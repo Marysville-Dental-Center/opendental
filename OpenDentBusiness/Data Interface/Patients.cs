@@ -5130,7 +5130,7 @@ namespace OpenDentBusiness {
 				return true;
 			}
 			//We are not checking the date. All patient get hashed.
-			if(patient.SecurityHash==HashFields(patient)) {
+			if(Misc.SecurityHash.IsHashValid(patient.SecurityHash,HashFields(patient))) {
 				return true;
 			}
 			return false;

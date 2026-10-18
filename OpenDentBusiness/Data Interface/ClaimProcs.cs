@@ -3389,7 +3389,7 @@ namespace OpenDentBusiness{
 			if(claimProc.SecDateEntry < dateHashStart) { //Too old, isn't hashed.
 				return true;
 			}
-			if(claimProc.SecurityHash==HashFields(claimProc)) {
+			if(Misc.SecurityHash.IsHashValid(claimProc.SecurityHash,HashFields(claimProc))) {
 				return true;
 			}
 			return false; 

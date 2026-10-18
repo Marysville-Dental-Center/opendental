@@ -22,7 +22,11 @@ namespace OpenDentBusiness.Misc {
 		private static List<Thread> _listHashThreads=new List<Thread>();
 
 		///<summary>This method is NOT safe to invoke during database conversions. It is only to be called AFTER all conversions have taken place in order to avoid a rare table lockup. 
-		///Runs a hashing algorithm over all tables for which Open Dental is enforcing database integrity. Overwrites any existing SecurityHashes with new ones for recent entries, except Patient table.</summary>
+		///Runs a hashing algorithm over all tables for which Open Dental is enforcing database integrity. Overwrites any existing SecurityHashes with new ones for recent entries, except Patient table.
+		///Patient rows are hashed only when their SecurityHash is blank or was written by Open Dental (see IsLegacyHash).
+		///This is also the admin rehash step after moving a database over from Open Dental. It runs automatically on the workstation that performs
+		///the next program version update (PrefL). RehashNow runs it on demand. Either way, it converts Open Dental's hashes for every patient, and for
+		///rows in the verified date range of the other tables, to the current CDT format. See CDT/README.md.</summary>
 		public static void UpdateHashing() {
 			//Ordered by threaded then non-threaded, then largest to smallest
 			RunClaimProc();
@@ -41,6 +45,26 @@ namespace OpenDentBusiness.Misc {
 			_arePatientsUpdated=false;
 		}
 
+		///<summary>Admin rehash: runs UpdateHashing on the calling thread, even if it already ran in this process, and returns when every table is done.
+		///Use it once after moving a database over from Open Dental so Open Dental's SecurityHash values are replaced with current ones.
+		///Not safe during database conversions, same as UpdateHashing.</summary>
+		public static void RehashNow() {
+			bool isThreadedOld=IsThreaded;
+			IsThreaded=false;
+			try {
+				_arePaySplitsUpdated=false;
+				_areAppointmentsUpdated=false;
+				_arePatientsUpdated=false;
+				_arePayPlansUpdated=false;
+				_areClaimsUpdated=false;
+				_areClaimProcsUpdated=false;
+				UpdateHashing();
+			}
+			finally {
+				IsThreaded=isThreadedOld;
+			}
+		}
+
 		///<summary>Returns either SecurityHash.DateStart or the date from a month prior to today, whichever is more recent.</summary>
 		public static DateTime GetHashingDate() {
 			DateTime dateLastMonth=DateTime.Now.Date.AddMonths(-1);
@@ -49,6 +73,22 @@ namespace OpenDentBusiness.Misc {
 				dateStartHashing=dateLastMonth;
 			}
 			return dateStartHashing;
+		}
+
+		///<summary>Compares a row's stored SecurityHash with the hash computed from its current values. Returns true if they match, or if the stored
+		///hash is a legacy hash written by Open Dental (see IsLegacyHash). Open Dental's hash key is proprietary, so those can't be checked and
+		///are not reported as tampering. They are replaced the next time the row is saved, or by UpdateHashing.</summary>
+		public static bool IsHashValid(string hashStored,string hashComputed) {
+			if(hashStored==hashComputed) {
+				return true;
+			}
+			return IsLegacyHash(hashStored);
+		}
+
+		///<summary>True if hash is non-empty and not in the current CDT.Class1.CreateSaltedHash format, which means Open Dental wrote it before this
+		///database was moved to this program. A blank hash is not legacy: it still counts as unhashed.</summary>
+		public static bool IsLegacyHash(string hash) {
+			return !string.IsNullOrEmpty(hash) && !CDT.Class1.IsCurrentSaltedHash(hash);
 		}
 
 		private static void RunPaysplit() {
@@ -186,7 +226,8 @@ namespace OpenDentBusiness.Misc {
 
 		private static void PatientWorker() {
 			//DateTime dateStartHashing=GetHashingDate();
-			string command="SELECT PatNum FROM patient WHERE SecurityHash = ''";
+			//Blank hashes, plus legacy hashes written by Open Dental (anything without the current CDT prefix), which can't be verified.
+			string command="SELECT PatNum FROM patient WHERE SecurityHash NOT LIKE '"+POut.String(CDT.Class1.SaltedHashPrefix)+"%'";
 			DataTable table=Db.GetTable(command);
 			long patNum;
 			string unhashedText="";
