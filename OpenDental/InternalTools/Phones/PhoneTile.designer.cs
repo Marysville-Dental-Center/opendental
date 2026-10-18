@@ -30,7 +30,6 @@ namespace OpenDental {
 			this.labelStatusAndNote = new System.Windows.Forms.Label();
 			this.pictureInUse = new System.Windows.Forms.PictureBox();
 			this.labelTime = new System.Windows.Forms.Label();
-			this.service11 = new OpenDental.localhost.Service1();
 			this.timerFlash = new System.Windows.Forms.Timer(this.components);
 			this.pictureProx = new System.Windows.Forms.PictureBox();
 			this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
@@ -90,11 +89,6 @@ namespace OpenDental {
 			this.labelTime.TabIndex = 5;
 			this.labelTime.Text = "01:10:13";
 			this.labelTime.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-			// 
-			// service11
-			// 
-			this.service11.Url = "http://localhost:3824/Service1.asmx";
-			this.service11.UseDefaultCredentials = true;
 			// 
 			// timerFlash
 			// 
@@ -201,7 +195,6 @@ namespace OpenDental {
 		private System.Windows.Forms.Label labelStatusAndNote;
 		private System.Windows.Forms.PictureBox pictureInUse;
 		private System.Windows.Forms.Label labelTime;
-		private localhost.Service1 service11;
 		private System.Windows.Forms.Timer timerFlash;
 		private System.Windows.Forms.PictureBox pictureProx;
 		private System.Windows.Forms.ToolTip toolTip1;

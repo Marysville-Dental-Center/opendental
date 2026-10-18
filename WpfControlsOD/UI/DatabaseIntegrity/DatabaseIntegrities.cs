@@ -169,7 +169,7 @@ namespace OpenDental {
 			string registrationKey=PrefC.GetString(PrefName.RegistrationKey);
 			string result="";
 			try {
-				OpenDentBusiness.localhost.Service1 service1=CustomerUpdatesProxy.GetWebServiceInstance();
+				ICustomerUpdates service1=CustomerUpdatesProxy.GetWebServiceInstance();
 				result=service1.DatabaseIntegrityGetList2(registrationKey);
 			}
 			catch{

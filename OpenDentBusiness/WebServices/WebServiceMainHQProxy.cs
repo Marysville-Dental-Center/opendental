@@ -13,55 +13,30 @@ namespace OpenDentBusiness {
 	/// <summary>Per Sam - This class is usually used for web service calls dealing with billing, account management, and synch.</summary>
 	public static class WebServiceMainHQProxy {
 
+		///<summary>Unit tests may set this to a fake implementation. When null, GetWebServiceMainHQInstance() returns WebServiceMainHQNoHq.</summary>
 		public static IWebServiceMainHQ MockWebServiceMainHQ {
 			private get;//Use GetWebServiceMainHQInstance()
 			set;
 		}
-		
-		///<summary>Get an instance of the WebServicesHQ web service which includes the URL (pulled from PrefC).
-		///Optionally, you can provide the URL. This option should only be used by web apps which don't want to cause a call to PrefC.
-		///Currently, OpenDentalREST and WebHostSynch hard-code the URL.</summary>
+
+		///<summary>Always false outside of unit tests. This build never connects to Open Dental's HQ web service, so callers can use this to skip
+		///work that only made sense with HQ (building payloads, starting threads, showing signup UI).</summary>
+		public static bool IsHqAvailable {
+			get {
+				return MockWebServiceMainHQ!=null;
+			}
+		}
+
+		///<summary>Returns the "no HQ" implementation of the WebServiceMainHQ web service. Its methods never make a network call; they throw
+		///HqNotAvailableException (or answer "not allowed") instead. The URL parameter is ignored and only kept so existing callers compile.</summary>
 		public static IWebServiceMainHQ GetWebServiceMainHQInstance(string webServiceHqUrl="") {
-			IWebServiceMainHQ service;
 			if(MockWebServiceMainHQ!=null) {
 				return MockWebServiceMainHQ;
 			}
-			//Right click OpenDentBusiness project, Properties, Settings, OpenDentBusiness_WebServiceMainHq_Mock = True.
-			//Set this application setting to False if you want to debug using a locally hosted WebServiceMainHQ.
-			if(ODBuild.IsDebug() && Properties.Settings.Default.OpenDentBusiness_WebServiceMainHq_Mock) {
-				service=new WebServiceMainHQMockDemo();
-			}
-			else {
-				service=new WebServiceMainHQReal();
-				if(ODBuild.IsDebug()) {
-					((WebServiceMainHQReal)service).Timeout=(int)TimeSpan.FromMinutes(60).TotalMilliseconds;
-				}
-			}
-			//This check MUST stay here, because some applications calling this method do not have database access and cannot update preference cache.
-			if(string.IsNullOrEmpty(webServiceHqUrl)) { //Default to the production URL.
-				service.Url=PrefC.GetString(PrefName.WebServiceHQServerURL);
-			}
-			else { //URL was provided so use that.
-				service.Url=webServiceHqUrl;
-			}
-			if(webServiceHqUrl.IsNullOrEmpty() && ODBuild.IsDebug()) {
-				//Change arguments for debug only.
-				if(!ODCloudClient.IsAppStream){
-					service.Url="http://localhost/OpenDentalWebServiceHQ/WebServiceMainHQ.asmx";//localhost
-				}
-				//service.Url="https://patientviewer.com:49997/OpenDentalWebServiceHQ/WebServiceMainHQ.asmx";//Live server
-				if(Environment.MachineName.ToLower()=="jordanhome"){
-					service.Url="https://patientviewer.com:49997/OpenDentalWebServiceHQ/WebServiceMainHQ.asmx";
-				}
-			}
-			if(ODBuild.IsUnitTest && service.Url.Contains("patientviewer.com")) {
-				throw new Exception("Unit test is not allowed to access live WSHQ! Maybe your unit test file is not inheriting TestBase. Ask me how I know...");
-			}
-			return service;
+			return new WebServiceMainHQNoHq();
 		}
 
-		///<summary>Prior to 17.4 the user had the choice to install the eConnector but leave it disabled.
-		///As of 17.4 installing gives implied conset to also enable the servcie for communicating.</summary>
+		///<summary>Used to tell HQ that the eConnector was installed. HQ is not available, so this always throws HqNotAvailableException.</summary>
 		public static ListenerServiceType SetEConnectorOn() {
 			return WebSerializer.DeserializePrimitiveOrThrow<ListenerServiceType>(
 					GetWebServiceMainHQInstance().SetEConnectorType(WebSerializer.SerializePrimitive<string>(PrefC.GetString(PrefName.RegistrationKey)),true));
@@ -164,6 +139,9 @@ namespace OpenDentBusiness {
 		///The ClinicNum 0 items are always used by the Signup portal to determine default signup preferences.
 		///However, these items are only used for validation and billing in the case where HasClinics==true.</summary>
 		public static EServiceSetup.SignupOut GetEServiceSetupFull(SignupPortalPermission permission,bool isSwitchClinicPref=false,EServiceSetup.SignupOut oldSignupOut=null) {
+			if(!IsHqAvailable) {
+				throw new HqNotAvailableException();
+			}
 			//Clinics will be stored in this order at HQ to allow signup portal to display them in proper order.
 			List<Clinic> clinics=new List<Clinic>() { Clinics.GetPracticeAsClinicZero("HQ") };
 			clinics.AddRange(Clinics.GetDeepCopy().OrderBy(x => x.ItemOrder));
@@ -345,24 +323,9 @@ namespace OpenDentBusiness {
 					+IsEServiceActive(signupOut,eServiceCode.WebSchedASAP).ToString()+".");
 			}
 			#endregion WebSchedASAP
-			#region PatientPortalURL
-			string patientPortalURL=PrefC.GetString(PrefName.PatientPortalURL);
-			string hostedURL=signupOut.EServices.FirstOrDefault(x => x.EService==eServiceCode.PatientPortal && x.ClinicNum==0)?.HostedUrl ?? "";
-			if(!string.IsNullOrEmpty(hostedURL)
-				&& patientPortalURL.Length>=29
-				&& patientPortalURL.Substring(0,29).ToLower()=="https://www.patientviewer.com"
-				&& patientPortalURL.ToLower()!=hostedURL.ToLower())
-			{
-				Prefs.UpdateString(PrefName.PatientPortalURL,hostedURL);
-				isCacheInvalid=true;
-			}
-			#endregion PatientPortalURL
 			#region Preferences
 			isCacheInvalid|=UpdatePreferences(signupOut.PushablePrefs);
 			isCacheInvalid|=Prefs.UpdateDateT(PrefName.EserviceLogUploadTimeNext,signupOut.DateTimeEServiceLogUploadNext);
-			#endregion
-			#region Limited Beta
-			LimitedBetaFeatures.SyncFromHQ(signupOut.ListLimitedBetaFeatures);
 			#endregion
 			if(isCacheInvalid) { //Something changed in the db. Alert other workstations and change this workstation immediately.
 				Signalods.Insert(new Signalod() { IType=InvalidType.Prefs });
@@ -730,7 +693,8 @@ namespace OpenDentBusiness {
 				//database setup with signups for eServices.
 				return MockWebServiceMainHQ.GetEServiceClinicsAllowed(listClinicNums,eService);
 			}
-			return GetEServiceClinicsAllowedHelper(listClinicNums,eService);
+			//HQ is not available, so no clinic is signed up for any Open Dental hosted eService.
+			return new List<long>();
 		}
 
 		public static List<long> GetEServiceClinicsAllowedHelper(List<long> listClinicNums,eServiceCode eService) {
@@ -1151,40 +1115,16 @@ namespace OpenDentBusiness {
 			return WebSerializer.DeserializeTag<List<ShortGuidResult>>(result,"ListShortGuidResults");
 		}
 
-		///<summary>Sends payload to HQ with version update information to be added to bugs database in CustomerVersion table.</summary>
-		public static void UpdateCustomerVersionHistory() {
-			string updateServerName=PrefC.GetString(PrefName.WebServiceServerName).ToLower();
-			if(updateServerName!="" && !ODEnvironment.IdIsThisComputer(updateServerName)){//When set, only send data from update server
-				return;
-			}
-			List<UpdateHistory> listUpdates=UpdateHistories.GetPreviousUpdateHistories(2);//Sorted by UpdateHistory.DateTimeUpdated DESC
-			string versionFrom;
-			string versionTo;
-			if(listUpdates.Count>0 && listUpdates[0].DateTimeUpdated.Date!=DateTime.Today) {//Only send out version info to HQ on same day as update.)
-				return;
-			}
-			else if(listUpdates.Count==2) {
-				versionFrom=listUpdates[1].ProgramVersion;
-				versionTo=listUpdates[0].ProgramVersion;
-			}
-			else {//Most likely a new customer with 1 or 0 updates.
-				versionFrom=(listUpdates.Count==1?listUpdates[0].ProgramVersion:"0.0.0.0");
-				versionTo=PrefC.GetString(PrefName.ProgramVersion);
-			}
-			List<PayloadItem> listPayloadItems=new List<PayloadItem>(){
-				new PayloadItem(versionFrom,"VersionFrom"),
-				new PayloadItem(versionTo,"VersionTo")
-			};
-			GetWebServiceMainHQInstance().CustomerUpdateCommitted(PayloadHelper.CreatePayload(listPayloadItems,eServiceCode.CustomerVersion));
-		}
-
 		public static string GetLatestCloudClientVersion() {
 			string result=GetWebServiceMainHQInstance().GetLatestCloudClientVersion();
 			return WebSerializer.DeserializePrimitive<string>(result);
 		}
 
-		///<summary>Returns a DateTime set by HQ or minval if we failed to retrieve the value.</summary>
+		///<summary>Returns a DateTime set by HQ or minval if we failed to retrieve the value. Without HQ this is always MinValue.</summary>
 		public static DateTime GetCareCreditBatchProcessTime() {
+			if(!IsHqAvailable) {
+				return DateTime.MinValue;
+			}
 			string payload=PayloadHelper.CreatePayload("",eServiceCode.Undefined);//Undefined to only check if they were ever a customer. Doesn't require support
 			try {
 				return WebSerializer.DeserializeTag<DateTime>(GetWebServiceMainHQInstance().GetCareCreditBatchTimes(payload),"DateTimeBatchProcess");
@@ -1194,8 +1134,11 @@ namespace OpenDentBusiness {
 			}
 		}
 
-		///<summary>Returns a DateTime set by HQ or minval if we failed to retrieve the value.</summary>
+		///<summary>Returns a DateTime set by HQ or minval if we failed to retrieve the value. Without HQ this is always MinValue.</summary>
 		public static DateTime GetCareCreditBatchPullbackTime() {
+			if(!IsHqAvailable) {
+				return DateTime.MinValue;
+			}
 			string payload=PayloadHelper.CreatePayload("",eServiceCode.Undefined);//Undefined to only check if they were ever a customer. Doesn't require support
 			try {
 				return WebSerializer.DeserializeTag<DateTime>(GetWebServiceMainHQInstance().GetCareCreditBatchTimes(payload),"DateTimeBatchPullback");
@@ -1268,8 +1211,12 @@ namespace OpenDentBusiness {
 			return GetWebServiceMainHQInstance().ProcessOCRIIDRequest(payload);
 		}
 
-		/// <summary> Takes in an open dental address. Packs it up and sends it off to USPS to validate. This service is available to all customers on support. </summary>
+		///<summary>Used to send the address to Open Dental HQ, which forwarded it to USPS. HQ is not available, so this throws
+		///HqNotAvailableException until USPS address validation talks to USPS directly with our own credentials.</summary>
 		public static string ProcessUSPSAddressValidationRequest(Address address) {
+			if(!IsHqAvailable) {
+				throw HqNotAvailableException.ForVendor("USPS address validation");
+			}
 			string payload=PayloadHelper.CreatePayload(
 				new List<PayloadItem> {
 					new PayloadItem(address,"address"),

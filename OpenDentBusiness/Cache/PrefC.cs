@@ -56,11 +56,11 @@ namespace OpenDentBusiness {
 			}
 		}
 
-		///<summary>Returns true if DockPhonePanelShow is enabled. Convenience function that should be used if for ODHQ only, and not resellers.</summary>
-		/// <returns></returns>
+		///<summary>Used to return true at Open Dental Software, Inc. headquarters (when DockPhonePanelShow was enabled), which turned on their
+		///internal staff tools. This build is never HQ, so this is always false, regardless of the DockPhonePanelShow preference.</summary>
 		public static bool IsODHQ {
 			get {
-				return GetBool(PrefName.DockPhonePanelShow);
+				return false;
 			}
 		}
 

@@ -787,18 +787,7 @@ namespace OpenDental {
 				return;
 			}
 			if(Prefs.UpdateBool(PrefName.SupplementalBackupEnabled,checkSupplementalBackupEnabled.Checked)) {
-				try {
-					//Inform HQ when the supplemental backups are enabled/disabled and which security admin performed the change.
-					PayloadItem payloadItemStatus=new PayloadItem(
-						(int)(checkSupplementalBackupEnabled.Checked?SupplementalBackupStatuses.Enabled:SupplementalBackupStatuses.Disabled),
-						"SupplementalBackupStatus");
-					PayloadItem payloadItemAdminUserName=new PayloadItem(Security.CurUser.UserName,"AdminUserName");
-					string officeData=PayloadHelper.CreatePayload(new List<PayloadItem>() { payloadItemStatus,payloadItemAdminUserName },eServiceCode.SupplementalBackup);
-					WebServiceMainHQProxy.GetWebServiceMainHQInstance().SetSupplementalBackupStatus(officeData);
-				}
-				catch(Exception ex) {
-					ex.DoNothing();//Internet probably is unavailble right now.
-				}
+				//The enabled/disabled status (and the admin's user name) used to be reported to Open Dental HQ here. That upload was removed.
 				SecurityLogs.MakeLogEntry(EnumPermType.SupplementalBackup,0,
 					"Supplemental backup has been "+(checkSupplementalBackupEnabled.Checked?"Enabled":"Disabled")+".");
 			}

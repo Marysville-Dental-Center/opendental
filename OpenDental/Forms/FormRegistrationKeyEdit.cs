@@ -189,19 +189,12 @@ namespace OpenDental {
 			writer.WriteEndElement();
 			writer.WriteEndElement();
 			writer.Close();
-			#if DEBUG
-				OpenDental.localhost.Service1 updateService=new OpenDental.localhost.Service1();
-			#else
-				OpenDental.customerUpdates.Service1 updateService=new OpenDental.customerUpdates.Service1();
-				updateService.Url=PrefC.GetString(PrefName.UpdateServerAddress);
-			#endif
-			if(PrefC.GetString(PrefName.UpdateWebProxyAddress)!="") {
-				IWebProxy iWebProxy=new WebProxy(PrefC.GetString(PrefName.UpdateWebProxyAddress));
-				ICredentials iCredentials=new NetworkCredential(PrefC.GetString(PrefName.UpdateWebProxyUserName),PrefC.GetString(PrefName.UpdateWebProxyPassword));
-				iWebProxy.Credentials=iCredentials;
-				updateService.Proxy=iWebProxy;
+			try {
+				CustomerUpdatesProxy.GetWebServiceInstance().PracticeTitleReset(stringBuilder.ToString());//Not available in this build.
 			}
-			updateService.PracticeTitleReset(stringBuilder.ToString());//may throw error
+			catch(Exception ex) {
+				MessageBox.Show(ex.Message);
+			}
 		}
 
 		private void createResellerChangeCommlog() {

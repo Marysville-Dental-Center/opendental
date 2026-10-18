@@ -34,12 +34,7 @@ namespace OpenDentBusiness{
 						writer.WriteEndElement();
 						writer.WriteEndElement();
 					}
-#if DEBUG
-					OpenDentBusiness.localhost.Service1 OIDService=new OpenDentBusiness.localhost.Service1();
-#else
-					OpenDentBusiness.customerUpdates.Service1 OIDService=new OpenDentBusiness.customerUpdates.Service1();
-					OIDService.Url=PrefC.GetString(PrefName.UpdateServerAddress);
-#endif
+					ICustomerUpdates OIDService=CustomerUpdatesProxy.GetWebServiceInstance();//Not available in this build. Throws HqNotAvailableException.
 					//Send the message and get the result---------------------------------------------------------------------------------------
 					string result="";
 					try {

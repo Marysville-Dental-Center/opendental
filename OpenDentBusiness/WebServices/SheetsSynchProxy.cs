@@ -7,14 +7,13 @@ using WebServiceSerializer;
 
 namespace OpenDentBusiness {
 	public class SheetsSynchProxy {
-	
+
 		///<summary></summary>
 		private static int _timeoutOverride=100000;//100 seconds
 		///<summary></summary>
 		private static string _urlOverride="";
 
-		///<summary>Used when we would like to override the service timeout.
-		///Will reset itself back to the default value after service instance is finished.</summary>
+		///<summary>Kept so existing callers compile. Has no effect because the Web Forms service is never contacted.</summary>
 		public static int TimeoutOverride {
 			get {
 				return _timeoutOverride;
@@ -23,9 +22,8 @@ namespace OpenDentBusiness {
 				_timeoutOverride=value;
 			}
 		}
-		
-		///<summary>Used when we would like to override the service URL.
-		///Will reset itself back to the default value after service instance is finished.</summary>
+
+		///<summary>Kept so existing callers compile. Has no effect because the Web Forms service is never contacted.</summary>
 		public static string UrlOverride {
 			get {
 				return _urlOverride;
@@ -35,33 +33,21 @@ namespace OpenDentBusiness {
 			}
 		}
 
+		///<summary>Unit tests may set this to a fake implementation. When null, GetWebServiceInstance() returns SheetsSynchNoHq.</summary>
 		public static ISheetsSynch MockSheetSynchService {
 			private get;//Use GetWebServiceInstance()
 			set;
 		}
 
-		/// <summary></summary>
+		///<summary>Returns the "no HQ" stand-in for Open Dental's hosted Web Forms service (SheetsSynch.asmx). It never makes a network call.</summary>
 		public static ISheetsSynch GetWebServiceInstance() {
 			if(MockSheetSynchService!=null) {
 				return MockSheetSynchService;
 			}
-			SheetsSynchReal sheetsSynchReal=new SheetsSynchReal();
-			sheetsSynchReal.Timeout=100000;
-			if(TimeoutOverride!=sheetsSynchReal.Timeout) {
-				sheetsSynchReal.Timeout=TimeoutOverride;
-				TimeoutOverride=100000;
-			}
-			if(string.IsNullOrEmpty(UrlOverride)) {
-				sheetsSynchReal.Url=PrefC.GetString(PrefName.WebHostSynchServerURL);
-			}
-			else { 
-				sheetsSynchReal.Url=UrlOverride;
-				UrlOverride="";
-			}
-			if(ODBuild.IsDebug()) {
-				//service.Url="http://localhost:2923/SheetsSynch.asmx";
-			}
-			return sheetsSynchReal;
+			//Reset the one-shot overrides the same way the hosted service did.
+			TimeoutOverride=100000;
+			UrlOverride="";
+			return new SheetsSynchNoHq();
 		}
 
 	}

@@ -61,7 +61,6 @@ namespace OpenDental {
 			this.label4 = new System.Windows.Forms.Label();
 			this.textHL7Server = new System.Windows.Forms.TextBox();
 			this.label7 = new System.Windows.Forms.Label();
-			this.service11 = new OpenDental.localhost.Service1();
 			this.label8 = new System.Windows.Forms.Label();
 			this.label9 = new System.Windows.Forms.Label();
 			this.labelDefEnabledWarning = new System.Windows.Forms.Label();
@@ -341,12 +340,7 @@ namespace OpenDental {
 			this.label7.TabIndex = 66;
 			this.label7.Text = "OpenDental HL7 Server";
 			this.label7.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// service11
-			// 
-			this.service11.Url = "http://localhost:3824/Service1.asmx";
-			this.service11.UseDefaultCredentials = true;
-			// 
+			//
 			// label8
 			// 
 			this.label8.Location = new System.Drawing.Point(426, 196);
@@ -549,6 +543,5 @@ namespace OpenDental {
 		private Label labelHL7FolderIn;
 		private OpenDental.UI.CheckBox checkProcRequireSignature;
 		private OpenDental.UI.CheckBox checkProcNotesNoIncomplete;
-		private localhost.Service1 service11;
 	}
 }

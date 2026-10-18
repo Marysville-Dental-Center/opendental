@@ -12,7 +12,6 @@ namespace UnitTests.ProgramProperties_Tests {
 	[TestClass]
 	public class ProgramPropertiess:TestBase {
 		private static List<ProgramProperty> _listProgramProperties=new List<ProgramProperty>();
-		private IWebServiceMainHQ _webInstanceOld;
 
 		///<summary>This method will execute only once, just before any tests in this class run.</summary>
 		[ClassInitialize]
@@ -28,32 +27,6 @@ namespace UnitTests.ProgramProperties_Tests {
 			ProgramPropertyT.ClearProgamPropertyTable();
 			HqProgram.ClearCaches();
 			Programs.RefreshCache();
-			_webInstanceOld=WebServiceMainHQProxy.GetWebServiceMainHQInstance();
-			WebServiceMainHQProxy.MockWebServiceMainHQ=new WebServiceMainHQMockDemo() {
-				EnableAdditionalFeaturesDelegate=(officeData) => {
-					List<HqProgram> listHqProgsForBiz=new List<HqProgram> {
-						new HqProgram() {
-							ProgramNameAsString=ProgramName.PDMP.ToString(),
-							IsEnabled=true,
-							ListProperties=new List<HqProgramProperty>() {
-								new HqProgramProperty() {
-									PropertyDesc="California "+PdmpProperty.PdmpUrl,
-									PropertyValue="www.testpdmp.com/ca",
-								},
-							}
-						},
-					};
-					foreach(HqProgram prog in listHqProgsForBiz) {
-						if(!prog.IsEnabled) {
-							prog.ListProperties.Where(x =>x.PropertyDesc!="Disable Advertising HQ").ForEach(x => x.PropertyValue="");//When program is disabled by HQ, clear out any property values at Dental Office.
-						}
-					}
-					return PayloadHelper.CreateSuccessResponse(new List<PayloadItem> {
-						new PayloadItem(listHqProgsForBiz,"ListHqPrograms"),
-						new PayloadItem((long)TimeSpan.FromHours(12).TotalHours,"IntervalHours"),
-					});
-				},
-			};
 		}
 
 		///<summary>This method will execute after each test in this class.</summary>
@@ -62,7 +35,6 @@ namespace UnitTests.ProgramProperties_Tests {
 			ProgramPropertyT.ClearProgamPropertyTable();
 			ProgramProperties.InsertMany(_listProgramProperties);
 			ProgramProperties.RefreshCache();
-			_webInstanceOld=null;
 		}
 
 		///<summary>This method will execute only once, just after all tests in this class have run.</summary>
@@ -125,7 +97,7 @@ namespace UnitTests.ProgramProperties_Tests {
 		}
 
 		[TestMethod]
-		public void PDMP_GetPropertyFromSource_UseBusinessValueWithDownload() {
+		public void PDMP_GetPropertyFromSource_UseBusinessValueForAnyProperty() {
 			OpenDentBusiness.Program prog=Programs.GetCur(ProgramName.PDMP);
 			string propDesc="Not Hq property";
 			string propVal="dbVal";
@@ -137,13 +109,13 @@ namespace UnitTests.ProgramProperties_Tests {
 				ProgramPropertyT.CreateProgramProperty(prog.ProgramNum,propDesc,0,propertyValue:propVal);
 			}
 			ProgramProperties.RefreshCache();
-			HqProgram.Download();
 			string actualValue=ProgramProperties.GetFirstOrDefault(x=>x.ProgramNum==prog.ProgramNum && x.PropertyDesc==propDesc).PropertyValue;
 			Assert.AreEqual(propVal,actualValue);
 		}
 
+		///<summary>Open Dental HQ used to override some property values (like PDMP URLs) in memory. That no longer happens; the database value wins.</summary>
 		[TestMethod]
-		public void PDMP_GetPropertyFromSource_UseHQ() {
+		public void PDMP_GetPropertyFromSource_HqNeverOverrides() {
 			string propDesc="California "+PdmpProperty.PdmpUrl;
 			OpenDentBusiness.Program prog=Programs.GetCur(ProgramName.PDMP);
 			ProgramPropertyT.CreateProgramProperty(prog.ProgramNum,propDesc,0);
@@ -152,12 +124,10 @@ namespace UnitTests.ProgramProperties_Tests {
 			if(ProgramProperties.UpdateProgramPropertyWithValue(propertyFromCache,"www.fakeurl.com")) {
 				ProgramProperties.RefreshCache();
 			}
+			Assert.IsFalse(HqProgram.IsInitialized());
+			Assert.AreEqual(0,HqProgram.GetAll().Count);
 			propertyFromCache=ProgramProperties.GetPropForProgByDesc(Programs.GetCur(ProgramName.PDMP).ProgramNum,propDesc);
-			Assert.AreNotEqual("",propertyFromCache.PropertyValue);
 			Assert.AreEqual("www.fakeurl.com",propertyFromCache.PropertyValue);
-			HqProgram.Download();
-			ProgramProperty propertyFromHq=ProgramProperties.GetPropForProgByDesc(Programs.GetCur(ProgramName.PDMP).ProgramNum,propDesc);
-			Assert.AreNotEqual(propertyFromHq.PropertyValue,propertyFromCache.PropertyValue);		
 		}
 	}
 }

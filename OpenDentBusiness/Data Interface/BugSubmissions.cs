@@ -394,48 +394,27 @@ namespace OpenDentBusiness {
 		#endregion
 
 		#region Misc Methods
-		///<summary>Attempts to submit an exception to HQ.
-		///Checks PrefName.SendUnhandledExceptionsToHQ prior to web call.</summary>
+		///<summary>Used to send the exception (with stack trace, patient number, server and database names) to Open Dental HQ.
+		///Telemetry was removed: nothing is sent anywhere. The exception is only written to the local log. Always returns BugSubmissionResult.None.</summary>
 		public static BugSubmissionResult SubmitException(Exception ex,string threadName="",long patNumCur=-1,string moduleName="") {
 			Meth.NoCheckMiddleTierRole();
 			return SubmitException(ex,out string displayMsg,threadName,patNumCur,moduleName);
 		}
-		
-		///<summary>Attempts to submit an exception to HQ.
-		///Checks PrefName.SendUnhandledExceptionsToHQ prior to web call.</summary>
+
+		///<summary>Used to send the exception to Open Dental HQ. Telemetry was removed: nothing is sent anywhere, the PrefName.SendUnhandledExceptionsToHQ
+		///preference is ignored (treated as false), and the exception is only written to the local log. displayMsg is always null.
+		///Always returns BugSubmissionResult.None.</summary>
 		public static BugSubmissionResult SubmitException(Exception ex,out string displayMsg,string threadName="",long patNumCur=-1,string moduleName="") {
 			Meth.NoCheckMiddleTierRole();
 			displayMsg=null;
 			if(MockBugSubmissions!=null) {
 				return MockBugSubmissions.SubmitException(ex,threadName,patNumCur,moduleName);
 			}
-			//Default SendUnhandledExceptionsToHQ to true if the preference cache is null or the preference was not found.
-			//There might not be a database connection yet, therefore the preference cache could be null.
-			//HQ needs to know more information regarding unhandled exceptions prior to setting a database connection (.NET issue, release issue, etc).
-			if(!PrefC.GetBoolSilent(PrefName.SendUnhandledExceptionsToHQ,true)) {
-				return BugSubmissionResult.None;
+			if(ex!=null) {
+				//Local logging only. Never let logging problems surface to the caller, which is usually already handling an error.
+				ODException.SwallowAnyException(() => Logger.WriteException(ex,"BugSubmissions"));
 			}
-			BugSubmission bugSubmission=new BugSubmission(ex,threadName,patNumCur,moduleName);
-			string registrationKey=null;
-			string practiceTitle=null;
-			string practicePhone=null;
-			string programVersion=null;
-			string webServiceHqURL="";
-			if(bugSubmission.RegKey=="7E57-1NPR-0DUC-710N") {
-				registrationKey=bugSubmission.RegKey;
-				practiceTitle="Unknown";
-				practicePhone="Unknown";
-				programVersion=bugSubmission.Info.OpenDentBusinessVersion;
-				webServiceHqURL="https://www.patientviewer.com:49997/OpenDentalWebServiceHQ/WebServiceMainHQ.asmx";
-			}
-			return ParseBugSubmissionResult(
-				WebServiceMainHQProxy.GetWebServiceMainHQInstance(webServiceHqURL).SubmitUnhandledException(
-					PayloadHelper.CreatePayload(
-						PayloadHelper.CreatePayloadContent(bugSubmission,"bugSubmission"),eServiceCode.BugSubmission,registrationKey,practiceTitle,practicePhone,programVersion
-					)
-				)
-				,out displayMsg
-			);
+			return BugSubmissionResult.None;
 		}
 
 		///<summary>After calling WebServiceMainHQ.SubmitUnhandledException(...) this will digest the result and provide the result.

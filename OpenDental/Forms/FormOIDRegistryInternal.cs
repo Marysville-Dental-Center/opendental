@@ -100,12 +100,7 @@ namespace OpenDental {
 			xmlWriter.WriteEndElement();
 			xmlWriter.WriteEndElement();
 			xmlWriter.Close();
-#if DEBUG
-			OpenDental.localhost.Service1 OIDService=new OpenDental.localhost.Service1();
-#else
-			OpenDental.customerUpdates.Service1 OIDService=new OpenDental.customerUpdates.Service1();
-			OIDService.Url=PrefC.GetString(PrefName.UpdateServerAddress);
-#endif
+			ICustomerUpdates OIDService=CustomerUpdatesProxy.GetWebServiceInstance();//Not available in this build. Throws HqNotAvailableException.
 			//Send the message and get the result-------------------------------------------------------------------------------------
 			string result="";
 			try {

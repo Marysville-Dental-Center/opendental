@@ -176,15 +176,7 @@ namespace OpenDental{
 			if(!_didChange){
 				return;
 			}
-			Cursor=Cursors.WaitCursor;
-			try {
-				//Let HQ know the program link change.
-				Programs.SendEnabledProgramsToHQ();
-			}
-			catch(Exception ex) {
-				ex.DoNothing();
-			}
-			Cursor=Cursors.Default;
+			//The list of enabled programs is no longer sent to Open Dental HQ.
 			DataValid.SetInvalid(InvalidType.Programs, InvalidType.ToolButsAndMounts);
 		}
 

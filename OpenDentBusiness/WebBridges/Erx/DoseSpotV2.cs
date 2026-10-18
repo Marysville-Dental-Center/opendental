@@ -762,13 +762,8 @@ namespace OpenDentBusiness {
 				}
 				xmlWriter.WriteEndElement();//End ErxAccessRequest
 			}
-#if DEBUG
-			OpenDentBusiness.localhost.Service1 service1=new OpenDentBusiness.localhost.Service1();
-
-#else
-			OpenDentBusiness.customerUpdates.Service1 service1=new OpenDentBusiness.customerUpdates.Service1();
-			service1.Url=PrefC.GetString(PrefName.UpdateServerAddress);
-#endif
+			//eRx clinic access used to be granted by Open Dental HQ. Not available until direct vendor integration is configured.
+			ICustomerUpdates service1=CustomerUpdatesProxy.GetWebServiceInstance();
 			bool isCacheRefreshNeeded=false;
 			try {
 				string result=service1.GetClinicErxAccess(stringBuilder.ToString());

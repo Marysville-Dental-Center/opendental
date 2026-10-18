@@ -51,6 +51,15 @@ namespace OpenDental{
 			if(PrefC.AtoZfolderUsed!=DataStorageType.LocalAtoZ) {
 				labelRecopy.Text=@"Recopy all of the files from C:\Program Files\Open Dental\ into a special place in the database for future use in updating other computers.";
 			}
+			//These settings only pointed at Open Dental's update servers, which this build never contacts. Their preference values are left unchanged.
+			label1.Visible=false;
+			textUpdateServerAddress.Visible=false;
+			label3.Visible=false;
+			textWebsitePath.Visible=false;
+			groupBox1.Visible=false;
+			checkShowMsi.Visible=false;
+			label10.Visible=false;
+			label4.Visible=false;
 		}
 
 		private void textRegKey_KeyUp(object sender,KeyEventArgs e) {
@@ -158,10 +167,7 @@ namespace OpenDental{
 			isChanged |= Prefs.UpdateString(PrefName.UpdateWebProxyUserName,textWebProxyUserName.Text);
 			isChanged |= Prefs.UpdateString(PrefName.UpdateWebProxyPassword,textWebProxyPassword.Text);
 			isChanged |= Prefs.UpdateString(PrefName.UpdateMultipleDatabases,textMultiple.Text);
-			if(Prefs.UpdateString(PrefName.RegistrationKey,regkey)) {
-				FormOpenDental.IsRegKeyForTesting=PrefL.IsRegKeyForTesting();
-				isChanged=true;
-			}
+			isChanged |= Prefs.UpdateString(PrefName.RegistrationKey,regkey);
 			if(isChanged) {
 				Cursor=Cursors.WaitCursor;
 				DataValid.SetInvalid(InvalidType.Prefs);

@@ -91,12 +91,7 @@ namespace OpenDental {
 			xmlWriter.WriteEndElement();
 			xmlWriter.WriteEndElement();
 			xmlWriter.Close();
-			#if DEBUG
-				OpenDental.localhost.Service1 updateService=new OpenDental.localhost.Service1();
-			#else
-				OpenDental.customerUpdates.Service1 updateService=new OpenDental.customerUpdates.Service1();
-				updateService.Url=PrefC.GetString(PrefName.UpdateServerAddress);
-			#endif
+			ICustomerUpdates updateService=CustomerUpdatesProxy.GetWebServiceInstance();//Not available in this build. Throws HqNotAvailableException.
 			//Send the message and get the result-------------------------------------------------------------------------------------
 			string result="";
 			try {
@@ -273,12 +268,7 @@ namespace OpenDental {
 			xmlWriter.WriteEndElement();
 			xmlWriter.WriteEndElement();
 			xmlWriter.Close();
-			#if DEBUG
-				OpenDental.localhost.Service1 updateService=new OpenDental.localhost.Service1();
-			#else
-				OpenDental.customerUpdates.Service1 updateService=new OpenDental.customerUpdates.Service1();
-				updateService.Url=PrefC.GetString(PrefName.UpdateServerAddress);
-			#endif
+			ICustomerUpdates updateService=CustomerUpdatesProxy.GetWebServiceInstance();//Not available in this build. Throws HqNotAvailableException.
 			//Send the message and get the result-------------------------------------------------------------------------------------
 			string result="";
 			try {
@@ -357,12 +347,7 @@ namespace OpenDental {
 			}*/
 			xmlWriter.Close();
 			Cursor=Cursors.WaitCursor;
-			#if DEBUG
-				OpenDental.localhost.Service1 updateService=new OpenDental.localhost.Service1();
-			#else
-				OpenDental.customerUpdates.Service1 updateService=new OpenDental.customerUpdates.Service1();
-				updateService.Url=PrefC.GetString(PrefName.UpdateServerAddress);
-			#endif
+			ICustomerUpdates updateService=CustomerUpdatesProxy.GetWebServiceInstance();//Not available in this build. Throws HqNotAvailableException.
 			//Send the message and get the result-------------------------------------------------------------------------------------
 			string result="";
 			try {
@@ -566,12 +551,7 @@ namespace OpenDental {
 			}
 			xmlWriter.WriteEndElement();
 			xmlWriter.Close();
-			#if DEBUG
-				OpenDental.localhost.Service1 updateService=new OpenDental.localhost.Service1();
-			#else
-				OpenDental.customerUpdates.Service1 updateService=new OpenDental.customerUpdates.Service1();
-				updateService.Url=PrefC.GetString(PrefName.UpdateServerAddress);
-			#endif
+			ICustomerUpdates updateService=CustomerUpdatesProxy.GetWebServiceInstance();//Not available in this build. Throws HqNotAvailableException.
 			//Send the message and get the result-------------------------------------------------------------------------------------
 			string result="";
 			try {

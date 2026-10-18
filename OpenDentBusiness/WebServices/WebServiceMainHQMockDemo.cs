@@ -192,9 +192,9 @@ namespace OpenDentBusiness {
 				case (eServiceCode.WebSchedNewPatAppt):
 					return "http://127.0.0.1:8000/WebSched.html";
 				case (eServiceCode.EmailMassUsage):
-					return "https://opendental.com/site/massemailembedded.html";
+					return "http://127.0.0.1:8001/MassEmailEmbedded.html";
 				case (eServiceCode.EmailSecureAccess):
-					return "https://opendental.com/site/secureemailembedded.html";
+					return "http://127.0.0.1:8002/SecureEmailEmbedded.html";
 				default:
 					return "";
 			}
@@ -415,7 +415,7 @@ namespace OpenDentBusiness {
 			PostcardManiaAccountCreateResponse res=new PostcardManiaAccountCreateResponse();
 			res.AccountId=1;
 			res.Company="Mordor Inc";
-			res.Email="SeanS@opendental.com";
+			res.Email="mock@example.invalid";
 			return PayloadHelper.CreateSuccessResponse(res,AdvertisingPostcards.MassPostcardResponseNode);
 		}
 

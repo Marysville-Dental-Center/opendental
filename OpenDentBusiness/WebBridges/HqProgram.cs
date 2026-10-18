@@ -54,35 +54,8 @@ namespace OpenDentBusiness {
 			}
 		}
 
-		///<summary>Fills in memory list of HqProgram.  Returns milliseconds for how frequently HQ wants this method called.  Throws exceptions.</summary>
-		public static int Download() {
-			string result="";
-			result=WebServiceMainHQProxy.GetWebServiceMainHQInstance()
-				.EnableAdditionalFeatures(PayloadHelper.CreatePayload("",eServiceCode.SoftwareUpdate));
-			PayloadHelper.CheckForError(result);//Throws if download failed.
-			List<HqProgram> listHqProgs=WebSerializer.DeserializeTag<List<HqProgram>>(result,"ListHqPrograms");
-			listHqProgs=listHqProgs.Where(x => x._programName!=ProgramName.None).ToList();//Ignore any programs that could not be deserialized
-			lock(_lock) {
-				_listHqPrograms=listHqProgs;
-			}
-			long intervalHours=WebSerializer.DeserializeTag<long>(result,"IntervalHours");			
-			UpdateCaches();
-			return (int)TimeSpan.FromHours(intervalHours).TotalMilliseconds;
-		}
-
-		///<summary>Fills in memory list of all HqPrograms, including those unrecognized in the ProgramName enumeration. Used on startup to validate plugins when missing from local whitelist.
-		///Throws exceptions.</summary>
-		public static void DownloadListHqPrograms() {
-			string result="";
-			result=WebServiceMainHQProxy.GetWebServiceMainHQInstance()
-				.EnableAdditionalFeatures(PayloadHelper.CreatePayload("",eServiceCode.SoftwareUpdate));
-			PayloadHelper.CheckForError(result);//Throws if download failed.
-			List<HqProgram> listHqProgs=WebSerializer.DeserializeTag<List<HqProgram>>(result,"ListHqPrograms");
-			lock(_lock) {
-				_listHqPrograms=listHqProgs;
-			}
-			UpdateCaches();
-		}
+		//HqProgram.Download() and DownloadListHqPrograms() were removed. Open Dental HQ used them to disable, delete and overwrite program links
+		//and program properties remotely. Nothing fills the list anymore, so GetAll() is always empty and local values are always used.
 
 		///<summary>Unit test methods need to clear out the HqProgram cache between tests.</summary>
 		public static void ClearCaches() {
@@ -94,39 +67,6 @@ namespace OpenDentBusiness {
 			}
 		}
 
-		private static void UpdateCaches() {			
-			bool isCacheRefresh=false;
-			List<Program> listProgs=Programs.GetListDeep().Where(x=> _listHqPrograms.Select(x => x.ProgramNameAsString).Contains(x.ProgName)).ToList();
-			foreach(HqProgram hqProg in _listHqPrograms) {
-				Program prog=listProgs.FirstOrDefault(x => x.ProgName==hqProg.ProgramNameAsString);
-				if(prog is null) {
-					continue;//Very important to skip for backward compatibility, otherwise we might insert ProgramProperties before a future convert script.
-				}				
-				Program old=prog.Copy();
-				prog.IsDisabledByHq=!Programs.IsEnabledByHq(prog,out string _);
-				if(prog.IsDisabledByHq) {
-					prog.CustErr=hqProg.CustErr;
-				}
-				else {
-					prog.CustErr="";
-				}
-				isCacheRefresh|=Programs.Update(prog,old);
-				foreach(HqProgramProperty hqProp in hqProg.ListProperties) {
-					ProgramProperty prop=ProgramProperties.GetFirstOrDefault(x => x.ProgramNum==prog.ProgramNum && x.PropertyDesc==hqProp.PropertyDesc);
-					if(prop is null) {
-						continue;
-					}
-					prop.PropertyValue=hqProp.PropertyValue;
-					ProgramProperties.Update(prop);
-					isCacheRefresh=true;
-				}
-			}
-			if(isCacheRefresh) {
-				Programs.RefreshCache();
-				ProgramProperties.RefreshCache();
-				Signalods.SetInvalid(InvalidType.Programs);
-			}
-		}
 	}
 
 	#endregion
