@@ -89,6 +89,8 @@ Open Dental's ciphertexts use its proprietary key, so this library can't decrypt
 
 Callers that use `TryDecrypt` get the stored value back unchanged. A value Open Dental stored as plain text therefore keeps working. A value Open Dental encrypted is passed through as-is, and authentication fails until the password is re-entered.
 
+The `DatabaseIntegritiesWhiteList` preference also holds Open Dental ciphertext. Open Dental HQ sent the plugin and warning list, and Open Dental saved it there encrypted. Nothing needs re-entering: `DatabaseIntegrities.RefreshCacheFromPref` reads it with `Decrypt` rather than `TryDecrypt`, so an undecryptable value is ignored and the list stays empty. That's the same state as when HQ is unreachable: plugins load and no integrity warnings show. `TryDecrypt` would have passed the ciphertext to the XML parser, which throws, and that exception would surface each time a module opened with a patient selected. The preference row is left as it is; clearing its value is optional.
+
 ## SecurityHash
 
 ### Format
