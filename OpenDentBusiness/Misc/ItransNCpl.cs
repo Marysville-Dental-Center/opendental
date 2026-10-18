@@ -60,6 +60,10 @@ namespace OpenDentBusiness {
 				dateTimeTrans=File.GetCreationTime(ncplFilePath);
 			}
 			else {//ITRANS2 not used or not setup correctly (ex using "ITRANS"), go to HQ for file content.
+				if(!WebServiceMainHQProxy.IsHqAvailable) {
+					//Open Dental HQ used to relay the carrier list. Set up ITRANS2 locally to import carriers directly from the vendor.
+					return HqNotAvailableException.GetVendorMessage(Lans.g("Clearinghouse","Downloading the carrier list without a local ITRANS2 install"));
+				}
 				try {
 					string result=WebServiceMainHQProxy.GetWebServiceMainHQInstance().CanadaCarrierUpdate(PayloadHelper.CreatePayload("",eServiceCode.Undefined));
 					json=WebSerializer.DeserializePrimitiveOrThrow<string>(result);

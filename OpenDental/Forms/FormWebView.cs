@@ -57,7 +57,7 @@ namespace OpenDental {
 				webViewMain.NavigateToString(HtmlContent);
 			}
 			await webViewMain.Init();
-			webViewMain.Source=new Uri("https://opendental.com/");
+			webViewMain.Source=new Uri("about:blank");//Used to load an Open Dental page on startup.
 			webViewMain.CoreWebView2InitializationCompleted+=WebViewMain_CoreWebView2InitializationCompleted;
 			Cursor=Cursors.WaitCursor;//Is set back to default cursor after the document loads inside the browser.
 			Application.DoEvents();//To show cursor change.

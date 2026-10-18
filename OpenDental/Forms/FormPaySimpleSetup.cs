@@ -317,8 +317,9 @@ namespace OpenDental {
 				listHooksNeeded.Add("payment_settled");
 			}
 			if(listHooksNeeded.Count > 0) {			
-				string url=WebServiceMainHQProxy.GetWebServiceMainHQInstance().GetPaySimpleWebHookUrl();		
 				try {
+					//The webhook receiver was hosted by Open Dental HQ. Throws HqNotAvailableException until direct vendor integration is configured.
+					string url=WebServiceMainHQProxy.GetWebServiceMainHQInstance().GetPaySimpleWebHookUrl();
 					PaySimple.PostWebhook(clinicNum,listHooksNeeded.ToArray(),url);
 				}
 				catch(Exception ex) {

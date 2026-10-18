@@ -80,6 +80,9 @@ namespace OpenDental {
 
 		///<summary>Returns true if this form needs to be shown to the user based on practice and patient settings.  False otherwise.</summary>
 		public static void PromptIfNecessary(Patient patient,long clinicNum) {
+			if(!WebServiceMainHQProxy.IsHqAvailable) {
+				return;//Short code texting opt-in was relayed through Open Dental HQ. Not available until direct vendor integration is configured.
+			}
 			PatComm patComm=Patients.GetPatComms(ListTools.FromSingle(patient)).FirstOrDefault();
 			if(patComm is null) {
 				return;
@@ -108,6 +111,12 @@ namespace OpenDental {
 		///<summary>Sends a request to HQ to update the Short Code Opt In status of this patient.  Can be sent silently without any feedback in the UI.
 		///</summary>
 		private static bool TrySendToHq(string wirelessPhone,YN optIn,long patNum,long clinicNum,bool isSilent=false) {
+			if(!WebServiceMainHQProxy.IsHqAvailable) {
+				if(!isSilent) {
+					MessageBox.Show(HqNotAvailableException.GetVendorMessage(Lang.g("ShortCodes","Text message opt-in")));
+				}
+				return false;
+			}
 			List<PayloadItem> listPayloadItems=new List<PayloadItem>(){
 				new PayloadItem(wirelessPhone,"PhonePat"),
 				new PayloadItem((int)optIn,"ShortCodeOptInInt"),

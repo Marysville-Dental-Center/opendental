@@ -389,18 +389,16 @@ namespace OpenDental{
 		}
 
 		private void butDownloadDriver_Click(object sender,EventArgs e) {
-			Cursor=Cursors.WaitCursor;
-			WebClient webClient=new WebClient();
 			//The VeriFone driver is necessary for PayConnect users to process payments on the VeriFone terminal.
-			string zipFileName=ODFileUtils.CombinePaths(PrefC.GetTempFolderPath(),"VeriFoneUSBUARTDriver_Vx_1.0.0.52_B5.zip");
-			try {
-				webClient.DownloadFile(@"http://www.opendental.com/download/drivers/VeriFoneUSBUARTDriver_Vx_1.0.0.52_B5.zip",zipFileName);
-			}
-			catch(Exception ex) {
-				Cursor=Cursors.Default;
-				MessageBox.Show(Lan.g(this,"Unable to download driver. Error message")+": "+ex.Message);
+			//It used to be downloaded from Open Dental's website, which this build never contacts. Use the driver zip file obtained from the vendor.
+			using OpenFileDialog openFileDialog=new OpenFileDialog();
+			openFileDialog.Title=Lan.g(this,"Choose the VeriFone USB driver zip file from the vendor");
+			openFileDialog.Filter="zip|*.zip";
+			if(openFileDialog.ShowDialog()!=DialogResult.OK) {
 				return;
 			}
+			Cursor=Cursors.WaitCursor;
+			string zipFileName=openFileDialog.FileName;
 			if(ODEnvironment.IsCloudServer) {
 				//ODCloud, send the installer to the client computer instead of installing it here on the server computer.
 				if(ODBuild.IsThinfinity()) {
