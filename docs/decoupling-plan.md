@@ -20,6 +20,11 @@ After that, port desktop features from Open Dental 26.1.70, **re-implemented fro
    - Bridge passwords that Open Dental stored masked will be re-entered after migration.
 4. **Nothing proprietary in the repo**: no ADA CDT code text, no ADA claim-form artwork, no "Open Dental" trademark in the product. GPL v2 copyright notices stay.
 5. **Core offline use must keep working at every step**: charting, scheduling, billing, claims, imaging, reports.
+6. **Everything runs locally; nothing depends on the cloud.**
+   - The database runs on the office's own MariaDB server.
+   - Any service or API the product needs is self-hosted on the office network: updates via the MariaDB update path, background services, and any future patient-facing services.
+   - Patient data and images stay on local storage.
+   - Third-party vendor integrations that are inherently online (QuickBooks Online, Microsoft 365 email, USPS, card processors, eRx, …) are optional and off by default. They are configured per office and call the vendor directly from the office. Core functionality never requires them.
 
 ## What we found
 
