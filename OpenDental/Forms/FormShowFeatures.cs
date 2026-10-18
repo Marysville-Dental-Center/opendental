@@ -86,9 +86,11 @@ namespace OpenDental{
 		}
 
 		private void checkEhr_Click(object sender,EventArgs e) {
-			if(checkEhr.Checked && !File.Exists(ODFileUtils.CombinePaths(Application.StartupPath,"EHR.dll"))){
+			//The EHR (Meaningful Use) feature depended on Open Dental's proprietary EHR.dll, which this build does not load.
+			//Turning the feature off is still allowed so that databases which had it on can turn it off.
+			if(checkEhr.Checked) {
 				checkEhr.Checked=false;
-				MsgBox.Show(this,"EHR.dll could not be found.");
+				MsgBox.Show(this,"The EHR feature is not available in this build.");
 				return;
 			}
 			MsgBox.Show(this,"You will need to restart the program for the change to take effect.");
