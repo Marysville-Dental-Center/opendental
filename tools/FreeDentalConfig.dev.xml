@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Connection settings for a local development database made by tools\New-DevDatabase.ps1.
+
+  OpenDental.exe reads FreeDentalConfig.xml from its own folder. Either copy this file to
+  OpenDental\bin\Debug\FreeDentalConfig.xml, or run
+      .\tools\New-DevDatabase.ps1 -WriteConfig
+  which writes it there with your -Name, -Server, -Port and -User filled in.
+
+  Defaults: MariaDB/MySQL on 127.0.0.1, default port 3306, user root, blank password, database
+  opendental_dev. For a non-default port write it as host:port in ComputerName, e.g. 127.0.0.1:3307.
+  NoShowOnStartup=True skips the Choose Database window; set it to False to get the window back.
+
+  Log in to the dev database as user Admin with a blank password.
+-->
+<ConnectionSettings>
+    <DatabaseConnection>
+        <ComputerName>127.0.0.1</ComputerName>
+        <Database>opendental_dev</Database>
+        <User>root</User>
+        <Password></Password>
+        <MySQLPassHash></MySQLPassHash>
+        <NoShowOnStartup>True</NoShowOnStartup>
+    </DatabaseConnection>
+    <DatabaseType>MySql</DatabaseType>
+    <UseDynamicMode>False</UseDynamicMode>
+</ConnectionSettings>
