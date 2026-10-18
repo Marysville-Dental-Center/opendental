@@ -6,7 +6,7 @@ It was written from how this repository calls the library and from public algori
 
 | Area | Members | Summary |
 |---|---|---|
-| Secrets | `Encrypt`, `Decrypt`, `TryEncrypt`, `TryDecrypt`, `EncryptSftp`, `DecryptSftp`, `ConcealClearinghouse`, `RevealClearinghouse`, `IsEncrypted` | Reversible obfuscation of stored passwords and tokens: AES-256-CBC plus HMAC-SHA256, prefix `osd1$`, fixed public key |
+| Secrets | `Encrypt`, `Decrypt`, `TryEncrypt`, `TryDecrypt`, `EncryptSftp`, `DecryptSftp`, `ConcealClearinghouse`, `RevealClearinghouse`, `IsEncrypted` | Reversible obfuscation of stored passwords and tokens: AES-256-CBC plus HMAC-SHA256, deterministic, prefix `osd1$`, fixed public key |
 | SecurityHash | `CreateSaltedHash`, `DisposeHashAlgorithm`, `IsCurrentSaltedHash`, `SaltedHashPrefix` | Keyed hashes for the tamper-detection columns: HMAC-SHA256, prefix `osh1$`, fixed public key |
 | ADA content | `GetADAcodes`, `GetProcedureCodeSettings`, `GetProcedureCodeTreatAreas`, `GetMandibularCodes`, `GetMaxillaryCodes`, `GetADA2006`, `GetADA2012`, `GetADA2012_J430D`, `GetADA2018_J432`, `GetADA2019_J430`, `GetADA2024_J430`, `GetDC217` | Not shipped. The text getters return `""` and the claim-form images are blank. |
 | Registration keys | `GenerateRandKey`, `ValidateKey` | No license gates. Key generation returns `""` and validation always returns true. |
@@ -19,13 +19,27 @@ Hashing and AES use the Windows CryptoAPI providers (`SHA256CryptoServiceProvide
 
 ```
 osd1$ + base64( IV[16] || AES-256-CBC-PKCS7( UTF-8 plaintext ) || tag[32] )
-tag    = HMAC-SHA256( macKey, "osd1$" || IV || ciphertext )      (encrypt-then-MAC)
+IV     = first 16 bytes of HMAC-SHA256( ivKey, "osd1$" || UTF-8 plaintext )   (synthetic IV)
+tag    = HMAC-SHA256( macKey, "osd1$" || IV || ciphertext )                  (encrypt-then-MAC)
 master = SHA-256( UTF-8 SecretBox.KeyMaterial )
 encKey = HMAC-SHA256( master, "osd1 encryption" )
 macKey = HMAC-SHA256( master, "osd1 authentication" )
+ivKey  = HMAC-SHA256( master, "osd1 iv" )
 ```
 
-Every call uses a fresh random IV, so the same password encrypts differently each time. The SFTP and clearinghouse variants are aliases that use the same format, so a value written by one decrypts with any of them.
+Encryption is **deterministic**: the IV is derived from the plaintext, so the same secret always encrypts to the same `osd1$` value. Decryption reads the IV from the value and doesn't care how it was chosen. The SFTP and clearinghouse variants are aliases that use the same format, so a value written by one decrypts with any of them.
+
+#### Why deterministic
+
+Existing code compares stored ciphertexts instead of decrypting them, so it relies on equal secrets giving equal ciphertexts. With a random IV, these comparisons would stop matching:
+
+- `FormPayConnectSetup.SynchWithHQ` keeps a clinic on the HQ credentials when its stored `Password` equals HQ's. With a random IV, no clinic would match after the first save. Those clinics would then keep the old password when HQ's changed, and their card payments would fail.
+- `FormTransworldSetup` folds a clinic back into HQ when its settings, including the encrypted `SftpPassword`, equal HQ's. It also logs `ManageHighSecurityProgProperties` when a value differs from the one loaded. With a random IV, every save would log a false "SftpPassword ... was altered" entry.
+- `Prefs.UpdateString` and the `ProgramProperties` updates would report a change on every save.
+
+The synthetic IV is an HMAC of the plaintext under its own key. Two different secrets get different IVs, unless a truncated 128-bit HMAC collides, so CBC never reuses an IV for different data. The only extra thing an observer learns is **whether two stored secrets are equal** (for example, that two clinics share a password). That's acceptable under the obfuscation-only threat model below, because anyone with this source code can decrypt both values anyway.
+
+Changing the IV derivation wouldn't break decryption, but every unchanged secret would encrypt to a new value. Each would then look altered once, on its next save. `CdtSecretTests.SyntheticIv_MatchesKnownAnswers` pins the derivation.
 
 | Call | Result |
 |---|---|

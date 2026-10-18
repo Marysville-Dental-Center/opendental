@@ -15,6 +15,8 @@ namespace CryptoTests {
 		private const string KnownPlaintext="correct horse battery staple";
 		///<summary>osd1 AES key, HMAC-SHA256(SHA-256(key material), "osd1 encryption"), computed independently with Python.</summary>
 		private const string KnownEncryptionKeyHex="5ea6a3d63826b93d44d6827a34f186f1b5db7ba0a32d57b37688580e2c810b07";
+		///<summary>Synthetic IV that Seal derives for KnownPlaintext, computed independently with Python's hmac module.</summary>
+		private const string KnownSyntheticIvHex="d015cdaa706054544121f497d8fe333e";
 
 		private static readonly string[] _arrayPlaintexts=new string[] {
 			"a",
@@ -37,15 +39,55 @@ namespace CryptoTests {
 			}
 		}
 
+		///<summary>Setup forms (PayConnect, Transworld) and Prefs/ProgramProperties updates compare stored ciphertexts to tell whether a secret
+		///changed or whether a clinic shares HQ's credentials, so equal plaintexts must give equal ciphertexts.</summary>
 		[TestMethod]
-		public void Encrypt_UsesRandomIv() {
-			CDT.Class1.Encrypt("same input",out string first);
-			CDT.Class1.Encrypt("same input",out string second);
-			Assert.AreNotEqual(first,second);
-			Assert.IsTrue(CDT.Class1.Decrypt(first,out string firstPlain));
-			Assert.IsTrue(CDT.Class1.Decrypt(second,out string secondPlain));
-			Assert.AreEqual("same input",firstPlain);
-			Assert.AreEqual("same input",secondPlain);
+		public void Encrypt_IsDeterministic() {
+			Assert.IsTrue(CDT.Class1.Encrypt("same input",out string first));
+			Assert.IsTrue(CDT.Class1.Encrypt("same input",out string second));
+			Assert.AreEqual(first,second);
+			Assert.AreEqual(first,CDT.Class1.TryEncrypt("same input"));
+			Assert.AreEqual(first,CDT.Class1.EncryptSftp("same input"));
+			Assert.IsTrue(CDT.Class1.ConcealClearinghouse("same input",out string concealed));
+			Assert.AreEqual(first,concealed);
+			Assert.IsTrue(CDT.Class1.Decrypt(first,out string plain));
+			Assert.AreEqual("same input",plain);
+			foreach(string text in _arrayPlaintexts) {
+				Assert.AreEqual(CDT.Class1.TryEncrypt(text),CDT.Class1.TryEncrypt(text),text);
+			}
+		}
+
+		[TestMethod]
+		public void Encrypt_DifferentInputs_GiveDifferentCiphertexts() {
+			string[] arrayInputs=new string[_arrayPlaintexts.Length+4];
+			_arrayPlaintexts.CopyTo(arrayInputs,0);
+			//Near misses: case, trailing space, one extra character, and a value equal to another one's padded length.
+			arrayInputs[_arrayPlaintexts.Length]="Password";
+			arrayInputs[_arrayPlaintexts.Length+1]="password ";
+			arrayInputs[_arrayPlaintexts.Length+2]="passwords";
+			arrayInputs[_arrayPlaintexts.Length+3]="exactly16bytes!!\u0010";
+			for(int i=0;i<arrayInputs.Length;i++) {
+				string cipherI=CDT.Class1.TryEncrypt(arrayInputs[i]);
+				for(int j=i+1;j<arrayInputs.Length;j++) {
+					Assert.AreNotEqual(cipherI,CDT.Class1.TryEncrypt(arrayInputs[j]),arrayInputs[i]+" vs "+arrayInputs[j]);
+				}
+			}
+			//Different plaintexts also get different IVs, so CBC never reuses an IV for different data.
+			Assert.AreNotEqual(TestUtil.ToHex(CDT.SecretBox.SyntheticIv("password")),TestUtil.ToHex(CDT.SecretBox.SyntheticIv("Password")));
+		}
+
+		///<summary>Pins the synthetic IV, first 16 bytes of HMAC-SHA256(HMAC-SHA256(master, "osd1 iv"), "osd1$" || UTF-8 plaintext), with values
+		///computed independently with Python's hmac module. If the derivation changes, every unchanged secret looks altered on its next save.</summary>
+		[TestMethod]
+		public void SyntheticIv_MatchesKnownAnswers() {
+			Assert.AreEqual(KnownSyntheticIvHex,TestUtil.ToHex(CDT.SecretBox.SyntheticIv(KnownPlaintext)));
+			Assert.AreEqual("cf3aadeaa7b9de509274cb8f6fa3f816",TestUtil.ToHex(CDT.SecretBox.SyntheticIv("same input")));
+			string sealedText=CDT.SecretBox.Seal(KnownPlaintext);
+			Assert.AreEqual(CDT.SecretBox.Seal(KnownPlaintext,TestUtil.FromHex(KnownSyntheticIvHex)),sealedText);
+			byte[] arrayPayload=Convert.FromBase64String(sealedText.Substring(5));
+			byte[] arrayIv=new byte[16];
+			Buffer.BlockCopy(arrayPayload,0,arrayIv,0,16);
+			Assert.AreEqual(KnownSyntheticIvHex,TestUtil.ToHex(arrayIv));
 		}
 
 		[TestMethod]

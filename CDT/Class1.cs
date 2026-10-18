@@ -8,7 +8,7 @@ namespace CDT {
 	///<summary>Drop-in replacement for the proprietary CDT.dll. It keeps the original assembly name, namespace and the member signatures this
 	///repository calls, written from those call sites and public algorithm specifications only. See CDT/README.md for the design and threat model.
 	///Covers:
-	///1. Secrets: obfuscated storage of passwords and tokens (AES-256-CBC + HMAC-SHA256, "osd1$" prefix, fixed public key).
+	///1. Secrets: obfuscated storage of passwords and tokens (AES-256-CBC + HMAC-SHA256, deterministic, "osd1$" prefix, fixed public key).
 	///2. SecurityHash: keyed hashes for tamper detection ("osh1$" prefix, fixed public key).
 	///3. ADA content: CDT code text and ADA claim-form artwork are proprietary and are not included. The getters return empty values.
 	///4. Registration keys: no license gates; key generation returns "" and validation always succeeds.</summary>
