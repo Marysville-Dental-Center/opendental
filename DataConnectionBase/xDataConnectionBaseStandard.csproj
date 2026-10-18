@@ -50,6 +50,13 @@
 	</ItemGroup>-->
 	
 	<ItemGroup>
+		<ProjectReference Include="..\CDT\xCDT.csproj">
+			<ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+			<SkipGetTargetFrameworkProperties>true</SkipGetTargetFrameworkProperties>
+		</ProjectReference>
+	</ItemGroup>
+
+	<ItemGroup>
 		<Compile Remove="Properties\AssemblyInfo.cs" />
 	</ItemGroup>
 
@@ -57,8 +64,10 @@
 		<Reference Include="BouncyCastle.Crypto">
 			<HintPath>..\Required dlls\.NET Standard\BouncyCastle.Crypto.dll</HintPath>
 		</Reference>
+		<!-- CDT targets net48. A netstandard2.0 project can reference the net48 assembly (as it did the prebuilt DLL) but not
+		     the project itself, so the ProjectReference only orders the build and the Reference points at its output. -->
 		<Reference Include="CDT">
-		  <HintPath>..\Required dlls\CDT.dll</HintPath>
+		  <HintPath>..\CDT\bin\$(Configuration)\CDT.dll</HintPath>
 		</Reference>
 		<Reference Include="Google.Protobuf">
 			<HintPath>..\Required dlls\.NET Standard\Google.Protobuf.dll</HintPath>
