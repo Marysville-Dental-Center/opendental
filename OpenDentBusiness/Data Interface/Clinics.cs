@@ -769,8 +769,12 @@ namespace OpenDentBusiness{
 			return hasEmailHostingCred;
 		}
 
+		///<summary>Always false outside of unit tests. Mass Email was hosted by Open Dental, so a signup that a migrated database still has is ignored.</summary>
 		public static bool IsMassEmailSignedUp(long clinicNum) {
 			Meth.NoCheckMiddleTierRole();
+			if(!WebServiceMainHQProxy.IsHqAvailable) {
+				return false;
+			}
 			HostedEmailStatus hostedEmailStatus=GetEmailHostingStatus(PrefName.MassEmailStatus,clinicNum);
 			bool isMassEmailUp=hostedEmailStatus.HasFlag(HostedEmailStatus.SignedUp) && HasEmailHostingCredentials(clinicNum);
 			return isMassEmailUp;
@@ -783,8 +787,13 @@ namespace OpenDentBusiness{
 			return isMassEmailEnabled;
 		}
 		
+		///<summary>Always false outside of unit tests. Secure Email was hosted by Open Dental, so a signup that a migrated database still has is ignored.
+		///Email sending and billing statements then use regular email.</summary>
 		public static bool IsSecureEmailSignedUp(long clinicNum) {
 			Meth.NoCheckMiddleTierRole();
+			if(!WebServiceMainHQProxy.IsHqAvailable) {
+				return false;
+			}
 			HostedEmailStatus hostedEmailStatus=GetEmailHostingStatus(PrefName.EmailSecureStatus,clinicNum);
 			bool isSecureEmailUp=hostedEmailStatus.HasFlag(HostedEmailStatus.SignedUp) && HasEmailHostingCredentials(clinicNum);
 			return isSecureEmailUp;

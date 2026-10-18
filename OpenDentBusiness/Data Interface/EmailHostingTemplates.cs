@@ -13,13 +13,18 @@ namespace OpenDentBusiness{
 		private const string MASS_EMAIL_LOG_DIR="MassEmail";
 		#region Get Methods
 
-		///<summary>Returns an instance of the account api for the given Clinic Num.</summary>
+		///<summary>Returns an instance of the account api for the given Clinic Num. Throws HqNotAvailableException outside of DEBUG builds and unit
+		///tests: Secure Email and Mass Email were hosted by Open Dental (PrefName.EmailHostingEndpoint), which this build never contacts.</summary>
 		public static IAccountApi GetAccountApi(long clinicNum) {
 			Meth.NoCheckMiddleTierRole();
 			string guid=ClinicPrefs.GetPrefValue(PrefName.MassEmailGuid,clinicNum);
 			string secret=ClinicPrefs.GetPrefValue(PrefName.MassEmailSecret,clinicNum);
 			if(ODBuild.IsDebug()) {
 				return AccountApiMock.Get(clinicNum,guid,secret);
+			}
+			if(!WebServiceMainHQProxy.IsHqAvailable) {
+				//The endpoint and the GUID/secret credentials came from Open Dental's email hosting. A migrated database still has them, so never use them.
+				throw new HqNotAvailableException();
 			}
 			string emailHostingEndpoint=PrefC.GetString(PrefName.EmailHostingEndpoint);
 			return new AccountApi(guid,secret,emailHostingEndpoint);

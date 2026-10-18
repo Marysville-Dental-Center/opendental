@@ -146,6 +146,20 @@ namespace NoHqTests {
 		}
 		#endregion Gates and telemetry
 
+		#region Hosted email
+		[TestMethod]
+		public void HostedEmail_SignupsFromOpenDentalAreIgnored() {
+			//Secure Email and Mass Email were hosted by Open Dental. These must answer "no" without reading the prefs a migrated database still has.
+			foreach(long clinicNum in new List<long> { 0,1 }) {
+				Assert.IsFalse(Clinics.IsSecureEmailSignedUp(clinicNum));
+				Assert.IsFalse(Clinics.IsSecureEmailEnabled(clinicNum));
+				Assert.IsFalse(Clinics.IsMassEmailSignedUp(clinicNum));
+				Assert.IsFalse(Clinics.IsMassEmailEnabled(clinicNum));
+			}
+			Assert.IsFalse(EmailSecures.IsSecureEmailReleased());
+		}
+		#endregion Hosted email
+
 		#region EHR
 		[TestMethod]
 		public void Ehr_ReflectionHooksAreGone() {
