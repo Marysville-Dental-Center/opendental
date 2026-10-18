@@ -861,6 +861,14 @@ namespace OpenDental {
 		public static bool UpgradeOrInstallEConnector(bool isSilent,string updateServerName=null,bool doOverrideBlankUpdateServerName=false,
 			bool isInvalidUpdateServerNameAllowed=false)
 		{
+			if(!WebServiceMainHQProxy.IsHqAvailable) {
+				//The eConnector only relays Open Dental hosted eServices to Open Dental's servers, which this build never contacts. Never install, start or
+				//upgrade it, even when an OpenDentalEConnector folder is left over from an Open Dental install, and leave any CustListener services alone.
+				if(!isSilent) {
+					MessageBox.Show(new HqNotAvailableException().Message);
+				}
+				return false;
+			}
 			if(updateServerName==null) {
 				updateServerName=PrefC.GetString(PrefName.WebServiceServerName);
 			}
@@ -907,10 +915,7 @@ namespace OpenDental {
 				return false;
 			}
 			//Installing and starting a new eConnector service was successful at this point so we should always return true past this point.
-			//Tell HQ that this registration key is now running the eConnector service. HQ is not available in this build, so skip that.
-			if(!WebServiceMainHQProxy.IsHqAvailable) {
-				return true;
-			}
+			//Tell HQ that this registration key is now running the eConnector service.
 			try {
 				ListenerServiceType listenerServiceType=WebServiceMainHQProxy.SetEConnectorOn();
 				string logText=Lan.g("PrefL","eConnector status automatically set to")+" "+listenerServiceType.ToString()+".";
