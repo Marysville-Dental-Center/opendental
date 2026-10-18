@@ -13,11 +13,13 @@ For each file the audit records its version info, its vendor and product, its li
 
 - **132 files (49 MB) are open source**, mostly MIT and Apache-2.0. Nearly all of them can come from NuGet instead of being committed binaries.
 - **51 files (17.5 MB) are unused** and can be deleted. 44 of them can go without touching any project file. See [Unused files](#unused-files-that-can-be-deleted).
-- **32 files are Open Dental proprietary, commercial, or of unknown license.** Ten are already being replaced in other pieces: the seven Open Dental assemblies named in the brief and the three commercial EZTwain files. The remaining blockers, in priority order, are:
+- **33 files are Open Dental proprietary, commercial, or of unknown license**, and two more are Microsoft platform files that we may not redistribute. Ten are already being replaced in other pieces: the seven Open Dental assemblies named in the brief and the three commercial EZTwain files. The remaining blockers, in priority order, are:
   - Sparks3D, whose license forbids SaaS use and reverse engineering.
-  - VBbridges, xImageDeviceManager (with SuniUSB) and VideoCamLib.
+  - VBbridges and xImageDeviceManager (with SuniUSB).
   - The Topaz and DentalXChange SDKs, which are kept vendor integrations that need a way to stop shipping the vendor's binary.
-  - COM interop generated from the Schick, QuickBooks Desktop and Microsoft Office type libraries.
+  - COM interop generated from the Schick, QuickBooks Desktop and Microsoft Office type libraries, plus `stdole.dll`.
+  - `Windows.winmd` and `installutil.exe`. They are Microsoft platform files with no redistribution grant, and the build copies both into its output today. Setting `<Private>False</Private>` on their two References stops that.
+  - VideoCamLib, Open Dental's native video-capture library.
   - `RS232.dll`, whose license is unknown.
 
   See [Blockers](#binaries-that-block-a-truly-open-source-release).
@@ -32,10 +34,10 @@ For each file the audit records its version info, its vendor and product, its li
 | Classification | Files | Size |
 |---|---:|---:|
 | Open source | 132 | 49.2 MB |
-| Microsoft redistributable or platform component | 15 | 5.9 MB |
+| Microsoft redistributable or platform component | 14 | 5.9 MB |
 | Commercial or proprietary third party | 13 | 3.2 MB |
 | Open Dental proprietary | 13 | 13.9 MB |
-| Unknown | 6 | 1.2 MB |
+| Unknown | 7 | 1.3 MB |
 | **Total** | **179** | **73.4 MB** |
 
 Open source files by license: MIT 57, Apache-2.0 43, GPL-2.0 (built from this repo, or Oracle MySql.Data) 8, BSD-3-Clause 4, MS-PL 3, LGPL-2.1-or-later (fyiReporting) 3, MIT-X11 (Tao) 3, Mentalis.org (BSD-style) 2, MPL / LGPL / GPL (Hunspell) 2, LGPL-2.1 or BSD (MF.Net) 2, X-Consortium (freeglut) 1, NDde Shared Source (permissive) 1, LGPL / MPL / GPL (NHunspell) 1, Public domain (OpenPop.NET) 1, BSD (SharpSSH/JSch) 1.
@@ -58,10 +60,10 @@ Open source files by license: MIT 57, Apache-2.0 43, GPL-2.0 (built from this re
 | Classification | Keep | NuGet | In-repo | Unused | Cut | Redist | Plugin | Elsewhere |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | Open source | 10 | 72 | 5 | 40 | 5 | - | - | - |
-| Microsoft redistributable or platform component | - | 5 | 2 | 7 | - | 1 | - | - |
+| Microsoft redistributable or platform component | - | 5 | 1 | 7 | - | 1 | - | - |
 | Commercial or proprietary third party | - | - | 3 | 4 | 1 | - | 2 | 3 |
 | Open Dental proprietary | - | - | 4 | - | 2 | - | - | 7 |
-| Unknown | - | - | 4 | - | 2 | - | - | - |
+| Unknown | - | - | 5 | - | 2 | - | - | - |
 
 ## How this audit was done
 
@@ -87,10 +89,10 @@ Open source files by license: MIT 57, Apache-2.0 43, GPL-2.0 (built from this re
 | Class | Meaning |
 |---|---|
 | Open source | OSI-style license (MIT, Apache-2.0, BSD, MS-PL, LGPL, GPL, MPL), public domain, or an equivalent permissive license such as NDde's or Mentalis.org's. Includes binaries built from GPL source in this repo, and Microsoft packages published under MIT. |
-| Microsoft redistributable or platform component | Microsoft binaries that may be redistributed under Microsoft's terms (VC++ runtime, WebView2 SDK, stdole PIA, DirectX, older NuGet builds under the .NET Library license), or that ship with Windows, .NET or the Windows SDK (InstallUtil, `Windows.winmd`). |
+| Microsoft redistributable or platform component | Microsoft binaries that may be redistributed under Microsoft's terms (VC++ runtime, WebView2 SDK, DirectX, older NuGet builds under the .NET Library license). Also Microsoft files that ship with Windows, .NET or the Windows SDK (InstallUtil, `Windows.winmd`). Those platform files carry no redistribution grant: users already have them, and we must not ship our copies. |
 | Commercial or proprietary third party | Vendor binaries under commercial or "All rights reserved" terms, and COM interop assemblies generated from a third party's proprietary type library. |
 | Open Dental proprietary | Open Dental binaries whose source is not published. |
-| Unknown | No license found, or interop generated from Microsoft type libraries outside Microsoft's official primary interop assemblies. |
+| Unknown | No license found that lets us ship the file as it sits in the repo. This includes interop generated from Microsoft type libraries outside Microsoft's official primary interop assemblies. It also includes `stdole.dll`, an official PIA that Microsoft supports redistributing only through its PIA installer. |
 
 **Limits**
 
@@ -99,7 +101,13 @@ Open source files by license: MIT 57, Apache-2.0 43, GPL-2.0 (built from this re
 
 ## Binaries that block a truly open source release
 
-A file blocks the release when it is not open source (or its license is unknown) and either the build or a feature we keep needs it. Unused proprietary files are not listed here; they are simply deleted (for example the four Adobe interop files).
+A file blocks the release when either the build or a feature we keep needs it, and it is one of these:
+
+- Open Dental proprietary, or commercial.
+- Of unknown license.
+- A Microsoft platform file with no redistribution grant that the build copies into its output.
+
+Unused proprietary files are not listed here; they are simply deleted (for example the four Adobe interop files).
 
 ### Priority 1: compile-time Open Dental assemblies, already assigned
 
@@ -142,24 +150,40 @@ Neither vendor publishes redistribution terms, so the repo should not carry thes
    - Late binding (`dynamic`) or a few hand-written `[ComImport]` interfaces in `WpfControlsOD/Bridges/Schick.cs` and `QuickBooks.cs` remove them.
 7. **`Interop.Word.dll`, `Interop.Microsoft.Office.Core.dll`, `Interop.VBIDE.dll`**, plus `stdole.dll`.
    - They support Word letter merge (`FormLetterMerges.cs`, `LetterMerges.cs`).
+   - The build copies `stdole.dll` into `OpenDental\bin\Debug`, as a dependency of the copy-local Office interop References. Its license is unknown. Microsoft supports redistributing it only through its Office PIA redistributable installer, so a loose copy must not ship, and no NuGet `stdole` package grants redistribution either.
    - Late binding to `Word.Application` removes all four.
 
-### Priority 5: proprietary binaries needed only at runtime
+### Priority 5: Microsoft platform files that the build copies into its output
 
-8. **`VideoCamLib.dll`**, Open Dental's native Media Foundation wrapper. Video capture (`FormVideo`) fails without it. Re-implement in-repo: the code comments say it was derived from the MIT-licensed Tanta samples, which are a clean starting point.
-9. **EZTwain** (`Eztwain4.dll`, `EZT4Jpeg.dll`, `EZT4Pdf.dll`). Already being replaced elsewhere (NTwain).
+These files come with Windows, the Windows SDK or the .NET Framework, and no Microsoft license lets us redistribute them. Each one is only a one-line project change away from no longer shipping. Checked on this commit: with `<Private>False</Private>` added to both References, the build still finishes with 0 errors, and neither file appears in any output folder. (That test change was not committed.)
 
-### Priority 6: unknown license
+8. **`Windows.winmd`**, the Windows SDK union metadata.
+   - The `Windows` Reference in `PasswordVaultWrapper/PasswordVaultWrapper.csproj` (lines 61-63) has the default CopyLocal, so the build copies the file into `OpenDental\bin\Debug`.
+   - Interim fix: add `<Private>False</Private>` to that Reference. The compiler still reads the file. At runtime Windows supplies its own metadata for system WinRT types, and the SDK's single-file copy exists for compile time only ([source](https://learn.microsoft.com/en-us/uwp/winrt-cref/winmd-files)). So `PasswordVault` should keep working, but test a saved credential once after the change.
+   - Final fix: either of these.
+     - NuGet `Microsoft.Windows.SDK.Contracts`. It must also keep its `.winmd` files out of the output folder: check `bin` after the switch, and turn off copy-local on those references if they appear.
+     - The Credential Manager P/Invoke option (`CredWrite`/`CredRead` in `advapi32.dll`), which needs no `.winmd` at all.
+   - Either way, delete `Required dlls/Windows.winmd`.
+9. **`installutil.exe`** (`Required dlls/`, .NET Framework 4 build).
+   - The `installutil` Reference in `ServiceManager/ServiceManager.csproj` (lines 84-87) has the default CopyLocal, so the build copies the file into `ServiceManager\bin\Debug`.
+   - No ServiceManager code uses a type from it, so the Reference does nothing at compile time.
+   - Interim fix: add `<Private>False</Private>` to that Reference, or delete the Reference outright.
+   - Final fix: point `CodeBase/Utilities/ServicesHelper.cs` at the framework's own `InstallUtil.exe` (the folder `RuntimeEnvironment.GetRuntimeDirectory()` returns), or call `ManagedInstallerClass.InstallHelper`. Then delete both repo copies.
 
-10. **`RS232.dll`**, a VB.NET serial-port class of unknown origin and license.
+### Priority 6: proprietary binaries needed only at runtime
+
+10. **`VideoCamLib.dll`**, Open Dental's native Media Foundation wrapper. Video capture (`FormVideo`) fails without it. Re-implement in-repo: the code comments say it was derived from the MIT-licensed Tanta samples, which are a clean starting point.
+11. **EZTwain** (`Eztwain4.dll`, `EZT4Jpeg.dll`, `EZT4Pdf.dll`). Already being replaced elsewhere (NTwain).
+
+### Priority 7: unknown license
+
+12. **`RS232.dll`**, a VB.NET serial-port class of unknown origin and license.
     - It is used only for the BCBS Georgia dial-up clearinghouse (`TerminalConnector.cs`).
     - Rewrite it on `System.IO.Ports.SerialPort`. A commented-out C# port, `Eclaims/Rs232.cs`, is already in the repo.
 
 ### Not blockers by license, but they should leave the repo
 
-- **`Windows.winmd`** is Windows SDK metadata. Use NuGet `Microsoft.Windows.SDK.Contracts` instead.
 - **`vcruntime140.dll`** should come from the VC++ Redistributable, installed as a prerequisite.
-- **`installutil.exe`** ships with the .NET Framework. Use the framework's copy or `ManagedInstallerClass`.
 - **The WebView2 SDK files** should come from NuGet `Microsoft.Web.WebView2`.
 - **`Ionic.Zip.dll`** (DotNetZip) is open source but abandoned, and its last release has a high-severity directory-traversal advisory, CVE-2024-48510. Replace it with `System.IO.Compression`.
 - **`Tamir.SharpSSH.dll`** is open source but unmaintained since 2013. Port its four call sites to SSH.NET, which the repo already uses. That also removes `DiffieHellman.dll` and `Org.Mentalis.Security.dll`.
@@ -332,12 +356,13 @@ One row per file, grouped by family. "csproj references" covers every project fi
 | `Interop.VBIDE.dll` | 56 KB | Generated from the VBA extensibility type library | tlbimp output for a Microsoft type library. Redistribution terms unclear. | Unknown | None | No | Needed by Interop.Word.dll | **In-repo replacement.** Delete when Word uses late binding. |
 | `Interop.WMPLib.dll` | 323 KB | Generated from the Windows Media Player type library | tlbimp output for a Microsoft type library. Redistribution terms unclear. | Unknown | None | No | Voicemail player in HQ-only `OpenDental/InternalTools/Phones/FormVoiceMails.cs`. `OpenDental.csproj` also has `COMReference` items that generate the same interop at build time. | **Remove with a cut feature.** Delete with InternalTools (Phase 3). |
 | `Interop.Word.dll` | 572 KB | Generated from the Microsoft Word type library (not Microsoft's official PIA) | tlbimp output for a Microsoft type library. Unsigned. Redistribution terms unclear (Microsoft ships official PIAs for this). | Unknown | HintPath: OpenDentBusiness, OpenDental, UnitTests | No | Word letter merge (`OpenDental/Forms/FormLetterMerges.cs`, `FormLetterMergeEdit.cs`, `OpenDentBusiness/Data Interface/LetterMerges.cs`). | **In-repo replacement.** Replace with late binding (`Type.GetTypeFromProgID("Word.Application")` plus `dynamic`) in-repo. That also removes Interop.Microsoft.Office.Core, Interop.VBIDE and stdole. |
+| `stdole.dll` | 16 KB | Microsoft OLE Automation primary interop assembly (stdole 7.0.3300.0). Version info says Visual Studio .NET, file version 7.00.9466. | No license found that lets us ship this loose file. Microsoft lists stdole 7.0.3300.0 among the PIAs included with Office 2003, and says the only supported way to redistribute it is Microsoft's Office PIA redistributable installer ([source](https://learn.microsoft.com/en-us/previous-versions/office/developer/office-2003/aa159923(v=office.11))). The NuGet `stdole` packages grant no redistribution right: 17.x is under the Visual Studio Add-ons and Extensions terms, which forbid bundling it with applications for others ([source](https://www.nuget.org/packages/stdole/17.14.40260/License)), and 7.0.3300 links to a Visual Studio 2017 pre-release license ([source](https://www.nuget.org/packages/stdole/7.0.3300)). The text the app shows for it, `OpenDental/Resources/stdole.txt`, is a Visual Studio 2015 pre-release license that allows evaluation use only. | Unknown | None directly. The build copies it into `OpenDental\bin\Debug` (and the other outputs downstream of OpenDentBusiness) as a dependency of the copy-local Interop.Word.dll and Interop.Microsoft.Office.Core.dll References. | No | Needed by Interop.Microsoft.Office.Core.dll (Word letter merge). | **In-repo replacement.** Delete when Word uses late binding. Do not swap in a NuGet `stdole` package. Until the late-binding change lands, a release must not ship this loose copy: users who run Word letter merge get stdole from Office itself or from Microsoft's Office PIA redistributable installer, and only that way. |
 
 ### Microsoft runtime, SDK and platform files
 
 | File | Size | Vendor and product | License | Class | csproj references | Loaded at runtime by name | Feature | Recommended action |
 |---|---:|---|---|---|---|---|---|---|
-| `installutil.exe` | 27 KB | Microsoft .NET Framework 4 InstallUtil | Microsoft .NET Framework component. Every machine with .NET Framework already has it. ([source](https://learn.microsoft.com/en-us/dotnet/framework/tools/installutil-exe-installer-tool)) | Microsoft | HintPath: ServiceManager | Yes. `CodeBase/Utilities/ServicesHelper.cs` launches `InstallUtil\installutil.exe` from the app folder as a process. | Installing and removing Windows services: `ServiceManager`, plus the eConnector, API and OpenDentalService installs in `OpenDental/Logic/PrefL.cs`. | **In-repo replacement.** Delete. Call `System.Configuration.Install.ManagedInstallerClass.InstallHelper` or the framework's own `InstallUtil.exe` under `%WINDIR%\Microsoft.NET\Framework\v4.0.30319` instead. |
+| `installutil.exe` | 27 KB | Microsoft .NET Framework 4 InstallUtil | Microsoft .NET Framework component with no redistribution grant. Every machine with .NET Framework already has it. ([source](https://learn.microsoft.com/en-us/dotnet/framework/tools/installutil-exe-installer-tool)) | Microsoft | HintPath: ServiceManager. No ServiceManager code uses it, but the default CopyLocal copies it into `ServiceManager\bin\Debug`. | Yes. `CodeBase/Utilities/ServicesHelper.cs` launches `InstallUtil\installutil.exe` from the app folder as a process. | Installing and removing Windows services: `ServiceManager`, plus the eConnector, API and OpenDentalService installs in `OpenDental/Logic/PrefL.cs`. | **In-repo replacement.** A blocker, because the build ships it. Interim: add `<Private>False</Private>` to the `installutil` Reference in `ServiceManager.csproj`, or delete that Reference. Then call `System.Configuration.Install.ManagedInstallerClass.InstallHelper`, or the framework's own `InstallUtil.exe` under `%WINDIR%\Microsoft.NET\Framework\v4.0.30319`, and delete the file. |
 | `Microsoft.DirectX.Direct3D.dll` | 462 KB | Microsoft Managed DirectX 1.1 Direct3D | DirectX SDK redistributable | Microsoft | Not built: TestToothChart | No | Only `TestToothChart.csproj`, which is not in the solution. | **Remove: unused.** Delete (unused), or delete TestToothChart with it. |
 | `Microsoft.DirectX.Direct3DX.dll` | 565 KB | Microsoft Managed DirectX 1.1 D3DX | DirectX SDK redistributable | Microsoft | None | No | None. No project references it. | **Remove: unused.** |
 | `Microsoft.DirectX.dll` | 218 KB | Microsoft Managed DirectX 1.1 (DirectX SDK, deprecated) | DirectX SDK redistributable | Microsoft | None | No | None. No project references it. | **Remove: unused.** |
@@ -345,11 +370,10 @@ One row per file, grouped by family. "csproj references" covers every project fi
 | `Microsoft.Web.WebView2.WinForms.dll` | 37 KB | Microsoft Edge WebView2 SDK 1.0.2420.47 | Microsoft WebView2 SDK license (BSD-3-Clause style) ([source](https://www.nuget.org/packages/Microsoft.Web.WebView2)) | Microsoft | HintPath: OpenDental, xCodeBase | No | WinForms WebView2 control | **NuGet.** NuGet `Microsoft.Web.WebView2`. |
 | `Microsoft.Web.WebView2.Wpf.dll` | 45 KB | Microsoft Edge WebView2 SDK 1.0.2420.47 | Microsoft WebView2 SDK license (BSD-3-Clause style) ([source](https://www.nuget.org/packages/Microsoft.Web.WebView2)) | Microsoft | HintPath: WpfControlsOD | No | WPF WebView2 control | **NuGet.** NuGet `Microsoft.Web.WebView2`. |
 | `MSVCR71.dll` | 340 KB | Microsoft Visual C++ .NET 2003 C runtime 7.10 | Microsoft redistributable (VS .NET 2003 redist) | Microsoft | None | No. No binary in the repo imports it and no code names it. | None found | **Remove: unused.** |
-| `stdole.dll` | 16 KB | Microsoft stdole PIA 7.0.3300 | Microsoft redistributable (Office/VS primary interop assembly) ([source](https://www.nuget.org/packages/stdole)) | Microsoft | None | No | Needed by Interop.Microsoft.Office.Core.dll (Word letter merge). | **In-repo replacement.** Delete when Word uses late binding. Until then NuGet `stdole` (Microsoft) could supply it. |
 | `System.Net.Http.dll` | 193 KB | Microsoft System.Net.Http 4.3.x NuGet build | Microsoft .NET Library license (2016-era package) ([source](https://www.nuget.org/packages/System.Net.Http/4.3.4)) | Microsoft | None | No | None. No project references it, and the framework's System.Net.Http is used. | **Remove: unused.** |
 | `vcruntime140.dll` | 82 KB | Microsoft Visual C++ 2015-2022 runtime 14.27 (x86) | Microsoft redistributable (Visual Studio redist list) ([source](https://learn.microsoft.com/en-us/cpp/windows/redistributing-visual-cpp-files)) | Microsoft | None | Yes, as an import of `Dicom.Native.dll`, `Sparks3D/Sparks3DXEngine.dll` and Release builds of `Direct2dWrapper.dll`. Not copied by the build. | C runtime for native and mixed-mode DLLs | **Remove: install the redistributable.** Do not keep it in the repo. The installer should chain `vc_redist.x86.exe`, which Microsoft recommends, and which also supplies `MSVCP140.dll`. Dicom.Native.dll needs that file and it is not in `Required dlls`. |
 | `WebView2Loader.dll` | 114 KB | Microsoft Edge WebView2 SDK native loader 1.0.2420.47 (x86) | Microsoft WebView2 SDK license (BSD-3-Clause style) ([source](https://www.nuget.org/packages/Microsoft.Web.WebView2)) | Microsoft | None | Yes, loaded by `Microsoft.Web.WebView2.Core.dll`. `CodeBase/Controls/ODWebView2.cs:42` warns when it is missing. Not copied by the build. | Embedded Edge browser (help, eServices pages, web bridges). | **NuGet.** Replace with NuGet `Microsoft.Web.WebView2`, which ships the loader under `runtimes/win-x86/native` and copies it. |
-| `Windows.winmd` | 3,267 KB | Microsoft Windows SDK union metadata | Windows SDK reference metadata. Not a runtime redistributable. ([source](https://www.nuget.org/packages/Microsoft.Windows.SDK.Contracts)) | Microsoft | HintPath: PasswordVaultWrapper | No. A compile-time reference, but the build copies it to `bin` anyway. | `Windows.Security.Credentials.PasswordVault` in `PasswordVaultWrapper/WindowsPasswordVaultWrapper.cs` (stored database and bridge credentials). | **NuGet.** Replace with NuGet `Microsoft.Windows.SDK.Contracts` (Windows SDK license), or with in-repo P/Invoke to the Credential Manager API. If you switch APIs, plan a one-time migration of existing vault entries. |
+| `Windows.winmd` | 3,267 KB | Microsoft Windows SDK union metadata | Windows SDK reference metadata. Not a runtime redistributable: Windows supplies the system metadata at runtime ([source](https://learn.microsoft.com/en-us/uwp/winrt-cref/winmd-files), [package](https://www.nuget.org/packages/Microsoft.Windows.SDK.Contracts)). | Microsoft | HintPath: PasswordVaultWrapper. The default CopyLocal copies it into `OpenDental\bin\Debug`. | No. A compile-time reference, but the build copies it to `bin` anyway. | `Windows.Security.Credentials.PasswordVault` in `PasswordVaultWrapper/WindowsPasswordVaultWrapper.cs` (stored database and bridge credentials). | **NuGet.** A blocker, because the build ships it. Interim: add `<Private>False</Private>` to the `Windows` Reference in `PasswordVaultWrapper.csproj`. Then replace it with NuGet `Microsoft.Windows.SDK.Contracts` (Windows SDK license), keeping that package's `.winmd` files out of the output folder too. Or use in-repo P/Invoke to the Credential Manager API, which needs no `.winmd`. If you switch APIs, plan a one-time migration of existing vault entries. |
 
 ### Open source: database, JSON and .NET support libraries
 
@@ -534,7 +558,7 @@ The build already restores NuGet packages (`-restore -p:RestorePackagesConfig=tr
 | `Newtonsoft.Json.dll` | `Newtonsoft.Json` | MIT | Lets `ProgramEntry`'s force-load workaround go. |
 | `System.Buffers`, `System.Memory`, `System.Numerics.Vectors`, `System.Runtime.CompilerServices.Unsafe`, `System.Threading.Tasks.Extensions`, `System.ValueTuple`, `System.Diagnostics.DiagnosticSource`, `System.Text.Json`, `System.Text.Encodings.Web`, `System.Net.Http.WinHttpHandler`, `Microsoft.Bcl.AsyncInterfaces`, `Microsoft.Extensions.Logging.Abstractions` | Same-named packages | MIT | Mostly transitive. Reference only what our code uses directly (`System.Text.Json`). |
 | `Microsoft.Web.WebView2.*.dll`, `WebView2Loader.dll` | `Microsoft.Web.WebView2` | Microsoft BSD-3-Clause-style | Also fixes the missing loader in dev builds. |
-| `Windows.winmd` | `Microsoft.Windows.SDK.Contracts` | Windows SDK license | Or replace `PasswordVault` with Credential Manager P/Invoke in-repo. |
+| `Windows.winmd` | `Microsoft.Windows.SDK.Contracts` | Windows SDK license | The package's `.winmd` files are compile-time metadata that we may not redistribute, so they must stay out of the output folder: check `bin` after switching, and turn off copy-local on them if they appear. Or replace `PasswordVault` with Credential Manager P/Invoke in-repo, which needs no `.winmd`. |
 | `MailKit.dll`, `MimeKit.dll` | `MailKit` (brings `MimeKit` and BouncyCastle) | MIT | Fixes the missing BouncyCastle dependency. |
 | `OpenPop.dll` | `OpenPop.NET` | Public domain | Or use MailKit's POP3 client and drop it. |
 | `Google.Apis*.dll` (6) | `Google.Apis.Gmail.v1` | Apache-2.0 | Gmail OAuth uses our own Google client ID. |
@@ -591,6 +615,7 @@ Some HintPaths in projects outside the solution point to files that do not exist
 The in-app license list (`OpenDental/Forms/FormLicense.cs`, texts in `OpenDental/Resources/`) does not match what ships:
 
 - The "Drifty" entry, shown for Ionic, is the MIT license of the Ionic web framework. `Ionic.Zip.dll` is DotNetZip, which is MS-PL.
+- The "Stdole" entry shows `Resources/stdole.txt`, a Visual Studio 2015 pre-release license for evaluation use only. It does not license `stdole.dll` for redistribution.
 - There are no entries for many libraries whose licenses ask for the license text or notices to travel with the binaries:
   - Apache-2.0: Google APIs, AWS SDK, Intuit SDK, Serilog, log4net, Avalara.
   - MS-PL: fo-dicom, DotNetZip.
@@ -839,9 +864,12 @@ Vendor, project and package pages consulted for license facts on 2026-10-18. Lic
 - <https://github.com/sshnet/SSH.NET>
 - <https://learn.microsoft.com/en-us/cpp/windows/redistributing-visual-cpp-files>
 - <https://learn.microsoft.com/en-us/dotnet/framework/tools/installutil-exe-installer-tool>
+- <https://learn.microsoft.com/en-us/previous-versions/office/developer/office-2003/aa159923(v=office.11)>
+- <https://learn.microsoft.com/en-us/uwp/winrt-cref/winmd-files>
 - <https://sourceforge.net/projects/mfnet/>
 - <https://sourceforge.net/projects/sharpssh/>
 - <https://topazsystems.com/license.htm>
+- <https://visualstudio.microsoft.com/license-terms/mt591984> (the license that NuGet `stdole` 7.0.3300 links to)
 - <https://www.bouncycastle.org/licence.html>
 - <https://www.eztwain.com/>
 - <https://www.nuget.org/packages/DotNetZip>
@@ -861,4 +889,5 @@ Vendor, project and package pages consulted for license facts on 2026-10-18. Lic
 - <https://www.nuget.org/packages/System.Xml.XPath.XmlDocument/4.3.0>
 - <https://www.nuget.org/packages/WeCantSpell.Hunspell>
 - <https://www.nuget.org/packages/fo-dicom.Desktop/4.0.7>
-- <https://www.nuget.org/packages/stdole>
+- <https://www.nuget.org/packages/stdole/17.14.40260/License>
+- <https://www.nuget.org/packages/stdole/7.0.3300>
