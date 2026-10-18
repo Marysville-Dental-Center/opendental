@@ -25,6 +25,12 @@ After that, port desktop features from Open Dental 26.1.70, **re-implemented fro
    - Any service or API the product needs is self-hosted on the office network: updates via the MariaDB update path, background services, and any future patient-facing services.
    - Patient data and images stay on local storage.
    - Third-party vendor integrations that are inherently online (QuickBooks Online, Microsoft 365 email, USPS, card processors, eRx, …) are optional and off by default. They are configured per office and call the vendor directly from the office. Core functionality never requires them.
+7. **Completely neutral toward third-party vendors; no vendor promotion of any kind.**
+   - An integration's buttons, menus and panels appear only after the office has enabled that integration.
+   - No ads, partner promos, "learn more" / "sign up" / "apply now" / free-trial links, referral or affiliate URLs, vendor logos used as promotion, or "recommended vendor" defaults.
+   - Integration setup screens describe what the integration does, and nothing more.
+   - Open Dental's "Disable Advertising" mechanism and its server override are removed (the stored property rows stay for schema compatibility).
+   - Vendor-neutral features stay, e.g. the monthly backup reminder.
 
 ## What we found
 
