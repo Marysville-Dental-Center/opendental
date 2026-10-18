@@ -4,7 +4,11 @@
 
 .DESCRIPTION
 	Scans the C# (.cs), XAML (.xaml) and resource (.resx) files of every project in OpenDental.Local.slnf, except the unit test projects,
-	for these hosts: opendental.com, open-dent.com, opendentalsoft.com and patientviewer.com (including subdomains such as www. or api.).
+	for these hosts: opendental.com, open-dent.com, opendentalsoft.com, patientviewer.com and opendental.cloud (including subdomains such as
+	www., api. or emailhosting.).
+
+	Host names that only live in database preferences (for example EmailHostingEndpoint, whose default is set in ConvertDatabases7.cs) cannot
+	be found this way. The code that reads them must check WebServiceMainHQProxy.IsHqAvailable instead.
 
 	Not scanned:
 	- comments (//, /* */ and /// XML doc comments in C#; <!-- --> in XAML and .resx), which also covers the GPL license headers
@@ -40,7 +44,7 @@ $ErrorActionPreference='Stop'
 $ScanExtensions=@('.cs','.xaml','.resx')
 
 #Hosts owned by Open Dental Software, Inc. Matches the bare domain and any subdomain, in any letter case.
-$HostPattern='(?i)(?<![a-z0-9-])(?:[a-z0-9-]+\.)*(?:opendental\.com|open-dent\.com|opendentalsoft\.com|patientviewer\.com)(?![a-z0-9-])'
+$HostPattern='(?i)(?<![a-z0-9-])(?:[a-z0-9-]+\.)*(?:opendental\.com|open-dent\.com|opendentalsoft\.com|patientviewer\.com|opendental\.cloud)(?![a-z0-9-])'
 
 #Deliberate remaining references. Path is a wildcard matched against the repository relative path (backslashes). Match, when present, is a
 #regular expression that the line must also match. Keep entries narrow and say why each one is allowed.
