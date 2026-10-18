@@ -44,23 +44,24 @@ Open source files by license: MIT 57, Apache-2.0 43, GPL-2.0 (built from this re
 
 | Recommended action | Files | Size |
 |---|---:|---:|
-| Keep as is | 12 | 2.9 MB |
+| Keep as is | 10 | 2.4 MB |
 | Replace with a NuGet package | 77 | 30.8 MB |
 | Replace with an in-repo open source implementation | 18 | 15.0 MB |
 | Remove because unused | 51 | 17.5 MB |
 | Remove together with a feature or binary that is being cut or replaced | 10 | 3.5 MB |
 | Remove from the repo and install the vendor redistributable instead | 1 | 0.1 MB |
+| Remove from the repo; an optional plugin binds to the DLL from the vendor's own installer | 2 | 0.6 MB |
 | Already being replaced in another piece of the decoupling work | 10 | 3.5 MB |
 
 ### Classification by action
 
-| Classification | Keep | NuGet | In-repo | Unused | Cut | Redist | Elsewhere |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| Open source | 10 | 72 | 5 | 40 | 5 | - | - |
-| Microsoft redistributable or platform component | - | 5 | 2 | 7 | - | 1 | - |
-| Commercial or proprietary third party | 2 | - | 3 | 4 | 1 | - | 3 |
-| Open Dental proprietary | - | - | 4 | - | 2 | - | 7 |
-| Unknown | - | - | 4 | - | 2 | - | - |
+| Classification | Keep | NuGet | In-repo | Unused | Cut | Redist | Plugin | Elsewhere |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Open source | 10 | 72 | 5 | 40 | 5 | - | - | - |
+| Microsoft redistributable or platform component | - | 5 | 2 | 7 | - | 1 | - | - |
+| Commercial or proprietary third party | - | - | 3 | 4 | 1 | - | 2 | 3 |
+| Open Dental proprietary | - | - | 4 | - | 2 | - | - | 7 |
+| Unknown | - | - | 4 | - | 2 | - | - | - |
 
 ## How this audit was done
 
@@ -308,11 +309,11 @@ One row per file, grouped by family. "csproj references" covers every project fi
 
 | File | Size | Vendor and product | License | Class | csproj references | Loaded at runtime by name | Feature | Recommended action |
 |---|---:|---|---|---|---|---|---|---|
-| `DpsPos.dll` | 330 KB | EDI Health Group (DentalXChange), PayConnect POS module | Proprietary ("All Rights Reserved") | Commercial | HintPath: OpenDental, WpfControlsOD | No. It needs `DpsPos.dll.config`, which `FormPayConnect.cs:67` writes from an embedded resource. That config in turn loads log4net by name. | PayConnect card-terminal payments (`FormPayConnect.cs`, `FormPayment.cs`, `WpfControlsOD/Bridges/PayConnectTerminal.cs`). | **Keep as is.** Keep the vendor integration but get the DLL from DentalXChange at install time (optional plugin), or re-implement terminal processing against DentalXChange's published API. It blocks a binary-free repo. |
+| `DpsPos.dll` | 330 KB | EDI Health Group (DentalXChange), PayConnect POS module | Proprietary ("All Rights Reserved") | Commercial | HintPath: OpenDental, WpfControlsOD | No. It needs `DpsPos.dll.config`, which `FormPayConnect.cs:67` writes from an embedded resource. That config in turn loads log4net by name. | PayConnect card-terminal payments (`FormPayConnect.cs`, `FormPayment.cs`, `WpfControlsOD/Bridges/PayConnectTerminal.cs`). | **Remove from repo: optional plugin that binds to the vendor-installed DLL.** Keep the PayConnect terminal integration, but move it into an optional plugin assembly built from our source that loads the `DpsPos.dll` DentalXChange supplies at install time. Alternatively, re-implement terminal processing against DentalXChange's published API. Until then it blocks a binary-free repo. |
 | `EZT4Jpeg.dll` | 268 KB | Atalasoft, EZTwain Pro JPEG/TIFF/PDF module | Commercial (part of EZTwain Pro) ([source](https://www.eztwain.com/)) | Commercial | None | Yes, loaded by EZTwain. Native x86. | JPEG and TIFF encoding for EZTwain. | **Replaced elsewhere.** Delete with Eztwain4.dll. |
 | `EZT4Pdf.dll` | 388 KB | Atalasoft, EZTwain Pro PDF module | Commercial (part of EZTwain Pro) ([source](https://www.eztwain.com/)) | Commercial | None | Yes, loaded by EZTwain. Native x86. Imports EZT4Jpeg.dll. | PDF output for EZTwain. | **Replaced elsewhere.** Delete with Eztwain4.dll. |
 | `Eztwain4.dll` | 964 KB | Atalasoft (Dosadi), EZTwain Pro 4 | Commercial, per-developer license ([source](https://www.eztwain.com/)) | Commercial | None | Yes, loaded by `ImagingDeviceManager.dll`. Native x86. The code shows "EzTwain4.dll not found" when it is missing (`ControlImages.cs:2627`). | TWAIN scanner and sensor acquisition. | **Replaced elsewhere.** NTwain (MIT) replaces it. Delete it when ImagingDeviceManager goes. |
-| `SigPlusNET.dll` | 271 KB | Topaz Systems, SigPlusNET 2.1.5 | Proprietary Topaz SDK. Redistribution terms are not published. ([source](https://topazsystems.com/license.htm)) | Commercial | HintPath: OpenDentBusiness, OpenDental, UnitTests, xCodeBase | No (comments only) | Topaz signature pads (`OpenDentBusiness/UI/TopazWrapper.cs`, `SignatureBoxWrapper.cs`, Imaging module, treatment plans). | **Keep as is.** Keep the vendor integration but stop shipping the binary: move the Topaz code into an optional plugin assembly that binds at runtime to the SigPlusNET.dll installed by Topaz's own SDK installer. Until then it blocks a binary-free repo. |
+| `SigPlusNET.dll` | 271 KB | Topaz Systems, SigPlusNET 2.1.5 | Proprietary Topaz SDK. Redistribution terms are not published. ([source](https://topazsystems.com/license.htm)) | Commercial | HintPath: OpenDentBusiness, OpenDental, UnitTests, xCodeBase | No (comments only) | Topaz signature pads (`OpenDentBusiness/UI/TopazWrapper.cs`, `SignatureBoxWrapper.cs`, Imaging module, treatment plans). | **Remove from repo: optional plugin that binds to the vendor-installed DLL.** Keep the Topaz integration, but stop shipping the binary: move the Topaz code into an optional plugin assembly that binds at runtime to the `SigPlusNET.dll` installed by Topaz's own SDK installer. Until then it blocks a binary-free repo. |
 | `SuniUSB.dll` | 84 KB | Suni Imaging Microsystems, SuniRay sensor driver 2.5 | Proprietary | Commercial | None | Presumably loaded by `xImageDeviceManager.dll`. Native x86. Named only in a comment (`WpfControlsOD/Bridges/Guru.cs:61`). | Direct Suni sensor capture (old Imaging module). | **Remove with a cut feature.** Remove with xImageDeviceManager. Suni users install Suni's own driver or use TWAIN. |
 
 ### COM interop assemblies
