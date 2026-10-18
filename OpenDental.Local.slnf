@@ -1,0 +1,28 @@
+{
+  "solution": {
+    "path": "OpenDental.sln",
+    "projects": [
+      "CentralManager\\xCentralManager.csproj",
+      "CodeBase\\xCodeBase.csproj",
+      "DataConnectionBase\\xDataConnectionBase.csproj",
+      "DatabaseIntegrityCheck\\xDatabaseIntegrityCheck.csproj",
+      "Direct2dWrapper\\Direct2dWrapper.vcxproj",
+      "MySQLManager\\xMySQLManager.csproj",
+      "OpenDentBusiness\\OpenDentBusiness.csproj",
+      "OpenDentHL7\\OpenDentHL7.csproj",
+      "OpenDental\\OpenDental.csproj",
+      "OpenDentalCloud\\OpenDentalCloud.csproj",
+      "OpenDentalGraph\\OpenDentalGraph.csproj",
+      "OpenDentalServer\\OpenDentalServer.csproj",
+      "PasswordVaultWrapper\\PasswordVaultWrapper.csproj",
+      "ServiceManager\\ServiceManager.csproj",
+      "SparksToothChart\\SparksToothChart.csproj",
+      "UnitTests\\UnitTests.csproj",
+      "UnitTestsCore\\UnitTestsCore.csproj",
+      "UpdateFileCopier\\UpdateFileCopier.csproj",
+      "WebCamOD\\WebCamOD.csproj",
+      "WpfControlsOD\\WpfControlsOD.csproj",
+      "xCrudGenerator\\xCrudGenerator.csproj"
+    ]
+  }
+}

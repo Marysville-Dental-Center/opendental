@@ -1,0 +1,30 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+*.pdb
+*.ilk
+*.obj
+*.iobj
+*.ipdb
+*.tlog
+*.lastbuildstate
+
+# NuGet (packages.config restore)
+packages/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.VC.db
+*.VC.opendb
+*.aps
+TestResults/
+
+# Logs
+*.binlog
+msbuild*.log
