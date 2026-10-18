@@ -348,6 +348,11 @@ namespace OpenDentBusiness{
 			if(Plugins.HookMethod(null,"SmsPhones.IsIntegratedTextingEnabled_start")) {
 				return true;
 			}
+			if(!WebServiceMainHQProxy.IsHqAvailable) {
+				//Integrated Texting was relayed through Open Dental HQ. It is not available until direct vendor integration is configured,
+				//so the texting UI that depends on it stays disabled even if this database still has a texting signup from Open Dental.
+				return false;
+			}
 			if(PrefC.HasClinicsEnabled) {
 				return (Clinics.GetFirstOrDefault(x => x.SmsContractDate.Year > 1880)!=null);
 			}

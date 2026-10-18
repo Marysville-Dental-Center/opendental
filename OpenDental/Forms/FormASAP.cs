@@ -119,6 +119,8 @@ namespace OpenDental {
 				butWebSchedHist.Visible=false;
 				LayoutManager.MoveHeight(groupWebSched,butSendWebSched.Height+LayoutManager.Scale(26));
 			}
+			//Web Sched ASAP was hosted by Open Dental and is not available in this build.
+			groupWebSched.Visible=WebServiceMainHQProxy.IsHqAvailable;
 			comboAptStatus.Items.Add(Lan.g(this,ApptStatus.Scheduled.ToString()),ApptStatus.Scheduled);
 			comboAptStatus.Items.Add(Lan.g(this,ApptStatus.Planned.ToString()),ApptStatus.Planned);
 			comboAptStatus.Items.Add(Lan.g(this,ApptStatus.UnschedList.ToString()),ApptStatus.UnschedList);

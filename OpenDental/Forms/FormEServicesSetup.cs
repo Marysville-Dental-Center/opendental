@@ -75,6 +75,19 @@ namespace OpenDental {
 			return false;
 		}
 
+		///<summary>Call first in the Load event of an eServices window that needs HQ signup data. eServices were hosted by Open Dental and are not
+		///available in this build, so this shows a message, closes the window with DialogResult.Abort and returns true. Returns false only when a
+		///unit test has supplied a mock HQ web service.</summary>
+		public static bool CloseIfHqNotAvailable(Form form) {
+			if(WebServiceMainHQProxy.IsHqAvailable) {
+				return false;
+			}
+			MessageBox.Show(new HqNotAvailableException().Message);
+			form.DialogResult=DialogResult.Abort;
+			form.Close();
+			return true;
+		}
+
 		///<summary>Makes a web call to WebServiceMainHQ to get the corresponding EServiceSetupFull information and then attempts to fill each tab.
 		///If anything goes wrong within this method a message box will show to the user and then the window will auto close via Abort.</summary>
 		public static WebServiceMainHQProxy.EServiceSetup.SignupOut GetSignupOut(WebServiceMainHQProxy.EServiceSetup.SignupOut signupOut=null) {

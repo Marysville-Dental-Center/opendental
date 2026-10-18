@@ -81,6 +81,8 @@ namespace OpenDental {
 
 		private void FormRecallList_Load(object sender, System.EventArgs e) {
 			CheckClinicsSignedUpForWebSched();
+			//Web Sched Recall was hosted by Open Dental and is not available in this build.
+			panelWebSched.Visible=WebServiceMainHQProxy.IsHqAvailable;
 			if(ODBuild.IsDebug()) {
 				butECards.Visible=true;
 			}

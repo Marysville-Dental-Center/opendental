@@ -21,6 +21,9 @@ namespace OpenDental {
 		}
 
 		private void FormEServicesPatientPortal_Load(object sender,EventArgs e) {
+			if(FormEServicesSetup.CloseIfHqNotAvailable(this)) {
+				return;//eServices were hosted by Open Dental and are not available in this build.
+			}
 			//Disable all controls except hosted URL if user does not have EServicesSetup permission.
 			if(!Security.IsAuthorized(EnumPermType.EServicesSetup,suppressMessage:true)) {
 				DisableAllExcept(butCopyToClipboard,butNavigateTo,comboPPClinicUrl,groupBox4);

@@ -31,6 +31,9 @@ namespace OpenDental {
 		}
 
 		private void FormEServicesAutoMsging_Load(object sender,EventArgs e) {
+			if(FormEServicesSetup.CloseIfHqNotAvailable(this)) {
+				return;//eServices were hosted by Open Dental and are not available in this build.
+			}
 			//Disable all controls if user does not have EServicesSetup permission.
 			//Most controls were disabled in a hardcoded list before, but the Activate New Pat Thank You button was not, which was likely a bug.
 			//Using DisableAllExcept ensures all controls are disabled.

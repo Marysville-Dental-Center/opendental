@@ -35,6 +35,9 @@ namespace OpenDental {
 		}
 
 		private async void FormEServicesSignup_Load(object sender,EventArgs e) {
+			if(FormEServicesSetup.CloseIfHqNotAvailable(this)) {
+				return;//eServices were hosted by Open Dental and are not available in this build.
+			}
 			//Disable all controls if user does not have EServicesSetup permission and is not opening via an HQ-only button.
 			if(!Security.IsAuthorized(EnumPermType.EServicesSetup,suppressMessage:true)
 				&& _signupOut.SignupPortalPermissionInt!=(int)SignupPortalPermission.FromHQ)
