@@ -253,7 +253,7 @@ namespace OpenDentBusiness {
 		///Open Dental) or unreadable token throws without any network call. Throws GoogleAuthException (an ODException) with a message for the user.</summary>
 		public static string MakeRefreshAccessTokenRequest(string storedRefreshToken) {
 			Meth.NoCheckMiddleTierRole();
-			GoogleClientCredentials googleClientCredentials=GoogleOAuthSettings.GetClientCredentials();
+			GoogleClientCredentials googleClientCredentials=GoogleOAuthSettings.GetClientCredentialsOrThrow(GoogleOAuthSettings.MessageNotConfiguredSend);
 			GoogleTokenCache.InvalidateStored(storedRefreshToken);
 			return VendorHttp.RunSync(() => GoogleTokenCache.GetAccessTokenAsync(0,"",storedRefreshToken,googleClientCredentials,null,CancellationToken.None));
 		}
@@ -312,7 +312,8 @@ namespace OpenDentBusiness {
 				CancellationToken cancellationToken=default(CancellationToken))
 			{
 				Meth.NoCheckMiddleTierRole();
-				GoogleClientCredentials googleClientCredentials=ClientCredentials??GoogleOAuthSettings.GetClientCredentials();
+				GoogleClientCredentials googleClientCredentials=ClientCredentials
+					??GoogleOAuthSettings.GetClientCredentialsOrThrow(GoogleOAuthSettings.MessageNotConfiguredAuthorize);
 				if(!googleClientCredentials.IsConfigured) {
 					throw new GoogleAuthException(GoogleAuthReason.NotConfigured,GoogleOAuthSettings.MessageNotConfiguredAuthorize);
 				}

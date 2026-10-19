@@ -33,7 +33,7 @@ namespace OpenDentBusiness {
 		}
 
 		///<summary>An access token for a Google address, refreshing it if it has under 5 minutes left. Blocks a pool thread, never the UI thread's
-		///context. Throws GoogleAuthException: NotConfigured (no client ID), NotAuthorized (blank, legacy or unreadable refresh token, no network
+		///context. Throws GoogleAuthException: NotConfigured (program link turned off, or no client ID), NotAuthorized (blank, legacy or unreadable refresh token, no network
 		///call), NeedsReauthorization / InvalidClient / AdminPolicy (Google refused it, now or earlier this session) or Unreachable.</summary>
 		public static string GetAccessToken(EmailAddress emailAddress) {
 			Meth.NoCheckMiddleTierRole();
@@ -47,7 +47,7 @@ namespace OpenDentBusiness {
 				throw new ArgumentNullException(nameof(emailAddress));
 			}
 			return GetAccessTokenAsync(emailAddress.EmailAddressNum,emailAddress.EmailUsername,emailAddress.RefreshToken,
-				GoogleOAuthSettings.GetClientCredentials(),null,cancellationToken);
+				GoogleOAuthSettings.GetClientCredentialsOrThrow(GoogleOAuthSettings.MessageNotConfiguredSend),null,cancellationToken);
 		}
 
 		///<summary>The core of GetAccessToken, with every input passed in (tests use it with a fake HttpClient). storedRefreshToken is the

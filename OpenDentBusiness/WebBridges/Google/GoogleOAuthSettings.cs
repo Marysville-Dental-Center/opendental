@@ -33,6 +33,8 @@ namespace OpenDentBusiness {
 		public const string MessageNotConfiguredAuthorize="Enter the OAuth client ID in Setup > Program Links > Gmail API first.";
 		///<summary>Shown when a Google address sends before the office has entered its OAuth client.</summary>
 		public const string MessageNotConfiguredSend="Gmail sending is not configured. An administrator can set it up in Setup > Program Links > Gmail API.";
+		///<summary>Shown when the Gmail API program link is turned off. Nothing calls Google until an administrator turns it on.</summary>
+		public const string MessageNotEnabled="The Gmail API program link is turned off. An administrator can turn it on in Setup > Program Links > Gmail API.";
 
 		///<summary>Inserts the GmailApi program row (Enabled=0, no path, no toolbar button) and its Client ID and Client Secret rows if they are missing.
 		///Returns true if it inserted anything; it then signals InvalidType.Programs (the UI caller also runs DataValid.SetInvalid). Never calls Google.
@@ -150,6 +152,20 @@ namespace OpenDentBusiness {
 		public static GoogleClientCredentials GetClientCredentials() {
 			Meth.NoCheckMiddleTierRole();
 			return new GoogleClientCredentials(GetClientId(),GetClientSecret(),GetClientFingerprint());
+		}
+
+		///<summary>The office's client for a call to Google. Throws GoogleAuthException (NotConfigured) without any network call while the program link
+		///is turned off (ground rule 6) or has no client ID. notConfiguredMessage is the text for a missing client ID.</summary>
+		public static GoogleClientCredentials GetClientCredentialsOrThrow(string notConfiguredMessage) {
+			Meth.NoCheckMiddleTierRole();
+			if(!IsEnabled) {
+				throw new GoogleAuthException(GoogleAuthReason.NotConfigured,MessageNotEnabled);
+			}
+			GoogleClientCredentials googleClientCredentials=GetClientCredentials();
+			if(!googleClientCredentials.IsConfigured) {
+				throw new GoogleAuthException(GoogleAuthReason.NotConfigured,notConfiguredMessage);
+			}
+			return googleClientCredentials;
 		}
 
 		///<summary>The scopes to request: openid, email and gmail.send always; gmail.readonly only when the address downloads mail. Google doesn't

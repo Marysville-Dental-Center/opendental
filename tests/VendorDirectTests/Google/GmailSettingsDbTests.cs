@@ -185,6 +185,33 @@ namespace VendorDirectTests.Gmail {
 			Assert.AreEqual("",GoogleOAuthSettings.GetClientSecret());
 			Assert.IsTrue(GoogleOAuthSettings.ReadClientSecret().NeedsReentry);
 		}
+
+		[TestMethod]
+		public void Credentials_NoGoogleCallWhileTurnedOff() {
+			GoogleOAuthSettings.EnsureProgram();
+			RefreshCaches();
+			GoogleOAuthSettings.SetClientId(GmailTestData.ClientId);
+			RefreshCaches();
+			GoogleAuthException ex=AssertEx.Throws<GoogleAuthException>(() => GoogleOAuthSettings.GetClientCredentialsOrThrow("no client"));
+			Assert.AreEqual(GoogleAuthReason.NotConfigured,ex.Reason);
+			Assert.AreEqual(GoogleOAuthSettings.MessageNotEnabled,ex.Message,"Off by default: nothing reaches Google (rule 6).");
+			EmailAddress emailAddress=new EmailAddress { EmailAddressNum=1,EmailUsername="front@example.com",AuthenticationType=OAuthType.Google,
+				RefreshToken=SecretsTestHelper.Protect("rt") };
+			Assert.AreEqual(GoogleAuthReason.NotConfigured,AssertEx.Throws<GoogleAuthException>(() => GoogleTokenCache.GetAccessToken(emailAddress)).Reason);
+			Assert.AreEqual(GoogleAuthReason.NotConfigured,
+				AssertEx.Throws<GoogleAuthException>(() => Google.MakeRefreshAccessTokenRequest(emailAddress.RefreshToken)).Reason);
+			Program program=Programs.GetCur(ProgramName.GmailApi);
+			Program programOld=program.Copy();
+			program.Enabled=true;
+			Programs.Update(program,programOld);
+			GoogleOAuthSettings.SetClientId("");
+			RefreshCaches();
+			ex=AssertEx.Throws<GoogleAuthException>(() => GoogleOAuthSettings.GetClientCredentialsOrThrow("no client"));
+			Assert.AreEqual("no client",ex.Message);
+			GoogleOAuthSettings.SetClientId(GmailTestData.ClientId);
+			RefreshCaches();
+			Assert.AreEqual(GmailTestData.ClientId,GoogleOAuthSettings.GetClientCredentialsOrThrow("no client").ClientId);
+		}
 	}
 
 	[TestClass]
