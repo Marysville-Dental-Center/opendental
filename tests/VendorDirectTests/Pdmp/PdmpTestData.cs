@@ -77,7 +77,7 @@ namespace VendorDirectTests.Pdmp {
 			using(RSA rsa=RSA.Create(2048)) {
 				CertificateRequest certificateRequest=new CertificateRequest("CN=PDMP Test Client",rsa,HashAlgorithmName.SHA256,RSASignaturePadding.Pkcs1);
 				if(ekuOid!=null) {
-					certificateRequest.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(new OidCollection { new Oid(ekuOid) },false));
+					certificateRequest.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(new OidCollection { new System.Security.Cryptography.Oid(ekuOid) },false));
 				}
 				using(X509Certificate2 certificate=certificateRequest.CreateSelfSigned(notBefore,notAfter)) {
 					return certificate.Export(X509ContentType.Pfx,password);
