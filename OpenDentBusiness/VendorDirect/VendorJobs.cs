@@ -33,13 +33,15 @@ namespace OpenDentBusiness.VendorDirect {
 		bool TryAcquire(IVendorBackgroundJob job,TimeSpan duration);
 	}
 
-	///<summary>The value stored in a lease row: "{computer}|{expiry, UTC, round-trip format}".</summary>
+	///<summary>The value stored in a lease row: "{owner}|{expiry, UTC, round-trip format}".</summary>
 	public sealed class VendorJobLeaseValue {
-		public string ComputerName;
+		///<summary>The process that holds the lease, from VendorJobLease.CurrentOwner: "{computer}/{process ID}/{per-process ID}". The computer name
+		///is there for diagnostics only. Many sessions on one terminal server share a computer name, so the owner must name the process.</summary>
+		public string Owner;
 		public DateTime ExpiresUtc;
 
 		public override string ToString() {
-			return ComputerName+"|"+ExpiresUtc.ToString("o",CultureInfo.InvariantCulture);
+			return Owner+"|"+ExpiresUtc.ToString("o",CultureInfo.InvariantCulture);
 		}
 
 		///<summary>Null for blank or unreadable text, which counts as "free".</summary>
@@ -56,20 +58,20 @@ namespace OpenDentBusiness.VendorDirect {
 				return null;
 			}
 			VendorJobLeaseValue value=new VendorJobLeaseValue();
-			value.ComputerName=text.Substring(0,indexBar);
+			value.Owner=text.Substring(0,indexBar);
 			value.ExpiresUtc=expires.ToUniversalTime();
 			return value;
 		}
 
-		///<summary>The lease decision, kept apart from the database for tests: returns the value to write, or null if another computer holds an
-		///unexpired lease.</summary>
-		public static VendorJobLeaseValue GetNext(string currentText,string computerName,DateTime nowUtc,TimeSpan duration) {
+		///<summary>The lease decision, kept apart from the database for tests: returns the value to write, or null if another owner (another
+		///process, even on the same computer) holds an unexpired lease. Owners are compared exactly.</summary>
+		public static VendorJobLeaseValue GetNext(string currentText,string owner,DateTime nowUtc,TimeSpan duration) {
 			VendorJobLeaseValue current=Parse(currentText);
-			if(current!=null && current.ExpiresUtc>nowUtc && !string.Equals(current.ComputerName,computerName,StringComparison.OrdinalIgnoreCase)) {
+			if(current!=null && current.ExpiresUtc>nowUtc && !string.Equals(current.Owner,owner,StringComparison.Ordinal)) {
 				return null;
 			}
 			VendorJobLeaseValue next=new VendorJobLeaseValue();
-			next.ComputerName=computerName;
+			next.Owner=owner;
 			next.ExpiresUtc=nowUtc.Add(duration);
 			return next;
 		}
@@ -80,6 +82,16 @@ namespace OpenDentBusiness.VendorDirect {
 	///hidden from the program link property grid and never copied to clinics.</summary>
 	public sealed class VendorJobLease : IVendorJobLease {
 		public const string PropertyDescPrefix="VendorJobLease.";
+		private static readonly Lazy<string> _lazyCurrentOwner=new Lazy<string>(() =>
+			ODEnvironment.MachineName+"/"+System.Diagnostics.Process.GetCurrentProcess().Id+"/"+Guid.NewGuid().ToString("N"));
+
+		///<summary>This process's lease owner: "{computer}/{process ID}/{random ID}". Unique per process, so two OpenDental sessions on one terminal
+		///server never share a lease, and a later process that reuses a process ID doesn't inherit one.</summary>
+		public static string CurrentOwner {
+			get {
+				return _lazyCurrentOwner.Value;
+			}
+		}
 
 		///<summary>True for a lease row's PropertyDesc.</summary>
 		public static bool IsLeaseProperty(string propertyDesc) {
@@ -94,7 +106,7 @@ namespace OpenDentBusiness.VendorDirect {
 			}
 			ProgramProperty programProperty=ProgramProperties.InsertIfMissing(programNum,PropertyDescPrefix+job.Name,0,"",false,false);
 			DateTime nowUtc=MiscData.GetNowDateTime().ToUniversalTime();
-			VendorJobLeaseValue next=VendorJobLeaseValue.GetNext(programProperty.PropertyValue,ODEnvironment.MachineName,nowUtc,duration);
+			VendorJobLeaseValue next=VendorJobLeaseValue.GetNext(programProperty.PropertyValue,CurrentOwner,nowUtc,duration);
 			if(next==null) {
 				return false;
 			}

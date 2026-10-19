@@ -86,18 +86,32 @@ namespace VendorDirectTests.Foundation {
 			DateTime nowUtc=new DateTime(2026,10,19,12,0,0,DateTimeKind.Utc);
 			TimeSpan duration=TimeSpan.FromMinutes(15);
 			VendorJobLeaseValue next=VendorJobLeaseValue.GetNext("",@"WS1",nowUtc,duration);
-			Assert.AreEqual("WS1",next.ComputerName);
+			Assert.AreEqual("WS1",next.Owner);
 			Assert.AreEqual(nowUtc.AddMinutes(15),next.ExpiresUtc);
 			string text=next.ToString();
 			VendorJobLeaseValue parsed=VendorJobLeaseValue.Parse(text);
-			Assert.AreEqual("WS1",parsed.ComputerName);
+			Assert.AreEqual("WS1",parsed.Owner);
 			Assert.AreEqual(next.ExpiresUtc,parsed.ExpiresUtc);
 			Assert.IsNull(VendorJobLeaseValue.GetNext(text,"WS2",nowUtc.AddMinutes(5),duration),"Held by WS1.");
-			Assert.IsNotNull(VendorJobLeaseValue.GetNext(text,"ws1",nowUtc.AddMinutes(5),duration),"The holder may renew.");
+			Assert.IsNotNull(VendorJobLeaseValue.GetNext(text,"WS1",nowUtc.AddMinutes(5),duration),"The holder may renew.");
 			Assert.IsNotNull(VendorJobLeaseValue.GetNext(text,"WS2",nowUtc.AddMinutes(16),duration),"Expired.");
 			Assert.IsNotNull(VendorJobLeaseValue.GetNext("garbage",@"WS2",nowUtc,duration),"Unreadable counts as free.");
 			Assert.IsTrue(VendorJobLease.IsLeaseProperty("VendorJobLease.PaySimpleAch"));
 			Assert.IsFalse(VendorJobLease.IsLeaseProperty("PaySimpleApiKey"));
+		}
+
+		[TestMethod]
+		public void LeaseValue_AnotherProcessOnTheSameComputerIsRefused() {
+			DateTime nowUtc=new DateTime(2026,10,19,12,0,0,DateTimeKind.Utc);
+			TimeSpan duration=TimeSpan.FromMinutes(15);
+			string text=VendorJobLeaseValue.GetNext("","RDS01/4100/aaaa",nowUtc,duration).ToString();
+			Assert.IsNull(VendorJobLeaseValue.GetNext(text,"RDS01/5200/bbbb",nowUtc.AddMinutes(1),duration),"Another session on the terminal server.");
+			Assert.IsNull(VendorJobLeaseValue.GetNext(text,"rds01/4100/aaaa",nowUtc.AddMinutes(1),duration),"Owners are compared exactly.");
+			Assert.IsNotNull(VendorJobLeaseValue.GetNext(text,"RDS01/4100/aaaa",nowUtc.AddMinutes(1),duration),"The same process renews.");
+			string owner=VendorJobLease.CurrentOwner;
+			StringAssert.StartsWith(owner,CodeBase.ODEnvironment.MachineName+"/"+System.Diagnostics.Process.GetCurrentProcess().Id+"/");
+			Assert.AreEqual(owner,VendorJobLease.CurrentOwner,"Stable for the life of the process.");
+			Assert.IsFalse(owner.Contains("|"));
 		}
 	}
 }

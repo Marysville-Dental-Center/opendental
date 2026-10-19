@@ -209,10 +209,11 @@ namespace VendorDirectTests.Foundation {
 			Assert.IsTrue(lease.TryAcquire(job,TimeSpan.FromMinutes(10)));
 			Assert.IsTrue(lease.TryAcquire(job,TimeSpan.FromMinutes(10)),"The holder renews.");
 			ProgramProperty programProperty=ProgramProperties.GetOneFromDb(programNum,VendorJobLease.PropertyDescPrefix+job.Name,0);
-			//Another computer takes over the row with an unexpired lease.
-			VendorJobLeaseValue valueOther=new VendorJobLeaseValue { ComputerName="OTHER-WS",ExpiresUtc=DateTime.UtcNow.AddHours(1) };
+			StringAssert.StartsWith(programProperty.PropertyValue,VendorJobLease.CurrentOwner+"|");
+			//Another session on this same computer (a terminal server) takes over the row with an unexpired lease.
+			VendorJobLeaseValue valueOther=new VendorJobLeaseValue { Owner=CodeBase.ODEnvironment.MachineName+"/1/other-session",ExpiresUtc=DateTime.UtcNow.AddHours(1) };
 			Assert.IsTrue(ProgramProperties.UpdateValueIfUnchanged(programProperty.ProgramPropertyNum,programProperty.PropertyValue,valueOther.ToString()));
-			Assert.IsFalse(lease.TryAcquire(job,TimeSpan.FromMinutes(10)));
+			Assert.IsFalse(lease.TryAcquire(job,TimeSpan.FromMinutes(10)),"Another process on the same computer holds the lease.");
 			ProgramProperties.RefreshCache();
 			Program program=Programs.GetProgram(programNum);
 			Assert.IsFalse(ProgramProperties.FilterProperties(program,ProgramProperties.GetForProgram(programNum)).Any(x => VendorJobLease.IsLeaseProperty(x.PropertyDesc)),
