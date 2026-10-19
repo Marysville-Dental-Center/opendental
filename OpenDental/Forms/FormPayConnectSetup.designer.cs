@@ -58,7 +58,6 @@ namespace OpenDental {
 			this.labelDefaultProcMethod = new System.Windows.Forms.Label();
 			this.checkForceRecurring = new OpenDental.UI.CheckBox();
 			this.checkTerminal = new OpenDental.UI.CheckBox();
-			this.butDownloadDriver = new OpenDental.UI.Button();
 			this.labelClinicEnable = new System.Windows.Forms.Label();
 			this.butSave = new OpenDental.UI.Button();
 			this.groupBoxTerminals = new OpenDental.UI.GroupBox();
@@ -332,18 +331,6 @@ namespace OpenDental {
 			this.checkTerminal.Size = new System.Drawing.Size(218, 17);
 			this.checkTerminal.TabIndex = 3;
 			this.checkTerminal.Text = "Enable terminal processing";
-			this.checkTerminal.CheckedChanged += new System.EventHandler(this.checkTerminal_CheckedChanged);
-			// 
-			// butDownloadDriver
-			// 
-			this.butDownloadDriver.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.butDownloadDriver.Location = new System.Drawing.Point(10, 670);
-			this.butDownloadDriver.Name = "butDownloadDriver";
-			this.butDownloadDriver.Size = new System.Drawing.Size(93, 26);
-			this.butDownloadDriver.TabIndex = 5;
-			this.butDownloadDriver.Text = "Download Driver";
-			this.butDownloadDriver.Visible = false;
-			this.butDownloadDriver.Click += new System.EventHandler(this.butDownloadDriver_Click);
 			// 
 			// labelClinicEnable
 			// 
@@ -402,7 +389,6 @@ namespace OpenDental {
 			this.ClientSize = new System.Drawing.Size(776, 708);
 			this.Controls.Add(this.groupBoxTerminals);
 			this.Controls.Add(this.butSave);
-			this.Controls.Add(this.butDownloadDriver);
 			this.Controls.Add(this.labelClinicEnable);
 			this.Controls.Add(this.groupPaySettings);
 			this.Controls.Add(this.comboClinic);
@@ -441,7 +427,6 @@ namespace OpenDental {
 		private OpenDental.UI.GroupBox groupPaySettings;
 		private Label labelClinicEnable;
 		private OpenDental.UI.CheckBox checkTerminal;
-		private UI.Button butDownloadDriver;
 		private OpenDental.UI.CheckBox checkForceRecurring;
 		private OpenDental.UI.ComboBox comboDefaultProcessing;
 		private Label labelDefaultProcMethod;

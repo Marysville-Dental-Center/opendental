@@ -1,13 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
-using System.Net;
 using System.Text;
 using System.Windows.Forms;
 using CodeBase;
-using Ionic.Zip;
 using OpenDental.UI;
 using OpenDentBusiness;
 using static OpenDentBusiness.PayConnect2;
@@ -371,10 +368,6 @@ namespace OpenDental{
 			Process.Start(url);
 		}
 
-		private void checkTerminal_CheckedChanged(object sender,EventArgs e) {
-			butDownloadDriver.Visible=checkTerminal.Checked;
-		}
-
 		private void gridODTerminals_CellDoubleClick(object sender,ODGridClickEventArgs e) {
 			PayTerminal payTerminal=(PayTerminal)gridODTerminals.ListGridRows[e.Row].Tag;
 			using FormPayTerminalEdit formPayTerminalEdit=new FormPayTerminalEdit(payTerminal);
@@ -386,51 +379,6 @@ namespace OpenDental{
 			using FormPayTerminalEdit formPayTerminalEdit=new FormPayTerminalEdit();
 			formPayTerminalEdit.ShowDialog();
 			FillGridTerminals();
-		}
-
-		private void butDownloadDriver_Click(object sender,EventArgs e) {
-			//The VeriFone driver is necessary for PayConnect users to process payments on the VeriFone terminal.
-			//It used to be downloaded from Open Dental's website, which this build never contacts. Use the driver zip file obtained from the vendor.
-			using OpenFileDialog openFileDialog=new OpenFileDialog();
-			openFileDialog.Title=Lan.g(this,"Choose the VeriFone USB driver zip file from the vendor");
-			openFileDialog.Filter="zip|*.zip";
-			if(openFileDialog.ShowDialog()!=DialogResult.OK) {
-				return;
-			}
-			Cursor=Cursors.WaitCursor;
-			string zipFileName=openFileDialog.FileName;
-			if(ODEnvironment.IsCloudServer) {
-				//ODCloud, send the installer to the client computer instead of installing it here on the server computer.
-				if(ODBuild.IsThinfinity()) {
-					Thinfinity.ThinfinityUtils.ExportForDownload(zipFileName);
-				}
-				else {//Is AppStream
-					CloudClientL.ExportForCloud(zipFileName,doPromptForName:false);
-				}
-				Cursor=Cursors.Default;
-				MessageBox.Show(Lans.g(this,"Download complete. Run the Setup.exe file in the downloaded zip file."));
-				return;
-			}
-			MemoryStream memoryStream=new MemoryStream();
-			string setupFileName="";
-			using(ZipFile zipFileUnzipped=ZipFile.Read(zipFileName)) {
-				for(int unzipIndex=0;unzipIndex<zipFileUnzipped.Count;unzipIndex++) {//Unzip/write all files to the temp directory
-					ZipEntry zipEntry=zipFileUnzipped[unzipIndex];
-					if(zipEntry.FileName.ToLower()=="setup.exe") {
-						setupFileName=zipEntry.FileName;
-					}
-					zipEntry.Extract(PrefC.GetTempFolderPath(),ExtractExistingFileAction.OverwriteSilently);
-				}
-			}
-			Cursor=Cursors.Default;
-			if(setupFileName=="") {
-				MsgBox.Show(this,"Unable to install driver. Setup.exe file not found.");
-				return;
-			}
-			//Run the setup.exe file
-			Process.Start(ODFileUtils.CombinePaths(PrefC.GetTempFolderPath(),setupFileName));
-			MessageBox.Show(Lans.g(this,"Download complete. Run the Setup.exe file in")+" "+PrefC.GetTempFolderPath()+" "
-				+Lans.g(this,"if it does not start automatically."));
 		}
 
 		private void butMerchantInfo_Click(object sender,EventArgs e) {
