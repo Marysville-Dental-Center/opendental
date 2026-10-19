@@ -117,7 +117,7 @@ Unused proprietary files are not listed here; they are simply deleted (for examp
 | `Bridges.dll` | 4 | Being replaced elsewhere (split; QuickBooks Online, Microsoft 365 and USPS are kept) |
 | `ODCrypt.dll` | 3 (HintPaths only) | Being replaced elsewhere |
 | `OpenDentalHelp.dll` | 0 | Removed: the help system (manual links, help browser, support-plan key gates) is gone, and the DLL is deleted |
-| `VirtualWeb.dll` | 4 | Being replaced elsewhere |
+| `VirtualWeb.dll` | 0 | Removed: Open Dental's cloud edition (Thinfinity, AppStream) is gone, and the DLL is deleted |
 | `ImagingDeviceManager.dll` | 1 | Being replaced elsewhere (NTwain) |
 | `ODApi.dll` | 0 | Removed: the local REST API is gone, and the DLL is deleted |
 | `EHR` | 0 (loaded by reflection) | Being removed elsewhere. There is no `EHR.dll` in `Required dlls`. |
@@ -314,7 +314,7 @@ One row per file, grouped by family. "csproj references" covers every project fi
 | `ODApi.dll` | 1,240 KB | Open Dental Software, ODApi | Proprietary, source not published | Open Dental | ProjectReference, substituted: OpenDental | No | Local REST API server (port 30222), used from `FormOpenDental.cs`. | **Removed.** The local REST API and its API key setup were cut; the DLL is deleted. |
 | `ODCrypt.dll` | 81 KB | Open Dental Software, ODCrypt | Proprietary, source not published | Open Dental | HintPath: OpenDentBusiness, OpenDental, UnitTests | No | MD5 and SHA3-512 password hashes, salts, random values, gzip. | **Replaced elsewhere.** Replaced by an in-repo shim. `UnitTests.csproj` also has a HintPath to it. |
 | `OpenDentalHelp.dll` | 142 KB | Open Dental Software, OpenDentalHelp (version info wrongly says "Microsoft") | Proprietary, source not published | Open Dental | ProjectReference, substituted: OpenDental, UnitTests, WpfControlsOD | No | F1 manual URLs, help-key and support-status checks, HQ SOAP client. | **Removed.** The help system was cut (no replacement); the DLL is deleted. |
-| `VirtualWeb.dll` | 6 KB | Open Dental Software, VirtualWeb ("Web") | Proprietary, source not published | Open Dental | ProjectReference, substituted: OpenDental, WpfControlsOD; HintPath: OpenDentBusiness, OpenDentalGraph | No | Thinfinity "ODCloud" browser-hosting shim. | **Replaced elsewhere.** The Thinfinity code paths are deleted. |
+| `VirtualWeb.dll` | 6 KB | Open Dental Software, VirtualWeb ("Web") | Proprietary, source not published | Open Dental | ProjectReference, substituted: OpenDental, WpfControlsOD; HintPath: OpenDentBusiness, OpenDentalGraph | No | Thinfinity "ODCloud" browser-hosting shim. | **Removed.** The Thinfinity and AppStream code paths, the cloud client and the cloud management windows were cut; the DLL is deleted. |
 
 ### Other Open Dental binaries
 
@@ -400,8 +400,8 @@ One row per file, grouped by family. "csproj references" covers every project fi
 | File | Size | Vendor and product | License | Class | csproj references | Loaded at runtime by name | Feature | Recommended action |
 |---|---:|---|---|---|---|---|---|---|
 | `Avalara.AvaTax.RestClient.net45.dll` | 758 KB | Avalara, AvaTax REST v2 SDK 20.1 | Apache-2.0 ([source](https://github.com/avadev/AvaTax-REST-V2-DotNet-SDK)) | Open source | HintPath: OpenDentBusiness | No | Sales tax. Only active at Open Dental HQ: `AvaTax.IsEnabled()` requires `PrefC.IsODHQ` (`OpenDentBusiness/WebBridges/AvaTax.cs:30`). | **Remove with a cut feature.** Remove with the HQ-only code (pin `IsODHQ` false, then delete `AvaTax.cs` and `FormAvaTax`). |
-| `AWSSDK.Core.dll` | 1,952 KB | Amazon, AWS SDK for .NET 3.7 | Apache-2.0 ([source](https://github.com/aws/aws-sdk-net)) | Open source | HintPath: OpenDental | No | Open Dental Cloud (AWS AppStream) user admin (`OpenDental/Forms/FormCloudUsers.cs`, `FormCloudUserEdit.cs`). This is an Open Dental-hosted service. | **Remove with a cut feature.** Remove with the ODCloud/AppStream code paths (Phase 3). |
-| `AWSSDK.IdentityStore.dll` | 120 KB | Amazon, AWS SDK for .NET 3.7 (IdentityStore) | Apache-2.0 ([source](https://github.com/aws/aws-sdk-net)) | Open source | HintPath: OpenDental | No | Same ODCloud user admin | **Remove with a cut feature.** Remove with the ODCloud/AppStream code paths. |
+| `AWSSDK.Core.dll` | 1,952 KB | Amazon, AWS SDK for .NET 3.7 | Apache-2.0 ([source](https://github.com/aws/aws-sdk-net)) | Open source | HintPath: OpenDental | No | Open Dental Cloud (AWS AppStream) user admin (`OpenDental/Forms/FormCloudUsers.cs`, `FormCloudUserEdit.cs`). This is an Open Dental-hosted service. | **Removed.** Cut with the ODCloud/AppStream code paths; the DLL is deleted. |
+| `AWSSDK.IdentityStore.dll` | 120 KB | Amazon, AWS SDK for .NET 3.7 (IdentityStore) | Apache-2.0 ([source](https://github.com/aws/aws-sdk-net)) | Open source | HintPath: OpenDental | No | Same ODCloud user admin | **Removed.** Cut with the ODCloud/AppStream code paths; the DLL is deleted. |
 | `Azure.Core.dll` | 323 KB | Microsoft Azure SDK, Azure.Core 1.25 | MIT ([source](https://github.com/Azure/azure-sdk-for-net)) | Open source | None | No | Dependency of Microsoft.Graph and Graph.Core (Microsoft 365 email) | **NuGet.** Transitive from NuGet `Microsoft.Graph`. |
 | `Dropbox.Api.dll` | 2,156 KB | Dropbox, Dropbox.Api 4.0 | MIT ([source](https://github.com/dropbox/dropbox-sdk-dotnet)) | Open source | HintPath: OpenDentalCloud | No (comment in `ProgramEntry.cs:137`) | Dropbox image storage (`OpenDentalCloud/Storage/Dropbox.cs`). | **NuGet.** NuGet `Dropbox.Api` (MIT). Our own Dropbox app key is needed. |
 | `Google.Apis.Auth.dll` | 116 KB | Google, Google APIs Client Library for .NET 1.44 | Apache-2.0 ([source](https://github.com/googleapis/google-api-dotnet-client)) | Open source | HintPath: OpenDentBusiness | No | Gmail OAuth email (`EmailMessages.cs`, `WebBridges/Google/GoogleApiConnector.cs`). The `using` in `Bridges/Pearl/IPearlApiClient.cs` is unused. | **NuGet.** NuGet `Google.Apis.Gmail.v1` (Apache-2.0), which pulls in the others. |
@@ -608,7 +608,7 @@ Some HintPaths in projects outside the solution point to files that do not exist
 | `CDT.dll` | `xCentralManager`, `xDatabaseIntegrityCheck`, `OpenDentHL7`, `ServiceManager`, `UnitTests` (and the unbuilt `xODR`, `xDataConnectionBaseStandard`) |
 | `Bridges.dll` | `OpenDentBusiness`, `UnitTests`, `WpfControlsOD` |
 | `ODCrypt.dll` | `OpenDental`, `OpenDentBusiness`, `UnitTests` (it has no ProjectReference at all) |
-| `VirtualWeb.dll` | `OpenDentBusiness`, `OpenDentalGraph` |
+| `VirtualWeb.dll` | None. Removed, with the HintPaths in `OpenDentBusiness` and `OpenDentalGraph`. |
 
 ### Third-party license notices
 
