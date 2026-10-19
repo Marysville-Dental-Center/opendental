@@ -12,7 +12,6 @@ using System.Windows.Forms;
 using OpenDentBusiness;
 using System.Linq;
 using CodeBase;
-using System.Xml;
 
 namespace OpenDentBusiness.Eclaims {
 	public class Canadian {
@@ -1509,6 +1508,58 @@ namespace OpenDentBusiness.Eclaims {
 			return primaryEOB;//No conversion necessary/possible.
 		}
 
+		///<summary>Matches the software-vendor certificate file names that Open Dental Software handed out for CCDWS: OPENDENTAL.pem (Alberta Blue Cross)
+		///and OD_yyyy-mm-dd_yyyy-mm-dd_prod.pem or _staging.pem (TELUS). They identify another software vendor, so this program won't use them.</summary>
+		private static readonly Regex _regexOtherVendorCertificate=new Regex(@"^(OPENDENTAL\.pem|OD_\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}_(prod|staging)\.pem)$",
+			RegexOptions.IgnoreCase|RegexOptions.CultureInvariant);
+		///<summary>Finds .pem file names (or paths) in ccdws.ini, whatever key or section names them.</summary>
+		private static readonly Regex _regexPemToken=new Regex(@"[^\s=;,""'<>|*?]+\.pem\b",RegexOptions.IgnoreCase|RegexOptions.CultureInvariant);
+
+		///<summary>True if the file name is one of the certificates Open Dental Software issued to its own installs for CCDWS.</summary>
+		public static bool IsOtherVendorCertificateName(string fileName) {
+			if(string.IsNullOrWhiteSpace(fileName)) {
+				return false;
+			}
+			return _regexOtherVendorCertificate.IsMatch(fileName.Trim());
+		}
+
+		///<summary>Read-only check, made before any claim file is written, that the office's CCDWS can identify this software to an ABC or TELUS network.
+		///Returns a blank string when the check passes or the network needs no vendor certificate (instream), otherwise a translated message.
+		///networkFolder is the CCDWS network sub-folder (abc, telusa, telusb) and configFilePath is the CCDWS ccdws.ini.
+		///A certificate passes when ccdws.ini names a .pem file that exists in the network sub-folder and isn't one of Open Dental's.
+		///Never downloads, creates or edits a certificate or ccdws.ini.</summary>
+		public static string GetVendorCertificateError(CanadianNetwork network,string networkFolder,string configFilePath) {
+			if(network==null || !network.Abbrev.In("ABC","TELUS A","TELUS B")) {
+				return "";//instream (CSI) uses the provider's own certificate, not a vendor certificate.
+			}
+			string networkName=string.IsNullOrWhiteSpace(network.Descript) ? network.Abbrev : network.Descript;
+			if(string.IsNullOrWhiteSpace(configFilePath) || !File.Exists(configFilePath)) {
+				return Lans.g("Canadian","CCDWS is not configured for network")+" "+networkName+". "
+					+Lans.g("Canadian","File not found:")+" "+configFilePath;
+			}
+			string configText;
+			try {
+				configText=File.ReadAllText(configFilePath);
+			}
+			catch(Exception ex) {
+				return Lans.g("Canadian","Unable to read the CCDWS configuration file")+" '"+configFilePath+"'\r\n"+ex.Message;
+			}
+			List<string> listCertFileNames=_regexPemToken.Matches(configText).Cast<Match>()
+				.Select(x => Path.GetFileName(x.Value))
+				.Where(x => File.Exists(ODFileUtils.CombinePaths(networkFolder,x)))
+				.Distinct(StringComparer.OrdinalIgnoreCase)
+				.ToList();
+			if(listCertFileNames.Count==0) {
+				return Lans.g("Canadian","No software-vendor certificate is installed for network")+" "+networkName+". "
+					+Lans.g("Canadian","Claims for hygienists and denturists sent through CCDWS need a vendor certificate issued by that network to the publisher of this software. Dentist claims can be sent through ITRANS 2.0 instead.");
+			}
+			if(listCertFileNames.Any(x => IsOtherVendorCertificateName(x))) {
+				return Lans.g("Canadian","The CCDWS certificate for network")+" "+networkName+" "
+					+Lans.g("Canadian","belongs to another software vendor and can't be used by this program.");
+			}
+			return "";
+		}
+
 		///<summary>Throws exception in rare cases.  Used for ITRANS and Claimstream.
 		///Takes a string, creates a file, and drops it into the clearinghouse export path.
 		///Waits for the response, and then returns it as a string. Always returns the response if one comes back even when it is an error response.
@@ -1530,7 +1581,7 @@ namespace OpenDentBusiness.Eclaims {
 			bool isClaimstream=(clearinghouseClin.CommBridge==EclaimsCommBridge.Claimstream);
 			bool isCertificateNeeded=(network!=null && isClaimstream);
 			string saveFolder=clearinghouseClin.ExportPath;
-			if(isCertificateNeeded) {//Download vendor identity certificate to appropriate subfolder if needed.
+			if(isCertificateNeeded) {//Pick the network sub-folder and check that the office's CCDWS has a vendor identity certificate there.
 				DirectoryInfo dirInfo=new DirectoryInfo(saveFolder);
 				if(dirInfo.Name=="abc") {//Is pointing to the "abc" sub-folder.
 					//For backwards compatibility, if the export path is pointing to the "abc" sub-folder,
@@ -1560,99 +1611,11 @@ namespace OpenDentBusiness.Eclaims {
 					errorMsg=saveFolder+" "+Lans.g("Canadian","not found.");
 					return "";//Return empty response, since we never received one.
 				}
-				string certFileName="";
-				if(network.Abbrev=="ABC") {//Alberta Blue Cross
-					certFileName="OPENDENTAL.pem";
-				}
-				else if(network.Abbrev=="TELUS A" || network.Abbrev=="TELUS B") {
-					if(ODBuild.IsDebug()) {
-						certFileName="OD_2023-02-05_2028-02-09_staging.pem";
-					}
-					else {
-						certFileName="OD_2023-02-20_2028-02-24_prod.pem";
-					}
-				}
-				//The certFileName is always blank for Instream, because we do not use vendor certs for Instream, we expect the dentist to have their provider cert installed.
-				//Claims for hygienists and denturists intended for Instream are redirected to TELUS B inside CanadianNetworks.GetNetwork() before we get here.
-				string certFilePath=ODFileUtils.CombinePaths(saveFolder,certFileName);
-				if(!string.IsNullOrEmpty(certFileName) && subDir!="" && !File.Exists(certFilePath)) {//Download a copy of the certificate from HQ if needed.
-					byte[] arrayCertFileBytes=null;
-					try {
-						XmlWriterSettings settings=new XmlWriterSettings();
-						settings.Indent=true;
-						settings.IndentChars=("    ");
-						StringBuilder strbuild=new StringBuilder();
-						using(XmlWriter writer=XmlWriter.Create(strbuild,settings)){
-							writer.WriteStartElement("Request");
-							writer.WriteElementString("RegistrationKey",PrefC.GetString(PrefName.RegistrationKey));
-							if(network.Abbrev=="TELUS A" || network.Abbrev=="TELUS B") {
-								writer.WriteElementString("RelativeFilePath","eclaim_certs/"+certFileName);
-							}
-							writer.WriteEndElement();
-						}
-						string response=null;
-						if(network.Abbrev=="ABC") {//Alberta Blue Cross
-							response=CustomerUpdatesProxy.GetWebServiceInstance().RequestCertCanadaABC(strbuild.ToString());
-						}
-						else if(network.Abbrev=="TELUS A" || network.Abbrev=="TELUS B") {
-							if(ODBuild.IsDebug()) {
-								response=CustomerUpdatesProxy.GetWebServiceInstance().RequestCertCanadaTelusAandBtest(strbuild.ToString());
-							}
-							else{
-								response=CustomerUpdatesProxy.GetWebServiceInstance().RequestCertCanadaTelusAandB(strbuild.ToString());
-							}
-						}
-						XmlDocument doc=new XmlDocument();
-						doc.LoadXml(response);
-						XmlNode node=doc.SelectSingleNode("//Error");
-						if(node!=null) {
-							errorMsg=node.InnerText;
-							return "";//Return empty response, since we never received one.
-						}
-						node=doc.SelectSingleNode("//KeyDisabled");
-						if(node!=null) {
-							if(Prefs.UpdateBool(PrefName.RegistrationKeyIsDisabled,true)) {
-								Signalods.Insert(new Signalod() { IType=InvalidType.Prefs });
-								Prefs.RefreshCache();
-							}
-							errorMsg=node.InnerText;
-							return "";//Return empty response, since we never received one.
-						}
-						//no error, and no disabled message
-						if(Prefs.UpdateBool(PrefName.RegistrationKeyIsDisabled,false)) {
-							Signalods.Insert(new Signalod() { IType=InvalidType.Prefs });
-							Prefs.RefreshCache();
-						}
-						node=doc.SelectSingleNode("//FileData64");
-						arrayCertFileBytes=Convert.FromBase64String(node.InnerText);
-					}
-					catch(Exception ex) {
-						errorMsg=Lans.g("Canadian","Failed to download certificate file")+"\r\n  "+ex.Message;
-						return "";//Return empty response, since we never received one.
-					}
-					try {
-						File.WriteAllBytes(certFilePath,arrayCertFileBytes);
-					}
-					catch(Exception ex) {
-						errorMsg=Lans.g("Canadian","Failed to export certificate file to path")+" '"+certFilePath+"'\r\n  "+ex.Message;
-						return "";//Return empty response, since we never received one.
-					}
-				}
-				if(!string.IsNullOrEmpty(certFileName) && File.Exists(configFilePath)) {
-					//Update the config file .pem references automatically. Customer might still need to restart CCDWS.
-					string configText=File.ReadAllText(configFilePath);
-					string configTextModified=configText.Replace("OD_2018-02-26_2023-03-02_staging.pem","OD_2023-02-05_2028-02-09_staging.pem");
-					configTextModified=configTextModified.Replace("OD_2018-05-17_2023-05-21_prod.pem","OD_2023-02-20_2028-02-24_prod.pem");
-					configTextModified=configTextModified.Replace("OD_2023-02-05_2028-02-09_prod.pem","OD_2023-02-20_2028-02-24_prod.pem");
-					configTextModified=configTextModified.Replace("<vendor_prod_cert_filename>.pem","OD_2023-02-20_2028-02-24_prod.pem");
-					if(configText!=configTextModified) {
-						try {
-							File.WriteAllText(configFilePath,configTextModified);
-						}
-						catch(Exception ex) {
-							ex.DoNothing();//Probably due to concurrency, as this file is usually on a UNC path.
-						}
-					}
+				//This program has no software-vendor certificates of its own to hand out, and it never downloads, writes or edits certificate files or
+				//ccdws.ini. The office's CCDWS must already be set up with a certificate the network issued to the publisher of this software.
+				errorMsg=GetVendorCertificateError(network,saveFolder,configFilePath);
+				if(!string.IsNullOrEmpty(errorMsg)) {
+					return "";//Return empty response, since we never received one. Nothing has been written to the claim folder.
 				}
 			}
 			string officeSequenceNumber=msgText.Substring(12,6);//Field A02. Office Sequence Number is always part of every message type and is always in the same place.
