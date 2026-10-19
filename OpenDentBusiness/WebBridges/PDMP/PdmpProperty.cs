@@ -489,34 +489,19 @@ namespace OpenDentBusiness {
 			SenderProductOverride=GetVal(progNum,BambooSenderProduct,clinicNum);
 		}
 
-		///<summary>A client certificate must be set: a store thumbprint, or an imported file that opens, has a private key and hasn't expired.
-		///Skipped in testing mode.</summary>
+		///<summary>A client certificate must be set: a store thumbprint, or an imported file that opens with its stored password, has a private key and
+		///hasn't expired. The password may be blank: a .pfx exported without one imports with a blank password, so it is checked here the same way
+		///import and Check setup check it (GetCertificateProblem). A wrong password gives "could not be opened. Check the password". Skipped in testing mode.</summary>
 		private static bool TryValidateKey(PdmpProperty property,out string error) {
 			error="";
 			if(Introspection.IsTestingMode) {
 				return true;
 			}
-			PdmpCertificateSource source=PdmpCertificate.GetSource(property);
-			if(source==PdmpCertificateSource.None) {
+			if(PdmpCertificate.GetSource(property)==PdmpCertificateSource.None) {
 				error=Lans.g("PDMP","Client certificate")+": "+PdmpCertificate.MessageNotSet+" "+property.GetSetupHint();
 				return false;
 			}
-			if(source==PdmpCertificateSource.Database && string.IsNullOrEmpty(property.BambooClientPassword)) {
-				return true;//TryValidatePassword reports this.
-			}
 			error=GetCertificateProblem(property,DateTime.UtcNow);
-			return string.IsNullOrWhiteSpace(error);
-		}
-
-		///<summary>An imported certificate needs its password. A store certificate doesn't. Skipped in testing mode.</summary>
-		private static bool TryValidatePassword(PdmpProperty property,out string error) {
-			error="";
-			if(Introspection.IsTestingMode) {
-				return true;
-			}
-			if(PdmpCertificate.GetSource(property)==PdmpCertificateSource.Database && string.IsNullOrEmpty(property.BambooClientPassword)) {
-				error=Lans.g("PDMP","Client certificate password was not set. Import the certificate again.")+" "+property.GetSetupHint();
-			}
 			return string.IsNullOrWhiteSpace(error);
 		}
 
@@ -552,7 +537,7 @@ namespace OpenDentBusiness {
 		private string ValidateBamboo() {
 			List<PropertyValidator> listBambooRequirements=new List<PropertyValidator>() {
 				TryValidateDea,TryValidateProvName,TryValidateUrl,TryValidateProvLicense,TryValidatePatBirthday,TryValidatePatZip,TryValidateState,
-				TryValidateCredentials,TryValidateKey,TryValidatePassword
+				TryValidateCredentials,TryValidateKey
 			};
 			return Validate(listBambooRequirements);
 		}

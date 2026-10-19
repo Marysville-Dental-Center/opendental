@@ -221,6 +221,54 @@ namespace VendorDirectTests.Pdmp {
 		}
 
 		[TestMethod]
+		public void Validate_BambooAcceptsAnImportedCertificateWithoutAPassword() {
+			Program program=Bamboo;
+			PdmpProperty.EnsureProperties(program);
+			SetRaw(program.ProgramNum,PdmpProperty.BambooUrl,0,PdmpTestData.GatewayUrl);
+			SetRaw(program.ProgramNum,PdmpProperty.BambooUserName,0,PdmpTestData.Username);
+			SetRaw(program.ProgramNum,PdmpProperty.BambooFacilityID,0,"Main Office");
+			Assert.IsTrue(VendorCredentials.WriteSecret(program.ProgramNum,PdmpProperty.BambooPassword,0,PdmpTestData.Password));
+			//What PdmpCertificate.SaveImported stores for a .pfx exported without a password: the file, and a blank password.
+			byte[] arrayPfx=PdmpTestData.MakeClientPfx("");
+			Assert.IsTrue(VendorCredentials.WriteSecret(program.ProgramNum,PdmpProperty.BambooAuthToken,0,Convert.ToBase64String(arrayPfx)));
+			Assert.IsTrue(VendorCredentials.WriteSecret(program.ProgramNum,PdmpProperty.BambooAuthPassword,0,""));
+			ProgramProperties.RefreshCache();
+			PdmpProperty pdmpProperty=PdmpProperty.LoadBambooForSetup(program,0);
+			Assert.IsFalse(pdmpProperty.IsClientCertLegacy);
+			Assert.AreEqual("",pdmpProperty.BambooClientPassword);
+			Assert.AreEqual(PdmpCertificateSource.Database,PdmpCertificate.GetSource(pdmpProperty));
+			//Check setup and the query path agree: both accept it.
+			FakeHttpHandler fakeHttpHandler=new FakeHttpHandler().Enqueue(HttpStatusCode.NotFound,"","text/plain");
+			List<PdmpSetupCheckItem> listItems=PdmpProperty.CheckSetup(program,0,fakeHttpHandler);
+			string text=string.Join("\n",listItems.Select(x => x.ToString()));
+			Assert.IsFalse(listItems.Any(x => x.Level==PdmpSetupCheckLevel.Error),text);
+			StringAssert.Contains(text,"PDMP Test Client");
+			SetQueryFields(pdmpProperty);
+			pdmpProperty.Validate(program);//Throws if refused.
+			//A file that does have a password, stored with a blank one, is refused with the import message by both.
+			Assert.IsTrue(VendorCredentials.WriteSecret(program.ProgramNum,PdmpProperty.BambooAuthToken,0,
+				Convert.ToBase64String(PdmpTestData.MakeClientPfx("pfx-pass"))));
+			ProgramProperties.RefreshCache();
+			PdmpProperty pdmpPropertyWrong=PdmpProperty.LoadBambooForSetup(program,0);
+			SetQueryFields(pdmpPropertyWrong);
+			ODException ex=AssertEx.Throws<ODException>(() => pdmpPropertyWrong.Validate(program));
+			StringAssert.Contains(ex.Message,"Check the password");
+			listItems=PdmpProperty.CheckSetup(program,0,new FakeHttpHandler().Enqueue(HttpStatusCode.NotFound,"","text/plain"));
+			Assert.IsTrue(listItems.Any(x => x.Level==PdmpSetupCheckLevel.Error && x.Text.Contains("Check the password")),
+				string.Join("\n",listItems.Select(x => x.ToString())));
+		}
+
+		///<summary>The patient and provider fields SendData fills before it validates.</summary>
+		private static void SetQueryFields(PdmpProperty pdmpProperty) {
+			pdmpProperty.PdmpPat=PdmpTestData.MakePatient();
+			pdmpProperty.PdmpProv=PdmpTestData.MakeProvider();
+			pdmpProperty.StateAbbr="KS";
+			pdmpProperty.Dea="AB1234563";
+			pdmpProperty.ProvLicenseType=nameof(ProviderClinic.StateLicense);
+			pdmpProperty.ProvLicenseNum="L-12345";
+		}
+
+		[TestMethod]
 		public void CheckSetup_BambooNotConfigured() {
 			Program program=Bamboo;
 			FakeHttpHandler fakeHttpHandler=new FakeHttpHandler();

@@ -38,6 +38,27 @@ namespace VendorDirectTests.Pdmp {
 		}
 
 		[TestMethod]
+		public void Import_AcceptsAFileWithoutAPassword() {
+			//As openssl pkcs12 -export -passout pass: makes it. The import dialog passes the blank password box as "".
+			byte[] arrayPfx=PdmpTestData.MakeClientPfx("");
+			using(X509Certificate2 certificate=PdmpCertificate.Import(arrayPfx,"",DateTime.UtcNow)) {
+				Assert.IsTrue(certificate.HasPrivateKey);
+			}
+			using(PdmpCertificate.Import(arrayPfx,null,DateTime.UtcNow)) {
+			}
+			PdmpProperty pdmpProperty=new PdmpProperty();
+			pdmpProperty.BambooClientKey=Convert.ToBase64String(arrayPfx);
+			pdmpProperty.BambooClientPassword="";
+			Assert.AreEqual("",PdmpProperty.GetCertificateProblem(pdmpProperty,DateTime.UtcNow));
+			using(X509Certificate2 certificate=PdmpCertificate.Load(pdmpProperty,DateTime.UtcNow)) {
+				Assert.IsTrue(certificate.HasPrivateKey);
+			}
+			//A file that has a password, stored without one, is refused the same way by import and by validation.
+			pdmpProperty.BambooClientKey=Convert.ToBase64String(PdmpTestData.MakeClientPfx(PFX_PASSWORD));
+			StringAssert.Contains(PdmpProperty.GetCertificateProblem(pdmpProperty,DateTime.UtcNow),"Check the password");
+		}
+
+		[TestMethod]
 		public void Import_RejectsAWrongPassword() {
 			byte[] arrayPfx=PdmpTestData.MakeClientPfx(PFX_PASSWORD);
 			PdmpException ex=AssertEx.Throws<PdmpException>(() => PdmpCertificate.Import(arrayPfx,"wrong",DateTime.UtcNow));
