@@ -76,11 +76,6 @@ namespace OpenDental {
 		}
 		*/
 
-		private void butCodeImport_Click(object sender,EventArgs e) {
-			using FormCodeSystemsImport formCodeSystemsImport=new FormCodeSystemsImport();
-			formCodeSystemsImport.ShowDialog();
-		}
-		
 		private void butOK_Click(object sender,EventArgs e) {
 			//not even visible unless IsSelectionMode
 			if(listMain.SelectedIndex==-1) {

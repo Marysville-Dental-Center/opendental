@@ -101,7 +101,6 @@ namespace OpenDental {
 			}
 			if(_listCdcrecsRaceAll.Count > 1 && _listCdcrecsEthnicityAll.Count > 1) {//Greater than 1 because we always add 'Declined to Specify'
 				labelNeedCodes.Visible=false;
-				butImport.Visible=false;
 			}
 		}
 
@@ -256,20 +255,6 @@ namespace OpenDental {
 			if(butSave.IsAltKey(Key.S,e)) {
 				butSave_Click(this,new EventArgs());
 			}
-			if(butImport.IsAltKey(Key.I,e)) {
-				butImport_Click(this,new EventArgs());
-			}
-		}
-
-		private void butImport_Click(object sender,EventArgs e) {
-			//Opens the Code System Importer tool so the user can download the CDCREC codes.
-			FormLauncher formLauncher=new FormLauncher(EnumFormName.FormCodeSystemsImport);
-			formLauncher.ShowDialog();
-			FillRaceData();
-			FillGrid(gridRace,_listCdcrecsRacePat);
-			FillGrid(gridEthnicity,_listCdcrecsEthnicityPat);
-			FillTree(treeRaces,_listCdcrecsRaceAll);
-			FillTree(treeEthnicities,_listCdcrecsEthnicityAll);
 		}
 
 		private void butSave_Click(object sender,EventArgs e) {

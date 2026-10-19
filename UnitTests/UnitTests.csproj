@@ -270,7 +270,6 @@
     <Compile Include="UnitTests\ChartModulesTests.cs" />
     <Compile Include="UnitTests\RpReceivablesBreakdownTests.cs" />
     <Compile Include="UnitTests\ClockEventsTests.cs" />
-    <Compile Include="UnitTests\CodeSystemsTests.cs" />
     <Compile Include="UnitTests\BillingTests.cs" />
     <Compile Include="UnitTests\RpCustomAgingTests.cs" />
     <Compile Include="UnitTests\PayConnect2Tests.cs" />

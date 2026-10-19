@@ -43,20 +43,6 @@ namespace OpenDental {
 			}
 		}
 
-		private void FormRxNorms_Shown(object sender,EventArgs e) {
-			if(!RxNorms.IsRxNormTableSmall()) { 
-				return;	
-			}
-			if(MsgBox.Show(this,MsgBoxButtons.OKCancel,"Incomplete RxNorm list detected.  "
-				+"If you intend to use RxNorm codes, you can download them now by clicking OK.  "
-				+"The RxNorm codes will add about 10 MB to your database size.  Download RxNorm codes?"))
-			{
-				using FormCodeSystemsImport formCodeSystemsImport=new FormCodeSystemsImport();
-				formCodeSystemsImport.listEnumCodeSystemNames=new List<EnumCodeSystemName>(){EnumCodeSystemName.RXNORM};
-				formCodeSystemsImport.ShowDialog();
-			}
-		}
-		
 		private void butSearch_Click(object sender,EventArgs e) {
 			FillGrid(false);
 		}
