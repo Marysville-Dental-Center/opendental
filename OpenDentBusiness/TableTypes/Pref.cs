@@ -543,10 +543,10 @@ namespace OpenDentBusiness {
 		BytesPerSmsHeader,
 		///<summmary>Int. Set by HQ</summmary>
 		BytesPerSmsMessagePart,
-		///<summary>DateTime.  Updated by HQ.  Determines what time to process CareCredit batch quickscreen transactions.</summary>
+		///<summary>DateTime.  Set in CareCredit Setup.  Only the time of day is used: when to submit CareCredit batch quickscreen transactions.</summary>
 		[PrefName(ValueType=PrefValueType.DATETIME)]
 		CareCreditBatchProcessDateTime,
-		///<summary>DateTime.  Updated by HQ.  Determines what time to run CareCredit batch quickscreen pullbacks.</summary>
+		///<summary>DateTime.  Set in CareCredit Setup.  Only the time of day is used: when to run the first CareCredit batch quickscreen pullback.</summary>
 		[PrefName(ValueType=PrefValueType.DATETIME)]
 		CareCreditBatchPullbackDateTime,
 		///<summary>Boolean.  True by default.  When true, Canadian PPO insurance plans create estimates for labs (default behavior for category percentage plans).</summary>
@@ -1550,23 +1550,24 @@ namespace OpenDentBusiness {
 		MySqlVersion,
 		///<summary>True by default.  Will use the claimsnapshot table for calculating production in the Net Production Detail report if the date range is today's date only.</summary>
 		NetProdDetailUseSnapshotToday,
-		///<summary>There is no UI for user to change this.  Format, if OD customer, is PatNum-(RandomString)(CheckSum).  Example: 1234-W6c43.  Format for resellers is up to them.</summary>
+		///<summary>LEGACY. The NewCrop account ID issued under the previous vendor's agreement (PatNum-(RandomString)(CheckSum), for example 1234-W6c43,
+		///or a reseller's own format). eRx Setup shows it for reference only; the office's own account ID is stored in the eRx program properties.</summary>
 		NewCropAccountId,
-		///<summary>The date this customer last checked with HQ to determine which provider have access to eRx.</summary>
+		///<summary>LEGACY, unused. The date this database last asked the previous vendor's HQ which providers had eRx access. eRx access is decided
+		///locally now.</summary>
 		NewCropDateLastAccessCheck,
 		///<summary>DEPRECATED. True for customers who were using NewCrop before version 15.4.  True if NewCropAccountId was not blank when upgraded.</summary>
 		NewCropIsLegacy,
-		///<summary>Controls which NewCrop database to use.  If false, then the customer uses the First Data Bank (FDB) database, otherwise the 
-		///customer uses the LexiData database.  Connecting to LexiData saves NewCrop some money on the new accounts.  Additionally, the RxNorms which
-		///come back from the prescription refresh in the Chart are more complete for the LexiData database than for the FDB database.</summary>
+		///<summary>LEGACY, unused. Chose the drug database (First Data Bank or LexiData) of the previous vendor's NewCrop account.</summary>
 		NewCropIsLexiData,
-		///<summary>There is no UI for user to change this. For distributors, this is part of the credentials.  OD credentials are not stored here, but are hard-coded.</summary>
+		///<summary>LEGACY. A reseller's NewCrop account name, in plain text. Read only by the one-time import into the eRx program properties
+		///(NewCropConfig.ImportLegacyPrefs).</summary>
 		NewCropName,
-		///<summary>There is no UI for user to change this.  For distributors, this is part of the credentials.
-		///OD credentials are not stored here, but are hard-coded.</summary>
+		///<summary>LEGACY. A reseller's NewCrop partner name, in plain text. Read only by the one-time import into the eRx program properties
+		///(NewCropConfig.ImportLegacyPrefs).</summary>
 		NewCropPartnerName,
-		///<summary>There is no UI for user to change this.  For distributors, this is part of the credentials.
-		///OD credentials are not stored here, but are hard-coded.</summary>
+		///<summary>LEGACY. A reseller's NewCrop password, in plain text. Read only by the one-time import, which encrypts it into the eRx program
+		///properties and then blanks this preference (NewCropConfig.ImportLegacyPrefs).</summary>
 		NewCropPassword,
 		///<summary>URL of the time server to use for EHR time synchronization.  Only used for EHR.  Example nist-time-server.eoni.com</summary>
 		NistTimeServerUrl,
