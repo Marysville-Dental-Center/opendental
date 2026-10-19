@@ -65,6 +65,9 @@ namespace OpenDental {
 			this.labelClinicStateWarning = new System.Windows.Forms.Label();
 			this.labelDisableForClinic = new System.Windows.Forms.Label();
 			this.label11 = new System.Windows.Forms.Label();
+			this.butPdmpCertificate = new OpenDental.UI.Button();
+			this.butPdmpCheckSetup = new OpenDental.UI.Button();
+			this.comboClinicPdmp = new OpenDental.UI.ComboBoxClinicPicker();
 			((System.ComponentModel.ISupportInitialize)(this.pictureBox)).BeginInit();
 			this.groupboxPLbuttons.SuspendLayout();
 			this.SuspendLayout();
@@ -376,9 +379,45 @@ namespace OpenDental {
 			this.label11.Text = "Example: Something.dll";
 			this.label11.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 			// 
+			// butPdmpCertificate
+			// 
+			this.butPdmpCertificate.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.butPdmpCertificate.Location = new System.Drawing.Point(419, 511);
+			this.butPdmpCertificate.Name = "butPdmpCertificate";
+			this.butPdmpCertificate.Size = new System.Drawing.Size(120, 26);
+			this.butPdmpCertificate.TabIndex = 79;
+			this.butPdmpCertificate.Text = "Client certificate...";
+			this.butPdmpCertificate.Visible = false;
+			this.butPdmpCertificate.Click += new System.EventHandler(this.butPdmpCertificate_Click);
+			// 
+			// butPdmpCheckSetup
+			// 
+			this.butPdmpCheckSetup.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.butPdmpCheckSetup.Location = new System.Drawing.Point(545, 511);
+			this.butPdmpCheckSetup.Name = "butPdmpCheckSetup";
+			this.butPdmpCheckSetup.Size = new System.Drawing.Size(90, 26);
+			this.butPdmpCheckSetup.TabIndex = 80;
+			this.butPdmpCheckSetup.Text = "Check setup";
+			this.butPdmpCheckSetup.Visible = false;
+			this.butPdmpCheckSetup.Click += new System.EventHandler(this.butPdmpCheckSetup_Click);
+			// 
+			// comboClinicPdmp
+			// 
+			this.comboClinicPdmp.HqDescription = "Default";
+			this.comboClinicPdmp.IncludeUnassigned = true;
+			this.comboClinicPdmp.Location = new System.Drawing.Point(548, 403);
+			this.comboClinicPdmp.Name = "comboClinicPdmp";
+			this.comboClinicPdmp.Size = new System.Drawing.Size(200, 21);
+			this.comboClinicPdmp.TabIndex = 81;
+			this.comboClinicPdmp.Visible = false;
+			this.comboClinicPdmp.SelectionChangeCommitted += new System.EventHandler(this.comboClinicPdmp_SelectionChangeCommitted);
+			// 
 			// FormProgramLinkEdit
 			// 
 			this.ClientSize = new System.Drawing.Size(768, 567);
+			this.Controls.Add(this.comboClinicPdmp);
+			this.Controls.Add(this.butPdmpCheckSetup);
+			this.Controls.Add(this.butPdmpCertificate);
 			this.Controls.Add(this.label11);
 			this.Controls.Add(this.labelDisableForClinic);
 			this.Controls.Add(this.butOutputFile);
@@ -413,6 +452,7 @@ namespace OpenDental {
 			this.Text = "Program Link";
 			this.Closing += new System.ComponentModel.CancelEventHandler(this.FormProgramLinkEdit_Closing);
 			this.Load += new System.EventHandler(this.FormProgramLinkEdit_Load);
+			this.Shown += new System.EventHandler(this.FormProgramLinkEdit_Shown);
 			((System.ComponentModel.ISupportInitialize)(this.pictureBox)).EndInit();
 			this.groupboxPLbuttons.ResumeLayout(false);
 			this.ResumeLayout(false);
@@ -453,5 +493,8 @@ namespace OpenDental {
 		private Label labelClinicStateWarning;
 		private Label labelDisableForClinic;
 		private Label label11;
+		private UI.Button butPdmpCertificate;
+		private UI.Button butPdmpCheckSetup;
+		private OpenDental.UI.ComboBoxClinicPicker comboClinicPdmp;
 	}
 }

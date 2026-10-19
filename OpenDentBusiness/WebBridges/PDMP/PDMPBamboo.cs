@@ -1,94 +1,117 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Net;
 using System.Net.Http;
-using System.Net.Security;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
-using System.Xml;
-using System.Xml.Linq;
-using System.Xml.Schema;
-using System.Xml.Serialization;
 using BambooScript;
 using CodeBase;
-using Health.Direct.Common.Extensions;
-using Newtonsoft.Json;
-using static OpenDentBusiness.PDMP;
+using CodeBase.VendorDirect;
 
 namespace OpenDentBusiness {
-	/// <summary>Formerly Appriss</summary>
+	/// <summary>Formerly Appriss. Talks to the Bamboo Health PMP Gateway directly from the workstation, with the office's own Gateway credentials and
+	///client certificate. Two steps: QueryPatient (the PatientRequest) runs before the user sees the scores; GetReportLink (the ReportRequest) runs only
+	///after the user clicks OK, so Cancel never asks the PMP for a report and the single-use link can't expire while the message box is open.</summary>
 	public class PDMPBamboo {
 		private PdmpProperty _pdmpProperties;
 		private USStateCodeType  _stateCode;
 		private SexCodeType _patGender;
+		private readonly HttpMessageHandler _httpMessageHandler;
+		///<summary>The single-use report link, set by GetReportLink. Open it at once and never reuse it.</summary>
 		public string Url;
+		///<summary>The text for the message box after QueryPatient: scores and messages.</summary>
 		public string Response;
+		///<summary>The ViewableReport URL from QueryPatient, where GetReportLink posts. "" for a message-only report (no match, for example).</summary>
+		public string ViewableReportUrl="";
+		///<summary>Set when the client certificate expires within 30 days.</summary>
+		public string CertificateWarning="";
 
-		public PDMPBamboo(PdmpProperty props) {
+		///<summary>httpMessageHandler replaces the network in tests; otherwise props.HttpMessageHandlerOverride, else the real network.</summary>
+		public PDMPBamboo(PdmpProperty props,HttpMessageHandler httpMessageHandler=null) {
 			_pdmpProperties=props;
+			_httpMessageHandler=httpMessageHandler??props.HttpMessageHandlerOverride;
 			Enum.TryParse(_pdmpProperties.StateAbbr,out _stateCode);
 			_patGender=GetPatGender(_pdmpProperties.PdmpPat);
 		}
-		
+
+		///<summary>True if QueryPatient returned a report that GetReportLink can open.</summary>
+		public bool HasReport {
+			get {
+				return !string.IsNullOrWhiteSpace(ViewableReportUrl);
+			}
+		}
+
 		///<summary>Returns BambooScript.SexCodeType. Defaults to 'Unknown'</summary>
 		private SexCodeType GetPatGender(Patient pat) {
 			SexCodeType gender=SexCodeType.U;
+			if(pat==null) {
+				return gender;
+			}
 			if(pat.Gender==PatientGender.Male) {
 				gender=SexCodeType.M;
 			}
 			else if(pat.Gender==PatientGender.Female) {
 				gender=SexCodeType.F;
 			}
-			return gender;	
+			return gender;
 		}
 
-		///<summary>Download method that will parse narx scores and url for use. Throws exceptions</summary>
-		public void DownloadData() {
+		///<summary>Step 1: sends the PatientRequest and fills Response and ViewableReportUrl. Throws PdmpException.</summary>
+		public void QueryPatient() {
 			PatientRequestType request=MakeRequester();
 			request.PrescriptionRequest=MakePrescriptionRequest();
-			BambooAuth auth=new BambooAuth(BambooAuth.GetEpoch(DateTime.Now),BambooAuth.GetNonce());
-			PatientResponseType patientResponse=Request(Serialize(request),new PatientResponseType(),auth,_pdmpProperties.Url);
-			if(patientResponse.Item is ReportType report) {
-				Url=GetURL(report);
-				Response=GetResponse(report,Url);
-				return;
-			}
-			string errMsg="";
-			if(patientResponse.Item is PatientResponseTypeError error) {
-				errMsg=GetErrorResponse(error.Message,error.Details,error.Source);
-			}
-			else if(patientResponse.Response!=null) {
-				ResponseType[] response=patientResponse.Response;
-				for(int i = 0;i<response.Length;i++) {
-					if(response[i].Item is ResponseTypeDisallowed dis) {
-						errMsg=GetErrorResponse(dis.Message,dis.Details,dis.Source);
-					}
-					else if(response[i].Item is ResponseTypeError err) {
-						errMsg=GetErrorResponse(err.Message,err.Details,err.Source);
-					}
-				}
-			}
-			if(!string.IsNullOrWhiteSpace(errMsg)) {
-				throw new ApplicationException(errMsg);
-			}
-			throw new ApplicationException(Lans.g("Bamboo","An error occurred.\n")+JsonConvert.SerializeObject(patientResponse));
+			PatientResponseType patientResponse=Request<PatientResponseType>(PdmpHttp.Serialize(request),_pdmpProperties.Url);
+			ProcessPatientResponse(patientResponse);
 		}
 
-		private string GetErrorResponse(string message, string[] details, ReportResponseTypeErrorSource source) {
+		///<summary>Reads a PatientResponse. A report sets Response (and ViewableReportUrl when the report can be opened). Disallowed and Error items throw
+		///PdmpException with the vendor's message. Public for tests.</summary>
+		public void ProcessPatientResponse(PatientResponseType patientResponse) {
+			if(patientResponse==null) {
+				throw new PdmpException(PdmpErrorKind.MalformedResponse,PdmpHttp.MessageMalformed);
+			}
+			if(patientResponse.Item is ReportType report) {
+				ViewableReportUrl=GetViewableReportUrl(report);
+				Response=GetResponse(report,ViewableReportUrl);
+				return;
+			}
+			if(patientResponse.Item is PatientResponseTypeError error) {
+				throw new PdmpException(PdmpErrorKind.VendorError,GetErrorResponse(error.Message,error.Details,error.Source,error.SourceSpecified));
+			}
+			if(patientResponse.Response!=null) {
+				ResponseTypeDisallowed disallowed=patientResponse.Response.Select(x => x?.Item).OfType<ResponseTypeDisallowed>().FirstOrDefault();
+				if(disallowed!=null) {
+					throw new PdmpException(PdmpErrorKind.Disallowed,
+						GetErrorResponse(disallowed.Message,disallowed.Details,disallowed.Source,disallowed.SourceSpecified)+PdmpHttp.MessageSearchPortal);
+				}
+				ResponseTypeError responseError=patientResponse.Response.Select(x => x?.Item).OfType<ResponseTypeError>().FirstOrDefault();
+				if(responseError!=null) {
+					throw new PdmpException(PdmpErrorKind.VendorError,
+						GetErrorResponse(responseError.Message,responseError.Details,responseError.Source,responseError.SourceSpecified));
+				}
+			}
+			throw new PdmpException(PdmpErrorKind.MalformedResponse,PdmpHttp.MessageMalformed);
+		}
+
+		///<summary>The ViewableReport URL of a report, or "" when the report carries none (a message-only report). Never throws.</summary>
+		public static string GetViewableReportUrl(ReportType report) {
+			return report?.ReportRequestURLs?.ViewableReport?.Value?.Trim()??"";
+		}
+
+		private string GetErrorResponse(string message,string[] details,ReportResponseTypeErrorSource source,bool isSourceSpecified) {
 			StringBuilder strErr=new StringBuilder();
-			if(message!=null) {
+			if(!string.IsNullOrWhiteSpace(message)) {
 				strErr.AppendLine(message);
 			}
-			if(details!=null) {
+			if(details!=null && details.Length>0) {
 				strErr.AppendLine(Lans.g("Bamboo","Details:")+" "+string.Join("\n",details));
 			}
-			if(!string.IsNullOrWhiteSpace(strErr.ToString())) {
+			if(isSourceSpecified && !string.IsNullOrWhiteSpace(strErr.ToString())) {
 				strErr.AppendLine(Lans.g("Bamboo","Source:")+" "+source.ToString());
+			}
+			if(strErr.Length==0) {
+				strErr.AppendLine(Lans.g("Bamboo","The service returned an error without a message."));
 			}
 			return strErr.ToString();
 		}
@@ -100,12 +123,15 @@ namespace OpenDentBusiness {
 		///	Note: This method is public for testing purposes only
 		///</summary>
 		public string GetResponse(ReportType report,string url) {
-			string strFurtherActionNeeded=Lans.g("Bamboo","You will need to log into your Bamboo account to search for the selected patient.");
+			string strFurtherActionNeeded=Lans.g("Bamboo","Search for the selected patient on your state PMP website.");
 			StringBuilder retVal=new StringBuilder();
 			retVal.AppendLine(Lans.g("Bamboo","Risk assessment for ")+_pdmpProperties.PdmpPat.LName+", "+_pdmpProperties.PdmpPat.FName);
 			if(report.NarxScores!=null) {
 				NarxScoreType[] narxMessage=report.NarxScores;
 				for(int i=0;i<narxMessage.Length;i++) {
+					if(narxMessage[i]==null) {
+						continue;
+					}
 					retVal.AppendLine(narxMessage[i].ScoreType+": "+narxMessage[i].ScoreValue);
 				}
 				if(!report.Message.IsNullOrEmpty()) {
@@ -129,32 +155,42 @@ namespace OpenDentBusiness {
 			return retVal.ToString();
 		}
 
-		///<summary>Submits a request to the appropriate API and returns a string containing the URL supplied by the API.  Throws exceptions.</summary>
-		private string GetURL(ReportType report) {
-			BambooAuth auth=new BambooAuth(BambooAuth.GetEpoch(DateTime.Now),BambooAuth.GetNonce());
+		///<summary>Step 2, called only after the user clicks OK: posts the ReportRequest to the ViewableReport URL and returns the single-use report link
+		///(also stored in Url). The link is checked against the vendor URL policy before it is returned. Throws PdmpException.</summary>
+		public string GetReportLink() {
+			if(!HasReport) {
+				throw new PdmpException(PdmpErrorKind.VendorError,Lans.g("Bamboo","No report was returned."));
+			}
 			ReportRequestType reportRequest=MakeReportRequest();
-			ReportResponseType reportResponse=Request(Serialize(reportRequest),new ReportResponseType(),auth,report.ReportRequestURLs.ViewableReport.Value);
-			//Items array from report response could return several different items. From the documentation it looks like only one would show up. 
+			ReportResponseType reportResponse=Request<ReportResponseType>(PdmpHttp.Serialize(reportRequest),ViewableReportUrl);
+			Url=ProcessReportResponse(reportResponse);
+			return Url;
+		}
+
+		///<summary>Reads a ReportResponse: returns the ReportLink, or throws PdmpException with the vendor's Error or Disallowed message. Public for tests.</summary>
+		public string ProcessReportResponse(ReportResponseType reportResponse) {
+			object[] arrayItems=reportResponse?.Items??new object[0];
+			//Items array from report response could return several different items. From the documentation it looks like only one would show up.
 			//The url will show up as a string and any other response is it's own type in the Bamboo script that indicates some sort of error.
-			//For now we'll just throw an exception if we get anything else other than a string. 
-			for(int i = 0;i<reportResponse.Items.Length;i++) {
-				if(reportResponse.Items[i] is string url) {
-					return url;
+			string link=arrayItems.OfType<string>().FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));
+			if(link!=null) {
+				link=link.Trim();
+				VendorUrlProblem problem=VendorUrlPolicy.Check(link);
+				if(problem!=VendorUrlProblem.None) {
+					throw new PdmpException(PdmpErrorKind.UrlRefused,Lans.g("Bamboo","The report address was refused.")+" "+VendorUrlPolicy.Describe(problem));
 				}
+				return link;
 			}
-			string errMsg="";
-			for(int i = 0;i<reportResponse.Items.Length;i++) {//we didn't find a url so we try, try again
-				if(errMsg=="" && reportResponse.Items[i] is ReportResponseTypeError err) {
-					errMsg=GetErrorResponse(err.Message,err.Details,err.Source);
-				}
-				else if(errMsg=="" && reportResponse.Items[i] is ReportResponseTypeDisallowed dis) {
-					errMsg=GetErrorResponse(dis.Message,dis.Details,dis.Source);
-				}
+			ReportResponseTypeDisallowed disallowed=arrayItems.OfType<ReportResponseTypeDisallowed>().FirstOrDefault();
+			if(disallowed!=null) {
+				throw new PdmpException(PdmpErrorKind.Disallowed,
+					GetErrorResponse(disallowed.Message,disallowed.Details,disallowed.Source,disallowed.SourceSpecified)+PdmpHttp.MessageSearchPortal);
 			}
-			if(!string.IsNullOrWhiteSpace(errMsg)) {
-				throw new ApplicationException(errMsg);
+			ReportResponseTypeError error=arrayItems.OfType<ReportResponseTypeError>().FirstOrDefault();
+			if(error!=null) {
+				throw new PdmpException(PdmpErrorKind.VendorError,GetErrorResponse(error.Message,error.Details,error.Source,error.SourceSpecified));
 			}
-			throw new ApplicationException(Lans.g("Bamboo","An error occurred.\n")+JsonConvert.SerializeObject(reportResponse));
+			throw new PdmpException(PdmpErrorKind.MalformedResponse,PdmpHttp.MessageMalformed);
 		}
 
 		#region Requesters
@@ -170,7 +206,7 @@ namespace OpenDentBusiness {
 					Birthdate=_pdmpProperties.PdmpPat.Birthdate,
 					SexCode=_patGender,
 					Items=new object[1] {
-						new AddressRequiredZipType(){ 
+						new AddressRequiredZipType(){
 							Street=new string[] {
 								_pdmpProperties.PdmpPat.Address,
 							},
@@ -185,7 +221,8 @@ namespace OpenDentBusiness {
 			return prescrRequest;
 		}
 
-		private ReportRequestType MakeReportRequest() {
+		///<summary>Method is public for testing purposes only. The ReportRequest's requester has no SenderSoftware in schema v5_1.</summary>
+		public ReportRequestType MakeReportRequest() {
 			ReportRequestType reportRequest=new ReportRequestType();
 			reportRequest.Requester=new ReportRequestTypeRequester {
 				Provider=new ProviderTypeForReports {
@@ -200,151 +237,77 @@ namespace OpenDentBusiness {
 						StateCode=_stateCode,
 					}
 				},
-				Location=new BambooScript.LocationType {
-					Name=_pdmpProperties.FacilityId,
-					DEANumber=_pdmpProperties.Dea,
-					NPINumber=_pdmpProperties.PdmpProv.NationalProvID,
-					Address=new LocationTypeAddress {
-						Street=new string[]{ _pdmpProperties.PdmpPat.Address },
-						City=_pdmpProperties.PdmpPat.City,
-						StateCode=_stateCode,
-						ZipCode=_pdmpProperties.PdmpPat.Zip
-					}
-				}
+				Location=MakeLocation(),
 			};
 			return reportRequest;
 		}
+
+		///<summary>The requesting location: the facility name, the facility's identifiers (else the provider's), and the clinic's or practice's address.
+		///Never the patient's address.</summary>
+		private BambooScript.LocationType MakeLocation() {
+			USStateCodeType stateCodeLocation=_stateCode;
+			if(!string.IsNullOrWhiteSpace(_pdmpProperties.LocationStateAbbr)
+				&& Enum.TryParse(_pdmpProperties.LocationStateAbbr.Trim().ToUpperInvariant(),out USStateCodeType stateCodeParsed))
+			{
+				stateCodeLocation=stateCodeParsed;
+			}
+			LocationTypeAddress locationTypeAddress=new LocationTypeAddress {
+				StateCode=stateCodeLocation,
+			};
+			if(!string.IsNullOrWhiteSpace(_pdmpProperties.LocationStreet)) {
+				locationTypeAddress.Street=new string[] { _pdmpProperties.LocationStreet };
+			}
+			if(!string.IsNullOrWhiteSpace(_pdmpProperties.LocationCity)) {
+				locationTypeAddress.City=_pdmpProperties.LocationCity;
+			}
+			if(!string.IsNullOrWhiteSpace(_pdmpProperties.LocationZip)) {
+				locationTypeAddress.ZipCode=_pdmpProperties.LocationZip;
+			}
+			return new BambooScript.LocationType {
+				Name=_pdmpProperties.FacilityId,
+				DEANumber=string.IsNullOrWhiteSpace(_pdmpProperties.LocationDea) ? _pdmpProperties.Dea : _pdmpProperties.LocationDea,
+				NPINumber=string.IsNullOrWhiteSpace(_pdmpProperties.LocationNpi) ? _pdmpProperties.PdmpProv.NationalProvID : _pdmpProperties.LocationNpi,
+				Address=locationTypeAddress,
+			};
+		}
 		#endregion
 
-		///<summary>Creates an X509 Certificate from certificate generated via documentation. These certificates will expire 5 years from their creation date.</summary>
-		private X509Certificate2 GetCertificate() {
-			X509Certificate2 pKey=new X509Certificate2();
+		///<summary>Posts body to url with the digest headers and the client certificate. The certificate is loaded per call and disposed after it.
+		///Throws PdmpException.</summary>
+		private T Request<T>(string body,string url) {
+			BambooAuth auth=new BambooAuth(BambooAuth.GetEpoch(DateTime.Now),BambooAuth.GetNonce());
+			Dictionary<string,string> dictHeaders=new Dictionary<string,string>() {
+				{ "X-Auth-PasswordDigest",auth.GetPasswordDigest(_pdmpProperties.Password??"") },
+				{ "X-Auth-Nonce",auth.Nonce },
+				{ "X-Auth-Timestamp",auth.EpochTime.ToString() },
+				{ "X-Auth-Username",_pdmpProperties.Username??"" },
+			};
+			X509Certificate2 certificate=null;
 			try {
-				Secrets.Decrypt(_pdmpProperties.BambooClientKey,out string clientKey);
-				Secrets.Decrypt(_pdmpProperties.BambooClientPassword,out string clientPassword);
-				byte[] clientKeyBytes=Convert.FromBase64String(clientKey);
-				pKey.Import(clientKeyBytes,clientPassword,X509KeyStorageFlags.MachineKeySet);
+				//A test handler never sees a certificate. In the program, the handler is always null and testing mode is off.
+				if(_httpMessageHandler==null && !Introspection.IsTestingMode) {
+					certificate=PdmpCertificate.Load(_pdmpProperties,DateTime.UtcNow);
+					CertificateWarning=PdmpCertificate.GetExpiryWarning(certificate,DateTime.UtcNow);
+				}
+				return PdmpHttp.PostXml<T>(url,body,dictHeaders,certificate,_httpMessageHandler,isDigestAuth:true);
 			}
-			catch (Exception ex) {
-				throw new Exception(Lans.g("Bamboo","An error occurred while creating the security certificate.")+"\n"+ex.Message);
-			}
-			return pKey;
-		}
-
-		///<summary>Throws exception if the response from the server returned an http code of 300 or greater.</summary>
-		private T Request<T>(string body,T responseType,BambooAuth auth,string url) {
-			using(WebClient client=new WebClient()) {
-				HttpWebRequest req=WebRequest.Create(url) as HttpWebRequest;
-				req.Method="POST";
-				req.Accept="application/xml";
-				req.Headers["X-Auth-PasswordDigest"]=auth.GetPasswordDigest(_pdmpProperties.Password);
-				req.Headers["X-Auth-Nonce"]=auth.Nonce;
-				req.Headers["X-Auth-Timestamp"]=auth.EpochTime.ToString();
-				req.Headers["X-Auth-Username"]=_pdmpProperties.Username;
-				if(!Introspection.IsTestingMode) {
-					req.ClientCertificates.Add(GetCertificate());
-				}
-				try {
-					UTF8Encoding encoding=new UTF8Encoding();
-					byte[] bytes=encoding.GetBytes(body);
-					using(Stream streamOut=req.GetRequestStream()) {
-						streamOut.Write(bytes,0,bytes.Length);
-						streamOut.Close();
-					}
-					string strResponse="";
-					using(WebResponse response=req.GetResponse()) {
-						using(StreamReader readStream=new StreamReader(response.GetResponseStream(),Encoding.UTF8)) {
-							strResponse=readStream.ReadToEnd();
-							readStream.Close();
-						}
-						if(ODBuild.IsDebug()) {
-							if((typeof(T)==typeof(string))) {//If user wants the entire json response as a string
-								return (T)Convert.ChangeType(response,typeof(T));
-							}
-							Console.WriteLine(response);
-						}
-					}
-					return Deserialize<T>(strResponse,responseType);
-				}
-				catch(WebException wex) {
-					string res="";
-					HttpWebResponse httpWebResponse=(HttpWebResponse)wex.Response;
-					if(httpWebResponse!=null) {
-						Stream stream=httpWebResponse.GetResponseStream();
-						using(StreamReader streamReader=new StreamReader(stream)) {
-							res=streamReader.ReadToEnd();
-							streamReader.Close();
-						}
-					}
-					if(string.IsNullOrWhiteSpace(res)) {
-						//The response didn't contain a body. Unlikely that this would happen but to be safe we can still throw if the error is null
-						throw new ODException(Lans.g("Bamboo","Unable to connect to Bamboo."));
-					}
-					string errorMsg=wex.Message+"\r\nRaw response:\r\n"+res;
-					throw new Exception(errorMsg,wex);//If we got this far and haven't rethrown, simply throw the entire exception.
-				}
+			finally {
+				certificate?.Dispose();
 			}
 		}
 
-		private string Serialize<T>(T request) {
-			using(MemoryStream memoryStream=new MemoryStream()) {
-				XmlSerializer xmlSerializer=new XmlSerializer(request.GetType());
-				xmlSerializer.Serialize(memoryStream,request);
-				byte[] memoryStreamInBytes=memoryStream.ToArray();
-				return Encoding.UTF8.GetString(memoryStreamInBytes,0,memoryStreamInBytes.Length);
-			}
-		}
-
-		private T Deserialize<T>(string strXml,T responseType) {
-			XmlDocument doc=new XmlDocument();
-			doc.LoadXml(strXml);
-			using(XmlReader reader=new XmlNodeReader(doc)) {
-				XmlSerializer xmlSerializer=new XmlSerializer(typeof(T));
-				T response;
-				try {
-					response=(T)xmlSerializer.Deserialize(reader);
-				}
-				catch(Exception ex) {
-					ex.DoNothing();
-					reader.Close();
-					//Responses from PDMP Logicoy have contained "xsi:type" attributes in the Pmp node.  This causes deserialization to fail.
-					//Keeping this in for Bamboo in case they suffer the same fate
-					//Removing it has been the only thing that has worked in our extensive testing when this occurs.
-					StripAttributeFromNode(doc.ChildNodes,"Pmp","xsi:type");
-					using(XmlReader strippedReader=new XmlNodeReader(doc)){
-						response=(T)xmlSerializer.Deserialize(strippedReader);
-						strippedReader.Close();
-					}
-				}
-				reader.Close();
-				return response;
-			}
-		}
-
-		///<summary>Strips out an attribute of Name=strAttributeName from XmlNode.Name=nodeName in an XmlNodeList nodeList, and sub lists.</summary>
-		private void StripAttributeFromNode(XmlNodeList nodeList,string nodeName,params string[] arrAttributeNames) {
-			if(nodeList==null) {
-				return;
-			}
-			foreach(XmlNode node in nodeList) {
-				StripAttributeFromNode(node.ChildNodes,nodeName,arrAttributeNames);//Recursively process all ChildNodes.
-				if(node.Name!=nodeName) {
-					continue;
-				}
-				for(int i=node.Attributes.Count-1;i>=0;i--) {
-					if(node.Attributes[i].Name.In(arrAttributeNames)) {
-						node.Attributes.RemoveAt(i);
-					}
-				}
-			}
-		}
-
-		///<summary>Method is public for testing purposes only</summary>
+		///<summary>Method is public for testing purposes only. The Requester carries the SenderSoftware identity (the override rows, else this product,
+		///never Open Dental).</summary>
 		public PatientRequestType MakeRequester() {
 			//There is no documentation identifying what the use case of "RoleType" is.  Setting to Dentist for now seems like the safe choice.
 			BambooScript.RoleType role=BambooScript.RoleType.Dentist;
 			PatientRequestType requester=new PatientRequestType {
 				Requester=new RequesterType {
+					SenderSoftware=new RequesterTypeSenderSoftware {
+						Developer=_pdmpProperties.SenderDeveloper,
+						Product=_pdmpProperties.SenderProduct,
+						Version=_pdmpProperties.SenderVersion,
+					},
 					Provider=new ProviderType {
 						Role=role,
 						FirstName=_pdmpProperties.PdmpProv.FName,
@@ -357,14 +320,7 @@ namespace OpenDentBusiness {
 							StateCode=_stateCode
 						},
 					},
-					Location=new BambooScript.LocationType {
-						Name=_pdmpProperties.FacilityId,
-						DEANumber=_pdmpProperties.Dea,
-						NPINumber=_pdmpProperties.PdmpProv.NationalProvID,
-						Address=new LocationTypeAddress {
-							StateCode=_stateCode,
-						},
-					},
+					Location=MakeLocation(),
 				},
 			};
 			return requester;
@@ -390,17 +346,17 @@ namespace OpenDentBusiness {
 			return Guid.NewGuid().ToString().Replace(":","");
 		}
 
-		///<summary>Password digest is needed to get authorization to access site</summary>
+		///<summary>Password digest is needed to get authorization to access site: lowercase hex SHA-256 of the UTF-8 bytes of password:nonce:timestamp.</summary>
 		public string GetPasswordDigest(string password) {
 			string strPlainText=$"{password}:{Nonce}:{EpochTime}";
-			using(var sha256=SHA256.Create()) {
-				return ToHex(sha256.ComputeHash(Encoding.Default.GetBytes(strPlainText)));
+			using(SHA256 sha256=SHA256.Create()) {
+				return ToHex(sha256.ComputeHash(Encoding.UTF8.GetBytes(strPlainText)));
 			}
 		}
 
 		///<summary>Bamboo requires a hex encoded SHA hash</summary>
 		private static string ToHex(byte[] bytes) {
 			return string.Join("",bytes.Select(x => x.ToString("x2")));
-    }
+		}
 	}
 }
