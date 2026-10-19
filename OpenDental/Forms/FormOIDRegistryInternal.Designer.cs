@@ -25,7 +25,6 @@
 		private void InitializeComponent() {
 			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormOIDRegistryInternal));
 			this.labelRetrieveStatus = new System.Windows.Forms.Label();
-			this.butRetrieveOIDs = new OpenDental.UI.Button();
 			this.butSave = new OpenDental.UI.Button();
 			this.gridMain = new OpenDental.UI.GridOD();
 			this.SuspendLayout();
@@ -38,16 +37,6 @@
 			this.labelRetrieveStatus.Size = new System.Drawing.Size(468, 17);
 			this.labelRetrieveStatus.TabIndex = 10;
 			this.labelRetrieveStatus.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			// 
-			// butRetrieveOIDs
-			// 
-			this.butRetrieveOIDs.Location = new System.Drawing.Point(12, 12);
-			this.butRetrieveOIDs.Name = "butRetrieveOIDs";
-			this.butRetrieveOIDs.Size = new System.Drawing.Size(85, 24);
-			this.butRetrieveOIDs.TabIndex = 9;
-			this.butRetrieveOIDs.Text = "Retrieve OIDs";
-			this.butRetrieveOIDs.UseVisualStyleBackColor = true;
-			this.butRetrieveOIDs.Click += new System.EventHandler(this.butRetrieveOIDs_Click);
 			// 
 			// butSave
 			// 
@@ -78,7 +67,6 @@
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
 			this.ClientSize = new System.Drawing.Size(584, 362);
 			this.Controls.Add(this.labelRetrieveStatus);
-			this.Controls.Add(this.butRetrieveOIDs);
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.gridMain);
 			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
@@ -93,7 +81,6 @@
 
 		private OpenDental.UI.GridOD gridMain;
 		private UI.Button butSave;
-		private UI.Button butRetrieveOIDs;
 		private System.Windows.Forms.Label labelRetrieveStatus;
 	}
 }

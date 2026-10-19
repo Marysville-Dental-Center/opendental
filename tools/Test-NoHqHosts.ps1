@@ -58,9 +58,7 @@ $AllowList=@(
 	@{ Path='OpenDental\Main Modules\ControlChart.cs'; Match='UpdateServerAddress\)\.ToLower\(\)\.Contains\('; Reason='String comparison on an old preference value. Nothing is contacted.' }
 	@{ Path='OpenDentBusiness\WebServiceTests.cs'; Match='@opendental\.com'; Reason='Sample e-mail address used only by unit tests.' }
 
-	#--- Unreachable UI and code that later phases delete.
-	@{ Path='OpenDental\InternalTools\*'; Reason='Open Dental HQ staff tools. Unreachable because PrefC.IsODHQ is always false; deleted in a later phase.' }
-	@{ Path='OpenDentBusiness\InternalTools\*'; Reason='Open Dental HQ staff tools. Unreachable because PrefC.IsODHQ is always false; deleted in a later phase.' }
+	#--- Developer-only windows.
 	@{ Path='WpfControlsOD\Frms\FrmTestAllControls.xaml*'; Reason='Developer UI test window, only opened from the UnitTests project.' }
 	@{ Path='WpfControlsOD\Frms\FrmTestSplitters.xaml*'; Reason='Developer UI test window, only opened from the UnitTests project.' }
 

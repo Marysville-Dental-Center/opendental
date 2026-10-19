@@ -27,36 +27,12 @@ namespace OpenDentBusiness {
 		}
 	}
 
-	///<summary>The only IWebServiceMainHQ implementation used outside of unit tests. It never makes a network call. Methods that return data throw
-	///HqNotAvailableException, methods that ask whether something is allowed answer "no", and fire-and-forget uploads do nothing.</summary>
+	///<summary>The only IWebServiceMainHQ implementation used outside of unit tests. It never makes a network call. Every method throws
+	///HqNotAvailableException; the vendor integrations Open Dental brokered through HQ say that a direct vendor integration is needed.</summary>
 	public class WebServiceMainHQNoHq:IWebServiceMainHQ {
-		///<summary>Kept only to satisfy the interface. Nothing ever connects to it.</summary>
-		public string Url { get; set; }="";
-
-		private static string NotAvailable() {
-			throw new HqNotAvailableException();
-		}
-
 		private static string VendorNotAvailable(string vendorName) {
 			throw HqNotAvailableException.ForVendor(vendorName);
 		}
-
-		#region Questions answered locally
-		///<summary>No clinic is signed up for any Open Dental hosted eService.</summary>
-		public List<long> GetEServiceClinicsAllowed(List<long> listClinicNums,eServiceCode eService) {
-			return new List<long>();
-		}
-		#endregion Questions answered locally
-
-		#region Uploads that are dropped
-		///<summary>eConnector statistics are no longer uploaded.</summary>
-		public void SetEConnectorStatsAsync(string payload) {
-		}
-
-		///<summary>eConnector failover is no longer reported.</summary>
-		public void ProcessEConnectorFailoverAsync(string officeData) {
-		}
-		#endregion Uploads that are dropped
 
 		#region HQ-brokered vendor integrations
 		public string BuildOAuthUrl(string registrationKey,string appName) {
@@ -84,67 +60,5 @@ namespace OpenDentBusiness {
 		public string SetSmsPatientPhoneOptIn(string officeData) { return VendorNotAvailable("Texting"); }
 		public string ProvisionTenDlcBrand(string officeData) { return VendorNotAvailable("Texting"); }
 		#endregion HQ-brokered vendor integrations
-
-		#region Open Dental hosted services
-		public string HandleConfirmationsApptChanged(string officeData) { return NotAvailable(); }
-		public string WebSchedAsapSend(string officeData) { return NotAvailable(); }
-		public string TestConnection(string officeData) { return NotAvailable(); }
-		public string TestConnectionDb(string officeData) { return NotAvailable(); }
-		public string SetEConnectorType(string officeData,bool isListening) { return NotAvailable(); }
-		public string BuildWebSchedNewPatApptURLs(string registrationKey,string clinicNums) { return NotAvailable(); }
-		public string EServiceSetup(string officeData) { return NotAvailable(); }
-		public string EnableAdditionalFeatures(string officeData) { return NotAvailable(); }
-		public string GetFHIRAPIKeysForOffice(string officeData) { return NotAvailable(); }
-		public string GenerateWebAppUrl(string officeData) { return NotAvailable(); }
-		public string GenerateFHIRAPIKey(string officeData) { return NotAvailable(); }
-		public string AssignFHIRAPIKey(string officeData) { return NotAvailable(); }
-		public string UpdateFHIRKeyStatus(string officeData) { return NotAvailable(); }
-		public string UpdateFHIRAPIKeys(string officeData) { return NotAvailable(); }
-		public string ConfirmationRequestSend(string officeData) { return NotAvailable(); }
-		public string WebSchedRecallNotificationsSend(string officeData) { return NotAvailable(); }
-		public string GetEConnectorType(string officeData) { return NotAvailable(); }
-		public string RequestListenerProxyPrefs(string officeData) { return NotAvailable(); }
-		public string ValidateWebAppUrl(string officeData) { return NotAvailable(); }
-		public string GetFeaturesForCustomer(string registrationKey) { return NotAvailable(); }
-		public string CheckFHIRAPIKey(string officeData) { return NotAvailable(); }
-		public string PerformRefreshCache(string officeData) { return NotAvailable(); }
-		public string ValidateVersion(string officeData) { return NotAvailable(); }
-		public string BuildConfirmationRequestUrl(string shortGuid) { return NotAvailable(); }
-		public string BuildWebSchedUrl(string shortGuid) { return NotAvailable(); }
-		public string BuildWebSchedASAPUrl(string shortGuid) { return NotAvailable(); }
-		public string SubmitUnhandledException(string officeData) { return NotAvailable(); }
-		public string ValidateEService(string registrationKey,string eService) { return NotAvailable(); }
-		public string GenerateShortGUIDs(string officeData) { return NotAvailable(); }
-		public string BuildPatientPortalStatementUrl(string shortGuid) { return NotAvailable(); }
-		public string BuildConfirmationRequestUrlQuick(string shortGuid) { return NotAvailable(); }
-		public string UploadRedactedDataPatientPortalInvites(string officeData) { return NotAvailable(); }
-		public string ODXamValidateLogin(string loginData) { return NotAvailable(); }
-		public string ODXamTwoFactorAuth(string twoFactorAuthRequestJSON) { return NotAvailable(); }
-		public string EServiceLogUpload(string officeData) { return NotAvailable(); }
-		public string CreateNewHelpKey(string officeData) { return NotAvailable(); }
-		public string GetManualPage(string formName,string programVersion) { return NotAvailable(); }
-		public string GetStableManualVersion() { return NotAvailable(); }
-		public string CustomerUpdateCommitted(string officeData) { return NotAvailable(); }
-		public string LicenseAgreementAccepted(string officeData) { return NotAvailable(); }
-		public string SupplementalBackupHandshake(string officeData) { return NotAvailable(); }
-		public string SetSupplementalBackupStatus(string officeData) { return NotAvailable(); }
-		public string ThankYouSend(string officeData) { return NotAvailable(); }
-		public string NewPatThankYouSend(string officeData) { return NotAvailable(); }
-		public string RetrieveWebFormURL(string officeData) { return NotAvailable(); }
-		public string BuildUrlRedirect(string officeData) { return NotAvailable(); }
-		public string RegisterCalendarEvent(string officeData) { return NotAvailable(); }
-		public string BuildApptThankYouIcs(string shortGuid) { return NotAvailable(); }
-		public string EmailHostingSignup(string officeData) { return NotAvailable(); }
-		public string EmailHostingChangeClinicStatus(string officeData) { return NotAvailable(); }
-		public string GetMobileSettings(string officeData) { return NotAvailable(); }
-		public string GetMobileSettings2FA(string officeData) { return NotAvailable(); }
-		public string UpsertMobileSettings(string officeData) { return NotAvailable(); }
-		public string UploadPatientPortalXWebResponses(string officeData) { return NotAvailable(); }
-		public string IsBetaAvailableForThisCustomer(string registrationKey,string proposedBetaVersion) { return NotAvailable(); }
-		public string ProcessOCRIIDRequest(string officeData) { return NotAvailable(); }
-		public string BuildPaymentPortalRedirectUrl(string shortGuid) { return NotAvailable(); }
-		public string MsgToPaySend(string officeData) { return NotAvailable(); }
-		public string GetMsgToPayShortUrl(string officeData) { return NotAvailable(); }
-		#endregion Open Dental hosted services
 	}
 }

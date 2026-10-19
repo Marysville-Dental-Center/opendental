@@ -8845,16 +8845,6 @@
     <Compile Include="User Controls\ValidNum.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Web References\customerUpdates\Reference.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>Reference.map</DependentUpon>
-    </Compile>
-    <Compile Include="Web References\localhost\Reference.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>Reference.map</DependentUpon>
-    </Compile>
     <None Include="Resources\DpsPos.dll.config" />
     <None Include="Web References\CallFireService\Reference.map">
       <Generator>MSDiscoCodeGenerator</Generator>
@@ -9339,17 +9329,6 @@
     <None Include="Resources\printPreview20.gif" />
     <None Include="Resources\email1.gif" />
     <None Include="Resources\email.gif" />
-    <None Include="Web References\customerUpdates\Reference.map">
-      <Generator>MSDiscoCodeGenerator</Generator>
-      <LastGenOutput>Reference.cs</LastGenOutput>
-    </None>
-    <None Include="Web References\customerUpdates\Service1.disco" />
-    <None Include="Web References\customerUpdates\Service1.wsdl" />
-    <None Include="Web References\localhost\Reference.map">
-      <Generator>MSDiscoCodeGenerator</Generator>
-      <LastGenOutput>Reference.cs</LastGenOutput>
-    </None>
-    <None Include="Web References\localhost\Service1.disco" />
     <None Include="Resources\PaymentsRDL.txt" />
     <None Include="Resources\CommLog.gif" />
     <None Include="Resources\NoFeeProcCodes.txt" />
@@ -9384,34 +9363,11 @@
     <None Include="Resources\Unsched Treat Plans.rdl" />
     <None Include="Resources\up.gif" />
     <None Include="Resources\DeleteX.gif" />
-    <None Include="Web References\localhost\Service1.wsdl" />
   </ItemGroup>
   <ItemGroup>
     <WebReferences Include="Web References\" />
   </ItemGroup>
   <ItemGroup>
-    <WebReferenceUrl Include="http://50.201.161.44:1942/WebServiceCustomerUpdates/Service1.asmx">
-      <UrlBehavior>Dynamic</UrlBehavior>
-      <RelPath>Web References\customerUpdates\</RelPath>
-      <UpdateFromURL>http://50.201.161.44:1942/WebServiceCustomerUpdates/Service1.asmx</UpdateFromURL>
-      <ServiceLocationURL>
-      </ServiceLocationURL>
-      <CachedDynamicPropName>
-      </CachedDynamicPropName>
-      <CachedAppSettingsObjectName>Settings</CachedAppSettingsObjectName>
-      <CachedSettingsPropName>OpenDental_customerUpdates_Service1</CachedSettingsPropName>
-    </WebReferenceUrl>
-    <WebReferenceUrl Include="http://localhost:3824/Service1.asmx">
-      <UrlBehavior>Static</UrlBehavior>
-      <RelPath>Web References\localhost\</RelPath>
-      <UpdateFromURL>http://localhost:3824/Service1.asmx</UpdateFromURL>
-      <ServiceLocationURL>
-      </ServiceLocationURL>
-      <CachedDynamicPropName>
-      </CachedDynamicPropName>
-      <CachedAppSettingsObjectName>Settings</CachedAppSettingsObjectName>
-      <CachedSettingsPropName>OpenDental_localhost_Service1</CachedSettingsPropName>
-    </WebReferenceUrl>
     <WebReferenceUrl Include="https://www.callfire.com/service/SMSService%3fwsdl">
       <UrlBehavior>Dynamic</UrlBehavior>
       <RelPath>Web References\CallFireService\</RelPath>

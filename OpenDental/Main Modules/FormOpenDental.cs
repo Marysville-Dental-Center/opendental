@@ -51,7 +51,6 @@ using OpenDental.UI;
 using System.ServiceProcess;
 using System.Linq;
 using OpenDental.Bridges;
-using OpenDentBusiness.WebServiceMainHQ;
 using ServiceManager;
 using System.DirectoryServices;
 using WMPLib;

@@ -36,23 +36,10 @@ namespace NoHqTests {
 			List<MethodInfo> listMethods=typeof(IWebServiceMainHQ).GetMethods()
 				.Where(x => x.ReturnType==typeof(string) && !x.IsSpecialName)
 				.ToList();
-			Assert.IsTrue(listMethods.Count>80,"Expected the full IWebServiceMainHQ surface.");
+			Assert.IsTrue(listMethods.Count>=20,"Expected the HQ-brokered vendor members of IWebServiceMainHQ.");
 			foreach(MethodInfo method in listMethods) {
 				AssertThrowsHqNotAvailable(() => method.Invoke(webService,GetDefaultArgs(method)),method.Name);
 			}
-		}
-
-		[TestMethod]
-		public void WebServiceMainHQ_NoClinicIsSignedUpForAnyEService() {
-			List<long> listClinicNums=new List<long> { 0,1,2 };
-			Assert.AreEqual(0,WebServiceMainHQProxy.GetWebServiceMainHQInstance().GetEServiceClinicsAllowed(listClinicNums,eServiceCode.IntegratedTexting).Count);
-		}
-
-		[TestMethod]
-		public void WebServiceMainHQ_UploadsAreDropped() {
-			IWebServiceMainHQ webService=WebServiceMainHQProxy.GetWebServiceMainHQInstance();
-			webService.SetEConnectorStatsAsync("<Request/>");//Must not throw.
-			webService.ProcessEConnectorFailoverAsync("<Request/>");//Must not throw.
 		}
 
 		[TestMethod]
@@ -97,7 +84,6 @@ namespace NoHqTests {
 			foreach(MethodInfo method in typeof(ICustomerUpdates).GetMethods()) {
 				AssertThrowsHqNotAvailable(() => method.Invoke(customerUpdates,GetDefaultArgs(method)),method.Name);
 			}
-			AssertThrowsHqNotAvailable(() => CustomerUpdatesProxy.SendAndReceiveUpdateRequestXml(),"SendAndReceiveUpdateRequestXml");
 		}
 
 		#endregion CustomerUpdates

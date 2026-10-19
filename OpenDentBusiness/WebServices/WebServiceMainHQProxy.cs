@@ -36,19 +36,6 @@ namespace OpenDentBusiness {
 			return new WebServiceMainHQNoHq();
 		}
 
-		///<summary>Test the connection to WebServiceMainHQ</summary>
-		public static bool CanReachWebService() {
-			try {
-				GetWebServiceMainHQInstance().TestConnection("");
-				//Communication succeeded so that is considered a pass.
-				return true;
-			}
-			catch (Exception e) {
-				e.DoNothing();
-				return false;
-			}
-		}
-
 		///<summary>Returns a serialized list of ClinicProgramPropertyContainer objects to pass from the office to HQ. Public for unit testing.
 		///HQ used to receive these CareCredit merchant numbers with the eServices setup, which was removed. Kept for the direct CareCredit integration.</summary>
 		public static string GetSerializedProgramProperties(List<Clinic> listClinics) {
