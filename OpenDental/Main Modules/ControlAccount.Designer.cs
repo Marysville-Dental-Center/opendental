@@ -96,7 +96,6 @@
 			this.menuItemAllocateUnearned = new System.Windows.Forms.MenuItem();
 			this.menuItemIncomeTransfer = new System.Windows.Forms.MenuItem();
 			this.menuItemSendCareCreditCSS = new System.Windows.Forms.MenuItem();
-			this.menuPrepayment = new System.Windows.Forms.MenuItem();
 			this.contextMenuPayPlan = new System.Windows.Forms.ContextMenu();
 			this.menuItemDynamicPayPlan = new System.Windows.Forms.MenuItem();
 			this.menuItemInsPayPlan = new System.Windows.Forms.MenuItem();
@@ -915,7 +914,6 @@
 			this.contextMenuPayment.MenuItems.AddRange(new System.Windows.Forms.MenuItem[] {
 						this.menuItemAllocateUnearned,
 						this.menuItemIncomeTransfer,
-						this.menuPrepayment,
 						this.menuItemSendCareCreditCSS});
 			this.contextMenuPayment.Popup += new System.EventHandler(this.contextMenuPayment_Popup);
 			// 
@@ -931,15 +929,9 @@
 			this.menuItemIncomeTransfer.Text = "Income Transfer";
 			this.menuItemIncomeTransfer.Click += new System.EventHandler(this.menuItemIncomeTransfer_Click);
 			// 
-			// menuPrepayment
-			// 
-			this.menuPrepayment.Index = 2;
-			this.menuPrepayment.Text = "Prepayment Tool";
-			this.menuPrepayment.Click += new System.EventHandler(this.menuPrepayment_Click);
-			// 
 			// menuItemSendCareCreditCSS
 			// 
-			this.menuItemSendCareCreditCSS.Index = 3;
+			this.menuItemSendCareCreditCSS.Index = 2;
 			this.menuItemSendCareCreditCSS.Text = "Get CareCredit Self-Service Link";
 			this.menuItemSendCareCreditCSS.Click += new System.EventHandler(this.menuItemSendCareCreditCSS_Click);
 			// 
@@ -1954,7 +1946,6 @@
 		private System.Windows.Forms.MenuItem menuItemStatementEmail;
 		private System.Windows.Forms.MenuItem menuItemStatementMore;
 		private System.Windows.Forms.MenuItem menuItemStatementWalkout;
-		private System.Windows.Forms.MenuItem menuPrepayment;
 		private UI.GridOD gridAccount;
 		private UI.GridOD gridAutoOrtho;
 		private UI.GridOD gridComm;

@@ -2348,12 +2348,6 @@
     <Compile Include="Forms\FormPrepaymentEdit.designer.cs">
       <DependentUpon>FormPrepaymentEdit.cs</DependentUpon>
     </Compile>
-    <Compile Include="Forms\FormPrepaymentTool.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FormPrepaymentTool.designer.cs">
-      <DependentUpon>FormPrepaymentTool.cs</DependentUpon>
-    </Compile>
     <Compile Include="Forms\FormApptSearchAdvanced.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -6354,9 +6348,6 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormPrepaymentEdit.resx">
       <DependentUpon>FormPrepaymentEdit.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormPrepaymentTool.resx">
-      <DependentUpon>FormPrepaymentTool.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormApptSearchAdvanced.resx">
       <DependentUpon>FormApptSearchAdvanced.cs</DependentUpon>

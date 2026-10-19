@@ -419,8 +419,6 @@ namespace OpenDental {
 
 		private void ContrAccount_Load(object sender,EventArgs e) {
 			this.Parent.MouseWheel+=Parent_MouseWheel;
-			menuPrepayment.Visible=false;
-			menuPrepayment.Enabled=false;
 			_superFamPrefEnabled=PrefC.GetBool(PrefName.ShowFeatureSuperfamilies);
 			ToggleUseSuperFamCheckboxEnabled(_superFamPrefEnabled);
 		}
@@ -1070,23 +1068,6 @@ namespace OpenDental {
 			ModuleSelected(_patient.PatNum);
 		}
 
-		private void menuPrepayment_Click(object sender,EventArgs e) {
-			if(_patient==null) {
-				return;
-			}
-			using FormPrepaymentTool formPrepaymentTool=new FormPrepaymentTool(_patient);
-			if(formPrepaymentTool.ShowDialog()==DialogResult.OK) {
-				Family family=Patients.GetFamily(_patient.PatNum);
-				using FormPayment formPayment=new FormPayment(_patient,family,formPrepaymentTool.PaymentReturn,false);
-				formPayment.IsNew=true;
-				Payments.Insert(formPrepaymentTool.PaymentReturn);
-				RefreshModuleData(_patient.PatNum,false);
-				RefreshModuleScreen(false);
-				formPayment.ShowDialog();
-			}
-			RefreshModuleData(_patient.PatNum,false);
-			RefreshModuleScreen(false);
-		}
 		#endregion Methods - Event Handlers Menus
 
 		#region Methods - Event Handlers MenuItem
