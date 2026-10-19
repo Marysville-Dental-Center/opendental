@@ -105,7 +105,7 @@ namespace OpenDentBusiness.Properties {
         [global::System.Configuration.ApplicationScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.SpecialSettingAttribute(global::System.Configuration.SpecialSetting.WebServiceUrl)]
-        [global::System.Configuration.DefaultSettingValueAttribute("http://secure.newcropaccounts.com/v7/WebServices/Update1.asmx")]
+        [global::System.Configuration.DefaultSettingValueAttribute("https://secure.newcropaccounts.com/v7/WebServices/Update1.asmx")]
         public string OpenDentBusiness_NewCrop_Update1 {
             get {
                 return ((string)(this["OpenDentBusiness_NewCrop_Update1"]));

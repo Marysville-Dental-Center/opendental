@@ -14,13 +14,19 @@ namespace OpenDentBusiness {
 
 		///<summary>Only called from Chart for now.  No validation is performed here.  Validate before calling.  There are many validtion checks, including the NPI must be exactly 10 digits.</summary>
 		public static string BuildNewCropClickThroughXml(Provider prov,Employee emp,Patient pat,long clinicNum,out NCScript ncScript) {
+			return BuildNewCropClickThroughXml(NewCropConfig.Load(),prov,emp,pat,clinicNum,out ncScript);
+		}
+
+		///<summary>BuildNewCropClickThroughXml with the NewCrop settings passed in: the credentials, product name, account ID and site ID all come
+		///from newCropConfig (the office's own, from eRx Setup). Nothing is compiled in.</summary>
+		public static string BuildNewCropClickThroughXml(NewCropConfig newCropConfig,Provider prov,Employee emp,Patient pat,long clinicNum,out NCScript ncScript) {
 			string deaNumDefault=ProviderClinics.GetDEANum(prov.ProvNum);
 			ncScript=new NCScript();
 			ncScript.Credentials=new CredentialsType();
-			ncScript.Credentials.partnerName=NewCrop.NewCropPartnerName;
-			ncScript.Credentials.name=NewCrop.NewCropAccountName;
-			ncScript.Credentials.password=NewCrop.NewCropAccountPasssword;
-			ncScript.Credentials.productName=NewCrop.NewCropProductName;
+			ncScript.Credentials.partnerName=newCropConfig.PartnerName;
+			ncScript.Credentials.name=newCropConfig.AccountName;
+			ncScript.Credentials.password=newCropConfig.Password;
+			ncScript.Credentials.productName=newCropConfig.ProductName;
 			ncScript.Credentials.productVersion=NewCrop.NewCropProductVersion;
 			ncScript.UserRole=new UserRoleType();
 			bool isMidlevel=false;
@@ -60,10 +66,10 @@ namespace OpenDentBusiness {
 			//  country=CultureInfo.CurrentCulture.Name.Substring(CultureInfo.CurrentCulture.Name.Length-2);
 			//}
 			ncScript.Account=new AccountTypeRx();
-			//Each LicensedPrescriberID must be unique within an account. Since we send ProvNum for LicensedPrescriberID, each OD database must have a unique AccountID.
-			ncScript.Account.ID=PrefC.GetString(PrefName.NewCropAccountId);//Customer account number then a dash then a random alpha-numeric string of 3 characters, followed by 2 digits.
+			//Each LicensedPrescriberID must be unique within an account, so each database must have its own AccountID.
+			ncScript.Account.ID=newCropConfig.AccountId;//Entered in eRx Setup (assigned by Ensora or the reseller) or generated there.
 			ncScript.Account.accountName=practiceTitle;//May be blank.
-			ncScript.Account.siteID="1";//Always send 1.  For each AccountID/SiteID pair, a separate database will be created in NewCrop.
+			ncScript.Account.siteID=newCropConfig.SiteId;//Usually 1.  For each AccountID/SiteID pair, a separate database will be created in NewCrop.
 			ncScript.Account.AccountAddress=new AddressType();
 			ncScript.Account.AccountAddress.address1=practiceAddress;//Validated to exist in chart.
 			ncScript.Account.AccountAddress.address2=practiceAddress2;//May be blank.
@@ -267,8 +273,40 @@ namespace OpenDentBusiness {
 			return listPatDiagnosis.ToArray();
 		}
 
+		///<summary>Blanks the children of the Credentials element (partner name, account name, password) in click-through XML, for erxlog and any
+		///dialog. Product name and version stay. Text that isn't XML has every "password" element and attribute value blanked instead.</summary>
+		public static string RedactNewCropCredentials(string xml) {
+			if(string.IsNullOrEmpty(xml)) {
+				return xml??"";
+			}
+			try {
+				System.Xml.XmlDocument xmlDocument=new System.Xml.XmlDocument();
+				xmlDocument.LoadXml(xml);
+				System.Xml.XmlNodeList xmlNodeList=xmlDocument.SelectNodes("//*[local-name()='Credentials']/*");
+				for(int i=0;i<xmlNodeList.Count;i++) {
+					string name=xmlNodeList[i].LocalName.ToLowerInvariant();
+					if(name=="partnername" || name=="name" || name=="password") {
+						xmlNodeList[i].InnerText="***";
+					}
+				}
+				using(StringWriter stringWriter=new StringWriter()) {
+					xmlDocument.Save(stringWriter);
+					return stringWriter.ToString();
+				}
+			}
+			catch(Exception) {
+				string redacted=Regex.Replace(xml,@"(?is)(<(?:\w+:)?password\b[^>]*>).*?(</(?:\w+:)?password>)","$1***$2");
+				return Regex.Replace(redacted,@"(?i)(password\s*=\s*"")[^""]*("")","$1***$2");
+			}
+		}
+
 		public static byte[] BuildNewCropPostDataBytes(Provider prov,Employee emp,Patient pat,long clinicNum,out string clickThroughXml) {
-			clickThroughXml=BuildNewCropClickThroughXml(prov,emp,pat,clinicNum,out _);
+			return BuildNewCropPostDataBytes(NewCropConfig.Load(),prov,emp,pat,clinicNum,out clickThroughXml);
+		}
+
+		///<summary>The form post for NewCrop's click-through page. clickThroughXml holds the credentials: log it only through RedactNewCropCredentials.</summary>
+		public static byte[] BuildNewCropPostDataBytes(NewCropConfig newCropConfig,Provider prov,Employee emp,Patient pat,long clinicNum,out string clickThroughXml) {
+			clickThroughXml=BuildNewCropClickThroughXml(newCropConfig,prov,emp,pat,clinicNum,out _);
 			string xmlBase64=System.Web.HttpUtility.HtmlEncode(Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(clickThroughXml)));
 			xmlBase64=xmlBase64.Replace("+","%2B");//A common base 64 character which needs to be escaped within URLs.
 			xmlBase64=xmlBase64.Replace("/","%2F");//A common base 64 character which needs to be escaped within URLs.

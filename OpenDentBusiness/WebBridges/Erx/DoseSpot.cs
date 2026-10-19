@@ -1,57 +1,38 @@
-﻿using CodeBase;
+using CodeBase;
 using Newtonsoft.Json;
+using OpenDentBusiness.VendorDirect;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Net;
-using System.Net.Http;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using System.Xml;
 
 namespace OpenDentBusiness {
 
+	///<summary>DoseSpot eRx, direct to DoseSpot with the office's own credentials (see DoseSpotConfig). DoseSpot's own prescribing screen opens in
+	///the eRx window through a single sign-on URL computed here, locally; the REST calls go through DoseSpotRESTV2. Whether a clinic or provider may
+	///use eRx is decided locally (configured credentials, Lists > Providers) and by DoseSpot itself, never by Open Dental's servers.</summary>
 	public class DoseSpot {
-
-		private static string _doseSpotPatNum="25128";//25128 is DoseSpot's patnum in the OD HQ database.
-		private static string _doseSpotOid="2.16.840.1.113883.3.4337.25128";
-		private static string _randomPhrase32=null;
+		///<summary>The middle arc of the DoseSpot patient-ID root in oidexternal. Kept so rows written by Open Dental still match.</summary>
+		private const string DOSESPOT_ARC="25128";
+		///<summary>The suffix of a root created by this program. The root is only a local lookup key; it is never sent to DoseSpot.</summary>
+		public const string LocalRootSuffix="0";
 
 		#region OID
-
-		///<summary>The PatNum associated to this office's regkey in the OD HQ database.  The patnum will be parsed from the database instead 
-		/// of making web calls because Dose Spot would explode if the patnum from OD HQ changed ever</summary>
-		public static long PatNumDoseSpotCustomer {
-			get {
-				string rootExternal=GetDoseSpotRoot();
-				long patNum=0;
-				//Gets the value of the last section of the root, which for DoseSpot/Internal OIDs is the PatNum of the office in the OD HQ database.
-				//This is grabbed instead of asking OD HQ for the patnum associated to the account 
-				// because there might be an edge case where the registration key for this office got moved to a new PatNum,
-				// and that would hide every DoseSpot OID link.
-				try {
-					patNum=PIn.Long(rootExternal.Substring(rootExternal.LastIndexOf(".")+1));
-				}
-				catch(Exception ex) {
-					ex.DoNothing();
-				}
-				return patNum;
-			}
+		///<summary>The prefix every DoseSpot patient-ID root starts with: LegacyOidArc.25128.</summary>
+		public static string GetDoseSpotRootPrefix() {
+			return OIDInternals.LegacyOidArc+"."+DOSESPOT_ARC;
 		}
 
-		///<summary>Returns the rootExternal that identifies OIDs as Dose Spot </summary>
+		///<summary>Returns the rootExternal that identifies OIDs as DoseSpot patient IDs. A database that used DoseSpot under Open Dental keeps its
+		///root (LegacyOidArc.25128.&lt;customer number&gt;); otherwise a local root (LegacyOidArc.25128.0) is inserted. No server is asked.</summary>
 		public static string GetDoseSpotRoot() {
 			Meth.NoCheckMiddleTierRole();
-			//The advantage of returning the root from the database is that there could be a scary edge case where 
-			// the PatNum of the office's regkey in OD HQ database could have been changed
-			OIDExternal oIDExternal=OIDExternals.GetByPartialRootExternal(_doseSpotOid);
+			OIDExternal oIDExternal=OIDExternals.GetByPartialRootExternal(GetDoseSpotRootPrefix());
 			if(oIDExternal==null) {
 				oIDExternal=new OIDExternal();
 				oIDExternal.IDType=IdentifierType.Root;
-				oIDExternal.rootExternal=OIDInternals.OpenDentalOID+"."+_doseSpotPatNum+"."+OIDInternals.CustomerPatNum;
+				oIDExternal.rootExternal=GetDoseSpotRootPrefix()+"."+LocalRootSuffix;
 				OIDExternals.Insert(oIDExternal);
 			}
 			return oIDExternal.rootExternal;
@@ -67,105 +48,21 @@ namespace OpenDentBusiness {
 		///If its not null this means the practice has used DoseSpot at least once.</summary>
 		public static OIDExternal GetDoseSpotRootOid() {
 			Meth.NoCheckMiddleTierRole();
-			return OIDExternals.GetByPartialRootExternal(_doseSpotOid);
+			return OIDExternals.GetByPartialRootExternal(GetDoseSpotRootPrefix());
 		}
 
-		#endregion
-
-		public static void MakeClinicErxAlert(ClinicErx clinicErx,bool clinicAutomaticallyAttached) {
-			AlertItem alertItem=AlertItems.RefreshForType(AlertType.DoseSpotClinicRegistered)
-				.FirstOrDefault(x => x.FKey==clinicErx.ClinicErxNum);
-			if(alertItem!=null) {
-				return;//alert already exists
-			}
-      Clinic clinic=Clinics.GetClinic(clinicErx.ClinicNum);
-      List<ProgramProperty> listProgramProperties=ProgramProperties.GetForProgram(Programs.GetProgramNum(ProgramName.eRx))
-          .FindAll(x => x.ClinicNum==0
-            && (x.PropertyDesc==Erx.PropertyDescs.ClinicID || x.PropertyDesc==Erx.PropertyDescs.ClinicKey)
-            && !string.IsNullOrWhiteSpace(x.PropertyValue));
-      if(clinic!=null || clinicAutomaticallyAttached) {
-        //A clinic was associated with the clinicerx successfully, no user action needed.
-        alertItem=new AlertItem {
-          Actions=ActionType.MarkAsRead | ActionType.Delete,
-          Description=(clinicErx.ClinicDesc=="" ? "Headquarters" : clinicErx.ClinicDesc)+" "+Lans.g("DoseSpot","has been registered"),
-          Severity=SeverityType.Low,
-          Type=AlertType.DoseSpotClinicRegistered,
-          FKey=clinicErx.ClinicErxNum,
-          ClinicNum=clinicErx.ClinicNum,
-        };
-      }
-      else {
-        //User action needed to make a link to an existing clinic that was registered.
-        alertItem=new AlertItem {
-          Actions=ActionType.MarkAsRead | ActionType.Delete | ActionType.OpenForm,
-          Description=Lans.g("DoseSpot","Select clinic to assign ID"),
-          Severity=SeverityType.Low,
-          Type=AlertType.DoseSpotClinicRegistered,
-          ClinicNum=-1,//Show in all clinics.  We only want 1 alert, but that alert can be processed from any clinic because we don't know which clinic to display in.
-          FKey=clinicErx.ClinicErxNum,
-          FormToOpen=FormType.FormDoseSpotAssignClinicId,
-        };
-      }
-      AlertItems.Insert(alertItem);
+		public static OIDExternal CreateOIDForPatient(int doseSpotPatID,long patNum) {
+			OIDExternal oIDExternal=new OIDExternal();
+			oIDExternal.rootExternal=DoseSpot.GetDoseSpotRoot()+"."+POut.Int((int)IdentifierType.Patient);
+			oIDExternal.IDExternal=doseSpotPatID.ToString();
+			oIDExternal.IDInternal=patNum;
+			oIDExternal.IDType=IdentifierType.Patient;
+			OIDExternals.Insert(oIDExternal);
+			return oIDExternal;
 		}
+		#endregion OID
 
-		///<summary>Handles assigning Dose Spot ID to a user with matching NPI.
-		///If multiple or no matches, creates form for manual selection of user.</summary>
-		public static void MakeProviderErxAlert(ProviderErx providerErx) {
-			AlertItem alertItem=AlertItems.RefreshForType(AlertType.DoseSpotProviderRegistered)
-				.FirstOrDefault(x => x.FKey==providerErx.ProviderErxNum);
-			if(alertItem!=null) {
-				return;//alert already exists
-			}
-			//get a list of users that correspond to a non-hidden provider
-			List<Provider> listProviders=Providers.GetWhere(x => x.NationalProvID==providerErx.NationalProviderID,true);
-			List<Userod> listUserods=Userods.GetWhere(x => listProviders.Exists(y => y.ProvNum==x.ProvNum),true);//Only consider non-hidden users.
-			if(listUserods.Count==1) {//One provider matched so simply notify the office and set the DoseSpot User Id.
-				alertItem=new AlertItem {
-					Actions=ActionType.MarkAsRead | ActionType.Delete | ActionType.ShowItemValue,
-					Description=Lans.g("DoseSpot","User automatically assigned."),
-					Severity=SeverityType.Low,
-					Type=AlertType.DoseSpotProviderRegistered,
-					FKey=providerErx.ProviderErxNum,
-					ClinicNum=-1,//Show in all clinics.  We only want 1 alert, but that alert can be processed from any clinic because providers aren't clinic specific
-					ItemValue=Lans.g("DoseSpot","User: ")+listUserods[0].UserNum+", "+listUserods[0].UserName+" "
-					+Lans.g("DoseSpot","has been assigned a DoseSpot User ID of: ")+providerErx.UserId,
-				};
-				AlertItems.Insert(alertItem);
-				//set userodpref to UserId
-				Program program=Programs.GetCur(ProgramName.eRx);
-				UserOdPref userOdPref=UserOdPrefs.GetByCompositeKey(listUserods[0].UserNum,program.ProgramNum,UserOdFkeyType.Program);
-				UserOdPref userOdPrefOld=userOdPref.Clone();
-				userOdPref.ValueString=providerErx.UserId;//assign DoseSpot User ID
-				if(userOdPref.IsNew) {
-					userOdPref.Fkey=program.ProgramNum;
-					UserOdPrefs.Insert(userOdPref);
-					Signalods.SetInvalid(InvalidType.UserOdPrefs);
-					UserOdPrefs.RefreshCache();
-				}
-				else {
-					if(UserOdPrefs.Update(userOdPref,userOdPrefOld)) {
-						//Only need to signal cache refresh on change.
-						Signalods.SetInvalid(InvalidType.UserOdPrefs);
-						UserOdPrefs.RefreshCache();
-					}
-				}
-			}
-			else {//More than one or no user associated to the NPI, generate alert with form to have the office choose which user to assign.
-				alertItem=new AlertItem {
-					Actions=ActionType.MarkAsRead | ActionType.Delete | ActionType.OpenForm,
-					Description=Lans.g("DoseSpot","Select user to assign ID"),
-					Severity=SeverityType.Low,
-					Type=AlertType.DoseSpotProviderRegistered,
-					FKey=providerErx.ProviderErxNum,
-					ClinicNum=-1,//Show in all clinics.  We only want 1 alert, but that alert can be processed from any clinic because providers aren't clinic specific
-					FormToOpen=FormType.FormDoseSpotAssignUserId,
-				};
-				AlertItems.Insert(alertItem);
-			}
-		}
-
-		///<summary>Returns true if the passed in accountId is a DoseSpot account id.</summary>
+		///<summary>Returns true if the passed in accountId is a DoseSpot account id (a repeat charge account ID that Open Dental's billing used).</summary>
 		public static bool IsDoseSpotAccountId(string accountId) {
 			Meth.NoCheckMiddleTierRole();
 			return accountId.ToUpper().StartsWith("DS;");//ToUpper because user might have manually typed in.
@@ -183,65 +80,38 @@ namespace OpenDentBusiness {
 			return accountId;
 		}
 
-		///<summary>The comments on each line come directly from the DoseSpot API Guide 12.8.pdf.  Creates a Single Sign On Code for DoseSpot.</summary>
+		///<summary>A single sign-on code for clinicKey with a fresh random phrase, URL-encoded if isQueryStr. See DoseSpotSso.</summary>
 		public static string CreateSsoCode(string clinicKey,bool isQueryStr=true) {
 			Meth.NoCheckMiddleTierRole();
-			string singleSignOnCode="";//1. You have been provided a clinic key (in UTF8).
-			string phrase=Get32CharPhrase();//2. Create a random phrase 32 characters long in UTF8
-			string phraseAndKey=phrase;
-			phraseAndKey+=clinicKey;//3. Append the key to the phrase
-			byte[] arrayBytes=GetBytesFromUTF8(phraseAndKey);//4. Get the value in Bytes from UTF8 String
-			byte[] arrayHashedBytes=GetSHA512Hash(arrayBytes);//5. Use SHA512 to hash the byte value you just received
-			string base64hash=Convert.ToBase64String(arrayHashedBytes);//6. Get a Base64String out of the hash that you created
-			base64hash=RemoveExtraEqualSigns(base64hash);//7. If there are two = signs at the end, then remove them
-			singleSignOnCode=phrase+base64hash;//8. Prepend the same random phrase from step 2 to your code
-			if(isQueryStr) {//9. If the SingleSignOnCode is going to be passed in a query string, be sure to UrlEncode the entire code
-				singleSignOnCode=WebUtility.UrlEncode(singleSignOnCode);
-			}
-			return singleSignOnCode;
-		}
-
-		///<summary>The comments on each line come directly from the DoseSpot API Guide 12.8.pdf.  Creates a Single Sign On User ID Verify for DoseSpot.</summary>
-		public static string CreateSsoUserIdVerify(string clinicKey,string userID,bool isQueryStr=true) {
-			Meth.NoCheckMiddleTierRole();
-			string singleSignOnCode="";
-			string phrase=Get32CharPhrase();
-			string idPhraseAndKey=phrase.Substring(0,22);//1. Grab the first 22 characters of the phrase used in CreateSSOCode from step 1 of CreateSsoCode
-			idPhraseAndKey=userID+idPhraseAndKey;//2. Append to the UserID string the 22 characters grabbed from step one
-			idPhraseAndKey+=clinicKey;//3. Append the key to the string created in 2b
-			byte[] arrayBytes=GetBytesFromUTF8(idPhraseAndKey);//4. Get the Byte value of the string
-			byte[] arrayHashedBytes=GetSHA512Hash(arrayBytes);//5. Use SHA512 to hash the byte value you just received
-			string base64hash=Convert.ToBase64String(arrayHashedBytes);//6. Get a Base64String out of the hash that you created
-			singleSignOnCode=RemoveExtraEqualSigns(base64hash);//7. If there are two = signs at the end, then remove them
-			if(isQueryStr) {//8. If the SingleSignOnUserIdVerify is going to be passed in a query string, be sure to UrlEncode the entire code
-				singleSignOnCode=WebUtility.UrlEncode(singleSignOnCode);
-			}
-			_randomPhrase32=null;
-			return singleSignOnCode;
+			string code=DoseSpotSso.ComputeCode(DoseSpotSso.CreatePhrase(),clinicKey);
+			return isQueryStr ? Uri.EscapeDataString(code) : code;
 		}
 
 		///<summary>Can throw exceptions.  Returns true if changes were made to medications.</summary>
-		public static bool SyncPrescriptionsFromDoseSpot(string clinicID,string clinicKey,string userID,long patNum,Action<List<RxPat>> onRxAdd=null) {
+		public static bool SyncPrescriptionsFromDoseSpot(string clinicID,string clinicKey,string userID,long patNum,Action<List<RxPat>> onRxAdd=null,
+			bool isInteractive=false)
+		{
 			Meth.NoCheckMiddleTierRole();
 			OIDExternal oIDExternal=DoseSpot.GetDoseSpotPatID(patNum);
 			if(oIDExternal==null) {
 				return false;//We don't have a PatID from DoseSpot for this patient.  Therefore there is nothing to sync with.
 			}
+			DoseSpotCredentials doseSpotCredentials=DoseSpotCredentials.FromConfig(clinicID,clinicKey,userID);
 			bool hasChangedPrescriptions=false;
 			Patient patient=Patients.GetPat(patNum);
 			List<long> listMedicationPatNumsActive=new List<long>();
 			Dictionary<int,string> dictPharmacyIdToPharmacyName=new Dictionary<int,string>();
 			List<RxPat> listRxPats=new List<RxPat>();
-			string token=DoseSpotREST.GetToken(userID,clinicID,clinicKey);
 			//Get rid of any deleted prescriptions.
-			List<DoseSpotPrescription> listDoseSpotPerscriptions=DoseSpotREST.GetPrescriptions(token,oIDExternal.IDExternal);
+			List<DoseSpotPrescription> listDoseSpotPerscriptions=DoseSpotRESTV2.GetPrescriptions(doseSpotCredentials,oIDExternal.IDExternal,isInteractive);
 			List<DoseSpotMedicationWrapper> listDoseSpotMedicationWrappers=listDoseSpotPerscriptions.Select(x => new DoseSpotMedicationWrapper(x,null)).ToList();
 			//Add self reported medications.
-			listDoseSpotMedicationWrappers.AddRange(DoseSpotREST.GetSelfReported(token,oIDExternal.IDExternal).Select(x => new DoseSpotMedicationWrapper(null,x)).ToList());
+			listDoseSpotMedicationWrappers.AddRange(DoseSpotRESTV2.GetSelfReported(doseSpotCredentials,oIDExternal.IDExternal,isInteractive)
+				.Select(x => new DoseSpotMedicationWrapper(null,x)).ToList());
 			foreach(DoseSpotMedicationWrapper doseSpotMedicationWrapper in listDoseSpotMedicationWrappers.Where(x=>x.MedicationStatus!=DoseSpotREST.MedicationStatus.Deleted)) {
 				RxPat rxPatOld=null;
 				if(doseSpotMedicationWrapper.IsSelfReported) {
-					//Get self reported that originated in OD
+					//Get self reported that originated in this program
 					rxPatOld=RxPats.GetErxByIdForPat(Erx.OpenDentalErxPrefix+doseSpotMedicationWrapper.MedicationId.ToString(),patNum);
 					if(rxPatOld==null) {
 						//Get self reported that originated in DS
@@ -320,7 +190,8 @@ namespace OpenDentBusiness {
 				if(doseSpotMedicationWrapper.PharmacyId.HasValue) {
 					try {
 						if(!dictPharmacyIdToPharmacyName.ContainsKey(doseSpotMedicationWrapper.PharmacyId.Value)) {
-							dictPharmacyIdToPharmacyName.Add(doseSpotMedicationWrapper.PharmacyId.Value,DoseSpotREST.GetPharmacyName(token,doseSpotMedicationWrapper.PharmacyId.Value));
+							dictPharmacyIdToPharmacyName.Add(doseSpotMedicationWrapper.PharmacyId.Value,
+								DoseSpotRESTV2.GetPharmacyName(doseSpotCredentials,doseSpotMedicationWrapper.PharmacyId.Value,isInteractive));
 						}
 						rxPat.ErxPharmacyInfo=dictPharmacyIdToPharmacyName[doseSpotMedicationWrapper.PharmacyId.Value];
 					}
@@ -354,7 +225,7 @@ namespace OpenDentBusiness {
 				if(doseSpotMedicationWrapper.IsSelfReported) {//Self Reported medications won't have a prescriber number
 					if(rxPatOld==null) {//Rx doesn't exist in the database.  This probably originated from DoseSpot
 						MedicationPat medicationPat=MedicationPats.GetMedicationOrderByErxIdAndPat(Erx.OpenDentalErxPrefix+doseSpotMedicationWrapper.MedicationId.ToString(),patNum);
-						if(medicationPat==null) {//If there isn't a record of the medication 
+						if(medicationPat==null) {//If there isn't a record of the medication
 							medicationPat=MedicationPats.GetMedicationOrderByErxIdAndPat(Erx.DoseSpotPatReportedPrefix+doseSpotMedicationWrapper.MedicationId.ToString(),patNum);
 						}
 						if(medicationPat==null) {//If medPat is null at this point we don't have a record of this patient having the medication, so it probably was just made in DoseSpot.
@@ -372,7 +243,7 @@ namespace OpenDentBusiness {
 					//The prescriber ID for each medication is the doctor that approved the prescription.
 					UserOdPref userOdPref=UserOdPrefs.GetByFkeyAndFkeyType(Programs.GetCur(ProgramName.eRx).ProgramNum,UserOdFkeyType.Program)
 					.FirstOrDefault(x => x.ValueString==doseSpotMedicationWrapper.PrescriberId.ToString());
-					if(userOdPref==null) {//The Dose Spot User ID from this medication is not present in Open Dental.
+					if(userOdPref==null) {//The Dose Spot User ID from this medication is not present in this database.
 						continue;//I don't know if we want to do anything with this.  Maybe we want to just get the ErxLog from before this medication was made.
 					}
 					Userod userod=Userods.GetUser(userOdPref.UserNum);
@@ -395,7 +266,7 @@ namespace OpenDentBusiness {
 				if(rxPatOld!=null) {
 					rxPat.Disp=rxPatOld.Disp; //The medication Disp currently always returns 0. Preserve the old value.
 					rxPat.Refills=rxPat.Refills==null ? rxPatOld.Refills : rxPat.Refills;
-					rxPat.Notes=rxPatOld.Notes.IsNullOrEmpty() ? rxPat.Notes : rxPatOld.Notes;//Preserve the note already in OD no matter what if there is one.
+					rxPat.Notes=rxPatOld.Notes.IsNullOrEmpty() ? rxPat.Notes : rxPatOld.Notes;//Preserve the note already in the database no matter what if there is one.
 					rxPat.PatientInstruction=rxPat.PatientInstruction.IsNullOrEmpty() ? rxPatOld.PatientInstruction : rxPat.PatientInstruction;
 					rxPat.ErxPharmacyInfo=rxPat.ErxPharmacyInfo==null ? rxPatOld.ErxPharmacyInfo : rxPat.ErxPharmacyInfo;
 					rxPat.IsControlled=rxPatOld.IsControlled;
@@ -420,7 +291,7 @@ namespace OpenDentBusiness {
 			}
 			List<MedicationPat> listMedicationPats=MedicationPats.Refresh(patNum,false);
 			for(int i=0;i<listMedicationPats.Count;i++) {
-			//This loop should update the end date for: Perscriptions made in DoseSpot, Medications made in DoseSpot, and Medications made in OD
+			//This loop should update the end date for: Perscriptions made in DoseSpot, Medications made in DoseSpot, and Medications made locally
 				string eRxGuidCur=listMedicationPats[i].ErxGuid;
 				if(!Erx.IsFromDoseSpot(eRxGuidCur) && !Erx.IsDoseSpotPatReported(eRxGuidCur) && !Erx.IsTwoWayIntegrated(eRxGuidCur))
 				{
@@ -430,7 +301,7 @@ namespace OpenDentBusiness {
 					continue;//The medication is still active.
 				}
 				if(listMedicationPats[i].DateStop.Year>1880) {
-					continue;//The medication is already discontinued in Open Dental.
+					continue;//The medication is already discontinued locally.
 				}
 				//The medication was discontinued inside the eRx interface.
 				DoseSpotMedicationWrapper doseSpotMedicationWrapper=listDoseSpotMedicationWrappers.FirstOrDefault(x => Erx.OpenDentalErxPrefix+x.MedicationId.ToString()==eRxGuidCur);
@@ -448,7 +319,7 @@ namespace OpenDentBusiness {
 				else {
 					listMedicationPats[i].DateStop=DateTime.Today.AddDays(-1);//Discontinue the medication as of yesterday so that it will immediately show as discontinued.
 				}
-				MedicationPats.Update(listMedicationPats[i]);//Discontinue the medication inside OD to match what shows in the eRx interface.
+				MedicationPats.Update(listMedicationPats[i]);//Discontinue the medication locally to match what shows in the eRx interface.
 				string medDescript=listMedicationPats[i].MedDescript;
 				if(listMedicationPats[i].MedicationNum!=0) {
 					medDescript=Medications.GetMedication(listMedicationPats[i].MedicationNum).MedName;
@@ -461,21 +332,21 @@ namespace OpenDentBusiness {
 			return hasChangedPrescriptions;
 		}
 
-		///<summary>Can throw exception.</summary>
+		///<summary>Can throw exception. Sends this program's medications for the patient to DoseSpot as self-reported medications.</summary>
 		public static void SyncPrescriptionsToDoseSpot(string clinicID,string clinicKey,string userID,long patNum) {
-			string token=DoseSpotREST.GetToken(userID,clinicID,clinicKey);
 			Meth.NoCheckMiddleTierRole();
 			OIDExternal oIDExternal=DoseSpot.GetDoseSpotPatID(patNum);
 			if(oIDExternal==null) {
 				return;//We don't have a PatID from DoseSpot for this patient.  Therefore there is nothing to sync with.
 			}
+			DoseSpotCredentials doseSpotCredentials=DoseSpotCredentials.FromConfig(clinicID,clinicKey,userID);
 			List<MedicationPat> listMedicationPats=MedicationPats.Refresh(patNum,true).FindAll(x => !Erx.IsFromDoseSpot(x.ErxGuid));
 			if(listMedicationPats.Count==0) {
 				return;//There are no medications to send to DoseSpot.
 			}
 			foreach(MedicationPat medicationPat in listMedicationPats) {
 				//Medications originating from DS are filtered out when the list is retrieved.
-				DoseSpotSelfReported doseSpotSelfReported=DoseSpotREST.MedicationPatToDoseSpotSelfReport(medicationPat);
+				DoseSpotSelfReported doseSpotSelfReported=DoseSpotRESTV2.MedicationPatToDoseSpotSelfReport(medicationPat);
 				if(string.IsNullOrWhiteSpace(doseSpotSelfReported.DisplayName)) {
 					//Couldn't get a name from the medicationpat or the medication, don't send to DS without a name.
 					continue;
@@ -483,16 +354,14 @@ namespace OpenDentBusiness {
 				if(doseSpotSelfReported.SelfReportedMedicationId>0) {
 					//We were able to get the external ID for this self reported from the medicationpat, therefore we want to do an edit.
 					try {
-						DoseSpotREST.PutSelfReportedMedications(token,oIDExternal.IDExternal,doseSpotSelfReported);
+						DoseSpotRESTV2.SaveSelfReported(doseSpotCredentials,oIDExternal.IDExternal,doseSpotSelfReported,false);
 					}
 					catch(ODException e) {
 						if(e.Message.Contains("does not belong to PatientID")) {
 							//skip these, get past a bug in the DS API where it returns medications for the wrong patient.
 							continue;
 						}
-						else {
-							throw e;
-						}
+						throw;
 					}
 				}
 				else {
@@ -501,7 +370,7 @@ namespace OpenDentBusiness {
 					if(medicationPat.ErxGuid.StartsWith(Erx.UnsentPrefix)) {
 						rxPat=RxPats.GetErxByIdForPat(medicationPat.ErxGuid,medicationPat.PatNum);
 					}
-					medicationPat.ErxGuid=Erx.OpenDentalErxPrefix+DoseSpotREST.PostSelfReportedMedications(token,oIDExternal.IDExternal,doseSpotSelfReported);
+					medicationPat.ErxGuid=Erx.OpenDentalErxPrefix+DoseSpotRESTV2.SaveSelfReported(doseSpotCredentials,oIDExternal.IDExternal,doseSpotSelfReported,false);
 					if(rxPat!=null) {
 						rxPat.ErxGuid=medicationPat.ErxGuid;
 						RxPats.Update(rxPat);
@@ -518,62 +387,31 @@ namespace OpenDentBusiness {
 			,out int countRefillReqs,out int countTransactionErrors,out int countPendingPrescriptionsCount)
 		{
 			Meth.NoCheckMiddleTierRole();
-			countRefillReqs=0;
-			countTransactionErrors=0;
-			string token=DoseSpotREST.GetToken(userID,clinicID,clinicKey);
-			DoseSpotREST.GetNotificationCounts(token,out countRefillReqs,out countTransactionErrors,out countPendingPrescriptionsCount);
-			#region SOAP - Deprecated
-			//DoseSpotService.API api=new DoseSpotService.API();
-			//			if(ODBuild.IsDebug()) {
-			//				api.Url="https://my.staging.dosespot.com/api/12/api.asmx?wsdl";
-			//			}
-			//			DoseSpotService.GetPrescriberNotificationCountsRequest req=new DoseSpotService.GetPrescriberNotificationCountsRequest();
-			//			req.SingleSignOn=GetSingleSignOn(clinicID,clinicKey,userID,false);
-			//			DoseSpotService.GetPrescriberNotificationCountsResponse res=api.GetPrescriberNotificationCounts(req);
-			//			if(res.Result!=null && res.Result.ResultCode.ToLower()=="error") {
-			//				ODException.ErrorCodes errorCode=ODException.ErrorCodes.NotDefined;
-			//				if(Erx.IsUserAnEmployee(Security.CurUser) && res.Result.ResultDescription.Contains("not authorized") || res.Result.ResultDescription.Contains("unauthorized")) {
-			//					errorCode=ODException.ErrorCodes.DoseSpotNotAuthorized;
-			//				}
-			//				throw new ODException(res.Result.ResultDescription,errorCode);
-			//			}
-			//			countRefillReqs=res.RefillRequestsCount;
-			//			countTransactionErrors=res.TransactionErrorsCount;
-			//			countPendingPrescriptionsCount=res.PendingPrescriptionsCount;
-			#endregion
+			DoseSpotNotificationCounts counts=DoseSpotRESTV2.GetNotificationCounts(DoseSpotCredentials.FromConfig(clinicID,clinicKey,userID),false);
+			countRefillReqs=counts.RefillRequestsCount;
+			countTransactionErrors=counts.TransactionErrorsCount;
+			countPendingPrescriptionsCount=counts.PendingPrescriptionsCount;
 			return (countRefillReqs>0 || countTransactionErrors>0 || countPendingPrescriptionsCount>0);//Return true if there is anything that the prescriber needs to see/take action on.
 		}
 
-		///<summary>If pat is null, it is assumed that we are making a SSO request for errors and refill requests.
-		///Throws exceptions for invalid Patient data.</summary>
+		///<summary>If pat is null, it is assumed that we are making a SSO request for errors and refill requests. The query string starts with '&amp;'.
+		///Every call gets a fresh random phrase. Log it only through DoseSpotSso.Redact.</summary>
 		public static string GetSingleSignOnQueryString(string clinicID,string clinicKey,string userID,string onBehalfOfUserId,Patient patient) {
 			Meth.NoCheckMiddleTierRole();
-			//Pass in false for isQueryString because we will URLEncode the values below in QueryStringAddParameter.  It was a bug where we were double encoding the data.
-			DoseSpotService.SingleSignOn singleSignOn=GetSingleSignOn(clinicID,clinicKey,userID,false);
-			StringBuilder stringBuilder=new StringBuilder();
-			QueryStringAddParameter(stringBuilder,"SingleSignOnCode",singleSignOn.SingleSignOnCode);
-			QueryStringAddParameter(stringBuilder,"SingleSignOnUserId",POut.Int(singleSignOn.SingleSignOnUserId));
-			QueryStringAddParameter(stringBuilder,"SingleSignOnUserIdVerify",singleSignOn.SingleSignOnUserIdVerify);
-			QueryStringAddParameter(stringBuilder,"SingleSignOnClinicId",POut.Int(singleSignOn.SingleSignOnClinicId));
-			if(!String.IsNullOrWhiteSpace(onBehalfOfUserId)) {
-				QueryStringAddParameter(stringBuilder,"OnBehalfOfUserId",POut.String(onBehalfOfUserId));
-			}
-			if(patient==null) {
-				QueryStringAddParameter(stringBuilder,"RefillsErrors",POut.Int(1));//Request transmission errors
-			}
-			else {
+			DoseSpotSso doseSpotSso=DoseSpotSso.Create(clinicID,clinicKey,userID);
+			string patientId="";
+			if(patient!=null) {
 				OIDExternal oIDExternal=DoseSpot.GetDoseSpotPatID(patient.PatNum);
 				if(oIDExternal!=null) {
-					QueryStringAddParameter(stringBuilder,"PatientId",oIDExternal.IDExternal);
+					patientId=oIDExternal.IDExternal;
 				}
 			}
-			return stringBuilder.ToString();
+			return doseSpotSso.ToQueryString(onBehalfOfUserId,patientId,patient==null);
 		}
 
-		///<summary>Throws exceptions.
-		///Gets the clinicID/clinicKey regarding the passed in clinicNum.
-		///Will register the passed in clinicNum with DoseSpot if it isn't already.
-		///Validates if the passed in doseSpotUserID is empty.</summary>
+		///<summary>Throws ODException naming what is missing. Puts out the clinic ID and the decrypted clinic key for clinicNum (no fallback to another
+		///clinic: each DoseSpot clinic is one location). An osd1$ key that does not decrypt counts as missing; it is never sent.
+		///doseSpotUserID, program and listProgramProperties are optional.</summary>
 		public static void GetClinicIdAndKey(long clinicNum,string doseSpotUserID,Program program,List<ProgramProperty> listProgramProperties
 			,out string clinicID,out string clinicKey)
 		{
@@ -590,133 +428,60 @@ namespace OpenDentBusiness {
 			}
 			ProgramProperty programPropertyClinicID=listProgramProperties.FirstOrDefault(x => x.ClinicNum==clinicNum && x.PropertyDesc==Erx.PropertyDescs.ClinicID);
 			ProgramProperty programPropertyClinicKey=listProgramProperties.FirstOrDefault(x => x.ClinicNum==clinicNum && x.PropertyDesc==Erx.PropertyDescs.ClinicKey);
-			//If the current clinic doesn't have a clinic id/key, use a different clinic to make them.
-			if(programPropertyClinicID==null || string.IsNullOrWhiteSpace(programPropertyClinicID.PropertyValue)
-				|| programPropertyClinicKey==null || string.IsNullOrWhiteSpace(programPropertyClinicKey.PropertyValue))
-			{
-				throw new ODException(((clinicNum==0)?"HQ ":Clinics.GetAbbr(clinicNum)+" ")
-					+Lans.g("DoseSpot","is missing a valid ClinicID or Clinic Key.  This should have been entered when setting up DoseSpot."));
+			string clinicIdStored=programPropertyClinicID?.PropertyValue??"";
+			SecretReadResult secretReadResult=DoseSpotConfig.ReadClinicKey(programPropertyClinicKey?.PropertyValue);
+			if(string.IsNullOrWhiteSpace(clinicIdStored) || !secretReadResult.HasValue) {
+				string message=DoseSpotConfig.GetClinicName(clinicNum)+" "+Lans.g("DoseSpot","has no DoseSpot clinic ID and key.");
+				if(secretReadResult.Status==SecretReadStatus.Unreadable) {
+					message=Lans.g("DoseSpot","The DoseSpot clinic key for")+" "+DoseSpotConfig.GetClinicName(clinicNum)+" "
+						+Lans.g("DoseSpot","can't be read on this computer.");
+				}
+				throw new ODException(message+" "+Lans.g("DoseSpot","Enter it in Setup > Program Links > eRx."));
 			}
-			else {
-				clinicID=programPropertyClinicID.PropertyValue;
-				clinicKey=programPropertyClinicKey.PropertyValue;
-			}
+			clinicID=clinicIdStored.Trim();
+			clinicKey=secretReadResult.PlainText.Trim();
 		}
 
-		///<summary>Throws Exceptions if clinic is deemed invalid for DoseSpot.
-		///Register the passed in clinicNum in DoseSpot, and pass out the registered ID/key.
-		///Will save the new clinic id/clinic key into program properties for the given clinic and refreshes cache.</summary>
+		///<summary>Throws Exceptions if clinic is deemed invalid for DoseSpot. Registers clinicNum with DoseSpot, using an already registered clinic's
+		///ID and plain key plus the user's DoseSpot ID, and puts out the new ID and key. Saves them for clinicNum: the key encrypted, in a masked,
+		///high-security row. Refreshes the cache.</summary>
 		public static void RegisterClinic(long clinicNum,string clinicID,string clinicKey,string userID
-			,out string clinicIdNew,out string clinicKeyNew) 
+			,out string clinicIdNew,out string clinicKeyNew)
 		{
 			Meth.NoCheckMiddleTierRole();
-			string token=DoseSpotREST.GetToken(userID,clinicID,clinicKey);
 			Clinic clinic=GetClinicOrPracticeInfo(clinicNum);
-			#region SOAP - Deprecated
-			//			DoseSpotService.API api=new DoseSpotService.API();
-			//			DoseSpotService.ClinicAddMessage req=new DoseSpotService.ClinicAddMessage();
-			//			req.Clinic=MakeDoseSpotClinic(clinicCur);
-			//			req.SingleSignOn=GetSingleSignOn(clinicID,clinicKey,userID,false);
-			//			if(ODBuild.IsDebug()) {
-			//				//This code will output the XML into the console.  This may be needed for DoseSpot when troubleshooting issues.
-			//				//This XML will be the soap body and exclude the header and envelope.
-			//				System.Xml.Serialization.XmlSerializer xml=new System.Xml.Serialization.XmlSerializer(req.GetType());
-			//				xml.Serialize(Console.Out,req);
-			//			}
-			//DoseSpotService.ClinicAddResultMessage res=api.ClinicAdd(req);
-			//if(res.Result!=null && res.Result.ResultCode.ToLower().Contains("error")) {
-			//	throw new Exception(res.Result.ResultDescription);
-			//}
-			#endregion
-			DoseSpotREST.PostClinic(token,clinic,out clinicIdNew,out clinicKeyNew);
+			DoseSpotCredentials doseSpotCredentials=DoseSpotCredentials.FromConfig(clinicID,clinicKey,userID);
+			DoseSpotRESTV2.PostClinic(doseSpotCredentials,clinic,out clinicIdNew,out clinicKeyNew);
 			long programNumErx=Programs.GetCur(ProgramName.eRx).ProgramNum;
-			List<ProgramProperty> listProgramProperties=ProgramProperties.GetListForProgramAndClinic(programNumErx,clinicNum);
-			ProgramProperty programPropertyClinicID=listProgramProperties.FirstOrDefault(x => x.PropertyDesc==Erx.PropertyDescs.ClinicID);
-			ProgramProperty programPropertyClinicKey=listProgramProperties.FirstOrDefault(x => x.PropertyDesc==Erx.PropertyDescs.ClinicKey);
-			//Update the database with the new id/key.
-			InsertOrUpdate(programPropertyClinicID,programNumErx,Erx.PropertyDescs.ClinicID,clinicIdNew,clinicNum);
-			InsertOrUpdate(programPropertyClinicKey,programNumErx,Erx.PropertyDescs.ClinicKey,clinicKeyNew,clinicNum);
+			string clinicKeyStored;
+			if(!SecretValue.Protect(clinicKeyNew,out clinicKeyStored)) {
+				throw new ODException(Lans.g("DoseSpot","DoseSpot registered the clinic, but its key could not be encrypted, so it was not saved.")+" "
+					+Lans.g("DoseSpot","Clinic ID:")+" "+clinicIdNew);
+			}
+			VendorCredentials.WriteSetting(programNumErx,Erx.PropertyDescs.ClinicID,clinicNum,clinicIdNew);
+			VendorCredentials.WriteSecret(programNumErx,Erx.PropertyDescs.ClinicKey,clinicNum,clinicKeyNew);
 			//Ensure cache is not stale after setting the values.
 			Cache.Refresh(InvalidType.Programs);
 		}
 
-		///<summary>Throws exceptions when validating clinic/practice info/provider.
-		///Updates the passed in user's UserOdPref for DoseSpot User ID</summary>
+		///<summary>Throws ODException when the user has no DoseSpot user ID for clinicNum (or the default). Also validates the clinic or practice info.</summary>
 		public static string GetUserID(Userod userod,long clinicNum) {
 			Meth.NoCheckMiddleTierRole();
-			string doseSpotUserID="";
-			Clinic clinic=GetClinicOrPracticeInfo(clinicNum);
-			//At this point we know that we have a valid clinic/practice info and valid provider.
-			Program program=Programs.GetCur(ProgramName.eRx);
-			//Get the DoseSpotID for the current user
+			GetClinicOrPracticeInfo(clinicNum);
+			//At this point we know that we have a valid clinic/practice info.
 			UserOdPref userOdPref=GetDoseSpotUserIdFromPref(userod.UserNum,clinicNum);
-			//If the current user doesn't have a valid User ID, go retreive one from DoseSpot.
 			if(userOdPref==null || string.IsNullOrWhiteSpace(userOdPref.ValueString)) {
-				//If there is no UserId for this user, throw an exception.  The below code was when we thought the Podio database matched the DoseSpot database.
-				//The below code would add a proxy clinician via the API and give back the DoseSpot User ID.
-				//This was causing issues with Podio and making sure the proxy clinician has access to the appropriate clinics.
-				throw new ODException("Missing DoseSpot User ID for user.  Call support to register provider or proxy user, then enter User ID into security window.");
-				#region Old Proxy User Registration
-				//        UserOdPref otherRegisteredClinician=UserOdPrefs.GetAllByFkeyAndFkeyType(programErx.ProgramNum,UserOdFkeyType.Program)
-				//          .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x.ValueString) && Userods.GetUser(x.UserNum).ProvNum!=0);
-				//        //userCur.ProvNum==0 means that this is a real clinician.  
-				//        //We can add proxy clinicians for no charge, but actual clinicians will incur a fee.
-				//        if(!Erx.IsUserAnEmployee(userCur) || otherRegisteredClinician==null) {
-				//          //Either the prov isn't registered, or there are no credentials to create the proxy clinician.
-				//          //Either way, we want the user to know they need to register the provider.
-				//          throw new ODException("Missing DoseSpot User ID for provider.  Call support to register provider, then enter User ID into security window.");
-				//        }
-				//        //Get the provider from the doseSpotUserID we are using.  This ensures that DoseSpot knows the provider is valid,
-				//        //instead of passing in the patient's primary provider, which may not be registered in DoseSpot.
-				//        Provider provOther=Providers.GetProv(Userods.GetUser(otherRegisteredClinician.UserNum).ProvNum);
-				//				ValidateProvider(provOther,clinicNum);
-				//				string defaultDoseSpotUserID=otherRegisteredClinician.ValueString;
-				//				string clinicID="";
-				//				string clinicKey="";
-				//				GetClinicIdAndKey(clinicNum,defaultDoseSpotUserID,programErx,null,out clinicID,out clinicKey);
-				//				DoseSpotService.API api=new DoseSpotService.API();
-				//				DoseSpotService.ClinicianAddMessage req=new DoseSpotService.ClinicianAddMessage();
-				//				req.SingleSignOn=GetSingleSignOn(clinicID,clinicKey,defaultDoseSpotUserID,false);
-				//				EmailAddress email=EmailAddresses.GetForUser(userCur.UserNum);
-				//				if(email==null || string.IsNullOrWhiteSpace(email.EmailUsername)) {
-				//					throw new ODException("Invalid email address for the current user.");
-				//				}
-				//				req.Clinician=MakeDoseSpotClinician(provOther,clinicCur,email.EmailUsername,true);//If the user isn't a provider, they are a proxy clinician.
-				//				if(ODBuild.IsDebug()) {
-				//					//This code will output the XML into the console.  This may be needed for DoseSpot when troubleshooting issues.
-				//					//This XML will be the soap body and exclude the header and envelope.
-				//					System.Xml.Serialization.XmlSerializer xml=new System.Xml.Serialization.XmlSerializer(req.GetType());
-				//					xml.Serialize(Console.Out,req);
-				//				}
-				//				DoseSpotService.ClinicianAddResultsMessage res=api.ClinicianAdd(req);
-				//				if(res.Result!=null && (res.Result.ResultCode.ToLower().Contains("error") || res.Clinician==null)) {
-				//					throw new Exception(res.Result.ResultDescription);
-				//				}
-				//				retVal=res.Clinician.ClinicianId.ToString();
-				//				//Since userPrefDoseSpotID can't be null, we just overwrite all of the fields to be sure that they are correct.
-				//				userPrefDoseSpotID.UserNum=userCur.UserNum;
-				//				userPrefDoseSpotID.Fkey=programErx.ProgramNum;
-				//				userPrefDoseSpotID.FkeyType=UserOdFkeyType.Program;
-				//				userPrefDoseSpotID.ValueString=retVal;
-				//				if(userPrefDoseSpotID.IsNew) {
-				//					UserOdPrefs.Insert(userPrefDoseSpotID);
-				//				}
-				//				else {
-				//					UserOdPrefs.Update(userPrefDoseSpotID);
-				//				}
-				#endregion
+				throw new ODException(Lans.g("DoseSpot","User")+" "+userod.UserName+" "+Lans.g("DoseSpot","has no DoseSpot user ID. "
+					+"DoseSpot issues one for each prescriber and proxy user; enter it in Security > User Edit."));
 			}
-			else {
-				doseSpotUserID=userOdPref.ValueString;
-			}
-			return doseSpotUserID;
+			return userOdPref.ValueString.Trim();
 		}
 
 		///<summary>Parses the passed in queryString for the value of the passed in parameter name.
 		///Returns null if a match isn't found.</summary>
 		public static string GetQueryParameterFromQueryString(string queryString,string parameterNameToReturn) {
 			Meth.NoCheckMiddleTierRole();
-			if(!string.IsNullOrWhiteSpace(parameterNameToReturn)) {
+			if(!string.IsNullOrWhiteSpace(parameterNameToReturn) && !string.IsNullOrEmpty(queryString)) {
 				if(queryString[0]=='?') {
 					queryString=queryString.Substring(1);
 				}
@@ -734,87 +499,6 @@ namespace OpenDentBusiness {
 			return null;
 		}
 
-		///<summary>Returns true if changes were made and cache needs to be refreshed.</summary>
-		public static bool SyncClinicErxsWithHQ() {
-			Meth.NoCheckMiddleTierRole();
-			MakeClinicErxsForDoseSpot();
-			List<ClinicErx> listClinicErxs=ClinicErxs.GetWhere(x => x.EnabledStatus!=ErxStatus.Enabled);
-			//Currently we do not have any intention of disabling clinics from HQ since there is no cost associated to adding a clinic.
-			//Because of this, don't make extra web calls to check if HQ has tried to disable any clinics.
-			XmlWriterSettings xmlWriterSettings=new XmlWriterSettings();
-			xmlWriterSettings.Indent=true;
-			xmlWriterSettings.IndentChars=("    ");
-			StringBuilder stringBuilder=new StringBuilder();
-			using(XmlWriter xmlWriter=XmlWriter.Create(stringBuilder,xmlWriterSettings)) {
-				xmlWriter.WriteStartElement("ErxClinicAccessRequest");
-				xmlWriter.WriteStartElement("RegistrationKey");
-				xmlWriter.WriteString(PrefC.GetString(PrefName.RegistrationKey));
-				xmlWriter.WriteEndElement();//End reg key
-				xmlWriter.WriteStartElement("RegKeyDisabledOverride");
-				//Allow disabled regkeys to use eRx.  This functionality matches how we handle a disabled regkey for providererx
-				//providererx in CustUpdates only cares that the regkey is valid and associated to a patnum in ODHQ
-				xmlWriter.WriteString("true");
-				xmlWriter.WriteEndElement();//End reg key disabled override
-				foreach(ClinicErx clinicErx in listClinicErxs) {
-					xmlWriter.WriteStartElement("Clinic");
-					xmlWriter.WriteAttributeString("ClinicDesc",clinicErx.ClinicDesc);
-					xmlWriter.WriteAttributeString("EnabledStatus",((int)clinicErx.EnabledStatus).ToString());
-					xmlWriter.WriteAttributeString("ClinicId",clinicErx.ClinicId);
-					xmlWriter.WriteAttributeString("ClinicKey",clinicErx.ClinicKey);
-					xmlWriter.WriteEndElement();//End Clinic
-				}
-				xmlWriter.WriteEndElement();//End ErxAccessRequest
-			}
-			//eRx clinic access used to be granted by Open Dental HQ. Not available until direct vendor integration is configured.
-			ICustomerUpdates service1=CustomerUpdatesProxy.GetWebServiceInstance();
-			bool isCacheRefreshNeeded=false;
-			try {
-				string result=service1.GetClinicErxAccess(stringBuilder.ToString());
-				XmlDocument xmlDocument=new XmlDocument();
-				xmlDocument.LoadXml(result);
-				XmlNodeList xmlNodeList=xmlDocument.SelectNodes("//Clinic");
-				for(int i=0;i<xmlNodeList.Count;i++) {//Loop through clinics.
-					XmlNode xmlNode=xmlNodeList[i];
-					string clinicDesc="";
-					string clinicId="";
-					string clinicKey="";
-					ErxStatus erxStatus=ErxStatus.Disabled;
-					for(int j=0;j<xmlNode.Attributes.Count;j++) {//Loop through the attributes for the current provider.
-						XmlAttribute xmlAttribute=xmlNode.Attributes[j];
-						if(xmlAttribute.Name=="ClinicDesc") {
-							clinicDesc=xmlAttribute.Value;
-						}
-						else if(xmlAttribute.Name=="EnabledStatus") {
-							erxStatus=PIn.Enum<ErxStatus>(PIn.Int(xmlAttribute.Value));
-						}
-						else if(xmlAttribute.Name=="ClinicId") {
-							clinicId=xmlAttribute.Value;
-						}
-						else if(xmlAttribute.Name=="ClinicKey") {
-							clinicKey=xmlAttribute.Value;
-						}
-					}
-					ClinicErx clinicErxOld=ClinicErxs.GetByClinicIdAndKey(clinicId,clinicKey);
-					if(clinicErxOld==null) {
-						continue;
-					}
-					ClinicErx clinicErx=clinicErxOld.Copy();
-					clinicErx.EnabledStatus=erxStatus;
-					clinicErx.ClinicId=clinicId;
-					clinicErx.ClinicKey=clinicKey;
-					//Dont need to set the ErxType here because it's not something that can be changed by HQ.
-					if(ClinicErxs.Update(clinicErx,clinicErxOld)) {
-						isCacheRefreshNeeded=true;
-					}
-				}
-			}
-			catch(Exception ex) {
-				ex.DoNothing();
-				//Failed to contact server and/or update clinicerx row at ODHQ. We will simply use what we already know in the local database.
-			}
-			return isCacheRefreshNeeded;
-		}
-
 		public static UserOdPref GetDoseSpotUserIdFromPref(long userNum,long clinicNum) {
 			Program program=Programs.GetCur(ProgramName.eRx);
 			UserOdPref userOdPref=UserOdPrefs.GetByCompositeKey(userNum,program.ProgramNum,UserOdFkeyType.Program,clinicNum);
@@ -823,54 +507,9 @@ namespace OpenDentBusiness {
 			}
 			return userOdPref;
 		}
-		
-		public static OIDExternal CreateOIDForPatient(int doseSpotPatID,long patNum) {
-			OIDExternal oIDExternal=new OIDExternal();
-			oIDExternal.rootExternal=DoseSpot.GetDoseSpotRoot()+"."+POut.Int((int)IdentifierType.Patient);
-			oIDExternal.IDExternal=doseSpotPatID.ToString();
-			oIDExternal.IDInternal=patNum;
-			oIDExternal.IDType=IdentifierType.Patient;
-			OIDExternals.Insert(oIDExternal);
-			return oIDExternal;
-		}
-
-		///<summary>Creates ClinicErx entries for every clinic that has DoseSpot ClinicID/ClinicKey values.
-		///This will be used when sending the clinics to ODHQ for enabling/disabling.
-		///This will create ClinicNum 0 entries, thus supporting offices without clinics enabled, as well as clinics using the "Headquarters" clinic.</summary>
-		private static void MakeClinicErxsForDoseSpot() {
-			long programNum=Programs.GetCur(ProgramName.eRx).ProgramNum;
-			List<ProgramProperty> listProgramPropertiesForClinicID=ProgramProperties.GetWhere(x => x.ProgramNum==programNum && x.PropertyDesc==Erx.PropertyDescs.ClinicID);
-			List<ProgramProperty> listProgramPropertiesForClinicKey=ProgramProperties.GetWhere(x => x.ProgramNum==programNum && x.PropertyDesc==Erx.PropertyDescs.ClinicKey);
-			bool isRefreshNeeded=false;
-			foreach(ProgramProperty programProperty in listProgramPropertiesForClinicID) {
-				ProgramProperty programPropertyClinicKey=listProgramPropertiesForClinicKey.FirstOrDefault(x => x.ClinicNum==programProperty.ClinicNum);
-				if(programPropertyClinicKey==null || string.IsNullOrWhiteSpace(programPropertyClinicKey.PropertyValue) || string.IsNullOrWhiteSpace(programProperty.PropertyValue)) {
-					continue;
-				}
-				ClinicErx clinicErx=ClinicErxs.GetByClinicNum(programProperty.ClinicNum);
-				if(clinicErx==null) {
-					clinicErx=new ClinicErx();
-					clinicErx.ClinicNum=programProperty.ClinicNum;
-					clinicErx.ClinicId=programProperty.PropertyValue;
-					clinicErx.ClinicKey=programPropertyClinicKey.PropertyValue;
-					clinicErx.ClinicDesc=Clinics.GetDesc(programProperty.ClinicNum);
-					clinicErx.EnabledStatus=ErxStatus.PendingAccountId;
-					ClinicErxs.Insert(clinicErx);
-				}
-				else {
-					clinicErx.ClinicId=programProperty.PropertyValue;
-					clinicErx.ClinicKey=programPropertyClinicKey.PropertyValue;
-					ClinicErxs.Update(clinicErx);
-				}
-				isRefreshNeeded=true;
-			}
-			if(isRefreshNeeded) {
-				Cache.Refresh(InvalidType.ClinicErxs);
-			}
-		}
 
 		///<summary>Throws exceptions if any of the clinic/practice info is invalid.
-		///Ensures that the Clinic that is returned is a valid clinic that can turned 
+		///Ensures that the Clinic that is returned is a valid clinic that can turned
 		/// into a DoseSpot Clinic to be used for DoseSpot API calls that require a Clinic (like registering a new clinic). </summary>
 		private static Clinic GetClinicOrPracticeInfo(long clinicNum) {
 			Clinic clinic=Clinics.GetClinic(clinicNum);
@@ -892,113 +531,6 @@ namespace OpenDentBusiness {
 			return clinic;
 		}
 
-		///<summary>Inserts a new ProgramProperty into the database if the passed in ppCur is null.
-		///If ppCur is not null, it just sets the PropertyValue and updates.</summary>
-		private static void InsertOrUpdate(ProgramProperty programProperty,long programNum,string propDesc,string propValue,long clinicNum) {
-			if(programProperty==null) {
-				programProperty=new ProgramProperty();
-				programProperty.ProgramNum=programNum;
-				programProperty.PropertyDesc=propDesc;
-				programProperty.PropertyValue=propValue;
-				programProperty.ClinicNum=clinicNum;
-				ProgramProperties.Insert(programProperty);
-			}
-			else {
-				programProperty.PropertyValue=propValue;
-				ProgramProperties.Update(programProperty);
-			}
-		}
-
-		///<summary>Generates a DoseSpot clinic based on the passed in clinic.
-		///The returned DoseSpot clinic does not have the ClinicID set.</summary>
-		private static DoseSpotService.Clinic MakeDoseSpotClinic(Clinic clinic) {
-			DoseSpotService.Clinic dSSClinic=new DoseSpotService.Clinic();
-			dSSClinic.Address1=clinic.Address;
-			dSSClinic.Address2=clinic.Address2;
-			dSSClinic.City=clinic.City;
-			dSSClinic.ClinicName=clinic.Abbr;
-			dSSClinic.ClinicNameLongForm=clinic.Description;
-			dSSClinic.PrimaryFax=clinic.Fax;
-			dSSClinic.PrimaryPhone=clinic.Phone;
-			//This is a required field but there is no way to set this value in Open Dental.
-			//Since it's a clinic it seems safe to assume that it's a work number
-			dSSClinic.PrimaryPhoneType="Work";
-			dSSClinic.State=clinic.State.ToUpper();
-			dSSClinic.ZipCode=clinic.Zip;
-			return dSSClinic;
-		}
-
-		///<summary>Makes a clinician out of the tables in OD that make up what DoseSpot considers a clinician.
-		///Clinic in this instance can also be a fake ClinicNum 0 clinic that contains practice information.
-		///When an employee is the reason for making a clinician, isProxyClinician must be set to true.
-		///If isProxyClinician is incorrectly set, the employee will have access to send prescriptions in DoseSpot.</summary>
-		private static DoseSpotService.Clinician MakeDoseSpotClinician(Provider provider,Clinic clinic,string emailAddress,bool isProxyClinician) {
-			DoseSpotService.Clinician dSSClinician=new DoseSpotService.Clinician();
-			dSSClinician.Address1=clinic.Address;
-			dSSClinician.Address2=clinic.Address2;
-			dSSClinician.City=clinic.City;
-			dSSClinician.DateOfBirth=provider.Birthdate;
-			dSSClinician.DEANumber=ProviderClinics.GetDEANum(provider.ProvNum,clinic.ClinicNum);//
-			dSSClinician.Email=emailAddress;//Email should have been validated by now.
-			dSSClinician.FirstName=provider.FName;
-			dSSClinician.Gender="Unknown";//This is a required field but we do not store this information.
-			dSSClinician.IsProxyClinician=isProxyClinician;
-			//retVal.IsReportingClinician=false;//This field was not present in the API documentation and weren't required when testing.
-			dSSClinician.LastName=provider.LName;
-			dSSClinician.MiddleName=provider.MI;
-			dSSClinician.NPINumber=provider.NationalProvID;
-			dSSClinician.PrimaryFax=clinic.Fax;
-			dSSClinician.PrimaryPhone=clinic.Phone;
-			//This is a required field but there is no way to set this value in Open Dental.
-			//Since it's a clinic phone number it seems safe to assume that it's a work number
-			dSSClinician.PrimaryPhoneType="Work";
-			dSSClinician.State=clinic.State.ToUpper();
-			dSSClinician.Suffix=provider.Suffix;
-			dSSClinician.ZipCode=clinic.Zip;
-			return dSSClinician;
-		}
-
-		///<summary>If isQueryString is false, the parameter format will assume json</summary>
-		private static StringBuilder AddParameter(StringBuilder stringBuilder,string paramName,string paramValue,bool isQueryString) {
-			if(isQueryString) {
-				return QueryStringAddParameter(stringBuilder,paramName,paramValue);
-			}
-			return JsonAddParameter(stringBuilder,paramName,paramValue);
-		}
-
-		///<summary>Adds a query parameter and that parameter's value to the string builder</summary>
-		private static StringBuilder QueryStringAddParameter(StringBuilder stringBuilder,string paramName,string paramValue) {
-			stringBuilder.Append("&"+paramName+"=");
-			if(paramName!=null) {
-				stringBuilder.Append(Uri.EscapeDataString(paramValue));
-			}
-			return stringBuilder;
-		}
-
-		///<summary>Adds a query parameter and that parameter's value to the string builder</summary>
-		private static StringBuilder JsonAddParameter(StringBuilder stringBuilder,string paramName,string paramValue) {
-			if(paramName!=null && !string.IsNullOrWhiteSpace(paramValue)) {
-				stringBuilder.AppendLine("\t"+"\""+paramName+"\""+":"+"\""+paramValue+"\",");
-			}
-			return stringBuilder;
-		}
-
-		///<summary>Generates a SingleSignOn to use for DoseSpot API calls.</summary>
-		private static DoseSpotService.SingleSignOn GetSingleSignOn(string clinicID,string clinicKey,string userID,bool isQueryString) {
-			clinicID=clinicID.Trim();
-			clinicKey=clinicKey.Trim();
-			userID=userID.Trim();
-			string singleSignOnCode=CreateSsoCode(clinicKey,isQueryString);
-			string singleSignOnUserIdVerify=CreateSsoUserIdVerify(clinicKey,userID,isQueryString);
-			DoseSpotService.SingleSignOn dSSSingleSignOn=new DoseSpotService.SingleSignOn();
-			dSSSingleSignOn.SingleSignOnClinicId=PIn.Int(clinicID);
-			dSSSingleSignOn.SingleSignOnUserId=PIn.Int(userID);
-			dSSSingleSignOn.SingleSignOnPhraseLength=32;
-			dSSSingleSignOn.SingleSignOnCode=singleSignOnCode;
-			dSSSingleSignOn.SingleSignOnUserIdVerify=singleSignOnUserIdVerify;
-			return dSSSingleSignOn;
-		}
-
 		///<summary>Throws exceptions if anything about the provider is invalid.
 		///Not throwing an exception means that the provider is valid</summary>
 		public static void ValidateProvider(Provider provider,long clinicNum=0) {
@@ -1009,8 +541,7 @@ namespace OpenDentBusiness {
 			ProviderClinic providerClinic=ProviderClinics.GetOneOrDefault(provider.ProvNum,clinicNum);
 			StringBuilder stringBuilder=new StringBuilder();
 			if(provider.IsErxEnabled==ErxEnabledStatus.Disabled) {
-				stringBuilder.AppendLine(Lans.g("DoseSpot","Erx is disabled for provider.  "
-					+"To enable, edit provider in Lists | Providers and acknowledge Electronic Prescription fees."));
+				stringBuilder.AppendLine(Lans.g("DoseSpot","eRx is not enabled for this provider. Enable it in Lists > Providers."));
 			}
 			if(provider.IsHidden) {
 				stringBuilder.AppendLine(Lans.g("DoseSpot","Provider is hidden"));
@@ -1060,7 +591,7 @@ namespace OpenDentBusiness {
 
 		///<summary>Throws exceptions if anything about the clinic is invalid.
 		///Not throwing an exception means that the clinic is valid.
-		///In the case that the user is validating clinicNum 0 or doesn't have clinics enabled, the clinic here has 
+		///In the case that the user is validating clinicNum 0 or doesn't have clinics enabled, the clinic here has
 		/// practice information in it.</summary>
 		private static void ValidateClinic(Clinic clinic,bool isPractice = false) {
 			if(clinic==null) {
@@ -1092,7 +623,7 @@ namespace OpenDentBusiness {
 				//Don't validate state values that are longer than 2 characters.
 				stringBuilder.AppendLine(Lans.g("DoseSpot","State abbreviation is invalid"));
 			}
-			if(clinic.Zip=="" && !Regex.IsMatch(clinic.Zip,@"^([0-9]{9})$|^([0-9]{5}-[0-9]{4})$|^([0-9]{5})$")) {//Blank, or #####, or #####-####, or #########
+			if(!IsZipValid(clinic.Zip)) {
 				stringBuilder.AppendLine(Lans.g("DoseSpot","Zip invalid."));
 			}
 			if(stringBuilder.ToString().Length>0) {
@@ -1101,6 +632,11 @@ namespace OpenDentBusiness {
 				}
 				throw new ODException(Lans.g("DoseSpot","Issues found for clinic")+" "+clinic.Abbr+":\r\n"+stringBuilder.ToString());
 			}
+		}
+
+		///<summary>True for #####, #####-#### or #########. Blank is invalid: DoseSpot needs a ZIP code for every clinic and patient.</summary>
+		public static bool IsZipValid(string zip) {
+			return Regex.IsMatch((zip??"").Trim(),@"^([0-9]{9})$|^([0-9]{5}-[0-9]{4})$|^([0-9]{5})$");
 		}
 
 		///<summary>Search the given address for a PO Box format.  Searches for the string "PO" case insensitive with or without periods. Ignores any match that has a non-space character before it (ex. "123 Ampo St" should be ignored even though it has 'po ')</summary>
@@ -1145,7 +681,7 @@ namespace OpenDentBusiness {
 			if(string.IsNullOrWhiteSpace(patient.Zip)) {
 				stringBuilder.AppendLine(Lans.g("DoseSpot","Blank zip."));
 			}
-			else if(!Regex.IsMatch(patient.Zip,@"^([0-9]{9})$|^([0-9]{5}-[0-9]{4})$|^([0-9]{5})$")) {//#####, #####-####, or #########
+			else if(!IsZipValid(patient.Zip)) {//#####, #####-####, or #########
 				stringBuilder.AppendLine(Lans.g("DoseSpot","Invalid zip."));
 			}
 			if(!IsPhoneNumberValid(primaryPhone)) {//If the primary phone number isn't valid, DoseSpot will break.
@@ -1156,70 +692,33 @@ namespace OpenDentBusiness {
 			}
 		}
 
-		///<summary>If isQueryString is false, this will be built as a json object</summary>
-		public static string GetPatientData(Patient patient,bool isQueryString=true) {
-			ValidatePatientData(patient);
-			string primaryPhone=GetPhoneAndType(patient,0,out string phoneType);
-			StringBuilder stringBuilder=new StringBuilder();
-			OIDExternal oIDExternal=DoseSpot.GetDoseSpotPatID(patient.PatNum);
-			if(oIDExternal!=null) {
-				stringBuilder=AddParameter(stringBuilder,"PatientId",oIDExternal.IDExternal,isQueryString);
+		///<summary>Adds the patient to DoseSpot (saving DoseSpot's patient ID in oidexternal) or updates DoseSpot's copy, and returns the
+		///OIDExternal. POST /api/patients is never retried automatically, so a lost answer never creates a duplicate patient.</summary>
+		public static OIDExternal AddOrUpdatePatient(DoseSpotCredentials doseSpotCredentials,Patient patient,bool isInteractive) {
+			Meth.NoCheckMiddleTierRole();
+			OIDExternal oIDExternal=GetDoseSpotPatID(patient.PatNum);
+			if(oIDExternal==null) {
+				return CreateOIDForPatient(PIn.Int(DoseSpotRESTV2.AddPatient(doseSpotCredentials,patient,isInteractive)),patient.PatNum);
 			}
-			stringBuilder=AddParameter(stringBuilder,"Prefix",Tidy(patient.Title,10),isQueryString);
-			stringBuilder=AddParameter(stringBuilder,"FirstName",Tidy(patient.FName,35),isQueryString);
-			stringBuilder=AddParameter(stringBuilder,"MiddleName",Tidy(patient.MiddleI,35),isQueryString);
-			stringBuilder=AddParameter(stringBuilder,"LastName",Tidy(patient.LName,35),isQueryString);
-			stringBuilder=AddParameter(stringBuilder,"Suffix","",isQueryString);//I don't see where we store suffixes.
-			stringBuilder=AddParameter(stringBuilder,"DateOfBirth",patient.Birthdate.ToShortDateString(),isQueryString);
-			stringBuilder=AddParameter(stringBuilder,"Gender",patient.Gender.ToString(),isQueryString);
-			stringBuilder=AddParameter(stringBuilder,"Address1",Tidy(patient.Address,35),isQueryString);
-			stringBuilder=AddParameter(stringBuilder,"Address2",Tidy(patient.Address2,35),isQueryString);
-			stringBuilder=AddParameter(stringBuilder,"City",Tidy(patient.City,35),isQueryString);
-			stringBuilder=AddParameter(stringBuilder,"State",patient.State,isQueryString);
-			stringBuilder=AddParameter(stringBuilder,"ZipCode",patient.Zip,isQueryString);
-			stringBuilder=AddParameter(stringBuilder,"PrimaryPhone",primaryPhone,isQueryString);
-			stringBuilder=AddParameter(stringBuilder,"PrimaryPhoneType",phoneType,isQueryString);
-			stringBuilder=AddParameter(stringBuilder,"PhoneAdditional1",GetPhoneAndType(patient,1,out phoneType),isQueryString);
-			stringBuilder=AddParameter(stringBuilder,"PhoneAdditionalType1",phoneType,isQueryString);
-			stringBuilder=AddParameter(stringBuilder,"PhoneAdditional2",GetPhoneAndType(patient,2,out phoneType),isQueryString);
-			stringBuilder=AddParameter(stringBuilder,"PhoneAdditionalType2",phoneType,isQueryString);
-			//sb=AddParameter(sb,"Height",Height,isQueryString);
-			//sb=AddParameter(sb,"Weight",Weight,isQueryString);
-			//sb=AddParameter(sb,"HeightMetric",HeightMetric,isQueryString);
-			//sb=AddParameter(sb,"WeightMetric",WeightMetric,isQueryString);
-			return stringBuilder.ToString();
+			DoseSpotRESTV2.EditPatient(doseSpotCredentials,patient,oIDExternal.IDExternal,isInteractive);
+			return oIDExternal;
 		}
 
 		///<summary>Set patient medication history consent for DoseSpot. Optionally pass in parameters for programErx and listProgramProperties.
 		///If left null they will be evaluated and set.  Throws exceptions.</summary>
-		public static void SetMedicationHistConsent(Patient patient,long clinicNum,Program program=null,List<ProgramProperty> listProgramProperties=null) {
+		public static void SetMedicationHistConsent(Patient patient,long clinicNum,Program program=null,List<ProgramProperty> listProgramProperties=null,
+			bool isInteractive=true)
+		{
 			ValidatePatientData(patient);
-			//Get Token
 			string doseSpotUserID=GetUserID(Security.CurUser,clinicNum);
 			GetClinicIdAndKey(clinicNum,doseSpotUserID,program,listProgramProperties,out string doseSpotClinicID,out string doseSpotClinicKey);
-			string token=DoseSpotREST.GetToken(doseSpotUserID,doseSpotClinicID,doseSpotClinicKey);
-			//Get DoseSpotPatID
-			OIDExternal oIDExternal=GetDoseSpotPatID(patient.PatNum);
-			if(oIDExternal==null) {
-				//Create a DoseSpot patient and save it for future uses with this patient.
-				oIDExternal=CreateOIDForPatient(PIn.Int(DoseSpotREST.AddPatient(token,patient)),patient.PatNum);
-			}
-			else {
-				DoseSpotREST.EditPatient(token,patient,oIDExternal.IDExternal);
-			}
-			//POST patient consent to DoseSpot
-			DoseSpotREST.PostMedicationHistoryConsent(token,oIDExternal.IDExternal);
-		}
-
-		private static string Tidy(string value,int length) {
-			if(value.Length<=length) {
-				return value;
-			}
-			return value.Substring(0,length);
+			DoseSpotCredentials doseSpotCredentials=DoseSpotCredentials.FromConfig(doseSpotClinicID,doseSpotClinicKey,doseSpotUserID);
+			OIDExternal oIDExternal=AddOrUpdatePatient(doseSpotCredentials,patient,isInteractive);
+			DoseSpotRESTV2.PostMedicationHistoryConsent(doseSpotCredentials,oIDExternal.IDExternal,isInteractive);
 		}
 
 		///<summary>Valid values for ordinal are 0 (for primary),1, or 2.</summary>
-		internal static string GetPhoneAndType(Patient patient,int ordinal,out string phoneType) {
+		public static string GetPhoneAndType(Patient patient,int ordinal,out string phoneType) {
 			List<string> listPhoneTypes=new List<string>();
 			List<string> listPhoneNumbers=new List<string>();
 			if(IsPhoneNumberValid(patient.HmPhone)) {
@@ -1290,546 +789,11 @@ namespace OpenDentBusiness {
 			}
 			return false;
 		}
-
-		///<summary>This phrase is a fallback incase for some reason the implementor didn't pass in a phrase.
-		///This is not recommended by DoseSpot because they will detect that the same phrase is being used for multiple requests</summary>
-		private static string Get32CharPhrase() {
-			if(_randomPhrase32==null) {
-				_randomPhrase32=MiscUtils.CreateRandomAlphaNumericString(32);
-			}
-			return _randomPhrase32;
-		}
-
-		private static byte[] GetBytesFromUTF8(string val) {
-			return new UTF8Encoding().GetBytes(val);//Get the value in Bytes from UTF8 String
-		}
-
-		private static byte[] GetSHA512Hash(byte[] arrayBytesToHash) {
-			byte[] arrayHash;
-			using(SHA512 sha512CryptoSP=new SHA512CryptoServiceProvider()) {//Use SHA512 to hash the byte value you just received
-				arrayHash=sha512CryptoSP.ComputeHash(arrayBytesToHash);
-			}
-			return arrayHash;
-		}
-
-		private static string RemoveExtraEqualSigns(string str) {
-			if(str.EndsWith("==")) {//If there are two = signs at the end, then remove them
-				str=str.Substring(0,str.Length-2);
-			}
-			return str;
-		}
 	}
 
+	///<summary>DoseSpot's medication and prescription status codes, and the names of two legacy property rows. The v1 REST client that used to live
+	///here is gone; DoseSpotRESTV2 and DoseSpotApiClient talk to API v2.</summary>
 	public class DoseSpotREST {
-
-		#region GET
-
-		public static string GetToken(string userId,string clinicId,string clinicKey) {
-			string userName=clinicId;
-			string password=MakeEncryptedClinicId(clinicKey,false);
-			string basicAuthContent=System.Convert.ToBase64String(System.Text.Encoding.GetEncoding("ISO-8859-1").GetBytes(userName+":"+password));
-			string body=$"grant_type=password&Username={userId}&Password={MakeEncryptedUserId(clinicKey,userId)}";
-			var resObj=Request(ApiRoute.Token,HttpMethod.Post,"Basic "+basicAuthContent,body,new {
-				access_token=""
-			},acceptType:"x-www-form-urlencoded");
-			return resObj.access_token;
-		}
-
-		///<summary>Gets a list of all prescriptions from DoseSpot for the passed in patientId.  Call GetDoseSpotPatID to convert patnum -> patientId.</summary>
-		public static List<DoseSpotPrescription> GetPrescriptions(string authToken,string patientId) {
-			//GET, don't need a body
-			string body="";
-			var resObj=Request(ApiRoute.GetPrescriptions,HttpMethod.Get,"Bearer "+authToken,body,new {
-				Items=new List<DoseSpotPrescription>(),
-				Result=new {ResultCode="",ResultDescription=""}
-			},"application/json",patientId);
-			if(resObj.Result.ResultCode.ToUpper().Contains("ERROR")) {
-				throw new ODException(Lans.g("DoseSpot","Error getting Prescriptions: ")+resObj.Result.ResultDescription);
-			}
-			return resObj.Items;
-		}
-
-		///<summary>Gets a list of all self reported medications from DoseSpot for the passed in patientId.  Call GetDoseSpotPatID to convert patnum -> patientId.</summary>
-		public static List<DoseSpotSelfReported> GetSelfReported(string authToken, string patientId) {
-			//GET, don't need a body
-			string body="";
-			var resObj=Request(ApiRoute.GetSelfReportedMedications,HttpMethod.Get,"Bearer "+authToken,body,new {
-				Items=new List<DoseSpotSelfReported>(),
-				Result=new {ResultCode="",ResultDescription=""}
-			},"application/json",patientId);
-			if(resObj.Result.ResultCode.ToUpper().Contains("ERROR")) {
-				throw new ODException(Lans.g("DoseSpot","Error getting self reported medications: ")+resObj.Result.ResultDescription);
-			}
-			return resObj.Items;
-		}
-
-		///<summary>Returns the StoreName in DoseSpot of the given pharmacy.</summary>
-		public static string GetPharmacyName(string authToken,int pharmacyID) {
-			//GET, don't need a body
-			string body="";
-			var resObj=Request(ApiRoute.GetPharmacy,HttpMethod.Get,"Bearer "+authToken,body,new {
-				Item=new {
-					StoreName="",
-				},
-				Result=new {
-					ResultCode="",
-					ResultDescription=""
-				}
-			},"application/json",pharmacyID.ToString());
-			if(resObj.Result.ResultCode.ToUpper().Contains("ERROR") || resObj.Item==null) {
-				throw new ODException(Lans.g("DoseSpot","Error getting Pharmacy: ")+(resObj.Result.ResultCode.ToUpper().Contains("ERROR")
-					? resObj.Result.ResultDescription 
-					: Lans.g("DoseSpot","Malformed response from DoseSpot")));
-			}
-			return resObj.Item.StoreName;
-		}
-
-
-		public static void GetNotificationCounts(string authToken,out int refillRequests,out int transactionErrors,out int pendingPerscriptions) {
-			//GET, don't need a body
-			string body="";
-			var resObj=Request(ApiRoute.GetNotificationCounts,HttpMethod.Get,"Bearer "+authToken,body,new {
-				RefillRequestsCount=new int(),
-				TransactionErrorsCount=new int(),
-				PendingPrescriptionsCount=new int(),
-				Result=new {
-					ResultCode="",
-					ResultDescription=""
-				}
-			});
-			if(resObj.Result.ResultCode.ToUpper().Contains("ERROR")) {
-				ODException.ErrorCodes errorCode=ODException.ErrorCodes.NotDefined;
-				if(Erx.IsUserAnEmployee(Security.CurUser) 
-					&& (resObj.Result.ResultDescription.ToLower().Contains("not authorized") || resObj.Result.ResultDescription.ToLower().Contains("unauthorized")))
-				{
-					errorCode=ODException.ErrorCodes.DoseSpotNotAuthorized;
-				}
-				throw new ODException(resObj.Result.ResultDescription,errorCode);
-			}
-			refillRequests=resObj.RefillRequestsCount;
-			transactionErrors=resObj.TransactionErrorsCount;
-			pendingPerscriptions=resObj.PendingPrescriptionsCount;
-		}
-		#endregion
-		#region POST
-
-		///<summary></summary>
-		public static string AddPatient(string authToken,Patient patient) {
-			Vitalsign vitalsign=Vitalsigns.GetOneWithValidHeightAndWeight(patient.PatNum);
-			string primaryPhone=DoseSpot.GetPhoneAndType(patient,0,out string phoneType);
-			if(patient.Age<18 && vitalsign==null) {
-				throw new ODException(Lans.g("DoseSpot","All patients under 18 must have a vital sign reading that includes height and weight. "
-					+"To add a vital sign to the patient, go to the 'Chart' module, and double click on the pink medical area. "
-					+"There is a tab in the next window labeled vitals, click it and add a vital reading that includes height and weight."));
-			}
-			PatientGender gender=patient.Gender;
-			if(gender==PatientGender.Other) {
-				gender=PatientGender.Unknown;
-			}
-			string body=JsonConvert.SerializeObject(
-				new {
-					FirstName=patient.FName.Trim(),
-					LastName=patient.LName.Trim(),
-					DateOfBirth=patient.Birthdate,
-					Gender=gender+1,
-					Address1=patient.Address.Trim(),
-					City=patient.City.Trim(),
-					State=patient.State.Trim(),
-					ZipCode=patient.Zip.Trim(),
-					PrimaryPhone=primaryPhone,
-					PrimaryPhoneType=phoneType,
-					Active="true"
-				});
-			if(vitalsign!=null) {
-				body=JsonConvert.SerializeObject(
-				new {
-					FirstName = patient.FName.Trim(),
-					LastName = patient.LName.Trim(),
-					DateOfBirth = patient.Birthdate,
-					Gender = gender+1,
-					Address1 = patient.Address.Trim(),
-					City = patient.City.Trim(),
-					State = patient.State.Trim(),
-					ZipCode = patient.Zip.Trim(),
-					PrimaryPhone = primaryPhone,
-					PrimaryPhoneType = phoneType,
-					Weight = vitalsign.Weight,
-					WeightMetric = 1,
-					Height = vitalsign.Height,
-					HeightMetric = 1,
-					Active = "true"
-				});
-			}
-			var resObj=Request(ApiRoute.AddPatient,HttpMethod.Post,"Bearer "+authToken,body,new {
-				Id="",
-				Result=new {ResultCode="",ResultDescription=""}
-			});
-			if(resObj.Result.ResultCode.ToUpper().Contains("ERROR")) {
-				throw new ODException(Lans.g("DoseSpot","Error adding patient: ")+resObj.Result.ResultDescription);
-			}
-			if(resObj.Id=="-1") {
-				throw new ODException(Lans.g("DoseSpot","Error adding patient, DoseSpot returned an invalid patient ID: ")+resObj.Result.ResultDescription);
-			}
-			return resObj.Id;
-		}
-
-		///<summary>Overwrites Patient Information on DoseSpots side.</summary>
-		public static string EditPatient(string authToken,Patient patient,string doseSpotPatId) {
-			Vitalsign vitalsign=Vitalsigns.GetOneWithValidHeightAndWeight(patient.PatNum);
-			string primaryPhone=DoseSpot.GetPhoneAndType(patient,0,out string phoneType);
-			if(patient.Age<18 && vitalsign==null) {
-				throw new ODException(Lans.g("DoseSpot","All patients under 18 must have a vital sign reading that includes height and weight. "
-					+"To add a vital sign to the patient, go to the 'Chart' module, and double click on the pink medical area. "
-					+"There is a tab in the next window labeled vitals, click it and add a vital reading that includes height and weight."));
-			}
-			PatientGender gender=patient.Gender;
-			if(gender==PatientGender.Other) {
-				gender=PatientGender.Unknown;
-			}
-			string body=JsonConvert.SerializeObject(
-				new {
-					FirstName=patient.FName.Trim(),
-					LastName=patient.LName.Trim(),
-					DateOfBirth=patient.Birthdate,
-					Gender=gender+1,
-					Address1=patient.Address.Trim(),
-					City=patient.City.Trim(),
-					State=patient.State.Trim(),
-					ZipCode=patient.Zip.Trim(),
-					PrimaryPhone=primaryPhone.Trim(),
-					PrimaryPhoneType=phoneType.Trim(),
-					Active="true"
-				});
-			if(vitalsign!=null) {
-				body=JsonConvert.SerializeObject(
-				new {
-					FirstName = patient.FName.Trim(),
-					LastName = patient.LName.Trim(),
-					DateOfBirth = patient.Birthdate,
-					Gender = gender+1,
-					Address1 = patient.Address.Trim(),
-					City = patient.City.Trim(),
-					State = patient.State.Trim(),
-					ZipCode = patient.Zip.Trim(),
-					PrimaryPhone = primaryPhone.Trim(),
-					PrimaryPhoneType = phoneType.Trim(),
-					Weight = vitalsign.Weight,
-					WeightMetric = 1,
-					Height = vitalsign.Height,
-					HeightMetric = 1,
-					Active = "true"
-				});
-			}
-			var resObj=Request(ApiRoute.EditPatient,HttpMethod.Post,"Bearer "+authToken,body,new {
-				Id="",
-				Result=new {ResultCode="",ResultDescription=""}
-			},"application/json",doseSpotPatId);
-			if(resObj.Result.ResultCode.ToUpper().Contains("ERROR")) {
-				throw new ODException(Lans.g("DoseSpot","Error editing patient: ")+resObj.Result.ResultDescription);
-			}
-			return resObj.Id;
-		}
-
-		///<summary>Only used by BCM at HQ.</summary>
-		public static void PostAddClinicToClinicGroup(string authToken,List<string> listClinicIDs,string clinicGroupName) {
-			List<long> listIDs=new List<long>();
-			try {
-				listIDs=listClinicIDs.ConvertAll(long.Parse);
-			}
-			catch {
-				throw new ODException(Lans.g("DoseSpot","Error posting Clinics to group, one or more clinic IDs are not valid numbers: "
-					+String.Join(",\r\n",listClinicIDs)));
-			}
-			string body=JsonConvert.SerializeObject(
-				new {
-					ClinicIDs=listIDs,
-					ClinicGroupName=clinicGroupName.Trim()
-				});
-			var resObj=Request(ApiRoute.PostClinicGroup,HttpMethod.Post,"Bearer "+authToken,body,new {
-				Id="",
-				Result=new { ResultCode="",ResultDescription=""}
-			});
-			if(resObj.Result.ResultCode.ToUpper().Contains("ERROR")) {
-				throw new ODException(Lans.g("DoseSpot","Error posting Clinics to group: ")+resObj.Result.ResultDescription);
-			}
-		}
-
-		public static void PostMedicationHistoryConsent(string authToken,string patientId) {
-			var resObj=Request(ApiRoute.LogMedicationHistoryConsent,HttpMethod.Post,"Bearer "+authToken,"",new {
-				Item="",
-				Result=new { ResultCode="",ResultDescription=""}
-			},"application/json",patientId);
-			if(resObj.Result.ResultCode.ToUpper().Contains("ERROR")) {
-				throw new ODException(Lans.g("DoseSpot","Error posting medication history consent: ")+resObj.Result.ResultDescription);
-			}
-		}
-
-		///<summary>Add a new clinic to DoseSpot and automatically add the provider from the authToken to that new clinic.
-		///On OK this method puts out the new clinicId and clinicKey as assigned by DoseSpot.</summary>
-		public static void PostClinic(string authToken,Clinic clinic,out string clinicID,out string clinicKey) {
-			clinicID="";
-			clinicKey="";
-			//From the DoseSpot REST API guide:
-			//	Note: After adding a new clinic, you MUST email the the Clinic Name and Clinic ID to DoseSpot:
-			//	STAGING: staging-clinicadd-notifications.907f8409@sniffle.dosespot.podio.com OR
-			//	PRODUCTION: production-clinicadd-notifications.ef8bed85@sniffle.dosespot.podio.com
-			//Phone type "7" means "Primary" which seemed like a good default because I don't see why a clinic needs a phone type.
-			string body=JsonConvert.SerializeObject(
-				new {
-					ClinicName=clinic.Abbr.Trim(),
-					Address1=clinic.Address.Trim(),
-					City=clinic.City.Trim(),
-					State=clinic.State.Trim(),
-					ZipCode=clinic.Zip.Trim(),
-					PrimaryPhone=clinic.Phone.Trim(),
-					PrimaryPhoneType="7"
-				});
-			var resObj=Request(ApiRoute.PostClinic,HttpMethod.Post,"Bearer "+authToken,body,new {
-				ClinicId="",
-				ClinicKey="",
-				Result=new {ResultCode="",ResultDescription=""}
-			});
-			if(resObj.Result.ResultCode.ToUpper().Contains("ERROR")) {
-				throw new ODException(Lans.g("DoseSpot","Error posting clinic: ")+resObj.Result.ResultDescription);
-			}
-			clinicID=resObj.ClinicId;
-			clinicKey=resObj.ClinicKey;
-		}
-
-		///<summary>POST a self reported medication to DoseSpot.  Only used for adding new medications.</summary>
-		public static int PostSelfReportedMedications(string authToken,string patientId,DoseSpotSelfReported doseSpotSelfReported) {
-			if(doseSpotSelfReported==null || doseSpotSelfReported.SelfReportedMedicationId==null) {
-				throw new ODException(Lans.g("DoseSpot","Error creating self reported medication ID: Could not convert medication ID to DoseSpot ID."));
-			}
-			bool doIncludeInactiveDate=doseSpotSelfReported.DateInactive.HasValue && doseSpotSelfReported.DateInactive.Value.Year>1880;
-			string body=JsonConvert.SerializeObject(
-				new {
-					DisplayName=doseSpotSelfReported.DisplayName.Trim(),
-					Status=(int)doseSpotSelfReported.MedicationStatus,
-					Comment=doseSpotSelfReported.Comment.Trim()
-				});
-			if(doIncludeInactiveDate) {
-				body=JsonConvert.SerializeObject(
-					new {
-						DisplayName = doseSpotSelfReported.DisplayName.Trim(),
-						Status = (int)doseSpotSelfReported.MedicationStatus,
-						InactiveDate = doseSpotSelfReported.DateInactive,
-						Comment = doseSpotSelfReported.Comment.Trim()
-					});
-			}
-			var resObj=Request(ApiRoute.PostSelfReportedMedications,HttpMethod.Post,"Bearer "+authToken,body,new {
-				Id=-1,
-				Result=new { ResultCode="",ResultDescription=""}
-			},"application/json",patientId,doseSpotSelfReported.SelfReportedMedicationId.ToString());
-			if(resObj.Result.ResultCode.ToUpper().Contains("ERROR")) {
-				throw new ODException(Lans.g("DoseSpot","Error posting medication: ")+resObj.Result.ResultDescription);
-			}
-			return resObj.Id;
-		}
-
-		///<summary>POST initiates the drug db migration for the specified client and clinics. </summary>
-		public static void PostInitiateDrugDbMigration(string authToken,List<string> listClinicIDs,string clientId,string medispanClientId) {
-			//DoseSpot docs specifically request an Array of clinicIDs.
-			int[] arrayIds=new int[listClinicIDs.Count];
-			try {
-				arrayIds=listClinicIDs.ConvertAll(int.Parse).ToArray();
-			}
-			catch {
-				throw new ODException(Lans.g("DoseSpot","Error migrating clinics to V2, one or more clinic IDs are not valid numbers. Please contact support."));
-			}
-			string body=JsonConvert.SerializeObject(
-				new {
-					MedispanClientId=medispanClientId,
-					ClinicIDs=arrayIds
-				});
-			var resObj=Request(ApiRoute.PostInitiateDrugDbMigration,HttpMethod.Post,"Bearer "+authToken,body,new {
-				Id="",
-				Result=new { ResultCode="",ResultDescription=""}
-			},"application/json",clientId
-			);
-			if(resObj.Result.ResultCode.ToUpper().Contains("ERROR")) {
-				throw new ODException(Lans.g("DoseSpot","Error requesting database migration: ")+resObj.Result.ResultDescription);
-			}
-		}
-
-		#endregion
-		#region PUT
-
-		///<summary>PUT a self reported medication to DoseSpot.  Only used for updating existing medications per DS API guide.</summary>
-		public static void PutSelfReportedMedications(string authToken,string patientId,DoseSpotSelfReported doseSpotSelfReported) {
-			if(doseSpotSelfReported==null || doseSpotSelfReported.SelfReportedMedicationId==null) {
-				throw new ODException(Lans.g("DoseSpot","Error creating self reported medication ID: Could not convert medication ID to DoseSpot ID."));
-			}
-			bool doIncludeInactiveDate=doseSpotSelfReported.DateInactive.HasValue && doseSpotSelfReported.DateInactive.Value.Year>1880;
-			string body=JsonConvert.SerializeObject(
-				new {
-					DisplayName=doseSpotSelfReported.DisplayName.Trim(),
-					Status=(int)doseSpotSelfReported.MedicationStatus,
-					Comment=doseSpotSelfReported.Comment.Trim()
-				});
-			if(doIncludeInactiveDate) {
-				body=JsonConvert.SerializeObject(
-					new {
-						DisplayName = doseSpotSelfReported.DisplayName.Trim(),
-						Status = (int)doseSpotSelfReported.MedicationStatus,
-						InactiveDate = doseSpotSelfReported.DateInactive,
-						Comment = doseSpotSelfReported.Comment.Trim()
-					});
-			}
-			var resObj=Request(ApiRoute.PutSelfReportedMedications,HttpMethod.Put,"Bearer "+authToken,body,new {
-				Id=-1,
-				Result=new { ResultCode="",ResultDescription=""}
-			},"application/json",patientId,doseSpotSelfReported.SelfReportedMedicationId.ToString());
-			if(resObj.Result.ResultCode.ToUpper().Contains("ERROR")) {
-				throw new ODException(Lans.g("DoseSpot","Error putting medication: ")+resObj.Result.ResultDescription);
-			}
-		}
-
-		#endregion
-
-		///<summary>Throws exception if the response from the server returned an http code of 300 or greater.</summary>
-		private static T Request<T>(ApiRoute apiRoute,HttpMethod httpMethod,string authHeader,string body,T responseType,string acceptType = "application/json",params string[] listRouteIDs) {
-			using(WebClient webClient=new WebClient()) {
-				webClient.Headers[HttpRequestHeader.Accept]=acceptType;
-				webClient.Headers[HttpRequestHeader.ContentType]=acceptType;
-				webClient.Headers[HttpRequestHeader.Authorization]=authHeader;
-				webClient.Encoding=UnicodeEncoding.UTF8;
-				//Post with Authorization headers and a body comprised of a JSON serialized anonymous type.
-				try {
-					string url="";
-					string response="";
-					//Only GET and POST are supported currently.
-					if(httpMethod==HttpMethod.Get) {
-						url=GetApiUrl(apiRoute,listRouteIDs);
-						response=webClient.DownloadString(url);
-					}
-					else if(httpMethod==HttpMethod.Post) {
-						url=GetApiUrl(apiRoute,listRouteIDs);
-						response=webClient.UploadString(url,HttpMethod.Post.Method,body);
-					}
-					else if(httpMethod==HttpMethod.Put) {
-						url=GetApiUrl(apiRoute,listRouteIDs);
-						response=webClient.UploadString(url,HttpMethod.Put.Method,body);
-					}
-					else {
-						throw new Exception("Unsupported HttpMethod type: "+httpMethod.Method);
-					}
-					if(ODBuild.IsDebug()) {
-						if((typeof(T)==typeof(string))) {//If user wants the entire json response as a string
-							return (T)Convert.ChangeType(response,typeof(T));
-						}
-					}
-					return JsonConvert.DeserializeAnonymousType(response,responseType);
-				}
-				catch(WebException wex) {
-					if(!(wex.Response is HttpWebResponse)) {
-						throw new ODException(Lans.g("DoseSpot","Could not connect to the DoseSpot server:")+"\r\n"+wex.Message,wex);
-					}
-					string responseErr="";
-					using(var streamReader=new StreamReader(((HttpWebResponse)wex.Response).GetResponseStream())) {
-						responseErr=streamReader.ReadToEnd();
-					}
-					if(string.IsNullOrWhiteSpace(responseErr)) {
-						//The response didn't contain a body.  Through my limited testing, it only happens for 401 (Unauthorized) requests.
-						if(wex.Response.GetType()==typeof(HttpWebResponse)) {
-							HttpStatusCode statusCode=((HttpWebResponse)wex.Response).StatusCode;
-							if(statusCode==HttpStatusCode.Unauthorized) {
-								throw new ODException(Lans.g("DoseSpot","Invalid DoseSpot credentials."));
-							}
-						}
-					}
-					string errorMsg=wex.Message+(string.IsNullOrWhiteSpace(responseErr) ? "" : "\r\nRaw response:\r\n"+responseErr);
-					throw new Exception(errorMsg,wex);//If it got this far and haven't rethrown, simply throw the entire exception.
-				}
-				catch(Exception ex) {
-					//WebClient returned an http status code >= 300
-					ex.DoNothing();
-					//For now, rethrow error and let whoever is expecting errors to handle them.
-					//We may enhance this to care about codes at some point.
-					throw;
-				}
-			}
-		}
-
-		///<summary>Returns the full URL according to the route/route id(s) given.  RouteIDs must be added in order left to right as they appear
-		///in the API call.</summary>
-		private static string GetApiUrl(ApiRoute apiRoute,params string[] arrayRouteIDs) {
-			string apiUrl=Introspection.GetOverride(Introspection.IntrospectionEntity.DoseSpotURL,"https://my.dosespot.com/webapi");
-			if(ODBuild.IsDebug()) {
-				apiUrl="https://my.staging.dosespot.com/webapi";
-			}
-			switch(apiRoute) {
-				case ApiRoute.Root:
-					//Do nothing.  This is to allow someone to quickly grab the URL without having to make a copy+paste reference.
-					break;
-				case ApiRoute.Token:
-					apiUrl+="/token";
-					break;
-				case ApiRoute.AddPatient:
-					apiUrl+="/api/patients";
-					break;
-				case ApiRoute.EditPatient:
-					apiUrl+=$"/api/patients/{arrayRouteIDs[0]}";
-					break;
-				case ApiRoute.GetNotificationCounts:
-					apiUrl+=$"/api/notifications/counts";
-					break;
-				case ApiRoute.GetPharmacy:
-					//routeId[0]=pharmacyId
-					apiUrl+=$"/api/pharmacies/{arrayRouteIDs[0]}";
-					break;
-				case ApiRoute.GetPrescriptions:
-					//routeId[0]=PatientId
-					apiUrl+=$"/api/patients/{arrayRouteIDs[0]}/prescriptions";
-					break;
-				case ApiRoute.GetSelfReportedMedications:
-					apiUrl+=$"/api/patients/{arrayRouteIDs[0]}/selfReportedMedications";
-					break;
-				case ApiRoute.LogMedicationHistoryConsent:
-					//routeId[0]=PatientId
-					apiUrl+=$"/api/patients/{arrayRouteIDs[0]}/logMedicationHistoryConsent";
-					break;
-				case ApiRoute.PostClinic:
-					apiUrl+=$"/api/clinics";
-					break;
-				case ApiRoute.PostClinicGroup:
-					apiUrl+=$"/api/clinics/clinicGroup";
-					break;
-				case ApiRoute.PutSelfReportedMedications:
-					//routeId[0]=PatientId, routeId[1]=selfReportedMedicationId
-					apiUrl+=$"/api/patients/{arrayRouteIDs[0]}/selfReportedMedications/freetext/{arrayRouteIDs[1]}";
-					break;
-				case ApiRoute.PostSelfReportedMedications:
-					//routeId[0]=PatientId
-					apiUrl+=$"/api/patients/{arrayRouteIDs[0]}/selfReportedMedications/freetext";
-					break;
-				case ApiRoute.PostInitiateDrugDbMigration:
-					//routeId[0]=ClientId
-					apiUrl+=$"/api/client/{arrayRouteIDs[0]}/initiateDrugDbMigration";
-					break;
-				default:
-					break;
-			}
-			return apiUrl;
-		}
-
-		private enum ApiRoute {
-			Root,
-			Token,
-			AddPatient,
-			EditPatient,
-			GetPharmacy,
-			GetPrescriptions,
-			GetNotificationCounts,
-			GetSelfReportedMedications,
-			LogMedicationHistoryConsent,
-			PostClinic,
-			PutSelfReportedMedications,
-			PostClinicGroup,
-			PostSelfReportedMedications,
-			PostInitiateDrugDbMigration,
-		}
-
 		///<summary>Medication statuses used by DoseSpot.  Unknown(0) and Inactive(2) are depricated.  This enum intentionally starts at 0 according to DoseSpot.</summary>
 		public enum MedicationStatus {
 			Unknown,//Depricated by DoseSpot
@@ -1864,71 +828,14 @@ namespace OpenDentBusiness {
 			NotAPresciption,
 		}
 
-		///<summary>This method uses the same equation as DoseSpot's other webservice encryption method</summary>
-		private static string MakeEncryptedClinicId(string clinicKey,bool isQueryStr=true) {
-			return DoseSpot.CreateSsoCode(clinicKey,isQueryStr);
-		}
-
-		///<summary>This method uses the same equation as DoseSpot's other webservice encryption method.</summary>
-		private static string MakeEncryptedUserId(string clinicKey,string userID,bool isQueryStr=true) {
-			return DoseSpot.CreateSsoUserIdVerify(clinicKey,userID,isQueryStr);
-		}
-
-		///<summary>Helper function that takes in a MedicationPat and creates a DoseSpot SelfReported object with all required fields for a POST/PUT.</summary>
-		public static DoseSpotSelfReported MedicationPatToDoseSpotSelfReport(MedicationPat medicationPat) {
-			DoseSpotSelfReported doseSpotSelfReported=new DoseSpotSelfReported();
-			doseSpotSelfReported.SelfReportedMedicationId=0;
-			//If we have the ErxGuid then it has already been sent to DS.
-			if(!medicationPat.ErxGuid.IsNullOrEmpty()) {
-				//Remove any possible prefixes from the ErxGuid. It will either be a DS prefix, an OD prefix, or have no prefix at all if it came from an Rx.
-				int ID=0;
-				string guid=medicationPat.ErxGuid;
-				//If it has the unsent prefix we want to intentionally set the ID to 0 so we post a new self reported and get an ID back from DS.
-				if(!guid.StartsWith(Erx.UnsentPrefix)) {
-					guid=Regex.Replace(guid,Erx.DoseSpotPatReportedPrefix,"");//Remove DS prefix.
-					guid=Regex.Replace(guid,Erx.OpenDentalErxPrefix,"");//Remove OD prefix.
-					int.TryParse(guid,out ID);
-				}
-				doseSpotSelfReported.SelfReportedMedicationId=ID;
-			}
-			//Set the DisplayName.
-			if(string.IsNullOrWhiteSpace(medicationPat.MedDescript) && medicationPat.MedicationNum!=0) {
-				Medication medication=Medications.GetMedication(medicationPat.MedicationNum);
-				doseSpotSelfReported.DisplayName=medication.MedName;
-			}
-			else {
-				doseSpotSelfReported.DisplayName=medicationPat.MedDescript;
-			}
-			//Strip any newlines before sending. Newlines cause parsing errors for the DoseSpot API. The changes to this note will be synced back into OD when the eRx window is closed.
-			doseSpotSelfReported.Comment=Regex.Replace(medicationPat.PatNote,@"\n|\r"," ");
-			//500 characters is the max size for the comment field. Going over 500 will return a 400 error from the DoseSpot API.
-			if(doseSpotSelfReported.Comment.Length>500) {
-				SecurityLogs.MakeLogEntry(EnumPermType.LogDoseSpotMedicationNoteEdit,medicationPat.PatNum,"Medication patient note automatically reduced to 500 characters for sending to DoseSpot. Original note: "+"\n"
-					+medicationPat.PatNote);
-				doseSpotSelfReported.Comment=doseSpotSelfReported.Comment.Substring(0,500);
-			}
-			//Set the MedicationStatus.
-			doseSpotSelfReported.MedicationStatus=MedicationStatus.Discontinued;
-			if(medicationPat.DateStop.Year<1880 || medicationPat.DateStop>=DateTime.Today) {
-				doseSpotSelfReported.MedicationStatus=MedicationStatus.Active;
-			}
-			else if(medicationPat.DateStop<DateTime.Today) {
-				doseSpotSelfReported.MedicationStatus=MedicationStatus.Completed;
-				doseSpotSelfReported.DateInactive=medicationPat.DateStop;
-				//A comment is required when a medication has been discontinued (figured out through testing, not in docs)
-				if(string.IsNullOrWhiteSpace(doseSpotSelfReported.Comment)) {
-					//We were infinitely adding this note which was causing the comment to be greater than 500 characters and caused a 400 from DS.
-					doseSpotSelfReported.Comment="Discontinued in Open Dental";
-				}
-			}
-			return doseSpotSelfReported;
-		}
-
 		public class PropertyDescs {
+			///<summary>Set to 2 when eRx Setup saves. No longer read: every call uses API v2.</summary>
 			public static string DoseSpotApiVersion="DoseSpotApiVersion";
+			///<summary>Left untouched. Was Open Dental's v1-to-v2 migration flag.</summary>
 			public static string DoseSpotApiMigrationRequested="DoseSpotApiMigrationRequested";
 		}
 	}
+
 
 	///<summary>This is a class to reflect the response object from DoseSpot's RESTful JSON objects.  
 	///Fields are nullable due to DoseSpot returning null values in some of their fields during testing, 
