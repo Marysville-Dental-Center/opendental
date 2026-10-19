@@ -383,16 +383,6 @@ namespace OpenDental.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        public static System.Drawing.Bitmap CareCredit_Button_NoTag_26x90 {
-            get {
-                object obj = ResourceManager.GetObject("CareCredit_Button_NoTag_26x90", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to {\rtf1\ansi\ansicpg1252\deff0\deflang1033{\fonttbl{\f0\froman\fcharset0 Times New Roman;}{\f1\fswiss\fcharset0 Arial;}}
         ///{\colortbl ;\red0\green0\blue0;}
         ///{\*\generator Msftedit 5.41.15.1507;}\viewkind4\uc1\pard\cf1\b\f0\fs24 CDT Content End User License\par
@@ -656,25 +646,6 @@ namespace OpenDental.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Copyright (c) 2015 Dropbox Inc.
-        ///
-        ///Permission is hereby granted, free of charge, to any person obtaining
-        ///a copy of this software and associated documentation files (the
-        ///&quot;Software&quot;), to deal in the Software without restriction, including
-        ///without limitation the rights to use, copy, modify, merge, publish,
-        ///distribute, sublicense, and/or sell copies of the Software, and to
-        ///permit persons to whom the Software is furnished to do so, subject to
-        ///the following conditions:
-        ///
-        ///The above copyright notice and this [rest of string was truncated]&quot;;.
-        /// </summary>
-        public static string Dropbox_Api {
-            get {
-                return ResourceManager.GetString("Dropbox_Api", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
         public static System.Drawing.Bitmap editPencil {
@@ -740,36 +711,6 @@ namespace OpenDental.Properties {
         public static System.Drawing.Bitmap Figure {
             get {
                 object obj = ResourceManager.GetObject("Figure", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        public static System.Drawing.Bitmap google_signin_focus {
-            get {
-                object obj = ResourceManager.GetObject("google_signin_focus", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        public static System.Drawing.Bitmap google_signin_normal {
-            get {
-                object obj = ResourceManager.GetObject("google_signin_normal", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        public static System.Drawing.Bitmap google_signin_pressed {
-            get {
-                object obj = ResourceManager.GetObject("google_signin_pressed", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -1123,16 +1064,6 @@ namespace OpenDental.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        public static System.Drawing.Bitmap payconnect_btn_26 {
-            get {
-                object obj = ResourceManager.GetObject("payconnect-btn-26", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to &lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
         ///&lt;Report xmlns=&quot;http://schemas.microsoft.com/sqlserver/reporting/2005/01/reportdefinition&quot; xmlns:rd=&quot;http://schemas.microsoft.com/SQLServer/reporting/reportdesigner&quot;&gt;
         ///  &lt;Description&gt;
@@ -1152,16 +1083,6 @@ namespace OpenDental.Properties {
         public static string PaymentsRDL {
             get {
                 return ResourceManager.GetString("PaymentsRDL", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        public static System.Drawing.Bitmap PaySimple_Button_2019_26x75 {
-            get {
-                object obj = ResourceManager.GetObject("PaySimple_Button_2019_26x75", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
             }
         }
         

@@ -8725,7 +8725,6 @@
     <None Include="Resources\Pearl.txt" />
     <None Include="Resources\opendentalapienduserlicense.txt" />
     <Resource Include="Resources\bola_launch.png" />
-    <None Include="Resources\payconnect-btn-26.png" />
     <None Include="Resources\Icon1.ico" />
     <None Include="Resources\XamlStyle_ToolBarButton.txt" />
     <None Include="Resources\XamlStyle_ToolBar.txt" />
@@ -8745,18 +8744,13 @@
     <None Include="Resources\Imaging32.gif" />
     <None Include="Resources\Chart32.gif" />
     <None Include="Resources\Family32.gif" />
-    <None Include="Resources\CareCredit_Button_NoTag_26x90.png" />
     <None Include="Resources\house16.png" />
     <Resource Include="Resources\topazPen10.gif" />
     <Resource Include="Resources\eSig.gif" />
     <Resource Include="Resources\deleteX10.gif" />
-    <None Include="Resources\google_signin_pressed.png" />
-    <None Include="Resources\google_signin_focus.png" />
-    <None Include="Resources\google_signin_normal.png" />
     <None Include="Resources\Sparks3D.txt" />
     <None Include="Resources\splashBenco.jpg" />
     <None Include="Resources\benco_logo.png" />
-    <None Include="Resources\PaySimple_Button_2019_26x75.png" />
     <None Include="Resources\Zxing.txt" />
     <None Include="Resources\butPin22.gif" />
     <None Include="Resources\ExternalLink.png" />
@@ -8764,7 +8758,6 @@
     <None Include="Resources\opendentallicense.txt" />
     <None Include="Resources\downArrowWinForm.png" />
     <None Include="Resources\setupGears.gif" />
-    <Resource Include="Resources\PaySimple_Button.png" />
     <None Include="Resources\Microphone_22px.png" />
     <None Include="Resources\Microphone_30px.png" />
     <Resource Include="Resources\SharpDX.txt" />
@@ -8790,7 +8783,6 @@
     <None Include="Resources\Mentalis.txt" />
     <None Include="Resources\Ionic.txt" />
     <None Include="Resources\Bsd.txt" />
-    <None Include="Resources\Dropbox_Api.txt" />
     <None Include="Resources\CDT Content End User License.txt" />
     <None Include="Resources\gtaicon3.png" />
     <None Include="Resources\NoFigure.png" />
