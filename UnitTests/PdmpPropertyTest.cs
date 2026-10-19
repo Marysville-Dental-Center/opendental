@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenDentBusiness;
@@ -7,6 +9,8 @@ using UnitTestsCore;
 namespace UnitTests {
 	[TestClass]
 	public class PdmpPropertyTest:TestBase {
+		///<summary>Validate requires an absolute HTTPS URL on a host that isn't blocked (VendorUrlPolicy).</summary>
+		private const string PMP_URL="https://pmp.example.test/test";
 
 		///<summary>This method will execute only once, just before any tests in this class run.</summary>
 		[ClassInitialize]
@@ -103,7 +107,11 @@ namespace UnitTests {
 			didThrow=false;
 			properties.PdmpPat.SSN="555555555";
 			properties.Dea="789456123";
-			properties.Url="www.fakeurl.com/test";
+			//Everything else is valid now. A bare host or a plain http URL is still refused.
+			SetCredentials(properties,false);
+			AssertUrlRefused(properties,progCur,"www.fakeurl.com/test");
+			AssertUrlRefused(properties,progCur,"http://pmp.example.test/test");
+			properties.Url=PMP_URL;
 			try {
 			properties.Validate(progCur);
 			}
@@ -131,15 +139,18 @@ namespace UnitTests {
 				PdmpPat=pat,
 				StateAbbr=state,
 				ProvLicenseNum="A1-SteakSauce",
-				Url="www.fakesite.com",
+				Url=PMP_URL,
 				Dea="123456789",
 			};
+			SetCredentials(props,false);
 			try {
 				props.Validate(progCur);
 			}
-			catch {
-				Assert.Fail();
+			catch(Exception ex) {
+				Assert.Fail(ex.Message);
 			}
+			AssertUrlRefused(props,progCur,"www.fakesite.com");
+			AssertUrlRefused(props,progCur,"http://www.fakesite.com");
 		}
 
 		[TestMethod]
@@ -206,7 +217,7 @@ namespace UnitTests {
 			}
 			Assert.IsTrue(didThrow);
 			didThrow=false;
-			properties.Url="www.fakebamboowebsite.eu";
+			properties.Url=PMP_URL;
 			try {
 			properties.Validate(progCur);
 			}
@@ -217,8 +228,7 @@ namespace UnitTests {
 			Assert.IsTrue(didThrow);
 			didThrow=false;
 			properties.StateAbbr="MA";
-			Secrets.Encrypt("F@k3C3Rt10010010011011",out properties.BambooClientKey);
-			Secrets.Encrypt("f@k3p@$$w0rd",out properties.BambooClientPassword);
+			SetCredentials(properties,true);
 			try {
 			properties.Validate(progCur);
 			}
@@ -239,18 +249,15 @@ namespace UnitTests {
 				Zip="12345",
 				Birthdate=DateTime.Today,
 			};
-			Secrets.Encrypt("F@k3C3Rt10010010011011",out string encryptedKey);
-			Secrets.Encrypt("f@k3p@$$w0rd",out string encryptedPassword);
 			PdmpProperty props = new PdmpProperty() {
 				PdmpProv=prov,
 				PdmpPat=pat,
 				StateAbbr=state,
 				ProvLicenseNum="A1-SteakSauce",
-				Url="www.fakesite.com",
+				Url=PMP_URL,
 				Dea="123456789",
-				BambooClientKey=encryptedKey,
-				BambooClientPassword=encryptedPassword
 			};
+			SetCredentials(props,true);
 			bool didThrow=false;
 			try {
 			props.Validate(progCur);
@@ -260,8 +267,47 @@ namespace UnitTests {
 				didThrow=true;
 			}
 			Assert.IsFalse(didThrow);
+			AssertUrlRefused(props,progCur,"www.fakesite.com");
+			AssertUrlRefused(props,progCur,"http://www.fakesite.com");
 		}
 		#endregion
+
+		///<summary>What Setup holds once the office has entered its own account: a username and password, and for Bamboo an imported client
+		///certificate. Validate checks these unless the database is in testing mode (IntrospectionItems). The certificate is a self-signed one made
+		///here at test time, stored as PdmpCertificate.SaveImported stores it: the .pfx as base64 and its password.</summary>
+		private static void SetCredentials(PdmpProperty properties,bool isBamboo) {
+			properties.Username="office-user";
+			properties.Password="office-password";
+			if(!isBamboo) {
+				return;
+			}
+			string password="pfx-password";
+			using(RSA rsa=RSA.Create(2048)) {
+				CertificateRequest certificateRequest=new CertificateRequest("CN=PDMP Unit Test Client",rsa,HashAlgorithmName.SHA256,RSASignaturePadding.Pkcs1);
+				certificateRequest.CertificateExtensions.Add(
+					new X509EnhancedKeyUsageExtension(new OidCollection { new Oid(PdmpCertificate.OidClientAuthentication) },false));
+				using(X509Certificate2 certificate=certificateRequest.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1),DateTimeOffset.UtcNow.AddYears(1))) {
+					properties.BambooClientKey=Convert.ToBase64String(certificate.Export(X509ContentType.Pfx,password));
+				}
+			}
+			properties.BambooClientPassword=password;
+		}
+
+		///<summary>Sets the URL, asserts that Validate throws and names the URL, then puts the previous URL back.</summary>
+		private static void AssertUrlRefused(PdmpProperty properties,OpenDentBusiness.Program progCur,string url) {
+			string urlOld=properties.Url;
+			properties.Url=url;
+			try {
+				properties.Validate(progCur);
+				Assert.Fail("Validate accepted the URL "+url);
+			}
+			catch(ODException ex) {
+				StringAssert.Contains(ex.Message,"Program url is not valid.");
+			}
+			finally {
+				properties.Url=urlOld;
+			}
+		}
 
 	}
 }
