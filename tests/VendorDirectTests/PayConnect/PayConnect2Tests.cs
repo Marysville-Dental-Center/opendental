@@ -441,6 +441,76 @@ namespace VendorDirectTests.PayConnectV2 {
 			Assert.AreEqual(1,fakeHttpHandler.Requests.Count(x => x.Method==HttpMethod.Post));
 		}
 
+		///<summary>A 2xx create answer whose source this model doesn't know: the card may well have been charged.</summary>
+		private const string UNREADABLE_CREATE_BODY="{\"referenceId\":\"R-UNR\",\"status\":\"Processed\",\"source\":\"NewValue\",\"type\":\"Sale\","
+			+"\"amount\":2500,\"invoiceNumber\":\"OPMS-unr000000001\"}";
+
+		[TestMethod]
+		public void ParseHttpResponse_Unreadable2xxIsNotAPlainError() {
+			PayConnect2.PayConnect2Response response=PayConnect2.ParseHttpResponse(PayConnect2.ApiRoute.CreateTransaction,HttpStatusCode.OK,
+				UNREADABLE_CREATE_BODY);
+			Assert.AreEqual(PayConnect2.ResponseType.Error,response.ResponseType);
+			Assert.AreEqual(PayConnect2.PayConnectRequestOutcome.ResponseUnreadable,response.Outcome);
+			Assert.AreEqual(PayConnect2.PayConnectErrorKind.NoAnswer,response.ErrorResponse.Kind);
+			StringAssert.Contains(response.ErrorResponse.Message,"may or may not");
+			Assert.IsFalse(response.ErrorResponse.Message.Contains("R-UNR"),"The body is never put in the message.");
+		}
+
+		[TestMethod]
+		public void UnreadableCreateResponse_NotFoundWarnsAndNamesTheInvoiceNumber() {
+			FakeHttpHandler fakeHttpHandler=UseFakeHandler();
+			fakeHttpHandler.Enqueue(HttpStatusCode.OK,UNREADABLE_CREATE_BODY);
+			fakeHttpHandler.Enqueue(HttpStatusCode.OK,"[]");
+			PayConnect2.PayConnect2Response response=PostLostCreate("OPMS-unr000000001");
+			Assert.AreEqual(PayConnect2.ResponseType.Error,response.ResponseType);
+			Assert.AreNotEqual(PayConnect2.PayConnectRequestOutcome.Response,response.Outcome,"Never an ordinary decline.");
+			Assert.AreEqual(PayConnect2.PayConnectRequestOutcome.ResponseUnreadable,response.Outcome);
+			Assert.AreEqual("OPMS-unr000000001",response.CorrelationId);
+			StringAssert.Contains(response.ErrorResponse.Message,"OPMS-unr000000001");
+			StringAssert.Contains(response.ErrorResponse.Message,"may or may not");
+			StringAssert.StartsWith(response.ErrorResponse.Message,"PayConnect answered, but its answer could not be read");
+			Assert.AreEqual(2,fakeHttpHandler.Requests.Count);
+			Assert.AreEqual(1,fakeHttpHandler.Requests.Count(x => x.Method==HttpMethod.Post),"The create is never resent.");
+			Assert.AreEqual("/sandbox/payments/transactions",fakeHttpHandler.Requests[0].RequestUri.AbsolutePath);
+			Assert.AreEqual("/sandbox/payments/transactions/list",fakeHttpHandler.Requests[1].RequestUri.AbsolutePath);
+			Assert.AreNotEqual("0",PayConnect2.ApiResponseToPayConnectResponse(response).StatusCode);
+		}
+
+		[TestMethod]
+		public void UnreadableCreateResponse_ListLookupFailureStillWarns() {
+			FakeHttpHandler fakeHttpHandler=UseFakeHandler();
+			fakeHttpHandler.Enqueue(HttpStatusCode.OK,UNREADABLE_CREATE_BODY);
+			fakeHttpHandler.Enqueue(HttpStatusCode.NotFound,"{\"errorType\":\"RESPONSE\",\"error\":{\"message\":\"Not found\"}}");
+			PayConnect2.PayConnect2Response response=PostLostCreate("OPMS-unr000000002");
+			Assert.AreEqual(PayConnect2.PayConnectRequestOutcome.ResponseUnreadable,response.Outcome);
+			StringAssert.Contains(response.ErrorResponse.Message,"could not be checked");
+			StringAssert.Contains(response.ErrorResponse.Message,"OPMS-unr000000002");
+			Assert.AreEqual(1,fakeHttpHandler.Requests.Count(x => x.Method==HttpMethod.Post),"The create is never resent.");
+		}
+
+		[TestMethod]
+		public void UnreadableCreateResponse_ApprovedListMatchIsReconciled() {
+			FakeHttpHandler fakeHttpHandler=UseFakeHandler();
+			fakeHttpHandler.Enqueue(HttpStatusCode.OK,UNREADABLE_CREATE_BODY);
+			fakeHttpHandler.Enqueue(HttpStatusCode.OK,"["+MakeTransactionJson("R-UNR","OPMS-unr000000003")+"]");
+			fakeHttpHandler.Enqueue(HttpStatusCode.OK,MakeTransactionJson("R-UNR","OPMS-unr000000003"));
+			PayConnect2.PayConnect2Response response=PostLostCreate("OPMS-unr000000003");
+			Assert.AreEqual(PayConnect2.ResponseType.GetStatus,response.ResponseType);
+			Assert.AreEqual(PayConnect2.PayConnectRequestOutcome.Reconciled,response.Outcome);
+			Assert.AreEqual(1,fakeHttpHandler.Requests.Count(x => x.Method==HttpMethod.Post),"The create is never resent.");
+			PayConnectResponse payConnectResponse=PayConnect2.ApiResponseToPayConnectResponse(response);
+			Assert.AreEqual("0",payConnectResponse.StatusCode);
+			Assert.AreEqual("R-UNR",payConnectResponse.RefNumber);
+			Assert.AreEqual(25m,payConnectResponse.Amount);
+		}
+
+		[TestMethod]
+		public void UnreadableRefundResponse_IsNotAPlainError() {
+			PayConnect2.PayConnect2Response response=PayConnect2.ParseHttpResponse(PayConnect2.ApiRoute.RefundTransaction,HttpStatusCode.OK,"not json");
+			Assert.AreEqual(PayConnect2.PayConnectRequestOutcome.ResponseUnreadable,response.Outcome);
+			StringAssert.Contains(response.ErrorResponse.Message,"may or may not");
+		}
+
 		[TestMethod]
 		public void CreateNotSent_IsNotReconciled() {
 			FakeHttpHandler fakeHttpHandler=UseFakeHandler();

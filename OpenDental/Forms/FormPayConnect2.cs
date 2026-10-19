@@ -340,8 +340,9 @@ namespace OpenDental {
 
 		///<summary>Handles a call that didn't get a normal answer. NotSent: says nothing was charged and returns false, so the user can try again.
 		///SentNoResponse (the library already searched the transaction list for the correlation ID and didn't find it): writes the ID to the security
-		///log, warns that the payment may or may not have gone through, and returns true so the payment window records the outcome. Anything else
-		///returns true.</summary>
+		///log, warns that the payment may or may not have gone through, and returns true so the payment window records the outcome.
+		///ResponseUnreadable (a 2xx answer whose body couldn't be read, and for a create not found in the transaction list either) is handled the same
+		///way. Anything else returns true.</summary>
 		private bool CheckOutcome(PayConnect2Response payConnect2Response,string correlationId) {
 			if(payConnect2Response==null) {
 				return true;
@@ -350,8 +351,13 @@ namespace OpenDental {
 				MsgBox.Show(payConnect2Response.ErrorResponse?.Message??Lan.g(this,"Could not reach PayConnect. No charge was made."));
 				return false;
 			}
-			if(payConnect2Response.Outcome==PayConnectRequestOutcome.SentNoResponse) {
+			if(payConnect2Response.Outcome==PayConnectRequestOutcome.SentNoResponse
+				|| payConnect2Response.Outcome==PayConnectRequestOutcome.ResponseUnreadable)
+			{
 				string logText="PayConnect did not answer.";
+				if(payConnect2Response.Outcome==PayConnectRequestOutcome.ResponseUnreadable) {
+					logText="PayConnect answered, but its answer could not be read.";
+				}
 				if(!string.IsNullOrEmpty(correlationId)) {
 					logText+=" The transaction was not found in its transaction list. PayConnect invoice number: "+correlationId;
 				}

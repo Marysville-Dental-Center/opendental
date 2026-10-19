@@ -41,6 +41,7 @@ namespace OpenDentBusiness {
 		private const string MSG_SECRET_REJECTED="The PayConnect Secret for this clinic was not accepted.";
 		private const string MSG_NOT_SENT="Could not reach PayConnect. Nothing was sent, so no charge was made.";
 		private const string MSG_NO_ANSWER="PayConnect did not answer. The request may or may not have been processed.";
+		private const string MSG_UNREADABLE="PayConnect answered, but its answer could not be read. The request may or may not have been processed.";
 		private static readonly ReadOnlyCollection<string> _listAllowedHostPatterns=new ReadOnlyCollection<string>(new[] { "*."+AllowedDomain });
 		///<summary>Default timeout for a request.</summary>
 		public static readonly TimeSpan TimeoutDefault=TimeSpan.FromSeconds(30);
@@ -518,7 +519,7 @@ namespace OpenDentBusiness {
 			return Send(route,method,apiCredentials,body,queryStr);
 		}
 
-		///<summary>Sends a create (POST) and reconciles a lost response by invoiceNumber.</summary>
+		///<summary>Sends a create (POST) and reconciles a lost or unreadable response by invoiceNumber.</summary>
 		private static PayConnect2Response SendCreate(ApiRoute route,long clinicNum,string invoiceNumber,string body) {
 			if(Mock!=null) {
 				return MockRequestResponse();
@@ -547,13 +548,15 @@ namespace OpenDentBusiness {
 		private static PayConnect2Response SendCreate(ApiRoute route,ApiCredentials apiCredentials,string invoiceNumber,string body) {
 			PayConnect2Response response=Send(route,HttpMethod.Post,apiCredentials,body);
 			response.CorrelationId=invoiceNumber;
-			if(response.Outcome!=PayConnectRequestOutcome.SentNoResponse) {
+			//A 2xx whose body couldn't be read (an enum value this model doesn't know, say) may well be an approval: it is never a plain error.
+			if(response.Outcome!=PayConnectRequestOutcome.SentNoResponse && response.Outcome!=PayConnectRequestOutcome.ResponseUnreadable) {
 				return response;
 			}
 			return Reconcile(apiCredentials,invoiceNumber,response);
 		}
 
-		///<summary>After a create was sent but no answer came: looks for the transaction by its correlation ID. A list entry is only a pointer: an
+		///<summary>After a create was sent but no answer came, or a 2xx answer came that couldn't be read: looks for the transaction by its
+		///correlation ID. A list entry is only a pointer: an
 		///entry whose status is not an approval (IsApprovedStatus) gives an Error response (Outcome Reconciled) that carries the vendor's status, as a
 		///decline that arrived normally would. An approved entry is re-read with the status route so the result has the full model (amount, surcharge,
 		///card); the re-read must also show an approval. Found and approved: a GetStatus response with Outcome Reconciled, as if the answer had
@@ -584,12 +587,18 @@ namespace OpenDentBusiness {
 				}
 			}
 			string message;
+			if(responseLost.Outcome==PayConnectRequestOutcome.ResponseUnreadable) {
+				message="PayConnect answered, but its answer could not be read";
+			}
+			else {
+				message="PayConnect did not answer";
+			}
 			if(didLookupFail) {
-				message="PayConnect did not answer, and its transaction list could not be checked. The payment may or may not have gone through. "
+				message+=", and its transaction list could not be checked. The payment may or may not have gone through. "
 					+"Look for invoice number "+invoiceNumber+" in the PayConnect portal before trying again.";
 			}
 			else {
-				message="PayConnect did not answer, and the transaction was not found in PayConnect's transaction list. The payment may or may not have "
+				message+=", and the transaction was not found in PayConnect's transaction list. The payment may or may not have "
 					+"gone through. Look for invoice number "+invoiceNumber+" in the PayConnect portal before trying again.";
 			}
 			responseLost.ErrorResponse.Error=message;
@@ -681,8 +690,8 @@ namespace OpenDentBusiness {
 			return ParseHttpResponse(route,statusCode,responseBody);
 		}
 
-		///<summary>Turns an HTTP status and body into a response. 2xx: the route's model. Anything else: an Error response from ParseErrorResponse.
-		///Public for tests.</summary>
+		///<summary>Turns an HTTP status and body into a response. 2xx: the route's model, or, if the body can't be read, an Error response with Outcome
+		///ResponseUnreadable (the request may have been processed). Anything else: an Error response from ParseErrorResponse. Public for tests.</summary>
 		public static PayConnect2Response ParseHttpResponse(ApiRoute route,HttpStatusCode statusCode,string responseBody) {
 			int code=(int)statusCode;
 			if(code>=200 && code<300) {
@@ -694,12 +703,13 @@ namespace OpenDentBusiness {
 				}
 				catch(Exception ex) {
 					ex.DoNothing();
-					//The body is never put in the message: it can carry card or patient details.
+					//The body is never put in the message: it can carry card or patient details. A 2xx means PayConnect accepted the request, so this
+					//is not a plain failure: creates are reconciled by their correlation ID, and the user is warned that it may have gone through.
 					PayConnect2Response responseBad=new PayConnect2Response();
 					responseBad.ResponseType=ResponseType.Error;
 					responseBad.httpStatusCode=statusCode;
-					responseBad.Outcome=PayConnectRequestOutcome.Response;
-					responseBad.ErrorResponse=MakeErrorResponse(PayConnectErrorKind.Vendor,"Error processing the PayConnect response.");
+					responseBad.Outcome=PayConnectRequestOutcome.ResponseUnreadable;
+					responseBad.ErrorResponse=MakeErrorResponse(PayConnectErrorKind.NoAnswer,MSG_UNREADABLE);
 					return responseBad;
 				}
 			}
@@ -2463,9 +2473,12 @@ namespace OpenDentBusiness {
 			NotSent,
 			///<summary>The request was sent but no answer came (timeout, dropped connection). It may have been processed. Creates are reconciled.</summary>
 			SentNoResponse,
-			///<summary>The answer was lost, but the transaction was found in the transaction list by its correlation ID. A GetStatus response if
-			///PayConnect approved it, an Error response (the vendor's status in its message) if not.</summary>
+			///<summary>The answer was lost or unreadable, but the transaction was found in the transaction list by its correlation ID. A GetStatus
+			///response if PayConnect approved it, an Error response (the vendor's status in its message) if not.</summary>
 			Reconciled,
+			///<summary>A 2xx answer arrived, but its body couldn't be read (malformed, or a value this model doesn't know). PayConnect accepted the
+			///request, so it may have been processed. Creates are reconciled, as for SentNoResponse.</summary>
+			ResponseUnreadable,
 		}
 
 		///<summary>The kind of error in an ErrorResponse.</summary>
@@ -2482,7 +2495,7 @@ namespace OpenDentBusiness {
 			NotConfigured,
 			///<summary>The request couldn't be sent.</summary>
 			Network,
-			///<summary>The request was sent but no answer came.</summary>
+			///<summary>The request was sent but no answer came, or the answer couldn't be read.</summary>
 			NoAnswer,
 		}
 		#endregion Request/Response Objects
