@@ -83,6 +83,11 @@ namespace OpenDental {
 				//We don't want the user to be able to tell if a directory exists.
 				tabControl1.TabPages.Remove(tabPageSupplementalBackups);
 			}
+			else if(!WebServiceMainHQProxy.IsHqAvailable) {
+				//Supplemental backups were made by Open Dental's eConnector service and copied to Open Dental HQ. Neither is part of this build, and
+				//FormOpenDental turns the preference off at startup.
+				tabControl1.TabPages.Remove(tabPageSupplementalBackups);
+			}
 		}
 
 		#region Backup Tab

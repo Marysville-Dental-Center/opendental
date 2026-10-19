@@ -799,6 +799,7 @@ namespace OpenDental{
 				};
 				FillComboTriageCoordinator();
 			}
+			TurnOffHqSupplementalBackups();
 			Logger.LogToPath("BackupReminder",LogPath.Startup,LogPhase.Unspecified);
 			//Users can have strange values in their preference table which can cause unhandled exceptions when the parsed date is manipulated.
 			//Manipulate DateTime.Today instead since it should always yield a reasonable DateTime for manipulation.
@@ -7044,6 +7045,21 @@ namespace OpenDental{
 
 		#region Menu - eServices
 		//The eServices main menu was removed. eServices were hosted by Open Dental and are not available in this build.
+
+		///<summary>Supplemental backups were made by Open Dental's eConnector service, which uploaded a copy of the whole database to Open Dental HQ.
+		///The preference defaults to on, so this turns it off once, in case an eConnector left behind by an Open Dental install is still running.
+		///Never throws.</summary>
+		private void TurnOffHqSupplementalBackups() {
+			if(WebServiceMainHQProxy.IsHqAvailable) {
+				return;
+			}
+			ODException.SwallowAnyException(() => {
+				if(Prefs.UpdateBool(PrefName.SupplementalBackupEnabled,false)) {
+					SecurityLogs.MakeLogEntry(EnumPermType.SupplementalBackup,0,
+						"Supplemental backup has been Disabled, because it uploaded the database to Open Dental HQ, which this build does not use.");
+				}
+			});
+		}
 
 		private void ShowEServicesSetup() {
 			if(_toolBarButtonText!=null) { //User may just have signed up for texting.
