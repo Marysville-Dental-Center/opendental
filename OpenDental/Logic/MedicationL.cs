@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Text;
 using CodeBase;
 using OpenDentBusiness;
@@ -32,12 +31,6 @@ namespace OpenDental {
 				Notes=medication.Notes;
 				RxCui=medication.RxCui;
 			}
-		}
-
-		///<summary>Used to download the default medications list from Open Dental's website. This build never contacts Open Dental's servers, so this
-		///always throws HqNotAvailableException. Import medications from a local file instead.</summary>
-		public static string DownloadDefaultMedicationsFile() {
-			throw new HqNotAvailableException();
 		}
 
 		///<summary>Inserts any new medications in listNewMeds, as well as updating any existing medications in listExistingMeds in conflict with 
@@ -134,15 +127,12 @@ namespace OpenDental {
 		///For V1 and V2, file required to be formatted such that each row contain: MedName\tGenericName\tNotes\tRxCui.
 		///Newer version exports as JSON file, so as long as it contains MedName, GenericName, Notes, and RxCui fields, it will be compatible.
 		///</summary>
-		public static List<Medication> GetMedicationsFromFile(string filename,bool isTempFile=false) {
+		public static List<Medication> GetMedicationsFromFile(string filename) {
 			List<Medication> listMedications=new List<Medication>();
 			if(string.IsNullOrEmpty(filename)) {
-				return listMedications;	
+				return listMedications;
 			}
 			string medicationData=File.ReadAllText(filename);
-			if(isTempFile) {
-				File.Delete(filename);
-			}
 			if(string.IsNullOrWhiteSpace(medicationData)) {
 				return listMedications;
 			}
