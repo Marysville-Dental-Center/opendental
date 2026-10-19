@@ -61,23 +61,7 @@ namespace OpenDentBusiness.Qbo {
 				throw new QboAuthException("The settings changed during the connection attempt. Click Connect again.",needsReconnect:false);
 			}
 			QboOAuth qboOAuth=new QboOAuth(GetOAuthHttpClient(),settings.ClientId,settings.ClientSecret);
-			QboTokenResult tokenResult;
-			try {
-				tokenResult=VendorHttp.RunSync(() => qboOAuth.ExchangeCodeAsync(result.Code,request.RedirectUri));
-			}
-			catch(TokenRejectedException ex) {
-				if(ex.Error=="invalid_client") {
-					throw new QboAuthException(QboAuthException.MessageInvalidClient,needsReconnect:false,oAuthError:ex.Error,innerException:ex);
-				}
-				throw new QboAuthException("Intuit did not accept the authorization ("+(ex.Error=="" ? "HTTP "+ex.StatusCode : ex.Error)+"). "
-					+"The code may have expired or been used already. Click Connect again.",needsReconnect:false,oAuthError:ex.Error,innerException:ex);
-			}
-			catch(HttpRequestException ex) {
-				throw new QboApiException(QboApiException.MessageUnreachable,innerException:ex);
-			}
-			if(tokenResult.RefreshToken=="") {
-				throw new QboAuthException("Intuit did not return a refresh token. Click Connect again.",needsReconnect:false);
-			}
+			QboTokenResult tokenResult=RedeemCode(qboOAuth,result.Code,request.RedirectUri);
 			//A manager just for this attempt: the new company has no saved token yet, so it hands out the token just issued.
 			QboTokenManager tokenManagerPending=new QboTokenManager(new TokenCache(),new PendingStore(tokenResult.RefreshToken),
 				(refreshToken,ct) => qboOAuth.RefreshAsync(refreshToken,ct));
@@ -97,6 +81,31 @@ namespace OpenDentBusiness.Qbo {
 				|| settings.RealmIdStatus==OpenDentBusiness.VendorDirect.SecretReadStatus.Legacy)
 				&& settings.RealmId!="" && settings.RealmId!=result.RealmId;
 			return pending;
+		}
+
+		///<summary>Redeems the authorization code at Intuit's token endpoint. Throws QboAuthException with MessageInvalidClient for wrong keys, a
+		///QboAuthException for an expired or used code, and QboApiException with MessageUnreachable when Intuit can't be reached. The original error
+		///is kept as InnerException, so a window must not let these escape through UI.ProgressWin (see RunForWindow). Public for tests.</summary>
+		public static QboTokenResult RedeemCode(QboOAuth qboOAuth,string code,string redirectUri) {
+			Meth.NoCheckMiddleTierRole();
+			QboTokenResult tokenResult;
+			try {
+				tokenResult=VendorHttp.RunSync(() => qboOAuth.ExchangeCodeAsync(code,redirectUri));
+			}
+			catch(TokenRejectedException ex) {
+				if(ex.Error=="invalid_client") {
+					throw new QboAuthException(QboAuthException.MessageInvalidClient,needsReconnect:false,oAuthError:ex.Error,innerException:ex);
+				}
+				throw new QboAuthException("Intuit did not accept the authorization ("+(ex.Error=="" ? "HTTP "+ex.StatusCode : ex.Error)+"). "
+					+"The code may have expired or been used already. Click Connect again.",needsReconnect:false,oAuthError:ex.Error,innerException:ex);
+			}
+			catch(HttpRequestException ex) {
+				throw new QboApiException(QboApiException.MessageUnreachable,innerException:ex);
+			}
+			if(tokenResult.RefreshToken=="") {
+				throw new QboAuthException("Intuit did not return a refresh token. Click Connect again.",needsReconnect:false);
+			}
+			return tokenResult;
 		}
 
 		///<summary>Saves an approved connection: the encrypted refresh token and realm ID, the expiry and the company name; blanks the account and class
@@ -173,6 +182,30 @@ namespace OpenDentBusiness.Qbo {
 			catch(Exception ex) {
 				Log("revoke failed: "+ex.GetType().Name);
 			}
+		}
+		#endregion
+
+		#region Windows
+		///<summary>Runs action and returns the exception it threw, or null. Windows call this inside UI.ProgressWin.ActionMain: ProgressWin rethrows
+		///an exception's InnerException whenever it has one, which would swap a QboAuthException or QboApiException (written for the office) for the
+		///raw TokenRejectedException or HttpRequestException beneath it. Show the result with GetMessageForUser.</summary>
+		public static Exception RunForWindow(Action action) {
+			try {
+				action();
+				return null;
+			}
+			catch(Exception ex) {
+				return ex;
+			}
+		}
+
+		///<summary>The message to show for an exception from RunForWindow: its own message when it is an ODException (QboAuthException and
+		///QboApiException are), otherwise "" and the window shows its general message with FriendlyException.</summary>
+		public static string GetMessageForUser(Exception ex) {
+			if(ex is ODException) {
+				return ex.Message;
+			}
+			return "";
 		}
 		#endregion
 

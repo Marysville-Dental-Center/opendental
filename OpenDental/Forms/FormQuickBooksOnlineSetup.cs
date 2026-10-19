@@ -134,22 +134,28 @@ namespace OpenDental {
 			List<QuickBooksOnlineAccount> listDepositAccounts=null;
 			List<QuickBooksOnlineAccount> listIncomeAccounts=null;
 			List<QuickBooksOnlineClassRef> listClassRefs=null;
+			Exception exLoad=null;
 			UI.ProgressWin progressWin=new UI.ProgressWin();
 			progressWin.StartingMessage=Lan.g(this,"Loading from QuickBooks Online...");
 			progressWin.ActionMain=() => {
-				listDepositAccounts=QuickBooksOnline.GetDepositAccounts(realmId,null);
-				listIncomeAccounts=QuickBooksOnline.GetIncomeAccounts(realmId,null);
-				listClassRefs=QuickBooksOnline.GetClassRefs(realmId,null);
+				exLoad=QuickBooksOnline.RunForWindow(() => {
+					listDepositAccounts=QuickBooksOnline.GetDepositAccounts(realmId,null);
+					listIncomeAccounts=QuickBooksOnline.GetIncomeAccounts(realmId,null);
+					listClassRefs=QuickBooksOnline.GetClassRefs(realmId,null);
+				});
 			};
 			try {
 				progressWin.ShowDialog();
 			}
 			catch(Exception ex) {
-				FriendlyException.Show(ex.Message,ex);
+				exLoad=ex;
+			}
+			if(progressWin.IsCancelled) {
 				FillAllListBoxes();
 				return;
 			}
-			if(progressWin.IsCancelled) {
+			if(exLoad!=null) {
+				ShowError(exLoad,Lan.g(this,"Could not load from QuickBooks Online."));
 				FillAllListBoxes();
 				return;
 			}
@@ -375,23 +381,29 @@ namespace OpenDental {
 				qboAuthorizationResult=formQuickBooksOnlineAuthorization.AuthorizationResult;
 			}
 			QboPendingConnection qboPendingConnection=null;
+			Exception exConnect=null;
 			UI.ProgressWin progressWin=new UI.ProgressWin();
 			progressWin.StartingMessage=Lan.g(this,"Connecting to QuickBooks Online...");
+			//Caught inside the action: ProgressWin would rethrow the InnerException (TokenRejectedException, HttpRequestException) and lose the message.
 			progressWin.ActionMain=() => {
-				qboPendingConnection=QuickBooksOnline.ExchangeAuthorization(qboAuthRequest,qboAuthorizationResult);
+				exConnect=QuickBooksOnline.RunForWindow(() => {
+					qboPendingConnection=QuickBooksOnline.ExchangeAuthorization(qboAuthRequest,qboAuthorizationResult);
+				});
 			};
 			try {
 				progressWin.ShowDialog();
 			}
-			catch(ODException ex) {
-				MessageBox.Show(this,ex.Message,Lan.g(this,"QuickBooks Online"));
-				return;
-			}
 			catch(Exception ex) {
-				FriendlyException.Show(Lan.g(this,"Could not connect to QuickBooks Online."),ex);
+				exConnect=ex;
+			}
+			if(progressWin.IsCancelled) {
 				return;
 			}
-			if(progressWin.IsCancelled || qboPendingConnection==null) {
+			if(exConnect!=null) {
+				ShowError(exConnect,Lan.g(this,"Could not connect to QuickBooks Online."));
+				return;
+			}
+			if(qboPendingConnection==null) {
 				return;
 			}
 			if(qboPendingConnection.IsDifferentCompany
@@ -436,17 +448,34 @@ namespace OpenDental {
 
 		///<summary>Revokes and clears the saved connection, behind a progress window.</summary>
 		private void RunDisconnect() {
+			Exception exDisconnect=null;
 			UI.ProgressWin progressWin=new UI.ProgressWin();
 			progressWin.StartingMessage=Lan.g(this,"Disconnecting...");
-			progressWin.ActionMain=() => QuickBooksOnline.Disconnect();
+			progressWin.ActionMain=() => {
+				exDisconnect=QuickBooksOnline.RunForWindow(() => QuickBooksOnline.Disconnect());
+			};
 			try {
 				progressWin.ShowDialog();
 			}
 			catch(Exception ex) {
-				FriendlyException.Show(Lan.g(this,"Could not disconnect."),ex);
+				exDisconnect=ex;
+			}
+			if(exDisconnect!=null) {
+				ShowError(exDisconnect,Lan.g(this,"Could not disconnect."));
 			}
 			DataValid.SetInvalid(InvalidType.Programs);
 			SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,"QuickBooks Online disconnected");
+		}
+
+		///<summary>Shows an exception from a QuickBooks Online call: its own message when it was written for the office (ODException), otherwise
+		///messageGeneral with the details behind FriendlyException.</summary>
+		private void ShowError(Exception ex,string messageGeneral) {
+			string message=QuickBooksOnline.GetMessageForUser(ex);
+			if(message!="") {
+				MessageBox.Show(this,message,Lan.g(this,"QuickBooks Online"));
+				return;
+			}
+			FriendlyException.Show(messageGeneral,ex);
 		}
 
 		private void butAddDepositAccount_Click(object sender,EventArgs e) {
