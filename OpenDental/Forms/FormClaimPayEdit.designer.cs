@@ -52,7 +52,7 @@ namespace OpenDental {
 			this.labelClaimPaymentGroup = new System.Windows.Forms.Label();
 			this.panelXcharge = new System.Windows.Forms.Panel();
 			this.groupPrepaid = new OpenDental.UI.GroupBox();
-			this.butPaySimple = new System.Windows.Forms.Panel();
+			this.butPaySimple = new OpenDental.UI.Button();
 			this.groupBoxDeposit = new OpenDental.UI.GroupBox();
 			this.labelDepositAccountNum = new System.Windows.Forms.Label();
 			this.comboDepositAccountNum = new OpenDental.UI.ComboBox();
@@ -335,12 +335,11 @@ namespace OpenDental {
 			// 
 			// butPaySimple
 			// 
-			this.butPaySimple.BackgroundImage = global::OpenDental.Properties.Resources.PaySimple_Button_2019_26x75;
-			this.butPaySimple.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
 			this.butPaySimple.Location = new System.Drawing.Point(250, 21);
 			this.butPaySimple.Name = "butPaySimple";
 			this.butPaySimple.Size = new System.Drawing.Size(76, 26);
 			this.butPaySimple.TabIndex = 131;
+			this.butPaySimple.Text = "PaySimple";
 			this.butPaySimple.MouseClick += new System.Windows.Forms.MouseEventHandler(this.butPaySimple_MouseClick);
 			// 
 			// groupBoxDeposit
@@ -565,7 +564,7 @@ namespace OpenDental {
 		private TextBox textBoxBatchNum;
 		private Label labelDepositAccountNum;
 		private UI.ComboBox comboDepositAccountNum;
-		private Panel butPaySimple;
+		private OpenDental.UI.Button butPaySimple;
 		private Label labelRequiredFields;
 		private Panel panelEdgeExpress;
 		private Panel butPayConnect;

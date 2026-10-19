@@ -85,9 +85,11 @@
 		private OpenDental.UI.TabControl tabControlCharges;
 		private OpenDental.UI.TabPage tabPageOutstanding;
 		private OpenDental.UI.TabPage tabPageTreatPlan;
-		private System.Windows.Forms.Panel butPaySimple;
+		private OpenDental.UI.Button butPaySimple;
 		private System.Windows.Forms.ContextMenu contextMenuPaySimple;
 		private System.Windows.Forms.MenuItem menuPaySimple;
+		private System.Windows.Forms.MenuItem menuPaySimpleCheckAch;
+		private System.Windows.Forms.Label labelPaySimpleAchStatus;
 		private UI.GridOD gridTreatPlan;
 		private System.Windows.Forms.Label labelTPProcWarning;
 		private System.Windows.Forms.Panel butCareCredit;
@@ -121,7 +123,8 @@
 			this.butPrintReceipt = new OpenDental.UI.Button();
 			this.butEmailReceipt = new OpenDental.UI.Button();
 			this.butCareCredit = new System.Windows.Forms.Panel();
-			this.butPaySimple = new System.Windows.Forms.Panel();
+			this.butPaySimple = new OpenDental.UI.Button();
+			this.labelPaySimpleAchStatus = new System.Windows.Forms.Label();
 			this.butShowHide = new OpenDental.UI.Button();
 			this.comboClinic = new OpenDental.UI.ComboBoxClinicPicker();
 			this.textDeposit = new System.Windows.Forms.TextBox();
@@ -201,6 +204,7 @@
 			this.butAddManual = new OpenDental.UI.Button();
 			this.contextMenuPaySimple = new System.Windows.Forms.ContextMenu();
 			this.menuPaySimple = new System.Windows.Forms.MenuItem();
+			this.menuPaySimpleCheckAch = new System.Windows.Forms.MenuItem();
 			this.panelSplits = new System.Windows.Forms.Panel();
 			this.groupBoxFilteringPaySplits = new OpenDental.UI.GroupBox();
 			this.labelIncludesNegativeEntries = new System.Windows.Forms.Label();
@@ -330,15 +334,24 @@
 			// 
 			// butPaySimple
 			// 
-			this.butPaySimple.BackgroundImage = global::OpenDental.Properties.Resources.PaySimple_Button_2019_26x75;
-			this.butPaySimple.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
 			this.butPaySimple.Location = new System.Drawing.Point(877, 17);
 			this.butPaySimple.Name = "butPaySimple";
 			this.butPaySimple.Size = new System.Drawing.Size(75, 26);
 			this.butPaySimple.TabIndex = 140;
+			this.butPaySimple.Text = "PaySimple";
 			this.butPaySimple.Visible = false;
 			this.butPaySimple.MouseClick += new System.Windows.Forms.MouseEventHandler(this.butPaySimple_Click);
-			// 
+			//
+			// labelPaySimpleAchStatus
+			//
+			this.labelPaySimpleAchStatus.Location = new System.Drawing.Point(984, 49);
+			this.labelPaySimpleAchStatus.Name = "labelPaySimpleAchStatus";
+			this.labelPaySimpleAchStatus.Size = new System.Drawing.Size(124, 17);
+			this.labelPaySimpleAchStatus.TabIndex = 1005;
+			this.labelPaySimpleAchStatus.Text = "ACH status";
+			this.labelPaySimpleAchStatus.TextAlign = System.Drawing.ContentAlignment.BottomLeft;
+			this.labelPaySimpleAchStatus.Visible = false;
+			//
 			// butShowHide
 			// 
 			this.butShowHide.Image = global::OpenDental.Properties.Resources.arrowDownTriangle;
@@ -1144,13 +1157,21 @@
 			// contextMenuPaySimple
 			// 
 			this.contextMenuPaySimple.MenuItems.AddRange(new System.Windows.Forms.MenuItem[] {
-            this.menuPaySimple});
-			// 
+            this.menuPaySimple,
+            this.menuPaySimpleCheckAch});
+			//
 			// menuPaySimple
-			// 
+			//
 			this.menuPaySimple.Index = 0;
 			this.menuPaySimple.Text = "Settings";
 			this.menuPaySimple.Click += new System.EventHandler(this.menuPaySimple_Click);
+			//
+			// menuPaySimpleCheckAch
+			//
+			this.menuPaySimpleCheckAch.Index = 1;
+			this.menuPaySimpleCheckAch.Text = "Check ACH status";
+			this.menuPaySimpleCheckAch.Visible = false;
+			this.menuPaySimpleCheckAch.Click += new System.EventHandler(this.menuPaySimpleCheckAch_Click);
 			// 
 			// panelSplits
 			// 
@@ -1400,6 +1421,7 @@
 			this.Controls.Add(this.panelSplits);
 			this.Controls.Add(this.butCareCredit);
 			this.Controls.Add(this.butPaySimple);
+			this.Controls.Add(this.labelPaySimpleAchStatus);
 			this.Controls.Add(this.label9);
 			this.Controls.Add(this.butShowHide);
 			this.Controls.Add(this.butSave);
