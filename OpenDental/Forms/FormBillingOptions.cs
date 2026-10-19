@@ -8,7 +8,6 @@ using MySqlConnector;
 using OpenDental.UI;
 using OpenDentBusiness;
 using CodeBase;
-using OpenDentBusiness.AutoComm;
 
 namespace OpenDental{
 	///<summary></summary>
@@ -35,7 +34,6 @@ namespace OpenDental{
 		///<summary>Tracks if textDateStart is blank so we can display a warning in FormBilling.cs when sending electronic bills.</summary>
 		public bool IsHistoryStartMinDate { get; private set; }
 		///<summary>This is used to pass the selected mode(s) for texting to FormBilling and then through to FormStatementOptions for determining whether to send a text when editing a statement's mode.</summary>
-		public List<StatementMode> ListStatementModesForSMS=new List<StatementMode>();
 
 		///<summary></summary>
 		public FormBillingOptions(){
@@ -68,16 +66,6 @@ namespace OpenDental{
 			comboAge.Items.Add(Lan.g(this,"Over 30 Days"));
 			comboAge.Items.Add(Lan.g(this,"Over 60 Days"));
 			comboAge.Items.Add(Lan.g(this,"Over 90 Days"));
-			listModeToText.Items.Clear();
-			if(SmsPhones.IsIntegratedTextingEnabled()) {
-				foreach(StatementMode stateMode in Enum.GetValues(typeof(StatementMode))) {
-					listModeToText.Items.Add(Lan.g("enumStatementMode",stateMode.GetDescription()),stateMode);
-				}
-			}
-			else {
-				listModeToText.Visible=false;
-				labelModesToText.Visible=false;
-			}
 			SetClinicFilters();
 			if(!PrefC.GetBool(PrefName.ShowFeatureSuperfamilies)) {
 				checkSuperFam.Visible=false;
@@ -542,14 +530,6 @@ namespace OpenDental{
 			checkSinglePatient.Checked=PrefC.GetBool(PrefName.BillingDefaultsSinglePatient);
 			checkBoxBillShowTransSinceZero.Checked=PrefC.GetBool(PrefName.BillingShowTransSinceBalZero);
 			textNote.Text=PrefC.GetString(PrefName.BillingDefaultsNote);
-			if(SmsPhones.IsIntegratedTextingEnabled()) {
-				listModeToText.ClearSelected();
-				string[] stringArrayBillingDefaultsModesToText=PrefC.GetString(PrefName.BillingDefaultsModesToText)
-					.Split(new string[] { "," },StringSplitOptions.RemoveEmptyEntries);
-				for(int i = 0;i<stringArrayBillingDefaultsModesToText.Length;++i) {
-					listModeToText.SetSelected(PIn.Int(stringArrayBillingDefaultsModesToText[i]),true);
-				}
-			}
 		}
 
 		private void checkExcludeInsPending_Click(object sender,EventArgs e) {
@@ -634,7 +614,6 @@ namespace OpenDental{
 				MsgBox.Show("Invalid selection of filing codes. None and all cannot be selected with other filing code options.");
 				return;
 			}
-			ListStatementModesForSMS=listModeToText.GetListSelected<StatementMode>();
 			SendStatementsIO sendStatementsIO=new SendStatementsIO();
 			sendStatementsIO.Source="FormBillingOptions";
 			sendStatementsIO.ActionPrompt=(prompt,useCopyPasteDialog) => { MessageBox.Show(prompt); };
@@ -931,33 +910,6 @@ namespace OpenDental{
 				dateRangeTo=PIn.Date(textDateEnd.Text);
 			}
 			Statement statement;
-			List<WebServiceMainHQProxy.ShortGuidResult> listShortGuidUrls=new List<WebServiceMainHQProxy.ShortGuidResult>();
-			SheetDef sheetDefStatement=SheetUtil.GetStatementSheetDef();
-			if(//They are going to send texts
-				listModeToText.SelectedIndices.Count > 0 
-				//Or the email body has a statement URL
-				|| PrefC.GetString(PrefName.BillingEmailBodyText).ToLower().Contains(MsgToPayTagReplacer.STATEMENT_URL_TAG.ToLower())
-				|| PrefC.GetString(PrefName.BillingEmailBodyText).ToLower().Contains(MsgToPayTagReplacer.STATEMENT_SHORT_TAG.ToLower())
-				|| PrefC.GetString(PrefName.BillingEmailBodyText).ToLower().Contains(MsgToPayTagReplacer.MSG_TO_PAY_TAG.ToLower())
-				//Or the statement sheet has a URL field
-				|| (sheetDefStatement!=null && sheetDefStatement.SheetFieldDefs.Any(x => x.FieldType==SheetFieldType.OutputText 
-							&& (x.FieldValue.ToLower().Contains(MsgToPayTagReplacer.STATEMENT_URL_TAG.ToLower()) || x.FieldValue.ToLower().Contains(MsgToPayTagReplacer.STATEMENT_SHORT_TAG.ToLower())))))
-			{
-				//Then get some short GUIDs and URLs from OD HQ.
-				try {
-					int countForSms=listPatAgings.Count(x => Statements.DoSendSms(x,dictionaryPatAgingData,listModeToText.GetListSelected<StatementMode>()));
-					//Previously we were reserving more guids then neccessary. Would just dump extra GUIDS.
-					listShortGuidUrls=WebServiceMainHQProxy.GetShortGUIDs(countForSms,countForSms,clinicNum,eServiceCode.PatientPortalViewStatement);
-				}
-				catch(Exception ex) {
-					FriendlyException.Show(Lans.g(this,"Unable to create a unique URL for each statement. The Patient Portal URL will be used instead."),ex);
-					listShortGuidUrls=listPatAgings.Select(x => new WebServiceMainHQProxy.ShortGuidResult {
-						MediumURL=PrefC.GetString(PrefName.PatientPortalURL),
-						ShortURL=PrefC.GetString(PrefName.PatientPortalURL),
-						ShortGuid=""
-					}).ToList();
-				}
-			}
 			Dictionary<long,InstallmentPlan> dictionaryInstallmentPlans=InstallmentPlans.GetForFams(listPatAgings.Select(x => x.PatNum).ToList());
 			List<Statement> listStatementsForInsert=new List<Statement>();
 			DateTime dateBalBeganCur;
@@ -974,18 +926,11 @@ namespace OpenDental{
 				if(PrefC.GetEnum<BillingUseElectronicEnum>(PrefName.BillingUseElectronic)!=BillingUseElectronicEnum.None) {
 					statement.Intermingled=true;
 				}
-				bool doSendSms=Statements.DoSendSms(listPatAgings[i],dictionaryPatAgingData,listModeToText.GetListSelected<StatementMode>());
-				statement.SmsSendStatus=(doSendSms ? AutoCommStatus.SendNotAttempted : AutoCommStatus.DoNotSend);
+				//Statement texts and portal links were Open Dental hosted eServices, which were removed.
+				statement.SmsSendStatus=AutoCommStatus.DoNotSend;
 				statement.ShortGUID="";
 				statement.StatementURL="";
 				statement.StatementShortURL="";
-				WebServiceMainHQProxy.ShortGuidResult shortGuidUrl=listShortGuidUrls.FirstOrDefault(x => x.IsForSms==doSendSms);
-				if(shortGuidUrl!=null) {
-					statement.ShortGUID=shortGuidUrl.ShortGuid;
-					statement.StatementURL=shortGuidUrl.MediumURL;
-					statement.StatementShortURL=shortGuidUrl.ShortURL;
-					listShortGuidUrls.Remove(shortGuidUrl);
-				}
 				statement.Note=textNote.Text;
 				InstallmentPlan installmentPlan;
 				if(dictionaryInstallmentPlans.TryGetValue(listPatAgings[i].PatNum,out installmentPlan) && installmentPlan!=null) {

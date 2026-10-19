@@ -689,13 +689,6 @@ namespace OpenDentBusiness {
 			foreach(SmsBilling smsBilling in listSmsBilling) {
 				Patient pat=listPatients.FirstOrDefault(x => x.PatNum==smsBilling.CustPatNum);
 				if(pat==null) {
-					EServiceSignal eSignal=new EServiceSignal {
-						ServiceCode=(int)eServiceCode.IntegratedTexting,
-						SigDateTime=MiscData.GetNowDateTime(),
-						Severity=eServiceSignalSeverity.Error,
-						Description="Sms billing row found for non existent patient PatNum:"+smsBilling.CustPatNum
-					};
-					EServiceSignals.Insert(eSignal);
 					continue;
 				}
 				//Find the billing date based on the date usage.

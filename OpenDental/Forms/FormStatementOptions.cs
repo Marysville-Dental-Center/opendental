@@ -29,9 +29,6 @@ namespace OpenDental{
 		public Statement StatementCur;
 		///<summary>This will be null for ordinary edits.  But sometimes this window is used to edit bulk statements.  In that case, this list contains the statements being edited.  Must contain at least one item.</summary>
 		public List<Statement> ListStatements;
-		///<summary>This is the list of selected statement modes to send text messages (if any). Set in FormBillingOptions. If this form is not being shown from Billing, this list should remain null.</summary>
-		public List<StatementMode> ListStatementModesForSms;
-
 		///<summary></summary>
 		public FormStatementOptions()
 		{
@@ -135,14 +132,6 @@ namespace OpenDental{
 				}
 				else {//either a limited statement or super family show feature is disabled or statements are not using sheets
 					checkSuperStatement.Visible=false;
-				}
-				if(!_isFromBilling) {
-					checkSendSms.Text=Lans.g(this,"Sent text");//The user cannot send a text from this window, so we want to make it clear that they can't.
-					checkSendSms.Enabled=false;
-					checkSendSms.Checked=StatementCur.SmsSendStatus==AutoCommStatus.SendSuccessful;
-				}
-				else if(!StatementCur.SmsSendStatus.In(AutoCommStatus.DoNotSend,AutoCommStatus.Undefined)) {
-					checkSendSms.Checked=true;
 				}
 				_isStatementNew=StatementCur.IsNew;
 				if(IsLimitedCustomStatement()) {
@@ -301,25 +290,9 @@ namespace OpenDental{
 				butEmail.Enabled=false;
 				butPrint.Enabled=false;
 				butPreview.Enabled=false;
-				butPatPortal.Enabled=false;
 				checkExportCSV.Enabled=false;
 				//Consider enhancing the checkIsSent Click event handler to delete archived statements (aka PDFs).
 				//checkIsSent.Enabled=false; NO this is the only way to unsend in bulk and must stay enabled
-				//Send Text Message-------------------------------------------------------------------------------
-				checkSendSms.ThreeState=true;
-				checkSendSms.CheckState=CheckState.Indeterminate;
-				allSame=true;
-				for(int i=1;i<ListStatements.Count;i++) {
-					if(ListStatements[0].SmsSendStatus!=ListStatements[i].SmsSendStatus) {
-						allSame=false;
-						break;
-					}
-				}
-				if(allSame) {
-					checkSendSms.ThreeState=false;
-					checkSendSms.CheckState=CheckState.Unchecked;
-					checkSendSms.Checked=(!ListStatements[0].SmsSendStatus.In(AutoCommStatus.DoNotSend,AutoCommStatus.Undefined));
-				}
 			}
 			#endregion Bulk Edit
 			_listDefsImageCat=Defs.GetDefsForCategory(DefCat.ImageCats,true);
@@ -436,7 +409,6 @@ namespace OpenDental{
 			textNoteBold.ReadOnly=!boolval;
 			groupInvoice.Enabled=boolval;
 			checkSuperStatement.Enabled=boolval;
-			checkSendSms.Enabled=boolval;
 			//These checkboxes don't store their state in the DB. Therefore, they are only helpful for unsent statements and would be misleading if left visible and disabled.
 			//E.g. Editing a limited statement that was generated with last names showing would display checkShowLName as unchecked and disabled (which is misleading).
 			checkShowLName.Visible=boolval;
@@ -863,44 +835,12 @@ namespace OpenDental{
 		}
 
 		private void LimitedCustomStatementLayoutHelper() {
-			this.DisableAllExcept(butDelete,butPreview,butSave,checkIsSent,checkIntermingled,checkExportCSV,checkShowLName,checkExcludeTxfr, checkHidePayment,butPrint,butEmail,butPatPortal,textNote,textNoteBold,listMode,label1,label2,label3,label4,textDate);
+			this.DisableAllExcept(butDelete,butPreview,butSave,checkIsSent,checkIntermingled,checkExportCSV,checkShowLName,checkExcludeTxfr, checkHidePayment,butPrint,butEmail,textNote,textNoteBold,listMode,label1,label2,label3,label4,textDate);
 			if(StatementCur.LimitedCustomFamily==EnumLimitedCustomFamily.SuperFamily) {
 				//We always want these to be unchecked if its or a SuperFamily statement, otherwise we continue using what was already generated on the statement.
 				checkSuperStatement.Checked=false;
 				checkSinglePatient.Checked=false;
 			}
-		}
-
-		private void butPatPortal_Click(object sender,EventArgs e) {
-			if(!Defs.GetDefsForCategory(DefCat.ImageCats,true).Any(x => x.ItemValue.Contains(ImageCategorySpecial.L.ToString())
-				&& x.ItemValue.Contains(ImageCategorySpecial.S.ToString()))) {
-				MsgBox.Show(this,"There is no image category used for both Patient Portal and Statements in Setup | Definitions | Image Categories. "
-					+"The Statements image category must have both 'Show in Patient Portal' and 'Statements' usage types selected.");
-				return;
-			}
-			if(UserWebs.GetByFKeyAndType(StatementCur.PatNum,UserWebFKeyType.PatientPortal,true)==null) {
-				MsgBox.Show(this,"This patient does not have Online Access to the Patient Portal.");
-				return;
-			}
-			//After checking the preference, CreatePdfForSheet() is called, which will try to create a pdf of the sheet
-			if(!CreatePdfForSheet()) {
-				MsgBox.Show(this,"There was an error creating a PDF for this patient");
-				return;
-			}
-			if(MsgBox.Show(this,MsgBoxButtons.YesNo,"Send an email to the patient notifying them that a statement is available?")) {
-				Patient patient=Patients.GetPat(StatementCur.PatNum);
-				EmailMessage emailMessage=Statements.GetEmailMessageForPortalStatement(StatementCur,patient);
-				using FormEmailMessageEdit formEmailMessageEdit=new FormEmailMessageEdit(emailMessage,EmailAddresses.GetByClinic(patient.ClinicNum));
-				formEmailMessageEdit.IsNew=true;
-				formEmailMessageEdit.ShowDialog();
-				if(formEmailMessageEdit.DialogResult != DialogResult.OK) {
-					return;
-				}
-			}
-			StatementCur.IsSent=checkIsSent.Checked;
-			Statements.Update(StatementCur);
-			Signalods.SetInvalid(InvalidType.BillingList);
-			DialogResult=DialogResult.OK;
 		}
 
 		private void textDate_KeyPress(object sender,KeyPressEventArgs e) {
@@ -1148,11 +1088,6 @@ namespace OpenDental{
 			if(IsLimitedCustomStatement()) {
 				LimitedCustomStatementLayoutHelper();
 			}
-			//Check the box to send a text message if the statement is being edited from Billing and the newly-selected mode was set in FormBillingOptions to send texts.
-			if(_isFromBilling && checkSendSms.Enabled && ListStatementModesForSms.Contains(listMode.GetSelected<StatementMode>())) {
-				checkSendSms.Checked=true;
-				checkSendSms.CheckState=CheckState.Checked;
-			}
 		}
 
 		private void checkSinglePatient_Click(object sender,EventArgs e) {
@@ -1199,21 +1134,6 @@ namespace OpenDental{
 			}
 			catch(Exception ex){
 				FriendlyException.Show(Lan.g(this,"Error deleting statements."),ex);
-				return;
-			}
-			try {
-				//If a patient is on a mobile device, then the statement also needs to be removed from there
-				List<MobileAppDevice> listMobileAppDevices=MobileAppDevices.GetAll();
-				List<Statement> listStatements=ListStatements??new List<Statement>() {StatementCur};
-				for(int i=0; i<listStatements.Count; i++) {
-					MobileAppDevice mobileAppDevice=listMobileAppDevices.FirstOrDefault(x => x.PatNum==listStatements[i].PatNum);
-					if(mobileAppDevice!=null && mobileAppDevice.LastCheckInActivity>DateTime.Now.AddHours(-1)) {
-						MobileNotifications.CI_RefreshPayment(mobileAppDevice.MobileAppDeviceNum,listStatements[i].PatNum);
-					}
-				}
-			}
-			catch(Exception ex) {
-				FriendlyException.Show(Lan.g(this,"Error retrieving patient folder."),ex);
 				return;
 			}
 			Signalods.SetInvalid(InvalidType.BillingList);
@@ -1355,14 +1275,6 @@ namespace OpenDental{
 				StatementCur.Note=textNote.Text;
 				StatementCur.NoteBold=textNoteBold.Text;
 				StatementCur.IsInvoiceCopy=checkIsInvoiceCopy.Checked;
-				if(checkSendSms.Checked) {
-					if(StatementCur.SmsSendStatus.In(AutoCommStatus.DoNotSend,AutoCommStatus.Undefined)) {
-						StatementCur.SmsSendStatus=AutoCommStatus.SendNotAttempted;
-					}
-				}
-				else {
-					StatementCur.SmsSendStatus=AutoCommStatus.DoNotSend;
-				}
 				if(StatementCur.IsInvoice || !StatementCur.IsNew) {
 					Statements.Update(StatementCur);
 					StatementCur.IsNew=false;
@@ -1429,16 +1341,6 @@ namespace OpenDental{
 					ListStatements[i].DateRangeFrom=DateTime.Now;
 					if(dateFrom!=DateTime.MinValue) {//patient does not have a zero or credit balance.
 						ListStatements[i].DateRangeFrom=dateFrom;
-					}
-				}
-				if(checkSendSms.CheckState!=CheckState.Indeterminate) {
-					if(checkSendSms.Checked) {
-						if(ListStatements[i].SmsSendStatus.In(AutoCommStatus.DoNotSend,AutoCommStatus.Undefined)) {
-							ListStatements[i].SmsSendStatus=AutoCommStatus.SendNotAttempted;
-						}
-					}
-					else {
-						ListStatements[i].SmsSendStatus=AutoCommStatus.DoNotSend;
 					}
 				}
 				Statements.Update(ListStatements[i]);//never new

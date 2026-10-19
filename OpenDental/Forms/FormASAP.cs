@@ -384,9 +384,6 @@ namespace OpenDental {
 						case "BillingType":
 							row.Cells.Add(tableRecalls.Rows[i]["billingType"].ToString());
 							break;
-						case "WebSched":
-							row.Cells.Add(tableRecalls.Rows[i]["webSchedSendDesc"].ToString());
-							break;
 					}
 				}
 				row.Tag=listRecalls.FirstOrDefault(x => x.RecallNum==PIn.Long(tableRecalls.Rows[i]["RecallNum"].ToString()));

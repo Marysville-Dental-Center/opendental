@@ -46,8 +46,6 @@ namespace UnitTests.Billing_Tests {
 			//Set to valid path so pdf will save.
 			PrefT.UpdateString(PrefName.BillingElectStmtOutputPathPos,PrefC.GetTempFolderPath());
 			PrefT.UpdateString(PrefName.BillingElectStmtOutputPathEds,PrefC.GetTempFolderPath());
-			//Mock webservicehq. We will need it for GenerateShortGUIDs when we try to text statements.
-			WebServiceMainHQProxy.MockWebServiceMainHQ=new WebServiceMainHQMockDemo() { };
 			ClinicPrefT.ClearClinicPrefTable();
 			EmailAutographT.ClearEmailAutographTable();
 			EmailAddressT.ClearEmailAddressTable();
@@ -67,8 +65,6 @@ namespace UnitTests.Billing_Tests {
 			PrefT.UpdateString(PrefName.DateLastAging,POut.Date(DateTime_.Today.AddDays(-1),false));
 			//Clear again lock .
 			Prefs.UpdateString(PrefName.AgingBeginDateTime,"");
-			//Clear pay portal text message statement modes. Set in SetupBilling() for each statement mode if desired.
-			Prefs.UpdateString(PrefName.BillingDefaultsModesToText,"");
 			//BillingType defs will be setup in BillingTests.SetupBilling() since we need those in the same place we create patients.
 		}
 
@@ -402,7 +398,7 @@ namespace UnitTests.Billing_Tests {
 			Assert.AreEqual(0,sendStatementsIO.ListSkippedPatients.Count(x => x.Reason==SkipReason.BadSmsSetup));
 		}
 
-		///<summary>Use secure email when clinic is setup, otherwise use non secure email. Skip patients who fail to email. Assert email autograph gets inserted when applicable.</summary>
+		///<summary>Statements are sent as regular email (Open Dental's hosted Secure Email was removed). Skip patients who fail to email. Assert email autograph gets inserted when applicable.</summary>
 		[TestMethod]
 		public void Billing_HappyPath_Email() {			
 			void assert(bool doIncludeAutograph,bool isHtmlAutograph) {
@@ -412,26 +408,18 @@ namespace UnitTests.Billing_Tests {
 				EmailAddressT.ClearEmailAddressTable();
 				BillingSetup billingSetup=SetupBilling(true,numPatsPerFam:1,numClinics:3,isHtmlEmailAutograph:isHtmlAutograph,
 				funcGetStatementMode:(a,b,c) =>{ return StatementMode.Email; },
-				//1 clinic uses secure, other 2 not secure.
+				//Clinic 0 used to send secure statements. They are regular email now.
 				funcGetClinicUsesSecureEmail:(clinicIndex) =>{ return clinicIndex==0; },
-				//must set clinic 0 to use secure statements in order for billing statements to be sent securely over email
 				funcGetClinicUsesSecureStatements: (clinicIndex) =>{return clinicIndex==0;});
 				SendStatementsIO sendStatementsIO = new SendStatementsIOTest(
 				listStatementNumsToSend:billingSetup.ListStatements.Select(x => x.StatementNum).ToList(),
-				actionSendEmail:(clinicNum,emailMessage,emailAddress,isSecure) => {
+				actionSendEmail:(clinicNum,emailMessage,emailAddress) => {
 					int clinicIndex=billingSetup.ListClinics.FindIndex(x => x.ClinicNum==clinicNum);
 					bool hasAutograph=emailMessage.BodyText.ToLower().Contains(billingSetup.ListEmailAutographs[clinicIndex].AutographText.ToLower());
 					bool hasHtmlAutograph=hasAutograph && MarkupEdit.ContainsOdHtmlTags(emailMessage.HtmlText) && MarkupEdit.ContainsOdHtmlTags(emailMessage.BodyText);
 					Assert.AreEqual(doIncludeAutograph,hasAutograph);
 					Assert.AreEqual(isHtmlAutograph,hasHtmlAutograph);
-					if(clinicIndex==0){
-						Assert.IsTrue(isSecure);
-						Assert.AreEqual(EmailSentOrReceived.SecureEmailSent,emailMessage.SentOrReceived);
-					}
-					else {
-						Assert.IsFalse(isSecure);
-						Assert.AreEqual(EmailSentOrReceived.Sent,emailMessage.SentOrReceived);
-					}
+					Assert.AreEqual(EmailSentOrReceived.Sent,emailMessage.SentOrReceived);
 					if(clinicIndex==2){ //Fail this email so we can assert that logic happened below.
 						throw new Exception("Email failed (test)!");
 					}
@@ -773,7 +761,7 @@ namespace UnitTests.Billing_Tests {
 						}
 						return pdfDocument;						
 					},
-					actionSendEmail: (a,b,c,d) => { Assert.Fail("Should not send email for InPerson statement mode"); });
+					actionSendEmail: (a,b,c) => { Assert.Fail("Should not send email for InPerson statement mode"); });
 				bool ret=BillingL.SendStatements(sendStatementsIO);
 				Assert.IsTrue(ret);
 				//All statements sent InPerson.
@@ -845,7 +833,7 @@ namespace UnitTests.Billing_Tests {
 				BillingL.RunFromODService(_logWriterBilling,(sendStatementsIOMock) => {
 					//Save a shallow copy so we can assert later.
 					sendStatementsIO=sendStatementsIOMock;
-					sendStatementsIOMock.ActionSendEmail=(clinicNumPat,emailMessage,emailAddress,useSecureEmail) => { };
+					sendStatementsIOMock.ActionSendEmail=(clinicNumPat,emailMessage,emailAddress) => { };
 					sendStatementsIOMock.FuncAskQuestion=(prompt) => { return true; };
 					sendStatementsIOMock.Source="BillingTests UnitTest";
 				});
@@ -882,7 +870,7 @@ namespace UnitTests.Billing_Tests {
 				BillingL.RunFromODService(_logWriterBilling,(sendStatementsIOMock) => {
 					//Save a shallow copy so we can assert later.
 					sendStatementsIO=sendStatementsIOMock;
-					sendStatementsIOMock.ActionSendEmail=(clinicNumPat,emailMessage,emailAddress,useSecureEmail) => { };
+					sendStatementsIOMock.ActionSendEmail=(clinicNumPat,emailMessage,emailAddress) => { };
 					sendStatementsIOMock.FuncAskQuestion=(prompt) => { return true; };
 					sendStatementsIOMock.Source="BillingTests UnitTest";
 				});
@@ -919,7 +907,7 @@ namespace UnitTests.Billing_Tests {
 				BillingL.RunFromODService(_logWriterBilling,(sendStatementsIOMock) => {
 					//Save a shallow copy so we can assert later.
 					sendStatementsIO=sendStatementsIOMock;
-					sendStatementsIOMock.ActionSendEmail=(clinicNumPat,emailMessage,emailAddress,useSecureEmail) => { };
+					sendStatementsIOMock.ActionSendEmail=(clinicNumPat,emailMessage,emailAddress) => { };
 					sendStatementsIOMock.FuncAskQuestion=(prompt) => { return true; };
 					sendStatementsIOMock.FuncSendEhgStatement=(xml,clinicNum) => {
 						//Only ehg calls this method.
@@ -984,7 +972,7 @@ namespace UnitTests.Billing_Tests {
 			BillingL.RunFromODService(_logWriterBilling,(sendStatementsIOMock) => {
 				//Save a shallow copy so we can assert later.
 				sendStatementsIO=sendStatementsIOMock;
-				sendStatementsIOMock.ActionSendEmail=(clinicNumPat,emailMessage,emailAddress,useSecureEmail) => { };
+				sendStatementsIOMock.ActionSendEmail=(clinicNumPat,emailMessage,emailAddress) => { };
 				sendStatementsIOMock.FuncAskQuestion=(prompt) => { return true; };
 				sendStatementsIOMock.Source="BillingTests UnitTest";
 			});
@@ -1020,7 +1008,7 @@ namespace UnitTests.Billing_Tests {
 			BillingL.RunFromODService(_logWriterBilling,(sendStatementsIOMock) => {
 				//Save a shallow copy so we can assert later.
 				sendStatementsIO=sendStatementsIOMock;
-				sendStatementsIOMock.ActionSendEmail=(clinicNumPat,emailMessage,emailAddress,useSecureEmail) => { };
+				sendStatementsIOMock.ActionSendEmail=(clinicNumPat,emailMessage,emailAddress) => { };
 				sendStatementsIOMock.FuncAskQuestion=(prompt) => { return true; };
 				sendStatementsIOMock.Source="BillingTests UnitTest";
 			});
@@ -1080,44 +1068,6 @@ namespace UnitTests.Billing_Tests {
 			Assert.IsTrue(didThrow);
 		}
 
-		/// <summary>Test sending of secure statements. Check that whether or not EmailDefaultSendPlatform is set to secure, clinics can be set to send statements securely based on EmailStatementsSecure pref (if EmailSecureStatus is enabled for that clinic.</summary>
-		[TestMethod]
-		public void Billing_Email_Secure(){
-			bool hasException=false;
-			BillingSetup billingSetup=SetupBilling(true,numPatsPerFam:1,numClinics:5,
-				funcGetStatementMode:(a,b,c) =>{ return StatementMode.Email; },
-				funcGetClinicUsesSecureEmail:(clinicIndex) =>{ return true; },
-				funcGetClinicUsesSecureStatements:(clinicIndex) => { return clinicIndex%2!=0; });//1 and 3 send statements secure
-			//set clinics 3 and 4 to send email unsecure. Can't be set in SetupBilling because we only want this pref disabled
-			//the code below is updating the old pref (EmailDefaultSendPlatform) to prove that the old pref is ignored when determining whether or not to send secure statements over email. Sending secure statements is determined by the new pref, EmailStatementsSecure, which is set above by funcGetClinicUsesSecureStatements
-			ClinicPrefs.Upsert(PrefName.EmailDefaultSendPlatform,billingSetup.ListClinics[3].ClinicNum,EmailPlatform.Unsecure.ToString());
-			ClinicPrefs.Upsert(PrefName.EmailDefaultSendPlatform,billingSetup.ListClinics[4].ClinicNum,EmailPlatform.Unsecure.ToString());
-			SendStatementsIO sendStatementsIO = new SendStatementsIOTest(
-				listStatementNumsToSend:billingSetup.ListStatements.Select(x => x.StatementNum).ToList(),
-				actionSendEmail:(clinicNum,emailMessage,emailAddress,isSecure) => {
-					int clinicIndex=billingSetup.ListClinics.FindIndex(x => x.ClinicNum==clinicNum);
-					if(clinicIndex==1 || clinicIndex==3){
-						try{
-							Assert.IsTrue(isSecure);
-							Assert.AreEqual(EmailSentOrReceived.SecureEmailSent,emailMessage.SentOrReceived);
-						}
-						catch(Exception ex){
-							hasException=true;
-						}
-					}
-					else {
-						try{
-							Assert.IsFalse(isSecure);
-							Assert.AreEqual(EmailSentOrReceived.Sent,emailMessage.SentOrReceived);
-						}
-						catch(Exception ex){
-							hasException=true;
-						}
-					}
-				});
-				BillingL.SendStatements(sendStatementsIO);
-				Assert.IsFalse(hasException);//check that none of the asserts within the Action failed
-		}
 		#endregion
 
 		private class LogWriterBillingTest : LogWriter {
@@ -1155,7 +1105,7 @@ namespace UnitTests.Billing_Tests {
 				Action<ODEventArgs> actionProgressEvent = null,
 				Action<string,bool> actionPrompt = null,
 				Action<string> actionDeleteTempPdfFile = null,
-				Action<long,EmailMessage,EmailAddress,bool> actionSendEmail = null,
+				Action<long,EmailMessage,EmailAddress> actionSendEmail = null,
 				Action actionSleepDuringPause = null,				
 				Func<string,bool> funcAskQuestion = null,
 				Func<string,ChooseSaveFile> funcChooseSaveFile = null,
@@ -1177,7 +1127,7 @@ namespace UnitTests.Billing_Tests {
 				ActionProgressEvent=ODMethodsT.Coalesce(actionProgressEvent,(args) => { });
 				ActionPrompt=ODMethodsT.Coalesce(actionPrompt,(prompt,useCopyPaste) => { });
 				ActionSleepDuringPause=ODMethodsT.Coalesce(actionSleepDuringPause,() => { });
-				ActionSendEmail=ODMethodsT.Coalesce(actionSendEmail,(clinicNumPat,emailMessage,emailAddress,useSecureEmail) => { });
+				ActionSendEmail=ODMethodsT.Coalesce(actionSendEmail,(clinicNumPat,emailMessage,emailAddress) => { });
 				ActionDeleteTempPdfFile=ODMethodsT.Coalesce(actionDeleteTempPdfFile,(tempPdfFile) => { File.Delete(tempPdfFile); });
 				FuncGetIsHistoryStartMinDate=ODMethodsT.Coalesce(funcGetIsHistoryStartMinDate,() => { return false; });
 				FuncAskQuestion=ODMethodsT.Coalesce(funcAskQuestion,(question) => { return true; });

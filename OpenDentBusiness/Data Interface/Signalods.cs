@@ -27,11 +27,6 @@ namespace OpenDentBusiness {
 		///ContrAppt.TickRefresh() was using DateSignalLastRefreshed, which is only set after we process signals. Therefore, when a client went inactive, we could potentially query the 
 		///SignalOD table for a much larger dataset than intended. E.g.- Client goes inactive for 3 hours, comes back, ContrAppt.TickRefresh() is called and calls RefreshTimed() with a 3 hour old datetime.</summary>
 		public static DateTime DateTApptSignalLastRefreshed;
-		///<summary>Track the last time that the web service refreshed it's cache. 
-		///The cache is shared by all consumers of this web service for this app pool. 
-		///Yes this goes against best practice and yes this could lead to occasional collisions. 
-		///But the risk of these things happening is very low given the low frequency of traffic and the low frequency of cache-eligible changes being made.</summary>
-		public static DateTime DateTSignalLastRefreshedWeb=DateTime.MinValue;
 		#endregion
 
 		#region Fields - Private
@@ -179,57 +174,6 @@ namespace OpenDentBusiness {
 				+$"AND IType IN({string.Join(",",invalidTypeArray.Select(x => POut.Int((int)x)))})";
 			int numSitesSignals=PIn.Int(Db.GetCount(command));
 			return numSitesSignals;
-		}
-
-		///<summary>Process all Signals and Acks Since a given DateTime.  Only to be used by OpenDentalWebService.
-		///Returns latest valid signal Date/Time and the list of InvalidTypes that were refreshed.
-		///Can throw exception.</summary>
-		public static List<InvalidType> RefreshForWeb() {
-			InvalidType[] invalidTypeArray=new InvalidType[0];
-			List<Signalod>listSignalods=new List<Signalod>();
-			try {
-				listSignalods=GetInvalidSignalsForWeb();
-				invalidTypeArray=Signalods.GetInvalidTypesForWeb(listSignalods);
-				//Get all invalid types since given time and refresh the cache for those given invalid types.
-				Cache.Refresh(invalidTypeArray);
-			}
-			catch(Exception ex) {
-				//Most likely cause for an exception here would be a thread collision between 2 consumers trying to refresh the cache at the exact same instant.
-				//There is a chance that performing a subsequent refresh here would cause yet another collision but it's the best we can do without redesigning the entire cache pattern.
-				Cache.Refresh(InvalidType.AllLocal);
-				throw new Exception("Server cache may be invalid. Please try again. Error: "+ex.Message);
-			}
-			InvalidTypeHistory.UpdateStatus(DateTSignalLastRefreshedWeb,listSignalods,invalidTypeArray);
-			return invalidTypeArray.ToList();
-		}
-
-		///<summary>Gets all Signals since SignalLastRefreshedWeb. Returns empty list if it is not yet time to process signals again. Can throw exception.</summary>
-		public static List<Signalod> GetInvalidSignalsForWeb() {
-			try {
-				InvalidTypeHistory.InitIfNecessary();
-				int defaultProcessSigsIntervalInSecs=7;
-				ODException.SwallowAnyException(() => defaultProcessSigsIntervalInSecs=PrefC.GetInt(PrefName.ProcessSigsIntervalInSecs));
-				if(DateTime.Now.Subtract(DateTSignalLastRefreshedWeb)<=TimeSpan.FromSeconds(defaultProcessSigsIntervalInSecs)) {
-					return new List<Signalod>();
-				}
-				Meth.NoCheckMiddleTierRole();
-				List<Signalod> listSignalods=new List<Signalod>();
-				if(DateTSignalLastRefreshedWeb.Year<1880) { //First signals for this session so go back in time a bit.
-					DateTSignalLastRefreshedWeb=MiscData.GetNowDateTime().AddSeconds(-1);
-				}
-				listSignalods=RefreshTimed(DateTSignalLastRefreshedWeb);
-				if(listSignalods.Count > 0) { //Next lower bound is current upper bound.
-					DateTSignalLastRefreshedWeb=listSignalods.Max(x => x.SigDateTime);
-				}
-				return listSignalods;
-			}
-			catch(Exception) {
-				//Reset the last signal process time if there was an error.
-				DateTime dateTimeLastRefreshed=DateTime.Now;
-				ODException.SwallowAnyException(() => dateTimeLastRefreshed=OpenDentBusiness.MiscData.GetNowDateTime());
-				DateTSignalLastRefreshedWeb=dateTimeLastRefreshed;
-				throw;
-			}
 		}
 
 		///<summary>Returns the PK of the signal inserted if only one signal was passed in; Otherwise, returns 0.</summary>

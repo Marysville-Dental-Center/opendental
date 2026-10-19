@@ -344,27 +344,6 @@ namespace OpenDentBusiness{
 			return Crud.AppointmentCrud.SelectMany(command);
 		}
 		
-		///<summary>Gets the appointments for the dates and operatories passed in.</summary>
-		public static List<Appointment> GetApptsForDatesOps(List<AsapComms.DateTOpNum> listDateTOpNums) {
-			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				return Meth.GetObject<List<Appointment>>(MethodBase.GetCurrentMethod(),listDateTOpNums);
-			}
-			if(listDateTOpNums.Count==0) {
-				return new List<Appointment>();
-			}
-			string command="SELECT * FROM appointment WHERE AptStatus NOT IN("+POut.Int((int)ApptStatus.UnschedList)+","
-				+POut.Int((int)ApptStatus.Planned)+") AND (";
-			for(int i=0;i<listDateTOpNums.Count();i++){
-				if(i>0){
-					command+=" OR";
-				}
-				command+=" ("+DbHelper.BetweenDates("AptDateTime",listDateTOpNums[i].DateTAppt,listDateTOpNums[i].DateTAppt)
-					+" AND Op=" + POut.Long(listDateTOpNums[i].OpNum)+")";
-			}
-			command+=")";
-			return Crud.AppointmentCrud.SelectMany(command);
-		}
-
 		///<summary>Returns a list containing every appointment associated to the provided patnum.</summary>
 		public static List<Appointment> GetAppointmentsForPat(params long[] patNumArray) {
 			if(patNumArray.IsNullOrEmpty()) {
@@ -3333,10 +3312,10 @@ namespace OpenDentBusiness{
 			Db.NonQ(command);
 		}
 
-		///<summary>The defNumApptConfirmed will be a DefNum or 0.  Inserts an invalid appointment signalod. If createSheetsForCheckin is true, it will create both sheets and eForms.</summary>
-		public static void SetConfirmed(Appointment appointment,long defNumApptConfirmed,bool createSheetsForCheckin=true) {
+		///<summary>The defNumApptConfirmed will be a DefNum or 0.  Inserts an invalid appointment signalod.</summary>
+		public static void SetConfirmed(Appointment appointment,long defNumApptConfirmed) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				Meth.GetVoid(MethodBase.GetCurrentMethod(),appointment,defNumApptConfirmed,createSheetsForCheckin);
+				Meth.GetVoid(MethodBase.GetCurrentMethod(),appointment,defNumApptConfirmed);
 				return;
 			}
 			appointment.Confirmed=defNumApptConfirmed;
@@ -3345,11 +3324,6 @@ namespace OpenDentBusiness{
 			command+=",SecurityHash='"+POut.String(appointment.SecurityHash)+"'";
 			if(PrefC.GetLong(PrefName.AppointmentTimeArrivedTrigger)==defNumApptConfirmed) {
 				command+=",DateTimeArrived="+POut.DateT(DateTime.Now);
-				//createSheetsForCheckin will create any eForms also.
-				if(createSheetsForCheckin) {
-					Sheets.CreateSheetsForCheckIn(appointment);
-					EForms.CreateEFormForCheckIn(appointment);
-				}
 			}
 			else if(PrefC.GetLong(PrefName.AppointmentTimeSeatedTrigger)==defNumApptConfirmed){
 				command+=",DateTimeSeated="+POut.DateT(DateTime.Now);
@@ -3397,10 +3371,6 @@ namespace OpenDentBusiness{
 			if(appointment.AptStatus==ApptStatus.UnschedList && appointment.AptStatus!=appointmentOld.AptStatus) {
 				appointment.Op=0;
 				SetAptStatus(appointment,appointment.AptStatus);
-			}
-			if(appointment.Confirmed!=appointmentOld.Confirmed && appointment.Confirmed==PrefC.GetLong(PrefName.AppointmentTimeArrivedTrigger)) {
-				Sheets.CreateSheetsForCheckIn(appointment);
-				EForms.CreateEFormForCheckIn(appointment);
 			}
 			if(isSuccess && !suppressHistory) {//Something actually changed.
 				HistAppointments.CreateHistoryEntry(appointment.AptNum,HistAppointmentAction.Changed);

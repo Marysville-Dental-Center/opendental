@@ -4198,37 +4198,8 @@ namespace OpenDental {
 				&& appointment.Confirmed!=Defs.GetFirstForCategory(DefCat.ApptConfirmed,true).DefNum
 				&& appointment.AptDateTime.Date!=DateTime.Today) 
 			{
-				string prompt;
-				if(PrefC.GetBool(PrefName.ApptConfirmAutoEnabled)){
-					prompt=Lan.g(this,"Do you want to resend the eConfirmation?");
-				}
-				else if(PrefC.GetBool(PrefName.ApptThankYouAutoEnabled)) {
-					prompt=Lan.g(this,"Do you want to resend the eThankYou?");
-				}
-				else{
-					prompt=Lan.g(this,"Reset Confirmation Status?");
-				}
-				bool isResetConf=MsgBox.Show(this,MsgBoxButtons.YesNo,prompt);
-				if(isResetConf) {
+				if(MsgBox.Show(this,MsgBoxButtons.YesNo,"Reset Confirmation Status?")) {
 					appointment.Confirmed=Defs.GetFirstForCategory(DefCat.ApptConfirmed,true).DefNum;//Causes the confirmation status to be reset.
-				}
-				if(PrefC.GetBool(PrefName.ApptConfirmAutoEnabled)) {
-					List<ConfirmationRequest> listConfirmationRequests=ConfirmationRequests.GetAllForAppts(new List<long> { appointment.AptNum});
-					for(int i=0;i<listConfirmationRequests.Count();i++) {
-						//If they selected No, this will force the econnector to not delete the row and therefore not send another eConfirmation.
-						//If they selected Yes, we will clear the DoNotResend flag so that it will get sent.
-						listConfirmationRequests[i].DoNotResend=!isResetConf;
-						ConfirmationRequests.Update(listConfirmationRequests[i]);
-					}
-				}
-				if(PrefC.GetBool(PrefName.ApptThankYouAutoEnabled)) {
-					List<ApptThankYouSent> listApptThankYouSents=ApptThankYouSents.GetForApt(appointment.AptNum);
-					for(int i=0;i<listApptThankYouSents.Count();i++) {
-						//If they selected No, this will force the econnector to not delete the row and therefore not send another eThankYou.
-						//If they selected Yes, we will clear the DoNotResend flag so that it will get sent.
-						listApptThankYouSents[i].DoNotResend=!isResetConf;
-						ApptThankYouSents.Update(listApptThankYouSents[i]);
-					}
 				}
 			}
 			if(isOpChanged && !appointment.IsHygiene) {//If a non-hygiene appointment is moved, update the IsHygiene value to that of the new operatory.

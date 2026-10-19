@@ -154,7 +154,7 @@ namespace OpenDentBusiness{
 
 		#region Misc Methods
 
-		///<summary>Creates a username that is not yet in use. Should typically call UserWebs.GetNewPatientPortalCredentials() instead.
+		///<summary>Creates a username that is not yet in use.
 		///If you are not inserting the name into UserWeb immediately then listExcludedNames should persist across multiple calls.</summary>
 		public static string CreateUserNameFromPat(Patient patient,UserWebFKeyType userWebFKeyType,List<string> listExcludedNames) {
 			Meth.NoCheckMiddleTierRole();
@@ -342,93 +342,6 @@ namespace OpenDentBusiness{
 				stringBuilderErrors.AppendLine(Lans.g("PatientPortal","Missing patient email."));
 			}
 			return stringBuilderErrors.ToString();
-		}
-
-		///<summary>Updates password info in db for given inputs if PlainTextPassword (Item2) is not empty.
-		///Insert EhrMeasureEvent OnlineAccessProvided if previous db version of UserWeb had no PasswordHash (access has now been granted to portal).
-		///Returns true if UserWeb row was updated. Otherwise returns false.</summary>
-		public static bool UpdateNewPatientPortalCredentials(PatientPortalCredential patientPortalCredential) {
-			Meth.NoCheckMiddleTierRole();
-			if(patientPortalCredential==null) {
-				return false;
-			}
-			UserWeb userWeb=patientPortalCredential.UserWeb;
-			PasswordContainer passwordContainer=patientPortalCredential.PasswordContainer;
-			if(userWeb!=null && !patientPortalCredential.HasAccessedPatientPortal) {
-				//Only insert an EHR event if the password was previously blank (meaning they don't currently have access).
-				if(string.IsNullOrEmpty(userWeb.PasswordHash)) {
-					EhrMeasureEvent ehrMeasureEvent=new EhrMeasureEvent();
-					ehrMeasureEvent.DateTEvent=DateTime.Now;
-					ehrMeasureEvent.EventType=EhrMeasureEventType.OnlineAccessProvided;
-					ehrMeasureEvent.PatNum=userWeb.FKey; //PatNum.
-					ehrMeasureEvent.MoreInfo="";
-					EhrMeasureEvents.Insert(ehrMeasureEvent);
-				}
-				//New password was created so set the flag for the user to change on next login and update the db accordingly.
-				userWeb.RequirePasswordChange=true;
-				userWeb.LoginDetails=passwordContainer;
-				UserWebs.Update(userWeb);
-				return true;
-			}
-			return false;
-		}
-
-		///<summary>Generates a username and password if necessary for this patient. If the patient is not eligible to be given access, this will return null. 
-		///Otherwise returns the UserWeb (Item1), PlainTextPassword (Item2), PasswordContainer (Item3). 
-		///If PlainTextPassword (Item2) is empty then assume new password generation was not necessary.
-		///Will insert a new UserWeb if none found for this Patient. Will leave UserWeb.PasswordHash blank. 
-		///Call UpdateNewPatientPortalCredentials() using results of this method if you want to save password to db.</summary>
-		///<param name="passwordOverride">If a password has already been generated for this patient, pass it in here so that the password returned
-		///will match.</param>
-		public static PatientPortalCredential GetNewPatientPortalCredentials(Patient patient,string passwordOverride="") {
-			Meth.NoCheckMiddleTierRole();
-			if(string.IsNullOrEmpty(PrefC.GetString(PrefName.PatientPortalURL))) {
-				return null;//Haven't set up patient portal yet.
-			}
-			string errors=UserWebs.ValidatePatientAccess(patient);
-			if(!string.IsNullOrEmpty(errors)) {
-				return null;//Patient is missing necessary fields.
-			}
-			UserWeb userWeb=UserWebs.GetByFKeyAndType(patient.PatNum,UserWebFKeyType.PatientPortal);			
-			if(userWeb==null) {
-				userWeb=new UserWeb(); 
-				userWeb.UserName=UserWebs.CreateUserNameFromPat(patient,UserWebFKeyType.PatientPortal,new List<string>());
-				userWeb.FKey=patient.PatNum;
-				userWeb.FKeyType=UserWebFKeyType.PatientPortal;
-				userWeb.RequireUserNameChange=true;
-				userWeb.LoginDetails=new PasswordContainer(HashTypes.None,"","");
-				userWeb.IsNew=true;		
-				//Always insert here. We may not ever end up updating UserWeb.PasswordHash if an email is not sent to this patient.
-				//This will leave a UserWeb row with a UserName (for next time) but no password. This row will be updated with a password at the appropriate time.
-				UserWebs.Insert(userWeb);
-			}
-			bool isNewPasswordRequired=false;			
-			if(string.IsNullOrEmpty(userWeb.UserName)) { //Fixing B11013 so new UserName and Password should be generated.
-				userWeb.UserName=UserWebs.CreateUserNameFromPat(patient,UserWebFKeyType.PatientPortal,new List<string>());
-				userWeb.RequireUserNameChange=true;
-				//UserName fields have been changed so update db.
-				UserWebs.Update(userWeb);
-				isNewPasswordRequired=true;
-			}
-			if(userWeb.RequirePasswordChange) { //Could be a new UserWeb or a subsequent invite being generated for the same patient (had a second appointment).
-				isNewPasswordRequired=true;
-			}
-			if(string.IsNullOrEmpty(userWeb.PasswordHash)) { //Patient has no password so portal access has not been previously granted.
-				isNewPasswordRequired=true;
-			}
-			string passwordPlainText="";
-			PasswordContainer passwordContainer=userWeb.LoginDetails;
-			if(isNewPasswordRequired) {
-				//PP invites will often times call this method and get this far but not actually want to save the new creds to the db.
-				//For that reason we won't actually update the db with the new password here. 
-				//The caller of this method will need to call ProcessNewPatientPortalCredentialsOut() if they really want this new password to persist to the db.
-				passwordPlainText=passwordOverride;
-				if(passwordOverride=="") {
-					passwordPlainText=UserWebs.GenerateRandomPassword(8);
-				}
-				passwordContainer=Authentication.GenerateLoginDetails(passwordPlainText,HashTypes.SHA3_512);
-			}
-			return new PatientPortalCredential(userWeb,passwordPlainText,passwordContainer);
 		}
 
 		public static bool UserNameExists(string userName,UserWebFKeyType userWebFKeyType) {

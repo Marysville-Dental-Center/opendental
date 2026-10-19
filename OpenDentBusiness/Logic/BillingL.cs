@@ -10,7 +10,6 @@ using System.Text;
 using System.Xml;
 using System.Data;
 using MySqlConnector;
-using OpenDentBusiness.AutoComm;
 
 namespace OpenDentBusiness {
 	public class BillingL {
@@ -55,14 +54,9 @@ namespace OpenDentBusiness {
 				emailAddress=EmailAddresses.OverrideSenderAddressClinical(emailAddress,clinicNum);
 				return emailAddress;
 			};
-			sendStatementsIO.ActionSendEmail=(clinicNumPat,emailMessage,emailAddress,useSecureEmail) => {
-				if(useSecureEmail) {
-					EmailSecures.InsertMessageThenSend(emailMessage,emailAddress,emailMessage.ToAddress,clinicNumPat);
-				}
-				else {
-					//If IsCloudStorage==true, then we will end up downloading the file again in EmailMessages.SendEmailUnsecure.
-					EmailMessages.SendEmail(emailMessage,emailAddress);
-				}
+			sendStatementsIO.ActionSendEmail=(clinicNumPat,emailMessage,emailAddress) => {
+				//If IsCloudStorage==true, then we will end up downloading the file again in EmailMessages.SendEmailUnsecure.
+				EmailMessages.SendEmail(emailMessage,emailAddress);
 			};
 			sendStatementsIO.FuncGetPatientPdfPath=(tempPdfFile,filePath) => {
 				if(!CloudStorage.IsCloudStorage) {
@@ -216,14 +210,11 @@ namespace OpenDentBusiness {
 				//Fire progress event before we start.
 				sendStatementsIO.FireOverallProgress();
 				sendStatementsIO.FireTextMsgProgress(Lans.g("FormBilling","Preparing Batch")+" "+sendStatementsIO.CurStatementBatch.BatchNum);
-				//Now to print, send eBills, and text messages.
+				//Now to print and send eBills. Statement texts were sent through Open Dental's hosted Integrated Texting, which was removed.
 				//If any return false, the user canceled during execution OR other catastrophic failure occurred.
 				bool isBatchValid=PrintBatch(sendStatementsIO);
 				if(isBatchValid) { //Only send eBills if batch ok.
 					isBatchValid=SendEBills(sendStatementsIO);
-				}
-				if(isBatchValid) { //Only send texts if batch and eBills ok.
-					isBatchValid=SendTextMessages(sendStatementsIO);
 				}
 				//Always sync back to StatementProd.
 				Statements.SyncStatementProdsForMultipleStatements(sendStatementsIO.CurStatementBatch.ListStatementDatas);
@@ -248,10 +239,6 @@ namespace OpenDentBusiness {
 			if(count>0) {
 				message+=Lans.g("FormBilling","Skipped due to missing or bad mailing address:")+" "+count.ToString()+"\r\n";
 			}
-			count=sendStatementsIO.ListSkippedPatients.Count(x => x.Reason==SkipReason.BadSmsSetup);
-			if(count>0) {
-				message+=Lans.g("FormBilling","No text message sent due to SMS setup issue:")+" "+count.ToString()+"\r\n";
-			}
 			if(sendStatementsIO.CountStatementsSkippedForDeletion>0) {
 				message+=Lans.g("FormBilling","Skipped due to being deleted by another user:")+" "+sendStatementsIO.CountStatementsSkippedForDeletion.ToString()+"\r\n";
 			}
@@ -261,8 +248,7 @@ namespace OpenDentBusiness {
 			}
 			message+=Lans.g("FormBilling","Printed:")+" "+sendStatementsIO.CountStatementsPrinted.ToString()+"\r\n"
 				+Lans.g("FormBilling","Emailed:")+" "+sendStatementsIO.CountStatementsEmailed.ToString()+"\r\n"
-				+Lans.g("FormBilling","SentElect:")+" "+sendStatementsIO.CountStatementsSentElectronic.ToString()+"\r\n"
-				+Lans.g("FormBilling","Texted:")+" "+sendStatementsIO.CountStatmentsSentPayPortalText.ToString();
+				+Lans.g("FormBilling","SentElect:")+" "+sendStatementsIO.CountStatementsSentElectronic.ToString();
 			sendStatementsIO.LogWrite(message,LogLevel.Error);
 			if(sendStatementsIO.ListSkippedPatients.Count>0) {
 				//Modify original box to have yes/no buttons to see if they want to see who errored out
@@ -428,18 +414,9 @@ namespace OpenDentBusiness {
 						long clinicNumPat=0;
 						if(PrefC.HasClinicsEnabled) {
 							clinicNumPat=patient.ClinicNum;
-							if(clinicNumPat==0) { //set 0 clinic to use default clinic settings
-								clinicNumPat=PrefC.GetLong(PrefName.EmailSecureDefaultClinic);
-							}
 						}
-						bool useSecureEmail=
-							Enum.TryParse(ClinicPrefs.GetPrefValue(PrefName.EmailStatementsSecure,clinicNumPat),out EmailPlatform emailPlatform)
-							&& emailPlatform==EmailPlatform.Secure
-							&& Clinics.IsSecureEmailEnabled(clinicNumPat);
-						if(useSecureEmail) {
-							emailMessage.SentOrReceived=EmailSentOrReceived.SecureEmailSent;
-						}
-						sendStatementsIO.ActionSendEmail(clinicNumPat,emailMessage,emailAddress,useSecureEmail);
+						//Statements used to be sent as Secure Email when the clinic was signed up for Open Dental's hosted Secure Email, which was removed.
+						sendStatementsIO.ActionSendEmail(clinicNumPat,emailMessage,emailAddress);
 						sendStatementsIO.FireStatementProgress(90);
 						sendStatementsIO.CountStatementsEmailed++;
 						sendStatementsIO.FireTextMsgProgress(Lans.g("FormBilling","Email Sent")+"...");
@@ -689,105 +666,6 @@ namespace OpenDentBusiness {
 			return true;
 		}
 
-		///<summary>Sends text messages to the current batch of statements. Changes to this method will also need to be made to OpenDentalService.ScheduledProcessThread.SendTextMessages().
-		///In order to receive a text, the clinic of the patient whom the statement belongs to must be signed up for texting, the patient must meet the criteria of PatComm.IsSmsAnOption, and patient must not be opted out.
-		///Most importantly, the BillingOptions for this statement Mode must indicate that this Mode is to receive a text message. Statement.SmsSendStatus is used to manage this flag.</summary>
-		private static bool SendTextMessages(SendStatementsIO sendStatementsIO) {
-			List<SmsToMobile> listTextsToSend=new List<SmsToMobile>();
-			List<Patient> listPatients=sendStatementsIO.DictionaryFamilies.Values.SelectMany(x => x.ListPats).DistinctBy(x => x.PatNum).ToList();
-			List<PatComm> listPatComms=Patients.GetPatComms(listPatients);
-			string guidBatch=null;
-			for(int i=0; i<sendStatementsIO.CurStatementBatch.ListStatements.Count; i++) {
-				Statement statement=sendStatementsIO.CurStatementBatch.ListStatements[i];
-				if(!BillingProgressPause(sendStatementsIO)) {
-					return false;
-				}
-				if(sendStatementsIO.ListSkippedPatients.Any(x => x.PatNum==statement.PatNum)) {
-					//Already skipped this patient for some other reason. Don't bother sending a text.
-					//Skipping here is new behavior for 24.2 Billing refactor. Previously would send statement text for skipped patients (bug).
-					continue;
-				}
-				if(!sendStatementsIO.ListStatementNumsSent.Contains(statement.StatementNum)) {
-					//This statement was not sent for whatever reason so don't bother sending a text message.
-					continue;
-				}
-				//Statements are generated in FormBillingOptions.
-				//This form will link certain statement modes (Email, Electronic, InPerson, etc) to receive a corresponding text message.
-				//If the Mode of this statement is not set to send a text message, then we will skip the text message here.
-				if(statement.SmsSendStatus!=AutoCommStatus.SendNotAttempted) {
-					continue;
-				}
-				if(string.IsNullOrWhiteSpace(PrefC.GetString(PrefName.BillingDefaultsSmsTemplate))) {
-					//User has opted to allow billing to run despite not having a valide sms template.
-					//This combination would previously cause this method to return false, which would cause billing to halt after already having sent first batch of statements.
-					//2/29/24 - SamO decided that this is not a haltable offense since user opted to allow it to happen. Instead we will just add this failed comm to the error list.
-					sendStatementsIO.AddSkippedPatient(statement.PatNum,SkipReason.BadSmsSetup,Lans.g("FormBilling","SMS Statements template not setup"));
-					continue;
-				}
-				PatComm patComm=listPatComms.Find(x => x.PatNum==statement.PatNum);
-				if(patComm==null) {
-					sendStatementsIO.AddSkippedPatient(statement.PatNum,SkipReason.BadSmsSetup,Lans.g("FormBilling","Unable to find patient communication method"));
-					continue;
-				}
-				if(!patComm.IsSmsAnOption) {
-					continue;
-				}
-				if(patComm.CommOptOut.IsOptedOut(CommOptOutMode.Text,CommOptOutType.Statements)) {
-					sendStatementsIO.AddSkippedPatient(statement.PatNum,SkipReason.BadSmsSetup,Lans.g("FormBilling","Patient is opted out of automated messaging."));
-					continue;
-				}
-				Patient patient=listPatients.Find(x => x.PatNum==statement.PatNum)??Patients.GetPat(statement.PatNum);
-				if(patient==null) {
-					sendStatementsIO.AddSkippedPatient(statement.PatNum,SkipReason.BadSmsSetup,Lans.g("FormBilling","Unable to find patient"));
-					continue;
-				}
-				SmsToMobile textToSend=new SmsToMobile();
-				textToSend.ClinicNum=patient.ClinicNum;
-				textToSend.GuidMessage=Guid.NewGuid().ToString();
-				textToSend.IsTimeSensitive=false;
-				textToSend.MobilePhoneNumber=patComm.SmsPhone;
-				textToSend.PatNum=statement.PatNum;
-				try {
-					textToSend.MsgText=new MsgToPayTagReplacer().ReplaceTagsForStatement(PrefC.GetString(PrefName.BillingDefaultsSmsTemplate),patient,statement);
-				}
-				catch(Exception e) {
-					sendStatementsIO.AddSkippedPatient(statement.PatNum,SkipReason.BadSmsSetup,Lans.g("FormBilling","Failed to format text message correctly")+ ": "+e.Message);
-					continue;
-				}
-				textToSend.MsgType=SmsMessageSource.Statements;
-				//First message guid is the batch guid.
-				guidBatch=guidBatch??textToSend.GuidMessage;
-				textToSend.GuidBatch=guidBatch;
-				listTextsToSend.Add(textToSend);
-				//Store the guid here so we can reference it below and link this statement back to it's message.
-				statement.TagOD=textToSend.GuidMessage;
-			}
-			if(!BillingProgressPause(sendStatementsIO)) {
-				return false;
-			}
-			if(listTextsToSend.Count==0) {
-				return true;
-			}
-			try {
-				sendStatementsIO.FireTextMsgProgress(Lans.g("FormBilling","Sending text messages")+"...");
-				List<SmsToMobile> listSmsToMobiles=SmsToMobiles.SendSmsMany(listTextsToSend,userod:Security.CurUser);
-				List<SmsToMobile> listSmsToMobilesFails=Statements.HandleSmsSent(listSmsToMobiles,sendStatementsIO.CurStatementBatch.ListStatements);
-				for(int i = 0;i<listSmsToMobilesFails.Count;++i) {
-					sendStatementsIO.AddSkippedPatient(listSmsToMobilesFails[i].PatNum,SkipReason.BadSmsSetup,Lans.g("Statements","Error Sending text messages")+": "+listSmsToMobilesFails[i].CustErrorText);
-				}
-				sendStatementsIO.CountStatmentsSentPayPortalText+=listSmsToMobiles.Where(x => x.SmsStatus!=SmsDeliveryStatus.FailNoCharge).Count();
-			}
-			catch(Exception ex) {
-				sendStatementsIO.AppendMiscSystemError(Lans.g("FormBilling","Error Sending text messages")+": "+ex.ToString());
-				List<long> listFailedStatementNums=sendStatementsIO.CurStatementBatch.ListStatements
-					//Statement.TagOD was set to SmsToMobile.GuidMessage above. Match all of those back here so we can fail them all.
-					.FindAll(x => x.TagOD is string guidMessage && listTextsToSend.Any(y => y.GuidMessage==guidMessage))
-					.Select(x => x.StatementNum).ToList();
-				Statements.UpdateSmsSendStatus(listFailedStatementNums,AutoCommStatus.SendFailed);
-			}
-			return true;
-		}
-
 		///<summary>Check to see if the user wants to pause the sending of statements.  If so, wait until they decide to resume.
 		///Returns true unless the user clicks cancel in the progress window.
 		///The method will wait infinitely if paused from the progress window.
@@ -868,11 +746,6 @@ namespace OpenDentBusiness {
 			}
 			ClinicBillingOptions clinicBillingOptions=new ClinicBillingOptions(clinicNum);
 			//Practice specific preferences.
-			List<StatementMode> listStatementModesToSendSMS=new List<StatementMode>();
-			if(SmsPhones.IsIntegratedTextingEnabled()) {
-				//Each statement mode can be coupled with a text message to the payment portal. This link is made in FormBillingOptions and saved to this pref.
-				listStatementModesToSendSMS=EnumTools.ConvertListOfIntsToListOfEnums<StatementMode>(PrefC.GetString(PrefName.BillingDefaultsModesToText));
-			}
 			string strLastStatementDate=DateTime.Today.AddMonths(-1).ToShortDateString();
 			string strDateStart=DateTime.Today.AddDays(-PrefC.GetLong(PrefName.BillingDefaultsLastDays)).ToShortDateString();
 			string strDateEnd=DateTime.Today.ToShortDateString();
@@ -1017,32 +890,6 @@ namespace OpenDentBusiness {
 				dateRangeTo=PIn.Date(strDateEnd);
 			}
 			Statement statement;
-			List<WebServiceMainHQProxy.ShortGuidResult> listShortGuidUrls=new List<WebServiceMainHQProxy.ShortGuidResult>();
-			SheetDef sheetDefStatement=SheetUtil.GetStatementSheetDef();
-			if(//They are going to send texts
-				listStatementModesToSendSMS.Count>0
-				//Or the email body has a statement URL
-				||PrefC.GetString(PrefName.BillingEmailBodyText).ToLower().Contains(MsgToPayTagReplacer.STATEMENT_URL_TAG.ToLower())
-				||PrefC.GetString(PrefName.BillingEmailBodyText).ToLower().Contains(MsgToPayTagReplacer.STATEMENT_SHORT_TAG.ToLower())
-				||PrefC.GetString(PrefName.BillingEmailBodyText).ToLower().Contains(MsgToPayTagReplacer.MSG_TO_PAY_TAG.ToLower())
-				//Or the statement sheet has a URL field
-				||(sheetDefStatement!=null&&sheetDefStatement.SheetFieldDefs.Any(x => x.FieldType==SheetFieldType.OutputText
-							&&(x.FieldValue.ToLower().Contains(MsgToPayTagReplacer.STATEMENT_URL_TAG.ToLower())||x.FieldValue.ToLower().Contains(MsgToPayTagReplacer.STATEMENT_SHORT_TAG.ToLower()))))) {
-				//Then get some short GUIDs and URLs from OD HQ.
-				try {
-					int countForSms=listPatAgings.Count(x => Statements.DoSendSms(x,dictPatAgingData,listStatementModesToSendSMS));
-					//Previously we were reserving more guids then neccessary. Would just dump extra GUIDS.
-					listShortGuidUrls=WebServiceMainHQProxy.GetShortGUIDs(countForSms,countForSms,clinicNum,eServiceCode.PatientPortalViewStatement);
-				}
-				catch(Exception ex) {
-					sendStatementsIO.LogWrite(Lans.g("FormBilling","Unable to create a unique URL for each statement. The Patient Portal URL will be used instead.\r\n")+ex.Message,LogLevel.Error);
-					listShortGuidUrls=listPatAgings.Select(x => new WebServiceMainHQProxy.ShortGuidResult {
-						MediumURL=PrefC.GetString(PrefName.PatientPortalURL),
-						ShortURL=PrefC.GetString(PrefName.PatientPortalURL),
-						ShortGuid=""
-					}).ToList();
-				}
-			}
 			Dictionary<long,InstallmentPlan> dictInstallmentPlans=InstallmentPlans.GetForFams(listPatAgings.Select(x => x.PatNum).ToList());
 			List<Statement> listStatementsForInsert=new List<Statement>();
 			DateTime dateBalBeganCur;
@@ -1059,18 +906,11 @@ namespace OpenDentBusiness {
 				if(ListTools.In(PrefC.GetInt(PrefName.BillingUseElectronic),1,2,3,4)) {
 					statement.Intermingled=true;
 				}
-				bool doSendSms=Statements.DoSendSms(listPatAgings[i],dictPatAgingData,listStatementModesToSendSMS);
-				statement.SmsSendStatus=(doSendSms ? AutoCommStatus.SendNotAttempted : AutoCommStatus.DoNotSend);
+				//Statement texts and portal links were Open Dental hosted eServices, which were removed.
+				statement.SmsSendStatus=AutoCommStatus.DoNotSend;
 				statement.ShortGUID="";
 				statement.StatementURL="";
 				statement.StatementShortURL="";
-				WebServiceMainHQProxy.ShortGuidResult shortGuidUrl=listShortGuidUrls.FirstOrDefault(x => x.IsForSms==doSendSms);
-				if(shortGuidUrl!=null) {
-					statement.ShortGUID=shortGuidUrl.ShortGuid;
-					statement.StatementURL=shortGuidUrl.MediumURL;
-					statement.StatementShortURL=shortGuidUrl.ShortURL;
-					listShortGuidUrls.Remove(shortGuidUrl);
-				}
 				statement.Note=strBillingDefaultNote;
 				InstallmentPlan installmentPlan;
 				if(dictInstallmentPlans.TryGetValue(listPatAgings[i].PatNum,out installmentPlan)&&installmentPlan!=null) {
@@ -1240,8 +1080,8 @@ namespace OpenDentBusiness {
 		public Func<DataTable> FuncGetBillingDataTable;
 		///<summary>Input: Patient's ClinicNum, Output: Sender Email. Will typically use the email belonging to the clinic of the patient attached to the statement.</summary>
 		public Func<long,EmailAddress> FuncGetSenderEmailAddress;
-		///<summary>Input: Patient's ClinicNum, EmailMessage to send, Send EmailAddress, Use Secure Email. Invoker must send the email via given method, and insert email into db.</summary>
-		public Action<long,EmailMessage,EmailAddress,bool> ActionSendEmail;
+		///<summary>Input: Patient's ClinicNum, EmailMessage to send, Send EmailAddress. Invoker must send the email via given method, and insert email into db.</summary>
+		public Action<long,EmailMessage,EmailAddress> ActionSendEmail;
 		///<summary>Input: tempPdfFile, filePath. Output: savedPdfPath.</summary>
 		public Func<string,string,string> FuncGetPatientPdfPath;
 		///<summary>Input: RawBase64 (only used when AtoZ is in database), savedPdfPath (was set by output of FuncGetPatientPdfPath). Output: pdf document opened using given inputs.

@@ -26,12 +26,6 @@ namespace OpenDental{
 			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormBillingDefaults));
 			this.butSave = new OpenDental.UI.Button();
 			this.checkBoxBillShowTransSinceZero = new OpenDental.UI.CheckBox();
-			this.groupBox1 = new OpenDental.UI.GroupBox();
-			this.listModesToText = new OpenDental.UI.ListBox();
-			this.label6 = new System.Windows.Forms.Label();
-			this.textSmsTemplate = new OpenDental.ODtextBox();
-			this.label5 = new System.Windows.Forms.Label();
-			this.label7 = new System.Windows.Forms.Label();
 			this.checkSinglePatient = new OpenDental.UI.CheckBox();
 			this.textInvoiceNote = new OpenDental.ODtextBox();
 			this.label11 = new System.Windows.Forms.Label();
@@ -76,7 +70,6 @@ namespace OpenDental{
 			this.labelStartDate = new System.Windows.Forms.Label();
 			this.textNote = new OpenDental.ODtextBox();
 			this.label4 = new System.Windows.Forms.Label();
-			this.groupBox1.SuspendLayout();
 			this.groupBox3.SuspendLayout();
 			this.groupBoxBilling.SuspendLayout();
 			this.groupBox2.SuspendLayout();
@@ -85,7 +78,7 @@ namespace OpenDental{
 			// butSave
 			// 
 			this.butSave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.butSave.Location = new System.Drawing.Point(798, 700);
+			this.butSave.Location = new System.Drawing.Point(798, 560);
 			this.butSave.Name = "butSave";
 			this.butSave.Size = new System.Drawing.Size(75, 24);
 			this.butSave.TabIndex = 3;
@@ -100,75 +93,6 @@ namespace OpenDental{
 			this.checkBoxBillShowTransSinceZero.Size = new System.Drawing.Size(284, 18);
 			this.checkBoxBillShowTransSinceZero.TabIndex = 253;
 			this.checkBoxBillShowTransSinceZero.Text = "Show all transactions since zero or negative balance";
-			// 
-			// groupBox1
-			// 
-			this.groupBox1.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-			this.groupBox1.Controls.Add(this.listModesToText);
-			this.groupBox1.Controls.Add(this.label6);
-			this.groupBox1.Controls.Add(this.textSmsTemplate);
-			this.groupBox1.Controls.Add(this.label5);
-			this.groupBox1.Controls.Add(this.label7);
-			this.groupBox1.Location = new System.Drawing.Point(12, 557);
-			this.groupBox1.Name = "groupBox1";
-			this.groupBox1.Size = new System.Drawing.Size(850, 137);
-			this.groupBox1.TabIndex = 250;
-			this.groupBox1.Text = "SMS Statements";
-			// 
-			// listModesToText
-			// 
-			this.listModesToText.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.listModesToText.Location = new System.Drawing.Point(642, 78);
-			this.listModesToText.Name = "listModesToText";
-			this.listModesToText.SelectionMode = OpenDental.UI.SelectionMode.MultiExtended;
-			this.listModesToText.Size = new System.Drawing.Size(113, 56);
-			this.listModesToText.TabIndex = 257;
-			// 
-			// label6
-			// 
-			this.label6.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.label6.Location = new System.Drawing.Point(639, 42);
-			this.label6.Name = "label6";
-			this.label6.Size = new System.Drawing.Size(195, 30);
-			this.label6.TabIndex = 256;
-			this.label6.Text = "Send text message for these modes (Patients will need a Patient Portal login)";
-			this.label6.TextAlign = System.Drawing.ContentAlignment.BottomLeft;
-			// 
-			// textSmsTemplate
-			// 
-			this.textSmsTemplate.AcceptsTab = true;
-			this.textSmsTemplate.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-			this.textSmsTemplate.BackColor = System.Drawing.SystemColors.Window;
-			this.textSmsTemplate.DetectLinksEnabled = false;
-			this.textSmsTemplate.DetectUrls = false;
-			this.textSmsTemplate.Location = new System.Drawing.Point(12, 64);
-			this.textSmsTemplate.Name = "textSmsTemplate";
-			this.textSmsTemplate.QuickPasteType = OpenDentBusiness.EnumQuickPasteType.Statement;
-			this.textSmsTemplate.ScrollBars = System.Windows.Forms.RichTextBoxScrollBars.Vertical;
-			this.textSmsTemplate.Size = new System.Drawing.Size(606, 70);
-			this.textSmsTemplate.TabIndex = 1;
-			this.textSmsTemplate.Text = "";
-			// 
-			// label5
-			// 
-			this.label5.Location = new System.Drawing.Point(11, 42);
-			this.label5.Name = "label5";
-			this.label5.Size = new System.Drawing.Size(87, 16);
-			this.label5.TabIndex = 240;
-			this.label5.Text = "Message";
-			this.label5.TextAlign = System.Drawing.ContentAlignment.BottomLeft;
-			// 
-			// label7
-			// 
-			this.label7.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-			this.label7.Location = new System.Drawing.Point(11, 13);
-			this.label7.Name = "label7";
-			this.label7.Size = new System.Drawing.Size(823, 29);
-			this.label7.TabIndex = 249;
-			this.label7.Text = "These variables may be used in either box: [monthlyCardsOnFile], [nameF], [nameFnoPref], [nameFL], [nameFLnoPref], [namePref], [PatNum], [currentMonth], [MsgToPayURL], [StatementBalance], [StatementInsuranceEst], and [StatementURL].";
 			// 
 			// checkSinglePatient
 			// 
@@ -622,10 +546,9 @@ namespace OpenDental{
 			// 
 			// FormBillingDefaults
 			// 
-			this.ClientSize = new System.Drawing.Size(877, 728);
+			this.ClientSize = new System.Drawing.Size(877, 588);
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.checkBoxBillShowTransSinceZero);
-			this.Controls.Add(this.groupBox1);
 			this.Controls.Add(this.checkSinglePatient);
 			this.Controls.Add(this.textInvoiceNote);
 			this.Controls.Add(this.label11);
@@ -641,7 +564,6 @@ namespace OpenDental{
 			this.Name = "FormBillingDefaults";
 			this.Text = "Billing Defaults";
 			this.Load += new System.EventHandler(this.FormBillingDefaults_Load);
-			this.groupBox1.ResumeLayout(false);
 			this.groupBox3.ResumeLayout(false);
 			this.groupBox3.PerformLayout();
 			this.groupBoxBilling.ResumeLayout(false);
@@ -696,12 +618,6 @@ namespace OpenDental{
 		private System.Windows.Forms.Label labelBlankForDefault;
 		private OpenDental.UI.CheckBox checkCreatePDF;
 		private OpenDental.UI.CheckBox checkSinglePatient;
-		private OpenDental.UI.GroupBox groupBox1;
-		private ODtextBox textSmsTemplate;
-		private System.Windows.Forms.Label label5;
-		private System.Windows.Forms.Label label7;
-		private OpenDental.UI.ListBox listModesToText;
-		private System.Windows.Forms.Label label6;
 		private OpenDental.UI.CheckBox checkBoxBillShowTransSinceZero;
 		private OpenDental.UI.CheckBox checkIncludeAdjust;
 		private OpenDental.UI.CheckBox checkIncludeClinicNum;

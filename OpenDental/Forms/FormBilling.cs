@@ -27,7 +27,6 @@ namespace OpenDental {
 		///<summary>Used to hold this preference's state when it is different from the default.</summary>
 		public bool ShowBillTransSinceZero=false;
 		///<summary>There is a pref for this, but if user changed their selection for this batch, we want to use that. This then gets passed into FormStatmentOptions.</summary>
-		public List<StatementMode> ListStatementModesForSms;
 		
 		///<summary></summary>
 		public FormBilling(){
@@ -48,7 +47,6 @@ namespace OpenDental {
 			labelPrinted.Text=Lan.g(this,"Printed=")+"0";
 			labelEmailed.Text=Lan.g(this,"E-mailed=")+"0";
 			labelSentElect.Text=Lan.g(this,"SentElect=")+"0";
-			labelTexted.Text=Lan.g(this,"Texted=")+"0";
 			comboOrder.Items.Add(Lan.g(this,"BillingType"));
 			comboOrder.Items.Add(Lan.g(this,"PatientName"));
 			comboOrder.SelectedIndex=0;
@@ -236,7 +234,6 @@ namespace OpenDental {
 				return;
 			}
 			using FormStatementOptions FormStatementOptions=new FormStatementOptions(true);
-			FormStatementOptions.ListStatementModesForSms=ListStatementModesForSms;
 			List<long> listStatementNums=new List<long>();
 			foreach(int index in gridBill.SelectedIndices) {
 				listStatementNums.Add(PIn.Long(((DataRow)gridBill.ListGridRows[index].Tag)["StatementNum"].ToString()));
@@ -315,21 +312,8 @@ namespace OpenDental {
 			labelPrinted.Text=Lan.g(this,"Printed=")+"0";
 			labelEmailed.Text=Lan.g(this,"E-mailed=")+"0";
 			labelSentElect.Text=Lan.g(this,"SentElect=")+"0";
-			labelTexted.Text=Lan.g(this,"Texted=")+"0";
 			if(!MsgBox.Show(this,MsgBoxButtons.YesNo,"Please be prepared to wait up to ten minutes while all the bills get processed.\r\nOnce complete, the pdf print preview will be launched in Adobe Reader.  You will print from that program.  Continue?")){
 				return;
-			}
-			//It is ok to allow statement sending if this text message template is empty because this does not determine if text messages actually get sent.
-			//That is determined per each patient's PatComm.IsSmsAnOption. This field will be false if clinic not signed up for texting.
-			if(string.IsNullOrWhiteSpace(PrefC.GetString(PrefName.BillingDefaultsSmsTemplate))) {
-				if(!MsgBox.Show(
-					this,
-					MsgBoxButtons.YesNo,
-					"Cannot send blank text messages. Please update the SMS Statements template in Billing Defaults. Statements will still be printed and sent electronically.  Continue?"
-					,"Send Statements - Warning"))
-				{
-					return;
-				}
 			}
 			_progExtended=new ODProgressExtended(this,tag: new ProgressBarHelper(Lan.g(this,"Billing Progress"),progressBarEventType: ProgBarEventType.Header));
 			_progExtended?.Fire(new ODEventArgs(ODEventType.Billing,new ProgressBarHelper("",progressBarEventType: ProgBarEventType.BringToFront)));
@@ -376,7 +360,6 @@ namespace OpenDental {
 				labelPrinted.Text=Lan.g(this,"Printed=")+sendStatementsIO.CountStatementsPrinted.ToString();
 				labelEmailed.Text=Lan.g(this,"E-mailed=")+sendStatementsIO.CountStatementsEmailed.ToString();
 				labelSentElect.Text=Lan.g(this,"SentElect=")+sendStatementsIO.CountStatementsSentElectronic.ToString();
-				labelTexted.Text=Lan.g(this,"Texted=")+sendStatementsIO.CountStatmentsSentPayPortalText.ToString();
 				Application.DoEvents();
 			};
 			sendStatementsIO.FuncGetBillingDataTable=() => { return GetBillingDataTable(); };
@@ -395,14 +378,9 @@ namespace OpenDental {
 				emailAddress=EmailAddresses.OverrideSenderAddressClinical(emailAddress,clinicNum); 
 				return emailAddress;
 			};
-			sendStatementsIO.ActionSendEmail=(clinicNumPat,emailMessage,emailAddress,useSecureEmail) => {
-				if(useSecureEmail) { 
-					EmailSecures.InsertMessageThenSend(emailMessage,emailAddress,emailMessage.ToAddress,clinicNumPat);
-				}
-				else {
-					//If IsCloudStorage==true, then we will end up downloading the file again in EmailMessages.SendEmailUnsecure.
-					EmailMessages.SendEmail(emailMessage,emailAddress);
-				}
+			sendStatementsIO.ActionSendEmail=(clinicNumPat,emailMessage,emailAddress) => {
+				//If IsCloudStorage==true, then we will end up downloading the file again in EmailMessages.SendEmailUnsecure.
+				EmailMessages.SendEmail(emailMessage,emailAddress);
 			};
 			sendStatementsIO.FuncGetPatientPdfPath=(tempPdfFile,filePath) => {
 				if(!CloudStorage.IsCloudStorage) {
@@ -501,7 +479,6 @@ namespace OpenDental {
 			}
 			formStatementOptions.StatementCur=statement;
 			formStatementOptions.ShowBillTransSinceZero=ShowBillTransSinceZero;
-			formStatementOptions.ListStatementModesForSms=ListStatementModesForSms;
 			formStatementOptions.ShowDialog();
 			//Could be changes even if not hit OK. Example: printing.
 			FillGrid();

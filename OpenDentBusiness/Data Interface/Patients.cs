@@ -13,7 +13,6 @@ using System.Windows.Forms;
 using CodeBase;
 using DataConnectionBase;
 using Microsoft.Graph.ExternalConnectors;
-using OpenDentBusiness.AutoComm;
 using OpenDentBusiness.HL7;
 
 namespace OpenDentBusiness {
@@ -5938,19 +5937,14 @@ namespace OpenDentBusiness {
 			}
 			if(pat!=null) {
 				string name=Patients.GetNameFirstOrPreferred(pat.FName,pat.Preferred);
-				Clinic clinic=null;//Null clinic will default to practice name in TagReplacer.
+				Clinic clinic=null;//Null clinic will default to practice name in MessageTagReplacer.
 				if(appt.ClinicNum>0) {
 					clinic=Clinics.GetClinic(appt.ClinicNum);
 				}
 				else if(pat.ClinicNum>0){
 					clinic=Clinics.GetClinic(pat.ClinicNum);
 				}
-				TagReplacer tagReplacer=new TagReplacer();
-				AutoCommObj autoCommObj=new AutoCommObj();
-				autoCommObj.NameF=pat.FName;
-				autoCommObj.NamePreferredOrFirst=name;
-				autoCommObj.ProvNum=appt.ProvNum;
-				template=tagReplacer.ReplaceTags(template,autoCommObj,clinic,isEmail);
+				template=MessageTagReplacer.ReplaceCommonTags(template,pat.FName,name,appt.ProvNum,clinic,isEmail);
 			}
 			template=template.Replace("[date]",dateTime.ToString(PrefC.PatientCommunicationDateFormat)); //[date] and [time] aren't considered in ReplaceTags
 			template=template.Replace("[time]",dateTime.ToShortTimeString());

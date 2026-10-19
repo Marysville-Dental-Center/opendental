@@ -1007,16 +1007,7 @@ namespace OpenDentBusiness {
 					famPopups+=listFamPopups[i].Description;
 				}
 				#endregion
-				#region Patient Portal
-				if(listEnumStaticTextFields.Contains(EnumStaticTextField.patientPortalCredentials)){
-					PatientPortalCredential patientPortalCredential=UserWebs.GetNewPatientPortalCredentials(patient);
-					if(UserWebs.UpdateNewPatientPortalCredentials(patientPortalCredential)) {
-						patientPortalCredentials=Lans.g("PatientPortal","Patient Portal Login")+"\r\n"
-							+Lans.g("PatientPortal","UserName:")+" "+patientPortalCredential.GetUserName()+"\r\n"
-							+Lans.g("PatientPortal","Password:")+" "+patientPortalCredential.PlainTextPassword;
-					}
-				}
-				#endregion Patient Portal
+				//The patientPortalCredentials field stays blank. Open Dental's hosted patient portal was removed.
 			}//End of if(pat!=null)
 			if(patient!=null || sheetType==SheetTypeEnum.DepositSlip) {
 				//Populate current clinic fields if a patient exists or if the sheet is a Deposit Slip.
@@ -3254,20 +3245,8 @@ namespace OpenDentBusiness {
 						break;
 					case "statementURL":
 					case "statementShortURL":
-						#region StatementURL
-						try {
-							Statements.AssignURLsIfNecessary(Stmt,pat);
-							field.FieldValue=(field.FieldName=="statementURL" ? Stmt.StatementURL : Stmt.StatementShortURL);
-							if(field.FieldValue!="") {
-								if(!field.FieldValue.StartsWith("http")) {
-									field.FieldValue="http://"+field.FieldValue;//Necessary for the URL to be recognized as a hyperlink in the pdf.
-								}
-							}
-						}
-						catch(Exception ex) {
-							ex.DoNothing();
-							field.FieldValue=PrefC.GetString(PrefName.PatientPortalURL);
-						}
+						//Statement links went to Open Dental's hosted patient portal, which was removed. The field is left blank.
+						field.FieldValue="";
 						break;
 					case "invoicePayPlanValue":
 						field.FieldValue=totInsBalVals[5];
@@ -3275,7 +3254,6 @@ namespace OpenDentBusiness {
 					case "invoicePayPlanLabel":
 						field.FieldValue=totInsBalLabs[5];
 						break;
-						#endregion
 					case "StatementNum":
 						field.FieldValue+=" #"+Stmt.StatementNum.ToString();
 						break;

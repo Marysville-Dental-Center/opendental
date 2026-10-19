@@ -91,13 +91,11 @@
     <Compile Include="TableTypes\AlertCategoryT.cs" />
     <Compile Include="TableTypes\AllergyDefT.cs" />
     <Compile Include="TableTypes\AllergyT.cs" />
-    <Compile Include="TableTypes\ApptNewPatThankYouSentT.cs" />
     <Compile Include="TableTypes\AutoCodeItemT.cs" />
     <Compile Include="TableTypes\AutoCodeT.cs" />
     <Compile Include="TableTypes\AutoNoteControlT.cs" />
     <Compile Include="TableTypes\AutoNoteT.cs" />
     <Compile Include="TableTypes\BroadcasterInstanceT.cs" />
-    <Compile Include="TableTypes\CalendarIcsInfoT.cs" />
     <Compile Include="TableTypes\CdcrecT.cs" />
     <Compile Include="TableTypes\CentralManagerT.cs" />
     <Compile Include="TableTypes\ClaimPaymentT.cs" />
@@ -138,13 +136,8 @@
     <Compile Include="TableTypes\AppointmentT.cs" />
     <Compile Include="TableTypes\AppointmentTypeT.cs" />
     <Compile Include="TableTypes\ApptFieldDefT.cs" />
-    <Compile Include="TableTypes\ApptGeneralMessageSentT.cs" />
-    <Compile Include="TableTypes\ApptReminderRuleT.cs" />
-    <Compile Include="TableTypes\ApptThankYouSentT.cs" />
-    <Compile Include="TableTypes\ApptReminderSentT.cs" />
     <Compile Include="TableTypes\ApptViewItemT.cs" />
     <Compile Include="TableTypes\ApptViewT.cs" />
-    <Compile Include="TableTypes\AsapCommT.cs" />
     <Compile Include="TableTypes\BenefitT.cs" />
     <Compile Include="TableTypes\CareCreditWebResponseT.cs" />
     <Compile Include="TableTypes\CarrierT.cs" />
@@ -156,7 +149,6 @@
     <Compile Include="TableTypes\CommlogT.cs" />
     <Compile Include="TableTypes\DiscountPlanSubT.cs" />
     <Compile Include="TableTypes\EhrMeasureEventT.cs" />
-    <Compile Include="TableTypes\EmailHostingTemplateT.cs" />
     <Compile Include="TableTypes\EmailAttachT.cs" />
     <Compile Include="TableTypes\EmailSecureT.cs" />
     <Compile Include="TableTypes\EServiceBillingT.cs" />
@@ -171,14 +163,12 @@
     <Compile Include="TableTypes\ClinicT.cs" />
     <Compile Include="TableTypes\ClockEventT.cs" />
     <Compile Include="TableTypes\CommOptOutT.cs" />
-    <Compile Include="TableTypes\ConfirmationRequestT.cs" />
     <Compile Include="TableTypes\CreditCardT.cs" />
     <Compile Include="TableTypes\DefT.cs" />
     <Compile Include="TableTypes\DefLinkT.cs" />
     <Compile Include="TableTypes\AlertItemT.cs" />
     <Compile Include="TableTypes\EmailMessageT.cs" />
     <Compile Include="TableTypes\EmployeeT.cs" />
-    <Compile Include="TableTypes\EServiceSignalT.cs" />
     <Compile Include="TableTypes\EtransT.cs" />
     <Compile Include="TableTypes\FeeSchedT.cs" />
     <Compile Include="TableTypes\FeeT.cs" />
@@ -188,7 +178,6 @@
     <Compile Include="TableTypes\MobileAppDeviceT.cs" />
     <Compile Include="TableTypes\OperatoryT.cs" />
     <Compile Include="TableTypes\OrthoProcLinkT.cs" />
-    <Compile Include="TableTypes\PatientPortalInviteT.cs" />
     <Compile Include="TableTypes\DiscountPlanT.cs" />
     <Compile Include="TableTypes\PayPlanChargeT.cs" />
     <Compile Include="TableTypes\PayPlanLinkT.cs" />
@@ -200,8 +189,6 @@
     <Compile Include="TableTypes\ProcNoteT.cs" />
     <Compile Include="TableTypes\ProcTpT.cs" />
     <Compile Include="TableTypes\ProgramPropertyT.cs" />
-    <Compile Include="TableTypes\PromotionLogT.cs" />
-    <Compile Include="TableTypes\PromotionT.cs" />
     <Compile Include="TableTypes\ProviderClinicT.cs" />
     <Compile Include="TableTypes\QuickPasteCatT.cs" />
     <Compile Include="TableTypes\QuickPasteNoteT.cs" />
@@ -263,7 +250,6 @@
     <Compile Include="MultiTypes\InsuranceT.cs" />
     <Compile Include="TableTypes\UserWebT.cs" />
     <Compile Include="TableTypes\VitalsignT.cs" />
-    <Compile Include="TableTypes\WebSchedRecallT.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CodeBase\xCodeBase.csproj">

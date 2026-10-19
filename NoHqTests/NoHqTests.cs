@@ -46,8 +46,6 @@ namespace NoHqTests {
 		public void WebServiceMainHQ_NoClinicIsSignedUpForAnyEService() {
 			List<long> listClinicNums=new List<long> { 0,1,2 };
 			Assert.AreEqual(0,WebServiceMainHQProxy.GetWebServiceMainHQInstance().GetEServiceClinicsAllowed(listClinicNums,eServiceCode.IntegratedTexting).Count);
-			Assert.AreEqual(0,WebServiceMainHQProxy.GetEServiceClinicsAllowed(listClinicNums,eServiceCode.WebSched).Count);
-			Assert.IsFalse(WebServiceMainHQProxy.IsEServiceClinicAllowed(0,eServiceCode.ConfirmationRequest));
 		}
 
 		[TestMethod]
@@ -80,7 +78,6 @@ namespace NoHqTests {
 			Assert.AreEqual(DateTime.MinValue,WebServiceMainHQProxy.GetCareCreditBatchProcessTime());
 			Assert.AreEqual(DateTime.MinValue,WebServiceMainHQProxy.GetCareCreditBatchPullbackTime());
 			AssertThrowsHqNotAvailable(() => WebServiceMainHQProxy.ProcessUSPSAddressValidationRequest(new Address()),"USPS");
-			AssertThrowsHqNotAvailable(() => WebServiceMainHQProxy.GetEServiceSetupFull(SignupPortalPermission.ReadOnly),"GetEServiceSetupFull");
 		}
 
 		[TestMethod]
@@ -137,20 +134,6 @@ namespace NoHqTests {
 			Assert.IsFalse(PrefC.IsODHQ);
 		}
 		#endregion Gates and telemetry
-
-		#region Hosted email
-		[TestMethod]
-		public void HostedEmail_SignupsFromOpenDentalAreIgnored() {
-			//Secure Email and Mass Email were hosted by Open Dental. These must answer "no" without reading the prefs a migrated database still has.
-			foreach(long clinicNum in new List<long> { 0,1 }) {
-				Assert.IsFalse(Clinics.IsSecureEmailSignedUp(clinicNum));
-				Assert.IsFalse(Clinics.IsSecureEmailEnabled(clinicNum));
-				Assert.IsFalse(Clinics.IsMassEmailSignedUp(clinicNum));
-				Assert.IsFalse(Clinics.IsMassEmailEnabled(clinicNum));
-			}
-			Assert.IsFalse(EmailSecures.IsSecureEmailReleased());
-		}
-		#endregion Hosted email
 
 		#region EHR
 		[TestMethod]

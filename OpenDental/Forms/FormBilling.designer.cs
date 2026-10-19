@@ -35,7 +35,6 @@ namespace OpenDental {
 			this.radioUnsent = new System.Windows.Forms.RadioButton();
 			this.radioSent = new System.Windows.Forms.RadioButton();
 			this.groupBox1 = new OpenDental.UI.GroupBox();
-			this.labelTexted = new System.Windows.Forms.Label();
 			this.labelSentElect = new System.Windows.Forms.Label();
 			this.labelEmailed = new System.Windows.Forms.Label();
 			this.labelPrinted = new System.Windows.Forms.Label();
@@ -166,7 +165,6 @@ namespace OpenDental {
 			// groupBox1
 			// 
 			this.groupBox1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.groupBox1.Controls.Add(this.labelTexted);
 			this.groupBox1.Controls.Add(this.labelSentElect);
 			this.groupBox1.Controls.Add(this.labelEmailed);
 			this.groupBox1.Controls.Add(this.labelPrinted);
@@ -177,15 +175,6 @@ namespace OpenDental {
 			this.groupBox1.Size = new System.Drawing.Size(96, 136);
 			this.groupBox1.TabIndex = 33;
 			this.groupBox1.Text = "Counts";
-			// 
-			// labelTexted
-			// 
-			this.labelTexted.Location = new System.Drawing.Point(4, 114);
-			this.labelTexted.Name = "labelTexted";
-			this.labelTexted.Size = new System.Drawing.Size(89, 16);
-			this.labelTexted.TabIndex = 34;
-			this.labelTexted.Text = "Texted=20";
-			this.labelTexted.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 			// 
 			// labelSentElect
 			// 
@@ -428,6 +417,5 @@ namespace OpenDental {
 		private OpenDental.UI.ComboBox comboEmailFrom;
 		private Label label6;
 		private UI.Button butDefaults;
-		private Label labelTexted;
 	}
 }

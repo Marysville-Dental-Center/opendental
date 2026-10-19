@@ -283,17 +283,6 @@ namespace OpenDental{
 					ConvertDatabases.Set_7_5_17_AutoMerge(InsPlanConverstion_7_5_17_AutoMergeYN);//does nothing if this pref is already present for some reason.
 					Cursor.Current=Cursors.WaitCursor;
 				}
-				if(!isSilent && FromVersion>new Version("16.3.0") && FromVersion<new Version("16.3.29") && ApptReminderRules.UsesApptReminders()) {
-					//16.3.29 is more strict about reminder rule setup. Prompt the user and allow them to exit the update if desired.
-					//Get all currently enabled reminder rules.
-					List<bool> listReminderFlags=ApptReminderRules.Get_16_3_29_ConversionFlags();
-					if(listReminderFlags?[0]??false) { //2 reminders scheduled for same day of appointment. 1 will be converted to future day reminder.
-						MsgBox.Show(this,"You have multiple appointment reminders set to send on the same day of the appointment. One of these will be converted to send 1 day prior to the appointment.  Please review automated reminder rule setup after update has finished.");
-					}
-					if(listReminderFlags?[1]??false) { //2 reminders scheduled for future day of appointment. 1 will be converted to same day reminder.
-						MsgBox.Show(this,"You have multiple appointment reminders set to send 1 or more days prior to the day of the appointment. One of these will be converted to send 1 hour prior to the appointment.  Please review automated reminder rule setup after update has finished.");
-					}
-				}
 				if(FromVersion>=new Version("17.3.1") && FromVersion<new Version("17.3.23") && DataConnection.DBtype==DatabaseType.MySql
 					&& (Tasks.HasAnyLongDescripts() || TaskNotes.HasAnyLongNotes() || Commlogs.HasAnyLongNotes())) 
 				{

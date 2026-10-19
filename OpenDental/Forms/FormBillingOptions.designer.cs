@@ -68,8 +68,6 @@ namespace OpenDental {
 			this.butUndo = new OpenDental.UI.Button();
 			this.checkSuperFam = new OpenDental.UI.CheckBox();
 			this.checkSinglePatient = new OpenDental.UI.CheckBox();
-			this.labelModesToText = new System.Windows.Forms.Label();
-			this.listModeToText = new OpenDental.UI.ListBox();
 			this.labelMultiClinicGenMsg = new System.Windows.Forms.Label();
 			this.groupBox2.SuspendLayout();
 			this.groupDateRange.SuspendLayout();
@@ -539,23 +537,6 @@ namespace OpenDental {
 			this.checkSinglePatient.Visible = false;
 			this.checkSinglePatient.Click += new System.EventHandler(this.checkSinglePatient_Click);
 			// 
-			// labelModesToText
-			// 
-			this.labelModesToText.Location = new System.Drawing.Point(563, 488);
-			this.labelModesToText.Name = "labelModesToText";
-			this.labelModesToText.Size = new System.Drawing.Size(200, 27);
-			this.labelModesToText.TabIndex = 254;
-			this.labelModesToText.Text = "Send text message for these modes (Patients will need a Patient Portal login)";
-			this.labelModesToText.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// listModeToText
-			// 
-			this.listModeToText.Location = new System.Drawing.Point(760, 488);
-			this.listModeToText.Name = "listModeToText";
-			this.listModeToText.SelectionMode = OpenDental.UI.SelectionMode.MultiExtended;
-			this.listModeToText.Size = new System.Drawing.Size(113, 56);
-			this.listModeToText.TabIndex = 8;
-			// 
 			// labelMultiClinicGenMsg
 			// 
 			this.labelMultiClinicGenMsg.Location = new System.Drawing.Point(353, 605);
@@ -572,8 +553,6 @@ namespace OpenDental {
 			this.AcceptButton = this.butCreate;
 			this.ClientSize = new System.Drawing.Size(918, 696);
 			this.Controls.Add(this.labelMultiClinicGenMsg);
-			this.Controls.Add(this.listModeToText);
-			this.Controls.Add(this.labelModesToText);
 			this.Controls.Add(this.checkSinglePatient);
 			this.Controls.Add(this.checkSuperFam);
 			this.Controls.Add(this.butUndo);
@@ -642,8 +621,6 @@ namespace OpenDental {
 		private OpenDental.UI.CheckBox checkUseClinicDefaults;
 		private OpenDental.UI.CheckBox checkBoxBillShowTransSinceZero;
 		private OpenDental.UI.CheckBox checkSinglePatient;
-		private Label labelModesToText;
-		private OpenDental.UI.ListBox listModeToText;
 		private Label labelMultiClinicGenMsg;
 		private OpenDental.UI.ComboBoxClinicPicker comboClinic;
 		private Label labelInsFilingCodes;
