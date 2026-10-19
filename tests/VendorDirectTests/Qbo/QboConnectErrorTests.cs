@@ -110,7 +110,8 @@ namespace VendorDirectTests.Qbo {
 			int countProgressWins=CountOccurrences(source,"new UI.ProgressWin()");
 			Assert.IsTrue(countProgressWins>=3,"Load, Connect and Disconnect each run behind a progress window.");
 			Assert.AreEqual(countProgressWins,CountOccurrences(source,"=QuickBooksOnline.RunForWindow("),
-				"Every ProgressWin action has to catch inside RunForWindow, or ProgressWin swaps the message for the inner exception.");		}
+				"Every ProgressWin action has to catch inside RunForWindow, or ProgressWin swaps the message for the inner exception.");
+		}
 
 		private static int CountOccurrences(string text,string value) {
 			int count=0;
