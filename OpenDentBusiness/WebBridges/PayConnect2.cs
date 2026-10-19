@@ -553,20 +553,35 @@ namespace OpenDentBusiness {
 			return Reconcile(apiCredentials,invoiceNumber,response);
 		}
 
-		///<summary>After a create was sent but no answer came: looks for the transaction by its correlation ID. Found: a GetStatus response with Outcome
-		///Reconciled, as if the answer had arrived. Not found: the original Error response, its message naming the correlation ID so staff can look
-		///for it in the PayConnect portal.</summary>
+		///<summary>After a create was sent but no answer came: looks for the transaction by its correlation ID. A list entry is only a pointer: an
+		///entry whose status is not an approval (IsApprovedStatus) gives an Error response (Outcome Response) that carries the vendor's status, as a
+		///decline that arrived normally would. An approved entry is re-read with the status route so the result has the full model (amount, surcharge,
+		///card); the re-read must also show an approval. Found and approved: a GetStatus response with Outcome Reconciled, as if the answer had
+		///arrived. Not found, or the re-read failed: the original Error response, its message naming the correlation ID so staff can look for it in
+		///the PayConnect portal. Never a success built from a list entry alone.</summary>
 		private static PayConnect2Response Reconcile(ApiCredentials apiCredentials,string invoiceNumber,PayConnect2Response responseLost) {
 			bool didLookupFail;
 			GetStatusResponse transaction=FindTransactionByInvoiceNumber(apiCredentials,invoiceNumber,out didLookupFail);
+			if(transaction!=null && !IsApprovedStatus(transaction.Status)) {
+				return MakeReconciledDeclineResponse(invoiceNumber,transaction.Status);
+			}
 			if(transaction!=null) {
-				PayConnect2Response responseFound=new PayConnect2Response();
-				responseFound.ResponseType=ResponseType.GetStatus;
-				responseFound.GetStatusResponse=transaction;
-				responseFound.Outcome=PayConnectRequestOutcome.Reconciled;
-				responseFound.CorrelationId=invoiceNumber;
-				responseFound.httpStatusCode=HttpStatusCode.OK;
-				return responseFound;
+				GetStatusResponse transactionFull=ReadReconciledTransaction(apiCredentials,transaction);
+				if(transactionFull==null) {
+					didLookupFail=true;//The list had it, but its details couldn't be read: say "may or may not", never a $0 success.
+				}
+				else if(!IsApprovedStatus(transactionFull.Status)) {
+					return MakeReconciledDeclineResponse(invoiceNumber,transactionFull.Status);
+				}
+				else {
+					PayConnect2Response responseFound=new PayConnect2Response();
+					responseFound.ResponseType=ResponseType.GetStatus;
+					responseFound.GetStatusResponse=transactionFull;
+					responseFound.Outcome=PayConnectRequestOutcome.Reconciled;
+					responseFound.CorrelationId=invoiceNumber;
+					responseFound.httpStatusCode=HttpStatusCode.OK;
+					return responseFound;
+				}
 			}
 			string message;
 			if(didLookupFail) {
@@ -580,6 +595,48 @@ namespace OpenDentBusiness {
 			responseLost.ErrorResponse.Error=message;
 			responseLost.ErrorResponse.Message=message;
 			return responseLost;
+		}
+
+		///<summary>True if a transaction status shows the money was approved: Processed, Authorized or Approved, ignoring case. Anything else
+		///(Declined, Error, Voided, blank, a status this code doesn't know) is not an approval.</summary>
+		public static bool IsApprovedStatus(string status) {
+			string statusTrimmed=(status??"").Trim();
+			return statusTrimmed.Equals("Processed",StringComparison.OrdinalIgnoreCase)
+				|| statusTrimmed.Equals("Authorized",StringComparison.OrdinalIgnoreCase)
+				|| statusTrimmed.Equals("Approved",StringComparison.OrdinalIgnoreCase);
+		}
+
+		///<summary>Re-reads a transaction found in the list with GET /transactions/status, by reference ID, or by transaction ID when the entry has no
+		///reference ID. Returns the full model, or null if it couldn't be read (or the entry has neither ID).</summary>
+		private static GetStatusResponse ReadReconciledTransaction(ApiCredentials apiCredentials,GetStatusResponse transactionListed) {
+			string queryStr;
+			if(!string.IsNullOrWhiteSpace(transactionListed.ReferenceId)) {
+				queryStr=BuildStatusQuery(transactionListed.ReferenceId);
+			}
+			else {
+				queryStr=BuildStatusQuery("",transactionListed.TransactionId);
+			}
+			if(queryStr=="") {
+				return null;
+			}
+			PayConnect2Response response=Send(ApiRoute.GetStatus,HttpMethod.Get,apiCredentials,"",queryStr);
+			if(response.ResponseType!=ResponseType.GetStatus || response.GetStatusResponse==null) {
+				return null;
+			}
+			return response.GetStatusResponse;
+		}
+
+		///<summary>The answer for a lost create that PayConnect's records show was not approved: an Error response, as a decline that arrived normally
+		///would be, whose message carries the vendor's status.</summary>
+		private static PayConnect2Response MakeReconciledDeclineResponse(string invoiceNumber,string status) {
+			string statusShown=string.IsNullOrWhiteSpace(status) ? "unknown" : status.Trim();
+			PayConnect2Response response=new PayConnect2Response();
+			response.ResponseType=ResponseType.Error;
+			response.Outcome=PayConnectRequestOutcome.Response;
+			response.CorrelationId=invoiceNumber;
+			response.httpStatusCode=HttpStatusCode.OK;
+			response.ErrorResponse=MakeErrorResponse(PayConnectErrorKind.Vendor,"PayConnect declined the transaction (status: "+statusShown+").");
+			return response;
 		}
 
 		///<summary>Sends one request through the vendor HTTP policy (DentalXChange hosts only, HTTPS, never an Open Dental host). Only GET status and list
@@ -1096,6 +1153,7 @@ namespace OpenDentBusiness {
 					ex.DoNothing();
 					//An entry with a value this model doesn't know (a new type or source) still counts for matching.
 					transaction=new GetStatusResponse();
+					transaction.TransactionId=GetInt(jObject,"transactionId");
 					transaction.ReferenceId=GetString(jObject,"referenceId");
 					transaction.InvoiceNumber=GetString(jObject,"invoiceNumber");
 					transaction.DocumentNumber=GetString(jObject,"documentNumber");

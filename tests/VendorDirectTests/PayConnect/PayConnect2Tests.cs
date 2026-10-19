@@ -291,9 +291,107 @@ namespace VendorDirectTests.PayConnectV2 {
 		#endregion HTTP calls
 
 		#region Reconciliation
-		private static string MakeTransactionJson(string referenceId,string invoiceNumber) {
-			return "{\"referenceId\":\""+referenceId+"\",\"invoiceNumber\":\""+invoiceNumber+"\",\"status\":\"Processed\",\"type\":\"Sale\",\"amount\":2500,"
-				+"\"paymentMethod\":{\"cardPaymentMethod\":{\"cardLast4Digits\":\"1111\",\"network\":\"Visa\"}}}";
+		private static string MakeTransactionJson(string referenceId,string invoiceNumber,string status="Processed") {
+			return "{\"referenceId\":\""+referenceId+"\",\"invoiceNumber\":\""+invoiceNumber+"\",\"status\":\""+status+"\",\"type\":\"Sale\",\"amount\":2500,"
+				+"\"amountSurcharged\":75,\"paymentMethod\":{\"cardPaymentMethod\":{\"cardLast4Digits\":\"1111\",\"network\":\"Visa\"}}}";
+		}
+
+		private static PayConnect2.PayConnect2Response PostLostCreate(string invoiceNumber) {
+			PayConnect2.CreateTransactionRequest createTransactionRequest=new PayConnect2.CreateTransactionRequest();
+			createTransactionRequest.CardToken="tok";
+			createTransactionRequest.Amount=2500;
+			createTransactionRequest.InvoiceNumber=invoiceNumber;
+			return PayConnect2.PostCreateTransaction(createTransactionRequest,PayConnect2.MakeCredentials(API_KEY,SECRET,true));
+		}
+
+		[TestMethod]
+		public void LostCreateResponse_DeclinedListMatchIsADecline() {
+			FakeHttpHandler fakeHttpHandler=UseFakeHandler();
+			fakeHttpHandler.Enqueue((request,ct) => throw MakeNetworkException(WebExceptionStatus.ReceiveFailure));
+			fakeHttpHandler.Enqueue(HttpStatusCode.OK,"["+MakeTransactionJson("R-DECL","OPMS-decl00000001","Declined")+"]");
+			PayConnect2.PayConnect2Response response=PostLostCreate("OPMS-decl00000001");
+			Assert.AreEqual(PayConnect2.ResponseType.Error,response.ResponseType);
+			Assert.AreEqual(PayConnect2.PayConnectRequestOutcome.Response,response.Outcome);
+			Assert.AreEqual(PayConnect2.PayConnectErrorKind.Vendor,response.ErrorResponse.Kind);
+			Assert.AreEqual("PayConnect declined the transaction (status: Declined).",response.ErrorResponse.Message);
+			Assert.AreEqual(response.ErrorResponse.Message,response.ErrorResponse.Error.ToString());
+			Assert.AreEqual(2,fakeHttpHandler.Requests.Count,"A declined entry needs no status read.");
+			PayConnectResponse payConnectResponse=PayConnect2.ApiResponseToPayConnectResponse(response);
+			Assert.AreNotEqual("0",payConnectResponse.StatusCode);
+			Assert.AreEqual(PayConnectResponse.TransactionType.Unknown,payConnectResponse.TransType);
+		}
+
+		[TestMethod]
+		public void LostCreateResponse_StatusReadThatShowsADeclineIsADecline() {
+			FakeHttpHandler fakeHttpHandler=UseFakeHandler();
+			fakeHttpHandler.Enqueue((request,ct) => throw MakeNetworkException(WebExceptionStatus.ReceiveFailure));
+			fakeHttpHandler.Enqueue(HttpStatusCode.OK,"["+MakeTransactionJson("R-X","OPMS-err000000001","Processed")+"]");
+			fakeHttpHandler.Enqueue(HttpStatusCode.OK,MakeTransactionJson("R-X","OPMS-err000000001","Error"));
+			PayConnect2.PayConnect2Response response=PostLostCreate("OPMS-err000000001");
+			Assert.AreEqual(PayConnect2.ResponseType.Error,response.ResponseType);
+			StringAssert.Contains(response.ErrorResponse.Message,"(status: Error)");
+		}
+
+		[TestMethod]
+		public void LostCreateResponse_FallbackParsedMatchIsReReadForItsAmount() {
+			FakeHttpHandler fakeHttpHandler=UseFakeHandler();
+			fakeHttpHandler.Enqueue((request,ct) => throw MakeNetworkException(WebExceptionStatus.ReceiveFailure));
+			//A type this model doesn't know makes ParseTransactionList fall back to a bare entry: no amount, type, card or surcharge.
+			fakeHttpHandler.Enqueue(HttpStatusCode.OK,"[{\"referenceId\":\"R-NEW\",\"invoiceNumber\":\"OPMS-new000000001\",\"status\":\"Processed\","
+				+"\"type\":\"SomethingNew\",\"amount\":2500}]");
+			fakeHttpHandler.Enqueue(HttpStatusCode.OK,MakeTransactionJson("R-NEW","OPMS-new000000001"));
+			PayConnect2.PayConnect2Response response=PostLostCreate("OPMS-new000000001");
+			Assert.AreEqual(PayConnect2.ResponseType.GetStatus,response.ResponseType);
+			Assert.AreEqual(PayConnect2.PayConnectRequestOutcome.Reconciled,response.Outcome);
+			Assert.AreEqual(3,fakeHttpHandler.Requests.Count);
+			Assert.AreEqual("/sandbox/payments/transactions/status",fakeHttpHandler.Requests[2].RequestUri.AbsolutePath);
+			Assert.AreEqual("?referenceId=R-NEW",fakeHttpHandler.Requests[2].RequestUri.Query);
+			PayConnectResponse payConnectResponse=PayConnect2.ApiResponseToPayConnectResponse(response);
+			Assert.AreEqual("0",payConnectResponse.StatusCode);
+			Assert.AreEqual(25m,payConnectResponse.Amount);
+			Assert.AreEqual(0.75m,payConnectResponse.AmountSurcharged);
+			Assert.AreEqual("1111",payConnectResponse.CardNumber);
+			Assert.AreEqual(PayConnectResponse.TransactionType.Sale,payConnectResponse.TransType);
+		}
+
+		[TestMethod]
+		public void LostCreateResponse_FallbackParsedMatchWithoutReferenceIdIsReReadByTransactionId() {
+			FakeHttpHandler fakeHttpHandler=UseFakeHandler();
+			fakeHttpHandler.Enqueue((request,ct) => throw MakeNetworkException(WebExceptionStatus.ReceiveFailure));
+			fakeHttpHandler.Enqueue(HttpStatusCode.OK,"[{\"transactionId\":4321,\"invoiceNumber\":\"OPMS-tid000000001\",\"status\":\"approved\","
+				+"\"type\":\"SomethingNew\"}]");
+			fakeHttpHandler.Enqueue(HttpStatusCode.OK,MakeTransactionJson("R-TID","OPMS-tid000000001","Approved"));
+			PayConnect2.PayConnect2Response response=PostLostCreate("OPMS-tid000000001");
+			Assert.AreEqual(PayConnect2.ResponseType.GetStatus,response.ResponseType);
+			Assert.AreEqual("?transactionId=4321",fakeHttpHandler.Requests[2].RequestUri.Query);
+			Assert.AreEqual("R-TID",response.GetStatusResponse.ReferenceId);
+		}
+
+		[TestMethod]
+		public void LostCreateResponse_FallbackParsedMatchWhoseStatusReadFailsIsNeverASuccess() {
+			FakeHttpHandler fakeHttpHandler=UseFakeHandler();
+			fakeHttpHandler.Enqueue((request,ct) => throw MakeNetworkException(WebExceptionStatus.ReceiveFailure));
+			fakeHttpHandler.Enqueue(HttpStatusCode.OK,"[{\"referenceId\":\"R-NEW\",\"invoiceNumber\":\"OPMS-new000000002\",\"status\":\"Processed\","
+				+"\"type\":\"SomethingNew\"}]");
+			fakeHttpHandler.Enqueue(HttpStatusCode.NotFound,"{\"errorType\":\"RESPONSE\",\"error\":{\"message\":\"Not found\"}}");
+			PayConnect2.PayConnect2Response response=PostLostCreate("OPMS-new000000002");
+			Assert.AreEqual(PayConnect2.ResponseType.Error,response.ResponseType);
+			Assert.AreEqual(PayConnect2.PayConnectRequestOutcome.SentNoResponse,response.Outcome);
+			StringAssert.Contains(response.ErrorResponse.Message,"OPMS-new000000002");
+			StringAssert.Contains(response.ErrorResponse.Message,"may or may not");
+			Assert.AreNotEqual("0",PayConnect2.ApiResponseToPayConnectResponse(response).StatusCode);
+		}
+
+		[TestMethod]
+		public void IsApprovedStatus_OnlyApprovals() {
+			Assert.IsTrue(PayConnect2.IsApprovedStatus("Processed"));
+			Assert.IsTrue(PayConnect2.IsApprovedStatus("AUTHORIZED"));
+			Assert.IsTrue(PayConnect2.IsApprovedStatus(" approved "));
+			Assert.IsFalse(PayConnect2.IsApprovedStatus("Declined"));
+			Assert.IsFalse(PayConnect2.IsApprovedStatus("Error"));
+			Assert.IsFalse(PayConnect2.IsApprovedStatus("Voided"));
+			Assert.IsFalse(PayConnect2.IsApprovedStatus(""));
+			Assert.IsFalse(PayConnect2.IsApprovedStatus(null));
 		}
 
 		[TestMethod]
@@ -302,6 +400,7 @@ namespace VendorDirectTests.PayConnectV2 {
 			fakeHttpHandler.Enqueue((request,ct) => throw MakeNetworkException(WebExceptionStatus.ReceiveFailure));
 			fakeHttpHandler.Enqueue(HttpStatusCode.OK,"{\"transactions\":["+MakeTransactionJson("R-OTHER","OPMS-000000000000")+","
 				+MakeTransactionJson("R-FOUND","OPMS-abcdef012345")+"],\"totalPages\":1}");
+			fakeHttpHandler.Enqueue(HttpStatusCode.OK,MakeTransactionJson("R-FOUND","OPMS-abcdef012345"));
 			PayConnect2.CreateTransactionRequest createTransactionRequest=new PayConnect2.CreateTransactionRequest();
 			createTransactionRequest.CardToken="tok";
 			createTransactionRequest.Amount=2500;
@@ -312,8 +411,10 @@ namespace VendorDirectTests.PayConnectV2 {
 			Assert.AreEqual("R-FOUND",response.GetStatusResponse.ReferenceId);
 			Assert.AreEqual("OPMS-abcdef012345",response.CorrelationId);
 			List<RecordedRequest> listRequests=fakeHttpHandler.Requests;
-			Assert.AreEqual(2,listRequests.Count);
+			Assert.AreEqual(3,listRequests.Count);
 			Assert.AreEqual(1,listRequests.Count(x => x.Method==HttpMethod.Post),"A POST that moves money is never retried.");
+			Assert.AreEqual("/sandbox/payments/transactions/status",listRequests[2].RequestUri.AbsolutePath);
+			Assert.AreEqual("?referenceId=R-FOUND",listRequests[2].RequestUri.Query);
 			StringAssert.Contains(listRequests[0].Body,"\"invoiceNumber\":\"OPMS-abcdef012345\"");
 			Assert.AreEqual("/sandbox/payments/transactions/list",listRequests[1].RequestUri.AbsolutePath);
 			StringAssert.Contains(listRequests[1].RequestUri.Query,"dateFrom=2026-10-18");
