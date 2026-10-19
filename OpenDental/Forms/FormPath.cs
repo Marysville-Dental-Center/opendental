@@ -16,15 +16,8 @@ namespace OpenDental{
 		public bool IsStartingUp;
 		private string _errorMsg="";
 		private bool _didVerifySwitchingFromDBStorage;
-		#region Dropbox Private Variables
-		private Program _program;
-		private ProgramProperty _programPropertyDropboxPathAtoZ;
-		private ProgramProperty _programPropertyDropboxAccessToken;
-		///<summary>Set to true if the Dropbox API has been loaded already.</summary>
-		private bool _hasDropboxLoaded;
-		#endregion
-
 		#region Sftp Private Variables
+		private Program _program;
 		///<summary>Set to true if the Sftp stuff has been loaded already.</summary>
 		private bool _hasSftpLoaded;
 		private ProgramProperty _programPropertySftpPathAtoZ;
@@ -84,8 +77,7 @@ namespace OpenDental{
 			}
 			if(PrefC.AtoZfolderUsed!=DataStorageType.InDatabase) {
 				radioDatabaseStorage.Visible=false;
-				LayoutManager.MoveLocation(radioDropboxStorage,new Point(LayoutManager.Scale(9),LayoutManager.Scale(38)));
-				LayoutManager.MoveLocation(radioSftp,new Point(LayoutManager.Scale(9),LayoutManager.Scale(57)));
+				LayoutManager.MoveLocation(radioSftp,new Point(LayoutManager.Scale(9),LayoutManager.Scale(38)));
 			}
 		}
 
@@ -121,10 +113,7 @@ namespace OpenDental{
 			butBrowseLetter.Enabled=false;
 			textLocalPath.ReadOnly=true;
 			butBrowseLocal.Enabled=false;
-			radioDropboxStorage.Enabled=false;
 			radioSftp.Enabled=false;
-			textAtoZPath.ReadOnly=true;
-			butAuthorize.Enabled=false;
 			textSftpAtoZ.ReadOnly=true;
 			textSftpHostname.ReadOnly=true;
 			textSftpPassword.ReadOnly=true;
@@ -145,14 +134,14 @@ namespace OpenDental{
 					tabControlDataStorageType.SelectedTab=tabInDatabase;
 					break;
 				case DataStorageType.DropboxAtoZ:
-					if(!LoadDropboxSetup()) {
-						SetRadioButtonChecked(_dataStorageType);//This can cause a stack overflow exception if someone sets _storageType from outside of this method.
-						MessageBox.Show(_errorMsg);
-						return;
-					}
-					radioDropboxStorage.Checked=true;//Will only do something when SetRadioButtonChecked is called on Load
-					tabControlDataStorageType.SelectedTab=tabDropbox;
+					//Dropbox storage was removed. Only reached on Load, for a database that still names it. No radio button is checked, and Save keeps
+					//the saved type until the user picks another one.
 					_dataStorageType=DataStorageType.DropboxAtoZ;
+					radioUseFolder.Checked=false;//The designer checks it by default.
+					radioDatabaseStorage.Checked=false;
+					radioSftp.Checked=false;
+					labelStorageRemoved.Text=Lan.g(this,Dropbox.StorageRemovedMessage);
+					tabControlDataStorageType.SelectedTab=tabStorageRemoved;
 					break;
 				case DataStorageType.SftpAtoZ:
 					if(!LoadSftpSetup()) {
@@ -293,57 +282,9 @@ namespace OpenDental{
 			SetRadioButtonChecked(DataStorageType.InDatabase);
 		}
 
-		#region Dropbox Methods and Events
-
-		///<summary>Returns true if loading Dropbox settings was successful.  False is something went wrong.
-		///errorMsg will contain translated details about what went wrong in the case of a failure.</summary>
-		private bool LoadDropboxSetup() {
-			_errorMsg="";
-			if(_hasDropboxLoaded) {
-				return true;
-			}
-			_program=Programs.GetCur(ProgramName.Dropbox);
-			if(_program==null) {//Should never happen.
-				_errorMsg=Lan.g(this,"The Dropbox bridge is missing from the database.");
-				return false;
-			}
-			List<ProgramProperty> listProgramProperties=ProgramProperties.GetForProgram(_program.ProgramNum);
-			_programPropertyDropboxPathAtoZ=listProgramProperties.Find(x => x.PropertyDesc==Dropbox.PropertyDescs.AtoZPath);
-			_programPropertyDropboxAccessToken=listProgramProperties.Find(x => x.PropertyDesc==Dropbox.PropertyDescs.AccessToken);
-			if(_programPropertyDropboxPathAtoZ==null || _programPropertyDropboxAccessToken==null) { 
-				_errorMsg=Lan.g(this,"You are missing a program property for Dropbox.  Please contact support to resolve this issue.");
-				return false;
-			}
-			textAtoZPath.Text=_programPropertyDropboxPathAtoZ.PropertyValue;
-			textAccessToken.Text=_programPropertyDropboxAccessToken.PropertyValue;
-			_hasDropboxLoaded=true;
-			return true;
-		}
-
-		private void butAuthorize_Click(object sender,EventArgs e) {
-			using FormDropboxAuthorize formDropboxAuthorize=new FormDropboxAuthorize();
-			formDropboxAuthorize.ProgramPropertyAccessToken=_programPropertyDropboxAccessToken;
-			formDropboxAuthorize.ShowDialog();
-			if(formDropboxAuthorize.DialogResult==DialogResult.OK) {
-				_programPropertyDropboxAccessToken=formDropboxAuthorize.ProgramPropertyAccessToken.Copy();
-				textAccessToken.Text=formDropboxAuthorize.ProgramPropertyAccessToken.PropertyValue;
-			}
-		}
-
-		private void radioDropboxStorage_Click(object sender,EventArgs e) {
-			if(!VerifySwitchingAwayFromDBStorage()) { //they clicked cancel
-				return;
-			}
-			if(_dataStorageType==DataStorageType.DropboxAtoZ) {
-				return;
-			}
-			SetRadioButtonChecked(DataStorageType.DropboxAtoZ);
-		}
-		#endregion
-
 		#region Sftp
 
-		///<summary>Returns true if loading Dropbox settings was successful.  False is something went wrong.
+		///<summary>Returns true if loading SFTP settings was successful.  False is something went wrong.
 		///errorMsg will contain translated details about what went wrong in the case of a failure.</summary>
 		private bool LoadSftpSetup() {
 			_errorMsg="";
@@ -420,24 +361,6 @@ namespace OpenDental{
 					}
 				}				
     		}
-			if(radioDropboxStorage.Checked && PrefC.AtoZfolderUsed!=DataStorageType.DropboxAtoZ
-				&& !MsgBox.Show(this,MsgBoxButtons.OKCancel,"Warning: Updating workstations older than 16.3 while using Dropbox may cause issues."
-					+"\r\nIf experienced, use Setup.exe located in AtoZ folder on DropBox to reinstall."))
-			{
-				return;
-			}
-			Cursor=Cursors.WaitCursor;
-			if(radioDropboxStorage.Checked && !OpenDentalCloud.Dropbox.FileExists(textAccessToken.Text,
-				ODFileUtils.CombinePaths(textAtoZPath.Text,"A",'/'))) 
-			{
-				Cursor=Cursors.Default;
-				MsgBox.Show(this,"The Dropbox folder cannot be accessed or does not exist. The folder must contain all 26 A through Z folders.");
-				return;
-			}
-			Cursor=Cursors.Default;
-			if(radioDropboxStorage.Checked && ProgramProperties.UpdateProgramPropertyWithValue(_programPropertyDropboxPathAtoZ,textAtoZPath.Text)) {
-				DataValid.SetInvalid(InvalidType.Programs);
-			}
 			Cursor=Cursors.WaitCursor;
 			if(radioSftp.Checked) {
 				bool doesFileExist;

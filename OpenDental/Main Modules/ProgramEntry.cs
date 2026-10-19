@@ -121,8 +121,7 @@ namespace OpenDental {
 			Application.ThreadException+=new ThreadExceptionEventHandler((object s,ThreadExceptionEventArgs e) => {
 				actionUnhandled(e.Exception,"ProgramEntry");
 			});
-			//OpenDentalCloud.dll references Dropbox.Api.dll which references Newtonsoft.Json.dll version 7.0.0.0. Sometimes it also says it can't find 
-			//9.0.0.0.
+			//Some referenced assemblies were built against older Newtonsoft.Json versions (7.0.0.0 or 9.0.0.0). Point them all at the copy that ships.
 			ODInitialize.FixPackageAssembly("Newtonsoft.Json",ODFileUtils.CombinePaths(AppDomain.CurrentDomain.BaseDirectory,"Newtonsoft.Json.dll"));
 			MouseWatcher.Start();
 			if(commandLineArgs.Any(x => x.ToLower()=="issilentupdate=true")) {

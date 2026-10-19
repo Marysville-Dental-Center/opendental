@@ -37,7 +37,6 @@ namespace OpenDental {
 			this.checkMultiplePaths = new OpenDental.UI.CheckBox();
 			this.groupbox1 = new OpenDental.UI.GroupBox();
 			this.radioSftp = new System.Windows.Forms.RadioButton();
-			this.radioDropboxStorage = new System.Windows.Forms.RadioButton();
 			this.tabControlDataStorageType = new OpenDental.UI.TabControl();
 			this.tabAtoZ = new OpenDental.UI.TabPage();
 			this.butBrowseLocal = new OpenDental.UI.Button();
@@ -48,14 +47,8 @@ namespace OpenDental {
 			this.textLocalPath = new System.Windows.Forms.TextBox();
 			this.tabInDatabase = new OpenDental.UI.TabPage();
 			this.label2 = new System.Windows.Forms.Label();
-			this.tabDropbox = new OpenDental.UI.TabPage();
-			this.label12 = new System.Windows.Forms.Label();
-			this.label5 = new System.Windows.Forms.Label();
-			this.textAtoZPath = new System.Windows.Forms.TextBox();
-			this.butAuthorize = new OpenDental.UI.Button();
-			this.labelWebhostURL = new System.Windows.Forms.Label();
-			this.textAccessToken = new System.Windows.Forms.TextBox();
-			this.label4 = new System.Windows.Forms.Label();
+			this.tabStorageRemoved = new OpenDental.UI.TabPage();
+			this.labelStorageRemoved = new System.Windows.Forms.Label();
 			this.tabSftp = new OpenDental.UI.TabPage();
 			this.label11 = new System.Windows.Forms.Label();
 			this.butSftpClear = new OpenDental.UI.Button();
@@ -74,7 +67,7 @@ namespace OpenDental {
 			this.tabControlDataStorageType.SuspendLayout();
 			this.tabAtoZ.SuspendLayout();
 			this.tabInDatabase.SuspendLayout();
-			this.tabDropbox.SuspendLayout();
+			this.tabStorageRemoved.SuspendLayout();
 			this.tabSftp.SuspendLayout();
 			this.SuspendLayout();
 			// 
@@ -175,7 +168,6 @@ namespace OpenDental {
 			// groupbox1
 			// 
 			this.groupbox1.Controls.Add(this.radioSftp);
-			this.groupbox1.Controls.Add(this.radioDropboxStorage);
 			this.groupbox1.Controls.Add(this.tabControlDataStorageType);
 			this.groupbox1.Controls.Add(this.radioDatabaseStorage);
 			this.groupbox1.Controls.Add(this.radioUseFolder);
@@ -187,7 +179,7 @@ namespace OpenDental {
 			// 
 			// radioSftp
 			// 
-			this.radioSftp.Location = new System.Drawing.Point(9, 76);
+			this.radioSftp.Location = new System.Drawing.Point(9, 57);
 			this.radioSftp.Name = "radioSftp";
 			this.radioSftp.Size = new System.Drawing.Size(569, 18);
 			this.radioSftp.TabIndex = 103;
@@ -195,21 +187,11 @@ namespace OpenDental {
 			this.radioSftp.UseVisualStyleBackColor = true;
 			this.radioSftp.Click += new System.EventHandler(this.radioSftp_Click);
 			// 
-			// radioDropboxStorage
-			// 
-			this.radioDropboxStorage.Location = new System.Drawing.Point(9, 57);
-			this.radioDropboxStorage.Name = "radioDropboxStorage";
-			this.radioDropboxStorage.Size = new System.Drawing.Size(435, 18);
-			this.radioDropboxStorage.TabIndex = 102;
-			this.radioDropboxStorage.Text = "Store images in Dropbox (an internet connection will be required)";
-			this.radioDropboxStorage.UseVisualStyleBackColor = true;
-			this.radioDropboxStorage.Click += new System.EventHandler(this.radioDropboxStorage_Click);
-			// 
 			// tabControlDataStorageType
 			// 
 			this.tabControlDataStorageType.Controls.Add(this.tabAtoZ);
 			this.tabControlDataStorageType.Controls.Add(this.tabInDatabase);
-			this.tabControlDataStorageType.Controls.Add(this.tabDropbox);
+			this.tabControlDataStorageType.Controls.Add(this.tabStorageRemoved);
 			this.tabControlDataStorageType.Controls.Add(this.tabSftp);
 			this.tabControlDataStorageType.Location = new System.Drawing.Point(11, 100);
 			this.tabControlDataStorageType.Name = "tabControlDataStorageType";
@@ -306,83 +288,24 @@ namespace OpenDental {
 			this.label2.TabIndex = 97;
 			this.label2.Text = resources.GetString("label2.Text");
 			// 
-			// tabDropbox
+			// tabStorageRemoved
 			// 
-			this.tabDropbox.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(252)))), ((int)(((byte)(253)))), ((int)(((byte)(254)))));
-			this.tabDropbox.Controls.Add(this.label12);
-			this.tabDropbox.Controls.Add(this.label5);
-			this.tabDropbox.Controls.Add(this.textAtoZPath);
-			this.tabDropbox.Controls.Add(this.butAuthorize);
-			this.tabDropbox.Controls.Add(this.labelWebhostURL);
-			this.tabDropbox.Controls.Add(this.textAccessToken);
-			this.tabDropbox.Controls.Add(this.label4);
-			this.tabDropbox.Location = new System.Drawing.Point(2, 21);
-			this.tabDropbox.Name = "tabDropbox";
-			this.tabDropbox.Padding = new System.Windows.Forms.Padding(3);
-			this.tabDropbox.Size = new System.Drawing.Size(602, 233);
-			this.tabDropbox.TabIndex = 2;
-			this.tabDropbox.Text = "Dropbox";
+			this.tabStorageRemoved.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(252)))), ((int)(((byte)(253)))), ((int)(((byte)(254)))));
+			this.tabStorageRemoved.Controls.Add(this.labelStorageRemoved);
+			this.tabStorageRemoved.Location = new System.Drawing.Point(2, 21);
+			this.tabStorageRemoved.Name = "tabStorageRemoved";
+			this.tabStorageRemoved.Padding = new System.Windows.Forms.Padding(3);
+			this.tabStorageRemoved.Size = new System.Drawing.Size(602, 233);
+			this.tabStorageRemoved.TabIndex = 2;
+			this.tabStorageRemoved.Text = "Removed";
 			// 
-			// label12
+			// labelStorageRemoved
 			// 
-			this.label12.Location = new System.Drawing.Point(81, 40);
-			this.label12.Name = "label12";
-			this.label12.Size = new System.Drawing.Size(465, 29);
-			this.label12.TabIndex = 138;
-			this.label12.Text = "Any subfolders defined in the AtoZ Path must be separated with the forward slash " +
-    "\" / \" character.";
-			this.label12.TextAlign = System.Drawing.ContentAlignment.BottomLeft;
-			// 
-			// label5
-			// 
-			this.label5.Location = new System.Drawing.Point(99, 77);
-			this.label5.Name = "label5";
-			this.label5.Size = new System.Drawing.Size(129, 19);
-			this.label5.TabIndex = 127;
-			this.label5.Text = "Dropbox AtoZ Path";
-			this.label5.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// textAtoZPath
-			// 
-			this.textAtoZPath.Location = new System.Drawing.Point(230, 76);
-			this.textAtoZPath.Name = "textAtoZPath";
-			this.textAtoZPath.Size = new System.Drawing.Size(199, 20);
-			this.textAtoZPath.TabIndex = 126;
-			// 
-			// butAuthorize
-			// 
-			this.butAuthorize.Location = new System.Drawing.Point(230, 128);
-			this.butAuthorize.Name = "butAuthorize";
-			this.butAuthorize.Size = new System.Drawing.Size(199, 24);
-			this.butAuthorize.TabIndex = 125;
-			this.butAuthorize.Text = "Authorize Dropbox";
-			this.butAuthorize.Click += new System.EventHandler(this.butAuthorize_Click);
-			// 
-			// labelWebhostURL
-			// 
-			this.labelWebhostURL.Location = new System.Drawing.Point(99, 103);
-			this.labelWebhostURL.Name = "labelWebhostURL";
-			this.labelWebhostURL.Size = new System.Drawing.Size(129, 19);
-			this.labelWebhostURL.TabIndex = 124;
-			this.labelWebhostURL.Text = "Access Token";
-			this.labelWebhostURL.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// textAccessToken
-			// 
-			this.textAccessToken.Location = new System.Drawing.Point(230, 102);
-			this.textAccessToken.Name = "textAccessToken";
-			this.textAccessToken.ReadOnly = true;
-			this.textAccessToken.Size = new System.Drawing.Size(199, 20);
-			this.textAccessToken.TabIndex = 123;
-			// 
-			// label4
-			// 
-			this.label4.Location = new System.Drawing.Point(6, 3);
-			this.label4.Name = "label4";
-			this.label4.Size = new System.Drawing.Size(436, 15);
-			this.label4.TabIndex = 93;
-			this.label4.Text = "Store images on your Dropbox account.";
-			this.label4.TextAlign = System.Drawing.ContentAlignment.BottomLeft;
+			this.labelStorageRemoved.Location = new System.Drawing.Point(6, 7);
+			this.labelStorageRemoved.Name = "labelStorageRemoved";
+			this.labelStorageRemoved.Size = new System.Drawing.Size(583, 124);
+			this.labelStorageRemoved.TabIndex = 93;
+			this.labelStorageRemoved.Text = "The A to Z storage type saved in this database is no longer supported.";
 			// 
 			// tabSftp
 			// 
@@ -544,8 +467,7 @@ namespace OpenDental {
 			this.tabAtoZ.ResumeLayout(false);
 			this.tabAtoZ.PerformLayout();
 			this.tabInDatabase.ResumeLayout(false);
-			this.tabDropbox.ResumeLayout(false);
-			this.tabDropbox.PerformLayout();
+			this.tabStorageRemoved.ResumeLayout(false);
 			this.tabSftp.ResumeLayout(false);
 			this.tabSftp.PerformLayout();
 			this.ResumeLayout(false);
@@ -577,15 +499,9 @@ namespace OpenDental {
 		private OpenDental.UI.TabControl tabControlDataStorageType;
 		private OpenDental.UI.TabPage tabAtoZ;
 		private OpenDental.UI.TabPage tabInDatabase;
-		private OpenDental.UI.TabPage tabDropbox;
+		private OpenDental.UI.TabPage tabStorageRemoved;
 		private Label label2;
-		private Label label4;
-		private Label label5;
-		private TextBox textAtoZPath;
-		private UI.Button butAuthorize;
-		private Label labelWebhostURL;
-		private TextBox textAccessToken;
-		private RadioButton radioDropboxStorage;
+		private Label labelStorageRemoved;
 		private RadioButton radioSftp;
 		private OpenDental.UI.TabPage tabSftp;
 		private Label label6;
@@ -599,7 +515,6 @@ namespace OpenDental {
 		private Label label10;
 		private UI.Button butSftpClear;
 		private Label label11;
-		private Label label12;
 		private FolderBrowserDialog folderBrowserDialog;
 	}
 }
