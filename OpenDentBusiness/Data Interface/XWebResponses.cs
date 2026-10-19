@@ -105,6 +105,46 @@ namespace OpenDentBusiness{
 					+POut.String(XWebTransactionType.CreditAuth.ToString())+"')");
 		}
 
+		///<summary>The EdgeExpress hosted-pay-page sessions that may still finish: EdgeExpressPending, a CreditSale or CreditAuth, and a session
+		///expiration (HpfExpiration) later than notBefore. Used by local reconciliation (EdgeExpress.CNP.ReconcilePending), which replaced the
+		///eConnector's polling. Unlike GetPendingHostedPay, this includes desktop sales (PaymentNum set) and leaves out X-Web HPF rows; unlike
+		///GetExpiredEdgeExpressResponses, it leaves out finished rows and old rows.</summary>
+		public static List<XWebResponse> GetPendingEdgeExpress(DateTime notBefore) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetObject<List<XWebResponse>>(MethodBase.GetCurrentMethod(),notBefore);
+			}
+			return Crud.XWebResponseCrud.SelectMany("SELECT * FROM xwebresponse "+GetPendingEdgeExpressWhere(notBefore)+" ORDER BY XWebResponseNum");
+		}
+
+		///<summary>How many rows GetPendingEdgeExpress would return. Cheap enough for a background job to check before it does anything else.</summary>
+		public static int CountPendingEdgeExpress(DateTime notBefore) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetInt(MethodBase.GetCurrentMethod(),notBefore);
+			}
+			return PIn.Int(Db.GetCount("SELECT COUNT(*) FROM xwebresponse "+GetPendingEdgeExpressWhere(notBefore)));
+		}
+
+		private static string GetPendingEdgeExpressWhere(DateTime notBefore) {
+			return "WHERE TransactionStatus="+POut.Int((int)XWebTransactionStatus.EdgeExpressPending)+" "
+				+"AND TransactionType IN('"+POut.String(EdgeExpressTransType.CreditSale.ToString())+"','"
+					+POut.String(EdgeExpressTransType.CreditAuth.ToString())+"') "
+				+"AND HpfExpiration>"+POut.DateT(notBefore);
+		}
+
+		///<summary>Claims a pending EdgeExpress row for one workstation before it is reconciled: moves DateTUpdate forward, but only if the row still
+		///has dateTUpdateOld and is still EdgeExpressPending. Returns false if another workstation (or the payment window) touched it first. The new
+		///value is always later than the old one, even within the same second, so the update always changes the row. No schema change.</summary>
+		public static bool TryClaim(long xWebResponseNum,DateTime dateTUpdateOld) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetBool(MethodBase.GetCurrentMethod(),xWebResponseNum,dateTUpdateOld);
+			}
+			string command="UPDATE xwebresponse SET DateTUpdate=GREATEST("+DbHelper.Now()+",DATE_ADD("+POut.DateT(dateTUpdateOld)+",INTERVAL 1 SECOND)) "
+				+"WHERE XWebResponseNum="+POut.Long(xWebResponseNum)+" "
+				+"AND DateTUpdate="+POut.DateT(dateTUpdateOld)+" "
+				+"AND TransactionStatus="+POut.Int((int)XWebTransactionStatus.EdgeExpressPending);
+			return Db.NonQ(command)>0;
+		}
+
 		///<summary></summary>
 		public static long Insert(XWebResponse xWebResponse) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
