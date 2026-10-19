@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<!--
+	QuickBooks Online redirect page for Open PMS - Dental. Licensed under the GNU General Public License, version 2 or later.
+	See LICENSE in the repository root.
+
+	Optional. Publish this file at the HTTPS redirect URI registered for the office's own Intuit app (for example
+	https://<office-domain>/qbo/callback), and enter the same address as the Redirect URI in Accounting > Setup > QuickBooks Online.
+
+	- RELAY_PORT = 0 (default): the page shows the address with a Copy button. Paste it into the QuickBooks Online Authorization window.
+	- RELAY_PORT = a port (for example 8765): the page forwards the browser to http://localhost:<port>/callback on the same computer, where the
+	  program is listening, so nothing has to be copied. Enter the same number as the Relay Port in the setup window.
+
+	The page loads nothing from anywhere, sends nothing to any server, and stores nothing. The authorization code in the address is short-lived
+	and useless without the office's client secret, but it still shouldn't sit in someone else's logs: host this page on a domain the office controls.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>QuickBooks Online connection</title>
+<style>
+	body { font-family: sans-serif; margin: 2em; max-width: 48em; }
+	textarea { width: 100%; height: 6em; font-family: monospace; }
+	.hidden { display: none; }
+</style>
+</head>
+<body>
+<h1>QuickBooks Online connection</h1>
+<p id="message">Copy this address and paste it into the QuickBooks Online Authorization window in the practice software.</p>
+<textarea id="address" readonly></textarea>
+<p><button id="copy" type="button">Copy</button> <span id="copied" class="hidden">Copied.</span></p>
+<script>
+(function() {
+	"use strict";
+	//Set to the Relay Port from the setup window to forward the answer to the program on this computer. 0 shows the address instead.
+	var RELAY_PORT = 0;
+
+	var query = window.location.search || "";
+	var params = new URLSearchParams(query);
+	var address = document.getElementById("address");
+	var message = document.getElementById("message");
+	address.value = window.location.href;
+	if(params.get("error")) {
+		message.textContent = "QuickBooks Online did not approve the connection (" + params.get("error") + "). Paste this address into the "
+			+ "practice software anyway so it can show why, or close this tab and click Connect again.";
+	}
+	else if(!params.get("code") || !params.get("realmId")) {
+		message.textContent = "This address has no authorization code. Start again from Connect in the practice software.";
+	}
+	if(RELAY_PORT > 0 && RELAY_PORT < 65536 && (params.get("code") || params.get("error"))) {
+		message.textContent = "Returning to the practice software...";
+		window.location.replace("http://localhost:" + RELAY_PORT + "/callback" + query);
+		return;
+	}
+	document.getElementById("copy").addEventListener("click", function() {
+		address.focus();
+		address.select();
+		var done = function() {
+			document.getElementById("copied").className = "";
+		};
+		if(navigator.clipboard && navigator.clipboard.writeText) {
+			navigator.clipboard.writeText(address.value).then(done, function() {
+				document.execCommand("copy");
+				done();
+			});
+		}
+		else {
+			document.execCommand("copy");
+			done();
+		}
+	});
+})();
+</script>
+</body>
+</html>

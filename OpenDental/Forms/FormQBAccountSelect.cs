@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Windows.Forms;
 using OpenDentBusiness;
+using OpenDentBusiness.Qbo;
 
 namespace OpenDental {
 	public partial class FormQBAccountSelect:FormODBase {
@@ -13,12 +15,13 @@ namespace OpenDental {
 		public string DepositAccountSelected="";
 		///<summary>The selected account when clicking OK.  Used in FormDepositEdit to pass to QuickBooks or QuickBooks Online.</summary>
 		public string IncomeAccountSelected="";
+		///<summary>The QuickBooks Online Id of the selected deposit account. Only set for QuickBooks Online. Matching by Id never confuses two accounts
+		///with the same name.</summary>
+		public string DepositAccountIdSelected="";
+		///<summary>The QuickBooks Online Id of the selected income account. Only set for QuickBooks Online.</summary>
+		public string IncomeAccountIdSelected="";
 		///<summary>True if user is using QuickBooks Online instead of regular QuickBooks.</summary>
 		private bool _isQuickBooksOnline;
-		///<summary>Contains the string of deposit accounts for QuickBooks Online.</summary>
-		private ProgramProperty _programPropertyQboDepositAccounts;
-		///<summary>Contains the string of income accounts for QuickBooks Online.</summary>
-		private ProgramProperty _programPropertyQboIncomeAccounts;
 
 		public FormQBAccountSelect(bool isQuickBooksOnline) {
 			InitializeComponent();
@@ -29,9 +32,6 @@ namespace OpenDental {
 
 		private void FormQBAccountSelect_Load(object sender,EventArgs e) {
 			if(_isQuickBooksOnline) {
-				Program programQbo=Programs.GetCur(ProgramName.QuickBooksOnline);
-				_programPropertyQboDepositAccounts=ProgramProperties.GetPropForProgByDesc(programQbo.ProgramNum,"Deposit Accounts");
-				_programPropertyQboIncomeAccounts=ProgramProperties.GetPropForProgByDesc(programQbo.ProgramNum,"Income Accounts");
 				FillQuickBooksOnlineAccounts();
 				return;
 			}
@@ -53,23 +53,34 @@ namespace OpenDental {
 		}
 
 		private void FillQuickBooksOnlineAccounts() {
-			FillAccountsFromProgramProperty(_programPropertyQboDepositAccounts,comboDepositAccount);
+			//Missing rows read as blank, so this works before anyone has opened the QuickBooks Online setup window.
+			QboSettings qboSettings=QboSettings.Load();
+			FillAccountsFromProgramProperty(qboSettings.DepositAccounts,comboDepositAccount);
 			comboDepositAccount.SelectedIndex=0;
-			FillAccountsFromProgramProperty(_programPropertyQboIncomeAccounts,comboIncomeAccount);
-			comboIncomeAccount.SelectedIndex=0;//change this combo box name.
+			FillAccountsFromProgramProperty(qboSettings.IncomeAccounts,comboIncomeAccount);
+			comboIncomeAccount.SelectedIndex=0;
 		}
 
-		private void FillAccountsFromProgramProperty(ProgramProperty progProp,OpenDental.UI.ComboBox comboBox) {
-			List<string> listAccountsNames=ProgramProperties.GetQuickBooksOnlineEntityNames(progProp.PropertyValue);
-			for(int i=0;i<listAccountsNames.Count;i++) {
-				comboBox.Items.Add(listAccountsNames[i]);
+		private void FillAccountsFromProgramProperty(string propertyValue,OpenDental.UI.ComboBox comboBox) {
+			List<QuickBooksOnlineAccount> listAccounts=QuickBooksOnlineAccount.StringAccountsToList(propertyValue)
+				.OrderBy(x => x.Name).ToList();
+			for(int i=0;i<listAccounts.Count;i++) {
+				comboBox.Items.Add(listAccounts[i].Name,listAccounts[i]);
 			}
 		}
 
 		private void butOK_Click(object sender,EventArgs e) {
 			if(_isQuickBooksOnline) {
-				DepositAccountSelected=comboDepositAccount.SelectedItem.ToString();
-				IncomeAccountSelected=comboIncomeAccount.SelectedItem.ToString();
+				QuickBooksOnlineAccount accountDeposit=comboDepositAccount.GetSelected<QuickBooksOnlineAccount>();
+				QuickBooksOnlineAccount accountIncome=comboIncomeAccount.GetSelected<QuickBooksOnlineAccount>();
+				if(accountDeposit==null || accountIncome==null) {
+					MsgBox.Show(this,"Pick a deposit account and an income account. They are chosen in Accounting > Setup > QuickBooks Online.");
+					return;
+				}
+				DepositAccountSelected=accountDeposit.Name;
+				DepositAccountIdSelected=accountDeposit.Id;
+				IncomeAccountSelected=accountIncome.Name;
+				IncomeAccountIdSelected=accountIncome.Id;
 			}
 			else {
 				DepositAccountSelected=_listDepositAccountsQB[comboDepositAccount.SelectedIndex];
