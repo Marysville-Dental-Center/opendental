@@ -161,7 +161,8 @@ namespace NoHqTests {
 			//A ConnectionStore config file may name a connection by number, so the kept values keep their original numbers.
 			Assert.AreEqual(4,(int)ConnectionNames.DentalOffice);
 			Assert.AreEqual(5,(int)ConnectionNames.DentalOfficeReportServer);
-			Assert.AreEqual(19,(int)ConnectionNames.DentalOfficeReadOnlyServer);
+			Assert.AreEqual(13,(int)ConnectionNames.DentalOffice_19_1);
+			Assert.AreEqual(18,(int)ConnectionNames.DentalOfficeReadOnlyServer);
 			Assert.IsNull(typeof(ConnectionStoreBase).GetField("GetTriageHQ",BindingFlags.Public|BindingFlags.Static));
 		}
 

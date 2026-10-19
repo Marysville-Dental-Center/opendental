@@ -48,8 +48,8 @@
 		///<summary>The OD proper database connection that is comprised of preferences via the currently connected database.</summary>
 		DentalOfficeReportServer=5,
 		///<summary>Only used when running tests. The OD proper database which holds test data for 19.1.</summary>
-		DentalOffice_19_1=14,
+		DentalOffice_19_1=13,
 		///<summary>The OD proper database connection that is comprised of preferences via the currently connected database.</summary>
-		DentalOfficeReadOnlyServer=19,
+		DentalOfficeReadOnlyServer=18,
 	}
 }
