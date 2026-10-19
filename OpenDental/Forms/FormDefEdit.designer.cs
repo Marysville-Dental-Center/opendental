@@ -37,30 +37,9 @@ namespace OpenDental {
 			this.butSave = new OpenDental.UI.Button();
 			this.checkHidden = new OpenDental.UI.CheckBox();
 			this.butDelete = new OpenDental.UI.Button();
-			this.checkIncludeSend = new OpenDental.UI.CheckBox();
-			this.checkIncludeConfirm = new OpenDental.UI.CheckBox();
-			this.groupEConfirm = new OpenDental.UI.GroupBox();
 			this.butSelect = new OpenDental.UI.Button();
 			this.butClearValue = new OpenDental.UI.Button();
-			this.groupBoxEReminders = new OpenDental.UI.GroupBox();
-			this.checkIncludeRemind = new OpenDental.UI.CheckBox();
 			this.checkNoColor = new OpenDental.UI.CheckBox();
-			this.groupBoxEThanks = new OpenDental.UI.GroupBox();
-			this.checkIncludeThanks = new OpenDental.UI.CheckBox();
-			this.groupBoxArrivals = new OpenDental.UI.GroupBox();
-			this.checkIncludeArrivalSend = new OpenDental.UI.CheckBox();
-			this.checkIncludeArrivalResponse = new OpenDental.UI.CheckBox();
-			this.groupBoxEClipboard = new OpenDental.UI.GroupBox();
-			this.checkIncludeEClipboard = new OpenDental.UI.CheckBox();
-			this.checkByod = new OpenDental.UI.CheckBox();
-			this.groupBoxGeneralMessages = new OpenDental.UI.GroupBox();
-			this.checkIncludeGeneralSend = new OpenDental.UI.CheckBox();
-			this.groupEConfirm.SuspendLayout();
-			this.groupBoxEReminders.SuspendLayout();
-			this.groupBoxEThanks.SuspendLayout();
-			this.groupBoxArrivals.SuspendLayout();
-			this.groupBoxEClipboard.SuspendLayout();
-			this.groupBoxGeneralMessages.SuspendLayout();
 			this.SuspendLayout();
 			// 
 			// labelName
@@ -150,36 +129,6 @@ namespace OpenDental {
 			this.butDelete.Text = "Delete";
 			this.butDelete.Click += new System.EventHandler(this.butDelete_Click);
 			// 
-			// checkIncludeSend
-			// 
-			this.checkIncludeSend.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-			this.checkIncludeSend.Location = new System.Drawing.Point(6, 19);
-			this.checkIncludeSend.Name = "checkIncludeSend";
-			this.checkIncludeSend.Size = new System.Drawing.Size(165, 18);
-			this.checkIncludeSend.TabIndex = 7;
-			this.checkIncludeSend.Text = "Send";
-			// 
-			// checkIncludeConfirm
-			// 
-			this.checkIncludeConfirm.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-			this.checkIncludeConfirm.Location = new System.Drawing.Point(6, 40);
-			this.checkIncludeConfirm.Name = "checkIncludeConfirm";
-			this.checkIncludeConfirm.Size = new System.Drawing.Size(165, 18);
-			this.checkIncludeConfirm.TabIndex = 8;
-			this.checkIncludeConfirm.Text = "Change status";
-			// 
-			// groupEConfirm
-			// 
-			this.groupEConfirm.Controls.Add(this.checkIncludeSend);
-			this.groupEConfirm.Controls.Add(this.checkIncludeConfirm);
-			this.groupEConfirm.Location = new System.Drawing.Point(12, 130);
-			this.groupEConfirm.Name = "groupEConfirm";
-			this.groupEConfirm.Size = new System.Drawing.Size(177, 64);
-			this.groupEConfirm.TabIndex = 9;
-			this.groupEConfirm.Text = "eConfirmations";
-			// 
 			// butSelect
 			// 
 			this.butSelect.Location = new System.Drawing.Point(371, 106);
@@ -199,25 +148,6 @@ namespace OpenDental {
 			this.butClearValue.TabIndex = 201;
 			this.butClearValue.Click += new System.EventHandler(this.butClearValue_Click);
 			// 
-			// groupBoxEReminders
-			// 
-			this.groupBoxEReminders.Controls.Add(this.checkIncludeRemind);
-			this.groupBoxEReminders.Location = new System.Drawing.Point(12, 197);
-			this.groupBoxEReminders.Name = "groupBoxEReminders";
-			this.groupBoxEReminders.Size = new System.Drawing.Size(177, 46);
-			this.groupBoxEReminders.TabIndex = 202;
-			this.groupBoxEReminders.Text = "eReminders";
-			// 
-			// checkIncludeRemind
-			// 
-			this.checkIncludeRemind.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-			this.checkIncludeRemind.Location = new System.Drawing.Point(6, 19);
-			this.checkIncludeRemind.Name = "checkIncludeRemind";
-			this.checkIncludeRemind.Size = new System.Drawing.Size(165, 18);
-			this.checkIncludeRemind.TabIndex = 7;
-			this.checkIncludeRemind.Text = "Send";
-			// 
 			// checkNoColor
 			// 
 			this.checkNoColor.Location = new System.Drawing.Point(260, 16);
@@ -229,110 +159,12 @@ namespace OpenDental {
 			this.checkNoColor.Visible = false;
 			this.checkNoColor.CheckedChanged += new System.EventHandler(this.checkNoColor_CheckedChanged);
 			// 
-			// groupBoxEThanks
-			// 
-			this.groupBoxEThanks.Controls.Add(this.checkIncludeThanks);
-			this.groupBoxEThanks.Location = new System.Drawing.Point(191, 197);
-			this.groupBoxEThanks.Name = "groupBoxEThanks";
-			this.groupBoxEThanks.Size = new System.Drawing.Size(177, 46);
-			this.groupBoxEThanks.TabIndex = 203;
-			this.groupBoxEThanks.Text = "Automated Thank-You";
-			// 
-			// checkIncludeThanks
-			// 
-			this.checkIncludeThanks.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-			this.checkIncludeThanks.Location = new System.Drawing.Point(6, 19);
-			this.checkIncludeThanks.Name = "checkIncludeThanks";
-			this.checkIncludeThanks.Size = new System.Drawing.Size(165, 18);
-			this.checkIncludeThanks.TabIndex = 7;
-			this.checkIncludeThanks.Text = "Send";
-			// 
-			// groupBoxArrivals
-			// 
-			this.groupBoxArrivals.Controls.Add(this.checkIncludeArrivalSend);
-			this.groupBoxArrivals.Controls.Add(this.checkIncludeArrivalResponse);
-			this.groupBoxArrivals.Location = new System.Drawing.Point(191, 130);
-			this.groupBoxArrivals.Name = "groupBoxArrivals";
-			this.groupBoxArrivals.Size = new System.Drawing.Size(177, 64);
-			this.groupBoxArrivals.TabIndex = 204;
-			this.groupBoxArrivals.Text = "Arrivals";
-			// 
-			// checkIncludeArrivalSend
-			// 
-			this.checkIncludeArrivalSend.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-			this.checkIncludeArrivalSend.Location = new System.Drawing.Point(6, 19);
-			this.checkIncludeArrivalSend.Name = "checkIncludeArrivalSend";
-			this.checkIncludeArrivalSend.Size = new System.Drawing.Size(165, 18);
-			this.checkIncludeArrivalSend.TabIndex = 7;
-			this.checkIncludeArrivalSend.Text = "Send";
-			// 
-			// checkIncludeArrivalResponse
-			// 
-			this.checkIncludeArrivalResponse.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-			this.checkIncludeArrivalResponse.Location = new System.Drawing.Point(6, 40);
-			this.checkIncludeArrivalResponse.Name = "checkIncludeArrivalResponse";
-			this.checkIncludeArrivalResponse.Size = new System.Drawing.Size(165, 18);
-			this.checkIncludeArrivalResponse.TabIndex = 8;
-			this.checkIncludeArrivalResponse.Text = "Send response";
-			// 
-			// groupBoxEClipboard
-			// 
-			this.groupBoxEClipboard.Controls.Add(this.checkIncludeEClipboard);
-			this.groupBoxEClipboard.Controls.Add(this.checkByod);
-			this.groupBoxEClipboard.Location = new System.Drawing.Point(12, 246);
-			this.groupBoxEClipboard.Name = "groupBoxEClipboard";
-			this.groupBoxEClipboard.Size = new System.Drawing.Size(177, 64);
-			this.groupBoxEClipboard.TabIndex = 205;
-			this.groupBoxEClipboard.Text = "eClipboard";
-			// 
-			// checkIncludeEClipboard
-			// 
-			this.checkIncludeEClipboard.Location = new System.Drawing.Point(5, 19);
-			this.checkIncludeEClipboard.Name = "checkIncludeEClipboard";
-			this.checkIncludeEClipboard.Size = new System.Drawing.Size(165, 18);
-			this.checkIncludeEClipboard.TabIndex = 1;
-			this.checkIncludeEClipboard.Text = "Change on check-in";
-			// 
-			// checkByod
-			// 
-			this.checkByod.Location = new System.Drawing.Point(5, 40);
-			this.checkByod.Name = "checkByod";
-			this.checkByod.Size = new System.Drawing.Size(165, 18);
-			this.checkByod.TabIndex = 0;
-			this.checkByod.Text = "Enable BYOD";
-			// 
-			// groupBoxGeneralMessages
-			// 
-			this.groupBoxGeneralMessages.Controls.Add(this.checkIncludeGeneralSend);
-			this.groupBoxGeneralMessages.Location = new System.Drawing.Point(191, 246);
-			this.groupBoxGeneralMessages.Name = "groupBoxGeneralMessages";
-			this.groupBoxGeneralMessages.Size = new System.Drawing.Size(177, 46);
-			this.groupBoxGeneralMessages.TabIndex = 206;
-			this.groupBoxGeneralMessages.Text = "General Messages";
-			// 
-			// checkIncludeGeneralSend
-			// 
-			this.checkIncludeGeneralSend.Location = new System.Drawing.Point(5, 19);
-			this.checkIncludeGeneralSend.Name = "checkIncludeGeneralSend";
-			this.checkIncludeGeneralSend.Size = new System.Drawing.Size(165, 18);
-			this.checkIncludeGeneralSend.TabIndex = 1;
-			this.checkIncludeGeneralSend.Text = "Send";
-			// 
 			// FormDefEdit
 			// 
 			this.AcceptButton = this.butSave;
 			this.ClientSize = new System.Drawing.Size(423, 352);
-			this.Controls.Add(this.groupBoxGeneralMessages);
-			this.Controls.Add(this.groupBoxEClipboard);
-			this.Controls.Add(this.groupBoxArrivals);
-			this.Controls.Add(this.groupBoxEThanks);
 			this.Controls.Add(this.checkNoColor);
-			this.Controls.Add(this.groupBoxEReminders);
 			this.Controls.Add(this.butClearValue);
-			this.Controls.Add(this.groupEConfirm);
 			this.Controls.Add(this.butSelect);
 			this.Controls.Add(this.butDelete);
 			this.Controls.Add(this.checkHidden);
@@ -350,12 +182,6 @@ namespace OpenDental {
 			this.ShowInTaskbar = false;
 			this.Text = "Edit Definition";
 			this.Load += new System.EventHandler(this.FormDefEdit_Load);
-			this.groupEConfirm.ResumeLayout(false);
-			this.groupBoxEReminders.ResumeLayout(false);
-			this.groupBoxEThanks.ResumeLayout(false);
-			this.groupBoxArrivals.ResumeLayout(false);
-			this.groupBoxEClipboard.ResumeLayout(false);
-			this.groupBoxGeneralMessages.ResumeLayout(false);
 			this.ResumeLayout(false);
 			this.PerformLayout();
 
@@ -373,22 +199,7 @@ namespace OpenDental {
 		private System.Windows.Forms.Label labelColor;
 		private OpenDental.UI.CheckBox checkHidden;
 		private OpenDental.UI.Button butDelete;
-		private OpenDental.UI.CheckBox checkIncludeSend;
-		private OpenDental.UI.CheckBox checkIncludeConfirm;
-		private OpenDental.UI.GroupBox groupEConfirm;
 		private UI.Button butClearValue;
-		private OpenDental.UI.GroupBox groupBoxEReminders;
-		private OpenDental.UI.CheckBox checkIncludeRemind;
 		private OpenDental.UI.CheckBox checkNoColor;
-		private OpenDental.UI.GroupBox groupBoxEThanks;
-		private OpenDental.UI.CheckBox checkIncludeThanks;
-		private OpenDental.UI.GroupBox groupBoxArrivals;
-		private OpenDental.UI.CheckBox checkIncludeArrivalSend;
-		private OpenDental.UI.CheckBox checkIncludeArrivalResponse;
-		private OpenDental.UI.GroupBox groupBoxEClipboard;
-		private OpenDental.UI.CheckBox checkIncludeEClipboard;
-		private OpenDental.UI.CheckBox checkByod;
-		private UI.GroupBox groupBoxGeneralMessages;
-		private OpenDental.UI.CheckBox checkIncludeGeneralSend;
 	}
 }

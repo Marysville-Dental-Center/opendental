@@ -29,7 +29,6 @@ namespace OpenDental {
 
 		private void FormASAP_Load(object sender,System.EventArgs e) {
 			Cursor=Cursors.WaitCursor;
-			LayoutMenu();
 			SetFilterControlsAndAction(() => {
 					if(tabControl.SelectedIndex==0) {
 						FillGridAppts();
@@ -90,12 +89,6 @@ namespace OpenDental {
 			}
 			LayoutManager.LayoutFormBoundsAndFonts(this);
 			Cursor=Cursors.Default;
-		}
-
-		private void LayoutMenu() {
-			menuMain.BeginUpdate();
-			menuMain.Add(new MenuItemOD("Settings",menuItemSettings_Click));
-			menuMain.EndUpdate();
 		}
 
 		///<summary>There is a bug in ODProgress.cs that forces windows that use a progress bar on load to go behind other applications. 
@@ -532,15 +525,6 @@ namespace OpenDental {
 		private void butRefresh_Click(object sender,EventArgs e) {
 			FillGridAppts();
 			FillGridRecalls();
-		}
-
-		private void menuItemSettings_Click(object sender,EventArgs e) {
-			if(!Security.IsAuthorized(EnumPermType.Setup)) {
-				return;
-			}
-			using FormAsapSetup formAsapSetup=new FormAsapSetup();
-			formAsapSetup.ShowDialog();
-			SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,"ASAP List Setup");
 		}
 
 		private void butPrint_Click(object sender,EventArgs e) {

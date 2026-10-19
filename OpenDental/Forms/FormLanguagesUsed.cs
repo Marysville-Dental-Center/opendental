@@ -90,11 +90,6 @@ namespace OpenDental{
 				MsgBox.Show(this,"Please select a language first");
 				return;
 			}
-			List<string> listLangRules=ApptReminderRules.GetAll().FindAll(x => x.Language!=string.Empty).Select(x => x.Language).ToList();
-			if(listLangRules.Contains(_listLangsUsed[listUsed.SelectedIndex])) {
-				MsgBox.Show(this,"Language is in use by:\r\n - eService reminders or confirmations");
-				return;
-			}
 			_listLangsUsed.RemoveAt(listUsed.SelectedIndex);
 			FillListUsed();
 		}

@@ -220,7 +220,6 @@ namespace OpenDental{
 			menuItemAppts.Add("Appointment Rules",menuItemApptRules_Click);
 			menuItemAppts.Add("Appointment Types",menuItemApptTypes_Click);
 			menuItemAppts.Add("Appointment Views",menuItemApptViews_Click);
-			menuItemAppts.Add("ASAP List",menuItemAsapList_Click);
 			menuItemAppts.Add("Confirmations",menuItemConfirmations_Click);
 			menuItemAppts.Add("Insurance Verification",menuItemInsVerify_Click);
 			menuItemAppts.Add("Operatories",menuItemOperatories_Click);

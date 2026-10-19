@@ -832,12 +832,6 @@
     <Compile Include="Forms\FormUserQuery.Designer.cs">
       <DependentUpon>FormUserQuery.cs</DependentUpon>
     </Compile>
-    <Compile Include="Forms\FormApptViewEditMobile.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FormApptViewEditMobile.designer.cs">
-      <DependentUpon>FormApptViewEditMobile.cs</DependentUpon>
-    </Compile>
     <Compile Include="Forms\FormContinuityOfCareDocument.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -2245,7 +2239,6 @@
     <Compile Include="Logic\PayPlanL.cs" />
     <Compile Include="Logic\aaLogicUI.cs" />
     <Compile Include="Logic\AppointmentL.cs" />
-    <Compile Include="Logic\PrintRemoteRequestL.cs" />
     <Compile Include="Logic\UserOdPrefL.cs" />
     <Compile Include="Main Modules\ControlAccount.Designer.cs">
       <DependentUpon>ControlAccount.cs</DependentUpon>
@@ -2896,12 +2889,6 @@
     </Compile>
     <Compile Include="Forms\FormTaskListBlock.designer.cs">
       <DependentUpon>FormTaskListBlock.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\FormAsapSetup.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FormAsapSetup.designer.cs">
-      <DependentUpon>FormAsapSetup.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\FormTrackNextSetup.cs">
       <SubType>Form</SubType>
@@ -6731,10 +6718,6 @@
     <EmbeddedResource Include="Forms\FormUserQuery.resx">
       <DependentUpon>FormUserQuery.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormApptViewEditMobile.resx">
-      <DependentUpon>FormApptViewEditMobile.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormContinuityOfCareDocument.resx">
       <DependentUpon>FormContinuityOfCareDocument.cs</DependentUpon>
     </EmbeddedResource>
@@ -7250,9 +7233,6 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormTaskListBlock.resx">
       <DependentUpon>FormTaskListBlock.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormAsapSetup.resx">
-      <DependentUpon>FormAsapSetup.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormTrackNextSetup.resx">
       <DependentUpon>FormTrackNextSetup.cs</DependentUpon>

@@ -242,16 +242,8 @@ namespace OpenDental {
 			}
 			SheetDef sheetDef;
 			Sheet sheet=null;//only useful if not Terminal
-			bool isPatUsingEClipboard=MobileAppDevices.PatientIsAlreadyUsingDevice(PatNum);
 			for(int i=0;i<frmSheetPicker.ListSheetDefsSelected.Count;i++) {
 				sheetDef=frmSheetPicker.ListSheetDefsSelected[i];
-				if(frmSheetPicker.DoKioskSend && isPatUsingEClipboard && !sheetDef.HasMobileLayout) {
-					if(!MsgBox.Show(MsgBoxButtons.YesNo,$"The patient is currently using an eClipboard to fill out forms, but the " +
-						$"{sheetDef.Description} sheet does not have a mobile layout and cannot be used with eClipboard. " +
-						$"If you add this form to the patient's list it will not be shown in eClipboard. Do you still want to add this form?")) {
-						continue;
-					}
-				}
 				sheet=SheetUtil.CreateSheet(sheetDef,PatNum);
 				if(SheetDefs.ContainsGrids(sheetDef,"ProcsWithFee","ProcsNoFee")) {
 					using FormSheetProcSelect formSheetProcSelect=new FormSheetProcSelect();
@@ -271,10 +263,6 @@ namespace OpenDental {
 					sheet.ShowInTerminal=(byte)(Sheets.GetBiggestShowInTerminal(PatNum)+1);
 					Sheets.SaveNewSheet(sheet);//save each sheet.
 					Sheets.SaveParameters(sheet);
-					//Create mobile notification to update eClipboard device with new sheet.
-					if(isPatUsingEClipboard && sheetDef.HasMobileLayout) {
-						MobileNotifications.CI_AddSheet(sheet.PatNum,sheet.SheetNum);
-					}
 				}
 			}
 			if(frmSheetPicker.DoKioskSend) {

@@ -23,13 +23,6 @@ namespace OpenDental {
 
 		private void FrmBackupReminder_Load(object sender,EventArgs e) {
 			Lang.F(this);
-			labelSupplementalBackupDisabled.Visible=false;
-			labelSupplementalBackupPath.Visible=false;
-			if(!WebServiceMainHQProxy.IsHqAvailable) {
-				return;//Supplemental backups were made by Open Dental's eConnector and copied to Open Dental HQ. Not available in this build.
-			}
-			labelSupplementalBackupDisabled.Visible=!PrefC.GetBool(PrefName.SupplementalBackupEnabled);
-			labelSupplementalBackupPath.Visible=string.IsNullOrEmpty(PrefC.GetString(PrefName.SupplementalBackupNetworkPath));
 		}
 
 		private void FrmBackupReminder_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e) {

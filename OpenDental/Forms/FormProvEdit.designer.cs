@@ -117,13 +117,6 @@ namespace OpenDental {
 			this.dateTerm = new OpenDental.UI.ODDatePicker();
 			this.tabSupplementalIDs = new OpenDental.UI.TabPage();
 			this.tabDentalSchools = new OpenDental.UI.TabPage();
-			this.tabWebSched = new OpenDental.UI.TabPage();
-			this.butPictureNone = new OpenDental.UI.Button();
-			this.butPickPict = new OpenDental.UI.Button();
-			this.label24 = new System.Windows.Forms.Label();
-			this.label23 = new System.Windows.Forms.Label();
-			this.pictureWebSched = new System.Windows.Forms.PictureBox();
-			this.textWebSchedDescript = new System.Windows.Forms.TextBox();
 			this.tabClinics = new OpenDental.UI.TabPage();
 			this.labelClinicsDesc = new System.Windows.Forms.Label();
 			this.checkAllClinics = new OpenDental.UI.CheckBox();
@@ -137,8 +130,6 @@ namespace OpenDental {
 			this.groupBox1.SuspendLayout();
 			this.tabSupplementalIDs.SuspendLayout();
 			this.tabDentalSchools.SuspendLayout();
-			this.tabWebSched.SuspendLayout();
-			((System.ComponentModel.ISupportInitialize)(this.pictureWebSched)).BeginInit();
 			this.tabClinics.SuspendLayout();
 			this.SuspendLayout();
 			// 
@@ -301,7 +292,6 @@ namespace OpenDental {
 			this.tabControlProvider.Controls.Add(this.tabGeneral);
 			this.tabControlProvider.Controls.Add(this.tabSupplementalIDs);
 			this.tabControlProvider.Controls.Add(this.tabDentalSchools);
-			this.tabControlProvider.Controls.Add(this.tabWebSched);
 			this.tabControlProvider.Controls.Add(this.tabClinics);
 			this.tabControlProvider.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F);
 			this.tabControlProvider.Location = new System.Drawing.Point(12, 12);
@@ -1070,82 +1060,6 @@ namespace OpenDental {
 			this.tabDentalSchools.TabIndex = 2;
 			this.tabDentalSchools.Text = "Dental Schools";
 			// 
-			// tabWebSched
-			// 
-			this.tabWebSched.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(252)))), ((int)(((byte)(253)))), ((int)(((byte)(254)))));
-			this.tabWebSched.Controls.Add(this.butPictureNone);
-			this.tabWebSched.Controls.Add(this.butPickPict);
-			this.tabWebSched.Controls.Add(this.label24);
-			this.tabWebSched.Controls.Add(this.label23);
-			this.tabWebSched.Controls.Add(this.pictureWebSched);
-			this.tabWebSched.Controls.Add(this.textWebSchedDescript);
-			this.tabWebSched.Location = new System.Drawing.Point(2, 21);
-			this.tabWebSched.Name = "tabWebSched";
-			this.tabWebSched.Padding = new System.Windows.Forms.Padding(3);
-			this.tabWebSched.Size = new System.Drawing.Size(866, 588);
-			this.tabWebSched.TabIndex = 3;
-			this.tabWebSched.Text = "Web Sched";
-			// 
-			// butPictureNone
-			// 
-			this.butPictureNone.Location = new System.Drawing.Point(320, 141);
-			this.butPictureNone.Name = "butPictureNone";
-			this.butPictureNone.Size = new System.Drawing.Size(57, 23);
-			this.butPictureNone.TabIndex = 117;
-			this.butPictureNone.TabStop = false;
-			this.butPictureNone.Text = "None";
-			this.butPictureNone.Click += new System.EventHandler(this.butPictureNone_Click);
-			// 
-			// butPickPict
-			// 
-			this.butPickPict.Location = new System.Drawing.Point(286, 141);
-			this.butPickPict.Name = "butPickPict";
-			this.butPickPict.Size = new System.Drawing.Size(27, 23);
-			this.butPickPict.TabIndex = 116;
-			this.butPickPict.Text = "...";
-			this.butPickPict.Click += new System.EventHandler(this.butPickPict_Click);
-			// 
-			// label24
-			// 
-			this.label24.Location = new System.Drawing.Point(54, 141);
-			this.label24.Name = "label24";
-			this.label24.Size = new System.Drawing.Size(93, 16);
-			this.label24.TabIndex = 115;
-			this.label24.Text = "Picture";
-			this.label24.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// label23
-			// 
-			this.label23.Location = new System.Drawing.Point(54, 37);
-			this.label23.Name = "label23";
-			this.label23.Size = new System.Drawing.Size(93, 16);
-			this.label23.TabIndex = 114;
-			this.label23.Text = "Description";
-			this.label23.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// pictureWebSched
-			// 
-			this.pictureWebSched.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-			this.pictureWebSched.Location = new System.Drawing.Point(153, 141);
-			this.pictureWebSched.Name = "pictureWebSched";
-			this.pictureWebSched.Size = new System.Drawing.Size(128, 128);
-			this.pictureWebSched.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
-			this.pictureWebSched.TabIndex = 113;
-			this.pictureWebSched.TabStop = false;
-			// 
-			// textWebSchedDescript
-			// 
-			this.textWebSchedDescript.AcceptsReturn = true;
-			this.textWebSchedDescript.AcceptsTab = true;
-			this.textWebSchedDescript.BackColor = System.Drawing.SystemColors.Window;
-			this.textWebSchedDescript.Location = new System.Drawing.Point(153, 36);
-			this.textWebSchedDescript.MaxLength = 500;
-			this.textWebSchedDescript.Multiline = true;
-			this.textWebSchedDescript.Name = "textWebSchedDescript";
-			this.textWebSchedDescript.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-			this.textWebSchedDescript.Size = new System.Drawing.Size(366, 96);
-			this.textWebSchedDescript.TabIndex = 1;
-			// 
 			// tabClinics
 			// 
 			this.tabClinics.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(252)))), ((int)(((byte)(253)))), ((int)(((byte)(254)))));
@@ -1224,9 +1138,6 @@ namespace OpenDental {
 			this.tabSupplementalIDs.ResumeLayout(false);
 			this.tabDentalSchools.ResumeLayout(false);
 			this.tabDentalSchools.PerformLayout();
-			this.tabWebSched.ResumeLayout(false);
-			this.tabWebSched.PerformLayout();
-			((System.ComponentModel.ISupportInitialize)(this.pictureWebSched)).EndInit();
 			this.tabClinics.ResumeLayout(false);
 			this.ResumeLayout(false);
 
@@ -1316,13 +1227,6 @@ namespace OpenDental {
 		private Label labelColor;
 		private OpenDental.UI.TabPage tabSupplementalIDs;
 		private OpenDental.UI.TabPage tabDentalSchools;
-		private OpenDental.UI.TabPage tabWebSched;
-		private TextBox textWebSchedDescript;
-		private Label label24;
-		private Label label23;
-		private PictureBox pictureWebSched;
-		private UI.Button butPickPict;
-		private UI.Button butPictureNone;
 		private OpenDental.UI.TabPage tabClinics;
 		private OpenDental.UI.CheckBox checkAllClinics;
 		private UI.ListBox listBoxClinics;

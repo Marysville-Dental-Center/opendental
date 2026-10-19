@@ -59,15 +59,10 @@ namespace OpenDental {
 			gridMain.Columns.Add(col);
 			col=new GridColumn(Lan.g("TableOperatories","Hygienist"),70);
 			gridMain.Columns.Add(col);
-			col=new GridColumn(Lan.g("TableOperatories","IsHygiene"),64,HorizontalAlignment.Center);
-			gridMain.Columns.Add(col);
-			col=new GridColumn(Lan.g("TableOperatories","IsWebSched"),74,HorizontalAlignment.Center);
-			gridMain.Columns.Add(col);
-			col=new GridColumn(Lan.g("TableOperatories","IsNewPat"),50,HorizontalAlignment.Center){ IsWidthDynamic=true };
+			col=new GridColumn(Lan.g("TableOperatories","IsHygiene"),64,HorizontalAlignment.Center){ IsWidthDynamic=true };
 			gridMain.Columns.Add(col);
 			gridMain.ListGridRows.Clear();
 			GridRow row;
-			List<long> listOperatoryNumsWSNPA=Operatories.GetOpsForWebSchedNewOrExistingPatAppts().Select(x => x.OperatoryNum).ToList();
 			for(int i=0;i<_listOperatories.Count;i++) {
 				row=new GridRow();
 				row.Cells.Add(_listOperatories[i].OpName);
@@ -89,8 +84,6 @@ namespace OpenDental {
 				else{
 					row.Cells.Add("");
 				}
-				row.Cells.Add(_listOperatories[i].IsWebSched?"X":"");
-				row.Cells.Add(listOperatoryNumsWSNPA.Contains(_listOperatories[i].OperatoryNum) ? "X" : "");
 				row.Tag=_listOperatories[i];
 				gridMain.ListGridRows.Add(row);
 			}

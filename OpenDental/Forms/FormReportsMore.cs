@@ -321,7 +321,6 @@ namespace OpenDental {
 				case DisplayReports.ReportNames.ClaimsNotSent:
 				case DisplayReports.ReportNames.CustomAging:
 				case DisplayReports.ReportNames.TreatmentFinder:
-				case DisplayReports.ReportNames.WebSchedAppointments:
 				case DisplayReports.ReportNames.ProcNotBilledIns:
 				case DisplayReports.ReportNames.IncompleteProcNotes:
 				case DisplayReports.ReportNames.ODProcOverpaid:
@@ -657,9 +656,6 @@ namespace OpenDental {
 				case DisplayReports.ReportNames.TreatmentFinder://Treatment Finder
 					SecurityLogs.MakeLogEntry(EnumPermType.Reports,0,"Treatment Finder report run.");
 					return ReportNonModalSelection.TreatmentFinder;
-				case DisplayReports.ReportNames.WebSchedAppointments://Web Sched Appts
-					SecurityLogs.MakeLogEntry(EnumPermType.Reports,0,"Web Sched Appointments report run.");
-					return ReportNonModalSelection.WebSchedAppointments;
 				case "ODRawScreeningData"://Raw Screening Data
 					if(!Security.IsAuthorized(EnumPermType.UserQuery)) {
 						break;
@@ -770,7 +766,6 @@ namespace OpenDental {
 		UnfinalizedInsPay,
 		///<summary></summary>
 		UnsentClaim,
-		WebSchedAppointments,
 		CustomAging,
 		IncompleteProcNotes,
 		ProcNotBilledIns,

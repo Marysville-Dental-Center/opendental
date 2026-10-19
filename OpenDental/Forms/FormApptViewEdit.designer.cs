@@ -74,7 +74,6 @@ namespace OpenDental {
 			this.label5 = new System.Windows.Forms.Label();
 			this.listWaitingRmNameFormat = new OpenDental.UI.ListBox();
 			this.label7 = new System.Windows.Forms.Label();
-			this.butMobileView = new OpenDental.UI.Button();
 			this.gridPatFieldDefs = new OpenDental.UI.GridOD();
 			this.gridApptFieldDefs = new OpenDental.UI.GridOD();
 			this.gridAvailable = new OpenDental.UI.GridOD();
@@ -452,17 +451,6 @@ namespace OpenDental {
 			this.label7.Text = "Waiting Room Name Format";
 			this.label7.TextAlign = System.Drawing.ContentAlignment.BottomLeft;
 			// 
-			// butMobileView
-			// 
-			this.butMobileView.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.butMobileView.Location = new System.Drawing.Point(284, 663);
-			this.butMobileView.Name = "butMobileView";
-			this.butMobileView.Size = new System.Drawing.Size(98, 24);
-			this.butMobileView.TabIndex = 141;
-			this.butMobileView.Text = "Mobile View";
-			this.butMobileView.Visible = false;
-			this.butMobileView.Click += new System.EventHandler(this.butMobileView_Click);
-			// 
 			// gridPatFieldDefs
 			// 
 			this.gridPatFieldDefs.Location = new System.Drawing.Point(207, 544);
@@ -497,7 +485,6 @@ namespace OpenDental {
 			// 
 			this.AcceptButton = this.butSave;
 			this.ClientSize = new System.Drawing.Size(926, 696);
-			this.Controls.Add(this.butMobileView);
 			this.Controls.Add(this.label7);
 			this.Controls.Add(this.listWaitingRmNameFormat);
 			this.Controls.Add(this.butSave);
@@ -582,7 +569,6 @@ namespace OpenDental {
 		private Label label5;
 		private UI.ListBox listWaitingRmNameFormat;
 		private Label label7;
-		private UI.Button butMobileView;
 		private UI.CheckBox checkOnlyScheduledProvDays;
 	}
 }

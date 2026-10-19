@@ -111,14 +111,14 @@ namespace OpenDental{
 			checkEnableClinics.Checked=_isClinicsEnabledInDb;
 		}
 
-		///<summary>Validates that PrefName.EasyNoClinics is ok to be changed and changes it when necessary. Sends an alert to eConnector to perform the conversion.
+		///<summary>Validates that PrefName.EasyNoClinics is ok to be changed and changes it when necessary.
 		///If fails then restores checkEnableClinics to original value when form was opened.</summary>
 		private bool IsClinicCheckBoxOk() {
 			if(_isClinicsEnabledInDb==checkEnableClinics.Checked) { //No change.
 				return true;
 			}
 			try {
-				//Turn clinics on/off locally and send the signal to other workstations. This must happen before we call HQ so we tell HQ the new value.
+				//Turn clinics on/off locally and send the signal to other workstations.
 				Prefs.UpdateBool(PrefName.EasyNoClinics,!checkEnableClinics.Checked);
 				DataValid.SetInvalid(InvalidType.Prefs);
 			}
@@ -128,23 +128,6 @@ namespace OpenDental{
 				MessageBox.Show(ex.Message);
 				return false;
 			}	
-			//Create an alert for the user to know they may need to restart the eConnector if they are subscribed to eServices
-			AlertItem alertItem=new AlertItem();
-			alertItem.Description=Lan.g(this,"Clinic Feature Changed, you may need to restart the eConnector if you are subscribed to eServices");
-			alertItem.Type=AlertType.ClinicsChanged;
-			alertItem.Severity=SeverityType.Low;
-			alertItem.Actions=ActionType.OpenForm | ActionType.MarkAsRead | ActionType.Delete;
-			alertItem.FormToOpen=FormType.FormEServicesEConnector;
-			alertItem.ItemValue="Clinics turned "+(checkEnableClinics.Checked ? "On":"Off");
-			AlertItems.Insert(alertItem);
-			//Create an alert for the eConnector to perform the clinic conversion as needed.
-			alertItem=new AlertItem();
-			alertItem.Description="Clinics Changed";
-			alertItem.Type=AlertType.ClinicsChangedInternal;
-			alertItem.Severity=SeverityType.Normal;
-			alertItem.Actions=ActionType.None;
-			alertItem.ItemValue=checkEnableClinics.Checked ? "On":"Off";
-			AlertItems.Insert(alertItem);
 			return true;
 		}
 

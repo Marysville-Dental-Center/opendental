@@ -31,10 +31,7 @@ namespace OpenDental{
 			this.menuMain = new OpenDental.UI.MenuOD();
 			this.panelSheetPreview = new OpenDental.UI.PanelOD();
 			this.labelVerticalDivider = new System.Windows.Forms.Label();
-			this.groupEClipboard = new OpenDental.UI.GroupBox();
 			this.label1 = new System.Windows.Forms.Label();
-			this.butSendToDevice = new OpenDental.UI.Button();
-			this.groupEClipboard.SuspendLayout();
 			this.SuspendLayout();
 			// 
 			// listExamTypes
@@ -108,16 +105,6 @@ namespace OpenDental{
 			this.labelVerticalDivider.Size = new System.Drawing.Size(1, 697);
 			this.labelVerticalDivider.TabIndex = 5;
 			// 
-			// groupEClipboard
-			// 
-			this.groupEClipboard.Controls.Add(this.label1);
-			this.groupEClipboard.Controls.Add(this.butSendToDevice);
-			this.groupEClipboard.Location = new System.Drawing.Point(4, 571);
-			this.groupEClipboard.Name = "groupEClipboard";
-			this.groupEClipboard.Size = new System.Drawing.Size(425, 53);
-			this.groupEClipboard.TabIndex = 50;
-			this.groupEClipboard.Text = "Send to ODTouch";
-			// 
 			// label1
 			// 
 			this.label1.Location = new System.Drawing.Point(91, 25);
@@ -126,22 +113,9 @@ namespace OpenDental{
 			this.label1.TabIndex = 2;
 			this.label1.Text = "Sends the selected exam sheet to a device";
 			// 
-			// butSendToDevice
-			// 
-			this.butSendToDevice.Image = global::OpenDental.Properties.Resources.arrowRightLine;
-			this.butSendToDevice.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			this.butSendToDevice.Location = new System.Drawing.Point(3, 20);
-			this.butSendToDevice.Name = "butSendToDevice";
-			this.butSendToDevice.Size = new System.Drawing.Size(85, 24);
-			this.butSendToDevice.TabIndex = 1;
-			this.butSendToDevice.Text = "Exam";
-			this.butSendToDevice.UseVisualStyleBackColor = true;
-			this.butSendToDevice.Click += new System.EventHandler(this.butSendToDevice_Click);
-			// 
 			// FormExamSheets
 			// 
 			this.ClientSize = new System.Drawing.Size(974, 696);
-			this.Controls.Add(this.groupEClipboard);
 			this.Controls.Add(this.labelVerticalDivider);
 			this.Controls.Add(this.panelSheetPreview);
 			this.Controls.Add(this.labelFilterTypes);
@@ -153,7 +127,6 @@ namespace OpenDental{
 			this.Name = "FormExamSheets";
 			this.Text = "Exam Sheets";
 			this.Load += new System.EventHandler(this.FormExamSheets_Load);
-			this.groupEClipboard.ResumeLayout(false);
 			this.ResumeLayout(false);
 
 		}
@@ -166,8 +139,6 @@ namespace OpenDental{
 		private UI.MenuOD menuMain;
 		private OpenDental.UI.PanelOD panelSheetPreview;
 		private System.Windows.Forms.Label labelVerticalDivider;
-		private UI.GroupBox groupEClipboard;
-		private UI.Button butSendToDevice;
 		private System.Windows.Forms.Label label1;
 	}
 }

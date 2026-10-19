@@ -3558,9 +3558,6 @@ namespace OpenDental{
 					onShutdown(false);
 					return;
 				}
-				//Print signal to be processed from this machine
-				List<Signalod> listSignalodsToPrint=listSignals.FindAll(x=>x.IType==InvalidType.Print && x.FKey==Computers.GetCur().ComputerNum);
-				PrintRemoteRequestL.ProcessCompPrintSignal(listSignalodsToPrint);//can handle empty list
 				//Create a distinct list of undefined invalid types which are from signals invalidating entire cache classes.
 				//Include the UserOdPrefs invalid type if there is a signal for the currently logged in user.
 				List<InvalidType> listInvalidTypes=listSignals.Where(x => (x.FKey==0 && x.FKeyType==KeyType.Undefined)
@@ -5196,15 +5193,6 @@ namespace OpenDental{
 			using Reporting.Allocators.MyAllocator1.FormInstallAllocator_Provider fap = new OpenDental.Reporting.Allocators.MyAllocator1.FormInstallAllocator_Provider();
 			fap.ShowDialog();
 		}*/
-
-		private void menuItemAsapList_Click(object sender,EventArgs e) {
-			if(!Security.IsAuthorized(EnumPermType.Setup)) {
-				return;
-			}
-			using FormAsapSetup formAsapSetup=new FormAsapSetup();
-			formAsapSetup.ShowDialog();
-			SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,"ASAP List Setup");
-		}
 
 		private void menuItemConfirmations_Click(object sender,EventArgs e) {
 			if(!Security.IsAuthorized(EnumPermType.Setup)) {

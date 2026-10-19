@@ -83,13 +83,19 @@ namespace OpenDentBusiness{
 		///<summary>Get all display reports for the passed-in category.  Pass in true to retrieve hidden display reports.</summary>
 		public static List<DisplayReport> GetForCategory(DisplayReportCategory displayReportCategory, bool showHidden) {
 			Meth.NoCheckMiddleTierRole();
-			return GetWhere(x => x.Category==displayReportCategory,!showHidden);
+			return GetWhere(x => x.Category==displayReportCategory && !IsRemoved(x),!showHidden);
 		}
 
 		///<summary>Pass in true to also retrieve hidden display reports.</summary>
 		public static List<DisplayReport> GetAll(bool showHidden) {
 			Meth.NoCheckMiddleTierRole();
-			return GetDeepCopy(!showHidden);
+			return GetDeepCopy(!showHidden).FindAll(x => !IsRemoved(x));
+		}
+
+		///<summary>True for display reports whose report was removed. The Web Sched Appointments report listed appointments made through Open Dental's
+		///hosted Web Sched, which was removed. Its displayreport row stays in the database but is not shown.</summary>
+		private static bool IsRemoved(DisplayReport displayReport) {
+			return displayReport.InternalName==ReportNames.WebSchedAppointments;
 		}
 
 		///<summary>Use DisplayReports.ReportNames to pass this method an internal report name. Returns null if no matches are found.

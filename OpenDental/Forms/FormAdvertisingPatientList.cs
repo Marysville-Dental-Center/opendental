@@ -162,11 +162,7 @@ namespace OpenDental {
 			if(tablePatientInfoRaw!=null) {
 				listPatientInfos=PatientInfo.GetListPatientInfos(tablePatientInfoRaw);
 			}
-			if(FormAdvertisingType==AdvertisingType.MassEmail) {
-				//Only show patients with a valid email address.
-				return listPatientInfos.Where(x=>EmailAddresses.GetValidMailAddress(x.Email)!=null).ToList();
-			}
-			else if(FormAdvertisingType==AdvertisingType.Postcards){
+			if(FormAdvertisingType==AdvertisingType.Postcards){
 				//Only show patients with a valid address.
 				return listPatientInfos.Where(x=>(!x.Address.IsNullOrEmpty() || !x.Address2.IsNullOrEmpty())
 					&& !x.City.IsNullOrEmpty() 
@@ -346,7 +342,6 @@ namespace OpenDental {
 	}
 
 	public enum AdvertisingType {
-		MassEmail,
 		Postcards,
 	}
 }

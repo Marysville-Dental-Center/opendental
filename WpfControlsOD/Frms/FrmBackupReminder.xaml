@@ -9,8 +9,6 @@
              Width="612" Height="487" 
              Text="Backup Reminder">
 	<Grid Background="#FFFCFDFE" >
-		<ui:Label x:Name="labelSupplementalBackupPath" Width="463" Height="32" Margin="42,429,0,0" ColorText="#FFFF0000" Text="Warning:  your Supplemental Backup Network Path is not set. It must be set in order to store Supplemental Backups locally." />
-		<ui:Label x:Name="labelSupplementalBackupDisabled" Width="463" Height="32" Margin="42,392,0,0" ColorText="#FFFF0000" Text="Warning:  your Supplemental Backups are disabled, using Supplemental Backups in addition to your own backups is strongly recommended." />
 		<ui:CheckBox x:Name="checkNoStrategy" Width="250" Height="21" Margin="45,369,0,0" Text="No strategy" CheckAlign="MiddleLeft" />
 		<ui:CheckBox x:Name="checkSecondaryMethodHardCopy" Width="312" Height="21" Margin="45,349,0,0" Text="Saved hardcopy paper reports" CheckAlign="MiddleLeft" />
 		<ui:CheckBox x:Name="checkSecondaryMethodArchive" Width="352" Height="21" Margin="45,329,0,0" Text="Completely separate archives stored offsite (DVD, HD, etc)" CheckAlign="MiddleLeft" />
