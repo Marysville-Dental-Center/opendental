@@ -2653,14 +2653,9 @@ End of Checklist================================================================
 				patientForDoseSpot.State=textState.Text.Trim();
 				patientForDoseSpot.Country=textCountry.Text;
 				patientForDoseSpot.Zip=textZip.Text.Trim();
-				ProgramProperty programPropertyDoseSpotApiVersion=OpenDentBusiness.ProgramProperties.GetPropForProgByDesc(Programs.GetProgramNum(ProgramName.eRx),DoseSpotREST.PropertyDescs.DoseSpotApiVersion);
 				try {
-					if(programPropertyDoseSpotApiVersion.PropertyValue=="1") {
-						DoseSpot.SetMedicationHistConsent(patientForDoseSpot,clinicNum);
-					}
-					else {
-						DoseSpotV2.SetMedicationHistConsent(patientForDoseSpot,clinicNum);
-					}
+					//Straight to DoseSpot with the office's own credentials (API v2). Throws if DoseSpot is not configured.
+					DoseSpot.SetMedicationHistConsent(patientForDoseSpot,clinicNum);
 				}
 				catch(Exception ex) {
 					MessageBox.Show(Lan.g(this,"Unable to set patient medication access consent for DoseSpot: ")+ex.Message);

@@ -24,6 +24,8 @@ namespace OpenDental{
 		private List<ProviderClinic> _listProviderClinicsOld;
 		private List<ProviderClinic> _listProviderClinicsNew;
 		private ProviderClinic _providerClinicDefault;
+		///<summary>True when the eRx program link is enabled, so the eRx settings are shown and saved.</summary>
+		private bool _isErxShown;
 		///<summary>The clinics this provider is linked to. May include clinics the user does not have access to.</summary>
 		private List<ProviderClinicLink> _listProviderClinicLinks=new List<ProviderClinicLink>();
 		///<summary>The clinics this user has access to.</summary>
@@ -173,8 +175,11 @@ namespace OpenDental{
 			odColorPickerOutline.BackgroundColor=ProviderCur.OutlineColor;
 			checkIsHiddenOnReports.Checked=ProviderCur.IsHiddenReport;
 			checkUseErx.Checked=(ProviderCur.IsErxEnabled!=ErxEnabledStatus.Disabled);
+			//The eRx setting shows only once the office has turned on the eRx program link. Hidden, it keeps the provider's stored value.
+			_isErxShown=Programs.IsEnabled(ProgramName.eRx);
+			checkUseErx.Visible=_isErxShown;
 			ErxOption erxOption=Erx.GetErxOption();
-			if(erxOption==ErxOption.DoseSpotWithNewCrop) {
+			if(erxOption==ErxOption.DoseSpotWithNewCrop && _isErxShown) {
 				checkAllowLegacy.Visible=true;
 				checkAllowLegacy.Checked=(ProviderCur.IsErxEnabled==ErxEnabledStatus.EnabledWithLegacy);
 			}
@@ -449,8 +454,8 @@ namespace OpenDental{
 				return;
 			}
 			if(ProviderCur.IsErxEnabled==ErxEnabledStatus.Disabled && checkUseErx.Checked) {//The user enabled eRx for this provider when it was previously disabled.
-				if(!MsgBox.Show(this,MsgBoxButtons.YesNo,"By clicking Yes, you acknowledge and approve Electronic Rx (eRx) fees for this "
-					+"provider. See the website for more details. ERx only works for the United States and its territories. Do you want to continue?"))
+				if(!MsgBox.Show(this,MsgBoxButtons.YesNo,"This lets the provider use electronic prescribing (eRx). The eRx vendor may charge the office for each "
+					+"prescriber under the office's own agreement. eRx only works for the United States and its territories. Do you want to continue?"))
 				{
 					return;
 				}
@@ -492,12 +497,14 @@ namespace OpenDental{
 			ProviderCur.IsInstructor=checkIsInstructor.Checked;
 			ProviderCur.EhrMuStage=comboEhrMu.SelectedIndex;
 			ProviderCur.IsHiddenReport=checkIsHiddenOnReports.Checked;
-			ProviderCur.IsErxEnabled=checkUseErx.Checked?ErxEnabledStatus.Enabled:ErxEnabledStatus.Disabled;
-			ErxOption erxOption=Erx.GetErxOption();
-			//If the ErxOption is Legacy, we want to keep the EnabledStatus as EnabledWithLegacy.
-			//If the office switches eRx Options we will know to prompt those providers which eRx solution to use until the office disables NewCrop.
-			if(erxOption!=ErxOption.NewCrop && checkAllowLegacy.Visible && checkAllowLegacy.Checked) {
-				ProviderCur.IsErxEnabled=ErxEnabledStatus.EnabledWithLegacy;
+			if(_isErxShown) {//Hidden while eRx is turned off: the stored value is kept as it is.
+				ProviderCur.IsErxEnabled=checkUseErx.Checked?ErxEnabledStatus.Enabled:ErxEnabledStatus.Disabled;
+				ErxOption erxOption=Erx.GetErxOption();
+				//If the ErxOption is Legacy, we want to keep the EnabledStatus as EnabledWithLegacy.
+				//If the office switches eRx Options we will know to prompt those providers which eRx solution to use until the office disables NewCrop.
+				if(erxOption==ErxOption.DoseSpotWithNewCrop && checkAllowLegacy.Checked) {
+					ProviderCur.IsErxEnabled=ErxEnabledStatus.EnabledWithLegacy;
+				}
 			}
 			ProviderCur.CustomID=textCustomID.Text;
 			ProviderCur.SchedNote=textSchedRules.Text;

@@ -34,6 +34,7 @@ namespace OpenDental{
 			this.butRegisterClinic = new OpenDental.UI.Button();
 			this.butClear = new OpenDental.UI.Button();
 			this.menuMain = new OpenDental.UI.MenuOD();
+			this.checkShowKey = new OpenDental.UI.CheckBox();
 			this.SuspendLayout();
 			// 
 			// butSave
@@ -74,10 +75,19 @@ namespace OpenDental{
 			// textClinicKey
 			// 
 			this.textClinicKey.Location = new System.Drawing.Point(101, 89);
-			this.textClinicKey.Multiline = true;
 			this.textClinicKey.Name = "textClinicKey";
-			this.textClinicKey.Size = new System.Drawing.Size(120, 48);
+			this.textClinicKey.Size = new System.Drawing.Size(120, 20);
 			this.textClinicKey.TabIndex = 6;
+			this.textClinicKey.UseSystemPasswordChar = true;
+			//
+			// checkShowKey
+			//
+			this.checkShowKey.Location = new System.Drawing.Point(101, 113);
+			this.checkShowKey.Name = "checkShowKey";
+			this.checkShowKey.Size = new System.Drawing.Size(120, 18);
+			this.checkShowKey.TabIndex = 13;
+			this.checkShowKey.Text = "Show key";
+			this.checkShowKey.CheckedChanged += new System.EventHandler(this.checkShowKey_CheckedChanged);
 			// 
 			// label3
 			// 
@@ -125,6 +135,7 @@ namespace OpenDental{
 			// FormDoseSpotPropertyEdit
 			// 
 			this.ClientSize = new System.Drawing.Size(350, 199);
+			this.Controls.Add(this.checkShowKey);
 			this.Controls.Add(this.butClear);
 			this.Controls.Add(this.butRegisterClinic);
 			this.Controls.Add(this.label3);
@@ -156,5 +167,6 @@ namespace OpenDental{
 		private UI.Button butRegisterClinic;
 		private UI.Button butClear;
 		private UI.MenuOD menuMain;
+		private OpenDental.UI.CheckBox checkShowKey;
 	}
 }
