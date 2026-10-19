@@ -422,10 +422,6 @@ namespace OpenDental{
 			//if clinics are enabled, the program link can be enabled with blank username and/or password fields for some clinics
 			//clinics with blank username and/or password will essentially not have PayConnect enabled
 			//if 'Enable terminal processing' is checked then the practice/clinic will not need a username and password.
-			if(checkEnabled.Checked && !Programs.IsEnabledByHq(ProgramName.PayConnect,out string err)) {
-				MsgBox.Show(err);
-				return;
-			}
 			if(checkEnabled.Checked //if PayConnect is enabled
 					&& comboDefaultProcessing.SelectedIndex < 0)
 			{

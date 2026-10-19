@@ -28,9 +28,8 @@ namespace OpenDentBusiness {
 			Program prog=Programs.GetCur(ProgramName.Podium);
 			long programNum=prog.ProgramNum;
 			//Consider blocking re-entrance if this hasn't finished.
-			//Only send invitations if the program link is enabled here and at HQ, the computer name is set to this computer, and eConnector is not set to send invitations 
-			if(!Programs.IsEnabledByHq(prog,out string _)
-				|| !Programs.IsEnabled(ProgramName.Podium) 
+			//Only send invitations if the program link is enabled, the computer name is set to this computer, and eConnector is not set to send invitations 
+			if(!Programs.IsEnabled(ProgramName.Podium) 
 				|| !ODEnvironment.IdIsThisComputer(ProgramProperties.GetPropVal(programNum,PropertyDescs.ComputerNameOrIP)) 
 				|| ProgramProperties.GetPropVal(programNum,PropertyDescs.UseService)!=POut.Bool(isService)) 
 			{ 

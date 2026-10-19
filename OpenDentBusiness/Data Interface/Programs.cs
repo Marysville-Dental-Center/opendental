@@ -102,26 +102,6 @@ namespace OpenDentBusiness {
 		}
 		#endregion Cache Pattern
 
-		///<summary>Open Dental HQ used to be able to disable (and delete) program links remotely. That kill switch is gone: this only checks that the
-		///program exists. The program.IsDisabledByHq and program.CustErr columns are kept for schema compatibility but are ignored.
-		///Kept under its old name so the many existing call sites keep compiling.</summary>
-		public static bool IsEnabledByHq(Program program,out string err) {
-			Meth.NoCheckMiddleTierRole();
-			err="";
-			if(program==null) {
-				err=Lans.g("Programs","The currently selected program could not be found.");
-				return false;
-			}
-			return true;
-		}
-
-		///<summary>See IsEnabledByHq(Program,out string). Only checks that the program exists.</summary>
-		public static bool IsEnabledByHq(ProgramName progName,out string err) {
-			Program progCur=GetCur(progName);
-			return IsEnabledByHq(progCur,out err);
-		}
-
-
 		///<summary></summary>
 		public static bool Update(Program cur,Program old=null){
 			bool isRefreshNeeded=false;

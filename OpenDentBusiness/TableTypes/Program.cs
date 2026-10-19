@@ -35,9 +35,9 @@ namespace OpenDentBusiness{
 		public string FileTemplate;
 		/// <summary>For custom program links only.  Stores the path of a file to be generated when launching the program link.</summary>
 		public string FilePath;
-		///<summary>Do not use directly.  Call Programs.IsEnabledByHq() instead.  Has HQ disabled this program for all customers via WebServiceHq.EnableAdditionalFeatures().  Using 'Disabled' because the web method will only send Programs HQ cares about.  Any user defined Programs should not be marked as 'Disabled' by default.</summary>
+		///<summary>No longer used. Open Dental HQ set this to disable a program link for all customers (WebServiceHq.EnableAdditionalFeatures()). That kill switch was removed; the column is kept for schema compatibility and ignored.</summary>
 		public bool IsDisabledByHq;
-		///<summary>Typically blank. A value is added to this if we have disabled this program at HQ's side and will be updated during HqProgram.Download()</summary>
+		///<summary>No longer used. Held Open Dental HQ's message for a program link it disabled (HqProgram.Download()). Kept for schema compatibility and ignored.</summary>
 		public string CustErr;
 
 		public Program Copy(){

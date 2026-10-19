@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenDentBusiness;
@@ -29,30 +30,29 @@ namespace UnitTests.Programs_Tests {
 		}
 
 		[TestMethod]
-		public void Programs_IsEnabledByHq_IgnoresIsDisabledByHq() {
+		public void Programs_IsEnabledByHq_IsRemoved() {
+			Assert.IsNull(typeof(Programs).GetMethod("IsEnabledByHq",BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Static));
+		}
+
+		[TestMethod]
+		public void Programs_IsDisabledByHq_IsIgnored() {
 			foreach(OpenDentBusiness.Program program in _listTestProgs) {
+				bool isEnabled=Programs.IsEnabled(program.ProgramNum);
 				program.IsDisabledByHq=true;//Pretend an old database still has the HQ flag set.
-				Assert.IsTrue(Programs.IsEnabledByHq(program,out string err));
-				Assert.AreEqual("",err);
+				Assert.AreEqual(isEnabled,Programs.IsEnabled(program.ProgramNum));
 			}
 		}
 
 		[TestMethod]
-		public void Programs_IsEnabledByHq_NeverDeletesProgram() {
+		public void Programs_IsDisabledByHq_NeverDeletesProgram() {
 			List<long> listProgramNums=_listTestProgs.Select(x => x.ProgramNum).ToList();
 			foreach(OpenDentBusiness.Program program in _listTestProgs) {
-				Programs.IsEnabledByHq(program,out string _);
+				program.IsDisabledByHq=true;
 			}
 			Programs.RefreshCache();
 			foreach(long programNum in listProgramNums) {
 				Assert.IsNotNull(Programs.GetProgram(programNum));
 			}
-		}
-
-		[TestMethod]
-		public void Programs_IsEnabledByHq_NullProgram() {
-			Assert.IsFalse(Programs.IsEnabledByHq((OpenDentBusiness.Program)null,out string err));
-			Assert.IsFalse(string.IsNullOrEmpty(err));
 		}
 	}
 }

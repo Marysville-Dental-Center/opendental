@@ -59,10 +59,6 @@ namespace OpenDental {
 			if(!checkEnabled.Checked) {
 				return true;//no need to check for valid fields if program link is disabled
 			}
-			else if(!Programs.IsEnabledByHq(ProgramName.TrojanExpressCollect,out string err)) {
-				MessageBox.Show(err);
-				return false;
-			}
 			if(!Directory.Exists(textExportFolder.Text)) {
 				MsgBox.Show(this,"Export folder does not exist.");
 				return false;

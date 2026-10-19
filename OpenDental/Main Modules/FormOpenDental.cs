@@ -1634,7 +1634,7 @@ namespace OpenDental{
 			#endregion
 			#region InvalidType.Programs
 			if(arrayITypes.Contains(InvalidType.Programs) || isAll) {
-				if(Programs.GetCur(ProgramName.PT).Enabled && Programs.IsEnabledByHq(ProgramName.PT,out _)) {
+				if(Programs.GetCur(ProgramName.PT).Enabled) {
 					Bridges.PaperlessTechnology.InitializeFileWatcher();
 				}
 				_menuItemCareCreditTransactions.Available=Programs.GetCur(ProgramName.CareCredit).Enabled;

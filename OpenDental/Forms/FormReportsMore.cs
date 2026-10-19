@@ -242,10 +242,6 @@ namespace OpenDental {
 
 		private void butPW_Click(object sender,EventArgs e) {
 			try {
-				if(!Programs.IsEnabledByHq(ProgramName.PracticeWebReports,out string err)) {
-					MsgBox.Show(err);
-					return;
-				}
 				ODFileUtils.ProcessStart("PWReports.exe");
 			}
 			catch {

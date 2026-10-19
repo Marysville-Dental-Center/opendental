@@ -2516,10 +2516,6 @@ namespace OpenDental{
 			//if(patient!=null && PrefC.GetBool(PrefName.ShowFeaturePatientClone)) {
 			//	patient=Patients.GetOriginalPatientForClone(patient);//not sure if this is needed for Imaging. Doesn't seem right.
 			//}
-			if(!Programs.IsEnabledByHq(program,out string err)) {
-				MessageBox.Show(err);
-				return;
-			}
 			if(!Programs.IsEnabled(program.ProgramNum)) {
 				return;//Toolbar buttons only show for enabled program links.
 			}

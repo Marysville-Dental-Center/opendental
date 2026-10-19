@@ -24,10 +24,6 @@ namespace OpenDental.Bridges {
 		///<summary>Attempt to send a phone number to place a call using DentalTek.  Already surrounded in try-catch. 
 		///Returns false if unsuccessful or a phone number wasn't passed in.</summary>
 		public static bool PlaceCall(string phoneNumber) {
-			if(!Programs.IsEnabledByHq(ProgramName.DentalTekSmartOfficePhone,out string error)) {
-				MessageBox.Show(error);
-				return false;
-			}
 			phoneNumber=new string(phoneNumber.Where(x => char.IsDigit(x)).ToArray());
 			string apiToken=ProgramProperties.GetPropVal(Programs.GetProgramNum(ProgramName.DentalTekSmartOfficePhone),"Enter your API Token");
 			string request="";

@@ -74,10 +74,6 @@ namespace OpenDental.Bridges {
 		}
 
 		public static void menuItemUserSettingsClick(object sender,EventArgs e) {
-			if(!Programs.IsEnabledByHq(ProgramName.Oryx,out string err)) {
-				MsgBox.Show(err);
-				return;
-			}
 			FormLauncher formLauncher=new FormLauncher(EnumFormName.FormOryxUserSettings);
 			formLauncher.ShowDialog();
 		}

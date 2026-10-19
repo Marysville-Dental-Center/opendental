@@ -235,10 +235,6 @@ namespace OpenDental {
 		}
 
 		private void butSave_Click(object sender,EventArgs e) {
-			if(checkEnabled.Checked && !Programs.IsEnabledByHq(ProgramName.XDR,out string err)) {
-				MessageBox.Show(err);
-				return;
-			}
 			SaveProgram();
 			if(_hasProgramPropertyChanged) {
 				DataValid.SetInvalid(InvalidType.Programs,InvalidType.ToolButsAndMounts);

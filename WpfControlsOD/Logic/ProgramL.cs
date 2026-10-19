@@ -18,10 +18,6 @@ namespace WpfControls {
 				MsgBox.Show("Program","Error, program entry not found in database.");
 				return;
 			}
-			if(!Programs.IsEnabledByHq(program,out string err)) {
-				MsgBox.Show(err);
-				return;
-			}
 			if(patient!=null && PrefC.GetBool(PrefName.ShowFeaturePatientClone)) {
 				patient=Patients.GetOriginalPatientForClone(patient);
 			}

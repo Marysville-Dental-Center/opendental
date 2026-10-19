@@ -421,10 +421,6 @@ namespace OpenDental {
 		}
 
 		private void butSave_Click(object sender,EventArgs e) {
-			if(checkEnabled.Checked && !Programs.IsEnabledByHq(ProgramName.CareCredit,out string err)) {
-				MessageBox.Show(err);
-				return;
-			}
 			if(checkEnabled.Checked && !IsValid(comboClinics.ClinicNumSelected)) {
 				return;
 			}

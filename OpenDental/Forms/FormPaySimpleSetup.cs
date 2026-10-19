@@ -359,10 +359,6 @@ namespace OpenDental {
 			//if clinics are not enabled and the PaySimple program link is enabled, make sure there is a username and key set
 			//if clinics are enabled, the program link can be enabled with blank username and/or key fields for some clinics
 			//clinics with blank username and/or key will essentially not have PaySimple enabled
-			if(checkEnabled.Checked && !Programs.IsEnabledByHq(ProgramName.PaySimple,out string err)) {
-				MsgBox.Show(err);
-				return;
-			}
 			if(checkEnabled.Checked && !IsClinicCurSetupDone()) {//Also works for offices not using clinics
 				MsgBox.Show(this,"Please enter a username, key, and/or payment type first.");
 				return;

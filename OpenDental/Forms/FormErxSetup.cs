@@ -276,10 +276,6 @@ namespace OpenDental {
 		}
 
 		private void butSave_Click(object sender,EventArgs e) {
-			if(checkEnabled.Checked && !Programs.IsEnabledByHq(ProgramName.eRx,out string err)) {
-				MsgBox.Show(err);
-				return;
-			}
 			ErxOptionPP.PropertyValue=POut.Int((int)_erxOption);
 			_program.Enabled=checkEnabled.Checked;
 			Programs.Update(_program);

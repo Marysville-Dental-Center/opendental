@@ -267,11 +267,6 @@ namespace OpenDental{
 		}
 
 		private void butSave_Click(object sender, System.EventArgs e) {
-			//If a program has been disabled by HQ when a customer attempts to enable it, we should block them from doing so, so as not to waste their time trying to launch it
-			if(checkEnabled.Checked && !Programs.IsEnabledByHq(ProgramCur,out string err)) {
-				MsgBox.Show(err);
-				return;
-			}
 			if(checkEnabled.Checked && textPluginDllName.Text!="") {
 				string dllPath=ODFileUtils.CombinePaths(Application.StartupPath,textPluginDllName.Text);
 				if(dllPath.Contains("[VersionMajMin]")) {

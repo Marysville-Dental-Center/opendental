@@ -324,10 +324,6 @@ namespace OpenDental {
 		}
 
 		private void butSave_Click(object sender,EventArgs e) {
-			if(checkEnabled.Checked && !Programs.IsEnabledByHq(ProgramName.Transworld,out string err)) {
-				MessageBox.Show(err);
-				return;
-			}
 			if(!textSftpPort.IsValid()) {
 				MsgBox.Show(this,"Please enter a valid integer for the Sftp Server Port.");
 				return;

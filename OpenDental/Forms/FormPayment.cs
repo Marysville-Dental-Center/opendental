@@ -1136,10 +1136,6 @@ namespace OpenDental {
 
 		///<summary>Returns true if the user can add a new credit card.</summary>
 		private bool CanAddNewCreditCard(Program program,string progPropertyDescription) {
-			if(!Programs.IsEnabledByHq(program,out string err)) {
-				MsgBox.Show(err);
-				return false;
-			}
 			if(comboCreditCards.GetSelected<CreditCard>()==null) {
 				MsgBox.Show(this,"Invalid credit card selected.");
 				return false;

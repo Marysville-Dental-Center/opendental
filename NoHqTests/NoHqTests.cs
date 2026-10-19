@@ -112,15 +112,9 @@ namespace NoHqTests {
 		}
 
 		[TestMethod]
-		public void Programs_IsEnabledByHq_IgnoresHqFlags() {
-			OpenDentBusiness.Program program=new OpenDentBusiness.Program() {
-				ProgName=ProgramName.PDMP.ToString(),
-				IsDisabledByHq=true,
-				CustErr="Disabled by HQ",
-			};
-			Assert.IsTrue(Programs.IsEnabledByHq(program,out string err));
-			Assert.AreEqual("",err);
-			Assert.IsFalse(Programs.IsEnabledByHq((OpenDentBusiness.Program)null,out err));
+		public void Programs_IsEnabledByHq_IsRemoved() {
+			//Programs.IsEnabledByHq was HQ's kill switch for program links. It became an always-true shim, then was inlined and removed.
+			Assert.IsNull(typeof(Programs).GetMethod("IsEnabledByHq",BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Static));
 		}
 
 		[TestMethod]

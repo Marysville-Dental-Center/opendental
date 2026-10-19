@@ -12,10 +12,6 @@ namespace OpenDental.Bridges{
 		///<summary></summary>
 		public static void ShowPage() {
 			try {
-				if(!Programs.IsEnabledByHq(ProgramName.PracticeByNumbers,out string err)) {
-					MsgBox.Show(err);
-					return;
-				}
 				if(!Programs.IsEnabled(ProgramName.PracticeByNumbers)) {
 					return;//Only reachable from buttons that show when the program link is enabled.
 				}

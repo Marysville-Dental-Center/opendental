@@ -26,11 +26,6 @@ namespace OpenDental.Bridges {
 				MsgBox.Show("DexisIntegrator","Please select a patient first.");
 				return;
 			}
-			//Some places where this function is called don't check if we have disabled this program at HQ. Adding this here as a catch all
-			if(!Programs.IsEnabledByHq(progCur,out string err)) {
-				MessageBox.Show(err);
-				return;
-			}
 			if(ProgramProperties.GetPropVal(progCur.ProgramNum,"Enter 0 to use DDE, or 1 to use communication file")=="0") {
 				SendDataDDE(progCur,pat);
 			}

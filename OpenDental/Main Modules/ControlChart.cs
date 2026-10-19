@@ -7410,10 +7410,6 @@ namespace OpenDental {
 				ToolBarMain.Buttons["eRx"].IsRed=false; //Set the eRx button back to default color.
 				ToolBarMain.Invalidate();
 			}
-			if(!Programs.IsEnabledByHq(ProgramName.eRx,out string err)) {
-				MessageBox.Show(err);
-				return false;
-			}
 			bool isNewInfo=false;
 			List<RxPat> listRxPatsNew=new List<RxPat>();
 			if(IsPatientNull()) {
@@ -7532,10 +7528,6 @@ namespace OpenDental {
 		private void RefreshDoseSpotNotifications() {
 			//toolBarButtonErx is cached, so also confirm it is still in the toolbar (it is left out when the eRx program link is disabled).
 			if(toolBarButtonErx==null || ToolBarMain.Buttons["eRx"]==null || IsPatientNull()) {
-				return;
-			}
-			if(!Programs.IsEnabledByHq(ProgramName.eRx,out string err)) {
-				MessageBox.Show(err);
 				return;
 			}
 			Program program=Programs.GetCur(ProgramName.eRx);
@@ -7975,10 +7967,6 @@ namespace OpenDental {
 				formErx.Restore();
 				formErx.BringToFront();
 				return;//FormErx is already open for this patient.  Simply bring it to the front to make the user aware that it is still there.
-			}
-			if(!Programs.IsEnabledByHq(ProgramName.eRx,out string err)) {
-				MessageBox.Show(err);
-				return;
 			}
 			Program programErx=Programs.GetCur(ProgramName.eRx);
 			ProgramProperty programPropertyErxOption=ProgramProperties.GetPropForProgByDesc(programErx.ProgramNum,Erx.PropertyDescs.ErxOption);

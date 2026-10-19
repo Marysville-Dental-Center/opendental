@@ -254,10 +254,6 @@ namespace OpenDental {
 				MsgBox.Show(this,"EdgeExpress entry is missing from the database.");
 				return;
 			}
-			if(checkEnabled.Checked && !Programs.IsEnabledByHq(ProgramName.EdgeExpress,out string err)) {
-				MsgBox.Show(err);
-				return;
-			}
 			//EdgeExpress will be enabled for the clinic if the enabled checkbox is checked and the 3 XWeb fields are not blank. Don't let them switch 
 			//clinics or close the form with only 1 or 2 of the three fields filled in.  If they fill in 1, they must fill in the other 2. 
 			bool isXWebEnabled=checkEnabled.Checked && (textXWebID.Text.Trim().Length>0 || textAuthKey.Text.Trim().Length>0

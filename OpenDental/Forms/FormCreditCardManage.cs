@@ -206,17 +206,10 @@ namespace OpenDental {
 			bool hasPaySimple=false;
 			Dictionary<string,int> dictionaryEnabledProcessors=new Dictionary<string,int>();
 			int idx=0;
-			StringBuilder stringBuilder=new StringBuilder();
 			#region check if pay prog is enabled
 			bool isEnabled(ProgramName programName,string preventPropName) {
 				bool hasPreventCreditCardAdd=PIn.Bool(ProgramProperties.GetPropVal(Programs.GetCur(programName).ProgramNum,preventPropName,Clinics.ClinicNum));
-				string errMsg="";
-				bool isPayProgEnabled=Programs.IsEnabled(programName) && !hasPreventCreditCardAdd && Programs.IsEnabledByHq(programName,out errMsg);
-				if(!isPayProgEnabled && !string.IsNullOrWhiteSpace(errMsg)) {
-					//Disabled by HQ.
-					stringBuilder.AppendLine(errMsg);
-				}
-				return isPayProgEnabled;
+				return Programs.IsEnabled(programName) && !hasPreventCreditCardAdd;
 			}
 			#endregion
 			if(isEnabled(ProgramName.EdgeExpress,ProgramProperties.PropertyDescs.EdgeExpress.PreventSavingNewCC)) {
@@ -257,13 +250,7 @@ namespace OpenDental {
 				hasPaySimple=dictionaryEnabledProcessors.ContainsKey("PaySimple") && inputBox.SelectedIndices.Contains(dictionaryEnabledProcessors["PaySimple"]);
 			}
 			else if(dictionaryEnabledProcessors.Count==0){//not storing CC numbers and both PayConnect and X-Charge are disabled
-				string errMsg=stringBuilder.ToString();
-				if(string.IsNullOrWhiteSpace(errMsg)) {
-					//When an enabled bridge was disabled by HQ, there will be a custom error message, otherwise, use the old generic error message which means that
-					//all bridges were disabled by the dental office (not HQ).
-					errMsg=Lan.g(this,"Not allowed to store credit cards.");
-				}
-				MessageBox.Show(this,errMsg);
+				MsgBox.Show(this,"Not allowed to store credit cards.");
 				return;
 			}
 			CreditCard creditCard=null;

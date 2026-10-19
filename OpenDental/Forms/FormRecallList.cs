@@ -702,10 +702,6 @@ namespace OpenDental {
 		}
 
 		private void butECards_Click(object sender,EventArgs e) {
-			if(!Programs.IsEnabledByHq(ProgramName.Divvy,out string err)) {
-				MsgBox.Show(err);
-				return;
-			}
 			if(!Programs.IsEnabled(ProgramName.Divvy)) {
 				if(MsgBox.Show(this,MsgBoxButtons.OKCancel,"The Divvy Program Link is not enabled. Would you like to enable it now?")) {
 					using FormProgramLinkEdit formProgramLinkEdit=new FormProgramLinkEdit();

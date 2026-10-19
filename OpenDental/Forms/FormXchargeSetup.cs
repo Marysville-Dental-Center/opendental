@@ -407,10 +407,6 @@ namespace OpenDental{
 				MsgBox.Show(this,"X-Charge entry is missing from the database.");
 				return;
 			}
-			if(checkEnabled.Checked && !Programs.IsEnabledByHq(ProgramName.Xcharge,out string err)) {
-				MessageBox.Show(err);
-				return;
-			}
 			#region Validate Path and Local Path Override
 			//Check for the path override first.
 			if(checkEnabled.Checked && textOverride.Text.Trim().Length>0) {
