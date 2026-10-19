@@ -10,6 +10,8 @@ using OpenDental.UI;
 using CodeBase;
 using System.Linq;
 using OpenDental.Bridges;
+using CodeBase.VendorDirect;
+using OpenDentBusiness.VendorDirect;
 
 namespace OpenDental{
 	/// <summary> </summary>
@@ -21,6 +23,11 @@ namespace OpenDental{
 
 		///<summary>Set to false if we do not want to allow assigning program link to toolbars.</summary>
 		public bool AllowToolbarChanges=true;
+		///<summary>True for the PDMP (LogiCoy) and Bamboo program links, which get a clinic selector, a "Check setup" button and (Bamboo) a client
+		///certificate row and button.</summary>
+		private bool _isPdmp;
+		///<summary>Tag of the Bamboo "Client certificate" status row in the grid.</summary>
+		private const string PDMP_CERTIFICATE_ROW_TAG="PdmpClientCertificate";
 
 		///<summary></summary>
 		public FormProgramLinkEdit(){
@@ -39,6 +46,13 @@ namespace OpenDental{
 			}
 			_pathOverrideOld=ProgramProperties.GetLocalPathOverrideForProgram(ProgramCur.ProgramNum);
 			textOverride.Text=_pathOverrideOld;
+			_isPdmp=PDMP.IsPdmpProgram(ProgramCur);
+			if(_isPdmp) {
+				PdmpProperty.EnsureProperties(ProgramCur);//Rows the office fills in, inserted at runtime if missing.
+				butPdmpCheckSetup.Visible=true;
+				butPdmpCertificate.Visible=(ProgramCur.ProgName==ProgramName.Bamboo.ToString());
+				comboClinicPdmp.Visible=PrefC.HasClinicsEnabled;//Starts on the current clinic, as the picker does everywhere.
+			}
 			FillForm();
 			DisableUIElementsBasedOnClinicRestriction();//Disable the UI Elements if needed.
 			HideClinicControls(PrefC.HasClinicsEnabled);//Hide the "Hide Button for Clinics" button based upon the user's clinics being on or off.
@@ -75,8 +89,17 @@ namespace OpenDental{
 		}
 
 		private void FillGrid(){
-			List<ProgramProperty> listProgramProperties=ProgramProperties.GetForProgram(ProgramCur.ProgramNum);
+			List<ProgramProperty> listProgramProperties;
+			long clinicNumPdmp=GetPdmpClinicNum();
+			if(_isPdmp) {
+				//One row per description: the selected clinic's row, else the default (ClinicNum 0) row it inherits.
+				listProgramProperties=ProgramProperties.GetListForProgramAndClinicWithDefault(ProgramCur.ProgramNum,clinicNumPdmp);
+			}
+			else {
+				listProgramProperties=ProgramProperties.GetForProgram(ProgramCur.ProgramNum);
+			}
 			listProgramProperties=ProgramProperties.FilterProperties(ProgramCur,listProgramProperties);
+			bool hasPdmpLegacyValues=_isPdmp && PdmpProperty.HasLegacyValues(ProgramCur.ProgramNum);
 			Plugins.HookAddCode(this,"FormProgramLinkEdit.FillGrid_GetProgramProperties",listProgramProperties,ProgramCur);
 			gridMain.BeginUpdate();
 			gridMain.Columns.Clear();
@@ -93,6 +116,12 @@ namespace OpenDental{
 					continue;
 				}
 				row=new GridRow();
+				if(_isPdmp) {
+					AddPdmpCells(row,listProgramProperties[i],clinicNumPdmp,hasPdmpLegacyValues);
+					row.Tag=listProgramProperties[i];
+					gridMain.ListGridRows.Add(row);
+					continue;
+				}
 				row.Cells.Add(listProgramProperties[i].PropertyDesc);
 				if(listProgramProperties[i].IsMasked) {
 					string password;
@@ -111,7 +140,105 @@ namespace OpenDental{
 				row.Tag=listProgramProperties[i];
 				gridMain.ListGridRows.Add(row);
 			}
+			if(_isPdmp && ProgramCur.ProgName==ProgramName.Bamboo.ToString()) {
+				row=new GridRow();
+				row.Cells.Add(Lan.g(this,"Client certificate"));
+				row.Cells.Add(PdmpProperty.GetCertificateStatusText(PdmpProperty.LoadBambooForSetup(ProgramCur,clinicNumPdmp),DateTime.UtcNow));
+				row.Tag=PDMP_CERTIFICATE_ROW_TAG;
+				gridMain.ListGridRows.Add(row);
+			}
 			gridMain.EndUpdate();
+		}
+
+		///<summary>The clinic whose PDMP settings the grid shows. 0 (Default) when clinics are off.</summary>
+		private long GetPdmpClinicNum() {
+			if(!_isPdmp || !PrefC.HasClinicsEnabled || !comboClinicPdmp.Visible) {
+				return 0;
+			}
+			return Math.Max(0,comboClinicPdmp.ClinicNumSelected);
+		}
+
+		///<summary>The PDMP grid cells. Secrets show as asterisks, or ask to be re-entered when the stored value is one this program can't read (an
+		///Open Dental ciphertext). URLs on a database with such values are marked as carried over. A row inherited from Default says so.</summary>
+		private void AddPdmpCells(GridRow row,ProgramProperty programProperty,long clinicNumPdmp,bool hasLegacyValues) {
+			string desc=programProperty.PropertyDesc;
+			if(clinicNumPdmp!=0 && programProperty.ClinicNum==0) {
+				desc+=" ("+Lan.g(this,"Default")+")";
+			}
+			row.Cells.Add(desc);
+			string value=programProperty.PropertyValue??"";
+			if(PdmpProperty.IsSecretDesc(programProperty.PropertyDesc) || programProperty.IsMasked) {
+				SecretReadResult secretReadResult=SecretValue.Read(value,LegacyPolicy.RejectPlaintext);
+				if(secretReadResult.NeedsReentry) {
+					row.Cells.Add(Lan.g(this,"Re-enter the password"));
+				}
+				else {
+					row.Cells.Add(secretReadResult.HasValue ? new string('*',8) : "");
+				}
+				return;
+			}
+			if(hasLegacyValues && value!="" && programProperty.PropertyDesc.EndsWith("Url")) {
+				value+=" ("+Lan.g(this,"carried over, confirm with your vendor")+")";
+			}
+			row.Cells.Add(value);
+		}
+
+		///<summary>For a PDMP row inherited from Default while a clinic is selected, inserts the clinic's own row (a copy of the default) and returns it, so
+		///the edit applies to that clinic only. Otherwise returns the row unchanged.</summary>
+		private ProgramProperty GetPdmpRowToEdit(ProgramProperty programProperty) {
+			long clinicNumPdmp=GetPdmpClinicNum();
+			if(!_isPdmp || clinicNumPdmp==0 || programProperty.ClinicNum==clinicNumPdmp) {
+				return programProperty;
+			}
+			ProgramProperty programPropertyClinic=ProgramProperties.InsertIfMissing(ProgramCur.ProgramNum,programProperty.PropertyDesc,clinicNumPdmp,
+				programProperty.PropertyValue,programProperty.IsMasked,programProperty.IsHighSecurity);
+			ProgramProperties.RefreshCache();
+			return programPropertyClinic;
+		}
+
+		private void comboClinicPdmp_SelectionChangeCommitted(object sender,EventArgs e) {
+			FillGrid();
+		}
+
+		private void butPdmpCertificate_Click(object sender,EventArgs e) {
+			OpenPdmpCertificate();
+		}
+
+		private void OpenPdmpCertificate() {
+			if(!Security.IsAuthorized(EnumPermType.ManageHighSecurityProgProperties)) {
+				return;
+			}
+			using FormPdmpClientCertificate formPdmpClientCertificate=new FormPdmpClientCertificate(ProgramCur,GetPdmpClinicNum());
+			formPdmpClientCertificate.ShowDialog();
+			ProgramProperties.RefreshCache();
+			FillGrid();
+		}
+
+		private void butPdmpCheckSetup_Click(object sender,EventArgs e) {
+			List<PdmpSetupCheckItem> listItems=null;
+			long clinicNumPdmp=GetPdmpClinicNum();
+			ProgressWin progressWin=new ProgressWin();
+			progressWin.StartingMessage=Lan.g(this,"Checking setup...");
+			progressWin.ActionMain=() => listItems=PdmpProperty.CheckSetup(ProgramCur,clinicNumPdmp);
+			try {
+				progressWin.ShowDialog();
+			}
+			catch(Exception ex) {
+				MsgBox.Show(ex.Message);
+				return;
+			}
+			if(progressWin.IsCancelled || listItems==null) {
+				return;
+			}
+			string header=Lan.g(this,"Setup check");
+			if(clinicNumPdmp!=0) {
+				header+=" - "+Clinics.GetAbbr(clinicNumPdmp);
+			}
+			string text=header+"\r\n"+Lan.g(this,"No patient data was sent.")+"\r\n\r\n"+string.Join("\r\n",listItems.Select(x => x.ToString()));
+			using MsgBoxCopyPaste msgBoxCopyPaste=new MsgBoxCopyPaste(text);
+			msgBoxCopyPaste.ShowDialog();
+			ProgramProperties.RefreshCache();
+			FillGrid();
 		}
 
 		///<summary>This method hides (Visible=false) controls when the Clinics are turned off.</summary>
@@ -155,7 +282,17 @@ namespace OpenDental{
 
 		/// <summary>Chooses which type of form to open based on current program and selected property.</summary>
 		private void gridMain_CellDoubleClick(object sender,OpenDental.UI.ODGridClickEventArgs e) {
+			if(gridMain.ListGridRows[e.Row].Tag is string tag && tag==PDMP_CERTIFICATE_ROW_TAG) {
+				OpenPdmpCertificate();
+				return;
+			}
 			ProgramProperty programProperty=(ProgramProperty)gridMain.ListGridRows[e.Row].Tag;
+			if(_isPdmp) {
+				if(!ProgramProperties.CanEditProperties(new List<ProgramProperty>() { programProperty },false)) {
+					return;
+				}
+				programProperty=GetPdmpRowToEdit(programProperty);
+			}
 			switch(ProgramCur.ProgName) {
 				case nameof(ProgramName.PDMP):
 				case nameof(ProgramName.Bamboo):
@@ -207,11 +344,22 @@ namespace OpenDental{
 				return;
 			}
 			bool propIsPassword=programProperty.PropertyDesc.Contains("Password");//We encrypt all passwords now, so just check for "Password" keyword.
+			ProgramProperty programPropertyOld=programProperty.Copy();
+			if(_isPdmp && propIsPassword && SecretValue.Read(programProperty.PropertyValue,LegacyPolicy.RejectPlaintext).NeedsReentry) {
+				programProperty.PropertyValue="";//A value another program saved can't be shown or reused. The user types the password again.
+			}
 			using FormProgramProperty formProgramProperty=new FormProgramProperty(propIsPassword);
 			formProgramProperty.ProgramPopertyCur=programProperty;
 			formProgramProperty.ShowDialog();
 			if(formProgramProperty.DialogResult!=DialogResult.OK) {
 				return;
+			}
+			if(_isPdmp && programProperty.PropertyDesc.EndsWith("Url") && !string.IsNullOrWhiteSpace(programProperty.PropertyValue)) {
+				VendorUrlProblem problem=VendorUrlPolicy.Check(programProperty.PropertyValue);
+				if(problem!=VendorUrlProblem.None) {
+					ProgramProperties.Update(programPropertyOld,programProperty.Copy());//Put the previous value back.
+					MsgBox.Show(Lan.g(this,"The address was not saved.")+"\r\n"+VendorUrlPolicy.Describe(problem));
+				}
 			}
 			ProgramProperties.RefreshCache();
 			FillGrid();
