@@ -4871,7 +4871,9 @@ namespace OpenDental {
 				}
 				else {
 					ToolBarMain.Buttons["Rx"].Enabled=false;
-					ToolBarMain.Buttons["eRx"].Enabled=false;
+					if(ToolBarMain.Buttons["eRx"]!=null) {//Only present once the eRx program link is enabled.
+						ToolBarMain.Buttons["eRx"].Enabled=false;
+					}
 				}
 			}
 			ToolBarMain.Buttons["LabCase"].Enabled=false;
@@ -5219,7 +5221,9 @@ namespace OpenDental {
 					}
 					else {
 						ToolBarMain.Buttons["Rx"].Enabled=false;
-						ToolBarMain.Buttons["eRx"].Enabled=false;
+						if(ToolBarMain.Buttons["eRx"]!=null) {//Only present once the eRx program link is enabled.
+							ToolBarMain.Buttons["eRx"].Enabled=false;
+						}
 					}
 				}
 				ToolBarMain.Buttons["LabCase"].Enabled=false;
@@ -5282,7 +5286,9 @@ namespace OpenDental {
 					}
 					else {
 						ToolBarMain.Buttons["Rx"].Enabled=true;
-						ToolBarMain.Buttons["eRx"].Enabled=true;
+						if(ToolBarMain.Buttons["eRx"]!=null) {//Only present once the eRx program link is enabled.
+							ToolBarMain.Buttons["eRx"].Enabled=true;
+						}
 					}
 				}
 				ToolBarMain.Buttons["LabCase"].Enabled=true;
@@ -7976,7 +7982,8 @@ namespace OpenDental {
 		}
 
 		private void RefreshDoseSpotNotifications() {
-			if(toolBarButtonErx==null || IsPatientNull()) {
+			//toolBarButtonErx is cached, so also confirm it is still in the toolbar (it is left out when the eRx program link is disabled).
+			if(toolBarButtonErx==null || ToolBarMain.Buttons["eRx"]==null || IsPatientNull()) {
 				return;
 			}
 			if(!Programs.IsEnabledByHq(ProgramName.eRx,out string err)) {

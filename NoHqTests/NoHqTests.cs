@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using CodeBase;
@@ -219,6 +220,26 @@ namespace NoHqTests {
 				StringAssert.Contains(exception.Message,"Not allowed to delete");
 			}
 		}
+		[TestMethod]
+		public void ControlChart_ErxToolbarButtonIsNullChecked() {
+			//The Chart module only adds the eRx toolbar button once the eRx program link is enabled, and ODToolBarButtonCollection's
+			//string indexer returns null for a missing button. ControlChart is WinForms (not referenced here), so this checks the source:
+			//every member access on Buttons["eRx"] must sit inside an "if(ToolBarMain.Buttons["eRx"]!=null)" block.
+			string pathControlChart=Path.Combine(FindRepoRoot(),"OpenDental","Main Modules","ControlChart.cs");
+			string[] arrayLines=File.ReadAllLines(pathControlChart);
+			int countAccesses=0;
+			for(int i=0;i<arrayLines.Length;i++) {
+				string line=arrayLines[i].Trim();
+				if(!line.StartsWith("ToolBarMain.Buttons[\"eRx\"].")) {
+					continue;
+				}
+				countAccesses++;
+				string linePrevious=(i==0) ? "" : arrayLines[i-1].Trim();
+				Assert.IsTrue(linePrevious.StartsWith("if(ToolBarMain.Buttons[\"eRx\"]!=null)"),
+					"ControlChart.cs line "+(i+1)+" uses the eRx toolbar button without a null check: "+line);
+			}
+			Assert.IsTrue(countAccesses>0,"Expected to find eRx toolbar button accesses in ControlChart.cs.");
+		}
 		#endregion Vendor neutrality
 
 		[TestMethod]
@@ -228,6 +249,16 @@ namespace NoHqTests {
 		}
 
 		#region Helpers
+		///<summary>Walks up from the test assembly's folder to the folder that holds OpenDental.sln.</summary>
+		private static string FindRepoRoot() {
+			DirectoryInfo directoryInfo=new DirectoryInfo(Path.GetDirectoryName(typeof(NoHqTests).Assembly.Location));
+			while(directoryInfo!=null && !File.Exists(Path.Combine(directoryInfo.FullName,"OpenDental.sln"))) {
+				directoryInfo=directoryInfo.Parent;
+			}
+			Assert.IsNotNull(directoryInfo,"Could not find the repository root (OpenDental.sln).");
+			return directoryInfo.FullName;
+		}
+
 		///<summary>Runs the action and asserts that it throws HqNotAvailableException, unwrapping reflection's TargetInvocationException.</summary>
 		private static HqNotAvailableException AssertThrowsHqNotAvailable(Action action,string name) {
 			try {
