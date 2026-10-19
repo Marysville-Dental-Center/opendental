@@ -13,13 +13,11 @@ using OpenDentBusiness;
 using WpfControls.UI;
 
 namespace OpenDental {
-	///<summary>Message box shown if the database was altered by a third party outside of Open Dental.
-	///Set the TextWarningMessage to describe which entries are unsafe. </summary>
+	///<summary>Message box shown when a record's tamper-detection hash does not match, meaning the record was changed outside of this program.
+	///Set MessageToShow to describe which entries are affected. </summary>
 	public partial class FrmDatabaseIntegrity:FrmODBase {
 		///<summary>This can be quite long.</summary>
 		public string MessageToShow;
-		///<summary>So that it shows a different link.</summary>
-		public bool IsPlugin;
 
 		public FrmDatabaseIntegrity() {
 			InitializeComponent();
@@ -29,18 +27,6 @@ namespace OpenDental {
 		private void FormDatabaseIntegrity_Load(object sender,EventArgs e) {
 			Lang.F(this);
 			labelMessage.Text=MessageToShow;
-			if(IsPlugin){
-				linkLabel.Text="https://www.opendental.com/site/plugins.html";
-			}
-		}
-
-		private void linkLabel_LinkClicked(object sender,EventArgs e) {
-			if(IsPlugin){
-				Process.Start("https://www.opendental.com/site/plugins.html");
-			}
-			else{
-				Process.Start("https://www.opendental.com/site/integrity.html");
-			}
 		}
 
 	}

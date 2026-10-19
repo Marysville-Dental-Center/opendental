@@ -50,9 +50,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenDentalCloud", "OpenDent
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnitTestsCore", "UnitTestsCore\UnitTestsCore.csproj", "{7BBDDEDF-C015-43C0-A532-FED224993281}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "xCDT", "..\CDT\xCDT.csproj", "{76BA82E6-D8E1-45B1-8ED6-41D97B8D67EC}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "xCDT", "CDT\xCDT.csproj", "{76BA82E6-D8E1-45B1-8ED6-41D97B8D67EC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "xODCrypt", "..\ODCrypt\xODCrypt.csproj", "{C37B8157-F665-4EBE-8FD6-20D1C92A0797}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "xODCrypt", "ODCrypt\xODCrypt.csproj", "{C37B8157-F665-4EBE-8FD6-20D1C92A0797}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OpenDentalSocket", "..\OpenDentalWebApps\OpenDentalSocket\OpenDentalSocket.csproj", "{F026A58B-2639-4B49-A1C9-79C0B3FA53E7}"
 EndProject
@@ -78,6 +78,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WpfControlsOD", "WpfControl
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "xBridges", "..\Bridges\xBridges.csproj", "{A4D55048-B426-4BC6-BBD5-56F1E4BCC28D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NoHqTests", "NoHqTests\NoHqTests.csproj", "{5B0E6C2A-7F41-4D3C-9A7E-2C1D9F0B8E53}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CryptoTests", "tests\CryptoTests\CryptoTests.csproj", "{E5185629-91EA-4199-9623-1FF57BBF9708}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -89,6 +93,30 @@ Global
 		Description = 
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5B0E6C2A-7F41-4D3C-9A7E-2C1D9F0B8E53}.Debug|Any CPU.ActiveCfg = Debug|x86
+		{5B0E6C2A-7F41-4D3C-9A7E-2C1D9F0B8E53}.Debug|Any CPU.Build.0 = Debug|x86
+		{5B0E6C2A-7F41-4D3C-9A7E-2C1D9F0B8E53}.Debug|x86.ActiveCfg = Debug|x86
+		{5B0E6C2A-7F41-4D3C-9A7E-2C1D9F0B8E53}.Debug|x86.Build.0 = Debug|x86
+		{5B0E6C2A-7F41-4D3C-9A7E-2C1D9F0B8E53}.ODXam|Any CPU.ActiveCfg = Release|x86
+		{5B0E6C2A-7F41-4D3C-9A7E-2C1D9F0B8E53}.ODXam|Any CPU.Build.0 = Release|x86
+		{5B0E6C2A-7F41-4D3C-9A7E-2C1D9F0B8E53}.ODXam|x86.ActiveCfg = Release|x86
+		{5B0E6C2A-7F41-4D3C-9A7E-2C1D9F0B8E53}.ODXam|x86.Build.0 = Release|x86
+		{5B0E6C2A-7F41-4D3C-9A7E-2C1D9F0B8E53}.Release|Any CPU.ActiveCfg = Release|x86
+		{5B0E6C2A-7F41-4D3C-9A7E-2C1D9F0B8E53}.Release|Any CPU.Build.0 = Release|x86
+		{5B0E6C2A-7F41-4D3C-9A7E-2C1D9F0B8E53}.Release|x86.ActiveCfg = Release|x86
+		{5B0E6C2A-7F41-4D3C-9A7E-2C1D9F0B8E53}.Release|x86.Build.0 = Release|x86
+		{E5185629-91EA-4199-9623-1FF57BBF9708}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E5185629-91EA-4199-9623-1FF57BBF9708}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E5185629-91EA-4199-9623-1FF57BBF9708}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{E5185629-91EA-4199-9623-1FF57BBF9708}.Debug|x86.Build.0 = Debug|Any CPU
+		{E5185629-91EA-4199-9623-1FF57BBF9708}.ODXam|Any CPU.ActiveCfg = Release|Any CPU
+		{E5185629-91EA-4199-9623-1FF57BBF9708}.ODXam|Any CPU.Build.0 = Release|Any CPU
+		{E5185629-91EA-4199-9623-1FF57BBF9708}.ODXam|x86.ActiveCfg = Release|Any CPU
+		{E5185629-91EA-4199-9623-1FF57BBF9708}.ODXam|x86.Build.0 = Release|Any CPU
+		{E5185629-91EA-4199-9623-1FF57BBF9708}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E5185629-91EA-4199-9623-1FF57BBF9708}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E5185629-91EA-4199-9623-1FF57BBF9708}.Release|x86.ActiveCfg = Release|Any CPU
+		{E5185629-91EA-4199-9623-1FF57BBF9708}.Release|x86.Build.0 = Release|Any CPU
 		{8136317D-C936-49B6-9E31-D90F02D2F207}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{8136317D-C936-49B6-9E31-D90F02D2F207}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8136317D-C936-49B6-9E31-D90F02D2F207}.Debug|x86.ActiveCfg = Debug|x86

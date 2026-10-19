@@ -9,10 +9,6 @@
              Width="464" Height="201" 
              Text="Database Integrity" >
 	<Grid Background="#FFFCFDFE" >
-		<ui:Label x:Name="labelUrl" Width="126" Height="13" Margin="12,172,0,0" Text="For more information visit:" />
 		<ui:Label x:Name="labelMessage" Width="430" Height="152" Margin="12,18,0,0" Text="Message" />
-		<ui:LinkLabel x:Name="linkLabel" Width="303" Height="18
-						  " Margin="139,172,0,0" Text="https://www.opendental.com/site/integrity.html" LinkLength="46" LinkStart="0"
-				LinkClicked="linkLabel_LinkClicked" />
 	</Grid>
 </local:FrmODBase>

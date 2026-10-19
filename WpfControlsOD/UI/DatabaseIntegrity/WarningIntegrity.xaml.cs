@@ -135,7 +135,6 @@ Jordan is the only one allowed to edit this file.
 			}
 			FrmDatabaseIntegrity frmDatabaseIntegrity=new FrmDatabaseIntegrity();
 			frmDatabaseIntegrity.MessageToShow=_databaseIntegrity.Message.Replace("[Class]",_databaseIntegrity.WarningIntegrityType.ToString());
-			frmDatabaseIntegrity.IsPlugin=true;
 			frmDatabaseIntegrity.ShowDialog();
 		}
 

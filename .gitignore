@@ -28,3 +28,6 @@ TestResults/
 # Logs
 *.binlog
 msbuild*.log
+
+# Claude Code worktrees
+.claude/

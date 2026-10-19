@@ -12,9 +12,6 @@ namespace OpenDental {
 	public class PluginLoader {
 		///<summary>There is a similar method for Middle Tier at OpenDentBusiness.Plugins.LoadAllPlugins.</summary>
 		public static void LoadAllPlugins(Form host) {
-			if(Environment.MachineName.ToLower()=="jordanhome" || Environment.MachineName.ToLower()=="jordancryo"){
-				bool isAllowed=DatabaseIntegrities.IsPluginAllowed("someplugin.dll");//to simulate loading a dll
-			}
 			Meth.NoCheckMiddleTierRole();
 			if(ODEnvironment.IsCloudServer) {
 				return;//plugins not allowed in cloud mode
@@ -26,24 +23,6 @@ namespace OpenDental {
 				string dllPath=ODFileUtils.CombinePaths(Application.StartupPath,listPrograms[i].PluginDllName);
 				if(RemotingClient.MiddleTierRole==MiddleTierRole.ServerMT) {
 					dllPath=ODFileUtils.CombinePaths(System.Web.HttpContext.Current.Server.MapPath(null),listPrograms[i].PluginDllName);
-				}
-				if(!DatabaseIntegrities.IsPluginAllowed(listPrograms[i].PluginDllName)){
-					DatabaseIntegrity databaseIntegrity=DatabaseIntegrities.GetOnePlugin(listPrograms[i].PluginDllName);
-					if(databaseIntegrity is null){
-						//keep going, I guess. Shouldn't happen
-					}
-					else{
-						FrmDatabaseIntegrity frmDatabaseIntegrity=new FrmDatabaseIntegrity();
-						frmDatabaseIntegrity.IsPlugin=true;
-						frmDatabaseIntegrity.MessageToShow=databaseIntegrity.Message.Replace("[Plugin]",listPrograms[i].PluginDllName);
-						frmDatabaseIntegrity.ShowDialog();
-						if(databaseIntegrity.Behavior==EnumIntegrityBehavior.PluginBlock){
-							continue;
-						}
-						if(databaseIntegrity.Behavior==EnumIntegrityBehavior.PluginWarning){
-							//nothing
-						}
-					}
 				}
 				//Check for the versioning trigger.
 				//For example, the plug-in might be entered as MyPlugin[VersionMajMin].dll. The bracketed section will be removed when loading the dll.
