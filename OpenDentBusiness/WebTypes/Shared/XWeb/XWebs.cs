@@ -18,12 +18,12 @@ namespace OpenDentBusiness.WebTypes.Shared.XWeb {
 	public class XWebs {
 		public static MockXWebs Mock;
 		public class MockXWebs {
+			///<summary>Returns a canned response for every request.</summary>
 			public Func<string> ResponseData;
+			///<summary>Returns a response for the given request XML and URL. Takes precedence over ResponseData. Lets tests see what would be sent.
+			///The request has already passed the size and address checks.</summary>
+			public Func<string,string,string> ResponseForRequest;
 		}
-		///<summary>Only used for testing. Should always be false otherwise.</summary>
-		public static bool UseTestAccountOD=false;
-		///<summary>Only used for testing. Should always be false otherwise.</summary>
-		public static bool UseTestAccountLoopback=false;
 		///<summary>Only used for testing. Points the eConnector at XWeb test URLs. Gets set to the value of the 'UseXWebTestGateway' node in the config file when present.</summary>
 		public static bool UseXWebTestGateway=false;
 		#region Public Interface
@@ -62,11 +62,26 @@ namespace OpenDentBusiness.WebTypes.Shared.XWeb {
 		public static EventHandler<Logger.LoggerEventArgs> InputEvent;
 		public static EventHandler<Logger.LoggerEventArgs> OutputEvent;
 		public static EventHandler WakeupMonitor;
-		///<summary>XWeb Gateway input event. Always sent as Verbose.</summary>
+		///<summary>XWeb Gateway input event. Always sent as Verbose. The request XML carries the merchant's auth key, so it is masked in both the
+		///sender and the text before anything is raised.</summary>
 		protected static void OnInputEvent(object sender,string s) {
 			if(InputEvent!=null) {
-				InputEvent(sender,new Logger.LoggerEventArgs(s,LogLevel.Verbose));
+				object senderMasked=sender;
+				if(sender is string) {
+					senderMasked=MaskAuthKeys((string)sender);
+				}
+				InputEvent(senderMasked,new Logger.LoggerEventArgs(MaskAuthKeys(s),LogLevel.Verbose));
 			}
+		}
+
+		///<summary>Replaces the value of every XWEBAUTHKEY (EdgeExpress) and AuthKey (X-Web) element with X's, so the merchant's key never reaches a
+		///log or an event handler.</summary>
+		public static string MaskAuthKeys(string xml) {
+			if(string.IsNullOrEmpty(xml)) {
+				return xml;
+			}
+			return Regex.Replace(xml,@"(<(XWEBAUTHKEY|AuthKey)>)([^<]*)(</\2>)",
+				x => x.Groups[1].Value+new string('X',x.Groups[3].Value.Length)+x.Groups[4].Value,RegexOptions.IgnoreCase);
 		}
 		///<summary>XWeb Gateway output event. Always sent as Verbose.</summary>
 		protected static void OnOutputEvent(object sender,string s) {
@@ -135,21 +150,10 @@ namespace OpenDentBusiness.WebTypes.Shared.XWeb {
 					//Always add shared params at start. These parameters are shared for both OTK creation and Hpf status monitoring.
 					Dictionary<string,string> ret=new Dictionary<string,string>();
 					ret.Add("SpecVersion",XWebSpecVersion);
-					if(UseTestAccountOD) { //OD test account.
-						ret.Add("XWebID","800000000894");
-						ret.Add("AuthKey","8RLVqcxRCTpH7bu9bjMkY1uLEiyWGsan");
-						ret.Add("TerminalID","80023128");
-					}
-					else if(UseTestAccountLoopback) { //XWeb loopback test account. For testing different DTG responses (see appendix D of DTG doc).
-						ret.Add("XWebID","800000000894");
-						ret.Add("AuthKey","t4mkUvKWQ12N2DNGSoKBMvOVNLuE1LFm");
-						ret.Add("TerminalID","80023450");
-					}
-					else { //Production.
-						ret.Add("XWebID",_xWebID.ToString());
-						ret.Add("AuthKey",_authKey.ToString());
-						ret.Add("TerminalID",_terminalID.ToString());
-					}
+					//Always the office's own credentials. No test account is compiled in: use the office's sandbox credentials with the test gateway.
+					ret.Add("XWebID",_xWebID.ToString());
+					ret.Add("AuthKey",_authKey.ToString());
+					ret.Add("TerminalID",_terminalID.ToString());
 					//OTK status polling does not require a specific transaction type. All other transaction types must be specified in the params.
 					if(_transactionType!=XWebTransactionType.PollOtkUnspecified) {
 						ret.Add("TransactionType",_transactionType.ToString());
@@ -234,14 +238,22 @@ namespace OpenDentBusiness.WebTypes.Shared.XWeb {
 			///<summary>Create a temporary WebClient connected to the XWeb gateway and perform UplodateData.</summary>
 			/// <returns>The response from the url given the input.</returns>
 			public static string UploadData(string input,string url) {
+				byte[] inputBytes=Encoding.ASCII.GetBytes(input);
+				if(inputBytes.Length>=MaxRequestBytes) {
+					throw new ODException("X-Web gateway request is too long.",ODException.ErrorCodes.MaxRequestDataExceeded);
+				}
+				//Only the card processor's hosts, or a loopback mock set through Introspection: HTTPS, and never an Open Dental host.
+				CodeBase.VendorDirect.VendorUrlProblem vendorUrlProblem=CodeBase.VendorDirect.VendorUrlPolicy.Check(url);
+				if(vendorUrlProblem!=CodeBase.VendorDirect.VendorUrlProblem.None) {
+					throw new ODException("Card processor address refused: "+CodeBase.VendorDirect.VendorUrlPolicy.Describe(vendorUrlProblem));
+				}
+				OnInputEvent(input,PrettyPrintXml(input));
+				if(Mock!=null && Mock.ResponseForRequest!=null) {
+					return Mock.ResponseForRequest(input,url);
+				}
 				if(Mock!=null && Mock.ResponseData!=null) {
 					return Mock.ResponseData();
 				}
-				byte[] inputBytes=Encoding.ASCII.GetBytes(input);
-				if(inputBytes.Length>=2048) {
-					throw new ODException("X-Web gateway request is too long.",ODException.ErrorCodes.MaxRequestDataExceeded);
-				}
-				OnInputEvent(input,PrettyPrintXml(input));
 				//Create HTTPS connection to X-Web gateway and send GET request.
 				using(WebClient webClient = new WebClient()) {
 					webClient.Headers.Add(HttpRequestHeader.ContentType,"application/xml");
@@ -260,6 +272,9 @@ namespace OpenDentBusiness.WebTypes.Shared.XWeb {
 					return ret;
 				}
 			}
+
+			///<summary>The gateway refuses requests of this many bytes or more (response code 801).</summary>
+			public const int MaxRequestBytes=2048;
 
 			///<summary>Returns true if the given bye array has a BOM (byte order marking) of UTF-16 Big Endian.</summary>
 			private static bool IsUTF16_BE(byte[] bytes) {

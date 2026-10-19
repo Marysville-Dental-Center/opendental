@@ -180,7 +180,7 @@ namespace OpenDentBusiness {
 		}
 	}
 
-	///<summary>Various statuses from XWeb. These states are returned directly from the XWeb gateway. A more complete list can be found at \\opendental.od\serverfiles\Storage\OPEN DENTAL\Programmers Documents\Bridge Info\X-Charge\EdgeExpress\EdgeExpress Card Not Present API 1.0.0.pdf.</summary>
+	///<summary>Various statuses from XWeb. These states are returned directly from the XWeb gateway. A more complete list is in the vendor's EdgeExpress Card Not Present API guide.</summary>
 	public enum XWebResponseCodes {
 		///<summary>1000</summary>
 		Undefined = 1000,
@@ -192,6 +192,9 @@ namespace OpenDentBusiness {
 		Declined = 001,
 		///<summary>005</summary>
 		AliasSuccess = 005,
+		///<summary>006 - Session timed out. The hosted payment page expired before a card was submitted, so no charge was made. Returned by the
+		///result query (QUERYPAYMENT).</summary>
+		SessionTimedOut = 006,
 		///<summary>007</summary>
 		PartialApproval = 007,
 		///<summary>009</summary>
@@ -204,6 +207,8 @@ namespace OpenDentBusiness {
 		ExpiredWithoutApproval = 101,
 		///<summary>102 - Pending (neither of the above events has occurred yet)</summary>
 		Pending = 102,
+		///<summary>103 - Cancelled by the user on the hosted payment page (spec version 3.7 and later). No charge was made.</summary>
+		TransactionCancelled = 103,
 		///<summary>800 Parsing Error Unable to parse the XML request sent.</summary>
 		ParsingError = 800,
 		///<summary>801 Maximum Request Data Exceeded Error - The XML request exceeds the 2048-byte maximum size.</summary>
