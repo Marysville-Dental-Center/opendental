@@ -11,8 +11,8 @@ using System.Threading.Tasks;
 
 namespace CodeBase.VendorDirect {
 	///<summary>Catches one browser redirect on this computer. Binds 127.0.0.1 (and ::1 too when the redirect host is "localhost") with a TcpListener,
-	///so no http.sys URL reservation is needed. Accepts exactly one GET on the expected path; any other path, method or Host header gets 404 and the
-	///wait goes on. Reads at most 16 KB per request and never logs or stores it. The caller checks the returned state.
+	///so no http.sys URL reservation is needed. Accepts exactly one GET on the expected path (or POST, when AcceptPost is set); any other path, method
+	///or Host header gets 404 and the wait goes on. Reads at most 16 KB per request and never logs or stores it. The caller checks the returned state.
 	///Use one instance per sign-in: Start, put RedirectUri on the authorization URL, open the browser, then await WaitForRedirectAsync.</summary>
 	public sealed class LoopbackListener : IDisposable {
 		///<summary>Default time to wait for the browser: 5 minutes.</summary>
@@ -49,6 +49,15 @@ namespace CodeBase.VendorDirect {
 
 		///<summary>The bound port. 0 until Start.</summary>
 		public int Port { get; private set; }
+
+		///<summary>False (default): only a GET ends the wait, as OAuth redirects are. True: a POST on the expected path ends it too, for a hosted payment
+		///page whose return may be a form post. The body is read (Content-Length only, within MaxRequestBytes in all) and discarded unread; only the
+		///query string is returned. Set before WaitForRedirectAsync.</summary>
+		public bool AcceptPost { get; set; }
+
+		///<summary>The page sent back for the expected path. Null (default) sends the sign-in page (OAuthResponsePage). Must be self-contained: no
+		///scripts or external assets. Set before WaitForRedirectAsync.</summary>
+		public string ResponseHtml { get; set; }
 
 		///<summary>"http://127.0.0.1:{port}{path}", the redirect_uri to send. Valid after Start.</summary>
 		public string RedirectUri {
@@ -165,7 +174,7 @@ namespace CodeBase.VendorDirect {
 			using(ctsConnection.Token.Register(() => tcpClient.Close())) {
 				ctsConnection.CancelAfter(_timeSpanPerConnection);
 				NetworkStream stream;
-				string requestHead;
+				RequestHead requestHead;
 				try {
 					stream=tcpClient.GetStream();
 					requestHead=await ReadRequestHeadAsync(stream).ConfigureAwait(false);
@@ -175,19 +184,35 @@ namespace CodeBase.VendorDirect {
 					return null;//This connection was slow or broken. Keep waiting for the real redirect.
 				}
 				string query;
-				if(requestHead==null || !TryParseRequest(requestHead,out query)) {
+				long contentLength;
+				if(requestHead==null || !TryParseRequest(requestHead.Text,out query,out contentLength)) {
 					await WriteResponseSafeAsync(stream,"404 Not Found","").ConfigureAwait(false);
 					return null;
 				}
+				if(contentLength>0) {
+					//A POST return: read the body so the browser gets a clean answer, but never look at it.
+					await DiscardBodySafeAsync(stream,contentLength-requestHead.CountBodyBytesRead,MaxRequestBytes-requestHead.CountBytesRead)
+						.ConfigureAwait(false);
+				}
 				OAuthRedirectResult result=new OAuthRedirectResult(OAuthRedirectParser.ParseQuery(query));
 				bool isError=!result.HasCode;
-				await WriteResponseSafeAsync(stream,"200 OK",OAuthResponsePage.GetHtml(isError)).ConfigureAwait(false);
+				await WriteResponseSafeAsync(stream,"200 OK",ResponseHtml??OAuthResponsePage.GetHtml(isError)).ConfigureAwait(false);
 				return result;
 			}
 		}
 
+		///<summary>The request line and headers, and how much was read with them.</summary>
+		private sealed class RequestHead {
+			///<summary>Everything before the blank line that ends the headers.</summary>
+			public string Text;
+			///<summary>All bytes read so far, headers included.</summary>
+			public int CountBytesRead;
+			///<summary>Bytes read past the blank line: the start of a body.</summary>
+			public int CountBodyBytesRead;
+		}
+
 		///<summary>Reads up to the blank line that ends the headers. Returns null if the request is larger than MaxRequestBytes or ends early.</summary>
-		private static async Task<string> ReadRequestHeadAsync(NetworkStream stream) {
+		private static async Task<RequestHead> ReadRequestHeadAsync(NetworkStream stream) {
 			byte[] buffer=new byte[MaxRequestBytes];
 			int countRead=0;
 			while(countRead<buffer.Length) {
@@ -199,18 +224,47 @@ namespace CodeBase.VendorDirect {
 				string text=Encoding.ASCII.GetString(buffer,0,countRead);
 				int indexEnd=text.IndexOf("\r\n\r\n",StringComparison.Ordinal);
 				if(indexEnd>=0) {
-					return text.Substring(0,indexEnd);
+					RequestHead requestHead=new RequestHead();
+					requestHead.Text=text.Substring(0,indexEnd);
+					requestHead.CountBytesRead=countRead;
+					requestHead.CountBodyBytesRead=countRead-(indexEnd+4);//ASCII: one byte per character.
+					return requestHead;
 				}
 			}
 			return null;
 		}
 
-		///<summary>True if the request is "GET {path}[?query] HTTP/1.x" with a loopback Host header for our port. Sets query to the part after '?'.</summary>
-		private bool TryParseRequest(string requestHead,out string query) {
+		///<summary>Reads and throws away up to countRemaining body bytes, but never more than countAllowed. A body larger than that is left unread;
+		///the connection is closed after the answer anyway.</summary>
+		private static async Task DiscardBodySafeAsync(NetworkStream stream,long countRemaining,int countAllowed) {
+			long countToRead=Math.Min(countRemaining,countAllowed);
+			byte[] buffer=new byte[4096];
+			try {
+				while(countToRead>0) {
+					int count=await stream.ReadAsync(buffer,0,(int)Math.Min(buffer.Length,countToRead)).ConfigureAwait(false);
+					if(count==0) {
+						return;
+					}
+					countToRead-=count;
+				}
+			}
+			catch(Exception ex) when(ex is IOException || ex is ObjectDisposedException || ex is SocketException) {
+				//The browser went away. The return was still received.
+			}
+		}
+
+		///<summary>True if the request is "GET {path}[?query] HTTP/1.x" (or POST, when AcceptPost is set) with a loopback Host header for our port.
+		///Sets query to the part after '?', and contentLength to a POST's Content-Length (0 for a GET or when none is given).</summary>
+		private bool TryParseRequest(string requestHead,out string query,out long contentLength) {
 			query="";
+			contentLength=0;
 			string[] arrayLines=requestHead.Split(new[] { "\r\n" },StringSplitOptions.None);
 			string[] arrayRequestLine=arrayLines[0].Split(' ');
-			if(arrayRequestLine.Length!=3 || arrayRequestLine[0]!="GET" || !arrayRequestLine[2].StartsWith("HTTP/1.",StringComparison.Ordinal)) {
+			if(arrayRequestLine.Length!=3 || !arrayRequestLine[2].StartsWith("HTTP/1.",StringComparison.Ordinal)) {
+				return false;
+			}
+			bool isPost=(arrayRequestLine[0]=="POST");
+			if(arrayRequestLine[0]!="GET" && !(isPost && AcceptPost)) {
 				return false;
 			}
 			string target=arrayRequestLine[1];
@@ -222,9 +276,18 @@ namespace CodeBase.VendorDirect {
 			string host=null;
 			for(int i=1;i<arrayLines.Length;i++) {
 				int indexColon=arrayLines[i].IndexOf(':');
-				if(indexColon>0 && arrayLines[i].Substring(0,indexColon).Trim().Equals("Host",StringComparison.OrdinalIgnoreCase)) {
+				if(indexColon<=0) {
+					continue;
+				}
+				string headerName=arrayLines[i].Substring(0,indexColon).Trim();
+				if(host==null && headerName.Equals("Host",StringComparison.OrdinalIgnoreCase)) {
 					host=arrayLines[i].Substring(indexColon+1).Trim().ToLowerInvariant();
-					break;
+				}
+				else if(isPost && headerName.Equals("Content-Length",StringComparison.OrdinalIgnoreCase)) {
+					long length;
+					if(long.TryParse(arrayLines[i].Substring(indexColon+1).Trim(),out length) && length>0) {
+						contentLength=length;
+					}
 				}
 			}
 			//Refuse a Host header that isn't this computer (a web page reaching the port through DNS rebinding).

@@ -23,7 +23,25 @@ namespace CodeBase.Controls {
 			InitializeComponent();
 		}
 
-		public async Task Init() {
+		///<summary>True if the Microsoft WebView2 Runtime is installed on this computer. Shows nothing and never throws, so a caller can choose a
+		///fallback before calling Init (which offers the runtime download and then throws).</summary>
+		public static bool IsRuntimeAvailable() {
+			try {
+				return !CoreWebView2Environment.GetAvailableBrowserVersionString().IsNullOrEmpty();
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+				return false;
+			}
+		}
+
+		public Task Init() {
+			return Init(null);
+		}
+
+		///<summary>Like Init(), but first lets the caller set the controller options, which are created from this control's environment. For example,
+		///x => x.IsInPrivateModeEnabled=true gives an InPrivate profile, so no cookies, history or form data persist in the shared cache folder.</summary>
+		public async Task Init(Action<CoreWebView2ControllerOptions> actionSetControllerOptions) {
 			bool doShowError=false;
 			try {
 				if(CoreWebView2Environment.GetAvailableBrowserVersionString().IsNullOrEmpty()) {
@@ -51,7 +69,13 @@ namespace CodeBase.Controls {
 			string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
 			string cacheFolder = ODFileUtils.CombinePaths(localAppData, "WindowsFormsWebView2");
 			CoreWebView2Environment environment=await CoreWebView2Environment.CreateAsync(null,cacheFolder);
-			await this.EnsureCoreWebView2Async(environment);
+			if(actionSetControllerOptions==null) {
+				await this.EnsureCoreWebView2Async(environment);
+				return;
+			}
+			CoreWebView2ControllerOptions coreWebView2ControllerOptions=environment.CreateCoreWebView2ControllerOptions();
+			actionSetControllerOptions(coreWebView2ControllerOptions);
+			await this.EnsureCoreWebView2Async(environment,coreWebView2ControllerOptions);
 		}
 
 		/// <summary>
