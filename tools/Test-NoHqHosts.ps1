@@ -61,9 +61,6 @@ $AllowList=@(
 	#--- Unreachable UI and code that later phases delete.
 	@{ Path='OpenDental\InternalTools\*'; Reason='Open Dental HQ staff tools. Unreachable because PrefC.IsODHQ is always false; deleted in a later phase.' }
 	@{ Path='OpenDentBusiness\InternalTools\*'; Reason='Open Dental HQ staff tools. Unreachable because PrefC.IsODHQ is always false; deleted in a later phase.' }
-	@{ Path='OpenDental\Forms\FormEServices*'; Reason='eServices setup windows. The eServices menu is gone and they close with "not available"; deleted in a later phase.' }
-	@{ Path='OpenDental\Forms\FormWebFormSetup*'; Reason='Hosted Web Forms setup (example text). Its menu items are gone; deleted in a later phase.' }
-	@{ Path='OpenDentBusiness\Data Interface\EmailHostingTemplates.cs'; Reason='Default template of the hosted mass e-mail eService, which is not available; deleted in a later phase.' }
 	@{ Path='WpfControlsOD\Frms\FrmTestAllControls.xaml*'; Reason='Developer UI test window, only opened from the UnitTests project.' }
 	@{ Path='WpfControlsOD\Frms\FrmTestSplitters.xaml*'; Reason='Developer UI test window, only opened from the UnitTests project.' }
 

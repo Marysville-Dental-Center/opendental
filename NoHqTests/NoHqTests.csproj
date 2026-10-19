@@ -44,6 +44,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CloudEditionTests.cs" />
+    <Compile Include="EServicesRemovedTests.cs" />
     <Compile Include="NoHqTests.cs" />
     <Compile Include="RemovedAssembliesTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
