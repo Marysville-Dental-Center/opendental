@@ -119,7 +119,7 @@ Then build the solution (see [Build](#build)), start `OpenDental\bin\Debug\OpenD
 | `DataConnectionBase/` | Low-level MySQL/Oracle connection layer |
 | `xCrudGenerator/` | Generates `OpenDentBusiness/Crud/*` from the table types. Run it after changing a table type |
 | `OpenDentalServer/` | Middle-tier web service (ASP.NET ASMX, hosted in IIS) |
-| `OpenDentHL7/`, `ServiceManager/`, `CentralManager/`, `DatabaseIntegrityCheck/`, `MySQLManager/`, `UpdateFileCopier/`, `WebCamOD/` | Supporting services and tools |
+| `OpenDentHL7/`, `ServiceManager/`, `CentralManager/`, `DatabaseIntegrityCheck/`, `MySQLManager/`, `UpdateFileCopier/` | Supporting services and tools |
 | `OpenDentalCloud/`, `OpenDentalGraph/`, `SparksToothChart/`, `Direct2dWrapper/`, `PasswordVaultWrapper/` | Cloud storage, dashboards, tooth chart rendering, native Direct2D, and Windows credential vault libraries |
 | `UnitTests/`, `UnitTestsCore/` | MSTest v1 tests. Most need a live test database |
 | `tools/` | Developer tools, not in the solution: `New-DevDatabase.ps1` and `DevDbTool/` build a local dev database (see [Running](#running)) |
