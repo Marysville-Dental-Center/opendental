@@ -303,12 +303,19 @@ namespace CodeBase.VendorDirect {
 					throw new VendorHttpException(_options.VendorName,VendorHttpFailure.TooManyRedirects,_options.VendorName+" redirected too many times.");
 				}
 				CheckUrl(uriLocation);
+				if(VendorUrlPolicy.IsLoopbackHost(uriLocation.Host) && !VendorUrlPolicy.IsLoopbackHost(requestCur.RequestUri.Host)) {
+					//Loopback is exempt from the allow-list only for requests the caller makes itself. A remote server may not send us to this computer.
+					response.Dispose();
+					_options.Log?.Invoke(_options.VendorName+": refused a redirect to this computer.");
+					throw new VendorHttpException(_options.VendorName,VendorHttpFailure.UrlRefused,
+						_options.VendorName+": request refused. "+VendorUrlPolicy.Describe(VendorUrlProblem.HostNotAllowed),VendorUrlProblem.HostNotAllowed);
+				}
+				bool isSameOrigin=IsSameOrigin(requestCur.RequestUri,uriLocation);
 				HttpRequestMessage requestNext=new HttpRequestMessage(requestCur.Method,uriLocation);
 				foreach(KeyValuePair<string,IEnumerable<string>> header in requestCur.Headers) {
-					//Credentials never follow a redirect to another host.
-					if(header.Key.Equals("Authorization",StringComparison.OrdinalIgnoreCase)
-						&& !uriLocation.Host.Equals(requestCur.RequestUri.Host,StringComparison.OrdinalIgnoreCase))
-					{
+					//Credentials (Authorization, API keys, subscription keys, X-Auth-*, cookies) never follow a redirect to another origin: a different
+					//scheme, host or port. By now the request headers include the client's DefaultRequestHeaders too.
+					if(!isSameOrigin && VendorHttp.IsSensitiveHeader(header.Key)) {
 						continue;
 					}
 					requestNext.Headers.TryAddWithoutValidation(header.Key,header.Value);
@@ -344,6 +351,13 @@ namespace CodeBase.VendorDirect {
 
 		private void Log(HttpRequestMessage request,string outcome) {
 			_options.Log?.Invoke(_options.VendorName+" "+VendorHttp.GetEndpointName(request)+": "+outcome);
+		}
+
+		///<summary>True if both addresses have the same scheme, host and port.</summary>
+		internal static bool IsSameOrigin(Uri uriA,Uri uriB) {
+			return uriA.Scheme.Equals(uriB.Scheme,StringComparison.OrdinalIgnoreCase)
+				&& uriA.Host.Equals(uriB.Host,StringComparison.OrdinalIgnoreCase)
+				&& uriA.Port==uriB.Port;
 		}
 
 		internal static bool IsRedirect(HttpStatusCode statusCode) {

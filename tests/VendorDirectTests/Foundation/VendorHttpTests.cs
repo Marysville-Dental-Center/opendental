@@ -98,6 +98,85 @@ namespace VendorDirectTests.Foundation {
 			});
 		}
 
+		private static readonly string[] _arrayCredentialHeaders={ "Authorization","Proxy-Authorization","API-Key","Secret","Subscription-Key",
+			"Ocp-Apim-Subscription-Key","X-Auth-Token","Cookie" };
+
+		///<summary>A client whose default headers carry one credential, and a GET that carries the rest of them plus a harmless header.</summary>
+		private static async Task<FakeHttpHandler> SendRedirectedGetWithCredentials(string urlFirst,string urlLocation) {
+			FakeHttpHandler fake=new FakeHttpHandler()
+				.Enqueue(HttpStatusCode.Found,"",actionCustomize:x => x.Headers.Location=new Uri(urlLocation,UriKind.RelativeOrAbsolute))
+				.Enqueue(HttpStatusCode.OK,"done");
+			HttpClient httpClient=VendorHttp.CreateClient(MakeOptions(),fake);
+			httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Ocp-Apim-Subscription-Key","default-subscription-key");
+			HttpRequestMessage request=new HttpRequestMessage(HttpMethod.Get,urlFirst);
+			request.Headers.Authorization=new AuthenticationHeaderValue("Bearer","secret-token");
+			request.Headers.TryAddWithoutValidation("Proxy-Authorization","Basic cHJveHk6cHc=");
+			request.Headers.TryAddWithoutValidation("API-Key","api-key-value");
+			request.Headers.TryAddWithoutValidation("Secret","secret-value");
+			request.Headers.TryAddWithoutValidation("Subscription-Key","subscription-key-value");
+			request.Headers.TryAddWithoutValidation("X-Auth-Token","x-auth-value");
+			request.Headers.TryAddWithoutValidation("Cookie","session=abc");
+			request.Headers.TryAddWithoutValidation("X-Trace","keep-me");
+			HttpResponseMessage response=await httpClient.SendAsync(request);
+			Assert.AreEqual("done",await response.Content.ReadAsStringAsync());
+			Assert.AreEqual(2,fake.Requests.Count);
+			foreach(string header in _arrayCredentialHeaders) {
+				Assert.IsNotNull(fake.Requests[0].GetHeader(header),header+" should reach the first host.");
+			}
+			Assert.AreEqual("keep-me",fake.Requests[1].GetHeader("X-Trace"),"Ordinary headers follow every redirect.");
+			return fake;
+		}
+
+		[TestMethod]
+		public void Client_RedirectToAnotherHostDropsEveryCredentialHeader() {
+			AssertEx.Run(async () => {
+				FakeHttpHandler fake=await SendRedirectedGetWithCredentials("https://api.vendor.example/v1/files/1","https://cdn.other.example/file");
+				foreach(string header in _arrayCredentialHeaders) {
+					Assert.IsNull(fake.Requests[1].GetHeader(header),header+" must not follow a redirect to another host.");
+				}
+			});
+		}
+
+		[TestMethod]
+		public void Client_RedirectToAnotherPortOrSchemeDropsEveryCredentialHeader() {
+			AssertEx.Run(async () => {
+				FakeHttpHandler fake=await SendRedirectedGetWithCredentials("https://api.vendor.example/v1/files/1","https://api.vendor.example:8443/file");
+				foreach(string header in _arrayCredentialHeaders) {
+					Assert.IsNull(fake.Requests[1].GetHeader(header),header+" must not follow a redirect to another port.");
+				}
+				fake=await SendRedirectedGetWithCredentials("http://localhost:5000/files/1","https://localhost:5000/file");
+				foreach(string header in _arrayCredentialHeaders) {
+					Assert.IsNull(fake.Requests[1].GetHeader(header),header+" must not follow a redirect to another scheme.");
+				}
+			});
+		}
+
+		[TestMethod]
+		public void Client_RedirectOnSameOriginKeepsCredentialHeaders() {
+			AssertEx.Run(async () => {
+				FakeHttpHandler fake=await SendRedirectedGetWithCredentials("https://api.vendor.example/v1/files/1","/v1/files/1/content");
+				Assert.AreEqual("https://api.vendor.example/v1/files/1/content",fake.Requests[1].RequestUri.AbsoluteUri);
+				foreach(string header in _arrayCredentialHeaders) {
+					Assert.AreEqual(fake.Requests[0].GetHeader(header),fake.Requests[1].GetHeader(header),header+" should follow a same-origin redirect.");
+				}
+			});
+		}
+
+		[TestMethod]
+		public void Client_RedirectFromRemoteHostToThisComputerIsRefused() {
+			AssertEx.Run(async () => {
+				FakeHttpHandler fake=new FakeHttpHandler()
+					.Enqueue(HttpStatusCode.Found,"",actionCustomize:x => x.Headers.Location=new Uri("http://127.0.0.1:8080/steal"));
+				VendorHttpOptions options=MakeOptions();
+				options.ListAllowedHosts.Add("*.vendor.example");
+				HttpClient httpClient=VendorHttp.CreateClient(options,fake);
+				VendorHttpException ex=await AssertEx.ThrowsAsync<VendorHttpException>(() => httpClient.GetAsync("files/1"));
+				Assert.AreEqual(VendorHttpFailure.UrlRefused,ex.Failure);
+				Assert.AreEqual(VendorUrlProblem.HostNotAllowed,ex.UrlProblem);
+				Assert.AreEqual(1,fake.Requests.Count,"The loopback hop must not be sent.");
+			});
+		}
+
 		[TestMethod]
 		public void Client_PostRedirectIsReturnedNotFollowed() {
 			AssertEx.Run(async () => {
