@@ -220,7 +220,7 @@ namespace OpenDentBusiness.Email {
 		}
 
 		///<summary>Helper method that creates a new MIME message based on the parameters (to, cc, bcc, from, and body)</summary>
-		private static MimeMessage CreateMIMEMsg(BasicEmailAddress emailAddress,BasicEmailMessage emailMessage) {
+		internal static MimeMessage CreateMIMEMsg(BasicEmailAddress emailAddress,BasicEmailMessage emailMessage) {
 			MimeMessage mimeMsg=new MimeMessage();
 			if(!emailMessage.Subject.IsNullOrEmpty()) {
 				mimeMsg.Subject=emailMessage.Subject;
