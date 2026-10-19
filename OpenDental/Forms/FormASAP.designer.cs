@@ -46,16 +46,6 @@ namespace OpenDental {
 			this.comboSite = new OpenDental.UI.ComboBox();
 			this.labelSite = new System.Windows.Forms.Label();
 			this.comboClinic = new OpenDental.UI.ComboBoxClinicPicker();
-			this.butText = new OpenDental.UI.Button();
-			this.comboEnd = new OpenDental.UI.ComboBox();
-			this.comboStart = new OpenDental.UI.ComboBox();
-			this.labelEnd = new System.Windows.Forms.Label();
-			this.labelStart = new System.Windows.Forms.Label();
-			this.butSendWebSched = new OpenDental.UI.Button();
-			this.butWebSchedHist = new OpenDental.UI.Button();
-			this.groupWebSched = new OpenDental.UI.GroupBox();
-			this.butWebSchedNotify = new OpenDental.UI.Button();
-			this.labelOperatory = new System.Windows.Forms.Label();
 			this.tabControl = new OpenDental.UI.TabControl();
 			this.tabPageAppts = new OpenDental.UI.TabPage();
 			this.label5 = new System.Windows.Forms.Label();
@@ -72,7 +62,6 @@ namespace OpenDental {
 			this.textDateEnd = new OpenDental.ValidDate();
 			this.label3 = new System.Windows.Forms.Label();
 			this.checkGroupFamilies = new OpenDental.UI.CheckBox();
-			this.gridWebSched = new OpenDental.UI.GridOD();
 			this.butRefresh = new OpenDental.UI.Button();
 			this.codeRangeFilter = new OpenDental.UI.ODCodeRangeFilter();
 			this.labelCodeRange = new System.Windows.Forms.Label();
@@ -82,7 +71,6 @@ namespace OpenDental {
 			this.splitterPanel2 = new OpenDental.UI.SplitterPanel();
 			this.menuApptsRightClick.SuspendLayout();
 			this.menuRecallsRightClick.SuspendLayout();
-			this.groupWebSched.SuspendLayout();
 			this.tabControl.SuspendLayout();
 			this.tabPageAppts.SuspendLayout();
 			this.tabPageRecalls.SuspendLayout();
@@ -220,113 +208,6 @@ namespace OpenDental {
 			this.comboClinic.Size = new System.Drawing.Size(203, 21);
 			this.comboClinic.TabIndex = 39;
 			// 
-			// butText
-			// 
-			this.butText.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.butText.Icon = OpenDental.UI.EnumIcons.Text;
-			this.butText.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			this.butText.Location = new System.Drawing.Point(967, 202);
-			this.butText.Name = "butText";
-			this.butText.Size = new System.Drawing.Size(87, 24);
-			this.butText.TabIndex = 62;
-			this.butText.Text = "Text";
-			this.butText.Click += new System.EventHandler(this.butText_Click);
-			// 
-			// comboEnd
-			// 
-			this.comboEnd.Location = new System.Drawing.Point(15, 101);
-			this.comboEnd.Name = "comboEnd";
-			this.comboEnd.Size = new System.Drawing.Size(108, 21);
-			this.comboEnd.TabIndex = 66;
-			this.comboEnd.Visible = false;
-			this.comboEnd.SelectionChangeCommitted += new System.EventHandler(this.comboEnd_SelectionChangeCommitted);
-			// 
-			// comboStart
-			// 
-			this.comboStart.Location = new System.Drawing.Point(15, 59);
-			this.comboStart.Name = "comboStart";
-			this.comboStart.Size = new System.Drawing.Size(108, 21);
-			this.comboStart.TabIndex = 65;
-			this.comboStart.Visible = false;
-			this.comboStart.SelectedIndexChanged += new System.EventHandler(this.comboStart_SelectedIndexChanged);
-			// 
-			// labelEnd
-			// 
-			this.labelEnd.Location = new System.Drawing.Point(17, 82);
-			this.labelEnd.Name = "labelEnd";
-			this.labelEnd.Size = new System.Drawing.Size(106, 16);
-			this.labelEnd.TabIndex = 64;
-			this.labelEnd.Text = "End Time";
-			this.labelEnd.TextAlign = System.Drawing.ContentAlignment.BottomLeft;
-			this.labelEnd.Visible = false;
-			// 
-			// labelStart
-			// 
-			this.labelStart.Location = new System.Drawing.Point(16, 42);
-			this.labelStart.Name = "labelStart";
-			this.labelStart.Size = new System.Drawing.Size(107, 16);
-			this.labelStart.TabIndex = 63;
-			this.labelStart.Text = "Start Time";
-			this.labelStart.TextAlign = System.Drawing.ContentAlignment.BottomLeft;
-			this.labelStart.Visible = false;
-			// 
-			// butSendWebSched
-			// 
-			this.butSendWebSched.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			this.butSendWebSched.Location = new System.Drawing.Point(15, 136);
-			this.butSendWebSched.Name = "butSendWebSched";
-			this.butSendWebSched.Size = new System.Drawing.Size(108, 24);
-			this.butSendWebSched.TabIndex = 67;
-			this.butSendWebSched.Text = "Send";
-			this.butSendWebSched.Click += new System.EventHandler(this.butWebSched_Click);
-			// 
-			// butWebSchedHist
-			// 
-			this.butWebSchedHist.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			this.butWebSchedHist.Location = new System.Drawing.Point(15, 166);
-			this.butWebSchedHist.Name = "butWebSchedHist";
-			this.butWebSchedHist.Size = new System.Drawing.Size(108, 24);
-			this.butWebSchedHist.TabIndex = 68;
-			this.butWebSchedHist.Text = "History";
-			this.butWebSchedHist.Click += new System.EventHandler(this.butWebSchedHist_Click);
-			// 
-			// groupWebSched
-			// 
-			this.groupWebSched.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.groupWebSched.Controls.Add(this.butWebSchedNotify);
-			this.groupWebSched.Controls.Add(this.labelOperatory);
-			this.groupWebSched.Controls.Add(this.butSendWebSched);
-			this.groupWebSched.Controls.Add(this.butWebSchedHist);
-			this.groupWebSched.Controls.Add(this.labelEnd);
-			this.groupWebSched.Controls.Add(this.comboEnd);
-			this.groupWebSched.Controls.Add(this.comboStart);
-			this.groupWebSched.Controls.Add(this.labelStart);
-			this.groupWebSched.Location = new System.Drawing.Point(940, 259);
-			this.groupWebSched.Name = "groupWebSched";
-			this.groupWebSched.Size = new System.Drawing.Size(140, 229);
-			this.groupWebSched.TabIndex = 69;
-			this.groupWebSched.Text = "Web Sched ASAP";
-			// 
-			// butWebSchedNotify
-			// 
-			this.butWebSchedNotify.Location = new System.Drawing.Point(15, 196);
-			this.butWebSchedNotify.Name = "butWebSchedNotify";
-			this.butWebSchedNotify.Size = new System.Drawing.Size(109, 24);
-			this.butWebSchedNotify.TabIndex = 75;
-			this.butWebSchedNotify.Text = "Notification Settings";
-			this.butWebSchedNotify.UseVisualStyleBackColor = true;
-			this.butWebSchedNotify.Click += new System.EventHandler(this.butWebSchedNotify_Click);
-			// 
-			// labelOperatory
-			// 
-			this.labelOperatory.Location = new System.Drawing.Point(6, 16);
-			this.labelOperatory.Name = "labelOperatory";
-			this.labelOperatory.Size = new System.Drawing.Size(130, 26);
-			this.labelOperatory.TabIndex = 69;
-			this.labelOperatory.Text = "Operatory:";
-			this.labelOperatory.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-			this.labelOperatory.Visible = false;
-			// 
 			// tabControl
 			// 
 			this.tabControl.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
@@ -406,7 +287,6 @@ namespace OpenDental {
 			this.gridAppts.Title = "Appointment ASAP List";
 			this.gridAppts.TranslationName = "TableASAP";
 			this.gridAppts.CellDoubleClick += new OpenDental.UI.ODGridClickEventHandler(this.gridAppts_CellDoubleClick);
-			this.gridAppts.MouseUp += new System.Windows.Forms.MouseEventHandler(this.gridAppts_MouseUp);
 			// 
 			// tabPageRecalls
 			// 
@@ -501,20 +381,6 @@ namespace OpenDental {
 			this.checkGroupFamilies.TabIndex = 74;
 			this.checkGroupFamilies.Text = "Group Families";
 			// 
-			// gridWebSched
-			// 
-			this.gridWebSched.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-			this.gridWebSched.ContextMenuStrip = this.menuApptsRightClick;
-			this.gridWebSched.Location = new System.Drawing.Point(6, 1);
-			this.gridWebSched.Name = "gridWebSched";
-			this.gridWebSched.SelectionMode = OpenDental.UI.GridSelectionMode.None;
-			this.gridWebSched.Size = new System.Drawing.Size(908, 131);
-			this.gridWebSched.TabIndex = 9;
-			this.gridWebSched.TabStop = false;
-			this.gridWebSched.Title = "Web Sched ASAP Messages";
-			// 
 			// butRefresh
 			// 
 			this.butRefresh.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
@@ -574,7 +440,6 @@ namespace OpenDental {
 			// 
 			// splitterPanel2
 			// 
-			this.splitterPanel2.Controls.Add(this.gridWebSched);
 			this.splitterPanel2.Location = new System.Drawing.Point(0, 413);
 			this.splitterPanel2.Name = "splitterPanel2";
 			this.splitterPanel2.Size = new System.Drawing.Size(920, 133);
@@ -587,8 +452,6 @@ namespace OpenDental {
 			this.Controls.Add(this.labelCodeRange);
 			this.Controls.Add(this.codeRangeFilter);
 			this.Controls.Add(this.butRefresh);
-			this.Controls.Add(this.groupWebSched);
-			this.Controls.Add(this.butText);
 			this.Controls.Add(this.comboClinic);
 			this.Controls.Add(this.comboSite);
 			this.Controls.Add(this.labelSite);
@@ -604,7 +467,6 @@ namespace OpenDental {
 			this.Shown += new System.EventHandler(this.FormASAP_Shown);
 			this.menuApptsRightClick.ResumeLayout(false);
 			this.menuRecallsRightClick.ResumeLayout(false);
-			this.groupWebSched.ResumeLayout(false);
 			this.tabControl.ResumeLayout(false);
 			this.tabPageAppts.ResumeLayout(false);
 			this.tabPageRecalls.ResumeLayout(false);
@@ -628,18 +490,8 @@ namespace OpenDental {
 		private ToolStripMenuItem menuApptSendToPinboard;
 		private ToolStripMenuItem toolStripMenuItemRemoveFromASAP;
 		private ToolStripMenuItem toolStripMenuItemMakeAppt;
-		private UI.Button butText;
 		private ContextMenuStrip menuApptsRightClick;
 		private ContextMenuStrip menuRecallsRightClick;
-		private OpenDental.UI.ComboBox comboEnd;
-		private OpenDental.UI.ComboBox comboStart;
-		private Label labelEnd;
-		private Label labelStart;
-		private UI.Button butSendWebSched;
-		private UI.Button butWebSchedHist;
-		private OpenDental.UI.GroupBox groupWebSched;
-		private OpenDental.UI.GridOD gridWebSched;
-		private Label labelOperatory;
 		private OpenDental.UI.TabControl tabControl;
 		private OpenDental.UI.TabPage tabPageAppts;
 		private OpenDental.UI.TabPage tabPageRecalls;
@@ -660,7 +512,6 @@ namespace OpenDental {
 		private OpenDental.UI.ODCodeRangeFilter codeRangeFilter;
 		private Label labelCodeRange;
 		private OpenDental.UI.MenuOD menuMain;
-		private UI.Button butWebSchedNotify;
 		private Label label5;
 		private OpenDental.UI.ComboBox comboShowHygiene;
 		private UI.SplitContainer splitContainer;

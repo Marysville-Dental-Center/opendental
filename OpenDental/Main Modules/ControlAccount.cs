@@ -722,14 +722,6 @@ namespace OpenDental {
 			if(_dataSetMain.Tables["Commlog"].Rows[row]["EmailMessageNum"].ToString()!="0") {
 				EmailMessage emailMessage=
 					EmailMessages.GetOne(PIn.Long(_dataSetMain.Tables["Commlog"].Rows[row]["EmailMessageNum"].ToString()));
-				if(EmailMessages.IsSecureWebMail(emailMessage.SentOrReceived)) {
-					//web mail uses special secure messaging portal
-					using FormWebMailMessageEdit formWebMailMessageEdit=new FormWebMailMessageEdit(_patient.PatNum,emailMessage);
-					if(formWebMailMessageEdit.ShowDialog()==DialogResult.OK) {
-						ModuleSelected(_patient.PatNum);
-					}
-					return;
-				}
 				using FormEmailMessageEdit formEmailMessageEdit=new FormEmailMessageEdit(emailMessage);
 				formEmailMessageEdit.ShowDialog();
 				if(formEmailMessageEdit.DialogResult==DialogResult.OK) {
@@ -790,29 +782,6 @@ namespace OpenDental {
 				GlobalFormOpenDental.PatientSelected(_patient,false);
 			}
 			ModuleSelected(_patient.PatNum);
-		}
-
-		private void gridPayPlan_CellClick(object sender,ODGridClickEventArgs e) {
-			DataRow dataRow=(DataRow)gridPayPlan.ListGridRows[e.Row].Tag;
-			if(dataRow["PayPlanNum"].ToString()=="0") {
-				return;
-			}
-			PayPlan payPlan=PayPlans.GetOne(PIn.Long(dataRow["PayPlanNum"].ToString()));
-			if(payPlan==null) {
-				MsgBox.Show(this,"This pay plan has been deleted by another user.");
-				return;
-			}
-			if(gridPayPlan.Columns[e.Col].Heading!="eClipboard") {
-				return;
-			}
-			if(payPlan.MobileAppDeviceNum<=0) {
-				return;
-			}
-			if(MsgBox.Show(this,MsgBoxButtons.YesNo,"Would you like to recall this payment plan from the mobile device?")) {
-				MobileNotifications.CI_RemovePaymentPlan(payPlan.MobileAppDeviceNum,payPlan);
-				//Signalods.SetInvalid(InvalidType.AccModule,KeyType.PatNum,payPlan.PatNum);
-				return;
-			}
 		}
 
 		private void gridPayPlan_CellDoubleClick(object sender,ODGridClickEventArgs e) {
@@ -1838,56 +1807,6 @@ namespace OpenDental {
 			ModuleSelected(_patient.PatNum);
 		}
 
-		private void menuItemRepeatSignupPortal_Click(object sender,EventArgs e) {
-			if(_patient==null) {
-				MsgBox.Show(this,"A customer must be selected first.");
-				return;
-			}
-			List<RegistrationKey> listRegistrationKeys=RegistrationKeys.GetForPatient(_patient.PatNum)
-				//.Where(x => RegistrationKeys.KeyIsEnabled(x)) //We no longer want to only show enabled keys, sometimes we need to manage disabled.
-				.OrderBy(x => x.RegKey)
-				.ToList();
-			if(listRegistrationKeys.Count<1) {
-				MsgBox.Show(this,"No registration keys found for this customer's family.");
-				return;
-			}
-			RegistrationKey registrationKey;
-			if(listRegistrationKeys.Count==1) {
-				registrationKey=listRegistrationKeys[0];
-			}
-			else {
-				List<string> listKeysDisplayed=new List<string>();
-				for(int i=0;i<listRegistrationKeys.Count;i++) {
-					string str="PatNum: "+listRegistrationKeys[i].PatNum+"  RegKey: "+listRegistrationKeys[i].RegKey;
-					if(listRegistrationKeys[i].DateDisabled<DateTime.Today && listRegistrationKeys[i].DateDisabled.Year>1) {
-						str+="  Disabled: "+listRegistrationKeys[i].DateDisabled.ToShortDateString();
-					}
-					if(listRegistrationKeys[i].DateEnded<DateTime.Today && listRegistrationKeys[i].DateEnded.Year>1) {
-						str+="  Ended: "+listRegistrationKeys[i].DateEnded.ToShortDateString();
-					}
-					listKeysDisplayed.Add(str);
-				}
-				InputBox inputBox=new InputBox("Select a registration key to load into the Signup Portal",listKeysDisplayed);
-				inputBox.ShowDialog();
-				if(inputBox.IsDialogCancel) {
-					return;
-				}
-				registrationKey=listRegistrationKeys[inputBox.SelectedIndex];
-			}
-			WebServiceMainHQProxy.EServiceSetup.SignupOut signupOut=null;
-			try {
-				//Get the URL for the selected registration key.
-				signupOut=WebServiceMainHQProxy.GetEServiceSetupLite(SignupPortalPermission.FromHQ,registrationKey.RegKey,"","","");
-			}
-			catch(Exception ex) {
-				MessageBox.Show(ex.Message);
-				return;
-			}
-			using FormEServicesSignup formEServicesSignup=new FormEServicesSignup(signupOut);
-			formEServicesSignup.ShowDialog();
-			ModuleSelected(_patient.PatNum);//Refresh the module.
-		}
-
 		private void MenuItemRepeatStand_Click(object sender,EventArgs e) {
 			if(!ProcedureCodes.GetContainsKey("001")) {
 				return;
@@ -2052,48 +1971,6 @@ namespace OpenDental {
 				statement.InsEst=guarantor.InsEst;
 			}
 			PrintStatement(statement);
-			ModuleSelected(_patient.PatNum);
-		}
-
-		private void menuItemSendPaymentToDevice_Click(object sender,EventArgs e) {
-			if(_patient==null) {
-				MsgBox.Show("Please select a patient first.");
-				return;
-			}
-			if(!MobileAppDevices.IsClinicSignedUpForEClipboard(Clinics.ClinicNum)) {
-				if(PrefC.HasClinicsEnabled) {
-					MsgBox.Show(this,"Please enable eClipboard for the current clinic to use this feature.");
-					return;
-				}
-				MsgBox.Show(this,"Please enable eClipboard to use this feature.");
-				return;
-			}
-			string error="";
-			if(!PrefC.HasOnlinePaymentEnabled(out ProgramName progName)) {
-				error+="Please enable online payments.\n";
-			}
-			if(!IsWebPaymentsEnabled()) {
-				error+="Please enable payments for eClipboard to use this feature.\n";
-			}
-			if(!error.IsNullOrEmpty()) {
-				MsgBox.Show(error);
-				return;
-			}
-			MobileAppDevice mobileAppDevice=MobileAppDevices.ShouldCreateMobileNotification(_patient.PatNum);
-			if(mobileAppDevice != null) {
-				PushPaymentToEclipboard(mobileAppDevice);
-				return;
-			}
-			OpenUnlockCodeForPayment();
-		}
-
-		private void menuItemSendMessageToPay_Click(object sender,EventArgs e) {
-			if(_patient==null) {
-				MsgBox.Show("Please select a patient first.");
-				return;
-			}
-			FormMessageToPayEdit formMessageToPayEdit=new FormMessageToPayEdit(_patient);
-			formMessageToPayEdit.ShowDialog();
 			ModuleSelected(_patient.PatNum);
 		}
 
@@ -3853,8 +3730,6 @@ namespace OpenDental {
 				col=new GridColumn(Lan.g("TablePaymentPlans","Due Now"),60,HorizontalAlignment.Right);
 			}
 			gridPayPlan.Columns.Add(col);
-			col=new GridColumn(Lan.g("TablePaymentPlans","eClipboard"),65,HorizontalAlignment.Center);
-			gridPayPlan.Columns.Add(col);
 			gridPayPlan.ListGridRows.Clear();
 			GridRow row;
 			GridCell cell;
@@ -3914,12 +3789,6 @@ namespace OpenDental {
 					}
 				}
 				row.Cells.Add(cell);
-				if(PIn.Long(table.Rows[i]["MobileAppDeviceNum"].ToString())>0) {
-					row.Cells.Add("X");
-				}
-				else {
-					row.Cells.Add("");
-				}
 				row.Tag=table.Rows[i];
 				if(listPayPlansOvercharged.ConvertAll(x => x.PayPlanNum).Contains(PIn.Long(table.Rows[i]["PayPlanNum"].ToString()))) {
 					row.ColorBackG=Color.FromArgb(255,255,128);
@@ -4437,12 +4306,6 @@ namespace OpenDental {
 		private void PrintStatement(Statement statement) {
 			Cursor=Cursors.WaitCursor;
 			Statements.Insert(statement);
-			//When the statement gets inserted into the db, check and see if a pat is on a mobile device to refresh payments
-			List<MobileAppDevice> listMobileAppDevices=MobileAppDevices.GetAll();
-			MobileAppDevice mobileAppDevice=listMobileAppDevices.Find(x => x.PatNum==_patient.PatNum);
-			if(mobileAppDevice!=null && mobileAppDevice.LastCheckInActivity>DateTime.Now.AddHours(-1)) {
-				MobileNotifications.CI_RefreshPayment(mobileAppDevice.MobileAppDeviceNum,_patient.PatNum);
-			}
 			SheetDef sheetDef=SheetUtil.GetStatementSheetDef(statement);
 			Sheet sheet=SheetUtil.CreateSheet(sheetDef,statement.PatNum,statement.HidePayment);
 			DataSet dataSet=AccountModules.GetAccount(statement.PatNum,statement,doShowHiddenPaySplits:statement.IsReceipt);
@@ -4699,33 +4562,6 @@ namespace OpenDental {
 			return Clearinghouses.OverrideFields(clearingHouse,claim.ClinicNum);
 		}
 
-		///<summary>Returns true if XCharge or PayConnect payments are allowed to be made for the currently selected clinic.</summary>
-		private static bool IsWebPaymentsEnabled() {
-			return IsXWebPaymentsEnabled() || IsPayConnectPaymentsEnabled();
-		}
-
-		private static bool IsXWebPaymentsEnabled() {
-			WebPaymentProperties webPaymentProperties;
-			try {
-				ProgramProperties.GetXWebCreds(Clinics.ClinicNum,out webPaymentProperties);
-			}
-			catch {
-				return false;
-			}
-			return webPaymentProperties.IsPaymentsAllowed;
-		}
-
-		private static bool IsPayConnectPaymentsEnabled() {
-			PayConnect.WebPaymentProperties webPaymentProperties=new PayConnect.WebPaymentProperties();
-			try {
-				ProgramProperties.GetPayConnectPatPortalCreds(Clinics.ClinicNum,out webPaymentProperties);
-			}
-			catch {
-				return false;
-			}
-			return webPaymentProperties.IsPaymentsAllowed;
-		}
-
 		private void PayPlanHelper(PayPlanModes payPlanMode) {
 			if(!Security.IsAuthorized(EnumPermType.PayPlanEdit)) {
 				return;
@@ -4792,35 +4628,6 @@ namespace OpenDental {
 				if(!string.IsNullOrEmpty(msg)) {
 					MessageBox.Show(this,msg+"\r\n"+Lan.g(this,"The account will have to be suspended manually using the A/R Manager or the TSI web portal."));
 				}
-			}
-		}
-
-		///<summary>If the "Make Payment" action item in eClip isn't present, this will add it.</summary>
-		private void PushPaymentToEclipboard(MobileAppDevice mobileAppDevice) {
-			string errMsg=MobileNotifications.CI_SendPayment(mobileAppDevice.MobileAppDeviceNum,_patient.PatNum);
-			if(errMsg.IsNullOrEmpty()) {
-				MsgBox.Show($"Payment option sent to: {mobileAppDevice.DeviceName}");
-				return;
-			}
-			//Error occurred
-			MsgBox.Show($"Error sending payment option: {errMsg}");
-		}
-
-		///<summary>Opens a FormMobileCode window.</summary>
-		private void OpenUnlockCodeForPayment() {
-			MobileDataByte funcInsertDataForUnlockCode(string unlockCode) {
-				MobileDataByte mobileDataByte=new MobileDataByte() {
-					PatNum=_patient.PatNum,
-					RawBase64Code=unlockCode.IsNullOrEmpty()?"":Convert.ToBase64String(Encoding.UTF8.GetBytes(unlockCode)),
-					ActionType=eActionType.MakePayment,
-				};
-				if(MobileDataBytes.Insert(mobileDataByte)>0) {
-					return mobileDataByte;
-				}
-				return null;
-			}
-			using(FormMobileCode formMobileCode=new FormMobileCode(funcInsertDataForUnlockCode)) {
-				formMobileCode.ShowDialog();
 			}
 		}
 

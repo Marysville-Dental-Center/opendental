@@ -104,7 +104,6 @@ namespace OpenDental {
 			this.label2 = new System.Windows.Forms.Label();
 			this.butAdj = new OpenDental.UI.Button();
 			this.textAdjustment = new OpenDental.ValidDouble();
-			this.butSendToDevice = new OpenDental.UI.Button();
 			this.warningIntegrity1 = new OpenDental.UI.WarningIntegrity();
 			this.labelSignature = new System.Windows.Forms.Label();
 			this.signatureBoxWrapper = new OpenDental.UI.SignatureBoxWrapper();
@@ -840,19 +839,6 @@ namespace OpenDental {
 			this.textAdjustment.TabIndex = 190;
 			this.textAdjustment.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
 			// 
-			// butSendToDevice
-			// 
-			this.butSendToDevice.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.butSendToDevice.Image = global::OpenDental.Properties.Resources.arrowRightLine;
-			this.butSendToDevice.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			this.butSendToDevice.Location = new System.Drawing.Point(486, 661);
-			this.butSendToDevice.Name = "butSendToDevice";
-			this.butSendToDevice.Size = new System.Drawing.Size(87, 24);
-			this.butSendToDevice.TabIndex = 191;
-			this.butSendToDevice.Text = "eClipboard";
-			this.butSendToDevice.UseVisualStyleBackColor = true;
-			this.butSendToDevice.Click += new System.EventHandler(this.butSendToDevice_Click);
-			// 
 			// warningIntegrity1
 			// 
 			this.warningIntegrity1.Location = new System.Drawing.Point(0, 0);
@@ -917,7 +903,6 @@ namespace OpenDental {
 			this.Controls.Add(this.labelSignature);
 			this.Controls.Add(this.signatureBoxWrapper);
 			this.Controls.Add(this.warningIntegrity1);
-			this.Controls.Add(this.butSendToDevice);
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.labelTxAmtInfo);
 			this.Controls.Add(this.textAdjustment);
@@ -1063,7 +1048,6 @@ namespace OpenDental {
 		private Label labelInterestDelay2;
 		private Label labelDateInterestStart;
 		private ValidDate textDateInterestStart;
-		private UI.Button butSendToDevice;
 		private UI.WarningIntegrity warningIntegrity1;
 		private Label labelSignature;
 	}

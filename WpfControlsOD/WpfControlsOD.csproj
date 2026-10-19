@@ -285,9 +285,6 @@
     <Compile Include="Frms\FrmChildRooms.xaml.cs">
       <DependentUpon>FrmChildRooms.xaml</DependentUpon>
     </Compile>
-		<Compile Include="Frms\FrmEClipboardDefEdit.xaml.cs">
-			<DependentUpon>FrmEClipboardDefEdit.xaml</DependentUpon>
-		</Compile>
     <Compile Include="InternalTools\Job Manager\FrmJobGitBranch.xaml.cs">
       <DependentUpon>FrmJobGitBranch.xaml</DependentUpon>
     </Compile>
@@ -311,9 +308,6 @@
     </Compile>
     <Compile Include="Frms\FrmApptProvPrompt.xaml.cs">
       <DependentUpon>FrmApptProvPrompt.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Frms\FrmERoutingActionDefEdit.xaml.cs">
-      <DependentUpon>FrmERoutingActionDefEdit.xaml</DependentUpon>
     </Compile>
     <Compile Include="Frms\FrmEFormImportRuleEdit.xaml.cs">
       <DependentUpon>FrmEFormImportRuleEdit.xaml</DependentUpon>
@@ -600,9 +594,6 @@
     <Compile Include="Frms\FrmSheetSetup.xaml.cs">
       <DependentUpon>FrmSheetSetup.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Frms\FrmShortCodeOptIn.xaml.cs">
-      <DependentUpon>FrmShortCodeOptIn.xaml</DependentUpon>
-    </Compile>
     <Compile Include="Frms\FrmSiteEdit.xaml.cs">
       <DependentUpon>FrmSiteEdit.xaml</DependentUpon>
     </Compile>
@@ -871,10 +862,6 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-		<Page Include="Frms\FrmEClipboardDefEdit.xaml">
-			<Generator>MSBuild:Compile</Generator>
-			<SubType>Designer</SubType>
-		</Page>
     <Page Include="InternalTools\Job Manager\FrmJobGitBranch.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -904,10 +891,6 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Frms\FrmApptProvPrompt.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Frms\FrmERoutingActionDefEdit.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
@@ -1288,10 +1271,6 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Frms\FrmSheetSetup.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Frms\FrmShortCodeOptIn.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

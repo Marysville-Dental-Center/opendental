@@ -92,9 +92,7 @@ namespace OpenDental {
 			}
 			listManualMessageSource.Items.Clear();
 			listManualMessageSource.Items.AddList(EmailMessage.GetMsgTypesForEmailClient(),x => Lan.g("enum"+typeof(EmailMessageSource).Name,x.GetDescription()));
-			if(!IsWebMail()) {
-				listManualMessageSource.SetAll(true);
-			}
+			listManualMessageSource.SetAll(true);
 			listAutomatedMessageSource.Items.Clear();
 			listAutomatedMessageSource.Items.AddList(EmailMessage.GetMsgTypesForEmailClient(isAutomated:true),x => Lan.g("enum"+typeof(EmailMessageSource).Name,x.GetDescription()));
 			groupSentMessageSource.Enabled=GetActiveMailbox()==MailboxType.Sent;
@@ -147,13 +145,6 @@ namespace OpenDental {
 				.OrderByDescending(x=>x.UserNum==curUserNum) //place user email first
 				.ThenByDescending(x=>x.EmailAddressNum==defaultEmailAddressNum)//then practice default
 				.ToList();
-			if(Security.CurUser.ProvNum!=0) {//Only providers have access to see Webmail messages.
-				EmailAddress webMail=new EmailAddress() {
-					EmailUsername="WebMail",
-					WebmailProvNum=Security.CurUser.ProvNum,
-				};
-				listEmailAddresses.Add(webMail);
-			}
 			comboEmailAddress.Items.Clear();//Clear out email addresses currently in combobox as to not duplicate them
 			comboEmailAddress.Items.AddList(listEmailAddresses,x=>EmailAddresses.GetDisplayStringForComboBox(x,curUserNum,defaultEmailAddressNum));
 			bool isPreviousAddressAvailable=listEmailAddresses.Any(x => x.EmailAddressNum==emailAddressNumPreviouslySelected);//Checks if previously selected email address still available in comboBox
@@ -213,9 +204,6 @@ namespace OpenDental {
 		private void GetMessages() {
 			_isRefreshInbox=true;
 			FillGridInbox();
-			if(IsWebMail()) { //WebMail is selected
-				return;//Webmail messages are in the database, so we will not need to receive email from the email server.
-			}
 			if(GetSelectedAddress().EmailUsername=="" || GetSelectedAddress().Pop3ServerIncoming=="") {//Email address not setup.
 				return;
 			}
@@ -268,12 +256,7 @@ namespace OpenDental {
 				listEmailMessagesFiltered=_listEmailMessagesInboxSearched.Where(x => EmailMessages.GetAddressSimple(x.RecipientAddress).ToLower().Contains(GetSelectedAddress().EmailUsername.ToLower())).ToList();
 			}
 			else {
-				if(IsWebMail()) {
-					listEmailMessagesFiltered=_listEmailMessagesInbox.Where(x => x.ProvNumWebMail==Security.CurUser.ProvNum).ToList();
-				}
-				else {
-					listEmailMessagesFiltered=_listEmailMessagesInbox.Where(x => EmailMessages.GetAddressSimple(x.RecipientAddress).ToLower().Contains(GetSelectedAddress().EmailUsername.ToLower())).ToList();
-				}
+				listEmailMessagesFiltered=_listEmailMessagesInbox.Where(x => EmailMessages.GetAddressSimple(x.RecipientAddress).ToLower().Contains(GetSelectedAddress().EmailUsername.ToLower())).ToList();
 			}
 			//Refresh the local list of patient names with all of the patients in the filtered email list.
 			if(!listEmailMessagesFiltered.IsNullOrEmpty()) {
@@ -409,12 +392,7 @@ namespace OpenDental {
 				listEmailsFiltered=_listEmailMessagesSentSearched.FindAll(x => EmailMessages.GetAddressSimple(x.FromAddress).ToLower().In(arrayAddresses));
 			}
 			else {
-				if(IsWebMail()) {
-					listEmailsFiltered=_listEmailMessagesSent.Where(x => x.ProvNumWebMail==Security.CurUser.ProvNum).ToList();
-				}
-				else {
-					listEmailsFiltered=_listEmailMessagesSent.FindAll(x => EmailMessages.GetAddressSimple(x.FromAddress).ToLower().In(arrayAddresses));
-				}
+				listEmailsFiltered=_listEmailMessagesSent.FindAll(x => EmailMessages.GetAddressSimple(x.FromAddress).ToLower().In(arrayAddresses));
 			}
 			//Refresh the local list of patient names with all of the patients in the filtered email list.
 			if(!listEmailsFiltered.IsNullOrEmpty()) {
@@ -427,17 +405,10 @@ namespace OpenDental {
 				if(!checkShowHiddenEmails.Checked && listEmailsFiltered[i].HideIn.HasFlag(HideInFlags.EmailInbox)) {//We might need a separate HideInFlags.EmailSent option later.
 					continue;
 				}
-				if(IsWebMail()) {
-					if(!EmailMessages.GetSentTypes(EmailPlatform.WebMail).Contains(listEmailsFiltered[i].SentOrReceived)) {
-						continue;
-					}
-				}
-				else {
-					if(!listManualMessageSource.GetListSelected<EmailMessageSource>().Contains(listEmailsFiltered[i].MsgType)
-						&& !listAutomatedMessageSource.GetListSelected<EmailMessageSource>().Contains(listEmailsFiltered[i].MsgType))
-					{
-						continue;
-					}
+				if(!listManualMessageSource.GetListSelected<EmailMessageSource>().Contains(listEmailsFiltered[i].MsgType)
+					&& !listAutomatedMessageSource.GetListSelected<EmailMessageSource>().Contains(listEmailsFiltered[i].MsgType))
+				{
+					continue;
 				}
 				if(!checkShowFailedSent.Checked && listEmailsFiltered[i].SentOrReceived==EmailSentOrReceived.SendFailed) {
 					//Only show failed messages when show failed sent checkbox is checked
@@ -512,11 +483,6 @@ namespace OpenDental {
 			for(int i=0;i<_listHideInFlags.Count;i++) {
 				listShowIn.Items.Add(Lan.g("enumHideInFlags",(_listHideInFlags[i]).GetDescription()));
 			}
-		}
-
-		///<summary>Returns true if the currently selected email client is WebMail.</summary>
-		private bool IsWebMail() {
-			return GetSelectedAddress().EmailUsername=="WebMail";
 		}
 
 		///<summary>Updates listShowIn according to current selections in GridSent/GridInbox</summary>
@@ -732,20 +698,10 @@ namespace OpenDental {
 			EmailMessage emailMessage=(EmailMessage)GetActiveGrid().ListGridRows[e.Row].Tag;
 			//When an email is read from the database for display in the inbox, the BodyText is limited to 50 characters and the RawEmailIn is blank.
 			emailMessage=EmailMessages.GetOne(emailMessage.EmailMessageNum);//Refresh the email from the database to include the full BodyText and RawEmailIn.
-			if(EmailMessages.IsSecureWebMail(emailMessage.SentOrReceived)) {
-				//web mail uses special secure messaging portal
-				using FormWebMailMessageEdit formWebMailMessageEdit=new FormWebMailMessageEdit(emailMessage.PatNum,emailMessage);
-				//Will return Abort if validation fails on load or message was deleted, in which case do not set email as read.
-				if(formWebMailMessageEdit.ShowDialog() != DialogResult.Abort) {
-					emailMessage.SentOrReceived=EmailMessages.UpdateSentOrReceivedRead(emailMessage);//Mark the message read.
-				}
-			}
-			else {
-				emailMessage.SentOrReceived=EmailMessages.UpdateSentOrReceivedRead(emailMessage); //mark read
-				FormEmailMessageEdit formEmailMessageEdit=new FormEmailMessageEdit(emailMessage,GetSelectedAddress(),false);
-				formEmailMessageEdit.FormClosed+=FormEmailMessage_Closed; //takes care of updating email message grid (Inbox/Sent) when edit window closes
-				formEmailMessageEdit.Show(); //any changes are taken care of in the edit window by signals.
-			}
+			emailMessage.SentOrReceived=EmailMessages.UpdateSentOrReceivedRead(emailMessage); //mark read
+			FormEmailMessageEdit formEmailMessageEdit=new FormEmailMessageEdit(emailMessage,GetSelectedAddress(),false);
+			formEmailMessageEdit.FormClosed+=FormEmailMessage_Closed; //takes care of updating email message grid (Inbox/Sent) when edit window closes
+			formEmailMessageEdit.Show(); //any changes are taken care of in the edit window by signals.
 		}
 
 		private void butMarkUnread_Click(object sender,EventArgs e) {
@@ -1018,7 +974,7 @@ namespace OpenDental {
 			SetButtonsEnabled();
 			FillInboxOrSent();
 			groupSentMessageSource.Enabled=false;
-			if(GetActiveMailbox()==MailboxType.Sent && !IsWebMail()) {
+			if(GetActiveMailbox()==MailboxType.Sent) {
 				groupSentMessageSource.Enabled=true;
 			}
 			Cursor=Cursors.Default;
@@ -1029,13 +985,6 @@ namespace OpenDental {
 			groupSentMessageSource.Enabled=GetActiveMailbox()==MailboxType.Sent;
 			if(GetSelectedAddress().EmailUsername==""||GetSelectedAddress().Pop3ServerIncoming=="") {//Email address not setup.
 				Text="Email Client - The currently selected email address is not setup to receive email.";
-			}
-			if(IsWebMail()) { //WebMail is selected
-				Text="Email Client for "+GetSelectedAddress().EmailUsername;
-				groupSentMessageSource.Enabled=false;
-				listAutomatedMessageSource.SetAll(false);
-				listManualMessageSource.SetAll(false);
-				checkShowFailedSent.Checked=false;
 			}
 			Cursor=Cursors.WaitCursor;
 			RefreshLists();

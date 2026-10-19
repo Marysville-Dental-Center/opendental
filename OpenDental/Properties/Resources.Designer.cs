@@ -1712,16 +1712,6 @@ namespace OpenDental.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        public static System.Drawing.Bitmap webSched_PV_Button {
-            get {
-                object obj = ResourceManager.GetObject("webSched_PV_Button", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to &lt;Style x:Key=&quot;DataGridStyle&quot; TargetType=&quot;{x:Type DataGrid}&quot;
         ///    xmlns=&quot;http://schemas.microsoft.com/winfx/2006/xaml/presentation&quot;
         ///	xmlns:x=&quot;http://schemas.microsoft.com/winfx/2006/xaml&quot;&gt;

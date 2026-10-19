@@ -64,7 +64,6 @@ namespace OpenDental {
 			this.butInsRem = new OpenDental.UI.Button();
 			this.ToolBarMain = new OpenDental.UI.ToolBarOD();
 			this.textNote = new OpenDental.ODtextBox();
-			this.butSendToDevice = new OpenDental.UI.Button();
 			this.menuConsent = new System.Windows.Forms.ContextMenu();
 			this.userControlIndDis = new OpenDental.DashIndividualDiscount();
 			this.tabControlShowSort.SuspendLayout();
@@ -462,17 +461,6 @@ namespace OpenDental {
 			this.textNote.TextChanged += new System.EventHandler(this.textNote_TextChanged);
 			this.textNote.Leave += new System.EventHandler(this.textNote_Leave);
 			// 
-			// butSendToDevice
-			// 
-			this.butSendToDevice.Image = global::OpenDental.Properties.Resources.arrowRightLine;
-			this.butSendToDevice.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			this.butSendToDevice.Location = new System.Drawing.Point(429, 91);
-			this.butSendToDevice.Name = "butSendToDevice";
-			this.butSendToDevice.Size = new System.Drawing.Size(90, 23);
-			this.butSendToDevice.TabIndex = 78;
-			this.butSendToDevice.Text = "eClipboard";
-			this.butSendToDevice.Click += new System.EventHandler(this.butSendToDevice_Click);
-			// 
 			// menuConsent
 			// 
 			this.menuConsent.Popup += new System.EventHandler(this.menuConsent_Popup);
@@ -488,7 +476,6 @@ namespace OpenDental {
 			// 
 			this.BackColor = System.Drawing.Color.White;
 			this.Controls.Add(this.userControlIndDis);
-			this.Controls.Add(this.butSendToDevice);
 			this.Controls.Add(this.butInsRem);
 			this.Controls.Add(this.userControlIndIns);
 			this.Controls.Add(this.userControlFamIns);
@@ -541,7 +528,6 @@ namespace OpenDental {
 		private DashFamilyInsurance userControlFamIns;
 		private DashIndividualDiscount userControlIndDis;
 		private DashIndividualInsurance userControlIndIns;
-		private UI.Button butSendToDevice;
 		private UI.Button butInsRem;
 		private UI.Button butNewTP;
 		private UI.Button butSaveTP;

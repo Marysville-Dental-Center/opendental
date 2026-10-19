@@ -36,9 +36,7 @@ namespace OpenDental{
 			this.textMessage = new OpenDental.ODtextBox();
 			this.butOK = new OpenDental.UI.Button();
 			this.labelCharCount = new System.Windows.Forms.Label();
-			this.labelMsgCount = new System.Windows.Forms.Label();
 			this.textCharCount = new OpenDental.ODtextBox();
-			this.textMsgCount = new OpenDental.ODtextBox();
 			this.groupRecipient.SuspendLayout();
 			this.SuspendLayout();
 			// 
@@ -168,15 +166,6 @@ namespace OpenDental{
 			this.labelCharCount.Text = "Character Count";
 			this.labelCharCount.TextAlign = System.Drawing.ContentAlignment.TopRight;
 			// 
-			// labelMsgCount
-			// 
-			this.labelMsgCount.Location = new System.Drawing.Point(190, 162);
-			this.labelMsgCount.Name = "labelMsgCount";
-			this.labelMsgCount.Size = new System.Drawing.Size(115, 13);
-			this.labelMsgCount.TabIndex = 165;
-			this.labelMsgCount.Text = "Message Count";
-			this.labelMsgCount.TextAlign = System.Drawing.ContentAlignment.TopRight;
-			// 
 			// textCharCount
 			// 
 			this.textCharCount.AcceptsTab = true;
@@ -193,28 +182,10 @@ namespace OpenDental{
 			this.textCharCount.TabStop = false;
 			this.textCharCount.Text = "0";
 			// 
-			// textMsgCount
-			// 
-			this.textMsgCount.AcceptsTab = true;
-			this.textMsgCount.BackColor = System.Drawing.SystemColors.Control;
-			this.textMsgCount.DetectLinksEnabled = false;
-			this.textMsgCount.DetectUrls = false;
-			this.textMsgCount.Location = new System.Drawing.Point(306, 159);
-			this.textMsgCount.Name = "textMsgCount";
-			this.textMsgCount.QuickPasteType = OpenDentBusiness.EnumQuickPasteType.TxtMsg;
-			this.textMsgCount.ReadOnly = true;
-			this.textMsgCount.ScrollBars = System.Windows.Forms.RichTextBoxScrollBars.Vertical;
-			this.textMsgCount.Size = new System.Drawing.Size(53, 20);
-			this.textMsgCount.TabIndex = 167;
-			this.textMsgCount.TabStop = false;
-			this.textMsgCount.Text = "0";
-			// 
 			// FormTxtMsgEdit
 			// 
 			this.ClientSize = new System.Drawing.Size(377, 339);
-			this.Controls.Add(this.textMsgCount);
 			this.Controls.Add(this.textCharCount);
-			this.Controls.Add(this.labelMsgCount);
 			this.Controls.Add(this.labelCharCount);
 			this.Controls.Add(this.butPatFind);
 			this.Controls.Add(this.groupRecipient);
@@ -249,8 +220,6 @@ namespace OpenDental{
 		private System.Windows.Forms.Label label4;
 		private UI.Button butPatFind;
 		private System.Windows.Forms.Label labelCharCount;
-		private System.Windows.Forms.Label labelMsgCount;
 		private ODtextBox textCharCount;
-		private ODtextBox textMsgCount;
 	}
 }

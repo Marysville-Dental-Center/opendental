@@ -111,7 +111,6 @@ namespace OpenDental{
 			{
 				label1,
 				labelCheckInsFrequency,
-				butSendToDevice,
 				butInsRem,
 				butPlannedAppt,
 				butRefresh,
@@ -461,10 +460,6 @@ namespace OpenDental{
 			ToolBarMainCreate_Click();
 		}
 
-		private void butSendToDevice_Click(object sender,EventArgs e) {
-			TrySendTreatPlan();
-		}
-
 		private void FillPlans(bool doRefreshData=true){
 			gridPlans.BeginUpdate();
 			gridPlans.Columns.Clear();
@@ -475,8 +470,6 @@ namespace OpenDental{
 			col=new GridColumn(Lan.g("TableTPList","Heading"),165);
 			gridPlans.Columns.Add(col);
 			col=new GridColumn(Lan.g("TableTPList","Signed"),50,HorizontalAlignment.Center);
-			gridPlans.Columns.Add(col);
-			col=new GridColumn(Lan.g("TabkeTPList","eClipboard"),75,HorizontalAlignment.Center);
 			gridPlans.Columns.Add(col);
 			gridPlans.ListGridRows.Clear();
 			if(PatientCur==null){
@@ -489,24 +482,8 @@ namespace OpenDental{
 			_listProceduresTP=Procedures.SortListByTreatPlanPriority(_listProcedures.FindAll(x => x.ProcStatus==ProcStat.TP || x.ProcStatus==ProcStat.TPi)
 				,PrefC.IsTreatPlanSortByTooth);//sorted by priority, then (conditionally) toothnum
 			//_listTPCurrent=TreatPlans.Refresh(PatCur.PatNum,new[] {TreatPlanStatus.Active,TreatPlanStatus.Inactive});
-			//todo: get all mobile devices here instead
-			List<MobileAppDevice> listMobileAppDevices=MobileAppDevices.GetAll(PatientCur.PatNum);
 			if(doRefreshData || _listTreatPlans==null) {
 				_listTreatPlans=TreatPlans.GetAllForPat(PatientCur.PatNum);
-				//Check if the treatment plans are actually still on mobile devices. If eClipboard crashed, for example, then the patient is no longer on that device,
-				//but treatment plans MobileAppDeviceNum wouldn't have been cleared.
-				if(listMobileAppDevices.Count==0) {
-					//Patient is on no devices, so clear out MobileAppDeviceNum on treatment plans
-					for(int i=0;i<_listTreatPlans.Count;i++) {
-						if(_listTreatPlans[i].MobileAppDeviceNum>0) {
-							TreatPlans.UpdateMobileAppDeviceNum(_listTreatPlans[i],0);
-							Signalods.SetInvalid(InvalidType.TPModule,KeyType.PatNum,_listTreatPlans[i].PatNum);
-							Signalods.SetInvalid(InvalidType.EClipboard);
-						}
-					}
-					//Patient isn't on a device, so there shouldn't be any TreatPlanParams for the pat.
-					TreatPlanParams.RemoveAllByPatNum(PatientCur.PatNum);
-				}
 			}
 			_listTreatPlans=_listTreatPlans
 					.OrderBy(x => x.TPStatus!=TreatPlanStatus.Active)
@@ -540,14 +517,6 @@ namespace OpenDental{
 				}
 				else{
 					row.Cells.Add("X");
-				}
-				if(treatPlan.MobileAppDeviceNum>0 
-					&& listMobileAppDevices.FirstOrDefault(x => x.MobileAppDeviceNum==treatPlan.MobileAppDeviceNum)?.PatNum==treatPlan.PatNum) 
-				{
-					row.Cells.Add("X");
-				}
-				else {
-					row.Cells.Add("");
 				}
 				row.Tag=treatPlan;
 				gridPlans.ListGridRows.Add(row);
@@ -1302,16 +1271,6 @@ namespace OpenDental{
 					}
 				}
 			}
-			if(gridPlans.Columns[e.Col].Heading=="eClipboard") {
-				if(_listTreatPlans[gridPlans.SelectedIndices[0]].MobileAppDeviceNum>0) {
-					if(MsgBox.Show(this,MsgBoxButtons.YesNo,"Would you like to recall this treatment plan from the mobile device?")) {
-						treatPlan=_listTreatPlans[gridPlans.SelectedIndices[0]];
-						MobileNotifications.CI_RemoveTreatmentPlan(treatPlan.MobileAppDeviceNum,treatPlan);
-						FillPlans();
-						return;
-					}
-				}
-			}
 			FillMain();
 			gridPreAuth.SetAll(false);
 			if(gridPlans.SelectedIndices.Length <= 0) {
@@ -1354,153 +1313,6 @@ namespace OpenDental{
 			FillMain();
 		}
 		
-		///<summary>Attempts to update the eClipbaord device with the currently selected TP in gridPlans.
-		///If a device is set to the same patient as PatCur then we will automatically create the notification for that device.
-		///Otherwise we prompt for an unlock code if doPromptForDevice is not enabled.</summary>
-		private void TrySendTreatPlan(){
-			//Mimics FillPlans()
-			TreatPlan treatPlan=gridPlans.SelectedTag<TreatPlan>();
-			Sheet sheetTP=null;
-			if(PatientCur==null) {
-				return;
-			}
-			if(DoPrintUsingSheets()) {
-				sheetTP=SheetUtil.CreateSheet(SheetDefs.GetInternalOrCustom(SheetInternalType.TreatmentPlan),PatientCur.PatNum);
-			}
-			bool hasPracticeSig=sheetTP?.SheetFields?.Any(x => x.FieldType==SheetFieldType.SigBoxPractice)??false;
-			if(PatientCur==null){
-				MsgBox.Show("Please select a patient first.");
-				return;
-			}
-			if(treatPlan==null) {//Shouldn't happen, control auto selects when loading.
-				MsgBox.Show("Please select a Saved Treatment Plan first.");
-				return;
-			}
-			else if(treatPlan.TPStatus!=TreatPlanStatus.Saved){
-				//Eventually we plan on implementing something here to save TPs for user when not saved.
-				MsgBox.Show("Only Saved Treatment Plans can be sent to a mobile device.");
-				return;
-			}
-			else if(!string.IsNullOrEmpty(treatPlan.Signature) || (hasPracticeSig && !string.IsNullOrEmpty(treatPlan.SignaturePractice)))
-			{
-				MsgBox.Show("This Treatment Plan has already been signed.");
-				return;
-			}
-			MobileAppDevice mobileAppDevice=MobileAppDevices.ShouldCreateMobileNotification(PatientCur.PatNum);
-			if(mobileAppDevice==null) {
-				OpenUnlockCodeForTP();
-				return;
-			}
-			PushSelectedTpToEclipboard(mobileAppDevice);
-		}
-
-		///<summary>Sends the currently selected TreatmentPlan in gridPlans to a given target mobile device.
-		///If no selection is currently made then this simply returns.
-		///Shows a MsgBox when done or if error occurs.</summary>
-		private void PushSelectedTpToEclipboard(MobileAppDevice mobileAppDevice){
-			if(gridPlans.SelectedIndices.Count()==0){
-				return;//document wont be null below.
-			}
-			using PdfDocument pdfDocument=GetTreatPlanPDF(out TreatPlan treatPlan,out bool hasPracticeSig); //Cant be null due to above check.
-			try {
-				MobileNotifications.CI_SendTreatmentPlan(pdfDocument,treatPlan,hasPracticeSig,mobileAppDevice.MobileAppDeviceNum);
-			}
-			catch (Exception ex) {
-				//Error occurred
-				//It failed to send to device, so clear out what ever device num was there
-				TreatPlans.UpdateMobileAppDeviceNum(treatPlan,0);
-				Signalods.SetInvalid(InvalidType.TPModule,KeyType.PatNum,treatPlan.PatNum);
-				Signalods.SetInvalid(InvalidType.EClipboard);
-				MsgBox.Show($"Error sending Treatment Plan: {ex.Message}");
-				return;
-			}
-			SendTreatPlanParam(treatPlan);
-			//The treatment plan's MobileAppDeviceNum needs to be updated so that we know it is on a device
-			FillPlans();
-			MsgBox.Show($"Treatment Plan sent to device: {mobileAppDevice.DeviceName}");
-		}
-
-		///<summary>Opens a FormMobileCode window with the currently selected TP.</summary>
-		private void OpenUnlockCodeForTP(){
-			long treatPlanParamNum=0;
-			MobileDataByte funcInsertDataForUnlockCode(string unlockCode) {
-				using PdfDocument pdfDocument=GetTreatPlanPDF(out TreatPlan treatPlan,out bool hasPracticeSig); 
-				MobileDataByte mobileDataByte=null;
-				try {
-					mobileDataByte=MobileDataBytes.InsertTreatPlanPDF(pdfDocument,treatPlan,hasPracticeSig,unlockCode);
-				}
-				catch (Exception ex) {
-					//Failed to insert mobile data byte and won't be retrievable in eClipboard so clear out mobile app device num
-					TreatPlans.UpdateMobileAppDeviceNum(treatPlan,0);
-					Signalods.SetInvalid(InvalidType.TPModule,KeyType.PatNum,treatPlan.PatNum);
-					Signalods.SetInvalid(InvalidType.EClipboard);
-					MsgBox.Show(ex.Message);
-					return null;
-				}
-				treatPlanParamNum=SendTreatPlanParam(treatPlan);
-				return mobileDataByte;
-			}
-			using FormMobileCode formMobileCode=new FormMobileCode(funcInsertDataForUnlockCode);
-			formMobileCode.ShowDialog();
-			if(formMobileCode.DialogResult==DialogResult.Cancel && treatPlanParamNum>0) {
-				//A TreatPlanParam was inserted into the DB already, so it needs to be removed if the unlock code isn't used.
-				TreatPlanParams.Delete(treatPlanParamNum);
-			}
-		}
-
-		///<summary>Inserts a new TreatPlanParam into the database if PrefName.TreatPlanSaveSignedToPdf is true.
-		///This will be used when they save from eClipboard and it needs to create a signed treatment plan PDF based on these check boxes.</summary>
-		private long SendTreatPlanParam(TreatPlan treatPlan) {
-			if(!PrefC.GetBool(PrefName.TreatPlanSaveSignedToPdf)) {//no need to create a treatPlanParam if not saving PDF
-				return 0;
-			}
-			return TreatPlanParams.Insert(new TreatPlanParam() {
-				IsNew=true,
-				PatNum=treatPlan.PatNum,
-				TreatPlanNum=treatPlan.TreatPlanNum,
-				ShowCompleted=checkShowCompleted.Checked,
-				ShowDiscount=checkShowDiscount.Checked,
-				ShowFees=checkShowFees.Checked,
-				ShowIns=checkShowIns.Checked,
-				ShowMaxDed=checkShowMaxDed.Checked,
-				ShowSubTotals=checkShowSubtotals.Checked,
-				ShowTotals=checkShowTotals.Checked
-			});
-		}
-
-		///<summary>Returns a PDF for the currently selected TreatmentPlan and sets out TreatmentPlan to selected TreatmentPlan.
-		///If nothing is selected in gridPlans then returns null and out TreatPlan is set to null.</summary>
-		private PdfDocument GetTreatPlanPDF(out TreatPlan treatPlan,out bool hasPracticeSig){
-			treatPlan=null;
-			hasPracticeSig=false;
-			PdfDocument pdfDocument=null;
-			if(gridPlans.SelectedIndices.Count()==1) {
-				Action actionCloseProgress=ODProgress.Show(); //Immediately shows a progress window.
-				//The following logic mimics ToolBarMainEmail_Click()
-				treatPlan=_listTreatPlans[gridPlans.SelectedIndices[0]].Copy();
-				if(DoPrintUsingSheets()) {
-					if(treatPlan.TPStatus==TreatPlanStatus.Saved) {
-						treatPlan.ListProcTPs=ProcTPs.RefreshForTP(treatPlan.TreatPlanNum);
-					}
-					else {
-						treatPlan.ListProcTPs=LoadTP(treatPlan);
-					}
-					Sheet sheet=TreatPlanToSheet(treatPlan);
-					hasPracticeSig=sheet.SheetFields.Any(x => x.FieldType==SheetFieldType.SigBoxPractice);
-					pdfDocument=SheetPrinting.CreatePdf(sheet,"",null,null,null,null,null,false);
-				}
-				else {//generate and save a new document from scratch
-					PrepImageForPrinting();
-					PdfDocumentRenderer pdfDocumentRenderer=new PdfDocumentRenderer(true,PdfFontEmbedding.Always);
-					pdfDocumentRenderer.Document=CreateDocument();
-					pdfDocumentRenderer.RenderDocument();
-					pdfDocument=pdfDocumentRenderer.PdfDocument;
-				}
-				actionCloseProgress();//Closes the progress window. 
-			}
-			return pdfDocument;
-		}
-
 		private void listSetPr_MouseDown(object sender,System.Windows.Forms.MouseEventArgs e) {
 			int clickedRow=listSetPr.IndexFromPoint(e.Location);
 			if(!clickedRow.Between(0,listSetPr.Items.Count-1)) {

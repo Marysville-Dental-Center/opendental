@@ -32,9 +32,6 @@ namespace OpenDental {
 				case EnumFormName.FormDrCeph:
 					type=Type.GetType((typeof(FormDrCeph)).FullName);
 					break;
-				case EnumFormName.FormEServicesTexting:
-					type=Type.GetType((typeof(FormEServicesTexting)).FullName);
-					break;
 				case EnumFormName.FormHouseCalls:
 					type=Type.GetType((typeof(FormHouseCalls)).FullName);
 					break;

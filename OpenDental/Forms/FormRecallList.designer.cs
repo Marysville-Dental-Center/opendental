@@ -26,7 +26,6 @@
 			this.tabPageRecalls = new OpenDental.UI.TabPage();
 			this.groupEmailFromRecalls = new OpenDental.UI.GroupBox();
 			this.comboEmailFromRecalls = new OpenDental.UI.ComboBox();
-			this.panelWebSched = new System.Windows.Forms.Panel();
 			this.butUndo = new OpenDental.UI.Button();
 			this.butGotoFamily = new OpenDental.UI.Button();
 			this.butCommlog = new OpenDental.UI.Button();
@@ -150,7 +149,6 @@
 			// 
 			this.tabPageRecalls.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(252)))), ((int)(((byte)(253)))), ((int)(((byte)(254)))));
 			this.tabPageRecalls.Controls.Add(this.groupEmailFromRecalls);
-			this.tabPageRecalls.Controls.Add(this.panelWebSched);
 			this.tabPageRecalls.Controls.Add(this.butUndo);
 			this.tabPageRecalls.Controls.Add(this.butGotoFamily);
 			this.tabPageRecalls.Controls.Add(this.butCommlog);
@@ -191,17 +189,6 @@
 			this.comboEmailFromRecalls.Name = "comboEmailFromRecalls";
 			this.comboEmailFromRecalls.Size = new System.Drawing.Size(216, 21);
 			this.comboEmailFromRecalls.TabIndex = 65;
-			// 
-			// panelWebSched
-			// 
-			this.panelWebSched.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.panelWebSched.BackgroundImage = global::OpenDental.Properties.Resources.webSched_PV_Button;
-			this.panelWebSched.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Center;
-			this.panelWebSched.Location = new System.Drawing.Point(759, 639);
-			this.panelWebSched.Name = "panelWebSched";
-			this.panelWebSched.Size = new System.Drawing.Size(120, 24);
-			this.panelWebSched.TabIndex = 138;
-			this.panelWebSched.MouseClick += new System.Windows.Forms.MouseEventHandler(this.panelWebSched_MouseClick);
 			// 
 			// butUndo
 			// 
@@ -1049,7 +1036,6 @@
 		private OpenDental.UI.TabPage tabPageRecalls;
 		private OpenDental.UI.GroupBox groupEmailFromRecalls;
 		private OpenDental.UI.ComboBox comboEmailFromRecalls;
-		private System.Windows.Forms.Panel panelWebSched;
 		private OpenDental.UI.Button butUndo;
 		private OpenDental.UI.Button butGotoFamily;
 		private OpenDental.UI.Button butCommlog;

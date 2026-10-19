@@ -30,7 +30,6 @@ namespace OpenDental{
 			this.butICD9s = new OpenDental.UI.Button();
 			this.butSnomeds = new OpenDental.UI.Button();
 			this.butProviderKeys = new OpenDental.UI.Button();
-			this.butPortalSetup = new OpenDental.UI.Button();
 			this.butOIDs = new OpenDental.UI.Button();
 			this.butEhrTriggers = new OpenDental.UI.Button();
 			this.butTimeSynch = new OpenDental.UI.Button();
@@ -106,15 +105,6 @@ namespace OpenDental{
 			this.butProviderKeys.TabIndex = 142;
 			this.butProviderKeys.Text = "Provider Keys";
 			this.butProviderKeys.Click += new System.EventHandler(this.butProviderKeys_Click);
-			// 
-			// butPortalSetup
-			// 
-			this.butPortalSetup.Location = new System.Drawing.Point(27, 319);
-			this.butPortalSetup.Name = "butPortalSetup";
-			this.butPortalSetup.Size = new System.Drawing.Size(128, 24);
-			this.butPortalSetup.TabIndex = 141;
-			this.butPortalSetup.Text = "Patient Portal";
-			this.butPortalSetup.Click += new System.EventHandler(this.butPortalSetup_Click);
 			// 
 			// butOIDs
 			// 
@@ -246,7 +236,6 @@ namespace OpenDental{
 			// 
 			this.ClientSize = new System.Drawing.Size(561, 395);
 			this.Controls.Add(this.butProviderKeys);
-			this.Controls.Add(this.butPortalSetup);
 			this.Controls.Add(this.butOIDs);
 			this.Controls.Add(this.butEhrTriggers);
 			this.Controls.Add(this.butTimeSynch);
@@ -290,7 +279,6 @@ namespace OpenDental{
 		private UI.Button butTimeSynch;
 		private UI.Button butEhrTriggers;
 		private UI.Button butOIDs;
-		private UI.Button butPortalSetup;
 		private UI.Button butProviderKeys;
 		private UI.MenuOD menuMain;
 	}

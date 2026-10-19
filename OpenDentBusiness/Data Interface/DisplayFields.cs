@@ -836,7 +836,6 @@ namespace OpenDentBusiness {
 					listDisplayFields.Add(new DisplayField("City",0,displayFieldCategory));
 					listDisplayFields.Add(new DisplayField("AskToArriveEarly",0,displayFieldCategory));
 					listDisplayFields.Add(new DisplayField("Super Head",0,displayFieldCategory));
-					listDisplayFields.Add(new DisplayField("Patient Portal",0,displayFieldCategory));
 					listDisplayFields.Add(new DisplayField("Broken Appts",0,displayFieldCategory));
 					if(PrefC.GetBool(PrefName.ShowFeatureEhr)) {
 						listDisplayFields.Add(new DisplayField("Tobacco Use",0,displayFieldCategory));

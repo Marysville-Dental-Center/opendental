@@ -21,7 +21,6 @@ namespace OpenDental{
 	/// <summary></summary>
 	public partial class FormPerio : FormODBase {
 		#region Fields - private
-		private bool _isExamInUse;
 		private bool _isLocalDefsChanged;
 		private bool _isTenDown;
 		private List<Def> _listDefsMiscColors;
@@ -55,33 +54,6 @@ namespace OpenDental{
 		#endregion Constructor
 
 		#region Methods - private
-		///<summary>Checks if perio is active on a MAD row with the current patient. If it is, locks editing.</summary>
-		private void CheckMobileActivity() {
-			if(!ClinicPrefs.IsODTouchAllowed(Clinics.ClinicNum)) {
-				labelIsMobileActive.Enabled=false;
-				labelIsMobileActive.Visible=false;
-				butUnlockEClip.Enabled=false;
-				butUnlockEClip.Visible=false;
-				return;
-			}
-			//If someone is currently using this patients exams in eClipboard, ask if this user would like to kick off the other user.
-			bool isExamInUse=MobileAppDevices.IsInUse(_patient.PatNum,MADPage.PerioExamEditPage,MADPage.PerioExamListPage,MADPage.PerioExamOverviewPage,MADPage.FileViewerPage,MADPage.Undefined);
-			bool hasUIChanged=!(_isExamInUse && isExamInUse); //This checks if the state has changed, we don't want to keep refreshing UI if it hasn't.
-			if(!hasUIChanged) {
-				return;
-			}
-			_isExamInUse=isExamInUse;
-			if(_isExamInUse) { //Answered No, they would not like to force eClip to checkin, or this method got called by the timer.
-				timerEClipCheck.Start();
-				SetEClipBoardEditing(true);
-				return;
-			}
-			else {
-				timerEClipCheck.Stop();
-				SetEClipBoardEditing(false);
-			}
-		}
-
 		private string ConvertListToString(List<string> listStringsTeeth){
 			if(listStringsTeeth.Count==0){
 				return "none";
@@ -523,20 +495,6 @@ namespace OpenDental{
 			PerioMeasures.InsertMany(listPerioMeasures);
 		}
 
-		///<summary>Unique to when eClipboard is viewing / editing this patients perio exams. Starts the eClipboard timer check.</summary>
-		private void SetEClipBoardEditing(bool isEditingOnEClipBoard) {
-			contrPerio.AllowPerioEdit=!isEditingOnEClipBoard;
-			gridODExam.Enabled=!isEditingOnEClipBoard;
-			butAdd.Enabled=!isEditingOnEClipBoard;
-			butCopyNote.Enabled=!isEditingOnEClipBoard;
-			butCopyPrevious.Enabled=!isEditingOnEClipBoard;
-			butDelete.Enabled=!isEditingOnEClipBoard;
-			butListen.Enabled=!isEditingOnEClipBoard;
-			butDefault.Enabled=!isEditingOnEClipBoard;
-			butUnlockEClip.Enabled=isEditingOnEClipBoard;
-			labelIsMobileActive.Visible=isEditingOnEClipBoard;
-		}
-
 		///<summary>Sets Forward/Reverse label in Current Direction groupbox based on expected direction from the path and the current direction</summary>
 		private void SetLabelFwdReverse(){
 			PerioCell perioCell=contrPerio.GetCurrentCell() ;
@@ -575,18 +533,13 @@ namespace OpenDental{
 
 		#region Methods - Event Handlers public
 		public override void ProcessSignalODs(List<Signalod> listSignals) {
-			if(listSignals.Any(x => x.IType==InvalidType.EClipboard)) {
-				CheckMobileActivity();
-			}
-			//This signal comes in for every action taken by a user on eClipboard - Perio.
+			//This signal comes in when another workstation edits this patient's perio exams.
 			if(_perioExam!=null && listSignals.Any(x=>x.FKeyType==KeyType.PatNum && x.FKey==_perioExam.PatNum && x.IType==InvalidType.PerioExams)) {
 				RefreshListExams(false);
 				if(gridODExam.ListGridRows.Count>0) {
 					gridODExam.SetSelected(gridODExam.ListGridRows.Count-1);
 				}
 				FillGrid(selectCell:true);
-				//Since FillGrid can re-enable the GridPerio editing.
-				SetEClipBoardEditing(_isExamInUse);
 			}
 		}
 		#endregion Methods - Event Handlers public
@@ -686,7 +639,6 @@ namespace OpenDental{
 				contrPerio.EnumAdvanceSequence_=EnumAdvanceSequence.FacialsFirst;
 			}
 			FillGrid();
-			CheckMobileActivity();
 			Plugins.HookAddCode(this,"FormPerio.Load_end");
 		}
 
@@ -834,10 +786,6 @@ namespace OpenDental{
 				,font,Brushes.Black,xPos,yPos);
 			//pagesPrinted++;
 			printPageEventArgs.HasMorePages=false;
-		}
-
-		private void timerEClipCheck_Tick(object sender,EventArgs e) {
-			CheckMobileActivity();
 		}
 
 		private void updownRed_MouseDown(object sender, System.Windows.Forms.MouseEventArgs e) {
@@ -1226,7 +1174,7 @@ namespace OpenDental{
 			contrPerio.ListPerioExams=PerioExams.Refresh(_patient.PatNum);
 			contrPerio.ListPerioMeasures=PerioMeasures.GetForPatient(_patient.PatNum);
 			List<ColRow> listColRowsOriginal=new List<ColRow>(contrPerio.ListColRowsSelected);//Preserve the currently selected ColRow so it can be set after Save is completed.
-			FillGrid(!_isExamInUse);
+			FillGrid(true);
 			contrPerio.ListColRowsSelected=new List<ColRow>();//Clear list so no cell is highlighted on saved image. JobNum:56018
 			//Document doc=new Document();
 			//try {
@@ -1324,29 +1272,6 @@ namespace OpenDental{
 				return;
 			}
 			contrPerio.ToggleSkip(_perioExam.PerioExamNum);
-		}
-
-		private void butUnlockEClip_Click(object sender,EventArgs e) {
-			bool isExamInUse=MobileAppDevices.IsInUse(_patient.PatNum,MADPage.PerioExamEditPage,MADPage.PerioExamListPage);
-			bool isAllowingEdit=false;
-			if(isExamInUse) {
-				isAllowingEdit=MsgBox.Show(MsgBoxButtons.YesNo,Lans.g(this, "This patient has a perio exam currently being edited in ODTouch. Would you like to edit anyway? (Not recommended)."));
-			}
-			else {
-				SetEClipBoardEditing(false);
-				return;
-			}
-			if(isAllowingEdit) {
-				MobileAppDevice mobileAppDevice=MobileAppDevices.GetForPat(_patient.PatNum);
-				if(mobileAppDevice==null) {
-					return;
-				}
-				MobileNotifications.CI_GoToCheckin(mobileAppDevice.MobileAppDeviceNum);
-				mobileAppDevice.DevicePage=MADPage.CheckinPage;
-				MobileAppDevices.Update(mobileAppDevice);
-				SetEClipBoardEditing(false);
-			}
-			return;
 		}
 
 		private void but0_Click(object sender, System.EventArgs e) {

@@ -135,11 +135,8 @@ namespace OpenDental{
 			this.labelMotherMaidenLname = new System.Windows.Forms.Label();
 			this.labelDeceased = new System.Windows.Forms.Label();
 			this.groupBox3 = new OpenDental.UI.GroupBox();
-			this.textOptIn = new System.Windows.Forms.TextBox();
 			this.checkTextingN = new OpenDental.UI.CheckBox();
 			this.checkTextingY = new OpenDental.UI.CheckBox();
-			this.butShortCodeOptIn = new OpenDental.UI.Button();
-			this.labelApptTexts = new System.Windows.Forms.Label();
 			this.labelABC = new System.Windows.Forms.Label();
 			this.butEmailEdit = new OpenDental.UI.Button();
 			this.checkEmailPhoneSame = new OpenDental.UI.CheckBox();
@@ -1305,11 +1302,8 @@ namespace OpenDental{
 			// 
 			// groupBox3
 			// 
-			this.groupBox3.Controls.Add(this.textOptIn);
 			this.groupBox3.Controls.Add(this.checkTextingN);
 			this.groupBox3.Controls.Add(this.checkTextingY);
-			this.groupBox3.Controls.Add(this.butShortCodeOptIn);
-			this.groupBox3.Controls.Add(this.labelApptTexts);
 			this.groupBox3.Controls.Add(this.labelABC);
 			this.groupBox3.Controls.Add(this.butEmailEdit);
 			this.groupBox3.Controls.Add(this.checkEmailPhoneSame);
@@ -1325,15 +1319,6 @@ namespace OpenDental{
 			this.groupBox3.Size = new System.Drawing.Size(474, 96);
 			this.groupBox3.TabIndex = 13;
 			this.groupBox3.Text = "Email and Phone";
-			// 
-			// textOptIn
-			// 
-			this.textOptIn.Location = new System.Drawing.Point(353, 47);
-			this.textOptIn.MaxLength = 100;
-			this.textOptIn.Name = "textOptIn";
-			this.textOptIn.ReadOnly = true;
-			this.textOptIn.Size = new System.Drawing.Size(43, 20);
-			this.textOptIn.TabIndex = 62;
 			// 
 			// checkTextingN
 			// 
@@ -1354,25 +1339,6 @@ namespace OpenDental{
 			this.checkTextingY.TabStop = false;
 			this.checkTextingY.Text = "Y";
 			this.checkTextingY.Click += new System.EventHandler(this.checkTextingY_Click);
-			// 
-			// butShortCodeOptIn
-			// 
-			this.butShortCodeOptIn.Location = new System.Drawing.Point(403, 47);
-			this.butShortCodeOptIn.Name = "butShortCodeOptIn";
-			this.butShortCodeOptIn.Size = new System.Drawing.Size(23, 21);
-			this.butShortCodeOptIn.TabIndex = 58;
-			this.butShortCodeOptIn.Text = "Info";
-			this.butShortCodeOptIn.UseVisualStyleBackColor = true;
-			this.butShortCodeOptIn.Click += new System.EventHandler(this.butShortCodeOptIn_Click);
-			// 
-			// labelApptTexts
-			// 
-			this.labelApptTexts.Location = new System.Drawing.Point(288, 49);
-			this.labelApptTexts.Name = "labelApptTexts";
-			this.labelApptTexts.Size = new System.Drawing.Size(64, 14);
-			this.labelApptTexts.TabIndex = 57;
-			this.labelApptTexts.Text = "Appt Texts";
-			this.labelApptTexts.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
 			// 
 			// labelABC
 			// 
@@ -2355,8 +2321,6 @@ namespace OpenDental{
 		private UI.Button butViewBirthdate;
 		private UI.Button butEmailEdit;
 		private Label labelABC;
-		private UI.Button butShortCodeOptIn;
-		private Label labelApptTexts;
 		private UI.ODDatePicker odDatePickerBirthDate;
 		private UI.ODDatePicker odDatePickerAdmitDate;
 		private UI.ODDatePicker odDatePickerDateFirstVisit;
@@ -2369,7 +2333,6 @@ namespace OpenDental{
 		private Label labelDischargeDate;
 		private UI.CheckBox checkTextingN;
 		private UI.CheckBox checkTextingY;
-		private TextBox textOptIn;
 		private TextBox textBirthdateMask;
 		private UI.Button butNow;
 	}

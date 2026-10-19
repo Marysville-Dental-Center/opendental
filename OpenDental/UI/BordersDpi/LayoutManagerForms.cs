@@ -390,11 +390,6 @@ Scrollable Control: For example, a panel that's set to AutoScroll=true.  These c
 			if(control is System.Windows.Forms.SplitContainer){
 				throw new Exception("MS SplitContainers are not allowed. Use a UI.SplitContainer instead.");
 			}
-			//In UserControlReminderAgg, there's a groupBox inside a tabcontrol.
-			//Changing anchors on the groupBox triggers layout event, which calls LayoutTabs, causing crash.
-			if(control.Name=="groupBoxEmailSubjAggShared"){
-				return;
-			}
 			control.Anchor=AnchorStyles.Left | AnchorStyles.Top;
 			control.Dock=DockStyle.None;
 			if(control is ButtonBase buttonBase){
@@ -1098,7 +1093,7 @@ Scrollable Control: For example, a panel that's set to AutoScroll=true.  These c
 			if(control is ScrollableControl scrollableControl && scrollableControl.AutoScroll){
 				//We need to return true for these forms to avoid a bug with scrollable splitters or panels that can create uneccessary additional white space.
 				List<string> listFormNames=new List<string>(){
-					typeof(FormSheetDefEdit).Name,typeof(FormSheetFillEdit).Name,typeof(FormWebChatSession).Name,typeof(FormSmsTextMessaging).Name
+					typeof(FormSheetDefEdit).Name,typeof(FormSheetFillEdit).Name,typeof(FormWebChatSession).Name
 				};
 				if(control.TopLevelControl!=null && listFormNames.Contains(control.TopLevelControl.Name)) {
 					return true;
@@ -1377,10 +1372,6 @@ Scrollable Control: For example, a panel that's set to AutoScroll=true.  These c
 			}
 			if(control is UserControlPhoneSmall userControlPhoneSmall){
 				userControlPhoneSmall.LayoutManager=this;
-				return;
-			}
-			if(control is UserControlReminderAgg userControlReminderAgg){
-				userControlReminderAgg.LayoutManager=this;
 				return;
 			}
 			if(control is UserControlSecurityTree userControlSecurityTree){

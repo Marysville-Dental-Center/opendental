@@ -206,36 +206,6 @@ namespace OpenDental{
 			row.Cells.Add(GetPrefTranslation(PrefName.RecallPostcardFamMsg));//old
 			row.Tag="RecallPostcardFamMsg";
 			gridMain.ListGridRows.Add(row);
-			//
-			row=new GridRow();
-			row.Cells.Add("1");
-			row.Cells.Add(Lan.g(this,"WebSched Email"));
-			row.Cells.Add(Lan.g(this,"Subject line.  Available variables")+": [NameF]");
-			row.Cells.Add(GetPrefTranslation(PrefName.WebSchedSubject));
-			row.Tag="WebSchedSubject";
-			gridMain.ListGridRows.Add(row);
-			//
-			row=new GridRow();
-			row.Cells.Add("1");
-			row.Cells.Add(Lan.g(this,"WebSched Email"));
-			row.Cells.Add(Lan.g(this,"Email body.  Available variables")+": [URL], "+availableFields);
-			row.Cells.Add(GetPrefTranslation(PrefName.WebSchedMessage));
-			row.Tag="WebSchedMessage";
-			gridMain.ListGridRows.Add(row);
-			AddRow(Lans.g(this,"All"),Lans.g(this,"WebSched Email Aggregate"),Lans.g(this,"Subject Line.  Available variables")+": [NameF], "
-				+"[ClinicName], [PracticeName], [OfficeName]",PrefName.WebSchedAggregatedEmailSubject);
-			AddRow(Lans.g(this,"All"),Lans.g(this,"WebSched Email Aggregate"),Lans.g(this,"Email body.  Available variables")+": [FamilyListURLs], [FamilyList], [NameF],"
-				+" [ClinicName], [ClinicPhone], [PracticeName], [PracticePhone], [OfficeName], [OfficePhone]",PrefName.WebSchedAggregatedEmailBody);
-			//
-			row=new GridRow();
-			row.Cells.Add("1");
-			row.Cells.Add(Lan.g(this,"WebSched Text"));
-			row.Cells.Add(Lan.g(this,"Available variables")+": [URL], "+availableFields);
-			row.Cells.Add(GetPrefTranslation(PrefName.WebSchedMessageText));
-			row.Tag=PrefName.WebSchedMessageText.ToString();
-			gridMain.ListGridRows.Add(row);
-			AddRow(Lans.g(this,"All"),Lans.g(this,"WebSched Text Aggregate"),Lans.g(this,"Available variables")+": [FamilyListURLs], [FamilyList], [NameF], [ClinicName],"
-				+" [ClinicPhone], [PracticeName], [PracticePhone], [OfficeName], [OfficePhone]",PrefName.WebSchedAggregatedTextMessage);
 			#endregion
 			#region 2nd Reminder
 			//2---------------------------------------------------------------------------------------------
@@ -278,30 +248,6 @@ namespace OpenDental{
 			row.Cells.Add(Lan.g(this,"For multiple patients in one family.  Use [FamilyList]."));
 			row.Cells.Add(GetPrefTranslation(PrefName.RecallPostcardFamMsg2));
 			row.Tag="RecallPostcardFamMsg2";
-			gridMain.ListGridRows.Add(row);
-			//
-			row=new GridRow();
-			row.Cells.Add("2");
-			row.Cells.Add(Lan.g(this,"WebSched Email"));
-			row.Cells.Add(Lan.g(this,"Subject line.  Available variables")+": [NameF]");
-			row.Cells.Add(GetPrefTranslation(PrefName.WebSchedSubject2));
-			row.Tag="WebSchedSubject2";
-			gridMain.ListGridRows.Add(row);
-			//
-			row=new GridRow();
-			row.Cells.Add("2");
-			row.Cells.Add(Lan.g(this,"WebSched Email"));
-			row.Cells.Add(Lan.g(this,"Email body.  Available variables")+": [URL], "+availableFields);
-			row.Cells.Add(GetPrefTranslation(PrefName.WebSchedMessage2));
-			row.Tag="WebSchedMessage2";
-			gridMain.ListGridRows.Add(row);
-			//
-			row=new GridRow();
-			row.Cells.Add("2");
-			row.Cells.Add(Lan.g(this,"WebSched Text"));
-			row.Cells.Add(Lan.g(this,"Available variables")+": [URL], "+availableFields);
-			row.Cells.Add(GetPrefTranslation(PrefName.WebSchedMessageText2));
-			row.Tag=PrefName.WebSchedMessageText2;
 			gridMain.ListGridRows.Add(row);
 			#endregion
 			#region 3rd Reminder
@@ -346,30 +292,6 @@ namespace OpenDental{
 			row.Cells.Add(GetPrefTranslation(PrefName.RecallPostcardFamMsg3));
 			row.Tag="RecallPostcardFamMsg3";
 			gridMain.ListGridRows.Add(row);
-			//
-			row=new GridRow();
-			row.Cells.Add("3");
-			row.Cells.Add(Lan.g(this,"WebSched Email"));
-			row.Cells.Add(Lan.g(this,"Subject line.  Available variables")+": [NameF]");
-			row.Cells.Add(GetPrefTranslation(PrefName.WebSchedSubject3));
-			row.Tag="WebSchedSubject3";
-			gridMain.ListGridRows.Add(row);
-			//
-			row=new GridRow();
-			row.Cells.Add("3");
-			row.Cells.Add(Lan.g(this,"WebSched Email"));
-			row.Cells.Add(Lan.g(this,"Email body.  Available variables")+": [URL], "+availableFields);
-			row.Cells.Add(GetPrefTranslation(PrefName.WebSchedMessage3));
-			row.Tag="WebSchedMessage3";
-			gridMain.ListGridRows.Add(row);
-			//
-			row=new GridRow();
-			row.Cells.Add("3");
-			row.Cells.Add(Lan.g(this,"WebSched Text"));
-			row.Cells.Add(Lan.g(this,"Available variables")+": [URL], "+availableFields);
-			row.Cells.Add(GetPrefTranslation(PrefName.WebSchedMessageText3));
-			row.Tag=PrefName.WebSchedMessageText3.ToString();
-			gridMain.ListGridRows.Add(row);
 			#endregion
 			gridMain.EndUpdate();
 		}
@@ -399,41 +321,6 @@ namespace OpenDental{
 		private void gridMain_CellDoubleClick(object sender,ODGridClickEventArgs e) {
 			PrefName prefName=(PrefName)Enum.Parse(typeof(PrefName),gridMain.ListGridRows[e.Row].Tag.ToString());
 			string newPrefValue;
-			bool isHtmlTemplate= prefName.In(PrefName.WebSchedMessage,PrefName.WebSchedMessage2,PrefName.WebSchedMessage3,
-				PrefName.WebSchedAggregatedEmailBody);
-			if(isHtmlTemplate) {
-				PrefName emailTypePref=PrefName.NotApplicable;
-				switch(prefName) {
-					case PrefName.WebSchedMessage:
-						emailTypePref=PrefName.WebSchedRecallEmailTemplateType;
-						break;
-					case PrefName.WebSchedMessage2:
-						emailTypePref=PrefName.WebSchedRecallEmailTemplateType2;
-						break;
-					case PrefName.WebSchedMessage3:
-						emailTypePref=PrefName.WebSchedRecallEmailTemplateType3;
-						break;
-					case PrefName.WebSchedAggregatedEmailBody:
-						emailTypePref=PrefName.WebSchedRecallEmailTemplateTypeAgg;
-						break;
-					default:
-						break;
-				}
-				using FormEmailEdit formEmailEdit=new FormEmailEdit();
-				formEmailEdit.MarkupText=GetPrefTranslation(prefName);
-				formEmailEdit.DoCheckForDisclaimer=true;
-				formEmailEdit.IsRawAllowed=true;
-				formEmailEdit.IsRaw=PrefC.GetEnum<EmailType>(emailTypePref)==EmailType.RawHtml;
-				formEmailEdit.ShowDialog();
-				if(formEmailEdit.DialogResult!=DialogResult.OK) {
-					return;
-				}
-				Prefs.UpdateInt(emailTypePref,(formEmailEdit.IsRaw?(int)EmailType.RawHtml:(int)EmailType.Html));
-				newPrefValue=formEmailEdit.MarkupText;
-				UpsertPrefTranslation(prefName,newPrefValue);
-				FillGrid();
-				return;
-			}
 			FrmRecallMessageEdit frmRecallMessageEdit=new FrmRecallMessageEdit(prefName);
 			frmRecallMessageEdit.MessageVal=GetPrefTranslation(prefName);
 			frmRecallMessageEdit.ShowDialog();
@@ -453,11 +340,6 @@ namespace OpenDental{
 			row.Cells.Add(GetPrefTranslation(pref));
 			row.Tag=pref.ToString();
 			gridMain.ListGridRows.Add(row);
-		}
-
-		private void butSetup_Click(object sender,EventArgs e) {
-			using FormEServicesWebSchedRecall formEServicesWebSchedRecall=new FormEServicesWebSchedRecall();
-			formEServicesWebSchedRecall.ShowDialog();
 		}
 
 		private void butSave_Click(object sender, System.EventArgs e) {

@@ -414,7 +414,7 @@ namespace OpenDental{
 				butPDF.Visible=false;
 			}
 			//Hide text message button sometimes
-			if(_patient.WirelessPhone=="" || (!Programs.IsEnabled(ProgramName.CallFire) && !SmsPhones.IsIntegratedTextingEnabled())) {
+			if(_patient.WirelessPhone=="" || !Programs.IsEnabled(ProgramName.CallFire)) {
 				butText.Enabled=false;
 			}
 			else {//Pat has a wireless phone number and CallFire is enabled
@@ -2761,7 +2761,6 @@ namespace OpenDental{
 					}
 				}
 			}
-			AppointmentL.ShowKioskManagerIfNeeded(_appointmentOld,_appointment.Confirmed);
 			Plugins.HookAddCode(this,"FormApptEdit.butOK_Click_end",_appointment,_appointmentOld,_patient);
 			DialogResult=DialogResult.OK;
 			if(!this.Modal) {
@@ -2853,10 +2852,6 @@ namespace OpenDental{
 						.Select(x => ProcedureCodes.GetStringProcCode(x.CodeNum)).Distinct().ToList();//get list of string proc codes
 					AutomationL.Trigger(EnumAutomationTrigger.ProcSchedule,listProcureCodes,_appointment.PatNum);
 				}
-			}
-			if(_appointmentOld.AptStatus!=ApptStatus.Complete && _appointment.AptStatus==ApptStatus.Complete) {
-				//If necessary, prompt the user to ask the patient to opt in to using Short Codes.
-				FrmShortCodeOptIn.PromptIfNecessary(_patient,_appointment.ClinicNum);
 			}
 			//Sync detaches any attached procedures within Appointments.Delete() but doesn't create any ApptComm items.
 			if(Appointments.Sync(_listAppointments,_listAppointmentsOld,_appointment.PatNum)) {

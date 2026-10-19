@@ -22,12 +22,9 @@ namespace OpenDental {
 				if(listDefCats[i].GetDescription().Contains("HqOnly") && !PrefC.IsODHQ) {
 					continue;
 				}
-				if(listDefCats[i]==DefCat.EClipboardImageCapture) {
-					//This category should not be visible in the main defs window.
-					//We built our own UI windows for it that have a some special logic.
-					//For example, we don't allow hiding, we allow delete, and we validate when deleting.
-					//It's available over in FormEClipboardDefs and FrmEClipboardDefEdit
-					//inside of eServices, eClipboard, Definitions.
+				if(listDefCats[i].In(DefCat.EClipboardImageCapture,DefCat.WebSchedExistingApptTypes,DefCat.WebSchedNewPatApptTypes)) {
+					//These categories were only used by Open Dental's hosted eClipboard and Web Sched, which were removed.
+					//The definitions stay in the database but are not shown.
 					continue;
 				}
 				DefCatOptions defCatOptions=new DefCatOptions(listDefCats[i]);
@@ -157,15 +154,6 @@ namespace OpenDental {
 						defCatOptions.ValueText=Lans.g("FormDefinitions","1 or 2 letter abbreviation");
 						defCatOptions.HelpText=Lans.g("FormDefinitions","The diagnosis list is shown when entering a procedure.  Ones that are less used should go lower on the list.  The abbreviation is shown in the progress notes.  BE VERY CAREFUL.  Changes affect all patients.");
 						break;
-					case DefCat.EClipboardImageCapture:
-						defCatOptions.CanEditName=true;
-						defCatOptions.EnableValue=true;
-						defCatOptions.EnableColor=false;
-						defCatOptions.HelpText=Lans.g("FormDefinitions","Allow patients to capture images in eClipboard");
-						defCatOptions.IsValueDefNum=false;
-						defCatOptions.DoShowItemOrderInValue=false;
-						defCatOptions.DoShowNoColor=false;
-						break;
 					case DefCat.FeeColors:
 						defCatOptions.CanEditName=false;
 						defCatOptions.CanHide=false;
@@ -276,18 +264,6 @@ namespace OpenDental {
 							+"definition is used.  'Internal Priority' does not show, but is used for list order and for automated selection of which procedures "
 							+"are next in a planned appointment.");
 						break;
-					case DefCat.WebSchedExistingApptTypes:
-						defCatOptions.CanDelete=true;
-						defCatOptions.CanHide=false;
-						defCatOptions.ValueText="Appointment Type";
-						defCatOptions.HelpText="Appointment types to be displayed in the Web Sched Existing Patient web application.  These are selectable by patients and will be saved to the appointment note.";
-						break;
-					case DefCat.WebSchedNewPatApptTypes:
-						defCatOptions.CanDelete=true;
-						defCatOptions.CanHide=false;
-						defCatOptions.ValueText=Lans.g("FormDefinitions","Appointment Type");
-						defCatOptions.HelpText=Lans.g("FormDefinitions","Appointment types to be displayed in the Web Sched New Pat Appt web application.  These are selectable for the new patients and will be saved to the appointment note.");
-						break;
 					case DefCat.CarrierGroupNames:
 						defCatOptions.CanHide=true;
 						defCatOptions.HelpText=Lans.g("FormDefinitions","These are group names for Carriers.");
@@ -393,10 +369,6 @@ namespace OpenDental {
 					string nameCur;
 					row.Cells.Add(dictAutoNoteDefs.TryGetValue(listDefs[i].ItemValue,out nameCur) ? nameCur : listDefs[i].ItemValue);
 				}
-				else if(defCatOptionsSelected.DefCat==DefCat.WebSchedNewPatApptTypes || defCatOptionsSelected.DefCat==DefCat.WebSchedExistingApptTypes) {
-					AppointmentType appointmentType=AppointmentTypes.GetApptTypeForDef(listDefs[i].DefNum);
-					row.Cells.Add(appointmentType==null ? "" : appointmentType.AppointmentTypeName);
-				}
 				else if(defCatOptionsSelected.DoShowItemOrderInValue) {
 					row.Cells.Add(listDefs[i].ItemOrder.ToString());
 				}
@@ -447,26 +419,6 @@ namespace OpenDental {
 						}
 					}
 					break;
-				case DefCat.WebSchedExistingApptTypes:
-					using(FormDefEditWebSchedApptTypes formDefEditWebSchedApptTypes=new FormDefEditWebSchedApptTypes(defSelected,"Edit Web Sched Existing Patient Appt Type")) {
-						if(formDefEditWebSchedApptTypes.ShowDialog()==DialogResult.OK) {
-							if(formDefEditWebSchedApptTypes.IsDeleted) {
-								listDefsAll.Remove(defSelected);
-							}
-							isDefChanged=true;
-						}
-					}
-					break;
-				case DefCat.WebSchedNewPatApptTypes:
-					using(FormDefEditWebSchedApptTypes formDefEditWebSchedApptTypes=new FormDefEditWebSchedApptTypes(defSelected,"Edit Web Sched New Patient Appt Type")) {
-						if(formDefEditWebSchedApptTypes.ShowDialog()==DialogResult.OK) {
-							if(formDefEditWebSchedApptTypes.IsDeleted) {
-								listDefsAll.Remove(defSelected);
-							}
-							isDefChanged=true;
-						}
-					}
-					break;
 				default://Show the normal FormDefEdit window.
 					using(FormDefEdit FormDefEdit=new FormDefEdit(defSelected,listDefs,defCatOptionsSelected)) {
 						FormDefEdit.IsNew=false;
@@ -511,20 +463,6 @@ namespace OpenDental {
 						formDefEditImages.IsNew=true;
 						formDefEditImages.ShowDialog();
 						if(formDefEditImages.DialogResult!=DialogResult.OK) {
-							return false;
-						}
-					}
-					break;
-				case DefCat.WebSchedExistingApptTypes:
-					using(FormDefEditWebSchedApptTypes formDefEditWebSchedApptTypes=new FormDefEditWebSchedApptTypes(def,"Edit Web Sched Existing Patient Appt Type")) {
-						if(formDefEditWebSchedApptTypes.ShowDialog()!=DialogResult.OK) {
-							return false;
-						}
-					}
-					break;
-				case DefCat.WebSchedNewPatApptTypes:
-					using(FormDefEditWebSchedApptTypes formDefEditWebSchedApptTypes=new FormDefEditWebSchedApptTypes(def,"Edit Web Sched New Patient Appt Type")) {
-						if(formDefEditWebSchedApptTypes.ShowDialog()!=DialogResult.OK) { 
 							return false;
 						}
 					}
@@ -617,14 +555,6 @@ namespace OpenDental {
 					MsgBox.Show(_lanThis,"You cannot hide a definition that is used as a status in the Setup Recall window.");
 					return false;
 				}
-				else if(def.DefNum==PrefC.GetLong(PrefName.WebSchedNewPatConfirmStatus)) {
-					MsgBox.Show(_lanThis,"You cannot hide a definition that is used as an appointment confirmation status in Web Sched New Pat Appt.");
-					return false;
-				}
-				else if(def.DefNum==PrefC.GetLong(PrefName.WebSchedRecallConfirmStatus)) {
-					MsgBox.Show(_lanThis,"You cannot hide a definition that is used as an appointment confirmation status in Web Sched Recall Appt.");
-					return false;
-				}
 				else if(def.DefNum==PrefC.GetLong(PrefName.PracticeDefaultBillType)) {
 					MsgBox.Show(_lanThis,"You cannot hide a billing type when it is selected as the practice default billing type.");
 					return false;
@@ -656,10 +586,6 @@ namespace OpenDental {
 				{
 					return false;
 				}
-			}
-			if(def.Category==DefCat.EClipboardImageCapture && EClipboardImageCaptureDefs.IsEClipboardImageDefInUse(def.DefNum)) {
-				MsgBox.Show(_lanThis,"You cannot hide an eClipboard Image Capture definition that is in use in 'eClipboard Setup'.");
-					return false;
 			}
 			return true;
 		}

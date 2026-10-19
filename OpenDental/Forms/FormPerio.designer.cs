@@ -117,9 +117,6 @@ namespace OpenDental {
 			this.labelListening = new System.Windows.Forms.Label();
 			this.labelNotes = new System.Windows.Forms.Label();
 			this.butCopyNote = new OpenDental.UI.Button();
-			this.labelIsMobileActive = new System.Windows.Forms.Label();
-			this.butUnlockEClip = new OpenDental.UI.Button();
-			this.timerEClipCheck = new System.Windows.Forms.Timer(this.components);
 			this.butDefault = new OpenDental.UI.Button();
 			this.menuMain = new OpenDental.UI.MenuOD();
 			this.groupBox3 = new OpenDental.UI.GroupBox();
@@ -934,34 +931,6 @@ namespace OpenDental {
 			this.butCopyNote.Text = "Copy Note";
 			this.butCopyNote.Click += new System.EventHandler(this.butCopyNote_Click);
 			// 
-			// labelIsMobileActive
-			// 
-			this.labelIsMobileActive.ForeColor = System.Drawing.Color.ForestGreen;
-			this.labelIsMobileActive.Image = global::OpenDental.Properties.Resources.record;
-			this.labelIsMobileActive.ImageAlign = System.Drawing.ContentAlignment.MiddleRight;
-			this.labelIsMobileActive.Location = new System.Drawing.Point(113, 295);
-			this.labelIsMobileActive.Name = "labelIsMobileActive";
-			this.labelIsMobileActive.Size = new System.Drawing.Size(122, 19);
-			this.labelIsMobileActive.TabIndex = 93;
-			this.labelIsMobileActive.Text = "Editing on Mobile";
-			this.labelIsMobileActive.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			this.labelIsMobileActive.Visible = false;
-			// 
-			// butUnlockEClip
-			// 
-			this.butUnlockEClip.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			this.butUnlockEClip.Location = new System.Drawing.Point(17, 292);
-			this.butUnlockEClip.Name = "butUnlockEClip";
-			this.butUnlockEClip.Size = new System.Drawing.Size(90, 24);
-			this.butUnlockEClip.TabIndex = 93;
-			this.butUnlockEClip.Text = "Unlock";
-			this.butUnlockEClip.Click += new System.EventHandler(this.butUnlockEClip_Click);
-			// 
-			// timerEClipCheck
-			// 
-			this.timerEClipCheck.Interval = 3000;
-			this.timerEClipCheck.Tick += new System.EventHandler(this.timerEClipCheck_Tick);
-			// 
 			// butDefault
 			// 
 			this.butDefault.Icon = OpenDental.UI.EnumIcons.Add;
@@ -1043,9 +1012,7 @@ namespace OpenDental {
 			this.ClientSize = new System.Drawing.Size(1231, 696);
 			this.Controls.Add(this.butBolaLaunch);
 			this.Controls.Add(this.groupBox3);
-			this.Controls.Add(this.labelIsMobileActive);
 			this.Controls.Add(this.menuMain);
-			this.Controls.Add(this.butUnlockEClip);
 			this.Controls.Add(this.butDefault);
 			this.Controls.Add(this.butCopyNote);
 			this.Controls.Add(this.textExamNotes);
@@ -1209,9 +1176,6 @@ namespace OpenDental {
 		//private OpenDental.ContrPerio gridP;
 		//private OpenDental.ContrPerio contrPerio1;
 		#endregion Controls
-		private Timer timerEClipCheck;
-		private UI.Button butUnlockEClip;
-		private Label labelIsMobileActive;
 		private UI.Button butDefault;
 		private UI.MenuOD menuMain;
 		private UI.GroupBox groupBox3;

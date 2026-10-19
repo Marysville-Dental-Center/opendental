@@ -49,10 +49,6 @@ namespace OpenDental{
 			this.butPhoneList = new OpenDental.UI.Button();
 			this.labelWaitTime = new System.Windows.Forms.Label();
 			this.labelTriage = new System.Windows.Forms.Label();
-			this.menuText = new System.Windows.Forms.ContextMenu();
-			this.menuItemTextMessagesAll = new System.Windows.Forms.MenuItem();
-			this.menuItemTextMessagesReceived = new System.Windows.Forms.MenuItem();
-			this.menuItemTextMessagesSent = new System.Windows.Forms.MenuItem();
 			this.menuTask = new System.Windows.Forms.ContextMenu();
 			this.menuItemTaskNewForUser = new System.Windows.Forms.MenuItem();
 			this.menuItemTaskReminders = new System.Windows.Forms.MenuItem();
@@ -270,31 +266,6 @@ namespace OpenDental{
 			this.labelTriage.Text = "000";
 			this.labelTriage.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 			// 
-			// menuText
-			// 
-			this.menuText.MenuItems.AddRange(new System.Windows.Forms.MenuItem[] {
-            this.menuItemTextMessagesAll,
-            this.menuItemTextMessagesReceived,
-            this.menuItemTextMessagesSent});
-			// 
-			// menuItemTextMessagesAll
-			// 
-			this.menuItemTextMessagesAll.Index = 0;
-			this.menuItemTextMessagesAll.Text = "Text Messages All";
-			this.menuItemTextMessagesAll.Click += new System.EventHandler(this.menuItemTextMessagesAll_Click);
-			// 
-			// menuItemTextMessagesReceived
-			// 
-			this.menuItemTextMessagesReceived.Index = 1;
-			this.menuItemTextMessagesReceived.Text = "Text Messages Received";
-			this.menuItemTextMessagesReceived.Click += new System.EventHandler(this.menuItemTextMessagesReceived_Click);
-			// 
-			// menuItemTextMessagesSent
-			// 
-			this.menuItemTextMessagesSent.Index = 2;
-			this.menuItemTextMessagesSent.Text = "Text Messages Sent";
-			this.menuItemTextMessagesSent.Click += new System.EventHandler(this.menuItemTextMessagesSent_Click);
-			// 
 			// menuTask
 			// 
 			this.menuTask.MenuItems.AddRange(new System.Windows.Forms.MenuItem[] {
@@ -438,10 +409,6 @@ namespace OpenDental{
 		private UI.ComboBox comboTriageCoordinator;
 		private Label labelFieldType;
 		private MenuItem menuItem14;
-		private ContextMenu menuText;
-		private MenuItem menuItemTextMessagesReceived;
-		private MenuItem menuItemTextMessagesSent;
-		private MenuItem menuItemTextMessagesAll;
 		private ContextMenu menuTask;
 		private MenuItem menuItemTaskNewForUser;
 		private MenuItem menuItemTaskReminders;

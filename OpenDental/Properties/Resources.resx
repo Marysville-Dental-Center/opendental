@@ -319,9 +319,6 @@
   <data name="house16" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\house16.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="webSched_PV_Button" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\webSched_PV_Button.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
   <data name="deleteX18" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\deleteX18.gif;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>

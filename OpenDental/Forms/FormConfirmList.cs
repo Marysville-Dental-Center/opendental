@@ -73,7 +73,7 @@ namespace OpenDental{
 			if(!Security.IsAuthorized(EnumPermType.ApptConfirmStatusEdit,suppressMessage:true)) {//Suppress message because it would be very annoying to users.
 				comboStatus.Enabled=false;
 			}
-			if(!Programs.IsEnabled(ProgramName.CallFire) && !SmsPhones.IsIntegratedTextingEnabled()) {
+			if(!Programs.IsEnabled(ProgramName.CallFire)) {
 				butText.Enabled=false;
 			}
 			FillComboEmail();
@@ -904,15 +904,6 @@ namespace OpenDental{
 					gridMain.SetSelected(gridMain.SelectedIndices[i],false);
 					continue;
 				}
-				if(PrefC.HasClinicsEnabled && SmsPhones.IsIntegratedTextingEnabled()){//using clinics with Integrated texting must have a non-zero clinic num.
-					patNum=PIn.Long(_tableAppointments.Rows[gridMain.SelectedIndices[i]][checkGroupFamilies.Checked?"Guarantor":"PatNum"].ToString());
-					long clinicNum=SmsPhones.GetClinicNumForTexting(patNum);
-					if(clinicNum==0 || Clinics.GetClinic(clinicNum).SmsContractDate.Year<1880) {//no clinic or assigned clinic is not enabled.
-						skipped++;
-						gridMain.SetSelected(gridMain.SelectedIndices[i],false);
-						continue;
-					}
-				}
 			}
 			if(gridMain.SelectedIndices.Length==0) {
 				MsgBox.Show(this,"None of the selected patients have wireless phone numbers and are OK to text.");
@@ -960,7 +951,6 @@ namespace OpenDental{
 				}
 				listAptNums.Add(PIn.Long(_tableAppointments.Rows[gridMain.SelectedIndices[i]]["AptNum"].ToString()));
 				patNum=PIn.Long(_tableAppointments.Rows[gridMain.SelectedIndices[i]][checkGroupFamilies.Checked?"Guarantor":"PatNum"].ToString());
-				long clinicNum=SmsPhones.GetClinicNumForTexting(patNum);
 				wirelessPhone=PIn.String(_tableAppointments.Rows[gridMain.SelectedIndices[i]][checkGroupFamilies.Checked?"guarWirelessPhone":"WirelessPhone"].ToString());
 				YNtxtMsgOk=((YN)PIn.Int(_tableAppointments.Rows[gridMain.SelectedIndices[i]][checkGroupFamilies.Checked?"guarTxtMsgOK":"TxtMsgOk"].ToString()));
 				if(checkGroupFamilies.Checked && familyApptList!="") {
@@ -971,7 +961,7 @@ namespace OpenDental{
 				else {
 					confirmationMessage=PatComm.BuildConfirmMessage(ContactMethod.TextMessage,patient,appt);
 				}
-				if(formTxtMsgEdit.SendText(patNum,wirelessPhone,confirmationMessage,YNtxtMsgOk,clinicNum,SmsMessageSource.Confirmation)) {
+				if(formTxtMsgEdit.SendText(patNum,wirelessPhone,confirmationMessage,YNtxtMsgOk)) {
 					for(int j=0; j<listAptNums.Count; j++) {
 						long aptNumOld=listAptNums[j];
 						long confirmStatusNew=PrefC.GetLong(PrefName.ConfirmStatusTextMessaged);

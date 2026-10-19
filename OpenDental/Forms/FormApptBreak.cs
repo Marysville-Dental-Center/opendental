@@ -38,32 +38,6 @@ namespace OpenDental {
 			return true;
 		}
 
-		private void DisplayFormAsapForWebSched() {
-			if(!AppointmentL.PromptTextAsapList(_appointment.ClinicNum)) {
-				return;
-			}
-			// Schedule.SchedDate is a Date, time is ignored.
-			DataTable dataTableSchedules=Schedules.GetPeriodSchedule(_appointment.AptDateTime,_appointment.AptDateTime,new List<long> { _appointment.Op },false);
-			List<Schedule> listSchedules=Schedules.ConvertTableToList(dataTableSchedules);
-			DateRange dateRange;
-			try {
-				dateRange=AppointmentL.GetAsapRange(_appointment.Op,_appointment.AptDateTime,_appointment.AptNum,listSchedules);
-			}
-			catch(ODException ex) {
-				MessageBox.Show(this,ex.Message);
-				return;
-			}
-			catch(Exception ex) {
-				FriendlyException.Show(Lan.g(this,"Unexpected error occurred."),ex);
-				return;
-			}
-			using FormASAP formASAP=new FormASAP(_appointment.Op);
-			formASAP.DateTimeChosen=_appointment.AptDateTime;
-			formASAP.DateTimeSlotStart=dateRange.Start;
-			formASAP.DateTimeSlotEnd=dateRange.End;
-			formASAP.ShowDialog();
-		}
-
 		private void butUnsched_Click(object sender,EventArgs e) {
 			if(!ValidateSelection()) {
 				return;
@@ -75,7 +49,6 @@ namespace OpenDental {
 				}
 				return;
 			}
-			DisplayFormAsapForWebSched();
 			ApptBreakSelection_=ApptBreakSelection.Unsched;
 			DialogResult=DialogResult.OK;
 		}
@@ -84,7 +57,6 @@ namespace OpenDental {
 			if(!ValidateSelection()) {
 				return;
 			}
-			DisplayFormAsapForWebSched();
 			ApptBreakSelection_=ApptBreakSelection.Pinboard;
 			DialogResult=DialogResult.OK;
 		}

@@ -726,14 +726,6 @@ namespace OpenDental {
 				FillPtInfo();
 				return;
 			}
-			if(gridPtInfo.ListGridRows[e.Row].Tag.ToString()=="Patient Portal") {
-				using FormPatientPortal formPatientPortal=new FormPatientPortal(Pd.Patient);
-				formPatientPortal.ShowDialog();
-				if(formPatientPortal.DialogResult==DialogResult.OK) {
-					FillPtInfo();
-				}
-				return;
-			}
 			if(gridPtInfo.ListGridRows[e.Row].Tag.ToString()=="Payor Types") {
 				using FormPayorTypes formPayorTypes=new FormPayorTypes();
 				formPayorTypes.PatientCur=Pd.Patient;
@@ -1569,8 +1561,6 @@ namespace OpenDental {
 				Recalls.Synch(Pd.PatNum);
 				Recalls.SynchScheduledApptFull(Pd.PatNum);
 				ModuleSelected(Pd.PatNum);
-				//If necessary, prompt the user to ask the patient to opt in to using Short Codes.
-				FrmShortCodeOptIn.PromptIfNecessary(Pd.Patient,appointment.ClinicNum);
 				return;
 			}
 			#endregion One Appointment
@@ -2513,15 +2503,7 @@ namespace OpenDental {
 					break;
 				case ProgNotesRowType.EmailMessage:
 					EmailMessage emailMessage=EmailMessages.GetOne(rowPk);
-					if(EmailMessages.IsSecureWebMail(emailMessage.SentOrReceived)) {
-						//web mail uses special secure messaging portal
-						using FormWebMailMessageEdit formWebMailMessageEdit=new FormWebMailMessageEdit(Pd.PatNum,emailMessage);
-						if(formWebMailMessageEdit.ShowDialog()==DialogResult.Cancel) {//This will cause an unneccesary refresh in the case of a validation error with the webmail
-							return;
-						}
-					}
-					else {
-						using FormEmailMessageEdit formEmailMessageEdit=new FormEmailMessageEdit(emailMessage);
+					using(FormEmailMessageEdit formEmailMessageEdit=new FormEmailMessageEdit(emailMessage)) {
 						formEmailMessageEdit.ShowDialog();
 						if(formEmailMessageEdit.DialogResult!=DialogResult.OK) {
 							return;
@@ -4367,16 +4349,8 @@ namespace OpenDental {
 					#endregion Pat Restrictions
 					#region Patient Portal
 					case "Patient Portal":
-						row.Tag="Patient Portal";
-						if(isRefreshData){
-							Pd.ClearAndFill(EnumPdTable.UserWebHasPortalAccess);
-						}
-						if(Pd.UserWebHasPortalAccess) {
-							row.Cells.Add(Lan.g(this,"Online"));
-							break;
-						}
-						row.Cells.Add(Lan.g(this,"No access"));
-						break;
+						//Open Dental's hosted patient portal was removed. A display field left in the database is not shown.
+						continue;
 					#endregion Patient Portal
 					#region Payor Types
 					case "Payor Types":

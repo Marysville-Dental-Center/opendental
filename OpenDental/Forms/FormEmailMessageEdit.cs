@@ -66,10 +66,6 @@ namespace OpenDental {
 				_listEmailMessages=listListsEmailMessagesHistory.SelectMany(x => x).Where(x => x!=null).ToList(); //Use SelectMany to get every non-null email message from those lists
 			}
 			_clinicNum=Clinics.ClinicNum;
-			if(PrefC.HasClinicsEnabled && _clinicNum==0) {
-				//Clinic0 cannot be directly signed up for Secure Email, so use the 'Default Clinic'
-				_clinicNum=PrefC.GetLong(PrefName.EmailSecureDefaultClinic);
-			}
 			_emailMessageReplyingTo=emailMessageReplyingTo;
 		}
 
@@ -127,25 +123,21 @@ namespace OpenDental {
 		///<summary>Configures the dropdown/contextmenu for the 'Send Email' button.</summary>
 		private ContextMenu GetSendMenu() {
 			if(!Enum.TryParse(ClinicPrefs.GetPrefValue(PrefName.EmailDefaultSendPlatform,_clinicNum),out EmailPlatform emailPlatform)
-				|| (emailPlatform==EmailPlatform.Secure && !Clinics.IsSecureEmailEnabled(_clinicNum))
+				|| emailPlatform==EmailPlatform.Secure//Open Dental's hosted Secure Email was removed.
 				|| (emailPlatform==EmailPlatform.Direct && !IsDirectMessagingEnabled()))
 			{
-				//If pref is invalid, or set to a platform that is not signed up, default to Insecure email.
+				//If pref is invalid, or set to a platform that is not available, default to Insecure email.
 				emailPlatform=EmailPlatform.Unsecure;
 			}
 			ContextMenu contextMenu=new ContextMenu();
 			MenuItem menuItemSend=new MenuItem();
 			menuItemSend.Text=Lan.g(this,"Send");
 			menuItemSend.Click+=new EventHandler(this.butSend_Click);
-			MenuItem menuItemSendSecure=new MenuItem();
-			menuItemSendSecure.Text=Lan.g(this,"Send Secure");
-			menuItemSendSecure.Click+=new EventHandler(this.butSendSecure_Click);
 			MenuItem menuItemSendDirect=new MenuItem();
 			menuItemSendDirect.Text=Lan.g(this,"Direct Messaging");//For EHR and very rare
 			menuItemSendDirect.Click+=new EventHandler(this.butDirectMessage_Click);
 			MenuItem getDefaultMenuItem() {
 				return emailPlatform switch {
-					EmailPlatform.Secure => menuItemSendSecure,
 					EmailPlatform.Direct => menuItemSendDirect,
 					EmailPlatform.Unsecure => menuItemSend,
 					_ => menuItemSend,//If the preference is invalid, just use Insecure as the default.
@@ -154,9 +146,6 @@ namespace OpenDental {
 			List<MenuItem> listMenuItems=new List<MenuItem>() {
 				menuItemSend,//always an option
 			};
-			if(EmailSecures.IsSecureEmailReleased()) {
-				listMenuItems.Add(menuItemSendSecure);
-			}
 			if(IsDirectMessagingEnabled()) {
 				//Only include Direct Messaging if enabled.
 				listMenuItems.Add(menuItemSendDirect);
@@ -165,11 +154,6 @@ namespace OpenDental {
 			listMenuItems=listMenuItems.OrderByDescending(x => x==getDefaultMenuItem()).ThenByDescending(x => x==menuItemSend).ToList();
 			for(int i=0;i<listMenuItems.Count;i++) {
 				listMenuItems[i].Index=i;
-			}
-			//If we are replying to a secure email, the only option should be to reply with a secure email.
-			//Users should start a new email if they want to send a different type.
-			if(IsReplyingToSecureEmail()) {
-				listMenuItems=new List<MenuItem>() { menuItemSendSecure };
 			}
 			contextMenu.MenuItems.AddRange(listMenuItems.ToArray());
 			return contextMenu;
@@ -213,7 +197,7 @@ namespace OpenDental {
 
 		private void RefreshAll() {
 			_emailMessage.IsNew=IsNew;
-			emailPreview.LoadEmailMessage(_emailMessage,_listEmailMessages,IsReplyingToSecureEmail());
+			emailPreview.LoadEmailMessage(_emailMessage,_listEmailMessages,false);
 			if(!emailPreview.IsComposing) {
 				panelTemplates.Visible=false;
 				panelAutographs.Visible=false;
@@ -238,11 +222,6 @@ namespace OpenDental {
 				butDecrypt.Visible=true;
 				butRefresh.Visible=false;
 			}
-		}
-
-		///<summary>Returns true if this message is a reply to a Secure Email.</summary>
-		private bool IsReplyingToSecureEmail() {
-			return _emailMessageReplyingTo!=null && EmailMessages.IsSecureEmail(_emailMessageReplyingTo.SentOrReceived);
 		}
 
 		#region Templates
@@ -878,88 +857,6 @@ namespace OpenDental {
 			DialogResult=DialogResult.OK;
 			Close();//this form can be opened modelessly.
 		}
-
-		///<summary>Sends the email as a Secure Email via the EmailHosting API.</summary>
-		private void butSendSecure_Click(object sender, System.EventArgs e) {
-			if(Clinics.IsSecureEmailEnabled(_clinicNum)) {
-				SendSecure();
-				return;
-			}
-			if(!MsgBox.Show(MsgBoxButtons.YesNo,"Secure Email must be signed up and enabled before sending emails.  Go to setup?")) {
-				return;
-			}
-			using FormSecureEmailSetup formSecureEmailSetup=new FormSecureEmailSetup();
-			formSecureEmailSetup.ShowDialog();
-			//Now we need to update the default clinic num.
-			if(PrefC.HasClinicsEnabled && _clinicNum==0) {
-				//Clinic0 cannot be directly signed up for Secure Email, so use the 'Default Clinic'
-				_clinicNum=PrefC.GetLong(PrefName.EmailSecureDefaultClinic);
-			}
-			ConfigureSendButtons();
-		}
-
-		private void SendSecure() {
-			if(!ValidateFieldsForSend(isSecureEmail:true)) {
-				return;
-			}
-			if(!IsValidSecureEmail()) {
-				return;
-			}
-			EmailAddress emailAddressSender=GetOutgoingEmailForSending();
-			if(emailAddressSender==null) {
-				return;
-			}
-			SaveMsg();//wires UI into _emailMessage and inserts/updates db.
-			string toAddress=emailPreview.ToAddress;
-			ProgressWin progressOD=new ProgressWin();
-			//Send the Email
-			progressOD.ActionMain=() => {
-				_patient??=EmailMessages.GetPatient(_emailMessage);
-				EmailSecures.SendSecureEmail(_emailMessage,emailAddressSender,toAddress,_clinicNum,_emailMessageReplyingTo,_patient);
-			};
-			try {
-				progressOD.ShowDialog();
-			}
-			catch(Exception ex) {
-				FriendlyException.Show(Lan.g(this,"Failed to send secure email.")+"\r\n"+ex.Message,ex);
-				return;
-			}
-			if(progressOD.IsCancelled){
-				return;
-			}
-			MsgBox.Show(this,"Sent");
-			DialogResult=DialogResult.OK;
-			Close();//this form can be opened modelessly.
-		}
-
-		#region Secure Email Validation
-		///<summary>Returns true if fields are valid for sending a Secure Email. CC and BCC fields must be blank.</summary>
-		private bool IsValidSecureEmail() {
-			//Secure emails only have From and To addresses.
-			if((emailPreview.CcAddress==string.Empty && emailPreview.BccAddress==string.Empty)
-				|| MsgBox.Show(this,MsgBoxButtons.YesNo,"CC and BCC fields must be blank for Secure Emails." +
-			" Would you like to move the addresses in those fields to the To field and continue sending?"))
-			{
-				MoveCCandBCCIntoToField();
-				return true;
-			}
-			return false;
-		}
-
-		///<summary>Moves the addresses in the CC and BCC fields into the To field.</summary>
-		private void MoveCCandBCCIntoToField() {
-			List<string> listAddressesToMove=emailPreview.CcAddress.Split(",",StringSplitOptions.RemoveEmptyEntries).ToList();
-			listAddressesToMove.AddRange(emailPreview.BccAddress.Split(",",StringSplitOptions.RemoveEmptyEntries).ToList());
-			for(int i=0;i<listAddressesToMove.Count;i++) {
-				if(emailPreview.ToAddress!="") {
-					emailPreview.ToAddress+=",";
-				}
-				emailPreview.ToAddress+=listAddressesToMove[i];
-			}
-			emailPreview.CcAddress="";
-			emailPreview.BccAddress="";
-		}
-		#endregion Secure Email Validation
 
 		private void butCancel_Click(object sender, System.EventArgs e) {
 			DialogResult=DialogResult.Cancel;
