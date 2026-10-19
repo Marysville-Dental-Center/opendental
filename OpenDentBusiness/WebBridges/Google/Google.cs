@@ -33,13 +33,13 @@ namespace OpenDentBusiness {
 		///<summary>The only hosts the OAuth client may reach.</summary>
 		private static readonly string[] _arrayAllowedHosts={ "oauth2.googleapis.com","accounts.google.com","gmail.googleapis.com" };
 
-		///<summary>The HTTP policy for Google's OAuth endpoints: Google hosts only, HTTPS, 15-second timeout, never retried POSTs, redacted logging.</summary>
+		///<summary>The HTTP policy for Google's OAuth endpoints: Google hosts only, HTTPS, 15-second timeout, never retried POSTs.</summary>
 		public static VendorHttpOptions GetHttpOptions() {
 			VendorHttpOptions options=new VendorHttpOptions();
 			options.VendorName=GoogleOAuthSettings.VendorName;
 			options.ListAllowedHosts=_arrayAllowedHosts.ToList();
 			options.Timeout=TokenTimeout;
-			options.Log=x => Logger.WriteLine(x,"VendorDirect");
+			//No per-call log: only refusals are logged (PostTokenAsync), with Google's error codes and never a token.
 			return options;
 		}
 
