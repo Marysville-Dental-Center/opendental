@@ -284,7 +284,7 @@ A webhook needs a public HTTPS listener. That would mean hosting something reach
 
 - **Target:** the fork's local background service host, the planned replacement for Open Dental Service (`docs/specs/port-backlog.md`, V-PAYSUITE; decoupling plan rule 6). `CareCreditJobs` exposes `RunBatch` and `PollPending` for it to call every minute.
 - **Interim, until that host exists:** the desktop app runs them on one workstation. If `Environment.MachineName` equals `CareCreditJobComputerName`, `FormOpenDental` starts an `ODThread` every 60 s that calls `PollPending()`, plus `RunBatch()` once the process time has passed. The setup screen shows "Background tasks run on: <name>" and a **Run on this computer** button. If no computer is set, the poller still runs for rows the current user created during the session (pullback when windows close), and batch QuickScreen doesn't run. The setup screen says so.
-- The compare-and-set lock (step 1 above) and the poller's single-row updates (`CareCreditWebResponses.Update(new,old)`) keep two hosts from double-processing.
+- The compare-and-set lock (step 1 above) keeps two hosts from running the same day's batch. `CareCreditWebResponses.Update(new,old)` is not a concurrency check (it writes the changed columns with no condition on their old values). So a payment is created only after `CareCreditWebResponses.ClaimCompletedForPayment` (`UPDATE ... SET ProcessingStatus='Completed' WHERE PayNum=0 AND ProcessingStatus IN('Created','Pending')`) changes the row. The poller also renews its lease during a long pass and re-reads each row before applying its pullback.
 
 ### 3.8 Errors and offline behaviour
 
@@ -529,7 +529,7 @@ The office can still take CareCredit through Synchrony's own provider portal, an
 - **PHI and credit data.** Prefill and batch requests send identity, contact data, fee estimates and sometimes DOB or SSN digits to a lender. Without a clear BAA or payment-disclosure basis, the office carries compliance risk.
 - **The batch needs an always-on host.** The interim workstation thread stops when that PC is off or nobody is signed in, so batches then run late or not at all.
 - **No webhooks** means up to an hour's delay for transactions the patient finishes on their own device, and more API calls (rate limits unknown).
-- **Duplicate payments** if pullback and the purchase window race. Mitigated by the `PayNum` check and the `Update(new,old)` concurrency guard.
+- **Duplicate payments** if pullback and the purchase window race, or two pollers hold the same row. Prevented by the atomic claim in the database (`ClaimCompletedForPayment`, 3.7) and the `PayNum` check.
 - **Migrated rows** were created under Open Dental's partner context. Their pullback may fail, which the 3.8 handling covers.
 - **`osd1$` is obfuscation, not protection** against someone with database access.
 - **Namespace collision** with `Bridges.dll` until the Phase 2 Bridges split (4.2).

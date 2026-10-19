@@ -77,6 +77,9 @@ namespace OpenDentBusiness.Bridges {
 		///(CareCreditWebResponses.ClaimCompletedForPayment). A payment is created only when this returns 1, so two processes pulling back the same
 		///row can't both pay it.</summary>
 		public Func<long,DateTime,long> FuncClaimCompletedForPayment;
+		///<summary>Reads a row from the database (CareCreditWebResponses.GetOne), or null. Used after a lost claim to pick up the winner's status and
+		///payment.</summary>
+		public Func<long,CareCreditWebResponse> FuncGetRow;
 		///<summary>(status description, patNum, isBatch)</summary>
 		public Action<string,long,bool> ActionUpdatePatField;
 		public Action<double,long> ActionUpsertPreApprovalAmt;
@@ -92,6 +95,7 @@ namespace OpenDentBusiness.Bridges {
 			actions.ActionUpdatePayment=Payments.Update;
 			actions.FuncUpdateRow=CareCreditWebResponses.Update;
 			actions.FuncClaimCompletedForPayment=CareCreditWebResponses.ClaimCompletedForPayment;
+			actions.FuncGetRow=CareCreditWebResponses.GetOne;
 			actions.ActionUpdatePatField=CareCreditWebResponses.UpdateCareCreditPatField;
 			actions.ActionUpsertPreApprovalAmt=CareCreditWebResponses.UpsertPreApprovalAmt;
 			actions.ActionUpsertAvailableCredit=CareCreditWebResponses.UpsertAvailableCredit;
@@ -173,6 +177,14 @@ namespace OpenDentBusiness.Bridges {
 					return countPolled;//Network down: try again next cycle.
 				}
 				countPolled++;
+				//A pass can outlive its lease, and a window can pull back its own row, so apply the result to the row as saved now, not to the snapshot
+				//from the start of the pass. (ApplyResult's claim is what guarantees one payment; this skips work another process already did.)
+				CareCreditWebResponse careCreditWebResponseDb=actions.FuncGetRow(careCreditWebResponse.CareCreditWebResponseNum);
+				if(careCreditWebResponseDb==null || !CareCreditWebResponses.ListWebStatusPending.Contains(careCreditWebResponseDb.ProcessingStatus)) {
+					_dictLastPoll.TryRemove(careCreditWebResponse.CareCreditWebResponseNum,out _);
+					continue;
+				}
+				careCreditWebResponse=careCreditWebResponseDb;
 				ApplyResult(careCreditWebResponse,result,dateTimeNow,actions);
 				if(!CareCreditWebResponses.ListWebStatusPending.Contains(careCreditWebResponse.ProcessingStatus)) {
 					_dictLastPoll.TryRemove(careCreditWebResponse.CareCreditWebResponseNum,out _);
@@ -208,7 +220,14 @@ namespace OpenDentBusiness.Bridges {
 				//window closing) pull back the same completed purchase, exactly one of them gets 1 here. It also saves the completed status first, so a
 				//crash between the two can't lead to a second payment next cycle.
 				if(actions.FuncClaimCompletedForPayment(careCreditWebResponse.CareCreditWebResponseNum,careCreditWebResponse.DateTimeCompleted)!=1) {
-					return;//Someone else completed this row and made its payment. Leave their row as it is.
+					//Someone else completed this row and made its payment. Leave their row as it is, and show the caller what they saved.
+					CareCreditWebResponse careCreditWebResponseDb=actions.FuncGetRow?.Invoke(careCreditWebResponse.CareCreditWebResponseNum);
+					if(careCreditWebResponseDb!=null) {
+						careCreditWebResponse.ProcessingStatus=careCreditWebResponseDb.ProcessingStatus;
+						careCreditWebResponse.PayNum=careCreditWebResponseDb.PayNum;
+						careCreditWebResponse.DateTimeCompleted=careCreditWebResponseDb.DateTimeCompleted;
+					}
+					return;
 				}
 				actions.FuncUpdateRow(careCreditWebResponse,careCreditWebResponseOld);//The rest of the pullback: response, amount, transaction type.
 				careCreditWebResponseOld=careCreditWebResponse.Copy();

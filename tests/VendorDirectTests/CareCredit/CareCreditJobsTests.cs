@@ -75,6 +75,8 @@ namespace VendorDirectTests.CareCreditTests {
 		///<summary>The rows the fake database has let someone claim: a second claim of the same row changes nothing, as with the real UPDATE.</summary>
 		private HashSet<long> _hashSetClaimed;
 		private List<Tuple<long,DateTime>> _listClaims;
+		///<summary>The fake database's rows, by CareCreditWebResponseNum: the last row written, or one a test put there.</summary>
+		private Dictionary<long,CareCreditWebResponse> _dictRowsDb;
 		private CareCreditResultActions _actions;
 
 		[TestInitialize]
@@ -89,7 +91,9 @@ namespace VendorDirectTests.CareCreditTests {
 			_listClosedMerchants=new List<string>();
 			_hashSetClaimed=new HashSet<long>();
 			_listClaims=new List<Tuple<long,DateTime>>();
+			_dictRowsDb=new Dictionary<long,CareCreditWebResponse>();
 			_actions=new CareCreditResultActions();
+			_actions.FuncGetRow=num => _dictRowsDb.TryGetValue(num,out CareCreditWebResponse row) ? row.Copy() : null;
 			_actions.FuncClaimCompletedForPayment=(num,dateTimeCompleted) => {
 				_listClaims.Add(Tuple.Create(num,dateTimeCompleted));
 				return _hashSetClaimed.Add(num) ? 1 : 0;
@@ -102,6 +106,7 @@ namespace VendorDirectTests.CareCreditTests {
 			_actions.ActionUpdatePayment=(payment,paymentOld) => _listUpdatedPayments.Add(payment);
 			_actions.FuncUpdateRow=(row,rowOld) => {
 				_listRowWrites.Add(row.Copy());
+				_dictRowsDb[row.CareCreditWebResponseNum]=row.Copy();
 				return true;
 			};
 			_actions.ActionUpdatePatField=(status,patNum,isBatch) => _listPatFields.Add(Tuple.Create(status,patNum,isBatch));
@@ -157,19 +162,37 @@ namespace VendorDirectTests.CareCreditTests {
 			Assert.AreEqual(1,_listInserted.Count,"Only the process whose claim changed the row creates a payment.");
 			Assert.AreEqual(2,_listClaims.Count);
 			Assert.AreEqual(901,rowProcessA.PayNum);
-			Assert.AreEqual(0,rowProcessB.PayNum);
 			Assert.AreEqual(2,_listRowWrites.Count,"Only the winner writes the row; the loser doesn't write over it.");
 			Assert.AreEqual(901,_listRowWrites.Last().PayNum);
+			Assert.AreEqual(901,rowProcessB.PayNum,"The loser re-reads the row and sees the winner's payment.");
+			Assert.AreEqual(CareCreditWebStatus.Completed,rowProcessB.ProcessingStatus);
+		}
+
+		[TestMethod]
+		public void ApplyResultTwiceFromTheSameStaleRow_InsertsOnePayment() {
+			//One process read the row at the start of a long pass; the lease changed hands and another process holds the same snapshot. Each applies
+			//the same COMPLETED pullback to its own copy of that stale row.
+			CareCreditWebResponse rowStale=CreatePendingRow(CareCreditTransType.Purchase,payNum:0);
+			CareCreditPullbackResult result=CareCreditJson.ReadPullback("{\"status\":\"COMPLETED\",\"amount\":\"80.00\"}",false);
+			CareCreditJobs.ApplyResult(rowStale.Copy(),result,_dateTimeNow,_actions);
+			CareCreditJobs.ApplyResult(rowStale.Copy(),result,_dateTimeNow.AddMinutes(2),_actions);
+			Assert.AreEqual(1,_listInserted.Count,"FuncInsertPayment is called once.");
+			Assert.AreEqual(901,_dictRowsDb[7].PayNum,"The second apply doesn't overwrite the row's PayNum.");
 		}
 
 		[TestMethod]
 		public void ClaimLost_CreatesNoPaymentAndLeavesTheRow() {
-			_hashSetClaimed.Add(7);//Another process or window already completed the row.
+			_hashSetClaimed.Add(7);//Another process or window already completed the row and is making its payment.
+			CareCreditWebResponse rowWinner=CreatePendingRow(CareCreditTransType.Purchase,payNum:0);
+			rowWinner.ProcessingStatus=CareCreditWebStatus.Completed;
+			rowWinner.PayNum=812;
+			_dictRowsDb[7]=rowWinner;
 			CareCreditWebResponse row=CreatePendingRow(CareCreditTransType.Purchase,payNum:0);
 			CareCreditJobs.ApplyResult(row,CareCreditJson.ReadPullback("{\"status\":\"COMPLETED\"}",false),_dateTimeNow,_actions);
 			Assert.AreEqual(0,_listInserted.Count);
 			Assert.AreEqual(0,_listRowWrites.Count);
-			Assert.AreEqual(0,row.PayNum);
+			Assert.AreEqual(812,row.PayNum,"The row is re-read after the lost claim.");
+			Assert.AreEqual(812,_dictRowsDb[7].PayNum);
 		}
 
 		[TestMethod]
