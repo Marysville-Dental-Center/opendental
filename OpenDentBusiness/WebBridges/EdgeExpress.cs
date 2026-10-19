@@ -306,11 +306,16 @@ namespace OpenDentBusiness {
 			public static readonly TimeSpan PendingGrace=TimeSpan.FromMinutes(5);
 			///<summary>Reconciliation looks at pending sessions whose HpfExpiration is no older than this.</summary>
 			public static readonly TimeSpan ReconcileWindow=TimeSpan.FromMinutes(30);
-			///<summary>Reconciliation leaves a pending session alone until this long past its HpfExpiration. The pay-page window can stay open up to 30
-			///seconds past HpfExpiration (EdgeExpressL.GetTimeLeft) and then asks for the result for about RepollCount*RepollDelay more, and
-			///HpfExpiration is stamped with the clock of the workstation that created the session, not the one reconciling. The margin covers both.
-			///</summary>
-			public static readonly TimeSpan ReconcileDelay=TimeSpan.FromMinutes(2);
+			///<summary>Reconciliation leaves a pending session alone until this long past its HpfExpiration: RepollCount*RepollDelay plus one minute.
+			///The pay-page window closes no later than HpfExpiration (EdgeExpressL.GetTimeLeft) and then asks for the result for about
+			///RepollCount*RepollDelay more; the extra minute covers the queries themselves. HpfExpiration and the reconciler's "now" are both database
+			///time, so workstation clocks don't matter. Windows with no time limit (the IE fallback, older callers) are kept apart by
+			///XWebResponses.TrySettle in ProcessTransaction instead.</summary>
+			public static TimeSpan ReconcileDelay {
+				get {
+					return TimeSpan.FromTicks(RepollDelay.Ticks*RepollCount).Add(TimeSpan.FromMinutes(1));
+				}
+			}
 			///<summary>After the pay-page window closes, the result is asked for once and then up to this many more times while it is still pending.
 			///</summary>
 			public static int RepollCount=3;
@@ -730,9 +735,10 @@ namespace OpenDentBusiness {
 				xmlWriter.WriteEndElement();//HOSTPAYSETTING
 			}
 
-			///<summary>Sets the expiration and inserts the response to the db.</summary>
+			///<summary>Sets the expiration and inserts the response to the db. HpfExpiration is database time, so the pay-page window
+			///(EdgeExpressL.GetTimeLeft) and reconciliation on any workstation measure it against the same clock.</summary>
 			private static void FinishEdgeExpressUrlRequest(XWebResponse response) {
-				response.HpfExpiration=DateTime.Now.Add(PayPageSessionLifetime);
+				response.HpfExpiration=MiscData.GetNowDateTime().Add(PayPageSessionLifetime);
 				XWebResponses.Insert(response);
 			}
 
@@ -1071,94 +1077,131 @@ namespace OpenDentBusiness {
 
 			///<summary>Similar to XWebs.ProcessOutstandingTransactions but only runs for a single XWebResponse. Used in the event that they don't have a running eConnector.
 			///Handles the creation of CreditCards if an alias is returned. The result is always asked for with the credentials of the clinic the session
-			///was created with (xWebResponseOld.ClinicNum), whatever clinic existingPayment has.</summary>
+			///was created with (xWebResponseOld.ClinicNum), whatever clinic existingPayment has.
+			///A pending pay-page row can be reached both by the window that opened it and by reconciliation (ReconcilePending) on any workstation, so
+			///the row is re-read first: if it is no longer EdgeExpressPending, the database copy is returned without asking or writing anything. After
+			///the answer comes back, the row is settled (XWebResponses.TrySettle) before anything is acted on; if another workstation or window
+			///changed it in the meantime, nothing is saved (no card on file, no payment, no row update) and the database copy is returned. The row
+			///keeps its PaymentNum unless an approval attaches it to existingPayment or a new payment.</summary>
 			public static XWebResponse ProcessTransaction(XWebResponse xWebResponseOld,Payment existingPayment=null,bool doCreatePayment=true) {
+				return ProcessTransactionExclusive(xWebResponseOld,existingPayment,doCreatePayment,out bool _);
+			}
+
+			///<summary>ProcessTransaction. isActedOn is false when the row was settled or changed by another workstation or window, so this call asked
+			///nothing or acted on nothing; the database copy is returned then.</summary>
+			private static XWebResponse ProcessTransactionExclusive(XWebResponse xWebResponseOld,Payment existingPayment,bool doCreatePayment,
+				out bool isActedOn)
+			{
+				isActedOn=true;
+				XWebResponse xWebResponseDb=null;
+				if(xWebResponseOld.XWebResponseNum!=0) {
+					xWebResponseDb=XWebResponses.GetOne(xWebResponseOld.XWebResponseNum);
+				}
+				//Only pending rows are contended: reconciliation never touches any other status.
+				bool isContended=(xWebResponseDb!=null && xWebResponseDb.TransactionStatus==XWebTransactionStatus.EdgeExpressPending);
+				if(xWebResponseDb!=null && !isContended && xWebResponseOld.TransactionStatus==XWebTransactionStatus.EdgeExpressPending) {
+					isActedOn=false;//Settled elsewhere since the caller read it.
+					return xWebResponseDb;
+				}
+				DateTime dateTimeNow=MiscData.GetNowDateTime();//HpfExpiration is database time.
 				XWebResponse xWebResponseUpdate=xWebResponseOld;
 				XWebTransactionStatus transactionStatusOld=xWebResponseOld.TransactionStatus;
+				bool isSettled=!isContended;//Nothing to settle on a row nobody else processes.
 				try {
 					//Get the OTK status from the gateway, under the merchant account the session was created with.
 					XWebResponse xWebResponseNew=QueryPayment(xWebResponseOld);
 					if(xWebResponseNew.XWebResponseCode==XWebResponseCodes.Pending || xWebResponseNew.XWebResponseCode==XWebResponseCodes.Undefined) { //No new status to report. Try again next time.
-						if(DateTime.Now>xWebResponseOld.HpfExpiration.Add(PendingGrace)) {
+						if(dateTimeNow>xWebResponseOld.HpfExpiration.Add(PendingGrace)) {
 							//EdgeExpress will return 814 "Invalid Reference Error" indefinitely if the patient doesn't finish the transaction.
 							xWebResponseUpdate.TransactionStatus=XWebTransactionStatus.EdgeExpressExpired;
 						}
-						return xWebResponseUpdate;
 					}
-					//We got this far so we at least got a valid gateway response. This is now the response that we will update in the db.
-					xWebResponseUpdate=xWebResponseNew;
-					//ResponseCode came over as an int from XML. We need to convert that the XWebResponseCode enum here. Note we are using the otkOutput.ResponseCode (not the otkOld.ResponseCode).
-					xWebResponseUpdate.XWebResponseCode=XWebResponse.ConvertResponseCode(xWebResponseUpdate.ResponseCode);
-					//Save existing fields from the old db version to the new db version.						
-					xWebResponseUpdate.SetPersistentFields(
-						xWebResponseOld.XWebResponseNum,
-						xWebResponseOld.TransactionType,
-						xWebResponseOld.PatNum,
-						xWebResponseOld.ProvNum,
-						xWebResponseOld.ClinicNum,
-						xWebResponseOld.Amount,
-						xWebResponseOld.OTK,
-						xWebResponseOld.HpfUrl,
-						xWebResponseOld.HpfExpiration,
-						xWebResponseOld.DebugError,
-						xWebResponseOld.PayNote,
-						xWebResponseOld.CCSource);
-					//The credit card's ExpDate will only be valid when we actually completed a payment.
-					if(!string.IsNullOrEmpty(xWebResponseUpdate.ExpDate)) {
-						xWebResponseUpdate.AccountExpirationDate=XWebResponse.ConvertExpDate(xWebResponseUpdate.ExpDate);
-					}
-					switch(xWebResponseUpdate.XWebResponseCode) {
-						case XWebResponseCodes.Approval:
-							if(!string.IsNullOrEmpty(xWebResponseUpdate.Alias)) {
+					else {
+						//We got this far so we at least got a valid gateway response. This is now the response that we will update in the db.
+						xWebResponseUpdate=xWebResponseNew;
+						//ResponseCode came over as an int from XML. We need to convert that the XWebResponseCode enum here. Note we are using the otkOutput.ResponseCode (not the otkOld.ResponseCode).
+						xWebResponseUpdate.XWebResponseCode=XWebResponse.ConvertResponseCode(xWebResponseUpdate.ResponseCode);
+						//Save existing fields from the old db version to the new db version.
+						xWebResponseUpdate.SetPersistentFields(
+							xWebResponseOld.XWebResponseNum,
+							xWebResponseOld.TransactionType,
+							xWebResponseOld.PatNum,
+							xWebResponseOld.ProvNum,
+							xWebResponseOld.ClinicNum,
+							xWebResponseOld.Amount,
+							xWebResponseOld.OTK,
+							xWebResponseOld.HpfUrl,
+							xWebResponseOld.HpfExpiration,
+							xWebResponseOld.DebugError,
+							xWebResponseOld.PayNote,
+							xWebResponseOld.CCSource);
+						//SetPersistentFields doesn't carry the link to the payment the window had open. Keep it, so a payment saved with this charge still
+						//finds the row (XWebResponses.GetOneByPaymentNum) for a void or return. An approval for existingPayment, or a payment created below,
+						//replaces it.
+						xWebResponseUpdate.PaymentNum=(xWebResponseDb??xWebResponseOld).PaymentNum;
+						//The credit card's ExpDate will only be valid when we actually completed a payment.
+						if(!string.IsNullOrEmpty(xWebResponseUpdate.ExpDate)) {
+							xWebResponseUpdate.AccountExpirationDate=XWebResponse.ConvertExpDate(xWebResponseUpdate.ExpDate);
+						}
+						bool doInsertCreditCard=false;
+						bool doInsertPayment=false;
+						switch(xWebResponseUpdate.XWebResponseCode) {
+							case XWebResponseCodes.Approval:
 								//Create a new credit card with this alias.
-								CreditCards.InsertFromXWeb(xWebResponseUpdate);
-							}
-							//If we already have a payment, just update the note and insert a paysplit.
-							if(existingPayment!=null) {
-								xWebResponseUpdate.PaymentNum=existingPayment.PayNum;
-							}
+								doInsertCreditCard=!string.IsNullOrEmpty(xWebResponseUpdate.Alias);
+								//If we already have a payment, just update the note and insert a paysplit.
+								if(existingPayment!=null) {
+									xWebResponseUpdate.PaymentNum=existingPayment.PayNum;
+								}
+								else if(doCreatePayment) {
+									doInsertPayment=true;
+								}
+								xWebResponseUpdate.TransactionStatus=XWebTransactionStatus.EdgeExpressCompletePaymentApproved;
+								break;
+							case XWebResponseCodes.AliasSuccess:
+							case XWebResponseCodes.ZeroDollarAuthApproval:
+								//Create a new credit card with this alias.
+								doInsertCreditCard=true;
+								xWebResponseUpdate.TransactionStatus=XWebTransactionStatus.EdgeExpressCompleteAliasCreated;
+								break;
+							case XWebResponseCodes.ExpiredWithoutApproval:
+							case XWebResponseCodes.SessionTimedOut://006: the page timed out before a card was submitted.
+							case XWebResponseCodes.TransactionCancelled://103: cancelled on the page.
+								//No charge was made. Just let the XWebResponseCode get updated so we don't check next time.
+								xWebResponseUpdate.TransactionStatus=XWebTransactionStatus.EdgeExpressExpired;
+								break;
+							case XWebResponseCodes.Declined:
+								break;
+							case XWebResponseCodes.PartialApproval:
+							case XWebResponseCodes.OtkSuccess:
+							case XWebResponseCodes.Undefined:
+							case XWebResponseCodes.Pending:
+							default:
+								throw new ODException("Unsupported XWebResponseCode for GetOtkStatus: "+xWebResponseUpdate.XWebResponseCode.ToString());
+						}
+						//Only the workstation or window that settles the row acts on the answer.
+						if(!isSettled) {
+							isActedOn=XWebResponses.TrySettle(xWebResponseDb.XWebResponseNum,xWebResponseDb.DateTUpdate,xWebResponseUpdate.TransactionStatus);
+							isSettled=true;
+						}
+						if(isActedOn && doInsertCreditCard) {
+							CreditCards.InsertFromXWeb(xWebResponseUpdate);
+						}
+						if(isActedOn && doInsertPayment) {
 							//Insert Payment, PaySplit, and set FK.
-							else if(doCreatePayment) {
-								xWebResponseUpdate.PaymentNum=Payments.InsertFromXWeb(
+							xWebResponseUpdate.PaymentNum=Payments.InsertFromXWeb(
 								//todo: create a formatted receipt to show the web user after the payment has been accepted
 								xWebResponseUpdate.PatNum,xWebResponseUpdate.ProvNum,xWebResponseUpdate.ClinicNum,xWebResponseUpdate.Amount,
 								xWebResponseUpdate.GetFormattedNote(true),//If we ever allow returns or voids from Patient Portal, we will need to change this argument.
 								"",xWebResponseUpdate.CCSource);
-							}
-							else {
-								//Reconciliation: nothing is posted, but keep the row's link to the payment the window had open (SetPersistentFields doesn't
-								//carry it), so a payment saved with this charge still finds it (XWebResponses.GetOneByPaymentNum) for a void or return.
-								xWebResponseUpdate.PaymentNum=xWebResponseOld.PaymentNum;
-							}
-							xWebResponseUpdate.TransactionStatus=XWebTransactionStatus.EdgeExpressCompletePaymentApproved;
-							break;
-						case XWebResponseCodes.AliasSuccess:
-						case XWebResponseCodes.ZeroDollarAuthApproval:
-							//Create a new credit card with this alias.
-							CreditCards.InsertFromXWeb(xWebResponseUpdate);
-							xWebResponseUpdate.TransactionStatus=XWebTransactionStatus.EdgeExpressCompleteAliasCreated;
-							break;
-						case XWebResponseCodes.ExpiredWithoutApproval:
-						case XWebResponseCodes.SessionTimedOut://006: the page timed out before a card was submitted.
-						case XWebResponseCodes.TransactionCancelled://103: cancelled on the page.
-							//No charge was made. Just let the XWebResponseCode get updated so we don't check next time.
-							xWebResponseUpdate.TransactionStatus=XWebTransactionStatus.EdgeExpressExpired;
-							break;
-						case XWebResponseCodes.Declined:
-							break;
-						case XWebResponseCodes.PartialApproval:
-						case XWebResponseCodes.OtkSuccess:
-						case XWebResponseCodes.Undefined:
-						case XWebResponseCodes.Pending:
-						default:
-							throw new ODException("Unsupported XWebResponseCode for GetOtkStatus: "+xWebResponseUpdate.XWebResponseCode.ToString());
+						}
 					}
 				}
 				catch(Exception e) {
 					if(transactionStatusOld==XWebTransactionStatus.EdgeExpressPending) {
 						//No answer, or one that settles nothing (a temporary outage, 820; a credential error, 805): the card may still have been charged, so
 						//the session stays pending and reconciliation asks again. Only officially stop polling once it is well past when the HPF expired.
-						if(DateTime.Now>xWebResponseOld.HpfExpiration.Add(PendingGrace)) {
+						if(dateTimeNow>xWebResponseOld.HpfExpiration.Add(PendingGrace)) {
 							xWebResponseUpdate.TransactionStatus=XWebTransactionStatus.EdgeExpressMonitoringError;
 						}
 						else {
@@ -1169,17 +1212,26 @@ namespace OpenDentBusiness {
 					xWebResponseUpdate.DebugError=e.Message;
 				}
 				finally { //Always update, even if there were no changes. This is to update the value of DateTUpdate.
-					xWebResponseUpdate.DateTUpdate=DateTime.Now;
-					XWebResponses.Update(xWebResponseUpdate);
+					if(!isSettled) {
+						isActedOn=XWebResponses.TrySettle(xWebResponseDb.XWebResponseNum,xWebResponseDb.DateTUpdate,xWebResponseUpdate.TransactionStatus);
+					}
+					if(isActedOn) {
+						xWebResponseUpdate.DateTUpdate=DateTime.Now;
+						XWebResponses.Update(xWebResponseUpdate);
+					}
+				}
+				if(!isActedOn) {
+					//Another workstation or window changed the row while the card processor was being asked. It acts on the answer; this call doesn't.
+					return XWebResponses.GetOne(xWebResponseDb.XWebResponseNum)??xWebResponseDb;
 				}
 				return xWebResponseUpdate;
 			}
 
 			///<summary>ProcessTransaction, then while the result is still pending (102, or 814 before the card is submitted), asks again up to
 			///RepollCount more times, RepollDelay apart. This catches a card submitted just before the user closed the pay-page window. Call it on a
-			///background thread (the pay-page helper shows a progress window). Before each query the row is re-read: if it is no longer
-			///EdgeExpressPending (reconciliation settled it, for example after clock skew between workstations), that row is returned as it is and the
-			///result is neither asked for nor acted on again, so no second card on file or payment is made. actionWait defaults to Thread.Sleep.</summary>
+			///background thread (the pay-page helper shows a progress window). ProcessTransaction re-reads the row each time: once it is no longer
+			///EdgeExpressPending (reconciliation settled it, for example), that row is returned as it is and the result is neither asked for nor acted
+			///on again, so no second card on file or payment is made. actionWait defaults to Thread.Sleep.</summary>
 			public static XWebResponse ProcessTransactionWithRepoll(XWebResponse xWebResponseOld,Payment existingPayment=null,bool doCreatePayment=true,
 				Action<TimeSpan> actionWait=null)
 			{
@@ -1187,18 +1239,9 @@ namespace OpenDentBusiness {
 				if(actionWait==null) {
 					actionWait=x => Thread.Sleep(x);
 				}
-				XWebResponse xWebResponse=xWebResponseOld;
-				for(int i=0;i<=RepollCount;i++) {
-					if(i>0) {
-						if(xWebResponse.TransactionStatus!=XWebTransactionStatus.EdgeExpressPending) {
-							break;
-						}
-						actionWait(RepollDelay);
-					}
-					XWebResponse xWebResponseDb=XWebResponses.GetOne(xWebResponse.XWebResponseNum);
-					if(xWebResponseDb!=null && xWebResponseDb.TransactionStatus!=XWebTransactionStatus.EdgeExpressPending) {
-						return xWebResponseDb;//Settled elsewhere (reconciliation); don't query and post a second time.
-					}
+				XWebResponse xWebResponse=ProcessTransaction(xWebResponseOld,existingPayment,doCreatePayment);
+				for(int i=0;i<RepollCount && xWebResponse.TransactionStatus==XWebTransactionStatus.EdgeExpressPending;i++) {
+					actionWait(RepollDelay);
 					xWebResponse=ProcessTransaction(xWebResponse,existingPayment,doCreatePayment);
 				}
 				return xWebResponse;
@@ -1206,14 +1249,15 @@ namespace OpenDentBusiness {
 
 			///<summary>Local reconciliation of pay-page sessions left pending, which Open Dental's eConnector used to do. Looks at EdgeExpressPending
 			///CreditSale and CreditAuth rows whose session ended within ReconcileWindow. A row is left alone until ReconcileDelay past its HpfExpiration,
-			///so no pay-page window still has it or is still asking for its result; the window's re-polls also stop once the row is settled here.
-			///Each row is claimed first (XWebResponses.TryClaim), so only one workstation handles it, and re-read after the claim. The result is asked
-			///for with the row's clinic. An approval found this late is never posted automatically: the row is marked approved (and a card on file is
-			///saved if an alias came back), no payment is created, the row keeps its PaymentNum, and an alert asks staff to attach or void it. Rows
-			///with no result past the grace period are marked expired, as before. dateTimeNow is for tests.</summary>
+			///so no pay-page window still has it or is still asking for its result. "Now" is database time, like HpfExpiration. Each row is claimed
+			///first (XWebResponses.TryClaim), so only one workstation asks about it, and re-read after the claim. The result is asked for with the
+			///row's clinic, and acted on only if this workstation settles the row first (ProcessTransaction); a row a window settled meanwhile counts
+			///as claimed elsewhere and raises no alert. An approval found this late is never posted automatically: the row is marked approved (and a
+			///card on file is saved if an alias came back), no payment is created, the row keeps its PaymentNum, and an alert asks staff to attach or
+			///void it. Rows with no result past the grace period are marked expired, as before. dateTimeNow (database time) is for tests.</summary>
 			public static EdgeExpressReconcileResult ReconcilePending(DateTime? dateTimeNow=null) {
 				Meth.NoCheckMiddleTierRole();
-				DateTime now=dateTimeNow??DateTime.Now;
+				DateTime now=dateTimeNow??MiscData.GetNowDateTime();
 				EdgeExpressReconcileResult reconcileResult=new EdgeExpressReconcileResult();
 				List<XWebResponse> listXWebResponses=XWebResponses.GetPendingEdgeExpress(now.Subtract(ReconcileWindow));
 				for(int i=0;i<listXWebResponses.Count;i++) {
@@ -1234,14 +1278,20 @@ namespace OpenDentBusiness {
 					}
 					long payNumOld=xWebResponseClaimed.PaymentNum;
 					XWebResponse xWebResponseProcessed;
+					bool isActedOn;
 					try {
-						xWebResponseProcessed=ProcessTransaction(xWebResponseClaimed,existingPayment:null,doCreatePayment:false);
+						xWebResponseProcessed=ProcessTransactionExclusive(xWebResponseClaimed,null,false,out isActedOn);
 					}
 					catch(Exception ex) {
 						//ProcessTransaction catches the vendor's errors itself; this is the database write or the card-on-file insert failing.
 						reconcileResult.CountFailed++;
 						ODException.SwallowAnyException(() => Logger.WriteLine("Reconciling XWebResponseNum "+xWebResponse.XWebResponseNum+" failed: "
 							+ex.Message,"EdgeExpress"));
+						continue;
+					}
+					if(!isActedOn) {
+						//The pay-page window (or another workstation) settled the row while the card processor was being asked; it acted on the answer.
+						reconcileResult.CountClaimedElsewhere++;
 						continue;
 					}
 					reconcileResult.CountChecked++;
@@ -1277,7 +1327,7 @@ namespace OpenDentBusiness {
 				if(xWebResponse.TransactionStatus==XWebTransactionStatus.EdgeExpressCompletePaymentApproved) {
 					alertItem.Severity=SeverityType.High;
 					alertItem.Description=Lans.g("EdgeExpress","Card payment of")+" "+xWebResponse.Amount.ToString("c")+" "+Lans.g("EdgeExpress","for")+" "
-						+patientText+" "+Lans.g("EdgeExpress","was approved after the payment window closed. No payment was entered. Attach it or void it.");
+						+patientText+" "+Lans.g("EdgeExpress","was approved after the payment window closed and was not entered automatically. If no payment shows it, attach it or void it.");
 				}
 				else {
 					alertItem.Severity=SeverityType.Normal;
@@ -1391,9 +1441,9 @@ namespace OpenDentBusiness {
 			}
 		}
 
-		///<summary>Only when a pending session might need it: one COUNT query, no vendor call.</summary>
+		///<summary>Only when a pending session might need it: one COUNT query (with database time), no vendor call.</summary>
 		public bool ShouldRun() {
-			return XWebResponses.CountPendingEdgeExpress(DateTime.Now.Subtract(EdgeExpress.CNP.ReconcileWindow))>0;
+			return XWebResponses.CountPendingEdgeExpress(MiscData.GetNowDateTime().Subtract(EdgeExpress.CNP.ReconcileWindow))>0;
 		}
 
 		public void Run() {

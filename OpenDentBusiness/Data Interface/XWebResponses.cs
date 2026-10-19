@@ -108,7 +108,8 @@ namespace OpenDentBusiness{
 		///<summary>The EdgeExpress hosted-pay-page sessions that may still finish: EdgeExpressPending, a CreditSale or CreditAuth, and a session
 		///expiration (HpfExpiration) later than notBefore. Used by local reconciliation (EdgeExpress.CNP.ReconcilePending), which replaced the
 		///eConnector's polling. Unlike GetPendingHostedPay, this includes desktop sales (PaymentNum set) and leaves out X-Web HPF rows; unlike
-		///GetExpiredEdgeExpressResponses, it leaves out finished rows and old rows.</summary>
+		///GetExpiredEdgeExpressResponses, it leaves out finished rows and old rows. HpfExpiration is stamped with database time, so notBefore must be
+		///database time too (MiscData.GetNowDateTime), not this computer's clock.</summary>
 		public static List<XWebResponse> GetPendingEdgeExpress(DateTime notBefore) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetObject<List<XWebResponse>>(MethodBase.GetCurrentMethod(),notBefore);
@@ -139,6 +140,22 @@ namespace OpenDentBusiness{
 				return Meth.GetBool(MethodBase.GetCurrentMethod(),xWebResponseNum,dateTUpdateOld);
 			}
 			string command="UPDATE xwebresponse SET DateTUpdate=GREATEST("+DbHelper.Now()+",DATE_ADD("+POut.DateT(dateTUpdateOld)+",INTERVAL 1 SECOND)) "
+				+"WHERE XWebResponseNum="+POut.Long(xWebResponseNum)+" "
+				+"AND DateTUpdate="+POut.DateT(dateTUpdateOld)+" "
+				+"AND TransactionStatus="+POut.Int((int)XWebTransactionStatus.EdgeExpressPending);
+			return Db.NonQ(command)>0;
+		}
+
+		///<summary>Like TryClaim, but also sets TransactionStatus to transactionStatusNew in the same statement. EdgeExpress.CNP.ProcessTransaction
+		///calls it after asking the card processor and before acting on the answer (card on file, payment, row update): whichever workstation or
+		///window settles a pending row first is the only one that acts on it. Once the status is no longer EdgeExpressPending, every later
+		///TryClaim or TrySettle on the row fails. Returns false if the row changed since dateTUpdateOld was read or is no longer pending.</summary>
+		public static bool TrySettle(long xWebResponseNum,DateTime dateTUpdateOld,XWebTransactionStatus transactionStatusNew) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetBool(MethodBase.GetCurrentMethod(),xWebResponseNum,dateTUpdateOld,transactionStatusNew);
+			}
+			string command="UPDATE xwebresponse SET TransactionStatus="+POut.Int((int)transactionStatusNew)+","
+				+"DateTUpdate=GREATEST("+DbHelper.Now()+",DATE_ADD("+POut.DateT(dateTUpdateOld)+",INTERVAL 1 SECOND)) "
 				+"WHERE XWebResponseNum="+POut.Long(xWebResponseNum)+" "
 				+"AND DateTUpdate="+POut.DateT(dateTUpdateOld)+" "
 				+"AND TransactionStatus="+POut.Int((int)XWebTransactionStatus.EdgeExpressPending);

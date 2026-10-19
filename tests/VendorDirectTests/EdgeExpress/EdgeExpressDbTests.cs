@@ -27,6 +27,8 @@ namespace VendorDirectTests.EdgeExpressTests {
 		private static long _programNumEdgeExpress;
 		///<summary>Every request the fake card processor received, in order.</summary>
 		private List<string> _listRequests;
+		///<summary>The logged-in user before the test; saving a card on file writes a security log entry for the current user.</summary>
+		private Userod _userodBefore;
 
 		[ClassInitialize]
 		public static void ClassInitialize(TestContext testContext) {
@@ -77,6 +79,24 @@ namespace VendorDirectTests.EdgeExpressTests {
 						+"Description varchar(2000) NOT NULL,Type tinyint(4) NOT NULL,Severity tinyint(4) NOT NULL,Actions tinyint(4) NOT NULL,"
 						+"FormToOpen tinyint(4) NOT NULL,FKey bigint(20) NOT NULL,ItemValue varchar(4000) NOT NULL,UserNum bigint(20) NOT NULL,"
 						+"SecDateTEntry datetime NOT NULL DEFAULT '0001-01-01 00:00:00',PRIMARY KEY (AlertItemNum)) ENGINE=MyISAM DEFAULT CHARSET=utf8mb3");
+					//Cards on file, and the security log that saving one writes.
+					Exec(connection,"CREATE TABLE creditcard (CreditCardNum bigint(20) NOT NULL AUTO_INCREMENT,PatNum bigint(20) NOT NULL,"
+						+"Address varchar(255) DEFAULT NULL,Zip varchar(255) DEFAULT NULL,XChargeToken varchar(255) DEFAULT NULL,"
+						+"CCNumberMasked varchar(255) DEFAULT NULL,CCExpiration date NOT NULL DEFAULT '0001-01-01',ItemOrder int(11) NOT NULL,"
+						+"ChargeAmt double NOT NULL,DateStart date NOT NULL DEFAULT '0001-01-01',DateStop date NOT NULL DEFAULT '0001-01-01',"
+						+"Note varchar(255) NOT NULL,PayPlanNum bigint(20) NOT NULL,PayConnectToken varchar(255) NOT NULL,"
+						+"PayConnectTokenExp date NOT NULL DEFAULT '0001-01-01',Procedures text NOT NULL,CCSource tinyint(4) NOT NULL,"
+						+"ClinicNum bigint(20) NOT NULL,ExcludeProcSync tinyint(4) NOT NULL,PaySimpleToken varchar(255) NOT NULL,"
+						+"ChargeFrequency varchar(150) NOT NULL,CanChargeWhenNoBal tinyint(4) NOT NULL,PaymentType bigint(20) NOT NULL,"
+						+"IsRecurringActive tinyint(4) NOT NULL,Nickname varchar(255) NOT NULL,PRIMARY KEY (CreditCardNum),KEY PatNum (PatNum)) "
+						+"ENGINE=MyISAM DEFAULT CHARSET=utf8mb3");
+					Exec(connection,"CREATE TABLE securitylog (SecurityLogNum bigint(20) NOT NULL AUTO_INCREMENT,PermType smallint(6) NOT NULL,"
+						+"UserNum bigint(20) NOT NULL,LogDateTime datetime NOT NULL DEFAULT '0001-01-01 00:00:00',LogText text DEFAULT NULL,"
+						+"PatNum bigint(20) NOT NULL,CompName varchar(255) NOT NULL,FKey bigint(20) NOT NULL,LogSource tinyint(4) NOT NULL,"
+						+"DefNum bigint(20) NOT NULL,DefNumError bigint(20) NOT NULL,DateTPrevious datetime NOT NULL DEFAULT '0001-01-01 00:00:00',"
+						+"PRIMARY KEY (SecurityLogNum)) ENGINE=MyISAM DEFAULT CHARSET=utf8mb3");
+					Exec(connection,"CREATE TABLE securityloghash (SecurityLogHashNum bigint(20) NOT NULL AUTO_INCREMENT,SecurityLogNum bigint(20) NOT NULL,"
+						+"LogHash varchar(255) NOT NULL,PRIMARY KEY (SecurityLogHashNum)) ENGINE=MyISAM DEFAULT CHARSET=utf8mb3");
 				}
 				UseScratchDb();
 				Prefs.RefreshCache();
@@ -140,13 +160,25 @@ namespace VendorDirectTests.EdgeExpressTests {
 				connection.Open();
 				Exec(connection,"DELETE FROM "+DB_NAME+".xwebresponse");
 				Exec(connection,"DELETE FROM "+DB_NAME+".alertitem");
+				Exec(connection,"DELETE FROM "+DB_NAME+".creditcard");
 			}
 			_listRequests=new List<string>();
+			_userodBefore=Security.CurUser;
 		}
 
 		[TestCleanup]
 		public void TestCleanup() {
 			XWebs.Mock=null;
+			Security.CurUser=_userodBefore;
+		}
+
+		///<summary>A clerk is logged in, as on a workstation (the payment window, or the vendor job host running reconciliation).</summary>
+		private void LogInClerk() {
+			_userodBefore=Security.CurUser;
+			Userod userod=new Userod();
+			userod.UserNum=7;
+			userod.UserName="clerk";
+			Security.CurUser=userod;
 		}
 
 		private static void Exec(MySqlConnection connection,string command) {
@@ -171,6 +203,10 @@ namespace VendorDirectTests.EdgeExpressTests {
 		private static string Approval(decimal amount) {
 			return Answer("000","<TRANSACTIONID>T1001</TRANSACTIONID><APPROVALCODE>A12345</APPROVALCODE><APPROVEDAMOUNT>"+amount+"</APPROVEDAMOUNT>"
 				+"<MASKEDCARDNUMBER>************1111</MASKEDCARDNUMBER><EXPMONTH>12</EXPMONTH><EXPYEAR>30</EXPYEAR><TRANSACTIONTYPE>CREDITSALE</TRANSACTIONTYPE>");
+		}
+
+		private static string ApprovalWithAlias(decimal amount) {
+			return Approval(amount).Replace("</RESULT>","<ALIAS>ALIAS-4242</ALIAS></RESULT>");
 		}
 
 		private static string GetElement(string xml,string name) {
@@ -203,6 +239,23 @@ namespace VendorDirectTests.EdgeExpressTests {
 
 		private static int CountAlerts() {
 			return PIn.Int(DataCore.GetScalar("SELECT COUNT(*) FROM alertitem"));
+		}
+
+		private static int CountCreditCards() {
+			return PIn.Int(DataCore.GetScalar("SELECT COUNT(*) FROM creditcard"));
+		}
+
+		///<summary>Fakes the card processor with an approval that saves a card. actionInFlight runs once, while the first request waits for its
+		///answer: the other path (the window or reconciliation) asks and acts in that gap, as another workstation would.</summary>
+		private void FakeGatewayWithSecondPathInFlight(Action actionInFlight) {
+			XWebs.Mock=new XWebs.MockXWebs();
+			XWebs.Mock.ResponseForRequest=(input,url) => {
+				_listRequests.Add(input);
+				if(_listRequests.Count==1) {
+					actionInFlight();
+				}
+				return ApprovalWithAlias(25);
+			};
 		}
 
 		[TestMethod]
@@ -348,7 +401,7 @@ namespace VendorDirectTests.EdgeExpressTests {
 
 		[TestMethod]
 		public void ReconcilePending_WaitsUntilThePayPageWindowIsDonePolling() {
-			//The window closes at HpfExpiration (or up to 30 seconds later) and then re-polls; the creating workstation's clock may also differ.
+			//The window closes by HpfExpiration and then re-polls for about RepollCount*RepollDelay.
 			DateTime hpfExpiration=DateTime.Now.AddMinutes(-10);
 			XWebResponse xWebResponse=InsertPending(2,hpfExpiration,paymentNum:78);
 			FakeGateway(Approval(25));
@@ -388,6 +441,84 @@ namespace VendorDirectTests.EdgeExpressTests {
 			xWebResponseProcessed=EdgeExpress.CNP.ProcessTransactionWithRepoll(xWebResponse,payment,true,x => { });
 			Assert.AreEqual(0,_listRequests.Count);
 			Assert.AreEqual(XWebTransactionStatus.EdgeExpressCompletePaymentApproved,xWebResponseProcessed.TransactionStatus);
+		}
+
+		[TestMethod]
+		public void ReconcileAndPayPageWindow_WindowSettlesFirst_OneCardNoAlert() {
+			//A window with no time limit (the IE fallback) is still asking when reconciliation takes the row. Both get the approval; the window
+			//settles the row first.
+			XWebResponse xWebResponse=InsertPending(2,DateTime.Now.Subtract(EdgeExpress.CNP.ReconcileDelay).AddMinutes(-1),paymentNum:80);
+			Payment payment=new Payment();
+			payment.PayNum=80;
+			payment.ClinicNum=2;
+			LogInClerk();
+			XWebResponse xWebResponseWindow=null;
+			FakeGatewayWithSecondPathInFlight(() => xWebResponseWindow=EdgeExpress.CNP.ProcessTransaction(xWebResponse,payment));
+			EdgeExpressReconcileResult reconcileResult=EdgeExpress.CNP.ReconcilePending();
+			Assert.AreEqual(2,_listRequests.Count,"Both asked.");
+			Assert.AreEqual(XWebTransactionStatus.EdgeExpressCompletePaymentApproved,xWebResponseWindow.TransactionStatus,xWebResponseWindow.DebugError);
+			Assert.AreEqual(80,xWebResponseWindow.PaymentNum);
+			Assert.AreEqual(0,reconcileResult.CountChecked,"Reconciliation doesn't act on a row the window settled.");
+			Assert.AreEqual(0,reconcileResult.CountApproved);
+			Assert.AreEqual(1,reconcileResult.CountClaimedElsewhere);
+			Assert.AreEqual(1,CountCreditCards(),"One card on file.");
+			XWebResponse xWebResponseDb=XWebResponses.GetOne(xWebResponse.XWebResponseNum);
+			Assert.AreEqual(XWebTransactionStatus.EdgeExpressCompletePaymentApproved,xWebResponseDb.TransactionStatus);
+			Assert.AreEqual(80,xWebResponseDb.PaymentNum,"Still linked to the payment, for a void or return.");
+			Assert.AreEqual(0,CountAlerts(),"No alert to void a payment the window posted.");
+		}
+
+		[TestMethod]
+		public void ReconcileAndPayPageWindow_ReconcileSettlesFirst_OneCardPaymentNumKept() {
+			//Reconciliation settles the row while the window waits for its answer.
+			XWebResponse xWebResponse=InsertPending(2,DateTime.Now.Subtract(EdgeExpress.CNP.ReconcileDelay).AddMinutes(-1),paymentNum:81);
+			Payment payment=new Payment();
+			payment.PayNum=81;
+			payment.ClinicNum=2;
+			LogInClerk();
+			EdgeExpressReconcileResult reconcileResult=null;
+			FakeGatewayWithSecondPathInFlight(() => reconcileResult=EdgeExpress.CNP.ReconcilePending());
+			XWebResponse xWebResponseWindow=EdgeExpress.CNP.ProcessTransaction(xWebResponse,payment);
+			Assert.AreEqual(2,_listRequests.Count);
+			Assert.AreEqual(1,reconcileResult.CountApproved,"DebugError: "+XWebResponses.GetOne(xWebResponse.XWebResponseNum).DebugError);
+			Assert.AreEqual(1,CountAlerts());
+			Assert.AreEqual(1,CountCreditCards(),"The window saves no second card.");
+			Assert.AreEqual(XWebTransactionStatus.EdgeExpressCompletePaymentApproved,xWebResponseWindow.TransactionStatus,"The window gets the settled row.");
+			XWebResponse xWebResponseDb=XWebResponses.GetOne(xWebResponse.XWebResponseNum);
+			Assert.AreEqual(81,xWebResponseDb.PaymentNum,"Reconciliation keeps the link to the window's payment.");
+			Assert.AreEqual(81,xWebResponseWindow.PaymentNum);
+		}
+
+		[TestMethod]
+		public void ProcessTransaction_NoPayment_KeepsPaymentNumOnEveryAnswer() {
+			//Reconciliation, or Manage Cards, passes no payment. The full-row update must not unlink the row from the payment it was made for.
+			XWebResponse xWebResponse=InsertPending(2,DateTime.Now.AddMinutes(-1),paymentNum:82);
+			FakeGateway(Answer("103"));
+			XWebResponse xWebResponseProcessed=EdgeExpress.CNP.ProcessTransaction(xWebResponse,null,doCreatePayment:false);
+			Assert.AreEqual(XWebTransactionStatus.EdgeExpressExpired,xWebResponseProcessed.TransactionStatus);
+			Assert.AreEqual(82,XWebResponses.GetOne(xWebResponse.XWebResponseNum).PaymentNum);
+		}
+
+		[TestMethod]
+		public void ReconcilePending_UsesDatabaseTime() {
+			//HpfExpiration is database time. A row whose session ended more than ReconcileDelay ago by the database clock is reconciled.
+			DateTime dateTimeDb=MiscData.GetNowDateTime();
+			XWebResponse xWebResponse=InsertPending(2,dateTimeDb.Subtract(EdgeExpress.CNP.ReconcileDelay).AddSeconds(-5));
+			FakeGateway(Answer("103"));
+			EdgeExpressReconcileResult reconcileResult=EdgeExpress.CNP.ReconcilePending();
+			Assert.AreEqual(1,reconcileResult.CountChecked);
+			Assert.AreEqual(XWebTransactionStatus.EdgeExpressExpired,XWebResponses.GetOne(xWebResponse.XWebResponseNum).TransactionStatus);
+			//One still inside the window's result check by the database clock is left alone.
+			xWebResponse=InsertPending(2,dateTimeDb.Subtract(EdgeExpress.CNP.ReconcileDelay).AddSeconds(30));
+			reconcileResult=EdgeExpress.CNP.ReconcilePending();
+			Assert.AreEqual(1,reconcileResult.CountStillOpen);
+			Assert.AreEqual(XWebTransactionStatus.EdgeExpressPending,XWebResponses.GetOne(xWebResponse.XWebResponseNum).TransactionStatus);
+		}
+
+		[TestMethod]
+		public void ReconcileDelay_CoversTheWindowsResultCheck() {
+			Assert.IsTrue(EdgeExpress.CNP.ReconcileDelay>=TimeSpan.FromTicks(EdgeExpress.CNP.RepollDelay.Ticks*EdgeExpress.CNP.RepollCount)
+				.Add(TimeSpan.FromMinutes(1)));
 		}
 
 		[TestMethod]

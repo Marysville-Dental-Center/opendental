@@ -93,6 +93,11 @@ namespace OpenDental {
 				return EdgeExpressPayPageEnd.Failed;
 			}
 			TimeSpan timeSpanLifetime=GetTimeLeft(xWebResponse);
+			if(timeSpanLifetime<TimeSpan.FromSeconds(1)) {
+				//The session is over (or too little is left to time). Reconciliation may take the row once ReconcileDelay passes, so the page is not
+				//shown; GetResult still asks for the result.
+				return EdgeExpressPayPageEnd.TimedOut;
+			}
 			bool isTestGateway=EdgeExpress.CNP.IsTestGateway();
 			if(ODWebView2.IsRuntimeAvailable()) {
 				EdgeExpressPayPageEnd payPageEnd;
@@ -149,17 +154,17 @@ namespace OpenDental {
 			return GetResult(xWebResponse,paymentExisting,doCreatePayment);
 		}
 
-		///<summary>How long the pay page stays open: until the session's HpfExpiration, but at least 30 seconds and at most the session lifetime.</summary>
+		///<summary>How long the pay page stays open: until the session's HpfExpiration and never past it, at most the session lifetime. Zero or less
+		///means the session is already over. HpfExpiration is database time, so it is compared with database time, not this computer's clock.
+		///Closing by HpfExpiration keeps the window's own result check inside EdgeExpress.CNP.ReconcileDelay, before reconciliation takes the row.
+		///</summary>
 		private static TimeSpan GetTimeLeft(XWebResponse xWebResponse) {
 			TimeSpan timeSpanLeft=EdgeExpress.CNP.PayPageSessionLifetime;
 			if(xWebResponse.HpfExpiration.Year>1880) {
-				timeSpanLeft=xWebResponse.HpfExpiration-DateTime.Now;
+				timeSpanLeft=xWebResponse.HpfExpiration-MiscData.GetNowDateTime();
 			}
 			if(timeSpanLeft>EdgeExpress.CNP.PayPageSessionLifetime) {
 				timeSpanLeft=EdgeExpress.CNP.PayPageSessionLifetime;
-			}
-			if(timeSpanLeft<TimeSpan.FromSeconds(30)) {
-				timeSpanLeft=TimeSpan.FromSeconds(30);
 			}
 			return timeSpanLeft;
 		}
