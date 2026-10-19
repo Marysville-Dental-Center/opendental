@@ -3231,8 +3231,14 @@ namespace OpenDental {
 						MsgBox.Show(this,"Required secondary insurance fields are missing on this sheet.  You cannot import secondary insurance with this sheet until it contains all of required fields.  Required fields: Relationship, Subscriber, SubscriberID, CarrierName, and CarrierPhone.");
 					}
 				}
-				if(PatientL.CanVerifyPatientAddressInteraction()) {
-					//If the feature is enabled, and the customer is on support, verify addresses with USPS.
+				//Every USPS lookup is billed and counts against the office's quota, so an address the import didn't change is not checked again.
+				bool isAddressChanged=_patient.Address!=_patientOld.Address
+					|| _patient.Address2!=_patientOld.Address2
+					|| _patient.City!=_patientOld.City
+					|| _patient.State!=_patientOld.State
+					|| _patient.Zip!=_patientOld.Zip;
+				if(isAddressChanged && PatientL.CanVerifyPatientAddressInteraction()) {
+					//If the feature is enabled, verify addresses with USPS.
 					//Here is a good place to do address verification and correction. Other validation has taken place and we havent saved addresses yet.
 					OpenDentBusiness.Address address = new OpenDentBusiness.Address();
 					address.Address1=_patient.Address;
