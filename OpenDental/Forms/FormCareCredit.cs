@@ -1,6 +1,6 @@
-using Bridges;
 using CodeBase;
 using OpenDentBusiness;
+using OpenDentBusiness.Bridges;
 using System;
 using System.Collections.Generic;
 using System.Windows.Forms;
@@ -32,9 +32,25 @@ namespace OpenDental {
 			string careCreditMerchantNum=PIn.String(ProgramProperties.GetPropValFromList(_listProgramProperties,
 				ProgramProperties.PropertyDescs.CareCredit.CareCreditMerchantNumber,comboClinics.ClinicNumSelected));
 			if(CareCredit.IsMerchantNumberByProv) {
-				careCreditMerchantNum=ProviderClinics.GetOneOrDefault(comboProviders.GetSelected<Provider>().ProvNum,comboClinics.ClinicNumSelected).CareCreditMerchantId??"";
+				careCreditMerchantNum=GetProviderMerchantNum();
 			}
 			DisableControlsForMerchantClosed(careCreditMerchantNum);
+		}
+
+		///<summary>The selected provider's merchant number for the selected clinic (or the provider's default), or "".</summary>
+		private string GetProviderMerchantNum() {
+			Provider provider=comboProviders.GetSelected<Provider>();
+			if(provider==null) {
+				return "";
+			}
+			return ProviderClinics.GetOneOrDefault(provider.ProvNum,comboClinics.ClinicNumSelected)?.CareCreditMerchantId??"";
+		}
+
+		///<summary>Staff at California locations may not submit applications for patients. Apply is hidden there, with a note.</summary>
+		private void SetApplyVisibility() {
+			bool isRestricted=CareCredit.IsStaffApplicationRestricted(comboClinics.ClinicNumSelected);
+			butApply.Visible=!isRestricted;
+			labelApplyRestricted.Visible=isRestricted;
 		}
 
 		private bool IsValid() {
@@ -86,29 +102,26 @@ namespace OpenDental {
 		}
 
 		private void DisableControlsForMerchantClosed(string careCreditMerchantNum) {
-			if(!CareCredit.IsMerchantNumClosed(careCreditMerchantNum)) {
-				labelMerchantClosedDescription.Visible=false;
-				return;
-			}
-			butApply.Enabled=false;
-			butReport.Enabled=false;
-			butLookup.Enabled=false;
-			butPromotions.Enabled=false;
-			labelMerchantClosedDescription.Visible=true;
+			SetApplyVisibility();
+			bool isClosed=CareCredit.IsMerchantNumClosed(careCreditMerchantNum);
+			butApply.Enabled=!isClosed;
+			butReport.Enabled=!isClosed;
+			butLookup.Enabled=!isClosed;
+			butPromotions.Enabled=!isClosed;
+			labelMerchantClosedDescription.Visible=isClosed;
 		}
 
 		private void comboClinics_SelectionChangeCommitted(object sender,EventArgs e) {
 			string careCreditMerchantNum=PIn.String(ProgramProperties.GetPropValFromList(_listProgramProperties,
 				ProgramProperties.PropertyDescs.CareCredit.CareCreditMerchantNumber,comboClinics.ClinicNumSelected));
 			if(CareCredit.IsMerchantNumberByProv) {
-				careCreditMerchantNum=ProviderClinics.GetOneOrDefault(comboProviders.GetSelected<Provider>().ProvNum,comboClinics.ClinicNumSelected).CareCreditMerchantId??"";
+				careCreditMerchantNum=GetProviderMerchantNum();
 			}
 			DisableControlsForMerchantClosed(careCreditMerchantNum);
 		}
 
 		private void comboProviders_SelectionChangedCommitted(object sender,EventArgs e) {
-			string careCreditMerchantNum=ProviderClinics.GetOneOrDefault(comboProviders.GetSelected<Provider>().ProvNum,comboClinics.ClinicNumSelected).CareCreditMerchantId??"";
-			DisableControlsForMerchantClosed(careCreditMerchantNum);
+			DisableControlsForMerchantClosed(GetProviderMerchantNum());
 		}
 
 		private void butApply_Click(object sender,EventArgs e) {
