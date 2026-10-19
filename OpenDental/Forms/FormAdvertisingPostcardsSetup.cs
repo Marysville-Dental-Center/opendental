@@ -1,20 +1,23 @@
 using System;
 using System.Collections.Generic;
-using System.Data;
-using System.Drawing;
 using System.Linq;
-using System.Net;
-using System.Text;
 using System.Windows.Forms;
-using Bridges;
 using CodeBase;
-using OpenDental.UI;
 using OpenDentBusiness;
+using OpenDentBusiness.PostcardMania;
 
 namespace OpenDental {
+	///<summary>Setup for the PostcardMania program link: the office's own API key and secret per clinic (or the default), the sending defaults, and
+	///whether a business associate agreement with the vendor is on file. Describes what the integration does and nothing more (ground rule 7).
+	///Opened from Setup > Program Links and from the Postcards window.</summary>
 	public partial class FormAdvertisingPostcardsSetup:FormODBase {
-		private PostcardManiaMetaData _postcardManiaMetaData;
-		private const string DEFAULT="Default";
+		private Program _program;
+		///<summary>Pending edits per clinic (0 is the default account), saved together on Save.</summary>
+		private Dictionary<long,AccountEdit> _dictAccountEdits=new Dictionary<long,AccountEdit>();
+		///<summary>The clinic whose account the fields show.</summary>
+		private long _clinicNumShowing;
+		///<summary>Accounts (by token cache key) that passed Test connection in this window.</summary>
+		private HashSet<string> _hashSetTestedAccounts=new HashSet<string>();
 
 		public FormAdvertisingPostcardsSetup() {
 			InitializeComponent();
@@ -22,189 +25,319 @@ namespace OpenDental {
 			Lan.F(this);
 		}
 
-		private void FormMassPostcardAdvertising_Load(object sender,EventArgs e) {
-			RefreshData();
-			RefreshView();
+		private void FormAdvertisingPostcardsSetup_Load(object sender,EventArgs e) {
+			if(PostcardManiaProgram.EnsureProgram()) {
+				DataValid.SetInvalid(InvalidType.Programs);
+			}
+			_program=Programs.GetCur(ProgramName.PostcardMania);
+			if(_program==null) {
+				MsgBox.Show(this,"The PostcardMania program link could not be created.");
+				DialogResult=DialogResult.Cancel;
+				Close();
+				return;
+			}
+			checkEnabled.Checked=_program.Enabled;
+			comboEnvironment.Items.Add(Lan.g(this,"Sandbox"),PostcardManiaProgram.EnvironmentSandbox);
+			comboEnvironment.Items.Add(Lan.g(this,"Production"),PostcardManiaProgram.EnvironmentProduction);
+			comboMailClass.Items.Add(Lan.g(this,"First Class"),PcmMailClass.FirstClass);
+			comboMailClass.Items.Add(Lan.g(this,"Standard"),PcmMailClass.Standard);
+			comboMailClass.SelectedIndex=(PostcardManiaProgram.GetDefaultMailClass()==PcmMailClass.Standard) ? 1 : 0;
+			checkUsePreferredName.Checked=PostcardManiaProgram.GetUsePreferredName();
+			checkSendPatientReference.Checked=PostcardManiaProgram.GetSendPatientReference();
+			checkBaaOnFile.Checked=PostcardManiaProgram.IsBaaOnFile();
+			labelBaaConfirmed.Text=checkBaaOnFile.Checked ? GetBaaConfirmedText() : "";
+			FillClinics();
+			LoadAccount(_clinicNumShowing);
 		}
 
-		///<summary>Calls Services HQ to get Account data for office.</summary>
-		private void RefreshData() {
-			_postcardManiaMetaData=new PostcardManiaMetaData();
+		private void FillClinics() {
+			comboClinic.Items.Clear();
+			if(!PrefC.HasClinicsEnabled) {
+				labelClinic.Visible=false;
+				comboClinic.Visible=false;
+				checkUseDefault.Visible=false;
+				_clinicNumShowing=0;
+				return;
+			}
+			if(!Security.CurUser.ClinicIsRestricted) {
+				comboClinic.Items.Add(Lan.g(this,"Default (all clinics)"),new Clinic { ClinicNum=0 });
+			}
+			List<Clinic> listClinics=Clinics.GetForUserod(Security.CurUser);
+			for(int i=0;i<listClinics.Count;i++) {
+				comboClinic.Items.Add(listClinics[i].Abbr,listClinics[i]);
+			}
+			if(comboClinic.Items.Count==0) {
+				_clinicNumShowing=0;
+				return;
+			}
+			comboClinic.SelectedIndex=0;
+			_clinicNumShowing=comboClinic.GetSelected<Clinic>().ClinicNum;
+		}
+
+		///<summary>The pending edit for a clinic, read from the database cache the first time.</summary>
+		private AccountEdit GetAccountEdit(long clinicNum) {
+			AccountEdit accountEdit;
+			if(_dictAccountEdits.TryGetValue(clinicNum,out accountEdit)) {
+				return accountEdit;
+			}
+			accountEdit=new AccountEdit();
+			accountEdit.ClinicNum=clinicNum;
+			accountEdit.IsUseDefault=!PostcardManiaProgram.HasOwnAccount(clinicNum);
+			PostcardManiaAccount account=PostcardManiaProgram.GetAccount(clinicNum);
+			if(accountEdit.IsUseDefault) {
+				accountEdit.ApiKey="";
+				accountEdit.HasStoredSecret=false;
+				accountEdit.Environment=PostcardManiaProgram.EnvironmentSandbox;
+				accountEdit.ChildRefNbr="";
+			}
+			else {
+				accountEdit.ApiKey=account.ApiKey;
+				accountEdit.HasStoredSecret=account.ApiSecret!="";
+				accountEdit.IsStoredSecretUnreadable=account.IsSecretUnreadable;
+				accountEdit.Environment=account.Environment;
+				accountEdit.ChildRefNbr=account.ChildRefNbr;
+			}
+			accountEdit.MarkOriginal();
+			_dictAccountEdits[clinicNum]=accountEdit;
+			return accountEdit;
+		}
+
+		private void LoadAccount(long clinicNum) {
+			AccountEdit accountEdit=GetAccountEdit(clinicNum);
+			bool isClinic=(clinicNum!=0);
+			checkUseDefault.Visible=isClinic;
+			checkUseDefault.Checked=isClinic && accountEdit.IsUseDefault;
+			textApiKey.Text=accountEdit.ApiKey;
+			textApiSecret.Text=accountEdit.SecretNew??"";
+			comboEnvironment.SelectedIndex=(accountEdit.Environment==PostcardManiaProgram.EnvironmentProduction) ? 1 : 0;
+			textChildRef.Text=accountEdit.ChildRefNbr;
+			labelTestResult.Text="";
+			SetAccountFieldsEnabled();
+		}
+
+		///<summary>Copies the fields into the pending edit for the clinic showing.</summary>
+		private void StoreAccount() {
+			AccountEdit accountEdit=GetAccountEdit(_clinicNumShowing);
+			accountEdit.IsUseDefault=(_clinicNumShowing!=0) && checkUseDefault.Checked;
+			if(accountEdit.IsUseDefault) {
+				return;
+			}
+			accountEdit.ApiKey=textApiKey.Text.Trim();
+			accountEdit.SecretNew=(textApiSecret.Text.Trim()=="") ? null : textApiSecret.Text.Trim();
+			accountEdit.Environment=comboEnvironment.GetSelected<string>()??PostcardManiaProgram.EnvironmentSandbox;
+			accountEdit.ChildRefNbr=textChildRef.Text.Trim();
+		}
+
+		private void SetAccountFieldsEnabled() {
+			bool isEditable=!(checkUseDefault.Visible && checkUseDefault.Checked);
+			textApiKey.Enabled=isEditable;
+			textApiSecret.Enabled=isEditable;
+			comboEnvironment.Enabled=isEditable;
+			textChildRef.Enabled=isEditable;
+			AccountEdit accountEdit=GetAccountEdit(_clinicNumShowing);
+			labelSecretHint.Visible=isEditable && (accountEdit.HasStoredSecret || accountEdit.IsStoredSecretUnreadable);
+			labelSecretHint.Text=accountEdit.IsStoredSecretUnreadable
+				? Lan.g(this,"The saved secret can't be read. Enter it again.")
+				: Lan.g(this,"A secret is saved. Leave this blank to keep it.");
+			bool isSandbox=isEditable ? comboEnvironment.SelectedIndex!=1 : GetAccountEdit(0).Environment!=PostcardManiaProgram.EnvironmentProduction;
+			labelSandbox.Visible=isSandbox;
+		}
+
+		private void comboClinic_SelectionChangeCommitted(object sender,EventArgs e) {
+			StoreAccount();
+			_clinicNumShowing=comboClinic.GetSelected<Clinic>()?.ClinicNum??0;
+			LoadAccount(_clinicNumShowing);
+		}
+
+		private void checkUseDefault_Click(object sender,EventArgs e) {
+			SetAccountFieldsEnabled();
+		}
+
+		private void comboEnvironment_SelectionChangeCommitted(object sender,EventArgs e) {
+			SetAccountFieldsEnabled();
+		}
+
+		///<summary>The account the pending edits describe for a clinic (its own, or the default's), with the secret decrypted or newly typed.</summary>
+		private PostcardManiaAccount BuildPendingAccount(long clinicNum) {
+			AccountEdit accountEdit=GetAccountEdit(clinicNum);
+			if(clinicNum!=0 && accountEdit.IsUseDefault) {
+				PostcardManiaAccount accountDefault=BuildPendingAccount(0);
+				accountDefault.ClinicNum=clinicNum;
+				return accountDefault;
+			}
+			PostcardManiaAccount account=new PostcardManiaAccount();
+			account.ClinicNum=clinicNum;
+			account.ClinicNumSource=clinicNum;
+			account.ApiKey=accountEdit.ApiKey;
+			if(accountEdit.SecretNew!=null) {
+				account.ApiSecret=accountEdit.SecretNew;
+			}
+			else if(accountEdit.HasStoredSecret) {
+				account.ApiSecret=PostcardManiaProgram.GetAccount(clinicNum).ApiSecret;
+			}
+			account.IsSecretUnreadable=accountEdit.SecretNew==null && accountEdit.IsStoredSecretUnreadable;
+			account.Environment=accountEdit.Environment;
+			account.ChildRefNbr=accountEdit.ChildRefNbr;
+			return account;
+		}
+
+		private void butTestConnection_Click(object sender,EventArgs e) {
+			StoreAccount();
+			PostcardManiaAccount account=BuildPendingAccount(_clinicNumShowing);
+			if(!account.IsConfigured) {
+				MsgBox.Show(this,"Enter the API key and secret first.");
+				return;
+			}
+			PcmConnectionResult pcmConnectionResult=null;
+			labelTestResult.Text="";
 			try {
-				UI.ProgressWin progressOD=new UI.ProgressWin();
-				progressOD.ActionMain=() => {
-					_postcardManiaMetaData=AdvertisingPostcards.GetPostcardManiaMetaData();
+				UI.ProgressWin progressWin=new UI.ProgressWin();
+				progressWin.ActionMain=() => {
+					pcmConnectionResult=AdvertisingPostcards.TestConnection(account);
 				};
-				progressOD.StartingMessage=Lan.g(this,"Getting Account Data")+"...";
-				progressOD.ShowDialog();
-				if(progressOD.IsCancelled){
+				progressWin.StartingMessage=Lan.g(this,"Testing the connection")+"...";
+				progressWin.ShowDialog();
+				if(progressWin.IsCancelled) {
 					return;
 				}
 			}
-			catch(Exception ex) {
-				FriendlyException.Show(ex.Message,ex);
-			}
-			if(string.IsNullOrWhiteSpace(PrefC.GetString(PrefName.AdvertisingPostCardGuid)) && !_postcardManiaMetaData.Accounts.IsNullOrEmpty()) {
-				Prefs.UpdateString(PrefName.AdvertisingPostCardGuid,_postcardManiaMetaData.Accounts.First().Guid);
-				Signalods.SetInvalid(InvalidType.Prefs);
-			}
-			if(PrefC.HasClinicsEnabled) { //This is to include a default in the Clinic grid's cmboboxes.
-				_postcardManiaMetaData.Accounts.Insert(0,new PostcardManiaAccountData(DEFAULT,DEFAULT,DEFAULT));
-			}
-		}
-
-		///<summary>Fills grids and populates UI.</summary>
-		private void RefreshView() {
-			if(!_postcardManiaMetaData.Accounts.IsNullOrEmpty()) {
-				FillClinicGrid();
-				FillAccountsGrid();
-			}
-			FillUI();	
-		}
-
-		private void FillClinicGrid() {
-			if(!PrefC.HasClinicsEnabled) {
+			catch(PostcardManiaException ex) {
+				labelTestResult.Text=Lan.g(this,"Failed.");
+				MsgBox.Show(this,ex.Message);
 				return;
 			}
-			List<Clinic> listClinics=Clinics.GetForUserod(Security.CurUser);//Intentionally ignores the 0 clinic, thats handled by accounts grid.
-			gridClinics.BeginUpdate();
-			gridClinics.Columns.Clear();
-			GridColumn col;
-			col=new GridColumn(Lan.g(this,"Clinic"),150);
-			gridClinics.Columns.Add(col);
-			col=new GridColumn("Postcards Account",165) {
-				ListDisplayStrings=_postcardManiaMetaData.Accounts.Select(x => x.AccountTitle).ToList(),
-				Tag=_postcardManiaMetaData,
-			};
-			gridClinics.Columns.Add(col);
-			gridClinics.ListGridRows.Clear();
-			foreach(Clinic clinic in listClinics) {
-				ClinicPref clinicPref=ClinicPrefs.GetPref(PrefName.AdvertisingPostCardGuid,clinic.ClinicNum);
-				GridRow row=new GridRow();
-				row.Cells.Add(Clinics.GetAbbr(clinic.ClinicNum,listClinics));
-				int comboSelectedIndex=0;
-				if(clinicPref!=null) 
-				{
-					comboSelectedIndex=_postcardManiaMetaData.Accounts.FindIndex(x=>x.Guid==clinicPref.ValueString);
-				}
-				if(comboSelectedIndex<0) { //Shouldn't happen. Something is out of synch.
-					comboSelectedIndex=0;
-				}
-				row.Cells.Add(new GridCell($"{_postcardManiaMetaData.Accounts[comboSelectedIndex].AccountTitle}") {
-					ComboSelectedIndex=comboSelectedIndex,
-				});
-				row.Tag=clinic;
-				gridClinics.ListGridRows.Add(row);
+			catch(Exception ex) {
+				labelTestResult.Text=Lan.g(this,"Failed.");
+				FriendlyException.Show(Lan.g(this,"The connection test failed."),ex);
+				return;
 			}
-			gridClinics.EndUpdate();
+			_hashSetTestedAccounts.Add(account.GetCacheKey());
+			string text=Lan.g(this,"Connected")+" ("+Lan.g(this,pcmConnectionResult.Environment)+").";
+			if(pcmConnectionResult.MoneyOnAccount.HasValue) {
+				text+=" "+Lan.g(this,"Money on account")+": "+pcmConnectionResult.MoneyOnAccount.Value.ToString("c");
+			}
+			labelTestResult.Text=text;
 		}
 
-		private void FillAccountsGrid() {
-			string defaultGuid=PrefC.GetString(PrefName.AdvertisingPostCardGuid);
-			gridAccounts.BeginUpdate();
-			gridAccounts.Columns.Clear();
-			GridColumn col=new GridColumn(Lan.g(this,DEFAULT),60,HorizontalAlignment.Center);
-			gridAccounts.Columns.Add(col);
-			col=new GridColumn(Lan.g(this,"Account"),60,HorizontalAlignment.Center);
-			gridAccounts.Columns.Add(col);
-			col=new GridColumn(Lan.g(this,"Email"),190);
-			gridAccounts.Columns.Add(col);
-			gridAccounts.ListGridRows.Clear();
-			foreach(PostcardManiaAccountData postcardManiaMetaData in _postcardManiaMetaData.Accounts) {
-				if(postcardManiaMetaData.Email==DEFAULT) {
+		private string GetBaaConfirmedText() {
+			string confirmed=PostcardManiaProgram.GetSetting(PostcardManiaProgram.PropertyDescs.BaaConfirmed);
+			if(confirmed=="") {
+				return "";
+			}
+			return Lan.g(this,"Recorded by")+" "+confirmed;
+		}
+
+		private void butSave_Click(object sender,EventArgs e) {
+			StoreAccount();
+			List<AccountEdit> listAccountEdits=_dictAccountEdits.Values.ToList();
+			for(int i=0;i<listAccountEdits.Count;i++) {
+				AccountEdit accountEdit=listAccountEdits[i];
+				if(accountEdit.ClinicNum!=0 && accountEdit.IsUseDefault) {
 					continue;
 				}
-				GridRow row=new GridRow();
-				if(postcardManiaMetaData.Guid==defaultGuid) {
-					row.Cells.Add(new GridCell("X"));
+				if(accountEdit.ChildRefNbr.Length>50) {
+					MsgBox.Show(this,"The Child Reference can be at most 50 characters.");
+					return;
 				}
-				else {
-					row.Cells.Add(new GridCell(""));
+				bool hasSecret=accountEdit.SecretNew!=null || (accountEdit.HasStoredSecret && !accountEdit.IsStoredSecretUnreadable);
+				if(accountEdit.ApiKey!="" && !hasSecret) {
+					MsgBox.Show(this,"Enter the API secret that goes with the API key.");
+					return;
 				}
-				row.Cells.Add(new GridCell(postcardManiaMetaData.AccountTitle));
-				row.Cells.Add(new GridCell(postcardManiaMetaData.Email));
-				row.Tag=postcardManiaMetaData;
-				gridAccounts.ListGridRows.Add(row);
-			}
-			gridAccounts.EndUpdate();
-		}
-
-		private void FillUI() {
-			gridClinics.Visible=PrefC.HasClinicsEnabled;
-			labelClinicsGridHint.Visible=PrefC.HasClinicsEnabled;
-			labelNotEnabled.Visible=_postcardManiaMetaData.Accounts.Where(x=>x.Email!=DEFAULT).ToList().IsNullOrEmpty();
-		}
-
-		///<summary>If accountData is set the setup window will populate with the existing data. This allows the user to edit the account title.</summary>
-		private void ManageMassPostcardAccount(PostcardManiaAccountData accountData=null) {
-			using FormAdvertisingPostcardsAccountSetup formMassPostcardSetup=new FormAdvertisingPostcardsAccountSetup();
-			if(accountData!=null) {
-				formMassPostcardSetup.AccountDataEditing=accountData;
-			}
-			formMassPostcardSetup.ListAccountData=_postcardManiaMetaData.Accounts;
-			formMassPostcardSetup.ShowDialog();
-			if(formMassPostcardSetup.DialogResult==DialogResult.OK) {
-				RefreshData();
-				if(string.IsNullOrWhiteSpace(PrefC.GetString(PrefName.AdvertisingPostCardGuid)) && !_postcardManiaMetaData.Accounts.IsNullOrEmpty()) {
-					Prefs.UpdateString(PrefName.AdvertisingPostCardGuid,_postcardManiaMetaData.Accounts.FirstOrDefault().Guid);
-					Signalods.SetInvalid(InvalidType.Prefs);
+				if(accountEdit.ClinicNum!=0 && accountEdit.ApiKey=="") {
+					//A clinic without its own key uses the default.
+					accountEdit.IsUseDefault=true;
 				}
-				RefreshView();
 			}
-		}
-
-		private void butManageAccount_Click(object sender,EventArgs e) {
-			ManageMassPostcardAccount();
-		}
-
-		private void gridAccounts_CellClick(object sender,ODGridClickEventArgs e) {
-			//Toggling the 'X' in the defualt column.
-			int selectedIndex=gridAccounts.GetSelectedIndex();
-			if(gridAccounts.SelectedCell.X!=0 || selectedIndex==-1) {
+			if(listAccountEdits.Any(x => x.SecretNew!=null) && !Security.IsAuthorized(EnumPermType.ManageHighSecurityProgProperties)) {
 				return;
 			}
-			PostcardManiaAccountData accountData=gridAccounts.SelectedTag<PostcardManiaAccountData>();
-			if(accountData==null) {
-				return;
+			if(checkEnabled.Checked && !_program.Enabled) {
+				//Rule 6: off until the office has its own credentials and a passing Test connection.
+				List<long> listClinicNumsConfigured=GetClinicNumsToCheck().Where(x => BuildPendingAccount(x).IsConfigured).ToList();
+				if(listClinicNumsConfigured.Count==0) {
+					MsgBox.Show(this,"Enter an API key and secret before turning this on.");
+					return;
+				}
+				if(!listClinicNumsConfigured.Any(x => _hashSetTestedAccounts.Contains(BuildPendingAccount(x).GetCacheKey()))) {
+					MsgBox.Show(this,"Click Test connection and get a successful result before turning this on.");
+					return;
+				}
 			}
-			gridAccounts.BeginUpdate();
-			for(int i=0;i<gridAccounts.ListGridRows.Count;i++) {
-				gridAccounts.ListGridRows[i].Cells[0].Text="";
+			bool wasBaaOnFile=PostcardManiaProgram.IsBaaOnFile();
+			for(int i=0;i<listAccountEdits.Count;i++) {
+				AccountEdit accountEdit=listAccountEdits[i];
+				if(!accountEdit.IsChanged()) {
+					continue;
+				}
+				if(accountEdit.ClinicNum!=0 && accountEdit.IsUseDefault) {
+					PostcardManiaProgram.ClearClinicAccount(accountEdit.ClinicNum);
+					continue;
+				}
+				if(!PostcardManiaProgram.SaveAccount(accountEdit.ClinicNum,accountEdit.ApiKey,accountEdit.SecretNew,accountEdit.Environment,accountEdit.ChildRefNbr)) {
+					MsgBox.Show(this,"The API secret could not be encrypted, so nothing was saved for this account.");
+					return;
+				}
+				if(accountEdit.SecretNew!=null) {
+					SecurityLogs.MakeLogEntry(EnumPermType.ManageHighSecurityProgProperties,0,
+						"PostcardMania API secret changed for "+(accountEdit.ClinicNum==0 ? "the default account" : ("clinic "+Clinics.GetAbbr(accountEdit.ClinicNum)))+".",
+						_program.ProgramNum,DateTime.Now);
+				}
 			}
-			gridAccounts.EndUpdate();
-			Prefs.UpdateString(PrefName.AdvertisingPostCardGuid,accountData.Guid);
-			Signalods.SetInvalid(InvalidType.Prefs);
-			RefreshView();
+			PostcardManiaProgram.SaveSetting(PostcardManiaProgram.PropertyDescs.DefaultMailClass,comboMailClass.GetSelected<string>()??PcmMailClass.FirstClass);
+			PostcardManiaProgram.SaveSetting(PostcardManiaProgram.PropertyDescs.UsePreferredName,checkUsePreferredName.Checked ? "1" : "0");
+			PostcardManiaProgram.SaveSetting(PostcardManiaProgram.PropertyDescs.SendPatientReference,checkSendPatientReference.Checked ? "1" : "0");
+			if(checkBaaOnFile.Checked!=wasBaaOnFile) {
+				PostcardManiaProgram.SaveSetting(PostcardManiaProgram.PropertyDescs.BaaOnFile,checkBaaOnFile.Checked ? "1" : "0");
+				string confirmed=checkBaaOnFile.Checked ? (Security.CurUser.UserName+", "+DateTime.Now.ToString()) : "";
+				PostcardManiaProgram.SaveSetting(PostcardManiaProgram.PropertyDescs.BaaConfirmed,confirmed);
+				SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,"PostcardMania: business associate agreement "
+					+(checkBaaOnFile.Checked ? "recorded as on file." : "no longer recorded as on file."));
+			}
+			if(checkEnabled.Checked!=_program.Enabled) {
+				Program programOld=_program.Copy();
+				_program.Enabled=checkEnabled.Checked;
+				Programs.Update(_program,programOld);
+				SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,"PostcardMania program link "+(_program.Enabled ? "enabled." : "disabled."));
+			}
+			DataValid.SetInvalid(InvalidType.Programs);
+			DialogResult=DialogResult.OK;
+			Close();
 		}
 
-		private void gridAccounts_CellDoubleClick(object sender,ODGridClickEventArgs e) {
-			int selectedIndex=gridAccounts.GetSelectedIndex();
-			if(gridAccounts.SelectedCell.X<=0 || selectedIndex==-1) {
-				return;
+		///<summary>The default (0) plus every clinic this user can see.</summary>
+		private List<long> GetClinicNumsToCheck() {
+			List<long> listClinicNums=new List<long> { 0 };
+			if(PrefC.HasClinicsEnabled) {
+				listClinicNums.AddRange(Clinics.GetForUserod(Security.CurUser).Select(x => x.ClinicNum));
 			}
-			PostcardManiaAccountData accountData=gridAccounts.SelectedTag<PostcardManiaAccountData>();
-			if(accountData==null) {
-				return;
-			}
-			ManageMassPostcardAccount(accountData);
+			return listClinicNums;
 		}
 
-		private void gridClinics_CellSelectionCommitted(object sender,ODGridClickEventArgs e) {
-			GridRow row=gridClinics.ListGridRows[e.Row];
-			int accountIndex=row.Cells[e.Col].ComboSelectedIndex;
-			string guid=_postcardManiaMetaData.Accounts[accountIndex].Guid;
-			Clinic clinic=(Clinic)row.Tag;
-			bool doInvalidate=false;
-			if(accountIndex>0) {
-				doInvalidate=ClinicPrefs.Upsert(PrefName.AdvertisingPostCardGuid,clinic.ClinicNum,guid);
+		///<summary>One clinic's (or the default's) account as edited in this window.</summary>
+		private class AccountEdit {
+			public long ClinicNum;
+			public bool IsUseDefault;
+			public string ApiKey="";
+			///<summary>A newly typed secret, or null to keep the stored one.</summary>
+			public string SecretNew;
+			public bool HasStoredSecret;
+			public bool IsStoredSecretUnreadable;
+			public string Environment=PostcardManiaProgram.EnvironmentSandbox;
+			public string ChildRefNbr="";
+			private string _original;
+
+			public bool IsChanged() {
+				return SecretNew!=null || Describe()!=_original;
 			}
-			else {
-				doInvalidate=ClinicPrefs.DeletePrefs(clinic.ClinicNum,ListTools.FromSingle(PrefName.AdvertisingPostCardGuid))!=0;
+
+			public void MarkOriginal() {
+				_original=Describe();
 			}
-			if(doInvalidate) {
-				DataValid.SetInvalid(InvalidType.ClinicPrefs);
+
+			private string Describe() {
+				return IsUseDefault+"|"+ApiKey+"|"+Environment+"|"+ChildRefNbr;
 			}
-			row.Cells[1].Text=_postcardManiaMetaData.Accounts[accountIndex].AccountTitle;
 		}
 	}
 }
