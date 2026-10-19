@@ -44,35 +44,9 @@ namespace OpenDental {
 			isEqual |= _prefName==PrefName.RecallEmailSubject2;
 			isEqual |= _prefName==PrefName.RecallEmailSubject3;
 			isEqual |= _prefName==PrefName.ReactivationEmailSubject;
-			isEqual |= _prefName==PrefName.WebSchedSubject;
 			if(isEqual){
 				if(textMain.Text.Length>200) {
 					MsgBox.Show(this,"Email subjects cannot be longer than 200 characters.");
-					return;
-				}
-			}
-			string urlWarning="Web Sched message does not contain the \"[URL]\" variable. Omitting the \"[URL]\" variable will prevent the "+
-				"patient from visiting the WebSched portal. Are you sure you want to continue?";
-			isEqual=false;
-			isEqual |= _prefName==PrefName.WebSchedMessage;
-			isEqual |= _prefName==PrefName.WebSchedMessage2;
-			isEqual |= _prefName==PrefName.WebSchedMessage3;
-			if(isEqual) {
-				if(!textMain.Text.Contains("[URL]")
-					&& !MsgBox.Show(this,MsgBoxButtons.OKCancel,urlWarning)) 
-				{
-					return;
-				}
-			}
-			isEqual=false;
-			isEqual |= _prefName==PrefName.WebSchedMessageText;
-			isEqual |= _prefName==PrefName.WebSchedMessageText2;
-			isEqual |= _prefName==PrefName.WebSchedMessageText3;
-			if(isEqual) {
-				if(textMain.Text.Contains("[URL]")) {
-					textMain.Text=textMain.Text.Replace("[URL].","[URL] .");//Clicking a link with a period will not get recognized. 
-				}
-				else if(!MsgBox.Show(this,MsgBoxButtons.OKCancel,urlWarning)) {
 					return;
 				}
 			}

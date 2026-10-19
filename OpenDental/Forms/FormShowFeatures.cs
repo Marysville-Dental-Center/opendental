@@ -64,11 +64,6 @@ namespace OpenDental{
 		private void checkEnableClinics_Click(object sender,EventArgs e) {
 			if (!GetPasswordFromUser()) {
 				RestoreClinicCheckBox();
-				return;
-			}
-			string question="If you are subscribed to eServices, you may need to restart the eConnector when you turn clinics on or off. Continue?";
-			if(!MsgBox.Show(this,MsgBoxButtons.YesNo,question)) {
-				RestoreClinicCheckBox();
 			}
 		}
 

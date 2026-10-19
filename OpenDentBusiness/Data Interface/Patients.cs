@@ -2158,14 +2158,6 @@ namespace OpenDentBusiness {
 			return "'0'";
 		}
 
-		public static bool HasPatientPortalAccess(long patNum) {
-			UserWeb uwCur=UserWebs.GetByFKeyAndType(patNum,UserWebFKeyType.PatientPortal);
-			if(uwCur!=null && uwCur.PasswordHash!="") {
-				return true;
-			}
-			return false;
-		}
-
 		///<summary>Used when filling appointments for an entire day. Gets a list of Pats, multPats, of all the specified patients.  Then, use GetOnePat to pull one patient from this list.  This process requires only one call to the database.</summary>
 		public static Patient[] GetMultPats(List<long> patNums) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {

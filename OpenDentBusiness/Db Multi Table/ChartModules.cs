@@ -2128,9 +2128,6 @@ namespace OpenDentBusiness {
 			if(listDisplayFields.Exists(x=>x.InternalName=="Medications")){
 				listPatDataTypes.Add(EnumPdTable.MedicationPat);
 			}
-			if(listDisplayFields.Exists(x=>x.InternalName=="Patient Portal")){
-				listPatDataTypes.Add(EnumPdTable.UserWebHasPortalAccess);
-			}
 			if(listDisplayFields.Exists(x=>x.InternalName=="PatFields")){
 				listPatDataTypes.Add(EnumPdTable.PatField);
 			}

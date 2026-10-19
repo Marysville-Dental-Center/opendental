@@ -6542,11 +6542,6 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Reference.map</DependentUpon>
     </Compile>
-    <Compile Include="Web References\MobileWeb\Reference.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>Reference.map</DependentUpon>
-    </Compile>
     <EmbeddedResource Include="Bridges\FormDrCeph.resx">
       <DependentUpon>FormDrCeph.cs</DependentUpon>
     </EmbeddedResource>
@@ -9730,11 +9725,6 @@
       <LastGenOutput>Reference.cs</LastGenOutput>
     </None>
     <None Include="Web References\CallFireService\SMSService.wsdl" />
-    <None Include="Web References\MobileWeb\Mobile.wsdl" />
-    <None Include="Web References\MobileWeb\Reference.map">
-      <Generator>MSDiscoCodeGenerator</Generator>
-      <LastGenOutput>Reference.cs</LastGenOutput>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\Pearl.txt" />
@@ -9827,7 +9817,6 @@
     <None Include="Resources\phoneInUse.png" />
     <None Include="Resources\UDS3b.gif" />
     <None Include="Resources\UDS3a.gif" />
-    <None Include="Web References\MobileWeb\Mobile.disco" />
     <EmbeddedResource Include="Bridges\FormTrophyNamePick.resx">
       <DependentUpon>FormTrophyNamePick.cs</DependentUpon>
       <SubType>Designer</SubType>
@@ -10303,17 +10292,6 @@
       </CachedDynamicPropName>
       <CachedAppSettingsObjectName>Settings</CachedAppSettingsObjectName>
       <CachedSettingsPropName>OpenDental_customerUpdates_Service1</CachedSettingsPropName>
-    </WebReferenceUrl>
-    <WebReferenceUrl Include="http://localhost:2923/Mobile.asmx">
-      <UrlBehavior>Dynamic</UrlBehavior>
-      <RelPath>Web References\MobileWeb\</RelPath>
-      <UpdateFromURL>http://localhost:2923/Mobile.asmx</UpdateFromURL>
-      <ServiceLocationURL>
-      </ServiceLocationURL>
-      <CachedDynamicPropName>
-      </CachedDynamicPropName>
-      <CachedAppSettingsObjectName>Settings</CachedAppSettingsObjectName>
-      <CachedSettingsPropName>OpenDental_MobileWeb_Mobile</CachedSettingsPropName>
     </WebReferenceUrl>
     <WebReferenceUrl Include="http://localhost:3824/Service1.asmx">
       <UrlBehavior>Static</UrlBehavior>
