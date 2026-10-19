@@ -43,8 +43,16 @@ namespace OpenDental{
 			this.butSave = new OpenDental.UI.Button();
 			this.checkEnabled = new OpenDental.UI.CheckBox();
 			this.labelClinicEnable = new System.Windows.Forms.Label();
+			this.checkUseTestGateway = new OpenDental.UI.CheckBox();
+			this.groupCardEntry = new OpenDental.UI.GroupBox();
+			this.labelReturnUrlHint = new System.Windows.Forms.Label();
+			this.textReturnUrl = new System.Windows.Forms.TextBox();
+			this.labelReturnUrl = new System.Windows.Forms.Label();
+			this.comboReturnMode = new OpenDental.UI.ComboBox();
+			this.labelReturnMode = new System.Windows.Forms.Label();
 			this.groupPaySettings.SuspendLayout();
 			this.groupCredentials.SuspendLayout();
+			this.groupCardEntry.SuspendLayout();
 			this.SuspendLayout();
 			// 
 			// checkPreventSavingNewCC
@@ -147,6 +155,7 @@ namespace OpenDental{
 			this.textAuthKey.Name = "textAuthKey";
 			this.textAuthKey.Size = new System.Drawing.Size(273, 20);
 			this.textAuthKey.TabIndex = 2;
+			this.textAuthKey.UseSystemPasswordChar = true;
 			// 
 			// labelAuthKey
 			// 
@@ -202,7 +211,7 @@ namespace OpenDental{
 			// butSave
 			// 
 			this.butSave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.butSave.Location = new System.Drawing.Point(341, 391);
+			this.butSave.Location = new System.Drawing.Point(341, 497);
 			this.butSave.Name = "butSave";
 			this.butSave.Size = new System.Drawing.Size(75, 26);
 			this.butSave.TabIndex = 18;
@@ -227,9 +236,74 @@ namespace OpenDental{
 			this.labelClinicEnable.Text = "To enable EdgeExpress for a clinic, enter the X-Web credentials for that clinic.";
 			this.labelClinicEnable.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 			// 
+			// checkUseTestGateway
+			// 
+			this.checkUseTestGateway.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.checkUseTestGateway.Location = new System.Drawing.Point(53, 38);
+			this.checkUseTestGateway.Name = "checkUseTestGateway";
+			this.checkUseTestGateway.Size = new System.Drawing.Size(340, 17);
+			this.checkUseTestGateway.TabIndex = 12;
+			this.checkUseTestGateway.Text = "Use the card processor's test gateway (affects all clinics)";
+			// 
+			// groupCardEntry
+			// 
+			this.groupCardEntry.Controls.Add(this.labelReturnUrlHint);
+			this.groupCardEntry.Controls.Add(this.textReturnUrl);
+			this.groupCardEntry.Controls.Add(this.labelReturnUrl);
+			this.groupCardEntry.Controls.Add(this.comboReturnMode);
+			this.groupCardEntry.Controls.Add(this.labelReturnMode);
+			this.groupCardEntry.Location = new System.Drawing.Point(24, 380);
+			this.groupCardEntry.Name = "groupCardEntry";
+			this.groupCardEntry.Size = new System.Drawing.Size(392, 105);
+			this.groupCardEntry.TabIndex = 17;
+			this.groupCardEntry.TabStop = false;
+			this.groupCardEntry.Text = "Card Entry Page";
+			// 
+			// labelReturnMode
+			// 
+			this.labelReturnMode.Location = new System.Drawing.Point(6, 21);
+			this.labelReturnMode.Name = "labelReturnMode";
+			this.labelReturnMode.Size = new System.Drawing.Size(105, 16);
+			this.labelReturnMode.TabIndex = 0;
+			this.labelReturnMode.Text = "Return mode";
+			this.labelReturnMode.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			// 
+			// comboReturnMode
+			// 
+			this.comboReturnMode.Location = new System.Drawing.Point(114, 19);
+			this.comboReturnMode.Name = "comboReturnMode";
+			this.comboReturnMode.Size = new System.Drawing.Size(265, 21);
+			this.comboReturnMode.TabIndex = 1;
+			// 
+			// labelReturnUrl
+			// 
+			this.labelReturnUrl.Location = new System.Drawing.Point(6, 48);
+			this.labelReturnUrl.Name = "labelReturnUrl";
+			this.labelReturnUrl.Size = new System.Drawing.Size(105, 16);
+			this.labelReturnUrl.TabIndex = 0;
+			this.labelReturnUrl.Text = "Return URL";
+			this.labelReturnUrl.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			// 
+			// textReturnUrl
+			// 
+			this.textReturnUrl.Location = new System.Drawing.Point(114, 46);
+			this.textReturnUrl.Name = "textReturnUrl";
+			this.textReturnUrl.Size = new System.Drawing.Size(265, 20);
+			this.textReturnUrl.TabIndex = 2;
+			// 
+			// labelReturnUrlHint
+			// 
+			this.labelReturnUrlHint.Location = new System.Drawing.Point(111, 69);
+			this.labelReturnUrlHint.Name = "labelReturnUrlHint";
+			this.labelReturnUrlHint.Size = new System.Drawing.Size(275, 30);
+			this.labelReturnUrlHint.TabIndex = 0;
+			this.labelReturnUrlHint.Text = "Blank uses the built-in address. The program closes the page when the card processor sends it there.";
+			// 
 			// FormEdgeExpressSetup
 			// 
-			this.ClientSize = new System.Drawing.Size(435, 429);
+			this.ClientSize = new System.Drawing.Size(435, 535);
+			this.Controls.Add(this.groupCardEntry);
+			this.Controls.Add(this.checkUseTestGateway);
 			this.Controls.Add(this.labelClinicEnable);
 			this.Controls.Add(this.groupPaySettings);
 			this.Controls.Add(this.comboClinic);
@@ -242,6 +316,8 @@ namespace OpenDental{
 			this.groupPaySettings.ResumeLayout(false);
 			this.groupCredentials.ResumeLayout(false);
 			this.groupCredentials.PerformLayout();
+			this.groupCardEntry.ResumeLayout(false);
+			this.groupCardEntry.PerformLayout();
 			this.ResumeLayout(false);
 
 		}
@@ -266,5 +342,12 @@ namespace OpenDental{
 		private OpenDental.UI.CheckBox checkEnabled;
 		private System.Windows.Forms.Label labelClinicEnable;
 		private OpenDental.UI.CheckBox checkWebPayEnabled;
+		private OpenDental.UI.CheckBox checkUseTestGateway;
+		private OpenDental.UI.GroupBox groupCardEntry;
+		private System.Windows.Forms.Label labelReturnMode;
+		private OpenDental.UI.ComboBox comboReturnMode;
+		private System.Windows.Forms.Label labelReturnUrl;
+		private System.Windows.Forms.TextBox textReturnUrl;
+		private System.Windows.Forms.Label labelReturnUrlHint;
 	}
 }
