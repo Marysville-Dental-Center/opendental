@@ -5,7 +5,6 @@ using System.Linq;
 using System.Windows.Forms;
 using Bridges;
 using CodeBase;
-using OpenDentalHelp;
 using OpenDentBusiness;
 
 namespace OpenDental{
@@ -280,7 +279,7 @@ namespace OpenDental{
 			return true;
 		}
 
-		///<summary>Returns true when customer is in the USA, has address verification enabled, is not on trial, and is signed up for support. Otherwise returns false</summary>
+		///<summary>Returns true when customer is in the USA and has address verification enabled. Otherwise returns false</summary>
 		public static bool CanVerifyPatientAddressInteraction() {
 			if(!System.Globalization.CultureInfo.CurrentCulture.Name.EndsWith("US")) {
 				//USPS address validation only works for US addresses.
@@ -289,13 +288,7 @@ namespace OpenDental{
 			if(!PrefC.GetBool(PrefName.AddressVerifyWithUSPS)) {
 				return false;
 			}
-			if(ODBuild.IsTrial()) {
-				return false;
-			}
-			if(ODHelp.IsEncryptedKeyValid()) {
-				return true;
-			}
-			return false;
+			return true;
 		}
 
 		///<summary>Launches an interaction where a patient address is validated and corrected by USPS. The user is then prompted to choose between the address they provided, the one corrected by USPS, or choosing to return null, and go back to edit. Takes in a sender for translation.</summary>
