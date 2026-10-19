@@ -459,16 +459,32 @@ namespace OpenDentBusiness.Bridges {
 				if(mode==EnumCareCreditBatch.On) {
 					candidate.EstimatedPatientPortion=(double)Appointments.GetEstPatientPortion(appointment);
 				}
-				if(isByProv) {
-					candidate.ProviderAbbr=Providers.GetAbbr(appointment.ProvNum);
-					candidate.MerchantNumber=(ProviderClinics.GetOneOrDefault(appointment.ProvNum,clinicNum)?.CareCreditMerchantId??"").Trim();
-				}
-				else {
-					candidate.MerchantNumber=merchantNumClinic;
-				}
 				listCandidates.Add(candidate);
 			}
+			SetMerchantNumbers(listCandidates,clinicNum,isByProv,merchantNumClinic);
 			return listCandidates;
+		}
+
+		///<summary>Sets each candidate's merchant number. By provider: CareCredit.GetMerchantNumberByProv, the same lookup a purchase or QuickScreen
+		///started from a window uses (the provider's row for the clinic, else, when that row is missing or blank, the provider's default), read once
+		///per provider; also sets ProviderAbbr. Otherwise: merchantNumClinic for every candidate.</summary>
+		public static void SetMerchantNumbers(List<CareCreditBatchCandidate> listCandidates,long clinicNum,bool isByProv,string merchantNumClinic) {
+			Meth.NoCheckMiddleTierRole();
+			Dictionary<long,string> dictMerchantNumsByProv=new Dictionary<long,string>();
+			for(int i=0;i<listCandidates.Count;i++) {
+				CareCreditBatchCandidate candidate=listCandidates[i];
+				if(!isByProv) {
+					candidate.MerchantNumber=merchantNumClinic;
+					continue;
+				}
+				string merchantNum;
+				if(!dictMerchantNumsByProv.TryGetValue(candidate.ProvNum,out merchantNum)) {
+					merchantNum=CareCredit.GetMerchantNumberByProv(candidate.ProvNum,clinicNum);
+					dictMerchantNumsByProv[candidate.ProvNum]=merchantNum;
+				}
+				candidate.ProviderAbbr=Providers.GetAbbr(candidate.ProvNum);
+				candidate.MerchantNumber=merchantNum;
+			}
 		}
 
 		private static Patient GetPatientCached(Dictionary<long,Patient> dictPatients,long patNum) {

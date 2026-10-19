@@ -37,13 +37,14 @@ namespace OpenDental {
 			DisableControlsForMerchantClosed(careCreditMerchantNum);
 		}
 
-		///<summary>The selected provider's merchant number for the selected clinic (or the provider's default), or "".</summary>
+		///<summary>The selected provider's merchant number for the selected clinic (or, when that row is missing or blank, the provider's default), or "".
+		///The same lookup the purchase and the batch use.</summary>
 		private string GetProviderMerchantNum() {
 			Provider provider=comboProviders.GetSelected<Provider>();
 			if(provider==null) {
 				return "";
 			}
-			return ProviderClinics.GetOneOrDefault(provider.ProvNum,comboClinics.ClinicNumSelected)?.CareCreditMerchantId??"";
+			return CareCredit.GetMerchantNumberByProv(provider.ProvNum,comboClinics.ClinicNumSelected);
 		}
 
 		///<summary>Staff at California locations may not submit applications for patients. Apply is hidden there, with a note.</summary>

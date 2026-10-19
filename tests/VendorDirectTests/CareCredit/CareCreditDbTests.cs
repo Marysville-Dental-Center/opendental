@@ -406,6 +406,57 @@ namespace VendorDirectTests.CareCreditTests {
 			Assert.IsTrue(CareCredit.IsMerchantNumClosed(MERCHANT_PROV3,listMerchantNums));
 			Assert.IsFalse(CareCredit.IsMerchantNumClosed(MERCHANT_CLINIC5,listMerchantNums));
 		}
+
+		private static CareCreditBatchCandidate CreateBatchCandidate(long patNum,long provNum,long clinicNum) {
+			Patient patient=CareCreditTestData.CreateAdult(patNum);
+			CareCreditBatchCandidate candidate=new CareCreditBatchCandidate();
+			candidate.AptNum=patNum*10;
+			candidate.AptDateTime=new DateTime(2026,10,20,9,0,0);
+			candidate.ClinicNum=clinicNum;
+			candidate.ProvNum=provNum;
+			candidate.Patient=patient;
+			candidate.Guarantor=patient;
+			candidate.EstimatedFee=250;
+			candidate.EstimatedPatientPortion=100;
+			return candidate;
+		}
+
+		[TestMethod]
+		public void Batch_ByProviderUsesTheDefaultPastABlankClinicRow() {
+			FillClinicsAndProviders();
+			InsertProviderClinic(3,0,MERCHANT_PROV3);
+			//DrA's row for clinic 6 is kept for the DEA number and has no merchant number: the batch uses the default, as a purchase does.
+			InsertProviderClinic(3,6,"",deaNum:"AB1234563");
+			List<CareCreditBatchCandidate> listCandidates=new List<CareCreditBatchCandidate> {
+				CreateBatchCandidate(1,3,6),
+				CreateBatchCandidate(2,4,6),//DrB has no merchant number anywhere.
+			};
+			CareCreditJobs.SetMerchantNumbers(listCandidates,6,isByProv:true,merchantNumClinic:"");
+			Assert.AreEqual(MERCHANT_PROV3,listCandidates[0].MerchantNumber);
+			Assert.AreEqual(CareCredit.GetMerchantNumber(6,3,isProvOverride:true),listCandidates[0].MerchantNumber,"The batch and a purchase agree.");
+			Assert.AreEqual("DrA",listCandidates[0].ProviderAbbr);
+			Assert.AreEqual("",listCandidates[1].MerchantNumber);
+			CareCreditBatchPlan plan=CareCreditBatchPlanner.Plan(listCandidates,EnumCareCreditBatch.NoBalance,null);
+			Assert.AreEqual(1,plan.ListSubmissions.Count);
+			Assert.AreEqual(1,plan.ListSubmissions[0].PatNum);
+			Assert.AreEqual(MERCHANT_PROV3,plan.ListSubmissions[0].Request.MerchantNumber);
+			Assert.AreEqual(1,plan.ListErrors.Count,"Only DrB's patient is a BatchError.");
+			Assert.AreEqual(2,plan.ListErrors[0].PatNum);
+			//The provider's own row for the clinic wins over the default.
+			InsertProviderClinic(3,5,MERCHANT_PROV3_CLINIC5);
+			listCandidates=new List<CareCreditBatchCandidate> { CreateBatchCandidate(1,3,5) };
+			CareCreditJobs.SetMerchantNumbers(listCandidates,5,isByProv:true,merchantNumClinic:"");
+			Assert.AreEqual(MERCHANT_PROV3_CLINIC5,listCandidates[0].MerchantNumber);
+		}
+
+		[TestMethod]
+		public void Batch_ByClinicUsesTheClinicsNumberForEveryone() {
+			FillClinicsAndProviders();
+			InsertProviderClinic(3,0,MERCHANT_PROV3);//Ignored unless merchant numbers are by provider.
+			List<CareCreditBatchCandidate> listCandidates=new List<CareCreditBatchCandidate> { CreateBatchCandidate(1,3,5),CreateBatchCandidate(2,4,5) };
+			CareCreditJobs.SetMerchantNumbers(listCandidates,5,isByProv:false,merchantNumClinic:MERCHANT_CLINIC5);
+			CollectionAssert.AreEqual(new[] { MERCHANT_CLINIC5,MERCHANT_CLINIC5 },listCandidates.Select(x => x.MerchantNumber).ToArray());
+		}
 		#endregion Merchant numbers
 	}
 }
