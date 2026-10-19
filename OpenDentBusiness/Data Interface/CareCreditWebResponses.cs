@@ -12,10 +12,6 @@ using OpenDentBusiness.Bridges;
 namespace OpenDentBusiness{
 	///<summary></summary>
 	public class CareCreditWebResponses {
-		///<summary>Legacy: the property name Open Dental's eService signup sent merchant IDs under. Only WebServiceMainHQProxy still names it, and the
-		///HQ clean-up package deletes that code. No merchant number leaves the office except in calls to Synchrony.</summary>
-		public const string MERCHANT_ID_PROG_PROPERTY="MerchantIDs";
-
 		#region Get Methods
 		///<summary></summary>
 		public static CareCreditWebResponse GetOne(long ccWebResponse) {

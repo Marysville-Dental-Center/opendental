@@ -28,37 +28,17 @@ namespace OpenDentBusiness {
 	}
 
 	///<summary>The only IWebServiceMainHQ implementation used outside of unit tests. It never makes a network call. Every method throws
-	///HqNotAvailableException; the vendor integrations Open Dental brokered through HQ say that a direct vendor integration is needed.</summary>
+	///HqNotAvailableException.</summary>
 	public class WebServiceMainHQNoHq:IWebServiceMainHQ {
-		private static string VendorNotAvailable(string vendorName) {
-			throw HqNotAvailableException.ForVendor(vendorName);
+		private static string NotAvailable(string featureName) {
+			throw HqNotAvailableException.ForVendor(featureName);
 		}
 
-		#region HQ-brokered vendor integrations
-		public string BuildOAuthUrl(string registrationKey,string appName) {
-			throw new HqNotAvailableException("The "+appName+" credentials are not available until direct vendor integration is configured.");
-		}
-		public string GetDropboxAccessToken(string accessCode) { return VendorNotAvailable("Dropbox"); }
-		public string GetDropboxAuthorizationUrl(long registrationKeyNum) { return VendorNotAvailable("Dropbox"); }
-		public string GetGoogleAccessToken(string officeData) { return VendorNotAvailable("Google"); }
-		public string GetGoogleAuthorizationUrl(long registrationKeyNum) { return VendorNotAvailable("Google"); }
-		public string GetGoogleAuthorizationUrlLoopbackIpAddressFlow(long registrationKeyNum) { return VendorNotAvailable("Google"); }
-		public string GetCareCreditOAuthToken(string officeData) { return VendorNotAvailable("CareCredit"); }
-		public string GetCareCreditWebToken(string officeData) { return VendorNotAvailable("CareCredit"); }
-		public string LogCareCreditTransaction(string officeData) { return VendorNotAvailable("CareCredit"); }
-		public string GetCareCreditBatchTimes(string officeData) { return VendorNotAvailable("CareCredit"); }
-		public string GetAdvertisingPostcardsAccounts(string officeData) { return VendorNotAvailable("PostcardMania"); }
-		public string GetPostcardManiaSSO(string officeData) { return VendorNotAvailable("PostcardMania"); }
-		public string ManageAdvertisingPostcardsAccount(string officeData) { return VendorNotAvailable("PostcardMania"); }
-		public string UploadPostcardManiaPatientList(string officeData) { return VendorNotAvailable("PostcardMania"); }
-		public string InsertPaySimpleACHId(string officeData) { return VendorNotAvailable("PaySimple"); }
-		public string GetPaySimpleWebHookUrl() { return VendorNotAvailable("PaySimple"); }
-		public string ProcessUSPSAddressValidationRequest(string payload) { return VendorNotAvailable("USPS address validation"); }
-		public string CanadaCarrierUpdate(string officeData) { return VendorNotAvailable("Canadian carrier updates"); }
-		public string SendPushNotification(string officeData,string pushPayloadJson) { return VendorNotAvailable("Push notifications"); }
-		public string SmsSend(string officeData) { return VendorNotAvailable("Texting"); }
-		public string SetSmsPatientPhoneOptIn(string officeData) { return VendorNotAvailable("Texting"); }
-		public string ProvisionTenDlcBrand(string officeData) { return VendorNotAvailable("Texting"); }
-		#endregion HQ-brokered vendor integrations
+		#region Hosted texting
+		public string SendPushNotification(string officeData,string pushPayloadJson) { return NotAvailable("Push notifications"); }
+		public string SmsSend(string officeData) { return NotAvailable("Texting"); }
+		public string SetSmsPatientPhoneOptIn(string officeData) { return NotAvailable("Texting"); }
+		public string ProvisionTenDlcBrand(string officeData) { return NotAvailable("Texting"); }
+		#endregion Hosted texting
 	}
 }
