@@ -248,16 +248,6 @@ namespace OpenDentBusiness {
 			return await RevokeAsync(secretReadResult.PlainText,cancellationToken,httpClient).ConfigureAwait(false);
 		}
 
-		///<summary>Kept until the EMAIL-UI package switches EmailMessages.RefreshGmailToken to GoogleTokenCache. Takes the stored
-		///emailaddress.RefreshToken (osd1$) and returns a fresh access token from Google, dropping any cached one first. A blank, plain-text (legacy
-		///Open Dental) or unreadable token throws without any network call. Throws GoogleAuthException (an ODException) with a message for the user.</summary>
-		public static string MakeRefreshAccessTokenRequest(string storedRefreshToken) {
-			Meth.NoCheckMiddleTierRole();
-			GoogleClientCredentials googleClientCredentials=GoogleOAuthSettings.GetClientCredentialsOrThrow(GoogleOAuthSettings.MessageNotConfiguredSend);
-			GoogleTokenCache.InvalidateStored(storedRefreshToken);
-			return VendorHttp.RunSync(() => GoogleTokenCache.GetAccessTokenAsync(0,"",storedRefreshToken,googleClientCredentials,null,CancellationToken.None));
-		}
-
 		///<summary>One sign-in of one email address: start the loopback listener, open the consent page in the system browser, wait for the redirect,
 		///check state, redeem the code with the PKCE verifier and check that the right account was authorized. Use one instance per attempt and
 		///Dispose it (or call CloseListener) afterwards; the port is always released.</summary>

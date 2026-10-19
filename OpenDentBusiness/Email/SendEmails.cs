@@ -10,9 +10,10 @@ using MimeKit;
 using MailKit.Security;
 using GmailApi=Google.Apis.Gmail.v1;
 using Google;
+using Google.Apis.Upload;
 using System.Text.RegularExpressions;
 using System.Linq;
-using Bridges;
+using OpenDentBusiness.Microsoft365;
 
 namespace OpenDentBusiness.Email {
 
@@ -186,17 +187,39 @@ namespace OpenDentBusiness.Email {
 			return message;
 		}
 
-		///<summary>Throws exceptions if failing to send emails or authenticate with Google/Microsoft.</summary>
+		///<summary>Raw MIME messages larger than this go to Gmail through the media upload URI (uploadType=resumable, message/rfc822) instead of
+		///inside the JSON body. Google suggests simple requests only up to about 5 MB, and the base64url "raw" field grows the message by 4/3.</summary>
+		public const int GMAIL_UPLOAD_THRESHOLD_BYTES=3500000;
+
+		///<summary>Throws exceptions if failing to send emails or authenticate with Google/Microsoft. address.AccessToken must be a fresh bearer token
+		///(EmailMessages.GetOAuthAccessToken). A GoogleApiException or Microsoft365Exception is rethrown as it is, so the caller can see the HTTP
+		///status, refresh the token after a 401 and show a neutral message.</summary>
 		private static void SendEmailOAuth(BasicEmailAddress address,BasicEmailMessage message) {
 			if(address.AuthenticationType==BasicOAuthType.Google) {
 				using GmailApi.GmailService gService=GoogleApiConnector.CreateGmailService(address);
 				try {
-					GmailApi.Data.Message gmailMessage=CreateGmailMsg(address,message);
-					gService.Users.Messages.Send(gmailMessage,address.EmailUsername).Execute();
+					byte[] arrayMime=GetMimeBytes(CreateMIMEMsg(address,message));
+					if(arrayMime.Length<=GMAIL_UPLOAD_THRESHOLD_BYTES) {
+						GmailApi.Data.Message gmailMessage=CreateGmailMsg(arrayMime);
+						gService.Users.Messages.Send(gmailMessage,address.EmailUsername).Execute();
+					}
+					else {
+						//Large message: send the raw RFC 2822 bytes through the upload URI.
+						using MemoryStream memoryStream=new MemoryStream(arrayMime);
+						GmailApi.UsersResource.MessagesResource.SendMediaUpload sendMediaUpload=gService.Users.Messages.Send(new GmailApi.Data.Message(),
+							address.EmailUsername,memoryStream,"message/rfc822");
+						IUploadProgress uploadProgress=sendMediaUpload.Upload();
+						if(uploadProgress.Status!=UploadStatus.Completed) {
+							if(uploadProgress.Exception!=null) {
+								System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(uploadProgress.Exception).Throw();
+							}
+							throw new ODException("Gmail did not accept the message upload.");
+						}
+					}
 				}
-				catch(GoogleApiException gae) {
-					//This will bubble up to the UI level and be caught in a copypaste box.
-					throw new GoogleApiException(gae.ServiceName,"Unable to authenticate with Google: "+gae.Message,gae);
+				catch(GoogleApiException) {
+					//Rethrown unchanged: EmailMessages reads the HTTP status and Google's reason (google.md 3.5) and refreshes the token after a 401.
+					throw;
 				}
 				catch(Exception ex) {
 					//This will bubble up to the UI level and be caught in a copypaste box.
@@ -207,6 +230,10 @@ namespace OpenDentBusiness.Email {
 				//create and send microsoft email.
 				try {
 					MicrosoftApiConnector.SendEmail(address.EmailUsername,address.AccessToken,message);
+				}
+				catch(Microsoft365Exception) {
+					//Rethrown unchanged: EmailMessages refreshes the token after a 401 and maps the kind to a neutral message (microsoft-365.md 3.5).
+					throw;
 				}
 				catch(Exception ex) {
 					//This will bubble up to the UI level and be caught in a copypaste box.
@@ -273,16 +300,19 @@ namespace OpenDentBusiness.Email {
 			return mimeMsg;
 		}
 
-		///<summary>Helper method that returns a ready-to-send Gmail Message</summary>
-		private static GmailApi.Data.Message CreateGmailMsg(BasicEmailAddress emailAddress,BasicEmailMessage emailMessage) {
-			MimeKit.MimeMessage mimeMsg=CreateMIMEMsg(emailAddress,emailMessage);
+		///<summary>The MIME message as the bytes MimeKit writes, decoded and re-encoded as UTF-8 text the way Gmail messages always were built.</summary>
+		private static byte[] GetMimeBytes(MimeMessage mimeMsg) {
 			using Stream stream=new MemoryStream();
 			mimeMsg.WriteTo(stream);
 			stream.Position=0;
 			using StreamReader sr=new StreamReader(stream);
-			GmailApi.Data.Message gMsg=new GmailApi.Data.Message();
 			string rawString=sr.ReadToEnd();
-			byte[] raw=System.Text.Encoding.UTF8.GetBytes(rawString);
+			return System.Text.Encoding.UTF8.GetBytes(rawString);
+		}
+
+		///<summary>Helper method that returns a ready-to-send Gmail Message</summary>
+		private static GmailApi.Data.Message CreateGmailMsg(byte[] raw) {
+			GmailApi.Data.Message gMsg=new GmailApi.Data.Message();
 			gMsg.Raw=System.Convert.ToBase64String(raw);
 			//What we send to Gmail must be a Base64 File/URL safe string.  We must convert our base64 to be URL safe. (replace - and _ with + and / respectively)
 			gMsg.Raw=gMsg.Raw.Replace("+","-");

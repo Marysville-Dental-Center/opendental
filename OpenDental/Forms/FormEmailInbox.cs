@@ -6,6 +6,7 @@ using System.Net;
 using System.Security.Cryptography.X509Certificates;
 using System.Windows.Forms;
 using OpenDentBusiness;
+using OpenDentBusiness.Microsoft365;
 using CodeBase;
 using System.Linq;
 using OpenDental.UI;
@@ -43,6 +44,8 @@ namespace OpenDental {
 		///<summary>Used to set the inbox that will be shown once the form is loaded.
 		///String matches the _listEmailAddresses.EmailUsername property</summary>
 		private string _emailUsername="";
+		///<summary>Gmail and Microsoft 365 addresses whose download failed while this window is open, so the failure is shown once.</summary>
+		private HashSet<long> _hashSetEmailAddressNumsWarned=new HashSet<long>();
 
 		/// <summary>Attempts to set the selected inbox based on email username.  Used to show a specific inbox when opening the form.</summary>
 		public FormEmailInbox(string emailUsername) : this() {
@@ -202,6 +205,9 @@ namespace OpenDental {
 
 		///<summary>Gets messages from the db and fills the grid. Also, resends previously failed acknowledgements when the current email address is set up to receive email.S</summary>
 		private void GetMessages() {
+			//Gmail and Microsoft 365 addresses that download mail are checked here, on open and on Refresh, because nothing in this program polls
+			//them in the background. This runs before the POP3 check below: these addresses have no real POP3 server.
+			ReceiveFromOAuthInbox(GetSelectedAddress());
 			_isRefreshInbox=true;
 			FillGridInbox();
 			if(GetSelectedAddress().EmailUsername=="" || GetSelectedAddress().Pop3ServerIncoming=="") {//Email address not setup.
@@ -210,6 +216,60 @@ namespace OpenDental {
 			Text="Email Client for "+GetSelectedAddress().EmailUsername+" - Resending any acknowledgments which previously failed...";
 			EmailMessages.SendOldestUnsentAck(GetSelectedAddress());
 			Text="Email Client for "+GetSelectedAddress().EmailUsername;
+		}
+
+		///<summary>True for a Gmail or Microsoft 365 address with Download incoming emails ticked, while its program link is enabled. Those are
+		///downloaded by this window (ReceiveFromOAuthInbox) rather than by a background service.</summary>
+		private bool IsOAuthDownloadAddress(EmailAddress emailAddress) {
+			if(emailAddress==null || !emailAddress.DownloadInbox || string.IsNullOrWhiteSpace(emailAddress.EmailUsername)) {
+				return false;
+			}
+			if(emailAddress.AuthenticationType==OAuthType.Google) {
+				return GoogleOAuthSettings.IsEnabled;
+			}
+			if(emailAddress.AuthenticationType==OAuthType.Microsoft) {
+				return Microsoft365Program.IsEnabled();
+			}
+			return false;
+		}
+
+		///<summary>Downloads new mail for a Gmail or Microsoft 365 address on a background thread, under a progress window with Cancel. Does nothing
+		///for other addresses. A failure (for example, the address has to be authorized again) is shown once per address while this window is
+		///open, not on every refresh.</summary>
+		private void ReceiveFromOAuthInbox(EmailAddress emailAddress) {
+			if(!IsOAuthDownloadAddress(emailAddress)) {
+				return;
+			}
+			Exception exception=null;
+			ProgressWin progressWin=new ProgressWin();
+			progressWin.StartingMessage=Lan.g(this,"Receiving new email for")+" "+emailAddress.EmailUsername+"...";
+			progressWin.ActionMain=() => {
+				try {
+					EmailMessages.ReceiveFromInbox(emailAddress);
+				}
+				catch(Exception ex) {
+					exception=ex;//Kept here: ProgressWin would rethrow only an inner exception.
+				}
+			};
+			try {
+				progressWin.ShowDialog();
+			}
+			catch(Exception ex) {
+				exception=ex;
+			}
+			if(progressWin.IsCancelled) {
+				return;
+			}
+			if(exception==null) {
+				_hashSetEmailAddressNumsWarned.Remove(emailAddress.EmailAddressNum);
+				return;
+			}
+			if(_hashSetEmailAddressNumsWarned.Contains(emailAddress.EmailAddressNum)) {
+				return;
+			}
+			_hashSetEmailAddressNumsWarned.Add(emailAddress.EmailAddressNum);
+			string message=(exception is ODException) ? exception.Message : Lan.g(this,"The email download failed.")+" "+exception.Message;
+			MessageBox.Show(this,Lan.g(this,"New email could not be downloaded for")+" "+emailAddress.EmailUsername+".\r\n\r\n"+message);
 		}
 
 		///<summary>Gets new emails and also shows older emails from the database.</summary>
@@ -751,7 +811,7 @@ namespace OpenDental {
 			Cursor=Cursors.WaitCursor;
 			if(GetActiveMailbox()==MailboxType.Inbox) {
 				try {
-					if(string.IsNullOrWhiteSpace(_emailAddress.Pop3ServerIncoming)) {
+					if(string.IsNullOrWhiteSpace(_emailAddress.Pop3ServerIncoming) || IsOAuthDownloadAddress(_emailAddress)) {
 						GetMessages();
 					}
 					else {//Insert a signal that will cause the Open Dental Service to retrieve emails when using the inbox feature.

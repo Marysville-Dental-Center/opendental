@@ -16,15 +16,49 @@ namespace OpenDentBusiness {
 	/// few dependencies as possible, so the email layer needs no database, OAuth client or token cache. The token comes from GoogleTokenCache.</summary>
 	public class GoogleApiConnector {
 
+		///<summary>Tests only (tests/VendorDirectTests/Email): every Gmail service sends through this handler instead of the network. Null in
+		///production.</summary>
+		internal static HttpMessageHandler HttpMessageHandlerForTests;
+
 		///<summary>Helper method that returns a ready-to-use Gmail service that is created based on the user's credentials</summary>
 		public static GmailApi.GmailService CreateGmailService(BasicEmailAddress emailAddress) {
 			ODGoogleUserCredential credential=new ODGoogleUserCredential() {
 				AccessToken=emailAddress.AccessToken,
 			};
 			BaseClientService.Initializer baseService=new BaseClientService.Initializer(){
-				HttpClientInitializer=credential
+				HttpClientInitializer=credential,
+				//Google's library resends a request that got a 503 by default. A send that got a 5xx may already have been accepted, so a resend could
+				//mail a patient twice. EmailMessages decides what is retried (google.md 3.5): never a send after a 5xx; the inbox download backs off itself.
+				DefaultExponentialBackOffPolicy=ExponentialBackOffPolicy.None
 			};
+			if(HttpMessageHandlerForTests!=null) {
+				baseService.HttpClientFactory=new HandlerHttpClientFactory(HttpMessageHandlerForTests);
+			}
 			return new GmailApi.GmailService(baseService);
+		}
+
+		///<summary>Builds Google's HTTP client over a given handler (tests). The handler is shared by every service a test creates, so disposing a
+		///service leaves it alone.</summary>
+		private class HandlerHttpClientFactory : HttpClientFactory {
+			private readonly HttpMessageHandler _httpMessageHandler;
+
+			public HandlerHttpClientFactory(HttpMessageHandler httpMessageHandler) {
+				_httpMessageHandler=httpMessageHandler;
+			}
+
+			protected override HttpMessageHandler CreateHandler(CreateHttpClientArgs args) {
+				return new NonDisposingHandler(_httpMessageHandler);
+			}
+		}
+
+		///<summary>Passes requests to a shared handler without disposing it.</summary>
+		private class NonDisposingHandler : DelegatingHandler {
+			public NonDisposingHandler(HttpMessageHandler innerHandler) : base(innerHandler) {
+			}
+
+			protected override void Dispose(bool disposing) {
+				//The inner handler belongs to the caller.
+			}
 		}
 
 		///<summary>Stands in for Google's UserCredential class, which would fetch and refresh tokens itself with the client ID and secret and a

@@ -26,13 +26,8 @@ using OpenDentBusiness.FileIO;
 using System.Net.Security;
 using MailKit.Security;
 using GmailApi=Google.Apis.Gmail.v1;
-using Google.Apis.Util.Store;
-using Google.Apis.Auth.OAuth2.Flows;
-using Google.Apis.Auth.OAuth2.Responses;
-using Google.Apis.Requests;
 using Google;
-using Google.Apis.Services;
-using Bridges;
+using OpenDentBusiness.Microsoft365;
 using Newtonsoft.Json;
 
 namespace OpenDentBusiness {
@@ -860,7 +855,7 @@ namespace OpenDentBusiness {
 		}
 
 		///<summary>Throws exceptions.  Attempts to physically send the message over the network wire. This is used from wherever email needs to be sent throughout the program. If a message must be encrypted, then encrypt it before calling this function. nameValueCollectionHeaders can be null.</summary>
-		private static void SendEmailUnsecure(EmailMessage emailMessage,EmailAddress emailAddress,NameValueCollection nameValueCollectionHeaders,bool hasRetried=false,params AlternateView[] alternateViewArray) {
+		private static void SendEmailUnsecure(EmailMessage emailMessage,EmailAddress emailAddress,NameValueCollection nameValueCollectionHeaders,params AlternateView[] alternateViewArray) {
 			Meth.NoCheckMiddleTierRole();
 			//When batch email operations are performed, we sometimes do this check further up in the UI.  This check is here to as a catch-all.
 			if(RemotingClient.MiddleTierRole!=MiddleTierRole.ServerMT) {//server can send email without checking user
@@ -868,60 +863,261 @@ namespace OpenDentBusiness {
 					return;
 				}
 			}
-			//Verify that we can connect to Google using OAuth before moving on as we can't refresh tokens from OpenDentalEmail Processor.
-			if(emailAddress.AuthenticationType==OAuthType.Google) {
-				if(emailAddress.RefreshToken.IsNullOrEmpty()) {
-					throw new ODException(emailAddress.EmailUsername+" needs to be re-authenticated. Please sign out and back in to continue.");
-				}
-				using GmailApi.GmailService gmailService=GoogleApiConnector.CreateGmailService(ODEmailAddressToBasic(emailAddress));
-				try {
-					//This call to Google is only to ensure that we have a valid OAuth token.  
-					//There is no connect or authorize, so this is the best/smallest request we can do.
-					//We have to ensure we have an OAuth token right here because we will send the email in SendEmail.WireEmailUnsecure,
-					// which doesn't have a DB context and wouldn't be able to refresh the token.
-					gmailService.Users.GetProfile(emailAddress.EmailUsername).Execute();
-				}
-				catch(GoogleApiException gae) {
-					if(hasRetried) {
-						throw; 
-					}
-					if(gae.HttpStatusCode!=HttpStatusCode.Unauthorized) {
-						throw; 
-					}
-					RefreshGmailToken(emailAddress);
-					//Try one more time after refreshing
-					SendEmailUnsecure(emailMessage,emailAddress,nameValueCollectionHeaders,true,alternateViewArray);
-					return;
-				}
-				catch(Exception) {
-					throw;
-				}
-			}
-			//Refresh the token for Microsoft here because it won't be able to be updated in the db further.
-			else if(emailAddress.AuthenticationType==OAuthType.Microsoft) {
-				if(emailAddress.RefreshToken.IsNullOrEmpty()) {
-					throw new ODException(emailAddress.EmailUsername+" needs to be re-authenticated. Please sign out and back in to continue.");
-				}
-				try {
-					MicrosoftApiConnector.GetProfile(emailAddress.EmailUsername,emailAddress.AccessToken);
-				}
-				catch(Exception ex) {
-					if(hasRetried) {
-						throw; 
-					}
-					if(!ex.InnerException.Message.Contains("InvalidAuthenticationToken")) {
-						throw; 
-					}
-					RefreshMicrosoftToken(emailAddress);
-					SendEmailUnsecure(emailMessage,emailAddress,nameValueCollectionHeaders,true,alternateViewArray);
-					return;
-				}
-			}
 			//Always send the email through this centralized method.  We cannot assume we have a database context inside SendEmail.
-			Email.SendEmail.WireEmailUnsecure(ODEmailAddressToBasic(emailAddress),ODEmailMessageToBasic(emailMessage),nameValueCollectionHeaders,alternateViewArray);
+			//For Gmail and Microsoft 365 addresses the access token is fetched here (memory only, never the database) and handed to SendEmail.
+			BasicEmailAddress basicEmailAddress=ODEmailAddressToBasic(emailAddress);
+			BasicEmailMessage basicEmailMessage=ODEmailMessageToBasic(emailMessage);
+			if(emailAddress.AuthenticationType==OAuthType.Google) {
+				SendEmailGmail(emailAddress,basicEmailAddress,basicEmailMessage,nameValueCollectionHeaders,alternateViewArray);
+			}
+			else if(emailAddress.AuthenticationType==OAuthType.Microsoft) {
+				SendEmailMicrosoft(emailAddress,basicEmailAddress,basicEmailMessage,nameValueCollectionHeaders,alternateViewArray);
+			}
+			else {
+				Email.SendEmail.WireEmailUnsecure(basicEmailAddress,basicEmailMessage,nameValueCollectionHeaders,alternateViewArray);
+			}
 			emailMessage.UserNum=Security.CurUser.UserNum;
 			SecurityLogs.MakeLogEntry(EnumPermType.EmailSend,emailMessage.PatNum,"Email Sent");
 		}
+
+		///<summary>Sends through the Gmail API as the address's mailbox (docs/specs/vendor-direct/google.md, 3.4 and 3.5). The access token comes from
+		///GoogleTokenCache: no getProfile probe, which a send-only grant can't call. A 401 refreshes the token once and retries once. A rate limit
+		///(the request was refused, so nothing was sent) backs off and retries at most twice. Gmail's sending limit marks the address so the rest of
+		///a batch fails at once instead of retrying. A 5xx is never retried, because the message may have been accepted. Throws ODException with a
+		///neutral message (GoogleAuthException when the address has to be authorized again).</summary>
+		internal static void SendEmailGmail(EmailAddress emailAddress,BasicEmailAddress basicEmailAddress,BasicEmailMessage basicEmailMessage,
+			NameValueCollection nameValueCollectionHeaders,AlternateView[] alternateViewArray)
+		{
+			DateTime dateTimeUntilUtc;
+			if(IsGmailSendingLimited(emailAddress.EmailAddressNum,DateTime.UtcNow,out dateTimeUntilUtc)) {
+				throw new ODException(GmailApiErrors.GetMessage(GmailErrorKind.SendingLimit,emailAddress.EmailUsername));
+			}
+			bool hasRefreshed=false;
+			int countBackoff=0;
+			while(true) {
+				basicEmailAddress.AccessToken=GetLoopAccessToken(emailAddress,forceRefresh:hasRefreshed);
+				try {
+					Email.SendEmail.WireEmailUnsecure(basicEmailAddress,basicEmailMessage,nameValueCollectionHeaders,alternateViewArray);
+					return;
+				}
+				catch(Exception ex) {
+					GoogleApiException googleApiException=FindException<GoogleApiException>(ex);
+					if(googleApiException==null) {
+						throw;
+					}
+					GmailErrorKind gmailErrorKind=ClassifyGmailError(googleApiException,isSend:true);
+					LogGmailError("send",emailAddress,googleApiException,gmailErrorKind);
+					if(gmailErrorKind==GmailErrorKind.Unauthorized && !hasRefreshed) {
+						hasRefreshed=true;
+						continue;
+					}
+					if(gmailErrorKind==GmailErrorKind.RateLimited && countBackoff<GmailSendMaxBackoffRetries) {
+						SleepBeforeGmailRetry(GmailApiErrors.GetBackoffDelay(countBackoff));
+						countBackoff++;
+						continue;
+					}
+					if(gmailErrorKind==GmailErrorKind.SendingLimit) {
+						MarkGmailSendingLimit(emailAddress.EmailAddressNum,GetGmailSendingLimitUntil(GetGmailErrorMessage(googleApiException),DateTime.UtcNow));
+					}
+					if(gmailErrorKind==GmailErrorKind.Other) {
+						throw;
+					}
+					throw new ODException(GmailApiErrors.GetMessage(gmailErrorKind,emailAddress.EmailUsername),ex);
+				}
+			}
+		}
+
+		///<summary>Sends through Microsoft Graph as the signed-in mailbox (docs/specs/vendor-direct/microsoft-365.md, 3.4 to 3.6). The access token
+		///comes from the mailbox's Microsoft365Session: no GetProfile probe. A 401 forces one token refresh and one retry; sendMail is never retried
+		///after a 5xx or a timeout (Microsoft365GraphClient reports SendOutcomeUnknown). Throws ODException with a neutral message; its
+		///InnerException is the Microsoft365Exception (Microsoft365AuthException when the mailbox has to sign in again).</summary>
+		internal static void SendEmailMicrosoft(EmailAddress emailAddress,BasicEmailAddress basicEmailAddress,BasicEmailMessage basicEmailMessage,
+			NameValueCollection nameValueCollectionHeaders,AlternateView[] alternateViewArray)
+		{
+			bool hasRefreshed=false;
+			while(true) {
+				basicEmailAddress.AccessToken=GetLoopAccessToken(emailAddress,forceRefresh:hasRefreshed);
+				try {
+					Email.SendEmail.WireEmailUnsecure(basicEmailAddress,basicEmailMessage,nameValueCollectionHeaders,alternateViewArray);
+					return;
+				}
+				catch(Exception ex) {
+					Microsoft365Exception microsoft365Exception=FindException<Microsoft365Exception>(ex);
+					if(microsoft365Exception==null) {
+						throw;
+					}
+					//The fixed token was refused (expired or revoked). A refused request was not sent, so one retry with a fresh token is safe.
+					if(microsoft365Exception.Kind==Microsoft365ErrorKind.NeedsSignIn && !hasRefreshed) {
+						hasRefreshed=true;
+						continue;
+					}
+					throw ToODException(microsoft365Exception,emailAddress.EmailUsername);
+				}
+			}
+		}
+
+		///<summary>A bearer token for a Gmail or Microsoft 365 address, held in memory only and never written to the database. forceRefresh skips a
+		///cached token (after a 401). Makes no network call while the program link is off, before it is set up, or when the address has no usable
+		///sign-in (blank, or a token issued to Open Dental's app). Throws ODException with a message for the user: GoogleAuthException for Gmail; for
+		///Microsoft 365 the InnerException is the Microsoft365Exception.</summary>
+		public static string GetOAuthAccessToken(EmailAddress emailAddress,bool forceRefresh=false) {
+			Meth.NoCheckMiddleTierRole();
+			if(emailAddress==null) {
+				throw new ArgumentNullException(nameof(emailAddress));
+			}
+			if(emailAddress.AuthenticationType==OAuthType.Google) {
+				if(string.IsNullOrEmpty(emailAddress.RefreshToken)) {
+					throw new GoogleAuthException(GoogleAuthReason.NotAuthorized,GoogleAuthException.GetNeedsAuthorizationMessage(emailAddress.EmailUsername));
+				}
+				if(forceRefresh) {
+					GoogleTokenCache.Invalidate(emailAddress.EmailAddressNum);
+				}
+				return GoogleTokenCache.GetAccessToken(emailAddress);//Throws GoogleAuthException (an ODException) with the user's message.
+			}
+			if(emailAddress.AuthenticationType==OAuthType.Microsoft) {
+				if(string.IsNullOrEmpty(emailAddress.RefreshToken)) {
+					throw new ODException(GetMicrosoftNeedsSignInMessage(emailAddress.EmailUsername),
+						new Microsoft365AuthException(Microsoft365ErrorKind.NeedsSignIn,Microsoft365Errors.MessageNeedsSignIn,0,"NotSignedIn"));
+				}
+				try {
+					return Microsoft365Session.GetAccessToken(emailAddress,forceRefresh);
+				}
+				catch(Microsoft365Exception ex) {
+					throw ToODException(ex,emailAddress.EmailUsername);
+				}
+			}
+			throw new ODException(Lans.g("EmailMessages","This email address does not use Gmail or Microsoft 365 sign-in."));
+		}
+
+		///<summary>"{address} needs to be re-authenticated. Please sign out and back in to continue."</summary>
+		public static string GetMicrosoftNeedsSignInMessage(string emailUsername) {
+			string name=string.IsNullOrWhiteSpace(emailUsername) ? "This email address" : emailUsername.Trim();
+			return name+" needs to be re-authenticated. Please sign out and back in to continue.";
+		}
+
+		///<summary>An ODException for a Microsoft 365 failure, with the neutral message and the original as InnerException (so the email window can
+		///tell a "sign in again" failure from the others). A mailbox that has to sign in again gets the familiar re-authentication message.</summary>
+		public static ODException ToODException(Microsoft365Exception microsoft365Exception,string emailUsername) {
+			if(microsoft365Exception.Kind==Microsoft365ErrorKind.NeedsSignIn) {
+				return new ODException(GetMicrosoftNeedsSignInMessage(emailUsername),microsoft365Exception);
+			}
+			return new ODException(microsoft365Exception.Message,microsoft365Exception);
+		}
+
+		///<summary>The first exception of type T in ex and its InnerException chain (AggregateException included), or null.</summary>
+		public static T FindException<T>(Exception ex) where T:Exception {
+			for(Exception exCur=ex;exCur!=null;exCur=exCur.InnerException) {
+				if(exCur is T exFound) {
+					return exFound;
+				}
+				if(exCur is AggregateException aggregateException) {
+					foreach(Exception exInner in aggregateException.InnerExceptions) {
+						T exFoundInner=FindException<T>(exInner);
+						if(exFoundInner!=null) {
+							return exFoundInner;
+						}
+					}
+				}
+			}
+			return null;
+		}
+
+		///<summary>Tests only (tests/VendorDirectTests/Email): replaces GetOAuthAccessToken in the Gmail and Microsoft 365 send and download loops.
+		///Gets the address and forceRefresh. Null in production.</summary>
+		internal static Func<EmailAddress,bool,string> FuncGetAccessTokenForTests;
+		///<summary>Tests only: called instead of Thread.Sleep before a Gmail retry, so a test records the wait instead of waiting. Null in production.</summary>
+		internal static Action<TimeSpan> ActionSleepForTests;
+
+		///<summary>The bearer token for a send or download loop: GetOAuthAccessToken, or the test seam.</summary>
+		private static string GetLoopAccessToken(EmailAddress emailAddress,bool forceRefresh) {
+			if(FuncGetAccessTokenForTests!=null) {
+				return FuncGetAccessTokenForTests(emailAddress,forceRefresh);
+			}
+			return GetOAuthAccessToken(emailAddress,forceRefresh);
+		}
+
+		///<summary>Waits before a Gmail retry: Thread.Sleep, or the test seam.</summary>
+		private static void SleepBeforeGmailRetry(TimeSpan timeSpan) {
+			if(ActionSleepForTests!=null) {
+				ActionSleepForTests(timeSpan);
+				return;
+			}
+			Thread.Sleep(timeSpan);
+		}
+		#endregion Sending
+
+		#region Gmail API errors
+		///<summary>A rate-limited Gmail send (refused, so not sent) is retried at most this many times (1 s, then 2 s, plus jitter).</summary>
+		public const int GmailSendMaxBackoffRetries=2;
+		///<summary>When Gmail's sending limit gives no retry time, the address is held back this long.</summary>
+		public static readonly TimeSpan GmailSendingLimitDefaultHold=TimeSpan.FromHours(1);
+		///<summary>Gmail locks a mailbox out for at most 24 hours.</summary>
+		public static readonly TimeSpan GmailSendingLimitMaxHold=TimeSpan.FromHours(24);
+		///<summary>Per process: EmailAddressNum to the UTC time Gmail's sending limit is expected to lift.</summary>
+		private static readonly System.Collections.Concurrent.ConcurrentDictionary<long,DateTime> _dictGmailSendingLimits
+			=new System.Collections.Concurrent.ConcurrentDictionary<long,DateTime>();
+
+		///<summary>Classifies a GoogleApiException with GmailApiErrors.Classify (google.md 3.5), from its HTTP status and Google's first error reason.</summary>
+		private static GmailErrorKind ClassifyGmailError(GoogleApiException googleApiException,bool isSend) {
+			string reason=googleApiException.Error?.Errors?.FirstOrDefault()?.Reason??"";
+			return GmailApiErrors.Classify((int)googleApiException.HttpStatusCode,reason,GetGmailErrorMessage(googleApiException),isSend);
+		}
+
+		///<summary>Google's error message (never a token or message content), or the exception's message.</summary>
+		private static string GetGmailErrorMessage(GoogleApiException googleApiException) {
+			string message=googleApiException.Error?.Message;
+			return string.IsNullOrEmpty(message) ? (googleApiException.Message??"") : message;
+		}
+
+		///<summary>Logs a Gmail API failure: the call, the HTTP status, Google's reason and the EmailAddressNum. Never a token, address or content.</summary>
+		private static void LogGmailError(string call,EmailAddress emailAddress,GoogleApiException googleApiException,GmailErrorKind gmailErrorKind) {
+			string reason=googleApiException.Error?.Errors?.FirstOrDefault()?.Reason??"";
+			Logger.WriteLine("Gmail "+call+": HTTP "+(int)googleApiException.HttpStatusCode+" "+reason+" ("+gmailErrorKind+") EmailAddressNum "
+				+POut.Long(emailAddress.EmailAddressNum),"VendorDirect");
+		}
+
+		///<summary>When Gmail's sending limit should lift, from the "Retry after {time}" in Google's 429 message: that time if it is in the future and
+		///at most 24 hours away, otherwise utcNow plus one hour.</summary>
+		public static DateTime GetGmailSendingLimitUntil(string message,DateTime utcNow) {
+			Match match=Regex.Match(message??"",@"Retry after\s+(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+\-]\d{2}:\d{2})?)",RegexOptions.IgnoreCase);
+			if(match.Success) {
+				DateTime dateTimeRetry;
+				if(DateTime.TryParse(match.Groups[1].Value,CultureInfo.InvariantCulture,DateTimeStyles.AdjustToUniversal|DateTimeStyles.AssumeUniversal,
+					out dateTimeRetry))
+				{
+					if(dateTimeRetry>utcNow && dateTimeRetry-utcNow<=GmailSendingLimitMaxHold) {
+						return dateTimeRetry;
+					}
+				}
+			}
+			return utcNow.Add(GmailSendingLimitDefaultHold);
+		}
+
+		///<summary>Holds back sends from an address until untilUtc, after Gmail's sending limit. Per process; never written to the database.</summary>
+		public static void MarkGmailSendingLimit(long emailAddressNum,DateTime untilUtc) {
+			_dictGmailSendingLimits[emailAddressNum]=untilUtc;
+		}
+
+		///<summary>True if Gmail's sending limit was reached for the address and hasn't lifted yet (untilUtc says when it will). Clears an expired mark.</summary>
+		public static bool IsGmailSendingLimited(long emailAddressNum,DateTime utcNow,out DateTime untilUtc) {
+			if(!_dictGmailSendingLimits.TryGetValue(emailAddressNum,out untilUtc)) {
+				return false;
+			}
+			if(untilUtc>utcNow) {
+				return true;
+			}
+			DateTime dateTimeRemoved;
+			_dictGmailSendingLimits.TryRemove(emailAddressNum,out dateTimeRemoved);
+			return false;
+		}
+
+		///<summary>Forgets every sending-limit mark (after the address was authorized again, and in tests).</summary>
+		public static void ClearGmailSendingLimits() {
+			_dictGmailSendingLimits.Clear();
+		}
+		#endregion Gmail API errors
+
+		#region Sending, signed
 
 		///<summary>Throws exceptions.  Uses the Direct library to sign the message, so that our unencrypted/signed messages are built the same way as our encrypted/signed messages. The provided certificate must contain a private key, or else the signing will fail (exception) when computing the signature digest.</summary>
 		private static void SendEmailUnsecureWithSig(EmailMessage emailMessage,EmailAddress emailAddressFrom,X509Certificate2 x509Certificate2Private) {
@@ -1087,150 +1283,222 @@ namespace OpenDentBusiness {
 			return isEmailFromInbox;
 		}
 
-		///<summary>Use token based authentication to retrieve emails. Returns the count of new emails that were downloaded.</summary>
-		private static int RetrieveFromInboxOAuth(EmailAddress emailAddressInbox,bool hasRetried=false) {
-			if(emailAddressInbox.RefreshToken.IsNullOrEmpty()) {
-				throw new ODException(emailAddressInbox.EmailUsername+" needs to be re-authenticated. Please sign out and back in to continue.");
-			}
+		///<summary>Use token based authentication to retrieve emails. Returns the count of new emails that were downloaded. Throws ODException with a
+		///message for the user when the address has to be authorized again, the program link is off, or the provider can't be reached.</summary>
+		private static int RetrieveFromInboxOAuth(EmailAddress emailAddressInbox) {
 			if(emailAddressInbox.AuthenticationType==OAuthType.Google) {
-				return RetrieveFromGmailInbox(emailAddressInbox,hasRetried);
+				return RetrieveFromGmailInbox(emailAddressInbox);
 			}
 			if(emailAddressInbox.AuthenticationType==OAuthType.Microsoft) {
-				return RetrieveFromMicrosoftInbox(emailAddressInbox,hasRetried);
+				return RetrieveFromMicrosoftInbox(emailAddressInbox);
 			}
 			return 0;
 		}
 
-		///<summary>Use Gmail authentication to retrieve emails. Returns the count of new emails that were downloaded.</summary>
-		private static int RetrieveFromGmailInbox(EmailAddress emailAddressInbox,bool hasRetried=false) {
-			//Get all the IDs in the users inbox (this is paginated so we have to continuously receive IDs until we don't receive a 'next page' token)
-			int countNewEmails=0;
-			using GmailApi.GmailService gmailService=GoogleApiConnector.CreateGmailService(ODEmailAddressToBasic(emailAddressInbox));
-			List<GmailApi.Data.Message> listMessages=new List<GmailApi.Data.Message>();
-			List<string> listEmailMessageUids=EmailMessageUids.GetMsgIdsRecipientAddress(emailAddressInbox.EmailUsername).Select(x=>x.TrimStart("GmailId".ToCharArray())).ToList();
-			//This example is from: https://developers.google.com/gmail/api/v1/reference/users/messages/list
-			GmailApi.UsersResource.MessagesResource.ListRequest request=gmailService.Users.Messages.List(emailAddressInbox.EmailUsername);
-			//Ask for as many email message IDs as possible so that we ask the API as few times as possible.
-			request.MaxResults=500;//Maximum number of messages to return. This field defaults to 100. The maximum allowed value for this field is 500.
-			//Open Dental has no need to download messages within SPAM and TRASH.
-			request.IncludeSpamTrash=false;
-			request.Q=emailAddressInbox.QueryString;
-			while(true) {
+		///<summary>Use Gmail authentication to retrieve emails (docs/specs/vendor-direct/google.md, 3.8). Lists the messages that match the address's
+		///query (the last 30 days of the inbox when it has none), skips IDs already downloaded (exact, case-sensitive compare) and imports the rest.
+		///The access token comes from GoogleTokenCache; a 401 refreshes it once. Rate limits and 5xx back off (1, 2, 4, 8 s); after that the poll
+		///stops. Returns the count of new emails that were downloaded.</summary>
+		private static int RetrieveFromGmailInbox(EmailAddress emailAddressInbox) {
+			return DownloadGmailInbox(emailAddressInbox,() => EmailMessageUids.GetMsgIdsRecipientAddress(emailAddressInbox.EmailUsername),
+				(messageId,raw) => ImportGmailMessage(emailAddressInbox,messageId,raw));
+		}
+
+		///<summary>The Gmail download loop behind RetrieveFromGmailInbox. funcGetStoredUids gives the IDs already downloaded. funcImport stores one
+		///message from its ID and "raw" field and returns true if it counts as a new email. Those two are the database side, which tests replace.</summary>
+		internal static int DownloadGmailInbox(EmailAddress emailAddressInbox,Func<List<string>> funcGetStoredUids,Func<string,string,bool> funcImport) {
+			BasicEmailAddress basicEmailAddress=ODEmailAddressToBasic(emailAddressInbox);
+			bool hasRefreshed=false;
+			int countBackoff=0;
+			List<string> listMessageIds=null;
+			while(listMessageIds==null) {
+				basicEmailAddress.AccessToken=GetLoopAccessToken(emailAddressInbox,forceRefresh:hasRefreshed);
 				try {
-					GmailApi.Data.ListMessagesResponse listMessagesResponse=request.Execute();
-					if(listMessagesResponse.Messages!=null) {
-						listMessages.AddRange(listMessagesResponse.Messages);
-					}
-					request.PageToken=listMessagesResponse.NextPageToken;
+					listMessageIds=ListGmailMessageIds(basicEmailAddress,emailAddressInbox);
 				}
 				catch(GoogleApiException gae) {
-					if(hasRetried) {
-						throw; 
+					GmailErrorKind gmailErrorKind=ClassifyGmailError(gae,isSend:false);
+					LogGmailError("list",emailAddressInbox,gae,gmailErrorKind);
+					if(gmailErrorKind==GmailErrorKind.Unauthorized && !hasRefreshed) {
+						hasRefreshed=true;
+						continue;
 					}
-					if(gae.HttpStatusCode!=HttpStatusCode.Unauthorized) {
-						throw; 
+					if(GmailApiErrors.IsBackoffRetryable(gmailErrorKind) && countBackoff<GmailApiErrors.MaxBackoffAttempts) {
+						SleepBeforeGmailRetry(GmailApiErrors.GetBackoffDelay(countBackoff));
+						countBackoff++;
+						continue;
 					}
-					RefreshGmailToken(emailAddressInbox);
-					return RetrieveFromInboxOAuth(emailAddressInbox,true);
-				}
-				catch(Exception) {
-					throw;
-				}
-				if(request.PageToken.IsNullOrEmpty()) {
-					break;
+					if(gmailErrorKind==GmailErrorKind.Other) {
+						throw;
+					}
+					throw new ODException(GmailApiErrors.GetMessage(gmailErrorKind,emailAddressInbox.EmailUsername),gae);
 				}
 			}
-			//Filter out messages that have already been received
-			listMessages=listMessages.Where(x => !listEmailMessageUids.Contains(x.Id)).ToList();
-			//After receiving all of the ID's in the inbox, perform a GET for each email message
-			for(int i=0;i<listMessages.Count;i++) {
-				GmailApi.UsersResource.MessagesResource.GetRequest emailRequest=gmailService.Users.Messages.Get(emailAddressInbox.EmailUsername,listMessages[i].Id);
-				emailRequest.Format=GmailApi.UsersResource.MessagesResource.GetRequest.FormatEnum.Raw;
-				GmailApi.Data.Message messageResponse=null;
-				try {
-					messageResponse=emailRequest.Execute();
-				}
-				catch(ThreadAbortException) {
-					//This can happen if the application is exiting. We need to leave right away so the program does not lock up.
-					//Otherwise, this loop could continue for a while if there are a lot of messages to download.
-					throw;
-				}
-				catch(Exception ex) {
-					//If one particular email fails to download, then skip it for now and move on to the next email.
-					ex.DoNothing();
-					continue;
-				}
-				EmailMessageUid emailMessageUid=new EmailMessageUid() {
-					MsgId=listMessages[i].Id, //Interchangeable with response.id
-					RecipientAddress=emailAddressInbox.EmailUsername.Trim()
-				};
-				try {
-					//What we receive from Gmail is a Base64 File/URL safe string, but we need this to be just Base64 (replace - and _ with + and / respectively)
-					messageResponse.Raw=Regex.Replace(messageResponse.Raw,"-","+");
-					messageResponse.Raw=Regex.Replace(messageResponse.Raw,"_","/");
-					byte[] byteArrayResponse=Convert.FromBase64String(messageResponse.Raw);
-					using MemoryStream memoryStream=new MemoryStream(byteArrayResponse);
-					MimeKit.MimeMessage mimeMessage=MimeKit.MimeMessage.Load(memoryStream);
-					if(IsEmailFromInbox(emailAddressInbox.EmailUsername,mimeMessage.To.ToList(),mimeMessage.From.ToList(),mimeMessage.Cc.ToList(),mimeMessage.Bcc.ToList())) {
-						//Convert MIME to our Email format and store the UID in the database
-						EmailMessage recd=ProcessRawEmailMessageIn(mimeMessage.ToString(),0,emailAddressInbox,isAck:true);
-						if(emailMessageUid.RecipientAddress!=recd.RecipientAddress) {
-							emailMessageUid.RecipientAddress=recd.RecipientAddress;
+			List<string> listNewIds=GmailInbox.GetNewMessageIds(listMessageIds,funcGetStoredUids());
+			int countNewEmails=0;
+			GmailApi.GmailService gmailService=GoogleApiConnector.CreateGmailService(basicEmailAddress);
+			try {
+				for(int i=0;i<listNewIds.Count;i++) {
+					GmailApi.Data.Message messageResponse=null;
+					while(messageResponse==null) {
+						GmailApi.UsersResource.MessagesResource.GetRequest emailRequest=gmailService.Users.Messages.Get(emailAddressInbox.EmailUsername,listNewIds[i]);
+						emailRequest.Format=GmailApi.UsersResource.MessagesResource.GetRequest.FormatEnum.Raw;
+						try {
+							messageResponse=emailRequest.Execute();
 						}
+						catch(ThreadAbortException) {
+							//This can happen if the application is exiting. We need to leave right away so the program does not lock up.
+							//Otherwise, this loop could continue for a while if there are a lot of messages to download.
+							throw;
+						}
+						catch(GoogleApiException gae) {
+							GmailErrorKind gmailErrorKind=ClassifyGmailError(gae,isSend:false);
+							if(gmailErrorKind==GmailErrorKind.Unauthorized && !hasRefreshed) {
+								//The token expired during a long download. Refresh it once and carry on with this message.
+								hasRefreshed=true;
+								basicEmailAddress.AccessToken=GetLoopAccessToken(emailAddressInbox,forceRefresh:true);
+								gmailService.Dispose();
+								gmailService=GoogleApiConnector.CreateGmailService(basicEmailAddress);
+								continue;
+							}
+							if(GmailApiErrors.IsBackoffRetryable(gmailErrorKind) && countBackoff<GmailApiErrors.MaxBackoffAttempts) {
+								SleepBeforeGmailRetry(GmailApiErrors.GetBackoffDelay(countBackoff));
+								countBackoff++;
+								continue;
+							}
+							LogGmailError("get",emailAddressInbox,gae,gmailErrorKind);
+							if(gmailErrorKind!=GmailErrorKind.Other) {
+								return countNewEmails;//Rate limits, quota, scope or authorization: stop this poll; the next one picks up from here.
+							}
+							break;//This one message failed. Skip it for now (no UID is stored, so it is tried again next time).
+						}
+						catch(Exception ex) {
+							//If one particular email fails to download, then skip it for now and move on to the next email.
+							ex.DoNothing();
+							break;
+						}
+					}
+					if(messageResponse==null) {
+						continue;
+					}
+					if(funcImport(listNewIds[i],messageResponse.Raw)) {
 						countNewEmails++;
 					}
 				}
-				catch(ThreadAbortException) {
-					//This can happen if the application is exiting. We need to leave right away so the program does not lock up.
-					//Otherwise, this loop could continue for a while if there are a lot of messages to download.
-					throw;
-				}
-				catch(Exception ex) {
-					//Something went wrong processing this email. Still insert uid so we don't download it again.
-					ex.DoNothing();
-				}
-				EmailMessageUids.Insert(emailMessageUid);
+			}
+			finally {
+				gmailService.Dispose();
 			}
 			return countNewEmails;
 		}
 
-		///<summary>Throws Exceptions. Use Microsoft authentication to retrieve emails. Returns the count of new emails that were downloaded.</summary>
-		private static int RetrieveFromMicrosoftInbox(EmailAddress emailAddressInbox,bool hasRetried=false) {
-			List<Microsoft.Graph.Message> listMessages=new List<Microsoft.Graph.Message>();
+		///<summary>Imports one downloaded Gmail message: decodes its "raw" field and, if it belongs in this inbox, stores it as an email. The ID is
+		///stored even if that fails, so the message isn't downloaded again. Returns true if it was stored as a new email.</summary>
+		private static bool ImportGmailMessage(EmailAddress emailAddressInbox,string messageId,string raw) {
+			bool isNewEmail=false;
+			EmailMessageUid emailMessageUid=new EmailMessageUid() {
+				MsgId=messageId, //Interchangeable with response.id. Stored without a prefix and compared exactly.
+				RecipientAddress=emailAddressInbox.EmailUsername.Trim()
+			};
 			try {
-				listMessages=MicrosoftApiConnector.RetrieveMessages(emailAddressInbox.EmailUsername,emailAddressInbox.AccessToken);
+				//Gmail sends "raw" as base64url, usually without '=' padding.
+				byte[] byteArrayResponse=GmailInbox.DecodeRaw(raw);
+				using MemoryStream memoryStream=new MemoryStream(byteArrayResponse);
+				MimeKit.MimeMessage mimeMessage=MimeKit.MimeMessage.Load(memoryStream);
+				if(IsEmailFromInbox(emailAddressInbox.EmailUsername,mimeMessage.To.ToList(),mimeMessage.From.ToList(),mimeMessage.Cc.ToList(),mimeMessage.Bcc.ToList())) {
+					//Convert MIME to our Email format and store the UID in the database
+					EmailMessage recd=ProcessRawEmailMessageIn(mimeMessage.ToString(),0,emailAddressInbox,isAck:true);
+					if(emailMessageUid.RecipientAddress!=recd.RecipientAddress) {
+						emailMessageUid.RecipientAddress=recd.RecipientAddress;
+					}
+					isNewEmail=true;
+				}
+			}
+			catch(ThreadAbortException) {
+				//This can happen if the application is exiting. We need to leave right away so the program does not lock up.
+				//Otherwise, this loop could continue for a while if there are a lot of messages to download.
+				throw;
 			}
 			catch(Exception ex) {
-				if(hasRetried) {
-					throw;
-				}
-				if(!ex.InnerException.Message.Contains("InvalidAuthenticationToken")) {
-					throw;
-				}
-				//Need to refresh the token and try again.
-				RefreshMicrosoftToken(emailAddressInbox);
-				return RetrieveFromMicrosoftInbox(emailAddressInbox,true);
+				//Something went wrong processing this email. Still insert uid so we don't download it again.
+				ex.DoNothing();
 			}
-			//Filter out messages that have already been received.
-			List<string> listMsgIds=EmailMessageUids.GetMsgIdsRecipientAddress(emailAddressInbox.EmailUsername)
-				.Select(x=>x.TrimStart("MicrosoftId".ToCharArray())).ToList();
-			listMessages=listMessages.Where(x => !listMsgIds.Contains(x.Id)).ToList();
+			EmailMessageUids.Insert(emailMessageUid);
+			return isNewEmail;
+		}
+
+		///<summary>Pages messages.list for the address (500 per page, spam and trash excluded) and returns every message ID. The query is the address's
+		///QueryString, or "in:inbox newer_than:30d" when it has none, so a poll never lists the whole mailbox. Throws GoogleApiException.</summary>
+		internal static List<string> ListGmailMessageIds(BasicEmailAddress basicEmailAddress,EmailAddress emailAddressInbox) {
+			List<string> listMessageIds=new List<string>();
+			using GmailApi.GmailService gmailService=GoogleApiConnector.CreateGmailService(basicEmailAddress);
+			//This example is from: https://developers.google.com/gmail/api/v1/reference/users/messages/list
+			GmailApi.UsersResource.MessagesResource.ListRequest request=gmailService.Users.Messages.List(emailAddressInbox.EmailUsername);
+			//Ask for as many email message IDs as possible so that we ask the API as few times as possible.
+			request.MaxResults=500;//Maximum number of messages to return. This field defaults to 100. The maximum allowed value for this field is 500.
+			//There is no need to download messages within SPAM and TRASH.
+			request.IncludeSpamTrash=false;
+			request.Q=GmailInbox.GetQuery(emailAddressInbox.QueryString);
+			while(true) {
+				GmailApi.Data.ListMessagesResponse listMessagesResponse=request.Execute();
+				if(listMessagesResponse.Messages!=null) {
+					listMessageIds.AddRange(listMessagesResponse.Messages.Select(x => x.Id));
+				}
+				request.PageToken=listMessagesResponse.NextPageToken;
+				if(request.PageToken.IsNullOrEmpty()) {
+					break;
+				}
+			}
+			return listMessageIds;
+		}
+
+		///<summary>Use Microsoft authentication to retrieve emails (docs/specs/vendor-direct/microsoft-365.md, 2.4). Lists the inbox's messages from the
+		///last 30 days with immutable IDs, skips IDs already downloaded (exact, case-sensitive compare) and imports the rest as MIME. Tokens come from
+		///the mailbox's Microsoft365Session, which refreshes after a 401 itself. Throws ODException (InnerException: the Microsoft365Exception).
+		///Returns the count of new emails that were downloaded.</summary>
+		private static int RetrieveFromMicrosoftInbox(EmailAddress emailAddressInbox) {
+			if(string.IsNullOrEmpty(emailAddressInbox.RefreshToken)) {
+				throw new ODException(GetMicrosoftNeedsSignInMessage(emailAddressInbox.EmailUsername),
+					new Microsoft365AuthException(Microsoft365ErrorKind.NeedsSignIn,Microsoft365Errors.MessageNeedsSignIn,0,"NotSignedIn"));
+			}
+			Microsoft365Session microsoft365Session;
+			List<MicrosoftMessageRef> listMessageRefs;
+			DateTime dateTimeSinceUtc=DateTime.UtcNow.Subtract(MicrosoftApiConnector.InboxDefaultLookBack);
+			try {
+				microsoft365Session=Microsoft365Session.Get(emailAddressInbox);
+				listMessageRefs=CodeBase.VendorDirect.VendorHttp.RunSync(() => microsoft365Session.ListInboxAsync(dateTimeSinceUtc));
+			}
+			catch(Microsoft365Exception ex) {
+				throw ToODException(ex,emailAddressInbox.EmailUsername);
+			}
+			//Filter out messages that have already been received. Graph IDs are case-sensitive and stored without a prefix.
+			List<string> listNewIds=GetNewMicrosoftMessageIds(listMessageRefs.Select(x => x.Id),
+				EmailMessageUids.GetMsgIdsRecipientAddress(emailAddressInbox.EmailUsername));
 			int countNewEmails=0;
-			for(int i=0;i<listMessages.Count;i++) {
+			for(int i=0;i<listNewIds.Count;i++) {
+				string messageId=listNewIds[i];
+				MimeKit.MimeMessage mimeMessage;
+				try {
+					mimeMessage=CodeBase.VendorDirect.VendorHttp.RunSync(() => microsoft365Session.GetMimeAsync(messageId));
+				}
+				catch(Microsoft365Exception ex) {
+					if(ex.IsAuthError || ex.Kind.In(Microsoft365ErrorKind.Unreachable,Microsoft365ErrorKind.Throttled,Microsoft365ErrorKind.NotConfigured)) {
+						throw ToODException(ex,emailAddressInbox.EmailUsername);//Stop this poll; nothing is marked, so the next one picks up from here.
+					}
+					continue;//This one message failed. No UID is stored, so it is tried again next time.
+				}
 				EmailMessageUid emailMessageUid=new EmailMessageUid();
-				emailMessageUid.MsgId=listMessages[i].Id;
+				emailMessageUid.MsgId=messageId;
 				emailMessageUid.RecipientAddress=emailAddressInbox.EmailUsername;
 				try {
-					//Check to see if the message has any inline attachments. If so then need to use MIME formatting.
-					MimeKit.MimeMessage mimeMessage=MicrosoftApiConnector.GetMIMEMessage(emailAddressInbox.EmailUsername,emailAddressInbox.AccessToken,listMessages[i].Id);
 					if(IsEmailFromInbox(emailAddressInbox.EmailUsername,mimeMessage.To.ToList(),mimeMessage.From.ToList(),mimeMessage.Cc.ToList(),mimeMessage.Bcc.ToList())) {
 						//Convert MIME to our Email format and store the ID in the database
 						EmailMessage emailMessageProcessed=ProcessRawEmailMessageIn(mimeMessage.ToString(),0,emailAddressInbox,true);
 						if(emailMessageUid.RecipientAddress!=emailMessageProcessed.RecipientAddress) {
 							emailMessageUid.RecipientAddress=emailMessageProcessed.RecipientAddress;
 						}
+						countNewEmails++;
 					}
-					countNewEmails++;
 				}
 				catch(ThreadAbortException) {
 					//This can happen if the application is exiting. We need to leave right away so the program does not lock up.
@@ -1244,6 +1512,21 @@ namespace OpenDentBusiness {
 				EmailMessageUids.Insert(emailMessageUid);
 			}
 			return countNewEmails;
+		}
+
+		///<summary>The Graph message IDs from listedIds that aren't stored yet, in order and without repeats. IDs are compared exactly (they are
+		///case-sensitive); unlike the old character-set trim, nothing is stripped from a stored ID.</summary>
+		public static List<string> GetNewMicrosoftMessageIds(IEnumerable<string> listedIds,IEnumerable<string> storedUids) {
+			HashSet<string> hashSetKnown=new HashSet<string>(storedUids.Where(x => x!=null),StringComparer.Ordinal);
+			List<string> listNewIds=new List<string>();
+			foreach(string id in listedIds) {
+				if(string.IsNullOrEmpty(id) || hashSetKnown.Contains(id)) {
+					continue;
+				}
+				hashSetKnown.Add(id);
+				listNewIds.Add(id);
+			}
+			return listNewIds;
 		}
 
 		///<summary>Parses a raw email into a usable object.</summary>
@@ -1665,42 +1948,25 @@ namespace OpenDentBusiness {
 			}
 		}
 
-		///<summary>Helper method that refreshes the user's Gmail Access Token and updates it in the database.</summary>
+		///<summary>Drops the address's cached Gmail access token and gets a fresh one from Google (google.md 3.4). The token stays in memory: nothing
+		///is written to the database and no signal is sent, because Google doesn't rotate the refresh token and each workstation refreshes on its
+		///own. Throws GoogleAuthException (an ODException) with a message for the user.</summary>
 		public static void RefreshGmailToken(EmailAddress emailAddress) {
 			Meth.NoCheckMiddleTierRole();
-			string dbToken=EmailAddresses.GetOneFromDb(emailAddress.EmailAddressNum).AccessToken;
-			if(!dbToken.IsNullOrEmpty() && dbToken!=emailAddress.AccessToken) {
-				emailAddress.AccessToken=dbToken; //This means that another service has already updated the token in the db, so use that one
-				return;
-			}
-			emailAddress.AccessToken=Google.MakeRefreshAccessTokenRequest(emailAddress.RefreshToken);
-			EmailAddresses.Update(emailAddress);
-			EmailAddresses.RefreshCache();
-			Signalods.SetInvalid(InvalidType.Email);
+			GetOAuthAccessToken(emailAddress,forceRefresh:true);
 		}
 
-		///<summary>Attempts to refresh the Access token for the passed in EmailAddress.</summary>
+		///<summary>Gets a fresh Microsoft 365 access token for the address through its Microsoft365Session (microsoft-365.md 3.4). The rotating MSAL
+		///cache is written back by the session itself (at most once a day per process); no signal is sent. Throws ODException with a message for
+		///the user.</summary>
 		public static void RefreshMicrosoftToken(EmailAddress emailAddress) {
 			Meth.NoCheckMiddleTierRole();
-			string dbToken=EmailAddresses.GetOneFromDb(emailAddress.EmailAddressNum).AccessToken;
-			if(!dbToken.IsNullOrEmpty() && dbToken!=emailAddress.AccessToken) {
-				emailAddress.AccessToken=dbToken; //This means that another service has already updated the token in the db, so use that one
-				return;
-			}
-			MicrosoftTokenHelper microsoftTokenHelper=new MicrosoftTokenHelper();
-			microsoftTokenHelper=System.Threading.Tasks.Task.Run(async () =>
-				await MicrosoftApiConnector.GetAccessToken(emailAddress.EmailUsername,emailAddress.RefreshToken)).GetAwaiter().GetResult();
-			if(microsoftTokenHelper.ErrorMessage!="" || microsoftTokenHelper.AccessToken=="") {
-				return;//authentication was cancelled or there was an error so just return.
-			}
-			emailAddress.AccessToken=microsoftTokenHelper.AccessToken;
-			emailAddress.RefreshToken=microsoftTokenHelper.AccountInfo;
-			EmailAddresses.Update(emailAddress);
-			EmailAddresses.RefreshCache();
-			Signalods.SetInvalid(InvalidType.Email);
+			GetOAuthAccessToken(emailAddress,forceRefresh:true);
 		}
 
-		///<summary>Converts an OD email address to a basic email address. Decrypts the password.</summary>
+		///<summary>Converts an OD email address to a basic email address. Decrypts the password. For Gmail and Microsoft 365 addresses the tokens are
+		///left blank: the email layer needs neither the stored refresh token nor the account marker, and the sender sets AccessToken to a fresh
+		///bearer token (GetOAuthAccessToken) just before it sends.</summary>
 		public static BasicEmailAddress ODEmailAddressToBasic(EmailAddress emailAddressOd) {
 			Meth.NoCheckMiddleTierRole();
 			BasicEmailAddress basicEmailAddress=new BasicEmailAddress();
@@ -1709,8 +1975,14 @@ namespace OpenDentBusiness {
 			basicEmailAddress.ServerPort=emailAddressOd.ServerPort;
 			basicEmailAddress.SMTPserver=emailAddressOd.SMTPserver;
 			basicEmailAddress.UseSSL=emailAddressOd.UseSSL;
-			basicEmailAddress.AccessToken=emailAddressOd.AccessToken;
-			basicEmailAddress.RefreshToken=emailAddressOd.RefreshToken;
+			if(emailAddressOd.AuthenticationType.In(OAuthType.Google,OAuthType.Microsoft)) {
+				basicEmailAddress.AccessToken="";
+				basicEmailAddress.RefreshToken="";
+			}
+			else {
+				basicEmailAddress.AccessToken=emailAddressOd.AccessToken;
+				basicEmailAddress.RefreshToken=emailAddressOd.RefreshToken;
+			}
 			basicEmailAddress.AuthenticationType=(BasicOAuthType)emailAddressOd.AuthenticationType;
 			return basicEmailAddress;
 		}
