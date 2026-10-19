@@ -49,7 +49,8 @@ namespace OpenDental{
 				butAdd.Enabled=false;
 			}
 			Clearinghouse clearingHouse=Clearinghouses.GetDefaultDental();
-			if(CultureInfo.CurrentCulture.Name.EndsWith("CA") && clearingHouse.Eformat==ElectronicClaimFormat.Canadian) {
+			//The carrier list comes only from the office's own ITRANS Claims Director, so the box shows only for a Canadian default clearinghouse.
+			if(CultureInfo.CurrentCulture.Name.EndsWith("CA") && clearingHouse!=null && clearingHouse.Eformat==ElectronicClaimFormat.Canadian) {
 				groupItrans.Visible=true;
 				ItransImportFields itransImportFields=(ItransImportFields)PrefC.GetInt(PrefName.ItransImportFields);
 				checkITransPhone.Checked=(itransImportFields.HasFlag(ItransImportFields.Phone));
