@@ -1,5 +1,5 @@
-// Tests that the vendor-direct scaffolding (README section 3) stays in place: the program names, the project wildcards, the stubs that later
-// packages fill in, and the gates that keep integrations hidden until enabled.
+// Tests that the vendor-direct scaffolding (README section 3) stays in place: the program names, the project wildcards, the business-layer stubs
+// that later packages fill in, and the registry and job host. Files that later packages own are tested by those packages.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.IO;
@@ -65,19 +65,19 @@ namespace VendorDirectTests.Foundation {
 				Assert.IsTrue(File.Exists(Path.Combine(root,"OpenDentBusiness",stub)),stub);
 				StringAssert.Contains(csprojBusiness,"<Compile Include=\""+stub+"\" />",stub);
 			}
+		}
+
+		[TestMethod]
+		public void ProgramProject_HasTheRegistryAndJobHost() {
+			//Only the foundation's own files. The forms and helpers that later packages fill in, rename or delete are theirs to test.
+			string root=GetRepositoryRoot();
 			string csprojProgram=ReadRepoFile(@"OpenDental\OpenDental.csproj");
-			foreach(string form in new[] { "FormMicrosoft365Setup","FormGmailApiSetup","FormUspsAddressSetup","FormEdgeExpressPayPage",
-				"FormPdmpClientCertificate" })
+			foreach(string file in new[] { @"Logic\VendorDirect\IProgramLinkSetup.cs",@"Logic\VendorDirect\ProgramLinkSetupRegistry.cs",
+				@"Logic\VendorDirect\VendorJobHost.cs" })
 			{
-				StringAssert.Contains(csprojProgram,@"<Compile Include=""Forms\"+form+@".cs"">",form);
-				StringAssert.Contains(csprojProgram,@"<EmbeddedResource Include=""Forms\"+form+@".resx"">",form);
-			}
-			foreach(string file in new[] { @"Logic\EdgeExpressL.cs",@"Logic\VendorDirect\IProgramLinkSetup.cs",@"Logic\VendorDirect\ProgramLinkSetupRegistry.cs",
-				@"Logic\VendorDirect\VendorJobHost.cs",@"Logic\VendorDirect\DropboxStartupCheck.cs",@"Logic\VendorDirect\PostcardsMenu.cs" })
-			{
+				Assert.IsTrue(File.Exists(Path.Combine(root,"OpenDental",file)),file);
 				StringAssert.Contains(csprojProgram,"<Compile Include=\""+file+"\" />",file);
 			}
-			StringAssert.Contains(ReadRepoFile(@"WpfControlsOD\WpfControlsOD.csproj"),@"<Compile Include=""Logic\VendorDirect\PdmpLaunch.cs"" />");
 		}
 
 		[TestMethod]
@@ -86,16 +86,6 @@ namespace VendorDirectTests.Foundation {
 			StringAssert.Contains(script,@"CodeBase\Utilities\VendorDirect\HqHosts.cs");
 			StringAssert.Contains(script,@"tests\VendorDirectTests\Foundation\HqHostsTests.cs");
 			Assert.IsFalse(script.Contains(@"tests\VendorDirectTests\*"),"Allow single files, not the whole test project.");
-		}
-
-		[TestMethod]
-		public void Gates_IntegrationUiShowsOnlyWhenEnabled() {
-			string menus=ReadRepoFile(@"OpenDental\Main Modules\FormOpenDental.cs");
-			StringAssert.Contains(menus,"_menuItemAdvertising.Available=Programs.IsEnabled(ProgramName.PostcardMania);");
-			string emailEdit=ReadRepoFile(@"OpenDental\Forms\FormEmailAddressEdit.cs");
-			StringAssert.Contains(emailEdit,"radioMicrosoft.Visible=isMicrosoft365Enabled || _authenticationType==OAuthType.Microsoft;");
-			string threads=ReadRepoFile(@"OpenDental\Main Modules\FormOpenDentalThreads.cs");
-			StringAssert.Contains(threads,"clearinghouseDefault.CommBridge!=EclaimsCommBridge.ITRANS2");
 		}
 
 		[TestMethod]
