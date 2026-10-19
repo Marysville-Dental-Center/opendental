@@ -799,7 +799,6 @@ namespace OpenDentBusiness {
 					listDisplayFields.Add(new DisplayField("Status",130,displayFieldCategory));
 					listDisplayFields.Add(new DisplayField("Note",215,displayFieldCategory));
 					listDisplayFields.Add(new DisplayField("BillingType",100,displayFieldCategory));
-					listDisplayFields.Add(new DisplayField("WebSched",100,displayFieldCategory));
 					listDisplayFields.Add(new DisplayField("Carrier Name",100,displayFieldCategory));
 					break;
 				#endregion RecallList

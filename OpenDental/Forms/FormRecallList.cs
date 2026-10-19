@@ -262,6 +262,8 @@ namespace OpenDental {
 			gridRecalls.BeginUpdate();
 			gridRecalls.Columns.Clear();
 			List<DisplayField> listDisplayFields=DisplayFields.GetForCategory(DisplayFieldCategory.RecallList);
+			//Web Sched was removed. Databases migrated from Open Dental can still have a 'WebSched' display field row, which is left in place but not shown.
+			listDisplayFields.RemoveAll(x => x.InternalName=="WebSched");
 			GridColumn col;
 			for(int i=0;i<listDisplayFields.Count;i++) {
 				col=new GridColumn(string.IsNullOrEmpty(listDisplayFields[i].Description)?listDisplayFields[i].InternalName:listDisplayFields[i].Description,listDisplayFields[i].ColumnWidth) { Tag=listDisplayFields[i].InternalName };
