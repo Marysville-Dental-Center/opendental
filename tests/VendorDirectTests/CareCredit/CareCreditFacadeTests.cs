@@ -41,6 +41,7 @@ namespace VendorDirectTests.CareCreditTests {
 		[TestCleanup]
 		public void TestCleanup() {
 			CareCredit.ResetDependencies();
+			CareCreditJobs.ClearSessionRows();
 		}
 
 		private string SendPrefill(CareCreditLandingPage landingPage,Patient patient,double purchase=0,double refund=0,long payNum=0) {
@@ -90,6 +91,7 @@ namespace VendorDirectTests.CareCreditTests {
 			Assert.AreEqual("S-1",CareCredit.GetSessionIDFromUrl(url));
 			Assert.AreEqual("staff1",CareCredit.GetUserName(row),"The staff user is kept with the row.");
 			Assert.AreEqual("",_lastAuthError,"A good call clears the last authorization error.");
+			Assert.IsTrue(CareCreditJobs.IsSessionRow(row.CareCreditWebResponseNum),"Pulled back by this session while no job computer is set.");
 		}
 
 		[TestMethod]
@@ -203,6 +205,68 @@ namespace VendorDirectTests.CareCreditTests {
 			int countRequests=_handler.Requests.Count;
 			StringAssert.Contains(CareCredit.TestConnection(configIncomplete),"Token path");
 			Assert.AreEqual(countRequests,_handler.Requests.Count,"Incomplete settings are refused without a call.");
+		}
+
+		[TestMethod]
+		public void TestConnection_SavedSecretIsNeverSentToAChangedHostWithoutPermission() {
+			CareCreditConfig configSaved=CareCreditTestData.CreateConfig();
+			//A user without the high-security permission leaves the secret masked (the saved one) and types a host of their own.
+			CareCreditConfig configTyped=CareCreditTestData.CreateConfig();
+			configTyped.ApiBaseUrl="https://collector.example.test/";
+			_handler.SetDefault((request,token) => System.Threading.Tasks.Task.FromResult(FakeHttpHandler.MakeResponse(HttpStatusCode.OK,TOKEN_JSON)));
+			string result=CareCredit.TestConnection(configTyped,configSaved,hasHighSecurityPermission:false);
+			StringAssert.Contains(result,"Manage High Security Program Properties");
+			StringAssert.Contains(result,"collector.example.test");
+			Assert.AreEqual(0,_handler.Requests.Count,"Nothing was sent anywhere.");
+			//Every setting that decides where the secret or patient data goes is covered.
+			foreach(Action<CareCreditConfig> actionChange in new Action<CareCreditConfig>[] {
+				x => x.IhsBaseUrl="https://pages.example.test/",x => x.TokenPath="/steal",x => x.PrefillPath="/p2",x => x.PullbackPath="/b2/{refId}",
+				x => x.BatchPath="/q2",x => x.ClientAuth=CareCreditClientAuth.FormBody,x => x.Scope="all" })
+			{
+				CareCreditConfig configChanged=CareCreditTestData.CreateConfig();
+				actionChange(configChanged);
+				Assert.AreEqual(1,CareCreditConfig.GetDestinationChanges(configSaved,configChanged).Count);
+				Assert.AreNotEqual("",CareCredit.TestConnection(configChanged,configSaved,hasHighSecurityPermission:false));
+			}
+			Assert.AreEqual(0,_handler.Requests.Count);
+			//Unchanged destination: a user without the permission may still test the saved settings.
+			Assert.AreEqual("",CareCredit.TestConnection(CareCreditTestData.CreateConfig(),configSaved,hasHighSecurityPermission:false));
+			Assert.AreEqual(CareCreditTestData.API_BASE+"/oauth2/token",_handler.Requests.Single().RequestUri.GetLeftPart(UriPartial.Path));
+			//With the permission, a changed host is allowed (that user could type the secret anyway).
+			Assert.AreEqual("",CareCredit.GetConnectionChangeProblem(configSaved,configTyped,hasHighSecurityPermission:true));
+			Assert.AreEqual(0,CareCreditConfig.GetDestinationChanges(configSaved,CareCreditTestData.CreateConfig()).Count);
+		}
+
+		[TestMethod]
+		public void PullbackNow_AppliesTheResultAndCreatesOnePayment() {
+			_handler.Enqueue(HttpStatusCode.OK,TOKEN_JSON).Enqueue(HttpStatusCode.OK,"{\"status\":\"COMPLETED\",\"amount\":\"80.00\"}");
+			int countInserted=0;
+			int countClaims=0;
+			CareCreditResultActions actions=new CareCreditResultActions();
+			actions.FuncClaimCompletedForPayment=(num,dateTimeCompleted) => ++countClaims==1 ? 1 : 0;
+			actions.FuncInsertPayment=(patNum,clinicNum,amount,note,fee) => 900+(++countInserted);
+			actions.FuncUpdateRow=(row,rowOld) => true;
+			CareCreditWebResponse careCreditWebResponse=new CareCreditWebResponse();
+			careCreditWebResponse.CareCreditWebResponseNum=12;
+			careCreditWebResponse.PatNum=5;
+			careCreditWebResponse.RefNumber="REF-12";
+			careCreditWebResponse.MerchantNumber=CareCreditTestData.MERCHANT;
+			careCreditWebResponse.ServiceType=CareCreditServiceType.Prefill;
+			careCreditWebResponse.TransType=CareCreditTransType.Purchase;
+			careCreditWebResponse.ProcessingStatus=CareCreditWebStatus.Pending;
+			Assert.IsTrue(CareCreditJobs.PullbackNow(careCreditWebResponse,_dateTimeNow,actions));
+			Assert.AreEqual(CareCreditWebStatus.Completed,careCreditWebResponse.ProcessingStatus);
+			Assert.AreEqual(901,careCreditWebResponse.PayNum);
+			Assert.AreEqual(1,countInserted);
+			//A completed row isn't pulled back again.
+			int countRequests=_handler.Requests.Count;
+			Assert.IsFalse(CareCreditJobs.PullbackNow(careCreditWebResponse,_dateTimeNow,actions));
+			Assert.AreEqual(countRequests,_handler.Requests.Count);
+			//Nor anything while CareCredit is disabled.
+			_isEnabled=false;
+			careCreditWebResponse.ProcessingStatus=CareCreditWebStatus.Pending;
+			Assert.IsFalse(CareCreditJobs.PullbackNow(careCreditWebResponse,_dateTimeNow,actions));
+			Assert.AreEqual(countRequests,_handler.Requests.Count);
 		}
 
 		[TestMethod]

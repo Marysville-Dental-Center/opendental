@@ -253,6 +253,8 @@ namespace OpenDentBusiness.Bridges {
 			careCreditWebResponse.WebToken=result.SessionId;
 			ApplyStatus(careCreditWebResponse,CareCreditWebStatus.Pending,FuncNow());
 			ResponseStore.Update(careCreditWebResponse,careCreditWebResponseOld);
+			//With no job computer set, this session pulls the row back itself (CareCreditJobs.PollSessionRows).
+			CareCreditJobs.TrackSessionRow(careCreditWebResponse.CareCreditWebResponseNum,careCreditWebResponse.DateTimePending);
 			if(result.SessionId!="") {
 				_dictSessionIdsByUrl[result.PageUrl]=result.SessionId;
 			}
@@ -366,7 +368,8 @@ namespace OpenDentBusiness.Bridges {
 			ResponseStore.Update(careCreditWebResponse,careCreditWebResponseOld);
 		}
 
-		///<summary>Calls pullback for the row. Records refused credentials for the setup window. Network failures become ODException.</summary>
+		///<summary>Calls pullback for the row. Records refused credentials for the setup window. Network failures become ODException. The OpenDental
+		///program reaches it through CareCreditJobs.PullbackNow, which also applies the result.</summary>
 		internal static CareCreditPullbackResult Pullback(CareCreditConfig config,CareCreditWebResponse careCreditWebResponse) {
 			bool isQuickScreen=careCreditWebResponse.ServiceType.In(CareCreditServiceType.Batch,CareCreditServiceType.IndividualQS);
 			try {
@@ -551,8 +554,36 @@ namespace OpenDentBusiness.Bridges {
 			}
 		}
 
+		///<summary>"" if the setup window may use configNew (Test connection, Save); otherwise why not. The settings that decide where the client
+		///secret and patient data go (CareCreditConfig.GetDestinationChanges) are high security, like the secret itself: without
+		///ManageHighSecurityProgProperties they can't differ from configSaved. Otherwise a user who may not see or edit the secret could point the
+		///API host at a server of their own and have Test connection send the saved secret there.</summary>
+		public static string GetConnectionChangeProblem(CareCreditConfig configSaved,CareCreditConfig configNew,bool hasHighSecurityPermission) {
+			if(hasHighSecurityPermission) {
+				return "";
+			}
+			List<string> listChanges=CareCreditConfig.GetDestinationChanges(configSaved,configNew);
+			if(listChanges.Count==0) {
+				return "";
+			}
+			return Lans.g("CareCredit","Changing where CareCredit sends the client secret and patient data needs the 'Manage High Security Program "
+				+"Properties' permission. Changed")+":\r\n"+string.Join("\r\n",listChanges);
+		}
+
+		///<summary>Test connection from the setup window: refuses, without calling anyone, when the user lacks the high-security permission and a
+		///destination setting differs from the saved one (GetConnectionChangeProblem); otherwise TestConnection(config).</summary>
+		public static string TestConnection(CareCreditConfig config,CareCreditConfig configSaved,bool hasHighSecurityPermission) {
+			Meth.NoCheckMiddleTierRole();
+			string problem=GetConnectionChangeProblem(configSaved,config,hasHighSecurityPermission);
+			if(problem!="") {
+				return problem;
+			}
+			return TestConnection(config);
+		}
+
 		///<summary>Asks Synchrony for an access token with config (the values in the setup window, saved or not). Returns "" on success, else a message
-		///for the user (never a secret). Refuses incomplete settings without calling Synchrony.</summary>
+		///for the user (never a secret). Refuses incomplete settings without calling Synchrony. The setup window calls the overload that also checks
+		///the user may change the destination.</summary>
 		public static string TestConnection(CareCreditConfig config) {
 			Meth.NoCheckMiddleTierRole();
 			List<string> listProblems=config.GetProblems();

@@ -288,6 +288,24 @@ namespace OpenDentBusiness{
 			return Crud.CareCreditWebResponseCrud.Update(careCreditWebResponse,careCreditWebResponseOld);
 		}
 
+		///<summary>Atomically marks a pending (Created or Pending) row with no payment as Completed, for the one process that will create its payment.
+		///Returns the number of rows changed: 1 for the caller that won the row, 0 if another process or window already completed it or attached a
+		///payment. Unlike Update(new,old), the WHERE clause checks the status and PayNum in the database, so two pollers can't both win.</summary>
+		public static long ClaimCompletedForPayment(long careCreditWebResponseNum,DateTime dateTimeCompleted) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetLong(MethodBase.GetCurrentMethod(),careCreditWebResponseNum,dateTimeCompleted);
+			}
+			if(careCreditWebResponseNum==0) {
+				return 0;
+			}
+			string command="UPDATE carecreditwebresponse "
+				+$"SET ProcessingStatus='{CareCreditWebStatus.Completed}',DateTimeCompleted={POut.DateT(dateTimeCompleted)} "
+				+$"WHERE CareCreditWebResponseNum={POut.Long(careCreditWebResponseNum)} "
+				+$"AND ProcessingStatus IN('{CareCreditWebStatus.Pending}','{CareCreditWebStatus.Created}') "
+				+"AND PayNum=0";
+			return Db.NonQ(command);
+		}
+
 		public static void UpdateProcessingWebStatus(CareCreditWebResponse careCreditWebResponse,CareCreditWebStatus careCreditWebStatus) {
 			Meth.NoCheckMiddleTierRole();
 			UpdateProcessingWebStatus(new List<CareCreditWebResponse>() { careCreditWebResponse },careCreditWebStatus);

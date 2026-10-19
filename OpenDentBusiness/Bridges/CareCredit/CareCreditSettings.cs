@@ -466,6 +466,33 @@ namespace OpenDentBusiness.Bridges {
 			return GetHost(url)==ihsHost;
 		}
 
+		///<summary>The settings that decide where the client secret and patient data are sent, or how the secret is presented: the API and hosted-page
+		///base URLs, the endpoint paths, the client authentication style and the scope. Returns one line per setting whose value differs between
+		///configSaved and configNew (old and new values; none of them is a secret), or an empty list.</summary>
+		public static List<string> GetDestinationChanges(CareCreditConfig configSaved,CareCreditConfig configNew) {
+			configSaved=configSaved??new CareCreditConfig();
+			configNew=configNew??new CareCreditConfig();
+			List<string> listChanges=new List<string>();
+			AddChange(listChanges,"API base URL",configSaved.ApiBaseUrl,configNew.ApiBaseUrl);
+			AddChange(listChanges,"Hosted-page base URL",configSaved.IhsBaseUrl,configNew.IhsBaseUrl);
+			AddChange(listChanges,"Token path",configSaved.TokenPath,configNew.TokenPath);
+			AddChange(listChanges,"Prefill path",configSaved.PrefillPath,configNew.PrefillPath);
+			AddChange(listChanges,"Pullback path",configSaved.PullbackPath,configNew.PullbackPath);
+			AddChange(listChanges,"Batch path",configSaved.BatchPath,configNew.BatchPath);
+			AddChange(listChanges,"Client authentication",configSaved.ClientAuth.ToString(),configNew.ClientAuth.ToString());
+			AddChange(listChanges,"Scope",configSaved.Scope,configNew.Scope);
+			return listChanges;
+		}
+
+		private static void AddChange(List<string> listChanges,string label,string valueOld,string valueNew) {
+			string old=(valueOld??"").Trim();
+			string cur=(valueNew??"").Trim();
+			if(string.Equals(old,cur,StringComparison.Ordinal)) {
+				return;
+			}
+			listChanges.Add(label+": '"+old+"' to '"+cur+"'");
+		}
+
 		///<summary>Keys the in-memory token cache: a changed client, secret, environment or token endpoint gets a new token.</summary>
 		public string GetTokenFingerprint() {
 			return TokenCache.Fingerprint("CareCredit",ClientId,ClientSecretStored,Environment.ToString(),ApiBaseUrl,TokenPath,ClientAuth.ToString(),Scope);

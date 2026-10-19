@@ -72,6 +72,9 @@ namespace VendorDirectTests.CareCreditTests {
 		private List<Tuple<double,long>> _listPreApproval;
 		private List<Tuple<double,long>> _listAvailableCredit;
 		private List<string> _listClosedMerchants;
+		///<summary>The rows the fake database has let someone claim: a second claim of the same row changes nothing, as with the real UPDATE.</summary>
+		private HashSet<long> _hashSetClaimed;
+		private List<Tuple<long,DateTime>> _listClaims;
 		private CareCreditResultActions _actions;
 
 		[TestInitialize]
@@ -84,7 +87,13 @@ namespace VendorDirectTests.CareCreditTests {
 			_listPreApproval=new List<Tuple<double,long>>();
 			_listAvailableCredit=new List<Tuple<double,long>>();
 			_listClosedMerchants=new List<string>();
+			_hashSetClaimed=new HashSet<long>();
+			_listClaims=new List<Tuple<long,DateTime>>();
 			_actions=new CareCreditResultActions();
+			_actions.FuncClaimCompletedForPayment=(num,dateTimeCompleted) => {
+				_listClaims.Add(Tuple.Create(num,dateTimeCompleted));
+				return _hashSetClaimed.Add(num) ? 1 : 0;
+			};
 			_actions.FuncInsertPayment=(patNum,clinicNum,amount,note,fee) => {
 				_listInserted.Add(Tuple.Create(patNum,clinicNum,amount,note,fee));
 				return 900+_listInserted.Count;
@@ -131,9 +140,47 @@ namespace VendorDirectTests.CareCreditTests {
 			Assert.AreEqual(CareCreditWebStatus.Completed,row.ProcessingStatus);
 			Assert.AreEqual(CareCreditWebStatus.Completed,_listRowWrites.First().ProcessingStatus,"The completed status is saved before the payment is created.");
 			Assert.AreEqual(901,_listRowWrites.Last().PayNum);
+			Assert.AreEqual(Tuple.Create(7L,_dateTimeNow),_listClaims.Single(),"The row is claimed, with its completed time, before the payment.");
 			//The same result again (a repeated pullback) creates nothing more.
 			CareCreditJobs.ApplyResult(row,result,_dateTimeNow,_actions);
 			Assert.AreEqual(1,_listInserted.Count);
+		}
+
+		[TestMethod]
+		public void TwoProcessesPullingBackTheSameRow_CreateOnePayment() {
+			//Both processes read the row while it was Pending with no payment, and both pull back COMPLETED.
+			CareCreditWebResponse rowProcessA=CreatePendingRow(CareCreditTransType.Purchase,payNum:0);
+			CareCreditWebResponse rowProcessB=CreatePendingRow(CareCreditTransType.Purchase,payNum:0);
+			CareCreditPullbackResult result=CareCreditJson.ReadPullback("{\"status\":\"COMPLETED\",\"amount\":\"80.00\"}",false);
+			CareCreditJobs.ApplyResult(rowProcessA,result,_dateTimeNow,_actions);
+			CareCreditJobs.ApplyResult(rowProcessB,result,_dateTimeNow.AddSeconds(1),_actions);
+			Assert.AreEqual(1,_listInserted.Count,"Only the process whose claim changed the row creates a payment.");
+			Assert.AreEqual(2,_listClaims.Count);
+			Assert.AreEqual(901,rowProcessA.PayNum);
+			Assert.AreEqual(0,rowProcessB.PayNum);
+			Assert.AreEqual(2,_listRowWrites.Count,"Only the winner writes the row; the loser doesn't write over it.");
+			Assert.AreEqual(901,_listRowWrites.Last().PayNum);
+		}
+
+		[TestMethod]
+		public void ClaimLost_CreatesNoPaymentAndLeavesTheRow() {
+			_hashSetClaimed.Add(7);//Another process or window already completed the row.
+			CareCreditWebResponse row=CreatePendingRow(CareCreditTransType.Purchase,payNum:0);
+			CareCreditJobs.ApplyResult(row,CareCreditJson.ReadPullback("{\"status\":\"COMPLETED\"}",false),_dateTimeNow,_actions);
+			Assert.AreEqual(0,_listInserted.Count);
+			Assert.AreEqual(0,_listRowWrites.Count);
+			Assert.AreEqual(0,row.PayNum);
+		}
+
+		[TestMethod]
+		public void CompletedWithPayment_IsNotClaimed() {
+			Payment payment=new Payment();
+			payment.PayNum=44;
+			_dictPayments[44]=payment;
+			CareCreditWebResponse row=CreatePendingRow(CareCreditTransType.Purchase,payNum:44);
+			CareCreditJobs.ApplyResult(row,CareCreditJson.ReadPullback("{\"status\":\"COMPLETED\"}",false),_dateTimeNow,_actions);
+			Assert.AreEqual(0,_listClaims.Count,"A row with a payment completes that payment; nothing is created, so nothing is claimed.");
+			Assert.AreEqual(1,_listUpdatedPayments.Count);
 		}
 
 		[TestMethod]
@@ -330,6 +377,53 @@ namespace VendorDirectTests.CareCreditTests {
 			List<IVendorBackgroundJob> listJobs=VendorJobScheduler.DiscoverJobs();
 			Assert.IsTrue(listJobs.Any(x => x.Name=="CareCreditPoll" && x.ProgramName==ProgramName.CareCredit));
 			Assert.IsTrue(listJobs.Any(x => x.Name=="CareCreditBatch" && x.ProgramName==ProgramName.CareCredit));
+		}
+
+		[TestMethod]
+		public void PollJob_RenewsItsLeaseDuringALongPassAndStopsWhenItIsLost() {
+			FakeLease fakeLease=new FakeLease();
+			DateTime dateTimeUtc=new DateTime(2026,10,19,14,50,0,DateTimeKind.Utc);
+			CareCreditPollJob job=new CareCreditPollJob();
+			job.Lease=fakeLease;
+			job.FuncUtcNow=() => dateTimeUtc;
+			Func<bool> funcKeepGoing=job.CreateKeepGoing();
+			Assert.IsTrue(funcKeepGoing());
+			Assert.AreEqual(0,fakeLease.ListDurations.Count,"No renewal within the first 20 seconds.");
+			dateTimeUtc=dateTimeUtc.AddSeconds(25);
+			Assert.IsTrue(funcKeepGoing());
+			Assert.AreEqual(job.Interval,fakeLease.ListDurations.Single(),"Renewed for another interval.");
+			dateTimeUtc=dateTimeUtc.AddSeconds(5);
+			Assert.IsTrue(funcKeepGoing());
+			Assert.AreEqual(1,fakeLease.ListDurations.Count);
+			fakeLease.IsHeld=false;//Another process took the lease.
+			dateTimeUtc=dateTimeUtc.AddSeconds(30);
+			Assert.IsFalse(funcKeepGoing(),"The pass stops; the remaining rows wait for the next one.");
+		}
+
+		[TestMethod]
+		public void SessionRows_AreTrackedUntilCleared() {
+			CareCreditJobs.ClearSessionRows();
+			Assert.IsFalse(CareCreditJobs.HasSessionRows);
+			CareCreditJobs.TrackSessionRow(0,new DateTime(2026,10,19,9,0,0));
+			Assert.IsFalse(CareCreditJobs.HasSessionRows,"A row that wasn't saved is ignored.");
+			CareCreditJobs.TrackSessionRow(31,new DateTime(2026,10,19,9,0,0));
+			Assert.IsTrue(CareCreditJobs.IsSessionRow(31));
+			Assert.IsTrue(CareCreditJobs.HasSessionRows);
+			CareCreditJobs.ClearSessionRows();
+			Assert.IsFalse(CareCreditJobs.IsSessionRow(31));
+		}
+
+		private sealed class FakeLease : IVendorJobLease {
+			public bool IsHeld=true;
+			public List<TimeSpan> ListDurations=new List<TimeSpan>();
+
+			public bool TryAcquire(IVendorBackgroundJob job,TimeSpan duration) {
+				if(!IsHeld) {
+					return false;
+				}
+				ListDurations.Add(duration);
+				return true;
+			}
 		}
 
 		[TestMethod]

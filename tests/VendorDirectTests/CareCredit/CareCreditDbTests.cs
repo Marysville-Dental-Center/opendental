@@ -59,7 +59,15 @@ namespace VendorDirectTests.CareCreditTests {
 			}
 			using(MySqlConnection connection=new MySqlConnection("Server=127.0.0.1;Port=3306;User ID=root;Password=;Database="+DB_NAME+";Connection Timeout=3")) {
 				connection.Open();
-				Exec(connection,"DROP TABLE IF EXISTS program,programproperty,preference");
+				Exec(connection,"DROP TABLE IF EXISTS program,programproperty,preference,carecreditwebresponse");
+				//Open Dental 24.3's carecreditwebresponse table (ConvertDatabases6 and 7).
+				Exec(connection,"CREATE TABLE carecreditwebresponse (CareCreditWebResponseNum bigint NOT NULL auto_increment PRIMARY KEY,"
+					+"PatNum bigint NOT NULL,PayNum bigint NOT NULL,RefNumber varchar(255) NOT NULL,Amount double NOT NULL,WebToken varchar(255) NOT NULL,"
+					+"ProcessingStatus varchar(255) NOT NULL,DateTimeEntry datetime NOT NULL DEFAULT '0001-01-01 00:00:00',"
+					+"DateTimePending datetime NOT NULL DEFAULT '0001-01-01 00:00:00',DateTimeCompleted datetime NOT NULL DEFAULT '0001-01-01 00:00:00',"
+					+"DateTimeExpired datetime NOT NULL DEFAULT '0001-01-01 00:00:00',DateTimeLastError datetime NOT NULL DEFAULT '0001-01-01 00:00:00',"
+					+"LastResponseStr text NOT NULL,ClinicNum bigint NOT NULL,ServiceType varchar(255) NOT NULL,TransType varchar(255) NOT NULL,"
+					+"MerchantNumber varchar(20) NOT NULL,HasLogged tinyint NOT NULL,INDEX(PatNum),INDEX(PayNum),INDEX(ClinicNum)) DEFAULT CHARSET=utf8mb3");
 				//The same definitions as Open Dental 24.3's program, programproperty and preference tables.
 				Exec(connection,"CREATE TABLE program (ProgramNum bigint(20) NOT NULL AUTO_INCREMENT,ProgName varchar(100) DEFAULT '',"
 					+"ProgDesc varchar(100) DEFAULT '',Enabled tinyint(1) unsigned NOT NULL DEFAULT 0,Path text NOT NULL DEFAULT '',"
@@ -172,6 +180,63 @@ namespace VendorDirectTests.CareCreditTests {
 			ProgramProperties.RefreshCache();
 			Assert.IsTrue(CareCreditSettings.IsThisComputerJobHost());
 			Assert.IsFalse(new CareCreditPollJob().ShouldRun(),"Still not usable: disabled and incomplete.");
+		}
+
+		[TestMethod]
+		public void ClaimCompletedForPayment_OnlyOneCallerWinsAPendingRowWithNoPayment() {
+			CareCreditWebResponse row=new CareCreditWebResponse();
+			row.PatNum=55;
+			row.RefNumber="REF-9";
+			row.WebToken="S-9";
+			row.LastResponseStr="";
+			row.MerchantNumber=CareCreditTestData.MERCHANT;
+			row.ServiceType=CareCreditServiceType.Prefill;
+			row.TransType=CareCreditTransType.Purchase;
+			row.ProcessingStatus=CareCreditWebStatus.Pending;
+			CareCreditWebResponses.Insert(row);
+			DateTime dateTimeCompleted=new DateTime(2026,10,19,7,51,0);
+			Assert.AreEqual(1,CareCreditWebResponses.ClaimCompletedForPayment(row.CareCreditWebResponseNum,dateTimeCompleted));
+			Assert.AreEqual(0,CareCreditWebResponses.ClaimCompletedForPayment(row.CareCreditWebResponseNum,dateTimeCompleted.AddSeconds(5)),
+				"A second process finds the row already completed.");
+			CareCreditWebResponse rowDb=CareCreditWebResponses.GetOne(row.CareCreditWebResponseNum);
+			Assert.AreEqual(CareCreditWebStatus.Completed,rowDb.ProcessingStatus);
+			Assert.AreEqual(dateTimeCompleted,rowDb.DateTimeCompleted);
+			//A pending row that already has a payment (the modal purchase window's) is never claimed.
+			CareCreditWebResponse rowWithPayment=row.Copy();
+			rowWithPayment.PayNum=44;
+			rowWithPayment.ProcessingStatus=CareCreditWebStatus.Pending;
+			CareCreditWebResponses.Insert(rowWithPayment);
+			Assert.AreEqual(0,CareCreditWebResponses.ClaimCompletedForPayment(rowWithPayment.CareCreditWebResponseNum,dateTimeCompleted));
+		}
+
+		[TestMethod]
+		public void ApplyResult_TwoPollersWithTheSameStaleRowCreateOnePayment() {
+			CareCreditWebResponse row=new CareCreditWebResponse();
+			row.PatNum=55;
+			row.ClinicNum=2;
+			row.Amount=80;
+			row.RefNumber="REF-10";
+			row.WebToken="S-10";
+			row.LastResponseStr="";
+			row.MerchantNumber=CareCreditTestData.MERCHANT;
+			row.ServiceType=CareCreditServiceType.Prefill;
+			row.TransType=CareCreditTransType.Purchase;
+			row.ProcessingStatus=CareCreditWebStatus.Pending;
+			CareCreditWebResponses.Insert(row);
+			//Both pollers read the row before either applied its result.
+			CareCreditWebResponse rowPollerA=CareCreditWebResponses.GetOne(row.CareCreditWebResponseNum);
+			CareCreditWebResponse rowPollerB=CareCreditWebResponses.GetOne(row.CareCreditWebResponseNum);
+			int countPayments=0;
+			CareCreditResultActions actions=CareCreditResultActions.CreateDb();
+			actions.FuncInsertPayment=(patNum,clinicNum,amount,note,fee) => 700+(++countPayments);
+			CareCreditPullbackResult result=CareCreditJson.ReadPullback("{\"status\":\"COMPLETED\",\"amount\":\"80.00\"}",false);
+			DateTime dateTimeNow=new DateTime(2026,10,19,7,51,0);
+			CareCreditJobs.ApplyResult(rowPollerA,result,dateTimeNow,actions);
+			CareCreditJobs.ApplyResult(rowPollerB,result,dateTimeNow.AddSeconds(2),actions);
+			Assert.AreEqual(1,countPayments);
+			CareCreditWebResponse rowDb=CareCreditWebResponses.GetOne(row.CareCreditWebResponseNum);
+			Assert.AreEqual(701,rowDb.PayNum,"The winner's payment stays on the row.");
+			Assert.AreEqual(CareCreditWebStatus.Completed,rowDb.ProcessingStatus);
 		}
 
 		[TestMethod]

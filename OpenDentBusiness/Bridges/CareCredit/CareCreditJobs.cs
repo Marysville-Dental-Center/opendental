@@ -73,6 +73,10 @@ namespace OpenDentBusiness.Bridges {
 		public Func<long,Payment> FuncGetPayment;
 		public Action<Payment,Payment> ActionUpdatePayment;
 		public Func<CareCreditWebResponse,CareCreditWebResponse,bool> FuncUpdateRow;
+		///<summary>(CareCreditWebResponseNum, DateTimeCompleted) => rows changed. Atomically marks a pending row with no payment as Completed
+		///(CareCreditWebResponses.ClaimCompletedForPayment). A payment is created only when this returns 1, so two processes pulling back the same
+		///row can't both pay it.</summary>
+		public Func<long,DateTime,long> FuncClaimCompletedForPayment;
 		///<summary>(status description, patNum, isBatch)</summary>
 		public Action<string,long,bool> ActionUpdatePatField;
 		public Action<double,long> ActionUpsertPreApprovalAmt;
@@ -87,6 +91,7 @@ namespace OpenDentBusiness.Bridges {
 			actions.FuncGetPayment=Payments.GetPayment;
 			actions.ActionUpdatePayment=Payments.Update;
 			actions.FuncUpdateRow=CareCreditWebResponses.Update;
+			actions.FuncClaimCompletedForPayment=CareCreditWebResponses.ClaimCompletedForPayment;
 			actions.ActionUpdatePatField=CareCreditWebResponses.UpdateCareCreditPatField;
 			actions.ActionUpsertPreApprovalAmt=CareCreditWebResponses.UpsertPreApprovalAmt;
 			actions.ActionUpsertAvailableCredit=CareCreditWebResponses.UpsertAvailableCredit;
@@ -106,8 +111,10 @@ namespace OpenDentBusiness.Bridges {
 
 		#region Polling
 		///<summary>Pulls back every pending row that is due, and applies the results: statuses, patient fields, payments. Rows past their lifetime
-		///become Expired (prefill) or ExpiredBatch. Returns the number of rows pulled back.</summary>
-		public static int PollPending(DateTime dateTimeNow) {
+		///become Expired (prefill) or ExpiredBatch. Returns the number of rows pulled back.
+		///funcInclude limits the pass to some rows (null: every pending row). funcKeepGoing is asked before each pullback (null: always); when it
+		///returns false the pass stops and the remaining rows wait for the next one. The job host uses it to renew its lease during a long pass.</summary>
+		public static int PollPending(DateTime dateTimeNow,Func<CareCreditWebResponse,bool> funcInclude=null,Func<bool> funcKeepGoing=null) {
 			Meth.NoCheckMiddleTierRole();
 			if(!CareCredit.IsUsable()) {
 				return 0;
@@ -115,6 +122,9 @@ namespace OpenDentBusiness.Bridges {
 			CareCreditConfig config=CareCredit.FuncGetConfig();
 			TimeSpan pullbackTime=CareCreditSettings.GetPullbackTime();
 			List<CareCreditWebResponse> listPending=CareCreditWebResponses.GetAllPending();
+			if(funcInclude!=null) {
+				listPending=listPending.FindAll(x => funcInclude(x));
+			}
 			CareCreditResultActions actions=CareCreditResultActions.CreateDb();
 			int countPolled=0;
 			for(int i=0;i<listPending.Count;i++) {
@@ -132,6 +142,9 @@ namespace OpenDentBusiness.Bridges {
 				}
 				if(!CareCreditPollSchedule.IsDue(careCreditWebResponse,dateTimeLastPoll,dateTimeNow,pullbackTime)) {
 					continue;
+				}
+				if(funcKeepGoing!=null && !funcKeepGoing()) {
+					return countPolled;//Out of time, or the lease went to another workstation. The rest are still due next pass.
 				}
 				_dictLastPoll[careCreditWebResponse.CareCreditWebResponseNum]=dateTimeNow;
 				CareCreditPullbackResult result;
@@ -170,8 +183,9 @@ namespace OpenDentBusiness.Bridges {
 
 		///<summary>Applies a pullback result to a pending row and saves it: status, then patient fields (QuickScreen and lookups), then payments
 		///(purchases and refunds). A completed purchase or refund with no payment (finished on the patient's own device) creates exactly one
-		///online-pending payment, refunds as a negative amount; one with a payment completes that payment. The row's PayNum is what keeps a
-		///repeated pullback from paying twice: nothing is created for a row that already has one, or that was already completed.</summary>
+		///online-pending payment, refunds as a negative amount; one with a payment completes that payment. Before a payment is created the row is
+		///claimed in the database (an UPDATE from pending to Completed WHERE PayNum=0, FuncClaimCompletedForPayment); only the caller whose claim
+		///changes the row creates the payment, so neither a repeated pullback nor a second process or window can pay twice.</summary>
 		public static void ApplyResult(CareCreditWebResponse careCreditWebResponse,CareCreditPullbackResult result,DateTime dateTimeNow,
 			CareCreditResultActions actions)
 		{
@@ -190,8 +204,13 @@ namespace OpenDentBusiness.Bridges {
 				if(careCreditWebResponse.TransType==CareCreditTransType.Refund) {
 					amount=-amount;
 				}
-				//Save the completed status before creating the payment, so a crash between the two can't lead to a second payment next cycle.
-				actions.FuncUpdateRow(careCreditWebResponse,careCreditWebResponseOld);
+				//Claim the row before creating the payment. The claim is a compare-and-swap in the database, so when two pollers (or a poller and a
+				//window closing) pull back the same completed purchase, exactly one of them gets 1 here. It also saves the completed status first, so a
+				//crash between the two can't lead to a second payment next cycle.
+				if(actions.FuncClaimCompletedForPayment(careCreditWebResponse.CareCreditWebResponseNum,careCreditWebResponse.DateTimeCompleted)!=1) {
+					return;//Someone else completed this row and made its payment. Leave their row as it is.
+				}
+				actions.FuncUpdateRow(careCreditWebResponse,careCreditWebResponseOld);//The rest of the pullback: response, amount, transaction type.
 				careCreditWebResponseOld=careCreditWebResponse.Copy();
 				long payNum=actions.FuncInsertPayment(careCreditWebResponse.PatNum,careCreditWebResponse.ClinicNum,amount,
 					CareCredit.GetFormattedNote(careCreditWebResponse),CareCredit.GetMerchantFee(careCreditWebResponse));
@@ -227,7 +246,104 @@ namespace OpenDentBusiness.Bridges {
 				}
 			}
 		}
+
+		///<summary>Pulls back one row now and applies the result as the poller would (statuses, patient fields, payments), for a hosted-page window
+		///that just closed. Returns false, without calling Synchrony, for a row that isn't pending or has no reference ID, or while CareCredit isn't
+		///usable. Throws CareCredit.CareCreditException for an HTTP error answer and ODException when Synchrony can't be reached. actions defaults to
+		///the database.</summary>
+		public static bool PullbackNow(CareCreditWebResponse careCreditWebResponse,DateTime dateTimeNow,CareCreditResultActions actions=null) {
+			Meth.NoCheckMiddleTierRole();
+			if(careCreditWebResponse==null || string.IsNullOrWhiteSpace(careCreditWebResponse.RefNumber)
+				|| !CareCreditWebResponses.ListWebStatusPending.Contains(careCreditWebResponse.ProcessingStatus))
+			{
+				return false;
+			}
+			if(!CareCredit.IsUsable()) {
+				return false;
+			}
+			CareCreditConfig config=CareCredit.FuncGetConfig();
+			_dictLastPoll[careCreditWebResponse.CareCreditWebResponseNum]=dateTimeNow;
+			CareCreditPullbackResult result=CareCredit.Pullback(config,careCreditWebResponse);
+			ApplyResult(careCreditWebResponse,result,dateTimeNow,actions??CareCreditResultActions.CreateDb());
+			if(!CareCreditWebResponses.ListWebStatusPending.Contains(careCreditWebResponse.ProcessingStatus)) {
+				_dictLastPoll.TryRemove(careCreditWebResponse.CareCreditWebResponseNum,out _);
+			}
+			return true;
+		}
 		#endregion Polling
+
+		#region Rows this session created
+		///<summary>Rows this process created with a prefill, by CareCreditWebResponseNum. While no computer is chosen in CareCredit Setup, nothing
+		///polls every row, so each session pulls back its own (carecredit.md 3.7).</summary>
+		private static readonly ConcurrentDictionary<long,byte> _dictSessionRows=new ConcurrentDictionary<long,byte>();
+
+		///<summary>Remembers a row this process just created, so this session pulls it back while no job computer is set. Its first scheduled
+		///pullback is a poll interval after dateTimeNow, not at once (the page has only just opened).</summary>
+		public static void TrackSessionRow(long careCreditWebResponseNum,DateTime dateTimeNow) {
+			if(careCreditWebResponseNum==0) {
+				return;
+			}
+			_dictSessionRows[careCreditWebResponseNum]=0;
+			_dictLastPoll[careCreditWebResponseNum]=dateTimeNow;
+		}
+
+		///<summary>True while this session has rows it created that may still be pending.</summary>
+		public static bool HasSessionRows {
+			get {
+				return !_dictSessionRows.IsEmpty;
+			}
+		}
+
+		public static bool IsSessionRow(long careCreditWebResponseNum) {
+			return _dictSessionRows.ContainsKey(careCreditWebResponseNum);
+		}
+
+		///<summary>Forgets every row this session created. For tests.</summary>
+		public static void ClearSessionRows() {
+			foreach(long num in _dictSessionRows.Keys) {
+				_dictLastPoll.TryRemove(num,out _);
+			}
+			_dictSessionRows.Clear();
+		}
+
+		///<summary>True when no computer is chosen in CareCredit Setup, so each session has to pull back the rows it created. With a job computer set,
+		///CareCreditPollJob on that computer pulls back every row.</summary>
+		public static bool IsSessionPollingNeeded() {
+			Meth.NoCheckMiddleTierRole();
+			return CareCreditSettings.GetJobComputerName()=="";
+		}
+
+		///<summary>While no job computer is set, pulls back the due rows this session created (PollPending limited to them) and forgets the ones that
+		///are no longer pending. Returns the number pulled back. Does nothing while CareCredit isn't usable. Once a job computer is set, the rows are
+		///left to it and forgotten here.</summary>
+		public static int PollSessionRows(DateTime dateTimeNow) {
+			Meth.NoCheckMiddleTierRole();
+			if(_dictSessionRows.IsEmpty) {
+				return 0;
+			}
+			if(!IsSessionPollingNeeded()) {
+				_dictSessionRows.Clear();//The job computer's poller pulls back every row.
+				return 0;
+			}
+			if(!CareCredit.IsUsable()) {
+				return 0;
+			}
+			HashSet<long> hashSetStillPending=new HashSet<long>();
+			int countPolled=PollPending(dateTimeNow,funcInclude:x => {
+				if(!_dictSessionRows.ContainsKey(x.CareCreditWebResponseNum)) {
+					return false;
+				}
+				hashSetStillPending.Add(x.CareCreditWebResponseNum);
+				return true;
+			});
+			foreach(long num in _dictSessionRows.Keys) {
+				if(!hashSetStillPending.Contains(num)) {
+					_dictSessionRows.TryRemove(num,out _);//Completed, expired, or handled by another window or computer.
+				}
+			}
+			return countPolled;
+		}
+		#endregion Rows this session created
 
 		#region Batch QuickScreen
 		///<summary>Runs today's batch QuickScreen once (compare-and-swap on CareCreditBatchLastRunDate): selects patients for each clinic whose mode
@@ -622,12 +738,36 @@ namespace OpenDentBusiness.Bridges {
 			}
 		}
 
+		///<summary>How often a running pass renews its lease. Well inside Interval (the lease length), so the lease can't lapse between renewals
+		///unless one pullback takes longer than the difference.</summary>
+		public static readonly TimeSpan LeaseRenewInterval=TimeSpan.FromSeconds(20);
+		///<summary>The lease the host took before Run. Replaced in tests.</summary>
+		public IVendorJobLease Lease=new VendorJobLease();
+		public Func<DateTime> FuncUtcNow=() => DateTime.UtcNow;
+
 		public bool ShouldRun() {
 			return CareCreditSettings.IsThisComputerJobHost() && CareCredit.IsUsable();
 		}
 
+		///<summary>The host holds the lease for one Interval only, and a pass at the batch pullback time can take longer. So the pass renews the lease
+		///every LeaseRenewInterval and stops if another process has taken it. Payments don't depend on this: ApplyResult claims each row atomically.</summary>
 		public void Run() {
-			CareCreditJobs.PollPending(CareCredit.FuncNow());
+			CareCreditJobs.PollPending(CareCredit.FuncNow(),funcKeepGoing:CreateKeepGoing());
+		}
+
+		///<summary>Asked before each pullback: true while this process still holds the lease, renewing it once LeaseRenewInterval has passed.</summary>
+		public Func<bool> CreateKeepGoing() {
+			DateTime dateTimeRenewedUtc=FuncUtcNow();
+			return () => {
+				if(FuncUtcNow()-dateTimeRenewedUtc<LeaseRenewInterval) {
+					return true;
+				}
+				if(!Lease.TryAcquire(this,Interval)) {
+					return false;
+				}
+				dateTimeRenewedUtc=FuncUtcNow();
+				return true;
+			};
 		}
 	}
 
