@@ -4905,20 +4905,17 @@ namespace OpenDentBusiness {
 			}
 			Dictionary<string,bool> dictEmailValidForClinics=listAllClinics
 				.ToDictionary(x => x.ClinicNum.ToString(),x => EmailAddresses.GetFirstOrDefault(y => y.EmailAddressNum==x.EmailAddressNum)!=null);
-			Dictionary<string,bool> dictTextingEnabledForClinics=listAllClinics.ToDictionary(x => x.ClinicNum.ToString(),x => Clinics.IsTextingEnabled(x.ClinicNum));
 			string curCulture=StringTools.TruncateBeginning(System.Globalization.CultureInfo.CurrentCulture.Name,2);
-			Dictionary<string,string> dictClinicCountryCodes=listAllClinics.ToDictionary(x => x.ClinicNum.ToString(),x => SmsPhones.GetFirstOrDefault(y => y.ClinicNum==x.ClinicNum)?.CountryCode??"");
 			bool isEmailValidForClinic;
-			bool isTextingEnabledForClinic;
-			string clinicCountryCode;
+			//Texting was enabled per clinic by Open Dental's hosted Integrated Texting, which was removed, so no clinic has texting enabled.
 			List<PatComm> listPatComms=Db.GetTable(command).Select()
 				.Select(x => new PatComm(
 					x,
 					(dictEmailValidForClinics.TryGetValue(x["ClinicNum"].ToString(),out isEmailValidForClinic)?isEmailValidForClinic:false),
-					(dictTextingEnabledForClinics.TryGetValue(x["ClinicNum"].ToString(),out isTextingEnabledForClinic)?isTextingEnabledForClinic:false),
+					false,
 					isUnknownNo,
 					curCulture,
-					(dictClinicCountryCodes.TryGetValue(x["ClinicNum"].ToString(),out clinicCountryCode)?clinicCountryCode:"")
+					""
 				)).ToList();
 			listPatComms=AppendCommOptOuts(listPatComms);
 			return listPatComms;
@@ -4944,9 +4941,8 @@ namespace OpenDentBusiness {
 			foreach(Patient pat in listPats) {
 				Clinic clinic=Clinics.GetFirstOrDefault(x => x.ClinicNum==pat.ClinicNum)??Clinics.GetPracticeAsClinicZero();
 				bool isEmailValidForClinic=(EmailAddresses.GetFirstOrDefault(x => x.EmailAddressNum==clinic.EmailAddressNum)!=null);
-				bool isTextingEnabledForClinic=Clinics.IsTextingEnabled(clinic.ClinicNum);
-				string countryCodePhone=SmsPhones.GetFirstOrDefault(x => x.ClinicNum==clinic.ClinicNum)?.CountryCode??"";
-				listPatComms.Add(new PatComm(pat,isEmailValidForClinic,isTextingEnabledForClinic,isUnknownNo,curCulture,countryCodePhone));
+				//Texting was enabled per clinic by Open Dental's hosted Integrated Texting, which was removed, so no clinic has texting enabled.
+				listPatComms.Add(new PatComm(pat,isEmailValidForClinic,false,isUnknownNo,curCulture,""));
 			}
 			listPatComms=AppendCommOptOuts(listPatComms);
 			return listPatComms;
@@ -5476,40 +5472,6 @@ namespace OpenDentBusiness {
 			return result;
 		}
 
-		///<summary>Determines if the user should be given the opportunity to send a text message to the patient when changes have been made to texting settings.</summary>
-		public static bool DoPromptForOptInSms(Patient patient,Patient patientOld) {
-			if(!Clinics.IsTextingEnabled(patient.ClinicNum)) {
-				return false;//Office doesn't use texting.
-			}
-			if(!ClinicPrefs.GetBool(PrefName.ShortCodeOptInOnApptComplete,patient.ClinicNum)) {
-				return false;//Office has turned off this prompt.
-			}
-			if(patient.TxtMsgOk!=YN.Yes || string.IsNullOrWhiteSpace(PhoneNumbers.RemoveNonDigitsAndTrimStart(patient.WirelessPhone))) {
-				return false;//Not set to YES or no phone number, so no need to send a test message.
-			}
-			string phoneOldNormalized=PhoneNumbers.RemoveNonDigitsAndTrimStart(patientOld.WirelessPhone);
-			string phoneNewNormalized=PhoneNumbers.RemoveNonDigitsAndTrimStart(patient.WirelessPhone);
-			if(phoneOldNormalized==phoneNewNormalized && patientOld.TxtMsgOk==YN.Yes) {
-				return false;//Phone number hasn't changed and TxtMsgOK was already YES => No changes, no need to prompt.
-			}
-			return true;
-		}
-
-		///<summary>Determines if the user should be given the opportunity to send a text message to the patient when changes have been made to texting settings.</summary>
-		public static bool DoSendOptOutText(Patient patient, Patient patientOld) {
-			if(!Clinics.IsTextingEnabled(patient.ClinicNum)) {
-				return false;//Office doesn't use texting.
-			}
-			if(patient.TxtMsgOk!=YN.No || string.IsNullOrWhiteSpace(PhoneNumbers.RemoveNonDigitsAndTrimStart(patient.WirelessPhone))) {
-				return false;//TxtMsgOk not set to NO or no phone number, so no need to send a text message.
-			}
-			//we are not checking if phone number changed like in optin because we do not want to send an opt out notification if a patient was previously notified that they were opted out on their old number
-			if(patientOld.TxtMsgOk==YN.Unknown || patientOld.TxtMsgOk==YN.No) {
-				return false;//TxtMsgOK was already 'No' or not set => No behavioral changes, no need to prompt.
-			}
-			return PrefC.GetBool(PrefName.TextOptOutSendNotification);
-		}
-
 		public static Result SetDefaultRelationships(Patient patient,Family family,PatientPosition patientPositionCur) {
 			Result result=new Result() { IsSuccess=false };
 			List<Patient> listPatientsAdults=new List<Patient>();
@@ -5843,7 +5805,7 @@ namespace OpenDentBusiness {
 				}
 				else {
 					try {
-						SmsPhone=SmsToMobiles.ConvertPhoneToInternational(SmsPhone,curCulture,smsPhoneCountryCode);
+						SmsPhone=ConvertPhoneToInternational(SmsPhone,curCulture,smsPhoneCountryCode);
 						IsSmsPhoneFormatOk=true;
 					}
 					catch(Exception e) { //Formatting for sms failed to set to empty so we don't try to use it.
@@ -5955,21 +5917,27 @@ namespace OpenDentBusiness {
 			return Patients.GetNameFirstOrPreferred(FName,PreferredName);
 		}
 
-		#region Short Codes
-
-		///<summary>Returns true if the clinic is using an eService automated texting feature for which it is set to use Short Codes and the patient is 
-		///set to receive sms.</summary>
-		public bool IsPatientShortCodeEligible(long clinicNum) {
-			return IsSmsAnOption //Patient set to receive sms.
-				&& IsAnyShortCodeServiceEnabled(clinicNum); //At least one Short Code eService is enabled
+		///<summary>Throws exceptions. Returns the phone number with only digits, with a leading 1 for US and Canada.</summary>
+		private static string ConvertPhoneToInternational(string phoneRaw,string countryCodeLocalMachine,string countryCodeSmsPhone) {
+			if(string.IsNullOrWhiteSpace(phoneRaw)) {
+				throw new Exception("Input phone number must be set");
+			}
+			bool isUSorCanada=(countryCodeLocalMachine.ToUpper().In("US","CA") || countryCodeSmsPhone.ToUpper().In("US","CA"));
+			//Remove non-numeric.
+			string phoneRetVal=new string(phoneRaw.Where(x => char.IsDigit(x)).ToArray());
+			int length=phoneRetVal.Length;
+			bool isShortCodeFormat=(length==5 || length==6);//A 5 or 6 digit phone number is likely a Short Code phone number.
+			if(!isUSorCanada || isShortCodeFormat) {
+				return phoneRetVal;
+			}
+			if(!phoneRetVal.StartsWith("1")) { //Add a "1" if US or Canada
+				phoneRetVal="1"+phoneRetVal;
+			}
+			if(phoneRetVal.Length!=11) {
+				throw new Exception("Input phone number cannot be properly formatted for country code: "+countryCodeLocalMachine);
+			}
+			return phoneRetVal;
 		}
-
-		///<summary>Determines if any of the eServices the clinic is set to use Short Codes are actually enabled.</summary>
-		public static bool IsAnyShortCodeServiceEnabled(long clinicNum) {
-			return EnumTools.GetFlags((ShortCodeTypeFlag)ClinicPrefs.GetLong(PrefName.ShortCodeApptReminderTypes,clinicNum))
-				.Any(x => EnumTools.GetAttributeOrDefault<ShortCodeAttribute>(x).IsServiceEnabled(clinicNum));
-		}
-		#endregion
 	}
 
 	///<summary>Not a database table.  Just used in billing and finance charges.</summary>

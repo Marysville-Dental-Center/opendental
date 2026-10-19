@@ -207,7 +207,6 @@
     <Compile Include="TableTypes\SessionTokenT.cs" />
     <Compile Include="TableTypes\SiteT.cs" />
     <Compile Include="TableTypes\SiteLinkT.cs" />
-    <Compile Include="TableTypes\SmsFromMobileT.cs" />
     <Compile Include="TableTypes\SnomedT.cs" />
     <Compile Include="TableTypes\StatementT.cs" />
     <Compile Include="TableTypes\SheetDefT.cs" />
@@ -242,7 +241,6 @@
     <Compile Include="TableTypes\RecurringChargeT.cs" />
     <Compile Include="TableTypes\ScheduleOpT.cs" />
     <Compile Include="TableTypes\ScheduleT.cs" />
-    <Compile Include="TableTypes\SmsToMobileT.cs" />
     <Compile Include="TableTypes\SubstitutionLinkT.cs" />
     <Compile Include="TableTypes\TestT.cs" />
     <Compile Include="TableTypes\TimeCardRuleT.cs" />

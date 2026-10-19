@@ -392,7 +392,6 @@
     <Compile Include="UnitTests\ProgramsTests.cs" />
     <Compile Include="UnitTests\ProviderClinicTests.cs" />
     <Compile Include="UnitTests\RecallsTests.cs" />
-    <Compile Include="UnitTests\ShortCodeTests.cs" />
     <Compile Include="UnitTests\PayPlansTests.cs" />
     <Compile Include="UnitTests\EmailAttachTests.cs" />
     <Compile Include="UnitTests\OrthoCasesTests.cs" />
@@ -408,7 +407,6 @@
     <Compile Include="UnitTests\AgingDataTests.cs" />
     <Compile Include="UnitTests\PrefsTests.cs" />
     <Compile Include="UnitTests\MiscUtilsTests.cs" />
-    <Compile Include="UnitTests\SmsPhoneTests.cs" />
     <Compile Include="UnitTests\SubstitutionLinksTests.cs" />
     <Compile Include="UnitTests\TasksTests.cs" />
     <Compile Include="UnitTests\TaskListsTests.cs" />

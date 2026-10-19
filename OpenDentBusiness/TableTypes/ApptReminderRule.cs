@@ -385,41 +385,6 @@ namespace OpenDentBusiness {
 			}
 		}
 
-		public bool IsServiceEnabled(long clinicNum) {
-			if(!PrefC.HasClinicsEnabled) {
-				clinicNum=0;
-			}
-			return Clinics.IsTextingEnabled(clinicNum) 
-				&& EServicePrefNames.Any(x => IsPrefEnabled(x,clinicNum,PrefIsEnabledValues,EnabledValueType));
-		}
-
-		///<summary>If prefName is not configured, returns true.  Otherwise, checks if "enabled" values have been defined.  If so, gets the 
-		///value of the ClinicPref/Pref corresponding to prefName as an int and checks if this value is "enabled".  If "enabled" values are not
-		///defined, considers </summary>
-		private static bool IsPrefEnabled(PrefName prefName,long clinicNum,int[] intArrayEnabledValues,Type typeEnabledValue) {
-			if(prefName==PrefName.NotApplicable) {
-				return true;
-			}
-			if(typeEnabledValue is null || intArrayEnabledValues.IsNullOrEmpty()) {
-				//No override type/values defined, so we can consider the preference to be a boolean.
-				return ClinicPrefs.GetBool(prefName,clinicNum);
-			}
-			Array arrayObjectsEnumValues=Enum.GetValues(typeEnabledValue);
-			string stringPrefValue=ClinicPrefs.GetPrefValue(prefName,clinicNum);
-			int? nullableIntPref=null;
-			for(int i = 0;i<arrayObjectsEnumValues.Length;i++) {
-				object objectEnumValue=arrayObjectsEnumValues.GetValue(i);
-				if(stringPrefValue==((int)objectEnumValue).ToString() || stringPrefValue==objectEnumValue.ToString()) {
-					nullableIntPref=(int)objectEnumValue;
-					break;
-				}
-			}
-			if(nullableIntPref is null) {
-				return false;
-			}
-			return nullableIntPref.Value.In(intArrayEnabledValues);
-		}
-
 		///<summary>Gets the first Enum T with a ShortCodeAttribute such that SmsMessageSouce matches the given value.</summary>
 		public static T GetFirstOrDefault<T>(SmsMessageSource smsMessageSource) where T:Enum {
 			return Enum.GetValues(typeof(T)).AsEnumerable<T>()

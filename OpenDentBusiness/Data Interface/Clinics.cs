@@ -735,26 +735,6 @@ namespace OpenDentBusiness{
 			return GetPracticeAsClinicZero();
 		}
 
-		public static bool IsTextingEnabled(long clinicNum) {
-			Meth.NoCheckMiddleTierRole();
-			if(Plugins.HookMethod(null,"Clinics.IsTextingEnabled_start",clinicNum)) {
-				return true;
-			}
-			if(clinicNum==0) {
-				if(PrefC.HasClinicsEnabled) {
-					clinicNum=PrefC.GetLong(PrefName.TextingDefaultClinicNum);
-				}
-				else {
-					return SmsPhones.IsIntegratedTextingEnabled();
-				}
-			}
-			Clinic clinic=GetClinic(clinicNum);
-			if(clinic==null) {
-				return false;//also handles clinicNum=0 which happens when default clinic not initialized.
-			}
-			return clinic.SmsContractDate.Year>1880;
-		}
-
 		///<summary>Provide the currently selected clinic num (FormOpenDental.ClinicNum).  If clinics are not enabled, this will return true if the pref
 		///PracticeIsMedicalOnly is true.  If clinics are enabled, this will return true if either the headquarters 'clinic' is selected
 		///(FormOpenDental.ClinicNum=0) and the pref PracticeIsMedicalOnly is true OR if the currently selected clinic's IsMedicalOnly flag is true.

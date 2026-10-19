@@ -1030,10 +1030,6 @@ namespace OpenDentBusiness {
 		///This usually means that statement was deleted by another user will billing was running.
 		///These statements will be counted as processed by no bill will be produced.</summary>
 		public int CountStatementsSkippedForDeletion;
-		///<summary>Running tally of statements that had a text message generated and succesfully sent to a patient.
-		///In order to receive a text, clinic must be signed up for texting, the patient must meet the criteria of PatComm.IsSmsAnOption, and patient must not be opted out.
-		///This tally only increments if all those criteria are met and then a text is sent to the patient and that text does not fail to send for any other reason.</summary>
-		public int CountStatmentsSentPayPortalText;
 		///<summary>Current index of overall progress of all statement. Used for progress updates only.</summary>
 		public int CurStatementIdx=0;
 		///<summary>Statements will be processed in batches. 

@@ -34,7 +34,6 @@ namespace UnitTests.Billing_Tests {
 			ProcedureT.ClearProcedureTable();
 			ClinicT.ClearClinicTable();
 			CommlogT.ClearCommLogTable();
-			SmsToMobileT.ClearSmsToMobileTable();
 			SecurityLogT.ClearSecurityLogsByPermType(EnumPermType.Billing);
 			AgingData.ActionGetAgingDataInvoked=null;
 			//Generate pdf if eBilling is on by default.
@@ -365,39 +364,6 @@ namespace UnitTests.Billing_Tests {
 			Assert.AreEqual(1,sendStatementsIO.CountStatementsEmailed);
 		}
 
-		///<summary>Statements generate ok. 1 patient wants sms, 1 does not.</summary>
-		[TestMethod]
-		public void Billing_SmsSendStatus() {
-			BillingSetup billingSetup=SetupBilling(false,numPatsPerFam:2,
-				funcGetStatementMode:(a,b,c) =>{ return StatementMode.Email; },
-				funcGetSmsSendStatus:(a,b,c,d) => {
-					return c==0 ? AutoCommStatus.SendNotAttempted : AutoCommStatus.DoNotSend;
-				});
-			SendStatementsIO sendStatementsIO = new SendStatementsIOTest(
-				listStatementNumsToSend:billingSetup.ListStatements.Select(x => x.StatementNum).ToList());
-			bool ret=BillingL.SendStatements(sendStatementsIO);
-			//Billing is ok, 1 patient is bad.
-			Assert.IsTrue(ret);
-			//No skip.
-			Assert.AreEqual(0,sendStatementsIO.ListSkippedPatients.Count);
-			//Emailed 2.
-			Assert.AreEqual(2,sendStatementsIO.CountStatementsEmailed);
-			//Only text 1.
-			Assert.AreEqual(1,sendStatementsIO.CountStatmentsSentPayPortalText);
-			//Only 1 text sent.
-			List<SmsToMobile> listSmsToMobiles=SmsToMobileT.GetAll();
-			Assert.AreEqual(1,listSmsToMobiles.Count);
-			//Only 1 comm log.
-			List<Commlog> listCommLogs=CommlogT.GetAll();
-			Assert.AreEqual(1,listCommLogs.Count);
-			//1 sms skipped, 1 sms sent ok.
-			List<Statement> listStatements=StatementT.GetAllStatements();
-			Assert.AreEqual(1,listStatements.Count(x => x.SmsSendStatus==AutoCommStatus.DoNotSend));
-			Assert.AreEqual(1,listStatements.Count(x => x.SmsSendStatus==AutoCommStatus.SendSuccessful));
-			//No patients skipped for bad sms setup (only for DoNotSend SmsSendStatus).
-			Assert.AreEqual(0,sendStatementsIO.ListSkippedPatients.Count(x => x.Reason==SkipReason.BadSmsSetup));
-		}
-
 		///<summary>Statements are sent as regular email (Open Dental's hosted Secure Email was removed). Skip patients who fail to email. Assert email autograph gets inserted when applicable.</summary>
 		[TestMethod]
 		public void Billing_HappyPath_Email() {			
@@ -442,8 +408,6 @@ namespace UnitTests.Billing_Tests {
 				//All statements sent.
 				Assert.AreEqual(2,listStatementsAfter.Count(x => x.IsSent));
 				//All text messages sent.
-				Assert.AreEqual(2,sendStatementsIO.CountStatmentsSentPayPortalText);
-				Assert.AreEqual(2,listStatementsAfter.Count(x => x.SmsSendStatus==AutoCommStatus.SendSuccessful));
 				//No Master pdf generated for Email.
 				Assert.IsNull(sendStatementsIO.PdfMasterDocument);
 				//No xml file for Email.
@@ -525,7 +489,6 @@ namespace UnitTests.Billing_Tests {
 				//No statements sent.
 				Assert.IsTrue(listStatementsAfter.All(x => !x.IsSent));
 				//No text messages sent.
-				Assert.AreEqual(0,sendStatementsIO.CountStatmentsSentPayPortalText);
 				//No eBills sent.
 				Assert.AreEqual(0,sendStatementsIO.CountStatementsSentElectronic);
 				//No statements sent.
@@ -590,8 +553,6 @@ namespace UnitTests.Billing_Tests {
 				//No statements sent.
 				Assert.AreEqual(0,listStatementsAfter.Count(x => x.IsSent));
 				//No text messages sent.
-				Assert.AreEqual(0,sendStatementsIO.CountStatmentsSentPayPortalText);
-				Assert.AreEqual(0,listStatementsAfter.Count(x => x.SmsSendStatus.In(AutoCommStatus.SendFailed,AutoCommStatus.SendSuccessful)));
 			}
 			assert(false);
 			assert(true);
@@ -617,8 +578,6 @@ namespace UnitTests.Billing_Tests {
 			//All statements sent.
 			Assert.IsTrue(listStatementsAfter.All(x => x.IsSent));
 			//All text messages sent.
-			Assert.AreEqual(billingSetup.ListStatements.Count,sendStatementsIO.CountStatmentsSentPayPortalText);
-			Assert.AreEqual(billingSetup.ListStatements.Count,listStatementsAfter.Count(x => x.SmsSendStatus.In(AutoCommStatus.SendSuccessful)));
 			//No statements are linked to documents.
 			Assert.IsTrue(sendStatementsIO.ListStatementBatches.SelectMany(x => x.ListStatements).All(x => x.DocNum==0));
 		}
@@ -652,8 +611,6 @@ namespace UnitTests.Billing_Tests {
 				//All statements sent.
 				Assert.IsTrue(listStatementsAfter.All(x => x.IsSent));
 				//All text messages sent.
-				Assert.AreEqual(billingSetup.ListStatements.Count,sendStatementsIO.CountStatmentsSentPayPortalText);
-				Assert.IsTrue(listStatementsAfter.All(x => x.SmsSendStatus==AutoCommStatus.SendSuccessful));
 				//No master pdf for electronic billing.
 				Assert.IsNull(sendStatementsIO.PdfMasterDocument);
 				//No email for electronic billing.
@@ -777,8 +734,6 @@ namespace UnitTests.Billing_Tests {
 				//All statements sent.
 				Assert.IsTrue(listStatementsAfter.All(x => x.IsSent));
 				//All text messages sent.
-				Assert.AreEqual(billingSetup.ListStatements.Count,sendStatementsIO.CountStatmentsSentPayPortalText);
-				Assert.IsTrue(listStatementsAfter.All(x => x.SmsSendStatus==AutoCommStatus.SendSuccessful));
 				//Master pdf generated for InPerson.
 				Assert.IsNotNull(sendStatementsIO.PdfMasterDocument);
 				Assert.AreEqual(sendStatementsIO.PdfMasterDocument.PageCount,totalPages);				
@@ -881,8 +836,6 @@ namespace UnitTests.Billing_Tests {
 				Assert.AreEqual(0,sendStatementsIO.CountStatementsPrinted);
 				Assert.AreEqual(useClinics ? 3 : 1,sendStatementsIO.CountStatementsEmailed);
 				Assert.AreEqual(0,sendStatementsIO.CountStatementsSentElectronic);
-				Assert.AreEqual(doSendText ? (useClinics ? 3 : 1) : 0,sendStatementsIO.CountStatmentsSentPayPortalText);
-				Assert.AreEqual(doSendText ? (useClinics ? 3 : 1) : 0,SmsToMobiles.GetAllChangedSince(DateTime_.Today).Count);
 				//No master pdf ODService (only created for Mail/Inperson, neither supported by ODService).
 				Assert.IsNull(sendStatementsIO.PdfMasterDocument);
 			}
@@ -933,8 +886,6 @@ namespace UnitTests.Billing_Tests {
 				Assert.AreEqual(0,sendStatementsIO.CountStatementsPrinted);
 				Assert.AreEqual(0,sendStatementsIO.CountStatementsEmailed);
 				Assert.AreEqual(useClinics ? 3 : 1,sendStatementsIO.CountStatementsSentElectronic);
-				Assert.AreEqual(doSendText ? (useClinics ? 3 : 1) : 0,sendStatementsIO.CountStatmentsSentPayPortalText);
-				Assert.AreEqual(doSendText ? (useClinics ? 3 : 1) : 0,SmsToMobiles.GetAllChangedSince(DateTime_.Today).Count);
 				//No master pdf ODService (only created for Mail/Inperson, neither supported by ODService).
 				Assert.IsNull(sendStatementsIO.PdfMasterDocument);
 				if(eBillingType.In(BillingUseElectronicEnum.POS,BillingUseElectronicEnum.ClaimX,BillingUseElectronicEnum.EDS)) {
@@ -990,8 +941,6 @@ namespace UnitTests.Billing_Tests {
 			sendStatementsIO.CurStatementBatch.ListStatements.Take(listAllPats.Count/2).All(x => x.Mode_==StatementMode.Email);
 			//Last group is electronic.
 			sendStatementsIO.CurStatementBatch.ListStatements.Skip(listAllPats.Count/2).All(x => x.Mode_==StatementMode.Electronic);
-			Assert.AreEqual(0,sendStatementsIO.CountStatmentsSentPayPortalText);
-			Assert.AreEqual(0,SmsToMobiles.GetAllChangedSince(DateTime_.Today).Count);
 			//No master pdf ODService (only created for Mail/Inperson, neither supported by ODService).
 			Assert.IsNull(sendStatementsIO.PdfMasterDocument);
 		}
@@ -1021,8 +970,6 @@ namespace UnitTests.Billing_Tests {
 			Assert.AreEqual(0,sendStatementsIO.CountStatementsPrinted);
 			Assert.AreEqual(0,sendStatementsIO.CountStatementsEmailed);
 			Assert.AreEqual(0,sendStatementsIO.CountStatementsSentElectronic);
-			Assert.AreEqual(0,sendStatementsIO.CountStatmentsSentPayPortalText);
-			Assert.AreEqual(0,SmsToMobiles.GetAllChangedSince(DateTime_.Today).Count);
 			//No master pdf ODService (only created for Mail/Inperson, neither supported by ODService).
 			Assert.IsNull(sendStatementsIO.PdfMasterDocument);
 			List<Statement> listStatements=StatementT.GetAllStatements();

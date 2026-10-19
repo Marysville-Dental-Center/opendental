@@ -408,41 +408,6 @@ namespace OpenDentBusiness {
 			Insert(signalod);
 		}
 
-		///<summary>Upserts the InvalidType.SmsTextMsgReceivedUnreadCount signal which tells all client machines to update the received unread SMS 
-		///message count.  There should only be max one of this signal IType in the database.</summary>
-		public static List<SmsFromMobiles.SmsNotification> UpsertSmsNotification() {
-			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				return Meth.GetObject<List<SmsFromMobiles.SmsNotification>>(MethodBase.GetCurrentMethod());
-			}
-			string command="SELECT ClinicNum,COUNT(*) AS CountUnread FROM smsfrommobile WHERE SmsStatus=0 AND IsHidden=0 GROUP BY ClinicNum "
-				+"ORDER BY ClinicNum";
-			DataTable tableSmsFromMobile=Db.GetTable(command);
-			List<SmsFromMobiles.SmsNotification> listSmsNotifications=new List<SmsFromMobiles.SmsNotification>();
-			for(int i=0;i<tableSmsFromMobile.Rows.Count;i++) {
-				SmsFromMobiles.SmsNotification smsNotification=new SmsFromMobiles.SmsNotification();
-				smsNotification.ClinicNum=PIn.Long(tableSmsFromMobile.Rows[i]["ClinicNum"].ToString());
-				smsNotification.Count=PIn.Int(tableSmsFromMobile.Rows[i]["CountUnread"].ToString());
-				listSmsNotifications.Add(smsNotification);
-			}
-			//Insert as structured data signal so all workstations won't have to query the db to get the counts. They will get it directly from Signalod.MsgValue.
-			string json=SmsFromMobiles.SmsNotification.GetJsonFromList(listSmsNotifications);
-			//FKeyType SmsMsgUnreadCount is written to db as a string. 
-			command="SELECT * FROM signalod WHERE IType="+POut.Int((int)InvalidType.SmsTextMsgReceivedUnreadCount)
-				+" AND FKeyType='"+POut.String(KeyType.SmsMsgUnreadCount.ToString())+"' ORDER BY SigDateTime DESC LIMIT 1";
-			DataTable table=Db.GetTable(command);
-			Signalod signalod=Crud.SignalodCrud.TableToList(table).FirstOrDefault();
-			if(signalod!=null && signalod.MsgValue==json) {//No changes, not need to insert a new signal.
-				return listSmsNotifications;//Return the list of notifications, but do not update the existing signal.
-			}
-			Signalod signalodNew=new Signalod();
-			signalodNew.IType=InvalidType.SmsTextMsgReceivedUnreadCount;
-			signalodNew.FKeyType=KeyType.SmsMsgUnreadCount;
-			signalodNew.MsgValue=json;
-			signalodNew.RemoteRole=RemotingClient.MiddleTierRole;
-			Signalods.Insert(signalodNew);
-			return listSmsNotifications;
-		}
-
 		/// <summary>Check for appointment signals for a single date.</summary>
 		public static bool IsApptRefreshNeeded(DateTime dateTimeShowing,List<Signalod> listSignalods,List<long> listOpNumsVisible,
 			List<long> listProvNumsVisible) 

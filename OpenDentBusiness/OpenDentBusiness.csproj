@@ -799,7 +799,6 @@
     <Compile Include="TableTypes\TaskTaken.cs" />
     <Compile Include="Data Interface\SiteLinks.cs" />
     <Compile Include="Data Interface\Sites.cs" />
-    <Compile Include="Data Interface\SmsBlockPhones.cs" />
     <Compile Include="Data Interface\SubstitutionLinks.cs" />
     <Compile Include="Data Interface\StmtLinks.cs" />
     <Compile Include="InternalTools\Phones\TriageMetrics.cs" />
@@ -1270,9 +1269,6 @@
     <Compile Include="Data Interface\PatientRaces.cs" />
     <Compile Include="Data Interface\PayorTypes.cs" />
     <Compile Include="InternalTools\IntegratedTexting\SmsBillings.cs" />
-    <Compile Include="Data Interface\SmsFromMobiles.cs" />
-    <Compile Include="Data Interface\SmsToMobiles.cs" />
-    <Compile Include="Data Interface\SmsPhones.cs" />
     <Compile Include="Data Interface\TaskHists.cs" />
     <Compile Include="InternalTools\IntegratedTexting\TableTypes\SmsBilling.cs" />
     <Compile Include="InternalTools\Job Manager\JobControls.cs" />

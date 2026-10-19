@@ -390,14 +390,6 @@ namespace OpenDentBusiness {
 					ds.Tables.Add(SiteLinks.GetTableFromCache(doRefreshServerCache));
 				}
 			}
-			if(listITypes.Contains(InvalidType.SmsBlockPhones) || isAll) {
-				ODEvent.Fire(ODEventType.Cache,prefix+InvalidType.SmsBlockPhones.ToString());
-				ds.Tables.Add(SmsBlockPhones.GetTableFromCache(doRefreshServerCache));
-			}
-			if(listITypes.Contains(InvalidType.SmsPhones) || isAll) {
-				ODEvent.Fire(ODEventType.Cache,prefix+InvalidType.SmsPhones.ToString());
-				ds.Tables.Add(SmsPhones.GetTableFromCache(doRefreshServerCache));
-			}
 			if(listITypes.Contains(InvalidType.Sops) || isAll) {  //InvalidType.Sops is currently never used 11/14/2014
 				ODEvent.Fire(ODEventType.Cache,prefix+InvalidType.Sops.ToString());
 				ds.Tables.Add(Sops.GetTableFromCache(doRefreshServerCache));
@@ -771,14 +763,6 @@ namespace OpenDentBusiness {
 				if(PrefC.IsODHQ) {
 					SiteLinks.FillCacheFromTable(ds.Tables["SiteLink"]);
 				}
-			}
-			if(listITypes.Contains(InvalidType.SmsBlockPhones) || isAll) {
-				ODEvent.Fire(ODEventType.Cache,suffix+InvalidType.SmsBlockPhones.ToString());
-				SmsBlockPhones.FillCacheFromTable(ds.Tables["SmsBlockPhone"]);
-			}
-			if(listITypes.Contains(InvalidType.SmsPhones) || isAll) {
-				ODEvent.Fire(ODEventType.Cache,suffix+InvalidType.SmsPhones.ToString());
-				SmsPhones.FillCacheFromTable(ds.Tables["SmsPhone"]);
 			}
 			if(listITypes.Contains(InvalidType.Sops) || isAll) {
 				ODEvent.Fire(ODEventType.Cache,suffix+InvalidType.Sops.ToString());
@@ -1272,14 +1256,6 @@ namespace OpenDentBusiness {
 					DataAction.ClearDictHqCentralConnections();//The HQ connection overrides could have changed.
 					SiteLinks.ClearCache();
 				}
-			}
-			if(listITypes.Contains(InvalidType.SmsBlockPhones) || isAll) {
-				ODEvent.Fire(ODEventType.Cache,prefix+InvalidType.SmsBlockPhones.ToString());
-				SmsBlockPhones.ClearCache();
-			}
-			if(listITypes.Contains(InvalidType.SmsPhones) || isAll) {
-				ODEvent.Fire(ODEventType.Cache,prefix+InvalidType.SmsPhones.ToString());
-				SmsPhones.ClearCache();
 			}
 			if(listITypes.Contains(InvalidType.Sops) || isAll) {  //InvalidType.Sops is currently never used 11/14/2014
 				ODEvent.Fire(ODEventType.Cache,prefix+InvalidType.Sops.ToString());
