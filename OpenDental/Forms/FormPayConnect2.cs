@@ -26,7 +26,8 @@ namespace OpenDental {
 		private long _clinicNum;
 		private decimal _amount;
 		private Program _program;
-		private PayConnectResponse _response;
+		///<summary>Never null: FormPayment reads it after any close in which WasPaymentAttempted is true.</summary>
+		private PayConnectResponse _response=new PayConnectResponse();
 		private PayConnect2Response _payConnect2Response=new PayConnect2Response();
 		private bool iframeOpen=false;
 		public PayConnectService.transType TransType=PayConnectService.transType.SALE;//Backwards compatability with PayConnect v1
@@ -34,6 +35,8 @@ namespace OpenDental {
 		///This is because FormPayment didn't know if a transaction was attempted or not, and was assuming it was.
 		///This can cause the payment amount to be reset to $0. So, this bool indicates if we have actually attempted a transaction.</summary>
 		public bool WasPaymentAttempted=false;
+		///<summary>WasPaymentAttempted as it was when the current ProcessTransaction call began. Put back when nothing was sent.</summary>
+		private bool _wasPaymentAttemptedBefore;
 		///<summary>The hosted card-entry session's order ID, kept so the result can still be found if the status call after SUCCESS fails.</summary>
 		private string _embedOrderId="";
 		///<summary>True once the hosted page has posted SUCCESS.</summary>
@@ -140,6 +143,7 @@ namespace OpenDental {
 
 		/// <summary>Returns true if we contacted and got a response from PayConnect.</summary>
 		private bool ProcessTransaction() {
+			_wasPaymentAttemptedBefore=WasPaymentAttempted;
 			WasPaymentAttempted=true;
 			int amountInCents=GetAmountFieldAsCents();
 			string magData="";
@@ -338,7 +342,9 @@ namespace OpenDental {
 			return true;
 		}
 
-		///<summary>Handles a call that didn't get a normal answer. NotSent: says nothing was charged and returns false, so the user can try again.
+		///<summary>Handles a call that didn't get a normal answer. NotSent: says nothing was charged and returns false, so the user can try again. It
+		///also sets _response from the error (no RefNumber, so FormPayment records no charge) and puts WasPaymentAttempted back to what it was before
+		///this call, since nothing reached PayConnect.
 		///SentNoResponse (the library already searched the transaction list for the correlation ID and didn't find it): writes the ID to the security
 		///log, warns that the payment may or may not have gone through, and returns true so the payment window records the outcome.
 		///ResponseUnreadable (a 2xx answer whose body couldn't be read, and for a create not found in the transaction list either) is handled the same
@@ -349,6 +355,8 @@ namespace OpenDental {
 			}
 			if(payConnect2Response.Outcome==PayConnectRequestOutcome.NotSent) {
 				MsgBox.Show(payConnect2Response.ErrorResponse?.Message??Lan.g(this,"Could not reach PayConnect. No charge was made."));
+				_response=PayConnect2.ApiResponseToPayConnectResponse(payConnect2Response);
+				WasPaymentAttempted=_wasPaymentAttemptedBefore;
 				return false;
 			}
 			if(payConnect2Response.Outcome==PayConnectRequestOutcome.SentNoResponse

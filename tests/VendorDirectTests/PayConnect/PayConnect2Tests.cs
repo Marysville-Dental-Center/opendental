@@ -244,6 +244,28 @@ namespace VendorDirectTests.PayConnectV2 {
 			StringAssert.Contains(response.ErrorResponse.Message,"no charge was made");
 		}
 
+		///<summary>FormPayConnect2 hands FormPayment this conversion when nothing was sent: it must carry no reference number (so no charge is
+		///recorded), a non-success status, and the message, both for missing keys and for an unreachable host.</summary>
+		[TestMethod]
+		public void ApiResponseToPayConnectResponse_NotSentRecordsNoCharge() {
+			FakeHttpHandler fakeHttpHandler=UseFakeHandler();
+			fakeHttpHandler.Enqueue((request,ct) => throw MakeNetworkException(WebExceptionStatus.ConnectFailure));
+			PayConnect2.PayConnect2Response[] arrayResponses=new[] {
+				PayConnect2.TestConnection(API_KEY,"",true),
+				PayConnect2.TestConnection(API_KEY,SECRET,true),
+			};
+			foreach(PayConnect2.PayConnect2Response response in arrayResponses) {
+				Assert.AreEqual(PayConnect2.PayConnectRequestOutcome.NotSent,response.Outcome);
+				PayConnectResponse payConnectResponse=PayConnect2.ApiResponseToPayConnectResponse(response);
+				Assert.IsNotNull(payConnectResponse);
+				Assert.IsTrue(string.IsNullOrEmpty(payConnectResponse.RefNumber));
+				Assert.AreEqual("",payConnectResponse.StatusCode);
+				Assert.AreEqual(PayConnectResponse.TransactionType.Unknown,payConnectResponse.TransType);
+				Assert.AreEqual(response.ErrorResponse.Message,payConnectResponse.Description);
+				Assert.IsFalse(string.IsNullOrEmpty(payConnectResponse.Description));
+			}
+		}
+
 		[TestMethod]
 		public void ErrorMessages_NeverContainTheKeys() {
 			FakeHttpHandler fakeHttpHandler=UseFakeHandler();
