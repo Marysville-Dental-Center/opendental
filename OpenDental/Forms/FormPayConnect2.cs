@@ -220,7 +220,8 @@ namespace OpenDental {
 				}
 			}
 			else if(radioWebService.Checked) {
-				if(radioSale.Checked && _payConnect2Response.ErrorResponse==null) {
+				//A hosted page that reported SUCCESS still goes through here when the status call after it failed, so the order ID lookup below can run.
+				if(radioSale.Checked && (_payConnect2Response.ErrorResponse==null || _didHostedFormSucceed)) {
 					if(amountInCents < 0) {
 						MsgBox.Show(this,"Amount must be greater than 0.00");
 						return false;
@@ -236,7 +237,13 @@ namespace OpenDental {
 							}
 						}
 						if(getStatusResponse==null) {
-							return false;
+							if(!_didHostedFormSucceed) {
+								return false;
+							}
+							//The card was charged on the hosted page, but neither lookup could read the result. Never silent: staff must check the portal.
+							WarnHostedSaleNotFound();
+							_response=PayConnect2.ApiResponseToPayConnectResponse(_payConnect2Response);
+							return true;
 						}
 						string pc2GatewayResponse=getStatusResponse.GatewayResponse?.ToString()??"";
 						if(pc2GatewayResponse.ToLower().Contains("swipe")){//"entrymode" : "Swipe (non emv)" means card was swiped, not manually entered.
@@ -352,6 +359,21 @@ namespace OpenDental {
 				MsgBox.Show(payConnect2Response.ErrorResponse?.Message??Lan.g(this,"PayConnect did not answer. The payment may or may not have processed."));
 			}
 			return true;
+		}
+
+		///<summary>The hosted card-entry page reported SUCCESS, but the status call after it and the order ID lookup both failed, so no payment
+		///details are known. Writes the order ID to the security log and warns that the card may have been charged, as CheckOutcome does for a lost
+		///answer.</summary>
+		private void WarnHostedSaleNotFound() {
+			string logText="The PayConnect payment form reported success, but the transaction's status could not be read.";
+			string message=Lan.g(this,"The payment form reported success, but PayConnect's record of the payment could not be read. The card may have been "
+				+"charged. Verify the payment in the PayConnect portal before trying again.");
+			if(!string.IsNullOrEmpty(_embedOrderId)) {
+				logText+=" PayConnect order ID: "+_embedOrderId;
+				message+=" "+Lan.g(this,"Order ID")+": "+_embedOrderId;
+			}
+			SecurityLogs.MakeLogEntry(EnumPermType.CreditCardTerminal,GetPatNumForLog(),logText);
+			MsgBox.Show(message);
 		}
 
 		private long GetPatNumForLog() {
@@ -537,8 +559,14 @@ namespace OpenDental {
 					_payConnect2Response.ResponseType=ResponseType.IFrame;
 				}
 				else {
-					//Immediately call the GetStatus endpoint for easier processing.
+					//Immediately call the GetStatus endpoint for easier processing. If that fails, try the session's order ID.
 					_payConnect2Response=GetTransactionStatus(_clinicNum,response.Response?.ReferenceId);
+					if(_payConnect2Response.ResponseType==ResponseType.Error && !string.IsNullOrEmpty(_embedOrderId)) {
+						PayConnect2Response responseByOrderId=GetTransactionStatus(_clinicNum,"",orderId:_embedOrderId);
+						if(responseByOrderId.ResponseType==ResponseType.GetStatus) {
+							_payConnect2Response=responseByOrderId;
+						}
+					}
 				}
 				butRefresh.Enabled=false;
 				return;
