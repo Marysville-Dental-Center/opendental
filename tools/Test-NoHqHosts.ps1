@@ -62,6 +62,10 @@ $AllowList=@(
 	@{ Path='WpfControlsOD\Frms\FrmTestAllControls.xaml*'; Reason='Developer UI test window, only opened from the UnitTests project.' }
 	@{ Path='WpfControlsOD\Frms\FrmTestSplitters.xaml*'; Reason='Developer UI test window, only opened from the UnitTests project.' }
 
+	#--- The blocked-host list itself. Vendor-direct code refuses these hosts at run time (VendorHttp, setup screens, browser launches).
+	@{ Path='CodeBase\Utilities\VendorDirect\HqHosts.cs'; Reason='The single list of blocked Open Dental hosts that vendor integrations refuse to contact.' }
+	@{ Path='tests\VendorDirectTests\Foundation\HqHostsTests.cs'; Reason='Unit tests of the blocked-host list. Nothing is contacted.' }
+
 	#--- Vendor integrations whose Open Dental hosted part is replaced in the direct vendor integrations wave.
 	@{ Path='OpenDentBusiness\Properties\Resources.resx'; Reason='GoogleAuthCodeResponseHtml, the page shown in the browser after Google sign-in. It loads Open Dental styling; replaced with the direct Google integration.' }
 )
