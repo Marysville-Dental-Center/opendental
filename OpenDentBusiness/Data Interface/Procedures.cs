@@ -3732,7 +3732,7 @@ namespace OpenDentBusiness {
 			}
 			#region Sales Tax
 			//At the end of recalculating writeoffs, we need to update sales tax estimate for treatment planned procs.
-			if(proc.ProcStatus==ProcStat.TP && !PrefC.IsODHQ) {
+			if(proc.ProcStatus==ProcStat.TP) {
 				proc.TaxAmt=ClaimProcs.ComputeSalesTax(proc,claimProcs,true);
 			}
 			#endregion
@@ -5600,7 +5600,7 @@ namespace OpenDentBusiness {
 
 		///<summary>Should be run after procedures are set complete, automates logic such as adding sales tax.</summary>
 		public static void AfterProcsSetComplete(List<Procedure> listProcedures) {
-			if(PrefC.GetBool(PrefName.SalesTaxDoAutomate) && !PrefC.IsODHQ) { //HQ shouldn't be doing this, it's taken care of elsewhere by AvaTax.
+			if(PrefC.GetBool(PrefName.SalesTaxDoAutomate)) {
 				for(int i=0; i<listProcedures.Count; i++) {
 					Adjustments.AddSalesTaxIfNoneExists(listProcedures[i]);
 				}

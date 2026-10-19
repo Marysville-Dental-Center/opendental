@@ -445,17 +445,6 @@ namespace OpenDental {
 
 		private void ContrApptPanel_ApptRightClicked(object sender, UI.ApptRightClickEventArgs e){
 			DataRow dataRowAppointment=contrApptPanel.TableAppointments.Select().FirstOrDefault(x => PIn.Long(x["AptNum"].ToString())==contrApptPanel.SelectedAptNum);
-			if(PrefC.IsODHQ) {
-				menuApt.Items.RemoveByKey(MenuItemNames.Jobs);
-				menuApt.Items.RemoveByKey(MenuItemNames.JobsSpacer);
-				menuApt.Items.Add(new ToolStripSeparator() { Name=MenuItemNames.JobsSpacer });
-				ToolStripMenuItem menuJobs=new ToolStripMenuItem(Lan.g(this,"Jobs"),null,null,MenuItemNames.Jobs);
-				menuJobs.DropDownItems.Add(Lan.g(this,"Attach Job"),null,menuJobs_Attach);
-				List<JobLink> listJobLinks = JobLinks.GetForApptNum(contrApptPanel.SelectedAptNum);
-				List<Job> listJobs = Jobs.GetMany(listJobLinks.Select(x => x.JobNum).ToList());
-				menuJobs.DropDownItems.AddRange(listJobs.Select(x => new ToolStripMenuItem(x.ToString(),null,menuJobs_GoToJob) { Tag=x.JobNum }).ToArray());
-				menuApt.Items.Add(menuJobs);
-			}
 			menuApt.Items.RemoveByKey(MenuItemNames.Tasks);
 			menuApt.Items.RemoveByKey(MenuItemNames.TasksSpacer);
 			menuApt.Items.Add(new ToolStripSeparator() { Name=MenuItemNames.TasksSpacer });
@@ -2411,32 +2400,6 @@ namespace OpenDental {
 		}
 		#endregion Methods - Event Handlers Menu Blockout Click
 
-		#region Methods - Event Handlers Menu Jobs
-		private void menuJobs_Attach(object sender,System.EventArgs e) {
-			if(contrApptPanel.SelectedAptNum<=0) {
-				return;
-			}
-			//Atach new job
-			using FormJobSearch formJobSearch = new FormJobSearch();
-			formJobSearch.DoBlockProjects=true;
-			formJobSearch.ShowDialog();
-			if(formJobSearch.DialogResult!=DialogResult.OK || formJobSearch.SelectedJobNum==0) {
-				return;
-			}
-			JobLink jobLink = new JobLink();
-			jobLink.JobNum=formJobSearch.SelectedJobNum;
-			jobLink.FKey=contrApptPanel.SelectedAptNum;
-			jobLink.LinkType=JobLinkType.Appointment;
-			JobLinks.Insert(jobLink);
-			Signalods.SetInvalid(InvalidType.Jobs,KeyType.Job,jobLink.JobNum);
-			return;
-		}
-
-		private void menuJobs_GoToJob(object sender,System.EventArgs e) {
-				FormOpenDental.S_GoToJob(((long)((ToolStripMenuItem)sender).Tag));
-		}
-		#endregion Methods - Event Handlers Menu Jobs
-
 		#region Methods - Event Handlers Menu Tasks
 		private void menuTasks_Click(object sender,System.EventArgs e) {
 			using FormTasksForAppt formTasksForAppt=new FormTasksForAppt(contrApptPanel.SelectedAptNum);
@@ -2610,9 +2573,6 @@ namespace OpenDental {
 			FillViews();
 			menuApt.Items.Clear();
 			menuApt.Items.Add(new ToolStripMenuItem(Lan.g(this,"Copy to Pinboard"),null,menuApt_Click,MenuItemNames.CopyToPinboard));
-			if(PrefC.IsODHQ) {
-				menuApt.Items.Add(new ToolStripMenuItem(Lan.g(this,"Copy Appointment Structure"),null,menuApt_Click,MenuItemNames.CopyAppointmentStructure));
-			}
 			menuApt.Items.Add(new ToolStripSeparator());
 			menuApt.Items.Add(new ToolStripMenuItem(Lan.g(this,"Send to Unscheduled List"),null,menuApt_Click,MenuItemNames.SendToUnscheduledList));
 			toolStripMenuItem=new ToolStripMenuItem(Lan.g(this,"Break Appointment"),null,menuApt_Click,MenuItemNames.BreakAppointment);
@@ -3385,9 +3345,6 @@ namespace OpenDental {
 			FillProduction(contrApptPanel.DateStart,contrApptPanel.DateEnd);
 			FillProductionGoal(contrApptPanel.DateStart,contrApptPanel.DateEnd);
 			bool hasNotes=true;
-			if(PrefC.IsODHQ){
-				hasNotes=Security.IsAuthorized(EnumPermType.Schedules,true);
-			}
 			FillProvSched(hasNotes);
 			FillEmpSched(hasNotes);
 			FillWaitingRoom();

@@ -218,18 +218,11 @@ namespace OpenDental {
 			if(gridMain.GetSelectedIndex()==-1) {
 				return;
 			}
-			if(checkMulti.Checked && PrefC.IsODHQ) {
-				return;
-			}
 			ListSelectedLists=gridMain.SelectedTags<TaskList>().Select(x => x.TaskListNum).ToList();
 			DialogResult=DialogResult.OK;
 		}
 
 		private void checkMulti_CheckedChanged(object sender,EventArgs e) {
-			if(checkMulti.Checked && PrefC.IsODHQ) {//If user is in checkMulti state, deselect the list
-				gridMain.SetAll(false);
-				textFilter.Select();
-			}
 			SetLabelText();
 		}
 

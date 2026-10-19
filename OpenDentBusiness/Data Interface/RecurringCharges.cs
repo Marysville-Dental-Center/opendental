@@ -347,19 +347,14 @@ namespace OpenDentBusiness {
 					total+=payPlanDue;//payPlanDue will be 0 if this is not a payplan row.  If negative amount due on payplan, payPlanDue is set to 0 above
 					return total;
 				};
-				if(PrefC.IsODHQ) {
-					rptChargeAmt=getProcTotal();
+				decimal totalChargeAmt;
+				if(!chargeCur.Procedures.IsNullOrEmpty()) { //calculates repeating charges based on the presence of procedures on the patient's account that are linked to the CC
+					totalChargeAmt=getProcTotal();
 				}
-				else {
-					decimal totalChargeAmt;
-					if(!chargeCur.Procedures.IsNullOrEmpty()) { //calculates repeating charges based on the presence of procedures on the patient's account that are linked to the CC
-						totalChargeAmt=getProcTotal();
-					}
-					else {//calculates repeating charges by the ChargeAmt on the credit card which is the sum of repeat charge and payplan payment amount
-						totalChargeAmt=(decimal)chargeCur.RecurringCharge.ChargeAmt;
-					}
-					rptChargeAmt=Math.Min(totalChargeAmt,(decimal)chargeCur.RecurringCharge.ChargeAmt);
+				else {//calculates repeating charges by the ChargeAmt on the credit card which is the sum of repeat charge and payplan payment amount
+					totalChargeAmt=(decimal)chargeCur.RecurringCharge.ChargeAmt;
 				}
+				rptChargeAmt=Math.Min(totalChargeAmt,(decimal)chargeCur.RecurringCharge.ChargeAmt);
 				//the Total Bal column should display the famBalTotal plus payPlanDue on the attached payplan if there is one with a positive amount due
 				//if the payplan has a negative amount due, it is set to 0 above and does not subtract from famBalTotal
 				//if the account balance is negative, the Total Bal column should still display the entire amount due on the payplan (if >0)
@@ -689,20 +684,10 @@ namespace OpenDentBusiness {
 			else if(addressPat!="") {
 				info.Arguments+="\"/ADDRESS:"+CleanString(addressPat)+"\" ";
 			}
-			//If ODHQ, do not add the zip code if the customer has an active foreign registration key
-			bool hasForeignKey=false;
-			if(PrefC.IsODHQ) {
-				hasForeignKey=RegistrationKeys.GetForPatient(chargeData.RecurringCharge.PatNum)
-					.Where(x => x.IsForeign)
-					.Where(x => x.DateStarted<=DateTime.Today)
-					.Where(x => x.DateEnded.Year<1880 || x.DateEnded>=DateTime.Today)
-					.Where(x => x.DateDisabled.Year<1880 || x.DateDisabled>=DateTime.Today)
-					.Count()>0;
-			}
-			if(zip!="" && !hasForeignKey) {
+			if(zip!="") {
 				info.Arguments+="\"/ZIP:"+CleanString(zip)+"\" ";
 			}
-			else if(zipPat!="" && !hasForeignKey) {
+			else if(zipPat!="") {
 				info.Arguments+="\"/ZIP:"+CleanString(zipPat)+"\" ";
 			}
 			info.Arguments+="/RECEIPT:Pat"+chargeData.RecurringCharge.PatNum+" ";//aka invoice#
@@ -1273,10 +1258,6 @@ namespace OpenDentBusiness {
 		{
 			Payment paymentCur=new Payment();
 			paymentCur.DateEntry=_nowDateTime.Date;
-			if(PrefC.IsODHQ && PrefC.GetBool(PrefName.BillingUseBillingCycleDay)) {
-				int dayOfMonth=Math.Min(DateTime.DaysInMonth(recCharge.DateStart.Year,recCharge.DateStart.Month),recCharge.BillingCycleDay);
-				recCharge.DateStart=new DateTime(recCharge.DateStart.Year,recCharge.DateStart.Month,dayOfMonth);
-			}
 			paymentCur.PayDate=GetPayDate(recCharge);
 			paymentCur.RecurringChargeDate=recCharge.RecurringChargeDate;
 			paymentCur.PatNum=patCur.PatNum;

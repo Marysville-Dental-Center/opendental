@@ -285,9 +285,6 @@
     <Compile Include="Frms\FrmChildRooms.xaml.cs">
       <DependentUpon>FrmChildRooms.xaml</DependentUpon>
     </Compile>
-    <Compile Include="InternalTools\Job Manager\FrmJobGitBranch.xaml.cs">
-      <DependentUpon>FrmJobGitBranch.xaml</DependentUpon>
-    </Compile>
     <Compile Include="Frms\FrmParagraph.xaml.cs">
       <DependentUpon>FrmParagraph.xaml</DependentUpon>
     </Compile>
@@ -597,9 +594,6 @@
     <Compile Include="Frms\FrmSiteEdit.xaml.cs">
       <DependentUpon>FrmSiteEdit.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Frms\FrmSiteLinkEdit.xaml.cs">
-      <DependentUpon>FrmSiteLinkEdit.xaml</DependentUpon>
-    </Compile>
     <Compile Include="Frms\FrmSites.xaml.cs">
       <DependentUpon>FrmSites.xaml</DependentUpon>
     </Compile>
@@ -859,10 +853,6 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Frms\FrmChildRooms.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="InternalTools\Job Manager\FrmJobGitBranch.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
@@ -1277,10 +1267,6 @@
     <Page Include="Frms\FrmSiteEdit.xaml">
       <SubType>Designer</SubType>
       <Generator>XamlIntelliSenseFileGenerator</Generator>
-    </Page>
-    <Page Include="Frms\FrmSiteLinkEdit.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
     </Page>
     <Page Include="Frms\FrmSites.xaml">
       <Generator>MSBuild:Compile</Generator>

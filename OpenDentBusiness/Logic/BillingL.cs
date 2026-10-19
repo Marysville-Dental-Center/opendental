@@ -313,7 +313,7 @@ namespace OpenDentBusiness {
 				}
 				patient=family.GetPatient(statement.PatNum);
 				patFolder=ImageStore.GetPatientFolder(patient,ImageStore.GetPreferredAtoZpath());
-				dataSet=AccountModules.GetStatementDataSet(statement,isComputeAging: false,doIncludePatLName: PrefC.IsODHQ);
+				dataSet=AccountModules.GetStatementDataSet(statement,isComputeAging: false,doIncludePatLName: false);
 				//Verify send email before trying to loop through any statements. If it's bad, we won't continue.
 				emailAddress=sendStatementsIO.FuncGetSenderEmailAddress(patient.ClinicNum);
 				sendStatementsIO.FireStatementProgress(10);
@@ -544,7 +544,7 @@ namespace OpenDentBusiness {
 				}
 				family=sendStatementsIO.CurStatementBatch.ListEbillStatements[i].Family;
 				patient=family.GetPatient(statementCur.PatNum);
-				dataSet=AccountModules.GetStatementDataSet(statementCur,isComputeAging: false,doIncludePatLName: PrefC.IsODHQ);
+				dataSet=AccountModules.GetStatementDataSet(statementCur,isComputeAging: false,doIncludePatLName: false);
 				try {
 					//Write the statement into a temporary string builder, so that if the statement fails to generate (due to exception),
 					//then the partially generated statement will not be added to the strBuildElect.

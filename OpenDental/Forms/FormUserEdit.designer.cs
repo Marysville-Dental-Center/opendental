@@ -63,7 +63,6 @@ namespace OpenDental {
 			this.listAlertSubsClinicsMulti = new OpenDental.UI.ListBox();
 			this.listAlertSubMulti = new OpenDental.UI.ListBox();
 			this.label7 = new System.Windows.Forms.Label();
-			this.butJobRoles = new OpenDental.UI.Button();
 			this.butSave = new OpenDental.UI.Button();
 			this.butPassword = new OpenDental.UI.Button();
 			this.butUnlock = new OpenDental.UI.Button();
@@ -455,16 +454,6 @@ namespace OpenDental {
 			this.label7.Text = "User Alert Subscriptions";
 			this.label7.TextAlign = System.Drawing.ContentAlignment.BottomLeft;
 			// 
-			// butJobRoles
-			// 
-			this.butJobRoles.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.butJobRoles.Location = new System.Drawing.Point(268, 663);
-			this.butJobRoles.Name = "butJobRoles";
-			this.butJobRoles.Size = new System.Drawing.Size(103, 26);
-			this.butJobRoles.TabIndex = 167;
-			this.butJobRoles.Text = "Set Job Roles";
-			this.butJobRoles.Click += new System.EventHandler(this.butJobRoles_Click);
-			// 
 			// butSave
 			// 
 			this.butSave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
@@ -499,7 +488,6 @@ namespace OpenDental {
 			// 
 			this.ClientSize = new System.Drawing.Size(1003, 694);
 			this.Controls.Add(this.butUnlock);
-			this.Controls.Add(this.butJobRoles);
 			this.Controls.Add(this.tabControl1);
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.butPassword);
@@ -525,7 +513,6 @@ namespace OpenDental {
 		private OpenDental.UI.TabPage tabClinics;
 		private UI.Button butSave;
 		private UI.Button butPassword;
-		private UI.Button butJobRoles;
 		private Label labelClinic;
 		private OpenDental.UI.ListBox listClinic;
 		private Label label1;

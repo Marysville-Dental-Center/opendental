@@ -1701,9 +1701,6 @@ namespace OpenDentBusiness{
 		///<summary>Centralized logic for computing sales tax. Returns whatever value is already there for ODHQ. The isEstimate parameter should be set to true when creating sales tax estimates</summary>
 		public static double ComputeSalesTax(Procedure procedure,List<ClaimProc> listClaimProcs,bool isEstimate) {
 			Meth.NoCheckMiddleTierRole();
-			if(PrefC.IsODHQ) {
-				return procedure.TaxAmt;
-			}			
 			//This check will stop non-autotaxed procedures from showing sales tax estimates, but will still allow manual sales tax to be applied
 			if(isEstimate && !ProcedureCodes.GetProcCode(procedure.CodeNum).IsTaxed) {
 				return 0;

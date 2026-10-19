@@ -91,8 +91,6 @@ namespace OpenDental {
 					Logger.LogActionIfOverTimeLimit("BeginComputerHeartbeatThread",LogPath.Threads,() => BeginComputerHeartbeatThread());
 					Logger.LogActionIfOverTimeLimit("BeginPodiumThread",LogPath.Threads,() => BeginPodiumThread());
 					Logger.LogActionIfOverTimeLimit("BeginTimeSyncThread",LogPath.Threads,() => BeginTimeSyncThread());
-					Logger.LogActionIfOverTimeLimit("BeginVoicemailThread",LogPath.Threads,() => BeginVoicemailThread());
-					Logger.LogActionIfOverTimeLimit("BeginHqMetricsThread",LogPath.Threads,() => BeginHqMetricsThread());
 					Logger.LogActionIfOverTimeLimit("CheckAlerts",LogPath.Threads,() => CheckAlerts(doRunOnThread: true));
 					Logger.LogToPath("Started threads",LogPath.Threads,LogPhase.Unspecified);
 					return;
@@ -114,7 +112,6 @@ namespace OpenDental {
 						//Kill these.
 						case FormODThreadNames.CanadianItransCarrier:
 						case FormODThreadNames.ClaimReport:
-						case FormODThreadNames.HqMetrics:
 						case FormODThreadNames.LogOff:
 						case FormODThreadNames.ODServiceMonitor:
 						case FormODThreadNames.Podium:
@@ -122,7 +119,6 @@ namespace OpenDental {
 						case FormODThreadNames.UpdateFormText:
 						case FormODThreadNames.WebSync:
 						case FormODThreadNames.TimeSync:
-						case FormODThreadNames.VoicemailHQ:
 						case FormODThreadNames.CheckAlerts:
 						default:
 							//Add these to our list so we can wait on them to exit before restarting the threads next time.
@@ -377,78 +373,6 @@ namespace OpenDental {
 		}
 
 		#endregion DataReaderNullMonitorThread
-		#region HqMetricsThread
-
-		private void BeginHqMetricsThread() {
-			if(IsThreadAlreadyRunning(FormODThreadNames.HqMetrics)) {
-				return;
-			}
-			if(!PrefC.IsODHQ) {
-				return;
-			}
-			//Only run this thread every 1.6 seconds.
-			ODThread odThread=new ODThread(1600,(o) => {
-				ProcessHqMetricsPhones();
-			});
-			odThread.AddExceptionHandler(ex => ex.DoNothing());
-			odThread.GroupName=FormODThreadNames.HqMetrics.GetDescription();
-			odThread.Name=FormODThreadNames.HqMetrics.GetDescription();
-			odThread.Start();
-		}
-
-		///<summary>HQ only. Called from HqMetricsThread(). Deals with HQ phone panel. This method runs in a thread so any access to form controls must be invoked. Gets hit every 1.6 seconds from each workstation.</summary>
-		private void ProcessHqMetricsPhones() {
-			if(Security.CurUser==null) {
-				return;//Don't waste time processing phone metrics when no one is logged in and sitting at the log on screen.
-			}
-			if((_listFormMaps.Count>0) 
-				&& DateTime.Now.Subtract(_dateHqOfficeDownLastRefreshed).TotalSeconds>PrefC.GetInt(PrefName.ProcessSigsIntervalInSecs)) 
-			{
-				List<OpenDentBusiness.Task> listOfficesDowns=Tasks.GetOfficeDowns();
-				if(!IsDisposed) {
-					Invoke(new ProcessOfficeDownArgs(ProcessOfficeDowns),new object[] { listOfficesDowns });
-				}
-				_dateHqOfficeDownLastRefreshed=DateTime.Now;
-			}
-			List<WebChatSession> listWebChatSessions=null;
-			List<PeerInfo> listRemoteSupportSessions=null;
-			TriageMetric triageMetrics=Phones.GetTriageMetrics();
-			ODException.SwallowAnyException(() => Invoke(new FillTriageLabelsResultsArgs(FillTriageLabelsResults),triageMetrics));
-			//Attempt to deserialize the active web chat sessions from the triage metric row.
-			ODException.SwallowAnyException(() => listWebChatSessions=JsonConvert.DeserializeObject<List<WebChatSession>>(triageMetrics.WebChatSessions));
-			//Attempt to deserialize the active web chat sessions from the triage metric row.
-			ODException.SwallowAnyException(() => {
-				listRemoteSupportSessions=JsonConvert.DeserializeObject<List<PeerInfo>>(triageMetrics.RemoteSupportSessions);
-				PeerInfos.SetEmployeeNum(ref listRemoteSupportSessions);
-			});
-			if(listWebChatSessions==null) {//An empty string value within triageMetrics.WebChatSessions will deserialize to null.
-				listWebChatSessions=new List<WebChatSession>();
-			}
-			if(listRemoteSupportSessions==null) {//An empty string value within triageMetrics.RemoteSupportSessions will deserialize to null.
-				listRemoteSupportSessions=new List<PeerInfo>();
-			}
-			List<PhoneEmpDefault> listPED=PhoneEmpDefaults.GetDeepCopy();
-			List<PhoneEmpSubGroup> listSubGroups=PhoneEmpSubGroups.GetAll();
-			//Get the extension linked to this machine.
-			PhoneComp phoneComp=PhoneComps.GetFirstOrDefault(x => x.ComputerName.ToUpper()==Environment.MachineName.ToUpper());
-			int extension=phoneComp?.PhoneExt??0;
-			//Get the phoneempdefault row that is currently associated to the corresponding extension.
-			PhoneEmpDefault pedCur=listPED.FirstOrDefault(x => x.PhoneExt==extension);
-			bool isTriageOperator=pedCur?.IsTriageOperator??false;
-			//Now get the Phone object for this extension. Phone table matches PhoneEmpDefault table more or less 1:1. 
-			//Phone fields represent current state of the PhoneEmpDefault table and will be modified by the phone tracking server anytime a phone state changes for a given extension 
-			//(EG... incoming call, outgoing call, hangup, etc).
-			List<Phone> listPhones=Phones.GetPhoneList();
-			Phone phone=listPhones.FirstOrDefault(x => x.Extension==extension);
-			List<ChatUser> listChatUsers=ChatUsers.GetAll();
-			//send the results back to the UI layer for action.
-			if(!this.IsDisposed) {
-				this.Invoke(() => ProcessHqMetricsResults(listPED,listPhones,listSubGroups,listChatUsers,phone,isTriageOperator,listWebChatSessions,
-					listRemoteSupportSessions));
-			}
-		}
-
-		#endregion
 		#region LogOffThread
 
 		///<summary>Begins the thread that checks for a forced log off.</summary>
@@ -696,24 +620,6 @@ namespace OpenDental {
 		}
 
 		#endregion
-		//#region PhoneConferenceThread
-		/////<summary>Begins a thread that updates the phone conference rooms. This is for HQ only.</summary>
-		//void BeginPhoneConferenceThread() {
-		//	if(IsThreadAlreadyRunning(FormODThreadNames.PhoneConference)) {
-		//		return;
-		//	}
-		//	ODThread odThread = new ODThread((o) =>{
-		//		Logger.LogToPath("PhoneConf",LogPath.Signals,LogPhase.Start);
-		//		List<PhoneConf> listPhoneConfs = PhoneConfs.GetAll();
-		//		this.Invoke((() => lightSignalGrid1.SetConfs(listPhoneConfs)));
-		//		Logger.LogToPath("PhoneConf",LogPath.Signals,LogPhase.End);
-		//	});
-		//	odThread.AddExceptionHandler(ex => SignalsTickExceptionHandler(ex));
-		//	odThread.GroupName=FormODThreadNames.PhoneConference.GetDescription();
-		//	odThread.Name=FormODThreadNames.PhoneConference.GetDescription();
-		//	odThread.Start();
-		//}
-		//#endregion
 		#region PlaySoundsThread
 
 		///<summary>Begins a thread that will play sounds based on the given signals.</summary>
@@ -776,14 +682,6 @@ namespace OpenDental {
 				return;
 			}
 			ODThread odThread=new ODThread((o) => {
-				if(PrefC.IsODHQ) {
-					ODThread webCamKillThread = new ODThread(((o2) => { Process.GetProcessesByName("WebCamOD").ToList().ForEach(x => x.Kill()); }));
-					webCamKillThread.AddExceptionHandler((ex) => ex.DoNothing());
-					webCamKillThread.Start();
-					ODThread proximityKillThread = new ODThread(((o2) => { Process.GetProcessesByName("ProximityOD").ToList().ForEach(x => x.Kill()); }));
-					proximityKillThread.AddExceptionHandler((ex) => ex.DoNothing());
-					proximityKillThread.Start();
-				}
 				Thread.Sleep(15000);//15 seconds
 				CloseOpenForms(true);
 				this.Invoke(Application.Exit);
@@ -881,73 +779,6 @@ namespace OpenDental {
 		}
 
 		#endregion
-		#region VoicemailThread
-
-		private void BeginVoicemailThread() {
-			if(IsThreadAlreadyRunning(FormODThreadNames.VoicemailHQ)) {
-				return;
-			}
-			if(!PrefC.IsODHQ) {
-				return;
-			}
-			ODThread odThread=new ODThread((int)TimeSpan.FromSeconds(3).TotalMilliseconds,VoicemailWorker);
-			odThread.AddExceptionHandler(ex => ex.DoNothing());
-			odThread.GroupName=FormODThreadNames.VoicemailHQ.GetDescription();
-			odThread.Name=FormODThreadNames.VoicemailHQ.GetDescription();
-			odThread.Start(true);
-		}
-
-		///<summary>Called on the voicemail thread for HQ only.</summary>
-		private void VoicemailWorker(ODThread odThread) {
-			try {
-				List<VoiceMail> listVoiceMails=VoiceMails.GetAll(false,false).FindAll(x => x.UserNum==0);//Only include unclaimed VMs in the count and timer
-				DateTime oldestVoicemail=DateTime.MaxValue;
-				foreach(VoiceMail voiceMail in listVoiceMails) {
-					if(voiceMail.DateCreated.AddSeconds(voiceMail.Duration)<oldestVoicemail) {
-						oldestVoicemail=voiceMail.DateCreated.AddSeconds(voiceMail.Duration);//Adding Duration so the timer starts at the end of the VM
-					}
-				}
-				TimeSpan ageOfOldestVoicemail=new TimeSpan(0);
-				if(oldestVoicemail!=DateTime.MaxValue) {
-					ageOfOldestVoicemail=DateTime.Now-oldestVoicemail;
-				}
-				this.Invoke(() => { SetVoicemailMetrics(false,listVoiceMails.Count,ageOfOldestVoicemail); });
-			}
-			catch(Exception ex) {
-				//Something went wrong with determining how many voicemails there are.  Sleep for 4 minutes then try again.
-				ODException.SwallowAnyException(() => this.Invoke(() => { SetVoicemailMetrics(true,0,new TimeSpan(0)); }));
-				odThread.Wait((int)TimeSpan.FromMinutes(4).TotalMilliseconds);
-				ex.DoNothing();
-			}
-		}
-
-		///<summary>Called from worker thread for HQ voicemails. Sets all UI changes for the voicemail counter.</summary>
-		private void SetVoicemailMetrics(bool hasError,int voiceMailCount,TimeSpan ageOfOldestVoicemail) {
-			if(hasError) {
-				labelMsg.Font=new Font(FontFamily.GenericSansSerif,8.25f,FontStyle.Bold);
-				labelMsg.Text="error";
-				labelMsg.ForeColor=Color.Firebrick;
-				return;
-			}
-			labelMsg.Text=voiceMailCount.ToString();
-			if(voiceMailCount==0) {
-				labelMsg.Font=new Font(FontFamily.GenericSansSerif,7.75f,FontStyle.Regular);
-				labelMsg.ForeColor=Color.Black;
-			}
-			else {
-				labelMsg.Font=new Font(FontFamily.GenericSansSerif,7.75f,FontStyle.Bold);
-				labelMsg.ForeColor=Color.Firebrick;
-			}
-			for(int i=0;i<_listFormMaps.Count;i++) {
-				_listFormMaps[i].SetVoicemail(voiceMailCount,ageOfOldestVoicemail);
-			}
-			if(_formPhoneList!=null && !_formPhoneList.IsDisposed) {
-				_formPhoneList.SetVoicemailCount(voiceMailCount);
-			}
-		}
-
-		#endregion
-
 		//The ApiEvents thread, which polled the database for Open Dental's local REST API subscriptions, was removed with the API.
 
 		///<summary>A list of the names and group names for all threads spawned from FormOpenDental.</summary>
@@ -963,13 +794,11 @@ namespace OpenDental {
 			EhrCodeList,
 			///<summary>DEPRECATED. This thread now runs from Open Dental Service solution</summary>
 			EnableAdditionalFeatures,
-			HqMetrics,
 			LicenseAgreementSignature,
 			LogOff,
 			MiddleTierConnectionLost,
 			ODServiceMonitor,
 			ODServiceStarter,
-			PhoneConference,
 			PlaySounds,
 			Podium,
 			RegKeyIsForTesting,
@@ -978,7 +807,6 @@ namespace OpenDental {
 			Tasks,
 			TimeSync,
 			UpdateFormText,
-			VoicemailHQ,
 			WebSync,
 			Dashboard,
 			RegistrationKeyIsDisabled,

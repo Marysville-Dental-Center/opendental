@@ -54,7 +54,6 @@
 			this.menuItemPrintRouteSlip = new System.Windows.Forms.MenuItem();
 			this.menuItemGroupMultiVisit = new System.Windows.Forms.MenuItem();
 			this.menuItemViewMultiVisitGroup = new System.Windows.Forms.MenuItem();
-			this.menuItemAiChat = new System.Windows.Forms.MenuItem();
 			this.tabControlImages = new OpenDental.UI.TabControl();
 			this.tabPage1 = new OpenDental.UI.TabPage();
 			this.tabPage2 = new OpenDental.UI.TabPage();
@@ -206,22 +205,6 @@
 			this.panelTPdark = new System.Windows.Forms.Panel();
 			this.label18 = new System.Windows.Forms.Label();
 			this.panelTPlight = new System.Windows.Forms.Panel();
-			this.tabCustomer = new OpenDental.UI.TabPage();
-			this.labelMonth0 = new System.Windows.Forms.Label();
-			this.textMonth0 = new System.Windows.Forms.TextBox();
-			this.label2 = new System.Windows.Forms.Label();
-			this.labelCommonProc = new System.Windows.Forms.Label();
-			this.labelTimes = new System.Windows.Forms.Label();
-			this.labelMonth1 = new System.Windows.Forms.Label();
-			this.labelMonth2 = new System.Windows.Forms.Label();
-			this.labelMonth3 = new System.Windows.Forms.Label();
-			this.labelMonthAvg = new System.Windows.Forms.Label();
-			this.textMonthAvg = new System.Windows.Forms.TextBox();
-			this.textMonth3 = new System.Windows.Forms.TextBox();
-			this.textMonth2 = new System.Windows.Forms.TextBox();
-			this.textMonth1 = new System.Windows.Forms.TextBox();
-			this.listCommonProcs = new OpenDental.UI.ListBox();
-			this.gridCustomerViews = new OpenDental.UI.GridOD();
 			this.tabOrtho = new OpenDental.UI.TabPage();
 			this.checkShowHidden = new OpenDental.UI.CheckBox();
 			this.checkOrthoGraphics = new OpenDental.UI.CheckBox();
@@ -269,15 +252,10 @@
 			this.gridTpProcs = new OpenDental.UI.GridOD();
 			this.butNewTP = new OpenDental.UI.Button();
 			this.gridTreatPlans = new OpenDental.UI.GridOD();
-			this.butErxAccess = new OpenDental.UI.Button();
-			this.butPhoneNums = new OpenDental.UI.Button();
-			this.butForeignKey = new OpenDental.UI.Button();
-			this.butAddKey = new OpenDental.UI.Button();
 			this.ToolBarMain = new OpenDental.UI.ToolBarOD();
 			this.button1 = new OpenDental.UI.Button();
 			this.gridPtInfo = new OpenDental.UI.GridOD();
 			this.textTreatmentNotes = new OpenDental.ODtextBox();
-			this.odInternalCustomerGrids = new OpenDental.UI.ODInternalCustomerGrids();
 			this.tabControlImages.SuspendLayout();
 			this.panelImages.SuspendLayout();
 			this.tabControlProc.SuspendLayout();
@@ -296,7 +274,6 @@
 			this.groupBox6.SuspendLayout();
 			this.tabDraw.SuspendLayout();
 			this.groupBox8.SuspendLayout();
-			this.tabCustomer.SuspendLayout();
 			this.tabOrtho.SuspendLayout();
 			this.groupBoxOD1.SuspendLayout();
 			this.panelEcw.SuspendLayout();
@@ -467,8 +444,7 @@
             this.menuItemLabFee,
             this.menuItemPrintRouteSlip,
             this.menuItemGroupMultiVisit,
-            this.menuItemViewMultiVisitGroup,
-            this.menuItemAiChat});
+            this.menuItemViewMultiVisitGroup});
 			this.menuProgRight.Popup += new System.EventHandler(this.menuProgRight_Popup);
 			// 
 			// menuItemDelete
@@ -548,12 +524,6 @@
 			this.menuItemViewMultiVisitGroup.Index = 12;
 			this.menuItemViewMultiVisitGroup.Text = "View Multivisit Group(s)";
 			this.menuItemViewMultiVisitGroup.Click += new System.EventHandler(this.menuItemViewMultiVisitGroup_Click);
-			// 
-			// menuItemAiChat
-			// 
-			this.menuItemAiChat.Index = 13;
-			this.menuItemAiChat.Text = "AI Chat";
-			this.menuItemAiChat.Click += new System.EventHandler(this.menuItemAiChat_Click);
 			// 
 			// tabControlImages
 			// 
@@ -643,7 +613,6 @@
 			this.tabControlProc.Controls.Add(this.tabPlanned);
 			this.tabControlProc.Controls.Add(this.tabShow);
 			this.tabControlProc.Controls.Add(this.tabDraw);
-			this.tabControlProc.Controls.Add(this.tabCustomer);
 			this.tabControlProc.Controls.Add(this.tabOrtho);
 			this.tabControlProc.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F);
 			this.tabControlProc.Location = new System.Drawing.Point(415, 28);
@@ -2189,174 +2158,6 @@
 			this.panelTPlight.TabIndex = 4;
 			this.panelTPlight.Click += new System.EventHandler(this.panelTPlight_Click);
 			// 
-			// tabCustomer
-			// 
-			this.tabCustomer.Controls.Add(this.labelMonth0);
-			this.tabCustomer.Controls.Add(this.textMonth0);
-			this.tabCustomer.Controls.Add(this.label2);
-			this.tabCustomer.Controls.Add(this.labelCommonProc);
-			this.tabCustomer.Controls.Add(this.labelTimes);
-			this.tabCustomer.Controls.Add(this.labelMonth1);
-			this.tabCustomer.Controls.Add(this.labelMonth2);
-			this.tabCustomer.Controls.Add(this.labelMonth3);
-			this.tabCustomer.Controls.Add(this.labelMonthAvg);
-			this.tabCustomer.Controls.Add(this.textMonthAvg);
-			this.tabCustomer.Controls.Add(this.textMonth3);
-			this.tabCustomer.Controls.Add(this.textMonth2);
-			this.tabCustomer.Controls.Add(this.textMonth1);
-			this.tabCustomer.Controls.Add(this.listCommonProcs);
-			this.tabCustomer.Controls.Add(this.gridCustomerViews);
-			this.tabCustomer.Location = new System.Drawing.Point(2, 21);
-			this.tabCustomer.Name = "tabCustomer";
-			this.tabCustomer.Padding = new System.Windows.Forms.Padding(3);
-			this.tabCustomer.Size = new System.Drawing.Size(520, 236);
-			this.tabCustomer.TabIndex = 8;
-			this.tabCustomer.Text = "Customer";
-			// 
-			// labelMonth0
-			// 
-			this.labelMonth0.Location = new System.Drawing.Point(340, 109);
-			this.labelMonth0.Name = "labelMonth0";
-			this.labelMonth0.Size = new System.Drawing.Size(72, 20);
-			this.labelMonth0.TabIndex = 62;
-			this.labelMonth0.Text = "month 0";
-			this.labelMonth0.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// textMonth0
-			// 
-			this.textMonth0.Location = new System.Drawing.Point(413, 110);
-			this.textMonth0.Name = "textMonth0";
-			this.textMonth0.ReadOnly = true;
-			this.textMonth0.Size = new System.Drawing.Size(50, 20);
-			this.textMonth0.TabIndex = 61;
-			// 
-			// label2
-			// 
-			this.label2.Location = new System.Drawing.Point(340, 163);
-			this.label2.Name = "label2";
-			this.label2.Size = new System.Drawing.Size(170, 41);
-			this.label2.TabIndex = 60;
-			this.label2.Text = "(Avg is based on entire family call history excluding first two months)";
-			// 
-			// labelCommonProc
-			// 
-			this.labelCommonProc.Location = new System.Drawing.Point(201, 11);
-			this.labelCommonProc.Name = "labelCommonProc";
-			this.labelCommonProc.Size = new System.Drawing.Size(123, 16);
-			this.labelCommonProc.TabIndex = 59;
-			this.labelCommonProc.Text = "Quick add:";
-			this.labelCommonProc.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			// 
-			// labelTimes
-			// 
-			this.labelTimes.Location = new System.Drawing.Point(347, 11);
-			this.labelTimes.Name = "labelTimes";
-			this.labelTimes.Size = new System.Drawing.Size(120, 16);
-			this.labelTimes.TabIndex = 58;
-			this.labelTimes.Text = "Total time for family:";
-			this.labelTimes.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// labelMonth1
-			// 
-			this.labelMonth1.Location = new System.Drawing.Point(340, 83);
-			this.labelMonth1.Name = "labelMonth1";
-			this.labelMonth1.Size = new System.Drawing.Size(72, 20);
-			this.labelMonth1.TabIndex = 57;
-			this.labelMonth1.Text = "month 1";
-			this.labelMonth1.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// labelMonth2
-			// 
-			this.labelMonth2.Location = new System.Drawing.Point(340, 57);
-			this.labelMonth2.Name = "labelMonth2";
-			this.labelMonth2.Size = new System.Drawing.Size(72, 20);
-			this.labelMonth2.TabIndex = 56;
-			this.labelMonth2.Text = "month 2";
-			this.labelMonth2.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// labelMonth3
-			// 
-			this.labelMonth3.Location = new System.Drawing.Point(340, 31);
-			this.labelMonth3.Name = "labelMonth3";
-			this.labelMonth3.Size = new System.Drawing.Size(72, 20);
-			this.labelMonth3.TabIndex = 55;
-			this.labelMonth3.Text = "month 3";
-			this.labelMonth3.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// labelMonthAvg
-			// 
-			this.labelMonthAvg.Location = new System.Drawing.Point(340, 135);
-			this.labelMonthAvg.Name = "labelMonthAvg";
-			this.labelMonthAvg.Size = new System.Drawing.Size(72, 20);
-			this.labelMonthAvg.TabIndex = 54;
-			this.labelMonthAvg.Text = "Avg";
-			this.labelMonthAvg.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// textMonthAvg
-			// 
-			this.textMonthAvg.Location = new System.Drawing.Point(413, 136);
-			this.textMonthAvg.Name = "textMonthAvg";
-			this.textMonthAvg.ReadOnly = true;
-			this.textMonthAvg.Size = new System.Drawing.Size(50, 20);
-			this.textMonthAvg.TabIndex = 50;
-			// 
-			// textMonth3
-			// 
-			this.textMonth3.Location = new System.Drawing.Point(413, 32);
-			this.textMonth3.Name = "textMonth3";
-			this.textMonth3.ReadOnly = true;
-			this.textMonth3.Size = new System.Drawing.Size(50, 20);
-			this.textMonth3.TabIndex = 49;
-			// 
-			// textMonth2
-			// 
-			this.textMonth2.Location = new System.Drawing.Point(413, 58);
-			this.textMonth2.Name = "textMonth2";
-			this.textMonth2.ReadOnly = true;
-			this.textMonth2.Size = new System.Drawing.Size(50, 20);
-			this.textMonth2.TabIndex = 48;
-			// 
-			// textMonth1
-			// 
-			this.textMonth1.Location = new System.Drawing.Point(413, 84);
-			this.textMonth1.Name = "textMonth1";
-			this.textMonth1.ReadOnly = true;
-			this.textMonth1.Size = new System.Drawing.Size(50, 20);
-			this.textMonth1.TabIndex = 47;
-			// 
-			// listCommonProcs
-			// 
-			this.listCommonProcs.ItemStrings = new string[] {
-        "Monthly Maintenance",
-        "Monthly Mobile",
-        "Monthly E-Mail Support",
-        "Monthly EHR",
-        "Data Conversion",
-        "Trial Conversion",
-        "Demo",
-        "Online Training",
-        "Additional Online Training",
-        "eCW Online Training",
-        "eCW Installation Verify",
-        "Programming",
-        "Query Programming"};
-			this.listCommonProcs.Location = new System.Drawing.Point(203, 30);
-			this.listCommonProcs.Name = "listCommonProcs";
-			this.listCommonProcs.Size = new System.Drawing.Size(131, 173);
-			this.listCommonProcs.TabIndex = 46;
-			this.listCommonProcs.MouseDown += new System.Windows.Forms.MouseEventHandler(this.listCommonProcs_MouseDown);
-			// 
-			// gridCustomerViews
-			// 
-			this.gridCustomerViews.Location = new System.Drawing.Point(6, 30);
-			this.gridCustomerViews.Name = "gridCustomerViews";
-			this.gridCustomerViews.Size = new System.Drawing.Size(191, 173);
-			this.gridCustomerViews.TabIndex = 45;
-			this.gridCustomerViews.Title = "Chart Views";
-			this.gridCustomerViews.TranslationName = "TableCustomerViews";
-			this.gridCustomerViews.CellDoubleClick += new OpenDental.UI.ODGridClickEventHandler(this.gridCustomerViews_CellDoubleClick);
-			this.gridCustomerViews.CellClick += new OpenDental.UI.ODGridClickEventHandler(this.gridCustomerViews_CellClick);
-			// 
 			// tabOrtho
 			// 
 			this.tabOrtho.Controls.Add(this.checkShowHidden);
@@ -2804,50 +2605,6 @@
 			this.gridTreatPlans.CellDoubleClick += new OpenDental.UI.ODGridClickEventHandler(this.gridTreatPlans_CellDoubleClick);
 			this.gridTreatPlans.CellClick += new OpenDental.UI.ODGridClickEventHandler(this.gridTreatPlans_CellClick);
 			// 
-			// butErxAccess
-			// 
-			this.butErxAccess.Enabled = false;
-			this.butErxAccess.Location = new System.Drawing.Point(88, 453);
-			this.butErxAccess.Name = "butErxAccess";
-			this.butErxAccess.Size = new System.Drawing.Size(75, 14);
-			this.butErxAccess.TabIndex = 199;
-			this.butErxAccess.Text = "Erx Access";
-			this.butErxAccess.UseVisualStyleBackColor = true;
-			this.butErxAccess.Click += new System.EventHandler(this.butErxAccess_Click);
-			// 
-			// butPhoneNums
-			// 
-			this.butPhoneNums.Enabled = false;
-			this.butPhoneNums.Location = new System.Drawing.Point(169, 453);
-			this.butPhoneNums.Name = "butPhoneNums";
-			this.butPhoneNums.Size = new System.Drawing.Size(75, 14);
-			this.butPhoneNums.TabIndex = 198;
-			this.butPhoneNums.Text = "Phone Nums";
-			this.butPhoneNums.UseVisualStyleBackColor = true;
-			this.butPhoneNums.Click += new System.EventHandler(this.butPhoneNums_Click);
-			// 
-			// butForeignKey
-			// 
-			this.butForeignKey.Enabled = false;
-			this.butForeignKey.Location = new System.Drawing.Point(250, 453);
-			this.butForeignKey.Name = "butForeignKey";
-			this.butForeignKey.Size = new System.Drawing.Size(75, 14);
-			this.butForeignKey.TabIndex = 196;
-			this.butForeignKey.Text = "Foreign Key";
-			this.butForeignKey.UseVisualStyleBackColor = true;
-			this.butForeignKey.Click += new System.EventHandler(this.butForeignKey_Click);
-			// 
-			// butAddKey
-			// 
-			this.butAddKey.Enabled = false;
-			this.butAddKey.Location = new System.Drawing.Point(331, 453);
-			this.butAddKey.Name = "butAddKey";
-			this.butAddKey.Size = new System.Drawing.Size(78, 14);
-			this.butAddKey.TabIndex = 195;
-			this.butAddKey.Text = "USA Key";
-			this.butAddKey.UseVisualStyleBackColor = true;
-			this.butAddKey.Click += new System.EventHandler(this.butAddKey_Click);
-			// 
 			// ToolBarMain
 			// 
 			this.ToolBarMain.Dock = System.Windows.Forms.DockStyle.Top;
@@ -2898,16 +2655,6 @@
 			this.textTreatmentNotes.Leave += new System.EventHandler(this.textTreatmentNotes_Leave);
 			this.textTreatmentNotes.MouseLeave += new System.EventHandler(this.textTreatmentNotes_MouseLeave);
 			// 
-			// odInternalCustomerGrids
-			// 
-			this.odInternalCustomerGrids.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F);
-			this.odInternalCustomerGrids.Location = new System.Drawing.Point(0, 27);
-			this.odInternalCustomerGrids.Name = "odInternalCustomerGrids";
-			this.odInternalCustomerGrids.PatCur = null;
-			this.odInternalCustomerGrids.Size = new System.Drawing.Size(410, 334);
-			this.odInternalCustomerGrids.TabIndex = 213;
-			this.odInternalCustomerGrids.Visible = false;
-			// 
 			// ControlChart
 			// 
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
@@ -2919,11 +2666,7 @@
 			this.Controls.Add(this.butNewTP);
 			this.Controls.Add(this.panelToothTrackBar);
 			this.Controls.Add(this.gridTreatPlans);
-			this.Controls.Add(this.butErxAccess);
-			this.Controls.Add(this.butPhoneNums);
 			this.Controls.Add(this.panelEcw);
-			this.Controls.Add(this.butForeignKey);
-			this.Controls.Add(this.butAddKey);
 			this.Controls.Add(this.tabControlProc);
 			this.Controls.Add(this.panelImages);
 			this.Controls.Add(this.tabControlImages);
@@ -2931,7 +2674,6 @@
 			this.Controls.Add(this.button1);
 			this.Controls.Add(this.gridPtInfo);
 			this.Controls.Add(this.textTreatmentNotes);
-			this.Controls.Add(this.odInternalCustomerGrids);
 			this.Controls.Add(this.panelTPpriority);
 			this.Name = "ControlChart";
 			this.Size = new System.Drawing.Size(939, 708);
@@ -2957,8 +2699,6 @@
 			this.groupBox6.ResumeLayout(false);
 			this.tabDraw.ResumeLayout(false);
 			this.groupBox8.ResumeLayout(false);
-			this.tabCustomer.ResumeLayout(false);
-			this.tabCustomer.PerformLayout();
 			this.tabOrtho.ResumeLayout(false);
 			this.groupBoxOD1.ResumeLayout(false);
 			this.panelEcw.ResumeLayout(false);
@@ -3086,9 +2826,7 @@
 		private OpenDental.UI.GroupBox groupBox6;
 		private OpenDental.UI.CheckBox checkAppt;
 		private OpenDental.UI.CheckBox checkLabCase;
-		private OpenDental.UI.Button butAddKey;
 		private OpenDental.UI.CheckBox checkCommFamily;
-		private OpenDental.UI.Button butForeignKey;
 		private OpenDental.UI.CheckBox checkTasks;
 		private OpenDental.UI.CheckBox checkEmail;
 		private OpenDental.UI.CheckBox checkSheets;
@@ -3139,28 +2877,10 @@
 		private System.Windows.Forms.Label labelPrognosis;
 		private UI.Button butShowDateRange;
 		private System.Windows.Forms.TextBox textShowDateRange;
-		private OpenDental.UI.TabPage tabCustomer;
-		private OpenDental.UI.GridOD gridCustomerViews;
-		private System.Windows.Forms.Label labelTimes;
-		private System.Windows.Forms.Label labelMonth1;
-		private System.Windows.Forms.Label labelMonth2;
-		private System.Windows.Forms.Label labelMonth3;
-		private System.Windows.Forms.Label labelMonthAvg;
-		private System.Windows.Forms.TextBox textMonthAvg;
-		private System.Windows.Forms.TextBox textMonth3;
-		private System.Windows.Forms.TextBox textMonth2;
-		private System.Windows.Forms.TextBox textMonth1;
-		private OpenDental.UI.ListBox listCommonProcs;
-		private System.Windows.Forms.Label labelCommonProc;
-		private System.Windows.Forms.Label label2;
-		private System.Windows.Forms.Label labelMonth0;
-		private System.Windows.Forms.TextBox textMonth0;
-		private UI.Button butPhoneNums;
 		private System.Windows.Forms.Label label3;
 		private OpenDental.UI.ODButtonPanel panelQuickButtons;
 		private UI.Button butClearAllMovements;
 		private OpenDental.UI.CheckBox checkShowCompleted;
-		private UI.Button butErxAccess;
 		private System.Windows.Forms.ContextMenu menuErx;
 		private System.Windows.Forms.MenuItem menuItemErxRefresh;
 		private OpenDental.UI.CheckBox checkTreatPlans;
@@ -3180,7 +2900,6 @@
 		private System.Windows.Forms.Label label23;
 		private ODtextBox textSearch;
 		private System.Windows.Forms.Label labelSearchClear;
-		private OpenDental.UI.ODInternalCustomerGrids odInternalCustomerGrids;
 		private System.Windows.Forms.MenuItem menuItemSetEC;
 		private System.Windows.Forms.MenuItem menuItemSetEO;
 		private System.Windows.Forms.MenuItem menuItemGroupMultiVisit;
@@ -3229,6 +2948,5 @@
 		private UI.Button butUnhideOrtho;
 		private UI.Button butHideOrtho;
 		private UI.CheckBox checkShowHidden;
-		private System.Windows.Forms.MenuItem menuItemAiChat;
 	}
 }

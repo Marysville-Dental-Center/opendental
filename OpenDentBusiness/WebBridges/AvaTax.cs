@@ -25,9 +25,9 @@ namespace OpenDentBusiness {
 		#endregion Constructor
 
 		#region Methods - Public
-		///<summary>True if we are in HQ and AvaTax is enabled.</summary>
+		///<summary>Always false. AvaTax was only ever enabled at Open Dental HQ, for billing its own customers, and this build is never HQ.</summary>
 		public static bool IsEnabled() {
-			return PrefC.IsODHQ && Programs.IsEnabled(ProgramName.AvaTax);
+			return false;
 		}
 
 		///<summary>True if we are in HQ, AvaTax is enabled, we tax the customer's state, and either the customer's tax exempt field is not defined or 

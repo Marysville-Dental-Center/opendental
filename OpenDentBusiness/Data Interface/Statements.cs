@@ -927,7 +927,7 @@ namespace OpenDentBusiness {
 				return "";
 			}
 			string path=FileAtoZ.CombinePaths(filePath,fileName); 
-			DataSet dataSet=AccountModules.GetStatementDataSet(statement,true,doIncludePatLName:PrefC.IsODHQ);
+			DataSet dataSet=AccountModules.GetStatementDataSet(statement,true,doIncludePatLName:false);
 			DataTable dataTable=SheetFramework.SheetDataTableUtil.GetTable_StatementMain(dataSet,statement);
 			StringBuilder stringBuilderExportCSV=new StringBuilder();
 			long stateNum=statement.StatementNum;

@@ -205,14 +205,6 @@ namespace OpenDental{
 				return;
 			}
 			//HQ users without the TimecardEditAll permission can only make Time Card Adjustments for PTO and UPL.
-			if(PrefC.IsODHQ
-				&& !checkUnpaidProtectedLeave.Checked
-				&& comboPTO.SelectedIndex==0
-				&& !Security.IsAuthorized(EnumPermType.TimecardsEditAll,suppressMessage:true)) 
-			{
-				MsgBox.Show(this,"HQ users without the Edit All Time Cards permission must select a PTO Type or check the Protected Leave box.");
-				return;
-			}
 			//end of validation
 			_timeAdjust.IsAuto=radioAuto.Checked;
 			_timeAdjust.TimeEntry=DateTime.Parse(textTimeEntry.Text);

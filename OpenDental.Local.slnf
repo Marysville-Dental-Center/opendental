@@ -24,7 +24,6 @@
       "UnitTests\\UnitTests.csproj",
       "UnitTestsCore\\UnitTestsCore.csproj",
       "UpdateFileCopier\\UpdateFileCopier.csproj",
-      "WebCamOD\\WebCamOD.csproj",
       "WpfControlsOD\\WpfControlsOD.csproj",
       "xCrudGenerator\\xCrudGenerator.csproj"
     ]

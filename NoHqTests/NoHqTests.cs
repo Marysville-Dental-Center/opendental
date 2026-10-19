@@ -130,8 +130,9 @@ namespace NoHqTests {
 		}
 
 		[TestMethod]
-		public void PrefC_IsODHQ_IsAlwaysFalse() {
-			Assert.IsFalse(PrefC.IsODHQ);
+		public void PrefC_IsODHQ_IsRemoved() {
+			//PrefC.IsODHQ turned on Open Dental HQ's staff tools. It was pinned to false, then inlined and removed.
+			Assert.IsNull(typeof(PrefC).GetProperty("IsODHQ",BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Static));
 		}
 		#endregion Gates and telemetry
 

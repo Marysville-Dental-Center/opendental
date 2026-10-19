@@ -19,7 +19,7 @@ namespace OpenDental {
 				if(listDefCats[i].GetDescription() == "NotUsed") {
 					continue;
 				}
-				if(listDefCats[i].GetDescription().Contains("HqOnly") && !PrefC.IsODHQ) {
+				if(listDefCats[i].GetDescription().Contains("HqOnly")) {
 					continue;
 				}
 				if(listDefCats[i].In(DefCat.EClipboardImageCapture,DefCat.WebSchedExistingApptTypes,DefCat.WebSchedNewPatApptTypes)) {
@@ -347,7 +347,7 @@ namespace OpenDental {
 			gridDefs.ListGridRows.Clear();
 			GridRow row;
 			for(int i=0;i<listDefs.Count;i++){
-				if(!PrefC.IsODHQ && listDefs[i].ItemValue==CommItemTypeAuto.ODHQ.ToString()) {
+				if(listDefs[i].ItemValue==CommItemTypeAuto.ODHQ.ToString()) {
 					continue;
 				}
 				if(Defs.IsDefDeprecated(listDefs[i])) {

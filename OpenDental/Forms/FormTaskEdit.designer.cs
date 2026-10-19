@@ -29,9 +29,7 @@ namespace OpenDental {
 		private void InitializeComponent() {
 			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormTaskEdit));
 			this.timePickerReminder = new System.Windows.Forms.DateTimePicker();
-			this.butCreateJob = new OpenDental.UI.Button();
 			this.label6 = new System.Windows.Forms.Label();
-			this.labelJobs = new System.Windows.Forms.Label();
 			this.panelRepeating = new OpenDental.UI.PanelOD();
 			this.labelDateTask = new System.Windows.Forms.Label();
 			this.labelDateType = new System.Windows.Forms.Label();
@@ -57,7 +55,6 @@ namespace OpenDental {
 			this.checkReminderRepeatWednesday = new OpenDental.UI.CheckBox();
 			this.checkReminderRepeatFriday = new OpenDental.UI.CheckBox();
 			this.checkReminderRepeatThursday = new OpenDental.UI.CheckBox();
-			this.comboJobs = new System.Windows.Forms.ComboBox();
 			this.butAudit = new OpenDental.UI.Button();
 			this.butColor = new System.Windows.Forms.Button();
 			this.label8 = new System.Windows.Forms.Label();
@@ -136,17 +133,6 @@ namespace OpenDental {
 			this.timePickerReminder.TabIndex = 4;
 			this.timePickerReminder.Visible = false;
 			// 
-			// butCreateJob
-			// 
-			this.butCreateJob.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.butCreateJob.Location = new System.Drawing.Point(748, 580);
-			this.butCreateJob.Name = "butCreateJob";
-			this.butCreateJob.Size = new System.Drawing.Size(75, 24);
-			this.butCreateJob.TabIndex = 172;
-			this.butCreateJob.Text = "Create Job";
-			this.butCreateJob.Visible = false;
-			this.butCreateJob.Click += new System.EventHandler(this.butCreateJob_Click);
-			// 
 			// label6
 			// 
 			this.label6.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
@@ -156,17 +142,6 @@ namespace OpenDental {
 			this.label6.TabIndex = 14;
 			this.label6.Text = "Object Type";
 			this.label6.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// labelJobs
-			// 
-			this.labelJobs.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.labelJobs.Location = new System.Drawing.Point(423, 583);
-			this.labelJobs.Name = "labelJobs";
-			this.labelJobs.Size = new System.Drawing.Size(47, 19);
-			this.labelJobs.TabIndex = 162;
-			this.labelJobs.Text = "Jobs";
-			this.labelJobs.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			this.labelJobs.Visible = false;
 			// 
 			// panelRepeating
 			// 
@@ -405,18 +380,6 @@ namespace OpenDental {
 			this.checkReminderRepeatThursday.Name = "checkReminderRepeatThursday";
 			this.checkReminderRepeatThursday.Size = new System.Drawing.Size(13, 15);
 			this.checkReminderRepeatThursday.TabIndex = 4;
-			// 
-			// comboJobs
-			// 
-			this.comboJobs.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.comboJobs.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-			this.comboJobs.FormattingEnabled = true;
-			this.comboJobs.Location = new System.Drawing.Point(476, 582);
-			this.comboJobs.Name = "comboJobs";
-			this.comboJobs.Size = new System.Drawing.Size(266, 21);
-			this.comboJobs.TabIndex = 163;
-			this.comboJobs.Visible = false;
-			this.comboJobs.SelectedIndexChanged += new System.EventHandler(this.comboJobs_SelectedIndexChanged);
 			// 
 			// butAudit
 			// 
@@ -1009,12 +972,9 @@ namespace OpenDental {
 			this.Controls.Add(this.textBoxDateTimeCreated);
 			this.Controls.Add(this.butRefresh);
 			this.Controls.Add(this.labelTaskChanged);
-			this.Controls.Add(this.butCreateJob);
 			this.Controls.Add(this.label6);
-			this.Controls.Add(this.labelJobs);
 			this.Controls.Add(this.panelRepeating);
 			this.Controls.Add(this.groupReminder);
-			this.Controls.Add(this.comboJobs);
 			this.Controls.Add(this.butAudit);
 			this.Controls.Add(this.butColor);
 			this.Controls.Add(this.label8);
@@ -1114,8 +1074,6 @@ namespace OpenDental {
 		private Label label8;
 		private System.Windows.Forms.Button butColor;
 		private UI.Button butAudit;
-		private ComboBox comboJobs;
-		private Label labelJobs;
 		private ComboBox comboReminderRepeat;
 		private Label labelReminderRepeat;
 		private ValidNum textReminderRepeatFrequency;
@@ -1135,7 +1093,6 @@ namespace OpenDental {
 		private UI.PanelOD panelRepeating;
 		private UI.PanelOD panelReminderFrequency;
 		private UI.Button butAutoNote;
-		private UI.Button butCreateJob;
 		private Label labelTaskChanged;
 		private TextBox textBoxDateTimeCreated;
 		private Label label3;

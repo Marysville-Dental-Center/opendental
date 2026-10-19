@@ -45,9 +45,6 @@ namespace OpenDental{
 			if(PrefC.HasClinicsEnabled) {
 				comboClinic.ClinicNumSelected=_clockEvent.ClinicNum;
 			}
-      if(PrefC.IsODHQ) {
-				checkIsWorkingHome.Visible=true;
-      }
 			//Set Text Fields----------------
 			FillInitialControlsHelper();
 		}

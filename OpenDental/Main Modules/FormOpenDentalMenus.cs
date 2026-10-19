@@ -20,7 +20,6 @@ namespace OpenDental{
 		private MenuItemOD _menuItemCounties;
 		///<summary>Not available if in Unix.</summary>
 		private MenuItemOD _menuItemCreateAtoZ;
-		private MenuItemOD _menuItemCustManagement;
 		private MenuItemOD _menuItemCustomReports;
 		///<summary>Only available in OD HQ.</summary>
 		private MenuItemOD _menuItemDefaultCCProcs;
@@ -36,11 +35,8 @@ namespace OpenDental{
 		private MenuItemOD _menuItemFinanceCharges;
 		private MenuItemOD _menuItemHL7;
 		private MenuItemOD _menuItemEHR;
-		///<summary>Only available in OD HQ.</summary>
-		private MenuItemOD _menuItemJobManager;
 		///<summary>Only available if Late Charges are enabled on the Show Features window.</summary>
 		private MenuItemOD _menuItemLateCharges;
-		private MenuItemOD _menuItemNewCropBilling;
 		private MenuItemOD _menuItemNoAlerts;
 		private MenuItemOD _menuItemPatDashboards;
 		private MenuItemOD _menuItemPatPortalTransactions;
@@ -58,8 +54,6 @@ namespace OpenDental{
 
 		private MenuItemOD _menuItemReplication;
 		private MenuItemOD _menuItemRequirementsNeeded;
-		///<summary>Only available in OD HQ.</summary>
-		private MenuItemOD _menuItemResellers;
 
 		private MenuItemOD _menuItemServiceManager;
 		private MenuItemOD _menuItemSites;
@@ -72,8 +66,6 @@ namespace OpenDental{
 		private MenuItemOD _menuItemTranslation;
 		private MenuItemOD _menuItemUnfinalizedPay;
 		private MenuItemOD _menuItemUserQuery;
-		///<summary>Only available in OD HQ.</summary>
-		private MenuItemOD _menuItemWebChatTools;
 		private MenuItemOD _menuItemXChargeReconcile;
 		#endregion Fields
 
@@ -354,13 +346,6 @@ namespace OpenDental{
 		#region Tools
 		///<summary>Tools Main</summary>
 		private void LayoutMenuTools(MenuItemOD menuItemTools) {
-			//Job Mananger----------------------------------------------------------------------------------------------------
-			_menuItemJobManager=new MenuItemOD("Job Manager",menuItemJobManager_Click);
-			menuItemTools.Add(_menuItemJobManager);
-			//Web Chat Tools--------------------------------------------------------------------------------------------------
-			_menuItemWebChatTools=new MenuItemOD("Chat Tools");
-			menuItemTools.Add(_menuItemWebChatTools);
-			LayoutSubMenuWebChatTools(_menuItemWebChatTools);
 			//Snipping Tool-----------------------------------------------------------------------------------------------
 			menuItemTools.Add("&Screen Snipping Tool",menuItemScreenSnip_Click);
 			//Print Screen Tool-----------------------------------------------------------------------------------------------
@@ -382,8 +367,6 @@ namespace OpenDental{
 			menuItemTools.Add(_menuItemCareCreditTransactions);
 			menuItemTools.Add("CC Recurring Charges",menuItemCCRecurring_Click);
 			menuItemTools.Add("Certifications",menuItemCertifications_Click);
-			_menuItemCustManagement=new MenuItemOD("Customer Management",menuItemCustomerManage_Click);
-			menuItemTools.Add(_menuItemCustManagement);
 			menuItemTools.Add("Database Maintenance",menuItemDatabaseMaintenance_Click);
 			//menuItemTools.Add("Dispensary",menuItemDispensary_Click);//FormDispensary is not fully functional and should not be an available option at this time
 			_menuItemEvaluations=new MenuItemOD("Evaluations",menuItemEvaluations_Click);
@@ -394,8 +377,6 @@ namespace OpenDental{
 			menuItemTools.Add(_menuItemTranslation);
 			_menuItemLateCharges=new MenuItemOD("Late Charges",menuItemLateCharges_Click);
 			menuItemTools.Add(_menuItemLateCharges);
-			_menuItemNewCropBilling=new MenuItemOD("NewCrop Billing",menuItemNewCropBilling_Click);
-			menuItemTools.Add(_menuItemNewCropBilling);
 			menuItemTools.Add("Ortho Auto Claims",menuItemOrthoAuto_Click);
 			_menuItemPatDashboards=new MenuItemOD("Patient Dashboards");
 			menuItemTools.Add(_menuItemPatDashboards);
@@ -407,8 +388,6 @@ namespace OpenDental{
 			menuItemTools.Add(_menuItemPublicHealthScreening);
 			_menuItemRepeatingCharges=new MenuItemOD("Repeating Charges",menuItemRepeatingCharges_Click);
 			menuItemTools.Add(_menuItemRepeatingCharges);
-			_menuItemResellers=new MenuItemOD("Resellers",menuItemResellers_Click);
-			menuItemTools.Add(_menuItemResellers);
 			menuItemTools.Add("Setup Wizard",menuItemSetupWizard_Click);
 			_menuItemStudentRequirements=new MenuItemOD("Student Requirements",menuItemReqStudents_Click);
 			menuItemTools.Add(_menuItemStudentRequirements);
@@ -421,13 +400,6 @@ namespace OpenDental{
 		/// <summary>Tools: Advertising</summary>
 		private void LayoutSubMenuAdvertising(MenuItemOD menuItemAdvertisingTools) {
 			menuItemAdvertisingTools.Add("Postcards",menuItemAdvertisingPostcards_Click);
-		}
-
-		///<summary>Tools: WebChatTools</summary>
-		private void LayoutSubMenuWebChatTools(MenuItemOD menuItemWebChatTools) {
-			menuItemWebChatTools.Add("AI Chat", menuItemAiChatSessions_Click);
-			menuItemWebChatTools.Add("Sessions",menuItemWebChatSessions_Click);
-			menuItemWebChatTools.Add("Surveys",menuItemWebChatSurveys_Click);
 		}
 
 		///<summary>Tools: Misc Tools</summary>

@@ -1111,7 +1111,7 @@ namespace OpenDental {
 					+_tableAddress.Rows[patientsPrinted]["State"].ToString()+" "
 					+_tableAddress.Rows[patientsPrinted]["Zip"].ToString()+"\r\n";
 				Rectangle rectangle=new Rectangle((int)xPos,(int)yPos,275,100);
-				OpenDental.InternalTools.Phones.MapPanel.FitTextOld(text,new Font(FontFamily.GenericSansSerif,11),Brushes.Black,rectangle,new StringFormat(),g);
+				PrinterL.FitText(text,new Font(FontFamily.GenericSansSerif,11),Brushes.Black,rectangle,new StringFormat(),g);
 				//reposition for next label
 				xPos+=275;
 				if(xPos>850){//drop a line

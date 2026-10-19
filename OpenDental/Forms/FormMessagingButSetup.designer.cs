@@ -41,7 +41,6 @@ namespace OpenDental {
 			this.label2 = new System.Windows.Forms.Label();
 			this.butDown = new OpenDental.UI.Button();
 			this.butUp = new OpenDental.UI.Button();
-			this.butSynchAll = new OpenDental.UI.Button();
 			this.SuspendLayout();
 			// 
 			// label1
@@ -106,22 +105,9 @@ namespace OpenDental {
 			this.butUp.Text = "Up";
 			this.butUp.Click += new System.EventHandler(this.butUp_Click);
 			// 
-			// butSynchAll
-			// 
-			this.butSynchAll.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.butSynchAll.Location = new System.Drawing.Point(497, 45);
-			this.butSynchAll.Name = "butSynchAll";
-			this.butSynchAll.Size = new System.Drawing.Size(75, 26);
-			this.butSynchAll.TabIndex = 24;
-			this.butSynchAll.Text = "Sync All";
-			this.butSynchAll.UseVisualStyleBackColor = true;
-			this.butSynchAll.Visible = false;
-			this.butSynchAll.Click += new System.EventHandler(this.butSynchAll_Click);
-			// 
 			// FormMessagingButSetup
 			// 
 			this.ClientSize = new System.Drawing.Size(584, 383);
-			this.Controls.Add(this.butSynchAll);
 			this.Controls.Add(this.listComputers);
 			this.Controls.Add(this.label2);
 			this.Controls.Add(this.butDown);
@@ -146,6 +132,5 @@ namespace OpenDental {
 		private OpenDental.UI.ListBox listButtons;
 		private OpenDental.UI.ListBox listComputers;
 		private Label label2;
-		private UI.Button butSynchAll;
 	}
 }

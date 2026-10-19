@@ -56,14 +56,6 @@ namespace OpenDentBusiness {
 			}
 		}
 
-		///<summary>Used to return true at Open Dental Software, Inc. headquarters (when DockPhonePanelShow was enabled), which turned on their
-		///internal staff tools. This build is never HQ, so this is always false, regardless of the DockPhonePanelShow preference.</summary>
-		public static bool IsODHQ {
-			get {
-				return false;
-			}
-		}
-
 		///<summary>Returns a list of DefNums that represent WSEP Generally Allowed blockout types.</summary>
 		public static List<long> GetWebSchedExistingPatAllowedBlockouts {
 			get {

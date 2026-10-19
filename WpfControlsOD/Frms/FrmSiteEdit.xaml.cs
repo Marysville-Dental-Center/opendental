@@ -49,8 +49,6 @@ namespace OpenDental {
 			FillComboZip();
 			textZip.Text=SiteCur.Zip;
 			textNote.Text=SiteCur.Note;
-			butSiteLink.Visible=PrefC.IsODHQ;
-			butSiteLink.IsEnabled=(!SiteCur.IsNew);
 		}
 
 		private void butPickProvider_Click(object sender,EventArgs e) {
@@ -184,22 +182,6 @@ namespace OpenDental {
 			textCity.Text=frmZipSelect.ZipCodeSelected.City;
 			textState.Text=frmZipSelect.ZipCodeSelected.State;
 			textZip.Text=frmZipSelect.ZipCodeSelected.ZipCodeDigits;
-		}
-
-		private void butSiteLink_Click(object sender,EventArgs e) {
-			SiteLink siteLink=SiteLinks.GetFirstOrDefault(x => x.SiteNum==SiteCur.SiteNum);
-			if(siteLink==null) {
-				siteLink=new SiteLink();
-				siteLink.SiteNum=SiteCur.SiteNum;
-				siteLink.ForeColor=System.Drawing.Color.Black;
-				siteLink.InnerColor=System.Drawing.Color.LightCyan;
-				siteLink.OuterColor=System.Drawing.Color.Blue;
-			}
-			FrmSiteLinkEdit frmSiteLinkEdit=new FrmSiteLinkEdit(siteLink);
-			frmSiteLinkEdit.ShowDialog();
-			if(frmSiteLinkEdit.IsDialogOK) {
-				DataValid.SetInvalid(InvalidType.Sites);
-			}
 		}
 
 		private void butDelete_Click(object sender,EventArgs e) {

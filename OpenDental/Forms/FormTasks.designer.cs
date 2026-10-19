@@ -33,7 +33,6 @@ namespace OpenDental {
 		{
 			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormTasks));
 			this.userControlTasks1 = new OpenDental.UserControlTasks();
-			this.gridWebChatSessions = new OpenDental.UI.GridOD();
 			this.splitContainer = new OpenDental.UI.SplitContainer();
 			this.splitterPanel1 = new OpenDental.UI.SplitterPanel();
 			this.splitterPanel2 = new OpenDental.UI.SplitterPanel();
@@ -51,18 +50,6 @@ namespace OpenDental {
 			this.userControlTasks1.TabIndex = 0;
 			this.userControlTasks1.TaskTab = OpenDental.UserControlTasksTab.ForUser;
 			this.userControlTasks1.FillGridEvent += new OpenDental.UserControlTasks.FillGridEventHandler(this.UserControlTasks1_FillGridEvent);
-			this.userControlTasks1.Resize += new System.EventHandler(this.userControlTasks1_Resize);
-			// 
-			// gridWebChatSessions
-			// 
-			this.gridWebChatSessions.Dock = System.Windows.Forms.DockStyle.Fill;
-			this.gridWebChatSessions.Location = new System.Drawing.Point(0, 0);
-			this.gridWebChatSessions.Name = "gridWebChatSessions";
-			this.gridWebChatSessions.Size = new System.Drawing.Size(1230, 153);
-			this.gridWebChatSessions.TabIndex = 1;
-			this.gridWebChatSessions.Title = "Web Chat Sessions";
-			this.gridWebChatSessions.TranslationName = "gridWebChatSessions";
-			this.gridWebChatSessions.CellDoubleClick += new OpenDental.UI.ODGridClickEventHandler(this.gridWebChatSessions_CellDoubleClick);
 			// 
 			// splitContainer
 			// 
@@ -89,7 +76,6 @@ namespace OpenDental {
 			// 
 			// splitterPanel2
 			// 
-			this.splitterPanel2.Controls.Add(this.gridWebChatSessions);
 			this.splitterPanel2.Location = new System.Drawing.Point(0, 543);
 			this.splitterPanel2.Name = "splitterPanel2";
 			this.splitterPanel2.Size = new System.Drawing.Size(1230, 153);
@@ -111,7 +97,6 @@ namespace OpenDental {
 		}
 		#endregion
 
-		private UI.GridOD gridWebChatSessions;
 		private UserControlTasks userControlTasks1;
 		private UI.SplitContainer splitContainer;
 		private UI.SplitterPanel splitterPanel1;

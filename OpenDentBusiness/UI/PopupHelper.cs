@@ -73,14 +73,6 @@ namespace OpenDentBusiness.UI {
 					EventHandler eventHandler=(s,eArg) => { OpenTaskNum(taskNum); };
 					listMenuItemsLinks.Add(new MenuItem("TaskNum - "+listNumMatches[i],eventHandler));
 				}
-				if(PrefC.IsODHQ) {
-					listNumMatches=GetJobNumsFromText(contextMenuItemText);
-					for(int i = 0;i<listNumMatches.Count;i++) {
-						long jobNum = listNumMatches[i];
-						EventHandler eventHandler = (s,eArg) => { OpenJobNum(jobNum); };
-						listMenuItemsLinks.Add(new MenuItem("JobNum - "+listNumMatches[i],eventHandler));
-					}
-				}
 			}
 			listMenuItemsLinks=listMenuItemsLinks.OrderByDescending(x => x.Text=="-").ThenBy(x => x.Text).ToList();//alphabetize the link items.
 			return listMenuItemsLinks;
@@ -140,17 +132,6 @@ namespace OpenDentBusiness.UI {
 			return listNumMatches;
 		}
 
-		public static List<long> GetJobNumsFromText(string text) {
-			//If this Regex pattern is ever changed, we may need to change the Select statement below.
-			string strJobNum = "jobnum:";
-			List<long> listNumMatches = Regex.Matches(text,$@"{strJobNum}\d+",RegexOptions.IgnoreCase)
-				.OfType<Match>()
-				.Select(x => PIn.Long(x.Groups[0].Value.Substring(strJobNum.Length),false))//Get Job num out of text.
-				.Distinct()
-				.ToList();
-			return listNumMatches;
-		}
-
 		#endregion Methods - Public
 
 		#region Methods - Private
@@ -172,12 +153,6 @@ namespace OpenDentBusiness.UI {
 		private static void OpenTaskNum(long taskNum) {
 			if(Tasks.NavTaskDelegate!=null) {
 				Tasks.NavTaskDelegate.Invoke(taskNum);
-			}
-		}
-
-		private static void OpenJobNum(long jobNum) {
-			if(Jobs.NavJobDelegate!=null) {
-				Jobs.NavJobDelegate.Invoke(jobNum);
 			}
 		}
 

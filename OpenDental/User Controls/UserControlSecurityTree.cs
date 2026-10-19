@@ -527,34 +527,6 @@ namespace OpenDental {
 				node.Nodes.Add(node2);
 			treePermissions.Nodes.Add(node);
 			#region HQ Only Permissions
-			if(PrefC.IsODHQ) {
-				node=SetNode("HQ Only");
-				node2=SetNode(EnumPermType.CommlogPersistent);
-				node.Nodes.Add(node2);
-				node2=SetNode(EnumPermType.SalesTaxAdjEdit);
-				node.Nodes.Add(node2);
-				node2=SetNode(EnumPermType.HeadmasterSetup);
-				node.Nodes.Add(node2);
-				node2=SetNode(EnumPermType.FAQEdit);
-				node.Nodes.Add(node2);
-				node2=SetNode(EnumPermType.FeatureRequestEdit);
-				node.Nodes.Add(node2);
-				node2=SetNode(EnumPermType.EditReadOnlyTasks);
-				node.Nodes.Add(node2);
-				node2=SetNode(EnumPermType.ApiAccountEdit);
-				node.Nodes.Add(node2);
-				node2=SetNode(EnumPermType.TextingAccountEdit);
-				node.Nodes.Add(node2);
-				node2=SetNode(EnumPermType.PreferenceEditBroadcastMonitor);
-				node.Nodes.Add(node2);
-				node2=SetNode(EnumPermType.CloudCustomerEdit);
-				node.Nodes.Add(node2);
-				node2=SetNode(EnumPermType.ChanSpy);
-				node.Nodes.Add(node2);
-				node2=SetNode(EnumPermType.AiChatSession);
-				node.Nodes.Add(node2);
-				treePermissions.Nodes.Add(node);
-			}
 			#region Child Daycare
 			if(PrefC.GetBoolSilent(PrefName.ChildDaycare,false)) {
 				node=SetNode(EnumPermType.ChildDaycareEdit);

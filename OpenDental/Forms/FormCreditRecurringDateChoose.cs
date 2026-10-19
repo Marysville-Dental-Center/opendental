@@ -102,11 +102,7 @@ namespace OpenDental {
 		///<summary>Returns a valid date based on the Month and Year taken from the date passed in and the Day that is set for the recurring charges.</summary>
 		private DateTime GetValidPayDate(DateTime date) {
 			int dayOfMonth;
-			DateTime datePay=date; 
-			if(PrefC.IsODHQ && PrefC.GetBool(PrefName.BillingUseBillingCycleDay)) {
-				dayOfMonth=_patient.BillingCycleDay;
-				return GetDateForDayOfMonth(date,dayOfMonth);
-			}
+			DateTime datePay=date;
 			if(CreditCards.GetFrequencyType(_creditCard.ChargeFrequency)==ChargeFrequencyType.FixedDayOfMonth) {
 				//EX: 1st of Each Month (This check only accounts for a singular day of the month being run)
 				List<int> listDaysOfMonth=CreditCards.GetDaysOfMonthForChargeFrequency(_creditCard.ChargeFrequency).Split(',').Select(x => PIn.Int(x))

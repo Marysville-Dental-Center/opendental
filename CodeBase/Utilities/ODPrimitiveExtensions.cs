@@ -686,7 +686,7 @@ namespace CodeBase {
 		}
 	}
 
-	///<summary>The IsODHQAttribute can  be applied to a field, and checked. Use in tandem with PrefC.IsODHQ to hide HQ only features.</summary>
+	///<summary>The IsODHQAttribute can  be applied to a field, and checked. Marks enum values that only Open Dental HQ used, so they can be hidden.</summary>
 	public class IsODHQAttribute:Attribute {
 		private bool _isODHQ=false;
 

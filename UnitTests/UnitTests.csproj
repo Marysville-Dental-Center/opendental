@@ -277,7 +277,6 @@
     <Compile Include="UnitTests\SetupWizardTests.cs" />
     <Compile Include="UnitTests\RpOutstandInsTests.cs" />
     <Compile Include="UnitTests\PaymentsTests.cs" />
-    <Compile Include="UnitTests\PeerInfosTests.cs" />
     <Compile Include="UnitTests\CentralManagerTests.cs" />
     <Compile Include="UnitTests\LimitedBetaFeatureTests.cs" />
     <Compile Include="UnitTests\POutTests.cs" />

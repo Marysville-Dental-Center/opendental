@@ -129,14 +129,10 @@ namespace OpenDental {
 				PreFillSearchBoxes();
 			}
 			ContextMenu contextMenu=new ContextMenu(gridMain);
-			if(!PrefC.GetBool(PrefName.DockPhonePanelShow)) {
-				labelCountry.Visible=false;
-				textCountry.Visible=false;
-			}
-			if(!PrefC.GetBool(PrefName.DistributorKey)) {
-				labelRegKey.Visible=false;
-				textRegKey.Visible=false;
-			}
+			labelCountry.Visible=false;
+			textCountry.Visible=false;
+			labelRegKey.Visible=false;
+			textRegKey.Visible=false;
 			checkRefresh.IsEnabled=PrefC.GetBool(PrefName.EnterpriseAllowRefreshWhileTyping);
 			checkShowInactive.Checked=PrefC.GetBool(PrefName.PatientSelectShowInactive);
 			groupAddPatient.Visible=false;

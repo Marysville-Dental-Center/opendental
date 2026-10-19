@@ -52,7 +52,6 @@ namespace OpenDental {
 
 		private void FormScheduleDay_Load(object sender,System.EventArgs e) {
 			SetFilterControlsAndAction(() => FillGrid(),textSearch);
-			butViewGraph.Visible=PrefC.IsODHQ;
 			butOkSchedule.Visible=ShowOkSchedule;
 			_listClinics=new List<Clinic>();
 			_listClinics.Add(new Clinic() { Abbr="" });//so HQ always comes before other clinics in the sort order; only for notes and holidays
@@ -169,26 +168,7 @@ namespace OpenDental {
 				.Where(x=>x!=null).ToList();//speed up sort.
 			_listProvidersSort=_listSchedules.Select(x=>x.ProvNum).Distinct().Select(x=>Providers.GetProv(x))//returns null if ProvNum==0 or invalid
 				.Where(x=>x!=null).ToList();//speed up sort.
-			if(PrefC.IsODHQ) {
-				//HQ wants their own sort, so instead of complicating the comparer we will just do the comparer on four seperate lists.
-				List<Schedule> listSchedulesPracticeNotes=_listSchedules.Where(x => x.EmployeeNum==0 && x.ProvNum==0).ToList();
-				listSchedulesPracticeNotes.Sort(CompareSchedule);
-				List<Schedule> listSchedulesEmpNotes=_listSchedules.Where(x => x.EmployeeNum!=0 && x.ProvNum==0 && x.StartTime==TimeSpan.Zero).ToList();
-				listSchedulesEmpNotes.Sort(CompareSchedule);
-				List<Schedule> listSchedulesProv=_listSchedules.Where(x => x.EmployeeNum==0 && x.ProvNum!=0).ToList();
-				listSchedulesProv.Sort(CompareSchedule);
-				List<Schedule> listSchedulesEmp=_listSchedules.Where(x => x.EmployeeNum!=0 && x.ProvNum==0 && x.StartTime!=TimeSpan.Zero).ToList();
-				listSchedulesEmp.Sort(CompareSchedule);
-				_listSchedules=new List<Schedule>();
-				_listSchedules.AddRange(listSchedulesPracticeNotes);
-				_listSchedules.AddRange(listSchedulesEmpNotes);
-				_listSchedules.AddRange(listSchedulesProv);
-				_listSchedules.AddRange(listSchedulesEmp);
-				_listSchedules.Distinct();
-			}
-			else {
-				_listSchedules.Sort(CompareSchedule);
-			}
+			_listSchedules.Sort(CompareSchedule);
 			graphScheduleDay.SetSchedules(_listSchedules);
 			gridMain.BeginUpdate();
 			gridMain.Columns.Clear();
@@ -632,11 +612,6 @@ namespace OpenDental {
 		private void butOkSchedule_Click(object sender,EventArgs e) {
 			GotoScheduleOnClose=true;
 			butSave_Click(sender,e);
-		}
-
-		private void butViewGraph_Click(object sender,EventArgs e) {
-			using FormGraphEmployeeTime formGraphEmployeeTime=new FormGraphEmployeeTime(_dateSched);
-			formGraphEmployeeTime.ShowDialog();
 		}
 
 		private void butSave_Click(object sender,EventArgs e) {

@@ -147,10 +147,6 @@ End of Checklist================================================================
 			LayoutManager.Add(listBoxSites,this);
 			listBoxSites.BringToFront();
 			Lan.F(this);
-			if(PrefC.GetBool(PrefName.DockPhonePanelShow)) {
-				labelST.Text=Lan.g(this,"ST, Country");
-				textCountry.Visible=true;
-			}
 			if(CultureInfo.CurrentCulture.Name.EndsWith("CA")) {//Canadian. en-CA or fr-CA
 				labelSSN.Text=Lan.g(this,"SIN");
 				labelZip.Text=Lan.g(this,"Postal Code");

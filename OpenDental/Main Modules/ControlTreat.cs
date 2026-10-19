@@ -1079,12 +1079,7 @@ namespace OpenDental{
 		///<summary>Helper method used to determine if sales tax is displayed.</summary>
 		private bool HasSalesTax(List<DisplayField> listDisplayFields) {
 			if(PatientCur!=null && listDisplayFields.Any(x => x.InternalName=="Tax Est")) {
-				if(PrefC.IsODHQ) {
-					return AvaTax.IsTaxable(PatientCur.PatNum);
-				}
-				else {
-					return true;
-				}
+				return true;
 			}
 			return false;
 		}

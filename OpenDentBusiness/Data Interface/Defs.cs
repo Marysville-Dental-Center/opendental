@@ -618,12 +618,6 @@ namespace OpenDentBusiness {
 				SET BillingTypeTwo={strDefNumTo} 
 				WHERE BillingTypeTwo={strDefNumFrom}";
 			Db.NonQ(command);
-			if(PrefC.IsODHQ){
-				command=$@"UPDATE reseller 
-					SET BillingType={strDefNumTo} 
-					WHERE BillingType={strDefNumFrom}";
-				Db.NonQ(command);
-			}
 			#endregion
 			#region Prefs
 			command=$@"UPDATE preference 

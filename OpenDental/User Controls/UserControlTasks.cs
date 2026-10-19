@@ -39,7 +39,6 @@ namespace OpenDental {
 		///<summary>A friendly string that could be used as the title of any window that has this control on it.
 		///It will contain the description of the currently selected task list and a count of all new tasks within that list.</summary>
 		public string TitleControlParent;
-		private const int _TriageListNum=1697;
 		private bool _isTaskSortApptDateTime;//Use task AptDateTime sort setup in FormTaskOptions.
 		private bool _isShowFinishedTasks=false;//Show finished task setup in FormTaskOptions.
 		private bool _isShowArchivedTaskLists;//Show archived task lists in FormTaskOptions.
@@ -221,13 +220,6 @@ namespace OpenDental {
 			else {
 				butRefresh.Visible=false;
 			}
-			if(PrefC.IsODHQ) {
-				menuNavJob.Visible=true;
-				menuNavJob.Enabled=false;
-				if(Security.IsAuthorized(EnumPermType.TaskDelete,true)) {
-					menuDeleteTaken.Visible=true;
-				}
-			}
 			menuNavAttachment.Enabled=false;
 			_isTaskSortApptDateTime=PrefC.GetBool(PrefName.TaskSortApptDateTime);//This sets it for use and also for the task options default value.
 			List<UserOdPref> listUserOdPrefsForCollapsing=UserOdPrefs.GetByUserAndFkeyType(Security.CurUser.UserNum,UserOdFkeyType.TaskCollapse);
@@ -349,30 +341,6 @@ namespace OpenDental {
 			gridMain.SetAll(false);
 			gridMain.ListGridRows.Clear();
 			gridMain.Invalidate();
-		}
-
-		///<summary>Used by OD HQ.</summary>
-		public void FillGridWithTriageList() {
-			TaskList taskList=TaskLists.GetOne(_TriageListNum);
-			tabControl.SelectedTab=tabMain;
-			if(_listTaskListTreeHistory==null) {
-				_listTaskListTreeHistory=new List<TaskList>();
-			}
-			_listTaskListTreeHistory.Clear();
-			_listTaskListTreeHistory.Add(taskList);
-			if(_listTaskLists==null) {
-				_listTaskLists=new List<TaskList>();
-			}
-			_listTaskLists.Clear();
-			if(_listTasks==null) {
-				_listTasks=new List<Task>();
-			}
-			_listTasks.Clear();
-			_listTasks=Tasks.RefreshChildren(_TriageListNum,false,monthCalendar.SelectionStart,Security.CurUser.UserNum,0,TaskType.All,_listClinicNumsFilter,_listDefNumsRegionFilter);
-			FillTree();
-			FillGrid();
-			gridMain.Focus();//Allow immediate mouse wheel scroll when loading triage list, no click required
-			LayoutToolBar();//To show the triage specific buttons.
 		}
 
 		private void UserControlTasks_Load(object sender,System.EventArgs e) {
@@ -979,7 +947,6 @@ namespace OpenDental {
 			// Having GetFilteredTaskLists() out here prevents having to call DB every time we type in the filter.
 			List<TaskList> listTaskLists=GetFilteredTaskLists();
 			//bool isTaskSelectedVisible=gridMain.IsTagVisible(_clickedTask);
-			bool isHqAndTriageList=PrefC.GetBool(PrefName.DockPhonePanelShow) && taskListNum==_TriageListNum;//True if HQ and looking at 'Triage' task list
 			gridMain.BeginUpdate();
 			gridMain.Columns.Clear();
 			GridColumn gridColumn=new GridColumn("",17);
@@ -997,28 +964,9 @@ namespace OpenDental {
 			gridColumn=new GridColumn(Lan.g(this,"+/-"),17,HorizontalAlignment.Center);
 			gridColumn.HeaderClick+=GridHeaderClickEvent;
 			gridMain.Columns.Add(gridColumn);
-			if(PrefC.GetBool(PrefName.DockPhonePanelShow)){//HQ
-				gridColumn=new GridColumn(Lan.g("TableTasks","ST"),30,HorizontalAlignment.Center);//ST
-				gridMain.Columns.Add(gridColumn);
-				List<long> listPatsNotInDict=_listTasks.Where(x => x.ObjectType==TaskObjectType.Patient && x.KeyNum!=0 && !_dictPatStates.ContainsKey(x.KeyNum))
-					.Select(x => x.KeyNum).ToList();
-				Dictionary<long,string> dictPatNewStates=Patients.GetStatesForPats(listPatsNotInDict);
-				foreach(long patNum in dictPatNewStates.Keys) {
-					_dictPatStates.Add(patNum,dictPatNewStates[patNum]);
-				}
-				if(taskListNum!=_TriageListNum) {//Everything that's not triage
-					gridColumn=new GridColumn(Lan.g("TableTasks","Job"),30,HorizontalAlignment.Center);//Job
-					gridMain.Columns.Add(gridColumn);
-				}
-			}
-			if(!isHqAndTriageList) {//Everything that is not HQ's triage task list will have the attachments column
-				gridColumn=new GridColumn(Lan.g("TableTasks","Att"),30,HorizontalAlignment.Center);//Attachment(s)
-				gridMain.Columns.Add(gridColumn);
-			}
-			if(isHqAndTriageList){//HQ and triage list only
-				gridColumn=new GridColumn(Lan.g("TableTasks","Category"),70,HorizontalAlignment.Center);//Category
-				gridMain.Columns.Add(gridColumn);
-			}
+			//Everything that is not HQ's triage task list will have the attachments column
+			gridColumn=new GridColumn(Lan.g("TableTasks","Att"),30,HorizontalAlignment.Center);//Attachment(s)
+			gridMain.Columns.Add(gridColumn);
 			gridColumn=new GridColumn(Lan.g("TableTasks","Description"),80);//any width
 			gridMain.Columns.Add(gridColumn);
 			gridMain.ListGridRows.Clear();
@@ -1064,18 +1012,8 @@ namespace OpenDental {
 				gridRow=new GridRow();
 				gridRow.Cells.Add(imageindex.ToString());
 				gridRow.Cells.Add("");
-				if(PrefC.GetBool(PrefName.DockPhonePanelShow)) {//HQ.  Add if job manager is available
-					gridRow.Cells.Add("");//ST
-					if(taskListNum!=_TriageListNum) {//Everything that's not triage
-						gridRow.Cells.Add("");//Job
-					}
-				}
-				if(!isHqAndTriageList) {//Everything that is not HQ's triage task list will have the attachments column
-					gridRow.Cells.Add("");//Att
-				}
-				if(isHqAndTriageList){//HQ and triage list only
-					gridRow.Cells.Add("");//Category
-				}
+				//Everything that is not HQ's triage task list will have the attachments column
+				gridRow.Cells.Add("");//Att
 				gridRow.Cells.Add(dateStr+objDesc+tasklistdescript);
 				gridRow.Tag=listTaskLists[i];
 				gridMain.ListGridRows.Add(gridRow);
@@ -1094,21 +1032,8 @@ namespace OpenDental {
 				categoryStr="";
 				Color colorTaskCategory=Defs.GetColor(DefCat.TaskCategories,_listTasks[i].TriageCategory,listDefsTaskCategory);
 				Color colorTaskPriority=Defs.GetColor(DefCat.TaskPriorities,_listTasks[i].PriorityDefNum,listDefsTaskPriority);
-				if(PrefC.GetBool(PrefName.DockPhonePanelShow)) {//HQ
-					stateString=HQStateColumn(_listTasks[i]);//ST
-					if(taskListNum!=_TriageListNum) {//Everything that's not triage
-						//get list of jobs attached to task then insert info about those jobs.
-						List<long> listJobNums=_listJobLinks.Where(x => x.FKey==_listTasks[i].TaskNum).Select(x => x.JobNum).ToList();
-						if(_listJobs.Any(x => listJobNums.Contains(x.JobNum))) {
-							jobNumString="X";//Is job
-						}
-					}
-				}
 				if(_listTaskAttachments.Any(x => x.TaskNum==_listTasks[i].TaskNum)) {
 					attStr="X";//Has attachments
-				}
-				if(isHqAndTriageList){//HQ and triage list only
-					categoryStr=Defs.GetName(DefCat.TaskCategories,_listTasks[i].TriageCategory,listDefsTaskCategory);
 				}
 				if(tabControl.SelectedTab==tabUser || tabControl.SelectedTab==tabNew
 					|| tabControl.SelectedTab==tabOpenTickets || tabControl.SelectedTab==tabMain 
@@ -1140,9 +1065,6 @@ namespace OpenDental {
 				if(_listTasks[i].ObjectType==TaskObjectType.Patient){// && _listTasks[i].DescriptOverride=="") {
 					if(_listTasks[i].KeyNum!=0) {
 						objDesc+=_listTasks[i].PatientName+" - ";
-						if(PrefC.IsODHQ) {
-							objDesc+=_listTasks[i].KeyNum+" - ";
-						}
 					}
 				}
 				else if(_listTasks[i].ObjectType==TaskObjectType.Appointment) {
@@ -1207,23 +1129,9 @@ namespace OpenDental {
 				}
 				if(_listTasks[i].DescriptOverride!=""){
 					gridRow.Cells.Add("");// +/- is irrelevant
-					if(PrefC.GetBool(PrefName.DockPhonePanelShow)) {//HQ
-						gridRow.Cells.Add(stateString);//ST
-						if(taskListNum!=_TriageListNum) {//Everything that's not triage
-							gridRow.Cells.Add(jobNumString);//Job
-						}
-					}
-					if(!isHqAndTriageList) {//Everything that is not HQ's triage task list will have the attachments column
-						gridRow.Cells.Add(attStr);//Att
-					}
-					if(isHqAndTriageList){//HQ and triage list only
-						gridRow.Cells.Add(categoryStr);//Category
-						gridRow.Cells.Last().ColorBackG=colorTaskCategory;
-					}
+					//Everything that is not HQ's triage task list will have the attachments column
+					gridRow.Cells.Add(attStr);//Att
 					gridRow.Cells.Add(dateStr+objDesc+_listTasks[i].DescriptOverride);
-					if(isHqAndTriageList) {//HQ and triage list only
-						gridRow.Cells.Last().ColorBackG=colorTaskPriority;
-					}
 				}
 				else if(_listTaskNumsExpanded.Contains(_listTasks[i].TaskNum)) {//Expanded
 					if(_listTasks[i].Descript.Length>250 || listTaskNotes.Count>1 || (listTaskNotes.Count==1 && notes.Length>250)) {
@@ -1232,41 +1140,16 @@ namespace OpenDental {
 					else {
 						gridRow.Cells.Add("");
 					}
-					if(PrefC.GetBool(PrefName.DockPhonePanelShow)) {//HQ
-						gridRow.Cells.Add(stateString);//ST
-						if(taskListNum!=_TriageListNum) {//Everything that's not triage
-							gridRow.Cells.Add(jobNumString);//Job
-						}
-					}
-					if(!isHqAndTriageList) {//Everything that is not HQ's triage task list will have the attachments column
-						gridRow.Cells.Add(attStr);//Att
-					}
-					if(isHqAndTriageList){//HQ and triage list only
-						gridRow.Cells.Add(categoryStr);//Category
-						gridRow.Cells.Last().ColorBackG=colorTaskCategory;
-					}
+					//Everything that is not HQ's triage task list will have the attachments column
+					gridRow.Cells.Add(attStr);//Att
 					gridRow.Cells.Add(dateStr+objDesc+_listTasks[i].Descript+notes);
-					if(isHqAndTriageList) {//HQ and triage list only
-						gridRow.Cells.Last().ColorBackG=colorTaskPriority;
-					}
 				}
 				else {//not expanded
 					//Conditions for giving collapse option: Descript is long, there is more than one note, or there is one note and it's long.
 					if(_listTasks[i].Descript.Length>250 || listTaskNotes.Count>1 || (listTaskNotes.Count==1 && notes.Length>250)) {
 						gridRow.Cells.Add("+");
-						if(PrefC.GetBool(PrefName.DockPhonePanelShow)) {//HQ
-							gridRow.Cells.Add(stateString);//ST
-							if(taskListNum!=_TriageListNum) {//Everything that's not triage
-								gridRow.Cells.Add(jobNumString);//Job
-							}
-						}
-						if(!isHqAndTriageList) {//Everything that is not HQ's triage task list will have the attachments column
-							gridRow.Cells.Add(attStr);//Att
-						}
-						if(isHqAndTriageList){//HQ and triage list only
-							gridRow.Cells.Add(categoryStr);//Category
-							gridRow.Cells.Last().ColorBackG=colorTaskCategory;
-						}
+						//Everything that is not HQ's triage task list will have the attachments column
+						gridRow.Cells.Add(attStr);//Att
 						string stringRow=dateStr+objDesc;
 						if(_listTasks[i].Descript.Length>250) {
 							stringRow+=_listTasks[i].Descript.Substring(0,250)+"(...)";//546,300 tasks have average Descript length of 142.1 characters.
@@ -1281,34 +1164,16 @@ namespace OpenDental {
 							stringRow+=notes;
 						}
 						gridRow.Cells.Add(stringRow);
-						if(isHqAndTriageList) {//HQ and triage list only
-							gridRow.Cells.Last().ColorBackG=colorTaskPriority;
-						}
 					}
 					else {//Descript length <= 250 and notes <=1 and note length is <= 250.  No collapse option.
 						gridRow.Cells.Add("");
-						if(PrefC.GetBool(PrefName.DockPhonePanelShow)) {//HQ
-							gridRow.Cells.Add(stateString);//ST
-							if(taskListNum!=_TriageListNum) {//Everything that's not triage
-								gridRow.Cells.Add(jobNumString);//Job
-							}
-						}
-						if(!isHqAndTriageList) {//Everything that is not HQ's triage task list will have the attachments column
-							gridRow.Cells.Add(attStr);//Att
-						}
-						if(isHqAndTriageList){//HQ and triage list only
-							gridRow.Cells.Add(categoryStr);//Category
-							gridRow.Cells.Last().ColorBackG=colorTaskCategory;
-						}
+						//Everything that is not HQ's triage task list will have the attachments column
+						gridRow.Cells.Add(attStr);//Att
 						gridRow.Cells.Add(dateStr+objDesc+_listTasks[i].Descript+notes);
-						if(isHqAndTriageList) {//HQ and triage list only
-							gridRow.Cells.Last().ColorBackG=colorTaskPriority;
-						}
 					}
 				}
-				if(!isHqAndTriageList){//HQ's triage list should not have color coded row as that task list is treated differently
-					gridRow.ColorBackG=Defs.GetColor(DefCat.TaskPriorities,_listTasks[i].PriorityDefNum);//No need to do any text detection for triage priorities, we'll just use the task priority colors.
-				}
+				//HQ's triage list should not have color coded row as that task list is treated differently
+				gridRow.ColorBackG=Defs.GetColor(DefCat.TaskPriorities,_listTasks[i].PriorityDefNum);//No need to do any text detection for triage priorities, we'll just use the task priority colors.
 				gridRow.Tag=_listTasks[i];
 				gridMain.ListGridRows.Add(gridRow);
 				// Check if this task was selected before FillGrid() was called
@@ -1547,10 +1412,6 @@ namespace OpenDental {
 					,Clinics.GetClinic(Clinics.ClinicNum)?.Region??0);
 				_listTasks=Tasks.RefreshDatedTrunk(date,TaskDateType.Month,_isShowFinishedTasks,_dateTimeStartShowFinished,Security.CurUser.UserNum
 					,_listClinicNumsFilter,_listDefNumsRegionFilter);
-			}
-			if(PrefC.IsODHQ && _listTasks!=null && _listTasks.Count>0) {
-				_listJobLinks=JobLinks.GetForTaskNums(_listTasks.Select(x => x.TaskNum).ToList());
-				_listJobs=Jobs.GetMany(_listJobLinks.Select(x => x.JobNum).ToList());
 			}
 			if(_listTasks!=null && _listTasks.Count>0) {		
 				_listTaskAttachments=TaskAttachments.GetForTaskNums(_listTasks.Select(x => x.TaskNum).ToList());
@@ -2792,12 +2653,7 @@ namespace OpenDental {
 				else {
 					menuItemGoto.Enabled=true;
 				}
-				if(PrefC.IsODHQ && Security.IsAuthorized(EnumPermType.TaskDelete,true)) {
-					menuDeleteTaken.Enabled=true;
-				}
-				else {
-					menuDeleteTaken.Visible=false;//Without this, HQ users without Permissions.TaskEdit still see this disabled item.
-				}
+				menuDeleteTaken.Visible=false;//Without this, HQ users without Permissions.TaskEdit still see this disabled item.
 				menuItemMarkRead.Enabled=true;
 				menuItemSendToMe.Enabled=true;
 				//Check if task has patient attached
@@ -2848,79 +2704,6 @@ namespace OpenDental {
 				menuDeleteTaken.Enabled=false;
 			}
 			//Navigate to Job-------------------------------------------------------------
-			if(gridMain.SelectedIndices.Length>0 && task!=null && PrefC.IsODHQ) {
-				//The clicked task was removed from _listTasks, could happen between FillGrid(), mouse click, and now
-				if(_listTasks.IndexOf(task)<0) {
-					IgnoreTaskClick();
-					return;
-				}
-				//get list of jobs attached to task then insert info about those jobs.
-				List<JobLink> listJobLinks=JobLinks.GetForTask(task.TaskNum);
-				List<Job> listJobs=Jobs.GetMany(listJobLinks.Select(x => x.JobNum).ToList());
-				//If a job exists that is attached to the task
-				if(listJobs.Count>0) {
-					menuNavJob.MenuItems.Clear();	//clear whatever items were in the menu before.
-					MenuItem newItem;
-					string title;
-					//Get a jobnum that matches the column in task menu
-					foreach(Job selectedJob in listJobs) {
-						title=selectedJob.JobNum.ToString()+" ";
-						//Append the correct letter to the jobnum
-						switch(selectedJob.Category) {
-							case JobCategory.Feature:
-								title="F"+title;
-								break;
-							case JobCategory.Bug:
-								title="B"+title;
-								break;
-							case JobCategory.Enhancement:
-								title="E"+title;
-								break;
-							case JobCategory.Query:
-								title="Q"+title;
-								break;
-							case JobCategory.ProgramBridge:
-								title="P"+title;
-								break;
-							case JobCategory.InternalRequest:
-								title="I"+title;
-								break;
-							case JobCategory.HqRequest:
-								title="H"+title;
-								break;
-							case JobCategory.Conversion:
-								title="C"+title;
-								break;
-							case JobCategory.Research:
-								title="R"+title;
-								break;
-							case JobCategory.NeedNoApproval:
-								title="N"+title;
-								break;
-							case JobCategory.MarketingDesign:
-								title="M"+title;
-								break;
-							case JobCategory.UnresolvedIssue:
-								title="U"+title;
-								break;
-						}
-						//Title is: "%jobnum% %description%" with a character limit of 30
-						title+=selectedJob.Title;
-						if(title.Length>=30) {
-							title=title.Substring(0,30);
-						}
-						title+="...";
-						newItem=new MenuItem(title);
-						newItem.Tag=selectedJob;
-						newItem.Click+=(sender,e) => menuNavJob_Click(sender,e,selectedJob);	//set a custom click event
-						menuNavJob.MenuItems.Add(newItem);
-					}
-					menuNavJob.Enabled=true;
-				}
-				else {
-					menuNavJob.Enabled=false;	//if there are no jobs, then just disable the ability to click or expand the sub-menu
-				}
-			}
 			//Navigate to attachment
 			if(gridMain.SelectedIndices.Length>0 && task!=null){//is task
 				//The clicked task was removed from _listTasks, could happen between FillGrid(), mouse click, and now
@@ -3070,10 +2853,6 @@ namespace OpenDental {
 			MarkRead(gridMain.SelectedTag<Task>());
 		}
 
-		private void menuNavJob_Click(object sender,EventArgs e,Job selectedJob) {
-			FormOpenDental.S_GoToJob(selectedJob.JobNum);
-		}
-
 		private void menuNavAtt_Click(object sender,EventArgs e,TaskAttachment taskAttachment) {
 			NavAtt_Clicked(taskAttachment);
 		}
@@ -3090,14 +2869,6 @@ namespace OpenDental {
 			taskNew.PriorityDefNum=defPriority.DefNum;
 			try {
 				Tasks.Update(taskNew,task);
-				if(PrefC.IsODHQ && defPriority.DefNum==502) {//They chose Blue as their priority
-					TaskNote taskNote=new TaskNote();
-					taskNote.UserNum=Security.CurUser.UserNum;
-					taskNote.TaskNum=task.TaskNum;
-					taskNote.Note="Setting priority to blue.";
-					TaskNotes.Insert(taskNote);
-					_listTaskNotes.Add(taskNote);
-				}
 				TaskHist taskHist=new TaskHist(task);
 				taskHist.UserNumHist=Security.CurUser.UserNum;
 				TaskHists.Insert(taskHist);

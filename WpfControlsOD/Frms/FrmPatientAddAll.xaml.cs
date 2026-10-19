@@ -331,10 +331,8 @@ namespace OpenDental {
 				butClearReferralSource.IsEnabled=false;
 				butReferredFrom.IsEnabled=false;
 			}
-			if(!PrefC.GetBool(PrefName.DockPhonePanelShow)) {
-				labelST.Text="ST";
-				textCountry.Visible=false;
-			}
+			labelST.Text="ST";
+			textCountry.Visible=false;
 			if(CultureInfo.CurrentCulture.Name.EndsWith("CA")) {//Canadian. en-CA or fr-CA
 				labelSSN.Text=Lang.g(this,"SIN");
 				labelZip.Text=Lang.g(this,"Postal Code");

@@ -124,30 +124,20 @@ namespace OpenDental {
 			menuItemGoTo.Enabled=false;
 			menuItemGoTo.Visible=true;
 			gridTasks.ContextMenu.MenuItems.Add(menuItemGoTo);
-			if(PrefC.IsODHQ) {
-				MenuItem menuItemNavToJob=gridTasks.ContextMenu.MenuItems.OfType<MenuItem>().FirstOrDefault(x => x.Text == "Navigate to Job");
-				menuItemNavToJob=new MenuItem("Navigate to Job");
-				menuItemNavToJob.Enabled=false;
-				menuItemNavToJob.Visible=true;
-				gridTasks.ContextMenu.MenuItems.Add(menuItemNavToJob);
-			}
 			gridTasks.ContextMenu.Popup+=MenuPopup;
 		}
 
 		private void MenuPopup(object sender,EventArgs e) {
 			int mouseLocationGridRow=gridTasks.PointToRow(_pointLastClicked.Y);
 			MenuItem menuItemGoTo=gridTasks.ContextMenu.MenuItems.OfType<MenuItem>().FirstOrDefault(x => x.Text == "Go To");
-			MenuItem menuItemNavJob=gridTasks.ContextMenu.MenuItems.OfType<MenuItem>().FirstOrDefault(x => x.Text == "Navigate to Job");
 			if(mouseLocationGridRow==-1) {
 				menuItemSetEnabled(menuItemGoTo,false);
-				menuItemSetEnabled(menuItemNavJob,false);
 				return;
 			}
 			long taskNum=PIn.Long(gridTasks.ListGridRows[mouseLocationGridRow].Tag.ToString());
 			Task task=Tasks.GetOne(taskNum);
 			if(task==null) {//Verify a task exists.
 				menuItemSetEnabled(menuItemGoTo,false);
-				menuItemSetEnabled(menuItemNavJob,false);
 				return;
 			}
 			if(task.ObjectType!=TaskObjectType.None && task.KeyNum>0) {
@@ -156,74 +146,6 @@ namespace OpenDental {
 			else {
 				menuItemSetEnabled(menuItemGoTo,false);
 			}
-			menuItemSetEnabled(menuItemNavJob,false);
-			if(!PrefC.IsODHQ) {
-				return;
-			}
-			List<JobLink> listJobLinks=JobLinks.GetForTask(task.TaskNum);
-			List<Job> listJobs=Jobs.GetMany(listJobLinks.Select(x => x.JobNum).ToList());
-			//If there are no jobs attached to the task, then kickout
-			if(listJobs.Count<=0) {
-				return;
-			}
-			menuItemNavJob.MenuItems.Clear(); //clear whatever items were in the menu before.
-			MenuItem menuItemNew;
-			string title;
-			//Get a job num that matches the column in task menu
-			for(int i=0;i<listJobs.Count;i++) {
-				Job selectedJob=listJobs[i];
-				title=selectedJob.JobNum.ToString()+" ";
-				//Append the correct letter to the jobnum
-				switch(selectedJob.Category) {
-					case JobCategory.Feature:
-						title="F"+title;
-						break;
-					case JobCategory.Bug:
-						title="B"+title;
-						break;
-					case JobCategory.Enhancement:
-						title="E"+title;
-						break;
-					case JobCategory.Query:
-						title="Q"+title;
-						break;
-					case JobCategory.ProgramBridge:
-						title="P"+title;
-						break;
-					case JobCategory.InternalRequest:
-						title="I"+title;
-						break;
-					case JobCategory.HqRequest:
-						title="H"+title;
-						break;
-					case JobCategory.Conversion:
-						title="C"+title;
-						break;
-					case JobCategory.Research:
-						title="R"+title;
-						break;
-					case JobCategory.NeedNoApproval:
-						title="N"+title;
-						break;
-					case JobCategory.MarketingDesign:
-						title="M"+title;
-						break;
-					case JobCategory.UnresolvedIssue:
-						title="U"+title;
-						break;
-				}
-				//Title is: "%jobnum% %description%" with a character limit of 30
-				title+=selectedJob.Title;
-				if(title.Length>=30) {
-					title=title.Substring(0,30);
-				}
-				title+="...";
-				menuItemNew=new MenuItem(title);
-				menuItemNew.Tag=selectedJob;
-				menuItemNew.Click+=(sender,e) => menuNavJob_Click(sender,e,selectedJob);	//set a custom click event
-				menuItemNavJob.MenuItems.Add(menuItemNew);
-			}
-			menuItemSetEnabled(menuItemNavJob,true);
 		}
 
 		private void gridTasks_MouseDown(object sender,MouseEventArgs e) {
@@ -248,17 +170,6 @@ namespace OpenDental {
 			taskObjectTypeGoto=task.ObjectType;
 			KeyNumGoTo=task.KeyNum;
 			FormOpenDental.S_TaskGoTo(taskObjectTypeGoto,KeyNumGoTo);
-		}
-
-		private void menuNavJob_Click(object sender,EventArgs e,Job selectedJob) {
-			int index=gridTasks.PointToRow(_pointLastClicked.Y);
-			string strTaskNum=(string)gridTasks.ListGridRows[index].Tag;
-			long taskNum=PIn.Long(strTaskNum);
-			//not even allowed to get to this point unless a valid task
-			Task task=Tasks.GetOne(taskNum);
-			taskObjectTypeGoto=task.ObjectType;
-			KeyNumGoTo=task.KeyNum;
-			FormOpenDental.S_GoToJob(selectedJob.JobNum);
 		}
 
 		private void textTaskNum_KeyUp(object sender,KeyEventArgs e) {

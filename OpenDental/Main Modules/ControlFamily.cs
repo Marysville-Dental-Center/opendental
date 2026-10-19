@@ -1125,27 +1125,7 @@ namespace OpenDental{
 						break;
 					#endregion Super Head
 					#region Tax Address
-					case "Tax Address":
-						if (!PrefC.IsODHQ) {
-							break;
-						}
-						row.Bold=true;
-						Address address=Addresses.GetOneByPatNum(_patient.PatNum);//can be null
-						row.Tag=address;
-						//If the current customer doesn't have a tax address, don't display other fields
-						if(address==null) {
-							address=new Address();//need an address object in double click to identify row type
-							address.IsNew=true;
-							row.Cells.Add("");
-							row.Tag=address;
-							break;
-						}
-						string rowText=address.Address1;
-						if (address.Address2!="") {
-							rowText+="\r\n"+address.Address2;
-						}
-						rowText+="\r\n"+address.City+", "+address.State+" "+address.Zip;
-						row.Cells.Add(rowText);
+					case "Tax Address"://Open Dental HQ only (sales tax addresses of its customers).
 						break;
 					#endregion Tax Address
 					#region Title

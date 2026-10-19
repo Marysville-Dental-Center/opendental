@@ -419,10 +419,8 @@ namespace OpenDental {
 
 		private void ContrAccount_Load(object sender,EventArgs e) {
 			this.Parent.MouseWheel+=Parent_MouseWheel;
-			if(!PrefC.IsODHQ) {
-				menuPrepayment.Visible=false;
-				menuPrepayment.Enabled=false;
-			}
+			menuPrepayment.Visible=false;
+			menuPrepayment.Enabled=false;
 			_superFamPrefEnabled=PrefC.GetBool(PrefName.ShowFeatureSuperfamilies);
 			ToggleUseSuperFamCheckboxEnabled(_superFamPrefEnabled);
 		}
@@ -710,13 +708,6 @@ namespace OpenDental {
 				if(frmCommItem.IsDialogOK) {
 					ModuleSelected(_patient.PatNum);
 				}
-				return;
-			}
-			if(_dataSetMain.Tables["Commlog"].Rows[row]["WebChatSessionNum"].ToString()!="0") {
-				long webChatSessionNum=PIn.Long(_dataSetMain.Tables["Commlog"].Rows[row]["WebChatSessionNum"].ToString());
-				WebChatSession webChatSession=WebChatSessions.GetOne(webChatSessionNum);
-				using FormWebChatSession formWebChatSession=new FormWebChatSession(webChatSession,() => ModuleSelected(_patient.PatNum));
-				formWebChatSession.ShowDialog();
 				return;
 			}
 			if(_dataSetMain.Tables["Commlog"].Rows[row]["EmailMessageNum"].ToString()!="0") {
@@ -2112,19 +2103,6 @@ namespace OpenDental {
 				return;
 			}
 			string quickProcText=textQuickProcs.Text;//because the text seems to disappear from textbox in menu bar when MsgBox comes up.
-			if(PrefC.IsODHQ) {
-				if (_patient.State=="") {
-					MessageBox.Show("A valid state is required to process sales tax on procedures. "
-						+"Please delete the procedure, enter a valid state, then reenter the procedure.");
-				}
-				//if this patient is in a taxable state
-				if(AvaTax.GetListTaxableStates()?.Any(x => x==_patient.State)==true) {
-					if(!Patients.HasValidUSZipCode(_patient)) {
-						MessageBox.Show("A valid zip code is required to process sales tax on procedures in this patient's state. "
-						+"Please delete the procedure, enter a valid zip, then reenter the procedure.");
-					}
-				}
-			}
 			Provider provider=Providers.GetProv(_patient.PriProv);
 			if(AddProcAndValidate(quickProcText,provider)) {
 				SecurityLogs.MakeLogEntry(EnumPermType.AccountProcsQuickAdd,_patient.PatNum
@@ -2357,10 +2335,6 @@ namespace OpenDental {
 			if(!PrefC.GetBool(PrefName.EasyHideRepeatCharges)) {
 				toolBarButton=new ODToolBarButton(Lan.g(this,"Repeating Charge"),-1,"","RepeatCharge");
 				toolBarButton.Style=ODToolBarButtonStyle.NormalButton;
-				if(PrefC.GetBool(PrefName.DockPhonePanelShow)) {//contextMenuRepeat items only get initialized when at HQ.
-					toolBarButton.Style=ODToolBarButtonStyle.DropDownButton;
-					toolBarButton.DropDownMenu=contextMenuRepeat;
-				}
 				ToolBarMain.Buttons.Add(toolBarButton);
 			}
 			ToolBarMain.Buttons.Add(new ODToolBarButton(ODToolBarButtonStyle.Separator));

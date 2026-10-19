@@ -630,19 +630,10 @@ namespace OpenDentBusiness {
 				listUnallocatedEntries.GroupBy(x => new { x.PatNum,x.ProvNum,x.ClinicNum })
 					.ToDictionary(x => x.Key,x => x.ToList())
 					.ForEach(x => listAccountEntriesCombined.Add(funcGetCombinedEntry(x.Value)));
-				if(PrefC.IsODHQ) {
-					//HQ wants to have each unearned type considered separately.
-					//This will allow for payment splits to be suggested that will technically transfer from one unearned type to another unearned type.
-					listUnearnedEntries.GroupBy(x => new { x.PatNum,x.ProvNum,x.ClinicNum,x.UnearnedType })
-						.ToDictionary(x => x.Key,x => x.ToList())
-						.ForEach(x => listAccountEntriesCombined.Add(funcGetCombinedEntry(x.Value)));
-				}
-				else {
-					//Treat all unearned types the same, as if there is only one big unearned type.
-					listUnearnedEntries.GroupBy(x => new { x.PatNum,x.ProvNum,x.ClinicNum })
-						.ToDictionary(x => x.Key,x => x.ToList())
-						.ForEach(x => listAccountEntriesCombined.Add(funcGetCombinedEntry(x.Value)));
-				}
+				//Treat all unearned types the same, as if there is only one big unearned type.
+				listUnearnedEntries.GroupBy(x => new { x.PatNum,x.ProvNum,x.ClinicNum })
+					.ToDictionary(x => x.Key,x => x.ToList())
+					.ForEach(x => listAccountEntriesCombined.Add(funcGetCombinedEntry(x.Value)));
 				constructResults.ListAccountEntries.AddRange(listAccountEntriesCombined);
 			}
 			#endregion
@@ -2075,12 +2066,7 @@ namespace OpenDentBusiness {
 				&& ((FauxAccountEntry)x.Tag).AccountEntryProc.GetType()==typeof(Procedure)
 				&& ((Procedure)((FauxAccountEntry)x.Tag).AccountEntryProc.Tag).ProcStatus==ProcStat.TP);
 			if(payPlanNum > 0) {
-				if(PrefC.IsODHQ) {
-					listAutoSplitAccountEntries=listAutoSplitAccountEntries.OrderByDescending(x => x.PayPlanNum==payPlanNum).ToList();
-				}
-				else {
-					listAutoSplitAccountEntries.RemoveAll(x => x.PayPlanNum!=payPlanNum);
-				}
+				listAutoSplitAccountEntries.RemoveAll(x => x.PayPlanNum!=payPlanNum);
 			}
 			if(!listAccountEntriesPayFirst.IsNullOrEmpty()) {
 				//Shove all of the selected account entries to the top of listAutoSplitAccountEntries so that they are paid first.
@@ -2119,7 +2105,7 @@ namespace OpenDentBusiness {
 				amtToAllocate=0;
 				split.DatePay=autoSplitData.PayDate;
 				split.PatNum=autoSplitData.PatNum;
-				split.ProvNum=(PrefC.IsODHQ) ? 7 : 0;//Jordan's ProvNum for HQ.
+				split.ProvNum=0;
 				split.UnearnedType=PrefC.GetLong(PrefName.PrepaymentUnearnedType);
 				if(PrefC.HasClinicsEnabled) {
 					split.ClinicNum=autoSplitData.ClinicNum;
@@ -3051,14 +3037,8 @@ namespace OpenDentBusiness {
 				}
 				if(listUnearnedEntries.Count > 1) {
 					string results=null;
-					if(PrefC.IsODHQ) {
-						//Invoke the helper method that will balance individual uneared types and will suggest new splits.
-						results=BalanceAccountEntriesByUnearnedType(ref listUnearnedEntries,ref incomeTransferData,datePay);
-					}
-					else {
-						//Invoke the helper method that will simply balance positive and negative account entries and will not suggest new splits.
-						results=BalanceAccountEntries(ref listUnearnedEntries);
-					}
+					//Invoke the helper method that will simply balance positive and negative account entries and will not suggest new splits.
+					results=BalanceAccountEntries(ref listUnearnedEntries);
 					if(!string.IsNullOrWhiteSpace(results)) {
 						incomeTransferData.AppendLine($"  Balancing {listUnearnedEntries.Count} unearned PaySplits not associated to any procedures...");
 						incomeTransferData.AppendLine(results);
@@ -3537,14 +3517,8 @@ namespace OpenDentBusiness {
 				BalanceAccountEntries(ref listAccountEntriesUnallocated);
 			}
 			if(listAccountEntriesUnearned.Count > 1) {
-				if(PrefC.IsODHQ) {
-					//Invoke the helper method that will balance individual uneared types and will suggest new splits.
-					BalanceAccountEntriesByUnearnedType(ref listAccountEntriesUnearned,ref incomeTransferData,datePay);
-				}
-				else {
-					//Invoke the helper method that will simply balance positive and negative account entries and will not suggest new splits.
-					BalanceAccountEntries(ref listAccountEntriesUnearned);
-				}
+				//Invoke the helper method that will simply balance positive and negative account entries and will not suggest new splits.
+				BalanceAccountEntries(ref listAccountEntriesUnearned);
 			}
 			List<AccountEntry> listAccountEntriesUnallocatedUnearned=new List<AccountEntry>(listAccountEntriesUnallocated);
 			listAccountEntriesUnallocatedUnearned.AddRange(listAccountEntriesUnearned);

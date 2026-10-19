@@ -69,7 +69,7 @@ namespace OpenDental {
 				}
 				groupProcedures.Visible=true;
 				FillProcs();
-				checkExcludeProcSync.Visible=PrefC.IsODHQ;
+				checkExcludeProcSync.Visible=false;
 				UpdateFrequencyText();
 				EnableFrequencyControls();
 			}
@@ -440,7 +440,7 @@ namespace OpenDental {
 
 		private void butToday_Click(object sender,EventArgs e) {
 			if(textDayOfMonth.Text=="" && radioDayOfMonth.Checked) {
-				textDayOfMonth.Text=PrefC.IsODHQ ? _patient.BillingCycleDay.ToString() : DateTime.Today.Day.ToString();
+				textDayOfMonth.Text=DateTime.Today.Day.ToString();
 			}
 			textDateStart.Text=DateTime.Today.ToShortDateString();
 			UpdateTextNextChargeDate();
@@ -452,18 +452,13 @@ namespace OpenDental {
 				return;
 			}
 			string textDateStartCopy=textDateStart.Text;//Copy textDateStart.Text to fill textDateStart field after textDayOfMonth_TextChanged() clears it
-			if(PrefC.IsODHQ) {
-				textDayOfMonth.Text=_patient.BillingCycleDay.ToString();
-			}
-			else {
-				DateTime dateStart=PIn.Date(textDateStart.Text);
-				if(dateStart.Year < 1880 || textDayOfMonth.Text!="") {//if invalid date or if they already have something in the day of the month text
-					UpdateTextNextChargeDate();
-					return;
-				}
-				textDayOfMonth.Text=dateStart.Date.Day.ToString();
+			DateTime dateStart=PIn.Date(textDateStart.Text);
+			if(dateStart.Year < 1880 || textDayOfMonth.Text!="") {//if invalid date or if they already have something in the day of the month text
 				UpdateTextNextChargeDate();
+				return;
 			}
+			textDayOfMonth.Text=dateStart.Date.Day.ToString();
+			UpdateTextNextChargeDate();
 			textDateStart.Text=textDateStartCopy;
 		}
 

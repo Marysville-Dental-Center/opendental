@@ -70,19 +70,13 @@ namespace UpdateFileCopier {
 			StartFileCopierThread();
 		}
 
-		///<summary>Kills the processes OpenDental and WebCamOD and then starts a file copier thread.</summary>
+		///<summary>Kills the processes OpenDental and the other programs in the installation directory and then starts a file copier thread.</summary>
 		private void StartFileCopierThread() {
 			Cursor=Cursors.WaitCursor;
 			if(_doKillServices) {//Generally kill except when dealing with DynamicMode
 				//kill all processes named OpenDental.
 				//If the software has been rebranded, the original exe will NOT be correctly closed.
 				KillProcess("OpenDental");
-				//kill all processes named WebCamOD.
-				//web cam does not always close properly when updater kills OpenDental
-				//web cam relies on shared library, OpenDentBusiness.dll (shared ref with OpenDental). 
-				//if this lib can't be updated then the opendental update/install fails
-				KillProcess("WebCamOD");
-				KillProcess("ProximityOD");
 				//Kill known applications that are present within the installation directory so that the resources are freed if currently in use.
 				//A customer complained on the forums about CentralManager explicitly.  DatabaseIntegrityCheck and ServiceManager are just in case.
 				KillProcess("CentralManager");

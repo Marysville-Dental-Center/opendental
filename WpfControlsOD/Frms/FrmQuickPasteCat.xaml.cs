@@ -35,12 +35,12 @@ namespace OpenDental {
 				stringArrayTypes=QuickPasteCatCur.DefaultForTypes.Split(',');
 			}
 			for(int i=0;i<Enum.GetNames(typeof(EnumQuickPasteType)).Length;i++){
-				if((i==(int)EnumQuickPasteType.WebChat || 
+				//These types were only used by Open Dental HQ's internal tools.
+				if(i==(int)EnumQuickPasteType.WebChat ||
 					i==(int)EnumQuickPasteType.ProviderSearchFilter ||
 					i==(int)EnumQuickPasteType.JobManager ||
 					i==(int)EnumQuickPasteType.PhoneEmpDefaultStatus||
 					i==(int)EnumQuickPasteType.FAQ)
-					&& !PrefC.IsODHQ) 
 				{
 					continue;
 				}

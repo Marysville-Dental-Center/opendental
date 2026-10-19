@@ -10,7 +10,6 @@
              Text="Edit Site" MinMaxBoxes="False" >
     <Grid Background="#FFFCFDFE" >
         <ui:Button x:Name="butPickProvider" Width="20" Height="22" Margin="399,65,0,0" Text="..." Click="butPickProvider_Click" />
-        <ui:Button x:Name="butSiteLink" HorizontalAlignment="Right" Width="75" VerticalAlignment="Bottom" Height="26" Margin="0,0,170,12" Text="Site Link" Click="butSiteLink_Click" />
         <ui:Label x:Name="labelPriProv" Width="145" Height="14" Margin="19,70,0,0" Text="Provider" HAlign="Right" />
         <ui:ComboBox x:Name="comboProv" Width="230" Height="21" Margin="165,66,0,0" />
         <ui:Label x:Name="label2" Width="148" Height="17" Margin="16,40,0,0" Text="Place of Service" HAlign="Right" VAlign="Center" />

@@ -24,7 +24,7 @@ namespace OpenDental {
 		}
 
 		private void FormPatientForms_Load(object sender,EventArgs e) {
-			if(!ODBuild.IsDebug() && !PrefC.IsODHQ) {//if release and not HQ
+			if(!ODBuild.IsDebug()) {//if release
 				butAddEForm.Visible=false;
 			}
 			_patient=Patients.GetPat(PatNum);
@@ -38,12 +38,12 @@ namespace OpenDental {
 			MenuItemOD menuItemSetup=new MenuItemOD("Setup");
 			menuMain.Add(menuItemSetup);
 			menuItemSetup.Add("Sheets",menuItemSheets_Click);
-			if(ODBuild.IsDebug() || PrefC.IsODHQ) {
+			if(ODBuild.IsDebug()) {
 				menuItemSetup.Add("eForms",menuItemEForms_Click);
 			}
 			menuItemSetup.Add("Image Categories",menuItemImageCats_Click);
 			menuItemSetup.Add("Options",menuItemOptions_Click);
-			//if(ODBuild.IsDebug() || PrefC.IsODHQ) {
+			//if(ODBuild.IsDebug()) {
 			//	menuItemSetup.Add("Import Rules",menuItemImportRules_Click);
 			//}
 			menuMain.EndUpdate();
@@ -440,7 +440,7 @@ namespace OpenDental {
 					return;
 				}
 			}
-			//if(ODBuild.IsDebug() || PrefC.IsODHQ) {
+			//if(ODBuild.IsDebug()) {
 				//this is for testing the new automatic import
 				//	MsgBox.Show(this,"Done");
 				//	return;

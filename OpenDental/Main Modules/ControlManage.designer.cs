@@ -33,7 +33,6 @@ namespace OpenDental {
 			this.components = new System.ComponentModel.Container();
 			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(ControlManage));
 			this.timerUpdateTime = new System.Windows.Forms.Timer(this.components);
-			this.butSchedule = new OpenDental.UI.Button();
 			this.groupBox3 = new OpenDental.UI.GroupBox();
 			this.butEras = new OpenDental.UI.Button();
 			this.butImportInsPlans = new OpenDental.UI.Button();
@@ -92,16 +91,6 @@ namespace OpenDental {
 			this.timerUpdateTime.Enabled = true;
 			this.timerUpdateTime.Interval = 1000;
 			this.timerUpdateTime.Tick += new System.EventHandler(this.timerUpdateTime_Tick);
-			// 
-			// butSchedule
-			// 
-			this.butSchedule.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			this.butSchedule.Location = new System.Drawing.Point(801, 99);
-			this.butSchedule.Name = "butSchedule";
-			this.butSchedule.Size = new System.Drawing.Size(79, 25);
-			this.butSchedule.TabIndex = 32;
-			this.butSchedule.Text = "Daily Graph";
-			this.butSchedule.Click += new System.EventHandler(this.butSchedule_Click);
 			// 
 			// groupBox3
 			// 
@@ -617,7 +606,6 @@ namespace OpenDental {
 			this.BackColor = System.Drawing.Color.White;
 			this.Controls.Add(this.butDaycareCheckIn);
 			this.Controls.Add(this.butDaycare);
-			this.Controls.Add(this.butSchedule);
 			this.Controls.Add(this.groupBox3);
 			this.Controls.Add(this.groupBox2);
 			this.Controls.Add(this.groupBox1);
@@ -649,7 +637,6 @@ namespace OpenDental {
 		private UI.Button butImportInsPlans;
 		private UI.Button butManage;
 		private UI.Button butManageAR;
-		private UI.Button butSchedule;
 		private UI.Button butSend;
 		private UI.Button butSendClaims;
 		private UI.Button butSupply;
