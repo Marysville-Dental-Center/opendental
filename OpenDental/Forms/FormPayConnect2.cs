@@ -34,6 +34,12 @@ namespace OpenDental {
 		///This is because FormPayment didn't know if a transaction was attempted or not, and was assuming it was.
 		///This can cause the payment amount to be reset to $0. So, this bool indicates if we have actually attempted a transaction.</summary>
 		public bool WasPaymentAttempted=false;
+		///<summary>The hosted card-entry session's order ID, kept so the result can still be found if the status call after SUCCESS fails.</summary>
+		private string _embedOrderId="";
+		///<summary>True once the hosted page has posted SUCCESS.</summary>
+		private bool _didHostedFormSucceed;
+		///<summary>True while every call goes to the vendor's sandbox. Shown in the title and on the receipt so test rows can't pass for real ones.</summary>
+		private bool _isSandbox;
 
 		public FormPayConnect2(long clinicNum,Patient patient,CreditCard creditCard,decimal amount,bool isAddingCard=false) {
 			_clinicNum=clinicNum;
@@ -67,6 +73,10 @@ namespace OpenDental {
 				}
 			}
 			textAmount.Text=_amount.ToString();
+			_isSandbox=PayConnect2.GetUseSandbox();
+			if(_isSandbox) {
+				Text+=" - "+Lan.g(this,"SANDBOX (test mode, nothing is charged)");
+			}
 			//Hide it here to override the enable/disable changes between terminal/webservice checked methods.
 			checkSaveToken.Visible=!PIn.Bool(ProgramProperties.GetPropVal(_program.ProgramNum,PayConnect.ProgramProperties.PayConnectPreventSavingNewCC,_clinicNum));
 			if(_patient==null) {//Prepaid card
@@ -154,6 +164,8 @@ namespace OpenDental {
 							request.TransType=TransactionType.AuthorizeOnly;
 							TransType=PayConnectService.transType.AUTH;
 					}
+					//The library sends a correlation ID as invoiceNumber and, if the answer is lost, looks the transaction up by it.
+					request.InvoiceNumber=PayConnect2.NewCorrelationId();
 					UI.ProgressWin progressOD=new UI.ProgressWin();
 					progressOD.ActionMain=()=> {_payConnect2Response=PayConnect2.PostCreateTerminalTransaction(request,_clinicNum);};
 					progressOD.ShowCancelButton=false;//This is neccessary as cancelling on our side will not cancel the transaction on the terminal, which could lead to the payment being processed but not show in the patients account. This also matches what we do in FormPayConnect.cs.
@@ -163,12 +175,15 @@ namespace OpenDental {
 						progressOD.ShowDialog();
 					}
 					catch(Exception ex){
-						SecurityLogs.MakeLogEntry(EnumPermType.CreditCardTerminal,_patient.PatNum,"No response received.");
+						SecurityLogs.MakeLogEntry(EnumPermType.CreditCardTerminal,GetPatNumForLog(),"No response received. PayConnect invoice number: "+request.InvoiceNumber);
 						MessageBox.Show(Lan.g(this,"A payment was initiated but no response was received. The payment may or may not have processed."
-							+" Verify payment with your Credit Card merchant."),ex.Message);
+							+" Verify payment with your Credit Card merchant.")+" "+Lan.g(this,"Invoice number")+": "+request.InvoiceNumber,ex.Message);
 						return false;
 					}
 					if(progressOD.IsCancelled){
+						return false;
+					}
+					if(!CheckOutcome(_payConnect2Response,request.InvoiceNumber)) {
 						return false;
 					}
 				}
@@ -200,7 +215,7 @@ namespace OpenDental {
 				//	}
 				//}
 				//We only have the last 4 digits of the card to work with now, no need for MagStripCardParser
-				if(_payConnect2Response.TerminalTransactionResponse!=null) {
+				if(_payConnect2Response.TerminalTransactionResponse?.PaymentMethod?.CardPaymentMethod!=null) {
 					magData=_payConnect2Response.TerminalTransactionResponse.PaymentMethod.CardPaymentMethod.CardLast4Digits;
 				}
 			}
@@ -212,10 +227,18 @@ namespace OpenDental {
 					}
 					if(_creditCard==null || _creditCard.PayConnectToken.IsNullOrEmpty()) {
 						GetStatusResponse getStatusResponse=_payConnect2Response.GetStatusResponse;
+						if(getStatusResponse==null && _didHostedFormSucceed && !string.IsNullOrEmpty(_embedOrderId)) {
+							//The hosted page reported SUCCESS but the status call after it failed: look the transaction up by the session's order ID.
+							PayConnect2Response responseByOrderId=PayConnect2.GetTransactionStatus(_clinicNum,"",orderId:_embedOrderId);
+							if(responseByOrderId.ResponseType==ResponseType.GetStatus && responseByOrderId.GetStatusResponse!=null) {
+								_payConnect2Response=responseByOrderId;
+								getStatusResponse=responseByOrderId.GetStatusResponse;
+							}
+						}
 						if(getStatusResponse==null) {
 							return false;
 						}
-						string pc2GatewayResponse=getStatusResponse.GatewayResponse.ToString();
+						string pc2GatewayResponse=getStatusResponse.GatewayResponse?.ToString()??"";
 						if(pc2GatewayResponse.ToLower().Contains("swipe")){//"entrymode" : "Swipe (non emv)" means card was swiped, not manually entered.
 							magData="swiped";//Set magData to something other than blank so receipt shows "Swiped"
 						}
@@ -228,6 +251,9 @@ namespace OpenDental {
 						catch(Exception ex) {
 							ex.DoNothing();
 							MsgBox.Show(this,"Invalid data, unable to send sale transaction");
+							return false;
+						}
+						if(!CheckOutcome(_payConnect2Response,_payConnect2Response.CorrelationId)) {
 							return false;
 						}
 					}
@@ -250,6 +276,9 @@ namespace OpenDental {
 							MsgBox.Show(this,"Invalid data, unable to send auth transaction");
 							return false;
 					}
+					if(!CheckOutcome(_payConnect2Response,_payConnect2Response.CorrelationId)) {
+						return false;
+					}
 					TransType=PayConnectService.transType.AUTH;
 				}
 				else if(radioRefund.Checked) {
@@ -264,6 +293,9 @@ namespace OpenDental {
 						refundReferenceIDRequest.Amount=amountInCents;
 					}
 					_payConnect2Response=PayConnect2.PostRefundWithReferenceID(refundReferenceIDRequest,_clinicNum);
+					if(!CheckOutcome(_payConnect2Response,"")) {
+						return false;
+					}
 					TransType=PayConnectService.transType.RETURN;
 				}
 				else if(radioVoid.Checked) {
@@ -274,6 +306,9 @@ namespace OpenDental {
 					VoidReferenceIDRequest voidReferenceIDRequest=new VoidReferenceIDRequest();
 					voidReferenceIDRequest.ReferenceId=textRefNumber.Text;
 					_payConnect2Response=PayConnect2.PutVoidWithReferenceID(voidReferenceIDRequest,_clinicNum);
+					if(!CheckOutcome(_payConnect2Response,"")) {
+						return false;
+					}
 					TransType=PayConnectService.transType.VOID;
 				}	
 			}
@@ -290,7 +325,40 @@ namespace OpenDental {
 			}
 			decimal surchargeAmount=_response.AmountSurcharged;
 			ReceiptStr=PayConnect.BuildReceiptString(TransType,_response.RefNumber,_patient.GetNameFLnoPref(),_response.CardNumber,magData,_response.AuthCode,_response.Description,messages:null,_response.Amount,doShowSignatureLine,_clinicNum,_response.CardType,surchargeAmount:surchargeAmount,cardHolder:_response.CardHolder);
+			if(_isSandbox) {
+				ReceiptStr="SANDBOX TEST - NOT A REAL CHARGE"+Environment.NewLine+ReceiptStr;
+			}
 			return true;
+		}
+
+		///<summary>Handles a call that didn't get a normal answer. NotSent: says nothing was charged and returns false, so the user can try again.
+		///SentNoResponse (the library already searched the transaction list for the correlation ID and didn't find it): writes the ID to the security
+		///log, warns that the payment may or may not have gone through, and returns true so the payment window records the outcome. Anything else
+		///returns true.</summary>
+		private bool CheckOutcome(PayConnect2Response payConnect2Response,string correlationId) {
+			if(payConnect2Response==null) {
+				return true;
+			}
+			if(payConnect2Response.Outcome==PayConnectRequestOutcome.NotSent) {
+				MsgBox.Show(payConnect2Response.ErrorResponse?.Message??Lan.g(this,"Could not reach PayConnect. No charge was made."));
+				return false;
+			}
+			if(payConnect2Response.Outcome==PayConnectRequestOutcome.SentNoResponse) {
+				string logText="PayConnect did not answer.";
+				if(!string.IsNullOrEmpty(correlationId)) {
+					logText+=" The transaction was not found in its transaction list. PayConnect invoice number: "+correlationId;
+				}
+				SecurityLogs.MakeLogEntry(EnumPermType.CreditCardTerminal,GetPatNumForLog(),logText);
+				MsgBox.Show(payConnect2Response.ErrorResponse?.Message??Lan.g(this,"PayConnect did not answer. The payment may or may not have processed."));
+			}
+			return true;
+		}
+
+		private long GetPatNumForLog() {
+			if(_patient==null) {
+				return 0;
+			}
+			return _patient.PatNum;
 		}
 
 		/// <summary>Does validation before sending. Will not make an API call if a signature has not been entered.</summary>
@@ -319,7 +387,7 @@ namespace OpenDental {
 				return;
 			}
 			PayConnect2Response statusResponse=PayConnect2.GetTransactionStatus(_clinicNum,_response.RefNumber);
-			if(statusResponse.GetStatusResponse.PaymentMethod.CardPaymentMethod==null) {
+			if(statusResponse.GetStatusResponse?.PaymentMethod?.CardPaymentMethod==null) {
 				return;
 			}
 			CardPaymentMethod cardPaymentMethod=statusResponse.GetStatusResponse.PaymentMethod.CardPaymentMethod;
@@ -388,7 +456,9 @@ namespace OpenDental {
 				try {
 					await webViewMain.Init();
 					webViewMain.CoreWebView2.WebMessageReceived+=GetTransactionResult;
-					await webViewMain.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.addEventListener(\'message\', e => { window.chrome.webview.postMessage(e.data); })");
+					webViewMain.CoreWebView2.NavigationStarting+=WebViewMain_NavigationStarting;
+					//Relays only messages whose origin is a DentalXChange host, with that origin, so GetTransactionResult can check it again.
+					await webViewMain.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(PayConnect2.GetHostedFormRelayScript());
 				}
 				catch(Exception ex) {
 					FriendlyException.Show("Error initializing window.",ex);
@@ -414,50 +484,84 @@ namespace OpenDental {
 				}
 			}
 			_payConnect2Response=PayConnect2.PostEmbedSession(embedSessionRequest,_clinicNum);
+			_didHostedFormSucceed=false;
 			if(_payConnect2Response.ResponseType==PayConnect2.ResponseType.EmbedSession) {
-				return _payConnect2Response.EmbedSessionResponse.Url;
+				string url=_payConnect2Response.EmbedSessionResponse.Url;
+				if(!PayConnect2.IsAllowedHostedFormUrl(url)) {
+					throw new ODException("PayConnect returned a payment form address that is not a DentalXChange address, so it was not opened.");
+				}
+				_embedOrderId=_payConnect2Response.EmbedSessionResponse.OrderId??"";
+				return url;
 			}
-			throw new ODException("Error occurred retrieving payment form URL from PayConnect.");
+			string message=_payConnect2Response.ErrorResponse?.Message;
+			if(string.IsNullOrEmpty(message)) {
+				message="Error occurred retrieving payment form URL from PayConnect.";
+			}
+			throw new ODException(message);
 		}
 
-		///<summary>Throws Exceptions. Originally from FormPayConnect2IFrame_Load().</summary>
+		///<summary>Keeps the card-entry window on DentalXChange: any top-level navigation elsewhere is cancelled.</summary>
+		private void WebViewMain_NavigationStarting(object sender,CoreWebView2NavigationStartingEventArgs args) {
+			if(!PayConnect2.IsAllowedHostedFormUrl(args.Uri)) {
+				args.Cancel=true;
+			}
+		}
+
+		///<summary>Handles a message relayed from the hosted card-entry page. Ignored unless both the top-level page and the message's origin are
+		///DentalXChange hosts. Originally from FormPayConnect2IFrame_Load().</summary>
 		private void GetTransactionResult(object sender,CoreWebView2WebMessageReceivedEventArgs args) {
-			iFrameResponse response=null;
-			try {
-				response=JsonConvert.DeserializeObject<iFrameResponse>(args.WebMessageAsJson);
+			if(!PayConnect2.IsAllowedHostedFormUrl(args.Source)) {
+				return;
 			}
-			catch(JsonException jEx) {
-				//failed to deserialize, we probably did not recieve a success response from the iFrame.
-				jEx.DoNothing();
+			HostedFormMessage hostedFormMessage=PayConnect2.ParseHostedFormMessage(args.WebMessageAsJson);
+			if(hostedFormMessage==null || !hostedFormMessage.IsFromAllowedOrigin) {
+				return;
 			}
-			catch (Exception ex) {
-				throw new ODException("Error retrieving response from PayConnect.",ex);
-			}
-			//Immediately call the GetStatus endpoint  for easier processing.
-			if(response!=null && response.IFrameStatus.ToLower()=="success") {
+			iFrameResponse response=hostedFormMessage.Response;
+			if(hostedFormMessage.Status=="SUCCESS") {
+				_didHostedFormSucceed=true;
 				//When adding a card the transaction status and reference ID fields will return null from PayConnect, therefore we cannot run GetStatus.
 				if(_isAddingCard) {
-					//When attempting to add a new card, PayConnect sometimes sends back data fromatted like track 2 of a magstrip. Example: ;1234123412341234=0305101193010877?. If this is the case we need to parse out the card number.
-					if(response.Response.CardToken.StartsWith(";") && response.Response.CardToken.EndsWith("?")) {
+					//PayConnect sometimes sends back data formatted like track 2 of a magstripe, e.g. ;1234123412341234=0305101193010877?.
+					//If the account number in it is a card number rather than a token, it is never stored.
+					if(PayConnect2.IsTrackTwoData(response.Response?.CardToken)) {
 						MagstripCardParser magstripCardParser=new MagstripCardParser(response.Response.CardToken,EnumMagstripCardParseTrack.TrackTwo);
+						if(PayConnect2.LooksLikeCardNumber(magstripCardParser.AccountNumber)) {
+							SetHostedFormError(Lan.g(this,"The card reader returned the card number instead of a token, so the card was not saved. Key the card in instead."));
+							MsgBox.Show(this,"The card reader returned the card number instead of a token, so the card was not saved. Key the card in instead.");
+							return;
+						}
 						response.Response.CardToken=magstripCardParser.AccountNumber;
 					}
 					_payConnect2Response.iFrameResponse=response;
 					_payConnect2Response.ResponseType=ResponseType.IFrame;
 				}
 				else {
-					_payConnect2Response=GetTransactionStatus(_clinicNum,response.Response.ReferenceId);
+					//Immediately call the GetStatus endpoint for easier processing.
+					_payConnect2Response=GetTransactionStatus(_clinicNum,response.Response?.ReferenceId);
 				}
 				butRefresh.Enabled=false;
+				return;
 			}
-			if(response!=null && response.IFrameStatus.ToLower()=="error") {
-				_payConnect2Response.ResponseType=ResponseType.Error;
-				_payConnect2Response.ErrorResponse=new ErrorResponse();
-				_payConnect2Response.ErrorResponse.ErrorType=ErrorType.Response;
-				_payConnect2Response.ErrorResponse.Error=(string)response.Response.Message;
+			if(hostedFormMessage.Status=="ERROR") {
+				SetHostedFormError(response.Response?.Message??Lan.g(this,"The payment form reported an error."));
+				return;
+			}
+			if(hostedFormMessage.Status=="SESSION_EXPIRED") {
+				SetHostedFormError(Lan.g(this,"The payment form expired."));
+				MsgBox.Show(this,"The payment form expired. Click Refresh to load a new one.");
+				butRefresh.Enabled=true;
 			}
 		}
-		
+
+		private void SetHostedFormError(string message) {
+			_payConnect2Response.ResponseType=ResponseType.Error;
+			_payConnect2Response.ErrorResponse=new ErrorResponse();
+			_payConnect2Response.ErrorResponse.ErrorType=ErrorType.Response;
+			_payConnect2Response.ErrorResponse.Error=message;
+			_payConnect2Response.ErrorResponse.Message=message;
+		}
+
 		///<summary>Size of this form is the original size. If any size changes occur this should be changed as well.</summary>
 		private void SetFormSizeToNormal() {
 			Size=new Size(LayoutManager.Scale(430),LayoutManager.Scale(516));
