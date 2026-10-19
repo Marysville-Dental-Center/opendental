@@ -112,10 +112,6 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\Dicom.Native.dll</HintPath>
     </Reference>
-    <Reference Include="DpsPos, Version=1.0.6191.28914, Culture=neutral, PublicKeyToken=fed6c2461985275f, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\DpsPos.dll</HintPath>
-    </Reference>
     <Reference Include="Health.Direct.Common">
       <HintPath>..\Required dlls\Health.Direct.Common.dll</HintPath>
     </Reference>
@@ -195,9 +191,6 @@
     <Reference Include="Ionic.Zip, Version=1.9.1.4, Culture=neutral, PublicKeyToken=edbe51ad942a3f5c, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\Ionic.Zip.dll</HintPath>
-    </Reference>
-    <Reference Include="log4net">
-      <HintPath>..\Required dlls\log4net.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="Microsoft.VisualBasic" />
@@ -4320,12 +4313,6 @@
     </Compile>
     <Compile Include="Forms\FormTimeCardRuleEdit.designer.cs">
       <DependentUpon>FormTimeCardRuleEdit.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\FormPayConnect.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FormPayConnect.designer.cs">
-      <DependentUpon>FormPayConnect.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\FormPatFieldPickEdit.cs">
       <SubType>Form</SubType>
@@ -8844,7 +8831,6 @@
     <Compile Include="User Controls\ValidNum.cs">
       <SubType>Component</SubType>
     </Compile>
-    <None Include="Resources\DpsPos.dll.config" />
     <None Include="Web References\CallFireService\Reference.map">
       <Generator>MSDiscoCodeGenerator</Generator>
       <LastGenOutput>Reference.cs</LastGenOutput>
@@ -9012,10 +8998,6 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormTimeCardRuleEdit.resx">
       <DependentUpon>FormTimeCardRuleEdit.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormPayConnect.resx">
-      <DependentUpon>FormPayConnect.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormPatFieldPickEdit.resx">

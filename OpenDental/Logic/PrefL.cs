@@ -353,9 +353,6 @@ namespace OpenDental {
 				if(fileInfoArrayApp[i].Name=="ProximitySettings.txt") {
 					continue;//skip as well
 				}
-				if(fileInfoArrayApp[i].Name=="DpsPos.dll.config") {
-					continue;//yep, skip it
-				}
 				if(fileInfoArrayApp[i].Name.StartsWith("openlog")) {
 					continue;//these can be big and are irrelevant
 				}

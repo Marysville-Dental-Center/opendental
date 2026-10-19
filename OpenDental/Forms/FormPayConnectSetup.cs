@@ -93,7 +93,6 @@ namespace OpenDental{
 				}
 			}
 			if(!ProgramProperties.CanEditProperties(_listProgramProperties)) {
-				textPassword.ReadOnly=true;
 				textAPISecret.ReadOnly=true;
 				textAPIKey.ReadOnly=true;
 				checkUseSandbox.Enabled=false;
@@ -112,31 +111,20 @@ namespace OpenDental{
 			if(PrefC.HasClinicsEnabled) {
 				clinicNum=_listUserClinicNums[comboClinic.SelectedIndex];
 			}
-			textUsername.Text=ProgramProperties.GetPropValFromList(_listProgramProperties,"Username",clinicNum);
-			textPassword.Text=Secrets.TryDecrypt(ProgramProperties.GetPropValFromList(_listProgramProperties,"Password",clinicNum));
+			//PayConnect 1.0 (user name, password and its patient-portal token) was removed. The window shows version 2.0 only, and Save writes version 2.
 			string payTypeDefNum=ProgramProperties.GetPropValFromList(_listProgramProperties,"PaymentType",clinicNum);
 			string processingMethod=ProgramProperties.GetPropValFromList(_listProgramProperties,PayConnect.ProgramProperties.DefaultProcessingMethod,clinicNum);
 			checkTerminal.Checked=PIn.Bool(ProgramProperties.GetPropValFromList(_listProgramProperties,"TerminalProcessingEnabled",clinicNum));
-			int programVersion=PIn.Int(ProgramProperties.GetPropValFromList(_listProgramProperties,"Program Version",clinicNum));
 			//Secrets are stored as osd1$; a Secret Open Dental left in plain text is shown as-is and encrypted on Save. An unreadable value shows blank.
 			textAPISecret.Text=SecretValue.ReadOrBlank(ProgramProperties.GetPropValFromList(_listProgramProperties,PayConnect.ProgramProperties.ApiSecret,clinicNum),
 				LegacyPolicy.AcceptPlaintext);
 			textAPIKey.Text=SecretValue.ReadOrBlank(ProgramProperties.GetPropValFromList(_listProgramProperties,PayConnect.ProgramProperties.ApiKey,0),
 				LegacyPolicy.AcceptPlaintext);
 			checkUseSandbox.Checked=PIn.Bool(ProgramProperties.GetPropValFromList(_listProgramProperties,PayConnect.ProgramProperties.UseSandbox,0));
-			if(programVersion==1) {
-				radioVersion1.Checked=true;
-			}
-			else {
-				radioVersion2.Checked=true;
-			}
-			ResetUIForVersion();
-			checkForceRecurring.Checked=PIn.Bool(ProgramProperties.GetPropValFromList(_listProgramProperties,
-				PayConnect.ProgramProperties.PayConnectForceRecurringCharge,clinicNum));
+			FillGridTerminals();
 			checkPreventSavingNewCC.Checked=PIn.Bool(ProgramProperties.GetPropValFromList(_listProgramProperties,
 				PayConnect.ProgramProperties.PayConnectPreventSavingNewCC,clinicNum));
 			checkPatientPortalPayEnabled.Checked=PIn.Bool(ProgramProperties.GetPropValFromList(_listProgramProperties,PayConnect.ProgramProperties.PatientPortalPaymentsEnabled,clinicNum));
-			textToken.Text=PIn.String(ProgramProperties.GetPropValFromList(_listProgramProperties,PayConnect.ProgramProperties.PatientPortalPaymentsToken,clinicNum));
 			comboPaymentType.Items.Clear();
 			_listDefsPaymentType=Defs.GetDefsForCategory(DefCat.PaymentTypes,true);
 			for(int i=0;i<_listDefsPaymentType.Count;i++) {
@@ -160,49 +148,7 @@ namespace OpenDental{
 			}
 		}
 
-		private void ResetUIForVersion() {
-			if(radioVersion1.Checked) {
-				this.Height=LayoutManager.Scale(380);
-				label4.Visible=true;
-				textToken.Visible=true;
-				butGenerateToken.Visible=true;
-				textUsername.Visible=true;
-				textPassword.Visible=true;
-				labelPassword.Visible=true;
-				textAPISecret.Visible=false;
-				groupBoxTerminals.Visible=false;
-				checkSurcharge.Visible=false;
-				labelPassword.Text=Lan.g(this,"Password");
-				label2.Text=Lan.g(this,"Username");
-				checkForceRecurring.Visible=true;
-				butMerchantInfo.Visible=false;
-				groupPracticeWide.Visible=false;
-			}
-			//version 2
-			else {
-				this.Height=LayoutManager.Scale(745);
-				label4.Visible=false;
-				textToken.Visible=false;
-				butGenerateToken.Visible=false;
-				textUsername.Visible=false;
-				textPassword.Visible=false;
-				labelPassword.Text=Lan.g(this,"");
-				label2.Text=Lan.g(this,"Secret");
-				textAPISecret.Visible=true;
-				groupBoxTerminals.Visible=true;
-				checkSurcharge.Visible=true;
-				labelPassword.Visible=false;
-				checkForceRecurring.Visible=false;
-				butMerchantInfo.Visible=true;
-				groupPracticeWide.Visible=true;
-				FillGridTerminals();
-			}
-		}
-
 		private void FillGridTerminals() {
-			if(!radioVersion2.Checked) {
-				return;
-			}
 			long clinicNum=0;
 			if(PrefC.HasClinicsEnabled) {
 				clinicNum=_listUserClinicNums[comboClinic.SelectedIndex];
@@ -229,59 +175,18 @@ namespace OpenDental{
 			if(comboClinic.SelectedIndex==_indexClinicRevert) {//didn't change the selected clinic
 				return;
 			}
-			//if PayConnect is enabled and the username and password are set for the current clinic,
-			//make the user select a payment type before switching clinics
-			if(checkEnabled.Checked && textUsername.Text!="" && textPassword.Text!="" && comboPaymentType.SelectedIndex==-1) {
+			//if PayConnect is enabled and the Secret is set for the current clinic, make the user select a payment type before switching clinics
+			if(checkEnabled.Checked && textAPISecret.Text.Trim()!="" && comboPaymentType.SelectedIndex==-1) {
 				comboClinic.SelectedIndex=_indexClinicRevert;
 				MsgBox.Show(this,"Please select a payment type first.");
 				return;
 			}
-			SynchWithHQ();//if the user just modified the HQ credentials, change any credentials that were the same as HQ to keep them synched
 			if(!UpdateListProgramPropertiesForClinic(_listUserClinicNums[_indexClinicRevert])) {
 				comboClinic.SelectedIndex=_indexClinicRevert;
 				return;
 			}
 			_indexClinicRevert=comboClinic.SelectedIndex;//now that we've updated the values for the clinic we're switching from, update _indexClinicRevert
 			FillFields();
-		}
-
-		///<summary>For each clinic, if the Username and Password are the same as the HQ (ClinicNum=0) Username and Password, update the clinic with the
-		///values in the text boxes.  Only modifies other clinics if _indexClinicRevert=0, meaning user just modified the HQ clinic credentials.</summary>
-		private void SynchWithHQ() {
-			if(!PrefC.HasClinicsEnabled || _listUserClinicNums[_indexClinicRevert]>0) {//using clinics, and modifying the HQ clinic. otherwise return.
-				return;
-			}
-			string hqUsername=ProgramProperties.GetPropValFromList(_listProgramProperties,"Username",0);//HQ Username before updating to value in textbox
-			string hqPassword=ProgramProperties.GetPropValFromList(_listProgramProperties,"Password",0);//HQ Password before updating to value in textbox
-			string hqPayType=ProgramProperties.GetPropValFromList(_listProgramProperties,"PaymentType",0);//HQ PaymentType before updating to combo box selection
-			//IsOnlinePaymentsEnabled will not be synced with HQ, since some clinics may need to disable patient portal payments
-			//Token will not be synced with HQ, since some clinics may need to disable patient portal payments
-			string payTypeCur="";
-			if(comboPaymentType.SelectedIndex>-1) {
-				payTypeCur=_listDefsPaymentType[comboPaymentType.SelectedIndex].DefNum.ToString();
-			}
-			List<long> listClinicNums=_listProgramProperties.Select(x => x.ClinicNum).Where(x => x>0).Distinct().ToList();
-			//for each distinct ClinicNum in the prog property list for PayConnect except HQ
-			for(int i=0;i<listClinicNums.Count;i++) {
-				//if this clinic has a different username or password, skip it
-				if(!_listProgramProperties.Exists(x => x.ClinicNum==listClinicNums[i] && x.PropertyDesc=="Username" && x.PropertyValue==hqUsername)
-					|| !_listProgramProperties.Exists(x => x.ClinicNum==listClinicNums[i] && x.PropertyDesc=="Password" && x.PropertyValue==hqPassword))
-				{
-					continue;
-				}
-				//this clinic had a matching username and password, so update the username and password to keep it synched with HQ
-				_listProgramProperties.FindAll(x => x.ClinicNum==listClinicNums[i] && x.PropertyDesc=="Username")
-					.ForEach(x => x.PropertyValue=textUsername.Text);//always 1 item; null safe
-				string password=Secrets.TryEncrypt(textPassword.Text);//Encrypt password before setting so it's not plaintext.
-				_listProgramProperties.FindAll(x => x.ClinicNum==listClinicNums[i] && x.PropertyDesc=="Password")
-					.ForEach(x => x.PropertyValue=password);//always 1 item; null safe
-				if(string.IsNullOrEmpty(payTypeCur)) {
-					continue;
-				}
-				//update clinic payment type if it originally matched HQ's payment type and the selected payment type is valid
-				_listProgramProperties.FindAll(x => x.ClinicNum==listClinicNums[i] && x.PropertyDesc=="PaymentType" && x.PropertyValue==hqPayType)
-					.ForEach(x => x.PropertyValue=payTypeCur);//always 1 item; null safe
-			}
 		}
 
 		///<summary>Copies the window's values into the in-memory rows for clinicNum, and the version 2.0 API key and sandbox switch into the ClinicNum 0
@@ -302,26 +207,18 @@ namespace OpenDental{
 				payTypeSelected=_listDefsPaymentType[comboPaymentType.SelectedIndex].DefNum.ToString();
 			}
 			string processingMethodSelected=comboDefaultProcessing.SelectedIndex.ToString();
-			//set the values in the list for this clinic
-			_listProgramProperties.FindAll(x => x.ClinicNum==clinicNum && x.PropertyDesc=="Username")
-				.ForEach(x => x.PropertyValue=textUsername.Text);//always 1 item; null safe
-			string password=Secrets.TryEncrypt(textPassword.Text);//Encrypt password before setting so it's not plaintext.
-			_listProgramProperties.FindAll(x => x.ClinicNum==clinicNum && x.PropertyDesc=="Password")
-				.ForEach(x => x.PropertyValue=password);//always 1 item; null safe
+			//set the values in the list for this clinic. The PayConnect 1.0 rows (Username, Password, the force-duplicates default and the patient-portal
+			//token) are left as they are: nothing reads them any more.
 			_listProgramProperties.FindAll(x => x.ClinicNum==clinicNum && x.PropertyDesc=="PaymentType")
 				.ForEach(x => x.PropertyValue=payTypeSelected);//always 1 item; null safe
 			_listProgramProperties.FindAll(x => x.ClinicNum==clinicNum && x.PropertyDesc==PayConnect.ProgramProperties.DefaultProcessingMethod)
 				.ForEach(x => x.PropertyValue=processingMethodSelected);
 			_listProgramProperties.FindAll(x => x.ClinicNum==clinicNum && x.PropertyDesc=="TerminalProcessingEnabled")
 				.ForEach(x => x.PropertyValue=POut.Bool(checkTerminal.Checked));//always 1 item; null safe
-			_listProgramProperties.FindAll(x => x.ClinicNum==clinicNum && x.PropertyDesc==PayConnect.ProgramProperties.PayConnectForceRecurringCharge)
-				.ForEach(x => x.PropertyValue=POut.Bool(checkForceRecurring.Checked));
 			_listProgramProperties.FindAll(x => x.ClinicNum==clinicNum && x.PropertyDesc==PayConnect.ProgramProperties.PayConnectPreventSavingNewCC)
 				.ForEach(x => x.PropertyValue=POut.Bool(checkPreventSavingNewCC.Checked));
 			_listProgramProperties.FindAll(x => x.ClinicNum==clinicNum && x.PropertyDesc==PayConnect.ProgramProperties.PatientPortalPaymentsEnabled)
 				.ForEach(x => x.PropertyValue=POut.Bool(checkPatientPortalPayEnabled.Checked));
-			_listProgramProperties.FindAll(x => x.ClinicNum==clinicNum && x.PropertyDesc==PayConnect.ProgramProperties.PatientPortalPaymentsToken)
-				.ForEach(x => x.PropertyValue=textToken.Text);
 			if(secretStored!=null) {//Null when the user can't edit high-security properties: leave the stored value alone.
 				_listProgramProperties.FindAll(x => x.ClinicNum==clinicNum && x.PropertyDesc==PayConnect.ProgramProperties.ApiSecret)
 					.ForEach(x => x.PropertyValue=secretStored);//always 1 item; null safe
@@ -334,12 +231,9 @@ namespace OpenDental{
 				_listProgramProperties.FindAll(x => x.ClinicNum==0 && x.PropertyDesc==PayConnect.ProgramProperties.UseSandbox)
 					.ForEach(x => x.PropertyValue=POut.Bool(checkUseSandbox.Checked));//practice-wide, always 1 item
 			}
-			int progVersion=1;
-			if(radioVersion2.Checked) {
-				progVersion=2;
-			}
-			_listProgramProperties.FindAll(x => x.ClinicNum==clinicNum && x.PropertyDesc=="Program Version")
-				.ForEach(x => x.PropertyValue=POut.Int(progVersion));//always 1 item; null safe
+			//PayConnect 1.0 was removed, so a clinic saved here is always version 2.
+			_listProgramProperties.FindAll(x => x.ClinicNum==clinicNum && x.PropertyDesc==PayConnect.ProgramProperties.ProgramVersion)
+				.ForEach(x => x.PropertyValue=PayConnect.Version2);//always 1 item; null safe
 			int accountType=0;
 			if(checkSurcharge.Checked) {
 				accountType=1;
@@ -367,37 +261,6 @@ namespace OpenDental{
 				}
 				//User wants to set as new processor for online payments, add to the list for the current session to remove currently enabled program.
 				_listProgramPropertiesXWebWebPay.Add(programPropertyWebPayEnabled);
-			}
-		}
-
-		private void radioVersion1_CheckedChanged(object sender,EventArgs e) {
-			ResetUIForVersion();
-		}
-
-		private void radioVersion2_CheckedChanged(object sender,EventArgs e) {
-			ResetUIForVersion();
-		}
-
-		private void butGenerateToken_Click(object sender,EventArgs e) {
-			if(string.IsNullOrWhiteSpace(textUsername.Text)) {
-				MessageBox.Show("Username cannot be empty.");
-				return;
-			}
-			if(string.IsNullOrWhiteSpace(textPassword.Text)) {
-				MessageBox.Show("Password cannot be empty.");
-				return;
-			}
-			if(!string.IsNullOrWhiteSpace(textToken.Text) && MessageBox.Show("A token already exists.  Do you want to create a new one?")!=DialogResult.OK) {
-				return;
-			}
-			try {
-				textToken.Text=PayConnectREST.GetAccountToken(textUsername.Text,textPassword.Text);
-			}
-			catch(ODException ex) {
-				MessageBox.Show(ex.Message);
-			}
-			catch(Exception ex) {
-				MessageBox.Show("Error:\r\n"+ex.Message);
 			}
 		}
 
@@ -517,11 +380,7 @@ namespace OpenDental{
 
 		private void butSave_Click(object sender, System.EventArgs e) {
 			#region Validation
-			//if this program has been disabled at HQ and someone is trying to enable it, block them
-			//if clinics are not enabled and the PayConnect program link is enabled, make sure there is a username and password set
-			//if clinics are enabled, the program link can be enabled with blank username and/or password fields for some clinics
-			//clinics with blank username and/or password will essentially not have PayConnect enabled
-			//if 'Enable terminal processing' is checked then the practice/clinic will not need a username and password.
+			//With clinics, the program link can be enabled with a blank Secret for some clinics; those clinics essentially don't have PayConnect.
 			if(checkEnabled.Checked //if PayConnect is enabled
 					&& comboDefaultProcessing.SelectedIndex < 0)
 			{
@@ -530,35 +389,22 @@ namespace OpenDental{
 			}
 			if(checkEnabled.Checked //if PayConnect is enabled
 				&& comboPaymentType.SelectedIndex<0 //and the payment type is not set
-				&& (!PrefC.HasClinicsEnabled  //and either clinics are not enabled (meaning this is the only set of username, password, payment type values)
-				|| (textUsername.Text!="" && textPassword.Text!="") //or clinics are enabled and this clinic's link has a username and password set
-				|| (radioVersion2.Checked && textAPISecret.Text.Trim()!=""))) //or a version 2.0 Secret
+				&& (!PrefC.HasClinicsEnabled  //and either clinics are not enabled (meaning this is the only set of values)
+				|| textAPISecret.Text.Trim()!="")) //or clinics are enabled and this clinic has a Secret
 			{
 				MsgBox.Show(this,"Please select a payment type first.");
 				return;
 			}
-			if(radioVersion1.Checked) {//version 1 specific validation
-				if(checkEnabled.Checked && !checkTerminal.Checked && !PrefC.HasClinicsEnabled && 
-				(textUsername.Text=="" || textPassword.Text=="")) 
-				{
-					MsgBox.Show(this,"Please enter a username and password first.");
+			if(checkEnabled.Checked) {
+				if(textAPIKey.Text.Trim()=="") {
+					MsgBox.Show(this,"Please enter the API key first.");
+					return;
+				}
+				if(textAPISecret.Text.Trim()=="") {
+					MsgBox.Show(this,"Please enter a Secret first.");
 					return;
 				}
 			}
-			else if(radioVersion2.Checked) {
-				if(checkEnabled.Checked) {
-					if(textAPIKey.Text.Trim()=="") {
-						MsgBox.Show(this,"Please enter the API key first.");
-						return;
-					}
-					if(textAPISecret.Text.Trim()=="") {
-						MsgBox.Show(this,"Please enter a Secret first.");
-						return;
-					}
-				}
-			}
-			
-			SynchWithHQ();//if the user changes the HQ credentials, any clinic that had the same credentials will be kept in synch with HQ
 			long clinicNum=0;
 			if(PrefC.HasClinicsEnabled) {
 				clinicNum=_listUserClinicNums[comboClinic.SelectedIndex];
@@ -566,6 +412,9 @@ namespace OpenDental{
 			if(!UpdateListProgramPropertiesForClinic(clinicNum)) {
 				return;
 			}
+			//PayConnect 1.0 was removed. Every clinic this user can see moves to version 2; a clinic still on version 1 could not take payments anyway.
+			_listProgramProperties.FindAll(x => _listUserClinicNums.Contains(x.ClinicNum) && x.PropertyDesc==PayConnect.ProgramProperties.ProgramVersion)
+				.ForEach(x => x.PropertyValue=PayConnect.Version2);
 			string payTypeCur;
 			//make sure any other clinics with PayConnect enabled also have a payment type selected
 			for(int i=0;i<_listUserClinicNums.Count;i++) {
@@ -573,16 +422,11 @@ namespace OpenDental{
 					break;
 				}
 				payTypeCur=ProgramProperties.GetPropValFromList(_listProgramProperties,"PaymentType",_listUserClinicNums[i]);
-				//if the program is enabled and the username and password fields are not blank,
-				//PayConnect is enabled for this clinic so make sure the payment type is also set
-				//Decrypt password because empty string password is not empty string when encrypted.
-				string password=Secrets.TryDecrypt(ProgramProperties.GetPropValFromList(_listProgramProperties,"Password",_listUserClinicNums[i]));
+				//if the program is enabled and the clinic has a Secret (or terminal processing), PayConnect is on for this clinic, so make sure the
+				//payment type is also set
 				string secret=SecretValue.ReadOrBlank(ProgramProperties.GetPropValFromList(_listProgramProperties,PayConnect.ProgramProperties.ApiSecret,
 					_listUserClinicNums[i]),LegacyPolicy.AcceptPlaintext);
-				bool isVersion2=ProgramProperties.GetPropValFromList(_listProgramProperties,PayConnect.ProgramProperties.ProgramVersion,_listUserClinicNums[i])=="2";
-				if(((ProgramProperties.GetPropValFromList(_listProgramProperties,"Username",_listUserClinicNums[i])!="" //if username set
-					&& password!="") //and password set
-					|| (isVersion2 && secret!="") //or a version 2.0 Secret set
+				if((secret!="" //a Secret set
 					|| ProgramProperties.GetPropValFromList(_listProgramProperties,"TerminalProcessingEnabled",_listUserClinicNums[i])=="1")//or terminal enabled
 					&& !_listDefsPaymentType.Any(x => x.DefNum.ToString()==payTypeCur)) //and paytype is not a valid DefNum
 				{

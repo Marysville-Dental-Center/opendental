@@ -10,7 +10,6 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows.Forms;
 using CodeBase;
-using DentalXChange.Dps.Pos;
 using MigraDoc.DocumentObjectModel;
 using MigraDoc.Rendering;
 using MigraDoc.Rendering.Printing;
@@ -77,7 +76,6 @@ namespace OpenDental {
 		private PaymentEdit.LoadData _loadData;
 		private int _originalHeight;
 		private Patient _patient;
-		private PayConnectService.creditCardRequest _creditCardRequestPayConnect;
 		private PayConnectResponseWeb _payConnectResponseWeb;
 		private PaySimple.ApiResponse _apiResponsePaySimple;
 		private Payment _payment;
@@ -2363,22 +2361,11 @@ namespace OpenDental {
 			Program program=Programs.GetCur(ProgramName.PayConnect);
 			bool isSetupRequired=false;
 			if(program.Enabled) {
-				//check program version
+				//Only PayConnect 2 runs. A clinic still set to version 1 (PayConnect 1.0 was removed) needs setup, and saving setup writes version 2.
 				string payconnectVersion=ProgramProperties.GetPropVal(program.ProgramNum,PayConnect.ProgramProperties.ProgramVersion,_payment.ClinicNum);
-				if(payconnectVersion=="1") {
-					//If clinics are disabled, _paymentCur.ClinicNum will be 0 and the Username and Password will be the 'Headquarters' or practice credentials
-					string password=Secrets.TryDecrypt(ProgramProperties.GetPropVal(program.ProgramNum,"Password",_payment.ClinicNum));
-					if(string.IsNullOrEmpty(ProgramProperties.GetPropVal(program.ProgramNum,"Username",_payment.ClinicNum))
-						|| string.IsNullOrEmpty(password))
-					{
-						isSetupRequired=true;
-					}
-				}
-				else if(payconnectVersion=="2") {
-					//The office's integrator API key and this clinic's Secret, both readable.
-					if(!PayConnect2.HasCredentials(_payment.ClinicNum)) {
-						isSetupRequired=true;
-					}
+				//The office's integrator API key and this clinic's Secret, both readable.
+				if(payconnectVersion!=PayConnect.Version2 || !PayConnect2.HasCredentials(_payment.ClinicNum)) {
+					isSetupRequired=true;
 				}
 				string paymentType=ProgramProperties.GetPropVal(program.ProgramNum,"PaymentType",_payment.ClinicNum);
 				if(!_listDefsPaymentType.Any(x => x.DefNum.ToString()==paymentType)) {
@@ -3335,64 +3322,45 @@ namespace OpenDental {
 			}
 		}
 
+		///<summary>Voids a PayConnect 2 transaction (web service or terminal) by reference number. PayConnect 1.0 and its VeriFone terminals were
+		///removed, so there is no other path.</summary>
 		private void VoidPayConnectTransaction(string refNum,string amount) {
-			Program program=Programs.GetCur(ProgramName.PayConnect);
-			string payconnectVersion=ProgramProperties.GetPropVal(program.ProgramNum,PayConnect.ProgramProperties.ProgramVersion,_payment.ClinicNum);
 			PayConnectResponse payConnectResponse=null;
 			string receiptStr="";
-			if(_creditCardRequestPayConnect==null || payconnectVersion=="2") {//The payment was made through the terminal or by PayConnect v2.
-				PayConnect2VoidResult payConnect2VoidResult=null;
-				ProgressWin progressOD=new ProgressWin();
-				progressOD.ActionMain=() => {
-					if(payconnectVersion=="1") {
-						PosRequest posRequest=PosRequest.CreateVoidByReference(refNum);
-						PosResponse posResponse=DpsPos.ProcessCreditCard(posRequest);
-						payConnectResponse=PayConnectTerminal.ToPayConnectResponse(posResponse);
-					}
-					else if(payconnectVersion=="2") {
-						//A void is never retried. If its answer is lost, the transaction's status decides; an unknown outcome records nothing.
-						payConnect2VoidResult=PaymentWindowRules.VoidPayConnect2(refNum,_payment.ClinicNum);
-						payConnectResponse=payConnect2VoidResult.IsVoided ? payConnect2VoidResult.PayConnectResponse : null;
-					}
-					if(payConnectResponse!=null) {
-						receiptStr=PayConnectTerminal.BuildReceiptString(payConnectResponse,false,_payment.ClinicNum);
-					}
-				};
-				progressOD.ShowCancelButton=false;
-				progressOD.StartingMessage=Lan.g(this,"Processing void on terminal.");
-				progressOD.StopNotAllowedMessage=Lan.g(this,"Not allowed to stop. Please wait up to 2 minutes.");
-				try {
-					progressOD.ShowDialog();
+			PayConnect2VoidResult payConnect2VoidResult=null;
+			ProgressWin progressOD=new ProgressWin();
+			progressOD.ActionMain=() => {
+				//A void is never retried. If its answer is lost, the transaction's status decides; an unknown outcome records nothing.
+				payConnect2VoidResult=PaymentWindowRules.VoidPayConnect2(refNum,_payment.ClinicNum);
+				payConnectResponse=payConnect2VoidResult.IsVoided ? payConnect2VoidResult.PayConnectResponse : null;
+				if(payConnectResponse!=null) {
+					receiptStr=PayConnectTerminal.BuildReceiptString(payConnectResponse,false,_payment.ClinicNum);
 				}
-				catch(Exception ex) {
-					MessageBox.Show(Lan.g(this,"Error voiding payment:")+" "+ex.Message);
-				}
-				if(progressOD.IsCancelled) {
-					//do nothing.  The code below handles it.
-				}
-				if(payConnect2VoidResult!=null && !payConnect2VoidResult.IsVoided) {
-					string logText="PayConnect void not completed for reference number "+refNum+".";
-					if(payConnect2VoidResult.Kind==PayConnect2VoidKind.Unknown) {
-						logText="PayConnect did not answer the void for reference number "+refNum+"; the outcome is unknown.";
-					}
-					SecurityLogs.MakeLogEntry(EnumPermType.CreditCardTerminal,_patient.PatNum,logText);
-					string message=payConnect2VoidResult.Message;
-					if(payConnect2VoidResult.Kind==PayConnect2VoidKind.NotVoided) {
-						message+="\r\n"+Lan.g(this,"This credit card payment has already been processed and will have to be voided manually through the web interface.");
-					}
-					MessageBox.Show(message);
-					return;
-				}
+			};
+			progressOD.ShowCancelButton=false;
+			progressOD.StartingMessage=Lan.g(this,"Processing void on terminal.");
+			progressOD.StopNotAllowedMessage=Lan.g(this,"Not allowed to stop. Please wait up to 2 minutes.");
+			try {
+				progressOD.ShowDialog();
 			}
-			else {//The payment was made through the web service.
-				Cursor=Cursors.WaitCursor;
-				_creditCardRequestPayConnect.TransType=PayConnectService.transType.VOID;
-				_creditCardRequestPayConnect.RefNumber=refNum;
-				_creditCardRequestPayConnect.Amount=PIn.Decimal(amount);
-				PayConnectService.transResponse transResponse=PayConnect.ProcessCreditCard(_creditCardRequestPayConnect,_payment.ClinicNum,x => MessageBox.Show(x));
-				payConnectResponse=PayConnectREST.ToPayConnectResponse(transResponse,_creditCardRequestPayConnect);
-				receiptStr=PayConnect.BuildReceiptString(_creditCardRequestPayConnect,transResponse,null,0);
-				Cursor=Cursors.Default;
+			catch(Exception ex) {
+				MessageBox.Show(Lan.g(this,"Error voiding payment:")+" "+ex.Message);
+			}
+			if(progressOD.IsCancelled) {
+				//do nothing.  The code below handles it.
+			}
+			if(payConnect2VoidResult!=null && !payConnect2VoidResult.IsVoided) {
+				string logText="PayConnect void not completed for reference number "+refNum+".";
+				if(payConnect2VoidResult.Kind==PayConnect2VoidKind.Unknown) {
+					logText="PayConnect did not answer the void for reference number "+refNum+"; the outcome is unknown.";
+				}
+				SecurityLogs.MakeLogEntry(EnumPermType.CreditCardTerminal,_patient.PatNum,logText);
+				string message=payConnect2VoidResult.Message;
+				if(payConnect2VoidResult.Kind==PayConnect2VoidKind.NotVoided) {
+					message+="\r\n"+Lan.g(this,"This credit card payment has already been processed and will have to be voided manually through the web interface.");
+				}
+				MessageBox.Show(message);
+				return;
 			}
 			if(payConnectResponse==null || payConnectResponse.StatusCode!="0") {//error in transaction
 				SecurityLogs.MakeLogEntry(EnumPermType.CreditCardTerminal,_patient.PatNum,"Invalid response, or error communicating with, PayConnect.");
@@ -3682,20 +3650,8 @@ namespace OpenDental {
 			bool wasPaymentAttempted=false;
 			PayConnectResponse payConnectResponse=null;
 			PayConnectService.transType transType=PayConnectService.transType.SALE;
-			if(payconnectVersion=="1") {
-				using FormPayConnect formPayConnect=new FormPayConnect(_payment.ClinicNum,_patient,amount,creditCard);
-				formPayConnect.ShowDialog();
-				payConnectResponse=formPayConnect.GetResponse();
-				cardNumber=formPayConnect.GetCardNumber();
-				receipt=formPayConnect.ReceiptStr;
-				amountChargedString=formPayConnect.GetAmountCharged();
-				transType=formPayConnect.TransType;
-				wasPaymentAttempted=formPayConnect.WasPaymentAttempted;
-				if(payConnectResponse!=null && payConnectResponse.StatusCode=="0") {
-					_creditCardRequestPayConnect=formPayConnect.CreditCardRequest;
-				}
-			}
-			else if(payconnectVersion=="2") {
+			//HasPayConnect() above made sure this clinic is on version 2; PayConnect 1.0 was removed.
+			if(payconnectVersion==PayConnect.Version2) {
 				using FormPayConnect2 formPayConnect2=new FormPayConnect2(_payment.ClinicNum,_patient,creditCard,amount);
 				if(formPayConnect2.ShowDialog()!=DialogResult.OK && !formPayConnect2.WasPaymentAttempted) {
 					return null;
@@ -3733,7 +3689,6 @@ namespace OpenDental {
 				amountChargedString=(((double)statusResponse.GetStatusResponse.Amount)/100).ToString("F2");
 				transType=formPayConnect2.TransType;
 				wasPaymentAttempted=formPayConnect2.WasPaymentAttempted;
-				_creditCardRequestPayConnect=null;//PayConnect2 doesn't use this field, explicitly set it null for safety.
 				string integrationType=ProgramProperties.GetPropVal(program.ProgramNum,PayConnect.ProgramProperties.IntegrationType,_payment.ClinicNum);
 				if(integrationType=="1") {//Surcharge integration
 					_payment.MerchantFee=((double)statusResponse.GetStatusResponse.AmountSurcharged)/100;

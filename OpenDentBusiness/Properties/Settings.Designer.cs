@@ -76,16 +76,6 @@ namespace OpenDentBusiness.Properties {
         [global::System.Configuration.ApplicationScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.SpecialSettingAttribute(global::System.Configuration.SpecialSetting.WebServiceUrl)]
-        [global::System.Configuration.DefaultSettingValueAttribute("https://prelive2.dentalxchange.com:443/merchant/MerchantService")]
-        public string OpenDentBusiness_PayConnectService_MerchantService {
-            get {
-                return ((string)(this["OpenDentBusiness_PayConnectService_MerchantService"]));
-            }
-        }
-        
-        [global::System.Configuration.ApplicationScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.SpecialSettingAttribute(global::System.Configuration.SpecialSetting.WebServiceUrl)]
         [global::System.Configuration.DefaultSettingValueAttribute("https://prelive2.dentalxchange.com:443/dea/DeaPartnerService")]
         public string OpenDentBusiness_DentalxchangePartnerService_DeaPartnerService {
             get {

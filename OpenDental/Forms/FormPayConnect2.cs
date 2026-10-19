@@ -172,7 +172,7 @@ namespace OpenDental {
 					request.InvoiceNumber=PayConnect2.NewCorrelationId();
 					UI.ProgressWin progressOD=new UI.ProgressWin();
 					progressOD.ActionMain=()=> {_payConnect2Response=PayConnect2.PostCreateTerminalTransaction(request,_clinicNum);};
-					progressOD.ShowCancelButton=false;//This is neccessary as cancelling on our side will not cancel the transaction on the terminal, which could lead to the payment being processed but not show in the patients account. This also matches what we do in FormPayConnect.cs.
+					progressOD.ShowCancelButton=false;//This is neccessary as cancelling on our side will not cancel the transaction on the terminal, which could lead to the payment being processed but not show in the patients account.
 					progressOD.StartingMessage=Lan.g(this,"Processing payment on terminal");
 					progressOD.StopNotAllowedMessage=Lan.g(this,"Not allowed to stop. Please wait up to 2 minutes.");
 					try{

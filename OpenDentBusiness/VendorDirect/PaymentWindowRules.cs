@@ -31,10 +31,9 @@ namespace OpenDentBusiness.VendorDirect {
 			return clinicNum;
 		}
 
-		///<summary>True if the PayConnect button shows for clinicNum. Version 2 needs PayConnect2.IsConfigured (enabled, the office's API key and the
-		///clinic's Secret), with clinics on or off. Version 1 keeps its old rule until PayConnect 1.0 is removed: with clinics on it needs a user name
-		///and password. With clinics on, both versions also need a valid payment type. listDefsPaymentType null skips the payment-type check (adding
-		///a card, where no payment is made).</summary>
+		///<summary>True if the PayConnect button shows for clinicNum. It needs PayConnect2.IsConfigured (enabled, version 2, the office's API key and
+		///the clinic's Secret), with clinics on or off, and with clinics on a valid payment type. A clinic still set to PayConnect 1.0 (removed) never
+		///shows it. listDefsPaymentType null skips the payment-type check (adding a card, where no payment is made).</summary>
 		public static bool ShowPayConnect(long clinicNum,List<Def> listDefsPaymentType) {
 			try {
 				Program program=Programs.GetCur(ProgramName.PayConnect);
@@ -42,23 +41,7 @@ namespace OpenDentBusiness.VendorDirect {
 					return false;
 				}
 				clinicNum=NormalizeClinicNum(clinicNum);
-				string programVersion=ProgramProperties.GetValOrDefault(program.ProgramNum,PayConnect.ProgramProperties.ProgramVersion,clinicNum);
-				bool hasCredentials;
-				if(programVersion=="2") {
-					hasCredentials=PayConnect2.IsConfigured(clinicNum);
-				}
-				else if(programVersion=="1") {
-					hasCredentials=true;
-					if(PrefC.HasClinicsEnabled) {
-						string password=Secrets.TryDecrypt(ProgramProperties.GetValOrDefault(program.ProgramNum,"Password",clinicNum));
-						hasCredentials=!string.IsNullOrEmpty(ProgramProperties.GetValOrDefault(program.ProgramNum,"Username",clinicNum))
-							&& !string.IsNullOrEmpty(password);
-					}
-				}
-				else {
-					return false;
-				}
-				if(!hasCredentials) {
+				if(!PayConnect2.IsConfigured(clinicNum)) {
 					return false;
 				}
 				if(listDefsPaymentType==null || !PrefC.HasClinicsEnabled) {

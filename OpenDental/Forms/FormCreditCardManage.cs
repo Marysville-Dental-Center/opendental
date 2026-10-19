@@ -405,15 +405,12 @@ namespace OpenDental {
 			if(hasPayConnect) {
 				Program program=Programs.GetCur(ProgramName.PayConnect);
 				string payconnectVersion=ProgramProperties.GetPropVal(program.ProgramNum,PayConnect.ProgramProperties.ProgramVersion,Clinics.ClinicNum);
-				if(payconnectVersion=="2" && !PayConnect2.IsConfigured(Clinics.ClinicNum)) {
+				//IsConfigured is false for a clinic still set to PayConnect 1.0, which was removed; saving PayConnect Setup moves it to version 2.
+				if(!PayConnect2.IsConfigured(Clinics.ClinicNum)) {
 					MsgBox.Show(this,"PayConnect is not set up for the current clinic. Enter the API key and the clinic's Secret in Setup, Program Links, "
 						+"PayConnect, and try again.");
 				}
-				else if(payconnectVersion=="1") {
-					using FormPayConnect formPayConnect=new FormPayConnect(Clinics.ClinicNum,_patient,(decimal)0.01,creditCard,isAddingCard:true);
-					formPayConnect.ShowDialog();
-				}
-				else if(payconnectVersion=="2") {
+				else if(payconnectVersion==PayConnect.Version2) {
 					using FormPayConnect2iFrame formPayConnect2IFrame=new FormPayConnect2iFrame(Clinics.ClinicNum,isAddingCard:true);
 					formPayConnect2IFrame.ShowDialog();
 					PayConnect2.PayConnect2Response response=formPayConnect2IFrame.GetResponse();

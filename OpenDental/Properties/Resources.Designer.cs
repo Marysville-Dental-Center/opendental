@@ -656,29 +656,6 @@ namespace OpenDental.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot; ?&gt;
-        ///&lt;configuration&gt;
-        ///  &lt;configSections&gt;
-        ///    &lt;section name=&quot;log4net&quot; type=&quot;log4net.Config.Log4NetConfigurationSectionHandler, log4net&quot;/&gt;
-        ///  &lt;/configSections&gt;
-        ///
-        ///  &lt;appSettings&gt;
-        ///    &lt;add key=&quot;ServicePort&quot; value=&quot;COM9&quot;/&gt;
-        ///    &lt;add key=&quot;BaudRate&quot; value=&quot;19200&quot;/&gt;
-        ///    &lt;add key=&quot;ReadTimeout&quot; value=&quot;120000&quot;/&gt;
-        ///    &lt;add key=&quot;WriteTimeout&quot; value=&quot;5000&quot;/&gt;
-        ///  &lt;/appSettings&gt;
-        ///
-        ///  &lt;!-- This section contains the log4net configuration settings --&gt;
-        ///  &lt;!-- Setting the Threshold on the [rest of string was truncated]&quot;;.
-        /// </summary>
-        public static string DpsPos_dll_config {
-            get {
-                return ResourceManager.GetString("DpsPos_dll_config", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Copyright (c) 2015 Dropbox Inc.
         ///
         ///Permission is hereby granted, free of charge, to any person obtaining

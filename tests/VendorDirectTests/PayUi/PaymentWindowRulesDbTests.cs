@@ -156,7 +156,7 @@ namespace VendorDirectTests.PayUi {
 			Enable(_programNumPayConnect);
 			Assert.IsFalse(PaymentWindowRules.ShowPayConnect(0,_listDefsEmpty));
 			SetRow(_programNumPayConnect,OpenDentBusiness.PayConnect.ProgramProperties.ProgramVersion,"1");
-			Assert.IsTrue(PaymentWindowRules.ShowPayConnect(0,_listDefsEmpty),"PayConnect 1.0 keeps its old clinics-off rule until it is removed.");
+			Assert.IsFalse(PaymentWindowRules.ShowPayConnect(0,_listDefsEmpty),"PayConnect 1.0 was removed, so a version 1 clinic never shows the button.");
 		}
 
 		[TestMethod]

@@ -1313,11 +1313,6 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Reference.map</DependentUpon>
     </Compile>
-    <Compile Include="Web References\PayConnectService\Reference.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>Reference.map</DependentUpon>
-    </Compile>
     <Compile Include="WebBridges\Erx\ErxXml.cs" />
     <Compile Include="WebBridges\Erx\NewCrop\NCScript.cs" />
     <Compile Include="HL7old\EhrADT_A01.cs" />
@@ -2435,32 +2430,6 @@
       <DependentUpon>Reference.map</DependentUpon>
     </None>
     <None Include="Web References\NewCropWebService\Update1.wsdl" />
-    <None Include="Web References\PayConnectService\batchInfoResponse.datasource">
-      <DependentUpon>Reference.map</DependentUpon>
-    </None>
-    <None Include="Web References\PayConnectService\cardType.datasource">
-      <DependentUpon>Reference.map</DependentUpon>
-    </None>
-    <None Include="Web References\PayConnectService\merchantInfoResponse.datasource">
-      <DependentUpon>Reference.map</DependentUpon>
-    </None>
-    <None Include="Web References\PayConnectService\MerchantService.wsdl" />
-    <None Include="Web References\PayConnectService\MerchantService.xsd">
-      <SubType>Designer</SubType>
-    </None>
-    <None Include="Web References\PayConnectService\MerchantService0.xsd">
-      <SubType>Designer</SubType>
-    </None>
-    <None Include="Web References\PayConnectService\Reference.map">
-      <Generator>MSDiscoCodeGenerator</Generator>
-      <LastGenOutput>Reference.cs</LastGenOutput>
-    </None>
-    <None Include="Web References\PayConnectService\signatureResponse.datasource">
-      <DependentUpon>Reference.map</DependentUpon>
-    </None>
-    <None Include="Web References\PayConnectService\transResponse.datasource">
-      <DependentUpon>Reference.map</DependentUpon>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <WebReferenceUrl Include="http://localhost/OpenDentalServer/ServiceMain.asmx">
@@ -2506,17 +2475,6 @@
       </CachedDynamicPropName>
       <CachedAppSettingsObjectName>Settings</CachedAppSettingsObjectName>
       <CachedSettingsPropName>OpenDentBusiness_DentalxchangePartnerService_DeaPartnerService</CachedSettingsPropName>
-    </WebReferenceUrl>
-    <WebReferenceUrl Include="https://prelive2.dentalxchange.com/merchant/MerchantService%3fwsdl">
-      <UrlBehavior>Dynamic</UrlBehavior>
-      <RelPath>Web References\PayConnectService\</RelPath>
-      <UpdateFromURL>https://prelive2.dentalxchange.com/merchant/MerchantService%3fwsdl</UpdateFromURL>
-      <ServiceLocationURL>
-      </ServiceLocationURL>
-      <CachedDynamicPropName>
-      </CachedDynamicPropName>
-      <CachedAppSettingsObjectName>Settings</CachedAppSettingsObjectName>
-      <CachedSettingsPropName>OpenDentBusiness_PayConnectService_MerchantService</CachedSettingsPropName>
     </WebReferenceUrl>
     <WebReferenceUrl Include="https://secure.newcropaccounts.com/v7/WebServices/Update1.asmx">
       <UrlBehavior>Dynamic</UrlBehavior>
