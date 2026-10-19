@@ -13,6 +13,7 @@ namespace OpenDental{
 		#region Fields
 		///<summary>Changes based on if OD HQ.</summary>
 		private MenuItemOD _menuItemAccount;
+		private MenuItemOD _menuItemAdvertising;
 		private MenuItemOD _menuItemAlerts;
 		private MenuItemOD _menuItemCareCreditTransactions;
 		private MenuItemOD _menuItemClinicsMain;
@@ -356,9 +357,11 @@ namespace OpenDental{
 			LayoutSubMenuMiscTools(menuItemMiscTools);
 			menuItemTools.AddSeparator();
 			//Advertising-----------------------------------------------------------------------------------------------------
-			MenuItemOD menuItemAdvertisingTools=new MenuItemOD("Advertising");
-			menuItemTools.Add(menuItemAdvertisingTools);
-			LayoutSubMenuAdvertising(menuItemAdvertisingTools);
+			_menuItemAdvertising=new MenuItemOD("Advertising");
+			//Shown only while the PostcardMania program link is enabled; the Programs cache refresh keeps this current.
+			_menuItemAdvertising.Available=!Programs.HListIsNull() && Programs.IsEnabled(ProgramName.PostcardMania);
+			menuItemTools.Add(_menuItemAdvertising);
+			LayoutSubMenuAdvertising(_menuItemAdvertising);
 			//Menus below have no submenus (name as shown)--------------------------------------------------------------------
 			menuItemTools.Add("Audit Trail",menuItemAuditTrail_Click);
 			_menuItemFinanceCharges=new MenuItemOD("Billing/&Finance Charges",menuItemFinanceCharge_Click);

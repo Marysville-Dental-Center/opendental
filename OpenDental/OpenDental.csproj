@@ -2854,6 +2854,42 @@
     <Compile Include="Forms\FormCdsTriggers.designer.cs">
       <DependentUpon>FormCdsTriggers.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\FormEdgeExpressPayPage.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormEdgeExpressPayPage.Designer.cs">
+      <DependentUpon>FormEdgeExpressPayPage.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormGmailApiSetup.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormGmailApiSetup.Designer.cs">
+      <DependentUpon>FormGmailApiSetup.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormMicrosoft365Setup.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormMicrosoft365Setup.Designer.cs">
+      <DependentUpon>FormMicrosoft365Setup.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormPdmpClientCertificate.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormPdmpClientCertificate.Designer.cs">
+      <DependentUpon>FormPdmpClientCertificate.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormUspsAddressSetup.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormUspsAddressSetup.Designer.cs">
+      <DependentUpon>FormUspsAddressSetup.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Logic\EdgeExpressL.cs" />
+    <Compile Include="Logic\VendorDirect\DropboxStartupCheck.cs" />
+    <Compile Include="Logic\VendorDirect\IProgramLinkSetup.cs" />
+    <Compile Include="Logic\VendorDirect\PostcardsMenu.cs" />
+    <Compile Include="Logic\VendorDirect\ProgramLinkSetupRegistry.cs" />
+    <Compile Include="Logic\VendorDirect\VendorJobHost.cs" />
     <Compile Include="Forms\FormPodiumSetup.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -6616,6 +6652,21 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormCdsTriggers.resx">
       <DependentUpon>FormCdsTriggers.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\FormEdgeExpressPayPage.resx">
+      <DependentUpon>FormEdgeExpressPayPage.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\FormGmailApiSetup.resx">
+      <DependentUpon>FormGmailApiSetup.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\FormMicrosoft365Setup.resx">
+      <DependentUpon>FormMicrosoft365Setup.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\FormPdmpClientCertificate.resx">
+      <DependentUpon>FormPdmpClientCertificate.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\FormUspsAddressSetup.resx">
+      <DependentUpon>FormUspsAddressSetup.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormPodiumSetup.resx">
       <DependentUpon>FormPodiumSetup.cs</DependentUpon>

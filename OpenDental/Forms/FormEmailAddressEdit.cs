@@ -87,6 +87,11 @@ namespace OpenDental{
 					checkDownloadMicrosoft.Checked=_emailAddress.DownloadInbox;
 				}
 			}
+			//Interim gate (vendor-direct, Microsoft 365): Microsoft sign-in is offered only once the Microsoft 365 email program link is enabled, so
+			//nobody signs in again under Open Dental's app registration. An address already set up for Microsoft still shows its state.
+			bool isMicrosoft365Enabled=Programs.IsEnabled(ProgramName.Microsoft365Email);
+			radioMicrosoft.Visible=isMicrosoft365Enabled || _authenticationType==OAuthType.Microsoft;
+			butAuthMicrosoft.Enabled=isMicrosoft365Enabled;
 			RefreshEmailTextFields(enableEmailFields);
 		}
 

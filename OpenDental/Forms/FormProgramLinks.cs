@@ -20,6 +20,10 @@ namespace OpenDental{
 		}
 
 		private void FormProgramLinks_Load(object sender, System.EventArgs e) {
+			//Vendor-direct program links insert their own rows (Enabled=0) the first time this window opens.
+			if(VendorDirect.ProgramLinkSetupRegistry.EnsureAllPrograms()) {
+				_didChange=true;
+			}
 			FillList();
 		}
 
@@ -62,6 +66,14 @@ namespace OpenDental{
 		private void gridProgram_CellDoubleClick(object sender,ODGridClickEventArgs e) {
 			DialogResult dialogResult=DialogResult.None;
 			Program program=_listPrograms[gridProgram.GetSelectedIndex()].Copy();
+			VendorDirect.IProgramLinkSetup programLinkSetup=VendorDirect.ProgramLinkSetupRegistry.Find(program.ProgName);
+			if(programLinkSetup!=null) {
+				if(programLinkSetup.OpenSetup(this)==DialogResult.OK) {
+					_didChange=true;
+					FillList();
+				}
+				return;
+			}
 			switch(program.ProgName) {
 				case "eClinicalWorks":
 					if(!Security.IsAuthorized(EnumPermType.SecurityAdmin)) {
