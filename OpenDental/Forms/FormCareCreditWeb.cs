@@ -9,8 +9,9 @@ using CodeBase.VendorDirect;
 
 namespace OpenDental {
 	///<summary>Browser window for CareCredit's hosted pages, using the WebView2 control. Modal for a purchase (FormPayment pulls the result back when it
-	///closes); non-modal for every other page (CareCreditL.ShowPage), whose results come from the background poller. Only the hosted-page host set in
-	///CareCredit Setup is shown here; links to anything else open in the default browser, and Open Dental hosts are never opened.</summary>
+	///closes); non-modal for every other page (CareCreditL.ShowPage), whose row is pulled back when the window closes and then by the pollers.
+	///Only the hosted-page host set in CareCredit Setup is shown here; links to anything else open in the default browser, and Open Dental hosts
+	///are never opened.</summary>
 	public partial class FormCareCreditWeb:FormODBase {
 		///<summary>Set to the value passed into the constructor if one was passed in.  Navigates the browser control to this url on load.</summary>
 		private string _urlBrowseTo="";
@@ -22,6 +23,9 @@ namespace OpenDental {
 		public bool IsUrlSingleUse;
 		///<summary>The session ID of the CareCredit prefill response.</summary>
 		public string SessionId;
+		///<summary>True for a non-modal window (CareCreditL.ShowPage): when it closes, its row is pulled back in the background. A modal purchase leaves
+		///this false; FormPayment pulls back itself.</summary>
+		public bool DoPullbackOnClose;
 
 
 		///<summary>Used when opening a new browser window via a link.</summary>
@@ -157,6 +161,9 @@ namespace OpenDental {
 
 		protected override void OnClosed(EventArgs e) {
 			webViewMain.Dispose();
+			if(DoPullbackOnClose) {
+				CareCreditL.PullbackOnClose(SessionId);
+			}
 			base.OnClosed(e);
 		}
 	}

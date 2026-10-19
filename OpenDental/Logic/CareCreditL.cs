@@ -9,6 +9,12 @@ using OpenDentBusiness.Bridges;
 
 namespace OpenDental {
 	public class CareCreditL {
+		private const string LOG_FOLDER="CareCredit";
+		private const string SESSION_POLLER_GROUP="CareCreditSessionPoll";
+		///<summary>How often this session's poller looks for due rows. Each row keeps its own schedule (CareCreditPollSchedule).</summary>
+		private static readonly TimeSpan SessionPollInterval=TimeSpan.FromMinutes(1);
+		private static readonly object _lockSessionPoller=new object();
+		private static ODThread _odThreadSessionPoller;
 
 		///<summary>Opens the CareCredit Admin page.</summary>
 		public static string LaunchAdminPage(string merchantNum,string userName=null,bool showPage=true) {
@@ -148,6 +154,7 @@ namespace OpenDental {
 				finally {
 					Cursor.Current=cursorOld;
 				}
+				StartSessionPoller();
 				if(doShowPage) {
 					ShowPage(pageUrl,patient);
 				}
@@ -192,8 +199,9 @@ namespace OpenDental {
 			return "";
 		}
 
-		///<summary>Shows a CareCredit hosted page in a non-modal window, or in the default browser when WebView2 isn't installed. Completion comes from
-		///the background poller. Refuses any address that isn't on the hosted-page host set in CareCredit Setup.</summary>
+		///<summary>Shows a CareCredit hosted page in a non-modal window, or in the default browser when WebView2 isn't installed. The result is pulled
+		///back when the window closes (PullbackOnClose), and after that by the job computer's poller, or by this session's own poller when no job
+		///computer is set (StartSessionPoller). Refuses any address that isn't on the hosted-page host set in CareCredit Setup.</summary>
 		public static void ShowPage(string url,Patient patient=null) {
 			if(string.IsNullOrEmpty(url)) {
 				return;
@@ -212,7 +220,54 @@ namespace OpenDental {
 				return;
 			}
 			FormCareCreditWeb formCareCreditWeb=new FormCareCreditWeb(url,patient);
+			formCareCreditWeb.DoPullbackOnClose=true;
 			formCareCreditWeb.Show();
+		}
+
+		///<summary>Called when a non-modal CareCredit window closes: pulls back the row for its session on a background thread and applies the result
+		///(patient fields, or the payment for a purchase finished in the window). Errors are logged, never shown; the pollers try again later.</summary>
+		public static void PullbackOnClose(string sessionId) {
+			if(string.IsNullOrEmpty(sessionId) || !CareCredit.IsUsable()) {
+				return;
+			}
+			ODThread odThread=new ODThread((o) => {
+				try {
+					CareCreditWebResponse careCreditWebResponse=CareCreditWebResponses.GetBySessionId(sessionId);
+					CareCreditJobs.PullbackNow(careCreditWebResponse,CareCredit.FuncNow());
+				}
+				catch(CareCredit.CareCreditException ex) {
+					Logger.WriteLine("Pullback when the window closed failed: HTTP "+ex.ErrorCode+": "+ex.Message,LOG_FOLDER);
+				}
+				catch(ODException ex) {
+					Logger.WriteLine("Pullback when the window closed failed: "+ex.Message,LOG_FOLDER);
+				}
+			});
+			odThread.AddExceptionHandler((e) => Logger.WriteLine("Pullback when the window closed failed: "+e.GetType().Name+": "+e.Message,LOG_FOLDER));
+			odThread.Name="CareCreditPullbackOnClose";
+			odThread.Start();
+		}
+
+		///<summary>Starts this session's poller if it isn't running. Once a minute, while no computer is chosen in CareCredit Setup, it pulls back the
+		///rows this session created (CareCreditJobs.PollSessionRows), so self-service purchases still become payments and QuickScreen and lookup
+		///results still reach the patient. It quits when no such rows are left; the next prefill starts it again.</summary>
+		private static void StartSessionPoller() {
+			lock(_lockSessionPoller) {
+				if(_odThreadSessionPoller!=null && !_odThreadSessionPoller.HasQuit) {
+					return;
+				}
+				ODThread odThread=new ODThread((int)SessionPollInterval.TotalMilliseconds,(o) => {
+					if(!CareCreditJobs.HasSessionRows) {
+						o.QuitAsync();
+						return;
+					}
+					CareCreditJobs.PollSessionRows(CareCredit.FuncNow());
+				});
+				odThread.AddExceptionHandler((e) => Logger.WriteLine("Session poll failed: "+e.GetType().Name+": "+e.Message,LOG_FOLDER));
+				odThread.GroupName=SESSION_POLLER_GROUP;
+				odThread.Name=SESSION_POLLER_GROUP;
+				_odThreadSessionPoller=odThread;
+				odThread.Start();
+			}
 		}
 
 		private static bool IsWebView2Available() {

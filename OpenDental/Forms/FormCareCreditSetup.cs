@@ -29,6 +29,10 @@ namespace OpenDental {
 		private string _verifiedFingerprint="";
 		///<summary>The computer chosen to run the background tasks, or "".</summary>
 		private string _jobComputerName="";
+		///<summary>The connection settings as saved when the window opened. Destination changes are compared against these.</summary>
+		private CareCreditConfig _configSaved;
+		///<summary>True if the user has ManageHighSecurityProgProperties, which editing the secret and the settings that decide where it goes needs.</summary>
+		private bool _hasHighSecurity;
 
 		///<summary>Used for comboboxDaysOut. The number of days a user can set.</summary>
 		public List<int> ListDaysOut => new List<int>() { 2,3,4 };
@@ -132,8 +136,19 @@ namespace OpenDental {
 			textClientId.Text=GetPracticeListValue(CareCreditSettings.ClientId);
 			SecretReadResult secretReadResult=SecretValue.Read(GetPracticeListValue(CareCreditSettings.ClientSecret),LegacyPolicy.RejectPlaintext);
 			textClientSecret.Text=secretReadResult.HasValue ? SECRET_MASK : "";
-			//Editing the secret needs the same permission as any other high-security program property.
-			textClientSecret.Enabled=Security.IsAuthorized(EnumPermType.ManageHighSecurityProgProperties,suppressMessage:true);
+			//Editing the secret needs the same permission as any other high-security program property. So does every setting that decides where the
+			//secret and patient data are sent: otherwise a user without the permission could point the API host elsewhere and Test connection would
+			//send the saved secret there. Test connection and Save check it again (CareCredit.GetConnectionChangeProblem).
+			_hasHighSecurity=Security.IsAuthorized(EnumPermType.ManageHighSecurityProgProperties,suppressMessage:true);
+			textClientSecret.Enabled=_hasHighSecurity;
+			textApiBaseUrl.Enabled=_hasHighSecurity;
+			textIhsBaseUrl.Enabled=_hasHighSecurity;
+			textTokenPath.Enabled=_hasHighSecurity;
+			textPrefillPath.Enabled=_hasHighSecurity;
+			textPullbackPath.Enabled=_hasHighSecurity;
+			textBatchPath.Enabled=_hasHighSecurity;
+			comboClientAuth.Enabled=_hasHighSecurity;
+			textScope.Enabled=_hasHighSecurity;
 			comboEnvironment.Items.Clear();
 			comboEnvironment.Items.AddEnums<CareCreditEnvironment>();
 			comboEnvironment.SetSelectedEnum(CareCreditSettings.ParseEnvironment(GetPracticeListValue(CareCreditSettings.Environment)));
@@ -156,6 +171,7 @@ namespace OpenDental {
 			_verifiedFingerprint=GetPracticeListValue(CareCreditSettings.VerifiedConfig);
 			string lastAuthError=CareCreditSettings.GetPracticeValue(CareCreditSettings.LastAuthError);
 			CareCreditConfig config=BuildConfigFromForm(out string error);
+			_configSaved=BuildSavedDestinationConfig();
 			if(lastAuthError!="") {
 				labelConnectionStatus.Text=Lan.g(this,"Last error")+": "+lastAuthError;
 			}
@@ -165,6 +181,20 @@ namespace OpenDental {
 			else {
 				labelConnectionStatus.Text=Lan.g(this,"Not tested. Test the connection before enabling CareCredit.");
 			}
+		}
+
+		///<summary>The saved values of the settings CareCreditConfig.GetDestinationChanges compares, from the rows loaded with the window.</summary>
+		private CareCreditConfig BuildSavedDestinationConfig() {
+			CareCreditConfig config=new CareCreditConfig();
+			config.ApiBaseUrl=GetPracticeListValue(CareCreditSettings.ApiBaseUrl).Trim();
+			config.IhsBaseUrl=GetPracticeListValue(CareCreditSettings.IhsBaseUrl).Trim();
+			config.TokenPath=GetPracticeListValue(CareCreditSettings.TokenPath).Trim();
+			config.PrefillPath=GetPracticeListValue(CareCreditSettings.PrefillPath).Trim();
+			config.PullbackPath=GetPracticeListValue(CareCreditSettings.PullbackPath).Trim();
+			config.BatchPath=GetPracticeListValue(CareCreditSettings.BatchPath).Trim();
+			config.ClientAuth=CareCreditSettings.ParseClientAuth(GetPracticeListValue(CareCreditSettings.ClientAuth));
+			config.Scope=GetPracticeListValue(CareCreditSettings.TokenScope).Trim();
+			return config;
 		}
 
 		private void FillBackground() {
@@ -180,7 +210,7 @@ namespace OpenDental {
 
 		private void SetJobComputerLabel() {
 			if(_jobComputerName=="") {
-				labelJobComputer.Text=Lan.g(this,"Run on: not set. Batch QuickScreen and result checks don't run.");
+				labelJobComputer.Text=Lan.g(this,"Run on: not set. No batch QuickScreen; each workstation checks only its own results.");
 				butRunHere.Text=Lan.g(this,"Run on this computer");
 				return;
 			}
@@ -252,7 +282,8 @@ namespace OpenDental {
 			string result;
 			Cursor=Cursors.WaitCursor;
 			try {
-				result=CareCredit.TestConnection(config);
+				//Refuses, before anything is sent, a changed host or path from a user who may not change them.
+				result=CareCredit.TestConnection(config,_configSaved,_hasHighSecurity);
 			}
 			finally {
 				Cursor=Cursors.Default;
@@ -642,11 +673,17 @@ namespace OpenDental {
 				MsgBox.Show(error);
 				return;
 			}
-			string problem=GetTypedValueProblem(config);
+			string problem=CareCredit.GetConnectionChangeProblem(_configSaved,config,_hasHighSecurity);
 			if(problem!="") {
 				MsgBox.Show(problem);
 				return;
 			}
+			problem=GetTypedValueProblem(config);
+			if(problem!="") {
+				MsgBox.Show(problem);
+				return;
+			}
+			List<string> listDestinationChanges=CareCreditConfig.GetDestinationChanges(_configSaved,config);
 			if(checkEnabled.Checked) {
 				List<string> listProblems=config.GetProblems();
 				if(listProblems.Count>0) {
@@ -697,6 +734,10 @@ namespace OpenDental {
 			if(secretStoredOld!=config.ClientSecretStored) {
 				SecurityLogs.MakeLogEntry(EnumPermType.ManageHighSecurityProgProperties,0,_program.ProgDesc+"'s "+CareCreditSettings.ClientSecret+" was altered.",
 					_program.ProgramNum,DateTime.Now);
+			}
+			if(listDestinationChanges.Count>0) {
+				SecurityLogs.MakeLogEntry(EnumPermType.ManageHighSecurityProgProperties,0,_program.ProgDesc+"'s connection settings were altered. "
+					+string.Join("; ",listDestinationChanges),_program.ProgramNum,DateTime.Now);
 			}
 			bool isPrefChanged=Prefs.UpdateDateT(PrefName.CareCreditBatchProcessDateTime,CareCreditSettings.GetPrefValueForTime(timeProcess));
 			isPrefChanged|=Prefs.UpdateDateT(PrefName.CareCreditBatchPullbackDateTime,CareCreditSettings.GetPrefValueForTime(timePullback));
