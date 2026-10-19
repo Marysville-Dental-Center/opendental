@@ -486,8 +486,6 @@ namespace OpenDentBusiness{
 					+"AND IsDeleted=0 "
 					+"AND ShowInTerminal>"+POut.Byte(showInTerminal);//decrement ShowInTerminal for all sheets with a bigger ShowInTerminal than the one deleted
 				Db.NonQ(command);
-				//Create mobile notification for deleted sheet to eClipboard.
-				MobileNotifications.CI_RemoveSheet(patNum,sheetNum);
 			}
 		}
 

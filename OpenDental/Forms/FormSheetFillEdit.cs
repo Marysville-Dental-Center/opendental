@@ -511,8 +511,6 @@ namespace OpenDental {
 			if(!TryToSaveData()){
 				return;
 			}
-			//Create mobile notification to update eClipboard device with new sheet.
-			MobileNotifications.CI_AddSheet(SheetCur.PatNum,SheetCur.SheetNum);
 			SecurityLogs.MakeLogEntry(EnumPermType.SheetEdit,SheetCur.PatNum,SheetCur.Description+" from "+SheetCur.DateTimeSheet.ToShortDateString());
 			DialogResult=DialogResult.OK;
 			Close();

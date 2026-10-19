@@ -483,12 +483,6 @@ namespace OpenDentBusiness {
 									EmailAddress emailAddressFrom=EmailAddresses.GetByClinic(clinicNum,true);
 									Statements.EmailStatementPatientPortal(Statements.CreateReceiptStatement(pat,StatementMode.Email),responseWebCur.EmailResponse,emailAddressFrom,pat);
 								}
-								//If a patient is on a mobile device, we need to create a refresh payment mobile notification so they can see the payment worked.
-								List<MobileAppDevice> listMobileAppDevicesPat=MobileAppDevices.GetAll(responseWebCur.PatNum);
-								MobileAppDevice device=listMobileAppDevicesPat.FirstOrDefault(x => x.PatNum==responseWebCur.PatNum);
-								if(device!=null && device.LastCheckInActivity>DateTime.Now.AddHours(-1)) {
-									MobileNotifications.CI_RefreshPayment(device.MobileAppDeviceNum,responseWebCur.PatNum);
-								}
 								break;
 							case PayConnectWebStatus.Cancelled:
 								OnLoggerEvent("PaymentToken has been cancelled: "+responseWebCur.PayToken,LogLevel.Information);

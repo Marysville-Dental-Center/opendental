@@ -148,17 +148,6 @@ namespace OpenDental {
 			EFormCur.PatNum=frmPatientSelect.PatNumSelected;
 		}
 
-		private void butEClipboard_Click(object sender,EventArgs e) {
-			EFormCur.Status=EnumEFormStatus.ShowInEClipboard;
-			TryToSaveData();
-			if(_wasError){
-				return;
-			}
-			MobileNotifications.CI_AddEForm(EFormCur.PatNum,EFormCur.EFormNum);//tells eClipboard to pull the eForm
-			SecurityLogs.MakeLogEntry(EnumPermType.EFormEdit,EFormCur.PatNum,EFormCur.Description+" from "+EFormCur.DateTimeShown.ToShortDateString());
-			IsDialogOK=true;
-		}
-
 		private void butSave_Click(object sender,EventArgs e) {
 			TryToSaveData();
 			if(_wasError){

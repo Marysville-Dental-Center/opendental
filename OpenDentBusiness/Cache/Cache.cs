@@ -224,12 +224,6 @@ namespace OpenDentBusiness {
 				ODEvent.Fire(ODEventType.Cache,prefix+InvalidType.FeeScheds.ToString());
 				ds.Tables.Add(FeeScheds.GetTableFromCache(doRefreshServerCache));
 			}
-			if(listITypes.Contains(InvalidType.ERoutingDef) || isAll) {
-				ODEvent.Fire(ODEventType.Cache, prefix + InvalidType.PatFields.ToString());
-				ds.Tables.Add(ERoutingDefs.GetTableFromCache(doRefreshServerCache));
-				ds.Tables.Add(ERoutingActionDefs.GetTableFromCache(doRefreshServerCache));
-				ds.Tables.Add(ERoutingDefLinks.GetTableFromCache(doRefreshServerCache));
-			}
 			if(listITypes.Contains(InvalidType.HL7Defs) || isAll) {
 				ODEvent.Fire(ODEventType.Cache,prefix+InvalidType.HL7Defs.ToString());
 				ds.Tables.Add(HL7Defs.GetTableFromCache(doRefreshServerCache));
@@ -601,12 +595,6 @@ namespace OpenDentBusiness {
 				ODEvent.Fire(ODEventType.Cache,suffix+InvalidType.FeeScheds.ToString());
 				FeeScheds.FillCacheFromTable(ds.Tables["FeeSched"]);
 			}
-			if(listITypes.Contains(InvalidType.ERoutingDef) || isAll) {
-				ODEvent.Fire(ODEventType.Cache, suffix + InvalidType.PatFields.ToString());
-				ERoutingDefs.FillCacheFromTable(ds.Tables["ERoutingDef"]);
-				ERoutingActionDefs.FillCacheFromTable(ds.Tables["ERoutingActionDef"]);
-				ERoutingDefLinks.FillCacheFromTable(ds.Tables["ERoutingDefLink"]);
-			}
 			if(listITypes.Contains(InvalidType.HL7Defs) || isAll) {
 				ODEvent.Fire(ODEventType.Cache,suffix+InvalidType.HL7Defs.ToString());
 				HL7Defs.FillCacheFromTable(ds.Tables["HL7Def"]);
@@ -912,7 +900,6 @@ namespace OpenDentBusiness {
 			listInvalidTypes.Add(InvalidType.UserOdPrefs);
 			listInvalidTypes.Add(InvalidType.JobTeams);
 			listInvalidTypes.Add(InvalidType.LimitedBetaFeature);
-			listInvalidTypes.Add(InvalidType.ERoutingDef);
 			listInvalidTypes.Add(InvalidType.FlowActionDef);
 			listInvalidTypes.Add(InvalidType.FlowDefLink);
 			listInvalidTypes.Add(InvalidType.CodeGroups);
@@ -1095,12 +1082,6 @@ namespace OpenDentBusiness {
 			if(listITypes.Contains(InvalidType.FeeScheds) || isAll) {
 				ODEvent.Fire(ODEventType.Cache,prefix+InvalidType.FeeScheds.ToString());
 				FeeScheds.ClearCache();
-			}
-			if(listITypes.Contains(InvalidType.ERoutingDef) || isAll) {
-				ODEvent.Fire(ODEventType.Cache, prefix + InvalidType.PatFields.ToString());
-				ERoutingDefs.ClearCache();
-				ERoutingActionDefs.ClearCache();
-				ERoutingDefLinks.ClearCache();
 			}
 			if(listITypes.Contains(InvalidType.HL7Defs) || isAll) {
 				ODEvent.Fire(ODEventType.Cache,prefix+InvalidType.HL7Defs.ToString());

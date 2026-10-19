@@ -718,12 +718,6 @@
     <Compile Include="Forms\FormPayTerminalEdit.Designer.cs">
       <DependentUpon>FormPayTerminalEdit.cs</DependentUpon>
     </Compile>
-    <Compile Include="Forms\FormMobileBrandingProfileEdit.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FormMobileBrandingProfileEdit.Designer.cs">
-      <DependentUpon>FormMobileBrandingProfileEdit.cs</DependentUpon>
-    </Compile>
     <Compile Include="Forms\FormAiChatSession.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -6658,9 +6652,6 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormPayTerminalEdit.resx">
       <DependentUpon>FormPayTerminalEdit.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormMobileBrandingProfileEdit.resx">
-      <DependentUpon>FormMobileBrandingProfileEdit.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormAiChatSession.resx">
       <DependentUpon>FormAiChatSession.cs</DependentUpon>

@@ -1159,17 +1159,10 @@ namespace OpenDental {
 		}
 
 		private void checkUseMobileLayout_CheckedChanged(object sender,EventArgs e) {
-			if(!checkUseMobileLayout.Checked && _sheetDef!=null && _sheetDef.SheetDefNum>0 && EClipboardSheetDefs.IsSheetDefInUse(_sheetDef.SheetDefNum)) {
-				MsgBox.Show("This sheet is currently being used by eClipboard, which requires sheets to have a mobile layout. " +
-					"You must remove this form from eClipboard rules before you can remove the mobile layout for this sheet.");
-				checkUseMobileLayout.Checked=true;
+			if(_sheetDef!=null) {
+				_sheetDef.HasMobileLayout=checkUseMobileLayout.Checked;
 			}
-			else {
-				if(_sheetDef!=null) {
-					_sheetDef.HasMobileLayout=checkUseMobileLayout.Checked;
-				}
-				HasMobileLayoutChanged?.Invoke(this,checkUseMobileLayout.Checked);
-			}
+			HasMobileLayoutChanged?.Invoke(this,checkUseMobileLayout.Checked);
 		}
 		
 		private void butAddHeader_Click(object sender,EventArgs e) {

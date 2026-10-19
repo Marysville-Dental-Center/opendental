@@ -112,15 +112,12 @@
     <Compile Include="TableTypes\EhrPatientT.cs" />
     <Compile Include="TableTypes\EmailAutographT.cs" />
     <Compile Include="TableTypes\EmployerT.cs" />
-    <Compile Include="TableTypes\EClipboardImageCaptureDefT.cs" />
-    <Compile Include="TableTypes\EClipboardImageCaptureT.cs" />
     <Compile Include="TableTypes\EobAttachT.cs" />
     <Compile Include="TableTypes\GroupPermissionT.cs" />
     <Compile Include="TableTypes\HistAppointmentT.cs" />
     <Compile Include="TableTypes\InsVerifyT.cs" />
     <Compile Include="TableTypes\LabCaseT.cs" />
     <Compile Include="TableTypes\LaboratoryT.cs" />
-    <Compile Include="TableTypes\MobileNotificationT.cs" />
     <Compile Include="TableTypes\OrthoChartRowT.cs" />
     <Compile Include="TableTypes\OrthoChartT.cs" />
     <Compile Include="TableTypes\PatFieldDefT.cs" />
@@ -151,7 +148,6 @@
     <Compile Include="TableTypes\EhrMeasureEventT.cs" />
     <Compile Include="TableTypes\EmailAttachT.cs" />
     <Compile Include="TableTypes\EmailSecureT.cs" />
-    <Compile Include="TableTypes\EServiceBillingT.cs" />
     <Compile Include="TableTypes\HieClinicT.cs" />
     <Compile Include="TableTypes\HieQueueT.cs" />
     <Compile Include="TableTypes\MedicationPatT.cs" />
@@ -175,7 +171,6 @@
     <Compile Include="TableTypes\InsPlanT.cs" />
     <Compile Include="TableTypes\InsSubT.cs" />
     <Compile Include="TableTypes\IntrospectionT.cs" />
-    <Compile Include="TableTypes\MobileAppDeviceT.cs" />
     <Compile Include="TableTypes\OperatoryT.cs" />
     <Compile Include="TableTypes\OrthoProcLinkT.cs" />
     <Compile Include="TableTypes\DiscountPlanT.cs" />
@@ -204,7 +199,6 @@
     <Compile Include="TableTypes\RxNormT.cs" />
     <Compile Include="TableTypes\RxPatT.cs" />
     <Compile Include="TableTypes\SecurityLogT.cs" />
-    <Compile Include="TableTypes\SessionTokenT.cs" />
     <Compile Include="TableTypes\SiteT.cs" />
     <Compile Include="TableTypes\SiteLinkT.cs" />
     <Compile Include="TableTypes\SnomedT.cs" />
@@ -216,7 +210,6 @@
     <Compile Include="TableTypes\TaskAncestorT.cs" />
     <Compile Include="TableTypes\TaskUnreadT.cs" />
     <Compile Include="TableTypes\TimeAdjustT.cs" />
-    <Compile Include="TableTypes\MsgToPaySentT.cs" />
     <Compile Include="TableTypes\ToothInitialT.cs" />
     <Compile Include="TableTypes\TreatPlanT.cs" />
     <Compile Include="TableTypes\UserGroupT.cs" />

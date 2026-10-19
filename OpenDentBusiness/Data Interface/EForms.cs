@@ -87,8 +87,6 @@ namespace OpenDentBusiness{
 			}
 //todo: mark deleted instead, just like sheets
 			Crud.EFormCrud.Delete(eFormNum);
-			//This triggers removal from eClipboard.
-			MobileNotifications.CI_RemoveEForm(patNum,eFormNum);
 		}
 
 		/// <summary>The eFormDef passed in must have ListEFormFieldDefs already filled. The resulting EForm will also have its fields already attached. Neither the form nor the fields get inserted into the db here.</summary>

@@ -2597,40 +2597,6 @@ namespace OpenDental {
 			this.Focus();
 		}
 
-		private bool PromptUpdateEClipboardSheetDefs() {
-			List<EClipboardSheetDef> listEClipboardSheetDefs = EClipboardSheetDefs.GetAllForSheetDefForOnceRule(SheetDef_.SheetDefNum);
-			if(listEClipboardSheetDefs == null || listEClipboardSheetDefs.Count == 0) {
-				return true; // nothing to update, no need to prompt.
-			}
-			string message = $"At least one eClipboard sheet currently uses this Sheet Def. If you check the box and press 'OK', patients will be forced to fill this form out again the next time they check in using eClipboard.";
-			List<InputBoxParam> listInputBoxParams=new List<InputBoxParam>();
-			InputBoxParam inputBoxParam=new InputBoxParam();
-			inputBoxParam.InputBoxType_=InputBoxType.CheckBox;
-			inputBoxParam.LabelText=message;
-			inputBoxParam.Text="Force patients to fill out again";
-			inputBoxParam.SizeParam=new System.Windows.Size(200,80);
-			inputBoxParam.PointPosition=new System.Windows.Point(15,30);
-			listInputBoxParams.Add(inputBoxParam);
-			InputBox inputBox = new InputBox(listInputBoxParams);
-			inputBox.ShowDialog();
-			if(inputBox.IsDialogCancel) {
-				return false; // don't save the sheet
-			}
-			if(!inputBox.BoolResult) {
-				return true; // save the sheet but don't update override
-			}
-			message = "Are you sure you want to force all patients to fill out this form again? Clicking 'No' will not update the eClipboard version of this sheet.";
-			if(MessageBox.Show(message,"",MessageBoxButtons.YesNo)==DialogResult.No) {
-				return true; // save sheet, but don't update override
-			}
-			//got to here, user wants to update eClipboard sheets and force patients to refill them.
-			for(int i=0;i<listEClipboardSheetDefs.Count();i++) {
-				listEClipboardSheetDefs[i].PrefillStatusOverride=SheetDef_.RevID;
-				EClipboardSheetDefs.Update(listEClipboardSheetDefs[i]);
-			}
-			return true;
-		}
-
 		///<summary>Refreshes local _listUsedLanguages and _listUnusedLanguages data. Called when loading or after user adds a new language for translations.</summary>
 		private void RefreshLanguages(string selectedThreeLetterLanguage=null) {
 			List<string> listAllLanguages=PrefC.GetString(PrefName.LanguagesUsedByPatients)//Must be before initial InitLayoutModes().
@@ -2762,9 +2728,6 @@ namespace OpenDental {
 			//If we added/subtracted any field defs or changed any static text, increment the revision ID. 
 			if(sheetDefStored.SheetFieldDefs.Count!=SheetDef_.SheetFieldDefs.Count || staticTextWasChanged) {
 				SheetDef_.RevID++;
-				if(!PromptUpdateEClipboardSheetDefs()) {//Revision number changed, so prompt to generate the sheet again for patients who have already filled the previous version of this sheet.
-					return false;
-				}
 			}
 			return true;
 		}
