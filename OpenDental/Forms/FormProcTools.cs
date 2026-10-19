@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
-using System.Net;
 using System.Windows.Forms;
 using CodeBase;
 using OpenDentBusiness;
@@ -13,7 +11,7 @@ namespace OpenDental{
 	/// </summary>
 	public partial class FormProcTools : FormODBase {
 		public bool Changed;
-		///<summary>The actual list of ADA codes as published by the ADA.  Only available on our compiled releases.  There is no other way to get this info.  For Canada, list will get filled on Run click by downloading code list from our website.</summary>
+		///<summary>The actual list of ADA codes as published by the ADA.  Only available on our compiled releases.  There is no other way to get this info.  Not used for Canada.</summary>
 		private List<ProcedureCode> _listProcedureCodes;
 
 		///<summary></summary>
@@ -57,9 +55,11 @@ namespace OpenDental{
 			if(CultureInfo.CurrentCulture.Name.EndsWith("CA")) {//Canadian. en-CA or fr-CA
 				//Tcodes remain enabled
 				//Ncodes remain enabled
-				checkDcodes.Text="CDA Codes - Add any missing 2025 CDA Codes. This option does not work in the trial version.";
+				//CDA codes used to be downloaded from Open Dental's website. That download is removed; CDA codes are loaded into the database directly.
+				checkDcodes.Text="CDA Codes - Not available in this tool. CDA codes are loaded into the database directly.";
 				checkRecallTypes.Text="Recall Types - Resets the recall types and triggers to default. Replaces any T Codes with CDA Codes.";
-				_listProcedureCodes=null;//Is only filled when the code tool runs because the user might not need to download the codes.
+				checkDcodes.Checked=false;
+				checkDcodes.Enabled=false;
 				checkTreatAreas.Checked=false;
 				checkTreatAreas.Enabled=false;
 				return;
@@ -85,49 +85,6 @@ namespace OpenDental{
 			checkProcButtons.Checked=false;
 			checkApptProcsQuickAdd.Checked=false;
 			checkRecallTypes.Checked=false;
-		}
-
-		///<summary>Reads Canadian procedure codes from a local file and updates _codeList accordingly. The file used to be downloaded from Open Dental's
-		///website, which this build never contacts; the file format (tab delimited, one code per line) is unchanged.</summary>
-		private void CanadaDownloadProcedureCodes() {
-			_listProcedureCodes=new List<ProcedureCode>();
-			using OpenFileDialog openFileDialog=new OpenFileDialog();
-			openFileDialog.Title=Lan.g(this,"Choose the Canadian procedure code file (procedurecodes.txt)");
-			openFileDialog.Filter="txt|*.txt";
-			if(openFileDialog.ShowDialog()!=DialogResult.OK) {
-				return;
-			}
-			Cursor=Cursors.WaitCursor;
-			string codeData;
-			try {
-				codeData=File.ReadAllText(openFileDialog.FileName);
-			}
-			catch(Exception ex) {
-				MessageBox.Show(Lan.g(this,"Failed to read procedure codes")+":\r\n"+ex.Message);
-				Cursor=Cursors.Default;
-				return;
-			}
-			string[] stringArrayCodeLines=codeData.Split("\n",StringSplitOptions.RemoveEmptyEntries);
-			for(int i=0;i<stringArrayCodeLines.Length;i++) {
-				string[] stringArrayFields=stringArrayCodeLines[i].Split('\t');
-				if(stringArrayFields.Length<1) {//Skip blank lines if they exist.
-					continue;
-				}
-				ProcedureCode procCode=new ProcedureCode();
-				procCode.ProcCode=PIn.String(stringArrayFields[0]);//0 ProcCode
-				procCode.Descript=PIn.String(stringArrayFields[1]);//1 Description
-				procCode.TreatArea=(TreatmentArea)PIn.Int(stringArrayFields[2]);//2 TreatArea
-				procCode.NoBillIns=PIn.Bool(stringArrayFields[3]);//3 NoBillIns
-				procCode.IsProsth=PIn.Bool(stringArrayFields[4]);//4 IsProsth
-				procCode.IsHygiene=PIn.Bool(stringArrayFields[5]);//5 IsHygiene
-				procCode.PaintType=(ToothPaintingType)PIn.Int(stringArrayFields[6]);//6 PaintType
-				procCode.ProcCatDescript=PIn.String(stringArrayFields[7]);//7 ProcCatDescript
-				procCode.ProcTime=PIn.String(stringArrayFields[8]);//8 ProcTime
-				procCode.AbbrDesc=PIn.String(stringArrayFields[9]);//9 AbbrDesc
-				procCode.CanadaTimeUnits=PIn.Double(stringArrayFields[10]);//10 CanadaTimeUnits
-				_listProcedureCodes.Add(procCode);
-			}
-			Cursor=Cursors.Default;
 		}
 
 		private void butRun_Click(object sender,EventArgs e) {
@@ -173,11 +130,6 @@ namespace OpenDental{
 			#endregion
 			#region D Codes
 			if(checkDcodes.Checked) {
-				if(CultureInfo.CurrentCulture.Name.EndsWith("CA")) {//Canadian. en-CA or fr-CA
-					if(_listProcedureCodes==null) {
-						CanadaDownloadProcedureCodes();
-					}
-				}
 				try {
 					rowsInserted+=FormProcCodes.ImportProcCodes("",_listProcedureCodes,"");
 					Changed=true;

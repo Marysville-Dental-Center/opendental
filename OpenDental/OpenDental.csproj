@@ -4551,12 +4551,6 @@
     <Compile Include="Forms\FormEhrSettings.designer.cs">
       <DependentUpon>FormEhrSettings.cs</DependentUpon>
     </Compile>
-    <Compile Include="Forms\FormFeeSchedPickAuthOntario.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FormFeeSchedPickAuthOntario.designer.cs">
-      <DependentUpon>FormFeeSchedPickAuthOntario.cs</DependentUpon>
-    </Compile>
     <Compile Include="Forms\FormResellerServiceEdit.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -4679,12 +4673,6 @@
     </Compile>
     <Compile Include="Forms\FormEmailAddressEdit.cs">
       <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FormFeeSchedPickRemote.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FormFeeSchedPickRemote.designer.cs">
-      <DependentUpon>FormFeeSchedPickRemote.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\FormProcNoteAppend.cs">
       <SubType>Form</SubType>
@@ -8562,9 +8550,6 @@
       <DependentUpon>FormEhrSettings.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormFeeSchedPickAuthOntario.resx">
-      <DependentUpon>FormFeeSchedPickAuthOntario.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormResellerServiceEdit.resx">
       <DependentUpon>FormResellerServiceEdit.cs</DependentUpon>
     </EmbeddedResource>
@@ -8628,9 +8613,6 @@
     <EmbeddedResource Include="Forms\FormEmailAddressEdit.resx">
       <DependentUpon>FormEmailAddressEdit.cs</DependentUpon>
       <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormFeeSchedPickRemote.resx">
-      <DependentUpon>FormFeeSchedPickRemote.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormProcNoteAppend.resx">
       <DependentUpon>FormProcNoteAppend.cs</DependentUpon>

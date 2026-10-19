@@ -5,12 +5,10 @@ using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows.Forms;
-using System.Xml;
 using CodeBase;
 using OpenDental.Thinfinity;
 using OpenDental.UI;
@@ -51,8 +49,6 @@ namespace OpenDental {
 			LayoutManager.MoveLocation(comboGroup,new Point(LayoutManager.Scale(100),LayoutManager.Scale(46)));
 			LayoutManager.MoveLocation(comboGroupTo,new Point(LayoutManager.Scale(100),LayoutManager.Scale(45)));
 			FillComboBoxes();
-			//Import Canada downloaded fee schedules from Open Dental's servers, which this build never contacts.
-			butImportCanada.Visible=false;
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				groupGlobalUpdateFees.Enabled=false;
 			}
@@ -670,12 +666,6 @@ namespace OpenDental {
 				return;
 			}
 			MsgBox.Show(this,"Fee schedule imported.");
-		}
-
-		private void butImportCanada_Click(object sender,EventArgs e) {
-			//Canadian fee schedules used to be downloaded from Open Dental's servers, which this build never contacts. The button is hidden on load.
-			//Use Import to load a fee schedule from a local file instead.
-			MessageBox.Show(new HqNotAvailableException().Message);
 		}
 
 		private void butUpdateFees_Click(object sender,EventArgs e) {

@@ -130,38 +130,6 @@ namespace UnitTests.FeeSchedTools_Tests {
 			}
 		}
 
-		///<summary>Import canada fees from a file.</summary>
-		[TestMethod]
-		public void FeeSchedTools_ImportCanada() {
-			string canadianCodes=Properties.Resources.canadianprocedurecodes;
-			//If we need to import these procedures codes, do so
-			List<ProcedureCode> listProcedureCodes=new List<ProcedureCode>();
-			foreach(string line in canadianCodes.Split(new[] { "\r\n", "\r", "\n" },StringSplitOptions.None)) {
-				string[] properties=line.Split('\t');
-				if(properties.Count()!=10) {
-					continue;
-				}
-				if(ProcedureCodes.GetCodeNum(properties[0])!=0) {
-					continue;
-				}
-				listProcedureCodes.Add(new ProcedureCode() {
-					ProcCode=properties[0],
-					Descript=properties[1],
-					ProcTime=properties[8],
-					AbbrDesc=properties[9],
-				});
-			}
-			if(!listProcedureCodes.IsNullOrEmpty()) {
-				ProcedureCodes.InsertMany(listProcedureCodes);
-				ProcedureCodes.RefreshCache();
-			}
-			//Now import the fees
-			string feeData=Properties.Resources.BC_BCDA_2018_GPOOC;
-			FeeSched feeSched=FeeSchedT.GetNewFeeSched(FeeScheduleType.Normal,MethodBase.GetCurrentMethod().Name,isGlobal:false);
-			List<Fee> listNewFees=FeeScheds.ImportCanadaFeeSchedule2(feeSched,feeData,0,0,out int numImported,out int numSkipped);
-			Assert.IsTrue(DoAmountsMatch(listNewFees,feeSched.FeeSchedNum,0,0));
-		}
-
 		///<summary>Create and fill a fee schedule, then clear the fee schedule and make sure it is empty.</summary>
 		[TestMethod]
 		public void FeeSchedTools_ClearFeeSchedule() {
