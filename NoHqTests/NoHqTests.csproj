@@ -43,6 +43,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CdtRetiredTests.cs" />
     <Compile Include="CloudEditionTests.cs" />
     <Compile Include="EServicesRemovedTests.cs" />
     <Compile Include="HqToolsRemovedTests.cs" />
