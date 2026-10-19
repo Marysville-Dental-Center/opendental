@@ -113,7 +113,7 @@ Unused proprietary files are not listed here; they are simply deleted (for examp
 
 | Files | Project files that reference them | Status |
 |---|---|---|
-| `CDT.dll` | 12 (5 substituted ProjectReferences, 7 HintPaths) | Being replaced elsewhere |
+| `CDT.dll` | 0 | Removed: secrets and `SecurityHash` hashes moved into `CodeBase/Crypto/` (`Secrets`, `TamperHash`), ADA content and registration keys removed, the DLL and the stand-in `CDT` project deleted |
 | `Bridges.dll` | 4 | Being replaced elsewhere (split; QuickBooks Online, Microsoft 365 and USPS are kept) |
 | `ODCrypt.dll` | 3 (HintPaths only) | Being replaced elsewhere |
 | `OpenDentalHelp.dll` | 0 | Removed: the help system (manual links, help browser, support-plan key gates) is gone, and the DLL is deleted |
@@ -605,7 +605,7 @@ Some HintPaths in projects outside the solution point to files that do not exist
 
 | DLL | Projects with a direct HintPath |
 |---|---|
-| `CDT.dll` | `xCentralManager`, `xDatabaseIntegrityCheck`, `OpenDentHL7`, `ServiceManager`, `UnitTests` (and the unbuilt `xODR`, `xDataConnectionBaseStandard`) |
+| `CDT.dll` | None. Removed; every project now uses `CodeBase`. |
 | `Bridges.dll` | `OpenDentBusiness`, `UnitTests`, `WpfControlsOD` |
 | `ODCrypt.dll` | `OpenDental`, `OpenDentBusiness`, `UnitTests` (it has no ProjectReference at all) |
 | `VirtualWeb.dll` | None. Removed, with the HintPaths in `OpenDentBusiness` and `OpenDentalGraph`. |
