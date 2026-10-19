@@ -2,13 +2,15 @@ using System;
 using System.IO;
 using System.Windows.Forms;
 using CodeBase;
+using CodeBase.VendorDirect;
 using OpenDental.UI;
 using OpenDentBusiness;
 using Microsoft.Web.WebView2.Core;
 using System.Diagnostics;
 
 namespace OpenDental {
-	///<summary>Internet browser window for NewCrop.  This is essentially a Microsoft Edge browser control embedded into our form.</summary>
+	///<summary>Internet browser window for the eRx vendor's own prescribing screens (DoseSpot or NewCrop).  This is essentially a Microsoft Edge
+	///browser control embedded into our form.</summary>
 	public partial class FormErx:FormODBase {
 		///<summary>The PatNum of the patient eRx was opened for.  The patient is tied to the window so that when the window is closed the Chart
 		///knows which patient to refresh.  If the patient is different than the patient modified in the eRx window then the Chart does not need to 
@@ -41,6 +43,10 @@ namespace OpenDental {
 				Close();
 				return;
 			}
+			//The NewCrop click-through carries the office's NewCrop password, and the DoseSpot address carries single sign-on codes: keep the
+			//browser's developer tools closed so nobody can read them from the window.
+			webViewMain.CoreWebView2.Settings.AreDevToolsEnabled=false;
+			webViewMain.CoreWebView2.NavigationStarting+=CoreWebView2_NavigationStartingGuard;
 			Text=Lan.g(this,"Loading")+"...";
 			LayoutToolBars();
 			if(ErxOptionCur==ErxOption.NewCrop) {
@@ -77,7 +83,11 @@ namespace OpenDental {
 		///without allowing the user to write any prescriptions.</summary>
 		public void ComposeNewRxNewCrop() {
 			string additionalHeaders="Content-Type: application/x-www-form-urlencoded\r\n";
-			string newCropUrl=Erx.GetLegacyUrl();
+			string newCropUrl=NewCropConfig.Load().GetRxEntryUrl();//The environment chosen in eRx Setup.
+			if(!IsUrlAllowed(newCropUrl)) {
+				MsgBox.Show(this,"The NewCrop address was refused.");
+				return;
+			}
 			_memoryStream?.Dispose();
 			_memoryStream=new MemoryStream(ByteArray);
 			CoreWebView2WebResourceRequest coreWebView2WebResourceRequest=webViewMain.CoreWebView2.Environment.CreateWebResourceRequest(newCropUrl,"POST",_memoryStream,additionalHeaders);
@@ -85,8 +95,32 @@ namespace OpenDental {
 		}
 
 		public void ComposeNewRxDoseSpot() {
-			string doseSpotUrl=Erx.GetRxDoseSpotUrl(StringSSOQuery);
+			string doseSpotUrl=Erx.GetRxDoseSpotUrl(StringSSOQuery);//The environment chosen in eRx Setup.
+			if(!IsUrlAllowed(doseSpotUrl)) {
+				MsgBox.Show(this,"The DoseSpot address was refused.");
+				return;
+			}
 			webViewMain.CoreWebView2.Navigate(doseSpotUrl);
+		}
+
+		///<summary>False for a host of the previous vendor (HqHosts), or plain http to another computer. The vendors' pages may link to other sites (identity proofing,
+		///for example), so other HTTPS hosts are allowed.</summary>
+		private static bool IsUrlAllowed(string url) {
+			return VendorUrlPolicy.Check(url)==VendorUrlProblem.None;
+		}
+
+		///<summary>Keeps the eRx window off the previous vendor's hosts and plain-http sites, wherever a vendor page tries to send it.</summary>
+		private void CoreWebView2_NavigationStartingGuard(object sender,CoreWebView2NavigationStartingEventArgs e) {
+			Uri uri;
+			if(!Uri.TryCreate(e.Uri,UriKind.Absolute,out uri)) {
+				return;
+			}
+			if(uri.Scheme!=Uri.UriSchemeHttp && uri.Scheme!=Uri.UriSchemeHttps) {
+				return;//about:blank, data: and the like.
+			}
+			if(!IsUrlAllowed(e.Uri)) {
+				e.Cancel=true;
+			}
 		}
 
 		private void webViewMain_NavigationCompleted(object sender,CoreWebView2NavigationCompletedEventArgs e) {
