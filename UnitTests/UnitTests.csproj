@@ -99,9 +99,10 @@
     <Reference Include="Bridges">
       <HintPath>..\Required dlls\Bridges.dll</HintPath>
     </Reference>
-    <Reference Include="CDT">
-      <HintPath>..\Required dlls\CDT.dll</HintPath>
-    </Reference>
+    <ProjectReference Include="..\CDT\xCDT.csproj">
+      <Project>{76ba82e6-d8e1-45b1-8ed6-41d97b8d67ec}</Project>
+      <Name>xCDT</Name>
+    </ProjectReference>
     <Reference Include="DpsPos, Version=1.0.6191.28914, Culture=neutral, PublicKeyToken=fed6c2461985275f" />
     <Reference Include="Health.Direct.Common, Version=1.2.0.8, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -149,9 +150,10 @@
       <HintPath>..\Required dlls\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="NHunspell, Version=0.9.6.0, Culture=neutral, PublicKeyToken=1ac793ea843b4366" />
-    <Reference Include="ODCrypt">
-      <HintPath>..\Required dlls\ODCrypt.dll</HintPath>
-    </Reference>
+    <ProjectReference Include="..\ODCrypt\xODCrypt.csproj">
+      <Project>{c37b8157-f665-4ebe-8fd6-20d1c92a0797}</Project>
+      <Name>xODCrypt</Name>
+    </ProjectReference>
     <Reference Include="OpenDentalCloud, Version=16.4.0.0, Culture=neutral, processorArchitecture=x86">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\OpenDentalCloud\bin\Debug\OpenDentalCloud.dll</HintPath>

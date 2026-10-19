@@ -185,10 +185,10 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\Newtonsoft.Json.dll</HintPath>
     </Reference>
-    <Reference Include="ODCrypt, Version=18.2.7.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\ODCrypt.dll</HintPath>
-    </Reference>
+    <ProjectReference Include="..\ODCrypt\xODCrypt.csproj">
+      <Project>{c37b8157-f665-4ebe-8fd6-20d1c92a0797}</Project>
+      <Name>xODCrypt</Name>
+    </ProjectReference>
     <Reference Include="OpenPop">
       <HintPath>..\Required dlls\OpenPop.dll</HintPath>
     </Reference>
@@ -2287,7 +2287,7 @@
     <Compile Include="Remoting\XmlConverterSerializer.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\CDT\xCDT.csproj">
+    <ProjectReference Include="..\CDT\xCDT.csproj">
       <Project>{76ba82e6-d8e1-45b1-8ed6-41d97b8d67ec}</Project>
       <Name>xCDT</Name>
     </ProjectReference>

@@ -236,9 +236,15 @@ namespace OpenDental {
 				whiteListObfuscated=Prefs.GetOne(PrefName.DatabaseIntegritiesWhiteList).ValueString;
 			}
 			string whiteListPlainText="";
-			if(whiteListObfuscated!="") {
-				whiteListPlainText=CDT.Class1.TryDecrypt(whiteListObfuscated);
+			//This pref is only ever written encrypted. Decrypt fails on values Open Dental encrypted with its own key, so skip them.
+			if(!CDT.Class1.Decrypt(whiteListObfuscated,out whiteListPlainText) || whiteListPlainText=="") {
+				return;
+			}
+			try {
 				FillCache(whiteListPlainText);
+			}
+			catch(XmlException) {
+				_listDatabaseIntegrities.Clear();
 			}
 		}
 

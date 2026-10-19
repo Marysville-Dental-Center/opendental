@@ -1934,7 +1934,7 @@ namespace OpenDentBusiness{
 			if(claim.DateService < dateHashStart) { //Too old, isn't hashed.
 				return true;
 			}
-			if(claim.SecurityHash==HashFields(claim)) {
+			if(Misc.SecurityHash.IsHashValid(claim.SecurityHash,HashFields(claim))) {
 				return true;
 			}
 			return false; 

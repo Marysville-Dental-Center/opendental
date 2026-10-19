@@ -3941,7 +3941,7 @@ namespace OpenDentBusiness{
 				//See notes in CDT.Class1 on how to pick which column to use for comparison
 				return true;
 			}
-			if(appointment.SecurityHash==HashFields(appointment)) {
+			if(Misc.SecurityHash.IsHashValid(appointment.SecurityHash,HashFields(appointment))) {
 				return true;
 			}
 			return false; 

@@ -848,7 +848,7 @@ namespace OpenDentBusiness{
 			if(payPlan.PayPlanDate < dateHashStart) { //old
 				return true;
 			}
-			if(payPlan.SecurityHash==HashFields(payPlan)) { //Hash is not what it should be
+			if(Misc.SecurityHash.IsHashValid(payPlan.SecurityHash,HashFields(payPlan))) { //Hash is not what it should be
 				return true;
 			}
 			return false; 

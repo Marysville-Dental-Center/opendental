@@ -574,7 +574,7 @@ namespace OpenDentBusiness{
 			if(paySplit.DatePay < dateHashStart) { //old
 				return true;
 			}
-			if(paySplit.SecurityHash==HashFields(paySplit)) {
+			if(Misc.SecurityHash.IsHashValid(paySplit.SecurityHash,HashFields(paySplit))) {
 				return true;
 			}
 			return false; 
