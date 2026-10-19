@@ -5016,12 +5016,14 @@ namespace OpenDental {
 					button.Style=ODToolBarButtonStyle.DropDownButton;
 					button.DropDownMenu=_contextMenuRxManage;
 					ToolBarMain.Buttons.Add(button);
-					if(toolBarButtonErx==null) {
-						toolBarButtonErx=new ODToolBarButton(Lan.g(this,"eRx"),1,"","eRx");
-						toolBarButtonErx.Style=ODToolBarButtonStyle.DropDownButton;
-						toolBarButtonErx.DropDownMenu=menuErx;
+					if(Programs.IsEnabled(ProgramName.eRx)) {//The eRx button only shows once the office has enabled the eRx program link.
+						if(toolBarButtonErx==null) {
+							toolBarButtonErx=new ODToolBarButton(Lan.g(this,"eRx"),1,"","eRx");
+							toolBarButtonErx.Style=ODToolBarButtonStyle.DropDownButton;
+							toolBarButtonErx.DropDownMenu=menuErx;
+						}
+						ToolBarMain.Buttons.Add(toolBarButtonErx);
 					}
-					ToolBarMain.Buttons.Add(toolBarButtonErx);
 				}
 			}
 			ToolBarMain.Buttons.Add(new ODToolBarButton(Lan.g(this,"LabCase"),-1,"","LabCase"));

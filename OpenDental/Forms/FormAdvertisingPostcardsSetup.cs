@@ -130,7 +130,6 @@ namespace OpenDental {
 		}
 
 		private void FillUI() {
-			webBrowser.Navigate(_postcardManiaMetaData.displayURL);
 			gridClinics.Visible=PrefC.HasClinicsEnabled;
 			labelClinicsGridHint.Visible=PrefC.HasClinicsEnabled;
 			labelNotEnabled.Visible=_postcardManiaMetaData.Accounts.Where(x=>x.Email!=DEFAULT).ToList().IsNullOrEmpty();
