@@ -613,28 +613,6 @@ namespace OpenDental {
 				ModuleSelected(Pd.PatNum);
 				return;
 			}
-			if(gridPtInfo.ListGridRows[e.Row].Tag.ToString()=="References") {
-				using FormReference formReference=new FormReference();
-				formReference.ShowDialog();
-				if(formReference.PatNumGoto!=0) {
-					Patient patient=Patients.GetPat(formReference.PatNumGoto);
-					GlobalFormOpenDental.PatientSelected(patient,false);
-					GlobalFormOpenDental.GoToModule(EnumModuleType.Family, patNum:formReference.PatNumGoto);
-					return;
-				}
-				if(formReference.DialogResult!=DialogResult.OK) {
-					return;
-				}
-				for(int i=0;i<formReference.ListCustReferencesSelected.Count;i++) {
-					CustRefEntry custRefEntry=new CustRefEntry();
-					custRefEntry.DateEntry=DateTime.Now;
-					custRefEntry.PatNumCust=Pd.PatNum;
-					custRefEntry.PatNumRef=formReference.ListCustReferencesSelected[i].PatNum;
-					CustRefEntries.Insert(custRefEntry);
-				}
-				FillPtInfo();
-				return;
-			}
 			if(gridPtInfo.ListGridRows[e.Row].Tag.ToString()=="Payor Types") {
 				using FormPayorTypes formPayorTypes=new FormPayorTypes();
 				formPayorTypes.PatientCur=Pd.Patient;
@@ -647,13 +625,7 @@ namespace OpenDental {
 			if(gridPtInfo.ListGridRows[e.Row].Tag.ToString()=="Broken Appts") {					
 				return;//This row is just for display; it can't be edited.
 			}
-			if(gridPtInfo.ListGridRows[e.Row].Tag.GetType()==typeof(CustRefEntry)) {
-				using FormReferenceEntryEdit formReferenceEntryEdit=new FormReferenceEntryEdit((CustRefEntry)gridPtInfo.ListGridRows[e.Row].Tag);
-				formReferenceEntryEdit.ShowDialog();
-				FillPtInfo();
-				return;
-			}
-			else if(gridPtInfo.ListGridRows[e.Row].Tag is PatFieldDef patFieldDef) {//patfield for an existing PatFieldDef
+			if(gridPtInfo.ListGridRows[e.Row].Tag is PatFieldDef patFieldDef) {//patfield for an existing PatFieldDef
 				Pd.FillIfNeeded(EnumPdTable.PatField);
 				PatField patField=Pd.ListPatFields.Find(x=>x.FieldName==patFieldDef.FieldName);
 				PatFieldL.OpenPatField(patField,patFieldDef,Pd.PatNum);
@@ -4017,23 +3989,6 @@ namespace OpenDental {
 						row.Tag=null;
 						break;
 					#endregion Discharge Date
-					#region Ehr Provider Keys
-					case "Ehr Provider Keys":
-						//Not even available to most users.
-						List<EhrProvKey> listEhrProvKeys=EhrProvKeys.RefreshForFam(Pd.Patient.Guarantor);
-						string desc="";
-						for(int i = 0;i<listEhrProvKeys.Count;i++) {
-							if(i>0) {
-								desc+="\r\n";
-							}
-							desc+=listEhrProvKeys[i].LName+", "+listEhrProvKeys[i].FName+", "
-								+listEhrProvKeys[i].YearValue+", "+listEhrProvKeys[i].ProvKey;
-						}
-						row.Cells.Add(desc);
-						row.ColorBackG=Color.PowderBlue;
-						row.Tag="EhrProvKeys";
-						break;
-					#endregion Ehr Provider Keys
 					#region Med Urgent
 					case "Med Urgent":
 						cell=new GridCell();
@@ -4290,32 +4245,6 @@ namespace OpenDental {
 						row.Tag = null;
 						break;
 					#endregion Prov. (Pri, Sec)
-					#region References
-					case "References":
-						List<CustRefEntry> listCustRefEntries=CustRefEntries.GetEntryListForCustomer(Pd.PatNum);
-						if(listCustRefEntries.Count==0) {
-							row.Cells.Add(Lan.g("TablePatient","None"));
-							row.Tag="References";
-							row.ColorBackG=listDefsMiscColorsShort[(int)DefCatMiscColors.FamilyModuleReferral].ItemColor;
-						}
-						else {
-							row.Cells.Add(Lan.g("TablePatient",""));
-							row.Tag="References";
-							row.ColorBackG=listDefsMiscColorsShort[(int)DefCatMiscColors.FamilyModuleReferral].ItemColor;
-							gridPtInfo.ListGridRows.Add(row);
-						}
-						for(int i=0;i<listCustRefEntries.Count;i++) {
-							row=new GridRow();
-							row.Cells.Add(listCustRefEntries[i].DateEntry.ToShortDateString());
-							row.Cells.Add(CustReferences.GetCustNameFL(listCustRefEntries[i].PatNumRef));
-							row.Tag=listCustRefEntries[i];
-							row.ColorBackG=listDefsMiscColorsShort[(int)DefCatMiscColors.FamilyModuleReferral].ItemColor;
-							if(i<listCustRefEntries.Count-1) {
-								gridPtInfo.ListGridRows.Add(row);
-							}
-						}
-						break;
-					#endregion References
 					#region Referred From
 					case "Referred From":
 						if(isRefreshData || Pd.ListRefAttaches==null) {
@@ -4336,50 +4265,6 @@ namespace OpenDental {
 						row.Tag="Referral";
 						break;
 					#endregion Referred From
-					#region Registration Keys
-					case "Registration Keys":
-						//Not even available to most users.
-						RegistrationKey[] registrationKeyArray=RegistrationKeys.GetForPatient(Pd.PatNum);
-						for(int i=0;i<registrationKeyArray.Length;i++) {
-							//For non-guarantors with reseller keys, we do not want to show other family member reseller keys (there will be a lot of them).
-							if(Pd.PatNum!=Pd.Patient.Guarantor
-								&& registrationKeyArray[i].IsResellerCustomer 
-								&& registrationKeyArray[i].PatNum!=Pd.PatNum) 
-							{
-								//The current patient selected is not the guarantor and this is a reseller key for another family member.  Do not show it in this patient's chart module.
-								continue;
-							}
-							row=new GridRow();
-							row.Cells.Add(Lan.g("TableChartPtInfo","Registration Key"));
-							string str=registrationKeyArray[i].RegKey.Substring(0,4)+"-"+registrationKeyArray[i].RegKey.Substring(4,4)+"-"
-								+registrationKeyArray[i].RegKey.Substring(8,4)+"-"+registrationKeyArray[i].RegKey.Substring(12,4);
-							str+="  |  PatNum: "+registrationKeyArray[i].PatNum.ToString();//Always show the PatNum
-							if(registrationKeyArray[i].IsForeign) {
-								str+="\r\nForeign";
-							}
-							else {
-								str+="\r\nUSA";
-							}
-							str+="\r\nStarted: "+registrationKeyArray[i].DateStarted.ToShortDateString();
-							if(registrationKeyArray[i].DateDisabled.Year>1880) {
-								str+="\r\nDisabled: "+registrationKeyArray[i].DateDisabled.ToShortDateString();
-							}
-							if(registrationKeyArray[i].DateEnded.Year>1880) {
-								str+="\r\nEnded: "+registrationKeyArray[i].DateEnded.ToShortDateString();
-							}
-							if(registrationKeyArray[i].Note!="") {
-								str+="\r\n"+registrationKeyArray[i].Note;
-							}
-							GridCell gridCell=new GridCell(str);
-							if(registrationKeyArray[i].DateDisabled.Year>1880) {
-								gridCell.ColorText=Color.Crimson;
-							}
-							row.Cells.Add(gridCell);
-							row.Tag=registrationKeyArray[i].Copy();
-							gridPtInfo.ListGridRows.Add(row);
-						}
-						break;
-					#endregion Registration Keys
 					#region Sec Ins
 					case "Sec Ins":
 						ordinal=PatPlans.GetOrdinal(PriSecMed.Secondary,Pd.ListPatPlans,Pd.ListInsPlans,Pd.ListInsSubs);

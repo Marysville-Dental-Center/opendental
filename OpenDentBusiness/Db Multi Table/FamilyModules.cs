@@ -48,9 +48,6 @@ namespace OpenDentBusiness {
 					case "Payor Types":
 						data.PayorTypeDesc=PayorTypes.GetCurrentDescription(patNum);
 						break;
-					case "References":
-						data.ListCustRefEntries=CustRefEntries.GetEntryListForCustomer(patNum);
-						break;
 					case "Referrals":
 						data.ListRefAttaches=RefAttaches.Refresh(patNum);
 						break;
@@ -103,7 +100,6 @@ namespace OpenDentBusiness {
 			public string PayorTypeDesc;
 			public List<RefAttach> ListRefAttaches;
 			public List<Guardian> ListGuardians;
-			public List<CustRefEntry> ListCustRefEntries;
 			public List<PatRestriction> ListPatRestricts;
 			public DiscountPlan DiscountPlan;
 			///<summary>Only has the fields from Patients.GetLim.</summary>
