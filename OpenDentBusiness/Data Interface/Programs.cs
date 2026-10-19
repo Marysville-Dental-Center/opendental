@@ -127,6 +127,42 @@ namespace OpenDentBusiness {
 			return Crud.ProgramCrud.Insert(Cur);
 		}
 
+		///<summary>Inserts a program row for programName with Enabled=0 if there isn't one, and returns true if this call inserted it. Used for the
+		///program links that vendor-direct integrations add at runtime (no ConvertDatabases step). If two workstations insert at the same moment, the
+		///duplicate with the higher ProgramNum is deleted, and only the call whose row survives returns true. Does not refresh the cache; the caller
+		///signals InvalidType.Programs.</summary>
+		public static bool InsertIfMissing(ProgramName programName,string progDesc) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetBool(MethodBase.GetCurrentMethod(),programName,progDesc);
+			}
+			string command="SELECT ProgramNum FROM program WHERE ProgName='"+POut.String(programName.ToString())+"' ORDER BY ProgramNum";
+			if(Db.GetListLong(command).Count>0) {
+				return false;
+			}
+			Program program=new Program();
+			program.ProgName=programName.ToString();
+			program.ProgDesc=progDesc??programName.ToString();
+			program.Enabled=false;
+			program.Path="";
+			program.CommandLine="";
+			program.Note="";
+			program.PluginDllName="";
+			program.ButtonImage="";
+			program.FileTemplate="";
+			program.FilePath="";
+			program.IsDisabledByHq=false;
+			program.CustErr="";
+			long programNum=Crud.ProgramCrud.Insert(program);
+			//Another workstation may have inserted the same program at the same moment. Keep the lowest ProgramNum.
+			List<long> listProgramNums=Db.GetListLong(command);
+			if(listProgramNums.Count>1) {
+				string listNumsDelete=string.Join(",",listProgramNums.Skip(1).Select(x => POut.Long(x)));
+				Db.NonQ("DELETE FROM programproperty WHERE ProgramNum IN("+listNumsDelete+")");
+				Db.NonQ("DELETE FROM program WHERE ProgramNum IN("+listNumsDelete+")");
+			}
+			return listProgramNums.Count>0 && listProgramNums[0]==programNum;
+		}
+
 		///<summary>This can only be called by the user if it is a program link that they created.  Included program links cannot be deleted.  If doing something similar from ClassConversion, must delete any dependent ProgramProperties first.  It will delete ToolButItems for you.</summary>
 		public static void Delete(Program prog){
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {

@@ -186,11 +186,11 @@ namespace OpenDentBusiness {
 			BambooClientKey,
 			///<summary>Formerly Appriss</summary>
 			BambooClientPassword,
-			///<summary></summary>
+			///<summary>Base URL override for the QuickBooks Online API (a mock server for tests).</summary>
 			QuickBooksOnlineSandboxUrl,
-			///<summary></summary>
+			///<summary>Unused; superseded by the Environment program property. Kept because IntrospectionItems JSON is keyed by name.</summary>
 			QuickBooksOnlineSandboxEnvironment,
-			///<summary></summary>
+			///<summary>Unused; superseded by the Client ID and Client Secret program properties. Kept because IntrospectionItems JSON is keyed by name.</summary>
 			QuickBooksOnlineSandboxClientIdAndSecret,
 			///<summary></summary>
 			EdgeExpressHostPay,
@@ -206,10 +206,13 @@ namespace OpenDentBusiness {
 			PayConnect2Key,
 			///<summary></summary>
 			DentalXChangeDciURL,
-			///<summary></summary>
+			///<summary>Unused. Kept because IntrospectionItems JSON may name it.</summary>
 			PayConnect2DLLKey,
-			///<summary></summary>
+			///<summary>Unused once DoseSpot reads the office's own subscription key. Kept because IntrospectionItems JSON may name it.</summary>
 			DoseSpotV2DecryptedSubscriptionKey,
+			///<summary>Base URL override for the PostcardMania API (a mock server for tests). Read it with TryGetOverride, so an older
+			///IntrospectionItems value without this entry keeps working.</summary>
+			PostcardManiaApiUrl,
 		}
 	}
 }

@@ -175,6 +175,11 @@
       <HintPath>..\Required dlls\Microsoft.Graph.Core.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.VisualBasic" />
+    <!-- MSAL for the vendor-direct Microsoft 365 sign-in (M365-LIB). The 4.47.1 copy shipped in Required dlls for now; see docs/specs/vendor-direct/microsoft-365.md. -->
+    <Reference Include="Microsoft.Identity.Client">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\Required dlls\Microsoft.Identity.Client.dll</HintPath>
+    </Reference>
     <Reference Include="MimeKit">
       <HintPath>..\Required dlls\MimeKit.dll</HintPath>
     </Reference>
@@ -687,12 +692,22 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Reference.map</DependentUpon>
     </Compile>
+    <!-- Vendor-direct folders (docs/specs/vendor-direct/README.md, 3.3). Each vendor package owns its folder; new files need no csproj edit. -->
+    <Compile Include="Bridges\CareCredit\**\*.cs" />
+    <Compile Include="Bridges\PostcardMania\**\*.cs" />
+    <Compile Include="Bridges\QuickBooksOnline\**\*.cs" />
+    <Compile Include="VendorDirect\**\*.cs" />
+    <Compile Include="WebBridges\Erx\DoseSpot\**\*.cs" />
+    <Compile Include="WebBridges\Microsoft365\**\*.cs" />
+    <Compile Include="WebBridges\Usps\**\*.cs" />
     <Compile Include="WebBridges\APIRequest.cs" />
     <Compile Include="WebBridges\AvaTax.cs" />
     <Compile Include="WebBridges\EdgeExpress.cs" />
     <Compile Include="WebBridges\Erx\DoseSpotV2.cs" />
     <Compile Include="WebBridges\Google\Google.cs" />
     <Compile Include="WebBridges\Google\GoogleApiConnector.cs" />
+    <Compile Include="WebBridges\Google\GoogleOAuthSettings.cs" />
+    <Compile Include="WebBridges\Google\GoogleTokenCache.cs" />
     <Compile Include="WebBridges\HqProgram.cs" />
     <Compile Include="WebBridges\IApiRequest.cs" />
     <Compile Include="WebBridges\OcrInsScan\OcrInsScanRequest.cs" />
@@ -707,6 +722,8 @@
     <Compile Include="WebBridges\PDMP\PDMP.cs" />
     <Compile Include="WebBridges\PDMP\PDMPLogicoy.cs" />
     <Compile Include="WebBridges\PDMP\PDMPScript.cs" />
+    <Compile Include="WebBridges\PDMP\PdmpCertificate.cs" />
+    <Compile Include="WebBridges\PDMP\PdmpHttp.cs" />
     <Compile Include="WebBridges\RESTfulTemplate.cs" />
     <Compile Include="WebServices\CustomerUpdatesProxy.cs" />
     <Compile Include="Remoting\DtoProcessor.cs" />
@@ -1775,8 +1792,10 @@
     <Compile Include="WebBridges\Erx\DoseSpot.cs" />
     <Compile Include="WebBridges\Erx\Erx.cs" />
     <Compile Include="WebBridges\Erx\NewCrop\NewCrop.cs" />
+    <Compile Include="WebBridges\Erx\NewCrop\NewCropConfig.cs" />
     <Compile Include="WebBridges\PayConnect.cs" />
     <Compile Include="WebBridges\PaySimple.cs" />
+    <Compile Include="WebBridges\PaySimpleAchStatusSync.cs" />
     <Compile Include="WebBridges\Podium.cs" />
     <Compile Include="WebBridges\Sftp.cs" />
     <Compile Include="WebServices\IOpenDentalServer.cs" />
