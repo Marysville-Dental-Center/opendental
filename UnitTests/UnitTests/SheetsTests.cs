@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using OpenDentBusiness.WebTypes.WebForms;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenDentBusiness;
 using UnitTestsCore;
@@ -268,18 +267,6 @@ namespace UnitTests {
 				.Select(x => x.SheetFieldDefNum)
 				.ToList();
 			Assert.IsTrue(sheetNew.SheetFields.All(x => x.SheetFieldDefNum.In(listSheetFieldDefNumsSpanish.ToArray())));
-		}
-
-		///<summary>Turn a WebForms_Sheet into a sheet and check that the sheetFieldDefNums on the WebFormsSheetFieldDefs match.</summary>
-		[TestMethod]
-		public void SheetUtil_CreateSheetFromWebSheet_SheetFieldDefNums() {
-			//Convert a WebForms_sheet into a Sheet, and assert that its sheetFieldDefNums are retained.
-			WebForms_Sheet webSheet=WebForms_SheetT.CreateWebFormSheet("Jones", "Dougie",DateTime.Now.AddYears(-20), "email@gmail.com", new List<string> {"1231231234","4564564567","6786786789"});
-			Sheet sheetFromWebSheet=SheetUtil.CreateSheetFromWebSheet(0,webSheet);
-			for(int i = 0;i<webSheet.SheetFields.Count;i++) {
-				Assert.AreEqual(webSheet.SheetFields[i].SheetFieldDefNum,sheetFromWebSheet.SheetFields[i].SheetFieldDefNum);
-				Assert.AreEqual(webSheet.SheetFields[i].SheetFieldDefNum,sheetFromWebSheet.SheetFields[i].SheetFieldDefNum);
-			}
 		}
 	}
 }

@@ -17,7 +17,6 @@ namespace NoHqTests {
 		public void SetUp() {
 			WebServiceMainHQProxy.MockWebServiceMainHQ=null;
 			CustomerUpdatesProxy.MockCustomerUpdates=null;
-			SheetsSynchProxy.MockSheetSynchService=null;
 			BugSubmissions.MockBugSubmissions=null;
 		}
 
@@ -93,7 +92,7 @@ namespace NoHqTests {
 		}
 		#endregion WebServiceMainHQ
 
-		#region CustomerUpdates and SheetsSynch
+		#region CustomerUpdates
 		[TestMethod]
 		public void CustomerUpdates_FactoryReturnsNoHqAndEveryMethodThrows() {
 			ICustomerUpdates customerUpdates=CustomerUpdatesProxy.GetWebServiceInstance();
@@ -104,15 +103,7 @@ namespace NoHqTests {
 			AssertThrowsHqNotAvailable(() => CustomerUpdatesProxy.SendAndReceiveUpdateRequestXml(),"SendAndReceiveUpdateRequestXml");
 		}
 
-		[TestMethod]
-		public void SheetsSynch_FactoryReturnsNoHqAndEveryMethodThrows() {
-			ISheetsSynch sheetsSynch=SheetsSynchProxy.GetWebServiceInstance();
-			Assert.IsInstanceOfType(sheetsSynch,typeof(SheetsSynchNoHq));
-			foreach(MethodInfo method in typeof(ISheetsSynch).GetMethods()) {
-				AssertThrowsHqNotAvailable(() => method.Invoke(sheetsSynch,GetDefaultArgs(method)),method.Name);
-			}
-		}
-		#endregion CustomerUpdates and SheetsSynch
+		#endregion CustomerUpdates
 
 		#region Gates and telemetry
 		[TestMethod]

@@ -1509,11 +1509,6 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Reference.map</DependentUpon>
     </Compile>
-    <Compile Include="Web References\SheetsSynch\Reference.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>Reference.map</DependentUpon>
-    </Compile>
     <Compile Include="WebBridges\Erx\ErxXml.cs" />
     <Compile Include="WebBridges\Erx\NewCrop\NCScript.cs" />
     <Compile Include="HL7old\EhrADT_A01.cs" />
@@ -2016,16 +2011,13 @@
     <Compile Include="WebBridges\Podium.cs" />
     <Compile Include="WebBridges\Sftp.cs" />
     <Compile Include="WebServices\IOpenDentalServer.cs" />
-    <Compile Include="WebServices\ISheetsSynch.cs" />
     <Compile Include="WebServices\IWebServiceMainHQ.cs" />
     <Compile Include="WebServices\OpenDentalServerMockIIS.cs" />
     <Compile Include="WebServices\OpenDentalServerReal.cs" />
     <Compile Include="WebServices\PayloadHelper.cs" />
-    <Compile Include="WebServices\SheetsSynchProxy.cs" />
     <Compile Include="WebServices\WebServiceHqServer.cs" />
     <Compile Include="WebServices\WebServiceMainHQMockDemo.cs" />
     <Compile Include="WebServices\OpenDentalServerProxy.cs" />
-    <Compile Include="WebServices\SheetsSynchNoHq.cs" />
     <Compile Include="WebServices\WebServiceMainHQNoHq.cs" />
     <Compile Include="WebServices\WebServiceMainHQProxy.cs" />
     <Compile Include="WebServiceTests.cs" />
@@ -2065,19 +2057,12 @@
     <Compile Include="WebTypes\WebForms\Crud\WebForms_SheetDefCrud.cs" />
     <Compile Include="WebTypes\WebForms\Crud\WebForms_SheetFieldCrud.cs" />
     <Compile Include="WebTypes\WebForms\Crud\WebForms_SheetFieldDefCrud.cs" />
-    <Compile Include="WebTypes\WebForms\Data Interface\WebForms_Logs.cs" />
-    <Compile Include="WebTypes\WebForms\Data Interface\WebForms_Preferences.cs" />
-    <Compile Include="WebTypes\WebForms\Data Interface\WebForms_SheetDefs.cs" />
-    <Compile Include="WebTypes\WebForms\Data Interface\WebForms_SheetFieldDefs.cs" />
-    <Compile Include="WebTypes\WebForms\Data Interface\WebForms_SheetFields.cs" />
-    <Compile Include="WebTypes\WebForms\Data Interface\WebForms_Sheets.cs" />
     <Compile Include="WebTypes\WebForms\TableTypes\WebForms_Log.cs" />
     <Compile Include="WebTypes\WebForms\TableTypes\WebForms_Preference.cs" />
     <Compile Include="WebTypes\WebForms\TableTypes\WebForms_Sheet.cs" />
     <Compile Include="WebTypes\WebForms\TableTypes\WebForms_SheetDef.cs" />
     <Compile Include="WebTypes\WebForms\TableTypes\WebForms_SheetField.cs" />
     <Compile Include="WebTypes\WebForms\TableTypes\WebForms_SheetFieldDef.cs" />
-    <Compile Include="WebTypes\WebForms\WebUtils.cs" />
     <Compile Include="WebTypes\WebSched\TimeSlot\TimeSlot.cs" />
     <Compile Include="WebTypes\WebSched\TimeSlot\TimeSlotCrud.cs" />
     <Compile Include="WebTypes\WebSched\TimeSlot\TimeSlots.cs" />
@@ -2729,11 +2714,6 @@
     <None Include="Web References\PayConnectService\transResponse.datasource">
       <DependentUpon>Reference.map</DependentUpon>
     </None>
-    <None Include="Web References\SheetsSynch\Reference.map">
-      <Generator>MSDiscoCodeGenerator</Generator>
-      <LastGenOutput>Reference.cs</LastGenOutput>
-    </None>
-    <None Include="Web References\SheetsSynch\SheetsSynch.wsdl" />
     <None Include="Web References\WebServiceMainHQ\Reference.map">
       <Generator>MSDiscoCodeGenerator</Generator>
       <LastGenOutput>Reference.cs</LastGenOutput>
@@ -2775,17 +2755,6 @@
       </CachedDynamicPropName>
       <CachedAppSettingsObjectName>Settings</CachedAppSettingsObjectName>
       <CachedSettingsPropName>OpenDentBusiness_customerupdates_Service1</CachedSettingsPropName>
-    </WebReferenceUrl>
-    <WebReferenceUrl Include="http://localhost:2923/SheetsSynch.asmx">
-      <UrlBehavior>Dynamic</UrlBehavior>
-      <RelPath>Web References\SheetsSynch\</RelPath>
-      <UpdateFromURL>http://localhost:2923/SheetsSynch.asmx</UpdateFromURL>
-      <ServiceLocationURL>
-      </ServiceLocationURL>
-      <CachedDynamicPropName>
-      </CachedDynamicPropName>
-      <CachedAppSettingsObjectName>Settings</CachedAppSettingsObjectName>
-      <CachedSettingsPropName>OpenDentBusiness_SheetsSynch_SheetsSynch</CachedSettingsPropName>
     </WebReferenceUrl>
     <WebReferenceUrl Include="http://localhost:3824/Service1.asmx">
       <UrlBehavior>Dynamic</UrlBehavior>
@@ -2926,7 +2895,6 @@
     <None Include="Resources\RecallPastDue_P.png" />
     <None Include="Resources\Right.gif" />
     <None Include="Resources\RxInstruction.xml" />
-    <None Include="Web References\SheetsSynch\SheetsSynch.disco" />
     <None Include="Resources\Statement.xml" />
     <None Include="Resources\Screening.xml" />
     <None Include="Resources\RoutingSlip.xml" />

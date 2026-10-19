@@ -144,12 +144,57 @@ namespace OpenDentBusiness{
 			//Parse the birthdate field using our websheet_preference for this practice if this sheet was a WebForm, otherwise, use the current 
 			//computer's region/language settings.
 			if(isWebForm && !isCemtTransfer) {
-				dateTime=WebTypes.WebForms.WebForms_Sheets.ParseDateWebForms(strDate,cultureName);
+				dateTime=ParseDateWebForms(strDate,cultureName);
 			}
 			else {
 				dateTime=PIn.Date(strDate);
 			}
 			return dateTime;
+		}
+
+		///<summary>Parses a date from a sheet that was retrieved from Open Dental's hosted Web Forms, using the given culture. If the culture is not
+		///supplied, uses the LanguageAndRegion preference. Supports the following delimiters in the date string even if they do not match the format
+		///determined by the culture: '/','.','-','\'</summary>
+		private static DateTime ParseDateWebForms(string date,string cultureName) {
+			string dateTimeFormat="M/d/yyyy";//Default to en-US format just in case we don't currently support the culture passed in.
+			if(string.IsNullOrEmpty(cultureName)) {
+				cultureName=PrefC.GetString(PrefName.LanguageAndRegion);
+			}
+			string delimiterSupported="/";
+			switch(cultureName) {
+				case "ar-JO":
+				case "en-CA":
+				case "en-GB":
+				case "en-ES":
+				case "en-MX":
+				case "en-PR":
+				case "nl-NL":
+					dateTimeFormat="dd/MM/yyyy";
+					break;
+				case "da-DK":
+				case "en-IN":
+					dateTimeFormat="dd-MM-yyyy";
+					delimiterSupported="-";
+					break;
+				case "en-AU":
+				case "en-NZ":
+					dateTimeFormat="d/MM/yyyy";
+					break;
+				case "mn-MN":
+					dateTimeFormat="yy.MM.dd";
+					delimiterSupported=".";
+					break;
+				case "zh-CN":
+					dateTimeFormat="yyyy/M/d";
+					break;
+			}
+			DateTime retVal;
+			//Ensure any characters in between digits are the correct delimiter.
+			string dateScrubbed=string.Join(delimiterSupported,System.Text.RegularExpressions.Regex.Split(date,"[^\\d]+").Where(x => !string.IsNullOrWhiteSpace(x)));
+			if(!DateTime.TryParseExact(dateScrubbed,dateTimeFormat,new System.Globalization.CultureInfo(cultureName),System.Globalization.DateTimeStyles.None,out retVal)) {
+				retVal=DateTime.MinValue;
+			}
+			return retVal;
 		}
 
 		///<summary>Re-orders the SheetFieldType enum to a drawing order. Images should be drawn first, then drawings, then lines, then rectangles, etc...</summary>
