@@ -25,6 +25,16 @@ namespace OpenDentBusiness.Microsoft365 {
 	public static class MicrosoftApiConnector {
 		///<summary>The first inbox download looks back this far.</summary>
 		public static readonly TimeSpan InboxDefaultLookBack=TimeSpan.FromDays(30);
+		///<summary>Tests only (tests/VendorDirectTests/Email): a Graph client over a fake handler, used instead of Microsoft365GraphClient.Default.
+		///Null in production.</summary>
+		internal static Microsoft365GraphClient GraphClientForTests;
+
+		///<summary>The Graph client the bearer-token calls use.</summary>
+		private static Microsoft365GraphClient GraphClient {
+			get {
+				return GraphClientForTests??Microsoft365GraphClient.Default;
+			}
+		}
 
 		#region Sign-in
 		///<summary>Blank accountInfo: interactive sign-in in the system browser (or device code), asking for User.Read and Mail.Send. Non-blank: a
@@ -106,7 +116,7 @@ namespace OpenDentBusiness.Microsoft365 {
 		public static MicrosoftProfile GetProfile(string emailUsername,string accessToken) {
 			Meth.NoCheckMiddleTierRole();
 			ThrowIfTurnedOff();
-			return VendorHttp.RunSync(() => Microsoft365GraphClient.Default.GetProfileAsync(emailUsername,GetFixedTokenProvider(accessToken)));
+			return VendorHttp.RunSync(() => GraphClient.GetProfileAsync(emailUsername,GetFixedTokenProvider(accessToken)));
 		}
 
 		///<summary>The inbox's messages from the last 30 days, newest first, with immutable IDs. Throws Microsoft365Exception.</summary>
@@ -118,14 +128,14 @@ namespace OpenDentBusiness.Microsoft365 {
 		public static List<MicrosoftMessageRef> RetrieveMessages(string emailUsername,string accessToken,DateTime sinceUtc) {
 			Meth.NoCheckMiddleTierRole();
 			ThrowIfTurnedOff();
-			return VendorHttp.RunSync(() => Microsoft365GraphClient.Default.ListInboxAsync(emailUsername,GetFixedTokenProvider(accessToken),sinceUtc));
+			return VendorHttp.RunSync(() => GraphClient.ListInboxAsync(emailUsername,GetFixedTokenProvider(accessToken),sinceUtc));
 		}
 
 		///<summary>One message as MIME. messageId is case-sensitive. Throws Microsoft365Exception.</summary>
 		public static MimeMessage GetMIMEMessage(string emailUsername,string accessToken,string messageId) {
 			Meth.NoCheckMiddleTierRole();
 			ThrowIfTurnedOff();
-			return VendorHttp.RunSync(() => Microsoft365GraphClient.Default.GetMimeAsync(emailUsername,GetFixedTokenProvider(accessToken),messageId));
+			return VendorHttp.RunSync(() => GraphClient.GetMimeAsync(emailUsername,GetFixedTokenProvider(accessToken),messageId));
 		}
 
 		///<summary>Sends message as the signed-in user, built with the same MIME builder as Gmail (SendEmails.CreateMIMEMsg). Throws
@@ -146,7 +156,7 @@ namespace OpenDentBusiness.Microsoft365 {
 		public static void SendMime(string emailUsername,string accessToken,MimeMessage mimeMessage) {
 			Meth.NoCheckMiddleTierRole();
 			ThrowIfTurnedOff();
-			VendorHttp.RunSync(() => Microsoft365GraphClient.Default.SendMimeAsync(emailUsername,GetFixedTokenProvider(accessToken),mimeMessage));
+			VendorHttp.RunSync(() => GraphClient.SendMimeAsync(emailUsername,GetFixedTokenProvider(accessToken),mimeMessage));
 		}
 
 		///<summary>A token provider for a token the caller already has. A 401 can't be fixed here, so the caller gets Microsoft365AuthException and
