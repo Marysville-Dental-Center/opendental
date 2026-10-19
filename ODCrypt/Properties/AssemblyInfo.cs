@@ -14,6 +14,9 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyCulture("")]
 [assembly: ComVisible(false)]
 [assembly: Guid("c37b8157-f665-4ebe-8fd6-20d1c92a0797")]
-[assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
+//Keep in step with the program version, and never lower than the version the prebuilt DLLs in "Required dlls" were compiled
+//against (Bridges.dll: CDT 24.3.63.0; OpenDentalHelp.dll: ODCrypt 24.3.62.0). A lower version makes MSBuild treat this build as a
+//conflicting older copy and silently leave the DLL out of any output that gets it only through another assembly.
+[assembly: AssemblyVersion("24.3.63.0")]
+[assembly: AssemblyFileVersion("24.3.63.0")]
 [assembly: InternalsVisibleTo("CryptoTests")]
