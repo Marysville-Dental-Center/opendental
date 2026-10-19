@@ -12,7 +12,8 @@ namespace OpenDental {
 		///<summary>Shown when a record's SecurityHash does not match. [Class] is replaced with the record type.</summary>
 		private const string CLASS_MESSAGE="This [Class] record was changed outside of this program, or before tamper detection was turned on, "
 			+"so its tamper-detection hash does not match.\r\n\r\n"
-			+"Review the record. If the change is expected, saving the record again recalculates its hash.";
+			+"Review the record. If the change is expected, a user with Security Admin permission can recalculate the hashes with "
+			+"Database Maintenance, Tools tab, Security Hashes.";
 
 		///<summary>Returns the local behavior for an invalid SecurityHash on the passed in record type: a static triangle with a neutral message.</summary>
 		public static DatabaseIntegrity GetOneClass(EnumWarningIntegrityType warningIntegrityType){
