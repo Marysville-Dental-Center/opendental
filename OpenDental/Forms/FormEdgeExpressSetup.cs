@@ -97,15 +97,6 @@ namespace OpenDental {
 			FillFields();
 		}
 
-		private void linkLabel1_LinkClicked(object sender,LinkLabelLinkClickedEventArgs e) {
-			string url="https://opendental.com/resources/redirects/redirectopenedge.html";
-			if(ODCloudClient.IsAppStream) {
-				ODCloudClient.LaunchFileWithODCloudClient(url);
-				return;
-			}
-			Process.Start(url);
-		}
-
 		///<summary>Validate XWebID, AuthKey, and TerminalID.  XWebID and TerminalID must be numbers only, 12 digits and 8 digits long respectively.
 		///AuthKey must be alphanumeric, 32 digits long.</summary>
 		private bool ValidateXWeb(bool suppressMessage = false) {

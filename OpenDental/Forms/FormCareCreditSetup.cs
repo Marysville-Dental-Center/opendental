@@ -35,7 +35,6 @@ namespace OpenDental {
 				throw new Exception("The CareCredit program is missing from the database.");//should never happen
 			}
 			checkEnabled.Checked=_program.Enabled;
-			checkHideAdvertising.Visible=!_program.Enabled;
 			if(PrefC.HasClinicsEnabled) {
 				if(Security.CurUser.ClinicIsRestricted) {
 					if(checkEnabled.Checked) {
@@ -94,8 +93,6 @@ namespace OpenDental {
 				comboPaymentType.Items.AddDefs(Defs.GetDefsForCategory(DefCat.PaymentTypes,true));
 				comboBoxDaysOut.Items.AddList(ListDaysOut,x => x.ToString());
 			}
-			checkHideAdvertising.Checked=PIn.Bool(ProgramProperties.GetPropValFromList(_listProgramProperties,
-				ProgramProperties.PropertyDescs.CareCredit.CareCreditDoDisableAdvertising));
 			string payTypeDefNum=ProgramProperties.GetPropValFromList(_listProgramProperties,ProgramProperties.PropertyDescs.CareCredit.CareCreditPaymentType,
 				comboClinics.ClinicNumSelected);
 			comboPaymentType.SetSelectedDefNum(PIn.Long(payTypeDefNum));
@@ -227,14 +224,6 @@ namespace OpenDental {
 					PropertyValue="0",//Default to false
 				});
 			}
-			if(!_listProgramProperties.Any(x => x.PropertyDesc==ProgramProperties.PropertyDescs.CareCredit.CareCreditDoDisableAdvertising)) {
-				_listProgramProperties.Add(new ProgramProperty() {
-					ClinicNum=0,
-					PropertyDesc=ProgramProperties.PropertyDescs.CareCredit.CareCreditDoDisableAdvertising,
-					ProgramNum=_program.ProgramNum,
-					PropertyValue="0",
-				});
-			}
 		}
 
 		///<summary>Sets the Payment Type combobox to the first "CareCredit" payment type in the combo box. A new "CareCredit" payment type will be created and added to the combo box if there were none to select when this method was invoked. A "CareCredit" payment type is guaranteed to be selected when this method returns.</summary>
@@ -314,8 +303,6 @@ namespace OpenDental {
 			}
 			_listProgramProperties.FindAll(x => x.PropertyDesc==ProgramProperties.PropertyDescs.CareCredit.CareCreditIsMerchantNumberByProv)
 				.ForEach(x => x.PropertyValue=POut.Bool(checkMerchantNumByProv.Checked));
-			_listProgramProperties.FindAll(x => x.PropertyDesc==ProgramProperties.PropertyDescs.CareCredit.CareCreditDoDisableAdvertising)
-			.ForEach(x => x.PropertyValue=POut.Bool(checkHideAdvertising.Checked));
 		}
 
 		private void textMerchantNumberPractice_Leave(object sender,EventArgs e) {

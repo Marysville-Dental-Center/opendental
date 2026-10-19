@@ -131,7 +131,6 @@
     <Compile Include="Bridges\Camsight.cs" />
     <Compile Include="Bridges\CaptureLink.cs" />
     <Compile Include="Bridges\Carestream.cs" />
-    <Compile Include="Bridges\CDS.cs" />
     <Compile Include="Bridges\Cerec.cs" />
     <Compile Include="Bridges\CleaRay.cs" />
     <Compile Include="Bridges\Cliniview.cs" />
@@ -139,7 +138,6 @@
     <Compile Include="Bridges\DBSWin.cs" />
     <Compile Include="Bridges\DemandForce.cs" />
     <Compile Include="Bridges\DentalEye.cs" />
-    <Compile Include="Bridges\DentalIntel.cs" />
     <Compile Include="Bridges\DentalStudio.cs" />
     <Compile Include="Bridges\DentalTek.cs" />
     <Compile Include="Bridges\DentalXChange.cs" />

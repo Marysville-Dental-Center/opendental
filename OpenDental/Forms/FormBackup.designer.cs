@@ -23,8 +23,6 @@
 			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormBackup));
 			this.tabControl1 = new OpenDental.UI.TabControl();
 			this.tabPageBackup = new OpenDental.UI.TabPage();
-			this.groupManagedBackups = new OpenDental.UI.GroupBox();
-			this.pictureCDS = new OpenDental.UI.ODPictureBox();
 			this.label1 = new System.Windows.Forms.Label();
 			this.checkExcludeImages = new OpenDental.UI.CheckBox();
 			this.butSave = new OpenDental.UI.Button();
@@ -80,7 +78,6 @@
 			this.labelExplanation = new System.Windows.Forms.Label();
 			this.tabControl1.SuspendLayout();
 			this.tabPageBackup.SuspendLayout();
-			this.groupManagedBackups.SuspendLayout();
 			this.groupBox1.SuspendLayout();
 			this.tabPageArchive.SuspendLayout();
 			this.groupBoxBackupConnection.SuspendLayout();
@@ -102,7 +99,6 @@
 			// tabPageBackup
 			// 
 			this.tabPageBackup.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(252)))), ((int)(((byte)(253)))), ((int)(((byte)(254)))));
-			this.tabPageBackup.Controls.Add(this.groupManagedBackups);
 			this.tabPageBackup.Controls.Add(this.label1);
 			this.tabPageBackup.Controls.Add(this.checkExcludeImages);
 			this.tabPageBackup.Controls.Add(this.butSave);
@@ -121,26 +117,6 @@
 			this.tabPageBackup.Size = new System.Drawing.Size(776, 554);
 			this.tabPageBackup.TabIndex = 0;
 			this.tabPageBackup.Text = "Backup";
-			// 
-			// groupManagedBackups
-			// 
-			this.groupManagedBackups.Controls.Add(this.pictureCDS);
-			this.groupManagedBackups.Location = new System.Drawing.Point(319, 488);
-			this.groupManagedBackups.Name = "groupManagedBackups";
-			this.groupManagedBackups.Size = new System.Drawing.Size(114, 57);
-			this.groupManagedBackups.TabIndex = 17;
-			this.groupManagedBackups.Text = "Managed Backups";
-			// 
-			// pictureCDS
-			// 
-			this.pictureCDS.HasBorder = false;
-			this.pictureCDS.Image = global::OpenDental.Properties.Resources.Unison_BDR_Logo;
-			this.pictureCDS.Location = new System.Drawing.Point(6, 15);
-			this.pictureCDS.Name = "pictureCDS";
-			this.pictureCDS.Size = new System.Drawing.Size(101, 39);
-			this.pictureCDS.TabIndex = 16;
-			this.pictureCDS.TextNullImage = null;
-			this.pictureCDS.Click += new System.EventHandler(this.pictureCDS_Click);
 			// 
 			// label1
 			// 
@@ -687,7 +663,6 @@
 			this.tabControl1.ResumeLayout(false);
 			this.tabPageBackup.ResumeLayout(false);
 			this.tabPageBackup.PerformLayout();
-			this.groupManagedBackups.ResumeLayout(false);
 			this.groupBox1.ResumeLayout(false);
 			this.groupBox1.PerformLayout();
 			this.tabPageArchive.ResumeLayout(false);
@@ -734,8 +709,6 @@
 		private System.ComponentModel.Container components = null;
 		private OpenDental.UI.GroupBox groupBox2;
 		private OpenDental.UI.CheckBox checkExcludeImages;
-		private UI.ODPictureBox pictureCDS;
-		private OpenDental.UI.GroupBox groupManagedBackups;
 		private OpenDental.UI.TabControl tabControl1;
 		private OpenDental.UI.TabPage tabPageArchive;
 		private OpenDental.UI.TabPage tabPageBackup;

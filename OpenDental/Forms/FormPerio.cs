@@ -664,12 +664,8 @@ namespace OpenDental{
 				else {//Bola AI is enabled but hidden for the patient's clinic
 					butBolaLaunch.Visible=false;
 				}
-				butBolaGet.Visible=false;
 			}
 			else {
-				if(ProgramProperties.IsAdvertisingDisabled(ProgramName.BolaAI)) {
-					butBolaGet.Visible=false;
-				}
 				butBolaLaunch.Visible=false;
 			}
 			if(!Security.IsAuthorized(EnumPermType.PerioEditCopy,true)) {
@@ -1399,17 +1395,6 @@ namespace OpenDental{
 
 		private void but10_Click(object sender, System.EventArgs e) {
 			_isTenDown=true;
-		}
-
-		///<summary>When BolaAi is not enabled, this button shows under the listen button. When clicked it launches their website.</summary>
-		private void butBolaGet_Click(object sender, EventArgs e) {
-			try {
-				ODFileUtils.ProcessStart("https://bola.ai/");
-			}
-			catch(Exception ex) {
-				BugSubmissions.SubmitException(ex);
-				MsgBox.Show(this,"There was an error launching the web browser.");
-			}
 		}
 
 		///<summary>When BolaAi is enabled, this button shows instead of the standard listen button. When clicked it launches their exe.</summary>

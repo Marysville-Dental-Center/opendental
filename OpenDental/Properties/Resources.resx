@@ -136,9 +136,6 @@
   <data name="CursorCrosshair" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\CursorCrosshair.cur;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
-  <data name="Unison_BDR_Logo" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\Unison_BDR_Logo.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
   <data name="ODLogo" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\ODLogo.gif;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
@@ -264,9 +261,6 @@
   </data>
   <data name="Family32" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Family32.gif;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="DentalIntelligence_Button_100x24" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\DentalIntelligence_Button_100x24.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="payconnect-btn-26" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\payconnect-btn-26.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
@@ -397,9 +391,6 @@
   <data name="email1" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\email1.gif;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="Podium_Button_100x24" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\Podium_Button_100x24.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
   <data name="UDS3b" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\UDS3b.gif;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
@@ -456,9 +447,6 @@
   </data>
   <data name="downArrowWinForm" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\downArrowWinForm.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="CDS_Button_green_obsolete" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\CDS_Button_green_obsolete.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="Angular" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Angular.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
@@ -550,14 +538,8 @@
   <data name="google_signin_focus" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\google_signin_focus.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="Podium_logo_Black" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\Podium_logo_Black.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
   <data name="Practice_Booster_Icon_22x22" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\PRB icon_OD.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="bola_get" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\bola_get.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="bola_launch" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\bola_launch.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>

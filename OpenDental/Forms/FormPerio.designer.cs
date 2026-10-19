@@ -127,7 +127,6 @@ namespace OpenDental {
 			this.textExamNotes = new OpenDental.ODtextBox();
 			this.gridODExam = new OpenDental.UI.GridOD();
 			this.butBolaLaunch = new System.Windows.Forms.Panel();
-			this.butBolaGet = new System.Windows.Forms.Panel();
 			this.groupBox1.SuspendLayout();
 			this.groupBox2.SuspendLayout();
 			this.groupBox3.SuspendLayout();
@@ -1039,20 +1038,9 @@ namespace OpenDental {
 			this.butBolaLaunch.TabIndex = 141;
 			this.butBolaLaunch.Click += new System.EventHandler(this.butBolaLaunch_Click);
 			// 
-			// butBolaGet
-			// 
-			this.butBolaGet.BackgroundImage = global::OpenDental.Properties.Resources.bola_get;
-			this.butBolaGet.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
-			this.butBolaGet.Location = new System.Drawing.Point(1112, 217);
-			this.butBolaGet.Name = "butBolaGet";
-			this.butBolaGet.Size = new System.Drawing.Size(89, 39);
-			this.butBolaGet.TabIndex = 142;
-			this.butBolaGet.Click += new System.EventHandler(this.butBolaGet_Click);
-			// 
 			// FormPerio
 			// 
 			this.ClientSize = new System.Drawing.Size(1231, 696);
-			this.Controls.Add(this.butBolaGet);
 			this.Controls.Add(this.butBolaLaunch);
 			this.Controls.Add(this.groupBox3);
 			this.Controls.Add(this.labelIsMobileActive);
@@ -1230,6 +1218,5 @@ namespace OpenDental {
 		private RadioButton radioMaxFirst;
 		private Label labelFwdReverse;
 		private Panel butBolaLaunch;
-		private Panel butBolaGet;
 	}
 }

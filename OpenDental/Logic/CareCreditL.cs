@@ -172,37 +172,26 @@ namespace OpenDental {
 			return "";
 		}
 
-		///<summary>Displays inputbox to the user to decide if they want to select a new provider or get directed to register a new provider.</summary>
+		///<summary>Tells the user that the provider has no Merchant Number and lets them select a different provider that has one.
+		///Returns the selected provider, or -1 if the user cancels or no provider has a Merchant Number.</summary>
 		private static long TryGetNewProvOrRegisterProv(long provNum,long clinicNum) {
 			long provNumNew=-1;
-			List<string> listOptions=new List<string>(){
-					"Select a new provider",
-					"Sign up for CareCredit",
-				};
 			string msg=$"{Lan.g("CareCreditL","Provider")} '{Providers.GetAbbr(provNum)}' "
-					+Lan.g("CareCreditL","does not have a Merchant Number.\r\nPlease select from the following options or click Cancel.");
-			InputBox inputBox=new InputBox(msg,listOptions);
-			inputBox.Text="CareCredit";//Don't translate.
-			inputBox.ShowDialog();
-			if(inputBox.IsDialogCancel) {
+					+Lan.g("CareCreditL","does not have a Merchant Number.\r\nSelect a different provider?");
+			if(!MsgBox.Show(MsgBoxButtons.OKCancel,msg,"CareCredit")) {
 				return provNumNew;
 			}
-			if(inputBox.SelectedIndex==0) {
-				List<Provider> listProvsWithOverrides=Providers.GetProvsWithCareCreditOverrides(clinicNum);
-				if(listProvsWithOverrides.IsNullOrEmpty()) {
-					MsgBox.Show("CareCreditL","No providers with CareCredit Merchant Numbers found.");
-					return provNumNew;
-				}
-				FrmProviderPick frmProvPick=new FrmProviderPick(listProvsWithOverrides);
-				frmProvPick.ShowDialog();
-				if(!frmProvPick.IsDialogOK) {
-					return provNumNew;
-				}
-				provNumNew=frmProvPick.ProvNumSelected;
+			List<Provider> listProvsWithOverrides=Providers.GetProvsWithCareCreditOverrides(clinicNum);
+			if(listProvsWithOverrides.IsNullOrEmpty()) {
+				MsgBox.Show("CareCreditL","No providers with CareCredit Merchant Numbers found.");
+				return provNumNew;
 			}
-			else if(inputBox.SelectedIndex==1) {
-				CareCredit.ShowPage(CareCredit.ProviderSignupURL);
+			FrmProviderPick frmProvPick=new FrmProviderPick(listProvsWithOverrides);
+			frmProvPick.ShowDialog();
+			if(!frmProvPick.IsDialogOK) {
+				return provNumNew;
 			}
+			provNumNew=frmProvPick.ProvNumSelected;
 			return provNumNew;
 		}
 

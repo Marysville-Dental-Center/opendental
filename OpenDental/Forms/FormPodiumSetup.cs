@@ -15,7 +15,6 @@ namespace OpenDental {
 		//list is used to store changes for each clinic to be updated or inserted when saving to DB.
 		private List<ProgramProperty> _listProgramPropertiesChanged;
 		private ProgramProperty _programPropertyUseService;
-		private ProgramProperty _programPropertyDisableAdvertising;
 		private ProgramProperty _programPropertyApptSetCompleteMins;
 		private ProgramProperty _programPropertyApptTimeArrivedMins;
 		private ProgramProperty _programPropertyApptTimeDismissedMins;
@@ -67,7 +66,6 @@ namespace OpenDental {
 			}
 			_listProgramProperties=ProgramProperties.GetListForProgramAndClinicWithDefault(_program.ProgramNum,clinicNum);
 			_programPropertyUseService=_listProgramProperties.Find(x => x.PropertyDesc==Podium.PropertyDescs.UseService);
-			_programPropertyDisableAdvertising=_listProgramProperties.Find(x => x.PropertyDesc==Podium.PropertyDescs.DisableAdvertising);
 			_programPropertyApptSetCompleteMins=_listProgramProperties.Find(x => x.PropertyDesc==Podium.PropertyDescs.ApptSetCompletedMinutes);
 			_programPropertyApptTimeArrivedMins=_listProgramProperties.Find(x => x.PropertyDesc==Podium.PropertyDescs.ApptTimeArrivedMinutes);
 			_programPropertyApptTimeDismissedMins=_listProgramProperties.Find(x => x.PropertyDesc==Podium.PropertyDescs.ApptTimeDismissedMinutes);
@@ -86,7 +84,6 @@ namespace OpenDental {
 			_programPropertyExistingPatTriggerType=_listProgramProperties.Find(x => x.PropertyDesc==Podium.PropertyDescs.ExistingPatientTriggerType);
 			_programPropertyShowCommlogsInChartAndAccount=_listProgramProperties.Find(x => x.PropertyDesc==Podium.PropertyDescs.ShowCommlogsInChartAndAccount);
 			if(_programPropertyUseService==null
-				|| _programPropertyDisableAdvertising==null
 				|| _programPropertyApptSetCompleteMins==null
 				|| _programPropertyApptTimeArrivedMins==null
 				|| _programPropertyApptTimeDismissedMins==null
@@ -94,26 +91,13 @@ namespace OpenDental {
 				|| _programPropertyAPIToken==null
 				|| _programPropertyNewPatTriggerType==null
 				|| _programPropertyExistingPatTriggerType==null
-				|| _programPropertyShowCommlogsInChartAndAccount==null) 
+				|| _programPropertyShowCommlogsInChartAndAccount==null)
 			{
 				MsgBox.Show(this,"You are missing a program property for Podium.  Please contact support to resolve this issue.");
 				DialogResult=DialogResult.Cancel;
 				return;
 			}
 			FillForm();
-			SetAdvertising();
-		}
-
-		///<summary>Handles both visibility and checking of checkHideButtons.</summary>
-		private void SetAdvertising() {
-			checkHideButtons.Visible=true;
-			ProgramProperty programProperty=ProgramProperties.GetForProgram(_program.ProgramNum).FirstOrDefault(x => x.PropertyDesc=="Disable Advertising");
-			if(checkEnabled.Checked || programProperty==null) {
-				checkHideButtons.Visible=false;
-			}
-			if(programProperty!=null) {
-				checkHideButtons.Checked=(programProperty.PropertyValue=="1");
-			}
 		}
 
 		private void comboClinic_SelectionChangeCommitted(object sender,EventArgs e) {
@@ -188,7 +172,6 @@ namespace OpenDental {
 			checkUseService.Checked=PIn.Bool(_programPropertyUseService.PropertyValue);
 			checkShowCommlogsInChart.Checked=PIn.Bool(_programPropertyShowCommlogsInChartAndAccount.PropertyValue);
 			checkEnabled.Checked=_program.Enabled;
-			checkHideButtons.Checked=PIn.Bool(_programPropertyDisableAdvertising.PropertyValue);
 			textApptSetComplete.Text=_programPropertyApptSetCompleteMins.PropertyValue;
 			textApptTimeArrived.Text=_programPropertyApptTimeArrivedMins.PropertyValue;
 			textApptTimeDismissed.Text=_programPropertyApptTimeDismissedMins.PropertyValue;
@@ -226,7 +209,6 @@ namespace OpenDental {
 					break;
 			}
 			if(_programPropertyUseService==null
-				|| _programPropertyDisableAdvertising==null
 				|| _programPropertyApptSetCompleteMins==null
 				|| _programPropertyApptTimeArrivedMins==null
 				|| _programPropertyApptTimeDismissedMins==null
@@ -279,7 +261,6 @@ namespace OpenDental {
 			_program.Enabled=checkEnabled.Checked;
 			UpdateProgramProperty(_programPropertyUseService,POut.Bool(checkUseService.Checked));
 			UpdateProgramProperty(_programPropertyShowCommlogsInChartAndAccount,POut.Bool(checkShowCommlogsInChart.Checked));
-			UpdateProgramProperty(_programPropertyDisableAdvertising,POut.Bool(checkHideButtons.Checked));
 			UpdateProgramProperty(_programPropertyApptSetCompleteMins,textApptSetComplete.Text);
 			UpdateProgramProperty(_programPropertyApptTimeArrivedMins,textApptTimeArrived.Text);
 			UpdateProgramProperty(_programPropertyApptTimeDismissedMins,textApptTimeDismissed.Text);

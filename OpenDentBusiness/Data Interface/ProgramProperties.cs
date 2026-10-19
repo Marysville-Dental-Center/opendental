@@ -202,33 +202,6 @@ namespace OpenDentBusiness {
 			return hasInsert;
 		}
 
-		///<summary>Safe to call on any program. Only returns true if the program is not enabled 
-		///AND the program has a property of "Disable Advertising" = 1 OR "Disable Advertising HQ" = 1.
-		///This means that either the office has disabled the ad or HQ has disabled the ad.</summary>
-		public static bool IsAdvertisingDisabled(ProgramName progName) {
-			Program program=Programs.GetCur(progName);
-			return IsAdvertisingDisabled(program);
-		}
-
-		///<summary>Safe to call on any program. Only returns true if the program is not enabled 
-		///AND the program has a property of "Disable Advertising" = 1 OR "Disable Advertising HQ" = 1.
-		///This means that either the office has disabled the ad or HQ has disabled the ad.</summary>
-		public static bool IsAdvertisingDisabled(Program program) {
-			if(program==null) {
-				return true;
-			}
-			if(program.Enabled) {
-				return false;//do not block advertising
-			}
-			return GetForProgram(program.ProgramNum).Any(x => (x.PropertyDesc=="Disable Advertising" && x.PropertyValue=="1") //Office has decided to hide the advertising
-				|| (x.PropertyDesc=="Disable Advertising HQ" && x.PropertyValue=="1"));//HQ has decided to hide the advertising
-		}
-
-		///<summary>True if this is a program that we advertise.</summary>
-		public static bool IsAdvertisingBridge(long programNum) {
-			return GetForProgram(programNum).Any(x => x.PropertyDesc.In("Disable Advertising","Disable Advertising HQ"));
-		}
-
 		///<summary>Returns a list of ProgramProperties with the specified programNum and the specified clinicNum from the cache.
 		///To get properties when clinics are not enabled or properties for 'Headquarters' use clinicNum 0.
 		///Does not include path overrides.</summary>
@@ -613,9 +586,7 @@ namespace OpenDentBusiness {
 		///explicitly add their condition to this method in the future.</summary>
 		private static List<string> GetDeletablePropertyDescriptions() {
 			return new List<string>() {
-				PropertyDescs.ClinicHideButton,
-				PropertyDescs.DisableAdvertising,
-				PropertyDescs.DisableAdvertisingHQ
+				PropertyDescs.ClinicHideButton
 			};
 		}
 
@@ -625,7 +596,11 @@ namespace OpenDentBusiness {
 			public const string Username="Username";
 			public const string Password="Password";
 			public const string ClinicHideButton="ClinicHideButton";
+			///<summary>No longer read. Open Dental showed partner buttons for program links that were not enabled unless the office set this to 1.
+			///Integration UI now only shows when the program link is enabled. The rows are kept for schema compatibility and hidden from the
+			///property grids.</summary>
 			public const string DisableAdvertising="Disable Advertising";
+			///<summary>No longer read. The Open Dental HQ override of DisableAdvertising. Kept and hidden for the same reason.</summary>
 			public const string DisableAdvertisingHQ="Disable Advertising HQ";
 
 			//Prevents this class from being instansiated.
@@ -649,7 +624,6 @@ namespace OpenDentBusiness {
 				public const string CareCreditPatFieldAvailableCredit="CareCreditPatFieldAvailableCredit";
 				public const string CareCreditIsMerchantNumberByProv="CareCreditIsMerchantNumberByProv";
 				public const string CareCreditMerchantNumber="CareCreditMerchantNumber";
-				public const string CareCreditDoDisableAdvertising="Disable Advertising";
 				public const string CareCreditPartnerCode="CareCreditPartnerCode";
 
 				public static string GetForPatFieldType(PatFieldType patFieldType){

@@ -662,14 +662,13 @@
 			// linkLabel1
 			// 
 			this.linkLabel1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(192)))));
-			this.linkLabel1.LinkArea = new System.Windows.Forms.LinkArea(27, 64);
+			this.linkLabel1.LinkArea = new System.Windows.Forms.LinkArea(25, 24);
 			this.linkLabel1.Location = new System.Drawing.Point(160, 520);
 			this.linkLabel1.Name = "linkLabel1";
 			this.linkLabel1.Size = new System.Drawing.Size(686, 29);
 			this.linkLabel1.TabIndex = 157;
 			this.linkLabel1.TabStop = true;
-			this.linkLabel1.Text = "The X-Charge website is at https://opendental.com/resources/redirects/redirectope" +
-    "nedge.html and more more";
+			this.linkLabel1.Text = "The sample website is at https://www.example.com/ and more more";
 			this.linkLabel1.TextAlign = System.Drawing.ContentAlignment.BottomRight;
 			this.linkLabel1.UseCompatibleTextRendering = true;
 			this.linkLabel1.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.linkLabel1_LinkClicked);

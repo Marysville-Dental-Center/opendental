@@ -57,10 +57,6 @@ $AllowList=@(
 	@{ Path='WpfControlsOD\Frms\FrmHelpBrowser.xaml.cs'; Reason='Built-in help browser (help links are being centralized separately).' }
 	@{ Path='OpenDentBusiness\Data Interface\DatabaseMaintenances.cs'; Match='(?i)opendental\.com/manual'; Reason='Manual link inside a message (help links are being centralized separately).' }
 
-	#--- Partner redirect pages. These only open the user's browser on a vendor page; nothing is sent. To be made configurable with the help links.
-	@{ Path='*'; Match='(?i)opendental\.com/resources/redirects/'; Reason='Partner redirect page opened in the browser (to be made configurable).' }
-	@{ Path='OpenDental\Main Modules\ControlAppt.cs'; Match='(?i)opendental\.com/contact\.html'; Reason='Error text of the DentalTek partner redirect above.' }
-
 	#--- Not network access.
 	@{ Path='OpenDentalServer\ServiceMain.asmx.cs'; Match='WebService\(Namespace='; Reason='XML namespace identifier of the middle tier web service. Never contacted.' }
 	@{ Path='OpenDental\Main Modules\ControlChart.cs'; Match='UpdateServerAddress\)\.ToLower\(\)\.Contains\('; Reason='String comparison on an old preference value. Nothing is contacted.' }

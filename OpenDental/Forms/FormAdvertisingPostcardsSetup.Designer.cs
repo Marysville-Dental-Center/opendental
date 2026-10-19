@@ -29,7 +29,6 @@ namespace OpenDental{
 			this.gridClinics = new OpenDental.UI.GridOD();
 			this.label2 = new System.Windows.Forms.Label();
 			this.butManageAccount = new OpenDental.UI.Button();
-			this.webBrowser = new System.Windows.Forms.WebBrowser();
 			this.labelClinicsGridHint = new System.Windows.Forms.Label();
 			this.SuspendLayout();
 			// 
@@ -40,7 +39,7 @@ namespace OpenDental{
 			this.labelNotEnabled.Name = "labelNotEnabled";
 			this.labelNotEnabled.Size = new System.Drawing.Size(269, 17);
 			this.labelNotEnabled.TabIndex = 233;
-			this.labelNotEnabled.Text = "* No accounts added, click here to signup";
+			this.labelNotEnabled.Text = "* No accounts added";
 			this.labelNotEnabled.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 			// 
 			// gridAccounts
@@ -88,16 +87,6 @@ namespace OpenDental{
 			this.butManageAccount.Text = "Add Account";
 			this.butManageAccount.Click += new System.EventHandler(this.butManageAccount_Click);
 			// 
-			// webBrowser
-			// 
-			this.webBrowser.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-			this.webBrowser.Location = new System.Drawing.Point(424, 6);
-			this.webBrowser.Name = "webBrowser";
-			this.webBrowser.Size = new System.Drawing.Size(794, 678);
-			this.webBrowser.TabIndex = 138;
-			// 
 			// labelClinicsGridHint
 			// 
 			this.labelClinicsGridHint.Location = new System.Drawing.Point(9, 417);
@@ -110,14 +99,13 @@ namespace OpenDental{
 			// 
 			// FormAdvertisingPostcardsSetup
 			// 
-			this.ClientSize = new System.Drawing.Size(1230, 696);
+			this.ClientSize = new System.Drawing.Size(430, 481);
 			this.Controls.Add(this.labelClinicsGridHint);
 			this.Controls.Add(this.label2);
 			this.Controls.Add(this.labelNotEnabled);
 			this.Controls.Add(this.butManageAccount);
 			this.Controls.Add(this.gridAccounts);
 			this.Controls.Add(this.gridClinics);
-			this.Controls.Add(this.webBrowser);
 			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormAdvertisingPostcardsSetup";
 			this.Text = "Advertising - Postcards Setup";
@@ -128,7 +116,6 @@ namespace OpenDental{
 
 		#endregion
 		private UI.GridOD gridClinics;
-		private System.Windows.Forms.WebBrowser webBrowser;
 		private UI.Button butManageAccount;
 		private UI.GridOD gridAccounts;
 		private System.Windows.Forms.Label labelNotEnabled;

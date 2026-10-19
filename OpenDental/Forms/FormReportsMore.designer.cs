@@ -33,8 +33,6 @@ namespace OpenDental {
 			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormReportsMore));
 			this.groupBusiness = new OpenDental.UI.GroupBox();
 			this.picturePracticeByNumbers = new OpenDental.UI.ODPictureBox();
-			this.groupPatientReviews = new OpenDental.UI.GroupBox();
-			this.picturePodium = new OpenDental.UI.ODPictureBox();
 			this.labelArizonaPrimaryCare = new System.Windows.Forms.Label();
 			this.label6 = new System.Windows.Forms.Label();
 			this.labelDaily = new System.Windows.Forms.Label();
@@ -55,7 +53,6 @@ namespace OpenDental {
 			this.listMonthly = new OpenDental.UI.ListBox();
 			this.menuMain = new OpenDental.UI.MenuOD();
 			this.groupBusiness.SuspendLayout();
-			this.groupPatientReviews.SuspendLayout();
 			this.SuspendLayout();
 			// 
 			// groupBusiness
@@ -77,26 +74,6 @@ namespace OpenDental {
 			this.picturePracticeByNumbers.TabIndex = 31;
 			this.picturePracticeByNumbers.TextNullImage = "Practice By Numbers";
 			this.picturePracticeByNumbers.Click += new System.EventHandler(this.picturePracticeByNumbers_Click);
-			// 
-			// groupPatientReviews
-			// 
-			this.groupPatientReviews.Controls.Add(this.picturePodium);
-			this.groupPatientReviews.Location = new System.Drawing.Point(532, 159);
-			this.groupPatientReviews.Name = "groupPatientReviews";
-			this.groupPatientReviews.Size = new System.Drawing.Size(120, 54);
-			this.groupPatientReviews.TabIndex = 26;
-			this.groupPatientReviews.Text = "Patient Reviews";
-			// 
-			// picturePodium
-			// 
-			this.picturePodium.HasBorder = false;
-			this.picturePodium.Image = global::OpenDental.Properties.Resources.Podium_logo_Black;
-			this.picturePodium.Location = new System.Drawing.Point(8, 14);
-			this.picturePodium.Name = "picturePodium";
-			this.picturePodium.Size = new System.Drawing.Size(95, 37);
-			this.picturePodium.TabIndex = 28;
-			this.picturePodium.TextNullImage = null;
-			this.picturePodium.Click += new System.EventHandler(this.picturePodium_Click);
 			// 
 			// labelArizonaPrimaryCare
 			// 
@@ -277,7 +254,6 @@ namespace OpenDental {
 			// 
 			this.ClientSize = new System.Drawing.Size(680, 665);
 			this.Controls.Add(this.groupBusiness);
-			this.Controls.Add(this.groupPatientReviews);
 			this.Controls.Add(this.butPatExport);
 			this.Controls.Add(this.butPatList);
 			this.Controls.Add(this.labelArizonaPrimaryCare);
@@ -305,7 +281,6 @@ namespace OpenDental {
 			this.Text = "Reports";
 			this.Load += new System.EventHandler(this.FormReportsMore_Load);
 			this.groupBusiness.ResumeLayout(false);
-			this.groupPatientReviews.ResumeLayout(false);
 			this.ResumeLayout(false);
 
 		}
@@ -328,8 +303,6 @@ namespace OpenDental {
 		private OpenDental.UI.ListBox listMonthly;
 		private UI.Button butPatList;
 		private UI.Button butPatExport;
-		private OpenDental.UI.GroupBox groupPatientReviews;
-		private UI.ODPictureBox picturePodium;
 		private OpenDental.UI.GroupBox groupBusiness;
 		private UI.ODPictureBox picturePracticeByNumbers;
 		private UI.MenuOD menuMain;

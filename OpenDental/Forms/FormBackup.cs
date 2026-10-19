@@ -44,9 +44,6 @@ namespace OpenDental {
 			textBackupRestoreAtoZToPath.Text=PrefC.GetString(PrefName.BackupRestoreAtoZToPath);
 			textBackupRestoreAtoZToPath.Enabled=ShouldUseAtoZFolder();
 			butBrowseRestoreAtoZTo.Enabled=ShouldUseAtoZFolder();
-			if(ProgramProperties.IsAdvertisingDisabled(ProgramName.CentralDataStorage)) {
-				groupManagedBackups.Visible=false;
-			}
 			#endregion
 			#region Archive Tab
 			string decryptedPassword;
@@ -658,14 +655,6 @@ namespace OpenDental {
 		private void checkExcludeImages_Click(object sender,EventArgs e) {
 			textBackupRestoreAtoZToPath.Enabled=ShouldUseAtoZFolder();
 			butBrowseRestoreAtoZTo.Enabled=ShouldUseAtoZFolder();
-		}
-
-		private void pictureCDS_Click(object sender,EventArgs e) {
-			if(!Programs.IsEnabledByHq(ProgramName.CentralDataStorage,out string err)) {
-				MsgBox.Show(err);
-				return;
-			}
-			CDS.ShowPage();
 		}
 
 		#endregion

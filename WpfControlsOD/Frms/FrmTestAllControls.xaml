@@ -65,7 +65,7 @@
 		<ui:TextVDouble x:Name="textDouble" Width="90" Height="20" Margin="60,100,0,0" MinVal="1" MaxVal="100000000" HAlign="Right" />
 		<ui:Button x:Name="butToggleVis" Width="85" Height="24" Margin="12,231,0,0" Text="Toggle Vis" IsEnabled="False" Click="butToggleVis_Click" />
 		<ui:Button x:Name="butLaunchWin" Width="85" Height="24" Margin="415,268,0,0" Text="Launch Win" Click="butLaunchWin_Click" />
-		<ui:LinkLabel x:Name="linkLabel1" Width="686" Height="29" Margin="160,520,0,0" ColorBack="#FFFFC0C0" Text="The X-Charge website is at https://opendental.com/resources/redirects/redirectopenedge.html and more more" HAlign="Right" VAlign="Bottom" LinkLength="64" LinkStart="27"
+		<ui:LinkLabel x:Name="linkLabel1" Width="686" Height="29" Margin="160,520,0,0" ColorBack="#FFFFC0C0" Text="The sample website is at https://www.example.com/ and more more" HAlign="Right" VAlign="Bottom" LinkLength="24" LinkStart="25"
 				LinkClicked="linkLabel1_LinkClicked" />
 		<ui:Button x:Name="butGetTag" Width="85" Height="44" Margin="392,298,0,0" Text="Get &amp; Tag" Click="butGetTag_Click" />
 		<ui:Label x:Name="label12" Width="145" Height="45" Margin="403,446,0,0" ColorBack="#FFADD8E6" Text="Here's multiline label so we can check alignment" VAlign="Bottom" />
