@@ -2776,12 +2776,6 @@
     <Compile Include="Forms\FormXWebTransactions.designer.cs">
       <DependentUpon>FormXWebTransactions.cs</DependentUpon>
     </Compile>
-    <Compile Include="Forms\FormDropboxAuthorize.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FormDropboxAuthorize.designer.cs">
-      <DependentUpon>FormDropboxAuthorize.cs</DependentUpon>
-    </Compile>
     <Compile Include="Forms\FormTimePick.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -6608,9 +6602,6 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormXWebTransactions.resx">
       <DependentUpon>FormXWebTransactions.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormDropboxAuthorize.resx">
-      <DependentUpon>FormDropboxAuthorize.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormTimePick.resx">
       <DependentUpon>FormTimePick.cs</DependentUpon>

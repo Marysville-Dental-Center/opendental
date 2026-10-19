@@ -1,5 +1,4 @@
-﻿using Dropbox.Api;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,7 +7,7 @@ using System.Threading.Tasks;
 namespace OpenDentalCloud.Core {
 	public abstract class TaskStateFile : TaskState {
 
-		///<summary>If a file is greater than 2MB in size, we will break it up into chunks when uploading it to Dropbox.</summary>
+		///<summary>If a file is greater than 2MB in size, we will break it up into chunks when uploading it.</summary>
 		protected const int MAX_FILE_SIZE_BYTES=2000000;
 		
 		private string _folder;

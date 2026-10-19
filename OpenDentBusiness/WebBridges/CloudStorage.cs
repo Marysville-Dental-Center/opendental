@@ -82,8 +82,7 @@ namespace OpenDentBusiness {
 			TaskStateUpload taskStateUpload=null;
 			switch(PrefC.AtoZfolderUsed) {					
 				case DataStorageType.DropboxAtoZ:
-					//Dropbox will always overwrite conflicting files.  This can be changed in the future by implementing an optional "Dropbox.WriteMode" param.
-					taskStateUpload=new OpenDentalCloud.Dropbox.Upload(Dropbox.AccessToken) {
+					taskStateUpload=new OpenDentalCloud.RemovedStorage.Upload(Dropbox.StorageRemovedMessage) {
 						Folder=PathTidy(folder),
 						FileName=fileName,
 						ByteArray=byteArray,
@@ -136,10 +135,9 @@ namespace OpenDentBusiness {
 			TaskStateDownload taskStateDownload=null;
 			switch(PrefC.AtoZfolderUsed) {
 				case DataStorageType.DropboxAtoZ:
-					taskStateDownload=new OpenDentalCloud.Dropbox.Download(Dropbox.AccessToken);
+					taskStateDownload=new OpenDentalCloud.RemovedStorage.Download(Dropbox.StorageRemovedMessage);
 					taskStateDownload.Folder=PathTidy(folder);
 					taskStateDownload.FileName=fileName;
-					//The purpose of this complex wrapper is to handle the fact that the Dropbox API is async.
 					break;
 				case DataStorageType.SftpAtoZ:
 					taskStateDownload=new OpenDentalCloud.Sftp.Download(ODSftp.Hostname,ODSftp.UserName,ODSftp.Password);
@@ -162,7 +160,7 @@ namespace OpenDentBusiness {
 			TaskStateDelete taskStateDelete=null;
 			switch(PrefC.AtoZfolderUsed) {
 				case DataStorageType.DropboxAtoZ:
-					taskStateDelete=new OpenDentalCloud.Dropbox.Delete(Dropbox.AccessToken) {
+					taskStateDelete=new OpenDentalCloud.RemovedStorage.Delete(Dropbox.StorageRemovedMessage) {
 						Path=PathTidy(path)
 					};
 					break;
@@ -191,7 +189,7 @@ namespace OpenDentBusiness {
 			TaskStateThumbnail taskStateThumbnail=null;
 			switch(PrefC.AtoZfolderUsed) {
 				case DataStorageType.DropboxAtoZ:
-					taskStateThumbnail=new OpenDentalCloud.Dropbox.Thumbnail(Dropbox.AccessToken) {
+					taskStateThumbnail=new OpenDentalCloud.RemovedStorage.Thumbnail(Dropbox.StorageRemovedMessage) {
 						Folder=PathTidy(folder),
 						FileName=fileName
 					};
@@ -220,7 +218,7 @@ namespace OpenDentBusiness {
 			TaskStateMove taskStateMove=null;
 			switch(PrefC.AtoZfolderUsed) {
 				case DataStorageType.DropboxAtoZ:
-					taskStateMove=new OpenDentalCloud.Dropbox.Move(Dropbox.AccessToken) {
+					taskStateMove=new OpenDentalCloud.RemovedStorage.Move(Dropbox.StorageRemovedMessage) {
 						FromPath=PathTidy(fromPath),
 						ToPath=PathTidy(toPath),
 						HasExceptions=hasExceptions
@@ -254,7 +252,7 @@ namespace OpenDentBusiness {
 			TaskStateMove state=null;
 			switch(PrefC.AtoZfolderUsed) {
 				case DataStorageType.DropboxAtoZ:
-					state=new OpenDentalCloud.Dropbox.Copy(Dropbox.AccessToken) {
+					state=new OpenDentalCloud.RemovedStorage.Copy(Dropbox.StorageRemovedMessage) {
 						FromPath=PathTidy(fromPath),
 						ToPath=PathTidy(toPath)
 					};
@@ -282,7 +280,7 @@ namespace OpenDentBusiness {
 			TaskStateListFolders taskStateListFolders=null;
 			switch(PrefC.AtoZfolderUsed) {
 				case DataStorageType.DropboxAtoZ:
-					taskStateListFolders=new OpenDentalCloud.Dropbox.ListFolders(Dropbox.AccessToken) {
+					taskStateListFolders=new OpenDentalCloud.RemovedStorage.ListFolders(Dropbox.StorageRemovedMessage) {
 						FolderPath=PathTidy(folderPath)
 					};
 					break;
@@ -313,7 +311,7 @@ namespace OpenDentBusiness {
 			bool retVal=false;
 			switch(PrefC.AtoZfolderUsed) {
 				case DataStorageType.DropboxAtoZ:
-					retVal=OpenDentalCloud.Dropbox.FileExists(Dropbox.AccessToken,PathTidy(path));
+					retVal=false;//Dropbox storage was removed. Nothing can be read from it.
 					break;
 				case DataStorageType.SftpAtoZ:
 					retVal=OpenDentalCloud.Sftp.FileExists(ODSftp.Hostname,ODSftp.UserName,ODSftp.Password,path);

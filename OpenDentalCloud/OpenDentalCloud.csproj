@@ -69,9 +69,6 @@
     <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Dropbox.Api">
-      <HintPath>..\Required dlls\Dropbox.Api.dll</HintPath>
-    </Reference>
     <Reference Include="Renci.SshNet">
       <HintPath>..\Required dlls\Renci.SshNet.dll</HintPath>
     </Reference>
@@ -95,7 +92,7 @@
     <Compile Include="Shared\TaskStateThumbnail.cs" />
     <Compile Include="Shared\TaskStateUpload.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Storage\Dropbox.cs" />
+    <Compile Include="Storage\RemovedStorage.cs" />
     <Compile Include="Shared\TaskState.cs" />
     <Compile Include="Storage\Sftp.cs" />
   </ItemGroup>
