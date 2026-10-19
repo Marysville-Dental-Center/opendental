@@ -4,10 +4,10 @@ using System.Data;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
-using Bridges;
 using CodeBase;
 using OpenDental.UI;
 using OpenDentBusiness;
+using OpenDentBusiness.Bridges;
 
 namespace OpenDental {
 	public partial class FormCareCreditTransactions:FormODBase {

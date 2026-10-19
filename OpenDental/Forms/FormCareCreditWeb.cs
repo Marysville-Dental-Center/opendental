@@ -2,23 +2,30 @@ using OpenDental.UI;
 using System;
 using System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
-using Bridges;
 using OpenDentBusiness;
+using OpenDentBusiness.Bridges;
 using CodeBase;
+using CodeBase.VendorDirect;
 
 namespace OpenDental {
-	///<summary>Internet browser window for CareCredit. This is essentially a Microsoft Internet Explorer control embedded into our form.</summary>
+	///<summary>Browser window for CareCredit's hosted pages, using the WebView2 control. Modal for a purchase (FormPayment pulls the result back when it
+	///closes); non-modal for every other page (CareCreditL.ShowPage), whose row is pulled back when the window closes and then by the pollers.
+	///Only the hosted-page host set in CareCredit Setup is shown here; links to anything else open in the default browser, and Open Dental hosts
+	///are never opened.</summary>
 	public partial class FormCareCreditWeb:FormODBase {
 		///<summary>Set to the value passed into the constructor if one was passed in.  Navigates the browser control to this url on load.</summary>
 		private string _urlBrowseTo="";
 		///<summary>The patient CareCredit was opened for.</summary>
 		private Patient _patient;
-		///<summary>Default to false. Determines if url is single use or not. When this is set to true, then the refresh button is not added. See LayoutToolBar() 
-		///Bamboo's API returns a single use URL for PHI security reasons. Hitting refresh would cause an unauthorized message to show from their server which would force offices to close and relaunch the bridge.
-		///</summary>
+		///<summary>Default to false. When true, the Refresh button is not added (see LayoutToolBars), for a hosted-page URL that can only be loaded
+		///once; reloading it would show an error from the vendor. Set it once Synchrony's implementation guide confirms CareCredit's session URLs are
+		///single use.</summary>
 		public bool IsUrlSingleUse;
 		///<summary>The session ID of the CareCredit prefill response.</summary>
 		public string SessionId;
+		///<summary>True for a non-modal window (CareCreditL.ShowPage): when it closes, its row is pulled back in the background. A modal purchase leaves
+		///this false; FormPayment pulls back itself.</summary>
+		public bool DoPullbackOnClose;
 
 
 		///<summary>Used when opening a new browser window via a link.</summary>
@@ -32,8 +39,9 @@ namespace OpenDental {
 		}
 
 		private async void FormCareCreditWeb_Load(object sender,EventArgs e) {
-			if(string.IsNullOrEmpty(_urlBrowseTo) || string.IsNullOrEmpty(SessionId)) {
+			if(string.IsNullOrEmpty(_urlBrowseTo) || !CareCredit.IsHostedPageUrl(_urlBrowseTo)) {
 				DialogResult=DialogResult.Cancel;
+				Close();
 				return;
 			}
 			try {
@@ -44,9 +52,38 @@ namespace OpenDental {
 				Close();
 				return;
 			}
+			webViewMain.CoreWebView2.NavigationStarting+=CoreWebView2_NavigationStarting;
+			webViewMain.CoreWebView2.NewWindowRequested+=CoreWebView2_NewWindowRequested;
 			Text=Lan.g(this,"Loading")+"...";
 			LayoutToolBars();
 			webViewMain.CoreWebView2.Navigate(_urlBrowseTo);
+		}
+
+		///<summary>Keeps this window on the hosted-page host. Anything else is cancelled here and, if allowed, opened in the default browser.</summary>
+		private void CoreWebView2_NavigationStarting(object sender,CoreWebView2NavigationStartingEventArgs e) {
+			if(CareCredit.IsHostedPageUrl(e.Uri)) {
+				return;
+			}
+			e.Cancel=true;
+			OpenInSystemBrowser(e.Uri);
+		}
+
+		///<summary>Pop-ups (a cardholder agreement, for example) open in the default browser, never in a new WebView2 window.</summary>
+		private void CoreWebView2_NewWindowRequested(object sender,CoreWebView2NewWindowRequestedEventArgs e) {
+			e.Handled=true;
+			OpenInSystemBrowser(e.Uri);
+		}
+
+		private void OpenInSystemBrowser(string url) {
+			if(VendorUrlPolicy.Check(url)!=VendorUrlProblem.None) {
+				return;//Not HTTPS, or a host this program never contacts.
+			}
+			try {
+				SystemBrowser.Open(url);
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+			}
 		}
 
 		///<summary></summary>
@@ -106,6 +143,11 @@ namespace OpenDental {
 				case "Refresh":
 					webViewMain.Refresh();
 					break;
+				case "Print":
+					if(webViewMain.CoreWebView2!=null) {
+						webViewMain.CoreWebView2.ExecuteScriptAsync("window.print();");
+					}
+					break;
 				case "Close":
 					DialogResult=DialogResult.Cancel;
 					Close();//For when we launch the window in a non-modal manner.
@@ -119,6 +161,9 @@ namespace OpenDental {
 
 		protected override void OnClosed(EventArgs e) {
 			webViewMain.Dispose();
+			if(DoPullbackOnClose) {
+				CareCreditL.PullbackOnClose(SessionId);
+			}
 			base.OnClosed(e);
 		}
 	}

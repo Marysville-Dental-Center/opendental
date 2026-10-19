@@ -2,11 +2,15 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
-using Bridges;
 using CodeBase;
 using OpenDentBusiness;
+using OpenDentBusiness.Bridges;
+using OpenDentBusiness.VendorDirect;
 
 namespace OpenDental {
+	///<summary>CareCredit setup. Stores the office's own Synchrony credentials (the client secret encrypted, in a high-security row), the endpoint values
+	///from Synchrony's implementation guide, the merchant numbers and batch options, and which computer runs the background tasks. The program can
+	///only be enabled after Test connection passes with the settings being saved.</summary>
 	public partial class FormCareCreditSetup:FormODBase {
 
 		private Program _program;
@@ -17,8 +21,18 @@ namespace OpenDental {
 		private long _previouslySelectedClinicNum;
 		///<summary>Default days for program property.</summary>
 		private const int DEFAULT_DAYS=2;
+		///<summary>Shown in the client secret box when a secret is saved. Leaving it unchanged keeps the saved secret.</summary>
+		private const string SECRET_MASK="********";
 		private bool _hasCareCreditPatFieldDefNum=false;
 		public bool DoShowApptViewWindow=false;
+		///<summary>Fingerprint of the connection settings at the last passing Test connection (saved, or from this session).</summary>
+		private string _verifiedFingerprint="";
+		///<summary>The computer chosen to run the background tasks, or "".</summary>
+		private string _jobComputerName="";
+		///<summary>The connection settings as saved when the window opened. Destination changes are compared against these.</summary>
+		private CareCreditConfig _configSaved;
+		///<summary>True if the user has ManageHighSecurityProgProperties, which editing the secret and the settings that decide where it goes needs.</summary>
+		private bool _hasHighSecurity;
 
 		///<summary>Used for comboboxDaysOut. The number of days a user can set.</summary>
 		public List<int> ListDaysOut => new List<int>() { 2,3,4 };
@@ -33,6 +47,10 @@ namespace OpenDental {
 			_program=Programs.GetCur(ProgramName.CareCredit);
 			if(_program==null) {
 				throw new Exception("The CareCredit program is missing from the database.");//should never happen
+			}
+			//Insert any missing practice-wide rows first, so the Sync on save never deletes a row this window doesn't list.
+			if(CareCreditSettings.EnsureRows(_program.ProgramNum)) {
+				ProgramProperties.RefreshCache();
 			}
 			checkEnabled.Checked=_program.Enabled;
 			if(PrefC.HasClinicsEnabled) {
@@ -85,11 +103,245 @@ namespace OpenDental {
 			enumCareCreditBatch=EnumCareCreditBatch.LookupOnly;
 			listBoxQSOptions.Items.Add(Lan.g("enumQSBatch",enumCareCreditBatch.GetDescription()),enumCareCreditBatch);
 			FillFields(isLoad:true);
+			FillConnection();
+			FillBackground();
 			DisableControlsForMerchantClosed();
 		}
 
+		#region Connection and background tasks
+		///<summary>The value of a practice-wide (ClinicNum 0) row in the in-memory list, or "".</summary>
+		private string GetPracticeListValue(string desc) {
+			return _listProgramProperties.FirstOrDefault(x => x.ClinicNum==0 && x.PropertyDesc==desc)?.PropertyValue??"";
+		}
+
+		///<summary>Sets a practice-wide row in the in-memory list, adding it if missing. Secret rows are kept masked and high security.</summary>
+		private void SetPracticeListValue(string desc,string value,bool isSecret=false) {
+			ProgramProperty programProperty=_listProgramProperties.FirstOrDefault(x => x.ClinicNum==0 && x.PropertyDesc==desc);
+			if(programProperty==null) {
+				programProperty=new ProgramProperty();
+				programProperty.ProgramNum=_program.ProgramNum;
+				programProperty.PropertyDesc=desc;
+				programProperty.ClinicNum=0;
+				programProperty.ComputerName="";
+				_listProgramProperties.Add(programProperty);
+			}
+			programProperty.PropertyValue=value??"";
+			if(isSecret) {
+				programProperty.IsMasked=true;
+				programProperty.IsHighSecurity=true;
+			}
+		}
+
+		private void FillConnection() {
+			textClientId.Text=GetPracticeListValue(CareCreditSettings.ClientId);
+			SecretReadResult secretReadResult=SecretValue.Read(GetPracticeListValue(CareCreditSettings.ClientSecret),LegacyPolicy.RejectPlaintext);
+			textClientSecret.Text=secretReadResult.HasValue ? SECRET_MASK : "";
+			//Editing the secret needs the same permission as any other high-security program property. So does every setting that decides where the
+			//secret and patient data are sent: otherwise a user without the permission could point the API host elsewhere and Test connection would
+			//send the saved secret there. Test connection and Save check it again (CareCredit.GetConnectionChangeProblem).
+			_hasHighSecurity=Security.IsAuthorized(EnumPermType.ManageHighSecurityProgProperties,suppressMessage:true);
+			textClientSecret.Enabled=_hasHighSecurity;
+			textApiBaseUrl.Enabled=_hasHighSecurity;
+			textIhsBaseUrl.Enabled=_hasHighSecurity;
+			textTokenPath.Enabled=_hasHighSecurity;
+			textPrefillPath.Enabled=_hasHighSecurity;
+			textPullbackPath.Enabled=_hasHighSecurity;
+			textBatchPath.Enabled=_hasHighSecurity;
+			comboClientAuth.Enabled=_hasHighSecurity;
+			textScope.Enabled=_hasHighSecurity;
+			comboEnvironment.Items.Clear();
+			comboEnvironment.Items.AddEnums<CareCreditEnvironment>();
+			comboEnvironment.SetSelectedEnum(CareCreditSettings.ParseEnvironment(GetPracticeListValue(CareCreditSettings.Environment)));
+			textApiBaseUrl.Text=GetPracticeListValue(CareCreditSettings.ApiBaseUrl);
+			textIhsBaseUrl.Text=GetPracticeListValue(CareCreditSettings.IhsBaseUrl);
+			string partnerCode=GetPracticeListValue(ProgramProperties.PropertyDescs.CareCredit.CareCreditPartnerCode).Trim();
+			if(partnerCode==CareCreditSettings.PARTNER_CODE_REFUSED) {
+				partnerCode="";//Open Dental's own code, from the database upgrade. Treated as not set.
+			}
+			textPartnerCode.Text=partnerCode;
+			textTokenPath.Text=GetPracticeListValue(CareCreditSettings.TokenPath);
+			textPrefillPath.Text=GetPracticeListValue(CareCreditSettings.PrefillPath);
+			textPullbackPath.Text=GetPracticeListValue(CareCreditSettings.PullbackPath);
+			textBatchPath.Text=GetPracticeListValue(CareCreditSettings.BatchPath);
+			textSessionParam.Text=GetPracticeListValue(CareCreditSettings.SessionParam);
+			comboClientAuth.Items.Clear();
+			comboClientAuth.Items.AddEnums<CareCreditClientAuth>();
+			comboClientAuth.SetSelectedEnum(CareCreditSettings.ParseClientAuth(GetPracticeListValue(CareCreditSettings.ClientAuth)));
+			textScope.Text=GetPracticeListValue(CareCreditSettings.TokenScope);
+			_verifiedFingerprint=GetPracticeListValue(CareCreditSettings.VerifiedConfig);
+			string lastAuthError=CareCreditSettings.GetPracticeValue(CareCreditSettings.LastAuthError);
+			CareCreditConfig config=BuildConfigFromForm(out string error);
+			_configSaved=BuildSavedDestinationConfig();
+			if(lastAuthError!="") {
+				labelConnectionStatus.Text=Lan.g(this,"Last error")+": "+lastAuthError;
+			}
+			else if(config!=null && _verifiedFingerprint!="" && _verifiedFingerprint==config.GetVerificationFingerprint()) {
+				labelConnectionStatus.Text=Lan.g(this,"Connection tested with these settings.");
+			}
+			else {
+				labelConnectionStatus.Text=Lan.g(this,"Not tested. Test the connection before enabling CareCredit.");
+			}
+		}
+
+		///<summary>The saved values of the settings CareCreditConfig.GetDestinationChanges compares, from the rows loaded with the window.</summary>
+		private CareCreditConfig BuildSavedDestinationConfig() {
+			CareCreditConfig config=new CareCreditConfig();
+			config.ApiBaseUrl=GetPracticeListValue(CareCreditSettings.ApiBaseUrl).Trim();
+			config.IhsBaseUrl=GetPracticeListValue(CareCreditSettings.IhsBaseUrl).Trim();
+			config.TokenPath=GetPracticeListValue(CareCreditSettings.TokenPath).Trim();
+			config.PrefillPath=GetPracticeListValue(CareCreditSettings.PrefillPath).Trim();
+			config.PullbackPath=GetPracticeListValue(CareCreditSettings.PullbackPath).Trim();
+			config.BatchPath=GetPracticeListValue(CareCreditSettings.BatchPath).Trim();
+			config.ClientAuth=CareCreditSettings.ParseClientAuth(GetPracticeListValue(CareCreditSettings.ClientAuth));
+			config.Scope=GetPracticeListValue(CareCreditSettings.TokenScope).Trim();
+			return config;
+		}
+
+		private void FillBackground() {
+			_jobComputerName=GetPracticeListValue(CareCreditSettings.JobComputerName).Trim();
+			SetJobComputerLabel();
+			textProcessTime.Text=FormatTime(CareCreditSettings.GetProcessTime());
+			textPullbackTime.Text=FormatTime(CareCreditSettings.GetPullbackTime());
+		}
+
+		private static string FormatTime(TimeSpan timeOfDay) {
+			return timeOfDay.Hours.ToString("00")+":"+timeOfDay.Minutes.ToString("00");
+		}
+
+		private void SetJobComputerLabel() {
+			if(_jobComputerName=="") {
+				labelJobComputer.Text=Lan.g(this,"Run on: not set. No batch QuickScreen; each workstation checks only its own results.");
+				butRunHere.Text=Lan.g(this,"Run on this computer");
+				return;
+			}
+			labelJobComputer.Text=Lan.g(this,"Run on")+": "+_jobComputerName;
+			if(string.Equals(_jobComputerName,ODEnvironment.MachineName,StringComparison.OrdinalIgnoreCase)) {
+				butRunHere.Text=Lan.g(this,"Stop running here");
+			}
+			else {
+				butRunHere.Text=Lan.g(this,"Run on this computer");
+			}
+		}
+
+		private void butRunHere_Click(object sender,EventArgs e) {
+			if(string.Equals(_jobComputerName,ODEnvironment.MachineName,StringComparison.OrdinalIgnoreCase)) {
+				_jobComputerName="";
+			}
+			else {
+				_jobComputerName=ODEnvironment.MachineName;
+			}
+			SetJobComputerLabel();
+		}
+
+		///<summary>The connection settings as typed. The client secret box showing the mask means the saved secret. Returns null, with error set, if the
+		///typed secret can't be encrypted.</summary>
+		private CareCreditConfig BuildConfigFromForm(out string error) {
+			error="";
+			CareCreditConfig config=new CareCreditConfig();
+			config.ClientId=textClientId.Text.Trim();
+			if(textClientSecret.Text==SECRET_MASK) {
+				config.ClientSecretStored=GetPracticeListValue(CareCreditSettings.ClientSecret);
+				SecretReadResult secretReadResult=SecretValue.Read(config.ClientSecretStored,LegacyPolicy.RejectPlaintext);
+				config.ClientSecret=secretReadResult.PlainText;
+				config.IsClientSecretUnreadable=secretReadResult.NeedsReentry;
+			}
+			else if(textClientSecret.Text=="") {
+				config.ClientSecretStored="";
+				config.ClientSecret="";
+			}
+			else {
+				string stored;
+				if(!SecretValue.Protect(textClientSecret.Text,out stored)) {
+					error=Lan.g(this,"The client secret could not be encrypted, so it was not saved.");
+					return null;
+				}
+				config.ClientSecret=textClientSecret.Text;
+				config.ClientSecretStored=stored;
+			}
+			config.Environment=comboEnvironment.GetSelected<CareCreditEnvironment>();
+			config.ApiBaseUrl=textApiBaseUrl.Text.Trim();
+			config.IhsBaseUrl=textIhsBaseUrl.Text.Trim();
+			config.PartnerCode=textPartnerCode.Text.Trim();
+			config.TokenPath=textTokenPath.Text.Trim();
+			config.PrefillPath=textPrefillPath.Text.Trim();
+			config.PullbackPath=textPullbackPath.Text.Trim();
+			config.BatchPath=textBatchPath.Text.Trim();
+			config.SessionParam=textSessionParam.Text.Trim();
+			config.ClientAuth=comboClientAuth.GetSelected<CareCreditClientAuth>();
+			config.Scope=textScope.Text.Trim();
+			config.VerifiedFingerprint=_verifiedFingerprint;
+			return config;
+		}
+
+		private void butTestConnection_Click(object sender,EventArgs e) {
+			CareCreditConfig config=BuildConfigFromForm(out string error);
+			if(config==null) {
+				MsgBox.Show(error);
+				return;
+			}
+			string result;
+			Cursor=Cursors.WaitCursor;
+			try {
+				//Refuses, before anything is sent, a changed host or path from a user who may not change them.
+				result=CareCredit.TestConnection(config,_configSaved,_hasHighSecurity);
+			}
+			finally {
+				Cursor=Cursors.Default;
+			}
+			if(result=="") {
+				_verifiedFingerprint=config.GetVerificationFingerprint();
+				CareCreditSettings.SetLastAuthError("");
+				labelConnectionStatus.Text=Lan.g(this,"Connection test passed. Save to keep these settings.");
+				return;
+			}
+			labelConnectionStatus.Text=Lan.g(this,"Connection test failed")+": "+result;
+			MsgBox.Show(Lan.g(this,"Connection test failed")+":\r\n"+result);
+		}
+
+		///<summary>Checks the values that are typed (blank is allowed while the program stays disabled). Returns "" or the problem.</summary>
+		private string GetTypedValueProblem(CareCreditConfig config) {
+			if(config.PartnerCode!="" && CareCreditConfig.GetPartnerCodeProblem(config.PartnerCode)!="") {
+				return CareCreditConfig.GetPartnerCodeProblem(config.PartnerCode);
+			}
+			if(config.ApiBaseUrl!="" && CareCreditConfig.GetUrlProblem(config.ApiBaseUrl)!="") {
+				return Lan.g(this,"API base URL")+": "+CareCreditConfig.GetUrlProblem(config.ApiBaseUrl);
+			}
+			if(config.IhsBaseUrl!="" && CareCreditConfig.GetUrlProblem(config.IhsBaseUrl)!="") {
+				return Lan.g(this,"Hosted-page base URL")+": "+CareCreditConfig.GetUrlProblem(config.IhsBaseUrl);
+			}
+			foreach(Tuple<string,string> tuple in new[] { Tuple.Create("Token path",config.TokenPath),Tuple.Create("Prefill path",config.PrefillPath),
+				Tuple.Create("Pullback path",config.PullbackPath),Tuple.Create("Batch path",config.BatchPath) })
+			{
+				string problem=CareCreditConfig.GetPathProblem(tuple.Item2,isRequired:false);
+				if(problem!="") {
+					return Lan.g(this,tuple.Item1)+" "+problem;
+				}
+			}
+			return "";
+		}
+
+		///<summary>Rows the background jobs and Test connection write are reloaded from the database before the list is synced, so a stale value isn't
+		///put back.</summary>
+		private void ReloadJobManagedRows() {
+			List<string> listDescs=CareCreditSettings.GetJobManagedDescs();
+			for(int i=0;i<_listProgramProperties.Count;i++) {
+				ProgramProperty programProperty=_listProgramProperties[i];
+				if(programProperty.ProgramPropertyNum==0) {
+					continue;
+				}
+				if(!listDescs.Contains(programProperty.PropertyDesc) && !VendorJobLease.IsLeaseProperty(programProperty.PropertyDesc)) {
+					continue;
+				}
+				ProgramProperty programPropertyDb=ProgramProperties.GetOneFromDb(programProperty.ProgramNum,programProperty.PropertyDesc,programProperty.ClinicNum);
+				if(programPropertyDb!=null && programPropertyDb.ProgramPropertyNum==programProperty.ProgramPropertyNum) {
+					programProperty.PropertyValue=programPropertyDb.PropertyValue;
+				}
+			}
+		}
+		#endregion Connection and background tasks
+
 		private void FillFields(bool isLoad=false) {
-			if(isLoad) { 
+			if(isLoad) {
 				comboPaymentType.Items.AddDefs(Defs.GetDefsForCategory(DefCat.PaymentTypes,true));
 				comboBoxDaysOut.Items.AddList(ListDaysOut,x => x.ToString());
 			}
@@ -149,7 +401,7 @@ namespace OpenDental {
 					ClinicNum=clinicNum,
 					PropertyDesc=ProgramProperties.PropertyDescs.CareCredit.CareCreditMerchantNumber,
 					ProgramNum=_program.ProgramNum,
-					PropertyValue=""//default value to empty string. 
+					PropertyValue=""//default value to empty string.
 				});
 			}
 			if(!_listProgramProperties.Any(x => x.ClinicNum==clinicNum && x.PropertyDesc==ProgramProperties.PropertyDescs.CareCredit.CareCreditQSBatchEnabled)) {
@@ -178,14 +430,6 @@ namespace OpenDental {
 				});
 			}
 			//These program properties are not clinic specific
-			if(!_listProgramProperties.Any(x => x.PropertyDesc==ProgramProperties.PropertyDescs.CareCredit.CareCreditOAuthToken)) {
-				_listProgramProperties.Add(new ProgramProperty() {
-					ClinicNum=0,
-					PropertyDesc=ProgramProperties.PropertyDescs.CareCredit.CareCreditOAuthToken,
-					ProgramNum=_program.ProgramNum,
-					PropertyValue="",
-				});
-			}
 			if(!_listProgramProperties.Any(x => x.PropertyDesc==ProgramProperties.PropertyDescs.CareCredit.CareCreditPatField)) {
 				PatFieldDef patFieldDef=PatFieldDefs.GetDeepCopy().FindAll(x => x.FieldType==PatFieldType.CareCreditStatus).FirstOrDefault();
 				long progPropValue=patFieldDef?.PatFieldDefNum??0;
@@ -272,7 +516,7 @@ namespace OpenDental {
 				payTypeSelected=comboPaymentType.GetSelectedDefNum().ToString();
 			}
 			int days=DEFAULT_DAYS;
-			if(comboBoxDaysOut.SelectedIndex>-1) { 
+			if(comboBoxDaysOut.SelectedIndex>-1) {
 				int.TryParse(comboBoxDaysOut.GetSelectedKey<int>(x => x).ToString(),out days);
 			}
 			_listProgramProperties.FindAll(x => x.ClinicNum==clinicNum
@@ -356,7 +600,7 @@ namespace OpenDental {
 				if(!MsgBox.Show(this,MsgBoxButtons.OKCancel,"No default payment type set. Set a default automatically?","CareCredit")) {
 					return false;//They want to set the default payment type.
 				}
-				//Set a default CareCredit payment type. 
+				//Set a default CareCredit payment type.
 				SetDefaultCareCreditPaymentType();
 			}
 			if(listBoxQSOptions.GetSelected<EnumCareCreditBatch>()!=EnumCareCreditBatch.Off && comboBoxDaysOut.SelectedIndex<0) {
@@ -424,8 +668,61 @@ namespace OpenDental {
 			if(checkEnabled.Checked && !IsValid(comboClinics.ClinicNumSelected)) {
 				return;
 			}
+			CareCreditConfig config=BuildConfigFromForm(out string error);
+			if(config==null) {
+				MsgBox.Show(error);
+				return;
+			}
+			string problem=CareCredit.GetConnectionChangeProblem(_configSaved,config,_hasHighSecurity);
+			if(problem!="") {
+				MsgBox.Show(problem);
+				return;
+			}
+			problem=GetTypedValueProblem(config);
+			if(problem!="") {
+				MsgBox.Show(problem);
+				return;
+			}
+			List<string> listDestinationChanges=CareCreditConfig.GetDestinationChanges(_configSaved,config);
+			if(checkEnabled.Checked) {
+				List<string> listProblems=config.GetProblems();
+				if(listProblems.Count>0) {
+					MsgBox.Show(Lan.g(this,"CareCredit can't be enabled until the connection settings are complete")+":\r\n"+string.Join("\r\n",listProblems));
+					return;
+				}
+				if(_verifiedFingerprint=="" || _verifiedFingerprint!=config.GetVerificationFingerprint()) {
+					MsgBox.Show(this,"Click Test connection with these settings before enabling CareCredit.");
+					return;
+				}
+			}
+			if(!CareCreditSettings.TryParseTimeOfDay(textProcessTime.Text,out TimeSpan timeProcess)
+				|| !CareCreditSettings.TryParseTimeOfDay(textPullbackTime.Text,out TimeSpan timePullback))
+			{
+				MsgBox.Show(this,"Enter the batch times as 24-hour times, such as 07:20.");
+				return;
+			}
 			//Set the program property value before saving.
 			UpdatePropertiesInMemory(comboClinics.ClinicNumSelected);
+			string secretStoredOld=GetPracticeListValue(CareCreditSettings.ClientSecret);
+			SetPracticeListValue(CareCreditSettings.ClientId,config.ClientId);
+			SetPracticeListValue(CareCreditSettings.ClientSecret,config.ClientSecretStored,isSecret:true);
+			SetPracticeListValue(CareCreditSettings.Environment,config.Environment.ToString());
+			SetPracticeListValue(CareCreditSettings.ApiBaseUrl,config.ApiBaseUrl);
+			SetPracticeListValue(CareCreditSettings.IhsBaseUrl,config.IhsBaseUrl);
+			SetPracticeListValue(ProgramProperties.PropertyDescs.CareCredit.CareCreditPartnerCode,config.PartnerCode);
+			SetPracticeListValue(CareCreditSettings.TokenPath,config.TokenPath);
+			SetPracticeListValue(CareCreditSettings.PrefillPath,config.PrefillPath);
+			SetPracticeListValue(CareCreditSettings.PullbackPath,config.PullbackPath);
+			SetPracticeListValue(CareCreditSettings.BatchPath,config.BatchPath);
+			SetPracticeListValue(CareCreditSettings.SessionParam,config.SessionParam);
+			SetPracticeListValue(CareCreditSettings.ClientAuth,config.ClientAuth.ToString());
+			SetPracticeListValue(CareCreditSettings.TokenScope,config.Scope);
+			SetPracticeListValue(CareCreditSettings.VerifiedConfig,_verifiedFingerprint);
+			SetPracticeListValue(CareCreditSettings.JobComputerName,_jobComputerName);
+			ReloadJobManagedRows();
+			//The token Open Dental's HQ handed out was issued to Open Dental's app. It is never used; clear it.
+			_listProgramProperties.FindAll(x => x.PropertyDesc==ProgramProperties.PropertyDescs.CareCredit.CareCreditOAuthToken)
+				.ForEach(x => x.PropertyValue="");
 			#region Save
 			//Only update the program if the IsEnabled flag has changed
 			if(_program.Enabled!=checkEnabled.Checked) {
@@ -434,6 +731,19 @@ namespace OpenDental {
 			}
 			ProgramProperties.Sync(_listProgramProperties,_program.ProgramNum);
 			#endregion
+			if(secretStoredOld!=config.ClientSecretStored) {
+				SecurityLogs.MakeLogEntry(EnumPermType.ManageHighSecurityProgProperties,0,_program.ProgDesc+"'s "+CareCreditSettings.ClientSecret+" was altered.",
+					_program.ProgramNum,DateTime.Now);
+			}
+			if(listDestinationChanges.Count>0) {
+				SecurityLogs.MakeLogEntry(EnumPermType.ManageHighSecurityProgProperties,0,_program.ProgDesc+"'s connection settings were altered. "
+					+string.Join("; ",listDestinationChanges),_program.ProgramNum,DateTime.Now);
+			}
+			bool isPrefChanged=Prefs.UpdateDateT(PrefName.CareCreditBatchProcessDateTime,CareCreditSettings.GetPrefValueForTime(timeProcess));
+			isPrefChanged|=Prefs.UpdateDateT(PrefName.CareCreditBatchPullbackDateTime,CareCreditSettings.GetPrefValueForTime(timePullback));
+			if(isPrefChanged) {
+				DataValid.SetInvalid(InvalidType.Prefs);
+			}
 			DataValid.SetInvalid(InvalidType.Programs);
 			bool hasCareCreditQSBatchEnabled=_listProgramProperties.Any(x => x.PropertyDesc==ProgramProperties.PropertyDescs.CareCredit.CareCreditQSBatchEnabled
 				&& PIn.Enum<EnumCareCreditBatch>(x.PropertyValue)!=EnumCareCreditBatch.Off);
