@@ -452,6 +452,7 @@ namespace OpenDental {
 			this.Text = "Program Link";
 			this.Closing += new System.ComponentModel.CancelEventHandler(this.FormProgramLinkEdit_Closing);
 			this.Load += new System.EventHandler(this.FormProgramLinkEdit_Load);
+			this.Shown += new System.EventHandler(this.FormProgramLinkEdit_Shown);
 			((System.ComponentModel.ISupportInitialize)(this.pictureBox)).EndInit();
 			this.groupboxPLbuttons.ResumeLayout(false);
 			this.ResumeLayout(false);

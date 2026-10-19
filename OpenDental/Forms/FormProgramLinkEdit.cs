@@ -51,12 +51,24 @@ namespace OpenDental{
 				PdmpProperty.EnsureProperties(ProgramCur);//Rows the office fills in, inserted at runtime if missing.
 				butPdmpCheckSetup.Visible=true;
 				butPdmpCertificate.Visible=(ProgramCur.ProgName==ProgramName.Bamboo.ToString());
-				comboClinicPdmp.Visible=PrefC.HasClinicsEnabled;//Starts on the current clinic, as the picker does everywhere.
+				comboClinicPdmp.Visible=PrefC.HasClinicsEnabled;
+				if(PrefC.HasClinicsEnabled) {
+					//The picker fills itself (and selects the current clinic) in its own OnLoad, which has not run yet while the form is hidden.
+					//Fill it now so the first FillGrid below shows the clinic the picker shows. SetUser with the picker's default user runs FillClinics.
+					comboClinicPdmp.SetUser(Security.CurUser);
+				}
 			}
 			FillForm();
 			DisableUIElementsBasedOnClinicRestriction();//Disable the UI Elements if needed.
 			HideClinicControls(PrefC.HasClinicsEnabled);//Hide the "Hide Button for Clinics" button based upon the user's clinics being on or off.
 			ShowPLButHiddenLabel();//Display warning label for "Hide Button for Clinics" if needed.
+		}
+
+		private void FormProgramLinkEdit_Shown(object sender,EventArgs e) {
+			if(_isPdmp && PrefC.HasClinicsEnabled) {
+				//The picker's own OnLoad may have refilled it (back to the current clinic) after Load. Refill the grid so it always matches the picker.
+				FillGrid();
+			}
 		}
 
 		private void FillForm(){
@@ -150,9 +162,10 @@ namespace OpenDental{
 			gridMain.EndUpdate();
 		}
 
-		///<summary>The clinic whose PDMP settings the grid shows. 0 (Default) when clinics are off.</summary>
+		///<summary>The clinic whose PDMP settings the grid shows. 0 (Default) when clinics are off.
+		///Not gated on comboClinicPdmp.Visible: that reads false until the form is shown, even after Load sets it to true.</summary>
 		private long GetPdmpClinicNum() {
-			if(!_isPdmp || !PrefC.HasClinicsEnabled || !comboClinicPdmp.Visible) {
+			if(!_isPdmp || !PrefC.HasClinicsEnabled) {
 				return 0;
 			}
 			return Math.Max(0,comboClinicPdmp.ClinicNumSelected);
