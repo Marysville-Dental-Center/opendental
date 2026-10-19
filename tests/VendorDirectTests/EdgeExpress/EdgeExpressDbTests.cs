@@ -310,7 +310,7 @@ namespace VendorDirectTests.EdgeExpressTests {
 		[TestMethod]
 		public void ReconcilePending_LateApprovalRaisesAnAlertAndPostsNothing() {
 			//The payment window had payment 77 open; the user closed it before the return and the re-polls saw nothing yet.
-			XWebResponse xWebResponse=InsertPending(2,DateTime.Now.AddMinutes(-1),paymentNum:77);
+			XWebResponse xWebResponse=InsertPending(2,DateTime.Now.Subtract(EdgeExpress.CNP.ReconcileDelay).AddMinutes(-1),paymentNum:77);
 			FakeGateway(Approval(25));
 			EdgeExpressReconcileResult reconcileResult=EdgeExpress.CNP.ReconcilePending();
 			Assert.AreEqual(1,reconcileResult.CountChecked);
@@ -319,7 +319,7 @@ namespace VendorDirectTests.EdgeExpressTests {
 			Assert.AreEqual(XWEB_ID_CLINIC_2,GetElement(_listRequests[0],"XWEBID"));
 			XWebResponse xWebResponseDb=XWebResponses.GetOne(xWebResponse.XWebResponseNum);
 			Assert.AreEqual(XWebTransactionStatus.EdgeExpressCompletePaymentApproved,xWebResponseDb.TransactionStatus);
-			Assert.AreEqual(0,xWebResponseDb.PaymentNum,"Not attached to any payment automatically.");
+			Assert.AreEqual(77,xWebResponseDb.PaymentNum,"No payment is made, but the link to the window's payment is kept for a later void or return.");
 			Assert.AreEqual(1,CountAlerts());
 			string description=DataCore.GetScalar("SELECT Description FROM alertitem");
 			StringAssert.Contains(description,"approved after the payment window closed");
@@ -344,6 +344,50 @@ namespace VendorDirectTests.EdgeExpressTests {
 			Assert.AreEqual(XWebTransactionStatus.EdgeExpressPending,XWebResponses.GetOne(xWebResponseOpen.XWebResponseNum).TransactionStatus);
 			Assert.AreEqual(XWebTransactionStatus.EdgeExpressExpired,XWebResponses.GetOne(xWebResponseOld.XWebResponseNum).TransactionStatus);
 			Assert.AreEqual(0,CountAlerts());
+		}
+
+		[TestMethod]
+		public void ReconcilePending_WaitsUntilThePayPageWindowIsDonePolling() {
+			//The window closes at HpfExpiration (or up to 30 seconds later) and then re-polls; the creating workstation's clock may also differ.
+			DateTime hpfExpiration=DateTime.Now.AddMinutes(-10);
+			XWebResponse xWebResponse=InsertPending(2,hpfExpiration,paymentNum:78);
+			FakeGateway(Approval(25));
+			EdgeExpressReconcileResult reconcileResult=EdgeExpress.CNP.ReconcilePending(hpfExpiration.AddSeconds(5));
+			Assert.AreEqual(1,reconcileResult.CountStillOpen,"The window may still be asking for the result.");
+			Assert.AreEqual(0,reconcileResult.CountChecked);
+			Assert.AreEqual(0,_listRequests.Count);
+			Assert.AreEqual(XWebTransactionStatus.EdgeExpressPending,XWebResponses.GetOne(xWebResponse.XWebResponseNum).TransactionStatus);
+			reconcileResult=EdgeExpress.CNP.ReconcilePending(hpfExpiration.Add(EdgeExpress.CNP.ReconcileDelay).AddSeconds(-1));
+			Assert.AreEqual(1,reconcileResult.CountStillOpen);
+			Assert.AreEqual(0,_listRequests.Count);
+			Assert.AreEqual(0,CountAlerts());
+			reconcileResult=EdgeExpress.CNP.ReconcilePending(hpfExpiration.Add(EdgeExpress.CNP.ReconcileDelay).AddSeconds(1));
+			Assert.AreEqual(1,reconcileResult.CountChecked);
+			Assert.AreEqual(1,reconcileResult.CountApproved);
+			Assert.AreEqual(78,XWebResponses.GetOne(xWebResponse.XWebResponseNum).PaymentNum);
+		}
+
+		[TestMethod]
+		public void ProcessTransactionWithRepoll_StopsOnceReconciliationSettledTheRow() {
+			XWebResponse xWebResponse=InsertPending(2,DateTime.Now.AddMinutes(-1),paymentNum:79);
+			Payment payment=new Payment();
+			payment.PayNum=79;
+			payment.ClinicNum=2;
+			FakeGateway(Answer("814"),Approval(25));
+			//Another workstation's reconciliation settles the row while this window waits between re-polls.
+			Action<TimeSpan> actionWait=x => {
+				XWebResponse xWebResponseDb=XWebResponses.GetOne(xWebResponse.XWebResponseNum);
+				xWebResponseDb.TransactionStatus=XWebTransactionStatus.EdgeExpressCompletePaymentApproved;
+				XWebResponses.Update(xWebResponseDb);
+			};
+			XWebResponse xWebResponseProcessed=EdgeExpress.CNP.ProcessTransactionWithRepoll(xWebResponse,payment,true,actionWait);
+			Assert.AreEqual(1,_listRequests.Count,"The settled row is not asked about, or acted on, again.");
+			Assert.AreEqual(XWebTransactionStatus.EdgeExpressCompletePaymentApproved,xWebResponseProcessed.TransactionStatus);
+			//A row already settled before the window asks is returned as it is.
+			_listRequests.Clear();
+			xWebResponseProcessed=EdgeExpress.CNP.ProcessTransactionWithRepoll(xWebResponse,payment,true,x => { });
+			Assert.AreEqual(0,_listRequests.Count);
+			Assert.AreEqual(XWebTransactionStatus.EdgeExpressCompletePaymentApproved,xWebResponseProcessed.TransactionStatus);
 		}
 
 		[TestMethod]

@@ -306,6 +306,11 @@ namespace OpenDentBusiness {
 			public static readonly TimeSpan PendingGrace=TimeSpan.FromMinutes(5);
 			///<summary>Reconciliation looks at pending sessions whose HpfExpiration is no older than this.</summary>
 			public static readonly TimeSpan ReconcileWindow=TimeSpan.FromMinutes(30);
+			///<summary>Reconciliation leaves a pending session alone until this long past its HpfExpiration. The pay-page window can stay open up to 30
+			///seconds past HpfExpiration (EdgeExpressL.GetTimeLeft) and then asks for the result for about RepollCount*RepollDelay more, and
+			///HpfExpiration is stamped with the clock of the workstation that created the session, not the one reconciling. The margin covers both.
+			///</summary>
+			public static readonly TimeSpan ReconcileDelay=TimeSpan.FromMinutes(2);
 			///<summary>After the pay-page window closes, the result is asked for once and then up to this many more times while it is still pending.
 			///</summary>
 			public static int RepollCount=3;
@@ -1120,6 +1125,11 @@ namespace OpenDentBusiness {
 								xWebResponseUpdate.GetFormattedNote(true),//If we ever allow returns or voids from Patient Portal, we will need to change this argument.
 								"",xWebResponseUpdate.CCSource);
 							}
+							else {
+								//Reconciliation: nothing is posted, but keep the row's link to the payment the window had open (SetPersistentFields doesn't
+								//carry it), so a payment saved with this charge still finds it (XWebResponses.GetOneByPaymentNum) for a void or return.
+								xWebResponseUpdate.PaymentNum=xWebResponseOld.PaymentNum;
+							}
 							xWebResponseUpdate.TransactionStatus=XWebTransactionStatus.EdgeExpressCompletePaymentApproved;
 							break;
 						case XWebResponseCodes.AliasSuccess:
@@ -1167,7 +1177,9 @@ namespace OpenDentBusiness {
 
 			///<summary>ProcessTransaction, then while the result is still pending (102, or 814 before the card is submitted), asks again up to
 			///RepollCount more times, RepollDelay apart. This catches a card submitted just before the user closed the pay-page window. Call it on a
-			///background thread (the pay-page helper shows a progress window). actionWait defaults to Thread.Sleep.</summary>
+			///background thread (the pay-page helper shows a progress window). Before each query the row is re-read: if it is no longer
+			///EdgeExpressPending (reconciliation settled it, for example after clock skew between workstations), that row is returned as it is and the
+			///result is neither asked for nor acted on again, so no second card on file or payment is made. actionWait defaults to Thread.Sleep.</summary>
 			public static XWebResponse ProcessTransactionWithRepoll(XWebResponse xWebResponseOld,Payment existingPayment=null,bool doCreatePayment=true,
 				Action<TimeSpan> actionWait=null)
 			{
@@ -1175,20 +1187,30 @@ namespace OpenDentBusiness {
 				if(actionWait==null) {
 					actionWait=x => Thread.Sleep(x);
 				}
-				XWebResponse xWebResponse=ProcessTransaction(xWebResponseOld,existingPayment,doCreatePayment);
-				for(int i=0;i<RepollCount && xWebResponse.TransactionStatus==XWebTransactionStatus.EdgeExpressPending;i++) {
-					actionWait(RepollDelay);
+				XWebResponse xWebResponse=xWebResponseOld;
+				for(int i=0;i<=RepollCount;i++) {
+					if(i>0) {
+						if(xWebResponse.TransactionStatus!=XWebTransactionStatus.EdgeExpressPending) {
+							break;
+						}
+						actionWait(RepollDelay);
+					}
+					XWebResponse xWebResponseDb=XWebResponses.GetOne(xWebResponse.XWebResponseNum);
+					if(xWebResponseDb!=null && xWebResponseDb.TransactionStatus!=XWebTransactionStatus.EdgeExpressPending) {
+						return xWebResponseDb;//Settled elsewhere (reconciliation); don't query and post a second time.
+					}
 					xWebResponse=ProcessTransaction(xWebResponse,existingPayment,doCreatePayment);
 				}
 				return xWebResponse;
 			}
 
 			///<summary>Local reconciliation of pay-page sessions left pending, which Open Dental's eConnector used to do. Looks at EdgeExpressPending
-			///CreditSale and CreditAuth rows whose session ended (HpfExpiration passed, so no pay-page window still has them) within ReconcileWindow.
+			///CreditSale and CreditAuth rows whose session ended within ReconcileWindow. A row is left alone until ReconcileDelay past its HpfExpiration,
+			///so no pay-page window still has it or is still asking for its result; the window's re-polls also stop once the row is settled here.
 			///Each row is claimed first (XWebResponses.TryClaim), so only one workstation handles it, and re-read after the claim. The result is asked
 			///for with the row's clinic. An approval found this late is never posted automatically: the row is marked approved (and a card on file is
-			///saved if an alias came back), no payment is created, and an alert asks staff to attach or void it. Rows with no result past the grace
-			///period are marked expired, as before. dateTimeNow is for tests.</summary>
+			///saved if an alias came back), no payment is created, the row keeps its PaymentNum, and an alert asks staff to attach or void it. Rows
+			///with no result past the grace period are marked expired, as before. dateTimeNow is for tests.</summary>
 			public static EdgeExpressReconcileResult ReconcilePending(DateTime? dateTimeNow=null) {
 				Meth.NoCheckMiddleTierRole();
 				DateTime now=dateTimeNow??DateTime.Now;
@@ -1196,8 +1218,9 @@ namespace OpenDentBusiness {
 				List<XWebResponse> listXWebResponses=XWebResponses.GetPendingEdgeExpress(now.Subtract(ReconcileWindow));
 				for(int i=0;i<listXWebResponses.Count;i++) {
 					XWebResponse xWebResponse=listXWebResponses[i];
-					if(xWebResponse.HpfExpiration>now) {
-						reconcileResult.CountStillOpen++;//A pay-page window may still have it; that window asks for the result itself.
+					if(xWebResponse.HpfExpiration.Add(ReconcileDelay)>now) {
+						//A pay-page window may still have it, or still be asking for its result after closing; that window handles it itself.
+						reconcileResult.CountStillOpen++;
 						continue;
 					}
 					if(!XWebResponses.TryClaim(xWebResponse.XWebResponseNum,xWebResponse.DateTUpdate)) {
