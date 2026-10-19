@@ -212,6 +212,22 @@ namespace OpenDentBusiness{
 			return Crud.PaymentCrud.SelectOne(command);
 		}
 
+		///<summary>PaySimple ACH payments whose status can still change, for the local ACH status check (PaySimpleAchStatusSync): every payment with
+		///a PaySimple payment ID (ExternalId) that is PaySimpleAchPosted, plus the PaySimpleAchSettled ones dated on or after dateFrom, which can still
+		///be returned. Doesn't filter on PaymentSource: the prepaid-card branch of the payment window sets PaymentStatus and ExternalId but not
+		///PaymentSource, and PaymentStatus is only ever set for PaySimple ACH.</summary>
+		public static List<Payment> GetPaySimpleAchToTrack(DateTime dateFrom) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetObject<List<Payment>>(MethodBase.GetCurrentMethod(),dateFrom);
+			}
+			string command="SELECT * FROM payment "
+				+"WHERE ExternalId!='' "
+				+"AND (PaymentStatus="+POut.Int((int)PaymentStatus.PaySimpleAchPosted)+" "
+					+"OR (PaymentStatus="+POut.Int((int)PaymentStatus.PaySimpleAchSettled)+" AND PayDate>="+POut.Date(dateFrom)+")) "
+				+"ORDER BY ClinicNum,PayNum";
+			return Crud.PaymentCrud.SelectMany(command);
+		}
+
 		///<summary>Gets all payments that have a ProcessStatus of OnlinePending for the clinic. Pass in a clinicNum of 0 to see all payments.</summary>
 		public static int CountNeedingProcessed(long clinicNum) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
