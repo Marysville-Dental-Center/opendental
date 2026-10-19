@@ -97,7 +97,6 @@ namespace OpenDental {
 					Logger.LogActionIfOverTimeLimit("CheckAlerts",LogPath.Threads,() => CheckAlerts(doRunOnThread: true));
 					Logger.LogActionIfOverTimeLimit("BeginODCloudDcvExtensionThread",LogPath.Threads, () => BeginODCloudDcvExtensionThread());
 					Logger.LogActionIfOverTimeLimit("BeginODCloudMachineNameThread",LogPath.Threads,() => BeginODCloudMachineNameThread());
-					Logger.LogActionIfOverTimeLimit("BeginApiEventsThread",LogPath.Threads,() => BeginApiEventsThread());
 					Logger.LogToPath("Started threads",LogPath.Threads,LogPhase.Unspecified);
 					return;
 				}
@@ -131,7 +130,6 @@ namespace OpenDental {
 						case FormODThreadNames.TimeSync:
 						case FormODThreadNames.VoicemailHQ:
 						case FormODThreadNames.CheckAlerts:
-						case FormODThreadNames.ApiEvents:
 						default:
 							//Add these to our list so we can wait on them to exit before restarting the threads next time.
 							_listThreadExitWaitHandles.AddRange(ODThread.QuitAsyncThreadsByGroupName(threadName.GetDescription()));
@@ -1062,19 +1060,7 @@ namespace OpenDental {
 
 		#endregion
 
-		#region ApiEventsThread
-		///<summary>This thread generates Api Events, based on ApiSubscriptions. These events are in response to database changes, so the database must be polled at a certain interval. Each subscription can be at a different interval.</summary>
-		private void BeginApiEventsThread() {
-			if(IsThreadAlreadyRunning(FormODThreadNames.ApiEvents)) {
-				return;
-			}
-			ODThread odThread=new ODThread(1000,(o)=>{ODApi.ApiEvents.FireDbEventsWorker();});//fire events as frequently as once per second
-			odThread.AddExceptionHandler(ex => ex.DoNothing());
-			odThread.GroupName=FormODThreadNames.ApiEvents.GetDescription();
-			odThread.Name=FormODThreadNames.ApiEvents.GetDescription();
-			odThread.Start(true);
-		}
-		#endregion ApiEventsThread
+		//The ApiEvents thread, which polled the database for Open Dental's local REST API subscriptions, was removed with the API.
 
 		///<summary>A list of the names and group names for all threads spawned from FormOpenDental.</summary>
 		public enum FormODThreadNames {
@@ -1111,7 +1097,6 @@ namespace OpenDental {
 			Dashboard,
 			RegistrationKeyIsDisabled,
 			DataReaderNullMonitor,
-			ApiEvents,
 			ODCloudDcvExtension
 		}
 	}

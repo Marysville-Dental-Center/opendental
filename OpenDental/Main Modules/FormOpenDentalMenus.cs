@@ -282,7 +282,6 @@ namespace OpenDental{
 
 		///<summary>Setup: Advanced Setup</summary>
 		private void LayoutSubMenuAdvSetup(MenuItemOD menuItemAdvSetup) {
-			menuItemAdvSetup.Add("API",menuItemFHIR_Click);
 			menuItemAdvSetup.Add("Computers",menuItemComputers_Click);
 			menuItemAdvSetup.Add("HIE",menuItemHIE_Click);
 			_menuItemHL7=new MenuItemOD("HL7",menuItemHL7_Click);

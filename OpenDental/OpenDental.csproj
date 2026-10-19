@@ -2209,12 +2209,6 @@
     <Compile Include="Forms\FormQueryMonitor.designer.cs">
       <DependentUpon>FormQueryMonitor.cs</DependentUpon>
     </Compile>
-    <Compile Include="Forms\FormFHIRAssignKey.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FormFHIRAssignKey.designer.cs">
-      <DependentUpon>FormFHIRAssignKey.cs</DependentUpon>
-    </Compile>
     <Compile Include="Forms\FormTaxAddress.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -3509,18 +3503,6 @@
     </Compile>
     <Compile Include="Forms\FormDropboxAuthorize.designer.cs">
       <DependentUpon>FormDropboxAuthorize.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\FormFHIRAPIKeyEdit.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FormFHIRAPIKeyEdit.designer.cs">
-      <DependentUpon>FormFHIRAPIKeyEdit.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\FormFHIRSetup.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FormFHIRSetup.designer.cs">
-      <DependentUpon>FormFHIRSetup.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\FormTimePick.cs">
       <SubType>Form</SubType>
@@ -7522,12 +7504,6 @@
     <EmbeddedResource Include="Forms\FormQueryMonitor.resx">
       <DependentUpon>FormQueryMonitor.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormFHIRAPIKeyEdit.resx">
-      <DependentUpon>FormFHIRAPIKeyEdit.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormFHIRAssignKey.resx">
-      <DependentUpon>FormFHIRAssignKey.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormTaxAddress.resx">
       <DependentUpon>FormTaxAddress.cs</DependentUpon>
     </EmbeddedResource>
@@ -8011,9 +7987,6 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormDropboxAuthorize.resx">
       <DependentUpon>FormDropboxAuthorize.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormFHIRSetup.resx">
-      <DependentUpon>FormFHIRSetup.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormTimePick.resx">
       <DependentUpon>FormTimePick.cs</DependentUpon>
@@ -11087,10 +11060,6 @@
     <ProjectReference Include="..\..\ImagingDeviceManager\xImagingDeviceManager.csproj">
       <Project>{783079e6-a13f-4f43-a28d-9d7731f945d1}</Project>
       <Name>xImagingDeviceManager</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\ODApi\xODApi.csproj">
-      <Project>{05c5f52c-f5d7-4eb6-a37d-88e8a8f9db9c}</Project>
-      <Name>xODApi</Name>
     </ProjectReference>
     <ProjectReference Include="..\..\OpenDentalHelp\OpenDentalHelp\OpenDentalHelp.csproj">
       <Project>{98b2999c-8a9f-4795-b452-7f6231ed56b4}</Project>
