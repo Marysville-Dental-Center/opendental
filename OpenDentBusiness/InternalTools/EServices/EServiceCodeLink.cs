@@ -28,50 +28,6 @@ namespace OpenDentBusiness {
 			return (EServiceCodeLink)this.MemberwiseClone();
 		}
 
-		///<summary>Gets the eService code associated with the procCode. Returns Undefined if the procedure is not associated with one.</summary>
-		public static eServiceCode GetEService(string procCode) {
-			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				return Meth.GetObject<eServiceCode>(MethodBase.GetCurrentMethod(),procCode);
-			}
-			//repeating charges are saved using the ProcCode of the procedurecode table instead of the PK
-			string command= @"SELECT MIN(EService) FROM eservicecodelink
-				INNER JOIN procedurecode ON eservicecodelink.CodeNum=procedurecode.CodeNum
-				WHERE procedurecode.ProcCode='"+POut.String(procCode)+"'";
-			DataTable table=Db.GetTable(command);
-			if(table.Rows.Count==0) {
-				return eServiceCode.Undefined;
-			}
-			return PIn.Enum(table.Rows[0][0].ToString(),false,eServiceCode.Undefined);
-		}
-
-		///<summary>Gets a list of unique proc codes for all eService code links in the table.</summary>
-		public static List<string> GetProcCodesForAll() {
-			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				return Meth.GetObject<List<string>>(MethodBase.GetCurrentMethod());
-			}
-			string command="SELECT procedurecode.ProcCode FROM procedurecode "
-				+"INNER JOIN eservicecodelink ON procedurecode.CodeNum=eservicecodelink.CodeNum "
-				+"GROUP BY eservicecodelink.CodeNum";
-			return Db.GetListString(command);
-		}
-
-		///<summary>Get all all eService code links in the table and merges with proc codes.</summary>
-		public static List<EServiceCodeLink> GetAll() {
-			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				return Meth.GetObject<List<EServiceCodeLink>>(MethodBase.GetCurrentMethod());
-			}
-			string command="SELECT eservicecodelink.EServiceCodeLinkNum,eservicecodelink.CodeNum,eservicecodelink.EService,procedurecode.ProcCode FROM procedurecode "
-				+"INNER JOIN eservicecodelink ON procedurecode.CodeNum=eservicecodelink.CodeNum";
-			return DataCore.GetTable(command)
-					.AsEnumerable()
-					.Select(x => new EServiceCodeLink {
-						EServiceCodeLinkNum=PIn.Long(x["EServiceCodeLinkNum"].ToString()),
-						CodeNum=PIn.Long(x["CodeNum"].ToString()),
-						EService=PIn.Enum<eServiceCode>(x["EService"].ToString()),
-						ProcCode=PIn.String(x["ProcCode"].ToString()),
-					}).ToList();
-		}
-
 		/* The following queries were ran when we upgraded HQ to v17.1.1
 			CREATE TABLE eservicecodelink (
 				EServiceCodeLinkNum bigint NOT NULL auto_increment PRIMARY KEY,
