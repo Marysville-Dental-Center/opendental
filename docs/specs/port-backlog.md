@@ -11,6 +11,18 @@ Status: draft, 2026-10-18. Inputs: the verified specs in this folder ([features-
 - **Parallelism**: inside a wave, packages own disjoint files, so they can be built at the same time on separate branches. M1 Tier A has 2 waves (17 and 5 packages including vendor slots), Tier B has 3 waves.
 - **Biggest risks**: the version check that would pull Open Dental binaries out of the office database (R1), and proving the adopted data is intact (R2).
 
+## Owner decisions (2026-10-18)
+
+These override anything below that conflicts with them.
+
+- **Dental-school features: excluded.** Drop M2-SCH1–M2-SCH3, plus the dental-school parts of A-SCH and M1 Tier B. The tables stay for schema compatibility.
+- **Intra-office chat: excluded.** Drop A-CHAT and M2-CHAT. The chat tables stay; existing chat history isn't shown.
+- **`patient._portal_active_email`: dropped during adoption.** It is an office-specific customization, not Open Dental schema. Remove the column and its unique index in the adoption step, so family members can share an e-mail again.
+- **Public sources only.** No customer-only manual pages, and no observing the licensed Open Dental client. Inferred behaviors stay marked, and are settled by the owner's testing.
+- **No office data.** M1-00 (census) and the M1-Z rehearsal use a synthetic-data generator over the real 25.3.48 schema (`od_253_schema`), never a copy of the office database. Enum numbers and preference names come from Open Dental's published database docs and the schema, not from a census.
+- **Local REST API: dropped.** The 98 API items stay excluded.
+- **Vendor neutrality and local-only services** (ground rules 6–7 in [../decoupling-plan.md](../decoupling-plan.md)) apply to every package.
+
 ## How to use this backlog
 
 1. **Packages and waves.** A package is a unit of work for one engineer or agent on one branch. Packages in the same wave own disjoint files and can run in parallel. A wave starts once the packages it depends on are merged. When a package merges, ownership of its files passes to whichever package needs them in a later wave. Each package lists two kinds of dependency: "Depends on" (it needs that work) and "takes files over from" (ordering only: it edits a file that package edited earlier). If a package it takes files over from is deferred or dropped, for example a vendor package the office does not need, that constraint disappears.
