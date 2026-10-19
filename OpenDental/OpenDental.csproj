@@ -10441,11 +10441,9 @@
   <ItemGroup>
     <None Include="Resources\Pearl.txt" />
     <None Include="Resources\opendentalapienduserlicense.txt" />
-    <Resource Include="Resources\bola_get.png" />
     <Resource Include="Resources\bola_launch.png" />
     <None Include="Resources\payconnect-btn-26.png" />
     <None Include="Resources\Icon1.ico" />
-    <None Include="Resources\Podium_logo_Black.png" />
     <None Include="Resources\XamlStyle_ToolBarButton.txt" />
     <None Include="Resources\XamlStyle_ToolBar.txt" />
     <None Include="Resources\XamlStyle_MenuItem.txt" />
@@ -10456,7 +10454,6 @@
     <None Include="Resources\PRB icon_OD.png" />
     <None Include="Resources\PrefInfos.xml" />
     <None Include="Resources\splashCanada.jpg" />
-    <None Include="Resources\Unison_BDR_Logo.png" />
     <None Include="Resources\Pen.cur" />
     <None Include="Resources\EraseCircle.cur" />
     <None Include="Resources\ColorChanger.cur" />
@@ -10470,7 +10467,6 @@
     <Resource Include="Resources\topazPen10.gif" />
     <Resource Include="Resources\eSig.gif" />
     <Resource Include="Resources\deleteX10.gif" />
-    <None Include="Resources\DentalIntelligence_Button_100x24.png" />
     <None Include="Resources\google_signin_pressed.png" />
     <None Include="Resources\google_signin_focus.png" />
     <None Include="Resources\google_signin_normal.png" />
@@ -10528,11 +10524,8 @@
     <None Include="Resources\Paste_24x24.png" />
     <None Include="Resources\Copy_24x24.png" />
     <None Include="Resources\Cut_24x24.png" />
-    <None Include="Resources\CDS_Button_green_obsolete.png" />
-    <None Include="Resources\Podium_Button_100x24.png" />
     <None Include="Resources\DI_Button_100x24.png" />
     <None Include="Resources\deleteX18.gif" />
-    <None Include="Resources\butDentalIntel.png" />
     <None Include="Resources\webSched_PV_Button.png" />
     <None Include="Resources\phoneInUse.png" />
     <None Include="Resources\UDS3b.gif" />

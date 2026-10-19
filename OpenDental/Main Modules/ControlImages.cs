@@ -2560,11 +2560,8 @@ namespace OpenDental{
 				MsgBox.Show("ProgramLinks","Bridge is not available while viewing through the web.");
 				return;//bridge is not available for web users at this time. 
 			}
-			if(program.ProgName==ProgramName.Pearl.ToString() //Pearl button pressed
-				&& !Programs.IsEnabled(program.ProgramNum)) //Pearl disabled
-			{
-				Process.Start("https://www.opendental.com/resources/redirects/redirectpearl.html");
-				return;
+			if(!Programs.IsEnabled(program.ProgramNum)) {
+				return;//Toolbar buttons only show for enabled program links.
 			}
 			ControlImageDisplay controlImageDisplay=GetControlImageDisplaySelected();
 			if(controlImageDisplay==null) {

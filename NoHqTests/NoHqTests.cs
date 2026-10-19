@@ -169,6 +169,58 @@ namespace NoHqTests {
 		}
 		#endregion EHR
 
+		#region Vendor neutrality
+		[TestMethod]
+		public void ToolButItems_OnlyEnabledProgramLinksGetButtons() {
+			//Open Dental also showed buttons for disabled partner program links that have a "Disable Advertising" property (an advertisement
+			//until the office turned it off). Only enabled program links get toolbar buttons now.
+			List<OpenDentBusiness.Program> listPrograms=new List<OpenDentBusiness.Program> {
+				new OpenDentBusiness.Program() { ProgramNum=1,ProgName=ProgramName.Apteryx.ToString(),ProgDesc="Apteryx",Enabled=true },
+				new OpenDentBusiness.Program() { ProgramNum=2,ProgName=ProgramName.Pearl.ToString(),ProgDesc="Pearl",Enabled=false },
+				new OpenDentBusiness.Program() { ProgramNum=3,ProgName=ProgramName.CareCredit.ToString(),ProgDesc="CareCredit",Enabled=false },
+			};
+			List<ProgramProperty> listProgramProperties=new List<ProgramProperty> {
+				new ProgramProperty() { ProgramPropertyNum=1,ProgramNum=2,PropertyDesc=ProgramProperties.PropertyDescs.DisableAdvertising,PropertyValue="0" },
+				new ProgramProperty() { ProgramPropertyNum=2,ProgramNum=3,PropertyDesc=ProgramProperties.PropertyDescs.DisableAdvertising,PropertyValue="0" },
+				new ProgramProperty() { ProgramPropertyNum=3,ProgramNum=3,PropertyDesc=ProgramProperties.PropertyDescs.DisableAdvertisingHQ,PropertyValue="0" },
+			};
+			List<ToolButItem> listToolButItems=new List<ToolButItem>();
+			foreach(OpenDentBusiness.Program program in listPrograms) {
+				listToolButItems.Add(new ToolButItem() { ToolButItemNum=program.ProgramNum,ProgramNum=program.ProgramNum,ToolBar=EnumToolBar.MainToolbar,ButtonText=program.ProgDesc });
+			}
+			try {
+				Programs.FillCacheFromTable(OpenDentBusiness.Crud.ProgramCrud.ListToTable(listPrograms));
+				ProgramProperties.FillCacheFromTable(OpenDentBusiness.Crud.ProgramPropertyCrud.ListToTable(listProgramProperties));
+				ToolButItems.FillCacheFromTable(OpenDentBusiness.Crud.ToolButItemCrud.ListToTable(listToolButItems));
+				List<ToolButItem> listToolButItemsShown=ToolButItems.GetForToolBar(EnumToolBar.MainToolbar);
+				CollectionAssert.AreEqual(new List<long> { 1 },listToolButItemsShown.Select(x => x.ProgramNum).ToList());
+			}
+			finally {
+				Programs.FillCacheFromTable(OpenDentBusiness.Crud.ProgramCrud.ListToTable(new List<OpenDentBusiness.Program>()));
+				ProgramProperties.FillCacheFromTable(OpenDentBusiness.Crud.ProgramPropertyCrud.ListToTable(new List<ProgramProperty>()));
+				ToolButItems.FillCacheFromTable(OpenDentBusiness.Crud.ToolButItemCrud.ListToTable(new List<ToolButItem>()));
+			}
+		}
+
+		[TestMethod]
+		public void ProgramProperties_AdvertisingMechanismIsGone() {
+			Assert.IsNull(typeof(ProgramProperties).GetMethod("IsAdvertisingDisabled",BindingFlags.Public|BindingFlags.Static));
+			Assert.IsNull(typeof(ProgramProperties).GetMethod("IsAdvertisingBridge",BindingFlags.Public|BindingFlags.Static));
+			//The stored "Disable Advertising" rows stay in the database for schema compatibility, so they are no longer deletable.
+			foreach(string propertyDesc in new List<string> { ProgramProperties.PropertyDescs.DisableAdvertising,ProgramProperties.PropertyDescs.DisableAdvertisingHQ }) {
+				Exception exception=null;
+				try {
+					ProgramProperties.Delete(new ProgramProperty() { ProgramPropertyNum=1,PropertyDesc=propertyDesc });
+				}
+				catch(Exception ex) {
+					exception=ex;
+				}
+				Assert.IsNotNull(exception,propertyDesc+" should not be deletable.");
+				StringAssert.Contains(exception.Message,"Not allowed to delete");
+			}
+		}
+		#endregion Vendor neutrality
+
 		[TestMethod]
 		public void HqNotAvailableException_IsAnODException() {
 			Assert.IsInstanceOfType(new HqNotAvailableException(),typeof(ODException));

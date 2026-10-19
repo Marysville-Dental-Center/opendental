@@ -47,7 +47,6 @@ namespace OpenDental{
 			this.textApptTimeArrived = new OpenDental.ValidDouble();
 			this.textApptTimeDismissed = new OpenDental.ValidDouble();
 			this.label4 = new System.Windows.Forms.Label();
-			this.checkHideButtons = new OpenDental.UI.CheckBox();
 			this.checkEnabled = new OpenDental.UI.CheckBox();
 			this.butSave = new OpenDental.UI.Button();
 			this.checkShowCommlogsInChart = new OpenDental.UI.CheckBox();
@@ -282,15 +281,6 @@ namespace OpenDental{
 			this.label4.Text = "minutes after appointment completed.\r\n";
 			this.label4.TextAlign = System.Drawing.ContentAlignment.BottomLeft;
 			// 
-			// checkHideButtons
-			// 
-			this.checkHideButtons.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
-			this.checkHideButtons.Location = new System.Drawing.Point(231, 12);
-			this.checkHideButtons.Name = "checkHideButtons";
-			this.checkHideButtons.Size = new System.Drawing.Size(291, 18);
-			this.checkHideButtons.TabIndex = 109;
-			this.checkHideButtons.Text = "Hide button in Standard Reports";
-			// 
 			// checkEnabled
 			// 
 			this.checkEnabled.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
@@ -335,7 +325,6 @@ namespace OpenDental{
 			this.Controls.Add(this.groupBox3);
 			this.Controls.Add(this.groupBox2);
 			this.Controls.Add(this.groupBox1);
-			this.Controls.Add(this.checkHideButtons);
 			this.Controls.Add(this.checkEnabled);
 			this.Controls.Add(this.butSave);
 			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
@@ -355,7 +344,6 @@ namespace OpenDental{
 
 		private OpenDental.UI.Button butSave;
 		private OpenDental.UI.CheckBox checkEnabled;
-		private OpenDental.UI.CheckBox checkHideButtons;
 		private System.Windows.Forms.Label label4;
 		private ValidDouble textApptTimeDismissed;
 		private ValidDouble textApptTimeArrived;

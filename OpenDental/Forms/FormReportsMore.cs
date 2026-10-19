@@ -45,12 +45,7 @@ namespace OpenDental {
 			butPatExport.Visible=PrefC.GetBool(PrefName.ShowFeatureEhr);
 			LayoutMenu();
 			FillLists();
-			if(ProgramProperties.IsAdvertisingDisabled(ProgramName.Podium)) {
-				groupPatientReviews.Visible=false;
-			}
-			if(ProgramProperties.IsAdvertisingDisabled(ProgramName.PracticeByNumbers)) {
-				groupBusiness.Visible=false;
-			}
+			groupBusiness.Visible=Programs.IsEnabled(ProgramName.PracticeByNumbers);
 		}
 
 		private void LayoutMenu() {
@@ -759,15 +754,6 @@ namespace OpenDental {
 		
 		private void picturePracticeByNumbers_Click(object sender,EventArgs e) {
 			PracticeByNumbers.ShowPage();
-		}
-
-		private void picturePodium_Click(object sender,EventArgs e) {
-			try {
-				Podium.ShowPage();
-			}
-			catch(Exception ex) {
-				MessageBox.Show(ex.Message);
-			}
 		}
 
 	}

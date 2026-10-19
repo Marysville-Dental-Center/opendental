@@ -511,7 +511,6 @@ namespace OpenDental {
 			menuApt.Items.RemoveByKey(MenuItemNames.SendMessageToPay);
 			menuApt.Items.RemoveByKey(MenuItemNames.SendEClipboardByod);
 			menuApt.Items.RemoveByKey(MenuItemNames.OrthoChart);
-			menuApt.Items.RemoveByKey(MenuItemNames.CareCredit);
 			menuApt.Items.RemoveByKey(MenuItemNames.CareCreditAcceptDeclineOffer);
 			menuApt.Items.RemoveByKey(MenuItemNames.CareCreditApplicationNeeded);
 			menuApt.Items.RemoveByKey(MenuItemNames.CareCreditDiv);
@@ -520,11 +519,8 @@ namespace OpenDental {
 				menuApt.Items.Add(new ToolStripMenuItem(Lan.g(this,"Go To ")+OrthoChartTabs.GetFirst(true).TabName,null,menuApt_Click,MenuItemNames.OrthoChart));
 			}
 			//Phone numbers
-			//The menu items to "Call Home/Work/Cell" will only be added to this context menu if action will actually be taken when clicking on them, i.e.
-			//when DentalTek bridge is disabled and advertising is disabled, nothing happens when clicking this buttons.
-			if(Programs.GetCur(ProgramName.DentalTekSmartOfficePhone).Enabled 
-				|| !ProgramProperties.IsAdvertisingDisabled(ProgramName.DentalTekSmartOfficePhone))
-			{
+			//The menu items to "Call Home/Work/Cell" place the call through the DentalTek bridge, so they are only added when that bridge is enabled.
+			if(Programs.IsEnabled(ProgramName.DentalTekSmartOfficePhone)) {
 				if(!String.IsNullOrEmpty(_patient.HmPhone)||!String.IsNullOrEmpty(_patient.WkPhone)||!String.IsNullOrEmpty(_patient.WirelessPhone)) {
 					menuApt.Items.Add(new ToolStripSeparator() { Name=MenuItemNames.PhoneDiv });
 				}
@@ -607,10 +603,6 @@ namespace OpenDental {
 					menuApt.Items.Add(new ToolStripSeparator() { Name=MenuItemNames.CareCreditDiv });
 					menuApt.Items.Add(new ToolStripMenuItem(Lan.g(this,MenuItemNames.CareCreditApplicationNeeded),null,menuApt_Click,MenuItemNames.CareCreditApplicationNeeded));
 				}
-			}
-			else if(!ProgramProperties.IsAdvertisingDisabled(ProgramName.CareCredit)) {
-				menuApt.Items.Add(new ToolStripSeparator() { Name=MenuItemNames.CareCreditDiv });
-				menuApt.Items.Add(new ToolStripMenuItem(Lan.g(this,MenuItemNames.CareCredit),null,menuApt_Click,MenuItemNames.CareCredit));
 			}
 			Plugins.HookAddCode(this,"ContrAppt.MouseDownAppointment_menuApt_right_click",menuApt,contrApptPanel.SelectedAptNum);
 			menuApt.Show(contrApptPanel,e.Location);
@@ -818,12 +810,7 @@ namespace OpenDental {
 						break;
 					//Family recall handled in context menu
 					case "RapidCall":
-						try {
-							OpenDental.Bridges.RapidCall.ShowPage();
-						}
-						catch(Exception ex) {
-							MessageBox.Show(ex.Message);
-						}
+						OpenDental.Bridges.RapidCall.Launch();
 						break;
 				}
 				return;
@@ -2214,27 +2201,18 @@ namespace OpenDental {
 					}
 					break;
 				case MenuItemNames.HomePhone: //Call Home Phone
-					if(Programs.GetCur(ProgramName.DentalTekSmartOfficePhone).Enabled) {
+					if(Programs.IsEnabled(ProgramName.DentalTekSmartOfficePhone)) {
 						Bridges.DentalTek.PlaceCall(_patient.HmPhone);
 					}
-					else {
-						AutomaticCallDialingDisabledMessage();
-					}
-					 break;
+					break;
 				case MenuItemNames.WorkPhone: //Call Work Phone
-					if(Programs.GetCur(ProgramName.DentalTekSmartOfficePhone).Enabled) {
+					if(Programs.IsEnabled(ProgramName.DentalTekSmartOfficePhone)) {
 						Bridges.DentalTek.PlaceCall(_patient.WkPhone);
-					}
-					else {
-						AutomaticCallDialingDisabledMessage();
 					}
 					break;
 				case MenuItemNames.WirelessPhone: //Call Wireless Phone
-					if(Programs.GetCur(ProgramName.DentalTekSmartOfficePhone).Enabled) {
+					if(Programs.IsEnabled(ProgramName.DentalTekSmartOfficePhone)) {
 						Bridges.DentalTek.PlaceCall(_patient.WirelessPhone);
-					}
-					else {
-						AutomaticCallDialingDisabledMessage();
 					}
 					break;
 				case MenuItemNames.SendText:
@@ -2284,9 +2262,6 @@ namespace OpenDental {
 					appointment=Appointments.GetOneApt(contrApptPanel.SelectedAptNum);
 					if(ApptIsNull(appointment)) { return; }
 					AppointmentL.SendByodLink(appointment);
-					break;
-				case MenuItemNames.CareCredit:
-					CareCredit.ShowPage(CareCredit.ProviderSignupURL);
 					break;
 				case MenuItemNames.CareCreditAcceptDeclineOffer:
 					appointment=Appointments.GetOneApt(contrApptPanel.SelectedAptNum);
@@ -2908,7 +2883,7 @@ namespace OpenDental {
 			//asap?
 			toolBarMain.Buttons.Add(new ODToolBarButton(Lan.g(this,"Complete"),EnumIcons.Complete,"","Complete"));
 			toolBarMain.Buttons.Add(new ODToolBarButton(Lan.g(this,"Delete"),EnumIcons.DeleteX,"","Delete"));
-			if(!ProgramProperties.IsAdvertisingDisabled(ProgramName.RapidCall)) {
+			if(Programs.IsEnabled(ProgramName.RapidCall)) {
 				toolBarMain.Buttons.Add(new ODToolBarButton(ODToolBarButtonStyle.Separator));
 				toolBarMain.Buttons.Add(new ODToolBarButton(Lan.g(this,"Rapid Call"),2,"","RapidCall"));
 			}
@@ -3859,21 +3834,6 @@ namespace OpenDental {
 			Appointments.SetPriority(appointment,ApptPriority.ASAP);
 			MsgBox.Show(this,"Done");
 			Plugins.HookAddCode(this,"ContrAppt.OnASAP_Click_end",appointment,_patient);
-		}
-
-		private void AutomaticCallDialingDisabledMessage() {
-			if(ProgramProperties.IsAdvertisingDisabled(ProgramName.DentalTekSmartOfficePhone)) {
-				return;
-			}
-			MsgBox.Show("Automatic dialing of patient phone numbers requires an additional service.\r\n"
-				+"Contact Open Dental for more information.");
-			try {
-				System.Diagnostics.Process.Start("http://www.opendental.com/resources/redirects/redirectdentaltekinfo.html");
-			}
-			catch(Exception) {
-				MsgBox.Show("Could not find http://www.opendental.com/contact.html \r\n"
-					+"Please set up a default web browser.");
-			}
 		}
 
 		///<summary>Copied from FormApptsOther. Does not limit appointment creation, only warns user. This check should be run before creating a new appointment. </summary>
@@ -5156,7 +5116,6 @@ namespace OpenDental {
 		public const string DeleteBlockout="Delete Blockout";
 		public const string AddBlockout="Add Blockout";
 		public const string BlockoutCutCopyPaste="Blockout Cut-Copy-Paste";
-		public const string CareCredit="CareCredit";
 		public const string CareCreditAcceptDeclineOffer="CareCredit Accept/Decline Offer";
 		public const string CareCreditApplicationNeeded="CareCredit Application Needed";
 		public const string CareCreditDiv="CareCredit Div";

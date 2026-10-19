@@ -53,7 +53,6 @@ namespace OpenDental{
 			this.textClientIdCollection = new System.Windows.Forms.TextBox();
 			this.labelClientIdCollection = new System.Windows.Forms.Label();
 			this.labelClinicEnable = new System.Windows.Forms.Label();
-			this.checkHideButtons = new OpenDental.UI.CheckBox();
 			this.labelSendTimeOfDay = new System.Windows.Forms.Label();
 			this.textUpdatesTimeOfDay = new System.Windows.Forms.TextBox();
 			this.labelODService = new System.Windows.Forms.Label();
@@ -88,7 +87,6 @@ namespace OpenDental{
 			this.checkEnabled.Size = new System.Drawing.Size(161, 18);
 			this.checkEnabled.TabIndex = 1;
 			this.checkEnabled.Text = "Enabled (affects all clinics)";
-			this.checkEnabled.Click += new System.EventHandler(this.checkEnabled_Click);
 			// 
 			// textSftpPassword
 			// 
@@ -381,16 +379,6 @@ namespace OpenDental{
     " and login credentials for that clinic.";
 			this.labelClinicEnable.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
 			// 
-			// checkHideButtons
-			// 
-			this.checkHideButtons.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.checkHideButtons.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
-			this.checkHideButtons.Location = new System.Drawing.Point(255, 13);
-			this.checkHideButtons.Name = "checkHideButtons";
-			this.checkHideButtons.Size = new System.Drawing.Size(145, 18);
-			this.checkHideButtons.TabIndex = 75;
-			this.checkHideButtons.Text = "Hide Unused Button";
-			// 
 			// labelSendTimeOfDay
 			// 
 			this.labelSendTimeOfDay.Location = new System.Drawing.Point(6, 17);
@@ -499,7 +487,6 @@ namespace OpenDental{
 			// 
 			this.ClientSize = new System.Drawing.Size(424, 538);
 			this.Controls.Add(this.groupSendActivity);
-			this.Controls.Add(this.checkHideButtons);
 			this.Controls.Add(this.labelClinicEnable);
 			this.Controls.Add(this.groupClinicSettings);
 			this.Controls.Add(this.labelClinic);
@@ -546,7 +533,6 @@ namespace OpenDental{
 		private System.Windows.Forms.Label labelClinicEnable;
 		private OpenDental.UI.GroupBox groupSftpServerInfo;
 		private OpenDental.UI.GroupBox groupClientIDs;
-		private OpenDental.UI.CheckBox checkHideButtons;
 		private System.Windows.Forms.Label labelSendTimeOfDay;
 		private System.Windows.Forms.TextBox textUpdatesTimeOfDay;
 		private System.Windows.Forms.Label labelODService;

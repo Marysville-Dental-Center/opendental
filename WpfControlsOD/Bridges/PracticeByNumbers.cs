@@ -16,12 +16,10 @@ namespace OpenDental.Bridges{
 					MsgBox.Show(err);
 					return;
 				}
-				if(Programs.IsEnabled(ProgramName.PracticeByNumbers)) {
-					ODFileUtils.ProcessStart("http://www.opendental.com/manual/portalpracticebynumbers.html");
+				if(!Programs.IsEnabled(ProgramName.PracticeByNumbers)) {
+					return;//Only reachable from buttons that show when the program link is enabled.
 				}
-				else {
-					ODFileUtils.ProcessStart("http://www.opendental.com/resources/redirects/redirectpracticebynumbers.html");
-				}
+				ODFileUtils.ProcessStart("http://www.opendental.com/manual/portalpracticebynumbers.html");
 			}
 			catch(Exception ex) {
 				MsgBox.Show("PracticeByNumbers","Failed to open web browser.  Please make sure you have a default browser set and are connected to the internet then try again.");

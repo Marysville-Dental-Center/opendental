@@ -311,20 +311,7 @@ namespace OpenDental{
 				return;
 			}
 			if(!Programs.IsEnabled(ProgramName.Transworld)) {
-				string url="https://opendental.com/resources/redirects/redirecttransworldsystems.html";
-				try {
-					if(!ODBuild.IsThinfinity() && ODCloudClient.IsAppStream) {
-						ODCloudClient.LaunchFileWithODCloudClient(url);
-					}
-					else {
-						Process.Start(url);
-					}
-				}
-				catch(Exception ex) {
-					ex.DoNothing();
-					MsgBox.Show(this,"Failed to open web browser.  Please make sure you have a default browser set and are connected to the internet and then try again.");
-				}
-				return;
+				return;//The button is only visible when the Transworld program link is enabled.
 			}
 			if(_formArManager==null || _formArManager.IsDisposed) {
 				while(!ValidateConnectionDetails()) {//only validate connection details if the ArManager form does not exist yet
@@ -892,7 +879,7 @@ namespace OpenDental{
 			if(PrefC.GetBool(PrefName.EasyHidePublicHealth)) {
 				butImportInsPlans.Visible=false;//Import Ins Plans button is only visible when Public Health feature is enabled.
 			}
-			butManageAR.Visible=!ProgramProperties.IsAdvertisingDisabled(ProgramName.Transworld);
+			butManageAR.Visible=Programs.IsEnabled(ProgramName.Transworld);
 		}
 
 		///<summary>-1 is also valid.</summary>

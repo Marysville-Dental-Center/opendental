@@ -8,7 +8,6 @@ using OpenDentBusiness;
 using OpenDental;
 using OpenDental.Bridges;
 using CodeBase;
-using xBridges=Bridges;//Bridges is ambiguous with OpenDental.Bridges
 
 namespace WpfControls {
 	public class ProgramL {
@@ -90,7 +89,7 @@ namespace WpfControls {
 			}
 			else if(program.ProgName==ProgramName.CareCredit.ToString()) {
 				if(!program.Enabled) {
-					xBridges.CareCredit.ShowPage(xBridges.CareCredit.ProviderSignupURL);
+					MsgBox.Show("ProgramLinks","CareCredit must be enabled in Program Links.");
 					return;
 				}
 				if(patient==null) {
@@ -582,9 +581,6 @@ namespace WpfControls {
 						continue;//If there exists a programProp for a clinic which should have its buttons hidden, carry on and do not display the button.
 					}
 				}
-				if(ProgramProperties.IsAdvertisingDisabled(program)) {
-					continue;
-				}
 				ToolBarButton toolBarButton=new ToolBarButton(listToolButItems[i].ButtonText,eventHandlerClick:eventHandlerClick,tag:program);
 				if(program.ButtonImage!="") {
 					System.Drawing.Bitmap bitmap=PIn.Bitmap(program.ButtonImage);
@@ -604,50 +600,8 @@ namespace WpfControls {
 					toolBarButton.ToolBarButtonStyle=ToolBarButtonStyle.DropDownButton;
 					toolBarButton.ContextMenuDropDown=contextMenu;
 				}
-				else if(program.ProgName==ProgramName.CareCredit.ToString()) {
-					if(Programs.IsEnabled(ProgramName.CareCredit)) {
-						return; //no need to create the drop down if CareCredit is already enabled
-					}
-					ContextMenu contextMenu=new ContextMenu();
-					MenuItem menuItem=new MenuItem();
-					menuItem.Text=Lans.g("CareCredit","Disable Advertising");
-					menuItem.Click+=(s,e) => {
-						List<ProgramProperty> listProgProps=ProgramProperties.GetForProgram(program.ProgramNum);
-						for(int i=0;i<listProgProps.Count;i++){
-							if(listProgProps[i].PropertyDesc==ProgramProperties.PropertyDescs.CareCredit.CareCreditDoDisableAdvertising){ 
-								listProgProps[i].PropertyValue=POut.Bool(true);
-							}
-						}
-						ProgramProperties.Sync(listProgProps,program.ProgramNum);
-						DataValid.SetInvalid(InvalidType.Programs, InvalidType.ToolButsAndMounts);
-					};
-					contextMenu.Add(menuItem);
-					toolBarButton.ToolBarButtonStyle=ToolBarButtonStyle.DropDownButton;
-					toolBarButton.ContextMenuDropDown=contextMenu;
-				}
 				else if(program.ProgName==ProgramName.Pearl.ToString()) {
-					if(Programs.IsEnabled(ProgramName.Pearl)) {
-						toolBarButton.SetToolTipText("Send currently displayed image(s) to Pearl");
-					}
-					else {
-						//Only show dropdown when not enabled
-						ContextMenu contextMenu=new ContextMenu();
-						MenuItem menuItem=new MenuItem();
-						menuItem.Text=Lans.g("Pearl","Disable Advertising");
-						menuItem.Click+=(s,e) => {
-							List<ProgramProperty> listProgProps=ProgramProperties.GetForProgram(program.ProgramNum);
-							for(int i=0;i<listProgProps.Count;i++){
-								if(listProgProps[i].PropertyDesc=="Disable Advertising"){ 
-									listProgProps[i].PropertyValue=POut.Bool(true);
-								}
-							}
-							ProgramProperties.Sync(listProgProps,program.ProgramNum);
-							DataValid.SetInvalid(InvalidType.Programs, InvalidType.ToolButsAndMounts);
-						};
-						contextMenu.Add(menuItem);
-						toolBarButton.ToolBarButtonStyle=ToolBarButtonStyle.DropDownButton;
-						toolBarButton.ContextMenuDropDown=contextMenu;
-					}
+					toolBarButton.SetToolTipText("Send currently displayed image(s) to Pearl");
 				}
 				if(toolBarsAvail!=EnumToolBar.MainToolbar) {
 					toolBar.AddSeparator();
