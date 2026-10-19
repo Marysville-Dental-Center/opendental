@@ -7,6 +7,7 @@ using System.Threading;
 using System.Windows.Forms;
 using OpenDental.UI;
 using OpenDentBusiness;
+using OpenDentBusiness.VendorDirect;
 using System.Text.RegularExpressions;
 using OpenDental.Bridges;
 using CodeBase;
@@ -255,12 +256,8 @@ namespace OpenDental {
 			}
 			CreditCard creditCard=null;
 			if(hasEdgeExpress) {
-				long programNum=Programs.GetProgramNum(ProgramName.EdgeExpress);
-				//In FormEdgeExpressSetup, if one of these program properties is filled, the form will require the other two to be filled also.
-				bool hasCredentials=ProgramProperties.GetPropVal(programNum,ProgramProperties.PropertyDescs.EdgeExpress.XWebID,Clinics.ClinicNum)!=""
-					&& ProgramProperties.GetPropVal(programNum,ProgramProperties.PropertyDescs.EdgeExpress.TerminalID,Clinics.ClinicNum)!=""
-					&& ProgramProperties.GetPropVal(programNum,ProgramProperties.PropertyDescs.EdgeExpress.AuthKey,Clinics.ClinicNum)!="";
-				if(!hasCredentials) {
+				//The X-Web ID, Terminal ID, Auth Key (stored encrypted) and payment type, set and well formed for the current clinic.
+				if(!PaymentWindowRules.ShowEdgeExpress(Clinics.ClinicNum)) {
 					MsgBox.Show(this,"EdgeExpress is not set up properly for the current clinic. Fix this and try again.");
 					return;
 				}
@@ -279,14 +276,21 @@ namespace OpenDental {
 					}
 					//Card Not Present API
 					else {
-						XWebResponse xWebResponse=EdgeExpress.CNP.GetUrlForCreditCardAlias(_patient.PatNum,CreditCardSource.EdgeExpressCNP,isWebPayment:false,doUseCurrentClinicNum:true);
+						//The session and the query after it use the current clinic's credentials and return settings.
+						long clinicNumSession=EdgeExpress.CNP.ResolveClinicNum(_patient.PatNum,doUseCurrentClinicNum:true);
 						Cursor=Cursors.Default;
-						FormWebBrowser formWebBrowser=new FormWebBrowser(xWebResponse.HpfUrl);
-						formWebBrowser.UrlCloseOn=EdgeExpress.CNP.ReturnUrlDefault;
-						formWebBrowser.ShowDialog();
-						//Process without creating a new payment.
-						XWebResponse xWebResponseProcessed=EdgeExpress.CNP.ProcessTransaction(xWebResponse,null,doCreatePayment:false);
-						if(!xWebResponseProcessed.TransactionStatus.In(
+						//Shows the card processor's page (WebView2), then processes the result without creating a new payment.
+						XWebResponse xWebResponseProcessed=EdgeExpressL.RunPayPage(this,clinicNumSession,
+							returnUrl => EdgeExpress.CNP.GetUrlForCreditCardAlias(_patient.PatNum,CreditCardSource.EdgeExpressCNP,isWebPayment:false,
+								doUseCurrentClinicNum:true,clinicNum:clinicNumSession,returnUrl:returnUrl),
+							paymentExisting:null,doCreatePayment:false);
+						string userMessage=EdgeExpress.CNP.GetUserMessage(xWebResponseProcessed);
+						if(userMessage!="") {
+							MessageBox.Show(this,userMessage);
+						}
+						//A pending result is not known yet: reconciliation keeps checking, and the message above said so.
+						if(xWebResponseProcessed.TransactionStatus!=XWebTransactionStatus.EdgeExpressPending
+							&& !xWebResponseProcessed.TransactionStatus.In(
 								XWebTransactionStatus.EdgeExpressCompleteAliasCreated,
 								XWebTransactionStatus.EdgeExpressCompletePaymentApproved))
 						{
@@ -400,8 +404,12 @@ namespace OpenDental {
 			}
 			if(hasPayConnect) {
 				Program program=Programs.GetCur(ProgramName.PayConnect);
-				string payconnectVersion=ProgramProperties.GetPropVal(program.ProgramNum,"Program Version",Clinics.ClinicNum);
-				if(payconnectVersion=="1") {
+				string payconnectVersion=ProgramProperties.GetPropVal(program.ProgramNum,PayConnect.ProgramProperties.ProgramVersion,Clinics.ClinicNum);
+				if(payconnectVersion=="2" && !PayConnect2.IsConfigured(Clinics.ClinicNum)) {
+					MsgBox.Show(this,"PayConnect is not set up for the current clinic. Enter the API key and the clinic's Secret in Setup, Program Links, "
+						+"PayConnect, and try again.");
+				}
+				else if(payconnectVersion=="1") {
 					using FormPayConnect formPayConnect=new FormPayConnect(Clinics.ClinicNum,_patient,(decimal)0.01,creditCard,isAddingCard:true);
 					formPayConnect.ShowDialog();
 				}
@@ -414,13 +422,27 @@ namespace OpenDental {
 					}
 					else if(response.ResponseType==PayConnect2.ResponseType.IFrame && !response.iFrameResponse.Response.CardToken.IsNullOrEmpty()) {
 						PayConnect2.iFrameListenerResponse cardData=response.iFrameResponse.Response;
+						//Only a token is ever stored. FormPayConnect2iFrame already refuses a card number inside track data; raw track data that still got
+						//here is refused too, never stored.
+						if(PayConnect2.IsTrackTwoData(cardData.CardToken)) {
+							MsgBox.Show(this,"The card reader returned card data instead of a token, so the card was not saved. Key the card in instead.");
+							FillGrid();
+							return;
+						}
+						if(!int.TryParse(cardData.ExpiryYear,out int expiryYearParsed) || !int.TryParse(cardData.ExpiryMonth,out int expiryMonthParsed)
+							|| expiryMonthParsed<1 || expiryMonthParsed>12 || expiryYearParsed<1)
+						{
+							MsgBox.Show(this,"PayConnect did not return a valid expiration date, so the card was not saved. Try again.");
+							FillGrid();
+							return;
+						}
 						CreditCard newCreditCard=new CreditCard();
 						newCreditCard.IsNew=true;
 						newCreditCard.PatNum=_patient.PatNum;
 						List<CreditCard> listCreditCardsItemOrderCount=CreditCards.RefreshAll(_patient.PatNum);
 						newCreditCard.ItemOrder=listCreditCardsItemOrderCount.Count;
-						int expiryYear=int.Parse(cardData.ExpiryYear);
-						int expiryMonth=int.Parse(cardData.ExpiryMonth);
+						int expiryYear=expiryYearParsed;
+						int expiryMonth=expiryMonthParsed;
 						newCreditCard.CCExpiration=new DateTime(expiryYear,expiryMonth,DateTime.DaysInMonth(expiryYear,expiryMonth));
 						//PayConnect informed us that the last 4 digits of the token are the same as the last 4 digits
 						//of the credit card that was used to create the token. Get the last 4 characters
@@ -438,7 +460,11 @@ namespace OpenDental {
 					}
 				}
 			}
-			if(hasPaySimple) {
+			if(hasPaySimple && !PaySimple.HasCredentials(Clinics.ClinicNum)) {
+				MsgBox.Show(this,"PaySimple is not set up for the current clinic. Enter the API user name and key in Setup, Program Links, PaySimple, "
+					+"and try again.");
+			}
+			else if(hasPaySimple) {
 				using FormPaySimple formPaySimple=new FormPaySimple(Clinics.ClinicNum,_patient,(decimal)0.01,creditCard,isAddingCard:true);
 				formPaySimple.ShowDialog();
 			}
