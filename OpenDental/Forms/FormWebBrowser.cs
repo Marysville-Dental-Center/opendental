@@ -24,6 +24,11 @@ namespace OpenDental {
 		///Bamboo's API returns a single use URL for PHI security reasons. Hitting refresh would cause an unauthorized message to show from their server which would force offices to close and relaunch the bridge.
 		///</summary>
 		public bool IsUrlSingleUse;
+		///<summary>Optional. When the browser is about to navigate to a URL that starts with this one (ignoring case), the navigation is cancelled and the
+		///window closes with DialogResult.OK. Used for the return URL of a hosted payment page, so that page never has to load.</summary>
+		public string UrlCloseOn="";
+		///<summary>True once navigation reached UrlCloseOn and the window is closing.</summary>
+		private bool _isClosingOnUrl;
 
 		///<summary> DO NOT USE. Use FormWebView.cs instead. Used when opening a new browser window via a link or to display html content.
 		///If html content and url specified, url will be used and given content ignored. postData and additionalHeaders will only be used if url is 
@@ -32,6 +37,7 @@ namespace OpenDental {
 			InitializeComponent();
 			InitializeLayoutManager();
 			Lan.F(this);
+			browser.Navigating+=browser_Navigating;
 			SHDocVw.WebBrowser webBrowser=(SHDocVw.WebBrowser)browser.ActiveXInstance;
 			if(webBrowser!=null) {//This was null once during testing.  Not sure when null can happen.  Not sure if we should allow the user to continue.
 				webBrowser.NewWindow2+=axBrowser_NewWindow2;
@@ -47,6 +53,7 @@ namespace OpenDental {
 			InitializeComponent();
 			InitializeLayoutManager();
 			Lan.F(this);
+			browser.Navigating+=browser_Navigating;
 			if(string.IsNullOrEmpty(url)) {
 				//this needs to be moved to load, and make htmlContent a public field.
 				if(!string.IsNullOrEmpty(htmlContent)) {
@@ -141,6 +148,27 @@ namespace OpenDental {
 			formWebBrowser.WindowState=FormWindowState.Normal;
 			LayoutManager.Add(formWebBrowser.PanelBorders,this);
 			formWebBrowser.Show();//Non-modal, so that we get the effect of opening in an independent window.
+		}
+
+		///<summary>Fires before the browser (or a frame inside it) navigates. Closes the window instead when the target is UrlCloseOn.</summary>
+		private void browser_Navigating(object sender,WebBrowserNavigatingEventArgs e) {
+			if(string.IsNullOrEmpty(UrlCloseOn) || e.Url==null) {
+				return;
+			}
+			if(!e.Url.AbsoluteUri.StartsWith(UrlCloseOn,StringComparison.OrdinalIgnoreCase)) {
+				return;
+			}
+			e.Cancel=true;
+			if(_isClosingOnUrl) {
+				return;
+			}
+			_isClosingOnUrl=true;
+			Cursor=Cursors.Default;
+			//Close after this event returns, since the browser control is still in the middle of the navigation.
+			BeginInvoke((Action)(() => {
+				DialogResult=DialogResult.OK;
+				Close();
+			}));
 		}
 
 		///<summary>Called after a document has finished loading, including initial page load and when Back and Forward buttons are pressed.</summary>

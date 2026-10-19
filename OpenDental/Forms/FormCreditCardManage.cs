@@ -295,6 +295,7 @@ namespace OpenDental {
 						XWebResponse xWebResponse=EdgeExpress.CNP.GetUrlForCreditCardAlias(_patient.PatNum,CreditCardSource.EdgeExpressCNP,isWebPayment:false,doUseCurrentClinicNum:true);
 						Cursor=Cursors.Default;
 						FormWebBrowser formWebBrowser=new FormWebBrowser(xWebResponse.HpfUrl);
+						formWebBrowser.UrlCloseOn=EdgeExpress.CNP.ReturnUrlDefault;
 						formWebBrowser.ShowDialog();
 						//Process without creating a new payment.
 						XWebResponse xWebResponseProcessed=EdgeExpress.CNP.ProcessTransaction(xWebResponse,null,doCreatePayment:false);

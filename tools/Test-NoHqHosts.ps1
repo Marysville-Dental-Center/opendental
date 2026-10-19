@@ -78,7 +78,6 @@ $AllowList=@(
 
 	#--- Vendor integrations whose Open Dental hosted part is replaced in the direct vendor integrations wave.
 	@{ Path='OpenDentBusiness\Properties\Resources.resx'; Reason='GoogleAuthCodeResponseHtml, the page shown in the browser after Google sign-in. It loads Open Dental styling; replaced with the direct Google integration.' }
-	@{ Path='OpenDentBusiness\WebBridges\EdgeExpress.cs'; Match='(?i)patientviewer\.com/PortalPayDone'; Reason='EdgeExpress hosted payment page return URL (an Open Dental hosted page); replaced by the direct vendor integration.' }
 )
 
 #Comment stripping in C#, so that "//" inside a string literal (like a URL) is not mistaken for a comment.
