@@ -99,21 +99,23 @@ namespace OpenDentBusiness.Bridges {
 			}
 		}
 
-		///<summary>The merchant number to use. By provider: the provider's row for the clinic, else the provider's default row. Otherwise: the clinic's
-		///row, else the practice row. Throws ODException when it is missing, closed or not 16 digits; the message names the provider or clinic.</summary>
+		///<summary>The merchant number to use. By provider: the provider's row for the clinic, else (missing or blank) the provider's default row.
+		///Otherwise: the clinic's row, else (missing or blank) the practice row; with clinics off, the practice row. Throws ODException when it is
+		///missing, closed or not 16 digits; the message names the provider or clinic.</summary>
 		public static string GetMerchantNumber(long clinicNum,long provNum,bool isProvOverride) {
 			Meth.NoCheckMiddleTierRole();
 			string merchantNum;
 			string owner;
 			if(isProvOverride) {
-				ProviderClinic providerClinic=ProviderClinics.GetOneOrDefault(provNum,clinicNum);
-				merchantNum=(providerClinic?.CareCreditMerchantId??"").Trim();
+				merchantNum=GetMerchantNumberByProv(provNum,clinicNum);
 				owner=Lans.g("CareCredit","Provider")+" '"+Providers.GetAbbr(provNum)+"'";
 			}
 			else {
+				if(!PrefC.HasClinicsEnabled) {
+					clinicNum=0;//A clinic row left from when clinics were on is not used.
+				}
 				merchantNum=GetMerchantNumberByClinic(clinicNum);
-				owner=(clinicNum==0 || !PrefC.HasClinicsEnabled) ? Lans.g("CareCredit","The practice")
-					: Lans.g("CareCredit","Clinic")+" '"+Clinics.GetAbbr(clinicNum)+"'";
+				owner=(clinicNum==0) ? Lans.g("CareCredit","The practice") : Lans.g("CareCredit","Clinic")+" '"+Clinics.GetAbbr(clinicNum)+"'";
 			}
 			if(merchantNum=="") {
 				throw new ODException(owner+" "+Lans.g("CareCredit","does not have a CareCredit merchant number."));
@@ -123,6 +125,20 @@ namespace OpenDentBusiness.Bridges {
 			}
 			if(!IsMerchantNumValid(merchantNum,allowClosedMerchant:false)) {
 				throw new ODException(owner+" "+Lans.g("CareCredit","has a CareCredit merchant number that is not a valid 16-digit number."));
+			}
+			return merchantNum;
+		}
+
+		///<summary>The provider's merchant number for the clinic (providerclinic row), else the provider's default (ClinicNum 0). A row for the clinic
+		///that exists for another reason (DEA number, state licence) but has no merchant number doesn't hide the default. "" if neither is set.</summary>
+		public static string GetMerchantNumberByProv(long provNum,long clinicNum) {
+			Meth.NoCheckMiddleTierRole();
+			List<ProviderClinic> listProviderClinics=ProviderClinics.GetListForProvider(provNum);
+			ProviderClinic providerClinic=ProviderClinics.GetFromList(provNum,clinicNum,listProviderClinics);
+			string merchantNum=(providerClinic?.CareCreditMerchantId??"").Trim();
+			if(merchantNum=="" && clinicNum!=0) {
+				providerClinic=ProviderClinics.GetFromList(provNum,0,listProviderClinics);
+				merchantNum=(providerClinic?.CareCreditMerchantId??"").Trim();
 			}
 			return merchantNum;
 		}

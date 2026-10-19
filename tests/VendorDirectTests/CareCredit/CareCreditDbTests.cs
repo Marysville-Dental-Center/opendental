@@ -3,6 +3,7 @@
 // (inconclusive) when no server answers at 127.0.0.1:3306 as root with a blank password, or when VENDORDIRECT_TEST_DB=skip.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -59,7 +60,11 @@ namespace VendorDirectTests.CareCreditTests {
 			}
 			using(MySqlConnection connection=new MySqlConnection("Server=127.0.0.1;Port=3306;User ID=root;Password=;Database="+DB_NAME+";Connection Timeout=3")) {
 				connection.Open();
-				Exec(connection,"DROP TABLE IF EXISTS program,programproperty,preference,carecreditwebresponse");
+				Exec(connection,"DROP TABLE IF EXISTS program,programproperty,preference,carecreditwebresponse,providerclinic");
+				//Open Dental 24.3's providerclinic table.
+				Exec(connection,"CREATE TABLE providerclinic (ProviderClinicNum bigint NOT NULL auto_increment PRIMARY KEY,ProvNum bigint NOT NULL,"
+					+"ClinicNum bigint NOT NULL,DEANum varchar(15) NOT NULL,StateLicense varchar(50) NOT NULL,StateRxID varchar(255) NOT NULL,"
+					+"StateWhereLicensed varchar(15) NOT NULL,CareCreditMerchantId varchar(20) NOT NULL,INDEX(ProvNum),INDEX(ClinicNum)) DEFAULT CHARSET=utf8mb3");
 				//Open Dental 24.3's carecreditwebresponse table (ConvertDatabases6 and 7).
 				Exec(connection,"CREATE TABLE carecreditwebresponse (CareCreditWebResponseNum bigint NOT NULL auto_increment PRIMARY KEY,"
 					+"PatNum bigint NOT NULL,PayNum bigint NOT NULL,RefNumber varchar(255) NOT NULL,Amount double NOT NULL,WebToken varchar(255) NOT NULL,"
@@ -81,7 +86,7 @@ namespace VendorDirectTests.CareCreditTests {
 				Exec(connection,"CREATE TABLE preference (PrefName varchar(255) NOT NULL DEFAULT '',ValueString text NOT NULL,"
 					+"PrefNum bigint(20) NOT NULL AUTO_INCREMENT,Comments text DEFAULT NULL,PRIMARY KEY (PrefNum),KEY PrefName (PrefName)) "
 					+"ENGINE=MyISAM DEFAULT CHARSET=utf8mb3");
-				Exec(connection,"INSERT INTO preference (PrefName,ValueString) VALUES ('RandomPrimaryKeys','0'),"
+				Exec(connection,"INSERT INTO preference (PrefName,ValueString) VALUES ('RandomPrimaryKeys','0'),('EasyNoClinics','0'),"
 					+"('CareCreditBatchProcessDateTime','0001-01-01 00:00:00'),('CareCreditBatchPullbackDateTime','2000-01-01 06:45:00')");
 				//The rows a migrated Open Dental database has: the program, disabled, with Open Dental's partner code and an old token.
 				Exec(connection,"INSERT INTO program (ProgName,ProgDesc,Enabled,Path,CommandLine,Note,PluginDllName,ButtonImage,FileTemplate,FilePath,"
@@ -94,6 +99,21 @@ namespace VendorDirectTests.CareCreditTests {
 			Prefs.RefreshCache();
 			Programs.RefreshCache();
 			ProgramProperties.RefreshCache();
+			//No clinic or provider tables here: those caches are filled from lists (FillClinicsAndProviders), empty unless a test needs them.
+			FillCaches(new List<Clinic>(),new List<Provider>());
+		}
+
+		[TestCleanup]
+		public void TestCleanup() {
+			if(_skipReason!=null) {
+				return;
+			}
+			FillCaches(new List<Clinic>(),new List<Provider>());//Leave no clinics behind for other test classes in this process.
+		}
+
+		private static void FillCaches(List<Clinic> listClinics,List<Provider> listProviders) {
+			Clinics.FillCacheFromTable(OpenDentBusiness.Crud.ClinicCrud.ListToTable(listClinics));
+			Providers.FillCacheFromTable(OpenDentBusiness.Crud.ProviderCrud.ListToTable(listProviders));
 		}
 
 		private static void Exec(MySqlConnection connection,string command) {
@@ -249,5 +269,143 @@ namespace VendorDirectTests.CareCreditTests {
 			CareCreditSettings.SetLastAuthError("");
 			Assert.AreEqual("",ProgramProperties.GetOneFromDb(programNum,CareCreditSettings.LastAuthError,0).PropertyValue);
 		}
+
+		#region Merchant numbers
+		private const string MERCHANT_CLINIC5="5348120000000005";
+		private const string MERCHANT_PROV3="5348120000000033";
+		private const string MERCHANT_PROV3_CLINIC5="5348120000000035";
+
+		///<summary>Clinics 5 (North) and 6 (South), providers 3 (DrA) and 4 (DrB), in the caches.</summary>
+		private static void FillClinicsAndProviders() {
+			List<Clinic> listClinics=new List<Clinic>();
+			foreach(Tuple<long,string> tuple in new[] { Tuple.Create(5L,"North"),Tuple.Create(6L,"South") }) {
+				Clinic clinic=new Clinic();
+				clinic.ClinicNum=tuple.Item1;
+				clinic.Abbr=tuple.Item2;
+				clinic.Description=tuple.Item2;
+				listClinics.Add(clinic);
+			}
+			List<Provider> listProviders=new List<Provider>();
+			foreach(Tuple<long,string> tuple in new[] { Tuple.Create(3L,"DrA"),Tuple.Create(4L,"DrB") }) {
+				Provider provider=new Provider();
+				provider.ProvNum=tuple.Item1;
+				provider.Abbr=tuple.Item2;
+				listProviders.Add(provider);
+			}
+			FillCaches(listClinics,listProviders);
+		}
+
+		private static void SetClinicMerchantNumber(long clinicNum,string merchantNum) {
+			long programNum=CareCreditSettings.GetProgramNum();
+			string desc=ProgramProperties.PropertyDescs.CareCredit.CareCreditMerchantNumber;
+			VendorCredentials.WriteSetting(programNum,desc,clinicNum,merchantNum);
+			ProgramProperties.RefreshCache();
+		}
+
+		private static void InsertProviderClinic(long provNum,long clinicNum,string merchantNum,string deaNum="") {
+			ProviderClinic providerClinic=new ProviderClinic();
+			providerClinic.ProvNum=provNum;
+			providerClinic.ClinicNum=clinicNum;
+			providerClinic.DEANum=deaNum;
+			providerClinic.StateLicense="";
+			providerClinic.StateRxID="";
+			providerClinic.StateWhereLicensed="";
+			providerClinic.CareCreditMerchantId=merchantNum;
+			OpenDentBusiness.Crud.ProviderClinicCrud.Insert(providerClinic);
+		}
+
+		private static string GetODExceptionMessage(Action action) {
+			try {
+				action();
+			}
+			catch(CodeBase.ODException ex) {
+				return ex.Message;
+			}
+			Assert.Fail("Expected an ODException.");
+			return "";
+		}
+
+		[TestMethod]
+		public void GetMerchantNumber_ClinicRowElsePracticeRow() {
+			FillClinicsAndProviders();
+			Assert.IsTrue(PrefC.HasClinicsEnabled);
+			SetClinicMerchantNumber(5,MERCHANT_CLINIC5);
+			Assert.AreEqual(MERCHANT_CLINIC5,CareCredit.GetMerchantNumber(5,3,isProvOverride:false),"The clinic's own row.");
+			Assert.AreEqual(CareCreditTestData.MERCHANT,CareCredit.GetMerchantNumber(6,3,isProvOverride:false),"No row for the clinic: the practice's.");
+			Assert.AreEqual(CareCreditTestData.MERCHANT,CareCredit.GetMerchantNumber(0,3,isProvOverride:false),"Clinic 0 is the practice.");
+			SetClinicMerchantNumber(6,"");
+			Assert.AreEqual(CareCreditTestData.MERCHANT,CareCredit.GetMerchantNumber(6,3,isProvOverride:false),"A blank clinic row: the practice's.");
+		}
+
+		[TestMethod]
+		public void GetMerchantNumber_ClinicsOffUsesThePracticeRow() {
+			FillClinicsAndProviders();
+			SetClinicMerchantNumber(5,MERCHANT_CLINIC5);//Left from when clinics were on.
+			using(MySqlConnection connection=new MySqlConnection("Server=127.0.0.1;Port=3306;User ID=root;Password=;Database="+DB_NAME+";Connection Timeout=3")) {
+				connection.Open();
+				Exec(connection,"UPDATE preference SET ValueString='1' WHERE PrefName='EasyNoClinics'");
+			}
+			Prefs.RefreshCache();
+			Assert.IsFalse(PrefC.HasClinicsEnabled);
+			Assert.AreEqual(CareCreditTestData.MERCHANT,CareCredit.GetMerchantNumber(5,3,isProvOverride:false));
+			Assert.AreEqual(CareCreditTestData.MERCHANT,CareCredit.GetMerchantNumber(0,3,isProvOverride:false));
+			SetClinicMerchantNumber(0,"");
+			StringAssert.Contains(GetODExceptionMessage(() => CareCredit.GetMerchantNumber(5,3,isProvOverride:false)),
+				"The practice does not have a CareCredit merchant number");
+		}
+
+		[TestMethod]
+		public void GetMerchantNumber_ProviderClinicRowElseProviderDefault() {
+			FillClinicsAndProviders();
+			InsertProviderClinic(3,0,MERCHANT_PROV3);
+			InsertProviderClinic(3,5,MERCHANT_PROV3_CLINIC5);
+			Assert.AreEqual(MERCHANT_PROV3_CLINIC5,CareCredit.GetMerchantNumber(5,3,isProvOverride:true),"The provider's row for the clinic.");
+			Assert.AreEqual(MERCHANT_PROV3,CareCredit.GetMerchantNumber(6,3,isProvOverride:true),"No row for the clinic: the provider's default.");
+			Assert.AreEqual(MERCHANT_PROV3,CareCredit.GetMerchantNumber(0,3,isProvOverride:true));
+			//A row for clinic 6 kept for the DEA number, with no merchant number, doesn't hide the provider's default.
+			InsertProviderClinic(3,6,"",deaNum:"AB1234563");
+			Assert.AreEqual(MERCHANT_PROV3,CareCredit.GetMerchantNumber(6,3,isProvOverride:true));
+			Assert.AreEqual(MERCHANT_PROV3,CareCredit.GetMerchantNumberByProv(3,6));
+			//A provider with no merchant number anywhere.
+			string message=GetODExceptionMessage(() => CareCredit.GetMerchantNumber(5,4,isProvOverride:true));
+			StringAssert.Contains(message,"'DrB'");
+			StringAssert.Contains(message,"does not have a CareCredit merchant number");
+		}
+
+		[TestMethod]
+		public void GetMerchantNumber_EmptyClosedOrInvalidThrows() {
+			FillClinicsAndProviders();
+			SetClinicMerchantNumber(0,"");
+			string message=GetODExceptionMessage(() => CareCredit.GetMerchantNumber(6,3,isProvOverride:false));
+			StringAssert.Contains(message,"'South' does not have a CareCredit merchant number");
+			SetClinicMerchantNumber(5,"x"+MERCHANT_CLINIC5);
+			message=GetODExceptionMessage(() => CareCredit.GetMerchantNumber(5,3,isProvOverride:false));
+			StringAssert.Contains(message,"'North' has a closed CareCredit merchant number");
+			SetClinicMerchantNumber(5,"53481200");
+			message=GetODExceptionMessage(() => CareCredit.GetMerchantNumber(5,3,isProvOverride:false));
+			StringAssert.Contains(message,"not a valid 16-digit number");
+			InsertProviderClinic(4,0,"x"+MERCHANT_PROV3);
+			message=GetODExceptionMessage(() => CareCredit.GetMerchantNumber(5,4,isProvOverride:true));
+			StringAssert.Contains(message,"'DrB' has a closed CareCredit merchant number");
+			InsertProviderClinic(4,5,"12345678901234567");
+			message=GetODExceptionMessage(() => CareCredit.GetMerchantNumber(5,4,isProvOverride:true));
+			StringAssert.Contains(message,"not a valid 16-digit number");
+		}
+
+		[TestMethod]
+		public void GetMerchantNumsAll_IsDistinctAcrossClinicsAndProviders() {
+			SetClinicMerchantNumber(5,MERCHANT_CLINIC5);
+			SetClinicMerchantNumber(6,MERCHANT_CLINIC5);//The same account at two clinics.
+			SetClinicMerchantNumber(7,"");
+			InsertProviderClinic(3,0,MERCHANT_PROV3);
+			InsertProviderClinic(3,5,MERCHANT_CLINIC5+" ");//The clinic's account again, typed with a trailing space.
+			InsertProviderClinic(4,0,"x"+MERCHANT_PROV3);//Closed: kept, so its open form can be recognized as closed.
+			InsertProviderClinic(4,5,"",deaNum:"AB1234563");
+			List<string> listMerchantNums=CareCredit.GetMerchantNumsAll();
+			CollectionAssert.AreEquivalent(new List<string> { CareCreditTestData.MERCHANT,MERCHANT_CLINIC5,MERCHANT_PROV3,"x"+MERCHANT_PROV3 },listMerchantNums);
+			Assert.IsTrue(CareCredit.IsMerchantNumClosed(MERCHANT_PROV3,listMerchantNums));
+			Assert.IsFalse(CareCredit.IsMerchantNumClosed(MERCHANT_CLINIC5,listMerchantNums));
+		}
+		#endregion Merchant numbers
 	}
 }
