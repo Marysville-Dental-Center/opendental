@@ -6,6 +6,7 @@ using System;
 using System.IO;
 using System.Linq;
 using CodeBase;
+using CodeBase.VendorDirect;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
@@ -225,7 +226,7 @@ namespace VendorDirectTests.Gmail {
 			foreach(string file in new[] { "Google.cs","GoogleApiConnector.cs","GoogleTokenCache.cs","GoogleOAuthSettings.cs" }) {
 				string text=Read(Path.Combine("OpenDentBusiness","WebBridges","Google",file));
 				foreach(string forbidden in new[] { "WebServiceMainHQ","BuildOAuthUrl","GetGoogleAccessToken","PayloadHelper","ODCloudClient",
-					"opendental.com","RegistrationKey","GoogleAuthCodeResponseHtml","www.googleapis.com/oauth2/v4" })
+					"RegistrationKey","GoogleAuthCodeResponseHtml","www.googleapis.com/oauth2/v4" }.Concat(HqHosts.BlockedDomains))
 				{
 					Assert.IsFalse(text.Contains(forbidden),file+" still mentions "+forbidden);
 				}
@@ -236,7 +237,7 @@ namespace VendorDirectTests.Gmail {
 		public void ResponsePageResource_IsGone() {
 			string resx=Read(Path.Combine("OpenDentBusiness","Properties","Resources.resx"));
 			Assert.IsFalse(resx.Contains("GoogleAuthCodeResponseHtml"));
-			Assert.IsFalse(resx.Contains("opendental.com/"),"The resources no longer load anything from opendental.com.");
+			Assert.IsFalse(HqHosts.BlockedDomains.Any(x => resx.Contains(x+"/")),"The resources no longer load anything from Open Dental.");
 			Assert.IsNull(typeof(OpenDentBusiness.Properties.Resources).GetProperty("GoogleAuthCodeResponseHtml"));
 		}
 

@@ -87,7 +87,7 @@ namespace VendorDirectTests.Gmail {
 				}
 				string page=listPages.Single();
 				StringAssert.Contains(page,OAuthResponsePage.MessageSuccess);
-				Assert.IsFalse(page.ToLowerInvariant().Contains("opendental"),"The neutral local page loads nothing from opendental.com.");
+				Assert.IsFalse(HqHosts.BlockedDomains.Any(x => page.ToLowerInvariant().Contains(x)),"The neutral local page loads nothing from Open Dental.");
 				Assert.IsFalse(page.Contains("src=") || page.Contains("href="),"No external assets.");
 			});
 		}

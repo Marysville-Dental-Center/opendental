@@ -229,7 +229,7 @@ namespace VendorDirectTests.Gmail {
 			AssertEx.Run(async () => {
 				FakeHttpHandler fake=new FakeHttpHandler();
 				HttpClient httpClient=GmailTestData.Client(fake);
-				await AssertEx.ThrowsAsync<VendorHttpException>(() => httpClient.GetAsync("https://www.opendental.com/style.css"));
+				await AssertEx.ThrowsAsync<VendorHttpException>(() => httpClient.GetAsync("https://www."+HqHosts.BlockedDomains[0]+"/style.css"));
 				await AssertEx.ThrowsAsync<VendorHttpException>(() => httpClient.GetAsync("https://example.com/"));
 				Assert.AreEqual(0,fake.Requests.Count);
 			});
