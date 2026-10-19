@@ -200,7 +200,7 @@ namespace VendorDirectTests.Gmail {
 				RefreshToken=SecretsTestHelper.Protect("rt") };
 			Assert.AreEqual(GoogleAuthReason.NotConfigured,AssertEx.Throws<GoogleAuthException>(() => GoogleTokenCache.GetAccessToken(emailAddress)).Reason);
 			Assert.AreEqual(GoogleAuthReason.NotConfigured,
-				AssertEx.Throws<GoogleAuthException>(() => Google.MakeRefreshAccessTokenRequest(emailAddress.RefreshToken)).Reason);
+				AssertEx.Throws<GoogleAuthException>(() => EmailMessages.RefreshGmailToken(emailAddress)).Reason);
 			Program program=Programs.GetCur(ProgramName.GmailApi);
 			Program programOld=program.Copy();
 			program.Enabled=true;
