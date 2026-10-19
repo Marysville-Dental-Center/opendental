@@ -1,14 +1,13 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 using CodeBase;
 using OpenDental.UI;
 using OpenDentBusiness;
+using OpenDentBusiness.VendorDirect;
 using static OpenDentBusiness.PayConnect2;
-using Newtonsoft.Json.Linq;
 
 namespace OpenDental{
 	/// <summary>
@@ -85,6 +84,9 @@ namespace OpenDental{
 				_indexClinicRevert=comboClinic.SelectedIndex;
 			}
 			_listProgramProperties=ProgramProperties.GetForProgram(_program.ProgramNum);
+			//Version 2.0 rows that may not exist yet (API Key, Use Sandbox, a clinic's API Secret) are added in memory and inserted on Save.
+			//Opening this window writes nothing. This also marks every key and Secret row masked and high security.
+			PayConnect2.AddMissingProperties(_listProgramProperties,_program.ProgramNum,_listUserClinicNums);
 			for(int i=0;i<_listProgramProperties.Count;i++) {
 				if(_listProgramProperties[i].IsHighSecurity){
 					_listProgramProperties[i].TagOD=_listProgramProperties[i].PropertyValue;
@@ -93,6 +95,13 @@ namespace OpenDental{
 			if(!ProgramProperties.CanEditProperties(_listProgramProperties)) {
 				textPassword.ReadOnly=true;
 				textAPISecret.ReadOnly=true;
+				textAPIKey.ReadOnly=true;
+				checkUseSandbox.Enabled=false;
+			}
+			if(PrefC.HasClinicsEnabled && Security.CurUser.ClinicIsRestricted) {
+				//The API key and the sandbox switch affect every clinic.
+				textAPIKey.ReadOnly=true;
+				checkUseSandbox.Enabled=false;
 			}
 			
 			FillFields();
@@ -109,7 +118,12 @@ namespace OpenDental{
 			string processingMethod=ProgramProperties.GetPropValFromList(_listProgramProperties,PayConnect.ProgramProperties.DefaultProcessingMethod,clinicNum);
 			checkTerminal.Checked=PIn.Bool(ProgramProperties.GetPropValFromList(_listProgramProperties,"TerminalProcessingEnabled",clinicNum));
 			int programVersion=PIn.Int(ProgramProperties.GetPropValFromList(_listProgramProperties,"Program Version",clinicNum));
-			textAPISecret.Text=ProgramProperties.GetPropValFromList(_listProgramProperties,"API Secret",clinicNum);
+			//Secrets are stored as osd1$; a Secret Open Dental left in plain text is shown as-is and encrypted on Save. An unreadable value shows blank.
+			textAPISecret.Text=SecretValue.ReadOrBlank(ProgramProperties.GetPropValFromList(_listProgramProperties,PayConnect.ProgramProperties.ApiSecret,clinicNum),
+				LegacyPolicy.AcceptPlaintext);
+			textAPIKey.Text=SecretValue.ReadOrBlank(ProgramProperties.GetPropValFromList(_listProgramProperties,PayConnect.ProgramProperties.ApiKey,0),
+				LegacyPolicy.AcceptPlaintext);
+			checkUseSandbox.Checked=PIn.Bool(ProgramProperties.GetPropValFromList(_listProgramProperties,PayConnect.ProgramProperties.UseSandbox,0));
 			if(programVersion==1) {
 				radioVersion1.Checked=true;
 			}
@@ -137,7 +151,7 @@ namespace OpenDental{
 			if(processingMethod=="0" || processingMethod=="1") {
 				comboDefaultProcessing.SelectedIndex=PIn.Int(ProgramProperties.GetPropValFromList(_listProgramProperties,"DefaultProcessingMethod",clinicNum));
 			}
-			int accountType=PIn.Int(ProgramProperties.GetPropValFromList(_listProgramProperties,"PayConnect2.0 Integration Type: 0 for normal, 1 for surcharge",clinicNum));
+			int accountType=PIn.Int(ProgramProperties.GetPropValFromList(_listProgramProperties,PayConnect.ProgramProperties.IntegrationType,clinicNum));
 			if(accountType==1) {
 				checkSurcharge.Checked=true;
 			}
@@ -162,6 +176,7 @@ namespace OpenDental{
 				label2.Text=Lan.g(this,"Username");
 				checkForceRecurring.Visible=true;
 				butMerchantInfo.Visible=false;
+				groupPracticeWide.Visible=false;
 			}
 			//version 2
 			else {
@@ -179,6 +194,7 @@ namespace OpenDental{
 				labelPassword.Visible=false;
 				checkForceRecurring.Visible=false;
 				butMerchantInfo.Visible=true;
+				groupPracticeWide.Visible=true;
 				FillGridTerminals();
 			}
 		}
@@ -221,7 +237,10 @@ namespace OpenDental{
 				return;
 			}
 			SynchWithHQ();//if the user just modified the HQ credentials, change any credentials that were the same as HQ to keep them synched
-			UpdateListProgramPropertiesForClinic(_listUserClinicNums[_indexClinicRevert]);
+			if(!UpdateListProgramPropertiesForClinic(_listUserClinicNums[_indexClinicRevert])) {
+				comboClinic.SelectedIndex=_indexClinicRevert;
+				return;
+			}
 			_indexClinicRevert=comboClinic.SelectedIndex;//now that we've updated the values for the clinic we're switching from, update _indexClinicRevert
 			FillFields();
 		}
@@ -265,7 +284,19 @@ namespace OpenDental{
 			}
 		}
 
-		private void UpdateListProgramPropertiesForClinic(long clinicNum) {
+		///<summary>Copies the window's values into the in-memory rows for clinicNum, and the version 2.0 API key and sandbox switch into the ClinicNum 0
+		///rows. Returns false, having changed nothing, if a secret could not be encrypted: secrets are never stored as plain text.</summary>
+		private bool UpdateListProgramPropertiesForClinic(long clinicNum) {
+			string secretStored=null;
+			if(!textAPISecret.ReadOnly && !SecretValue.Protect(textAPISecret.Text.Trim(),out secretStored)) {
+				MsgBox.Show(this,"The Secret could not be encrypted, so it was not saved.");
+				return false;
+			}
+			string apiKeyStored=null;
+			if(!textAPIKey.ReadOnly && !SecretValue.Protect(textAPIKey.Text.Trim(),out apiKeyStored)) {
+				MsgBox.Show(this,"The API key could not be encrypted, so it was not saved.");
+				return false;
+			}
 			string payTypeSelected="";
 			if(comboPaymentType.SelectedIndex>-1) {
 				payTypeSelected=_listDefsPaymentType[comboPaymentType.SelectedIndex].DefNum.ToString();
@@ -291,8 +322,18 @@ namespace OpenDental{
 				.ForEach(x => x.PropertyValue=POut.Bool(checkPatientPortalPayEnabled.Checked));
 			_listProgramProperties.FindAll(x => x.ClinicNum==clinicNum && x.PropertyDesc==PayConnect.ProgramProperties.PatientPortalPaymentsToken)
 				.ForEach(x => x.PropertyValue=textToken.Text);
-			_listProgramProperties.FindAll(x => x.ClinicNum==clinicNum && x.PropertyDesc=="API Secret")
-				.ForEach(x => x.PropertyValue=textAPISecret.Text);//always 1 item; null safe
+			if(secretStored!=null) {//Null when the user can't edit high-security properties: leave the stored value alone.
+				_listProgramProperties.FindAll(x => x.ClinicNum==clinicNum && x.PropertyDesc==PayConnect.ProgramProperties.ApiSecret)
+					.ForEach(x => x.PropertyValue=secretStored);//always 1 item; null safe
+			}
+			if(apiKeyStored!=null) {
+				_listProgramProperties.FindAll(x => x.ClinicNum==0 && x.PropertyDesc==PayConnect.ProgramProperties.ApiKey)
+					.ForEach(x => x.PropertyValue=apiKeyStored);//practice-wide, always 1 item
+			}
+			if(checkUseSandbox.Enabled) {
+				_listProgramProperties.FindAll(x => x.ClinicNum==0 && x.PropertyDesc==PayConnect.ProgramProperties.UseSandbox)
+					.ForEach(x => x.PropertyValue=POut.Bool(checkUseSandbox.Checked));//practice-wide, always 1 item
+			}
 			int progVersion=1;
 			if(radioVersion2.Checked) {
 				progVersion=2;
@@ -303,8 +344,9 @@ namespace OpenDental{
 			if(checkSurcharge.Checked) {
 				accountType=1;
 			}
-			_listProgramProperties.FindAll(x => x.ClinicNum==clinicNum && x.PropertyDesc=="PayConnect2.0 Integration Type: 0 for normal, 1 for surcharge")
+			_listProgramProperties.FindAll(x => x.ClinicNum==clinicNum && x.PropertyDesc==PayConnect.ProgramProperties.IntegrationType)
 				.ForEach(x => x.PropertyValue=POut.Int(accountType));//always 1 item; null safe
+			return true;
 		}
 
 		private void checkPatientPortalPayEnabled_Click(object sender,EventArgs e) {
@@ -359,11 +401,6 @@ namespace OpenDental{
 			}
 		}
 
-		private void linkLabel1_LinkClicked(object sender,LinkLabelLinkClickedEventArgs e) {
-			string url="https://www.payconnect.com/";
-			Process.Start(url);
-		}
-
 		private void gridODTerminals_CellDoubleClick(object sender,ODGridClickEventArgs e) {
 			PayTerminal payTerminal=(PayTerminal)gridODTerminals.ListGridRows[e.Row].Tag;
 			using FormPayTerminalEdit formPayTerminalEdit=new FormPayTerminalEdit(payTerminal);
@@ -377,42 +414,105 @@ namespace OpenDental{
 			FillGridTerminals();
 		}
 
+		///<summary>Test connection: GET /merchants with the values typed in this window, before they are saved.</summary>
 		private void butMerchantInfo_Click(object sender,EventArgs e) {
-			if(textAPISecret.Text.IsNullOrEmpty()) {
-				MsgBox.Show(this,"You must first enter the secret.");
+			string apiKey=textAPIKey.Text;
+			string secret=textAPISecret.Text;
+			bool useSandbox=checkUseSandbox.Checked;
+			PayConnect2Response payConnect2Response=null;
+			ProgressWin progressWin=new ProgressWin();
+			progressWin.ActionMain=() => { payConnect2Response=PayConnect2.TestConnection(apiKey,secret,useSandbox); };
+			progressWin.StartingMessage=Lan.g(this,"Testing the connection to PayConnect");
+			try {
+				progressWin.ShowDialog();
+			}
+			catch(Exception ex) {
+				FriendlyException.Show(Lan.g(this,"Test connection failed."),ex);
 				return;
 			}
+			if(progressWin.IsCancelled || payConnect2Response==null) {
+				return;
+			}
+			GetMerchantInfoResponse merchantInfo=payConnect2Response.GetMerchantInfoResponse;
+			if(payConnect2Response.ResponseType!=ResponseType.MerchantInfo || merchantInfo==null) {
+				string message=payConnect2Response.ErrorResponse?.Message;
+				if(string.IsNullOrEmpty(message)) {
+					message=Lan.g(this,"PayConnect returned an unexpected answer.");
+				}
+				MsgBox.Show(Lan.g(this,"Test connection failed.")+"\r\n"+message);
+				return;
+			}
+			string data=Lan.g(this,"Connected.")+(useSandbox ? " "+Lan.g(this,"(sandbox)") : "")+"\n\n"+
+									Lan.g(this,"Merchant ID")+$": {merchantInfo.MerchantId}\n"+
+									Lan.g(this,"Name")+$": {merchantInfo.Name}\n"+
+									Lan.g(this,"Status")+$": {merchantInfo.Status}\n"+
+									Lan.g(this,"Address 1")+$": {merchantInfo.Address1}\n"+
+									Lan.g(this,"Address 2")+$": {merchantInfo.Address2}\n"+
+									Lan.g(this,"City")+$": {merchantInfo.City}\n"+
+									Lan.g(this,"State")+$": {merchantInfo.State}\n"+
+									Lan.g(this,"Zip Code")+$": {merchantInfo.ZipCode}\n"+
+									Lan.g(this,"Phone Number")+$": {TelephoneNumbers.ReFormat(merchantInfo.PhoneNumber)}\n"+
+									Lan.g(this,"Email")+$": {merchantInfo.Email}\n"+
+									Lan.g(this,"DXC Group ID")+$": {merchantInfo.DxcGroupId}\n"+
+									Lan.g(this,"Reporting Emails")+$": {string.Join(", ",merchantInfo.ReportingEmails??new string[0])}\n"+
+									Lan.g(this,"Refund Without Reference Enabled")+$": {merchantInfo.RefundWithoutReferenceEnabled}\n";
+			MsgBox.Show(data);
+		}
+
+		///<summary>Adds the merchant's terminals (GET /terminals) to the selected clinic, skipping any whose ID is already there.</summary>
+		private void butImportTerminals_Click(object sender,EventArgs e) {
 			long clinicNum=0;
 			if(PrefC.HasClinicsEnabled) {
 				clinicNum=_listUserClinicNums[comboClinic.SelectedIndex];
 			}
-			PayConnect2Response payConnect2Response=null;
+			ApiCredentials apiCredentials;
 			try {
-				payConnect2Response=PayConnect2.GetMerchantInfo(clinicNum,textAPISecret.Text);
+				apiCredentials=PayConnect2.MakeCredentials(textAPIKey.Text,textAPISecret.Text,checkUseSandbox.Checked);
 			}
-			catch(Exception ex) {
-				ex.DoNothing();
-			}
-			if(payConnect2Response.ResponseType==PayConnect2.ResponseType.Error) {
-				JObject err=JObject.Parse(payConnect2Response.ErrorResponse.Error.ToString());
-				MsgBox.Show(err["message"].ToString());
+			catch(PayConnectNotConfiguredException ex) {
+				MsgBox.Show(ex.Message);
 				return;
 			}
-			string data=Lan.g(this,"Merchant ID")+$": {payConnect2Response.GetMerchantInfoResponse.MerchantId}\n"+
-									Lan.g(this,"Name")+$": {payConnect2Response.GetMerchantInfoResponse.Name}\n"+
-									Lan.g(this,"Status")+$": {payConnect2Response.GetMerchantInfoResponse.Status}\n"+
-									Lan.g(this,"Address 1")+$": {payConnect2Response.GetMerchantInfoResponse.Address1}\n"+
-									Lan.g(this,"Address 2")+$": {payConnect2Response.GetMerchantInfoResponse.Address2}\n"+
-									Lan.g(this,"City")+$": {payConnect2Response.GetMerchantInfoResponse.City}\n"+
-									Lan.g(this,"State")+$": {payConnect2Response.GetMerchantInfoResponse.State}\n"+
-									Lan.g(this,"Zip Code")+$": {payConnect2Response.GetMerchantInfoResponse.ZipCode}\n"+
-									Lan.g(this,"Phone Number")+$": {TelephoneNumbers.ReFormat(payConnect2Response.GetMerchantInfoResponse.PhoneNumber)}\n"+
-									Lan.g(this,"Email")+$": {payConnect2Response.GetMerchantInfoResponse.Email}\n"+
-									Lan.g(this,"DXC Group ID")+$": {payConnect2Response.GetMerchantInfoResponse.DxcGroupId}\n"+
-									Lan.g(this,"Reporting Emails")+$": {string.Join(", ",payConnect2Response.GetMerchantInfoResponse.ReportingEmails??new string[0])}\n"+
-									Lan.g(this,"Refund Without Reference Enabled")+$": {payConnect2Response.GetMerchantInfoResponse.RefundWithoutReferenceEnabled}\n"+
-									Lan.g(this,"Text 2 Pay Enabled")+$": {payConnect2Response.GetMerchantInfoResponse.Text2PayEnabled}\n";
-			MsgBox.Show(data);
+			PayConnect2Response payConnect2Response=null;
+			ProgressWin progressWin=new ProgressWin();
+			progressWin.ActionMain=() => { payConnect2Response=PayConnect2.GetTerminals(apiCredentials); };
+			progressWin.StartingMessage=Lan.g(this,"Getting terminals from PayConnect");
+			try {
+				progressWin.ShowDialog();
+			}
+			catch(Exception ex) {
+				FriendlyException.Show(Lan.g(this,"Could not get the terminals."),ex);
+				return;
+			}
+			if(progressWin.IsCancelled || payConnect2Response==null) {
+				return;
+			}
+			if(payConnect2Response.ResponseType!=ResponseType.Terminals || payConnect2Response.ListTerminals==null) {
+				MsgBox.Show(Lan.g(this,"Could not get the terminals.")+"\r\n"+(payConnect2Response.ErrorResponse?.Message??""));
+				return;
+			}
+			List<PayTerminal> listPayTerminals=PayTerminals.Refresh(clinicNum);
+			int countAdded=0;
+			for(int i=0;i<payConnect2Response.ListTerminals.Count;i++) {
+				PayConnectTerminalInfo payConnectTerminalInfo=payConnect2Response.ListTerminals[i];
+				//The serial is what a terminal sale sends as "terminal"; fall back to the vendor's terminal ID.
+				string terminalId=payConnectTerminalInfo.Serial;
+				if(string.IsNullOrWhiteSpace(terminalId)) {
+					terminalId=payConnectTerminalInfo.TerminalId;
+				}
+				if(string.IsNullOrWhiteSpace(terminalId) || listPayTerminals.Any(x => x.TerminalID==terminalId)) {
+					continue;
+				}
+				PayTerminal payTerminal=new PayTerminal();
+				payTerminal.Name=payConnectTerminalInfo.Name;
+				payTerminal.ClinicNum=clinicNum;
+				payTerminal.TerminalID=terminalId;
+				PayTerminals.Insert(payTerminal);
+				listPayTerminals.Add(payTerminal);
+				countAdded++;
+			}
+			FillGridTerminals();
+			MsgBox.Show(Lan.g(this,"Terminals added")+": "+countAdded);
 		}
 
 		private void butSave_Click(object sender, System.EventArgs e) {
@@ -431,7 +531,8 @@ namespace OpenDental{
 			if(checkEnabled.Checked //if PayConnect is enabled
 				&& comboPaymentType.SelectedIndex<0 //and the payment type is not set
 				&& (!PrefC.HasClinicsEnabled  //and either clinics are not enabled (meaning this is the only set of username, password, payment type values)
-				|| (textUsername.Text!="" && textPassword.Text!=""))) //or clinics are enabled and this clinic's link has a username and password set
+				|| (textUsername.Text!="" && textPassword.Text!="") //or clinics are enabled and this clinic's link has a username and password set
+				|| (radioVersion2.Checked && textAPISecret.Text.Trim()!=""))) //or a version 2.0 Secret
 			{
 				MsgBox.Show(this,"Please select a payment type first.");
 				return;
@@ -446,7 +547,11 @@ namespace OpenDental{
 			}
 			else if(radioVersion2.Checked) {
 				if(checkEnabled.Checked) {
-					if(textAPISecret.Text.IsNullOrEmpty()) {
+					if(textAPIKey.Text.Trim()=="") {
+						MsgBox.Show(this,"Please enter the API key first.");
+						return;
+					}
+					if(textAPISecret.Text.Trim()=="") {
 						MsgBox.Show(this,"Please enter a Secret first.");
 						return;
 					}
@@ -458,7 +563,9 @@ namespace OpenDental{
 			if(PrefC.HasClinicsEnabled) {
 				clinicNum=_listUserClinicNums[comboClinic.SelectedIndex];
 			}
-			UpdateListProgramPropertiesForClinic(clinicNum);
+			if(!UpdateListProgramPropertiesForClinic(clinicNum)) {
+				return;
+			}
 			string payTypeCur;
 			//make sure any other clinics with PayConnect enabled also have a payment type selected
 			for(int i=0;i<_listUserClinicNums.Count;i++) {
@@ -470,12 +577,16 @@ namespace OpenDental{
 				//PayConnect is enabled for this clinic so make sure the payment type is also set
 				//Decrypt password because empty string password is not empty string when encrypted.
 				string password=Secrets.TryDecrypt(ProgramProperties.GetPropValFromList(_listProgramProperties,"Password",_listUserClinicNums[i]));
+				string secret=SecretValue.ReadOrBlank(ProgramProperties.GetPropValFromList(_listProgramProperties,PayConnect.ProgramProperties.ApiSecret,
+					_listUserClinicNums[i]),LegacyPolicy.AcceptPlaintext);
+				bool isVersion2=ProgramProperties.GetPropValFromList(_listProgramProperties,PayConnect.ProgramProperties.ProgramVersion,_listUserClinicNums[i])=="2";
 				if(((ProgramProperties.GetPropValFromList(_listProgramProperties,"Username",_listUserClinicNums[i])!="" //if username set
 					&& password!="") //and password set
+					|| (isVersion2 && secret!="") //or a version 2.0 Secret set
 					|| ProgramProperties.GetPropValFromList(_listProgramProperties,"TerminalProcessingEnabled",_listUserClinicNums[i])=="1")//or terminal enabled
 					&& !_listDefsPaymentType.Any(x => x.DefNum.ToString()==payTypeCur)) //and paytype is not a valid DefNum
 				{
-					MsgBox.Show(this,"Please select the payment type for all clinics with PayConnect username and password set.");
+					MsgBox.Show(this,"Please select the payment type for all clinics with PayConnect credentials set.");
 					return;
 				}
 			}

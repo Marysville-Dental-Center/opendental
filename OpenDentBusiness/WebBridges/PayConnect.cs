@@ -527,6 +527,15 @@ namespace OpenDentBusiness {
 			public const string PatientPortalPaymentsEnabled="IsOnlinePaymentsEnabled";
 			public const string PatientPortalPaymentsToken="Patient Portal Payments Token";
 			public const string ProgramVersion="Program Version";
+			///<summary>PayConnect 2 integrator API key. Practice-wide (ClinicNum 0 only), osd1$, masked and high security.
+			///ProgramProperties.GetPracticeWideDescs repeats this name so InsertForClinic never copies it.</summary>
+			public const string ApiKey="API Key";
+			///<summary>PayConnect 2 merchant Secret, per clinic. osd1$ once saved; a plain-text value from Open Dental still works until then.</summary>
+			public const string ApiSecret="API Secret";
+			///<summary>PayConnect 2: "1" sends every call to the vendor's sandbox. Practice-wide (ClinicNum 0 only).</summary>
+			public const string UseSandbox="PayConnect2 Use Sandbox";
+			///<summary>PayConnect 2 account type per clinic: "0" normal, "1" surcharge.</summary>
+			public const string IntegrationType="PayConnect2.0 Integration Type: 0 for normal, 1 for surcharge";
 		}
 	}
 

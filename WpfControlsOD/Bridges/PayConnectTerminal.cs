@@ -48,7 +48,7 @@ namespace OpenDental.Bridges {
 			}
 			result+=Environment.NewLine+Environment.NewLine+Environment.NewLine;
 			Program program=Programs.GetCur(ProgramName.PayConnect);
-			string integrationType=ProgramProperties.GetPropVal(program.ProgramNum,"PayConnect2.0 Integration Type: 0 for normal, 1 for surcharge",clinicNum);
+			string integrationType=ProgramProperties.GetPropVal(program.ProgramNum,PayConnect.ProgramProperties.IntegrationType,clinicNum);
 			//Void transaction already includes any surcharge amount, so no additional line item needed
 			if(integrationType=="1" && pcResponse.TransType!=PayConnectResponse.TransactionType.Void) {//Surcharge integration
 				result+=AddReceiptField("Surcharge Fee",pcResponse.AmountSurcharged.ToString("F2"));
