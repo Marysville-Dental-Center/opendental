@@ -162,14 +162,6 @@
     <Reference Include="MailKit">
       <HintPath>..\Required dlls\MailKit.dll</HintPath>
     </Reference>
-    <Reference Include="Microsoft.Graph, Version=4.42.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\Microsoft.Graph.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Graph.Core, Version=2.0.13.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\Microsoft.Graph.Core.dll</HintPath>
-    </Reference>
     <Reference Include="Microsoft.VisualBasic" />
     <!-- MSAL for the vendor-direct Microsoft 365 sign-in (M365-LIB). The 4.47.1 copy shipped in Required dlls for now; see docs/specs/vendor-direct/microsoft-365.md. -->
     <Reference Include="Microsoft.Identity.Client">

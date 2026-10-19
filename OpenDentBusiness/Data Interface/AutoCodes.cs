@@ -9,7 +9,6 @@ using System.Threading;
 using System.Windows.Forms;
 using CodeBase;
 using DataConnectionBase;
-using Microsoft.Graph;
 
 namespace OpenDentBusiness{
 	///<summary></summary>
