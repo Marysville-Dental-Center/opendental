@@ -64,9 +64,7 @@ namespace UnitTests.MiddleTier.ParamCheck_Tests {
 					if((method.DeclaringType.FullName==typeof(Security).FullName 
 							&& method.Name==SymbolExtensions.GetMethodInfo(() => Security.LogInWeb("","","","",false)).Name)
 						|| (method.DeclaringType.FullName==typeof(ReplicationServers).FullName 
-							&& method.Name==SymbolExtensions.GetMethodInfo(() => ReplicationServers.ServerIsBlocked()).Name)
-						|| (method.DeclaringType.FullName==typeof(Lans).FullName 
-							&& method.Name==SymbolExtensions.GetMethodInfo(() => Lans.LoadTranslationsFromTextFile("")).Name))
+							&& method.Name==SymbolExtensions.GetMethodInfo(() => ReplicationServers.ServerIsBlocked()).Name))
 					{
 						continue;
 					}

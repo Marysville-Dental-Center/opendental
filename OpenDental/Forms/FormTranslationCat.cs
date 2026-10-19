@@ -4,7 +4,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
-using System.Net;
 using System.IO;
 using System.Windows.Forms;
 using OpenDentBusiness;
@@ -44,38 +43,6 @@ namespace OpenDental{
 			}
 			using FormTranslation formTranslation=new FormTranslation(listCats.GetSelected<string>()); 
 			formTranslation.ShowDialog();
-		}
-
-		private void butDownload_Click(object sender, System.EventArgs e) {
-			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				MessageBox.Show("Not allowed when using client web.");
-				return;
-			}
-			//Translation files used to be downloaded from Open Dental's website, which this build never contacts. Import one from a local file instead.
-			string fileName = CultureInfo.CurrentCulture.Name+".txt";//eg. en-US.txt
-			using OpenFileDialog openFileDialog=new OpenFileDialog();
-			openFileDialog.Title=Lan.g(this,"Choose the translation file")+" ("+fileName+")";
-			openFileDialog.FileName=fileName;
-			openFileDialog.Filter="txt|*.txt";
-			if(openFileDialog.ShowDialog()!=DialogResult.OK) {
-				return;
-			}
-			fileName=openFileDialog.FileName;
-			Cursor=Cursors.WaitCursor;
-			//ClassConvertDatabase ConvertDB=new ClassConvertDatabase();
-			try{
-				//ConvertDB.ExecuteFile(fileName);
-				string content = File.ReadAllText(fileName).Trim();
-				Lans.LoadTranslationsFromTextFile(content);
-			}
-			catch{
-				Cursor=Cursors.Default;
-				MessageBox.Show("Translations not installed properly.");
-				return;
-			}
-			LanguageForeigns.RefreshCache();
-			Cursor=Cursors.Default;
-			MessageBox.Show("Done");
 		}
 
 		///<summary>Only exports for the current culture.</summary>
