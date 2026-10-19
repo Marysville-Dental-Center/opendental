@@ -49,10 +49,9 @@ $HostPattern='(?i)(?<![a-z0-9-])(?:[a-z0-9-]+\.)*(?:opendental\.com|open-dent\.c
 #Deliberate remaining references. Path is a wildcard matched against the repository relative path (backslashes). Match, when present, is a
 #regular expression that the line must also match. Keep entries narrow and say why each one is allowed.
 $AllowList=@(
-	#--- Manual links in the vendor portal bridges. Open Dental's online help was removed; these two lines sit in the bridges' promotion
-	#    code, which the vendor-neutrality piece of the decoupling work rewrites.
-	@{ Path='WpfControlsOD\Bridges\DentalIntel.cs'; Match='(?i)opendental\.com/manual/'; Reason='DentalIntel portal manual page (removed with the bridge promotion code).' }
-	@{ Path='WpfControlsOD\Bridges\PracticeByNumbers.cs'; Match='(?i)opendental\.com/manual/'; Reason='Practice by Numbers portal manual page (removed with the bridge promotion code).' }
+	#--- Manual link in the Practice by Numbers bridge. Open Dental's online help was removed; the vendor-neutrality work removed the
+	#    DentalIntel bridge and kept this line, which opens the portal page for an office that has enabled the program link.
+	@{ Path='WpfControlsOD\Bridges\PracticeByNumbers.cs'; Match='(?i)opendental\.com/manual/'; Reason='Practice by Numbers portal page on the Open Dental manual site (still to be pointed at the vendor).' }
 
 	#--- Not network access.
 	@{ Path='OpenDentalServer\ServiceMain.asmx.cs'; Match='WebService\(Namespace='; Reason='XML namespace identifier of the middle tier web service. Never contacted.' }
