@@ -40,9 +40,6 @@ namespace OpenDental{
 			if(_program==null) {
 				return;//should never happen
 			}
-			if(ODEnvironment.IsCloudServer) {
-				linkLabel1.Text+="\r\n"+Lans.g(this,"X-Charge is not supported while using Open Dental Cloud. Use EdgeExpress instead.");
-			}
 			if(PrefC.HasClinicsEnabled) {
 				groupPaySettings.Text=Lan.g(this,"Clinic Payment Settings");
 				if(Security.CurUser.ClinicIsRestricted) {
@@ -243,15 +240,6 @@ namespace OpenDental{
 				//User wants to set as new processor for online payments, add to the list for the current session to remove currently enabled program.
 				_listProgramPropertiesWebPay.Add(programPropertyWebPayEnabled);
 			}
-		}
-
-		private void linkLabel1_LinkClicked(object sender,LinkLabelLinkClickedEventArgs e) {
-			string url="https://opendental.com/resources/redirects/redirectopenedge.html";
-			if(ODCloudClient.IsAppStream) {
-				ODCloudClient.LaunchFileWithODCloudClient(url);
-				return;
-			}
-			Process.Start(url);
 		}
 
 		///<summary>Validate XWebID, AuthKey, and TerminalID.  XWebID and TerminalID must be numbers only, 12 digits and 8 digits long respectively.

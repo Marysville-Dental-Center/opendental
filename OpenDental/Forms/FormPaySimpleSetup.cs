@@ -272,15 +272,6 @@ namespace OpenDental {
 			}
 		}
 
-		private void linkLabel1_LinkClicked(object sender,LinkLabelLinkClickedEventArgs e) {
-			string url="https://paysimple.com/partner/open-dental";
-			if(ODCloudClient.IsAppStream) {
-				ODCloudClient.LaunchFileWithODCloudClient(url);
-				return;
-			}
-			Process.Start(url);
-		}
-
 		///<summary>Returns an error message if something went wrong. Otherwise, returns an empty string.</summary>
 		private string WebhookHelper(string username,string key,long clinicNum) {
 			string errorMessage="";

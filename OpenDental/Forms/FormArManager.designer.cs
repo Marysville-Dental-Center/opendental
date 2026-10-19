@@ -30,8 +30,6 @@ namespace OpenDental{
 			this.menuItemMarkExcluded = new System.Windows.Forms.ToolStripMenuItem();
 			this.timerFillGrid = new System.Windows.Forms.Timer(this.components);
 			this.butHistory = new OpenDental.UI.Button();
-			this.labelTsiOcp = new System.Windows.Forms.Label();
-			this.butTsiOcp = new OpenDental.UI.Button();
 			this.tabControlMain = new OpenDental.UI.TabControl();
 			this.tabUnsent = new OpenDental.UI.TabPage();
 			this.checkExcludeBadAddress = new OpenDental.UI.CheckBox();
@@ -189,28 +187,6 @@ namespace OpenDental{
 			this.butHistory.TabIndex = 33;
 			this.butHistory.Text = "History";
 			this.butHistory.Click += new System.EventHandler(this.butHistory_Click);
-			// 
-			// labelTsiOcp
-			// 
-			this.labelTsiOcp.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.labelTsiOcp.Location = new System.Drawing.Point(93, 664);
-			this.labelTsiOcp.Name = "labelTsiOcp";
-			this.labelTsiOcp.Size = new System.Drawing.Size(230, 17);
-			this.labelTsiOcp.TabIndex = 3;
-			this.labelTsiOcp.Text = "Launch the TSI Online Client Portal";
-			this.labelTsiOcp.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			// 
-			// butTsiOcp
-			// 
-			this.butTsiOcp.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.butTsiOcp.Image = global::OpenDental.Properties.Resources.TSI_Icon;
-			this.butTsiOcp.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			this.butTsiOcp.Location = new System.Drawing.Point(12, 660);
-			this.butTsiOcp.Name = "butTsiOcp";
-			this.butTsiOcp.Size = new System.Drawing.Size(75, 24);
-			this.butTsiOcp.TabIndex = 32;
-			this.butTsiOcp.Text = "OCP";
-			this.butTsiOcp.Click += new System.EventHandler(this.butTsiOcp_Click);
 			// 
 			// tabControlMain
 			// 
@@ -1520,8 +1496,6 @@ namespace OpenDental{
 			this.ClientSize = new System.Drawing.Size(1230, 696);
 			this.Controls.Add(this.menuMain);
 			this.Controls.Add(this.butHistory);
-			this.Controls.Add(this.labelTsiOcp);
-			this.Controls.Add(this.butTsiOcp);
 			this.Controls.Add(this.tabControlMain);
 			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormArManager";
@@ -1599,8 +1573,6 @@ namespace OpenDental{
 		private System.Windows.Forms.Label labelSentMinBal;
 		private System.Windows.Forms.ErrorProvider errorProvider1;
 		private UI.Button butSentSaveDefaults;
-		private System.Windows.Forms.Label labelTsiOcp;
-		private UI.Button butTsiOcp;
 		private ValidDouble textUnsentTotal;
 		private ValidDouble textUnsentOver90;
 		private ValidDouble textUnsent31to60;
