@@ -1688,16 +1688,8 @@ namespace OpenDentBusiness {
 				return;
 			}
 			MicrosoftTokenHelper microsoftTokenHelper=new MicrosoftTokenHelper();
-			if(ODEnvironment.IsCloudInstance) {
-				string strMicrosoftAuthCodesJSON=ODCloudClient.GetMicrosoftAccessToken(emailAddress.EmailUsername,emailAddress.RefreshToken);
-				if(!strMicrosoftAuthCodesJSON.IsNullOrEmpty()) { 
-					microsoftTokenHelper=JsonConvert.DeserializeObject<MicrosoftTokenHelper>(strMicrosoftAuthCodesJSON);
-				} 
-			}
-			else {
-				microsoftTokenHelper=System.Threading.Tasks.Task.Run(async () =>
-					await MicrosoftApiConnector.GetAccessToken(emailAddress.EmailUsername,emailAddress.RefreshToken)).GetAwaiter().GetResult();
-			}
+			microsoftTokenHelper=System.Threading.Tasks.Task.Run(async () =>
+				await MicrosoftApiConnector.GetAccessToken(emailAddress.EmailUsername,emailAddress.RefreshToken)).GetAwaiter().GetResult();
 			if(microsoftTokenHelper.ErrorMessage!="" || microsoftTokenHelper.AccessToken=="") {
 				return;//authentication was cancelled or there was an error so just return.
 			}

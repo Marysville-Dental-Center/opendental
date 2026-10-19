@@ -100,12 +100,6 @@
     <DocumentationFile>bin\Release\OpenDental.xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="AWSSDK.Core">
-      <HintPath>..\Required dlls\AWSSDK.Core.dll</HintPath>
-    </Reference>
-    <Reference Include="AWSSDK.IdentityStore">
-      <HintPath>..\Required dlls\AWSSDK.IdentityStore.dll</HintPath>
-    </Reference>
     <Reference Include="AxInterop.AcroPDFLib, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\AxInterop.AcroPDFLib.dll</HintPath>
@@ -621,18 +615,6 @@
     </Compile>
     <Compile Include="Forms\FormClaimAttachSnipDXC.designer.cs">
       <DependentUpon>FormClaimAttachSnipDXC.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\FormCloudUserEdit.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FormCloudUserEdit.Designer.cs">
-      <DependentUpon>FormCloudUserEdit.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\FormCloudUsers.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FormCloudUsers.Designer.cs">
-      <DependentUpon>FormCloudUsers.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\FormBenefitFrequencyEdit.cs">
       <SubType>Form</SubType>
@@ -1969,12 +1951,6 @@
     <Compile Include="Forms\FormCareCreditWeb.designer.cs">
       <DependentUpon>FormCareCreditWeb.cs</DependentUpon>
     </Compile>
-    <Compile Include="Forms\FormChangeCloudPassword.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FormChangeCloudPassword.designer.cs">
-      <DependentUpon>FormChangeCloudPassword.cs</DependentUpon>
-    </Compile>
     <Compile Include="Forms\FormInsBlueBookRuleEdit.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -1992,12 +1968,6 @@
     </Compile>
     <Compile Include="Forms\FormInsBlueBookRules.designer.cs">
       <DependentUpon>FormInsBlueBookRules.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\FormCloudSessionLimit.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FormCloudSessionLimit.designer.cs">
-      <DependentUpon>FormCloudSessionLimit.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\FormReportsFiltered.cs">
       <SubType>Form</SubType>
@@ -2022,12 +1992,6 @@
     </Compile>
     <Compile Include="Forms\FormMassEmailSetup.designer.cs">
       <DependentUpon>FormMassEmailSetup.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\FormCloudManagement.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FormCloudManagement.designer.cs">
-      <DependentUpon>FormCloudManagement.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\FormAlerts.cs">
       <SubType>Form</SubType>
@@ -2727,12 +2691,6 @@
       <DependentUpon>TestForWpf.cs</DependentUpon>
     </Compile>
     <Compile Include="UI\ClinicSelector\ClinicPrefHelper.cs" />
-    <Compile Include="UI\CloudIframe.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="UI\CloudIframe.Designer.cs">
-      <DependentUpon>CloudIframe.cs</DependentUpon>
-    </Compile>
     <Compile Include="UI\Direct2D\Direct2d.cs" />
     <Compile Include="UI\FolderBrowserDialog.cs" />
     <Compile Include="UI\ControlDoubleBuffered.cs">
@@ -7036,12 +6994,6 @@
     <EmbeddedResource Include="Forms\FormClaimAttachSnipDXC.resx">
       <DependentUpon>FormClaimAttachSnipDXC.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormCloudUserEdit.resx">
-      <DependentUpon>FormCloudUserEdit.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormCloudUsers.resx">
-      <DependentUpon>FormCloudUsers.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormBenefitFrequencyEdit.resx">
       <DependentUpon>FormBenefitFrequencyEdit.cs</DependentUpon>
     </EmbeddedResource>
@@ -7366,9 +7318,6 @@
     <EmbeddedResource Include="Forms\FormCareCreditWeb.resx">
       <DependentUpon>FormCareCreditWeb.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormChangeCloudPassword.resx">
-      <DependentUpon>FormChangeCloudPassword.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormInsBlueBookRuleEdit.resx">
       <DependentUpon>FormInsBlueBookRuleEdit.cs</DependentUpon>
     </EmbeddedResource>
@@ -7377,9 +7326,6 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormInsBlueBookRules.resx">
       <DependentUpon>FormInsBlueBookRules.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormCloudSessionLimit.resx">
-      <DependentUpon>FormCloudSessionLimit.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormReportsFiltered.resx">
       <DependentUpon>FormReportsFiltered.cs</DependentUpon>
@@ -7392,9 +7338,6 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormMassEmailSetup.resx">
       <DependentUpon>FormMassEmailSetup.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormCloudManagement.resx">
-      <DependentUpon>FormCloudManagement.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormAlerts.resx">
       <DependentUpon>FormAlerts.cs</DependentUpon>
@@ -11035,10 +10978,6 @@
     <ProjectReference Include="..\..\ImagingDeviceManager\xImagingDeviceManager.csproj">
       <Project>{783079e6-a13f-4f43-a28d-9d7731f945d1}</Project>
       <Name>xImagingDeviceManager</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\Unversioned\VirtualWeb\VirtualWeb.csproj">
-      <Project>{4ed3df2f-e97e-4bc3-ae5f-aa31a11af57f}</Project>
-      <Name>VirtualWeb</Name>
     </ProjectReference>
     <ProjectReference Include="..\CodeBase\xCodeBase.csproj">
       <Project>{18F7BC78-4B99-48D3-A1F1-0D13A63E3CF9}</Project>

@@ -223,19 +223,11 @@ namespace OpenDental {
 
 		private void butImport_Click(object sender,EventArgs e) {
 			string importFilePath;
-			if(!ODBuild.IsThinfinity() && ODCloudClient.IsAppStream) {
-				importFilePath=ODCloudClient.ImportFileForCloud().FirstOrDefault();
-				if(importFilePath.IsNullOrEmpty()) {
-					return; //User cancelled out of OpenFileDialog
-				}
+			using OpenFileDialog openFileDialog=ImportDialogSetup();
+			if(openFileDialog.ShowDialog()!=DialogResult.OK) {
+				return; //User cancelled out of OpenFileDialog
 			}
-			else {
-				using OpenFileDialog openFileDialog=ImportDialogSetup();
-				if(openFileDialog.ShowDialog()!=DialogResult.OK) {
-					return; //User cancelled out of OpenFileDialog
-				}
-				importFilePath=openFileDialog.FileName;
-			}
+			importFilePath=openFileDialog.FileName;
 			string fileContents;
 			try {
 				fileContents=File.ReadAllText(importFilePath);

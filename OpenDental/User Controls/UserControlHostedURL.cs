@@ -115,12 +115,7 @@ namespace OpenDental.User_Controls {
 				browse.Click+=(sender, e) => {
 					if(!string.IsNullOrWhiteSpace(text.Text)) {
 						string url=text.Text;
-						if(ODCloudClient.IsAppStream) {
-							ODCloudClient.LaunchFileWithODCloudClient(url);
-						}
-						else {
-							System.Diagnostics.Process.Start(url);
-						}
+						System.Diagnostics.Process.Start(url);
 					}
 				};
 				menu.Items.Add(browse);

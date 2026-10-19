@@ -13,9 +13,6 @@ namespace OpenDental {
 		///<summary>There is a similar method for Middle Tier at OpenDentBusiness.Plugins.LoadAllPlugins.</summary>
 		public static void LoadAllPlugins(Form host) {
 			Meth.NoCheckMiddleTierRole();
-			if(ODEnvironment.IsCloudServer) {
-				return;//plugins not allowed in cloud mode
-			}
 			List<PluginContainer> listPluginContainers=new List<PluginContainer>();
 			//Loop through all programs that are enabled with a plug-in dll name set.
 			List<Program> listPrograms=Programs.GetWhere(x => x.Enabled && !string.IsNullOrEmpty(x.PluginDllName));

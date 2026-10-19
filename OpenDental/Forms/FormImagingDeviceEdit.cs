@@ -37,15 +37,6 @@ namespace OpenDentalImaging {
 		}
 
 		private void comboTwainName_DropDown(object sender,EventArgs e) {
-			if(ODEnvironment.IsCloudServer) {
-				if(!CloudClientL.IsCloudClientRunning()) {
-					return;
-				}
-				List<string>listTwainNames=ODCloudClient.GetTwainSourceList();
-				comboTwainName.Items.Clear();
-				comboTwainName.Items.AddRange(listTwainNames.ToArray());
-				return;
-			}
 			try {
 				Twain.ActivateEZTwain();
 			}

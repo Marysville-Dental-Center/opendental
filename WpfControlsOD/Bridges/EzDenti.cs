@@ -19,13 +19,13 @@ namespace OpenDental.Bridges{
 		///<summary>Sends data for the patient to linkage.xml and launches the program.</summary>
 		public static void SendData(Program ProgramCur, Patient pat){
 			string path=Programs.GetProgramPath(ProgramCur);
-			if(!ODEnvironment.IsCloudServer && !File.Exists(path)) {//If ODCloud, this check is performed by the Cloud Client
+			if(!File.Exists(path)) {
 					MessageBox.Show(path+" could not be found.");
 					return;
 			}
 			string dir=Path.GetDirectoryName(path);
 			string linkage=CodeBase.ODFileUtils.CombinePaths(dir,"linkage.xml");
-			if(!ODEnvironment.IsCloudServer && File.Exists(linkage)){//Will never exist for Thinfinity or AppStream version.
+			if(File.Exists(linkage)){
 				try {
 					File.Delete(linkage);
 				}
@@ -74,21 +74,16 @@ namespace OpenDental.Bridges{
 				writer.Flush();
 				writer.Close();
 				try {
-					ODFileUtils.WriteAllTextThenStart(linkage,strb.ToString(),path,doStartWithoutExtraFile:true);
+					ODFileUtils.WriteAllTextThenStart(linkage,strb.ToString(),path);
 					return;
 				}
 				catch(Exception e) {
-					if(ODEnvironment.IsCloudServer) {
-						//If ODCloud, the Cloud Client will start the process even if writing the extra file fails so the ProcessStart below is redundant.
-						MessageBox.Show("Error launching "+path);
-						return;
-					}
 					e.DoNothing();
 				}
 			}
 			try {
 				//whether there is a patient or not.
-				ODFileUtils.ProcessStart(path,doWaitForODCloudClientResponse:true);
+				ODFileUtils.ProcessStart(path);
 			} 
 			catch {
 				MessageBox.Show("Error launching "+path);

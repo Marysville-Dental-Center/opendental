@@ -135,7 +135,6 @@ namespace OpenDental {
 		public void SetControlImageDisplay(ControlImageDisplay controlImageDisplay){
 			//Can get called repeatedly.
 			if(ControlImageDisplay_!=null && ControlImageDisplay_.Parent==this){
-				ControlImageDisplay_.ClearPDFBrowser();
 				//still here. Wasn't popped out to a floater
 				ControlImageDisplay_?.Dispose();
 			}

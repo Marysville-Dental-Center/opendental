@@ -12,7 +12,6 @@ using System.IO;
 using CodeBase;
 using OpenDentBusiness.Eclaims;
 using System.Text;
-using OpenDental.Thinfinity;
 using System.Diagnostics;
 
 namespace OpenDental {
@@ -179,26 +178,16 @@ namespace OpenDental {
 				}
 				string tempFile=PrefC.GetRandomTempFile(Path.GetExtension(pathAndFileName));
 				File.WriteAllBytes(tempFile,byteArray);
-				if(ODBuild.IsThinfinity()) {
-					ThinfinityUtils.HandleFile(tempFile);
-				}
-				else {
-					Process.Start(tempFile);
-				}
+				Process.Start(tempFile);
 			}
 			else {//Local storage
 				string pathAndFileName=ODFileUtils.CombinePaths(patFolder,claimAttach.ActualFileName);
-				if(ODBuild.IsThinfinity()) {
-					ThinfinityUtils.HandleFile(pathAndFileName);
+				try {
+					Process.Start(pathAndFileName);
 				}
-				else {
-					try {
-						Process.Start(pathAndFileName);
-					}
-					catch(Exception ex) {
-						ex.DoNothing();
-						MsgBox.Show(this,"Could not open the attachment.");
-					}
+				catch(Exception ex) {
+					ex.DoNothing();
+					MsgBox.Show(this,"Could not open the attachment.");
 				}
 			}
 		}

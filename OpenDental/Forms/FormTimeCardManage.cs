@@ -11,7 +11,6 @@ using CodeBase;
 using OpenDental.UI;
 using OpenDentBusiness;
 using System.Linq;
-using OpenDental.Thinfinity;
 
 namespace OpenDental {
 	public partial class FormTimeCardManage:FormODBase {
@@ -998,10 +997,8 @@ namespace OpenDental {
 		///<summary>Exports MainTable (a data table) not the actual OD Grid. This allows for EmployeeNum and ADPNum without having to perform any lookups.</summary>
 		private void butExportGrid_Click(object sender,EventArgs e) {
 			using FolderBrowserDialog folderBrowserDialog = new FolderBrowserDialog();
-			if(!ODBuild.IsThinfinity()) {
-				if(folderBrowserDialog.ShowDialog()!=DialogResult.OK) {
-					return;
-				}
+			if(folderBrowserDialog.ShowDialog()!=DialogResult.OK) {
+				return;
 			}
 			StringBuilder stringBuilder = new StringBuilder();
 			string headers="";
@@ -1054,10 +1051,6 @@ namespace OpenDental {
 				stringBuilder.AppendLine(row);
 			}
 			string fileName="ODPayroll"+DateTime.Now.ToString("yyyyMMdd_hhmmss")+".TXT";
-			if(ODBuild.IsThinfinity()) {
-				ThinfinityUtils.ExportForDownload(fileName,stringBuilder.ToString());
-				return;
-			}
 			try {
 				System.IO.File.WriteAllText(folderBrowserDialog.SelectedPath+"\\"+fileName,stringBuilder.ToString());
 				MessageBox.Show(this,Lan.g(this,"File created")+" : "+folderBrowserDialog.SelectedPath+"\\"+fileName);
@@ -1186,20 +1179,12 @@ namespace OpenDental {
 				}
 			}
 			using FolderBrowserDialog folderBrowserDialog = new FolderBrowserDialog();
-			if(!ODBuild.IsThinfinity()) {
-				if(folderBrowserDialog.ShowDialog()!=DialogResult.OK) {
-					return;
-				}
+			if(folderBrowserDialog.ShowDialog()!=DialogResult.OK) {
+				return;
 			}
 			string fileSuffix=GenerateFileSuffix(folderBrowserDialog.SelectedPath,"\\EPI"+coCode);
 			try {
-				if(ODBuild.IsThinfinity()) {
-					string fileName="EPI"+coCode+fileSuffix+".CSV";
-					ThinfinityUtils.ExportForDownload(fileName,stringBuilder.ToString());
-				}
-				else {
-					System.IO.File.WriteAllText(folderBrowserDialog.SelectedPath+"\\EPI"+coCode+fileSuffix+".CSV",stringBuilder.ToString());
-				}
+				System.IO.File.WriteAllText(folderBrowserDialog.SelectedPath+"\\EPI"+coCode+fileSuffix+".CSV",stringBuilder.ToString());
 				if(errors!="") {
 					MsgBoxCopyPaste msgBox=new MsgBoxCopyPaste(
 						"The following errors will prevent ADP from properly processing this export:\r\n"+errors);
@@ -1270,10 +1255,8 @@ namespace OpenDental {
 				#endregion
 			}//end file contents
 			using FolderBrowserDialog folderBrowserDialog=new FolderBrowserDialog();
-			if(!ODBuild.IsThinfinity()) {
-				if(folderBrowserDialog.ShowDialog()!=DialogResult.OK) {
-					return;
-				}
+			if(folderBrowserDialog.ShowDialog()!=DialogResult.OK) {
+				return;
 			}
 			//ADP recommends a filename like "Biweekly-01012021-01152021.csv"
 			string fileName=payFrequency+"-"+startDate.Replace("/","")+"-"+endDate.Replace("/","");
@@ -1287,12 +1270,7 @@ namespace OpenDental {
 				errors+="  The pay frequency '"+payPeriodInterval+"' does not match the pay period date range.\r\n";
 			}
 			try {
-				if(ODBuild.IsThinfinity()) {
-					ThinfinityUtils.ExportForDownload(fileName+".CSV",stringBuilder.ToString());
-				}
-				else {
-					System.IO.File.WriteAllText(folderBrowserDialog.SelectedPath+"\\"+fileName+".CSV",stringBuilder.ToString());
-				}
+				System.IO.File.WriteAllText(folderBrowserDialog.SelectedPath+"\\"+fileName+".CSV",stringBuilder.ToString());
 			}
 			catch(Exception ex) {
 				MessageBox.Show(this,"File not created:\r\n"+ex.Message);
@@ -1312,9 +1290,6 @@ namespace OpenDental {
 			//generate suffix from i
 			for(int i=0;i<=1297;i++) {//1296=36*36 to represent all acceptable suffixes for file name consisting of two alphanumeric digits; +1 to catch error. (A-Z, 0-9)
 				fileSuffix="";
-				if(ODEnvironment.IsCloudServer) {
-					return ""; //we don't have a way to check if the file exists.
-				}
 				if(i==1297) {
 					 return "NamingError"; //could not find acceptable file name.
 				}

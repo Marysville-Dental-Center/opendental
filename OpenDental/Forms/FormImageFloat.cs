@@ -11,7 +11,6 @@ using System.Threading;
 using System.Windows.Forms;
 using CodeBase;
 using OpenDentBusiness;
-using OpenDental.Thinfinity;
 using OpenDental.UI;
 using System.Drawing.Imaging;
 using CodeBase.Controls;
@@ -111,7 +110,6 @@ namespace OpenDental {
 			if(_windowImageFloatWindows!=null){
 				_windowImageFloatWindows.Close();
 			}
-			ControlImageDisplay_.ClearPDFBrowser();
 		}
 
 		private void FormImageFloat_Load(object sender, EventArgs e){

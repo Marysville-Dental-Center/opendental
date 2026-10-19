@@ -26,9 +26,6 @@ namespace OpenDental {
 			_listComputers=Computers.GetDeepCopy();
 			_listUserods=Userods.GetDeepCopy();
 			_listActiveInstances=ActiveInstances.GetAllResponsiveActiveInstances().OrderByDescending(x => x.DateTimeLastActive).ToList();
-			if(ODBuild.IsThinfinity() && !Security.IsAuthorized(EnumPermType.CloseOtherSessions)) {
-				butCloseSessions.Enabled=false;
-			}
 			if(IsUpdate) {
 				butShutdown.Text=Lan.g(this,"Continue");
 				butCloseSessions.Enabled=false;

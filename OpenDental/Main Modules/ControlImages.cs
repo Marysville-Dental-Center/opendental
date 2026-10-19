@@ -1,7 +1,6 @@
 ﻿#region using
 using CodeBase;
 using ImagingDeviceManager;
-using OpenDental.Thinfinity;
 using OpenDental.UI;
 using OpenDentBusiness;
 using System;
@@ -250,9 +249,6 @@ namespace OpenDental{
 			contextMenuImport.Add(new WpfControls.UI.MenuItem(Lan.g(this,"Import Automatically"),ToolBarImportAuto));
 			//toolStripMenuItem.ToolTipText="Import files as they are created in a folder.";//todo? no tooltip available for menus
 			WpfControls.UI.ToolBarButtonStyle buttonStyle=WpfControls.UI.ToolBarButtonStyle.DropDownButton;
-			if(ODEnvironment.IsCloudInstance) {
-				buttonStyle=WpfControls.UI.ToolBarButtonStyle.NormalButton;
-			}
 			toolBarMain.Add(Lan.g(this,"Import"),ToolBarImport_Click,WpfControls.UI.EnumIcons.Import,buttonStyle,Lan.g(this,"Import From File"),contextMenuImport);
 			WpfControls.UI.ContextMenu contextMenuExport = new WpfControls.UI.ContextMenu();
 			contextMenuExport.Add(new WpfControls.UI.MenuItem(Lan.g(this,"Move to Patient..."),ToolBarMoveToPatient));
@@ -524,9 +520,6 @@ namespace OpenDental{
 			//So _listFormImageFloats remains valid and still has all the floaters in it, even when we are in the Chart module. 
 			//In CloseFloaters below, we close the floaters when changing patients.
 			_patNumLastSecurityLog=0;//Clear out the last pat num so that a security log gets entered that the module was "visited" or "refreshed".
-			if(ODBuild.IsThinfinity()) {
-				controlImageDock.ControlImageDisplay_?.ClearPDFBrowser();
-			}
 			Plugins.HookAddCode(this,"ContrImages.ModuleUnselected_end");
 		}
 
@@ -651,10 +644,6 @@ namespace OpenDental{
 			//Select the node always, but perform additional tasks when necessary (i.e. load an image, or mount).	
 			if(nodeTypeAndKey!=null && nodeTypeAndKey.NodeType!=EnumImageNodeType.None){	
 				imageSelector.SetSelected(nodeTypeAndKey.NodeType,nodeTypeAndKey.PriKey);//this is redundant when user is clicking, but harmless 
-			}
-			if(ODBuild.IsThinfinity()) {
-				//Clear the PDF browser in the existing docked ControlImageDisplay before a new one is created
-				controlImageDock.ControlImageDisplay_?.ClearPDFBrowser();
 			}
 			ControlImageDisplay controlImageDisplay=null;
 			if(controlImageDock.ControlImageDisplay_!=null && controlImageDock.ControlImageDisplay_.GetNodeTypeAndKey().IsMatching(nodeTypeAndKey) && !isChartModuleFloater) {//Ignore Image Module Dock if launching a floater in Chart Module
@@ -1244,10 +1233,6 @@ namespace OpenDental{
 				return;
 			}
 			ControlImageDisplay controlImageDisplay=GetControlImageDisplaySelected();
-			if(!controlImageDisplay.HideWebBrowser()) {
-				MsgBox.Show(this,"The PDF viewer is busy loading the document and cannot be opened in its default program yet. Please try again.");
-				return;
-			}
 			if(imageSelector.GetSelectedType()==EnumImageNodeType.Mount) {
 				FrmMountEdit frmMountEdit=new FrmMountEdit();
 				frmMountEdit.MountCur=GetMountShowing();
@@ -1290,20 +1275,12 @@ namespace OpenDental{
 			//Specifically, multi-page faxes can be viewed more easily by one of our customers using the fax viewer.
 			if(PrefC.AtoZfolderUsed==DataStorageType.LocalAtoZ) {
 				string tempFile=ImageStore.GetFilePath(document,_patFolder);
-				if(ODBuild.IsThinfinity()) {
-					ThinfinityUtils.HandleFile(tempFile);
+				try {
+					string filePath=ImageStore.GetFilePath(document,_patFolder);
+					Process.Start(filePath);
 				}
-				else if(ODCloudClient.IsAppStream) {
-					CloudClientL.ExportForCloud(tempFile,doPromptForName:false);
-				}
-				else {
-					try {
-						string filePath=ImageStore.GetFilePath(document,_patFolder);
-						Process.Start(filePath);
-					}
-					catch(Exception ex) {
-						MessageBox.Show(ex.Message);
-					}
+				catch(Exception ex) {
+					MessageBox.Show(ex.Message);
 				}
 			}
 			else {//Cloud
@@ -1319,15 +1296,7 @@ namespace OpenDental{
 				if(progressWin.IsCancelled){
 					return;
 				}	
-				if(ODBuild.IsThinfinity()) {
-					ThinfinityUtils.HandleFile(tempFile);
-				}
-				else if(ODCloudClient.IsAppStream){
-					CloudClientL.ExportForCloud(tempFile,doPromptForName:false);
-				}
-				else {
-					Process.Start(tempFile);
-				}
+				Process.Start(tempFile);
 			}
 		}
 
@@ -2363,10 +2332,6 @@ namespace OpenDental{
 		}
 
 		private void ToolBarMoveToPatient(object sender, EventArgs e){
-			if(ODBuild.IsThinfinity()) {
-				MsgBox.Show(this,"Not yet implemented for Open Dental Cloud.");
-				return;
-			}
 			if(!IsDocumentShowing() && !IsMountShowing()){
 				MsgBox.Show(this,"Please select an item first.");
 				return;
@@ -2427,7 +2392,6 @@ namespace OpenDental{
 			//Delete Old=====================================================================================
 			if(document!=null){
 				try {
-					controlImageDisplay.ClearPDFBrowser();//Dispose of the web browser control that has a hold on the PDF that is showing.
 					ImageStore.DeleteDocuments(new List<Document> {document},patFolderOld);
 				}
 				catch(Exception ex) { 
@@ -2488,7 +2452,7 @@ namespace OpenDental{
 		}
 
 		private void ToolBarPrintCategory(object sender, EventArgs e){
-			if(ODEnvironment.IsCloudServer || CloudStorage.IsCloudStorage) {
+			if(CloudStorage.IsCloudStorage) {
 				MsgBox.Show("This feature is only supported when images and documents are stored on a local or network folder.");
 				return;
 			}
@@ -2556,10 +2520,6 @@ namespace OpenDental{
 				MessageBox.Show(err);
 				return;
 			}
-			if(ODBuild.IsThinfinity() && Programs.GetListDisabledForWeb().Contains(program.ProgName)) {
-				MsgBox.Show("ProgramLinks","Bridge is not available while viewing through the web.");
-				return;//bridge is not available for web users at this time. 
-			}
 			if(!Programs.IsEnabled(program.ProgramNum)) {
 				return;//Toolbar buttons only show for enabled program links.
 			}
@@ -2607,12 +2567,6 @@ namespace OpenDental{
 			if(!Security.IsAuthorized(EnumPermType.ImageCreate)) {
 				return;
 			}	
-			if(ODEnvironment.IsCloudServer) {
-				if(CloudClientL.IsCloudClientRunning()) {
-					ToolbarScanWeb(imgType);
-				}
-				return;
-			}
 			Cursor=Cursors.WaitCursor;
 			Bitmap bitmapScanned=null;
 			IntPtr handleDIB=IntPtr.Zero;
@@ -2744,12 +2698,6 @@ namespace OpenDental{
 			if(!Security.IsAuthorized(EnumPermType.ImageCreate)) {
 				return;
 			}
-			if(ODEnvironment.IsCloudServer) {
-				if(CloudClientL.IsCloudClientRunning()) {
-					ToolbarScanMultiWeb();
-				}
-				return;
-			}
 			string tempFile=PrefC.GetRandomTempFile(".pdf");
 			try {
 				Twain.ActivateEZTwain();
@@ -2847,119 +2795,8 @@ namespace OpenDental{
 			FillImageSelector(true);
 		}
 
-		///<summary>Handles the scan multi click for ODCloud using similar logic to ToolbarScanMulti_Click()</summary>
-		private void ToolbarScanMultiWeb() {
-			if(!CloudClientL.IsCloudClientRunning()) {
-				return;
-			}
-			//Ask the ODCloudClient to use a scanner on the client's computer
-			string tempFile=ODCloudClient.GetImageMultiFromScanner(
-				ComputerPrefs.LocalComputer.ScanDocSelectSource,
-				ComputerPrefs.LocalComputer.ScanDocShowOptions,
-				ComputerPrefs.LocalComputer.ScanDocDuplex,
-				ComputerPrefs.LocalComputer.ScanDocGrayscale,
-				ComputerPrefs.LocalComputer.ScanDocResolution,
-				ComputerPrefs.LocalComputer.ScanDocQuality
-			);
-			if(tempFile==null) {
-				return;//The scan was probably cancelled
-			}
-			NodeTypeAndKey nodeTypeAndKey=null;
-			bool copied=true;
-			Document doc=null;
-			try {
-				doc=ImageStore.Import(tempFile,GetCurrentCategory(),_patient);
-			}
-			catch(Exception ex) {
-				MessageBox.Show(Lan.g(this,"Unable to copy file, May be in use: ") + ex.Message + ": " + tempFile);
-				copied = false;
-			}
-			if(copied) {
-				FillImageSelector(false);
-				SelectTreeNode1(new NodeTypeAndKey(EnumImageNodeType.Document,doc.DocNum));
-				ControlImageDisplay controlImageDisplay=GetControlImageDisplaySelected();
-				FrmDocInfo frmDocInfo=new FrmDocInfo(_patient,doc,isDocCreate:true);
-				frmDocInfo.ShowDialog();//some of the fields might get changed, but not the filename 
-				if(frmDocInfo.IsDialogCancel) {
-					DeleteDocument(false,false,doc);
-				}
-				else {
-					nodeTypeAndKey=new NodeTypeAndKey(EnumImageNodeType.Document,doc.DocNum);
-					SetDocumentShowing(0,doc.Copy());
-				}
-			}
-			ImageStore.TryDeleteFile(tempFile
-				,actInUseException:(msg) => MsgBox.Show(msg)//Informs user when a 'file is in use' exception occurs.
-			);
-			//Reselect the last successfully added node when necessary. js This code seems to be copied from import multi.  Simplify it.
-			if(doc!=null && !new NodeTypeAndKey(EnumImageNodeType.Document,doc.DocNum).Equals(nodeTypeAndKey)) {
-				SelectTreeNode1(new NodeTypeAndKey(EnumImageNodeType.Document,doc.DocNum));
-			}
-			FillImageSelector(true);
-		}
-
 		private void ToolBarScanPhoto_Click(object sender,EventArgs e){
 			ToolBarScan_Click(ImageType.Photo);
-		}
-
-		///<summary>Handles the scan click for ODCloud using similar logic to ToolbarScan_Click()</summary>
-		private void ToolbarScanWeb(ImageType imgType) {
-			if(!CloudClientL.IsCloudClientRunning()) {
-				return;
-			}
-			Bitmap bitmapScanned=null;
-			try {
-				//Ask the ODCloudClient to use a scanner on the client's computer
-				bitmapScanned=ODCloudClient.GetImageFromScanner(
-					ComputerPrefs.LocalComputer.ScanDocSelectSource,
-					ComputerPrefs.LocalComputer.ScanDocShowOptions,
-					ComputerPrefs.LocalComputer.ScanDocDuplex,
-					ComputerPrefs.LocalComputer.ScanDocGrayscale,
-					ComputerPrefs.LocalComputer.ScanDocResolution,
-					ComputerPrefs.LocalComputer.ScanDocQuality
-				);
-			}
-			catch (ODException ex) {
-				MessageBox.Show(ex.Message);
-				return;
-			}
-			catch (Exception ex) {
-				MessageBox.Show(ex.Message);
-				return;
-			}
-			if(bitmapScanned==null) {//The scan was probably cancelled.
-				return;
-			}
-			bool saved=true;
-			Document doc = null;
-			try {//Create corresponding image file.
-				bool doPrintHeading=false;
-				if(imgType==ImageType.Radiograph) {
-					doPrintHeading=true;
-				}
-				doc=ImageStore.Import(bitmapScanned,GetCurrentCategory(),imgType,_patient,doPrintHeading:doPrintHeading);
-			}
-			catch(Exception ex) {
-				saved=false;
-				MessageBox.Show(Lan.g(this,"Unable to save document")+": "+ex.Message);
-			}
-			if(bitmapScanned!=null) {
-				bitmapScanned.Dispose();
-				bitmapScanned=null;
-			}//===========================
-			if(saved) {
-				FillImageSelector(false);//Reload and keep new document selected.
-				SelectTreeNode1(new NodeTypeAndKey(EnumImageNodeType.Document,doc.DocNum));
-				ControlImageDisplay controlImageDisplay=GetControlImageDisplaySelected();
-				FrmDocInfo frmDocInfo=new FrmDocInfo(_patient,GetDocumentShowing(0),isDocCreate:true);
-				frmDocInfo.ShowDialog();
-				if(frmDocInfo.IsDialogCancel) {
-					DeleteDocument(false,false,doc);
-				}
-				else {
-					FillImageSelector(true);//Update tree, in case the new document's icon or category were modified in formDocInfo.
-				}
-			}
 		}
 
 		private void ToolBarScanXRay_Click(object sender,EventArgs e){
@@ -3022,10 +2859,6 @@ namespace OpenDental{
 		}
 
 		private void ToolBarVideo_Click(object sender,EventArgs e){
-			if(ODBuild.IsThinfinity()) {
-				MsgBox.Show(this,"This feature is not available in Open Dental Cloud.");
-				return;
-			}
 			//If no patient selected, then this button is disabled
 			if(!Security.IsAuthorized(EnumPermType.ImageCreate)) {
 				return;
@@ -3768,89 +3601,6 @@ namespace OpenDental{
 					return;
 				}
 			}
-			if(ODEnvironment.IsCloudServer) {
-				if(!CloudClientL.IsCloudClientRunning()) {
-					return;
-				}
-				if(imagingDevice.DeviceType==EnumImgDeviceType.TwainRadiograph) {
-					try{
-						ODCloudClient.TwainInitializeDevice(imagingDevice.ShowTwainUI);
-					}
-					catch(Exception ex){
-						MsgBox.Show(ex.Message);
-						return;
-					}
-					GlobalFormOpenDental.LockODForMountAcquire(isEnabled:false);
-					ProgressWin progressWin=new ProgressWin();
-					progressWin.ActionMain=() => {
-						while(true) {
-							ODCloudClient.TwainAcquireBitmapStart(imagingDevice.TwainName,doThrowException: true,doShowProgressBar: false);
-							Bitmap bitmap=null;
-							string scannerState="scanning";
-							while(scannerState=="scanning" || scannerState=="setup") {
-									//Scan is "setup" when starting up or currently "scanning"
-									scannerState=ODCloudClient.CheckBitmapIsAcquired();
-									Thread.Sleep(100);
-							}
-							if(scannerState=="done") {
-									//Scan was successful and retrieving the bitmap
-									bitmap=ODCloudClient.TwainGetAcquiredBitmap();
-							}
-							else if(scannerState=="cancelled") {
-									//Scan was cancelled
-									bitmap?.Dispose();
-									bitmap=null;
-									break;
-							}
-							else {
-									//Scan had an error and was not successful retrieving the bitmap
-									Exception exception=new Exception(scannerState);
-									throw exception;
-							}
-							Thread.Sleep(100);
-							if(bitmap==null) {
-									break; //Cancel the scanning task
-							}
-							if(!(bool)this.Invoke((Func<bool>)(()=>PlaceAcquiredBitmapInUI(bitmap,imagingDevice.DeviceType)))) {
-								break;
-							}
-							if(!IsMountShowing()) {//single
-								break;
-							}
-						}
-						if(!IsMountShowing()) {
-							return;
-						}
-						if(GetMountShowing().AdjModeAfterSeries) {
-							this.Invoke(()=> {
-								SetCropPanAdj(EnumCropPanAdj.Adj);
-								LayoutControls();
-							});
-						}
-					};
-					progressWin.ActionCancel=ODCloudClient.TwainCloseScanner;
-					progressWin.StartingMessage=Lan.g(this,"Getting Scanned Image(s)")+"...";
-					try{
-						progressWin.ShowDialog();
-					}
-					catch(Exception ex){
-						if(!ex.Message.Contains("Thread was being aborted.")){
-							MessageBox.Show(this, "An error occurred: " + ex.Message);
-						}
-					}
-					finally{
-						ODCloudClient.TwainCloseScanner();
-						GlobalFormOpenDental.LockODForMountAcquire(isEnabled:true);
-						LayoutControls();//To refresh the mount after acquiring images.
-					}
-					if(progressWin.IsCancelled) {
-						GlobalFormOpenDental.LockODForMountAcquire(isEnabled:true);
-						LayoutControls();//To refresh the mount after acquiring images.
-					}
-				}
-				return;
-			}
-			//Below here NOT Thinfinity
 			try {
 				Twain.ActivateEZTwain();//Activate EZTWAIN license
 			}

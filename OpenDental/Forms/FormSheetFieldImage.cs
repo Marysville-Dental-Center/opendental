@@ -68,25 +68,16 @@ namespace OpenDental {
 
 		private void butImport_Click(object sender,EventArgs e) {
 			string importFilePath;
-			if(!ODBuild.IsThinfinity() && ODCloudClient.IsAppStream) {
-				List<string> listImportFilePaths=ODCloudClient.ImportFileForCloud();
-				if(listImportFilePaths.IsNullOrEmpty()) {
-					return; //User cancelled out file selection
-				}
-				importFilePath=listImportFilePaths[0];
+			using OpenFileDialog dialogOpenFile=new OpenFileDialog();
+			dialogOpenFile.Multiselect=false;
+			if(dialogOpenFile.ShowDialog()!=DialogResult.OK){
+				return;
 			}
-			else {
-				using OpenFileDialog dialogOpenFile=new OpenFileDialog();
-				dialogOpenFile.Multiselect=false;
-				if(dialogOpenFile.ShowDialog()!=DialogResult.OK){
-					return;
-				}
-				if(!File.Exists(dialogOpenFile.FileName)){
-					MsgBox.Show(this,"File does not exist.");
-					return;
-				}
-				importFilePath=dialogOpenFile.FileName;
+			if(!File.Exists(dialogOpenFile.FileName)){
+				MsgBox.Show(this,"File does not exist.");
+				return;
 			}
+			importFilePath=dialogOpenFile.FileName;
 			if(!ImageHelper.HasImageExtension(importFilePath)){
 				MsgBox.Show(this,"Only allowed to import an image.");
 				return;

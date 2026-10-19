@@ -86,10 +86,6 @@ namespace OpenDental {
 					node2.Nodes.Add(node3);
 					node3=SetNode(EnumPermType.AutoNoteQuickNoteEdit);
 					node2.Nodes.Add(node3);
-					if(ODBuild.IsThinfinity()) {
-						node3=SetNode(EnumPermType.CloseOtherSessions);
-						node2.Nodes.Add(node3);
-					}
 					node3=SetNode("Definitions");
 						node4=SetNode(EnumPermType.DefEdit);
 						node3.Nodes.Add(node4);
@@ -182,10 +178,8 @@ namespace OpenDental {
 					node2.Nodes.Add(node3);
 					node3=SetNode(EnumPermType.UserQueryAdmin);
 					node2.Nodes.Add(node3);
-					if(!ODEnvironment.IsCloudServer) {
-						node3=SetNode(EnumPermType.CommandQuery);
-						node2.Nodes.Add(node3);
-					}
+					node3=SetNode(EnumPermType.CommandQuery);
+					node2.Nodes.Add(node3);
 					node3=SetNode(EnumPermType.NewClaimsProcNotBilled);
 					node2.Nodes.Add(node3);
 				node.Nodes.Add(node2);
@@ -532,14 +526,6 @@ namespace OpenDental {
 				node2=SetNode(EnumPermType.MobileWeb);
 				node.Nodes.Add(node2);
 			treePermissions.Nodes.Add(node);
-			#region ODCloud Only Permissions
-			if(ODBuild.IsThinfinity()) {
-				node=SetNode("Cloud");
-					node2=SetNode(EnumPermType.AllowLoginFromAnyLocation);
-					node.Nodes.Add(node2);
-				treePermissions.Nodes.Add(node);
-			}
-			#endregion
 			#region HQ Only Permissions
 			if(PrefC.IsODHQ) {
 				node=SetNode("HQ Only");

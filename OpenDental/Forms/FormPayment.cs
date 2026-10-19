@@ -4020,10 +4020,6 @@ namespace OpenDental {
 		///If prepaidAmt is not zero, then will show the xcharge window with the given prepaid amount and let the user enter card # and exp.
 		///A patient is not required for prepaid cards.</summary>
 		public string MakeXChargeTransaction(double prepaidAmt = 0) {
-			if(ODEnvironment.IsCloudServer) {
-				MsgBox.Show(this,"XCharge is not available while using Open Dental Cloud.");
-				return null;
-			}
 			//Need to refresh this list locally in case we are coming from another form
 			_listDefsPaymentType=_listDefsPaymentType??Defs.GetDefsForCategory(DefCat.PaymentTypes,true);
 			XchargeMilestone="Validation";

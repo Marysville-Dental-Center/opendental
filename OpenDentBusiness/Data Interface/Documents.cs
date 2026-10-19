@@ -12,7 +12,6 @@ using System.Text.RegularExpressions;
 using CodeBase;
 using DataConnectionBase;
 using Microsoft.Win32;
-using OpenDental.Thinfinity;
 using PdfSharp.Pdf;
 
 namespace OpenDentBusiness {
@@ -980,10 +979,6 @@ namespace OpenDentBusiness {
 					,document.FileName);
 				documentPath=PrefC.GetRandomTempFile(ImageStore.GetExtension(document));
 				File.WriteAllBytes(documentPath,byteArray);
-				if(ODBuild.IsThinfinity()) {
-					ThinfinityUtils.HandleFile(documentPath);
-					return "";
-				}
 			}
 			try { 
 				Process.Start(documentPath);

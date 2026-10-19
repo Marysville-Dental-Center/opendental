@@ -18,7 +18,6 @@ namespace OpenDental{
 		public bool IsNew;
 		public Program ProgramCur;
 		private string _pathOverrideOld;
-		private bool _isLoading = false;
 
 		///<summary>Set to false if we do not want to allow assigning program link to toolbars.</summary>
 		public bool AllowToolbarChanges=true;
@@ -34,7 +33,6 @@ namespace OpenDental{
 		}
 
 		private void FormProgramLinkEdit_Load(object sender, System.EventArgs e) {
-			_isLoading=true;
 			if(ProgramCur.ProgName!=""){
 				//user not allowed to delete program links that we include, only their own.
 				butDelete.Enabled=false;
@@ -45,27 +43,6 @@ namespace OpenDental{
 			DisableUIElementsBasedOnClinicRestriction();//Disable the UI Elements if needed.
 			HideClinicControls(PrefC.HasClinicsEnabled);//Hide the "Hide Button for Clinics" button based upon the user's clinics being on or off.
 			ShowPLButHiddenLabel();//Display warning label for "Hide Button for Clinics" if needed.
-			if(!CanEnableProgram()) {
-				labelCloudMessage.Visible=true;
-			}
-			_isLoading=false;
-		}
-
-		private void checkEnabled_CheckedChanged(object sender,EventArgs e) {
-			if(checkEnabled.Checked && !CanEnableProgram() && !_isLoading) {
-				checkEnabled.Checked=false;
-				MsgBox.Show(this,"Web users cannot currently enable this bridge");
-			}
-		}
-
-		private bool CanEnableProgram() {
-			if(!ODEnvironment.IsCloudServer) {
-				return true;
-			}
-			if(Programs.GetListDisabledForWeb().Contains(ProgramCur.ProgName)) {
-				return false;//these programs are not currently allowed for web users
-			}
-			return true;//it was not one of the programs listed
 		}
 
 		private void FillForm(){
@@ -201,19 +178,11 @@ namespace OpenDental{
 
 		private void butImport_Click(object sender,EventArgs e) {
 			string importFilePath;
-			if(!ODBuild.IsThinfinity() && ODCloudClient.IsAppStream) {
-				importFilePath=ODCloudClient.ImportFileForCloud().FirstOrDefault();
-				if(importFilePath.IsNullOrEmpty()) {
-					return; //User cancelled out of OpenFileDialog
-				}
+			using OpenFileDialog openFileDialog=new OpenFileDialog();
+			if(openFileDialog.ShowDialog()!=DialogResult.OK) {
+				return;
 			}
-			else {
-				using OpenFileDialog openFileDialog=new OpenFileDialog();
-				if(openFileDialog.ShowDialog()!=DialogResult.OK) {
-					return;
-				}
-				importFilePath=openFileDialog.FileName;
-			}
+			importFilePath=openFileDialog.FileName;
 			try {
 				Image imageImported=Image.FromFile(importFilePath);
 				if(imageImported.Size!=new Size(22,22)) {
@@ -304,10 +273,6 @@ namespace OpenDental{
 				return;
 			}
 			if(checkEnabled.Checked && textPluginDllName.Text!="") {
-				if(ODEnvironment.IsCloudServer) {
-					MessageBox.Show(Lan.g(this,"Plugins are not allowed while using Open Dental Cloud."));
-					return;
-				}
 				string dllPath=ODFileUtils.CombinePaths(Application.StartupPath,textPluginDllName.Text);
 				if(dllPath.Contains("[VersionMajMin]")) {
 					Version version = new Version(Application.ProductVersion);

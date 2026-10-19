@@ -72,9 +72,7 @@ namespace OpenDentBusiness{
 				return _curComputerName;
 			}
 			set {
-				if(!ODBuild.IsThinfinity()) { 
-					_curComputerNameT=value; 
-				}
+				_curComputerNameT=value; 
 				_curComputerName=value;
 			}
 		}

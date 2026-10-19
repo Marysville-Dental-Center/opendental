@@ -26,19 +26,11 @@ namespace OpenDental {
 
 		private void butBrowse_Click(object sender,EventArgs e) {
 			string[] stringArrayFileNames;
-			if(!ODBuild.IsThinfinity() && ODCloudClient.IsAppStream) {
-				stringArrayFileNames=new string[]{ODCloudClient.GetFileFolderPath()};
-				if(stringArrayFileNames[0].IsNullOrEmpty()) {
-					return;
-				}
+			OpenFileDialog openFileDialog=new OpenFileDialog();
+			if(openFileDialog.ShowDialog()!=DialogResult.OK) {
+				return;
 			}
-			else {
-				OpenFileDialog openFileDialog=new OpenFileDialog();
-				if(openFileDialog.ShowDialog()!=DialogResult.OK) {
-					return;
-				}
-				stringArrayFileNames=openFileDialog.FileNames;
-			}
+			stringArrayFileNames=openFileDialog.FileNames;
 			if(stringArrayFileNames.Length<1) {
 				return;
 			}

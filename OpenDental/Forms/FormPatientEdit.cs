@@ -1571,12 +1571,7 @@ End of Checklist================================================================
 			}
 			try {
 				string mapUrl="http://maps.google.com/maps?t=m&q="+textAddress.Text+" "+textAddress2.Text+" "+textCity.Text+" "+textState.Text;
-				if (ODCloudClient.IsAppStream) {
-					ODCloudClient.LaunchFileWithODCloudClient(mapUrl);
-				}
-				else {
-					System.Diagnostics.Process.Start(mapUrl);
-				}
+				System.Diagnostics.Process.Start(mapUrl);
 			}
 			catch {
 				MsgBox.Show(this,"Failed to open web browser.  Please make sure you have a default browser set and are connected to the internet then try again.");

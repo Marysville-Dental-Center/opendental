@@ -202,12 +202,10 @@ namespace OpenDental {
 				row.Tag=new Action(EtransFix);
 				gridTools.ListGridRows.Add(row);
 			}
-			if(!ODEnvironment.IsCloudServer) {
-				//If the office converted their db to MyISAM, their backups would stop working.
-				row=new GridRow(Lan.g(this,"InnoDB"),Lan.g(this,"Converts database storage engine to/from InnoDb."));
-				row.Tag=new Action(InnoDBFix);
-				gridTools.ListGridRows.Add(row);
-			}
+			//If the office converted their db to MyISAM, their backups would stop working.
+			row=new GridRow(Lan.g(this,"InnoDB"),Lan.g(this,"Converts database storage engine to/from InnoDb."));
+			row.Tag=new Action(InnoDBFix);
+			gridTools.ListGridRows.Add(row);
 			row=new GridRow(Lan.g(this,"Ins Pay Fix"),Lan.g(this,"Creates checks for insurance payments that are not attached to a check."));
 			row.Tag=new Action(InsPayFix);
 			gridTools.ListGridRows.Add(row);

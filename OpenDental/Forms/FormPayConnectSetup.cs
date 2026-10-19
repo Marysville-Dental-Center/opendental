@@ -361,10 +361,6 @@ namespace OpenDental{
 
 		private void linkLabel1_LinkClicked(object sender,LinkLabelLinkClickedEventArgs e) {
 			string url="https://www.payconnect.com/";
-			if(ODCloudClient.IsAppStream) {
-				ODCloudClient.LaunchFileWithODCloudClient(url);
-				return;
-			}
 			Process.Start(url);
 		}
 

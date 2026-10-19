@@ -56,9 +56,7 @@ namespace WpfControls.UI {
 			for(int i=0;i<listStringMatches.Count;i++) {
 				string strMatch=listStringMatches[i]; //To avoid lazy eval
 				System.Windows.RoutedEventHandler eventHandler=(s,eArg) => { OpenUNCPath(strMatch); };
-				if(!ODCloudClient.IsAppStream) {
-					listMenuItemsLinks.Add(new MenuItem("File Explorer - "+listStringMatches[i],eventHandler));
-				}
+				listMenuItemsLinks.Add(new MenuItem("File Explorer - "+listStringMatches[i],eventHandler));
 			}
 			if(rightClickLinks) {
 				listNumMatches=GetPatNumsFromText(contextMenuItemText);
@@ -185,10 +183,6 @@ namespace WpfControls.UI {
 			try {
 				if(!url.ToLower().StartsWith("http")) {
 					url=@"http://"+url;
-				}
-				if(!ODBuild.IsThinfinity() && ODCloudClient.IsAppStream) {
-					ODCloudClient.LaunchFileWithODCloudClient(url);
-					return;
 				}
 				Process.Start(url);
 			}

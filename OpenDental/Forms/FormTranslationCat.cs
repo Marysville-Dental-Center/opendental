@@ -8,7 +8,6 @@ using System.IO;
 using System.Windows.Forms;
 using OpenDentBusiness;
 using CodeBase;
-using OpenDental.Thinfinity;
 
 namespace OpenDental{
 ///<summary></summary>
@@ -49,19 +48,14 @@ namespace OpenDental{
 		private void butExport_Click(object sender, System.EventArgs e) {
 			string fileName=CultureInfo.CurrentCulture.Name+".sql";//eg en-US.sql
 			string filePath=ODFileUtils.CombinePaths(Path.GetTempPath(),fileName);
-			if(ODEnvironment.IsCloudServer) {
-				//file download dialog will come up later for Thinfinity, after file is created.
-			}
-			else {
-				saveFileDialog1.InitialDirectory=Application.StartupPath;
-				saveFileDialog1.FileName=fileName;
-				if(saveFileDialog1.ShowDialog()!=DialogResult.OK) {
-					saveFileDialog1.Dispose();
-					return;
-				}
-				filePath=saveFileDialog1.FileName;
+			saveFileDialog1.InitialDirectory=Application.StartupPath;
+			saveFileDialog1.FileName=fileName;
+			if(saveFileDialog1.ShowDialog()!=DialogResult.OK) {
 				saveFileDialog1.Dispose();
+				return;
 			}
+			filePath=saveFileDialog1.FileName;
+			saveFileDialog1.Dispose();
 			using StreamWriter streamWriter=new StreamWriter(filePath,false,System.Text.Encoding.UTF8);
 			streamWriter.WriteLine("DELETE FROM languageforeign WHERE Culture='"+CultureInfo.CurrentCulture.Name+"';");
 			List<LanguageForeign> listLanguageForeigns=LanguageForeigns.GetListForCurrentCulture();
@@ -75,14 +69,6 @@ namespace OpenDental{
 				);
 			}//for
 			streamWriter.Close();
-			if(ODBuild.IsThinfinity()) {
-				ThinfinityUtils.ExportForDownload(filePath);
-				return;
-			}
-			else if(ODCloudClient.IsAppStream) {
-				CloudClientL.ExportForCloud(filePath);
-				return;
-			}
 			MessageBox.Show("Done");
 		}
 

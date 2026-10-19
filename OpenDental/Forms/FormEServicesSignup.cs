@@ -44,25 +44,6 @@ namespace OpenDental {
 			{
 				DisableAllExcept(webViewMain);
 			}
-			if(ODEnvironment.IsCloudInstance) {
-				if(_signupOut==null){
-					_signupOut=FormEServicesSetup.GetSignupOut();
-				}
-				UIHelper.ForceBringToFront(this);
-				if(ODBuild.IsThinfinity()) {
-					Process.Start(_signupOut.SignupPortalUrl);
-				}
-				else if(ODCloudClient.IsAppStream) {
-					try {
-						ODCloudClient.LaunchFileWithODCloudClient(_signupOut.SignupPortalUrl);
-					}
-					catch(Exception ex) {
-						MessageBox.Show(ex.Message);
-					}
-				}
-				DialogResult=DialogResult.Abort;
-				return;
-			}
 			try {
 				await webViewMain.Init();
 			}

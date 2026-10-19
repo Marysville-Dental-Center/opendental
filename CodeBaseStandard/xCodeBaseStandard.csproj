@@ -39,7 +39,6 @@
     <Compile Include="..\CodeBase\Utilities\ODPrimitiveExtensions.cs" Link="ODPrimitiveExtensions.cs" />
     <Compile Include="..\CodeBase\Utilities\ODThread.cs" Link="ODThread.cs" />
     <Compile Include="..\CodeBase\Utilities\ODTuple.cs" Link="ODTuple.cs" />
-    <Compile Include="..\UpdateFileCopier\ODCloudClient.cs" Link="ODCloudClient.cs" />
   </ItemGroup>
 
 </Project>

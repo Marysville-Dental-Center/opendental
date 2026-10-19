@@ -878,12 +878,6 @@ namespace OpenDental {
 				}
 				return false;
 			}
-			if(ODEnvironment.IsCloudServer) {//We do not want to install in case this is a pre-test cloud database.
-				if(!isSilent) {
-					MessageBox.Show(Lans.g("ServicesHelper","Not allowed to install the OpenDentalEConnector service in cloud mode."));
-				}
-				return false;
-			}
 			if(string.IsNullOrWhiteSpace(updateServerName)) {
 				//The calling method wants to install the eConnector which is going to be attempted farther down.
 				//This will only be permitted if there haven't been any heartbeats within the last 24hrs.
@@ -1011,10 +1005,6 @@ namespace OpenDental {
 				actionDisplayError(Lans.g("ServicesHelper","Not allowed to install services when using the middle tier."));
 				return false;
 			}
-			if(ODEnvironment.IsCloudServer) {//We do not want to install in case this is a pre-test cloud database.
-				actionDisplayError(Lans.g("ServicesHelper","Not allowed to install the OpenDentalAPIService in cloud mode."));
-				return false;
-			}
 			if(string.IsNullOrWhiteSpace(updateServerName)) {
 				actionDisplayError(Lans.g("ServicesHelper","The 'Update Server (pref.WebServiceServerName): Version updates can only be performed from this computer, and the eConnector can only be installed on this computer' preference is not set."));
 				return false;
@@ -1079,9 +1069,6 @@ namespace OpenDental {
 			List<ServiceController> listServiceControllersOD=new List<ServiceController>();
 			FileInfo fileInfoOdServiceExe;
 			string odServiceFilePath;
-			if(ODEnvironment.IsCloudServer) {
-				return true;//We do not want to install now in case this is a pre-test cloud database.
-			}
 			try {
 				listServiceControllersOD=ServicesHelper.GetServicesByExe("OpenDentalService.exe");
 				odServiceFilePath=ODFileUtils.CombinePaths(Directory.GetCurrentDirectory(),"OpenDentalService","OpenDentalService.exe");

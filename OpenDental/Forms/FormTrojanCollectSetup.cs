@@ -25,11 +25,6 @@ namespace OpenDental {
 		}
 
 		private void FormTrojanCollectSetup_Load(object sender,EventArgs e) {
-			if(ODEnvironment.IsCloudServer) {
-				MsgBox.Show(this,"This program is not available while using Open Dental Cloud.");
-				Close();
-				return;
-			}
 			_program=Programs.GetCur(ProgramName.TrojanExpressCollect);
 			textExportFolder.Text=ProgramProperties.GetPropVal(_program.ProgramNum,"FolderPath");
 			long billtype=PIn.Long(ProgramProperties.GetPropVal(_program.ProgramNum,"BillingType"));

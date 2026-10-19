@@ -17,7 +17,7 @@ namespace OpenDentBusiness {
 
 		public static ComputerPref LocalComputer{
 			get {
-				if(_computerPrefLocal==null || (ODEnvironment.IsCloudInstance && _computerPrefLocal.ComputerName.ToLower()!=ODEnvironment.MachineName.ToLower())) {
+				if(_computerPrefLocal==null) {
 					_computerPrefLocal=GetForLocalComputer();
 					_computerPrefLocalOld=_computerPrefLocal.Copy();
 				}
@@ -125,15 +125,6 @@ namespace OpenDentBusiness {
 			catch {
 				return null;//Maybe for conversion from older version of OD?
 			}
-		}
-
-		///<summary>Used by ODCloudAdmin in order to set all computers to use OpenGL graphics, disable DirectX, set GraphicsSimple=3 (OpenGL), and
-		///PreferredPixelFormat=Prioritized pixel format for WinCloud PC.</summary>
-		public static List<ComputerPref> GetAll() {
-			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				return Meth.GetObject<List<ComputerPref>>(MethodBase.GetCurrentMethod());
-			}
-			return Crud.ComputerPrefCrud.SelectMany("SELECT * FROM computerpref");
 		}
 
 		///<summary>Should not be called by external classes.</summary>

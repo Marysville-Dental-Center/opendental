@@ -88,24 +88,15 @@ namespace OpenDental {
 
 		private void butImport_Click(object sender,EventArgs e) {
 			string importFilePath;
-			if(!ODBuild.IsThinfinity() && ODCloudClient.IsAppStream) {
-				List<string> listImportFilePaths=ODCloudClient.ImportFileForCloud();
-				if(listImportFilePaths.IsNullOrEmpty()) {
-					return; //User cancelled out file selection
-				}
-				importFilePath=listImportFilePaths[0];
+			using OpenFileDialog openFileDialog=new OpenFileDialog();
+			openFileDialog.Multiselect=false;
+			if(!TaskAttachmentCur.IsNew && TaskAttachmentCur.DocNum>0) { 
+				openFileDialog.FileName=Documents.GetPath(_document.DocNum);
 			}
-			else {
-				using OpenFileDialog openFileDialog=new OpenFileDialog();
-				openFileDialog.Multiselect=false;
-				if(!TaskAttachmentCur.IsNew && TaskAttachmentCur.DocNum>0) { 
-					openFileDialog.FileName=Documents.GetPath(_document.DocNum);
-				}
-				if(openFileDialog.ShowDialog()==DialogResult.Cancel){
-					return;
-				}
-				importFilePath=openFileDialog.FileName;
+			if(openFileDialog.ShowDialog()==DialogResult.Cancel){
+				return;
 			}
+			importFilePath=openFileDialog.FileName;
 			if(!TryImportDoc(importFilePath)) {
 				return;
 			}

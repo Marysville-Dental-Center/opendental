@@ -12,7 +12,6 @@ using System.Xml;
 using System.Xml.Serialization;
 using CodeBase;
 using Microsoft.Win32;
-using OpenDental.Thinfinity;
 using OpenDentBusiness;
 using WpfControls.UI;
 
@@ -120,25 +119,16 @@ namespace OpenDental {
 		private void butImport_Click(object sender,EventArgs e) {
 			Cursor=Cursors.Wait;
 			string importFilePath="";
-			if(!ODBuild.IsThinfinity() && ODCloudClient.IsAppStream) {
-				importFilePath=ODCloudClient.ImportFileForCloud().First();
-				if(importFilePath.IsNullOrEmpty()) {
-					Cursor=Cursors.Arrow;
-					return; //User cancelled out of OpenFileDialog
-				}
+			OpenFileDialog openFileDialog=new OpenFileDialog();
+			string initDir=PrefC.GetString(PrefName.ExportPath);
+			if(Directory.Exists(initDir)) {
+				openFileDialog.InitialDirectory=initDir;
 			}
-			else {
-				OpenFileDialog openFileDialog=new OpenFileDialog();
-				string initDir=PrefC.GetString(PrefName.ExportPath);
-				if(Directory.Exists(initDir)) {
-					openFileDialog.InitialDirectory=initDir;
-				}
-				if(openFileDialog.ShowDialog()==false) {
-					Cursor=Cursors.Arrow;
-					return;
-				}
-				importFilePath=openFileDialog.FileName;
+			if(openFileDialog.ShowDialog()==false) {
+				Cursor=Cursors.Arrow;
+				return;
 			}
+			importFilePath=openFileDialog.FileName;
 			EFormDef eFormDef=new EFormDef();
 			XmlSerializer serializer=new XmlSerializer(typeof(EFormDef));
 			if(importFilePath=="") {
@@ -190,43 +180,28 @@ namespace OpenDental {
 			}
 			XmlSerializer xmlSerializer=new XmlSerializer(typeof(EFormDef));
 			string fileName="eFormDefCustom.xml";
-			if(ODEnvironment.IsCloudServer) {
-				StringBuilder stringBuilder=new StringBuilder();
-				using XmlWriter xmlWriter=XmlWriter.Create(stringBuilder);
-				xmlSerializer.Serialize(xmlWriter,eFormDef);
-				xmlWriter.Close();
-				if(ODBuild.IsThinfinity()) {
-					ThinfinityUtils.ExportForDownload(fileName,stringBuilder.ToString());
+			SaveFileDialog saveFileDialog=new SaveFileDialog();
+			saveFileDialog.Filter = "XML files (*.xml)|*.xml|All files (*.*)|*.*";
+			if(ODBuild.IsDebug()) {
+				if(Environment.MachineName.ToLower()=="ryanr"){
+					saveFileDialog.InitialDirectory="C:\\Users\\ryanr\\Desktop";
 				}
-				else {//Is AppStream
-					File.WriteAllText(fileName,stringBuilder.ToString());
-					CloudClientL.ExportForCloud(fileName);
+				if(Environment.MachineName.ToLower()=="jordanhome"){
+					saveFileDialog.InitialDirectory=@"E:\Documents\GIT REPOS\Versioned\OpenDental\OpenDentBusiness\Resources\EForms";
 				}
 			}
-			else {
-				SaveFileDialog saveFileDialog=new SaveFileDialog();
-				saveFileDialog.Filter = "XML files (*.xml)|*.xml|All files (*.*)|*.*";
-				if(ODBuild.IsDebug()) {
-					if(Environment.MachineName.ToLower()=="ryanr"){
-						saveFileDialog.InitialDirectory="C:\\Users\\ryanr\\Desktop";
-					}
-					if(Environment.MachineName.ToLower()=="jordanhome"){
-						saveFileDialog.InitialDirectory=@"E:\Documents\GIT REPOS\Versioned\OpenDental\OpenDentBusiness\Resources\EForms";
-					}
+			else { 
+				if(Directory.Exists(PrefC.GetString(PrefName.ExportPath))) {
+					saveFileDialog.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
 				}
-				else { 
-					if(Directory.Exists(PrefC.GetString(PrefName.ExportPath))) {
-						saveFileDialog.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
-					}
-				}
-				saveFileDialog.FileName=fileName;
-				if(saveFileDialog.ShowDialog()==false) {
-					return;
-				}
-				using StreamWriter streamWriter=new StreamWriter(saveFileDialog.FileName);
-				xmlSerializer.Serialize(streamWriter,eFormDef);
-				streamWriter.Close();
 			}
+			saveFileDialog.FileName=fileName;
+			if(saveFileDialog.ShowDialog()==false) {
+				return;
+			}
+			using StreamWriter streamWriter=new StreamWriter(saveFileDialog.FileName);
+			xmlSerializer.Serialize(streamWriter,eFormDef);
+			streamWriter.Close();
 			//we changed some things on the selected object, so refresh
 			FillGrid();
 			gridMain.SetSelected(idx);

@@ -8,7 +8,6 @@ using System.Windows.Forms;
 using CodeBase;
 using OpenDental.UI;
 using OpenDentBusiness;
-using OpenDental.Thinfinity;
 
 namespace OpenDental {
 	public partial class FormMedLabEdit:FormODBase {
@@ -388,12 +387,7 @@ namespace OpenDental {
 			}
 			Cursor=Cursors.Default;
 			if(filePathAndName!="") {
-				if(ODBuild.IsThinfinity()) {
-					ThinfinityUtils.HandleFile(filePathAndName);
-				}
-				else {
-					Process.Start(filePathAndName);
-				}
+				Process.Start(filePathAndName);
 			}
 			SecurityLogs.MakeLogEntry(EnumPermType.SheetEdit,sheet.PatNum,sheet.Description+" from "+sheet.DateTimeSheet.ToShortDateString()+" pdf was created");
 			DialogResult=DialogResult.OK;

@@ -1,6 +1,5 @@
 using CodeBase;
 using Newtonsoft.Json;
-using OpenDental.Thinfinity;
 using OpenDentBusiness;
 using OpenDentBusiness.AutoComm;
 using System;
@@ -132,12 +131,7 @@ namespace OpenDental {
 			string filePath=ODFileUtils.CombinePaths(PrefC.GetTempFolderPath(),statement.PatNum.ToString()+".pdf");
 			SheetPrinting.CreatePdf(sheet,filePath,statement,dataSet:dataSetStatement);
 			try {
-				if(ODBuild.IsThinfinity()) {
-					ThinfinityUtils.HandleFile(filePath);
-				}
-				else {
-					Process.Start(filePath);
-				}
+				Process.Start(filePath);
 			}
 			catch(Exception ex) {
 				FriendlyException.Show(Lan.g(this,"Unable to open the file."),ex);

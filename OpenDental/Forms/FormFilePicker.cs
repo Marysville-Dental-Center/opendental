@@ -7,7 +7,6 @@ using System.Drawing;
 using OpenDentBusiness;
 using System.IO;
 using CodeBase;
-using OpenDental.Thinfinity;
 
 namespace OpenDental {
 	public partial class FormFilePicker:FormODBase {
@@ -28,9 +27,6 @@ namespace OpenDental {
 		}
 
 		private void FormFilePicker_Load(object sender,EventArgs e) {
-			if(!ODBuild.IsThinfinity() && ODCloudClient.IsAppStream) {
-				DoHideLocalButton=true;
-			}
 			butFileChoose.Visible=!DoHideLocalButton;
 			FillGrid();
 		}
@@ -82,32 +78,18 @@ namespace OpenDental {
 			string extension = Path.GetExtension(gridMain.ListGridRows[gridMain.GetSelectedIndex()].Cells[0].Text);
 			string tempFile=ODFileUtils.CreateRandomFile(Path.GetTempPath(),extension);
 			File.WriteAllBytes(tempFile,byteArray);
-			if(ODBuild.IsThinfinity()) {
-				ThinfinityUtils.HandleFile(tempFile);
-			}
-			else {
-				System.Diagnostics.Process.Start(tempFile);
-			}
+			System.Diagnostics.Process.Start(tempFile);
 		}
 
 		private void butImport_Click(object sender,EventArgs e) {
 			string[] stringArrayFileNames;
-			if(!ODBuild.IsThinfinity() && ODCloudClient.IsAppStream) {
-				List<string> listImportFilePaths=ODCloudClient.ImportFileForCloud(isMulti:true);
-				if(listImportFilePaths.IsNullOrEmpty()) {
-					return;
-				}
-				stringArrayFileNames=listImportFilePaths.ToArray();
+			using OpenFileDialog openFileDialog=new OpenFileDialog();
+			openFileDialog.Multiselect=true;
+			openFileDialog.InitialDirectory="";
+			if(openFileDialog.ShowDialog()!=DialogResult.OK) {
+				return;
 			}
-			else {
-				using OpenFileDialog openFileDialog=new OpenFileDialog();
-				openFileDialog.Multiselect=true;
-				openFileDialog.InitialDirectory="";
-				if(openFileDialog.ShowDialog()!=DialogResult.OK) {
-					return;
-				}
-				stringArrayFileNames=openFileDialog.FileNames;
-			}
+			stringArrayFileNames=openFileDialog.FileNames;
 			for(int i=0;i<stringArrayFileNames.Length;i++) {
 				string combinedPath=FileAtoZ.CombinePaths(textPath.Text,Path.GetFileName(stringArrayFileNames[i]));
 				FileAtoZ.Copy(stringArrayFileNames[i],combinedPath,FileAtoZSourceDestination.LocalToAtoZ);

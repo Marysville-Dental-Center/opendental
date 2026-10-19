@@ -3468,10 +3468,6 @@ namespace OpenDental {
 
 		#region Methods - Event Handlers - Tab Draw
 		private void butAddText_Click(object sender,EventArgs e) {
-			if(ODBuild.IsThinfinity()) {
-				MsgBox.Show(this,"The text feature is not available in Open Dental Cloud.");
-				return;
-			}
 			InputBox inputBox=new InputBox("Text");
 			inputBox.ShowDialog();
 			if(inputBox.IsDialogCancel){
@@ -3500,10 +3496,6 @@ namespace OpenDental {
 		}
 
 		private void butDeleteText_Click(object sender,EventArgs e) {
-			if(ODBuild.IsThinfinity()) {
-				MsgBox.Show(this,"The text feature is not available in Open Dental Cloud.");
-				return;
-			}
 			if(listBoxText.SelectedIndex==-1){
 				MsgBox.Show(this,"Please select an item above, first.");
 				return;
@@ -3597,11 +3589,6 @@ namespace OpenDental {
 		}
 
 		private void radioMoveText_Click(object sender,EventArgs e) {
-			if(ODBuild.IsThinfinity()) {
-				MsgBox.Show(this,"The text feature is not available in Open Dental Cloud.");
-				radioPointer.Checked=true;
-				return;
-			}
 			_toothChartRelay.CursorTool=CursorTool.MoveText;
 		}
 
@@ -8448,10 +8435,8 @@ namespace OpenDental {
 			else {
 				provider=Providers.GetProv(Pd.Patient.PriProv);
 			}
-			bool isNewCropDisabledForWeb=ODEnvironment.IsCloudServer && Programs.GetListDisabledForWeb().Contains("NewCrop");
 			if(erxOption==ErxOption.DoseSpotWithNewCrop) {
-				//ODCloud does not support NewCrop eRx so just use DoseSpot if in web mode.
-				if(!isNewCropDisabledForWeb && provider.IsErxEnabled==ErxEnabledStatus.EnabledWithLegacy) {
+				if(provider.IsErxEnabled==ErxEnabledStatus.EnabledWithLegacy) {
 					InputBox inputBoxPickErxOption=new InputBox(Lan.g(this,"Which eRx option would you like to use?"),new List<string>() { "NewCrop","DoseSpot"});
 					inputBoxPickErxOption.ShowDialog();
 					if(inputBoxPickErxOption.IsDialogCancel) {
@@ -8494,11 +8479,6 @@ namespace OpenDental {
 				return;
 			}
 			if(erxOption==ErxOption.NewCrop) {
-				if(isNewCropDisabledForWeb) {
-					//ODCloud does not support NewCrop eRx.
-					MsgBox.Show(this,"NewCrop is not available while using Open Dental Cloud.");
-					return;
-				}
 				string newCropAccountId=PrefC.GetString(PrefName.NewCropAccountId);
 				if(newCropAccountId=="") {//NewCrop has not been enabled yet.
 					if(!MsgBox.Show(this,MsgBoxButtons.YesNo,"Continuing will enable basic Electronic Rx (eRx).  Fees are associated with this secure e-prescribing system.  See our online manual for details.  At this time, eRx only works for the United States and its territories, including Puerto Rico.  Continue?")) {
@@ -10665,9 +10645,6 @@ namespace OpenDental {
 			}
 			for(int i=0;i<_listToothInitialsText.Count;i++) {
 				listBoxText.Items.Add(_listToothInitialsText[i].GetTextString(),_listToothInitialsText[i]);
-			}
-			if(ODBuild.IsThinfinity()) {
-				listBoxText.Enabled=false;
 			}
 			#endregion TextDraw
 		}

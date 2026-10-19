@@ -7,7 +7,6 @@ using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using CodeBase;
-using OpenDental.Thinfinity;
 using OpenDental.UI;
 using OpenDentBusiness;
 using PdfSharp.Pdf.IO;
@@ -309,16 +308,6 @@ namespace OpenDental {
 
 		private void butSend_Click(object sender,System.EventArgs e) {
 			BillingUseElectronicEnum electronicBillingType=PrefC.GetEnum<BillingUseElectronicEnum>(PrefName.BillingUseElectronic);
-			if(ODEnvironment.IsCloudServer && electronicBillingType.In(
-					BillingUseElectronicEnum.ClaimX,
-					BillingUseElectronicEnum.EDS,
-					BillingUseElectronicEnum.POS
-				)) 
-			{
-				MsgBox.Show(this,$"Electronic statements using {electronicBillingType.GetDescription()} "
-					+"are not available while using Open Dental Cloud.");
-				return;
-			}
 			if(gridBill.SelectedIndices.Length==0){
 				MsgBox.Show(this,"Please select items first.");
 				return;
@@ -490,16 +479,11 @@ namespace OpenDental {
 			if(sendStatementsIO.PdfMasterDocument!=null) {
 				string tempFileOutputDocument = PrefC.GetRandomTempFile(".pdf");
 				sendStatementsIO.PdfMasterDocument.Save(tempFileOutputDocument);
-				if(ODBuild.IsThinfinity()) {
-					ThinfinityUtils.HandleFile(tempFileOutputDocument);
+				try {
+					Process.Start(tempFileOutputDocument);
 				}
-				else {
-					try {
-						Process.Start(tempFileOutputDocument);
-					}
-					catch(Exception ex) {
-						MsgBox.Show(Lan.g(this,"Error: Please make sure Adobe Reader is installed.")+ex.Message);
-					}
+				catch(Exception ex) {
+					MsgBox.Show(Lan.g(this,"Error: Please make sure Adobe Reader is installed.")+ex.Message);
 				}
 			}
 			#endregion

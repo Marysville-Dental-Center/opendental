@@ -228,12 +228,7 @@ namespace OpenDental {
 			}
 			List<Medication> listMedicationImports=new List<Medication>();
 			string fileName;
-			if(!ODBuild.IsThinfinity() && ODCloudClient.IsAppStream) {
-				fileName=ODCloudClient.ImportFileForCloud().FirstOrDefault();
-			}
-			else {
-				fileName=GetFilenameFromUser(true);
-			}
+			fileName=GetFilenameFromUser(true);
 			if(fileName.IsNullOrEmpty()) {
 				return;
 			}
@@ -262,13 +257,8 @@ namespace OpenDental {
 			}
 			int countExportedMeds=0;
 			string fileName;
-			if(ODEnvironment.IsCloudInstance) {
-				fileName="ExportedMedications.txt";
-			}
-			else {
-				//Prompt for file.
-				fileName=GetFilenameFromUser(false);
-			}
+			//Prompt for file.
+			fileName=GetFilenameFromUser(false);
 			if(string.IsNullOrEmpty(fileName)) {
 				return;
 			}

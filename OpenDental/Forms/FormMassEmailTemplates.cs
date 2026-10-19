@@ -92,26 +92,18 @@ namespace OpenDental {
 		private void butImport_Click(object sender,EventArgs e) {
 			#region Get Imported HTML 
 			string importFilePath;
-			if(!ODBuild.IsThinfinity() && ODCloudClient.IsAppStream) {
-				importFilePath=ODCloudClient.ImportFileForCloud().FirstOrDefault();
-				if(importFilePath.IsNullOrEmpty()) {
-					return; //User cancelled out of OpenFileDialog
-				}
+			using OpenFileDialog openFileDialog=new OpenFileDialog();
+			openFileDialog.Multiselect=false;
+			if(Directory.Exists(PrefC.GetString(PrefName.ExportPath))) {
+				openFileDialog.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
 			}
-			else {
-				using OpenFileDialog openFileDialog=new OpenFileDialog();
-				openFileDialog.Multiselect=false;
-				if(Directory.Exists(PrefC.GetString(PrefName.ExportPath))) {
-					openFileDialog.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
-				}
-				else if(Directory.Exists("C:\\")) {
-					openFileDialog.InitialDirectory="C:\\";
-				}
-				if(openFileDialog.ShowDialog()!=DialogResult.OK) {
-					return;
-				}
-				importFilePath=openFileDialog.FileName;
+			else if(Directory.Exists("C:\\")) {
+				openFileDialog.InitialDirectory="C:\\";
 			}
+			if(openFileDialog.ShowDialog()!=DialogResult.OK) {
+				return;
+			}
+			importFilePath=openFileDialog.FileName;
 			string fileName=Path.GetFileName(importFilePath);
 			string path=importFilePath;
 			if(!File.Exists(path)) {

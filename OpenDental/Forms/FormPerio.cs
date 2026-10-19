@@ -1158,10 +1158,6 @@ namespace OpenDental{
 		}
 
 		private void butListen_Click(object sender,EventArgs e) {
-			if(ODBuild.IsThinfinity()) {
-				MsgBox.Show(this,"Voice Perio is not available for the Web version at this time.");
-				return;
-			}
 			if(_voiceController!=null && _voiceController.IsListening) {
 				_voiceController.StopListening();
 				labelListening.Visible=false;

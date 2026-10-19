@@ -5,7 +5,6 @@ using System.Linq;
 using System.Text;
 using CodeBase;
 using OpenDentBusiness;
-using OpenDental.Thinfinity;
 using Newtonsoft.Json;
 
 namespace OpenDental {
@@ -105,17 +104,7 @@ namespace OpenDental {
 				listMedicationExports.Add(new MedicationExport(listMedications[i]));
 			}
 			string json=JsonConvert.SerializeObject(listMedicationExports,Formatting.Indented);
-			if(ODBuild.IsThinfinity()) {
-				ThinfinityUtils.ExportForDownload(filename,json);
-			}
-			else if(ODCloudClient.IsAppStream) {
-				byte[] byteArray=Encoding.UTF8.GetBytes(json);
-				string combinedPath=ODFileUtils.CombinePaths(PrefC.GetTempFolderPath(),Path.GetFileName(filename));
-				CloudClientL.ExportForCloud(combinedPath,false,byteArray);
-			}
-			else {
-				File.WriteAllText(filename,json);//Allow Exception to trickle up.
-			}
+			File.WriteAllText(filename,json);//Allow Exception to trickle up.
 			SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,
 				Lans.g("Medications","Exported")+" "+POut.Int(listMedications.Count)+" "+Lans.g("Medications","medications to:")+" "+filename
 			);

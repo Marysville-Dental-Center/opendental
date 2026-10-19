@@ -20,7 +20,7 @@ namespace OpenDentBusiness.Eclaims
 			+"create another batch.");
 
 		static x837Controller() {
-			//Need to initiliaze this here because ODCloudClient doesn't have access to OpenDentBusiness.Lans.
+			//Need to initialize this here because the shared half of this class (Shared\ODCloudClient\x837Controller.cs) does not use OpenDentBusiness.Lans.
 			_lans_g=Lans.g;
 		}
 
@@ -32,14 +32,14 @@ namespace OpenDentBusiness.Eclaims
 
 		///<summary>Gets the filename for this batch. Used when saving.</summary>
 		private static string GetFileName(Clearinghouse clearinghouseClin,int batchNum,bool isAutomatic) { //called from this.SendBatch. Clinic-level clearinghouse passed in.
-			if(clearinghouseClin.CommBridge==EclaimsCommBridge.WebMD) { //If attempting to use WebMD, exit if client program does not exist.  WebMD not allowed for Thinfinity or AppStream
+			if(clearinghouseClin.CommBridge==EclaimsCommBridge.WebMD) { //If attempting to use WebMD, exit if client program does not exist.
 				if(!File.Exists(clearinghouseClin.ClientProgram)) {
 					MessageBox.Show(Lans.g("Eclaims","The ChangeHealthcare program (WebMD) is not installed at the expected path. Go to Setup, Family/Insurance, Clearinghouses, and double-click ") + clearinghouseClin.Description + Lans.g("Eclaims"," to confirm the Launch Client Program path."));
 							return "";
 				}
 			}
 			string saveFolder=clearinghouseClin.ExportPath;
-			if(!ODEnvironment.IsCloudServer && !Directory.Exists(saveFolder)) {
+			if(!Directory.Exists(saveFolder)) {
 				if(!isAutomatic) {
 					string message=saveFolder+Lans.g("Eclaims"," not found. Attempt to create?");
 					MessageBoxButtons messsageBoxButtons=MessageBoxButtons.YesNo;
@@ -62,7 +62,7 @@ namespace OpenDentBusiness.Eclaims
 				}
 			}
 			if(clearinghouseClin.CommBridge==EclaimsCommBridge.RECS){
-				if(!ODEnvironment.IsCloudServer && File.Exists(ODFileUtils.CombinePaths(saveFolder,"ecs.txt"))){
+				if(File.Exists(ODFileUtils.CombinePaths(saveFolder,"ecs.txt"))){
 					if(!isAutomatic) {
 						MessageBox.Show(RECSFileExistsMsg);
 					}
@@ -133,50 +133,20 @@ namespace OpenDentBusiness.Eclaims
 					messageText=messageText.Replace("\r","");
 					messageText=messageText.Replace("\n","");
 				}
-				if(ODEnvironment.IsCloudServer && DoSendBatchToCloudClient(clearinghouseClin)) {
-					try {
-						ODCloudClient.ExportClaim(saveFile,messageText,doOverwriteFile:clearinghouseClin.CommBridge!=EclaimsCommBridge.RECS);
-					}
-					catch(ODException odEx) {
-						if(odEx.ErrorCodeAsEnum==ODException.ErrorCodes.FileExists && clearinghouseClin.CommBridge==EclaimsCommBridge.RECS) {
-							MessageBox.Show(RECSFileExistsMsg,"x837");
-						}
-						else {
-							MessageBox.Show(odEx.Message,"x837");
-						}
-						if(odEx.ErrorCodeAsEnum!=ODException.ErrorCodes.ClaimArchiveFailed) {//If archiving failed, we can continue with sending.
-							return "";
-						}
-					}
-					catch(Exception ex) {
-						MessageBox.Show(ex.Message,"x837");
-						return "";
-					}
+				try {
+					File.WriteAllText(saveFile,messageText,Encoding.ASCII);
 				}
-				else {
-					try {
-						File.WriteAllText(saveFile,messageText,Encoding.ASCII);
-					}
-					catch(UnauthorizedAccessException ex) {
-						MessageBox.Show(ex.Message+"  Permissions for that folder need to be changed.","File Permissions");
-						return "";
-					}
-					catch(Exception ex) {
-						MessageBox.Show(ex.Message);
-						return "";
-					}
-					CopyToArchive(saveFile);
+				catch(UnauthorizedAccessException ex) {
+					MessageBox.Show(ex.Message+"  Permissions for that folder need to be changed.","File Permissions");
+					return "";
 				}
+				catch(Exception ex) {
+					MessageBox.Show(ex.Message);
+					return "";
+				}
+				CopyToArchive(saveFile);
 			}
 			return messageText;
-		}
-
-		///<summary>True if the x837 batch file should be created on the Cloud user's client machine. False it it should be created on the server.</summary>
-		public static bool DoSendBatchToCloudClient(Clearinghouse clearinghouse) {
-			if(clearinghouse.CommBridge==EclaimsCommBridge.ClaimConnect || clearinghouse.CommBridge==EclaimsCommBridge.EmdeonMedical) {//ClaimConnect and EmdeonMedical does everything without a client program.
-				return false;
-			}
-			return true;
 		}
 
 		///<summary>Helper method for SendBatch that generates the X837 messagetext. This method is public as it is used in ClaimConnect.cs</summary>

@@ -235,10 +235,6 @@
     <Reference Include="Tamir.SharpSSH">
       <HintPath>..\Required dlls\Tamir.SharpSSH.dll</HintPath>
     </Reference>
-    <Reference Include="VirtualWeb, Version=22.1.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\VirtualWeb.dll</HintPath>
-    </Reference>
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
@@ -427,7 +423,6 @@
     <Compile Include="Data Interface\EForms.cs" />
     <Compile Include="Data Interface\LanguagePats.cs" />
     <Compile Include="Data Interface\MobileBrandingProfiles.cs" />
-    <Compile Include="Data Interface\CloudAddresses.cs" />
     <Compile Include="Data Interface\CommlogHists.cs" />
     <Compile Include="Data Interface\EClipboardImageCaptureDefs.cs" />
     <Compile Include="Data Interface\EClipboardImageCaptures.cs" />

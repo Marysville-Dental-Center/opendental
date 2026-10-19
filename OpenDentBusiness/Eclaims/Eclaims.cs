@@ -35,10 +35,6 @@ namespace OpenDentBusiness.Eclaims
 				MessageBox.Show(Lans.g("Eclaims","Cannot send Canadian claims as part of Eclaims.SendBatch."));
 				return;
 			}
-			if(ODEnvironment.IsCloudServer && Clearinghouses.IsDisabledForWeb(clearinghouseClin)) {
-				MessageBox.Show(Lans.g("Eclaims","This clearinghouse is not available while using Open Dental Cloud."));
-				return;
-			}
 			//get next batch number for this clearinghouse
 			int batchNum=Clearinghouses.GetNextBatchNumber(clearinghouseClin);
 			//---------------------------------------------------------------------------------------
@@ -220,12 +216,12 @@ namespace OpenDentBusiness.Eclaims
 			if(clearinghouseClin.ClientProgram==""){
 				return;
 			}
-			if(!ODEnvironment.IsCloudServer && !File.Exists(clearinghouseClin.ClientProgram)){
+			if(!File.Exists(clearinghouseClin.ClientProgram)){
 				MessageBox.Show(clearinghouseClin.ClientProgram+" "+Lans.g("Eclaims","does not exist."));
 				return;
 			}
 			try{
-				ODFileUtils.ProcessStart(clearinghouseClin.ClientProgram,doWaitForODCloudClientResponse:true);
+				ODFileUtils.ProcessStart(clearinghouseClin.ClientProgram);
 			}
 			catch(ODException odEx) {
 				MessageBox.Show(odEx.Message);

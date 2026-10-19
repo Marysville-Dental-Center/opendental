@@ -9,7 +9,6 @@ using OpenDental.UI;
 using OpenDentBusiness;
 using CodeBase;
 using System.Collections.Generic;
-using OpenDental.Thinfinity;
 using System.Linq;
 
 namespace OpenDental{
@@ -42,9 +41,7 @@ namespace OpenDental{
 			MenuItemOD menuItemSetup=new MenuItemOD("Setup");
 			menuMain.Add(menuItemSetup);
 			menuItemSetup.Add("Open Dental", menuItemOpenDental_Click);
-			if(!ODEnvironment.IsCloudInstance) {
-				menuItemSetup.Add("QuickBooks", menuItemQuickBooks_Click);
-			}
+			menuItemSetup.Add("QuickBooks", menuItemQuickBooks_Click);
 			menuItemSetup.Add("QuickBooks Online", menuItemQuickBooksOnline_Click);
 			//Lock-----------------------------------------------------------------------------------------------------------
 			menuMain.Add(new MenuItemOD("Lock",menuItemLock_Click));
@@ -207,53 +204,36 @@ namespace OpenDental{
 				return;
 			}
 			string filePath;
-			if(!ODBuild.IsThinfinity() && ODCloudClient.IsAppStream) {
-				filePath=ODFileUtils.CombinePaths(Path.GetTempPath(),"ODAccountExport.xls");
+			saveFileDialog=new SaveFileDialog();
+			saveFileDialog.AddExtension=true;
+			saveFileDialog.FilterIndex=0;
+			if(delimiter=="\t") {
+				saveFileDialog.Filter="Text files(*.txt)|*.txt|All files(*.*)|*.*";
 			}
 			else {
-				saveFileDialog=new SaveFileDialog();
-				saveFileDialog.AddExtension=true;
-				saveFileDialog.FilterIndex=0;
-				if(delimiter=="\t") {
-					saveFileDialog.Filter="Text files(*.txt)|*.txt|All files(*.*)|*.*";
+				saveFileDialog.Filter="CSV files(*.csv)|*.csv|All files(*.*)|*.*";
+			}
+			saveFileDialog.FileName=gridMain.Title;
+			Cursor=Cursors.WaitCursor;//Checking the directory can take time, so set cursor to loading wheel
+			if(!Directory.Exists(PrefC.GetString(PrefName.ExportPath))) {
+				try {
+					Directory.CreateDirectory(PrefC.GetString(PrefName.ExportPath));
+					saveFileDialog.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
 				}
-				else {
-					saveFileDialog.Filter="CSV files(*.csv)|*.csv|All files(*.*)|*.*";
-				}
-				saveFileDialog.FileName=gridMain.Title;
-				if(ODEnvironment.IsCloudServer) {
-					if(saveFileDialog.ShowDialog()!=DialogResult.OK) { 
-						return;
-					}
-					if(saveFileDialog.FileName.IsNullOrEmpty()) {
-						MsgBox.Show("Failed to save the file.");
-						return;
-					}
-					filePath=ODFileUtils.CombinePaths(Path.GetTempPath(),saveFileDialog.FileName.Split('\\').Last());
-				}
-				else {
-					Cursor=Cursors.WaitCursor;//Checking the directory can take time, so set cursor to loading wheel
-					if(!Directory.Exists(PrefC.GetString(PrefName.ExportPath))) {
-						try {
-							Directory.CreateDirectory(PrefC.GetString(PrefName.ExportPath));
-							saveFileDialog.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
-						}
-						catch {
-							//initialDirectory will be blank
-						}
-					}
-					else{
-						saveFileDialog.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
-					}
-					Cursor=Cursors.Default;
-					if(saveFileDialog.ShowDialog()!=DialogResult.OK) {
-						saveFileDialog.Dispose();
-						return;
-					}
-					filePath=saveFileDialog.FileName;
-					saveFileDialog.Dispose();
+				catch {
+					//initialDirectory will be blank
 				}
 			}
+			else{
+				saveFileDialog.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
+			}
+			Cursor=Cursors.Default;
+			if(saveFileDialog.ShowDialog()!=DialogResult.OK) {
+				saveFileDialog.Dispose();
+				return;
+			}
+			filePath=saveFileDialog.FileName;
+			saveFileDialog.Dispose();
 			StreamWriter streamWriter=null;
 			try {
 				streamWriter=new StreamWriter(filePath,false);
@@ -309,15 +289,7 @@ namespace OpenDental{
 			}
 			streamWriter.Close();
 			streamWriter.Dispose();
-			if(ODBuild.IsThinfinity()) {
-				ThinfinityUtils.ExportForDownload(filePath);
-			}
-			else if(ODCloudClient.IsAppStream) {
-				CloudClientL.ExportForCloud(filePath);
-			}
-			else {
-				MessageBox.Show(Lan.g(this,"File created successfully"));
-			}
+			MessageBox.Show(Lan.g(this,"File created successfully"));
 		}
 
 		private void gridMain_CellDoubleClick(object sender,ODGridClickEventArgs e) {

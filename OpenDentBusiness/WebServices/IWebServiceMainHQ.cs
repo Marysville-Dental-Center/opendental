@@ -36,8 +36,6 @@ namespace OpenDentBusiness {
 		string RequestListenerProxyPrefs(string officeData);
 		string ValidateWebAppUrl(string officeData);
 		string GetFeaturesForCustomer(string registrationKey);
-		string RecordCloudSessionsInUse(string officeData);
-		string RecordCloudStorageSizeUsed(string officeData);
 		string GetDropboxAuthorizationUrl(long registrationKeyNum);
 		void ProcessEConnectorFailoverAsync(string officeData);
 		string CheckFHIRAPIKey(string officeData);
@@ -79,10 +77,6 @@ namespace OpenDentBusiness {
 		string EmailHostingSignup(string officeData);
 		string EmailHostingChangeClinicStatus(string officeData);
 		string GetCareCreditOAuthToken(string officeData);
-		string GetCloudMaxSessions(string officeData);
-		string GetThinfinityLicenseUsers(string officeData);
-		string GetMaxAtoZSizeGB(string officeData);
-		string UpsertCloudMaxSessions(string officeData);
 		string LogCareCreditTransaction(string officeData);
 		string GetMobileSettings(string officeData);
 		string GetMobileSettings2FA(string officeData);
@@ -93,7 +87,6 @@ namespace OpenDentBusiness {
 		string GetPostcardManiaSSO(string officeData);
 		string ManageAdvertisingPostcardsAccount(string officeData);
 		string UploadPostcardManiaPatientList(string officeData);
-		string GetLatestCloudClientVersion();
 		string GetCareCreditWebToken(string officeData);
 		string ProvisionTenDlcBrand(string officeData);
 		string ProcessOCRIIDRequest(string officeData);

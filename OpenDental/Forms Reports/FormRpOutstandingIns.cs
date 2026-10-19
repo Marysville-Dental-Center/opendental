@@ -12,7 +12,6 @@ using OpenDentBusiness;
 using System.Collections;
 using OpenDental.UI;
 using CodeBase;
-using OpenDental.Thinfinity;
 
 namespace OpenDental {
 	public partial class FormRpOutstandingIns:FormODBase {
@@ -700,33 +699,27 @@ namespace OpenDental {
 		private void butExport_Click(object sender,System.EventArgs e) {			
 			string fileName=Lan.g(this,"Outstanding Insurance Claims");
 			string filePath=ODFileUtils.CombinePaths(Path.GetTempPath(),fileName);
-			if(ODEnvironment.IsCloudServer) {
-				//Thinfinity: file download dialog will come up later, after file is created. AppStream: File will be created in client's Downloads folder.
-				filePath+=".txt";//Provide the filepath an extension so that Thinfinity can offer as a download.
-			}
-			else {
-				SaveFileDialog saveFileDialog=new SaveFileDialog();
-				saveFileDialog.AddExtension=true;
-				saveFileDialog.FileName=fileName;
-				if(!Directory.Exists(PrefC.GetString(PrefName.ExportPath))) {
-					try {
-						Directory.CreateDirectory(PrefC.GetString(PrefName.ExportPath));
-						saveFileDialog.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
-					}
-					catch {
-						//initialDirectory will be blank
-					}
-				}
-				else {
+			SaveFileDialog saveFileDialog=new SaveFileDialog();
+			saveFileDialog.AddExtension=true;
+			saveFileDialog.FileName=fileName;
+			if(!Directory.Exists(PrefC.GetString(PrefName.ExportPath))) {
+				try {
+					Directory.CreateDirectory(PrefC.GetString(PrefName.ExportPath));
 					saveFileDialog.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
 				}
-				saveFileDialog.Filter="Text files(*.txt)|*.txt|Excel Files(*.xls)|*.xls|All files(*.*)|*.*";
-				saveFileDialog.FilterIndex=0;
-				if(saveFileDialog.ShowDialog()!=DialogResult.OK) {
-					return;
+				catch {
+					//initialDirectory will be blank
 				}
-				filePath=saveFileDialog.FileName;
 			}
+			else {
+				saveFileDialog.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
+			}
+			saveFileDialog.Filter="Text files(*.txt)|*.txt|Excel Files(*.xls)|*.xls|All files(*.*)|*.*";
+			saveFileDialog.FilterIndex=0;
+			if(saveFileDialog.ShowDialog()!=DialogResult.OK) {
+				return;
+			}
+			filePath=saveFileDialog.FileName;
 			try {
 				using(StreamWriter sw=new StreamWriter(filePath,false))
 				//new FileStream(,FileMode.Create,FileAccess.Write,FileShare.Read)))
@@ -752,15 +745,7 @@ namespace OpenDental {
 				MessageBox.Show(Lan.g(this,"File in use by another program.  Close and try again."));
 				return;
 			}
-			if(ODBuild.IsThinfinity()) {
-				ThinfinityUtils.ExportForDownload(filePath);
-			}
-			else if(ODCloudClient.IsAppStream) {
-				CloudClientL.ExportForCloud(filePath);
-			}
-			else {
-				MessageBox.Show(Lan.g(this,"File created successfully"));
-			}
+			MessageBox.Show(Lan.g(this,"File created successfully"));
 		}
 
 		private void butZeroClaims_Click(object sender,EventArgs e) {

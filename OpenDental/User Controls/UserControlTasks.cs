@@ -1876,7 +1876,7 @@ namespace OpenDental {
 		public void Search_Clicked() {
 			string textClip="";
 			try {
-				textClip=System.Windows.Clipboard.GetText().Trim().ToLower();//System.Windows.Forms.Clipboard fails for Thinfinity
+				textClip=System.Windows.Clipboard.GetText().Trim().ToLower();
 			}
 			catch {
 				//do nothing

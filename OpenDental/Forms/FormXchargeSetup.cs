@@ -399,15 +399,6 @@ namespace OpenDental{
 		}
 
 		private void checkEnabled_CheckedChanged(object sender,EventArgs e) {
-			if(ODEnvironment.IsCloudServer) {
-				bool isDisabledForWeb=Programs.GetListDisabledForWeb().Contains(_program.ProgName);
-				if(checkEnabled.Checked && isDisabledForWeb) {
-					checkEnabled.Checked=false;
-					if(!_isLoading){
-						MsgBox.Show(this,"Web users cannot currently enable this bridge");
-					}
-				}
-			}
 		}
 
 		private void butSave_Click(object sender,System.EventArgs e) {

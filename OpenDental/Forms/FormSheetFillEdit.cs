@@ -13,7 +13,6 @@ using System.Windows.Forms;
 using CodeBase;
 using OpenDental.UI;
 using OpenDentBusiness;
-using OpenDental.Thinfinity;
 using PdfSharp.Drawing;
 
 namespace OpenDental {
@@ -255,15 +254,7 @@ namespace OpenDental {
 				}
 			}
 			try {
-				if(ODBuild.IsThinfinity()) {
-					ThinfinityUtils.HandleFile(filePathAndName);
-				}
-				else if(ODCloudClient.IsAppStream) {
-					CloudClientL.ExportForCloud(filePathAndName);
-				}
-				else {
-					Process.Start(filePathAndName);
-				}
+				Process.Start(filePathAndName);
 			}
 			catch(Exception ex) {
 				FriendlyException.Show(Lan.g(this,"Unable to open the file."),ex);

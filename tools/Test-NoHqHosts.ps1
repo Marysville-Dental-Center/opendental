@@ -66,7 +66,6 @@ $AllowList=@(
 	@{ Path='OpenDentBusiness\Data Interface\EmailHostingTemplates.cs'; Reason='Default template of the hosted mass e-mail eService, which is not available; deleted in a later phase.' }
 	@{ Path='WpfControlsOD\Frms\FrmTestAllControls.xaml*'; Reason='Developer UI test window, only opened from the UnitTests project.' }
 	@{ Path='WpfControlsOD\Frms\FrmTestSplitters.xaml*'; Reason='Developer UI test window, only opened from the UnitTests project.' }
-	@{ Path='WpfControlsOD\Logic\CloudClientL.cs'; Reason='Open Dental Cloud (AppStream) client installer. The cloud hosting paths are removed by another piece of the decoupling work.' }
 
 	#--- Vendor integrations whose Open Dental hosted part is replaced in the direct vendor integrations wave.
 	@{ Path='OpenDentBusiness\Properties\Resources.resx'; Reason='GoogleAuthCodeResponseHtml, the page shown in the browser after Google sign-in. It loads Open Dental styling; replaced with the direct Google integration.' }

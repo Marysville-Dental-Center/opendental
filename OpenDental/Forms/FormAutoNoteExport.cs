@@ -82,17 +82,11 @@ namespace OpenDental {
 				return;
 			}
 			string fileName;
-			if(ODEnvironment.IsCloudServer) {
-				//file download dialog will come up later, after file is created.
-				fileName="autonotes.json";
-			}
-			else {
-				using(SaveFileDialog saveDialog=ExportDialogSetup()) {
-					if(saveDialog.ShowDialog()!=DialogResult.OK) {
-						return;//user canceled out of SaveFileDialog
-					}
-					fileName=saveDialog.FileName;
+			using(SaveFileDialog saveDialog=ExportDialogSetup()) {
+				if(saveDialog.ShowDialog()!=DialogResult.OK) {
+					return;//user canceled out of SaveFileDialog
 				}
+				fileName=saveDialog.FileName;
 			}
 			List<SerializableAutoNote> listSerializableAutoNotes=AutoNotes.GetSerializableAutoNotes(listAutoNotesChecked);
 			List<AutoNoteControl> listAutoNoteControls=AutoNoteControls.GetListByParsingAutoNoteText(listSerializableAutoNotes);

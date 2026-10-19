@@ -94,7 +94,7 @@ namespace OpenDental {
 			if(!WebServiceMainHQProxy.IsHqAvailable) {
 				throw new HqNotAvailableException();//Fail before showing any progress window.
 			}
-			if(!ODEnvironment.IsCloudServer && MiscUtils.TryUpdateIeEmulation()) {
+			if(MiscUtils.TryUpdateIeEmulation()) {
 				throw new Exception("Browser emulation version updated.\r\nYou must restart this application before accessing the Signup Portal.");
 			}
 			//Send light version of clinics to HQ to be used by signup portal below. Get back all args needed from HQ in order to perform the operations of this window.
@@ -151,15 +151,6 @@ namespace OpenDental {
 			//Permissions check presumably. Discuss with Sam.
 			if(!ClinicPrefs.IsODTouchAllowed(Clinics.ClinicNum)) {
 				string site="https://www.opendental.com/site/odtouch.html";
-				if(!ODBuild.IsThinfinity() && ODCloudClient.IsAppStream) {
-					try {
-						ODCloudClient.LaunchFileWithODCloudClient(site);
-					}
-					catch(Exception ex) {
-						MessageBox.Show(ex.Message);
-					}
-					return;
-				}
 				try{
 					Process.Start(site);
 				}

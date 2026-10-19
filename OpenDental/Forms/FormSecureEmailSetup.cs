@@ -38,14 +38,6 @@ namespace OpenDental {
 			if(string.IsNullOrWhiteSpace(secureEmailUrl)) {
 				webBrowser.Visible=false;
 			}
-			else if(!ODBuild.IsThinfinity() && ODCloudClient.IsAppStream) {
-				try {
-					ODCloudClient.LaunchFileWithODCloudClient(secureEmailUrl);
-				}
-				catch(Exception ex) {
-					MessageBox.Show(ex.Message);
-				}
-			}
 			else {
 				webBrowser.Navigate(secureEmailUrl);
 			}

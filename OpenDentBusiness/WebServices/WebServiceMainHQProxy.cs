@@ -1115,11 +1115,6 @@ namespace OpenDentBusiness {
 			return WebSerializer.DeserializeTag<List<ShortGuidResult>>(result,"ListShortGuidResults");
 		}
 
-		public static string GetLatestCloudClientVersion() {
-			string result=GetWebServiceMainHQInstance().GetLatestCloudClientVersion();
-			return WebSerializer.DeserializePrimitive<string>(result);
-		}
-
 		///<summary>Returns a DateTime set by HQ or minval if we failed to retrieve the value. Without HQ this is always MinValue.</summary>
 		public static DateTime GetCareCreditBatchProcessTime() {
 			if(!IsHqAvailable) {

@@ -259,27 +259,6 @@ namespace OpenDental {
 		}
 		
 		private void listElectBilling_SelectedIndexChanged(object sender,EventArgs e) {
-			//In Web mode do not allow ClaimX or EDS to be selected, provide warning if they are.
-			if(ODEnvironment.IsCloudServer) {
-				string disabledBillingProvider="";
-				if(listElectBilling.SelectedIndex==3) {
-					disabledBillingProvider+="ClaimX";
-				}
-				else if(listElectBilling.SelectedIndex==4) {
-					disabledBillingProvider+="Electronic Dental Services";
-				}
-				if(!string.IsNullOrEmpty(disabledBillingProvider)) {
-					MsgBox.Show(this,disabledBillingProvider+" is not available while using Open Dental Cloud.");
-					//Reset to previous default selection if pref wasn't set to ClaimX or EDS
-					int prefBillingtype=(int)PrefC.GetEnum<BillingUseElectronicEnum>(PrefName.BillingUseElectronic);
-					if(prefBillingtype>=0 && prefBillingtype<=2) {
-						listElectBilling.SelectedIndex=prefBillingtype;
-					}
-					else {
-						listElectBilling.SelectedIndex=0;//If their current billing is ClaimX or EDS, set to "No electronic billing" to prevent infinite loop.
-					}
-				}
-			}
 			//If Dental X Change is selected, enable its textboxes and combo.
 			if(listElectBilling.SelectedIndex==1) {
 				comboRemitAddr.Enabled=true;

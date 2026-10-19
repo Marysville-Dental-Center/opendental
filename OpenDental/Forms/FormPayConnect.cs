@@ -58,9 +58,6 @@ namespace OpenDental {
 				DialogResult=DialogResult.Cancel;
 				return;
 			}
-			if(ODEnvironment.IsCloudServer){
-				sigBoxWrapper.Enabled=false;
-			}
 			if(PIn.Bool(ProgramProperties.GetPropVal(_program.ProgramNum,"TerminalProcessingEnabled",_clinicNum))) {
 				try {
 					//If the config file for the DentalXChange credit card processing .dll doesn't exist, construct it from the included resource.
@@ -522,36 +519,6 @@ namespace OpenDental {
 
 		///<summary>Processes a PayConnect payment via a credit card terminal.</summary>
 		private bool ProcessPaymentTerminal() {
-			if(ODEnvironment.IsCloudServer) {
-				if(!CloudClientL.IsCloudClientRunning()) {
-					return false;
-				}
-				if(radioSale.Checked) {
-					_payConnectResponse=ODCloudClient.ProcessPaymentTerminal("SALE",PIn.Decimal(textAmount.Text),checkForceDuplicate.Checked);
-				}
-				else if(radioAuthorization.Checked) {
-					_payConnectResponse=ODCloudClient.ProcessPaymentTerminal("AUTH",PIn.Decimal(textAmount.Text),checkForceDuplicate.Checked);
-				}
-				else if(radioVoid.Checked) {
-					_payConnectResponse=ODCloudClient.ProcessPaymentTerminal("VOID",PIn.Decimal(textAmount.Text),checkForceDuplicate.Checked,textRefNumber.Text);
-				}
-				else if(radioReturn.Checked) {
-					_payConnectResponse=ODCloudClient.ProcessPaymentTerminal("RETURN",PIn.Decimal(textAmount.Text),checkForceDuplicate.Checked,textRefNumber.Text);
-				}
-				else {//Shouldn't happen
-					MsgBox.Show(this,"Error creating request: Please select a transaction type");
-					return false;
-				}
-				if(_payConnectResponse==null) {
-					SecurityLogs.MakeLogEntry(EnumPermType.CreditCardTerminal,_patient.PatNum,"No response received.");
-					return false;
-				}
-				textCardNumber.Text=_payConnectResponse.CardNumber;
-				textAmount.Text=_payConnectResponse.Amount.ToString("f");
-				ReceiptStr=PayConnectTerminal.BuildReceiptString(_payConnectResponse,false,_clinicNum);
-				PayConnectL.PrintReceipt(ReceiptStr,_patient);
-				return true;
-			}//end of IsWeb()
 			PosRequest posRequest=null;
 			try {
 				if(radioSale.Checked) {

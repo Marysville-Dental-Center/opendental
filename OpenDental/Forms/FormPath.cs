@@ -82,11 +82,6 @@ namespace OpenDental{
 					ActiveControl=textLocalPath;//Focus on textLocalPath, since this is the only textbox the user can edit in this case.
 				}
 			}
-			if(ODEnvironment.IsCloudServer) {
-				textSftpUsername.UseSystemPasswordChar=true;
-				butOK.Enabled=false;
-				DisableMostControls();
-			}
 			if(PrefC.AtoZfolderUsed!=DataStorageType.InDatabase) {
 				radioDatabaseStorage.Visible=false;
 				LayoutManager.MoveLocation(radioDropboxStorage,new Point(LayoutManager.Scale(9),LayoutManager.Scale(38)));

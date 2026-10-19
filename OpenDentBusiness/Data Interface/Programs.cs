@@ -209,11 +209,6 @@ namespace OpenDentBusiness {
 			return (program==null ? 0 : program.ProgramNum);
 		}
 
-		///<summary>These programs do not work in cloud mode for various reasons. We will restore them as our cloud customers request them.</summary>
-		public static List<string> GetListDisabledForWeb() {
-			return PrefC.GetString(PrefName.ProgramLinksDisabledForWeb).Split(new[] { "," },StringSplitOptions.RemoveEmptyEntries).ToList();
-		}
-
 		/// <summary>Using eClinicalWorks tight integration.</summary>
 		public static bool UsingEcwTightMode() {
 			Meth.NoCheckMiddleTierRole();

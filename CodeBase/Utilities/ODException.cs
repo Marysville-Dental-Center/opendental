@@ -195,15 +195,9 @@ namespace CodeBase {
 			///<summary>An individual SMS is trying to include an HTTPS short url redirect link, but has already used all available HTTPS enabled domains
 			///on previous send attempts.  This should be used to simply fail the SMS.</summary>
 			NoAvailableHttpsShortUrlRedirectDomains=901,
-			//4000-4999. Values used by ODCloud
-			///<summary>The file trying to write exists.</summary>
-			FileExists=4000,
-			///<summary>Unable to communicate with ODCloudClient.</summary>
-			ODCloudClientTimeout=4001,
+			//4000-4999. Values used by claim file handling
 			///<summary>Error occurred when attempting to archive old claims.</summary>
 			ClaimArchiveFailed=4002,
-			///<summary>Unable to communicate with the browser.</summary>
-			BrowserTimeout=4003,
 			//5000-5099. Values used by LamportsBakery
 			///<summary>Failed to execute locking logic more than the permitted number of attempts.</summary>
 			LamportsBakeryLockMaxAttempts=5000,

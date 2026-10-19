@@ -32,11 +32,9 @@ namespace OpenDental {
 			this.textNumDecimals = new System.Windows.Forms.TextBox();
 			this.label7 = new System.Windows.Forms.Label();
 			this.labelTrackClinic = new System.Windows.Forms.Label();
-			this.labelAlertCloudSessions = new System.Windows.Forms.Label();
 			this.checkBackupIndexesDisabled = new OpenDental.UI.CheckBox();
 			this.textAuditEntries = new OpenDental.ValidNum();
 			this.comboTrackClinic = new OpenDental.UI.ComboBox();
-			this.textAlertCloudSessions = new OpenDental.ValidNum();
 			this.groupBox2 = new OpenDental.UI.GroupBox();
 			this.textLanguageAndRegion = new System.Windows.Forms.TextBox();
 			this.label4 = new System.Windows.Forms.Label();
@@ -130,15 +128,6 @@ namespace OpenDental {
 			this.labelTrackClinic.Text = "Track Last Clinic By";
 			this.labelTrackClinic.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
 			// 
-			// labelAlertCloudSessions
-			// 
-			this.labelAlertCloudSessions.Location = new System.Drawing.Point(33, 403);
-			this.labelAlertCloudSessions.Name = "labelAlertCloudSessions";
-			this.labelAlertCloudSessions.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
-			this.labelAlertCloudSessions.Size = new System.Drawing.Size(365, 17);
-			this.labelAlertCloudSessions.TabIndex = 263;
-			this.labelAlertCloudSessions.Text = "Alert when within this value of the maximum allowed Cloud Sessions";
-			// 
 			// checkBackupIndexesDisabled
 			// 
 			this.checkBackupIndexesDisabled.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
@@ -167,14 +156,6 @@ namespace OpenDental {
 			this.comboTrackClinic.Name = "comboTrackClinic";
 			this.comboTrackClinic.Size = new System.Drawing.Size(130, 21);
 			this.comboTrackClinic.TabIndex = 251;
-			// 
-			// textAlertCloudSessions
-			// 
-			this.textAlertCloudSessions.Location = new System.Drawing.Point(399, 400);
-			this.textAlertCloudSessions.Name = "textAlertCloudSessions";
-			this.textAlertCloudSessions.ShowZero = false;
-			this.textAlertCloudSessions.Size = new System.Drawing.Size(74, 20);
-			this.textAlertCloudSessions.TabIndex = 262;
 			// 
 			// groupBox2
 			// 
@@ -386,7 +367,6 @@ namespace OpenDental {
 			this.Controls.Add(this.textSyncCode);
 			this.Controls.Add(this.textNumDecimals);
 			this.Controls.Add(this.comboTrackClinic);
-			this.Controls.Add(this.textAlertCloudSessions);
 			this.Controls.Add(this.label2);
 			this.Controls.Add(this.groupBox2);
 			this.Controls.Add(this.groupBox1);
@@ -398,7 +378,6 @@ namespace OpenDental {
 			this.Controls.Add(this.butDecimal);
 			this.Controls.Add(this.label7);
 			this.Controls.Add(this.labelTrackClinic);
-			this.Controls.Add(this.labelAlertCloudSessions);
 			this.Name = "UserControlMainWindowMisc";
 			this.Size = new System.Drawing.Size(494, 660);
 			this.groupBox2.ResumeLayout(false);
@@ -441,8 +420,6 @@ namespace OpenDental {
 		private System.Windows.Forms.Label label7;
 		private UI.ComboBox comboTrackClinic;
 		private System.Windows.Forms.Label labelTrackClinic;
-		private System.Windows.Forms.Label labelAlertCloudSessions;
-		private ValidNum textAlertCloudSessions;
 		private ValidNum textInactiveAlert;
 		private UI.CheckBox checkBackupIndexesDisabled;
 	}

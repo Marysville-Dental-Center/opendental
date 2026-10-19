@@ -67,9 +67,6 @@ namespace OpenDental {
 			if(PrefC.GetBool(PrefName.SecurityBadgesRequirePassword)) {
 				labelSwipeBadge.Visible=false;
 			}
-			if(ODEnvironment.IsCloudServer) {
-				timerShutdownInstance.Enabled=true;
-			}
 			FillListBox();
 			this.Focus();//Attempted fix, customers had issue with UI not defaulting focus to this form on startup.
 			textSelectOnLoad.Select();//Give focus to appropriate text box.
@@ -107,12 +104,6 @@ namespace OpenDental {
 
 		private void textFilterName_TextChanged(object sender,EventArgs e) {
 			FillListBox();
-		}
-
-		private void timerShutdownInstance_Tick(object sender,EventArgs e) {
-			//If the timer ticks that means IsWeb() is enabled and the user has sat at the login window too long. We want this to behave exactly like
-			//the user clicked Exit to shut down the software.
-			DialogResult=DialogResult.Cancel;
 		}
 
 		///<summary>Looks for input from badge reader. Will open FrmUserodHistory if there is a user matching the input ID. The timer interval should be faster a user could type.</summary>

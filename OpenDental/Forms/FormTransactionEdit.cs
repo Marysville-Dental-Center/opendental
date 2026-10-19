@@ -428,24 +428,15 @@ namespace OpenDental{
 				return;
 			}
 			string importFilePath;
-			if(!ODBuild.IsThinfinity() && ODCloudClient.IsAppStream) {
-				List<string> listImportFilePaths=ODCloudClient.ImportFileForCloud();
-				if(listImportFilePaths.IsNullOrEmpty()) {
-					return; //User cancelled out file selection
-				}
-				importFilePath=listImportFilePaths[0];
+			using OpenFileDialog openFileDialog=new OpenFileDialog();
+			openFileDialog.InitialDirectory=Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+			if(openFileDialog.ShowDialog()!=DialogResult.OK) {
+				return;
 			}
-			else {
-				using OpenFileDialog openFileDialog=new OpenFileDialog();
-				openFileDialog.InitialDirectory=Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-				if(openFileDialog.ShowDialog()!=DialogResult.OK) {
-					return;
-				}
-				importFilePath=openFileDialog.FileName;
-				if(!File.Exists(importFilePath)) {
-					MsgBox.Show(this,"File does not exist or cannot be read.");
-					return;
-				}
+			importFilePath=openFileDialog.FileName;
+			if(!File.Exists(importFilePath)) {
+				MsgBox.Show(this,"File does not exist or cannot be read.");
+				return;
 			}
 			TransactionInvoice transactionInvoice=new TransactionInvoice();
 			if(PrefC.GetBool(PrefName.AccountingInvoiceAttachmentsSaveInDatabase)) {
@@ -484,11 +475,6 @@ namespace OpenDental{
 				string prefix=transactionInvoice.FileName.Substring(0,transactionInvoice.FileName.Length-fileExt.Length);
 				string filePath=ODFileUtils.CreateRandomFile(PrefC.GetTempFolderPath(),fileExt,prefix);
 				byte[] byteArray=Convert.FromBase64String(transactionInvoice.InvoiceData);
-				if(!ODBuild.IsThinfinity() && ODCloudClient.IsAppStream) {
-					//Use FileName instead of filePath here to preserve original file name.
-					CloudClientL.ExportForCloud(transactionInvoice.FileName,doPromptForName:false,byteArray);
-					return;
-				}
 				try {
 					ODFileUtils.WriteAllBytesThenStart(filePath,byteArray,null);
 				}
@@ -496,10 +482,6 @@ namespace OpenDental{
 					FriendlyException.Show(ex.Message,ex);
 					return;
 				}
-				return;
-			}
-			if(!ODBuild.IsThinfinity() && ODCloudClient.IsAppStream) {
-				CloudClientL.ExportForCloud(transactionInvoice.FilePath,doPromptForName:false);
 				return;
 			}
 			try {

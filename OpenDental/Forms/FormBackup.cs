@@ -70,17 +70,7 @@ namespace OpenDental {
 			}
 			textSupplementalBackupCopyNetworkPath.Text=PrefC.GetString(PrefName.SupplementalBackupNetworkPath);
 			#endregion Supplemental Tab
-			if(ODEnvironment.IsCloudServer) {
-				//OD Cloud users cannot use this tool because they're InnoDb.
-				tabControl1.TabPages.Remove(tabPageBackup);
-				//We don't want to allow the user to connect to another server.
-				checkArchiveDoBackupFirst.Visible=false;
-				checkArchiveDoBackupFirst.Checked=false;
-				groupBoxBackupConnection.Visible=false;
-				//We don't want the user to be able to tell if a directory exists.
-				tabControl1.TabPages.Remove(tabPageSupplementalBackups);
-			}
-			else if(!WebServiceMainHQProxy.IsHqAvailable) {
+			if(!WebServiceMainHQProxy.IsHqAvailable) {
 				//Supplemental backups were made by Open Dental's eConnector service and copied to Open Dental HQ. Neither is part of this build, and
 				//FormOpenDental turns the preference off at startup.
 				tabControl1.TabPages.Remove(tabPageSupplementalBackups);

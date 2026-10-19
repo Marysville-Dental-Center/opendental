@@ -14,7 +14,6 @@ using System.Web;
 using System.Windows.Forms;
 using System.Threading;
 using OpenDentBusiness;
-using OpenDental.Thinfinity;
 using CodeBase;
 using DataConnectionBase;
 
@@ -165,42 +164,37 @@ namespace OpenDental{
 				fileName="queryexport.txt";
 			}
 			string filePath=ODFileUtils.CombinePaths(Path.GetTempPath(),fileName);
-			if(ODEnvironment.IsCloudServer) {
-				//Thinfinity: file download dialog will come up later, after file is created. AppStream: File will be created in client's Downloads folder.
+			saveFileDialog2=new SaveFileDialog();
+			saveFileDialog2.AddExtension=true;
+			//saveFileDialog2.Title=Lan.g(this,"Select Folder to Save File To");
+			if(IsReport) {
+				saveFileDialog2.FileName=fileName;
 			}
 			else {
-				saveFileDialog2=new SaveFileDialog();
-				saveFileDialog2.AddExtension=true;
-				//saveFileDialog2.Title=Lan.g(this,"Select Folder to Save File To");
-				if(IsReport) {
-					saveFileDialog2.FileName=fileName;
-				}
-				else {
-					if(_userQueryCur==null || _userQueryCur.FileName==null || _userQueryCur.FileName=="")//.FileName==null)
-						saveFileDialog2.FileName=_reportSimpleGrid.Title;
-					else
-						saveFileDialog2.FileName=_userQueryCur.FileName;
-				}
-				if(!Directory.Exists(PrefC.GetString(PrefName.ExportPath))) {
-					try {
-						Directory.CreateDirectory(PrefC.GetString(PrefName.ExportPath));
-						saveFileDialog2.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
-					}
-					catch {
-						//initialDirectory will be blank
-					}
-				}
-				else saveFileDialog2.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
-				//saveFileDialog2.DefaultExt="txt";
-				saveFileDialog2.Filter="Text files(*.txt)|*.txt|Excel Files(*.xls)|*.xls|All files(*.*)|*.*";
-				saveFileDialog2.FilterIndex=0;
-				if(saveFileDialog2.ShowDialog()!=DialogResult.OK) {
-					saveFileDialog2.Dispose();
-					return;
-				}
-				filePath=saveFileDialog2.FileName;
-				saveFileDialog2.Dispose();
+				if(_userQueryCur==null || _userQueryCur.FileName==null || _userQueryCur.FileName=="")//.FileName==null)
+					saveFileDialog2.FileName=_reportSimpleGrid.Title;
+				else
+					saveFileDialog2.FileName=_userQueryCur.FileName;
 			}
+			if(!Directory.Exists(PrefC.GetString(PrefName.ExportPath))) {
+				try {
+					Directory.CreateDirectory(PrefC.GetString(PrefName.ExportPath));
+					saveFileDialog2.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
+				}
+				catch {
+					//initialDirectory will be blank
+				}
+			}
+			else saveFileDialog2.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
+			//saveFileDialog2.DefaultExt="txt";
+			saveFileDialog2.Filter="Text files(*.txt)|*.txt|Excel Files(*.xls)|*.xls|All files(*.*)|*.*";
+			saveFileDialog2.FilterIndex=0;
+			if(saveFileDialog2.ShowDialog()!=DialogResult.OK) {
+				saveFileDialog2.Dispose();
+				return;
+			}
+			filePath=saveFileDialog2.FileName;
+			saveFileDialog2.Dispose();
 			try{
 			  using(StreamWriter sw=new StreamWriter(filePath,false))
 					//new FileStream(,FileMode.Create,FileAccess.Write,FileShare.Read)))
@@ -246,15 +240,7 @@ namespace OpenDental{
         MessageBox.Show(Lan.g(this,"File in use by another program.  Close and try again."));
 				return;
 			}
-			if(ODBuild.IsThinfinity()) {
-				ThinfinityUtils.ExportForDownload(filePath);
-			}
-			else if(ODCloudClient.IsAppStream) {
-				CloudClientL.ExportForCloud(filePath);
-			}
-			else {
-				MessageBox.Show(Lan.g(this,"File created successfully"));
-			}
+			MessageBox.Show(Lan.g(this,"File created successfully"));
 		}
 
 		private void butFavorites_Click(object sender, System.EventArgs e) {
@@ -280,10 +266,6 @@ namespace OpenDental{
 		private void butPaste_Click(object sender, System.EventArgs e){
 			IDataObject iData;
 			try {
-				if(ODEnvironment.IsCloudServer) {
-					textQuery.Text=ODClipboard.GetText();
-					return;
-				}
 				iData=Clipboard.GetDataObject();
 			}
 			catch(Exception ex) {

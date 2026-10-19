@@ -18,11 +18,6 @@ namespace OpenDental {
 		}
 
 		private void FormRedundantIndexes_Load(object sender,EventArgs e) {
-			if(ODEnvironment.IsCloudServer) {
-				checkLogAddStatements.CheckedChanged-=checkLogAddStatements_CheckedChanged;
-				checkLogAddStatements.Checked=false;
-				checkLogAddStatements.Enabled=false;
-			}
 			FillGrid();
 			if(gridMain.ListGridRows.Count!=0) {
 				return;

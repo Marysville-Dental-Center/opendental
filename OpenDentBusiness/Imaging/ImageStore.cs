@@ -121,7 +121,7 @@ namespace OpenDentBusiness {
 			return retVal;
 		}
 
-		///<summary>Will create folder if needed. Will validate that folder exists. Currently only used for ODCloud AppStream</summary>
+		///<summary>Will create folder if needed. Will validate that folder exists.</summary>
 		public static string GetMobileBrandingImageFolder() {
 			string retVal="";
 			if(PrefC.AtoZfolderUsed==DataStorageType.InDatabase) {

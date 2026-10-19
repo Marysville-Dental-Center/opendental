@@ -10,7 +10,6 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows.Forms;
 using CodeBase;
-using OpenDental.Thinfinity;
 using OpenDental.UI;
 using OpenDentBusiness;
 
@@ -555,27 +554,22 @@ namespace OpenDental {
 			}
 			string fileName="Fees"+feeSchedDesc+".txt";
 			string filePath=ODFileUtils.CombinePaths(Path.GetTempPath(),fileName);
-			if(ODEnvironment.IsCloudServer) {
-				//Thinfinity: file download dialog will come up later, after file is created. AppStream: File will be created in client's Downloads folder.
+			Cursor=Cursors.WaitCursor;
+			using SaveFileDialog saveFileDialog=new SaveFileDialog();
+			if(Directory.Exists(PrefC.GetString(PrefName.ExportPath))) {
+				saveFileDialog.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
 			}
-			else {
-				Cursor=Cursors.WaitCursor;
-				using SaveFileDialog saveFileDialog=new SaveFileDialog();
-				if(Directory.Exists(PrefC.GetString(PrefName.ExportPath))) {
-					saveFileDialog.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
-				}
-				else if(Directory.Exists("C:\\")) {
-					saveFileDialog.InitialDirectory="C:\\";
-				}
-				saveFileDialog.FileName=fileName;
-				saveFileDialog.Filter="Text files(*.txt)|*.txt|Excel Files(*.xls)|*.xls|All files(*.*)|*.*";
-				saveFileDialog.FilterIndex=0;
-				if(saveFileDialog.ShowDialog()!=DialogResult.OK) {
-					Cursor=Cursors.Default;
-					return;
-				}
-				filePath=saveFileDialog.FileName;
+			else if(Directory.Exists("C:\\")) {
+				saveFileDialog.InitialDirectory="C:\\";
 			}
+			saveFileDialog.FileName=fileName;
+			saveFileDialog.Filter="Text files(*.txt)|*.txt|Excel Files(*.xls)|*.xls|All files(*.*)|*.*";
+			saveFileDialog.FilterIndex=0;
+			if(saveFileDialog.ShowDialog()!=DialogResult.OK) {
+				Cursor=Cursors.Default;
+				return;
+			}
+			filePath=saveFileDialog.FileName;
 			ProgressWin progressOD=new ProgressWin();
 			progressOD.ActionMain=() => FeeScheds.ExportFeeSchedule(feeSched.FeeSchedNum,clinicNum,provNum,filePath);
 			progressOD.StartingMessage=Lan.g(this,"Preparing to export fees")+"...";
@@ -584,16 +578,8 @@ namespace OpenDental {
 			if(progressOD.IsCancelled){
 				return;
 			}
-			if(ODBuild.IsThinfinity()) {
-				ThinfinityUtils.ExportForDownload(filePath);
-			}
-			else if(ODCloudClient.IsAppStream) {
-				CloudClientL.ExportForCloud(filePath);
-			}
-			else {
-				Cursor=Cursors.Default;
-				MsgBox.Show(this,"Fee schedule exported.");
-			}
+			Cursor=Cursors.Default;
+			MsgBox.Show(this,"Fee schedule exported.");
 		}
 
 		private void butImport_Click(object sender,EventArgs e) {
@@ -602,29 +588,21 @@ namespace OpenDental {
 				return;
 			}
 			string importFilePath;
-			if(!ODBuild.IsThinfinity() && ODCloudClient.IsAppStream) {
-				importFilePath=ODCloudClient.ImportFileForCloud().FirstOrDefault();
-				if(importFilePath.IsNullOrEmpty()) {
-					return; //User cancelled out of OpenFileDialog
-				}
+			using OpenFileDialog openFileDialog=new OpenFileDialog();
+			if(Directory.Exists(PrefC.GetString(PrefName.ExportPath))) {
+				openFileDialog.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
 			}
-			else {
-				using OpenFileDialog openFileDialog=new OpenFileDialog();
-				if(Directory.Exists(PrefC.GetString(PrefName.ExportPath))) {
-					openFileDialog.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
-				}
-				else if(Directory.Exists("C:\\")) {
-					openFileDialog.InitialDirectory="C:\\";
-				}
-				if(openFileDialog.ShowDialog()!=DialogResult.OK) {
-					return;
-				}
-				if(!File.Exists(openFileDialog.FileName)){
-					MsgBox.Show(this,"File not found");
-					return;
-				}
-				importFilePath=openFileDialog.FileName;
+			else if(Directory.Exists("C:\\")) {
+				openFileDialog.InitialDirectory="C:\\";
 			}
+			if(openFileDialog.ShowDialog()!=DialogResult.OK) {
+				return;
+			}
+			if(!File.Exists(openFileDialog.FileName)){
+				MsgBox.Show(this,"File not found");
+				return;
+			}
+			importFilePath=openFileDialog.FileName;
 			//Import deletes fee if it exists and inserts new fees based on fee settings.
 			long clinicNum=0;
 			if(!comboClinic.IsUnassignedSelected) {

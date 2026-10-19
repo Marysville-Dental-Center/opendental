@@ -807,18 +807,7 @@ namespace OpenDental {
 			if(emailAddress.RefreshToken.IsNullOrEmpty() && emailAddress.AuthenticationType==OAuthType.Microsoft) {
 				if(MsgBox.Show(this,MsgBoxButtons.YesNo,"This email address needs to be re-authenticated. Sign into this email through Microsoft?")) {
 					MicrosoftTokenHelper microsoftToken=new MicrosoftTokenHelper();
-					if(ODEnvironment.IsCloudServer) {
-						if(!CloudClientL.IsCloudClientRunning()) {
-							toolBarSend.Enabled=true;
-							return; 
-						}
-						string strMicrosoftAuthCodesJSON=ODCloudClient.GetMicrosoftAccessToken(emailAddress.EmailUsername,"");
-						if(!strMicrosoftAuthCodesJSON.IsNullOrEmpty())
-						microsoftToken=JsonConvert.DeserializeObject<MicrosoftTokenHelper>(strMicrosoftAuthCodesJSON);
-					}
-					else {
-						microsoftToken=System.Threading.Tasks.Task.Run(async()=>await MicrosoftApiConnector.GetAccessToken(emailAddress.EmailUsername,"")).GetAwaiter().GetResult();
-					}
+					microsoftToken=System.Threading.Tasks.Task.Run(async()=>await MicrosoftApiConnector.GetAccessToken(emailAddress.EmailUsername,"")).GetAwaiter().GetResult();
 					if(microsoftToken.ErrorMessage!="") {
 						MsgBox.Show("Error: "+microsoftToken.ErrorMessage);
 						toolBarSend.Enabled=true;
@@ -878,17 +867,6 @@ namespace OpenDental {
 			}
 			catch(Exception ex){
 				Cursor=Cursors.Default;
-				if(ODEnvironment.IsCloudServer && ex.InnerException!=null) {
-					if(ex.InnerException.Message.Contains("InvalidAuthenticationToken") && emailAddress.AuthenticationType==OAuthType.Microsoft) {
-						emailAddress.AccessToken="";
-						emailAddress.RefreshToken="";
-						EmailAddresses.Update(emailAddress);
-						DataValid.SetInvalid(InvalidType.Email);
-						butSend_Click(sender,e);
-					toolBarSend.Enabled=true;
-					return;
-					}
-				}
 				string errMsg=Lan.g(this,"Failed to send email.")+"\r\n"+Lan.g(this, "Click Details to see the error message from the Email Client.");
 				FriendlyException.Show(errMsg, ex);
 				toolBarSend.Enabled=true;

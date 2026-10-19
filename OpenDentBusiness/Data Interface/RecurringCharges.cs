@@ -622,10 +622,6 @@ namespace OpenDentBusiness {
 			strBuilderResultText=new StringBuilder();
 			amount=0;
 			receipt=new StringBuilder();
-			if(ODEnvironment.IsCloudServer) {
-				MarkFailed(chargeData,Lans.g(_lanThis,"XCharge is not available while using Open Dental Cloud."),LogLevel.Error);
-				return false;
-			}
 			long clinicNumCur=0;
 			if(PrefC.HasClinicsEnabled) {
 				//this is patient.ClinicNum or if it's a payplan row it's the ClinicNum from one of the payplancharges on the payplan

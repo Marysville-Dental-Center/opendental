@@ -31,16 +31,6 @@ namespace OpenDental {
 		}
 
 		private async void FormPayConnect2iFrame_Load(object sender,EventArgs e) {
-			if(ODBuild.IsThinfinity()) {
-				//Unable to support PayConnect 2 on OD Cloud for the following reasons: OD Cloud uses Thinfinity, which does not allow for using WebView2 controls, meaning cloud would need to use the
-				//old WebBrowser control. This issue with this is we currently do not know of a way to retrieve the iFrame response from a WebBrowser control. Maybe when Payment Portal is finished
-				//we could try using a modified version of that to send the transaction data to the office's eConnector. We could also try making a "dummy" html page that contains the iFrame that is
-				//capable of storing the iFrame response and then parse the DOM afterthe user is finished.
-				MsgBox.Show(this,"Open Dental Cloud does not currently support PayConnect version 2.");
-				DialogResult=DialogResult.Cancel;
-				Close(); 
-				return;
-			}
 			string url="";
 			try {
 				url=GetiFrameUrl();
@@ -51,30 +41,20 @@ namespace OpenDental {
 				Close();
 				return;
 			}
-			//Cloud requires using the old web browser control due to constraints from thinfinity.
-			if(ODBuild.IsThinfinity()) {
-				webViewMain.Visible=false;
-				webBrowserMain.Visible=true;
-				//webBrowserMain.Navigate();
-				webBrowserMain.DocumentCompleted+= webBrowserMain_DocumentCompleted;
-				webBrowserMain.Navigate(url);
+			webViewMain.Visible=true;
+			webBrowserMain.Visible=false;
+			try {
+				await webViewMain.Init();
+				webViewMain.CoreWebView2.WebMessageReceived+=GetTransactionResult;
+				await webViewMain.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.addEventListener(\'message\', e => { window.chrome.webview.postMessage(e.data); })");
 			}
-			else {
-				webViewMain.Visible=true;
-				webBrowserMain.Visible=false;
-				try {
-					await webViewMain.Init();
-					webViewMain.CoreWebView2.WebMessageReceived+=GetTransactionResult;
-					await webViewMain.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.addEventListener(\'message\', e => { window.chrome.webview.postMessage(e.data); })");
-				}
-				catch(Exception ex){
-					FriendlyException.Show("Error initializing window.",ex);
-					DialogResult=DialogResult.Cancel;
-					Close();
-					return;
-				}
-				webViewMain.CoreWebView2.Navigate(url);
+			catch(Exception ex){
+				FriendlyException.Show("Error initializing window.",ex);
+				DialogResult=DialogResult.Cancel;
+				Close();
+				return;
 			}
+			webViewMain.CoreWebView2.Navigate(url);
 			
 		}
 

@@ -811,23 +811,6 @@ namespace OpenDentBusiness {
 			}
 		}
 
-		///<summary>Some clearinghouses do not work in THINFINITY mode.</summary>
-		public static bool IsDisabledForWeb(Clearinghouse clearinghouse) {
-			Meth.NoCheckMiddleTierRole();
-			bool isDisabled=IsDisabledForWeb(clearinghouse.Eformat,clearinghouse.CommBridge);
-			return isDisabled;
-		}
-
-		///<summary>Some clearinghouses do not work in THINFINITY mode.</summary>
-		public static bool IsDisabledForWeb(ElectronicClaimFormat electronicClaimFormat,EclaimsCommBridge eclaimsCommBridge) {
-			Meth.NoCheckMiddleTierRole();
-			if(electronicClaimFormat.In(ElectronicClaimFormat.Renaissance,ElectronicClaimFormat.Canadian)
-				|| eclaimsCommBridge==EclaimsCommBridge.WebMD) {
-				return true;
-			}
-			return false;
-		}
-
 
 		#endregion
 	}

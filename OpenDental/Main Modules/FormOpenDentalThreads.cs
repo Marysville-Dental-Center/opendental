@@ -95,8 +95,6 @@ namespace OpenDental {
 					Logger.LogActionIfOverTimeLimit("BeginVoicemailThread",LogPath.Threads,() => BeginVoicemailThread());
 					Logger.LogActionIfOverTimeLimit("BeginHqMetricsThread",LogPath.Threads,() => BeginHqMetricsThread());
 					Logger.LogActionIfOverTimeLimit("CheckAlerts",LogPath.Threads,() => CheckAlerts(doRunOnThread: true));
-					Logger.LogActionIfOverTimeLimit("BeginODCloudDcvExtensionThread",LogPath.Threads, () => BeginODCloudDcvExtensionThread());
-					Logger.LogActionIfOverTimeLimit("BeginODCloudMachineNameThread",LogPath.Threads,() => BeginODCloudMachineNameThread());
 					Logger.LogToPath("Started threads",LogPath.Threads,LogPhase.Unspecified);
 					return;
 				}
@@ -113,8 +111,6 @@ namespace OpenDental {
 						case FormODThreadNames.DataConnectionLost:
 						case FormODThreadNames.MiddleTierConnectionLost:
 						case FormODThreadNames.LicenseAgreementSignature:
-						case FormODThreadNames.ODCloudMachineName:
-						case FormODThreadNames.ODCloudDcvExtension:
 							break;
 						//Kill these.
 						case FormODThreadNames.CanadianItransCarrier:
@@ -679,49 +675,7 @@ namespace OpenDental {
 		}
 
 		#endregion
-		#region ODCloudSetMachineName
-
-		///<summary>For ODBuild.IsThinfinity and PrefC.IsAppStream only.  Begins a thread that will run once per minute attempting to set the ODEnvironment.MachineName by making a
-		///call to the ODCloudClient. If ODCloudClient is not running or throws an exception, the machine name will be set to "UNKNOWN".  The next time this thread runs, if the
-		///machine name is "UNKNOWN" we will attempt to get the machine name from the ODCloudClient again.  If the machine name is successfully retrieved from the ODCloudClient
-		///(i.e. ODEnvironment.MachineName!="UNKNOWN") we will not attempt to get the name from the cloud client again while this session is active.</summary>
-		private void BeginODCloudMachineNameThread() {
-			//We have to call PrefC.IsAppStream here and not ODEnvironment.IsCloudServer so ODCloudClient.IsAppStream will be set to the pref cache value
-			if((!ODBuild.IsThinfinity() && !PrefC.IsAppStream) || IsThreadAlreadyRunning(FormODThreadNames.ODCloudMachineName)) {
-				return;
-			}
-			ODThread threadCloudMachineName=new ODThread(60000,o => {//Once a minute
-				ODException.SwallowAnyException(ODEnvironment.SetMachineName);
-				if(ODEnvironment.MachineName.ToUpper()!=Security.CurComputerName.ToUpper()) {//_machineName was just found, update Security.cs and the activeinstance row
-					Security.CurComputerName=ODEnvironment.MachineName;
-					ActiveInstances.Upsert(Security.CurUser.UserNum,Computers.GetCur().ComputerNum,Process.GetCurrentProcess().Id);
-					this.InvokeIfRequired(() =>RefreshLocalDataPostCleanup(InvalidType.AllLocal));
-				}
-			});
-			threadCloudMachineName.AddExceptionHandler((e) => e.DoNothing());
-			threadCloudMachineName.GroupName=FormODThreadNames.ODCloudMachineName.GetDescription();
-			threadCloudMachineName.Name=FormODThreadNames.ODCloudMachineName.GetDescription();
-			threadCloudMachineName.Start();
-		}
-
-		#endregion ODCloudSetMachineName
-		#region ODCloudDcvExtension
-		///<summary>For PrefC.IsAppStream only. Begins a thread that will run to initiate dcv named piped link.</summary>
-		private void BeginODCloudDcvExtensionThread() {
-			if (!PrefC.IsAppStream || IsThreadAlreadyRunning(FormODThreadNames.ODCloudDcvExtension)) {
-				return;
-			}
-			ODThread threadDcvExtension=new ODThread(o => {
-				System.Threading.Tasks.Task task=System.Threading.Tasks.Task.Run(() => CodeBase.Utilities.ODCloudDcvExtension.Start());
-				task.Wait();
-			});
-			threadDcvExtension.AddExceptionHandler((e) => e.DoNothing());
-			threadDcvExtension.GroupName=FormODThreadNames.ODCloudDcvExtension.GetDescription();
-			threadDcvExtension.Name=FormODThreadNames.ODCloudDcvExtension.GetDescription();
-			threadDcvExtension.Start();
-			}
-			#endregion ODCloudDcvExtension
-			#region ODServiceMonitorThread
+		#region ODServiceMonitorThread
 
 			///<summary>Begins a thread that monitor's the Open Dental Service heartbeat and alerts the user if the service is not running.</summary>
 			private void BeginODServiceMonitorThread() {
@@ -1080,7 +1034,6 @@ namespace OpenDental {
 			LicenseAgreementSignature,
 			LogOff,
 			MiddleTierConnectionLost,
-			ODCloudMachineName,
 			ODServiceMonitor,
 			ODServiceStarter,
 			PhoneConference,
@@ -1096,8 +1049,7 @@ namespace OpenDental {
 			WebSync,
 			Dashboard,
 			RegistrationKeyIsDisabled,
-			DataReaderNullMonitor,
-			ODCloudDcvExtension
+			DataReaderNullMonitor
 		}
 	}
 }

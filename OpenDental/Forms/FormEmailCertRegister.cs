@@ -61,13 +61,6 @@ namespace OpenDental {
 		}
 
 		private void butBrowse_Click(object sender,EventArgs e) {
-			if(!ODBuild.IsThinfinity() && ODCloudClient.IsAppStream) {
-				List<string> listImportFilePaths=ODCloudClient.ImportFileForCloud();
-				if(!listImportFilePaths.IsNullOrEmpty()) {
-					textCertFilePath.Text=listImportFilePaths[0];
-				}
-				return;
-			}
 			if(openFileDialogCert.ShowDialog()==DialogResult.OK) {
 				textCertFilePath.Text=openFileDialogCert.FileName;
 			}

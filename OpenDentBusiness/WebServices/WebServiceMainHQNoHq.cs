@@ -106,8 +106,6 @@ namespace OpenDentBusiness {
 		public string RequestListenerProxyPrefs(string officeData) { return NotAvailable(); }
 		public string ValidateWebAppUrl(string officeData) { return NotAvailable(); }
 		public string GetFeaturesForCustomer(string registrationKey) { return NotAvailable(); }
-		public string RecordCloudSessionsInUse(string officeData) { return NotAvailable(); }
-		public string RecordCloudStorageSizeUsed(string officeData) { return NotAvailable(); }
 		public string CheckFHIRAPIKey(string officeData) { return NotAvailable(); }
 		public string PerformRefreshCache(string officeData) { return NotAvailable(); }
 		public string ValidateVersion(string officeData) { return NotAvailable(); }
@@ -138,16 +136,11 @@ namespace OpenDentBusiness {
 		public string BuildApptThankYouIcs(string shortGuid) { return NotAvailable(); }
 		public string EmailHostingSignup(string officeData) { return NotAvailable(); }
 		public string EmailHostingChangeClinicStatus(string officeData) { return NotAvailable(); }
-		public string GetCloudMaxSessions(string officeData) { return NotAvailable(); }
-		public string GetThinfinityLicenseUsers(string officeData) { return NotAvailable(); }
-		public string GetMaxAtoZSizeGB(string officeData) { return NotAvailable(); }
-		public string UpsertCloudMaxSessions(string officeData) { return NotAvailable(); }
 		public string GetMobileSettings(string officeData) { return NotAvailable(); }
 		public string GetMobileSettings2FA(string officeData) { return NotAvailable(); }
 		public string UpsertMobileSettings(string officeData) { return NotAvailable(); }
 		public string UploadPatientPortalXWebResponses(string officeData) { return NotAvailable(); }
 		public string IsBetaAvailableForThisCustomer(string registrationKey,string proposedBetaVersion) { return NotAvailable(); }
-		public string GetLatestCloudClientVersion() { return NotAvailable(); }
 		public string ProcessOCRIIDRequest(string officeData) { return NotAvailable(); }
 		public string BuildPaymentPortalRedirectUrl(string shortGuid) { return NotAvailable(); }
 		public string MsgToPaySend(string officeData) { return NotAvailable(); }

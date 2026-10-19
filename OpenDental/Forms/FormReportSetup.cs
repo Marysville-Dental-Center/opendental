@@ -53,12 +53,7 @@ namespace OpenDental {
 			checkReportDisplayUnearnedTP.Checked=PrefC.GetBool(PrefName.ReportsDoShowHiddenTPPrepayments);
 			checkUserQueryDefaultRaw.Checked=PrefC.GetBool(PrefName.UserQueryDefaultRaw);
 			textIncompleteProcsExcludeCodes.Text=PrefC.GetString(PrefName.ReportsIncompleteProcsExcludeCodes);
-			if(ODEnvironment.IsCloudServer) {
-				tabControl1.TabPages.Remove(tabReportServer);//Web users can't change their database settings.
-			}
-			else {
-				FillReportServer();
-			}
+			FillReportServer();
 			userControlReportSetup.InitializeOnStartup(true,_userGroupNum,_isPermissionMode);
 			if(_isPermissionMode) {
 				tabControl1.SelectedIndex=1;

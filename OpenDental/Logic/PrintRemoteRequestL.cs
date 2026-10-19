@@ -1,5 +1,4 @@
-﻿using Amazon.Auth.AccessControlPolicy;
-using Health.Direct.Common.Extensions;
+﻿using Health.Direct.Common.Extensions;
 using Newtonsoft.Json;
 using OpenDentBusiness;
 using OpenDentBusiness.Crud;

@@ -17,7 +17,6 @@ namespace OpenDental{
 		private MenuItemOD _menuItemCareCreditTransactions;
 		private MenuItemOD _menuItemClinicsMain;
 		private MenuItemOD _menuItemClinics;
-		private MenuItemOD _menuItemCloudUsers;
 		private MenuItemOD _menuItemCounties;
 		///<summary>Not available if in Unix.</summary>
 		private MenuItemOD _menuItemCreateAtoZ;
@@ -57,19 +56,19 @@ namespace OpenDental{
 		///<summary>Only show enterprise setup if it is enabled.</summary>
 		private MenuItemOD _menuItemReactivation;
 		private MenuItemOD _menuItemRepeatingCharges;
-		///<summary>Not available if isWeb.</summary>
+
 		private MenuItemOD _menuItemReplication;
 		private MenuItemOD _menuItemRequirementsNeeded;
 		///<summary>Only available in OD HQ.</summary>
 		private MenuItemOD _menuItemResellers;
-		///<summary>Not available if isWeb.</summary>
+
 		private MenuItemOD _menuItemServiceManager;
 		private MenuItemOD _menuItemSites;
 		private MenuItemOD _menuItemStandard;
 		private MenuItemOD _menuItemStandardFiltered;
 		private MenuItemOD _menuItemStudentRequirements;
 		private MenuItemOD _menuItemActivityLog;
-		///<summary>Not available if isWeb.</summary>
+
 		private MenuItemOD _menuItemPrinter;
 		///<summary>Available if OD is not set to English Translation.</summary>
 		private MenuItemOD _menuItemTranslation;
@@ -183,11 +182,6 @@ namespace OpenDental{
 			menuItemSetup.Add("Auto Codes",menuItemAutoCodes_Click);
 			menuItemSetup.Add("Automation",menuItemAutomation_Click);
 			menuItemSetup.Add("Auto Notes",menuItemAutoNotes_Click);
-			if(ODBuild.IsThinfinity()) {
-				menuItemSetup.Add("Cloud Management",menuItemCloudManagement_Click);
-			}
-			_menuItemCloudUsers=new MenuItemOD("Cloud Users",menuItemCloudUsers_Click);
-			menuItemSetup.Add(_menuItemCloudUsers);
 			menuItemSetup.Add("Code Groups",menuItemCodeGroups_Click);
 			menuItemSetup.Add("Data Paths",menuItemDataPath_Click);
 			menuItemSetup.Add("Definitions",menuItemDefinitions_Click);
@@ -426,9 +420,7 @@ namespace OpenDental{
 			_menuItemStudentRequirements=new MenuItemOD("Student Requirements",menuItemReqStudents_Click);
 			menuItemTools.Add(_menuItemStudentRequirements);
 			MenuItemOD menuItemWiki=new MenuItemOD("Wiki",menuItemWiki_Click);
-			if(!ODEnvironment.IsCloudInstance){
-				menuItemWiki.ShortcutKeys=Keys.Control|Keys.Shift|Keys.W;
-			}
+			menuItemWiki.ShortcutKeys=Keys.Control|Keys.Shift|Keys.W;
 			menuItemTools.Add(menuItemWiki);
 			menuItemTools.Add("Zoom",menuItemZoom_Click);
 		}

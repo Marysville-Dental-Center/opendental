@@ -416,11 +416,6 @@ namespace OpenDental {
 				if(PrefC.HasClinicsEnabled) {
 					merchantNumber=textMerchantNumberClinic.Text;
 				}
-				if(ODCloudClient.IsAppStream) {
-					string url=CareCreditL.LaunchAdminPage(merchantNumber,showPage:false);
-					ODCloudClient.LaunchFileWithODCloudClient(url);
-					return;
-				}
 				CareCreditL.LaunchAdminPage(merchantNumber);
 			}
 		}

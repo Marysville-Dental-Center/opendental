@@ -56,7 +56,6 @@ using ServiceManager;
 using System.DirectoryServices;
 using WMPLib;
 using OpenDentalImaging;
-using OpenDental.Thinfinity;
 
 namespace OpenDental{
 	///<summary></summary>
@@ -515,8 +514,7 @@ namespace OpenDental{
 				finally {
 					Logger.LogToPath("Plugins.LoadAllPlugins",LogPath.Startup,LogPhase.End);
 				}
-				if(CommandLineArgs_.ArrayCommandLineArgs.Length==0 //eCW doesn't load splash screen
-					&& !Web.IsWeb) { //don't show splash screen a second time if web is enabled
+				if(CommandLineArgs_.ArrayCommandLineArgs.Length==0) {//eCW doesn't load splash screen
 					formSplash.Show(this);
 				}
 				//If there is no model and they are trying to run dynamic mode via command line arguments, use the model from the 
@@ -569,7 +567,6 @@ namespace OpenDental{
 			Logger.LogToPath("RefreshLocalData Prefs",LogPath.Startup,LogPhase.Unspecified);
 			RefreshLocalData(InvalidType.Prefs);//should only refresh preferences so that SignalLastClearedDate preference can be used in ClearOldSignals()
 			Signalods.ClearOldSignals();
-			_=PrefC.IsAppStream;//calling this as soon as the pref cache is refreshed so ODCloudClient.IsAppStream will be set right away
 			//We no longer do this shotgun approach because it can slow the loading time.
 			//RefreshLocalData(InvalidType.AllLocal);
 			List<InvalidType> listInvalidTypes=new List<InvalidType>();
@@ -648,10 +645,6 @@ namespace OpenDental{
 			Logger.LogToPath("LogOnOpenDentalUser",LogPath.Startup,LogPhase.End);
 			//At this point a user has successfully logged in.  Flag the userod cache as safe to cache data.
 			Userods.SetIsCacheAllowed(true);
-			//Active Instances Validation for OD Cloud
-			if(!ActiveInstanceUnderLimit()) {
-				return;
-			}
 			//If clinics are enabled, we will set the public ClinicNum variable
 			//If the user is restricted to a clinic(s), and the computerpref clinic is not one of the user's restricted clinics, the user's clinic will be selected
 			//If the user is not restricted, or if the user is restricted but has access to the computerpref clinic, the computerpref clinic will be selected
@@ -906,32 +899,6 @@ namespace OpenDental{
 			Signalods.DateTRegularPrioritySignalLastRefreshed=MiscData.GetNowDateTime();
 			Signalods.DateTApptSignalLastRefreshed=Signalods.DateTRegularPrioritySignalLastRefreshed;
 			SetTimersAndThreads(true);//Safe to start timers since this method call is on the main thread.
-			if(ODBuild.IsThinfinity() || !PrefC.IsAppStream) {
-				_menuItemCloudUsers.Available=false;
-			}
-			if(ODEnvironment.IsCloudServer) {
-				_menuItemCreateAtoZ.Available=false;
-				_menuItemServiceManager.Available=false;
-				_menuItemReplication.Available=false;
-				_menuItemHL7.Available=false;
-				_menuItemEHR.Available=false;
-				if(ODBuild.IsThinfinity()) {
-					_menuItemPrinter.Available=false;
-				}
-				//If the office needs to reset their office passowrd, we will prompt them until they change it.
-				if(ODBuild.IsThinfinity() && PrefC.GetEnum<YN>(PrefName.CloudPasswordNeedsReset)!=YN.No) {
-					string message="You must reset the office password. ";
-					if(Security.IsAuthorized(EnumPermType.SecurityAdmin)) {
-						if(MsgBox.Show(this,MsgBoxButtons.YesNo,message+"Do you want to open the Change Office Password window?")) {
-							using FormChangeCloudPassword formChangeCloudPassword=new FormChangeCloudPassword();
-							formChangeCloudPassword.ShowDialog();
-						}
-					}
-					else {
-						MsgBox.Show(this,message+"This must be done by a SecurityAdmin user.");
-					}
-				}
-			}
 			Logger.LogToPath("MainBorderColors",LogPath.Startup,LogPhase.Unspecified);
 			List<Def> listDefsMisColors=Defs.GetDefsForCategory(DefCat.MiscColors);
 			SetBorderColor(DefCatMiscColors.MainBorder,listDefsMisColors[(int)DefCatMiscColors.MainBorder].ItemColor);
@@ -946,33 +913,6 @@ namespace OpenDental{
 			//The Open Dental license agreement signature prompt (and the upload of the signature to Open Dental HQ) has been removed.
 			//Open Dental's local REST API (an HttpListener on port 30222, served by the proprietary ODApi.dll) has been removed.
 			Plugins.HookAddCode(this,"FormOpenDental.Load_end");
-		}
-
-		/// <summary>Helper method that checks if the number of Active Instances (OD Cloud) exceed the allowed amount. Exits the application on false.
-		/// Calling method should return in that circumstance.</summary>
-		private bool ActiveInstanceUnderLimit() {
-			if(!ODBuild.IsThinfinity()
-				|| ActiveInstances.GetCountCloudActiveInstances(ActiveInstances.GetActiveInstance()?.ActiveInstanceNum??0)<PrefC.GetInt(PrefName.CloudSessionLimit)) 
-			{
-				return true;
-			}
-			string msg="You have exceeded the allowed number of concurrent Open Dental Cloud sessions.\r\n"
-			+"Would you like to view Cloud Management?";
-			if(MsgBox.Show(MsgBoxButtons.YesNo,Lan.g(this,msg))) {
-				using FormCloudManagement formCloudManagement=new FormCloudManagement();
-				formCloudManagement.ShowDialog();
-				//If the user still exceeds the allowed sessions, close this session
-				if(ActiveInstances.GetCountCloudActiveInstances(ActiveInstances.GetActiveInstance()?.ActiveInstanceNum??0)>=PrefC.GetInt(PrefName.CloudSessionLimit)) {
-					MsgBox.Show(this,"Your active sessions still exceed the allowed number of concurrent Open Dental Cloud sessions. Closing this session.");
-					Application.Exit();
-					return false;
-				}
-			}
-			else {
-				Application.Exit();
-				return false;
-			}
-			return true;
 		}
 
 		protected override void OnResize(EventArgs e){
@@ -1071,7 +1011,7 @@ namespace OpenDental{
 			// Grab curent patient and save it so we can compare it to our search from clipboard
 			long prevPatNum=PatNumCur;
 			try {
-				textClip=System.Windows.Clipboard.GetText().Trim().ToLower();//System.Windows.Forms.Clipboard fails for Thinfinity
+				textClip=System.Windows.Clipboard.GetText().Trim().ToLower();
 			}
 			catch {
 				//do nothing
@@ -2707,10 +2647,6 @@ namespace OpenDental{
 			Patient patient=Patients.GetPat(PatNumCur);
 			if(((MenuItem)sender).Tag.GetType()==typeof(string)) {
 				if(((MenuItem)sender).Tag.ToString()=="Merge") {
-					if(ODBuild.IsThinfinity()) {
-						MsgBox.Show(this,"Letter Merge is not available while viewing through the web.");
-						return;
-					}
 					using FormLetterMerges formLetterMerges=new FormLetterMerges(patient);
 					formLetterMerges.ShowDialog();
 				}
@@ -5050,19 +4986,6 @@ namespace OpenDental{
 			SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,"Clearinghouses");
 		}
 
-		private void menuItemCloudManagement_Click(object sender,EventArgs e) {
-			using FormCloudManagement formCloudManagement=new FormCloudManagement();
-			formCloudManagement.ShowDialog();
-		}
-
-		private void menuItemCloudUsers_Click(object sender,EventArgs e) {
-			if(!Security.IsAuthorized(EnumPermType.SecurityAdmin)) {
-				return;
-			}
-			using FormCloudUsers formCloudUsers=new FormCloudUsers();
-			formCloudUsers.ShowDialog();
-		}
-
 		private void menuItemCodeGroups_Click(object sender,EventArgs e) {
 			if(!Security.IsAuthorized(EnumPermType.Setup)) {
 				return;
@@ -6511,12 +6434,6 @@ namespace OpenDental{
 				MsgBox.Show(this,"Cannot open terminal unless process signal interval is set. To set it, go to Setup > Miscellaneous.");
 				return;
 			}
-			if(ODEnvironment.IsCloudServer) {
-				//Thinfinity messes up window ordering so sometimes FormOpenDental is visible in Kiosk mode.
-				for(int i=0;i<Application.OpenForms.Count;i++) {
-					Application.OpenForms[i].Visible=false;
-				}
-			}
 			using FormTerminal formTerminal=new FormTerminal();
 			formTerminal.ShowDialog(); 
 			Application.Exit();//always close after coming out of terminal mode as a safety precaution.*/
@@ -7122,12 +7039,6 @@ namespace OpenDental{
 					formCareCreditTransactions.FormClosed+=this.alertFormClosingHelper;
 					formCareCreditTransactions.Show();
 					break;
-				case FormType.FormCloudManagement:
-					using(FormCloudManagement formCloudManagement=new FormCloudManagement()) {
-						formCloudManagement.FormClosed+=this.alertFormClosingHelper;
-						formCloudManagement.ShowDialog();
-					}
-					break;
 				case FormType.FormWebForms:
 					if(!Security.IsAuthorized(EnumPermType.WebFormAccess)) {
 						break;
@@ -7363,12 +7274,7 @@ namespace OpenDental{
 		private void LogOnOpenDentalUser(string odUser,string odPassword,string domainUserFromCmd) {
 			//CurUser will be set if using web service because login from ChooseDatabase window.
 			if(Security.CurUser!=null) {
-				if(!IsCloudUserIpAllowed()) {
-					ShowLogOn();
-				}
-				else {
-					CheckForPasswordReset();
-				}
+				CheckForPasswordReset();
 				Security.IsUserLoggedIn=true;
 				SecurityLogs.MakeLogEntry(EnumPermType.UserLogOnOff,0,Lan.g(this,"User:")+" "+Security.CurUser.UserName+" "+Lan.g(this,"has logged on."));
 				return;
@@ -7400,9 +7306,6 @@ namespace OpenDental{
 					Application.Exit();
 					return;
 				}
-				if(!IsCloudUserIpAllowed()) {
-					ShowLogOn();
-				}
 				SecurityLogs.MakeLogEntry(EnumPermType.UserLogOnOff,0,Lan.g(this,"User:")+" "+Security.CurUser.UserName+" "+Lan.g(this,"has logged on via command line."));
 			}
 			#endregion
@@ -7417,12 +7320,7 @@ namespace OpenDental{
 				long userNumFirstAdminNoPass=Userods.GetFirstSecurityAdminUserNumNoPasswordNoCache();
 				if(userNumFirstAdminNoPass > 0) {
 					Security.CurUser=Userods.GetUserNoCache(userNumFirstAdminNoPass);
-					if(!IsCloudUserIpAllowed()) {
-						ShowLogOn();
-					}
-					else {
-						CheckForPasswordReset();
-					}
+					CheckForPasswordReset();
 					SecurityLogs.MakeLogEntry(EnumPermType.UserLogOnOff,0,Lan.g(this,"User:")+" "+Security.CurUser.UserName+" "+Lan.g(this,"has logged on."));
 				}
 				#endregion
@@ -7466,12 +7364,7 @@ namespace OpenDental{
 							inputBox.ShowDialog();
 							if(inputBox.IsDialogOK) {
 								Security.CurUser=Userods.GetUserNoCache(dictDomainUserNumsAndNames.Keys.ElementAt(inputBox.SelectedIndex));
-								if(!IsCloudUserIpAllowed()) {
-									ShowLogOn();
-								}
-								else {
-									CheckForPasswordReset();
-								}
+								CheckForPasswordReset();
 								SecurityLogs.MakeLogEntry(EnumPermType.UserLogOnOff,0,Lan.g(this,"User:")+" "+Security.CurUser.UserName+" "
 									+Lan.g(this,"has logged on automatically via ActiveDirectory."));
 							}
@@ -7481,12 +7374,7 @@ namespace OpenDental{
 						}
 						else { //log on automatically if only one user is linked to current domain user
 							Security.CurUser=Userods.GetUserNoCache(dictDomainUserNumsAndNames.Keys.First());
-							if(!IsCloudUserIpAllowed()) {
-								ShowLogOn();
-							}
-							else {
-								CheckForPasswordReset();
-							}
+							CheckForPasswordReset();
 							SecurityLogs.MakeLogEntry(EnumPermType.UserLogOnOff,0,Lan.g(this,"User:")+" "+Security.CurUser.UserName+" "
 									+Lan.g(this,"has logged on automatically via ActiveDirectory."));
 						}
@@ -7509,66 +7397,6 @@ namespace OpenDental{
 			Security.IsUserLoggedIn=true;//User is guaranteed to be logged in at this point.
 		}
 
-		///<summary>
-		///If the user is permitted to login from this IP address, return true. Otherwise, inform the user and return false.
-		///If a Security Admin does not have permission, they are prompted to add their current IP address to the list of allowed addresses.
-		///</summary>
-		private bool IsCloudUserIpAllowed() {
-			if(!ODBuild.IsThinfinity()) {
-				return true;
-			}
-			string addressCur=Browser.GetComputerIpAddress();
-			CloudAddress cloudAddress=CloudAddresses.GetByIpAddress(addressCur);
-			if(cloudAddress!=null) {
-				cloudAddress.UserNumLastConnect=Security.CurUser.UserNum;
-				cloudAddress.DateTimeLastConnect=DateTime.Now;
-				CloudAddresses.Update(cloudAddress);
-				return true;
-			}
-			if(Security.IsAuthorized(EnumPermType.AllowLoginFromAnyLocation, true)) {
-				return true;
-			}
-			string message=Lan.g(this,"The IP address you are attempting to connect from")+", "+addressCur+", "
-				+Lan.g(this,"is not an approved address for accessing this cloud environment and you are not authorized for")+" "
-				+GroupPermissions.GetDesc(EnumPermType.AllowLoginFromAnyLocation)+".";
-			//Security Admins can add their own IP if it is not already allowed.
-			if(Security.IsAuthorized(EnumPermType.SecurityAdmin, true)) {
-				message+="\r\n"+Lan.g(this,"To connect from this IP address, you will need to do one of the following")+":";
-				List<string> listOptions = new List<string> {
-					Lan.g(this,"Add this address to the approved list"),
-					Lan.g(this,"Grant access for")+" "+GroupPermissions.GetDesc(EnumPermType.AllowLoginFromAnyLocation)
-				};
-				InputBox ibox=new InputBox(message,listOptions);
-				ibox.ShowDialog();
-				if(ibox.IsDialogOK) {
-					if(ibox.SelectedIndex==0) {
-						using FormCloudManagement formCloudManagement=new FormCloudManagement();
-						//Either Security Admin has no password or the user must have authenticated to get to this step.
-						//We can safely (temporarily) allow the cache so formCloudManagement can be shown without crashing.
-						Userods.SetIsCacheAllowed(true);//Enable the cache
-						formCloudManagement.ShowDialog();
-						Userods.SetIsCacheAllowed(false);//Disable the cache, it will be enabled again by the calling method if it needs to be.
-					}
-					if(ibox.SelectedIndex==1) {
-						//Either Security Admin has no password or the user must have authenticated to get to this step.
-						//We can safely (temporarily) allow the cache so formCloudManagement can be shown without crashing.
-						Userods.SetIsCacheAllowed(true);//Enable the cache
-						using FormSecurity formSecurity=new FormSecurity();
-						formSecurity.ShowDialog();
-						SecurityLogs.MakeLogEntry(EnumPermType.SecurityAdmin,0,"Security Window");
-						Userods.SetIsCacheAllowed(false);//Disable the cache, it will be enabled again by the calling method if it needs to be.
-					}
-					return IsCloudUserIpAllowed();
-				}
-			}
-			else {
-				message+="\r\n"+Lan.g(this,"A user with the SecurityAdmin permission must either add this address to the approved list or grant you the permission for")+" "
-					+GroupPermissions.GetDesc(EnumPermType.AllowLoginFromAnyLocation)+".";
-				MsgBox.Show(message);
-			}
-			return false;
-		}
-
 		///<summary>Show the log on window.</summary>
 		private void ShowLogOn(bool doClearCaches=false) {
 			Logger.LogToPath("ShowLogOn",LogPath.Startup,LogPhase.Start);
@@ -7580,10 +7408,6 @@ namespace OpenDental{
 				CloseOpenForms(isForceClose:true);
 				Cursor=Cursors.Default;
 				Application.Exit();
-			}
-			if(!IsCloudUserIpAllowed()) {
-				ShowLogOn();
-				return;
 			}
 			CheckForPasswordReset();
 			Userods.SetIsCacheAllowed(true);

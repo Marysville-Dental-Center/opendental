@@ -12,7 +12,6 @@ using System.Linq;
 using System.Text;
 using CodeBase;
 using System.IO;
-using OpenDental.Thinfinity;
 
 namespace OpenDental{
 	/// <summary></summary>
@@ -213,12 +212,6 @@ namespace OpenDental{
 			stringBuilder.AppendLine(string.Join(",",gridMain.Columns.Select(x => x.Heading)));
 			gridMain.ListGridRows
 				.ForEach(row => stringBuilder.AppendLine(string.Join(",",row.Cells.Select(cell => cell.Text.Replace(',','-').Replace('\t',',')))));
-			if(ODBuild.IsThinfinity()) {
-				string exportFilename="BenefitsRpt_"+_dateNow.ToString("yyyyMMdd")+"_"+DateTime.Now.ToString("hhmm")+".csv";
-				string dataString=stringBuilder.ToString();
-				ThinfinityUtils.ExportForDownload(exportFilename,dataString);
-				return;
-			}
 			using FolderBrowserDialog folderBrowserDialog = new FolderBrowserDialog();
 			if(folderBrowserDialog.ShowDialog()!=DialogResult.OK || string.IsNullOrEmpty(folderBrowserDialog.SelectedPath)) {
 				MsgBox.Show(this,"Invalid directory.");

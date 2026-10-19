@@ -12,7 +12,6 @@ using System.Xml;
 using System.Xml.Serialization;
 using CodeBase;
 using Microsoft.Win32;
-using OpenDental.Thinfinity;
 using OpenDentBusiness;
 using WpfControls.UI;
 

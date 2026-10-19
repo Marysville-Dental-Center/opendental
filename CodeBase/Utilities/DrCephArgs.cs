@@ -46,14 +46,5 @@ namespace CodeBase {
 				args.ResponsibleState,args.ResponsibleZip,args.ResponsiblePhone,args.ResponsibleRelationship,args.TreatmentPhase,args.CephXRayLocation,args.PhotoFileLocation,args.XRayDate);
 		}
 
-		public static void LaunchFromCloud(ODCloudClient.ODCloudClientData data) {
-			try {
-				DrCephArgs args=JsonConvert.DeserializeObject<DrCephArgs>(data.Args);
-				Launch(args);
-			}
-			catch(Exception ex) {
-				throw new ODException("An error occurred when launching Dr Ceph in web mode: ",ex);
-			}
-		}
 	}
 }

@@ -115,12 +115,6 @@ namespace OpenDental {
 				return;
 			}
 			string outputStr=adt_a03.GenerateMessage();
-			if(ODCloudClient.IsAppStream) {
-				string combinedPath=ODFileUtils.CombinePaths(PrefC.GetTempFolderPath(),Path.GetFileName("adt.txt"));
-				File.WriteAllText(combinedPath,outputStr);
-				CloudClientL.ExportForCloud(combinedPath);
-				return;
-			}
 			SaveFileDialog dlg=new SaveFileDialog();
 			dlg.FileName="adt.txt";
 			DialogResult result=dlg.ShowDialog();

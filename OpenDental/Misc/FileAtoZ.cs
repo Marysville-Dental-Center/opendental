@@ -8,7 +8,6 @@ using System.Text;
 using System.Windows.Forms;
 using CodeBase;
 using OpenDentBusiness;
-using OpenDental.Thinfinity;
 
 namespace OpenDental {
 	///<summary>This class is used to access files in the AtoZ folder. Depending on the storage type in use, it will read/write to a local 
@@ -98,15 +97,7 @@ namespace OpenDental {
 					//placed in the temporary directory.			
 					File.Copy(actualFilePath,tempFile,true);
 				}
-				if(ODBuild.IsThinfinity()) {
-					ThinfinityUtils.HandleFile(tempFile);
-				}
-				else if(ODCloudClient.IsAppStream) {
-					CloudClientL.ExportForCloud(tempFile,doPromptForName:false);
-				}
-				else {
-					Process.Start(tempFile);
-				}
+				Process.Start(tempFile);
 			}
 			catch(Exception ex) {
 				MsgBox.Show(ex.Message);
@@ -171,15 +162,7 @@ namespace OpenDental {
 			else {
 				filePathToOpen=fileFullPath;
 			}
-			if(ODBuild.IsThinfinity()) {
-				ThinfinityUtils.HandleFile(filePathToOpen);
-			}
-			else if(ODCloudClient.IsAppStream) {
-				ODCloudClient.ExportForAppStream(filePathToOpen);
-			}
-			else {
-				Process.Start(filePathToOpen);
-			}
+			Process.Start(filePathToOpen);
 		}
 
 		///<summary>Runs the file.  If necessary, downloads the file from the cloud to the temp directory.  Throws exceptions.
