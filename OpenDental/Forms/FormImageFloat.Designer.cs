@@ -29,7 +29,6 @@ namespace OpenDental{
 			// FormImageFloat
 			// 
 			this.ClientSize = new System.Drawing.Size(431, 376);
-			this.HasHelpButton = false;
 			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormImageFloat";
 			this.ShowIcon = false;

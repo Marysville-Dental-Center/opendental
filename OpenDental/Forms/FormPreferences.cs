@@ -917,12 +917,6 @@ namespace OpenDental {
 			//But that's wrong. See notes in FormClosing and butSave_Click.
 		}
 		#endregion Methods - Private
-
-		#region Methods - Other
-		protected override string GetHelpOverride() {
-			return treeMain.SelectedNode.Name;
-		}
-		#endregion Methods - Other
 	}
 }
 

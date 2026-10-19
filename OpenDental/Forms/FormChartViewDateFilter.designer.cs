@@ -114,7 +114,6 @@ namespace OpenDental{
 			this.Controls.Add(this.textDateEnd);
 			this.Controls.Add(this.textDateStart);
 			this.Controls.Add(this.butOK);
-			this.HasHelpButton = false;
 			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormChartViewDateFilter";
 			this.Text = "Date Range Filter";

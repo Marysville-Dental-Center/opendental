@@ -7,7 +7,7 @@
              xmlns:ui="clr-namespace:WpfControls.UI"
              mc:Ignorable="d"
              Width="1936" Height="1048" 
-             Text="Child Room Map" MinMaxBoxes="True" HasHelpButton="False">
+             Text="Child Room Map" MinMaxBoxes="True">
 	<Grid Background="#FFFCFDFE" >
 		<ui:Button x:Name="butChildren" Margin="49,22,0,0" Text="Children"  Click="butChildren_Click" Height="24" Width="76" />
 		<ui:Button x:Name="butClassrooms" Margin="49,53,0,0" Text="Classrooms"  Click="butClassrooms_Click" Height="24" Width="76" />

@@ -23,13 +23,6 @@ namespace OpenDental{
 		public Carrier CarrierSelected;
 		private List<ItransImportFields> _listItransImportFields=new List<ItransImportFields>();
 
-		protected override string GetHelpOverride() {
-			if(CultureInfo.CurrentCulture.Name.EndsWith("CA")) {
-				return "FormCarriersCanada";
-			}
-			return "FormCarriers";
-		}
-
 		///<summary></summary>
 		public FormCarriers()
 		{

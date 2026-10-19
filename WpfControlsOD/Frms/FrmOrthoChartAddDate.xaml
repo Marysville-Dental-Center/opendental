@@ -7,7 +7,7 @@
              xmlns:ui="clr-namespace:WpfControls.UI"
              mc:Ignorable="d"
              Width="407" Height="166" 
-             Text="Add New Ortho Chart Date" HasHelpButton="False" >
+             Text="Add New Ortho Chart Date" >
 	<Grid Background="#FFFCFDFE" >
 		<ui:Label x:Name="labelOptional" Width="68" Height="17" Margin="277,65,0,0" Text="(optional)" VAlign="Center" />
 		<ui:Button x:Name="butNow" Width="75" Height="24" Margin="306,29,0,0" Text="Now" Click="butNow_Click" />

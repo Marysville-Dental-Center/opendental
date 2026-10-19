@@ -410,7 +410,6 @@
 			this.Controls.Add(this.groupBox1);
 			this.Controls.Add(this.labelMsg);
 			this.Controls.Add(this.butSettings);
-			this.HasHelpButton = false;
 			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Location = new System.Drawing.Point(10, 10);
 			this.Name = "FormPhoneList";

@@ -14,13 +14,6 @@ namespace OpenDental{
 		public bool IsNew;
 		private CovSpan _covSpan;
 
-		protected override string GetHelpOverride() {
-			if(CultureInfo.CurrentCulture.Name.EndsWith("CA")) {
-				return "FormInsSpanEditCanada";
-			}
-			return "FormInsSpanEdit";
-		}
-
 		///<summary></summary>
 		public FormInsSpanEdit(CovSpan covSpan){
 			InitializeComponent();// Required for Windows Form Designer support

@@ -49,13 +49,6 @@ namespace OpenDental {
 			return ONTARIO_DENTAL_ASSOCIATION;
 		}
 
-		protected override string GetHelpOverride() {
-			if(CultureInfo.CurrentCulture.Name.EndsWith("CA")) {
-				return "FormFeeSchedPickRemoteCanada";
-			}
-			return "FormFeeSchedTools";
-		}
-
 		public FormFeeSchedPickRemote() {
 			InitializeComponent();
 			InitializeLayoutManager();

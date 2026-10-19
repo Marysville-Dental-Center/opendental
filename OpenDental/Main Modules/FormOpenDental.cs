@@ -1355,27 +1355,6 @@ namespace OpenDental{
 			#endregion
 		}
 
-		protected override string GetHelpOverride() {
-			switch(moduleBar.SelectedModule){
-				case EnumModuleType.Appointments:
-					return nameof(ControlAppt);
-				case EnumModuleType.Family:
-					return nameof(ControlFamily);
-				case EnumModuleType.Account:
-					return nameof(ControlAccount);
-				case EnumModuleType.TreatPlan:
-					return nameof(ControlTreat);
-				case EnumModuleType.Chart:
-					return nameof(ControlChart);
-				case EnumModuleType.Imaging:
-					return nameof(ControlImages);
-				case EnumModuleType.Manage:
-					return nameof(ControlManage);
-				default:
-					return "";
-			}
-		}
-
 		///<summary>Returns true if the old Images module control should be used, false otherwise. Use this method instead of the ImagesModuleUsesOld2020 preference.</summary>
 		private bool ImagesModuleUsesOld2020() {
 			//This form only looks at the value of the ImagesModuleUsesOld2020 preference during startup for instantiating either the old Images module control or the new Imaging module control.
@@ -7217,35 +7196,8 @@ namespace OpenDental{
 		#endregion Menu - Alerts
 
 		#region Menu - Help
-		//Online Support, Training Videos, Request Features, Support Status and Remote Support were Open Dental Software, Inc. services and have been removed.
-
-		private void menuItemHelpDocumentation_Click(object sender, System.EventArgs e) {
-			string site="https://www.opendental.com/site/documentation.html";
-			try {
-				if(ODCloudClient.IsAppStream) {
-					ODCloudClient.LaunchFileWithODCloudClient(site);
-					return;
-				}
-				Process.Start(site);
-			}
-			catch{
-				MsgBox.Show(this,"Could not find file.");
-			}
-		}
-
-		private void menuItemHelpSearch_Click(object sender, System.EventArgs e) {
-			string site="https://www.opendental.com/site/searchsite.html";
-			try {
-				if(ODCloudClient.IsAppStream) {
-					ODCloudClient.LaunchFileWithODCloudClient(site);
-					return;
-				}
-				Process.Start(site);
-			}
-			catch{
-				MsgBox.Show(this,"Could not find file.");
-			}
-		}
+		//Online Support, Training Videos, Request Features, Support Status, Remote Support and the online help (documentation and search)
+		//were Open Dental Software, Inc. services and have been removed.
 
 		private void MenuItemQueryMonitor_Click(object sender,EventArgs e) {
 			if(!Security.IsAuthorized(EnumPermType.QueryMonitor)) {

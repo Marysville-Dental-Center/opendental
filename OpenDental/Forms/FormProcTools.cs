@@ -27,13 +27,6 @@ namespace OpenDental{
 			Lan.F(this);
 		}
 
-		protected override string GetHelpOverride() {
-			if(CultureInfo.CurrentCulture.Name.EndsWith("CA")) {
-				return "FormProcToolsCanada";
-			}
-			return "FormProcTools";
-		}
-
 		private void FormProcTools_Load(object sender,EventArgs e) {
 			if(ODBuild.IsTrial()) {
 				checkTcodes.Checked=false;

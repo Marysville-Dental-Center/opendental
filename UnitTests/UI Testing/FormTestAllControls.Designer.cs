@@ -1218,7 +1218,6 @@
 			this.Controls.Add(this.checkBox6);
 			this.Controls.Add(this.groupBox3);
 			this.Controls.Add(this.button2);
-			this.HasHelpButton = false;
 			this.Name = "FormTestAllControls";
 			this.Text = "Test All Controls";
 			this.Load += new System.EventHandler(this.FormTestAllControls_Load);

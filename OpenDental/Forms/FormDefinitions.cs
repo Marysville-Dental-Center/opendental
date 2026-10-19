@@ -16,14 +16,6 @@ namespace OpenDental{
 		///<summary>All defs for the selected category, sorted.</summary>
 		private List<Def> _listDefsAll;
 
-		protected override string GetHelpOverride() {
-			DefCatOptions defCatOption=(DefCatOptions)listCategory.SelectedItem;
-			if(CultureInfo.CurrentCulture.Name.EndsWith("CA") && defCatOption.DefCat==DefCat.ApptProcsQuickAdd) {
-				return "FormDefinitionsCanada";
-			}
-			return "FormDefinitions";
-		}
-
 		///<summary>Must check security before allowing this window to open.</summary>
 		public FormDefinitions(DefCat defCatInitial){
 			InitializeComponent();// Required for Windows Form Designer support

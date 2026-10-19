@@ -11061,10 +11061,6 @@
       <Project>{783079e6-a13f-4f43-a28d-9d7731f945d1}</Project>
       <Name>xImagingDeviceManager</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\OpenDentalHelp\OpenDentalHelp\OpenDentalHelp.csproj">
-      <Project>{98b2999c-8a9f-4795-b452-7f6231ed56b4}</Project>
-      <Name>OpenDentalHelp</Name>
-    </ProjectReference>
     <ProjectReference Include="..\..\..\Unversioned\VirtualWeb\VirtualWeb.csproj">
       <Project>{4ed3df2f-e97e-4bc3-ae5f-aa31a11af57f}</Project>
       <Name>VirtualWeb</Name>

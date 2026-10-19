@@ -102,7 +102,6 @@ namespace OpenDental{
 			this.Controls.Add(this.comboSelectOverride);
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.butClose);
-			this.HasHelpButton = false;
 			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
