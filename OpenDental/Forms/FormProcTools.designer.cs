@@ -37,7 +37,6 @@ namespace OpenDental {
 			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormProcTools));
 			this.checkAutocodes = new OpenDental.UI.CheckBox();
 			this.checkTcodes = new OpenDental.UI.CheckBox();
-			this.checkDcodes = new OpenDental.UI.CheckBox();
 			this.checkNcodes = new OpenDental.UI.CheckBox();
 			this.label5 = new System.Windows.Forms.Label();
 			this.checkProcButtons = new OpenDental.UI.CheckBox();
@@ -46,12 +45,11 @@ namespace OpenDental {
 			this.butRun = new OpenDental.UI.Button();
 			this.labelLineOne = new System.Windows.Forms.Label();
 			this.labelLineTwo = new System.Windows.Forms.Label();
-			this.checkTreatAreas = new OpenDental.UI.CheckBox();
 			this.SuspendLayout();
 			// 
 			// checkAutocodes
 			// 
-			this.checkAutocodes.Location = new System.Drawing.Point(16, 258);
+			this.checkAutocodes.Location = new System.Drawing.Point(16, 176);
 			this.checkAutocodes.Name = "checkAutocodes";
 			this.checkAutocodes.Size = new System.Drawing.Size(646, 36);
 			this.checkAutocodes.TabIndex = 43;
@@ -68,16 +66,6 @@ namespace OpenDental {
 			this.checkTcodes.Text = "T Codes - Remove temp codes, codes that start with \"T\", which were only needed fo" +
     "r the trial version. If a T code has already been used, then this moves it to th" +
     "e obsolete category.";
-			// 
-			// checkDcodes
-			// 
-			this.checkDcodes.Checked = true;
-			this.checkDcodes.CheckState = System.Windows.Forms.CheckState.Checked;
-			this.checkDcodes.Location = new System.Drawing.Point(15, 141);
-			this.checkDcodes.Name = "checkDcodes";
-			this.checkDcodes.Size = new System.Drawing.Size(646, 46);
-			this.checkDcodes.TabIndex = 45;
-			this.checkDcodes.Text = resources.GetString("checkDcodes.Text");
 			// 
 			// checkNcodes
 			// 
@@ -97,7 +85,7 @@ namespace OpenDental {
 			// 
 			// checkProcButtons
 			// 
-			this.checkProcButtons.Location = new System.Drawing.Point(16, 300);
+			this.checkProcButtons.Location = new System.Drawing.Point(16, 218);
 			this.checkProcButtons.Name = "checkProcButtons";
 			this.checkProcButtons.Size = new System.Drawing.Size(646, 36);
 			this.checkProcButtons.TabIndex = 49;
@@ -105,7 +93,7 @@ namespace OpenDental {
 			// 
 			// checkApptProcsQuickAdd
 			// 
-			this.checkApptProcsQuickAdd.Location = new System.Drawing.Point(16, 342);
+			this.checkApptProcsQuickAdd.Location = new System.Drawing.Point(16, 260);
 			this.checkApptProcsQuickAdd.Name = "checkApptProcsQuickAdd";
 			this.checkApptProcsQuickAdd.Size = new System.Drawing.Size(646, 36);
 			this.checkApptProcsQuickAdd.TabIndex = 51;
@@ -114,7 +102,7 @@ namespace OpenDental {
 			// 
 			// checkRecallTypes
 			// 
-			this.checkRecallTypes.Location = new System.Drawing.Point(16, 384);
+			this.checkRecallTypes.Location = new System.Drawing.Point(16, 302);
 			this.checkRecallTypes.Name = "checkRecallTypes";
 			this.checkRecallTypes.Size = new System.Drawing.Size(646, 36);
 			this.checkRecallTypes.TabIndex = 52;
@@ -124,7 +112,7 @@ namespace OpenDental {
 			// butRun
 			// 
 			this.butRun.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.butRun.Location = new System.Drawing.Point(603, 420);
+			this.butRun.Location = new System.Drawing.Point(603, 338);
 			this.butRun.Name = "butRun";
 			this.butRun.Size = new System.Drawing.Size(82, 26);
 			this.butRun.TabIndex = 50;
@@ -134,7 +122,7 @@ namespace OpenDental {
 			// labelLineOne
 			// 
 			this.labelLineOne.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
-			this.labelLineOne.Location = new System.Drawing.Point(15, 190);
+			this.labelLineOne.Location = new System.Drawing.Point(15, 150);
 			this.labelLineOne.Name = "labelLineOne";
 			this.labelLineOne.Size = new System.Drawing.Size(670, 2);
 			this.labelLineOne.TabIndex = 53;
@@ -142,27 +130,14 @@ namespace OpenDental {
 			// labelLineTwo
 			// 
 			this.labelLineTwo.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
-			this.labelLineTwo.Location = new System.Drawing.Point(15, 205);
+			this.labelLineTwo.Location = new System.Drawing.Point(15, 165);
 			this.labelLineTwo.Name = "labelLineTwo";
 			this.labelLineTwo.Size = new System.Drawing.Size(670, 2);
 			this.labelLineTwo.TabIndex = 54;
 			// 
-			// checkTreatAreas
-			// 
-			this.checkTreatAreas.Checked = true;
-			this.checkTreatAreas.CheckState = System.Windows.Forms.CheckState.Checked;
-			this.checkTreatAreas.Location = new System.Drawing.Point(16, 216);
-			this.checkTreatAreas.Name = "checkTreatAreas";
-			this.checkTreatAreas.Size = new System.Drawing.Size(646, 36);
-			this.checkTreatAreas.TabIndex = 55;
-			this.checkTreatAreas.Text = "Treatment Areas - Update treatment areas based on the 2025 ADA recommendations. T" +
-    "his option does not work in the trial version, self-compiled version, or outside" +
-    " the USA.";
-			// 
 			// FormProcTools
 			// 
-			this.ClientSize = new System.Drawing.Size(698, 458);
-			this.Controls.Add(this.checkTreatAreas);
+			this.ClientSize = new System.Drawing.Size(698, 376);
 			this.Controls.Add(this.labelLineTwo);
 			this.Controls.Add(this.labelLineOne);
 			this.Controls.Add(this.checkRecallTypes);
@@ -171,7 +146,6 @@ namespace OpenDental {
 			this.Controls.Add(this.checkProcButtons);
 			this.Controls.Add(this.label5);
 			this.Controls.Add(this.checkNcodes);
-			this.Controls.Add(this.checkDcodes);
 			this.Controls.Add(this.checkTcodes);
 			this.Controls.Add(this.checkAutocodes);
 			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
@@ -187,7 +161,6 @@ namespace OpenDental {
 		#endregion
 		private OpenDental.UI.CheckBox checkAutocodes;
 		private OpenDental.UI.CheckBox checkTcodes;
-		private OpenDental.UI.CheckBox checkDcodes;
 		private OpenDental.UI.CheckBox checkNcodes;
 		private Label label5;
 		private OpenDental.UI.CheckBox checkProcButtons;
@@ -196,6 +169,5 @@ namespace OpenDental {
 		private OpenDental.UI.CheckBox checkRecallTypes;
 		private Label labelLineOne;
 		private Label labelLineTwo;
-		private UI.CheckBox checkTreatAreas;
 	}
 }

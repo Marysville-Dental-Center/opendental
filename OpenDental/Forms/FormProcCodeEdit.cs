@@ -40,14 +40,6 @@ namespace OpenDental{
 		}
 
 		private void FormProcCodeEdit_Load(object sender, System.EventArgs e) {
-			List<ProcedureCode> listProcedureCodes=ProcedureCodes.GetADAcodes();
-			if(listProcedureCodes.Count>0 && _procedureCode.ProcCode.Length==5 && _procedureCode.ProcCode.Substring(0,1)=="D") {
-				for(int i=0;i<listProcedureCodes.Count;i++) {
-					if(listProcedureCodes[i].ProcCode==_procedureCode.ProcCode) {
-						textDescription.ReadOnly=true;
-					}
-				}
-			}
 			textProcCode.Text=_procedureCode.ProcCode;
 			textAlternateCode1.Text=_procedureCode.AlternateCode1;
 			textMedicalCode.Text=_procedureCode.MedicalCode;

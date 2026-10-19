@@ -1167,25 +1167,6 @@ namespace UnitTests.MiddleTier {
 					continue;
 				}
 				#endregion
-				#region RegistrationKeys
-				else if(insertMethod.DeclaringType.Name=="RegistrationKeys") {//Needs a field set to true to ensure a valid return.
-					RegistrationKey regKey=new RegistrationKey();
-					regKey.IsForeign=true;
-					try {
-						RegistrationKeys.Insert(regKey);
-					}
-					catch(Exception ex) {
-						AppendError(insertMethod,strBuilderErrors,countFailure,ex);
-						countFailure++;
-						continue;
-					}
-					if(regKey.RegistrationKeyNum==0) {
-						AppendError(insertMethod,strBuilderErrors,countFailure);
-						countFailure++;
-					}
-					continue;
-				}
-				#endregion
 				#region Payments
 				else if(insertMethod.DeclaringType==typeof(Payments)) {
 					//There are multiple Insert methods with different parameters. For simplicity, we will skip these methods.

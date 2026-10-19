@@ -57,7 +57,8 @@ namespace OpenDentBusiness {
 		[PrefName(ValueType=PrefValueType.BOOL),Obsolete("This preference has been deprecated. Do not use.",true)]
 		AccountShowTrojanExpressCollect,
 		ADAComplianceDateTime,
-		/// <summary>Boolean. </summary>
+		///<summary>Boolean. Open Dental set it after resetting ADA code descriptions on startup. No longer read; procedure code descriptions come
+		///from the procedurecode table as loaded.</summary>
 		ADAdescriptionsReset,
 		///<summary>Boolean, true by default.  When set to true and a new family member is added, the new patient's email will be autofilled with the 
 		///guarantor's email.</summary>

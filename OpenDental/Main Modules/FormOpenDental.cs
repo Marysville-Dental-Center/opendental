@@ -592,10 +592,6 @@ namespace OpenDental{
 			_menuItemPayloadMonitor.Available=(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT);
 			//Query Monitor does not capture queries from a Middle Tier client, only show Query Monitor menu item when directly connected to the database.
 			_menuItemQueryMonitor.Available=(RemotingClient.MiddleTierRole==MiddleTierRole.ClientDirect);
-			if(Security.IsAuthorized(EnumPermType.ProcCodeEdit,true) && !PrefC.GetBool(PrefName.ADAdescriptionsReset)) {
-				ProcedureCodes.ResetADAdescriptionsAndAbbrs();
-				Prefs.UpdateBool(PrefName.ADAdescriptionsReset,true);
-			}
 			//Spawn a thread so that attempting to start services on this computer does not hinder the loading time of Open Dental.
 			//This is placed before login on pupose so it will run even when the user does not login properly.
 			BeginODServiceStarterThread();
