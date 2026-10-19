@@ -44,15 +44,12 @@ namespace OpenDental {
 			textBackupRestoreAtoZToPath.Text=PrefC.GetString(PrefName.BackupRestoreAtoZToPath);
 			textBackupRestoreAtoZToPath.Enabled=ShouldUseAtoZFolder();
 			butBrowseRestoreAtoZTo.Enabled=ShouldUseAtoZFolder();
-			if(ProgramProperties.IsAdvertisingDisabled(ProgramName.CentralDataStorage)) {
-				groupManagedBackups.Visible=false;
-			}
 			#endregion
 			#region Archive Tab
 			string decryptedPassword;
 			checkEmailMessage.Checked=false;
 			checkSecurityLog.Checked=true;
-			CDT.Class1.Decrypt(PrefC.GetString(PrefName.ArchivePassHash),out decryptedPassword);
+			Secrets.Decrypt(PrefC.GetString(PrefName.ArchivePassHash),out decryptedPassword);
 			textArchivePass.Text=decryptedPassword;
 			textArchivePass.PasswordChar=(textArchivePass.Text=="" ? default(char) : '*');
 			textArchiveServerName.Text=PrefC.GetString(PrefName.ArchiveServerName);
@@ -66,28 +63,6 @@ namespace OpenDental {
 			}
 			ToggleBackupSettings();
 		#endregion
-			#region Supplemental Tab
-			checkSupplementalBackupEnabled.Checked=PrefC.GetBool(PrefName.SupplementalBackupEnabled);
-			if(PrefC.GetDate(PrefName.SupplementalBackupDateLastComplete).Year > 1880) {
-				textSupplementalBackupDateLastComplete.Text=PrefC.GetDate(PrefName.SupplementalBackupDateLastComplete).ToString();
-			}
-			textSupplementalBackupCopyNetworkPath.Text=PrefC.GetString(PrefName.SupplementalBackupNetworkPath);
-			#endregion Supplemental Tab
-			if(ODEnvironment.IsCloudServer) {
-				//OD Cloud users cannot use this tool because they're InnoDb.
-				tabControl1.TabPages.Remove(tabPageBackup);
-				//We don't want to allow the user to connect to another server.
-				checkArchiveDoBackupFirst.Visible=false;
-				checkArchiveDoBackupFirst.Checked=false;
-				groupBoxBackupConnection.Visible=false;
-				//We don't want the user to be able to tell if a directory exists.
-				tabControl1.TabPages.Remove(tabPageSupplementalBackups);
-			}
-			else if(!WebServiceMainHQProxy.IsHqAvailable) {
-				//Supplemental backups were made by Open Dental's eConnector service and copied to Open Dental HQ. Neither is part of this build, and
-				//FormOpenDental turns the preference off at startup.
-				tabControl1.TabPages.Remove(tabPageSupplementalBackups);
-			}
 		}
 
 		#region Backup Tab
@@ -129,7 +104,7 @@ namespace OpenDental {
 			hasChanged |= Prefs.UpdateString(PrefName.ArchiveServerName,textArchiveServerName.Text);
 			hasChanged |= Prefs.UpdateString(PrefName.ArchiveUserName,textArchiveUser.Text);
 			string encryptedPassword;
-      CDT.Class1.Encrypt(textArchivePass.Text,out encryptedPassword);
+      Secrets.Encrypt(textArchivePass.Text,out encryptedPassword);
 			hasChanged |= Prefs.UpdateString(PrefName.ArchivePassHash,encryptedPassword);
 			return hasChanged;
 		}
@@ -660,14 +635,6 @@ namespace OpenDental {
 			butBrowseRestoreAtoZTo.Enabled=ShouldUseAtoZFolder();
 		}
 
-		private void pictureCDS_Click(object sender,EventArgs e) {
-			if(!Programs.IsEnabledByHq(ProgramName.CentralDataStorage,out string err)) {
-				MsgBox.Show(err);
-				return;
-			}
-			CDS.ShowPage();
-		}
-
 		#endregion
 
 		#region Archive Tab
@@ -766,44 +733,6 @@ namespace OpenDental {
 		}
 
 		#endregion
-
-		#region Supplemental Tab
-
-		private void TabControl1_SelectedIndexChanged(object sender,EventArgs e) {
-			if(tabControl1.SelectedTab==tabPageSupplementalBackups) {
-				if(!Security.IsAuthorized(EnumPermType.SecurityAdmin)) {
-					tabControl1.SelectedTab=tabPageBackup;
-					return;
-				}
-			}
-		}
-
-		private void ButSupplementalBrowse_Click(object sender,EventArgs e) {
-			using FolderBrowserDialog folderBrowserDialog=new FolderBrowserDialog();
-			folderBrowserDialog.SelectedPath=textSupplementalBackupCopyNetworkPath.Text;
-			if(folderBrowserDialog.ShowDialog()==DialogResult.OK) {
-				textSupplementalBackupCopyNetworkPath.Text=folderBrowserDialog.SelectedPath;
-			}
-		}
-
-		private void ButSupplementalSaveDefaults_Click(object sender,EventArgs e) {
-			if(!string.IsNullOrEmpty(textSupplementalBackupCopyNetworkPath.Text) && !Directory.Exists(textSupplementalBackupCopyNetworkPath.Text)) {
-				MsgBox.Show(this,"Invalid or inaccessible "+labelSupplementalBackupCopyNetworkPath.Text+".");//This label text will rarely change.
-				return;
-			}
-			if(Prefs.UpdateBool(PrefName.SupplementalBackupEnabled,checkSupplementalBackupEnabled.Checked)) {
-				//The enabled/disabled status (and the admin's user name) used to be reported to Open Dental HQ here. That upload was removed.
-				SecurityLogs.MakeLogEntry(EnumPermType.SupplementalBackup,0,
-					"Supplemental backup has been "+(checkSupplementalBackupEnabled.Checked?"Enabled":"Disabled")+".");
-			}
-			if(Prefs.UpdateString(PrefName.SupplementalBackupNetworkPath,textSupplementalBackupCopyNetworkPath.Text)) {
-				SecurityLogs.MakeLogEntry(EnumPermType.SupplementalBackup,0,
-					labelSupplementalBackupCopyNetworkPath.Text+" changed to '"+textSupplementalBackupCopyNetworkPath.Text+"'.");
-			}
-			MsgBox.Show(this,"Saved");
-		}
-
-		#endregion Supplemental Tab
 
 		private void checkOptimize_Click(object sender,EventArgs e) {
 			if(checkOptimize.Checked) {

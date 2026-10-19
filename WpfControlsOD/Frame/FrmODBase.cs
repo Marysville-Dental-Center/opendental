@@ -168,7 +168,6 @@ How to:
 		_formFrame gives you a reference to the WinForm that's the frame for the Frm usercontrol.
 		frmODBase.MinMaxBoxes: set to false to not show either min or max. This is very common for any window that is launched using ShowDialog.
 		_formFrame.FormWindowState(get and set), _formFrame.Select, _formFrame.Restore, etc are all available and work as normal.
-		HasHelpButton can be set false, but that's rare.
 -BitmapImage
 		This is the new object for storing bitmaps. You can specify BitmapImage.StreamSource to load any bitmap.
 		See OpenDental.Drawing.Graphics.ConvertBitmapFromWpf() and ConvertBitmapToWpf().
@@ -223,7 +222,6 @@ How to:
 	/// <summary>All WPF windows inherit from this base class.</summary>
 	public partial class FrmODBase:System.Windows.Controls.UserControl {
 		#region Fields
-		private bool _hasHelpButton=true;
 		private bool _isDialogOK=false;
 		private bool _minMaxBoxes=true;
 		private bool _startMaximized=false;
@@ -273,22 +271,6 @@ How to:
 		[Description("Default true.")]
 		[DefaultValue(true)]
 		public bool EscClosesWindow{get;set; }=true;
-
-		[Description("Default true. Set to false to hide the help button.  Form 'HelpButton' property is ignored.")]
-		[Category("OD")]
-		[DefaultValue(true)]
-		///<summary>Default true. Set to false to hide the help button.  Form 'HelpButton' property is ignored.</summary>
-		public bool HasHelpButton{
-			get{
-				return _hasHelpButton;
-			}
-			set{
-				_hasHelpButton=value;
-				if(_formFrame!=null){//usually null, so see UIManager Ctor
-					_formFrame.HasHelpButton=_hasHelpButton;
-				}
-			}
-		}
 
 		[Browsable(false)]
 		///<summary>A wrapper for IsDialogOK to make code easier to read. Setter is not usually used but does work.</summary>

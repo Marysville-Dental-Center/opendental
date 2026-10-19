@@ -56,7 +56,7 @@ namespace OpenDentBusiness{
 		public static DataTable GetTableFromCache(bool doRefreshCache) {
 			//It is important to call EnsureComputerInDB prior to the remoting role check.
 			//Get MachineName before the remoting role check so Environment.MachineName is not the middle tier server.
-			EnsureComputerInDB(ODEnvironment.MachineName,Environment.MachineName);//ODEnvironment.MachineName and Environment.MachineName are different in RDP and ODCloud.
+			EnsureComputerInDB(ODEnvironment.MachineName,Environment.MachineName);//ODEnvironment.MachineName and Environment.MachineName are different in RDP.
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				DataTable table=Meth.GetTable(MethodBase.GetCurrentMethod(),doRefreshCache);
 				_computerCache.FillCacheFromTable(table);
@@ -93,10 +93,6 @@ namespace OpenDentBusiness{
 			Computer computer=new Computer();
 			computer.CompName=clientComputerName;
 			long computerNum=Computers.Insert(computer);
-			//Never copy the printer rows for Thinfinity or AppStream
-			if(ODEnvironment.IsCloudServer) {
-				return;
-			}
 			if(clientComputerName.ToLower()!=hostComputerName.ToLower()) {
 				CopyPrinterRowsForComputer(computerNum,hostComputerName);//This computer is an RDP remote client. Copy the host computer's printer settings for the new computer.
 			}
@@ -193,8 +189,7 @@ namespace OpenDentBusiness{
 				return;
 			}
 			if(_computerCache.ListIsNull() || !_computerCache.GetExists(x => x.CompName==computerName)) {
-				//RefreshCache if computer name doesn't exist in cache. Happens in cloud when a new computer connects to the db and is assigned the "UNKNOWN" name that is later updated
-				//when the ODCloudClient sets the ODEnvironment.MachineName property.   RefreshCache will insert the new computer row with CompName=ODEnvironment.MachineName.
+				//RefreshCache if computer name doesn't exist in cache. RefreshCache will insert the new computer row with CompName=ODEnvironment.MachineName.
 				RefreshCache();//adds new computer to list
 			}
 			command="SELECT LastHeartBeat<"+DbHelper.DateAddMinute(DbHelper.Now(),"-3")+" FROM computer WHERE CompName='"+POut.String(computerName)+"'";

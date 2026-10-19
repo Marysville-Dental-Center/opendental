@@ -13,17 +13,13 @@ namespace OpenDental.Bridges {
 		public static void SendData(Program progOryx,Patient pat) {
 			string clientUrl="";
 			try {
-				clientUrl=OpenDentBusiness.ProgramProperties.GetPropVal(progOryx.ProgramNum,ProgramProperties.ClientUrl);
-				if(clientUrl=="") {//Office has not signed up with Oryx yet, launch a promotional page.
-					string promoUrl="http://www.opendental.com/resources/redirects/redirectoryx.html";
-					if(ODBuild.IsDebug()) {
-						promoUrl="http://www.opendental.com/resources/redirects/redirectoryxdebug.html";
-					}
-					ODFileUtils.ProcessStart(promoUrl);
-					return;
-				}
 				if(!progOryx.Enabled) {
 					MsgBox.Show("Oryx","Oryx must be enabled in Program Links.");
+					return;
+				}
+				clientUrl=OpenDentBusiness.ProgramProperties.GetPropVal(progOryx.ProgramNum,ProgramProperties.ClientUrl);
+				if(clientUrl=="") {
+					MsgBox.Show("Oryx","Enter the Client URL in the Oryx program link.");
 					return;
 				}
 				if(!clientUrl.ToLower().StartsWith("http")) {
@@ -40,7 +36,7 @@ namespace OpenDental.Bridges {
 				}
 				string apiUrl=clientUrl.TrimEnd('/')+"/api/auth/opendental/v1/login";
 				string passwordPlain;
-				if(!CDT.Class1.Decrypt(passwordPref.ValueString,out passwordPlain)) {
+				if(!Secrets.Decrypt(passwordPref.ValueString,out passwordPlain)) {
 					MsgBox.Show("Oryx","Unable to decrypt password");
 					return;
 				}
@@ -78,17 +74,12 @@ namespace OpenDental.Bridges {
 		}
 
 		public static void menuItemUserSettingsClick(object sender,EventArgs e) {
-			if(!Programs.IsEnabledByHq(ProgramName.Oryx,out string err)) {
-				MsgBox.Show(err);
-				return;
-			}
 			FormLauncher formLauncher=new FormLauncher(EnumFormName.FormOryxUserSettings);
 			formLauncher.ShowDialog();
 		}
 
 		public class ProgramProperties {
 			public static string ClientUrl="Client URL";
-			public static string DisableAdvertising="Disable Advertising";
 		}
 	}
 }

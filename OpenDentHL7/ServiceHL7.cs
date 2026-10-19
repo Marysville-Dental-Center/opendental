@@ -82,7 +82,7 @@ namespace OpenDentHL7 {
 			string password=nav.SelectSingleNode("Password").Value;
 			XPathNavigator encryptedPwdNode=nav.SelectSingleNode("MySQLPassHash");//only use the encrypted pwd node is the password node is empty
 			string decryptedPwd;
-			if(password=="" && encryptedPwdNode!=null && encryptedPwdNode.Value!="" && CDT.Class1.Decrypt(encryptedPwdNode.Value,out decryptedPwd)) {
+			if(password=="" && encryptedPwdNode!=null && encryptedPwdNode.Value!="" && Secrets.Decrypt(encryptedPwdNode.Value,out decryptedPwd)) {
 				password=decryptedPwd;//password will still be blank if a blank password was encrypted
 			}
 			XPathNavigator verboseNav=Navigator.SelectSingleNode("//HL7verbose");
@@ -291,12 +291,12 @@ namespace OpenDentHL7 {
 			if(isMedLab) {
 				serverHostPort=_medLabHL7DefEnabled.SftpInSocket.Split(':');
 				sftpUsername=_medLabHL7DefEnabled.SftpUsername;
-				sftpPassword=CDT.Class1.TryDecrypt(_medLabHL7DefEnabled.SftpPassword);
+				sftpPassword=Secrets.TryDecrypt(_medLabHL7DefEnabled.SftpPassword);
 			}
 			else {
 				serverHostPort=HL7DefEnabled.SftpInSocket.Split(':');
 				sftpUsername=HL7DefEnabled.SftpUsername;
-				sftpPassword=CDT.Class1.TryDecrypt(HL7DefEnabled.SftpPassword);
+				sftpPassword=Secrets.TryDecrypt(HL7DefEnabled.SftpPassword);
 			}
 			bool isConnected=false;
 			try {

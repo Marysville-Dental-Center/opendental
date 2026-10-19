@@ -8,7 +8,6 @@ using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using OpenDentBusiness;
 using CodeBase;
-using CDT;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -177,6 +176,9 @@ namespace OpenDental{
 				if(_claimForm.Items[i].ImageFileName==""){
 					continue;
 				}
+				if(ClaimFormItems.IsUnshippedBackground(_claimForm.Items[i].ImageFileName)) {
+					continue;//Pre-printed form; no background is drawn.
+				}
 				string extension="";
 				Image image;
 				if(_dictImages.ContainsKey(_claimForm.Items[i].ImageFileName)) {
@@ -246,36 +248,8 @@ namespace OpenDental{
 		private Image GetImage(ClaimFormItem claimFormItem,out string extension) {
 			extension="";
 			Image image=null;
-			if(claimFormItem.ImageFileName=="ADA2006.gif") {
-				image=CDT.Class1.GetADA2006();
-				extension=".gif";
-			}
-			else if(claimFormItem.ImageFileName=="ADA2012.gif") {
-				image=CDT.Class1.GetADA2012();
-				extension=".gif";
-			}
-			else if(claimFormItem.ImageFileName=="ADA2012_J430D.gif") {
-				image=CDT.Class1.GetADA2012_J430D();
-				extension=".gif";
-			}
-			else if(claimFormItem.ImageFileName=="ADA2018_J432.gif") {
-				image=CDT.Class1.GetADA2018_J432();
-				extension=".gif";
-			}
-			else if(claimFormItem.ImageFileName=="ADA2019_J430.gif") {
-				image=CDT.Class1.GetADA2019_J430();
-				extension=".gif";
-			}
-			else if(claimFormItem.ImageFileName=="ADA2024_J430.gif") {
-				image=CDT.Class1.GetADA2024_J430();
-				extension=".gif";
-			}
-			else if(claimFormItem.ImageFileName=="1500_02_12.gif") {
+			if(claimFormItem.ImageFileName=="1500_02_12.gif") {
 				image=Properties.Resources._1500_02_12;
-				extension=".gif";
-			}
-			else if(claimFormItem.ImageFileName=="DC-217.gif") {
-				image=CDT.Class1.GetDC217();
 				extension=".gif";
 			}
 			else {
@@ -902,27 +876,12 @@ namespace OpenDental{
 					if(!_claimForm.PrintImages){
 						continue;
 					}
+					if(ClaimFormItems.IsUnshippedBackground(_claimForm.Items[i].ImageFileName)) {
+						continue;//Pre-printed form; no background is printed.
+					}
 					string fileName=FileAtoZ.CombinePaths(ImageStore.GetPreferredAtoZpath(),_claimForm.Items[i].ImageFileName);
 					Image image=null;
 					switch(_claimForm.Items[i].ImageFileName) {
-						case "ADA2006.gif":
-							image=CDT.Class1.GetADA2006();
-							break;
-						case "ADA2012.gif":
-							image=CDT.Class1.GetADA2012();
-							break;
-						case "ADA2012_J430D.gif":
-							image=CDT.Class1.GetADA2012_J430D();
-							break;
-						case "ADA2018_J432.gif":
-							image=CDT.Class1.GetADA2018_J432();
-							break;
-						case "ADA2019_J430.gif":
-							image=CDT.Class1.GetADA2019_J430();
-							break;
-						case "ADA2024_J430.gif":
-							image=CDT.Class1.GetADA2024_J430();
-							break;
 						case "1500_02_12.gif":
 							image=Properties.Resources._1500_02_12;
 							break;

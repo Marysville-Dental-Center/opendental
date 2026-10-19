@@ -227,19 +227,8 @@ namespace OpenDental {
 				return;
 			}
 			List<Medication> listMedicationImports=new List<Medication>();
-			//Leaving code here to include later when we have developed a default medications list available for download.
-			//if(MsgBox.Show(this,MsgBoxButtons.YesNo,"Click Yes to download and import default medication list.\r\nClick No to import from a file.")) {
-			//	Cursor=Cursors.WaitCursor;
-			//	listMedicationImports=DownloadDefaultMedications();//Import from OpenDental.com
-			//}
-			//else {//Prompt for file.
 			string fileName;
-			if(!ODBuild.IsThinfinity() && ODCloudClient.IsAppStream) {
-				fileName=ODCloudClient.ImportFileForCloud().FirstOrDefault();
-			}
-			else {
-				fileName=GetFilenameFromUser(true);
-			}
+			fileName=GetFilenameFromUser(true);
 			if(fileName.IsNullOrEmpty()) {
 				return;
 			}
@@ -253,7 +242,6 @@ namespace OpenDental {
 				MessageBox.Show(this,msg+"\r\n: "+ex.Message);
 				return;
 			}
-			//}
 			int countImportedMedications=MedicationL.ImportMedications(listMedicationImports,Medications.GetList());
 			int countDuplicateMedications=listMedicationImports.Count-countImportedMedications;
 			DataValid.SetInvalid(InvalidType.Medications);
@@ -263,32 +251,14 @@ namespace OpenDental {
 			FillTab();
 		}
 
-		///<summary>Attempts to download the default medication list from HQ.
-		///If there is an exception returns an empty list after showing the user an error prompt.</summary>
-		private List<Medication> DownloadDefaultMedications() {
-			List<Medication> listMedicationsNew=new List<Medication>();
-			try {
-				listMedicationsNew=MedicationL.GetMedicationsFromFile(MedicationL.DownloadDefaultMedicationsFile(),true);
-			}
-			catch(Exception ex) {
-				MessageBox.Show(Lan.g(this,"Failed to download medications.")+"\r\n"+ex.Message);
-			}
-			return listMedicationsNew;
-		}
-
 		private void butExportMedications_Click(object sender,EventArgs e) {
 			if(!Security.IsAuthorized(EnumPermType.MedicationDefEdit)) {
 				return;
 			}
 			int countExportedMeds=0;
 			string fileName;
-			if(ODEnvironment.IsCloudInstance) {
-				fileName="ExportedMedications.txt";
-			}
-			else {
-				//Prompt for file.
-				fileName=GetFilenameFromUser(false);
-			}
+			//Prompt for file.
+			fileName=GetFilenameFromUser(false);
 			if(string.IsNullOrEmpty(fileName)) {
 				return;
 			}

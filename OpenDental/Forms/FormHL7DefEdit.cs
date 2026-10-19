@@ -44,7 +44,7 @@ namespace OpenDental {
 			checkLongDCodes.Checked=HL7DefCur.HasLongDCodes;
 			checkProcsAppt.Checked=HL7DefCur.IsProcApptEnforced;
 			textSftpUsername.Text=HL7DefCur.SftpUsername;
-			textSftpPassword.Text=CDT.Class1.TryDecrypt(HL7DefCur.SftpPassword);
+			textSftpPassword.Text=Secrets.TryDecrypt(HL7DefCur.SftpPassword);
 			for(int i=0;i<Enum.GetNames(typeof(ModeTxHL7)).Length;i++) {
 				comboModeTx.Items.Add(Lan.g("enumModeTxHL7",Enum.GetName(typeof(ModeTxHL7),i).ToString()));
 				if((int)HL7DefCur.ModeTx==i){
@@ -375,10 +375,6 @@ namespace OpenDental {
 			if(!checkEnabled.Checked) {
 				return true;
 			}
-			if(ODEnvironment.IsCloudServer) {
-				MsgBox.Show(this,"HL7 is not supported while using Open Dental Cloud.");
-				return false;
-			}
 			if(textHL7Server.Text=="") {
 				MsgBox.Show(this,"HL7 Server may not be blank.");
 				return false;
@@ -555,7 +551,7 @@ namespace OpenDental {
 				HL7DefCur.SftpInSocket=textInPathOrSocket.Text.Trim();
 				HL7DefCur.IncomingFolder=textOutPathSocketOrDir.Text.Trim();
 				HL7DefCur.SftpUsername=textSftpUsername.Text.Trim();
-				HL7DefCur.SftpPassword=CDT.Class1.TryEncrypt(textSftpPassword.Text.Trim());
+				HL7DefCur.SftpPassword=Secrets.TryEncrypt(textSftpPassword.Text.Trim());
 			}
 			if(comboLabImageCat.SelectedIndex>=0) {
 				HL7DefCur.LabResultImageCat=_listDefsImageCat[comboLabImageCat.SelectedIndex].DefNum;

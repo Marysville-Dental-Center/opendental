@@ -26,10 +26,6 @@ namespace CodeBase {
 		///See https://docs.microsoft.com/en-us/windows/desktop/api/winuser/nf-winuser-getsystemmetrics for details.
 		///Not supported in Windows CE.</summary>
 		private const int SM_TABLETPC=86;
-		///<summary>This is what MachineName will return if ODBuild.IsWeb and the ODCloudClient isn't running or there's an error trying to retrieve the local computer name.</summary>
-		private const string UNKNOWN_NAME="UNKNOWN";
-		///<summary>The name of the computer the client is running on.  Start the name out as "UNKNOWN".  Gets set by the ODCloudMachineName thread if the cloud client is running.</summary>
-		private static string _machineName=UNKNOWN_NAME;
 
 		#region Tablet Mode
 		[DllImport("user32.dll",SetLastError=true,CharSet=CharSet.Auto,EntryPoint="GetSystemMetrics")]
@@ -65,30 +61,6 @@ namespace CodeBase {
 			}
 		}
 
-		private static DateTime _dateTimeLastCloudCheck= DateTime.MinValue;
-		private static bool _isCloudServerFileValid=false;
-		///<summary>Indicates if we are running on an OD Cloud server (Thinfinity or AppStream).</summary>
-		public static bool IsCloudServer {
-			get {
-				if(IsCloudInstance) {
-					return true;
-				}
-				//Sometimes we connect to an OD Cloud db with a normal build to do things like updates or from the ODService or ODEConnector services.
-				//Only check every 1 minute to prevent spamming the file system.
-				if(DateTime.Now.Subtract(_dateTimeLastCloudCheck).TotalMinutes>1) {
-					FileInfo fileInfo=new FileInfo(@"C:\Scripts\RegKeyNum.txt");
-					_isCloudServerFileValid=(fileInfo.Exists&&fileInfo.Length>0);
-					_dateTimeLastCloudCheck=DateTime.Now;
-				}
-				return _isCloudServerFileValid;				
-			}
-		}
-
-		public static bool IsCloudInstance {
-			get {
-				return ODBuild.IsThinfinity() || ODCloudClient.IsAppStream;
-			}
-		}
 
 		///<summary>True if the current device is both a Tablet PC and is also in slate mode, the combination of which we will consider to mean the
 		///device is currently running in Tablet Mode.  SM_CONVERTIBLESLATEMODE reflects the state of the laptop or slate mode, 0 for Slate Mode and 
@@ -102,12 +74,9 @@ namespace CodeBase {
 		}
 		#endregion
 
-		///<summary>Always client name.  If on RDP, gets client name, never server name. If Thinfinity or AppStream, sends a request to the CloudClient to get the computer name.</summary>
+		///<summary>Always client name.  If on RDP, gets client name, never server name.</summary>
 		public static string MachineName {
 			get {
-				if(IsCloudInstance) {
-					return _machineName;
-				}
 #if DOT_NET_STANDARD
 				return Environment.MachineName;
 #else
@@ -133,32 +102,8 @@ namespace CodeBase {
 				return Environment.MachineName;
 #endif
 			}
-			set {
-				_machineName=value;
-			}
 		}
 
-		///<summary>Only called from FormOpenDentalThreads.ODCloudMachineName thread once per minute. Does nothing for regular (not Thinfinity or AppStream) instances. For Thinfinity
-		///and AppStream, this will attempt to get the local computer name from the ODCloudClient.  If ODCloudClient isn't running or we get an error, machine name will be "UNKNOWN"
-		///and this will try again the next time it's called by the ODCloudMachineName thread.  Once the machine name is retrieved from ODCloudClient successfully
-		///(_machineName!="UNKNOWN") this will not attempt to retrieve the local computer name again while this instance is running.</summary>
-		public static void SetMachineName() {
-			if(!IsCloudInstance) {//only for Thinfinity and AppStream
-				return;
-			}
-			if(!_machineName.IsNullOrEmpty() && _machineName.ToUpper()!=UNKNOWN_NAME.ToUpper()) {//_machineName is already set, no need to get from ODCloudClient
-				return;
-			}
-			try {
-				_machineName=ODCloudClient.GetComputerName();
-			}
-			catch(Exception ex) {
-				ex.DoNothing();
-			}
-			if(_machineName.IsNullOrEmpty()) {
-				_machineName=UNKNOWN_NAME;
-			}
-		}
 
 		//public static bool Is64BitOperatingSystem(){
 		//  string arch="";

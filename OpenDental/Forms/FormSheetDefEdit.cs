@@ -54,8 +54,6 @@ namespace OpenDental {
 		private bool _isDraggingSelectionRect;
 		///<summary>This stores the previous calculations so that we don't have to recal unless certain things have changed.  The key is the index of the sheetfield.  The data is an array of objects of different types as seen in the code.</summary>
 		private Hashtable _hashTableRtfStringCache=new Hashtable();
-		///<summary>Set to true if the web forms have been downloaded or if an error occurred.</summary>
-		private bool _hasSheetsDownloaded=false;
 		///<summary>Keep track of when the bounds of this window are programmatically changed.
 		///Used to help prevent resizing when users are simply moving the window.</summary>
 		private bool _hasWindowBoundsChanged=false;
@@ -82,9 +80,6 @@ namespace OpenDental {
 		private List<SheetDefLanguage> _listSheetDefLanguagesUsed;
 		///<summary>Infinite undo levels.  Every time the user changes something, a new level is added to this list. The last item in this list should normally match what the user is seeing. If they "undo", then we pull from the list, tracking the _undoLevel instead of removing from the list so that they can "redo".</summary>
 		private List<UndoLevel> _listUndoLevels=new List<UndoLevel>();
-		///<summary>If the sheet def is linked to any web sheets, this will hold those web sheet defs.</summary>
-		private List<WebForms_SheetDef> _listWebForms_SheetDefs;
-		private object _lock=new object();
 		///<summary>In panel coords.</summary>
 		private Point _pointMouseCurrentPos;
 		///<summary>In panel coords.</summary>
@@ -405,9 +400,6 @@ namespace OpenDental {
 				return;
 			}
 			if(!_sheetEditMobileCtrl.MergeMobileSheetFieldDefs(SheetDef_,true,new Action<string>((err) => { MsgBox.Show(this,err); }))) {
-				return;
-			}
-			if(!UpdateWebSheetDef()) {
 				return;
 			}
 			if(!UpdateRevisionID()) {
@@ -850,17 +842,6 @@ namespace OpenDental {
 			if(SheetDef_.HasMobileLayout) { //Always open the mobile editor since they want to use the mobile layout.
 				ShowMobile();
 			}
-			ODThread threadGetWebSheetId=new ODThread(GetWebSheetDefs);
-			threadGetWebSheetId.AddExceptionHandler(new ODThread.ExceptionDelegate((Exception ex) => {
-				//So that the main thread will know the worker thread is done getting the web sheet defs.
-				_hasSheetsDownloaded=true;
-			}));
-			threadGetWebSheetId.AddExitHandler(new ODThread.WorkerDelegate((ODThread o) => {
-				//So that the main thread will know the worker thread is done getting the web sheet defs.
-				_hasSheetsDownloaded=true;
-			}));
-			threadGetWebSheetId.Name="GetWebSheetIdThread";
-			threadGetWebSheetId.Start(true);
 			this.Text="Sheet Def Edit - Revision "+SheetDef_.RevID.ToString();
 			_sheetEditMobileCtrl.SyncSheetFieldsWithDefualt=checkSynchMatchedFields.Checked;
 			//textDescription.Focus();
@@ -1963,20 +1944,6 @@ namespace OpenDental {
 			return listSheetFieldDefs;
 		}
 
-		///<summary>Fills _listWebSheetIds with any webforms_sheetdefs that have the same SheetDefNum of the current SheetDef.</summary>
-		private void GetWebSheetDefs(ODThread odThread) {
-			//Ignore the certificate errors for the staging machine and development machine
-			if(PrefC.GetString(PrefName.WebHostSynchServerURL).In(WebFormL.SynchUrlStaging,WebFormL.SynchUrlDev)) {
-				WebFormL.IgnoreCertificateErrors();
-			}
-			List<WebForms_SheetDef> listWebForms_SheetDefs;
-			if(WebForms_SheetDefs.TryDownloadSheetDefs(out listWebForms_SheetDefs)) {
-				lock(_lock) {
-					_listWebForms_SheetDefs=listWebForms_SheetDefs.FindAll(x => x.SheetDefNum==SheetDef_.SheetDefNum);
-				}
-			}
-		}
-
 		private bool HasScreeningChart(bool isTreatmentChart) {
 			if(SheetDef_.SheetType!=SheetTypeEnum.Screening) {
 				return false;
@@ -2630,40 +2597,6 @@ namespace OpenDental {
 			this.Focus();
 		}
 
-		private bool PromptUpdateEClipboardSheetDefs() {
-			List<EClipboardSheetDef> listEClipboardSheetDefs = EClipboardSheetDefs.GetAllForSheetDefForOnceRule(SheetDef_.SheetDefNum);
-			if(listEClipboardSheetDefs == null || listEClipboardSheetDefs.Count == 0) {
-				return true; // nothing to update, no need to prompt.
-			}
-			string message = $"At least one eClipboard sheet currently uses this Sheet Def. If you check the box and press 'OK', patients will be forced to fill this form out again the next time they check in using eClipboard.";
-			List<InputBoxParam> listInputBoxParams=new List<InputBoxParam>();
-			InputBoxParam inputBoxParam=new InputBoxParam();
-			inputBoxParam.InputBoxType_=InputBoxType.CheckBox;
-			inputBoxParam.LabelText=message;
-			inputBoxParam.Text="Force patients to fill out again";
-			inputBoxParam.SizeParam=new System.Windows.Size(200,80);
-			inputBoxParam.PointPosition=new System.Windows.Point(15,30);
-			listInputBoxParams.Add(inputBoxParam);
-			InputBox inputBox = new InputBox(listInputBoxParams);
-			inputBox.ShowDialog();
-			if(inputBox.IsDialogCancel) {
-				return false; // don't save the sheet
-			}
-			if(!inputBox.BoolResult) {
-				return true; // save the sheet but don't update override
-			}
-			message = "Are you sure you want to force all patients to fill out this form again? Clicking 'No' will not update the eClipboard version of this sheet.";
-			if(MessageBox.Show(message,"",MessageBoxButtons.YesNo)==DialogResult.No) {
-				return true; // save sheet, but don't update override
-			}
-			//got to here, user wants to update eClipboard sheets and force patients to refill them.
-			for(int i=0;i<listEClipboardSheetDefs.Count();i++) {
-				listEClipboardSheetDefs[i].PrefillStatusOverride=SheetDef_.RevID;
-				EClipboardSheetDefs.Update(listEClipboardSheetDefs[i]);
-			}
-			return true;
-		}
-
 		///<summary>Refreshes local _listUsedLanguages and _listUnusedLanguages data. Called when loading or after user adds a new language for translations.</summary>
 		private void RefreshLanguages(string selectedThreeLetterLanguage=null) {
 			List<string> listAllLanguages=PrefC.GetString(PrefName.LanguagesUsedByPatients)//Must be before initial InitLayoutModes().
@@ -2771,38 +2704,6 @@ namespace OpenDental {
 			}
 		}
 
-		///<summary>Updates the web sheet defs linked to this sheet def if the user agrees. Returns true if this sheet is okay to be saved to the database.</summary>
-		private bool UpdateWebSheetDef() {
-			if(SheetDef_.IsNew) {
-				//There is no Web Form to sync because they just created this sheet def.
-				//Without this return we would show the user that this Sheet Def matches all web forms that are not yet linked to a valid Sheet Def.
-				return true;
-			}
-			Cursor=Cursors.WaitCursor;
-			while(!_hasSheetsDownloaded) {//The thread has not finished getting the list. 
-				Application.DoEvents();
-				Thread.Sleep(100);
-			}
-			Cursor=Cursors.Default;
-			if(_listWebForms_SheetDefs==null || _listWebForms_SheetDefs.Count==0) {//No web forms use this sheet def.
-				return true;
-			}
-			string message=Lan.g(this,"This Sheet Def is used by the following web "+(_listWebForms_SheetDefs.Count==1?"form":"forms"))+":\r\n"
-				+string.Join("\r\n",_listWebForms_SheetDefs.Select(x => x.Description))+"\r\n"
-				+Lan.g(this,"Do you want to update "+(_listWebForms_SheetDefs.Count==1?"that web form":"those web forms")+"?");
-			if(MessageBox.Show(message,"",MessageBoxButtons.YesNo)==DialogResult.No) {
-				return true;
-			}
-			if(!WebFormL.VerifyRequiredFieldsPresent(SheetDef_)) {
-				return false;
-			}
-			Cursor=Cursors.WaitCursor;
-			WebFormL.LoadImagesToSheetDef(SheetDef_);
-			bool isSuccess=WebFormL.TryAddOrUpdateSheetDef(this,SheetDef_,false,_listWebForms_SheetDefs);
-			Cursor=Cursors.Default;
-			return isSuccess;
-		}
-
 		///<summary>Updates the sheetdef's revision ID if any fielddef was added or removed from the sheet def or if any static text was changed. If the revision ID is increased, also handles prompting the user if they would like to force patient's to fill out this sheet def again. Returns true if sheetdef is ready to be saved. Returns false if user does not want to save sheet def changes and wants to remain on the form. </summary>
 		private bool UpdateRevisionID() {
 			SheetDef sheetDefStored=SheetDefs.GetSheetDef(SheetDef_.SheetDefNum,false);//Go to DB to get current copy of sheetdef.
@@ -2827,9 +2728,6 @@ namespace OpenDental {
 			//If we added/subtracted any field defs or changed any static text, increment the revision ID. 
 			if(sheetDefStored.SheetFieldDefs.Count!=SheetDef_.SheetFieldDefs.Count || staticTextWasChanged) {
 				SheetDef_.RevID++;
-				if(!PromptUpdateEClipboardSheetDefs()) {//Revision number changed, so prompt to generate the sheet again for patients who have already filled the previous version of this sheet.
-					return false;
-				}
 			}
 			return true;
 		}

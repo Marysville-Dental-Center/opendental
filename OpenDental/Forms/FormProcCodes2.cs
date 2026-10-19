@@ -9,7 +9,6 @@ using System.Windows.Forms;
 using System.Xml;
 using System.Xml.Serialization;
 using CodeBase;
-using OpenDental.Thinfinity;
 using OpenDental.UI;
 using OpenDentBusiness;
 
@@ -1081,31 +1080,18 @@ namespace OpenDental {
 			}
 			string filename="ProcCodes.xml";
 			string filePath=ODFileUtils.CombinePaths(Path.GetTempPath(),filename); 
-			if(ODEnvironment.IsCloudServer) {
-				//Thinfinity: file download dialog will come up later, after file is created. AppStream: File will be created in client's Downloads folder.
+			using SaveFileDialog saveFileDialog=new SaveFileDialog();
+			saveFileDialog.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
+			saveFileDialog.FileName=filename;
+			if(saveFileDialog.ShowDialog()!=DialogResult.OK) {
+				return;
 			}
-			else {
-				using SaveFileDialog saveFileDialog=new SaveFileDialog();
-				saveFileDialog.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
-				saveFileDialog.FileName=filename;
-				if(saveFileDialog.ShowDialog()!=DialogResult.OK) {
-					return;
-				}
-				filePath=saveFileDialog.FileName;
-			}
+			filePath=saveFileDialog.FileName;
 			XmlSerializer xmlSerializer=new XmlSerializer(typeof(List<ProcedureCode>));
 			TextWriter textWriter=new StreamWriter(filePath);
 			xmlSerializer.Serialize(textWriter,listProcedureCodes);
 			textWriter.Close();
-			if(ODBuild.IsThinfinity()){
-				ThinfinityUtils.ExportForDownload(filePath);
-			}
-			else if(ODCloudClient.IsAppStream){
-				CloudClientL.ExportForCloud(filePath);
-			}
-			else {
-				MsgBox.Show(this,"Exported");
-			}
+			MsgBox.Show(this,"Exported");
 		}
 
 		private void butImport_Click(object sender,EventArgs e) {
@@ -1116,20 +1102,12 @@ namespace OpenDental {
 				SynchAndFillListFees(true);
 			}
 			string importFilePath;
-			if(!ODBuild.IsThinfinity() && ODCloudClient.IsAppStream) {
-				importFilePath=ODCloudClient.ImportFileForCloud().FirstOrDefault();
-				if(importFilePath.IsNullOrEmpty()) {
-					return; //User cancelled out of OpenFileDialog
-				}
+			using OpenFileDialog openFileDialog=new OpenFileDialog();
+			openFileDialog.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
+			if(openFileDialog.ShowDialog()!=DialogResult.OK) {
+				return;
 			}
-			else {
-				using OpenFileDialog openFileDialog=new OpenFileDialog();
-				openFileDialog.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
-				if(openFileDialog.ShowDialog()!=DialogResult.OK) {
-					return;
-				}
-				importFilePath=openFileDialog.FileName;
-			}
+			importFilePath=openFileDialog.FileName;
 			int rowsInserted=0;
 			try {
 				rowsInserted=ImportProcCodes(importFilePath,null,"");

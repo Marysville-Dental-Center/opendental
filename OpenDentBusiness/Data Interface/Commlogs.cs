@@ -17,7 +17,7 @@ namespace OpenDentBusiness{
 		public static List<CommItemTypeAuto> GetCommItemTypes() {
 			Meth.NoCheckMiddleTierRole();
 			List<CommItemTypeAuto> listCommonItemTypeAutos=Enum.GetValues(typeof(CommItemTypeAuto)).Cast<CommItemTypeAuto>().ToList();
-			listCommonItemTypeAutos.RemoveAll(x => !PrefC.IsODHQ && GenericTools.IsODHQ(x)); //only remove the HQ commlog type(s) if we are not in HQ
+			listCommonItemTypeAutos.RemoveAll(x => GenericTools.IsODHQ(x)); //remove the HQ-only commlog type(s)
 			return listCommonItemTypeAutos;
 		}
 

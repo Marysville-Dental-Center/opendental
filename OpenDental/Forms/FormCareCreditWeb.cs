@@ -26,9 +26,6 @@ namespace OpenDental {
 			InitializeComponent();
 			InitializeLayoutManager();
 			Lan.F(this);
-			if(ODBuild.IsThinfinity()) {
-				cloudIframe.Initialize(cloudIframe.Handle,url);
-			}
 			_urlBrowseTo=url;
 			_patient=patient;
 			SessionId=CareCredit.GetSessionIDFromUrl(url);
@@ -38,9 +35,6 @@ namespace OpenDental {
 			if(string.IsNullOrEmpty(_urlBrowseTo) || string.IsNullOrEmpty(SessionId)) {
 				DialogResult=DialogResult.Cancel;
 				return;
-			}
-			if(ODBuild.IsThinfinity()) {
-				return;//Don't use WebView2 or the toolbar in cloud
 			}
 			try {
 				await webViewMain.Init();

@@ -26,7 +26,6 @@ namespace OpenDental{
 			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormPaySimpleSetup));
 			this.butSave = new OpenDental.UI.Button();
 			this.checkEnabled = new OpenDental.UI.CheckBox();
-			this.linkLabel1 = new System.Windows.Forms.LinkLabel();
 			this.labelClinicEnable = new System.Windows.Forms.Label();
 			this.comboClinic = new OpenDental.UI.ComboBox();
 			this.labelClinic = new System.Windows.Forms.Label();
@@ -62,19 +61,6 @@ namespace OpenDental{
 			this.checkEnabled.Size = new System.Drawing.Size(226, 18);
 			this.checkEnabled.TabIndex = 4;
 			this.checkEnabled.Text = "Enabled (affects all clinics)";
-			// 
-			// linkLabel1
-			// 
-			this.linkLabel1.LinkArea = new System.Windows.Forms.LinkArea(28, 38);
-			this.linkLabel1.Location = new System.Drawing.Point(4, 9);
-			this.linkLabel1.Name = "linkLabel1";
-			this.linkLabel1.Size = new System.Drawing.Size(389, 16);
-			this.linkLabel1.TabIndex = 5;
-			this.linkLabel1.TabStop = true;
-			this.linkLabel1.Text = "The PaySimple website is at www.paysimple.com/partner/open-dental";
-			this.linkLabel1.TextAlign = System.Drawing.ContentAlignment.TopCenter;
-			this.linkLabel1.UseCompatibleTextRendering = true;
-			this.linkLabel1.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.linkLabel1_LinkClicked);
 			// 
 			// labelClinicEnable
 			// 
@@ -218,7 +204,6 @@ namespace OpenDental{
 			this.Controls.Add(this.comboClinic);
 			this.Controls.Add(this.labelClinic);
 			this.Controls.Add(this.labelClinicEnable);
-			this.Controls.Add(this.linkLabel1);
 			this.Controls.Add(this.checkEnabled);
 			this.Controls.Add(this.butSave);
 			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
@@ -235,7 +220,6 @@ namespace OpenDental{
 
 		private OpenDental.UI.Button butSave;
 		private OpenDental.UI.CheckBox checkEnabled;
-		private System.Windows.Forms.LinkLabel linkLabel1;
 		private System.Windows.Forms.Label labelClinicEnable;
 		private OpenDental.UI.ComboBox comboClinic;
 		private System.Windows.Forms.Label labelClinic;

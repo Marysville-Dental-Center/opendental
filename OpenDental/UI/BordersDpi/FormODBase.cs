@@ -13,7 +13,6 @@ using Microsoft.Win32;
 using OpenDental.UI;
 using CodeBase;
 using OpenDentBusiness;
-using OpenDentalHelp;
 
 namespace OpenDental {
 	//Jordan is the only one allowed to alter this file.
@@ -75,15 +74,12 @@ namespace OpenDental {
 		protected EnumMouseDownRegion _enumMouseDownRegion;
 		///<summary>Dispose handled automatically when this form closes.</summary>
 		private FormSnap _formSnap;
-		///<summary>The circle around the ?. Disposed.</summary>
-		private GraphicsPath _graphicsPathHelp=new GraphicsPath();
-		///<summary>Set to true to use the traditional MS layout engine instead of the OD LayoutManager for a single form. Used for internal tools that the customers will not see, like Job Manager. Downsides: no help button, no high dpi support, no scaling, no retention of "restore down" size.</summary>
+		///<summary>Set to true to use the traditional MS layout engine instead of the OD LayoutManager for a single form. Used for internal tools that the customers will not see, like Job Manager. Downsides: no high dpi support, no scaling, no retention of "restore down" size.</summary>
 		private bool IsLayoutMS;
 		private bool _isDraggingTitle;
 		private bool _isHotX;
 		private bool _isHotMax;
 		private bool _isHotMin;
-		private bool _isHotHelp;
 		///<summary>This handles the layout and fonts of all the controls on this form instead of using the default MS layout.  Required for high dpi support.  Layout is based on dock or anchor, just like always.  The client area of the window is now called PanelClient, which contains all the controls on the form.  Do not add or move any controls manually.  Use LayoutManager.Add() and .Move().</summary>
 		protected LayoutManagerForms LayoutManager;
 		///<summary>All controls are placed into this container panel.  This represents the "client area" of the form.  This is used for all combinations of IsLayoutMS and AreBordersMS. If UsingUIManager, then this is not used and remains null.</summary>
@@ -98,9 +94,6 @@ namespace OpenDental {
 		private Rectangle _rectangleButX;
 		private Rectangle _rectangleButMax;
 		protected Rectangle _rectangleButMin;
-		private Rectangle _rectangleButHelp;
-		///<summary>The circle around the ?. Disposed.</summary>
-		private Region _regionButHelp=new Region();
 		///<summary>This tracks when we hover over the maximize button to trigger the snap window. Disposed.</summary>
 		private System.Windows.Forms.Timer timerHoverSnap;
 		private ToolTip _toolTipBorderButtons;
@@ -117,8 +110,6 @@ namespace OpenDental {
 		///<summary></summary>
 		protected override void Dispose(bool disposing){
 			if(disposing){
-				_graphicsPathHelp?.Dispose();
-				_regionButHelp?.Dispose();
 				timerHoverSnap?.Dispose();
 			}
 			base.Dispose(disposing);
@@ -232,12 +223,6 @@ namespace OpenDental {
 		[DefaultValue(FormStartPosition.CenterScreen)]
 		public new FormStartPosition StartPosition{ get; set;	}*/
 
-		///<summary>Default true. Set to false to hide the help button.  Window 'HelpButton' property is ignored.</summary>
-		[Category("OD")]
-		[Description("Default true. Set to false to hide the help button.  Windows 'HelpButton' property is ignored.")]
-		[DefaultValue(true)]
-		public bool HasHelpButton {get;set;}=true;
-
 		///<summary>True when form has been shown by the system. Used for filter controls and for closing open forms. Number of references is incorrect because called by reflection in FormOpenDental.</summary>
 		[Browsable(false)]
 		public bool HasShown {
@@ -278,11 +263,7 @@ namespace OpenDental {
 					ShowInTaskbar=false;
 				}
 				else{//false
-					if(!ODBuild.IsThinfinity()) {
-						//This causes the form to refresh and in cloud the attached iframe loses the image and you have to reselect the image to make it show again.
-						//Also, there is no need to show in taskbar for cloud
-						ShowInTaskbar=true;
-					}
+					ShowInTaskbar=true;
 				}
 				_isImageFloatDocked=value;
 				IsImageFloatDockedChanged?.Invoke(this,new EventArgs());
@@ -546,12 +527,12 @@ namespace OpenDental {
 
 		///<summary>Returns true if the form passed in has been disposed or if it extends ODForm and HasClosed is true.</summary>
 		public static bool IsDisposedOrClosed(Form form) {
-			if(form.IsDisposed) {//Usually the system will set IsDisposed to true after a form has closed.  Not true for FormHelpBrowser.
+			if(form.IsDisposed) {//Usually the system will set IsDisposed to true after a form has closed.
 				return true;
 			}
 			if(form.GetType().GetProperty("HasClosed")!=null) {//Is a Form and has property HasClosed => Assume is an ODForm.
 				//Difficult to compare type to ODForm, because it is a template class.
-				if((bool)form.GetType().GetProperty("HasClosed").GetValue(form)) {//This is how we know FormHelpBrowser has closed.
+				if((bool)form.GetType().GetProperty("HasClosed").GetValue(form)) {
 					return true;
 				}
 			}
@@ -738,16 +719,7 @@ namespace OpenDental {
 				xPos-=wEdge;
 				_rectangleButMin=new Rectangle(xPos,yPos,wEdge,hEdge);
 			}
-			if(ControlBox && HasHelpButton){
-				xPos-=wEdge;
-				_rectangleButHelp=new Rectangle(xPos,yPos-2,GetHeightTitleBar()-4,GetHeightTitleBar()-4);
-			}
 			_rectangleButtons=new Rectangle(xPos,yPos,Width-xPos,GetHeightTitleBar());
-			_graphicsPathHelp?.Dispose();
-			_graphicsPathHelp=new GraphicsPath();
-			_graphicsPathHelp.AddEllipse(_rectangleButHelp);
-			_regionButHelp?.Dispose();
-			_regionButHelp=new Region(_graphicsPathHelp);
 			g.SmoothingMode=SmoothingMode.Default;
 			//button glyphs are all 10x10
 			int indentTop=Scale(5);//7
@@ -793,8 +765,8 @@ namespace OpenDental {
 				}
 				g.DrawLine(penButtons,_rectangleButMin.X+indentLeft,_rectangleButMin.Y+indentTop+whSymbol/2,_rectangleButMin.X+indentLeft+whSymbol,_rectangleButMin.Y+indentTop+whSymbol/2);
 			}
-			//Button Help:
-			//Had trouble with the ? getting bigger each time drawn.  There's bad logic somewhere, so we will ignore Font.
+			//Title font:
+			//Had trouble with the font getting bigger each time drawn.  There's bad logic somewhere, so we will ignore Font.
 			float fontSize=ScaleFontODZoom(8.25f);
 			float fontSizeMainWindow=ScaleFontODZoom(13f);
 			System.Windows.Forms.Screen screen=System.Windows.Forms.Screen.FromControl(this);
@@ -824,15 +796,6 @@ namespace OpenDental {
 				//scale it again?
 				heightFont=heightFont/scaleRatio;
 				heightFontMainWindow=heightFontMainWindow/scaleRatio;
-			}
-			if(HasHelpButton){
-				if(_isHotHelp){
-					g.SmoothingMode=SmoothingMode.HighQuality;
-					g.FillPath(brushButtonHot,_graphicsPathHelp);//using a path because can't antialias a region
-					g.SmoothingMode=SmoothingMode.Default;
-					//g.FillRectangle(_brushButtonHot,_rectangleButQuest);
-				}
-				g.DrawString("?",font,brushText,_rectangleButHelp.X+Scale(7),_rectangleButHelp.Y+Scale(5));
 			}
 			Rectangle rectangleIcon=new Rectangle(MaxInset()+5,MaxInset()+4,Scale(20),Scale(20));
 			if(ShowIcon){
@@ -993,7 +956,6 @@ namespace OpenDental {
 			_isHotX=false;
 			_isHotMax=false;
 			_isHotMin=false;
-			_isHotHelp=false;
 			_toolTipBorderButtons.SetToolTip(this,"");
 			PanelBorders.Invalidate();
 		}
@@ -1060,13 +1022,6 @@ namespace OpenDental {
 			#endregion Cursors
 			#region Button Hover Effects
 			timerHoverSnap.Enabled=false;//we will turn it back on if we are within the max button
-			bool isInHelp=false;
-			if(HasHelpButton && _regionButHelp!=null){
-				try{
-					isInHelp=_regionButHelp.IsVisible(e.Location);
-				}
-				catch{ }//region could be disposed or other similar issues
-			}
 			if(_rectangleButX.Contains(e.Location)){
 				if(!_isHotX){//first time
 					_toolTipBorderButtons.InitialDelay=1000;
@@ -1074,7 +1029,6 @@ namespace OpenDental {
 					_isHotX=true;
 					_isHotMax=false;
 					_isHotMin=false;
-					_isHotHelp=false;
 					PanelBorders.Invalidate(_rectangleButtons);
 				}
 			}
@@ -1090,7 +1044,6 @@ namespace OpenDental {
 					_isHotMax=true;
 					_isHotX=false;
 					_isHotMin=false;
-					_isHotHelp=false;
 					PanelBorders.Invalidate(_rectangleButtons);
 				}
 				//timerHoverSnap.Enabled=false;//was already done above
@@ -1103,28 +1056,15 @@ namespace OpenDental {
 					_isHotMin=true;
 					_isHotX=false;
 					_isHotMax=false;
-					_isHotHelp=false;
-					PanelBorders.Invalidate(_rectangleButtons);
-				}
-			}
-			else if(isInHelp){
-				if(!_isHotHelp){
-					_toolTipBorderButtons.InitialDelay=0;
-					_toolTipBorderButtons.SetToolTip(this,Lans.g(this,"Help"));
-					_isHotHelp=true;
-					_isHotX=false;
-					_isHotMax=false;
-					_isHotMin=false;
 					PanelBorders.Invalidate(_rectangleButtons);
 				}
 			}
 			else{
-				if(_isHotX || _isHotMax || _isHotMin || _isHotHelp){
+				if(_isHotX || _isHotMax || _isHotMin){
 					_toolTipBorderButtons.SetToolTip(this,"");
 					_isHotX=false;
 					_isHotMax=false;
 					_isHotMin=false;
-					_isHotHelp=false;
 					PanelBorders.Invalidate(_rectangleButtons);
 				}
 			}
@@ -1342,40 +1282,7 @@ Refresh();
 				OnResizeEnd(new EventArgs());
 				return;
 			}
-			if(_regionButHelp.IsVisible(e.Location) && HasHelpButton){//IsVisible really means HitTest
-				string formName="";
-				if(GetHelpOverride()=="") {
-					formName=Name;
-				}
-				else {
-					formName=GetHelpOverride();
-				}
-				try {
-					bool isKeyValid=ODHelp.IsEncryptedKeyValid();//always true in debug
-					string manualPageURL=OpenDentalHelp.ODHelp.GetManualPage(formName,PrefC.GetString(PrefName.ProgramVersion),isKeyValid);
-					if(ODBuild.IsThinfinity()) {
-						Process.Start(manualPageURL);
-					}
-					else if(ODCloudClient.IsAppStream){
-						ODCloudClient.LaunchFileWithODCloudClient(manualPageURL);
-					}
-					else{
-						FrmHelpBrowser frmHelpBrowser=new FrmHelpBrowser();
-						frmHelpBrowser.EnableUI(enableUI:isKeyValid);//If false, then just the Help Feature page shows
-						frmHelpBrowser.GoToPage(manualPageURL);
-						frmHelpBrowser.Show();
-						//UIHelper.ForceBringToFront(frmHelpBrowser);
-					}
-					if(!isKeyValid) {
-						//comes up on top of locked browser.
-						MsgBox.Show("To use the Open Dental Help feature you must be on support.");
-					}
-				}
-				catch(Exception ex) {
-					MessageBox.Show(ex.Message);
-				}
-				return;
-			}
+			//The help button (?), which opened Open Dental's online manual, was removed.
 		}
 		#endregion Border Mouse
 
@@ -1682,13 +1589,6 @@ Refresh();
 		public virtual void ProcessSignalODs(List<Signalod> listSignals) {
 		}
 		#endregion Signal Processing
-
-		#region Help
-		///<summary>Used to send a different form name to ODHelp.</summary>
-		protected virtual string GetHelpOverride(){
-			return "";
-		}
-		#endregion Help
 
 		#region Filtering
 		///<summary>This introduces a delay between when a filter control is changed and when an action is taken. For example, when searching for a patient, each keystroke changes the filter criteria for the LName, and this makes sure that the grid won't be refreshed more than once per second. Call before form is Shown. Adds the given controls to the list of filter controls. We will loop through all the controls in the list to identify the first control that has had its filter change commited for _waitFilterMs.  Once a filter is commited, the filter action will be invoked and the thread will wait for the next filter change to start the thread again.  Controls which are not text-based will commit immediately and will not use a thread (ex checkboxes). _waitFilterMs: The number of milliseconds to wait after the last user input on one of the specified filter controls to wait before calling _actionFilter. The action runs on the UI thread which means it's safe. But it also means that any db call also runs on the UI thread, so we didn't gain anything at all by implmenting threading.</summary>

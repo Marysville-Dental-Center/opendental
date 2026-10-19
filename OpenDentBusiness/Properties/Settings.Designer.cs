@@ -36,36 +36,6 @@ namespace OpenDentBusiness.Properties {
         [global::System.Configuration.ApplicationScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.SpecialSettingAttribute(global::System.Configuration.SpecialSetting.WebServiceUrl)]
-        [global::System.Configuration.DefaultSettingValueAttribute("http://localhost/OpenDentalWebServiceHQ/WebServiceMainHQ.asmx")]
-        public string OpenDentBusiness_WebServiceMainHQ_WebServiceMainHQ {
-            get {
-                return ((string)(this["OpenDentBusiness_WebServiceMainHQ_WebServiceMainHQ"]));
-            }
-        }
-        
-        [global::System.Configuration.ApplicationScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.SpecialSettingAttribute(global::System.Configuration.SpecialSetting.WebServiceUrl)]
-        [global::System.Configuration.DefaultSettingValueAttribute("http://50.201.161.44:1942/WebServiceCustomerUpdates/Service1.asmx")]
-        public string OpenDentBusiness_customerupdates_Service1 {
-            get {
-                return ((string)(this["OpenDentBusiness_customerupdates_Service1"]));
-            }
-        }
-        
-        [global::System.Configuration.ApplicationScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.SpecialSettingAttribute(global::System.Configuration.SpecialSetting.WebServiceUrl)]
-        [global::System.Configuration.DefaultSettingValueAttribute("http://localhost:3824/Service1.asmx")]
-        public string OpenDentBusiness_localhost_Service1 {
-            get {
-                return ((string)(this["OpenDentBusiness_localhost_Service1"]));
-            }
-        }
-        
-        [global::System.Configuration.ApplicationScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.SpecialSettingAttribute(global::System.Configuration.SpecialSetting.WebServiceUrl)]
         [global::System.Configuration.DefaultSettingValueAttribute("https://webservices.dentalxchange.com:443/dws/DwsService")]
         public string OpenDentBusiness_Dentalxchange2016_DwsService {
             get {
@@ -120,16 +90,6 @@ namespace OpenDentBusiness.Properties {
         public string OpenDentBusiness_DentalxchangePartnerService_DeaPartnerService {
             get {
                 return ((string)(this["OpenDentBusiness_DentalxchangePartnerService_DeaPartnerService"]));
-            }
-        }
-        
-        [global::System.Configuration.ApplicationScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.SpecialSettingAttribute(global::System.Configuration.SpecialSetting.WebServiceUrl)]
-        [global::System.Configuration.DefaultSettingValueAttribute("http://localhost:2923/SheetsSynch.asmx")]
-        public string OpenDentBusiness_SheetsSynch_SheetsSynch {
-            get {
-                return ((string)(this["OpenDentBusiness_SheetsSynch_SheetsSynch"]));
             }
         }
         

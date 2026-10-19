@@ -9,7 +9,6 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using CodeBase;
-using OpenDental.Thinfinity;
 using OpenDental.UI;
 using OpenDentBusiness;
 
@@ -1034,22 +1033,7 @@ namespace OpenDental.ReportingComplex {
 			saveFileDialog.Filter="Text files(*.txt)|*.txt|Excel Files(*.xls)|*.xls|All files(*.*)|*.*";
 			saveFileDialog.DefaultExt="txt";
 			saveFileDialog.FileName=_myReport.ReportName;
-			if(ODBuild.IsThinfinity()) {
-				if(saveFileDialog.ShowDialog()!=DialogResult.OK) {
-					return;
-				}
-				if(saveFileDialog.FileName.IsNullOrEmpty()) {
-					MsgBox.Show("Failed to save the file.");
-					return;
-				}
-				filePath=ODFileUtils.CombinePaths(Path.GetTempPath(),saveFileDialog.FileName.Split('\\').Last());
-			}
-			else if(ODCloudClient.IsAppStream) {
-				//Don't show save file dialog in AppStream environment.
-				string fileName=_myReport.ReportName;
-				filePath=ODFileUtils.CombinePaths(Path.GetTempPath(),fileName);
-			}
-			else if(IsRetailStorePAndI) {
+			if(IsRetailStorePAndI) {
 				filePath=@"\\opendental.od\serverfiles\My\KaitlynW\SnackShack_Reports\P&I_Report_"+DateTime.Now.ToString("yyyyMMdd")+".txt";
 			}
 			else if(IsRetailStoreInventory) {
@@ -1152,15 +1136,7 @@ namespace OpenDental.ReportingComplex {
 				MessageBox.Show(Lan.g(this,"File in use by another program.  Close and try again."));
 				return;
 			}
-			if(ODBuild.IsThinfinity()) {
-				ThinfinityUtils.ExportForDownload(filePath);
-			}
-			else if(ODCloudClient.IsAppStream) {
-				CloudClientL.ExportForCloud(filePath);
-			}
-			else {
-				MessageBox.Show(Lan.g(this,"File created successfully"));
-			}
+			MessageBox.Show(Lan.g(this,"File created successfully"));
 		}
 
     private void OnWrapText_Click() {

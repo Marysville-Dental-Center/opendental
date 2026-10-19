@@ -46,7 +46,7 @@ namespace ServiceManager {
 				if(textPassword.Text==""
 					&& encryptedPwdNode!=null
 					&& encryptedPwdNode.Value!=""
-					&& CDT.Class1.Decrypt(encryptedPwdNode.Value,out decryptedPwd))
+					&& Secrets.Decrypt(encryptedPwdNode.Value,out decryptedPwd))
 				{
 					textPassword.Text=decryptedPwd;
 				}
@@ -164,7 +164,7 @@ namespace ServiceManager {
 			XmlNode user=document.CreateNode(XmlNodeType.Element,"User","");
 			user.InnerText=strUser;
 			string encryptedPwd;
-			CDT.Class1.Encrypt(strPassword,out encryptedPwd);
+			Secrets.Encrypt(strPassword,out encryptedPwd);
 			XmlNode password=document.CreateNode(XmlNodeType.Element,"Password","");
 			password.InnerText=string.IsNullOrEmpty(encryptedPwd) ? strPassword : "";//only write the mysql password in plain text if encryption fails
 			XmlNode mysqlPassHash=document.CreateNode(XmlNodeType.Element,"MySQLPassHash","");

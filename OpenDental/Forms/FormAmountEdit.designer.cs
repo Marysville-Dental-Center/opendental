@@ -62,7 +62,6 @@ namespace OpenDental{
 			this.Controls.Add(this.labelText);
 			this.Controls.Add(this.textAmount);
 			this.Controls.Add(this.butOK);
-			this.HasHelpButton = false;
 			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormAmountEdit";
 			this.Text = "Enter Amount";

@@ -56,14 +56,6 @@ namespace OpenDentBusiness {
 			}
 		}
 
-		///<summary>Used to return true at Open Dental Software, Inc. headquarters (when DockPhonePanelShow was enabled), which turned on their
-		///internal staff tools. This build is never HQ, so this is always false, regardless of the DockPhonePanelShow preference.</summary>
-		public static bool IsODHQ {
-			get {
-				return false;
-			}
-		}
-
 		///<summary>Returns a list of DefNums that represent WSEP Generally Allowed blockout types.</summary>
 		public static List<long> GetWebSchedExistingPatAllowedBlockouts {
 			get {
@@ -470,23 +462,6 @@ namespace OpenDentBusiness {
 			}
 		}
 
-		private static YN _isAppStream=YN.Unknown;
-		public static bool IsAppStream {
-			get {
-				try {
-					if(GetBool(PrefName.CloudIsAppStream) && _isAppStream==YN.Unknown) {
-						_isAppStream=string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AppStream_UserName"))?YN.No:YN.Yes;
-					}
-					ODCloudClient.IsAppStream=_isAppStream==YN.Yes;
-					return ODCloudClient.IsAppStream;
-				}
-				catch(Exception ex) {
-					ex.DoNothing();
-					return false;
-				}
-			}
-		}
-
 		///<summary>Returns true if the office has a report server set up.</summary>
 		public static bool HasReportServer {
 			get {
@@ -576,7 +551,7 @@ namespace OpenDentBusiness {
 			public static string MySqlPass {
 				get {
 					string pass;
-					CDT.Class1.Decrypt(PrefC.GetString(PrefName.ReportingServerMySqlPassHash),out pass);
+					Secrets.Decrypt(PrefC.GetString(PrefName.ReportingServerMySqlPassHash),out pass);
 					return pass;
 				}
 			}
@@ -643,7 +618,7 @@ namespace OpenDentBusiness {
 			public static string MySqlPass {
 				get {
 					string pass;
-					CDT.Class1.Decrypt(PrefC.GetString(PrefName.ReadOnlyServerMySqlPassHash),out pass);
+					Secrets.Decrypt(PrefC.GetString(PrefName.ReadOnlyServerMySqlPassHash),out pass);
 					return pass;
 				}
 			}

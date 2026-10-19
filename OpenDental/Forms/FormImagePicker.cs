@@ -98,21 +98,12 @@ namespace OpenDental {
 
 		private void butImport_Click(object sender,EventArgs e) {
 			string[] stringArrayFileNames;
-			if(!ODBuild.IsThinfinity() && ODCloudClient.IsAppStream) {
-				List<string> listImportFilePaths=ODCloudClient.ImportFileForCloud(isMulti:true);
-				if(listImportFilePaths.IsNullOrEmpty()) {
-					return;
-				}
-				stringArrayFileNames=listImportFilePaths.ToArray();
+			using OpenFileDialog openFileDialog=new OpenFileDialog();
+			openFileDialog.Multiselect=true;
+			if(openFileDialog.ShowDialog()!=DialogResult.OK) {
+				return;
 			}
-			else {
-				using OpenFileDialog openFileDialog=new OpenFileDialog();
-				openFileDialog.Multiselect=true;
-				if(openFileDialog.ShowDialog()!=DialogResult.OK) {
-					return;
-				}
-				stringArrayFileNames=openFileDialog.FileNames;
-			}
+			stringArrayFileNames=openFileDialog.FileNames;
 			Invalidate();
 			for(int i=0;i<stringArrayFileNames.Length;i++) {
 				//check file types?

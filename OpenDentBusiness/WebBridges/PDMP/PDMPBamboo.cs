@@ -220,8 +220,8 @@ namespace OpenDentBusiness {
 		private X509Certificate2 GetCertificate() {
 			X509Certificate2 pKey=new X509Certificate2();
 			try {
-				CDT.Class1.Decrypt(_pdmpProperties.BambooClientKey,out string clientKey);
-				CDT.Class1.Decrypt(_pdmpProperties.BambooClientPassword,out string clientPassword);
+				Secrets.Decrypt(_pdmpProperties.BambooClientKey,out string clientKey);
+				Secrets.Decrypt(_pdmpProperties.BambooClientPassword,out string clientPassword);
 				byte[] clientKeyBytes=Convert.FromBase64String(clientKey);
 				pKey.Import(clientKeyBytes,clientPassword,X509KeyStorageFlags.MachineKeySet);
 			}

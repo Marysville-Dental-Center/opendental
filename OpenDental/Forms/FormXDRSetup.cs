@@ -209,19 +209,11 @@ namespace OpenDental {
 
 		private void ButImport_Click(object sender,EventArgs e) {
 			string importFilePath;
-			if(!ODBuild.IsThinfinity() && ODCloudClient.IsAppStream) {
-				importFilePath=ODCloudClient.ImportFileForCloud().FirstOrDefault();
-				if(importFilePath.IsNullOrEmpty()) {
-					return; //User cancelled out of OpenFileDialog
-				}
+			using OpenFileDialog openFileDialog=new OpenFileDialog();
+			if(openFileDialog.ShowDialog()!=DialogResult.OK) {
+				return;
 			}
-			else {
-				using OpenFileDialog openFileDialog=new OpenFileDialog();
-				if(openFileDialog.ShowDialog()!=DialogResult.OK) {
-					return;
-				}
-				importFilePath=openFileDialog.FileName;
-			}
+			importFilePath=openFileDialog.FileName;
 			Image imageImported;
 			try {
 				imageImported=Image.FromFile(importFilePath);
@@ -243,10 +235,6 @@ namespace OpenDental {
 		}
 
 		private void butSave_Click(object sender,EventArgs e) {
-			if(checkEnabled.Checked && !Programs.IsEnabledByHq(ProgramName.XDR,out string err)) {
-				MessageBox.Show(err);
-				return;
-			}
 			SaveProgram();
 			if(_hasProgramPropertyChanged) {
 				DataValid.SetInvalid(InvalidType.Programs,InvalidType.ToolButsAndMounts);

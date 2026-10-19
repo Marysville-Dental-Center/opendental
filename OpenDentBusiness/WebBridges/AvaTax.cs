@@ -25,9 +25,9 @@ namespace OpenDentBusiness {
 		#endregion Constructor
 
 		#region Methods - Public
-		///<summary>True if we are in HQ and AvaTax is enabled.</summary>
+		///<summary>Always false. AvaTax was only ever enabled at Open Dental HQ, for billing its own customers, and this build is never HQ.</summary>
 		public static bool IsEnabled() {
-			return PrefC.IsODHQ && Programs.IsEnabled(ProgramName.AvaTax);
+			return false;
 		}
 
 		///<summary>True if we are in HQ, AvaTax is enabled, we tax the customer's state, and either the customer's tax exempt field is not defined or 
@@ -403,7 +403,7 @@ namespace OpenDentBusiness {
 		///<summary>The API client based on the current environment and credentials provided by the program properties.</summary>
 		private static AvaTaxClient GetAvaTaxClient() {
 			//Decrypt password for API.
-			string password=CDT.Class1.TryDecrypt(ProgramProperties.GetPropVal(ProgramName.AvaTax,ProgramProperties.PropertyDescs.Password));
+			string password=Secrets.TryDecrypt(ProgramProperties.GetPropVal(ProgramName.AvaTax,ProgramProperties.PropertyDescs.Password));
 			return new AvaTaxClient("AvaTaxClient","1.0",Environment.MachineName,IsProduction()?AvaTaxEnvironment.Production:AvaTaxEnvironment.Sandbox)
 				.WithSecurity(ProgramProperties.GetPropVal(ProgramName.AvaTax,ProgramProperties.PropertyDescs.Username),password);
 		}

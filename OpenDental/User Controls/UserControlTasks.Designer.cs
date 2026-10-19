@@ -47,8 +47,6 @@ namespace OpenDental {
 			this.menuItemSendAndGoto = new System.Windows.Forms.MenuItem();
 			this.menuItemGoto = new System.Windows.Forms.MenuItem();
 			this.menuItemMarkRead = new System.Windows.Forms.MenuItem();
-			this.menuNavJob = new System.Windows.Forms.MenuItem();
-			this.menuDeleteTaken = new System.Windows.Forms.MenuItem();
 			this.menuArchive = new System.Windows.Forms.MenuItem();
 			this.menuUnarchive = new System.Windows.Forms.MenuItem();
 			this.menuNavAttachment = new System.Windows.Forms.MenuItem();
@@ -142,8 +140,6 @@ namespace OpenDental {
             this.menuItemSendAndGoto,
             this.menuItemGoto,
             this.menuItemMarkRead,
-            this.menuNavJob,
-            this.menuDeleteTaken,
             this.menuArchive,
             this.menuUnarchive,
             this.menuNavAttachment});
@@ -246,36 +242,23 @@ namespace OpenDental {
 			this.menuItemMarkRead.Text = "Mark as Read";
 			this.menuItemMarkRead.Click += new System.EventHandler(this.menuItemMarkRead_Click);
 			// 
-			// menuNavJob
-			// 
-			this.menuNavJob.Index = 17;
-			this.menuNavJob.Text = "Navigate to Job";
-			this.menuNavJob.Visible = false;
-			// 
-			// menuDeleteTaken
-			// 
-			this.menuDeleteTaken.Index = 18;
-			this.menuDeleteTaken.Text = "Delete Task Taken";
-			this.menuDeleteTaken.Visible = false;
-			this.menuDeleteTaken.Click += new System.EventHandler(this.menuDeleteTaken_Click);
-			// 
 			// menuArchive
 			// 
-			this.menuArchive.Index = 19;
+			this.menuArchive.Index = 17;
 			this.menuArchive.Text = "Archive";
 			this.menuArchive.Visible = false;
 			this.menuArchive.Click += new System.EventHandler(this.menuArchive_Click);
 			// 
 			// menuUnarchive
 			// 
-			this.menuUnarchive.Index = 20;
+			this.menuUnarchive.Index = 18;
 			this.menuUnarchive.Text = "Unarchive";
 			this.menuUnarchive.Visible = false;
 			this.menuUnarchive.Click += new System.EventHandler(this.menuUnarchive_Click);
 			// 
 			// menuNavAttachment
 			// 
-			this.menuNavAttachment.Index = 21;
+			this.menuNavAttachment.Index = 19;
 			this.menuNavAttachment.Text = "Navigate to Attachment";
 			// 
 			// menuTask
@@ -536,9 +519,7 @@ namespace OpenDental {
 		private System.Windows.Forms.MenuItem menuItemSendAndGoto;
 		private System.Windows.Forms.ContextMenuStrip menuJobs;
 		private System.Windows.Forms.ContextMenuStrip contextMenuStrip1;
-		private System.Windows.Forms.MenuItem menuNavJob;
 		private System.Windows.Forms.MenuItem menuItemPriority;
-		private System.Windows.Forms.MenuItem menuDeleteTaken;
 		private System.Windows.Forms.MenuItem menuItemMarkRead;
 		private System.Windows.Forms.ContextMenu menuFilter;
 		private System.Windows.Forms.MenuItem menuArchive;

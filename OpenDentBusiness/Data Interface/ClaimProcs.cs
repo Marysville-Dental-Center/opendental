@@ -1701,9 +1701,6 @@ namespace OpenDentBusiness{
 		///<summary>Centralized logic for computing sales tax. Returns whatever value is already there for ODHQ. The isEstimate parameter should be set to true when creating sales tax estimates</summary>
 		public static double ComputeSalesTax(Procedure procedure,List<ClaimProc> listClaimProcs,bool isEstimate) {
 			Meth.NoCheckMiddleTierRole();
-			if(PrefC.IsODHQ) {
-				return procedure.TaxAmt;
-			}			
 			//This check will stop non-autotaxed procedures from showing sales tax estimates, but will still allow manual sales tax to be applied
 			if(isEstimate && !ProcedureCodes.GetProcCode(procedure.CodeNum).IsTaxed) {
 				return 0;
@@ -3366,12 +3363,12 @@ namespace OpenDentBusiness{
 			Db.NonQ(command);
 		}
 
-		///<summary>Returns the salted hash for the claimproc. Will return an empty string if the calling program is unable to use CDT.dll. </summary>
+		///<summary>Returns the salted hash for the claimproc. Computed by CodeBase.TamperHash. </summary>
 		public static string HashFields(ClaimProc claimProc) {
 			Meth.NoCheckMiddleTierRole();
 			string unhashedText=claimProc.ClaimNum.ToString()+((int)claimProc.Status).ToString()+claimProc.InsPayEst.ToString("F2")+claimProc.InsPayAmt.ToString("F2");
 			try {
-				return CDT.Class1.CreateSaltedHash(unhashedText);
+				return TamperHash.Compute(unhashedText);
 			}
 			catch(Exception ex)  {
 				ex.DoNothing();

@@ -56,9 +56,7 @@ namespace WpfControls.UI {
 			for(int i=0;i<listStringMatches.Count;i++) {
 				string strMatch=listStringMatches[i]; //To avoid lazy eval
 				System.Windows.RoutedEventHandler eventHandler=(s,eArg) => { OpenUNCPath(strMatch); };
-				if(!ODCloudClient.IsAppStream) {
-					listMenuItemsLinks.Add(new MenuItem("File Explorer - "+listStringMatches[i],eventHandler));
-				}
+				listMenuItemsLinks.Add(new MenuItem("File Explorer - "+listStringMatches[i],eventHandler));
 			}
 			if(rightClickLinks) {
 				listNumMatches=GetPatNumsFromText(contextMenuItemText);
@@ -72,14 +70,6 @@ namespace WpfControls.UI {
 					long taskNum=listNumMatches[i];
 					System.Windows.RoutedEventHandler eventHandler=(s,eArg) => { OpenTaskNum(taskNum); };
 					listMenuItemsLinks.Add(new MenuItem("TaskNum - "+listNumMatches[i],eventHandler,tag:"autolink"));
-				}
-				if(PrefC.IsODHQ) {
-					listNumMatches=GetJobNumsFromText(contextMenuItemText);
-					for(int i = 0;i<listNumMatches.Count;i++) {
-						long jobNum = listNumMatches[i];
-						System.Windows.RoutedEventHandler eventHandler = (s,eArg) => { OpenJobNum(jobNum); };
-						listMenuItemsLinks.Add(new MenuItem("JobNum - "+listNumMatches[i],eventHandler,tag:"autolink"));
-					}
 				}
 			}
 			listMenuItemsLinks=listMenuItemsLinks.OrderByDescending(x => x.Header.ToString()=="-").ThenBy(x => x.Header.ToString()).ToList();//alphabetize the link items.
@@ -140,17 +130,6 @@ namespace WpfControls.UI {
 			return listNumMatches;
 		}
 
-		public static List<long> GetJobNumsFromText(string text) {
-			//If this Regex pattern is ever changed, we may need to change the Select statement below.
-			string strJobNum = "jobnum:";
-			List<long> listNumMatches = Regex.Matches(text,$@"{strJobNum}\d+",RegexOptions.IgnoreCase)
-				.OfType<Match>()
-				.Select(x => PIn.Long(x.Groups[0].Value.Substring(strJobNum.Length),false))//Get Job num out of text.
-				.Distinct()
-				.ToList();
-			return listNumMatches;
-		}
-
 		#endregion Methods - Public
 
 		#region Methods - Private
@@ -175,20 +154,10 @@ namespace WpfControls.UI {
 			}
 		}
 
-		private static void OpenJobNum(long jobNum) {
-			if(Jobs.NavJobDelegate!=null) {
-				Jobs.NavJobDelegate.Invoke(jobNum);
-			}
-		}
-
 		private static void OpenWebPage(string url) {
 			try {
 				if(!url.ToLower().StartsWith("http")) {
 					url=@"http://"+url;
-				}
-				if(!ODBuild.IsThinfinity() && ODCloudClient.IsAppStream) {
-					ODCloudClient.LaunchFileWithODCloudClient(url);
-					return;
 				}
 				Process.Start(url);
 			}

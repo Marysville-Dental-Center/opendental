@@ -24,8 +24,6 @@ namespace OpenDental{
 		/// </summary>
 		private void InitializeComponent() {
 			this.butSave = new OpenDental.UI.Button();
-			this.label7 = new System.Windows.Forms.Label();
-			this.butSetup = new OpenDental.UI.Button();
 			this.gridMain = new OpenDental.UI.GridOD();
 			this.comboStatusTextMessagedConfirm = new OpenDental.UI.ComboBox();
 			this.label6 = new System.Windows.Forms.Label();
@@ -43,25 +41,6 @@ namespace OpenDental{
 			this.butSave.TabIndex = 97;
 			this.butSave.Text = "&Save";
 			this.butSave.Click += new System.EventHandler(this.butSave_Click);
-			// 
-			// label7
-			// 
-			this.label7.Location = new System.Drawing.Point(297, 10);
-			this.label7.Name = "label7";
-			this.label7.Size = new System.Drawing.Size(555, 28);
-			this.label7.TabIndex = 96;
-			this.label7.Text = "Automated eConfirmation and eReminders are alternatives to using manual confirmat" +
-    "ions and reminders.";
-			this.label7.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			// 
-			// butSetup
-			// 
-			this.butSetup.Location = new System.Drawing.Point(13, 12);
-			this.butSetup.Name = "butSetup";
-			this.butSetup.Size = new System.Drawing.Size(279, 24);
-			this.butSetup.TabIndex = 95;
-			this.butSetup.Text = "Automated eConfirmation && eReminder Setup";
-			this.butSetup.Click += new System.EventHandler(this.butSetup_Click);
 			// 
 			// gridMain
 			// 
@@ -127,8 +106,6 @@ namespace OpenDental{
 			this.ClientSize = new System.Drawing.Size(864, 563);
 			this.Controls.Add(this.checkGroupFamilies);
 			this.Controls.Add(this.butSave);
-			this.Controls.Add(this.label7);
-			this.Controls.Add(this.butSetup);
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.comboStatusTextMessagedConfirm);
 			this.Controls.Add(this.label6);
@@ -143,8 +120,6 @@ namespace OpenDental{
 
 		#endregion
 		
-		private System.Windows.Forms.Label label7;
-		private UI.Button butSetup;
 		private UI.GridOD gridMain;
 		private OpenDental.UI.ComboBox comboStatusTextMessagedConfirm;
 		private System.Windows.Forms.Label label6;

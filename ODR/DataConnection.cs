@@ -83,7 +83,7 @@ namespace ODR{
 				return "";
 			}
 			string decryptedPwd;
-			if(password=="" && passHash!="" && CDT.Class1.Decrypt(passHash,out decryptedPwd)) {
+			if(password=="" && passHash!="" && Secrets.Decrypt(passHash,out decryptedPwd)) {
 				//if plain text password is blank but encrypted pwd isn't and decryption is successful, use decryptedPwd
 				password=decryptedPwd;
 			}
@@ -144,7 +144,7 @@ namespace ODR{
 				return "";
 			}
 			string decryptedPwd;
-			if(password=="" && passHash!="" && CDT.Class1.Decrypt(passHash,out decryptedPwd)) {
+			if(password=="" && passHash!="" && Secrets.Decrypt(passHash,out decryptedPwd)) {
 				//if plain text password is blank but encrypted pwd isn't and decryption is successful, use decryptedPwd
 				password=decryptedPwd;
 			}

@@ -31,13 +31,6 @@ namespace OpenDental{
 		///<summary></summary>
 		public bool IsNew;
 
-		protected override string GetHelpOverride() {
-			if(CultureInfo.CurrentCulture.Name.EndsWith("CA")) {
-				return "FormProvEditCanada";
-			}
-			return "FormProvEdit";
-		}
-
 		///<summary></summary>
 		public FormProvEdit(){
 			InitializeComponent();// Required for Windows Form Designer support
@@ -232,8 +225,6 @@ namespace OpenDental{
 			comboProv.Items.AddProvNone();
 			comboProv.Items.AddProvsFull(Providers.GetDeepCopy(true));
 			comboProv.SetSelectedProvNum(ProviderCur.ProvNumBillingOverride);
-			textWebSchedDescript.Text=ProviderCur.WebSchedDescript;
-			FillImage();
 			if(ProviderCur.ProvStatus==ProviderStatus.Deleted) {
 				this.DisableAllExcept();
 				//Make the cancel button the only thing the user can click on.
@@ -256,19 +247,6 @@ namespace OpenDental{
 			butClinicOverrides.Visible=false;
 			groupClinicOverrides.Text="";
 			tabControlProvider.TabPages.Remove(tabClinics);
-		}
-
-		private void FillImage() {
-			if(string.IsNullOrEmpty(ProviderCur.WebSchedImageLocation)) {
-				return;
-			}
-			string fullImagePath=FileAtoZ.CombinePaths(ImageStore.GetProviderImagesFolder(),ProviderCur.WebSchedImageLocation);
-			try {
-				pictureWebSched.Image=FileAtoZ.GetImage(fullImagePath);
-			}
-			catch(Exception ex) {
-				Shown+=new EventHandler((o,e) => FriendlyException.Show(Lans.g(this,"Unable to display image."),ex));
-			}
 		}
 
 		private void radioSSN_Click(object sender, System.EventArgs e) {
@@ -331,56 +309,6 @@ namespace OpenDental{
 			}
 			ProviderIdents.Delete(ProviderIdentArray[rowSelected]);
 			FillGridProvIdent();
-		}
-
-		private void butPickPict_Click(object sender,EventArgs e) {
-			using OpenFileDialog openFileDialog=new OpenFileDialog();
-			openFileDialog.Multiselect=false;
-			if(openFileDialog.ShowDialog()!=DialogResult.OK) {
-				return;
-			}
-			string localFileName=openFileDialog.FileName;
-			if(!File.Exists(localFileName)) {
-				MsgBox.Show(this,"File does not exist.");
-				return;
-			}
-			if(!ImageHelper.HasImageExtension(localFileName)) {
-				MsgBox.Show(this,"Only allowed to import an image.");
-				return;
-			}
-			string atoZFileName=FileAtoZ.CombinePaths(ImageStore.GetProviderImagesFolder(),Path.GetFileName(localFileName));
-			if(FileAtoZ.Exists(atoZFileName)) {
-				int attempts=1;
-				string newAtoZFileName=FileAtoZ.AppendSuffix(atoZFileName,"_"+attempts);
-				while(FileAtoZ.Exists(newAtoZFileName)) {
-					if(attempts++ > 1000) {
-						MsgBox.Show(this,"Unable to upload image.");
-						return;
-					}
-					newAtoZFileName=FileAtoZ.AppendSuffix(atoZFileName,"_"+attempts);
-				}
-				atoZFileName=newAtoZFileName;
-			}
-			try {
-				FileAtoZ.Upload(localFileName,atoZFileName);
-			}
-			catch(Exception ex) {
-				FriendlyException.Show(Lans.g(this,"Unable to upload image."),ex);
-				return;
-			}
-			ProviderCur.WebSchedImageLocation=Path.GetFileName(atoZFileName);
-			try {
-				pictureWebSched.Image=Image.FromFile(localFileName);
-			}
-			catch(Exception ex) {
-				pictureWebSched.Image=null;
-				FriendlyException.Show(Lans.g(this,"Unable to display image."),ex);
-			}
-		}
-
-		private void butPictureNone_Click(object sender,EventArgs e) {
-			ProviderCur.WebSchedImageLocation="";
-			pictureWebSched.Image=null;
 		}
 
 		private void butClinicOverrides_Click(object sender,EventArgs e) {
@@ -574,7 +502,6 @@ namespace OpenDental{
 			ProviderCur.CustomID=textCustomID.Text;
 			ProviderCur.SchedNote=textSchedRules.Text;
 			ProviderCur.Birthdate=PIn.Date(textBirthdate.Text);
-			ProviderCur.WebSchedDescript=textWebSchedDescript.Text;
 			ProviderCur.HourlyProdGoalAmt=PIn.Double(textProdGoalHr.Text);
 			ProviderCur.DateTerm=dateTerm.GetDateTime();
 			if(!PrefC.GetBool(PrefName.EasyHideDentalSchools)) {

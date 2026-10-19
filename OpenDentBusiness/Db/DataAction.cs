@@ -11,186 +11,11 @@ using System.Threading;
 using System.Threading.Tasks;
 
 namespace OpenDentBusiness {
-	///<summary>Perform actions in different database contexts.</summary>
+	///<summary>Perform actions in different database contexts. The helpers for Open Dental HQ's own databases (bugs, customers, manual publisher,
+	///web chat, triage, eServices and others) were removed.</summary>
 	public class DataAction {
-		private static bool _hasConnections=false;
-		///<summary>Filled via FillDictHqCentralConnections().</summary>
-		private static ConcurrentDictionary<ConnectionNames,CentralConnection> _dictHqCentralConnections=
-			new ConcurrentDictionary<ConnectionNames,CentralConnection>();
-
-		#region HQ Central Connections
-		///<summary>Fills the dictionary of connection setting defaults or user overrides for several fkeyTypes if needed.</summary>
-		private static void FillDictHqCentralConnections() {
-			if(_hasConnections) {
-				return;
-			}
-			Dictionary<ConnectionNames,CentralConnection> dictHqCentralConnections=null;
-			if(ODBuild.IsDebug() && !ODBuild.IsUnitTest) {
-				//The database will typically have connection settings to live databases that should not be used in debug mode.
-				//Use the hard coded connection settings which developers can change as needed.
-				dictHqCentralConnections=new Dictionary<ConnectionNames,CentralConnection>() {
-					#region Default Debug Connections
-					{
-						ConnectionNames.BugsHQ,
-						new CentralConnection() {
-							ServerName="localhost",
-							DatabaseName="bugs",
-							MySqlUser="root",
-							MySqlPassword="",
-						}
-					},
-					{
-						ConnectionNames.CustomersHQ,
-						new CentralConnection() {
-							ServerName="localhost",
-							DatabaseName="customers",
-							MySqlUser="root",
-							MySqlPassword="",
-						}
-					},
-					{
-						ConnectionNames.ManualPublisher,
-						new CentralConnection() {
-							ServerName="localhost",
-							DatabaseName="jordans_mp_test",
-							MySqlUser="root",
-							MySqlPassword="",
-						}
-					},
-					{
-						ConnectionNames.WebChat,
-						new CentralConnection() {
-							ServerName="localhost",
-							DatabaseName="webchat",
-							MySqlUser="root",
-							MySqlPassword="",
-						}
-					},
-					{
-						ConnectionNames.RemoteSupport,
-						new CentralConnection() {
-							ServerName="localhost",
-							DatabaseName="p2p_debug",
-							MySqlUser="root",
-							MySqlPassword="",
-						}
-					}
-					#endregion
-				};
-			}
-			else {//Release mode or unit testing
-				//Get the default connection settings for all databases from the preference table.
-				dictHqCentralConnections=GetHqConnections();
-				#region Site Overrides
-				SiteLink siteLink=SiteLinks.GetSiteLinkByGateway();
-				//There should always be a default connection setting for every possible connection at HQ.
-				if(dictHqCentralConnections!=null && siteLink!=null && !string.IsNullOrEmpty(siteLink.ConnectionSettingsHQOverrides)) {
-					//Look for site specific overrides.
-					Dictionary<ConnectionNames,CentralConnection> dictHqCentralConnectionOverrides=
-					GetHqConnectionsFromString(siteLink.ConnectionSettingsHQOverrides);
-					if(dictHqCentralConnectionOverrides!=null) {
-						foreach(KeyValuePair<ConnectionNames,CentralConnection> keyValuePair in dictHqCentralConnectionOverrides) {
-							dictHqCentralConnections[keyValuePair.Key]=keyValuePair.Value;
-						}
-					}
-				}
-				#endregion
-			}
-			foreach(KeyValuePair<ConnectionNames,CentralConnection> keyValuePair in dictHqCentralConnections) {
-				_dictHqCentralConnections.AddOrUpdate(keyValuePair.Key,keyValuePair.Value,(conNames,conCentral) => { return keyValuePair.Value; });
-			}
-			_hasConnections=true;
-		}
-
-		///<summary>Flags the connection as stale so they are lazy refreshed next time they are needed.</summary>
-		public static void ClearDictHqCentralConnections() {
-			_hasConnections=false;
-		}
-
-		public static Dictionary<ConnectionNames,CentralConnection> GetHqConnections() {
-			return GetHqConnectionsFromString(Prefs.GetOne(PrefName.ConnectionSettingsHQ).ValueString);
-		}
-
-		public static Dictionary<ConnectionNames,CentralConnection> GetHqConnectionsFromString(string connectionSettings) {
-			Dictionary<ConnectionNames,CentralConnection> dictConns=JsonConvert.DeserializeObject
-				<Dictionary<ConnectionNames,CentralConnection>>(connectionSettings);
-			foreach(ConnectionNames name in dictConns.Keys) {
-				CentralConnection conn=dictConns[name];
-				if(conn.MySqlPassword.IsNullOrEmpty()) {
-					continue;
-				}
-				CDT.Class1.Decrypt(conn.MySqlPassword,out conn.MySqlPassword);
-			}
-			return dictConns;
-		}
-
-		///<summary>Returns the connection settings (default or user override) for the type passed in.
-		///Returns null if a corresponding connection could not be found.</summary>
-		public static CentralConnection GetHqConnection(ConnectionNames connName) {
-			FillDictHqCentralConnections();
-			_dictHqCentralConnections.TryGetValue(connName,out CentralConnection centralConnection);
-			return centralConnection;
-		}
-		#endregion
-
 		#region Helpers to run directly on a given db.
 		#region Actions
-		///<summary>Perform the given action in the context of the bugs db.
-		///Set useConnectionStore false to use the ConnectionSettingsHQ preference or the sitelink override for ConnectionNames.BugsHQ.</summary>
-		public static void RunBugsHQ(Action a,bool useConnectionStore=true) {
-			if(useConnectionStore) {
-				Run(a,ConnectionNames.BugsHQ);
-			}
-			else {
-				CentralConnection con=GetHqConnection(ConnectionNames.BugsHQ);
-				Run(a,con.ServerName,con.DatabaseName,con.MySqlUser,con.MySqlPassword,"","");
-			}
-		}
-
-		///<summary>HQ only. Perform the given action in the context of the customers db.
-		///Set useConnectionStore false to use the ConnectionSettingsHQ preference or the sitelink override for ConnectionNames.CustomersHQ.</summary>
-		public static void RunCustomers(Action a,bool useConnectionStore=true) {
-			if(useConnectionStore) {
-				Run(a,ConnectionNames.CustomersHQ);
-			}
-			else {
-				CentralConnection con=GetHqConnection(ConnectionNames.CustomersHQ);
-				Run(a,con.ServerName,con.DatabaseName,con.MySqlUser,con.MySqlPassword,"","",DatabaseType.MySql);
-			}
-		}
-
-		///<summary>HQ only. Perform the given action in the context of the eServices db.</summary>
-		public static void RunEServices(Action a) {
-			Run(a,ConnectionNames.ServicesHQ);
-		}
-
-		///<summary>HQ only. Perform the given action in the context of the eServices logger db.</summary>
-		public static void RunEServicesLogger(Action a) {
-			Run(a,ConnectionNames.ServicesHQLog);
-		}
-
-		///<summary>HQ only. Perform the given action in the context of the headmaster db.</summary>
-		public static void RunHeadmaster(Action a) {
-			Run(a,ConnectionNames.Headmaster);
-		}
-
-		///<summary>HQ only. Perform the given action in the context of the headmaster db.</summary>
-		public static void RunHosting(Action a) {
-			Run(a,ConnectionNames.Hosting);
-		}
-
-		///<summary>Perform the given action in the context of the manual publisher db (jordans_mp)
-		///Leave useConnectionStore false to use the ConnectionSettingsHQ preference or the sitelink override for ConnectionNames.ManualPublisher.</summary>
-		public static void RunManualPublisherHQ(Action a,bool useConnectionStore=false) {
-			if(useConnectionStore) {
-				Run(a,ConnectionNames.ManualPublisher);
-			}
-			else {
-				CentralConnection con=GetHqConnection(ConnectionNames.ManualPublisher);
-				Run(a,con.ServerName,con.DatabaseName,con.MySqlUser,con.MySqlPassword,"","");
-			}
-		}
-
 		///<summary>Perform the given action as a Middle Tier client using OpenDentalServerMockIIS.</summary>
 		public static void RunMiddleTierMock(Action a) {
 			MiddleTierRole remotingRolePrevious=RemotingClient.MiddleTierRole;
@@ -208,116 +33,19 @@ namespace OpenDentBusiness {
 			}
 		}		
 
-		///<summary>Perform the given action in the context of the webforms db.</summary>
-		public static void RunMobileWebForms(Action a) {
-			Run(a,ConnectionNames.WebForms);
-		}
-
-		///<summary>Perform the given action in the context of the old mobile web db.</summary>
-		public static void RunMobileWebOld(Action a) {
-			Run(a,ConnectionNames.MobileWebOld);
-		}
-
 		///<summary>Perform the given action in the context of the dental office db.</summary>
 		public static void RunPractice(Action a) {
 			Run(a,ConnectionNames.DentalOffice);
 		}
 
-		///<summary>Perform the given action in the context of the remote support db.</summary>
-		public static void RunRemoteSupport(Action a,bool useConnectionStore=false) {
-			if(useConnectionStore) {
-				Run(a,ConnectionNames.RemoteSupport);
-			}
-			else {
-				CentralConnection con=GetHqConnection(ConnectionNames.RemoteSupport);
-				Run(a,con.ServerName,con.DatabaseName,con.MySqlUser,con.MySqlPassword,"","");
-			}
-		}
-
-		///<summary>Perform the given action in the context of the supplementalbackups db.</summary>
-		public static void RunSupplementalBackups(Action a) {
-			Run(a,ConnectionNames.SupplementalBackups);
-		}
-
-		///<summary>HQ only. Perform the given action in the context of the designated 'triage tasks taken' database.
-		///The connection information for this context will come from the implimentation of ConnectionStoreBase.GetTriageHQ() so make sure to instantiate that correctly prior to invoking this.</summary>
-		public static void RunTriageHQ(Action a) {
-			Run(a,ConnectionNames.TriageHQ);
-		}
-
-		///<summary>HQ only.  Perform the given action in the context of the webchat db.
-		///Set useConnectionStore false to use the ConnectionSettingsHQ preference or the sitelink override for ConnectionNames.WebChat.</summary>
-		public static void RunWebChat(Action a,bool useConnectionStore=false) {
-			if(useConnectionStore) {
-				Run(a,ConnectionNames.WebChat);
-			}
-			else {
-				CentralConnection con=GetHqConnection(ConnectionNames.WebChat);
-				Run(a,con.ServerName,con.DatabaseName,con.MySqlUser,con.MySqlPassword,"","",DatabaseType.MySql);
-			}
-		}
 		#endregion
 
 		#region Funcs
-		///<summary>Perform the given function in the context of the bugs db.</summary>
-		public static T GetBugsHQ<T>(Func<T> fn,bool useConnectionStore=true) {
-			if(useConnectionStore) {
-				return GetT(fn,ConnectionNames.BugsHQ);
-			}
-			else {
-				CentralConnection con=GetHqConnection(ConnectionNames.BugsHQ);
-				return GetT(fn,con.ServerName,con.DatabaseName,con.MySqlUser,con.MySqlPassword,"","");
-			}
-		}
-
-		///<summary>Perform the given function in the context of the customers db.</summary>
-		public static T GetCustomers<T>(Func<T> fn) {
-			return GetT(fn,ConnectionNames.CustomersHQ);
-		}
-
-		///<summary>Perform the given function in the context of the serviceshq db.</summary>
-		public static T GetEServices<T>(Func<T> fn) {
-			return GetT(fn,ConnectionNames.ServicesHQ);
-		}
-
-		public static T GetEServicesLogger<T>(Func<T> fn) {
-			return GetT(fn,ConnectionNames.ServicesHQLog);
-		}
-
-		public static T GetHeadmaster<T>(Func<T> fn) {
-			return GetT(fn,ConnectionNames.Headmaster);
-		}
-
-		///<summary>Perform the given function in the context of the hosting db.</summary>
-		public static T GetHosting<T>(Func<T> fn) {
-			return GetT(fn,ConnectionNames.Hosting);
-		}
-
 		///<summary>Perform the given function in the context of the dental office db.</summary>
 		public static T GetPractice<T>(Func<T> fn) {
 			return GetT(fn,ConnectionNames.DentalOffice);
 		}
 
-		///<summary>Perform the given function in the context of the remote support db.</summary>
-		public static T GetRemoteSupport<T>(Func<T> fn,bool useConnectionStore=false) {
-			if(useConnectionStore) {
-				return GetT(fn,ConnectionNames.RemoteSupport);
-			}
-			else {
-				CentralConnection con=GetHqConnection(ConnectionNames.RemoteSupport);
-				return GetT(fn,con.ServerName,con.DatabaseName,con.MySqlUser,con.MySqlPassword,"","");
-			}
-		}
-
-		///<summary>Perform the given function in the context of the webforms db.</summary>
-		public static T GetWebForms<T>(Func<T> fn) {
-			return GetT(fn,ConnectionNames.WebForms);
-		}
-
-		///<summary>Perform the given function in the context of the supplementalbackups db.</summary>
-		public static T GetSupplementalBackups<T>(Func<T> fn) {
-			return GetT(fn,ConnectionNames.SupplementalBackups);
-		}
 		#endregion
 		#endregion
 

@@ -104,12 +104,6 @@ namespace OpenDental {
 
 		private void gridMain_SelectionCommitted(object sender,EventArgs e) {
 			panelSheetPreview.Invalidate();
-			if(gridMain.GetSelectedIndex()==-1) {
-				butSendToDevice.Enabled=false;
-			}
-			else {
-				butSendToDevice.Enabled=true;
-			}
 		}
 
 		private void panelSheetPreview_Paint(object sender,PaintEventArgs e) {
@@ -192,32 +186,6 @@ namespace OpenDental {
 				gridMain.SetSelected(gridMain.ListGridRows.Count-1,setValue:true);//Select the newly added row. Always last, since ordered by date.
 				panelSheetPreview.Invalidate();//The new sheet is selected, so we refresh the preview.
 			}
-		}
-
-		///<summary>Tries to send a single exam sheet. It attempts to do this by looking for a mobile device that has a logged in user that has also selected a patient.</summary>
-		private void butSendToDevice_Click(object sender,EventArgs e) {
-			if(PatNum==0){
-				MsgBox.Show("Please select a patient first.");
-				return;
-			}
-			if(_listSheets.IsNullOrEmpty()) {
-				MsgBox.Show("The patient doesn't have any exam sheets. Please add one.");
-				return;
-			}
-			List<MobileAppDevice> listMobileAppDevices=MobileAppDevices.GetAll();
-			//Get the device that we know has a clinical user logged in, plus they will have to have selected a patient
-			MobileAppDevice mobileAppDevice=listMobileAppDevices.Where(x => x.UserNum!=0 && x.PatNum==PatNum).FirstOrDefault();
-			if(mobileAppDevice==null || gridMain.SelectedIndices.Count()==0) {
-				return;//Nothing is selected, but the button was some how still enabled
-			}
-			Sheet sheetSelected=gridMain.SelectedTag<Sheet>();
-			SheetDrawingJob sheetDrawingJob=new SheetDrawingJob();
-			string errMsg=MobileNotifications.ODT_ExamSheet(PatNum,sheetSelected.SheetNum,mobileAppDevice.MobileAppDeviceNum);
-			if(errMsg.IsNullOrEmpty()){
-				MsgBox.Show(this,$"Exam sheet sent to device: {mobileAppDevice.DeviceName}");
-				return;
-			}
-			MsgBox.Show($"Error sending the exam sheet: {errMsg}");
 		}
 
 	}

@@ -67,9 +67,6 @@ namespace OpenDental {
 			if(PrefC.GetBool(PrefName.SecurityBadgesRequirePassword)) {
 				labelSwipeBadge.Visible=false;
 			}
-			if(ODEnvironment.IsCloudServer) {
-				timerShutdownInstance.Enabled=true;
-			}
 			FillListBox();
 			this.Focus();//Attempted fix, customers had issue with UI not defaulting focus to this form on startup.
 			textSelectOnLoad.Select();//Give focus to appropriate text box.
@@ -107,12 +104,6 @@ namespace OpenDental {
 
 		private void textFilterName_TextChanged(object sender,EventArgs e) {
 			FillListBox();
-		}
-
-		private void timerShutdownInstance_Tick(object sender,EventArgs e) {
-			//If the timer ticks that means IsWeb() is enabled and the user has sat at the login window too long. We want this to behave exactly like
-			//the user clicked Exit to shut down the software.
-			DialogResult=DialogResult.Cancel;
 		}
 
 		///<summary>Looks for input from badge reader. Will open FrmUserodHistory if there is a user matching the input ID. The timer interval should be faster a user could type.</summary>
@@ -196,29 +187,23 @@ namespace OpenDental {
 			if(isEcw) {//ecw requires hash, but non-ecw requires actual password
 				passwordTyped=Authentication.HashPasswordMD5(passwordTyped,true);
 			}
-			if(userName=="Stay Open" && _isSimpleSwitch && PrefC.IsODHQ) {
-				// No need to check password when changing task users at HQ to user "Stay Open".
-				userod=Userods.GetUserByNameNoCache(userName);
-			}
-			else {//Not HQ (most common scenario)
-				//Middle Tier sessions should not fire the CheckUserAndPasswordFailed exception code in FormLogOn.
-				//That event would cause a second login window to pop with strange behavior.
-				//Invoke the overload for CheckUserAndPassword that does not throw exceptions and give the user a generic error message if necessary.
-				if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-					userod=Userods.CheckUserAndPassword(userName,passwordTyped,isEcw,false);
-					if(userod==null) {
-						MsgBox.Show("Userods","Invalid username, password, or the account has been locked due to failed log in attempts.");
-						return;
-					}
+			//Middle Tier sessions should not fire the CheckUserAndPasswordFailed exception code in FormLogOn.
+			//That event would cause a second login window to pop with strange behavior.
+			//Invoke the overload for CheckUserAndPassword that does not throw exceptions and give the user a generic error message if necessary.
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				userod=Userods.CheckUserAndPassword(userName,passwordTyped,isEcw,false);
+				if(userod==null) {
+					MsgBox.Show("Userods","Invalid username, password, or the account has been locked due to failed log in attempts.");
+					return;
 				}
-				else {//Directly connected to the database.  This code will give a more accurate error message to the user when failing to log in.
-					try {
-						userod=Userods.CheckUserAndPassword(userName,passwordTyped,isEcw);
-					}
-					catch(Exception ex) {
-						MessageBox.Show(ex.Message);
-						return;
-					}
+			}
+			else {//Directly connected to the database.  This code will give a more accurate error message to the user when failing to log in.
+				try {
+					userod=Userods.CheckUserAndPassword(userName,passwordTyped,isEcw);
+				}
+				catch(Exception ex) {
+					MessageBox.Show(ex.Message);
+					return;
 				}
 			}
 			//successful login.

@@ -16,8 +16,6 @@ namespace OpenDental{
 		//public TaskObjectType GotoType;
 		/////<summary>After closing, if this is not zero, then it will jump to the specified patient.</summary>
 		//public long GotoKeyNum;
-		private bool _isTriage;
-		private FormWindowState _formWindowStateOld;
 		public static Color ColorLightRed=Color.FromArgb(247,110,110);
 
 		public void SetUserControlTasksTab(UserControlTasksTab newTab){
@@ -36,15 +34,8 @@ namespace OpenDental{
 		}
 
 		private void FormTasks_Load(object sender,EventArgs e) {
-			_formWindowStateOld=WindowState;
 			userControlTasks1.InitializeOnStartup();
 			splitContainer.Panel2Collapsed=true;
-		}
-
-		public override void ProcessSignalODs(List<Signalod> listSignalods) {
-			if(listSignalods.Exists(x => x.IType==InvalidType.WebChatSessions)) {
-				FillGridWebChats();
-			}
 		}
 
 		private void userControlTasks1_GoToChanged(object sender,EventArgs e) {
@@ -54,12 +45,7 @@ namespace OpenDental{
 				if(gotoKeyNum!=0){
 					Patient patient=Patients.GetPat(gotoKeyNum);
 					//OnPatientSelected(pat);
-					if(_isTriage) {
-						GlobalFormOpenDental.GoToModule(EnumModuleType.Chart,patNum:patient.PatNum);
-					}
-					else {
-						GlobalFormOpenDental.GoToModule(EnumModuleType.Account,patNum:patient.PatNum);
-					}
+					GlobalFormOpenDental.GoToModule(EnumModuleType.Account,patNum:patient.PatNum);
 				}
 			}
 			if(taskObjectTypeGoto!=TaskObjectType.Appointment){
@@ -87,105 +73,6 @@ namespace OpenDental{
 			//OnPatientSelected(pat);
 			GlobalFormOpenDental.GoToModule(EnumModuleType.Appointments, dateSelected:dateTimeSelected,selectedAptNum:appointment.AptNum);
 			//DialogResult=DialogResult.OK;
-		}
-
-		///<summary>Used by OD HQ.</summary>
-		public void ShowTriage() {
-			userControlTasks1.Width=gridWebChatSessions.Left-3;
-			splitContainer.Panel2Collapsed=false;
-			userControlTasks1.FillGridWithTriageList();//always show webchat panel when HQ - triage
-			FillGridWebChats();
-			_isTriage=true;
-		}
-
-		///<summary>Only for ODHQ triage.</summary>
-		private void FillGridWebChats() {
-			if(splitContainer.Panel2Collapsed) {
-				return;
-			}
-			gridWebChatSessions.BeginUpdate();
-			gridWebChatSessions.ListGridRows.Clear();
-			if(gridWebChatSessions.Columns.Count==0) {
-				gridWebChatSessions.Columns.Add(new GridColumn("DateTime",80,HorizontalAlignment.Center));
-				gridWebChatSessions.Columns.Add(new GridColumn("IsEnded",60,HorizontalAlignment.Center));
-				gridWebChatSessions.Columns.Add(new GridColumn("Owner",80,HorizontalAlignment.Left));
-				gridWebChatSessions.Columns.Add(new GridColumn("PatNum",80,HorizontalAlignment.Right));
-				gridWebChatSessions.Columns.Add(new GridColumn("SessionNum",90,HorizontalAlignment.Right));
-				gridWebChatSessions.Columns.Add(new GridColumn("Question",90,HorizontalAlignment.Left){ IsWidthDynamic=true });
-			}
-			List <WebChatSession> listWebChatSessions=null;
-			List <WebChatMessage> listWebChatMessages=null;
-			//If connection to webchat is lost or not visible from a specific network location, then continue, in order to keep the call center operational.
-			ODException.SwallowAnyException(() => {
-				listWebChatSessions=WebChatSessions.GetSessions(hasEndedSessionsIncluded:false,dateCreatedFrom:DateTime.Now.AddDays(-7),dateCreatedTo:DateTime.Now.AddYears(1),WebChatSessionType.WebSupport);
-				listWebChatMessages=WebChatMessages.GetAllForSessions(listWebChatSessions.Select(x => x.WebChatSessionNum).ToArray());
-			});
-			if(listWebChatSessions!=null) {//Will only be null if connection to webchat database failed.
-				for(int i=0;i<listWebChatSessions.Count();i++){
-					bool isRelevantSession=false;
-					if(String.IsNullOrEmpty(listWebChatSessions[i].TechName)) {
-						isRelevantSession=true;//Unclaimed web chat sessions are visible to all technicians, so they can consider taking ownership.
-					}
-					else if(listWebChatSessions[i].TechName==Security.CurUser.UserName) {
-						isRelevantSession=true;
-					}
-					else if(listWebChatMessages.Exists(x => x.WebChatSessionNum==listWebChatSessions[i].WebChatSessionNum && x.UserName==Security.CurUser.UserName)) {
-						isRelevantSession=true;
-					}
-					if(!isRelevantSession) {
-						continue;
-					}
-					List <string> listMessagesForSession=listWebChatMessages
-						.Where(x => x.WebChatSessionNum==listWebChatSessions[i].WebChatSessionNum)
-						.Select(x => x.MessageText.ToLower())
-						.ToList();
-					GridRow row=new GridRow();
-					row.Tag=listWebChatSessions[i];
-					row.Cells.Add(listWebChatSessions[i].DateTcreated.ToString());
-					row.Cells.Add((listWebChatSessions[i].DateTend.Year > 1880)?"X":"");
-					TimeSpan timeSpanWebChatAge=new TimeSpan(DateTime.Now.Ticks-listWebChatSessions[i].DateTcreated.Ticks);
-					Color colorBackground=ColorLightRed;
-					if(timeSpanWebChatAge.TotalMinutes>2) {
-						//Change the color to red if the time since it was created is greater than 2 minutes.
-						colorBackground=Color.Red;
-					}
-					if(string.IsNullOrEmpty(listWebChatSessions[i].TechName)) {
-						row.Cells.Add("NEEDS TECH");
-						row.Bold=true;
-						row.ColorBackG=colorBackground;
-						row.ColorText=Color.White;
-					}
-					else {
-						row.Cells.Add(listWebChatSessions[i].TechName);
-					}
-					row.Cells.Add((listWebChatSessions[i].PatNum==0)?"":listWebChatSessions[i].PatNum.ToString());
-					row.Cells.Add(listWebChatSessions[i].WebChatSessionNum.ToString());
-					row.Cells.Add(listWebChatSessions[i].QuestionText);
-					gridWebChatSessions.ListGridRows.Add(row);
-				}
-			}
-			gridWebChatSessions.EndUpdate();
-		}
-
-		private void gridWebChatSessions_CellDoubleClick(object sender,ODGridClickEventArgs e) {
-			Action actionWhenClose=new Action(()=>{
-				FillGridWebChats();//Refresh to show if session ended or if tech has been assigned to the session.
-			});
-			FormWebChatSession formWebChatSession=new FormWebChatSession((WebChatSession)gridWebChatSessions.ListGridRows[e.Row].Tag, actionWhenClose);
-			formWebChatSession.Show();
-		}
-
-		private void userControlTasks1_Resize(object sender,EventArgs e) {
-			if(WindowState==FormWindowState.Minimized) {//Form currently minimized.
-				_formWindowStateOld=WindowState;
-				return;//The window is invisble when minimized, so no need to refresh.
-			}
-			if(_formWindowStateOld==FormWindowState.Minimized) {//Form was previously minimized (invisible) and is now in normal state or maximized state.
-				FillGridWebChats();//Refresh the grid height because the form height might have changed.
-				_formWindowStateOld=WindowState;
-				return;
-			}
-			_formWindowStateOld=WindowState;//Set the window state after every resize.
 		}
 
 		private void UserControlTasks1_FillGridEvent(object sender,EventArgs e) {

@@ -37,58 +37,19 @@
 		public string OdPassHash;
 	}
 
-	///<summary>List of typically available database names. Used in conjunction with ConnectionStore.GetConnection().</summary>
+	///<summary>List of typically available database names. Used in conjunction with ConnectionStore.GetConnection().
+	///The names of Open Dental HQ's own databases (bugs, customers, web chat, triage, eServices and others) were removed. The remaining values keep their
+	///original numbers, because a ConnectionStore config file may name a connection by number.</summary>
 	public enum ConnectionNames {
 		///<summary>No database connection.</summary>
-		None,
-		///<summary>HQ serviceshq.</summary>
-		ServicesHQ,
-		///<summary>HQ bugs.</summary>
-		BugsHQ,
-		///<summary>HQ customers. This may be filled from a config file or if the config file does not include it, it will be filled from the preference
-		///table.</summary>
-		CustomersHQ,
+		None=0,
 		///<summary>Only used when running in DEBUG demo mode. The OD proper database which holds demo data.</summary>
-		DentalOffice,
+		DentalOffice=4,
 		///<summary>The OD proper database connection that is comprised of preferences via the currently connected database.</summary>
-		DentalOfficeReportServer,
-		///<summary></summary>
-		MobileWebOld,
-		///<summary></summary>
-		WebForms,
-		///<summary>Database containing information about the devices monitored by the Headmaster app.</summary>
-		Headmaster,
-		///<summary>Database used by the Documentation department and ODHelp.</summary>
-		ManualPublisher,
-		///<summary>The database behind the chat system at HQ.</summary>
-		WebChat,
-		///<summary>Database containing information regarding offices hosted by OD.</summary>
-		Hosting,
-		///<summary>Database containing archives of HQ serviceshq</summary>
-		ServicesHqArchive,
+		DentalOfficeReportServer=5,
 		///<summary>Only used when running tests. The OD proper database which holds test data for 19.1.</summary>
-		DentalOffice_19_1,
-		///<summary>Services HQ on replication server</summary>
-		ServicesHqReplicated,
-		///<summary>Database containing a few API and FHIR tables.</summary>
-		ApiHQ,
-		///<summary>Database containing Remote Support sessions.</summary>
-		RemoteSupport,
-		///<summary>Database containing speed test scores.</summary>
-		SpeedTest,
+		DentalOffice_19_1=13,
 		///<summary>The OD proper database connection that is comprised of preferences via the currently connected database.</summary>
-		DentalOfficeReadOnlyServer,
-		///<summary>The centralized connection information at HQ that all workstations will use when taking/owning triage tasks.</summary>
-		TriageHQ,
-		///<summary>Logger database for ServicesHQ</summary>
-		ServicesHQLog,
-		///<summary>Database that stores the upload schedule and metadata regarding supplemental backups from each dental office.</summary>
-		SupplementalBackups,
-		///<summary>Database that stores hardware monitoring data.</summary>
-		HardwareMonitoring,
-		///<summary>Database for hosting secure email.</summary>
-		SecureEmail,
-		///<summary>Services HQ on read-only reporting server</summary>
-		ServicesHqReadOnly,
+		DentalOfficeReadOnlyServer=18,
 	}
 }

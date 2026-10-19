@@ -30,32 +30,11 @@ namespace UnitTestsCore {
 			return sheetDef;
 		}
 
-		///<summary>ClinicNum of 0 creates a default rule for all clinics.</summary>
-		public static SheetDef CreateCustomSheet(SheetInternalType sheetInternalType,bool createEClipboardRule = true,long clinicNum = 0,int days = 30,
-			int minAge = -1,int maxAge = -1) 
-		{
+		///<summary>Inserts a copy of the internal sheetDef.</summary>
+		public static SheetDef CreateCustomSheet(SheetInternalType sheetInternalType) {
 			var sheetDef=SheetDefs.GetInternalOrCustom(sheetInternalType);
 			sheetDef.IsNew=true;
 			SheetDefs.InsertOrUpdate(sheetDef);
-			if(!createEClipboardRule) {
-				return sheetDef;
-			}
-			var existingAll=EClipboardSheetDefs.Refresh().FindAll(x => x.SheetDefNum > 0);
-			var existingClinic=existingAll.FindAll(x => x.ClinicNum==clinicNum);
-			int items=0;
-			existingClinic.ForEach(x => { x.ItemOrder=++items; });
-			existingAll.Add(new EClipboardSheetDef(){
-				ClinicNum=clinicNum,
-				ResubmitInterval=TimeSpan.FromDays(days),
-				SheetDefNum=sheetDef.SheetDefNum,
-				EFormDefNum=0, //Always 0 for Sheets
-				ItemOrder=++items,
-				PrefillStatus=PrefillStatuses.New,
-				MinAge=minAge,
-				MaxAge=maxAge,
-			});
-			//Removes any EClipboardSheetDefs that are not Sheets (that means EForms rules will be deleted).
-			EClipboardSheetDefs.Sync(existingAll,EClipboardSheetDefs.Refresh());
 			EFormDefs.RefreshCache();
 			EFormFieldDefs.RefreshCache();
 			SheetDefs.RefreshCache();

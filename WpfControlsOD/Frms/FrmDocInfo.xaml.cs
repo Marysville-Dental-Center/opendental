@@ -10,7 +10,6 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using CodeBase;
-using OpenDental.Thinfinity;
 using OpenDental.UI;
 using OpenDentBusiness;
 using WpfControls.UI;
@@ -68,17 +67,6 @@ namespace OpenDental {
 			}
 			if(_isOkDisabled) {
 				butSave.IsEnabled=false;
-			}
-			if(ODEnvironment.IsCloudServer) {
-				butOpen.Text="Open File";
-				if(Path.GetExtension(_document.FileName).ToLower()!=".pdf") {
-					if(ODBuild.IsThinfinity()) {
-						butOpen.Text="Download";
-					}
-					else {//Is AppStream
-						butOpen.Text="Export";
-					}
-				}
 			}
 			listCategory.Items.Clear();
 			_listDefsImageCats=Defs.GetDefsForCategory(DefCat.ImageCats,true);
@@ -156,15 +144,7 @@ namespace OpenDental {
 
 		private void butOpen_Click(object sender,EventArgs e) {
 			if(PrefC.AtoZfolderUsed==DataStorageType.LocalAtoZ) {
-				if(ODBuild.IsThinfinity()) {
-					ThinfinityUtils.HandleFile(textFileName.Text);
-				}
-				else if(ODCloudClient.IsAppStream) {
-					CloudClientL.ExportForCloud(textFileName.Text,doPromptForName:false);
-				}
-				else {
-					System.Diagnostics.Process.Start("Explorer",Path.GetDirectoryName(textFileName.Text));
-				}
+				System.Diagnostics.Process.Start("Explorer",Path.GetDirectoryName(textFileName.Text));
 				return;
 			}
 			if(!CloudStorage.IsCloudStorage) {
@@ -187,12 +167,7 @@ namespace OpenDental {
 				return;
 			}
 			File.WriteAllBytes(tempFile,byteArray);
-			if(ODBuild.IsThinfinity()) {
-				ThinfinityUtils.HandleFile(tempFile);
-			}
-			else {
-				System.Diagnostics.Process.Start(tempFile);
-			}
+			System.Diagnostics.Process.Start(tempFile);
 		}
 
 		private void FillComboProv(){

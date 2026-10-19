@@ -21,7 +21,6 @@ namespace OpenDental.UI {
 		private int _buttonH;
 		private bool mouseIsDown;
 		private int hotButton;
-		private Point _mouseCoords;
 		///<summary></summary>
 		[Category("Action"),Description("Occurs when a button is clicked.")]
 		public event ODLightSignalGridClickEventHandler ButtonClick=null;
@@ -276,10 +275,6 @@ namespace OpenDental.UI {
 		protected override void OnMouseDown(System.Windows.Forms.MouseEventArgs e) {
 			base.OnMouseDown(e);
 			if((e.Button & MouseButtons.Left)!=MouseButtons.Left) {
-				if(e.Button==MouseButtons.Right && PrefC.IsODHQ && Security.IsAuthorized(EnumPermType.Setup,true)) {
-					_mouseCoords=new Point(e.X,e.Y);
-					contextMenuConfKick.Show(this,_mouseCoords);
-				}
 				return;
 			}
 			mouseIsDown=true;
@@ -330,16 +325,6 @@ namespace OpenDental.UI {
 				ButtonClick(this,bArgs);
 		}
 
-		protected void menuItemKick_Click(object sender,EventArgs e) {
-			int button=HitTest(_mouseCoords.X,_mouseCoords.Y);//idx of button
-			if(!IsValidSigButState(button)) {//if there is no current hover button
-				return;
-			}
-			string confRoom=new string(Array.FindAll(_listSignalButtonStates[button].Text.ToCharArray(),(x => char.IsDigit(x))));
-			if(!string.IsNullOrEmpty(confRoom)) {
-				PhoneConfs.KickConfRoom(PIn.Long(confRoom));
-			}
-		}
 	}
 
 	///<summary></summary>

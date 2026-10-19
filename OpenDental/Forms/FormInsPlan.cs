@@ -89,13 +89,6 @@ namespace OpenDental {
 				return _insPlan.PlanNum;
 		}
 
-		protected override string GetHelpOverride() {
-			if(CultureInfo.CurrentCulture.Name.EndsWith("CA")) {
-				return "FormInsPlanCanada";
-			}
-			return "FormInsPlan";
-		}
-
 		///<summary>Called from ContrFamily and FormInsPlans. Must pass in the plan, patPlan, and sub, although patPlan and sub can be null.</summary>
 		public FormInsPlan(InsPlan insPlan,PatPlan patPlan,InsSub insSub) {
 			Cursor=Cursors.WaitCursor;
@@ -1358,10 +1351,6 @@ namespace OpenDental {
 		}
 
 		private void butImportTrojan_Click(object sender,System.EventArgs e) {
-			if(ODEnvironment.IsCloudServer) {
-				MsgBox.Show(this,"Bridge is not available while using Open Dental Cloud.");
-				return;//bridge is not yet available for web users.
-			}
 			//If SubCur is null, this button is not visible to click.
 			if(CovCats.GetForEbenCat(EbenefitCategory.Diagnostic)==null
 				|| CovCats.GetForEbenCat(EbenefitCategory.RoutinePreventive)==null
@@ -1491,10 +1480,6 @@ namespace OpenDental {
 		}
 
 		private void butIapFind_Click(object sender,System.EventArgs e) {
-			if(ODEnvironment.IsCloudServer) {
-				MsgBox.Show(this,"Bridge is not available while using Open Dental Cloud.");
-				return;
-			}
 			//If SubCur is null, this button is not visible to click.
 			using FormIap formIap=new FormIap();
 			formIap.ShowDialog();

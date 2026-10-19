@@ -117,12 +117,7 @@ namespace OpenDental.Bridges {
 						line.Append(pat.ChartNumber);
 					}
 					line.Append(nTerm);
-					if(ODEnvironment.IsCloudServer) {
-						line.Append(ODEnvironment.MachineName);//Will be replaced on the client side
-					}
-					else {
-						line.Append(SystemInformation.ComputerName);
-					}
+					line.Append(SystemInformation.ComputerName);
 					line.Append(nTerm);
 					line.Append(DateTime.Now.ToString("dd.MM.yyyy"));
 					line.Append(nTerm);
@@ -137,9 +132,7 @@ namespace OpenDental.Bridges {
 					line.Append("\r\n");
 					listIniLines.Add(line.ToString());
 					#endregion
-					if(!ODEnvironment.IsCloudServer) {
-						OpenDentBusiness.Shared.Sirona.WriteToSendBoxFile(path,listIniLines);
-					}
+					OpenDentBusiness.Shared.Sirona.WriteToSendBoxFile(path,listIniLines);
 				}
 				catch(Exception ex) {
 					FriendlyException.Show(Lang.g("Sirona","Error preparing Sidexis for patient message."),ex);
@@ -148,12 +141,7 @@ namespace OpenDental.Bridges {
 			}//if patient is loaded
 			//Start Sidexis.exe whether patient loaded or not.
 			try {
-				if(ODEnvironment.IsCloudServer) {
-					ODCloudClient.SendToSirona(path,listIniLines);
-				}
-				else {
-					ODFileUtils.ProcessStart(path);
-				}
+				ODFileUtils.ProcessStart(path);
 			}
 			catch(Exception ex) {
 				FriendlyException.Show(path+" is not available.",ex);

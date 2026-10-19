@@ -354,7 +354,7 @@ namespace OpenDentBusiness{
 					xmlWriter.WriteString(centralConnection.MySqlUser);
 					xmlWriter.WriteEndElement();
 					string encryptedPwd;
-					CDT.Class1.Encrypt(centralConnection.MySqlPassword,out encryptedPwd);//sets encryptedPwd ot value or null
+					Secrets.Encrypt(centralConnection.MySqlPassword,out encryptedPwd);//sets encryptedPwd ot value or null
 					xmlWriter.WriteStartElement("Password");
 					//If encryption fails, write plain text password to xml file; maintains old behavior.
 					xmlWriter.WriteString(string.IsNullOrEmpty(encryptedPwd) ? centralConnection.MySqlPassword : "");
@@ -567,7 +567,7 @@ namespace OpenDentBusiness{
 					if(centralConnection.MySqlPassword==""
 						&& xPathNavigatorEncryptedPwdNode!=null
 						&& xPathNavigatorEncryptedPwdNode.Value!=""
-						&& CDT.Class1.Decrypt(xPathNavigatorEncryptedPwdNode.Value,out _decryptedPwd))
+						&& Secrets.Decrypt(xPathNavigatorEncryptedPwdNode.Value,out _decryptedPwd))
 					{
 						//decrypted value could be an empty string, which means they don't have a password set, so textPassword will be an empty string
 						centralConnection.MySqlPassword=_decryptedPwd;
@@ -869,7 +869,7 @@ namespace OpenDentBusiness{
 			}
 			if(mySqlPassHash!="") {
 				string decryptedPwd;
-				CDT.Class1.Decrypt(mySqlPassHash,out decryptedPwd);
+				Secrets.Decrypt(mySqlPassHash,out decryptedPwd);
 				chooseDatabaseInfo.CentralConnectionCur.MySqlPassword=decryptedPwd;
 			}
 			if(yNNoShow!=YN.Unknown) {

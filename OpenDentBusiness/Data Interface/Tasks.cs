@@ -82,7 +82,6 @@ namespace OpenDentBusiness{
 		public const long RedTaskDefNum=501;
 		///<summary>Internal HQ only, FK to tasklist.TaskListNum for the Office Down task list.</summary>
 		public const long OfficeDownTaskListNum=2576;
-		private static bool _isHQ;
 		private static long _defaultTaskPriorityDefNum;
 		private static bool _isSortApptDateTime=false;
 		///<summary>Only used from UI.  The index of the last open tab.</summary>
@@ -698,7 +697,6 @@ namespace OpenDentBusiness{
 				listDataRows.Add(table.Rows[i]);
 			}
 			#region Set Sort Variables. This greatly increases sort speed.
-			_isHQ=PrefC.GetBool(PrefName.DockPhonePanelShow);//increases speed of the sort function performed below.
 			List<Def> listDefsTaskPriorities=Defs.GetDefsForCategory(DefCat.TaskPriorities,true);
 			for(int i=0;i<listDefsTaskPriorities.Count;i++) {
 				if(listDefsTaskPriorities[i].ItemValue.ToUpper()=="D") {
@@ -876,7 +874,6 @@ namespace OpenDentBusiness{
 				listDataRows.Add(table.Rows[i]);
 			}
 			#region Set Sort Variables. This greatly increases sort speed.
-			_isHQ=PrefC.GetBool(PrefName.DockPhonePanelShow);//increases speed of the sort function performed below.
 			List<Def> listDefsTaskPriorities=Defs.GetDefsForCategory(DefCat.TaskPriorities,true);
 			for(int i=0;i<listDefsTaskPriorities.Count;i++) {
 				if(listDefsTaskPriorities[i].ItemValue.ToUpper()=="D") {
@@ -1114,9 +1111,6 @@ namespace OpenDentBusiness{
 				return;
 			}
 			TaskAncestors.Synch(task);
-			if(PrefC.IsODHQ && task.TaskListNum==TriageTaskListNum) {//Sending the task TO triage
-				TaskTakens.DeleteForTask(task.TaskNum);
-			}
 		}
 
 		///<summary>Creates a copy of reminderTask with DateTimeEntry set to the next date due in the future.  Ensures new copy is marked new.
@@ -1242,12 +1236,6 @@ namespace OpenDentBusiness{
 			}
 			if(WasTaskAltered(taskOld)){
 				throw new Exception(Lans.g("Tasks","Not allowed to save changes because the task has been altered by someone else."));
-			}
-			//HQ Only - Every workstation needs to communicate with the same server when moving triage tasks out of the task list (e.g. trying to claim the task).
-			if(PrefC.IsODHQ && taskOld.TaskListNum==TriageTaskListNum && task.TaskListNum!=TriageTaskListNum) {
-				//Try and insert a tasktaken entry using the data action for the 'TriageHQ' database.
-				//If no error occurs then this user has claimed the task. Otherwise, something went wrong and the user needs to be made aware.
-				TaskTakens.InsertForTaskNum(task.TaskNum);
 			}
 			if(task.IsNew) {
 				TaskEditCreateLog(Lans.g("Tasks","New task added"),task);
@@ -1406,13 +1394,6 @@ namespace OpenDentBusiness{
 			Db.NonQ(command);
 			command="DELETE FROM taskunread WHERE TaskNum = "+POut.Long(taskNum);
 			Db.NonQ(command);
-			//Remove all references from the joblink table for HQ only.
-			if(Prefs.GetBoolNoCache(PrefName.DockPhonePanelShow)) {
-				command="DELETE FROM joblink "
-					+"WHERE FKey = "+POut.Long(taskNum)+" "
-					+"AND LinkType = "+POut.Int((int)JobLinkType.Task);
-				Db.NonQ(command);
-			}
 		}
 
 		/*
@@ -1560,14 +1541,6 @@ namespace OpenDentBusiness{
 		public static int CompareTimes(DataRow dataRowX,DataRow dataRowY) {
 			DateTime dateTimeXMax;
 			DateTime dateTimeYMax;
-			if(_isHQ
-				&& PIn.Long(dataRowX["TaskListNum"].ToString())==TriageTaskListNum
-				&& PIn.Long(dataRowX["PriorityDefNum"].ToString())==RedTaskDefNum)//Red tasks in triage only, sort by lastUpdated
-			{
-				dateTimeXMax=PIn.DateT(dataRowX["LastUpdated"].ToString());
-				dateTimeYMax=PIn.DateT(dataRowY["LastUpdated"].ToString());
-				return dateTimeXMax.CompareTo(dateTimeYMax);
-			}
 			//Sort everything else based on task creation date
 			dateTimeXMax=PIn.DateT(dataRowX["DateTimeEntry"].ToString());
 			dateTimeYMax=PIn.DateT(dataRowY["DateTimeEntry"].ToString());

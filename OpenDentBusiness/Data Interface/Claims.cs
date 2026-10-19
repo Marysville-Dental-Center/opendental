@@ -1911,12 +1911,12 @@ namespace OpenDentBusiness{
 			return true;
 		}
 
-		///<summary>Returns the salted hash for the claim. Will return an empty string if the calling program is unable to use CDT.dll. </summary>
+		///<summary>Returns the salted hash for the claim. Computed by CodeBase.TamperHash. </summary>
 		public static string HashFields(Claim claim) {
 			Meth.NoCheckMiddleTierRole();
 			string unhashedText=claim.ClaimFee.ToString("F2")+claim.ClaimStatus+claim.InsPayEst.ToString("F2")+claim.InsPayAmt.ToString("F2");
 			try {
-				return CDT.Class1.CreateSaltedHash(unhashedText);
+				return TamperHash.Compute(unhashedText);
 			}
 			catch(Exception ex)  {
 				ex.DoNothing();

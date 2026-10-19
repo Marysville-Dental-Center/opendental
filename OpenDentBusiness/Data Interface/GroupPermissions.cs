@@ -673,8 +673,8 @@ namespace OpenDentBusiness{
 				//case EnumPermType.SuperFamilyDisband:
 				return false;//Does not have audit Trail if uncommented.
 			}
-			if(!PrefC.IsODHQ && enumPermType.In(
-					//These permissions are only used at OD HQ
+			if(enumPermType.In(
+					//These permissions were only used at OD HQ
 					EnumPermType.EhrKeyAdd,
 					EnumPermType.CommlogPersistent,
 					EnumPermType.VerifyPhoneOwnership,

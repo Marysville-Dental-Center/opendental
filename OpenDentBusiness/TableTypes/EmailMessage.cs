@@ -123,10 +123,8 @@ namespace OpenDentBusiness {
 			}
 			//Manual message sources
 			List<EmailMessageSource> listSourcesToExclude=GetAutomatedTypes();//Exclude automated message sources
-			if(!PrefC.IsODHQ) {
-				listSourcesToExclude.Add(EmailMessageSource.Cryo);
-				listSourcesToExclude.Add(EmailMessageSource.JobManager);
-			}
+			listSourcesToExclude.Add(EmailMessageSource.Cryo);
+			listSourcesToExclude.Add(EmailMessageSource.JobManager);
 			listSourcesToExclude.Add(EmailMessageSource.WebMail);//Always exclude webmail messages
 			return Enum.GetValues(typeof(EmailMessageSource))
 				.Cast<EmailMessageSource>()

@@ -135,11 +135,6 @@ namespace OpenDental {
 			formET.ShowDialog();
 		}
 
-		private void butPortalSetup_Click(object sender,EventArgs e) {
-			using FormEServicesPatientPortal formESPatPortal=new FormEServicesPatientPortal();
-			formESPatPortal.ShowDialog();
-		}
-
 		private void butCodeImport_Click(object sender,EventArgs e) {
 			using FormCodeSystemsImport FormCSI=new FormCodeSystemsImport();
 			FormCSI.ShowDialog();

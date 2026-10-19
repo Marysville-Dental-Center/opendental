@@ -39,10 +39,8 @@ namespace OpenDental {
 			if(Programs.HasMultipleCreditCardProgramsEnabled()) {
 				gridMain.HScrollVisible=true;
 			}
-			if(!PrefC.IsODHQ) {
-				checkHideBold.Checked=true;
-				checkHideBold.Visible=false;
-			}
+			checkHideBold.Checked=true;
+			checkHideBold.Visible=false;
 			Program program=null;
 			if(Programs.IsEnabled(ProgramName.PaySimple)) {
 				program=Programs.GetCur(ProgramName.PaySimple);

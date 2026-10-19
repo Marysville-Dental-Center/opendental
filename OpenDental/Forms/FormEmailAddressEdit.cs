@@ -317,21 +317,8 @@ namespace OpenDental{
 				return;
 			}
 			MicrosoftTokenHelper microsoftTokenHelper;
-			if(ODEnvironment.IsCloudServer) {
-				if(!CloudClientL.IsCloudClientRunning()) {
-					return;
-				}
-				string strMicrosoftTokenJSON=ODCloudClient.MicrosoftSignOutUser(textUsername.Text,textRefreshTokenMicrosoft.Text);
-				if(strMicrosoftTokenJSON.IsNullOrEmpty()) { 
-					return;
-				}
-				//Microsft requires it's own way of signing out users in this application rather than just clearing the token.
-				microsoftTokenHelper=JsonConvert.DeserializeObject<MicrosoftTokenHelper>(strMicrosoftTokenJSON);
-			}
-			else {
-				//Microsft requires it's own way of signing out users in this application rather than just clearing the token.
-				microsoftTokenHelper=MicrosoftApiConnector.SignOutUser(textUsername.Text,textRefreshTokenMicrosoft.Text).Result;
-			}
+			//Microsft requires it's own way of signing out users in this application rather than just clearing the token.
+			microsoftTokenHelper=MicrosoftApiConnector.SignOutUser(textUsername.Text,textRefreshTokenMicrosoft.Text).Result;
 			if(microsoftTokenHelper.ErrorMessage!="") {
 				MsgBox.Show("Error: "+microsoftTokenHelper.ErrorMessage);
 				return;
@@ -344,9 +331,6 @@ namespace OpenDental{
 		///<summary>Requests authorization for Open Dental to send emails and access the inbox for a gmail address.
 		///Google sends us access and refresh tokens that we store in the database.</summary>
 		private void butAuthGoogle_Click(object sender,EventArgs e) {
-			if(ODEnvironment.IsCloudServer && !CloudClientL.IsCloudClientRunning()) {
-				return;
-			}
 			Google.AuthorizationRequest authorizationRequest=new Google.AuthorizationRequest();
 			GoogleToken googleToken=null;
 			string emailAddress=textUsername.Text;
@@ -415,18 +399,8 @@ namespace OpenDental{
 
 		private void butAuthMicrosoft_Click(object sender,EventArgs e) {
 			MicrosoftTokenHelper microsoftToken=new MicrosoftTokenHelper();
-			if(ODEnvironment.IsCloudServer) {
-				if(!CloudClientL.IsCloudClientRunning()) {
-					return; 
-				}
-				string strMicrosoftAuthCodesJSON=ODCloudClient.GetMicrosoftAccessToken(textUsername.Text,textRefreshTokenMicrosoft.Text);
-				if(!strMicrosoftAuthCodesJSON.IsNullOrEmpty())
-				microsoftToken=JsonConvert.DeserializeObject<MicrosoftTokenHelper>(strMicrosoftAuthCodesJSON);
-			}
-			else {
-				microsoftToken=System.Threading.Tasks.Task.Run(async()=>
-					await MicrosoftApiConnector.GetAccessToken(textUsername.Text,textRefreshTokenMicrosoft.Text)).GetAwaiter().GetResult();
-			}
+			microsoftToken=System.Threading.Tasks.Task.Run(async()=>
+				await MicrosoftApiConnector.GetAccessToken(textUsername.Text,textRefreshTokenMicrosoft.Text)).GetAwaiter().GetResult();
 			if(microsoftToken.ErrorMessage!="") {
 				MsgBox.Show("Error: "+microsoftToken.ErrorMessage);
 				return;

@@ -147,10 +147,6 @@ End of Checklist================================================================
 			LayoutManager.Add(listBoxSites,this);
 			listBoxSites.BringToFront();
 			Lan.F(this);
-			if(PrefC.GetBool(PrefName.DockPhonePanelShow)) {
-				labelST.Text=Lan.g(this,"ST, Country");
-				textCountry.Visible=true;
-			}
 			if(CultureInfo.CurrentCulture.Name.EndsWith("CA")) {//Canadian. en-CA or fr-CA
 				labelSSN.Text=Lan.g(this,"SIN");
 				labelZip.Text=Lan.g(this,"Postal Code");
@@ -326,7 +322,6 @@ End of Checklist================================================================
 			if(Patient.TxtMsgOk==YN.No){
 				checkTextingN.Checked=true;
 			}
-			FillShortCodes(Patient.TxtMsgOk);
 			textEmail.Text=Patient.Email;
 			textCreditType.Text=Patient.CreditType;
 			odDatePickerDateFirstVisit.SetDateTime(Patient.DateFirstVisit);
@@ -605,46 +600,6 @@ End of Checklist================================================================
 			//Move age back over since butViewBirthdate is not showing
 			LayoutManager.MoveLocation(label20,new Point(label20.Location.X-LayoutManager.Scale(77),label20.Location.Y));
 			LayoutManager.MoveLocation(textAge,new Point(textAge.Location.X-LayoutManager.Scale(77),textAge.Location.Y));
-		}
-
-		private void butShortCodeOptIn_Click(object sender,EventArgs e) {
-			FrmShortCodeOptIn frmShortCodeOptIn=new FrmShortCodeOptIn();
-			frmShortCodeOptIn.PatientCur=Patient;
-			YN yn=YN.Unknown;
-			if(checkTextingY.Checked){
-				yn=YN.Yes;
-			}
-			if(checkTextingN.Checked){
-				yn=YN.No;
-			}
-			frmShortCodeOptIn.ShowDialog();
-			if(frmShortCodeOptIn.IsDialogOK) {
-				FillShortCodes(yn);
-			}
-		}
-
-		private void FillShortCodes(YN txtMsgOk) {
-			Patient patient=Patient.Copy();
-			patient.TxtMsgOk=txtMsgOk;
-			PatComm patComm=Patients.GetPatComms(ListTools.FromSingle(patient)).FirstOrDefault();
-			bool isShortCodeInfoNeeded=patComm?.IsPatientShortCodeEligible(patient.ClinicNum)??false;
-			butShortCodeOptIn.Visible=isShortCodeInfoNeeded;
-			labelApptTexts.Visible=isShortCodeInfoNeeded;
-			textOptIn.Visible=isShortCodeInfoNeeded;
-			if(isShortCodeInfoNeeded) {
-				switch(patient.ShortCodeOptIn) {
-					case YN.Yes:
-						textOptIn.Text="Yes";
-						break;
-					case YN.No:
-						textOptIn.Text="No";
-						break;
-					case YN.Unknown:
-					default:
-						textOptIn.Text="??";
-						break;
-				}
-			}
 		}
 
 		private void FillSpecialty() {
@@ -1030,14 +985,6 @@ End of Checklist================================================================
 			if(!areAnyConditionsMet) {
 				labelRequiredField.Visible=false;
 			}
-			YN yNTxtMsgOk=YN.Unknown;
-			if(checkTextingY.Checked){
-				yNTxtMsgOk=YN.Yes;
-			}
-			if(checkTextingN.Checked){
-				yNTxtMsgOk=YN.No;
-			}
-			FillShortCodes(yNTxtMsgOk);
 		}
 
 		///<summary>Returns true if all the conditions for the RequiredField are met.</summary>
@@ -1571,12 +1518,7 @@ End of Checklist================================================================
 			}
 			try {
 				string mapUrl="http://maps.google.com/maps?t=m&q="+textAddress.Text+" "+textAddress2.Text+" "+textCity.Text+" "+textState.Text;
-				if (ODCloudClient.IsAppStream) {
-					ODCloudClient.LaunchFileWithODCloudClient(mapUrl);
-				}
-				else {
-					System.Diagnostics.Process.Start(mapUrl);
-				}
+				System.Diagnostics.Process.Start(mapUrl);
 			}
 			catch {
 				MsgBox.Show(this,"Failed to open web browser.  Please make sure you have a default browser set and are connected to the internet then try again.");
@@ -1589,37 +1531,6 @@ End of Checklist================================================================
 				return;
 			}
 			Plugins.HookAddCode(sender,"FormPatientEdit.textAnyPhoneNumber_TextChanged_end");
-		}
-
-		///<summary>Offers the user, if necessary, the opportunity to send a text message to the patient when changes have been made to texting settings.</summary>
-		private void PromptForSmsIfNecessary(Patient patientNew,Patient patientOld) {
-			if(Patients.DoPromptForOptInSms(patientNew,patientOld) 
-				&& MsgBox.Show(this,MsgBoxButtons.YesNo,"Texting settings have changed.  Would you like to send a message now?","Send a message?")) 
-			{
-				string msg=PrefC.GetString(PrefName.ShortCodeOptInScript);
-				msg=FrmShortCodeOptIn.FillInTextTemplate(msg,patientNew);
-				GlobalFormOpenDental.SendTextMessage(patientNew.PatNum,msg);
-				return;
-			}
-			if(!Patients.DoSendOptOutText(patientNew,patientOld)) {
-				return;
-			}
-			if(!MsgBox.Show(this,MsgBoxButtons.YesNo,"Patient has opted out of texting. Would you like to send an opt out notification message?","Send a message?")) {
-				return;
-			}
-			//ex:[WirelessPhone] has cancelled Appointment Texts and must text [START] to [PhoneProv] to begin receiving Appointment Texts.
-			string message=PrefC.GetString(PrefName.ShortCodeOptedOutScript)
-				//[PhoneProv] tag was already replaced on nightly sync in EServiceSetups.GetTextingOptScript().
-				.Replace("[WirelessPhone]",patientNew.WirelessPhone);
-			try {
-				SmsToMobile smsToMobile=SmsToMobiles.SendSmsSingle(patientNew.PatNum,patientNew.WirelessPhone,message,patientNew.ClinicNum,SmsMessageSource.OptOutReply);
-			}
-			catch(Exception ex) {
-				if(!FormEServicesSetup.ProcessSendSmsException(ex)) {
-					MsgBox.Show(this,ex.Message);
-				}
-				return;
-			}
 		}
 
 		private void butAuto_Click(object sender, System.EventArgs e) {
@@ -2942,7 +2853,6 @@ End of Checklist================================================================
 			}
 			//The specialty could have changed so invalidate the cached specialty on the currently selected patient object in PatientL.cs
 			PatientL.InvalidateSelectedPatSpecialty();
-			PromptForSmsIfNecessary(Patient,patientOld);
 			Plugins.HookAddCode(this,"FormPatientEdit.butOK_Click_end",Patient,_patientOld);
 			DialogResult=DialogResult.OK;
 		}

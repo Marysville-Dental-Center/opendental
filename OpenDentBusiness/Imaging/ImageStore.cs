@@ -121,7 +121,7 @@ namespace OpenDentBusiness {
 			return retVal;
 		}
 
-		///<summary>Will create folder if needed. Will validate that folder exists. Currently only used for ODCloud AppStream</summary>
+		///<summary>Will create folder if needed. Will validate that folder exists.</summary>
 		public static string GetMobileBrandingImageFolder() {
 			string retVal="";
 			if(PrefC.AtoZfolderUsed==DataStorageType.InDatabase) {
@@ -1172,7 +1172,6 @@ namespace OpenDentBusiness {
 				}
 				//Row from db.  This deletes the "image file" also if it's stored in db.
 				Documents.Delete(documents[i]);
-				EClipboardImageCaptures.DeleteByDocNum(documents[i].DocNum);
 				ImageDraws.DeleteByDocNum(documents[i].DocNum);
 				PearlRequests.DeleteByDocNum(documents[i].DocNum);
 			}//end documents

@@ -390,11 +390,6 @@ Scrollable Control: For example, a panel that's set to AutoScroll=true.  These c
 			if(control is System.Windows.Forms.SplitContainer){
 				throw new Exception("MS SplitContainers are not allowed. Use a UI.SplitContainer instead.");
 			}
-			//In UserControlReminderAgg, there's a groupBox inside a tabcontrol.
-			//Changing anchors on the groupBox triggers layout event, which calls LayoutTabs, causing crash.
-			if(control.Name=="groupBoxEmailSubjAggShared"){
-				return;
-			}
 			control.Anchor=AnchorStyles.Left | AnchorStyles.Top;
 			control.Dock=DockStyle.None;
 			if(control is ButtonBase buttonBase){
@@ -1098,7 +1093,7 @@ Scrollable Control: For example, a panel that's set to AutoScroll=true.  These c
 			if(control is ScrollableControl scrollableControl && scrollableControl.AutoScroll){
 				//We need to return true for these forms to avoid a bug with scrollable splitters or panels that can create uneccessary additional white space.
 				List<string> listFormNames=new List<string>(){
-					typeof(FormSheetDefEdit).Name,typeof(FormSheetFillEdit).Name,typeof(FormWebChatSession).Name,typeof(FormSmsTextMessaging).Name
+					typeof(FormSheetDefEdit).Name,typeof(FormSheetFillEdit).Name
 				};
 				if(control.TopLevelControl!=null && listFormNames.Contains(control.TopLevelControl.Name)) {
 					return true;
@@ -1176,10 +1171,6 @@ Scrollable Control: For example, a panel that's set to AutoScroll=true.  These c
 
 		///<summary>Passes this LayoutManager object to any of our custom controls so that they have access to the same scale numbers as the form.</summary>
 		private void PassLayoutManager(Control control){
-			if(control is BugSubmissionControl bugSubmissionControl){
-				bugSubmissionControl.LayoutManager=this;
-				return;
-			}
 			if(control is UI.Button button){
 				button.LayoutManager=this;
 				return;
@@ -1264,10 +1255,6 @@ Scrollable Control: For example, a panel that's set to AutoScroll=true.  These c
 				emailPreviewControl.LayoutManager=this;
 				return;
 			}
-			if(control is InternalTools.Phones.EscalationView escalationView){
-				escalationView.LayoutManager=this;
-				return;
-			}
 			if(control is GraphScheduleDay graphScheduleDay){
 				graphScheduleDay.LayoutManager=this;
 				return;
@@ -1289,14 +1276,6 @@ Scrollable Control: For example, a panel that's set to AutoScroll=true.  These c
 			}
 			if(control is UI.ListBox listBoxOD){
 				listBoxOD.LayoutManager=this;
-				return;
-			}
-			if(control is InternalTools.Phones.MapNumber mapNumber){
-				mapNumber.LayoutManager=this;
-				return;
-			}
-			if(control is InternalTools.Phones.MapPanel mapPanel){
-				mapPanel.LayoutManager=this;
 				return;
 			}
 			if(control is UI.MenuOD menuOD){
@@ -1327,20 +1306,12 @@ Scrollable Control: For example, a panel that's set to AutoScroll=true.  These c
 				oDtextBox.LayoutManager=this;
 				return;
 			}
-			if(control is PhoneTile phoneTile){
-				phoneTile.LayoutManager=this;
-				return;
-			}
 			if(control is UI.PinBoard pinBoard){
 				pinBoard.LayoutManager=this;
 				return;
 			}
 			if(control is SheetEditMobileCtrl sheetEditMobileCtrl){
 				sheetEditMobileCtrl.LayoutManager=this;
-				return;
-			}
-			if(control is SmsThreadView smsThreadView){
-				smsThreadView.LayoutManager=this;
 				return;
 			}
 			if(control is UI.SplitContainer splitContainer){
@@ -1373,14 +1344,6 @@ Scrollable Control: For example, a panel that's set to AutoScroll=true.  These c
 			}
 			if(control is UserControlDashboard userControlDashboard){
 				userControlDashboard.LayoutManager=this;
-				return;
-			}
-			if(control is UserControlPhoneSmall userControlPhoneSmall){
-				userControlPhoneSmall.LayoutManager=this;
-				return;
-			}
-			if(control is UserControlReminderAgg userControlReminderAgg){
-				userControlReminderAgg.LayoutManager=this;
 				return;
 			}
 			if(control is UserControlSecurityTree userControlSecurityTree){
@@ -1481,12 +1444,10 @@ Scrollable Control: For example, a panel that's set to AutoScroll=true.  These c
 //Minor annoyances for later that I will not fix in the first pass have been moved to the Manual page: Zoom Artifacts
 
 //Areas that still need to be tested. I put them off because they were too hard to set up:
-//SmsThreadView for chat
 //There are 6 kinds of grids that go on statements. Verify that they all work in both SheetDefEdit and when printing.
 
 //Areas that look good, but the math needs to be reviewed:
 //Pinboard, drag appts to this pinboard
-//MapPanel HitTest.
 //MapPanel.FitText. Why do I need to unscale it again. It was already unscaled earlier.
 //CheckBox.IsOnActualText. I shouldn't have to scale the measurement
 

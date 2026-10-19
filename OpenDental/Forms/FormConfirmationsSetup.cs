@@ -122,11 +122,6 @@ namespace OpenDental {
 		//===============================================================================================
 
 
-		private void butSetup_Click(object sender,EventArgs e) {
-			using FormEServicesAutoMsging formEServicesAutoMsging=new FormEServicesAutoMsging();
-			formEServicesAutoMsging.ShowDialog();
-		}
-
 		private void butSave_Click(object sender,System.EventArgs e) {
 			Prefs.UpdateLong(PrefName.ConfirmStatusEmailed,comboStatusEmailedConfirm.GetSelectedDefNum());
 			Prefs.UpdateLong(PrefName.ConfirmStatusTextMessaged,comboStatusTextMessagedConfirm.GetSelectedDefNum());

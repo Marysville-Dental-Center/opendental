@@ -32,15 +32,6 @@ namespace CodeBase {
 #endif
 		}
 
-		///<summary>Returns true if current build is using Thinfinity Virtual UI, aka ODCloud.</summary>
-		public static bool IsThinfinity() {
-#if THINFINITY
-			return true;
-#else
-			return false;
-#endif
-		}
-
 		///<summary>Returns true if current build is for the trial version only.</summary>
 		public static bool IsTrial() {
 #if TRIALONLY

@@ -12,7 +12,6 @@ using System.Diagnostics;
 using System.Linq;
 using CodeBase;
 using System.IO;
-using OpenDental.Thinfinity;
 using Bridges;
 using System.Text.RegularExpressions;
 
@@ -91,11 +90,11 @@ namespace OpenDental{
 				butSendQB.Text="&Send QBO";
 				Program programQbo=Programs.GetCur(ProgramName.QuickBooksOnline);
 				_programPropertyQboRefreshToken=ProgramProperties.GetPropForProgByDesc(programQbo.ProgramNum,"Refresh Token");
-				CDT.Class1.Decrypt(_programPropertyQboRefreshToken.PropertyValue,out string decryptedRefreshToken);
+				Secrets.Decrypt(_programPropertyQboRefreshToken.PropertyValue,out string decryptedRefreshToken);
 				_quickBooksOnlineToken=new QuickBooksOnlineToken("",decryptedRefreshToken);
 				_programPropertyQboClassRefs=ProgramProperties.GetPropForProgByDesc(programQbo.ProgramNum,"Class Refs");
 				_programPropertyQboRealmId=ProgramProperties.GetPropForProgByDesc(programQbo.ProgramNum,"Realm ID");
-				CDT.Class1.Decrypt(_programPropertyQboRealmId.PropertyValue,out string decryptedRealmID);
+				Secrets.Decrypt(_programPropertyQboRealmId.PropertyValue,out string decryptedRealmID);
 				_realmIdPlainText=decryptedRealmID;
 			}
 			if(IsNew) {
@@ -572,7 +571,7 @@ namespace OpenDental{
 		private void SaveTokens() {
 			bool isChanged = false;
 			if(!_quickBooksOnlineToken.RefreshToken.IsNullOrEmpty()) {
-				CDT.Class1.Encrypt(_quickBooksOnlineToken.RefreshToken,out string obfuscatedvalueToEncrypt);
+				Secrets.Encrypt(_quickBooksOnlineToken.RefreshToken,out string obfuscatedvalueToEncrypt);
 				isChanged|=ProgramProperties.UpdateProgramPropertyWithValue(_programPropertyQboRefreshToken,obfuscatedvalueToEncrypt);
 			}
 			if(isChanged) {
@@ -661,7 +660,7 @@ namespace OpenDental{
 			if(IsNew && !_hasBeenSavedToDB){
 				//Create a deposit in QuickBooks or QuickBooks Online
 				bool hasDepositInfo=Accounts.DepositsLinked();
-				bool isQbOrQbo=(IsQuickBooks() && !ODBuild.IsThinfinity()) || IsQuickBooksOnline();
+				bool isQbOrQbo=IsQuickBooks() || IsQuickBooksOnline();
 				//Short circuit so that CreateDepositQbOrQbo() is only called if hasDepositInfo and isQbOrQbo are both true.
 				if(hasDepositInfo && isQbOrQbo && !CreateDepositQbOrQbo(true)) {
 					return false;
@@ -762,10 +761,6 @@ namespace OpenDental{
 		}
 
 		private void butSendQB_Click(object sender,EventArgs e) {
-			if(ODBuild.IsThinfinity() && IsQuickBooks()) {
-				MsgBox.Show(this,"QuickBooks is not available while viewing through the web.");
-				return;
-			}
 			DateTime dateTime=PIn.Date(textDate.Text);//We use security on the date showing.
 			if(!Security.IsAuthorized(EnumPermType.DepositSlips,dateTime)) {
 				return;
@@ -840,15 +835,7 @@ namespace OpenDental{
 			Sheet sheet=CreateAndFillSheet();
 			string filePathAndName=PrefC.GetRandomTempFile(".pdf");
 			SheetPrinting.CreatePdf(sheet,filePathAndName,null);
-			if(ODBuild.IsThinfinity()) {
-				ThinfinityUtils.HandleFile(filePathAndName);
-			}
-			else if(ODCloudClient.IsAppStream) {
-				CloudClientL.ExportForCloud(filePathAndName);
-			}
-			else {
-				Process.Start(filePathAndName);
-			}
+			Process.Start(filePathAndName);
 		}
 
 		private void butEmailPDF_Click(object sender,EventArgs e) {

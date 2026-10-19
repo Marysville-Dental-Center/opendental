@@ -55,7 +55,6 @@ namespace OpenDental {
 			this.label4 = new System.Windows.Forms.Label();
 			this.butUpdate = new OpenDental.UI.Button();
 			this.groupBox5 = new OpenDental.UI.GroupBox();
-			this.butImportCanada = new OpenDental.UI.Button();
 			this.butImport = new OpenDental.UI.Button();
 			this.butExport = new OpenDental.UI.Button();
 			this.groupBox3 = new OpenDental.UI.GroupBox();
@@ -282,7 +281,6 @@ namespace OpenDental {
 			// 
 			// groupBox5
 			// 
-			this.groupBox5.Controls.Add(this.butImportCanada);
 			this.groupBox5.Controls.Add(this.butImport);
 			this.groupBox5.Controls.Add(this.butExport);
 			this.groupBox5.Location = new System.Drawing.Point(12, 302);
@@ -291,15 +289,6 @@ namespace OpenDental {
 			this.groupBox5.TabIndex = 3;
 			this.groupBox5.TabStop = false;
 			this.groupBox5.Text = "Export/Import";
-			// 
-			// butImportCanada
-			// 
-			this.butImportCanada.Location = new System.Drawing.Point(88, 51);
-			this.butImportCanada.Name = "butImportCanada";
-			this.butImportCanada.Size = new System.Drawing.Size(84, 24);
-			this.butImportCanada.TabIndex = 2;
-			this.butImportCanada.Text = "Import Canada";
-			this.butImportCanada.Click += new System.EventHandler(this.butImportCanada_Click);
 			// 
 			// butImport
 			// 
@@ -603,7 +592,6 @@ namespace OpenDental {
 		private Label label4;
 		private OpenDental.UI.Button butUpdate;
 		private Label label5;
-		private UI.Button butImportCanada;
 		private OpenDental.UI.GroupBox groupBox7;
 		private OpenDental.UI.ComboBox comboProvider;
 		private OpenDental.UI.ComboBoxClinicPicker comboClinic;

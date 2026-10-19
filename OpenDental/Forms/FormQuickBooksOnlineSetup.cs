@@ -62,7 +62,7 @@ namespace OpenDental {
 			_progCur=Programs.GetCur(ProgramName.QuickBooksOnline);
 			_progOld=_progCur.Copy();
 			_programPropRefreshToken=ProgramProperties.GetPropForProgByDesc(_progCur.ProgramNum,"Refresh Token");
-			CDT.Class1.Decrypt(_programPropRefreshToken.PropertyValue,out string decryptedRefreshToken);
+			Secrets.Decrypt(_programPropRefreshToken.PropertyValue,out string decryptedRefreshToken);
 			_tokens=new QuickBooksOnlineToken("",decryptedRefreshToken);
 			_programPropDepositAccounts=ProgramProperties.GetPropForProgByDesc(_progCur.ProgramNum,"Deposit Accounts");
 			_listDepositAccountsInOD=QuickBooksOnlineAccount.StringAccountsToList(_programPropDepositAccounts.PropertyValue);
@@ -71,7 +71,7 @@ namespace OpenDental {
 			_programPropClassRefs=ProgramProperties.GetPropForProgByDesc(_progCur.ProgramNum,"Class Refs");
 			_listClassRefsInOD=QuickBooksOnlineClassRef.StringClassRefsToList(_programPropClassRefs.PropertyValue);
 			_programPropRealmId=ProgramProperties.GetPropForProgByDesc(_progCur.ProgramNum,"Realm ID");
-			CDT.Class1.Decrypt(_programPropRealmId.PropertyValue,out string decryptedRealmID);
+			Secrets.Decrypt(_programPropRealmId.PropertyValue,out string decryptedRealmID);
 			_realmIdCur=decryptedRealmID;
 			checkEnabled.Visible=_isFromFormProgramLinks;
 			checkEnabled.Checked=_progCur.Enabled;
@@ -238,10 +238,10 @@ namespace OpenDental {
 		private void SaveTokensAndRealmId() {
 			bool changed=false;
 			if(!_tokens.RefreshToken.IsNullOrEmpty()) {
-				CDT.Class1.Encrypt(_tokens.RefreshToken,out string obfuscatedvalueToEncrypt);
+				Secrets.Encrypt(_tokens.RefreshToken,out string obfuscatedvalueToEncrypt);
 				changed|=ProgramProperties.UpdateProgramPropertyWithValue(_programPropRefreshToken,obfuscatedvalueToEncrypt);
 			}
-			CDT.Class1.Encrypt(_realmIdCur,out string obfuscatedvalueToEncrypt2);
+			Secrets.Encrypt(_realmIdCur,out string obfuscatedvalueToEncrypt2);
 			changed|=ProgramProperties.UpdateProgramPropertyWithValue(_programPropRealmId,obfuscatedvalueToEncrypt2);
 			if(changed) {
 				DataValid.SetInvalid(InvalidType.Programs);
@@ -265,12 +265,7 @@ namespace OpenDental {
 		private void butAuthenticate_Click(object sender,EventArgs e) {
 			try {
 				string authorizationUrl=QuickBooksOnline.GetQuickBooksOnlineAuthorizationUrl();
-				if(!ODBuild.IsThinfinity() && ODCloudClient.IsAppStream) {
-					ODCloudClient.LaunchFileWithODCloudClient(authorizationUrl);
-				}
-				else {
-					Process.Start(authorizationUrl);
-				}
+				Process.Start(authorizationUrl);
 				using FormQuickBooksOnlineAuthorization formQuickBooksOnlineAuth=new FormQuickBooksOnlineAuthorization();
 				formQuickBooksOnlineAuth.ShowDialog();
 				if(formQuickBooksOnlineAuth.DialogResult!=DialogResult.OK) {

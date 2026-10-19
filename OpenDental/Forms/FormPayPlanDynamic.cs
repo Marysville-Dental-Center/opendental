@@ -1295,47 +1295,6 @@ namespace OpenDental {
 			return PayPlanFrequency.Quarterly;
 		}
 
-		private void butSendToDevice_Click(object sender,EventArgs e) {
-			if(!MobileAppDevices.IsClinicSignedUpForEClipboard(Clinics.ClinicNum)) {
-				MsgBox.Show("Please enable eClipboard for this clinic to use this feature.");
-				return;
-			}
-			if(!ValidateTerms()) {
-					return;
-			}
-			SaveData();
-			//The sheet that the practice uses for payment plans needs to have a signature box on it, otherwise the signature won't be
-			//visible after signing. 
-			if(SheetDefs.GetInternalOrCustom(SheetInternalType.PaymentPlan).SheetFieldDefs.FirstOrDefault(
-				x => x.FieldType==SheetFieldType.SigBox)==null) 
-			{
-				MsgBox.Show(this,"Please add a signature field to your pay plan sheet.");
-				return;
-			}
-			if(_dynamicPaymentPlanData.Patient==null){
-				MsgBox.Show(this,"Please select a patient first.");
-				return;
-			}
-			if(_dynamicPaymentPlanData.PayPlan==null) {
-				MsgBox.Show(this,"Please select a payment plan to send.");
-				return;
-			}
-			else if(!string.IsNullOrEmpty(_dynamicPaymentPlanData.PayPlan.Signature)) {
-				MsgBox.Show(this,"This Payment Plan has already been signed.");
-				return;
-			}
-			MobileAppDevice mobileAppDevice=MobileAppDevices.ShouldCreateMobileNotification(_dynamicPaymentPlanData.Patient.PatNum);
-			if(mobileAppDevice==null) {
-				OpenUnlockCodeForPayPlan();
-			}
-			else {
-				PushSelectedPayPlanToEclipboard(mobileAppDevice);
-			}
-			//The form needs to close, because if a patient signs a payment plan while FormPayPlan is open, and then someone in OD
-			//clicks OK, then the signature gets blown away. 
-			Close();
-		}
-
 		/// <summary>This will enable/disable the delete production button depending on the cell type.</summary>
 		private void gridLinkedProduction_CellClick(object sender,ODGridClickEventArgs e) {
 			if(gridLinkedProduction.ListGridRows[e.Row].Tag.GetType()==typeof(PayPlanProductionEntry)) {
@@ -1344,67 +1303,6 @@ namespace OpenDental {
 			else {
 				butDeleteProduction.Enabled=false;
 			}
-		}
-
-		///<summary>Sends the current PayPlan to a given target mobile device.
-		///Shows a MsgBox when done or if error occurs.</summary>
-		private void PushSelectedPayPlanToEclipboard(MobileAppDevice mobileAppDevice){
-			if(_dynamicPaymentPlanData.PayPlan==null){
-				return;//document wont be null below.
-			}
-			using PdfDocument pdfDocument=GetPayPlanPDF(_dynamicPaymentPlanData.PayPlan);//Can't be null due to above check.
-			try {
-				MobileNotifications.CI_SendPaymentPlan(pdfDocument,_dynamicPaymentPlanData.PayPlan,mobileAppDevice.MobileAppDeviceNum);
-			}
-			catch (Exception ex) {
-				//Error occurred
-				//It failed to send to device, so clear out what ever device num was there
-				PayPlans.UpdateMobileAppDeviceNum(_dynamicPaymentPlanData.PayPlan,0);
-				Signalods.SetInvalid(InvalidType.AccModule,KeyType.PatNum,_dynamicPaymentPlanData.PayPlan.PatNum);
-				Signalods.SetInvalid(InvalidType.EClipboard);
-				MsgBox.Show($"Error sending Payment Plan: {ex.Message}");
-				return;
-			}
-			//The payment plan's MobileAppDeviceNum needs to be updated so that we know it is on a device
-			MsgBox.Show($"Payment Plan sent to device: {mobileAppDevice.DeviceName}");
-			//The signal from CI_SendPaymentPlan will take care of refreshing Control Account
-		}
-
-		///<summary>Opens a FormMobileCode window with the current PayPlan.</summary>
-		private void OpenUnlockCodeForPayPlan(){
-			MobileDataByte funcInsertDataForUnlockCode(string unlockCode) {
-				using PdfDocument pdfDocument=GetPayPlanPDF(_dynamicPaymentPlanData.PayPlan);
-				List<string> listTagValues=new List<string>() { _dynamicPaymentPlanData.PayPlan.PayPlanNum.ToString(),_dynamicPaymentPlanData.PayPlan.PayPlanDate.Ticks.ToString(),
-					_dynamicPaymentPlanData.Patient.GetNameFirstOrPrefL() };
-				long mobileDataByteNum=-1;
-				try {
-					mobileDataByteNum=MobileDataBytes.InsertPDF(pdfDocument,_dynamicPaymentPlanData.Patient.PatNum,unlockCode,eActionType.PaymentPlan,listTagValues);
-				}
-				catch (Exception ex) {
-					//Failed to insert mobile data byte and won't be retrievable in eClipboard so clear out mobile app device num
-					PayPlans.UpdateMobileAppDeviceNum(_dynamicPaymentPlanData.PayPlan,0);
-					Signalods.SetInvalid(InvalidType.AccModule,KeyType.PatNum,_dynamicPaymentPlanData.PayPlan.PatNum);
-					Signalods.SetInvalid(InvalidType.EClipboard);
-					MsgBox.Show(ex.Message);
-					return null;
-				}
-				return MobileDataBytes.GetOne(mobileDataByteNum);
-			}
-			using FormMobileCode formMobileCode=new FormMobileCode(funcInsertDataForUnlockCode);
-			formMobileCode.ShowDialog();
-		}
-
-		///<summary>Returns a PDF for the current PayPlan and sets out PayPlan to the current PayPlan.
-		///If nothing is selected in gridPayPlans then returns null and out PaymentPlan is set to null.</summary>
-		private PdfDocument GetPayPlanPDF(PayPlan payPlan){
-			PdfDocument pdfDocument=null;
-			if(payPlan!=null) {
-				Action actionCloseProgress=ODProgress.Show(); //Immediately shows a progress window.
-				Sheet sheet=PayPlanToSheet(payPlan);
-				pdfDocument=SheetPrinting.CreatePdf(sheet,"",null,null,null,null,null,false);
-				actionCloseProgress();//Closes the progress window. 
-			}
-			return pdfDocument;
 		}
 
 		///<summary>Creates a new sheet from a given Pay plan.</summary>

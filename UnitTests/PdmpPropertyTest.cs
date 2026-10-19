@@ -217,8 +217,8 @@ namespace UnitTests {
 			Assert.IsTrue(didThrow);
 			didThrow=false;
 			properties.StateAbbr="MA";
-			CDT.Class1.Encrypt("F@k3C3Rt10010010011011",out properties.BambooClientKey);
-			CDT.Class1.Encrypt("f@k3p@$$w0rd",out properties.BambooClientPassword);
+			Secrets.Encrypt("F@k3C3Rt10010010011011",out properties.BambooClientKey);
+			Secrets.Encrypt("f@k3p@$$w0rd",out properties.BambooClientPassword);
 			try {
 			properties.Validate(progCur);
 			}
@@ -239,8 +239,8 @@ namespace UnitTests {
 				Zip="12345",
 				Birthdate=DateTime.Today,
 			};
-			CDT.Class1.Encrypt("F@k3C3Rt10010010011011",out string encryptedKey);
-			CDT.Class1.Encrypt("f@k3p@$$w0rd",out string encryptedPassword);
+			Secrets.Encrypt("F@k3C3Rt10010010011011",out string encryptedKey);
+			Secrets.Encrypt("f@k3p@$$w0rd",out string encryptedPassword);
 			PdmpProperty props = new PdmpProperty() {
 				PdmpProv=prov,
 				PdmpPat=pat,

@@ -75,21 +75,6 @@ namespace OpenDentBusiness{
 			return Crud.ActiveInstanceCrud.SelectMany(command);
 		}
 
-		/// <summary>Returns a count of all ODCloud Active Instances newer than 4 minutes. The timeframe is important so old Active Instance rows
-		/// that linger due to a non-graceful shutdown do not affect user's ability to log in.</summary>
-		public static int GetCountCloudActiveInstances(long excludeInstanceNum=0) {
-			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				return Meth.GetInt(MethodBase.GetCurrentMethod(),excludeInstanceNum);
-			}
-			DateTime dateTimeToCheck=DateTime.Now.AddMinutes(-4);
-			string command="SELECT COUNT(*) FROM activeinstance WHERE DateTRecorded > "+POut.DateT(dateTimeToCheck)
-				+" AND ConnectionType="+POut.Enum(ConnectionTypes.Thinfinity);
-			if(excludeInstanceNum!=0) {
-				command+=" AND ActiveInstanceNum!="+POut.Long(excludeInstanceNum);
-			}
-			return PIn.Int(Db.GetCount(command));
-		}
-
 		///<summary>Gets one ActiveInstance from the db based on the ActiveInstanceNum.</summary>
 		public static ActiveInstance GetOne(long activeInstanceNum) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
@@ -141,13 +126,7 @@ namespace OpenDentBusiness{
 			ActiveInstance activeInstance=GetActiveInstance()??GetOne(userNum,computerNum,processId);
 			if(activeInstance==null) {
 				activeInstance=new ActiveInstance();
-				if(ODBuild.IsThinfinity()) {
-					activeInstance.ConnectionType=ConnectionTypes.Thinfinity;
-				}
-				else if(PrefC.IsAppStream) {
-					activeInstance.ConnectionType=ConnectionTypes.AppStream;
-				}
-				else if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientDirect) {
+				if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientDirect) {
 					activeInstance.ConnectionType=ConnectionTypes.Direct;
 				}
 				else {
@@ -162,13 +141,6 @@ namespace OpenDentBusiness{
 			}
 			else {
 				activeInstance.DateTimeLastActive=Security.DateTimeLastActivity;
-				if(ODEnvironment.IsCloudServer && (activeInstance.UserNum!=userNum || activeInstance.ComputerNum!=computerNum || activeInstance.ProcessId!=processId)) {
-					//Cloud instances start with computer name UNKNOWN until the computer name can be retrieved from the browser by the ODCloudMachineName thread
-					activeInstance.UserNum=userNum;
-					activeInstance.ComputerNum=computerNum;
-					activeInstance.ProcessId=processId;
-					SetActiveInstance(activeInstance);
-				}
 				Update(activeInstance);
 			}
 		}

@@ -73,13 +73,6 @@ namespace OpenDental {
 		///<summary>All primary teeth currently being displayed in the UI, but stored as permanent teeth so that indexes are easy to calculate.</summary>
 		private List<string> _listPriTeeths=null;
 
-		protected override string GetHelpOverride() {
-			if(CultureInfo.CurrentCulture.Name.EndsWith("CA") && tabControl.SelectedTab==tabPageCanada) {
-				return "FormProcEditCanada";
-			}
-			return "FormProcEdit";
-		}
-
 		private void FillFees(){
 			List<ProcedureCode> listProcedureCodes=new List<ProcedureCode>(){ ProcedureCodes.GetProcCode(_procedure.CodeNum) };
 			List<Procedure> listProcedures=new List<Procedure>(){_procedure };
@@ -115,14 +108,6 @@ namespace OpenDental {
 		}
 
 		private void FormProcInfo_Load(object sender,System.EventArgs e) {
-			if(PrefC.IsODHQ) {
-				labelTaxEst.Visible=true;
-				textTaxAmt.Visible=true;
-				textTaxAmt.Text=POut.Double(_procedure.TaxAmt);
-				if(_procedure.ProcStatus==ProcStat.C) {
-					labelTaxEst.Text="Tax Amt";
-				}
-			}
 			_loadData=ProcEdit.GetLoadData(_procedure,_patient,_family);
 			_orthoProcLink=_loadData.OrthoProcedureLink;
 			if(_orthoProcLink!=null) {

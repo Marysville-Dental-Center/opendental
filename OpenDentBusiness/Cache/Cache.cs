@@ -72,30 +72,6 @@ namespace OpenDentBusiness {
 				isAll=true;
 			}
 			DataSet ds=new DataSet();
-			//All Internal OD Tables that are cached go here
-			if(PrefC.IsODHQ) {
-				if(listITypes.Contains(InvalidType.JobPermission) || isAll) {
-					ODEvent.Fire(ODEventType.Cache,prefix+InvalidType.JobPermission.ToString());
-					ds.Tables.Add(JobPermissions.RefreshCache());
-				}
-				if(listITypes.Contains(InvalidType.PhoneComps) || isAll) {
-					ODEvent.Fire(ODEventType.Cache,prefix+InvalidType.PhoneComps.ToString());
-					ds.Tables.Add(PhoneComps.GetTableFromCache(doRefreshServerCache));
-				}
-				if(listITypes.Contains(InvalidType.PhoneEmpDefaults) || isAll) {
-					ODEvent.Fire(ODEventType.Cache,prefix+InvalidType.PhoneEmpDefaults.ToString());
-					ds.Tables.Add(PhoneEmpDefaults.GetTableFromCache(doRefreshServerCache));
-				}
-				if(listITypes.Contains(InvalidType.JobTeams) || isAll) {
-					ODEvent.Fire(ODEventType.Cache,prefix+InvalidType.JobTeams.ToString());
-					ds.Tables.Add(JobTeams.GetTableFromCache(doRefreshServerCache));
-					ds.Tables.Add(JobTeamUsers.GetTableFromCache(doRefreshServerCache));
-				}
-				if(listITypes.Contains(InvalidType.WebChatAiAssistants) || isAll) {
-					ODEvent.Fire(ODEventType.Cache,prefix+InvalidType.WebChatAiAssistants.ToString());
-					ds.Tables.Add(WebChatAiAssistants.GetTableFromCache(doRefreshServerCache));
-				}
-			}
 			//All cached public tables go here
 			if(listITypes.Contains(InvalidType.AccountingAutoPays) || isAll) {
 				ODEvent.Fire(ODEventType.Cache,prefix+InvalidType.AccountingAutoPays.ToString());
@@ -223,12 +199,6 @@ namespace OpenDentBusiness {
 			if(listITypes.Contains(InvalidType.FeeScheds) || isAll) {
 				ODEvent.Fire(ODEventType.Cache,prefix+InvalidType.FeeScheds.ToString());
 				ds.Tables.Add(FeeScheds.GetTableFromCache(doRefreshServerCache));
-			}
-			if(listITypes.Contains(InvalidType.ERoutingDef) || isAll) {
-				ODEvent.Fire(ODEventType.Cache, prefix + InvalidType.PatFields.ToString());
-				ds.Tables.Add(ERoutingDefs.GetTableFromCache(doRefreshServerCache));
-				ds.Tables.Add(ERoutingActionDefs.GetTableFromCache(doRefreshServerCache));
-				ds.Tables.Add(ERoutingDefLinks.GetTableFromCache(doRefreshServerCache));
 			}
 			if(listITypes.Contains(InvalidType.HL7Defs) || isAll) {
 				ODEvent.Fire(ODEventType.Cache,prefix+InvalidType.HL7Defs.ToString());
@@ -385,18 +355,6 @@ namespace OpenDentBusiness {
 			if(listITypes.Contains(InvalidType.Sites) || isAll) {
 				ODEvent.Fire(ODEventType.Cache,prefix+InvalidType.Sites.ToString());
 				ds.Tables.Add(Sites.GetTableFromCache(doRefreshServerCache));
-				if(PrefC.IsODHQ) {
-					DataAction.ClearDictHqCentralConnections();//The HQ connection overrides could have changed.
-					ds.Tables.Add(SiteLinks.GetTableFromCache(doRefreshServerCache));
-				}
-			}
-			if(listITypes.Contains(InvalidType.SmsBlockPhones) || isAll) {
-				ODEvent.Fire(ODEventType.Cache,prefix+InvalidType.SmsBlockPhones.ToString());
-				ds.Tables.Add(SmsBlockPhones.GetTableFromCache(doRefreshServerCache));
-			}
-			if(listITypes.Contains(InvalidType.SmsPhones) || isAll) {
-				ODEvent.Fire(ODEventType.Cache,prefix+InvalidType.SmsPhones.ToString());
-				ds.Tables.Add(SmsPhones.GetTableFromCache(doRefreshServerCache));
 			}
 			if(listITypes.Contains(InvalidType.Sops) || isAll) {  //InvalidType.Sops is currently never used 11/14/2014
 				ODEvent.Fire(ODEventType.Cache,prefix+InvalidType.Sops.ToString());
@@ -462,30 +420,6 @@ namespace OpenDentBusiness {
 			bool isAll=false;
 			if(listITypes.Contains(InvalidType.AllLocal)) {
 				isAll=true;
-			}
-			//All Internal OD Tables that are cached go here
-			if(PrefC.IsODHQ) {
-				if(listITypes.Contains(InvalidType.JobPermission) || isAll) {
-					ODEvent.Fire(ODEventType.Cache,suffix+InvalidType.JobPermission.ToString());
-					JobPermissions.FillCache(ds.Tables["JobRole"]);
-				}
-				if(listITypes.Contains(InvalidType.PhoneComps) || isAll) {
-					ODEvent.Fire(ODEventType.Cache,suffix+InvalidType.PhoneComps.ToString());
-					PhoneComps.FillCacheFromTable(ds.Tables["PhoneComp"]);
-				}
-				if(listITypes.Contains(InvalidType.PhoneEmpDefaults) || isAll) {
-					ODEvent.Fire(ODEventType.Cache,suffix+InvalidType.PhoneEmpDefaults.ToString());
-					PhoneEmpDefaults.FillCacheFromTable(ds.Tables["PhoneEmpDefault"]);
-				}
-				if(listITypes.Contains(InvalidType.JobTeams) || isAll) {
-					ODEvent.Fire(ODEventType.Cache,suffix+InvalidType.JobTeams.ToString());
-					JobTeams.FillCacheFromTable(ds.Tables["JobTeam"]);
-					JobTeamUsers.FillCacheFromTable(ds.Tables["JobTeamUser"]);
-				}
-				if(listITypes.Contains(InvalidType.WebChatAiAssistants) || isAll) {
-					ODEvent.Fire(ODEventType.Cache,suffix+InvalidType.WebChatAiAssistants.ToString());
-					WebChatAiAssistants.FillCacheFromTable(ds.Tables["WebChatAssistant"]);
-				}
 			}
 			if(listITypes.Contains(InvalidType.AccountingAutoPays) || isAll) {
 				ODEvent.Fire(ODEventType.Cache,suffix+InvalidType.AccountingAutoPays.ToString());
@@ -608,12 +542,6 @@ namespace OpenDentBusiness {
 			if(listITypes.Contains(InvalidType.FeeScheds) || isAll) {
 				ODEvent.Fire(ODEventType.Cache,suffix+InvalidType.FeeScheds.ToString());
 				FeeScheds.FillCacheFromTable(ds.Tables["FeeSched"]);
-			}
-			if(listITypes.Contains(InvalidType.ERoutingDef) || isAll) {
-				ODEvent.Fire(ODEventType.Cache, suffix + InvalidType.PatFields.ToString());
-				ERoutingDefs.FillCacheFromTable(ds.Tables["ERoutingDef"]);
-				ERoutingActionDefs.FillCacheFromTable(ds.Tables["ERoutingActionDef"]);
-				ERoutingDefLinks.FillCacheFromTable(ds.Tables["ERoutingDefLink"]);
 			}
 			if(listITypes.Contains(InvalidType.HL7Defs) || isAll) {
 				ODEvent.Fire(ODEventType.Cache,suffix+InvalidType.HL7Defs.ToString());
@@ -768,17 +696,6 @@ namespace OpenDentBusiness {
 			if(listITypes.Contains(InvalidType.Sites) || isAll) {
 				ODEvent.Fire(ODEventType.Cache,suffix+InvalidType.Sites.ToString());
 				Sites.FillCacheFromTable(ds.Tables["Site"]);
-				if(PrefC.IsODHQ) {
-					SiteLinks.FillCacheFromTable(ds.Tables["SiteLink"]);
-				}
-			}
-			if(listITypes.Contains(InvalidType.SmsBlockPhones) || isAll) {
-				ODEvent.Fire(ODEventType.Cache,suffix+InvalidType.SmsBlockPhones.ToString());
-				SmsBlockPhones.FillCacheFromTable(ds.Tables["SmsBlockPhone"]);
-			}
-			if(listITypes.Contains(InvalidType.SmsPhones) || isAll) {
-				ODEvent.Fire(ODEventType.Cache,suffix+InvalidType.SmsPhones.ToString());
-				SmsPhones.FillCacheFromTable(ds.Tables["SmsPhone"]);
 			}
 			if(listITypes.Contains(InvalidType.Sops) || isAll) {
 				ODEvent.Fire(ODEventType.Cache,suffix+InvalidType.Sops.ToString());
@@ -924,15 +841,11 @@ namespace OpenDentBusiness {
 			listInvalidTypes.Add(InvalidType.Referral);
 			listInvalidTypes.Add(InvalidType.ProcMultiVisits);
 			listInvalidTypes.Add(InvalidType.ProviderClinicLink);
-			listInvalidTypes.Add(InvalidType.PhoneEmpDefaults);
 			listInvalidTypes.Add(InvalidType.UserOdPrefs);
-			listInvalidTypes.Add(InvalidType.JobTeams);
 			listInvalidTypes.Add(InvalidType.LimitedBetaFeature);
-			listInvalidTypes.Add(InvalidType.ERoutingDef);
 			listInvalidTypes.Add(InvalidType.FlowActionDef);
 			listInvalidTypes.Add(InvalidType.FlowDefLink);
 			listInvalidTypes.Add(InvalidType.CodeGroups);
-			listInvalidTypes.Add(InvalidType.WebChatAiAssistants);
 			return listInvalidTypes;
 		}
 
@@ -962,30 +875,6 @@ namespace OpenDentBusiness {
 			bool isAll=false;
 			if(listITypes.Contains(InvalidType.AllLocal)) {
 				isAll=true;
-			}
-			//All Internal OD Tables that are cached go here
-			if(PrefC.IsODHQ) {
-				if(listITypes.Contains(InvalidType.JobPermission) || isAll) {
-					ODEvent.Fire(ODEventType.Cache,prefix+InvalidType.JobPermission.ToString());
-					JobPermissions.ClearCache(); //Required special attention, may need to re-visit.
-				}
-				if(listITypes.Contains(InvalidType.PhoneComps) || isAll) {
-					ODEvent.Fire(ODEventType.Cache,prefix+InvalidType.PhoneComps.ToString());
-					PhoneComps.ClearCache();
-				}
-				if(listITypes.Contains(InvalidType.PhoneEmpDefaults) || isAll) {
-					ODEvent.Fire(ODEventType.Cache,prefix+InvalidType.PhoneEmpDefaults.ToString());
-					PhoneEmpDefaults.ClearCache();
-				}
-				if(listITypes.Contains(InvalidType.JobTeams) || isAll) {
-					ODEvent.Fire(ODEventType.Cache,prefix+InvalidType.JobTeams.ToString());
-					JobTeams.ClearCache();
-					JobTeamUsers.ClearCache();
-				}
-				if(listITypes.Contains(InvalidType.WebChatAiAssistants) || isAll) {
-					ODEvent.Fire(ODEventType.Cache,prefix+InvalidType.WebChatAiAssistants.ToString());
-					WebChatAiAssistants.ClearCache();
-				}
 			}
 			//All cached public tables go here
 			if(listITypes.Contains(InvalidType.AccountingAutoPays) || isAll) {
@@ -1111,12 +1000,6 @@ namespace OpenDentBusiness {
 			if(listITypes.Contains(InvalidType.FeeScheds) || isAll) {
 				ODEvent.Fire(ODEventType.Cache,prefix+InvalidType.FeeScheds.ToString());
 				FeeScheds.ClearCache();
-			}
-			if(listITypes.Contains(InvalidType.ERoutingDef) || isAll) {
-				ODEvent.Fire(ODEventType.Cache, prefix + InvalidType.PatFields.ToString());
-				ERoutingDefs.ClearCache();
-				ERoutingActionDefs.ClearCache();
-				ERoutingDefLinks.ClearCache();
 			}
 			if(listITypes.Contains(InvalidType.HL7Defs) || isAll) {
 				ODEvent.Fire(ODEventType.Cache,prefix+InvalidType.HL7Defs.ToString());
@@ -1268,18 +1151,6 @@ namespace OpenDentBusiness {
 			if(listITypes.Contains(InvalidType.Sites) || isAll) {
 				ODEvent.Fire(ODEventType.Cache,prefix+InvalidType.Sites.ToString());
 				Sites.ClearCache();
-				if(PrefC.IsODHQ) {
-					DataAction.ClearDictHqCentralConnections();//The HQ connection overrides could have changed.
-					SiteLinks.ClearCache();
-				}
-			}
-			if(listITypes.Contains(InvalidType.SmsBlockPhones) || isAll) {
-				ODEvent.Fire(ODEventType.Cache,prefix+InvalidType.SmsBlockPhones.ToString());
-				SmsBlockPhones.ClearCache();
-			}
-			if(listITypes.Contains(InvalidType.SmsPhones) || isAll) {
-				ODEvent.Fire(ODEventType.Cache,prefix+InvalidType.SmsPhones.ToString());
-				SmsPhones.ClearCache();
 			}
 			if(listITypes.Contains(InvalidType.Sops) || isAll) {  //InvalidType.Sops is currently never used 11/14/2014
 				ODEvent.Fire(ODEventType.Cache,prefix+InvalidType.Sops.ToString());

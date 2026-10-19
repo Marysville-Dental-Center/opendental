@@ -22,7 +22,7 @@ One significant downside to this late binding is that if you change a public mem
 		There is no easy solution to that, but it will be an obvious failure and an obvious fix.
 
 Example code:
-			FormLauncher formLauncher=new FormLauncher(EnumFormName.FormEServicesTexting);
+			FormLauncher formLauncher=new FormLauncher(EnumFormName.FormMedications);
 			formLauncher.ShowDialog();
 
 Complex example showing both setting fields and getting results:
@@ -270,7 +270,6 @@ Events:
 		FormCodeSystemsImport,
 		FormDiseaseDefs,
 		FormDrCeph,
-		FormEServicesTexting,
 		FormHouseCalls,
 		FormMedications,
 		FormNotePick,

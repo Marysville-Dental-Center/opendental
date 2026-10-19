@@ -561,10 +561,6 @@ Like in that form, edits to the fields do not get saved to the db as they are ed
 			if(!MsgBox.Show(this,MsgBoxButtons.OKCancel,"Delete entire form?")){
 				return;
 			}
-			if(EFormDefCur.EFormDefNum>0 && EClipboardSheetDefs.IsEFormDefInUse(EFormDefCur.EFormDefNum)){
-				MsgBox.Show(this,"EForm is in use by eClipboard. Not allowed to delete.");
-				return;
-			}
 			//The form deletion actually happens in the parent.
 			//Delete of a new form is equivalent to cancel, and both of those happen in the parent.
 			//Delete of an existing form is also handled in the parent.

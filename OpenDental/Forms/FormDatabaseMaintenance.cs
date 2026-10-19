@@ -202,12 +202,10 @@ namespace OpenDental {
 				row.Tag=new Action(EtransFix);
 				gridTools.ListGridRows.Add(row);
 			}
-			if(!ODEnvironment.IsCloudServer) {
-				//If the office converted their db to MyISAM, their backups would stop working.
-				row=new GridRow(Lan.g(this,"InnoDB"),Lan.g(this,"Converts database storage engine to/from InnoDb."));
-				row.Tag=new Action(InnoDBFix);
-				gridTools.ListGridRows.Add(row);
-			}
+			//If the office converted their db to MyISAM, their backups would stop working.
+			row=new GridRow(Lan.g(this,"InnoDB"),Lan.g(this,"Converts database storage engine to/from InnoDb."));
+			row.Tag=new Action(InnoDBFix);
+			gridTools.ListGridRows.Add(row);
 			row=new GridRow(Lan.g(this,"Ins Pay Fix"),Lan.g(this,"Creates checks for insurance payments that are not attached to a check."));
 			row.Tag=new Action(InsPayFix);
 			gridTools.ListGridRows.Add(row);
@@ -251,6 +249,11 @@ namespace OpenDental {
 			if(Security.IsAuthorized(EnumPermType.RepeatChargeTool,true)) {
 				row=new GridRow(Lan.g(this,"Repeat Charge"),Lan.g(this,"Update multiple repeat charge amounts."));
 				row.Tag=new Action(RepeatChargeEditMultiFix);
+				gridTools.ListGridRows.Add(row);
+			}
+			if(Security.IsAuthorized(EnumPermType.SecurityAdmin,true)) {
+				row=new GridRow(Lan.g(this,"Security Hashes"),Lan.g(this,"Recalculates the tamper-detection hashes of patients and recent appointments, claims and payments."));
+				row.Tag=new Action(SecurityHashesFix);
 				gridTools.ListGridRows.Add(row);
 			}
 			row=new GridRow(Lan.g(this,"Spec Char"),Lan.g(this,"Removes special characters from appt notes and appt proc descriptions."));
@@ -426,6 +429,33 @@ namespace OpenDental {
 			Appointments.UpdateProcDescriptForAppts(listAppointmentsForPeriod);
 			Cursor=Cursors.Default;
 			MsgBox.Show(this,"Done. Please refresh Appt module to see the changes.");
+		}
+
+		///<summary>Runs SecurityHash.RehashNow. Needed once after moving a database over from Open Dental, whose hashes can't be checked here. It also
+		///clears the Database Integrity triangle on recent rows that were changed directly in the database, so it asks first.</summary>
+		private void SecurityHashesFix() {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				MsgBox.Show(this,"This tool must be run from a workstation that connects directly to the database.");
+				return;
+			}
+			string msg=Lan.g(this,"This tool recalculates the tamper-detection hash (SecurityHash) of:")+"\r\n"
+				+"- "+Lan.g(this,"every patient whose hash is blank or was written by Open Dental")+"\r\n"
+				+"- "+Lan.g(this,"every appointment, claim, claim procedure, payment split and payment plan dated on or after")+" "
+					+OpenDentBusiness.Misc.SecurityHash.GetHashingDate().ToShortDateString()+"\r\n\r\n"
+				+Lan.g(this,"Recent records that were changed directly in the database will no longer show the Database Integrity warning. "
+					+"Run it once after moving a database over from Open Dental, before anyone edits data directly in the database.")+"\r\n\r\n"
+				+Lan.g(this,"Continue?");
+			if(MessageBox.Show(msg,Lan.g(this,"Security Hashes"),MessageBoxButtons.OKCancel)!=DialogResult.OK) {
+				return;
+			}
+			ProgressWin progressOD=new ProgressWin();
+			progressOD.ActionMain=OpenDentBusiness.Misc.SecurityHash.RehashNow;
+			progressOD.ShowDialog();
+			if(progressOD.IsCancelled) {
+				return;
+			}
+			SecurityLogs.MakeLogEntry(EnumPermType.SecurityAdmin,0,"Security hashes recalculated with the Database Maintenance tool.");
+			MsgBox.Show(this,"Done.");
 		}
 
 		private void SpecCharFix() {

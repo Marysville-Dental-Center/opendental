@@ -11,7 +11,6 @@ using System.Text;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.IO;
-using OpenDental.Thinfinity;
 
 namespace OpenDentBusiness {
 	public class AutoNotes {
@@ -209,17 +208,7 @@ namespace OpenDentBusiness {
 			Meth.NoCheckMiddleTierRole();
 			TransferableAutoNotes transferableAutoNotes=new TransferableAutoNotes(listSerializableAutoNotes,listSerializableAutoNoteControls);
 			string json=JsonConvert.SerializeObject(transferableAutoNotes);
-			if(ODBuild.IsThinfinity()) {
-			ThinfinityUtils.ExportForDownload(path,json);
-			}
-			else if(ODCloudClient.IsAppStream) {
-				string combinedPath=ODFileUtils.CombinePaths(PrefC.GetTempFolderPath(), Path.GetFileName(path));
-				File.WriteAllText(combinedPath,json);
-				ODCloudClient.ExportForAppStream(combinedPath);
-			}
-			else {
-				File.WriteAllText(path,json);
-			}
+			File.WriteAllText(path,json);
 		}
 	}
 

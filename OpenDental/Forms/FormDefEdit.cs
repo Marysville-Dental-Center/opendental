@@ -18,17 +18,6 @@ namespace OpenDental {
 		public bool IsNew;
 		private Def _def;
 		//private Def 
-		private List<long> _listExcludeSendNums;
-		private List<long> _listExcludeConfirmNums;
-		///<summary>A list of DefNums that represent all of the Confirmation Statuses that should skip sending eReminders.</summary>
-		private List<long> _listExcludeRemindNums;
-		private List<long> _listExcludeThanksNums;
-		private List<long> _listExcludeArrivalSendNums;
-		private List<long> _listExcludeArrivalResponseNums;
-		private List<long> _listExcludeEClipboardNums;
-		private List<long> _listByodEnabled;
-		private List<long> _listExcludeNewPatEThanksNums;
-		private List<long> _listExcludeGeneralMessageSendNums;
 		private DefCatOptions _defCatOptions;
 		private string _strSelectedValue;
 		public bool IsDeleted=false;
@@ -46,72 +35,6 @@ namespace OpenDental {
 		}
 
 		private void FormDefEdit_Load(object sender, System.EventArgs e) {
-			if(_def.Category==DefCat.ApptConfirmed) {
-				_listExcludeSendNums=PrefC.GetString(PrefName.ApptConfirmExcludeESend).Split(',').Select(x => PIn.Long(x)).ToList();
-				_listExcludeConfirmNums=PrefC.GetString(PrefName.ApptConfirmExcludeEConfirm).Split(',').Select(x => PIn.Long(x)).ToList();
-				_listExcludeRemindNums=PrefC.GetString(PrefName.ApptConfirmExcludeERemind).Split(',').Select(x => PIn.Long(x)).ToList();
-				_listExcludeThanksNums=PrefC.GetString(PrefName.ApptConfirmExcludeEThankYou).Split(',').Select(x => PIn.Long(x)).ToList();
-				_listExcludeArrivalSendNums=PrefC.GetString(PrefName.ApptConfirmExcludeArrivalSend).Split(',').Select(x => PIn.Long(x)).ToList();
-				_listExcludeArrivalResponseNums=PrefC.GetString(PrefName.ApptConfirmExcludeArrivalResponse).Split(',').Select(x => PIn.Long(x)).ToList();
-				_listExcludeEClipboardNums=PrefC.GetString(PrefName.ApptConfirmExcludeEclipboard).Split(',').ToList().Select(x => PIn.Long(x)).ToList();
-				_listByodEnabled=PrefC.GetString(PrefName.ApptConfirmByodEnabled).Split(',').ToList().Select(x => PIn.Long(x)).ToList();
-				_listExcludeNewPatEThanksNums=PrefC.GetString(PrefName.ApptConfirmExcludeNewPatThankYou).Split(',').Select(x => PIn.Long(x)).ToList();
-				_listExcludeGeneralMessageSendNums=PrefC.GetString(PrefName.ApptConfirmExcludeGeneralMessage).Split(',').ToList().Select(x => PIn.Long(x)).ToList();
-				//0 will get automatically added to the list when this is the first of its kind.  We never want 0 inserted.
-				_listExcludeSendNums.Remove(0);
-				_listExcludeConfirmNums.Remove(0);
-				_listExcludeRemindNums.Remove(0);
-				_listExcludeThanksNums.Remove(0);
-				_listExcludeArrivalSendNums.Remove(0);
-				_listExcludeArrivalSendNums.Remove(0);
-				_listExcludeGeneralMessageSendNums.Remove(0);
-				checkIncludeSend.Checked=!_listExcludeSendNums.Contains(_def.DefNum);
-				checkIncludeConfirm.Checked=!_listExcludeConfirmNums.Contains(_def.DefNum);
-				checkIncludeRemind.Checked=!_listExcludeRemindNums.Contains(_def.DefNum);
-				checkIncludeThanks.Checked=!_listExcludeThanksNums.Contains(_def.DefNum);
-				checkIncludeArrivalSend.Checked=!_listExcludeArrivalSendNums.Contains(_def.DefNum);
-				checkIncludeArrivalResponse.Checked=!_listExcludeArrivalResponseNums.Contains(_def.DefNum);
-				checkIncludeEClipboard.Checked=!_listExcludeEClipboardNums.Contains(_def.DefNum);
-				checkByod.Checked=_listByodEnabled.Contains(_def.DefNum);
-				checkIncludeGeneralSend.Checked=!_listExcludeGeneralMessageSendNums.Contains(_def.DefNum);
-			}
-			else {
-				groupEConfirm.Visible=false;
-				groupBoxEReminders.Visible=false;
-				groupBoxEThanks.Visible=false;
-				groupBoxArrivals.Visible=false;
-				groupBoxEClipboard.Visible=false;
-				groupBoxGeneralMessages.Visible=false;
-			}
-			if(_def.DefNum.In(PrefC.GetLong(PrefName.AppointmentTimeArrivedTrigger),PrefC.GetLong(PrefName.AppointmentTimeDismissedTrigger),
-				PrefC.GetLong(PrefName.AppointmentTimeSeatedTrigger)) && _def.DefNum!=0)
-			{
-				//We never want to send confirmation or reminders to an appointment when it is in a triggered confirm status.
-				checkIncludeConfirm.Enabled=false;
-				checkIncludeRemind.Enabled=false;
-				checkIncludeSend.Enabled=false;
-				checkIncludeThanks.Enabled=false;
-				checkIncludeArrivalSend.Enabled=false;
-				checkIncludeArrivalResponse.Enabled=false;
-				checkIncludeEClipboard.Enabled=false;
-				checkIncludeConfirm.Checked=false;
-				checkIncludeRemind.Checked=false;
-				checkIncludeSend.Checked=false;
-				checkIncludeThanks.Checked=false;
-				checkIncludeArrivalSend.Checked=false;
-				checkIncludeArrivalResponse.Checked=false;
-				checkIncludeEClipboard.Checked=false;
-				//General messages are able to send for the dismissed status
-				if(_def.DefNum!=PrefC.GetLong(PrefName.AppointmentTimeDismissedTrigger)) {
-					checkIncludeGeneralSend.Enabled=false;
-					checkIncludeGeneralSend.Checked=false;
-				}
-			}
-			if(_def.DefNum.In(PrefC.GetLong(PrefName.AppointmentTimeArrivedTrigger))) {
-				//There always has to be one status that automatically defaults to true for BYOD, which is the time arrived trigger confirm status
-				checkByod.Enabled=false;
-				checkByod.Checked=true;
-			}
 			string itemName=_def.ItemName;
 			_strSelectedValue=_def.ItemValue;
 			if(!_defCatOptions.CanEditName) {
@@ -406,30 +329,6 @@ namespace OpenDental {
 			else{
 				DefL.Update(_def);
 			}
-			//Must be after the upsert so that we have access to the DefNum for new Defs.
-			if(_def.Category==DefCat.ApptConfirmed) {
-				//==================== EXCLUDE SEND ====================
-				UpdateAutoCommExcludes(checkIncludeSend,_listExcludeSendNums,_def,PrefName.ApptConfirmExcludeESend);
-				//==================== EXCLUDE CONFIRM ====================
-				UpdateAutoCommExcludes(checkIncludeConfirm,_listExcludeConfirmNums,_def,PrefName.ApptConfirmExcludeEConfirm);
-				//==================== EXCLUDE REMIND ====================
-				UpdateAutoCommExcludes(checkIncludeRemind,_listExcludeRemindNums,_def,PrefName.ApptConfirmExcludeERemind);
-				//==================== EXCLUDE THANKYOU ====================
-				UpdateAutoCommExcludes(checkIncludeThanks,_listExcludeThanksNums,_def,PrefName.ApptConfirmExcludeEThankYou);
-				//==================== EXCLUDE NEWPATTHANKYOU ====================
-				UpdateAutoCommExcludes(checkIncludeThanks,_listExcludeNewPatEThanksNums,_def,PrefName.ApptConfirmExcludeNewPatThankYou);
-				//==================== EXCLUDE ARRIVAL SEND ====================
-				UpdateAutoCommExcludes(checkIncludeArrivalSend,_listExcludeArrivalSendNums,_def,PrefName.ApptConfirmExcludeArrivalSend);
-				//==================== EXCLUDE ARRIVAL RESPONSE ====================
-				UpdateAutoCommExcludes(checkIncludeArrivalResponse,_listExcludeArrivalResponseNums,_def,PrefName.ApptConfirmExcludeArrivalResponse);
-				//==================== EXCLUDE ECLIPBOARD CHECKIN ======================
-				UpdateAutoCommExcludes(checkIncludeEClipboard,_listExcludeEClipboardNums,_def,PrefName.ApptConfirmExcludeEclipboard);
-				//==================== EXLCUDE GENERAL MESSAGE ======================
-				UpdateAutoCommExcludes(checkIncludeGeneralSend,_listExcludeGeneralMessageSendNums,_def,PrefName.ApptConfirmExcludeGeneralMessage);
-				//==================== ENABLED BYOD FOR DEF ====================
-				UpdateByod(checkByod,_listByodEnabled,_def,PrefName.ApptConfirmByodEnabled);
-				DataValid.SetInvalid(InvalidType.Prefs);
-			}
 			if(_def.Category==DefCat.MiscColors){
 				if(_def.ItemOrder==(int)DefCatMiscColors.MainBorder){
 					SetBorderColor(DefCatMiscColors.MainBorder,_def.ItemColor);
@@ -442,32 +341,6 @@ namespace OpenDental {
 				}
 			}
 			DialogResult=DialogResult.OK;
-		}
-
-		private static void UpdateAutoCommExcludes(UI.CheckBox checkBox,List<long> listExcludeNums,Def def,PrefName prefName) {
-			if(checkBox.Checked) {
-				listExcludeNums.RemoveAll(x => x==def.DefNum);
-			}
-			else {
-				listExcludeNums.Add(def.DefNum);
-			}
-			//Do not want to insert 0 into db. If included we won't send autocomm for status 0.
-			listExcludeNums.Remove(0);
-			string toString=string.Join(",",listExcludeNums.Distinct().OrderBy(x => x));
-			Prefs.UpdateString(prefName,toString);
-		}
-
-		private static void UpdateByod(UI.CheckBox check,List<long> listExcludeNums,Def def,PrefName prefName) {
-			if(check.Checked) {
-				listExcludeNums.Add(def.DefNum);
-			}
-			else {
-				listExcludeNums.RemoveAll(x => x==def.DefNum);
-			}
-			//Do not want to insert 0 into db. If included we won't send autocomm for status 0.
-			listExcludeNums.Remove(0);
-			string strExcludeNums=string.Join(",",listExcludeNums.Distinct().OrderBy(x => x));
-			Prefs.UpdateString(prefName,strExcludeNums);
 		}
 
 	}

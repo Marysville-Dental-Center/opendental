@@ -432,9 +432,6 @@ namespace OpenDentBusiness{
 		///This uses the SalesTaxDefaultProvider if it is set.</summary>
 		public static void CreateAdjustmentForSalesTax(Procedure procedure,bool canSkipIsTaxed=false) {
 			Meth.NoCheckMiddleTierRole();
-			if(PrefC.IsODHQ) {
-				return;
-			}
 			if(!canSkipIsTaxed && !ProcedureCodes.GetProcCode(procedure.CodeNum).IsTaxed) {
 				return;
 			}
@@ -566,9 +563,6 @@ namespace OpenDentBusiness{
 		///doesn't already exist.</summary>
 		public static void AddSalesTaxIfNoneExists(Procedure procedure) {
 			Meth.NoCheckMiddleTierRole();
-			if(PrefC.IsODHQ) {
-				return;
-			}
 			//Don't apply if there's an ortho proc link
 			if(OrthoProcLinks.GetByProcNum(procedure.ProcNum)!=null) {
 				return;

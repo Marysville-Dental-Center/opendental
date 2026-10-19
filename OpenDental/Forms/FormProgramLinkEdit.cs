@@ -18,7 +18,6 @@ namespace OpenDental{
 		public bool IsNew;
 		public Program ProgramCur;
 		private string _pathOverrideOld;
-		private bool _isLoading = false;
 
 		///<summary>Set to false if we do not want to allow assigning program link to toolbars.</summary>
 		public bool AllowToolbarChanges=true;
@@ -34,7 +33,6 @@ namespace OpenDental{
 		}
 
 		private void FormProgramLinkEdit_Load(object sender, System.EventArgs e) {
-			_isLoading=true;
 			if(ProgramCur.ProgName!=""){
 				//user not allowed to delete program links that we include, only their own.
 				butDelete.Enabled=false;
@@ -45,41 +43,6 @@ namespace OpenDental{
 			DisableUIElementsBasedOnClinicRestriction();//Disable the UI Elements if needed.
 			HideClinicControls(PrefC.HasClinicsEnabled);//Hide the "Hide Button for Clinics" button based upon the user's clinics being on or off.
 			ShowPLButHiddenLabel();//Display warning label for "Hide Button for Clinics" if needed.
-			SetAdvertising();
-			if(!CanEnableProgram()) {
-				labelCloudMessage.Visible=true;
-			}
-			_isLoading=false;
-		}
-
-		///<summary>Handles both visibility and checking of checkHideButtons.</summary>
-		private void SetAdvertising() {
-			checkHideButtons.Visible=true;
-			ProgramProperty programProperty = ProgramProperties.GetForProgram(ProgramCur.ProgramNum).FirstOrDefault(x => x.PropertyDesc=="Disable Advertising");
-			if(checkEnabled.Checked || programProperty==null) {
-				checkHideButtons.Visible=false;
-			}
-			if(programProperty!=null) {
-				checkHideButtons.Checked=(programProperty.PropertyValue=="1");
-			}
-		}
-
-		private void checkEnabled_CheckedChanged(object sender,EventArgs e) {
-			SetAdvertising();
-			if(checkEnabled.Checked && !CanEnableProgram() && !_isLoading) {
-				checkEnabled.Checked=false;
-				MsgBox.Show(this,"Web users cannot currently enable this bridge");
-			}
-		}
-
-		private bool CanEnableProgram() {
-			if(!ODEnvironment.IsCloudServer) {
-				return true;
-			}
-			if(Programs.GetListDisabledForWeb().Contains(ProgramCur.ProgName)) {
-				return false;//these programs are not currently allowed for web users
-			}
-			return true;//it was not one of the programs listed
 		}
 
 		private void FillForm(){
@@ -124,7 +87,9 @@ namespace OpenDental{
 			gridMain.ListGridRows.Clear();
 			GridRow row;
 			for(int i=0;i<listProgramProperties.Count;i++) {
-				if(listProgramProperties[i].PropertyDesc.In("Disable Advertising","Disable Advertising HQ",ProgramProperties.PropertyDescs.ClinicHideButton)) {//Don't display in grid
+				if(listProgramProperties[i].PropertyDesc.In(ProgramProperties.PropertyDescs.DisableAdvertising,ProgramProperties.PropertyDescs.DisableAdvertisingHQ,
+					ProgramProperties.PropertyDescs.ClinicHideButton))
+				{//Don't display in grid. The Disable Advertising rows are no longer used and are only kept for schema compatibility.
 					continue;
 				}
 				row=new GridRow();
@@ -133,7 +98,7 @@ namespace OpenDental{
 					string password;
 					bool isXVWebPassword=ProgramCur.ProgName==ProgramName.XVWeb.ToString() && listProgramProperties[i].PropertyDesc==XVWeb.ProgramProps.Password;
 					if(isXVWebPassword) {
-						CDT.Class1.Decrypt(listProgramProperties[i].PropertyValue,out password);
+						Secrets.Decrypt(listProgramProperties[i].PropertyValue,out password);
 					}
 					else {
 						password=listProgramProperties[i].PropertyValue;
@@ -175,7 +140,7 @@ namespace OpenDental{
 			if(PrefC.HasClinicsEnabled && Security.CurUser.ClinicIsRestricted) {//Clinics are Enabled and the user is restricted.
 				//TODO: change this logic to be explicit instead of implicit (i.e get a list of all controls we want to explicitly disable.)
 				List<Control> listControls=new List<Control>() { 
-					label1,textProgName,label2,textProgDesc,checkEnabled,checkHideButtons,label3,textPath,label4,textCommandLine,label9,label7,textButtonText,
+					label1,textProgName,label2,textProgDesc,checkEnabled,label3,textPath,label4,textCommandLine,label9,label7,textButtonText,
 					label5,textPluginDllName,gridMain,label8,textNote,butOutputFile,label6,listToolBars,label10,pictureBox,butClear,butImport,butDelete
 					};
 				List<Control> listControlsAll=UIHelper.GetAllControls(this).Where(x => listControls.Contains(x)).ToList();
@@ -213,19 +178,11 @@ namespace OpenDental{
 
 		private void butImport_Click(object sender,EventArgs e) {
 			string importFilePath;
-			if(!ODBuild.IsThinfinity() && ODCloudClient.IsAppStream) {
-				importFilePath=ODCloudClient.ImportFileForCloud().FirstOrDefault();
-				if(importFilePath.IsNullOrEmpty()) {
-					return; //User cancelled out of OpenFileDialog
-				}
+			using OpenFileDialog openFileDialog=new OpenFileDialog();
+			if(openFileDialog.ShowDialog()!=DialogResult.OK) {
+				return;
 			}
-			else {
-				using OpenFileDialog openFileDialog=new OpenFileDialog();
-				if(openFileDialog.ShowDialog()!=DialogResult.OK) {
-					return;
-				}
-				importFilePath=openFileDialog.FileName;
-			}
+			importFilePath=openFileDialog.FileName;
 			try {
 				Image imageImported=Image.FromFile(importFilePath);
 				if(imageImported.Size!=new Size(22,22)) {
@@ -242,23 +199,6 @@ namespace OpenDental{
 
 		private void butClear_Click(object sender,EventArgs e) {
 			pictureBox.Image=null;
-		}
-
-		private void checkHideButtons_CheckedChanged(object sender,EventArgs e) {
-			if(_isLoading) {
-				return;
-			}
-			ProgramProperty programProperty = ProgramProperties.GetForProgram(ProgramCur.ProgramNum).FirstOrDefault(x => x.PropertyDesc=="Disable Advertising");
-			if(programProperty==null) {
-				return;//should never happen.
-			}
-			if(checkHideButtons.Checked) {
-				programProperty.PropertyValue="1";
-			}
-			else {
-				programProperty.PropertyValue="0";
-			}
-			ProgramProperties.Update(programProperty);
 		}
 
 		///<summary>Opens a form where the user can type in their selection for a program poperty.</summary>
@@ -327,16 +267,7 @@ namespace OpenDental{
 		}
 
 		private void butSave_Click(object sender, System.EventArgs e) {
-			//If a program has been disabled by HQ when a customer attempts to enable it, we should block them from doing so, so as not to waste their time trying to launch it
-			if(checkEnabled.Checked && !Programs.IsEnabledByHq(ProgramCur,out string err)) {
-				MsgBox.Show(err);
-				return;
-			}
 			if(checkEnabled.Checked && textPluginDllName.Text!="") {
-				if(ODEnvironment.IsCloudServer) {
-					MessageBox.Show(Lan.g(this,"Plugins are not allowed while using Open Dental Cloud."));
-					return;
-				}
 				string dllPath=ODFileUtils.CombinePaths(Application.StartupPath,textPluginDllName.Text);
 				if(dllPath.Contains("[VersionMajMin]")) {
 					Version version = new Version(Application.ProductVersion);

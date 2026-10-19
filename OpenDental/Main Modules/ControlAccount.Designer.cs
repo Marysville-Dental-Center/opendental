@@ -39,7 +39,6 @@
 			this.menuItemRepeatStand = new System.Windows.Forms.MenuItem();
 			this.menuItemRepeatEmail = new System.Windows.Forms.MenuItem();
 			this.menuItemRepeatCanada = new System.Windows.Forms.MenuItem();
-			this.menuItemRepeatSignupPortal = new System.Windows.Forms.MenuItem();
 			this.panelAging = new System.Windows.Forms.Panel();
 			this.labelDisRem = new System.Windows.Forms.Label();
 			this.labelInsRem = new System.Windows.Forms.Label();
@@ -97,9 +96,6 @@
 			this.menuItemAllocateUnearned = new System.Windows.Forms.MenuItem();
 			this.menuItemIncomeTransfer = new System.Windows.Forms.MenuItem();
 			this.menuItemSendCareCreditCSS = new System.Windows.Forms.MenuItem();
-			this.menuPrepayment = new System.Windows.Forms.MenuItem();
-			this.menuItemSendPaymentToDevice = new System.Windows.Forms.MenuItem();
-			this.menuItemSendMsgToPay = new System.Windows.Forms.MenuItem();
 			this.contextMenuPayPlan = new System.Windows.Forms.ContextMenu();
 			this.menuItemDynamicPayPlan = new System.Windows.Forms.MenuItem();
 			this.menuItemInsPayPlan = new System.Windows.Forms.MenuItem();
@@ -338,8 +334,7 @@
 			this.contextMenuRepeat.MenuItems.AddRange(new System.Windows.Forms.MenuItem[] {
 						this.menuItemRepeatStand,
 						this.menuItemRepeatEmail,
-						this.menuItemRepeatCanada,
-						this.menuItemRepeatSignupPortal});
+						this.menuItemRepeatCanada});
 			// 
 			// menuItemRepeatStand
 			// 
@@ -358,12 +353,6 @@
 			this.menuItemRepeatCanada.Index = 2;
 			this.menuItemRepeatCanada.Text = "Canada Monthly";
 			this.menuItemRepeatCanada.Click += new System.EventHandler(this.menuItemRepeatCanada_Click);
-			// 
-			// menuItemRepeatSignupPortal
-			// 
-			this.menuItemRepeatSignupPortal.Index = 3;
-			this.menuItemRepeatSignupPortal.Text = "Signup Portal";
-			this.menuItemRepeatSignupPortal.Click += new System.EventHandler(this.menuItemRepeatSignupPortal_Click);
 			// 
 			// panelAging
 			// 
@@ -925,9 +914,6 @@
 			this.contextMenuPayment.MenuItems.AddRange(new System.Windows.Forms.MenuItem[] {
 						this.menuItemAllocateUnearned,
 						this.menuItemIncomeTransfer,
-						this.menuPrepayment,
-						this.menuItemSendPaymentToDevice,
-						this.menuItemSendMsgToPay,
 						this.menuItemSendCareCreditCSS});
 			this.contextMenuPayment.Popup += new System.EventHandler(this.contextMenuPayment_Popup);
 			// 
@@ -943,27 +929,9 @@
 			this.menuItemIncomeTransfer.Text = "Income Transfer";
 			this.menuItemIncomeTransfer.Click += new System.EventHandler(this.menuItemIncomeTransfer_Click);
 			// 
-			// menuPrepayment
-			// 
-			this.menuPrepayment.Index = 2;
-			this.menuPrepayment.Text = "Prepayment Tool";
-			this.menuPrepayment.Click += new System.EventHandler(this.menuPrepayment_Click);
-			// 
-			// menuItemSendPaymentToDevice
-			// 
-			this.menuItemSendPaymentToDevice.Index = 3;
-			this.menuItemSendPaymentToDevice.Text = "Send Payment to eClipboard";
-			this.menuItemSendPaymentToDevice.Click += new System.EventHandler(this.menuItemSendPaymentToDevice_Click);
-			// 
-			// menuItemSendMsgToPay
-			// 
-			this.menuItemSendMsgToPay.Index = 4;
-			this.menuItemSendMsgToPay.Text = "Send Message-to-Pay";
-			this.menuItemSendMsgToPay.Click += new System.EventHandler(this.menuItemSendMessageToPay_Click);
-			// 
 			// menuItemSendCareCreditCSS
 			// 
-			this.menuItemSendCareCreditCSS.Index = 5;
+			this.menuItemSendCareCreditCSS.Index = 2;
 			this.menuItemSendCareCreditCSS.Text = "Get CareCredit Self-Service Link";
 			this.menuItemSendCareCreditCSS.Click += new System.EventHandler(this.menuItemSendCareCreditCSS_Click);
 			// 
@@ -1417,7 +1385,6 @@
 			this.gridPayPlan.Title = "Payment Plans";
 			this.gridPayPlan.TranslationName = "TablePaymentPlans";
 			this.gridPayPlan.CellDoubleClick += new OpenDental.UI.ODGridClickEventHandler(this.gridPayPlan_CellDoubleClick);
-			this.gridPayPlan.CellClick += new OpenDental.UI.ODGridClickEventHandler(this.gridPayPlan_CellClick);
 			// 
 			// tabControlAccount
 			// 
@@ -1974,15 +1941,11 @@
 		private System.Windows.Forms.MenuItem menuItemReceipt;
 		private System.Windows.Forms.MenuItem menuItemRepeatCanada;
 		private System.Windows.Forms.MenuItem menuItemRepeatEmail;
-		private System.Windows.Forms.MenuItem menuItemRepeatSignupPortal;
 		private System.Windows.Forms.MenuItem menuItemRepeatStand;
 		private System.Windows.Forms.MenuItem menuItemSalesTax;
-		private System.Windows.Forms.MenuItem menuItemSendPaymentToDevice;
-		private System.Windows.Forms.MenuItem menuItemSendMsgToPay;
 		private System.Windows.Forms.MenuItem menuItemStatementEmail;
 		private System.Windows.Forms.MenuItem menuItemStatementMore;
 		private System.Windows.Forms.MenuItem menuItemStatementWalkout;
-		private System.Windows.Forms.MenuItem menuPrepayment;
 		private UI.GridOD gridAccount;
 		private UI.GridOD gridAutoOrtho;
 		private UI.GridOD gridComm;

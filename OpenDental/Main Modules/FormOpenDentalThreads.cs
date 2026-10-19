@@ -85,19 +85,13 @@ namespace OpenDental {
 					Logger.LogToPath("Starting threads",LogPath.Threads,LogPhase.Unspecified);
 					Logger.LogActionIfOverTimeLimit("BeginClaimReportThread",LogPath.Threads,() => BeginClaimReportThread());
 					Logger.LogActionIfOverTimeLimit("BeginCanadianItransCarrierThread",LogPath.Threads,() => BeginCanadianItransCarrierThread());
-					Logger.LogActionIfOverTimeLimit("BeginEServiceMonitorThread",LogPath.Threads,() => BeginEServiceMonitorThread());
 					Logger.LogActionIfOverTimeLimit("BeginLogOffThread",LogPath.Threads,() => BeginLogOffThread());
 					Logger.LogActionIfOverTimeLimit("BeginODServiceMonitorThread",LogPath.Threads,() => BeginODServiceMonitorThread());
 					Logger.LogActionIfOverTimeLimit("BeginUpdateFormTextThread",LogPath.Threads,() => BeginUpdateFormTextThread());
 					Logger.LogActionIfOverTimeLimit("BeginComputerHeartbeatThread",LogPath.Threads,() => BeginComputerHeartbeatThread());
 					Logger.LogActionIfOverTimeLimit("BeginPodiumThread",LogPath.Threads,() => BeginPodiumThread());
 					Logger.LogActionIfOverTimeLimit("BeginTimeSyncThread",LogPath.Threads,() => BeginTimeSyncThread());
-					Logger.LogActionIfOverTimeLimit("BeginVoicemailThread",LogPath.Threads,() => BeginVoicemailThread());
-					Logger.LogActionIfOverTimeLimit("BeginHqMetricsThread",LogPath.Threads,() => BeginHqMetricsThread());
 					Logger.LogActionIfOverTimeLimit("CheckAlerts",LogPath.Threads,() => CheckAlerts(doRunOnThread: true));
-					Logger.LogActionIfOverTimeLimit("BeginODCloudDcvExtensionThread",LogPath.Threads, () => BeginODCloudDcvExtensionThread());
-					Logger.LogActionIfOverTimeLimit("BeginODCloudMachineNameThread",LogPath.Threads,() => BeginODCloudMachineNameThread());
-					Logger.LogActionIfOverTimeLimit("BeginApiEventsThread",LogPath.Threads,() => BeginApiEventsThread());
 					Logger.LogToPath("Started threads",LogPath.Threads,LogPhase.Unspecified);
 					return;
 				}
@@ -114,14 +108,10 @@ namespace OpenDental {
 						case FormODThreadNames.DataConnectionLost:
 						case FormODThreadNames.MiddleTierConnectionLost:
 						case FormODThreadNames.LicenseAgreementSignature:
-						case FormODThreadNames.ODCloudMachineName:
-						case FormODThreadNames.ODCloudDcvExtension:
 							break;
 						//Kill these.
 						case FormODThreadNames.CanadianItransCarrier:
 						case FormODThreadNames.ClaimReport:
-						case FormODThreadNames.EServiceMonitoring:
-						case FormODThreadNames.HqMetrics:
 						case FormODThreadNames.LogOff:
 						case FormODThreadNames.ODServiceMonitor:
 						case FormODThreadNames.Podium:
@@ -129,9 +119,7 @@ namespace OpenDental {
 						case FormODThreadNames.UpdateFormText:
 						case FormODThreadNames.WebSync:
 						case FormODThreadNames.TimeSync:
-						case FormODThreadNames.VoicemailHQ:
 						case FormODThreadNames.CheckAlerts:
-						case FormODThreadNames.ApiEvents:
 						default:
 							//Add these to our list so we can wait on them to exit before restarting the threads next time.
 							_listThreadExitWaitHandles.AddRange(ODThread.QuitAsyncThreadsByGroupName(threadName.GetDescription()));
@@ -385,142 +373,6 @@ namespace OpenDental {
 		}
 
 		#endregion DataReaderNullMonitorThread
-		#region EServiceMonitorThread
-
-		///<summary>Starts the eService monitoring thread that will run once a minute.  Only runs if the user currently logged in has the eServices permission.</summary>
-		private void BeginEServiceMonitorThread() {
-			if(IsThreadAlreadyRunning(FormODThreadNames.EServiceMonitoring)) {
-				return;
-			}
-			//The eConnector only relays Open Dental hosted eServices, which are not available in this build. Do not raise "restart the eConnector" alerts.
-			if(!WebServiceMainHQProxy.IsHqAvailable) {
-				return;
-			}
-			//If the user currently logged in has permission to view eService settings, turn on the listener monitor.
-			if(Security.CurUser==null || !Security.IsAuthorized(EnumPermType.EServicesSetup,true)) {
-				return;//Do not start the listener service monitor for users without permission.
-			}
-			//Process any Error signals that happened due to an update:
-			EServiceSignals.ProcessErrorSignalsAroundTime(PrefC.GetDateT(PrefName.ProgramVersionLastUpdated));
-			//Create a separate thread that will run every 60 seconds to monitor eService signals.
-			ODThread odThread=new ODThread(60000,EServiceMonitorWorker);
-			//Currently we don't want to do anything if the eService signal processing fails.  Simply try again in a minute.  
-			//Most likely cause for exceptions will be database IO when computers are just sitting around not doing anything.
-			//Implementing this delegate allows us to NOT litter ProcessEServiceSignals() with try catches.  
-			odThread.AddExceptionHandler((e) => e.DoNothing());
-			odThread.GroupName=FormODThreadNames.EServiceMonitoring.GetDescription();
-			odThread.Name=FormODThreadNames.EServiceMonitoring.GetDescription();
-			odThread.Start();
-		}
-
-		///<summary>Worker method for eServiceMonitorThread.  Call BeginEServiceMonitorThread() to start monitoring eService signals instead of calling 
-		///this method directly. This thread's only job is to check to see if the eConnector's current status is critical and if it is critical, 
-		///create a High severity alert.</summary>
-		private void EServiceMonitorWorker(ODThread odThread) {
-			//The listener service will have a local heartbeat every 5 minutes so it's overkill to check every time timerSignals_Tick fires.
-			//Only check the Listener Service status once a minute.
-			//The downside to doing this is that the menu item will stay red up to one minute when a user wants to stop monitoring the service.
-			eServiceSignalSeverity listenerStatus = EServiceSignals.GetListenerServiceStatus();
-			if(listenerStatus==eServiceSignalSeverity.None) {
-				//This office has never had a valid listener service running and does not have more than 5 patients set up to use the listener service.
-				//Quit the thread so that this computer does not waste its time sending queries to the server every minute.
-				odThread.QuitAsync();
-				return;
-			}
-			if(listenerStatus!=eServiceSignalSeverity.Critical) { //Not a critical event so no need to continue.
-				return;
-			}
-			if(AlertItems.RefreshForType(AlertType.EConnectorDown).Count>0) { //Alert already exists to no need to continue.
-				return;
-			}
-			//Create an alert.
-			AlertItems.Insert(new AlertItem {
-				//Do not allow delete. The only way for this alert to be deleted is for the eConnector to insert a heartbeat, which will in-turn delete this alert.
-				Actions=ActionType.MarkAsRead|ActionType.OpenForm,
-				Description=Lans.g("EConnector","eConnector needs to be restarted"),
-				Severity=SeverityType.High,
-				Type=AlertType.EConnectorDown,
-				//Show for all clinics.
-				ClinicNum=-1,
-				FormToOpen=FormType.FormEServicesEConnector,
-			});
-			//We just inserted an alert so update the alert menu.
-			CheckAlerts();
-		}
-		
-		#endregion
-		#region HqMetricsThread
-
-		private void BeginHqMetricsThread() {
-			if(IsThreadAlreadyRunning(FormODThreadNames.HqMetrics)) {
-				return;
-			}
-			if(!PrefC.IsODHQ) {
-				return;
-			}
-			//Only run this thread every 1.6 seconds.
-			ODThread odThread=new ODThread(1600,(o) => {
-				ProcessHqMetricsPhones();
-			});
-			odThread.AddExceptionHandler(ex => ex.DoNothing());
-			odThread.GroupName=FormODThreadNames.HqMetrics.GetDescription();
-			odThread.Name=FormODThreadNames.HqMetrics.GetDescription();
-			odThread.Start();
-		}
-
-		///<summary>HQ only. Called from HqMetricsThread(). Deals with HQ phone panel. This method runs in a thread so any access to form controls must be invoked. Gets hit every 1.6 seconds from each workstation.</summary>
-		private void ProcessHqMetricsPhones() {
-			if(Security.CurUser==null) {
-				return;//Don't waste time processing phone metrics when no one is logged in and sitting at the log on screen.
-			}
-			if((_listFormMaps.Count>0) 
-				&& DateTime.Now.Subtract(_dateHqOfficeDownLastRefreshed).TotalSeconds>PrefC.GetInt(PrefName.ProcessSigsIntervalInSecs)) 
-			{
-				List<OpenDentBusiness.Task> listOfficesDowns=Tasks.GetOfficeDowns();
-				if(!IsDisposed) {
-					Invoke(new ProcessOfficeDownArgs(ProcessOfficeDowns),new object[] { listOfficesDowns });
-				}
-				_dateHqOfficeDownLastRefreshed=DateTime.Now;
-			}
-			List<WebChatSession> listWebChatSessions=null;
-			List<PeerInfo> listRemoteSupportSessions=null;
-			TriageMetric triageMetrics=Phones.GetTriageMetrics();
-			ODException.SwallowAnyException(() => Invoke(new FillTriageLabelsResultsArgs(FillTriageLabelsResults),triageMetrics));
-			//Attempt to deserialize the active web chat sessions from the triage metric row.
-			ODException.SwallowAnyException(() => listWebChatSessions=JsonConvert.DeserializeObject<List<WebChatSession>>(triageMetrics.WebChatSessions));
-			//Attempt to deserialize the active web chat sessions from the triage metric row.
-			ODException.SwallowAnyException(() => {
-				listRemoteSupportSessions=JsonConvert.DeserializeObject<List<PeerInfo>>(triageMetrics.RemoteSupportSessions);
-				PeerInfos.SetEmployeeNum(ref listRemoteSupportSessions);
-			});
-			if(listWebChatSessions==null) {//An empty string value within triageMetrics.WebChatSessions will deserialize to null.
-				listWebChatSessions=new List<WebChatSession>();
-			}
-			if(listRemoteSupportSessions==null) {//An empty string value within triageMetrics.RemoteSupportSessions will deserialize to null.
-				listRemoteSupportSessions=new List<PeerInfo>();
-			}
-			List<PhoneEmpDefault> listPED=PhoneEmpDefaults.GetDeepCopy();
-			List<PhoneEmpSubGroup> listSubGroups=PhoneEmpSubGroups.GetAll();
-			//Get the extension linked to this machine.
-			PhoneComp phoneComp=PhoneComps.GetFirstOrDefault(x => x.ComputerName.ToUpper()==Environment.MachineName.ToUpper());
-			int extension=phoneComp?.PhoneExt??0;
-			//Get the phoneempdefault row that is currently associated to the corresponding extension.
-			PhoneEmpDefault pedCur=listPED.FirstOrDefault(x => x.PhoneExt==extension);
-			bool isTriageOperator=pedCur?.IsTriageOperator??false;
-			//Now get the Phone object for this extension. Phone table matches PhoneEmpDefault table more or less 1:1. 
-			//Phone fields represent current state of the PhoneEmpDefault table and will be modified by the phone tracking server anytime a phone state changes for a given extension 
-			//(EG... incoming call, outgoing call, hangup, etc).
-			List<Phone> listPhones=Phones.GetPhoneList();
-			Phone phone=listPhones.FirstOrDefault(x => x.Extension==extension);
-			List<ChatUser> listChatUsers=ChatUsers.GetAll();
-			//send the results back to the UI layer for action.
-			if(!this.IsDisposed) {
-				this.Invoke(() => ProcessHqMetricsResults(listPED,listPhones,listSubGroups,listChatUsers,phone,isTriageOperator,listWebChatSessions,
-					listRemoteSupportSessions));
-			}
-		}
-
-		#endregion
 		#region LogOffThread
 
 		///<summary>Begins the thread that checks for a forced log off.</summary>
@@ -681,49 +533,7 @@ namespace OpenDental {
 		}
 
 		#endregion
-		#region ODCloudSetMachineName
-
-		///<summary>For ODBuild.IsThinfinity and PrefC.IsAppStream only.  Begins a thread that will run once per minute attempting to set the ODEnvironment.MachineName by making a
-		///call to the ODCloudClient. If ODCloudClient is not running or throws an exception, the machine name will be set to "UNKNOWN".  The next time this thread runs, if the
-		///machine name is "UNKNOWN" we will attempt to get the machine name from the ODCloudClient again.  If the machine name is successfully retrieved from the ODCloudClient
-		///(i.e. ODEnvironment.MachineName!="UNKNOWN") we will not attempt to get the name from the cloud client again while this session is active.</summary>
-		private void BeginODCloudMachineNameThread() {
-			//We have to call PrefC.IsAppStream here and not ODEnvironment.IsCloudServer so ODCloudClient.IsAppStream will be set to the pref cache value
-			if((!ODBuild.IsThinfinity() && !PrefC.IsAppStream) || IsThreadAlreadyRunning(FormODThreadNames.ODCloudMachineName)) {
-				return;
-			}
-			ODThread threadCloudMachineName=new ODThread(60000,o => {//Once a minute
-				ODException.SwallowAnyException(ODEnvironment.SetMachineName);
-				if(ODEnvironment.MachineName.ToUpper()!=Security.CurComputerName.ToUpper()) {//_machineName was just found, update Security.cs and the activeinstance row
-					Security.CurComputerName=ODEnvironment.MachineName;
-					ActiveInstances.Upsert(Security.CurUser.UserNum,Computers.GetCur().ComputerNum,Process.GetCurrentProcess().Id);
-					this.InvokeIfRequired(() =>RefreshLocalDataPostCleanup(InvalidType.AllLocal));
-				}
-			});
-			threadCloudMachineName.AddExceptionHandler((e) => e.DoNothing());
-			threadCloudMachineName.GroupName=FormODThreadNames.ODCloudMachineName.GetDescription();
-			threadCloudMachineName.Name=FormODThreadNames.ODCloudMachineName.GetDescription();
-			threadCloudMachineName.Start();
-		}
-
-		#endregion ODCloudSetMachineName
-		#region ODCloudDcvExtension
-		///<summary>For PrefC.IsAppStream only. Begins a thread that will run to initiate dcv named piped link.</summary>
-		private void BeginODCloudDcvExtensionThread() {
-			if (!PrefC.IsAppStream || IsThreadAlreadyRunning(FormODThreadNames.ODCloudDcvExtension)) {
-				return;
-			}
-			ODThread threadDcvExtension=new ODThread(o => {
-				System.Threading.Tasks.Task task=System.Threading.Tasks.Task.Run(() => CodeBase.Utilities.ODCloudDcvExtension.Start());
-				task.Wait();
-			});
-			threadDcvExtension.AddExceptionHandler((e) => e.DoNothing());
-			threadDcvExtension.GroupName=FormODThreadNames.ODCloudDcvExtension.GetDescription();
-			threadDcvExtension.Name=FormODThreadNames.ODCloudDcvExtension.GetDescription();
-			threadDcvExtension.Start();
-			}
-			#endregion ODCloudDcvExtension
-			#region ODServiceMonitorThread
+		#region ODServiceMonitorThread
 
 			///<summary>Begins a thread that monitor's the Open Dental Service heartbeat and alerts the user if the service is not running.</summary>
 			private void BeginODServiceMonitorThread() {
@@ -810,24 +620,6 @@ namespace OpenDental {
 		}
 
 		#endregion
-		//#region PhoneConferenceThread
-		/////<summary>Begins a thread that updates the phone conference rooms. This is for HQ only.</summary>
-		//void BeginPhoneConferenceThread() {
-		//	if(IsThreadAlreadyRunning(FormODThreadNames.PhoneConference)) {
-		//		return;
-		//	}
-		//	ODThread odThread = new ODThread((o) =>{
-		//		Logger.LogToPath("PhoneConf",LogPath.Signals,LogPhase.Start);
-		//		List<PhoneConf> listPhoneConfs = PhoneConfs.GetAll();
-		//		this.Invoke((() => lightSignalGrid1.SetConfs(listPhoneConfs)));
-		//		Logger.LogToPath("PhoneConf",LogPath.Signals,LogPhase.End);
-		//	});
-		//	odThread.AddExceptionHandler(ex => SignalsTickExceptionHandler(ex));
-		//	odThread.GroupName=FormODThreadNames.PhoneConference.GetDescription();
-		//	odThread.Name=FormODThreadNames.PhoneConference.GetDescription();
-		//	odThread.Start();
-		//}
-		//#endregion
 		#region PlaySoundsThread
 
 		///<summary>Begins a thread that will play sounds based on the given signals.</summary>
@@ -890,14 +682,6 @@ namespace OpenDental {
 				return;
 			}
 			ODThread odThread=new ODThread((o) => {
-				if(PrefC.IsODHQ) {
-					ODThread webCamKillThread = new ODThread(((o2) => { Process.GetProcessesByName("WebCamOD").ToList().ForEach(x => x.Kill()); }));
-					webCamKillThread.AddExceptionHandler((ex) => ex.DoNothing());
-					webCamKillThread.Start();
-					ODThread proximityKillThread = new ODThread(((o2) => { Process.GetProcessesByName("ProximityOD").ToList().ForEach(x => x.Kill()); }));
-					proximityKillThread.AddExceptionHandler((ex) => ex.DoNothing());
-					proximityKillThread.Start();
-				}
 				Thread.Sleep(15000);//15 seconds
 				CloseOpenForms(true);
 				this.Invoke(Application.Exit);
@@ -995,86 +779,7 @@ namespace OpenDental {
 		}
 
 		#endregion
-		#region VoicemailThread
-
-		private void BeginVoicemailThread() {
-			if(IsThreadAlreadyRunning(FormODThreadNames.VoicemailHQ)) {
-				return;
-			}
-			if(!PrefC.IsODHQ) {
-				return;
-			}
-			ODThread odThread=new ODThread((int)TimeSpan.FromSeconds(3).TotalMilliseconds,VoicemailWorker);
-			odThread.AddExceptionHandler(ex => ex.DoNothing());
-			odThread.GroupName=FormODThreadNames.VoicemailHQ.GetDescription();
-			odThread.Name=FormODThreadNames.VoicemailHQ.GetDescription();
-			odThread.Start(true);
-		}
-
-		///<summary>Called on the voicemail thread for HQ only.</summary>
-		private void VoicemailWorker(ODThread odThread) {
-			try {
-				List<VoiceMail> listVoiceMails=VoiceMails.GetAll(false,false).FindAll(x => x.UserNum==0);//Only include unclaimed VMs in the count and timer
-				DateTime oldestVoicemail=DateTime.MaxValue;
-				foreach(VoiceMail voiceMail in listVoiceMails) {
-					if(voiceMail.DateCreated.AddSeconds(voiceMail.Duration)<oldestVoicemail) {
-						oldestVoicemail=voiceMail.DateCreated.AddSeconds(voiceMail.Duration);//Adding Duration so the timer starts at the end of the VM
-					}
-				}
-				TimeSpan ageOfOldestVoicemail=new TimeSpan(0);
-				if(oldestVoicemail!=DateTime.MaxValue) {
-					ageOfOldestVoicemail=DateTime.Now-oldestVoicemail;
-				}
-				this.Invoke(() => { SetVoicemailMetrics(false,listVoiceMails.Count,ageOfOldestVoicemail); });
-			}
-			catch(Exception ex) {
-				//Something went wrong with determining how many voicemails there are.  Sleep for 4 minutes then try again.
-				ODException.SwallowAnyException(() => this.Invoke(() => { SetVoicemailMetrics(true,0,new TimeSpan(0)); }));
-				odThread.Wait((int)TimeSpan.FromMinutes(4).TotalMilliseconds);
-				ex.DoNothing();
-			}
-		}
-
-		///<summary>Called from worker thread for HQ voicemails. Sets all UI changes for the voicemail counter.</summary>
-		private void SetVoicemailMetrics(bool hasError,int voiceMailCount,TimeSpan ageOfOldestVoicemail) {
-			if(hasError) {
-				labelMsg.Font=new Font(FontFamily.GenericSansSerif,8.25f,FontStyle.Bold);
-				labelMsg.Text="error";
-				labelMsg.ForeColor=Color.Firebrick;
-				return;
-			}
-			labelMsg.Text=voiceMailCount.ToString();
-			if(voiceMailCount==0) {
-				labelMsg.Font=new Font(FontFamily.GenericSansSerif,7.75f,FontStyle.Regular);
-				labelMsg.ForeColor=Color.Black;
-			}
-			else {
-				labelMsg.Font=new Font(FontFamily.GenericSansSerif,7.75f,FontStyle.Bold);
-				labelMsg.ForeColor=Color.Firebrick;
-			}
-			for(int i=0;i<_listFormMaps.Count;i++) {
-				_listFormMaps[i].SetVoicemail(voiceMailCount,ageOfOldestVoicemail);
-			}
-			if(_formPhoneList!=null && !_formPhoneList.IsDisposed) {
-				_formPhoneList.SetVoicemailCount(voiceMailCount);
-			}
-		}
-
-		#endregion
-
-		#region ApiEventsThread
-		///<summary>This thread generates Api Events, based on ApiSubscriptions. These events are in response to database changes, so the database must be polled at a certain interval. Each subscription can be at a different interval.</summary>
-		private void BeginApiEventsThread() {
-			if(IsThreadAlreadyRunning(FormODThreadNames.ApiEvents)) {
-				return;
-			}
-			ODThread odThread=new ODThread(1000,(o)=>{ODApi.ApiEvents.FireDbEventsWorker();});//fire events as frequently as once per second
-			odThread.AddExceptionHandler(ex => ex.DoNothing());
-			odThread.GroupName=FormODThreadNames.ApiEvents.GetDescription();
-			odThread.Name=FormODThreadNames.ApiEvents.GetDescription();
-			odThread.Start(true);
-		}
-		#endregion ApiEventsThread
+		//The ApiEvents thread, which polled the database for Open Dental's local REST API subscriptions, was removed with the API.
 
 		///<summary>A list of the names and group names for all threads spawned from FormOpenDental.</summary>
 		public enum FormODThreadNames {
@@ -1089,15 +794,11 @@ namespace OpenDental {
 			EhrCodeList,
 			///<summary>DEPRECATED. This thread now runs from Open Dental Service solution</summary>
 			EnableAdditionalFeatures,
-			EServiceMonitoring,
-			HqMetrics,
 			LicenseAgreementSignature,
 			LogOff,
 			MiddleTierConnectionLost,
-			ODCloudMachineName,
 			ODServiceMonitor,
 			ODServiceStarter,
-			PhoneConference,
 			PlaySounds,
 			Podium,
 			RegKeyIsForTesting,
@@ -1106,13 +807,10 @@ namespace OpenDental {
 			Tasks,
 			TimeSync,
 			UpdateFormText,
-			VoicemailHQ,
 			WebSync,
 			Dashboard,
 			RegistrationKeyIsDisabled,
-			DataReaderNullMonitor,
-			ApiEvents,
-			ODCloudDcvExtension
+			DataReaderNullMonitor
 		}
 	}
 }

@@ -7,7 +7,7 @@
              xmlns:ui="clr-namespace:WpfControls.UI"
              mc:Ignorable="d"
              Width="453" Height="174" 
-             Text="" HasHelpButton="False" MinMaxBoxes="False" >
+             Text="" MinMaxBoxes="False" >
 	<Grid Background="#FFFCFDFE" Name="grid">
 		<ui:Button x:Name="butDelete" VerticalAlignment="Bottom" Height="24" Margin="34,0,0,14" Text="Delete" Icon="DeleteX" Click="butDelete_Click" Width="77" />
 		<ui:Label x:Name="labelPrompt" Width="387" Height="45" Margin="31,35,0,0" Text="Input controls can be added dynamically to this form. Types that can be added are TextBoxes, ComboBoxes (mult and single), ValidDates,ValidTimes, ValidPhones, and Checkboxes." VAlign="Bottom" />

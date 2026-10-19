@@ -214,7 +214,7 @@ namespace OpenDentBusiness {
 			string urlPropDesc=GetPropDesc(stateFull,PdmpUrl);
 			FacilityId=ProgramProperties.GetPropVal(progNum,facilityIdPropDesc);
 			Username=ProgramProperties.GetPropVal(progNum,userNamePropDesc);
-			Password=CDT.Class1.TryDecrypt(ProgramProperties.GetPropVal(progNum,passwordPropDesc));
+			Password=Secrets.TryDecrypt(ProgramProperties.GetPropVal(progNum,passwordPropDesc));
 			Url=ProgramProperties.GetPropVal(progNum,urlPropDesc);
 		}
 
@@ -265,7 +265,7 @@ namespace OpenDentBusiness {
 		///<summary>Loads properties for Bamboo PDMP</summary>
 		private void LoadBambooProps(long progNum) {
 			Username=ProgramProperties.GetPropVal(progNum,BambooUserName);
-			Password=CDT.Class1.TryDecrypt(ProgramProperties.GetPropVal(progNum,BambooPassword));
+			Password=Secrets.TryDecrypt(ProgramProperties.GetPropVal(progNum,BambooPassword));
 			Url=ProgramProperties.GetPropVal(progNum,BambooUrl);
 			BambooClientKey=ProgramProperties.GetPropVal(progNum,BambooAuthToken);
 			BambooClientPassword=ProgramProperties.GetPropVal(progNum,BambooAuthPassword);
@@ -277,7 +277,7 @@ namespace OpenDentBusiness {
 			if(Introspection.IsTestingMode) {
 				return true;
 			}
-			CDT.Class1.Decrypt(property.BambooClientKey,out string decryptedKey);
+			Secrets.Decrypt(property.BambooClientKey,out string decryptedKey);
 			if(string.IsNullOrWhiteSpace(decryptedKey)) {
 				error=Lans.g("PDMP","Security certificate was not set. Please contact support.");
 			}
@@ -289,7 +289,7 @@ namespace OpenDentBusiness {
 			if(Introspection.IsTestingMode) {
 				return true;
 			}
-			CDT.Class1.Decrypt(property.BambooClientPassword,out string decryptedPassword);
+			Secrets.Decrypt(property.BambooClientPassword,out string decryptedPassword);
 			if(string.IsNullOrWhiteSpace(decryptedPassword)) {
 				error=Lans.g("PDMP","Security certificate password was not set. Please contact support.");
 			}

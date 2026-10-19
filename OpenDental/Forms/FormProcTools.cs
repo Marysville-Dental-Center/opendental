@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
-using System.Net;
 using System.Windows.Forms;
 using CodeBase;
 using OpenDentBusiness;
@@ -13,8 +11,6 @@ namespace OpenDental{
 	/// </summary>
 	public partial class FormProcTools : FormODBase {
 		public bool Changed;
-		///<summary>The actual list of ADA codes as published by the ADA.  Only available on our compiled releases.  There is no other way to get this info.  For Canada, list will get filled on Run click by downloading code list from our website.</summary>
-		private List<ProcedureCode> _listProcedureCodes;
 
 		///<summary></summary>
 		public FormProcTools()
@@ -27,26 +23,15 @@ namespace OpenDental{
 			Lan.F(this);
 		}
 
-		protected override string GetHelpOverride() {
-			if(CultureInfo.CurrentCulture.Name.EndsWith("CA")) {
-				return "FormProcToolsCanada";
-			}
-			return "FormProcTools";
-		}
-
 		private void FormProcTools_Load(object sender,EventArgs e) {
 			if(ODBuild.IsTrial()) {
 				checkTcodes.Checked=false;
 				checkNcodes.Checked=false;
-				checkDcodes.Checked=false;
-				checkTreatAreas.Checked=false;
 				checkAutocodes.Checked=false;
 				checkProcButtons.Checked=false;
 				checkApptProcsQuickAdd.Checked=false;
 				checkTcodes.Enabled=false;
 				//checkNcodes.Enabled=false;
-				checkDcodes.Enabled=false;
-				checkTreatAreas.Enabled=false;
 				checkAutocodes.Enabled=false;
 				checkProcButtons.Enabled=false;
 				if(CultureInfo.CurrentCulture.Name.EndsWith("US")) {
@@ -54,102 +39,26 @@ namespace OpenDental{
 					checkApptProcsQuickAdd.Enabled=false;
 				}
 			}
+			//Procedure codes (CDT and CDA) and their descriptions and treatment areas come from the procedurecode table, which is loaded into the
+			//database directly. This tool doesn't add or reset them.
 			if(CultureInfo.CurrentCulture.Name.EndsWith("CA")) {//Canadian. en-CA or fr-CA
-				//Tcodes remain enabled
-				//Ncodes remain enabled
-				checkDcodes.Text="CDA Codes - Add any missing 2025 CDA Codes. This option does not work in the trial version.";
 				checkRecallTypes.Text="Recall Types - Resets the recall types and triggers to default. Replaces any T Codes with CDA Codes.";
-				_listProcedureCodes=null;//Is only filled when the code tool runs because the user might not need to download the codes.
-				checkTreatAreas.Checked=false;
-				checkTreatAreas.Enabled=false;
-				return;
 			}
-			//USA
-			_listProcedureCodes=ProcedureCodes.GetADAcodes();
-			//If this is not the full USA release version, then disable the D-code import because the CDT codes will not be available.
-			if(_listProcedureCodes!=null && _listProcedureCodes.Count!=0) { 
-				return;	
-			}
-			checkDcodes.Checked=false;
-			checkDcodes.Enabled=false;
-			checkTreatAreas.Checked=false;
-			checkTreatAreas.Enabled=false;
 		}
 
 		private void butUncheck_Click(object sender,EventArgs e) {
 			checkTcodes.Checked=false;
 			checkNcodes.Checked=false;
-			checkDcodes.Checked=false;
-			checkTreatAreas.Checked=false;
 			checkAutocodes.Checked=false;
 			checkProcButtons.Checked=false;
 			checkApptProcsQuickAdd.Checked=false;
 			checkRecallTypes.Checked=false;
 		}
 
-		///<summary>Reads Canadian procedure codes from a local file and updates _codeList accordingly. The file used to be downloaded from Open Dental's
-		///website, which this build never contacts; the file format (tab delimited, one code per line) is unchanged.</summary>
-		private void CanadaDownloadProcedureCodes() {
-			_listProcedureCodes=new List<ProcedureCode>();
-			using OpenFileDialog openFileDialog=new OpenFileDialog();
-			openFileDialog.Title=Lan.g(this,"Choose the Canadian procedure code file (procedurecodes.txt)");
-			openFileDialog.Filter="txt|*.txt";
-			if(openFileDialog.ShowDialog()!=DialogResult.OK) {
-				return;
-			}
-			Cursor=Cursors.WaitCursor;
-			string codeData;
-			try {
-				codeData=File.ReadAllText(openFileDialog.FileName);
-			}
-			catch(Exception ex) {
-				MessageBox.Show(Lan.g(this,"Failed to read procedure codes")+":\r\n"+ex.Message);
-				Cursor=Cursors.Default;
-				return;
-			}
-			string[] stringArrayCodeLines=codeData.Split("\n",StringSplitOptions.RemoveEmptyEntries);
-			for(int i=0;i<stringArrayCodeLines.Length;i++) {
-				string[] stringArrayFields=stringArrayCodeLines[i].Split('\t');
-				if(stringArrayFields.Length<1) {//Skip blank lines if they exist.
-					continue;
-				}
-				ProcedureCode procCode=new ProcedureCode();
-				procCode.ProcCode=PIn.String(stringArrayFields[0]);//0 ProcCode
-				procCode.Descript=PIn.String(stringArrayFields[1]);//1 Description
-				procCode.TreatArea=(TreatmentArea)PIn.Int(stringArrayFields[2]);//2 TreatArea
-				procCode.NoBillIns=PIn.Bool(stringArrayFields[3]);//3 NoBillIns
-				procCode.IsProsth=PIn.Bool(stringArrayFields[4]);//4 IsProsth
-				procCode.IsHygiene=PIn.Bool(stringArrayFields[5]);//5 IsHygiene
-				procCode.PaintType=(ToothPaintingType)PIn.Int(stringArrayFields[6]);//6 PaintType
-				procCode.ProcCatDescript=PIn.String(stringArrayFields[7]);//7 ProcCatDescript
-				procCode.ProcTime=PIn.String(stringArrayFields[8]);//8 ProcTime
-				procCode.AbbrDesc=PIn.String(stringArrayFields[9]);//9 AbbrDesc
-				procCode.CanadaTimeUnits=PIn.Double(stringArrayFields[10]);//10 CanadaTimeUnits
-				_listProcedureCodes.Add(procCode);
-			}
-			Cursor=Cursors.Default;
-		}
-
 		private void butRun_Click(object sender,EventArgs e) {
-			//The updating of CDT codes takes place towards the end of the year, while we typically do it in December, we have 
-			//done it as early as Novemeber before. This warning will inform users that using the new codes will cause rejection
-			//on their claims if they try to use them before the first of the new year.
-			DateTime datePromptStart=new DateTime(2024,10,30);
-			DateTime datePromptEnd=new DateTime(datePromptStart.Year,12,31);
-			if(DateTime.Now.Between(datePromptStart,datePromptEnd) && checkDcodes.Checked) {//Only validate if attempting to update D Codes
-				if(MessageBox.Show(//Still between datePromptStart and the first of the next year, prompt that these codes may cause problems.
-						Lan.g(this,"Updating procedure codes at this time could result in acquiring codes which are not valid until ")
-						+datePromptEnd.AddDays(1).ToShortDateString()+Lan.g(this,". Using these codes and new claim form could cause claims to be rejected, continue?")
-						,Lan.g(this,"Procedure Codes"),MessageBoxButtons.YesNo)==DialogResult.No) 
-				{
-					return;//Early return if the user is between datePromptStart and the first of the next year and they've said no to updating D Codes.
-				}
-			}
-			if(!checkTcodes.Checked 
-				&& !checkNcodes.Checked 
-				&& !checkDcodes.Checked 
-				&& !checkTreatAreas.Checked 
-				&& !checkAutocodes.Checked 
+			if(!checkTcodes.Checked
+				&& !checkNcodes.Checked
+				&& !checkAutocodes.Checked
 				&& !checkProcButtons.Checked 
 				&& !checkApptProcsQuickAdd.Checked 
 				&& !checkRecallTypes.Checked)
@@ -169,37 +78,7 @@ namespace OpenDental{
 				}
 				Changed=true;
 				DataValid.SetInvalid(InvalidType.Defs, InvalidType.ProcCodes);
-			}
-			#endregion
-			#region D Codes
-			if(checkDcodes.Checked) {
-				if(CultureInfo.CurrentCulture.Name.EndsWith("CA")) {//Canadian. en-CA or fr-CA
-					if(_listProcedureCodes==null) {
-						CanadaDownloadProcedureCodes();
-					}
-				}
-				try {
-					rowsInserted+=FormProcCodes.ImportProcCodes("",_listProcedureCodes,"");
-					Changed=true;
-					int procCodesFixed=ProcedureCodes.ResetADAdescriptionsAndAbbrs();
-					ClaimForms.SetDefaultClaimForm("ADA 2019","ADA 2024");
-					MessageBox.Show(Lan.g(this,"Procedure codes with descriptions or abbreviations updated:")+" "+procCodesFixed.ToString());
-				}
-				catch(ApplicationException ex) {
-					MessageBox.Show(ex.Message);
-				}
-				DataValid.SetInvalid(InvalidType.Defs, InvalidType.ProcCodes);
-			}
-			#endregion
-			if(checkNcodes.Checked || checkDcodes.Checked){
 				MessageBox.Show("Procedure codes inserted: "+rowsInserted);
-			}
-			#region Treatment Areas
-			if(checkTreatAreas.Checked && CultureInfo.CurrentCulture.Name.EndsWith("US")) {
-				int countProcCodesUpdated=ProcedureCodes.SetTreatAreasForADACodes();
-				Changed=true;
-				MessageBox.Show(Lans.g(this,"Treatment areas updated")+": "+countProcCodesUpdated);
-				DataValid.SetInvalid(InvalidType.ProcCodes);
 			}
 			#endregion
 			#region Auto Codes

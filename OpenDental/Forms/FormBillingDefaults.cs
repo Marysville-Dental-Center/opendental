@@ -129,16 +129,6 @@ namespace OpenDental {
 				//_eBillCur will be the default Ebill, the clinic's Ebill, or null if there are no existing ebills for OD's selected clinic.
 				_eBillCur=eBill;
 			}
-			listModesToText.Items.Clear();
-			foreach(StatementMode statementMode in Enum.GetValues(typeof(StatementMode))) {
-				listModesToText.Items.Add(Lan.g("enumStatementMode",statementMode.GetDescription()),statementMode);//new ODBoxItem<StatementMode>(Lan.g("enumStatementMode",stateMode.GetDescription()),stateMode));
-			}
-			foreach(string modeIdx in PrefC.GetString(PrefName.BillingDefaultsModesToText)
-				.Split(new string[] { "," },StringSplitOptions.RemoveEmptyEntries)) 
-			{ 
-				listModesToText.SetSelected(PIn.Int(modeIdx),true);
-			}
-			textSmsTemplate.Text=PrefC.GetString(PrefName.BillingDefaultsSmsTemplate);
 			//Load _eBillCur's fields into the UI.
 			LoadEbill(_eBillCur);
 		}
@@ -147,12 +137,12 @@ namespace OpenDental {
 		private string GetPassword(string eBillPassword,bool isDecrypted=false) {
 			string returnValue=eBillPassword;
 			if(isDecrypted) {
-				if(CDT.Class1.Encrypt(eBillPassword,out string encryptedPassword)) {
+				if(Secrets.Encrypt(eBillPassword,out string encryptedPassword)) {
 					returnValue=encryptedPassword;
 				}
 			}
 			else {
-				if(CDT.Class1.Decrypt(eBillPassword,out string plainPassword)) {
+				if(Secrets.Decrypt(eBillPassword,out string plainPassword)) {
 					returnValue=plainPassword;
 				}
 			}
@@ -259,27 +249,6 @@ namespace OpenDental {
 		}
 		
 		private void listElectBilling_SelectedIndexChanged(object sender,EventArgs e) {
-			//In Web mode do not allow ClaimX or EDS to be selected, provide warning if they are.
-			if(ODEnvironment.IsCloudServer) {
-				string disabledBillingProvider="";
-				if(listElectBilling.SelectedIndex==3) {
-					disabledBillingProvider+="ClaimX";
-				}
-				else if(listElectBilling.SelectedIndex==4) {
-					disabledBillingProvider+="Electronic Dental Services";
-				}
-				if(!string.IsNullOrEmpty(disabledBillingProvider)) {
-					MsgBox.Show(this,disabledBillingProvider+" is not available while using Open Dental Cloud.");
-					//Reset to previous default selection if pref wasn't set to ClaimX or EDS
-					int prefBillingtype=(int)PrefC.GetEnum<BillingUseElectronicEnum>(PrefName.BillingUseElectronic);
-					if(prefBillingtype>=0 && prefBillingtype<=2) {
-						listElectBilling.SelectedIndex=prefBillingtype;
-					}
-					else {
-						listElectBilling.SelectedIndex=0;//If their current billing is ClaimX or EDS, set to "No electronic billing" to prevent infinite loop.
-					}
-				}
-			}
 			//If Dental X Change is selected, enable its textboxes and combo.
 			if(listElectBilling.SelectedIndex==1) {
 				comboRemitAddr.Enabled=true;
@@ -372,7 +341,6 @@ namespace OpenDental {
 			if(listElectBilling.SelectedIndex==1 && string.IsNullOrEmpty(textStatementURL.Text)) {
 				textStatementURL.Text=@"https://claimconnect.dentalxchange.com/dci/upload.svl";//default value from before 16.2.19
 			}
-			string modesToText=string.Join(",",listModesToText.GetListSelected<StatementMode>().Select(x => POut.Int((int)x)));
 			if(Prefs.UpdateLong(PrefName.BillingDefaultsLastDays,PIn.Long(textDays.Text))
 				| Prefs.UpdateBool(PrefName.BillingDefaultsIntermingle,checkIntermingled.Checked)
 				| Prefs.UpdateString(PrefName.BillingDefaultsNote,textNote.Text)
@@ -391,8 +359,6 @@ namespace OpenDental {
 				| (listElectBilling.SelectedIndex==3 && Prefs.UpdateString(PrefName.BillingElectStmtOutputPathClaimX,textStatementURL.Text))
 				| (listElectBilling.SelectedIndex==4 && Prefs.UpdateString(PrefName.BillingElectStmtOutputPathEds,textStatementURL.Text))
 				| Prefs.UpdateBool(PrefName.BillingDefaultsSinglePatient,checkSinglePatient.Checked)
-				| Prefs.UpdateString(PrefName.BillingDefaultsModesToText,modesToText)
-				| Prefs.UpdateString(PrefName.BillingDefaultsSmsTemplate,textSmsTemplate.Text)
 				| Prefs.UpdateBool(PrefName.BillingShowTransSinceBalZero,checkBoxBillShowTransSinceZero.Checked)
 				| Prefs.UpdateBool(PrefName.BillingElectIncludeAdjustDescript,checkIncludeAdjust.Checked))
 			{

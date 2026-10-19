@@ -43,12 +43,7 @@ namespace OpenDental {
 				labelClaimAttachWarning.Visible=false;
 			}
 			Plugins.HookAddCode(this,"FormClaimAttachment.Load_end",Patient,ClaimCur,(Action<Bitmap>)ShowImageAttachmentItemEdit);
-			if(ODEnvironment.IsCloudServer) {
-				ODProgress.ShowAction(()=>StartSnipping(),"Opening snipping tool...");
-			}
-			else {
-				StartSnipping();//this also minimizes
-			}
+			StartSnipping();//this also minimizes
 			textNarrative.Text=ClaimCur.Narrative;
 			ValidateClaimDXC();
 		}
@@ -147,13 +142,8 @@ namespace OpenDental {
 			//every 250ms
 			timerMonitorClipboard.Stop();
 			bool hasRunningProcess;
-			if(ODEnvironment.IsCloudServer) {
-				hasRunningProcess=ODCloudClient.GetProcessesSnipTool();
-			}
-			else {
-				List<Process> listProcesses=GetProcessesSnipTool();
-				hasRunningProcess=listProcesses.Count>0;
-			}
+			List<Process> listProcesses=GetProcessesSnipTool();
+			hasRunningProcess=listProcesses.Count>0;
 			if(!hasRunningProcess) {
 				WindowState=FormWindowState.Normal;
 				BringToFront();
@@ -182,15 +172,8 @@ namespace OpenDental {
 		///<summary>100ms. Monitor the list of running processes for Snip & Sketch and Snipping Tool, for a short duration,
 		///and kill any matching processes.  Doesn't stop trying until the duration is over. </summary>
 		private void timerKillSnipToolProcesses_Tick(object sender,EventArgs e) {
-			if(ODEnvironment.IsCloudServer) {
-				if(ODCloudClient.GetProcessesSnipTool()) { 
-					ODCloudClient.KillProcesses(); 
-				}
-			}
-			else {
-				List<Process> listProcesses=GetProcessesSnipTool();
-				KillProcesses(listProcesses);
-			}
+			List<Process> listProcesses=GetProcessesSnipTool();
+			KillProcesses(listProcesses);
 			if(_stopwatchKillSnipToolProcesses.Elapsed>TimeSpan.FromSeconds(3)) {
 				timerKillSnipToolProcesses.Stop();
 				_stopwatchKillSnipToolProcesses.Reset();
@@ -250,9 +233,6 @@ namespace OpenDental {
 
 		///<summary>Attempts to start Snip & Sketch, then Snipping Tool if that fails. Returns true if either started, false if neither did.</summary>
 		public static bool StartSnipAndSketchOrSnippingTool() {
-			if(ODEnvironment.IsCloudServer) {
-				return ODCloudClient.StartSnipAndSketchOrSnippingTool(_snipSketchURI);
-			}
 			//Determine if the screensketch protocol is in the registry; if not, we assume Snip & Sketch is not installed.
 			if(DoesSnipAndSketchExist()) {
 				Process processSnipAndSketch=new Process();
@@ -300,18 +280,10 @@ namespace OpenDental {
 			//If we're in the middle of trying to kill Snip Tool processes, stop for now.
 			timerKillSnipToolProcesses.Stop();
 			_stopwatchKillSnipToolProcesses.Reset();
-			if(ODEnvironment.IsCloudServer) {
-				if(ODCloudClient.GetProcessesSnipTool()) {
-					ODCloudClient.KillProcesses();
-					Thread.Sleep(100);
-				}
-			}
-			else {
-				List<Process> listProcesses=GetProcessesSnipTool();
-				if(KillProcesses(listProcesses)) {
-					//Wait a short time before launching, since otherwise the Win32Exception "The remote procedure call failed and did not execute" can happen
-					Thread.Sleep(100);
-				}
+			List<Process> listProcesses=GetProcessesSnipTool();
+			if(KillProcesses(listProcesses)) {
+				//Wait a short time before launching, since otherwise the Win32Exception "The remote procedure call failed and did not execute" can happen
+				Thread.Sleep(100);
 			}
 			if(!StartSnipAndSketchOrSnippingTool()) {
 				MsgBox.Show(this,"Neither the Snip & Sketch tool nor the Snipping Tool could be launched.  Copy an image to the clipboard, then use the Paste Image button to add it as an attachment.  If you are on a Remote Desktop connection, launch your local system's Snip & Sketch or Snipping Tool, and make snips using either of those, which will be automatically copied to the clipboard.  If neither tool is available on your system, use the Print Screen keyboard key, or other screenshot software, to copy screenshots to the clipboard.");
@@ -464,12 +436,7 @@ namespace OpenDental {
 			if(!attachmentSentAndSaved) {
 				return;
 			}
-			if(ODEnvironment.IsCloudServer) {
-				ODProgress.ShowAction(()=>StartSnipping(),"Opening snipping tool...");
-			}
-			else {
-				StartSnipping();
-			}
+			StartSnipping();
 			textFileName.Text="Attachment";
 		}
 

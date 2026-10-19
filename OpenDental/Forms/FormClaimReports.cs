@@ -19,13 +19,6 @@ namespace OpenDental{
 		public bool IsAutomaticMode;
 		private List<Clearinghouse> _listClearinghousesHq;
 
-		protected override string GetHelpOverride() {
-			if(CultureInfo.CurrentCulture.Name.EndsWith("CA")) {
-				return "FormClaimReportsCanada";
-			}
-			return "FormClaimReports";
-		}
-
 		///<summary></summary>
 		public FormClaimReports()
 		{

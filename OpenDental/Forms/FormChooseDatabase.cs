@@ -22,10 +22,6 @@ namespace OpenDental {
 		private void FormChooseDatabase_Load(object sender,EventArgs e) {
 			Logger.LogToPath("Load",LogPath.Startup,LogPhase.Start);
 			FillForm();
-			if(ODEnvironment.IsCloudInstance) {
-				//Don't let the user choose another office's database (this window should never show anyway because NoShowOnStartup should be true)
-				DisableAllExcept(butOK);
-			}
 			Logger.LogToPath("Load",LogPath.Startup,LogPhase.End);
 			this.ActiveControl=comboComputerName;
 		}
@@ -33,9 +29,6 @@ namespace OpenDental {
 		private void FillForm() {
 			Logger.LogToPath("FillForm",LogPath.Startup,LogPhase.Start);
 			if(ChooseDatabaseInfo_.IsAccessedFromMainMenu) {
-				if(ODEnvironment.IsCloudInstance) {
-					textUser.UseSystemPasswordChar=true;
-				}
 				comboComputerName.Enabled=false;
 				comboComputerName.Text=DataConnection.GetServerName();
 				comboDatabase.Enabled=false;

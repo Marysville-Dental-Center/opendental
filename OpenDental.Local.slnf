@@ -2,7 +2,6 @@
   "solution": {
     "path": "OpenDental.sln",
     "projects": [
-      "CDT\\xCDT.csproj",
       "CentralManager\\xCentralManager.csproj",
       "CodeBase\\xCodeBase.csproj",
       "DatabaseIntegrityCheck\\xDatabaseIntegrityCheck.csproj",
@@ -24,7 +23,6 @@
       "UnitTests\\UnitTests.csproj",
       "UnitTestsCore\\UnitTestsCore.csproj",
       "UpdateFileCopier\\UpdateFileCopier.csproj",
-      "WebCamOD\\WebCamOD.csproj",
       "WpfControlsOD\\WpfControlsOD.csproj",
       "xCrudGenerator\\xCrudGenerator.csproj"
     ]

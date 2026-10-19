@@ -41,13 +41,6 @@ namespace OpenDental{
 
 		private delegate void ToolBarClick();
 
-		protected override string GetHelpOverride() {
-			if(CultureInfo.CurrentCulture.Name.EndsWith("CA")) {
-				return "FormClaimsSendCanada";
-			}
-			return "FormClaimsSend";
-		}
-
 		///<summary></summary>
 		public FormClaimsSend(){
 			InitializeComponent();

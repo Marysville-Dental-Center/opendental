@@ -88,19 +88,6 @@ namespace OpenDentBusiness{
 
 		#endregion*/
 
-		///<summary>RxNorm table is considered to be too small if less than 50 RxNorms in table,
-		///because our default medication list contains 50 items, implying that the user has not imported RxNorms.</summary>
-		public static bool IsRxNormTableSmall() {
-			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				return Meth.GetBool(MethodBase.GetCurrentMethod());
-			}
-			string command="SELECT COUNT(*) FROM rxnorm";
-			if(PIn.Int(Db.GetCount(command))<50) {
-				return true;
-			}
-			return false;
-		}
-
 		public static RxNorm GetByRxCUI(string rxCui) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetObject<RxNorm>(MethodBase.GetCurrentMethod(),rxCui);

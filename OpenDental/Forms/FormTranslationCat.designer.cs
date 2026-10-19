@@ -26,7 +26,6 @@ namespace OpenDental {
 			this.listCats = new OpenDental.UI.ListBox();
 			this.label1 = new System.Windows.Forms.Label();
 			this.butExport = new OpenDental.UI.Button();
-			this.butDownload = new OpenDental.UI.Button();
 			this.label2 = new System.Windows.Forms.Label();
 			this.saveFileDialog1 = new System.Windows.Forms.SaveFileDialog();
 			this.labelLanguage = new System.Windows.Forms.Label();
@@ -61,16 +60,6 @@ namespace OpenDental {
 			this.butExport.Text = "&Export All";
 			this.butExport.Click += new System.EventHandler(this.butExport_Click);
 			// 
-			// butDownload
-			// 
-			this.butDownload.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.butDownload.Location = new System.Drawing.Point(310, 34);
-			this.butDownload.Name = "butDownload";
-			this.butDownload.Size = new System.Drawing.Size(102, 26);
-			this.butDownload.TabIndex = 4;
-			this.butDownload.Text = "&Download";
-			this.butDownload.Click += new System.EventHandler(this.butDownload_Click);
-			// 
 			// label2
 			// 
 			this.label2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
@@ -78,13 +67,12 @@ namespace OpenDental {
 			this.label2.Name = "label2";
 			this.label2.Size = new System.Drawing.Size(182, 82);
 			this.label2.TabIndex = 5;
-			this.label2.Text = "Use this to create a file to send to us with all translations.  You can ONLY do t" +
-    "his if you are the manager for your language.";
+			this.label2.Text = "Creates a file of SQL statements with all translations for the current language/culture.";
 			// 
 			// labelLanguage
 			// 
 			this.labelLanguage.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.labelLanguage.Location = new System.Drawing.Point(310, 63);
+			this.labelLanguage.Location = new System.Drawing.Point(310, 34);
 			this.labelLanguage.Name = "labelLanguage";
 			this.labelLanguage.Size = new System.Drawing.Size(198, 81);
 			this.labelLanguage.TabIndex = 6;
@@ -98,7 +86,6 @@ namespace OpenDental {
 			this.Controls.Add(this.butExport);
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.listCats);
-			this.Controls.Add(this.butDownload);
 			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
@@ -115,7 +102,6 @@ namespace OpenDental {
 		private OpenDental.UI.ListBox listCats;
 		private System.Windows.Forms.Label label1;
 		private OpenDental.UI.Button butExport;
-		private OpenDental.UI.Button butDownload;
 		private System.Windows.Forms.Label label2;
 		private System.Windows.Forms.SaveFileDialog saveFileDialog1;
 		private Label labelLanguage;

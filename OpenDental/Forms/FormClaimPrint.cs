@@ -194,39 +194,14 @@ namespace OpenDental{
 					if(!ClaimFormCur.PrintImages){
 						continue;
 					}
+					if(ClaimFormItems.IsUnshippedBackground(ClaimFormCur.Items[i].ImageFileName)) {
+						continue;//Pre-printed form; no background is printed.
+					}
 					Image image;
 					string extension;
 					switch(ClaimFormCur.Items[i].ImageFileName) {
-						case "ADA2006.gif":
-							image=CDT.Class1.GetADA2006();
-							extension=".gif";
-							break;
-						case "ADA2012.gif":
-							image=CDT.Class1.GetADA2012();
-							extension=".gif";
-							break;
-						case "ADA2012_J430D.gif":
-							image=CDT.Class1.GetADA2012_J430D();
-							extension=".gif";
-							break;
-						case "ADA2018_J432.gif":
-							image=CDT.Class1.GetADA2018_J432();
-							extension=".gif";
-							break;
-						case "ADA2019_J430.gif":
-							image=CDT.Class1.GetADA2019_J430();
-							extension=".gif";
-							break;
-						case "ADA2024_J430.gif":
-							image=CDT.Class1.GetADA2024_J430();
-							extension=".gif";
-							break;
 						case "1500_02_12.gif":
 							image=Properties.Resources._1500_02_12;
-							extension=".gif";
-							break;
-						case "DC-217.gif":
-							image=CDT.Class1.GetDC217();
 							extension=".gif";
 							break;
 						default:

@@ -964,9 +964,6 @@ How to use the TextRich control:
 				return;
 			}
 			if(menuItem==menuItemCut) {
-				if(ODEnvironment.IsCloudServer) {//For cloud, set the local workstation clipboard so it matches the VM/browser clipboard
-					ODClipboard.SetClipboard(SelectedText);
-				}
 				richTextBox.Cut();
 				SpellCheck();
 				return;
@@ -975,9 +972,6 @@ How to use the TextRich control:
 				if(ReadOnly) {
 					MsgBox.Show(this,"Not allowed because this text box is set to read-only.");
 					return;
-				}
-				if(ODEnvironment.IsCloudServer) {//For cloud, set the local workstation clipboard so it matches the VM/browser clipboard
-					ODClipboard.SetClipboard(SelectedText);
 				}
 				richTextBox.Copy();//no need to refresh SpellCheck because no text is added
 				return;

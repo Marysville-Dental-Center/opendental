@@ -691,22 +691,6 @@ namespace OpenDental {
 			}
 		}
 
-		private void butTsiOcp_Click(object sender,EventArgs e) {
-			string url="https://opendental.com/resources/redirects/redirecttransworldocp.html";
-			try {
-				if(!ODBuild.IsThinfinity() && ODCloudClient.IsAppStream) {
-					ODCloudClient.LaunchFileWithODCloudClient(url);
-				}
-				else {
-					Process.Start(url);
-				}
-			}
-			catch(Exception ex) {
-				ex.DoNothing();
-				MsgBox.Show(this,"Failed to open web browser.  Please make sure you have a default browser set and are connected to the internet and then try again.");
-			}
-		}
-
 		///<summary>Fills listClinicsSkipped with ClinicNums for those clinics that fail connection detail validation.</summary>
 		///<param name="listClinicNums">The list of ClinicNums whose connection details should be validated by connecting to the sftp server.</param>
 		private bool ValidateSendUpdateData(List<long> listClinicNums,out List<long> listClinicsSkipped) {
@@ -1583,7 +1567,7 @@ namespace OpenDental {
 					sftpPort=22;//default to port 22
 				}
 				string userName=listProps.Find(x => x.PropertyDesc=="SftpUsername")?.PropertyValue??"";
-				string userPassword=CDT.Class1.TryDecrypt(listProps.Find(x => x.PropertyDesc=="SftpPassword")?.PropertyValue??"");
+				string userPassword=Secrets.TryDecrypt(listProps.Find(x => x.PropertyDesc=="SftpPassword")?.PropertyValue??"");
 				byte[] fileContents=Encoding.ASCII.GetBytes(TsiMsgConstructor.GetPlacementFileHeader()+"\r\n"+string.Join("\r\n",kvp.Value.Values));
 				try {
 					TaskStateUpload state=new Sftp.Upload(sftpAddress,userName,userPassword,sftpPort) {
@@ -1636,7 +1620,7 @@ namespace OpenDental {
 					sftpPort=22;//default to port 22
 				}
 				string userName=listProps.Find(x => x.PropertyDesc=="SftpUsername")?.PropertyValue??"";
-				string userPassword=CDT.Class1.TryDecrypt(listProps.Find(x => x.PropertyDesc=="SftpPassword")?.PropertyValue??"");
+				string userPassword=Secrets.TryDecrypt(listProps.Find(x => x.PropertyDesc=="SftpPassword")?.PropertyValue??"");
 				byte[] fileContents=Encoding.ASCII.GetBytes(TsiMsgConstructor.GetUpdateFileHeader()+"\r\n"+string.Join("\r\n",kvp.Value.Values));
 				try {
 					TaskStateUpload state=new Sftp.Upload(sftpAddress,userName,userPassword,sftpPort) {
@@ -2128,7 +2112,7 @@ namespace OpenDental {
 					sftpPort=22;//default to port 22
 				}
 				string userName=listProps.Find(x => x.PropertyDesc=="SftpUsername")?.PropertyValue??"";
-				string userPassword=CDT.Class1.TryDecrypt(listProps.Find(x => x.PropertyDesc=="SftpPassword")?.PropertyValue??"");
+				string userPassword=Secrets.TryDecrypt(listProps.Find(x => x.PropertyDesc=="SftpPassword")?.PropertyValue??"");
 				byte[] fileContents=Encoding.ASCII.GetBytes(TsiMsgConstructor.GetUpdateFileHeader()+"\r\n"+string.Join("\r\n",kvp.Value.Values));
 				try {
 					TaskStateUpload state=new Sftp.Upload(sftpAddress,userName,userPassword,sftpPort) {

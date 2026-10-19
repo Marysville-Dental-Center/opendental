@@ -137,7 +137,6 @@ namespace OpenDental{
 			this.Name = "FormRxNorms";
 			this.Text = "RxNorms";
 			this.Load += new System.EventHandler(this.FormRxNorms_Load);
-			this.Shown += new System.EventHandler(this.FormRxNorms_Shown);
 			this.ResumeLayout(false);
 			this.PerformLayout();
 

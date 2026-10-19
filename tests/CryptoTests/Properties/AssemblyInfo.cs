@@ -1,10 +1,10 @@
-// Tests for the open source CDT and ODCrypt libraries.
+// Tests for CodeBase's Secrets and TamperHash and the ODCrypt library.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System.Reflection;
 using System.Runtime.InteropServices;
 
 [assembly: AssemblyTitle("CryptoTests")]
-[assembly: AssemblyDescription("Unit tests for CDT and ODCrypt. No database needed.")]
+[assembly: AssemblyDescription("Unit tests for CodeBase.Secrets, CodeBase.TamperHash and ODCrypt. No database needed.")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("CryptoTests")]

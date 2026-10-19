@@ -79,9 +79,6 @@ namespace OpenDental{
 			if(Security.IsAuthorized(EnumPermType.TimecardsEditAll,true)) {
 				groupEmployee.Visible=true;
 			}
-			if(PrefC.IsODHQ) {
-				butBenefits.Visible=true;
-			}
 		}
 
 		public void SortEmployeeList() {
@@ -297,10 +294,6 @@ namespace OpenDental{
 			gridMain.Columns.Add(col);
 			col=new GridColumn(Lan.g(this,"PL"),45,HorizontalAlignment.Right);
 			gridMain.Columns.Add(col);
-			if(PrefC.IsODHQ) {
-				col=new GridColumn(Lan.g(this,"WFH"),35,HorizontalAlignment.Center);
-				gridMain.Columns.Add(col);
-			}
 			col=new GridColumn(Lan.g(this,"Day"),50,HorizontalAlignment.Right);
 			gridMain.Columns.Add(col);
 			col=new GridColumn(Lan.g(this,"Week"),50,HorizontalAlignment.Right);
@@ -465,14 +458,6 @@ namespace OpenDental{
 					row.Cells.Add("");//No PL should exist, leave blank
 
 				//Column 12 - WFH Working From Home ------------------------------
-					if(PrefC.IsODHQ) {
-						if(IsBreaks || !clockEvent.IsWorkingHome){
-							row.Cells.Add("");//Not Working from home, leave blank
-						}
-						else {
-							row.Cells.Add("X");
-						}
-					}
 				//Column 13 (or 12 if no WFH) - Day (daily total)-----------------
 					//if this is the last entry for a given date
 					if(i==_arrayListMerged.Count-1//if this is the last row
@@ -579,9 +564,6 @@ namespace OpenDental{
 						row.Cells.Add("");
 					}
 				//Column 12 - WFH Working From Home ------------------------------
-					if(PrefC.IsODHQ) {
-						row.Cells.Add("");
-					}
 				//Column 13 (or 12 if no WFH) - Day (daily total)-----------------
 					//if this is the last entry for a given date
 					if(i==_arrayListMerged.Count-1//if this is the last row
@@ -697,15 +679,6 @@ namespace OpenDental{
 					return;
 				}
 				//HQ users without the TimecardsEditAll permission can only edit PTO and UPL Time Card Adjustments.
-				if(PrefC.IsODHQ
-					&& !adjust.IsUnpaidProtectedLeave
-					&& adjust.PtoDefNum==0
-					&& !Security.IsAuthorized(EnumPermType.TimecardsEditAll,suppressMessage:true))
-				{
-					MsgBox.Show(this,"HQ users without the Edit All Time Cards permission can only edit Time Card Adjustments for PTO or Protected Leave.");
-					timerUpdateBreak.Enabled=true;
-					return;
-				}
 				using FormTimeAdjustEdit formTimeAdjustmentEdit=new FormTimeAdjustEdit(adjust);
 				formTimeAdjustmentEdit.ShowDialog();
 			}
@@ -808,19 +781,10 @@ namespace OpenDental{
 			FillMain(true);
 		}
 
-		private void butBenefits_Click(object sender,EventArgs e) {
-			using FormTimeCardBenefitRp formTimeCardBenefitRp=new FormTimeCardBenefitRp();
-			formTimeCardBenefitRp.EmployeeNum=EmployeeCur.EmployeeNum;
-			formTimeCardBenefitRp.ShowDialog();
-		}
-
 		private void butPrint_Click(object sender,EventArgs e) {
 			SaveNoteToDb();
 			_linesPrinted=0;
 			PrintoutOrientation printoutOrientation=PrintoutOrientation.Portrait;
-      if(PrefC.IsODHQ) {
-				printoutOrientation=PrintoutOrientation.Landscape; //Switching for extra WFH column
-      }
 			PrinterL.TryPrintOrDebugClassicPreview(pd_PrintPage,
 				Lan.g(this,"Time card for")+" "+EmployeeCur.LName+","+EmployeeCur.FName+" "+Lan.g(this,"printed"),
 				new Margins(0,0,0,0),
@@ -852,11 +816,8 @@ namespace OpenDental{
 			yPos+=heightRect+5;//+5 pixels for a small space between columns and title area.
 			//define columns
 			int[] intArrayColW=new int[14];
-			if(PrefC.HasClinicsEnabled || PrefC.IsODHQ) {
+			if(PrefC.HasClinicsEnabled) {
 				intArrayColW=new int[15];
-			}
-			if(PrefC.HasClinicsEnabled && PrefC.IsODHQ) {
-				intArrayColW=new int[16];
 			}
 			intArrayColW[0]=70;//Date
 			intArrayColW[1]=45;//Day: Column starts to wrap at 32 pixels, however added padding to 45 to allow room for language translations
@@ -872,19 +833,9 @@ namespace OpenDental{
 			intArrayColW[11]=45;//Day
 			intArrayColW[12]=50;//Week
 			intArrayColW[13]=130;//Note
-			if(PrefC.IsODHQ) {
-				intArrayColW[11]=45;//WFH
-				intArrayColW[12]=45;//Day
-				intArrayColW[13]=50;//Week
-				intArrayColW[14]=300;//Note
-			}
-			else if(PrefC.HasClinicsEnabled) {
+			if(PrefC.HasClinicsEnabled) {
 				intArrayColW[13]=50;//Clinic
 				intArrayColW[14]=80;//Note: Reduce width when Clinic column is added so that we do not exceed the margin.
-			}
-			if(PrefC.HasClinicsEnabled && PrefC.IsODHQ) {
-				intArrayColW[14]=100;//Clinic
-				intArrayColW[15]=200;//Note: Reduce width when Clinic column is added so that we do not exceed the margin.
 			}
 			int[] intArrayColPos=new int[intArrayColW.Length+1];
 			intArrayColPos[0]=45;
@@ -892,11 +843,8 @@ namespace OpenDental{
 				intArrayColPos[i]=intArrayColPos[i-1]+intArrayColW[i-1];
 			}
 			string[] stringArrayColCaption=new string[14];
-			if(PrefC.HasClinicsEnabled || PrefC.IsODHQ) {
+			if(PrefC.HasClinicsEnabled) {
 				stringArrayColCaption=new string[15];
-			}
-			if(PrefC.HasClinicsEnabled && PrefC.IsODHQ) {
-				stringArrayColCaption=new string[16];
 			}
 			stringArrayColCaption[0]=Lan.g(this,"Date");
 			stringArrayColCaption[1]=Lan.g(this,"Day");
@@ -918,19 +866,9 @@ namespace OpenDental{
 			stringArrayColCaption[11]=Lan.g(this,"Day");
 			stringArrayColCaption[12]=Lan.g(this,"Week");
 			stringArrayColCaption[13]=Lan.g(this,"Note");
-			if(PrefC.IsODHQ) {
-				stringArrayColCaption[11]=Lan.g(this,"WFH");
-				stringArrayColCaption[12]=Lan.g(this,"Day");
-				stringArrayColCaption[13]=Lan.g(this,"Week");
-				stringArrayColCaption[14]=Lan.g(this,"Note");
-			}
-			else if(PrefC.HasClinicsEnabled) {
+			if(PrefC.HasClinicsEnabled) {
 				stringArrayColCaption[13]=Lan.g(this,"Clinic");
 				stringArrayColCaption[14]=Lan.g(this,"Note");
-			}
-			if(PrefC.HasClinicsEnabled && PrefC.IsODHQ) {
-				stringArrayColCaption[14]=Lan.g(this,"Clinic");
-				stringArrayColCaption[15]=Lan.g(this,"Note");
 			}
 			//column headers-----------------------------------------------------------------------------------------
 			e.Graphics.FillRectangle(Brushes.LightGray,intArrayColPos[0],yPos,intArrayColPos[intArrayColPos.Length-1]-intArrayColPos[0],18);

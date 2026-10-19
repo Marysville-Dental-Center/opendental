@@ -31,7 +31,7 @@ namespace OpenDental.Bridges{
 			}
 			str+=Tidy(userName)+" ";
 			//Param2: UserPassword
-			string userPassword=CDT.Class1.TryDecrypt(ProgramProperties.GetPropVal(ProgramCur.ProgramNum,"UserPassword"));
+			string userPassword=Secrets.TryDecrypt(ProgramProperties.GetPropVal(ProgramCur.ProgramNum,"UserPassword"));
 			if(userName=="") {//Give the customer the option to use OD usernames.
 				//TODO: Dental Studio might need to be contacted or our bridge might need to be enhanced for sending / updating password hashes.
 				userPassword=Security.CurUser.PasswordHash;

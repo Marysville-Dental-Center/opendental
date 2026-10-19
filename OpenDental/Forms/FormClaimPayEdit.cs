@@ -161,10 +161,10 @@ namespace OpenDental{
 			Program progPaySimple=Programs.GetCur(ProgramName.PaySimple);
 			Program progEdgeExpress=Programs.GetCur(ProgramName.EdgeExpress);
 			if(progXcharge==null || progPayConnect==null || progPaySimple==null || progEdgeExpress==null) {//Should not happen.
-				panelXcharge.Visible=(progXcharge!=null);
-				butPayConnect.Visible=(progPayConnect!=null);
-				butPaySimple.Visible=(progPaySimple!=null);
-				panelEdgeExpress.Visible=(progEdgeExpress!=null);
+				panelXcharge.Visible=(progXcharge!=null && progXcharge.Enabled);
+				butPayConnect.Visible=(progPayConnect!=null && progPayConnect.Enabled);
+				butPaySimple.Visible=(progPaySimple!=null && progPaySimple.Enabled);
+				panelEdgeExpress.Visible=(progEdgeExpress!=null && progEdgeExpress.Enabled);
 				groupPrepaid.Visible=(panelXcharge.Visible || butPayConnect.Visible || butPaySimple.Visible || panelEdgeExpress.Visible);
 				return;
 			}
@@ -173,12 +173,8 @@ namespace OpenDental{
 			butPaySimple.Visible=false;
 			panelEdgeExpress.Visible=false;
 			if(!progPayConnect.Enabled && !progXcharge.Enabled && !progPaySimple.Enabled && !progEdgeExpress.Enabled) {//if none enabled
-				//show all so user can pick
-				panelXcharge.Visible=true;
-				butPayConnect.Visible=true;
-				butPaySimple.Visible=true;
-				panelEdgeExpress.Visible=true;
-				groupPrepaid.Visible=true;
+				//Card processing buttons only show for processors whose program link is enabled.
+				groupPrepaid.Visible=false;
 				return;
 			}
 			long clinicNum=GetClinicNumSelected();
@@ -192,7 +188,7 @@ namespace OpenDental{
 					string paymentType=ProgramProperties.GetPropVal(progPayConnect.ProgramNum,"PaymentType",clinicNum);
 					//Decrypt password for later checks because an empty string password is not an empty string when encrypted.
 					if(programVersion=="1") {
-						string password=CDT.Class1.TryDecrypt(ProgramProperties.GetPropVal(progPayConnect.ProgramNum,"Password",clinicNum));
+						string password=Secrets.TryDecrypt(ProgramProperties.GetPropVal(progPayConnect.ProgramNum,"Password",clinicNum));
 						if(!string.IsNullOrEmpty(ProgramProperties.GetPropVal(progPayConnect.ProgramNum,"Username",clinicNum))
 							&& !string.IsNullOrEmpty(password)
 							&& listDefs.Any(x => x.DefNum.ToString()==paymentType))

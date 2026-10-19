@@ -217,12 +217,12 @@ namespace OpenDental {
 		}
 
 		private void radioDoseSpot_Click(object sender,EventArgs e) {
-			MsgBox.Show(this,"This enables the DoseSpot program link only.  You must contact support to cancel current eRx NewCrop charges and sign up for DoseSpot.");
+			MsgBox.Show(this,"This enables the DoseSpot program link only.  A DoseSpot account is also required.");
 			SetRadioButtonChecked(ErxOption.DoseSpot);
 		}
 
 		private void radioDoseSpotLegacy_Click(object sender,EventArgs e) {
-			MsgBox.Show(this,"This enables the program links only. You must contact support to sign up for eRx.");
+			MsgBox.Show(this,"This enables the program links only. An account with the eRx vendor is also required.");
 			SetRadioButtonChecked(ErxOption.DoseSpotWithNewCrop);
 		}
 
@@ -276,10 +276,6 @@ namespace OpenDental {
 		}
 
 		private void butSave_Click(object sender,EventArgs e) {
-			if(checkEnabled.Checked && !Programs.IsEnabledByHq(ProgramName.eRx,out string err)) {
-				MsgBox.Show(err);
-				return;
-			}
 			ErxOptionPP.PropertyValue=POut.Int((int)_erxOption);
 			_program.Enabled=checkEnabled.Checked;
 			Programs.Update(_program);

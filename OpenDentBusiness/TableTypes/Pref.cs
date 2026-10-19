@@ -57,7 +57,8 @@ namespace OpenDentBusiness {
 		[PrefName(ValueType=PrefValueType.BOOL),Obsolete("This preference has been deprecated. Do not use.",true)]
 		AccountShowTrojanExpressCollect,
 		ADAComplianceDateTime,
-		/// <summary>Boolean. </summary>
+		///<summary>Boolean. Open Dental set it after resetting ADA code descriptions on startup. No longer read; procedure code descriptions come
+		///from the procedurecode table as loaded.</summary>
 		ADAdescriptionsReset,
 		///<summary>Boolean, true by default.  When set to true and a new family member is added, the new patient's email will be autofilled with the 
 		///guarantor's email.</summary>
@@ -739,8 +740,8 @@ namespace OpenDentBusiness {
 		ConfirmTextFamMessage,
 		///<summary>Selected connection group within the CEMT.</summary>
 		ConnGroupCEMT,
-		///<summary>Missing in general.  HQ Only.  JSON serialized dictionary of the default connection settings for several databases.
-		///Key = ConnectionNames enum, Value = CentralConnection object.  These default connection settings can be overridden by SiteLinks.</summary>
+		///<summary>Missing in general.  No longer used.  Open Dental HQ's JSON serialized connection settings for its own databases (DataAction's HQ helpers,
+		///which were removed).</summary>
 		ConnectionSettingsHQ,
 		///<summary></summary>
 		CoPay_FeeSchedule_BlankLikeZero,
@@ -819,7 +820,7 @@ namespace OpenDentBusiness {
 		DisplayRenamedPatFields,
 		///<summary>Boolean.  Set to 1 to indicate that this database holds customers instead of patients.  Used by OD HQ.  Used for showing extra phone numbers, showing some extra buttons for tools that only we use, behavior of checkboxes in repeating charge window, etc.  But phone panel visibility is based on DockPhonePanelShow.</summary>
 		DistributorKey,
-		///<summary>If this is true, then PrefC.IsODHQ will return true.</summary>
+		///<summary>Used by Open Dental HQ to turn on its internal staff tools. No longer read; this build is never HQ.</summary>
 		DockPhonePanelShow,
 		///<summary>The AtoZ folder path.</summary>
 		DocPath,

@@ -33,7 +33,6 @@ namespace OpenDental{
 		private FormClaimsSend _formClaimsSend;
 		private FormEmailInbox _formEmailInbox=null;
 		private FormEtrans834Import _formEtrans834Import=null;
-		private FormGraphEmployeeTime _formGraphEmployeeTime;
 		//private bool _initializedOnStartup;
 		private List<Employee> _listEmployees=new List<Employee>();
 		/// <summary>Always 1:1 with values in listStatus.Items</summary>
@@ -157,13 +156,6 @@ namespace OpenDental{
 				SelectEmpI(-1);
 				return;
 			}
-			if(PrefC.GetBool(PrefName.DockPhonePanelShow) && !Security.IsAuthorized(EnumPermType.TimecardsEditAll,true)) {
-				//Check if the employee set their ext to 0 in the phoneempdefault table.
-				if(PhoneEmpDefaults.GetByExtAndEmp(0,_employee.EmployeeNum)==null) {
-					MessageBox.Show("Not allowed.  Use the small phone panel or the \"Big\" phone window to clock in.\r\nIf you are trying to clock in as a \"floater\", you need to set your extension to 0 first before using this Clock In button.");
-					return;
-				}
-			}
 			ProgressWin progressOD=new ProgressWin();
 			progressOD.ShowCancelButton=false;//safe because this is guaranteed to be only one second, more like a fancy wait cursor
 			progressOD.ActionMain=() => {
@@ -187,9 +179,6 @@ namespace OpenDental{
 			Employee EmployeeOld=_employee.Copy();
 			_employee.ClockStatus=Lan.g(this,"Working");
 			Employees.UpdateChanged(_employee, EmployeeOld, true);
-			if(PrefC.GetBool(PrefName.DockPhonePanelShow)) {
-				Phones.SetPhoneStatus(ClockStatusEnum.Available,Phones.GetExtensionForEmp(_employee.EmployeeNum),_employee.EmployeeNum);
-			}
 			ModuleSelected(_patNum);
 			if(!PayPeriods.HasPayPeriodForDate(DateTime.Today)) {
 				MsgBox.Show(this,"No dates exist for this pay period.  Time clock events will not display until pay periods have been created for this date range");
@@ -204,13 +193,6 @@ namespace OpenDental{
 			if(gridEmp.SelectedGridRows.Count>1) {
 				SelectEmpI(-1);
 				return;
-			}
-			if(PrefC.GetBool(PrefName.DockPhonePanelShow) && !Security.IsAuthorized(EnumPermType.TimecardsEditAll,true)) {
-				//Check if the employee set their ext to 0 in the phoneempdefault table.
-				if(PhoneEmpDefaults.GetByExtAndEmp(0,_employee.EmployeeNum)==null) {
-					MessageBox.Show("Not allowed.  Use the small phone panel or the \"Big\" phone window to clock out.\r\nIf you are trying to clock out as a \"floater\", you need to set your extension to 0 first before using this Clock Out For: button.");
-					return;
-				}
 			}
 			if(listBoxStatus.SelectedIndex==-1) {
 				MsgBox.Show(this,"Please select a status first.");
@@ -241,9 +223,6 @@ namespace OpenDental{
 			_employee.ClockStatus=Lan.g("enumTimeClockStatus",(_listTimeClockStatusesShown[listBoxStatus.SelectedIndex]).GetDescription());
 			Employees.UpdateChanged(_employee, employeeOld, true);
 			ModuleSelected(_patNum);
-			if(PrefC.GetBool(PrefName.DockPhonePanelShow)) {
-				Phones.SetPhoneStatus(Phones.GetClockStatusFromEmp(_employee.ClockStatus),Phones.GetExtensionForEmp(_employee.EmployeeNum),_employee.EmployeeNum);
-			}
 			//Automatically create a leaving log when an employee clocks out
 			if(PrefC.GetBoolSilent(PrefName.ChildDaycare,false)) {
 				ChildRoomLog childRoomLog=new ChildRoomLog();
@@ -311,20 +290,7 @@ namespace OpenDental{
 				return;
 			}
 			if(!Programs.IsEnabled(ProgramName.Transworld)) {
-				string url="https://opendental.com/resources/redirects/redirecttransworldsystems.html";
-				try {
-					if(!ODBuild.IsThinfinity() && ODCloudClient.IsAppStream) {
-						ODCloudClient.LaunchFileWithODCloudClient(url);
-					}
-					else {
-						Process.Start(url);
-					}
-				}
-				catch(Exception ex) {
-					ex.DoNothing();
-					MsgBox.Show(this,"Failed to open web browser.  Please make sure you have a default browser set and are connected to the internet and then try again.");
-				}
-				return;
+				return;//The button is only visible when the Transworld program link is enabled.
 			}
 			if(_formArManager==null || _formArManager.IsDisposed) {
 				while(!ValidateConnectionDetails()) {//only validate connection details if the ArManager form does not exist yet
@@ -348,21 +314,6 @@ namespace OpenDental{
 				//event handler sets _formAR=null.
 				_formArManager.BringToFront();
 			}
-		}
-
-		private void butSchedule_Click(object sender,EventArgs e){
-			//only visible at ODHQ
-			DateTime date=DateTime.Today;
-			if(ODBuild.IsDebug() && Environment.MachineName=="JORDANHOME") {
-				//date=new DateTime(2020,3,18);
-			}
-			if(_formGraphEmployeeTime!=null && !_formGraphEmployeeTime.IsDisposed) {
-				_formGraphEmployeeTime.Show();
-				_formGraphEmployeeTime.Restore();
-				return;
-			}
-			_formGraphEmployeeTime=new FormGraphEmployeeTime(date);
-			_formGraphEmployeeTime.Show();
 		}
 
 		private void butDaycare_Click(object sender,EventArgs e) {
@@ -406,7 +357,7 @@ namespace OpenDental{
 		}
 
 		private void butTasks_Click(object sender,EventArgs e) {
-			LaunchTaskWindow(false);
+			LaunchTaskWindow();
 			/*  //This is the old code exactly how it was before making the task window non-modal in case issues arise.
 			using FormTasks FormT=new FormTasks();
 			FormT.ShowDialog();
@@ -599,9 +550,6 @@ namespace OpenDental{
 
 		#region Methods - Event Handlers - Other
 		private void ControlManage_Load(object sender,EventArgs e) {
-			if(!PrefC.IsODHQ) {
-				butSchedule.Visible=false;
-			}
 			if(!PrefC.GetBoolSilent(PrefName.ChildDaycare,false)) {
 				butDaycare.Visible=false;
 				butDaycareCheckIn.Visible=false;
@@ -718,19 +666,10 @@ namespace OpenDental{
 			//But if checkIncludeAck is clicked,then it does RefreshMessages again.
 		}
 
-		///<summary>Only used internally to launch the task window with the Triage task list.</summary>
-		public void JumpToTriageTaskWindow() {
-			LaunchTaskWindow(true);
-		}
-
-		///<summary>Used to launch the task window preloaded with a certain task list open.  isTriage is only used at OD HQ.</summary>
-		public void LaunchTaskWindow(bool isTriage,UserControlTasksTab tab=UserControlTasksTab.Invalid) {
+		///<summary>Used to launch the task window preloaded with a certain task list open.</summary>
+		public void LaunchTaskWindow(UserControlTasksTab tab=UserControlTasksTab.Invalid) {
 			FormTasks FormTasks=new FormTasks();
 			FormTasks.Show();
-			if(isTriage) {
-				FormTasks.ShowTriage();
-				return;
-			}
 			if(tab!=UserControlTasksTab.Invalid) {
 				FormTasks.SetUserControlTasksTab(tab);
 			}
@@ -892,7 +831,7 @@ namespace OpenDental{
 			if(PrefC.GetBool(PrefName.EasyHidePublicHealth)) {
 				butImportInsPlans.Visible=false;//Import Ins Plans button is only visible when Public Health feature is enabled.
 			}
-			butManageAR.Visible=!ProgramProperties.IsAdvertisingDisabled(ProgramName.Transworld);
+			butManageAR.Visible=Programs.IsEnabled(ProgramName.Transworld);
 		}
 
 		///<summary>-1 is also valid.</summary>
@@ -959,7 +898,7 @@ namespace OpenDental{
 
 		///<summary>Shows FormBilling and displays warning message if needed.  Pass 0 to show all clinics.  Make sure to check for unsent bills before calling this method.  IsAllSelected is based upon
 		///the comboClinic selection from formBillingOptions</summary>
-		private void ShowBilling(List<long> listClinicNums,bool isHistStartMinDate=false,bool showBillTransSinceZero=false,bool isAllSelected=false,List<StatementMode> listStatementModesForSms=null) {
+		private void ShowBilling(List<long> listClinicNums,bool isHistStartMinDate=false,bool showBillTransSinceZero=false,bool isAllSelected=false) {
 			//Check to see if there is an instance of the billing list window already open that needs to be closed.
 			//This can happen if multiple people are trying to send bills at the same time.
 			if(_formBilling!=null && !_formBilling.IsDisposed) {
@@ -973,7 +912,6 @@ namespace OpenDental{
 			_formBilling.IsAllSelected=isAllSelected;
 			_formBilling.IsHistoryStartMinDate=isHistStartMinDate;
 			_formBilling.ShowBillTransSinceZero=showBillTransSinceZero;
-			_formBilling.ListStatementModesForSms=listStatementModesForSms??EnumTools.ConvertListOfIntsToListOfEnums<StatementMode>(PrefC.GetString(PrefName.BillingDefaultsModesToText));
 			_formBilling.Show();//FormBilling has a Go To option and is shown as a non-modal window so the user can view the patient account and the billing list at the same time.
 			_formBilling.BringToFront();
 		}
@@ -984,7 +922,7 @@ namespace OpenDental{
 			formBillingOptions.ListClinicNumsSelected=new List<long>() { clinicNum };
 			formBillingOptions.ShowDialog();
 			if(formBillingOptions.DialogResult==DialogResult.OK) {
-				ShowBilling(formBillingOptions.ListClinicNumsSelected,formBillingOptions.IsHistoryStartMinDate,formBillingOptions.ShowBillTransSinceZero,formBillingOptions.IsAllSelected,formBillingOptions.ListStatementModesForSMS);
+				ShowBilling(formBillingOptions.ListClinicNumsSelected,formBillingOptions.IsHistoryStartMinDate,formBillingOptions.ShowBillTransSinceZero,formBillingOptions.IsAllSelected);
 			}
 		}
 
@@ -1013,7 +951,7 @@ namespace OpenDental{
 					sftpPort=22;//default to port 22
 				}
 				string userName=listProgPropsForClinic.Find(x => x.PropertyDesc=="SftpUsername")?.PropertyValue??"";
-				string userPassword=CDT.Class1.TryDecrypt(listProgPropsForClinic.Find(x => x.PropertyDesc=="SftpPassword")?.PropertyValue??"");
+				string userPassword=Secrets.TryDecrypt(listProgPropsForClinic.Find(x => x.PropertyDesc=="SftpPassword")?.PropertyValue??"");
 				if(Sftp.IsConnectionValid(sftpAddress,userName,userPassword,sftpPort)) {
 					return true;
 				}

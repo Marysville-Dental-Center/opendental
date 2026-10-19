@@ -48,16 +48,6 @@ namespace OpenDental {
 				MsgBox.Show(this,"Turning off this option will not affect any procedures that are already locked or invalidated.");
 			}
 		}
-
-		private void linkLabelProcLockingIsAllowedDetails_LinkClicked(object sender,LinkLabelLinkClickedEventArgs e) {
-			try {
-				Process.Start("https://www.opendental.com/manual/procedurelocking.html");
-			}
-			catch(Exception ex) {
-				MessageBox.Show(Lan.g(this,"Could not find")+" "+"https://www.opendental.com/manual/procedurelocking.html"+"\r\n"
-					+Lan.g(this,"Please set up a default web browser."));
-			}
-		}
 		#endregion Methods - Event Handlers
 
 		#region Methods - Private

@@ -432,8 +432,6 @@ namespace OpenDental.User_Controls {
 					return "Unfinalized Insurance";
 				case DisplayReports.ReportNames.PatPortionUncollected:
 					return "Patient Portion Uncollected";
-				case DisplayReports.ReportNames.WebSchedAppointments:
-					return "Web Sched Appointments";
 				case DisplayReports.ReportNames.InsAging:
 					return "Insurance Aging Report";
 				case DisplayReports.ReportNames.EraAutoProcessed:

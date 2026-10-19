@@ -30,4 +30,6 @@ using System.Runtime.InteropServices;
 //      Revision
 //
 [assembly: AssemblyVersion("24.3.63.0")]
+//The crypto tests pin the osd1$ synthetic IV and encrypt with fixed IVs through SecretBox's internals.
+[assembly: InternalsVisibleTo("CryptoTests")]
 //[assembly: AssemblyFileVersion("1.0.0.0")]

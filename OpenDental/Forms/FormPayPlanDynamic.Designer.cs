@@ -118,7 +118,6 @@ namespace OpenDental {
 			this.toolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
 			this.checkProductionLock = new OpenDental.UI.CheckBox();
 			this.labelOverchargedWarning = new System.Windows.Forms.Label();
-			this.butSendToDevice = new OpenDental.UI.Button();
 			this.warningIntegrity1 = new OpenDental.UI.WarningIntegrity();
 			this.textNote = new OpenDental.ODtextBox();
 			this.groupTerms.SuspendLayout();
@@ -1063,19 +1062,6 @@ namespace OpenDental {
 			this.labelOverchargedWarning.TextAlign = System.Drawing.ContentAlignment.TopRight;
 			this.labelOverchargedWarning.Visible = false;
 			// 
-			// butSendToDevice
-			// 
-			this.butSendToDevice.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.butSendToDevice.Image = global::OpenDental.Properties.Resources.arrowRightLine;
-			this.butSendToDevice.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			this.butSendToDevice.Location = new System.Drawing.Point(474, 661);
-			this.butSendToDevice.Name = "butSendToDevice";
-			this.butSendToDevice.Size = new System.Drawing.Size(91, 24);
-			this.butSendToDevice.TabIndex = 202;
-			this.butSendToDevice.Text = "eClipboard";
-			this.butSendToDevice.UseVisualStyleBackColor = true;
-			this.butSendToDevice.Click += new System.EventHandler(this.butSendToDevice_Click);
-			// 
 			// warningIntegrity1
 			// 
 			this.warningIntegrity1.Location = new System.Drawing.Point(0, 0);
@@ -1105,7 +1091,6 @@ namespace OpenDental {
 			this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(252)))), ((int)(((byte)(253)))), ((int)(((byte)(254)))));
 			this.ClientSize = new System.Drawing.Size(1043, 696);
 			this.Controls.Add(this.warningIntegrity1);
-			this.Controls.Add(this.butSendToDevice);
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.labelTotalTx);
 			this.Controls.Add(this.textTotalTxAmt);
@@ -1249,7 +1234,6 @@ namespace OpenDental {
 		private OpenDental.UI.GroupBox groupTreatmentPlanned;
 		private System.Windows.Forms.RadioButton radioTpTreatAsComplete;
 		private System.Windows.Forms.RadioButton radioTpAwaitComplete;
-		private UI.Button butSendToDevice;
 		private UI.WarningIntegrity warningIntegrity1;
 		private UI.CheckBox checkUngrouped;
 		private UI.CheckBox checkShowAttachedPnI;

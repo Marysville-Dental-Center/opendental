@@ -25,7 +25,6 @@ namespace OpenDental {
 
 		private void FormMessagingButSetup_Load(object sender,EventArgs e) {
 			Reinitialize();
-			butSynchAll.Visible=PrefC.IsODHQ;
 		}
 
 		private void Reinitialize() {
@@ -129,39 +128,6 @@ namespace OpenDental {
 			//Refresh our local list to match the cache in case the user edited or added a new button item.
 			_sigButDefArray=SigButDefs.GetByComputer(computerNameSelected);
 			FillList();
-		}
-
-		private void butSynchAll_Click(object sender,EventArgs e) {
-			//Cache needs to be saved to the database just in case the user JUST made a change to the 'All' computer and hasn't clicked away yet.
-			if(SigButDefs.UpdateButtonIndexIfChanged(_sigButDefArray)) {
-				DataValid.SetInvalid(InvalidType.SigMessages);
-			}
-			string strWarning="Synchronize the Buttons associated to the 'All' computer to phonecomp computers."
-				+"\r\n1.) Verifies or creates a 'User Message Element' for every extension in the phonecomp table."
-				+"\r\n2.) Propagates the Buttons for the 'All' Computer to every computer in the phonecomp table."
-				+"\r\n  2a. Each Button (SigButDef) will utilize the message element from step 1 (SigElementDefNumUser)."
-				+"\r\n  2b. The phonecomp rows are used in order to correctly tie these computers to their corresponding Buttons."
-				+"\r\n3.) Delete any Buttons that were not associated to a 'User' that has a corresponding entry in the phonecomp table."
-				+"\r\n"
-				+"\r\nThis process could take a while and will most likely delete data. Continue?";
-			if(!MsgBox.Show(MsgBoxButtons.OKCancel,strWarning)) {
-				return;
-			}
-			ProgressWin progressOD=new ProgressWin();
-			progressOD.ActionMain=SigButDefs.SynchTheAllComputerWithPhoneComps;
-			//This is an HQ only tool that is not safe to abort, do not show the Cancel button.
-			progressOD.ShowCancelButton=false;
-			try {
-				progressOD.ShowDialog();
-			}
-			catch(Exception ex) {
-				FriendlyException.Show("Critical error during the synchronization process. The database has most likely been partially manipulated.",ex);
-				return;
-			}
-			//Do not send out a refresh signal to other workstations and refresh the local cache only.
-			Cache.Refresh(InvalidType.SigMessages);
-			Reinitialize();
-			MsgBox.Show(this,"Done");
 		}
 
 		private void butUp_Click(object sender,EventArgs e) {

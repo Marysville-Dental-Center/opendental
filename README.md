@@ -44,11 +44,11 @@ With Visual Studio installed instead of Build Tools, replace `BuildTools` in the
 
 ### Why upstream doesn't build out of the box, and what we changed
 
-`OpenDental.sln` references 12 projects that Open Dental doesn't publish, such as `CDT`, `Bridges`, `ODApi`, `ODCrypt`, `OpenDentalHelp`, `VirtualWeb`, `ImagingDeviceManager`, `EHR`, and the web apps. They live in sibling folders outside this repo. Prebuilt DLLs for the ones the desktop app needs ship in `Required dlls/`. We fixed this without editing any upstream `.csproj` files, so upstream updates still merge cleanly:
+`OpenDental.sln` references 12 projects that Open Dental doesn't publish, such as `CDT` (now replaced by `CodeBase/Crypto/`), `Bridges`, `ODApi`, `ODCrypt`, `OpenDentalHelp`, `VirtualWeb`, `ImagingDeviceManager`, `EHR`, and the web apps. They live in sibling folders outside this repo. Prebuilt DLLs for the ones the desktop app needs ship in `Required dlls/`. We fixed this without editing any upstream `.csproj` files, so upstream updates still merge cleanly:
 
 - **`OpenDental.Local.slnf`** is a solution filter that loads only the 21 projects actually in this repo.
 - **`Directory.Build.targets`** runs before references are resolved:
-  - Each `ProjectReference` whose project file is missing is replaced with a reference to the matching DLL in `Required dlls/`. The DLL name is the project file name without a leading `x`, so `xCDT.csproj` becomes `CDT.dll`. The build log notes each substitution, and warns if no DLL is found.
+  - Each `ProjectReference` whose project file is missing is replaced with a reference to the matching DLL in `Required dlls/`. The DLL name is the project file name without a leading `x`, so `xImagingDeviceManager.csproj` becomes `ImagingDeviceManager.dll`. The build log notes each substitution, and warns if no DLL is found.
   - The Visual Studio folder that holds MSTest v1 (`Microsoft.VisualStudio.QualityTools.UnitTestFramework`) is added to the assembly search path.
 - **`.gitignore`** ignores build output (`bin/`, `obj/`, `packages/`, `.vs/`). The `ConversionFiles` already tracked under `OpenDental/bin/Debug` remain tracked.
 
@@ -115,11 +115,11 @@ Then build the solution (see [Build](#build)), start `OpenDental\bin\Debug\OpenD
 | `OpenDental/` | The WinForms desktop application (`OpenDental.exe`): forms, modules, UI |
 | `OpenDentBusiness/` | Business logic and data access: table types, `Crud/` (generated), `Db*/`, eClaims, X12, HL7, bridges, sheets, web services |
 | `WpfControlsOD/` | WPF controls and newer UI hosted in the WinForms app |
-| `CodeBase/` | Shared utilities with no database dependency |
+| `CodeBase/` | Shared utilities with no database dependency, including stored-secret obfuscation and the `SecurityHash` tamper hashes (`CodeBase/Crypto/`, see its README) |
 | `DataConnectionBase/` | Low-level MySQL/Oracle connection layer |
 | `xCrudGenerator/` | Generates `OpenDentBusiness/Crud/*` from the table types. Run it after changing a table type |
 | `OpenDentalServer/` | Middle-tier web service (ASP.NET ASMX, hosted in IIS) |
-| `OpenDentHL7/`, `ServiceManager/`, `CentralManager/`, `DatabaseIntegrityCheck/`, `MySQLManager/`, `UpdateFileCopier/`, `WebCamOD/` | Supporting services and tools |
+| `OpenDentHL7/`, `ServiceManager/`, `CentralManager/`, `DatabaseIntegrityCheck/`, `MySQLManager/`, `UpdateFileCopier/` | Supporting services and tools |
 | `OpenDentalCloud/`, `OpenDentalGraph/`, `SparksToothChart/`, `Direct2dWrapper/`, `PasswordVaultWrapper/` | Cloud storage, dashboards, tooth chart rendering, native Direct2D, and Windows credential vault libraries |
 | `UnitTests/`, `UnitTestsCore/` | MSTest v1 tests. Most need a live test database |
 | `tools/` | Developer tools, not in the solution: `New-DevDatabase.ps1` and `DevDbTool/` build a local dev database (see [Running](#running)) |

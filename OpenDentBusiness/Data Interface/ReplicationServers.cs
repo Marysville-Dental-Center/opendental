@@ -277,10 +277,6 @@ namespace OpenDentBusiness{
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetBool(MethodBase.GetCurrentMethod());
 			}
-			//Thinfinity and AppStream do not use replication
-			if(ODEnvironment.IsCloudServer) {
-				return false;
-			}
 			//For the majority of calling methods, they should treat the program as if replication is not being used. 
 			//For the few places in the program that the database is cloud hosted it needs to check DatabaseGlobalVariablesDontSet to know if replication should be skipped.
 			if(PrefC.GetBoolSilent(PrefName.DatabaseGlobalVariablesDontSet,false)) {

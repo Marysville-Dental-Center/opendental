@@ -9,7 +9,6 @@ using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using CodeBase;
-using OpenDental.Thinfinity;
 using OpenDental.UI;
 using OpenDentalCloud.Core;
 using OpenDentBusiness;
@@ -86,18 +85,6 @@ namespace OpenDental{
 					return EnumPermType.ClaimEdit;
 				}
 				return _claimOld.ClaimStatus.In("S","R") ? EnumPermType.ClaimSentEdit : EnumPermType.ClaimEdit;
-			}
-		}
-
-		protected override string GetHelpOverride(){
-			if(_claim.ClaimType.ToLower()=="preauth"){
-				return "FormClaimEditPreauth";
-			}
-			if(CultureInfo.CurrentCulture.Name.EndsWith("CA")) {
-				return "FormClaimEditCanada";
-			}
-			else{
-				return "FormClaimEdit";
 			}
 		}
 
@@ -1243,26 +1230,16 @@ namespace OpenDental{
 				}
 				string tempFile=PrefC.GetRandomTempFile(Path.GetExtension(pathAndFileName));
 				File.WriteAllBytes(tempFile,byteArray);
-				if(ODBuild.IsThinfinity()) {
-					ThinfinityUtils.HandleFile(tempFile);
-				}
-				else {
-					Process.Start(tempFile);
-				}
+				Process.Start(tempFile);
 			}
 			else {//Local storage
 				string pathAndFileName=ODFileUtils.CombinePaths(patFolder,claimAttach.ActualFileName);
-				if(ODBuild.IsThinfinity()) {
-					ThinfinityUtils.HandleFile(pathAndFileName);
+				try {
+					Process.Start(pathAndFileName);
 				}
-				else {
-					try {
-						Process.Start(pathAndFileName);
-					}
-					catch(Exception ex) {
-						ex.DoNothing();
-						MsgBox.Show(this,"Could not open the attachment.");
-					}
+				catch(Exception ex) {
+					ex.DoNothing();
+					MsgBox.Show(this,"Could not open the attachment.");
 				}
 			}
 		}
@@ -2548,21 +2525,6 @@ namespace OpenDental{
 		}
 
 		private void butExportHelper() {
-			if(ODEnvironment.IsCloudServer) {
-				for(int i=0;i<_claim.Attachments.Count;i++) {
-					string fileName=_patient.FName+_patient.LName+_patient.PatNum+"_"+i+Path.GetExtension(_claim.Attachments[i].ActualFileName);
-					string tempPath=ODFileUtils.CombinePaths(Path.GetTempPath(),fileName);
-					string currentPath=FileAtoZ.CombinePaths(EmailAttaches.GetAttachPath(),_claim.Attachments[i].ActualFileName);
-					FileAtoZ.Copy(currentPath,tempPath,FileAtoZSourceDestination.AtoZToLocal,"Exporting attachment...");
-					if(ODBuild.IsThinfinity()) {
-						ThinfinityUtils.ExportForDownload(tempPath);
-					}
-					else if(ODCloudClient.IsAppStream) {
-						CloudClientL.ExportForCloud(tempPath,doPromptForName:false);
-					}
-				}
-				return;
-			}
 			string claimAttachExportPath=PrefC.GetString(PrefName.ClaimAttachExportPath);
 			if(!Directory.Exists(claimAttachExportPath)){
 				if(MessageBox.Show(Lan.g(this,"The claim export path no longer exists at:")+" "+claimAttachExportPath+"\r\n"
@@ -2941,10 +2903,6 @@ namespace OpenDental{
 			}
 			Clearinghouse clearinghouseHq=ClearinghouseL.GetClearinghouseHq(claimSendQueueItemsArrayCA[0].ClearinghouseNum);
 			Clearinghouse clearinghouseClin=Clearinghouses.OverrideFields(clearinghouseHq,clinicNum);
-			if(ODEnvironment.IsCloudServer && Clearinghouses.IsDisabledForWeb(clearinghouseClin)) {
-				MessageBox.Show(Lans.g("Eclaims","This clearinghouse is not available while using Open Dental Cloud."));
-				return;
-			}
 			//string warnings;
 			//string missingData=
 			claimSendQueueItemsArrayCA[0]=Eclaims.GetMissingData(clearinghouseClin,claimSendQueueItemsArrayCA[0]);

@@ -42,7 +42,6 @@ namespace OpenDental{
 			this.comboClinic = new OpenDental.UI.ComboBoxClinicPicker();
 			this.butSave = new OpenDental.UI.Button();
 			this.checkEnabled = new OpenDental.UI.CheckBox();
-			this.linkLabel1 = new System.Windows.Forms.LinkLabel();
 			this.labelClinicEnable = new System.Windows.Forms.Label();
 			this.groupPaySettings.SuspendLayout();
 			this.groupCredentials.SuspendLayout();
@@ -219,19 +218,6 @@ namespace OpenDental{
 			this.checkEnabled.TabIndex = 13;
 			this.checkEnabled.Text = "Enabled (affects all clinics)";
 			// 
-			// linkLabel1
-			// 
-			this.linkLabel1.LinkArea = new System.Windows.Forms.LinkArea(30, 41);
-			this.linkLabel1.Location = new System.Drawing.Point(22, 32);
-			this.linkLabel1.Name = "linkLabel1";
-			this.linkLabel1.Size = new System.Drawing.Size(410, 16);
-			this.linkLabel1.TabIndex = 12;
-			this.linkLabel1.TabStop = true;
-			this.linkLabel1.Text = "The EdgeExpress website is at https://www.globalpaymentsintegrated.com/";
-			this.linkLabel1.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			this.linkLabel1.UseCompatibleTextRendering = true;
-			this.linkLabel1.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.linkLabel1_LinkClicked);
-			// 
 			// labelClinicEnable
 			// 
 			this.labelClinicEnable.Location = new System.Drawing.Point(22, 80);
@@ -249,7 +235,6 @@ namespace OpenDental{
 			this.Controls.Add(this.comboClinic);
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.checkEnabled);
-			this.Controls.Add(this.linkLabel1);
 			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEdgeExpressSetup";
 			this.Text = "EdgeExpress Setup";
@@ -279,7 +264,6 @@ namespace OpenDental{
 		private UI.ComboBoxClinicPicker comboClinic;
 		private UI.Button butSave;
 		private OpenDental.UI.CheckBox checkEnabled;
-		private System.Windows.Forms.LinkLabel linkLabel1;
 		private System.Windows.Forms.Label labelClinicEnable;
 		private OpenDental.UI.CheckBox checkWebPayEnabled;
 	}

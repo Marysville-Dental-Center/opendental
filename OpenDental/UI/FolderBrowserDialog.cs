@@ -8,7 +8,7 @@ using CodeBase;
 using OpenDentBusiness;
 
 namespace OpenDental {
-	///<summary>This class purposely obscures System.Windows.Forms.FolderBrowserDialog. We want to give it different behavior in web mode.</summary>
+	///<summary>This class purposely obscures System.Windows.Forms.FolderBrowserDialog.</summary>
 	public class FolderBrowserDialog:IDisposable {
 
 		private System.Windows.Forms.FolderBrowserDialog _folderBrowserDialog;
@@ -49,10 +49,6 @@ namespace OpenDental {
 		}
 
 		public DialogResult ShowDialog() {
-			if(ODEnvironment.IsCloudServer) {
-				MessageBox.Show(Lans.g(this,"Folder browsing not allowed in web mode."));
-				return DialogResult.Cancel;
-			}
 			return _folderBrowserDialog.ShowDialog();
 		}
 

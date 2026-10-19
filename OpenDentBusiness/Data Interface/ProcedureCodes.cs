@@ -11,33 +11,10 @@ using System.Threading;
 using Word;
 using System.Globalization;
 using OpenDentBusiness.Eclaims;
-using Newtonsoft.Json;
 
 namespace OpenDentBusiness{
 	///<summary></summary>
 	public class ProcedureCodes {
-		#region Get Methods
-
-		public static List<ProcedureCode> GetMandibularCodes() {
-			List<ProcedureCode> listMandibularCodes=new List<ProcedureCode>();
-			ODException.SwallowAnyException(() => {
-				listMandibularCodes=JsonConvert.DeserializeObject<List<ProcedureCode>>(CDT.Class1.GetMandibularCodes());
-			});
-			//The list of mandibular proc codes can be null, due to DeserializeObject interrupting an empty string as null
-			return listMandibularCodes??new List<ProcedureCode>();
-		}
-
-		public static List<ProcedureCode> GetMaxillaryCodes() {
-			List<ProcedureCode> listMaxillaryCodes=new List<ProcedureCode>();
-			ODException.SwallowAnyException(() => {
-				listMaxillaryCodes=JsonConvert.DeserializeObject<List<ProcedureCode>>(CDT.Class1.GetMaxillaryCodes());
-			});
-			//The list of maxillary proc codes can be null, due to DeserializeObject interrupting an empty string as null
-			return listMaxillaryCodes??new List<ProcedureCode>();
-		}
-
-		#endregion
-
 		#region Cache Pattern
 
 		///<summary>Utilizes the NonPkAbs version of CacheDict because it uses ProcCode as the Key instead of the PK CodeNum.</summary>
@@ -1008,139 +985,6 @@ namespace OpenDentBusiness{
 					+Lans.g("Defintions","with category:")+" "+def.Category.GetDescription();
 				SecurityLogs.MakeLogEntry(EnumPermType.DefEdit,0,logText);
 			}
-		}
-
-		///<summary>Resets the descriptions and abbreviations for all ADA codes to the official wording.  Descriptions are required by the license, we set the abbreviations.</summary>
-		public static int ResetADAdescriptionsAndAbbrs() {
-			Meth.NoCheckMiddleTierRole();
-			return ResetADAdescriptionsAndAbbrs(GetADAcodes());
-		}
-
-		///<summary>Gets a list of procedure codes as defined by the ADA, plus procedure code settings for codes which are commonly used and default settings for those which are not commonly used.</summary>
-		public static List<ProcedureCode> GetADAcodes() {
-			List<ProcedureCode> listProcedureCodes=new List<ProcedureCode>();
-			//Split raw data into non-empty lines of text in the file.
-			string[] arrayAdaCodeLines=CDT.Class1.GetADAcodes().Split(new char[] {'\r','\n'},StringSplitOptions.RemoveEmptyEntries);
-			string[] arrayProcedureCodeSettingLines=CDT.Class1.GetProcedureCodeSettings().Split(new char[] {'\r','\n'},StringSplitOptions.RemoveEmptyEntries);
-			string[] arrayAdaDictionaryCode;
-			//load our codes into a hashtable
-			Hashtable hashTable=new Hashtable();//key=adacode, value=entire row string
-			for(int i=0;i<arrayProcedureCodeSettingLines.Length;i++) {
-				hashTable.Add(arrayProcedureCodeSettingLines[i].Substring(0,5),arrayProcedureCodeSettingLines[i]);
-			}
-			for(int i=0;i<arrayAdaCodeLines.Length;i++) {
-				arrayAdaDictionaryCode=arrayAdaCodeLines[i].Split(new char[] { '\t' });
-				//Skips invalid text lines in the file.
-				if(arrayAdaDictionaryCode[0].Length!=5) {
-					continue;
-				}
-				ProcedureCode procedureCode=new ProcedureCode();
-				procedureCode.ProcCode=PIn.String(arrayAdaDictionaryCode[0]);
-				procedureCode.Descript=PIn.String(arrayAdaDictionaryCode[2].TrimEnd('"').TrimStart('"'));
-				procedureCode.ProcCatDescript="Never Used";
-				procedureCode.ProcTime="/X/";
-				//look for a matching code in our list
-				if(hashTable.ContainsKey(procedureCode.ProcCode)) {
-					string[] columns=((string)hashTable[procedureCode.ProcCode]).Split('\t');
-					procedureCode.TreatArea=(TreatmentArea)PIn.Int(columns[1]);
-					//code.SetRecall=PIn.PBool(columns[2]);
-					procedureCode.NoBillIns=PIn.Bool(columns[3]);
-					procedureCode.IsProsth=PIn.Bool(columns[4]);
-					procedureCode.IsHygiene=PIn.Bool(columns[5]);
-					procedureCode.PaintType=(ToothPaintingType)PIn.Int(columns[6]);
-					procedureCode.ProcCatDescript=PIn.String(columns[7]);
-					procedureCode.ProcTime=PIn.String(columns[8]);
-					procedureCode.AbbrDesc=PIn.String(columns[9]);
-					procedureCode.IsRadiology=PIn.Bool(columns[10]);
-					if(procedureCode.ProcCode=="D2391") {
-						procedureCode.SubstitutionCode="D2140";
-						procedureCode.SubstOnlyIf=SubstitutionCondition.Always;
-					}
-					else if(procedureCode.ProcCode=="D2392") {
-						procedureCode.SubstitutionCode="D2150";
-						procedureCode.SubstOnlyIf=SubstitutionCondition.Always;
-					}
-					else if(procedureCode.ProcCode=="D2393") {
-						procedureCode.SubstitutionCode="D2160";
-						procedureCode.SubstOnlyIf=SubstitutionCondition.Always;
-					}
-					else if(procedureCode.ProcCode=="D2394") {
-						procedureCode.SubstitutionCode="D2161";
-						procedureCode.SubstOnlyIf=SubstitutionCondition.Always;
-					}
-				}
-				listProcedureCodes.Add(procedureCode);
-			}
-			return listProcedureCodes;
-		}
-
-		///<summary>Updates the treatment areas for all procedure codes to the ADA recommended treatment areas. Returns the count of procedure codes updated</summary>
-		public static int SetTreatAreasForADACodes() {
-			Meth.NoCheckMiddleTierRole();
-			List<ProcedureCode> listProcedureCodes=ProcedureCodes.GetAllCodes();//Ordered by D-code.
-			string[] arrayProcedureCodeTreatAreasLines=CDT.Class1.GetProcedureCodeTreatAreas()//~850 rows
-				.Split(new char[] {'\r','\n'},StringSplitOptions.RemoveEmptyEntries);
-			string[] arrayProcCodeTreatArea;
-			int countProcCodesUpdated=0;
-			for(int i=0;i<arrayProcedureCodeTreatAreasLines.Length;i++) {
-				//Expects each row in the text file to be of the format D0120\t0\t0
-				arrayProcCodeTreatArea=arrayProcedureCodeTreatAreasLines[i].Split("\t",StringSplitOptions.RemoveEmptyEntries);
-				if(arrayProcCodeTreatArea.Length<3) {
-					continue;
-				}
-				ProcedureCode procedureCode=listProcedureCodes.Find(x => x.ProcCode==arrayProcCodeTreatArea[0]);
-				if(procedureCode==null) {
-					continue;
-				}
-				if(!Enum.TryParse(arrayProcCodeTreatArea[1],out TreatmentArea treatmentArea) 
-					|| procedureCode.TreatArea==treatmentArea)
-				{
-					continue;
-				}
-				ProcedureCode procedureCodeOld=procedureCode.Copy();
-				procedureCode.TreatArea=treatmentArea;
-				procedureCode.AreaAlsoToothRange=PIn.Bool(arrayProcCodeTreatArea[2]);
-				if(ProcedureCodes.Update(procedureCode,procedureCodeOld)) {
-					countProcCodesUpdated+=1;
-				}
-			}
-			return countProcCodesUpdated;
-		}
-
-		///<summary>Resets the descriptions and abbreviations for all ADA codes to the official wording.  Descriptions are required by the license, we set the abbreviations.</summary>
-		public static int ResetADAdescriptionsAndAbbrs(List<ProcedureCode> listProcedureCodes) {
-			Meth.NoCheckMiddleTierRole();
-			ProcedureCode procedureCode;
-			int count=0;
-			for(int i=0;i<listProcedureCodes.Count;i++) {
-				if(!ProcedureCodes.IsValidCode(listProcedureCodes[i].ProcCode)) {//If this code is not in this database
-					continue;
-				}
-				procedureCode=ProcedureCodes.GetProcCode(listProcedureCodes[i].ProcCode);
-				DateTime datePrevious=procedureCode.DateTStamp;
-				bool changedThisLoop=false;
-				if(procedureCode.Descript!=listProcedureCodes[i].Descript) {
-					string oldDescript=procedureCode.Descript;
-					procedureCode.Descript=listProcedureCodes[i].Descript;
-					ProcedureCodes.Update(procedureCode);		
-					SecurityLogs.MakeLogEntry(EnumPermType.ProcCodeEdit,0,"Code "+procedureCode.ProcCode+" changed from '"+oldDescript+"' to '"+procedureCode.Descript+"' by D-Codes Tool."
-						,procedureCode.CodeNum,datePrevious);
-					changedThisLoop|=true;
-				}
-				if(string.IsNullOrWhiteSpace(procedureCode.AbbrDesc) && listProcedureCodes[i].AbbrDesc!="") {
-					string oldAbbrDesc=procedureCode.AbbrDesc;
-					procedureCode.AbbrDesc=listProcedureCodes[i].AbbrDesc;
-					ProcedureCodes.Update(procedureCode);
-					SecurityLogs.MakeLogEntry(EnumPermType.ProcCodeEdit,0,$"Code {procedureCode.ProcCode} changed from '{oldAbbrDesc}' to '{procedureCode.AbbrDesc}' by D-Codes Tool."
-						,procedureCode.CodeNum,datePrevious);
-					changedThisLoop|=true;
-				}
-				if(changedThisLoop){
-					count++;
-				}
-			}
-			return count;
-			//don't forget to refresh procedurecodes.
 		}
 
 		///<summary>Returns true if the ADA missed appointment procedure code is in the database to identify how to track missed appointments.</summary>

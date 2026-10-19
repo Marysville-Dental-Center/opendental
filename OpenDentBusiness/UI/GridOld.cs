@@ -17,7 +17,6 @@ using System.Windows.Forms;
 using CodeBase;
 using OpenDentBusiness;
 using PdfSharp.Drawing;
-using OpenDental.Thinfinity;
 using PdfSharp.Pdf;
 
 namespace OpenDental.UI {
@@ -3297,36 +3296,27 @@ namespace OpenDental.UI {
 		///<summary>Exports the grid to a text or Excel file. The user will have the opportunity to choose the location of the export file.</summary>
 		public void Export(string fileName) {
 			string selectedFilePath=ODFileUtils.CombinePaths(Path.GetTempPath(),fileName);
-			if(ODBuild.IsThinfinity()) {
-				//file download dialog will come up later, after file is created.
-				//If extension is missing, add .txt extension. VirtualUI won't download if missing extension.
-				if(string.IsNullOrEmpty(Path.GetExtension(selectedFilePath))) {
-					selectedFilePath+=".txt";
+			SaveFileDialog saveFileDialog=new SaveFileDialog();
+			saveFileDialog.AddExtension=true;
+			saveFileDialog.FileName=fileName;
+			if(!Directory.Exists(PrefC.GetString(PrefName.ExportPath))) {
+				try {
+					Directory.CreateDirectory(PrefC.GetString(PrefName.ExportPath));
+					saveFileDialog.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
+				}
+				catch {
+					//initialDirectory will be blank
 				}
 			}
 			else {
-				SaveFileDialog saveFileDialog=new SaveFileDialog();
-				saveFileDialog.AddExtension=true;
-				saveFileDialog.FileName=fileName;
-				if(!Directory.Exists(PrefC.GetString(PrefName.ExportPath))) {
-					try {
-						Directory.CreateDirectory(PrefC.GetString(PrefName.ExportPath));
-						saveFileDialog.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
-					}
-					catch {
-						//initialDirectory will be blank
-					}
-				}
-				else {
-					saveFileDialog.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
-				}
-				saveFileDialog.Filter="Text files(*.txt)|*.txt|Excel Files(*.xls)|*.xls|All files(*.*)|*.*";
-				saveFileDialog.FilterIndex=0;
-				if(saveFileDialog.ShowDialog()!=DialogResult.OK) {
-					return;
-				}
-				selectedFilePath=saveFileDialog.FileName;
+				saveFileDialog.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
 			}
+			saveFileDialog.Filter="Text files(*.txt)|*.txt|Excel Files(*.xls)|*.xls|All files(*.*)|*.*";
+			saveFileDialog.FilterIndex=0;
+			if(saveFileDialog.ShowDialog()!=DialogResult.OK) {
+				return;
+			}
+			selectedFilePath=saveFileDialog.FileName;
 			try {
 				using(StreamWriter sw=new StreamWriter(selectedFilePath,false)) {
 					String line="";
@@ -3353,12 +3343,7 @@ namespace OpenDental.UI {
 				MessageBox.Show(Lans.g(this,"File in use by another program.  Close and try again."));
 				return;
 			}
-			if(ODBuild.IsThinfinity()) {
-				ThinfinityUtils.ExportForDownload(selectedFilePath);
-			}
-			else {
-				MessageBox.Show(Lans.g(this,"File created successfully"));
-			}
+			MessageBox.Show(Lans.g(this,"File created successfully"));
 		}
 
 		///<summary>Returns the text in the cell for the given row and column. Will throw if either index is invalid.</summary>

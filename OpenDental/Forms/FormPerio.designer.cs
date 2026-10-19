@@ -117,9 +117,6 @@ namespace OpenDental {
 			this.labelListening = new System.Windows.Forms.Label();
 			this.labelNotes = new System.Windows.Forms.Label();
 			this.butCopyNote = new OpenDental.UI.Button();
-			this.labelIsMobileActive = new System.Windows.Forms.Label();
-			this.butUnlockEClip = new OpenDental.UI.Button();
-			this.timerEClipCheck = new System.Windows.Forms.Timer(this.components);
 			this.butDefault = new OpenDental.UI.Button();
 			this.menuMain = new OpenDental.UI.MenuOD();
 			this.groupBox3 = new OpenDental.UI.GroupBox();
@@ -127,7 +124,6 @@ namespace OpenDental {
 			this.textExamNotes = new OpenDental.ODtextBox();
 			this.gridODExam = new OpenDental.UI.GridOD();
 			this.butBolaLaunch = new System.Windows.Forms.Panel();
-			this.butBolaGet = new System.Windows.Forms.Panel();
 			this.groupBox1.SuspendLayout();
 			this.groupBox2.SuspendLayout();
 			this.groupBox3.SuspendLayout();
@@ -935,34 +931,6 @@ namespace OpenDental {
 			this.butCopyNote.Text = "Copy Note";
 			this.butCopyNote.Click += new System.EventHandler(this.butCopyNote_Click);
 			// 
-			// labelIsMobileActive
-			// 
-			this.labelIsMobileActive.ForeColor = System.Drawing.Color.ForestGreen;
-			this.labelIsMobileActive.Image = global::OpenDental.Properties.Resources.record;
-			this.labelIsMobileActive.ImageAlign = System.Drawing.ContentAlignment.MiddleRight;
-			this.labelIsMobileActive.Location = new System.Drawing.Point(113, 295);
-			this.labelIsMobileActive.Name = "labelIsMobileActive";
-			this.labelIsMobileActive.Size = new System.Drawing.Size(122, 19);
-			this.labelIsMobileActive.TabIndex = 93;
-			this.labelIsMobileActive.Text = "Editing on Mobile";
-			this.labelIsMobileActive.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			this.labelIsMobileActive.Visible = false;
-			// 
-			// butUnlockEClip
-			// 
-			this.butUnlockEClip.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			this.butUnlockEClip.Location = new System.Drawing.Point(17, 292);
-			this.butUnlockEClip.Name = "butUnlockEClip";
-			this.butUnlockEClip.Size = new System.Drawing.Size(90, 24);
-			this.butUnlockEClip.TabIndex = 93;
-			this.butUnlockEClip.Text = "Unlock";
-			this.butUnlockEClip.Click += new System.EventHandler(this.butUnlockEClip_Click);
-			// 
-			// timerEClipCheck
-			// 
-			this.timerEClipCheck.Interval = 3000;
-			this.timerEClipCheck.Tick += new System.EventHandler(this.timerEClipCheck_Tick);
-			// 
 			// butDefault
 			// 
 			this.butDefault.Icon = OpenDental.UI.EnumIcons.Add;
@@ -1039,25 +1007,12 @@ namespace OpenDental {
 			this.butBolaLaunch.TabIndex = 141;
 			this.butBolaLaunch.Click += new System.EventHandler(this.butBolaLaunch_Click);
 			// 
-			// butBolaGet
-			// 
-			this.butBolaGet.BackgroundImage = global::OpenDental.Properties.Resources.bola_get;
-			this.butBolaGet.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
-			this.butBolaGet.Location = new System.Drawing.Point(1112, 217);
-			this.butBolaGet.Name = "butBolaGet";
-			this.butBolaGet.Size = new System.Drawing.Size(89, 39);
-			this.butBolaGet.TabIndex = 142;
-			this.butBolaGet.Click += new System.EventHandler(this.butBolaGet_Click);
-			// 
 			// FormPerio
 			// 
 			this.ClientSize = new System.Drawing.Size(1231, 696);
-			this.Controls.Add(this.butBolaGet);
 			this.Controls.Add(this.butBolaLaunch);
 			this.Controls.Add(this.groupBox3);
-			this.Controls.Add(this.labelIsMobileActive);
 			this.Controls.Add(this.menuMain);
-			this.Controls.Add(this.butUnlockEClip);
 			this.Controls.Add(this.butDefault);
 			this.Controls.Add(this.butCopyNote);
 			this.Controls.Add(this.textExamNotes);
@@ -1221,15 +1176,11 @@ namespace OpenDental {
 		//private OpenDental.ContrPerio gridP;
 		//private OpenDental.ContrPerio contrPerio1;
 		#endregion Controls
-		private Timer timerEClipCheck;
-		private UI.Button butUnlockEClip;
-		private Label labelIsMobileActive;
 		private UI.Button butDefault;
 		private UI.MenuOD menuMain;
 		private UI.GroupBox groupBox3;
 		private RadioButton radioMaxFirst;
 		private Label labelFwdReverse;
 		private Panel butBolaLaunch;
-		private Panel butBolaGet;
 	}
 }

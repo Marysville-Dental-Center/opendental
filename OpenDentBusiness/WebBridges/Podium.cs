@@ -28,9 +28,8 @@ namespace OpenDentBusiness {
 			Program prog=Programs.GetCur(ProgramName.Podium);
 			long programNum=prog.ProgramNum;
 			//Consider blocking re-entrance if this hasn't finished.
-			//Only send invitations if the program link is enabled here and at HQ, the computer name is set to this computer, and eConnector is not set to send invitations 
-			if(!Programs.IsEnabledByHq(prog,out string _)
-				|| !Programs.IsEnabled(ProgramName.Podium) 
+			//Only send invitations if the program link is enabled, the computer name is set to this computer, and eConnector is not set to send invitations 
+			if(!Programs.IsEnabled(ProgramName.Podium) 
 				|| !ODEnvironment.IdIsThisComputer(ProgramProperties.GetPropVal(programNum,PropertyDescs.ComputerNameOrIP)) 
 				|| ProgramProperties.GetPropVal(programNum,PropertyDescs.UseService)!=POut.Bool(isService)) 
 			{ 
@@ -116,21 +115,6 @@ namespace OpenDentBusiness {
 				)";
 			}
 			return Crud.AppointmentCrud.SelectMany(command);
-		}
-
-		///<summary>Throws exceptions.</summary>
-		public static void ShowPage() {
-			try {
-				if(Programs.IsEnabled(ProgramName.Podium)) {
-					Process.Start("http://www.opendental.com/resources/redirects/redirectpodiumdashboard.html");
-				}
-				else {
-					Process.Start("http://www.opendental.com/resources/redirects/redirectpodiumod.html");
-				}
-			}
-			catch {
-				throw new Exception(Lans.g("Podium","Failed to open web browser.  Please make sure you have a default browser set and are connected to the internet and then try again."));
-			}
 		}
 
 		///<summary>Tries each of the phone numbers provided in the list one at a time until it succeeds.</summary>
@@ -337,7 +321,6 @@ namespace OpenDentBusiness {
 			public static string ApptTimeDismissedMinutes="Send after appointment time dismissed (minutes)";
 			public static string ExistingPatientTriggerType="Existing patient trigger type";
 			public static string NewPatientTriggerType="New patient trigger type";
-			public static string DisableAdvertising="Disable Advertising";
 			///<summary>This is used in the Chart and the Account. 
 			///The string is an identifier for the database and should not be changed</summary>
 			public static string ShowCommlogsInChartAndAccount="Show Commlogs In Chart";

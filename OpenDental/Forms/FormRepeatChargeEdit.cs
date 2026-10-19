@@ -125,42 +125,6 @@ namespace OpenDental{
 				checkCreatesClaim.Enabled=false;
 				checkIsEnabled.Enabled=false;
 			}
-			if(PrefC.IsODHQ) {
-				_eServiceCode=EServiceCodeLink.GetEService(_repeatCharge.ProcCode);  
-				bool isDefined=_eServiceCode!=eServiceCode.Undefined;//it found a link
-				if(isDefined) { 
-					if(IsNew) {
-						MsgBox.Show(this,"You cannot manually create any eService repeating charges.\r\n"
-							+"Use the Signup Portal instead.\r\n\r\n"
-							+"The Charge Amount can be manually edited after the Signup Portal has created the desired eService repeating charge.");
-						DialogResult=DialogResult.Abort;
-						return;
-					}
-					if(IsForZipwhip() || _isMassEmail) {
-						if(_isMassEmail) {
-							labelZipwhipAmt.Text="Usage Rate";
-						}
-						textZipwhipChargeAmount.Visible=true;
-						labelZipwhipAmt.Visible=true;
-						if(CompareDouble.IsGreaterThan(_repeatCharge.ChargeAmtAlt,-1)) {
-							textZipwhipChargeAmount.Text=Currency.Round(_repeatCharge.ChargeAmtAlt).ToString();
-						}
-					}
-					//The only things that users should be able to do for eServices are:
-					//1. Change the repeating charge amount(s).
-					//2. Manipulate the Start Date.
-					//3. Manipulate the Note.
-					//4. Manipulate Billing Day because not all customers will have a non-eService repeating charge in order to manipulate.
-					//This is because legacy users (versions prior to 17.1) need the ability to manually set their monthly charge amount, etc.
-					SetFormReadOnly(this.PanelClient,butSave
-						,textChargeAmt,labelChargeAmount
-						,textDateStart,labelDateStart
-						,textNote,labelNote
-						,textBillingDay,labelBillingCycleDay
-						,textZipwhipChargeAmount,labelZipwhipAmt
-						,checkUseUnearned,comboUnearnedTypes);
-				}
-			}
 			Patient patient=Patients.GetPat(_repeatCharge.PatNum);//pat should never be null. If it is, this will fail.
 			//If this is a new repeat charge and no other active repeat charges exist, set the billing cycle day to today
 			if(IsNew && !RepeatCharges.ActiveRepeatChargeExists(_repeatCharge.PatNum)) {
@@ -434,9 +398,6 @@ namespace OpenDental{
 				}
 				_repeatCharge.RepeatChargeNum=RepeatCharges.Insert(_repeatCharge);
 				RepeatCharges.InsertRepeatChargeChangeSecurityLogEntry(_repeatCharge,EnumPermType.RepeatChargeCreate,patientOldChange,isAutomated:false);
-				if(PrefC.IsODHQ) {
-					AddProcedureToCC();
-				}
 			}
 			else{ //not a new repeat charge
 				RepeatCharges.InsertRepeatChargeChangeSecurityLogEntry(_repeatChargeOld,EnumPermType.RepeatChargeUpdate,patientOldChange,newCharge:_repeatCharge,isAutomated:false,newPat:patientNewChange);

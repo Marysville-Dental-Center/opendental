@@ -127,7 +127,6 @@ namespace OpenDental {
 			textSyncCode.Text=PrefC.GetString(PrefName.CentralManagerSyncCode);
 			textNumDecimals.Text=CultureInfo.CurrentCulture.NumberFormat.CurrencyDecimalDigits.ToString();
 			textWebServiceServerName.Text=PrefC.GetString(PrefName.WebServiceServerName);
-			textAlertCloudSessions.Text=PrefC.GetString(PrefName.CloudAlertWithinLimit);
 			_listTrackLastClinicBys=new List<string> { "None","Workstation","User" };//must be in english because these values are stored in DB.
 			for(int i=0;i<_listTrackLastClinicBys.Count;i++) {
 				comboTrackClinic.Items.Add(Lan.g(this,_listTrackLastClinicBys[i]));//translation is for display only.
@@ -151,7 +150,7 @@ namespace OpenDental {
 		}
 
 		public bool SaveMainWindowMisc() {
-			if(!textProcessSigsIntervalInSecs.IsValid() || !textSignalInactiveMinutes.IsValid() || !textAlertInterval.IsValid() || !textInactiveAlert.IsValid() || !textAlertCloudSessions.IsValid() || !textAuditEntries.IsValid()) {
+			if(!textProcessSigsIntervalInSecs.IsValid() || !textSignalInactiveMinutes.IsValid() || !textAlertInterval.IsValid() || !textInactiveAlert.IsValid() || !textAuditEntries.IsValid()) {
 				MessageBox.Show(Lan.g(this,"Please fix data entry errors first."));
 				return false;
 			}
@@ -202,7 +201,6 @@ namespace OpenDental {
 			hasChanged |=Prefs.UpdateBool(PrefName.ImeCompositionCompatibility,checkImeCompositionCompatibility.Checked);
 			hasChanged |=Prefs.UpdateString(PrefName.CentralManagerSyncCode,textSyncCode.Text);
 			hasChanged |=Prefs.UpdateString(PrefName.WebServiceServerName,textWebServiceServerName.Text);
-			hasChanged |=Prefs.UpdateLong(PrefName.CloudAlertWithinLimit,PIn.Long(textAlertCloudSessions.Text));
 			hasChanged |=Prefs.UpdateString(PrefName.ClinicTrackLast,_listTrackLastClinicBys[comboTrackClinic.SelectedIndex]);
 			hasChanged |=Prefs.UpdateString(PrefName.AuditTrailEntriesDisplayed,textAuditEntries.Text);
 			hasChanged |=Prefs.UpdateBool(PrefName.BackupIndexesDisabled,checkBackupIndexesDisabled.Checked);

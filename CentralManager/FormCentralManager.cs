@@ -130,7 +130,7 @@ namespace CentralManager {
 				odThread.Name="VerifyThread"+i;
 				odThread.GroupName="Verify";
 				odThread.AddExceptionHandler((ex) => {
-					odThread.Tag=new object[] { conn,"OFFLINE: "+StringTools.Truncate(ex.Message,100),eServiceSignalSeverity.None };//Can't connect
+					odThread.Tag=new object[] { conn,"OFFLINE: "+StringTools.Truncate(ex.Message,100) };//Can't connect
 				});
 				odThread.Start(false);
 			}
@@ -142,8 +142,6 @@ namespace CentralManager {
 				string status=((string)obj[1]);
 				CentralConnection connection=_listConnsAll.Find(x => x.CentralConnectionNum==conn.CentralConnectionNum);
 				connection.ConnectionStatus=status;
-				eServiceSignalSeverity severity=((eServiceSignalSeverity)obj[2]);
-				connection.EServicesSignalSeverity=severity;
 			}
 			ODThread.QuitSyncThreadsByGroupName(100,"Verify");
 			Cursor=Cursors.Default;
@@ -596,7 +594,7 @@ namespace CentralManager {
 			CentralConnection connection=(CentralConnection)odThread.Parameters[0];
 			string progVersion=(string)odThread.Parameters[1];
 			if(!CentralConnectionHelper.SetCentralConnection(connection,false)) {
-				odThread.Tag=new object[] { connection,"OFFLINE",eServiceSignalSeverity.None };//Can't connect
+				odThread.Tag=new object[] { connection,"OFFLINE" };//Can't connect
 				return;
 			}
 			if(!string.IsNullOrEmpty(connection.ServiceURI)) {
@@ -608,8 +606,7 @@ namespace CentralManager {
 			if(progVersionRemote!=progVersion) {
 				err=progVersionRemote;
 			}
-			eServiceSignalSeverity severity=EServiceSignals.GetListenerServiceStatus();
-			odThread.Tag=new object[] { connection,err,severity };
+			odThread.Tag=new object[] { connection,err };
 		}
 
 		///<summary>Refreshes _listConnectionGroups with the current cache (could have been updated) and then selects the conn group passed in.</summary>
@@ -642,9 +639,6 @@ namespace CentralManager {
 			col.SortingStrategy=GridSortingStrategy.AmountParse;
 			gridConns.Columns.Add(col);
 			col=new GridColumn("Status",70,HorizontalAlignment.Center);
-			col.SortingStrategy=GridSortingStrategy.StringCompare;
-			gridConns.Columns.Add(col);
-			col=new GridColumn("eConnector",80,HorizontalAlignment.Center);
 			col.SortingStrategy=GridSortingStrategy.StringCompare;
 			gridConns.Columns.Add(col);
 			col=new GridColumn("Window",70,HorizontalAlignment.Center);
@@ -684,26 +678,6 @@ namespace CentralManager {
 				else {
 					cell.Text=status;
 					cell.ColorText=Color.Red;
-				}
-				row.Cells.Add(cell);
-				cell=new GridCell();
-				cell.Text=listConnsFiltered[i].EServicesSignalSeverity.ToString();
-				switch(listConnsFiltered[i].EServicesSignalSeverity) {
-					case eServiceSignalSeverity.Info:
-					case eServiceSignalSeverity.Working:
-						cell.ColorText=Color.Green;
-						break;
-					case eServiceSignalSeverity.Warning:
-						cell.ColorText=Color.DarkGoldenrod;
-						break;
-					case eServiceSignalSeverity.Error:
-						cell.ColorText=Color.Orange;
-						break;
-					case eServiceSignalSeverity.Critical:
-						cell.ColorText=Color.Red;
-						break;
-					default: //Covers None and NotEnabled
-						break;
 				}
 				row.Cells.Add(cell);
 				//not refreshed during FillGrid.  
@@ -891,7 +865,7 @@ namespace CentralManager {
 					mySqlPassword=nav.SelectSingleNode("Password").Value;
 					XPathNavigator passHashNode=nav.SelectSingleNode("MySQLPassHash");
 					string decryptedPwd;
-					if(mySqlPassword=="" && passHashNode!=null && passHashNode.Value!="" && CDT.Class1.Decrypt(passHashNode.Value,out decryptedPwd)) {
+					if(mySqlPassword=="" && passHashNode!=null && passHashNode.Value!="" && Secrets.Decrypt(passHashNode.Value,out decryptedPwd)) {
 						mySqlPassword=decryptedPwd;
 					}
 				}

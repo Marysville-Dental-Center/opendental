@@ -45,12 +45,7 @@ namespace OpenDental {
 			butPatExport.Visible=PrefC.GetBool(PrefName.ShowFeatureEhr);
 			LayoutMenu();
 			FillLists();
-			if(ProgramProperties.IsAdvertisingDisabled(ProgramName.Podium)) {
-				groupPatientReviews.Visible=false;
-			}
-			if(ProgramProperties.IsAdvertisingDisabled(ProgramName.PracticeByNumbers)) {
-				groupBusiness.Visible=false;
-			}
+			groupBusiness.Visible=Programs.IsEnabled(ProgramName.PracticeByNumbers);
 		}
 
 		private void LayoutMenu() {
@@ -247,10 +242,6 @@ namespace OpenDental {
 
 		private void butPW_Click(object sender,EventArgs e) {
 			try {
-				if(!Programs.IsEnabledByHq(ProgramName.PracticeWebReports,out string err)) {
-					MsgBox.Show(err);
-					return;
-				}
 				ODFileUtils.ProcessStart("PWReports.exe");
 			}
 			catch {
@@ -326,7 +317,6 @@ namespace OpenDental {
 				case DisplayReports.ReportNames.ClaimsNotSent:
 				case DisplayReports.ReportNames.CustomAging:
 				case DisplayReports.ReportNames.TreatmentFinder:
-				case DisplayReports.ReportNames.WebSchedAppointments:
 				case DisplayReports.ReportNames.ProcNotBilledIns:
 				case DisplayReports.ReportNames.IncompleteProcNotes:
 				case DisplayReports.ReportNames.ODProcOverpaid:
@@ -662,9 +652,6 @@ namespace OpenDental {
 				case DisplayReports.ReportNames.TreatmentFinder://Treatment Finder
 					SecurityLogs.MakeLogEntry(EnumPermType.Reports,0,"Treatment Finder report run.");
 					return ReportNonModalSelection.TreatmentFinder;
-				case DisplayReports.ReportNames.WebSchedAppointments://Web Sched Appts
-					SecurityLogs.MakeLogEntry(EnumPermType.Reports,0,"Web Sched Appointments report run.");
-					return ReportNonModalSelection.WebSchedAppointments;
 				case "ODRawScreeningData"://Raw Screening Data
 					if(!Security.IsAuthorized(EnumPermType.UserQuery)) {
 						break;
@@ -761,15 +748,6 @@ namespace OpenDental {
 			PracticeByNumbers.ShowPage();
 		}
 
-		private void picturePodium_Click(object sender,EventArgs e) {
-			try {
-				Podium.ShowPage();
-			}
-			catch(Exception ex) {
-				MessageBox.Show(ex.Message);
-			}
-		}
-
 	}
 
 	///<summary>Used in FormReportsMore to indicate that a non-modal window should be shown.</summary>
@@ -784,7 +762,6 @@ namespace OpenDental {
 		UnfinalizedInsPay,
 		///<summary></summary>
 		UnsentClaim,
-		WebSchedAppointments,
 		CustomAging,
 		IncompleteProcNotes,
 		ProcNotBilledIns,

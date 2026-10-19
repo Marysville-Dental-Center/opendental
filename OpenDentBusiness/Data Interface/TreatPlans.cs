@@ -155,13 +155,6 @@ namespace OpenDentBusiness{
 			}
 			command= "DELETE from treatplan WHERE TreatPlanNum = '"+POut.Long(treatPlan.TreatPlanNum)+"'";
  			Db.NonQ(command);
-			if(!treatPlan.TPStatus.In(TreatPlanStatus.Saved)) {
-			 return;
-			}
-			List<MobileAppDevice> listMobileAppDevices=MobileAppDevices.GetAll(treatPlan.PatNum);
-			if(listMobileAppDevices.Count>0) {
-				MobileNotifications.CI_RemoveTreatmentPlan(listMobileAppDevices.First().MobileAppDeviceNum,treatPlan);
-			}
 		}
 
 		///<summary>Inserts the passed in Treatment plan. Inserts all ProcTP's passed in.</summary>

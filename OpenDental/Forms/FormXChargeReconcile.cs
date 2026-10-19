@@ -20,26 +20,18 @@ namespace OpenDental {
 		private void butImport_Click(object sender,EventArgs e) {
 			Cursor=Cursors.WaitCursor;
 			string importFilePath;
-			if(!ODBuild.IsThinfinity() && ODCloudClient.IsAppStream) {
-				importFilePath=ODCloudClient.ImportFileForCloud().FirstOrDefault();
-				if(importFilePath.IsNullOrEmpty()) {
-					return; //User cancelled out of OpenFileDialog
-				}
+			using OpenFileDialog openFileDialog=new OpenFileDialog();
+			if(Directory.Exists(@"C:\X-Charge\")) {
+				openFileDialog.InitialDirectory=@"C:\X-Charge\";
 			}
-			else {
-				using OpenFileDialog openFileDialog=new OpenFileDialog();
-				if(Directory.Exists(@"C:\X-Charge\")) {
-					openFileDialog.InitialDirectory=@"C:\X-Charge\";
-				}
-				else if(Directory.Exists(@"C:\")) {
-					openFileDialog.InitialDirectory=@"C:\";
-				}
-				if(openFileDialog.ShowDialog()!=DialogResult.OK) {
-					Cursor=Cursors.Default;
-					return;
-				}
-				importFilePath=openFileDialog.FileName;
+			else if(Directory.Exists(@"C:\")) {
+				openFileDialog.InitialDirectory=@"C:\";
 			}
+			if(openFileDialog.ShowDialog()!=DialogResult.OK) {
+				Cursor=Cursors.Default;
+				return;
+			}
+			importFilePath=openFileDialog.FileName;
 			if(!File.Exists(importFilePath)) {
 				Cursor=Cursors.Default;
 				MsgBox.Show(this,"File not found");

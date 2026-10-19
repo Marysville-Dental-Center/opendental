@@ -15,10 +15,6 @@ namespace OpenDental{
 		public bool IsNew;
 		private Operatory _operatory;
 		public List<Operatory> ListOperatories;
-		///<summary>All of the Web Sched New Pat Appt appointment type defs that this operatory is associated to.</summary>
-		private List<Def> _listDefsWSNPAOperatory=new List<Def>();
-		private List<Def> _listDefsWSEPOperatory=new List<Def>();
-
 		///<summary>This reference is passed in because it's needed for the "Update Provs on Future Appts" tool.</summary>
 		public ControlAppt ControlApptRef;
 
@@ -39,18 +35,8 @@ namespace OpenDental{
 			FillCombosProv();
 			comboProv.SetSelectedProvNum(_operatory.ProvDentist);
 			comboHyg.SetSelectedProvNum(_operatory.ProvHygienist);
-			if(_operatory.ListWSNPAOperatoryDefNums!=null) {
-				//This is an existing operatory with WSNPA appointment types associated.  Go get them in order to display to the user.
-				_listDefsWSNPAOperatory=Defs.GetDefs(DefCat.WebSchedNewPatApptTypes,_operatory.ListWSNPAOperatoryDefNums);
-			}
-			if(_operatory.ListWSEPOperatoryDefNums!=null) {
-				_listDefsWSEPOperatory=Defs.GetDefs(DefCat.WebSchedExistingApptTypes,_operatory.ListWSEPOperatoryDefNums);
-			}
-			textWSNPAApptTypes.Text=string.Join(", ",_listDefsWSNPAOperatory.Select(x => x.ItemName));//WSNPA
-			textWSEPApptTypes.Text=string.Join(", ",_listDefsWSEPOperatory.Select(x => x.ItemName));//WSEP
 			checkIsHygiene.Checked=_operatory.IsHygiene;
 			checkSetProspective.Checked=_operatory.SetProspective;
-			checkIsWebSched.Checked=_operatory.IsWebSched;
 			if(ControlApptRef==null) {
 				butUpdateProvs.Visible=false;
 				label5.Visible=false;
@@ -85,24 +71,6 @@ namespace OpenDental{
 			FillCombosProv();
 		}
 
-		private void butWSNPAPickApptTypes_Click(object sender,EventArgs e) {
-			using FormDefinitionPicker formDefinitionPicker=new FormDefinitionPicker(DefCat.WebSchedNewPatApptTypes,_listDefsWSNPAOperatory);
-			formDefinitionPicker.IsMultiSelectionMode=true;
-			if(formDefinitionPicker.ShowDialog()==DialogResult.OK) {
-				_listDefsWSNPAOperatory=formDefinitionPicker.ListDefsSelected.Select(x => x.Copy()).ToList();
-				textWSNPAApptTypes.Text=string.Join(", ",_listDefsWSNPAOperatory.Select(x => x.ItemName));
-			}
-		}
-
-		private void butWSEPPickApptTypes_Click(object sender,EventArgs e) {
-			using FormDefinitionPicker formDefinitionPicker=new FormDefinitionPicker(DefCat.WebSchedExistingApptTypes,_listDefsWSEPOperatory);
-			formDefinitionPicker.IsMultiSelectionMode=true;
-			if(formDefinitionPicker.ShowDialog()==DialogResult.OK) {
-				_listDefsWSEPOperatory=formDefinitionPicker.ListDefsSelected.Select(x => x.Copy()).ToList();
-				textWSEPApptTypes.Text=string.Join(", ",_listDefsWSEPOperatory.Select(x => x.ItemName));
-			}
-		}
-
 		///<summary>Fills combo provider based on which clinic is selected and attempts to preserve provider selection if any.</summary>
 		private void FillCombosProv() {
 			long provNum=comboProv.GetSelectedProvNum();
@@ -131,8 +99,7 @@ namespace OpenDental{
 				|| operatory.ProvDentist!=comboProv.GetSelectedProvNum()
 				|| operatory.ProvHygienist!=comboHyg.GetSelectedProvNum()
 				|| operatory.IsHygiene!=checkIsHygiene.Checked
-				|| operatory.SetProspective!=checkSetProspective.Checked
-				|| operatory.IsWebSched!=checkIsWebSched.Checked)
+				|| operatory.SetProspective!=checkSetProspective.Checked)
 			{
 				MsgBox.Show(this,"Changes were detected above.  Save all changes, get completely out of the operatories window, and then re-enter.");
 				return;
@@ -185,9 +152,7 @@ namespace OpenDental{
 			_operatory.ProvHygienist=comboHyg.GetSelectedProvNum();
 			_operatory.IsHygiene=checkIsHygiene.Checked;
 			_operatory.SetProspective=checkSetProspective.Checked;
-			_operatory.IsWebSched=checkIsWebSched.Checked;
-			_operatory.ListWSNPAOperatoryDefNums=_listDefsWSNPAOperatory.Select(x => x.DefNum).ToList();
-			_operatory.ListWSEPOperatoryDefNums=_listDefsWSEPOperatory.Select(x => x.DefNum).ToList();
+			//IsWebSched and the Web Sched appointment type links were set up for Open Dental's hosted Web Sched, which was removed. They are left as they are.
 			if(IsNew) {
 				ListOperatories.Insert(_operatory.ItemOrder,_operatory);//Insert into list at appropriate spot
 				for(int i=0;i<ListOperatories.Count;i++) {

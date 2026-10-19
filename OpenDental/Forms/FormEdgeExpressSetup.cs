@@ -97,15 +97,6 @@ namespace OpenDental {
 			FillFields();
 		}
 
-		private void linkLabel1_LinkClicked(object sender,LinkLabelLinkClickedEventArgs e) {
-			string url="https://opendental.com/resources/redirects/redirectopenedge.html";
-			if(ODCloudClient.IsAppStream) {
-				ODCloudClient.LaunchFileWithODCloudClient(url);
-				return;
-			}
-			Process.Start(url);
-		}
-
 		///<summary>Validate XWebID, AuthKey, and TerminalID.  XWebID and TerminalID must be numbers only, 12 digits and 8 digits long respectively.
 		///AuthKey must be alphanumeric, 32 digits long.</summary>
 		private bool ValidateXWeb(bool suppressMessage = false) {
@@ -261,10 +252,6 @@ namespace OpenDental {
 		private void butSave_Click(object sender,System.EventArgs e) {
 			if(_program==null) {//should never happen
 				MsgBox.Show(this,"EdgeExpress entry is missing from the database.");
-				return;
-			}
-			if(checkEnabled.Checked && !Programs.IsEnabledByHq(ProgramName.EdgeExpress,out string err)) {
-				MsgBox.Show(err);
 				return;
 			}
 			//EdgeExpress will be enabled for the clinic if the enabled checkbox is checked and the 3 XWeb fields are not blank. Don't let them switch 

@@ -54,7 +54,6 @@ namespace OpenDental {
 			this.labelDate = new System.Windows.Forms.Label();
 			this.butCloseOffice = new OpenDental.UI.Button();
 			this.butOkSchedule = new OpenDental.UI.Button();
-			this.butViewGraph = new OpenDental.UI.Button();
 			this.textSearch = new System.Windows.Forms.TextBox();
 			this.labelSearch = new System.Windows.Forms.Label();
 			this.tabControl1.SuspendLayout();
@@ -362,18 +361,6 @@ namespace OpenDental {
 			this.butOkSchedule.Text = "OK + Goto Schedules";
 			this.butOkSchedule.Click += new System.EventHandler(this.butOkSchedule_Click);
 			// 
-			// butViewGraph
-			// 
-			this.butViewGraph.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.butViewGraph.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			this.butViewGraph.Location = new System.Drawing.Point(539, 680);
-			this.butViewGraph.Name = "butViewGraph";
-			this.butViewGraph.Size = new System.Drawing.Size(91, 24);
-			this.butViewGraph.TabIndex = 41;
-			this.butViewGraph.Text = "View Graph";
-			this.butViewGraph.Visible = false;
-			this.butViewGraph.Click += new System.EventHandler(this.butViewGraph_Click);
-			// 
 			// textSearch
 			// 
 			this.textSearch.Location = new System.Drawing.Point(564, 10);
@@ -396,7 +383,6 @@ namespace OpenDental {
 			this.ClientSize = new System.Drawing.Size(1003, 720);
 			this.Controls.Add(this.labelSearch);
 			this.Controls.Add(this.textSearch);
-			this.Controls.Add(this.butViewGraph);
 			this.Controls.Add(this.butOkSchedule);
 			this.Controls.Add(this.butForward);
 			this.Controls.Add(this.butBack);
@@ -456,7 +442,6 @@ namespace OpenDental {
 		private UI.Button butForward;
 		private UI.Button butBack;
 		private UI.Button butOkSchedule;
-		private UI.Button butViewGraph;
 		private TextBox textSearch;
 		private Label labelSearch;
 		private GraphScheduleDay graphScheduleDay;

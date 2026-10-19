@@ -9,7 +9,6 @@ using PdfSharp.Pdf;
 using PdfSharp.Drawing;
 using System.IO;
 using CodeBase;
-using OpenDental.Thinfinity;
 
 namespace OpenDentalGraph {
 	public partial class FormPrintSettings:Form {
@@ -198,13 +197,8 @@ namespace OpenDentalGraph {
 				FilterIndex=1,
 				RestoreDirectory=true,
 			};
-			if(ODBuild.IsThinfinity()) {
-				sd.FileName=ODFileUtils.CombinePaths(Path.GetTempPath(),"chart_export.pdf");
-			}
-			else {
-				if(sd.ShowDialog()!=DialogResult.OK) {
-					return;
-				}
+			if(sd.ShowDialog()!=DialogResult.OK) {
+				return;
 			}
 			using(PdfDocument pdfDoc=new PdfDocument()) {
 				//save the chart into the memoryStream as a BitMap
@@ -216,9 +210,6 @@ namespace OpenDentalGraph {
 						xGraphics.DrawImage(_bmpSheet,0,0,page.Width,page.Height);
 					}
 					pdfDoc.Save(sd.FileName);
-					if(ODBuild.IsThinfinity()) {
-						ThinfinityUtils.ExportForDownload(sd.FileName);
-					}
 					MessageBox.Show(Lans.g(this,"Chart saved."));
 				}
 				catch(Exception ex) {

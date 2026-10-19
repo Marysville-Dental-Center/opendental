@@ -44,7 +44,6 @@ namespace OpenDental {
 		private Patient _patient;
 		///<summary>If the user has done a blockout/copy, then this will contain the blockout that is on the "clipboard".</summary>
 		private Schedule _scheduleBlockoutClipboard;
-		private OpenDentBusiness.AutoComm.Arrivals _arrivalsLoaded;
 		#endregion Fields - Private
 
 		#region Constructor
@@ -59,15 +58,6 @@ namespace OpenDental {
 
 		#region Properties
 		//protected override bool ScaleChildren => false;
-		private OpenDentBusiness.AutoComm.Arrivals GetArrivalsLoaded() {
-			if(_arrivalsLoaded is null) {
-					_arrivalsLoaded=OpenDentBusiness.AutoComm.Arrivals.LoadArrivals();
-				}
-			return _arrivalsLoaded;
-		}
-		private void SetArrivalsLoaded(OpenDentBusiness.AutoComm.Arrivals value) {
-			_arrivalsLoaded=value;
-		}
 		#endregion Properties
 
 		#region Methods - Event Handlers ContrAppt
@@ -388,45 +378,17 @@ namespace OpenDental {
 				}
 				toolStripItemDelete.Enabled=false;
 			}
-			bool isTextingEnabled=SmsPhones.IsIntegratedTextingEnabled();
+			//Web Sched ASAP blockouts were made by Open Dental's hosted Web Sched, which was removed. Any left in the database can still be deleted.
 			bool isDeleteAsapBlockoutVisible=false;
-			if(PrefC.GetBool(PrefName.WebSchedAsapEnabled)) {
-				if(!SmsPhones.IsIntegratedTextingEnabled()) {//Some customers have the Bundle without texting
-					textASAPContextMenuHelper(true,"Email ASAP List");
+			if(Security.IsAuthorized(EnumPermType.Blockouts,suppressMessage:true)) {
+				Schedule schedule=GetClickedSchedule(ScheduleType.WebSchedASAP);
+				if(schedule!=null) {
+					isDeleteAsapBlockoutVisible=true;
 				}
-				else {
-					textASAPContextMenuHelper(true,"Text ASAP List");
-				}
-				if(Security.IsAuthorized(EnumPermType.Blockouts)) {
-					Schedule schedule=GetClickedSchedule(ScheduleType.WebSchedASAP);
-					if(schedule!=null) {
-						isDeleteAsapBlockoutVisible=true;
-					}
-				}
-			}
-			else if(isTextingEnabled) {//Don't have Web Sched ASAP but do have texting
-				textASAPContextMenuHelper(true,"Text ASAP List (manual)");
-			}
-			else {//Don't have Web Sched ASAP or texting
-				textASAPContextMenuHelper(false);
 			}
 			SetMenuItemProperty(menuBlockout,MenuItemNames.DeleteWebSchedAsapBlockout,x => x.Visible=isDeleteAsapBlockoutVisible);
-			SetMenuItemProperty(menuBlockout,MenuItemNames.TextApptsForDayOp,x => x.Visible=isTextingEnabled);
-			SetMenuItemProperty(menuBlockout,MenuItemNames.TextApptsForDayView,x => x.Visible=isTextingEnabled);
-			SetMenuItemProperty(menuBlockout,MenuItemNames.TextApptsForDay,x => {
-				x.Visible=isTextingEnabled;
-				x.Text=MenuItemNames.TextApptsForDay+(PrefC.HasClinicsEnabled ? ", Clinic only" : "");
-			});
 			Plugins.HookAddCode(this,"ControlAppt.ContrApptPanel_ApptMainAreaRightClick_end",menuBlockout);
 			menuBlockout.Show(contrApptPanel,e.Location);
-		}
-
-		private void textASAPContextMenuHelper(bool isVisible,string itemText="") {
-			ToolStripItem[] toolStripItemArray=menuBlockout.Items.Find(MenuItemNames.TextAsapList,false);
-			if(toolStripItemArray.Length > 0) {
-				toolStripItemArray[0].Visible=isVisible;
-				toolStripItemArray[0].Text=Lans.g(this,itemText);
-			}
 		}
 
 		private void contrApptPanel_ApptMoved(object sender,UI.ApptMovedEventArgs e) {
@@ -483,17 +445,6 @@ namespace OpenDental {
 
 		private void ContrApptPanel_ApptRightClicked(object sender, UI.ApptRightClickEventArgs e){
 			DataRow dataRowAppointment=contrApptPanel.TableAppointments.Select().FirstOrDefault(x => PIn.Long(x["AptNum"].ToString())==contrApptPanel.SelectedAptNum);
-			if(PrefC.IsODHQ) {
-				menuApt.Items.RemoveByKey(MenuItemNames.Jobs);
-				menuApt.Items.RemoveByKey(MenuItemNames.JobsSpacer);
-				menuApt.Items.Add(new ToolStripSeparator() { Name=MenuItemNames.JobsSpacer });
-				ToolStripMenuItem menuJobs=new ToolStripMenuItem(Lan.g(this,"Jobs"),null,null,MenuItemNames.Jobs);
-				menuJobs.DropDownItems.Add(Lan.g(this,"Attach Job"),null,menuJobs_Attach);
-				List<JobLink> listJobLinks = JobLinks.GetForApptNum(contrApptPanel.SelectedAptNum);
-				List<Job> listJobs = Jobs.GetMany(listJobLinks.Select(x => x.JobNum).ToList());
-				menuJobs.DropDownItems.AddRange(listJobs.Select(x => new ToolStripMenuItem(x.ToString(),null,menuJobs_GoToJob) { Tag=x.JobNum }).ToArray());
-				menuApt.Items.Add(menuJobs);
-			}
 			menuApt.Items.RemoveByKey(MenuItemNames.Tasks);
 			menuApt.Items.RemoveByKey(MenuItemNames.TasksSpacer);
 			menuApt.Items.Add(new ToolStripSeparator() { Name=MenuItemNames.TasksSpacer });
@@ -506,12 +457,7 @@ namespace OpenDental {
 			menuApt.Items.RemoveByKey(MenuItemNames.TextDiv);
 			menuApt.Items.RemoveByKey(MenuItemNames.SendText);
 			menuApt.Items.RemoveByKey(MenuItemNames.SendConfirmationText);
-			menuApt.Items.RemoveByKey(MenuItemNames.SendComeInText);
-			menuApt.Items.RemoveByKey(MenuItemNames.EClipboardQR);
-			menuApt.Items.RemoveByKey(MenuItemNames.SendMessageToPay);
-			menuApt.Items.RemoveByKey(MenuItemNames.SendEClipboardByod);
 			menuApt.Items.RemoveByKey(MenuItemNames.OrthoChart);
-			menuApt.Items.RemoveByKey(MenuItemNames.CareCredit);
 			menuApt.Items.RemoveByKey(MenuItemNames.CareCreditAcceptDeclineOffer);
 			menuApt.Items.RemoveByKey(MenuItemNames.CareCreditApplicationNeeded);
 			menuApt.Items.RemoveByKey(MenuItemNames.CareCreditDiv);
@@ -520,11 +466,8 @@ namespace OpenDental {
 				menuApt.Items.Add(new ToolStripMenuItem(Lan.g(this,"Go To ")+OrthoChartTabs.GetFirst(true).TabName,null,menuApt_Click,MenuItemNames.OrthoChart));
 			}
 			//Phone numbers
-			//The menu items to "Call Home/Work/Cell" will only be added to this context menu if action will actually be taken when clicking on them, i.e.
-			//when DentalTek bridge is disabled and advertising is disabled, nothing happens when clicking this buttons.
-			if(Programs.GetCur(ProgramName.DentalTekSmartOfficePhone).Enabled 
-				|| !ProgramProperties.IsAdvertisingDisabled(ProgramName.DentalTekSmartOfficePhone))
-			{
+			//The menu items to "Call Home/Work/Cell" place the call through the DentalTek bridge, so they are only added when that bridge is enabled.
+			if(Programs.IsEnabled(ProgramName.DentalTekSmartOfficePhone)) {
 				if(!String.IsNullOrEmpty(_patient.HmPhone)||!String.IsNullOrEmpty(_patient.WkPhone)||!String.IsNullOrEmpty(_patient.WirelessPhone)) {
 					menuApt.Items.Add(new ToolStripSeparator() { Name=MenuItemNames.PhoneDiv });
 				}
@@ -538,41 +481,11 @@ namespace OpenDental {
 					menuApt.Items.Add(new ToolStripMenuItem(Lan.g(this,"Call Wireless Phone ")+_patient.WirelessPhone,null,menuApt_Click,MenuItemNames.WirelessPhone));
 				}
 			}
-			//Texting
-			menuApt.Items.Add(new ToolStripSeparator() { Name=MenuItemNames.TextDiv });
-			menuItem=new ToolStripMenuItem(Lan.g(this,"Send Text"),null,menuApt_Click,MenuItemNames.SendText);
-			menuApt.Items.Add(menuItem);
-			if(!SmsPhones.IsIntegratedTextingEnabled() && !Programs.IsEnabled(ProgramName.CallFire)) {
-				menuItem.Enabled=false;
-			}
-			menuItem=new ToolStripMenuItem(Lan.g(this,"Send Confirmation Text"),null,menuApt_Click,MenuItemNames.SendConfirmationText);
-			menuApt.Items.Add(menuItem);
-			if(!SmsPhones.IsIntegratedTextingEnabled() && !Programs.IsEnabled(ProgramName.CallFire)) {
-				menuItem.Enabled=false;
-			}
-			long clinicNum=(dataRowAppointment is null) ? 0 : PIn.Long(dataRowAppointment["ClinicNum"].ToString()); 
-			if(OpenDentBusiness.AutoComm.Byod.IsSetup(clinicNum,out string err)) {//Check-In Links feature is enabled.  (handles PrefC.HasClinicsEnabled)
-				menuItem=new ToolStripMenuItem(Lan.g(this,MenuItemNames.SendEClipboardByod),null,menuApt_Click,MenuItemNames.SendEClipboardByod);
-				menuApt.Items.Add(menuItem);
-				long confirmed=(dataRowAppointment is null) ? 0 : PIn.Long(dataRowAppointment["Confirmed"].ToString()); 
-				menuItem.Enabled=OpenDentBusiness.AutoComm.Byod.IsEnabledForConfirmed(confirmed,clinicNum,out err);//(handles PrefC.HasClinicsEnabled)
-			}
-			//If the appointment is not for today, or the office is not signed up for eclipboard, hide this item. We are using the calendars selected date instead of the appointments date to save us from making a database call.
-			if(monthCalendarOD.GetDateSelected()==DateTime.Today.Date && MobileAppDevices.IsClinicSignedUpForEClipboard(Clinics.ClinicNum)) {
-				menuApt.Items.Add(new ToolStripMenuItem(Lan.g(this,"Show eClipboard QR"),null,menuApt_Click,MenuItemNames.EClipboardQR));
-			}
-			menuItem=new ToolStripMenuItem(Lan.g(this,MenuItemNames.SendComeInText),null,menuApt_Click,MenuItemNames.SendComeInText);
-			menuApt.Items.Add(menuItem);
-			if(!GetArrivalsLoaded().HasComeInMsg(contrApptPanel.SelectedAptNum)) {
-				menuItem.Enabled=false;
-			}
-			else if(!SmsPhones.IsIntegratedTextingEnabled() && !Programs.IsEnabled(ProgramName.CallFire)) {
-				menuItem.Enabled=false;
-			}
-			menuItem=new ToolStripMenuItem(Lan.g(this,MenuItemNames.SendMessageToPay),null,menuApt_Click,MenuItemNames.SendMessageToPay);
-			menuApt.Items.Add(menuItem);
-			if(!SmsPhones.IsIntegratedTextingEnabled()) { //Does not require a completed appt, only requires texting.
-				menuItem.Enabled=false;
+			//Texting. The menu items only appear when a texting integration (CallFire) is enabled.
+			if(Programs.IsEnabled(ProgramName.CallFire)) {
+				menuApt.Items.Add(new ToolStripSeparator() { Name=MenuItemNames.TextDiv });
+				menuApt.Items.Add(new ToolStripMenuItem(Lan.g(this,"Send Text"),null,menuApt_Click,MenuItemNames.SendText));
+				menuApt.Items.Add(new ToolStripMenuItem(Lan.g(this,"Send Confirmation Text"),null,menuApt_Click,MenuItemNames.SendConfirmationText));
 			}
 			//CareCredit
 			if(Programs.IsEnabled(ProgramName.CareCredit)) {
@@ -607,10 +520,6 @@ namespace OpenDental {
 					menuApt.Items.Add(new ToolStripSeparator() { Name=MenuItemNames.CareCreditDiv });
 					menuApt.Items.Add(new ToolStripMenuItem(Lan.g(this,MenuItemNames.CareCreditApplicationNeeded),null,menuApt_Click,MenuItemNames.CareCreditApplicationNeeded));
 				}
-			}
-			else if(!ProgramProperties.IsAdvertisingDisabled(ProgramName.CareCredit)) {
-				menuApt.Items.Add(new ToolStripSeparator() { Name=MenuItemNames.CareCreditDiv });
-				menuApt.Items.Add(new ToolStripMenuItem(Lan.g(this,MenuItemNames.CareCredit),null,menuApt_Click,MenuItemNames.CareCredit));
 			}
 			Plugins.HookAddCode(this,"ContrAppt.MouseDownAppointment_menuApt_right_click",menuApt,contrApptPanel.SelectedAptNum);
 			menuApt.Show(contrApptPanel,e.Location);
@@ -818,12 +727,7 @@ namespace OpenDental {
 						break;
 					//Family recall handled in context menu
 					case "RapidCall":
-						try {
-							OpenDental.Bridges.RapidCall.ShowPage();
-						}
-						catch(Exception ex) {
-							MessageBox.Show(ex.Message);
-						}
+						OpenDental.Bridges.RapidCall.Launch();
 						break;
 				}
 				return;
@@ -1099,8 +1003,6 @@ namespace OpenDental {
 			Ledgers.ComputeAging(patient.Guarantor,DateTime.Today);
 			ModuleSelected(appointment.PatNum);
 			ODEvent.Fire(ODEventType.AppointmentEdited,appointment);
-			//If necessary, prompt the user to ask the patient to opt in to using Short Codes.
-			FrmShortCodeOptIn.PromptIfNecessary(patient,appointment.ClinicNum);
 			Plugins.HookAddCode(this,"ContrAppt.OnComplete_Click_end",appointment,_patient);
 			Signalods.SetInvalid(InvalidType.BillingList);
 		}
@@ -1279,8 +1181,6 @@ namespace OpenDental {
 					+" "+Lans.g(this,"from the appointment module")+".",contrApptPanel.SelectedAptNum,appointmentOld.DateTStamp);
 			}
 			RefreshPeriod();
-			//Need to pass in aptOld since we compare the appointment's old confirmed status to the new confirmed status to help determine if the kiosk manager should be shown.
-			AppointmentL.ShowKioskManagerIfNeeded(appointmentOld,newStatus);
 		}
 
 		//Right Make Buttons----------------------------------------------------------------------------------------
@@ -2119,7 +2019,6 @@ namespace OpenDental {
 		private void menuBreakDelete_Click(object sender,EventArgs e) {
 			Appointment appointment=BreakApptHelper(sender,true);
 			if(appointment!=null) {
-				DisplayFormAsapForWebSched(appointment);
 				butDelete_Click(showPrompt:false);
 			}
 		}
@@ -2127,7 +2026,6 @@ namespace OpenDental {
 		private void menuBreakToPin_Click(object sender,EventArgs e) {
 			Appointment appointment=BreakApptHelper(sender);
 			if(appointment!=null && AppointmentL.ValidateApptToPinboard(appointment)) {
-				DisplayFormAsapForWebSched(appointment);
 				AppointmentL.CopyAptToPinboardHelper(appointment);
 			}
 		}
@@ -2135,7 +2033,6 @@ namespace OpenDental {
 		private void menuBreakToUnsched_Click(object sender,EventArgs e) {
 			Appointment appointment=BreakApptHelper(sender,true);
 			if(appointment!=null && AppointmentL.ValidateApptUnsched(appointment)) {
-				DisplayFormAsapForWebSched(appointment);
 				AppointmentL.SetApptUnschedHelper(appointment);
 				ModuleSelected(appointment.PatNum);
 			}
@@ -2172,9 +2069,6 @@ namespace OpenDental {
 					break;
 				case MenuItemNames.Delete: // Menu: Delete
 					butDelete_Click(showPrompt:true);
-					break;
-				case MenuItemNames.EClipboardQR:
-					EClipboardQR_Click(sender, e);
 					break;
 				case MenuItemNames.PatientAppointments: // Menu: Patient Appointments
 					DisplayOtherDlg(false);
@@ -2214,27 +2108,18 @@ namespace OpenDental {
 					}
 					break;
 				case MenuItemNames.HomePhone: //Call Home Phone
-					if(Programs.GetCur(ProgramName.DentalTekSmartOfficePhone).Enabled) {
+					if(Programs.IsEnabled(ProgramName.DentalTekSmartOfficePhone)) {
 						Bridges.DentalTek.PlaceCall(_patient.HmPhone);
 					}
-					else {
-						AutomaticCallDialingDisabledMessage();
-					}
-					 break;
+					break;
 				case MenuItemNames.WorkPhone: //Call Work Phone
-					if(Programs.GetCur(ProgramName.DentalTekSmartOfficePhone).Enabled) {
+					if(Programs.IsEnabled(ProgramName.DentalTekSmartOfficePhone)) {
 						Bridges.DentalTek.PlaceCall(_patient.WkPhone);
-					}
-					else {
-						AutomaticCallDialingDisabledMessage();
 					}
 					break;
 				case MenuItemNames.WirelessPhone: //Call Wireless Phone
-					if(Programs.GetCur(ProgramName.DentalTekSmartOfficePhone).Enabled) {
+					if(Programs.IsEnabled(ProgramName.DentalTekSmartOfficePhone)) {
 						Bridges.DentalTek.PlaceCall(_patient.WirelessPhone);
-					}
-					else {
-						AutomaticCallDialingDisabledMessage();
 					}
 					break;
 				case MenuItemNames.SendText:
@@ -2263,30 +2148,6 @@ namespace OpenDental {
 						}
 						ModuleSelected(patient.PatNum);//Refresh the module so that the current appt status is updated
 					}
-					break;
-				case MenuItemNames.SendComeInText:
-					appointment=Appointments.GetOneApt(contrApptPanel.SelectedAptNum);
-					if(ApptIsNull(appointment)) { return; }
-					if(!GetArrivalsLoaded().TryGetComeInMsg(appointment,out message)) {
-						MsgBox.Show(this,$"Unable to {MenuItemNames.SendComeInText} ");
-						return;
-					}
-					GlobalFormOpenDental.SendTextMessage(appointment.PatNum,message);
-					break;
-				case MenuItemNames.SendMessageToPay:
-					appointment=Appointments.GetOneApt(contrApptPanel.SelectedAptNum);
-					if(ApptIsNull(appointment)) { return; }
-					patient=Patients.GetPat(appointment.PatNum);
-					FormMessageToPayEdit formMessageToPayEdit=new FormMessageToPayEdit(patient);
-					formMessageToPayEdit.ShowDialog();
-					break;
-				case MenuItemNames.SendEClipboardByod:
-					appointment=Appointments.GetOneApt(contrApptPanel.SelectedAptNum);
-					if(ApptIsNull(appointment)) { return; }
-					AppointmentL.SendByodLink(appointment);
-					break;
-				case MenuItemNames.CareCredit:
-					CareCredit.ShowPage(CareCredit.ProviderSignupURL);
 					break;
 				case MenuItemNames.CareCreditAcceptDeclineOffer:
 					appointment=Appointments.GetOneApt(contrApptPanel.SelectedAptNum);
@@ -2539,100 +2400,6 @@ namespace OpenDental {
 		}
 		#endregion Methods - Event Handlers Menu Blockout Click
 
-		#region Methods - Event Handlers Menu TextAppts Click
-		private void menuTextApptsForDay_Click(object sender,EventArgs e) {
-			List<Appointment> listAppointments=Appointments.GetForPeriodList(contrApptPanel.DateSelected,contrApptPanel.DateSelected,Clinics.ClinicNum)
-				.Where(x => !x.AptStatus.In(ApptStatus.PtNote,ApptStatus.PtNoteCompleted)).ToList();
-			if(PrefC.HasClinicsEnabled && Clinics.ClinicNum==0) {
-				//The above query would have gotten appointments for all clinics. We need to filter to just ClinicNums of 0.
-				listAppointments=listAppointments.Where(x => x.ClinicNum==0).ToList();
-			}
-			SendTextMessages(listAppointments.Select(x => x.PatNum).ToList());
-		}
-
-		private void menuTextApptsForDayOp_Click(object sender,EventArgs e) {
-			DateTime dateClicked=contrApptPanel.DateSelected;
-			long opNumClicked=contrApptPanel.OpNumClicked;
-			List<long> listPatNums=new List<long>();
-			for(int i=0;i<contrApptPanel.TableAppointments.Rows.Count;i++){
-				if(PIn.Long(contrApptPanel.TableAppointments.Rows[i]["Op"].ToString())!=opNumClicked){
-					continue;
-				}
-				if(PIn.DateT(contrApptPanel.TableAppointments.Rows[i]["AptDateTime"].ToString()).Date!=dateClicked){
-					continue;
-				}
-				listPatNums.Add(PIn.Long(contrApptPanel.TableAppointments.Rows[i]["PatNum"].ToString()));
-			}
-			SendTextMessages(listPatNums);
-		}
-
-		private void menuTextApptsForDayView_Click(object sender,EventArgs e) {
-			DateTime dateClicked=contrApptPanel.DateSelected;
-			List<long> listPatNums=new List<long>();
-			for(int i=0;i<contrApptPanel.TableAppointments.Rows.Count;i++){
-				long opNum=PIn.Long(contrApptPanel.TableAppointments.Rows[i]["Op"].ToString());
-				if(!contrApptPanel.ListOpsVisible.Any(y => y.OperatoryNum==opNum)){//Make sure the appointments are visible in the current view.
-					continue;
-				}
-				if(PIn.DateT(contrApptPanel.TableAppointments.Rows[i]["AptDateTime"].ToString()).Date!=dateClicked){
-					continue;
-				}
-				listPatNums.Add(PIn.Long(contrApptPanel.TableAppointments.Rows[i]["PatNum"].ToString()));
-			}
-			SendTextMessages(listPatNums);
-		}
-
-		private void menuTextASAPList_Click(object sender,EventArgs e) {
-			DateTime dateTimeClicked=contrApptPanel.DateTimeClicked;
-			if(PrefC.GetBool(PrefName.WebSchedAsapEnabled)) {
-				DisplayFormAsapForWebSched();
-				return;
-			}
-			//Texting the ASAP list manually
-			if(_formASAP!=null && !_formASAP.IsDisposed) {
-				_formASAP.Close();
-			}
-			_formASAP=new FormASAP();
-			_formASAP.DateTimeChosen=dateTimeClicked;
-			_formASAP.Show();
-			if(_formASAP.WindowState==FormWindowState.Minimized) {
-				_formASAP.WindowState=FormWindowState.Normal;
-			}
-			_formASAP.BringToFront();
-		}
-
-		private void FormASAP_FormClosed(object sender,FormClosedEventArgs e) {
-			RefreshModuleDataPeriod();
-			RefreshModuleScreenPeriod();
-		}
-		#endregion Methods - Event Handlers Menu TextAppts Click
-
-		#region Methods - Event Handlers Menu Jobs
-		private void menuJobs_Attach(object sender,System.EventArgs e) {
-			if(contrApptPanel.SelectedAptNum<=0) {
-				return;
-			}
-			//Atach new job
-			using FormJobSearch formJobSearch = new FormJobSearch();
-			formJobSearch.DoBlockProjects=true;
-			formJobSearch.ShowDialog();
-			if(formJobSearch.DialogResult!=DialogResult.OK || formJobSearch.SelectedJobNum==0) {
-				return;
-			}
-			JobLink jobLink = new JobLink();
-			jobLink.JobNum=formJobSearch.SelectedJobNum;
-			jobLink.FKey=contrApptPanel.SelectedAptNum;
-			jobLink.LinkType=JobLinkType.Appointment;
-			JobLinks.Insert(jobLink);
-			Signalods.SetInvalid(InvalidType.Jobs,KeyType.Job,jobLink.JobNum);
-			return;
-		}
-
-		private void menuJobs_GoToJob(object sender,System.EventArgs e) {
-				FormOpenDental.S_GoToJob(((long)((ToolStripMenuItem)sender).Tag));
-		}
-		#endregion Methods - Event Handlers Menu Jobs
-
 		#region Methods - Event Handlers Menu Tasks
 		private void menuTasks_Click(object sender,System.EventArgs e) {
 			using FormTasksForAppt formTasksForAppt=new FormTasksForAppt(contrApptPanel.SelectedAptNum);
@@ -2806,9 +2573,6 @@ namespace OpenDental {
 			FillViews();
 			menuApt.Items.Clear();
 			menuApt.Items.Add(new ToolStripMenuItem(Lan.g(this,"Copy to Pinboard"),null,menuApt_Click,MenuItemNames.CopyToPinboard));
-			if(PrefC.IsODHQ) {
-				menuApt.Items.Add(new ToolStripMenuItem(Lan.g(this,"Copy Appointment Structure"),null,menuApt_Click,MenuItemNames.CopyAppointmentStructure));
-			}
 			menuApt.Items.Add(new ToolStripSeparator());
 			menuApt.Items.Add(new ToolStripMenuItem(Lan.g(this,"Send to Unscheduled List"),null,menuApt_Click,MenuItemNames.SendToUnscheduledList));
 			toolStripMenuItem=new ToolStripMenuItem(Lan.g(this,"Break Appointment"),null,menuApt_Click,MenuItemNames.BreakAppointment);
@@ -2840,11 +2604,6 @@ namespace OpenDental {
 				menuBlockout.Items.Add(new ToolStripMenuItem(Lan.g(this,"Clear All Blockouts for Day, Clinic only"),null,menuBlockClearClinic_Click,MenuItemNames.ClearAllBlockoutsForDayClinicOnly));
 			}
 			menuBlockout.Items.Add(new ToolStripMenuItem(Lan.g(this,"Edit Blockout Types"),null,menuBlockTypes_Click,MenuItemNames.EditBlockoutTypes));
-			menuBlockout.Items.Add(new ToolStripSeparator() { Name=MenuItemNames.BlockoutSpacer });
-			menuBlockout.Items.Add(new ToolStripMenuItem(Lan.g(this,"Text ASAP List"),null,menuTextASAPList_Click,MenuItemNames.TextAsapList));
-			menuBlockout.Items.Add(new ToolStripMenuItem(Lan.g(this,MenuItemNames.TextApptsForDayOp),null,menuTextApptsForDayOp_Click,MenuItemNames.TextApptsForDayOp));
-			menuBlockout.Items.Add(new ToolStripMenuItem(Lan.g(this,MenuItemNames.TextApptsForDayView),null,menuTextApptsForDayView_Click,MenuItemNames.TextApptsForDayView));
-			menuBlockout.Items.Add(new ToolStripMenuItem(Lan.g(this,MenuItemNames.TextApptsForDay),null,menuTextApptsForDay_Click,MenuItemNames.TextApptsForDay));
 			//Recall Family
 			menuRecall.MenuItems.Clear();
 			menuRecall.MenuItems.Add(Lan.g(this,"Make Family Recall"),butFamRecall_Click);
@@ -2908,7 +2667,7 @@ namespace OpenDental {
 			//asap?
 			toolBarMain.Buttons.Add(new ODToolBarButton(Lan.g(this,"Complete"),EnumIcons.Complete,"","Complete"));
 			toolBarMain.Buttons.Add(new ODToolBarButton(Lan.g(this,"Delete"),EnumIcons.DeleteX,"","Delete"));
-			if(!ProgramProperties.IsAdvertisingDisabled(ProgramName.RapidCall)) {
+			if(Programs.IsEnabled(ProgramName.RapidCall)) {
 				toolBarMain.Buttons.Add(new ODToolBarButton(ODToolBarButtonStyle.Separator));
 				toolBarMain.Buttons.Add(new ODToolBarButton(Lan.g(this,"Rapid Call"),2,"","RapidCall"));
 			}
@@ -3248,11 +3007,6 @@ namespace OpenDental {
 			contrApptPanel.TableAppointments=table;
 			contrApptPanel.TableApptFields=Appointments.GetApptFields(contrApptPanel.TableAppointments);
 			contrApptPanel.TablePatFields=Appointments.GetPatFields(contrApptPanel.TableAppointments.Select().Select(x => PIn.Long(x["PatNum"].ToString())).ToList());
-			OpenDentBusiness.AutoComm.Arrivals arrivals=OpenDentBusiness.AutoComm.Arrivals.LoadArrivals(
-				contrApptPanel.TableAppointments.Select().Select(x => PIn.Long(x["ClinicNum"].ToString())).Distinct().ToList(),
-				contrApptPanel.TableAppointments.Select().Select(x => PIn.Long(x["AptNum"].ToString())).Distinct().ToList()
-			);
-			SetArrivalsLoaded(arrivals);
 		}
 
 		///<summary>Fills PatCur from the database. If a patient change occurs, any selected appointment will be cleared.</summary>
@@ -3591,9 +3345,6 @@ namespace OpenDental {
 			FillProduction(contrApptPanel.DateStart,contrApptPanel.DateEnd);
 			FillProductionGoal(contrApptPanel.DateStart,contrApptPanel.DateEnd);
 			bool hasNotes=true;
-			if(PrefC.IsODHQ){
-				hasNotes=Security.IsAuthorized(EnumPermType.Schedules,true);
-			}
 			FillProvSched(hasNotes);
 			FillEmpSched(hasNotes);
 			FillWaitingRoom();
@@ -3861,21 +3612,6 @@ namespace OpenDental {
 			Plugins.HookAddCode(this,"ContrAppt.OnASAP_Click_end",appointment,_patient);
 		}
 
-		private void AutomaticCallDialingDisabledMessage() {
-			if(ProgramProperties.IsAdvertisingDisabled(ProgramName.DentalTekSmartOfficePhone)) {
-				return;
-			}
-			MsgBox.Show("Automatic dialing of patient phone numbers requires an additional service.\r\n"
-				+"Contact Open Dental for more information.");
-			try {
-				System.Diagnostics.Process.Start("http://www.opendental.com/resources/redirects/redirectdentaltekinfo.html");
-			}
-			catch(Exception) {
-				MsgBox.Show("Could not find http://www.opendental.com/contact.html \r\n"
-					+"Please set up a default web browser.");
-			}
-		}
-
 		///<summary>Copied from FormApptsOther. Does not limit appointment creation, only warns user. This check should be run before creating a new appointment. </summary>
 		private void CheckStatus() {
 			if(_patient.PatStatus == PatientStatus.Inactive
@@ -3934,98 +3670,6 @@ namespace OpenDental {
 				return;//silently fail
 			}
 			SendToPinboardDataRow(dataRow);
-		}
-
-		/// <summary>Opens a QR code to scan on a mobile device to checkin a patient.</summary>
-		private void EClipboardQR_Click(object sender,System.EventArgs e) {
-			ToolStripMenuItem menuItem=sender as ToolStripMenuItem;
-			if(menuItem==null || contrApptPanel==null || contrApptPanel.SelectedAptNum==0) {
-				MsgBox.Show("No appointment selected, please select an appointment first.");
-				return;
-			}
-			Appointment apt=Appointments.GetOneApt(contrApptPanel.SelectedAptNum);
-			if(apt==null) {
-				MsgBox.Show("No appointment selected, please select an appointment first.");
-				return;
-			}
-			Func<string, MobileDataByte> funcInsertUnlock=InsertDataForUnlockCode;
-			using FormMobileCode formMobileCode=new FormMobileCode(funcInsertUnlock);
-			formMobileCode.ShowDialog();			
-		}
-
-		/// <summary>Inserts MobileDataByte for checkin.</summary>
-		private MobileDataByte InsertDataForUnlockCode(string unlockCode) {
-			MobileDataByte mobileDataByte;
-			try {
-				mobileDataByte=MobileDataBytes.InsertPatientCheckin(_patient,unlockCode);
-			}
-			catch (Exception ex) {
-				MsgBox.Show(ex.Message);
-				return null;
-			}
-			return mobileDataByte;
-		}
-
-		///<summary>Brings up FormASAP ready to send for an open time slot.</summary>
-		private void DisplayFormAsapForWebSched(Appointment appointment=null) {
-			DateTime dateTimeSelected=contrApptPanel.DateTimeClicked;
-			long opNum=contrApptPanel.OpNumClicked;
-			long apptNum=0;
-			int apptLength=0;
-			if(appointment!=null) {
-				dateTimeSelected=appointment.AptDateTime;
-				apptLength=appointment.Length;
-				int apptTimeIncrement=PrefC.GetInt(PrefName.AppointmentTimeIncrement);//Based on the users appt view increment.
-				//Get the current time and strip off the seconds.
-				DateTime dateTimeMinReplacementStart=DateTimeOD.GetDateTimeHourAndMins(DateTime.Now).AddMinutes(20);
-				//If the current time is less than 20 minutes before the appts start time, adjust the length of the allowed appointment replacement.
-				//This way we only suggest an ASAP appointment that fits within the time slot of the broken appt minus the 20 mins needed to arrive at the location.
-				//If the appt length is ever zero or less, simply return. 
-				//E.g. The current time is 11:00 AM and an hour long appt that starts at 11:00 AM is broken. Only search for ASAP appts that fit within 11:20 AM - 12:00 PM
-				if(appointment.AptDateTime<dateTimeMinReplacementStart) {
-					//Adjust the minimum replacement starting time so that it is on a perfect time increment.
-					int minsToAdd=0;
-					int mod=dateTimeMinReplacementStart.Minute%apptTimeIncrement;
-					if(mod>0) {
-						minsToAdd=apptTimeIncrement-mod;
-					}
-					dateTimeMinReplacementStart=dateTimeMinReplacementStart.AddMinutes(minsToAdd);
-					//Figure out how many minutes are needed to adjust the length of the allowed appointment replacement in order to fit within the new time slot.
-					TimeSpan timeSpanApptLengthAdjust=dateTimeMinReplacementStart-appointment.AptDateTime;
-					//If the entire appt is either in the past or ends before the minimum replacement start time, simply return.
-					if(timeSpanApptLengthAdjust.TotalMinutes>=appointment.Length) {
-						return;
-					}
-					//Adjust the "selected" date time so that it doesn't look for time slots too close to the current time.
-					dateTimeSelected=dateTimeMinReplacementStart;
-					//Only search for appointments with a length that will fit within the new time slot.
-					apptLength-=(int)timeSpanApptLengthAdjust.TotalMinutes;
-				}
-				//An appointment is being broken/deleted, so we may need to prompt the user to make this slot available to ASAP List.
-				if(!AppointmentL.PromptTextAsapList(appointment.ClinicNum)) {
-					return;
-				}
-				opNum=appointment.Op;
-				apptNum=appointment.AptNum;
-			}
-			DateRange dateRange;
-			try {
-				dateRange=AppointmentL.GetAsapRange(opNum,dateTimeSelected,apptNum,contrApptPanel.ListSchedules);
-			}
-			catch(ODException ex) {
-				MessageBox.Show(this,ex.Message);
-				return;
-			}
-			catch(Exception ex) {
-				FriendlyException.Show(Lan.g(this,"Unexpected error occurred."),ex);
-				return;
-			}
-			dateRange.Start=ODMathLib.Max(dateTimeSelected,dateRange.Start);
-			if(_formASAP==null||_formASAP.IsDisposed) {
-				_formASAP=new FormASAP();
-			}
-			_formASAP.ShowFormForWebSched(dateTimeSelected,dateRange.Start,dateRange.End,opNum,maxApptLengthFilter:apptLength);
-			_formASAP.FormClosed+=FormASAP_FormClosed;
 		}
 
 		///<summary>Helper function for users who have BrokenApptRequiredOnMove enabled. Pref forces the user to pick whether the appt was missed or
@@ -4511,37 +4155,8 @@ namespace OpenDental {
 				&& appointment.Confirmed!=Defs.GetFirstForCategory(DefCat.ApptConfirmed,true).DefNum
 				&& appointment.AptDateTime.Date!=DateTime.Today) 
 			{
-				string prompt;
-				if(PrefC.GetBool(PrefName.ApptConfirmAutoEnabled)){
-					prompt=Lan.g(this,"Do you want to resend the eConfirmation?");
-				}
-				else if(PrefC.GetBool(PrefName.ApptThankYouAutoEnabled)) {
-					prompt=Lan.g(this,"Do you want to resend the eThankYou?");
-				}
-				else{
-					prompt=Lan.g(this,"Reset Confirmation Status?");
-				}
-				bool isResetConf=MsgBox.Show(this,MsgBoxButtons.YesNo,prompt);
-				if(isResetConf) {
+				if(MsgBox.Show(this,MsgBoxButtons.YesNo,"Reset Confirmation Status?")) {
 					appointment.Confirmed=Defs.GetFirstForCategory(DefCat.ApptConfirmed,true).DefNum;//Causes the confirmation status to be reset.
-				}
-				if(PrefC.GetBool(PrefName.ApptConfirmAutoEnabled)) {
-					List<ConfirmationRequest> listConfirmationRequests=ConfirmationRequests.GetAllForAppts(new List<long> { appointment.AptNum});
-					for(int i=0;i<listConfirmationRequests.Count();i++) {
-						//If they selected No, this will force the econnector to not delete the row and therefore not send another eConfirmation.
-						//If they selected Yes, we will clear the DoNotResend flag so that it will get sent.
-						listConfirmationRequests[i].DoNotResend=!isResetConf;
-						ConfirmationRequests.Update(listConfirmationRequests[i]);
-					}
-				}
-				if(PrefC.GetBool(PrefName.ApptThankYouAutoEnabled)) {
-					List<ApptThankYouSent> listApptThankYouSents=ApptThankYouSents.GetForApt(appointment.AptNum);
-					for(int i=0;i<listApptThankYouSents.Count();i++) {
-						//If they selected No, this will force the econnector to not delete the row and therefore not send another eThankYou.
-						//If they selected Yes, we will clear the DoNotResend flag so that it will get sent.
-						listApptThankYouSents[i].DoNotResend=!isResetConf;
-						ApptThankYouSents.Update(listApptThankYouSents[i]);
-					}
 				}
 			}
 			if(isOpChanged && !appointment.IsHygiene) {//If a non-hygiene appointment is moved, update the IsHygiene value to that of the new operatory.
@@ -4799,46 +4414,6 @@ namespace OpenDental {
 				return curApptViewNum;//We already have the view we need. Do nothing.
 			}
 			return listApptViewNums.FirstOrDefault();
-		}
-
-		///<summary>Brings up the window to send text messagse to the patients.</summary>
-		private void SendTextMessages(List<long> listPatNums) {
-			if(!Security.IsAuthorized(EnumPermType.TextMessageSend)) {
-				return;
-			}
-			if(listPatNums.Count==0) {
-				MsgBox.Show(this,"No appointments this day to send text messages to.");
-				return;
-			}
-			Clinic clinic=Clinics.GetClinic(Clinics.ClinicNum)??Clinics.GetDefaultForTexting()??Clinics.GetPracticeAsClinicZero();
-			List<PatComm> listPatComms=Patients.GetPatComms(listPatNums,clinic,false);
-			List<string> listPatsSkipped=new List<string>();
-			for(int i=listPatComms.Count-1;i>=0;i--) {
-				//Remove patients that can't receive texts.
-				PatComm patComm=listPatComms[i];
-				if(patComm.IsSmsAnOption) {
-					continue;
-				}
-				listPatsSkipped.Add(patComm.FName+" "+patComm.LName+": "+patComm.GetReasonCantText());
-				listPatComms.RemoveAt(i);
-			}
-			if(listPatsSkipped.Count > 0) {
-				string msg=listPatsSkipped.Count+Lan.g(this," of the ")+listPatNums.Distinct().Count()+" "
-					+Lan.g(this,"patients cannot receive text messages:")+"\r\n"+string.Join("\r\n",listPatsSkipped);
-				if(listPatsSkipped.Count < 8) {
-					MessageBox.Show(msg);
-				}
-				else {
-					using MsgBoxCopyPaste msgBoxCopyPaste=new MsgBoxCopyPaste(msg);
-					msgBoxCopyPaste.ShowDialog();
-				}
-			}
-			if(listPatComms.Count==0) {
-				return;
-			}
-			FormTxtMsgMany formTxtMsgMany=new FormTxtMsgMany(listPatComms,"",Clinics.ClinicNum,SmsMessageSource.DirectSms);
-			formTxtMsgMany.DoCombineNumbers=true;
-			formTxtMsgMany.Show();
 		}
 
 		///<summary>Used to send one or more appontments to the pinboard.  The other way to do it is SendToPinboardDataRow.</summary>
@@ -5110,11 +4685,9 @@ namespace OpenDental {
 
 	#region Other Classes
 	class MenuItemNames {
-		public const string TextAsapList="Text Asap List";
 		public const string BringOverlapToFront="Bring Overlapped Appt to Front";
 		public const string CopyToPinboard="Copy to Pinboard";
 		public const string CopyAppointmentStructure="Copy Appointment Structure";
-		public const string EClipboardQR="Show eClipboard QR";
 		public const string SendToUnscheduledList="Send to Unscheduled List";
 		public const string BreakAppointment="Break Appointment";
 		public const string MarkAsAsap="Mark as ASAP";
@@ -5137,17 +4710,11 @@ namespace OpenDental {
 		public const string TextDiv="Text Div";
 		public const string SendText="Send Text";
 		public const string SendConfirmationText="Send Confirmation Text";
-		public const string SendComeInText="Send Come In Text";
-		public const string SendEClipboardByod="Send eClipboard BYOD Text";
-		public const string SendMessageToPay="Send Message-to-Pay Message";
 		public const string OrthoChart="Ortho Chart";
 		public const string Jobs="Jobs";
 		public const string JobsSpacer="Jobs Spacer";
 		public const string Tasks="Tasks";
 		public const string TasksSpacer="Tasks Spacer";
-		public const string TextApptsForDayOp="Text Appointments for Day, Op only";
-		public const string TextApptsForDayView="Text Appointments for Day, Current View only";
-		public const string TextApptsForDay="Text Appointments for Day";
 		public const string DeleteWebSchedAsapBlockout="Delete Web Schedule ASAP Blockout";
 		public const string EditBlockout="Edit Blockout";
 		public const string CutBlockout="Cut Blockout";
@@ -5156,7 +4723,6 @@ namespace OpenDental {
 		public const string DeleteBlockout="Delete Blockout";
 		public const string AddBlockout="Add Blockout";
 		public const string BlockoutCutCopyPaste="Blockout Cut-Copy-Paste";
-		public const string CareCredit="CareCredit";
 		public const string CareCreditAcceptDeclineOffer="CareCredit Accept/Decline Offer";
 		public const string CareCreditApplicationNeeded="CareCredit Application Needed";
 		public const string CareCreditDiv="CareCredit Div";

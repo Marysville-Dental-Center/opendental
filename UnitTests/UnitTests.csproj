@@ -95,21 +95,13 @@
     <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="AxInterop.WMPLib, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" />
     <Reference Include="Bridges">
       <HintPath>..\Required dlls\Bridges.dll</HintPath>
     </Reference>
-    <ProjectReference Include="..\CDT\xCDT.csproj">
-      <Project>{76ba82e6-d8e1-45b1-8ed6-41d97b8d67ec}</Project>
-      <Name>xCDT</Name>
-    </ProjectReference>
     <Reference Include="DpsPos, Version=1.0.6191.28914, Culture=neutral, PublicKeyToken=fed6c2461985275f" />
     <Reference Include="Health.Direct.Common, Version=1.2.0.8, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\Health.Direct.Common.dll</HintPath>
-    </Reference>
-    <Reference Include="Interop.WMPLib, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
-      <EmbedInteropTypes>True</EmbedInteropTypes>
     </Reference>
     <Reference Include="Interop.Word, Version=8.2.0.0, Culture=neutral">
       <SpecificVersion>False</SpecificVersion>
@@ -270,7 +262,6 @@
     <Compile Include="UnitTests\ChartModulesTests.cs" />
     <Compile Include="UnitTests\RpReceivablesBreakdownTests.cs" />
     <Compile Include="UnitTests\ClockEventsTests.cs" />
-    <Compile Include="UnitTests\CodeSystemsTests.cs" />
     <Compile Include="UnitTests\BillingTests.cs" />
     <Compile Include="UnitTests\RpCustomAgingTests.cs" />
     <Compile Include="UnitTests\PayConnect2Tests.cs" />
@@ -278,7 +269,6 @@
     <Compile Include="UnitTests\SetupWizardTests.cs" />
     <Compile Include="UnitTests\RpOutstandInsTests.cs" />
     <Compile Include="UnitTests\PaymentsTests.cs" />
-    <Compile Include="UnitTests\PeerInfosTests.cs" />
     <Compile Include="UnitTests\CentralManagerTests.cs" />
     <Compile Include="UnitTests\LimitedBetaFeatureTests.cs" />
     <Compile Include="UnitTests\POutTests.cs" />
@@ -369,7 +359,6 @@
     <Compile Include="IntegrationTests\InsVerifiesIntegrationTests.cs" />
     <Compile Include="UnitTests\AccountEntryTests.cs" />
     <Compile Include="UnitTests\PayPlanChargeTests.cs" />
-    <Compile Include="UnitTests\PromotionTests.cs" />
     <Compile Include="UnitTests\TsiTransLogsTests.cs" />
     <Compile Include="UnitTests\HieQueuesTests.cs" />
     <Compile Include="UnitTests\AdjustmentsTests.cs" />
@@ -387,7 +376,6 @@
     <Compile Include="UnitTests\DateSpanTests.cs" />
     <Compile Include="UnitTests\ODPrimitiveExtensionsTests.cs" />
     <Compile Include="UnitTests\AccountModulesTests.cs" />
-    <Compile Include="UnitTests\MassEmailTests.cs" />
     <Compile Include="UnitTests\PaySplitsTests.cs" />
     <Compile Include="UnitTests\PayPlanEditTests.cs" />
     <Compile Include="UnitTests\CovCatsTests.cs" />
@@ -395,13 +383,11 @@
     <Compile Include="UnitTests\ProgramsTests.cs" />
     <Compile Include="UnitTests\ProviderClinicTests.cs" />
     <Compile Include="UnitTests\RecallsTests.cs" />
-    <Compile Include="UnitTests\ShortCodeTests.cs" />
     <Compile Include="UnitTests\PayPlansTests.cs" />
     <Compile Include="UnitTests\EmailAttachTests.cs" />
     <Compile Include="UnitTests\OrthoCasesTests.cs" />
     <Compile Include="UnitTests\RpProcNotBilledInsTests.cs" />
     <Compile Include="UnitTests\ClinicPrefHelperTests.cs" />
-    <Compile Include="UnitTests\DataActionTests.cs" />
     <Compile Include="UnitTests\ODFileUtilsTests.cs" />
     <Compile Include="UnitTests\ProcedureLogicTests.cs" />
     <Compile Include="UnitTests\ProgramPropertiesTests.cs" />
@@ -411,7 +397,6 @@
     <Compile Include="UnitTests\AgingDataTests.cs" />
     <Compile Include="UnitTests\PrefsTests.cs" />
     <Compile Include="UnitTests\MiscUtilsTests.cs" />
-    <Compile Include="UnitTests\SmsPhoneTests.cs" />
     <Compile Include="UnitTests\SubstitutionLinksTests.cs" />
     <Compile Include="UnitTests\TasksTests.cs" />
     <Compile Include="UnitTests\TaskListsTests.cs" />
@@ -441,8 +426,6 @@
     <Compile Include="UnitTests\ToothTests.cs" />
     <Compile Include="UnitTests\UserodsTests.cs" />
     <Compile Include="UnitTests\UserQueriesTests.cs" />
-    <Compile Include="UnitTests\WebForms_SheetsTests.cs" />
-    <Compile Include="UnitTests\WebSchedRecallTests.cs" />
     <Compile Include="UnitTests\XmlConverterTests.cs" />
     <Compile Include="UnitTests\ProvidersTests.cs" />
     <Compile Include="UnitTests\ClaimProcsTests.cs" />
@@ -481,7 +464,6 @@
     <Compile Include="UnitTests\RepeatChargesTests.cs" />
     <Compile Include="UnitTests\SchedulesTests.cs" />
     <Compile Include="UnitTests\ProcedureCodesTests.cs" />
-    <Compile Include="UnitTests\TimeSlotsTests.cs" />
     <Compile Include="UnitTests\ContrApptSingleTests.cs" />
     <Compile Include="UnitTests\WikiPagesTests.cs" />
     <EmbeddedResource Include="UI Testing\FormGraphicsTests.resx">
@@ -582,10 +564,6 @@
     <Compile Include="MiddleTier\WebServiceT.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\OpenDentalHelp\OpenDentalHelp\OpenDentalHelp.csproj">
-      <Project>{98b2999c-8a9f-4795-b452-7f6231ed56b4}</Project>
-      <Name>OpenDentalHelp</Name>
-    </ProjectReference>
     <ProjectReference Include="..\CentralManager\xCentralManager.csproj">
       <Project>{10BFA78E-E5FE-4209-8347-AD0EC8B3F064}</Project>
       <Name>xCentralManager</Name>

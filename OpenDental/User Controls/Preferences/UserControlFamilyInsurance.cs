@@ -88,36 +88,6 @@ namespace OpenDental {
 				InsPlans.UpdateCobRuleForAll((EnumCobRule)comboCobRule.SelectedIndex);
 			}
 		}
-
-		private void linkLabelCobRuleDetails_LinkClicked(object sender,LinkLabelLinkClickedEventArgs e) {
-			try {
-				Process.Start("https://www.opendental.com/manual/cob.html");
-			}
-			catch(Exception ex) {
-				MessageBox.Show(Lan.g(this,"Could not find")+" "+"https://www.opendental.com/manual/cob.html"+"\r\n"
-					+Lan.g(this,"Please set up a default web browser."));
-			}
-		}
-
-		private void linkLabelZeroOutWriteoffOnAgeOrFreq_LinkClicked(object sender,LinkLabelLinkClickedEventArgs e) {
-			try {
-				Process.Start("https://www.opendental.com/resources/UnitTestsDocumentation.xml#InsPlans_ComputeEstimates_ZeroWriteoffOverFrequencyGlobalLevel"); 
-			}
-			catch(Exception ex) {
-				MessageBox.Show(Lan.g(this,"Could not find")+" "+"https://www.opendental.com/resources/UnitTestsDocumentation.xml#InsPlans_ComputeEstimates_ZeroWriteoffOverFrequencyGlobalLevel"+"\r\n"
-					+Lan.g(this,"Please set up a default web browser."));
-			}
-		}
-
-		private void linkLabelZeroOutWriteoffOnAnnualMax_LinkClicked(object sender,LinkLabelLinkClickedEventArgs e) {
-			try {
-				Process.Start("https://www.opendental.com/resources/UnitTestsDocumentation.xml#InsPlans_ComputeEstimates_ZeroWriteoffOverAnnualMaxGlobalLevel"); 
-			}
-			catch(Exception ex) {
-				MessageBox.Show(Lan.g(this,"Could not find")+" "+"https://www.opendental.com/resources/UnitTestsDocumentation.xml#InsPlans_ComputeEstimates_ZeroWriteoffOverAnnualMaxGlobalLevel"+"\r\n"
-					+Lan.g(this,"Please set up a default web browser."));
-			}
-		}
 		#endregion Methods - Event Handlers
 
 		#region Methods - Private

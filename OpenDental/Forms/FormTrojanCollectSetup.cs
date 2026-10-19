@@ -25,18 +25,13 @@ namespace OpenDental {
 		}
 
 		private void FormTrojanCollectSetup_Load(object sender,EventArgs e) {
-			if(ODEnvironment.IsCloudServer) {
-				MsgBox.Show(this,"This program is not available while using Open Dental Cloud.");
-				Close();
-				return;
-			}
 			_program=Programs.GetCur(ProgramName.TrojanExpressCollect);
 			textExportFolder.Text=ProgramProperties.GetPropVal(_program.ProgramNum,"FolderPath");
 			long billtype=PIn.Long(ProgramProperties.GetPropVal(_program.ProgramNum,"BillingType"));
 			_listDefsBillingType=Defs.GetDefsForCategory(DefCat.BillingTypes,true);
 			comboBillType.Items.AddList(_listDefsBillingType.Select(x => x.ItemName));
 			comboBillType.SelectedIndex=Math.Max(_listDefsBillingType.FindIndex(x => x.DefNum==billtype),0);
-			textPassword.Text=CDT.Class1.TryDecrypt(ProgramProperties.GetPropVal(_program.ProgramNum,"Password"));
+			textPassword.Text=Secrets.TryDecrypt(ProgramProperties.GetPropVal(_program.ProgramNum,"Password"));
 			checkEnabled.Checked=_program.Enabled;
 		}
 
@@ -63,10 +58,6 @@ namespace OpenDental {
 		private bool Validation() {
 			if(!checkEnabled.Checked) {
 				return true;//no need to check for valid fields if program link is disabled
-			}
-			else if(!Programs.IsEnabledByHq(ProgramName.TrojanExpressCollect,out string err)) {
-				MessageBox.Show(err);
-				return false;
 			}
 			if(!Directory.Exists(textExportFolder.Text)) {
 				MsgBox.Show(this,"Export folder does not exist.");
@@ -97,7 +88,7 @@ namespace OpenDental {
 				Programs.Update(_program);
 				hasChanges=true;
 			}
-			string password=CDT.Class1.TryEncrypt(textPassword.Text);
+			string password=Secrets.TryEncrypt(textPassword.Text);
 			hasChanges |= ProgramProperties.SetProperty(_program.ProgramNum,"FolderPath",textExportFolder.Text)>0;
 			hasChanges |= ProgramProperties.SetProperty(_program.ProgramNum,"BillingType",defNum.ToString())>0;
 			hasChanges |= ProgramProperties.SetProperty(_program.ProgramNum,"Password",password)>0;

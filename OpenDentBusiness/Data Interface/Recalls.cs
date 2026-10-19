@@ -12,7 +12,6 @@ using System.Threading;
 using System.Xml;
 using CodeBase;
 using DataConnectionBase;
-using OpenDentBusiness.AutoComm;
 using OpenDentBusiness.WebTypes.WebSched.TimeSlot;
 
 namespace OpenDentBusiness {
@@ -426,11 +425,6 @@ namespace OpenDentBusiness {
 			table.Columns.Add("RecallTypeNum");
 			table.Columns.Add("RecallStatus");
 			table.Columns.Add("status");
-			table.Columns.Add("WebSchedRecallNum");
-			table.Columns.Add("webSchedDateTimeFailed");
-			table.Columns.Add("webSchedSendDesc");
-			table.Columns.Add("webSchedSendError");
-			table.Columns.Add("webSchedSendStatus");
 			table.Columns.Add("WirelessPhone");
 			table.Columns.Add("Priority");
 			#endregion
@@ -481,34 +475,6 @@ namespace OpenDentBusiness {
 				.GroupBy(x => PIn.Long(x["PatNum"].ToString()),x => new { CommDate=PIn.Date(x["CommDateTime"].ToString()),CommSource=PIn.Enum<CommItemSource>(x["CommSource"].ToString()) })
 				.ToDictionary(x => x.Key,x => x.Distinct().Select(y => y.CommDate).ToList());
 			logQuery("dictCommlogs",command,dictCommlogs.Values.Sum(x => x.Count()));
-			//Get the most recent webschedrecall reminders that have been sent to these patients.
-			command="SELECT webschedrecall.WebSchedRecallNum,webschedrecall.PatNum,webschedrecall.SendStatus,webschedrecall.MessageType,"
-				+"webschedrecall.DateTimeSendFailed,webschedrecall.ResponseDescript,webschedrecall.DateTimeSent "
-				+"FROM webschedrecall "
-				+"INNER JOIN ("
-					+"SELECT PatNum,MAX(DateTimeEntry) DateTimeEntry "
-					+"FROM webschedrecall "
-					+"WHERE PatNum IN ("+string.Join(",",dictPatientRows.Keys)+") "
-					+"GROUP BY PatNum "
-				+") recent ON recent.PatNum=webschedrecall.PatNum AND DATE(recent.DateTimeEntry)=DATE(webschedrecall.DateTimeEntry)";
-			sw.Restart();
-			DataTable tableWebSchedRecalls=Db.GetTable(command);
-			logQuery("tableWebSchedRecalls",command,tableWebSchedRecalls.Rows.Count);
-			//Create dictionary of key=PatNum, value=List of WebSchedRecalls for that patient
-			sw.Restart();
-			Dictionary<long,List<WebSchedRecall>> dictWebSchedRecalls=tableWebSchedRecalls.AsEnumerable()
-				.Select(x => new WebSchedRecall {
-					WebSchedRecallNum=PIn.Long(x["WebSchedRecallNum"].ToString()),
-					PatNum=PIn.Long(x["PatNum"].ToString()),
-					MessageType=PIn.Enum<CommType>(PIn.Int(x["MessageType"].ToString())),
-					SendStatus=PIn.Enum<AutoCommStatus>(PIn.Int(x["SendStatus"].ToString())),
-					DateTimeSendFailed=PIn.DateT(x["DateTimeSendFailed"].ToString()),
-					ResponseDescript=PIn.String(x["ResponseDescript"].ToString()),
-					DateTimeSent=PIn.DateT(x["DateTimeSent"].ToString()),
-				})
-				.GroupBy(x => x.PatNum,x => x)
-				.ToDictionary(x => x.Key,x => x.ToList());
-			logOther($"dictWebSchedRecalls {dictWebSchedRecalls.Count} rows");
 			#endregion Run Queries and Create Dictionaries
 			List<DateTime> listDatesRemindersSent;
 			DataRow rowPat;
@@ -597,30 +563,6 @@ namespace OpenDentBusiness {
 					row["RecallTypeNum"]=rowCur["RecallTypeNum"].ToString();
 					row["RecallStatus"]=rowCur["RecallStatus"].ToString();
 					row["status"]=Defs.GetName(DefCat.RecallUnschedStatus,PIn.Long(rowCur["RecallStatus"].ToString()));
-					row["WebSchedRecallNum"]="0";
-					row["webSchedDateTimeFailed"]=DateTime.MinValue;
-					row["webSchedSendDesc"]="";
-					row["webSchedSendError"]="";
-					row["webSchedSendStatus"]=((int)AutoCommStatus.Undefined).ToString();
-					if(dictWebSchedRecalls.TryGetValue(patNum,out List<WebSchedRecall> listWebSchedSendMostRecent)) {
-						//We should expect a WebSchedRecall for each configured send method in this list, ex. one for sms, one for email.
-						WebSchedRecall webSchedRecall=listWebSchedSendMostRecent
-							.OrderByDescending(x => AutoCommObj.IsSent(x.SendStatus))//Prioritize successfully sent
-							.ThenByDescending(x => x.SendStatus==AutoCommStatus.SendNotAttempted)//Then pending
-							.ThenByDescending(x => x.SendStatus==AutoCommStatus.SendFailed)//Then failed.
-							.FirstOrDefault();
-						row["webSchedDateTimeFailed"]=webSchedRecall.DateTimeSendFailed;
-						row["webSchedSendStatus"]=((int)webSchedRecall.SendStatus).ToString();
-						row["WebSchedRecallNum"]=webSchedRecall.WebSchedRecallNum;
-						//This may be displayed in the Recall List window.
-						row["webSchedSendDesc"]=string.Join(";",listWebSchedSendMostRecent.Select(x => x.MessageType.GetDescription()+": "+x.SendStatus switch {
-							AutoCommStatus.SendNotAttempted => Lans.g("FormRecallList","Sending"),
-							AutoCommStatus.SentAwaitingReceipt => Lans.g("FormRecallList","Awaiting Delivery Receipt"),
-							AutoCommStatus.SendFailed => Lans.g("FormRecallList","Send Failed"),
-							_ => webSchedRecall.SendStatus.GetDescription(),
-						}));
-						row["webSchedSendError"]=webSchedRecall.ResponseDescript;
-					}
 					row["WirelessPhone"]=rowPat["WirelessPhone"].ToString();
 					#endregion Create Row
 					rows.Add(row);
@@ -1650,59 +1592,6 @@ namespace OpenDentBusiness {
 			return table;
 		}
 
-		///<summary></summary>
-		public static DataTable GetAddrTableForWebSched(List<long> recallNums,bool groupByFamily,RecallListSort sortBy,List<CommType> listCommTypes=null) {
-			Meth.NoCheckMiddleTierRole();
-			DataTable rawTable=GetAddrTableRaw(recallNums);
-			HashSet<long> hashRecallNumsUnsent=WebSchedRecalls.GetAllUnsent(listCommTypes).Select(x => x.RecallNum).Distinct().ToHashSet();
-			//Only return rows where there isn't already a pending WebSchedRecall.
-			List<DataRow> rawRows=rawTable.Rows.AsEnumerable<DataRow>().Where(x => !hashRecallNumsUnsent.Contains(PIn.Long(x["RecallNum"].ToString()))).ToList();
-			RecallComparer comparer=new RecallComparer();
-			comparer.GroupByFamilies=groupByFamily;
-			comparer.SortBy=sortBy;
-			rawRows.Sort(comparer);
-			DataTable table=new DataTable();
-			table.Columns.Add("clinicNum");//will be the guar clinicNum if grouped.
-			table.Columns.Add("dateDue");
-			table.Columns.Add("email");//will be guar if grouped by family
-			table.Columns.Add("emailPatNum");//will be guar if grouped by family
-			table.Columns.Add("numberOfReminders");//for a family, this will be the max for the family
-			table.Columns.Add("patientNameF");
-			table.Columns.Add("patientNameFL");
-			table.Columns.Add("PatNum");
-			table.Columns.Add("RecallNum");
-			table.Columns.Add("PreferRecallMethod");
-			Patient pat;
-			for(int i=0;i<rawRows.Count;i++) {
-				DataRow rawRaw=rawRows[i];
-				DataRow row=table.NewRow();
-				if(groupByFamily) {
-					//Use guarantors clinic and email for all notifications.
-					row["clinicNum"]=rawRaw["guarClinicNum"].ToString();
-					row["email"]=rawRaw["guarEmail"].ToString();
-					row["emailPatNum"]=rawRaw["Guarantor"].ToString();
-				}
-				else {
-					row["clinicNum"]=rawRaw["ClinicNum"].ToString();
-					row["email"]=rawRaw["Email"].ToString();
-					row["emailPatNum"]=rawRaw["PatNum"].ToString();
-				}
-				row["dateDue"]=PIn.Date(rawRaw["DateDue"].ToString()).ToShortDateString();
-				row["numberOfReminders"]=PIn.Long(rawRaw["numberOfReminders"].ToString()).ToString();
-				row["PatNum"]=rawRaw["PatNum"].ToString();
-				pat=new Patient();
-				pat.LName=rawRaw["LName"].ToString();
-				pat.FName=rawRaw["FName"].ToString();
-				pat.Preferred=rawRaw["Preferred"].ToString();
-				row["patientNameF"]=pat.GetNameFirstOrPreferred();
-				row["patientNameFL"]=pat.GetNameFLnoPref();
-				row["RecallNum"]=rawRaw["RecallNum"].ToString();
-				row["PreferRecallMethod"]=rawRaw["PreferRecallMethod"].ToString();
-				table.Rows.Add(row);
-			}
-			return table;
-		}
-
 		///<summary>Gets a base table used for creating recall reminders.</summary>
 		public static DataTable GetAddrTableRaw(List<long> recallNums) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
@@ -1878,140 +1767,6 @@ namespace OpenDentBusiness {
 			return listRecent;
 		}
 
-		#region Web Sched
-
-		///<summary>Creates and inserts an appointment for the recall passed in using the dateStart hour as the beginning of the appointment.
-		///It will be scheduled in the first available operatory.
-		///<para>The first available operatory is determined by the order in which they are stored in the database (operatory.ItemOrder).</para>
-		///<para>This means that (visually to the user) we will be filling up their appointment schedule from the left to the right.</para>
-		///<para>Surround with a try catch.  Throws exceptions if anything goes wrong.</para>
-		///<para>Returns the list of procedures that were scheduled and the appointment created.</para></summary>
-		///<param name="isASAP">If true, then the appointment created will have a priority of ASAP.</param>
-		public static Tuple<Appointment,List<Procedure>> CreateRecallApptForWebSched(long recallNum,DateTime dateStart,DateTime dateEnd
-			,List<TimeSlot> listAvailableTimeSlots,LogSources source,bool isASAP=false,bool sendVerification=false,string logGuid="") 
-		{
-			Meth.NoCheckMiddleTierRole();
-			foreach(TimeSlot timeSlot in listAvailableTimeSlots) {
-				if(dateStart!=timeSlot.DateTimeStart || dateEnd!=timeSlot.DateTimeStop) {
-					continue;//Not the available slot that the patient selected within the app.
-				}
-				//At this point we know the slot time that the patient selected matches this open time slot.
-				Recall recallCur=Recalls.GetRecall(recallNum);
-				if(recallCur==null) {
-					throw new ODException("This recall appointment is no longer available.\r\nPlease call us to schedule your appointment.");
-				}
-				Patient patCur=Patients.GetPat(recallCur.PatNum);
-				List<Recall> listRecalls=Recalls.GetList(patCur.PatNum);
-				for(int j=0;j<listRecalls.Count;j++) {
-					if(listRecalls[j].RecallNum==recallNum) {
-						recallCur=listRecalls[j].Copy();
-						break;
-					}
-				}
-				Appointment aptCur=new Appointment();
-				aptCur.AptDateTime=dateStart; //set the AptDateTime here, so FillAppointmentforRecall uses the correct Date for the procedure
-				Family fam=Patients.GetFamily(patCur.PatNum);
-				List<Procedure> procList=Procedures.Refresh(patCur.PatNum);
-				List<InsSub> listSubs=InsSubs.RefreshForFam(fam);
-				List<InsPlan> listPlans=InsPlans.RefreshForSubList(listSubs);
-				List<string> listProcStrs=RecallTypes.GetProcs(recallCur.RecallTypeNum);
-				//Now we need to completely fill the appointment with procedures, claimprocs, etc. for this specific recall.
-				List<Procedure> listProcedures=Appointments.FillAppointmentForRecall(aptCur,recallCur,listRecalls,patCur,listProcStrs,listPlans,listSubs);
-				Appointment aptOld=aptCur.Copy();
-				//Take the recall appointment that was just inserted via FillAppointmentForRecall() and update the time and operatory.
-				Operatory opCur=Operatories.GetOperatory(timeSlot.OperatoryNum);
-				aptCur.AptStatus=ApptStatus.Scheduled;
-				aptCur.Op=opCur.OperatoryNum;
-				aptCur.Priority=isASAP ? ApptPriority.ASAP : ApptPriority.Normal;
-				aptCur.Confirmed=PrefC.GetLong(PrefName.WebSchedRecallConfirmStatus);
-				//Make sure that operatory specific settings are applied to the appointment.
-				List<Schedule> listSchedules=Schedules.RefreshDayEdit(aptCur.AptDateTime);
-				if(!PrefC.HasClinicsEnabled) {
-					aptCur.ClinicNum=0;
-				}
-				else if(opCur.ClinicNum==0) {
-					aptCur.ClinicNum=patCur.ClinicNum;
-				}
-				else {
-					aptCur.ClinicNum=opCur.ClinicNum;
-				}
-				WebSchedProviderRules rule;
-				if(PrefC.HasClinicsEnabled) {
-					rule=PIn.Enum<WebSchedProviderRules>(
-						ClinicPrefs.GetPref(PrefName.WebSchedProviderRule,aptCur.ClinicNum)?.ValueString??PrefC.GetString(PrefName.WebSchedProviderRule));
-				}
-				else {
-					rule=PIn.Enum<WebSchedProviderRules>(PrefC.GetString(PrefName.WebSchedProviderRule));
-				}
-				long preferredProvNum=0;
-				if(rule!=WebSchedProviderRules.FirstAvailable) {
-					//If the recall is supposed to be with a particular provider, then the listAvailableTimeSlots should all have a ProvNum of that 
-					//particular provider.
-					preferredProvNum=timeSlot.ProvNum;
-				}
-				long assignedDent=Schedules.GetAssignedProvNumForSpot(listSchedules,opCur,false,aptCur.AptDateTime,preferredProvNum);
-				long assignedHyg=Schedules.GetAssignedProvNumForSpot(listSchedules,opCur,true,aptCur.AptDateTime,preferredProvNum);
-				if(assignedDent > 0) {//if no dentist is assigned to op, then keep the original dentist.  All appts must have prov.
-					aptCur.ProvNum=assignedDent;
-				}
-				if(assignedHyg > 0) {
-					aptCur.ProvHyg=assignedHyg;
-				}
-				aptCur.IsHygiene=opCur.IsHygiene;
-				//Note: We do not need to do any prospective operatory checks here because the query currently excludes prospective ops.
-				//Also, aptCur already has the correct time pattern set.  No need to set it again here.
-				Appointments.Update(aptCur,aptOld);
-				listProcedures.AddRange(Appointments.TryAddPerVisitProcCodesToAppt(aptCur,aptOld.AptStatus));
-				//At this point, the appointment has been fully scheduled. The remaining operations can be run on a thread so that this method can return 
-				//faster.
-				ODThread thread=new ODThread(o => {
-					eServiceCode eServiceCode=eServiceCode.WebSched;
-					if(source==LogSources.WebSchedASAP) {
-						eServiceCode=eServiceCode.WebSchedASAP;
-					}
-					if(recallCur.Priority==RecallPriority.ASAP) {
-						Recall recallOld=recallCur.Copy();
-						recallCur.Priority=RecallPriority.Normal;
-						if(Recalls.Update(recallCur,recallOld)) {
-							SecurityLogs.MakeLogEntry(EnumPermType.RecallEdit,recallCur.PatNum,"Recall priority changed to Normal by Web Sched.");
-							EServiceLogs.MakeLogEntry(eServiceAction.WSMovedAppt,eServiceType.WSAsap,FKeyType.ApptNum,patNum:aptCur.PatNum,FKey:aptCur.AptNum,clinicNum:aptCur.ClinicNum,logGuid:logGuid);
-						}
-					}
-					//Create a security log so that the office knows where this appointment came from.
-					SecurityLogs.MakeLogEntry(EnumPermType.AppointmentCreate,aptCur.PatNum,
-						aptCur.AptDateTime.ToString()+", "+aptCur.ProcDescript+"  -  Created via Web Sched",
-						aptCur.AptNum,source,aptOld.DateTStamp);
-					EServiceLogs.MakeLogEntry(eServiceAction.WSAppointmentScheduledFromServer,eServiceType.WSRecall,FKeyType.ApptNum,patNum:aptCur.PatNum,
-						FKey:aptCur.AptNum,clinicNum:aptCur.ClinicNum,logGuid:logGuid);
-					if(sendVerification) {
-						Appointments.SendWebSchedNotify(aptCur,PrefName.WebSchedVerifyRecallType,PrefName.WebSchedVerifyRecallText,
-							PrefName.WebSchedVerifyRecallEmailSubj,PrefName.WebSchedVerifyRecallEmailBody,PrefName.WebSchedVerifyRecallEmailTemplateType);
-					}
-					//There is no need to make security logs for anything other than the appointment.  That is how the recall list system currently does it.
-					Recalls.SynchScheduledApptFull(aptCur.PatNum);//Synch the recalls so that the appointment will disappear from the recall list.
-					AlertItem alert=new AlertItem() {
-						ClinicNum=aptCur.ClinicNum,
-						Description=aptCur.AptDateTime.ToString(),
-						Type=AlertType.WebSchedRecallApptCreated,
-						Actions=ActionType.MarkAsRead|ActionType.OpenForm|ActionType.Delete,
-						FormToOpen=FormType.FormWebSchedAppts,
-						Severity=SeverityType.Low,
-						FKey=aptCur.AptNum
-					};
-					AlertItems.Insert(alert);
-				});
-				thread.Name="FinishWebSchedRecallAppt";
-				thread.AddExceptionHandler(e => e.DoNothing());
-				thread.Start(true);
-				if(RunWebSchedSynchronously) {
-					thread.Join(Timeout.Infinite);
-				}
-				return new Tuple<Appointment,List<Procedure>>(aptCur,listProcedures);
-			}
-			//It is very possible that from the time the patient loaded the Web Sched app and now that the available time slot has been removed or filled.
-			throw new ODException("The selected appointment time is no longer available.\r\nPlease choose a different time slot.",100);
-		}
-		#endregion
 		
 		///<summary>List of recalls, dictionary of last completed dates for recall code nums, and dictionary of next scheduled dates for recall types for
 		///one patient.  This will be added to a dictionary with key=PatNum for the patient whose data this represents.</summary>

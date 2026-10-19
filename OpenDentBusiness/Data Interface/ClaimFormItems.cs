@@ -36,6 +36,19 @@ namespace OpenDentBusiness{
 			return _claimFormItemCache.GetWhere(match,isShort);
 		}
 
+		///<summary>Image names of the ADA and DC-217 claim-form backgrounds that Open Dental drew from its proprietary library. That artwork is
+		///copyrighted and isn't shipped, so items that name one of these draw nothing; those claims print on pre-printed forms. The items stay in
+		///the claim form so existing claim forms load unchanged.</summary>
+		private static readonly string[] _arrayUnshippedBackgrounds=new string[] {
+			"ADA2006.gif","ADA2012.gif","ADA2012_J430D.gif","ADA2018_J432.gif","ADA2019_J430.gif","ADA2024_J430.gif","DC-217.gif"
+		};
+
+		///<summary>True if imageFileName names an ADA or DC-217 claim-form background, which isn't shipped and is never drawn.</summary>
+		public static bool IsUnshippedBackground(string imageFileName) {
+			Meth.NoCheckMiddleTierRole();
+			return _arrayUnshippedBackgrounds.Contains(imageFileName);
+		}
+
 		///<summary>Refreshes the cache and returns it as a DataTable. This will refresh the ClientWeb's cache and the ServerWeb's cache.</summary>
 		public static DataTable RefreshCache() {
 			return GetTableFromCache(true);

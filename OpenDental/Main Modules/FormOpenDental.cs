@@ -1,4 +1,4 @@
-/*=============================================================================================================
+﻿/*=============================================================================================================
 Open Dental 
 Copyright 2003-2023  Jordan Sparks, DMD.  http://www.opendental.com
 
@@ -51,13 +51,9 @@ using OpenDental.UI;
 using System.ServiceProcess;
 using System.Linq;
 using OpenDental.Bridges;
-using OpenDentBusiness.WebServiceMainHQ;
 using ServiceManager;
 using System.DirectoryServices;
-using WMPLib;
 using OpenDentalImaging;
-using OpenDental.Thinfinity;
-using ODApi;
 
 namespace OpenDental{
 	///<summary></summary>
@@ -74,7 +70,6 @@ namespace OpenDental{
 		#region Fields - Private Static
 		///<summary>This is the singleton instance of the FormOpenDental. This allows us to have S_ methods that are public static and can be called from anywhere in the program to update FormOpenDental.</summary>
 		private static FormOpenDental _formOpenDentalSingleton;
-		private static List<InternalTools.Phones.FormMap> _listFormMaps=new List<InternalTools.Phones.FormMap>();
 		///<summary>Todo: look into this dict of dicts.</summary>
 		private static Dictionary<long,Dictionary<long,DateTime>> _dictionaryBlockedAutomations;
 		///<summary>Task Popups use this upper limit of open FormTaskEdit instances to determine if a task should popup.  More than 115 open FormTaskEdit has been observed to crash the program.  See task #1481164.</summary>
@@ -82,8 +77,6 @@ namespace OpenDental{
 		private static bool _isTreatPlanSortByTooth;
 		///<summary>In most cases, CurPatNum should be used instead of _CurPatNum.</summary>
 		private static long _patNumCur;
-		///<summary>This accepts incoming http REST requests to our local API.</summary>
-		private static HttpListener _httpListenerApi;
 		#endregion Fields - Private Static
 
 		#region Fields - Private
@@ -98,7 +91,6 @@ namespace OpenDental{
 		///<summary>This list will only contain events for this computer where the users clicked to disable a popup for a specified period of time.  So it won't typically have many items in it.</summary>
 		private List<PopupEvent> _listPopupEvents;
 		private FormAlerts _formAlerts;
-		private FormPhoneList _formPhoneList;
 		private FormTerminalManager _formTerminalManager;
 		private Form _formRecentlyOpenForLogoff;
 		///<summary>When auto log off is in use, we don't want to log off user if they are in the FormLogOn window.  Mostly a problem when using web service because CurUser is not null.</summary>
@@ -111,18 +103,12 @@ namespace OpenDental{
 		private Dictionary<string,object> _dictionaryChartPrefsCache=new Dictionary<string,object>();
 		///<summary>A secondary cache only used to determine if preferences related to the redrawing of the non-modal task list have been changed.</summary>
 		private Dictionary<string,object> _dictionaryTaskListPrefsCache=new Dictionary<string,object>();
-		///<summary>HQ only. Keep track of last time EServiceMetrics were filled. Server is only updating every 30 seconds so no need to go any faster than that.</summary>
-		private DateTime _dateTimeHqEServiceMetricsLastRefreshed=DateTime.MinValue;
-		///<summary>A specific reference to the "Text" button.  This special reference helps us preserve the notification text on the button after setup is modified.</summary>
-		private ODToolBarButton _toolBarButtonText;
 		///<summary>A specific reference to the "Task" button. This special reference helps us refresh the notification text on the button after the user changes.</summary>
 		private ODToolBarButton _toolBarButtonTask;
 		/// <summary>Command line can pass in show=... "Popup", "Popups", "ApptsForPatient", or "SearchPatient".  Stored here as lowercase.</summary>
 		private string _strCmdLineShow="";
-		private FormSmsTextMessaging _formSmsTextMessaging;
 		private FormUserQuery _formUserQuery;
 		private OpenDentalGraph.FormDashboardEditTab _formDashboardEditTab;
-		private FormJobManager _formJobManager;
 		///<summary>Tracks the reminder tasks for the currently logged in user.  Is null until the first signal refresh.  Includes new and viewed tasks.</summary>
 		private List<Task> _listTasksReminders=null;
 		///<summary>Gets initialized or refreshed when searching for archived task lists to exclude from reminders</summary>
@@ -135,14 +121,11 @@ namespace OpenDental{
 		private long _userNumTasks=0;
 		///<summary>The date the appointment module reminders tab was last refreshed.</summary>
 		private DateTime _dateReminderRefresh=DateTime.MinValue;
-		///<summary>HQ only. Keep track of the last time the office down was checked. Too taxing on the server to perform every 1.6 seconds with the rest of the HQ thread metrics. Will be refreshed on ProcessSigsIntervalInSecs interval.</summary>
-		private DateTime _dateHqOfficeDownLastRefreshed=DateTime.MinValue;
 		///<summary>List of AlerReads for the current User.</summary>
 		private List<AlertRead> _listAlertReads=new List<AlertRead>();
 		///<summary>List of AlertItems for the current user and clinic.</summary>
 		private List<AlertItem> _listAlertItems=new List<AlertItem>();
 		private FormXWebTransactions _formXWebTransactions;
-		private FormVoiceMails _formVoiceMails;
 		private FormLoginFailed _formLoginFailed=null;
 		///<summary>We will send a maximum of 1 exception to HQ that occurs when processing signals.</summary>
 		private Exception _exceptionSignalsTick;
@@ -157,8 +140,6 @@ namespace OpenDental{
 		private FormRpDPPOvercharged _formRpDPPOvercharged;
 		///<summary>There is one instance of this object. References are passed to each module. This object is never initialized other than this one spot. This abbreviation is approved because this will be very heavily used and needs to not take up space.</summary>
 		private PatientData _pd=new PatientData();
-		///<summary>E40138 - Used to give a timespan for HQ users so they can perform time clock actions without being interrupted by task popups.</summary>
-		private DateTime _dateTimeLastSignalTickInactiveHq=DateTime.MinValue;
 		#endregion Fields - Private
 
 		#region Constructor
@@ -248,16 +229,6 @@ namespace OpenDental{
 			LayoutManager.Add(userControlTasks1,this);
 			panelSplitter.ContextMenu=menuSplitter;
 			menuItemDockBottom.Checked=true;
-			phoneSmall=new UserControlPhoneSmall();
-			phoneSmall.GoToChanged += new System.EventHandler(this.phoneSmall_GoToChanged);
-			//phoneSmall.Visible=false;
-			//this.Controls.Add(phoneSmall);
-			LayoutManager.Add(phoneSmall,panelPhoneSmall);
-			panelPhoneSmall.Visible=false;
-			//phonePanel=new UserControlPhonePanel();
-			//phonePanel.Visible=false;
-			//this.Controls.Add(phonePanel);
-			//phonePanel.GoToChanged += new System.EventHandler(this.phonePanel_GoToChanged);
 			DataValid.EventInvalid+=(sender,e)=>DataValid_BecameInvalid(e);
 			GlobalFormOpenDental.EventLockODForMountAcquire+=(sender,isEnabled)=>LockODForMountAcquire(isEnabled);
 			GlobalFormOpenDental.EventRefreshCurrentModule+=(sender,isClinicRefresh)=>RefreshCurrentModule(isClinicRefresh:isClinicRefresh);
@@ -329,13 +300,6 @@ namespace OpenDental{
 			}
 		}
 
-		[Browsable(false)]
-		public static PhoneTile PhoneTile {
-			get {
-				return _formOpenDentalSingleton.phoneSmall.phoneTile;
-			}
-		}
-
 		///<summary>List of tab titles for the TabProc control. Used to get accurate preview in sheet layout design view. Returns a list of one item called "Tab" if something goes wrong.</summary>
 		[Browsable(false)]
 		public static List<string> S_Contr_TabProcPageTitles { 
@@ -394,7 +358,7 @@ namespace OpenDental{
 			string odPassword=CommandLineArgs_.OdPassword??"";
 			string odPassObfuscated=CommandLineArgs_.OdPassObfuscated??"";
 			if(odPassword=="" && odPassObfuscated!="") {
-				CDT.Class1.Decrypt(odPassObfuscated,out odPassword);
+				Secrets.Decrypt(odPassObfuscated,out odPassword);
 			}
 			string serverName=CommandLineArgs_.ServerName??"";
 			string databaseName=CommandLineArgs_.DatabaseName??"";
@@ -403,7 +367,7 @@ namespace OpenDental{
 			string mySqlPassHash=CommandLineArgs_.MySqlPassHash??"";
 			string mySqlPassObfuscated=CommandLineArgs_.MySqlPassObfuscated??"";
 			if(mySqlPassword=="" && mySqlPassObfuscated!="") {
-				CDT.Class1.Decrypt(mySqlPassObfuscated,out mySqlPassword);
+				Secrets.Decrypt(mySqlPassObfuscated,out mySqlPassword);
 			}
 			bool useDynamicMode=(CommandLineArgs_.UseDynamicMode??"").Contains("true");
 			string domainUser=CommandLineArgs_.DomainUser??"";
@@ -518,8 +482,7 @@ namespace OpenDental{
 				finally {
 					Logger.LogToPath("Plugins.LoadAllPlugins",LogPath.Startup,LogPhase.End);
 				}
-				if(CommandLineArgs_.ArrayCommandLineArgs.Length==0 //eCW doesn't load splash screen
-					&& !Web.IsWeb) { //don't show splash screen a second time if web is enabled
+				if(CommandLineArgs_.ArrayCommandLineArgs.Length==0) {//eCW doesn't load splash screen
 					formSplash.Show(this);
 				}
 				//If there is no model and they are trying to run dynamic mode via command line arguments, use the model from the 
@@ -572,7 +535,6 @@ namespace OpenDental{
 			Logger.LogToPath("RefreshLocalData Prefs",LogPath.Startup,LogPhase.Unspecified);
 			RefreshLocalData(InvalidType.Prefs);//should only refresh preferences so that SignalLastClearedDate preference can be used in ClearOldSignals()
 			Signalods.ClearOldSignals();
-			_=PrefC.IsAppStream;//calling this as soon as the pref cache is refreshed so ODCloudClient.IsAppStream will be set right away
 			//We no longer do this shotgun approach because it can slow the loading time.
 			//RefreshLocalData(InvalidType.AllLocal);
 			List<InvalidType> listInvalidTypes=new List<InvalidType>();
@@ -630,10 +592,6 @@ namespace OpenDental{
 			_menuItemPayloadMonitor.Available=(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT);
 			//Query Monitor does not capture queries from a Middle Tier client, only show Query Monitor menu item when directly connected to the database.
 			_menuItemQueryMonitor.Available=(RemotingClient.MiddleTierRole==MiddleTierRole.ClientDirect);
-			if(Security.IsAuthorized(EnumPermType.ProcCodeEdit,true) && !PrefC.GetBool(PrefName.ADAdescriptionsReset)) {
-				ProcedureCodes.ResetADAdescriptionsAndAbbrs();
-				Prefs.UpdateBool(PrefName.ADAdescriptionsReset,true);
-			}
 			//Spawn a thread so that attempting to start services on this computer does not hinder the loading time of Open Dental.
 			//This is placed before login on pupose so it will run even when the user does not login properly.
 			BeginODServiceStarterThread();
@@ -651,10 +609,6 @@ namespace OpenDental{
 			Logger.LogToPath("LogOnOpenDentalUser",LogPath.Startup,LogPhase.End);
 			//At this point a user has successfully logged in.  Flag the userod cache as safe to cache data.
 			Userods.SetIsCacheAllowed(true);
-			//Active Instances Validation for OD Cloud
-			if(!ActiveInstanceUnderLimit()) {
-				return;
-			}
 			//If clinics are enabled, we will set the public ClinicNum variable
 			//If the user is restricted to a clinic(s), and the computerpref clinic is not one of the user's restricted clinics, the user's clinic will be selected
 			//If the user is not restricted, or if the user is restricted but has access to the computerpref clinic, the computerpref clinic will be selected
@@ -727,7 +681,7 @@ namespace OpenDental{
 				}
 				else {
 					string decryptedPassword;
-					CDT.Class1.DecryptSftp(programPropertyPassword.PropertyValue,out decryptedPassword); //Password is encrypted when stored, so	we have to decrypt it in order to get the plaintext.
+					Secrets.DecryptSftp(programPropertyPassword.PropertyValue,out decryptedPassword); //Password is encrypted when stored, so	we have to decrypt it in order to get the plaintext.
 					try {
 						hasConnected=OpenDentalCloud.Sftp.FileExists(programPropertyHost.PropertyValue,programPropertyUsername.PropertyValue,decryptedPassword,
 							ODFileUtils.CombinePaths(programPropertyPath.PropertyValue,"A",'/'));
@@ -766,38 +720,9 @@ namespace OpenDental{
 			Bridges.Trojan.StartupCheck();
 			Bridges.ICat.StartFileWatcher();
 			Bridges.TigerView.StartFileWatcher();
-			if(!PrefC.IsODHQ) {
-				_menuItemJobManager.Available=false;
-				_menuItemWebChatTools.Available=false;
-				_menuItemResellers.Available=false;
-				_menuItemXChargeReconcile.Available=false;
-			}
-			if(!ODBuild.IsDebug() && !PrefC.IsODHQ){//if release and not HQ
+			_menuItemXChargeReconcile.Available=false;
+			if(!ODBuild.IsDebug()){//if release
 				_menuItemEForms.Available=false;
-			}
-			if(PrefC.IsODHQ) {
-				if(!ODBuild.IsDebug()) {
-					if(Process.GetProcessesByName("ProximityOD").Length==0) {
-						try {
-							Process.Start("ProximityOD.exe");
-						}
-						catch { }//for example, if working from home.
-					}
-				}
-				//Instantiate the static Func that dictates the database connection information when techs take/own tasks from the triage task list.
-				ConnectionStoreBase.GetTriageHQ=() => {
-					CentralConnectionBase cn=null;
-					ODException.SwallowAnyException(() => {
-						cn=new CentralConnectionBase {
-							ServerName=PrefC.GetString(PrefName.CustomersHQServer),
-							DatabaseName=PrefC.GetString(PrefName.CustomersHQDatabase),
-							MySqlUser=PrefC.GetString(PrefName.CustomersHQMySqlUser),
-						};
-						CDT.Class1.Decrypt(PrefC.GetString(PrefName.CustomersHQMySqlPassHash),out cn.MySqlPassword);
-					});
-					return cn;
-				};
-				FillComboTriageCoordinator();
 			}
 			TurnOffHqSupplementalBackups();
 			Logger.LogToPath("BackupReminder",LogPath.Startup,LogPhase.Unspecified);
@@ -859,9 +784,7 @@ namespace OpenDental{
 					FillPatientButton(patient);
 				}
 			}
-			if(!PrefC.IsODHQ) {
-				_menuItemDefaultCCProcs.Available=false;
-			}
+			_menuItemDefaultCCProcs.Available=false;
 			Logger.LogToPath("LanguageAndRegion",LogPath.Startup,LogPhase.Unspecified);
 			if(PrefC.GetString(PrefName.LanguageAndRegion)!=CultureInfo.CurrentCulture.Name && !ComputerPrefs.LocalComputer.NoShowLanguage) {
 				StringBuilder stringBuilder=new StringBuilder();
@@ -902,43 +825,12 @@ namespace OpenDental{
 			ComputerPrefs.UpdateLocalComputerOS();
 			WikiPages.NavPageDelegate=S_WikiLoadPage;
 			Tasks.NavTaskDelegate=S_TaskNumLoad;
-			Jobs.NavJobDelegate=S_GoToJob;
 			Logger.LogToPath("SignalLastRefreshed",LogPath.Startup,LogPhase.Unspecified);
 			//We are about to start signal processing regular priority signals for the first time so set the initial refresh timestamp.
 			//High priority signal processing was started earlier
 			Signalods.DateTRegularPrioritySignalLastRefreshed=MiscData.GetNowDateTime();
 			Signalods.DateTApptSignalLastRefreshed=Signalods.DateTRegularPrioritySignalLastRefreshed;
 			SetTimersAndThreads(true);//Safe to start timers since this method call is on the main thread.
-			if(ODBuild.IsThinfinity() || !PrefC.IsAppStream) {
-				_menuItemCloudUsers.Available=false;
-			}
-			if(ODEnvironment.IsCloudServer) {
-				_menuItemCreateAtoZ.Available=false;
-				_menuItemServiceManager.Available=false;
-				_menuItemReplication.Available=false;
-				_menuItemHL7.Available=false;
-				_menuItemEHR.Available=false;
-				if(ODBuild.IsThinfinity()) {
-					_menuItemPrinter.Available=false;
-				}
-				//If the office needs to reset their office passowrd, we will prompt them until they change it.
-				if(ODBuild.IsThinfinity() && PrefC.GetEnum<YN>(PrefName.CloudPasswordNeedsReset)!=YN.No) {
-					string message="You must reset the office password. ";
-					if(Security.IsAuthorized(EnumPermType.SecurityAdmin)) {
-						if(MsgBox.Show(this,MsgBoxButtons.YesNo,message+"Do you want to open the Change Office Password window?")) {
-							using FormChangeCloudPassword formChangeCloudPassword=new FormChangeCloudPassword();
-							formChangeCloudPassword.ShowDialog();
-						}
-					}
-					else {
-						MsgBox.Show(this,message+"This must be done by a SecurityAdmin user.");
-					}
-				}
-				if(Programs.IsEnabled(ProgramName.FHIR)) {
-					ODCloudClient.IsApiEnabled=true;
-					ODCloudClient.LaunchIfNotRunning();
-				}
-			}
 			Logger.LogToPath("MainBorderColors",LogPath.Startup,LogPhase.Unspecified);
 			List<Def> listDefsMisColors=Defs.GetDefsForCategory(DefCat.MiscColors);
 			SetBorderColor(DefCatMiscColors.MainBorder,listDefsMisColors[(int)DefCatMiscColors.MainBorder].ItemColor);
@@ -951,62 +843,8 @@ namespace OpenDental{
 				StartLoadSimulation();
 			}
 			//The Open Dental license agreement signature prompt (and the upload of the signature to Open Dental HQ) has been removed.
-			_httpListenerApi=new HttpListener();
-			if(ODBuild.IsDebug()) {
-				_httpListenerApi.Prefixes.Add("http://127.0.0.1:30555/");//30555 was chosen arbitrarily for local API debugging.
-			}
-			else {
-				_httpListenerApi.Prefixes.Add("http://127.0.0.1:30222/");//must end in /
-			}
-				//127.0.0.1 should support both that IP and localhost. Might possibly require host header if using "localhost".
-				//Port 30222 was chosen as very likely to be unused. Plan to add port choice later.
-				//_httpListenerApi.Prefixes.Add("http://*:30222/");//didn't work because:
-				//MS requires running in admin for anything but localhost. Or, add something similar to this:
-				//netsh http add urlacl url=http://+:80/MyUri user=DOMAIN\user
-				//This means that we will need to include instructions to users for additional config if they want to uses this other than localhost.
-				//the wildcard was supposed to let us support a variety of scenarios:
-				//http://localhost:30222/api/v1/
-				//http://192.168.1.12:30222/api/v1/
-				//http://api.opendental.com:30222/api/v1/");
-				//But that also clearly won't work, so we'll also need to let them specify the host somewhere in OD setup.
-			if(ApiMain.IsAllowedToOpenPort()){
-				//Remember that this block won't run unless your VS is in Admin mode.
-				try{
-					_httpListenerApi.Start();
-					IAsyncResult iAsyncResult=_httpListenerApi.BeginGetContext(new AsyncCallback(HttpListenerApiCallback),_httpListenerApi);
-				}
-				catch{
-					//port is already in use
-				}
-			}
+			//Open Dental's local REST API (an HttpListener on port 30222, served by the proprietary ODApi.dll) has been removed.
 			Plugins.HookAddCode(this,"FormOpenDental.Load_end");
-		}
-
-		/// <summary>Helper method that checks if the number of Active Instances (OD Cloud) exceed the allowed amount. Exits the application on false.
-		/// Calling method should return in that circumstance.</summary>
-		private bool ActiveInstanceUnderLimit() {
-			if(!ODBuild.IsThinfinity()
-				|| ActiveInstances.GetCountCloudActiveInstances(ActiveInstances.GetActiveInstance()?.ActiveInstanceNum??0)<PrefC.GetInt(PrefName.CloudSessionLimit)) 
-			{
-				return true;
-			}
-			string msg="You have exceeded the allowed number of concurrent Open Dental Cloud sessions.\r\n"
-			+"Would you like to view Cloud Management?";
-			if(MsgBox.Show(MsgBoxButtons.YesNo,Lan.g(this,msg))) {
-				using FormCloudManagement formCloudManagement=new FormCloudManagement();
-				formCloudManagement.ShowDialog();
-				//If the user still exceeds the allowed sessions, close this session
-				if(ActiveInstances.GetCountCloudActiveInstances(ActiveInstances.GetActiveInstance()?.ActiveInstanceNum??0)>=PrefC.GetInt(PrefName.CloudSessionLimit)) {
-					MsgBox.Show(this,"Your active sessions still exceed the allowed number of concurrent Open Dental Cloud sessions. Closing this session.");
-					Application.Exit();
-					return false;
-				}
-			}
-			else {
-				Application.Exit();
-				return false;
-			}
-			return true;
 		}
 
 		protected override void OnResize(EventArgs e){
@@ -1105,7 +943,7 @@ namespace OpenDental{
 			// Grab curent patient and save it so we can compare it to our search from clipboard
 			long prevPatNum=PatNumCur;
 			try {
-				textClip=System.Windows.Clipboard.GetText().Trim().ToLower();//System.Windows.Forms.Clipboard fails for Thinfinity
+				textClip=System.Windows.Clipboard.GetText().Trim().ToLower();
 			}
 			catch {
 				//do nothing
@@ -1161,29 +999,6 @@ namespace OpenDental{
 			}
 		}
 
-
-		///<summary>Opens maps with descriptions matching the passed in parameters.</summary>
-		private void OpenMapsFromCommandLine(List<string> listMapDescriptions) {
-			for(int i=0;i<listMapDescriptions.Count;i++) {
-				if(listMapDescriptions[i].IsNullOrEmpty()) {
-					continue;
-				}
-				OpenMap(listMapDescriptions[i]);
-			}
-		}
-
-		///<summary>Opens a call center map which matches the passed in description.</summary>
-		private void OpenMap(string mapDescription=null) {
-			InternalTools.Phones.FormMap formMap;
-			formMap=new InternalTools.Phones.FormMap();
-			formMap.ExtraMapClicked+=FormMap_ExtraMapClicked;
-			formMap.GoToPatient+=FormMap_GoToPatient;
-			if(!mapDescription.IsNullOrEmpty()) {
-				formMap.MapDescription=mapDescription;
-			}
-			formMap.Show();
-			formMap.BringToFront();
-		}
 
 		///<summary></summary>
 		private void ProcessCommandLine() {
@@ -1381,32 +1196,6 @@ namespace OpenDental{
 			#endregion
 			else {
 				FillPatientButton(null);
-			}
-			#region HQ Call Center Map
-			if(PrefC.IsODHQ && !CommandLineArgs_.MapNames.IsNullOrEmpty()) {
-				OpenMapsFromCommandLine(CommandLineArgs_.MapNames.Split(";",StringSplitOptions.RemoveEmptyEntries).ToList());
-			}
-			#endregion
-		}
-
-		protected override string GetHelpOverride() {
-			switch(moduleBar.SelectedModule){
-				case EnumModuleType.Appointments:
-					return nameof(ControlAppt);
-				case EnumModuleType.Family:
-					return nameof(ControlFamily);
-				case EnumModuleType.Account:
-					return nameof(ControlAccount);
-				case EnumModuleType.TreatPlan:
-					return nameof(ControlTreat);
-				case EnumModuleType.Chart:
-					return nameof(ControlChart);
-				case EnumModuleType.Imaging:
-					return nameof(ControlImages);
-				case EnumModuleType.Manage:
-					return nameof(ControlManage);
-				default:
-					return "";
 			}
 		}
 
@@ -1754,10 +1543,6 @@ namespace OpenDental{
 					_menuItemOnlinePayments.Available=false;
 					_menuItemPatPortalTransactions.Available=false;
 				}
-				if(PrefC.GetString(PrefName.DistributorKey)=="") {
-					_menuItemCustManagement.Available=false;
-					_menuItemNewCropBilling.Available=false;
-				}
 				_menuItemFeeSchedGroups.Available=PrefC.GetBool(PrefName.ShowFeeSchedGroups);
 				bool isLateChargeFeatureActive=PrefC.GetBool(PrefName.ShowFeatureLateCharges);
 				if(isLateChargeFeatureActive) {
@@ -1843,7 +1628,7 @@ namespace OpenDental{
 			#endregion
 			#region InvalidType.Programs
 			if(arrayITypes.Contains(InvalidType.Programs) || isAll) {
-				if(Programs.GetCur(ProgramName.PT).Enabled && Programs.IsEnabledByHq(ProgramName.PT,out _)) {
+				if(Programs.GetCur(ProgramName.PT).Enabled) {
 					Bridges.PaperlessTechnology.InitializeFileWatcher();
 				}
 				_menuItemCareCreditTransactions.Available=Programs.GetCur(ProgramName.CareCredit).Enabled;
@@ -1925,19 +1710,11 @@ namespace OpenDental{
 				controlAppt.FillViews();
 			}
 			#endregion
-			#region HQ Only
-			if(PrefC.GetBool(PrefName.DockPhonePanelShow)) {
-				if(arrayITypes.Contains(InvalidType.Employees) || arrayITypes.Contains(InvalidType.Sites) || isAll) { 
-					FillComboTriageCoordinator();
-				}
-			}
-			#endregion
 			//TODO: If there are still issues with TP refreshing, include TP prefs in needsRedraw()
 			controlTreat.InitializeLocalData();//easier to leave this here for now than to split it.
 			_dictionaryChartPrefsCache.Clear();
 			_dictionaryTaskListPrefsCache.Clear();
 			//Chart Drawing Prefs
-			_dictionaryChartPrefsCache.Add(PrefName.DistributorKey.ToString(),PrefC.GetBool(PrefName.DistributorKey));
 			_dictionaryChartPrefsCache.Add(PrefName.UseInternationalToothNumbers.ToString(),PrefC.GetInt(PrefName.UseInternationalToothNumbers));
 			_dictionaryChartPrefsCache.Add("GraphicsUseHardware",ComputerPrefs.LocalComputer.GraphicsUseHardware);
 			_dictionaryChartPrefsCache.Add("PreferredPixelFormatNum",ComputerPrefs.LocalComputer.PreferredPixelFormatNum);
@@ -1964,31 +1741,12 @@ namespace OpenDental{
 
 		}
 
-		private void FillComboTriageCoordinator() {
-			SiteLink siteLink=SiteLinks.GetSiteLinkByGateway();
-			if(siteLink is null){
-				return;
-			}
-			ODException.SwallowAnyException(() => {
-				comboTriageCoordinator.Items.Clear();
-				//The following line will purposefully throw an exception if there is not a valid site link for the current IP octet.
-				//We need the triage combo box to look incorrect so that we have a visual indicator to go fix our sites.
-				Employee employeeCurrentTriageCoordinator=Employees.GetEmp(siteLink.EmployeeNum);
-				List<Employee> listEmployees=Employees.GetDeepCopy(true);
-				for(int i=0; i<listEmployees.Count;i++) {
-					comboTriageCoordinator.Items.Add(Employees.GetNameFL(listEmployees[i]),listEmployees[i]);
-				}
-				comboTriageCoordinator.SetSelectedKey<Employee>(employeeCurrentTriageCoordinator.EmployeeNum, x=> x.EmployeeNum);
-			});
-		}
-
 		///<summary>Compares preferences related to sections of the program that require redraws and returns true if a redraw is necessary, false otherwise.  If anything goes wrong with checking the status of any preference this method will return true.</summary>
 		private bool NeedsRedraw(string section) {
 			try {
 				switch(section) {
 					case "ChartModule":
 						if(_dictionaryChartPrefsCache.Count==0
-							|| PrefC.GetBool(PrefName.DistributorKey)!=(bool)_dictionaryChartPrefsCache["DistributorKey"]
 							|| PrefC.GetInt(PrefName.UseInternationalToothNumbers)!=(int)_dictionaryChartPrefsCache["UseInternationalToothNumbers"]
 							|| ComputerPrefs.LocalComputer.GraphicsUseHardware!=(bool)_dictionaryChartPrefsCache["GraphicsUseHardware"]
 							|| ComputerPrefs.LocalComputer.PreferredPixelFormatNum!=(int)_dictionaryChartPrefsCache["PreferredPixelFormatNum"]
@@ -2064,31 +1822,16 @@ namespace OpenDental{
 			ToolBarMain.Buttons.Add(toolBarButton);
 			if(!Programs.UsingEcwTightMode()) {//eCW tight only gets Patient Select and Popups toolbar buttons
 				toolBarButton=new ODToolBarButton(Lan.g(this,"Commlog"),EnumIcons.CommLog,Lan.g(this,"New Commlog Entry"),"Commlog");
-				if(PrefC.IsODHQ) {
-					toolBarButton.Style=ODToolBarButtonStyle.DropDownButton;
-					toolBarButton.DropDownMenu=menuCommlog;
-				}
 				ToolBarMain.Buttons.Add(toolBarButton);
 				toolBarButton=new ODToolBarButton(Lan.g(this,"E-mail"),EnumIcons.Email,Lan.g(this,"Send E-mail"),"Email");
 				toolBarButton.Style=ODToolBarButtonStyle.DropDownButton;
 				toolBarButton.DropDownMenu=menuEmail;
 				ToolBarMain.Buttons.Add(toolBarButton);
-				toolBarButton=new ODToolBarButton(Lan.g(this,"WebMail"),EnumIcons.WebMail,Lan.g(this,"Secure WebMail"),"WebMail");
-				toolBarButton.Enabled=true;//Always enabled.  If the patient does not have an email address, then the user will be blocked from the FormWebMailMessageEdit window.
-				ToolBarMain.Buttons.Add(toolBarButton);
-				if(_toolBarButtonText==null) {//If laying out again (after modifying setup), we keep the button to preserve the current notification text.
-					_toolBarButtonText=new ODToolBarButton(Lan.g(this,"Text"),EnumIcons.Text,Lan.g(this,"Send Text Message"),"Text");
-					_toolBarButtonText.Style=ODToolBarButtonStyle.DropDownButton;
-					_toolBarButtonText.DropDownMenu=menuText;
-					_toolBarButtonText.Enabled=IsTextingAvailable();
-					//The Notification text has not been set since startup.  We need an accurate starting count.
-					if(SmsPhones.IsIntegratedTextingEnabled()) {
-						//Init.  Will query for sms notification signal, or insert one if not found (eConnector hasn't updated this signal since we last cleared
-						//old signals).
-						SetSmsNotificationText();
-					}
+				//The Text button only appears when a texting integration is enabled (CallFire).
+				if(IsTextingAvailable()) {
+					toolBarButton=new ODToolBarButton(Lan.g(this,"Text"),EnumIcons.Text,Lan.g(this,"Send Text Message"),"Text");
+					ToolBarMain.Buttons.Add(toolBarButton);
 				}
-				ToolBarMain.Buttons.Add(_toolBarButtonText);
 				toolBarButton=new ODToolBarButton(Lan.g(this,"Letter"),-1,Lan.g(this,"Quick Letter"),"Letter");
 				toolBarButton.Style=ODToolBarButtonStyle.DropDownButton;
 				toolBarButton.DropDownMenu=menuLetter;
@@ -2109,13 +1852,6 @@ namespace OpenDental{
 				ToolBarMain.Buttons.Add(toolBarButton);
 			}
 			ToolBarMain.Buttons.Add(new ODToolBarButton(Lan.g(this,"Popups"),-1,Lan.g(this,"Edit popups for this patient"),"Popups"));
-			//if(PrefC.IsODHQ || ODBuild.IsDebug()) {
-			//	ODToolBarButton odToolbarButton=new ODToolBarButton(Lan.g(this,"MouseWatcher"),-1,Lan.g(this,"Only used temporarily at HQ. Toggle MouseWatcher on/off. You can completely ignore this button unless you are trying to test the mouse watcher."),"MouseWatcher");
-			//	if(MouseWatcher.IsRunning) {
-			//		odToolbarButton.IsRed=true;
-			//	}
-			//	ToolBarMain.Buttons.Add(odToolbarButton);
-			//}
 			ProgramL.LoadToolBar(ToolBarMain,EnumToolBar.MainToolbar);
 			Plugins.HookAddCode(this,"FormOpenDental.LayoutToolBar_end");
 			ToolBarMain.Invalidate();
@@ -2154,7 +1890,6 @@ namespace OpenDental{
 				if(!Programs.UsingEcwTightMode()) {//eCW tight only gets Patient Select and Popups toolbar buttons
 					//We need a drafts folder the user can view saved emails in before we allow the user to save email without a patient selected.
 					ToolBarMain.Buttons["Email"].Enabled=false;
-					ToolBarMain.Buttons["WebMail"].Enabled=false;
 					ToolBarMain.Buttons["Commlog"].Enabled=false;
 					ToolBarMain.Buttons["Letter"].Enabled=false;
 					ToolBarMain.Buttons["Form"].Enabled=false;
@@ -2167,10 +1902,6 @@ namespace OpenDental{
 				if(!Programs.UsingEcwTightMode()) {//eCW tight only gets Patient Select and Popups toolbar buttons
 					ToolBarMain.Buttons["Commlog"].Enabled=true;
 					ToolBarMain.Buttons["Email"].Enabled=true;
-					if(_toolBarButtonText!=null) {
-						_toolBarButtonText.Enabled=IsTextingAvailable();
-					}
-					ToolBarMain.Buttons["WebMail"].Enabled=true;
 					ToolBarMain.Buttons["Letter"].Enabled=true;
 					ToolBarMain.Buttons["Form"].Enabled=true;
 					ToolBarMain.Buttons["Tasklist"].Enabled=true;
@@ -2275,26 +2006,12 @@ namespace OpenDental{
 					LayoutManager.MoveLocation(panelSplitter,new Point(pointPosition.X,LayoutManager.Scale(_pointFPanelSplitter96dpi.Y)));
 					LayoutManager.MoveWidth(panelSplitter,width);
 					panelSplitter.Visible=true;
-					if(PrefC.GetBool(PrefName.DockPhonePanelShow)){
-						LayoutManager.Move(panelPhoneSmall,new Rectangle(pointPosition.X,panelSplitter.Bottom,LayoutManager.Scale(213),ClientSize.Height-panelSplitter.Bottom));
-						LayoutManager.Move(userControlTasks1,new Rectangle(panelPhoneSmall.Right,panelSplitter.Bottom,width-panelPhoneSmall.Width,ClientSize.Height-panelSplitter.Bottom));
-						LayoutManager.MoveLocation(phoneSmall,new Point(0,comboTriageCoordinator.Bottom));//??
-						//LayoutManager.MoveLocation(userControlTasks1,new Point(position.X+phoneSmall.Width,panelSplitter.Bottom));
-						//LayoutManager.MoveWidth(userControlTasks1,width-phoneSmall.Width);
-						panelPhoneSmall.Visible=true;
-						//LayoutManager.MoveLocation(panelPhoneSmall,new Point(position.X,panelSplitter.Bottom));
-						panelPhoneSmall.BringToFront();
-					}
-					else{
-						panelPhoneSmall.Visible=false;
-						LayoutManager.MoveLocation(userControlTasks1,new Point(pointPosition.X,panelSplitter.Bottom));
-						LayoutManager.MoveWidth(userControlTasks1,width);
-					}
+					LayoutManager.MoveLocation(userControlTasks1,new Point(pointPosition.X,panelSplitter.Bottom));
+					LayoutManager.MoveWidth(userControlTasks1,width);
 					LayoutManager.MoveHeight(userControlTasks1,ClientSize.Height-userControlTasks1.Top);
 					height=ClientSize.Height-panelSplitter.Height-userControlTasks1.Height-ToolBarMain.Height-menuMain.Height;
 				}
 				else {//docked Right
-					panelPhoneSmall.Visible=false;
 					if(panelSplitter.Width>LayoutManager.Scale(9)) {//docking needs to be changed
 						LayoutManager.MoveWidth(panelSplitter,LayoutManager.Scale(7));
 						_pointFPanelSplitter96dpi=new Point(900,0);
@@ -2310,7 +2027,6 @@ namespace OpenDental{
 				userControlTasks1.Refresh();//draw even if not resizing
 			}
 			else {
-				panelPhoneSmall.Visible=false;
 				panelSplitter.Visible=false;
 			}
 			LayoutManager.Move(splitContainer,new Rectangle(pointPosition.X,pointPosition.Y,width,height));
@@ -2377,9 +2093,6 @@ namespace OpenDental{
 					case "Email":
 						toolButEmail_Click();
 						break;
-					case "WebMail":
-						toolButWebMail_Click();
-						break;
 					case "Text":
 						if(!Security.IsAuthorized(EnumPermType.TextMessageSend)) {
 							return;
@@ -2423,7 +2136,6 @@ namespace OpenDental{
 			Text=PatientL.GetMainTitle(patient, Clinics.ClinicNum);
 			bool patChanged=PatientL.AddPatsToMenu(menuPatient,new EventHandler(menuPatient_Click),patient);
 			if(patChanged){
-				ApiEvents.FireUiEventAsynch(EnumApiUiEventType.PatientSelected,patient);
 				if(AutomationL.Trigger(EnumAutomationTrigger.PatientOpen,null,patient.PatNum)) {//if a trigger happened
 					if(controlAppt.Visible) {
 						controlAppt.MouseUpForced();
@@ -2602,14 +2314,6 @@ namespace OpenDental{
 			}
 		}
 
-		private void toolButWebMail_Click() {
-			if(!Security.IsAuthorized(EnumPermType.WebMailSend)) {
-				return;
-			}
-			using FormWebMailMessageEdit formWebMailMessageEdit=new FormWebMailMessageEdit(PatNumCur);
-			formWebMailMessageEdit.ShowDialog();
-		}
-
 		private void menuEmail_Click(object sender,System.EventArgs e) {
 			if(((MenuItem)sender).Tag==null){
 				return;
@@ -2651,40 +2355,14 @@ namespace OpenDental{
 			}
 		}
 
-		private void menuItemCommlogPersistent_Click(object sender,EventArgs e) {
-			if(!Security.IsAuthorized(EnumPermType.CommlogPersistent)) {
-				return;
-			}
-			List<Form> listForms=Application.OpenForms.Cast<Form>().Where(x=>x.Name=="FormCommItem").ToList();
-			if(listForms.Count==0){//If there is no currently minimized commlog form, make a new persistent one
-				FrmCommItem frmCommItem=new FrmCommItem(GetNewCommlog());
-				frmCommItem.IsPersistent=true;
-				frmCommItem.Show();
-				return;
-			}
-			//A persistent window already is open
-			Form form=listForms[0];
-			FormFrame formFrame=(FormFrame)form;
-			if(formFrame.WindowState==FormWindowState.Minimized){
-				formFrame.WindowState=FormWindowState.Normal;
-			}
-			formFrame.BringToFront();
-		}
-
 		///<summary>This is a helper method to get a new commlog object for the commlog tool bar buttons.</summary>
 		private Commlog GetNewCommlog() {
 			Commlog commlog=new Commlog();
 			commlog.PatNum=PatNumCur;
 			commlog.CommDateTime=DateTime.Now;
 			commlog.CommType=Commlogs.GetTypeAuto(CommItemTypeAuto.MISC);
-			if(PrefC.GetBool(PrefName.DistributorKey)) {//for OD HQ
-				commlog.Mode_=CommItemMode.None;
-				commlog.SentOrReceived=CommSentOrReceived.Neither;
-			}
-			else {
-				commlog.Mode_=CommItemMode.Phone;
-				commlog.SentOrReceived=CommSentOrReceived.Received;
-			}
+			commlog.Mode_=CommItemMode.Phone;
+			commlog.SentOrReceived=CommSentOrReceived.Received;
 			commlog.UserNum=Security.CurUser.UserNum;
 			commlog.IsNew=true;
 			return commlog;
@@ -2763,10 +2441,6 @@ namespace OpenDental{
 			Patient patient=Patients.GetPat(PatNumCur);
 			if(((MenuItem)sender).Tag.GetType()==typeof(string)) {
 				if(((MenuItem)sender).Tag.ToString()=="Merge") {
-					if(ODBuild.IsThinfinity()) {
-						MsgBox.Show(this,"Letter Merge is not available while viewing through the web.");
-						return;
-					}
 					using FormLetterMerges formLetterMerges=new FormLetterMerges(patient);
 					formLetterMerges.ShowDialog();
 				}
@@ -2905,11 +2579,11 @@ namespace OpenDental{
 		}
 
 		private void menuItemTaskNewForUser_Click(object sender,EventArgs e) {
-			controlManage.LaunchTaskWindow(false,UserControlTasksTab.ForUser);//Set the tab to the "for [User]" tab.
+			controlManage.LaunchTaskWindow(UserControlTasksTab.ForUser);//Set the tab to the "for [User]" tab.
 		}
 
 		private void menuItemTaskReminders_Click(object sender,EventArgs e) {
-			controlManage.LaunchTaskWindow(false,UserControlTasksTab.Reminders);//Set the tab to the "Reminders" tab
+			controlManage.LaunchTaskWindow(UserControlTasksTab.Reminders);//Set the tab to the "Reminders" tab
 		}
 
 		private delegate void ToolBarMainClick(long patNum);
@@ -3108,112 +2782,6 @@ namespace OpenDental{
 			return false;
 		}
 
-		private void menuItemTextMessagesReceived_Click(object sender,EventArgs e) {
-			ShowFormTextMessagingModeless(false,true);
-		}
-
-		private void menuItemTextMessagesSent_Click(object sender,EventArgs e) {
-			ShowFormTextMessagingModeless(true,false);
-		}
-
-		private void menuItemTextMessagesAll_Click(object sender,EventArgs e) {
-			ShowFormTextMessagingModeless(true,true);
-		}
-
-		private void ShowFormTextMessagingModeless(bool isSent, bool isReceived) {
-			if(!Security.IsAuthorized(EnumPermType.TextMessageView)) {
-				return;
-			}
-			if(_formSmsTextMessaging==null || _formSmsTextMessaging.IsDisposed) {
-				_formSmsTextMessaging=new FormSmsTextMessaging(isSent,isReceived,(x) => { SetSmsNotificationText(increment:x); });
-				_formSmsTextMessaging.FormClosed+=new FormClosedEventHandler((o,e) => { _formSmsTextMessaging=null; });
-			}
-			_formSmsTextMessaging.Show();
-			_formSmsTextMessaging.BringToFront();
-		}
-
-		///<summary>Sets the SMS "Text" button's Notification Text based on structured data parsed from signalSmsCount.MsgValue.  This Signalod will have been inserted into the db by the eConnector.  If signalSmsCount is not passed in, attempts to find the most recent Signalod of type SmsTextMsgReceivedUnreadCount, using it to update the notification text, or if not found, either creates and inserts the Signalod (this occurs on startup if the Signalod table does not have an entry for this signal type) or uses the currently displayed value of the Sms notification 
-		///Text and the 'increment' value to update the locally displayed notification count (occurs when this method is called between signal intervals
-		///and the eConnector has not updated the SmsTextmsgReceivedUnreadCount signal in the last signal interval).
-		///</summary>
-		///<param name="signalodSmsCount">Signalod, inserted by the eConnector, containing a list of clinicnums and the count of unread SmsFromMobiles for 
-		///each clinic.</param>
-		///<param name="doUseSignalInterval">Defaults to true.  Indicates, in the event that signalSmsCount is null, if the query to find the most 
-		///recent SmsTextMsgReceivedUnreadCount type Signalod should be run for the interval since signals were last processed, or if the entire table
-		///should be considered.</param>
-		///<param name="increment">Defaults to 0.  Increments the value displayed in the Sms notification "Text" button for unread SmsFromMobiles, but
-		///only if a Signalod of type SmsTextMsgReceivedUnreadCount was not found.  This can occur if signalSmsCount is null, doUseSignalInteral is true
-		///and the signal was not found in the the last signal interval (meaning the eConnector has not updated the SmsNotification count recently).
-		///</param>
-		private void SetSmsNotificationText(Signalod signalodSmsCount=null,bool doUseSignalInterval=true,int increment=0) {
-			if(_toolBarButtonText==null) {
-				return;//This button does not exist in eCW tight integration mode.
-			}
-			try {
-				if(!_toolBarButtonText.Enabled) {
-					return;//This button is disabled when neither of the Text Messaging bridges have been enabled.
-				}
-				List<SmsFromMobiles.SmsNotification> listSmsNotifications=null;
-				if(signalodSmsCount==null) {
-					//If we are here because the user changed clinics, then get the absolute most recent sms notification signal.
-					//Otherwise, use DateTime since last signal refresh.
-					DateTime timeSignalStart=doUseSignalInterval ? Signalods.DateTRegularPrioritySignalLastRefreshed : DateTime.MinValue;
-					//Get the most recent SmsTextMsgReceivedUnreadCount. Should only be one, but just in case, order desc.
-					signalodSmsCount=Signalods.RefreshTimed(timeSignalStart,new List<InvalidType>() { InvalidType.SmsTextMsgReceivedUnreadCount })
-						.OrderByDescending(x => x.SigDateTime)
-						.FirstOrDefault();
-					if(signalodSmsCount==null && timeSignalStart==DateTime.MinValue) {
-						//No SmsTextMsgReceivedUnreadCount signal in db.  This means the eConnector has not updated the sms notification signal in quite some 
-						//time.  Do the eConnector's job; 
-						listSmsNotifications=Signalods.UpsertSmsNotification();
-					}
-				}
-				if(signalodSmsCount!=null) {//Either the signal was passed in, or we found it when we queried.
-					listSmsNotifications=SmsFromMobiles.SmsNotification.GetListFromJson(signalodSmsCount.MsgValue);//Extract notifications from signal.
-					if(listSmsNotifications==null) {
-						return;//Something went wrong deserializing the signal.  Leave the stale notification count until eConnector updates the signal.
-					}
-				}
-				int smsUnreadCount=0;
-				if(listSmsNotifications==null) {
-					//listNotifications might still be null if signalSmsCount was not passed in, signal processing had already started, and we didn't find the
-					//sms notification signal in the last signal interval.  We will assume the signal is stale.  We know the count has changed (based on some 
-					//action) if 'increment' is non-zero, so increment according to our known changes.
-					smsUnreadCount=PIn.Int(_toolBarButtonText.NotificationText)+increment;
-				}
-				else if(!PrefC.HasClinicsEnabled||Clinics.ClinicNum==0) {
-					//No clinics or HQ clinic is active so sum them all.
-					smsUnreadCount=listSmsNotifications.Sum(x => x.Count);
-				}
-				else {
-					//Only count the active clinic.
-					smsUnreadCount=listSmsNotifications.Where(x => x.ClinicNum==Clinics.ClinicNum).Sum(x => x.Count);
-				}
-				//Default to empty so we show nothing if there aren't any notifications.
-				string smsNotificationText="";
-				if(smsUnreadCount>99) { //We only have room in the UI for a 2-digit number.
-					smsNotificationText="99";
-				}
-				else if(smsUnreadCount>0) { //We have a "real" number so show it.
-					smsNotificationText=smsUnreadCount.ToString();
-				}
-				if(_toolBarButtonText.NotificationText==smsNotificationText) { //Prevent the toolbar from being invalidated unnecessarily.
-					return;
-				}
-				_toolBarButtonText.NotificationText=smsNotificationText;
-				if(menuItemTextMessagesReceived.Text.Contains("(")) {//Remove the old count from the menu item.
-					menuItemTextMessagesReceived.Text=menuItemTextMessagesReceived.Text.Substring(0,menuItemTextMessagesReceived.Text.IndexOf("(")-1);
-				}
-				if(smsNotificationText!="") {
-					menuItemTextMessagesReceived.Text+=" ("+smsNotificationText+")";
-				}
-				Plugins.HookAddCode(this,"FormOpenDental.SetSmsNotificationText_end",_toolBarButtonText,menuItemTextMessagesReceived,increment);
-			}
-			finally { //Always redraw the toolbar item.
-				ToolBarMain.Invalidate(_toolBarButtonText.Bounds);//To cause the Text button to redraw.			
-			}
-		}
-
 		#endregion SMS Text Messaging
 
 		#region Clinics
@@ -3289,7 +2857,6 @@ namespace OpenDental{
 			bool isChangingClinic=(Clinics.ClinicNum!=clinic.ClinicNum);
 			Clinics.SetClinicNum(clinic.ClinicNum);
 			Text=PatientL.GetMainTitle(Patients.GetPat(PatNumCur),Clinics.ClinicNum);
-			SetSmsNotificationText(doUseSignalInterval:!isChangingClinic);
 			if(PrefC.GetBool(PrefName.AppointmentClinicTimeReset)) {
 				controlAppt.ModuleSelected(DateTime.Today);
 				//this actually refreshes the module, which is possibly different behavior than before the overhaul.
@@ -3563,23 +3130,11 @@ namespace OpenDental{
 		private void SignalsTick(bool isAllInvalidTypes=true) {
 			try {
 				Logger.LogToPath("",LogPath.Signals,LogPhase.Start);
-				if(PrefC.IsODHQ) {
-					TimeSpan timeSpan=DateTime.Now-_dateTimeLastSignalTickInactiveHq;
-					//If 15 seconds have not passed, kick out. This is to prevent clock-ins at hq from being interrupted by tasks.
-					if(timeSpan.TotalSeconds<15) {
-						return;
-					}
-				}
 				//This checks if any forms are open that make us want to continue processing signals even if inactive. Currently only FormTerminal.
 				//Then check if we're inactive and if so, pause regular signal processing and set the private shutdown signal check variable
 				//this gets checked frequently, with each tick.
 				if(Application.OpenForms.OfType<FormTerminal>().Count()==0 && !IsWorkStationActive()) {
 					_onlyProcessHighPrioritySignals=true;
-					if(PrefC.IsODHQ) { 
-						//Set the most recent time of inactivity to now.
-						//This variable is used to give users at HQ a time window of 15 seconds, from when this was last set, to clock back in before processing tasks.
-						_dateTimeLastSignalTickInactiveHq=DateTime.Now;
-					}
 				}
 				if(Security.CurUser==null || !Userods.GetIsCacheAllowed()) {
 					//User must be at the log in screen or resetting their password, so no need to process signals. We will need to look for shutdown signals since the last refreshed time when the user attempts to log in. 'Userods.GetIsCacheAllowed()' is used to detect edge case when a User is logged in, but is resetting their password so none of the caches are loaded yet.
@@ -3766,9 +3321,6 @@ namespace OpenDental{
 			listInvalidTypesHighPriority.Add(InvalidType.ShutDownNow);
 			listInvalidTypesHighPriority.Add(InvalidType.ActiveInstance);
 			listInvalidTypesHighPriority.Add(InvalidType.Print);
-			if(PrefC.IsODHQ) {
-				listInvalidTypesHighPriority.Add(InvalidType.Sites);
-			}
 			//Create thread to handle getting and processing signals.
 			ODThread threadRefreshSignals=new ODThread((o) => {
 				//Get new signals from DB.
@@ -3815,9 +3367,6 @@ namespace OpenDental{
 					onShutdown(false);
 					return;
 				}
-				//Print signal to be processed from this machine
-				List<Signalod> listSignalodsToPrint=listSignals.FindAll(x=>x.IType==InvalidType.Print && x.FKey==Computers.GetCur().ComputerNum);
-				PrintRemoteRequestL.ProcessCompPrintSignal(listSignalodsToPrint);//can handle empty list
 				//Create a distinct list of undefined invalid types which are from signals invalidating entire cache classes.
 				//Include the UserOdPrefs invalid type if there is a signal for the currently logged in user.
 				List<InvalidType> listInvalidTypes=listSignals.Where(x => (x.FKey==0 && x.FKeyType==KeyType.Undefined)
@@ -3828,10 +3377,6 @@ namespace OpenDental{
 				//The preference cache is unique in that it is heavily used and should never be cleared out. It should be refreshed immediately instead.
 				if(listInvalidTypes.Remove(InvalidType.Prefs)) {
 					Cache.Refresh(InvalidType.Prefs);
-				}
-				//The PhoneEmpDefaults cache is unique in that it is heavily used and should never be cleared out. It should be refreshed immediately instead.
-				if(listInvalidTypes.Remove(InvalidType.PhoneEmpDefaults)) {
-					Cache.Refresh(InvalidType.PhoneEmpDefaults);
 				}
 				//The remaining caches should be cleared out and will be refilled when needed.
 				Cache.ClearCaches(listInvalidTypes.ToArray());
@@ -3919,10 +3464,6 @@ namespace OpenDental{
 				_menuItemAlerts.Text=Lan.g(this,"Alerts")+" ("+alertCount+")";
 				_menuItemAlerts.ForeColor=Color.Red;
 			}
-			if(PrefC.IsODHQ) {
-				//Disable the Get Conf Room button when the PhoneTrackingServer goes down.
-				phoneSmall.SetEnabledStateForControls(!_listAlertItems.Any(x => x.Type==AlertType.AsteriskServerMonitor));
-			}
 			Logger.LogToPath("CheckAlerts",LogPath.Signals,LogPhase.End);
 		}
 
@@ -3934,16 +3475,6 @@ namespace OpenDental{
 			if(listSignalods.Exists(x => x.IType==InvalidType.Prefs)) {
 				PrefC.InvalidateVerboseLogging();
 			}
-			#region SMS Notifications
-			Logger.LogToPath("SMS Notifications",LogPath.Signals,LogPhase.Start);
-			Signalod signalodSmsCount=listSignalods.OrderByDescending(x => x.SigDateTime)
-				.FirstOrDefault(x => x.IType==InvalidType.SmsTextMsgReceivedUnreadCount && x.FKeyType==KeyType.SmsMsgUnreadCount);
-			if(signalodSmsCount!=null) {
-				//Provide the pre-existing value here. This will act as a flag indicating that we should not resend the signal.  This would cause infinite signal loop.
-				SetSmsNotificationText(signalodSmsCount);
-			}
-			Logger.LogToPath("SMS Notifications",LogPath.Signals,LogPhase.End);
-			#endregion SMS Notifications
 			#region Tasks
 			List<Signalod> listSignalodsTasks=listSignalods.FindAll(x => x.IType==InvalidType.Task || x.IType==InvalidType.TaskPopup 
 				|| x.IType==InvalidType.TaskList || x.IType==InvalidType.TaskAuthor || x.IType==InvalidType.TaskPatient);
@@ -3982,11 +3513,6 @@ namespace OpenDental{
 			#region Unfinalize Pay Menu Update
 			UpdateUnfinalizedPayCount(listSignalods.FindAll(x => x.IType==InvalidType.UnfinalizedPayMenuUpdate));
 			#endregion Unfinalize Pay Menu Update
-			#region eClipboard/Kiosk
-			if(listSignalods.Exists(x => x.IType==InvalidType.EClipboard)) {
-				ODEvent.Fire(ODEventType.eClipboard);
-			}
-			#endregion
 			#region Refresh
 			InvalidType[] invalidTypesArray=Signalods.GetInvalidTypes(listSignalods);
 			if(invalidTypesArray.Length > 0) {
@@ -4214,10 +3740,6 @@ namespace OpenDental{
 			if(e.PatNum!=0) {
 				if(e.PatNum!=PatNumCur) { //Currently selected patient changed.
 					PatNumCur=e.PatNum;
-					//Going to Chart Module, to specifically handle the SendToMeCreateTask_Click in FormVoiceMails to make sure Patient tab refreshes.
-					if(PrefC.IsODHQ && e.ModuleType==EnumModuleType.Chart) { 
-						UserControlTasks.RefreshTasksForAllInstances(null,UserControlTasksTab.PatientTickets);//Force a refresh on Task area or Triage.
-					}
 				}
 				Patient patient=Patients.GetPat(PatNumCur);
 				FillPatientButton(patient);
@@ -4641,56 +4163,9 @@ namespace OpenDental{
 			}
 			BeginDataReaderNullMonitorThread(e);
 		}
-
-		///<summary>This happens on another thread and does not block.  Since it's not on the main thread, it also doesn't slow down the UI when it's processing messages.</summary>
-		private void HttpListenerApiCallback(IAsyncResult iAsyncResult){
-			HttpListenerContext httpListenerContext=_httpListenerApi.EndGetContext(iAsyncResult);
-			HttpListenerRequest httpListenerRequest=httpListenerContext.Request;
-			string registrationKey =PrefC.GetString(PrefName.RegistrationKey);
-			ApiRequest apiRequest=null;
-			try {
-				apiRequest=ApiMain.ConvertHttpListenerRequest(httpListenerRequest);
-			}
-			catch{
-				//a malformed request shouldn't crash the program
-			}
-			ApiReturnResult apiReturnResult;
-			if(apiRequest is null){
-				apiReturnResult=new ApiReturnResult(ReturnStatusCode.BadRequest,"Local API. Unable to convert request.");
-			}
-			else{
-				apiReturnResult=ApiMain.PassRequestToODApi(apiRequest,registrationKey);
-			}
-			HttpListenerResponse httpListenerResponse=httpListenerContext.Response;
-			httpListenerResponse.StatusCode=(int)apiReturnResult.GetHttpStatusCode();//example 201 Created
-			string responseBody =apiReturnResult.ResourceSerialized;
-			byte[] byteArray = Encoding.UTF8.GetBytes(responseBody);
-			httpListenerResponse.ContentLength64 = byteArray.Length;
-			httpListenerResponse.ContentType="application/json";
-			Stream streamOutput = httpListenerResponse.OutputStream;
-			streamOutput.Write(byteArray,0,byteArray.Length);
-			streamOutput.Close();
-			//Listen for next message. 
-			IAsyncResult iAsyncResult2=_httpListenerApi.BeginGetContext(new AsyncCallback(HttpListenerApiCallback),_httpListenerApi);
-			//Doing it this way, it handles one request at a time, in the order that they arrive.
-			//This is plenty fast for our purposes, since it's only acting as a server for one dental office.
-		}
 		#endregion DataConnection
 
 		#region Phone Panel
-		private void comboTriageCoordinator_SelectionChangeCommitted(object sender,EventArgs e) {
-			if(comboTriageCoordinator.SelectedIndex<0) {
-				return;
-			}
-			ODException.SwallowAnyException(() => {
-				if(SiteLinks.UpdateTriageCoordinator(SiteLinks.GetSiteLinkByGateway().SiteLinkNum
-					,comboTriageCoordinator.GetSelected<Employee>().EmployeeNum))
-				{
-					DataValid.SetInvalid(InvalidType.Sites);
-				}
-			});
-		}
-
 		public static void S_TaskGoTo(TaskObjectType taskObjectType,long keyNum) {
 			_formOpenDentalSingleton.TaskGoTo(taskObjectType,keyNum);
 		}
@@ -4757,139 +4232,6 @@ namespace OpenDental{
 			}
 		}
 
-		private void butPhoneList_Click(object sender,EventArgs e) {
-			if(_formPhoneList==null || _formPhoneList.IsDisposed) {
-				_formPhoneList=new FormPhoneList();
-				_formPhoneList.GoToPatient += new System.EventHandler(this.phonePanel_GoToChanged);
-				_formPhoneList.Show();
-				//Rectangle rectangle=System.Windows.Forms.Screen.FromControl(this).Bounds;
-				//_formPhoneTiles.Location=new Point((rectangle.Width-_formPhoneTiles.Width)/2+rectangle.X,0);
-				//_formPhoneTiles.BringToFront();
-			}
-			else {
-				if(_formPhoneList.WindowState==FormWindowState.Minimized) {
-					_formPhoneList.WindowState=FormWindowState.Normal;
-				}
-				_formPhoneList.Show();
-				_formPhoneList.BringToFront();
-			}
-		}
-
-		private void butNewMap_Click(object sender,EventArgs e) {
-			InternalTools.Phones.FormMap formMap;
-			if(_listFormMaps.Count==0) {
-				formMap=new InternalTools.Phones.FormMap();
-				formMap.ExtraMapClicked+=FormMap_ExtraMapClicked;
-				formMap.GoToPatient+=FormMap_GoToPatient;
-			}
-			else {
-				formMap=_listFormMaps[0]; //always just take the first one.
-				if(formMap.WindowState==FormWindowState.Minimized) {
-					formMap.WindowState=FormWindowState.Normal; 
-				}
-			}
-			formMap.Show();
-			formMap.BringToFront();
-		}
-
-		private void butTriage_Click(object sender,EventArgs e) {
-			controlManage.JumpToTriageTaskWindow();
-		}
-
-		private void butVoiceMails_Click(object sender,EventArgs e) {
-			//Change the ClockStatus to TeamAssist if the logged on user is clocked in and the same user as the extension.
-			if(PhoneTile.PhoneCur!=null
-				&& ClockEvents.IsClockedIn(Security.CurUser.EmployeeNum)
-				&& Security.CurUser.EmployeeNum==PhoneTile.PhoneCur.EmployeeNum) 
-			{
-				phoneSmall.SetTeamAssist();
-			}
-			if(_formVoiceMails==null || _formVoiceMails.IsDisposed) {
-				try {
-					_formVoiceMails=new FormVoiceMails();
-				}
-				catch {
-					MessageBox.Show(this,"You need Windows Media Player to use this feature. Ensure that it is installed and enabled properly.");
-					return;
-				}
-				_formVoiceMails.FormClosed+=new FormClosedEventHandler((o,e1) => { _formVoiceMails=null; });
-				_formVoiceMails.Show();
-			}
-			if(_formVoiceMails.WindowState==FormWindowState.Minimized) {
-				_formVoiceMails.WindowState=FormWindowState.Normal;
-			}
-			_formVoiceMails.BringToFront();
-		}
-
-		public static void S_SetPhoneStatusAvailable() {
-			//maintain if they were clocked in at home or at the office
-			_formOpenDentalSingleton.phoneSmall.SetAvailable(Employees.GetEmp(Security.CurUser.EmployeeNum).IsWorkingHome);
-		}
-
-		private void phonePanel_GoToChanged(object sender,EventArgs e) {
-			if(_formPhoneList.PatNumGoTo!=0) {
-				PatNumCur=_formPhoneList.PatNumGoTo;
-				Patient patient=Patients.GetPat(PatNumCur);
-				RefreshCurrentModule();
-				FillPatientButton(patient);
-			}
-		}
-
-		private void FormMap_GoToPatient(object sender,long patNum) {
-			PatNumCur=patNum;
-			Patient patient=Patients.GetPat(patNum);
-			RefreshCurrentModule();
-			FillPatientButton(patient);
-		}
-
-		private void phoneSmall_GoToChanged(object sender,EventArgs e) {
-			if(phoneSmall.PatNumGoto==0) {
-				return;
-			}
-			PatNumCur=phoneSmall.PatNumGoto;
-			Patient patient=Patients.GetPat(PatNumCur);
-			RefreshCurrentModule();
-			FillPatientButton(patient);
-			Commlog commlog=Commlogs.GetIncompleteEntry(Security.CurUser.UserNum,PatNumCur);
-			PhoneEmpDefault phoneEmpDefault=PhoneEmpDefaults.GetByExtAndEmp(phoneSmall.Extension,Security.CurUser.EmployeeNum);
-			if(phoneEmpDefault!=null && phoneEmpDefault.IsTriageOperator) {
-				if(Plugins.HookMethod(this,"FormOpenDental.phoneSmall_GoToChanged_IsTriage",patient,phoneSmall.Extension)) {
-					return;
-				}
-				Task task=new Task();
-				task.TaskListNum=-1;//don't show it in any list yet.
-				Tasks.Insert(task);
-				Task taskOld=task.Copy();
-				task.KeyNum=PatNumCur;
-				task.ObjectType=TaskObjectType.Patient;
-				task.TaskListNum=1697;//Hardcoded for internal Triage task list.
-				task.UserNum=Security.CurUser.UserNum;
-				task.Descript=Phones.GetPhoneForExtensionDB(phoneSmall.Extension).CustomerNumberRaw+" ";//Prefill description with customers number.
-				FormTaskEdit formTaskEdit=new FormTaskEdit(task,taskOld);
-				formTaskEdit.IsNew=true;
-				formTaskEdit.Show();
-			}
-			else {//Not a triage operator.
-				if(Plugins.HookMethod(this,"FormOpenDental.phoneSmall_GoToChanged_NotTriage",patient)) {
-					return;
-				}
-				if(commlog==null) {
-					commlog=new Commlog();
-					commlog.IsNew=true;
-					commlog.PatNum = PatNumCur;
-					commlog.CommDateTime = DateTime.Now;
-					commlog.CommType =Commlogs.GetTypeAuto(CommItemTypeAuto.MISC);
-					commlog.Mode_=CommItemMode.Phone;
-					commlog.SentOrReceived=CommSentOrReceived.Received;
-					commlog.UserNum=Security.CurUser.UserNum;
-				}
-				FrmCommItem frmCommItem=new FrmCommItem(commlog);
-				frmCommItem.ShowDialog();
-				if(frmCommItem.IsDialogOK) {
-					RefreshCurrentModule();
-				}
-			}
-		}
 		#endregion Phone Panel
 
 		#region Menu
@@ -5140,19 +4482,6 @@ namespace OpenDental{
 			SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,"Clearinghouses");
 		}
 
-		private void menuItemCloudManagement_Click(object sender,EventArgs e) {
-			using FormCloudManagement formCloudManagement=new FormCloudManagement();
-			formCloudManagement.ShowDialog();
-		}
-
-		private void menuItemCloudUsers_Click(object sender,EventArgs e) {
-			if(!Security.IsAuthorized(EnumPermType.SecurityAdmin)) {
-				return;
-			}
-			using FormCloudUsers formCloudUsers=new FormCloudUsers();
-			formCloudUsers.ShowDialog();
-		}
-
 		private void menuItemCodeGroups_Click(object sender,EventArgs e) {
 			if(!Security.IsAuthorized(EnumPermType.Setup)) {
 				return;
@@ -5287,17 +4616,6 @@ namespace OpenDental{
 			using FormFeeSchedGroups formFeeSchedGroups=new FormFeeSchedGroups();
 			formFeeSchedGroups.ShowDialog();
 			SecurityLogs.MakeLogEntry(EnumPermType.FeeSchedEdit,0,"Fee Schedule Groups");
-		}
-
-		private void menuItemFHIR_Click(object sender,EventArgs e) {
-			if(!Security.IsAuthorized(EnumPermType.Setup)) {
-				return;
-			}
-			Cursor=Cursors.WaitCursor;
-			using FormFHIRSetup formFHIRSetup=new FormFHIRSetup();
-			formFHIRSetup.ShowDialog();
-			Cursor=Cursors.Default;
-			SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,"API/FHIR");
 		}
 
 		private void menuItemHIE_Click(object sender,EventArgs e) {
@@ -5527,15 +4845,6 @@ namespace OpenDental{
 			fap.ShowDialog();
 		}*/
 
-		private void menuItemAsapList_Click(object sender,EventArgs e) {
-			if(!Security.IsAuthorized(EnumPermType.Setup)) {
-				return;
-			}
-			using FormAsapSetup formAsapSetup=new FormAsapSetup();
-			formAsapSetup.ShowDialog();
-			SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,"ASAP List Setup");
-		}
-
 		private void menuItemConfirmations_Click(object sender,EventArgs e) {
 			if(!Security.IsAuthorized(EnumPermType.Setup)) {
 				return;
@@ -5671,7 +4980,6 @@ namespace OpenDental{
 				Clinics.SetClinicNum(Security.CurUser.ClinicNum);
 			}
 			Text=PatientL.GetMainTitle(Patients.GetPat(PatNumCur),Clinics.ClinicNum);
-			SetSmsNotificationText(doUseSignalInterval:(clinicNumOld==Clinics.ClinicNum));//Clinic selection changed, update sms notifications.
 			RefreshMenuClinics();//this calls ModuleSelected, so no need to call RefreshCurrentModule
 			RefreshMenuDashboards();
 		}
@@ -5815,7 +5123,6 @@ namespace OpenDental{
 			//Check if Clinic has been deleted and clinic is not headquarters.
 			if(Clinics.GetDesc(Clinics.ClinicNum)=="" && Clinics.ClinicNum!=0) {//will be empty string if ClinicNum is not valid, in case they deleted the clinic
 				Clinics.SetClinicNum(Security.CurUser.ClinicNum);
-				SetSmsNotificationText(doUseSignalInterval:true);//Update sms notification text.
 				Text=PatientL.GetMainTitle(Patients.GetPat(PatNumCur),Clinics.ClinicNum);
 			}
 			RefreshMenuClinics();
@@ -5858,7 +5165,7 @@ namespace OpenDental{
 		}
 
 		private void menuItemEmployees_Click(object sender, System.EventArgs e) {
-			if(!PrefC.IsODHQ && !Security.IsAuthorized(EnumPermType.Setup)){
+			if(!Security.IsAuthorized(EnumPermType.Setup)){
 				return;
 			}
 			using FormEmployeeSelect formEmployeeSelect=new FormEmployeeSelect();
@@ -5890,42 +5197,6 @@ namespace OpenDental{
 			using FormInsPlans formInsPlans = new FormInsPlans();
 			formInsPlans.ShowDialog();
 			RefreshCurrentModule(true);
-		}
-
-		private void menuItemJobManager_Click(object sender,System.EventArgs e) {
-			if(_formJobManager==null || _formJobManager.IsDisposed) {
-				//Dpi.SetUnaware();//this fails for some unknown reason.  I suspect UI threads.  No time to research further.
-				_formJobManager=new FormJobManager();
-				//Dpi.SetAware();
-			}
-			_formJobManager.Show();
-			if(_formJobManager.WindowState==FormWindowState.Minimized) {
-				_formJobManager.WindowState=FormWindowState.Normal;
-			}
-			_formJobManager.BringToFront();
-		}
-
-		public static void S_GoToJob(long jobNum) {
-			_formOpenDentalSingleton.GoToJob(jobNum);
-		}
-
-		///<summary>Can be called from anywhere in OD layer to load job. 
-		///It is in FormOpenDental because this is where the static reference to theJob Manager is.</summary>
-		private void GoToJob(long jobNum) {
-			if(_formJobManager==null || _formJobManager.IsDisposed) {
-				//Dpi.SetUnaware();//this fails for some unknown reason.  I suspect UI threads.  No time to research further.
-				_formJobManager=new FormJobManager();
-				//Dpi.SetAware();
-			}
-			else if (!_formJobManager.CanFocus) {
-				return;
-			}
-			_formJobManager.Show();
-			if(_formJobManager.WindowState==FormWindowState.Minimized) {
-				_formJobManager.WindowState=FormWindowState.Normal;
-			}
-			_formJobManager.BringToFront();
-			_formJobManager.GoToJob(jobNum);
 		}
 
 		private void menuItemLabCases_Click(object sender,EventArgs e) {
@@ -6116,11 +5387,6 @@ namespace OpenDental{
 			formRpUnfinalizedInsPay.Show();
 		}
 
-		private void menuItemReportsActivityLog_Click(object sender, EventArgs e) {
-			using FormActivityLog formActivityLog=new FormActivityLog();
-			formActivityLog.ShowDialog();
-		}
-
 		private void UpdateUnfinalizedPayCount(List<Signalod> listSignalods) {
 			if(listSignalods.Count==0) {
 				_menuItemUnfinalizedPay.Text=Lan.g(this,"Unfinalized Payments");
@@ -6207,10 +5473,6 @@ namespace OpenDental{
 				case ReportNonModalSelection.UnsentClaim:
 					FormRpClaimNotSent formRpClaimNotSent=new FormRpClaimNotSent();
 					formRpClaimNotSent.Show();
-					break;
-				case ReportNonModalSelection.WebSchedAppointments:
-					FormWebSchedAppts formWebSchedAppts=new FormWebSchedAppts(true,true,true,true);
-					formWebSchedAppts.Show();
 					break;
 				case ReportNonModalSelection.CustomAging:
 					FormRpCustomAging formRpCustomAging=new FormRpCustomAging();
@@ -6566,17 +5828,6 @@ namespace OpenDental{
 			_formCertifications.BringToFront();
 		}
 
-		private void menuItemCustomerManage_Click(object sender,EventArgs e) {
-			using FormCustomerManagement formCustomerManagement=new FormCustomerManagement();
-			formCustomerManagement.ShowDialog();
-			if(formCustomerManagement.PatNumSelected!=0) {
-				PatNumCur=formCustomerManagement.PatNumSelected;
-				Patient patient=Patients.GetPat(PatNumCur);
-				RefreshCurrentModule();
-				FillPatientButton(patient);
-			}
-		}
-
 		private void menuItemDatabaseMaintenance_Click(object sender, System.EventArgs e) {
 			if(!Security.IsAuthorized(EnumPermType.Setup)){
 				return;
@@ -6612,12 +5863,6 @@ namespace OpenDental{
 				MsgBox.Show(this,"Cannot open terminal unless process signal interval is set. To set it, go to Setup > Miscellaneous.");
 				return;
 			}
-			if(ODEnvironment.IsCloudServer) {
-				//Thinfinity messes up window ordering so sometimes FormOpenDental is visible in Kiosk mode.
-				for(int i=0;i<Application.OpenForms.Count;i++) {
-					Application.OpenForms[i].Visible=false;
-				}
-			}
 			using FormTerminal formTerminal=new FormTerminal();
 			formTerminal.ShowDialog(); 
 			Application.Exit();//always close after coming out of terminal mode as a safety precaution.*/
@@ -6649,11 +5894,6 @@ namespace OpenDental{
 			SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,"Late Charges window");
 		}
 
-		private void menuItemNewCropBilling_Click(object sender,EventArgs e) {
-			using FormNewCropBilling formNewCropBilling=new FormNewCropBilling();
-			formNewCropBilling.ShowDialog();
-		}
-
 		private void menuItemOnlinePayments_Click(object sender,EventArgs e) {
 			FormOnlinePayments formOnlinePayments=new FormOnlinePayments();
 			formOnlinePayments.Show();//Non-modal so the user can view the patient's account
@@ -6665,11 +5905,6 @@ namespace OpenDental{
 			}
 			using FormRepeatChargesUpdate formRepeatChargesUpdate=new FormRepeatChargesUpdate();
 			formRepeatChargesUpdate.ShowDialog();
-		}
-
-		private void menuItemResellers_Click(object sender,EventArgs e) {
-			using FormResellers formResellers=new FormResellers();
-			formResellers.ShowDialog();
 		}
 
 		private void menuItemScreening_Click(object sender,System.EventArgs e) {
@@ -6787,41 +6022,6 @@ namespace OpenDental{
 			}
 		}
 
-		private void menuItemAiChatSessions_Click(object sender, EventArgs e) {
-			if(_formAiSession==null || _formAiSession.IsDisposed) {
-				_formAiSession=new FormAiChatSession();
-			}
-			_formAiSession.Show();
-			if(_formAiSession.WindowState==FormWindowState.Minimized) {
-				_formAiSession.WindowState=FormWindowState.Normal;
-			}
-			_formAiSession.BringToFront();
-		}
-
-		private void menuItemWebChatSessions_Click(object sender,EventArgs e) {
-			if(_formWCT==null || _formWCT.IsDisposed) {
-				_formWCT=new FormWebChatTools();
-			}
-			_formWCT.Show(); 
-			if(_formWCT.WindowState==FormWindowState.Minimized) {
-				_formWCT.WindowState=FormWindowState.Normal;
-			}
-			_formWCT.BringToFront();
-		}
-
-		private void menuItemWebChatSurveys_Click(object sender,EventArgs e) {
-			if(!Security.IsAuthorized(EnumPermType.Setup)){
-				return;
-			}
-			if(_formWebChatSurveys==null || _formWebChatSurveys.IsDisposed) {
-				_formWebChatSurveys=new FormWebChatSurveys();
-			}
-			_formWebChatSurveys.Show(); 
-			if(_formWebChatSurveys.WindowState==FormWindowState.Minimized) {
-				_formWebChatSurveys.WindowState=FormWindowState.Normal;
-			}
-			_formWebChatSurveys.BringToFront();
-		}
 		#endregion Menu - Tools
 
 		#region Menu - Clinics
@@ -7061,45 +6261,12 @@ namespace OpenDental{
 			});
 		}
 
-		private void ShowEServicesSetup() {
-			if(_toolBarButtonText!=null) { //User may just have signed up for texting.
-				_toolBarButtonText.Enabled=IsTextingAvailable();
-			}
-		}
-
-		///<summary>True if a texting integration that works in this build is enabled. CallFire talks to the vendor directly. Integrated Texting
-		///was relayed through Open Dental HQ, so it only counts once that hop is available (it is not in this build).</summary>
+		///<summary>True if a texting integration is enabled. CallFire talks to the vendor directly. Open Dental's hosted Integrated Texting was
+		///removed.</summary>
 		private bool IsTextingAvailable() {
-			if(Programs.IsEnabled(ProgramName.CallFire)) {
-				return true;
-			}
-			return WebServiceMainHQProxy.IsHqAvailable && SmsPhones.IsIntegratedTextingEnabled();
+			return Programs.IsEnabled(ProgramName.CallFire);
 		}
 
-		///<summary>Shows a message instead of opening an eServices window that only worked with Open Dental HQ. Returns true if the form type was
-		///one of those windows.</summary>
-		private bool IsEServicesFormUnavailable(FormType formType) {
-			if(!formType.In(FormType.FormEServicesWebSchedRecall,FormType.FormEServicesSignupPortal,FormType.FormEServicesWebSchedNewPat,
-				FormType.FormEServicesEConnector,FormType.FormEServicesAutoMsging,FormType.FormWebForms))
-			{
-				return false;
-			}
-			if(WebServiceMainHQProxy.IsHqAvailable) {
-				return false;
-			}
-			MessageBox.Show(new HqNotAvailableException().Message);
-			return true;
-		}
-
-		private void _menuItemERouting_Click(object sender, EventArgs e) {
-			if(!ClinicPrefs.IsODTouchAllowed(Clinics.ClinicNum)) {
-				//ODTouch signup was an Open Dental hosted eService.
-				MessageBox.Show(new HqNotAvailableException().Message);
-				return;
-			}
-			using FormERoutings formERoutings = new FormERoutings();
-			formERoutings.ShowDialog();
-		}
 		#endregion Menu - eServices
 
 		#region Menu - Alerts
@@ -7118,20 +6285,11 @@ namespace OpenDental{
 			List<long> listAlertItemNums=(List<long>)alertItem.TagOD;
 			AlertReadsHelper(listAlertItemNums);
 			CheckAlerts();
-			if(IsEServicesFormUnavailable(alertItem.FormToOpen)) {
-				return;
-			}
 			switch(alertItem.FormToOpen) {
 				case FormType.FormOnlinePayments:
 					FormOnlinePayments formOnlinePayments=new FormOnlinePayments();
 					formOnlinePayments.Show();//Non-modal so the user can view the patient's account
 					formOnlinePayments.FormClosed+=this.alertFormClosingHelper;
-					break;
-				case FormType.FormEServicesWebSchedRecall:
-					using(FormEServicesWebSchedRecall formEServicesWebSchedRecall=new FormEServicesWebSchedRecall()) {
-						formEServicesWebSchedRecall.ShowDialog();
-					}
-					ShowEServicesSetup();
 					break;
 				case FormType.FormRadOrderList:
 					List<FormRadOrderList> listFormRadOrderLists=Application.OpenForms.OfType<FormRadOrderList>().ToList();
@@ -7145,24 +6303,6 @@ namespace OpenDental{
 						formRadOrderList.FormClosed+=this.alertFormClosingHelper;
 					}
 					break;
-				case FormType.FormEServicesSignupPortal:
-					using(FormEServicesSignup formEServicesSignup=new FormEServicesSignup()) {
-						formEServicesSignup.ShowDialog();
-					}
-					ShowEServicesSetup();
-					break;
-				case FormType.FormEServicesWebSchedNewPat:
-					using(FormEServicesWebSchedPat formEServicesWebSchedPat=new FormEServicesWebSchedPat(true)) {
-						formEServicesWebSchedPat.ShowDialog();
-					}
-					ShowEServicesSetup();
-					break;
-				case FormType.FormEServicesEConnector:
-					using(FormEServicesEConnector formEServicesEConnector=new FormEServicesEConnector()) {
-						formEServicesEConnector.ShowDialog();
-					}
-					ShowEServicesSetup();
-					break;
 				case FormType.FormApptEdit:
 					Appointment appointment=Appointments.GetOneApt(alertItem.FKey);
 					Patient patient=Patients.GetPat(appointment.PatNum);
@@ -7170,11 +6310,6 @@ namespace OpenDental{
 					FormApptEdit formApptEdit=new FormApptEdit(appointment.AptNum);//Dispose below due to local variable.
 					formApptEdit.ShowDialog();
 					formApptEdit.Dispose();
-					break;
-				case FormType.FormWebSchedAppts:
-					FormWebSchedAppts formWebSchedAppts=new FormWebSchedAppts(alertItem.Type==AlertType.WebSchedNewPatApptCreated,
-						alertItem.Type==AlertType.WebSchedRecallApptCreated,alertItem.Type==AlertType.WebSchedASAPApptCreated,alertItem.Type==AlertType.WebSchedExistingPatApptCreated);
-					formWebSchedAppts.Show();
 					break;
 				case FormType.FormPatientEdit:
 					if(!Security.IsAuthorized(EnumPermType.PatientEdit)) {
@@ -7205,12 +6340,6 @@ namespace OpenDental{
 						formDoseSpotAssignClinicId.ShowDialog();
 					}
 					break;
-				case FormType.FormEmailInbox:
-					//Will open the email inbox form and set the current inbox to "WebMail".
-					FormEmailInbox formEmailInbox=new FormEmailInbox("WebMail");
-					formEmailInbox.FormClosed+=this.alertFormClosingHelper;
-					formEmailInbox.Show();
-					break;
 				case FormType.FormEmailAddresses:
 					//Will open the email addresses window that is usually opened from email inbox setup.
 					using(FormEmailAddresses formEmailAddresses=new FormEmailAddresses()) {
@@ -7223,29 +6352,8 @@ namespace OpenDental{
 					formCareCreditTransactions.FormClosed+=this.alertFormClosingHelper;
 					formCareCreditTransactions.Show();
 					break;
-				case FormType.FormCloudManagement:
-					using(FormCloudManagement formCloudManagement=new FormCloudManagement()) {
-						formCloudManagement.FormClosed+=this.alertFormClosingHelper;
-						formCloudManagement.ShowDialog();
-					}
-					break;
-				case FormType.FormWebForms:
-					if(!Security.IsAuthorized(EnumPermType.WebFormAccess)) {
-						break;
-					}
-					using(FormWebForms formWebForms=new FormWebForms()) {
-						formWebForms.FormClosed+=this.alertFormClosingHelper;
-						formWebForms.ShowDialog();
-					}
-					break;					
 				case FormType.FormModuleSetup:
 					LaunchPrerencesWithMenuItem((int)alertItem.FKey);
-					break;
-				case FormType.FormEServicesAutoMsging:
-					using(FormEServicesAutoMsging formEServicesAutoMsging=new FormEServicesAutoMsging()) {
-						formEServicesAutoMsging.FormClosed+=this.alertFormClosingHelper;
-						formEServicesAutoMsging.ShowDialog();
-					}
 					break;
 			}
 		}
@@ -7297,35 +6405,8 @@ namespace OpenDental{
 		#endregion Menu - Alerts
 
 		#region Menu - Help
-		//Online Support, Training Videos, Request Features, Support Status and Remote Support were Open Dental Software, Inc. services and have been removed.
-
-		private void menuItemHelpDocumentation_Click(object sender, System.EventArgs e) {
-			string site="https://www.opendental.com/site/documentation.html";
-			try {
-				if(ODCloudClient.IsAppStream) {
-					ODCloudClient.LaunchFileWithODCloudClient(site);
-					return;
-				}
-				Process.Start(site);
-			}
-			catch{
-				MsgBox.Show(this,"Could not find file.");
-			}
-		}
-
-		private void menuItemHelpSearch_Click(object sender, System.EventArgs e) {
-			string site="https://www.opendental.com/site/searchsite.html";
-			try {
-				if(ODCloudClient.IsAppStream) {
-					ODCloudClient.LaunchFileWithODCloudClient(site);
-					return;
-				}
-				Process.Start(site);
-			}
-			catch{
-				MsgBox.Show(this,"Could not find file.");
-			}
-		}
+		//Online Support, Training Videos, Request Features, Support Status, Remote Support and the online help (documentation and search)
+		//were Open Dental Software, Inc. services and have been removed.
 
 		private void MenuItemQueryMonitor_Click(object sender,EventArgs e) {
 			if(!Security.IsAuthorized(EnumPermType.QueryMonitor)) {
@@ -7360,143 +6441,12 @@ namespace OpenDental{
 		}
 		#endregion Menu - Help
 
-		#region HQ-only metrics
-		private void FormMap_ExtraMapClicked(object sender,EventArgs e) {
-			OpenMap();
-		}
-
-		/// <summary>HQ Only. ProcessOfficeDowns must be invoked from a worker thread. These are the arguments necessary.</summary>
-		protected delegate void ProcessOfficeDownArgs(List<Task> listTasksOfficeDowns);
-
-		///<summary>HQ Only.  Every 1.6 seconds. Digest results of ProcessHqMetrics and update form controls accordingly.  phoneList is the list of all phone rows just pulled from the database.  phone is the one that we should display here, and it can be null.</summary>
-		private void ProcessHqMetricsResults(List<PhoneEmpDefault> listPhoneEmpDefault,List<Phone> phoneList,List<PhoneEmpSubGroup> listPhoneEmpSubGroups,
-			List<ChatUser> listChatUsers,Phone phone,bool isTriageOperator,List<WebChatSession> listWebChatSessions,
-			List<PeerInfo> listPeerInfoRemoteSupportSessions) 
-		{
-			try {
-				//Send the phone info to the 3 places where it's needed.
-				//1) Send to the small display in the main OD form (quick-glance).
-				phoneSmall.SetPhoneList(phoneList);
-				if(_formPhoneList!=null && !_formPhoneList.IsDisposed) { //2) Send to the big phones panel if it is open.
-					_formPhoneList.SetPhoneList(phoneList,listChatUsers,listWebChatSessions,listPeerInfoRemoteSupportSessions);
-				}
-				for(int i=0;i<_listFormMaps.Count;i++) {
-					_listFormMaps[i].SetPhoneList(phoneList,listPhoneEmpSubGroups,listChatUsers,listWebChatSessions,listPeerInfoRemoteSupportSessions);
-				}
-				//Now set the small display's current phone extension info.
-				long employeeNum=0;
-				ChatUser chatUser;
-				WebChatSession webChatSession=null;
-				PeerInfo peerInfoRemoteSupportSession=null;
-				if(phone==null) {
-					phoneSmall.Extension=0;
-					if(Security.CurUser!=null) {
-						employeeNum=Security.CurUser.EmployeeNum;
-					}
-					chatUser=null;
-				}
-				else {
-					phoneSmall.Extension=phone.Extension;
-					employeeNum=phone.EmployeeNum;
-					chatUser=listChatUsers.Where(x => x.Extension == phone.Extension).FirstOrDefault();
-					webChatSession=listWebChatSessions.FirstOrDefault(x => x.TechName==phone.EmployeeName);
-					peerInfoRemoteSupportSession=listPeerInfoRemoteSupportSessions.FirstOrDefault(x => x.EmployeeNum==phone.EmployeeNum);
-				}
-				phoneSmall.SetPhone(phone,PhoneEmpDefaults.GetEmpDefaultFromList(employeeNum,listPhoneEmpDefault),chatUser,isTriageOperator,webChatSession,
-					peerInfoRemoteSupportSession);
-				if(!_formJobManager?.IsDisposed??false) {
-					_formJobManager.SetEmployeeStatus(phone);
-				}
-			}
-			catch(Exception e) {
-				e.DoNothing();
-				//HQ users are complaining of unhandled exception when they close OD.
-				//Suspect it could be caused here if the thread tries to access a control that has been disposed.
-			}
-		}
-
-		///<summary>HQ Only. Send the office downs to any Call Center Maps that are open.</summary>
-		private void ProcessOfficeDowns(List<Task> listTasksOfficeDowns) {
-			try {
-				for(int i=0;i<_listFormMaps.Count;i++) {
-					_listFormMaps[i].SetOfficesDownList(listTasksOfficeDowns);
-				}
-			}
-			catch {
-				//HQ users are complaining of unhandled exception when they close OD.
-				//Suspect it could be caused here if the thread tries to access a control that has been disposed.
-			}
-		}
-
-		public static void AddMapToList2(InternalTools.Phones.FormMap formMap) {
-			_listFormMaps.Add(formMap);
-		}
-
-		public static void RemoveMapFromList2(InternalTools.Phones.FormMap formMap) {
-			_listFormMaps.Remove(formMap);
-		}
-
-		/// <summary>HQ Only. OnFillTriageLabelsResults must be invoked from a worker thread. These are the arguments necessary.</summary>
-		private delegate void FillTriageLabelsResultsArgs(TriageMetric triageMetric);
-
-		/// <summary>HQ Only. Digest results of Phones.GetTriageMetrics() in ProcessHqMetrics(). Fills the triage labels and update form controls accordingly.</summary>
-		private void FillTriageLabelsResults(TriageMetric triageMetric) {
-			int countBlueTasks=triageMetric.CountBlueTasks;
-			int countWhiteTasks=triageMetric.CountWhiteTasks;
-			int countRedTasks=triageMetric.CountRedTasks;
-			DateTime timeOfOldestBlueTaskNote=triageMetric.DateTimeOldestTriageTaskOrTaskNote;
-			DateTime timeOfOldestRedTaskNote=triageMetric.DateTimeOldestUrgentTaskOrTaskNote;
-			TimeSpan timeSpanTriageBehind=new TimeSpan(0);
-			if(timeOfOldestBlueTaskNote.Year>1880 && timeOfOldestRedTaskNote.Year>1880) {
-				if(timeOfOldestBlueTaskNote<timeOfOldestRedTaskNote) {
-					timeSpanTriageBehind=DateTime.Now-timeOfOldestBlueTaskNote;
-				}
-				else {//triageBehind based off of older RedTask
-					timeSpanTriageBehind=DateTime.Now-timeOfOldestRedTaskNote;
-				}
-			}
-			else if(timeOfOldestBlueTaskNote.Year>1880) {
-				timeSpanTriageBehind=DateTime.Now-timeOfOldestBlueTaskNote;
-			}
-			else if(timeOfOldestRedTaskNote.Year>1880) {
-				timeSpanTriageBehind=DateTime.Now-timeOfOldestRedTaskNote;
-			}
-			string countStr="0";
-			if(countBlueTasks>0 || countRedTasks>0) {//Triage show red so users notice more.
-				countStr=(countBlueTasks+countRedTasks).ToString();
-				labelTriage.ForeColor=Color.Firebrick;
-			}
-			else {
-				if(countWhiteTasks>0) {
-					countStr="("+countWhiteTasks.ToString()+")";
-				}
-				labelTriage.ForeColor=Color.Black;
-			}
-			labelTriage.Text=countStr;
-			labelWaitTime.Text=((int)timeSpanTriageBehind.TotalMinutes).ToString()+"m";
-			for(int i=0;i<_listFormMaps.Count;i++) {
-				_listFormMaps[i].SetTriageMain(countWhiteTasks,countBlueTasks,timeSpanTriageBehind,countRedTasks);
-				TimeSpan urgentTriageBehind=new TimeSpan(0);
-				if(timeOfOldestRedTaskNote.Year>1880) {
-					urgentTriageBehind=DateTime.Now-timeOfOldestRedTaskNote;
-				}
-				_listFormMaps[i].SetTriageRed(countRedTasks,urgentTriageBehind);
-				_listFormMaps[i].SetChatCount();
-			}
-		}
-		#endregion HQ-only metrics
-
 		#region LogOn
 		///<summary>Logs on a user using the passed in credentials or Active Directory or the good old-fashioned log on window.</summary>
 		private void LogOnOpenDentalUser(string odUser,string odPassword,string domainUserFromCmd) {
 			//CurUser will be set if using web service because login from ChooseDatabase window.
 			if(Security.CurUser!=null) {
-				if(!IsCloudUserIpAllowed()) {
-					ShowLogOn();
-				}
-				else {
-					CheckForPasswordReset();
-				}
+				CheckForPasswordReset();
 				Security.IsUserLoggedIn=true;
 				SecurityLogs.MakeLogEntry(EnumPermType.UserLogOnOff,0,Lan.g(this,"User:")+" "+Security.CurUser.UserName+" "+Lan.g(this,"has logged on."));
 				return;
@@ -7528,9 +6478,6 @@ namespace OpenDental{
 					Application.Exit();
 					return;
 				}
-				if(!IsCloudUserIpAllowed()) {
-					ShowLogOn();
-				}
 				SecurityLogs.MakeLogEntry(EnumPermType.UserLogOnOff,0,Lan.g(this,"User:")+" "+Security.CurUser.UserName+" "+Lan.g(this,"has logged on via command line."));
 			}
 			#endregion
@@ -7545,12 +6492,7 @@ namespace OpenDental{
 				long userNumFirstAdminNoPass=Userods.GetFirstSecurityAdminUserNumNoPasswordNoCache();
 				if(userNumFirstAdminNoPass > 0) {
 					Security.CurUser=Userods.GetUserNoCache(userNumFirstAdminNoPass);
-					if(!IsCloudUserIpAllowed()) {
-						ShowLogOn();
-					}
-					else {
-						CheckForPasswordReset();
-					}
+					CheckForPasswordReset();
 					SecurityLogs.MakeLogEntry(EnumPermType.UserLogOnOff,0,Lan.g(this,"User:")+" "+Security.CurUser.UserName+" "+Lan.g(this,"has logged on."));
 				}
 				#endregion
@@ -7594,12 +6536,7 @@ namespace OpenDental{
 							inputBox.ShowDialog();
 							if(inputBox.IsDialogOK) {
 								Security.CurUser=Userods.GetUserNoCache(dictDomainUserNumsAndNames.Keys.ElementAt(inputBox.SelectedIndex));
-								if(!IsCloudUserIpAllowed()) {
-									ShowLogOn();
-								}
-								else {
-									CheckForPasswordReset();
-								}
+								CheckForPasswordReset();
 								SecurityLogs.MakeLogEntry(EnumPermType.UserLogOnOff,0,Lan.g(this,"User:")+" "+Security.CurUser.UserName+" "
 									+Lan.g(this,"has logged on automatically via ActiveDirectory."));
 							}
@@ -7609,12 +6546,7 @@ namespace OpenDental{
 						}
 						else { //log on automatically if only one user is linked to current domain user
 							Security.CurUser=Userods.GetUserNoCache(dictDomainUserNumsAndNames.Keys.First());
-							if(!IsCloudUserIpAllowed()) {
-								ShowLogOn();
-							}
-							else {
-								CheckForPasswordReset();
-							}
+							CheckForPasswordReset();
 							SecurityLogs.MakeLogEntry(EnumPermType.UserLogOnOff,0,Lan.g(this,"User:")+" "+Security.CurUser.UserName+" "
 									+Lan.g(this,"has logged on automatically via ActiveDirectory."));
 						}
@@ -7637,66 +6569,6 @@ namespace OpenDental{
 			Security.IsUserLoggedIn=true;//User is guaranteed to be logged in at this point.
 		}
 
-		///<summary>
-		///If the user is permitted to login from this IP address, return true. Otherwise, inform the user and return false.
-		///If a Security Admin does not have permission, they are prompted to add their current IP address to the list of allowed addresses.
-		///</summary>
-		private bool IsCloudUserIpAllowed() {
-			if(!ODBuild.IsThinfinity()) {
-				return true;
-			}
-			string addressCur=Browser.GetComputerIpAddress();
-			CloudAddress cloudAddress=CloudAddresses.GetByIpAddress(addressCur);
-			if(cloudAddress!=null) {
-				cloudAddress.UserNumLastConnect=Security.CurUser.UserNum;
-				cloudAddress.DateTimeLastConnect=DateTime.Now;
-				CloudAddresses.Update(cloudAddress);
-				return true;
-			}
-			if(Security.IsAuthorized(EnumPermType.AllowLoginFromAnyLocation, true)) {
-				return true;
-			}
-			string message=Lan.g(this,"The IP address you are attempting to connect from")+", "+addressCur+", "
-				+Lan.g(this,"is not an approved address for accessing this cloud environment and you are not authorized for")+" "
-				+GroupPermissions.GetDesc(EnumPermType.AllowLoginFromAnyLocation)+".";
-			//Security Admins can add their own IP if it is not already allowed.
-			if(Security.IsAuthorized(EnumPermType.SecurityAdmin, true)) {
-				message+="\r\n"+Lan.g(this,"To connect from this IP address, you will need to do one of the following")+":";
-				List<string> listOptions = new List<string> {
-					Lan.g(this,"Add this address to the approved list"),
-					Lan.g(this,"Grant access for")+" "+GroupPermissions.GetDesc(EnumPermType.AllowLoginFromAnyLocation)
-				};
-				InputBox ibox=new InputBox(message,listOptions);
-				ibox.ShowDialog();
-				if(ibox.IsDialogOK) {
-					if(ibox.SelectedIndex==0) {
-						using FormCloudManagement formCloudManagement=new FormCloudManagement();
-						//Either Security Admin has no password or the user must have authenticated to get to this step.
-						//We can safely (temporarily) allow the cache so formCloudManagement can be shown without crashing.
-						Userods.SetIsCacheAllowed(true);//Enable the cache
-						formCloudManagement.ShowDialog();
-						Userods.SetIsCacheAllowed(false);//Disable the cache, it will be enabled again by the calling method if it needs to be.
-					}
-					if(ibox.SelectedIndex==1) {
-						//Either Security Admin has no password or the user must have authenticated to get to this step.
-						//We can safely (temporarily) allow the cache so formCloudManagement can be shown without crashing.
-						Userods.SetIsCacheAllowed(true);//Enable the cache
-						using FormSecurity formSecurity=new FormSecurity();
-						formSecurity.ShowDialog();
-						SecurityLogs.MakeLogEntry(EnumPermType.SecurityAdmin,0,"Security Window");
-						Userods.SetIsCacheAllowed(false);//Disable the cache, it will be enabled again by the calling method if it needs to be.
-					}
-					return IsCloudUserIpAllowed();
-				}
-			}
-			else {
-				message+="\r\n"+Lan.g(this,"A user with the SecurityAdmin permission must either add this address to the approved list or grant you the permission for")+" "
-					+GroupPermissions.GetDesc(EnumPermType.AllowLoginFromAnyLocation)+".";
-				MsgBox.Show(message);
-			}
-			return false;
-		}
-
 		///<summary>Show the log on window.</summary>
 		private void ShowLogOn(bool doClearCaches=false) {
 			Logger.LogToPath("ShowLogOn",LogPath.Startup,LogPhase.Start);
@@ -7708,10 +6580,6 @@ namespace OpenDental{
 				CloseOpenForms(isForceClose:true);
 				Cursor=Cursors.Default;
 				Application.Exit();
-			}
-			if(!IsCloudUserIpAllowed()) {
-				ShowLogOn();
-				return;
 			}
 			CheckForPasswordReset();
 			Userods.SetIsCacheAllowed(true);
@@ -8356,8 +7224,6 @@ namespace OpenDental{
 		///<summary>Not in manual</summary>
 		public string LBSESSIONID;
 		public string IsSilentUpdate;
-		/// <summary>HQ only, semicolon separated list of map names that will open on start up.</summary>
-		public string MapNames;
 		public string Module;
 		public string MySqlUser;
 		public string MySqlPassHash;
@@ -8402,7 +7268,6 @@ namespace OpenDental{
 			if(!isSilentUpdateValue.IsNullOrEmpty()) {
 				IsSilentUpdate=isSilentUpdateValue.ToLower();
 			}
-			MapNames=GetArgFromCommandLineArgs("MapNames=",arrayCommandLineArgs);
 			string moduleValue=GetArgFromCommandLineArgs("module=",arrayCommandLineArgs);
 			if(!moduleValue.IsNullOrEmpty()) {
 				Module=moduleValue.ToLower();
@@ -8482,9 +7347,6 @@ namespace OpenDental{
 			if(Module!=null) { 
 				arguments+="Module=\""+Module+"\" ";
 			}			
-			if(MapNames!=null) { 
-				arguments+="MapNames=\""+MapNames+"\" ";
-			}
 			if(MySqlUser!=null) {
 				arguments+="MySqlUser=\""+MySqlUser+"\" ";
 			}

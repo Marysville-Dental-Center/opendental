@@ -44,7 +44,6 @@
 			this.textMerchantNumberPractice = new System.Windows.Forms.TextBox();
 			this.labelMerchantNumberPractice = new System.Windows.Forms.Label();
 			this.checkMerchantNumByProv = new OpenDental.UI.CheckBox();
-			this.checkHideAdvertising = new OpenDental.UI.CheckBox();
 			this.labelMerchantClosedDescription = new System.Windows.Forms.Label();
 			this.comboPatFieldPreApprvAmt = new OpenDental.UI.ComboBox();
 			this.labelPreApprvAmt = new System.Windows.Forms.Label();
@@ -242,15 +241,6 @@
 			this.checkMerchantNumByProv.Text = "Merchant number by provider";
 			this.checkMerchantNumByProv.CheckedChanged += new System.EventHandler(this.checkMerchantNumByProv_CheckedChanged);
 			// 
-			// checkHideAdvertising
-			// 
-			this.checkHideAdvertising.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
-			this.checkHideAdvertising.Location = new System.Drawing.Point(72, 44);
-			this.checkHideAdvertising.Name = "checkHideAdvertising";
-			this.checkHideAdvertising.Size = new System.Drawing.Size(118, 18);
-			this.checkHideAdvertising.TabIndex = 1;
-			this.checkHideAdvertising.Text = "Hide advertising";
-			// 
 			// labelMerchantClosedDescription
 			// 
 			this.labelMerchantClosedDescription.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
@@ -305,7 +295,6 @@
 			this.Controls.Add(this.comboPatFieldPreApprvAmt);
 			this.Controls.Add(this.labelPreApprvAmt);
 			this.Controls.Add(this.labelMerchantClosedDescription);
-			this.Controls.Add(this.checkHideAdvertising);
 			this.Controls.Add(this.checkMerchantNumByProv);
 			this.Controls.Add(this.labelMerchantNumberPractice);
 			this.Controls.Add(this.textMerchantNumberPractice);
@@ -346,7 +335,6 @@
 		private System.Windows.Forms.TextBox textMerchantNumberPractice;
 		private System.Windows.Forms.Label labelMerchantNumberPractice;
 		private OpenDental.UI.CheckBox checkMerchantNumByProv;
-		private OpenDental.UI.CheckBox checkHideAdvertising;
 		private System.Windows.Forms.Label labelMerchantNumberClinic;
 		private System.Windows.Forms.TextBox textMerchantNumberClinic;
 		private System.Windows.Forms.Label labelMerchantClosedDescription;

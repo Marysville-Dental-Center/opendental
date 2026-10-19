@@ -1,13 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
-using System.Net;
 using System.Text;
 using System.Windows.Forms;
 using CodeBase;
-using Ionic.Zip;
 using OpenDental.UI;
 using OpenDentBusiness;
 using static OpenDentBusiness.PayConnect2;
@@ -107,7 +104,7 @@ namespace OpenDental{
 				clinicNum=_listUserClinicNums[comboClinic.SelectedIndex];
 			}
 			textUsername.Text=ProgramProperties.GetPropValFromList(_listProgramProperties,"Username",clinicNum);
-			textPassword.Text=CDT.Class1.TryDecrypt(ProgramProperties.GetPropValFromList(_listProgramProperties,"Password",clinicNum));
+			textPassword.Text=Secrets.TryDecrypt(ProgramProperties.GetPropValFromList(_listProgramProperties,"Password",clinicNum));
 			string payTypeDefNum=ProgramProperties.GetPropValFromList(_listProgramProperties,"PaymentType",clinicNum);
 			string processingMethod=ProgramProperties.GetPropValFromList(_listProgramProperties,PayConnect.ProgramProperties.DefaultProcessingMethod,clinicNum);
 			checkTerminal.Checked=PIn.Bool(ProgramProperties.GetPropValFromList(_listProgramProperties,"TerminalProcessingEnabled",clinicNum));
@@ -256,7 +253,7 @@ namespace OpenDental{
 				//this clinic had a matching username and password, so update the username and password to keep it synched with HQ
 				_listProgramProperties.FindAll(x => x.ClinicNum==listClinicNums[i] && x.PropertyDesc=="Username")
 					.ForEach(x => x.PropertyValue=textUsername.Text);//always 1 item; null safe
-				string password=CDT.Class1.TryEncrypt(textPassword.Text);//Encrypt password before setting so it's not plaintext.
+				string password=Secrets.TryEncrypt(textPassword.Text);//Encrypt password before setting so it's not plaintext.
 				_listProgramProperties.FindAll(x => x.ClinicNum==listClinicNums[i] && x.PropertyDesc=="Password")
 					.ForEach(x => x.PropertyValue=password);//always 1 item; null safe
 				if(string.IsNullOrEmpty(payTypeCur)) {
@@ -277,7 +274,7 @@ namespace OpenDental{
 			//set the values in the list for this clinic
 			_listProgramProperties.FindAll(x => x.ClinicNum==clinicNum && x.PropertyDesc=="Username")
 				.ForEach(x => x.PropertyValue=textUsername.Text);//always 1 item; null safe
-			string password=CDT.Class1.TryEncrypt(textPassword.Text);//Encrypt password before setting so it's not plaintext.
+			string password=Secrets.TryEncrypt(textPassword.Text);//Encrypt password before setting so it's not plaintext.
 			_listProgramProperties.FindAll(x => x.ClinicNum==clinicNum && x.PropertyDesc=="Password")
 				.ForEach(x => x.PropertyValue=password);//always 1 item; null safe
 			_listProgramProperties.FindAll(x => x.ClinicNum==clinicNum && x.PropertyDesc=="PaymentType")
@@ -364,15 +361,7 @@ namespace OpenDental{
 
 		private void linkLabel1_LinkClicked(object sender,LinkLabelLinkClickedEventArgs e) {
 			string url="https://www.payconnect.com/";
-			if(ODCloudClient.IsAppStream) {
-				ODCloudClient.LaunchFileWithODCloudClient(url);
-				return;
-			}
 			Process.Start(url);
-		}
-
-		private void checkTerminal_CheckedChanged(object sender,EventArgs e) {
-			butDownloadDriver.Visible=checkTerminal.Checked;
 		}
 
 		private void gridODTerminals_CellDoubleClick(object sender,ODGridClickEventArgs e) {
@@ -386,51 +375,6 @@ namespace OpenDental{
 			using FormPayTerminalEdit formPayTerminalEdit=new FormPayTerminalEdit();
 			formPayTerminalEdit.ShowDialog();
 			FillGridTerminals();
-		}
-
-		private void butDownloadDriver_Click(object sender,EventArgs e) {
-			//The VeriFone driver is necessary for PayConnect users to process payments on the VeriFone terminal.
-			//It used to be downloaded from Open Dental's website, which this build never contacts. Use the driver zip file obtained from the vendor.
-			using OpenFileDialog openFileDialog=new OpenFileDialog();
-			openFileDialog.Title=Lan.g(this,"Choose the VeriFone USB driver zip file from the vendor");
-			openFileDialog.Filter="zip|*.zip";
-			if(openFileDialog.ShowDialog()!=DialogResult.OK) {
-				return;
-			}
-			Cursor=Cursors.WaitCursor;
-			string zipFileName=openFileDialog.FileName;
-			if(ODEnvironment.IsCloudServer) {
-				//ODCloud, send the installer to the client computer instead of installing it here on the server computer.
-				if(ODBuild.IsThinfinity()) {
-					Thinfinity.ThinfinityUtils.ExportForDownload(zipFileName);
-				}
-				else {//Is AppStream
-					CloudClientL.ExportForCloud(zipFileName,doPromptForName:false);
-				}
-				Cursor=Cursors.Default;
-				MessageBox.Show(Lans.g(this,"Download complete. Run the Setup.exe file in the downloaded zip file."));
-				return;
-			}
-			MemoryStream memoryStream=new MemoryStream();
-			string setupFileName="";
-			using(ZipFile zipFileUnzipped=ZipFile.Read(zipFileName)) {
-				for(int unzipIndex=0;unzipIndex<zipFileUnzipped.Count;unzipIndex++) {//Unzip/write all files to the temp directory
-					ZipEntry zipEntry=zipFileUnzipped[unzipIndex];
-					if(zipEntry.FileName.ToLower()=="setup.exe") {
-						setupFileName=zipEntry.FileName;
-					}
-					zipEntry.Extract(PrefC.GetTempFolderPath(),ExtractExistingFileAction.OverwriteSilently);
-				}
-			}
-			Cursor=Cursors.Default;
-			if(setupFileName=="") {
-				MsgBox.Show(this,"Unable to install driver. Setup.exe file not found.");
-				return;
-			}
-			//Run the setup.exe file
-			Process.Start(ODFileUtils.CombinePaths(PrefC.GetTempFolderPath(),setupFileName));
-			MessageBox.Show(Lans.g(this,"Download complete. Run the Setup.exe file in")+" "+PrefC.GetTempFolderPath()+" "
-				+Lans.g(this,"if it does not start automatically."));
 		}
 
 		private void butMerchantInfo_Click(object sender,EventArgs e) {
@@ -478,10 +422,6 @@ namespace OpenDental{
 			//if clinics are enabled, the program link can be enabled with blank username and/or password fields for some clinics
 			//clinics with blank username and/or password will essentially not have PayConnect enabled
 			//if 'Enable terminal processing' is checked then the practice/clinic will not need a username and password.
-			if(checkEnabled.Checked && !Programs.IsEnabledByHq(ProgramName.PayConnect,out string err)) {
-				MsgBox.Show(err);
-				return;
-			}
 			if(checkEnabled.Checked //if PayConnect is enabled
 					&& comboDefaultProcessing.SelectedIndex < 0)
 			{
@@ -529,7 +469,7 @@ namespace OpenDental{
 				//if the program is enabled and the username and password fields are not blank,
 				//PayConnect is enabled for this clinic so make sure the payment type is also set
 				//Decrypt password because empty string password is not empty string when encrypted.
-				string password=CDT.Class1.TryDecrypt(ProgramProperties.GetPropValFromList(_listProgramProperties,"Password",_listUserClinicNums[i]));
+				string password=Secrets.TryDecrypt(ProgramProperties.GetPropValFromList(_listProgramProperties,"Password",_listUserClinicNums[i]));
 				if(((ProgramProperties.GetPropValFromList(_listProgramProperties,"Username",_listUserClinicNums[i])!="" //if username set
 					&& password!="") //and password set
 					|| ProgramProperties.GetPropValFromList(_listProgramProperties,"TerminalProcessingEnabled",_listUserClinicNums[i])=="1")//or terminal enabled

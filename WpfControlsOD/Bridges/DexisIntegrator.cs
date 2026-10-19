@@ -26,11 +26,6 @@ namespace OpenDental.Bridges {
 				MsgBox.Show("DexisIntegrator","Please select a patient first.");
 				return;
 			}
-			//Some places where this function is called don't check if we have disabled this program at HQ. Adding this here as a catch all
-			if(!Programs.IsEnabledByHq(progCur,out string err)) {
-				MessageBox.Show(err);
-				return;
-			}
 			if(ProgramProperties.GetPropVal(progCur.ProgramNum,"Enter 0 to use DDE, or 1 to use communication file")=="0") {
 				SendDataDDE(progCur,pat);
 			}
@@ -56,10 +51,6 @@ namespace OpenDental.Bridges {
 			string communicationFile=ProgramProperties.GetPropValFromList(listProgramProperties,"Communication files folder path");//This path is the folder where all comm files will be stored. 
 			string fileName="Patient_"+ODEnvironment.MachineName+".txt";
 			if(communicationFile.Trim()=="") {
-				if(ODEnvironment.IsCloudServer) {
-					MsgBox.Show("DexisIntegrator","Communication files folder path must not be empty.");
-					return;
-				}
 				communicationFile=CodeBase.ODFileUtils.CombinePaths(PrefC.GetTempFolderPath(),fileName);
 			}
 			else {

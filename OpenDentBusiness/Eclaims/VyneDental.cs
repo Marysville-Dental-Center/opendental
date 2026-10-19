@@ -15,7 +15,7 @@ namespace OpenDentBusiness.Eclaims {
 		///<summary>Returns true if the exe was launched, false otherwise.</summary>
 		public static bool Launch(Clearinghouse clearinghouse,int batchNum){//Called from Eclaims.cs. Clinic-level clearinghouse passed in.
 			try{
-				ODFileUtils.ProcessStart(clearinghouse.ClientProgram,doWaitForODCloudClientResponse:true);
+				ODFileUtils.ProcessStart(clearinghouse.ClientProgram);
 			}
 			catch(Exception ex) {
 				ErrorMessage=ex.Message;

@@ -346,7 +346,6 @@ namespace OpenDental{
 			this.Controls.Add(this.groupServer);
 			this.Controls.Add(this.groupDirect);
 			this.Controls.Add(this.butOK);
-			this.HasHelpButton = false;
 			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;

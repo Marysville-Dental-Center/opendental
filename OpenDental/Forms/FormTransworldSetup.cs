@@ -142,7 +142,7 @@ namespace OpenDental {
 						textSftpUsername.Text=listProgramPropertiesClinic[i].PropertyValue;
 						continue;
 					case "SftpPassword":
-						textSftpPassword.Text=CDT.Class1.TryDecrypt(listProgramPropertiesClinic[i].PropertyValue);
+						textSftpPassword.Text=Secrets.TryDecrypt(listProgramPropertiesClinic[i].PropertyValue);
 						continue;
 					case "ClientIdAccelerator":
 						textClientIdAccelerator.Text=listProgramPropertiesClinic[i].PropertyValue;
@@ -166,20 +166,8 @@ namespace OpenDental {
 						continue;
 				}
 			}
-			SetAdvertising();
-		}
-		
-		///<summary>Handles both visibility and checking of checkHideButtons.</summary>
-		private void SetAdvertising() {
-			ProgramProperty programProperty=_dictionaryClinicListProgProps[0].FirstOrDefault(x => x.PropertyDesc=="Disable Advertising");//dict guaranteed to contain key 0
-			checkHideButtons.Visible=(programProperty!=null && !checkEnabled.Checked);//show check box if disable prop exists and program is not enabled
-			checkHideButtons.Checked=(programProperty?.PropertyValue=="1");//check box checked if disable prop exists and is set to "1" for HQ
 		}
 
-		private void checkEnabled_Click(object sender,EventArgs e) {
-			SetAdvertising();
-		}
-		
 		///<summary>Saves form data to the dict and then removes any clinics from the dict that exactly match the HQ clinic details.  If editing a clinic
 		///other than HQ and there are no props for that clinic and the form values are different than HQ, a new list is added to the dict.</summary>
 		private void SyncWithHQ() {
@@ -211,7 +199,7 @@ namespace OpenDental {
 						listProgramProperties[i].PropertyValue=textSftpUsername.Text;
 						continue;
 					case "SftpPassword":
-						listProgramProperties[i].PropertyValue=CDT.Class1.TryEncrypt(textSftpPassword.Text);
+						listProgramProperties[i].PropertyValue=Secrets.TryEncrypt(textSftpPassword.Text);
 						continue;
 					case "ClientIdAccelerator":
 						listProgramProperties[i].PropertyValue=textClientIdAccelerator.Text;
@@ -222,17 +210,11 @@ namespace OpenDental {
 					case "IsThankYouLetterEnabled":
 						listProgramProperties[i].PropertyValue=POut.Bool(checkThankYouLetter.Checked);
 						continue;
-					case "Disable Advertising":
-						_dictionaryClinicListProgProps.Values.SelectMany(x => x.Where(y => y.PropertyDesc=="Disable Advertising")).ToList()
-							.ForEach(y => y.PropertyValue=POut.Bool(checkHideButtons.Checked));
-						listProgramProperties[i].PropertyValue=POut.Bool(checkHideButtons.Checked);//in case list is for a new clinic and not in dict
-						continue;
-					case "Disable Advertising HQ":
-						//false if prop is null or if the value is anything but "1"
-						bool isAdvertDisabledHQ=(listProgramPropertiesHq.FirstOrDefault(x => x.PropertyDesc=="Disable Advertising HQ")?.PropertyValue=="1");
-						_dictionaryClinicListProgProps.Values.SelectMany(x => x.Where(y => y.PropertyDesc=="Disable Advertising HQ")).ToList()
-							.ForEach(x => x.PropertyValue=POut.Bool(isAdvertDisabledHQ));//in case list is for a new clinic and not in dict
-						listProgramProperties[i].PropertyValue=POut.Bool(isAdvertDisabledHQ);
+					case ProgramProperties.PropertyDescs.DisableAdvertising:
+					case ProgramProperties.PropertyDescs.DisableAdvertisingHQ:
+						//No longer used. A new clinic's copy keeps the stored HQ value so the row is not left blank.
+						string propertyDesc=listProgramProperties[i].PropertyDesc;
+						listProgramProperties[i].PropertyValue=listProgramPropertiesHq.FirstOrDefault(x => x.PropertyDesc==propertyDesc)?.PropertyValue??"0";
 						continue;
 					case "SelectedServices":
 						List<int> listSelectedServices=new List<int>();
@@ -342,10 +324,6 @@ namespace OpenDental {
 		}
 
 		private void butSave_Click(object sender,EventArgs e) {
-			if(checkEnabled.Checked && !Programs.IsEnabledByHq(ProgramName.Transworld,out string err)) {
-				MessageBox.Show(err);
-				return;
-			}
 			if(!textSftpPort.IsValid()) {
 				MsgBox.Show(this,"Please enter a valid integer for the Sftp Server Port.");
 				return;

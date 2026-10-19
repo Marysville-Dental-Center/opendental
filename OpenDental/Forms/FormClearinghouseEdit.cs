@@ -251,7 +251,7 @@ namespace OpenDental{
 			if(string.IsNullOrEmpty(clearinghouse.Password)) {
 				return;
 			}
-			if(CDT.Class1.ConcealClearinghouse(clearinghouse.Password,out concealedPassword)) {
+			if(Secrets.ConcealClearinghouse(clearinghouse.Password,out concealedPassword)) {
 				clearinghouse.Password=concealedPassword;
 			}
 		}
@@ -398,12 +398,6 @@ namespace OpenDental{
 				MsgBox.Show(this,"Invalid Comm Bridge.");
 				return false;
 			}
-			if(ODEnvironment.IsCloudServer 
-				&& Clearinghouses.IsDisabledForWeb(comboFormat.GetSelected<ElectronicClaimFormat>(),comboCommBridge.GetSelected<EclaimsCommBridge>())) 
-			{
-				MsgBox.Show(this,"This clearinghouse is not available while using Open Dental Cloud.");
-				return false;
-			}
 			if(ClinicNum==0) {//HQ
 				if(textDescription.Text=="") {
 					MsgBox.Show(this,"Description cannot be blank.");//HQ
@@ -525,24 +519,13 @@ namespace OpenDental{
 		}
 
 		private bool CheckOrCreateDirectory(string directoryName,string pathName) {
-			bool isUsingODCloudClient=x837Controller.DoSendBatchToCloudClient(ClearinghouseCur);
 			bool didDirectoryExist=false;
-			if(isUsingODCloudClient && ODEnvironment.IsCloudServer) {
-				didDirectoryExist=ODCloudClient.CheckOrCreateWithODCloudClient(directoryName,ODCloudClient.CloudClientAction.CheckForDirectory)=="Success";
-			}
-			else {
-				didDirectoryExist=Directory.Exists(directoryName);
-			}
+			didDirectoryExist=Directory.Exists(directoryName);
 			if(didDirectoryExist || !MsgBox.Show(this,MsgBoxButtons.YesNo,pathName+" path does not exist. Attempt to create?")) {
 				return true;//Nothing to create.
 			}
 			try {
-				if(isUsingODCloudClient && ODEnvironment.IsCloudServer) {
-					ODCloudClient.CheckOrCreateWithODCloudClient(directoryName,ODCloudClient.CloudClientAction.CreateDirectory);
-				}
-				else {
-					Directory.CreateDirectory(directoryName);
-				}
+				Directory.CreateDirectory(directoryName);
 				MsgBox.Show(this,"Folder created.");
 			}
 			catch {

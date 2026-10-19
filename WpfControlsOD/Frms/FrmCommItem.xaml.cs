@@ -61,9 +61,7 @@ namespace OpenDental {
 			_isStartingUp=true;
 			labelSavedManually.Visible=false;
 			_listDefsCommlogTypes=Defs.GetDefsForCategory(DefCat.CommLogTypes,true);
-			if(!PrefC.IsODHQ) {
-				_listDefsCommlogTypes.RemoveAll(x => x.ItemValue==CommItemTypeAuto.ODHQ.ToString());
-			}
+			_listDefsCommlogTypes.RemoveAll(x => x.ItemValue==CommItemTypeAuto.ODHQ.ToString());
 			//there will usually be a commtype set before this dialog is opened
 			for(int i=0;i<_listDefsCommlogTypes.Count;i++){
 				listType.Items.Add(_listDefsCommlogTypes[i].ItemName);
@@ -73,12 +71,10 @@ namespace OpenDental {
 			}
 			listMode.Items.AddEnums<CommItemMode>();
 			listSentOrReceived.Items.AddEnums<CommSentOrReceived>();
-			if(!PrefC.IsODHQ) {
-				labelDateTimeEnd.Visible=false;
-				textDateTimeEnd.Visible=false;
-				butNow.Visible=false;
-				butNowEnd.Visible=false;
-			}
+			labelDateTimeEnd.Visible=false;
+			textDateTimeEnd.Visible=false;
+			butNow.Visible=false;
+			butNowEnd.Visible=false;
 			bool isNewOrPersistent=_commlogOld.IsNew || IsPersistent;
 			//Check if the commlog is new and user has permission to create
 			if(isNewOrPersistent && !Security.IsAuthorized(EnumPermType.CommlogCreate)) {
@@ -138,18 +134,8 @@ namespace OpenDental {
 			ODEvent.Fired+=CommItemSaveEvent_Fired;
 			_isStartingUp=false;
 			//Turn off any UI that could alter this Commlog.
-			if(PrefC.IsODHQ) {
-				if(IsHistoric) {
-					DisableAllExcept(textNote);
-					textNote.ReadOnly=true;//so scrolling is still enabled.
-				}
-				if(_commlog.IsNew || IsHistoric) {//Commlog must exist in the db in order to have history.
-					butCommlogHist.Visible=false;
-				}
-			}
-			else{//Always hide the button since it's not HQ
-				butCommlogHist.Visible=false;
-			}
+			//Always hide the button since it's not HQ
+			butCommlogHist.Visible=false;
 			float scale=(float)VisualTreeHelper.GetDpi(this).DpiScaleX;
 			signatureBoxWrapper.SetScaleAndZoom(scale,GetZoom());
 		}
@@ -290,9 +276,6 @@ namespace OpenDental {
 		///<summary>Returns true if the commlog was able to save to the database. Otherwise returns false.
 		///Set showMsg to true to show a meaningful message when the commlog cannot be saved.</summary>
 		private bool SaveCommItem(bool showMsg) {
-			if(PrefC.IsODHQ && IsHistoric) {
-				return false;// Don't actually save because it is historic.
-			}
 			if(!SyncCommlogWithUI(showMsg)) {
 				return false;
 			}
@@ -326,9 +309,6 @@ namespace OpenDental {
 		}
 
 		private void AutoSaveCommItem() {
-			if(PrefC.IsODHQ && IsHistoric) {
-				return;
-			}
 			if(_commlogOld.IsNew) {
 				//Insert
 				Commlogs.Insert(_commlog);
@@ -469,9 +449,6 @@ namespace OpenDental {
 		///<summary>Tries to delete the commlog passed in. Throws exceptions if anything goes wrong.</summary>
 		private void DeleteCommlog(Commlog commlog,string logText="Delete") {
 			Commlogs.Delete(commlog);
-			if (PrefC.IsODHQ){
-				CommlogHists.DeleteForCommlog(commlog.CommlogNum);
-			}
 			SecurityLogs.MakeLogEntry(EnumPermType.CommlogEdit,commlog.PatNum,logText);
 		}
 

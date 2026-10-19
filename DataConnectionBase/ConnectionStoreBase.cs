@@ -19,8 +19,6 @@ namespace DataConnectionBase {
 		public static Func<CentralConnectionBase> GetDentalOfficeReportServerFromPrefC=() => { return null; };
 		///<summary>Called when getting the DentalOfficeReadOnlyServer settings from PrefC.</summary>
 		public static Func<CentralConnectionBase> GetDentalOfficeReadOnlyServerFromPrefC=() => { return null; };
-		///<summary>Called when getting the TriageHQ settings. This is intentionally set to null and does not return a valid null function like the existing report and read-only patterns. This is so the Triage connection can be explicitly defined later in the initialization process of the parent project. E.g. Open Dental instantiates this within the Shown event handler.</summary>
-		public static Func<CentralConnectionBase> GetTriageHQ=null;
 		///<summary>The current database connection.</summary>
 		private static ConnectionNames _currentConnection=ConnectionNames.DentalOffice;
 		///<summary>The current database connection. Specific to this thread.</summary>
@@ -96,16 +94,6 @@ namespace DataConnectionBase {
 				//Not already there so add it once.
 				return new Dictionary<ConnectionNames,CentralConnectionBase>() { { ConnectionNames.DentalOfficeReadOnlyServer,cn??new CentralConnectionBase() } };
 			}));
-			actionTryInit(new Func<Dictionary<ConnectionNames,CentralConnectionBase>>(() => { //TriageHQ (if implemented).
-				//GetTriageHQ defaults to null instead of a valid func that returns null so that the parent project can dictate when a TriageHQ connection can be added to the dictionary.
-				//E.g. Open Dental instantiates GetTriageHQ within the Shown event handler instead of a static constructor like the report and read-only funcs.
-				if(GetTriageHQ==null || HasSingleEntry(ConnectionNames.TriageHQ)) {//TriageHQ is not implemented or has already been added.
-					return null;
-				}
-				CentralConnectionBase cn=GetTriageHQ();
-				//Not already there so add it once.
-				return new Dictionary<ConnectionNames,CentralConnectionBase>() { { ConnectionNames.TriageHQ,cn??new CentralConnectionBase() } };
-			}));
 			Dictionary<ConnectionNames,CentralConnectionBase> dictRet=null;
 			lock(_lock) {
 				dictRet=_dictCentConnUnsafe;
@@ -155,7 +143,7 @@ namespace DataConnectionBase {
 		private static Dictionary<ConnectionNames,CentralConnectionBase> InitConnectionStoreXml(string fullPath) {
 			return InitConnectionsFromXmlFile<ListCentralConnections,CentralConnectionBase>(fullPath,new Func<CentralConnectionBase,CentralConnectionBase>((conn) => {
 				if(!string.IsNullOrEmpty(conn.MySqlPassword)) {
-					if(!CDT.Class1.Decrypt(conn.MySqlPassword,out conn.MySqlPassword)) {
+					if(!Secrets.Decrypt(conn.MySqlPassword,out conn.MySqlPassword)) {
 						throw new Exception("Unable to decrypt MySQL password: "+fullPath);
 					}
 				}
@@ -167,7 +155,7 @@ namespace DataConnectionBase {
 		private static Dictionary<ConnectionNames,CentralConnectionBase> InitOpenDentalWebConfigXml(string fullPath) {
 			return InitConnectionsFromXmlFile<ConnectionSettings,DatabaseConnection>(fullPath,new Func<DatabaseConnection,CentralConnectionBase>((conn) => {
 				if(!string.IsNullOrEmpty(conn.Password)) {
-					if(!CDT.Class1.Decrypt(conn.Password,out conn.Password)) {
+					if(!Secrets.Decrypt(conn.Password,out conn.Password)) {
 						throw new Exception("Unable to decrypt MySQL password: "+fullPath);
 					}
 				}

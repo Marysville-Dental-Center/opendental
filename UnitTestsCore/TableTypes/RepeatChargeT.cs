@@ -6,17 +6,6 @@ using OpenDentBusiness;
 
 namespace UnitTestsCore {
 	public class RepeatChargeT {
-
-		public static RepeatCharge GetRepeatChargeCustomers(eServiceCode eService,long patNum)
-		{
-			return DataAction.GetCustomers(() => {
-				var all=RepeatCharges.Refresh(patNum).ToList();
-				var link=EServiceCodeLink.GetAll().FirstOrDefault(x => x.EService==eService)??new EServiceCodeLink();
-				return all.FirstOrDefault(x => x.ProcCode==link.ProcCode);
-			});
-			
-		}
-
 		public static RepeatCharge CreateRepeatCharge(long patNum,string procCode,double chargeAmt,DateTime dateStart=default) {
 			RepeatCharge repeatCharge=new RepeatCharge {
 				ChargeAmt=chargeAmt,
@@ -27,7 +16,7 @@ namespace UnitTestsCore {
 				ProcCode=procCode,
 			};
 			Patient oldPat=Patients.GetPat(repeatCharge.PatNum);
-			repeatCharge.RepeatChargeNum=DataAction.GetCustomers(() => RepeatCharges.Insert(repeatCharge));
+			repeatCharge.RepeatChargeNum=RepeatCharges.Insert(repeatCharge);
 			RepeatCharges.InsertRepeatChargeChangeSecurityLogEntry(repeatCharge,EnumPermType.RepeatChargeCreate,oldPat,isAutomated:true);
 			return repeatCharge;
 		}

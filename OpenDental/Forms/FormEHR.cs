@@ -179,10 +179,7 @@ namespace OpenDental {
 						break;
 					case EhrMeasureType.TimelyAccess:
 					case EhrMeasureType.ElectronicCopyAccess:
-						using(FormPatientPortal formPatientPortal=new FormPatientPortal(_patient)) {
-							formPatientPortal.ShowDialog();
-						}
-						FillGridMu();
+						//Patient portal access was set up through Open Dental's hosted patient portal, which was removed.
 						break;
 					case EhrMeasureType.ProvOrderEntry:
 					case EhrMeasureType.CPOE_MedOrdersOnly:
@@ -294,11 +291,7 @@ namespace OpenDental {
 						FillGridMu();
 						break;
 					case EhrMeasureType.SecureMessaging:
-						if(PrefC.GetInt(PrefName.MeaningfulUseTwo)==2) {/*Modified Stage 2*/
-							using FormWebMailMessageEdit formWebMailMessageEdit=new FormWebMailMessageEdit(_patient.PatNum);
-							formWebMailMessageEdit.ShowDialog();
-							FillGridMu();
-						}
+						//Secure messages were sent through Open Dental's hosted patient portal, which was removed.
 						break;
 					case EhrMeasureType.FamilyHistory:
 						using(FormMedical formMedical=new FormMedical(PatientNoteCur,_patient,"tabFamHealthHist")) {

@@ -40,24 +40,17 @@ namespace OpenDental {
 				}
 				Location=new Point(x,y);
 			}
-			if(!ODBuild.IsThinfinity()) {
-				try {
-					await webView.Init();
-					webView.CoreWebView2.NewWindowRequested+=CoreWebView2_NewWindowRequested;
-				}
-				catch(Exception ex) {
-					ex.DoNothing();
-					DialogResult=DialogResult.Cancel;
-					Close();
-					return;
-				}
+			try {
+				await webView.Init();
+				webView.CoreWebView2.NewWindowRequested+=CoreWebView2_NewWindowRequested;
 			}
-			if(string.IsNullOrEmpty(HtmlContent)) {
+			catch(Exception ex) {
+				ex.DoNothing();
+				DialogResult=DialogResult.Cancel;
+				Close();
 				return;
 			}
-			if(ODBuild.IsThinfinity()) {//Webview2 doesn't work with cloud, use a webBrowser object as a backup until Thinfinity supports webview2
-				webBrowser.Visible=true;
-				webBrowser.DocumentText=HtmlContent;
+			if(string.IsNullOrEmpty(HtmlContent)) {
 				return;
 			}
 			webView.Visible=true;

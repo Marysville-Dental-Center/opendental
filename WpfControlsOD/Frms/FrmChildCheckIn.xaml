@@ -7,7 +7,7 @@
              xmlns:ui="clr-namespace:WpfControls.UI"
              mc:Ignorable="d"
              Width="1936" Height="1048"
-             Text="Child Check In" MinMaxBoxes="True" HasHelpButton="False">
+             Text="Child Check In" MinMaxBoxes="True">
 	<Grid Background="#FFFCFDFE" >
 		<ui:GroupBox x:Name="groupBoxAbsent" Width="216" Height="474" Margin="734,299,0,0" TabIndexOD="1" Text="Absent Children" >
 			<ui:ListBox x:Name="listBoxAbsent" Margin="9,25,0,0" Height="436" Width="127" SelectionMode="MultiExtended"/>

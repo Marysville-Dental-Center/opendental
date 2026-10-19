@@ -192,16 +192,6 @@ namespace OpenDental.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        public static System.Drawing.Bitmap bola_get {
-            get {
-                object obj = ResourceManager.GetObject("bola_get", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
         public static System.Drawing.Bitmap bola_launch {
             get {
                 object obj = ResourceManager.GetObject("bola_launch", resourceCulture);
@@ -398,16 +388,6 @@ namespace OpenDental.Properties {
         public static System.Drawing.Bitmap CareCredit_Button_NoTag_26x90 {
             get {
                 object obj = ResourceManager.GetObject("CareCredit_Button_NoTag_26x90", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        public static System.Drawing.Bitmap CDS_Button_green_obsolete {
-            get {
-                object obj = ResourceManager.GetObject("CDS_Button_green_obsolete", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -651,16 +631,6 @@ namespace OpenDental.Properties {
         public static System.Drawing.Bitmap deleteX18 {
             get {
                 object obj = ResourceManager.GetObject("deleteX18", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        public static System.Drawing.Bitmap DentalIntelligence_Button_100x24 {
-            get {
-                object obj = ResourceManager.GetObject("DentalIntelligence_Button_100x24", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -1269,26 +1239,6 @@ namespace OpenDental.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        public static System.Drawing.Bitmap Podium_Button_100x24 {
-            get {
-                object obj = ResourceManager.GetObject("Podium_Button_100x24", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        public static System.Drawing.Bitmap Podium_logo_Black {
-            get {
-                object obj = ResourceManager.GetObject("Podium_logo_Black", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
         public static System.Drawing.Bitmap Practice_Booster_Icon_22x22 {
             get {
                 object obj = ResourceManager.GetObject("Practice_Booster_Icon_22x22", resourceCulture);
@@ -1713,16 +1663,6 @@ namespace OpenDental.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        public static System.Drawing.Bitmap Unison_BDR_Logo {
-            get {
-                object obj = ResourceManager.GetObject("Unison_BDR_Logo", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to &lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
         ///&lt;Report Name=&quot;&quot;&gt;
         ///  &lt;CodeModules&gt;
@@ -1767,16 +1707,6 @@ namespace OpenDental.Properties {
         public static System.Drawing.Bitmap WebChatIcon {
             get {
                 object obj = ResourceManager.GetObject("WebChatIcon", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        public static System.Drawing.Bitmap webSched_PV_Button {
-            get {
-                object obj = ResourceManager.GetObject("webSched_PV_Button", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

@@ -145,16 +145,11 @@ namespace OpenDentBusiness {
 			public static bool IsRCMRunning {
 				get {
 					bool isRCMRunning=false;
-					if(ODEnvironment.IsCloudServer) {
-						isRCMRunning=ODCloudClient.IsProcessRunning("rcm");
+					try {
+						isRCMRunning=Process.GetProcesses().Any(x => x.ProcessName.ToLower().Contains("rcm"));
 					}
-					else {
-						try {
-							isRCMRunning=Process.GetProcesses().Any(x => x.ProcessName.ToLower().Contains("rcm"));
-						}
-						catch(Exception ex) {
-							ex.DoNothing();
-						}
+					catch(Exception ex) {
+						ex.DoNothing();
 					}
 					return isRCMRunning;
 				}
@@ -171,14 +166,8 @@ namespace OpenDentBusiness {
 					cashBackAmt,expDate);
 				string url=$"{_edgeExpressRCMURL}?xl2Parameters={strBldXml}";
 				string response;
-				if(ODBuild.IsThinfinity()) {
-					//Timeout is 120 seconds because that's how long we set the timeout for PayConnect terminal.
-					response=ODCloudClient.DownloadString(url,timeoutSecs: 120,doShowProgressBar: false);
-				}
-				else {
-					using WebClient client=new WebClient();
-					response=client.DownloadString(url);
-				}
+				using WebClient client=new WebClient();
+				response=client.DownloadString(url);
 				//Response will look like: 
 				//{"Description":"OK","IsSuccessful":true,"RcmResponse":"{\"RESPONSE\":{\"RESPONSE\":\"3\",\"RESULTMSG\":\"Transaction Cancelled\"}}","XmlRcmResponse":null}
 				var jsonResponse=new {

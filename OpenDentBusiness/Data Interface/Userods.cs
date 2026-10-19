@@ -390,13 +390,6 @@ namespace OpenDentBusiness {
 			return Userods.GetWhere(x => listUserNums.Contains(x.UserNum),!showHidden);
 		}
 
-		///<summary>Returns all users that are associated to the permission passed in.  Returns empty list if no matches found.</summary>
-		public static List<Userod> GetUsersByJobRole(JobPerm jobPerm,bool showHidden) {
-			Meth.NoCheckMiddleTierRole();
-			List<JobPermission> listJobPermissionsRoles=JobPermissions.GetList().FindAll(x=>x.JobPermType==jobPerm);
-			return Userods.GetWhere(x=>listJobPermissionsRoles.Any(y=>x.UserNum==y.UserNum),!showHidden);
-		}
-
 		///<summary>Gets all non-hidden users that have an associated provider.</summary>
 		public static List<Userod> GetUsersWithProviders() {
 			Meth.NoCheckMiddleTierRole();
@@ -637,7 +630,7 @@ namespace OpenDentBusiness {
 				mysqlPassword=xPathNavigatorConn.SelectSingleNode("Password").Value;
 				XPathNavigator xPathNavigatorEncryptPwdNode=xPathNavigatorConn.SelectSingleNode("MySQLPassHash");
 				string decryptedPwd;
-				if(mysqlPassword=="" && xPathNavigatorEncryptPwdNode!=null && xPathNavigatorEncryptPwdNode.Value!="" && CDT.Class1.Decrypt(xPathNavigatorEncryptPwdNode.Value,out decryptedPwd)) {
+				if(mysqlPassword=="" && xPathNavigatorEncryptPwdNode!=null && xPathNavigatorEncryptPwdNode.Value!="" && Secrets.Decrypt(xPathNavigatorEncryptPwdNode.Value,out decryptedPwd)) {
 					mysqlPassword=decryptedPwd;
 				}
 				mysqlUserLow=xPathNavigatorConn.SelectSingleNode("UserLow").Value;

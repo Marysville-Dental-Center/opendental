@@ -98,30 +98,6 @@ namespace OpenDental{
 				frmReferralsPatient.PatNum=_patient.PatNum;
 				frmReferralsPatient.ShowDialog();
 			}
-			else if(gridPat.ListGridRows[e.Row].Tag.ToString()=="References") {
-				using FormReference formReference=new FormReference();
-				formReference.ShowDialog();
-				if(formReference.PatNumGoto!=0) {
-					Patient patient=Patients.GetPat(formReference.PatNumGoto);
-					GlobalFormOpenDental.PatientSelected(patient,false);
-					GlobalFormOpenDental.GoToModule(EnumModuleType.Family, patNum:formReference.PatNumGoto);
-					return;
-				}
-				if(formReference.DialogResult!=DialogResult.OK) {
-					return;
-				}
-				for(int i=0;i<formReference.ListCustReferencesSelected.Count;i++) {
-					CustRefEntry custRefEntry=new CustRefEntry();
-					custRefEntry.DateEntry=DateTime.Now;
-					custRefEntry.PatNumCust=_patient.PatNum;
-					custRefEntry.PatNumRef=formReference.ListCustReferencesSelected[i].PatNum;
-					CustRefEntries.Insert(custRefEntry);
-				}
-			}
-			else if(gridPat.ListGridRows[e.Row].Tag.GetType()==typeof(CustRefEntry)) {
-				using FormReferenceEntryEdit formReferenceEntryEdit=new FormReferenceEntryEdit((CustRefEntry)gridPat.ListGridRows[e.Row].Tag);
-				formReferenceEntryEdit.ShowDialog();
-			}
 			else if(gridPat.ListGridRows[e.Row].Tag.ToString().Equals("Payor Types")) {
 				using FormPayorTypes formPayorTypes=new FormPayorTypes();
 				formPayorTypes.PatientCur=_patient;
@@ -971,38 +947,6 @@ namespace OpenDental{
 						row.Cells.Add(Lan.g("TablePatient","None"));
 						break;
 					#endregion Primary Provider
-					#region References
-					case "References":
-						List<CustRefEntry> custREList=_loadData.ListCustRefEntries??CustRefEntries.GetEntryListForCustomer(_patient.PatNum);
-						if(custREList.Count==0) {
-							row.Cells.Add(Lan.g("TablePatient","None"));
-							row.Tag="References";
-							row.ColorBackG=listDefsMiscColor[(int)DefCatMiscColors.FamilyModuleReferral].ItemColor;
-						}
-						else {
-							row.Cells.Add(Lan.g("TablePatient",""));
-							row.Tag="References";
-							row.ColorBackG=listDefsMiscColor[(int)DefCatMiscColors.FamilyModuleReferral].ItemColor;
-							gridPat.ListGridRows.Add(row);
-						}
-						for(int i=0;i<custREList.Count;i++) {
-							row=new GridRow();
-							if(custREList[i].PatNumRef==_patient.PatNum) {
-								row.Cells.Add(custREList[i].DateEntry.ToShortDateString());
-								row.Cells.Add("For: "+CustReferences.GetCustNameFL(custREList[i].PatNumCust));
-							}
-							else {
-								row.Cells.Add("");
-								row.Cells.Add(CustReferences.GetCustNameFL(custREList[i].PatNumRef));
-							}
-							row.Tag=custREList[i];
-							row.ColorBackG=listDefsMiscColor[(int)DefCatMiscColors.FamilyModuleReferral].ItemColor;
-							if(i<custREList.Count-1) {
-								gridPat.ListGridRows.Add(row);
-							}
-						}
-						break;
-					#endregion References
 					#region Referrals
 					case "Referrals":
 						List<RefAttach> listRefs=_loadData.ListRefAttaches??RefAttaches.Refresh(_patient.PatNum);
@@ -1125,27 +1069,7 @@ namespace OpenDental{
 						break;
 					#endregion Super Head
 					#region Tax Address
-					case "Tax Address":
-						if (!PrefC.IsODHQ) {
-							break;
-						}
-						row.Bold=true;
-						Address address=Addresses.GetOneByPatNum(_patient.PatNum);//can be null
-						row.Tag=address;
-						//If the current customer doesn't have a tax address, don't display other fields
-						if(address==null) {
-							address=new Address();//need an address object in double click to identify row type
-							address.IsNew=true;
-							row.Cells.Add("");
-							row.Tag=address;
-							break;
-						}
-						string rowText=address.Address1;
-						if (address.Address2!="") {
-							rowText+="\r\n"+address.Address2;
-						}
-						rowText+="\r\n"+address.City+", "+address.State+" "+address.Zip;
-						row.Cells.Add(rowText);
+					case "Tax Address"://Open Dental HQ only (sales tax addresses of its customers).
 						break;
 					#endregion Tax Address
 					#region Title

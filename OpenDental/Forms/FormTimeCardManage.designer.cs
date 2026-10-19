@@ -43,7 +43,6 @@ namespace OpenDental{
 			this.groupBox2 = new OpenDental.UI.GroupBox();
 			this.groupBox3 = new OpenDental.UI.GroupBox();
 			this.comboClinic = new OpenDental.UI.ComboBoxClinicPicker();
-			this.butTimeCardBenefits = new OpenDental.UI.Button();
 			this.menuMain = new OpenDental.UI.MenuOD();
 			this.groupBox1.SuspendLayout();
 			this.groupBox2.SuspendLayout();
@@ -249,18 +248,6 @@ namespace OpenDental{
 			this.comboClinic.TabIndex = 128;
 			this.comboClinic.SelectionChangeCommitted += new System.EventHandler(this.comboClinic_SelectionChangeCommitted);
 			// 
-			// butTimeCardBenefits
-			// 
-			this.butTimeCardBenefits.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.butTimeCardBenefits.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			this.butTimeCardBenefits.Location = new System.Drawing.Point(967, 655);
-			this.butTimeCardBenefits.Name = "butTimeCardBenefits";
-			this.butTimeCardBenefits.Size = new System.Drawing.Size(70, 24);
-			this.butTimeCardBenefits.TabIndex = 119;
-			this.butTimeCardBenefits.Text = "Benefits";
-			this.butTimeCardBenefits.Visible = false;
-			this.butTimeCardBenefits.Click += new System.EventHandler(this.butTimeCardBenefits_Click);
-			// 
 			// menuMain
 			// 
 			this.menuMain.Dock = System.Windows.Forms.DockStyle.Top;
@@ -272,7 +259,6 @@ namespace OpenDental{
 			// FormTimeCardManage
 			// 
 			this.ClientSize = new System.Drawing.Size(1049, 696);
-			this.Controls.Add(this.butTimeCardBenefits);
 			this.Controls.Add(this.comboClinic);
 			this.Controls.Add(this.groupBox3);
 			this.Controls.Add(this.groupBox2);
@@ -314,7 +300,6 @@ namespace OpenDental{
 		private OpenDental.UI.GroupBox groupBox2;
 		private OpenDental.UI.GroupBox groupBox3;
 		private UI.ComboBoxClinicPicker comboClinic;
-		private UI.Button butTimeCardBenefits;
 		private UI.MenuOD menuMain;
 	}
 }

@@ -344,27 +344,6 @@ namespace OpenDentBusiness{
 			return Crud.AppointmentCrud.SelectMany(command);
 		}
 		
-		///<summary>Gets the appointments for the dates and operatories passed in.</summary>
-		public static List<Appointment> GetApptsForDatesOps(List<AsapComms.DateTOpNum> listDateTOpNums) {
-			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				return Meth.GetObject<List<Appointment>>(MethodBase.GetCurrentMethod(),listDateTOpNums);
-			}
-			if(listDateTOpNums.Count==0) {
-				return new List<Appointment>();
-			}
-			string command="SELECT * FROM appointment WHERE AptStatus NOT IN("+POut.Int((int)ApptStatus.UnschedList)+","
-				+POut.Int((int)ApptStatus.Planned)+") AND (";
-			for(int i=0;i<listDateTOpNums.Count();i++){
-				if(i>0){
-					command+=" OR";
-				}
-				command+=" ("+DbHelper.BetweenDates("AptDateTime",listDateTOpNums[i].DateTAppt,listDateTOpNums[i].DateTAppt)
-					+" AND Op=" + POut.Long(listDateTOpNums[i].OpNum)+")";
-			}
-			command+=")";
-			return Crud.AppointmentCrud.SelectMany(command);
-		}
-
 		///<summary>Returns a list containing every appointment associated to the provided patnum.</summary>
 		public static List<Appointment> GetAppointmentsForPat(params long[] patNumArray) {
 			if(patNumArray.IsNullOrEmpty()) {
@@ -3333,10 +3312,10 @@ namespace OpenDentBusiness{
 			Db.NonQ(command);
 		}
 
-		///<summary>The defNumApptConfirmed will be a DefNum or 0.  Inserts an invalid appointment signalod. If createSheetsForCheckin is true, it will create both sheets and eForms.</summary>
-		public static void SetConfirmed(Appointment appointment,long defNumApptConfirmed,bool createSheetsForCheckin=true) {
+		///<summary>The defNumApptConfirmed will be a DefNum or 0.  Inserts an invalid appointment signalod.</summary>
+		public static void SetConfirmed(Appointment appointment,long defNumApptConfirmed) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				Meth.GetVoid(MethodBase.GetCurrentMethod(),appointment,defNumApptConfirmed,createSheetsForCheckin);
+				Meth.GetVoid(MethodBase.GetCurrentMethod(),appointment,defNumApptConfirmed);
 				return;
 			}
 			appointment.Confirmed=defNumApptConfirmed;
@@ -3345,11 +3324,6 @@ namespace OpenDentBusiness{
 			command+=",SecurityHash='"+POut.String(appointment.SecurityHash)+"'";
 			if(PrefC.GetLong(PrefName.AppointmentTimeArrivedTrigger)==defNumApptConfirmed) {
 				command+=",DateTimeArrived="+POut.DateT(DateTime.Now);
-				//createSheetsForCheckin will create any eForms also.
-				if(createSheetsForCheckin) {
-					Sheets.CreateSheetsForCheckIn(appointment);
-					EForms.CreateEFormForCheckIn(appointment);
-				}
 			}
 			else if(PrefC.GetLong(PrefName.AppointmentTimeSeatedTrigger)==defNumApptConfirmed){
 				command+=",DateTimeSeated="+POut.DateT(DateTime.Now);
@@ -3397,10 +3371,6 @@ namespace OpenDentBusiness{
 			if(appointment.AptStatus==ApptStatus.UnschedList && appointment.AptStatus!=appointmentOld.AptStatus) {
 				appointment.Op=0;
 				SetAptStatus(appointment,appointment.AptStatus);
-			}
-			if(appointment.Confirmed!=appointmentOld.Confirmed && appointment.Confirmed==PrefC.GetLong(PrefName.AppointmentTimeArrivedTrigger)) {
-				Sheets.CreateSheetsForCheckIn(appointment);
-				EForms.CreateEFormForCheckIn(appointment);
 			}
 			if(isSuccess && !suppressHistory) {//Something actually changed.
 				HistAppointments.CreateHistoryEntry(appointment.AptNum,HistAppointmentAction.Changed);
@@ -3917,12 +3887,12 @@ namespace OpenDentBusiness{
 			return isChanged;
 		}
 
-		///<summary>Returns the salted hash for the appointment. Will return an empty string if the calling program is unable to use CDT.dll. </summary>
+		///<summary>Returns the salted hash for the appointment. Computed by CodeBase.TamperHash. </summary>
 		private static string HashFields(Appointment appointment) {
 			Meth.NoCheckMiddleTierRole();//Private method.
 			string unhashedText=(int)appointment.AptStatus+appointment.Confirmed.ToString()+appointment.AptDateTime.ToString("yyyy-MM-dd HH:mm:ss");
 			try {
-				return CDT.Class1.CreateSaltedHash(unhashedText);
+				return TamperHash.Compute(unhashedText);
 			}
 			catch(Exception ex)  {
 				ex.DoNothing();
@@ -3938,7 +3908,7 @@ namespace OpenDentBusiness{
 			}
 			DateTime dateHashStart=Misc.SecurityHash.GetHashingDate();
 			if(appointment.AptDateTime < dateHashStart) { //old
-				//See notes in CDT.Class1 on how to pick which column to use for comparison
+				//Rows dated before the hashing start date are not verified.
 				return true;
 			}
 			if(Misc.SecurityHash.IsHashValid(appointment.SecurityHash,HashFields(appointment))) {
@@ -5232,84 +5202,6 @@ namespace OpenDentBusiness{
 				appointment.Pattern=appointmentType.Pattern;
 			}
 			return listProcedures;
-		}
-
-		///<summary>Sends verification texts and e-mails after a patient confirms any type of appointment via WebSched.</summary>
-		public static void SendWebSchedNotify(Appointment appointment,PrefName prefNameType,PrefName prefNameText,PrefName prefNameEmailSubj,PrefName prefNameEmailBody
-			,PrefName prefNameEmailType,bool logErrors=true) 
-		{
-			try {
-				Patient patient=Patients.GetPat(appointment.PatNum);
-				Clinic clinic=Clinics.GetClinic(appointment.ClinicNum);
-				WebSchedVerifyType webSchedVerifyType=(WebSchedVerifyType)PIn.Int(ClinicPrefs.GetPrefValue(prefNameType,appointment.ClinicNum));
-				if(webSchedVerifyType==WebSchedVerifyType.None) {
-					return;
-				}
-				CommOptOut commOptOut=CommOptOuts.Refresh(patient.PatNum);
-				//Load in the templates and insert replacement fields
-				string textTemplate=ClinicPrefs.GetPrefValue(prefNameText,appointment.ClinicNum);
-				textTemplate=Patients.ReplacePatient(textTemplate,patient);
-				textTemplate=Appointments.ReplaceAppointment(textTemplate,appointment);
-				textTemplate=Clinics.ReplaceOffice(textTemplate,clinic);
-				string emailSubj=OpenDentBusiness.EmailMessages.SubjectTidy(ClinicPrefs.GetPrefValue(prefNameEmailSubj,appointment.ClinicNum));
-				emailSubj=Patients.ReplacePatient(emailSubj,patient);
-				emailSubj=Appointments.ReplaceAppointment(emailSubj,appointment);
-				emailSubj=Clinics.ReplaceOffice(emailSubj,clinic);
-				string emailBody=OpenDentBusiness.EmailMessages.BodyTidy(ClinicPrefs.GetPrefValue(prefNameEmailBody,appointment.ClinicNum));
-				emailBody=Patients.ReplacePatient(emailBody,patient,isHtmlEmail:true);
-				emailBody=Appointments.ReplaceAppointment(emailBody,appointment,isHtmlEmail:true);
-				emailBody=Clinics.ReplaceOffice(emailBody,clinic,isHtmlEmail:true,doReplaceDisclaimer:true);
-				//send text
-				if(webSchedVerifyType==WebSchedVerifyType.Text || webSchedVerifyType==WebSchedVerifyType.TextAndEmail) {					
-					try {
-						if(commOptOut.IsOptedOut(CommOptOutMode.Text,CommOptOutType.Verify)) {
-							throw new ODException("Patient has opted out of text automated messaging.");
-						}
-						else {
-							SmsToMobiles.SendSmsSingle(patient.PatNum,patient.WirelessPhone,textTemplate,appointment.ClinicNum,SmsMessageSource.Verify,true,canCheckBal:false);
-						}
-					}
-					catch(ODException odex) {
-						if(webSchedVerifyType==WebSchedVerifyType.TextAndEmail && logErrors) {
-							//SMS failed, so log, but continue so that we also try to send the email.
-							Logger.WriteException(odex,"SendFollowUpErrors");
-						}
-						else if(webSchedVerifyType==WebSchedVerifyType.Text) {
-							throw odex;
-						}
-					}
-				}
-				//send e-mail
-				if(webSchedVerifyType==WebSchedVerifyType.Email || webSchedVerifyType==WebSchedVerifyType.TextAndEmail) {
-					EmailAddress emailAddress=EmailAddresses.GetByClinic(appointment.ClinicNum,true);
-					if(emailAddress==null) { //If clinic is not setup for email then don't bother trying to send.
-						return;
-					}
-					if(commOptOut.IsOptedOut(CommOptOutMode.Email,CommOptOutType.Verify)) {
-						throw new ODException("Patient has opted out of email automated messaging.");
-					}
-					emailAddress=EmailAddresses.OverrideSenderAddressClinical(emailAddress,patient.ClinicNum); //Use clinic's Email Sender Address Override, if present
-					EmailMessage emailMessage=new EmailMessage()
-					{
-						PatNum=patient.PatNum,
-						ToAddress=patient.Email,
-						FromAddress=emailAddress.GetFrom(),
-						Subject=emailSubj,
-						BodyText=emailBody,
-						HtmlType=PIn.Enum<EmailType>(ClinicPrefs.GetPrefValue(prefNameEmailType,appointment.ClinicNum)),
-						MsgDateTime=DateTime_.Now,
-						SentOrReceived=EmailSentOrReceived.Sent,
-						MsgType=EmailMessageSource.Verification
-					};
-					EmailMessages.PrepHtmlEmail(emailMessage);
-					EmailMessages.SendEmail(emailMessage,emailAddress);
-				}
-			}
-			catch(Exception e) {
-				if(logErrors) {
-					Logger.WriteException(e,"SendFollowUpErrors");
-				}
-			}
 		}
 
 		///<summary>Replaces all appointment fields in the given message with the given appointment's information.  Returns the resulting string.

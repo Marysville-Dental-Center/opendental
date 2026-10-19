@@ -131,7 +131,6 @@
     <Compile Include="Bridges\Camsight.cs" />
     <Compile Include="Bridges\CaptureLink.cs" />
     <Compile Include="Bridges\Carestream.cs" />
-    <Compile Include="Bridges\CDS.cs" />
     <Compile Include="Bridges\Cerec.cs" />
     <Compile Include="Bridges\CleaRay.cs" />
     <Compile Include="Bridges\Cliniview.cs" />
@@ -139,7 +138,6 @@
     <Compile Include="Bridges\DBSWin.cs" />
     <Compile Include="Bridges\DemandForce.cs" />
     <Compile Include="Bridges\DentalEye.cs" />
-    <Compile Include="Bridges\DentalIntel.cs" />
     <Compile Include="Bridges\DentalStudio.cs" />
     <Compile Include="Bridges\DentalTek.cs" />
     <Compile Include="Bridges\DentalXChange.cs" />
@@ -287,12 +285,6 @@
     <Compile Include="Frms\FrmChildRooms.xaml.cs">
       <DependentUpon>FrmChildRooms.xaml</DependentUpon>
     </Compile>
-		<Compile Include="Frms\FrmEClipboardDefEdit.xaml.cs">
-			<DependentUpon>FrmEClipboardDefEdit.xaml</DependentUpon>
-		</Compile>
-    <Compile Include="InternalTools\Job Manager\FrmJobGitBranch.xaml.cs">
-      <DependentUpon>FrmJobGitBranch.xaml</DependentUpon>
-    </Compile>
     <Compile Include="Frms\FrmParagraph.xaml.cs">
       <DependentUpon>FrmParagraph.xaml</DependentUpon>
     </Compile>
@@ -313,9 +305,6 @@
     </Compile>
     <Compile Include="Frms\FrmApptProvPrompt.xaml.cs">
       <DependentUpon>FrmApptProvPrompt.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Frms\FrmERoutingActionDefEdit.xaml.cs">
-      <DependentUpon>FrmERoutingActionDefEdit.xaml</DependentUpon>
     </Compile>
     <Compile Include="Frms\FrmEFormImportRuleEdit.xaml.cs">
       <DependentUpon>FrmEFormImportRuleEdit.xaml</DependentUpon>
@@ -440,12 +429,6 @@
     <Compile Include="Frms\FrmDocumentSizeMount.xaml.cs">
       <DependentUpon>FrmDocumentSizeMount.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Frms\FrmFaqPicker.xaml.cs">
-      <DependentUpon>FrmFaqPicker.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Frms\FrmHelpBrowser.xaml.cs">
-      <DependentUpon>FrmHelpBrowser.xaml</DependentUpon>
-    </Compile>
     <Compile Include="Frms\FrmImageFilter.xaml.cs">
       <DependentUpon>FrmImageFilter.xaml</DependentUpon>
     </Compile>
@@ -526,12 +509,6 @@
     </Compile>
     <Compile Include="Frms\FrmExternalLink.xaml.cs">
       <DependentUpon>FrmExternalLink.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Frms\FrmFaqEdit.xaml.cs">
-      <DependentUpon>FrmFaqEdit.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Frms\FrmFaqVersionPicker.xaml.cs">
-      <DependentUpon>FrmFaqVersionPicker.xaml</DependentUpon>
     </Compile>
     <Compile Include="Frms\FrmFeeSchedEdit.xaml.cs">
       <DependentUpon>FrmFeeSchedEdit.xaml</DependentUpon>
@@ -614,14 +591,8 @@
     <Compile Include="Frms\FrmSheetSetup.xaml.cs">
       <DependentUpon>FrmSheetSetup.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Frms\FrmShortCodeOptIn.xaml.cs">
-      <DependentUpon>FrmShortCodeOptIn.xaml</DependentUpon>
-    </Compile>
     <Compile Include="Frms\FrmSiteEdit.xaml.cs">
       <DependentUpon>FrmSiteEdit.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Frms\FrmSiteLinkEdit.xaml.cs">
-      <DependentUpon>FrmSiteLinkEdit.xaml</DependentUpon>
     </Compile>
     <Compile Include="Frms\FrmSites.xaml.cs">
       <DependentUpon>FrmSites.xaml</DependentUpon>
@@ -689,7 +660,6 @@
     <Compile Include="Frms\InputBox.xaml.cs">
       <DependentUpon>InputBox.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Logic\CloudClientL.cs" />
     <Compile Include="Logic\EFormL.cs" />
     <Compile Include="Logic\PatientL.cs" />
     <Compile Include="Logic\ProgramL.cs" />
@@ -886,14 +856,6 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-		<Page Include="Frms\FrmEClipboardDefEdit.xaml">
-			<Generator>MSBuild:Compile</Generator>
-			<SubType>Designer</SubType>
-		</Page>
-    <Page Include="InternalTools\Job Manager\FrmJobGitBranch.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
     <Page Include="Frms\FrmParagraph.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -919,10 +881,6 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Frms\FrmApptProvPrompt.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Frms\FrmERoutingActionDefEdit.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
@@ -1090,14 +1048,6 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Frms\FrmFaqPicker.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Frms\FrmHelpBrowser.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
     <Page Include="Frms\FrmImageFilter.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -1210,14 +1160,6 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Frms\FrmFaqEdit.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Frms\FrmFaqVersionPicker.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
     <Page Include="Frms\FrmFeeSchedEdit.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -1322,17 +1264,9 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Frms\FrmShortCodeOptIn.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
     <Page Include="Frms\FrmSiteEdit.xaml">
       <SubType>Designer</SubType>
       <Generator>XamlIntelliSenseFileGenerator</Generator>
-    </Page>
-    <Page Include="Frms\FrmSiteLinkEdit.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
     </Page>
     <Page Include="Frms\FrmSites.xaml">
       <Generator>MSBuild:Compile</Generator>
@@ -1708,18 +1642,6 @@
     <None Include="Resources\en_US_dic" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\..\Unversioned\VirtualWeb\VirtualWeb.csproj">
-      <Project>{4ED3DF2F-E97E-4BC3-AE5F-AA31A11AF57F}</Project>
-      <Name>VirtualWeb</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\CDT\xCDT.csproj">
-      <Project>{76ba82e6-d8e1-45b1-8ed6-41d97b8d67ec}</Project>
-      <Name>xCDT</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\OpenDentalHelp\OpenDentalHelp\OpenDentalHelp.csproj">
-      <Project>{98b2999c-8a9f-4795-b452-7f6231ed56b4}</Project>
-      <Name>OpenDentalHelp</Name>
-    </ProjectReference>
     <ProjectReference Include="..\CodeBase\xCodeBase.csproj">
       <Project>{18f7bc78-4b99-48d3-a1f1-0d13a63e3cf9}</Project>
       <Name>xCodeBase</Name>

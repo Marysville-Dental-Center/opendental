@@ -69,11 +69,6 @@ namespace OpenDental{
 			listBoxRegistration.Items.Add("Zxing",Properties.Resources.Zxing);
 		}
 
-		///<summary>There is no registration key gate. Every key, including a blank or malformed one, is valid.</summary>
-		public static bool ValidateKey(string keystr){
-			return true;
-		}
-
 		private void textKey1_KeyUp(object sender,KeyEventArgs e) {
 			int cursorPosition=textKey1.SelectionStart;
 			textKey1.Text=textKey1.Text.ToUpper();

@@ -60,8 +60,6 @@ namespace OpenDental {
 			this.label10 = new System.Windows.Forms.Label();
 			this.pictureBox = new System.Windows.Forms.PictureBox();
 			this.butOutputFile = new OpenDental.UI.Button();
-			this.checkHideButtons = new OpenDental.UI.CheckBox();
-			this.labelCloudMessage = new System.Windows.Forms.Label();
 			this.butClinicLink = new OpenDental.UI.Button();
 			this.groupboxPLbuttons = new OpenDental.UI.GroupBox();
 			this.labelClinicStateWarning = new System.Windows.Forms.Label();
@@ -89,7 +87,6 @@ namespace OpenDental {
 			this.checkEnabled.Size = new System.Drawing.Size(98, 18);
 			this.checkEnabled.TabIndex = 41;
 			this.checkEnabled.Text = "Enabled";
-			this.checkEnabled.CheckedChanged += new System.EventHandler(this.checkEnabled_CheckedChanged);
 			// 
 			// butDelete
 			// 
@@ -318,28 +315,6 @@ namespace OpenDental {
 			this.butOutputFile.Text = "Output File";
 			this.butOutputFile.Click += new System.EventHandler(this.butOutputFile_Click);
 			// 
-			// checkHideButtons
-			// 
-			this.checkHideButtons.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
-			this.checkHideButtons.Location = new System.Drawing.Point(188, 80);
-			this.checkHideButtons.Name = "checkHideButtons";
-			this.checkHideButtons.Size = new System.Drawing.Size(163, 18);
-			this.checkHideButtons.TabIndex = 74;
-			this.checkHideButtons.Text = "Hide Unused Button";
-			this.checkHideButtons.CheckedChanged += new System.EventHandler(this.checkHideButtons_CheckedChanged);
-			// 
-			// labelCloudMessage
-			// 
-			this.labelCloudMessage.ForeColor = System.Drawing.Color.DarkRed;
-			this.labelCloudMessage.Location = new System.Drawing.Point(353, 60);
-			this.labelCloudMessage.Name = "labelCloudMessage";
-			this.labelCloudMessage.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
-			this.labelCloudMessage.Size = new System.Drawing.Size(166, 18);
-			this.labelCloudMessage.TabIndex = 75;
-			this.labelCloudMessage.Text = "Bridge disabled in Cloud mode";
-			this.labelCloudMessage.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			this.labelCloudMessage.Visible = false;
-			// 
 			// butClinicLink
 			// 
 			this.butClinicLink.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
@@ -406,8 +381,6 @@ namespace OpenDental {
 			this.ClientSize = new System.Drawing.Size(768, 567);
 			this.Controls.Add(this.label11);
 			this.Controls.Add(this.labelDisableForClinic);
-			this.Controls.Add(this.labelCloudMessage);
-			this.Controls.Add(this.checkHideButtons);
 			this.Controls.Add(this.butOutputFile);
 			this.Controls.Add(this.textOverride);
 			this.Controls.Add(this.labelOverride);
@@ -475,8 +448,6 @@ namespace OpenDental {
 		private Label label10;
 		private PictureBox pictureBox;
 		private UI.Button butOutputFile;
-		private OpenDental.UI.CheckBox checkHideButtons;
-		private Label labelCloudMessage;
 		private UI.Button butClinicLink;
 		private OpenDental.UI.GroupBox groupboxPLbuttons;
 		private Label labelClinicStateWarning;

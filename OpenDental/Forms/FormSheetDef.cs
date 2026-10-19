@@ -203,14 +203,6 @@ namespace OpenDental {
 			}
 		}
 
-		private void CheckHasMobileLayout_CheckedChanged(object sender,EventArgs e) {
-			if(!checkHasMobileLayout.Checked && SheetDefCur.SheetDefNum>0 && EClipboardSheetDefs.IsSheetDefInUse(SheetDefCur.SheetDefNum)) {
-				MsgBox.Show("This sheet is currently being used by eClipboard, which requires sheets to have a mobile layout. " +
-					"You must remove this form from eClipboard rules before you can remove the mobile layout for this sheet.");
-				checkHasMobileLayout.Checked=true;
-			}
-		}
-
 		private void ReloadDefaultValues() {
 			if(textDescription.Text==""){
 				textDescription.Text=listSheetType.GetSelected<SheetTypeEnum>().GetDescription();

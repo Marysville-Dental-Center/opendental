@@ -87,8 +87,6 @@ namespace OpenDentBusiness{
 			}
 //todo: mark deleted instead, just like sheets
 			Crud.EFormCrud.Delete(eFormNum);
-			//This triggers removal from eClipboard.
-			MobileNotifications.CI_RemoveEForm(patNum,eFormNum);
 		}
 
 		/// <summary>The eFormDef passed in must have ListEFormFieldDefs already filled. The resulting EForm will also have its fields already attached. Neither the form nor the fields get inserted into the db here.</summary>
@@ -294,75 +292,6 @@ namespace OpenDentBusiness{
 			}
 		}
 
-		/// <summary>Creates eForms for the patient to fill out. Starts by getting all EClipboardSheetDefs from the eClipboardSheetDef table. This includes sheets and eForms. We then filter out any eForms that are already created and need filling out. Next we will remove any that don't pass the MinAge, MaxAge settings and any that have already been completed and have a prefillStatus that is set to Once.</summary>
-		public static int CreateEFormForCheckIn(Appointment appointment) {
-			Meth.NoCheckMiddleTierRole();
-			if(!MobileAppDevices.IsClinicSignedUpForEClipboard(PrefC.HasClinicsEnabled?appointment.ClinicNum:0)) { //this clinic isn't signed up for this feature
-				return 0;
-			}
-			if(!ClinicPrefs.GetBool(PrefName.EClipboardCreateMissingFormsOnCheckIn,appointment.ClinicNum)) { //This feature is turned off
-				return 0;
-			}
-			bool useDefault=ClinicPrefs.GetBool(PrefName.EClipboardUseDefaults,appointment.ClinicNum);
-			List<EClipboardSheetDef> listEClipboardSheetDefEFormDefsToCreate=EClipboardSheetDefs.GetForClinic(useDefault ? 0 : appointment.ClinicNum);
-			//This list can hold sheets and eForms. Lets remove all forms that are not eForms since this method is only for creating eForms.
-			listEClipboardSheetDefEFormDefsToCreate.RemoveAll(x=>x.EFormDefNum==0);
-			if(listEClipboardSheetDefEFormDefsToCreate.Count==0) { //There aren't any eForms to create here
-				return 0;
-			}
-			//Get all eForms that the patient has already filled out.
-			List<EForm> listEFormsAlreadyCompleted=GetForPatient(appointment.PatNum);
-			Patient patient=Patients.GetPat(appointment.PatNum);
-			//Filter out any that don't pass the MinAge, MaxAge settings and any that have already been completed and have a prefillStatus that is set to Once. 
-			listEClipboardSheetDefEFormDefsToCreate.RemoveAll(x=>x.MinAge!=-1 && patient.Age<x.MinAge);
-			listEClipboardSheetDefEFormDefsToCreate.RemoveAll(x=>x.MaxAge!=-1 && patient.Age>x.MaxAge);
-			//Remove any eClipboard defs that are set to EnumEClipFreq.Once and have been filled out. 
-			listEClipboardSheetDefEFormDefsToCreate.RemoveAll(x=>x.Frequency==EnumEClipFreq.Once && listEFormsAlreadyCompleted.Any(y=>y.EFormDefNum==x.EFormDefNum));
-			listEClipboardSheetDefEFormDefsToCreate=listEClipboardSheetDefEFormDefsToCreate.OrderBy(x=>x.ItemOrder).ToList();
-			List<EForm> listEFormsNew=new List<EForm>();
-			for(int i=0;i<listEClipboardSheetDefEFormDefsToCreate.Count;i++) {
-				//First check if we've already completed this form against our resubmission interval rules
-				EForm eFormLastCompleted=listEFormsAlreadyCompleted
-					.Where(x=>x.EFormDefNum==listEClipboardSheetDefEFormDefsToCreate[i].EFormDefNum)
-					.OrderBy(x=>x.DateTimeShown)
-					.LastOrDefault()??new EForm();
-				//This is an edge case where the eForm was inserted in the database but not submitted yet. We don't want to create the eForm again if it's still on the checkin list.
-				if(eFormLastCompleted.Status==EnumEFormStatus.ShowInEClipboard) {
-					continue;
-				}
-				//If the eForm's frequency is set to EachTime, we need to skip this because it should create the eForm every time they checkin.
-				if(eFormLastCompleted.DateTimeShown>DateTime.MinValue && listEClipboardSheetDefEFormDefsToCreate[i].Frequency!=EnumEClipFreq.EachTime) {
-					if(listEClipboardSheetDefEFormDefsToCreate[i].ResubmitInterval.Days==0) {
-						continue;//If this interval is set to 0 and they've already completed this form once, we never want to creat it automatically again.
-					}
-					int elapsed=(DateTime_.Today-eFormLastCompleted.DateTimeShown.Date).Days;
-					if(elapsed<listEClipboardSheetDefEFormDefsToCreate[i].ResubmitInterval.Days) {
-						continue;//The interval hasn't elapsed yet so we don't want to create this eForm.
-					}
-				}
-				EFormDef eFormDef=EFormDefs.GetFirstOrDefault(x=>x.EFormDefNum==listEClipboardSheetDefEFormDefsToCreate[i].EFormDefNum);
-				if(eFormDef==null) {
-					continue;//Didn't find a matching eFormDef in the cache.
-				}
-				eFormDef.ListEFormFieldDefs=EFormFieldDefs.GetWhere(x=>x.EFormDefNum==eFormDef.EFormDefNum);
-				EForm eForm=CreateEFormFromEFormDef(eFormDef,appointment.PatNum,EnumEFormStatus.ShowInEClipboard);
-				if(listEClipboardSheetDefEFormDefsToCreate[i].PrefillStatus==PrefillStatuses.PreFill) {
-					EFormFiller.FillFields(eForm);
-				}
-				else {//If we are not prefilling the eForm, we still need to replace static text fields. 
-					Family family=Patients.GetFamily(eForm.PatNum);
-					List<EnumStaticTextField> listEnumStaticTextFields=EFormFiller.GetAllStaticTextFieldsForEForm(eForm);
-					StaticTextFieldDependency staticTextFieldDependency=StaticTextData.GetStaticTextDependencies(listEnumStaticTextFields);
-					List<StaticTextReplacement> listStaticTextReplacements=SheetFiller.GetStaticTextReplacements(listEnumStaticTextFields,patient,family,staticTextData:null,staticTextFieldDependency,aptNum:0);
-					EFormFiller.ReplaceStaticTextFields(listStaticTextReplacements,eForm,patient,family);
-				}
-				TranslateFields(eForm,patient.Language);
-				listEFormsNew.Add(eForm);
-			}
-			SaveNewEForms(listEFormsNew);
-			return listEFormsNew.Count;
-		}
-		
 		///<summary>Loops through all the fields and appends together all the ValueStrings. All the ValueStrings must have been filled first, and it excludes all SigBox types. The order is critical.</summary>
 		public static string GetSignatureKeyData(List<EFormField> listEFormFields) {
 			Meth.NoCheckMiddleTierRole();

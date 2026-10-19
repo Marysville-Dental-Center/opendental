@@ -129,14 +129,10 @@ namespace OpenDental {
 				PreFillSearchBoxes();
 			}
 			ContextMenu contextMenu=new ContextMenu(gridMain);
-			if(!PrefC.GetBool(PrefName.DockPhonePanelShow)) {
-				labelCountry.Visible=false;
-				textCountry.Visible=false;
-			}
-			if(!PrefC.GetBool(PrefName.DistributorKey)) {
-				labelRegKey.Visible=false;
-				textRegKey.Visible=false;
-			}
+			labelCountry.Visible=false;
+			textCountry.Visible=false;
+			labelRegKey.Visible=false;
+			textRegKey.Visible=false;
 			checkRefresh.IsEnabled=PrefC.GetBool(PrefName.EnterpriseAllowRefreshWhileTyping);
 			checkShowInactive.Checked=PrefC.GetBool(PrefName.PatientSelectShowInactive);
 			groupAddPatient.Visible=false;
@@ -208,11 +204,6 @@ namespace OpenDental {
 			butPrevious.IsEnabled=false;
 			FillSearchOption();
 			SetGridCols();
-			if(ODEnvironment.IsCloudInstance) {
-				//Keyboard does not currently work with THINFINITY users.
-				//Disable keyboard for Appstream, help button launches URL on VM and options button can get to VM control panel.
-				butOnScreenKeyboard.Visible=false;
-			}
 			checkShowMerged.Visibility=Visibility.Hidden;
 			if(ListPatNumsExplicit!=null && ListPatNumsExplicit.Count>0) {
 				_ignoreRefresh=true;

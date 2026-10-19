@@ -54,9 +54,6 @@ namespace OpenDental {
 				DialogResult=DialogResult.Cancel;
 				return;
 			}
-			if(ODEnvironment.IsCloudServer){
-				sigBoxWrapper.Enabled=false;
-			}
 			comboTerminal.Items.Clear();
 			List<PayTerminal> listPayTerminals = PayTerminals.Refresh(_clinicNum);
 			for(int i = 0;i<listPayTerminals.Count;i++) {
@@ -376,15 +373,6 @@ namespace OpenDental {
 					Size=new Size(LayoutManager.Scale(959),LayoutManager.Scale(516));
 				}
 			}
-			if(ODBuild.IsThinfinity()) {
-				//Unable to support PayConnect 2 on OD Cloud for the following reasons: OD Cloud uses Thinfinity, which does not allow for using WebView2 controls, meaning cloud would need to use the
-				//old WebBrowser control. This issue with this is we currently do not know of a way to retrieve the iFrame response from a WebBrowser control. Maybe when Payment Portal is finished
-				//we could try using a modified version of that to send the transaction data to the office's eConnector. We could also try making a "dummy" html page that contains the iFrame that is
-				//capable of storing the iFrame response and then parse the DOM afterthe user is finished.
-				MsgBox.Show(this,"Open Dental Cloud does not currently support PayConnect version 2.");
-				DialogResult=DialogResult.Cancel;
-				return;
-			}
 			string url = "";
 			Size=new Size(LayoutManager.Scale(959),LayoutManager.Scale(516));
 			try {
@@ -394,32 +382,21 @@ namespace OpenDental {
 				FriendlyException.Show("Error loading window.",ex);
 				return;
 			}
-			//Cloud requires using the old web browser control due to constraints from thinfinity.
-			if(ODBuild.IsThinfinity()) {
-				webViewMain.Visible=false;
-				webBrowserMain.Visible=true;
-				//webBrowserMain.Navigate();
-				//webBrowserMain.DocumentCompleted+= webBrowserMain_DocumentCompleted;
-				webBrowserMain.Navigate(url);
-				iframeOpen=true;
-			}
-			else {
-				webViewMain.Visible=true;
-				webBrowserMain.Visible=false;
-				if(!update) {
-					try {
-						await webViewMain.Init();
-						webViewMain.CoreWebView2.WebMessageReceived+=GetTransactionResult;
-						await webViewMain.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.addEventListener(\'message\', e => { window.chrome.webview.postMessage(e.data); })");
-					}
-					catch(Exception ex) {
-						FriendlyException.Show("Error initializing window.",ex);
-						return;
-					}
+			webViewMain.Visible=true;
+			webBrowserMain.Visible=false;
+			if(!update) {
+				try {
+					await webViewMain.Init();
+					webViewMain.CoreWebView2.WebMessageReceived+=GetTransactionResult;
+					await webViewMain.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.addEventListener(\'message\', e => { window.chrome.webview.postMessage(e.data); })");
 				}
-				webViewMain.CoreWebView2.Navigate(url);
-				iframeOpen=true;
+				catch(Exception ex) {
+					FriendlyException.Show("Error initializing window.",ex);
+					return;
+				}
 			}
+			webViewMain.CoreWebView2.Navigate(url);
+			iframeOpen=true;
 		}
 
 		///<summary>Originally from FormPayConnect2IFrame_Load().</summary>

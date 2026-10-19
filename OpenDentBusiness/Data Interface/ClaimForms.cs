@@ -202,20 +202,6 @@ namespace OpenDentBusiness{
 				+" WHERE ClaimFormNum="+POut.Long(claimFormNumOld);
 			return Db.NonQ(command);
 		}
-		
-		///<summary>Sets the Default Claim Form to the Default description passed in.</summary>
-		public static void SetDefaultClaimForm(string claimFormDescriptFrom,string claimFormDescriptTo) {
-			Meth.NoCheckMiddleTierRole();
-			ClaimForm claimFormFrom=GetDeepCopy().Find(x => x.Description.ToLower()==claimFormDescriptFrom.ToLower());
-			ClaimForm claimFormTo=GetDeepCopy().Find(x => x.Description.ToLower()==claimFormDescriptTo.ToLower());
-			long defaultClaimFormNum=PrefC.GetLong(PrefName.DefaultClaimForm);
-			if(claimFormFrom!=null && claimFormTo!=null) {
-				Reassign(claimFormFrom.ClaimFormNum,claimFormTo.ClaimFormNum);
-				if(defaultClaimFormNum==claimFormFrom.ClaimFormNum) {
-					Prefs.UpdateLong(PrefName.DefaultClaimForm,claimFormTo.ClaimFormNum);
-				}
-			}
-		}
 	}
 
 	

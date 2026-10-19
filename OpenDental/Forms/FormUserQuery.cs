@@ -15,7 +15,6 @@ using System.Web;
 using System.Windows.Forms;
 using System.Threading;
 using OpenDentBusiness;
-using OpenDental.Thinfinity;
 using CodeBase;
 using DataConnectionBase;
 using System.Threading.Tasks;
@@ -189,10 +188,6 @@ namespace OpenDental {
 		private void butPaste_Click(object sender,System.EventArgs e) {
 			IDataObject iDataObject;
 			try {
-				if(ODEnvironment.IsCloudServer) {
-					textQuery.Text=ODClipboard.GetText();
-					return;
-				}
 				iDataObject=Clipboard.GetDataObject();
 			}
 			catch(Exception ex) {
@@ -325,63 +320,46 @@ namespace OpenDental {
 				return;
 			}
 			string filePath;
-			if(!ODBuild.IsThinfinity() && ODCloudClient.IsAppStream) {
-				filePath=ODFileUtils.CombinePaths(Path.GetTempPath(),"ODUserQueryExport.xls");
+			saveFileDialog2=new SaveFileDialog();
+			saveFileDialog2.AddExtension=true;
+			saveFileDialog2.FilterIndex=0;
+			if(delimiter=="\t") {
+				saveFileDialog2.Filter="Text files(*.txt)|*.txt|All files(*.*)|*.*";
 			}
 			else {
-				saveFileDialog2=new SaveFileDialog();
-				saveFileDialog2.AddExtension=true;
-				saveFileDialog2.FilterIndex=0;
-				if(delimiter=="\t") {
-					saveFileDialog2.Filter="Text files(*.txt)|*.txt|All files(*.*)|*.*";
+				saveFileDialog2.Filter="CSV files(*.csv)|*.csv|All files(*.*)|*.*";
+			}
+			if(_userQuery==null || _userQuery.FileName==null || _userQuery.FileName==""){//.FileName==null)
+				if(textTitle.Text.IsNullOrEmpty()) {
+					saveFileDialog2.FileName="UserQuery";//Filename suggestion instead of being empty
 				}
 				else {
-					saveFileDialog2.Filter="CSV files(*.csv)|*.csv|All files(*.*)|*.*";
-				}
-				if(_userQuery==null || _userQuery.FileName==null || _userQuery.FileName==""){//.FileName==null)
-					if(textTitle.Text.IsNullOrEmpty()) {
-						saveFileDialog2.FileName="UserQuery";//Filename suggestion instead of being empty
-					}
-					else {
-						saveFileDialog2.FileName=textTitle.Text;
-					}
-				}
-				else{
-					saveFileDialog2.FileName=_userQuery.FileName;
-				}
-				if(ODEnvironment.IsCloudServer) {
-					if(saveFileDialog2.ShowDialog()!=DialogResult.OK) { 
-						return;
-					}
-					if(saveFileDialog2.FileName.IsNullOrEmpty()) {
-						MsgBox.Show("Failed to save the file.");
-						return;
-					}
-					filePath=ODFileUtils.CombinePaths(Path.GetTempPath(),saveFileDialog2.FileName.Split('\\').Last());
-				}
-				else {
-					Cursor=Cursors.WaitCursor;//Checking the directory can take time, so set cursor to loading wheel
-					if(!Directory.Exists(PrefC.GetString(PrefName.ExportPath))) {
-						try {
-							Directory.CreateDirectory(PrefC.GetString(PrefName.ExportPath));
-							saveFileDialog2.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
-						}
-						catch {
-							//initialDirectory will be blank
-						}
-					}
-					else {
-						saveFileDialog2.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
-					}
-					Cursor=Cursors.Default;
-					if(saveFileDialog2.ShowDialog()!=DialogResult.OK) {
-						saveFileDialog2.Dispose();
-						return;
-					}
-					filePath=saveFileDialog2.FileName;
-					saveFileDialog2.Dispose();
+					saveFileDialog2.FileName=textTitle.Text;
 				}
 			}
+			else{
+				saveFileDialog2.FileName=_userQuery.FileName;
+			}
+			Cursor=Cursors.WaitCursor;//Checking the directory can take time, so set cursor to loading wheel
+			if(!Directory.Exists(PrefC.GetString(PrefName.ExportPath))) {
+				try {
+					Directory.CreateDirectory(PrefC.GetString(PrefName.ExportPath));
+					saveFileDialog2.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
+				}
+				catch {
+					//initialDirectory will be blank
+				}
+			}
+			else {
+				saveFileDialog2.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
+			}
+			Cursor=Cursors.Default;
+			if(saveFileDialog2.ShowDialog()!=DialogResult.OK) {
+				saveFileDialog2.Dispose();
+				return;
+			}
+			filePath=saveFileDialog2.FileName;
+			saveFileDialog2.Dispose();
 			StreamWriter streamWriter=null;
 			try {
 				streamWriter=new StreamWriter(filePath,false);
@@ -438,15 +416,7 @@ namespace OpenDental {
 			}
 			streamWriter.Close();
 			streamWriter.Dispose();
-			if(ODBuild.IsThinfinity()) {
-				ThinfinityUtils.ExportForDownload(filePath);
-			}
-			else if(ODCloudClient.IsAppStream) {
-				CloudClientL.ExportForCloud(filePath);
-			}
-			else {
-				MessageBox.Show(Lan.g(this,"File created successfully"));
-			}
+			MessageBox.Show(Lan.g(this,"File created successfully"));
 		}
 
 		///<summary>Formats the current report to be human-readable. Does NOT run the whole query again.</summary>

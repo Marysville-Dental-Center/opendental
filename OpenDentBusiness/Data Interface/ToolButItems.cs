@@ -110,10 +110,10 @@ namespace OpenDentBusiness{
 			return GetWhere(x => x.ProgramNum==programNum);
 		}
 
-		///<summary>Returns a list of toolbutitems for the specified toolbar. Used when laying out toolbars.</summary>
+		///<summary>Returns a list of toolbutitems for the specified toolbar. Used when laying out toolbars. Only includes buttons for enabled program links.</summary>
 		public static List<ToolButItem> GetForToolBar(EnumToolBar toolBarsAvail) {
 			Meth.NoCheckMiddleTierRole();
-			return GetWhere(x => x.ToolBar==toolBarsAvail && (Programs.IsEnabled(x.ProgramNum) || ProgramProperties.IsAdvertisingBridge(x.ProgramNum)));
+			return GetWhere(x => x.ToolBar==toolBarsAvail && Programs.IsEnabled(x.ProgramNum));
 		}
 	}
 

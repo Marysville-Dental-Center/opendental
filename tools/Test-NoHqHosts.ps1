@@ -49,32 +49,18 @@ $HostPattern='(?i)(?<![a-z0-9-])(?:[a-z0-9-]+\.)*(?:opendental\.com|open-dent\.c
 #Deliberate remaining references. Path is a wildcard matched against the repository relative path (backslashes). Match, when present, is a
 #regular expression that the line must also match. Keep entries narrow and say why each one is allowed.
 $AllowList=@(
-	#--- Help and manual links. Another piece of the decoupling work centralizes these into one configurable help base URL.
-	@{ Path='*'; Match='(?i)opendental\.com/manual\d*/'; Reason='Online manual link (help links are being centralized separately).' }
-	@{ Path='*'; Match='(?i)opendental\.com/resources/UnitTestsDocumentation\.xml'; Reason='Online documentation link (help links are being centralized separately).' }
-	@{ Path='OpenDental\Main Modules\FormOpenDental.cs'; Match='(?i)opendental\.com/site/(documentation|searchsite)\.html'; Reason='Help menu: online documentation and search (help links are being centralized separately).' }
-	@{ Path='WpfControlsOD\Frms\FrmDatabaseIntegrity.xaml*'; Match='(?i)opendental\.com/site/(plugins|integrity)\.html'; Reason='Help link about plugins and database integrity (help links are being centralized separately).' }
-	@{ Path='WpfControlsOD\Frms\FrmHelpBrowser.xaml.cs'; Reason='Built-in help browser (help links are being centralized separately).' }
-	@{ Path='OpenDentBusiness\Data Interface\DatabaseMaintenances.cs'; Match='(?i)opendental\.com/manual'; Reason='Manual link inside a message (help links are being centralized separately).' }
-
-	#--- Partner redirect pages. These only open the user's browser on a vendor page; nothing is sent. To be made configurable with the help links.
-	@{ Path='*'; Match='(?i)opendental\.com/resources/redirects/'; Reason='Partner redirect page opened in the browser (to be made configurable).' }
-	@{ Path='OpenDental\Main Modules\ControlAppt.cs'; Match='(?i)opendental\.com/contact\.html'; Reason='Error text of the DentalTek partner redirect above.' }
+	#--- Manual link in the Practice by Numbers bridge. Open Dental's online help was removed; the vendor-neutrality work removed the
+	#    DentalIntel bridge and kept this line, which opens the portal page for an office that has enabled the program link.
+	@{ Path='WpfControlsOD\Bridges\PracticeByNumbers.cs'; Match='(?i)opendental\.com/manual/'; Reason='Practice by Numbers portal page on the Open Dental manual site (still to be pointed at the vendor).' }
 
 	#--- Not network access.
 	@{ Path='OpenDentalServer\ServiceMain.asmx.cs'; Match='WebService\(Namespace='; Reason='XML namespace identifier of the middle tier web service. Never contacted.' }
 	@{ Path='OpenDental\Main Modules\ControlChart.cs'; Match='UpdateServerAddress\)\.ToLower\(\)\.Contains\('; Reason='String comparison on an old preference value. Nothing is contacted.' }
 	@{ Path='OpenDentBusiness\WebServiceTests.cs'; Match='@opendental\.com'; Reason='Sample e-mail address used only by unit tests.' }
 
-	#--- Unreachable UI and code that later phases delete.
-	@{ Path='OpenDental\InternalTools\*'; Reason='Open Dental HQ staff tools. Unreachable because PrefC.IsODHQ is always false; deleted in a later phase.' }
-	@{ Path='OpenDentBusiness\InternalTools\*'; Reason='Open Dental HQ staff tools. Unreachable because PrefC.IsODHQ is always false; deleted in a later phase.' }
-	@{ Path='OpenDental\Forms\FormEServices*'; Reason='eServices setup windows. The eServices menu is gone and they close with "not available"; deleted in a later phase.' }
-	@{ Path='OpenDental\Forms\FormWebFormSetup*'; Reason='Hosted Web Forms setup (example text). Its menu items are gone; deleted in a later phase.' }
-	@{ Path='OpenDentBusiness\Data Interface\EmailHostingTemplates.cs'; Reason='Default template of the hosted mass e-mail eService, which is not available; deleted in a later phase.' }
+	#--- Developer-only windows.
 	@{ Path='WpfControlsOD\Frms\FrmTestAllControls.xaml*'; Reason='Developer UI test window, only opened from the UnitTests project.' }
 	@{ Path='WpfControlsOD\Frms\FrmTestSplitters.xaml*'; Reason='Developer UI test window, only opened from the UnitTests project.' }
-	@{ Path='WpfControlsOD\Logic\CloudClientL.cs'; Reason='Open Dental Cloud (AppStream) client installer. The cloud hosting paths are removed by another piece of the decoupling work.' }
 
 	#--- Vendor integrations whose Open Dental hosted part is replaced in the direct vendor integrations wave.
 	@{ Path='OpenDentBusiness\Properties\Resources.resx'; Reason='GoogleAuthCodeResponseHtml, the page shown in the browser after Google sign-in. It loads Open Dental styling; replaced with the direct Google integration.' }

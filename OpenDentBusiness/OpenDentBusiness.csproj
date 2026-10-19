@@ -235,10 +235,6 @@
     <Reference Include="Tamir.SharpSSH">
       <HintPath>..\Required dlls\Tamir.SharpSSH.dll</HintPath>
     </Reference>
-    <Reference Include="VirtualWeb, Version=22.1.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\VirtualWeb.dll</HintPath>
-    </Reference>
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
@@ -408,13 +404,9 @@
     <Compile Include="Data Interface\Addresses.cs" />
     <Compile Include="Data Interface\AlertCategories.cs" />
     <Compile Include="Data Interface\AlertCategoryLinks.cs" />
-    <Compile Include="Data Interface\APIKeys.cs" />
     <Compile Include="Data Interface\ApiSubscriptions.cs" />
-    <Compile Include="Data Interface\ApptGeneralMessageSents.cs" />
-    <Compile Include="Data Interface\AutoCommExcludeDates.cs" />
     <Compile Include="Data Interface\CareCreditWebResponses.cs" />
     <Compile Include="Data Interface\AdvertisingPostcards.cs" />
-    <Compile Include="Data Interface\AutoCommActives.cs" />
     <Compile Include="Data Interface\ChildParentLinks.cs" />
     <Compile Include="Data Interface\ChildParents.cs" />
     <Compile Include="Data Interface\ChildRoomLogs.cs" />
@@ -427,28 +419,16 @@
     <Compile Include="Data Interface\EFormImportRules.cs" />
     <Compile Include="Data Interface\EForms.cs" />
     <Compile Include="Data Interface\LanguagePats.cs" />
-    <Compile Include="Data Interface\MobileBrandingProfiles.cs" />
-    <Compile Include="Data Interface\CloudAddresses.cs" />
     <Compile Include="Data Interface\CommlogHists.cs" />
-    <Compile Include="Data Interface\EClipboardImageCaptureDefs.cs" />
-    <Compile Include="Data Interface\EClipboardImageCaptures.cs" />
     <Compile Include="Data Interface\Etrans835s.cs" />
     <Compile Include="Data Interface\ImageDraws.cs" />
     <Compile Include="Data Interface\InsPlanPreferences.cs" />
-    <Compile Include="Data Interface\JobTeams.cs" />
-    <Compile Include="Data Interface\JobTeamUsers.cs" />
     <Compile Include="Data Interface\LimitedBetaFeatures.cs" />
-    <Compile Include="Data Interface\MobileNotifications.cs" />
     <Compile Include="Data Interface\OrthoChartRows.cs" />
     <Compile Include="Data Interface\OrthoChartLogs.cs" />
     <Compile Include="Data Interface\OrthoHardwares.cs" />
     <Compile Include="Data Interface\OrthoHardwareSpecs.cs" />
     <Compile Include="Data Interface\OrthoRxs.cs" />
-    <Compile Include="Data Interface\ERoutingActionDefs.cs" />
-    <Compile Include="Data Interface\ERoutingActions.cs" />
-    <Compile Include="Data Interface\ERoutingDefLinks.cs" />
-    <Compile Include="Data Interface\ERoutingDefs.cs" />
-    <Compile Include="Data Interface\ERoutings.cs" />
     <Compile Include="Data Interface\PatFieldPickItems.cs" />
     <Compile Include="Data Interface\PayPlanTemplates.cs" />
     <Compile Include="Data Interface\PayTerminals.cs" />
@@ -457,15 +437,12 @@
     <Compile Include="Data Interface\HieClinics.cs" />
     <Compile Include="Data Interface\HieQueues.cs" />
     <Compile Include="Data Interface\TaskAttachments.cs" />
-    <Compile Include="Data Interface\MsgToPaySents.cs" />
     <Compile Include="Data Interface\TransactionInvoices.cs" />
     <Compile Include="Data Interface\TreatPlanParams.cs" />
     <Compile Include="Data Interface\Utms.cs" />
-    <Compile Include="Data Interface\WebSchedCarrierRules.cs" />
     <Compile Include="Db Multi Table\OrthoCaseProcedureLinker.cs" />
     <Compile Include="Db Multi Table\PatientData.cs" />
     <Compile Include="Db Multi Table\PatientDataGenerated.cs" />
-    <Compile Include="Db Multi Table\PrintRemoteRequest.cs" />
     <Compile Include="Eclaims\Lantek.cs" />
     <Compile Include="Eclaims\VyneDental.cs" />
     <Compile Include="EForms\EFormFieldsAvailable.cs" />
@@ -473,128 +450,19 @@
     <Compile Include="EForms\EFormImport.cs" />
     <Compile Include="EForms\EFormInternal.cs" />
     <Compile Include="Email\BasicEmailAttachment.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\CreateSignedS3LinksRequest.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\CreateSignedS3LinksResponse.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\EmailResourceBase.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\GetChainEmailsTotalEmailsRequest.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\GetChainEmailsTotalEmailsResponse.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\SendReplyWebClientRequest.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\SendReplyWebClientResponse.cs" />
-    <Compile Include="Email\EmailHosting\Provider\Models\GetHealthRequest.cs" />
-    <Compile Include="Email\EmailHosting\Provider\Models\GetHealthResponse.cs" />
-    <Compile Include="Email\EmailHosting\Provider\Models\ResetAccountPasswordRequest.cs" />
-    <Compile Include="Email\EmailHosting\Provider\Models\ResetAccountPasswordResponse.cs" />
     <Compile Include="Imaging\MountHelper.cs" />
-    <Compile Include="Email\EmailHosting\Provider\Models\ValidateAccountRequest.cs" />
-    <Compile Include="Email\EmailHosting\Provider\Models\ValidateAccountResponse.cs" />
-    <Compile Include="InternalTools\Cloud\CloudBillings.cs" />
     <Compile Include="Data Interface\DiscountPlanSubs.cs" />
     <Compile Include="Data Interface\CertEmployees.cs" />
     <Compile Include="Data Interface\Certs.cs" />
-    <Compile Include="Data Interface\EmailHostingTemplates.cs" />
-    <Compile Include="Data Interface\EmailSecureAttaches.cs" />
-    <Compile Include="Data Interface\EmailSecures.cs" />
-    <Compile Include="Data Interface\EServiceLogs.cs" />
-    <Compile Include="Data Interface\EServiceShortGuids.cs" />
     <Compile Include="Data Interface\InsBlueBookLogs.cs" />
     <Compile Include="Data Interface\InsBlueBookRules.cs" />
     <Compile Include="Data Interface\InsBlueBooks.cs" />
-    <Compile Include="Data Interface\PromotionLogs.cs" />
-    <Compile Include="Data Interface\Promotions.cs" />
     <Compile Include="Data Interface\ImagingDevices.cs" />
-    <Compile Include="Data Interface\SessionTokens.cs" />
     <Compile Include="Data Interface\StatementProds.cs" />
     <Compile Include="Db Multi Table\InsPlanSubstitution.cs" />
-    <Compile Include="Email\EmailHosting\Account\AccountApi.cs" />
-    <Compile Include="Email\EmailHosting\Account\AccountApiMock.cs" />
-    <Compile Include="Email\EmailHosting\Account\IAccountApi.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\AppendAttachmentDataRequest.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\AppendAttachmentDataResponse.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\AttachmentResource.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\CreateAccessCodeRequest.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\CreateAccessCodeResponse.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\CreateDomainIdentityRequest.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\CreateDomainIdentityResponse.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\CreateEmailAddressIdentityRequest.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\CreateEmailAddressIdentityResponse.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\CreateTemplateRequest.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\CreateTemplateResponse.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\DeleteIdentityRequest.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\DeleteIdentityResponse.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\DeleteTemplateRequest.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\DeleteTemplateResponse.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\DownloadAttachmentRequest.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\DownloadAttachmentResponse.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\EmailAddressResource.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\EmailResource.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\ExternalTag.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\FinishUploadRequest.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\FinishUploadResponse.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\GetAllTemplatesByAccountRequest.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\GetAllTemplatesByAccountResponse.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\GetAllTemplatesByGuarantorRequest.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\GetAllTemplatesByGuarantorResponse.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\GetChainEmailsRequest.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\GetChainEmailsResponse.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\GetDomainDKIMTokensRequest.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\GetDomainDKIMTokensResponse.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\GetEmailRequest.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\GetEmailResponse.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\GetIdentitiesRequest.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\GetIdentitiesResponse.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\GetIdentityRequest.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\GetIdentityResponse.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\GetTemplateRequest.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\GetTemplateResponse.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\IdentityResource.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\IdentityVerificationStatus.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\S3ObjectPurpose.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\S3ObjectType.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\SendMassEmailRequest.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\SendMassEmailResponse.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\SendNewEmailRequest.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\SendNewEmailResponse.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\SendReplyRequest.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\SendReplyResponse.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\StartUploadRequest.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\StartUploadResponse.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\Template.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\TemplateDestination.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\UpdateSignatureRequest.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\UpdateSignatureResponse.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\UpdateTemplateRequest.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\UpdateTemplateResponse.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\UploadS3ObjectRequest.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\UploadS3ObjectResponse.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\ValidateAccessCodeRequest.cs" />
-    <Compile Include="Email\EmailHosting\Account\Models\ValidateAccessCodeResponse.cs" />
-    <Compile Include="Email\EmailHosting\Models\AccountTransmissionType.cs" />
-    <Compile Include="Email\EmailHosting\Provider\IProviderApi.cs" />
-    <Compile Include="Email\EmailHosting\Provider\Models\AccountResource.cs" />
-    <Compile Include="Email\EmailHosting\Provider\Models\AccountUsage.cs" />
-    <Compile Include="Email\EmailHosting\Provider\Models\CreateAccountGuarantorRequest.cs" />
-    <Compile Include="Email\EmailHosting\Provider\Models\CreateAccountGuarantorResponse.cs" />
-    <Compile Include="Email\EmailHosting\Provider\Models\CreateAccountRequest.cs" />
-    <Compile Include="Email\EmailHosting\Provider\Models\CreateAccountResponse.cs" />
-    <Compile Include="Email\EmailHosting\Provider\Models\GetAccountGuarantorRequest.cs" />
-    <Compile Include="Email\EmailHosting\Provider\Models\GetAccountGuarantorResponse.cs" />
-    <Compile Include="Email\EmailHosting\Provider\Models\GetAccountRequest.cs" />
-    <Compile Include="Email\EmailHosting\Provider\Models\GetAccountResponse.cs" />
-    <Compile Include="Email\EmailHosting\Provider\Models\GetGuarantorUsageRequest.cs" />
-    <Compile Include="Email\EmailHosting\Provider\Models\GetGuarantorUsageResponse.cs" />
-    <Compile Include="Email\EmailHosting\Provider\Models\UpdateAccountGuarantorStatusRequest.cs" />
-    <Compile Include="Email\EmailHosting\Provider\Models\UpdateAccountGuarantorStatusResponse.cs" />
-    <Compile Include="Email\EmailHosting\Provider\Models\UpdateAccountStatusRequest.cs" />
-    <Compile Include="Email\EmailHosting\Provider\Models\UpdateAccountStatusResponse.cs" />
-    <Compile Include="Email\EmailHosting\Provider\ProviderApi.cs" />
-    <Compile Include="Email\EmailHosting\Provider\ProviderApiDebugWSHQ.cs" />
     <Compile Include="Imaging\BitmapDicom.cs" />
     <Compile Include="InternalTools\Cloud\Crud\CloudBillingCrud.cs" />
     <Compile Include="InternalTools\Cloud\TableTypes\CloudBilling.cs" />
-    <Compile Include="InternalTools\EServices\APIBillings.cs" />
-    <Compile Include="Data Interface\ApptNewPatThankYouSents.cs" />
-    <Compile Include="Data Interface\ApptThankYouSents.cs" />
-    <Compile Include="Data Interface\AsapComms.cs" />
     <Compile Include="Data Interface\BugSubmissions.cs" />
     <Compile Include="Data Interface\ClaimTrackings.cs" />
     <Compile Include="Data Interface\ClinicErxs.cs" />
@@ -603,23 +471,17 @@
     <Compile Include="Data Interface\DbmLogs.cs" />
     <Compile Include="Data Interface\DefLinks.cs" />
     <Compile Include="Data Interface\DiscountPlans.cs" />
-    <Compile Include="Data Interface\EClipboardSheetDefs.cs" />
     <Compile Include="Data Interface\EntryLogs.cs" />
     <Compile Include="Data Interface\Etrans835Attaches.cs" />
     <Compile Include="Data Interface\InsEditPatLogs.cs" />
-    <Compile Include="Data Interface\MobileDataBytes.cs" />
     <Compile Include="Data Interface\FeeSchedGroups.cs" />
     <Compile Include="Eclaims\EdsMedical.cs" />
     <Compile Include="InternalTools\EServices\Crud\APIBillingCrud.cs" />
     <Compile Include="InternalTools\EServices\TableTypes\APIBilling.cs" />
     <Compile Include="InternalTools\Job Manager\Crud\MobileBugVersionCrud.cs" />
-    <Compile Include="InternalTools\Job Manager\HelperClasses\JobManagerCore.cs" />
     <Compile Include="InternalTools\Job Manager\Crud\MobileBugCrud.cs" />
     <Compile Include="InternalTools\Job Manager\Crud\MobileReleaseBuildCrud.cs" />
     <Compile Include="InternalTools\Job Manager\Crud\MobileReleaseCrud.cs" />
-    <Compile Include="InternalTools\Job Manager\HelperClasses\TeamReportJob.cs" />
-    <Compile Include="InternalTools\Job Manager\HelperClasses\TeamReportUser.cs" />
-    <Compile Include="InternalTools\Job Manager\JobActiveLinks.cs" />
     <Compile Include="Data Interface\LoginAttempts.cs" />
     <Compile Include="Data Interface\OrthoCases.cs" />
     <Compile Include="Data Interface\OrthoPlanLinks.cs" />
@@ -629,18 +491,12 @@
     <Compile Include="Data Interface\ScheduledProcesses.cs" />
     <Compile Include="Db Multi Table\PayPlanProductionEntry.cs" />
     <Compile Include="Db Multi Table\ProcFeeHelper.cs" />
-    <Compile Include="InternalTools\Faq\Faqs.cs" />
-    <Compile Include="Data Interface\MobileAppDevices.cs" />
     <Compile Include="Data Interface\PayConnectResponseWebs.cs" />
     <Compile Include="Data Interface\PharmClinics.cs" />
     <Compile Include="Data Interface\ProcMultiVisits.cs" />
     <Compile Include="Data Interface\ProviderClinicLinks.cs" />
     <Compile Include="Data Interface\Reactivations.cs" />
-    <Compile Include="InternalTools\OpenAi\Models\OAIFaqResponseFunctionArgs.cs" />
-    <Compile Include="InternalTools\OpenAi\Models\OAIToolOutput.cs" />
-    <Compile Include="InternalTools\Job Manager\Git.cs" />
     <Compile Include="InternalTools\WebChat\TableTypes\WebChatAiAssistant.cs" />
-    <Compile Include="InternalTools\WebChat\WebChatAiAssistants.cs" />
     <Compile Include="SheetFramework\EnumStaticTextField.cs" />
     <Compile Include="Db Multi Table\ApptSearch.cs" />
     <Compile Include="Email\BasicEmailAddress.cs" />
@@ -649,25 +505,14 @@
     <Compile Include="Email\EmailResult.cs" />
     <Compile Include="Email\SendEmails.cs" />
     <Compile Include="Email\SerializeEmail.cs" />
-    <Compile Include="InternalTools\Job Manager\BugSubmissionHashes.cs" />
-    <Compile Include="InternalTools\Job Manager\JobHelper.cs" />
-    <Compile Include="InternalTools\Job Manager\JobNotifications.cs" />
     <Compile Include="Data Interface\ProviderClinics.cs" />
     <Compile Include="Data Interface\RecurringCharges.cs" />
-    <Compile Include="Data Interface\TaskTakens.cs" />
     <Compile Include="Db Multi Table\AgingData.cs" />
     <Compile Include="Db Multi Table\MarkupEdit.cs" />
     <Compile Include="Db Multi Table\PayPlanEdit.cs" />
-    <Compile Include="InternalTools\Job Manager\Backports.cs" />
-    <Compile Include="InternalTools\Job Manager\JobSprintLinks.cs" />
-    <Compile Include="InternalTools\Job Manager\JobSprints.cs" />
-    <Compile Include="InternalTools\Job Manager\MobileBugs.cs" />
-    <Compile Include="InternalTools\Job Manager\MobileBugVersions.cs" />
     <Compile Include="InternalTools\Job Manager\TableTypes\JobTeamUser.cs" />
     <Compile Include="InternalTools\Job Manager\TableTypes\MobileBug.cs" />
     <Compile Include="InternalTools\Job Manager\TableTypes\MobileBugVersion.cs" />
-    <Compile Include="InternalTools\Job Manager\MobileReleaseBuilds.cs" />
-    <Compile Include="InternalTools\Job Manager\MobileReleases.cs" />
     <Compile Include="InternalTools\Job Manager\TableTypes\BugSubmissionHash.cs" />
     <Compile Include="InternalTools\Job Manager\TableTypes\JobActiveLink.cs" />
     <Compile Include="InternalTools\Job Manager\TableTypes\JobSprint.cs" />
@@ -676,50 +521,27 @@
     <Compile Include="InternalTools\Job Manager\TableTypes\MobileRelease.cs" />
     <Compile Include="InternalTools\Job Manager\TableTypes\MobileReleaseBuild.cs" />
     <Compile Include="InternalTools\Job Manager\TableTypes\JobTeam.cs" />
-    <Compile Include="InternalTools\OpenAi\Models\OAIAssistant.cs" />
-    <Compile Include="InternalTools\OpenAi\Models\OAIFunction.cs" />
-    <Compile Include="InternalTools\OpenAi\Models\OAIManualUrlFunctionArgs.cs" />
-    <Compile Include="InternalTools\OpenAi\Models\OAIMetadata.cs" />
-    <Compile Include="InternalTools\OpenAi\Models\OAIAssistantsListResponse.cs" />
-    <Compile Include="InternalTools\OpenAi\Models\OAIContent.cs" />
-    <Compile Include="InternalTools\OpenAi\Models\OAIMessage.cs" />
-    <Compile Include="InternalTools\OpenAi\Models\OAIRun.cs" />
-    <Compile Include="InternalTools\OpenAi\Models\OAISubmitToolOutput.cs" />
-    <Compile Include="InternalTools\OpenAi\Models\OAIToolCall.cs" />
-    <Compile Include="InternalTools\OpenAi\OpenAiChatSession.cs" />
-    <Compile Include="InternalTools\OpenAi\OpenAiClient.cs" />
-    <Compile Include="InternalTools\OpenAi\Models\OAITextContent.cs" />
-    <Compile Include="InternalTools\OpenAi\Models\OAIThread.cs" />
-    <Compile Include="InternalTools\OpenAi\Models\OAIRequiredAction.cs" />
-    <Compile Include="InternalTools\OpenAi\Models\OAIUsage.cs" />
-    <Compile Include="InternalTools\Phones\MapAreaContainers.cs" />
     <Compile Include="InternalTools\Phones\TableTypes\MapAreaContainer.cs" />
     <Compile Include="InternalTools\Phones\TableTypes\VoiceMailPath.cs" />
-    <Compile Include="InternalTools\RemoteSupport\PeerInfos.cs" />
     <Compile Include="InternalTools\RemoteSupport\TableTypes\PeerInfo.cs" />
     <Compile Include="InternalTools\WebChat\TableTypes\WebChatNote.cs" />
     <Compile Include="InternalTools\WebChat\TableTypes\WebChatSurvey.cs" />
-    <Compile Include="InternalTools\WebChat\WebChatNotes.cs" />
-    <Compile Include="InternalTools\WebChat\WebChatSurveys.cs" />
     <Compile Include="Logic\BillingL.cs" />
     <Compile Include="Logic\CodeMapping.cs" />
     <Compile Include="Logic\USlocales.cs" />
     <Compile Include="Misc\ConvertDatabases.cs" />
     <Compile Include="Misc\Authentication.cs" />
     <Compile Include="Misc\ConvertDatabases6.cs" />
-    <Compile Include="InternalTools\WebChat\WebChatMessages.cs" />
-    <Compile Include="InternalTools\WebChat\WebChatPrefs.cs" />
-    <Compile Include="InternalTools\WebChat\WebChatSessions.cs" />
     <Compile Include="InternalTools\WebChat\TableTypes\WebChatMessage.cs" />
     <Compile Include="InternalTools\WebChat\TableTypes\WebChatPref.cs" />
     <Compile Include="InternalTools\WebChat\TableTypes\WebChatSession.cs" />
-    <Compile Include="InternalTools\WebChat\WebChatMisc.cs" />
     <Compile Include="Misc\ConvertDatabases7.cs" />
     <Compile Include="Misc\ConvertDatabases8.cs" />
     <Compile Include="Misc\Currency.cs" />
     <Compile Include="Misc\FamilyBalancer.cs" />
     <Compile Include="Misc\FHIRUtils.cs" />
     <Compile Include="Misc\Introspection.cs" />
+    <Compile Include="Misc\MessageTagReplacer.cs" />
     <Compile Include="Misc\ReplaceTags.cs" />
     <Compile Include="Misc\Result.cs" />
     <Compile Include="Misc\SecurityHash.cs" />
@@ -877,14 +699,7 @@
     <Compile Include="WebBridges\OcrInsScan\OcrInsScanResponse.cs" />
     <Compile Include="WebBridges\PayConnect2.cs" />
     <Compile Include="WebServices\PatientviewerServer.cs" />
-    <Compile Include="WebTypes\AutoComm\AutoCommObj\AutoCommRule.cs" />
-    <Compile Include="WebTypes\AutoComm\AutoCommObj\MsgToPayLite.cs" />
     <Compile Include="WebTypes\AutoComm\IAutoCommSent.cs" />
-    <Compile Include="WebTypes\AutoComm\AutoCommSents.cs" />
-    <Compile Include="WebTypes\AutoComm\AutoCommUtil\AutoCommWebSerializerUtil.cs" />
-    <Compile Include="WebTypes\AutoComm\TagReplacementPhiSafe\ConfirmationTagReplacer.cs" />
-    <Compile Include="WebTypes\AutoComm\TagReplacementPhiSafe\NewPatientThankYouTagReplacer.cs" />
-    <Compile Include="WebTypes\AutoComm\TagReplacementPhiSafe\MsgToPayTagReplacer.cs" />
     <Compile Include="WebTypes\Shared\PatientInfo.cs" />
     <Compile Include="WebBridges\PDMP\BambooScript.cs" />
     <Compile Include="WebBridges\PDMP\PDMPBamboo.cs" />
@@ -906,13 +721,11 @@
     <Compile Include="UI\SigBox.cs" />
     <Compile Include="Db Multi Table\AccountEntry.cs" />
     <Compile Include="Db Multi Table\SplitCollection.cs" />
-    <Compile Include="InternalTools\Phones\PhoneComps.cs" />
     <Compile Include="Db Multi Table\ApptEdit.cs" />
     <Compile Include="Db Multi Table\ClaimEdit.cs" />
     <Compile Include="Data Interface\HistAppointments.cs" />
     <Compile Include="Data Interface\InsEditLogs.cs" />
     <Compile Include="Data Interface\PatientLinks.cs" />
-    <Compile Include="Data Interface\PatientPortalInvites.cs" />
     <Compile Include="Db Multi Table\PaymentEdit.cs" />
     <Compile Include="Db Multi Table\ProcEdit.cs" />
     <Compile Include="InternalTools\Phones\TableTypes\PhoneComp.cs" />
@@ -922,15 +735,11 @@
     <Compile Include="TableTypes\DatabaseMaintenance.cs" />
     <Compile Include="TableTypes\EntryLog.cs" />
     <Compile Include="TableTypes\TaskTaken.cs" />
-    <Compile Include="Data Interface\SiteLinks.cs" />
     <Compile Include="Data Interface\Sites.cs" />
-    <Compile Include="Data Interface\SmsBlockPhones.cs" />
     <Compile Include="Data Interface\SubstitutionLinks.cs" />
     <Compile Include="Data Interface\StmtLinks.cs" />
-    <Compile Include="InternalTools\Phones\TriageMetrics.cs" />
     <Compile Include="Data Interface\TsiTransLogs.cs" />
     <Compile Include="Data Interface\UserGroupAttaches.cs" />
-    <Compile Include="Data Interface\WebSchedRecalls.cs" />
     <Compile Include="Db Multi Table\TreatmentPlanModules.cs" />
     <Compile Include="Db\ConnectionStore.cs" />
     <Compile Include="Db\DataAction.cs" />
@@ -967,7 +776,6 @@
     <Compile Include="InternalTools\EServices\EServiceBilling.cs" />
     <Compile Include="InternalTools\EServices\EServiceCodeLink.cs" />
     <Compile Include="InternalTools\Job Manager\TableTypes\FeatureRequest.cs" />
-    <Compile Include="InternalTools\Phones\ChatUsers.cs" />
     <Compile Include="CrudFramework\CrudTableAttribute.cs" />
     <Compile Include="CrudFramework\CrudColumnAttribute.cs" />
     <Compile Include="Crud\AccountCrud.cs" />
@@ -1256,11 +1064,8 @@
     <Compile Include="Data Interface\AlertItems.cs" />
     <Compile Include="Data Interface\AlertReads.cs" />
     <Compile Include="Data Interface\AlertSubs.cs" />
-    <Compile Include="Data Interface\ApptReminderRules.cs" />
-    <Compile Include="Data Interface\ApptReminderSents.cs" />
     <Compile Include="Data Interface\ClaimSnapshots.cs" />
     <Compile Include="Data Interface\ClinicPrefs.cs" />
-    <Compile Include="Data Interface\ConfirmationRequests.cs" />
     <Compile Include="Data Interface\DashboardCells.cs" />
     <Compile Include="Data Interface\DashboardLayouts.cs" />
     <Compile Include="Data Interface\DisplayReports.cs" />
@@ -1268,12 +1073,10 @@
     <Compile Include="Data Interface\EmailAutographs.cs" />
     <Compile Include="Data Interface\FamAgings.cs" />
     <Compile Include="Data Interface\FHIRContactPoints.cs" />
-    <Compile Include="Data Interface\FHIRSubscriptions.cs" />
     <Compile Include="Data Interface\FieldDefLinks.cs" />
     <Compile Include="Data Interface\HL7ProcAttaches.cs" />
     <Compile Include="Data Interface\InsVerifies.cs" />
     <Compile Include="Data Interface\InsVerifyHists.cs" />
-    <Compile Include="InternalTools\Job Manager\JobLogs.cs" />
     <Compile Include="Data Interface\OrthoChartTabLinks.cs" />
     <Compile Include="Data Interface\OrthoChartTabs.cs" />
     <Compile Include="Data Interface\PatRestrictions.cs" />
@@ -1284,17 +1087,11 @@
     <Compile Include="Data Interface\UserWebs.cs" />
     <Compile Include="Data Interface\XWebResponses.cs" />
     <Compile Include="InternalTools\Job Manager\BugCrud.cs" />
-    <Compile Include="InternalTools\Job Manager\Bugs.cs" />
     <Compile Include="Data Interface\UserClinics.cs" />
-    <Compile Include="InternalTools\Job Manager\FeatureRequests.cs" />
-    <Compile Include="InternalTools\Job Manager\JobNotes.cs" />
-    <Compile Include="InternalTools\Job Manager\JobQuotes.cs" />
-    <Compile Include="InternalTools\Job Manager\JobPermissions.cs" />
     <Compile Include="Data Interface\ProviderErxs.cs" />
     <Compile Include="Data Interface\StateAbbrs.cs" />
     <Compile Include="Data Interface\RequiredFieldConditions.cs" />
     <Compile Include="Data Interface\RequiredFields.cs" />
-    <Compile Include="InternalTools\EServices\EServiceMetrics.cs" />
     <Compile Include="InternalTools\IntegratedTexting\SmsBillingCrud.cs" />
     <Compile Include="Crud\SmsFromMobileCrud.cs" />
     <Compile Include="Crud\SmsToMobileCrud.cs" />
@@ -1378,7 +1175,6 @@
     </Compile>
     <Compile Include="Data Interface\EmailMessageUids.cs" />
     <Compile Include="Data Interface\Encounters.cs" />
-    <Compile Include="Data Interface\EServiceSignals.cs" />
     <Compile Include="Data Interface\EvaluationCriterionDefs.cs" />
     <Compile Include="Data Interface\EvaluationCriterions.cs" />
     <Compile Include="Data Interface\EvaluationDefs.cs" />
@@ -1390,7 +1186,6 @@
     <Compile Include="Data Interface\Icd10s.cs" />
     <Compile Include="Data Interface\Interventions.cs" />
     <Compile Include="Data Interface\Loincs.cs" />
-    <Compile Include="InternalTools\Phones\MapAreas.cs" />
     <Compile Include="Data Interface\MedLabFacAttaches.cs" />
     <Compile Include="Data Interface\MedLabFacilities.cs" />
     <Compile Include="Data Interface\MedLabResults.cs" />
@@ -1400,13 +1195,8 @@
     <Compile Include="Data Interface\OIDInternals.cs" />
     <Compile Include="Data Interface\PatientRaces.cs" />
     <Compile Include="Data Interface\PayorTypes.cs" />
-    <Compile Include="InternalTools\IntegratedTexting\SmsBillings.cs" />
-    <Compile Include="Data Interface\SmsFromMobiles.cs" />
-    <Compile Include="Data Interface\SmsToMobiles.cs" />
-    <Compile Include="Data Interface\SmsPhones.cs" />
     <Compile Include="Data Interface\TaskHists.cs" />
     <Compile Include="InternalTools\IntegratedTexting\TableTypes\SmsBilling.cs" />
-    <Compile Include="InternalTools\Job Manager\JobControls.cs" />
     <Compile Include="InternalTools\Job Manager\TableTypes\Bug.cs" />
     <Compile Include="InternalTools\Job Manager\TableTypes\JobCustContact.cs" />
     <Compile Include="InternalTools\Job Manager\TableTypes\JobLog.cs" />
@@ -1414,17 +1204,11 @@
     <Compile Include="InternalTools\Job Manager\TableTypes\JobPermission.cs" />
     <Compile Include="InternalTools\Job Manager\TableTypes\JobControl.cs" />
     <Compile Include="InternalTools\Job Manager\TableTypes\JobLink.cs" />
-    <Compile Include="InternalTools\Job Manager\JobLinks.cs" />
-    <Compile Include="InternalTools\Job Manager\JobProjects.cs" />
-    <Compile Include="InternalTools\Job Manager\JobReviews.cs" />
-    <Compile Include="InternalTools\Job Manager\Jobs.cs" />
     <Compile Include="InternalTools\Job Manager\TableTypes\Job.cs" />
     <Compile Include="InternalTools\Job Manager\TableTypes\JobProject.cs" />
     <Compile Include="InternalTools\Job Manager\TableTypes\JobReview.cs" />
     <Compile Include="InternalTools\Job Manager\TableTypes\JobNote.cs" />
     <Compile Include="InternalTools\Job Manager\TableTypes\VersionRelease.cs" />
-    <Compile Include="InternalTools\Job Manager\VersionReleases.cs" />
-    <Compile Include="InternalTools\Phones\PhoneConfs.cs" />
     <Compile Include="Data Interface\ProcButtonQuicks.cs" />
     <Compile Include="Data Interface\Resellers.cs" />
     <Compile Include="Data Interface\ResellerServices.cs" />
@@ -1452,7 +1236,6 @@
     <Compile Include="Data Interface\EhrMeasureEvents.cs" />
     <Compile Include="Data Interface\EhrMeasures.cs" />
     <Compile Include="Data Interface\EhrProvKeys.cs" />
-    <Compile Include="Data Interface\EhrQuarterlyKeys.cs" />
     <Compile Include="Data Interface\EhrSummaryCcds.cs" />
     <Compile Include="Data Interface\EmailAddresses.cs" />
     <Compile Include="Data Interface\EobAttaches.cs" />
@@ -1518,11 +1301,6 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Reference.map</DependentUpon>
     </Compile>
-    <Compile Include="Web References\SheetsSynch\Reference.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>Reference.map</DependentUpon>
-    </Compile>
     <Compile Include="WebBridges\Erx\ErxXml.cs" />
     <Compile Include="WebBridges\Erx\NewCrop\NCScript.cs" />
     <Compile Include="HL7old\EhrADT_A01.cs" />
@@ -1540,14 +1318,7 @@
     <Compile Include="HL7\FieldParser.cs" />
     <Compile Include="HL7\MessageParser.cs" />
     <Compile Include="HL7\MessageConstructor.cs" />
-    <Compile Include="InternalTools\Phones\PhoneAsterisks.cs" />
-    <Compile Include="InternalTools\Phones\PhoneEmpDefaults.cs" />
-    <Compile Include="InternalTools\Phones\PhoneEmpSubGroups.cs" />
-    <Compile Include="InternalTools\Phones\PhoneGraphs.cs" />
-    <Compile Include="InternalTools\Phones\PhoneMetrics.cs" />
     <Compile Include="Data Interface\PhoneNumbers.cs" />
-    <Compile Include="InternalTools\Phones\PhoneOverrides.cs" />
-    <Compile Include="InternalTools\Phones\Phones.cs" />
     <Compile Include="InternalTools\Phones\TableTypes\ChatUser.cs" />
     <Compile Include="InternalTools\Phones\TableTypes\PhoneConf.cs" />
     <Compile Include="InternalTools\Phones\TableTypes\Phone.cs" />
@@ -1557,7 +1328,6 @@
     <Compile Include="InternalTools\Phones\TableTypes\PhoneMetric.cs" />
     <Compile Include="TableTypes\PhoneNumber.cs" />
     <Compile Include="InternalTools\Phones\TableTypes\SiteLink.cs" />
-    <Compile Include="InternalTools\Phones\VoiceMails.cs" />
     <Compile Include="Misc\ConvertDatabases3.cs" />
     <Compile Include="Misc\ConvertDatabases4.cs" />
     <Compile Include="Misc\ConvertDatabases5.cs" />
@@ -1990,27 +1760,12 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Reference.map</DependentUpon>
     </Compile>
-    <Compile Include="Web References\customerUpdates\Reference.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>Reference.map</DependentUpon>
-    </Compile>
     <Compile Include="Web References\Dentalxchange2016\Reference.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
       <DependentUpon>Reference.map</DependentUpon>
     </Compile>
     <Compile Include="Web References\EmdeonITS\Reference.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>Reference.map</DependentUpon>
-    </Compile>
-    <Compile Include="Web References\localhost\Reference.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>Reference.map</DependentUpon>
-    </Compile>
-    <Compile Include="Web References\WebServiceMainHQ\Reference.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
       <DependentUpon>Reference.map</DependentUpon>
@@ -2025,44 +1780,15 @@
     <Compile Include="WebBridges\Podium.cs" />
     <Compile Include="WebBridges\Sftp.cs" />
     <Compile Include="WebServices\IOpenDentalServer.cs" />
-    <Compile Include="WebServices\ISheetsSynch.cs" />
     <Compile Include="WebServices\IWebServiceMainHQ.cs" />
     <Compile Include="WebServices\OpenDentalServerMockIIS.cs" />
     <Compile Include="WebServices\OpenDentalServerReal.cs" />
     <Compile Include="WebServices\PayloadHelper.cs" />
-    <Compile Include="WebServices\SheetsSynchProxy.cs" />
     <Compile Include="WebServices\WebServiceHqServer.cs" />
-    <Compile Include="WebServices\WebServiceMainHQMockDemo.cs" />
     <Compile Include="WebServices\OpenDentalServerProxy.cs" />
-    <Compile Include="WebServices\SheetsSynchNoHq.cs" />
     <Compile Include="WebServices\WebServiceMainHQNoHq.cs" />
     <Compile Include="WebServices\WebServiceMainHQProxy.cs" />
     <Compile Include="WebServiceTests.cs" />
-    <Compile Include="WebTypes\AutoComm\Arrivals\Arrivals.cs" />
-    <Compile Include="WebTypes\AutoComm\AutoCommObj\ApptLite.cs" />
-    <Compile Include="WebTypes\AutoComm\AutoCommObj\AutoCommObj.cs" />
-    <Compile Include="WebTypes\AutoComm\AutoCommObj\Byod.cs" />
-    <Compile Include="WebTypes\AutoComm\AutoCommObj\BirthdayLite.cs" />
-    <Compile Include="WebTypes\AutoComm\AutoCommObj\PatPortalInviteLite.cs" />
-    <Compile Include="WebTypes\AutoComm\AutoCommObj\PatientPortalCredential.cs" />
-    <Compile Include="WebTypes\AutoComm\AutoCommObj\WebSchedAgg.cs" />
-    <Compile Include="WebTypes\AutoComm\TagReplacementPhiSafe\ApptTagReplacer.cs" />
-    <Compile Include="WebTypes\AutoComm\TagReplacementPhiSafe\ArrivalsTagReplacer.cs" />
-    <Compile Include="WebTypes\AutoComm\TagReplacementPhiSafe\ByodTagReplacer.cs" />
-    <Compile Include="WebTypes\AutoComm\TagReplacementPhiSafe\BirthdayTagReplacer.cs" />
-    <Compile Include="WebTypes\AutoComm\TagReplacementPhiSafe\PatientPortalInviteTagReplacer.cs" />
-    <Compile Include="WebTypes\AutoComm\TagReplacementPhiSafe\RecallTagReplacer.cs" />
-    <Compile Include="WebTypes\AutoComm\TagReplacementPhiSafe\ReminderTagReplacer.cs" />
-    <Compile Include="WebTypes\AutoComm\TagReplacementPhiSafe\TagReplacer.cs" />
-    <Compile Include="WebTypes\AutoComm\TagReplacementPhiSafe\ThankYouTagReplacer.cs" />
-    <Compile Include="WebTypes\eConnector\EConnectorRequest.cs" />
-    <Compile Include="WebTypes\eConnector\EConnectorStatistics.cs" />
-    <Compile Include="WebTypes\eConnector\InvalidTypeHistory.cs" />
-    <Compile Include="WebTypes\eConnector\ShutDownAlert.cs" />
-    <Compile Include="WebTypes\PushNotifications\PushNotificationAction.cs" />
-    <Compile Include="WebTypes\PushNotifications\PushNotificationPayload.cs" />
-    <Compile Include="WebTypes\PushNotifications\PushNotificationConstants.cs" />
-    <Compile Include="WebTypes\PushNotifications\PushNotificationUtils.cs" />
     <Compile Include="WebTypes\Payments\PaySimpleStatus.cs" />
     <Compile Include="WebTypes\Shared\XWeb\EdgeExpressResponse.cs" />
     <Compile Include="WebTypes\Shared\XWeb\XWeb.cs" />
@@ -2074,22 +1800,14 @@
     <Compile Include="WebTypes\WebForms\Crud\WebForms_SheetDefCrud.cs" />
     <Compile Include="WebTypes\WebForms\Crud\WebForms_SheetFieldCrud.cs" />
     <Compile Include="WebTypes\WebForms\Crud\WebForms_SheetFieldDefCrud.cs" />
-    <Compile Include="WebTypes\WebForms\Data Interface\WebForms_Logs.cs" />
-    <Compile Include="WebTypes\WebForms\Data Interface\WebForms_Preferences.cs" />
-    <Compile Include="WebTypes\WebForms\Data Interface\WebForms_SheetDefs.cs" />
-    <Compile Include="WebTypes\WebForms\Data Interface\WebForms_SheetFieldDefs.cs" />
-    <Compile Include="WebTypes\WebForms\Data Interface\WebForms_SheetFields.cs" />
-    <Compile Include="WebTypes\WebForms\Data Interface\WebForms_Sheets.cs" />
     <Compile Include="WebTypes\WebForms\TableTypes\WebForms_Log.cs" />
     <Compile Include="WebTypes\WebForms\TableTypes\WebForms_Preference.cs" />
     <Compile Include="WebTypes\WebForms\TableTypes\WebForms_Sheet.cs" />
     <Compile Include="WebTypes\WebForms\TableTypes\WebForms_SheetDef.cs" />
     <Compile Include="WebTypes\WebForms\TableTypes\WebForms_SheetField.cs" />
     <Compile Include="WebTypes\WebForms\TableTypes\WebForms_SheetFieldDef.cs" />
-    <Compile Include="WebTypes\WebForms\WebUtils.cs" />
     <Compile Include="WebTypes\WebSched\TimeSlot\TimeSlot.cs" />
     <Compile Include="WebTypes\WebSched\TimeSlot\TimeSlotCrud.cs" />
-    <Compile Include="WebTypes\WebSched\TimeSlot\TimeSlots.cs" />
     <Compile Include="WebTypes\WebApps\WebAppUtil.cs" />
     <Compile Include="WebTypes\WebBase.cs" />
     <Compile Include="X12\X834.cs" />
@@ -2287,10 +2005,6 @@
     <Compile Include="Remoting\XmlConverterSerializer.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\CDT\xCDT.csproj">
-      <Project>{76ba82e6-d8e1-45b1-8ed6-41d97b8d67ec}</Project>
-      <Name>xCDT</Name>
-    </ProjectReference>
     <ProjectReference Include="..\CodeBase\xCodeBase.csproj">
       <Project>{18F7BC78-4B99-48D3-A1F1-0D13A63E3CF9}</Project>
       <Name>xCodeBase</Name>
@@ -2486,11 +2200,6 @@
       <Generator>MSDiscoCodeGenerator</Generator>
       <LastGenOutput>Reference.cs</LastGenOutput>
     </None>
-    <None Include="Web References\customerUpdates\Reference.map">
-      <Generator>MSDiscoCodeGenerator</Generator>
-      <LastGenOutput>Reference.cs</LastGenOutput>
-    </None>
-    <None Include="Web References\customerUpdates\Service1.wsdl" />
     <None Include="Web References\Dentalxchange2016\ClaimPaymentListResponse.datasource">
       <DependentUpon>Reference.map</DependentUpon>
     </None>
@@ -2531,11 +2240,6 @@
       <Generator>MSDiscoCodeGenerator</Generator>
       <LastGenOutput>Reference.cs</LastGenOutput>
     </None>
-    <None Include="Web References\localhost\Reference.map">
-      <Generator>MSDiscoCodeGenerator</Generator>
-      <LastGenOutput>Reference.cs</LastGenOutput>
-    </None>
-    <None Include="Web References\localhost\Service1.wsdl" />
     <None Include="Web References\NewCropWebService\AccountStatusDetailV2Result1.datasource">
       <DependentUpon>Reference.map</DependentUpon>
     </None>
@@ -2738,18 +2442,6 @@
     <None Include="Web References\PayConnectService\transResponse.datasource">
       <DependentUpon>Reference.map</DependentUpon>
     </None>
-    <None Include="Web References\SheetsSynch\Reference.map">
-      <Generator>MSDiscoCodeGenerator</Generator>
-      <LastGenOutput>Reference.cs</LastGenOutput>
-    </None>
-    <None Include="Web References\SheetsSynch\SheetsSynch.wsdl" />
-    <None Include="Web References\WebServiceMainHQ\Reference.map">
-      <Generator>MSDiscoCodeGenerator</Generator>
-      <LastGenOutput>Reference.cs</LastGenOutput>
-    </None>
-    <None Include="Web References\WebServiceMainHQ\WebServiceMainHQ.wsdl">
-      <SubType>Designer</SubType>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <WebReferenceUrl Include="http://localhost/OpenDentalServer/ServiceMain.asmx">
@@ -2762,50 +2454,6 @@
       </CachedDynamicPropName>
       <CachedAppSettingsObjectName>Settings</CachedAppSettingsObjectName>
       <CachedSettingsPropName>OpenDentBusiness_OpenDentalServer_ServiceMain</CachedSettingsPropName>
-    </WebReferenceUrl>
-    <WebReferenceUrl Include="http://localhost/OpenDentalWebServiceHQ/WebServiceMainHQ.asmx">
-      <UrlBehavior>Dynamic</UrlBehavior>
-      <RelPath>Web References\WebServiceMainHQ\</RelPath>
-      <UpdateFromURL>http://localhost/OpenDentalWebServiceHQ/WebServiceMainHQ.asmx</UpdateFromURL>
-      <ServiceLocationURL>
-      </ServiceLocationURL>
-      <CachedDynamicPropName>
-      </CachedDynamicPropName>
-      <CachedAppSettingsObjectName>Settings</CachedAppSettingsObjectName>
-      <CachedSettingsPropName>OpenDentBusiness_WebServiceMainHQ_WebServiceMainHQ</CachedSettingsPropName>
-    </WebReferenceUrl>
-    <WebReferenceUrl Include="http://50.201.161.44:1942/WebServiceCustomerUpdates/Service1.asmx">
-      <UrlBehavior>Dynamic</UrlBehavior>
-      <RelPath>Web References\customerUpdates\</RelPath>
-      <UpdateFromURL>http://50.201.161.44:1942/WebServiceCustomerUpdates/Service1.asmx</UpdateFromURL>
-      <ServiceLocationURL>
-      </ServiceLocationURL>
-      <CachedDynamicPropName>
-      </CachedDynamicPropName>
-      <CachedAppSettingsObjectName>Settings</CachedAppSettingsObjectName>
-      <CachedSettingsPropName>OpenDentBusiness_customerupdates_Service1</CachedSettingsPropName>
-    </WebReferenceUrl>
-    <WebReferenceUrl Include="http://localhost:2923/SheetsSynch.asmx">
-      <UrlBehavior>Dynamic</UrlBehavior>
-      <RelPath>Web References\SheetsSynch\</RelPath>
-      <UpdateFromURL>http://localhost:2923/SheetsSynch.asmx</UpdateFromURL>
-      <ServiceLocationURL>
-      </ServiceLocationURL>
-      <CachedDynamicPropName>
-      </CachedDynamicPropName>
-      <CachedAppSettingsObjectName>Settings</CachedAppSettingsObjectName>
-      <CachedSettingsPropName>OpenDentBusiness_SheetsSynch_SheetsSynch</CachedSettingsPropName>
-    </WebReferenceUrl>
-    <WebReferenceUrl Include="http://localhost:3824/Service1.asmx">
-      <UrlBehavior>Dynamic</UrlBehavior>
-      <RelPath>Web References\localhost\</RelPath>
-      <UpdateFromURL>http://localhost:3824/Service1.asmx</UpdateFromURL>
-      <ServiceLocationURL>
-      </ServiceLocationURL>
-      <CachedDynamicPropName>
-      </CachedDynamicPropName>
-      <CachedAppSettingsObjectName>Settings</CachedAppSettingsObjectName>
-      <CachedSettingsPropName>OpenDentBusiness_localhost_Service1</CachedSettingsPropName>
     </WebReferenceUrl>
     <WebReferenceUrl Include="https://its.changehealthcare.com/ITS/ITSWS.asmx%3fwsdl">
       <UrlBehavior>Dynamic</UrlBehavior>
@@ -2911,13 +2559,10 @@
     <WCFMetadata Include="Service References\" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Web References\WebServiceMainHQ\WebServiceMainHQ.disco" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Web References\customerUpdates\Service1.disco" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Web References\localhost\Service1.disco" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Web References\NewCropWebService\Update1.disco" />
@@ -2935,7 +2580,6 @@
     <None Include="Resources\RecallPastDue_P.png" />
     <None Include="Resources\Right.gif" />
     <None Include="Resources\RxInstruction.xml" />
-    <None Include="Web References\SheetsSynch\SheetsSynch.disco" />
     <None Include="Resources\Statement.xml" />
     <None Include="Resources\Screening.xml" />
     <None Include="Resources\RoutingSlip.xml" />

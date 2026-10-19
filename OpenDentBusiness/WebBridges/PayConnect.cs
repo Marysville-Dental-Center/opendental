@@ -30,7 +30,7 @@ namespace OpenDentBusiness {
 		private static PayConnectService.Credentials GetCredentials(Program prog,long clinicNum){
 			PayConnectService.Credentials cred=new PayConnectService.Credentials();
 			cred.Username=OpenDentBusiness.ProgramProperties.GetPropVal(prog.ProgramNum,"Username",clinicNum);
-			cred.Password=CDT.Class1.TryDecrypt(OpenDentBusiness.ProgramProperties.GetPropVal(prog.ProgramNum,"Password",clinicNum));
+			cred.Password=Secrets.TryDecrypt(OpenDentBusiness.ProgramProperties.GetPropVal(prog.ProgramNum,"Password",clinicNum));
 			cred.Client="OpenDental2";
 			if(ODBuild.IsDebug() || Introspection.IsTestingMode) {
 				cred.ServiceID="DCI Web Service ID: 002778";//Testing
@@ -482,12 +482,6 @@ namespace OpenDentBusiness {
 								if(EmailAddresses.GetValidMailAddress(responseWebCur.EmailResponse)!=null) {
 									EmailAddress emailAddressFrom=EmailAddresses.GetByClinic(clinicNum,true);
 									Statements.EmailStatementPatientPortal(Statements.CreateReceiptStatement(pat,StatementMode.Email),responseWebCur.EmailResponse,emailAddressFrom,pat);
-								}
-								//If a patient is on a mobile device, we need to create a refresh payment mobile notification so they can see the payment worked.
-								List<MobileAppDevice> listMobileAppDevicesPat=MobileAppDevices.GetAll(responseWebCur.PatNum);
-								MobileAppDevice device=listMobileAppDevicesPat.FirstOrDefault(x => x.PatNum==responseWebCur.PatNum);
-								if(device!=null && device.LastCheckInActivity>DateTime.Now.AddHours(-1)) {
-									MobileNotifications.CI_RefreshPayment(device.MobileAppDeviceNum,responseWebCur.PatNum);
 								}
 								break;
 							case PayConnectWebStatus.Cancelled:

@@ -42,7 +42,6 @@ namespace OpenDental {
 			this.textPassword = new System.Windows.Forms.TextBox();
 			this.textUser = new System.Windows.Forms.TextBox();
 			this.checkShowCEMTUsers = new OpenDental.UI.CheckBox();
-			this.timerShutdownInstance = new System.Windows.Forms.Timer(this.components);
 			this.labelFilterName = new System.Windows.Forms.Label();
 			this.textFilterName = new System.Windows.Forms.TextBox();
 			this.labelSwipeBadge = new System.Windows.Forms.Label();
@@ -110,11 +109,6 @@ namespace OpenDental {
 			this.checkShowCEMTUsers.Visible = false;
 			this.checkShowCEMTUsers.CheckedChanged += new System.EventHandler(this.checkShowCEMTUsers_CheckedChanged);
 			// 
-			// timerShutdownInstance
-			// 
-			this.timerShutdownInstance.Interval = 300000;
-			this.timerShutdownInstance.Tick += new System.EventHandler(this.timerShutdownInstance_Tick);
-			// 
 			// labelFilterName
 			// 
 			this.labelFilterName.Location = new System.Drawing.Point(22, 13);
@@ -174,7 +168,6 @@ namespace OpenDental {
 		private System.Windows.Forms.TextBox textPassword;
 		private System.Windows.Forms.TextBox textUser;
 		private OpenDental.UI.CheckBox checkShowCEMTUsers;
-		private System.Windows.Forms.Timer timerShutdownInstance;
 		private System.Windows.Forms.Label labelFilterName;
 		private System.Windows.Forms.TextBox textFilterName;
 		private System.Windows.Forms.Label labelSwipeBadge;

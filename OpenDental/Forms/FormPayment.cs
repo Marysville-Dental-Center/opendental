@@ -426,10 +426,7 @@ namespace OpenDental {
 			}
 			Program program=Programs.GetCur(ProgramName.CareCredit);
 			if(!program.Enabled) {
-				ODException.SwallowAnyException(() =>
-					Process.Start(CareCredit.ProviderSignupURL)
-				);
-				return;
+				return;//The button is only visible when the CareCredit program link is enabled.
 			}
 			double payAmt=PIn.Double(textAmount.Text);
 			if(CompareDouble.IsZero(payAmt)) {
@@ -1139,10 +1136,6 @@ namespace OpenDental {
 
 		///<summary>Returns true if the user can add a new credit card.</summary>
 		private bool CanAddNewCreditCard(Program program,string progPropertyDescription) {
-			if(!Programs.IsEnabledByHq(program,out string err)) {
-				MsgBox.Show(err);
-				return false;
-			}
 			if(comboCreditCards.GetSelected<CreditCard>()==null) {
 				MsgBox.Show(this,"Invalid credit card selected.");
 				return false;
@@ -1204,11 +1197,11 @@ namespace OpenDental {
 			Program programPaySimple=Programs.GetCur(ProgramName.PaySimple);
 			Program programCareCredit=Programs.GetCur(ProgramName.CareCredit);
 			if(_programX==null || programPayConnect==null || programPaySimple==null || programCareCredit==null || programEdgeExpress==null) {//Should not happen.
-				panelXcharge.Visible=(_programX!=null);
-				butPayConnect.Visible=(programPayConnect!=null);
-				butPaySimple.Visible=(programPaySimple!=null);
-				butCareCredit.Visible=(programCareCredit!=null);
-				panelEdgeExpress.Visible=(programEdgeExpress!=null);
+				panelXcharge.Visible=(_programX!=null && _programX.Enabled);
+				butPayConnect.Visible=(programPayConnect!=null && programPayConnect.Enabled);
+				butPaySimple.Visible=(programPaySimple!=null && programPaySimple.Enabled);
+				butCareCredit.Visible=(programCareCredit!=null && programCareCredit.Enabled);
+				panelEdgeExpress.Visible=(programEdgeExpress!=null && programEdgeExpress.Enabled);
 				return;
 			}
 			panelXcharge.Visible=false;
@@ -1226,13 +1219,9 @@ namespace OpenDental {
 				textSurcharge.Visible=false;
 				return;
 			}
-			butCareCredit.Visible=!ProgramProperties.IsAdvertisingDisabled(programCareCredit);
+			butCareCredit.Visible=programCareCredit.Enabled;
 			if(!programPayConnect.Enabled && !_programX.Enabled && !programEdgeExpress.Enabled && !programPaySimple.Enabled) {//if none enabled
-																																																												//show all so user can pick
-				panelEdgeExpress.Visible=true;
-				butPayConnect.Visible=true;
-				butPaySimple.Visible=true;
-				return;
+				return;//Card processing buttons only show for processors whose program link is enabled.
 			}
 			//show if enabled.  User could have all enabled.
 		if(programPayConnect.Enabled) {
@@ -1244,7 +1233,7 @@ namespace OpenDental {
 				else {//if clinics are enabled, PayConnect is enabled if the PaymentType is valid and the Username and Password are not blank
 					string paymentType=ProgramProperties.GetPropVal(programPayConnect.ProgramNum,"PaymentType",_payment.ClinicNum);
 					if(programVersion=="1") {
-						string password=CDT.Class1.TryDecrypt(ProgramProperties.GetPropVal(programPayConnect.ProgramNum,"Password",_payment.ClinicNum));
+						string password=Secrets.TryDecrypt(ProgramProperties.GetPropVal(programPayConnect.ProgramNum,"Password",_payment.ClinicNum));
 						if(!string.IsNullOrEmpty(ProgramProperties.GetPropVal(programPayConnect.ProgramNum,"Username",_payment.ClinicNum))
 							&& !string.IsNullOrEmpty(password)
 							&& _listDefsPaymentType.Any(x => x.DefNum.ToString()==paymentType))
@@ -2407,7 +2396,7 @@ namespace OpenDental {
 				string payconnectVersion=ProgramProperties.GetPropVal(program.ProgramNum,"Program Version",_payment.ClinicNum);
 				if(payconnectVersion=="1") {
 					//If clinics are disabled, _paymentCur.ClinicNum will be 0 and the Username and Password will be the 'Headquarters' or practice credentials
-					string password=CDT.Class1.TryDecrypt(ProgramProperties.GetPropVal(program.ProgramNum,"Password",_payment.ClinicNum));
+					string password=Secrets.TryDecrypt(ProgramProperties.GetPropVal(program.ProgramNum,"Password",_payment.ClinicNum));
 					if(string.IsNullOrEmpty(ProgramProperties.GetPropVal(program.ProgramNum,"Username",_payment.ClinicNum))
 						|| string.IsNullOrEmpty(password)) 
 					{
@@ -2425,10 +2414,8 @@ namespace OpenDental {
 					isSetupRequired=true;
 				}	
 			}
-			else {//Program link not enabled.  Launch a promo site.
-				ODException.SwallowAnyException(() =>
-					Process.Start("http://www.opendental.com/resources/redirects/redirectpayconnect.html")
-				);
+			else {
+				MsgBox.Show(this,"PayConnect must be enabled in Program Links.");
 				return false;
 			}
 			if(isSetupRequired) {
@@ -2460,10 +2447,8 @@ namespace OpenDental {
 					isSetupRequired=true;
 				}
 			}
-			else {//Program link not enabled.  Launch a promo website.
-				ODException.SwallowAnyException(() =>
-					Process.Start("http://www.opendental.com/resources/redirects/redirectpaysimple.html")//
-				);
+			else {
+				MsgBox.Show(this,"PaySimple must be enabled in Program Links.");
 				return false;
 			}
 			if(isSetupRequired) {
@@ -2499,10 +2484,8 @@ namespace OpenDental {
 					isSetupRequired=true;
 				}
 			}
-			else {//Program link not enabled.  Launch a promo site.
-				ODException.SwallowAnyException(() =>
-					Process.Start("http://www.opendental.com/resources/redirects/redirectopenedge.html")
-				);
+			else {
+				MsgBox.Show(this,"X-Charge must be enabled in Program Links.");
 				return false;
 			}
 			//if X-Charge is enabled and the Username and Password is set and the PaymentType is a valid DefNum,
@@ -2525,8 +2508,7 @@ namespace OpenDental {
 			_listDefsPaymentType=_listDefsPaymentType??Defs.GetDefsForCategory(DefCat.PaymentTypes,true);
 			Program program=Programs.GetCur(ProgramName.EdgeExpress);
 			if(!program.Enabled) {
-				ODException.SwallowAnyException(() =>
-					Process.Start("http://www.opendental.com/resources/redirects/redirectopenedge.html"));
+				MsgBox.Show(this,"EdgeExpress must be enabled in Program Links.");
 				return false;
 			}
 			return true;
@@ -4034,10 +4016,6 @@ namespace OpenDental {
 		///If prepaidAmt is not zero, then will show the xcharge window with the given prepaid amount and let the user enter card # and exp.
 		///A patient is not required for prepaid cards.</summary>
 		public string MakeXChargeTransaction(double prepaidAmt = 0) {
-			if(ODEnvironment.IsCloudServer) {
-				MsgBox.Show(this,"XCharge is not available while using Open Dental Cloud.");
-				return null;
-			}
 			//Need to refresh this list locally in case we are coming from another form
 			_listDefsPaymentType=_listDefsPaymentType??Defs.GetDefsForCategory(DefCat.PaymentTypes,true);
 			XchargeMilestone="Validation";

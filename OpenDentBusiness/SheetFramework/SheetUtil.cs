@@ -245,61 +245,6 @@ namespace OpenDentBusiness{
 			return Sheets.CreateSheetFromSheetDef(sheetDef,patNum,hidePaymentOptions);
 		}
 
-		///<summary>Creates a Sheet from a WebSheet. Does not insert it into the database.</summary>
-		public static Sheet CreateSheetFromWebSheet(long PatNum,WebForms_Sheet webFormsSheet) {
-			Sheet newSheet=null;
-			SheetDef sheetDef=new SheetDef((SheetTypeEnum)webFormsSheet.SheetType);
-			newSheet=CreateSheet(sheetDef,PatNum);
-			SheetParameter.SetParameter(newSheet,"PatNum",PatNum);
-			newSheet.DateTimeSheet=webFormsSheet.DateTimeSheet;
-			newSheet.Description=webFormsSheet.Description;
-			newSheet.Height=webFormsSheet.Height;
-			newSheet.Width=webFormsSheet.Width;
-			newSheet.FontName=webFormsSheet.FontName;
-			newSheet.FontSize=webFormsSheet.FontSize;
-			newSheet.SheetType=(SheetTypeEnum)webFormsSheet.SheetType;
-			newSheet.IsLandscape=webFormsSheet.IsLandscape;
-			newSheet.InternalNote="";
-			newSheet.IsWebForm=true;
-			newSheet.ClinicNum=webFormsSheet.ClinicNum;
-			newSheet.SheetDefNum=webFormsSheet.SheetDefNum;
-			newSheet.HasMobileLayout=webFormsSheet.HasMobileLayout;
-			newSheet.RevID=webFormsSheet.RevID;
-			newSheet.WebFormSheetID=webFormsSheet.SheetID;
-			//loop through each variable in a single sheetfield
-			foreach(WebForms_SheetField field in webFormsSheet.SheetFields) {
-				SheetField sheetfieldCopy=new SheetField();
-				sheetfieldCopy.FieldName=field.FieldName;
-				sheetfieldCopy.FieldType=field.FieldType;
-				sheetfieldCopy.FontIsBold=field.FontIsBold;
-				sheetfieldCopy.FontName=field.FontName;
-				sheetfieldCopy.FontSize=field.FontSize;
-				sheetfieldCopy.Height=field.Height;
-				sheetfieldCopy.Width=field.Width;
-				sheetfieldCopy.XPos=field.XPos;
-				sheetfieldCopy.YPos=field.YPos;
-				sheetfieldCopy.IsRequired=field.IsRequired;
-				sheetfieldCopy.TabOrder=field.TabOrder;
-				sheetfieldCopy.ReportableName=field.ReportableName;
-				sheetfieldCopy.RadioButtonGroup=field.RadioButtonGroup;
-				sheetfieldCopy.RadioButtonValue=field.RadioButtonValue;
-				sheetfieldCopy.SheetFieldDefNum=field.SheetFieldDefNum;
-				sheetfieldCopy.GrowthBehavior=field.GrowthBehavior;
-				sheetfieldCopy.FieldValue=field.FieldValue;
-				sheetfieldCopy.TextAlign=field.TextAlign;
-				sheetfieldCopy.ItemColor=field.ItemColor;
-				sheetfieldCopy.TabOrderMobile=field.TabOrderMobile;
-				sheetfieldCopy.UiLabelMobile=field.UiLabelMobile;
-				sheetfieldCopy.UiLabelMobileRadioButton=field.UiLabelMobileRadioButton;
-				sheetfieldCopy.CanElectronicallySign=field.CanElectronicallySign;
-				if(sheetfieldCopy.FieldType==SheetFieldType.SigBox && !string.IsNullOrWhiteSpace(sheetfieldCopy.FieldValue)) {
-					sheetfieldCopy.DateTimeSig=newSheet.DateTimeSheet;
-				}
-				newSheet.SheetFields.Add(sheetfieldCopy);
-			}
-			return newSheet;
-		}
-
 		///<summary>Returns the current list of all columns available for the grid in the data table.</summary>
 		public static List<DisplayField> GetGridColumnsAvailable(string gridType) {
 			int i=0;

@@ -9,7 +9,6 @@ using System.Windows.Forms;
 using CodeBase;
 using OpenDental.UI;
 using OpenDentBusiness;
-using OpenDentBusiness.WebTypes.WebSched.TimeSlot;
 
 namespace OpenDental {
 	///<summary></summary>
@@ -20,13 +19,6 @@ namespace OpenDental {
 		private DataTable _tableRecalls;
 		private bool _isHeadingPrinted;
 		private int _heightHeadingPrint;
-		///<summary>The clinics that are signed up for Web Sched.</summary>
-		private List<long> _listClinicNumsWebSched=new List<long>();
-		private ODThread _threadWebSchedSignups=null;
-		///<summary>Indicates whether the Reg Key is currently on Open Dental support.</summary>
-		private YN _isOnSupport=YN.Unknown;
-		///<summary>The user has clicked the Web Sched button while a thread was busy checking which clinics are signed up for Web Sched.</summary>
-		private bool _hasClickedWebSched;
 		///<summary>Short list, for the two combo boxes.</summary>
 		private List<Provider> _listProviders;
 		///<summary>Default starting offset from Date Since for Date Stop.</summary>
@@ -80,9 +72,6 @@ namespace OpenDental {
 		}
 
 		private void FormRecallList_Load(object sender, System.EventArgs e) {
-			CheckClinicsSignedUpForWebSched();
-			//Web Sched Recall was hosted by Open Dental and is not available in this build.
-			panelWebSched.Visible=WebServiceMainHQProxy.IsHqAvailable;
 			if(ODBuild.IsDebug()) {
 				butECards.Visible=true;
 			}
@@ -243,49 +232,6 @@ namespace OpenDental {
 			}
 		}
 
-		private void CheckClinicsSignedUpForWebSched() {
-			if(_threadWebSchedSignups!=null) {
-				return;
-			}
-			ODThread.WorkerDelegate workerDelegate=new ODThread.WorkerDelegate((ODThread o) => {
-				_listClinicNumsWebSched=WebServiceMainHQProxy.GetEServiceClinicsAllowed(
-					Clinics.GetDeepCopy().Select(x => x.ClinicNum).ToList(),
-					eServiceCode.WebSched);
-				_isOnSupport=YN.Yes;
-			});
-			_threadWebSchedSignups=new ODThread(workerDelegate);
-			//Swallow all exceptions and allow thread to exit gracefully.
-			_threadWebSchedSignups.AddExceptionHandler(new ODThread.ExceptionDelegate((Exception ex) => {}));
-			_threadWebSchedSignups.AddExitHandler(new ODThread.WorkerDelegate((ODThread o) => {
-				ThreadWebSchedSignupsExitHandler();
-			}));
-			_threadWebSchedSignups.Name="CheckWebSchedSignups";
-			_threadWebSchedSignups.Start(true);
-		}
-
-		private void ThreadWebSchedSignupsExitHandler() { 
-			if(IsDisposed) {
-				return;
-			}
-			if(InvokeRequired) {
-				Action action=new Action(() =>{ThreadWebSchedSignupsExitHandler(); });
-				Invoke(action);
-				return;
-			}
-			_threadWebSchedSignups=null;
-			Cursor=Cursors.Default;
-			if(!_hasClickedWebSched){
-				return;
-			}
-			try {
-				SendWebSched();
-			}
-			catch(Exception ex) {
-				MessageBox.Show(Lan.g(this,"Error sending Web Sched notifications. Error message:")+" "+ex.Message);
-			}
-			_hasClickedWebSched=false;
-		}
-
 		private void FillComboEmail() {
 			comboEmailFromReact.Items.Clear();
 			comboEmailFromRecalls.Items.Clear();
@@ -316,6 +262,8 @@ namespace OpenDental {
 			gridRecalls.BeginUpdate();
 			gridRecalls.Columns.Clear();
 			List<DisplayField> listDisplayFields=DisplayFields.GetForCategory(DisplayFieldCategory.RecallList);
+			//Web Sched was removed. Databases migrated from Open Dental can still have a 'WebSched' display field row, which is left in place but not shown.
+			listDisplayFields.RemoveAll(x => x.InternalName=="WebSched");
 			GridColumn col;
 			for(int i=0;i<listDisplayFields.Count;i++) {
 				col=new GridColumn(string.IsNullOrEmpty(listDisplayFields[i].Description)?listDisplayFields[i].InternalName:listDisplayFields[i].Description,listDisplayFields[i].ColumnWidth) { Tag=listDisplayFields[i].InternalName };
@@ -388,9 +336,6 @@ namespace OpenDental {
 						case "BillingType":
 							row.Cells.Add(_tableRecalls.Rows[i]["billingType"].ToString());
 							break;
-						case "WebSched":
-							row.Cells.Add(_tableRecalls.Rows[i]["webSchedSendDesc"].ToString());
-							break;
 						case "Carrier Name":
 							row.Cells.Add(_tableRecalls.Rows[i]["CarrierName"].ToString());
 							break;
@@ -407,8 +352,6 @@ namespace OpenDental {
 				patRowTag.ClinicNum=PIn.Long(_tableRecalls.Rows[i]["ClinicNum"].ToString());
 				patRowTag.DateDue=PIn.Date(_tableRecalls.Rows[i]["dueDate"].ToString());
 				patRowTag.WirelessPhone=PIn.String(_tableRecalls.Rows[i]["WirelessPhone"].ToString());
-				patRowTag.WebSchedSendError=PIn.String(_tableRecalls.Rows[i]["webSchedSendError"].ToString());
-				patRowTag.AutoCommStatusWebSchedSend=PIn.Enum<AutoCommStatus>(_tableRecalls.Rows[i]["webSchedSendStatus"].ToString(),defaultEnumOption:AutoCommStatus.Undefined);
 				row.Tag=patRowTag;
 				gridRecalls.ListGridRows.Add(row);
 				if(listPatRowTagsSelected.Any(x => x.PriKeyNum==((PatRowTag)row.Tag).PriKeyNum)) {
@@ -453,12 +396,6 @@ namespace OpenDental {
 		}
 
 		private void gridRecalls_CellDoubleClick(object sender,ODGridClickEventArgs e) {
-			if(gridRecalls.Columns[e.Col].Tag.ToString()=="WebSched") {//A column's tag is its display field internal name.
-				using MsgBoxCopyPaste msgBoxCopyPaste=new MsgBoxCopyPaste(((PatRowTag)gridRecalls.ListGridRows[e.Row].Tag).WebSchedSendError);
-				msgBoxCopyPaste.Text=Lan.g(this,"Web Sched Notification Send Error");
-				msgBoxCopyPaste.ShowDialog();
-				return;
-			}
 			Recall recall=Recalls.GetRecall(((PatRowTag)gridRecalls.ListGridRows[e.Row].Tag).PriKeyNum);
 			if(recall==null) {
 				MsgBox.Show(this,"Recall for this patient has been removed.");
@@ -614,269 +551,6 @@ namespace OpenDental {
 			return listAppointments;
 		}
 		
-		///<summary>Automatically open the eService Setup window so that they can easily click the Enable button. 
-		///Calls CheckClinicsSignedUpForWebSched() before exiting.</summary>
-		private void OpenSignupPortal() {
-			using FormEServicesSignup formEServicesSignup=new FormEServicesSignup();
-			formEServicesSignup.ShowDialog();
-			//User may have made changes to signups. Reload the valid clinics from HQ.
-			CheckClinicsSignedUpForWebSched();
-		}
-
-		private void panelWebSched_MouseClick(object sender,MouseEventArgs e) {
-			SendWebSched();
-		}
-
-		private void SendWebSched() {
-			#region Check Web Sched Pref and Show Promo
-			if(IsDisposed) {//The user closed the form while the thread checking Web Sched signups was still running.
-				return;
-			}
-			if(_threadWebSchedSignups!=null) {//The thread has not finished getting the list.
-				_hasClickedWebSched=true;//The thread checking Web Sched signups will call this method on exit.
-				Cursor=Cursors.AppStarting;
-				return;
-			}
-			if(_isOnSupport!=YN.Yes) {
-				MsgBox.Show(this,"You must be on support to use this feature.");
-				return;
-			}
-			bool needsToBeSignedUp=WebSchedRecalls.TemplatesHaveURLTags();
-			if(needsToBeSignedUp && _listClinicNumsWebSched.Count==0) {//No clinics are signed up for Web Sched
-				string message=PrefC.HasClinicsEnabled ?
-					"No clinics are signed up for Web Sched Recall. Open Sign Up Portal?" : 
-					"This practice is not signed up for Web Sched Recall. Open Sign Up Portal?";
-				message+="\r\n\r\nAlternatively, you could remove all URL tags from Web Sched text and emails templates to use this feature.";
-				if(!MsgBox.Show(this,MsgBoxButtons.YesNo,message)) {
-					return;
-				}
-				OpenSignupPortal();
-				return;
-			}
-			//At least one clinic is signed up for Web Sched or the templates are not using URLs.
-			List<long> listClinicNumsNotSignedUp=new List<long>();
-			List<int> listGridIndicesNotSignUp=new List<int>();
-			for(int i=0;i<gridRecalls.SelectedIndices.Length;i++) {
-				long clinicNum=((PatRowTag)gridRecalls.ListGridRows[gridRecalls.SelectedIndices[i]].Tag).ClinicNum;
-				//We don't want to send users to the sign up portal for clinic 0 if clinics are enabled because there will be nothing for them to do there. 
-				if(clinicNum==0 && !_listClinicNumsWebSched.Contains(0)) {
-					continue;//We will deselect these rows later.
-				}
-				if(_listClinicNumsWebSched.Count > 0 && !PrefC.HasClinicsEnabled) {
-					//The office is signed up for Web Sched, but the patient's clinic might not be 0.
-					continue;//We will let them send for this patient.
-				}
-				if(!_listClinicNumsWebSched.Contains(clinicNum)) {
-					listClinicNumsNotSignedUp.Add(clinicNum);
-				}
-				listGridIndicesNotSignUp.Add(i);
-			}
-			if(needsToBeSignedUp && listClinicNumsNotSignedUp.Count > 0) {
-				string message=Lan.g(this,"You have selected recalls whose clinic is not signed up for Web Sched recall. "
-					+"Do you want to go to the sign up portal to sign these clinics up? "
-					+"Clicking 'No' will deselect these recalls and send the remaining.");
-				if(MessageBox.Show(message,"",MessageBoxButtons.YesNo)==DialogResult.Yes) {
-					OpenSignupPortal();
-					return;
-				}
-				//De-select any rows that are not allowed to send WebSched.
-				gridRecalls.SetSelected(listGridIndicesNotSignUp.ToArray(),false);
-			}
-			#endregion Check Web Sched Pref and Show Promo
-			#region Recall List Validation
-			if(gridRecalls.ListGridRows.Count < 1) {
-				MessageBox.Show(Lan.g(this,"There are no Patients in the Recall table.  Must have at least one."));
-				return;
-			}
-			if(!EmailAddresses.ExistsValidEmail()) {
-				MsgBox.Show(this,"You need to enter an SMTP server name in email setup before you can send email.");
-				return;
-			}
-			if(PrefC.GetLong(PrefName.RecallStatusEmailed)==0
-				|| PrefC.GetLong(PrefName.RecallStatusTexted)==0
-				|| PrefC.GetLong(PrefName.RecallStatusEmailedTexted)==0) 
-			{
-				MsgBox.Show(this,"You need to set an email status, text status, and email and text status first in the Recall Setup window.");
-				return;
-			}
-			if(!ODBuild.IsDebug()) {
-				if(EServiceSignals.GetListenerServiceStatus().In(
-					eServiceSignalSeverity.None,
-					eServiceSignalSeverity.NotEnabled,
-					eServiceSignalSeverity.Critical)) 
-				{
-					MsgBox.Show(this,"Your eConnector is not currently running. Please enable the eConnector to send Web Sched Recalls.");
-					return;
-				}
-			}
-			//If the user didn't manually select any recalls we will automatically select all rows that have an email or text prefer recall method.
-			if(gridRecalls.SelectedIndices.Length==0) {
-				List<int> listIndexes=new List<int>();
-				for(int i=0;i<gridRecalls.ListGridRows.Count;i++){
-					ContactMethod contactMethod=((PatRowTag)gridRecalls.ListGridRows[i].Tag).ContactMethodRecallPref;
-					if(contactMethod.In(ContactMethod.Email,ContactMethod.TextMessage)){
-						listIndexes.Add(i);
-					}
-				}
-				gridRecalls.SetSelected(listIndexes.ToArray(),true);
-			}
-			if(gridRecalls.SelectedIndices.Length==0) {
-				MsgBox.Show(this,"No patients prefer contact via email or text.");
-				return;
-			}
-			//Now that there are rows guaranteed to be selected, check each row to see if their recall will yield available Web Sched time slots.
-			//Deselect the ones that do not have email or wireless phone specified or are assigned to clinic num 0 when clinics are enabled.
-			//Also deselect ones that were just sent but are still in the list because the grid hasn't refreshed yet.
-			int skippedContact=0;
-			int skippedTimeSlot=0;
-			int skippedClinic0=0;
-			int skippedNotInList=0;
-			int skippedRestricted=0;
-			List<long> listRestricted=PatRestrictions.GetAllRestrictedForType(PatRestrict.ApptSchedule);
-			DataTable tableRecalls=GetRecallTable();
-			List<long> listPatNumsInTableRecallCur=tableRecalls.Select().Select(x => PIn.Long(x["PatNum"].ToString())).ToList();
-			for(int i=gridRecalls.SelectedIndices.Length-1;i>=0;i--) {
-				PatRowTag patRowTag=gridRecalls.ListGridRows[gridRecalls.SelectedIndices[i]].Tag as PatRowTag;
-				if(listRestricted.Contains(patRowTag.PatNum)){
-					skippedRestricted++;
-					gridRecalls.SetSelected(gridRecalls.SelectedIndices[i],false);
-					continue;
-				}
-				//Check that they at least have an email or wireless phone.
-				if(string.IsNullOrEmpty(patRowTag.Email.Trim()) && string.IsNullOrEmpty(patRowTag.WirelessPhone.Trim())) {
-					skippedContact++;
-					gridRecalls.SetSelected(gridRecalls.SelectedIndices[i],false);
-					continue;
-				}
-				//If this practice has clinics enabled for Web Sched, then they will not have Web Sched enabled for clinic num 0. They will need to assign
-				//patients to a clinic in order to send Web Sched. We will prompt them below to assign them.
-				if(needsToBeSignedUp && patRowTag.ClinicNum==0 && !_listClinicNumsWebSched.Contains(0)) {
-					skippedClinic0++;
-					gridRecalls.SetSelected(gridRecalls.SelectedIndices[i],false);
-					continue;
-				}
-				//Check that the patient is still in the recall list (they haven't been sent something since the grid has been refreshed)
-				if(!listPatNumsInTableRecallCur.Contains(patRowTag.PatNum)) {
-					skippedNotInList++;
-					gridRecalls.SetSelected(gridRecalls.SelectedIndices[i],false);
-					continue;
-				}
-				//The eConnector will attempt to send a webschedrecall if WebSchedSendStatus is already SendNotAttempted
-				if(patRowTag.AutoCommStatusWebSchedSend==AutoCommStatus.SendNotAttempted) {
-					continue;//The eConnector is about to send this anyway.
-				}
-				//Check to see if they'll have any potential time slots via their Web Sched link.
-				DateTime dateTimeDue=patRowTag.DateDue;
-				if(patRowTag.DateDue.Date<DateTime.Now.Date) {
-					dateTimeDue=DateTime.Now;
-				}
-				//This takes a long time to run for lots of recalls.  Might consider making a faster overload in the future (213 recalls ~ 10 seconds).
-				bool hasTimeSlots=false;
-				DateTime date=dateTimeDue.AddMonths(PrefC.GetInt(PrefName.WebSchedRecallApptSearchMaximumMonths));
-				if(needsToBeSignedUp) {
-					try{
-						hasTimeSlots=TimeSlots.GetAvailableWebSchedTimeSlots(patRowTag.PriKeyNum,dateTimeDue,date).Count>0;
-					}
-					catch{}
-				}
-				else {
-					hasTimeSlots=true;
-				}
-				if(!hasTimeSlots) {
-					skippedTimeSlot++;
-					gridRecalls.SetSelected(gridRecalls.SelectedIndices[i],false);
-				}
-			}
-			List<string> listSkippedMsgs=new List<string>();
-			if(skippedContact>0) {
-				listSkippedMsgs.Add(Lan.g(this,"Selected patients skipped due to missing email addresses and wireless phone:")+" "+skippedContact);
-			}
-			if(skippedTimeSlot>0) {
-				listSkippedMsgs.Add(Lan.g(this,"Selected patients skipped due to no available Web Sched time slots found:")+" "+skippedTimeSlot);
-			}
-			if(skippedClinic0>0) {
-				listSkippedMsgs.Add(Lan.g(this,"Selected patients skipped due to not being assigned to a clinic:")+" "+skippedClinic0);
-			}
-			if(skippedRestricted>0) {
-				listSkippedMsgs.Add(Lan.g(this,"Selected patients skipped due to patient restriction:")+ " "+skippedRestricted);
-			}
-			if(skippedNotInList>0) {
-				FillRecalls();
-				listSkippedMsgs.Add(Lan.g(this,"Selected patients skipped due to no longer being in the recall list:")+" "+skippedNotInList);
-			}
-			if(!listSkippedMsgs.IsNullOrEmpty()) {
-				MessageBox.Show(string.Join("\r\n",listSkippedMsgs));
-			}
-			if(gridRecalls.SelectedIndices.Length==0) {
-				MsgBox.Show(this,"No Web Sched emails or texts sent.");
-				return;
-			}
-			#endregion Recall List Validation
-			List<long> listPatNums=gridRecalls.SelectedGridRows.Select(x => ((PatRowTag)x.Tag).PatNum).ToList();
-			List<CommOptOut> listCommOptOuts=CommOptOuts.GetForPats(listPatNums);
-			List<CommOptOut> listCommOptOutsWebSched=listCommOptOuts.FindAll(x => x.IsOptedOut(CommOptOutMode.Text,CommOptOutType.WebSchedRecall)
-				|| x.IsOptedOut(CommOptOutMode.Email,CommOptOutType.WebSchedRecall));
-			string messageText=Lans.g(this,"Send Web Sched emails and/or texts to all of the selected patients?");
-			if(!listCommOptOutsWebSched.IsNullOrEmpty()) {
-				List<Patient> listPatientLim=Patients.GetLimForPats(listCommOptOutsWebSched.Select(x => x.PatNum).ToList());
-				StringBuilder stringBuilder=new StringBuilder();
-				stringBuilder.AppendLine(Lans.g(this,"The following patients have opted out of receiving automated emails and/or texts:"));
-				for(int i=0;i<listPatientLim.Count;i++) {
-					stringBuilder.AppendLine(listPatientLim[i].LName+", "+listPatientLim[i].FName);
-				}
-				stringBuilder.AppendLine(messageText);
-				messageText=stringBuilder.ToString();
-			}
-			using MsgBoxCopyPaste msgBoxCopyPasteMessage=new MsgBoxCopyPaste(messageText);
-			msgBoxCopyPasteMessage.ShowDialog();
-			if(msgBoxCopyPasteMessage.DialogResult!=DialogResult.OK) {
-				return;
-			}
-			Cursor.Current=Cursors.WaitCursor;
-			List<long> listRecallNums=gridRecalls.SelectedTags<PatRowTag>().Select(x => x.PriKeyNum).ToList();
-			List<string> listWebSchedErrors=new List<string>();
-			List<string> listTemp=WebSchedRecalls.InsertForRecallNums(
-				//Queue emails.  AutoComm will filter out any that cannot be sent as email.
-				listRecallNums,
-				checkGroupFamiliesRecalls.Checked,
-				comboSortRecalls.GetSelected<RecallListSort>(),
-				WebSchedRecallSource.FormRecallList,
-				CommType.Email,
-				DateTime.Now
-			);
-			listWebSchedErrors.AddRange(listTemp);
-			listTemp=WebSchedRecalls.InsertForRecallNums(
-				listRecallNums,
-				checkGroupFamiliesRecalls.Checked,
-				comboSortRecalls.GetSelected<RecallListSort>(),
-				WebSchedRecallSource.FormRecallList,
-				CommType.SecureEmail,
-				DateTime.Now
-			);
-			listWebSchedErrors.AddRange(listTemp);
-			listTemp=WebSchedRecalls.InsertForRecallNums(
-				//Queue SMS.  AutoComm will filter out any that cannot be sent as SMS.
-				listRecallNums,
-				checkGroupFamiliesRecalls.Checked,
-				comboSortRecalls.GetSelected<RecallListSort>(),
-				WebSchedRecallSource.FormRecallList,
-				CommType.Text,
-				DateTime.Now
-			);
-			listWebSchedErrors.AddRange(listTemp);
-			//Workstations don't actually care about this pref, this pref is entirely for the eConnector.
-			CommTypeFlag commType=CommTypeFlag.Text|CommTypeFlag.Email|CommTypeFlag.SecureEmail;
-			Prefs.UpdateIntNoCache(PrefName.WebSchedManualSendTriggered,(int)commType); //This pref is for the EConnector running webschedrecalls, doesn't get used by anyone else so update without cache.
-			Cursor=Cursors.Default;
-			SecurityLogs.MakeLogEntry(EnumPermType.WebSchedRecallManualSend,0,Lan.g(this,"Web Sched Recalls manually sent."));
-			if(listWebSchedErrors.Count>0) {
-				//Show the error (already translated) to the user and then refresh the grid in case any were successful.
-				using MsgBoxCopyPaste msgBoxCopyPaste=new MsgBoxCopyPaste(string.Join("\r\n",listWebSchedErrors));
-				msgBoxCopyPaste.Show();
-			}
-			FillRecalls();
-		}
-
 		private void checkGroupFamilies_Click(object sender,EventArgs e) {
 			Cursor=Cursors.WaitCursor;
 			FillCurGrid();
@@ -1028,10 +702,6 @@ namespace OpenDental {
 		}
 
 		private void butECards_Click(object sender,EventArgs e) {
-			if(!Programs.IsEnabledByHq(ProgramName.Divvy,out string err)) {
-				MsgBox.Show(err);
-				return;
-			}
 			if(!Programs.IsEnabled(ProgramName.Divvy)) {
 				if(MsgBox.Show(this,MsgBoxButtons.OKCancel,"The Divvy Program Link is not enabled. Would you like to enable it now?")) {
 					using FormProgramLinkEdit formProgramLinkEdit=new FormProgramLinkEdit();
@@ -1156,7 +826,7 @@ namespace OpenDental {
 			DivvyConnect.PostcardReturnMessage postcardReturnMessage=new DivvyConnect.PostcardReturnMessage();
 			string messages="";
 			Cursor=Cursors.WaitCursor;
-			string password=CDT.Class1.TryDecrypt(ProgramProperties.GetPropVal(ProgramName.Divvy,"Password"));
+			string password=Secrets.TryDecrypt(ProgramProperties.GetPropVal(ProgramName.Divvy,"Password"));
 			Guid guid=Guid.Parse(ProgramProperties.GetPropVal(ProgramName.Divvy,"API Key"));
 			string username=ProgramProperties.GetPropVal(ProgramName.Divvy,"Username");
 			try {
@@ -1437,7 +1107,7 @@ namespace OpenDental {
 					+_tableAddress.Rows[patientsPrinted]["State"].ToString()+" "
 					+_tableAddress.Rows[patientsPrinted]["Zip"].ToString()+"\r\n";
 				Rectangle rectangle=new Rectangle((int)xPos,(int)yPos,275,100);
-				OpenDental.InternalTools.Phones.MapPanel.FitTextOld(text,new Font(FontFamily.GenericSansSerif,11),Brushes.Black,rectangle,new StringFormat(),g);
+				PrinterL.FitText(text,new Font(FontFamily.GenericSansSerif,11),Brushes.Black,rectangle,new StringFormat(),g);
 				//reposition for next label
 				xPos+=275;
 				if(xPos>850){//drop a line
@@ -1711,12 +1381,6 @@ namespace OpenDental {
 			e.HasMorePages=false;
 		}
 	
-		public override void ProcessSignalODs(List<Signalod> listSignalods) {
-			if(listSignalods.Any(x => x.IType==InvalidType.WebSchedRecallReminders)) {
-				FillRecalls();
-			}
-		}
-
 		///<summary>We don't fill tabPageRecall when selected as that is the default selected tab and is filled on load.</summary>
 		private void tabControl_SelectedIndexChanged(object sender,EventArgs e) {
 			if(_grid.Columns.Count>0) {
@@ -2105,8 +1769,6 @@ namespace OpenDental {
 			public long ClinicNum;
 			public DateTime DateDue;
 			public string WirelessPhone;
-			public string WebSchedSendError;
-			public AutoCommStatus AutoCommStatusWebSchedSend;
 		}
 
 		///<summary>Rebuilds the context menu when the user right-clicks on the grids in this form. Rebuilding the context menu each time rather than just once on form_load is necessary to ensure that the correct context values are passed along to the user's selected function.</summary>

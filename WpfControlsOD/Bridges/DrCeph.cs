@@ -25,16 +25,7 @@ namespace OpenDental.Bridges{
 				return;
 			}
 			//Make sure the program is running
-			if(ODEnvironment.IsCloudServer) {
-				try {
-					ODFileUtils.ProcessStart(path,tryLaunch:true);
-				}
-				catch(Exception ex) {
-					FriendlyException.Show(Lans.g("DrCeph","An error occurred when checking for the Dr.Ceph bridge"),ex);
-					return;
-				}
-			}
-			else if(Process.GetProcessesByName("DrCeph").Length==0) {
+			if(Process.GetProcessesByName("DrCeph").Length==0) {
 				try{
 					ODFileUtils.ProcessStart(path);
 				}
@@ -54,13 +45,7 @@ namespace OpenDental.Bridges{
 					return;
 				}
 				DrCephArgs cephArgs=formLauncher.GetField<DrCephArgs>("Args");
-				if(ODEnvironment.IsCloudServer) {
-					string patArgs=JsonConvert.SerializeObject(cephArgs);
-					ODCloudClient.SendToDrCeph(patArgs);
-				}
-				else {
-					DrCephUtils.Launch(cephArgs);
-				}
+				DrCephUtils.Launch(cephArgs);
 			}
 			catch(Exception ex) {
 				MessageBox.Show("An error occurred. "+ex.Message);

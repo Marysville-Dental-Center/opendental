@@ -127,9 +127,6 @@ SetFilterControlsAndAction will be handled by a new class that has not been buil
 			s+="Height=\""+formODBase.ClientSize.Height.ToString()+"\" \r\n";
 			s+="             ";
 			s+="Text=\""+formODBase.Text+"\" ";
-			if(!formODBase.HasHelpButton){
-				s+="HasHelpButton=\"False\" ";
-			}
 			if(formODBase.IsBorderLocked){
 //todo:
 				throw new Exception("Setting IsBorderLocked is not supported. Talk to Jordan.");

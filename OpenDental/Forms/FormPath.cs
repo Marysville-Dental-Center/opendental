@@ -82,11 +82,6 @@ namespace OpenDental{
 					ActiveControl=textLocalPath;//Focus on textLocalPath, since this is the only textbox the user can edit in this case.
 				}
 			}
-			if(ODEnvironment.IsCloudServer) {
-				textSftpUsername.UseSystemPasswordChar=true;
-				butOK.Enabled=false;
-				DisableMostControls();
-			}
 			if(PrefC.AtoZfolderUsed!=DataStorageType.InDatabase) {
 				radioDatabaseStorage.Visible=false;
 				LayoutManager.MoveLocation(radioDropboxStorage,new Point(LayoutManager.Scale(9),LayoutManager.Scale(38)));
@@ -375,7 +370,7 @@ namespace OpenDental{
 			textSftpPassword.Text=_programPropertySftpPassword.PropertyValue;
 			if(textSftpPassword.Text.Length>0) {
 				string pass="";
-				if(CDT.Class1.DecryptSftp(textSftpPassword.Text,out pass)) {
+				if(Secrets.DecryptSftp(textSftpPassword.Text,out pass)) {
 					textSftpPassword.Text=pass;
 				}
 				textSftpPassword.UseSystemPasswordChar=true;
@@ -474,7 +469,7 @@ namespace OpenDental{
 				isChanged|=ProgramProperties.UpdateProgramPropertyWithValue(_programPropertySftpPathAtoZ,textSftpAtoZ.Text);
 				isChanged|=ProgramProperties.UpdateProgramPropertyWithValue(_programPropertySftpHostname,textSftpHostname.Text);
 				isChanged|=ProgramProperties.UpdateProgramPropertyWithValue(_programPropertySftpUsername,textSftpUsername.Text);
-				string encryptedText=CDT.Class1.EncryptSftp(textSftpPassword.Text);
+				string encryptedText=Secrets.EncryptSftp(textSftpPassword.Text);
 				if(encryptedText!="") { 
 					isChanged|=ProgramProperties.UpdateProgramPropertyWithValue(_programPropertySftpPassword,encryptedText);
 				}

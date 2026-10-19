@@ -47,7 +47,6 @@ namespace OpenDental{
 		public UIManager(FormFrame formFrame,FrmODBase frmODBase){
 			//for FormMaker
 			FormFrame_=formFrame;
-			FormFrame_.HasHelpButton=frmODBase.HasHelpButton;
 			FormFrame_.MinimizeBox=frmODBase.MinMaxBoxes;
 			FormFrame_.MaximizeBox=frmODBase.MinMaxBoxes;
 			string classType=frmODBase.GetType().Name;

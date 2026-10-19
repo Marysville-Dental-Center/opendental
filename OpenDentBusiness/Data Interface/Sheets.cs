@@ -44,22 +44,6 @@ namespace OpenDentBusiness{
 			return Crud.SheetCrud.SelectMany(command);
 		}
 
-		///<summary>Returns true if a sheet with the WebFormSheetID passed in already exists in the database. Otherwise; false.
-		///Multiple entities can be retrieving the same web forms from HQ at the same time so it is important to check the sheet table to see if the SheetID has been retrieved before.
-		///Typically called before invoking SaveNewSheet() to avoid making duplicate sheets.</summary>
-		public static bool HasWebFormSheetID(long webFormSheetID) {
-			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				return Meth.GetBool(MethodBase.GetCurrentMethod(),webFormSheetID);
-			}
-			string command="SELECT COUNT(*) FROM sheet WHERE WebFormSheetID = "+POut.Long(webFormSheetID);
-			if(Db.GetCount(command)=="0") {
-				return false;
-			}
-			string note="Duplicate SheetID detected. This web form will not be inserted into the sheet table since a row with this SheetID is already present.";
-			EServiceLogs.MakeLogEntryWebForms(eServiceAction.WFError,FKey:webFormSheetID,note:note);
-			return true;
-		}
-
 		///<Summary>This is normally done in FormSheetFillEdit, but if we bypass that window for some reason, we can also save a new sheet here. Signature
 		///fields are inserted as they are, so they must be keyed to the field values already. Saves the sheet and sheetfields exactly as they are. Used by
 		///webforms, for example, when a sheet is retrieved from the web server and the sheet signatures have already been keyed to the field values and
@@ -331,83 +315,6 @@ namespace OpenDentBusiness{
 			return Crud.SheetCrud.SelectOne(command);
 		}
 
-		///<summary>Called by eClipboard check-in once an appointment has been moved to the waiting room and the patient is ready to fill out forms.
-		///Returns number of new sheets created and inserted into Sheet table.</summary>
-		public static int CreateSheetsForCheckIn(Appointment appointment) {
-			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				return Meth.GetInt(MethodBase.GetCurrentMethod(),appointment);
-			}
-			if(!MobileAppDevices.IsClinicSignedUpForEClipboard(PrefC.HasClinicsEnabled?appointment.ClinicNum:0)) { //this clinic isn't signed up for this feature
-				return 0;
-			}
-			if(!ClinicPrefs.GetBool(PrefName.EClipboardCreateMissingFormsOnCheckIn,appointment.ClinicNum)) { //This feature is turned off
-				return 0;
-			}
-			bool useDefault=ClinicPrefs.GetBool(PrefName.EClipboardUseDefaults,appointment.ClinicNum);
-			List<EClipboardSheetDef> listEClipboardSheetDefsToCreate=EClipboardSheetDefs.GetForClinic(useDefault ? 0 : appointment.ClinicNum);
-			//This list can hold sheets and eForms. Lets remove all forms that are not sheets since this method is only for creating sheets.
-			listEClipboardSheetDefsToCreate.RemoveAll(x=>x.SheetDefNum==0);
-			if(listEClipboardSheetDefsToCreate.Count==0) { //There aren't any sheets to create here
-				return 0;
-			}
-			List<Sheet> listSheetsAlreadyCompleted=Sheets.GetForPatient(appointment.PatNum);
-			List<Sheet> listSheetsAlreadyInTerminal=Sheets.GetForTerminal(appointment.PatNum);
-			//if we already have sheets queued for the patient don't add duplicates
-			if(listSheetsAlreadyInTerminal.Count>0) {
-				listSheetsAlreadyCompleted.RemoveAll(x => listSheetsAlreadyInTerminal.Select(y => y.SheetNum).Contains(x.SheetNum));
-				listEClipboardSheetDefsToCreate.RemoveAll(x => listSheetsAlreadyInTerminal.Select(y => y.SheetDefNum).Contains(x.SheetDefNum));
-			}
-			Patient patient=Patients.GetPat(appointment.PatNum);
-			//Remove any sheets that the patient shouldn't see based on age. A value of -1 means ignore.
-			listEClipboardSheetDefsToCreate.RemoveAll(x => x.MinAge!=-1 && patient.Age<x.MinAge);
-			listEClipboardSheetDefsToCreate.RemoveAll(x => x.MaxAge!=-1 && patient.Age>x.MaxAge);
-			listEClipboardSheetDefsToCreate=EClipboardSheetDefs.FilterPrefillStatuses(listEClipboardSheetDefsToCreate,listSheetsAlreadyCompleted, clinicNum:appointment.ClinicNum, listSheetsInTerminal:listSheetsAlreadyInTerminal)
-				.OrderBy(x => x.ItemOrder).ToList();
-			byte showInTerminal=GetBiggestShowInTerminal(appointment.PatNum);
-			List<Sheet> listSheetsNew=new List<Sheet>();
-			for(int i=0;i<listEClipboardSheetDefsToCreate.Count;i++) {
-				//First check if we've already completed this form against our resubmission interval rules
-				Sheet sheetLastCompleted=listSheetsAlreadyCompleted
-					.Where(x => x.SheetDefNum==listEClipboardSheetDefsToCreate[i].SheetDefNum)
-					.OrderBy(x => x.DateTimeSheet)
-					.LastOrDefault()??new Sheet();
-				if(sheetLastCompleted.DateTimeSheet > DateTime.MinValue) {//If the patient has submitted this sheetDef before.
-					if(listEClipboardSheetDefsToCreate[i].Frequency==EnumEClipFreq.Once && sheetLastCompleted.RevID >= listEClipboardSheetDefsToCreate[i].PrefillStatusOverride) {
-							continue;//If this frequency is set to once and they've already completed this form once, we never want to create it automatically again.
-					}	
-					else if(listEClipboardSheetDefsToCreate[i].Frequency==EnumEClipFreq.TimeSpan) {
-						int daysElapsed=(DateTime.Today - sheetLastCompleted.DateTimeSheet.Date).Days;
-						if(daysElapsed < listEClipboardSheetDefsToCreate[i].ResubmitInterval.Days) {
-							continue; //The interval hasn't elapsed yet so we don't want to create this sheet
-						}
-					}
-					//else if(listEClipboardSheetDefsToCreate[i].Frequency==EnumEClipFreq.EachTime), then we do not care about time elapsed and will populate the form each time.
-				}
-				SheetDef sheetDef=SheetDefs.GetSheetDef(listEClipboardSheetDefsToCreate[i].SheetDefNum);
-				Sheet sheetNew=new Sheet();
-				//Look up the most recent sheet filledout by this patients wth this def num
-				Sheet sheet=Sheets.GetForPatient(appointment.PatNum).Where(x=>x.SheetDefNum==sheetDef.SheetDefNum).OrderByDescending(x=>x.DateTimeSheet).FirstOrDefault();
-				if(listEClipboardSheetDefsToCreate[i].PrefillStatus==PrefillStatuses.PreFill && sheet!=null && sheet.RevID==sheetDef.RevID) {
-					//do the pre-fill thing from  the other method here.
-					sheetNew=PreFillSheetFromPreviousAndDatabase(sheetDef,sheet);
-					sheetNew.IsNew=true; //Setting this to true because we want to insert this new sheet not update an old one
-					sheetNew.DateTimeSheet=DateTime.Now;
-				}
-				else {
-					sheetNew=CreateSheetFromSheetDef(sheetDef,appointment.PatNum);
-					SheetParameter.SetParameter(sheetNew,"PatNum",appointment.PatNum);//must come before sheet filler
-					SheetFiller.FillFields(sheetNew);
-				}
-				//Counting starts at 1 in this case and we don't want to ovewrite the previous number so increment first
-				sheetNew.ShowInTerminal=++showInTerminal;
-				listSheetsNew.Add(sheetNew);
-				SecurityLogs.MakeLogEntry(EnumPermType.FormAdded,sheetNew.PatNum,$"{sheetNew.Description} Created in EClipboard");
-				EServiceLogs.MakeLogEntry(eServiceAction.ECAddedForm,eServiceType.EClipboard,FKeyType.SheetNum,patNum:sheetNew.PatNum,FKey:sheetNew.SheetNum,clinicNum: appointment.ClinicNum);
-			}
-			SaveNewSheetList(listSheetsNew);
-			return listSheetsNew.Count;
-		}
-
 		///<summary>Creates a new sheet instance based on sheetDefOriginal, and fills it with values from the db, and then fills remaining with values from sheet. Returns the new, pre-filled sheet.</summary>
 		public static Sheet PreFillSheetFromPreviousAndDatabase(SheetDef sheetDefOriginal,Sheet sheet) {
 			Meth.NoCheckMiddleTierRole();
@@ -579,8 +486,6 @@ namespace OpenDentBusiness{
 					+"AND IsDeleted=0 "
 					+"AND ShowInTerminal>"+POut.Byte(showInTerminal);//decrement ShowInTerminal for all sheets with a bigger ShowInTerminal than the one deleted
 				Db.NonQ(command);
-				//Create mobile notification for deleted sheet to eClipboard.
-				MobileNotifications.CI_RemoveSheet(patNum,sheetNum);
 			}
 		}
 

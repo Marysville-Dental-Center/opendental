@@ -34,17 +34,15 @@ namespace OpenDental {
 		}
 
 		private async void FormErx_Load(object sender,EventArgs e) {
-			if(!ODBuild.IsThinfinity()) {//Don't use WebView2 or toolbar in cloud
-				try {
-					await webViewMain.Init();
-				}
-				catch(Exception ex) {
-					Close();
-					return;
-				}
-				Text=Lan.g(this,"Loading")+"...";
-				LayoutToolBars();
+			try {
+				await webViewMain.Init();
 			}
+			catch(Exception ex) {
+				Close();
+				return;
+			}
+			Text=Lan.g(this,"Loading")+"...";
+			LayoutToolBars();
 			if(ErxOptionCur==ErxOption.NewCrop) {
 				ComposeNewRxNewCrop();
 			}
@@ -88,12 +86,7 @@ namespace OpenDental {
 
 		public void ComposeNewRxDoseSpot() {
 			string doseSpotUrl=Erx.GetRxDoseSpotUrl(StringSSOQuery);
-			if(ODBuild.IsThinfinity()) {
-				cloudIframe.Initialize(cloudIframe.Handle,doseSpotUrl);
-			}
-			else {
-				webViewMain.CoreWebView2.Navigate(doseSpotUrl);
-			}
+			webViewMain.CoreWebView2.Navigate(doseSpotUrl);
 		}
 
 		private void webViewMain_NavigationCompleted(object sender,CoreWebView2NavigationCompletedEventArgs e) {

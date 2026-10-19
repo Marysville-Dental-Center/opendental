@@ -65,13 +65,7 @@ namespace OpenDental{
 			gridMain.Columns.Add(col);
 			col=new GridColumn(Lan.g("TableOperatories","Hygienist"),70);
 			gridMain.Columns.Add(col);
-			col=new GridColumn(Lan.g("TableOperatories","IsHygiene"),64,HorizontalAlignment.Center);
-			gridMain.Columns.Add(col);
-			col=new GridColumn(Lan.g("TableOperatories","IsWebSched"),74,HorizontalAlignment.Center);
-			gridMain.Columns.Add(col);
-			col=new GridColumn(Lan.g("TableOperatories","IsNewPat"),75,HorizontalAlignment.Center);
-			gridMain.Columns.Add(col);
-			col=new GridColumn(Lan.g("TableOperatories","IsExistPat"),75,HorizontalAlignment.Center) { IsWidthDynamic=true };
+			col=new GridColumn(Lan.g("TableOperatories","IsHygiene"),64,HorizontalAlignment.Center) { IsWidthDynamic=true };
 			gridMain.Columns.Add(col);
 			gridMain.ListGridRows.Clear();
 			UI.GridRow row;
@@ -102,9 +96,6 @@ namespace OpenDental{
 				else{
 					row.Cells.Add("");
 				}
-				row.Cells.Add(_listOperatories[i].IsWebSched?"X":"");
-				row.Cells.Add((_listOperatories[i].ListWSNPAOperatoryDefNums!=null && _listOperatories[i].ListWSNPAOperatoryDefNums.Count > 0) ? "X" : "");
-				row.Cells.Add((_listOperatories[i].ListWSEPOperatoryDefNums!=null && _listOperatories[i].ListWSEPOperatoryDefNums.Count > 0) ? "X" : "");
 				row.Tag=_listOperatories[i];
 				gridMain.ListGridRows.Add(row);
 			}

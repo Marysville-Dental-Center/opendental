@@ -40,9 +40,6 @@ namespace OpenDental{
 			if(_program==null) {
 				return;//should never happen
 			}
-			if(ODEnvironment.IsCloudServer) {
-				linkLabel1.Text+="\r\n"+Lans.g(this,"X-Charge is not supported while using Open Dental Cloud. Use EdgeExpress instead.");
-			}
 			if(PrefC.HasClinicsEnabled) {
 				groupPaySettings.Text=Lan.g(this,"Clinic Payment Settings");
 				if(Security.CurUser.ClinicIsRestricted) {
@@ -245,15 +242,6 @@ namespace OpenDental{
 			}
 		}
 
-		private void linkLabel1_LinkClicked(object sender,LinkLabelLinkClickedEventArgs e) {
-			string url="https://opendental.com/resources/redirects/redirectopenedge.html";
-			if(ODCloudClient.IsAppStream) {
-				ODCloudClient.LaunchFileWithODCloudClient(url);
-				return;
-			}
-			Process.Start(url);
-		}
-
 		///<summary>Validate XWebID, AuthKey, and TerminalID.  XWebID and TerminalID must be numbers only, 12 digits and 8 digits long respectively.
 		///AuthKey must be alphanumeric, 32 digits long.</summary>
 		private bool ValidateXWeb(bool suppressMessage=false) {
@@ -411,25 +399,12 @@ namespace OpenDental{
 		}
 
 		private void checkEnabled_CheckedChanged(object sender,EventArgs e) {
-			if(ODEnvironment.IsCloudServer) {
-				bool isDisabledForWeb=Programs.GetListDisabledForWeb().Contains(_program.ProgName);
-				if(checkEnabled.Checked && isDisabledForWeb) {
-					checkEnabled.Checked=false;
-					if(!_isLoading){
-						MsgBox.Show(this,"Web users cannot currently enable this bridge");
-					}
-				}
-			}
 		}
 
 		private void butSave_Click(object sender,System.EventArgs e) {
 			#region Validation and Update Local List
 			if(_program==null) {//should never happen
 				MsgBox.Show(this,"X-Charge entry is missing from the database.");
-				return;
-			}
-			if(checkEnabled.Checked && !Programs.IsEnabledByHq(ProgramName.Xcharge,out string err)) {
-				MessageBox.Show(err);
 				return;
 			}
 			#region Validate Path and Local Path Override

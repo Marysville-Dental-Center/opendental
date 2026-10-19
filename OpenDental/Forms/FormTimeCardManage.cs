@@ -11,7 +11,6 @@ using CodeBase;
 using OpenDental.UI;
 using OpenDentBusiness;
 using System.Linq;
-using OpenDental.Thinfinity;
 
 namespace OpenDental {
 	public partial class FormTimeCardManage:FormODBase {
@@ -64,7 +63,6 @@ namespace OpenDental {
 			_listPayPeriods=PayPeriods.GetDeepCopy();
 			LayoutMenu();
 			FillPayPeriod();
-			butTimeCardBenefits.Visible=PrefC.IsODHQ && Security.IsAuthorized(EnumPermType.TimecardsEditAll,true);
 		}
 
 		private void LayoutMenu() {
@@ -273,10 +271,6 @@ namespace OpenDental {
 			gridTimeCard.Columns.Add(col);
 			col=new GridColumn(Lan.g(this,"PL"),45,HorizontalAlignment.Right);
 			gridTimeCard.Columns.Add(col);
-			if(PrefC.IsODHQ) {
-				col=new GridColumn(Lan.g(this,"WFH"),45,HorizontalAlignment.Right);
-				gridTimeCard.Columns.Add(col);
-			}
 			col=new GridColumn(Lan.g(this,"Day"),50,HorizontalAlignment.Right);
 			gridTimeCard.Columns.Add(col);
 			col=new GridColumn(Lan.g(this,"Week"),50,HorizontalAlignment.Right);
@@ -411,14 +405,6 @@ namespace OpenDental {
 				//Column 11 - PL (Unpaid Protected Leave)-------------------------
 					row.Cells.Add("");//No PL should exist, leave blank
 				//Column 12 - WFH Working From Home ------------------------------
-					if(PrefC.IsODHQ) {
-						if(clockEvent.IsWorkingHome){
-							row.Cells.Add("X");//Working from home, fill with X
-						}
-						else {
-							row.Cells.Add("");//No WFH on adjustments, leave blank
-						}
-					}
 				//Column 13 (or 12 if no WFH) - Day (daily total)-----------------
 					//if this is the last entry for a given date
 					if(i==arrayListMerged.Count-1//if this is the last row
@@ -508,9 +494,6 @@ namespace OpenDental {
 						row.Cells.Add("");
 					}
 				//Column 12 - WFH Working From Home ------------------------------
-					if(PrefC.IsODHQ) {
-						row.Cells.Add("");//No WFH on adjustments, leave blank
-					}
 				//Column 13 (or 12 if no WFH) - Day (daily total)-----------------
 					//if this is the last entry for a given date
 					if(i==arrayListMerged.Count-1//if this is the last row
@@ -582,9 +565,6 @@ namespace OpenDental {
 			}
 			_pagesPrinted=0;
 			PrintoutOrientation printoutOrientation=PrintoutOrientation.Portrait;
-			if(PrefC.IsODHQ) {
-				printoutOrientation=PrintoutOrientation.Landscape; //Switching for extra WFH column
-			}
 			PrinterL.TryPreview(pd2_PrintPage,
 				Lan.g(this,Lans.g(this,"Employee time cards printed")),
 				printoutOrientation:printoutOrientation,
@@ -610,9 +590,6 @@ namespace OpenDental {
 			}
 			_pagesPrinted=0;
 			PrintoutOrientation printoutOrientation=PrintoutOrientation.Portrait;
-			if(PrefC.IsODHQ) {
-				printoutOrientation=PrintoutOrientation.Landscape; //Switching for extra WFH column
-			}
 			PrinterL.TryPreview(pd2_PrintPageSelective,
 				Lan.g(this,"Employee time cards printed"),
 				printoutOrientation:printoutOrientation,
@@ -656,11 +633,8 @@ namespace OpenDental {
 			yPos+=heightRect+5;//+5 pixels for a small space between columns and title area.
 			//define columns
 			int[] colW=new int[14];
-			if(PrefC.HasClinicsEnabled || PrefC.IsODHQ) {
+			if(PrefC.HasClinicsEnabled) {
 				colW=new int[15];
-			}
-			if(PrefC.HasClinicsEnabled && PrefC.IsODHQ) {
-				colW=new int[16];
 			}
 			colW[0]=70;//Date
 			colW[1]=45;//Day: Column starts to wrap at 32 pixels, however added padding to 45 to allow room for language translations
@@ -676,19 +650,9 @@ namespace OpenDental {
 			colW[11]=45;//Day
 			colW[12]=50;//Week
 			colW[13]=130;//Note
-			if(PrefC.IsODHQ) {
-				colW[11]=45;//WFH
-				colW[12]=45;//Day
-				colW[13]=50;//Week
-				colW[14]=300;//Note
-			}
-			else if(PrefC.HasClinicsEnabled) {
+			if(PrefC.HasClinicsEnabled) {
 				colW[13]=50;//Clinic
 				colW[14]=80;//Note: Reduce width when Clinic column is added so that we do not exceed the margin.
-			}
-			if(PrefC.HasClinicsEnabled && PrefC.IsODHQ) {
-				colW[14]=100;//Clinic
-				colW[15]=200;//Note: Reduce width when Clinic column is added so that we do not exceed the margin.
 			}
 			int[] colPos=new int[colW.Length+1];
 			colPos[0]=45;
@@ -696,11 +660,8 @@ namespace OpenDental {
 				colPos[i]=colPos[i-1]+colW[i-1];
 			}
 			string[] ColCaption=new string[14];
-			if(PrefC.HasClinicsEnabled || PrefC.IsODHQ) {
+			if(PrefC.HasClinicsEnabled) {
 				ColCaption=new string[15];
-			}
-			if(PrefC.HasClinicsEnabled && PrefC.IsODHQ) {
-				ColCaption=new string[16];
 			}
 			ColCaption[0]=Lan.g(this,"Date");
 			ColCaption[1]=Lan.g(this,"Day");
@@ -716,19 +677,9 @@ namespace OpenDental {
 			ColCaption[11]=Lan.g(this,"Day");
 			ColCaption[12]=Lan.g(this,"Week");
 			ColCaption[13]=Lan.g(this,"Note");
-			if(PrefC.IsODHQ) {
-				ColCaption[11]=Lan.g(this,"WFH");
-				ColCaption[12]=Lan.g(this,"Day");
-				ColCaption[13]=Lan.g(this,"Week");
-				ColCaption[14]=Lan.g(this,"Note");
-			}
-			else if(PrefC.HasClinicsEnabled) {
+			if(PrefC.HasClinicsEnabled) {
 				ColCaption[13]=Lan.g(this,"Clinic");
 				ColCaption[14]=Lan.g(this,"Note");
-			}
-			if(PrefC.HasClinicsEnabled && PrefC.IsODHQ) {
-				ColCaption[14]=Lan.g(this,"Clinic");
-				ColCaption[15]=Lan.g(this,"Note");
 			}
 			//column headers-----------------------------------------------------------------------------------------
 			e.Graphics.FillRectangle(Brushes.LightGray,colPos[0],yPos,colPos[colPos.Length-1]-colPos[0],18);
@@ -998,10 +949,8 @@ namespace OpenDental {
 		///<summary>Exports MainTable (a data table) not the actual OD Grid. This allows for EmployeeNum and ADPNum without having to perform any lookups.</summary>
 		private void butExportGrid_Click(object sender,EventArgs e) {
 			using FolderBrowserDialog folderBrowserDialog = new FolderBrowserDialog();
-			if(!ODBuild.IsThinfinity()) {
-				if(folderBrowserDialog.ShowDialog()!=DialogResult.OK) {
-					return;
-				}
+			if(folderBrowserDialog.ShowDialog()!=DialogResult.OK) {
+				return;
 			}
 			StringBuilder stringBuilder = new StringBuilder();
 			string headers="";
@@ -1054,10 +1003,6 @@ namespace OpenDental {
 				stringBuilder.AppendLine(row);
 			}
 			string fileName="ODPayroll"+DateTime.Now.ToString("yyyyMMdd_hhmmss")+".TXT";
-			if(ODBuild.IsThinfinity()) {
-				ThinfinityUtils.ExportForDownload(fileName,stringBuilder.ToString());
-				return;
-			}
 			try {
 				System.IO.File.WriteAllText(folderBrowserDialog.SelectedPath+"\\"+fileName,stringBuilder.ToString());
 				MessageBox.Show(this,Lan.g(this,"File created")+" : "+folderBrowserDialog.SelectedPath+"\\"+fileName);
@@ -1186,20 +1131,12 @@ namespace OpenDental {
 				}
 			}
 			using FolderBrowserDialog folderBrowserDialog = new FolderBrowserDialog();
-			if(!ODBuild.IsThinfinity()) {
-				if(folderBrowserDialog.ShowDialog()!=DialogResult.OK) {
-					return;
-				}
+			if(folderBrowserDialog.ShowDialog()!=DialogResult.OK) {
+				return;
 			}
 			string fileSuffix=GenerateFileSuffix(folderBrowserDialog.SelectedPath,"\\EPI"+coCode);
 			try {
-				if(ODBuild.IsThinfinity()) {
-					string fileName="EPI"+coCode+fileSuffix+".CSV";
-					ThinfinityUtils.ExportForDownload(fileName,stringBuilder.ToString());
-				}
-				else {
-					System.IO.File.WriteAllText(folderBrowserDialog.SelectedPath+"\\EPI"+coCode+fileSuffix+".CSV",stringBuilder.ToString());
-				}
+				System.IO.File.WriteAllText(folderBrowserDialog.SelectedPath+"\\EPI"+coCode+fileSuffix+".CSV",stringBuilder.ToString());
 				if(errors!="") {
 					MsgBoxCopyPaste msgBox=new MsgBoxCopyPaste(
 						"The following errors will prevent ADP from properly processing this export:\r\n"+errors);
@@ -1270,10 +1207,8 @@ namespace OpenDental {
 				#endregion
 			}//end file contents
 			using FolderBrowserDialog folderBrowserDialog=new FolderBrowserDialog();
-			if(!ODBuild.IsThinfinity()) {
-				if(folderBrowserDialog.ShowDialog()!=DialogResult.OK) {
-					return;
-				}
+			if(folderBrowserDialog.ShowDialog()!=DialogResult.OK) {
+				return;
 			}
 			//ADP recommends a filename like "Biweekly-01012021-01152021.csv"
 			string fileName=payFrequency+"-"+startDate.Replace("/","")+"-"+endDate.Replace("/","");
@@ -1287,12 +1222,7 @@ namespace OpenDental {
 				errors+="  The pay frequency '"+payPeriodInterval+"' does not match the pay period date range.\r\n";
 			}
 			try {
-				if(ODBuild.IsThinfinity()) {
-					ThinfinityUtils.ExportForDownload(fileName+".CSV",stringBuilder.ToString());
-				}
-				else {
-					System.IO.File.WriteAllText(folderBrowserDialog.SelectedPath+"\\"+fileName+".CSV",stringBuilder.ToString());
-				}
+				System.IO.File.WriteAllText(folderBrowserDialog.SelectedPath+"\\"+fileName+".CSV",stringBuilder.ToString());
 			}
 			catch(Exception ex) {
 				MessageBox.Show(this,"File not created:\r\n"+ex.Message);
@@ -1312,9 +1242,6 @@ namespace OpenDental {
 			//generate suffix from i
 			for(int i=0;i<=1297;i++) {//1296=36*36 to represent all acceptable suffixes for file name consisting of two alphanumeric digits; +1 to catch error. (A-Z, 0-9)
 				fileSuffix="";
-				if(ODEnvironment.IsCloudServer) {
-					return ""; //we don't have a way to check if the file exists.
-				}
 				if(i==1297) {
 					 return "NamingError"; //could not find acceptable file name.
 				}
@@ -1354,11 +1281,6 @@ namespace OpenDental {
 				return true;
 			}
 			return false;
-		}
-
-		private void butTimeCardBenefits_Click(object sender,EventArgs e) {
-			FormTimeCardBenefitRp formTimeCardBenefitRp = new FormTimeCardBenefitRp();
-			formTimeCardBenefitRp.Show();
 		}
 
 		private void setupToolStripMenuItem_Click(object sender,EventArgs e) {

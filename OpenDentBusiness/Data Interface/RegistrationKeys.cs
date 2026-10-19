@@ -1,4 +1,3 @@
-using CDT;
 using CodeBase;
 using System;
 using System.Collections.Generic;
@@ -40,39 +39,6 @@ namespace OpenDentBusiness {
 				return Meth.GetBool(MethodBase.GetCurrentMethod(),registrationKey,registrationKeyOld);
 			}
 			return Crud.RegistrationKeyCrud.Update(registrationKey,registrationKeyOld);
-		}
-
-		///<summary>Inserts a new and unique registration key into the database.</summary>
-		public static long Insert(RegistrationKey registrationKey){
-			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				registrationKey.RegistrationKeyNum=Meth.GetLong(MethodBase.GetCurrentMethod(),registrationKey);
-				return registrationKey.RegistrationKeyNum;
-			}
-			do{
-				if(registrationKey.IsForeign){
-					Random rand=new Random();
-					StringBuilder strBuild=new StringBuilder();
-					for(int i=0;i<16;i++){
-						int r=rand.Next(0,35);
-						if(r<10){
-							strBuild.Append((char)('0'+r));
-						}
-						else{
-							strBuild.Append((char)('A'+r-10));
-						}
-					}
-					registrationKey.RegKey=strBuild.ToString();
-				}
-				else{
-					registrationKey.RegKey=CDT.Class1.GenerateRandKey();
-				}
-				if(registrationKey.RegKey==""){
-					//Don't loop forever when software is unverified.
-					return 0;//not sure what consequence this would have.
-				}
-			} 
-			while(KeyIsInUse(registrationKey.RegKey));
-			return Crud.RegistrationKeyCrud.Insert(registrationKey);
 		}
 
 		public static void Delete(long registrationKeyNum) {

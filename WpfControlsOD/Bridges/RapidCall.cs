@@ -22,19 +22,12 @@ namespace OpenDental.Bridges{
 			}
 		}
 
-		///<summary>Throws exceptions.</summary>
-		public static void ShowPage() {
-			try {
-				if(Programs.IsEnabled(ProgramName.RapidCall)) {
-					SendData(Programs.GetCur(ProgramName.RapidCall));
-				}
-				else {
-					ODFileUtils.ProcessStart("http://www.opendental.com/resources/redirects/redirectdentaltekrapidcall.html");
-				}
+		///<summary>Launches Rapid Call from the Appointments toolbar. Does nothing unless the Rapid Call program link is enabled.</summary>
+		public static void Launch() {
+			if(!Programs.IsEnabled(ProgramName.RapidCall)) {
+				return;
 			}
-			catch {
-				throw new Exception(Lans.g("RapidCall","Failed to open web browser.  Please make sure you have a default browser set and are connected to the internet and then try again."));
-			}
+			SendData(Programs.GetCur(ProgramName.RapidCall));
 		}
 
 		///<summary>Removes semicolons and spaces.</summary>

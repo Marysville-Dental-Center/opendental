@@ -35,11 +35,8 @@ namespace OpenDental {
 		private void InitializeComponent()
 		{
 			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormOperatoryEdit));
-			this.labelApptType = new System.Windows.Forms.Label();
 			this.butPickHyg = new OpenDental.UI.Button();
 			this.butPickProv = new OpenDental.UI.Button();
-			this.label4 = new System.Windows.Forms.Label();
-			this.checkIsWebSched = new OpenDental.UI.CheckBox();
 			this.comboClinic = new OpenDental.UI.ComboBoxClinicPicker();
 			this.label3 = new System.Windows.Forms.Label();
 			this.label9 = new System.Windows.Forms.Label();
@@ -56,31 +53,13 @@ namespace OpenDental {
 			this.textOpName = new System.Windows.Forms.TextBox();
 			this.butSave = new OpenDental.UI.Button();
 			this.label1 = new System.Windows.Forms.Label();
-			this.groupBoxApptType = new OpenDental.UI.GroupBox();
-			this.labelWSEPDesc = new System.Windows.Forms.Label();
-			this.butWSEPPickApptTypes = new OpenDental.UI.Button();
-			this.textWSEPApptTypes = new System.Windows.Forms.TextBox();
-			this.labelWSEPApptTypes = new System.Windows.Forms.Label();
-			this.textWSNPAApptTypes = new System.Windows.Forms.TextBox();
-			this.butWSNPAPickApptTypes = new OpenDental.UI.Button();
-			this.label10 = new System.Windows.Forms.Label();
 			this.butUpdateProvs = new OpenDental.UI.Button();
 			this.label5 = new System.Windows.Forms.Label();
 			this.label11 = new System.Windows.Forms.Label();
 			this.comboOpType = new OpenDental.UI.ComboBox();
 			this.label12 = new System.Windows.Forms.Label();
 			this.label13 = new System.Windows.Forms.Label();
-			this.groupBoxApptType.SuspendLayout();
 			this.SuspendLayout();
-			// 
-			// labelApptType
-			// 
-			this.labelApptType.Location = new System.Drawing.Point(2, 42);
-			this.labelApptType.Name = "labelApptType";
-			this.labelApptType.Size = new System.Drawing.Size(143, 17);
-			this.labelApptType.TabIndex = 126;
-			this.labelApptType.Text = "New Pat Appt Types";
-			this.labelApptType.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
 			// 
 			// butPickHyg
 			// 
@@ -99,24 +78,6 @@ namespace OpenDental {
 			this.butPickProv.TabIndex = 5;
 			this.butPickProv.Text = "...";
 			this.butPickProv.Click += new System.EventHandler(this.butPickProv_Click);
-			// 
-			// label4
-			// 
-			this.label4.Location = new System.Drawing.Point(160, 20);
-			this.label4.Name = "label4";
-			this.label4.Size = new System.Drawing.Size(394, 16);
-			this.label4.TabIndex = 120;
-			this.label4.Text = "This operatory will be available for Web Sched Recall appointments.";
-			// 
-			// checkIsWebSched
-			// 
-			this.checkIsWebSched.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
-			this.checkIsWebSched.Location = new System.Drawing.Point(24, 19);
-			this.checkIsWebSched.Name = "checkIsWebSched";
-			this.checkIsWebSched.Size = new System.Drawing.Size(135, 16);
-			this.checkIsWebSched.TabIndex = 119;
-			this.checkIsWebSched.TabStop = false;
-			this.checkIsWebSched.Text = "Is Recall";
 			// 
 			// comboClinic
 			// 
@@ -245,7 +206,7 @@ namespace OpenDental {
 			// butSave
 			// 
 			this.butSave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.butSave.Location = new System.Drawing.Point(502, 451);
+			this.butSave.Location = new System.Drawing.Point(502, 265);
 			this.butSave.Name = "butSave";
 			this.butSave.Size = new System.Drawing.Size(75, 26);
 			this.butSave.TabIndex = 9;
@@ -261,92 +222,9 @@ namespace OpenDental {
 			this.label1.Text = "Op Name";
 			this.label1.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
 			// 
-			// groupBoxApptType
-			// 
-			this.groupBoxApptType.Controls.Add(this.labelWSEPDesc);
-			this.groupBoxApptType.Controls.Add(this.butWSEPPickApptTypes);
-			this.groupBoxApptType.Controls.Add(this.textWSEPApptTypes);
-			this.groupBoxApptType.Controls.Add(this.labelWSEPApptTypes);
-			this.groupBoxApptType.Controls.Add(this.textWSNPAApptTypes);
-			this.groupBoxApptType.Controls.Add(this.butWSNPAPickApptTypes);
-			this.groupBoxApptType.Controls.Add(this.label10);
-			this.groupBoxApptType.Controls.Add(this.labelApptType);
-			this.groupBoxApptType.Controls.Add(this.label4);
-			this.groupBoxApptType.Controls.Add(this.checkIsWebSched);
-			this.groupBoxApptType.Location = new System.Drawing.Point(18, 191);
-			this.groupBoxApptType.Name = "groupBoxApptType";
-			this.groupBoxApptType.Size = new System.Drawing.Size(556, 186);
-			this.groupBoxApptType.TabIndex = 7;
-			this.groupBoxApptType.Text = "Web Sched Settings";
-			// 
-			// labelWSEPDesc
-			// 
-			this.labelWSEPDesc.Location = new System.Drawing.Point(143, 137);
-			this.labelWSEPDesc.Name = "labelWSEPDesc";
-			this.labelWSEPDesc.Size = new System.Drawing.Size(411, 47);
-			this.labelWSEPDesc.TabIndex = 133;
-			this.labelWSEPDesc.Text = "Only the above Appointment Types will be allowed within this operatory. Appt Type" +
-    " is required to be considered for Web Sched Existing Patient.";
-			// 
-			// butWSEPPickApptTypes
-			// 
-			this.butWSEPPickApptTypes.Location = new System.Drawing.Point(398, 113);
-			this.butWSEPPickApptTypes.Name = "butWSEPPickApptTypes";
-			this.butWSEPPickApptTypes.Size = new System.Drawing.Size(23, 22);
-			this.butWSEPPickApptTypes.TabIndex = 132;
-			this.butWSEPPickApptTypes.Text = "...";
-			this.butWSEPPickApptTypes.UseVisualStyleBackColor = true;
-			this.butWSEPPickApptTypes.Click += new System.EventHandler(this.butWSEPPickApptTypes_Click);
-			// 
-			// textWSEPApptTypes
-			// 
-			this.textWSEPApptTypes.Location = new System.Drawing.Point(146, 114);
-			this.textWSEPApptTypes.Name = "textWSEPApptTypes";
-			this.textWSEPApptTypes.ReadOnly = true;
-			this.textWSEPApptTypes.Size = new System.Drawing.Size(252, 20);
-			this.textWSEPApptTypes.TabIndex = 131;
-			this.textWSEPApptTypes.TabStop = false;
-			// 
-			// labelWSEPApptTypes
-			// 
-			this.labelWSEPApptTypes.Location = new System.Drawing.Point(2, 117);
-			this.labelWSEPApptTypes.Name = "labelWSEPApptTypes";
-			this.labelWSEPApptTypes.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
-			this.labelWSEPApptTypes.Size = new System.Drawing.Size(143, 18);
-			this.labelWSEPApptTypes.TabIndex = 130;
-			this.labelWSEPApptTypes.Text = "Existing Pat Appt Types";
-			// 
-			// textWSNPAApptTypes
-			// 
-			this.textWSNPAApptTypes.Location = new System.Drawing.Point(146, 41);
-			this.textWSNPAApptTypes.MaxLength = 255;
-			this.textWSNPAApptTypes.Name = "textWSNPAApptTypes";
-			this.textWSNPAApptTypes.ReadOnly = true;
-			this.textWSNPAApptTypes.Size = new System.Drawing.Size(252, 20);
-			this.textWSNPAApptTypes.TabIndex = 129;
-			this.textWSNPAApptTypes.TabStop = false;
-			// 
-			// butWSNPAPickApptTypes
-			// 
-			this.butWSNPAPickApptTypes.Location = new System.Drawing.Point(398, 40);
-			this.butWSNPAPickApptTypes.Name = "butWSNPAPickApptTypes";
-			this.butWSNPAPickApptTypes.Size = new System.Drawing.Size(23, 22);
-			this.butWSNPAPickApptTypes.TabIndex = 129;
-			this.butWSNPAPickApptTypes.Text = "...";
-			this.butWSNPAPickApptTypes.Click += new System.EventHandler(this.butWSNPAPickApptTypes_Click);
-			// 
-			// label10
-			// 
-			this.label10.Location = new System.Drawing.Point(143, 64);
-			this.label10.Name = "label10";
-			this.label10.Size = new System.Drawing.Size(411, 47);
-			this.label10.TabIndex = 128;
-			this.label10.Text = "Only the above Appointment Types will be allowed within this operatory.\r\nAppt Typ" +
-    "e is required to be considered for Web Sched New Pat Appt.";
-			// 
 			// butUpdateProvs
 			// 
-			this.butUpdateProvs.Location = new System.Drawing.Point(160, 381);
+			this.butUpdateProvs.Location = new System.Drawing.Point(160, 195);
 			this.butUpdateProvs.Name = "butUpdateProvs";
 			this.butUpdateProvs.Size = new System.Drawing.Size(75, 26);
 			this.butUpdateProvs.TabIndex = 129;
@@ -356,7 +234,7 @@ namespace OpenDental {
 			// 
 			// label5
 			// 
-			this.label5.Location = new System.Drawing.Point(-1, 386);
+			this.label5.Location = new System.Drawing.Point(-1, 200);
 			this.label5.Name = "label5";
 			this.label5.Size = new System.Drawing.Size(160, 17);
 			this.label5.TabIndex = 130;
@@ -365,7 +243,7 @@ namespace OpenDental {
 			// 
 			// label11
 			// 
-			this.label11.Location = new System.Drawing.Point(240, 388);
+			this.label11.Location = new System.Drawing.Point(240, 202);
 			this.label11.Name = "label11";
 			this.label11.Size = new System.Drawing.Size(160, 21);
 			this.label11.TabIndex = 131;
@@ -373,7 +251,7 @@ namespace OpenDental {
 			// 
 			// comboOpType
 			// 
-			this.comboOpType.Location = new System.Drawing.Point(160, 413);
+			this.comboOpType.Location = new System.Drawing.Point(160, 227);
 			this.comboOpType.Name = "comboOpType";
 			this.comboOpType.Size = new System.Drawing.Size(252, 21);
 			this.comboOpType.TabIndex = 1;
@@ -381,7 +259,7 @@ namespace OpenDental {
 			// 
 			// label12
 			// 
-			this.label12.Location = new System.Drawing.Point(23, 415);
+			this.label12.Location = new System.Drawing.Point(23, 229);
 			this.label12.Name = "label12";
 			this.label12.Size = new System.Drawing.Size(134, 16);
 			this.label12.TabIndex = 133;
@@ -390,7 +268,7 @@ namespace OpenDental {
 			// 
 			// label13
 			// 
-			this.label13.Location = new System.Drawing.Point(416, 415);
+			this.label13.Location = new System.Drawing.Point(416, 229);
 			this.label13.Name = "label13";
 			this.label13.Size = new System.Drawing.Size(150, 16);
 			this.label13.TabIndex = 134;
@@ -399,14 +277,13 @@ namespace OpenDental {
 			// 
 			// FormOperatoryEdit
 			// 
-			this.ClientSize = new System.Drawing.Size(589, 489);
+			this.ClientSize = new System.Drawing.Size(589, 303);
 			this.Controls.Add(this.label13);
 			this.Controls.Add(this.label12);
 			this.Controls.Add(this.comboOpType);
 			this.Controls.Add(this.label11);
 			this.Controls.Add(this.label5);
 			this.Controls.Add(this.butUpdateProvs);
-			this.Controls.Add(this.groupBoxApptType);
 			this.Controls.Add(this.butPickHyg);
 			this.Controls.Add(this.butPickProv);
 			this.Controls.Add(this.comboClinic);
@@ -432,8 +309,6 @@ namespace OpenDental {
 			this.ShowInTaskbar = false;
 			this.Text = "Edit Operatory";
 			this.Load += new System.EventHandler(this.FormOperatoryEdit_Load);
-			this.groupBoxApptType.ResumeLayout(false);
-			this.groupBoxApptType.PerformLayout();
 			this.ResumeLayout(false);
 			this.PerformLayout();
 
@@ -455,22 +330,11 @@ namespace OpenDental {
 		private OpenDental.UI.CheckBox checkIsHygiene;
 		private OpenDental.UI.CheckBox checkSetProspective;
 		private Label label3;
-		private Label label4;
-		private OpenDental.UI.CheckBox checkIsWebSched;
 		private UI.Button butPickProv;
 		private UI.Button butPickHyg;
-		private Label labelApptType;
-		private OpenDental.UI.GroupBox groupBoxApptType;
-		private Label label10;
-		private UI.Button butWSNPAPickApptTypes;
-		private TextBox textWSNPAApptTypes;
 		private UI.Button butUpdateProvs;
 		private Label label5;
 		private Label label11;
-		private Label labelWSEPDesc;
-		private UI.Button butWSEPPickApptTypes;
-		private TextBox textWSEPApptTypes;
-		private Label labelWSEPApptTypes;
 		private UI.ComboBox comboOpType;
 		private Label label12;
 		private Label label13;

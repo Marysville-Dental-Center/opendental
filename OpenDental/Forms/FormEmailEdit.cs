@@ -30,11 +30,6 @@ namespace OpenDental {
 		public bool IsRawAllowed=true;
 		///<summary>When true, the replacement button will be visible and allow users to select field replacements.</summary>
 		public bool AreReplacementsAllowed=false;
-		///<summary>When true, the caller of FormEmailEdit() is the FormMassEmail() window.</summary>
-		public bool IsMassEmail=false;
-		///<summary>A list of email image names and urls hosted at Email Hosting. Just for temporary caching so that we do not upload the same image
-		///twice while in this window.</summary>
-		private List<FileNameUrl> _listFileNameUrls=new List<FileNameUrl>();
 		///<summary>When true, disables some buttons that are not allowed when EmailSignature.</summary>
 		public bool IsEmailSignature=false;
 
@@ -286,62 +281,12 @@ namespace OpenDental {
 			}
 			textContentEmail.SelectionLength=0;
 			string imgName=formImagePicker.ImageNameSelected;
-			if(IsMassEmail) {
-				try {
-					imgName=GetMassEmailImageLink(formImagePicker.ImageNameSelected);
-				}
-				catch(Exception e) {
-					FriendlyException.Show($"An error occurred: {e.Message}",e);
-					return;
-				}
-				if(string.IsNullOrEmpty(imgName)) {//if user cancelled
-					return;
-				}
-			}
 			if(checkIsRaw.Checked) {
 				textContentEmail.SelectedText=$"<img src=\"{imgName}\" />";
 			}
 			else {
 				textContentEmail.SelectedText=$"[[img:{imgName}]]";
 			}
-		}
-
-		///<summary>Attempts to get the selected image name and upload the file to the EmailHosting api. May throw exception.</summary>
-		private string GetMassEmailImageLink(string selectedImgName) {
-			if(string.IsNullOrEmpty(selectedImgName)) {
-				throw new ApplicationException("Please select an image");
-			}
-			FileNameUrl fileNameUrl=_listFileNameUrls.FirstOrDefault(x=>x.FileName==selectedImgName);
-			if(fileNameUrl!=null){
-				return fileNameUrl.Url;
-			}
-			string imagePath=ImageStore.GetEmailImagePath();
-			string fullPath=FileAtoZ.CombinePaths(imagePath,POut.String(selectedImgName));
-			byte[] byteArray;
-			if(CloudStorage.IsCloudStorage) {
-				//WebBrowser needs to have a local file to open, so we download the images to temp files.	
-				byteArray=CloudStorage.Download(Path.GetDirectoryName(fullPath),Path.GetFileName(fullPath));
-			}
-			else {
-				byteArray=File.ReadAllBytes(fullPath);
-			}
-			IAccountApi iAccountApi=EmailHostingTemplates.GetAccountApi(Clinics.ClinicNum);
-			UploadS3ObjectResponse uploadS3ObjectResponse=null;
-			ProgressWin progress=new ProgressWin();
-			UploadS3ObjectRequest uploadS3ObjectRequest=new UploadS3ObjectRequest { 
-				FileName=Path.GetFileNameWithoutExtension(fullPath),
-				Extension=Path.GetExtension(fullPath),
-				ObjectBytesBase64=Convert.ToBase64String(byteArray),
-				ObjectPurpose=S3ObjectPurpose.MassEmailImages,
-				ObjectType=S3ObjectType.Image,
-			};
-			progress.ActionMain=() => uploadS3ObjectResponse=iAccountApi.UploadS3Object(uploadS3ObjectRequest);
-			progress.ShowDialog();
-			if(progress.IsCancelled) {
-				return "";
-			}
-			_listFileNameUrls.Add(new FileNameUrl(){FileName=selectedImgName,Url=uploadS3ObjectResponse.Url });
-			return uploadS3ObjectResponse.Url;
 		}
 
 		private void Autograph_Click() {
@@ -382,9 +327,6 @@ namespace OpenDental {
 			listMessageReplaceTypes.Add(MessageReplaceType.Misc);
 			FrmMessageReplacements frmMessageReplacements=new FrmMessageReplacements(listMessageReplaceTypes);
 			frmMessageReplacements.IsSelectionMode=true;
-			if(IsMassEmail) {
-				frmMessageReplacements.MessageReplacementSystemType=MessageReplacementSystemType.MassEmail;
-			}
 			frmMessageReplacements.ShowDialog();
 			if(frmMessageReplacements.IsDialogOK) {
 				//assumed this is used for the email hosting project which requires this special replacement tag. 
@@ -475,10 +417,6 @@ namespace OpenDental {
 			if(url.StartsWith("about")) {
 				url=url.Replace("about:","http://");
 			}
-			if(ODCloudClient.IsAppStream) {
-				ODCloudClient.LaunchFileWithODCloudClient(url);
-				return;
-			}
 			Process.Start(url);//Instead launch the URL into a new default browser window.
 		}
 
@@ -524,7 +462,7 @@ namespace OpenDental {
 		private void SetWikiToolBarItems(bool isWikiMarkupEnabled) {
 			toolBarTop.Buttons["Table"].Enabled=isWikiMarkupEnabled;
 			//Allow them to add images for mass email raw-html templates.
-			toolBarTop.Buttons["Image"].Enabled=(isWikiMarkupEnabled || IsMassEmail) && !IsEmailSignature;
+			toolBarTop.Buttons["Image"].Enabled=isWikiMarkupEnabled && !IsEmailSignature;
 			toolBarBottom.Buttons["Color"].Enabled=isWikiMarkupEnabled;
 			toolBarBottom.Buttons["Font"].Enabled=isWikiMarkupEnabled;
 			toolBarTop.Refresh();
@@ -541,14 +479,6 @@ namespace OpenDental {
 				if(_isInvalidPreview) {
 					MsgBox.Show(this,"This page is in an invalid state and cannot be saved.");
 					return;
-				}
-				if(IsMassEmail) {
-					//Check to make sure they have no regular image tags [[img:image.png]]. Only allowed to have http(s) image links for mass email.
-					List<string> listImageNames=MarkupEdit.GetImageNames(textContentEmail.Text);
-					if(listImageNames.Any(x => !MiscUtils.IsValidHttpUri(x))) {
-						MsgBox.Show(this,"All images must be hosted externally. Use the Image button.");
-						return;
-					}
 				}
 			}
 			if(DoCheckForDisclaimer && PrefC.GetBool(PrefName.EmailDisclaimerIsOn) && !textContentEmail.Text.ToLower().Contains("[emaildisclaimer]")) {
@@ -573,11 +503,6 @@ namespace OpenDental {
 			if(_isInvalidPreview) {
 				e.Cancel=true;//don't close the form if there are errors (prevents OK click)
 			}
-		}
-
-		private class FileNameUrl{
-			public string FileName;
-			public string Url;
 		}
 
 	}

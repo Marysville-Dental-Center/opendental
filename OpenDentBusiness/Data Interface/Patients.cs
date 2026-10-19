@@ -13,7 +13,6 @@ using System.Windows.Forms;
 using CodeBase;
 using DataConnectionBase;
 using Microsoft.Graph.ExternalConnectors;
-using OpenDentBusiness.AutoComm;
 using OpenDentBusiness.HL7;
 
 namespace OpenDentBusiness {
@@ -1828,23 +1827,12 @@ namespace OpenDentBusiness {
 					AND definition.Category={SOut.Int((int)DefCat.ClinicSpecialty)}
 					LIMIT 1
 				)")+$@" Specialty,"//always include Specialty column, only populate if displaying specialty field
-			+(!PrefC.GetBool(PrefName.DistributorKey)?"":
-				ptSearchArgs.Phone.IsNullOrEmpty()?"'' OtherPhone, ":$@"GROUP_CONCAT(DISTINCT phonenumber.PhoneNumberVal) AS OtherPhone,")
-			+(!PrefC.GetBool(PrefName.DistributorKey)?"":
-				ptSearchArgs.RegKey.IsNullOrEmpty()?"'' RegKey, ":$@"registrationkey.RegKey,")
+			//OtherPhone and RegKey were only filled for Open Dental HQ's customer database. The columns stay, always blank, for the patient select grid.
+			+"'' OtherPhone,'' RegKey,"
 			+(string.IsNullOrEmpty(ptSearchArgs.InvoiceNumber)?"'' ":"statement.")+$@"StatementNum
 				FROM patient"
 			+(!usePhonenumTable?"":$@"
 				INNER JOIN phonenumber ON phonenumber.PatNum=patient.PatNum")
-			+(!PrefC.GetBool(PrefName.DistributorKey)?"":
-					ptSearchArgs.Phone.IsNullOrEmpty()?"":$@"{(usePhonenumTable?"":$@"
-				LEFT JOIN phonenumber ON phonenumber.PatNum=patient.PatNum
-					AND phonenumber.PhoneType={SOut.Int((int)PhoneType.Other)}
-				{(string.IsNullOrEmpty(regexp)?"":$@"
-					AND phonenumber.PhoneNumberVal REGEXP '{regexp}'")}")}")
-			+(!PrefC.GetBool(PrefName.DistributorKey)?"":
-				ptSearchArgs.RegKey.IsNullOrEmpty()?"":$@"
-				LEFT JOIN registrationkey ON patient.PatNum=registrationkey.PatNum")
 			+(string.IsNullOrEmpty(ptSearchArgs.SubscriberId)?"":$@"
 				LEFT JOIN patplan ON patplan.PatNum=patient.PatNum
 				LEFT JOIN inssub ON patplan.InsSubNum=inssub.InsSubNum")
@@ -1866,29 +1854,26 @@ namespace OpenDentBusiness {
 				+(ptSearchArgs.IsFromMobile?lNameMobileQueryString:
 				(string.IsNullOrEmpty(ptSearchArgs.LName)?"":$@"
 				AND (
-					patient.LName LIKE '{(ptSearchArgs.DoLimit?"":"%")+ptSearchArgs.LName}%'{(!PrefC.GetBool(PrefName.DistributorKey)?"":$@"
-					OR patient.Preferred LIKE '{(ptSearchArgs.DoLimit?"":"%")+ptSearchArgs.LName}%'")}
+					patient.LName LIKE '{(ptSearchArgs.DoLimit?"":"%")+ptSearchArgs.LName}%'
 				) "))
 				+(ptSearchArgs.IsFromMobile?fNameMobileQueryString:
 				(string.IsNullOrEmpty(ptSearchArgs.FName)?"":$@"
 				AND (
 					patient.FName LIKE '{ptSearchArgs.FName}%'"
 					//Nathan has approved the preferred name search for first name only. It is not intended to work with last name for our customers.
-					+$@"{((!PrefC.GetBool(PrefName.DistributorKey) && !PrefC.GetBool(PrefName.PatientSelectUseFNameForPreferred))?"":$@"
+					+$@"{(!PrefC.GetBool(PrefName.PatientSelectUseFNameForPreferred)?"":$@"
 					OR patient.Preferred LIKE '{ptSearchArgs.FName}%'")}
 				) "))
 				+(string.IsNullOrEmpty(regexp) || usePhonenumTable?"":$@"
 				AND (
 					patient.HmPhone REGEXP '{regexp}'
 					OR patient.WkPhone REGEXP '{regexp}'
-					OR patient.WirelessPhone REGEXP '{regexp}'{(!PrefC.GetBool(PrefName.DistributorKey)?"":$@"
-					OR phonenumber.PhoneNumberVal REGEXP '{regexp}'")}
+					OR patient.WirelessPhone REGEXP '{regexp}'
 				) ")
 				+phoneNumSearch
 				+(string.IsNullOrEmpty(strAddress)?"":$@"
 				AND (
-					patient.Address LIKE '%{strAddress}%'{(!PrefC.IsODHQ?"":$@"
-					OR patient.Address2 LIKE '%{strAddress}%'")}
+					patient.Address LIKE '%{strAddress}%'
 				)")
 				+(string.IsNullOrEmpty(ptSearchArgs.City)?"":$@"
 				AND patient.City LIKE '{ptSearchArgs.City}%'")//LIKE is case insensitive in mysql.
@@ -1902,8 +1887,6 @@ namespace OpenDentBusiness {
 				AND patient.Email LIKE '%{ptSearchArgs.Email}%'")//LIKE is case insensitive in mysql.
 				+(string.IsNullOrEmpty(ptSearchArgs.Country)?"":$@"
 				AND patient.Country LIKE '%{ptSearchArgs.Country}%'")//LIKE is case insensitive in mysql.
-				+(string.IsNullOrEmpty(ptSearchArgs.RegKey)?"":$@"
-				AND registrationkey.RegKey LIKE '%{ptSearchArgs.RegKey}%'")//LIKE is case insensitive in mysql.
 				+(ptSearchArgs.BillingType==0?"":$@"
 				AND patient.BillingType={SOut.Long(ptSearchArgs.BillingType)}")
 				+(!ptSearchArgs.GuarOnly?"":$@"
@@ -2064,10 +2047,6 @@ namespace OpenDentBusiness {
 				long clinicNum=PIn.Long(dRow["ClinicNum"].ToString());
 				r["ClinicNum"]=clinicNum;
 				r["clinic"]=Clinics.GetAbbr(clinicNum);
-				if(PrefC.GetBool(PrefName.DistributorKey)) {//if for OD HQ
-					r["OtherPhone"]=dRow["OtherPhone"].ToString();
-					r["RegKey"]=dRow["RegKey"].ToString();
-				}
 				r["StatementNum"]=dRow["StatementNum"].ToString();
 				r["WirelessPhone"]=dRow["WirelessPhone"].ToString();
 				r["SecProv"]=Providers.GetAbbr(SIn.Long(dRow["SecProv"].ToString()));
@@ -2137,9 +2116,7 @@ namespace OpenDentBusiness {
 			listClauses.Add(string.IsNullOrEmpty(args.LName) ? "" : "(patient.LName='"+args.LName+"')");
 			listClauses.Add(string.IsNullOrEmpty(args.FName) ? "" : "(patient.FName='"+args.FName+"')");
 			listClauses.Add(string.IsNullOrEmpty(args.Phone) ? "" : 
-				"(patient.WirelessPhone='"+args.Phone+"' OR patient.HmPhone='"+args.Phone+"' OR patient.WkPhone='"+args.Phone+"'"
-				+(!PrefC.GetBool(PrefName.DistributorKey)?"": " OR phonenumber.PhoneNumberVal='"+args.Phone+"'") //Join
-				+")");
+				"(patient.WirelessPhone='"+args.Phone+"' OR patient.HmPhone='"+args.Phone+"' OR patient.WkPhone='"+args.Phone+"')");
 			listClauses.Add(string.IsNullOrEmpty(args.Address) ? "" : "(patient.Address='"+args.Address+"')");
 			listClauses.Add(string.IsNullOrEmpty(args.City) ? "" : "(patient.City='"+args.City+"')");
 			listClauses.Add(string.IsNullOrEmpty(args.State) ? "" : "(patient.State='"+args.State+"')");
@@ -2149,7 +2126,6 @@ namespace OpenDentBusiness {
 			listClauses.Add(string.IsNullOrEmpty(args.SubscriberId) ? "" : "(inssub.SubscriberId='"+args.SubscriberId+"')"); //Join
 			listClauses.Add(string.IsNullOrEmpty(args.Email) ? "" : "(patient.Email='"+args.Email+"')");
 			listClauses.Add(string.IsNullOrEmpty(args.Country) ? "" : "(patient.Country='"+args.Country+"')");
-			listClauses.Add((string.IsNullOrEmpty(args.RegKey) || !PrefC.GetBool(PrefName.DistributorKey)) ? "" : "(registrationkey.RegKey='"+args.RegKey+"')"); //Join
 			listClauses.Add(args.Birthdate.Year<1880 ? "" : "(patient.Birthdate="+SOut.Date(args.Birthdate)+")");
 			listClauses.Add(string.IsNullOrEmpty(args.InvoiceNumber) ? "" : "(statement.StatementNum='"+args.InvoiceNumber+"')");
 			listClauses.RemoveAll(string.IsNullOrEmpty);
@@ -2157,14 +2133,6 @@ namespace OpenDentBusiness {
 				return "("+string.Join(" AND ",listClauses)+")";
 			}
 			return "'0'";
-		}
-
-		public static bool HasPatientPortalAccess(long patNum) {
-			UserWeb uwCur=UserWebs.GetByFKeyAndType(patNum,UserWebFKeyType.PatientPortal);
-			if(uwCur!=null && uwCur.PasswordHash!="") {
-				return true;
-			}
-			return false;
 		}
 
 		///<summary>Used when filling appointments for an entire day. Gets a list of Pats, multPats, of all the specified patients.  Then, use GetOnePat to pull one patient from this list.  This process requires only one call to the database.</summary>
@@ -4099,15 +4067,6 @@ namespace OpenDentBusiness {
 				Referrals.RefreshCache();
 			}
 			Recalls.Synch(patTo);  //Update patient's recalls now that merge is completed.
-			if(PrefC.IsODHQ) {
-				//Merge webchats.  The webchat database is HQ only.
-				WebChatMisc.DbAction(delegate() {
-					command=@"UPDATE webchatsession
-									SET webchatsession.PatNum=("+POut.Long(patTo)+@") 
-									WHERE webchatsession.PatNum=("+POut.Long(patFrom)+")";
-					Db.NonQ(command);
-				});
-			}
 			//Delete all Clone PatientLinks for this patient, it has been merged into another patient.
 			PatientLinks.DeletePatNumTos(patFrom,PatientLinkType.Clone);
 			//Delete any existing PatientLinks between these two patients of type Clone.
@@ -4906,20 +4865,17 @@ namespace OpenDentBusiness {
 			}
 			Dictionary<string,bool> dictEmailValidForClinics=listAllClinics
 				.ToDictionary(x => x.ClinicNum.ToString(),x => EmailAddresses.GetFirstOrDefault(y => y.EmailAddressNum==x.EmailAddressNum)!=null);
-			Dictionary<string,bool> dictTextingEnabledForClinics=listAllClinics.ToDictionary(x => x.ClinicNum.ToString(),x => Clinics.IsTextingEnabled(x.ClinicNum));
 			string curCulture=StringTools.TruncateBeginning(System.Globalization.CultureInfo.CurrentCulture.Name,2);
-			Dictionary<string,string> dictClinicCountryCodes=listAllClinics.ToDictionary(x => x.ClinicNum.ToString(),x => SmsPhones.GetFirstOrDefault(y => y.ClinicNum==x.ClinicNum)?.CountryCode??"");
 			bool isEmailValidForClinic;
-			bool isTextingEnabledForClinic;
-			string clinicCountryCode;
+			//Texting was enabled per clinic by Open Dental's hosted Integrated Texting, which was removed, so no clinic has texting enabled.
 			List<PatComm> listPatComms=Db.GetTable(command).Select()
 				.Select(x => new PatComm(
 					x,
 					(dictEmailValidForClinics.TryGetValue(x["ClinicNum"].ToString(),out isEmailValidForClinic)?isEmailValidForClinic:false),
-					(dictTextingEnabledForClinics.TryGetValue(x["ClinicNum"].ToString(),out isTextingEnabledForClinic)?isTextingEnabledForClinic:false),
+					false,
 					isUnknownNo,
 					curCulture,
-					(dictClinicCountryCodes.TryGetValue(x["ClinicNum"].ToString(),out clinicCountryCode)?clinicCountryCode:"")
+					""
 				)).ToList();
 			listPatComms=AppendCommOptOuts(listPatComms);
 			return listPatComms;
@@ -4945,9 +4901,8 @@ namespace OpenDentBusiness {
 			foreach(Patient pat in listPats) {
 				Clinic clinic=Clinics.GetFirstOrDefault(x => x.ClinicNum==pat.ClinicNum)??Clinics.GetPracticeAsClinicZero();
 				bool isEmailValidForClinic=(EmailAddresses.GetFirstOrDefault(x => x.EmailAddressNum==clinic.EmailAddressNum)!=null);
-				bool isTextingEnabledForClinic=Clinics.IsTextingEnabled(clinic.ClinicNum);
-				string countryCodePhone=SmsPhones.GetFirstOrDefault(x => x.ClinicNum==clinic.ClinicNum)?.CountryCode??"";
-				listPatComms.Add(new PatComm(pat,isEmailValidForClinic,isTextingEnabledForClinic,isUnknownNo,curCulture,countryCodePhone));
+				//Texting was enabled per clinic by Open Dental's hosted Integrated Texting, which was removed, so no clinic has texting enabled.
+				listPatComms.Add(new PatComm(pat,isEmailValidForClinic,false,isUnknownNo,curCulture,""));
 			}
 			listPatComms=AppendCommOptOuts(listPatComms);
 			return listPatComms;
@@ -5105,14 +5060,14 @@ namespace OpenDentBusiness {
 			return pat;
 		}
 
-		///<summary>Returns the salted hash for the patient. Will return an empty string if the calling program is unable to use CDT.dll. </summary>
+		///<summary>Returns the salted hash for the patient. Computed by CodeBase.TamperHash. </summary>
 		public static string HashFields(Patient patient) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetString(MethodBase.GetCurrentMethod(),patient);
 			}
 			string unhashedText=patient.PatNum.ToString();
 			try {
-				return CDT.Class1.CreateSaltedHash(unhashedText,isPatientTable:true);
+				return TamperHash.Compute(unhashedText,isPatientTable:true);
 			}
 			catch(Exception ex) {
 				ex.DoNothing();
@@ -5477,40 +5432,6 @@ namespace OpenDentBusiness {
 			return result;
 		}
 
-		///<summary>Determines if the user should be given the opportunity to send a text message to the patient when changes have been made to texting settings.</summary>
-		public static bool DoPromptForOptInSms(Patient patient,Patient patientOld) {
-			if(!Clinics.IsTextingEnabled(patient.ClinicNum)) {
-				return false;//Office doesn't use texting.
-			}
-			if(!ClinicPrefs.GetBool(PrefName.ShortCodeOptInOnApptComplete,patient.ClinicNum)) {
-				return false;//Office has turned off this prompt.
-			}
-			if(patient.TxtMsgOk!=YN.Yes || string.IsNullOrWhiteSpace(PhoneNumbers.RemoveNonDigitsAndTrimStart(patient.WirelessPhone))) {
-				return false;//Not set to YES or no phone number, so no need to send a test message.
-			}
-			string phoneOldNormalized=PhoneNumbers.RemoveNonDigitsAndTrimStart(patientOld.WirelessPhone);
-			string phoneNewNormalized=PhoneNumbers.RemoveNonDigitsAndTrimStart(patient.WirelessPhone);
-			if(phoneOldNormalized==phoneNewNormalized && patientOld.TxtMsgOk==YN.Yes) {
-				return false;//Phone number hasn't changed and TxtMsgOK was already YES => No changes, no need to prompt.
-			}
-			return true;
-		}
-
-		///<summary>Determines if the user should be given the opportunity to send a text message to the patient when changes have been made to texting settings.</summary>
-		public static bool DoSendOptOutText(Patient patient, Patient patientOld) {
-			if(!Clinics.IsTextingEnabled(patient.ClinicNum)) {
-				return false;//Office doesn't use texting.
-			}
-			if(patient.TxtMsgOk!=YN.No || string.IsNullOrWhiteSpace(PhoneNumbers.RemoveNonDigitsAndTrimStart(patient.WirelessPhone))) {
-				return false;//TxtMsgOk not set to NO or no phone number, so no need to send a text message.
-			}
-			//we are not checking if phone number changed like in optin because we do not want to send an opt out notification if a patient was previously notified that they were opted out on their old number
-			if(patientOld.TxtMsgOk==YN.Unknown || patientOld.TxtMsgOk==YN.No) {
-				return false;//TxtMsgOK was already 'No' or not set => No behavioral changes, no need to prompt.
-			}
-			return PrefC.GetBool(PrefName.TextOptOutSendNotification);
-		}
-
 		public static Result SetDefaultRelationships(Patient patient,Family family,PatientPosition patientPositionCur) {
 			Result result=new Result() { IsSuccess=false };
 			List<Patient> listPatientsAdults=new List<Patient>();
@@ -5844,7 +5765,7 @@ namespace OpenDentBusiness {
 				}
 				else {
 					try {
-						SmsPhone=SmsToMobiles.ConvertPhoneToInternational(SmsPhone,curCulture,smsPhoneCountryCode);
+						SmsPhone=ConvertPhoneToInternational(SmsPhone,curCulture,smsPhoneCountryCode);
 						IsSmsPhoneFormatOk=true;
 					}
 					catch(Exception e) { //Formatting for sms failed to set to empty so we don't try to use it.
@@ -5938,19 +5859,14 @@ namespace OpenDentBusiness {
 			}
 			if(pat!=null) {
 				string name=Patients.GetNameFirstOrPreferred(pat.FName,pat.Preferred);
-				Clinic clinic=null;//Null clinic will default to practice name in TagReplacer.
+				Clinic clinic=null;//Null clinic will default to practice name in MessageTagReplacer.
 				if(appt.ClinicNum>0) {
 					clinic=Clinics.GetClinic(appt.ClinicNum);
 				}
 				else if(pat.ClinicNum>0){
 					clinic=Clinics.GetClinic(pat.ClinicNum);
 				}
-				TagReplacer tagReplacer=new TagReplacer();
-				AutoCommObj autoCommObj=new AutoCommObj();
-				autoCommObj.NameF=pat.FName;
-				autoCommObj.NamePreferredOrFirst=name;
-				autoCommObj.ProvNum=appt.ProvNum;
-				template=tagReplacer.ReplaceTags(template,autoCommObj,clinic,isEmail);
+				template=MessageTagReplacer.ReplaceCommonTags(template,pat.FName,name,appt.ProvNum,clinic,isEmail);
 			}
 			template=template.Replace("[date]",dateTime.ToString(PrefC.PatientCommunicationDateFormat)); //[date] and [time] aren't considered in ReplaceTags
 			template=template.Replace("[time]",dateTime.ToShortTimeString());
@@ -5961,21 +5877,27 @@ namespace OpenDentBusiness {
 			return Patients.GetNameFirstOrPreferred(FName,PreferredName);
 		}
 
-		#region Short Codes
-
-		///<summary>Returns true if the clinic is using an eService automated texting feature for which it is set to use Short Codes and the patient is 
-		///set to receive sms.</summary>
-		public bool IsPatientShortCodeEligible(long clinicNum) {
-			return IsSmsAnOption //Patient set to receive sms.
-				&& IsAnyShortCodeServiceEnabled(clinicNum); //At least one Short Code eService is enabled
+		///<summary>Throws exceptions. Returns the phone number with only digits, with a leading 1 for US and Canada.</summary>
+		private static string ConvertPhoneToInternational(string phoneRaw,string countryCodeLocalMachine,string countryCodeSmsPhone) {
+			if(string.IsNullOrWhiteSpace(phoneRaw)) {
+				throw new Exception("Input phone number must be set");
+			}
+			bool isUSorCanada=(countryCodeLocalMachine.ToUpper().In("US","CA") || countryCodeSmsPhone.ToUpper().In("US","CA"));
+			//Remove non-numeric.
+			string phoneRetVal=new string(phoneRaw.Where(x => char.IsDigit(x)).ToArray());
+			int length=phoneRetVal.Length;
+			bool isShortCodeFormat=(length==5 || length==6);//A 5 or 6 digit phone number is likely a Short Code phone number.
+			if(!isUSorCanada || isShortCodeFormat) {
+				return phoneRetVal;
+			}
+			if(!phoneRetVal.StartsWith("1")) { //Add a "1" if US or Canada
+				phoneRetVal="1"+phoneRetVal;
+			}
+			if(phoneRetVal.Length!=11) {
+				throw new Exception("Input phone number cannot be properly formatted for country code: "+countryCodeLocalMachine);
+			}
+			return phoneRetVal;
 		}
-
-		///<summary>Determines if any of the eServices the clinic is set to use Short Codes are actually enabled.</summary>
-		public static bool IsAnyShortCodeServiceEnabled(long clinicNum) {
-			return EnumTools.GetFlags((ShortCodeTypeFlag)ClinicPrefs.GetLong(PrefName.ShortCodeApptReminderTypes,clinicNum))
-				.Any(x => EnumTools.GetAttributeOrDefault<ShortCodeAttribute>(x).IsServiceEnabled(clinicNum));
-		}
-		#endregion
 	}
 
 	///<summary>Not a database table.  Just used in billing and finance charges.</summary>

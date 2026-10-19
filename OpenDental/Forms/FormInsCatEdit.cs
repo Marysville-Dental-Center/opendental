@@ -24,13 +24,6 @@ namespace OpenDental {
 			Lan.F(this);
 		}
 
-		protected override string GetHelpOverride() {
-			if(CultureInfo.CurrentCulture.Name.EndsWith("CA")) {
-				return "FormInsCatEditCanada";
-			}
-			return "FormInsCatEdit";
-		}
-
 		private void FormInsCatEdit_Load(object sender,System.EventArgs e) {
 			textDescription.Text=_covCat.Description;
 			if(_covCat.DefaultPercent==-1)

@@ -220,9 +220,6 @@ namespace OpenDental{
 			listEmpNums.RemoveAll(x => x==0);
 			if(doRefreshData || this._tableScheds==null) {
 				bool canViewNotes=true;
-				if(PrefC.IsODHQ) {
-					canViewNotes=Security.IsAuthorized(EnumPermType.Schedules,true);
-				}
 				_dateFromDate=PIn.Date(textDateFrom.Text);
 				_dateToDate=PIn.Date(textDateTo.Text);
 				Logger.LogToPath("Schedules.GetPeriod",LogPath.Signals,LogPhase.Start);

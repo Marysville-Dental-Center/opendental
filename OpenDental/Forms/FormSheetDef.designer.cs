@@ -202,7 +202,6 @@ namespace OpenDental{
 			this.checkHasMobileLayout.Size = new System.Drawing.Size(126, 20);
 			this.checkHasMobileLayout.TabIndex = 102;
 			this.checkHasMobileLayout.Text = "Use Mobile Layout";
-			this.checkHasMobileLayout.CheckedChanged += new System.EventHandler(this.CheckHasMobileLayout_CheckedChanged);
 			// 
 			// checkAutoSaveCheck
 			// 

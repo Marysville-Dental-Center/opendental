@@ -8,7 +8,6 @@ using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using CodeBase;
-using OpenDental.Thinfinity;
 using OpenDental.UI;
 using OpenDentBusiness;
 using PdfSharp.Pdf;
@@ -202,12 +201,7 @@ namespace OpenDental{
 				}
 				filePathAndName=PrefC.GetRandomTempFile(".pdf");
 				document.Save(filePathAndName);
-				if(ODBuild.IsThinfinity()) {
-					ThinfinityUtils.HandleFile(filePathAndName);
-				}
-				else {
-					Process.Start(filePathAndName);
-				}
+				Process.Start(filePathAndName);
 				DialogResult=DialogResult.OK;
 			}
 			if(MsgBox.Show(this,MsgBoxButtons.YesNo,"Would you like to save the sheets for the selected patients?")) {
@@ -263,7 +257,7 @@ namespace OpenDental{
 				text+=curRow["address"].ToString()+"\r\n";
 				text+=curRow["City"].ToString()+", "+curRow["State"].ToString()+" "+curRow["Zip"].ToString()+"\r\n";
 				Rectangle rect=new Rectangle((int)xPos,(int)yPos,275,100);
-				OpenDental.InternalTools.Phones.MapPanel.FitTextOld(text,new Font(FontFamily.GenericSansSerif,11),Brushes.Black,rect,new StringFormat(),g);
+				PrinterL.FitText(text,new Font(FontFamily.GenericSansSerif,11),Brushes.Black,rect,new StringFormat(),g);
 				//reposition for next label
 				xPos+=275;
 				if(xPos>850){//drop a line
@@ -344,38 +338,22 @@ namespace OpenDental{
 				Filter="Text files(*.txt)|*.txt|Excel Files(*.xls)|*.xls|All files(*.*)|*.*",
 				FilterIndex=0
 			};
-			if(ODBuild.IsThinfinity()) {
-				//file download dialog will come up later, after file is created.
-				if(saveFileDialog.ShowDialog()!=DialogResult.OK) { 
-					return;
-				}
-				if(saveFileDialog.FileName.IsNullOrEmpty()) {
-					MsgBox.Show("Failed to save the file.");
-					return;
-				}
-				filePath=ODFileUtils.CombinePaths(Path.GetTempPath(),saveFileDialog.FileName.Split('\\').Last());
-			}
-			else if(ODCloudClient.IsAppStream) {
-				//Do not show save dialog or export locally. File will be exported later.
-			}
-			else {
-				if(!Directory.Exists(PrefC.GetString(PrefName.ExportPath))) {
-					try {
-						Directory.CreateDirectory(PrefC.GetString(PrefName.ExportPath));
-						saveFileDialog.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
-					}
-					catch {
-						//initialDirectory will be blank
-					}
-				}
-				else {
+			if(!Directory.Exists(PrefC.GetString(PrefName.ExportPath))) {
+				try {
+					Directory.CreateDirectory(PrefC.GetString(PrefName.ExportPath));
 					saveFileDialog.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
 				}
-				if(saveFileDialog.ShowDialog()!=DialogResult.OK) {
-					return;
+				catch {
+					//initialDirectory will be blank
 				}
-				filePath=saveFileDialog.FileName;
 			}
+			else {
+				saveFileDialog.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
+			}
+			if(saveFileDialog.ShowDialog()!=DialogResult.OK) {
+				return;
+			}
+			filePath=saveFileDialog.FileName;
 			try{
 			  using(StreamWriter sw=new StreamWriter(filePath,false))
 				{
@@ -395,15 +373,7 @@ namespace OpenDental{
         MessageBox.Show(Lan.g(this,"File in use by another program.  Close and try again."));
 				return;
 			}
-			if(ODBuild.IsThinfinity()) {
-				ThinfinityUtils.ExportForDownload(filePath);
-			}
-			else if(ODCloudClient.IsAppStream) {
-				CloudClientL.ExportForCloud(filePath);
-			}
-			else {
-				MessageBox.Show(Lan.g(this,"File created successfully"));
-			}
+			MessageBox.Show(Lan.g(this,"File created successfully"));
 		}
 
 		private void butPrint_Click(object sender,EventArgs e) {
