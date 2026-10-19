@@ -8,7 +8,6 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Xml;
 
 namespace OpenDentBusiness{
 	///<summary></summary>
@@ -28,60 +27,6 @@ namespace OpenDentBusiness{
 		public static string OpenDentalOID {
 			get {
 				return LegacyOidArc;
-			}
-		}
-		private static long _customerPatNum=0;
-
-		///<summary>The PatNum at Open Dental HQ associated to this database's registration key.
-		///Makes a web call to WebServiceCustomerUpdates in order to get the PatNum from HQ.
-		///Throws exceptions to show to the user if anything goes wrong in communicating with the web service.  Exceptions are already translated.
-		///This build has no HQ, so it always throws. The OID registry no longer uses it; it is deleted once the DoseSpot root stops calling it.</summary>
-		public static long CustomerPatNum {
-			get {
-				if(_customerPatNum==0) {
-					//prepare the xml document to send--------------------------------------------------------------------------------------
-					XmlWriterSettings settings=new XmlWriterSettings();
-					settings.Indent=true;
-					settings.IndentChars=("    ");
-					StringBuilder strbuild=new StringBuilder();
-					using(XmlWriter writer = XmlWriter.Create(strbuild,settings)) {
-						writer.WriteStartElement("CustomerIdRequest");
-						writer.WriteStartElement("RegistrationKey");
-						writer.WriteString(PrefC.GetString(PrefName.RegistrationKey));
-						writer.WriteEndElement();
-						writer.WriteStartElement("RegKeyDisabledOverride");
-						writer.WriteString("true");
-						writer.WriteEndElement();
-						writer.WriteEndElement();
-					}
-					ICustomerUpdates OIDService=CustomerUpdatesProxy.GetWebServiceInstance();//Not available in this build. Throws HqNotAvailableException.
-					//Send the message and get the result---------------------------------------------------------------------------------------
-					string result="";
-					try {
-						result=OIDService.RequestCustomerID(strbuild.ToString());
-					}
-					catch(Exception ex) {
-						throw new Exception(Lans.g("OIDInternals","Error obtaining CustomerID:")+" "+ex.Message);
-					}
-					XmlDocument doc=new XmlDocument();
-					doc.LoadXml(result);
-					//Process errors------------------------------------------------------------------------------------------------------------
-					XmlNode node=doc.SelectSingleNode("//Error");
-					if(node!=null) {
-						throw new Exception(Lans.g("OIDInternals","Error:")+" "+node.InnerText);
-					}
-					//Process a valid return value----------------------------------------------------------------------------------------------
-					node=doc.SelectSingleNode("//CustomerIdResponse");
-					if(node==null) {
-						throw new ODException(Lans.g("OIDInternals","There was an error requesting your OID or processing the result of the request.  Please try again."));
-					}
-					if(node.InnerText=="") {
-						throw new ODException(Lans.g("OIDInternals","Invalid registration key.  Your OIDs will have to be set manually."));
-					}
-					//CustomerIdResponse has been returned and is not blank
-					_customerPatNum=PIn.Long(node.InnerText);
-				}
-				return _customerPatNum;
 			}
 		}
 

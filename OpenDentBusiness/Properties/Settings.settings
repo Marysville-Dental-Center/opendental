@@ -14,9 +14,6 @@
     <Setting Name="OpenDentBusiness_EmdeonITS_ITSWS" Type="(Web Service URL)" Scope="Application">
       <Value Profile="(Default)">https://its.changehealthcare.com/ITS/ITSWS.asmx</Value>
     </Setting>
-    <Setting Name="OpenDentBusiness_com_dosespot_staging_my_API" Type="(Web Service URL)" Scope="Application">
-      <Value Profile="(Default)">https://my.dosespot.com/api/12/api.asmx</Value>
-    </Setting>
     <Setting Name="OpenDentBusiness_DentalxchangePartnerService_DeaPartnerService" Type="(Web Service URL)" Scope="Application">
       <Value Profile="(Default)">https://prelive2.dentalxchange.com:443/dea/DeaPartnerService</Value>
     </Setting>

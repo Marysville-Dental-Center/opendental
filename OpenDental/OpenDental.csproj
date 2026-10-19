@@ -2290,12 +2290,6 @@
     <Compile Include="Forms\FormClaimAttachment.Designer.cs">
       <DependentUpon>FormClaimAttachment.cs</DependentUpon>
     </Compile>
-    <Compile Include="Forms\FormDoseSpotAssignClinicId.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FormDoseSpotAssignClinicId.designer.cs">
-      <DependentUpon>FormDoseSpotAssignClinicId.cs</DependentUpon>
-    </Compile>
     <Compile Include="Forms\FormPaySimpleSetup.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -2334,12 +2328,6 @@
     </Compile>
     <Compile Include="Forms\FormLoginFailed.designer.cs">
       <DependentUpon>FormLoginFailed.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\FormDoseSpotAssignUserId.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FormDoseSpotAssignUserId.designer.cs">
-      <DependentUpon>FormDoseSpotAssignUserId.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\FormFamilyBalancer.cs">
       <SubType>Form</SubType>
@@ -6285,9 +6273,6 @@
     <EmbeddedResource Include="Forms\FormClaimAttachment.resx">
       <DependentUpon>FormClaimAttachment.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormDoseSpotAssignClinicId.resx">
-      <DependentUpon>FormDoseSpotAssignClinicId.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormPaySimpleSetup.resx">
       <DependentUpon>FormPaySimpleSetup.cs</DependentUpon>
     </EmbeddedResource>
@@ -6305,9 +6290,6 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormLoginFailed.resx">
       <DependentUpon>FormLoginFailed.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormDoseSpotAssignUserId.resx">
-      <DependentUpon>FormDoseSpotAssignUserId.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormFamilyBalancer.resx">
       <DependentUpon>FormFamilyBalancer.cs</DependentUpon>

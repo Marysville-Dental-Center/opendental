@@ -5,10 +5,8 @@ using CodeBase;
 namespace OpenDentBusiness {
 	///<summary>The methods of Open Dental's "Customer Updates" web service (Service1.asmx) that this program still calls. Kept as an interface so
 	///that call sites compile and unit tests can supply a fake. The only real implementation is CustomerUpdatesNoHq. The Canadian network
-	///certificate and eRx access members were deleted once nothing called them. RequestCustomerID goes together with OIDInternals.CustomerPatNum,
-	///its last caller.</summary>
+	///certificate, eRx access and customer ID (OID root) members were deleted once nothing called them.</summary>
 	public interface ICustomerUpdates {
-		string RequestCustomerID(string officeData);
 		string RequestEmailVerificationCode(string officeData);
 		string PostEmailCertificate(string officeData);
 	}
@@ -16,7 +14,6 @@ namespace OpenDentBusiness {
 	///<summary>Stand-in for Open Dental's "Customer Updates" web service. It never makes a network call; every method throws
 	///HqNotAvailableException.</summary>
 	public class CustomerUpdatesNoHq:ICustomerUpdates {
-		public string RequestCustomerID(string officeData) { throw new HqNotAvailableException(); }
 		public string RequestEmailVerificationCode(string officeData) { throw new HqNotAvailableException(); }
 		public string PostEmailCertificate(string officeData) { throw new HqNotAvailableException(); }
 	}

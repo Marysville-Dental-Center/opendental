@@ -6299,20 +6299,11 @@ namespace OpenDental{
 					}
 					break;
 				case FormType.FormDoseSpotAssignUserId:
-					if(!Security.IsAuthorized(EnumPermType.SecurityAdmin)) {
-						break;
-					}
-					using(FormDoseSpotAssignUserId formDoseSpotAssignUserId=new FormDoseSpotAssignUserId(alertItem.FKey)) {
-						formDoseSpotAssignUserId.ShowDialog();
-					}
-					break;
 				case FormType.FormDoseSpotAssignClinicId:
-					if(!Security.IsAuthorized(EnumPermType.SecurityAdmin)) {
-						break;
-					}
-					using(FormDoseSpotAssignClinicId formDoseSpotAssignClinicId=new FormDoseSpotAssignClinicId(alertItem.FKey)) {
-						formDoseSpotAssignClinicId.ShowDialog();
-					}
+					//Alerts left from the previous vendor's DoseSpot provisioning. The office now gets its IDs from DoseSpot (or its contract holder)
+					//and enters them itself, so there is nothing to assign here.
+					MsgBox.Show(this,"DoseSpot clinic and user IDs are now entered directly: clinic IDs in Setup, Program Links, eRx, and user IDs in each "
+						+"user's settings in Setup, Security.");
 					break;
 				case FormType.FormEmailAddresses:
 					//Will open the email addresses window that is usually opened from email inbox setup.

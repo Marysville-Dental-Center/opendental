@@ -66,16 +66,6 @@ namespace OpenDentBusiness.Properties {
         [global::System.Configuration.ApplicationScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.SpecialSettingAttribute(global::System.Configuration.SpecialSetting.WebServiceUrl)]
-        [global::System.Configuration.DefaultSettingValueAttribute("https://my.dosespot.com/api/12/api.asmx")]
-        public string OpenDentBusiness_com_dosespot_staging_my_API {
-            get {
-                return ((string)(this["OpenDentBusiness_com_dosespot_staging_my_API"]));
-            }
-        }
-        
-        [global::System.Configuration.ApplicationScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.SpecialSettingAttribute(global::System.Configuration.SpecialSetting.WebServiceUrl)]
         [global::System.Configuration.DefaultSettingValueAttribute("https://prelive2.dentalxchange.com:443/dea/DeaPartnerService")]
         public string OpenDentBusiness_DentalxchangePartnerService_DeaPartnerService {
             get {

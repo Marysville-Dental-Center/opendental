@@ -115,9 +115,11 @@ namespace NoHqTests {
 
 		[TestMethod]
 		public void CustomerUpdates_VendorMembersAreRemoved() {
-			//The Canadian network certificates come from the office's own files now, and eRx access is decided locally.
+			//The Canadian network certificates come from the office's own files now, eRx access is decided locally, and the OID root is generated
+			//locally (OIDInternals.CustomerPatNum, the last RequestCustomerID caller, is gone).
 			AssertMembersRemoved(new List<Type> { typeof(ICustomerUpdates),typeof(CustomerUpdatesNoHq) },
-				new string[] { "RequestCertCanadaABC","RequestCertCanadaTelusAandB","RequestCertCanadaTelusAandBtest","GetErxAccess","GetClinicErxAccess" });
+				new string[] { "RequestCertCanadaABC","RequestCertCanadaTelusAandB","RequestCertCanadaTelusAandBtest","GetErxAccess","GetClinicErxAccess",
+					"RequestCustomerID" });
 		}
 
 		#endregion CustomerUpdates

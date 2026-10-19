@@ -158,13 +158,10 @@ namespace VendorDirectTests.Oid {
 			}
 			StringAssert.Contains(form,"OIDInternals.GenerateUuidRoot()");
 			StringAssert.Contains(form,"OIDInternals.IsValidOid(");
-			//In the business class, the HQ request lives only in CustomerPatNum, which the DoseSpot root still calls until it moves to a local suffix.
+			//The business class asks no one for the root either: CustomerPatNum, its last HQ request, was deleted (package Z2).
 			string business=File.ReadAllText(Path.Combine(root,@"OpenDentBusiness\Data Interface\OIDInternals.cs"));
-			Assert.AreEqual(1,Regex.Matches(business,@"CustomerUpdatesProxy\.").Count);
-			int indexProxy=business.IndexOf("CustomerUpdatesProxy.");
-			int indexCustomerPatNum=business.IndexOf("public static long CustomerPatNum");
-			int indexGenerate=business.IndexOf("public static string GenerateUuidRoot");
-			Assert.IsTrue(indexCustomerPatNum<indexProxy && indexProxy<indexGenerate,"The HQ call is only inside CustomerPatNum.");
+			StringAssert.DoesNotMatch(business,new Regex("CustomerPatNum|RequestCustomerID|CustomerUpdates|WebServiceMainHQ"));
+			Assert.IsNull(typeof(OIDInternals).GetProperty("CustomerPatNum"),"OIDInternals.CustomerPatNum should have been removed.");
 		}
 	}
 }
