@@ -549,14 +549,14 @@ namespace OpenDentBusiness{
 				+$"'{Payments.GetPaymentTypeDesc(payment??Payments.GetPayment(paySplit.PayNum))}'";
 		}
 
-		///<summary>Returns the salted hash for the paysplit. Will return an empty string if the calling program is unable to use CDT.dll. </summary>
+		///<summary>Returns the salted hash for the paysplit. Computed by CodeBase.TamperHash. </summary>
 		public static string HashFields(PaySplit split) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetString(MethodBase.GetCurrentMethod(),split);
 			}
 			string unhashedText=split.PatNum.ToString()+split.SplitAmt.ToString("F2")+split.DatePay.ToString("yyyy-MM-dd");
 			try {
-				return CDT.Class1.CreateSaltedHash(unhashedText);
+				return TamperHash.Compute(unhashedText);
 			}
 			catch(Exception ex)  {
 				ex.DoNothing();

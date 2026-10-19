@@ -358,7 +358,7 @@ namespace OpenDental{
 			string odPassword=CommandLineArgs_.OdPassword??"";
 			string odPassObfuscated=CommandLineArgs_.OdPassObfuscated??"";
 			if(odPassword=="" && odPassObfuscated!="") {
-				CDT.Class1.Decrypt(odPassObfuscated,out odPassword);
+				Secrets.Decrypt(odPassObfuscated,out odPassword);
 			}
 			string serverName=CommandLineArgs_.ServerName??"";
 			string databaseName=CommandLineArgs_.DatabaseName??"";
@@ -367,7 +367,7 @@ namespace OpenDental{
 			string mySqlPassHash=CommandLineArgs_.MySqlPassHash??"";
 			string mySqlPassObfuscated=CommandLineArgs_.MySqlPassObfuscated??"";
 			if(mySqlPassword=="" && mySqlPassObfuscated!="") {
-				CDT.Class1.Decrypt(mySqlPassObfuscated,out mySqlPassword);
+				Secrets.Decrypt(mySqlPassObfuscated,out mySqlPassword);
 			}
 			bool useDynamicMode=(CommandLineArgs_.UseDynamicMode??"").Contains("true");
 			string domainUser=CommandLineArgs_.DomainUser??"";
@@ -681,7 +681,7 @@ namespace OpenDental{
 				}
 				else {
 					string decryptedPassword;
-					CDT.Class1.DecryptSftp(programPropertyPassword.PropertyValue,out decryptedPassword); //Password is encrypted when stored, so	we have to decrypt it in order to get the plaintext.
+					Secrets.DecryptSftp(programPropertyPassword.PropertyValue,out decryptedPassword); //Password is encrypted when stored, so	we have to decrypt it in order to get the plaintext.
 					try {
 						hasConnected=OpenDentalCloud.Sftp.FileExists(programPropertyHost.PropertyValue,programPropertyUsername.PropertyValue,decryptedPassword,
 							ODFileUtils.CombinePaths(programPropertyPath.PropertyValue,"A",'/'));

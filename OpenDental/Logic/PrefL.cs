@@ -911,7 +911,7 @@ namespace OpenDental {
 			}
 			//At this point we know that Open Dental Service does not have a config file present.
 			string mySqlPassHash;
-			CDT.Class1.Encrypt(DataConnection.GetMysqlPass(),out mySqlPassHash);
+			Secrets.Encrypt(DataConnection.GetMysqlPass(),out mySqlPassHash);
 			return ServicesHelper.CreateServiceConfigFile(odServiceConfigPath
 				,DataConnection.GetServerName()
 				,DataConnection.GetDatabaseName()
@@ -1067,7 +1067,7 @@ namespace OpenDental {
 				+" "+killServices.ToString()//and whether to kill all processes or not
 				+" "+openCopiedFiles.ToString();//and whether to open the copied files or not.
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientDirect && !string.IsNullOrEmpty(DataConnection.GetServerName())) {
-				CDT.Class1.Encrypt(DataConnection.GetMysqlPass(),out string mySqlDatabasePassHash);//sets encryptedPwd ot value or null
+				Secrets.Encrypt(DataConnection.GetMysqlPass(),out string mySqlDatabasePassHash);//sets encryptedPwd ot value or null
 				arguments+=" \""+DataConnection.GetServerName()+"\""//and server name for reconnecting to database
 					+" \""+DataConnection.GetDatabaseName()+"\""//and database name for reconnecting to database
 					+" \""+DataConnection.GetMysqlUser()+"\""//and mysqluser for reconnecting to database

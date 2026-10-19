@@ -143,7 +143,7 @@ namespace OpenDental {
 				return;
 			}
 			long programNum=Programs.GetProgramNum(ProgramName.TrojanExpressCollect);
-			string password=CDT.Class1.TryDecrypt(ProgramProperties.GetPropVal(programNum,"Password"));
+			string password=Secrets.TryDecrypt(ProgramProperties.GetPropVal(programNum,"Password"));
 			if(!Regex.IsMatch(password,@"^[A-Z]{2}\d{4}$")) {
 				MsgBox.Show(this,"Password is not in correct format. Must be like this: AB1234");
 				return;

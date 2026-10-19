@@ -98,7 +98,7 @@ namespace OpenDental{
 					string password;
 					bool isXVWebPassword=ProgramCur.ProgName==ProgramName.XVWeb.ToString() && listProgramProperties[i].PropertyDesc==XVWeb.ProgramProps.Password;
 					if(isXVWebPassword) {
-						CDT.Class1.Decrypt(listProgramProperties[i].PropertyValue,out password);
+						Secrets.Decrypt(listProgramProperties[i].PropertyValue,out password);
 					}
 					else {
 						password=listProgramProperties[i].PropertyValue;

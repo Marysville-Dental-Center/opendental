@@ -823,11 +823,11 @@ namespace OpenDentBusiness{
 			return count;
 		}
 
-		///<summary>Returns the salted hash for the payplan. Will return an empty string if the calling program is unable to use CDT.dll. </summary>
+		///<summary>Returns the salted hash for the payplan. Computed by CodeBase.TamperHash. </summary>
 		public static string HashFields(PayPlan payPlan) {
 			string unhashedText=payPlan.Guarantor.ToString()+payPlan.PayAmt.ToString("f2")+payPlan.IsClosed.ToString()+payPlan.IsLocked.ToString();
 			try {
-				return CDT.Class1.CreateSaltedHash(unhashedText);
+				return TamperHash.Compute(unhashedText);
 			}
 			catch(Exception ex)  {
 				ex.DoNothing();

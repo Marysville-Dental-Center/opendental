@@ -127,7 +127,7 @@ namespace OpenDental {
 			comboReportingServerDbName.Text=PrefC.GetString(PrefName.ReportingServerDbName);
 			textReportingServerMySqlUser.Text=PrefC.GetString(PrefName.ReportingServerMySqlUser);
 			string decryptedPass;
-			CDT.Class1.Decrypt(PrefC.GetString(PrefName.ReportingServerMySqlPassHash),out decryptedPass);
+			Secrets.Decrypt(PrefC.GetString(PrefName.ReportingServerMySqlPassHash),out decryptedPass);
 			textMysqlPass.Text=decryptedPass;
 			//textReportingServerURI.Text=PrefC.GetString(PrefName.ReportingServerURI);
 			FillComboDatabases();
@@ -149,7 +149,7 @@ namespace OpenDental {
 			else {
 				if(radioReportServerDirect.Checked) {
 					string reportingServerMySqlPassHash;
-					CDT.Class1.Encrypt(textMysqlPass.Text,out reportingServerMySqlPassHash);
+					Secrets.Encrypt(textMysqlPass.Text,out reportingServerMySqlPassHash);
 					Changed|=Prefs.UpdateString(PrefName.ReportingServerCompName,textReportingServerCompName.Text);
 					Changed|=Prefs.UpdateString(PrefName.ReportingServerDbName,comboReportingServerDbName.Text);
 					Changed|=Prefs.UpdateString(PrefName.ReportingServerMySqlUser,textReportingServerMySqlUser.Text);

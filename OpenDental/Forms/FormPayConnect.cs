@@ -374,7 +374,7 @@ namespace OpenDental {
 			}
 			//verify the selected clinic has a username and password type entered
 			//Decrypt password first because empty string decrypted does not mean empty string when encrypted.
-			string password=CDT.Class1.TryDecrypt(ProgramProperties.GetPropVal(_program.ProgramNum,"Password",_clinicNum));
+			string password=Secrets.TryDecrypt(ProgramProperties.GetPropVal(_program.ProgramNum,"Password",_clinicNum));
 			if(ProgramProperties.GetPropVal(_program.ProgramNum,"Username",_clinicNum)=="" || password=="") {//if username or password is blank
 				MsgBox.Show(this,"The PayConnect username and/or password has not been set.");
 				return false;

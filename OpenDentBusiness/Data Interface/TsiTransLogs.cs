@@ -277,7 +277,7 @@ namespace OpenDentBusiness{
 				sftpPort=22;//default to port 22
 			}
 			string userName=listProgramProperties.Find(x => x.PropertyDesc=="SftpUsername")?.PropertyValue;
-			string userPassword=CDT.Class1.TryDecrypt(listProgramProperties.Find(x => x.PropertyDesc=="SftpPassword")?.PropertyValue);
+			string userPassword=Secrets.TryDecrypt(listProgramProperties.Find(x => x.PropertyDesc=="SftpPassword")?.PropertyValue);
 			if(string.IsNullOrWhiteSpace(sftpAddress) || string.IsNullOrWhiteSpace(userName) || string.IsNullOrWhiteSpace(userPassword)) {
 				return false;
 			}
@@ -377,7 +377,7 @@ namespace OpenDentBusiness{
 				sftpPort=22;//default to port 22
 			}
 			string userName=listProgramPropertiesClinic.Find(x => x.PropertyDesc=="SftpUsername")?.PropertyValue??"";
-			string userPassword=CDT.Class1.TryDecrypt(listProgramPropertiesClinic.Find(x => x.PropertyDesc=="SftpPassword")?.PropertyValue??"");
+			string userPassword=Secrets.TryDecrypt(listProgramPropertiesClinic.Find(x => x.PropertyDesc=="SftpPassword")?.PropertyValue??"");
 			if(new[] { sftpAddress,userName,userPassword }.Any(x => string.IsNullOrEmpty(x))) {
 				return Lans.g("TsiTransLogs","The SFTP address, username, or password for the Transworld program link")+" "
 					+(PrefC.HasClinicsEnabled?(Lans.g("TsiTransLogs","for the guarantor's clinic")+", "+clinicDesc+", "):"")+Lans.g("TsiTransLogs","is blank.");

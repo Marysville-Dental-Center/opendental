@@ -454,7 +454,7 @@ namespace OpenDentBusiness.Bridges {
 					}
 				}
 			}
-			if(!CDT.Class1.Decrypt(billingPasswordEnc,out string billingPassword)) {
+			if(!Secrets.Decrypt(billingPasswordEnc,out string billingPassword)) {
 				billingPassword=billingPasswordEnc;//If decryption is successful we won't get here. Instead the out parameter is used.
 			}
 			string postData=

@@ -1233,7 +1233,7 @@ namespace OpenDental {
 				else {//if clinics are enabled, PayConnect is enabled if the PaymentType is valid and the Username and Password are not blank
 					string paymentType=ProgramProperties.GetPropVal(programPayConnect.ProgramNum,"PaymentType",_payment.ClinicNum);
 					if(programVersion=="1") {
-						string password=CDT.Class1.TryDecrypt(ProgramProperties.GetPropVal(programPayConnect.ProgramNum,"Password",_payment.ClinicNum));
+						string password=Secrets.TryDecrypt(ProgramProperties.GetPropVal(programPayConnect.ProgramNum,"Password",_payment.ClinicNum));
 						if(!string.IsNullOrEmpty(ProgramProperties.GetPropVal(programPayConnect.ProgramNum,"Username",_payment.ClinicNum))
 							&& !string.IsNullOrEmpty(password)
 							&& _listDefsPaymentType.Any(x => x.DefNum.ToString()==paymentType))
@@ -2396,7 +2396,7 @@ namespace OpenDental {
 				string payconnectVersion=ProgramProperties.GetPropVal(program.ProgramNum,"Program Version",_payment.ClinicNum);
 				if(payconnectVersion=="1") {
 					//If clinics are disabled, _paymentCur.ClinicNum will be 0 and the Username and Password will be the 'Headquarters' or practice credentials
-					string password=CDT.Class1.TryDecrypt(ProgramProperties.GetPropVal(program.ProgramNum,"Password",_payment.ClinicNum));
+					string password=Secrets.TryDecrypt(ProgramProperties.GetPropVal(program.ProgramNum,"Password",_payment.ClinicNum));
 					if(string.IsNullOrEmpty(ProgramProperties.GetPropVal(program.ProgramNum,"Username",_payment.ClinicNum))
 						|| string.IsNullOrEmpty(password)) 
 					{

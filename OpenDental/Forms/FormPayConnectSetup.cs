@@ -104,7 +104,7 @@ namespace OpenDental{
 				clinicNum=_listUserClinicNums[comboClinic.SelectedIndex];
 			}
 			textUsername.Text=ProgramProperties.GetPropValFromList(_listProgramProperties,"Username",clinicNum);
-			textPassword.Text=CDT.Class1.TryDecrypt(ProgramProperties.GetPropValFromList(_listProgramProperties,"Password",clinicNum));
+			textPassword.Text=Secrets.TryDecrypt(ProgramProperties.GetPropValFromList(_listProgramProperties,"Password",clinicNum));
 			string payTypeDefNum=ProgramProperties.GetPropValFromList(_listProgramProperties,"PaymentType",clinicNum);
 			string processingMethod=ProgramProperties.GetPropValFromList(_listProgramProperties,PayConnect.ProgramProperties.DefaultProcessingMethod,clinicNum);
 			checkTerminal.Checked=PIn.Bool(ProgramProperties.GetPropValFromList(_listProgramProperties,"TerminalProcessingEnabled",clinicNum));
@@ -253,7 +253,7 @@ namespace OpenDental{
 				//this clinic had a matching username and password, so update the username and password to keep it synched with HQ
 				_listProgramProperties.FindAll(x => x.ClinicNum==listClinicNums[i] && x.PropertyDesc=="Username")
 					.ForEach(x => x.PropertyValue=textUsername.Text);//always 1 item; null safe
-				string password=CDT.Class1.TryEncrypt(textPassword.Text);//Encrypt password before setting so it's not plaintext.
+				string password=Secrets.TryEncrypt(textPassword.Text);//Encrypt password before setting so it's not plaintext.
 				_listProgramProperties.FindAll(x => x.ClinicNum==listClinicNums[i] && x.PropertyDesc=="Password")
 					.ForEach(x => x.PropertyValue=password);//always 1 item; null safe
 				if(string.IsNullOrEmpty(payTypeCur)) {
@@ -274,7 +274,7 @@ namespace OpenDental{
 			//set the values in the list for this clinic
 			_listProgramProperties.FindAll(x => x.ClinicNum==clinicNum && x.PropertyDesc=="Username")
 				.ForEach(x => x.PropertyValue=textUsername.Text);//always 1 item; null safe
-			string password=CDT.Class1.TryEncrypt(textPassword.Text);//Encrypt password before setting so it's not plaintext.
+			string password=Secrets.TryEncrypt(textPassword.Text);//Encrypt password before setting so it's not plaintext.
 			_listProgramProperties.FindAll(x => x.ClinicNum==clinicNum && x.PropertyDesc=="Password")
 				.ForEach(x => x.PropertyValue=password);//always 1 item; null safe
 			_listProgramProperties.FindAll(x => x.ClinicNum==clinicNum && x.PropertyDesc=="PaymentType")
@@ -469,7 +469,7 @@ namespace OpenDental{
 				//if the program is enabled and the username and password fields are not blank,
 				//PayConnect is enabled for this clinic so make sure the payment type is also set
 				//Decrypt password because empty string password is not empty string when encrypted.
-				string password=CDT.Class1.TryDecrypt(ProgramProperties.GetPropValFromList(_listProgramProperties,"Password",_listUserClinicNums[i]));
+				string password=Secrets.TryDecrypt(ProgramProperties.GetPropValFromList(_listProgramProperties,"Password",_listUserClinicNums[i]));
 				if(((ProgramProperties.GetPropValFromList(_listProgramProperties,"Username",_listUserClinicNums[i])!="" //if username set
 					&& password!="") //and password set
 					|| ProgramProperties.GetPropValFromList(_listProgramProperties,"TerminalProcessingEnabled",_listUserClinicNums[i])=="1")//or terminal enabled

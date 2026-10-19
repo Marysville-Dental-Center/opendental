@@ -1,21 +1,22 @@
-// CDT: open source replacement for the prebuilt CDT.dll.
+// Secret obfuscation and SecurityHash tamper hashes, built on .NET's own crypto providers.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace CDT {
+namespace CodeBase {
 	///<summary>Reversible obfuscation of stored secrets (passwords and tokens in the database and in local config files).
 	///Format: "osd1$" + base64(IV[16] || AES-256-CBC-PKCS7 ciphertext || HMAC-SHA256 tag[32]). The tag covers the ASCII prefix, the IV and the
 	///ciphertext (encrypt-then-MAC), so corrupted or foreign values are rejected instead of decrypting to garbage.
 	///Encryption is deterministic: the IV is a synthetic IV, HMAC-SHA256(ivKey, "osd1$" || UTF-8 plaintext) truncated to 16 bytes, so equal
 	///plaintexts always give equal values. Setup forms rely on that when they compare stored ciphertexts (e.g. a clinic's password with HQ's).
 	///Decryption reads the IV from the value and doesn't care how it was chosen.
-	///The key is fixed and derived from a public constant. That is deliberate; see CDT/README.md for the threat model.</summary>
+	///The key is fixed and derived from a public constant. That is deliberate; see CodeBase/Crypto/README.md for the threat model.</summary>
 	internal static class SecretBox {
 		///<summary>Version prefix of every value this class produces. A future format with different keys must use a new prefix (e.g. osd2$).</summary>
 		internal const string Prefix="osd1$";
-		///<summary>Public key material for osd1. Changing it makes every stored osd1 value undecryptable.</summary>
+		///<summary>Public key material for osd1. Changing it makes every stored osd1 value undecryptable.
+		///The text is frozen, including its mention of the retired CDT library name: it is key input, not a reference.</summary>
 		internal const string KeyMaterial="CDT osd1 secret obfuscation key. Public by design; see CDT/README.md.";
 		private const int IvLength=16;
 		private const int TagLength=32;

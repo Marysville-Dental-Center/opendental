@@ -73,7 +73,7 @@ namespace DatabaseIntegrityCheck {
 				textUser.Text="root";
 			}
 			string decryptedPwd;
-			if(textPassword.Text=="" && passHash!="" && CDT.Class1.Decrypt(passHash,out decryptedPwd)) {
+			if(textPassword.Text=="" && passHash!="" && Secrets.Decrypt(passHash,out decryptedPwd)) {
 				textPassword.Text=decryptedPwd;
 			}
 			textPassword.PasswordChar=textPassword.Text==""?default(char):'*';//mask password on leave

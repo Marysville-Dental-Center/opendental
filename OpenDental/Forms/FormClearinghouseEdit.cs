@@ -251,7 +251,7 @@ namespace OpenDental{
 			if(string.IsNullOrEmpty(clearinghouse.Password)) {
 				return;
 			}
-			if(CDT.Class1.ConcealClearinghouse(clearinghouse.Password,out concealedPassword)) {
+			if(Secrets.ConcealClearinghouse(clearinghouse.Password,out concealedPassword)) {
 				clearinghouse.Password=concealedPassword;
 			}
 		}

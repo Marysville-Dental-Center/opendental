@@ -49,7 +49,7 @@ namespace OpenDental {
 			string decryptedPassword;
 			checkEmailMessage.Checked=false;
 			checkSecurityLog.Checked=true;
-			CDT.Class1.Decrypt(PrefC.GetString(PrefName.ArchivePassHash),out decryptedPassword);
+			Secrets.Decrypt(PrefC.GetString(PrefName.ArchivePassHash),out decryptedPassword);
 			textArchivePass.Text=decryptedPassword;
 			textArchivePass.PasswordChar=(textArchivePass.Text=="" ? default(char) : '*');
 			textArchiveServerName.Text=PrefC.GetString(PrefName.ArchiveServerName);
@@ -104,7 +104,7 @@ namespace OpenDental {
 			hasChanged |= Prefs.UpdateString(PrefName.ArchiveServerName,textArchiveServerName.Text);
 			hasChanged |= Prefs.UpdateString(PrefName.ArchiveUserName,textArchiveUser.Text);
 			string encryptedPassword;
-      CDT.Class1.Encrypt(textArchivePass.Text,out encryptedPassword);
+      Secrets.Encrypt(textArchivePass.Text,out encryptedPassword);
 			hasChanged |= Prefs.UpdateString(PrefName.ArchivePassHash,encryptedPassword);
 			return hasChanged;
 		}

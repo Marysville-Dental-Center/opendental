@@ -951,7 +951,7 @@ namespace OpenDental{
 					sftpPort=22;//default to port 22
 				}
 				string userName=listProgPropsForClinic.Find(x => x.PropertyDesc=="SftpUsername")?.PropertyValue??"";
-				string userPassword=CDT.Class1.TryDecrypt(listProgPropsForClinic.Find(x => x.PropertyDesc=="SftpPassword")?.PropertyValue??"");
+				string userPassword=Secrets.TryDecrypt(listProgPropsForClinic.Find(x => x.PropertyDesc=="SftpPassword")?.PropertyValue??"");
 				if(Sftp.IsConnectionValid(sftpAddress,userName,userPassword,sftpPort)) {
 					return true;
 				}

@@ -224,7 +224,7 @@ namespace OpenDentBusiness {
 		public static string GetRevealPassword(string concealPassword) {
 			Meth.NoCheckMiddleTierRole();
 			string revealedPassword="";
-			CDT.Class1.RevealClearinghouse(concealPassword,out revealedPassword);
+			Secrets.RevealClearinghouse(concealPassword,out revealedPassword);
 			return revealedPassword;
 		}
 

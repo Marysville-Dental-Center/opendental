@@ -1,9 +1,9 @@
-// CDT: open source replacement for the prebuilt CDT.dll.
+// Secret obfuscation and SecurityHash tamper hashes, built on .NET's own crypto providers.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Security.Cryptography;
 
-namespace CDT {
+namespace CodeBase {
 	///<summary>HMAC-SHA256 (RFC 2104) over SHA256CryptoServiceProvider. The framework's HMACSHA256 class uses SHA256Managed, which throws on
 	///machines with Windows FIPS policy enforced; the CryptoAPI provider used here doesn't. Not thread safe: lock around shared instances.</summary>
 	internal sealed class HmacSha256 : IDisposable {

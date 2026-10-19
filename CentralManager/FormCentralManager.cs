@@ -865,7 +865,7 @@ namespace CentralManager {
 					mySqlPassword=nav.SelectSingleNode("Password").Value;
 					XPathNavigator passHashNode=nav.SelectSingleNode("MySQLPassHash");
 					string decryptedPwd;
-					if(mySqlPassword=="" && passHashNode!=null && passHashNode.Value!="" && CDT.Class1.Decrypt(passHashNode.Value,out decryptedPwd)) {
+					if(mySqlPassword=="" && passHashNode!=null && passHashNode.Value!="" && Secrets.Decrypt(passHashNode.Value,out decryptedPwd)) {
 						mySqlPassword=decryptedPwd;
 					}
 				}

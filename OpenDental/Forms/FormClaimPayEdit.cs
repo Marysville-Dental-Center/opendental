@@ -188,7 +188,7 @@ namespace OpenDental{
 					string paymentType=ProgramProperties.GetPropVal(progPayConnect.ProgramNum,"PaymentType",clinicNum);
 					//Decrypt password for later checks because an empty string password is not an empty string when encrypted.
 					if(programVersion=="1") {
-						string password=CDT.Class1.TryDecrypt(ProgramProperties.GetPropVal(progPayConnect.ProgramNum,"Password",clinicNum));
+						string password=Secrets.TryDecrypt(ProgramProperties.GetPropVal(progPayConnect.ProgramNum,"Password",clinicNum));
 						if(!string.IsNullOrEmpty(ProgramProperties.GetPropVal(progPayConnect.ProgramNum,"Username",clinicNum))
 							&& !string.IsNullOrEmpty(password)
 							&& listDefs.Any(x => x.DefNum.ToString()==paymentType))

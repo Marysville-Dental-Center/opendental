@@ -551,7 +551,7 @@ namespace OpenDentBusiness {
 			public static string MySqlPass {
 				get {
 					string pass;
-					CDT.Class1.Decrypt(PrefC.GetString(PrefName.ReportingServerMySqlPassHash),out pass);
+					Secrets.Decrypt(PrefC.GetString(PrefName.ReportingServerMySqlPassHash),out pass);
 					return pass;
 				}
 			}
@@ -618,7 +618,7 @@ namespace OpenDentBusiness {
 			public static string MySqlPass {
 				get {
 					string pass;
-					CDT.Class1.Decrypt(PrefC.GetString(PrefName.ReadOnlyServerMySqlPassHash),out pass);
+					Secrets.Decrypt(PrefC.GetString(PrefName.ReadOnlyServerMySqlPassHash),out pass);
 					return pass;
 				}
 			}

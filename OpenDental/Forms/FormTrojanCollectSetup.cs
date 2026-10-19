@@ -31,7 +31,7 @@ namespace OpenDental {
 			_listDefsBillingType=Defs.GetDefsForCategory(DefCat.BillingTypes,true);
 			comboBillType.Items.AddList(_listDefsBillingType.Select(x => x.ItemName));
 			comboBillType.SelectedIndex=Math.Max(_listDefsBillingType.FindIndex(x => x.DefNum==billtype),0);
-			textPassword.Text=CDT.Class1.TryDecrypt(ProgramProperties.GetPropVal(_program.ProgramNum,"Password"));
+			textPassword.Text=Secrets.TryDecrypt(ProgramProperties.GetPropVal(_program.ProgramNum,"Password"));
 			checkEnabled.Checked=_program.Enabled;
 		}
 
@@ -88,7 +88,7 @@ namespace OpenDental {
 				Programs.Update(_program);
 				hasChanges=true;
 			}
-			string password=CDT.Class1.TryEncrypt(textPassword.Text);
+			string password=Secrets.TryEncrypt(textPassword.Text);
 			hasChanges |= ProgramProperties.SetProperty(_program.ProgramNum,"FolderPath",textExportFolder.Text)>0;
 			hasChanges |= ProgramProperties.SetProperty(_program.ProgramNum,"BillingType",defNum.ToString())>0;
 			hasChanges |= ProgramProperties.SetProperty(_program.ProgramNum,"Password",password)>0;

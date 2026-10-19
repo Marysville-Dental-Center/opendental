@@ -1,17 +1,19 @@
-# CDT
+# Secrets and TamperHash
 
-Open source replacement for the proprietary prebuilt `CDT.dll` that used to ship in `Required dlls/`. It keeps the assembly name (`CDT`), the namespace (`CDT`), the static class `Class1`, and every member signature this repository calls, so no call site changed.
+Stored-secret obfuscation and the `SecurityHash` tamper hashes, built on .NET's own crypto providers. They live in CodeBase, the lowest layer, because `DataConnectionBase` needs them to read connection passwords before any database connection exists.
 
-It was written from how this repository calls the library and from public algorithm specifications. Nothing was taken from the original binary.
+They replace the proprietary prebuilt `CDT.dll` that Open Dental shipped in `Required dlls/`, and the in-repo `CDT` project that briefly stood in for it. The code was written from how this repository called the library and from public algorithm specifications. Nothing was taken from the original binary. The formats are unchanged, so values already written by the `CDT` project keep decrypting and verifying.
 
-| Area | Members | Summary |
+| Class | Members | Summary |
 |---|---|---|
-| Secrets | `Encrypt`, `Decrypt`, `TryEncrypt`, `TryDecrypt`, `EncryptSftp`, `DecryptSftp`, `ConcealClearinghouse`, `RevealClearinghouse`, `IsEncrypted` | Reversible obfuscation of stored passwords and tokens: AES-256-CBC plus HMAC-SHA256, deterministic, prefix `osd1$`, fixed public key |
-| SecurityHash | `CreateSaltedHash`, `DisposeHashAlgorithm`, `IsCurrentSaltedHash`, `SaltedHashPrefix` | Keyed hashes for the tamper-detection columns: HMAC-SHA256, prefix `osh1$`, fixed public key |
-| ADA content | `GetADAcodes`, `GetProcedureCodeSettings`, `GetProcedureCodeTreatAreas`, `GetMandibularCodes`, `GetMaxillaryCodes`, `GetADA2006`, `GetADA2012`, `GetADA2012_J430D`, `GetADA2018_J432`, `GetADA2019_J430`, `GetADA2024_J430`, `GetDC217` | Not shipped. The text getters return `""` and the claim-form images are blank. |
-| Registration keys | `GenerateRandKey`, `ValidateKey` | No license gates. Key generation returns `""` and validation always returns true. |
+| `CodeBase.Secrets` | `Encrypt`, `Decrypt`, `TryEncrypt`, `TryDecrypt`, `EncryptSftp`, `DecryptSftp`, `ConcealClearinghouse`, `RevealClearinghouse`, `IsEncrypted`, `Prefix` | Reversible obfuscation of stored passwords and tokens: AES-256-CBC plus HMAC-SHA256, deterministic, prefix `osd1$`, fixed public key |
+| `CodeBase.TamperHash` | `Compute`, `IsCurrentFormat`, `Prefix`, `ReleaseProviders` | Keyed hashes for the tamper-detection columns: HMAC-SHA256, prefix `osh1$`, fixed public key. `OpenDentBusiness.Misc.SecurityHash` decides which rows are hashed and verified. |
+
+`SecretBox`, `SaltedHash` and `HmacSha256` are the internal implementations.
 
 Hashing and AES use the Windows CryptoAPI providers (`SHA256CryptoServiceProvider`, `AesCryptoServiceProvider`), so they also work on machines that enforce the Windows FIPS policy.
+
+The key-material strings in `SecretBox` and `SaltedHash` still mention `CDT`. They are frozen key input, not references: changing a single character would make every stored `osd1$` value undecryptable and every `osh1$` hash invalid.
 
 ## Secrets
 
@@ -39,7 +41,7 @@ Existing code compares stored ciphertexts instead of decrypting them, so it reli
 
 The synthetic IV is an HMAC of the plaintext under its own key. Two different secrets get different IVs, unless a truncated 128-bit HMAC collides, so CBC never reuses an IV for different data. The only extra thing an observer learns is **whether two stored secrets are equal** (for example, that two clinics share a password). That's acceptable under the obfuscation-only threat model below, because anyone with this source code can decrypt both values anyway.
 
-Changing the IV derivation wouldn't break decryption, but every unchanged secret would encrypt to a new value. Each would then look altered once, on its next save. `CdtSecretTests.SyntheticIv_MatchesKnownAnswers` pins the derivation.
+Changing the IV derivation wouldn't break decryption, but every unchanged secret would encrypt to a new value. Each would then look altered once, on its next save. `SecretsTests.SyntheticIv_MatchesKnownAnswers` pins the derivation.
 
 | Call | Result |
 |---|---|
@@ -65,7 +67,7 @@ We considered and rejected these options:
 | A per-machine key (DPAPI) | Fails case 1, because another workstation can't decrypt. It also breaks config files that are copied between machines or read by services running under another account. |
 | A key file installed on every workstation and server | Works, but adds a deployment step that locks everyone out if it's missing or differs. It can be added later as a new format (`osd2$`). |
 
-So `osd1` uses one key compiled into the library and derived from a public constant. That meets both requirements with no setup. The `osd1$` prefix makes rotation possible: a future `osd2$` (for example, with a site key file) would make `Decrypt` accept both formats and re-encrypt values on save.
+So `osd1` uses one key compiled into CodeBase and derived from a public constant. That meets both requirements with no setup. The `osd1$` prefix makes rotation possible: a future `osd2$` (for example, with a site key file) would make `Decrypt` accept both formats and re-encrypt values on save.
 
 ### Threat model
 
@@ -77,7 +79,7 @@ This is **obfuscation at rest, not strong security.**
 
 ### Migrating a database from Open Dental
 
-Open Dental's ciphertexts use its proprietary key, so this library can't decrypt them. `Decrypt` returns `false` with `""`, and the UI shows a blank field. After migrating, re-enter:
+Open Dental's ciphertexts use its proprietary key, so `Secrets` can't decrypt them. `Decrypt` returns `false` with `""`, and the UI shows a blank field. After migrating, re-enter:
 
 - bridge and program-link passwords, including SFTP (A to Z) and Transworld
 - clearinghouse passwords
@@ -102,7 +104,7 @@ rowKey     = HMAC-SHA256( master, "osh1 row" )       appointment, claim, claimpr
 patientKey = HMAC-SHA256( master, "osh1 patient" )   patient (isPatientTable: true)
 ```
 
-A hash is 49 characters, which fits the `varchar(255)` `SecurityHash` columns. `CreateSaltedHash` is thread safe. `DisposeHashAlgorithm` releases the cached providers, and the next call recreates them.
+A hash is 49 characters, which fits the `varchar(255)` `SecurityHash` columns. `TamperHash.Compute` is thread safe. `TamperHash.ReleaseProviders` releases the cached providers, and the next call recreates them.
 
 ### Threat model
 
@@ -127,19 +129,17 @@ The hashes Open Dental wrote can't be recomputed here. Comparing them with `osh1
 After moving a database over from Open Dental, run the rehash once so every verified row carries an `osh1$` hash:
 
 - `SecurityHash.UpdateHashing()` runs automatically, in background threads, on the workstation that performs the next program version update (`PrefL`).
-- `SecurityHash.RehashNow()` runs the same work on demand, on the calling thread, even if it already ran in this process. No menu item calls it yet.
+- `SecurityHash.RehashNow()` runs the same work on demand, on the calling thread, even if it already ran in this process. **Database Maintenance, Tools tab, Security Hashes** runs it after a confirmation prompt. The tool needs the Security Admin permission and a direct database connection (not the middle tier), and it makes a security log entry.
 
 It rehashes every patient with a blank or legacy hash, and every appointment, claim, claim procedure, payment split and payment plan in the verified date range. Like Open Dental's own update-time rehash, it also rewrites the hash of a recent row that was tampered with. Run it right after migrating, before anyone edits data directly in the database.
 
 Until the rehash runs, legacy hashes are accepted without verification. Rows written by this program are verified normally.
 
-## ADA content
+## What the CDT library also did, and what replaced it
 
-The American Dental Association's CDT code text and claim-form artwork are copyrighted and licensed by the ADA, so they aren't included:
-
-- The code-text getters return `""`. Callers already treat that as an empty list. Procedure codes come from a user import, which needs an ADA license.
-- The claim-form background getters return a new, fully transparent 1×1 image on each call. Callers may dispose it. Print claims on pre-printed forms.
+- **ADA content.** The American Dental Association's CDT code text and claim-form artwork are copyrighted and licensed by the ADA, so they aren't included. Procedure codes, their descriptions and treatment areas come straight from the `procedurecode` table, which is loaded into the database directly. Procedure Code Tools no longer offers the D-code and treatment-area options, and the startup reset of ADA descriptions is gone. Claim-form items that name an ADA or DC-217 background image (`ClaimFormItems.IsUnshippedBackground`) draw nothing; print those claims on pre-printed forms.
+- **Registration keys.** Removed with their callers. There is no license gate.
 
 ## Tests
 
-`tests/CryptoTests` holds MSTest v1 tests that need no database. They cover round trips, pass-through behavior, tamper rejection, a pinned `osd1$` value cross-checked with Python's `hmac` and with .NET's `AesManaged`, and `osh1$` known answers computed independently with Python.
+`tests/CryptoTests` holds MSTest v1 tests (`SecretsTests`, `TamperHashTests`) that need no database. They cover round trips, pass-through behavior, tamper rejection, a pinned `osd1$` value cross-checked with Python's `hmac` and with .NET's `AesManaged`, and `osh1$` known answers computed independently with Python.

@@ -355,7 +355,7 @@ namespace OpenDentBusiness {
 				string archiveServerName=PrefC.GetString(PrefName.ArchiveServerName);
 				string archiveUserName=PrefC.GetString(PrefName.ArchiveUserName);
 				string decryptedPass;
-				CDT.Class1.Decrypt(PrefC.GetString(PrefName.ArchivePassHash),out decryptedPass);
+				Secrets.Decrypt(PrefC.GetString(PrefName.ArchivePassHash),out decryptedPass);
 				//Connect to the archive database.  This can throw many exceptions.
 				dcon.SetDb(archiveServerName,MiscData.GetArchiveDatabaseName(),archiveUserName,decryptedPass,"","",dbTypeOrig);
 				#region Validate archive database version

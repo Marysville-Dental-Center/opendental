@@ -157,6 +157,11 @@
     <Compile Include="Controls\PrintPanel.Designer.cs">
       <DependentUpon>PrintPanel.cs</DependentUpon>
     </Compile>
+    <Compile Include="Crypto\HmacSha256.cs" />
+    <Compile Include="Crypto\SaltedHash.cs" />
+    <Compile Include="Crypto\SecretBox.cs" />
+    <Compile Include="Crypto\Secrets.cs" />
+    <Compile Include="Crypto\TamperHash.cs" />
     <Compile Include="Progress\FormProgressBase.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -256,6 +261,9 @@
       <DependentUpon>MsgBoxCopyPaste.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Crypto\README.md" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include="Microsoft.Net.Framework.2.0">

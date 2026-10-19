@@ -3,7 +3,7 @@
     Local build support for the public Open Dental source.
 
     Several projects reference sibling projects that are not published in this
-    repository (CDT, Bridges, ODApi, ODCrypt, OpenDentalHelp, VirtualWeb,
+    repository (Bridges, ODApi, ODCrypt, OpenDentalHelp, VirtualWeb,
     ImagingDeviceManager, ...). Prebuilt copies of those assemblies ship in
     "Required dlls". Before project references are resolved, any
     ProjectReference whose .csproj does not exist on disk is swapped for a plain

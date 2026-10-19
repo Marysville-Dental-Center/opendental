@@ -30,7 +30,7 @@ namespace OpenDentBusiness {
 		private static PayConnectService.Credentials GetCredentials(Program prog,long clinicNum){
 			PayConnectService.Credentials cred=new PayConnectService.Credentials();
 			cred.Username=OpenDentBusiness.ProgramProperties.GetPropVal(prog.ProgramNum,"Username",clinicNum);
-			cred.Password=CDT.Class1.TryDecrypt(OpenDentBusiness.ProgramProperties.GetPropVal(prog.ProgramNum,"Password",clinicNum));
+			cred.Password=Secrets.TryDecrypt(OpenDentBusiness.ProgramProperties.GetPropVal(prog.ProgramNum,"Password",clinicNum));
 			cred.Client="OpenDental2";
 			if(ODBuild.IsDebug() || Introspection.IsTestingMode) {
 				cred.ServiceID="DCI Web Service ID: 002778";//Testing

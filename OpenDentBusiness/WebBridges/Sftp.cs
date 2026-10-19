@@ -39,7 +39,7 @@ namespace OpenDentBusiness {
 			get {
 				string passEncrypted=ProgramProperties.GetPropVal(ProgramNum,PropertyDescs.Password);
 				string passDecrypted="";
-				CDT.Class1.DecryptSftp(passEncrypted,out passDecrypted);
+				Secrets.DecryptSftp(passEncrypted,out passDecrypted);
 				return passDecrypted;
 			}
 		}

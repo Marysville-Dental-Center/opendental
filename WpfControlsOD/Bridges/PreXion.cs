@@ -21,7 +21,7 @@ namespace OpenDental.Bridges{
 		public static void SendDataViewer(Program programCur, Patient pat){
 			string path=Programs.GetProgramPath(programCur);
 			string cmdline="-l "+ProgramProperties.GetPropVal(programCur.ProgramNum,"Username");
-			string password=CDT.Class1.TryDecrypt(ProgramProperties.GetPropVal(programCur.ProgramNum,"Password"));
+			string password=Secrets.TryDecrypt(ProgramProperties.GetPropVal(programCur.ProgramNum,"Password"));
 			cmdline+=" -p "+password;
 			if(pat!=null) {
 				cmdline+=" -pid ";

@@ -826,7 +826,7 @@ namespace OpenDental {
 			DivvyConnect.PostcardReturnMessage postcardReturnMessage=new DivvyConnect.PostcardReturnMessage();
 			string messages="";
 			Cursor=Cursors.WaitCursor;
-			string password=CDT.Class1.TryDecrypt(ProgramProperties.GetPropVal(ProgramName.Divvy,"Password"));
+			string password=Secrets.TryDecrypt(ProgramProperties.GetPropVal(ProgramName.Divvy,"Password"));
 			Guid guid=Guid.Parse(ProgramProperties.GetPropVal(ProgramName.Divvy,"API Key"));
 			string username=ProgramProperties.GetPropVal(ProgramName.Divvy,"Username");
 			try {

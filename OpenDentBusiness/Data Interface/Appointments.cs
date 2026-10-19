@@ -3887,12 +3887,12 @@ namespace OpenDentBusiness{
 			return isChanged;
 		}
 
-		///<summary>Returns the salted hash for the appointment. Will return an empty string if the calling program is unable to use CDT.dll. </summary>
+		///<summary>Returns the salted hash for the appointment. Computed by CodeBase.TamperHash. </summary>
 		private static string HashFields(Appointment appointment) {
 			Meth.NoCheckMiddleTierRole();//Private method.
 			string unhashedText=(int)appointment.AptStatus+appointment.Confirmed.ToString()+appointment.AptDateTime.ToString("yyyy-MM-dd HH:mm:ss");
 			try {
-				return CDT.Class1.CreateSaltedHash(unhashedText);
+				return TamperHash.Compute(unhashedText);
 			}
 			catch(Exception ex)  {
 				ex.DoNothing();
@@ -3908,7 +3908,7 @@ namespace OpenDentBusiness{
 			}
 			DateTime dateHashStart=Misc.SecurityHash.GetHashingDate();
 			if(appointment.AptDateTime < dateHashStart) { //old
-				//See notes in CDT.Class1 on how to pick which column to use for comparison
+				//Rows dated before the hashing start date are not verified.
 				return true;
 			}
 			if(Misc.SecurityHash.IsHashValid(appointment.SecurityHash,HashFields(appointment))) {

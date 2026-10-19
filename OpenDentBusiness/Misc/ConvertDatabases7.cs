@@ -770,7 +770,7 @@ namespace OpenDentBusiness {
 			command=$"SELECT * FROM ebill WHERE ElectPassword!=''";
 			table=Db.GetTable(command);
 			foreach(DataRow row in table.Rows) {
-				CDT.Class1.Encrypt(row["ElectPassword"].ToString(),out string encPW);
+				Secrets.Encrypt(row["ElectPassword"].ToString(),out string encPW);
 				long ebillNum=PIn.Long(row["EbillNum"].ToString());
 				command=$"UPDATE ebill SET ElectPassword='{POut.String(encPW)}' WHERE EbillNum={POut.Long(ebillNum)}";
 				Db.NonQ(command);
@@ -1251,7 +1251,7 @@ namespace OpenDentBusiness {
 				progPropertyNum=PIn.Long(table.Rows[i]["ProgramPropertyNum"].ToString());
 				password=PIn.String(table.Rows[i]["PropertyValue"].ToString());
 				try {
-					if(CDT.Class1.Decrypt(password,out _) || !CDT.Class1.Encrypt(password,out obfuscatedPassword)) {
+					if(Secrets.Decrypt(password,out _) || !Secrets.Encrypt(password,out obfuscatedPassword)) {
 						continue;
 					}
 					command=$@"UPDATE programproperty SET PropertyValue='{obfuscatedPassword}' WHERE ProgramPropertyNum={POut.Long(progPropertyNum)}";
@@ -1295,7 +1295,7 @@ namespace OpenDentBusiness {
 				hl7DefNum=PIn.Long(table.Rows[i]["HL7DefNum"].ToString());
 				password=PIn.String(table.Rows[i]["SftpPassword"].ToString());
 				try {
-					if(CDT.Class1.Decrypt(password,out _) || !CDT.Class1.Encrypt(password,out obfuscatedPassword)) {
+					if(Secrets.Decrypt(password,out _) || !Secrets.Encrypt(password,out obfuscatedPassword)) {
 						continue;
 					}
 					command=$@"UPDATE hl7def SET SftpPassword='{obfuscatedPassword}' WHERE HL7DefNum={POut.Long(hl7DefNum)}";
@@ -4139,7 +4139,7 @@ namespace OpenDentBusiness {
 				long progPropertyNum = PIn.Long(table.Rows[i]["ProgramPropertyNum"].ToString());
 				string valueToEncrypt=PIn.String(table.Rows[i]["PropertyValue"].ToString());
 				try {
-					CDT.Class1.Encrypt(valueToEncrypt,out string obfuscatedvalueToEncrypt);
+					Secrets.Encrypt(valueToEncrypt,out string obfuscatedvalueToEncrypt);
 					command=$@"UPDATE programproperty SET PropertyValue='{POut.String(obfuscatedvalueToEncrypt)}' WHERE ProgramPropertyNum={POut.Long(progPropertyNum)}";
 					Db.NonQ(command);
 				}

@@ -630,7 +630,7 @@ namespace OpenDentBusiness {
 			//PayConnect is encrypted in later version than XCharge, so we need to distinguish which one we're using to decrypt correctly.
 			string password=ProgramProperties.GetPropVal(_progCur.ProgramNum,"Password",clinicNumCur);
 			if(_progCur.ProgName!=ProgramName.Xcharge.ToString()) {
-				password=CDT.Class1.TryDecrypt(password);
+				password=Secrets.TryDecrypt(password);
 			}
 			if(string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password)) {//clinicNumCur is not in listClinicNumsBadCredentials yet
 				string clinicAbbr="Headquarters";

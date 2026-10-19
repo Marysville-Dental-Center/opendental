@@ -403,7 +403,7 @@ namespace OpenDentBusiness {
 		///<summary>The API client based on the current environment and credentials provided by the program properties.</summary>
 		private static AvaTaxClient GetAvaTaxClient() {
 			//Decrypt password for API.
-			string password=CDT.Class1.TryDecrypt(ProgramProperties.GetPropVal(ProgramName.AvaTax,ProgramProperties.PropertyDescs.Password));
+			string password=Secrets.TryDecrypt(ProgramProperties.GetPropVal(ProgramName.AvaTax,ProgramProperties.PropertyDescs.Password));
 			return new AvaTaxClient("AvaTaxClient","1.0",Environment.MachineName,IsProduction()?AvaTaxEnvironment.Production:AvaTaxEnvironment.Sandbox)
 				.WithSecurity(ProgramProperties.GetPropVal(ProgramName.AvaTax,ProgramProperties.PropertyDescs.Username),password);
 		}

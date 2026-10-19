@@ -9369,10 +9369,6 @@
       <Project>{a4d55048-b426-4bc6-bbd5-56f1e4bcc28d}</Project>
       <Name>xBridges</Name>
     </ProjectReference>
-    <ProjectReference Include="..\CDT\xCDT.csproj">
-      <Project>{76ba82e6-d8e1-45b1-8ed6-41d97b8d67ec}</Project>
-      <Name>xCDT</Name>
-    </ProjectReference>
     <ProjectReference Include="..\..\ImagingDeviceManager\xImagingDeviceManager.csproj">
       <Project>{783079e6-a13f-4f43-a28d-9d7731f945d1}</Project>
       <Name>xImagingDeviceManager</Name>

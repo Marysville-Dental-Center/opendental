@@ -50,7 +50,7 @@ namespace OpenDental {
 			}
 			//Set username and password
 			textUsername.Text=ProgramProperties.GetPropVal(ProgramName.AvaTax,ProgramProperties.PropertyDescs.Username);
-			textPassword.Text=CDT.Class1.TryDecrypt(ProgramProperties.GetPropVal(ProgramName.AvaTax,ProgramProperties.PropertyDescs.Password));
+			textPassword.Text=Secrets.TryDecrypt(ProgramProperties.GetPropVal(ProgramName.AvaTax,ProgramProperties.PropertyDescs.Password));
 			//Fill Log Level options
 			listBoxLogLevel.Items.Clear();
 			for(int i=0;i<Enum.GetValues(typeof(LogLevel)).Length;i++) {
@@ -166,7 +166,7 @@ namespace OpenDental {
 			Programs.Update(ProgramCur);
 			ProgramProperties.SetProperty(programNum,"Test (T) or Production (P)",radioProdEnv.Checked?"P":"T");
 			ProgramProperties.SetProperty(programNum,ProgramProperties.PropertyDescs.Username,textUsername.Text);
-			ProgramProperties.SetProperty(programNum,ProgramProperties.PropertyDescs.Password,CDT.Class1.TryEncrypt(textPassword.Text));
+			ProgramProperties.SetProperty(programNum,ProgramProperties.PropertyDescs.Password,Secrets.TryEncrypt(textPassword.Text));
 			ProgramProperties.SetProperty(programNum,"Company Code",textCompanyCode.Text);
 			ProgramProperties.SetProperty(programNum,"Sales Tax Adjustment Type",POut.Long(_defCurrentSalesTaxAdjType.DefNum));
 			ProgramProperties.SetProperty(programNum,"Sales Tax Return Adjustment Type",POut.Long(_defCurrentSalesTaxReturnAdjType.DefNum));

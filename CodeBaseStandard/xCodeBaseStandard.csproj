@@ -26,6 +26,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="..\CodeBase\Crypto\HmacSha256.cs" Link="Crypto\HmacSha256.cs" />
+    <Compile Include="..\CodeBase\Crypto\SaltedHash.cs" Link="Crypto\SaltedHash.cs" />
+    <Compile Include="..\CodeBase\Crypto\SecretBox.cs" Link="Crypto\SecretBox.cs" />
+    <Compile Include="..\CodeBase\Crypto\Secrets.cs" Link="Crypto\Secrets.cs" />
+    <Compile Include="..\CodeBase\Crypto\TamperHash.cs" Link="Crypto\TamperHash.cs" />
     <Compile Include="..\CodeBase\Utilities\DateTime_.cs" Link="DateTime_.cs" />
     <Compile Include="..\CodeBase\Utilities\Logger.cs" Link="Logger.cs" />
     <Compile Include="..\CodeBase\Utilities\LoggerOld.cs" Link="LoggerOld.cs" />

@@ -1,3 +1,4 @@
+using CodeBase;
 using System;
 using System.Drawing;
 using System.Collections;
@@ -31,7 +32,7 @@ namespace OpenDental{
 			if(_isPassword) {
 				if(ProgramPopertyCur.PropertyValue!="") {
 					string decryptedText;
-					CDT.Class1.Decrypt(ProgramPopertyCur.PropertyValue,out decryptedText);
+					Secrets.Decrypt(ProgramPopertyCur.PropertyValue,out decryptedText);
 					textValue.Text=decryptedText;
 				}
 				checkIsHighSecurity.Visible=true;
@@ -48,7 +49,7 @@ namespace OpenDental{
 			ProgramPopertyCur.PropertyValue=textValue.Text;
 			if(_isPassword) {
 				string encryptedText;
-				CDT.Class1.Encrypt(ProgramPopertyCur.PropertyValue,out encryptedText);
+				Secrets.Encrypt(ProgramPopertyCur.PropertyValue,out encryptedText);
 				ProgramPopertyCur.PropertyValue=encryptedText;
 			}
 			if(ProgramPopertyCur.IsHighSecurity!=checkIsHighSecurity.Checked) {

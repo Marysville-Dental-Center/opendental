@@ -2290,7 +2290,7 @@ Go to eServices -> Web Sched to activate.";
 			table=Db.GetTable(command);
 			foreach(DataRow row in table.Rows) {
 				string concealPass="";
-				CDT.Class1.ConcealClearinghouse(PIn.String(row["Password"].ToString()),out concealPass);
+				Secrets.ConcealClearinghouse(PIn.String(row["Password"].ToString()),out concealPass);
 				command="UPDATE clearinghouse SET Password='"+POut.String(concealPass)+"' "
 					+"WHERE ClearinghouseNum="+PIn.Long(row["ClearinghouseNum"].ToString());
 				Db.NonQ(command);

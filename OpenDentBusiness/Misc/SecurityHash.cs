@@ -26,7 +26,7 @@ namespace OpenDentBusiness.Misc {
 		///Patient rows are hashed only when their SecurityHash is blank or was written by Open Dental (see IsLegacyHash).
 		///This is also the admin rehash step after moving a database over from Open Dental. It runs automatically on the workstation that performs
 		///the next program version update (PrefL). RehashNow runs it on demand. Either way, it converts Open Dental's hashes for every patient, and for
-		///rows in the verified date range of the other tables, to the current CDT format. See CDT/README.md.</summary>
+		///rows in the verified date range of the other tables, to the current TamperHash format. See CodeBase/Crypto/README.md.</summary>
 		public static void UpdateHashing() {
 			//Ordered by threaded then non-threaded, then largest to smallest
 			RunClaimProc();
@@ -47,6 +47,7 @@ namespace OpenDentBusiness.Misc {
 
 		///<summary>Admin rehash: runs UpdateHashing on the calling thread, even if it already ran in this process, and returns when every table is done.
 		///Use it once after moving a database over from Open Dental so Open Dental's SecurityHash values are replaced with current ones.
+		///Database Maintenance's Tools tab runs it as "Security Hashes".
 		///Not safe during database conversions, same as UpdateHashing.</summary>
 		public static void RehashNow() {
 			bool isThreadedOld=IsThreaded;
@@ -85,10 +86,10 @@ namespace OpenDentBusiness.Misc {
 			return IsLegacyHash(hashStored);
 		}
 
-		///<summary>True if hash is non-empty and not in the current CDT.Class1.CreateSaltedHash format, which means Open Dental wrote it before this
+		///<summary>True if hash is non-empty and not in the current TamperHash.Compute format, which means Open Dental wrote it before this
 		///database was moved to this program. A blank hash is not legacy: it still counts as unhashed.</summary>
 		public static bool IsLegacyHash(string hash) {
-			return !string.IsNullOrEmpty(hash) && !CDT.Class1.IsCurrentSaltedHash(hash);
+			return !string.IsNullOrEmpty(hash) && !TamperHash.IsCurrentFormat(hash);
 		}
 
 		private static void RunPaysplit() {
@@ -139,7 +140,7 @@ namespace OpenDentBusiness.Misc {
 				unhashedText+=PIn.Double(table.Rows[i]["SplitAmt"].ToString()).ToString("F2");
 				unhashedText+=PIn.Date(table.Rows[i]["DatePay"].ToString()).ToString("yyyy-MM-dd");
 				try {
-					hashedTextNew=CDT.Class1.CreateSaltedHash(unhashedText);
+					hashedTextNew=TamperHash.Compute(unhashedText);
 				}
 				catch(Exception ex) {
 					ex.DoNothing();
@@ -183,7 +184,7 @@ namespace OpenDentBusiness.Misc {
 				unhashedText+=PIn.Long(table.Rows[i]["Confirmed"].ToString()).ToString();
 				unhashedText+=PIn.DateT(table.Rows[i]["AptDateTime"].ToString()).ToString("yyyy-MM-dd HH:mm:ss");
 				try {
-					hashedTextNew=CDT.Class1.CreateSaltedHash(unhashedText);
+					hashedTextNew=TamperHash.Compute(unhashedText);
 				}
 				catch(Exception ex) {
 					ex.DoNothing();
@@ -226,8 +227,8 @@ namespace OpenDentBusiness.Misc {
 
 		private static void PatientWorker() {
 			//DateTime dateStartHashing=GetHashingDate();
-			//Blank hashes, plus legacy hashes written by Open Dental (anything without the current CDT prefix), which can't be verified.
-			string command="SELECT PatNum FROM patient WHERE SecurityHash NOT LIKE '"+POut.String(CDT.Class1.SaltedHashPrefix)+"%'";
+			//Blank hashes, plus legacy hashes written by Open Dental (anything without the current TamperHash prefix), which can't be verified.
+			string command="SELECT PatNum FROM patient WHERE SecurityHash NOT LIKE '"+POut.String(TamperHash.Prefix)+"%'";
 			DataTable table=Db.GetTable(command);
 			long patNum;
 			string unhashedText="";
@@ -236,7 +237,7 @@ namespace OpenDentBusiness.Misc {
 				patNum=PIn.Long(table.Rows[i]["PatNum"].ToString());
 				unhashedText=patNum.ToString();
 				try {
-					hashedText=CDT.Class1.CreateSaltedHash(unhashedText,isPatientTable:true);
+					hashedText=TamperHash.Compute(unhashedText,isPatientTable:true);
 				}
 				catch(Exception ex) {
 					ex.DoNothing();
@@ -280,7 +281,7 @@ namespace OpenDentBusiness.Misc {
 				unhashedText+=PIn.Bool(table.Rows[i]["IsClosed"].ToString());
 				unhashedText+=PIn.Bool(table.Rows[i]["IsLocked"].ToString());
 				try {
-					hashedText=CDT.Class1.CreateSaltedHash(unhashedText);
+					hashedText=TamperHash.Compute(unhashedText);
 				}
 				catch(Exception ex) {
 					ex.DoNothing();
@@ -324,7 +325,7 @@ namespace OpenDentBusiness.Misc {
 				unhashedText+=PIn.Double(table.Rows[i]["InsPayEst"].ToString()).ToString("F2");
 				unhashedText+=PIn.Double(table.Rows[i]["InsPayAmt"].ToString()).ToString("F2");
 				try {
-					hashedText=CDT.Class1.CreateSaltedHash(unhashedText);
+					hashedText=TamperHash.Compute(unhashedText);
 				}
 				catch(Exception ex) {
 					ex.DoNothing();
@@ -387,7 +388,7 @@ namespace OpenDentBusiness.Misc {
 				unhashedText+=PIn.Double(table.Rows[i]["InsPayEst"].ToString()).ToString("F2");
 				unhashedText+=PIn.Double(table.Rows[i]["InsPayAmt"].ToString()).ToString("F2");
 				try {
-					hashedText=CDT.Class1.CreateSaltedHash(unhashedText);
+					hashedText=TamperHash.Compute(unhashedText);
 				}
 				catch(Exception ex) {
 					ex.DoNothing();
@@ -404,7 +405,7 @@ namespace OpenDentBusiness.Misc {
 		private static void ThreadJoinHelper() {
 			static void joinThreads() {
 				_listHashThreads.ForEach(x => x?.Join());
-				CDT.Class1.DisposeHashAlgorithm();
+				TamperHash.ReleaseProviders();
 			}
 			ThreadStart threadStart=new ThreadStart(joinThreads);
 			Thread threadJoin=new Thread(threadStart);

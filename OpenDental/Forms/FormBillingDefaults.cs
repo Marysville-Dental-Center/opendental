@@ -137,12 +137,12 @@ namespace OpenDental {
 		private string GetPassword(string eBillPassword,bool isDecrypted=false) {
 			string returnValue=eBillPassword;
 			if(isDecrypted) {
-				if(CDT.Class1.Encrypt(eBillPassword,out string encryptedPassword)) {
+				if(Secrets.Encrypt(eBillPassword,out string encryptedPassword)) {
 					returnValue=encryptedPassword;
 				}
 			}
 			else {
-				if(CDT.Class1.Decrypt(eBillPassword,out string plainPassword)) {
+				if(Secrets.Decrypt(eBillPassword,out string plainPassword)) {
 					returnValue=plainPassword;
 				}
 			}

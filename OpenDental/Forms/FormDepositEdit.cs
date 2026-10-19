@@ -90,11 +90,11 @@ namespace OpenDental{
 				butSendQB.Text="&Send QBO";
 				Program programQbo=Programs.GetCur(ProgramName.QuickBooksOnline);
 				_programPropertyQboRefreshToken=ProgramProperties.GetPropForProgByDesc(programQbo.ProgramNum,"Refresh Token");
-				CDT.Class1.Decrypt(_programPropertyQboRefreshToken.PropertyValue,out string decryptedRefreshToken);
+				Secrets.Decrypt(_programPropertyQboRefreshToken.PropertyValue,out string decryptedRefreshToken);
 				_quickBooksOnlineToken=new QuickBooksOnlineToken("",decryptedRefreshToken);
 				_programPropertyQboClassRefs=ProgramProperties.GetPropForProgByDesc(programQbo.ProgramNum,"Class Refs");
 				_programPropertyQboRealmId=ProgramProperties.GetPropForProgByDesc(programQbo.ProgramNum,"Realm ID");
-				CDT.Class1.Decrypt(_programPropertyQboRealmId.PropertyValue,out string decryptedRealmID);
+				Secrets.Decrypt(_programPropertyQboRealmId.PropertyValue,out string decryptedRealmID);
 				_realmIdPlainText=decryptedRealmID;
 			}
 			if(IsNew) {
@@ -571,7 +571,7 @@ namespace OpenDental{
 		private void SaveTokens() {
 			bool isChanged = false;
 			if(!_quickBooksOnlineToken.RefreshToken.IsNullOrEmpty()) {
-				CDT.Class1.Encrypt(_quickBooksOnlineToken.RefreshToken,out string obfuscatedvalueToEncrypt);
+				Secrets.Encrypt(_quickBooksOnlineToken.RefreshToken,out string obfuscatedvalueToEncrypt);
 				isChanged|=ProgramProperties.UpdateProgramPropertyWithValue(_programPropertyQboRefreshToken,obfuscatedvalueToEncrypt);
 			}
 			if(isChanged) {

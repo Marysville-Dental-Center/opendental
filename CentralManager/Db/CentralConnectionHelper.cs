@@ -1,4 +1,5 @@
 ﻿using System;
+using CodeBase;
 using OpenDentBusiness;
 using System.Text;
 using System.Threading;
@@ -18,7 +19,7 @@ namespace CentralManager {
 				args+="MySqlUser="+Scrub(centralConnection.MySqlUser)+" ";
 				if(centralConnection.MySqlPassword!="") {
 					string mySqlPass=CentralConnections.Decrypt(centralConnection.MySqlPassword,FormCentralManager.EncryptionKey);
-					CDT.Class1.Encrypt(mySqlPass,out string mySqlPassObfuscated);
+					Secrets.Encrypt(mySqlPass,out string mySqlPassObfuscated);
 					args+="MySqlPassObfuscated="+Scrub(mySqlPassObfuscated)+" ";
 				}
 			}
@@ -37,7 +38,7 @@ namespace CentralManager {
 			string args=GetArgsFromConnection(centralConnection,useDynamicMode);
 			if(isAutoLogin) {
 				args+="UserName="+Scrub(Security.CurUser.UserName)+" ";
-				CDT.Class1.Encrypt(Security.PasswordTyped,out string odPassObfuscated);
+				Secrets.Encrypt(Security.PasswordTyped,out string odPassObfuscated);
 				args+="OdPassObfuscated="+Scrub(odPassObfuscated)+" ";
 			}
 			if(isDomainLogin) {

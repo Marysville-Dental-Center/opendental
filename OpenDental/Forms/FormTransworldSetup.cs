@@ -142,7 +142,7 @@ namespace OpenDental {
 						textSftpUsername.Text=listProgramPropertiesClinic[i].PropertyValue;
 						continue;
 					case "SftpPassword":
-						textSftpPassword.Text=CDT.Class1.TryDecrypt(listProgramPropertiesClinic[i].PropertyValue);
+						textSftpPassword.Text=Secrets.TryDecrypt(listProgramPropertiesClinic[i].PropertyValue);
 						continue;
 					case "ClientIdAccelerator":
 						textClientIdAccelerator.Text=listProgramPropertiesClinic[i].PropertyValue;
@@ -199,7 +199,7 @@ namespace OpenDental {
 						listProgramProperties[i].PropertyValue=textSftpUsername.Text;
 						continue;
 					case "SftpPassword":
-						listProgramProperties[i].PropertyValue=CDT.Class1.TryEncrypt(textSftpPassword.Text);
+						listProgramProperties[i].PropertyValue=Secrets.TryEncrypt(textSftpPassword.Text);
 						continue;
 					case "ClientIdAccelerator":
 						listProgramProperties[i].PropertyValue=textClientIdAccelerator.Text;

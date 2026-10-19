@@ -195,7 +195,7 @@ namespace OpenDental {
 			comboDatabase.Text=PrefC.GetString(PrefName.ReadOnlyServerDbName);
 			textMysqlUser.Text=PrefC.GetString(PrefName.ReadOnlyServerMySqlUser);
 			string decryptedPass;
-			CDT.Class1.Decrypt(PrefC.GetString(PrefName.ReadOnlyServerMySqlPassHash),out decryptedPass);
+			Secrets.Decrypt(PrefC.GetString(PrefName.ReadOnlyServerMySqlPassHash),out decryptedPass);
 			textMysqlPass.Text=decryptedPass;
 			textMysqlPass.PasswordChar='*';
 			textMiddleTierURI.Text=PrefC.GetString(PrefName.ReadOnlyServerURI);
@@ -218,7 +218,7 @@ namespace OpenDental {
 			else {
 				if(radioReadOnlyServerDirect.Checked) {
 					string encryptedPass;
-					CDT.Class1.Encrypt(textMysqlPass.Text,out encryptedPass);
+					Secrets.Encrypt(textMysqlPass.Text,out encryptedPass);
 					Changed |=Prefs.UpdateString(PrefName.ReadOnlyServerCompName,comboServerName.Text);
 					Changed |=Prefs.UpdateString(PrefName.ReadOnlyServerDbName,comboDatabase.Text);
 					Changed |=Prefs.UpdateString(PrefName.ReadOnlyServerMySqlUser,textMysqlUser.Text);

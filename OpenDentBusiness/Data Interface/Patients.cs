@@ -5060,14 +5060,14 @@ namespace OpenDentBusiness {
 			return pat;
 		}
 
-		///<summary>Returns the salted hash for the patient. Will return an empty string if the calling program is unable to use CDT.dll. </summary>
+		///<summary>Returns the salted hash for the patient. Computed by CodeBase.TamperHash. </summary>
 		public static string HashFields(Patient patient) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetString(MethodBase.GetCurrentMethod(),patient);
 			}
 			string unhashedText=patient.PatNum.ToString();
 			try {
-				return CDT.Class1.CreateSaltedHash(unhashedText,isPatientTable:true);
+				return TamperHash.Compute(unhashedText,isPatientTable:true);
 			}
 			catch(Exception ex) {
 				ex.DoNothing();
