@@ -1034,7 +1034,10 @@ namespace OpenDentBusiness {
 			if((payConnectResponse==null || payConnectResponse.StatusCode.IsNullOrEmpty())
 				&& !(payConnectResponse?.Description??"").ToLower().Contains("declined"))
 			{
-				MarkFailed(chargeData,Lans.g(_lanThis,"Transaction Failed, unknown error"),LogLevel.Information);//Likely a server internal error not a card issue
+				if(errorMessage=="") {
+					//An error response was already marked above, with the vendor's detail.
+					MarkFailed(chargeData,Lans.g(_lanThis,"Transaction Failed, unknown error"),LogLevel.Information);//Likely a server internal error not a card issue
+				}
 				if(PrefC.HasClinicsEnabled && dictClinicNumDesc.ContainsKey(clinicNumCur)) {
 					strBuilderResultText.AppendLine("CLINIC="+dictClinicNumDesc[clinicNumCur]);
 				}

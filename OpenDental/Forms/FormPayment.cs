@@ -230,9 +230,6 @@ namespace OpenDental {
 			if(_payment.IsCcCompleted) {
 				DisablePaymentControls();
 			}
-			List<ProgramProperty> listProgramProperties=ProgramProperties.GetForProgram(Programs.GetProgramNum(ProgramName.CareCredit));
-			string careCreditMerchantNum=PIn.String(ProgramProperties.GetPropValFromList(listProgramProperties,
-				ProgramProperties.PropertyDescs.CareCredit.CareCreditMerchantNumber,0));//Practice merchant num
 			if(PrefC.HasClinicsEnabled) {
 				comboClinic.ClinicNumSelected=_payment.ClinicNum;
 				_listClinics=Clinics.GetDeepCopy();
