@@ -14,13 +14,6 @@ namespace OpenDental {
 		private bool changed;
 		private List<CovCat> _listCovCats;
 
-		protected override string GetHelpOverride() {
-			if(CultureInfo.CurrentCulture.Name.EndsWith("CA")) {
-				return "FormInsCatsSetupCanada";
-			}
-			return "FormInsCatsSetup";
-		}
-
 		///<summary></summary>
 		public FormInsCatsSetup() {
 			InitializeComponent();

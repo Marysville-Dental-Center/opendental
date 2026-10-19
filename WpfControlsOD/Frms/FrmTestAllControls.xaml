@@ -9,7 +9,7 @@
              xmlns:odui="clr-namespace:OpenDental.UI"
              mc:Ignorable="d"
              Width="1505" Height="827" 
-             Text="Test All Controls" HasHelpButton="False" >
+             Text="Test All Controls" >
 	<Grid Background="#FFFCFDFE" >
 		<ui:ListBox x:Name="checkedListBox1" Width="120" Height="99" Margin="854,691,0,0" SelectionMode="CheckBoxes" />
 		<ui:SignatureBoxWrapper HorizontalAlignment="Right" Width="364" Height="81" Margin="0,665,700,0" x:Name="signatureBoxWrapper" />

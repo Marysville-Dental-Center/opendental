@@ -57,7 +57,6 @@ using System.DirectoryServices;
 using WMPLib;
 using OpenDentalImaging;
 using OpenDental.Thinfinity;
-using ODApi;
 
 namespace OpenDental{
 	///<summary></summary>
@@ -82,8 +81,6 @@ namespace OpenDental{
 		private static bool _isTreatPlanSortByTooth;
 		///<summary>In most cases, CurPatNum should be used instead of _CurPatNum.</summary>
 		private static long _patNumCur;
-		///<summary>This accepts incoming http REST requests to our local API.</summary>
-		private static HttpListener _httpListenerApi;
 		#endregion Fields - Private Static
 
 		#region Fields - Private
@@ -934,10 +931,6 @@ namespace OpenDental{
 						MsgBox.Show(this,message+"This must be done by a SecurityAdmin user.");
 					}
 				}
-				if(Programs.IsEnabled(ProgramName.FHIR)) {
-					ODCloudClient.IsApiEnabled=true;
-					ODCloudClient.LaunchIfNotRunning();
-				}
 			}
 			Logger.LogToPath("MainBorderColors",LogPath.Startup,LogPhase.Unspecified);
 			List<Def> listDefsMisColors=Defs.GetDefsForCategory(DefCat.MiscColors);
@@ -951,34 +944,7 @@ namespace OpenDental{
 				StartLoadSimulation();
 			}
 			//The Open Dental license agreement signature prompt (and the upload of the signature to Open Dental HQ) has been removed.
-			_httpListenerApi=new HttpListener();
-			if(ODBuild.IsDebug()) {
-				_httpListenerApi.Prefixes.Add("http://127.0.0.1:30555/");//30555 was chosen arbitrarily for local API debugging.
-			}
-			else {
-				_httpListenerApi.Prefixes.Add("http://127.0.0.1:30222/");//must end in /
-			}
-				//127.0.0.1 should support both that IP and localhost. Might possibly require host header if using "localhost".
-				//Port 30222 was chosen as very likely to be unused. Plan to add port choice later.
-				//_httpListenerApi.Prefixes.Add("http://*:30222/");//didn't work because:
-				//MS requires running in admin for anything but localhost. Or, add something similar to this:
-				//netsh http add urlacl url=http://+:80/MyUri user=DOMAIN\user
-				//This means that we will need to include instructions to users for additional config if they want to uses this other than localhost.
-				//the wildcard was supposed to let us support a variety of scenarios:
-				//http://localhost:30222/api/v1/
-				//http://192.168.1.12:30222/api/v1/
-				//http://api.opendental.com:30222/api/v1/");
-				//But that also clearly won't work, so we'll also need to let them specify the host somewhere in OD setup.
-			if(ApiMain.IsAllowedToOpenPort()){
-				//Remember that this block won't run unless your VS is in Admin mode.
-				try{
-					_httpListenerApi.Start();
-					IAsyncResult iAsyncResult=_httpListenerApi.BeginGetContext(new AsyncCallback(HttpListenerApiCallback),_httpListenerApi);
-				}
-				catch{
-					//port is already in use
-				}
-			}
+			//Open Dental's local REST API (an HttpListener on port 30222, served by the proprietary ODApi.dll) has been removed.
 			Plugins.HookAddCode(this,"FormOpenDental.Load_end");
 		}
 
@@ -1387,27 +1353,6 @@ namespace OpenDental{
 				OpenMapsFromCommandLine(CommandLineArgs_.MapNames.Split(";",StringSplitOptions.RemoveEmptyEntries).ToList());
 			}
 			#endregion
-		}
-
-		protected override string GetHelpOverride() {
-			switch(moduleBar.SelectedModule){
-				case EnumModuleType.Appointments:
-					return nameof(ControlAppt);
-				case EnumModuleType.Family:
-					return nameof(ControlFamily);
-				case EnumModuleType.Account:
-					return nameof(ControlAccount);
-				case EnumModuleType.TreatPlan:
-					return nameof(ControlTreat);
-				case EnumModuleType.Chart:
-					return nameof(ControlChart);
-				case EnumModuleType.Imaging:
-					return nameof(ControlImages);
-				case EnumModuleType.Manage:
-					return nameof(ControlManage);
-				default:
-					return "";
-			}
 		}
 
 		///<summary>Returns true if the old Images module control should be used, false otherwise. Use this method instead of the ImagesModuleUsesOld2020 preference.</summary>
@@ -2423,7 +2368,6 @@ namespace OpenDental{
 			Text=PatientL.GetMainTitle(patient, Clinics.ClinicNum);
 			bool patChanged=PatientL.AddPatsToMenu(menuPatient,new EventHandler(menuPatient_Click),patient);
 			if(patChanged){
-				ApiEvents.FireUiEventAsynch(EnumApiUiEventType.PatientSelected,patient);
 				if(AutomationL.Trigger(EnumAutomationTrigger.PatientOpen,null,patient.PatNum)) {//if a trigger happened
 					if(controlAppt.Visible) {
 						controlAppt.MouseUpForced();
@@ -4641,40 +4585,6 @@ namespace OpenDental{
 			}
 			BeginDataReaderNullMonitorThread(e);
 		}
-
-		///<summary>This happens on another thread and does not block.  Since it's not on the main thread, it also doesn't slow down the UI when it's processing messages.</summary>
-		private void HttpListenerApiCallback(IAsyncResult iAsyncResult){
-			HttpListenerContext httpListenerContext=_httpListenerApi.EndGetContext(iAsyncResult);
-			HttpListenerRequest httpListenerRequest=httpListenerContext.Request;
-			string registrationKey =PrefC.GetString(PrefName.RegistrationKey);
-			ApiRequest apiRequest=null;
-			try {
-				apiRequest=ApiMain.ConvertHttpListenerRequest(httpListenerRequest);
-			}
-			catch{
-				//a malformed request shouldn't crash the program
-			}
-			ApiReturnResult apiReturnResult;
-			if(apiRequest is null){
-				apiReturnResult=new ApiReturnResult(ReturnStatusCode.BadRequest,"Local API. Unable to convert request.");
-			}
-			else{
-				apiReturnResult=ApiMain.PassRequestToODApi(apiRequest,registrationKey);
-			}
-			HttpListenerResponse httpListenerResponse=httpListenerContext.Response;
-			httpListenerResponse.StatusCode=(int)apiReturnResult.GetHttpStatusCode();//example 201 Created
-			string responseBody =apiReturnResult.ResourceSerialized;
-			byte[] byteArray = Encoding.UTF8.GetBytes(responseBody);
-			httpListenerResponse.ContentLength64 = byteArray.Length;
-			httpListenerResponse.ContentType="application/json";
-			Stream streamOutput = httpListenerResponse.OutputStream;
-			streamOutput.Write(byteArray,0,byteArray.Length);
-			streamOutput.Close();
-			//Listen for next message. 
-			IAsyncResult iAsyncResult2=_httpListenerApi.BeginGetContext(new AsyncCallback(HttpListenerApiCallback),_httpListenerApi);
-			//Doing it this way, it handles one request at a time, in the order that they arrive.
-			//This is plenty fast for our purposes, since it's only acting as a server for one dental office.
-		}
 		#endregion DataConnection
 
 		#region Phone Panel
@@ -5287,17 +5197,6 @@ namespace OpenDental{
 			using FormFeeSchedGroups formFeeSchedGroups=new FormFeeSchedGroups();
 			formFeeSchedGroups.ShowDialog();
 			SecurityLogs.MakeLogEntry(EnumPermType.FeeSchedEdit,0,"Fee Schedule Groups");
-		}
-
-		private void menuItemFHIR_Click(object sender,EventArgs e) {
-			if(!Security.IsAuthorized(EnumPermType.Setup)) {
-				return;
-			}
-			Cursor=Cursors.WaitCursor;
-			using FormFHIRSetup formFHIRSetup=new FormFHIRSetup();
-			formFHIRSetup.ShowDialog();
-			Cursor=Cursors.Default;
-			SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,"API/FHIR");
 		}
 
 		private void menuItemHIE_Click(object sender,EventArgs e) {
@@ -7297,35 +7196,8 @@ namespace OpenDental{
 		#endregion Menu - Alerts
 
 		#region Menu - Help
-		//Online Support, Training Videos, Request Features, Support Status and Remote Support were Open Dental Software, Inc. services and have been removed.
-
-		private void menuItemHelpDocumentation_Click(object sender, System.EventArgs e) {
-			string site="https://www.opendental.com/site/documentation.html";
-			try {
-				if(ODCloudClient.IsAppStream) {
-					ODCloudClient.LaunchFileWithODCloudClient(site);
-					return;
-				}
-				Process.Start(site);
-			}
-			catch{
-				MsgBox.Show(this,"Could not find file.");
-			}
-		}
-
-		private void menuItemHelpSearch_Click(object sender, System.EventArgs e) {
-			string site="https://www.opendental.com/site/searchsite.html";
-			try {
-				if(ODCloudClient.IsAppStream) {
-					ODCloudClient.LaunchFileWithODCloudClient(site);
-					return;
-				}
-				Process.Start(site);
-			}
-			catch{
-				MsgBox.Show(this,"Could not find file.");
-			}
-		}
+		//Online Support, Training Videos, Request Features, Support Status, Remote Support and the online help (documentation and search)
+		//were Open Dental Software, Inc. services and have been removed.
 
 		private void MenuItemQueryMonitor_Click(object sender,EventArgs e) {
 			if(!Security.IsAuthorized(EnumPermType.QueryMonitor)) {

@@ -3030,12 +3030,6 @@ namespace OpenDental{
 			if(!Security.IsAuthorized(EnumPermType.ImageCreate)) {
 				return;
 			}
-			if(!ODBuild.IsTrial()
-				&& !OpenDentalHelp.ODHelp.IsEncryptedKeyValid())//always true in debug
-			{
-				MsgBox.Show(this,"This feature requires an active support plan.");
-				return;
-			}
 			if(_formLauncherVideo is null){
 				_formLauncherVideo=new FormLauncher(EnumFormName.FormVideo);
 				_formLauncherVideo.SetEvent("BitmapCaptured",formVideo_BitmapCaptured);

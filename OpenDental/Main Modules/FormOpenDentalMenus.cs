@@ -282,7 +282,6 @@ namespace OpenDental{
 
 		///<summary>Setup: Advanced Setup</summary>
 		private void LayoutSubMenuAdvSetup(MenuItemOD menuItemAdvSetup) {
-			menuItemAdvSetup.Add("API",menuItemFHIR_Click);
 			menuItemAdvSetup.Add("Computers",menuItemComputers_Click);
 			menuItemAdvSetup.Add("HIE",menuItemHIE_Click);
 			_menuItemHL7=new MenuItemOD("HL7",menuItemHL7_Click);
@@ -479,11 +478,8 @@ namespace OpenDental{
 		#region Help
 		///<summary>Help Main</summary>
 		private void LayoutMenuHelp(MenuItemOD menuItemHelp) {
-			//Online Support, Training Videos, Request Features, Support Status and Remote Support were Open Dental Software, Inc. services and were removed.
-			menuItemHelp.Add("Online Help - Documentation",menuItemHelpDocumentation_Click);
-			MenuItemOD menuItemOnlineHelpSearch=new MenuItemOD("Online Help - Search",menuItemHelpSearch_Click);
-			menuItemOnlineHelpSearch.ShortcutKeys=Keys.Shift|Keys.F1;
-			menuItemHelp.Add(menuItemOnlineHelpSearch);
+			//Online Support, Training Videos, Request Features, Support Status, Remote Support and Online Help (documentation and search)
+			//were Open Dental Software, Inc. services and were removed.
 			_menuItemPayloadMonitor=new MenuItemOD("Payload Monitor",MenuItemQueryMonitor_Click);
 			menuItemHelp.Add(_menuItemPayloadMonitor);
 			_menuItemQueryMonitor=new MenuItemOD("Query Monitor",MenuItemQueryMonitor_Click);

@@ -120,7 +120,6 @@ namespace OpenDental {
 			this.Controls.Add(this.labelConnection);
 			this.Controls.Add(this.labelWelcome);
 			this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
-			this.HasHelpButton = false;
 			this.IsBorderLocked = true;
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;

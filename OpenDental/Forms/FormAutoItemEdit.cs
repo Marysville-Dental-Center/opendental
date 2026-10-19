@@ -15,13 +15,6 @@ namespace OpenDental{
 		///<summary>Set this value externally before opening this form, even if IsNew.</summary>
 		public AutoCodeItem AutoCodeItemCur;
 
-		protected override string GetHelpOverride() {
-			if(CultureInfo.CurrentCulture.Name.EndsWith("CA")) {
-				return "FormAutoItemEditCanada";
-			}
-			return "FormAutoItemEdit";
-		}
-
 		///<summary></summary>
 		public FormAutoItemEdit(){
 			InitializeComponent();

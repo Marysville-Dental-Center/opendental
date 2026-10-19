@@ -29,6 +29,8 @@ namespace OpenDental{
 			if(!PrefC.IsODHQ) {
 				_listPrograms.RemoveAll(x => x.ProgName==ProgramName.AvaTax.ToString());
 			}
+			//The FHIR program row held the setup of Open Dental's API keys, which were issued by Open Dental HQ. The API was removed.
+			_listPrograms.RemoveAll(x => x.ProgName==ProgramName.FHIR.ToString());
 			_listPrograms.RemoveAll(x => !Programs.IsEnabledByHq(x,out string _));//Remove all programs that are disabled by HQ from the list to fill.
 			gridProgram.BeginUpdate();
 			gridProgram.Columns.Clear();
@@ -97,11 +99,6 @@ namespace OpenDental{
 				case "Xcharge":
 					using(FormXchargeSetup fromXChargeSetup=new FormXchargeSetup()) {
 						dialogResult=fromXChargeSetup.ShowDialog();
-					}
-					break;
-				case "FHIR":
-					using(FormFHIRSetup formFHIRSetup=new FormFHIRSetup()) {
-						dialogResult=formFHIRSetup.ShowDialog();
 					}
 					break;
 				case "Transworld":

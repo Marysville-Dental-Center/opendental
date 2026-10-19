@@ -31,13 +31,6 @@ namespace OpenDental{
 		///<summary></summary>
 		public bool IsNew;
 
-		protected override string GetHelpOverride() {
-			if(CultureInfo.CurrentCulture.Name.EndsWith("CA")) {
-				return "FormProvEditCanada";
-			}
-			return "FormProvEdit";
-		}
-
 		///<summary></summary>
 		public FormProvEdit(){
 			InitializeComponent();// Required for Windows Form Designer support

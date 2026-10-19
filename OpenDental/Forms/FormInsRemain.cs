@@ -13,10 +13,6 @@ namespace OpenDental {
 		private Patient _patient;
 		private Family _family;
 
-		protected override string GetHelpOverride() {
-			return "FormInsRemain";//Canada-only page
-		}
-
 
 		public FormInsRemain(long selectedPatNum) {
 			InitializeComponent();

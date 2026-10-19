@@ -89,18 +89,6 @@ namespace OpenDental{
 			}
 		}
 
-		protected override string GetHelpOverride(){
-			if(_claim.ClaimType.ToLower()=="preauth"){
-				return "FormClaimEditPreauth";
-			}
-			if(CultureInfo.CurrentCulture.Name.EndsWith("CA")) {
-				return "FormClaimEditCanada";
-			}
-			else{
-				return "FormClaimEdit";
-			}
-		}
-
 		///<summary>Set isForOrthoAutoPay to true to automatically show the supplemental payment window on Shown().</summary>
 		public FormClaimEdit(Claim claim, Patient patient,Family family, bool isForOrthoAutoPay = false) {
 			_patient=patient;

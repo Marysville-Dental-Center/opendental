@@ -408,7 +408,6 @@
     <Compile Include="Data Interface\Addresses.cs" />
     <Compile Include="Data Interface\AlertCategories.cs" />
     <Compile Include="Data Interface\AlertCategoryLinks.cs" />
-    <Compile Include="Data Interface\APIKeys.cs" />
     <Compile Include="Data Interface\ApiSubscriptions.cs" />
     <Compile Include="Data Interface\ApptGeneralMessageSents.cs" />
     <Compile Include="Data Interface\AutoCommExcludeDates.cs" />
@@ -629,7 +628,6 @@
     <Compile Include="Data Interface\ScheduledProcesses.cs" />
     <Compile Include="Db Multi Table\PayPlanProductionEntry.cs" />
     <Compile Include="Db Multi Table\ProcFeeHelper.cs" />
-    <Compile Include="InternalTools\Faq\Faqs.cs" />
     <Compile Include="Data Interface\MobileAppDevices.cs" />
     <Compile Include="Data Interface\PayConnectResponseWebs.cs" />
     <Compile Include="Data Interface\PharmClinics.cs" />
@@ -1268,7 +1266,6 @@
     <Compile Include="Data Interface\EmailAutographs.cs" />
     <Compile Include="Data Interface\FamAgings.cs" />
     <Compile Include="Data Interface\FHIRContactPoints.cs" />
-    <Compile Include="Data Interface\FHIRSubscriptions.cs" />
     <Compile Include="Data Interface\FieldDefLinks.cs" />
     <Compile Include="Data Interface\HL7ProcAttaches.cs" />
     <Compile Include="Data Interface\InsVerifies.cs" />

@@ -116,10 +116,10 @@ Unused proprietary files are not listed here; they are simply deleted (for examp
 | `CDT.dll` | 12 (5 substituted ProjectReferences, 7 HintPaths) | Being replaced elsewhere |
 | `Bridges.dll` | 4 | Being replaced elsewhere (split; QuickBooks Online, Microsoft 365 and USPS are kept) |
 | `ODCrypt.dll` | 3 (HintPaths only) | Being replaced elsewhere |
-| `OpenDentalHelp.dll` | 3 | Being replaced elsewhere |
+| `OpenDentalHelp.dll` | 0 | Removed: the help system (manual links, help browser, support-plan key gates) is gone, and the DLL is deleted |
 | `VirtualWeb.dll` | 4 | Being replaced elsewhere |
 | `ImagingDeviceManager.dll` | 1 | Being replaced elsewhere (NTwain) |
-| `ODApi.dll` | 1 | Being replaced elsewhere (in-repo local REST API) |
+| `ODApi.dll` | 0 | Removed: the local REST API is gone, and the DLL is deleted |
 | `EHR` | 0 (loaded by reflection) | Being removed elsewhere. There is no `EHR.dll` in `Required dlls`. |
 
 ### Priority 2: compile-time Open Dental binaries with no owner yet
@@ -311,9 +311,9 @@ One row per file, grouped by family. "csproj references" covers every project fi
 | `Bridges.dll` | 116 KB | Open Dental Software, Bridges | Proprietary, source not published | Open Dental | ProjectReference, substituted: OpenDental; HintPath: OpenDentBusiness, UnitTests, WpfControlsOD | No | CareCredit, PostcardMania, QuickBooks Online, Microsoft 365 email, USPS address validation. It pulls in the Intuit, Microsoft Graph, MSAL and Azure.Core assemblies below. | **Replaced elsewhere.** Split into in-repo code. Delete the DLL and the `UnitTests`, `OpenDentBusiness` and `WpfControlsOD` HintPaths when the replacement lands. |
 | `CDT.dll` | 339 KB | Open Dental Software, CDT | Proprietary, source not published | Open Dental | ProjectReference, substituted: OpenDentBusiness, OpenDental, OpenDentalServer, WpfControlsOD, xDataConnectionBase; HintPath: OpenDentHL7, ServiceManager, UnitTests, xCentralManager, xDatabaseIntegrityCheck; Not built: xDataConnectionBaseStandard, xODR | No (comments only, e.g. `OpenDental/Forms/FormRegistrationKey.cs:79`) | Secret encryption, `SecurityHash` salted hashes, registration-key validation, claim-form images. | **Replaced elsewhere.** Replaced by an in-repo library. Twelve project files reference it (five through substituted ProjectReferences, seven through HintPaths), so the HintPath ones need updating too. |
 | `ImagingDeviceManager.dll` | 64 KB | Open Dental Software, ImagingDeviceManager | Proprietary, source not published | Open Dental | ProjectReference, substituted: OpenDental | No, but it loads `Eztwain4.dll` at runtime | TWAIN scanning and sensor acquisition in the Imaging module (`ControlImages.cs`, `FormImagingSetup.cs`, `FormImagingDeviceEdit.cs`). | **Replaced elsewhere.** Scanning is re-implemented on NTwain or WIA. |
-| `ODApi.dll` | 1,240 KB | Open Dental Software, ODApi | Proprietary, source not published | Open Dental | ProjectReference, substituted: OpenDental | No | Local REST API server (port 30222), used from `FormOpenDental.cs`. | **Replaced elsewhere.** The owner decided to keep the local REST API, so it gets an in-repo implementation. |
+| `ODApi.dll` | 1,240 KB | Open Dental Software, ODApi | Proprietary, source not published | Open Dental | ProjectReference, substituted: OpenDental | No | Local REST API server (port 30222), used from `FormOpenDental.cs`. | **Removed.** The local REST API and its API key setup were cut; the DLL is deleted. |
 | `ODCrypt.dll` | 81 KB | Open Dental Software, ODCrypt | Proprietary, source not published | Open Dental | HintPath: OpenDentBusiness, OpenDental, UnitTests | No | MD5 and SHA3-512 password hashes, salts, random values, gzip. | **Replaced elsewhere.** Replaced by an in-repo shim. `UnitTests.csproj` also has a HintPath to it. |
-| `OpenDentalHelp.dll` | 142 KB | Open Dental Software, OpenDentalHelp (version info wrongly says "Microsoft") | Proprietary, source not published | Open Dental | ProjectReference, substituted: OpenDental, UnitTests, WpfControlsOD | No | F1 manual URLs, help-key and support-status checks, HQ SOAP client. | **Replaced elsewhere.** Replaced by an in-repo help-URL map. |
+| `OpenDentalHelp.dll` | 142 KB | Open Dental Software, OpenDentalHelp (version info wrongly says "Microsoft") | Proprietary, source not published | Open Dental | ProjectReference, substituted: OpenDental, UnitTests, WpfControlsOD | No | F1 manual URLs, help-key and support-status checks, HQ SOAP client. | **Removed.** The help system was cut (no replacement); the DLL is deleted. |
 | `VirtualWeb.dll` | 6 KB | Open Dental Software, VirtualWeb ("Web") | Proprietary, source not published | Open Dental | ProjectReference, substituted: OpenDental, WpfControlsOD; HintPath: OpenDentBusiness, OpenDentalGraph | No | Thinfinity "ODCloud" browser-hosting shim. | **Replaced elsewhere.** The Thinfinity code paths are deleted. |
 
 ### Other Open Dental binaries
