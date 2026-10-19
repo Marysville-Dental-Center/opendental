@@ -554,7 +554,7 @@ namespace OpenDentBusiness {
 		}
 
 		///<summary>After a create was sent but no answer came: looks for the transaction by its correlation ID. A list entry is only a pointer: an
-		///entry whose status is not an approval (IsApprovedStatus) gives an Error response (Outcome Response) that carries the vendor's status, as a
+		///entry whose status is not an approval (IsApprovedStatus) gives an Error response (Outcome Reconciled) that carries the vendor's status, as a
 		///decline that arrived normally would. An approved entry is re-read with the status route so the result has the full model (amount, surcharge,
 		///card); the re-read must also show an approval. Found and approved: a GetStatus response with Outcome Reconciled, as if the answer had
 		///arrived. Not found, or the re-read failed: the original Error response, its message naming the correlation ID so staff can look for it in
@@ -632,7 +632,7 @@ namespace OpenDentBusiness {
 			string statusShown=string.IsNullOrWhiteSpace(status) ? "unknown" : status.Trim();
 			PayConnect2Response response=new PayConnect2Response();
 			response.ResponseType=ResponseType.Error;
-			response.Outcome=PayConnectRequestOutcome.Response;
+			response.Outcome=PayConnectRequestOutcome.Reconciled;//The answer came from the transaction list, not from the create itself.
 			response.CorrelationId=invoiceNumber;
 			response.httpStatusCode=HttpStatusCode.OK;
 			response.ErrorResponse=MakeErrorResponse(PayConnectErrorKind.Vendor,"PayConnect declined the transaction (status: "+statusShown+").");
@@ -2463,7 +2463,8 @@ namespace OpenDentBusiness {
 			NotSent,
 			///<summary>The request was sent but no answer came (timeout, dropped connection). It may have been processed. Creates are reconciled.</summary>
 			SentNoResponse,
-			///<summary>The answer was lost, but the transaction was found in the transaction list by its correlation ID.</summary>
+			///<summary>The answer was lost, but the transaction was found in the transaction list by its correlation ID. A GetStatus response if
+			///PayConnect approved it, an Error response (the vendor's status in its message) if not.</summary>
 			Reconciled,
 		}
 

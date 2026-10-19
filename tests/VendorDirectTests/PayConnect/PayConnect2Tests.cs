@@ -311,7 +311,8 @@ namespace VendorDirectTests.PayConnectV2 {
 			fakeHttpHandler.Enqueue(HttpStatusCode.OK,"["+MakeTransactionJson("R-DECL","OPMS-decl00000001","Declined")+"]");
 			PayConnect2.PayConnect2Response response=PostLostCreate("OPMS-decl00000001");
 			Assert.AreEqual(PayConnect2.ResponseType.Error,response.ResponseType);
-			Assert.AreEqual(PayConnect2.PayConnectRequestOutcome.Response,response.Outcome);
+			Assert.AreEqual(PayConnect2.PayConnectRequestOutcome.Reconciled,response.Outcome);
+			Assert.AreEqual("OPMS-decl00000001",response.CorrelationId);
 			Assert.AreEqual(PayConnect2.PayConnectErrorKind.Vendor,response.ErrorResponse.Kind);
 			Assert.AreEqual("PayConnect declined the transaction (status: Declined).",response.ErrorResponse.Message);
 			Assert.AreEqual(response.ErrorResponse.Message,response.ErrorResponse.Error.ToString());
