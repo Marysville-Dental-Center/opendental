@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Windows.Forms;
-using Bridges;
 using CodeBase;
 using OpenDentBusiness;
 
@@ -273,13 +272,19 @@ namespace OpenDental{
 			return true;
 		}
 
-		///<summary>Returns true when customer is in the USA and has address verification enabled. Otherwise returns false</summary>
+		///<summary>Returns true when customer is in the USA, has address verification enabled, and the USPS address validation program link is enabled
+		///with the office's own USPS credentials. Returns false, quietly, for a few minutes after USPS said the office is over its quota.
+		///Otherwise returns false.</summary>
 		public static bool CanVerifyPatientAddressInteraction() {
 			if(!System.Globalization.CultureInfo.CurrentCulture.Name.EndsWith("US")) {
 				//USPS address validation only works for US addresses.
 				return false;
 			}
 			if(!PrefC.GetBool(PrefName.AddressVerifyWithUSPS)) {
+				return false;
+			}
+			//The program link keeps the feature off by default: databases from Open Dental have the preference on.
+			if(!UspsAddresses.IsReadyToVerify()) {
 				return false;
 			}
 			return true;
@@ -320,22 +325,47 @@ namespace OpenDental{
 			return address;
 		}
 
-		///<summary>Makes call to WSHQ for address validation and processes the result of this call</summary>
+		///<summary>Sends the address (street, unit, city, state and ZIP only) to USPS with the office's own USPS app and processes the result.
+		///Never blocks a save: every failure ends in a "Save anyway?" prompt.</summary>
 		private static OpenDentBusiness.Address VerifyPatientAddressInteractionHelper(OpenDentBusiness.Address address, object sender) {
 			OpenDentBusiness.Address addressResult=new OpenDentBusiness.Address();
 			USPSAddressValidationResponse uspsAddressValidationResponse=null;
+			UspsApiException uspsApiException=null;
+			UI.ProgressWin progressWin=new UI.ProgressWin();
+			progressWin.StartingMessage=Lan.g("PatientL","Checking address with USPS...");
+			progressWin.ShowCancelButton=false;
+			progressWin.ActionMain=() => {
+				try {
+					uspsAddressValidationResponse=USPSAddressValidationDatas.GetUSPSAddressValidationResponse(address);
+				}
+				catch(UspsApiException ex) {
+					uspsApiException=ex;
+				}
+			};
 			try {
-				uspsAddressValidationResponse=USPSAddressValidationDatas.GetUSPSAddressValidationResponse(address);
+				progressWin.ShowDialog();
 			}
-			catch(HqNotAvailableException ex) {
-				//USPS address validation used to be relayed through Open Dental HQ. Not available until direct vendor integration is configured.
-				if(MessageBox.Show(ex.Message+"\r\n"+Lan.g("PatientL","Save anyway?"),"",MessageBoxButtons.YesNo)==DialogResult.Yes) {
+			catch(Exception ex) {
+				//Anything unexpected is treated like USPS being unreachable. The save is never blocked.
+				uspsApiException=new UspsApiException(UspsErrorKind.Offline,0,"",ex.Message,ex);
+			}
+			if(uspsApiException!=null) {
+				if(MessageBox.Show(GetUspsErrorPrompt(uspsApiException),Lan.g("PatientL","Warning"),MessageBoxButtons.YesNo)==DialogResult.Yes) {
 					return address;
 				}
 				return null;
 			}
 			//We want to include zip+4 in zip codes, so we will always show the prompt when we get a response.
-			if(uspsAddressValidationResponse==null || uspsAddressValidationResponse.address==null) { 
+			if(uspsAddressValidationResponse==null || uspsAddressValidationResponse.address==null) {
+				string uspsMessage=uspsAddressValidationResponse?.ErrorMessage;
+				if(!string.IsNullOrWhiteSpace(uspsMessage)) {
+					string message=Lan.g("PatientL","Failed to verify address with USPS.")+"\r\n"+uspsMessage+"\r\n"
+						+Lan.g("PatientL","(Verification can be turned off in Preferences, Family, General). Save Anyway?");
+					if(MessageBox.Show(message,Lan.g("PatientL","Warning"),MessageBoxButtons.YesNo)==DialogResult.Yes) {
+						return address;
+					}
+					return null;
+				}
 				if(MsgBox.Show(sender, MsgBoxButtons.YesNo, "Failed to verify address with USPS. (Verification can be turned off in Preferences, Family, General). Save Anyway?", "Warning")) {
 					//Import anyway.
 					return address;
@@ -374,6 +404,30 @@ namespace OpenDental{
 				return address;
 			}
 			return addressResult;
+		}
+
+		///<summary>The "Save anyway?" prompt for an address check that got no usable answer from USPS.</summary>
+		private static string GetUspsErrorPrompt(UspsApiException uspsApiException) {
+			string message;
+			switch(uspsApiException.Kind) {
+				case UspsErrorKind.Credentials:
+				case UspsErrorKind.Forbidden:
+				case UspsErrorKind.NotConfigured:
+					message=Lan.g("PatientL","USPS rejected the address check.")+" ("+uspsApiException.Message+")\r\n"
+						+Lan.g("PatientL","Check Setup, Program Links, USPS address validation.");
+					break;
+				case UspsErrorKind.Quota:
+					message=Lan.g("PatientL","USPS address checks are over the limit right now. Addresses will be saved without checking for a few minutes.");
+					break;
+				case UspsErrorKind.BadRequest:
+					message=Lan.g("PatientL","USPS could not check this address.")
+						+(string.IsNullOrWhiteSpace(uspsApiException.UspsMessage) ? "" : " "+uspsApiException.UspsMessage);
+					break;
+				default:
+					message=Lan.g("PatientL","Could not reach USPS to check the address.");
+					break;
+			}
+			return message+"\r\n"+Lan.g("PatientL","Save anyway?");
 		}
 	}
 }
