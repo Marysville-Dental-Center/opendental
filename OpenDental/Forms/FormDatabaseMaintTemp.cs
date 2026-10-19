@@ -83,10 +83,6 @@ namespace OpenDental {
 			MsgBox.Show(this,"Please print from the text editor.");
 		}
 
-		private void linkLabel1_LinkClicked(object sender,LinkLabelLinkClickedEventArgs e) {
-			Process.Start("http://www.opendental.com/manual/bugcp.html");
-		}
-
 		private void butBackup_Click(object sender,EventArgs e) {
 			Cursor=Cursors.WaitCursor;
 			if(!ODBuild.IsDebug()) {

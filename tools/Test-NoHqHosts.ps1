@@ -49,13 +49,10 @@ $HostPattern='(?i)(?<![a-z0-9-])(?:[a-z0-9-]+\.)*(?:opendental\.com|open-dent\.c
 #Deliberate remaining references. Path is a wildcard matched against the repository relative path (backslashes). Match, when present, is a
 #regular expression that the line must also match. Keep entries narrow and say why each one is allowed.
 $AllowList=@(
-	#--- Help and manual links. Another piece of the decoupling work centralizes these into one configurable help base URL.
-	@{ Path='*'; Match='(?i)opendental\.com/manual\d*/'; Reason='Online manual link (help links are being centralized separately).' }
-	@{ Path='*'; Match='(?i)opendental\.com/resources/UnitTestsDocumentation\.xml'; Reason='Online documentation link (help links are being centralized separately).' }
-	@{ Path='OpenDental\Main Modules\FormOpenDental.cs'; Match='(?i)opendental\.com/site/(documentation|searchsite)\.html'; Reason='Help menu: online documentation and search (help links are being centralized separately).' }
-	@{ Path='WpfControlsOD\Frms\FrmDatabaseIntegrity.xaml*'; Match='(?i)opendental\.com/site/(plugins|integrity)\.html'; Reason='Help link about plugins and database integrity (help links are being centralized separately).' }
-	@{ Path='WpfControlsOD\Frms\FrmHelpBrowser.xaml.cs'; Reason='Built-in help browser (help links are being centralized separately).' }
-	@{ Path='OpenDentBusiness\Data Interface\DatabaseMaintenances.cs'; Match='(?i)opendental\.com/manual'; Reason='Manual link inside a message (help links are being centralized separately).' }
+	#--- Manual links in the vendor portal bridges. Open Dental's online help was removed; these two lines sit in the bridges' promotion
+	#    code, which the vendor-neutrality piece of the decoupling work rewrites.
+	@{ Path='WpfControlsOD\Bridges\DentalIntel.cs'; Match='(?i)opendental\.com/manual/'; Reason='DentalIntel portal manual page (removed with the bridge promotion code).' }
+	@{ Path='WpfControlsOD\Bridges\PracticeByNumbers.cs'; Match='(?i)opendental\.com/manual/'; Reason='Practice by Numbers portal manual page (removed with the bridge promotion code).' }
 
 	#--- Partner redirect pages. These only open the user's browser on a vendor page; nothing is sent. To be made configurable with the help links.
 	@{ Path='*'; Match='(?i)opendental\.com/resources/redirects/'; Reason='Partner redirect page opened in the browser (to be made configurable).' }

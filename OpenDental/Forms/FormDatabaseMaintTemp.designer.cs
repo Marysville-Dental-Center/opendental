@@ -47,16 +47,14 @@ namespace OpenDental{
 			// 
 			// linkLabel1
 			// 
-			this.linkLabel1.LinkArea = new System.Windows.Forms.LinkArea(97, 43);
+			this.linkLabel1.LinkArea = new System.Windows.Forms.LinkArea(0, 0);
 			this.linkLabel1.Location = new System.Drawing.Point(12, 7);
 			this.linkLabel1.Name = "linkLabel1";
 			this.linkLabel1.Size = new System.Drawing.Size(671, 51);
 			this.linkLabel1.TabIndex = 5;
 			this.linkLabel1.TabStop = true;
-			this.linkLabel1.Text = "This tool checks the database to make sure no damage was done by a specific bug a" +
-    "s described at\r\nhttp://www.opendental.com/manual/bugcp.html\r\n";
+			this.linkLabel1.Text = "This tool checks the database to make sure no damage was done by a specific bug.";
 			this.linkLabel1.UseCompatibleTextRendering = true;
-			this.linkLabel1.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.linkLabel1_LinkClicked);
 			// 
 			// label1
 			// 
