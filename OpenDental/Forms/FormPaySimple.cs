@@ -370,6 +370,10 @@ namespace OpenDental {
 				}
 				return null;
 			}
+			catch(PaySimpleResultUnknownException ex) {
+				ShowResultUnknown(ex);
+				return null;
+			}
 			catch(ODException ex) {
 				MessageBox.Show(ex.Message);//This should have already been Lans.g if applicable.
 				return null;
@@ -378,15 +382,8 @@ namespace OpenDental {
 				FriendlyException.Show(Lan.g(this,"Error:")+" "+ex.Message,ex);
 				return null;
 			}
-			try {
-				string result=WebServiceMainHQProxy.GetWebServiceMainHQInstance()
-					.InsertPaySimpleACHId(PayloadHelper.CreatePayload(
-						PayloadHelper.CreatePayloadContent(apiResponseRetVal.RefNumber.ToString(),"PaymentId"),eServiceCode.PaySimple));
-				PayloadHelper.CheckForError(result);
-			}
-			catch(Exception ex) {
-				FriendlyException.Show("Unable to register for ACH Settled event",ex);
-			}	
+			//The payment's settlement is tracked locally: FormPayment stores the PaySimple payment ID in payment.ExternalId with PaymentStatus
+			//PaySimpleAchPosted, and PaySimpleAchStatusSync asks PaySimple for its status. Nothing is registered anywhere else.
 			if(!_isAddingCard) {
 				apiResponseRetVal.BuildReceiptString(accountNumber,-1,-1,_patient?.GetNameFL(),_clinicNum,wasSwiped: false,isACH:true);
 				if(checkPrintReceiptACH.Checked) {
@@ -553,14 +550,19 @@ namespace OpenDental {
 		}
 
 		private bool IsPaySimpleSetup() {
-			//verify the selected clinic has a username and API key entered
-			if(string.IsNullOrWhiteSpace(ProgramProperties.GetPropValForClinicOrDefault(_program.ProgramNum,PaySimple.PropertyDescs.PaySimpleApiUserName,_clinicNum))
-				|| string.IsNullOrWhiteSpace(ProgramProperties.GetPropValForClinicOrDefault(_program.ProgramNum,PaySimple.PropertyDescs.PaySimpleApiKey,_clinicNum))) 
-			{
+			//verify the selected clinic has a username and a readable API key entered
+			if(!PaySimple.HasCredentials(_clinicNum)) {
 				MsgBox.Show(this,"The PaySimple username and/or key has not been set.");
 				return false;
 			}
 			return true;
+		}
+
+		///<summary>A charge timed out and PaySimple didn't show it when asked by its order ID. It may still have gone through, so the user must check
+		///PaySimple's web portal before charging again. The message is copyable so the order ID can be searched for.</summary>
+		private void ShowResultUnknown(PaySimpleResultUnknownException ex) {
+			using MsgBoxCopyPaste msgBoxCopyPaste=new MsgBoxCopyPaste(ex.Message);
+			msgBoxCopyPaste.ShowDialog();
 		}
 
 		private PaySimple.ApiResponse ProcessPaymentHelper(int expYear,int expMonth,bool isRetry=false) {
@@ -619,6 +621,10 @@ namespace OpenDental {
 					throw ex;
 				}
 				MessageBox.Show(ex.Message);
+				return null;
+			}
+			catch(PaySimpleResultUnknownException ex) {
+				ShowResultUnknown(ex);
 				return null;
 			}
 			catch(ODException wex) {
