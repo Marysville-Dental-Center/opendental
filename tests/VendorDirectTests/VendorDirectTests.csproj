@@ -44,6 +44,10 @@
   <ItemGroup>
     <!-- MSTest v1, found through the search path added in Directory.Build.targets. -->
     <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
+    <!-- MimeKit: the Microsoft 365 and Gmail tests build and read MIME messages. -->
+    <Reference Include="MimeKit">
+      <HintPath>..\..\Required dlls\MimeKit.dll</HintPath>
+    </Reference>
     <Reference Include="MySqlConnector">
       <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
     </Reference>
