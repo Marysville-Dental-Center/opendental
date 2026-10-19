@@ -42,10 +42,6 @@
     </Win32Resource>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Bridges, Version=24.1.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\Bridges.dll</HintPath>
-    </Reference>
     <Reference Include="Interop.CDRDATALib">
       <HintPath>..\Required dlls\Interop.CDRDATALib.dll</HintPath>
       <EmbedInteropTypes>True</EmbedInteropTypes>

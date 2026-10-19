@@ -863,12 +863,6 @@
     <Compile Include="Forms\FormImageDrawColor.Designer.cs">
       <DependentUpon>FormImageDrawColor.cs</DependentUpon>
     </Compile>
-    <Compile Include="Forms\FormAdvertisingPostcardsAccountSetup.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FormAdvertisingPostcardsAccountSetup.Designer.cs">
-      <DependentUpon>FormAdvertisingPostcardsAccountSetup.cs</DependentUpon>
-    </Compile>
     <Compile Include="Forms\FormImageFloat.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -6129,9 +6123,6 @@
     <EmbeddedResource Include="Forms\FormImageDrawColor.resx">
       <DependentUpon>FormImageDrawColor.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormAdvertisingPostcardsAccountSetup.resx">
-      <DependentUpon>FormAdvertisingPostcardsAccountSetup.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormImageFloat.resx">
       <DependentUpon>FormImageFloat.cs</DependentUpon>
     </EmbeddedResource>
@@ -9389,10 +9380,6 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\Bridges\xBridges.csproj">
-      <Project>{a4d55048-b426-4bc6-bbd5-56f1e4bcc28d}</Project>
-      <Name>xBridges</Name>
-    </ProjectReference>
     <ProjectReference Include="..\..\ImagingDeviceManager\xImagingDeviceManager.csproj">
       <Project>{783079e6-a13f-4f43-a28d-9d7731f945d1}</Project>
       <Name>xImagingDeviceManager</Name>

@@ -67,7 +67,7 @@ namespace NoHqTests {
 
 		[TestMethod]
 		public void WebServiceMainHQ_ProxyNoLongerUsesBridgesTypes() {
-			//The PostcardMania helpers were the last reason for "using Bridges;" here. Bridges.dll goes in the final clean-up package.
+			//The PostcardMania helpers were the last reason for "using Bridges;" here. Bridges.dll itself is deleted (vendor-direct package Z2).
 			string source=File.ReadAllText(Path.Combine(FindRepoRoot(),"OpenDentBusiness","WebServices","WebServiceMainHQProxy.cs"));
 			Assert.IsFalse(source.Contains("using Bridges;"),"WebServiceMainHQProxy.cs should not import Bridges.dll types.");
 			Assert.IsFalse(source.Contains("PostcardMania"),"WebServiceMainHQProxy.cs should not name PostcardMania types.");
