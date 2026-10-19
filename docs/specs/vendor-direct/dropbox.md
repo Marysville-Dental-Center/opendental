@@ -2,6 +2,15 @@
 
 Status: draft, 2026-10-18; fact-checked against the code and Dropbox's public docs on 2026-10-18. Baseline: `main` at `6855026f5`. Vendor: Dropbox, Inc. API: **Dropbox API v2** (public), OAuth 2.0 with PKCE.
 
+> **Superseded: removed (2026-10-19).** Per the owner decision of 2026-10-18 (README, top), Dropbox A to Z storage was **removed**, not rebuilt (open question 1, the **S** option). The rest of this page is kept as the record of what the rebuild would have taken. What the removal did:
+>
+> - **Gone:** `OpenDentalCloud/Storage/Dropbox.cs`, the `Dropbox.Api` reference and `using` lines, `FormDropboxAuthorize`, the Dropbox radio button and tab in Setup > Data Paths (with its 16.3 warning), the token and HQ helper members of `OpenDentBusiness.Dropbox`, and the Dropbox licence entry in the licence and registration windows. Nothing contacts Dropbox any more.
+> - **Kept for schema compatibility:** `DataStorageType.DropboxAtoZ` (2), the "Dropbox" program row and its two `programproperty` rows, `OAuthApplicationNames.Dropbox` and `ExternalSourceType.Dropbox`. The stored token is never read.
+> - **A database that still has `AtoZfolderUsed=2`:** startup shows a message telling the administrator to copy the A to Z folder to a local, network or SFTP location and choose it in Setup > Data Paths, which shows the same text on a "Removed" tab. `CloudStorage` routes every call to `OpenDentalCloud.RemovedStorage` tasks, which fail without a network call and keep the no-throw contract (`StorageRemovedException` only when `hasExceptions` is set).
+> - **`OpenDentalCloud` stays**, because SFTP A to Z storage still uses it.
+> - **Left for later packages:** the HQ members `GetDropboxAccessToken` and `GetDropboxAuthorizationUrl` (Z1); `Required dlls/Dropbox.Api.dll`, `OpenDental/Resources/Dropbox_Api.txt` with its `Resources.resx` entry, and the binaries-audit row (Z2). Nothing references the DLL or the licence text now.
+> - **Tests:** `tests/VendorDirectTests/Dropbox/DropboxRemovedTests.cs`.
+
 ## Summary
 
 - **What it is.** In Setup > Data Paths an office can choose "Store images in Dropbox" instead of a local A to Z folder. The images module, sheets, email and claim attachments, patient merge and the HL7 MedLab archive then read and write the office's Dropbox account through `CloudStorage`, which is referenced roughly 245 times from about 42 caller files.
