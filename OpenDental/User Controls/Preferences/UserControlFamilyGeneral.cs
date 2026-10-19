@@ -112,7 +112,8 @@ namespace OpenDental {
 			if(!PrefC.GetBool(PrefName.ShowFeatureSuperfamilies)) {//Keep if here so values only get set to prefName values upon FillFamilyGeneral()
 				groupBoxSuperFamily.Visible=false;
 			}
-			if(CultureInfo.CurrentCulture.Name!="en-US") {
+			//The USPS check needs the office's own USPS credentials, set up in the USPS address validation program link. Hidden until it is enabled.
+			if(CultureInfo.CurrentCulture.Name!="en-US" || !Programs.IsEnabled(ProgramName.USPSAddresses)) {
 				checkAddressVerifyWithUSPS.Visible=false;
 			}
 			//always set superFamily controls in case groupBox becomes visible after formPreferences is first opened

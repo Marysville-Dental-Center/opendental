@@ -13,7 +13,7 @@
 		<UI:Label x:Name="labelUserAddress" Height="18" Margin="3,66,0,0" Width="83" 
 		Text="Address" IsWrap="True" HAlign="Right"/>
 		<UI:Label x:Name="labelUserEntered" Height="18" Margin="91,39,0,0" Width="184" Text="User Entered Address"/>
-		<UI:Label x:Name="labelUSPSReccomended" Height="18" Margin="351,39,0,0" Width="249" Text="Address Reccomended By USPS"/>
+		<UI:Label x:Name="labelUSPSReccomended" Height="18" Margin="351,39,0,0" Width="249" Text="Address Recommended By USPS"/>
 		<UI:Label x:Name="labelHeading" Height="18" Margin="0,3,0,0" Width="597" Text="The United States Postal Service has recommended the following changes to the address you provided." HAlign="Center" HorizontalAlignment="Center"/>
 		<UI:Button x:Name="butYes" Width="74" VerticalAlignment="Bottom" Height="24" Margin="394,0,0,16" Text="Yes" Click="butYes_Click" TabIndex="1" />
 		<UI:Button x:Name="butNo" Width="76" VerticalAlignment="Bottom" Height="24" Margin="125,0,0,16" Text="No" Click="butNo_Click" TabIndex="2" />
