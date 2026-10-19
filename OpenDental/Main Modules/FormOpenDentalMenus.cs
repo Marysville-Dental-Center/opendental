@@ -358,8 +358,8 @@ namespace OpenDental{
 			menuItemTools.AddSeparator();
 			//Advertising-----------------------------------------------------------------------------------------------------
 			_menuItemAdvertising=new MenuItemOD("Advertising");
-			//Shown only while the PostcardMania program link is enabled; the Programs cache refresh keeps this current.
-			_menuItemAdvertising.Available=!Programs.HListIsNull() && Programs.IsEnabled(ProgramName.PostcardMania);
+			//Shown only while the PostcardMania program link is enabled (and so configured); the Programs cache refresh keeps this current.
+			_menuItemAdvertising.Available=VendorDirect.PostcardsMenu.IsAvailable();
 			menuItemTools.Add(_menuItemAdvertising);
 			LayoutSubMenuAdvertising(_menuItemAdvertising);
 			//Menus below have no submenus (name as shown)--------------------------------------------------------------------

@@ -163,11 +163,15 @@ namespace OpenDental {
 				listPatientInfos=PatientInfo.GetListPatientInfos(tablePatientInfoRaw);
 			}
 			if(FormAdvertisingType==AdvertisingType.Postcards){
-				//Only show patients with a valid address.
+				//Only show patients with a complete US address (the postcard vendor mails within the US only), once each: the query returns a row per
+				//email address, and a postcard goes to a mailing address.
 				return listPatientInfos.Where(x=>(!x.Address.IsNullOrEmpty() || !x.Address2.IsNullOrEmpty())
-					&& !x.City.IsNullOrEmpty() 
-					&& !x.State.IsNullOrEmpty() 
-					&& !x.Zip.IsNullOrEmpty()).ToList();
+					&& !x.City.IsNullOrEmpty()
+					&& !x.State.IsNullOrEmpty()
+					&& !x.Zip.IsNullOrEmpty()
+					&& AdvertisingPostcards.IsUsCountry(x.Country))
+					.DistinctBy(x => x.PatNum)
+					.ToList();
 			}
 			return listPatientInfos.ToList();
 		}

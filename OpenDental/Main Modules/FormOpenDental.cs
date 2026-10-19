@@ -1613,7 +1613,7 @@ namespace OpenDental{
 				}
 				_menuItemCareCreditTransactions.Available=Programs.GetCur(ProgramName.CareCredit).Enabled;
 				//Rule 7: the Advertising menu (Postcards) shows only while the PostcardMania program link is enabled.
-				_menuItemAdvertising.Available=Programs.IsEnabled(ProgramName.PostcardMania);
+				_menuItemAdvertising.Available=VendorDirect.PostcardsMenu.IsAvailable();
 			}
 			#endregion
 			#region InvalidType.Programs OR InvalidType.Prefs
