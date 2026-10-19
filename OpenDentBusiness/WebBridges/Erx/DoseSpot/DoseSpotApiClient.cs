@@ -188,6 +188,9 @@ namespace OpenDentBusiness {
 			_dictTokenCaches.Clear();
 		}
 
+		///<summary>This instance's client for one API base URL, allowed to reach only that URL's host. Each base URL gets its own client, so
+		///Production, Staging and an Introspection override can all be used in one session. VendorHttp.GetClient is not used: it caches by vendor
+		///and BaseAddress, and with no BaseAddress every DoseSpot URL would share the allow-list of whichever one was used first.</summary>
 		private HttpClient GetHttpClient(string apiBaseUrl) {
 			return _dictHttpClients.GetOrAdd(apiBaseUrl,x => {
 				VendorHttpOptions options=new VendorHttpOptions();
@@ -196,10 +199,8 @@ namespace OpenDentBusiness {
 				options.Timeout=TimeSpan.FromSeconds(30);
 				options.MaxGetRetries=1;
 				options.Log=_actionLog;
-				if(_httpMessageHandler!=null) {
-					return VendorHttp.CreateClient(options,_httpMessageHandler);
-				}
-				return VendorHttp.GetClient(options);
+				//Null uses the real network: an HttpClientHandler behind the same policy handler the tests go through.
+				return VendorHttp.CreateClient(options,_httpMessageHandler);
 			});
 		}
 
@@ -247,8 +248,9 @@ namespace OpenDentBusiness {
 		}
 
 		private async Task<OAuthAccessToken> RequestTokenAsync(DoseSpotCredentials doseSpotCredentials,CancellationToken cancellationToken) {
+			Uri uri=MakeUri(doseSpotCredentials,"/connect/token");
 			HttpClient httpClient=GetHttpClient(doseSpotCredentials.ApiBaseUrl);
-			using(HttpRequestMessage request=new HttpRequestMessage(HttpMethod.Post,MakeUri(doseSpotCredentials,"/connect/token"))) {
+			using(HttpRequestMessage request=new HttpRequestMessage(HttpMethod.Post,uri)) {
 				request.Content=new FormUrlEncodedContent(GetTokenForm(doseSpotCredentials));
 				request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 				request.Headers.TryAddWithoutValidation("Subscription-Key",doseSpotCredentials.SubscriptionKey);
@@ -430,12 +432,12 @@ namespace OpenDentBusiness {
 			bool isInteractive,CancellationToken cancellationToken)
 		{
 			doseSpotCredentials.ThrowIfIncomplete();
+			Uri uri=MakeUri(doseSpotCredentials,path);//Before GetHttpClient, so an address that won't parse is reported as NotConfigured.
 			HttpClient httpClient=GetHttpClient(doseSpotCredentials.ApiBaseUrl);
 			TokenCache tokenCache=GetTokenCache(doseSpotCredentials);
 			if(isInteractive) {
 				tokenCache.ClearReauthorization();
 			}
-			Uri uri=MakeUri(doseSpotCredentials,path);
 			string json=(body==null) ? null : JsonConvert.SerializeObject(body);
 			HttpResponseMessage response;
 			try {

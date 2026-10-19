@@ -332,6 +332,71 @@ namespace VendorDirectTests.Erx {
 		}
 
 		[TestMethod]
+		public void SwitchingEnvironments_ReachesEachHost() {
+			FakeHttpHandler fakeHttpHandler=new FakeHttpHandler().SetDefault((request,ct) => System.Threading.Tasks.Task.FromResult(
+				request.RequestUri.AbsolutePath.EndsWith("/connect/token")
+					? FakeHttpHandler.MakeResponse(HttpStatusCode.OK,TOKEN_JSON)
+					: FakeHttpHandler.MakeResponse(HttpStatusCode.OK,CountsJson(0,0,0))));
+			DoseSpotApiClient client=MakeClient(fakeHttpHandler);
+			string[] arrayBaseUrls={ DoseSpotConfig.UrlApiProduction,DoseSpotConfig.UrlApiStaging,DoseSpotConfig.UrlApiProduction };
+			foreach(string baseUrl in arrayBaseUrls) {
+				DoseSpotCredentials doseSpotCredentials=MakeCredentials();
+				doseSpotCredentials.ApiBaseUrl=baseUrl;
+				AssertEx.Run(() => client.GetNotificationCountsAsync(doseSpotCredentials,true));
+			}
+			List<string> listHosts=fakeHttpHandler.Requests.Select(x => x.RequestUri.Host).Distinct().ToList();
+			CollectionAssert.AreEquivalent(new[] { "my.dosespot.com","my.staging.dosespot.com" },listHosts);
+		}
+
+		///<summary>The real-network path (no fake handler) must give each base URL its own client with its own allow-list. A shared process-wide
+		///client keyed only by vendor name kept the first environment's host, so Staging was refused after Production until a restart.
+		///The requests here use a cancelled token, so nothing is sent: the policy handler checks the URL before the network handler sees the request.</summary>
+		[TestMethod]
+		public void RealNetworkPath_GivesEachBaseUrlItsOwnClient() {
+			DoseSpotApiClient client=new DoseSpotApiClient(null,() => _nowUtc,x => { },_erxPollThrottle);
+			System.Reflection.MethodInfo methodInfo=typeof(DoseSpotApiClient).GetMethod("GetHttpClient",
+				System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic);
+			Assert.IsNotNull(methodInfo);
+			HttpClient httpClientProduction=(HttpClient)methodInfo.Invoke(client,new object[] { DoseSpotConfig.UrlApiProduction });
+			HttpClient httpClientStaging=(HttpClient)methodInfo.Invoke(client,new object[] { DoseSpotConfig.UrlApiStaging });
+			Assert.AreNotSame(httpClientProduction,httpClientStaging);
+			Assert.AreSame(httpClientStaging,methodInfo.Invoke(client,new object[] { DoseSpotConfig.UrlApiStaging }),"One client per base URL is reused.");
+			//A second instance (e.g. a replaced Default) gets its own clients too.
+			DoseSpotApiClient client2=new DoseSpotApiClient(null,() => _nowUtc,x => { },_erxPollThrottle);
+			Assert.AreNotSame(httpClientStaging,methodInfo.Invoke(client2,new object[] { DoseSpotConfig.UrlApiStaging }));
+			AssertNotRefused(httpClientProduction,DoseSpotConfig.UrlApiProduction+"/api/notifications/counts");
+			AssertNotRefused(httpClientStaging,DoseSpotConfig.UrlApiStaging+"/api/notifications/counts");
+			//Each client still refuses the other environment's host.
+			Exception exRefused=SendCancelled(httpClientProduction,DoseSpotConfig.UrlApiStaging+"/api/notifications/counts");
+			Assert.IsInstanceOfType(exRefused,typeof(VendorHttpException));
+			Assert.AreEqual(VendorHttpFailure.UrlRefused,((VendorHttpException)exRefused).Failure);
+		}
+
+		private static void AssertNotRefused(HttpClient httpClient,string url) {
+			Exception ex=SendCancelled(httpClient,url);
+			VendorHttpException vendorHttpException=ex as VendorHttpException;
+			Assert.IsFalse(vendorHttpException!=null && vendorHttpException.Failure==VendorHttpFailure.UrlRefused,url+" was refused.");
+		}
+
+		///<summary>Sends a GET with an already-cancelled token and returns what was thrown. The policy handler checks the URL first; the network
+		///handler then cancels without connecting.</summary>
+		private static Exception SendCancelled(HttpClient httpClient,string url) {
+			using(System.Threading.CancellationTokenSource cancellationTokenSource=new System.Threading.CancellationTokenSource()) {
+				cancellationTokenSource.Cancel();
+				try {
+					using(HttpRequestMessage request=new HttpRequestMessage(HttpMethod.Get,url)) {
+						httpClient.SendAsync(request,cancellationTokenSource.Token).GetAwaiter().GetResult().Dispose();
+					}
+				}
+				catch(Exception ex) {
+					return ex;
+				}
+			}
+			Assert.Fail("A cancelled request should not complete.");
+			return null;
+		}
+
+		[TestMethod]
 		public void PostClinic_ReturnsTheNewIdAndKey() {
 			FakeHttpHandler fakeHttpHandler=new FakeHttpHandler()
 				.Enqueue(HttpStatusCode.OK,TOKEN_JSON)
