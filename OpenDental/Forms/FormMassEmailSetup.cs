@@ -42,6 +42,10 @@ namespace OpenDental {
 			try {
 				signupOut=FormEServicesSetup.GetSignupOut(signupOutOld);
 			}
+			catch(HqNotAvailableException hqEx) {
+				//Mass Email was hosted by Open Dental, which this build never contacts.
+				MessageBox.Show(hqEx.Message);
+			}
 			catch(WebException e) {
 				FriendlyException.Show(Lan.g(this,"Could not reach HQ.  Please make sure you have an internet connection and try again or call support."),e);
 			}

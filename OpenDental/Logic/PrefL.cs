@@ -663,301 +663,26 @@ namespace OpenDental {
 			return true;
 		}
 		
-		///<summary>If AtoZ.manifest was wrong, or if user is not using AtoZ, then just download again.  Will use dir selected by user.  If an appropriate download is not available, it will fail and inform user.</summary>
+		///<summary>Used to download Setup.exe from Open Dental's update website when the update files in the database were wrong. This build never
+		///contacts Open Dental's servers, so it tells the user to install the database's version manually instead.</summary>
 		private static void DownloadAndRunSetup(Version versionStored,Version versionCurrent) {
-			string patchName="Setup.exe";
-			string updateUri=PrefC.GetString(PrefName.UpdateWebsitePath);
-			string updateCode=PrefC.GetString(PrefName.UpdateCode);
-			string updateInfoMajor="";
-			string updateInfoMinor="";
-			if(!ShouldDownloadUpdate(updateUri,updateCode,out updateInfoMajor,out updateInfoMinor)){
-				return;
-			}
-			if(MessageBox.Show(
-				Lan.g("Prefs","Setup file will now be downloaded.")+"\r\n"
-				+Lan.g("Prefs","Workstation version will be updated from ")+versionCurrent.ToString(3)
-				+Lan.g("Prefs"," to ")+versionStored.ToString(3),
-				"",MessageBoxButtons.OKCancel)
-				!=DialogResult.OK)//they don't want to update for some reason.
-			{
-				return;
-			}
-			using FolderBrowserDialog folderBrowserDialog=new FolderBrowserDialog();
-			folderBrowserDialog.SelectedPath=ImageStore.GetPreferredAtoZpath();
-			folderBrowserDialog.Description=Lan.g("Prefs","Setup.exe will be downloaded to the folder you select below");
-			if(folderBrowserDialog.ShowDialog()!=DialogResult.OK) {
-				return;//app will exit
-			}
-			string tempFile=ODFileUtils.CombinePaths(folderBrowserDialog.SelectedPath,patchName);
-			//ODFileUtils.CombinePaths(GetTempFolderPath(),patchName);
-			DownloadInstallPatchFromURI(downloadUri:updateUri+updateCode+"/"+patchName,
-				destinationPath:tempFile,runSetupAfterDownload:true,showShutdownWindow:false,destinationPath2:null);
-			if(File.Exists(tempFile)) {//If user canceled in DownloadInstallPatchFromURI file will not exist.
-				try{
-					File.Delete(tempFile);//Cleanup install file.
-				}
-				catch(Exception ex) {
-					ex.DoNothing();
-				}
-			}
+			MessageBox.Show(Lan.g("Prefs","Downloading updates from Open Dental is not available in this build.")+"\r\n"
+				+Lan.g("Prefs","Install version")+" "+versionStored.ToString(3)+" "+Lan.g("Prefs","on this workstation manually, or go to the computer "
+				+"where the update was run and use Help | Update | Setup | Recopy."));
 		}
 
-		///<summary>Returns true if the download at the specified remoteUri with the given registration code should be downloaded and installed as an update, and false is returned otherwise. Also, information about the decision making process is stored in the updateInfoMajor and updateInfoMinor strings, but only holds significance to a human user.</summary>
+		///<summary>Used to read the update manifest from Open Dental's update website. This build never contacts Open Dental's servers, so this always
+		///returns false and explains why in updateInfoMajor.</summary>
 		public static bool ShouldDownloadUpdate(string remoteUri,string updateCode,out string updateInfoMajor,out string updateInfoMinor) {
-			updateInfoMajor="";
+			updateInfoMajor=Lan.g("FormUpdate","Checking for updates with Open Dental is not available in this build.  ");
 			updateInfoMinor="";
-			bool shouldDownload=false;
-			string fileName="Manifest.txt";
-			WebClient webClient=new WebClient();
-			string myStringWebResource=remoteUri+updateCode+"/"+fileName;
-			Version versionNewBuild=null;
-			string strNewVersion="";
-			string newBuild="";
-			bool isAlphaBuild=false;
-			bool isBetaBuild=false;
-			bool isAlphaVersion=false;
-			bool isBetaVersion=false;
-			try{
-				using StreamReader streamReader=new StreamReader(webClient.OpenRead(myStringWebResource));
-				newBuild=streamReader.ReadLine();//must be be 3 or 4 components (revision is optional)
-				strNewVersion=streamReader.ReadLine();//returns null if no second line
-				if(newBuild.EndsWith("a")) {
-					isAlphaBuild=true;
-					newBuild=newBuild.Replace("a","");
-				}
-				if(newBuild.EndsWith("b")) {
-					isBetaBuild=true;
-					newBuild=newBuild.Replace("b","");
-				}
-				versionNewBuild=new Version(newBuild);
-				if(versionNewBuild.Revision==-1) {
-					versionNewBuild=new Version(versionNewBuild.Major,versionNewBuild.Minor,versionNewBuild.Build,0);
-				}
-				if(strNewVersion!=null && strNewVersion.EndsWith("a")) {
-					isAlphaVersion=true;
-					strNewVersion=strNewVersion.Replace("a","");
-				}
-				if(strNewVersion!=null && strNewVersion.EndsWith("b")) {
-					isBetaVersion=true;
-					strNewVersion=strNewVersion.Replace("b","");
-				}
-			}
-			catch{
-				updateInfoMajor+=Lan.g("FormUpdate","Registration number not valid, or internet connection failed.  ");
-				return false;
-			}
-			if(versionNewBuild==new Version(Application.ProductVersion)) {
-				updateInfoMajor+=Lan.g("FormUpdate","You are using the most current build of this version.  ");
-			}
-			else{
-				//this also allows users to install previous versions.
-				updateInfoMajor+=Lan.g("FormUpdate","A new build of this version is available for download:  ")
-					+versionNewBuild.ToString();
-				if(isAlphaBuild) {
-					updateInfoMajor+=Lan.g("FormUpdate","(alpha)  ");
-				}
-				if(isBetaBuild) {
-					updateInfoMajor+=Lan.g("FormUpdate","(beta)  ");
-				}
-				shouldDownload=true;
-			}
-			//Whether or not build is current, we want to inform user about the next minor version
-			if(strNewVersion!=null) {//we don't really care what it is.
-				updateInfoMinor+=Lan.g("FormUpdate","A newer version is also available.  ");
-				if(isAlphaVersion) {
-					updateInfoMinor+=Lan.g("FormUpdate","It is alpha (experimental), so it has bugs and "+
-						"you will need to update it frequently.  ");
-				}
-				if(isBetaVersion) {
-					updateInfoMinor+=Lan.g("FormUpdate","It is beta (test), so it has some bugs and "+
-						"you will need to update it frequently.  ");
-				}
-				updateInfoMinor+=Lan.g("FormUpdate","Contact us for a new Registration number if you wish to use it.  ");
-			}
-			return shouldDownload;
+			return false;
 		}
 
-		/// <summary>destinationPath includes filename (Setup.exe).  destinationPath2 will create a second copy at the specified path/filename, or it will be skipped if null or empty.</summary>
+		///<summary>Used to download Setup.exe from Open Dental's update website and run it. This build never contacts Open Dental's servers, so this
+		///only shows a message. destinationPath includes filename (Setup.exe).</summary>
 		public static void DownloadInstallPatchFromURI(string downloadUri,string destinationPath,bool runSetupAfterDownload,bool showShutdownWindow,string destinationPath2) {
-			string[] stringArrayDBList=PrefC.GetString(PrefName.UpdateMultipleDatabases).Split(new string[] {","},StringSplitOptions.RemoveEmptyEntries);
-			bool isShutdownWindowNeeded=showShutdownWindow;
-			while(isShutdownWindowNeeded) {
-				//Even if updating multiple databases, extra shutdown signals are not needed.
-				using FormShutdown formShutdown=new FormShutdown();
-				formShutdown.IsUpdate=true;
-				formShutdown.ShowDialog();
-				if(formShutdown.DialogResult==DialogResult.OK) {
-					//turn off signal reception for 5 seconds so this workstation will not shut down.
-					Signalods.DateTHighPrioritySignalLastRefreshed=MiscData.GetNowDateTime().AddSeconds(5);
-					Signalod signalod=new Signalod();
-					signalod.IType=InvalidType.ShutDownNow;
-					Signalods.Insert(signalod);
-					Computers.ClearAllHeartBeats(Environment.MachineName);//always assume success
-					isShutdownWindowNeeded=false;
-					//SecurityLogs.MakeLogEntry(Permissions.Setup,0,"Shutdown all workstations.");//can't do this because sometimes no user.
-				}
-				else if(formShutdown.DialogResult==DialogResult.Cancel) {//Cancel
-					if(MsgBox.Show("FormUpdate",MsgBoxButtons.YesNo,"Are you sure you want to cancel the update?")) {
-						return;
-					}
-					continue;
-				}
-				//no other workstation will be able to start up until this value is reset.
-				Prefs.UpdateString(PrefName.UpdateInProgressOnComputerName,Environment.MachineName);
-			}
-			MiscData.LockWorkstationsForDbs(stringArrayDBList);//lock workstations for other db's.
-			try {
-				File.Delete(destinationPath);
-			}
-			catch(Exception ex) {
-				FriendlyException.Show(Lan.g("FormUpdate","Error deleting file:")+"\r\n"+ex.Message,ex);
-				MiscData.UnlockWorkstationsForDbs(stringArrayDBList);//unlock workstations since nothing was actually done.
-				Prefs.UpdateString(PrefName.UpdateInProgressOnComputerName,"");
-				return;
-			}
-			WebRequest webRequest=WebRequest.Create(downloadUri);
-			WebResponse webResponse=null;
-			try{
-				webResponse=webRequest.GetResponse();
-			}
-			catch(Exception ex) {
-				using CodeBase.MsgBoxCopyPaste msgBoxCopyPaste=new MsgBoxCopyPaste(ex.Message+"\r\nUri: "+downloadUri);
-				msgBoxCopyPaste.ShowDialog();
-				MiscData.UnlockWorkstationsForDbs(stringArrayDBList);//unlock workstations since nothing was actually done.
-				Prefs.UpdateString(PrefName.UpdateInProgressOnComputerName,"");
-				return;
-			}
-			int fileSize=(int)webResponse.ContentLength/1024;
-			UI.ProgressWin progressWin=new UI.ProgressWin();
-			progressWin.ActionMain=() => DownloadInstallPatchWorker(downloadUri,destinationPath,webResponse.ContentLength);
-			try{
-				progressWin.ShowDialog();
-			}
-			catch{
-				try {
-					File.Delete(destinationPath);//Try to clean up after ourselves.
-				}
-				catch(Exception ex) {
-					ex.DoNothing();
-				}
-			}
-			if(progressWin.IsCancelled){
-				MiscData.UnlockWorkstationsForDbs(stringArrayDBList);//unlock workstations since nothing was actually done.
-				Prefs.UpdateString(PrefName.UpdateInProgressOnComputerName,"");
-				return;
-			}
-			//copy to second destination directory
-			if(CloudStorage.IsCloudStorage) {
-				OpenDentalCloud.Core.TaskStateUpload taskStateUpload=null;
-				byte[] byteArray=File.ReadAllBytes(destinationPath);
-				progressWin=new UI.ProgressWin();
-				progressWin.StartingMessage=Lan.g("FormUpdate","Uploading Setup File...");//Upload unversioned setup file to AtoZ main folder.
-				progressWin.ActionMain=() => CloudStorage.Upload(CloudStorage.AtoZPath,Path.GetFileName(destinationPath),byteArray);
-				progressWin.ShowDialog();
-				if(progressWin.IsCancelled){
-					MiscData.UnlockWorkstationsForDbs(stringArrayDBList);//unlock workstations since nothing was actually done.
-					Prefs.UpdateString(PrefName.UpdateInProgressOnComputerName,"");
-					return;
-				}
-				if(destinationPath2!=null && destinationPath2!="") {//Upload a copy of the Setup.exe to a versioned setup file to SetupFiles folder.  Not always used.
-					progressWin=new UI.ProgressWin();
-					progressWin.StartingMessage=Lan.g("FormUpdate","Uploading Setup File SetupFiles folder...");
-					progressWin.ActionMain=() => CloudStorage.Upload(ODFileUtils.CombinePaths(CloudStorage.AtoZPath,"SetupFiles"),Path.GetFileName(destinationPath2),byteArray);
-					progressWin.ShowDialog();
-					if(progressWin.IsCancelled){
-						MiscData.UnlockWorkstationsForDbs(stringArrayDBList);//unlock workstations since nothing was actually done.
-						Prefs.UpdateString(PrefName.UpdateInProgressOnComputerName,"");
-						return;
-					}
-				}
-			}
-			else {
-				if(destinationPath2!=null && destinationPath2!="") {
-					if(File.Exists(destinationPath2)) {
-						try {
-							File.Delete(destinationPath2);
-						}
-						catch(Exception ex) {
-							FriendlyException.Show(Lan.g("FormUpdate","Error deleting file:")+"\r\n"+ex.Message,ex);
-							MiscData.UnlockWorkstationsForDbs(stringArrayDBList);//unlock workstations since nothing was actually done.
-							Prefs.UpdateString(PrefName.UpdateInProgressOnComputerName,"");
-							return;
-						}
-					}
-					File.Copy(destinationPath,destinationPath2);
-				}
-			}
-			//copy the Setup.exe to the AtoZ folders for the other db's.
-			List<string> listAtoZNames=MiscData.GetAtoZforDb(stringArrayDBList);
-			for(int i=0;i<listAtoZNames.Count;i++) {
-				if(destinationPath==Path.Combine(listAtoZNames[i],"Setup.exe")) {//if they are sharing an AtoZ folder.
-					continue;
-				}
-				if(Directory.Exists(listAtoZNames[i])) {
-					File.Copy(destinationPath,//copy the Setup.exe that was just downloaded to this AtoZ folder
-						Path.Combine(listAtoZNames[i],"Setup.exe"),//to the other atozFolder
-						true);//overwrite
-				}
-			}
-			if(!runSetupAfterDownload) {
-				return;
-			}
-			string msg=Lan.g("FormUpdate","Download succeeded.  Setup program will now begin.  When done, restart the program on this computer, then on the other computers.");
-			if(stringArrayDBList.Length > 0) {
-				msg="Download succeeded.  Setup file probably copied to other AtoZ folders as well.  Setup program will now begin.  When done, restart the program for each database on this computer, then on the other computers.";
-			}
-			if(MessageBox.Show(msg,"",MessageBoxButtons.OKCancel) !=DialogResult.OK) {
-				//Clicking cancel gives the user a chance to avoid running the setup program,
-				Prefs.UpdateString(PrefName.UpdateInProgressOnComputerName,"");//unlock workstations, since nothing was actually done.
-				return;
-			}
-			#region Stop OpenDent Services
-			//If the update has been initiated from the designated update server then try and stop all "OpenDent..." services.
-			//They will be automatically restarted once Open Dental has successfully upgraded.
-			if(PrefC.GetString(PrefName.WebServiceServerName)!="" && ODEnvironment.IdIsThisComputer(PrefC.GetString(PrefName.WebServiceServerName))) {
-				Action actionCloseStopServicesProgress=ODProgress.Show("Stopping services...");
-				List<ServiceController> listServiceControllersOpenDent=ServicesHelper.GetAllOpenDentServices();
-				//Newer versions of Windows have heightened security measures for managing services.
-				//We get lots of calls where users do not have the correct permissions to start and stop Open Dental services.
-				//Open Dental services are not important enough to warrent "Admin" rights to manage so we want to allow "Everyone" to start and stop them.
-				ServicesHelper.SetSecurityDescriptorToAllowEveryoneToManageServices(listServiceControllersOpenDent);
-				//Loop through all Open Dental services and stop them if they have not stopped or are not pending a stop so that their binaries can be updated.
-				string strServicesNotStopped=ServicesHelper.StopServices(listServiceControllersOpenDent);
-				actionCloseStopServicesProgress?.Invoke();
-				//Notify the user to go manually stop the services that could not automatically stop.
-				if(!string.IsNullOrEmpty(strServicesNotStopped)) {
-					using MsgBoxCopyPaste msgBoxCopyPaste=new MsgBoxCopyPaste(Lan.g("FormUpdate","The following services could not be stopped.  You need to manually stop them before continuing.")
-					+"\r\n"+strServicesNotStopped);
-					msgBoxCopyPaste.ShowDialog();
-				}
-			}
-			#endregion
-			try {
-				Process.Start(destinationPath);
-				FormOpenDental.S_ProcessKillCommand();
-			}
-			catch{
-				Prefs.UpdateString(PrefName.UpdateInProgressOnComputerName,"");//unlock workstations, since nothing was actually done.
-				MsgBox.Show("FormProgress","Could not launch setup");
-			}
-		}
-
-		///<summary>This is the function that the worker thread uses to actually perform the download.
-		///Can also call this method in the ordinary way if the file to be transferred is short.</summary>
-		private static void DownloadInstallPatchWorker(string downloadUri,string destinationPath,long contentLength) {
-			using WebClient webClient=new WebClient();
-			using Stream streamRead=webClient.OpenRead(downloadUri);
-			using FileStream fileStream=new FileStream(destinationPath,FileMode.Create);
-			int bytesRead;
-			//long position=0;
-			byte[] byteArray=new byte[10 * 1024];
-			while((bytesRead=streamRead.Read(byteArray,0,byteArray.Length)) > 0) {
-				//position+=bytesRead;
-				//if(position!=contentLength) {
-				//	formProgressIndicator.CurrentVal=((double)position / 1024) / 1024;
-				//}
-				fileStream.Write(byteArray,0,bytesRead);
-			}
+			MessageBox.Show(Lan.g("FormUpdate","Downloading updates from Open Dental is not available in this build. Install new versions manually."));
 		}
 
 		///<summary>This ONLY runs when first opening the program.  Gets run early in the sequence. Returns false if the program should exit.</summary>
@@ -1136,6 +861,14 @@ namespace OpenDental {
 		public static bool UpgradeOrInstallEConnector(bool isSilent,string updateServerName=null,bool doOverrideBlankUpdateServerName=false,
 			bool isInvalidUpdateServerNameAllowed=false)
 		{
+			if(!WebServiceMainHQProxy.IsHqAvailable) {
+				//The eConnector only relays Open Dental hosted eServices to Open Dental's servers, which this build never contacts. Never install, start or
+				//upgrade it, even when an OpenDentalEConnector folder is left over from an Open Dental install, and leave any CustListener services alone.
+				if(!isSilent) {
+					MessageBox.Show(new HqNotAvailableException().Message);
+				}
+				return false;
+			}
 			if(updateServerName==null) {
 				updateServerName=PrefC.GetString(PrefName.WebServiceServerName);
 			}
@@ -1633,32 +1366,9 @@ namespace OpenDental {
 				return false;
 			}
 			process.WaitForExit();//Waits for the file copier to be complete.
-			return true;	
+			return true;
 		}
 
-		/// <summary>Check for a developer only license</summary>
-		public static bool IsRegKeyForTesting() {
-			XmlWriterSettings xmlWriterSettings = new XmlWriterSettings();
-			xmlWriterSettings.Indent = true;
-			xmlWriterSettings.IndentChars = ("    ");
-			StringBuilder stringBuilder=new StringBuilder();
-			using(XmlWriter xmlWriter=XmlWriter.Create(stringBuilder,xmlWriterSettings)){
-				xmlWriter.WriteStartElement("RegistrationKey");
-				xmlWriter.WriteString(PrefC.GetString(PrefName.RegistrationKey));			
-				xmlWriter.WriteEndElement();
-			}
-			try {
-				string response=CustomerUpdatesProxy.GetWebServiceInstance().RequestIsDevKey(stringBuilder.ToString());
-				XmlDocument xmlDocument=new XmlDocument();
-				xmlDocument.LoadXml(response);
-				XmlNode xmlNode=xmlDocument.SelectSingleNode("//IsDevKey");
-				return PIn.Bool(xmlNode.InnerText);
-			}
-			catch(Exception ex) {
-				//They don't have an external internet connection.
-				ex.DoNothing();
-				return false;
-			}
-		}
+		//IsRegKeyForTesting() was removed. It asked Open Dental HQ whether the registration key was a developer-only key.
 	}
 }

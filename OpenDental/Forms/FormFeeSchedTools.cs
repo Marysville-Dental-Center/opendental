@@ -51,9 +51,8 @@ namespace OpenDental {
 			LayoutManager.MoveLocation(comboGroup,new Point(LayoutManager.Scale(100),LayoutManager.Scale(46)));
 			LayoutManager.MoveLocation(comboGroupTo,new Point(LayoutManager.Scale(100),LayoutManager.Scale(45)));
 			FillComboBoxes();
-			if(!CultureInfo.CurrentCulture.Name.EndsWith("CA")) {//Canadian. en-CA or fr-CA
-				butImportCanada.Visible=false;
-			}
+			//Import Canada downloaded fee schedules from Open Dental's servers, which this build never contacts.
+			butImportCanada.Visible=false;
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				groupGlobalUpdateFees.Enabled=false;
 			}
@@ -674,160 +673,9 @@ namespace OpenDental {
 		}
 
 		private void butImportCanada_Click(object sender,EventArgs e) {
-			if(!MsgBox.Show(this,MsgBoxButtons.OKCancel,"If you want a clean slate, the current fee schedule should be cleared first.  When imported, any fees that are found in the text file will overwrite values of the current fee schedule showing in the main window.  Are you sure you want to continue?")) {
-				return;
-			}
-			Cursor=Cursors.WaitCursor;
-			using FormFeeSchedPickRemote formFeeSchedPickRemote=new FormFeeSchedPickRemote();
-			formFeeSchedPickRemote.Url=@"http://www.opendental.com/feescanada/";//points to index.php file
-			if(formFeeSchedPickRemote.ShowDialog()!=DialogResult.OK) {
-				Cursor=Cursors.Default;
-				return;
-			}
-			Cursor=Cursors.WaitCursor;//original wait cursor seems to go away for some reason.
-			Application.DoEvents();
-			string feeData="";
-			Action actionCloseFeeSchedImportCanadaProgress=ODProgress.Show();
-			if(formFeeSchedPickRemote.IsFileChosenProtected()) {
-				actionCloseFeeSchedImportCanadaProgress?.Invoke();//Hide the progress window so it does not cover up the authorization form.
-				using FormFeeSchedPickAuthOntario formFeeSchedPickAuthOntario=new FormFeeSchedPickAuthOntario(formFeeSchedPickRemote.GetSelectedFeeDA());
-				if(formFeeSchedPickAuthOntario.ShowDialog()!=DialogResult.OK) {
-					Cursor=Cursors.Default;
-					return;
-				}
-				actionCloseFeeSchedImportCanadaProgress=ODProgress.Show();
-				string memberNumberODA=formFeeSchedPickAuthOntario.getODAMemberNumber();
-				string memberPasswordODA=formFeeSchedPickAuthOntario.getODAMemberPassword(); 
-				//prepare the xml document to send--------------------------------------------------------------------------------------
-				XmlWriterSettings xmlWriterSettings = new XmlWriterSettings();
-				xmlWriterSettings.Indent = true;
-				xmlWriterSettings.IndentChars = ("    ");
-				StringBuilder stringBuilder=new StringBuilder();
-				using XmlWriter xmlWriter=XmlWriter.Create(stringBuilder,xmlWriterSettings);
-				xmlWriter.WriteStartElement("RequestFeeSched");
-				xmlWriter.WriteStartElement("RegistrationKey");
-				xmlWriter.WriteString(PrefC.GetString(PrefName.RegistrationKey));
-				xmlWriter.WriteEndElement();//RegistrationKey
-				xmlWriter.WriteStartElement("FeeSchedFileName");
-				xmlWriter.WriteString(formFeeSchedPickRemote.getFileChosenName());
-				xmlWriter.WriteEndElement();//FeeSchedFileName
-				if(memberNumberODA!="") {
-					xmlWriter.WriteStartElement("ODAMemberNumber");
-					xmlWriter.WriteString(memberNumberODA);
-					xmlWriter.WriteEndElement();//ODAMemberNumber
-					xmlWriter.WriteStartElement("ODAMemberPassword");
-					xmlWriter.WriteString(memberPasswordODA);
-					xmlWriter.WriteEndElement();//ODAMemberPassword
-				}
-				xmlWriter.WriteEndElement();//RequestFeeSched
-				xmlWriter.Close();
-		
-#if DEBUG
-				OpenDental.localhost.Service1 updateService=new OpenDental.localhost.Service1();
-#else
-				OpenDental.customerUpdates.Service1 updateService=new OpenDental.customerUpdates.Service1();
-				updateService.Url=PrefC.GetString(PrefName.UpdateServerAddress);
-#endif
-				//Send the message and get the result-------------------------------------------------------------------------------------
-				string result="";
-				try {
-					ODEvent.Fire(ODEventType.FeeSched,Lan.g(this,"Retrieving fee schedule")+"...");
-					result=updateService.RequestFeeSched(stringBuilder.ToString());
-				}
-				catch(Exception ex) {
-					actionCloseFeeSchedImportCanadaProgress?.Invoke();
-					Cursor=Cursors.Default;
-					MessageBox.Show("Error: "+ex.Message);
-					return;
-				}
-				Cursor=Cursors.Default;
-				XmlDocument xmlDocument=new XmlDocument();
-				xmlDocument.LoadXml(result);
-				//Process errors------------------------------------------------------------------------------------------------------------
-				XmlNode xmlNode=xmlDocument.SelectSingleNode("//Error");
-				if(xmlNode!=null) {
-					actionCloseFeeSchedImportCanadaProgress?.Invoke();
-					MessageBox.Show(xmlNode.InnerText,"Error");
-					return;
-				}
-				xmlNode=xmlDocument.SelectSingleNode("//KeyDisabled");
-				if(xmlNode==null) {
-					//no error, and no disabled message
-					if(Prefs.UpdateBool(PrefName.RegistrationKeyIsDisabled,false)) {
-						DataValid.SetInvalid(InvalidType.Prefs);
-					}
-				}
-				else {
-					actionCloseFeeSchedImportCanadaProgress?.Invoke();
-					MessageBox.Show(xmlNode.InnerText);
-					if(Prefs.UpdateBool(PrefName.RegistrationKeyIsDisabled,true)) {
-						DataValid.SetInvalid(InvalidType.Prefs);
-					}
-					return;
-				}
-				//Process a valid return value------------------------------------------------------------------------------------------------
-				xmlNode=xmlDocument.SelectSingleNode("//ResultCSV64");
-				string feeData64=xmlNode.InnerXml;
-				byte[] byteArrayFeeData=Convert.FromBase64String(feeData64);
-				feeData=Encoding.UTF8.GetString(byteArrayFeeData);
-			}
-			else {
-				ODEvent.Fire(ODEventType.FeeSched,Lan.g(this,"Downloading fee schedule")+"...");
-				string tempFile=PrefC.GetRandomTempFile(".tmp");
-				WebClient webClient=new WebClient();
-				try {
-					webClient.DownloadFile(formFeeSchedPickRemote.getFileChosenUrl(),tempFile);
-				}
-				catch(Exception ex) {
-					actionCloseFeeSchedImportCanadaProgress?.Invoke();
-					MessageBox.Show(Lan.g(this,"Failed to download fee schedule file")+": "+ex.Message);
-					Cursor=Cursors.Default;
-					return;
-				}
-				feeData=File.ReadAllText(tempFile);
-				try {
-					File.Delete(tempFile);
-				}
-				catch(Exception ex) {
-					ex.DoNothing();
-				}
-			}
-			int numImported;
-			int numSkipped;
-			long clinicNum=0;
-			if(!comboClinic.IsUnassignedSelected) {
-				clinicNum=comboClinic.ClinicNumSelected;
-			}
-			FeeSched feeSched=_listFeeScheds[comboFeeSched.SelectedIndex];
-			if(PrefC.GetBool(PrefName.ShowFeeSchedGroups) && !checkShowGroups.Checked) {
-				FeeSchedGroup feeSchedGroup=FeeSchedGroups.GetOneForFeeSchedAndClinic(feeSched.FeeSchedNum,clinicNum);
-				if(feeSchedGroup!=null) {
-					MsgBox.Show(Lans.g(this,"Selected clinic is a member of Fee Schedule Group: ")+feeSchedGroup.Description
-						+Lans.g(this," and must be imported at the group level."));
-					return;
-				}
-			}
-			if(checkShowGroups.Checked) {
-				if(comboGroup.SelectedIndex==-1) {
-					MsgBox.Show(this,"Please select a Fee Schedule Group.");
-					return;
-				}
-				//Fees.ImportFees() will update the rest of the group.
-				clinicNum=comboGroup.GetSelected<FeeSchedGroup>().ListClinicNumsAll.FirstOrDefault();
-			}
-			long provNum=0;
-			if(comboProvider.SelectedIndex!=0) {
-				provNum=_listProviders[comboProvider.SelectedIndex-1].ProvNum;
-			}
-			FeeScheds.ImportCanadaFeeSchedule2(feeSched,feeData,clinicNum,provNum,out numImported,out numSkipped);
-			actionCloseFeeSchedImportCanadaProgress?.Invoke();
-			Cursor=Cursors.Default;
-			DialogResult=DialogResult.OK;
-			string outputMessage="Done. Number imported: "+numImported;
-			if(numSkipped>0) {
-				outputMessage+=" Number skipped: "+numSkipped;
-			}
-			MessageBox.Show(outputMessage);
+			//Canadian fee schedules used to be downloaded from Open Dental's servers, which this build never contacts. The button is hidden on load.
+			//Use Import to load a fee schedule from a local file instead.
+			MessageBox.Show(new HqNotAvailableException().Message);
 		}
 
 		private void butUpdateFees_Click(object sender,EventArgs e) {

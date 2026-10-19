@@ -62,7 +62,7 @@ namespace OpenDental{
 			this.webBrowser.ScrollBarsEnabled = false;
 			this.webBrowser.Size = new System.Drawing.Size(670, 549);
 			this.webBrowser.TabIndex = 6;
-			this.webBrowser.Url = new System.Uri("http://www.opendental.com/manual/updateAnnounce.html", System.UriKind.Absolute);
+			this.webBrowser.Url = new System.Uri("about:blank", System.UriKind.Absolute);
 			// 
 			// FormUpdateInstallMsg
 			// 

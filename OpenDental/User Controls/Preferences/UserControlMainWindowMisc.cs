@@ -140,7 +140,8 @@ namespace OpenDental {
 				labelTrackClinic.Visible=false;
 				comboTrackClinic.Visible=false;
 			}
-			checkSubmitExceptions.Checked=PrefC.GetBool(PrefName.SendUnhandledExceptionsToHQ);
+			//Exceptions are never sent to Open Dental HQ in this build, so the SendUnhandledExceptionsToHQ option is hidden and left unchanged.
+			checkSubmitExceptions.Visible=false;
 			textAuditEntries.Text=PrefC.GetString(PrefName.AuditTrailEntriesDisplayed);
 			//if(PrefC.GetString(PrefName.ReportingServerCompName)=="" && PrefC.GetString(PrefName.ReportingServerURI)=="") {
 			//	checkAuditTrailUseReportingServer.Visible=false;
@@ -203,7 +204,6 @@ namespace OpenDental {
 			hasChanged |=Prefs.UpdateString(PrefName.WebServiceServerName,textWebServiceServerName.Text);
 			hasChanged |=Prefs.UpdateLong(PrefName.CloudAlertWithinLimit,PIn.Long(textAlertCloudSessions.Text));
 			hasChanged |=Prefs.UpdateString(PrefName.ClinicTrackLast,_listTrackLastClinicBys[comboTrackClinic.SelectedIndex]);
-			hasChanged |=Prefs.UpdateBool(PrefName.SendUnhandledExceptionsToHQ,checkSubmitExceptions.Checked);
 			hasChanged |=Prefs.UpdateString(PrefName.AuditTrailEntriesDisplayed,textAuditEntries.Text);
 			hasChanged |=Prefs.UpdateBool(PrefName.BackupIndexesDisabled,checkBackupIndexesDisabled.Checked);
 			if(checkAuditTrailUseReportingServer.Visible) {

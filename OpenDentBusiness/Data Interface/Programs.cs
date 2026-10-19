@@ -102,7 +102,9 @@ namespace OpenDentBusiness {
 		}
 		#endregion Cache Pattern
 
-		///<summary>Checks to see if we have disabled the current program at HQ. Handles null. Sets and translates the out parameter where possible.</summary>
+		///<summary>Open Dental HQ used to be able to disable (and delete) program links remotely. That kill switch is gone: this only checks that the
+		///program exists. The program.IsDisabledByHq and program.CustErr columns are kept for schema compatibility but are ignored.
+		///Kept under its old name so the many existing call sites keep compiling.</summary>
 		public static bool IsEnabledByHq(Program program,out string err) {
 			Meth.NoCheckMiddleTierRole();
 			err="";
@@ -110,53 +112,13 @@ namespace OpenDentBusiness {
 				err=Lans.g("Programs","The currently selected program could not be found.");
 				return false;
 			}
-			if(DoUseCacheValues(program)) {
-				err=program.CustErr;
-				if(string.IsNullOrWhiteSpace(err)) {//if the CustErr wasn't set at HQ then we assume a customer is not able to use this program because they are not on support
-					err=Lans.g("Program","You must be on support to use this program.");
-				}
-				return !program.IsDisabledByHq;
-			}
-			HqProgram hqProgram=HqProgram.GetAll().FirstOrDefault(x => x.ProgramNameAsString.Trim()==program.ProgName.Trim());
-			if(hqProgram==null) {
-				err=Lans.g("Programs","The currently selected HQ program could not be found.");
-				return false;
-			}
-			if(!hqProgram.IsEnabled) {
-				err=hqProgram.CustErr;
-				//Delete all programs disabled by HQ
-				ProgramProperties.GetForProgram(program.ProgramNum).ForEach(x=>ProgramProperties.Delete(x));
-				Programs.Delete(program);
-				if(string.IsNullOrWhiteSpace(err)) {
-					err=Lans.g("Program",program.ProgName+" has been removed.");
-				}
-				return false;
-			}
 			return true;
 		}
 
-
-		///<summary>Checks to see if we have disabled the current program at HQ. Handles null Sets and translates the out parameter where possible.</summary>
+		///<summary>See IsEnabledByHq(Program,out string). Only checks that the program exists.</summary>
 		public static bool IsEnabledByHq(ProgramName progName,out string err) {
 			Program progCur=GetCur(progName);
 			return IsEnabledByHq(progCur,out err);
-		}
-
-
-		///<summary>Checks to see if we have enabled the current plugin at HQ. </summary>
-		public static bool IsDllEnabledByHq(Program progCur) {
-			List<HqProgram> listHqPrograms=HqProgram.GetAll().ToList();
-			HqProgram hqProgram=listHqPrograms.FirstOrDefault(x => x.PluginDllName.Trim()==progCur.PluginDllName.Trim());
-			if(hqProgram==null) {
-				return false;
-			}
-			return hqProgram.IsEnabled;
-		}
-
-		private static bool DoUseCacheValues(Program prog) {
-			//Is not an OD defined program name or is not a program HQ is concerned with enabling/disabling.
-			return !Enum.TryParse(prog.ProgName,out ProgramName progName) 
-				|| !(HqProgram.IsInitialized() && HqProgram.GetAll().Any(x => x.ProgramNameAsString.Trim()==progName.ToString()));
 		}
 
 
@@ -499,11 +461,6 @@ namespace OpenDentBusiness {
 			return new List<bool> {
 				IsEnabled(ProgramName.EdgeExpress),IsEnabled(ProgramName.Xcharge),IsEnabled(ProgramName.PayConnect),IsEnabled(ProgramName.PaySimple)
 			}.Count(x => x==true) >= 2;
-		}
-
-		///<summary>Called when we want to inform HQ about changes maded to enabled programs.</summary>
-		public static void SendEnabledProgramsToHQ() {
-			CustomerUpdatesProxy.SendAndReceiveUpdateRequestXml();//Piggy back on this, we don't do anything with result just want to trigger some code.
 		}
 
 		/// <summary>Called to delete the linkage.xml file used by EzDenti and Ez3Di.</summary>

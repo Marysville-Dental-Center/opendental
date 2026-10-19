@@ -129,9 +129,6 @@ namespace OpenDental {
 						xslContents=FileAtoZ.ReadAllText(strAlterateFilPathXslCCD);
 					}
 				}
-				if(xslContents=="") { //one last check to see if we succeeded in finding a stylesheet
-					throw new Exception("No stylesheet found");
-				}
 			}
 			else if(doc.DocumentElement.Name.ToLower()=="continuityofcarerecord" || doc.DocumentElement.Name.ToLower()=="ccr:continuityofcarerecord") {//CCR
 				xmlFileName="ccr.xml";
@@ -141,6 +138,13 @@ namespace OpenDental {
 			else {
 				MessageBox.Show("This is not a valid CCD, CCDA, CCR, or C32 message.  Only the raw text will be shown");
 				MessageBox.Show(strXmlCCD);
+				return false;
+			}
+			if(xslContents=="") {
+				//The display stylesheets came from Open Dental's proprietary EHR.dll, which is not loaded anymore, and no alternative was provided.
+				MessageBox.Show(Lan.g("FormEhrSummaryOfCare","No stylesheet is available to display this document.  Only the raw text will be shown."));
+				using MsgBoxCopyPaste msgBoxCopyPaste=new MsgBoxCopyPaste(strXmlCCD);
+				msgBoxCopyPaste.ShowDialog();
 				return false;
 			}
 			XmlNode node=doc.SelectSingleNode("/processing-instruction(\"xml-stylesheet\")");

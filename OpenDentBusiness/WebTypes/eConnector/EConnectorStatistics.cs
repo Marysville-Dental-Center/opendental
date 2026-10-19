@@ -119,9 +119,7 @@ namespace OpenDentBusiness.WebTypes {
 			}
 			string statsStr=CompressAndSerializeToJson(listStatsToSend);
 			OpenDentBusiness.Prefs.UpdateString(PrefName.EConnectorStatistics,statsStr);
-			string payload=PayloadHelper.CreatePayload(PayloadHelper.CreatePayloadContent(statsStr,"EConnectorStatsStr"),
-			eServiceCode.ListenerService);
-			WebServiceMainHQProxy.GetWebServiceMainHQInstance().SetEConnectorStatsAsync(payload);
+			//The statistics used to be uploaded to Open Dental HQ here. Telemetry was removed; they are only kept in the local preference.
 		}
 		
 		///<summary>Returns an empty list if deserialization fails. Will attempt to decompress and deserialize jsonString into a list of EConnectorStatistics. If decompression fails, will attempt to deserialize the original jsonString</summary>

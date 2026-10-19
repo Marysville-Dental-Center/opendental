@@ -250,6 +250,10 @@ namespace OpenDentBusiness{
 			if(listSmsToMobileMessages==null || listSmsToMobileMessages.Count==0) {
 				throw new Exception("No messages to send.");
 			}
+			if(!WebServiceMainHQProxy.IsHqAvailable) {
+				//Integrated Texting was relayed through Open Dental HQ to the SMS vendor.
+				throw HqNotAvailableException.ForVendor("Integrated Texting");
+			}
 			System.Xml.Serialization.XmlSerializer xmlListSmsToMobileSerializer=new System.Xml.Serialization.XmlSerializer(typeof(List<SmsToMobile>));
 			StringBuilder stringBuilder=new StringBuilder();
 			using XmlWriter xmlWriter=XmlWriter.Create(stringBuilder,WebSerializer.CreateXmlWriterSettings(true));

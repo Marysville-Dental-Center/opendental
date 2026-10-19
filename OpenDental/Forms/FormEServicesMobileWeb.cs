@@ -34,6 +34,9 @@ namespace OpenDental {
 		}
 
 		private void FormEServicesMobileWeb_Load(object sender,EventArgs e) {
+			if(FormEServicesSetup.CloseIfHqNotAvailable(this)) {
+				return;//eServices were hosted by Open Dental and are not available in this build.
+			}
 			//If user does not have EServicesSetup permission, disable all controls except the Setup Mobile Web Users button, which opens
 			//FormSecurity and checks the SecurityAdmin permission. FormSecurity is normally reachable without EServiceSetup permission,
 			//so no reason to block it here.

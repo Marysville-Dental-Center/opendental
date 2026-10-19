@@ -56,7 +56,6 @@ namespace OpenDental{
 		private MenuItemOD _menuItemReports;
 		///<summary>Only show enterprise setup if it is enabled.</summary>
 		private MenuItemOD _menuItemReactivation;
-		private MenuItemOD _menuItemRemoteSupport;
 		private MenuItemOD _menuItemRepeatingCharges;
 		///<summary>Not available if isWeb.</summary>
 		private MenuItemOD _menuItemReplication;
@@ -112,8 +111,7 @@ namespace OpenDental{
 			//Clinics--------------------------------------------------------------------------------------------------------
 			_menuItemClinicsMain=new MenuItemOD("&Clinics");
 			menuMain.Add(_menuItemClinicsMain);
-			//eServices------------------------------------------------------------------------------------------------------
-			menuMain.Add("eServices",menuItemEServices_Click);
+			//eServices were hosted by Open Dental and are not available in this build, so there is no eServices menu.
 			//Alerts---------------------------------------------------------------------------------------------------------
 			_menuItemAlerts=new MenuItemOD("Alerts (0)",menuItemAlerts_Click);
 			menuMain.Add(_menuItemAlerts);
@@ -216,7 +214,7 @@ namespace OpenDental{
 			menuItemSetup.Add("Sheets",menuItemSheets_Click);
 			menuItemSetup.Add("Spell Check",menuItemSpellCheck_Click);
 			menuItemSetup.Add("Tasks",menuItemTask_Click);
-			menuItemSetup.Add("Web Forms",menuItemWebForm_Click);
+			//Web Forms were hosted by Open Dental and are not available in this build.
 			menuItemSetup.AddSeparator();
 			//Obsolete--------------------------------------------------------------------------------------------------------
 			MenuItemOD menuItemObsolete=new MenuItemOD("Obsolete");
@@ -428,7 +426,6 @@ namespace OpenDental{
 			menuItemTools.Add("Setup Wizard",menuItemSetupWizard_Click);
 			_menuItemStudentRequirements=new MenuItemOD("Student Requirements",menuItemReqStudents_Click);
 			menuItemTools.Add(_menuItemStudentRequirements);
-			menuItemTools.Add("Web Forms",menuItemWebForms_Click);
 			MenuItemOD menuItemWiki=new MenuItemOD("Wiki",menuItemWiki_Click);
 			if(!ODEnvironment.IsCloudInstance){
 				menuItemWiki.ShortcutKeys=Keys.Control|Keys.Shift|Keys.W;
@@ -482,20 +479,16 @@ namespace OpenDental{
 		#region Help
 		///<summary>Help Main</summary>
 		private void LayoutMenuHelp(MenuItemOD menuItemHelp) {
-			menuItemHelp.Add("Online Support",menuItemRemote_Click);
+			//Online Support, Training Videos, Request Features, Support Status and Remote Support were Open Dental Software, Inc. services and were removed.
 			menuItemHelp.Add("Online Help - Documentation",menuItemHelpDocumentation_Click);
 			MenuItemOD menuItemOnlineHelpSearch=new MenuItemOD("Online Help - Search",menuItemHelpSearch_Click);
 			menuItemOnlineHelpSearch.ShortcutKeys=Keys.Shift|Keys.F1;
 			menuItemHelp.Add(menuItemOnlineHelpSearch);
 			_menuItemPayloadMonitor=new MenuItemOD("Payload Monitor",MenuItemQueryMonitor_Click);
 			menuItemHelp.Add(_menuItemPayloadMonitor);
-			menuItemHelp.Add("Training Videos",menuItemWebinar_Click);
 			_menuItemQueryMonitor=new MenuItemOD("Query Monitor",MenuItemQueryMonitor_Click);
 			menuItemHelp.Add(_menuItemQueryMonitor);
-			menuItemHelp.Add("Request Features",menuItemRequestFeatures_Click);
-			menuItemHelp.Add("Support Status",MenuItemSupportStatus_Click);
-			_menuItemRemoteSupport=new MenuItemOD("Remote Support",menuItemRemoteSupport_Click);
-			menuItemHelp.Add(_menuItemRemoteSupport);
+			//The update window no longer checks Open Dental's servers. It keeps update history, update setup and local workstation updates.
 			menuItemHelp.Add("&Update",menuItemUpdate_Click);
 			menuItemHelp.AddSeparator();
 			menuItemHelp.Add("About",menuItemAbout_Click);

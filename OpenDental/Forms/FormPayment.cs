@@ -2667,6 +2667,7 @@ namespace OpenDental {
 					xWebResponse=EdgeExpress.CNP.GetUrlForPaymentPage(_patient.PatNum,textNote.Text,amt,
 						doCreateToken,CreditCardSource.EdgeExpressCNP,false,aliasToken,paymentNum: _payment.PayNum,clinicNum: clinicNum);
 					using(FormWebBrowser formWebBrowser = new FormWebBrowser(xWebResponse.HpfUrl)) {//Braces required within switch statements.
+						formWebBrowser.UrlCloseOn=EdgeExpress.CNP.ReturnUrlDefault;
 						formWebBrowser.ShowDialog();
 					}
 					xWebResponseProcessed=EdgeExpress.CNP.ProcessTransaction(xWebResponse,_payment);
@@ -2694,6 +2695,7 @@ namespace OpenDental {
 				case EdgeExpressTransType.CreditAuth:
 					xWebResponse=EdgeExpress.CNP.GetUrlForCreditCardAlias(_patient.PatNum,CreditCardSource.EdgeExpressCNP,false,amt,doCreateToken);
 					using(FormWebBrowser formWebBrowser = new FormWebBrowser(xWebResponse.HpfUrl)) {//Braces required within switch statements.
+						formWebBrowser.UrlCloseOn=EdgeExpress.CNP.ReturnUrlDefault;
 						formWebBrowser.ShowDialog();
 					}
 					xWebResponseProcessed=EdgeExpress.CNP.ProcessTransaction(xWebResponse,_payment);

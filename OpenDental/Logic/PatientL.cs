@@ -132,9 +132,6 @@ namespace OpenDental{
 			}
 			if(patient==null || patient.PatNum==0 || patient.PatNum==-1) {
 				retVal+=MainTitleUpdateCountdown();
-				if(FormOpenDental.IsRegKeyForTesting) {
-					retVal+=" - "+Lan.g("FormOpenDental","Developer Only License")+" - "+Lan.g("FormOpenDental","Not for use with live patient data")+" - ";
-				}
 				return retVal;
 			}
 			retVal+=" - "+patient.GetNameLF();
@@ -156,9 +153,6 @@ namespace OpenDental{
 				retVal+=" - "+Sites.GetDescription(patient.SiteNum);
 			}
 			retVal+=MainTitleUpdateCountdown();
-			if(FormOpenDental.IsRegKeyForTesting) {
-				retVal+=" - "+Lan.g("FormOpenDental","Developer Only License")+" - "+Lan.g("FormOpenDental","Not for use with live patient data")+" - ";
-			}
 			return retVal;
 		}
 
@@ -182,9 +176,6 @@ namespace OpenDental{
 			}
 			if(_patientSelected==null || _patientSelected.PatNum==0 || _patientSelected.PatNum==-1) {
 				retVal+=MainTitleUpdateCountdown();
-				if(FormOpenDental.IsRegKeyForTesting) {
-					retVal+=" - "+Lan.g("FormOpenDental","Developer Only License")+" - "+Lan.g("FormOpenDental","Not for use with live patient data")+" - ";
-				}
 				//Now check to see if this database has been put into "Testing Mode"
 				if(Introspection.IsTestingMode) {
 					retVal+=" <TESTING MODE ENABLED> ";
@@ -213,9 +204,6 @@ namespace OpenDental{
 				retVal+=" - "+Sites.GetDescription(_patientSelected.SiteNum);
 			}
 			retVal+=MainTitleUpdateCountdown();
-			if(FormOpenDental.IsRegKeyForTesting) {
-				retVal+=" - "+Lan.g("FormOpenDental","Developer Only License")+" - "+Lan.g("FormOpenDental","Not for use with live patient data")+" - ";
-			}
 			//Now check to see if this database has been put into "Testing Mode"
 			if(Introspection.IsTestingMode) {
 				retVal+=" <TESTING MODE ENABLED> ";
@@ -348,7 +336,17 @@ namespace OpenDental{
 		///<summary>Makes call to WSHQ for address validation and processes the result of this call</summary>
 		private static OpenDentBusiness.Address VerifyPatientAddressInteractionHelper(OpenDentBusiness.Address address, object sender) {
 			OpenDentBusiness.Address addressResult=new OpenDentBusiness.Address();
-			USPSAddressValidationResponse uspsAddressValidationResponse=USPSAddressValidationDatas.GetUSPSAddressValidationResponse(address);
+			USPSAddressValidationResponse uspsAddressValidationResponse=null;
+			try {
+				uspsAddressValidationResponse=USPSAddressValidationDatas.GetUSPSAddressValidationResponse(address);
+			}
+			catch(HqNotAvailableException ex) {
+				//USPS address validation used to be relayed through Open Dental HQ. Not available until direct vendor integration is configured.
+				if(MessageBox.Show(ex.Message+"\r\n"+Lan.g("PatientL","Save anyway?"),"",MessageBoxButtons.YesNo)==DialogResult.Yes) {
+					return address;
+				}
+				return null;
+			}
 			//We want to include zip+4 in zip codes, so we will always show the prompt when we get a response.
 			if(uspsAddressValidationResponse==null || uspsAddressValidationResponse.address==null) { 
 				if(MsgBox.Show(sender, MsgBoxButtons.YesNo, "Failed to verify address with USPS. (Verification can be turned off in Preferences, Family, General). Save Anyway?", "Warning")) {

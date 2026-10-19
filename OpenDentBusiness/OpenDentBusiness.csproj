@@ -2034,8 +2034,8 @@
     <Compile Include="WebServices\WebServiceHqServer.cs" />
     <Compile Include="WebServices\WebServiceMainHQMockDemo.cs" />
     <Compile Include="WebServices\OpenDentalServerProxy.cs" />
-    <Compile Include="WebServices\SheetsSynchReal.cs" />
-    <Compile Include="WebServices\WebServiceMainHQReal.cs" />
+    <Compile Include="WebServices\SheetsSynchNoHq.cs" />
+    <Compile Include="WebServices\WebServiceMainHQNoHq.cs" />
     <Compile Include="WebServices\WebServiceMainHQProxy.cs" />
     <Compile Include="WebServiceTests.cs" />
     <Compile Include="WebTypes\AutoComm\Arrivals\Arrivals.cs" />

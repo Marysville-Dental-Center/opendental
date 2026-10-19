@@ -43,6 +43,9 @@ namespace OpenDental {
 		}
 
 		private void FormEServicesTexting_Load(object sender,EventArgs e) {
+			if(FormEServicesSetup.CloseIfHqNotAvailable(this)) {
+				return;//eServices were hosted by Open Dental and are not available in this build.
+			}
 			//Disable all controls if user does not have EServicesSetup permission.
 			if(!Security.IsAuthorized(EnumPermType.EServicesSetup,suppressMessage:true)) {
 				DisableAllExcept();

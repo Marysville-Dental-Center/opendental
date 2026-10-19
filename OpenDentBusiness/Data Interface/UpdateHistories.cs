@@ -128,21 +128,6 @@ namespace OpenDentBusiness {
 			return Db.GetCount(command)=="0";
 		}
 
-		///<summary>Attempts to send the customer's License Agreement signature to BugsHQ database. Returns true if web call successfully inserts a signature, otherwise false. </summary>
-		public static bool SendSignatureToHQ(string regKey,string obfuscatedSignature) {
-			List<PayloadItem> listPayloadItems=new List<PayloadItem>();
-			listPayloadItems.Add(new PayloadItem(regKey,"RegistrationKey"));
-			listPayloadItems.Add(new PayloadItem(obfuscatedSignature,"Signature"));
-			string officeData=PayloadHelper.CreatePayload(listPayloadItems,eServiceCode.LicenseAgreementSig);
-			string result;
-			try {
-				result=WebServiceMainHQProxy.GetWebServiceMainHQInstance().LicenseAgreementAccepted(officeData);
-			}
-			catch(Exception ex) {
-				ex.DoNothing();
-				return false;
-			}
-			return WebServiceSerializer.WebSerializer.DeserializePrimitive<bool>(result);
-		}
+		//SendSignatureToHQ() was removed. License agreement signatures are no longer collected or sent to Open Dental HQ.
 	}
 }

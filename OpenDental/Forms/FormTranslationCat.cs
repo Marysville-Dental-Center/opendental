@@ -51,20 +51,17 @@ namespace OpenDental{
 				MessageBox.Show("Not allowed when using client web.");
 				return;
 			}
-			string remoteUri = "http://www.opendental.com/cultures/";
+			//Translation files used to be downloaded from Open Dental's website, which this build never contacts. Import one from a local file instead.
 			string fileName = CultureInfo.CurrentCulture.Name+".txt";//eg. en-US.txt
-			string myStringWebResource = null;
-			WebClient webClient = new WebClient();
-			myStringWebResource=remoteUri+fileName;
-			Cursor=Cursors.WaitCursor;
-			try{
-				webClient.DownloadFile(myStringWebResource,fileName);
-			}
-			catch{
-				Cursor=Cursors.Default;
-				MessageBox.Show("Either you do not have internet access, or no translations are available for "+CultureInfo.CurrentCulture.DisplayName);
+			using OpenFileDialog openFileDialog=new OpenFileDialog();
+			openFileDialog.Title=Lan.g(this,"Choose the translation file")+" ("+fileName+")";
+			openFileDialog.FileName=fileName;
+			openFileDialog.Filter="txt|*.txt";
+			if(openFileDialog.ShowDialog()!=DialogResult.OK) {
 				return;
 			}
+			fileName=openFileDialog.FileName;
+			Cursor=Cursors.WaitCursor;
 			//ClassConvertDatabase ConvertDB=new ClassConvertDatabase();
 			try{
 				//ConvertDB.ExecuteFile(fileName);

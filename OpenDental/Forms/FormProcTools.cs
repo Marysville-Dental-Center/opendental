@@ -87,27 +87,25 @@ namespace OpenDental{
 			checkRecallTypes.Checked=false;
 		}
 
-		///<summary>Downloads Canadian procedure codes from our website and updates _codeList accordingly.</summary>
+		///<summary>Reads Canadian procedure codes from a local file and updates _codeList accordingly. The file used to be downloaded from Open Dental's
+		///website, which this build never contacts; the file format (tab delimited, one code per line) is unchanged.</summary>
 		private void CanadaDownloadProcedureCodes() {
-			Cursor=Cursors.WaitCursor;
 			_listProcedureCodes=new List<ProcedureCode>();
-			string url=@"http://www.opendental.com/feescanada/procedurecodes.txt";
-			string tempFile=PrefC.GetRandomTempFile(".tmp");
-			WebClient webClient=new WebClient();
-			try {
-				webClient.DownloadFile(url,tempFile);
-			}
-			catch(Exception ex) {
-				MessageBox.Show(Lan.g(this,"Failed to download procedure codes")+":\r\n"+ex.Message);
-				Cursor=Cursors.Default;
+			using OpenFileDialog openFileDialog=new OpenFileDialog();
+			openFileDialog.Title=Lan.g(this,"Choose the Canadian procedure code file (procedurecodes.txt)");
+			openFileDialog.Filter="txt|*.txt";
+			if(openFileDialog.ShowDialog()!=DialogResult.OK) {
 				return;
 			}
-			string codeData=File.ReadAllText(tempFile);
+			Cursor=Cursors.WaitCursor;
+			string codeData;
 			try {
-				File.Delete(tempFile);
+				codeData=File.ReadAllText(openFileDialog.FileName);
 			}
 			catch(Exception ex) {
-				ex.DoNothing();
+				MessageBox.Show(Lan.g(this,"Failed to read procedure codes")+":\r\n"+ex.Message);
+				Cursor=Cursors.Default;
+				return;
 			}
 			string[] stringArrayCodeLines=codeData.Split("\n",StringSplitOptions.RemoveEmptyEntries);
 			for(int i=0;i<stringArrayCodeLines.Length;i++) {

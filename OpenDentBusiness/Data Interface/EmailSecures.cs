@@ -15,9 +15,12 @@ namespace OpenDentBusiness{
 	///<summary></summary>
 	public class EmailSecures {
 		private static char[] _arrEmailAddressDelimiters=new char[] { ';',',' };
-		///<summary>Has the Secure Email feature been released.</summary>
+		///<summary>Has the Secure Email feature been released. Always false outside of unit tests, because Secure Email was hosted by Open Dental.</summary>
 		public static bool IsSecureEmailReleased() {
 			Meth.NoCheckMiddleTierRole();
+			if(!WebServiceMainHQProxy.IsHqAvailable) {
+				return false;
+			}
 			List<long> listClinicNums=Clinics.GetDeepCopy().Select(x=>x.ClinicNum).ToList();
 			listClinicNums.Add(0);
 			return listClinicNums.Any(x => LimitedBetaFeatures.IsAllowed(EServiceFeatureInfoEnum.SecureEmail,x));

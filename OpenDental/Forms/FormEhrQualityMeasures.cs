@@ -11,9 +11,6 @@ using OpenDental.UI;
 using System.Xml;
 using System.Xml.XPath;
 using CodeBase;
-#if EHRTEST
-using EHR;
-#endif
 
 namespace OpenDental {
 	public partial class FormEhrQualityMeasures:FormODBase {

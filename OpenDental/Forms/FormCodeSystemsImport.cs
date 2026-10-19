@@ -91,37 +91,11 @@ namespace OpenDental {
 		}
 
 		private void CheckUpdates() {
-			Cursor=Cursors.WaitCursor;
-			butDownload.Enabled=false;
-			checkKeepDescriptions.Enabled=false;
-			string result="";
-			XmlDocument xmlDocument=new XmlDocument();
-			try {
-				result=RequestCodeSystemsXml();
-				xmlDocument.LoadXml(result);
-			}
-			catch(Exception ex) {
-				MessageBox.Show(Lan.g("CodeSystemImporter","Error"+": "+ex.Message));
-				Cursor=Cursors.Default;
-				return;
-			}
-			List<CodeSystem> listCodeSystemsAvailable=CodeSystems.GetForCurrentVersion(_isMemberNation);
-			for(int i=0;i<listCodeSystemsAvailable.Count;i++) {
-				string codeSystemName=listCodeSystemsAvailable[i].CodeSystemName;
-				XmlNode xmlNode=xmlDocument.SelectSingleNode("//"+codeSystemName);
-				if(xmlNode==null) {
-					listCodeSystemsAvailable[i].VersionAvail=@"N\A";
-				}
-				else {
-					listCodeSystemsAvailable[i].VersionAvail=xmlNode.Attributes["VersionAvailable"].InnerText;
-				}
-				CodeSystems.Update(listCodeSystemsAvailable[i]);						
-			}
+			//Code system files used to be listed and downloaded from Open Dental's servers, which this build never contacts.
+			//Only code systems imported from a local file (CPT) can be imported now.
 			FillGrid();
-			//It is now safe to allow downloading.
 			butDownload.Enabled=true;
 			checkKeepDescriptions.Enabled=true;
-			Cursor=Cursors.Default;
 		}
 
 		private void butDownload_Click(object sender,EventArgs e) {
@@ -140,6 +114,17 @@ namespace OpenDental {
 			_listCodeSystemStatuses.Clear();
 			for(int i=0;i<gridMain.SelectedIndices.Length;i++) {		
 				CodeSystem codeSystem=_listCodeSystems[gridMain.SelectedIndices[i]];
+				if(codeSystem.CodeSystemName!="CPT") {
+					//All code system files other than CPT were downloaded from Open Dental's servers, which this build never contacts.
+					CodeSystemStatus codeSystemStatusOther=_listCodeSystemStatuses.FirstOrDefault(x => x.CodeSystemName==codeSystem.CodeSystemName);
+					if(codeSystemStatusOther==null) {
+						codeSystemStatusOther=new CodeSystemStatus();
+						codeSystemStatusOther.CodeSystemName=codeSystem.CodeSystemName;
+						_listCodeSystemStatuses.Add(codeSystemStatusOther);
+					}
+					codeSystemStatusOther.SystemStatus=Lan.g("CodeSystemImporter","Download not available");
+					continue;
+				}
 				//Show warnings and prompts
 				if(!PreDownloadHelper(codeSystem.CodeSystemName)) {
 					CodeSystemStatus codeSystemStatus=_listCodeSystemStatuses.FirstOrDefault(x => x.CodeSystemName==codeSystem.CodeSystemName);
@@ -286,76 +271,6 @@ namespace OpenDental {
 					}
 					#endregion
 				}
-				else {
-					#region Import all other codes
-					try {
-						//Add a new thread. We will run these all in parallel once we have them all queued.
-						//This code system file does not exist on the system so it will be downloaded before being imported.
-						if(codeSystem.CodeSystemName=="SNOMEDCT") {//SNOMEDCT codes cannot be given out to non-member nations.  We treat non-USA reg keys as non-member nations.
-							//Ensure customer has a valid USA registration key
-							#if DEBUG
-								OpenDental.localhost.Service1 regService=new OpenDental.localhost.Service1();
-							#else
-								OpenDental.customerUpdates.Service1 regService=new OpenDental.customerUpdates.Service1();
-								regService.Url=PrefC.GetString(PrefName.UpdateServerAddress);
-							#endif
-							if(PrefC.GetString(PrefName.UpdateWebProxyAddress) !="") {
-								IWebProxy iWebProxy=new WebProxy(PrefC.GetString(PrefName.UpdateWebProxyAddress));
-								ICredentials iCredentials=new NetworkCredential(PrefC.GetString(PrefName.UpdateWebProxyUserName),PrefC.GetString(PrefName.UpdateWebProxyPassword));
-								iWebProxy.Credentials=iCredentials;
-								regService.Proxy=iWebProxy;
-							}
-							XmlWriterSettings xmlWriterSettings=new XmlWriterSettings();
-							xmlWriterSettings.Indent=true;
-							xmlWriterSettings.IndentChars=("    ");
-							StringBuilder stringBuilder=new StringBuilder();
-							XmlWriter xmlWriter=XmlWriter.Create(stringBuilder,xmlWriterSettings);
-							xmlWriter.WriteStartElement("IsForeignRegKeyRequest");
-							xmlWriter.WriteStartElement("RegistrationKey");
-							xmlWriter.WriteString(PrefC.GetString(PrefName.RegistrationKey));
-							xmlWriter.WriteEndElement();
-							xmlWriter.WriteEndElement();
-							xmlWriter.Close();
-							string result=regService.IsForeignRegKey(stringBuilder.ToString());
-							XmlDocument xmlDocument=new XmlDocument();
-							xmlDocument.LoadXml(result);
-							XmlNode xmlNode=xmlDocument.SelectSingleNode("//IsForeign");
-							bool isForeignKey=true;
-							if(xmlNode!=null) {
-								if(xmlNode.InnerText=="false") {
-									isForeignKey=false;
-								}
-							}
-							if(isForeignKey) {
-								string errorMessage=Lan.g(this,"SNOMEDCT has been skipped")+":\r\n";
-								xmlNode=xmlDocument.SelectSingleNode("//ErrorMessage");
-								if(xmlNode!=null) {
-									errorMessage+=xmlNode.InnerText;
-								}
-								//The user will have to click OK on this message in order to continue downloading any additional code systems.
-								//In the future we might turn this into calling a delegate in order to update the affected SNOMED row's text instead of stopping the main thread.
-								MessageBox.Show(errorMessage);
-								continue;
-							}
-						}
-						UpdateCodeSystemThread.Add(_listCodeSystems[gridMain.SelectedIndices[i]],
-							new UpdateCodeSystemThread.UpdateCodeSystemArgs(UpdateCodeSystemThread_UpdateSafe),!checkKeepDescriptions.Checked);
-					}
-					catch(Exception ex) {
-						//Set status for this code system.
-						CodeSystemStatus codeSystemStatus=_listCodeSystemStatuses.FirstOrDefault(x => x.CodeSystemName==codeSystem.CodeSystemName);
-						if(codeSystemStatus==null) {
-							codeSystemStatus=new CodeSystemStatus();
-							codeSystemStatus.CodeSystemName=codeSystem.CodeSystemName;
-							codeSystemStatus.SystemStatus=Lan.g("CodeSystemImporter",ex.Message);
-							_listCodeSystemStatuses.Add(codeSystemStatus);
-						}
-						else {
-							codeSystemStatus.SystemStatus=Lan.g("CodeSystemImporter",ex.Message);
-						}
-					}
-					#endregion
-				}
 			}
 			//Threads are all ready to go start them all in parallel. We will re-enable these buttons when we handle the UpdateCodeSystemThread.Finished event.
 			if(UpdateCodeSystemThread.StartAll()) {
@@ -364,19 +279,6 @@ namespace OpenDental {
 			}
 			_hasDownloaded=true;
 			FillGrid();
-		}
-
-		///<summary>Returns a list of available code systems.  Throws exceptions, put in try catch block.</summary>
-		private static string RequestCodeSystemsXml() {
-			OpenDental.customerUpdates.Service1 updateService=new OpenDental.customerUpdates.Service1();
-			updateService.Url=PrefC.GetString(PrefName.UpdateServerAddress);
-			if(PrefC.GetString(PrefName.UpdateWebProxyAddress) !="") {
-				IWebProxy iWebProxy=new WebProxy(PrefC.GetString(PrefName.UpdateWebProxyAddress));
-				ICredentials iCredentials=new NetworkCredential(PrefC.GetString(PrefName.UpdateWebProxyUserName),PrefC.GetString(PrefName.UpdateWebProxyPassword));
-				iWebProxy.Credentials=iCredentials;
-				updateService.Proxy=iWebProxy;
-			}
-			return updateService.RequestCodeSystems("");//may throw error.  No security on this webmethod.
 		}
 
 		///<summary>Used to show EULA or other pre-download actions.  Displays message boxes. Returns false if pre-download checks not satisfied.</summary>
@@ -962,50 +864,9 @@ If the master term dictionary or software program containing the UCUM table, UCU
 				}
 			}
 
-			///<summary>Can throw exception.</summary>
+			///<summary>Code system files used to be downloaded from Open Dental's servers. Always throws HqNotAvailableException.</summary>
 			private static string SendAndReceiveDownloadXml(string codeSystemName) {
-				//prepare the xml document to send--------------------------------------------------------------------------------------
-				XmlWriterSettings xmlWriterSettings=new XmlWriterSettings();
-				xmlWriterSettings.Indent=true;
-				xmlWriterSettings.IndentChars=("    ");
-				StringBuilder stringBuilder=new StringBuilder();
-				XmlWriter xmlWriter=XmlWriter.Create(stringBuilder,xmlWriterSettings); 
-				//TODO: include more user information
-				xmlWriter.WriteStartElement("UpdateRequest");
-				xmlWriter.WriteStartElement("RegistrationKey");
-				xmlWriter.WriteString(PrefC.GetString(PrefName.RegistrationKey));
-				xmlWriter.WriteEndElement();
-				xmlWriter.WriteStartElement("PracticeTitle");
-				xmlWriter.WriteString(PrefC.GetString(PrefName.PracticeTitle));
-				xmlWriter.WriteEndElement();
-				xmlWriter.WriteStartElement("PracticeAddress");
-				xmlWriter.WriteString(PrefC.GetString(PrefName.PracticeAddress));
-				xmlWriter.WriteEndElement();
-				xmlWriter.WriteStartElement("PracticePhone");
-				xmlWriter.WriteString(PrefC.GetString(PrefName.PracticePhone));
-				xmlWriter.WriteEndElement();
-				xmlWriter.WriteStartElement("ProgramVersion");
-				xmlWriter.WriteString(PrefC.GetString(PrefName.ProgramVersion));
-				xmlWriter.WriteEndElement();
-				xmlWriter.WriteStartElement("CodeSystemRequested");
-				xmlWriter.WriteString(codeSystemName);
-				xmlWriter.WriteEndElement();
-				xmlWriter.WriteEndElement();
-				xmlWriter.Close();
-#if DEBUG
-				OpenDental.localhost.Service1 updateService=new OpenDental.localhost.Service1();
-#else
-				OpenDental.customerUpdates.Service1 updateService=new OpenDental.customerUpdates.Service1();
-				updateService.Url=PrefC.GetString(PrefName.UpdateServerAddress);
-#endif
-				if(PrefC.GetString(PrefName.UpdateWebProxyAddress) !="") {
-					IWebProxy iWebProxy=new WebProxy(PrefC.GetString(PrefName.UpdateWebProxyAddress));
-					ICredentials iCredentials=new NetworkCredential(PrefC.GetString(PrefName.UpdateWebProxyUserName),PrefC.GetString(PrefName.UpdateWebProxyPassword));
-					iWebProxy.Credentials=iCredentials;
-					updateService.Proxy=iWebProxy;
-				}
-				//may throw error
-				return updateService.RequestCodeSystemDownload(stringBuilder.ToString());
+				throw new HqNotAvailableException();
 			}
 		}
 

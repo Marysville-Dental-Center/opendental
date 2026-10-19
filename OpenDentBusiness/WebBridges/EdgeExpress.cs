@@ -276,6 +276,11 @@ namespace OpenDentBusiness {
 
 		///<summary>This class makes calls to the EdgeExpress Card Not Present API.</summary>
 		public class CNP {
+			///<summary>Where the hosted payment page sends the browser after the card is submitted, when the caller gives no return URL. The .invalid
+			///top level domain is reserved (RFC 2606) and never resolves, so nothing is contacted. FormWebBrowser closes itself when it is about to
+			///navigate here (see FormWebBrowser.UrlCloseOn), and the caller then asks EdgeExpress for the result.</summary>
+			public const string ReturnUrlDefault="https://edgeexpress-return.invalid/PayDone";
+
 			///<summary>Url to setup a payment page and get a OTK.</summary>
 			private static string _edgeExpressHostPayUrl {
 				get {
@@ -328,7 +333,7 @@ namespace OpenDentBusiness {
 					//Only host pay calls can display a payment page, direct pay calls will return an error if we send UI parameters.
 					if(url==_edgeExpressHostPayUrl) {
 						if(returnUrl.IsNullOrEmpty()) {
-							returnUrl="https://www.patientviewer.com/PortalPayDone.aspx";
+							returnUrl=ReturnUrlDefault;
 						}
 						AddUIParams(xmlWriter,returnUrl);
 						isDirectPay=false;

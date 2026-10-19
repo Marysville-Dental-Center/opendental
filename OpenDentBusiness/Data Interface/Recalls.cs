@@ -103,14 +103,6 @@ namespace OpenDentBusiness {
 		}
 		#endregion
 
-		private const string WEB_SCHED_SIGN_UP_URL="http://www.patientviewer.com/WebSchedSignUp.html";
-
-		///<summary>http://www.patientviewer.com/WebSchedSignUp.html</summary>
-		public static string GetWebSchedPromoURL() {
-			Meth.NoCheckMiddleTierRole();
-			return WEB_SCHED_SIGN_UP_URL;
-		}
-
 		///<summary>Gets all recalls for the supplied patients, usually a family or single pat.  Result might have a length of zero.  
 		///Each recall will also have the DateScheduled filled by pulling that info from other tables.</summary>
 		public static List<Recall> GetList(List<long> listPatNums) {

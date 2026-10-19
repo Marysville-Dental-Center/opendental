@@ -6,41 +6,23 @@ using System.Text;
 using System.Linq;
 
 namespace OpenDentBusiness {
-	///<summary>Never insert or update, use cache pattern only.  This is not referencing a real table in the database, it is a static object filled by the contents of the EHR.dll.</summary>
+	///<summary>Never insert or update, use cache pattern only.  This is not referencing a real table in the database. It used to be filled by
+	///loading Open Dental's proprietary EHR.dll through reflection. That reflection hook was removed, so the list starts empty (as if the table
+	///existed with no rows) unless something sets Listt explicitly.</summary>
 	public class EhrCodes {
 		#region CachePattern
-		//Atypical cache pattern. Cache is only filled when we have access to the EHR.dll file, otherwise listt will be an empty list of EHR codes (not null, just empty as if the table were there but with no codes in it.)
+		//Atypical cache pattern. listt is an empty list of EHR codes (not null, just empty as if the table were there but with no codes in it).
 
 		///<summary>A list of all EhrCodes.</summary>
 		private static List<EhrCode> listt;
 		private static object lockListt=new object();
 
-		///<summary>A list of all EhrCodes.</summary>
+		///<summary>A list of all EhrCodes. Empty unless set explicitly; EHR.dll is never loaded.</summary>
 		public static List<EhrCode> Listt {
 			get {
 				lock(lockListt) {
-					if(listt==null) {//instead of refreshing the cache using the normal pattern we must retrieve the cache from the EHR.dll. No call to DB.
-						object ObjEhrCodeList;
-						Assembly AssemblyEHR;
-						string dllPathEHR;
-						if(RemotingClient.MiddleTierRole==MiddleTierRole.ServerMT) {
-							dllPathEHR=CodeBase.ODFileUtils.CombinePaths(System.Web.Hosting.HostingEnvironment.ApplicationPhysicalPath,@"bin\EHR.dll");
-						}
-						else {
-							dllPathEHR=CodeBase.ODFileUtils.CombinePaths(System.Windows.Forms.Application.StartupPath,"EHR.dll");
-						}
-						ObjEhrCodeList=null;
-						AssemblyEHR=null;
-						if(System.IO.File.Exists(dllPathEHR)) {//EHR.dll is available, so load it up
-							AssemblyEHR=Assembly.LoadFile(dllPathEHR);
-							Type type=AssemblyEHR.GetType("EHR.EhrCodeList");//namespace.class
-							ObjEhrCodeList=Activator.CreateInstance(type);
-							object[] args=null;
-							listt=Crud.EhrCodeCrud.TableToList((DataTable)type.InvokeMember("GetListt",System.Reflection.BindingFlags.InvokeMethod,null,ObjEhrCodeList,args));
-						}
-						else {//no EHR.dll. "Return" empty list.
-							listt=new List<EhrCode>();
-						}
+					if(listt==null) {
+						listt=new List<EhrCode>();
 						updateCodeExistsHelper();
 					}
 					return listt;
@@ -53,7 +35,7 @@ namespace OpenDentBusiness {
 			}
 		}
 
-		///<summary>Forces an update to the in-memory list.  The list is filled from an in-memory list that is inside our oubfuscated EHR.dll.  For future reference, this method should never call the database because it is called by a background thread during startup.</summary>
+		///<summary>Forces an update to the in-memory list.</summary>
 		public static void UpdateList() {
 			if(listt==null) {
 				List<EhrCode> tempList=Listt;//Forces data to be cached.

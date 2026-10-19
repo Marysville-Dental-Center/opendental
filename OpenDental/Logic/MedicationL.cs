@@ -34,13 +34,10 @@ namespace OpenDental {
 			}
 		}
 
-		///<summary>Throws Exception. Downloads default medications list from OpenDental.com; returns filename of temp file.</summary>
+		///<summary>Used to download the default medications list from Open Dental's website. This build never contacts Open Dental's servers, so this
+		///always throws HqNotAvailableException. Import medications from a local file instead.</summary>
 		public static string DownloadDefaultMedicationsFile() {
-			string tempFile=PrefC.GetRandomTempFile(".tmp");
-			using(WebClient webClient=new WebClient()) {
-				webClient.DownloadFile("http://www.opendental.com/medications/DefaultMedications.txt",tempFile);
-			}
-			return tempFile;
+			throw new HqNotAvailableException();
 		}
 
 		///<summary>Inserts any new medications in listNewMeds, as well as updating any existing medications in listExistingMeds in conflict with 

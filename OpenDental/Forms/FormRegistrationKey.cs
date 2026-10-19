@@ -11,12 +11,12 @@ using CodeBase;
 
 namespace OpenDental{
 
+	///<summary>Shows the registration key field and the third party license texts. The registration key is optional and is not validated against
+	///anything: Open Dental's registration key check and license agreement signature (which was sent to Open Dental HQ) were removed.</summary>
 	public partial class FormRegistrationKey : FormODBase {
 
-		public bool NeedsSignature=false;
 		private string _key;
 
-		///<summary>Set NeedsSignature to true if the license agreements need to be signed.</summary>
 		public FormRegistrationKey()
 		{
 			//
@@ -28,20 +28,13 @@ namespace OpenDental{
 		}
 
 		private void FormRegistrationKey_Load(object sender,EventArgs e) {
-			if(!Security.IsUserLoggedIn) {
-				checkAgree.Enabled=false;
-			}
+			//No license agreement signature is collected anymore. The license texts below are still shown for reference.
+			checkAgree.Visible=false;
 			_key=PrefC.GetString(PrefName.RegistrationKey);
 			if(_key!=null && _key.Length==16){
 				_key=_key.Substring(0,4)+"-"+_key.Substring(4,4)+"-"+_key.Substring(8,4)+"-"+_key.Substring(12,4);
 			}
 			textKey1.Text=_key;
-			if(NeedsSignature) {
-				if(textKey1.Text!="") {
-					textKey1.ReadOnly=true;
-				}
-				this.Text=Lan.g(this,"License Agreement");
-			}
 			SetOKEnabled();
 			FillListBoxRegistration();
 			listBoxRegistration.SetSelected(0);
@@ -76,9 +69,9 @@ namespace OpenDental{
 			listBoxRegistration.Items.Add("Zxing",Properties.Resources.Zxing);
 		}
 
-		/// <summary>If using the foreign CDT.dll, it always returns true (valid), regardless of whether the box is blank or malformed.</summary>
+		///<summary>There is no registration key gate. Every key, including a blank or malformed one, is valid.</summary>
 		public static bool ValidateKey(string keystr){
-			return CDT.Class1.ValidateKey(keystr);
+			return true;
 		}
 
 		private void textKey1_KeyUp(object sender,KeyEventArgs e) {
@@ -100,36 +93,7 @@ namespace OpenDental{
 			textKey1.SelectionStart=cursorPosition;
 		}
 
-		///<summary>Creates an obfuscated signature when agreeing to the listed licenses. This is saved locally and sent to BugsHQ database. If send attempt is unsuccessful, 
-		///FormOpenDental will handle subsequent attempts on load. </summary>
-		private void SignLicenseAgreement(string regKey) {
-			UpdateHistory updateHistory=UpdateHistories.GetLastUpdateHistory();
-			if(updateHistory==null) { //Shouldn't happen. Table cannot be empty, but we cannot sign a non-existant update
-				return;
-			}
-			string windowsUserName="";
-			try {
-				windowsUserName=System.Security.Principal.WindowsIdentity.GetCurrent().Name;
-			}
-			catch {
-				windowsUserName="User not found";
-			}
-			string signature="RegKey:"+regKey+", UserNum:"+Security.CurUser.UserNum+", UserName:"+Security.CurUser.UserName+", WindowsUser:"+windowsUserName
-				+", Version:"+updateHistory.ProgramVersion+", DateTime Accepted:"+DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-			string obfuscatedSignature=CDT.Class1.TryEncrypt(signature);
-			bool wasSuccessful=UpdateHistories.SendSignatureToHQ(regKey,obfuscatedSignature);
-			if(wasSuccessful) {
-				Prefs.UpdateBool(PrefName.LicenseAgreementAccepted,true);
-				Signalods.SetInvalid(InvalidType.Prefs);
-			} //Will try to send again next time Open Dental is launched
-			updateHistory.Signature=obfuscatedSignature;
-			UpdateHistories.Update(updateHistory); //save signature regardless if web call successful
-		}
-
 		private void textKey1_TextChanged(object sender,EventArgs e) {
-			if(Security.IsUserLoggedIn && textKey1.Text!=_key) {
-				NeedsSignature=true;
-			}
 			SetOKEnabled();
 		}
 
@@ -142,21 +106,12 @@ namespace OpenDental{
 		}
 
 		private void SetOKEnabled(){
-			//User with a regKey needs to sign the license agreement and has checked the box
-			if(NeedsSignature && checkAgree.Checked && textKey1.Text!="") {
-				butOK.Enabled=true;
-			}
-			//Does not need to sign
-			else if(!NeedsSignature) {
-				butOK.Enabled=true;
-			}
-			else {
-				butOK.Enabled=false;
-			}
+			//No signature is required, so OK is always available.
+			butOK.Enabled=true;
 		}
 
 		private void butOK_Click(object sender, System.EventArgs e) {
-			if(textKey1.Text!="" 
+			if(textKey1.Text!=""
 				&& !Regex.IsMatch(textKey1.Text,@"^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$")
 				&& !Regex.IsMatch(textKey1.Text,@"^[A-Z0-9]{16}$"))
 			{
@@ -170,20 +125,10 @@ namespace OpenDental{
 			else if(Regex.IsMatch(textKey1.Text,@"^[A-Z0-9]{16}$")){
 				regkey=textKey1.Text;
 			}
-			if(!ValidateKey(regkey)){//a blank registration key will only be valid if the CDT.dll is foreign
-				MsgBox.Show(this,"Invalid registration key.");
-				return;
-			}
-			bool regKeyHasChanged=Prefs.UpdateString(PrefName.RegistrationKey,regkey);
-			if(regKeyHasChanged) {
-				Prefs.UpdateBool(PrefName.LicenseAgreementAccepted,false);
+			if(Prefs.UpdateString(PrefName.RegistrationKey,regkey)) {
 				Signalods.SetInvalid(InvalidType.Prefs);
 			}
-			FormOpenDental.IsRegKeyForTesting=PrefL.IsRegKeyForTesting();
 			//prefs refresh automatically in the calling class anyway.
-			if(NeedsSignature) {
-				SignLicenseAgreement(regkey);
-			}
 			DialogResult=DialogResult.OK;
 		}
 

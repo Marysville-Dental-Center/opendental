@@ -58,16 +58,11 @@ using WMPLib;
 using OpenDentalImaging;
 using OpenDental.Thinfinity;
 using ODApi;
-#if EHRTEST
-using EHR;
-#endif
 
 namespace OpenDental{
 	///<summary></summary>
 	public partial class FormOpenDental:FormODBase {
 		#region Fields - Public
-		///<summary>Represents if the regkey is a developer regkey.</summary>
-		public static bool IsRegKeyForTesting;
 		///<summary>This is used to determine how Open Dental closed.  If this is set to anything but 0 then some kind of error occurred and Open Dental was forced to close.  Currently only used when updating Open Dental silently.</summary>
 		public static int ExitCode=0;
 		///<summary>Class for holding command line args passed in when program starts.</summary>
@@ -633,7 +628,6 @@ namespace OpenDental{
 			_menuItemEditTestModeOverrides.Available=Introspection.IsTestingMode;
 			//If on a Middle Tier client, show the Payload Monitor
 			_menuItemPayloadMonitor.Available=(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT);
-			_menuItemRemoteSupport.Available=false;//Hidden until we are ready to go live.
 			//Query Monitor does not capture queries from a Middle Tier client, only show Query Monitor menu item when directly connected to the database.
 			_menuItemQueryMonitor.Available=(RemotingClient.MiddleTierRole==MiddleTierRole.ClientDirect);
 			if(Security.IsAuthorized(EnumPermType.ProcCodeEdit,true) && !PrefC.GetBool(PrefName.ADAdescriptionsReset)) {
@@ -805,6 +799,7 @@ namespace OpenDental{
 				};
 				FillComboTriageCoordinator();
 			}
+			TurnOffHqSupplementalBackups();
 			Logger.LogToPath("BackupReminder",LogPath.Startup,LogPhase.Unspecified);
 			//Users can have strange values in their preference table which can cause unhandled exceptions when the parsed date is manipulated.
 			//Manipulate DateTime.Today instead since it should always yield a reasonable DateTime for manipulation.
@@ -955,17 +950,7 @@ namespace OpenDental{
 			if(CommandLineArgs_.ArrayCommandLineArgs.Contains("--runLoadSimulation")) {
 				StartLoadSimulation();
 			}
-			Logger.LogToPath("LicenseAgreement",LogPath.Startup,LogPhase.Unspecified);
-			//Determine if customer needs to accept the License Agreement
-			if(!PrefC.GetBool(PrefName.LicenseAgreementAccepted)) { 
-				bool needsSignature=UpdateHistories.IsLicenseAgreementNeeded();
-				if(needsSignature) {
-					PromptForLicenseSignature(); //Makes web call
-				}
-				else {	//License Agreement already signed in local database, just need to send to HQ
-					BeginLicenseAgreementSignatureThread();
-				}
-			}
+			//The Open Dental license agreement signature prompt (and the upload of the signature to Open Dental HQ) has been removed.
 			_httpListenerApi=new HttpListener();
 			if(ODBuild.IsDebug()) {
 				_httpListenerApi.Prefixes.Add("http://127.0.0.1:30555/");//30555 was chosen arbitrarily for local API debugging.
@@ -1545,20 +1530,7 @@ namespace OpenDental{
 				MsgBox.Show("Database update successful");
 			}
 			ComputerPref computerPref =ComputerPrefs.LocalComputer;//just to trigger refresh. See notes in LayoutManagerForms.ScaleMy().
-			if(!FormRegistrationKey.ValidateKey(PrefC.GetString(PrefName.RegistrationKey))){
-				if(isSilentUpdate) {
-					ExitCode=311;//Registration Key could not be validated
-					Environment.Exit(ExitCode);
-					return false;
-				}
-				using FormRegistrationKey formRegistrationKey=new FormRegistrationKey();
-				formRegistrationKey.ShowDialog();
-				if(formRegistrationKey.DialogResult!=DialogResult.OK){
-					Environment.Exit(ExitCode);
-					return false;
-				}
-				Cache.Refresh(InvalidType.Prefs);
-			}
+			//There is no registration key gate. Any key, including a blank one, is accepted.
 			//This must be done at startup in case the user does not perform any action to save something to temp file.
 			//This will cause slowdown, but only for the first week.
 			if(DateTime.Today<PrefC.GetDate(PrefName.TempFolderDateFirstCleaned).AddDays(7)) {
@@ -2108,7 +2080,7 @@ namespace OpenDental{
 					_toolBarButtonText=new ODToolBarButton(Lan.g(this,"Text"),EnumIcons.Text,Lan.g(this,"Send Text Message"),"Text");
 					_toolBarButtonText.Style=ODToolBarButtonStyle.DropDownButton;
 					_toolBarButtonText.DropDownMenu=menuText;
-					_toolBarButtonText.Enabled=Programs.IsEnabled(ProgramName.CallFire)||SmsPhones.IsIntegratedTextingEnabled();
+					_toolBarButtonText.Enabled=IsTextingAvailable();
 					//The Notification text has not been set since startup.  We need an accurate starting count.
 					if(SmsPhones.IsIntegratedTextingEnabled()) {
 						//Init.  Will query for sms notification signal, or insert one if not found (eConnector hasn't updated this signal since we last cleared
@@ -2196,7 +2168,7 @@ namespace OpenDental{
 					ToolBarMain.Buttons["Commlog"].Enabled=true;
 					ToolBarMain.Buttons["Email"].Enabled=true;
 					if(_toolBarButtonText!=null) {
-						_toolBarButtonText.Enabled=Programs.IsEnabled(ProgramName.CallFire)||SmsPhones.IsIntegratedTextingEnabled();
+						_toolBarButtonText.Enabled=IsTextingAvailable();
 					}
 					ToolBarMain.Buttons["WebMail"].Enabled=true;
 					ToolBarMain.Buttons["Letter"].Enabled=true;
@@ -3917,10 +3889,10 @@ namespace OpenDental{
 			return true;
 		}
 
-		///<summary>Catches an exception from signal processing and sends the first one to HQ.</summary>
+		///<summary>Catches an exception from signal processing and writes the first one to the local log (nothing is sent to HQ).</summary>
 		private void SignalsTickExceptionHandler(Exception ex) {
 			//If an exception happens during processing signals, we will not close the program because the user is not trying to do anything. We will
-			//send the first exception to HQ.
+			//log the first exception locally.
 			if(_exceptionSignalsTick==null) {
 				_exceptionSignalsTick=new Exception("SignalsTick exception.",ex);
 				ODException.SwallowAnyException(() => {
@@ -5813,15 +5785,6 @@ namespace OpenDental{
 			frmQuickPaste.ShowDialog();
 		}
 
-		private void menuItemWebForm_Click(object sender,EventArgs e) {
-			if(!Security.IsAuthorized(EnumPermType.Setup)) {
-				return;
-			}
-			using FormWebFormSetup formWebFormSetup=new FormWebFormSetup();
-			formWebFormSetup.ShowDialog();
-			SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,"Web Forms Setup");
-		}
-
 		#endregion Menu - Setup
 
 		#region Menu - Lists
@@ -6733,14 +6696,6 @@ namespace OpenDental{
 			}
 		}
 
-		private void menuItemWebForms_Click(object sender,EventArgs e) {
-			if(!Security.IsAuthorized(EnumPermType.WebFormAccess)) {
-				return;
-			}
-			FormWebForms formWebForms = new FormWebForms();
-			formWebForms.Show();
-		}
-
 		private void menuItemWiki_Click(object sender,EventArgs e) {
 			if(Plugins.HookMethod(this,"FormOpenDental.menuItemWiki_Click")) {
 				return;
@@ -7089,27 +7044,57 @@ namespace OpenDental{
 		#endregion Menu - Dashboard
 
 		#region Menu - eServices
-		private void menuItemEServices_Click(object sender,EventArgs e) {
-			using FormEServicesSetup formEServicesSetup=new FormEServicesSetup();
-			formEServicesSetup.ShowDialog();
+		//The eServices main menu was removed. eServices were hosted by Open Dental and are not available in this build.
+
+		///<summary>Supplemental backups were made by Open Dental's eConnector service, which uploaded a copy of the whole database to Open Dental HQ.
+		///The preference defaults to on, so this turns it off once, in case an eConnector left behind by an Open Dental install is still running.
+		///Never throws.</summary>
+		private void TurnOffHqSupplementalBackups() {
+			if(WebServiceMainHQProxy.IsHqAvailable) {
+				return;
+			}
+			ODException.SwallowAnyException(() => {
+				if(Prefs.UpdateBool(PrefName.SupplementalBackupEnabled,false)) {
+					SecurityLogs.MakeLogEntry(EnumPermType.SupplementalBackup,0,
+						"Supplemental backup has been Disabled, because it uploaded the database to Open Dental HQ, which this build does not use.");
+				}
+			});
 		}
 
 		private void ShowEServicesSetup() {
 			if(_toolBarButtonText!=null) { //User may just have signed up for texting.
-				_toolBarButtonText.Enabled=Programs.IsEnabled(ProgramName.CallFire)||SmsPhones.IsIntegratedTextingEnabled();
+				_toolBarButtonText.Enabled=IsTextingAvailable();
 			}
+		}
+
+		///<summary>True if a texting integration that works in this build is enabled. CallFire talks to the vendor directly. Integrated Texting
+		///was relayed through Open Dental HQ, so it only counts once that hop is available (it is not in this build).</summary>
+		private bool IsTextingAvailable() {
+			if(Programs.IsEnabled(ProgramName.CallFire)) {
+				return true;
+			}
+			return WebServiceMainHQProxy.IsHqAvailable && SmsPhones.IsIntegratedTextingEnabled();
+		}
+
+		///<summary>Shows a message instead of opening an eServices window that only worked with Open Dental HQ. Returns true if the form type was
+		///one of those windows.</summary>
+		private bool IsEServicesFormUnavailable(FormType formType) {
+			if(!formType.In(FormType.FormEServicesWebSchedRecall,FormType.FormEServicesSignupPortal,FormType.FormEServicesWebSchedNewPat,
+				FormType.FormEServicesEConnector,FormType.FormEServicesAutoMsging,FormType.FormWebForms))
+			{
+				return false;
+			}
+			if(WebServiceMainHQProxy.IsHqAvailable) {
+				return false;
+			}
+			MessageBox.Show(new HqNotAvailableException().Message);
+			return true;
 		}
 
 		private void _menuItemERouting_Click(object sender, EventArgs e) {
 			if(!ClinicPrefs.IsODTouchAllowed(Clinics.ClinicNum)) {
-				string site="https://www.opendental.com/site/odtouch.html";
-				try{
-					Process.Start(site);
-				}
-				catch{
-					MessageBox.Show(Lan.g(this,"Could not find")+" "+site+"\r\n"
-					+Lan.g(this,"Please set up a default web browser."));
-				}
+				//ODTouch signup was an Open Dental hosted eService.
+				MessageBox.Show(new HqNotAvailableException().Message);
 				return;
 			}
 			using FormERoutings formERoutings = new FormERoutings();
@@ -7133,6 +7118,9 @@ namespace OpenDental{
 			List<long> listAlertItemNums=(List<long>)alertItem.TagOD;
 			AlertReadsHelper(listAlertItemNums);
 			CheckAlerts();
+			if(IsEServicesFormUnavailable(alertItem.FormToOpen)) {
+				return;
+			}
 			switch(alertItem.FormToOpen) {
 				case FormType.FormOnlinePayments:
 					FormOnlinePayments formOnlinePayments=new FormOnlinePayments();
@@ -7309,34 +7297,7 @@ namespace OpenDental{
 		#endregion Menu - Alerts
 
 		#region Menu - Help
-		private void menuItemRemote_Click(object sender,System.EventArgs e) {
-			string site="https://www.opendental.com/site/contact.html";
-			if(Programs.GetCur(ProgramName.BencoPracticeManagement).Enabled) {
-				site="https://support.benco.com/";
-			}
-			try {
-				if(ODCloudClient.IsAppStream) {
-					ODCloudClient.LaunchFileWithODCloudClient(site);
-					return;
-				}
-				Process.Start(site);
-			}
-			catch(Exception) {
-				MessageBox.Show(Lan.g(this,"Could not find")+" "+site+"\r\n"
-					+Lan.g(this,"Please set up a default web browser."));
-			}
-			/*
-			if(!MsgBox.Show(this,true,"A remote connection will now be attempted. Do NOT continue unless you are already on the phone with us.  Do you want to continue?"))
-			{
-				return;
-			}
-			try{
-				Process.Start("remoteclient.exe");//Network streaming remote client or any other similar client
-			}
-			catch{
-				MsgBox.Show(this,"Could not find file.");
-			}*/
-		}
+		//Online Support, Training Videos, Request Features, Support Status and Remote Support were Open Dental Software, Inc. services and have been removed.
 
 		private void menuItemHelpDocumentation_Click(object sender, System.EventArgs e) {
 			string site="https://www.opendental.com/site/documentation.html";
@@ -7365,20 +7326,6 @@ namespace OpenDental{
 				MsgBox.Show(this,"Could not find file.");
 			}
 		}
-		
-		private void menuItemWebinar_Click(object sender,EventArgs e) {
-			string site="https://opendental.com/site/webinars.html";
-			try {
-				if(ODCloudClient.IsAppStream) {
-					ODCloudClient.LaunchFileWithODCloudClient(site);
-					return;
-				}
-				Process.Start(site);
-			}
-			catch{
-				MsgBox.Show(this,"Could not open page.");
-			}
-		}
 
 		private void MenuItemQueryMonitor_Click(object sender,EventArgs e) {
 			if(!Security.IsAuthorized(EnumPermType.QueryMonitor)) {
@@ -7399,28 +7346,9 @@ namespace OpenDental{
 			**********************************************************************************************************************************/
 		}
 
-		private void menuItemRequestFeatures_Click(object sender,EventArgs e) {
-			FormFeatureRequest formFeatureRequest=new FormFeatureRequest();
-			formFeatureRequest.Show();
-		}
-
-		private void MenuItemSupportStatus_Click(object sender,EventArgs e) {
-			FormSupportStatus formSupportStatus=new FormSupportStatus();
-			formSupportStatus.Show();
-		}
-
-		private void menuItemRemoteSupport_Click(object sender,System.EventArgs e) {
-			Cursor=Cursors.WaitCursor;
-			string errorMsg=DocumentMiscs.LaunchShareScreen();
-			Cursor=Cursors.Default;
-			if(errorMsg!=null) {
-				MessageBox.Show(errorMsg);
-			}
-		}
-
 		private void menuItemUpdate_Click(object sender, System.EventArgs e) {
-			//If A to Z folders are disabled, this menu option is unavailable, since
-			//updates are handled more automatically.
+			//Opens the local update window (update history, update setup, copying program files into the database for other workstations).
+			//It no longer checks Open Dental's servers for new versions.
 			using FormUpdate formUpdate = new FormUpdate();
 			formUpdate.ShowDialog();
 			SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,"Opened Update Window.");
@@ -7790,27 +7718,7 @@ namespace OpenDental{
 			if(formLogOn.RefreshSecurityCache) {//Refresh the cache if we need to since cache allowed was just set to true
 				DataValid.SetInvalid(InvalidType.Security);
 			}
-			bool needsSignature=UpdateHistories.IsLicenseAgreementNeeded();
-			if(!PrefC.GetBool(PrefName.LicenseAgreementAccepted) && needsSignature) {
-				PromptForLicenseSignature();
-			}
 			Logger.LogToPath("ShowLogOn",LogPath.Startup,LogPhase.End);
-		}
-
-		///<summary>Opens the License Agreements for the user to sign. This prompting will only display when the user is a SecurityAdmin with a valid regkey. Closes Open Dental if they refuse to sign. </summary>
-		private void PromptForLicenseSignature() {
-			if(Security.IsAuthorized(EnumPermType.SecurityAdmin,true) && !PrefC.GetString(PrefName.RegistrationKey).IsNullOrEmpty()
-				&& !ODBuild.IsTrial() && !ODBuild.IsDebug()) 
-				{
-				using FormRegistrationKey formRegistrationKey=new FormRegistrationKey();
-				formRegistrationKey.NeedsSignature=true;
-				formRegistrationKey.ShowDialog();
-				if(formRegistrationKey.DialogResult!=DialogResult.OK) {
-					MsgBox.Show(this,"The License Agreement must be accepted by a SecurityAdmin user. The application will now close.");
-					Application.Exit();
-					return;
-				}
-			}
 		}
 
 		///<summary>Checks to see if the currently logged-in user needs to reset their password.  If they do, then this method will force the user to reset the password otherwise the program will exit.</summary>
@@ -8118,7 +8026,7 @@ namespace OpenDental{
 		}
 
 		///<summary>Call this method in places where Security.CurUser should not be null in order to
-		///notify HQ with additional information when a null Security.CurUser is detected.  Does nothing if CurUser is not null.</summary>
+		///log additional information locally when a null Security.CurUser is detected.  Does nothing if CurUser is not null.</summary>
 		private void NullUserCheck(string methodName) {
 			if(Security.CurUser!=null) {
 				return;

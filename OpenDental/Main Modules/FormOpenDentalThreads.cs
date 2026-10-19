@@ -91,12 +91,9 @@ namespace OpenDental {
 					Logger.LogActionIfOverTimeLimit("BeginUpdateFormTextThread",LogPath.Threads,() => BeginUpdateFormTextThread());
 					Logger.LogActionIfOverTimeLimit("BeginComputerHeartbeatThread",LogPath.Threads,() => BeginComputerHeartbeatThread());
 					Logger.LogActionIfOverTimeLimit("BeginPodiumThread",LogPath.Threads,() => BeginPodiumThread());
-					Logger.LogActionIfOverTimeLimit("BeginEhrCodeListThread",LogPath.Threads,() => BeginEhrCodeListThread());
 					Logger.LogActionIfOverTimeLimit("BeginTimeSyncThread",LogPath.Threads,() => BeginTimeSyncThread());
 					Logger.LogActionIfOverTimeLimit("BeginVoicemailThread",LogPath.Threads,() => BeginVoicemailThread());
 					Logger.LogActionIfOverTimeLimit("BeginHqMetricsThread",LogPath.Threads,() => BeginHqMetricsThread());
-					Logger.LogActionIfOverTimeLimit("BeginRegKeyThread",LogPath.Threads,() => BeginRegKeyThread());
-					Logger.LogActionIfOverTimeLimit("BeginRegistrationKeyIsDisabledThread",LogPath.Threads,() => BeginRegistrationKeyIsDisabledThread());
 					Logger.LogActionIfOverTimeLimit("CheckAlerts",LogPath.Threads,() => CheckAlerts(doRunOnThread: true));
 					Logger.LogActionIfOverTimeLimit("BeginODCloudDcvExtensionThread",LogPath.Threads, () => BeginODCloudDcvExtensionThread());
 					Logger.LogActionIfOverTimeLimit("BeginODCloudMachineNameThread",LogPath.Threads,() => BeginODCloudMachineNameThread());
@@ -388,38 +385,15 @@ namespace OpenDental {
 		}
 
 		#endregion DataReaderNullMonitorThread
-		#region EhrCodeListThread
-
-		///<summary>This begins a thread that loads the EHR.dll in the background.</summary>
-		private void BeginEhrCodeListThread() {
-			if(IsThreadAlreadyRunning(FormODThreadNames.EhrCodeList)) {
-				return;
-			}
-			//For EHR users we want to load up the EHR code list from the obfuscated dll in a background thread because it takes roughly 11 seconds to load up.
-			if(!PrefC.GetBool(PrefName.ShowFeatureEhr)) {
-				return;
-			}
-			ODThread odThread=new ODThread(o => {
-				//In regards to throwing, this should never happen.  It would most likely be due to a corrupt dll issue but I don't want to stop the 
-				//start up sequence. Users could theoretically use Open Dental for an entire day and never hit the code that utilizes the EhrCodes class.
-				//Therefore, we do not want to cause any issues and the worst case scenario is the users has to put up with the 11 second delay (old behavior).
-				ODException.SwallowAnyException(() => {
-					EhrCodes.UpdateList();
-				});
-			});
-			odThread.AddExceptionHandler((e) => e.DoNothing());
-			odThread.GroupName=FormODThreadNames.EhrCodeList.GetDescription();
-			odThread.Name=FormODThreadNames.EhrCodeList.GetDescription();
-			odThread.Start();
-			_listOdThreadsRunOnce.Add(odThread);
-		}
-
-		#endregion
 		#region EServiceMonitorThread
 
 		///<summary>Starts the eService monitoring thread that will run once a minute.  Only runs if the user currently logged in has the eServices permission.</summary>
 		private void BeginEServiceMonitorThread() {
 			if(IsThreadAlreadyRunning(FormODThreadNames.EServiceMonitoring)) {
+				return;
+			}
+			//The eConnector only relays Open Dental hosted eServices, which are not available in this build. Do not raise "restart the eConnector" alerts.
+			if(!WebServiceMainHQProxy.IsHqAvailable) {
 				return;
 			}
 			//If the user currently logged in has permission to view eService settings, turn on the listener monitor.
@@ -767,6 +741,10 @@ namespace OpenDental {
 		#endregion
 		#region ODServiceStarterThread
 
+		///<summary>Executable names of Open Dental Software, Inc.'s own services that relay to Open Dental HQ: the eConnector (heartbeats, eService
+		///relay, statistics and log uploads, supplemental backups to HQ) and the legacy CustListener it replaced. Neither is built from this repo.</summary>
+		private static readonly string[] _arrayHqRelayServiceExeNames=new string[] { "OpenDentalEConnector.exe","OpenDentalCustListener.exe" };
+
 		///<summary>Spawns a thread that attempts to start all Open Dental services.</summary>
 		private void BeginODServiceStarterThread() {
 			if(IsThreadAlreadyRunning(FormODThreadNames.ODServiceStarter)) {
@@ -777,7 +755,7 @@ namespace OpenDental {
 					//An InvalidOperationException can get thrown if services could not start.  E.g. current user is not running Open Dental as an 
 					//administrator.	We do not want to halt the startup sequence here.  If we want to notify customers of a downed service, there needs to 
 					//be an additional monitoring service installed.
-					ServicesHelper.StartServices(ServicesHelper.GetAllOpenDentServices());
+					ServicesHelper.StartServices(GetOpenDentServicesToStart());
 				}
 			});
 			//If the thread that attempts to start all Open Dental services fails for any reason, silently fail.
@@ -785,6 +763,26 @@ namespace OpenDental {
 			odThread.GroupName=FormODThreadNames.ODServiceStarter.GetDescription();
 			odThread.Name=FormODThreadNames.ODServiceStarter.GetDescription();
 			odThread.Start(true);
+		}
+
+		///<summary>Returns the installed services whose names start with "OpenDent" that this computer should start, such as OpenDentalService,
+		///OpenDentalAPIService and OpenDentHL7. When Open Dental HQ is not available (always, outside of unit tests), the eConnector and CustListener
+		///are left out, so a copy left behind by an Open Dental install is never restarted after an administrator stopped it.</summary>
+		private static List<System.ServiceProcess.ServiceController> GetOpenDentServicesToStart() {
+			List<System.ServiceProcess.ServiceController> listServiceControllers=ServicesHelper.GetAllOpenDentServices();
+			if(WebServiceMainHQProxy.IsHqAvailable) {
+				return listServiceControllers;
+			}
+			List<string> listServiceNamesExcluded=new List<string>();
+			for(int i=0;i<_arrayHqRelayServiceExeNames.Length;i++) {
+				string exeName=_arrayHqRelayServiceExeNames[i];
+				//GetServicesByExe reads each service's ImagePath from the registry and throws if a key can't be read.
+				ODException.SwallowAnyException(() => listServiceNamesExcluded.AddRange(ServicesHelper.GetServicesByExe(exeName).Select(x => x.ServiceName)));
+			}
+			return listServiceControllers.FindAll(x => !listServiceNamesExcluded.Contains(x.ServiceName)
+				//Also leave out the default service names, in case the registry lookup above failed.
+				&& x.ServiceName.IndexOf("EConnector",StringComparison.OrdinalIgnoreCase)<0
+				&& x.ServiceName.IndexOf("CustListener",StringComparison.OrdinalIgnoreCase)<0);
 		}
 
 		///<summary>Spawns a thread that attempts to start the Patient Dashboard.</summary>
@@ -880,26 +878,6 @@ namespace OpenDental {
 			odThread.GroupName=FormODThreadNames.Podium.GetDescription();
 			odThread.Name=FormODThreadNames.Podium.GetDescription();
 			odThread.Start();
-		}
-
-		#endregion
-		#region RegKeyThread
-
-		///<summary>Begins a thread that checks if the thread key is for testing. Also makes a call to check and update customer version history if 
-		///recently updated. This thread is ran only once.</summary>
-		private void BeginRegKeyThread() {
-			if(IsThreadAlreadyRunning(FormODThreadNames.RegKeyIsForTesting)) {
-				return;
-			}
-			ODThread odThread=new ODThread(o => {
-				IsRegKeyForTesting=PrefL.IsRegKeyForTesting();
-				WebServiceMainHQProxy.UpdateCustomerVersionHistory();
-			});
-			odThread.AddExceptionHandler(ex => ex.DoNothing());//silently fail.
-			odThread.GroupName=FormODThreadNames.RegKeyIsForTesting.GetDescription();
-			odThread.Name=FormODThreadNames.RegKeyIsForTesting.GetDescription();
-			odThread.Start(true);
-			_listOdThreadsRunOnce.Add(odThread);
 		}
 
 		#endregion
@@ -1082,55 +1060,6 @@ namespace OpenDental {
 			}
 		}
 
-		#endregion
-		#region RegistrationKeyIsDisabledThread
-
-		///<summary>Begins a thread that monitor's the RegistrationKeyIsDisabled pref. If pref exists and value is true then shows an annoying popup.</summary>
-		private void BeginRegistrationKeyIsDisabledThread() {
-			if(IsThreadAlreadyRunning(FormODThreadNames.RegistrationKeyIsDisabled)) {
-				return;
-			}
-			ODThread threadRegistrationKeyIsDisabled=new ODThread(
-				(int)TimeSpan.FromMinutes(10).TotalMilliseconds,
-				(o) => {
-					if(PrefC.GetBoolSilent(PrefName.RegistrationKeyIsDisabled,false)) {
-						this.Invoke(() => {
-							MessageBox.Show(
-								"Registration key has been disabled.  You are using an unauthorized version of this program.",
-								"Warning",
-								MessageBoxButtons.OK,
-								MessageBoxIcon.Warning);
-						});						
-					}
-				});
-			threadRegistrationKeyIsDisabled.AddExceptionHandler(ex => ex.DoNothing());
-			threadRegistrationKeyIsDisabled.GroupName=FormODThreadNames.RegistrationKeyIsDisabled.GetDescription();
-			threadRegistrationKeyIsDisabled.Name=FormODThreadNames.RegistrationKeyIsDisabled.GetDescription();
-			threadRegistrationKeyIsDisabled.Start();
-		}
-
-		#endregion
-		#region LicenseAgreementSignature
-		///<summary>Begins a thread that sends the customer's License Agreement signature to HQ. This thread is ran only once.</summary>
-		private void BeginLicenseAgreementSignatureThread() {
-			if(IsThreadAlreadyRunning(FormODThreadNames.LicenseAgreementSignature)) {
-				return;
-			}
-			ODThread odThread=new ODThread(o => {
-				UpdateHistory updateHistory=UpdateHistories.GetLastSignedUpdateHistory();
-				string regKey=PrefC.GetString(PrefName.RegistrationKey);
-				bool wasSuccessful=UpdateHistories.SendSignatureToHQ(regKey,updateHistory.Signature);
-				if(wasSuccessful) {
-					Prefs.UpdateBool(PrefName.LicenseAgreementAccepted,true);
-					Signalods.SetInvalid(InvalidType.Prefs);
-				}
-			});
-			odThread.AddExceptionHandler(ex => ex.DoNothing());//silently fail.
-			odThread.GroupName=FormODThreadNames.LicenseAgreementSignature.GetDescription();
-			odThread.Name=FormODThreadNames.LicenseAgreementSignature.GetDescription();
-			odThread.Start(true);
-			_listOdThreadsRunOnce.Add(odThread);
-		}
 		#endregion
 
 		#region ApiEventsThread

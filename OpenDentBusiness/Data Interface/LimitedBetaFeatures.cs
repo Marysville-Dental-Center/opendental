@@ -131,7 +131,9 @@ namespace OpenDentBusiness{
 			return (limitedBetaFeature?.IsSignedUp??false);
 		}
 
-		///<summary>Syncs the loacal LimitedBetaFeature table with the list passed in. Ignores rows with undefined EServiceFeatureInfoEnums.</summary>
+		///<summary>Syncs the loacal LimitedBetaFeature table with the list passed in. Ignores rows with undefined EServiceFeatureInfoEnums.
+		///The list used to come from Open Dental HQ during eService setup. That sync was removed, so the application never calls this anymore;
+		///it is kept for the unit tests of IsAllowed().</summary>
 		public static void SyncFromHQ(List<LimitedBetaFeature> listLimitedBetaFeaturesHQ) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT){
 				Meth.GetVoid(MethodBase.GetCurrentMethod(),listLimitedBetaFeaturesHQ);

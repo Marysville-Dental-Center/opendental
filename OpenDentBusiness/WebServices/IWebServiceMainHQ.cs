@@ -5,8 +5,8 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace OpenDentBusiness {
-	///<summary>This interface needs to have any method from WebServiceMainHQ that you want to use. This allows for testing code without having to
-	///have an instance of WebServiceMainHQ setup.</summary>
+	///<summary>The methods of Open Dental's HQ web service (WebServiceMainHQ.asmx) that this program used to call. This build never contacts it:
+	///WebServiceMainHQProxy.GetWebServiceMainHQInstance() returns WebServiceMainHQNoHq unless a unit test sets a mock.</summary>
 	public interface IWebServiceMainHQ {
 		///<summary>RealWebServiceMainHQ must be able to change the URL at runtime. URL is typically a property of each web reference in c#. 
 		///Placing this here allows the mock instance to see this property also.</summary>

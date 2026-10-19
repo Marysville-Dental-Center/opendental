@@ -37,18 +37,7 @@ namespace OpenDental {
 			xmlWriter.WriteElementString("EmailAddress",textEmailAddress.Text);
 			xmlWriter.WriteEndElement();
 			xmlWriter.Close();
-#if DEBUG
-			OpenDental.localhost.Service1 service1=new OpenDental.localhost.Service1();
-#else
-			OpenDental.customerUpdates.Service1 service1=new OpenDental.customerUpdates.Service1();
-			service1.Url=PrefC.GetString(PrefName.UpdateServerAddress);
-#endif
-			if(PrefC.GetString(PrefName.UpdateWebProxyAddress)!="") {
-				IWebProxy iWebProxy=new WebProxy(PrefC.GetString(PrefName.UpdateWebProxyAddress));
-				ICredentials iCredentials=new NetworkCredential(PrefC.GetString(PrefName.UpdateWebProxyUserName),PrefC.GetString(PrefName.UpdateWebProxyPassword));
-				iWebProxy.Credentials=iCredentials;
-				service1.Proxy=iWebProxy;
-			}
+			ICustomerUpdates service1=CustomerUpdatesProxy.GetWebServiceInstance();//Not available in this build. Throws HqNotAvailableException.
 			string xmlResponse="";
 			try {
 				xmlResponse=service1.RequestEmailVerificationCode(stringBuilder.ToString());
@@ -137,18 +126,7 @@ namespace OpenDental {
 			xmlWriter.WriteElementString("CertificateData",Convert.ToBase64String(byteArrayCertificate));
 			xmlWriter.WriteEndElement();
 			xmlWriter.Close();
-#if DEBUG
-			OpenDental.localhost.Service1 service1=new OpenDental.localhost.Service1();
-#else
-			OpenDental.customerUpdates.Service1 service1=new OpenDental.customerUpdates.Service1();
-			service1.Url=PrefC.GetString(PrefName.UpdateServerAddress);
-#endif
-			if(PrefC.GetString(PrefName.UpdateWebProxyAddress)!="") {
-				IWebProxy iWebProxy=new WebProxy(PrefC.GetString(PrefName.UpdateWebProxyAddress));
-				ICredentials iCredentials=new NetworkCredential(PrefC.GetString(PrefName.UpdateWebProxyUserName),PrefC.GetString(PrefName.UpdateWebProxyPassword));
-				iWebProxy.Credentials=iCredentials;
-				service1.Proxy=iWebProxy;
-			}
+			ICustomerUpdates service1=CustomerUpdatesProxy.GetWebServiceInstance();//Not available in this build. Throws HqNotAvailableException.
 			string xmlResponse="";
 			try {
 				xmlResponse=service1.PostEmailCertificate(stringBuilder.ToString());

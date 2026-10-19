@@ -8507,18 +8507,7 @@ namespace OpenDental {
 						xmlWriter.WriteEndElement();
 						xmlWriter.WriteEndElement();
 					}
-#if DEBUG
-					OpenDental.localhost.Service1 service1Update=new OpenDental.localhost.Service1();
-#else
-					OpenDental.customerUpdates.Service1 service1Update=new OpenDental.customerUpdates.Service1();
-					service1Update.Url=PrefC.GetString(PrefName.UpdateServerAddress);
-#endif
-					if(PrefC.GetString(PrefName.UpdateWebProxyAddress)!="") {
-						IWebProxy iWebProxy=new WebProxy(PrefC.GetString(PrefName.UpdateWebProxyAddress));
-						ICredentials iCredentials=new NetworkCredential(PrefC.GetString(PrefName.UpdateWebProxyUserName),PrefC.GetString(PrefName.UpdateWebProxyPassword));
-						iWebProxy.Credentials=iCredentials;
-						service1Update.Proxy=iWebProxy;
-					}
+					ICustomerUpdates service1Update=CustomerUpdatesProxy.GetWebServiceInstance();//Not available in this build. Throws HqNotAvailableException.
 					string patNum="";
 					XmlDocument xmlDocument=new XmlDocument();
 					try {
@@ -9253,18 +9242,8 @@ namespace OpenDental {
 			}
 			xmlWriter.WriteEndElement();//End ErxAccessRequest
 			xmlWriter.Close();
-#if DEBUG
-			localhost.Service1 service1Update=new localhost.Service1();
-#else
-			OpenDental.customerUpdates.Service1 service1Update=new OpenDental.customerUpdates.Service1();
-				service1Update.Url=PrefC.GetString(PrefName.UpdateServerAddress);
-#endif
-			if(PrefC.GetString(PrefName.UpdateWebProxyAddress)!="") {
-				IWebProxy iWebProxy=new WebProxy(PrefC.GetString(PrefName.UpdateWebProxyAddress));
-				ICredentials iCredentials=new NetworkCredential(PrefC.GetString(PrefName.UpdateWebProxyUserName),PrefC.GetString(PrefName.UpdateWebProxyPassword));
-				iWebProxy.Credentials=iCredentials;
-				service1Update.Proxy=iWebProxy;
-			}
+			//eRx provider access used to be granted by Open Dental HQ. Not available until direct vendor integration is configured.
+			ICustomerUpdates service1Update=CustomerUpdatesProxy.GetWebServiceInstance();
 			string result;
 			try {
 				result=service1Update.GetErxAccess(stringBuilder.ToString());//may throw error

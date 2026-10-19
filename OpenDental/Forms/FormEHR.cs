@@ -7,10 +7,6 @@ using OpenDentBusiness;
 using OpenDental.UI;
 using CodeBase;
 using DataConnectionBase;
-using System.Reflection;
-#if EHRTEST
-using EHR;
-#endif
 
 namespace OpenDental {
 	public partial class FormEHR:FormODBase {
@@ -29,33 +25,12 @@ namespace OpenDental {
 		public bool DoShowOrders;
 		///<summary>This is set every time the form is shown.  It is used to determine if there is an Ehr key for the patient's primary provider.  If not, then The main grid will show empty.</summary>
 		private Provider _provider;
-		///<summary>This will be null if EHR didn't load up.  EHRTEST conditional compilation constant is used because the EHR project is only part of the solution here at HQ.  We need to use late binding in a few places so that it will still compile for people who download our sourcecode.  But late binding prevents us from stepping through for debugging, so the EHRTEST lets us switch to early binding.</summary>
-		public static object ObjFormEhrMeasures;
-		///<summary>This will be null if EHR didn't load up.</summary>
-		public static Assembly AssemblyEHR;
 
+		///<summary>The Meaningful Use measures dashboard and the EHR provider/quarterly key checks lived in Open Dental's proprietary EHR.dll, which
+		///used to be loaded through reflection. That hook was removed. The rest of this window works as it did when EHR.dll was missing.</summary>
 		public FormEHR() {
 			InitializeComponent();
 			InitializeLayoutManager();
-			if(PrefC.GetBoolSilent(PrefName.ShowFeatureEhr,false)) {
-				constructObjFormEhrMeasuresHelper();
-			}
-		}
-
-		///<summary>Constructs the ObjFormEhrMeasures fro use with late binding.</summary>
-		private static void constructObjFormEhrMeasuresHelper() {
-			string dllPathEHR=ODFileUtils.CombinePaths(Application.StartupPath,"EHR.dll");
-			ObjFormEhrMeasures=null;
-			AssemblyEHR=null;
-			if(File.Exists(dllPathEHR)) {//EHR.dll is available, so load it up
-				AssemblyEHR=Assembly.LoadFile(dllPathEHR);
-				Type type=AssemblyEHR.GetType("EHR.FormEhrMeasures");//namespace.class
-				ObjFormEhrMeasures=Activator.CreateInstance(type);
-				return;
-			}
-			#if EHRTEST
-				ObjFormEhrMeasures=new FormEhrMeasures();
-			#endif
 		}
 
 		private void FormEHR_Load(object sender,EventArgs e) {
@@ -556,34 +531,8 @@ namespace OpenDental {
 		}
 
 		private void butMeasures_Click(object sender,EventArgs e) {
-			#if EHRTEST
-				ObjFormEhrMeasures=new EHR.FormEhrMeasures();
-				((EHR.FormEhrMeasures)ObjFormEhrMeasures).ShowDialog();
-
-			#else
-				if(ObjFormEhrMeasures==null) {
-					return;
-				}
-				Type type=AssemblyEHR.GetType("EHR.FormEhrMeasures");//namespace.class
-				//type.InvokeMember("ShowDialog",System.Reflection.BindingFlags.InvokeMethod,null,ObjFormEhrMeasures,null);
-				using Form form=(Form)type.InvokeMember("FormEhrMeasures",System.Reflection.BindingFlags.CreateInstance,null,ObjFormEhrMeasures,null);
-				//AssemblyEHR.GetModule("FormEhrMeasures");
-				form.ShowDialog();
-				long patNum=0;
-				try {
-					patNum=(long)type.InvokeMember("SelectedPatNum",System.Reflection.BindingFlags.GetProperty,null,form,null);
-				}
-				catch { }
-				if(form.DialogResult==DialogResult.OK && patNum!=0) {
-					PatNum=patNum;
-					EhrFormResultOnClose=EhrFormResult.PatientSelect;
-					DialogResult=DialogResult.OK;
-					Close();
-					return;
-				}
-				//long patNum;
-			#endif
-			FillGridMu();
+			//The Meaningful Use measures report was part of Open Dental's proprietary EHR.dll, which is not loaded anymore.
+			MsgBox.Show(this,"The Meaningful Use measures report is not available in this build.");
 		}
 
 		private void butHash_Click(object sender,EventArgs e) {
@@ -679,38 +628,16 @@ namespace OpenDental {
 			formEhrMeasureEvents.ShowDialog();
 		}
 
+		///<summary>EHR provider keys were issued and checked by Open Dental's proprietary EHR.dll, which is not loaded anymore. Always returns false,
+		///the same result as when EHR.dll was missing.</summary>
 		public static bool ProvKeyIsValid(string lName,string fName,int year,string provKey) {
-			//A similar method was moved over to EhrSummaryCcds so it could also be accessed from WpfControlsOD
-			try {
-				#if EHRTEST //This pattern allows the code to compile without having the EHR code available.
-				return FormEhrMeasures.ProvKeyIsValid(lName,fName,yearValue,provKey);
-				#else
-				constructObjFormEhrMeasuresHelper();
-				Type type=AssemblyEHR.GetType("EHR.FormEhrMeasures");//namespace.class
-				object[] objectArray=new object[] { lName,fName,year,provKey };
-				return (bool)type.InvokeMember("ProvKeyIsValid",System.Reflection.BindingFlags.InvokeMethod,null,ObjFormEhrMeasures,objectArray);
-				#endif
-			}
-			catch {
-				return false;
-			}
+			return false;
 		}
 
+		///<summary>EHR quarterly keys were issued and checked by Open Dental's proprietary EHR.dll, which is not loaded anymore. Always returns false,
+		///the same result as when EHR.dll was missing.</summary>
 		public static bool QuarterlyKeyIsValid(string year,string quarter,string practiceTitle,string qKey) {
-			//A similar method was moved over to EhrSummaryCcds so it could also be accessed from WpfControlsOD
-			try{
-				#if EHRTEST //This pattern allows the code to compile without having the EHR code available.
-					return FormEhrMeasures.QuarterlyKeyIsValid(year,quarter,practiceTitle,qkey);
-				#else
-					constructObjFormEhrMeasuresHelper();
-					Type type=AssemblyEHR.GetType("EHR.FormEhrMeasures");//namespace.class
-					object[] objectArray=new object[] { year,quarter,practiceTitle,qKey };
-					return (bool)type.InvokeMember("QuarterlyKeyIsValid",System.Reflection.BindingFlags.InvokeMethod,null,ObjFormEhrMeasures,objectArray);
-				#endif
-			}
-			catch{
-				return false;
-			}
+			return false;
 		}
 
 	}
