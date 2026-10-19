@@ -7,11 +7,9 @@ using System.Net;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
-using System.Windows.Forms;
 using CodeBase;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
-using WebServiceSerializer;
 
 namespace OpenDentBusiness {
 	public class ItransNCpl {
@@ -26,10 +24,12 @@ namespace OpenDentBusiness {
 		[JsonProperty("Change_Log")]
 		private List<ChangeLog> ListChangeLogs { get; set; }
 		
-		///<summary>Returns a blank string if there were no errors while attempting to update internal carriers using iTrans n-cpl.json file.</summary>
+		///<summary>How long the ITRANS Claims Director's --getncpl command may run before we stop waiting for it.</summary>
+		public const int GetNcplTimeoutMs=120000;
+
+		///<summary>Returns a blank string if there were no errors while attempting to update internal carriers using iTrans n-cpl.json file.
+		///The carrier list comes only from the office's own ITRANS Claims Director (ITRANS 2.0) install. This program never downloads it.</summary>
 		public static string TryCarrierUpdate(bool isAutomatic=true,ItransImportFields fieldsToImport=ItransImportFields.None) {
-			string json;
-			DateTime dateTimeTrans=DateTime.Now;
 			Clearinghouse clearinghouse=Clearinghouses.GetDefaultDental();
 			if(clearinghouse==null) {
 				return Lans.g("Clearinghouse","Unable to update. No default dental clearinghouse set.");
@@ -38,39 +38,9 @@ namespace OpenDentBusiness {
 			//if(ODBuild.IsDebug()) {
 			//	json=File.ReadAllText(@"..\..\..\UnitTests\Resources\test-n-cpl.txt");
 			//}
-			//If ITRANS2 is fully setup, then use the local ITRANS2 install on server to import carrier data.
-			if(clearinghouse.CommBridge==EclaimsCommBridge.ITRANS2 && !string.IsNullOrEmpty(clearinghouse.ResponsePath)) {
-				if(!File.Exists(ODFileUtils.CombinePaths(clearinghouse.ResponsePath,"ITRANS Claims Director.exe"))) {
-					return Lans.g("Clearinghouse","Unable to find 'ITRANS Claims Director.exe'. Make sure the file exists and the path is correct.");
-				}
-				if(isAutomatic && PrefC.GetString(PrefName.WebServiceServerName).ToLower()!=Dns.GetHostName().ToLower()) {//Only server can run when isOnlyServer is true.
-					return Lans.g("Clearinghouse","Update can only run on the web service server "+PrefC.GetString(PrefName.WebServiceServerName))+
-						". "+Lans.g("Clearinghouse","Connect to the server and try again.");
-				}
-				Process process=new Process {
-					StartInfo=new ProcessStartInfo {
-						FileName=ODFileUtils.CombinePaths(clearinghouse.ResponsePath,"ITRANS Claims Director.exe"),
-						Arguments=" --getncpl"
-					}
-				};
-				process.Start();
-				process.WaitForExit();
-				string ncplFilePath=ODFileUtils.CombinePaths(clearinghouse.ResponsePath,"n-cpl.json");
-				json=File.ReadAllText(ncplFilePath);//Read n-cpl.json
-				dateTimeTrans=File.GetCreationTime(ncplFilePath);
-			}
-			else {//ITRANS2 not used or not setup correctly (ex using "ITRANS"), go to HQ for file content.
-				if(!WebServiceMainHQProxy.IsHqAvailable) {
-					//Open Dental HQ used to relay the carrier list. Set up ITRANS2 locally to import carriers directly from the vendor.
-					return HqNotAvailableException.GetVendorMessage(Lans.g("Clearinghouse","Downloading the carrier list without a local ITRANS2 install"));
-				}
-				try {
-					string result=WebServiceMainHQProxy.GetWebServiceMainHQInstance().CanadaCarrierUpdate(PayloadHelper.CreatePayload("",eServiceCode.Undefined));
-					json=WebSerializer.DeserializePrimitiveOrThrow<string>(result);
-				}
-				catch(Exception ex) {
-					return Lans.g("Clearinghouse","Unable to update carrier list from HQ web services.")+"\r\n"+ex.Message.ToString();
-				}
+			string errorMsg=TryGetJsonFromIcd(clearinghouse,isAutomatic,out string json,out DateTime dateTimeTrans);
+			if(!string.IsNullOrEmpty(errorMsg)) {
+				return errorMsg;
 			}
 			EtransMessageText msgTextPrev=EtransMessageTexts.GetMostRecentForType(EtransType.ItransNcpl);
 			if(msgTextPrev!=null && msgTextPrev.MessageText==json) {
@@ -92,6 +62,61 @@ namespace OpenDentBusiness {
 			}
 			UpdateCarriersFromJsonList(iTransNCpl,isAutomatic,fieldsToImport);
 			return "";//Blank string represents a completed update.
+		}
+
+		///<summary>Reads the carrier list (n-cpl.json) from the local ITRANS Claims Director install that the clearinghouse's ResponsePath points to,
+		///after asking it to refresh the list with its --getncpl command. Returns a blank string on success, otherwise a translated message.
+		///Only ITRANS 2.0 is supported. This program never fetches the carrier list from any internet host.</summary>
+		public static string TryGetJsonFromIcd(Clearinghouse clearinghouse,bool isAutomatic,out string json,out DateTime dateTimeTrans) {
+			json="";
+			dateTimeTrans=DateTime.Now;
+			if(clearinghouse==null || clearinghouse.CommBridge!=EclaimsCommBridge.ITRANS2 || string.IsNullOrWhiteSpace(clearinghouse.ResponsePath)) {
+				return Lans.g("Clearinghouse","Carrier list import needs the ITRANS Claims Director (ITRANS 2.0) installed and selected in Setup > Clearinghouses.");
+			}
+			string exePath=ODFileUtils.CombinePaths(clearinghouse.ResponsePath,"ITRANS Claims Director.exe");
+			if(!File.Exists(exePath)) {
+				return Lans.g("Clearinghouse","Unable to find 'ITRANS Claims Director.exe'. Make sure the file exists and the path is correct.");
+			}
+			if(isAutomatic && PrefC.GetString(PrefName.WebServiceServerName).ToLower()!=Dns.GetHostName().ToLower()) {//Only server can run when isOnlyServer is true.
+				return Lans.g("Clearinghouse","Update can only run on the web service server "+PrefC.GetString(PrefName.WebServiceServerName))+
+					". "+Lans.g("Clearinghouse","Connect to the server and try again.");
+			}
+			string errorMsg=TryRunGetNcplCommand(exePath,GetNcplTimeoutMs);
+			if(!string.IsNullOrEmpty(errorMsg)) {
+				return errorMsg;
+			}
+			string ncplFilePath=ODFileUtils.CombinePaths(clearinghouse.ResponsePath,"n-cpl.json");
+			try {
+				json=File.ReadAllText(ncplFilePath);//Read n-cpl.json
+				dateTimeTrans=File.GetCreationTime(ncplFilePath);
+			}
+			catch(Exception ex) {
+				json="";
+				return Lans.g("Clearinghouse","Unable to read the carrier list file")+" '"+ncplFilePath+"'\r\n"+ex.Message;
+			}
+			return "";
+		}
+
+		///<summary>Runs the ITRANS Claims Director's --getncpl command and waits for it, but never longer than timeoutMs, so a stuck install can't
+		///hang the hourly carrier thread. Returns a blank string when the command finished, otherwise a translated message.</summary>
+		public static string TryRunGetNcplCommand(string exePath,int timeoutMs) {
+			try {
+				using Process process=new Process {
+					StartInfo=new ProcessStartInfo {
+						FileName=exePath,
+						Arguments=" --getncpl"
+					}
+				};
+				process.Start();
+				if(process.WaitForExit(timeoutMs)) {
+					return "";
+				}
+				ODException.SwallowAnyException(() => process.Kill());
+				return Lans.g("Clearinghouse","The ITRANS Claims Director did not finish refreshing the carrier list in time. Make sure its service is running and try again.");
+			}
+			catch(Exception ex) {
+				return Lans.g("Clearinghouse","Unable to run 'ITRANS Claims Director.exe'.")+"\r\n"+ex.Message;
+			}
 		}
 
 		///<summary>Updates carriers in the database with information from the n-cpl.json file. Will update network, version, and supported types based on information from the first carrier found in the .json file with the same electID for user added carriers.
