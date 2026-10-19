@@ -95,7 +95,6 @@
     <Compile Include="TableTypes\AutoCodeT.cs" />
     <Compile Include="TableTypes\AutoNoteControlT.cs" />
     <Compile Include="TableTypes\AutoNoteT.cs" />
-    <Compile Include="TableTypes\BroadcasterInstanceT.cs" />
     <Compile Include="TableTypes\CdcrecT.cs" />
     <Compile Include="TableTypes\CentralManagerT.cs" />
     <Compile Include="TableTypes\ClaimPaymentT.cs" />
@@ -191,8 +190,6 @@
     <Compile Include="TableTypes\RecallTriggerT.cs" />
     <Compile Include="TableTypes\RefAttachT.cs" />
     <Compile Include="TableTypes\ReferralT.cs" />
-    <Compile Include="TableTypes\ResellerServiceT.cs" />
-    <Compile Include="TableTypes\ResellerT.cs" />
     <Compile Include="TableTypes\RegistrationKeyT.cs" />
     <Compile Include="TableTypes\RepeatChargeT.cs" />
     <Compile Include="TableTypes\PharmacyT.cs" />
@@ -200,7 +197,6 @@
     <Compile Include="TableTypes\RxPatT.cs" />
     <Compile Include="TableTypes\SecurityLogT.cs" />
     <Compile Include="TableTypes\SiteT.cs" />
-    <Compile Include="TableTypes\SiteLinkT.cs" />
     <Compile Include="TableTypes\SnomedT.cs" />
     <Compile Include="TableTypes\StatementT.cs" />
     <Compile Include="TableTypes\SheetDefT.cs" />

@@ -841,14 +841,11 @@ namespace OpenDentBusiness {
 			listInvalidTypes.Add(InvalidType.Referral);
 			listInvalidTypes.Add(InvalidType.ProcMultiVisits);
 			listInvalidTypes.Add(InvalidType.ProviderClinicLink);
-			listInvalidTypes.Add(InvalidType.PhoneEmpDefaults);
 			listInvalidTypes.Add(InvalidType.UserOdPrefs);
-			listInvalidTypes.Add(InvalidType.JobTeams);
 			listInvalidTypes.Add(InvalidType.LimitedBetaFeature);
 			listInvalidTypes.Add(InvalidType.FlowActionDef);
 			listInvalidTypes.Add(InvalidType.FlowDefLink);
 			listInvalidTypes.Add(InvalidType.CodeGroups);
-			listInvalidTypes.Add(InvalidType.WebChatAiAssistants);
 			return listInvalidTypes;
 		}
 

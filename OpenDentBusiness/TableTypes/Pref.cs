@@ -739,8 +739,8 @@ namespace OpenDentBusiness {
 		ConfirmTextFamMessage,
 		///<summary>Selected connection group within the CEMT.</summary>
 		ConnGroupCEMT,
-		///<summary>Missing in general.  HQ Only.  JSON serialized dictionary of the default connection settings for several databases.
-		///Key = ConnectionNames enum, Value = CentralConnection object.  These default connection settings can be overridden by SiteLinks.</summary>
+		///<summary>Missing in general.  No longer used.  Open Dental HQ's JSON serialized connection settings for its own databases (DataAction's HQ helpers,
+		///which were removed).</summary>
 		ConnectionSettingsHQ,
 		///<summary></summary>
 		CoPay_FeeSchedule_BlankLikeZero,

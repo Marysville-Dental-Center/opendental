@@ -396,7 +396,6 @@
     <Compile Include="UnitTests\OrthoCasesTests.cs" />
     <Compile Include="UnitTests\RpProcNotBilledInsTests.cs" />
     <Compile Include="UnitTests\ClinicPrefHelperTests.cs" />
-    <Compile Include="UnitTests\DataActionTests.cs" />
     <Compile Include="UnitTests\ODFileUtilsTests.cs" />
     <Compile Include="UnitTests\ProcedureLogicTests.cs" />
     <Compile Include="UnitTests\ProgramPropertiesTests.cs" />

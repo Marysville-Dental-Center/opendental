@@ -59,12 +59,6 @@ namespace OpenDental {
 		///<summary>TaskListNums for TaskLists the current user is subscribed to.
 		///Is static so can be referenced from multiple instances of this control.  Locked each time it is accessed so it is thread safe.</summary>
 		private static List<long> _listTaskListNumsSubscribed=new List<long>();
-		///<summary>A list of job links used for displaying whether a task has an attached job.</summary>
-		private static List<JobLink> _listJobLinks=new List<JobLink>();
-		///<summary>A list of jobs that are used for determining whether a task has an attached job in the fill grid.</summary>
-		private static List<Job> _listJobs=new List<Job>();
-		///<summary>The action which occurs when the Toggle Chat button is clicked.  Only set for OD HQ triage.</summary>
-		private Action _actionChatToggle=null;
 		///<summary>Defines which filter type is the default for the current tasklist for filtering the Task grid.</summary>
 		private EnumTaskFilterType _enumTaskFilterTypeForList;
 		///<summary>This is the patient used to filter tasks from.</summary>
@@ -2653,7 +2647,6 @@ namespace OpenDental {
 				else {
 					menuItemGoto.Enabled=true;
 				}
-				menuDeleteTaken.Visible=false;//Without this, HQ users without Permissions.TaskEdit still see this disabled item.
 				menuItemMarkRead.Enabled=true;
 				menuItemSendToMe.Enabled=true;
 				//Check if task has patient attached
@@ -2678,10 +2671,8 @@ namespace OpenDental {
 				if(task.IsReadOnly) {
 					menuItemDelete.Enabled=false;
 					menuItemCut.Enabled=false;
-					menuDeleteTaken.Enabled=false;
 					menuItemPriority.Enabled=false;
 					menuItemDone.Enabled=false;
-					menuDeleteTaken.Enabled=false;
 					menuItemSendToMe.Enabled=false;
 					menuItemSendAndGoto.Enabled=false;
 					//If the task is in  the current users task list, the current user created the task, or they have permission to modify read only tasks, allow them to mark it as done.
@@ -2701,9 +2692,7 @@ namespace OpenDental {
 				menuItemSendAndGoto.Enabled=false;
 				menuItemPriority.Enabled=false;
 				menuItemMarkRead.Enabled=false;
-				menuDeleteTaken.Enabled=false;
 			}
-			//Navigate to Job-------------------------------------------------------------
 			//Navigate to attachment
 			if(gridMain.SelectedIndices.Length>0 && task!=null){//is task
 				//The clicked task was removed from _listTasks, could happen between FillGrid(), mouse click, and now
@@ -2855,13 +2844,6 @@ namespace OpenDental {
 
 		private void menuNavAtt_Click(object sender,EventArgs e,TaskAttachment taskAttachment) {
 			NavAtt_Clicked(taskAttachment);
-		}
-
-		private void menuDeleteTaken_Click(object sender,EventArgs e) {
-			Cursor=Cursors.WaitCursor;
-			TaskTakens.DeleteForTask(gridMain.SelectedTag<Task>().TaskNum);
-			Cursor=Cursors.Default;
-			MsgBox.Show(this,"Task taken deleted");
 		}
 
 		private void menuTaskPriority_Click(Task task,Def defPriority) {
