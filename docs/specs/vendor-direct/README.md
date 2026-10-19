@@ -28,6 +28,14 @@ The ground rules that shape every spec (from `docs/decoupling-plan.md`):
 
 ---
 
+## Owner decisions (2026-10-18)
+
+These override the recommendations below.
+
+- **Remove:** PayConnect 1.0 and VeriFone terminals (DpsPos.dll), Dropbox A to Z image storage, and the Canadian claim networks (ITRANS carrier list, network certificates). Do the small clean-up in canada.md section 4.1.
+- **Rebuild direct-to-vendor:** QuickBooks Online, Microsoft 365, Google, USPS, PostcardMania, PayConnect 2, PaySimple, CareCredit, DoseSpot, NewCrop (plus the OID root), EdgeExpress, and PDMP/Bamboo Health.
+  - The partner-gated ones (CareCredit, DoseSpot, NewCrop, EdgeExpress, PDMP) are built against the public material and ship configurable but disabled until the office has partner credentials.
+
 ## 1. Summary table
 
 Feasibility uses three values:
