@@ -53,7 +53,6 @@ using System.Linq;
 using OpenDental.Bridges;
 using ServiceManager;
 using System.DirectoryServices;
-using WMPLib;
 using OpenDentalImaging;
 
 namespace OpenDental{

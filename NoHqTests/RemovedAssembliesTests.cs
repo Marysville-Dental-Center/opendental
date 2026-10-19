@@ -10,8 +10,9 @@ namespace NoHqTests {
 	///Reads the metadata of the built assemblies, so it needs the solution to be built first, but no database or network connection.</summary>
 	[TestClass]
 	public class RemovedAssembliesTests {
-		///<summary>ODApi.dll was Open Dental's local REST API. OpenDentalHelp.dll was the online manual, help browser and support-plan key check.</summary>
-		private static readonly string[] _arrayRemovedAssemblies=new string[] { "ODApi","OpenDentalHelp" };
+		///<summary>ODApi.dll was Open Dental's local REST API. OpenDentalHelp.dll was the online manual, help browser and support-plan key check.
+		///The WMPLib interop assemblies only played voicemail in Open Dental HQ's phone tools.</summary>
+		private static readonly string[] _arrayRemovedAssemblies=new string[] { "ODApi","OpenDentalHelp","AxInterop.WMPLib","Interop.WMPLib" };
 
 		[TestMethod]
 		public void RemovedAssemblies_AreNotInRequiredDlls() {
