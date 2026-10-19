@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using CodeBase;
 using CodeBase.VendorDirect;
 using Microsoft.Identity.Client;
+using Microsoft.IdentityModel.Abstractions;
 using MimeKit;
 using OpenDentBusiness.VendorDirect;
 
@@ -584,7 +585,8 @@ namespace OpenDentBusiness.Microsoft365 {
 				.WithClientName(ProductIdentity.ProductName)
 				.WithClientVersion(ProductIdentity.Version)
 				.WithLegacyCacheCompatibility(false)
-				.WithHttpClientFactory(new MsalHttpClientFactory(httpClient));
+				.WithHttpClientFactory(new MsalHttpClientFactory(httpClient))
+				.WithLogging(new MsalNoLogger(),enablePiiLogging:false);
 			if(!string.IsNullOrEmpty(_options.InstanceDiscoveryJson)) {
 				builder=builder.WithInstanceDiscoveryMetadata(_options.InstanceDiscoveryJson);
 			}
@@ -750,6 +752,19 @@ namespace OpenDentBusiness.Microsoft365 {
 
 			public HttpClient GetHttpClient() {
 				return _httpClient;
+			}
+		}
+
+		///<summary>MSAL's logger, switched off for every level, so MSAL never writes tokens, account names or other PII anywhere (the same as MSAL's
+		///default, made explicit). Using MSAL's IIdentityLogger here also makes Microsoft.IdentityModel.Abstractions a reference of this assembly, so
+		///every program that hosts the sign-in copies it and gets the binding redirect it needs (MSAL 4.47.1 asks for 6.22; the shipped copy is
+		///6.23.1). Microsoft Graph's dependencies brought it in before Bridges.dll and the Graph SDK were removed.</summary>
+		private sealed class MsalNoLogger : IIdentityLogger {
+			public bool IsEnabled(EventLogLevel eventLogLevel) {
+				return false;
+			}
+
+			public void Log(LogEntry entry) {
 			}
 		}
 

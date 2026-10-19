@@ -168,6 +168,13 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\Microsoft.Identity.Client.dll</HintPath>
     </Reference>
+    <!-- MSAL's own dependency (its IIdentityLogger). Used by Microsoft365Session, so every program hosting the sign-in copies it and gets the
+         6.22 to 6.23.1 binding redirect MSAL needs. The Graph SDK's dependencies brought it in until the prebuilt Bridges assembly and
+         the Graph SDK were deleted. -->
+    <Reference Include="Microsoft.IdentityModel.Abstractions">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\Required dlls\Microsoft.IdentityModel.Abstractions.dll</HintPath>
+    </Reference>
     <Reference Include="MimeKit">
       <HintPath>..\Required dlls\MimeKit.dll</HintPath>
     </Reference>
