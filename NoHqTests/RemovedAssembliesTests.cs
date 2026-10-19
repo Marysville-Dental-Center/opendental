@@ -42,7 +42,7 @@ namespace NoHqTests {
 		}
 
 		///<summary>Reads the assembly references of the file in a separate app domain, so the file is not locked and nothing is loaded here.</summary>
-		private static List<string> GetReferencedAssemblyNames(string path) {
+		internal static List<string> GetReferencedAssemblyNames(string path) {
 			AppDomainSetup appDomainSetup=new AppDomainSetup();
 			appDomainSetup.ApplicationBase=Path.GetDirectoryName(typeof(ReferenceReader).Assembly.Location);//so the new domain can load this test assembly
 			AppDomain appDomain=AppDomain.CreateDomain("ReferenceReader",null,appDomainSetup);
@@ -56,7 +56,7 @@ namespace NoHqTests {
 		}
 
 		///<summary>The folder that holds OpenDental.sln, found by walking up from the test assembly (MSTest may run it from a deployment folder below the repository).</summary>
-		private static string GetRepositoryRoot() {
+		internal static string GetRepositoryRoot() {
 			List<string> listStarts=new List<string> { Path.GetDirectoryName(typeof(RemovedAssembliesTests).Assembly.Location),Environment.CurrentDirectory };
 			for(int i=0;i<listStarts.Count;i++) {
 				DirectoryInfo directoryInfo=new DirectoryInfo(listStarts[i]);
