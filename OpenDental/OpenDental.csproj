@@ -441,6 +441,18 @@
     <Compile Include="Forms Reports\FormRpProcOverpaid.designer.cs">
       <DependentUpon>FormRpProcOverpaid.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms Reports\FormRpProcedures.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms Reports\FormRpProcedures.designer.cs">
+      <DependentUpon>FormRpProcedures.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms Reports\FormRpInsPendingSupplementals.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms Reports\FormRpInsPendingSupplementals.designer.cs">
+      <DependentUpon>FormRpInsPendingSupplementals.cs</DependentUpon>
+    </Compile>
     <Compile Include="Forms Reports\FormRpProcSheet.designer.cs">
       <DependentUpon>FormRpProcSheet.cs</DependentUpon>
     </Compile>
@@ -5874,6 +5886,14 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms Reports\FormRpProcOverpaid.resx">
       <DependentUpon>FormRpProcOverpaid.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms Reports\FormRpProcedures.resx">
+      <DependentUpon>FormRpProcedures.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms Reports\FormRpInsPendingSupplementals.resx">
+      <DependentUpon>FormRpInsPendingSupplementals.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="Bridges\FormOryxUserSettings.resx">

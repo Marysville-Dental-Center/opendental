@@ -127,76 +127,9 @@ namespace OpenDental{
 					_listClinicNums=_listClinicNums.Union(Clinics.GetAllForUserod(Security.CurUser).Select(x => x.ClinicNum)).ToList();
 				}
 			}
-			if(radioIndividual.Checked){
-				CreateIndividual();
-			}
-			else{
-				CreateGrouped();
-			}
-		}
-
-		private void CreateIndividual() {
-			ReportComplex report=new ReportComplex(true,false);
-			bool isAnyClinicMedical=false;//Used to determine whether or not to display 'Tooth' column
-			if(AnyClinicSelectedIsMedical()) {
-				isAnyClinicMedical=true;
-			}
-			DataTable table=new DataTable();
-			try { 
-				table=RpProcSheet.GetIndividualTable(date1.SelectionStart,date2.SelectionStart,_listProvNums,_listClinicNums,textCode.Text,
-					isAnyClinicMedical,checkAllProv.Checked,PrefC.HasClinicsEnabled);
-			}
-			catch (Exception ex) {
-				report.CloseProgressBar();
-				string text=Lan.g(this,"Error getting report data:")+" "+ex.Message+"\r\n\r\n"+ex.StackTrace;
-				using MsgBoxCopyPaste msgBox=new MsgBoxCopyPaste(text);
-				msgBox.ShowDialog();
-				return;
-			}
-			if(table.Columns.Contains("ToothNum")) {
-				foreach(DataRow row in table.Rows) {
-					row["ToothNum"]=Tooth.Display(row["ToothNum"].ToString());
-				}
-			}
-			string subtitleProvs=ConstructProviderSubtitle();
-			string subtitleClinics=ConstructClinicSubtitle();
-			Font font=new Font("Tahoma",9);
-			Font fontBold=new Font("Tahoma",9,FontStyle.Bold);
-			Font fontTitle=new Font("Tahoma",17,FontStyle.Bold);
-			Font fontSubTitle=new Font("Tahoma",10,FontStyle.Bold);
-			report.ReportName=Lan.g(this,"Daily Procedures");
-			report.AddTitle("Title",Lan.g(this,"Daily Procedures"),fontTitle);
-			report.AddSubTitle("Practice Title",PrefC.GetString(PrefName.PracticeTitle),fontSubTitle);
-			report.AddSubTitle("Dates of Report",date1.SelectionStart.ToString("d")+" - "+date2.SelectionStart.ToString("d"),fontSubTitle);
-			report.AddSubTitle("Providers",subtitleProvs,fontSubTitle);
-			if(PrefC.HasClinicsEnabled) {
-				report.AddSubTitle("Clinics",subtitleClinics,fontSubTitle);
-			}
-			QueryObject query=report.AddQuery(table,Lan.g(this,"Date")+": "+DateTime.Today.ToString("d"));
-			query.AddColumn(Lan.g(this,"Date"),85,FieldValueType.Date,font);
-			query.GetColumnDetail(Lan.g(this,"Date")).StringFormat="d";
-			query.AddColumn(Lan.g(this,"Patient Name"),145,FieldValueType.String,font);
-			if(isAnyClinicMedical) {
-				query.AddColumn(Lan.g(this,"Code"),140,FieldValueType.String,font);
-			}
-			else {
-				query.AddColumn(Lan.g(this,"Code"),70,FieldValueType.String,font);
-				query.AddColumn("Tooth",40,FieldValueType.String,font);
-			}
-			query.AddColumn("Area",60,FieldValueType.String,font);
-			query.AddColumn(Lan.g(this,"Description"),140,FieldValueType.String,font);
-			query.AddColumn(Lan.g(this,"Prov"),60,FieldValueType.String,font);
-			if(PrefC.HasClinicsEnabled) {
-				query.AddColumn(Lan.g(this,"Clinic"),100,FieldValueType.String,font);
-			}
-			query.AddColumn(Lan.g(this,"Fee"),65,FieldValueType.Number,font);
-			report.AddPageNum(font);
-			if(!report.SubmitQueries()) {
-				return;
-			}
-			using FormReportComplex FormR=new FormReportComplex(report);
-			FormR.ShowDialog();
-			DialogResult=DialogResult.OK;
+			//Since 24.4 this is the Production by Procedure report: always grouped by procedure code. The itemized list is the Procedures report
+			//(FormRpProcedures).
+			CreateGrouped();
 		}
 
 		private void CreateGrouped() {
@@ -208,8 +141,8 @@ namespace OpenDental{
 			Font fontBold=new Font("Tahoma",9,FontStyle.Bold);
 			Font fontTitle=new Font("Tahoma",17,FontStyle.Bold);
 			Font fontSubTitle=new Font("Tahoma",10,FontStyle.Bold);
-			report.ReportName=Lan.g(this,"Procedures By Procedure Code");
-			report.AddTitle("Title",Lan.g(this,"Procedures By Procedure Code"),fontTitle);
+			report.ReportName=Lan.g(this,"Production by Procedure");
+			report.AddTitle("Title",Lan.g(this,"Production by Procedure"),fontTitle);
 			report.AddSubTitle("Practice Title",PrefC.GetString(PrefName.PracticeTitle),fontSubTitle);
 			report.AddSubTitle("Dates of Report",date1.SelectionStart.ToString("d")+" - "+date2.SelectionStart.ToString("d"),fontSubTitle);
 			report.AddSubTitle("Providers",subtitleProvs,fontSubTitle);
@@ -277,26 +210,5 @@ namespace OpenDental{
 			return subtitleClinics;
 		}
 
-		private bool AnyClinicSelectedIsMedical() {
-			if(!PrefC.HasClinicsEnabled) {
-				return Clinics.IsMedicalPracticeOrClinic(0);//Check if the practice is medical
-			}
-			if(Security.CurUser.ClinicIsRestricted) {//User can only view one clinic
-				return Clinics.IsMedicalPracticeOrClinic(Clinics.ClinicNum);
-			}
-			for(int i=0;i<listClin.SelectedIndices.Count;i++) {
-				if(listClin.SelectedIndices[i]==0 //The user selected 'Unassigned' 
-					&& Clinics.IsMedicalPracticeOrClinic(0)) //And the practice is medical
-				{
-					return true;
-				}
-				//if(Clinics.IsMedicalPracticeOrClinic(_listClinics[listClin.SelectedIndices[i]-1].ClinicNum)) {//Minus 1 from the selected index
-				if(listClin.SelectedIndices[i]!=0 && Clinics.IsMedicalPracticeOrClinic(_listClinics[listClin.SelectedIndices[i]-1].ClinicNum)) {//Minus 1 from the selected index
-					return true;
-				}
-			}
-			return false;
-		}
-		
 	}
 }

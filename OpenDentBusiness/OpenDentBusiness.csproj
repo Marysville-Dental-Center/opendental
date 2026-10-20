@@ -1593,6 +1593,7 @@
     <Compile Include="Reports\RpInsOverpaid.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Reports\RpInsPendingSupplementals.cs" />
     <Compile Include="Reports\RpNewPatients.cs" />
     <Compile Include="Reports\RpOutstandingIns.cs" />
     <Compile Include="Reports\RpPayPlan.cs" />

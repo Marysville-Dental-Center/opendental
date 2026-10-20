@@ -350,7 +350,7 @@ namespace OpenDental.User_Controls {
 					return "Adjustments";
 				case "ODPayments":
 					return "Payments";
-				case "ODProcedures":
+				case DisplayReports.ReportNames.Procedures://Before 24.4. The fork migration renames it to ProceduresIndividual.
 					return "Procedures";
 				case "ODWriteoffs":
 					return "Write-offs";
@@ -438,10 +438,12 @@ namespace OpenDental.User_Controls {
 					return "ERAs Automatically Processed Report";
 				case "ODMonthlyProductionGoal":
 					return "Monthly Production Goal";
-				case "ODProceduresIndividual":
+				case DisplayReports.ReportNames.ProceduresIndividual:
 					return "Procedures Individual";
-				case "ODProductionByProcedure":
+				case DisplayReports.ReportNames.ProductionByProcedure:
 					return "Production By Procedure";
+				case DisplayReports.ReportNames.InsPendingSupplementals:
+					return "Insurance Pending Supplementals";
 				case "ODCustomAging":
 					return "Custom Aging";
 				case "ODDynamicPayPlanOvercharged":

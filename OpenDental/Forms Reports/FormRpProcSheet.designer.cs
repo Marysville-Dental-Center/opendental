@@ -33,16 +33,12 @@ namespace OpenDental {
 			this.labelTO = new System.Windows.Forms.Label();
 			this.listProv = new OpenDental.UI.ListBox();
 			this.label1 = new System.Windows.Forms.Label();
-			this.radioIndividual = new System.Windows.Forms.RadioButton();
-			this.groupBox1 = new OpenDental.UI.GroupBox();
-			this.radioGrouped = new System.Windows.Forms.RadioButton();
 			this.label2 = new System.Windows.Forms.Label();
 			this.textCode = new System.Windows.Forms.TextBox();
 			this.checkAllProv = new OpenDental.UI.CheckBox();
 			this.checkAllClin = new OpenDental.UI.CheckBox();
 			this.listClin = new OpenDental.UI.ListBox();
 			this.labelClin = new System.Windows.Forms.Label();
-			this.groupBox1.SuspendLayout();
 			this.SuspendLayout();
 			// 
 			// butOK
@@ -93,38 +89,9 @@ namespace OpenDental {
 			this.label1.TabIndex = 32;
 			this.label1.Text = "Providers";
 			// 
-			// radioIndividual
-			// 
-			this.radioIndividual.Checked = true;
-			this.radioIndividual.Location = new System.Drawing.Point(11, 17);
-			this.radioIndividual.Name = "radioIndividual";
-			this.radioIndividual.Size = new System.Drawing.Size(207, 21);
-			this.radioIndividual.TabIndex = 35;
-			this.radioIndividual.TabStop = true;
-			this.radioIndividual.Text = "Individual Procedures";
-			// 
-			// groupBox1
-			// 
-			this.groupBox1.Controls.Add(this.radioGrouped);
-			this.groupBox1.Controls.Add(this.radioIndividual);
-			this.groupBox1.Location = new System.Drawing.Point(28, 229);
-			this.groupBox1.Name = "groupBox1";
-			this.groupBox1.Size = new System.Drawing.Size(239, 70);
-			this.groupBox1.TabIndex = 36;
-			this.groupBox1.TabStop = false;
-			this.groupBox1.Text = "Type";
-			// 
-			// radioGrouped
-			// 
-			this.radioGrouped.Location = new System.Drawing.Point(11, 40);
-			this.radioGrouped.Name = "radioGrouped";
-			this.radioGrouped.Size = new System.Drawing.Size(215, 21);
-			this.radioGrouped.TabIndex = 36;
-			this.radioGrouped.Text = "Grouped By Procedure Code";
-			// 
 			// label2
 			// 
-			this.label2.Location = new System.Drawing.Point(26, 324);
+			this.label2.Location = new System.Drawing.Point(26, 225);
 			this.label2.Name = "label2";
 			this.label2.Size = new System.Drawing.Size(290, 20);
 			this.label2.TabIndex = 37;
@@ -133,7 +100,7 @@ namespace OpenDental {
 			// 
 			// textCode
 			// 
-			this.textCode.Location = new System.Drawing.Point(28, 348);
+			this.textCode.Location = new System.Drawing.Point(28, 249);
 			this.textCode.Name = "textCode";
 			this.textCode.Size = new System.Drawing.Size(100, 20);
 			this.textCode.TabIndex = 38;
@@ -187,7 +154,6 @@ namespace OpenDental {
 			this.Controls.Add(this.checkAllProv);
 			this.Controls.Add(this.textCode);
 			this.Controls.Add(this.label2);
-			this.Controls.Add(this.groupBox1);
 			this.Controls.Add(this.listProv);
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.butOK);
@@ -200,9 +166,8 @@ namespace OpenDental {
 			this.Name = "FormRpProcSheet";
 			this.ShowInTaskbar = false;
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-			this.Text = "Daily Procedures Report";
+			this.Text = "Production by Procedure Report";
 			this.Load += new System.EventHandler(this.FormDailySummary_Load);
-			this.groupBox1.ResumeLayout(false);
 			this.ResumeLayout(false);
 			this.PerformLayout();
 
@@ -214,9 +179,6 @@ namespace OpenDental {
 		private System.Windows.Forms.Label labelTO;
 		private OpenDental.UI.ListBox listProv;
 		private System.Windows.Forms.Label label1;
-		private System.Windows.Forms.RadioButton radioIndividual;
-		private OpenDental.UI.GroupBox groupBox1;
-		private System.Windows.Forms.RadioButton radioGrouped;
 		private Label label2;
 		private TextBox textCode;
 		private OpenDental.UI.CheckBox checkAllProv;
