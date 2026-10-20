@@ -917,7 +917,7 @@ namespace OpenDentBusiness{
 			}
 			double totalNegAdjAmt=listPayPlanCharges.FindAll(x => x.ChargeType==PayPlanChargeType.Debit && x.Principal<0).Sum(x => x.Principal);
 			double totPrincIntAdj=totalPrincipal+totalInterest+totalNegAdjAmt;
-			Sheet sheetPP=SheetUtil.CreateSheet(SheetDefs.GetInternalOrCustom(SheetInternalType.PaymentPlan),payPlan.PatNum);
+			Sheet sheetPP=SheetUtil.CreateSheet(SheetDefs.GetForPayPlan(payPlan.SheetDefNum),payPlan.PatNum);//24.4: the plan's chosen sheet (A-PAY)
 			sheetPP.Parameters.Add(new SheetParameter(true,"payplan") { ParamValue=payPlan });
 			//The math for this comes from FormPayPlanDynamic
 			if(payPlan.IsDynamic) {

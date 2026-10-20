@@ -75,6 +75,34 @@ namespace OpenDental {
 					radioTpAwaitComplete.Checked=true;
 					break;
 			}
+			FillComboSheetDef();
+		}
+
+		///<summary>24.4: the default payment plan sheet for plans made from this template. "Default" (0) plus every custom PaymentPlan sheet. Shown only
+		///when the preference PayPlansUseSheets is on. A deleted sheet shows Default.</summary>
+		private void FillComboSheetDef() {
+			bool useSheets=PrefC.GetBool(PrefName.PayPlansUseSheets);
+			labelSheetDef.Visible=useSheets;
+			comboSheetDef.Visible=useSheets;
+			comboSheetDef.Items.Clear();
+			comboSheetDef.Items.Add(Lan.g(this,"Default"),0L);
+			List<SheetDef> listSheetDefs=SheetDefs.GetPayPlanSheetDefChoices();
+			int indexSelected=0;
+			for(int i=0;i<listSheetDefs.Count;i++) {
+				comboSheetDef.Items.Add(listSheetDefs[i].Description,listSheetDefs[i].SheetDefNum);
+				if(listSheetDefs[i].SheetDefNum==_payPlanTemplate.SheetDefNum) {
+					indexSelected=i+1;
+				}
+			}
+			comboSheetDef.SelectedIndex=indexSelected;
+		}
+
+		///<summary>The SheetDefNum chosen in the Sheet Definition box. When sheets are not used for printing, the stored value is kept as it is.</summary>
+		private long GetSelectedSheetDefNum() {
+			if(!PrefC.GetBool(PrefName.PayPlansUseSheets) || comboSheetDef.SelectedIndex<0) {
+				return _payPlanTemplate.SheetDefNum;
+			}
+			return (long)comboSheetDef.Items.GetObjectAt(comboSheetDef.SelectedIndex);
 		}
 
 		private void ToggleInterestDelayFieldsHelper() {
@@ -175,6 +203,7 @@ namespace OpenDental {
 			_payPlanTemplate.DownPayment=PIn.Double(textDownPayment.Text);
 			_payPlanTemplate.DynamicPayPlanTPOption=GetSelectedTreatmentPlannedOption();
 			_payPlanTemplate.IsHidden=checkHidden.Checked;
+			_payPlanTemplate.SheetDefNum=GetSelectedSheetDefNum();
 			if(_payPlanTemplate.IsNew) {
 				PayPlanTemplates.Insert(_payPlanTemplate);
 				DialogResult=DialogResult.OK;

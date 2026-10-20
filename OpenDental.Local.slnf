@@ -23,6 +23,7 @@
       "tests\\CryptoTests\\CryptoTests.csproj",
       "tests\\FeeTests\\FeeTests.csproj",
       "tests\\ForkMigrationTests\\ForkMigrationTests.csproj",
+      "tests\\PayPlanTests\\PayPlanTests.csproj",
       "tests\\RegistryTests\\RegistryTests.csproj",
       "tests\\ReleaseFlowTests\\ReleaseFlowTests.csproj",
       "tests\\VendorDirectTests\\VendorDirectTests.csproj",

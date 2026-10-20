@@ -118,17 +118,9 @@ namespace OpenDental {
 				radioTpTreatAsComplete.Enabled=false; //Disable this as it will cause issues if used with Ortho cases.
 			}
 			#endregion
+			FillComboSheetDef();
 			if(PrefC.GetBool(PrefName.PayPlansUseSheets)) {
-				Sheet sheet=null;
-				sheet=PayPlanToSheet(_dynamicPaymentPlanData.PayPlan);
-				//check to see if sig box is on the sheet
-				//hides butPrint and adds butSignPrint,groupbox,and sigwrapper
-				for(int i = 0;i<sheet.SheetFields.Count;i++) {
-					if(sheet.SheetFields[i].FieldType==SheetFieldType.SigBox) {
-						butPrint.Visible=false;
-						butSignPrint.Visible=true;
-					}
-				}
+				SetPrintButtonsForSheet();
 			}
 			List<PayPlan> listPayPlansOvercharged=PayPlans.GetOverChargedPayPlans(new List<long>{_dynamicPaymentPlanData.PayPlan.PayPlanNum});
 			for(int i=0;i<listPayPlansOvercharged.Count;i++) {
@@ -193,7 +185,7 @@ namespace OpenDental {
 				MsgBox.Show(Lan.g(this,"The selected charge couldn't be deleted. Only a debit charge without a payment can be deleted."));
 				return;
 			}
-			if(listPayPlanCharges.Exists(x=>x.Note.ToLower().Contains("down payment"))){
+			if(listPayPlanCharges.Exists(x=>x.IsDownPayment)){
 				MsgBox.Show(Lan.g(this,"The selected charge couldn't be deleted. Down payments cannot be deleted."));
 				return;
 			}
@@ -275,7 +267,8 @@ namespace OpenDental {
 			if(_dynamicPaymentPlanData.PayPlan.IsLocked) {
 				butUnlock.Visible=false;
 				checkProductionLock.Checked=true;
-				checkProductionLock.Enabled=false;
+				//25.1: only users with Pay Plan Unlock (and Pay Plan Edit) can clear the Locked box of a saved plan.
+				checkProductionLock.Enabled=PayPlanEdit.CanUnlockPayPlan() && Security.IsAuthorized(EnumPermType.PayPlanEdit,true);
 				butChangeGuar.Visible=false;
 				LockProduction();
 			}
@@ -515,7 +508,7 @@ namespace OpenDental {
 			labelDateInterestStart.Visible=areVisible;
 		}
 
-		///<summary>If opening a saved payment plan, the terms groupbox will be disabled to prevent accidental changes. This button just makes the user go through an additional step before editing terms. It gently reminds them that they probably shouldn't touch the terms. It has nothing to do with the nearby checkbox for Permanent Lock.</summary>
+		///<summary>If opening a saved payment plan, the terms groupbox will be disabled to prevent accidental changes. This button just makes the user go through an additional step before editing terms. It gently reminds them that they probably shouldn't touch the terms. It has nothing to do with the nearby Locked checkbox (payplan.IsLocked).</summary>
 		private void ButUnlock_Click(object sender,EventArgs e) {
 			UnlockTerms();
 		}
@@ -588,6 +581,12 @@ namespace OpenDental {
 					radioTpAwaitComplete.Checked=true;
 					break;
 			}
+			//24.4: the plan takes the template's sheet (Default when the template has none or its sheet was deleted).
+			PayPlanTemplates.ApplySheetDefToPayPlan(payPlanTemplate,_dynamicPaymentPlanData.PayPlan);
+			SetSelectedSheetDefNum(_dynamicPaymentPlanData.PayPlan.SheetDefNum);
+			if(PrefC.GetBool(PrefName.PayPlansUseSheets)) {
+				SetPrintButtonsForSheet();
+			}
 		}
 
 		///<summary>This is the gentle "lock", not the permanent one.</summary>
@@ -631,11 +630,40 @@ namespace OpenDental {
 			UnlockTerms();
 		}
 
+		///<summary>25.1: true when this saved plan is locked in the database and the user has cleared the Locked box. Saving then unlocks it.</summary>
+		private bool IsUnlocking() {
+			return !_dynamicPaymentPlanData.PayPlan.IsNew && _dynamicPaymentPlanData.PayPlan.IsLocked && !checkProductionLock.Checked;
+		}
+
+		///<summary>25.1: reverses what FillUiForSavedPayPlan and LockProduction turned off for a locked plan: the Unlock button for the terms, Change
+		///Guarantor and production editing. Nothing is saved until Save.</summary>
+		private void UnlockSavedPayPlan() {
+			butAddProd.Enabled=true;
+			butDeleteProduction.Enabled=true;
+			butUnlock.Visible=true;
+			butChangeGuar.Visible=true;
+		}
+
 		private void CheckProductionLock_CheckedChanged(object sender,EventArgs e) {
 			if(!checkProductionLock.Checked && _dynamicPaymentPlanData.PayPlan.IsNew) {
 				UnlockProduction();
 			}
+			else if(IsUnlocking()) {
+				if(!_isLoading && !Security.IsAuthorized(EnumPermType.PayPlanUnlock)) {
+					bool isLoadingOld=_isLoading;
+					_isLoading=true;//Re-check the box without creating a schedule.
+					checkProductionLock.Checked=true;
+					_isLoading=isLoadingOld;
+					return;
+				}
+				UnlockSavedPayPlan();
+			}
 			else if(checkProductionLock.Checked) {
+				if(!_dynamicPaymentPlanData.PayPlan.IsNew && _dynamicPaymentPlanData.PayPlan.IsLocked) {
+					//25.1: locked again before saving the unlock. Back to how FillUiForSavedPayPlan shows a locked plan.
+					butUnlock.Visible=false;
+					butChangeGuar.Visible=false;
+				}
 				LockProduction();
 				if(!_isLoading) {
 					if(CreateSchedule()) {//create schedule button will get disabled once this box is checked so we need to do this for the user 
@@ -1276,6 +1304,7 @@ namespace OpenDental {
 				comboCategory.GetSelectedDefNum());
 			PayPlanL.MakeSecLogEntries(_dynamicPaymentPlanData.PayPlan,_payPlanOld,signatureBoxWrapper.GetSigChanged(),
 			_isSigOldValid,signatureBoxWrapper.SigIsBlank,signatureBoxWrapper.IsValid,false);
+			LogSheetChange();
 			DialogResult=DialogResult.OK;
 		}
 
@@ -1307,13 +1336,74 @@ namespace OpenDental {
 
 		///<summary>Creates a new sheet from a given Pay plan.</summary>
 		private Sheet PayPlanToSheet(PayPlan payPlan) {
-			Sheet sheet=SheetUtil.CreateSheet(SheetDefs.GetInternalOrCustom(SheetInternalType.PaymentPlan),_dynamicPaymentPlanData.Patient.PatNum);
+			//24.4: the sheet chosen for this plan; 0 or a deleted sheet falls back to the first custom PaymentPlan sheet, then the internal one.
+			Sheet sheet=SheetUtil.CreateSheet(SheetDefs.GetForPayPlan(GetSelectedSheetDefNum()),_dynamicPaymentPlanData.Patient.PatNum);
 			sheet.Parameters.Add(new SheetParameter(true,"payplan") { ParamValue=payPlan });
 			sheet.Parameters.Add(new SheetParameter(true,"Principal") { ParamValue=_sumAttachedProduction.ToString("n") });
 			sheet.Parameters.Add(new SheetParameter(true,"totalFinanceCharge") { ParamValue=_dynamicPaymentPlanData.TotalInterest });
 			sheet.Parameters.Add(new SheetParameter(true,"totalCostOfLoan") {ParamValue=(_sumAttachedProduction+(decimal)_dynamicPaymentPlanData.TotalInterest).ToString("n")});
 			SheetFiller.FillFields(sheet);
 			return sheet;
+		}
+
+		///<summary>24.4: fills the Sheet box with "Default" (0) and every custom PaymentPlan sheet, and selects the plan's sheet. The box is only shown
+		///when the preference PayPlansUseSheets is on. A plan whose sheet was deleted shows Default.</summary>
+		private void FillComboSheetDef() {
+			bool useSheets=PrefC.GetBool(PrefName.PayPlansUseSheets);
+			labelSheetDef.Visible=useSheets;
+			comboSheetDef.Visible=useSheets;
+			comboSheetDef.Items.Clear();
+			comboSheetDef.Items.Add(Lan.g(this,"Default"),0L);
+			List<SheetDef> listSheetDefs=SheetDefs.GetPayPlanSheetDefChoices();
+			int indexSelected=0;
+			for(int i=0;i<listSheetDefs.Count;i++) {
+				comboSheetDef.Items.Add(listSheetDefs[i].Description,listSheetDefs[i].SheetDefNum);
+				if(listSheetDefs[i].SheetDefNum==_dynamicPaymentPlanData.PayPlan.SheetDefNum) {
+					indexSelected=i+1;
+				}
+			}
+			comboSheetDef.SelectedIndex=indexSelected;
+		}
+
+		///<summary>24.4: logs a change of the plan's print sheet once the plan is saved. The logged value becomes the new starting point, so a
+		///later save in this window (Sign and Print, then OK) does not log the same change twice.</summary>
+		private void LogSheetChange() {
+			if(PayPlanTemplates.MakeLogEntryIfSheetChanged(_dynamicPaymentPlanData.PayPlan,_payPlanOld)) {
+				_payPlanOld.SheetDefNum=_dynamicPaymentPlanData.PayPlan.SheetDefNum;
+			}
+		}
+
+		///<summary>The SheetDefNum chosen in the Sheet box. When sheets are not used for printing, the plan's stored value is kept as it is.</summary>
+		private long GetSelectedSheetDefNum() {
+			if(!PrefC.GetBool(PrefName.PayPlansUseSheets) || comboSheetDef.SelectedIndex<0) {
+				return _dynamicPaymentPlanData.PayPlan.SheetDefNum;
+			}
+			return (long)comboSheetDef.Items.GetObjectAt(comboSheetDef.SelectedIndex);
+		}
+
+		///<summary>Selects the sheet in the Sheet box, or Default when it is not a choice.</summary>
+		private void SetSelectedSheetDefNum(long sheetDefNum) {
+			int indexSelected=0;
+			for(int i=0;i<comboSheetDef.Items.Count;i++) {
+				if((long)comboSheetDef.Items.GetObjectAt(i)==sheetDefNum) {
+					indexSelected=i;
+					break;
+				}
+			}
+			comboSheetDef.SelectedIndex=indexSelected;
+		}
+
+		///<summary>A sheet with a signature box opens for signing before it prints (Sign and Print); other sheets print directly. Looks at the sheet chosen
+		///in the Sheet box.</summary>
+		private void SetPrintButtonsForSheet() {
+			bool hasSigBox=SheetDefs.GetForPayPlan(GetSelectedSheetDefNum()).SheetFieldDefs.Any(x => x.FieldType==SheetFieldType.SigBox);
+			butPrint.Visible=!hasSigBox;
+			butSignPrint.Visible=hasSigBox;
+		}
+
+		private void comboSheetDef_SelectionChangeCommitted(object sender,EventArgs e) {
+			_dynamicPaymentPlanData.PayPlan.SheetDefNum=GetSelectedSheetDefNum();
+			SetPrintButtonsForSheet();
 		}
 
 		private void checkExcludePast_CheckedChanged(object sender,EventArgs e) {
@@ -1350,13 +1440,27 @@ namespace OpenDental {
 				}
 				_createdSchedule=true;
 			}
-			_dynamicPaymentPlanData=PayPlanEdit.SaveDynamicPaymentPlanAndTerms(
-				terms,
-				_dynamicPaymentPlanData,
-				checkProductionLock.Checked,
-				comboCategory.GetSelectedDefNum());
+			_dynamicPaymentPlanData.PayPlan.SheetDefNum=GetSelectedSheetDefNum();
+			//25.1: a saved, locked plan whose Locked box was cleared by a user with Pay Plan Unlock.
+			bool isUnlocking=IsUnlocking();
+			if(isUnlocking && !Security.IsAuthorized(EnumPermType.PayPlanUnlock)) {
+				return false;
+			}
+			try {
+				_dynamicPaymentPlanData=PayPlanEdit.SaveDynamicPaymentPlanAndTerms(
+					terms,
+					_dynamicPaymentPlanData,
+					checkProductionLock.Checked,
+					comboCategory.GetSelectedDefNum(),
+					isUnlocking:isUnlocking);
+			}
+			catch(ODException ex) {
+				MsgBox.Show(ex.Message);
+				return false;
+			}
 			PayPlanL.MakeSecLogEntries(_dynamicPaymentPlanData.PayPlan,_payPlanOld,signatureBoxWrapper.GetSigChanged(),
 				_isSigOldValid,signatureBoxWrapper.SigIsBlank,signatureBoxWrapper.IsValid,isPrinting);
+			LogSheetChange();
 			//When sign & print is clicked (saves the plan) on new plan to let users know it has been saved and some thing can no longer be edited.
 			//Refresh local class wide variables.
 			LoadPayDataFromDB();
