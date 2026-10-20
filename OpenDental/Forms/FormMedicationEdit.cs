@@ -22,6 +22,8 @@ namespace OpenDental{
 		///<summary></summary>
 		private List<string> _listBrands;
 		public Medication MedicationCur;
+		///<summary>A copy of MedicationCur as it was when the window opened, to log a change to the Hidden flag.</summary>
+		private Medication _medicationOld;
 
 		///<summary></summary>
 		public FormMedicationEdit()
@@ -40,11 +42,13 @@ namespace OpenDental{
 				butSave.Enabled=false;
 				butDelete.Enabled=false;
 			}
+			_medicationOld=MedicationCur.Copy();
 			FillForm();
 		}
 
 		private void FillForm() {
 			textMedName.Text=MedicationCur.MedName;
+			checkHidden.Checked=MedicationCur.IsHidden;
 			if(!IsNew) {
 				textMedName.ReadOnly=true;
 			}
@@ -159,6 +163,18 @@ namespace OpenDental{
 					}
 				}
 			}
+			if(checkHidden.Checked && !_medicationOld.IsHidden && MedicationCur.MedicationNum==MedicationCur.GenericNum) {
+				//Hiding a generic does not hide its brands.
+				List<string> listBrandsVisible=Medications.GetVisibleBrands(MedicationCur.MedicationNum);
+				if(listBrandsVisible.Count>0 && !MsgBox.Show(MsgBoxButtons.OKCancel,
+					Lan.g(this,"Hiding this generic medication does not hide its brands.  These brands will still be offered:")+"\r\n"
+					+string.Join("\r\n",listBrandsVisible)+"\r\n"
+					+Lan.g(this,"Click OK to hide only this generic, or Cancel to stay in this window.")))
+				{
+					return;
+				}
+			}
+			MedicationCur.IsHidden=checkHidden.Checked;
 			if(MedicationCur.MedicationNum==MedicationCur.GenericNum){
 				MedicationCur.Notes=textNotes.Text;
 			}
@@ -169,6 +185,10 @@ namespace OpenDental{
 			//The following behavior must match what happens when the user clicks the RxNorm column in FormMedications to pick RxCui.
 			Medications.Update(MedicationCur);
 			MedicationPats.UpdateRxCuiForMedication(MedicationCur.MedicationNum,MedicationCur.RxCui);
+			string logText=Medications.GetHiddenChangedLogText(MedicationCur,_medicationOld);
+			if(logText!="") {
+				SecurityLogs.MakeLogEntry(EnumPermType.MedicationDefEdit,0,logText);
+			}
 			DataValid.SetInvalid(InvalidType.Medications);
 			DialogResult=DialogResult.OK;
 		}

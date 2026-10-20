@@ -103,11 +103,73 @@ namespace OpenDentBusiness{
 			return Crud.MedicationCrud.TableToList(table);
 		}
 
-		///<summary>Returns medications that contain the passed in string.  Blank for all.</summary>
+		///<summary>Returns medications that contain the passed in string.  Blank for all.  Includes hidden medications, so that export, import duplicate
+		///checks and lookups by name still see every row.  Pickers use GetListForPicker instead.</summary>
 		public static List<Medication> GetList(string str="") {
 			Meth.NoCheckMiddleTierRole();
-			return GetWhere(x => str=="" || x.MedName.ToUpper().Contains(str.ToUpper()));
+			return GetWhere(x => IsSearchMatch(x,str));
 		}
+
+		#region Hidden medications (Open Dental 25.1)
+		///<summary>Returns medications that contain the passed in string, for a window where the user picks a medication for a patient, an allergy, an
+		///EHR rule, an eForm medication list or a reconcile.  Hidden medications are left out unless includeHidden is true (the merge tool, or the
+		///master list with Show Hidden checked).</summary>
+		public static List<Medication> GetListForPicker(string str="",bool includeHidden=false) {
+			Meth.NoCheckMiddleTierRole();
+			return GetWhere(x => IsSearchMatch(x,str) && (includeHidden || !x.IsHidden));
+		}
+
+		///<summary>True when the medication name contains the search text, ignoring case.  Blank or null search text matches everything.</summary>
+		public static bool IsSearchMatch(Medication medication,string str) {
+			Meth.NoCheckMiddleTierRole();
+			if(string.IsNullOrEmpty(str)) {
+				return true;
+			}
+			return (medication.MedName??"").ToUpper().Contains(str.ToUpper());
+		}
+
+		///<summary>Removes hidden medications from the list unless includeHidden is true.  Returns a new list; the passed in list is not changed.</summary>
+		public static List<Medication> FilterHidden(List<Medication> listMedications,bool includeHidden) {
+			Meth.NoCheckMiddleTierRole();
+			if(listMedications==null) {
+				return new List<Medication>();
+			}
+			return listMedications.FindAll(x => includeHidden || !x.IsHidden);
+		}
+
+		///<summary>True when the medication is in the cache and is hidden.  False for 0 or a medication that does not exist.</summary>
+		public static bool IsMedicationHidden(long medicationNum) {
+			Meth.NoCheckMiddleTierRole();
+			if(medicationNum==0 || !HasMedicationInCache(medicationNum)) {
+				return false;
+			}
+			return GetOne(medicationNum).IsHidden;
+		}
+
+		///<summary>Brand medications of this generic that are not hidden, by name.  Hiding a generic does not hide its brands, so the edit window warns
+		///when this list is not empty.  Empty when the medication is a brand.  Reads the database, so brands added on another workstation count.</summary>
+		public static List<string> GetVisibleBrands(long medicationNum) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetObject<List<string>>(MethodBase.GetCurrentMethod(),medicationNum);
+			}
+			string command="SELECT MedName FROM medication "
+				+"WHERE GenericNum="+POut.Long(medicationNum)+" "
+				+"AND MedicationNum!="+POut.Long(medicationNum)+" "
+				+"AND IsHidden=0 "
+				+"ORDER BY MedName";
+			return Db.GetListString(command);
+		}
+
+		///<summary>The audit text when the Hidden flag changed between medicationOld and medication, or an empty string when it did not.</summary>
+		public static string GetHiddenChangedLogText(Medication medication,Medication medicationOld) {
+			Meth.NoCheckMiddleTierRole();
+			if(medication==null || medicationOld==null || medication.IsHidden==medicationOld.IsHidden) {
+				return "";
+			}
+			string action=medication.IsHidden ? Lans.g("Medications","hidden") : Lans.g("Medications","unhidden");
+			return Lans.g("Medications","Medication")+" '"+medication.MedName+"' "+action+".";
+		}
+		#endregion Hidden medications (Open Dental 25.1)
 
 		///<summary></summary>
 		public static void Update(Medication medication){
@@ -429,7 +491,8 @@ namespace OpenDentBusiness{
 				|| medicationOld.MedName!=medication.MedName
 				|| medicationOld.GenericNum!=medication.GenericNum
 				|| medicationOld.Notes!=medication.Notes
-				|| medicationOld.RxCui!=medication.RxCui) 
+				|| medicationOld.RxCui!=medication.RxCui
+				|| medicationOld.IsHidden!=medication.IsHidden)
 			{
 				return false;
 			}

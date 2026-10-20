@@ -18,6 +18,9 @@ namespace OpenDental {
 		public bool IsSelectionMode;
 		///<summary>the number returned if using select mode.</summary>
 		public long SelectedMedicationNum;
+		///<summary>Selection mode only.  When true, the Show Hidden box is offered so a hidden medication can be picked, as the merge tool needs.
+		///Every other picker leaves this false: hidden medications are not offered for patients, allergies, EHR rules or reconciles.</summary>
+		public bool CanSelectHidden;
 		private Timer _timer=new Timer();
 
 		///<summary>Set isAll to true to start in the All Medications tab, or false to start in the Meds In Use tab.</summary>
@@ -36,6 +39,8 @@ namespace OpenDental {
 				//This type of data can only be created in the United States for customers using NewCrop.
 				tabMedications.TabPages.Remove(tabMissing);
 			}
+			//Show Hidden is offered in the master list, and in selection mode only to callers that allow hidden medications (the merge tool).
+			checkShowHidden.Visible=(!IsSelectionMode || CanSelectHidden);
 			FillTab();
 			if(IsSelectionMode){
 				this.Text=Lan.g(this,"Select Medication");
@@ -63,6 +68,18 @@ namespace OpenDental {
 		private void _timer_Tick(object sender,EventArgs e) {
 			_timer.Stop();
 			FillTab();
+		}
+
+		private void checkShowHidden_Click(object sender,EventArgs e) {
+			FillGridAllMedications();
+		}
+
+		///<summary>True when hidden medications are listed in the All Medications grid.</summary>
+		private bool IsShowingHidden() {
+			if(IsSelectionMode && !CanSelectHidden) {
+				return false;
+			}
+			return checkShowHidden.Checked;
 		}
 
 		private void FillTab() {
@@ -97,8 +114,14 @@ namespace OpenDental {
 			}
 			col=new GridColumn(Lan.g(this,"Notes for Generic"),250,GridSortingStrategy.StringCompare);
 			gridAllMedications.Columns.Add(col);
+			bool isShowingHidden=IsShowingHidden();
+			if(isShowingHidden) {
+				//Last column, so the RxNorm column index used by the click handlers does not move.
+				col=new GridColumn(Lan.g(this,"Hidden"),50,HorizontalAlignment.Center,GridSortingStrategy.StringCompare);
+				gridAllMedications.Columns.Add(col);
+			}
 			gridAllMedications.ListGridRows.Clear();
-			List <Medication> listMedications=Medications.GetList(textSearch.Text);
+			List <Medication> listMedications=Medications.GetListForPicker(textSearch.Text,includeHidden:isShowingHidden);
 			for(int i=0;i<listMedications.Count;i++) {
 				GridRow row=new GridRow();
 				row.Tag=listMedications[i];
@@ -126,9 +149,18 @@ namespace OpenDental {
 					}
 				}
 				row.Cells.Add(listMedications[i].Notes);
+				if(isShowingHidden) {
+					row.Cells.Add(listMedications[i].IsHidden ? "X" : "");
+				}
+				if(listMedications[i].IsHidden) {
+					row.ColorText=System.Drawing.Color.Gray;
+				}
 				gridAllMedications.ListGridRows.Add(row);
 			}
 			gridAllMedications.EndUpdate();
+			if(sortColIndex>=gridAllMedications.Columns.Count) {
+				sortColIndex=-1;//Was sorted by the Hidden column, which Show Hidden just removed.
+			}
 			gridAllMedications.SortForced(sortColIndex,isSortAscending);
 			if(medicationSelected!=null) {//Will be null if nothing is selected.
 				for(int i=0;i<gridAllMedications.ListGridRows.Count;i++) {

@@ -52,6 +52,7 @@ namespace OpenDental {
 			this.labelRxNorm = new System.Windows.Forms.Label();
 			this.textRxNormDesc = new System.Windows.Forms.TextBox();
 			this.butRxNormSelect = new OpenDental.UI.Button();
+			this.checkHidden = new OpenDental.UI.CheckBox();
 			this.groupBox1.SuspendLayout();
 			this.SuspendLayout();
 			// 
@@ -232,10 +233,20 @@ namespace OpenDental {
 			this.butRxNormSelect.Text = "...";
 			this.butRxNormSelect.Click += new System.EventHandler(this.butRxNorm_Click);
 			// 
+			// checkHidden
+			// 
+			this.checkHidden.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.checkHidden.Location = new System.Drawing.Point(34, 414);
+			this.checkHidden.Name = "checkHidden";
+			this.checkHidden.Size = new System.Drawing.Size(127, 20);
+			this.checkHidden.TabIndex = 8;
+			this.checkHidden.Text = "Hidden";
+			// 
 			// FormMedicationEdit
 			// 
 			this.AcceptButton = this.butSave;
 			this.ClientSize = new System.Drawing.Size(621, 478);
+			this.Controls.Add(this.checkHidden);
 			this.Controls.Add(this.groupBox1);
 			this.Controls.Add(this.label4);
 			this.Controls.Add(this.butDelete);
@@ -282,5 +293,6 @@ namespace OpenDental {
 		private UI.Button butRxNormSelect;
 		private Label labelPatientAllergy;
 		private OpenDental.UI.ComboBox comboPatientAllergy;
+		private OpenDental.UI.CheckBox checkHidden;
 	}
 }
