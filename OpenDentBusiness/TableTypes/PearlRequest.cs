@@ -34,6 +34,12 @@ namespace OpenDentBusiness {
 		TimedOut,
 		///<summary>4 - The image is being uploaded to Pearl.</summary>
 		Uploading,
+		///<summary>5 - Open Dental 24.4. The upload failed; the image should be uploaded again.</summary>
+		ErrorUploading,
+		///<summary>6 - Open Dental 24.4. Pearl failed while processing; do not upload again, but polling may be restarted.</summary>
+		ErrorProcessing,
+		///<summary>7 - Open Dental 24.4. Pearl returned no findings for the image; do not upload again.</summary>
+		NoResults,
 	}
 }
 

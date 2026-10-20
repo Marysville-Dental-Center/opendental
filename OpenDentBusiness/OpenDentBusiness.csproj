@@ -729,6 +729,9 @@
     <Compile Include="WebBridges\Erx\DoseSpot\**\*.cs" />
     <Compile Include="WebBridges\Microsoft365\**\*.cs" />
     <Compile Include="WebBridges\Usps\**\*.cs" />
+    <!-- Fork migration steps (docs/specs/port-backlog.md, M1-01 and M1-02). Each step is its own file; new steps need no csproj edit. -->
+    <Compile Include="Misc\ForkMigrations\**\*.cs" />
+    <Compile Include="Misc\ReservedEnumValueAttribute.cs" />
     <Compile Include="WebBridges\APIRequest.cs" />
     <Compile Include="WebBridges\AvaTax.cs" />
     <Compile Include="WebBridges\EdgeExpress.cs" />

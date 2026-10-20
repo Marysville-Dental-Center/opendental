@@ -39,9 +39,10 @@ namespace OpenDentBusiness {
 		///<summary>4 - Manual Blue Book Schedule</summary>
 		[Description("Manual Blue Book Fee Schedule")]
 		ManualBlueBookSchedule,
-		///<summary>5 - UCR Fee</summary>
-		[Description("UCR Fee")]
-		UcrFee,
+		///<summary>5 - Provider Fee. Named UcrFee before Open Dental 25.3; the number did not change. Estimates use the provider's fee, so the Blue
+		///Book history (insbluebook rows) is not read.</summary>
+		[Description("Provider Fee")]
+		ProviderFee,
 	}
 
 	public enum InsBlueBookRuleLimitType {

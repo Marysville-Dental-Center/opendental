@@ -292,7 +292,7 @@ namespace OpenDentBusiness {
 						break;
 				}
 				DictRuleLimits.Add(insBlueBookRule.InsBlueBookRuleNum,dateLimit);
-				if(insBlueBookRule.RuleType.In(InsBlueBookRuleType.ManualBlueBookSchedule,InsBlueBookRuleType.UcrFee)) {
+				if(insBlueBookRule.RuleType.In(InsBlueBookRuleType.ManualBlueBookSchedule,InsBlueBookRuleType.ProviderFee)) {
 					continue;
 				}
 				else if(dateOldestLimit > dateLimit) {
@@ -377,7 +377,7 @@ namespace OpenDentBusiness {
 					LogText="Rule Type: Manual Blue Book Fee Schedule.";
 					allowed=Fees.GetAmount(codeNum,InsPlanPrimaryDental.ManualFeeSchedNum,procedure.ClinicNum,procedure.ProvNum,listFees);
 				}
-				else {//InsBlueBookRuleType.UcrFee
+				else {//InsBlueBookRuleType.ProviderFee
 					long feeSchedNum;
 					LogText="Rule Type: UCR Fee";
 					//Logic here mimics InsPlans.GetAllowed()
@@ -406,7 +406,7 @@ namespace OpenDentBusiness {
 			//Finish creating log
 			if(allowed==-1) {
 				LogText="No rule applied. Last attempted "+LogText;
-				if(insBlueBookRule.RuleType.In(InsBlueBookRuleType.UcrFee,InsBlueBookRuleType.ManualBlueBookSchedule)) {
+				if(insBlueBookRule.RuleType.In(InsBlueBookRuleType.ProviderFee,InsBlueBookRuleType.ManualBlueBookSchedule)) {
 					LogText+=$" No fee for code in fee schedule.";
 				}
 			}
@@ -418,7 +418,7 @@ namespace OpenDentBusiness {
 			}
 			else {
 				LogText+=$" Allowed amount: {Math.Round(allowed*procedure.Quantity,2).ToString("f")}";
-				if(insBlueBookRule.RuleType==InsBlueBookRuleType.UcrFee) {
+				if(insBlueBookRule.RuleType==InsBlueBookRuleType.ProviderFee) {
 					LogText+=$" ({PrefC.GetInt(PrefName.InsBlueBookUcrFeePercent).ToString()}% of UCR fee)";
 				}
 				LogText+=".";

@@ -128,6 +128,12 @@ namespace OpenDentBusiness{
 		///<summary>21 - SuperFamily Grid</summary>
 		[Description("SuperFamily Grid Columns")]
 		SuperFamilyGridCols,
+		///<summary>22 - Open Dental 25.3 placeholder for the 25.4 Account module service-date view. No fields yet in this program.</summary>
+		[Description("Account Module Service Date View")]
+		AccountModuleServiceDateView,
+		///<summary>23 - Open Dental 25.3. Columns of the ERA (electronic remittance advice) grids. No fields yet in this program.</summary>
+		[Description("ERA")]
+		ERA,
 	}
 	
 

@@ -74,6 +74,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VendorDirectTests", "tests\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ForkMigrationTests", "tests\ForkMigrationTests\ForkMigrationTests.csproj", "{0A2794F5-175E-48A2-946E-09D3981D6545}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RegistryTests", "tests\RegistryTests\RegistryTests.csproj", "{6A3C1E52-8B47-4C1D-9E2A-5F0B7D4C3A21}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -133,6 +135,18 @@ Global
 		{0A2794F5-175E-48A2-946E-09D3981D6545}.Release|Any CPU.Build.0 = Release|x86
 		{0A2794F5-175E-48A2-946E-09D3981D6545}.Release|x86.ActiveCfg = Release|x86
 		{0A2794F5-175E-48A2-946E-09D3981D6545}.Release|x86.Build.0 = Release|x86
+		{6A3C1E52-8B47-4C1D-9E2A-5F0B7D4C3A21}.Debug|Any CPU.ActiveCfg = Debug|x86
+		{6A3C1E52-8B47-4C1D-9E2A-5F0B7D4C3A21}.Debug|Any CPU.Build.0 = Debug|x86
+		{6A3C1E52-8B47-4C1D-9E2A-5F0B7D4C3A21}.Debug|x86.ActiveCfg = Debug|x86
+		{6A3C1E52-8B47-4C1D-9E2A-5F0B7D4C3A21}.Debug|x86.Build.0 = Debug|x86
+		{6A3C1E52-8B47-4C1D-9E2A-5F0B7D4C3A21}.ODXam|Any CPU.ActiveCfg = Release|x86
+		{6A3C1E52-8B47-4C1D-9E2A-5F0B7D4C3A21}.ODXam|Any CPU.Build.0 = Release|x86
+		{6A3C1E52-8B47-4C1D-9E2A-5F0B7D4C3A21}.ODXam|x86.ActiveCfg = Release|x86
+		{6A3C1E52-8B47-4C1D-9E2A-5F0B7D4C3A21}.ODXam|x86.Build.0 = Release|x86
+		{6A3C1E52-8B47-4C1D-9E2A-5F0B7D4C3A21}.Release|Any CPU.ActiveCfg = Release|x86
+		{6A3C1E52-8B47-4C1D-9E2A-5F0B7D4C3A21}.Release|Any CPU.Build.0 = Release|x86
+		{6A3C1E52-8B47-4C1D-9E2A-5F0B7D4C3A21}.Release|x86.ActiveCfg = Release|x86
+		{6A3C1E52-8B47-4C1D-9E2A-5F0B7D4C3A21}.Release|x86.Build.0 = Release|x86
 		{8136317D-C936-49B6-9E31-D90F02D2F207}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{8136317D-C936-49B6-9E31-D90F02D2F207}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8136317D-C936-49B6-9E31-D90F02D2F207}.Debug|x86.ActiveCfg = Debug|x86

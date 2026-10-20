@@ -659,7 +659,7 @@ namespace OpenDentBusiness{
 				case EnumPermType.ArchivedPatientSelect:
 				//case EnumPermType.CloudCustomerEdit:
 				//case Permissions.ChanSpy
-				case EnumPermType.ClaimProcFeeBilledToInsEdit:
+				case EnumPermType.ClaimProcFieldsBilledToInsEdit:
 				//case Permissions.AllergyMerge
 				//case Permissions.AiChatSession:
 				//case Permissions.BadgeIdEdit
@@ -671,6 +671,15 @@ namespace OpenDentBusiness{
 				//case EnumPermType.MobileNotification:
 				case EnumPermType.ChartViewsEdit:
 				//case EnumPermType.SuperFamilyDisband:
+				//case EnumPermType.ImageSignatureCreate:
+				//case EnumPermType.SignedImageEdit:
+				//case EnumPermType.BlockoutsFlagged:
+				//case EnumPermType.PayPlanUnlock:
+				//case EnumPermType.SendAlertsFromHQ://Reserved, see below.
+				//case EnumPermType.TextAllEmployees://Reserved, see below.
+				//case EnumPermType.ProcTPEditFee:
+				//case EnumPermType.EFormImport:
+				//case EnumPermType.PhoneExtension://Reserved, see below.
 				return false;//Does not have audit Trail if uncommented.
 			}
 			if(enumPermType.In(
@@ -687,9 +696,15 @@ namespace OpenDentBusiness{
 					EnumPermType.PreferenceEditBroadcastMonitor,
 					EnumPermType.CloudCustomerEdit,
 					EnumPermType.ChanSpy,
-					EnumPermType.AiChatSession
-				)) 
+					EnumPermType.AiChatSession,
+					EnumPermType.SendAlertsFromHQ,
+					EnumPermType.TextAllEmployees,
+					EnumPermType.PhoneExtension
+				))
 			{
+				return false;
+			}
+			if(IsReserved(enumPermType)) {//Any other HQ-only value.
 				return false;
 			}
 			return true;
@@ -724,6 +739,14 @@ namespace OpenDentBusiness{
 		public static string GetDesc(EnumPermType enumPermType){
 			Meth.NoCheckMiddleTierRole();
 			return Lans.g("enumPermissions",enumPermType.GetDescription());//If Description attribute is not defined, will default to perm.ToString()
+		}
+
+		///<summary>True for permission values that are marked [IsODHQ]: Open Dental HQ permissions that this program keeps only so that rows written by
+		///Open Dental load and display (for example 268 SendAlertsFromHQ, 269 TextAllEmployees and 272 PhoneExtension). They are hidden from the
+		///security tree and the audit trail filter, and Set All never grants them.</summary>
+		public static bool IsReserved(EnumPermType enumPermType) {
+			Meth.NoCheckMiddleTierRole();
+			return GenericTools.IsODHQ(enumPermType);
 		}
 
 		///<summary></summary>

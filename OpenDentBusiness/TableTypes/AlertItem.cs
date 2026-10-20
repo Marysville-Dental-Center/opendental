@@ -204,6 +204,23 @@ namespace OpenDentBusiness {
 		///<summary>40 - Alert that is created when an error occurs while uploading an image to Pearl or processing Pearl results.</summary>
 		[Description("Pearl AI Imaging Error")]
 		Pearl,
+		//41 to 45 were added by Open Dental 25.1. They belong to services this program does not have, so nothing here raises them. They are defined
+		//so that alertitem and alertcategorylink rows written by Open Dental load, and they are hidden from alert category setup.
+		///<summary>41 - Reserved. Upload or result errors from the BetterDiagnostics imaging service (not in this program).</summary>
+		[Description("BetterDiagnostics Error"),ReservedEnumValue("BetterDiagnostics is an Open Dental hosted service.")]
+		BetterDiagnostics,
+		///<summary>42 - Reserved. Billing found email and text templates without the Message-to-Pay link tag (Message-to-Pay is not in this program).</summary>
+		[Description("Message-to-Pay Tag Missing"),ReservedEnumValue("Message-to-Pay is an Open Dental hosted service.")]
+		MessageToPayTag,
+		///<summary>43 - Reserved. Progress of a mass email audience upload (mass email is not in this program).</summary>
+		[Description("Mass Email Upload"),ReservedEnumValue("Mass email is an Open Dental hosted service.")]
+		MassEmailUpload,
+		///<summary>44 - Reserved. Commlogs were made for a sent mass email (mass email is not in this program).</summary>
+		[Description("Mass Email Receipt"),ReservedEnumValue("Mass email is an Open Dental hosted service.")]
+		MassEmailReceipt,
+		///<summary>45 - Reserved. Open Dental HQ only: a notification HQ sent to an office.</summary>
+		[Description("HQ Notification"),IsODHQ]
+		HQNotification,
 	}
 
 	///<summary>Represents the urgency of the alert.  Also determines the color for the menu item in the main menu.</summary>
@@ -291,6 +308,12 @@ namespace OpenDentBusiness {
 		///<summary>18 - FormEServicesAutoMsging</summary>
 		[Description("eServices Auto Messaging")]
 		FormEServicesAutoMsging,
+		///<summary>19 - Reserved (Open Dental 25.1). Statement Send Setup, a Message-to-Pay window this program does not have. Opening it does nothing.</summary>
+		[Description("Statement Send Setup"),ReservedEnumValue("Message-to-Pay is an Open Dental hosted service.")]
+		FrmStatementSendSetup,
+		///<summary>20 - Reserved (Open Dental 25.1). Mass email audience upload window, not in this program. Opening it does nothing.</summary>
+		[Description("Mass Email Upload"),ReservedEnumValue("Mass email is an Open Dental hosted service.")]
+		FormAdvertisingMassEmailUpload,
 	}
 
 }

@@ -175,6 +175,10 @@ namespace OpenDentBusiness{
 		///<summary>35 Canada.  Type 19.</summary>
 		[EtransTypeAttr(true,false)]
 		AttachmentAck_CA,
+		///<summary>36 Open Dental 25.2. A claim sent to DentalXChange through its XConnect interface.</summary>
+		Claim_XConnect,
+		///<summary>37 Open Dental 25.2. DentalXChange XConnect acknowledgement of a claim.</summary>
+		ClaimAck_XConnect,
 	}
 
 	public class EtransTypeAttr:Attribute {

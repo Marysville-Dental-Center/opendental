@@ -11,7 +11,7 @@ using OpenDentBusiness.Eclaims;
 
 namespace OpenDentBusiness{
 	///<summary></summary>
-	public class ClaimProcs{
+	public partial class ClaimProcs{
 		#region Get Methods
 
 		///<summary>Can be used to calculate the patient portion estimate for a procedure from a list of claimprocs and list of adjustments.</summary>

@@ -15,7 +15,7 @@ using DataConnectionBase;
 using OpenDentBusiness.SheetFramework;
 
 namespace OpenDentBusiness {
-	public class Procedures {
+	public partial class Procedures {
 		public const string AutoNotePromptRegex=@"\[Prompt:""[a-zA-Z_0-9 ]+""\]";
 		#region Global Update Fees Variables
 		///<summary>Queue to hold batches for FIFO processing.  A batch is a DataTable of TPd procs.  One thread fills the queue with db data while the

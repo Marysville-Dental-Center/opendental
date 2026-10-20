@@ -193,6 +193,10 @@ namespace OpenDentBusiness {
 		///Short Code Supported: NO
 		///</summary>
 		OptOutReply,
+		///<summary>29. Reserved (Open Dental 25.2). eClipboard web links sent to patients; eClipboard is not in this program.
+		///Short Code Supported: NO</summary>
+		[ReservedEnumValue("eClipboard is an Open Dental hosted service.")]
+		EClipboardWeb,
 	}
 
 	///<summary>None should never be used, the code should be re-written to not use it.</summary>

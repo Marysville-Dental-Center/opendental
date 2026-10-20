@@ -162,7 +162,8 @@ namespace OpenDental{
 				}
 				else {
 					securityLogArray=ReportsComplex.RunFuncOnReportServer(() => SecurityLogs.Refresh(PIn.Date(textDateFrom.Text),PIn.Date(textDateTo.Text),
-						(EnumPermType)Enum.Parse(typeof(EnumPermType),comboPermission.SelectedItem.ToString()),_patNum,
+						//The combo shows translated names, so map the selected index back to the untranslated enum name.
+						(EnumPermType)Enum.Parse(typeof(EnumPermType),_listPermissionsAlphabetic[comboPermission.SelectedIndex]),_patNum,
 						datePreviousFrom,datePreviousTo,PIn.Int(textRows.Text),userNum,logSource), Prefs.GetBoolNoCache(PrefName.AuditTrailUseReportingServer));
 				}
 			}

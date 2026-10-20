@@ -14,7 +14,7 @@ using OpenDentBusiness.HL7;
 namespace OpenDentBusiness{
 
 	///<summary>Appointment S-Class.  Sends signalods for Invalid Appointments whenever a call to the db is made.</summary>
-	public class Appointments {
+	public partial class Appointments {
 		#region Prompt constant strings
 		public const string PROMPT_ListAptsToDelete = "One or more procedures are attached to another appointment.\r\n"
 					+ "All selected procedures will be detached from the other appointment which will result in its deletion.\r\n"
