@@ -1922,7 +1922,7 @@ namespace OpenDentBusiness {
 			}*/
 			//Warning if attachments are listed as Mail even though we are sending electronically.
 			bool pwkNeeded=false;
-			if(claim.AttachedFlags!="Mail") {//in other words, if there are additional flags.
+			if(ClaimAttaches.HasPaperworkFlags(claim.AttachedFlags)) {//in other words, if there are additional flags. Submitted (a sent DentalXChange attachment) is not one.
 				pwkNeeded=true;
 			}
 			if(claim.Radiographs>0 || claim.AttachedImages>0 || claim.AttachedModels>0) {
@@ -1934,7 +1934,7 @@ namespace OpenDentBusiness {
 				warning+="Attachments set to Mail";
 			}
 			//Warning if any PWK segments are needed, and there is no ID code.
-			if(pwkNeeded && claim.AttachmentID=="") {
+			if(ClaimAttaches.IsAttachmentIdMissing(claim.AttachedFlags,claim.AttachmentID,pwkNeeded)) {//Not once the DentalXChange attachment was sent.
 				if(warning!="")
 					warning+=",";
 				warning+="Attachment ID missing";

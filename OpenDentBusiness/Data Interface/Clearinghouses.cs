@@ -419,7 +419,53 @@ namespace OpenDentBusiness {
 				clearinghouseRetVal.LocationID=clearinghouseClin.LocationID;
 			}
 			clearinghouseRetVal.IsAttachmentSendAllowed=clearinghouseClin.IsAttachmentSendAllowed;
+			//Open Dental 25.2: XConnect is turned on per clinic, like attachment sending.
+			clearinghouseRetVal.EnableXConnect=clearinghouseClin.EnableXConnect;
 			return clearinghouseRetVal;
+		}
+
+		///<summary>The security log lines for XConnect being turned on or off (Open Dental 25.2: "XConnect enabled/disabled for clearinghouse X,
+		///clinic Y"), comparing the HQ row and the clinic override rows before and after an edit in Clearinghouse Setup. A clinic row that is new is
+		///compared with the HQ row as it was, which is what the clinic used before. funcGetClinicAbbr may be null.</summary>
+		public static List<string> GetXConnectChangeLogLines(Clearinghouse clearinghouseHqOld,Clearinghouse clearinghouseHqNew,
+			List<Clearinghouse> listClearinghousesClinOld,List<Clearinghouse> listClearinghousesClinNew,Func<long,string> funcGetClinicAbbr)
+		{
+			Meth.NoCheckMiddleTierRole();
+			List<string> listLines=new List<string>();
+			string description=clearinghouseHqNew?.Description??clearinghouseHqOld?.Description??"";
+			bool isEnabledHqOld=clearinghouseHqOld!=null && clearinghouseHqOld.EnableXConnect;
+			if(clearinghouseHqNew!=null && clearinghouseHqNew.EnableXConnect!=isEnabledHqOld) {
+				listLines.Add("XConnect "+(clearinghouseHqNew.EnableXConnect ? "enabled" : "disabled")+" for clearinghouse "+description+", clinic "
+					+GetClinicLabel(0,funcGetClinicAbbr));
+			}
+			List<Clearinghouse> listClinOld=listClearinghousesClinOld??new List<Clearinghouse>();
+			List<Clearinghouse> listClinNew=listClearinghousesClinNew??new List<Clearinghouse>();
+			foreach(Clearinghouse clearinghouseClinNew in listClinNew.GroupBy(x => x.ClinicNum).Select(x => x.First())) {
+				Clearinghouse clearinghouseClinOld=listClinOld.FirstOrDefault(x => x.ClinicNum==clearinghouseClinNew.ClinicNum);
+				bool isEnabledOld=clearinghouseClinOld==null ? isEnabledHqOld : clearinghouseClinOld.EnableXConnect;
+				if(clearinghouseClinNew.EnableXConnect==isEnabledOld) {
+					continue;
+				}
+				listLines.Add("XConnect "+(clearinghouseClinNew.EnableXConnect ? "enabled" : "disabled")+" for clearinghouse "+description+", clinic "
+					+GetClinicLabel(clearinghouseClinNew.ClinicNum,funcGetClinicAbbr));
+			}
+			return listLines;
+		}
+
+		private static string GetClinicLabel(long clinicNum,Func<long,string> funcGetClinicAbbr) {
+			string abbr=null;
+			if(funcGetClinicAbbr!=null) {
+				try {
+					abbr=funcGetClinicAbbr(clinicNum);
+				}
+				catch(Exception ex) {
+					ex.DoNothing();
+				}
+			}
+			if(string.IsNullOrWhiteSpace(abbr)) {
+				return clinicNum==0 ? "Headquarters" : clinicNum.ToString();
+			}
+			return abbr;
 		}
 
 		public static void RetrieveReportsAutomatic(bool isAllClinics) {
