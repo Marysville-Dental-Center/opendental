@@ -23,6 +23,7 @@
       "tests\\CryptoTests\\CryptoTests.csproj",
       "tests\\ForkMigrationTests\\ForkMigrationTests.csproj",
       "tests\\RegistryTests\\RegistryTests.csproj",
+      "tests\\StatementTests\\StatementTests.csproj",
       "tests\\ReleaseFlowTests\\ReleaseFlowTests.csproj",
       "tests\\VendorDirectTests\\VendorDirectTests.csproj",
       "tools\\SyntheticData\\SyntheticData.csproj",
