@@ -190,6 +190,10 @@ namespace OpenDental{
 		}
 
 		private void butNew_Click(object sender, System.EventArgs e) {
+			if(DocxMailMerge.IsSupportedTemplate(textTemplateName.Text) && Path.GetExtension(textTemplateName.Text).ToLower()==".docx") {
+				CreateDocxTemplate();//No word processor needed. Also the usual format for chart letter templates.
+				return;
+			}
 			#if DISABLE_MICROSOFT_OFFICE
 				MessageBox.Show(this, "This version of Open Dental does not support Microsoft Word.");
 				return;
@@ -231,6 +235,37 @@ namespace OpenDental{
 			word_Application.WindowState=Word.WdWindowState.wdWindowStateMinimize;
 			word_Document=null;
 			MsgBox.Show(this,"Done. You can edit the new template after closing this window.");
+		}
+
+		///<summary>Writes a starter .docx template with a merge field for each field selected in this window, without a word processor.</summary>
+		private void CreateDocxTemplate() {
+			if(!Directory.Exists(PrefC.GetString(PrefName.LetterMergePath))){
+				MsgBox.Show(this,"Letter merge path invalid");
+				return;
+			}
+			string templateFile=ODFileUtils.CombinePaths(PrefC.GetString(PrefName.LetterMergePath),textTemplateName.Text);
+			if(File.Exists(templateFile)){
+				MsgBox.Show(this,"A file with that name already exists.  Choose a different name, or close this window to edit the template.");
+				return;
+			}
+			List<string> listFieldNames=new List<string>();
+			for(int i=0;i<listPatSelect.SelectedIndices.Count;i++){
+				listFieldNames.Add(listPatSelect.Items.GetTextShowingAt(listPatSelect.SelectedIndices[i]));
+			}
+			for(int i=0;i<listReferral.SelectedIndices.Count;i++){
+				listFieldNames.Add(LetterMergesQueries.GetDataFieldName("referral."+listReferral.Items.GetTextShowingAt(listReferral.SelectedIndices[i])));
+			}
+			for(int i=0;i<listOther.SelectedIndices.Count;i++){
+				listFieldNames.Add(listOther.Items.GetTextShowingAt(listOther.SelectedIndices[i]));
+			}
+			try {
+				File.WriteAllBytes(templateFile,DocxMailMerge.CreateTemplate(textDescription.Text,listFieldNames));
+			}
+			catch(Exception ex) {
+				FriendlyException.Show(Lan.g(this,"The template could not be created."),ex);
+				return;
+			}
+			MsgBox.Show(this,"Done. The new template lists the selected fields. Edit it with any program that opens .docx files after closing this window.");
 		}
 
 		private void butDelete_Click(object sender, System.EventArgs e) {

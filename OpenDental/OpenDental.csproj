@@ -1901,6 +1901,7 @@
     <Compile Include="Logic\PayPlanL.cs" />
     <Compile Include="Logic\aaLogicUI.cs" />
     <Compile Include="Logic\AppointmentL.cs" />
+    <Compile Include="Logic\ChartLetterL.cs" />
     <Compile Include="Logic\UserOdPrefL.cs" />
     <Compile Include="Main Modules\ControlAccount.Designer.cs">
       <DependentUpon>ControlAccount.cs</DependentUpon>
@@ -5262,6 +5263,10 @@
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="Main Modules\ControlChart.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Main Modules\ControlChart.ChartLetters.cs">
+      <DependentUpon>ControlChart.cs</DependentUpon>
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="Main Modules\ControlImagesOld.cs">

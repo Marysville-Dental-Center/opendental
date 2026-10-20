@@ -31,6 +31,11 @@ namespace OpenDental{
 		private Object _objectFalse = false;
 #endif
 		private List<Def> _listDefsLetterMergeCat;
+		///<summary>Set true when opened from the Chart module's New Chart Letter: the window is titled for picking the template of a chart letter.
+		///The Chart Letter button works in either mode.</summary>
+		public bool IsChartLetterMode;
+		///<summary>The chart letter made with the Chart Letter button, or null.</summary>
+		public Document DocumentChartLetter;
 
 		///<summary></summary>
 		public FormLetterMerges(Patient patient){
@@ -54,6 +59,25 @@ namespace OpenDental{
 			comboImageCategory.Items.AddDefNone();
 			comboImageCategory.Items.AddDefs(Defs.GetDefsForCategory(DefCat.ImageCats,true));
 			SelectImageCat();
+			if(IsChartLetterMode) {
+				Text=Lan.g(this,"New Chart Letter - pick a letter, then click Chart Letter");
+			}
+		}
+
+		///<summary>Creates a chart letter (24.4) for the patient from the selected letter's template. It is listed in the Chart module's progress
+		///notes, not in the Imaging module.</summary>
+		private void butChartLetter_Click(object sender,EventArgs e) {
+			if(listLetters.SelectedIndex==-1) {
+				MsgBox.Show(this,"Please select a letter first.");
+				return;
+			}
+			LetterMerge letterMerge=_listLetterMergesForCat[listLetters.SelectedIndex];
+			Document document=ChartLetterL.CreateFromTemplate(_patient,letterMerge);
+			if(document==null) {
+				return;
+			}
+			DocumentChartLetter=document;
+			DialogResult=DialogResult.OK;
 		}
 
 		private void FillCats() {

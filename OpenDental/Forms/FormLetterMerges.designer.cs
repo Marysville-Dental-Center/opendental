@@ -50,6 +50,7 @@ namespace OpenDental {
 			this.labelImageCategory = new System.Windows.Forms.Label();
 			this.butViewData = new OpenDental.UI.Button();
 			this.butPreview = new OpenDental.UI.Button();
+			this.butChartLetter = new OpenDental.UI.Button();
 			this.groupBox1.SuspendLayout();
 			this.SuspendLayout();
 			// 
@@ -190,10 +191,21 @@ namespace OpenDental {
 			this.butPreview.TabIndex = 22;
 			this.butPreview.Text = "Preview";
 			this.butPreview.Click += new System.EventHandler(this.butPreview_Click);
-			// 
+			//
+			// butChartLetter
+			//
+			this.butChartLetter.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			this.butChartLetter.Location = new System.Drawing.Point(453, 90);
+			this.butChartLetter.Name = "butChartLetter";
+			this.butChartLetter.Size = new System.Drawing.Size(79, 24);
+			this.butChartLetter.TabIndex = 24;
+			this.butChartLetter.Text = "Chart Letter";
+			this.butChartLetter.Click += new System.EventHandler(this.butChartLetter_Click);
+			//
 			// FormLetterMerges
-			// 
+			//
 			this.ClientSize = new System.Drawing.Size(579, 446);
+			this.Controls.Add(this.butChartLetter);
 			this.Controls.Add(this.groupBox1);
 			this.Controls.Add(this.butEditTemplate);
 			this.Controls.Add(this.butEditCats);
@@ -228,6 +240,7 @@ namespace OpenDental {
 		private OpenDental.UI.GroupBox groupBox1;
 		private OpenDental.UI.Button butViewData;
 		private OpenDental.UI.Button butPreview;
+		private OpenDental.UI.Button butChartLetter;
 		private UI.ComboBox comboImageCategory;
 		private Label labelImageCategory;
 		private System.Drawing.Printing.PrintDocument pd2;
