@@ -48,6 +48,7 @@ namespace OpenDental {
 			this.labelDefaultProcMethod = new System.Windows.Forms.Label();
 			this.checkTerminal = new OpenDental.UI.CheckBox();
 			this.labelClinicEnable = new System.Windows.Forms.Label();
+			this.butErrorLog = new OpenDental.UI.Button();
 			this.butSave = new OpenDental.UI.Button();
 			this.groupBoxTerminals = new OpenDental.UI.GroupBox();
 			this.butAddTerminal = new OpenDental.UI.Button();
@@ -322,9 +323,20 @@ namespace OpenDental {
 			this.labelPracticeWide.TabIndex = 3;
 			this.labelPracticeWide.Text = "The API key and the sandbox setting apply to every clinic. Each clinic enters its own Secret below. In the sandbox, transactions are tests and nothing is charged.";
 			// 
+			// butErrorLog
+			// 
+			this.butErrorLog.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.butErrorLog.Location = new System.Drawing.Point(9, 670);
+			this.butErrorLog.Name = "butErrorLog";
+			this.butErrorLog.Size = new System.Drawing.Size(110, 26);
+			this.butErrorLog.TabIndex = 20;
+			this.butErrorLog.Text = "Error Log";
+			this.butErrorLog.Click += new System.EventHandler(this.butErrorLog_Click);
+			// 
 			// FormPayConnectSetup
 			// 
 			this.ClientSize = new System.Drawing.Size(776, 708);
+			this.Controls.Add(this.butErrorLog);
 			this.Controls.Add(this.groupBoxTerminals);
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.labelClinicEnable);
@@ -352,6 +364,7 @@ namespace OpenDental {
 
 		}
 		#endregion
+		private UI.Button butErrorLog;
 		private OpenDental.UI.Button butSave;
 		private OpenDental.UI.CheckBox checkEnabled;
 		private Label label1;

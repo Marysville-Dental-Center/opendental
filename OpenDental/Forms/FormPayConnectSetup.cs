@@ -338,7 +338,7 @@ namespace OpenDental{
 			}
 			PayConnect2Response payConnect2Response=null;
 			ProgressWin progressWin=new ProgressWin();
-			progressWin.ActionMain=() => { payConnect2Response=PayConnect2.GetTerminals(apiCredentials); };
+			progressWin.ActionMain=() => { payConnect2Response=PayConnect2.GetTerminals(apiCredentials,clinicNum); };
 			progressWin.StartingMessage=Lan.g(this,"Getting terminals from PayConnect");
 			try {
 				progressWin.ShowDialog();
@@ -376,6 +376,24 @@ namespace OpenDental{
 			}
 			FillGridTerminals();
 			MsgBox.Show(Lan.g(this,"Terminals added")+": "+countAdded);
+		}
+
+		///<summary>25.3: shows the last PayConnect errors logged on this workstation (PayConnectErrorLog), newest last. The log never holds card
+		///numbers, tokens or keys.</summary>
+		private void butErrorLog_Click(object sender,EventArgs e) {
+			List<string> listLines=PayConnectErrorLog.GetRecentLines();
+			string text;
+			if(listLines.Count==0) {
+				text=Lan.g(this,"No PayConnect errors have been logged on this computer.");
+			}
+			else {
+				text=Lan.g(this,"The last PayConnect errors logged on this computer, newest last.")+" "
+					+Lan.g(this,"Folder")+": "+Logger.GetDirectory(PayConnectErrorLog.SubDirectory)+"\r\n\r\n"
+					+string.Join("\r\n",listLines);
+			}
+			using MsgBoxCopyPaste msgBoxCopyPaste=new MsgBoxCopyPaste(text);
+			msgBoxCopyPaste.Text=Lan.g(this,"PayConnect Error Log");
+			msgBoxCopyPaste.ShowDialog();
 		}
 
 		private void butSave_Click(object sender, System.EventArgs e) {
