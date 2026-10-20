@@ -82,11 +82,11 @@ namespace DevDbTool {
 			devDatabase.LoadDump(dumpPath);
 			devDatabase.ConnectToDatabase(skipValidation:false);
 			devDatabase.Upgrade();
+			devDatabase.StampProgramVersion();//Before the fork migrations: adoption needs ProgramVersion to agree with DataBaseVersion.
 			if(!options.SkipForkMigrations) {
 				devDatabase.RunForkMigrations();
 			}
 			devDatabase.ApplyDefaults();
-			devDatabase.StampProgramVersion();
 			if(options.AtoZPath!="") {
 				devDatabase.SetAtoZFolder(options.AtoZPath);
 			}
@@ -121,8 +121,14 @@ namespace DevDbTool {
 				Console.Error.WriteLine("Verification FAILED with "+check.ListProblems.Count+" problem(s).");
 				return ExitVerifyFailed;
 			}
-			Info("Verification passed: DataBaseVersion "+DevDatabase.GetPrefRaw(PrefName.DataBaseVersion)+" matches program version "
-				+DevDatabase.VersionProgram+".");
+			if(options.SkipForkMigrations) {
+				Info("Verification passed: DataBaseVersion "+DevDatabase.GetPrefRaw(PrefName.DataBaseVersion)+" matches program version "
+					+DevDatabase.VersionProgram+".");
+			}
+			else {
+				Info("Verification passed: adopted database at fork schema level "+DevDatabase.GetPrefRaw(ForkVersions.PREF_FORK_SCHEMA_LEVEL)
+					+", schema of Open Dental "+DevDatabase.GetPrefRaw(ForkVersions.PREF_OD_SCHEMA_COMPAT)+".");
+			}
 			return ExitOk;
 		}
 

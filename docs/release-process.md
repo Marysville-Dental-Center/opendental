@@ -57,7 +57,7 @@ No case offers a "downgrade". Open Dental's `UpdateFiles` and `UpdateFilesSegmen
 
 When an inactive workstation becomes active again, `FormOpenDental.IsDbConnectionSafe` runs the same guard, in Debug builds too. In Release builds, a workstation also restarts when a different build has been published, unless it may publish its own build under the rules below (`ForkReleases.MayRunUnpublishedBuild`): the named update server, or, with a blank `WebServiceServerName`, a build known to be newer. A blank preference never exempts a stale build.
 
-The legacy `ConvertDatabases` chain is frozen at 24.3.63 (`ConvertDatabases.FrozenVersion`). Adding a `ToX_Y_Z` method above it throws, and so does running the chain on a newer database. Later schema changes are fork migration steps. `PrefL.ConvertDB` hands an adopted database to the runner through `IForkMigrationRunner` (`ForkMigrationHandOff`). Until M1-01's runner is merged, a baseline runner with no steps is used.
+The legacy `ConvertDatabases` chain is frozen at 24.3.63 (`ConvertDatabases.FrozenVersion`). Adding a `ToX_Y_Z` method above it throws, and so does running the chain on a newer database. Later schema changes are fork migration steps. `PrefL.ConvertDB` hands an adopted database to the runner through `IForkMigrationRunner` (`ForkMigrationHandOff`), which finds `ForkMigrationRunnerAdapter`: it runs M1-01's `ForkMigrationRunner` and, when the schema verifier then finds an exact match, sets `OdSchemaCompat` to `25.3.48`. The baseline runner with no steps is used only when no runner is found. `tools/New-DevDatabase.ps1` adopts the 24.3.63 database it builds, so a development database carries the same markers as an adopted office copy.
 
 ## Adopting a database
 

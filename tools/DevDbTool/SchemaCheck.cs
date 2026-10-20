@@ -33,7 +33,7 @@ namespace DevDbTool {
 		///--no-fork-migrations: columns that only the fork migrations add are then listed as notes, not problems.</summary>
 		public static SchemaCheck Run(string databaseName,bool isForkMigrated=true) {
 			SchemaCheck check=new SchemaCheck();
-			check.CheckPrefs();
+			check.CheckPrefs(isForkMigrated);
 			check.CheckTables(databaseName,isForkMigrated);
 			if(isForkMigrated) {
 				check.CheckForkMigrations(databaseName);
@@ -43,24 +43,14 @@ namespace DevDbTool {
 			return check;
 		}
 
-		private void CheckPrefs() {
-			Version versionProgram=DevDatabase.VersionProgram;
-			string dbVersion=DevDatabase.GetPrefRaw(PrefName.DataBaseVersion);
-			if(dbVersion==null) {
-				ListProblems.Add("Preference DataBaseVersion is missing.");
+		///<summary>isForkMigrated: the database was adopted (DevDatabase.RunForkMigrations), so the startup version guard must let it through with no
+		///fork migration pending, and DataBaseVersion and ProgramVersion hold the adoption sentinel instead of the program version.</summary>
+		private void CheckPrefs(bool isForkMigrated) {
+			if(isForkMigrated) {
+				CheckForkMarkers();
 			}
 			else {
-				Version versionDb=new Version(dbVersion);
-				if(versionDb!=versionProgram) {
-					ListProblems.Add("DataBaseVersion is "+dbVersion+" but the program is "+versionProgram+".");
-				}
-				if(versionDb!=ConvertDatabases.LatestVersion) {
-					ListProblems.Add("DataBaseVersion is "+dbVersion+" but the newest convert method is "+ConvertDatabases.LatestVersion+".");
-				}
-			}
-			string programVersion=DevDatabase.GetPrefRaw(PrefName.ProgramVersion);
-			if(programVersion!=versionProgram.ToString()) {
-				ListProblems.Add("ProgramVersion is "+(programVersion??"missing")+" but the program is "+versionProgram+".");
+				CheckVersionPrefs();
 			}
 			if(DevDatabase.GetPrefRaw(PrefName.CorruptedDatabase)!="0") {
 				ListProblems.Add("CorruptedDatabase is set: a conversion did not finish.");
@@ -80,6 +70,46 @@ namespace DevDbTool {
 			int countMissingPrefs=Enum.GetNames(typeof(PrefName)).Count(x => !setPrefNames.Contains(x));
 			ListNotes.Add(setPrefNames.Count+" preference rows; "+countMissingPrefs+" PrefName values have none (clinicpref-only, HQ-only or "
 				+"optional prefs that the convert scripts never insert).");
+		}
+
+		private void CheckVersionPrefs() {
+			Version versionProgram=DevDatabase.VersionProgram;
+			string dbVersion=DevDatabase.GetPrefRaw(PrefName.DataBaseVersion);
+			if(dbVersion==null) {
+				ListProblems.Add("Preference DataBaseVersion is missing.");
+			}
+			else {
+				Version versionDb=new Version(dbVersion);
+				if(versionDb!=versionProgram) {
+					ListProblems.Add("DataBaseVersion is "+dbVersion+" but the program is "+versionProgram+".");
+				}
+				if(versionDb!=ConvertDatabases.LatestVersion) {
+					ListProblems.Add("DataBaseVersion is "+dbVersion+" but the newest convert method is "+ConvertDatabases.LatestVersion+".");
+				}
+			}
+			string programVersion=DevDatabase.GetPrefRaw(PrefName.ProgramVersion);
+			if(programVersion!=versionProgram.ToString()) {
+				ListProblems.Add("ProgramVersion is "+(programVersion??"missing")+" but the program is "+versionProgram+".");
+			}
+		}
+
+		///<summary>The fork version markers of an adopted database: what the startup version guard reads.</summary>
+		private void CheckForkMarkers() {
+			ForkDbState forkDbState=ForkVersions.ReadState();
+			ForkGuardResult forkGuardResult=ForkVersionGuard.Evaluate(forkDbState);
+			if(forkGuardResult.Action!=ForkGuardAction.ProceedFork) {
+				ListProblems.Add("The startup version guard would not open this database ("+forkGuardResult.Action+"): "+forkGuardResult.Message);
+			}
+			else if(forkGuardResult.HasPendingMigrations) {
+				ListProblems.Add("ForkSchemaLevel is "+forkDbState.ForkSchemaLevel+" but this build's fork migrations reach "
+					+ForkMigrationHandOff.Runner.LatestLevel+".");
+			}
+			if(forkDbState.OdSchemaCompat!=SchemaVerifier.ReferenceVersion) {
+				ListProblems.Add("OdSchemaCompat is "+(forkDbState.OdSchemaCompat??"missing")+" but the schema should match Open Dental "
+					+SchemaVerifier.ReferenceVersion+".");
+			}
+			ListNotes.Add("Adopted ("+forkDbState.ForkAdoptedFrom+"): DataBaseVersion "+forkDbState.DataBaseVersion+", fork schema level "
+				+forkDbState.ForkSchemaLevel+", OdSchemaCompat "+forkDbState.OdSchemaCompat+".");
 		}
 
 		private void CheckTables(string databaseName,bool isForkMigrated) {

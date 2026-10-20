@@ -551,12 +551,6 @@
     <Compile Include="InternalTools\WebChat\TableTypes\WebChatSession.cs" />
     <Compile Include="Misc\ConvertDatabases7.cs" />
     <Compile Include="Misc\ConvertDatabases8.cs" />
-    <Compile Include="Misc\ForkMigrations\ForkMigrationContext.cs" />
-    <Compile Include="Misc\ForkMigrations\ForkMigrationRunner.cs" />
-    <Compile Include="Misc\ForkMigrations\ForkMigrationStep.cs" />
-    <Compile Include="Misc\ForkMigrations\OdParity25_3.cs" />
-    <Compile Include="Misc\ForkMigrations\SchemaSnapshot.cs" />
-    <Compile Include="Misc\ForkMigrations\SchemaVerifier.cs" />
     <Compile Include="Misc\Currency.cs" />
     <Compile Include="Misc\FamilyBalancer.cs" />
     <Compile Include="Misc\FHIRUtils.cs" />
@@ -726,14 +720,12 @@
     <Compile Include="Bridges\PostcardMania\**\*.cs" />
     <Compile Include="Bridges\QuickBooksOnline\**\*.cs" />
     <Compile Include="VendorDirect\**\*.cs" />
-    <!-- Fork version guard, adoption and fork migrations (backlog M1-01/M1-03), and the fork release channel (M1-03). -->
+    <!-- Fork version guard, adoption and fork migrations (backlog M1-01 to M1-03; each migration step is its own file, so new steps need no csproj edit), and the fork release channel (M1-03). -->
     <Compile Include="Misc\ForkMigrations\**\*.cs" />
     <Compile Include="Misc\ForkRelease\**\*.cs" />
     <Compile Include="WebBridges\Erx\DoseSpot\**\*.cs" />
     <Compile Include="WebBridges\Microsoft365\**\*.cs" />
     <Compile Include="WebBridges\Usps\**\*.cs" />
-    <!-- Fork migration steps (docs/specs/port-backlog.md, M1-01 and M1-02). Each step is its own file; new steps need no csproj edit. -->
-    <Compile Include="Misc\ForkMigrations\**\*.cs" />
     <Compile Include="Misc\ReservedEnumValueAttribute.cs" />
     <Compile Include="WebBridges\APIRequest.cs" />
     <Compile Include="WebBridges\AvaTax.cs" />

@@ -11,6 +11,17 @@ The legacy `ConvertDatabases` chain (`OpenDentBusiness/Misc/ConvertDatabases*.cs
 5. Write column definitions exactly as `SHOW CREATE TABLE` prints them on MariaDB 10.11 (for example `tinyint(4) NOT NULL`, `date NOT NULL DEFAULT '0001-01-01'`), so the schema verifier sees an exact match.
 6. Regenerate the CRUD with xCrudGenerator (`CrudGenerator.exe crud=TypeName,...` from `xCrudGenerator\bin\Debug`), never by hand.
 
+## Steps and order
+
+| Level | Step | Package |
+|---|---|---|
+| 2026101901 to 2026101906 | `OdParity25_3.cs`: the Open Dental 24.4, 25.1, 25.2 and 25.3 schema, then the 25.3.48 keys and definitions of existing columns | M1-01 |
+| 2026101907 | `Seed25_3Step.cs`: the `Seed25_3` preference, permission-grant and eForm status rows, only for a database that comes from 24.3 (judged by the `ForkAdoptedFrom` source on an adopted database, otherwise by `DataBaseVersion`) | M1-02 |
+
+## Hand-off to the version guard and adoption
+
+`ForkMigrationRunnerAdapter` implements M1-03's `IForkMigrationRunner`, so `ForkMigrationHandOff` finds it. Startup (`PrefL.ConvertDB`) and adoption (`Adoption.Run`) run the steps through it; afterwards it sets `OdSchemaCompat` to `25.3.48` when the schema verifier finds an exact match. `tools/New-DevDatabase.ps1` adopts the database it builds, so a development database carries the same markers as an adopted office copy. Running `ForkMigrationRunner.Run()` directly (tests, the UnitTests database) leaves a database the startup guard refuses, because it has `ForkSchemaLevel` without the adoption markers.
+
 ## Runner state
 
 Kept in preference rows (no schema change): `ForkMigrationsApplied` (levels that finished), `ForkSchemaLevel` (highest finished level) and `ForkMigrationInProgress` (a step that started and did not finish; while it is set the runner refuses to run, because MyISAM has no transactions and the database needs a restore). Callers own backups, version checks and the progress window.
