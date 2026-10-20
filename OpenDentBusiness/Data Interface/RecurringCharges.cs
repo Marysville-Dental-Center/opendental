@@ -10,6 +10,7 @@ using System.Threading;
 using CodeBase;
 using OpenDentBusiness.FileIO;
 using OpenDentBusiness.PayConnectService;
+using OpenDentBusiness.VendorDirect;
 using OpenDentBusiness.WebTypes.Shared.XWeb;
 using EdgeExpressProps=OpenDentBusiness.ProgramProperties.PropertyDescs.EdgeExpress;
 
@@ -584,17 +585,29 @@ namespace OpenDentBusiness {
 			if(_isManual) {
 				payNote="Made from manually ran recurring charge";
 			}
-			XWebResponse response=EdgeExpress.CNP.ProcessPaymentDirect(
-				chargeData.RecurringCharge.PatNum,
-				Lans.g(_lanThis,payNote),			
-				chargeData.RecurringCharge.ChargeAmt,
-				chargeData.CCSource,
-				isWebPayment:false,
-				chargeData.XChargeToken,
-				forceDuplicates,
-				listCreditCardSourcesEdgeExpress,
-				chargeData.RecurringCharge.ClinicNum
-			);
+			XWebResponse response;
+			try {
+				response=EdgeExpress.CNP.ProcessPaymentDirect(
+					chargeData.RecurringCharge.PatNum,
+					Lans.g(_lanThis,payNote),
+					chargeData.RecurringCharge.ChargeAmt,
+					chargeData.CCSource,
+					isWebPayment:false,
+					chargeData.XChargeToken,
+					forceDuplicates,
+					listCreditCardSourcesEdgeExpress,
+					chargeData.RecurringCharge.ClinicNum
+				);
+			}
+			catch(Exception ex) {
+				//Not set up for this clinic, or no answer from the card processor. Mark this card and carry on with the rest of the batch. The request may
+				//have reached the processor before the error, so the card is never charged again automatically.
+				string errorMsg=Lans.g(_lanThis,"Error from EdgeExpress:")+" "+(ex.InnerException?.Message??ex.Message)+" "
+					+Lans.g(_lanThis,"Check the card processor's records before charging this card again.");
+				MarkFailed(chargeData,errorMsg);
+				strBuilderResultFile.AppendLine("PatNum: "+chargeData.RecurringCharge.PatNum+" "+errorMsg);
+				return;
+			}
 
 			double amount=response.Amount;
 			if(response.XWebResponseCode==XWebResponseCodes.Approval) {
@@ -835,118 +848,23 @@ namespace OpenDentBusiness {
 			}
 		}
 		
-		///<summary>Charges the credit cards passed in using PayConnect.</summary>
+		///<summary>Charges the credit cards passed in using PayConnect 2. forceDuplicates is not used: only PayConnect 1.0 (removed) could force a
+		///duplicate. A clinic still set to version 1 is marked failed, and nothing is sent.</summary>
 		public void SendPayConnect(RecurringChargeData chargeData,bool forceDuplicates,StringBuilder strBuilderResultFile) {
 			Program program=Programs.GetCur(ProgramName.PayConnect);
-			string payconnectVersion=ProgramProperties.GetPropVal(program.ProgramNum,"Program Version",Clinics.ClinicNum);
+			//The version of the clinic the charge is made for (its row, else the practice row), not the clinic of the computer running the batch.
+			long clinicNumCharge=PrefC.HasClinicsEnabled ? chargeData.RecurringCharge.ClinicNum : 0;
+			string payconnectVersion=ProgramProperties.GetValOrDefault(program.ProgramNum,PayConnect.ProgramProperties.ProgramVersion,clinicNumCharge);
 			if(payconnectVersion=="1") {
-				SendPayConnectV1(chargeData,forceDuplicates,strBuilderResultFile);
+				MarkFailed(chargeData,PayConnect.GetVersion1RemovedText());
+				strBuilderResultFile.AppendLine("PatNum: "+chargeData.RecurringCharge.PatNum+" "+PayConnect.GetVersion1RemovedText());
 			}
-			else if(payconnectVersion=="2") {
+			else if(payconnectVersion==PayConnect.Version2) {
 				SendPayConnectV2(chargeData,strBuilderResultFile);
 			}
-		}
-
-		/// <summary>Charges the card using version 1 of PayConnect. This method is equivalent to the SendPayConnect() method in prior versions of Open Dental.</summary>
-		private void SendPayConnectV1(RecurringChargeData chargeData,bool forceDuplicates,StringBuilder strBuilderResultFile) {
-			Dictionary<long,string> dictClinicNumDesc=new Dictionary<long,string>();
-			if(PrefC.HasClinicsEnabled) {
-				dictClinicNumDesc=Clinics.GetClinicsNoCache().ToDictionary(x => x.ClinicNum,x => x.Description);
+			else {
+				MarkFailed(chargeData,Lans.g(_lanThis,"PayConnect is not set up for this clinic."));
 			}
-			dictClinicNumDesc[0]=PrefC.GetString(PrefName.PracticeTitle);
-			strBuilderResultFile.AppendLine("Recurring charge results for "+DateTime.Now.ToShortDateString()+" ran at "+DateTime.Now.ToShortTimeString());
-			strBuilderResultFile.AppendLine();
-			bool isPayConnectToken=true;
-			string tokenOrCCMasked=chargeData.PayConnectToken;
-			int tokenCount=CreditCards.GetPayConnectTokenCount(tokenOrCCMasked);
-			if(tokenOrCCMasked!="" && tokenCount!=1) {
-				string msg=(tokenCount>1)?"A duplicate token was found":"A token no longer exists";
-				MarkFailed(chargeData,Lans.g(_lanThis,msg+", the card cannot be charged."));
-				return;
-			}
-			long patNum=chargeData.RecurringCharge.PatNum;
-			Patient patCur=Patients.GetPat(patNum);
-			if(patCur==null) {
-				MarkFailed(chargeData,Lans.g(_lanThis,"Unable to find patient")+" "+chargeData.RecurringCharge.PatNum);
-				return;
-			}
-			if(chargeData.PayConnectTokenExp==DateTime.MinValue) {
-				chargeData.PayConnectTokenExp=chargeData.CCExpiration;
-			}
-			DateTime exp=chargeData.PayConnectTokenExp;
-			if(tokenOrCCMasked=="") {
-				isPayConnectToken=false;
-				tokenOrCCMasked=chargeData.CCNumberMasked;
-				exp=chargeData.CCExpiration;
-			}
-			decimal amt=(decimal)chargeData.RecurringCharge.ChargeAmt;
-			string zip=chargeData.Zip;
-			long clinicNumCur=chargeData.RecurringCharge.ClinicNum;
-			double amount=0;
-			//request a PayConnect token, if a token was already saved PayConnect will return the same token,
-			//otherwise replace CCNumberMasked with the returned token if the sale successful
-			PayConnectService.creditCardRequest payConnectRequest=PayConnect.BuildSaleRequest(
-				amt,tokenOrCCMasked,exp.Year,exp.Month,
-				patCur.GetNameFLnoPref(),"",zip,null,
-				PayConnectService.transType.SALE,"",true,
-				isForced:forceDuplicates);
-			//clinicNumCur could be 0, and the practice level or 'Headquarters' PayConnect credentials would be used for this charge
-			PayConnectService.transResponse payConnectResponse=PayConnect.ProcessCreditCard(payConnectRequest,clinicNumCur,
-				x => MarkDeclined(chargeData,x));
-			StringBuilder strBuilderResultText=new StringBuilder();//this payment's result text, used in payment note and then appended to file string builder
-			strBuilderResultFile.AppendLine("PatNum: "+patNum+" Name: "+patCur.GetNameFLnoPref());
-			if(payConnectResponse==null || payConnectResponse.Status==null) {
-				MarkFailed(chargeData,Lans.g(_lanThis,"Transaction Failed, unknown error"),LogLevel.Information);//Likely a server internal error not a card issue
-				if(PrefC.HasClinicsEnabled && dictClinicNumDesc.ContainsKey(clinicNumCur)) {
-					strBuilderResultText.AppendLine("CLINIC="+dictClinicNumDesc[clinicNumCur]);
-				}
-				strBuilderResultText.AppendLine(Lans.g(_lanThis,"Transaction Failed, unknown error"));
-				strBuilderResultFile.AppendLine(strBuilderResultText.ToString());//add to the file string builder
-			}
-			else if(payConnectResponse.Status.code!=0) {//error in transaction
-				MarkDeclined(chargeData,Lans.g(_lanThis,"Transaction Failed, error status")+" "+payConnectResponse.Status.description,LogLevel.Information);
-				if(PrefC.HasClinicsEnabled && dictClinicNumDesc.ContainsKey(clinicNumCur)) {
-					strBuilderResultText.AppendLine("CLINIC="+dictClinicNumDesc[clinicNumCur]);
-				}
-				strBuilderResultText.AppendLine(Lans.g(_lanThis,"Transaction Type")+": "+PayConnectService.transType.SALE.ToString());
-				strBuilderResultText.AppendLine(Lans.g(_lanThis,"Status")+": "+payConnectResponse.Status.description);
-				strBuilderResultFile.AppendLine(strBuilderResultText.ToString());//add to the file string builder
-			}
-			else {//approved sale, update CC, add result to file string builder		
-				chargeData.RecurringCharge.ChargeStatus=RecurringChargeStatus.ChargeSuccessful;
-				Success++;
-				CreditCard ccCur=CreditCards.GetOne(chargeData.RecurringCharge.CreditCardNum);
-				ccCur.PayConnectTokenExp=chargeData.CCExpiration;
-				UpdateCreditCardPayConnect(ccCur,payConnectResponse);
-				//add to strbuilder that will be written to txt file and to the payment note
-				if(PrefC.HasClinicsEnabled && dictClinicNumDesc.ContainsKey(clinicNumCur)) {
-					strBuilderResultText.AppendLine("CLINIC="+dictClinicNumDesc[clinicNumCur]);
-				}
-				strBuilderResultText.AppendLine("RESULT="+payConnectResponse.Status.description);
-				strBuilderResultText.AppendLine("TRANS TYPE="+PayConnectService.transType.SALE.ToString());
-				strBuilderResultText.AppendLine("AUTH CODE="+payConnectResponse.AuthCode);
-				strBuilderResultText.AppendLine("ENTRY=MANUAL");
-				strBuilderResultText.AppendLine("CLERK="+Security.CurUser.UserName);
-				strBuilderResultText.AppendLine("TRANSACTION NUMBER="+payConnectResponse.RefNumber);
-				if(ccCur!=null) {
-					strBuilderResultText.AppendLine("ACCOUNT="+ccCur.CCNumberMasked);//XXXXXXXXXXXX1234, all but last four numbers replaced with X's
-				}
-				if(payConnectResponse.PaymentToken!=null && payConnectResponse.PaymentToken.Expiration!=null) {
-					strBuilderResultText.AppendLine("EXPIRATION="+payConnectResponse.PaymentToken.Expiration.month.ToString().PadLeft(2,'0')
-						+(payConnectResponse.PaymentToken.Expiration.year%100));
-				}
-				if(isPayConnectToken) {
-					strBuilderResultText.AppendLine("CARD TYPE=PayConnect Token");
-				}
-				else {
-					strBuilderResultText.AppendLine("CARD TYPE="+CreditCardUtils.GetCardType(tokenOrCCMasked));
-				}
-				strBuilderResultText.AppendLine("AMOUNT="+payConnectRequest.Amount.ToString("F2"));
-				amount=(double)payConnectRequest.Amount;
-			}
-			string receipt=PayConnect.BuildReceiptString(payConnectRequest,payConnectResponse,null,clinicNumCur);
-			CreatePayment(patCur,chargeData,strBuilderResultText.ToString(),amount,receipt,CreditCardSource.PayConnect);
-			strBuilderResultFile.AppendLine(strBuilderResultText.ToString());
 		}
 
 		/// <summary>A modified version of the origian SendPayConnect() method that works with a response from the PayConnect API v2. This API does not have an option for forcing duplicates.</summary>
@@ -985,33 +903,50 @@ namespace OpenDentBusiness {
 			string zip=chargeData.Zip;
 			long clinicNumCur=chargeData.RecurringCharge.ClinicNum;
 			double amount=0;
+			//Without the office's API key and this clinic's Secret, mark this card failed and carry on with the batch (nothing is sent).
+			if(!PayConnect2.IsConfigured(clinicNumCur)) {
+				MarkFailed(chargeData,Lans.g(_lanThis,"PayConnect is not set up for this clinic."));
+				strBuilderResultFile.AppendLine("PatNum: "+patNum+" "+Lans.g(_lanThis,"PayConnect is not set up for this clinic."));
+				return;
+			}
+			bool isSandbox=PayConnect2.GetUseSandbox();
 			PayConnect2.PayConnect2Response response=PayConnect2.PostCreateTransactionByToken(patCur,exp.ToString("MMyy"),chargeData.PayConnectToken,zip,PayConnect2.FormatAmountForApi(chargeData.RecurringCharge.ChargeAmt),clinicNumCur,PayConnect2.TransactionType.Sale,PayConnect2.TransactionFrequency.Recurring);
+			string errorMessage="";
+			bool isOutcomeUnknown=PaymentWindowRules.IsPayConnect2OutcomeUnknown(response);
 			if(response.ResponseType==PayConnect2.ResponseType.Error) {
-				string errorMessage="";
-				if(response.ErrorResponse.ErrorType==PayConnect2.ErrorType.Validation) {
-					errorMessage="Validation error";
+				//The vendor's detail: each rejected field for a validation error, or "may or may not have gone through" with the invoice number to look
+				//for when no answer came.
+				errorMessage=PaymentWindowRules.GetPayConnect2ErrorText(response);
+				if(isOutcomeUnknown || response.Outcome==PayConnect2.PayConnectRequestOutcome.NotSent) {
+					//Not a decline: the card is never marked declined (or deactivated) for a network problem. Never charged again automatically either.
+					MarkFailed(chargeData,errorMessage);
 				}
 				else {
-					try {
-						errorMessage=(response.ErrorResponse).Error.ToString();
-					}
-					catch (Exception e) { 
-						errorMessage="Error returned from PayConnect: unable to parse error message";
-					}
+					MarkDeclined(chargeData,errorMessage);
 				}
-				MarkDeclined(chargeData,errorMessage);
 			}
 			PayConnectResponse payConnectResponse=PayConnect2.ApiResponseToPayConnectResponse(response);
 			StringBuilder strBuilderResultText=new StringBuilder();//this payment's result text, used in payment note and then appended to file string builder
 			strBuilderResultFile.AppendLine("PatNum: "+patNum+" Name: "+patCur.GetNameFLnoPref());
+			if(isSandbox) {
+				strBuilderResultText.AppendLine(PaymentWindowRules.PayConnectSandboxMarker);
+			}
 			if((payConnectResponse==null || payConnectResponse.StatusCode.IsNullOrEmpty())
-				&& !payConnectResponse.Description.ToLower().Contains("declined")) 
+				&& !(payConnectResponse?.Description??"").ToLower().Contains("declined"))
 			{
-				MarkFailed(chargeData,Lans.g(_lanThis,"Transaction Failed, unknown error"),LogLevel.Information);//Likely a server internal error not a card issue
+				if(errorMessage=="") {
+					//An error response was already marked above, with the vendor's detail.
+					MarkFailed(chargeData,Lans.g(_lanThis,"Transaction Failed, unknown error"),LogLevel.Information);//Likely a server internal error not a card issue
+				}
 				if(PrefC.HasClinicsEnabled && dictClinicNumDesc.ContainsKey(clinicNumCur)) {
 					strBuilderResultText.AppendLine("CLINIC="+dictClinicNumDesc[clinicNumCur]);
 				}
-				strBuilderResultText.AppendLine(Lans.g(_lanThis,"Transaction Failed, unknown error"));
+				if(errorMessage=="") {
+					strBuilderResultText.AppendLine(Lans.g(_lanThis,"Transaction Failed, unknown error"));
+				}
+				else {
+					strBuilderResultText.AppendLine(Lans.g(_lanThis,"Transaction Failed")+": "+errorMessage);
+				}
 				strBuilderResultFile.AppendLine(strBuilderResultText.ToString());//add to the file string builder
 			}
 			else if(payConnectResponse.Description.ToLower().Contains("declined")
@@ -1069,6 +1004,9 @@ namespace OpenDentBusiness {
 				payConnectResponse.CardNumber,null,payConnectResponse.AuthCode,payConnectResponse.Description,null,
 				payConnectResponse.Amount,false,clinicNumCur,surchargeAmount:payConnectResponse.AmountSurcharged,
 				cardHolder:payConnectResponse.CardHolder);
+			if(isSandbox) {
+				receipt=PaymentWindowRules.PayConnectSandboxMarker+Environment.NewLine+receipt;
+			}
 			//AmountSurcharged will be 0 for clinics that don't have surcharging turned on.
 			CreatePayment(patCur,chargeData,strBuilderResultText.ToString(),amount,receipt,CreditCardSource.PayConnect,merchantFee:(double)payConnectResponse.AmountSurcharged);
 			strBuilderResultFile.AppendLine(strBuilderResultText.ToString());
@@ -1104,6 +1042,9 @@ namespace OpenDentBusiness {
 			StringBuilder strBuilderResultText=new StringBuilder();//this payment's result text, used in payment note and then appended to file string builder
 			strBuilderResultFile.AppendLine("PatNum: "+patNum+" Name: "+patCur.GetNameFLnoPref());
 			string receipt="";
+			//An ACH payment is tracked by its PaySimple payment ID until it settles or fails (PaySimpleAchStatusSync).
+			string externalId="";
+			PaymentStatus paymentStatus=PaymentStatus.None;
 			try {
 				PaySimple.ApiResponse response=PaySimple.MakePaymentByToken(patCur,new CreditCard() {
 					CreditCardNum=chargeData.RecurringCharge.CreditCardNum,
@@ -1141,6 +1082,10 @@ namespace OpenDentBusiness {
 				resultAmt=(double)response.Amount;
 				response.BuildReceiptString(ccCur.CCNumberMasked,ccExpMonth,ccExpYear,"",clinicNumCur,isACH: ccCur.IsPaySimpleACH());
 				receipt=response.TransactionReceipt;
+				if(IsPaySimpleAchSource(chargeData.CCSource) && !string.IsNullOrWhiteSpace(response.RefNumber)) {
+					externalId=response.RefNumber;
+					paymentStatus=PaymentStatus.PaySimpleAchPosted;
+				}
 			}
 			catch(Exception ex) {
 				MarkDeclined(chargeData,Lans.g(_lanThis,"Error processing card:")+" "+ex.Message,LogLevel.Information);
@@ -1151,9 +1096,15 @@ namespace OpenDentBusiness {
 				AddErrorToStrb(strBuilderResultText,ex.Message,clinicDesc);
 			}
 			finally {
-				CreatePayment(patCur,chargeData,strBuilderResultText.ToString(),resultAmt,receipt,chargeData.CCSource);
+				CreatePayment(patCur,chargeData,strBuilderResultText.ToString(),resultAmt,receipt,chargeData.CCSource,externalId:externalId,
+					paymentStatus:paymentStatus);
 				strBuilderResultFile.AppendLine(strBuilderResultText.ToString());//add to the file string builder
 			}
+		}
+
+		///<summary>True for the card sources of a PaySimple bank account (ACH), whose payments settle days later.</summary>
+		public static bool IsPaySimpleAchSource(CreditCardSource creditCardSource) {
+			return creditCardSource.In(CreditCardSource.PaySimpleACH,CreditCardSource.PaySimplePaymentPortalACH);
 		}
 
 		///<summary>For PaySimple only. Adds the error message to the StringBuilder.</summary>
@@ -1163,26 +1114,6 @@ namespace OpenDentBusiness {
 				strb.AppendLine("CLINIC="+clinicDesc);
 			}
 			strb.AppendLine(Lans.g(_lanThis,"Error")+": "+errorMsg);
-		}
-
-		///<summary>Updates the credit card's masked number and expiration.</summary>
-		private void UpdateCreditCardPayConnect(CreditCard ccCur,PayConnectService.transResponse payConnectResponse) {
-			if(ccCur==null || payConnectResponse==null || payConnectResponse.PaymentToken==null || payConnectResponse.PaymentToken.Expiration==null) {
-				return;
-			}
-			PayConnectService.expiration payConnectExp =payConnectResponse.PaymentToken.Expiration;
-			//if stored CC token or token expiration are different than those returned by PayConnect, update the stored CC
-			if(ccCur.PayConnectToken!=payConnectResponse.PaymentToken.TokenId
-				|| ccCur.PayConnectTokenExp.Year!=payConnectExp.year
-				|| ccCur.PayConnectTokenExp.Month!=payConnectExp.month)
-			{
-				ccCur.PayConnectToken=payConnectResponse.PaymentToken.TokenId;
-				ccCur.PayConnectTokenExp=new DateTime(payConnectExp.year,payConnectExp.month,
-					DateTime.DaysInMonth(payConnectExp.year,payConnectExp.month));
-				ccCur.CCNumberMasked=ccCur.PayConnectToken.Substring(ccCur.PayConnectToken.Length-4).PadLeft(ccCur.PayConnectToken.Length,'X');
-				ccCur.CCExpiration=ccCur.PayConnectTokenExp;
-				CreditCards.Update(ccCur);
-			}
 		}
 
 		///<summary>Call to mark a recurring charge as declined in the specific scenario when the transaction has reached the processor gateway and the processor has responded with something other than success (per Nathan in task #3119214 job #24498).</summary>
@@ -1252,9 +1183,11 @@ namespace OpenDentBusiness {
 			return listRecurringCharges;
 		}
 
-		///<summary>Inserts a payment and paysplits for the recurring charge data, call after processing a payment through merchant services.</summary>
+		///<summary>Inserts a payment and paysplits for the recurring charge data, call after processing a payment through merchant services.
+		///externalId and paymentStatus are for a PaySimple ACH payment: its PaySimple payment ID and PaySimpleAchPosted, so the ACH status check can
+		///follow it until it settles or fails.</summary>
 		protected void CreatePayment(Patient patCur,RecurringChargeData recCharge,string note,double amount,string receipt,CreditCardSource ccSource,
-			long xWebResponseNum=0,double merchantFee=0)
+			long xWebResponseNum=0,double merchantFee=0,string externalId="",PaymentStatus paymentStatus=PaymentStatus.None)
 		{
 			Payment paymentCur=new Payment();
 			paymentCur.DateEntry=_nowDateTime.Date;
@@ -1300,6 +1233,10 @@ namespace OpenDentBusiness {
 			paymentCur.PaymentSource=ccSource;
 			paymentCur.Receipt=receipt;
 			paymentCur.MerchantFee=merchantFee;
+			if(!string.IsNullOrWhiteSpace(externalId)) {
+				paymentCur.ExternalId=externalId;
+				paymentCur.PaymentStatus=paymentStatus;
+			}
 			Payments.Insert(paymentCur);
 			SecurityLogs.MakeLogEntry(EnumPermType.PaymentCreate,paymentCur.PatNum,patCur.GetNameLF()+", "
 				+paymentCur.PayAmt.ToString("c")+", "+Lans.g(_lanThis,"created from the Recurring Charges List"));

@@ -33,6 +33,7 @@ namespace OpenDental {
 			this.butReport = new OpenDental.UI.Button();
 			this.butPromotions = new OpenDental.UI.Button();
 			this.labelMerchantClosedDescription = new System.Windows.Forms.Label();
+			this.labelApplyRestricted = new System.Windows.Forms.Label();
 			this.SuspendLayout();
 			// 
 			// comboProviders
@@ -86,7 +87,7 @@ namespace OpenDental {
 			// butTransactions
 			// 
 			this.butTransactions.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-			this.butTransactions.Location = new System.Drawing.Point(34, 233);
+			this.butTransactions.Location = new System.Drawing.Point(34, 248);
 			this.butTransactions.Name = "butTransactions";
 			this.butTransactions.Size = new System.Drawing.Size(90, 24);
 			this.butTransactions.TabIndex = 7;
@@ -122,10 +123,21 @@ namespace OpenDental {
 			this.labelMerchantClosedDescription.Text = "The Merchant Number you are using has been closed.\r\nPlease refer to the manual on" +
     " how to change your settings.";
 			this.labelMerchantClosedDescription.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			// 
+			//
+			// labelApplyRestricted
+			//
+			this.labelApplyRestricted.Location = new System.Drawing.Point(34, 212);
+			this.labelApplyRestricted.Name = "labelApplyRestricted";
+			this.labelApplyRestricted.Size = new System.Drawing.Size(348, 30);
+			this.labelApplyRestricted.TabIndex = 275;
+			this.labelApplyRestricted.Text = "At this location, staff may not submit applications for patients. The patient applies directly with CareCredit.";
+			this.labelApplyRestricted.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			this.labelApplyRestricted.Visible = false;
+			//
 			// FormCareCredit
-			// 
-			this.ClientSize = new System.Drawing.Size(401, 278);
+			//
+			this.ClientSize = new System.Drawing.Size(401, 293);
+			this.Controls.Add(this.labelApplyRestricted);
 			this.Controls.Add(this.labelMerchantClosedDescription);
 			this.Controls.Add(this.butPromotions);
 			this.Controls.Add(this.butLookup);
@@ -153,5 +165,6 @@ namespace OpenDental {
 		private UI.Button butReport;
 		private UI.Button butPromotions;
 		private System.Windows.Forms.Label labelMerchantClosedDescription;
+		private System.Windows.Forms.Label labelApplyRestricted;
 	}
 }

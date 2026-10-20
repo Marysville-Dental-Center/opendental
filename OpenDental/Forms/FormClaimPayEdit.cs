@@ -9,6 +9,7 @@ using OpenDental.UI;
 using System.Linq;
 using CodeBase;
 using OpenDental.Bridges;
+using OpenDentBusiness.VendorDirect;
 using EdgeExpressProps = OpenDentBusiness.ProgramProperties.PropertyDescs.EdgeExpress;
 
 namespace OpenDental{
@@ -154,60 +155,26 @@ namespace OpenDental{
 			return depositCur;
 		}
 
-		///<summary>Mimics FormPayment.CheckUIState().</summary>
+		///<summary>Mimics FormPayment.CheckUIState(). A card processor's button shows only when its program link is enabled and set up for the selected
+		///clinic (PaymentWindowRules), and the processor allows new cards; there is no fallback that shows processors that aren't set up.</summary>
 		private void CheckUIState() {
 			Program progXcharge=Programs.GetCur(ProgramName.Xcharge);
 			Program progPayConnect=Programs.GetCur(ProgramName.PayConnect);
 			Program progPaySimple=Programs.GetCur(ProgramName.PaySimple);
 			Program progEdgeExpress=Programs.GetCur(ProgramName.EdgeExpress);
-			if(progXcharge==null || progPayConnect==null || progPaySimple==null || progEdgeExpress==null) {//Should not happen.
-				panelXcharge.Visible=(progXcharge!=null && progXcharge.Enabled);
-				butPayConnect.Visible=(progPayConnect!=null && progPayConnect.Enabled);
-				butPaySimple.Visible=(progPaySimple!=null && progPaySimple.Enabled);
-				panelEdgeExpress.Visible=(progEdgeExpress!=null && progEdgeExpress.Enabled);
-				groupPrepaid.Visible=(panelXcharge.Visible || butPayConnect.Visible || butPaySimple.Visible || panelEdgeExpress.Visible);
-				return;
-			}
 			panelXcharge.Visible=false;
 			butPayConnect.Visible=false;
 			butPaySimple.Visible=false;
 			panelEdgeExpress.Visible=false;
-			if(!progPayConnect.Enabled && !progXcharge.Enabled && !progPaySimple.Enabled && !progEdgeExpress.Enabled) {//if none enabled
-				//Card processing buttons only show for processors whose program link is enabled.
-				groupPrepaid.Visible=false;
-				return;
-			}
 			long clinicNum=GetClinicNumSelected();
 			List<Def> listDefs=Defs.GetDefsForCategory(DefCat.PaymentTypes,isShort:true);
-			//Users can have mutiple CC processing programs, so we will show every program they have enabled (and have set up).
-			if(progPayConnect.Enabled 
-				&& !PIn.Bool(ProgramProperties.GetPropVal(progPayConnect.ProgramNum,PayConnect.ProgramProperties.PayConnectPreventSavingNewCC,clinicNum))) 
+			//Users can have mutiple CC processing programs, so we will show every program they have enabled and set up.
+			if(progPayConnect!=null
+				&& !PIn.Bool(ProgramProperties.GetPropVal(progPayConnect.ProgramNum,PayConnect.ProgramProperties.PayConnectPreventSavingNewCC,clinicNum)))
 			{
-				if(PrefC.HasClinicsEnabled) {//if clinics are enabled, PayConnect is enabled if the PaymentType is valid and the Username and Password are not blank
-					string programVersion=ProgramProperties.GetPropVal(progPayConnect.ProgramNum,"Program Version",clinicNum);
-					string paymentType=ProgramProperties.GetPropVal(progPayConnect.ProgramNum,"PaymentType",clinicNum);
-					//Decrypt password for later checks because an empty string password is not an empty string when encrypted.
-					if(programVersion=="1") {
-						string password=Secrets.TryDecrypt(ProgramProperties.GetPropVal(progPayConnect.ProgramNum,"Password",clinicNum));
-						if(!string.IsNullOrEmpty(ProgramProperties.GetPropVal(progPayConnect.ProgramNum,"Username",clinicNum))
-							&& !string.IsNullOrEmpty(password)
-							&& listDefs.Any(x => x.DefNum.ToString()==paymentType))
-						{
-							butPayConnect.Visible=true;
-						}
-					}
-					else if(programVersion=="2") {
-						string apiSecret=PayConnect2.GetApiSecretForClinic(clinicNum);
-						if(!apiSecret.IsNullOrEmpty() && listDefs.Any(x => x.DefNum.ToString()==paymentType)) {
-							butPayConnect.Visible=true;
-						}
-					}
-				}
-				else {//if clinics are disabled, PayConnect button will be visible if PayConnect has been enabled in program links
-					butPayConnect.Visible=true;
-				}
+				butPayConnect.Visible=PaymentWindowRules.ShowPayConnect(clinicNum,listDefs);
 			}
-			if(progXcharge.Enabled
+			if(progXcharge!=null && progXcharge.Enabled
 				&& !PIn.Bool(ProgramProperties.GetPropVal(progXcharge.ProgramNum,ProgramProperties.PropertyDescs.XCharge.XChargePreventSavingNewCC,clinicNum)))
 			{
 				if(PrefC.HasClinicsEnabled) {//if clinics are enabled, X-Charge is enabled if the PaymentType is valid and the Username and Password are not blank
@@ -223,42 +190,15 @@ namespace OpenDental{
 					panelXcharge.Visible=true;
 				}
 			}
-			if(progPaySimple.Enabled
+			if(progPaySimple!=null
 				&& !PIn.Bool(ProgramProperties.GetPropVal(progPaySimple.ProgramNum,PaySimple.PropertyDescs.PaySimplePreventSavingNewCC,clinicNum)))
 			{
-				if(PrefC.HasClinicsEnabled) {//if clinics are enabled, PaySimple is enabled if the PaymentType is valid and the Username and Password are not blank
-					string paymentType=ProgramProperties.GetPropValForClinicOrDefault(progPaySimple.ProgramNum,PaySimple.PropertyDescs.PaySimplePayTypeCC,clinicNum);
-					if(!string.IsNullOrEmpty(ProgramProperties.GetPropValForClinicOrDefault(progPaySimple.ProgramNum,PaySimple.PropertyDescs.PaySimpleApiUserName,clinicNum))
-						&& !string.IsNullOrEmpty(ProgramProperties.GetPropValForClinicOrDefault(progPaySimple.ProgramNum,PaySimple.PropertyDescs.PaySimpleApiKey,clinicNum))
-						&& listDefs.Any(x => x.DefNum.ToString()==paymentType))
-					{
-						butPaySimple.Visible=true;
-					}
-				}
-				else {//if clinics are disabled, PaySimple button will be visible if PaySimple has been enabled in program links
-					butPaySimple.Visible=true;
-				}
+				butPaySimple.Visible=PaymentWindowRules.ShowPaySimple(clinicNum,listDefs);
 			}
-			if(progEdgeExpress.Enabled
+			if(progEdgeExpress!=null
 				&& !PIn.Bool(ProgramProperties.GetPropVal(progEdgeExpress.ProgramNum,EdgeExpressProps.PreventSavingNewCC,clinicNum)))
 			{
-				if(PrefC.HasClinicsEnabled) {//if clinics are enabled, EdgeExpress is enabled if the XWeb creds are not blank
-					if(!string.IsNullOrEmpty(ProgramProperties.GetPropVal(progEdgeExpress.ProgramNum,EdgeExpressProps.XWebID,clinicNum))
-						&& !string.IsNullOrEmpty(ProgramProperties.GetPropVal(progEdgeExpress.ProgramNum,EdgeExpressProps.AuthKey,clinicNum))
-						&& !string.IsNullOrEmpty(ProgramProperties.GetPropVal(progEdgeExpress.ProgramNum,EdgeExpressProps.TerminalID,clinicNum))) {
-						panelEdgeExpress.Visible=true;
-					}
-				}
-				else {//if clinics are disabled, EdgeExpress button will be visible if EdgeExpress has been enabled in program links
-					panelEdgeExpress.Visible=true;
-				}
-			}
-			if(!panelXcharge.Visible && !butPayConnect.Visible && !butPaySimple.Visible && !panelEdgeExpress.Visible) {
-				//This is an office with clinics and one of the payment processing bridges is enabled but this particular clinic doesn't have one set up.
-				panelXcharge.Visible=progXcharge.Enabled;
-				butPayConnect.Visible=progPayConnect.Enabled;
-				butPaySimple.Visible=progPaySimple.Enabled;
-				panelEdgeExpress.Visible=progEdgeExpress.Enabled;
+				panelEdgeExpress.Visible=PaymentWindowRules.ShowEdgeExpress(clinicNum);
 			}
 			groupPrepaid.Visible=(panelXcharge.Visible || butPayConnect.Visible || butPaySimple.Visible || panelEdgeExpress.Visible);
 		}

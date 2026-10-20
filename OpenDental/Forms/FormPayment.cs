@@ -10,7 +10,6 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows.Forms;
 using CodeBase;
-using DentalXChange.Dps.Pos;
 using MigraDoc.DocumentObjectModel;
 using MigraDoc.Rendering;
 using MigraDoc.Rendering.Printing;
@@ -21,7 +20,8 @@ using PayConnectService = OpenDentBusiness.PayConnectService;
 using OpenDentBusiness.WebTypes.Shared.XWeb;
 using PdfSharp.Pdf;
 using EdgeExpressProps = OpenDentBusiness.ProgramProperties.PropertyDescs.EdgeExpress;
-using Bridges;
+using OpenDentBusiness.Bridges;
+using OpenDentBusiness.VendorDirect;
 using static OpenDentBusiness.PayConnect2;
 
 namespace OpenDental {
@@ -76,7 +76,6 @@ namespace OpenDental {
 		private PaymentEdit.LoadData _loadData;
 		private int _originalHeight;
 		private Patient _patient;
-		private PayConnectService.creditCardRequest _creditCardRequestPayConnect;
 		private PayConnectResponseWeb _payConnectResponseWeb;
 		private PaySimple.ApiResponse _apiResponsePaySimple;
 		private Payment _payment;
@@ -229,9 +228,6 @@ namespace OpenDental {
 			if(_payment.IsCcCompleted) {
 				DisablePaymentControls();
 			}
-			List<ProgramProperty> listProgramProperties=ProgramProperties.GetForProgram(Programs.GetProgramNum(ProgramName.CareCredit));
-			string careCreditMerchantNum=PIn.String(ProgramProperties.GetPropValFromList(listProgramProperties,
-				ProgramProperties.PropertyDescs.CareCredit.CareCreditMerchantNumber,0));//Practice merchant num
 			if(PrefC.HasClinicsEnabled) {
 				comboClinic.ClinicNumSelected=_payment.ClinicNum;
 				_listClinics=Clinics.GetDeepCopy();
@@ -425,8 +421,8 @@ namespace OpenDental {
 				return;
 			}
 			Program program=Programs.GetCur(ProgramName.CareCredit);
-			if(!program.Enabled) {
-				return;//The button is only visible when the CareCredit program link is enabled.
+			if(program==null || !PaymentWindowRules.ShowCareCredit()) {
+				return;//The button is only visible when the CareCredit program link is enabled and set up.
 			}
 			double payAmt=PIn.Double(textAmount.Text);
 			if(CompareDouble.IsZero(payAmt)) {
@@ -447,11 +443,7 @@ namespace OpenDental {
 				MessageBox.Show(ex.Message);
 				return;
 			}
-			//Enforce Latest IE Version Available.
-			if(MiscUtils.TryUpdateIeEmulation()) {
-				MsgBox.Show(this,"Browser emulation version updated.\r\nYou must restart this application before making a CareCredit payment.");
-				return;
-			}
+			//The purchase page opens in FormCareCreditWeb (WebView2), so the old Internet Explorer emulation check and its restart are not needed.
 			//Force the payment type to the default CareCredit PayType that was set in the CareCredit Setup window.
 			string careCreditPayType=ProgramProperties.GetPropVal(program.ProgramNum,ProgramProperties.PropertyDescs.CareCredit.CareCreditPaymentType,
 				_payment.ClinicNum);
@@ -655,6 +647,7 @@ namespace OpenDental {
 				return;
 			}
 			MakePaySimpleTransaction();
+			FillPaySimpleAchStatus();
 			if(_payment.IsCcCompleted) {
 				DisablePaymentControls();
 			}
@@ -868,6 +861,42 @@ namespace OpenDental {
 				formPaySimpleSetup.ShowDialog();
 				CheckUIState();
 			}
+		}
+
+		///<summary>Asks PaySimple for the status of this ACH payment now, instead of waiting for the hourly check. Only PaymentStatus and one note line
+		///can change; the amount, splits and deposit never do.</summary>
+		private void menuPaySimpleCheckAch_Click(object sender,EventArgs e) {
+			if(!PaymentWindowRules.CanCheckAchStatus(_payment)) {
+				return;
+			}
+			Payment paymentBefore=Payments.GetPayment(_payment.PayNum);
+			if(paymentBefore==null) {
+				return;
+			}
+			PaySimpleAchSyncResult paySimpleAchSyncResult=null;
+			ProgressWin progressWin=new ProgressWin();
+			progressWin.ActionMain=() => {
+				paySimpleAchSyncResult=new PaySimpleAchStatusSync().CheckPayment(_payment.PayNum);
+			};
+			progressWin.ShowCancelButton=false;
+			progressWin.StartingMessage=Lan.g(this,"Checking with PaySimple...");
+			progressWin.ShowDialog();
+			if(paySimpleAchSyncResult==null) {
+				return;
+			}
+			Payment paymentDb=Payments.GetPayment(_payment.PayNum);
+			if(paymentDb!=null && paymentDb.PaymentStatus!=_payment.PaymentStatus) {
+				//The check wrote the new status and appended a note line to the saved payment. Carry both into this window, so saving it later
+				//neither puts the old status back nor drops the line.
+				string noteLinesNew=PaymentWindowRules.GetAppendedNoteLines(paymentBefore.PayNote,paymentDb.PayNote);
+				_payment.PaymentStatus=paymentDb.PaymentStatus;
+				_paymentOld.PaymentStatus=paymentDb.PaymentStatus;
+				if(noteLinesNew!="") {
+					textNote.Text+=((textNote.Text=="") ? "" : Environment.NewLine)+noteLinesNew;
+				}
+			}
+			FillPaySimpleAchStatus();
+			MessageBox.Show(this,paySimpleAchSyncResult.GetSummary());
 		}
 
 		private void menuXcharge_Click(object sender,EventArgs e) {
@@ -1188,27 +1217,19 @@ namespace OpenDental {
 			UpdateChargeTotalWithSelectedEntries();
 		}
 
-		///<summary>Mimics FormClaimPayEdit.CheckUIState().</summary>
+		///<summary>Mimics FormClaimPayEdit.CheckUIState(). A card processor's button shows only when its program link is enabled and set up for the
+		///payment's clinic (PaymentWindowRules); there is no fallback that shows processors that aren't set up.</summary>
 		private void CheckUIState() {
 			_programX=Programs.GetCur(ProgramName.Xcharge);
 			_xPath=Programs.GetProgramPath(_programX);
-			Program programEdgeExpress=Programs.GetCur(ProgramName.EdgeExpress);
 			Program programPayConnect=Programs.GetCur(ProgramName.PayConnect);
-			Program programPaySimple=Programs.GetCur(ProgramName.PaySimple);
-			Program programCareCredit=Programs.GetCur(ProgramName.CareCredit);
-			if(_programX==null || programPayConnect==null || programPaySimple==null || programCareCredit==null || programEdgeExpress==null) {//Should not happen.
-				panelXcharge.Visible=(_programX!=null && _programX.Enabled);
-				butPayConnect.Visible=(programPayConnect!=null && programPayConnect.Enabled);
-				butPaySimple.Visible=(programPaySimple!=null && programPaySimple.Enabled);
-				butCareCredit.Visible=(programCareCredit!=null && programCareCredit.Enabled);
-				panelEdgeExpress.Visible=(programEdgeExpress!=null && programEdgeExpress.Enabled);
-				return;
-			}
+			_listDefsPaymentType=_listDefsPaymentType??Defs.GetDefsForCategory(DefCat.PaymentTypes,true);
 			panelXcharge.Visible=false;
 			panelEdgeExpress.Visible=false;
 			butPayConnect.Visible=false;
 			butPaySimple.Visible=false;
 			butCareCredit.Visible=false;
+			FillPaySimpleAchStatus();
 			if(_payment.MerchantFee>0) {
 				labelSurchargeFee.Visible=true;
 				textSurcharge.Visible=true;
@@ -1219,67 +1240,33 @@ namespace OpenDental {
 				textSurcharge.Visible=false;
 				return;
 			}
-			butCareCredit.Visible=programCareCredit.Enabled;
-			if(!programPayConnect.Enabled && !_programX.Enabled && !programEdgeExpress.Enabled && !programPaySimple.Enabled) {//if none enabled
-				return;//Card processing buttons only show for processors whose program link is enabled.
-			}
-			//show if enabled.  User could have all enabled.
-		if(programPayConnect.Enabled) {
-				string programVersion=ProgramProperties.GetPropVal(programPayConnect.ProgramNum,"Program Version",_payment.ClinicNum);
-				//if clinics are disabled, PayConnect is enabled if marked enabled
-				if(!PrefC.HasClinicsEnabled) {
-					butPayConnect.Visible=true;
-				}
-				else {//if clinics are enabled, PayConnect is enabled if the PaymentType is valid and the Username and Password are not blank
-					string paymentType=ProgramProperties.GetPropVal(programPayConnect.ProgramNum,"PaymentType",_payment.ClinicNum);
-					if(programVersion=="1") {
-						string password=Secrets.TryDecrypt(ProgramProperties.GetPropVal(programPayConnect.ProgramNum,"Password",_payment.ClinicNum));
-						if(!string.IsNullOrEmpty(ProgramProperties.GetPropVal(programPayConnect.ProgramNum,"Username",_payment.ClinicNum))
-							&& !string.IsNullOrEmpty(password)
-							&& _listDefsPaymentType.Any(x => x.DefNum.ToString()==paymentType))
-						{
-							butPayConnect.Visible=true;
-						}
+			butCareCredit.Visible=PaymentWindowRules.ShowCareCredit();
+			//Show every processor that is enabled and set up for this clinic. User could have all enabled.
+			butPayConnect.Visible=PaymentWindowRules.ShowPayConnect(_payment.ClinicNum,_listDefsPaymentType);
+			if(butPayConnect.Visible && programPayConnect!=null) {
+				string programVersion=ProgramProperties.GetValOrDefault(programPayConnect.ProgramNum,PayConnect.ProgramProperties.ProgramVersion,
+					_payment.ClinicNum);
+				//set visibility for PayConnect2.
+				if(programVersion=="2") {
+					groupXWeb.Visible=false;//All voids/refunds should be done through the PayConnect window.
+					string integrationType=ProgramProperties.GetValOrDefault(programPayConnect.ProgramNum,PayConnect.ProgramProperties.IntegrationType,
+						_payment.ClinicNum);
+					if(integrationType=="1" || _payment.MerchantFee>0) {//surcharge
+						labelSurchargeFee.Visible=true;
+						textSurcharge.Visible=true;//needs to show no matter what any time MerchantFee has a non-zero value
+						SetSurchargeTextFieldReadOnly();
 					}
-					else if(programVersion=="2") {
-						string apiSecret=PayConnect2.GetApiSecretForClinic(_payment.ClinicNum);
-						if(!apiSecret.IsNullOrEmpty() && _listDefsPaymentType.Any(x => x.DefNum.ToString()==paymentType)) {
-							butPayConnect.Visible=true;
-						}
-					}
-				}
-				if(butPayConnect.Visible==true) {
-					//set visibility for PayConnect2.
-					if(programVersion=="2") {
-						groupXWeb.Visible=false;//All voids/refunds should be done through the PayConnect window.
-						string integrationType=ProgramProperties.GetPropVal(programPayConnect.ProgramNum,"PayConnect2.0 Integration Type: 0 for normal, 1 for surcharge",_payment.ClinicNum);
-						if(integrationType=="1" || _payment.MerchantFee>0) {//surcharge
-							labelSurchargeFee.Visible=true;
-							textSurcharge.Visible=true;//needs to show no matter what any time MerchantFee has a non-zero value
-							SetSurchargeTextFieldReadOnly();
-						}
-						else {
-							labelSurchargeFee.Visible=false;
-							textSurcharge.Visible=false;
-						}
+					else {
+						labelSurchargeFee.Visible=false;
+						textSurcharge.Visible=false;
 					}
 				}
 			}
-			if(programEdgeExpress.Enabled) {
-				//if clinics are disabled, EdgeExpress is enabled if marked enabled
-				if(!PrefC.HasClinicsEnabled) {
-					panelEdgeExpress.Visible=true;
-				}
-				else {//if clinics are enabled, EdgeExpress is enabled if the XWeb creds are not blank
-					if(!string.IsNullOrEmpty(ProgramProperties.GetPropVal(programEdgeExpress.ProgramNum,EdgeExpressProps.XWebID,_payment.ClinicNum))
-						&& !string.IsNullOrEmpty(ProgramProperties.GetPropVal(programEdgeExpress.ProgramNum,EdgeExpressProps.AuthKey,_payment.ClinicNum))
-						&& !string.IsNullOrEmpty(ProgramProperties.GetPropVal(programEdgeExpress.ProgramNum,EdgeExpressProps.TerminalID,_payment.ClinicNum))) {
-						panelEdgeExpress.Visible=true;
-						panelEdgeExpress.BringToFront();
-					}
-				}
+			if(PaymentWindowRules.ShowEdgeExpress(_payment.ClinicNum)) {
+				panelEdgeExpress.Visible=true;
+				panelEdgeExpress.BringToFront();
 			}
-			if(_programX.Enabled) {
+			if(_programX!=null && _programX.Enabled) {
 				//if clinics are disabled, X-Charge is enabled if marked enabled
 				if(!PrefC.HasClinicsEnabled) {
 					panelXcharge.Visible=true;
@@ -1293,35 +1280,17 @@ namespace OpenDental {
 					}
 				}
 			}
-			if(programPaySimple.Enabled) {
-				//if clinics are disabled, PaySimple is enabled if marked enabled
-				if(!PrefC.HasClinicsEnabled) {
-					butPaySimple.Visible=true;
-				}
-				else {//if clinics are enabled, PaySimple is enabled if the PaymentType is valid and the Username and Key are not blank
-					string paymentType=ProgramProperties.GetPropValForClinicOrDefault(programPaySimple.ProgramNum,PaySimple.PropertyDescs.PaySimplePayTypeCC,_payment.ClinicNum);
-					if(!string.IsNullOrEmpty(ProgramProperties.GetPropValForClinicOrDefault(programPaySimple.ProgramNum,PaySimple.PropertyDescs.PaySimpleApiUserName,_payment.ClinicNum))
-						&& !string.IsNullOrEmpty(ProgramProperties.GetPropValForClinicOrDefault(programPaySimple.ProgramNum,PaySimple.PropertyDescs.PaySimpleApiKey,_payment.ClinicNum))
-						&& _listDefsPaymentType.Any(x => x.DefNum.ToString()==paymentType)) {
-						butPaySimple.Visible=true;
-					}
-				}
-			}
-			if(panelXcharge.Visible==false && butPayConnect.Visible==false && butPaySimple.Visible==false && panelEdgeExpress.Visible==false) {
-				//This is an office with clinics and one of the payment processing bridges is enabled but this particular clinic doesn't have one set up.
-				if(_programX.Enabled) {
-					panelXcharge.Visible=true;
-				}
-				if(programEdgeExpress.Enabled) {
-					panelEdgeExpress.Visible=true;
-				}
-				if(programPayConnect.Enabled) {
-					butPayConnect.Visible=true;
-				}
-				if(programPaySimple.Enabled) {
-					butPaySimple.Visible=true;
-				}
-			}
+			butPaySimple.Visible=PaymentWindowRules.ShowPaySimple(_payment.ClinicNum,_listDefsPaymentType);
+		}
+
+		///<summary>Shows the read-only ACH status of a PaySimple ACH payment next to the PaySimple button, and offers "Check ACH status" in the
+		///button's menu while the payment can still change. Hidden for every other payment, and whenever PaySimple is turned off.</summary>
+		private void FillPaySimpleAchStatus() {
+			bool isPaySimpleEnabled=Programs.IsEnabled(ProgramName.PaySimple);
+			string achStatusText=PaymentWindowRules.GetAchStatusText(_payment.PaymentStatus);
+			labelPaySimpleAchStatus.Text=achStatusText;
+			labelPaySimpleAchStatus.Visible=isPaySimpleEnabled && achStatusText!="";
+			menuPaySimpleCheckAch.Visible=isPaySimpleEnabled && PaymentWindowRules.CanCheckAchStatus(_payment);
 		}
 
 		///<summary>Creates a split similar to how CreateSplitsForPayment does it, but with selected rows of the grid.
@@ -2392,22 +2361,11 @@ namespace OpenDental {
 			Program program=Programs.GetCur(ProgramName.PayConnect);
 			bool isSetupRequired=false;
 			if(program.Enabled) {
-				//check program version
-				string payconnectVersion=ProgramProperties.GetPropVal(program.ProgramNum,"Program Version",_payment.ClinicNum);
-				if(payconnectVersion=="1") {
-					//If clinics are disabled, _paymentCur.ClinicNum will be 0 and the Username and Password will be the 'Headquarters' or practice credentials
-					string password=Secrets.TryDecrypt(ProgramProperties.GetPropVal(program.ProgramNum,"Password",_payment.ClinicNum));
-					if(string.IsNullOrEmpty(ProgramProperties.GetPropVal(program.ProgramNum,"Username",_payment.ClinicNum))
-						|| string.IsNullOrEmpty(password)) 
-					{
-						isSetupRequired=true;
-					}
-				}
-				else if(payconnectVersion=="2") { 
-					string apiSecret=ProgramProperties.GetPropVal(program.ProgramNum,"API Secret",_payment.ClinicNum);
-					if(apiSecret.IsNullOrEmpty()) {
-						isSetupRequired=true;
-					}
+				//Only PayConnect 2 runs. A clinic still set to version 1 (PayConnect 1.0 was removed) needs setup, and saving setup writes version 2.
+				string payconnectVersion=ProgramProperties.GetPropVal(program.ProgramNum,PayConnect.ProgramProperties.ProgramVersion,_payment.ClinicNum);
+				//The office's integrator API key and this clinic's Secret, both readable.
+				if(payconnectVersion!=PayConnect.Version2 || !PayConnect2.HasCredentials(_payment.ClinicNum)) {
+					isSetupRequired=true;
 				}
 				string paymentType=ProgramProperties.GetPropVal(program.ProgramNum,"PaymentType",_payment.ClinicNum);
 				if(!_listDefsPaymentType.Any(x => x.DefNum.ToString()==paymentType)) {
@@ -2440,9 +2398,9 @@ namespace OpenDental {
 			bool isSetupRequired=false;
 			if(program.Enabled) {
 				//If clinics are disabled, _paymentCur.ClinicNum will be 0 and the Username and Key will be the 'Headquarters' or practice credentials
-				string paymentType=ProgramProperties.GetPropValForClinicOrDefault(program.ProgramNum,PaySimple.PropertyDescs.PaySimplePayTypeCC,_payment.ClinicNum);
-				if(string.IsNullOrEmpty(ProgramProperties.GetPropValForClinicOrDefault(program.ProgramNum,PaySimple.PropertyDescs.PaySimpleApiUserName,_payment.ClinicNum))
-					|| string.IsNullOrEmpty(ProgramProperties.GetPropValForClinicOrDefault(program.ProgramNum,PaySimple.PropertyDescs.PaySimpleApiKey,_payment.ClinicNum))
+				string paymentType=ProgramProperties.GetValOrDefault(program.ProgramNum,PaySimple.PropertyDescs.PaySimplePayTypeCC,_payment.ClinicNum);
+				//The user name and a readable key (the key is stored encrypted).
+				if(!PaySimple.HasCredentials(_payment.ClinicNum)
 					|| !_listDefsPaymentType.Any(x => x.DefNum.ToString()==paymentType)) {
 					isSetupRequired=true;
 				}
@@ -2509,6 +2467,11 @@ namespace OpenDental {
 			Program program=Programs.GetCur(ProgramName.EdgeExpress);
 			if(!program.Enabled) {
 				MsgBox.Show(this,"EdgeExpress must be enabled in Program Links.");
+				return false;
+			}
+			if(!PaymentWindowRules.ShowEdgeExpress(_payment.ClinicNum)) {
+				MsgBox.Show(this,"EdgeExpress is not set up for this clinic. Enter the X-Web ID, Terminal ID, Auth Key and payment type in Setup, "
+					+"Program Links, EdgeExpress.");
 				return false;
 			}
 			return true;
@@ -2644,17 +2607,17 @@ namespace OpenDental {
 			XWebResponse xWebResponse;
 			XWebResponse xWebResponseProcessed;
 			string payNote="";
+			//The pay-page session and the query after it use one clinic's credentials and return settings: clinicNum when given (the claim payment
+			//window passes its clinic), otherwise the patient's clinic.
+			long clinicNumSession=EdgeExpress.CNP.ResolveClinicNum(_patient.PatNum,clinicNum);
 			switch(edgeExpressTransType) {
 				case EdgeExpressTransType.CreditSale:
-					xWebResponse=EdgeExpress.CNP.GetUrlForPaymentPage(_patient.PatNum,textNote.Text,amt,
-						doCreateToken,CreditCardSource.EdgeExpressCNP,false,aliasToken,paymentNum: _payment.PayNum,clinicNum: clinicNum);
-					using(FormWebBrowser formWebBrowser = new FormWebBrowser(xWebResponse.HpfUrl)) {//Braces required within switch statements.
-						formWebBrowser.UrlCloseOn=EdgeExpress.CNP.ReturnUrlDefault;
-						formWebBrowser.ShowDialog();
-					}
-					xWebResponseProcessed=EdgeExpress.CNP.ProcessTransaction(xWebResponse,_payment);
-					if(xWebResponseProcessed.TransactionStatus==XWebTransactionStatus.EdgeExpressPending) {
-						return null; //FormWebBrowser closed early
+					xWebResponseProcessed=EdgeExpressL.RunPayPage(this,clinicNumSession,
+						returnUrl => EdgeExpress.CNP.GetUrlForPaymentPage(_patient.PatNum,textNote.Text,amt,doCreateToken,CreditCardSource.EdgeExpressCNP,false,
+							aliasToken,paymentNum:_payment.PayNum,clinicNum:clinicNumSession,returnUrl:returnUrl),
+						_payment);
+					if(!ShowEdgeExpressPayPageMessage(xWebResponseProcessed)) {
+						return null;//Still pending: the pay page was closed early, or the result isn't known yet. Reconciliation keeps checking.
 					}
 					payNote=xWebResponseProcessed.GetFormattedNote(true,false);
 					_payment.PaymentSource=xWebResponseProcessed.CCSource;
@@ -2675,14 +2638,12 @@ namespace OpenDental {
 					textNote.Text+=payNote;
 					break;
 				case EdgeExpressTransType.CreditAuth:
-					xWebResponse=EdgeExpress.CNP.GetUrlForCreditCardAlias(_patient.PatNum,CreditCardSource.EdgeExpressCNP,false,amt,doCreateToken);
-					using(FormWebBrowser formWebBrowser = new FormWebBrowser(xWebResponse.HpfUrl)) {//Braces required within switch statements.
-						formWebBrowser.UrlCloseOn=EdgeExpress.CNP.ReturnUrlDefault;
-						formWebBrowser.ShowDialog();
-					}
-					xWebResponseProcessed=EdgeExpress.CNP.ProcessTransaction(xWebResponse,_payment);
-					if(xWebResponseProcessed.TransactionStatus==XWebTransactionStatus.EdgeExpressPending) {
-						return null; //FormWebBrowser closed early
+					xWebResponseProcessed=EdgeExpressL.RunPayPage(this,clinicNumSession,
+						returnUrl => EdgeExpress.CNP.GetUrlForCreditCardAlias(_patient.PatNum,CreditCardSource.EdgeExpressCNP,false,amt,doCreateToken,
+							clinicNum:clinicNumSession,returnUrl:returnUrl),
+						_payment);
+					if(!ShowEdgeExpressPayPageMessage(xWebResponseProcessed)) {
+						return null;//Still pending: the pay page was closed early, or the result isn't known yet. Reconciliation keeps checking.
 					}
 					payNote=xWebResponseProcessed.GetFormattedNote(true,false);
 					_payment.Receipt=EdgeExpress.CNP.BuildReceiptString(xWebResponseProcessed,false);
@@ -2758,9 +2719,23 @@ namespace OpenDental {
 			return payNote;
 		}
 
+		///<summary>After an EdgeExpress pay page: shows the card processor's special message for the result, if there is one (an expired page, a
+		///rejected Auth Key, a result still pending). Returns false if the result is still pending, in which case nothing is recorded here; the
+		///EdgeExpress reconciliation job keeps checking and raises an alert if it turns out approved.</summary>
+		private bool ShowEdgeExpressPayPageMessage(XWebResponse xWebResponseProcessed) {
+			if(xWebResponseProcessed==null) {
+				return false;
+			}
+			string message=EdgeExpress.CNP.GetUserMessage(xWebResponseProcessed);
+			if(message!="") {
+				MessageBox.Show(this,message);
+			}
+			return xWebResponseProcessed.TransactionStatus!=XWebTransactionStatus.EdgeExpressPending;
+		}
+
 		private void PayConnectReturn() {
 			Program programPayConnect=Programs.GetCur(ProgramName.PayConnect);
-			string payconnectVersion=ProgramProperties.GetPropVal(programPayConnect.ProgramNum,"Program Version",_payment.ClinicNum);
+			string payconnectVersion=ProgramProperties.GetPropVal(programPayConnect.ProgramNum,PayConnect.ProgramProperties.ProgramVersion,_payment.ClinicNum);
 			string refNum=_payConnectResponseWeb.RefNumber;
 			if(refNum.IsNullOrEmpty()) {
 				MsgBox.Show(this,"Missing PayConnect Reference Number. This return cannot be processed.");
@@ -3347,48 +3322,45 @@ namespace OpenDental {
 			}
 		}
 
+		///<summary>Voids a PayConnect 2 transaction (web service or terminal) by reference number. PayConnect 1.0 and its VeriFone terminals were
+		///removed, so there is no other path.</summary>
 		private void VoidPayConnectTransaction(string refNum,string amount) {
-			Program program=Programs.GetCur(ProgramName.PayConnect);
-			string payconnectVersion=ProgramProperties.GetPropVal(program.ProgramNum,"Program Version",_payment.ClinicNum);
 			PayConnectResponse payConnectResponse=null;
 			string receiptStr="";
-			if(_creditCardRequestPayConnect==null || payconnectVersion=="2") {//The payment was made through the terminal or by PayConnect v2.
-				ProgressWin progressOD=new ProgressWin();
-				progressOD.ActionMain=() => {
-					if(payconnectVersion=="1") {
-						PosRequest posRequest=PosRequest.CreateVoidByReference(refNum);
-						PosResponse posResponse=DpsPos.ProcessCreditCard(posRequest);
-						payConnectResponse=PayConnectTerminal.ToPayConnectResponse(posResponse);				
-					}
-					else if(payconnectVersion=="2") {
-						VoidReferenceIDRequest voidReferenceIDRequest=new VoidReferenceIDRequest();
-						voidReferenceIDRequest.ReferenceId=refNum;
-						payConnectResponse=PayConnect2.ApiResponseToPayConnectResponse(PayConnect2.PutVoidWithReferenceID(voidReferenceIDRequest,_payment.ClinicNum));
-					}
+			PayConnect2VoidResult payConnect2VoidResult=null;
+			ProgressWin progressOD=new ProgressWin();
+			progressOD.ActionMain=() => {
+				//A void is never retried. If its answer is lost, the transaction's status decides; an unknown outcome records nothing.
+				payConnect2VoidResult=PaymentWindowRules.VoidPayConnect2(refNum,_payment.ClinicNum);
+				payConnectResponse=payConnect2VoidResult.IsVoided ? payConnect2VoidResult.PayConnectResponse : null;
+				if(payConnectResponse!=null) {
 					receiptStr=PayConnectTerminal.BuildReceiptString(payConnectResponse,false,_payment.ClinicNum);
-				};
-				progressOD.ShowCancelButton=false;
-				progressOD.StartingMessage=Lan.g(this,"Processing void on terminal.");
-				progressOD.StopNotAllowedMessage=Lan.g(this,"Not allowed to stop. Please wait up to 2 minutes.");
-				try {
-					progressOD.ShowDialog();
 				}
-				catch(Exception ex) {
-					MessageBox.Show(Lan.g(this,"Error voiding payment:")+" "+ex.Message);
-				}
-				if(progressOD.IsCancelled) {
-					//do nothing.  The code below handles it.
-				}
+			};
+			progressOD.ShowCancelButton=false;
+			progressOD.StartingMessage=Lan.g(this,"Processing void on terminal.");
+			progressOD.StopNotAllowedMessage=Lan.g(this,"Not allowed to stop. Please wait up to 2 minutes.");
+			try {
+				progressOD.ShowDialog();
 			}
-			else {//The payment was made through the web service.
-				Cursor=Cursors.WaitCursor;
-				_creditCardRequestPayConnect.TransType=PayConnectService.transType.VOID;
-				_creditCardRequestPayConnect.RefNumber=refNum;
-				_creditCardRequestPayConnect.Amount=PIn.Decimal(amount);
-				PayConnectService.transResponse transResponse=PayConnect.ProcessCreditCard(_creditCardRequestPayConnect,_payment.ClinicNum,x => MessageBox.Show(x));
-				payConnectResponse=PayConnectREST.ToPayConnectResponse(transResponse,_creditCardRequestPayConnect);
-				receiptStr=PayConnect.BuildReceiptString(_creditCardRequestPayConnect,transResponse,null,0);
-				Cursor=Cursors.Default;
+			catch(Exception ex) {
+				MessageBox.Show(Lan.g(this,"Error voiding payment:")+" "+ex.Message);
+			}
+			if(progressOD.IsCancelled) {
+				//do nothing.  The code below handles it.
+			}
+			if(payConnect2VoidResult!=null && !payConnect2VoidResult.IsVoided) {
+				string logText="PayConnect void not completed for reference number "+refNum+".";
+				if(payConnect2VoidResult.Kind==PayConnect2VoidKind.Unknown) {
+					logText="PayConnect did not answer the void for reference number "+refNum+"; the outcome is unknown.";
+				}
+				SecurityLogs.MakeLogEntry(EnumPermType.CreditCardTerminal,_patient.PatNum,logText);
+				string message=payConnect2VoidResult.Message;
+				if(payConnect2VoidResult.Kind==PayConnect2VoidKind.NotVoided) {
+					message+="\r\n"+Lan.g(this,"This credit card payment has already been processed and will have to be voided manually through the web interface.");
+				}
+				MessageBox.Show(message);
+				return;
 			}
 			if(payConnectResponse==null || payConnectResponse.StatusCode!="0") {//error in transaction
 				SecurityLogs.MakeLogEntry(EnumPermType.CreditCardTerminal,_patient.PatNum,"Invalid response, or error communicating with, PayConnect.");
@@ -3670,7 +3642,7 @@ namespace OpenDental {
 			}
 			string resultNote=null;
 			Program program=Programs.GetCur(ProgramName.PayConnect);
-			string payconnectVersion=ProgramProperties.GetPropVal(program.ProgramNum,"Program Version",_payment.ClinicNum);
+			string payconnectVersion=ProgramProperties.GetPropVal(program.ProgramNum,PayConnect.ProgramProperties.ProgramVersion,_payment.ClinicNum);
 			//Get rid of "Unassigned variable" errors
 			string cardNumber="";
 			string receipt="";
@@ -3678,20 +3650,8 @@ namespace OpenDental {
 			bool wasPaymentAttempted=false;
 			PayConnectResponse payConnectResponse=null;
 			PayConnectService.transType transType=PayConnectService.transType.SALE;
-			if(payconnectVersion=="1") {
-				using FormPayConnect formPayConnect=new FormPayConnect(_payment.ClinicNum,_patient,amount,creditCard);
-				formPayConnect.ShowDialog();
-				payConnectResponse=formPayConnect.GetResponse();
-				cardNumber=formPayConnect.GetCardNumber();
-				receipt=formPayConnect.ReceiptStr;
-				amountChargedString=formPayConnect.GetAmountCharged();
-				transType=formPayConnect.TransType;
-				wasPaymentAttempted=formPayConnect.WasPaymentAttempted;
-				if(payConnectResponse!=null && payConnectResponse.StatusCode=="0") {
-					_creditCardRequestPayConnect=formPayConnect.CreditCardRequest;
-				}
-			}
-			else if(payconnectVersion=="2") {
+			//HasPayConnect() above made sure this clinic is on version 2; PayConnect 1.0 was removed.
+			if(payconnectVersion==PayConnect.Version2) {
 				using FormPayConnect2 formPayConnect2=new FormPayConnect2(_payment.ClinicNum,_patient,creditCard,amount);
 				if(formPayConnect2.ShowDialog()!=DialogResult.OK && !formPayConnect2.WasPaymentAttempted) {
 					return null;
@@ -3723,14 +3683,13 @@ namespace OpenDental {
 					}
 					return null;
 				}
-				CardPaymentMethod cardPaymentMethod=statusResponse.GetStatusResponse.PaymentMethod.CardPaymentMethod;
-				cardNumber=cardPaymentMethod.CardLast4Digits;
+				CardPaymentMethod cardPaymentMethod=statusResponse.GetStatusResponse?.PaymentMethod?.CardPaymentMethod;
+				cardNumber=cardPaymentMethod?.CardLast4Digits??"";
 				receipt=formPayConnect2.ReceiptStr;
 				amountChargedString=(((double)statusResponse.GetStatusResponse.Amount)/100).ToString("F2");
 				transType=formPayConnect2.TransType;
 				wasPaymentAttempted=formPayConnect2.WasPaymentAttempted;
-				_creditCardRequestPayConnect=null;//PayConnect2 doesn't use this field, explicitly set it null for safety.
-				string integrationType=ProgramProperties.GetPropVal(program.ProgramNum,"PayConnect2.0 Integration Type: 0 for normal, 1 for surcharge",_payment.ClinicNum);
+				string integrationType=ProgramProperties.GetPropVal(program.ProgramNum,PayConnect.ProgramProperties.IntegrationType,_payment.ClinicNum);
 				if(integrationType=="1") {//Surcharge integration
 					_payment.MerchantFee=((double)statusResponse.GetStatusResponse.AmountSurcharged)/100;
 					//Flip the sign for voids to show that this money was returned to the patient.
@@ -3773,6 +3732,10 @@ namespace OpenDental {
 						long integrationType=PayConnect2.GetIntegrationType(_payment.ClinicNum);
 						if(integrationType==1) {
 							resultNote+=Environment.NewLine+Lan.g(this,"Surcharge Fee Amount")+": "+_payment.MerchantFee.ToString("C");
+						}
+						if(PayConnect2.GetUseSandbox()) {
+							//Nothing was really charged. Mark the note so a test payment can't pass for a real one.
+							resultNote=PaymentWindowRules.PayConnectSandboxMarker+Environment.NewLine+resultNote;
 						}
 					}
 				}

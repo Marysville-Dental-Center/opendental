@@ -642,27 +642,7 @@ namespace OpenDental{
 				}
 			}
 			else if(PrefC.AtoZfolderUsed==DataStorageType.DropboxAtoZ) {
-				storageErrMsg="The Dropbox data path for your A to Z Images Folder is not available and this may cause functionality issues or slowness " +
-					"as long as it is not available.";
-				Program program=Programs.GetCur(ProgramName.Dropbox);
-				if(program==null) {//Should never happen.
-					hasConnected=false;//If an error occurs, DataStorageType does not connect
-				}
-				List<ProgramProperty> listProgramProperties=ProgramProperties.GetForProgram(program.ProgramNum);
-				ProgramProperty programPropertyPath=listProgramProperties.Find(x => x.PropertyDesc==Dropbox.PropertyDescs.AtoZPath);
-				ProgramProperty programPropertyAccessToken=listProgramProperties.Find(x => x.PropertyDesc==Dropbox.PropertyDescs.AccessToken);
-				if(programPropertyPath==null || programPropertyAccessToken==null) {
-					hasConnected=false;//If an error occurs, DataStorageType does not connect
-				}
-				else {
-					try {
-						hasConnected=OpenDentalCloud.Dropbox.FileExists(programPropertyAccessToken.PropertyValue,
-							ODFileUtils.CombinePaths(programPropertyPath.PropertyValue,"A",'/'));
-					}
-					catch(Exception) {
-						hasConnected=false;//If an error occurs, DataStorageType does not connect
-					}
-				}
+				hasConnected=VendorDirect.DropboxStartupCheck.Run(out storageErrMsg);
 			}
 			else if(PrefC.AtoZfolderUsed==DataStorageType.SftpAtoZ) {
 				storageErrMsg="The SFTP data path for your A to Z Images Folder is not available and this may cause functionality issues or slowness " +
@@ -1632,6 +1612,8 @@ namespace OpenDental{
 					Bridges.PaperlessTechnology.InitializeFileWatcher();
 				}
 				_menuItemCareCreditTransactions.Available=Programs.GetCur(ProgramName.CareCredit).Enabled;
+				//Rule 7: the Advertising menu (Postcards) shows only while the PostcardMania program link is enabled.
+				_menuItemAdvertising.Available=VendorDirect.PostcardsMenu.IsAvailable();
 			}
 			#endregion
 			#region InvalidType.Programs OR InvalidType.Prefs
@@ -5774,15 +5756,7 @@ namespace OpenDental{
 		//End of MiscTools
 
 		private void menuItemAdvertisingPostcards_Click(object sender, System.EventArgs e) {
-			if(!Security.IsAuthorized(EnumPermType.Advertising)) {
-				return;
-			}
-			if(PrefC.GetString(PrefName.AdvertisingPostCardGuid)=="") {
-				using FormAdvertisingPostcardsSetup formMassPostcardSetup=new FormAdvertisingPostcardsSetup();
-				formMassPostcardSetup.ShowDialog();
-			}
-			using FormAdvertisingPostcardsSend formMassPostcardSend=new FormAdvertisingPostcardsSend();
-			formMassPostcardSend.ShowDialog();
+			VendorDirect.PostcardsMenu.Open();
 		}
 
 		private void menuItemAuditTrail_Click(object sender,EventArgs e) {
@@ -6325,20 +6299,11 @@ namespace OpenDental{
 					}
 					break;
 				case FormType.FormDoseSpotAssignUserId:
-					if(!Security.IsAuthorized(EnumPermType.SecurityAdmin)) {
-						break;
-					}
-					using(FormDoseSpotAssignUserId formDoseSpotAssignUserId=new FormDoseSpotAssignUserId(alertItem.FKey)) {
-						formDoseSpotAssignUserId.ShowDialog();
-					}
-					break;
 				case FormType.FormDoseSpotAssignClinicId:
-					if(!Security.IsAuthorized(EnumPermType.SecurityAdmin)) {
-						break;
-					}
-					using(FormDoseSpotAssignClinicId formDoseSpotAssignClinicId=new FormDoseSpotAssignClinicId(alertItem.FKey)) {
-						formDoseSpotAssignClinicId.ShowDialog();
-					}
+					//Alerts left from the previous vendor's DoseSpot provisioning. The office now gets its IDs from DoseSpot (or its contract holder)
+					//and enters them itself, so there is nothing to assign here.
+					MsgBox.Show(this,"DoseSpot clinic and user IDs are now entered directly: clinic IDs in Setup, Program Links, eRx, and user IDs in each "
+						+"user's settings in Setup, Security.");
 					break;
 				case FormType.FormEmailAddresses:
 					//Will open the email addresses window that is usually opened from email inbox setup.

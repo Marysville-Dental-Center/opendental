@@ -12,7 +12,6 @@ using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using CodeBase;
 using DataConnectionBase;
-using Microsoft.Graph.ExternalConnectors;
 using OpenDentBusiness.HL7;
 
 namespace OpenDentBusiness {

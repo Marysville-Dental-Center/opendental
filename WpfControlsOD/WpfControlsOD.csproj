@@ -42,13 +42,6 @@
     </Win32Resource>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Bridges, Version=24.1.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\Bridges.dll</HintPath>
-    </Reference>
-    <Reference Include="DpsPos">
-      <HintPath>..\Required dlls\DpsPos.dll</HintPath>
-    </Reference>
     <Reference Include="Interop.CDRDATALib">
       <HintPath>..\Required dlls\Interop.CDRDATALib.dll</HintPath>
       <EmbedInteropTypes>True</EmbedInteropTypes>
@@ -663,6 +656,7 @@
     <Compile Include="Logic\EFormL.cs" />
     <Compile Include="Logic\PatientL.cs" />
     <Compile Include="Logic\ProgramL.cs" />
+    <Compile Include="Logic\VendorDirect\PdmpLaunch.cs" />
     <Compile Include="Logic\ReferralL.cs" />
     <Compile Include="Misc\DataValid.cs" />
     <Compile Include="Misc\FilterControlsAndAction.cs" />

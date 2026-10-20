@@ -5,11 +5,12 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
-using Bridges;
 using CodeBase;
+using CodeBase.VendorDirect;
 using Newtonsoft.Json;
 using OpenDental.UI;
 using OpenDentBusiness;
+using OpenDentBusiness.Microsoft365;
 
 namespace OpenDental {
 	public partial class FormEmailMessageEdit : FormODBase {
@@ -783,34 +784,20 @@ namespace OpenDental {
 				toolBarSend.Enabled=true;
 				return;
 			}
-			if(emailAddress.RefreshToken.IsNullOrEmpty() && emailAddress.AuthenticationType==OAuthType.Microsoft) {
-				if(MsgBox.Show(this,MsgBoxButtons.YesNo,"This email address needs to be re-authenticated. Sign into this email through Microsoft?")) {
-					MicrosoftTokenHelper microsoftToken=new MicrosoftTokenHelper();
-					microsoftToken=System.Threading.Tasks.Task.Run(async()=>await MicrosoftApiConnector.GetAccessToken(emailAddress.EmailUsername,"")).GetAwaiter().GetResult();
-					if(microsoftToken.ErrorMessage!="") {
-						MsgBox.Show("Error: "+microsoftToken.ErrorMessage);
-						toolBarSend.Enabled=true;
-						return;
-					}
-					if(microsoftToken.AccessToken=="") {
-						toolBarSend.Enabled=true;
-						return; //Authentication was cancelled so do nothing.
-					}
-					if(microsoftToken.EmailAddress!=emailAddress.EmailUsername) {
-						MsgBox.Show("Please sign in with the same email address.");
-						toolBarSend.Enabled=true;
-						return;
-					}
-					emailAddress.AccessToken=microsoftToken.AccessToken;
-					emailAddress.RefreshToken=microsoftToken.AccountInfo;
-					emailAddress.Pop3ServerIncoming="pop.outlook.com"; //This field was also cleared and needs to be populated.
-					EmailAddresses.Update(emailAddress);
-					DataValid.SetInvalid(InvalidType.Email);
-				}
-				else {
+			if(emailAddress.AuthenticationType==OAuthType.Microsoft && !IsMicrosoftSignInUsable(emailAddress)) {
+				//Not signed in, or a sign-in made under Open Dental's app registration: no Microsoft call can use it.
+				if(!MsgBox.Show(this,MsgBoxButtons.YesNo,"This email address needs to be re-authenticated. Sign into this email through Microsoft 365?")
+					|| !SignInMicrosoftAgain(emailAddress))
+				{
 					toolBarSend.Enabled=true;
-					return;//User wants to manually sign into the email in the setup window.
+					return;//Cancelled, failed, or the user wants to sign in from the setup window.
 				}
+			}
+			if(emailAddress.AuthenticationType==OAuthType.Google && GoogleTokenCache.NeedsReauthorization(emailAddress)) {
+				//Blank or legacy refresh token, or Google refused it earlier in this session. No Google call is made.
+				MessageBox.Show(this,GoogleAuthException.GetNeedsAuthorizationMessage(emailAddress.EmailUsername));
+				toolBarSend.Enabled=true;
+				return;
 			}
 			//If default autograph is HTML send the whole email as HTML.
 			EmailAutograph emailAutograph=FindDefaultEmailAutograph();
@@ -846,6 +833,18 @@ namespace OpenDental {
 			}
 			catch(Exception ex){
 				Cursor=Cursors.Default;
+				Microsoft365Exception microsoft365Exception=EmailMessages.FindException<Microsoft365Exception>(ex);
+				if(emailAddress.AuthenticationType==OAuthType.Microsoft && microsoft365Exception!=null && microsoft365Exception.IsAuthError) {
+					//The mailbox has to sign in again (revoked, expired, password reset) or grant a permission. The stored sign-in is not cleared
+					//automatically: the user decides. A refused request was not sent, so sending again after signing in can't duplicate it.
+					if(MsgBox.Show(this,MsgBoxButtons.YesNo,ex.Message+"\r\n\r\n"+Lan.g(this,"Sign in to Microsoft 365 again now?"))
+						&& SignInMicrosoftAgain(emailAddress))
+					{
+						MsgBox.Show(this,"Signed in. Click Send to send the message.");
+					}
+					toolBarSend.Enabled=true;
+					return;
+				}
 				string errMsg=Lan.g(this,"Failed to send email.")+"\r\n"+Lan.g(this, "Click Details to see the error message from the Email Client.");
 				FriendlyException.Show(errMsg, ex);
 				toolBarSend.Enabled=true;
@@ -856,6 +855,77 @@ namespace OpenDental {
 			//MessageCur.MsgDateTime=DateTime.Now;
 			DialogResult=DialogResult.OK;
 			Close();//this form can be opened modelessly.
+		}
+
+		///<summary>True if a Microsoft 365 address holds an account marker and an osd1$ MSAL cache this program can decrypt. A blank value, or a cache
+		///issued under Open Dental's app registration, means the mailbox has to sign in again.</summary>
+		private bool IsMicrosoftSignInUsable(EmailAddress emailAddress) {
+			if(string.IsNullOrEmpty(emailAddress.AccessToken) || string.IsNullOrEmpty(emailAddress.RefreshToken)) {
+				return false;
+			}
+			return OpenDentBusiness.VendorDirect.SecretValue.Read(emailAddress.RefreshToken,OpenDentBusiness.VendorDirect.LegacyPolicy.RejectPlaintext).Status
+				==OpenDentBusiness.VendorDirect.SecretReadStatus.Ok;
+		}
+
+		///<summary>Signs a Microsoft 365 address in again interactively (system browser or device code, with the office's own app registration) and
+		///saves the new sign-in to the address. The account must be the address's own (mail or user principal name, ignoring case). Returns true if
+		///the address is signed in now.</summary>
+		private bool SignInMicrosoftAgain(EmailAddress emailAddress) {
+			string emailUsername=emailAddress.EmailUsername;
+			bool includeMailRead=emailAddress.DownloadInbox;
+			MicrosoftTokenHelper microsoftToken=null;
+			Exception exception=null;
+			System.Threading.CancellationTokenSource cancellationTokenSource=new System.Threading.CancellationTokenSource();
+			ProgressWin progressWin=new ProgressWin();
+			progressWin.StartingMessage=Lan.g(this,"Waiting for the Microsoft 365 sign-in in the browser")+"...";
+			progressWin.ActionCancel=() => cancellationTokenSource.Cancel();
+			progressWin.ActionMain=() => {
+				try {
+					microsoftToken=VendorHttp.RunSync(() => MicrosoftApiConnector.GetAccessToken(emailUsername,"",includeMailRead,cancellationTokenSource.Token));
+				}
+				catch(Exception ex) {
+					exception=ex;//Kept here: ProgressWin would rethrow only an inner exception.
+				}
+			};
+			try {
+				progressWin.ShowDialog();
+			}
+			catch(Exception ex) {
+				exception=ex;
+			}
+			if(progressWin.IsCancelled) {
+				cancellationTokenSource.Cancel();
+				return false;
+			}
+			if(exception!=null) {
+				FriendlyException.Show(Lan.g(this,"Microsoft 365 sign-in failed."),exception);
+				return false;
+			}
+			if(microsoftToken==null || (microsoftToken.AccessToken=="" && microsoftToken.ErrorMessage=="")) {
+				return false; //Authentication was cancelled so do nothing.
+			}
+			if(microsoftToken.ErrorMessage!="") {
+				MessageBox.Show(this,microsoftToken.ErrorMessage);
+				return false;
+			}
+			if(!string.Equals(microsoftToken.EmailAddress.Trim(),emailAddress.EmailUsername.Trim(),StringComparison.OrdinalIgnoreCase)) {
+				//The sign-in already refuses another account; this also catches an address whose user name is the UPN while mail differs.
+				if(!MsgBox.Show(this,MsgBoxButtons.YesNo,Lan.g(this,"Signed in as")+" "+microsoftToken.EmailAddress+". "
+					+Lan.g(this,"Keep this sign-in for")+" "+emailAddress.EmailUsername+"?"))
+				{
+					return false;
+				}
+			}
+			emailAddress.AccessToken=microsoftToken.AccessToken;//The account marker, not a bearer token.
+			emailAddress.RefreshToken=microsoftToken.AccountInfo;//The osd1$ MSAL cache.
+			if(emailAddress.DownloadInbox) {
+				emailAddress.Pop3ServerIncoming="pop.outlook.com"; //This field was also cleared and needs to be populated.
+			}
+			EmailAddresses.Update(emailAddress);
+			Microsoft365Session.Forget(emailAddress.EmailAddressNum);
+			SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,"Microsoft 365 signed in for EmailAddressNum "+POut.Long(emailAddress.EmailAddressNum));
+			DataValid.SetInvalid(InvalidType.Email);
+			return true;
 		}
 
 		private void butCancel_Click(object sender, System.EventArgs e) {

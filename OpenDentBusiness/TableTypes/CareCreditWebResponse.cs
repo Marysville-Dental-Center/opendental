@@ -56,7 +56,7 @@ namespace OpenDentBusiness {
 		public CareCreditTransType TransType;
 		///<summary>The MerchantNumber associated to this request.</summary>
 		public string MerchantNumber;
-		///<summary>True if row has been logged at HQ, otherwise false.</summary>
+		///<summary>Legacy: set by Open Dental's HQ transaction upload. Not used; nothing uploads transactions anywhere.</summary>
 		public bool HasLogged;
 
 		public CareCreditWebResponse Copy() {

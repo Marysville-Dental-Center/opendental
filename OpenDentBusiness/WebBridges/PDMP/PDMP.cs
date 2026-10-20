@@ -1,22 +1,21 @@
 ﻿using CodeBase;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Net;
-using System.Net.Http;
 using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Serialization;
-using System.Xml;
-using OpenDentBusiness.UI;
-using System.Windows;
 
 namespace OpenDentBusiness {
+	///<summary>The PDMP (LogiCoy) and Bamboo program links: a prescription monitoring check from the patient's chart. Both talk to the vendor directly
+	///with the office's own credentials (docs/specs/vendor-direct/pdmp.md). Both programs are disabled until the office enables them.</summary>
 	public class PDMP {
+		///<summary>Text for the user. For Bamboo, the scores and messages to show before the report is requested.</summary>
 		public string Message;
+		///<summary>The report URL to open. For LogiCoy it is set by SendData. For Bamboo it is set by GetBambooReportLink, after the user clicks OK.</summary>
 		public string Url;
+		///<summary>A warning to show the user, such as a client certificate that expires soon. "" when none.</summary>
+		public string Warning="";
+		///<summary>The Bamboo session between step 1 (SendData) and step 2 (GetBambooReportLink). Null for LogiCoy.</summary>
+		private PDMPBamboo _pdmpBamboo;
 
 		/// <summary>List of programs that can access PDMP bridge</summary>
 		private static List<string> _listPDMPProgNames=new List<string>() {
@@ -24,7 +23,21 @@ namespace OpenDentBusiness {
 			ProgramName.Bamboo.ToString(),
 		};
 
-		///<summary>Returns a PDMP object after validating necessary program properties and going through API calls</summary>
+		///<summary>True if the program is one of the two PDMP program links.</summary>
+		public static bool IsPdmpProgram(Program program) {
+			return program!=null && _listPDMPProgNames.Contains(program.ProgName);
+		}
+
+		///<summary>True for Bamboo when step 1 returned a report that GetBambooReportLink can open.</summary>
+		public bool HasBambooReport {
+			get {
+				return _pdmpBamboo!=null && _pdmpBamboo.HasReport;
+			}
+		}
+
+		///<summary>Validates the program properties and runs the first vendor call. LogiCoy: the report URL is in Url. Bamboo: only the patient query
+		///runs; the scores are in Message, and GetBambooReportLink asks for the report once the user has confirmed. Throws ApplicationException
+		///(PdmpException) with a message for the user.</summary>
 		public static PDMP SendData(Program programCur,Patient pat,Provider prov) {
 			PDMP pdmp=new PDMP();
 			StringBuilder sbErrors=new StringBuilder();
@@ -40,6 +53,7 @@ namespace OpenDentBusiness {
 				sbErrors.AppendLine(Lans.g("PDMP","Please select a patient."));
 				throw new ApplicationException(sbErrors.ToString());
 			}
+			PdmpProperty.EnsureProperties(programCur);
 			PdmpProperty propertyVals=new PdmpProperty() {
 				PdmpProv=prov,
 				PdmpPat=pat,
@@ -67,9 +81,10 @@ namespace OpenDentBusiness {
 						break;
 					case ProgramName.Bamboo:
 						PDMPBamboo pdmpBamboo=new PDMPBamboo(propertyVals);
-						pdmpBamboo.DownloadData();
-						pdmp.Url=pdmpBamboo.Url;
+						pdmpBamboo.QueryPatient();
+						pdmp._pdmpBamboo=pdmpBamboo;
 						pdmp.Message=pdmpBamboo.Response;
+						pdmp.Warning=pdmpBamboo.CertificateWarning;
 						break;
 					default:
 						throw new Exception(Lans.g("PDMP","PDMP program link has not been implemented."));
@@ -81,26 +96,34 @@ namespace OpenDentBusiness {
 			return pdmp;
 		}
 
-		///<summary>Removes program properties that users don't need to see. Namely, the url that HQ manages.</summary>
+		///<summary>Bamboo step 2, called only after the user clicks OK: requests the single-use report link, stores it in Url and returns it.
+		///Throws PdmpException.</summary>
+		public string GetBambooReportLink() {
+			if(_pdmpBamboo==null) {
+				throw new PdmpException(PdmpErrorKind.VendorError,Lans.g("PDMP","No report was returned."));
+			}
+			Url=_pdmpBamboo.GetReportLink();
+			return Url;
+		}
+
+		///<summary>Orders the program's properties for the setup grid: the license field first, then the rest. The URL rows are shown: each office enters
+		///the URL its vendor gave it. For Bamboo, the client certificate file and its password are hidden; the certificate dialog manages them and the
+		///setup window shows one status row instead. Rows of other programs pass through unchanged.</summary>
 		public static List<ProgramProperty> FilterAndSortProperties(Program progCur,List<ProgramProperty> listProps) {
 			if(!_listPDMPProgNames.Contains(progCur.ProgName)) {
 				return listProps;//Program isn't PDMP so we don't care
 			}
 			List<ProgramProperty> retList=new List<ProgramProperty>();
-			ProgramProperty progProp=listProps.Where(x=>x.PropertyDesc==PdmpProperty.PdmpProvLicenseField).FirstOrDefault();//add license type first
-			if(progProp!=null) {
-				retList.Add(progProp);
-			}
+			retList.AddRange(listProps.Where(x=>x.PropertyDesc==PdmpProperty.PdmpProvLicenseField));//add license type first
 			if(Enum.TryParse(progCur.ProgName,out ProgramName programName)) {
 				switch(programName) {
 					case ProgramName.PDMP:
-						retList.AddRange(listProps.Where(x=>!x.PropertyDesc.Contains("Url")//no need for visible url for user
-							&& x.PropertyDesc!=PdmpProperty.PdmpProvLicenseField)//already added license above
-							.OrderBy(x=>x.PropertyDesc));//order by state name		
+						retList.AddRange(listProps.Where(x=>x.PropertyDesc!=PdmpProperty.PdmpProvLicenseField)//already added license above
+							.OrderBy(x=>x.PropertyDesc));//order by state name
 						break;
 					case ProgramName.Bamboo:
-						retList.AddRange(listProps.Where(x=>!x.PropertyDesc.Contains("Url")//no need for visible url for user
-							&& !x.PropertyDesc.Contains("Client")//Bamboo has a client authorization key and a client password only needed for us to access bridge
+						retList.AddRange(listProps.Where(x=>x.PropertyDesc!=PdmpProperty.BambooAuthToken
+							&& x.PropertyDesc!=PdmpProperty.BambooAuthPassword//managed by the certificate dialog
 							&& x.PropertyDesc!=PdmpProperty.PdmpProvLicenseField));//already added above
 						break;
 					default:

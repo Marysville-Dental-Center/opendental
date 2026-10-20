@@ -41,13 +41,19 @@ namespace OpenDental{
 			this.label2 = new System.Windows.Forms.Label();
 			this.comboPaymentTypeCC = new OpenDental.UI.ComboBox();
 			this.label1 = new System.Windows.Forms.Label();
+			this.comboEnvironment = new OpenDental.UI.ComboBox();
+			this.label5 = new System.Windows.Forms.Label();
+			this.butTestConnection = new OpenDental.UI.Button();
+			this.checkAchStatusCheck = new OpenDental.UI.CheckBox();
+			this.butCheckAchStatuses = new OpenDental.UI.Button();
+			this.butWebhooks = new OpenDental.UI.Button();
 			this.groupPaySettings.SuspendLayout();
 			this.SuspendLayout();
 			// 
 			// butSave
 			// 
 			this.butSave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.butSave.Location = new System.Drawing.Point(305, 326);
+			this.butSave.Location = new System.Drawing.Point(305, 426);
 			this.butSave.Name = "butSave";
 			this.butSave.Size = new System.Drawing.Size(75, 24);
 			this.butSave.TabIndex = 3;
@@ -91,6 +97,9 @@ namespace OpenDental{
 			// groupPaySettings
 			// 
 			this.groupPaySettings.ColorBackLabel = System.Drawing.Color.Empty;
+			this.groupPaySettings.Controls.Add(this.butTestConnection);
+			this.groupPaySettings.Controls.Add(this.comboEnvironment);
+			this.groupPaySettings.Controls.Add(this.label5);
 			this.groupPaySettings.Controls.Add(this.checkAllowOnlinePayments);
 			this.groupPaySettings.Controls.Add(this.checkPrintReceipt);
 			this.groupPaySettings.Controls.Add(this.comboPaymentTypeACH);
@@ -104,22 +113,22 @@ namespace OpenDental{
 			this.groupPaySettings.Controls.Add(this.label1);
 			this.groupPaySettings.Location = new System.Drawing.Point(12, 133);
 			this.groupPaySettings.Name = "groupPaySettings";
-			this.groupPaySettings.Size = new System.Drawing.Size(370, 185);
+			this.groupPaySettings.Size = new System.Drawing.Size(370, 225);
 			this.groupPaySettings.TabIndex = 9;
 			this.groupPaySettings.Text = "Clinic Payment Settings";
 			// 
 			// checkAllowOnlinePayments
 			// 
-			this.checkAllowOnlinePayments.Location = new System.Drawing.Point(151, 159);
+			this.checkAllowOnlinePayments.Location = new System.Drawing.Point(151, 199);
 			this.checkAllowOnlinePayments.Name = "checkAllowOnlinePayments";
 			this.checkAllowOnlinePayments.Size = new System.Drawing.Size(217, 18);
 			this.checkAllowOnlinePayments.TabIndex = 9;
 			this.checkAllowOnlinePayments.Text = "Allow online payments";
-			this.checkAllowOnlinePayments.Click += new System.EventHandler(this.checkAllowOnlinePayments_Click);
+			this.checkAllowOnlinePayments.Visible = false;
 			// 
 			// checkPrintReceipt
 			// 
-			this.checkPrintReceipt.Location = new System.Drawing.Point(151, 141);
+			this.checkPrintReceipt.Location = new System.Drawing.Point(151, 169);
 			this.checkPrintReceipt.Name = "checkPrintReceipt";
 			this.checkPrintReceipt.Size = new System.Drawing.Size(217, 18);
 			this.checkPrintReceipt.TabIndex = 8;
@@ -143,7 +152,7 @@ namespace OpenDental{
 			// 
 			// checkPreventSavingNewCC
 			// 
-			this.checkPreventSavingNewCC.Location = new System.Drawing.Point(151, 124);
+			this.checkPreventSavingNewCC.Location = new System.Drawing.Point(151, 151);
 			this.checkPreventSavingNewCC.Name = "checkPreventSavingNewCC";
 			this.checkPreventSavingNewCC.Size = new System.Drawing.Size(217, 18);
 			this.checkPreventSavingNewCC.TabIndex = 5;
@@ -155,6 +164,7 @@ namespace OpenDental{
 			this.textKey.Name = "textKey";
 			this.textKey.Size = new System.Drawing.Size(175, 20);
 			this.textKey.TabIndex = 2;
+			this.textKey.UseSystemPasswordChar = true;
 			// 
 			// label3
 			// 
@@ -197,9 +207,63 @@ namespace OpenDental{
 			this.label1.Text = "Payment Type Credit Card";
 			this.label1.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
 			// 
+			// comboEnvironment
+			// 
+			this.comboEnvironment.Location = new System.Drawing.Point(151, 124);
+			this.comboEnvironment.Name = "comboEnvironment";
+			this.comboEnvironment.Size = new System.Drawing.Size(175, 21);
+			this.comboEnvironment.TabIndex = 3;
+			// 
+			// label5
+			// 
+			this.label5.Location = new System.Drawing.Point(40, 126);
+			this.label5.Name = "label5";
+			this.label5.Size = new System.Drawing.Size(110, 16);
+			this.label5.TabIndex = 0;
+			this.label5.Text = "Environment";
+			this.label5.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			// 
+			// butTestConnection
+			// 
+			this.butTestConnection.Location = new System.Drawing.Point(151, 193);
+			this.butTestConnection.Name = "butTestConnection";
+			this.butTestConnection.Size = new System.Drawing.Size(120, 24);
+			this.butTestConnection.TabIndex = 10;
+			this.butTestConnection.Text = "Test connection";
+			this.butTestConnection.Click += new System.EventHandler(this.butTestConnection_Click);
+			// 
+			// checkAchStatusCheck
+			// 
+			this.checkAchStatusCheck.Location = new System.Drawing.Point(12, 366);
+			this.checkAchStatusCheck.Name = "checkAchStatusCheck";
+			this.checkAchStatusCheck.Size = new System.Drawing.Size(370, 18);
+			this.checkAchStatusCheck.TabIndex = 10;
+			this.checkAchStatusCheck.Text = "Check ACH payment statuses every hour (all clinics)";
+			// 
+			// butCheckAchStatuses
+			// 
+			this.butCheckAchStatuses.Location = new System.Drawing.Point(12, 390);
+			this.butCheckAchStatuses.Name = "butCheckAchStatuses";
+			this.butCheckAchStatuses.Size = new System.Drawing.Size(150, 24);
+			this.butCheckAchStatuses.TabIndex = 11;
+			this.butCheckAchStatuses.Text = "Check ACH statuses now";
+			this.butCheckAchStatuses.Click += new System.EventHandler(this.butCheckAchStatuses_Click);
+			// 
+			// butWebhooks
+			// 
+			this.butWebhooks.Location = new System.Drawing.Point(170, 390);
+			this.butWebhooks.Name = "butWebhooks";
+			this.butWebhooks.Size = new System.Drawing.Size(150, 24);
+			this.butWebhooks.TabIndex = 12;
+			this.butWebhooks.Text = "Webhook subscriptions...";
+			this.butWebhooks.Click += new System.EventHandler(this.butWebhooks_Click);
+			// 
 			// FormPaySimpleSetup
 			// 
-			this.ClientSize = new System.Drawing.Size(394, 362);
+			this.ClientSize = new System.Drawing.Size(394, 462);
+			this.Controls.Add(this.butWebhooks);
+			this.Controls.Add(this.butCheckAchStatuses);
+			this.Controls.Add(this.checkAchStatusCheck);
 			this.Controls.Add(this.groupPaySettings);
 			this.Controls.Add(this.comboClinic);
 			this.Controls.Add(this.labelClinic);
@@ -235,5 +299,11 @@ namespace OpenDental{
 		private System.Windows.Forms.Label label4;
 		private OpenDental.UI.CheckBox checkPrintReceipt;
 		private UI.CheckBox checkAllowOnlinePayments;
+		private UI.ComboBox comboEnvironment;
+		private System.Windows.Forms.Label label5;
+		private OpenDental.UI.Button butTestConnection;
+		private OpenDental.UI.CheckBox checkAchStatusCheck;
+		private OpenDental.UI.Button butCheckAchStatuses;
+		private OpenDental.UI.Button butWebhooks;
 	}
 }

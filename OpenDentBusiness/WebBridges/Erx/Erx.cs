@@ -1,9 +1,7 @@
 ﻿using CodeBase;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -13,7 +11,12 @@ namespace OpenDentBusiness {
 		public class PropertyDescs {
 			public static string ErxOption="eRx Option";
 			public static string ClinicID="DoseSpot Clinic ID";
+			///<summary>Secret: an osd1$ value (plain text in rows Open Dental wrote, encrypted on the next save of eRx Setup).</summary>
 			public static string ClinicKey="DoseSpot Clinic Key";
+			///<summary>Practice-wide, secret. See DoseSpotConfig.</summary>
+			public static string SubscriptionKey=DoseSpotConfig.PropSubscriptionKey;
+			///<summary>Practice-wide: Production or Staging. See DoseSpotConfig.</summary>
+			public static string Environment=DoseSpotConfig.PropEnvironment;
 		}
 
 		public static ErxOption GetErxOption() {
@@ -182,7 +185,7 @@ namespace OpenDentBusiness {
 			}
 			ProviderClinic providerClinic=ProviderClinics.GetOneOrDefault(provider.ProvNum,(clinic==null ? 0 : clinic.ClinicNum));
 			if(provider.IsErxEnabled==ErxEnabledStatus.Disabled) {
-				throw new ODException(Lans.g("Erx","Erx is disabled for provider")+": "+provider.Abbr+".  "+Lans.g("Erx","To enable, edit provider in Lists | Providers and acknowledge Electronic Prescription fees."));
+				throw new ODException(Lans.g("Erx","eRx is not enabled for provider")+": "+provider.Abbr+".  "+Lans.g("Erx","Enable it in Lists | Providers."));
 			}
 			if(provider.IsHidden) {
 				throw new ODException(Lans.g("Erx","Provider")+": "+provider.Abbr+" "+Lans.g("Erx","is hidden")+".  "+Lans.g("Erx","Unhide the provider to use Erx features."));
@@ -301,38 +304,29 @@ namespace OpenDentBusiness {
 			return true;
 		}
 
+		///<summary>The DoseSpot single sign-on URL for the environment chosen in eRx Setup (never the build configuration), plus the query string.</summary>
 		public static string GetRxDoseSpotUrl(string stringSSOQuery) {
-			string doseSpotUrl=Introspection.GetOverride(Introspection.IntrospectionEntity.DoseSpotSingleSignOnURL,"https://my.dosespot.com/LoginSingleSignOn.aspx");
-			if(ODBuild.IsDebug()) {
-				doseSpotUrl="https://my.staging.dosespot.com/LoginSingleSignOn.aspx?b=2";
-			}
+			Meth.NoCheckMiddleTierRole();
+			return BuildDoseSpotUrl(DoseSpotConfig.GetSsoBaseUrl(DoseSpotConfig.GetEnvironment()),stringSSOQuery);
+		}
+
+		///<summary>doseSpotUrl plus the query string; a leading '&amp;' becomes '?' when doseSpotUrl has no query yet.</summary>
+		public static string BuildDoseSpotUrl(string doseSpotUrl,string stringSSOQuery) {
+			stringSSOQuery=stringSSOQuery??"";
 			//Don't use the post data, just tack on query string to the URI and do a normal navigate.
-			if(!doseSpotUrl.Contains("?") && stringSSOQuery[0]=='&') {
+			if(!doseSpotUrl.Contains("?") && stringSSOQuery.StartsWith("&")) {
 				stringSSOQuery="?"+stringSSOQuery.Substring(1);
 			}
 			return doseSpotUrl+stringSSOQuery;
 		}
 
-		public static string GetLegacyUrl() {
-			string newCropUrl=Introspection.GetOverride(Introspection.IntrospectionEntity.NewCropRxEntryURL,"https://secure.newcropaccounts.com/interfacev7/rxentry.aspx");
-			if(ODBuild.IsDebug()) {
-				newCropUrl="https://preproduction.newcropaccounts.com/interfaceV7/rxentry.aspx";
+		///<summary>The text kept in erxlog.MsgText for an eRx launch: the DoseSpot SSO query with its code and user verification replaced by ***,
+		///or the NewCrop click-through XML with its credentials blanked. Never a secret.</summary>
+		public static string RedactForLog(string msgText,ErxOption erxOption) {
+			if(erxOption==ErxOption.NewCrop) {
+				return ErxXml.RedactNewCropCredentials(msgText);
 			}
-			return newCropUrl;
-		}
-
-		///<summary>Sends the provider information to NewCrop without allowing the provider to use NewCrop.</summary>
-		public static void ComposeNewRxNewCropWebRequest(byte[] postDataBytes) {
-			string newCropUrl=GetLegacyUrl();
-			WebRequest webRequest=WebRequest.Create(newCropUrl);
-			webRequest.Method="POST";
-			webRequest.ContentType="application/x-www-form-urlencoded";
-			webRequest.ContentLength=postDataBytes.Length;
-			Stream stream=webRequest.GetRequestStream();
-			stream.Write(postDataBytes,0,postDataBytes.Length);
-			stream.Close();
-			WebResponse webResponse=webRequest.GetResponse();
-			webResponse.Close();
+			return DoseSpotSso.Redact(msgText);
 		}
 	}
 
@@ -347,9 +341,9 @@ namespace OpenDentBusiness {
 		DoseSpotWithNewCrop,
 	}
 
-	///<summary>Used by Erx to determine if the provider or clinic has been enabled at ODHQ.
-	///Enum is in this file because it belongs to multiple tables.
-	///This enum is copied to WebServiceCustomerUpdates/ClinicErx.cs.  See there for detailed comments.</summary>
+	///<summary>Stored in providererx.IsEnabled and clinicerx.EnabledStatus. Open Dental's servers used to set it; now eRx Setup sets
+	///providererx.IsEnabled for NewCrop locally (Enabled or Disabled), and DoseSpot no longer reads either table. The values stay for schema
+	///compatibility. Enum is in this file because it belongs to multiple tables.</summary>
 	public enum ErxStatus {
 		///<summary>0.</summary>
 		Disabled,

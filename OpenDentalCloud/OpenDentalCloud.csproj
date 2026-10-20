@@ -69,8 +69,10 @@
     <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Dropbox.Api">
-      <HintPath>..\Required dlls\Dropbox.Api.dll</HintPath>
+    <!-- Renci.SshNet (SSH.NET 2024.1.0, net462) references Microsoft.Bcl.AsyncInterfaces 1.0.0.0. Sftp.TypeAsyncInterfacesDependency uses the
+    shipped 6.0.0.0 copy, so every host copies it and its auto-generated binding redirect points SSH.NET at it. -->
+    <Reference Include="Microsoft.Bcl.AsyncInterfaces">
+      <HintPath>..\Required dlls\Microsoft.Bcl.AsyncInterfaces.dll</HintPath>
     </Reference>
     <Reference Include="Renci.SshNet">
       <HintPath>..\Required dlls\Renci.SshNet.dll</HintPath>
@@ -95,7 +97,7 @@
     <Compile Include="Shared\TaskStateThumbnail.cs" />
     <Compile Include="Shared\TaskStateUpload.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Storage\Dropbox.cs" />
+    <Compile Include="Storage\RemovedStorage.cs" />
     <Compile Include="Shared\TaskState.cs" />
     <Compile Include="Storage\Sftp.cs" />
   </ItemGroup>

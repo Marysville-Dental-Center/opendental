@@ -14,7 +14,6 @@ using OpenDental.UI;
 using OpenDentBusiness;
 using OpenDentBusiness.HL7;
 using System.Windows.Interop;
-using Bridges;
 
 namespace OpenDental {
 	///<summary>The Appointments Module.</summary>
@@ -509,6 +508,10 @@ namespace OpenDental {
 					}
 				}
 				Appointment appointment=Appointments.GetOneApt(contrApptPanel.SelectedAptNum);
+				//Staff at California locations may not submit applications for patients, so neither action is offered there.
+				if(appointment!=null && OpenDentBusiness.Bridges.CareCredit.IsStaffApplicationRestricted(appointment.ClinicNum)) {
+					careCreditStatus="";
+				}
 				if(careCreditStatus.ToLower().In(CareCreditWebStatus.PreApproved.GetDescription().ToLower())) 
 				{
 					menuApt.Items.Add(new ToolStripSeparator() { Name=MenuItemNames.CareCreditDiv });

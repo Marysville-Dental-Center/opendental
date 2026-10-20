@@ -1,11 +1,10 @@
 ﻿using System;
 using CodeBase;
-using DentalXChange.Dps.Pos;
 using OpenDentBusiness;
-using OpenDentBusiness.PayConnectService;
 
 namespace OpenDental.Bridges {
-	///<summary>Methods that can be used when interacting with a PayConnect terminal.</summary>
+	///<summary>Receipts for PayConnect 2 transactions (terminal sales and voids through the cloud API). The PayConnect 1.0 VeriFone terminal path
+	///(DpsPos.dll) was removed.</summary>
 	public class PayConnectTerminal {
 
 		///<summary>Builds a receipt string for a terminal transaction.</summary>
@@ -48,7 +47,7 @@ namespace OpenDental.Bridges {
 			}
 			result+=Environment.NewLine+Environment.NewLine+Environment.NewLine;
 			Program program=Programs.GetCur(ProgramName.PayConnect);
-			string integrationType=ProgramProperties.GetPropVal(program.ProgramNum,"PayConnect2.0 Integration Type: 0 for normal, 1 for surcharge",clinicNum);
+			string integrationType=ProgramProperties.GetPropVal(program.ProgramNum,PayConnect.ProgramProperties.IntegrationType,clinicNum);
 			//Void transaction already includes any surcharge amount, so no additional line item needed
 			if(integrationType=="1" && pcResponse.TransType!=PayConnectResponse.TransactionType.Void) {//Surcharge integration
 				result+=AddReceiptField("Surcharge Fee",pcResponse.AmountSurcharged.ToString("F2"));
@@ -88,34 +87,6 @@ namespace OpenDental.Bridges {
 				retStr+="".PadRight(xright,'.')+fieldValue.Substring(xmax-xright-1)+Environment.NewLine;
 			}
 			return retStr;
-		}
-
-		///<summary>Turns a PosResponse into an OpenDentBusiness.PayConnectResponse.</summary>
-		public static PayConnectResponse ToPayConnectResponse(PosResponse response) {
-			PayConnectResponse pcResponse=new PayConnectResponse();
-			if(response != null) {
-				pcResponse.AuthCode=response.AuthCode;
-				pcResponse.RefNumber=response.ReferenceNumber.ToString();
-				pcResponse.Description=response.ResponseDescription;
-				pcResponse.StatusCode=response.ResponseCode;
-				pcResponse.CardType=response.CardBrand;
-				pcResponse.Amount=response.Amount;
-				pcResponse.OriginalAmount=response.OriginalAmount;
-				pcResponse.EntryMode=response.EntryMode;
-				pcResponse.CardNumber=response.CardNumber;
-				pcResponse.MerchantId=response.MerchantId;
-				pcResponse.TerminalId=response.TerminalId;
-				pcResponse.Mode=response.Mode;
-				pcResponse.CardVerificationMethod=response.CardVerificationMethod;
-				pcResponse.TransType=(PayConnectResponse.TransactionType)response.TransactionType;
-				pcResponse.EMV=new PayConnectResponse.EmvData();
-				pcResponse.EMV.AppId=response.EMV.AppId;
-				pcResponse.EMV.TermVerifResults=response.EMV.TermVerifResults;
-				pcResponse.EMV.IssuerAppData=response.EMV.IssuerAppData;
-				pcResponse.EMV.TransStatusInfo=response.EMV.TransStatusInfo;
-				pcResponse.EMV.AuthResponseCode=response.EMV.AuthResponseCode;
-			}
-			return pcResponse;
 		}
 	}
 }

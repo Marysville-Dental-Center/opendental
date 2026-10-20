@@ -22,6 +22,9 @@ using System.Runtime.InteropServices;
 // The following GUID is for the ID of the typelib if this project is exposed to COM
 [assembly: Guid("c4b7fb93-d248-44a4-9148-7c3723ef0cdf")]
 
+// The vendor-direct tests reach the email layer's test seams (fake HTTP handlers, no real waits).
+[assembly: InternalsVisibleTo("VendorDirectTests")]
+
 // Version information for an assembly consists of the following four values:
 //
 //      Major Version

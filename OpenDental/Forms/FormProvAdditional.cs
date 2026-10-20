@@ -8,7 +8,7 @@ using OpenDentBusiness;
 using OpenDental.UI;
 using System.Linq;
 using CodeBase;
-using Bridges;
+using OpenDentBusiness.Bridges;
 
 namespace OpenDental {
 	public partial class FormProvAdditional:FormODBase {

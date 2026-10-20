@@ -5,15 +5,13 @@ using System.Linq;
 using System.Net;
 using System.Reflection;
 using System.Text;
-using Bridges;
 using CodeBase;
 using Newtonsoft.Json;
+using OpenDentBusiness.Bridges;
 
 namespace OpenDentBusiness{
 	///<summary></summary>
 	public class CareCreditWebResponses {
-		public const string MERCHANT_ID_PROG_PROPERTY="MerchantIDs";
-
 		#region Get Methods
 		///<summary></summary>
 		public static CareCreditWebResponse GetOne(long ccWebResponse) {
@@ -240,21 +238,6 @@ namespace OpenDentBusiness{
 			return Crud.CareCreditWebResponseCrud.SelectOne(command);
 		}
 
-		///<summary>Returns up to 50 items that need to be logged to ODHQ.</summary>
-		public static List<CareCreditWebResponse> GetPendingForLogging() {
-			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				return Meth.GetObject<List<CareCreditWebResponse>>(MethodBase.GetCurrentMethod());
-			}
-			List<CareCreditWebStatus> listCareCreditWebStatusesToLog=ListWebStatusCompleted;
-			listCareCreditWebStatusesToLog.Add(CareCreditWebStatus.ExpiredBatch);
-			string command=$"SELECT * "
-				+$"FROM carecreditwebresponse "
-				+$"WHERE HasLogged={POut.Bool(false)} "
-				+$"AND ProcessingStatus IN({string.Join(",",listCareCreditWebStatusesToLog.Select(x => "'"+x.ToString()+"'").ToList())}) "
-				+$"LIMIT 50";
-			return Crud.CareCreditWebResponseCrud.SelectMany(command);
-		}
-
 		///<summary>Gets the DateTime column name for the status passed in.</summary>
 		private static string GetDateTimeColumnForStatus(CareCreditWebStatus careCreditWebStatus) {
 			Meth.NoCheckMiddleTierRole();
@@ -301,18 +284,22 @@ namespace OpenDentBusiness{
 			return Crud.CareCreditWebResponseCrud.Update(careCreditWebResponse,careCreditWebResponseOld);
 		}
 
-		///<summary>Updates the HasLogged column to true for all CareCreditWebResponseNums passed in.</summary>
-		public static void UpdateHasLoggedToTrue(List<long> listCareCreditWebResponseNums) {
-			if(listCareCreditWebResponseNums.IsNullOrEmpty()) {
-				return;
-			}
+		///<summary>Atomically marks a pending (Created or Pending) row with no payment as Completed, for the one process that will create its payment.
+		///Returns the number of rows changed: 1 for the caller that won the row, 0 if another process or window already completed it or attached a
+		///payment. Unlike Update(new,old), the WHERE clause checks the status and PayNum in the database, so two pollers can't both win.</summary>
+		public static long ClaimCompletedForPayment(long careCreditWebResponseNum,DateTime dateTimeCompleted) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				Meth.GetVoid(MethodBase.GetCurrentMethod(),listCareCreditWebResponseNums);
-				return;
+				return Meth.GetLong(MethodBase.GetCurrentMethod(),careCreditWebResponseNum,dateTimeCompleted);
 			}
-			string command=$"UPDATE carecreditwebresponse SET HasLogged={POut.Bool(true)} "
-				+$"WHERE CareCreditWebResponseNum IN ({string.Join(",",listCareCreditWebResponseNums.Select(x => POut.Long(x)).ToList())})";
-			Db.NonQ(command);
+			if(careCreditWebResponseNum==0) {
+				return 0;
+			}
+			string command="UPDATE carecreditwebresponse "
+				+$"SET ProcessingStatus='{CareCreditWebStatus.Completed}',DateTimeCompleted={POut.DateT(dateTimeCompleted)} "
+				+$"WHERE CareCreditWebResponseNum={POut.Long(careCreditWebResponseNum)} "
+				+$"AND ProcessingStatus IN('{CareCreditWebStatus.Pending}','{CareCreditWebStatus.Created}') "
+				+"AND PayNum=0";
+			return Db.NonQ(command);
 		}
 
 		public static void UpdateProcessingWebStatus(CareCreditWebResponse careCreditWebResponse,CareCreditWebStatus careCreditWebStatus) {
@@ -397,6 +384,12 @@ namespace OpenDentBusiness{
 		///<summary>Handles the responses by setting correct error status.</summary>
 		public static void HandleResponseError(CareCreditWebResponse careCreditWebResponse,string resStr) {
 			Meth.NoCheckMiddleTierRole();
+			HandleResponseErrorAt(careCreditWebResponse,resStr,MiscData.GetNowDateTime());
+		}
+
+		///<summary>HandleResponseError with the time given, so it needs no database. Doesn't save the row.</summary>
+		public static void HandleResponseErrorAt(CareCreditWebResponse careCreditWebResponse,string resStr,DateTime dateTimeNow) {
+			Meth.NoCheckMiddleTierRole();
 			careCreditWebResponse.LastResponseStr=resStr;
 			if(careCreditWebResponse.ProcessingStatus==CareCreditWebStatus.Created) {
 				careCreditWebResponse.ProcessingStatus=CareCreditWebStatus.CreatedError;
@@ -407,7 +400,7 @@ namespace OpenDentBusiness{
 			else {
 				careCreditWebResponse.ProcessingStatus=CareCreditWebStatus.UnknownError;
 			}
-			careCreditWebResponse.DateTimeLastError=MiscData.GetNowDateTime();
+			careCreditWebResponse.DateTimeLastError=dateTimeNow;
 		}
 
 		public static void AddPatFieldsForMinors(long patNum) {

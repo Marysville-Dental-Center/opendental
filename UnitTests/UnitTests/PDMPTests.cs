@@ -53,7 +53,7 @@ namespace UnitTests {
 				FacilityId="VAMC Division XYZ",
 				ProvLicenseType="StateLicense",
 				ProvLicenseNum="A1231xbzy-bx",
-				Url="BambooTest.com"
+				Url="https://pmp.example.test/bamboo"
 			};
 		}
 
@@ -116,7 +116,7 @@ namespace UnitTests {
 				FacilityId="VAMC Division XYZ",
 				ProvLicenseType="StateLicense",
 				ProvLicenseNum="A1231xbzy-bx",
-				Url="BambooTest.com"
+				Url="https://pmp.example.test/bamboo"
 			};
 			PDMPBamboo pdmp=new PDMPBamboo(props);
 			var req=pdmp.MakePrescriptionRequest();

@@ -77,6 +77,8 @@ namespace OpenDentBusiness {
 		public static List<ProgramProperty> FilterProperties(Program progCur,List<ProgramProperty> listProps) {
 			//If any other programs need to apply filtration, add it here.
 			List<ProgramProperty> listProgramProperty=PDMP.FilterAndSortProperties(progCur,listProps);
+			//Vendor job lease rows are bookkeeping for the background job host, not settings.
+			listProgramProperty.RemoveAll(x => VendorDirect.VendorJobLease.IsLeaseProperty(x.PropertyDesc));
 			return listProgramProperty;
 		}
 
@@ -153,7 +155,9 @@ namespace OpenDentBusiness {
 			Crud.ProgramPropertyCrud.InsertMany(listProgramProps);
 		}
 
-		///<summary>Copies rows for a given programNum for each clinic in listClinicNums.  Returns true if changes were made to the db.</summary>
+		///<summary>Copies rows for a given programNum for each clinic in listClinicNums, with their IsMasked and IsHighSecurity flags, so a copied
+		///secret stays masked. Rows that only exist for the practice (GetPracticeWideDescs) and vendor job leases are not copied.
+		///Returns true if changes were made to the db.</summary>
 		public static bool InsertForClinic(long programNum,List<long> listClinicNums) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetBool(MethodBase.GetCurrentMethod(),programNum,listClinicNums);
@@ -161,45 +165,67 @@ namespace OpenDentBusiness {
 			if(listClinicNums==null || listClinicNums.Count==0) {
 				return false;
 			}
+			string whereSkip="";
+			List<string> listDescsSkip=GetPracticeWideDescs(Programs.GetProgram(programNum)?.ProgName);
+			if(listDescsSkip.Count>0) {
+				whereSkip+="AND PropertyDesc NOT IN("+string.Join(",",listDescsSkip.Select(x => "'"+POut.String(x)+"'"))+") ";
+			}
+			whereSkip+="AND PropertyDesc NOT LIKE '"+POut.String(VendorDirect.VendorJobLease.PropertyDescPrefix)+"%' ";
 			bool hasInsert=false;
 			string command="";
 			if(DataConnection.DBtype==DatabaseType.MySql) {
-				command="INSERT INTO programproperty (ProgramNum,PropertyDesc,PropertyValue,ComputerName,ClinicNum) ";
+				command="INSERT INTO programproperty (ProgramNum,PropertyDesc,PropertyValue,ComputerName,ClinicNum,IsMasked,IsHighSecurity) ";
 				for(int i=0;i<listClinicNums.Count;i++) {
 					if(i>0) {
 						command+=" UNION ";
 					}
-					command+="SELECT ProgramNum,PropertyDesc,PropertyValue,ComputerName,"+POut.Long(listClinicNums[i])+" "
+					command+="SELECT ProgramNum,PropertyDesc,PropertyValue,ComputerName,"+POut.Long(listClinicNums[i])+",IsMasked,IsHighSecurity "
 						+"FROM programproperty "
 						+"WHERE ProgramNum="+POut.Long(programNum)+" "
-						+"AND ClinicNum=0";
+						+"AND ClinicNum=0 "
+						+whereSkip;
 				}
 				hasInsert=(Db.NonQ(command) > 0);
 			}
 			else {//Oracle
-				command="SELECT ProgramNum,PropertyDesc,PropertyValue,ComputerName "
+				command="SELECT ProgramNum,PropertyDesc,PropertyValue,ComputerName,IsMasked,IsHighSecurity "
 					+"FROM programproperty "
 					+"WHERE ProgramNum="+POut.Long(programNum)+" "
-					+"AND ClinicNum=0";
+					+"AND ClinicNum=0 "
+					+whereSkip;
 				DataTable tableProgProps=Db.GetTable(command);
 				//Loop through all program properties for this program.
 				foreach(DataRow row in tableProgProps.Rows) {
 					//Insert this program property for every single clinic passed in.
 					foreach(long clinicNum in listClinicNums) {
-						command="INSERT INTO programproperty (ProgramPropertyNum,ProgramNum,PropertyDesc,PropertyValue,ComputerName,ClinicNum) "
+						command="INSERT INTO programproperty (ProgramPropertyNum,ProgramNum,PropertyDesc,PropertyValue,ComputerName,ClinicNum,IsMasked,IsHighSecurity) "
 							+"VALUES("
 							+"(SELECT COALESCE(MAX(ProgramPropertyNum),0)+1 FROM programproperty),"
 							+row["ProgramNum"].ToString()+","
 							+"'"+row["PropertyDesc"].ToString()+"',"
 							+"'"+row["PropertyValue"].ToString()+"',"
 							+"'"+row["ComputerName"].ToString()+"',"
-							+POut.Long(clinicNum)+")";
+							+POut.Long(clinicNum)+","
+							+POut.Bool(PIn.Bool(row["IsMasked"].ToString()))+","
+							+POut.Bool(PIn.Bool(row["IsHighSecurity"].ToString()))+")";
 						Db.NonQ(command);
 						hasInsert=true;
 					}
 				}
 			}
 			return hasInsert;
+		}
+
+		///<summary>Property descriptions that only exist for the practice (ClinicNum 0) and are never copied to a clinic. progName may be null.</summary>
+		public static List<string> GetPracticeWideDescs(string progName) {
+			Meth.NoCheckMiddleTierRole();
+			List<string> listDescs=new List<string>();
+			if(progName==ProgramName.PayConnect.ToString()) {
+				//The PayConnect 2 integrator API key is practice-wide; only the merchant Secret is per clinic. The PayConnect package owns the
+				//constant for this name; it is repeated here so this list doesn't depend on that package.
+				listDescs.Add("API Key");
+			}
+			return listDescs;
 		}
 
 		///<summary>Returns a list of ProgramProperties with the specified programNum and the specified clinicNum from the cache.
@@ -230,6 +256,111 @@ namespace OpenDentBusiness {
 			Meth.NoCheckMiddleTierRole();
 			return GetListForProgramAndClinicWithDefault(programNum,clinicNum).FirstOrDefault(x => x.PropertyDesc==desc).PropertyValue;
 		}
+
+		#region Vendor-direct helpers
+		///<summary>Returns the value for the clinic's row, else the ClinicNum 0 row, else "". Reads the cache and never throws, so a workstation never
+		///fails just because nobody has opened the integration's setup window yet. Every new vendor-direct reader uses this.</summary>
+		public static string GetValOrDefault(long programNum,string desc,long clinicNum) {
+			Meth.NoCheckMiddleTierRole();
+			try {
+				List<ProgramProperty> listProgramProperties=GetWhere(x => x.ProgramNum==programNum && x.PropertyDesc==desc
+					&& (x.ClinicNum==clinicNum || x.ClinicNum==0));
+				ProgramProperty programProperty=listProgramProperties.Where(x => x.ClinicNum==clinicNum).OrderBy(x => x.ProgramPropertyNum).FirstOrDefault()
+					??listProgramProperties.Where(x => x.ClinicNum==0).OrderBy(x => x.ProgramPropertyNum).FirstOrDefault();
+				return programProperty?.PropertyValue??"";
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+				return "";
+			}
+		}
+
+		///<summary>Returns the row for programNum, desc and clinicNum straight from the database (not the cache), the one with the lowest key if there
+		///are several, or null. Path overrides (ComputerName rows) are never returned for a non-blank desc because their desc is blank.</summary>
+		public static ProgramProperty GetOneFromDb(long programNum,string desc,long clinicNum) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetObject<ProgramProperty>(MethodBase.GetCurrentMethod(),programNum,desc,clinicNum);
+			}
+			string command="SELECT * FROM programproperty "
+				+"WHERE ProgramNum="+POut.Long(programNum)+" "
+				+"AND PropertyDesc='"+POut.String(desc)+"' "
+				+"AND ClinicNum="+POut.Long(clinicNum)+" "
+				+"ORDER BY ProgramPropertyNum";
+			return Crud.ProgramPropertyCrud.SelectMany(command).FirstOrDefault();
+		}
+
+		///<summary>Inserts the row for programNum, desc and clinicNum with defaultValue if it doesn't exist, and returns the row (existing or new).
+		///Idempotent: if two workstations insert at the same moment, the duplicate with the higher key is deleted. Flags are only ever raised: an
+		///existing row gets IsMasked or IsHighSecurity set when the caller asks for it (secret rows are always both). Does not refresh the cache;
+		///the caller signals InvalidType.Programs once it is done.</summary>
+		public static ProgramProperty InsertIfMissing(long programNum,string desc,long clinicNum,string defaultValue,bool isMasked,bool isHighSecurity) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetObject<ProgramProperty>(MethodBase.GetCurrentMethod(),programNum,desc,clinicNum,defaultValue,isMasked,isHighSecurity);
+			}
+			if(string.IsNullOrEmpty(desc)) {
+				throw new ArgumentException("A property description is required.",nameof(desc));
+			}
+			ProgramProperty programProperty=GetOneFromDb(programNum,desc,clinicNum);
+			if(programProperty==null) {
+				programProperty=new ProgramProperty();
+				programProperty.ProgramNum=programNum;
+				programProperty.PropertyDesc=desc;
+				programProperty.PropertyValue=defaultValue??"";
+				programProperty.ComputerName="";
+				programProperty.ClinicNum=clinicNum;
+				programProperty.IsMasked=isMasked;
+				programProperty.IsHighSecurity=isHighSecurity;
+				Crud.ProgramPropertyCrud.Insert(programProperty);
+				//Another workstation may have inserted the same row at the same moment. Keep the lowest key.
+				string command="SELECT ProgramPropertyNum FROM programproperty "
+					+"WHERE ProgramNum="+POut.Long(programNum)+" "
+					+"AND PropertyDesc='"+POut.String(desc)+"' "
+					+"AND ClinicNum="+POut.Long(clinicNum)+" "
+					+"ORDER BY ProgramPropertyNum";
+				List<long> listNums=Db.GetListLong(command);
+				if(listNums.Count>1) {
+					command="DELETE FROM programproperty "
+						+"WHERE ProgramPropertyNum IN("+string.Join(",",listNums.Skip(1).Select(x => POut.Long(x)))+")";
+					Db.NonQ(command);
+				}
+				return GetOneFromDb(programNum,desc,clinicNum);
+			}
+			if((isMasked && !programProperty.IsMasked) || (isHighSecurity && !programProperty.IsHighSecurity)) {
+				string command="UPDATE programproperty SET "
+					+"IsMasked="+POut.Bool(programProperty.IsMasked || isMasked)+","
+					+"IsHighSecurity="+POut.Bool(programProperty.IsHighSecurity || isHighSecurity)+" "
+					+"WHERE ProgramPropertyNum="+POut.Long(programProperty.ProgramPropertyNum);
+				Db.NonQ(command);
+				programProperty.IsMasked=programProperty.IsMasked || isMasked;
+				programProperty.IsHighSecurity=programProperty.IsHighSecurity || isHighSecurity;
+			}
+			return programProperty;
+		}
+
+		///<summary>Compare-and-swap: sets PropertyValue to newValue only if it still equals oldValue (exact, case-sensitive). Returns true if the row
+		///now holds newValue because of this call; false if another workstation changed it first or the row is gone. Works on osd1$ ciphertexts
+		///because they are deterministic. Used for rotating refresh tokens and job leases. Does not refresh the cache.</summary>
+		public static bool UpdateValueIfUnchanged(long programPropertyNum,string oldValue,string newValue) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetBool(MethodBase.GetCurrentMethod(),programPropertyNum,oldValue,newValue);
+			}
+			oldValue=oldValue??"";
+			newValue=newValue??"";
+			if(oldValue==newValue) {
+				//Nothing to write. Report whether the row holds that value.
+				ProgramProperty programProperty=Crud.ProgramPropertyCrud.SelectOne(programPropertyNum);
+				return programProperty!=null && (programProperty.PropertyValue??"")==oldValue;
+			}
+			//BINARY makes the comparison exact: the column's collation ignores letter case, and ciphertexts differ by case.
+			string compare=(DataConnection.DBtype==DatabaseType.MySql) ? "BINARY PropertyValue=BINARY " : "PropertyValue=";
+			string command="UPDATE programproperty SET PropertyValue="+DbHelper.ParamChar+"paramNewValue "
+				+"WHERE ProgramPropertyNum="+POut.Long(programPropertyNum)+" "
+				+"AND "+compare+DbHelper.ParamChar+"paramOldValue";
+			OdSqlParameter paramNewValue=new OdSqlParameter("paramNewValue",OdDbType.Text,POut.StringParam(newValue));
+			OdSqlParameter paramOldValue=new OdSqlParameter("paramOldValue",OdDbType.Text,POut.StringParam(oldValue));
+			return Db.NonQ(command,paramNewValue,paramOldValue)>0;
+		}
+		#endregion Vendor-direct helpers
 
 		///<summary>Returns a list of ProgramProperties attached to the specified programNum.  Does not include path overrides.
 		///Uses thread-safe caching pattern.  Each call to this method creates an copy of the entire ProgramProperty cache.</summary>
@@ -422,6 +553,9 @@ namespace OpenDentBusiness {
 				isPaymentsAllowed=PIn.Bool(GetPropValFromList(listXchargeProperties,"IsOnlinePaymentsEnabled",clinicNum));
 				isXWeb=true;
 			}
+			//The Auth Key is stored as osd1$ once the setup window saves it; Open Dental stored it as plain text, which is still accepted.
+			//An unreadable value counts as missing.
+			authKey=VendorDirect.SecretValue.ReadOrBlank(authKey,VendorDirect.LegacyPolicy.AcceptPlaintext);
 			//Validate ALL XWebID, AuthKey, and TerminalID.  Each is required for X-Web to work.
 			if(string.IsNullOrEmpty(xWebID) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(terminalID) ||
 				!long.TryParse(paymentTypeDefString,out paymentTypeDefNum))
@@ -469,6 +603,7 @@ namespace OpenDentBusiness {
 
 		/// <summary>Exception means failed. Return means success. paySimpleProps should be checked upon return. If false then assume payments cannot be made for this clinic.</summary>
 		public static void GetPaySimpleOnlinePaymentCreds(long clinicNum,out PaySimple.WebPaymentProperties paySimpleProps) {
+			Meth.NoCheckMiddleTierRole();
 			paySimpleProps=new PaySimple.WebPaymentProperties();
 			OpenDentBusiness.Program programPaySimple=OpenDentBusiness.Programs.GetCur(OpenDentBusiness.ProgramName.PaySimple);
 			if(programPaySimple==null) {
@@ -479,6 +614,8 @@ namespace OpenDentBusiness {
 			}
 			List<OpenDentBusiness.ProgramProperty> listPaySimpleProperties=OpenDentBusiness.ProgramProperties.GetListForProgramAndClinic(programPaySimple.ProgramNum,clinicNum);
 			paySimpleProps.Token=OpenDentBusiness.ProgramProperties.GetPropValFromList(listPaySimpleProperties,PaySimple.PropertyDescs.PaySimpleApiKey,clinicNum);
+			//osd1$ once saved by the setup window; Open Dental's plain-text keys are still accepted. An unreadable value counts as missing.
+			paySimpleProps.Token=VendorDirect.SecretValue.ReadOrBlank(paySimpleProps.Token,VendorDirect.LegacyPolicy.AcceptPlaintext);
 			if(string.IsNullOrEmpty(paySimpleProps.Token)) {
 				throw new ODException("PaySimple API Key not found.",ODException.ErrorCodes.PaySimpleProgramProperties);
 			}
@@ -539,6 +676,23 @@ namespace OpenDentBusiness {
 				string[] arrayNameAndId=arrayEntityNameIdPairs[i].Split(',');
 				if(arrayNameAndId[0]==entityName) {
 					return arrayNameAndId[1];
+				}
+			}
+			return "";
+		}
+
+		///<summary>QuickBooks Online Accounts and Class Refs are stored as ',' separated Name/Id pairs. Each pair is separated by a '|'. Returns the name
+		///stored for the passed in Id, or "" if none. Matching by Id survives a rename in QuickBooks Online.</summary>
+		public static string GetQuickBooksOnlineEntityNameById(string propertyValue,string entityId) {
+			Meth.NoCheckMiddleTierRole();
+			if(propertyValue.IsNullOrEmpty() || entityId.IsNullOrEmpty()) {
+				return "";
+			}
+			string[] arrayEntityNameIdPairs=propertyValue.Split('|');
+			for(int i=0;i<arrayEntityNameIdPairs.Length;i++) {
+				string[] arrayNameAndId=arrayEntityNameIdPairs[i].Split(',');
+				if(arrayNameAndId.Length>1 && arrayNameAndId[arrayNameAndId.Length-1]==entityId) {
+					return string.Join(",",arrayNameAndId.Take(arrayNameAndId.Length-1));
 				}
 			}
 			return "";

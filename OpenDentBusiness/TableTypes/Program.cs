@@ -192,7 +192,17 @@ namespace OpenDentBusiness{
 		Xcharge,
 		XDR,
 		XVWeb,
-		ZImage
+		ZImage,
+		//Vendor-direct program links, appended (not alphabetical) so they're easy to find. Their rows are inserted at runtime with Enabled=0
+		//(Programs.InsertIfMissing); there is no ConvertDatabases step.
+		///<summary>Microsoft 365 email through the office's own Entra app registration.</summary>
+		Microsoft365Email,
+		///<summary>Gmail through the office's own Google OAuth client.</summary>
+		GmailApi,
+		///<summary>USPS Addresses API v3 with the office's own consumer key.</summary>
+		USPSAddresses,
+		///<summary>PostcardMania (PCM Integrations) DirectMail API v3 with the office's own API key.</summary>
+		PostcardMania
 	}
 
 	

@@ -48,7 +48,6 @@ namespace OpenDental{
 			listBoxRegistration.Items.Add("Bouncy Castle",Properties.Resources.BouncyCastle);
 			listBoxRegistration.Items.Add("BSD",Properties.Resources.Bsd);
 			listBoxRegistration.Items.Add("CDT",Properties.Resources.CDT_Content_End_User_License1);
-			listBoxRegistration.Items.Add("Dropbox",Properties.Resources.Dropbox_Api);
 			listBoxRegistration.Items.Add("Drifty",Properties.Resources.Ionic);
 			listBoxRegistration.Items.Add("Mentalis",Properties.Resources.Mentalis);
 			listBoxRegistration.Items.Add("Microsoft",Properties.Resources.Microsoft);

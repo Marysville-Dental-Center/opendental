@@ -24,19 +24,45 @@
 		/// </summary>
 		private void InitializeComponent() {
 			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormOIDRegistryInternal));
-			this.labelRetrieveStatus = new System.Windows.Forms.Label();
+			this.labelStatus = new System.Windows.Forms.Label();
 			this.butSave = new OpenDental.UI.Button();
 			this.gridMain = new OpenDental.UI.GridOD();
+			this.butGenerateRoot = new OpenDental.UI.Button();
+			this.butEnterRoot = new OpenDental.UI.Button();
 			this.SuspendLayout();
-			// 
-			// labelRetrieveStatus
-			// 
-			this.labelRetrieveStatus.ForeColor = System.Drawing.Color.Red;
-			this.labelRetrieveStatus.Location = new System.Drawing.Point(103, 16);
-			this.labelRetrieveStatus.Name = "labelRetrieveStatus";
-			this.labelRetrieveStatus.Size = new System.Drawing.Size(468, 17);
-			this.labelRetrieveStatus.TabIndex = 10;
-			this.labelRetrieveStatus.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			//
+			// labelStatus
+			//
+			this.labelStatus.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+			this.labelStatus.ForeColor = System.Drawing.Color.Red;
+			this.labelStatus.Location = new System.Drawing.Point(12, 6);
+			this.labelStatus.Name = "labelStatus";
+			this.labelStatus.Size = new System.Drawing.Size(560, 32);
+			this.labelStatus.TabIndex = 10;
+			this.labelStatus.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			//
+			// butGenerateRoot
+			//
+			this.butGenerateRoot.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.butGenerateRoot.Location = new System.Drawing.Point(12, 326);
+			this.butGenerateRoot.Name = "butGenerateRoot";
+			this.butGenerateRoot.Size = new System.Drawing.Size(100, 24);
+			this.butGenerateRoot.TabIndex = 4;
+			this.butGenerateRoot.Text = "&Generate Root";
+			this.butGenerateRoot.UseVisualStyleBackColor = true;
+			this.butGenerateRoot.Click += new System.EventHandler(this.butGenerateRoot_Click);
+			//
+			// butEnterRoot
+			//
+			this.butEnterRoot.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.butEnterRoot.Location = new System.Drawing.Point(118, 326);
+			this.butEnterRoot.Name = "butEnterRoot";
+			this.butEnterRoot.Size = new System.Drawing.Size(100, 24);
+			this.butEnterRoot.TabIndex = 5;
+			this.butEnterRoot.Text = "&Enter Root";
+			this.butEnterRoot.UseVisualStyleBackColor = true;
+			this.butEnterRoot.Click += new System.EventHandler(this.butEnterRoot_Click);
 			// 
 			// butSave
 			// 
@@ -66,7 +92,9 @@
 			// 
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
 			this.ClientSize = new System.Drawing.Size(584, 362);
-			this.Controls.Add(this.labelRetrieveStatus);
+			this.Controls.Add(this.butEnterRoot);
+			this.Controls.Add(this.butGenerateRoot);
+			this.Controls.Add(this.labelStatus);
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.gridMain);
 			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
@@ -81,6 +109,8 @@
 
 		private OpenDental.UI.GridOD gridMain;
 		private UI.Button butSave;
-		private System.Windows.Forms.Label labelRetrieveStatus;
+		private System.Windows.Forms.Label labelStatus;
+		private UI.Button butGenerateRoot;
+		private UI.Button butEnterRoot;
 	}
 }

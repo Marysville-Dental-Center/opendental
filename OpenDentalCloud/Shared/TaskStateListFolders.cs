@@ -1,5 +1,4 @@
-﻿using Dropbox.Api;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -48,7 +47,7 @@ namespace OpenDentalCloud.Core {
 		}
 			
 		///<summary>List of folder and file paths that were found for the given folder path.
-		///PathLower is the preferred path for making transactions between Dropbox and Open Dental, as PathDisplay is used for UI.</summary>
+		///PathLower is the preferred path for making transactions with the storage server, as PathDisplay is used for UI.</summary>
 		public List<string> ListFolderPathLower {
 			get {
 				List<string> listFolderPaths=new List<string>();

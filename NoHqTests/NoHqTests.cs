@@ -36,35 +36,62 @@ namespace NoHqTests {
 			List<MethodInfo> listMethods=typeof(IWebServiceMainHQ).GetMethods()
 				.Where(x => x.ReturnType==typeof(string) && !x.IsSpecialName)
 				.ToList();
-			Assert.IsTrue(listMethods.Count>=20,"Expected the HQ-brokered vendor members of IWebServiceMainHQ.");
+			Assert.IsTrue(listMethods.Count>0,"Expected the remaining hosted texting members of IWebServiceMainHQ.");
 			foreach(MethodInfo method in listMethods) {
 				AssertThrowsHqNotAvailable(() => method.Invoke(webService,GetDefaultArgs(method)),method.Name);
 			}
 		}
 
 		[TestMethod]
-		public void WebServiceMainHQ_VendorMethodsSayDirectIntegrationIsNeeded() {
-			IWebServiceMainHQ webService=WebServiceMainHQProxy.GetWebServiceMainHQInstance();
-			List<Action> listVendorCalls=new List<Action> {
-				() => webService.GetCareCreditOAuthToken(""),
-				() => webService.GetPostcardManiaSSO(""),
-				() => webService.ProcessUSPSAddressValidationRequest(""),
-				() => webService.GetGoogleAccessToken(""),
-				() => webService.BuildOAuthUrl("","Dropbox"),
-				() => webService.SmsSend(""),
-				() => webService.GetPaySimpleWebHookUrl(),
-			};
-			foreach(Action action in listVendorCalls) {
-				HqNotAvailableException ex=AssertThrowsHqNotAvailable(action,"vendor call");
-				StringAssert.Contains(ex.Message,"direct vendor integration");
-			}
+		public void WebServiceMainHQ_VendorMembersAreRemoved() {
+			//Each vendor integration Open Dental brokered through HQ now talks to its vendor directly (Google, QuickBooks Online, PayConnect, PaySimple,
+			//USPS, PostcardMania, CareCredit) or was removed (Dropbox, the Canadian carrier update). Their HQ members were deleted with their last caller.
+			string[] arrayRemovedMembers=new string[] { "BuildOAuthUrl",
+				"GetDropboxAccessToken","GetDropboxAuthorizationUrl",
+				"GetGoogleAccessToken","GetGoogleAuthorizationUrl","GetGoogleAuthorizationUrlLoopbackIpAddressFlow",
+				"GetCareCreditOAuthToken","GetCareCreditWebToken","LogCareCreditTransaction","GetCareCreditBatchTimes",
+				"GetAdvertisingPostcardsAccounts","GetPostcardManiaSSO","ManageAdvertisingPostcardsAccount","UploadPostcardManiaPatientList",
+				"InsertPaySimpleACHId","GetPaySimpleWebHookUrl",
+				"ProcessUSPSAddressValidationRequest",
+				"CanadaCarrierUpdate" };
+			AssertMembersRemoved(new List<Type> { typeof(IWebServiceMainHQ),typeof(WebServiceMainHQNoHq),typeof(WebServiceMainHQProxy) },arrayRemovedMembers);
+			string[] arrayRemovedProxyHelpers=new string[] { "GetAdvertisingPostcardsAccountData","GetAdvertisingPostcardsSSO",
+				"ManageAdvertisingPostcardsAccount","UploadAdvertisingPostcardsPatientList","GetCareCreditBatchProcessTime","GetCareCreditBatchPullbackTime",
+				"GetSerializedProgramProperties","ProcessUSPSAddressValidationRequest" };
+			AssertMembersRemoved(new List<Type> { typeof(WebServiceMainHQProxy) },arrayRemovedProxyHelpers);
+			Assert.IsNull(typeof(WebServiceMainHQProxy).GetNestedType("ClinicProgramPropertyContainer",BindingFlags.Public|BindingFlags.NonPublic),
+				"WebServiceMainHQProxy.ClinicProgramPropertyContainer carried CareCredit merchant numbers to HQ and should have been removed.");
+			Assert.IsNull(typeof(CareCreditWebResponses).GetField("MERCHANT_ID_PROG_PROPERTY",BindingFlags.Public|BindingFlags.Static),
+				"CareCreditWebResponses.MERCHANT_ID_PROG_PROPERTY only named the merchant numbers sent to HQ and should have been removed.");
 		}
 
 		[TestMethod]
-		public void WebServiceMainHQ_HelpersFailWithoutTouchingTheNetwork() {
-			Assert.AreEqual(DateTime.MinValue,WebServiceMainHQProxy.GetCareCreditBatchProcessTime());
-			Assert.AreEqual(DateTime.MinValue,WebServiceMainHQProxy.GetCareCreditBatchPullbackTime());
-			AssertThrowsHqNotAvailable(() => WebServiceMainHQProxy.ProcessUSPSAddressValidationRequest(new Address()),"USPS");
+		public void WebServiceMainHQ_ProxyNoLongerUsesBridgesTypes() {
+			//The PostcardMania helpers were the last reason for "using Bridges;" here. Bridges.dll itself is deleted (vendor-direct package Z2).
+			string source=File.ReadAllText(Path.Combine(FindRepoRoot(),"OpenDentBusiness","WebServices","WebServiceMainHQProxy.cs"));
+			Assert.IsFalse(source.Contains("using Bridges;"),"WebServiceMainHQProxy.cs should not import Bridges.dll types.");
+			Assert.IsFalse(source.Contains("PostcardMania"),"WebServiceMainHQProxy.cs should not name PostcardMania types.");
+		}
+
+		[TestMethod]
+		public void WebServiceMainHQ_NoProductCodeCallsHq() {
+			//Every HQ-brokered vendor flow was replaced, so only the factory itself (and unit tests) may still ask for the HQ web service.
+			string root=FindRepoRoot();
+			List<string> listOffenders=new List<string>();
+			foreach(string folder in new[] { "OpenDentBusiness","OpenDental","WpfControlsOD","CodeBase" }) {
+				foreach(string path in Directory.EnumerateFiles(Path.Combine(root,folder),"*.cs",SearchOption.AllDirectories)) {
+					string relativePath=path.Substring(root.Length+1);
+					if(relativePath.Contains(@"\obj\") || relativePath.Contains(@"\bin\") || relativePath.Contains(@"\Web References\")
+						|| relativePath.StartsWith(@"OpenDentBusiness\WebServices\",StringComparison.OrdinalIgnoreCase))
+					{
+						continue;
+					}
+					if(File.ReadAllText(path).Contains("GetWebServiceMainHQInstance(")) {
+						listOffenders.Add(relativePath);
+					}
+				}
+			}
+			Assert.AreEqual(0,listOffenders.Count,"Product code calls the HQ web service: "+string.Join(", ",listOffenders));
 		}
 
 		[TestMethod]
@@ -84,6 +111,15 @@ namespace NoHqTests {
 			foreach(MethodInfo method in typeof(ICustomerUpdates).GetMethods()) {
 				AssertThrowsHqNotAvailable(() => method.Invoke(customerUpdates,GetDefaultArgs(method)),method.Name);
 			}
+		}
+
+		[TestMethod]
+		public void CustomerUpdates_VendorMembersAreRemoved() {
+			//The Canadian network certificates come from the office's own files now, eRx access is decided locally, and the OID root is generated
+			//locally (OIDInternals.CustomerPatNum, the last RequestCustomerID caller, is gone).
+			AssertMembersRemoved(new List<Type> { typeof(ICustomerUpdates),typeof(CustomerUpdatesNoHq) },
+				new string[] { "RequestCertCanadaABC","RequestCertCanadaTelusAandB","RequestCertCanadaTelusAandBtest","GetErxAccess","GetClinicErxAccess",
+					"RequestCustomerID" });
 		}
 
 		#endregion CustomerUpdates
@@ -230,6 +266,19 @@ namespace NoHqTests {
 			}
 			Assert.Fail(name+" did not throw HqNotAvailableException.");
 			return null;
+		}
+
+		///<summary>Asserts that none of the types declares a method with any of the names.</summary>
+		private static void AssertMembersRemoved(List<Type> listTypes,string[] arrayNames) {
+			for(int i=0;i<listTypes.Count;i++) {
+				List<string> listMethodNames=listTypes[i]
+					.GetMethods(BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Instance|BindingFlags.Static|BindingFlags.DeclaredOnly)
+					.Select(x => x.Name)
+					.ToList();
+				for(int j=0;j<arrayNames.Length;j++) {
+					Assert.IsFalse(listMethodNames.Contains(arrayNames[j]),listTypes[i].Name+"."+arrayNames[j]+" should have been removed.");
+				}
+			}
 		}
 
 		private static object[] GetDefaultArgs(MethodInfo method) {

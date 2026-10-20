@@ -174,12 +174,7 @@ namespace NoHqTests {
 			{
 				Assert.IsFalse(listMembers.Contains(name),"IWebServiceMainHQ."+name+" should have been removed.");
 			}
-			//The vendor integrations Open Dental brokered through HQ still call these, until their direct vendor integrations replace them.
-			foreach(string name in new[] { "BuildOAuthUrl","GetDropboxAccessToken","GetGoogleAccessToken","GetCareCreditOAuthToken","GetPostcardManiaSSO",
-				"ProcessUSPSAddressValidationRequest","InsertPaySimpleACHId","CanadaCarrierUpdate" })
-			{
-				Assert.IsTrue(listMembers.Contains(name),"IWebServiceMainHQ."+name+" must stay for its vendor integration.");
-			}
+			//The HQ-brokered vendor members were deleted once each integration talked to its vendor directly. NoHqTests checks that they stay gone.
 			List<string> listCustomerUpdates=typeof(ICustomerUpdates).GetMethods().Select(x => x.Name).ToList();
 			foreach(string name in new[] { "RequestUpdate","FeatureRequestGetList","RequestCodeSystems","RequestFeeSched","RequestIsDevKey","DatabaseIntegrityGetList" }) {
 				Assert.IsFalse(listCustomerUpdates.Contains(name),"ICustomerUpdates."+name+" should have been removed.");

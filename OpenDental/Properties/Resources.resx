@@ -127,9 +127,6 @@
   <data name="butPaste" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\butPaste.gif;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="CareCredit_Button_NoTag_26x90" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\CareCredit_Button_NoTag_26x90.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
   <data name="Oracle" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Oracle.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
   </data>
@@ -262,9 +259,6 @@
   <data name="Family32" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Family32.gif;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="payconnect-btn-26" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\payconnect-btn-26.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
   <data name="ColorChanger" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\ColorChanger.cur;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
@@ -309,12 +303,6 @@
   </data>
   <data name="NoFigure" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\NoFigure.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="google_signin_normal" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\google_signin_normal.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="PaySimple_Button_2019_26x75" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\PaySimple_Button_2019_26x75.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="house16" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\house16.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
@@ -436,9 +424,6 @@
   <data name="close_door" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\close_door.ico;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="Dropbox_Api" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\Dropbox_Api.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
-  </data>
   <data name="padlock_open" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\padlock_open.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
@@ -484,9 +469,6 @@
   <data name="butPrintSmall" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\butPrintsmall.gif;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="google_signin_pressed" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\google_signin_pressed.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
   <data name="ReportAccountingGenLedger" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\ReportAccountingGenLedger.txt;System.String, mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
   </data>
@@ -501,9 +483,6 @@
   </data>
   <data name="splashBenco" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\splashBenco.jpg;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="DpsPos_dll_config" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\DpsPos.dll.config;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
   </data>
   <data name="Ionic" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Ionic.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
@@ -531,9 +510,6 @@
   </data>
   <data name="XamlStyle_MenuItem" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\XamlStyle_MenuItem.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
-  </data>
-  <data name="google_signin_focus" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\google_signin_focus.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="Practice_Booster_Icon_22x22" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\PRB icon_OD.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>

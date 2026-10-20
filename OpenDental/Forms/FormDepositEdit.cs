@@ -12,7 +12,7 @@ using System.Diagnostics;
 using System.Linq;
 using CodeBase;
 using System.IO;
-using Bridges;
+using OpenDentBusiness.Qbo;
 using System.Text.RegularExpressions;
 
 namespace OpenDental{
@@ -31,16 +31,10 @@ namespace OpenDental{
 		private List<long> _listDepositAccounts;
 		///<summary>The accounting software selected in Manage Module preferences.</summary>
 		private AccountingSoftware _accountingSoftware;
-		///<summary>OAuth access token stored in DB for QuickBooks Online API.</summary>
-		private ProgramProperty _programPropertyQboAccessToken;
-		///<summary>OAuth refresh token stored in DB for QuickBooks Online API.</summary>
-		private ProgramProperty _programPropertyQboRefreshToken;
-		///<summary>Current OAuth access token for QuickBooks Online API.</summary>
-		private QuickBooksOnlineToken _quickBooksOnlineToken;
-		///<summary>Class Refs for QuickBooks Online.</summary>
-		private ProgramProperty _programPropertyQboClassRefs;
-		///<summary>Realm ID for QuickBooks Online.</summary>
-		private ProgramProperty _programPropertyQboRealmId;
+		///<summary>The QuickBooks Online settings, loaded when the window opens. Tokens are not here: QuickBooksOnline reads and refreshes them itself.</summary>
+		private QboSettings _qboSettings=new QboSettings();
+		///<summary>True once this process has warned that the QuickBooks Online connection expires soon, so the warning shows once per session.</summary>
+		private static bool _hasWarnedQboExpiry;
 		///<summary>Used to store DefNums in a 1:1 ratio for listInsPayType</summary>
 		private List<long> _listInsPayTypeDefNums;
 		///<summary>Used to store DefNums in a 1:1 ratio for listPayType</summary>
@@ -55,8 +49,6 @@ namespace OpenDental{
 		private List<long> _listClaimPaymentNumsAttached=new List<long>();
 		///<summary>Used in UpdateToDB to detach any payments that were attached to deposit but have been deselected before clicking OK.</summary>
 		private bool _isOnOKClick=false;
-		///<summary>The current realm ID.</summary>
-		private string _realmIdPlainText;
 		///<summary>True if the accounting software pref is set to QuickBooks.</summary>
 		private bool IsQuickBooks() {
 			return _accountingSoftware==AccountingSoftware.QuickBooks;
@@ -88,14 +80,9 @@ namespace OpenDental{
 			}
 			else if(IsQuickBooksOnline()) {
 				butSendQB.Text="&Send QBO";
-				Program programQbo=Programs.GetCur(ProgramName.QuickBooksOnline);
-				_programPropertyQboRefreshToken=ProgramProperties.GetPropForProgByDesc(programQbo.ProgramNum,"Refresh Token");
-				Secrets.Decrypt(_programPropertyQboRefreshToken.PropertyValue,out string decryptedRefreshToken);
-				_quickBooksOnlineToken=new QuickBooksOnlineToken("",decryptedRefreshToken);
-				_programPropertyQboClassRefs=ProgramProperties.GetPropForProgByDesc(programQbo.ProgramNum,"Class Refs");
-				_programPropertyQboRealmId=ProgramProperties.GetPropForProgByDesc(programQbo.ProgramNum,"Realm ID");
-				Secrets.Decrypt(_programPropertyQboRealmId.PropertyValue,out string decryptedRealmID);
-				_realmIdPlainText=decryptedRealmID;
+				//Missing rows read as blank, so this works before anyone has opened the QuickBooks Online setup window.
+				_qboSettings=QboSettings.Load();
+				WarnIfQboConnectionExpiresSoon();
 			}
 			if(IsNew) {
 				if(!Security.IsAuthorized(EnumPermType.DepositSlips,DateTime.Today)) {
@@ -220,7 +207,7 @@ namespace OpenDental{
 
 		private void FillClassRefs() {
 			bool isQBAndClassRefsEnabled=IsQuickBooks() && PrefC.GetBool(PrefName.QuickBooksClassRefsEnabled);
-			bool isQBOAndClassRefsEnabled=IsQuickBooksOnline() && _programPropertyQboClassRefs.PropertyValue!="";
+			bool isQBOAndClassRefsEnabled=IsQuickBooksOnline() && _qboSettings.ClassRefs!="";
 			if(!isQBAndClassRefsEnabled && !isQBOAndClassRefsEnabled){//Neither QB nor QBO and their respective class refs feature is on, nothing to fill.
 				return;
 			}
@@ -239,13 +226,18 @@ namespace OpenDental{
 			}
 			labelClassRef.Visible=true;
 			comboClassRefs.Visible=true;
-			List<string> listClassNames=new List<string>();
-			if(IsQuickBooks()) {
-				listClassNames=PrefC.GetString(PrefName.QuickBooksClassRefs).Split(',').ToList();
+			if(IsQuickBooksOnline()) {
+				//The class objects carry their Ids, so the deposit uses the Id of the class picked, never a lookup by name.
+				List<QuickBooksOnlineClassRef> listClassRefs=QuickBooksOnlineClassRef.StringClassRefsToList(_qboSettings.ClassRefs).OrderBy(x => x.Name).ToList();
+				for(int i=0;i<listClassRefs.Count;i++) {
+					if(listClassRefs[i].Name=="") {
+						continue;
+					}
+					comboClassRefs.Items.Add(listClassRefs[i].Name,listClassRefs[i]);
+				}
+				return;
 			}
-			else if(IsQuickBooksOnline()) {
-				listClassNames=ProgramProperties.GetQuickBooksOnlineEntityNames(_programPropertyQboClassRefs.PropertyValue);
-			}
+			List<string> listClassNames=PrefC.GetString(PrefName.QuickBooksClassRefs).Split(',').ToList();
 			for(int i=0;i<listClassNames.Count;i++) {
 				if(listClassNames[i]=="") {
 					continue;
@@ -480,8 +472,9 @@ namespace OpenDental{
 		}
 
 		private bool CreateDepositQBO(bool allowContinue) {
-			if(_quickBooksOnlineToken.RefreshToken.IsNullOrEmpty() || _realmIdPlainText.IsNullOrEmpty()) {
-				MsgBox.Show(this,"You don't have a QuickBooks Online Refresh Token or Realm ID. Please go to the QuickBooks Online Setup window, and click the Authenticate button to obtain them.");
+			_qboSettings=QboSettings.Load();
+			if(!_qboSettings.IsConnected) {
+				MessageBox.Show(this,Lan.g(this,_qboSettings.GetNotConnectedMessage()));
 				return false;
 			}
 			using FormQBAccountSelect formQBAccountSelect=new FormQBAccountSelect(true);
@@ -491,43 +484,25 @@ namespace OpenDental{
 			}
 			Cursor.Current=Cursors.WaitCursor;
 			QuickBooksOnlineClassRef quickBooksOnlineClassRef=null;
-			QuickBooksOnlineAccount quickBooksOnlineAccountDeposit=null;
-			QuickBooksOnlineAccount quickBooksOnlineAccountIncome=null;
 			QuickBooksOnlineDepositResponse quickBooksOnlineDepositResponse=null;
 			List<decimal> listSelectedPaymentAmounts=GetListSelectedPaymentAmounts();
+			//One idempotency key per Send. QuickBooksOnline retries with the same key, so a lost response never creates a second deposit.
+			string requestId=QuickBooksOnline.NewRequestId();
 			try {
-				if(_quickBooksOnlineToken.AccessToken.IsNullOrEmpty()) {
-					_quickBooksOnlineToken = QuickBooksOnline.RefreshTokens(_quickBooksOnlineToken);
-					SaveTokens();
-				}
 				if(CompareDecimal.IsLessThanOrEqualToZero(listSelectedPaymentAmounts.Sum())) {
 					throw new ODException(Lan.g(this,"Only deposits greater than zero can be sent to QuickBooks Online."));
 				}
-				if(_programPropertyQboClassRefs.PropertyValue!="" && comboClassRefs.SelectedItem!=null) {
-					string classRefName=comboClassRefs.SelectedItem.ToString();
-					string classRefId=ProgramProperties.GetQuickBooksOnlineEntityIdByName(_programPropertyQboClassRefs.PropertyValue,classRefName);
-					quickBooksOnlineClassRef=new QuickBooksOnlineClassRef(classRefName,classRefId);
+				if(_qboSettings.ClassRefs!="" && comboClassRefs.SelectedIndex>-1) {
+					quickBooksOnlineClassRef=comboClassRefs.GetSelected<QuickBooksOnlineClassRef>();
 				}
-				Program program=Programs.GetCur(ProgramName.QuickBooksOnline);
-				string deposits=ProgramProperties.GetPropForProgByDesc(program.ProgramNum,"Deposit Accounts").PropertyValue;
-				string depositAccountID=ProgramProperties.GetQuickBooksOnlineEntityIdByName(deposits,formQBAccountSelect.DepositAccountSelected);
-				quickBooksOnlineAccountDeposit=new QuickBooksOnlineAccount(formQBAccountSelect.DepositAccountSelected,depositAccountID);
-				string income=ProgramProperties.GetPropForProgByDesc(program.ProgramNum,"Income Accounts").PropertyValue;
-				string incomeAccountID=ProgramProperties.GetQuickBooksOnlineEntityIdByName(income,formQBAccountSelect.IncomeAccountSelected);
-				quickBooksOnlineAccountIncome=new QuickBooksOnlineAccount(formQBAccountSelect.IncomeAccountSelected,incomeAccountID);
-				quickBooksOnlineDepositResponse=QuickBooksOnline.CreateDeposit(_realmIdPlainText,_quickBooksOnlineToken
-					,quickBooksOnlineAccountDeposit,quickBooksOnlineAccountIncome,quickBooksOnlineClassRef,listSelectedPaymentAmounts,textMemo.Text,_depositCur.DateDeposit);
+				QuickBooksOnlineAccount quickBooksOnlineAccountDeposit=new QuickBooksOnlineAccount(formQBAccountSelect.DepositAccountSelected,
+					formQBAccountSelect.DepositAccountIdSelected);
+				QuickBooksOnlineAccount quickBooksOnlineAccountIncome=new QuickBooksOnlineAccount(formQBAccountSelect.IncomeAccountSelected,
+					formQBAccountSelect.IncomeAccountIdSelected);
+				quickBooksOnlineDepositResponse=QuickBooksOnline.CreateDeposit(_qboSettings.RealmId,null,quickBooksOnlineAccountDeposit,
+					quickBooksOnlineAccountIncome,quickBooksOnlineClassRef,listSelectedPaymentAmounts,textMemo.Text,_depositCur.DateDeposit,requestId);
 				if(quickBooksOnlineDepositResponse.RequestException!=null) {
-					if(QuickBooksOnline.RefreshTokensIfNeeded(quickBooksOnlineDepositResponse.RequestException,_quickBooksOnlineToken)) {
-						SaveTokens();
-						//Try again after token refresh
-						quickBooksOnlineDepositResponse=QuickBooksOnline.CreateDeposit(_realmIdPlainText,_quickBooksOnlineToken
-							,quickBooksOnlineAccountDeposit,quickBooksOnlineAccountIncome,quickBooksOnlineClassRef,listSelectedPaymentAmounts,textMemo.Text,_depositCur.DateDeposit);
-					}
-					//Check again as a different error may have occurred.
-					if(quickBooksOnlineDepositResponse.RequestException!=null) {
-						throw quickBooksOnlineDepositResponse.RequestException;
-					}
+					throw quickBooksOnlineDepositResponse.RequestException;
 				}
 			}
 			catch(Exception ex) {
@@ -567,16 +542,19 @@ namespace OpenDental{
 			return true;
 		}
 
-		///<summary>Save the QuickBooks Online access and refresh tokens if they have changed.</summary>
-		private void SaveTokens() {
-			bool isChanged = false;
-			if(!_quickBooksOnlineToken.RefreshToken.IsNullOrEmpty()) {
-				Secrets.Encrypt(_quickBooksOnlineToken.RefreshToken,out string obfuscatedvalueToEncrypt);
-				isChanged|=ProgramProperties.UpdateProgramPropertyWithValue(_programPropertyQboRefreshToken,obfuscatedvalueToEncrypt);
+		///<summary>Once per session: warns when the saved QuickBooks Online connection stops working within 14 days (Intuit's 100 days unused, or its
+		///five-year cap), so the office can reconnect before Send QBO fails.</summary>
+		private void WarnIfQboConnectionExpiresSoon() {
+			if(_hasWarnedQboExpiry || !_qboSettings.IsConnected || !_qboSettings.RefreshTokenExpiresUtc.HasValue) {
+				return;
 			}
-			if(isChanged) {
-				DataValid.SetInvalid(InvalidType.Programs);
+			if(_qboSettings.RefreshTokenExpiresUtc.Value-DateTime.UtcNow>TimeSpan.FromDays(14)) {
+				return;
 			}
+			_hasWarnedQboExpiry=true;
+			MessageBox.Show(this,Lan.g(this,"The QuickBooks Online connection expires on")+" "
+				+_qboSettings.RefreshTokenExpiresUtc.Value.ToLocalTime().ToShortDateString()+". "
+				+Lan.g(this,"Reconnect it in Accounting > Setup > QuickBooks Online."));
 		}
 
 		///<summary>Gets the selected patient and insurance payments. If this is an existing deposit, this gets all payments listed.</summary>

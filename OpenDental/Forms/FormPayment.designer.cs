@@ -23,7 +23,7 @@
 		private System.Windows.Forms.Label label12;
 		private System.Windows.Forms.Label labelDepositAccount;
 		private OpenDental.UI.ComboBox comboDepositAccount;
-		private System.Windows.Forms.Panel panelXcharge;
+		private OpenDental.UI.Button panelXcharge;
 		private System.Windows.Forms.ContextMenu contextMenuXcharge;
 		private System.Windows.Forms.MenuItem menuXcharge;
 		private System.Windows.Forms.TextBox textDepositAccount;
@@ -85,12 +85,14 @@
 		private OpenDental.UI.TabControl tabControlCharges;
 		private OpenDental.UI.TabPage tabPageOutstanding;
 		private OpenDental.UI.TabPage tabPageTreatPlan;
-		private System.Windows.Forms.Panel butPaySimple;
+		private OpenDental.UI.Button butPaySimple;
 		private System.Windows.Forms.ContextMenu contextMenuPaySimple;
 		private System.Windows.Forms.MenuItem menuPaySimple;
+		private System.Windows.Forms.MenuItem menuPaySimpleCheckAch;
+		private System.Windows.Forms.Label labelPaySimpleAchStatus;
 		private UI.GridOD gridTreatPlan;
 		private System.Windows.Forms.Label labelTPProcWarning;
-		private System.Windows.Forms.Panel butCareCredit;
+		private OpenDental.UI.Button butCareCredit;
 		#endregion
 
 		///<summary></summary>
@@ -120,8 +122,9 @@
 			this.butDeletePayment = new OpenDental.UI.Button();
 			this.butPrintReceipt = new OpenDental.UI.Button();
 			this.butEmailReceipt = new OpenDental.UI.Button();
-			this.butCareCredit = new System.Windows.Forms.Panel();
-			this.butPaySimple = new System.Windows.Forms.Panel();
+			this.butCareCredit = new OpenDental.UI.Button();
+			this.butPaySimple = new OpenDental.UI.Button();
+			this.labelPaySimpleAchStatus = new System.Windows.Forms.Label();
 			this.butShowHide = new OpenDental.UI.Button();
 			this.comboClinic = new OpenDental.UI.ComboBoxClinicPicker();
 			this.textDeposit = new System.Windows.Forms.TextBox();
@@ -130,8 +133,8 @@
 			this.textDepositAccount = new System.Windows.Forms.TextBox();
 			this.comboCreditCards = new OpenDental.UI.ComboBox();
 			this.label1 = new System.Windows.Forms.Label();
-			this.panelXcharge = new System.Windows.Forms.Panel();
-			this.panelEdgeExpress = new System.Windows.Forms.Panel();
+			this.panelXcharge = new OpenDental.UI.Button();
+			this.panelEdgeExpress = new OpenDental.UI.Button();
 			this.labelCreditCards = new System.Windows.Forms.Label();
 			this.label2 = new System.Windows.Forms.Label();
 			this.comboDepositAccount = new OpenDental.UI.ComboBox();
@@ -201,6 +204,7 @@
 			this.butAddManual = new OpenDental.UI.Button();
 			this.contextMenuPaySimple = new System.Windows.Forms.ContextMenu();
 			this.menuPaySimple = new System.Windows.Forms.MenuItem();
+			this.menuPaySimpleCheckAch = new System.Windows.Forms.MenuItem();
 			this.panelSplits = new System.Windows.Forms.Panel();
 			this.groupBoxFilteringPaySplits = new OpenDental.UI.GroupBox();
 			this.labelIncludesNegativeEntries = new System.Windows.Forms.Label();
@@ -220,7 +224,7 @@
 			this.labelTransactionCompleted = new System.Windows.Forms.Label();
 			this.labelSurchargeFee = new System.Windows.Forms.Label();
 			this.textSurcharge = new System.Windows.Forms.TextBox();
-			this.butPayConnect = new System.Windows.Forms.Panel();
+			this.butPayConnect = new OpenDental.UI.Button();
 			this.groupXWeb.SuspendLayout();
 			this.tabControlCharges.SuspendLayout();
 			this.tabPageOutstanding.SuspendLayout();
@@ -319,26 +323,34 @@
 			// 
 			// butCareCredit
 			// 
-			this.butCareCredit.BackgroundImage = global::OpenDental.Properties.Resources.CareCredit_Button_NoTag_26x90;
-			this.butCareCredit.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
-			this.butCareCredit.Location = new System.Drawing.Point(651, 17);
+			this.butCareCredit.Location = new System.Drawing.Point(650, 17);
 			this.butCareCredit.Name = "butCareCredit";
-			this.butCareCredit.Size = new System.Drawing.Size(90, 26);
+			this.butCareCredit.Size = new System.Drawing.Size(75, 26);
 			this.butCareCredit.TabIndex = 143;
+			this.butCareCredit.Text = "CareCredit";
 			this.butCareCredit.Visible = false;
 			this.butCareCredit.MouseClick += new System.Windows.Forms.MouseEventHandler(this.butCareCredit_Click);
 			// 
 			// butPaySimple
 			// 
-			this.butPaySimple.BackgroundImage = global::OpenDental.Properties.Resources.PaySimple_Button_2019_26x75;
-			this.butPaySimple.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
 			this.butPaySimple.Location = new System.Drawing.Point(877, 17);
 			this.butPaySimple.Name = "butPaySimple";
 			this.butPaySimple.Size = new System.Drawing.Size(75, 26);
 			this.butPaySimple.TabIndex = 140;
+			this.butPaySimple.Text = "PaySimple";
 			this.butPaySimple.Visible = false;
 			this.butPaySimple.MouseClick += new System.Windows.Forms.MouseEventHandler(this.butPaySimple_Click);
-			// 
+			//
+			// labelPaySimpleAchStatus
+			//
+			this.labelPaySimpleAchStatus.Location = new System.Drawing.Point(984, 49);
+			this.labelPaySimpleAchStatus.Name = "labelPaySimpleAchStatus";
+			this.labelPaySimpleAchStatus.Size = new System.Drawing.Size(124, 17);
+			this.labelPaySimpleAchStatus.TabIndex = 1005;
+			this.labelPaySimpleAchStatus.Text = "ACH status";
+			this.labelPaySimpleAchStatus.TextAlign = System.Drawing.ContentAlignment.BottomLeft;
+			this.labelPaySimpleAchStatus.Visible = false;
+			//
 			// butShowHide
 			// 
 			this.butShowHide.Image = global::OpenDental.Properties.Resources.arrowDownTriangle;
@@ -415,23 +427,21 @@
 			// 
 			// panelXcharge
 			// 
-			this.panelXcharge.BackgroundImage = ((System.Drawing.Image)(resources.GetObject("panelXcharge.BackgroundImage")));
-			this.panelXcharge.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
 			this.panelXcharge.Location = new System.Drawing.Point(812, 17);
 			this.panelXcharge.Name = "panelXcharge";
 			this.panelXcharge.Size = new System.Drawing.Size(59, 26);
 			this.panelXcharge.TabIndex = 118;
+			this.panelXcharge.Text = "X-Charge";
 			this.panelXcharge.Visible = false;
 			this.panelXcharge.MouseClick += new System.Windows.Forms.MouseEventHandler(this.panelXcharge_MouseClick);
 			// 
 			// panelEdgeExpress
 			// 
-			this.panelEdgeExpress.BackgroundImage = ((System.Drawing.Image)(resources.GetObject("panelEdgeExpress.BackgroundImage")));
-			this.panelEdgeExpress.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
-			this.panelEdgeExpress.Location = new System.Drawing.Point(747, 17);
+			this.panelEdgeExpress.Location = new System.Drawing.Point(731, 17);
 			this.panelEdgeExpress.Name = "panelEdgeExpress";
-			this.panelEdgeExpress.Size = new System.Drawing.Size(59, 26);
+			this.panelEdgeExpress.Size = new System.Drawing.Size(75, 26);
 			this.panelEdgeExpress.TabIndex = 119;
+			this.panelEdgeExpress.Text = "EdgeExpress";
 			this.panelEdgeExpress.Visible = false;
 			this.panelEdgeExpress.MouseClick += new System.Windows.Forms.MouseEventHandler(this.panelEdgeExpress_MouseClick);
 			// 
@@ -1144,13 +1154,21 @@
 			// contextMenuPaySimple
 			// 
 			this.contextMenuPaySimple.MenuItems.AddRange(new System.Windows.Forms.MenuItem[] {
-            this.menuPaySimple});
-			// 
+            this.menuPaySimple,
+            this.menuPaySimpleCheckAch});
+			//
 			// menuPaySimple
-			// 
+			//
 			this.menuPaySimple.Index = 0;
 			this.menuPaySimple.Text = "Settings";
 			this.menuPaySimple.Click += new System.EventHandler(this.menuPaySimple_Click);
+			//
+			// menuPaySimpleCheckAch
+			//
+			this.menuPaySimpleCheckAch.Index = 1;
+			this.menuPaySimpleCheckAch.Text = "Check ACH status";
+			this.menuPaySimpleCheckAch.Visible = false;
+			this.menuPaySimpleCheckAch.Click += new System.EventHandler(this.menuPaySimpleCheckAch_Click);
 			// 
 			// panelSplits
 			// 
@@ -1379,12 +1397,11 @@
 			// 
 			// butPayConnect
 			// 
-			this.butPayConnect.BackgroundImage = global::OpenDental.Properties.Resources.payconnect_btn_26;
-			this.butPayConnect.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
 			this.butPayConnect.Location = new System.Drawing.Point(958, 17);
 			this.butPayConnect.Name = "butPayConnect";
 			this.butPayConnect.Size = new System.Drawing.Size(75, 26);
 			this.butPayConnect.TabIndex = 141;
+			this.butPayConnect.Text = "PayConnect";
 			this.butPayConnect.Visible = false;
 			this.butPayConnect.Click += new System.EventHandler(this.butPayConnect_Click);
 			// 
@@ -1400,6 +1417,7 @@
 			this.Controls.Add(this.panelSplits);
 			this.Controls.Add(this.butCareCredit);
 			this.Controls.Add(this.butPaySimple);
+			this.Controls.Add(this.labelPaySimpleAchStatus);
 			this.Controls.Add(this.label9);
 			this.Controls.Add(this.butShowHide);
 			this.Controls.Add(this.butSave);
@@ -1467,7 +1485,7 @@
 		}
 		#endregion
 
-		private System.Windows.Forms.Panel panelEdgeExpress;
+		private OpenDental.UI.Button panelEdgeExpress;
 		private System.Windows.Forms.Panel panelSplits;
 		private System.Windows.Forms.Label labelRecurringChargeWarning;
 		private UI.WarningIntegrity warningIntegrity1;
@@ -1487,6 +1505,6 @@
 		private System.Windows.Forms.Label labelSurchargeFee;
 		private System.Windows.Forms.TextBox textSurcharge;
 		private System.Windows.Forms.Label labelIncludesNegativeEntries;
-		private System.Windows.Forms.Panel butPayConnect;
+		private OpenDental.UI.Button butPayConnect;
 	}
 }

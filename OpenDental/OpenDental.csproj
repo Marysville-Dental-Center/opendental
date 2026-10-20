@@ -112,10 +112,6 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\Dicom.Native.dll</HintPath>
     </Reference>
-    <Reference Include="DpsPos, Version=1.0.6191.28914, Culture=neutral, PublicKeyToken=fed6c2461985275f, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\DpsPos.dll</HintPath>
-    </Reference>
     <Reference Include="Health.Direct.Common">
       <HintPath>..\Required dlls\Health.Direct.Common.dll</HintPath>
     </Reference>
@@ -150,54 +146,9 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\Interop.Word.dll</HintPath>
     </Reference>
-    <Reference Include="Intuit.Ipp.Core">
-      <HintPath>..\Required dlls\Intuit.Ipp.Core.dll</HintPath>
-    </Reference>
-    <Reference Include="Intuit.Ipp.Data">
-      <HintPath>..\Required dlls\Intuit.Ipp.Data.dll</HintPath>
-    </Reference>
-    <Reference Include="Intuit.Ipp.DataService">
-      <HintPath>..\Required dlls\Intuit.Ipp.DataService.dll</HintPath>
-    </Reference>
-    <Reference Include="Intuit.Ipp.Diagnostics">
-      <HintPath>..\Required dlls\Intuit.Ipp.Diagnostics.dll</HintPath>
-    </Reference>
-    <Reference Include="Intuit.Ipp.EntitlementService">
-      <HintPath>..\Required dlls\Intuit.Ipp.EntitlementService.dll</HintPath>
-    </Reference>
-    <Reference Include="Intuit.Ipp.Exception">
-      <HintPath>..\Required dlls\Intuit.Ipp.Exception.dll</HintPath>
-    </Reference>
-    <Reference Include="Intuit.Ipp.GlobalTaxService">
-      <HintPath>..\Required dlls\Intuit.Ipp.GlobalTaxService.dll</HintPath>
-    </Reference>
-    <Reference Include="Intuit.Ipp.OAuth2PlatformClient">
-      <HintPath>..\Required dlls\Intuit.Ipp.OAuth2PlatformClient.dll</HintPath>
-    </Reference>
-    <Reference Include="Intuit.Ipp.QueryFilter">
-      <HintPath>..\Required dlls\Intuit.Ipp.QueryFilter.dll</HintPath>
-    </Reference>
-    <Reference Include="Intuit.Ipp.ReportService">
-      <HintPath>..\Required dlls\Intuit.Ipp.ReportService.dll</HintPath>
-    </Reference>
-    <Reference Include="Intuit.Ipp.Retry">
-      <HintPath>..\Required dlls\Intuit.Ipp.Retry.dll</HintPath>
-    </Reference>
-    <Reference Include="Intuit.Ipp.Security">
-      <HintPath>..\Required dlls\Intuit.Ipp.Security.dll</HintPath>
-    </Reference>
-    <Reference Include="Intuit.Ipp.Utility">
-      <HintPath>..\Required dlls\Intuit.Ipp.Utility.dll</HintPath>
-    </Reference>
-    <Reference Include="Intuit.Ipp.WebHooksService">
-      <HintPath>..\Required dlls\Intuit.Ipp.WebHooksService.dll</HintPath>
-    </Reference>
     <Reference Include="Ionic.Zip, Version=1.9.1.4, Culture=neutral, PublicKeyToken=edbe51ad942a3f5c, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\Ionic.Zip.dll</HintPath>
-    </Reference>
-    <Reference Include="log4net">
-      <HintPath>..\Required dlls\log4net.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="Microsoft.VisualBasic" />
@@ -261,45 +212,6 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\RdlViewer.dll</HintPath>
     </Reference>
-    <Reference Include="Serilog">
-      <HintPath>..\Required dlls\Serilog.dll</HintPath>
-    </Reference>
-    <Reference Include="Serilog.Enrichers.Environment">
-      <HintPath>..\Required dlls\Serilog.Enrichers.Environment.dll</HintPath>
-    </Reference>
-    <Reference Include="Serilog.Enrichers.Thread">
-      <HintPath>..\Required dlls\Serilog.Enrichers.Thread.dll</HintPath>
-    </Reference>
-    <Reference Include="Serilog.Extensions.Logging">
-      <HintPath>..\Required dlls\Serilog.Extensions.Logging.dll</HintPath>
-    </Reference>
-    <Reference Include="Serilog.Settings.Configuration">
-      <HintPath>..\Required dlls\Serilog.Settings.Configuration.dll</HintPath>
-    </Reference>
-    <Reference Include="Serilog.Sinks.AzureDocumentDB">
-      <HintPath>..\Required dlls\Serilog.Sinks.AzureDocumentDB.dll</HintPath>
-    </Reference>
-    <Reference Include="Serilog.Sinks.Console">
-      <HintPath>..\Required dlls\Serilog.Sinks.Console.dll</HintPath>
-    </Reference>
-    <Reference Include="Serilog.Sinks.Debug">
-      <HintPath>..\Required dlls\Serilog.Sinks.Debug.dll</HintPath>
-    </Reference>
-    <Reference Include="Serilog.Sinks.File">
-      <HintPath>..\Required dlls\Serilog.Sinks.File.dll</HintPath>
-    </Reference>
-    <Reference Include="Serilog.Sinks.Literate">
-      <HintPath>..\Required dlls\Serilog.Sinks.Literate.dll</HintPath>
-    </Reference>
-    <Reference Include="Serilog.Sinks.RollingFile">
-      <HintPath>..\Required dlls\Serilog.Sinks.RollingFile.dll</HintPath>
-    </Reference>
-    <Reference Include="Serilog.Sinks.Trace">
-      <HintPath>..\Required dlls\Serilog.Sinks.Trace.dll</HintPath>
-    </Reference>
-    <Reference Include="SerilogTraceListener">
-      <HintPath>..\Required dlls\SerilogTraceListener.dll</HintPath>
-    </Reference>
     <Reference Include="SharpDX, Version=4.0.1.0, Culture=neutral, PublicKeyToken=b4dcf0f35e5521f1, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\SharpDX.dll</HintPath>
@@ -328,18 +240,10 @@
     <Reference Include="System.EnterpriseServices" />
     <Reference Include="System.Management" />
     <Reference Include="System.Net.Http" />
-    <Reference Include="System.Net.Http.WinHttpHandler, Version=6.0.0.1, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\System.Net.Http.WinHttpHandler.dll</HintPath>
-    </Reference>
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.ServiceModel" />
     <Reference Include="System.ServiceProcess" />
     <Reference Include="System.Speech" />
-    <Reference Include="System.Text.Json, Version=6.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\System.Text.Json.dll</HintPath>
-    </Reference>
     <Reference Include="System.Web" />
     <Reference Include="System.Web.Extensions" />
     <Reference Include="System.Web.Services" />
@@ -869,12 +773,6 @@
     </Compile>
     <Compile Include="Forms\FormImageDrawColor.Designer.cs">
       <DependentUpon>FormImageDrawColor.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\FormAdvertisingPostcardsAccountSetup.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FormAdvertisingPostcardsAccountSetup.Designer.cs">
-      <DependentUpon>FormAdvertisingPostcardsAccountSetup.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\FormImageFloat.cs">
       <SubType>Form</SubType>
@@ -2392,12 +2290,6 @@
     <Compile Include="Forms\FormClaimAttachment.Designer.cs">
       <DependentUpon>FormClaimAttachment.cs</DependentUpon>
     </Compile>
-    <Compile Include="Forms\FormDoseSpotAssignClinicId.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FormDoseSpotAssignClinicId.designer.cs">
-      <DependentUpon>FormDoseSpotAssignClinicId.cs</DependentUpon>
-    </Compile>
     <Compile Include="Forms\FormPaySimpleSetup.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -2436,12 +2328,6 @@
     </Compile>
     <Compile Include="Forms\FormLoginFailed.designer.cs">
       <DependentUpon>FormLoginFailed.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\FormDoseSpotAssignUserId.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FormDoseSpotAssignUserId.designer.cs">
-      <DependentUpon>FormDoseSpotAssignUserId.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\FormFamilyBalancer.cs">
       <SubType>Form</SubType>
@@ -2776,12 +2662,6 @@
     <Compile Include="Forms\FormXWebTransactions.designer.cs">
       <DependentUpon>FormXWebTransactions.cs</DependentUpon>
     </Compile>
-    <Compile Include="Forms\FormDropboxAuthorize.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FormDropboxAuthorize.designer.cs">
-      <DependentUpon>FormDropboxAuthorize.cs</DependentUpon>
-    </Compile>
     <Compile Include="Forms\FormTimePick.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -2854,6 +2734,42 @@
     <Compile Include="Forms\FormCdsTriggers.designer.cs">
       <DependentUpon>FormCdsTriggers.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\FormEdgeExpressPayPage.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormEdgeExpressPayPage.Designer.cs">
+      <DependentUpon>FormEdgeExpressPayPage.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormGmailApiSetup.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormGmailApiSetup.Designer.cs">
+      <DependentUpon>FormGmailApiSetup.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormMicrosoft365Setup.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormMicrosoft365Setup.Designer.cs">
+      <DependentUpon>FormMicrosoft365Setup.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormPdmpClientCertificate.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormPdmpClientCertificate.Designer.cs">
+      <DependentUpon>FormPdmpClientCertificate.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormUspsAddressSetup.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormUspsAddressSetup.Designer.cs">
+      <DependentUpon>FormUspsAddressSetup.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Logic\EdgeExpressL.cs" />
+    <Compile Include="Logic\VendorDirect\DropboxStartupCheck.cs" />
+    <Compile Include="Logic\VendorDirect\IProgramLinkSetup.cs" />
+    <Compile Include="Logic\VendorDirect\PostcardsMenu.cs" />
+    <Compile Include="Logic\VendorDirect\ProgramLinkSetupRegistry.cs" />
+    <Compile Include="Logic\VendorDirect\VendorJobHost.cs" />
     <Compile Include="Forms\FormPodiumSetup.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -4290,12 +4206,6 @@
     </Compile>
     <Compile Include="Forms\FormTimeCardRuleEdit.designer.cs">
       <DependentUpon>FormTimeCardRuleEdit.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\FormPayConnect.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FormPayConnect.designer.cs">
-      <DependentUpon>FormPayConnect.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\FormPatFieldPickEdit.cs">
       <SubType>Form</SubType>
@@ -6112,9 +6022,6 @@
     <EmbeddedResource Include="Forms\FormImageDrawColor.resx">
       <DependentUpon>FormImageDrawColor.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormAdvertisingPostcardsAccountSetup.resx">
-      <DependentUpon>FormAdvertisingPostcardsAccountSetup.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormImageFloat.resx">
       <DependentUpon>FormImageFloat.cs</DependentUpon>
     </EmbeddedResource>
@@ -6366,9 +6273,6 @@
     <EmbeddedResource Include="Forms\FormClaimAttachment.resx">
       <DependentUpon>FormClaimAttachment.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormDoseSpotAssignClinicId.resx">
-      <DependentUpon>FormDoseSpotAssignClinicId.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormPaySimpleSetup.resx">
       <DependentUpon>FormPaySimpleSetup.cs</DependentUpon>
     </EmbeddedResource>
@@ -6386,9 +6290,6 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormLoginFailed.resx">
       <DependentUpon>FormLoginFailed.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormDoseSpotAssignUserId.resx">
-      <DependentUpon>FormDoseSpotAssignUserId.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormFamilyBalancer.resx">
       <DependentUpon>FormFamilyBalancer.cs</DependentUpon>
@@ -6573,9 +6474,6 @@
     <EmbeddedResource Include="Forms\FormXWebTransactions.resx">
       <DependentUpon>FormXWebTransactions.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormDropboxAuthorize.resx">
-      <DependentUpon>FormDropboxAuthorize.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormTimePick.resx">
       <DependentUpon>FormTimePick.cs</DependentUpon>
     </EmbeddedResource>
@@ -6616,6 +6514,21 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormCdsTriggers.resx">
       <DependentUpon>FormCdsTriggers.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\FormEdgeExpressPayPage.resx">
+      <DependentUpon>FormEdgeExpressPayPage.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\FormGmailApiSetup.resx">
+      <DependentUpon>FormGmailApiSetup.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\FormMicrosoft365Setup.resx">
+      <DependentUpon>FormMicrosoft365Setup.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\FormPdmpClientCertificate.resx">
+      <DependentUpon>FormPdmpClientCertificate.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\FormUspsAddressSetup.resx">
+      <DependentUpon>FormUspsAddressSetup.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormPodiumSetup.resx">
       <DependentUpon>FormPodiumSetup.cs</DependentUpon>
@@ -8802,7 +8715,6 @@
     <Compile Include="User Controls\ValidNum.cs">
       <SubType>Component</SubType>
     </Compile>
-    <None Include="Resources\DpsPos.dll.config" />
     <None Include="Web References\CallFireService\Reference.map">
       <Generator>MSDiscoCodeGenerator</Generator>
       <LastGenOutput>Reference.cs</LastGenOutput>
@@ -8813,7 +8725,6 @@
     <None Include="Resources\Pearl.txt" />
     <None Include="Resources\opendentalapienduserlicense.txt" />
     <Resource Include="Resources\bola_launch.png" />
-    <None Include="Resources\payconnect-btn-26.png" />
     <None Include="Resources\Icon1.ico" />
     <None Include="Resources\XamlStyle_ToolBarButton.txt" />
     <None Include="Resources\XamlStyle_ToolBar.txt" />
@@ -8833,18 +8744,13 @@
     <None Include="Resources\Imaging32.gif" />
     <None Include="Resources\Chart32.gif" />
     <None Include="Resources\Family32.gif" />
-    <None Include="Resources\CareCredit_Button_NoTag_26x90.png" />
     <None Include="Resources\house16.png" />
     <Resource Include="Resources\topazPen10.gif" />
     <Resource Include="Resources\eSig.gif" />
     <Resource Include="Resources\deleteX10.gif" />
-    <None Include="Resources\google_signin_pressed.png" />
-    <None Include="Resources\google_signin_focus.png" />
-    <None Include="Resources\google_signin_normal.png" />
     <None Include="Resources\Sparks3D.txt" />
     <None Include="Resources\splashBenco.jpg" />
     <None Include="Resources\benco_logo.png" />
-    <None Include="Resources\PaySimple_Button_2019_26x75.png" />
     <None Include="Resources\Zxing.txt" />
     <None Include="Resources\butPin22.gif" />
     <None Include="Resources\ExternalLink.png" />
@@ -8852,7 +8758,6 @@
     <None Include="Resources\opendentallicense.txt" />
     <None Include="Resources\downArrowWinForm.png" />
     <None Include="Resources\setupGears.gif" />
-    <Resource Include="Resources\PaySimple_Button.png" />
     <None Include="Resources\Microphone_22px.png" />
     <None Include="Resources\Microphone_30px.png" />
     <Resource Include="Resources\SharpDX.txt" />
@@ -8878,7 +8783,6 @@
     <None Include="Resources\Mentalis.txt" />
     <None Include="Resources\Ionic.txt" />
     <None Include="Resources\Bsd.txt" />
-    <None Include="Resources\Dropbox_Api.txt" />
     <None Include="Resources\CDT Content End User License.txt" />
     <None Include="Resources\gtaicon3.png" />
     <None Include="Resources\NoFigure.png" />
@@ -8970,10 +8874,6 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormTimeCardRuleEdit.resx">
       <DependentUpon>FormTimeCardRuleEdit.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormPayConnect.resx">
-      <DependentUpon>FormPayConnect.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormPatFieldPickEdit.resx">
@@ -9365,10 +9265,6 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\Bridges\xBridges.csproj">
-      <Project>{a4d55048-b426-4bc6-bbd5-56f1e4bcc28d}</Project>
-      <Name>xBridges</Name>
-    </ProjectReference>
     <ProjectReference Include="..\..\ImagingDeviceManager\xImagingDeviceManager.csproj">
       <Project>{783079e6-a13f-4f43-a28d-9d7731f945d1}</Project>
       <Name>xImagingDeviceManager</Name>

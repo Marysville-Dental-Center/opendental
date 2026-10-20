@@ -92,6 +92,7 @@ namespace OpenDental {
 					Logger.LogActionIfOverTimeLimit("BeginPodiumThread",LogPath.Threads,() => BeginPodiumThread());
 					Logger.LogActionIfOverTimeLimit("BeginTimeSyncThread",LogPath.Threads,() => BeginTimeSyncThread());
 					Logger.LogActionIfOverTimeLimit("CheckAlerts",LogPath.Threads,() => CheckAlerts(doRunOnThread: true));
+					Logger.LogActionIfOverTimeLimit("BeginVendorJobsThread",LogPath.Threads,() => BeginVendorJobsThread());
 					Logger.LogToPath("Started threads",LogPath.Threads,LogPhase.Unspecified);
 					return;
 				}
@@ -120,6 +121,7 @@ namespace OpenDental {
 						case FormODThreadNames.WebSync:
 						case FormODThreadNames.TimeSync:
 						case FormODThreadNames.CheckAlerts:
+						case FormODThreadNames.VendorJobs:
 						default:
 							//Add these to our list so we can wait on them to exit before restarting the threads next time.
 							_listThreadExitWaitHandles.AddRange(ODThread.QuitAsyncThreadsByGroupName(threadName.GetDescription()));
@@ -148,6 +150,13 @@ namespace OpenDental {
 			if(!CultureInfo.CurrentCulture.Name.EndsWith("CA")) {//Canada
 				return;
 			}
+			//Only an office whose default clearinghouse is ITRANS 2.0 with its response (ICD install) path set reads the carrier list.
+			Clearinghouse clearinghouseDefault=Clearinghouses.GetDefaultDental();
+			if(clearinghouseDefault==null || clearinghouseDefault.CommBridge!=EclaimsCommBridge.ITRANS2
+				|| string.IsNullOrWhiteSpace(clearinghouseDefault.ResponsePath))
+			{
+				return;
+			}
 			ODThread odThread=new ODThread((int)TimeSpan.FromHours(1).TotalMilliseconds,(o) => {
 				ItransNCpl.TryCarrierUpdate();
 			});
@@ -155,6 +164,17 @@ namespace OpenDental {
 			odThread.GroupName=FormODThreadNames.CanadianItransCarrier.GetDescription();
 			odThread.Name=FormODThreadNames.CanadianItransCarrier.GetDescription();
 			odThread.Start();
+		}
+
+		#endregion
+		#region VendorJobsThread
+
+		///<summary>Starts the vendor-direct job host (VendorDirect.VendorJobHost), which starts no thread unless a vendor package added a job.</summary>
+		private void BeginVendorJobsThread() {
+			if(IsThreadAlreadyRunning(FormODThreadNames.VendorJobs)) {
+				return;
+			}
+			VendorDirect.VendorJobHost.Start(FormODThreadNames.VendorJobs.GetDescription());
 		}
 
 		#endregion
@@ -810,7 +830,8 @@ namespace OpenDental {
 			WebSync,
 			Dashboard,
 			RegistrationKeyIsDisabled,
-			DataReaderNullMonitor
+			DataReaderNullMonitor,
+			VendorJobs
 		}
 	}
 }

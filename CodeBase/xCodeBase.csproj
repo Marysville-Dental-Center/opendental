@@ -120,6 +120,7 @@
     <Reference Include="System.Deployment" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Management" />
+    <Reference Include="System.Net.Http" />
     <Reference Include="System.ServiceProcess" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
@@ -202,6 +203,15 @@
     <Compile Include="Utilities\SoundHelper.cs" />
     <Compile Include="Utilities\SymbolExtensions.cs" />
     <Compile Include="Utilities\ConvertWebCore.cs" />
+    <Compile Include="Utilities\VendorDirect\HqHosts.cs" />
+    <Compile Include="Utilities\VendorDirect\LoopbackListener.cs" />
+    <Compile Include="Utilities\VendorDirect\OAuthRedirect.cs" />
+    <Compile Include="Utilities\VendorDirect\OAuthTokenClient.cs" />
+    <Compile Include="Utilities\VendorDirect\Pkce.cs" />
+    <Compile Include="Utilities\VendorDirect\ProductIdentity.cs" />
+    <Compile Include="Utilities\VendorDirect\TokenCache.cs" />
+    <Compile Include="Utilities\VendorDirect\TypeDiscovery.cs" />
+    <Compile Include="Utilities\VendorDirect\VendorHttp.cs" />
     <Compile Include="Utilities\DateDefaultToday.cs" />
     <Compile Include="Utilities\DateRange.cs" />
     <Compile Include="Utilities\DateTimeOD.cs" />

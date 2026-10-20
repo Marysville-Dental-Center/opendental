@@ -50,9 +50,9 @@ namespace OpenDental {
 			this.butPickPaymentGroup = new OpenDental.UI.Button();
 			this.comboPayGroup = new OpenDental.UI.ComboBox();
 			this.labelClaimPaymentGroup = new System.Windows.Forms.Label();
-			this.panelXcharge = new System.Windows.Forms.Panel();
+			this.panelXcharge = new OpenDental.UI.Button();
 			this.groupPrepaid = new OpenDental.UI.GroupBox();
-			this.butPaySimple = new System.Windows.Forms.Panel();
+			this.butPaySimple = new OpenDental.UI.Button();
 			this.groupBoxDeposit = new OpenDental.UI.GroupBox();
 			this.labelDepositAccountNum = new System.Windows.Forms.Label();
 			this.comboDepositAccountNum = new OpenDental.UI.ComboBox();
@@ -64,8 +64,8 @@ namespace OpenDental {
 			this.labelDepositAmount = new System.Windows.Forms.Label();
 			this.validDoubleDepositAmt = new OpenDental.ValidDouble();
 			this.labelRequiredFields = new System.Windows.Forms.Label();
-			this.panelEdgeExpress = new System.Windows.Forms.Panel();
-			this.butPayConnect = new System.Windows.Forms.Panel();
+			this.panelEdgeExpress = new OpenDental.UI.Button();
+			this.butPayConnect = new OpenDental.UI.Button();
 			this.groupPrepaid.SuspendLayout();
 			this.groupBoxDeposit.SuspendLayout();
 			this.SuspendLayout();
@@ -312,12 +312,11 @@ namespace OpenDental {
 			// 
 			// panelXcharge
 			// 
-			this.panelXcharge.BackgroundImage = ((System.Drawing.Image)(resources.GetObject("panelXcharge.BackgroundImage")));
-			this.panelXcharge.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
 			this.panelXcharge.Location = new System.Drawing.Point(9, 21);
 			this.panelXcharge.Name = "panelXcharge";
 			this.panelXcharge.Size = new System.Drawing.Size(59, 26);
 			this.panelXcharge.TabIndex = 119;
+			this.panelXcharge.Text = "X-Charge";
 			this.panelXcharge.MouseClick += new System.Windows.Forms.MouseEventHandler(this.panelXcharge_MouseClick);
 			// 
 			// groupPrepaid
@@ -335,12 +334,11 @@ namespace OpenDental {
 			// 
 			// butPaySimple
 			// 
-			this.butPaySimple.BackgroundImage = global::OpenDental.Properties.Resources.PaySimple_Button_2019_26x75;
-			this.butPaySimple.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
 			this.butPaySimple.Location = new System.Drawing.Point(250, 21);
 			this.butPaySimple.Name = "butPaySimple";
 			this.butPaySimple.Size = new System.Drawing.Size(76, 26);
 			this.butPaySimple.TabIndex = 131;
+			this.butPaySimple.Text = "PaySimple";
 			this.butPaySimple.MouseClick += new System.Windows.Forms.MouseEventHandler(this.butPaySimple_MouseClick);
 			// 
 			// groupBoxDeposit
@@ -455,23 +453,21 @@ namespace OpenDental {
 			// 
 			// panelEdgeExpress
 			// 
-			this.panelEdgeExpress.BackgroundImage = ((System.Drawing.Image)(resources.GetObject("panelEdgeExpress.BackgroundImage")));
-			this.panelEdgeExpress.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
-			this.panelEdgeExpress.Location = new System.Drawing.Point(84, 21);
+			this.panelEdgeExpress.Location = new System.Drawing.Point(78, 21);
 			this.panelEdgeExpress.Name = "panelEdgeExpress";
-			this.panelEdgeExpress.Size = new System.Drawing.Size(59, 26);
+			this.panelEdgeExpress.Size = new System.Drawing.Size(75, 26);
 			this.panelEdgeExpress.TabIndex = 132;
+			this.panelEdgeExpress.Text = "EdgeExpress";
 			this.panelEdgeExpress.Visible = false;
 			this.panelEdgeExpress.MouseClick += new System.Windows.Forms.MouseEventHandler(this.panelEdgeExpress_MouseClick);
 			// 
 			// butPayConnect
 			// 
-			this.butPayConnect.BackgroundImage = global::OpenDental.Properties.Resources.payconnect_btn_26;
-			this.butPayConnect.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
-			this.butPayConnect.Location = new System.Drawing.Point(159, 21);
+			this.butPayConnect.Location = new System.Drawing.Point(163, 21);
 			this.butPayConnect.Name = "butPayConnect";
 			this.butPayConnect.Size = new System.Drawing.Size(76, 26);
 			this.butPayConnect.TabIndex = 132;
+			this.butPayConnect.Text = "PayConnect";
 			this.butPayConnect.Click += new System.EventHandler(this.butPayConnect_Click);
 			// 
 			// FormClaimPayEdit
@@ -553,7 +549,7 @@ namespace OpenDental {
 		private UI.Button butPickPaymentGroup;
 		private OpenDental.UI.ComboBox comboPayGroup;
 		private Label labelClaimPaymentGroup;
-		private Panel panelXcharge;
+		private OpenDental.UI.Button panelXcharge;
 		private OpenDental.UI.GroupBox groupPrepaid;
 		private OpenDental.UI.GroupBox groupBoxDeposit;
 		private ValidDate validDepositDate;
@@ -565,9 +561,9 @@ namespace OpenDental {
 		private TextBox textBoxBatchNum;
 		private Label labelDepositAccountNum;
 		private UI.ComboBox comboDepositAccountNum;
-		private Panel butPaySimple;
+		private OpenDental.UI.Button butPaySimple;
 		private Label labelRequiredFields;
-		private Panel panelEdgeExpress;
-		private Panel butPayConnect;
+		private OpenDental.UI.Button panelEdgeExpress;
+		private OpenDental.UI.Button butPayConnect;
 	}
 }

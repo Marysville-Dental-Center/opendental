@@ -55,13 +55,11 @@ namespace OpenDental {
 			this.butPickUserod = new OpenDental.UI.Button();
 			this.labelUserod = new System.Windows.Forms.Label();
 			this.textUserod = new System.Windows.Forms.TextBox();
-			this.textAccessTokenGmail = new System.Windows.Forms.TextBox();
-			this.textRefreshTokenGmail = new System.Windows.Forms.TextBox();
-			this.labelAccessGmail = new System.Windows.Forms.Label();
-			this.labelRefreshGmail = new System.Windows.Forms.Label();
+			this.labelGmailStatusCaption = new System.Windows.Forms.Label();
+			this.labelGmailStatus = new System.Windows.Forms.Label();
 			this.groupGmail = new OpenDental.UI.GroupBox();
 			this.labelDownloadGmail = new System.Windows.Forms.Label();
-			this.butAuthGoogle = new System.Windows.Forms.Label();
+			this.butAuthGoogle = new OpenDental.UI.Button();
 			this.checkUnreadGmail = new OpenDental.UI.CheckBox();
 			this.textParams = new System.Windows.Forms.TextBox();
 			this.labelParams = new System.Windows.Forms.Label();
@@ -74,14 +72,12 @@ namespace OpenDental {
 			this.groupAuthentication = new OpenDental.UI.GroupBox();
 			this.panelPassword = new System.Windows.Forms.Panel();
 			this.groupMicrosoft = new OpenDental.UI.GroupBox();
-			this.textRefreshTokenMicrosoft = new System.Windows.Forms.TextBox();
-			this.butAuthMicrosoft = new System.Windows.Forms.Button();
-			this.labelRefreshTokenMicrosoft = new System.Windows.Forms.Label();
+			this.butAuthMicrosoft = new OpenDental.UI.Button();
 			this.labelDownloadMicrosoft = new System.Windows.Forms.Label();
 			this.checkDownloadMicrosoft = new OpenDental.UI.CheckBox();
-			this.textAccessTokenMicrosoft = new System.Windows.Forms.TextBox();
+			this.labelMicrosoftStatus = new System.Windows.Forms.Label();
 			this.butClearTokensMicrosoft = new OpenDental.UI.Button();
-			this.labelAccessMicrosoft = new System.Windows.Forms.Label();
+			this.labelMicrosoftStatusCaption = new System.Windows.Forms.Label();
 			this.groupOutgoing.SuspendLayout();
 			this.groupIncoming.SuspendLayout();
 			this.groupGmail.SuspendLayout();
@@ -348,43 +344,26 @@ namespace OpenDental {
 			this.textUserod.ReadOnly = true;
 			this.textUserod.Size = new System.Drawing.Size(218, 20);
 			this.textUserod.TabIndex = 0;
-			// 
-			// textAccessTokenGmail
-			// 
-			this.textAccessTokenGmail.Location = new System.Drawing.Point(160, 58);
-			this.textAccessTokenGmail.Name = "textAccessTokenGmail";
-			this.textAccessTokenGmail.ReadOnly = true;
-			this.textAccessTokenGmail.Size = new System.Drawing.Size(115, 20);
-			this.textAccessTokenGmail.TabIndex = 11;
-			// 
-			// textRefreshTokenGmail
-			// 
-			this.textRefreshTokenGmail.Location = new System.Drawing.Point(160, 86);
-			this.textRefreshTokenGmail.Name = "textRefreshTokenGmail";
-			this.textRefreshTokenGmail.ReadOnly = true;
-			this.textRefreshTokenGmail.Size = new System.Drawing.Size(115, 20);
-			this.textRefreshTokenGmail.TabIndex = 12;
-			// 
-			// labelAccessGmail
-			// 
-			this.labelAccessGmail.Location = new System.Drawing.Point(41, 58);
-			this.labelAccessGmail.Name = "labelAccessGmail";
-			this.labelAccessGmail.Size = new System.Drawing.Size(116, 20);
-			this.labelAccessGmail.TabIndex = 14;
-			this.labelAccessGmail.Text = "Access Token";
-			this.labelAccessGmail.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// labelRefreshGmail
-			// 
-			this.labelRefreshGmail.Location = new System.Drawing.Point(42, 86);
-			this.labelRefreshGmail.Name = "labelRefreshGmail";
-			this.labelRefreshGmail.Size = new System.Drawing.Size(115, 20);
-			this.labelRefreshGmail.TabIndex = 15;
-			this.labelRefreshGmail.Text = "Refresh Token";
-			this.labelRefreshGmail.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
+			//
+			// labelGmailStatusCaption
+			//
+			this.labelGmailStatusCaption.Location = new System.Drawing.Point(41, 58);
+			this.labelGmailStatusCaption.Name = "labelGmailStatusCaption";
+			this.labelGmailStatusCaption.Size = new System.Drawing.Size(116, 20);
+			this.labelGmailStatusCaption.TabIndex = 14;
+			this.labelGmailStatusCaption.Text = "Status";
+			this.labelGmailStatusCaption.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			//
+			// labelGmailStatus
+			//
+			this.labelGmailStatus.Location = new System.Drawing.Point(160, 58);
+			this.labelGmailStatus.Name = "labelGmailStatus";
+			this.labelGmailStatus.Size = new System.Drawing.Size(281, 52);
+			this.labelGmailStatus.TabIndex = 15;
+			this.labelGmailStatus.Text = "Not authorized.";
+			//
 			// groupGmail
-			// 
+			//
 			this.groupGmail.ColorBackLabel = System.Drawing.Color.Empty;
 			this.groupGmail.Controls.Add(this.labelDownloadGmail);
 			this.groupGmail.Controls.Add(this.butAuthGoogle);
@@ -392,11 +371,9 @@ namespace OpenDental {
 			this.groupGmail.Controls.Add(this.textParams);
 			this.groupGmail.Controls.Add(this.labelParams);
 			this.groupGmail.Controls.Add(this.checkDownloadGmail);
-			this.groupGmail.Controls.Add(this.textAccessTokenGmail);
 			this.groupGmail.Controls.Add(this.butClearTokensGmail);
-			this.groupGmail.Controls.Add(this.labelAccessGmail);
-			this.groupGmail.Controls.Add(this.textRefreshTokenGmail);
-			this.groupGmail.Controls.Add(this.labelRefreshGmail);
+			this.groupGmail.Controls.Add(this.labelGmailStatusCaption);
+			this.groupGmail.Controls.Add(this.labelGmailStatus);
 			this.groupGmail.Location = new System.Drawing.Point(492, 13);
 			this.groupGmail.Name = "groupGmail";
 			this.groupGmail.Size = new System.Drawing.Size(449, 286);
@@ -414,16 +391,12 @@ namespace OpenDental {
 			// 
 			// butAuthGoogle
 			// 
-			this.butAuthGoogle.Image = global::OpenDental.Properties.Resources.google_signin_normal;
-			this.butAuthGoogle.Location = new System.Drawing.Point(114, 8);
+			this.butAuthGoogle.Location = new System.Drawing.Point(160, 24);
 			this.butAuthGoogle.Name = "butAuthGoogle";
-			this.butAuthGoogle.Size = new System.Drawing.Size(191, 46);
+			this.butAuthGoogle.Size = new System.Drawing.Size(115, 24);
 			this.butAuthGoogle.TabIndex = 24;
+			this.butAuthGoogle.Text = "Authorize...";
 			this.butAuthGoogle.Click += new System.EventHandler(this.butAuthGoogle_Click);
-			this.butAuthGoogle.MouseDown += new System.Windows.Forms.MouseEventHandler(this.butAuthGoogle_MouseDown);
-			this.butAuthGoogle.MouseEnter += new System.EventHandler(this.butAuthGoogle_MouseEnter);
-			this.butAuthGoogle.MouseLeave += new System.EventHandler(this.butAuthGoogle_MouseLeave);
-			this.butAuthGoogle.MouseUp += new System.Windows.Forms.MouseEventHandler(this.butAuthGoogle_MouseUp);
 			// 
 			// checkUnreadGmail
 			// 
@@ -443,16 +416,15 @@ namespace OpenDental {
 			this.textParams.Name = "textParams";
 			this.textParams.Size = new System.Drawing.Size(264, 87);
 			this.textParams.TabIndex = 26;
-			this.textParams.Text = "in:inbox";
-			// 
+			//
 			// labelParams
-			// 
+			//
 			this.labelParams.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-			this.labelParams.Location = new System.Drawing.Point(26, 172);
+			this.labelParams.Location = new System.Drawing.Point(6, 172);
 			this.labelParams.Name = "labelParams";
-			this.labelParams.Size = new System.Drawing.Size(128, 46);
+			this.labelParams.Size = new System.Drawing.Size(148, 84);
 			this.labelParams.TabIndex = 28;
-			this.labelParams.Text = "Inbox Search Operators for Filtering";
+			this.labelParams.Text = "Inbox Search Operators for Filtering\r\n(blank: in:inbox newer_than:30d)";
 			this.labelParams.TextAlign = System.Drawing.ContentAlignment.TopRight;
 			// 
 			// checkDownloadGmail
@@ -502,9 +474,9 @@ namespace OpenDental {
 			// 
 			this.radioGmail.Location = new System.Drawing.Point(22, 45);
 			this.radioGmail.Name = "radioGmail";
-			this.radioGmail.Size = new System.Drawing.Size(97, 18);
+			this.radioGmail.Size = new System.Drawing.Size(120, 18);
 			this.radioGmail.TabIndex = 22;
-			this.radioGmail.Text = "Gmail";
+			this.radioGmail.Text = "Gmail (OAuth)";
 			this.radioGmail.UseVisualStyleBackColor = true;
 			this.radioGmail.Click += new System.EventHandler(this.radioGmail_Click);
 			// 
@@ -512,9 +484,9 @@ namespace OpenDental {
 			// 
 			this.radioMicrosoft.Location = new System.Drawing.Point(22, 68);
 			this.radioMicrosoft.Name = "radioMicrosoft";
-			this.radioMicrosoft.Size = new System.Drawing.Size(97, 18);
+			this.radioMicrosoft.Size = new System.Drawing.Size(120, 18);
 			this.radioMicrosoft.TabIndex = 23;
-			this.radioMicrosoft.Text = "Microsoft";
+			this.radioMicrosoft.Text = "Microsoft 365";
 			this.radioMicrosoft.UseVisualStyleBackColor = true;
 			this.radioMicrosoft.Click += new System.EventHandler(this.radioMicrosoft_Click);
 			// 
@@ -545,49 +517,27 @@ namespace OpenDental {
 			// groupMicrosoft
 			// 
 			this.groupMicrosoft.ColorBackLabel = System.Drawing.Color.Empty;
-			this.groupMicrosoft.Controls.Add(this.textRefreshTokenMicrosoft);
 			this.groupMicrosoft.Controls.Add(this.butAuthMicrosoft);
-			this.groupMicrosoft.Controls.Add(this.labelRefreshTokenMicrosoft);
 			this.groupMicrosoft.Controls.Add(this.labelDownloadMicrosoft);
 			this.groupMicrosoft.Controls.Add(this.checkDownloadMicrosoft);
-			this.groupMicrosoft.Controls.Add(this.textAccessTokenMicrosoft);
+			this.groupMicrosoft.Controls.Add(this.labelMicrosoftStatus);
 			this.groupMicrosoft.Controls.Add(this.butClearTokensMicrosoft);
-			this.groupMicrosoft.Controls.Add(this.labelAccessMicrosoft);
+			this.groupMicrosoft.Controls.Add(this.labelMicrosoftStatusCaption);
 			this.groupMicrosoft.Location = new System.Drawing.Point(92, 93);
 			this.groupMicrosoft.Name = "groupMicrosoft";
 			this.groupMicrosoft.Size = new System.Drawing.Size(379, 206);
 			this.groupMicrosoft.TabIndex = 30;
-			this.groupMicrosoft.Text = "Microsoft";
-			// 
-			// textRefreshTokenMicrosoft
-			// 
-			this.textRefreshTokenMicrosoft.Location = new System.Drawing.Point(173, 88);
-			this.textRefreshTokenMicrosoft.Name = "textRefreshTokenMicrosoft";
-			this.textRefreshTokenMicrosoft.ReadOnly = true;
-			this.textRefreshTokenMicrosoft.Size = new System.Drawing.Size(115, 20);
-			this.textRefreshTokenMicrosoft.TabIndex = 31;
-			// 
+			this.groupMicrosoft.Text = "Microsoft 365";
+			//
 			// butAuthMicrosoft
-			// 
-			this.butAuthMicrosoft.FlatAppearance.BorderSize = 0;
-			this.butAuthMicrosoft.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-			this.butAuthMicrosoft.Image = ((System.Drawing.Image)(resources.GetObject("butAuthMicrosoft.Image")));
-			this.butAuthMicrosoft.Location = new System.Drawing.Point(98, 7);
+			//
+			this.butAuthMicrosoft.Location = new System.Drawing.Point(173, 24);
 			this.butAuthMicrosoft.Name = "butAuthMicrosoft";
-			this.butAuthMicrosoft.Size = new System.Drawing.Size(190, 45);
+			this.butAuthMicrosoft.Size = new System.Drawing.Size(115, 24);
 			this.butAuthMicrosoft.TabIndex = 25;
-			this.butAuthMicrosoft.UseVisualStyleBackColor = true;
+			this.butAuthMicrosoft.Text = "Sign in...";
 			this.butAuthMicrosoft.Click += new System.EventHandler(this.butAuthMicrosoft_Click);
-			// 
-			// labelRefreshTokenMicrosoft
-			// 
-			this.labelRefreshTokenMicrosoft.Location = new System.Drawing.Point(55, 88);
-			this.labelRefreshTokenMicrosoft.Name = "labelRefreshTokenMicrosoft";
-			this.labelRefreshTokenMicrosoft.Size = new System.Drawing.Size(115, 20);
-			this.labelRefreshTokenMicrosoft.TabIndex = 32;
-			this.labelRefreshTokenMicrosoft.Text = "Refresh Token";
-			this.labelRefreshTokenMicrosoft.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
+			//
 			// labelDownloadMicrosoft
 			// 
 			this.labelDownloadMicrosoft.Location = new System.Drawing.Point(190, 160);
@@ -607,15 +557,15 @@ namespace OpenDental {
 			this.checkDownloadMicrosoft.TabIndex = 30;
 			this.checkDownloadMicrosoft.Text = "Download incoming emails";
 			this.checkDownloadMicrosoft.CheckedChanged += new System.EventHandler(this.checkDownloadMicrosoft_CheckedChanged);
-			// 
-			// textAccessTokenMicrosoft
-			// 
-			this.textAccessTokenMicrosoft.Location = new System.Drawing.Point(173, 60);
-			this.textAccessTokenMicrosoft.Name = "textAccessTokenMicrosoft";
-			this.textAccessTokenMicrosoft.ReadOnly = true;
-			this.textAccessTokenMicrosoft.Size = new System.Drawing.Size(115, 20);
-			this.textAccessTokenMicrosoft.TabIndex = 11;
-			// 
+			//
+			// labelMicrosoftStatus
+			//
+			this.labelMicrosoftStatus.Location = new System.Drawing.Point(173, 60);
+			this.labelMicrosoftStatus.Name = "labelMicrosoftStatus";
+			this.labelMicrosoftStatus.Size = new System.Drawing.Size(200, 52);
+			this.labelMicrosoftStatus.TabIndex = 11;
+			this.labelMicrosoftStatus.Text = "Not signed in.";
+			//
 			// butClearTokensMicrosoft
 			// 
 			this.butClearTokensMicrosoft.Location = new System.Drawing.Point(173, 120);
@@ -626,14 +576,14 @@ namespace OpenDental {
 			this.butClearTokensMicrosoft.UseVisualStyleBackColor = true;
 			this.butClearTokensMicrosoft.Click += new System.EventHandler(this.butClearTokensMicrosoft_Click);
 			// 
-			// labelAccessMicrosoft
-			// 
-			this.labelAccessMicrosoft.Location = new System.Drawing.Point(54, 60);
-			this.labelAccessMicrosoft.Name = "labelAccessMicrosoft";
-			this.labelAccessMicrosoft.Size = new System.Drawing.Size(116, 20);
-			this.labelAccessMicrosoft.TabIndex = 14;
-			this.labelAccessMicrosoft.Text = "Access Token";
-			this.labelAccessMicrosoft.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			// labelMicrosoftStatusCaption
+			//
+			this.labelMicrosoftStatusCaption.Location = new System.Drawing.Point(54, 60);
+			this.labelMicrosoftStatusCaption.Name = "labelMicrosoftStatusCaption";
+			this.labelMicrosoftStatusCaption.Size = new System.Drawing.Size(116, 20);
+			this.labelMicrosoftStatusCaption.TabIndex = 14;
+			this.labelMicrosoftStatusCaption.Text = "Status";
+			this.labelMicrosoftStatusCaption.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
 			// 
 			// FormEmailAddressEdit
 			// 
@@ -702,10 +652,8 @@ namespace OpenDental {
 		private UI.Button butPickUserod;
 		private Label labelUserod;
 		private TextBox textUserod;
-		private TextBox textAccessTokenGmail;
-		private TextBox textRefreshTokenGmail;
-		private Label labelAccessGmail;
-		private Label labelRefreshGmail;
+		private Label labelGmailStatusCaption;
+		private Label labelGmailStatus;
 		private OpenDental.UI.GroupBox groupGmail;
 		private UI.Button butClearTokensGmail;
 		private Panel panelUserod;
@@ -719,15 +667,13 @@ namespace OpenDental {
 		private UI.CheckBox checkDownloadGmail;
 		private UI.GroupBox groupMicrosoft;
 		private UI.CheckBox checkDownloadMicrosoft;
-		private TextBox textAccessTokenMicrosoft;
+		private Label labelMicrosoftStatus;
 		private UI.Button butClearTokensMicrosoft;
-		private Label labelAccessMicrosoft;
+		private Label labelMicrosoftStatusCaption;
 		private Label labelDownloadGmail;
 		private Panel panelPassword;
 		private Label labelDownloadMicrosoft;
-		private Label butAuthGoogle;
-		private Button butAuthMicrosoft;
-		private TextBox textRefreshTokenMicrosoft;
-		private Label labelRefreshTokenMicrosoft;
+		private UI.Button butAuthGoogle;
+		private UI.Button butAuthMicrosoft;
 	}
 }
