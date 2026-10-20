@@ -14,7 +14,7 @@ using OpenDentBusiness;
 namespace VendorDirectTests.PayConnectV2 {
 	[TestClass]
 	public class PayConnectParityDbTests {
-		private const string DB_NAME="vendordirect_payconnect_parity_tests";
+		private static readonly string DB_NAME=ScratchDb.Name("vendordirect_payconnect_parity_tests");
 		private const string DB_REFERENCE="od_253_schema";
 		private const string CONNECTION="Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=15";
 		private static readonly string[] _arrayTables=new[] { "computerpref","creditcard","payterminal","preference" };

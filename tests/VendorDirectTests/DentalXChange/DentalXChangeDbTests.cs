@@ -19,7 +19,7 @@ using OpenDentBusiness.VendorDirect.DentalXChange;
 namespace VendorDirectTests.DentalXChange {
 	[TestClass]
 	public class DentalXChangeDbTests {
-		private const string DB_NAME="vendordirect_dxc_tests";
+		private static readonly string DB_NAME=ScratchDb.Name("vendordirect_dxc_tests");
 		private const string CONNECTION="Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=15";
 		private static readonly string[] _arrayTables={ "preference","clearinghouse","etrans","etransmessagetext","insplan" };
 		private static string _skipReason;
