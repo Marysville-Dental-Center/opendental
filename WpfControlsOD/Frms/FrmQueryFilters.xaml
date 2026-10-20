@@ -1,0 +1,26 @@
+<local:FrmODBase x:Class="OpenDental.FrmQueryFilters"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:local="clr-namespace:OpenDental"
+             xmlns:ui="clr-namespace:WpfControls.UI"
+             mc:Ignorable="d"
+             Width="560" Height="520"
+             Text="Query Filters" MinMaxBoxes="False">
+	<Grid Background="#FFFCFDFE" >
+		<ui:Label x:Name="labelGroup" Width="60" Height="18" Margin="12,14,0,0" Text="Group" HAlign="Right" VAlign="Center" />
+		<ui:ComboBox x:Name="comboGroup" Width="220" Height="21" Margin="76,13,0,0" />
+		<ui:Button x:Name="butNewGroup" Width="80" Height="24" Margin="304,11,0,0" Text="New Group" Click="butNewGroup_Click" />
+		<ui:Button x:Name="butRenameGroup" Width="80" Height="24" Margin="390,11,0,0" Text="Rename" Click="butRenameGroup_Click" />
+		<ui:CheckBox x:Name="checkActive" Width="440" Height="20" Margin="76,40,0,0" Text="Filter the Query Monitor with this group (remembered for you on this computer)" />
+		<ui:Grid x:Name="gridMain" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="12,66,105,52" Title="Filters" TranslationName="TableQueryFilters" SelectionMode="MultiExtended" />
+		<ui:Button x:Name="butAdd" HorizontalAlignment="Right" Width="80" Height="24" Margin="0,66,12,0" Text="_Add" Click="butAdd_Click" />
+		<ui:Button x:Name="butDelete" HorizontalAlignment="Right" Width="80" Height="24" Margin="0,96,12,0" Text="Delete" Click="butDelete_Click" />
+		<ui:Button x:Name="butImport" HorizontalAlignment="Right" Width="80" Height="24" Margin="0,146,12,0" Text="Import" Click="butImport_Click" />
+		<ui:Button x:Name="butExport" HorizontalAlignment="Right" Width="80" Height="24" Margin="0,176,12,0" Text="Export" Click="butExport_Click" />
+		<ui:Label x:Name="labelHelp" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="330" Height="36" Margin="12,0,0,10" Text="A query that contains any filter text of the active group (ignoring case) is left out of the feed and the log." />
+		<ui:Button x:Name="butSave" HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="75" Height="24" Margin="0,0,98,16" Text="_Save" Click="butSave_Click" />
+		<ui:Button x:Name="butClose" HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="75" Height="24" Margin="0,0,12,16" Text="Close" Click="butClose_Click" />
+	</Grid>
+</local:FrmODBase>
