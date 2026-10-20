@@ -26,6 +26,11 @@ namespace xCrudGenerator {
 				CrudGenHelper.UpdateDatabase(database,server,user,password);
 				return;
 			}
+			string crudTypes=GetCommandLineValue("crud=",args);
+			if(!string.IsNullOrEmpty(crudTypes)) {
+				Environment.Exit(Form1.GenerateCrudFromCommandLine(crudTypes));
+				return;
+			}
 			Application.EnableVisualStyles();
 			Application.SetCompatibleTextRenderingDefault(false);
 			Application.Run(new Form1());
