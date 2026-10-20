@@ -20,7 +20,7 @@ namespace OpenDentBusiness {
 
 	///<summary>The text manifest of a release published by the update server. It names our product, so a manifest from any other program is never
 	///accepted, and carries the SHA-256 of the archive and of every file. Format, one "Key=Value" per line, '#' starts a comment:
-	///Format, Product, ReleaseVersion, BuildId, CompatVersion, PublishedUtc, PublishedBy, ArchiveSha256 (only in the database copy, because the
+	///Format, Product, ReleaseVersion, BuildId, BuildUtc (optional), CompatVersion, PublishedUtc, PublishedBy, ArchiveSha256 (only in the database copy, because the
 	///archive itself holds a copy of the manifest), and one "File=sha256|size|relative path" line per file.</summary>
 	public class ReleaseManifest {
 		///<summary>The product name every manifest must carry. The internal rename of the program comes later; release manifests use the new name
@@ -35,6 +35,9 @@ namespace OpenDentBusiness {
 		public string ReleaseVersion="";
 		///<summary>Identifies the exact build: SHA-256 over the program's own assemblies (see ForkReleases.ComputeBuildId).</summary>
 		public string BuildId="";
+		///<summary>When the build was compiled (UTC, ForkBuildUtc metadata of OpenDental.exe). Orders two builds of the same release version.
+		///DateTime.MinValue when unknown; the "BuildUtc" line is then left out.</summary>
+		public DateTime BuildUtc=DateTime.MinValue;
 		///<summary>The Open Dental compatible version line of the build (24.3.63.0 until the fork markers take over). Information only.</summary>
 		public string CompatVersion="";
 		public DateTime PublishedUtc=DateTime.MinValue;
@@ -51,6 +54,9 @@ namespace OpenDentBusiness {
 			stringBuilder.Append("Product="+Clean(Product)+"\n");
 			stringBuilder.Append("ReleaseVersion="+Clean(ReleaseVersion)+"\n");
 			stringBuilder.Append("BuildId="+Clean(BuildId)+"\n");
+			if(BuildUtc!=DateTime.MinValue) {
+				stringBuilder.Append("BuildUtc="+BuildUtc.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'",CultureInfo.InvariantCulture)+"\n");
+			}
 			stringBuilder.Append("CompatVersion="+Clean(CompatVersion)+"\n");
 			stringBuilder.Append("PublishedUtc="+PublishedUtc.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'",CultureInfo.InvariantCulture)+"\n");
 			stringBuilder.Append("PublishedBy="+Clean(PublishedBy)+"\n");
@@ -104,13 +110,10 @@ namespace OpenDentBusiness {
 						releaseManifest.ArchiveSha256=value;
 						break;
 					case "PublishedUtc":
-						DateTime dateTime;
-						if(!DateTime.TryParseExact(value,"yyyy-MM-dd'T'HH:mm:ss'Z'",CultureInfo.InvariantCulture,
-							DateTimeStyles.AdjustToUniversal|DateTimeStyles.AssumeUniversal,out dateTime))
-						{
-							throw new FormatException("Bad publish date in the release manifest: "+value);
-						}
-						releaseManifest.PublishedUtc=dateTime;
+						releaseManifest.PublishedUtc=ParseUtc(value,"publish date");
+						break;
+					case "BuildUtc":
+						releaseManifest.BuildUtc=ParseUtc(value,"build time");
 						break;
 					case "File":
 						releaseManifest.ListFiles.Add(ParseFileLine(value));
@@ -129,6 +132,16 @@ namespace OpenDentBusiness {
 				throw new FormatException("The release manifest lists a file twice.");
 			}
 			return releaseManifest;
+		}
+
+		private static DateTime ParseUtc(string value,string what) {
+			DateTime dateTime;
+			if(!DateTime.TryParseExact(value,"yyyy-MM-dd'T'HH:mm:ss'Z'",CultureInfo.InvariantCulture,
+				DateTimeStyles.AdjustToUniversal|DateTimeStyles.AssumeUniversal,out dateTime))
+			{
+				throw new FormatException("Bad "+what+" in the release manifest: "+value);
+			}
+			return dateTime;
 		}
 
 		private static ReleaseManifestFile ParseFileLine(string value) {

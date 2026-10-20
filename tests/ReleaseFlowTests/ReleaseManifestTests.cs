@@ -113,42 +113,123 @@ namespace ReleaseFlowTests {
 
 	[TestClass]
 	public class ReleaseDecisionTests {
-		private static ReleaseManifest Published(string release,string buildId) {
+		private const UpdateServerRole NAMED=UpdateServerRole.ThisComputer;
+		private const UpdateServerRole BLANK=UpdateServerRole.AnyWorkstation;
+		private const UpdateServerRole OTHER=UpdateServerRole.OtherComputer;
+		private static readonly DateTime _dateTimeOld=new DateTime(2026,10,1,9,0,0,DateTimeKind.Utc);
+		private static readonly DateTime _dateTimeNew=new DateTime(2026,10,19,9,0,0,DateTimeKind.Utc);
+
+		private static ReleaseManifest Published(string release,string buildId,DateTime? dateTimeBuildUtc=null) {
 			ReleaseManifest releaseManifest=new ReleaseManifest();
 			releaseManifest.ReleaseVersion=release;
 			releaseManifest.BuildId=buildId;
+			releaseManifest.BuildUtc=dateTimeBuildUtc??DateTime.MinValue;
 			return releaseManifest;
 		}
 
-		private static ReleaseIdentity Running(string release,string buildId) {
-			return new ReleaseIdentity { ReleaseVersion=release,BuildId=buildId };
+		private static ReleaseIdentity Running(string release,string buildId,DateTime? dateTimeBuildUtc=null) {
+			return new ReleaseIdentity { ReleaseVersion=release,BuildId=buildId,BuildUtc=dateTimeBuildUtc??DateTime.MinValue };
+		}
+
+		private static ReleaseAction Act(ReleaseManifest releaseManifestPublished,ReleaseIdentity releaseIdentityRunning,UpdateServerRole updateServerRole) {
+			ReleaseDecision releaseDecision=ForkReleases.Decide(releaseManifestPublished,releaseIdentityRunning,updateServerRole,false,"SERVER1");
+			Assert.IsFalse(releaseDecision.Message.ToLowerInvariant().Contains("downgrade"),releaseDecision.Message);
+			return releaseDecision.Action;
 		}
 
 		[TestMethod]
-		public void UpdateServer_PublishesItsBuild_UnlessANewerReleaseIsPublished() {
-			Assert.AreEqual(ReleaseAction.Publish,ForkReleases.Decide(null,Running("0.0","x"),true,false).Action,"Nothing published yet.");
-			Assert.AreEqual(ReleaseAction.Publish,ForkReleases.Decide(Published("0.0","old"),Running("0.0","new"),true,false).Action,"A rebuild of 0.0.");
-			Assert.AreEqual(ReleaseAction.Publish,ForkReleases.Decide(Published("0.0","old"),Running("0.1","new"),true,false).Action);
-			Assert.AreEqual(ReleaseAction.Pull,ForkReleases.Decide(Published("0.1","new"),Running("0.0","old"),true,false).Action);
-			Assert.AreEqual(ReleaseAction.None,ForkReleases.Decide(Published("0.0","same"),Running("0.0","same"),true,false).Action);
+		public void NamedUpdateServer_PublishesItsBuild_UnlessANewerOneIsPublished() {
+			Assert.AreEqual(ReleaseAction.Publish,Act(null,Running("0.0","x"),NAMED),"Nothing published yet.");
+			Assert.AreEqual(ReleaseAction.Publish,Act(Published("0.0","old"),Running("0.0","new"),NAMED),"A rebuild of 0.0, build order unknown.");
+			Assert.AreEqual(ReleaseAction.Publish,Act(Published("0.0","old",_dateTimeOld),Running("0.0","new",_dateTimeNew),NAMED));
+			Assert.AreEqual(ReleaseAction.Publish,Act(Published("0.0","old"),Running("0.1","new"),NAMED));
+			Assert.AreEqual(ReleaseAction.Pull,Act(Published("0.1","new"),Running("0.0","old"),NAMED));
+			Assert.AreEqual(ReleaseAction.Pull,Act(Published("0.0","new",_dateTimeNew),Running("0.0","old",_dateTimeOld),NAMED),"A later build is published.");
+			Assert.AreEqual(ReleaseAction.None,Act(Published("0.0","same"),Running("0.0","same"),NAMED));
+		}
+
+		[TestMethod]
+		public void BlankUpdateServerName_NeverPublishesAnOlderOrUnorderedBuild() {
+			//WebServiceServerName is blank by default, so every workstation may act as the update server. A workstation still running an older build
+			//of the pinned release "0.0" must update to the published build, not publish its own over it.
+			Assert.AreEqual(ReleaseAction.Publish,Act(null,Running("0.0","x"),BLANK),"Nothing published yet.");
+			Assert.AreEqual(ReleaseAction.Pull,Act(Published("0.0","new"),Running("0.0","old"),BLANK),"Same release, order unknown: pull, never publish.");
+			Assert.AreEqual(ReleaseAction.Pull,Act(Published("0.0","new",_dateTimeNew),Running("0.0","old",_dateTimeOld),BLANK),"Older build: pull.");
+			Assert.AreEqual(ReleaseAction.Pull,Act(Published("0.0","new",_dateTimeNew),Running("0.0","old"),BLANK),"Running build has no time: pull.");
+			Assert.AreEqual(ReleaseAction.Pull,Act(Published("0.0","new",_dateTimeNew),Running("0.0","old",_dateTimeNew),BLANK),"Equal times: pull.");
+			Assert.AreEqual(ReleaseAction.Pull,Act(Published("0.1","new"),Running("0.0","old"),BLANK));
+			Assert.AreEqual(ReleaseAction.Publish,Act(Published("0.0","old",_dateTimeOld),Running("0.0","new",_dateTimeNew),BLANK),"A later build: publish.");
+			Assert.AreEqual(ReleaseAction.Publish,Act(Published("0.0","old"),Running("0.1","new"),BLANK),"A higher release: publish.");
+			Assert.AreEqual(ReleaseAction.None,Act(Published("0.0","same"),Running("0.0","same"),BLANK));
+			StringAssert.Contains(ForkReleases.Decide(Published("0.0","new"),Running("0.0","old"),BLANK,false).Message,"update server",
+				"Tells how to publish this build instead.");
 		}
 
 		[TestMethod]
 		public void Workstation_PullsThePublishedRelease_AndIsNeverOfferedADowngrade() {
-			Assert.AreEqual(ReleaseAction.None,ForkReleases.Decide(null,Running("0.0","x"),false,false).Action);
-			Assert.AreEqual(ReleaseAction.None,ForkReleases.Decide(Published("0.0","same"),Running("0.0","same"),false,false).Action);
-			Assert.AreEqual(ReleaseAction.Pull,ForkReleases.Decide(Published("0.0","new"),Running("0.0","old"),false,false).Action);
-			Assert.AreEqual(ReleaseAction.Pull,ForkReleases.Decide(Published("0.2","new"),Running("0.1","old"),false,false).Action);
-			ReleaseDecision releaseDecision=ForkReleases.Decide(Published("0.1","old"),Running("0.2","new"),false,false,"SERVER1");
+			Assert.AreEqual(ReleaseAction.None,Act(null,Running("0.0","x"),OTHER));
+			Assert.AreEqual(ReleaseAction.None,Act(Published("0.0","same"),Running("0.0","same"),OTHER));
+			Assert.AreEqual(ReleaseAction.Pull,Act(Published("0.0","new"),Running("0.0","old"),OTHER));
+			Assert.AreEqual(ReleaseAction.Pull,Act(Published("0.0","new",_dateTimeNew),Running("0.0","old",_dateTimeOld),OTHER));
+			Assert.AreEqual(ReleaseAction.Pull,Act(Published("0.2","new"),Running("0.1","old"),OTHER));
+			ReleaseDecision releaseDecision=ForkReleases.Decide(Published("0.1","old"),Running("0.2","new"),OTHER,false,"SERVER1");
 			Assert.AreEqual(ReleaseAction.RefuseNewerThanPublished,releaseDecision.Action);
 			StringAssert.Contains(releaseDecision.Message,"SERVER1");
-			Assert.IsFalse(releaseDecision.Message.ToLowerInvariant().Contains("downgrade"));
+			Assert.AreEqual(ReleaseAction.RefuseNewerThanPublished,Act(Published("0.0","old",_dateTimeOld),Running("0.0","new",_dateTimeNew),OTHER),
+				"A later build of the same release is refused, not replaced by the older published one.");
+		}
+
+		[TestMethod]
+		public void OnlyAWorkstationThatMayPublish_KeepsRunningAnUnpublishedBuild() {
+			//The rule IsDbConnectionSafe and Update Setup's Recopy use.
+			Assert.IsTrue(ForkReleases.MayRunUnpublishedBuild(null,Running("0.0","x"),OTHER));
+			Assert.IsTrue(ForkReleases.MayRunUnpublishedBuild(Published("0.0","same"),Running("0.0","same"),OTHER));
+			Assert.IsTrue(ForkReleases.MayRunUnpublishedBuild(Published("0.0","new"),Running("0.0","old"),NAMED));
+			Assert.IsFalse(ForkReleases.MayRunUnpublishedBuild(Published("0.0","new"),Running("0.0","old"),BLANK),"Stale build, blank update server name.");
+			Assert.IsFalse(ForkReleases.MayRunUnpublishedBuild(Published("0.0","new",_dateTimeNew),Running("0.0","old",_dateTimeOld),BLANK));
+			Assert.IsTrue(ForkReleases.MayRunUnpublishedBuild(Published("0.0","old",_dateTimeOld),Running("0.0","new",_dateTimeNew),BLANK));
+			Assert.IsFalse(ForkReleases.MayRunUnpublishedBuild(Published("0.0","new"),Running("0.0","old"),OTHER));
+			Assert.IsFalse(ForkReleases.MayRunUnpublishedBuild(Published("0.0","old",_dateTimeOld),Running("0.0","new",_dateTimeNew),OTHER));
+		}
+
+		[TestMethod]
+		public void UpdateServerRole_FromThePreference() {
+			Assert.AreEqual(BLANK,ForkReleases.GetUpdateServerRole("",x => false));
+			Assert.AreEqual(BLANK,ForkReleases.GetUpdateServerRole("  ",x => true));
+			Assert.AreEqual(NAMED,ForkReleases.GetUpdateServerRole("SERVER1",x => x=="SERVER1"));
+			Assert.AreEqual(OTHER,ForkReleases.GetUpdateServerRole("SERVER1",x => false));
+		}
+
+		[TestMethod]
+		public void BuildTime_RoundTripsThroughTheManifest() {
+			ReleaseManifest releaseManifest=Published("0.0",new string('a',64),_dateTimeNew);
+			string text=releaseManifest.Serialize();
+			StringAssert.Contains(text,"BuildUtc=2026-10-19T09:00:00Z\n");
+			Assert.AreEqual(_dateTimeNew,ReleaseManifest.Parse(text).BuildUtc);
+			Assert.AreEqual(text,ReleaseManifest.Parse(text).Serialize());
+			Assert.IsFalse(Published("0.0",new string('a',64)).Serialize().Contains("BuildUtc"),"Left out when unknown.");
+			Assert.AreEqual(DateTime.MinValue,ReleaseManifest.Parse(Published("0.0",new string('a',64)).Serialize()).BuildUtc);
+			Assert.AreEqual(_dateTimeNew,ForkReleases.ParseBuildUtc("2026-10-19T09:00:00Z"));
+			Assert.AreEqual(DateTime.MinValue,ForkReleases.ParseBuildUtc("not a time"));
+		}
+
+		[TestMethod]
+		public void BuiltOpenDentalExe_CarriesItsBuildTime() {
+			string path=Path.Combine(TestPaths.RepoRoot,"OpenDental","bin","Debug","OpenDental.exe");
+			if(!File.Exists(path)) {
+				Assert.Inconclusive("OpenDental is not built.");
+			}
+			//Loaded only to read its attributes; nothing in it runs.
+			DateTime dateTimeBuildUtc=ForkReleases.GetBuildUtc(System.Reflection.Assembly.LoadFrom(path));
+			Assert.AreNotEqual(DateTime.MinValue,dateTimeBuildUtc,"OpenDental.csproj stamps "+ForkReleases.BUILD_UTC_METADATA_KEY+" into OpenDental.exe.");
+			Assert.IsTrue(dateTimeBuildUtc<=DateTime.UtcNow.AddMinutes(5));
 		}
 
 		[TestMethod]
 		public void DebugBuilds_NeitherPublishNorPull() {
-			Assert.AreEqual(ReleaseAction.None,ForkReleases.Decide(null,Running("0.0","x"),true,true).Action);
-			Assert.AreEqual(ReleaseAction.None,ForkReleases.Decide(Published("0.1","new"),Running("0.0","old"),false,true).Action);
+			Assert.AreEqual(ReleaseAction.None,ForkReleases.Decide(null,Running("0.0","x"),NAMED,true).Action);
+			Assert.AreEqual(ReleaseAction.None,ForkReleases.Decide(null,Running("0.0","x"),BLANK,true).Action);
+			Assert.AreEqual(ReleaseAction.None,ForkReleases.Decide(Published("0.1","new"),Running("0.0","old"),OTHER,true).Action);
 		}
 
 		[TestMethod]

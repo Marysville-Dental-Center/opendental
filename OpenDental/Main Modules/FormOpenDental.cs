@@ -3416,12 +3416,16 @@ namespace OpenDental{
 					+Lan.g(this,"You will have to restart")+" "+PrefC.GetString(PrefName.SoftwareName)+" "+Lan.g(this,"to correct the version mismatch.");
 				return false;
 			}
-			if(!ODBuild.IsDebug() && !PrefL.IsUpdateServer()) {
-				//The update server published a different build since this one started (ForkProgramVersion holds "release+buildId"). The update server
-				//itself may run a build it chose not to publish.
+			if(!ODBuild.IsDebug()) {
+				//A different build was published since this one started (ForkProgramVersion holds "release+buildId"). Only a workstation that may
+				//publish its own build keeps running it: the named update server, or (blank WebServiceServerName) a build known to be newer than the
+				//published one. The same rule as at startup (ForkReleases.Decide), so a stale build never keeps running.
 				ReleaseIdentity releaseIdentityPublished=ForkReleases.ParseProgramVersion(forkDbState.ForkProgramVersion);
 				ReleaseIdentity releaseIdentityRunning=ForkReleases.GetRunningIdentity();
-				if(releaseIdentityPublished!=null && releaseIdentityPublished.BuildId!=releaseIdentityRunning.BuildId) {
+				bool isOtherBuildPublished=releaseIdentityPublished!=null && releaseIdentityPublished.BuildId!=releaseIdentityRunning.BuildId;
+				if(isOtherBuildPublished && !ForkReleases.MayRunUnpublishedBuild(ForkReleases.GetPublishedManifestOrMarker(releaseIdentityPublished),
+					releaseIdentityRunning,PrefL.GetUpdateServerRole()))
+				{
 					errorMsg=Lan.g(this,"You are running release")+" "+releaseIdentityRunning+", "
 						+Lan.g(this,"but the update server published release")+" "+releaseIdentityPublished+".\r\n\r\n"
 						+Lan.g(this,"You will have to restart")+" "+PrefC.GetString(PrefName.SoftwareName)+" "+Lan.g(this,"to correct the version mismatch.");

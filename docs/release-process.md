@@ -22,6 +22,8 @@ Raise the release version by editing `AssemblyInformationalVersion`, for example
 
 A build is identified by its **build id**: a SHA-256 over the program's own assemblies (`ForkReleases.ListBuildIdFiles`: `OpenDental.exe`, `OpenDentBusiness.dll`, `CodeBase.dll` and the others). Every rebuild of `0.0` therefore counts as a different build, and third-party DLLs aren't hashed at every startup.
 
+Because the release version stays `0.0` across rebuilds, it can't tell an older build from a newer one. Each build therefore also carries its **build time**. `OpenDental.csproj` (target `ForkWriteBuildStamp`) writes `[assembly: AssemblyMetadata("ForkBuildUtc", "…Z")]` into `OpenDental.exe`. It rewrites the stamp only when something compiled into `OpenDental.exe` changed (its sources, references, resources, the project file or `UpdateFileCopier.exe`), so an unchanged rebuild keeps its build id. The release manifest records the stamp as `BuildUtc`. A higher release version is newer. Within one release version, the later build time is newer. If either time is missing or the two are equal, the order is unknown.
+
 ## Fork version markers
 
 These are four preference rows. The fork reads and writes them with plain SQL (`ForkVersions`), so they need no `PrefName` entry. None of the names is an Open Dental preference.
@@ -30,7 +32,7 @@ These are four preference rows. The fork reads and writes them with plain SQL (`
 |---|---|
 | `ForkSchemaLevel` | The last fork migration step applied. `0` right after adoption. If this row exists, the database is adopted. |
 | `OdSchemaCompat` | The Open Dental schema the database matches exactly (`25.3.48` or `24.3.63`). The M1-01 runner and schema verifier advance it. |
-| `ForkAdoptedFrom` | The adoption record: `source=25.3.48.0;started=…;adopted=…` (UTC). If it has no `adopted=` and there is no `ForkSchemaLevel`, the adoption didn't finish. |
+| `ForkAdoptedFrom` | The adoption record: `source=25.3.48.0;started=…;adopted=…` (UTC). If it has no `adopted=` and there is no `ForkSchemaLevel`, the adoption didn't finish. If it has `adopted=` but `ForkSchemaLevel` or `OdSchemaCompat` is missing, the markers of an adopted database were removed: that database is refused, never adopted again. |
 | `ForkProgramVersion` | The release published from the update server: `release+buildId`, for example `0.0+3f2a…`. |
 
 Adoption also sets `DataBaseVersion` and `ProgramVersion` to the **sentinel** `99.0.0.0`. No Open Dental release will reach that number. An Open Dental client therefore sees a "newer" database: it skips its own conversion, finds no update files and can't use the copy. The fork reads those two preferences only to recognize an unadopted database.
@@ -48,11 +50,12 @@ Adoption also sets `DataBaseVersion` and `ProgramVersion` to the **sentinel** `9
 | Adopted by a newer release (`ForkSchemaLevel` above what this build knows) | Pulls the published release if there is one, otherwise refused (exit 172). |
 | Adopted, but `DataBaseVersion`/`ProgramVersion` changed, or markers incomplete | Refused (exit 173). |
 | Sentinel versions with no markers (markers removed) | Refused (exit 173). Restore a backup. |
-| Adoption started but not finished | Refused. The adoption tool can finish it. |
+| `ForkAdoptedFrom` says `adopted=`, but `ForkSchemaLevel` (or `ForkSchemaLevel` and `OdSchemaCompat`) was removed | Refused (exit 173). This is not an unfinished adoption: the adoption tool refuses it too, so the schema level is never reset and the fork migration steps never run a second time. Restore a backup. |
+| Adoption started but not finished (`ForkAdoptedFrom` without `adopted=`, no `ForkSchemaLevel`) | Refused. The adoption tool can finish it. |
 
 No case offers a "downgrade". Open Dental's `UpdateFiles` and `UpdateFilesSegment` rows are never read. The only code that names them is `DocumentMiscs.DeleteOpenDentalUpdateFiles`, which adoption calls.
 
-When an inactive workstation becomes active again, `FormOpenDental.IsDbConnectionSafe` runs the same guard, in Debug builds too. In Release builds, other workstations also restart when the update server has published a different build.
+When an inactive workstation becomes active again, `FormOpenDental.IsDbConnectionSafe` runs the same guard, in Debug builds too. In Release builds, a workstation also restarts when a different build has been published, unless it may publish its own build under the rules below (`ForkReleases.MayRunUnpublishedBuild`): the named update server, or, with a blank `WebServiceServerName`, a build known to be newer. A blank preference never exempts a stale build.
 
 The legacy `ConvertDatabases` chain is frozen at 24.3.63 (`ConvertDatabases.FrozenVersion`). Adding a `ToX_Y_Z` method above it throws, and so does running the chain on a newer database. Later schema changes are fork migration steps. `PrefL.ConvertDB` hands an adopted database to the runner through `IForkMigrationRunner` (`ForkMigrationHandOff`). Until M1-01's runner is merged, a baseline runner with no steps is used.
 
@@ -78,6 +81,7 @@ The preflight refuses these databases:
 - a database flagged `CorruptedDatabase`
 - an update marked in progress
 - an already adopted database
+- an adopted database whose markers were removed (`ForkAdoptedFrom` says `adopted=`)
 - a middle-tier connection
 
 Re-entering bridge passwords and rehashing `SecurityHash` columns are separate steps of the M1-Z rehearsal. Adoption doesn't do them.
@@ -86,11 +90,11 @@ Before adopting the office copy, stop and uninstall the Open Dental services on 
 
 ## Publishing a release
 
-The **update server** is the workstation named in the `WebServiceServerName` preference (Update Setup). If that preference is blank, any workstation acts as the update server.
+The **update server** is the workstation named in the `WebServiceServerName` preference (Update Setup). Name it before you publish rebuilds. If that preference is blank (the default), any workstation may act as the update server, but only within limits: it may publish the first release, or a build known to be newer than the published one (a higher release version, or the same release with a later build time). It never replaces a published build that is newer or whose order is unknown. It updates to that build instead.
 
 1. Build the solution in Release. `OpenDental.csproj` copies `UpdateFileCopier.exe` next to `OpenDental.exe`, because every release ships it.
 2. Install the build on the update server, for example by copying the output folder over the installation, and start it as an administrator.
-3. At startup, `PrefL.CheckProgramVersion` sees that this build isn't the published one and asks whether to publish it. If you click Cancel, this workstation runs the build without publishing it. Update Setup's Recopy button publishes the running build at any time.
+3. At startup, `PrefL.CheckProgramVersion` sees that this build isn't the published one and asks whether to publish it. If you click Cancel, this workstation runs the build without publishing it. Update Setup's Recopy button publishes the running build at any time, under the same rules: with a blank `WebServiceServerName` it refuses to replace a different published build that this one isn't known to be newer than. A silent run publishes only when nothing is published yet. It never replaces a published release, because nobody is asked.
 4. Publishing (`ForkReleases.Publish`) works like this:
    - While it runs, `UpdateInProgressOnComputerName` is set, so other workstations wait.
    - It zips the installation folder, except local files: `FreeDentalConfig.xml`, logs, files with `__` in the name, and Open Dental's `Manifest.txt`. The `Sparks3D` and `OpenDentalReplicationService` sub folders are included.
@@ -101,7 +105,7 @@ The **update server** is the workstation named in the `WebServiceServerName` pre
 
 The manifest (`ForkRelease.manifest`, `ReleaseManifest`) names the product `Open PMS - Dental`. It also records:
 
-- the release version, build id and compatibility version
+- the release version, build id, build time and compatibility version
 - the publish time and the workstation that published it
 - the SHA-256 of the archive
 - for every file: its path, size and SHA-256
@@ -112,14 +116,18 @@ The archive holds a copy of the manifest without the archive hash.
 
 At startup each workstation compares its build with the published one (`ForkReleases.Decide`):
 
-| Situation | Action |
-|---|---|
-| Same build id | Nothing. |
-| Published release is the same or newer, different build | **Pull**. The workstation downloads the release and checks it: product name, archive SHA-256, only listed files, safe paths, archive manifest equal to the published one, and every file's size and SHA-256. It then asks for OK and starts `UpdateFileCopier`. UpdateFileCopier checks the manifest and every file again, both in the download and in its local copy, then copies the files, writes the manifest last and restarts the program. If any check fails, nothing on the workstation changes. |
-| This workstation runs a newer release than the published one | Refused (exit 174), with a message to run the new release on the update server first. There is no downgrade offer. |
-| Update server, published release newer | Pull. |
-| Update server, own release the same or newer, different build | Offer to publish. |
-| Debug build | Never publishes or pulls. The version guard still runs. |
+| Situation | Named update server (`WebServiceServerName` is this computer) | `WebServiceServerName` blank | Another computer is named |
+|---|---|---|---|
+| Same build id | Nothing. | Nothing. | Nothing. |
+| Nothing published yet | Offer to publish. | Offer to publish. | Nothing. |
+| A newer build is published (higher release, or same release with a later build time) | Pull. | Pull. | Pull. |
+| This build is newer (higher release, or same release with a later build time) | Offer to publish. | Offer to publish. | Refused (exit 174), with a message to run the new build on the update server first. |
+| Same release, different build, order unknown | Offer to publish. | Pull. The message says how to publish this build instead: name this computer as the update server. | Pull. |
+| Debug build | Never publishes or pulls. The version guard still runs. | Same. | Same. |
+
+**Pull** means: the workstation downloads the release and checks it: product name, archive SHA-256, only listed files, safe paths, archive manifest equal to the published one, and every file's size and SHA-256. It then asks for OK and starts `UpdateFileCopier`. UpdateFileCopier checks the manifest and every file again, both in the download and in its local copy, then copies the files, writes the manifest last and restarts the program. If any check fails, nothing on the workstation changes.
+
+No row offers a downgrade. A pull always goes to a build that is newer, or, when the order is unknown, to the build the office published. A workstation still running an old build is never asked to publish it over the office's release. Only the named update server, which the office chose, can replace a build it can't prove older.
 
 Dynamic mode, where Open Dental kept per-version program folders, isn't part of the fork's release channel.
 
@@ -134,6 +142,8 @@ vstest.console.exe tests/ReleaseFlowTests/bin/Debug/ReleaseFlowTests.dll /Platfo
 - Guard decisions for the full startup matrix: fresh 24.3.63, office copy 25.3.48, copies edited to 25.3.50 and 25.4.0, adopted, adopted with markers removed, adopted by a newer build, unfinished adoption.
 - Adoption on scratch databases with synthetic data. The 25.3.48 case uses the `od_253_schema` patient definition when it's loaded, otherwise the column and index from `fox-db-schema.sql`.
 - Publish and pull round trips, including tampered segments, a tampered manifest and a manifest for another product.
+- The publish/pull decision for the named, blank and other update server cases, with and without build times; the restart rule of `IsDbConnectionSafe`; and the build time stamped into `OpenDental.exe`.
+- An adopted copy with only `ForkSchemaLevel`, or `ForkSchemaLevel` and `OdSchemaCompat`, removed: refused (exit 173) and never adopted again.
 - Source checks: `OpenDental.exe` reports `0.0` and `24.3.63.0`; the legacy chain is frozen; the guard code has no Debug bypass; Open Dental's update file types are only ever deleted; no downgrade prompt; UpdateFileCopier checks the manifest before copying.
 
 Database tests use `127.0.0.1:3306` (root, blank password). They are inconclusive if no server answers, or if `RELEASEFLOW_TEST_DB=skip` is set.

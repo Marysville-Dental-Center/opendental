@@ -23,11 +23,16 @@ namespace OpenDental {
 	///take over. Open Dental's update files (documentmisc UpdateFiles rows) are never read, and no downgrade is ever offered.</summary>
 	public class PrefL {
 
-		///<summary>True when this workstation is the update server: the WebServiceServerName preference is blank or names this computer. Only the
-		///update server converts the database and publishes releases.</summary>
+		///<summary>True when this workstation may act as the update server: the WebServiceServerName preference is blank or names this computer. Only
+		///the update server converts the database and publishes releases. Whether it may replace a release that is already published depends on
+		///GetUpdateServerRole: with a blank preference only by a build known to be newer (ForkReleases.Decide).</summary>
 		public static bool IsUpdateServer() {
-			string updateServerName=PrefC.GetString(PrefName.WebServiceServerName);
-			return updateServerName=="" || ODEnvironment.IdIsThisComputer(updateServerName.ToLower());
+			return GetUpdateServerRole()!=UpdateServerRole.OtherComputer;
+		}
+
+		///<summary>Whether WebServiceServerName names this computer, another computer, or is blank (any workstation).</summary>
+		public static UpdateServerRole GetUpdateServerRole() {
+			return ForkReleases.GetUpdateServerRole(PrefC.GetString(PrefName.WebServiceServerName),x => ODEnvironment.IdIsThisComputer(x.ToLower()));
 		}
 
 		#region Version guard
@@ -208,10 +213,14 @@ namespace OpenDental {
 			}
 			ReleaseIdentity releaseIdentityRunning=ForkReleases.GetRunningIdentity();
 			ReleaseManifest releaseManifestPublished=ForkReleases.GetPublishedManifest(out string _);
-			ReleaseDecision releaseDecision=ForkReleases.Decide(releaseManifestPublished,releaseIdentityRunning,isUpdateServer,ODBuild.IsDebug(),
+			ReleaseDecision releaseDecision=ForkReleases.Decide(releaseManifestPublished,releaseIdentityRunning,GetUpdateServerRole(),ODBuild.IsDebug(),
 				PrefC.GetString(PrefName.WebServiceServerName));
 			switch(releaseDecision.Action) {
 				case ReleaseAction.Publish:
+					if(isSilent && releaseManifestPublished!=null) {
+						//A silent run never replaces a published release: nobody is asked. The first release is still published silently.
+						return true;
+					}
 					return PublishRelease(releaseIdentityRunning,isSilent,releaseDecision.Message,doAsk:true);
 				case ReleaseAction.Pull:
 					PullRelease(releaseManifestPublished,releaseIdentityRunning,isSilent);
@@ -236,7 +245,18 @@ namespace OpenDental {
 				}
 				return false;
 			}
-			return PublishRelease(ForkReleases.GetRunningIdentity(),isSilent,"",doAsk:false);
+			ReleaseIdentity releaseIdentityRunning=ForkReleases.GetRunningIdentity();
+			ReleaseManifest releaseManifestPublished=ForkReleases.GetPublishedManifest(out string _);
+			if(!ForkReleases.MayRunUnpublishedBuild(releaseManifestPublished,releaseIdentityRunning,GetUpdateServerRole())) {
+				//Blank WebServiceServerName and a different published build that this one is not known to be newer than: never replace it from here.
+				if(!isSilent) {
+					MessageBox.Show(Lan.g("Prefs","A different build is published")+" ("+releaseManifestPublished.ReleaseVersion+", "
+						+Lan.g("Prefs","build")+" "+releaseManifestPublished.BuildId.Substring(0,Math.Min(12,releaseManifestPublished.BuildId.Length))+").\r\n"
+						+Lan.g("Prefs","This build is not known to be newer, so it does not replace it. To publish this build, name this computer as the update server first."));
+				}
+				return false;
+			}
+			return PublishRelease(releaseIdentityRunning,isSilent,"",doAsk:false);
 		}
 
 		///<summary>Stores this installation's files in the database as the published release, so the other workstations update to it on their next

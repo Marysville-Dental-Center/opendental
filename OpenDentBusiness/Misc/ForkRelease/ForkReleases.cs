@@ -2,32 +2,53 @@
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using CodeBase;
 using Ionic.Zip;
 
 namespace OpenDentBusiness {
-	///<summary>Which build is running or was published: the release version ("0.0") and the build id.</summary>
+	///<summary>Which build is running or was published: the release version ("0.0"), the build id and the build time.</summary>
 	[Serializable]
 	public class ReleaseIdentity {
 		public string ReleaseVersion="";
 		public string BuildId="";
+		///<summary>When the build was compiled (UTC), from the ForkBuildUtc assembly metadata that OpenDental.csproj writes. Orders two builds of the
+		///same release version. DateTime.MinValue when unknown.</summary>
+		public DateTime BuildUtc=DateTime.MinValue;
 
 		public override string ToString() {
-			return ReleaseVersion+" (build "+(BuildId.Length>12?BuildId.Substring(0,12):BuildId)+")";
+			return ReleaseVersion+" (build "+(BuildId.Length>12?BuildId.Substring(0,12):BuildId)
+				+(BuildUtc==DateTime.MinValue?"":", built "+BuildUtc.ToString("yyyy-MM-dd HH:mm",CultureInfo.InvariantCulture)+" UTC")+")";
 		}
+	}
+
+	///<summary>How this workstation relates to the update server, from the WebServiceServerName preference.</summary>
+	public enum UpdateServerRole {
+		///<summary>WebServiceServerName names another computer. This workstation never publishes.</summary>
+		OtherComputer,
+		///<summary>WebServiceServerName is blank (the default), so any workstation may act as the update server. A workstation may publish when
+		///nothing is published yet or when its build is known to be newer than the published one; it never replaces a published build that is newer or
+		///whose order is unknown.</summary>
+		AnyWorkstation,
+		///<summary>WebServiceServerName names this computer: the update server chosen by the office. It may replace the published build.</summary>
+		ThisComputer,
 	}
 
 	public enum ReleaseAction {
 		///<summary>Nothing to do: this workstation runs the published build, or nothing applies.</summary>
 		None,
-		///<summary>This is the update server and it runs a build that is not published yet (same release or newer): store its binaries.</summary>
+		///<summary>Offer to store this workstation's binaries as the published release: nothing is published yet, this is the named update server, or
+		///(blank WebServiceServerName) this build is known to be newer than the published one.</summary>
 		Publish,
-		///<summary>A different build of the same or a newer release is published: update this workstation from it.</summary>
+		///<summary>A different build is published that is newer, or whose order is unknown and that this workstation may not replace: update this
+		///workstation from it.</summary>
 		Pull,
-		///<summary>This workstation runs a newer release than the one published and is not the update server. Refused; no downgrade is offered.</summary>
+		///<summary>This workstation runs a newer release or build than the one published and may not publish it. Refused; no downgrade is offered.
+		///</summary>
 		RefuseNewerThanPublished,
 	}
 
@@ -69,6 +90,8 @@ namespace OpenDentBusiness {
 			"PasswordVaultWrapper.dll",
 			"UpdateFileCopier.exe",
 		};
+		///<summary>Key of the AssemblyMetadata attribute that holds the build time of OpenDental.exe (written by OpenDental.csproj).</summary>
+		public const string BUILD_UTC_METADATA_KEY="ForkBuildUtc";
 		private static ReleaseIdentity _releaseIdentityRunning;
 
 		#region Identity
@@ -85,15 +108,40 @@ namespace OpenDentBusiness {
 			return ReleaseManifest.ComputeSha256(Encoding.UTF8.GetBytes(stringBuilder.ToString()));
 		}
 
-		///<summary>The running program's identity: release version from OpenDental.exe and build id of the installation folder. Computed once.</summary>
+		///<summary>The running program's identity: release version and build time from OpenDental.exe, and build id of the installation folder.
+		///Computed once.</summary>
 		public static ReleaseIdentity GetRunningIdentity() {
 			if(_releaseIdentityRunning==null) {
 				ReleaseIdentity releaseIdentity=new ReleaseIdentity();
 				releaseIdentity.ReleaseVersion=ForkVersions.GetReleaseVersion();
 				releaseIdentity.BuildId=ComputeBuildId(AppDomain.CurrentDomain.BaseDirectory);
+				releaseIdentity.BuildUtc=GetBuildUtc();
 				_releaseIdentityRunning=releaseIdentity;
 			}
 			return _releaseIdentityRunning;
+		}
+
+		///<summary>The build time (UTC) that OpenDental.csproj stamps into OpenDental.exe as [assembly: AssemblyMetadata("ForkBuildUtc",...)] each time
+		///the program is compiled. Reads the given assembly, else the entry assembly. DateTime.MinValue when it has no readable stamp.</summary>
+		public static DateTime GetBuildUtc(Assembly assembly=null) {
+			assembly=assembly??Assembly.GetEntryAssembly();
+			if(assembly==null) {
+				return DateTime.MinValue;
+			}
+			AssemblyMetadataAttribute assemblyMetadataAttribute=assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
+				.FirstOrDefault(x => x.Key==BUILD_UTC_METADATA_KEY);
+			return ParseBuildUtc(assemblyMetadataAttribute?.Value);
+		}
+
+		///<summary>Parses a build time in the form yyyy-MM-ddTHH:mm:ssZ. DateTime.MinValue when blank or malformed.</summary>
+		public static DateTime ParseBuildUtc(string value) {
+			DateTime dateTime;
+			if(string.IsNullOrWhiteSpace(value) || !DateTime.TryParseExact(value.Trim(),"yyyy-MM-dd'T'HH:mm:ss'Z'",CultureInfo.InvariantCulture,
+				DateTimeStyles.AdjustToUniversal|DateTimeStyles.AssumeUniversal,out dateTime))
+			{
+				return DateTime.MinValue;
+			}
+			return dateTime;
 		}
 
 		///<summary>The ForkProgramVersion marker value for a release: "releaseVersion+buildId".</summary>
@@ -118,11 +166,42 @@ namespace OpenDentBusiness {
 		#endregion Identity
 
 		#region Decision
-		///<summary>What this workstation does with the published release. No case ever offers a downgrade: a workstation whose release is newer than
-		///the published one is refused (or, on the update server, publishes), and an older or equal release with a different build pulls.
+		///<summary>The role of this workstation from the WebServiceServerName preference: blank means any workstation, otherwise the named computer
+		///is the update server and every other computer is not.</summary>
+		public static UpdateServerRole GetUpdateServerRole(string updateServerName,Func<string,bool> funcIsThisComputer) {
+			if(string.IsNullOrWhiteSpace(updateServerName)) {
+				return UpdateServerRole.AnyWorkstation;
+			}
+			return funcIsThisComputer(updateServerName.Trim()) ? UpdateServerRole.ThisComputer : UpdateServerRole.OtherComputer;
+		}
+
+		///<summary>Orders the published build and the running build. Greater than 0 when the published one is newer, less than 0 when the running one
+		///is newer, null when the order is unknown. A higher release version is newer. Within one release version (it is pinned at "0.0" for now), the
+		///build times decide; if either is missing or they are equal, the order is unknown.</summary>
+		public static int? CompareBuilds(ReleaseManifest releaseManifestPublished,ReleaseIdentity releaseIdentityRunning) {
+			int compare=ForkVersions.CompareReleaseVersions(releaseManifestPublished.ReleaseVersion,releaseIdentityRunning.ReleaseVersion);
+			if(compare!=0) {
+				return compare;
+			}
+			if(releaseManifestPublished.BuildUtc==DateTime.MinValue || releaseIdentityRunning.BuildUtc==DateTime.MinValue
+				|| releaseManifestPublished.BuildUtc==releaseIdentityRunning.BuildUtc)
+			{
+				return null;
+			}
+			return releaseManifestPublished.BuildUtc.CompareTo(releaseIdentityRunning.BuildUtc);
+		}
+
+		///<summary>What this workstation does with the published release. No case ever offers a downgrade:
+		///- Nothing published: the update server (named, or any workstation when WebServiceServerName is blank) offers to publish.
+		///- A newer build is published: pull it.
+		///- The named update server (WebServiceServerName is this computer) may replace the published build: it offers to publish.
+		///- This build is known to be newer (higher release version, or same release and later build time): with a blank WebServiceServerName it offers
+		///to publish, otherwise it is refused until the update server publishes it.
+		///- Same release and the order is unknown: pull. Only the named update server replaces a build it cannot prove older, so a workstation that
+		///still runs an old build never publishes it over the office's release.
 		///Debug builds never publish or pull; the version guard still runs for them.</summary>
-		public static ReleaseDecision Decide(ReleaseManifest releaseManifestPublished,ReleaseIdentity releaseIdentityRunning,bool isUpdateServer,
-			bool isDebugBuild,string updateServerName="")
+		public static ReleaseDecision Decide(ReleaseManifest releaseManifestPublished,ReleaseIdentity releaseIdentityRunning,
+			UpdateServerRole updateServerRole,bool isDebugBuild,string updateServerName="")
 		{
 			ReleaseDecision releaseDecision=new ReleaseDecision();
 			if(isDebugBuild) {
@@ -130,7 +209,7 @@ namespace OpenDentBusiness {
 				return releaseDecision;
 			}
 			if(releaseManifestPublished==null) {
-				if(isUpdateServer) {
+				if(updateServerRole!=UpdateServerRole.OtherComputer) {
 					releaseDecision.Action=ReleaseAction.Publish;
 					releaseDecision.Message="No release is published yet.";
 				}
@@ -139,35 +218,55 @@ namespace OpenDentBusiness {
 			if(releaseManifestPublished.BuildId==releaseIdentityRunning.BuildId) {
 				return releaseDecision;
 			}
-			int compare=ForkVersions.CompareReleaseVersions(releaseManifestPublished.ReleaseVersion,releaseIdentityRunning.ReleaseVersion);
-			if(isUpdateServer) {
-				if(compare<=0) {
-					releaseDecision.Action=ReleaseAction.Publish;
-					releaseDecision.Message="This build is not the published one ("+Describe(releaseManifestPublished)+").";
-				}
-				else {
-					releaseDecision.Action=ReleaseAction.Pull;
-					releaseDecision.Message="A newer release is published ("+Describe(releaseManifestPublished)+").";
-				}
-				return releaseDecision;
-			}
-			if(compare>=0) {
+			int? compare=CompareBuilds(releaseManifestPublished,releaseIdentityRunning);
+			if(compare>0) {
 				releaseDecision.Action=ReleaseAction.Pull;
-				releaseDecision.Message="The update server published "+Describe(releaseManifestPublished)+".";
+				releaseDecision.Message="A newer build is published: "+Describe(releaseManifestPublished)+".";
 				return releaseDecision;
 			}
-			releaseDecision.Action=ReleaseAction.RefuseNewerThanPublished;
-			releaseDecision.Message="This workstation runs release "+releaseIdentityRunning+", which is newer than the published release "
-				+Describe(releaseManifestPublished)+".\r\n"
-				+"Run the new release on the update server"+(string.IsNullOrEmpty(updateServerName)?"":" ("+updateServerName+")")
-				+" first so it is published, or install the published release on this workstation.";
+			if(updateServerRole==UpdateServerRole.ThisComputer) {
+				releaseDecision.Action=ReleaseAction.Publish;
+				releaseDecision.Message="This build is not the published one ("+Describe(releaseManifestPublished)+").";
+				return releaseDecision;
+			}
+			if(compare<0) {
+				if(updateServerRole==UpdateServerRole.AnyWorkstation) {
+					releaseDecision.Action=ReleaseAction.Publish;
+					releaseDecision.Message="This build is newer than the published one ("+Describe(releaseManifestPublished)+").";
+					return releaseDecision;
+				}
+				releaseDecision.Action=ReleaseAction.RefuseNewerThanPublished;
+				releaseDecision.Message="This workstation runs "+releaseIdentityRunning+", which is newer than the published release "
+					+Describe(releaseManifestPublished)+".\r\n"
+					+"Run the new release on the update server"+(string.IsNullOrEmpty(updateServerName)?"":" ("+updateServerName+")")
+					+" first so it is published, or install the published release on this workstation.";
+				return releaseDecision;
+			}
+			//Same release version and no build order. Only the named update server may replace the published build, so pull it.
+			releaseDecision.Action=ReleaseAction.Pull;
+			releaseDecision.Message="The update server published "+Describe(releaseManifestPublished)+".";
+			if(updateServerRole==UpdateServerRole.AnyWorkstation) {
+				releaseDecision.Message+="\r\nTo publish this build instead, name this computer as the update server (Update Setup) and start it again.";
+			}
 			return releaseDecision;
+		}
+
+		///<summary>True when this workstation may keep running a build other than the published one: the decision would offer to publish it (the
+		///named update server, or a build known to be newer with a blank WebServiceServerName). Any other different build must update.</summary>
+		public static bool MayRunUnpublishedBuild(ReleaseManifest releaseManifestPublished,ReleaseIdentity releaseIdentityRunning,
+			UpdateServerRole updateServerRole)
+		{
+			if(releaseManifestPublished==null || releaseManifestPublished.BuildId==releaseIdentityRunning.BuildId) {
+				return true;
+			}
+			return Decide(releaseManifestPublished,releaseIdentityRunning,updateServerRole,isDebugBuild:false).Action==ReleaseAction.Publish;
 		}
 
 		private static string Describe(ReleaseManifest releaseManifest) {
 			ReleaseIdentity releaseIdentity=new ReleaseIdentity();
 			releaseIdentity.ReleaseVersion=releaseManifest.ReleaseVersion;
 			releaseIdentity.BuildId=releaseManifest.BuildId;
+			releaseIdentity.BuildUtc=releaseManifest.BuildUtc;
 			return releaseIdentity.ToString();
 		}
 		#endregion Decision
@@ -219,6 +318,7 @@ namespace OpenDentBusiness {
 			ReleaseManifest releaseManifest=new ReleaseManifest();
 			releaseManifest.ReleaseVersion=releaseIdentity.ReleaseVersion;
 			releaseManifest.BuildId=releaseIdentity.BuildId;
+			releaseManifest.BuildUtc=releaseIdentity.BuildUtc;
 			releaseManifest.CompatVersion=ForkVersions.CompatVersion.ToString(4);
 			releaseManifest.PublishedUtc=new DateTime(dateTimeUtc.Year,dateTimeUtc.Month,dateTimeUtc.Day,dateTimeUtc.Hour,dateTimeUtc.Minute,
 				dateTimeUtc.Second,DateTimeKind.Utc);
@@ -282,6 +382,19 @@ namespace OpenDentBusiness {
 				error="The published release manifest is for another product ("+releaseManifest.Product+").";
 				return null;
 			}
+			return releaseManifest;
+		}
+
+		///<summary>The published manifest (for its build time), or, when it is missing or unreadable, a manifest with only the release version and
+		///build id of the ForkProgramVersion marker, whose build order is then unknown.</summary>
+		public static ReleaseManifest GetPublishedManifestOrMarker(ReleaseIdentity releaseIdentityMarker) {
+			ReleaseManifest releaseManifest=GetPublishedManifest(out string _);
+			if(releaseManifest!=null && releaseManifest.BuildId==releaseIdentityMarker.BuildId) {
+				return releaseManifest;
+			}
+			releaseManifest=new ReleaseManifest();
+			releaseManifest.ReleaseVersion=releaseIdentityMarker.ReleaseVersion;
+			releaseManifest.BuildId=releaseIdentityMarker.BuildId;
 			return releaseManifest;
 		}
 
