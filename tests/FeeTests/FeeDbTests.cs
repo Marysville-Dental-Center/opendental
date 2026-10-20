@@ -380,6 +380,96 @@ namespace FeeTests {
 			Assert.AreEqual(60,procFee);
 		}
 
+		///<summary>Edit All Procedures (FormProcEditAll) with a provider change: it builds the fee list with GetListExactAllDates for the new
+		///provider's schedule and passes it to ShouldFeesChange and GetProcFee. A completed procedure dated before a dated fee must get the fee that
+		///was in effect on its procedure date, not $0.</summary>
+		[TestMethod]
+		public void Db_GetProcFee_ListLikeEditAll_CompletedBeforeDatedFee() {
+			FeeSched feeSched=NewFeeSched();
+			ProcedureCode procedureCode=NewCode();
+			Provider provider=new Provider();
+			provider.Abbr="FTP"+(++_counter);
+			provider.LName="Fictional";
+			provider.FName="Provider"+_counter;
+			provider.FeeSched=feeSched.FeeSchedNum;
+			Providers.Insert(provider);
+			Providers.RefreshCache();
+			InsertFee(feeSched.FeeSchedNum,procedureCode.CodeNum,80,DateTime.MinValue,0,provider.ProvNum);
+			InsertFee(feeSched.FeeSchedNum,procedureCode.CodeNum,90,_date2025,0,provider.ProvNum);//in effect today
+			Patient patient=new Patient { PriProv=provider.ProvNum };
+			Procedure procedure=new Procedure { CodeNum=procedureCode.CodeNum,ProvNum=provider.ProvNum,ClinicNum=0,ProcStatus=ProcStat.C,
+				ProcDate=new DateTime(2024,12,15),DateComplete=DateTime.Today,ProcFee=0 };
+			//The list as FormProcEditAll builds it.
+			List<Fee> listFees=Fees.GetListExactAllDates(feeSched.FeeSchedNum,0,provider.ProvNum);
+			Assert.AreEqual(2,listFees.Count);
+			double procFee=Procedures.GetProcFee(patient,new List<PatPlan>(),new List<InsSub>(),new List<InsPlan>(),procedure,null,listFees);
+			Assert.AreEqual(80,procFee);
+			//The today-only list (what Edit All used to pass) has no row in effect on the procedure date.
+			List<Fee> listFeesToday=Fees.GetListExact(feeSched.FeeSchedNum,0,provider.ProvNum);
+			Assert.AreEqual(1,listFeesToday.Count);
+			Assert.AreEqual(90,listFeesToday[0].Amount);
+			//A treatment planned procedure with the same list gets today's fee.
+			procedure.ProcStatus=ProcStat.TP;
+			procedure.DateComplete=DateTime.MinValue;
+			Assert.AreEqual(90,Procedures.GetProcFee(patient,new List<PatPlan>(),new List<InsSub>(),new List<InsPlan>(),procedure,null,listFees));
+			//ShouldFeesChange ("prompt if the fee amount is different") compares against $80, the fee on the procedure date, not $0.
+			int promptOld=PrefC.GetInt(PrefName.ProcFeeUpdatePrompt);
+			try {
+				Prefs.UpdateInt(PrefName.ProcFeeUpdatePrompt,3);
+				procedure.ProcStatus=ProcStat.C;
+				procedure.DateComplete=DateTime.Today;
+				procedure.ProcFee=80;
+				Procedure procedureOld=procedure.Copy();
+				ProcFeeHelper procFeeHelper=new ProcFeeHelper(patient,listFees,new List<PatPlan>(),new List<InsSub>(),new List<InsPlan>(),new List<Benefit>());
+				string promptText="";
+				bool canChangeFees=Procedures.ShouldFeesChange(new List<Procedure> { procedure },new List<Procedure> { procedureOld },ref promptText,
+					procFeeHelper);
+				Assert.IsFalse(canChangeFees,"same fee on the procedure date: no prompt");
+				Assert.AreEqual("",promptText);
+				Assert.AreEqual(80,procedure.ProcFee);
+			}
+			finally {
+				Prefs.UpdateInt(PrefName.ProcFeeUpdatePrompt,promptOld);
+			}
+		}
+
+		///<summary>Procedure Codes (FormProcCodes2) syncs every row of the schedules it shows. Two identical rows left over from before fee
+		///effective dates, which the user did not touch, must not stop the user from saving another fee of that schedule.</summary>
+		[TestMethod]
+		public void Db_SynchList_UntouchedLegacyDuplicatesDoNotBlock() {
+			FeeSched feeSched=NewFeeSched();
+			ProcedureCode procedureCodeDup=NewCode();
+			ProcedureCode procedureCode=NewCode();
+			ProcedureCode procedureCodeNew=NewCode();
+			string insert="INSERT INTO fee (Amount,OldCode,FeeSched,UseDefaultFee,UseDefaultCov,CodeNum,ClinicNum,ProvNum,SecUserNumEntry,SecDateEntry,DateEffective) "
+				+"VALUES (25,'',"+feeSched.FeeSchedNum+",0,0,"+procedureCodeDup.CodeNum+",0,0,0,CURDATE(),'0001-01-01')";
+			DataCore.NonQ(insert);
+			DataCore.NonQ(insert);
+			Fee feeEdited=InsertFee(feeSched.FeeSchedNum,procedureCode.CodeNum,40,DateTime.MinValue);
+			//The lists as FormProcCodes2 builds them.
+			List<Fee> listFeesNew=Fees.GetListForSchedsAndClinics(feeSched.FeeSchedNum,new List<long> { 0 },0);
+			List<Fee> listFeesDb=listFeesNew.Select(x => x.Copy()).ToList();
+			Assert.AreEqual(3,listFeesNew.Count);
+			listFeesNew.Find(x => x.FeeNum==feeEdited.FeeNum).Amount=45;
+			listFeesNew.Add(new Fee { FeeSched=feeSched.FeeSchedNum,CodeNum=procedureCodeNew.CodeNum,Amount=55,DateEffective=DateTime.MinValue });
+			Fees.SynchList(listFeesNew,listFeesDb);
+			List<Fee> listFeesAfter=Fees.GetListExactAllDates(feeSched.FeeSchedNum,0,0);
+			Assert.AreEqual(45,listFeesAfter.Single(x => x.CodeNum==procedureCode.CodeNum).Amount);
+			Assert.AreEqual(55,listFeesAfter.Single(x => x.CodeNum==procedureCodeNew.CodeNum).Amount);
+			Assert.AreEqual(2,listFeesAfter.FindAll(x => x.CodeNum==procedureCodeDup.CodeNum).Count);//left as they were
+			//A change that makes a new duplicate is still refused: a new row, or a changed date, landing on a key and date that is taken.
+			listFeesDb=Fees.GetListForSchedsAndClinics(feeSched.FeeSchedNum,new List<long> { 0 },0);
+			listFeesNew=listFeesDb.Select(x => x.Copy()).ToList();
+			listFeesNew.Add(new Fee { FeeSched=feeSched.FeeSchedNum,CodeNum=procedureCode.CodeNum,Amount=60,DateEffective=DateTime.MinValue });
+			AssertThrowsApplicationException(() => Fees.SynchList(listFeesNew,listFeesDb));
+			InsertFee(feeSched.FeeSchedNum,procedureCode.CodeNum,70,_date2027);
+			listFeesDb=Fees.GetListExactAllDates(feeSched.FeeSchedNum,0,0);
+			listFeesNew=listFeesDb.Select(x => x.Copy()).ToList();
+			listFeesNew.Find(x => x.CodeNum==procedureCode.CodeNum && x.DateEffective==_date2027).DateEffective=DateTime.MinValue;
+			AssertThrowsApplicationException(() => Fees.SynchList(listFeesNew,listFeesDb));
+			Assert.AreEqual(2,Fees.GetListExactAllDates(feeSched.FeeSchedNum,0,0).FindAll(x => x.CodeNum==procedureCode.CodeNum).Count);
+		}
+
 		[TestMethod]
 		public void Db_DatabaseMaintenance_DatedRowsAreNotDuplicates() {
 			FeeSched feeSched=NewFeeSched();
