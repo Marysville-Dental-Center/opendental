@@ -7,14 +7,15 @@ using CodeBase;
 
 namespace OpenDentBusiness {
 	///<summary>Writes eForm answers into the patient record. The office reviews and imports most answers in FormSheetImport. Fields marked Auto Import
-	///(Open Dental 25.1, eformfield.AutoImport) are written here, without review, when the form is submitted as Filled.</summary>
+	///(Open Dental 25.1, eformfield.AutoImport) are written here, without review, by the save that first stores the filled form.</summary>
 	public class EFormImport {
 		//Any changes to the DbLinks handled here should also be duplicated in EFormFiller and EFormFieldsAvailable.
 
-		///<summary>Auto import runs once, on the save that makes the form Filled. A form that was already Filled (for example one that Open Dental's
-		///eClipboard filled and imported) is never imported again by opening and saving it.</summary>
-		public static bool ShouldAutoImportOnSave(EnumEFormStatus statusBefore) {
-			return statusBefore!=EnumEFormStatus.Filled;
+		///<summary>Call before the save. Auto import runs once, on the save that first inserts the form, and only for a form tied to a patient. A form
+		///already in the database (saved earlier on the desktop, or filled and handled by Open Dental) is never imported again by opening and saving
+		///it, whatever its status: Open Dental leaves desktop-filled forms at None, so the status cannot tell whether a form was imported.</summary>
+		public static bool ShouldAutoImportOnSave(EForm eForm) {
+			return eForm.IsNew && eForm.PatNum!=0;
 		}
 
 		///<summary>True if this field's answer is written into the database without review: it is marked Auto Import, its link supports it, it is not

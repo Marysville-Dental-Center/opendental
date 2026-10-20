@@ -201,10 +201,21 @@ namespace EFormTests {
 		}
 
 		[TestMethod]
-		public void AutoImport_RunsOnlyOnTheSaveThatMakesTheFormFilled() {
-			Assert.IsTrue(EFormImport.ShouldAutoImportOnSave(EnumEFormStatus.None));
-			Assert.IsTrue(EFormImport.ShouldAutoImportOnSave(EnumEFormStatus.ShowInEClipboard));
-			Assert.IsFalse(EFormImport.ShouldAutoImportOnSave(EnumEFormStatus.Filled));
+		public void AutoImport_RunsOnlyOnTheSaveThatFirstInsertsTheForm() {
+			EForm eForm=new EForm();
+			eForm.PatNum=5;
+			eForm.IsNew=true;
+			Assert.IsTrue(EFormImport.ShouldAutoImportOnSave(eForm));
+			eForm.PatNum=0;
+			Assert.IsFalse(EFormImport.ShouldAutoImportOnSave(eForm),"no patient to import into");
+			//A form already in the database is never imported again, whatever its status. Open Dental leaves desktop-filled forms at None, so an
+			//adopted None form with Auto Import fields must not be imported by re-saving it.
+			eForm.PatNum=5;
+			eForm.IsNew=false;
+			foreach(EnumEFormStatus status in new[] { EnumEFormStatus.None,EnumEFormStatus.ShowInEClipboard,EnumEFormStatus.Filled }) {
+				eForm.Status=status;
+				Assert.IsFalse(EFormImport.ShouldAutoImportOnSave(eForm),status.ToString());
+			}
 		}
 
 		[TestMethod]

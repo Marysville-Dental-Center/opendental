@@ -311,13 +311,10 @@ namespace OpenDental {
 				isChanged=true;
 			}
 			isChanged|=EFormFields.IsAnyChanged(EFormCur.ListEFormFields,_listEFormFieldsOld);
-			//A form that passes the required-field check is submitted as Filled. The save that makes it Filled also writes its Auto Import fields into
-			//the patient record (Open Dental 25.1). Forms that were already Filled, for example by Open Dental's eClipboard, are not imported again.
-			bool doAutoImport=EFormImport.ShouldAutoImportOnSave(EFormCur.Status);
-			if(EFormCur.Status!=EnumEFormStatus.Filled){
-				EFormCur.Status=EnumEFormStatus.Filled;
-				isChanged=true;
-			}
+			//Auto Import fields (Open Dental 25.1) are written into the patient record only by the save that first inserts the form. A form that was
+			//already in the database, whether saved here earlier or filled by Open Dental, is never imported again by opening and saving it.
+			//The status is left as it is: Open Dental's 25.3 docs say a form added and filled in OD proper stays None; Filled is set by eClipboard.
+			bool doAutoImport=EFormImport.ShouldAutoImportOnSave(EFormCur);
 			if(!isChanged){
 				_wasUnchanged=true;
 				return;
@@ -354,7 +351,7 @@ namespace OpenDental {
 				EFormFields.Insert(EFormCur.ListEFormFields[i]);//ignores any existing PK when inserting
 			}
 			SecurityLogs.MakeLogEntry(EnumPermType.EFormEdit,EFormCur.PatNum,"EForm: "+EFormCur.Description+" from "+EFormCur.DateTimeShown.ToShortDateString());
-			if(doAutoImport && EFormCur.PatNum!=0){
+			if(doAutoImport){
 				EFormImport.ImportAutoFields(EFormCur);//logs its own changes
 			}
 		}
