@@ -13,7 +13,7 @@ using OpenDentBusiness.PostcardMania;
 namespace VendorDirectTests.PostcardMania {
 	[TestClass]
 	public class PostcardManiaProgramDbTests {
-		private const string DB_NAME="vendordirect_postcard_tests";
+		private static readonly string DB_NAME=ScratchDb.Name("vendordirect_postcard_tests");
 		private static string _skipReason;
 
 		[ClassInitialize]

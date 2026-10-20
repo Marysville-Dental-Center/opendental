@@ -12,7 +12,7 @@ using OpenDentBusiness;
 namespace VendorDirectTests.Oid {
 	[TestClass]
 	public class OIDInternalsDbTests {
-		private const string DB_NAME="vendordirect_oid_tests";
+		private static readonly string DB_NAME=ScratchDb.Name("vendordirect_oid_tests");
 		private const string CONNECTION_SERVER="Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=3";
 		private static string _skipReason;
 
