@@ -3567,6 +3567,9 @@ namespace OpenDental{
 				_claim.AttachedFlags=ClaimAttaches.RebuildFromCheckBoxes(_claim.AttachedFlags,listStringFlags);
 			}
 			#endregion
+			//Open Dental 24.4: the DentalXChange Submitted flag goes once every attachment is gone. Every save, whatever the clearinghouse (XConnect
+			//included) or claim status, so a claim whose attachments were all removed asks for its attachment again.
+			_claim.AttachedFlags=ClaimAttaches.SyncDxcSubmittedWithAttachments(_claim.AttachedFlags,_claim.Attachments);
 			//Use the DXC attachmentID if it is not blank, otherwise use the NEA attachmentID. In the case they are both blank it does not matter,
 			//but users can have DXC attachments enabled with old NEA numbers attached. This will preserve those.
 			_claim.AttachmentID=textAttachID.Text;
@@ -4006,9 +4009,8 @@ namespace OpenDental{
 						MsgBox.Show(this,"An attachment is required for this claim. Use the right click attachment workflow to add an attachment to this claim.");
 					}
 					else if(_claim.Attachments.Count==0) {//Don't set to 'Mail' on claims with attachments or make unneccessary DB trips.
-						//No attachments: Mail, and no Submitted flag (Open Dental 24.4: the flag goes when every attachment is gone).
-						string attachedFlagsMail=ClaimAttaches.ClearDxcAttachmentSubmitted(
-							ClaimAttaches.RebuildFromCheckBoxes(_claim.AttachedFlags,new List<string> { ClaimAttaches.FlagMail }));
+						//No attachments: Mail. UpdateClaim() has already dropped the Submitted flag (Open Dental 24.4: it goes when every attachment is gone).
+						string attachedFlagsMail=ClaimAttaches.RebuildFromCheckBoxes(_claim.AttachedFlags,new List<string> { ClaimAttaches.FlagMail });
 						if(_claim.AttachedFlags!=attachedFlagsMail) {
 							_claim.AttachedFlags=attachedFlagsMail;
 							Claims.Update(_claim);
