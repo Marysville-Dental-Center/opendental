@@ -21,6 +21,7 @@
 		<ui:TextBox x:Name="textMedAllerProb" Width="213" Height="20" Margin="151,151,0,0" />
 		<ui:Button x:Name="butChange" Width="75" Height="24" Margin="371,149,0,0" Text="Change" Click="butChange_Click" />
 		<ui:CheckBox x:Name="checkIsRequired" Height="20" Margin="34,174,0,0" Width="130" Text="Required" CheckAlign="MiddleRight"/>
+		<ui:CheckBox x:Name="checkAutoImport" Height="20" Margin="170,174,0,0" Width="100" Text="Auto Import" CheckAlign="MiddleRight"/>
 		<ui:GroupBox Height="184" Margin="31,196,0,0" Width="454" Text="Layout" TabIndexOD="2">
 			<ui:CheckBox x:Name="checkBorder" Height="20" Margin="4,17,0,0" Width="129" Text="Show Border Box" CheckAlign="MiddleRight"/>
 			<ui:Label x:Name="labelWidth" Width="60" Height="18" Margin="59,40,0,0" Text="Width" HAlign="Right" VAlign="Center" />

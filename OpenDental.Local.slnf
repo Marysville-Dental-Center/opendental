@@ -24,6 +24,7 @@
       "tests\\AttributionTests\\AttributionTests.csproj",
       "tests\\CryptoTests\\CryptoTests.csproj",
       "tests\\FeeTests\\FeeTests.csproj",
+      "tests\\EFormTests\\EFormTests.csproj",
       "tests\\ForkMigrationTests\\ForkMigrationTests.csproj",
       "tests\\PayPlanTests\\PayPlanTests.csproj",
       "tests\\MedicationTests\\MedicationTests.csproj",
