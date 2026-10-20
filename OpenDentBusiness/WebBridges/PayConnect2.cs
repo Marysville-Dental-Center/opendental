@@ -574,14 +574,21 @@ namespace OpenDentBusiness {
 				if(errorResponse.HttpStatus>0) {
 					entry.HttpStatus=errorResponse.HttpStatus;
 				}
+				entry.VendorCode=errorResponse.VendorCode??"";
 				entry.ErrorKind=errorResponse.Kind.ToString();
 				if(errorResponse.ErrorType==ErrorType.Validation) {
 					entry.ErrorKind+="/VALIDATION";
 				}
 				entry.Message=string.IsNullOrEmpty(errorResponse.Message) ? (errorResponse.Error as string??"") : errorResponse.Message;
+				//Where Message is our own sentence (a rejected key or Secret), PayConnect's message is added so the line still carries it.
+				string vendorMessage=errorResponse.VendorMessage??"";
+				if(vendorMessage!="" && entry.Message.IndexOf(vendorMessage,StringComparison.Ordinal)<0) {
+					entry.Message=(entry.Message=="") ? vendorMessage : entry.Message+" PayConnect: "+vendorMessage;
+				}
 			}
 			string statusNotApproved=GetCreateStatusNotApproved(response);
 			if(response.ResponseType!=ResponseType.Error && statusNotApproved!=null) {
+				entry.VendorCode=statusNotApproved;//For example Declined: the only code PayConnect gives for a 2xx that is not an approval.
 				entry.ErrorKind="NotApproved";
 				entry.Message="PayConnect answered with status: "+(statusNotApproved=="" ? "(blank)" : statusNotApproved);
 			}
@@ -851,6 +858,7 @@ namespace OpenDentBusiness {
 			response.CorrelationId=invoiceNumber;
 			response.httpStatusCode=HttpStatusCode.OK;
 			response.ErrorResponse=MakeErrorResponse(PayConnectErrorKind.Vendor,"PayConnect declined the transaction (status: "+statusShown+").");
+			response.ErrorResponse.VendorCode=(status??"").Trim();//The vendor's status is the only code its transaction list gives.
 			return response;
 		}
 
@@ -944,6 +952,16 @@ namespace OpenDentBusiness {
 			JToken jTokenError=jObject?["error"];
 			JToken jTokenErrorType=jObject?["errorType"];
 			string errorType=(jTokenErrorType!=null && jTokenErrorType.Type==JTokenType.String) ? (string)jTokenErrorType : "";
+			//PayConnect's own code and message, kept for every kind of error (the error log needs them even when Message is our own sentence).
+			string vendorCode="";
+			string vendorMessage="";
+			if(jTokenError!=null && jTokenError.Type==JTokenType.String) {
+				vendorMessage=(string)jTokenError;
+			}
+			else if(jTokenError is JObject jObjectError) {
+				vendorCode=GetString(jObjectError,"code");
+				vendorMessage=GetString(jObjectError,"message");
+			}
 			ErrorResponse errorResponse;
 			if(errorType.Equals("VALIDATION",StringComparison.OrdinalIgnoreCase) || (code==400 && jTokenError is JArray)) {
 				List<ValidationErrorBody> listValidationErrors=ParseValidationErrors(jTokenError);
@@ -966,19 +984,15 @@ namespace OpenDentBusiness {
 				errorResponse=MakeErrorResponse(PayConnectErrorKind.SecretRejected,MSG_SECRET_REJECTED);
 			}
 			else {
-				string vendorMessage="";
-				if(jTokenError!=null && jTokenError.Type==JTokenType.String) {
-					vendorMessage=(string)jTokenError;
+				string message=vendorMessage;
+				if(string.IsNullOrWhiteSpace(message)) {
+					message="PayConnect returned an error (HTTP "+code.ToString(CultureInfo.InvariantCulture)+").";
 				}
-				else if(jTokenError is JObject && jTokenError["message"]!=null && jTokenError["message"].Type==JTokenType.String) {
-					vendorMessage=(string)jTokenError["message"];
-				}
-				if(string.IsNullOrWhiteSpace(vendorMessage)) {
-					vendorMessage="PayConnect returned an error (HTTP "+code.ToString(CultureInfo.InvariantCulture)+").";
-				}
-				errorResponse=MakeErrorResponse(PayConnectErrorKind.Vendor,vendorMessage);
+				errorResponse=MakeErrorResponse(PayConnectErrorKind.Vendor,message);
 			}
 			errorResponse.HttpStatus=code;
+			errorResponse.VendorCode=vendorCode.Trim();
+			errorResponse.VendorMessage=vendorMessage.Trim();
 			return errorResponse;
 		}
 
@@ -2466,6 +2480,12 @@ namespace OpenDentBusiness {
 			public List<ValidationErrorBody> ListValidationErrors=new List<ValidationErrorBody>();
 			///<summary>The HTTP status, or 0 when no response arrived.</summary>
 			public int HttpStatus;
+			///<summary>PayConnect's own response code: the "code" of an error object (ResponseError.Code), or, for an answer whose status is not an
+			///approval, that status. Blank when PayConnect sent none. Not PayConnectErrorKind, which is this program's classification.</summary>
+			public string VendorCode="";
+			///<summary>PayConnect's own error message, as sent (a string "error", or the "message" of an error object). Blank when there was none.
+			///Message can differ from it: for a rejected key or Secret, Message is our sentence for the user.</summary>
+			public string VendorMessage="";
 		}
 
 		[DataContract]

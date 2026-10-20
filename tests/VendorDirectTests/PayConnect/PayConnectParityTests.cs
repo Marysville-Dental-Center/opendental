@@ -207,7 +207,8 @@ namespace VendorDirectTests.PayConnectV2 {
 			Assert.AreEqual("12.34",dictFields["Amount"]);
 			Assert.AreEqual("402",dictFields["HTTP"]);
 			Assert.AreEqual("Response",dictFields["Outcome"]);
-			Assert.AreEqual("Vendor",dictFields["Code"]);
+			Assert.AreEqual("Vendor",dictFields["Kind"]);
+			Assert.AreEqual("",dictFields["Code"],"PayConnect sent no code.");
 			Assert.AreEqual("1234",dictFields["Card"],"Only the last 4 of the token.");
 			Assert.AreEqual(response.CorrelationId,dictFields["Invoice"]);
 			Assert.IsTrue(dictFields["Invoice"].StartsWith(PayConnect2.CorrelationIdPrefix));
@@ -247,7 +248,8 @@ namespace VendorDirectTests.PayConnectV2 {
 			Assert.AreEqual(1,_listLogLines.Count);
 			Dictionary<string,string> dictFields=ParseFields(_listLogLines[0]);
 			Assert.AreEqual("recurring sale",dictFields["Operation"]);
-			Assert.AreEqual("NotApproved",dictFields["Code"]);
+			Assert.AreEqual("NotApproved",dictFields["Kind"]);
+			Assert.AreEqual("Declined",dictFields["Code"],"The returned status is the vendor code.");
 			Assert.AreEqual("200",dictFields["HTTP"]);
 			StringAssert.Contains(dictFields["Message"],"Declined");
 		}
@@ -262,12 +264,63 @@ namespace VendorDirectTests.PayConnectV2 {
 			PayConnect2.PostCreateTransaction(MakeTokenSale(100),apiCredentials);
 			PayConnect2.PostCreateTransaction(MakeTokenSale(100),apiCredentials);
 			Assert.AreEqual(2,_listLogLines.Count);
-			Assert.AreEqual("SecretRejected",ParseFields(_listLogLines[0])["Code"]);
+			Assert.AreEqual("SecretRejected",ParseFields(_listLogLines[0])["Kind"]);
 			Assert.AreEqual("401",ParseFields(_listLogLines[0])["HTTP"]);
 			Dictionary<string,string> dictValidation=ParseFields(_listLogLines[1]);
-			Assert.AreEqual("Validation/VALIDATION",dictValidation["Code"]);
+			Assert.AreEqual("Validation/VALIDATION",dictValidation["Kind"]);
 			StringAssert.Contains(dictValidation["Message"],"expiry: is invalid");
 			Assert.IsFalse(_listLogLines[1].Contains("1299"),"The rejected value is never logged.");
+		}
+
+		[TestMethod]
+		public void ErrorLog_CarriesPayConnectsOwnCode() {
+			PayConnect2.ErrorResponse errorResponse=PayConnect2.ParseErrorResponse(HttpStatusCode.NotFound,"{\"error\":{\"message\":\"x\",\"code\":123}}");
+			Assert.AreEqual("123",errorResponse.VendorCode);
+			Assert.AreEqual("x",errorResponse.VendorMessage);
+			Assert.AreEqual(PayConnect2.PayConnectErrorKind.Vendor,errorResponse.Kind,"Our classification stays separate.");
+			PayConnect2.PayConnect2Response response=new PayConnect2.PayConnect2Response { ResponseType=PayConnect2.ResponseType.Error,
+				httpStatusCode=HttpStatusCode.NotFound,ErrorResponse=errorResponse };
+			string line=PayConnectErrorLog.FormatLine(PayConnect2.MakeErrorLogEntry(response,"sale",1,2,100,TOKEN,"OPMS-1"));
+			StringAssert.Contains(line,"Code=123");
+			Dictionary<string,string> dictFields=ParseFields(line);
+			Assert.AreEqual("123",dictFields["Code"]);
+			Assert.AreEqual("Vendor",dictFields["Kind"]);
+			Assert.AreEqual("404",dictFields["HTTP"]);
+			Assert.AreEqual("x",dictFields["Message"]);
+		}
+
+		[TestMethod]
+		public void ErrorLog_RejectedKeyOrSecretKeepsTheVendorCodeAndMessage() {
+			FakeHttpHandler fakeHttpHandler=UseFakeHandler();
+			fakeHttpHandler.Enqueue(HttpStatusCode.Unauthorized,"{\"error\":{\"message\":\"Invalid secret\",\"code\":\"E401\"}}");
+			fakeHttpHandler.Enqueue(HttpStatusCode.Forbidden,"{\"error\":{\"message\":\"Key not allowed\",\"code\":4031}}");
+			fakeHttpHandler.Enqueue(HttpStatusCode.Unauthorized,"{\"error\":\"Authorization field missing\"}");
+			fakeHttpHandler.Enqueue(HttpStatusCode.BadRequest,"{\"errorType\":\"VALIDATION\",\"error\":{\"code\":40,\"message\":\"Bad request\","
+				+"\"properties\":[{\"param\":\"amount\",\"message\":\"is required\"}]}}");
+			PayConnect2.ApiCredentials apiCredentials=PayConnect2.MakeCredentials(API_KEY,SECRET,true);
+			for(int i=0;i<4;i++) {
+				PayConnect2.PostCreateTransaction(MakeTokenSale(100),apiCredentials);
+			}
+			Assert.AreEqual(4,_listLogLines.Count);
+			Dictionary<string,string> dictSecret=ParseFields(_listLogLines[0]);
+			Assert.AreEqual("E401",dictSecret["Code"]);
+			Assert.AreEqual("SecretRejected",dictSecret["Kind"]);
+			StringAssert.Contains(dictSecret["Message"],"Invalid secret");
+			Dictionary<string,string> dictForbidden=ParseFields(_listLogLines[1]);
+			Assert.AreEqual("4031",dictForbidden["Code"]);
+			Assert.AreEqual("ApiKeyRejected",dictForbidden["Kind"]);
+			StringAssert.Contains(dictForbidden["Message"],"Key not allowed");
+			Dictionary<string,string> dictKey=ParseFields(_listLogLines[2]);
+			Assert.AreEqual("",dictKey["Code"],"A plain-string error has no code.");
+			StringAssert.Contains(dictKey["Message"],"Authorization field missing");
+			Dictionary<string,string> dictValidation=ParseFields(_listLogLines[3]);
+			Assert.AreEqual("40",dictValidation["Code"]);
+			Assert.AreEqual("Validation/VALIDATION",dictValidation["Kind"]);
+			StringAssert.Contains(dictValidation["Message"],"amount: is required");
+			StringAssert.Contains(dictValidation["Message"],"Bad request");
+			foreach(string line in _listLogLines) {
+				Assert.IsFalse(line.Contains(API_KEY) || line.Contains(SECRET) || line.Contains(TOKEN));
+			}
 		}
 
 		[TestMethod]
@@ -280,7 +333,7 @@ namespace VendorDirectTests.PayConnectV2 {
 			Assert.AreEqual(1,_listLogLines.Count);
 			Dictionary<string,string> dictFields=ParseFields(_listLogLines[0]);
 			Assert.AreEqual("NotSent",dictFields["Outcome"]);
-			Assert.AreEqual("Network",dictFields["Code"]);
+			Assert.AreEqual("Network",dictFields["Kind"]);
 			Assert.AreEqual("",dictFields["HTTP"],"No answer, no status.");
 			Assert.AreEqual("25.00",dictFields["Amount"]);
 		}
@@ -291,7 +344,7 @@ namespace VendorDirectTests.PayConnectV2 {
 			Assert.AreEqual(1,_listLogLines.Count);
 			Dictionary<string,string> dictFields=ParseFields(_listLogLines[0]);
 			Assert.AreEqual("test connection",dictFields["Operation"]);
-			Assert.AreEqual("NotConfigured",dictFields["Code"]);
+			Assert.AreEqual("NotConfigured",dictFields["Kind"]);
 			Assert.IsFalse(_listLogLines[0].Contains(API_KEY));
 		}
 
@@ -326,11 +379,11 @@ namespace VendorDirectTests.PayConnectV2 {
 			Assert.AreEqual(2,_listLogLines.Count);
 			Dictionary<string,string> dictForm=ParseFields(_listLogLines[0]);
 			Assert.AreEqual("card token form",dictForm["Operation"]);
-			Assert.AreEqual("HostedForm",dictForm["Code"]);
+			Assert.AreEqual("HostedForm",dictForm["Kind"]);
 			Assert.AreEqual("Card number  invalid",dictForm["Message"],"Tabs and line breaks never split a line.");
-			Assert.AreEqual(13,_listLogLines[0].Split('\t').Length,"Fixed field count.");
+			Assert.AreEqual(14,_listLogLines[0].Split('\t').Length,"Fixed field count.");
 			Dictionary<string,string> dictException=ParseFields(_listLogLines[1]);
-			Assert.AreEqual("Exception",dictException["Code"]);
+			Assert.AreEqual("Exception",dictException["Kind"]);
 			Assert.AreEqual("OPMS-abc",dictException["Invoice"]);
 			Assert.AreEqual("InvalidOperationException: boom [card number removed]",dictException["Message"]);
 		}

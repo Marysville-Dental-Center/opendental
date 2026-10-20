@@ -202,7 +202,10 @@ namespace OpenDentBusiness {
 			public int HttpStatus;
 			///<summary>Whether the request reached PayConnect (PayConnect2.PayConnectRequestOutcome), or blank.</summary>
 			public string Outcome="";
-			///<summary>The kind of error (PayConnect2.PayConnectErrorKind), or blank.</summary>
+			///<summary>PayConnect's own response code (an error object's "code", or the status of an answer that is not an approval), or blank when
+			///PayConnect sent none or no answer arrived.</summary>
+			public string VendorCode="";
+			///<summary>This program's classification of the error (PayConnect2.PayConnectErrorKind, or HostedForm, Exception, NotApproved), or blank.</summary>
 			public string ErrorKind="";
 			///<summary>PayConnect's message, or ours. Scrubbed of anything that looks like a card number.</summary>
 			public string Message="";
@@ -245,7 +248,8 @@ namespace OpenDentBusiness {
 			listFields.Add("Amount="+(entry.AmountCents.HasValue ? FormatAmount(entry.AmountCents.Value) : ""));
 			listFields.Add("HTTP="+(entry.HttpStatus>0 ? entry.HttpStatus.ToString(System.Globalization.CultureInfo.InvariantCulture) : ""));
 			listFields.Add("Outcome="+ScrubText(entry.Outcome,50));
-			listFields.Add("Code="+ScrubText(entry.ErrorKind,50));
+			listFields.Add("Code="+ScrubText(entry.VendorCode,50));
+			listFields.Add("Kind="+ScrubText(entry.ErrorKind,50));
 			listFields.Add("Card="+GetLast4(entry.CardLast4));
 			listFields.Add("Invoice="+ScrubText(entry.InvoiceNumber,50,doMaskCardNumbers:false));
 			listFields.Add("Message="+ScrubText(entry.Message,MAX_MESSAGE_LENGTH));
