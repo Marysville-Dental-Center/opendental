@@ -95,6 +95,10 @@ namespace OpenDentBusiness {
 				+"AND fee.FeeSched='"+POut.Long(feeSchedNum)+"' "
 				+"AND fee.ClinicNum='"+POut.Long(clinicNum)+"' "
 				+"AND fee.ProvNum='"+POut.Long(provNum)+"' "
+				//Only the fee in effect today when a code has dated fees (fee.DateEffective, Open Dental 24.4).
+				+"AND fee.DateEffective=(SELECT MAX(feedated.DateEffective) FROM fee feedated "
+					+"WHERE feedated.FeeSched=fee.FeeSched AND feedated.CodeNum=fee.CodeNum AND feedated.ClinicNum=fee.ClinicNum "
+					+"AND feedated.ProvNum=fee.ProvNum AND feedated.DateEffective<="+POut.Date(DateTime.Today)+") "
 				+"ORDER BY procedurecode.ProcCode";
 			return ReportsComplex.RunFuncOnReportServer(() => Db.GetTable(command));
 		}

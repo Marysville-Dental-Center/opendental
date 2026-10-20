@@ -85,10 +85,16 @@ namespace OpenDentBusiness{
 		#endregion
 
 		#region Misc Methods
-		///<summary>Copies one fee schedule to one or more fee schedules.  clinicNumFrom, provNumFrom, and toProvNum can be zero.  Set listClinicNumsTo to copy to multiple clinic overrides.  If this list is null or empty, clinicNum 0 will be used.</summary>
-		public static void CopyFeeSchedule(FeeSched feeSchedFrom,long clinicNumFrom,long provNumFrom,FeeSched feeSchedTo,List<long> listClinicNumsTo,long provNumTo){
+		///<summary>Copies one fee schedule to one or more fee schedules.  clinicNumFrom, provNumFrom, and toProvNum can be zero.  Set listClinicNumsTo to copy to multiple clinic overrides.  If this list is null or empty, clinicNum 0 will be used.
+		///The fees in effect today in the "from" schedule are copied, and every copied fee gets dateEffective as its start date (before 1880 means
+		///always in effect). Rows of the "to" combination that start on or after dateEffective are replaced; rows that start earlier are kept, so
+		///copying next year's fees in with a future date does not touch the current fees. With no date every row of the "to" combination is replaced,
+		///as before effective dates existed.</summary>
+		public static void CopyFeeSchedule(FeeSched feeSchedFrom,long clinicNumFrom,long provNumFrom,FeeSched feeSchedTo,List<long> listClinicNumsTo,long provNumTo,
+			DateTime dateEffective=default(DateTime))
+		{
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				Meth.GetVoid(MethodBase.GetCurrentMethod(),feeSchedFrom,clinicNumFrom,provNumFrom,feeSchedTo,listClinicNumsTo,provNumTo);
+				Meth.GetVoid(MethodBase.GetCurrentMethod(),feeSchedFrom,clinicNumFrom,provNumFrom,feeSchedTo,listClinicNumsTo,provNumTo,dateEffective);
 				return;
 			}
 			if(listClinicNumsTo==null) {
@@ -96,12 +102,17 @@ namespace OpenDentBusiness{
 			}
 			if(listClinicNumsTo.Count==0) {
 				listClinicNumsTo.Add(0);
-			}			
-			//Store a local copy of the fees from the old FeeSched
-			List<Fee> listFeesLocalCopy=Fees.GetListExact(feeSchedTo.FeeSchedNum,listClinicNumsTo,provNumTo);
-			//Delete all fees that exactly match setting in "To" combo selections.
+			}
+			dateEffective=(dateEffective.Year<1880 ? Fees.DateEffectiveAlways : dateEffective.Date);
+			//Store a local copy of the fees from the old FeeSched that are about to be replaced.
+			List<Fee> listFeesLocalCopy=new List<Fee>();
 			for(int i=0;i<listClinicNumsTo.Count;i++){
-				Fees.DeleteFees(feeSchedTo.FeeSchedNum,listClinicNumsTo[i],provNumTo);
+				listFeesLocalCopy.AddRange(Fees.GetListExactAllDates(feeSchedTo.FeeSchedNum,listClinicNumsTo[i],provNumTo)
+					.FindAll(x => x.DateEffective.Date>=dateEffective));
+			}
+			//Delete the fees that exactly match setting in "To" combo selections and start on or after the new date.
+			for(int i=0;i<listClinicNumsTo.Count;i++){
+				Fees.DeleteFeesOnOrAfter(feeSchedTo.FeeSchedNum,listClinicNumsTo[i],provNumTo,dateEffective);
 			}
 			//Copy:
 			List<Fee> listFeesNew=Fees.GetListExact(feeSchedFrom.FeeSchedNum,clinicNumFrom,provNumFrom);
@@ -122,12 +133,22 @@ namespace OpenDentBusiness{
 					feeNew.ProvNum=provNumTo;
 					feeNew.ClinicNum=listClinicNumsTo[i];
 					feeNew.FeeSched=feeSchedTo.FeeSchedNum;
-					Fees.Insert(feeNew);
+					feeNew.DateEffective=dateEffective;
+					//When copying to a fee schedule group, inserting the fee for one clinic already wrote it for the other clinics of the group.
+					Fee feeExisting=Fees.GetFeeFromDb(feeNew.CodeNum,feeNew.FeeSched,feeNew.ClinicNum,feeNew.ProvNum,doGetExactMatch:true,dateAsOf:dateEffective);
+					if(feeExisting!=null && feeExisting.DateEffective.Date==dateEffective) {
+						feeExisting.Amount=feeNew.Amount;
+						Fees.Update(feeExisting);
+					}
+					else {
+						Fees.Insert(feeNew);
+					}
 					//Check to see if this replaced an old fee with the same fee details
 					Fee feeOld=listFeesLocalCopy.Where(x => x.ProvNum==feeNew.ProvNum)
 						.Where(x => x.ClinicNum==feeNew.ClinicNum)
 						.Where(x => x.CodeNum==feeNew.CodeNum)
 						.Where(x => x.FeeSched==feeNew.FeeSched)
+						.OrderBy(x => x.DateEffective)
 						.FirstOrDefault();
 					if(feeOld!=null)	{ 
 						isReplacementFee=true;
@@ -137,7 +158,7 @@ namespace OpenDentBusiness{
 					if(listClinicNumsTo[i]!=0){
 						securityLogText+="To Clinic \""+Clinics.GetDesc(listClinicNumsTo[i])+"\", ";
 					}
-					securityLogText+="Proc Code \""+procedureCode.ProcCode+"\", Fee \""+listFeesNew[j].Amount+"\", ";
+					securityLogText+="Proc Code \""+procedureCode.ProcCode+"\", Fee \""+listFeesNew[j].Amount+"\""+Fees.GetDateEffectiveLogText(dateEffective)+", ";
 					if(isReplacementFee) { 
 						securityLogText+="Replacing Previous Fee \""+feeOld.Amount+"\"";
 					}
@@ -150,8 +171,10 @@ namespace OpenDentBusiness{
 			}
 		}
 
-		///<summary>Exports a fee schedule.  Called only in FormFeeSchedTools. Fires FeeSchedEvents for a progress bar.</summary>
-		public static void ExportFeeSchedule(long feeSchedNum,long clinicNum,long provNum,string fileName) {
+		///<summary>Exports a fee schedule.  Called only in FormFeeSchedTools. Fires FeeSchedEvents for a progress bar.
+		///Writes the fees in effect today. With doIncludeFutureFees, a fifth column holds the start date (yyyy-MM-dd, blank for a fee that is always
+		///in effect) and every later change of a code's fee gets a line of its own with its start date. Fees.ImportFees reads both formats.</summary>
+		public static void ExportFeeSchedule(long feeSchedNum,long clinicNum,long provNum,string fileName,bool doIncludeFutureFees=false) {
 			Meth.NoCheckMiddleTierRole();
 			//CreateText will overwrite any content if the file already exists.
 			using StreamWriter streamWriter=File.CreateText(fileName);
@@ -159,22 +182,42 @@ namespace OpenDentBusiness{
 			//Even if the code does not have a fee, include it in the export because that will trigger a 'deletion' when importing over other schedules.
 			int rowNum=0;
 			List<ProcedureCode> listProcedureCodes=ProcedureCodes.GetListDeep();
-			List<Fee> listFees=Fees.GetListForScheds(feeSchedNum,clinicNum,provNum);//gets best matches
+			List<Fee> listFees=Fees.GetListForScheds(feeSchedNum,clinicNum,provNum);//gets best matches, all start dates
+			bool isGlobal=IsGlobal(feeSchedNum);
+			FeeIndex feeIndex=new FeeIndex(listFees,DateTime.Today);
+			Dictionary<long,List<Fee>> dictFeesByCode=listFees.GroupBy(x => x.CodeNum).ToDictionary(x => x.Key,x => x.ToList());
 			for(int i=0;i<listProcedureCodes.Count;i++) {
-				//Get the best matching fee (not exact match) for the current selections. 
-				Fee fee=Fees.GetFee(listProcedureCodes[i].CodeNum,feeSchedNum,clinicNum,provNum,listFees);
-				streamWriter.Write(listProcedureCodes[i].ProcCode+"\t");
-				if(fee!=null && fee.Amount!=-1) {
-					streamWriter.Write(fee.Amount.ToString("n"));
+				//Get the best matching fee (not exact match) for the current selections.
+				Fee fee=feeIndex.GetFee(listProcedureCodes[i].CodeNum,feeSchedNum,clinicNum,provNum,isGlobal);
+				WriteExportLine(streamWriter,listProcedureCodes[i],fee,doIncludeFutureFees,fee?.DateEffective??DateTime.MinValue);
+				if(doIncludeFutureFees && dictFeesByCode.TryGetValue(listProcedureCodes[i].CodeNum,out List<Fee> listFeesCode)) {
+					List<Fee> listFeesFuture=Fees.GetFutureChanges(listFeesCode,listProcedureCodes[i].CodeNum,feeSchedNum,clinicNum,provNum,isGlobal,DateTime.Today);
+					for(int f=0;f<listFeesFuture.Count;f++) {
+						WriteExportLine(streamWriter,listProcedureCodes[i],listFeesFuture[f],true,listFeesFuture[f].DateEffective);
+					}
 				}
-				streamWriter.Write("\t");
-				streamWriter.Write(listProcedureCodes[i].AbbrDesc+"\t");
-				streamWriter.WriteLine(listProcedureCodes[i].Descript);
 				double percent=((rowNum*1.0)/listProcedureCodes.Count*100);
 				ODEvent.Fire(ODEventType.ProgressBar,new ProgressBarHelper(
 					"Exporting fees, please wait...",percent.ToString(),blockValue:(int)percent,progressStyle:ProgBarStyle.Blocks));
 				rowNum++;
 			}
+		}
+
+		///<summary>One line of a fee export: code, amount (blank for no fee or a blank override), abbreviation, description, and with dates the start
+		///date (blank when always in effect).</summary>
+		private static void WriteExportLine(StreamWriter streamWriter,ProcedureCode procedureCode,Fee fee,bool doWriteDate,DateTime dateEffective) {
+			streamWriter.Write(procedureCode.ProcCode+"\t");
+			if(fee!=null && fee.Amount!=-1) {
+				streamWriter.Write(fee.Amount.ToString("n"));
+			}
+			streamWriter.Write("\t");
+			streamWriter.Write(procedureCode.AbbrDesc+"\t");
+			if(!doWriteDate) {
+				streamWriter.WriteLine(procedureCode.Descript);
+				return;
+			}
+			streamWriter.Write(procedureCode.Descript+"\t");
+			streamWriter.WriteLine(dateEffective.Year<1880 ? "" : dateEffective.ToString("yyyy-MM-dd"));
 		}
 
 		///<summary>Used for moving feesched items to a new location within the feesched list.</summary>
@@ -611,6 +654,8 @@ namespace OpenDentBusiness{
 				+"WHERE FeeSched NOT IN (SELECT FeeSchedNum FROM feesched)";
 			List<long> listFeeNums=Db.GetListLong(command);
 			Fees.DeleteMany(listFeeNums);
+			//The notes of deleted fee schedules go with them.
+			FeeSchedNotes.DeleteOrphans();
 			return countDeleted;
 		}
 

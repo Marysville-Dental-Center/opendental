@@ -84,7 +84,8 @@ namespace OpenDentBusiness {
 
 		#region Fee Operations
 		///<summary>Takes a list of fees that have been inserted/updated and copies those changes to the rest of the clinics in the feeschedgroup.
-		///listFeesOld only sent in from SyncGroupFees.</summary>
+		///listFeesOld only sent in from SyncGroupFees. Fees with a start date (fee.DateEffective) are copied to the rows of the other clinics with the
+		///same start date, so every clinic of the group gets the same dated fees.</summary>
 		public static void UpsertGroupFees(List<Fee> listFees,List<Fee> listFeesOld=null) {
 			Meth.NoCheckMiddleTierRole();
 			if(listFees.IsNullOrEmpty()) {
@@ -109,19 +110,24 @@ namespace OpenDentBusiness {
 				//the fees in listFees will be updated outside of this method.  So skip clinics in the group where a fee already exists in listFees for this
 				//CodeNum, FeeSched, ProvNum, and ClinicNum with matching Amount
 				List<long> listClinicNums=feeSchedGroup.ListClinicNumsAll
-					.FindAll(x => !listFees.Exists(y => y.CodeNum==listFees[i].CodeNum && y.FeeSched==listFees[i].FeeSched && y.ProvNum==listFees[i].ProvNum && y.ClinicNum==x && y.Amount==listFees[i].Amount));
+					.FindAll(x => !listFees.Exists(y => y.CodeNum==listFees[i].CodeNum && y.FeeSched==listFees[i].FeeSched && y.ProvNum==listFees[i].ProvNum && y.ClinicNum==x && y.Amount==listFees[i].Amount
+						&& y.DateEffective.Date==listFees[i].DateEffective.Date));
 				if(listClinicNums.Count==0) {
 					continue;
 				}
 				List<Fee> listFeesForClinics;
+				DateTime dateEffective=listFees[i].DateEffective.Date;
 				if(listFeesDb.IsNullOrEmpty()) {
-					listFeesForClinics=Fees.GetListExactForClinicsFromDb(listFees[i].CodeNum,listFees[i].FeeSched,listFees[i].ProvNum,listClinicNums);
+					listFeesForClinics=Fees.GetListExactForClinicsFromDb(listFees[i].CodeNum,listFees[i].FeeSched,listFees[i].ProvNum,listClinicNums)
+						.FindAll(x => x.DateEffective.Date==dateEffective);
 				}
 				else {
-					listFeesForClinics=listFeesDb.FindAll(x => x.CodeNum==listFees[i].CodeNum && x.FeeSched==listFees[i].FeeSched && x.ProvNum==listFees[i].ProvNum && listClinicNums.Contains(x.ClinicNum));
+					listFeesForClinics=listFeesDb.FindAll(x => x.CodeNum==listFees[i].CodeNum && x.FeeSched==listFees[i].FeeSched && x.ProvNum==listFees[i].ProvNum && listClinicNums.Contains(x.ClinicNum)
+						&& x.DateEffective.Date==dateEffective);
 				}
 				List<Fee> listFeesToInsert=listClinicNums.FindAll(x => listFeesForClinics.All(y => y.ClinicNum!=x))
-					.Select(x => new Fee { Amount=listFees[i].Amount,FeeSched=listFees[i].FeeSched,CodeNum=listFees[i].CodeNum,ClinicNum=x,ProvNum=listFees[i].ProvNum }).ToList();
+					.Select(x => new Fee { Amount=listFees[i].Amount,FeeSched=listFees[i].FeeSched,CodeNum=listFees[i].CodeNum,ClinicNum=x,ProvNum=listFees[i].ProvNum,
+						DateEffective=listFees[i].DateEffective }).ToList();
 				List<Fee> listFeesToUpdate=listFeesForClinics.FindAll(x => !CompareDouble.IsEqual(x.Amount,listFees[i].Amount));
 				if(listFeesToInsert.Count>0) {
 					Fees.InsertMany(listFeesToInsert,false);//Don't call FeeSchedGroup logic or we'll be sucked into an infinite loop.
@@ -177,8 +183,10 @@ namespace OpenDentBusiness {
 				if(feeSchedGroup==null) {
 					continue;
 				}
-				//list of all fees with the same CodeNum, FeeSched, ProvNum, and with ClinicNum in the group with the current fee.
+				//list of all fees with the same CodeNum, FeeSched, ProvNum and start date, and with ClinicNum in the group with the current fee.
+				DateTime dateEffective=listFees[i].DateEffective.Date;
 				listFeeNumsToDelete.AddRange(Fees.GetListExactForClinicsFromDb(listFees[i].CodeNum,listFees[i].FeeSched,listFees[i].ProvNum,feeSchedGroup.ListClinicNumsAll)
+					.FindAll(x => x.DateEffective.Date==dateEffective)
 					.Select(x => x.FeeNum));
 			}
 			//Remove any fees where the FeeNum is in listFees, since those are handled outside this method.
