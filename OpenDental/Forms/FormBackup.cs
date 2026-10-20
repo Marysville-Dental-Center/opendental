@@ -607,7 +607,7 @@ namespace OpenDental {
 				MessageBox.Show(Lan.g(this,"Restore complete."));
 			}
 			Version versionProgramVersionDb=new Version(PrefC.GetStringNoCache(PrefName.ProgramVersion));
-			Version versionProductVersion=new Version(Application.ProductVersion);
+			Version versionProductVersion=ForkVersions.CompatVersion;//Not Application.ProductVersion, which is the fork's release version ("0.0").
 			if(versionProgramVersionDb!=versionProductVersion) {
 				MsgBox.Show(this,"The restored database version is different than the version installed and requires a restart.  The program will now close.");
 				FormOpenDental.S_ProcessKillCommand();

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.ServiceProcess;
 using System.Text;
 using System.Threading;
@@ -9,7 +10,6 @@ using System.Windows.Forms;
 using System.Xml;
 using CodeBase;
 using DataConnectionBase;
-using Ionic.Zip;
 using MySqlConnector;
 using OpenDentBusiness;
 using OpenDental.UI;
@@ -17,22 +17,82 @@ using System.Net;
 using OpenDentBusiness.Misc;
 
 namespace OpenDental {
+	///<summary>Startup version checks and the fork's release channel. Two meanings of "version" are kept apart (backlog Risk R1): the release
+	///version ("0.0", AssemblyInformationalVersion, shown in About and in release manifests) and the Open Dental compatibility version (24.3.63.0,
+	///ForkVersions.CompatVersion), which the legacy conversion chain and the DataBaseVersion and ProgramVersion preferences use until the fork markers
+	///take over. Open Dental's update files (documentmisc UpdateFiles rows) are never read, and no downgrade is ever offered.</summary>
 	public class PrefL {
 
-		///<summary>Directory names of special folders that need to have their files preserved.
-		///These names should be treated as if they are being appended to the end of a directory path.
-		///Any sub folders should be explicitly listed within this list because the copy method used is not recursive.
-		///E.g. "\\Parent", "\\Parent\\Child", and "\\Gramps\\Dad\\Bro" are all valid directory names.</summary>
-		private static readonly List<string> _listSpecialDirs=new List<string>() {
-			"\\Sparks3D",
-			"\\OpenDentalReplicationService",
-		};
+		///<summary>True when this workstation is the update server: the WebServiceServerName preference is blank or names this computer. Only the
+		///update server converts the database and publishes releases.</summary>
+		public static bool IsUpdateServer() {
+			string updateServerName=PrefC.GetString(PrefName.WebServiceServerName);
+			return updateServerName=="" || ODEnvironment.IdIsThisComputer(updateServerName.ToLower());
+		}
 
-		///<summary>This ONLY runs when first opening the program.  It returns true if either no conversion is necessary, or if conversion was successful.  False for other situations like corrupt db, trying to convert to older version, etc.  Silent mode is mostly used from internal tools.  It is currently used in the Main Program if the silent command line argument is set.</summary>
-		public static bool ConvertDB(bool isSilent,string toVersion,Form form,bool useDynamicMode) {
-			ClassConvertDatabase classConvertDatabase=new ClassConvertDatabase();
-			string prefDbVersion=PrefC.GetString(PrefName.DataBaseVersion);
-			if(classConvertDatabase.Convert(prefDbVersion,toVersion,isSilent,form,useDynamicMode)) {
+		#region Version guard
+		///<summary>Runs at startup before any conversion, in Debug and Release builds alike (Open Dental skipped its version check in Debug builds;
+		///the fork does not). Refuses unadopted Open Dental databases above 24.3.63, adopted databases whose markers disagree, and adopted databases
+		///that a newer release has updated (after trying to pull that release). Normal startup never adopts: for a database on the adoption allowlist
+		///it only offers to open the adoption tool. Returns false if the program must exit.</summary>
+		public static bool CheckForkVersionGuard(Form form,bool isSilent) {
+			ForkGuardResult forkGuardResult=ForkVersionGuard.Evaluate(ForkVersions.ReadState());
+			if(forkGuardResult.CanProceed) {
+				return true;
+			}
+			if(forkGuardResult.Action==ForkGuardAction.NeedsNewerBuild && !isSilent) {
+				ReleaseManifest releaseManifestPublished=ForkReleases.GetPublishedManifest(out string _);
+				ReleaseIdentity releaseIdentityRunning=ForkReleases.GetRunningIdentity();
+				if(!ODBuild.IsDebug() && releaseManifestPublished!=null && releaseManifestPublished.BuildId!=releaseIdentityRunning.BuildId
+					&& ForkVersions.CompareReleaseVersions(releaseManifestPublished.ReleaseVersion,releaseIdentityRunning.ReleaseVersion)>=0)
+				{
+					MessageBox.Show(forkGuardResult.Message);
+					PullRelease(releaseManifestPublished,releaseIdentityRunning,isSilent);
+					return false;
+				}
+			}
+			FormOpenDental.ExitCode=forkGuardResult.ExitCode;
+			if(isSilent) {
+				return false;
+			}
+			if(forkGuardResult.Action==ForkGuardAction.NeedsAdoption) {
+				OfferAdoption(form,forkGuardResult);
+				return false;//Adopted or not, the program starts again so the guard sees the new state.
+			}
+			MessageBox.Show(forkGuardResult.Message);
+			return false;
+		}
+
+		///<summary>Explains why the database needs adoption and lets an administrator open the adoption tool. Nothing is changed unless the
+		///administrator goes through the tool's own checks and confirmation.</summary>
+		private static void OfferAdoption(Form form,ForkGuardResult forkGuardResult) {
+			string message=forkGuardResult.Message+"\r\n\r\n"
+				+Lan.g("Prefs","Open the adoption tool? Only adopt a restored copy, and only after taking a backup.");
+			if(MessageBox.Show(message,"",MessageBoxButtons.YesNo)!=DialogResult.Yes) {
+				return;
+			}
+			using FormAdoptDatabase formAdoptDatabase=new FormAdoptDatabase();
+			if(formAdoptDatabase.ShowDialog()==DialogResult.OK) {
+				MsgBox.Show("Prefs","The database was adopted. Start the program again to use it.");
+			}
+		}
+		#endregion Version guard
+
+		#region Conversion
+		///<summary>This ONLY runs when first opening the program.  It returns true if either no conversion is necessary, or if conversion was successful.  False for other situations like corrupt db, trying to convert to older version, etc.  Silent mode is mostly used from internal tools.  It is currently used in the Main Program if the silent command line argument is set.
+		///An adopted database never enters the frozen legacy chain: the fork migration runner (M1-01) takes over. Any other database is converted by
+		///the legacy chain up to the compatibility version (24.3.63.0), never further.</summary>
+		public static bool ConvertDB(bool isSilent,Form form,bool useDynamicMode) {
+			bool isSuccess;
+			if(ForkVersions.ReadState().IsForkMarked) {
+				isSuccess=RunForkMigrations(isSilent);
+			}
+			else {
+				ClassConvertDatabase classConvertDatabase=new ClassConvertDatabase();
+				string prefDbVersion=PrefC.GetString(PrefName.DataBaseVersion);
+				isSuccess=classConvertDatabase.Convert(prefDbVersion,ForkVersions.CompatVersion.ToString(4),isSilent,form,useDynamicMode);
+			}
+			if(isSuccess) {
 				return true;
 			}
 			if(FormOpenDental.ExitCode==0) {
@@ -44,640 +104,242 @@ namespace OpenDental {
 
 		///<summary>This ONLY runs when first opening the program.  It returns true if either no conversion is necessary, or if conversion was successful.  False for other situations like corrupt db, trying to convert to older version, etc.</summary>
 		public static bool ConvertDB(Form form,bool useDynamicMode) {
-			return ConvertDB(isSilent: false,Application.ProductVersion,form,useDynamicMode);
+			return ConvertDB(isSilent: false,form,useDynamicMode);
 		}
 
-		///<summary>Copies the installation directory files into the database.</summary>
-		///<param name="versionCurrent">The versioning information that will go into the Manifest.txt</param>
-		///<param name="isSilent">Set to true when upgrading silently.  No message boxes will show but errors will log and exit codes will be set.</param>
-		///<param name="hasAtoZ">Set to true when a copy of the update files needs to be made in the AtoZ share (for backwards compatibility).</param>
-		///<param name="hasConcatFiles">Set to true to also make one large concatenated row in the database (for backwards compatibility).
-		///This method will not return false if this particular option has problems executing.
-		///Making this singular row often times violates MySQL limitations which cause errors that cannot be easily avoided.
-		///Therefore, this method has the potential to log an error of the concat files failing yet the method can still return true.</param>
-		///<returns>Returns true if the update files were successfully copied into the database.</returns>
-		public static bool CopyFromHereToUpdateFiles(Version versionCurrent,bool isSilent,bool hasAtoZ,bool hasConcatFiles) {
-			#region Get Valid AtoZ path
-			if(hasAtoZ && PrefC.AtoZfolderUsed==DataStorageType.LocalAtoZ) {
-				string prefImagePath=ImageStore.GetPreferredAtoZpath();
-				if(prefImagePath==null || !Directory.Exists(prefImagePath)) {//AtoZ folder not found
-					if(isSilent) {
-						FormOpenDental.ExitCode=300;//AtoZ folder not found (Warning)
-						return false;
-					}
-					using FormPath formPath=new FormPath();
-					formPath.IsStartingUp=true;
-					formPath.ShowDialog();
-					if(formPath.DialogResult!=DialogResult.OK) {
-						MsgBox.Show("Prefs","Invalid A to Z path.  Closing program.");
-						FormOpenDental.ExitCode=300;//AtoZ folder not found (Warning)
-						return false;
-					}
-				}
-			}
-			#endregion
-			#region 
-			bool hasCopiedFiles=false;
-			if(isSilent) {//call on main thread
-				hasCopiedFiles=CopyFilesToDatabase(hasAtoZ,isSilent,versionCurrent,hasConcatFiles);
-			}
-			else {//otherwise show progress bar, run on separate thread
-				ProgressWin progressOD=new ProgressWin();
-				progressOD.ActionMain=() => hasCopiedFiles=CopyFilesToDatabase(hasAtoZ,isSilent,versionCurrent,hasConcatFiles);
-				//progressOD.ODEventType=ODEventType.PrefL;
-				progressOD.ShowDialog();
-				if(progressOD.IsCancelled){
-					return false;
-				}
-			}
-			#endregion
-			return hasCopiedFiles;//if true, inserting a compressed version of the files in the current installation directory into the database was successful.
-			//bool result=CopyFilesToDatabase(hasAtoZ,isSilent,versionCurrent,hasConcatFiles);
-			//return result;//if true, inserting a compressed version of the files in the current installation directory into the database was successful.
-		}
-
-		///<summary>Core copying logic for copying the files from the installation directory into the database. Returns true if the files were copied sucessfully.</summary>
-		public static bool CopyFilesToDatabase(bool hasAtoZ,bool isSilent,Version versionCurrent,bool hasConcatFiles) {
-			#region Delete Old UpdateFiles Folders
-			string folderTempUpdateFiles=ODFileUtils.CombinePaths(PrefC.GetTempFolderPath(),"UpdateFiles");
-			string folderAtoZUpdateFiles="";
-			if(PrefC.AtoZfolderUsed==DataStorageType.LocalAtoZ && hasAtoZ) {
-				folderAtoZUpdateFiles=ODFileUtils.CombinePaths(ImageStore.GetPreferredAtoZpath(),"UpdateFiles");
-			}
-			ODEvent.Fire(ODEventType.ProgressBar,Lan.g("Prefs","Removing old update files..."));
-			Thread.Sleep(300);
-			//Try to delete the UpdateFiles folder from both the AtoZ share and the local TEMP dir.
-			if(!DeleteFolder(folderAtoZUpdateFiles) | !DeleteFolder(folderTempUpdateFiles)) {//Logical OR to prevent short circuit.
-				FormOpenDental.ExitCode=301;//UpdateFiles folder cannot be deleted (Warning)
+		///<summary>The hand-off from the frozen legacy chain: runs the pending fork migration steps of an adopted database. Only the update server
+		///runs them, after a backup (Release builds), with the same in-progress flags as a conversion. Steps are idempotent, so a failed run can be
+		///repeated. Returns false if the program must exit.</summary>
+		private static bool RunForkMigrations(bool isSilent) {
+			IForkMigrationRunner runner=ForkMigrationHandOff.Runner;
+			ForkDbState forkDbState=ForkVersions.ReadState();
+			ForkGuardResult forkGuardResult=ForkVersionGuard.Evaluate(forkDbState,runner);
+			if(!forkGuardResult.CanProceed) {
+				FormOpenDental.ExitCode=forkGuardResult.ExitCode;
 				if(!isSilent) {
-					MsgBox.Show("Prefs","Unable to delete old UpdateFiles folder.  Go manually delete the UpdateFiles folder then retry.");
+					MessageBox.Show(forkGuardResult.Message);
 				}
 				return false;
 			}
-			#endregion
-			#region Copy Current Installation Directory To UpdateFiles Folders
-			ODEvent.Fire(ODEventType.ProgressBar,Lan.g("Prefs","Backing up new update files..."));
-			Thread.Sleep(300);
-			//Copy the installation directory files to the UpdateFiles share and a TEMP dir that we just created which we will zip up and insert into the db.
-			//When PrefC.AtoZfolderUsed is true and we're upgrading from a version prior to 15.3.10, this copy that we are about to make allows backwards 
-			//compatibility for versions of OD that do not look at the database for their UpdateFiles.
-			if(!CopyInstallFilesToPath(folderAtoZUpdateFiles,versionCurrent) | !CopyInstallFilesToPath(folderTempUpdateFiles,versionCurrent)) {
-				FormOpenDental.ExitCode=302;//Installation files could not be copied.
+			if(!forkGuardResult.HasPendingMigrations) {
+				return true;
+			}
+			if(!IsUpdateServer()) {
+				FormOpenDental.ExitCode=141;//Updates are only allowed from a designated web server
 				if(!isSilent) {
-					MsgBox.Show("Prefs","Failed to copy the current installation files on this computer.\r\n"
-						+"This could be due to a lack of permissions, or file(s) in the installation directory are still in use.");
+					MessageBox.Show(Lan.g("Prefs","The database needs an update that only the update server can run:")+" "
+						+PrefC.GetString(PrefName.WebServiceServerName));
 				}
 				return false;
 			}
-			#endregion
-			#region Get Current MySQL max_allowed_packet Setting
-			//Starting in v15.3, we always insert the UpdateFiles into the database.
-			int maxAllowedPacket=0;
-			int maxDefaultAllowedPacketSize=41943040;//40MB
-			if(DataConnection.DBtype==DatabaseType.MySql) {
-				ODEvent.Fire(ODEventType.ProgressBar,Lan.g("Prefs","Getting MySQL max allowed packet setting..."));
-				Thread.Sleep(300);
-				maxAllowedPacket=MiscData.GetMaxAllowedPacket();
-				//If trying to get the max_allowed_packet value for MySQL failed, assume they can handle 40MB of data.
-				//Our installations of MySQL defaults the global property 'max_allowed_packet' to 40MB.
-				//Nathan suggested forcing the global and local max_allowed_packet to 40MB if it was set to anything less.
-				if(maxAllowedPacket < maxDefaultAllowedPacketSize) {
-					try {
-						maxAllowedPacket=MiscData.SetMaxAllowedPacket(maxDefaultAllowedPacketSize);
-					}
-					catch(Exception ex) {
-						//Do nothing.  Either maxAllowedPacket is set to something small (e.g. 10MB) and we failed to update it to 40MB (should be fine)
-						//             OR we failed to get and set the global variable due to MySQL permissions and a UE was thrown.
-						//             Regardless, if maxAllowedPacket is 0 (the only thing that we can't have happen) it will get updated to 40MB later down.
-						ODException.SwallowAnyException(() => {
-							EventLog.WriteEntry("OpenDental","Error updating max_allowed_packet from "+maxAllowedPacket
-								+" to "+maxDefaultAllowedPacketSize+":\r\n"+ex.Message,EventLogEntryType.Error);
-						});
-					}
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				FormOpenDental.ExitCode=140;//Web client cannot convert database
+				if(!isSilent) {
+					MsgBox.Show("Prefs","Web client cannot convert database.  Must be using a direct connection.");
 				}
+				return false;
 			}
-			//Only change maxAllowedPacket if we couldn't successfully get the current value from the database or using Oracle.
-			//This will let the program attempt to insert the UpdateFiles into the db with the assumption that they are using our default setting (40MB).
-			//Worst case scenario, the user will hit the max_packet_allowed error below which will simply notify them to update their my.ini manually.
-			if(maxAllowedPacket==0) {
-				maxAllowedPacket=maxDefaultAllowedPacketSize;
+			if(!isSilent && MessageBox.Show(Lan.g("Prefs","The database will now be updated")+"\r\n"
+				+Lan.g("Prefs","from schema level")+" "+forkDbState.ForkSchemaLevel+" "+Lan.g("Prefs","to")+" "+runner.LatestLevel+".","",
+				MessageBoxButtons.OKCancel)!=DialogResult.OK)
+			{
+				return false;
 			}
-			//Now we need to break up the memory stream into a Base64 string but each payload needs to be small enough to send to MySQL.
-			//Each character in Base64 represents 6 bits.  Therefore, 4 chars are used to represent 3 bytes
-			//Therefore we have to read an amout of bytes per loop that must be divisible by 3. 
-			//Also, we want to 'buffer' a few KB for MySQL because the query itself and the parameter information will take up some bytes (unknown).
-			int charsPerPayload=maxAllowedPacket-8192;//Arbitrarily subtracted 8KB from max allowed bytes for MySQL "header" information.
-			charsPerPayload-=(charsPerPayload % 3);//Use the closest amount of bytes divisible by 3.
-			#endregion
-			#region Zip Update Files Into Memory
-			using MemoryStream memoryStream=new MemoryStream();
-			using ZipFile zipFile=new ZipFile();
-			//Take the entire directory in the temp dir that we just created and zip it up.
-			ODEvent.Fire(ODEventType.ProgressBar,Lan.g("Prefs","Compressing new update files..."));
-			Thread.Sleep(300);
-			zipFile.AddDirectory(folderTempUpdateFiles);//This adds any sub directories as well.
+			if(!ODBuild.IsDebug() && !Shared.MakeABackup(isSilent,BackupLocation.ConvertScript,false)) {
+				FormOpenDental.ExitCode=101;//Database Backup failed
+				return false;
+			}
+			Prefs.UpdateString(PrefName.UpdateInProgressOnComputerName,Environment.MachineName);
+			Prefs.UpdateBool(PrefName.CorruptedDatabase,true);
 			try {
-				zipFile.Save(memoryStream);//saves into memoryStream
-			}
-			catch(Exception ex) {
-				FormOpenDental.ExitCode=304;//Error compressing UpdateFiles
-				if(!isSilent) {
-					MessageBox.Show(Lan.g("Prefs","Error compressing UpdateFiles:")+"\r\n"+ex.Message);
-				}
-				return false;
-			}
-			#endregion
-			#region Insert Update Files Into One Row
-			if(hasConcatFiles) {
-				//For backwards compatibility we have to try and store the entire UpdateFiles content into one row
-				//Everything within this section will be in a try catch because we found out that it can fail due to the amount of data being sent.
-				//The MySQL CONCAT command gives up on life after so much data and sets the column to 0 bytes but does not throw an exception.
-				//This is simply here to help reduce the number of offices that might have problems updating from older versions.
-				//E.g. buying a new workstation and using an old trial installer could require this single large Update Files column.
-				
-				//Converting the file to Base64String bloats the size by approximately 30% so we need to make sure that the chunk size is wellbelow 40MB
-				//Old code used 15MB and that seemed to work very well for the majority of users.
-				charsPerPayload=Math.Min(charsPerPayload,15728640);//15728640 is divisible by 3 which is important for Base64 "appending" logic.
-				ODEvent.Fire(ODEventType.ProgressBar,Lan.g("Prefs","Deleting old update files row..."));
-				Thread.Sleep(300);
-				DocumentMiscs.DeleteAllForType(DocumentMiscType.UpdateFiles);
-				byte[] byteArrayZipFile=new byte[charsPerPayload];
-				memoryStream.Position=0;//Start at the beginning of the stream.
-				ODEvent.Fire(ODEventType.ProgressBar,Lan.g("Prefs","Inserting new update files into database row..."));
-				Thread.Sleep(300);
-				DocumentMisc documentMiscUpdateFiles=new DocumentMisc();
-				documentMiscUpdateFiles.DateCreated=DateTime.Today;
-				documentMiscUpdateFiles.DocMiscType=DocumentMiscType.UpdateFiles;
-				documentMiscUpdateFiles.FileName="UpdateFiles.zip";
-				DocumentMiscs.Insert(documentMiscUpdateFiles);
-				try {
-					while((memoryStream.Read(byteArrayZipFile,0,byteArrayZipFile.Length))>0) {
-						DocumentMiscs.AppendRawBase64ForUpdateFiles(Convert.ToBase64String(byteArrayZipFile));
-					}
-				}
-				catch(Exception ex) {
-					//Only log the error, do not stop the update process.  The above code is known to fail for various reasons and we abandoned it.
-					ODEvent.Fire(ODEventType.ProgressBar,Lan.g("Prefs","Error inserting new update files into database row..."));
-					Thread.Sleep(300);
-					ODException.SwallowAnyException(() => {
-						EventLog.WriteEntry("OpenDental","Error inserting new update files into database row:\r\n"+ex.Message,
-							EventLogEntryType.Error);
-					});
-				}
-			}
-			#endregion
-			#region Insert Update Files Segments Into Many Rows
-			//When we try and send over ~40MB of data, MySQL can drop our connection randomly giving a "MySQL server has gone away" error.
-			//Use a maximum of ~1MB payloads so that the likelyhood of this error is less.
-			charsPerPayload=Math.Min(charsPerPayload,1048575);//1048575 is divisible by 3 which is important for Base64 "appending" logic.
-			try {
-				//Clear and prep the current UpdateFiles row in the documentmisc table for the updated binaries.
-				ODEvent.Fire(ODEventType.ProgressBar,Lan.g("Prefs","Deleting old update files segments..."));
-				Thread.Sleep(300);
-				DocumentMiscs.DeleteAllForType(DocumentMiscType.UpdateFilesSegment);
-				byte[] byteArrayZipFile=new byte[charsPerPayload];
-				memoryStream.Position=0;//Start at the beginning of the stream.
-				//Convert the zipped up bytes into Base64 and instantly insert it into the database little by little.
-				ODEvent.Fire(ODEventType.ProgressBar,Lan.g("Prefs","Inserting new update files segments into database..."));
-				Thread.Sleep(300);
-				try {
-					int count=1;
-					DocumentMisc documentMiscUpdateFilesSegment=new DocumentMisc();
-					documentMiscUpdateFilesSegment.DateCreated=DateTime.Today;
-					documentMiscUpdateFilesSegment.DocMiscType=DocumentMiscType.UpdateFilesSegment;
-					while((memoryStream.Read(byteArrayZipFile,0,byteArrayZipFile.Length))>0) {
-						documentMiscUpdateFilesSegment.FileName=count.ToString().PadLeft(4,'0');
-						documentMiscUpdateFilesSegment.RawBase64=Convert.ToBase64String(byteArrayZipFile);
-						DocumentMiscs.Insert(documentMiscUpdateFilesSegment);
-						count++;
-					}
-					ODEvent.Fire(ODEventType.ProgressBar,Lan.g("Prefs","Done..."));
-					Thread.Sleep(300);
-				}
-				catch(MySqlException myEx) {
-					ODException.SwallowAnyException(() => {
-						EventLog.WriteEntry("OpenDental","Error inserting UpdateFiles into database:"
-							+"\r\nMySqlException: "+myEx.Message
-							+"\r\n  maxAllowedPacket: "+maxAllowedPacket
-							+"\r\n  charsPerPayload: "+charsPerPayload
-							+"\r\n  memStream.Length: "+memoryStream.Length,EventLogEntryType.Error);
-					});
-					throw myEx;
-				}
-				catch(Exception ex) {
-					ODException.SwallowAnyException(() => {
-						EventLog.WriteEntry("OpenDental","Error inserting UpdateFiles into database:"
-							+"\r\n"+ex.Message
-							+"\r\n  maxAllowedPacket: "+maxAllowedPacket
-							+"\r\n  charsPerPayload: "+charsPerPayload
-							+"\r\n  memStream.Length: "+memoryStream.Length,EventLogEntryType.Error);
-					});
-					throw ex;
-				}
-			}
-			catch(MySqlException myEx) {
-				FormOpenDental.ExitCode=303;//Failed inserting update files into the database.
 				if(isSilent) {
-					return false;
-				}
-				string errorStr=Lan.g("Prefs","Failed inserting update files into the database.");
-				if(myEx.Number.In((int)MySqlErrorCode.TooLongString,(int)MySqlErrorCode.WarningAllowedPacketOverflowed,(int)MySqlErrorCode.PacketTooLarge)) {
-					errorStr+="\r\n"+Lan.g("Prefs","Please call us or have your IT admin increase the max_allowed_packet to 40MB in the my.ini file.");
-					string innoDBTableNames=InnoDb.GetInnodbTableNames();
-					if(innoDBTableNames!="") {
-						//Starting in MySQL 5.6 you can specify innodb_log_file_size in the my.ini and it typicaly needs to be set higher than 48 MB (default).
-						//There is danger in manipulating this value so we should not do it for the customer but have their IT do it.
-						//Since the innodb_log_size variable only exists in MySQL 5.6 and greater, if the user adds this setting to their my.ini file for an
-						//older version, then MySQL will fail to start.  
-						//An alternative solution would be to convert their tables over to MyISAM instead of letting them continue with InnoDB (if possible).
-						//The following message to the user is vague on purpose to avoid listing version numbers.
-						errorStr+="\r\n"+Lan.g("Prefs","InnoDB tables have been detected, you may need to increase the innodb_log_file_size variable.");
-						//Do not add the additional InnoDB warning because it will often times just confuse our typical users (odds are they are using MyISAM).
-					}
+					runner.RunPending(x => ODEvent.Fire(ODEventType.ConvertDatabases,x));
 				}
 				else {
-					errorStr+="\r\n"+Lan.g("Prefs","MySqlException")+": "+myEx.Message;
+					ProgressWin progressWin=new ProgressWin();
+					progressWin.ActionMain=() => runner.RunPending(x => ODEvent.Fire(ODEventType.ConvertDatabases,x));
+					progressWin.ShowCancelButton=false;
+					progressWin.ShowDialog();
 				}
-				MessageBox.Show(errorStr);
+			}
+			catch(Exception ex) {
+				FormOpenDental.ExitCode=ForkVersionGuard.EXIT_CODE_MIGRATION_FAILED;
+				if(!isSilent) {
+					FriendlyException.Show(Lan.g("Prefs","A database update step failed. The steps can be run again; restore the backup if it fails again."),ex);
+				}
 				return false;
 			}
-			catch(Exception ex) {//non-MySqlException
-				FormOpenDental.ExitCode=303;//Failed inserting update files into the database.
-				if(isSilent) {
-					return false;
-				}
-				MessageBox.Show(Lan.g("Prefs","Failed inserting update files into the database.")+"\r\n"+ex.Message);
-				return false;
+			finally {
+				//Fork steps are idempotent, so a failed run leaves the database usable for another attempt instead of flagged as corrupted.
+				Prefs.UpdateBool(PrefName.CorruptedDatabase,false,true);
+				Prefs.UpdateString(PrefName.UpdateInProgressOnComputerName,"");
 			}
-			#endregion
+			Cache.Refresh(InvalidType.Prefs,InvalidType.Programs);
+			SecurityLog securityLog=new SecurityLog {
+				PermType=EnumPermType.UpdateInstall,
+				UserNum=0,//Created before a user logs in.
+				LogDateTime=DateTime.Now,
+				LogText="Database updated from fork schema level "+forkDbState.ForkSchemaLevel+" to "+runner.LatestLevel+".",
+				CompName=Security.GetComplexComputerName()
+			};
+			SecurityLogs.MakeLogEntry(securityLog);
 			return true;
 		}
+		#endregion Conversion
 
-		///<summary>Creates the directory passed in and copies the files in the current installation directory to the specified folder path.
-		///Creates a Manifest.txt file with the version information passed in.
-		///Returns false if anything goes wrong.  Returns true if copy was successful or if the folder path passed in is null or blank.</summary>
-		private static bool CopyInstallFilesToPath(string folderPath,Version versionCurrent) {
-			if(string.IsNullOrEmpty(folderPath)) {
-				return true;//Some customers will not be using the AtoZ folder which will pass in blank.
-			}
-			try {
-				Directory.CreateDirectory(folderPath);
-				DirectoryInfo directoryInfo=new DirectoryInfo(Application.StartupPath);
-				CopyFilesToFolder(directoryInfo.GetFiles(),folderPath);
-				//Copy over the contents of all special directories.
-				for(int i=0;i<_listSpecialDirs.Count;i++){
-					DirectoryInfo directoryInfoSpecial=new DirectoryInfo(Application.StartupPath+_listSpecialDirs[i]);
-					if(directoryInfoSpecial.Exists) {
-						Directory.CreateDirectory(folderPath+_listSpecialDirs[i]);
-						CopyFilesToFolder(directoryInfoSpecial.GetFiles(),folderPath+_listSpecialDirs[i]);
-					}
-				}
-				//Create a simple manifest file so that we know what version the files are for.
-				File.WriteAllText(ODFileUtils.CombinePaths(folderPath,"Manifest.txt"),versionCurrent.ToString(3));
-			}
-			catch(Exception) {
-				return false;
-			}
-			return true;
-		}
-
-		///<summary>Copies all of the files that meet a hard coded filter into the destination folder.  Throws exceptions.</summary>
-		private static void CopyFilesToFolder(FileInfo[] fileInfoArrayApp,string folderPath) {
-			for(int i=0;i<fileInfoArrayApp.Length;i++){
-				if(fileInfoArrayApp[i].Name=="FreeDentalConfig.xml") {
-					continue;//skip this one.
-				}
-				if(fileInfoArrayApp[i].Name=="OpenDentalServerConfig.xml") {
-					continue;//skip also
-				}
-				if(fileInfoArrayApp[i].Name=="ProximitySettings.txt") {
-					continue;//skip as well
-				}
-				if(fileInfoArrayApp[i].Name.StartsWith("openlog")) {
-					continue;//these can be big and are irrelevant
-				}
-				if(fileInfoArrayApp[i].Name.Contains("__")) {//double underscore
-					continue;//So that plugin dlls can purposely skip the file copy.
-				}
-				if(fileInfoArrayApp[i].Name=="OpenDentalReplicationServiceConfig.xml") {
-					continue;
-				}
-				//include UpdateFileCopier
-				File.Copy(fileInfoArrayApp[i].FullName,ODFileUtils.CombinePaths(folderPath,fileInfoArrayApp[i].Name));
-			}
-		}
-
-		///<summary>Recursively deletes all folders and files in the provided folder path.
-		///Waits up to 10 seconds for the delete command to finish.  Returns false if anything goes wrong.</summary>
-		private static bool DeleteFolder(string folderPath) {
-			if(string.IsNullOrEmpty(folderPath)) {
-				return true;//Nothing to delete.
-			}
-			if(!Directory.Exists(folderPath)) {
-				return true;//Already deleted
-			}
-			//The directory we want to delete is present so try and recursively delete it and all its content.
-			try {
-				Directory.Delete(folderPath,true);
-			}
-			catch {
-				return false;//Something went wrong, typically a permission issue or files are still in use.
-			}
-			//The delete seems to have been successful, wait up to 10 seconds so that CreateDirectory won't malfunction.
-			DateTime dateTimeWait=DateTime.Now.AddSeconds(10);
-			while(Directory.Exists(folderPath) && DateTime.Now < dateTimeWait) {
-				Application.DoEvents();
-			}
-			if(Directory.Exists(folderPath)) {//Dir is still present after 10 seconds of waiting for the delete to complete.
-				return false;
-			}
-			return true;//Dir deleted successfully.
-		}
-
-		///<summary>Called from FormOpenDental.PrefsStartup. Compares the installed version to the version on the server being connected to.</summary>
+		#region Release channel
+		///<summary>Called from FormOpenDental.PrefsStartup after conversion. Compares this build with the release the update server published and
+		///publishes, pulls or refuses (ForkReleases.Decide). There is never a downgrade prompt, and Open Dental's update files are never read.
+		///Debug builds neither publish nor pull. Returns false if the program must exit.</summary>
 		///<param name="formCurrent">The form where the method is being called from.</param>
 		///<param name="isSilent">Whether this is a silent update. A silent update will have no UI elements appear.</param>
-		///<param name="chooseDatabaseInfo">May be null. The model for the choose database window. Stores all information entered within the window.</param>
+		///<param name="chooseDatabaseInfo">May be null. Dynamic mode (per-version program folders) is not supported by the fork's release channel.</param>
 		public static bool CheckProgramVersion(Form formCurrent,bool isSilent,ChooseDatabaseInfo chooseDatabaseInfo,CommandLineArgs commandLineArgs) {
-			if(ODBuild.IsDebug()) {
-				return true;//Development mode never needs to check versions or copy files to other directories.  Simply return true at this point.
+			ForkDbState forkDbState=ForkVersions.ReadState();
+			bool isUpdateServer=IsUpdateServer();
+			if(!forkDbState.IsForkMarked && isUpdateServer && !ODBuild.IsDebug()) {
+				//Compatibility line: ProgramVersion keeps its Open Dental meaning. After the legacy chain converted an older database, raise it to
+				//24.3.63.0. An adopted database keeps its sentinel and is never touched here.
+				Version versionProgram=ForkVersions.ParseVersion(forkDbState.ProgramVersion);
+				if(versionProgram==null || versionProgram<ForkVersions.CompatVersion) {
+					Prefs.UpdateString(PrefName.ProgramVersion,ForkVersions.CompatVersion.ToString(4));
+					Cache.Refresh(InvalidType.Prefs);
+				}
 			}
-			if(PrefC.GetBool(PrefName.UpdateWindowShowsClassicView)) {
-				if(isSilent) {
-					FormOpenDental.ExitCode=399;//Classic View is not supported with Silent Update
+			ReleaseIdentity releaseIdentityRunning=ForkReleases.GetRunningIdentity();
+			ReleaseManifest releaseManifestPublished=ForkReleases.GetPublishedManifest(out string _);
+			ReleaseDecision releaseDecision=ForkReleases.Decide(releaseManifestPublished,releaseIdentityRunning,isUpdateServer,ODBuild.IsDebug(),
+				PrefC.GetString(PrefName.WebServiceServerName));
+			switch(releaseDecision.Action) {
+				case ReleaseAction.Publish:
+					return PublishRelease(releaseIdentityRunning,isSilent,releaseDecision.Message,doAsk:true);
+				case ReleaseAction.Pull:
+					PullRelease(releaseManifestPublished,releaseIdentityRunning,isSilent);
+					return false;//The copier restarts the program, or the user cancelled.
+				case ReleaseAction.RefuseNewerThanPublished:
+					FormOpenDental.ExitCode=ForkVersionGuard.EXIT_CODE_RELEASE_NEWER_THAN_PUBLISHED;
+					if(!isSilent) {
+						MessageBox.Show(releaseDecision.Message);
+					}
 					return false;
-				}
-				return CheckProgramVersionClassic();
+				default:
+					return true;
 			}
-			string updateServerName=PrefC.GetString(PrefName.WebServiceServerName);
-			Version versionStored=new Version(PrefC.GetString(PrefName.ProgramVersion));
-			Version versionDB=new Version(PrefC.GetString(PrefName.DataBaseVersion));
-			Version versionCurrent=new Version(Application.ProductVersion);
-			//Determines if the current version is within the dynamic mode folder.
-			bool isInDynamicModeFolder=Application.StartupPath.Contains("DynamicMode");
-			//Regardless of the WebServiceServerName preference (update server) if the stored version is higher than the current version then this
-			//computer needs to be upgraded to the version of the program that is stored within the database (or UpdateFiles folder in AtoZ).
-			if(versionStored>versionCurrent) {
-				if(isSilent) {//This should never happen after a silent update.
-					FormOpenDental.ExitCode=312;//Stored version is higher that client version after an update was successful.
-					return false;
-				}
-				//If this application is in the dynamic mode folder, do not allow them to update the files. Or if using dynamic mode, download the
-				//more recent files.
-				if(isInDynamicModeFolder || (chooseDatabaseInfo?.UseDynamicMode??false)) {
-					LaunchCorrespondingVersion(versionStored,versionCurrent,isInDynamicModeFolder,chooseDatabaseInfo,commandLineArgs);
-					return false;
-				}
-				//At this point we know with absolute certainty that we cannot allow this version to connect to the database.
-				//Attempt to update the client version to the correct version from the server.
-				ODException.SwallowAnyException(() => {
-					UpdateClientFromServerUpdateFiles(versionStored,versionCurrent,Application.StartupPath,killServices:true,
-						useLocalUpdateFileCopier:false,openCopiedFiles:true);
-				});
-				return false;//Regardless if the client update was successful or not we HAVE to restart Open Dental so always return false.
-			}
-			//Give option to downgrade to server if client version > server version and both the WebServiceServerName isn't blank and the current 
-			//computer ID is not the same as the WebServiceServerName or if they server name is blank and they are using dynamic mode.
-			if(versionStored<versionCurrent 
-				&& ((updateServerName!="" && !ODEnvironment.IdIsThisComputer(updateServerName.ToLower())) 
-					|| (updateServerName=="" && (chooseDatabaseInfo?.UseDynamicMode??false))))
-			{
-				if(isSilent) {//This should have already been thrown but we do it here anyway.
-					FormOpenDental.ExitCode=141;//Updates are only allowed from a designated web server
-					return false;
-				}
-				//If this application is in the dynamic mode folder or they are connecting to a database of a lower version.
-				if(isInDynamicModeFolder || (chooseDatabaseInfo?.UseDynamicMode??false)) {
-					LaunchCorrespondingVersion(versionStored,versionCurrent,isInDynamicModeFolder,chooseDatabaseInfo,commandLineArgs);
-					return false;
-				}
-				//Else offer to downgrade their client
-				string message=Lan.g("Prefs","Your version is more recent than the server version.");
-				message+="\r\n"+Lan.g("Prefs","Updates are only allowed from the web server")+": "+updateServerName;
-				message+="\r\n\r\n"+Lan.g("Prefs","Do you want to downgrade to the server version?");
-				if(MessageBox.Show(message,"",MessageBoxButtons.OKCancel)!=DialogResult.OK) {
-					return false;//If user clicks cancel, then exit program
-				}
-				//At this point we know with absolute certainty that we cannot allow this version to connect to the database.
-				//Attempt to downgrade the client version to the correct version from the server.
-				ODException.SwallowAnyException(() => {
-					UpdateClientFromServerUpdateFiles(versionStored,versionCurrent,Application.StartupPath,killServices:true,
-						useLocalUpdateFileCopier:false,openCopiedFiles:true);
-				});
-				return false;//Regardless if the downgrade was successful or not we HAVE to restart Open Dental so always return false.
-			}
-			//Push update to server if client version > server version and either the WebServiceServerName is blank or the current computer ID is the same as the WebServiceServerName
-			//At this point we know 100% it's going to be an upgrade
-			else if(versionStored<versionCurrent 
-				&& (updateServerName=="" || ODEnvironment.IdIsThisComputer(updateServerName.ToLower()))) 
-			{
-				if(ODBuild.IsTrial() && PrefC.GetString(PrefName.RegistrationKey)!="") {//Allow databases with no reg key to continue.  Needed by our conversion department.
-					//Trial users should never be able to update a database, not even the ProgramVersion preference.
-					MsgBox.Show("PrefL","Trial versions cannot connect to live databases.  Please run the Setup.exe in the AtoZ folder to reinstall your original version.");
-					FormOpenDental.ExitCode=398;//Trial versions does not support updating databases.
-					return false;//Should not get to this line.  Just in case.
-				}
-				//This has been commented out because it was deemed unnecessary: 10/10/14 per Jason and Derek
-				//There are two different situations where this might happen.
-				//if(PrefC.GetString(PrefName.UpdateInProgressOnComputerName)==""){//1. Just performed an update from this workstation on another database.
-				//	//This is very common for admins when viewing slighly older databases.
-				//	//There should be no annoying behavior here.  So do nothing.
-				//	if(!ODBuild.IsDebug()) {
-				//		//Excluding this in debug allows us to view slightly older databases without accidentally altering them.
-				//		Prefs.UpdateString(PrefName.ProgramVersion,currentVersion.ToString());
-				//		Cache.Refresh(InvalidType.Prefs);
-				//	}
-				//	return true;
-				//}
-				//and 2a. Just performed an update from this workstation on this database.  
-				//or 2b. Just performed an update from this workstation for multiple databases.
-				//In both 2a and 2b, we already downloaded Setup file to correct location for this db, so skip 1 above.
-				//This computer just performed an update, but none of the other computers has updated yet.
-				//So attempt to stash all files that are in the Application directory.
-				//At this point we know that we are going to perform an update.
-				bool hasAtoZ=false;
-				bool hasConcatFiles=false;
-				//Check to see if the version we are coming from is prior to v15.3.
-				//If we are coming from an older version, we need to put a copy of the Update Files into the AtoZ share for backwards compatibility.
-				if(versionStored<new Version("15.3.10")) {
-					//In 15.3.10 we started to explicitly use the database for storing the Update Files folder.
-					//Any clients updating from a previous version still need the Update Files in the AtoZ because they look there instead of the db.
-					hasAtoZ=true;
-				}
-				//Check to see if the version we are coming from is prior to v15.4.50 or between v16.1.0 and v16.1.20.
-				//If these scenarios are met, we need to insert the new Update Files as one big row using the old CONCAT methodology. 
-				if(versionStored < new Version("15.4.50")
-					|| (versionStored > new Version("16.1.0") && versionStored < new Version("16.1.20"))) 
-				{
-					//Attempts to copy UpdateFiles into a single row in the database for backwards compatibility.
-					//If copying the entire UpdateFiles zip into one row fails, the update will go on because it has been proven to be unreliable. 
-					hasConcatFiles=true;
-				}
-				if(!CopyFromHereToUpdateFiles(versionCurrent,isSilent,hasAtoZ,hasConcatFiles)) {
-					Environment.Exit(FormOpenDental.ExitCode);
-					return false;
-				}
-				SecurityHash.UpdateHashing();
-				Prefs.UpdateString(PrefName.ProgramVersion,versionCurrent.ToString());
-				UpdateHistory updateHistory=new UpdateHistory(versionCurrent.ToString());
-				UpdateHistories.Insert(updateHistory);
-				Prefs.UpdateString(PrefName.UpdateInProgressOnComputerName,"");//now, other workstations will be allowed to update.
-				Cache.Refresh(InvalidType.Prefs);
-				//Try to install Open Dental Service, since this is the computer that matches PrefName.WebServiceServerName.
-				//If PrefName.WebServiceServerName is blank, this will install on the computer running the update if it isn't already installed.
-				//In addition to the service installing, there will also be a new OpenDentalServiceConfig.xml file that the service will use.  
-				//The config data is defaulted to the current connection settings in DataConnection. 
-				TryInstallOpenDentalService(isSilent);
-			}
-			if(versionCurrent < versionDB) {
-				//This could happen if a previous update was partially successful.
+		}
+
+		///<summary>Recopy (Update Setup): publishes the files of this installation as the current release, on the update server only. The parameters
+		///are those of Open Dental's update-file copy and are ignored: the fork stores only its own release rows. Returns true on success.</summary>
+		public static bool CopyFromHereToUpdateFiles(Version versionCurrent,bool isSilent,bool hasAtoZ,bool hasConcatFiles) {
+			if(!IsUpdateServer()) {
 				if(!isSilent) {
-					MsgBox.Show(Lans.g("PrefL","The current version is lower than the database version. Current version:")+" "+versionCurrent
-						+Lans.g("PrefL",". Database version:")+" "+versionDB+".");
+					MessageBox.Show(Lan.g("Prefs","Only the update server publishes releases:")+" "+PrefC.GetString(PrefName.WebServiceServerName));
 				}
-				FormOpenDental.ExitCode=(int)FormOpenDentalExitCodes.DbVersionHigherThanCurrent;//309
 				return false;
+			}
+			return PublishRelease(ForkReleases.GetRunningIdentity(),isSilent,"",doAsk:false);
+		}
+
+		///<summary>Stores this installation's files in the database as the published release, so the other workstations update to it on their next
+		///start. Returns false only in silent mode when publishing failed; otherwise this workstation keeps running either way.</summary>
+		private static bool PublishRelease(ReleaseIdentity releaseIdentity,bool isSilent,string reason,bool doAsk) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return true;//Releases are published over a direct connection only.
+			}
+			if(!isSilent && doAsk) {
+				string message=(reason==""?"":reason+"\r\n\r\n")
+					+Lan.g("Prefs","Publish this build (release")+" "+releaseIdentity+") "
+					+Lan.g("Prefs","so the other workstations update to it when they start?")+"\r\n"
+					+Lan.g("Prefs","Click Cancel to run it on this workstation only.");
+				if(MessageBox.Show(message,"",MessageBoxButtons.OKCancel)!=DialogResult.OK) {
+					return true;
+				}
+			}
+			ReleaseManifest releaseManifest=null;
+			Prefs.UpdateString(PrefName.UpdateInProgressOnComputerName,Environment.MachineName);//Other workstations wait while the rows are replaced.
+			try {
+				if(isSilent) {
+					releaseManifest=ForkReleases.Publish(Application.StartupPath,releaseIdentity,ODEnvironment.MachineName);
+				}
+				else {
+					ProgressWin progressWin=new ProgressWin();
+					progressWin.StartingMessage=Lan.g("Prefs","Publishing the release...");
+					progressWin.ActionMain=() => releaseManifest=ForkReleases.Publish(Application.StartupPath,releaseIdentity,ODEnvironment.MachineName);
+					progressWin.ShowCancelButton=false;
+					progressWin.ShowDialog();
+				}
+			}
+			catch(Exception ex) {
+				FormOpenDental.ExitCode=303;//Failed inserting update files into the database.
+				if(!isSilent) {
+					FriendlyException.Show(Lan.g("Prefs","Publishing the release failed. The other workstations keep the previous release."),ex);
+				}
+			}
+			finally {
+				Prefs.UpdateString(PrefName.UpdateInProgressOnComputerName,"");
+			}
+			if(releaseManifest==null) {
+				return !isSilent;
+			}
+			if(UpdateHistories.GetForVersion(releaseIdentity.ReleaseVersion)==null) {
+				UpdateHistories.Insert(new UpdateHistory(releaseIdentity.ReleaseVersion));
+			}
+			Cache.Refresh(InvalidType.Prefs);
+			SecurityLogs.MakeLogEntry(new SecurityLog {
+				PermType=EnumPermType.UpdateInstall,
+				UserNum=0,//Created before a user logs in.
+				LogDateTime=DateTime.Now,
+				LogText="Release "+releaseIdentity+" published with "+releaseManifest.ListFiles.Count+" files.",
+				CompName=Security.GetComplexComputerName()
+			});
+			if(!isSilent && doAsk) {
+				MsgBox.Show("Prefs","Release published. The other workstations update when they start.");
 			}
 			return true;
 		}
 
-		///<summary>Launches the correct version of Open Dental based on the parameters passed in.
-		///Has the potential to launch an executable that lives within another versioned folder or it may launch the installed executable.
-		///This method will first check the version within the installation folder to see if it should launch the installed version.
-		///Otherwise, it creates a new DynamicMode "version" folder if one is not found and fills it with the corresponding binaries from the db.
-		///If a corresponding versioned folder was found with the correct binaries, it simply launches said dynamic mode executable.</summary>
-		///<param name="versionStored">A version object that represents the ProgramVersion preference in the database.</param>
-		///<param name="versionCurrent">A version object that represents the currently running version (Application.ProductVersion).</param>
-		///<param name="isInDynamicModeFolder">Indicates whether the current installation is within a dynamic mode folder that was then launched 
-		///and attempting to connect to an incorrect version.</param>
-		///<param name="chooseDatabaseInfo">The model from the choose database database. This will include all information neccessary to pass the database information
-		///to the correct version of Open Dental when it is launched.</param>
-		private static void LaunchCorrespondingVersion(Version versionStored,Version versionCurrent,bool isInDynamicModeFolder,
-			ChooseDatabaseInfo chooseDatabaseInfo,CommandLineArgs commandLineArgs)
-		{
-			//The full path to the official installation folder for Open Dental.
-			string installationFolder=isInDynamicModeFolder ? 
-				Directory.GetParent(Directory.GetParent(Application.StartupPath).FullName).FullName : Application.StartupPath;
-			//The full path to the dynamic mode folder.
-			string dynamicModeFolder=ODFileUtils.CombinePaths(installationFolder,"DynamicMode");
-			//The full path to the DynamicMode folder for the ProgramVersion in the database.
-			string currentServerVersionFolder=ODFileUtils.CombinePaths(dynamicModeFolder,versionStored.ToString());
-			//Create dynamic mode folder if it does not exist
-			if(!TryCreateDirectory(dynamicModeFolder)) {
+		///<summary>Downloads the published release, checks the archive and every file with SHA-256, and starts UpdateFileCopier, which checks the
+		///files again, copies them over this installation and restarts the program. On any problem nothing on this workstation changes.</summary>
+		private static void PullRelease(ReleaseManifest releaseManifestPublished,ReleaseIdentity releaseIdentityRunning,bool isSilent) {
+			if(isSilent) {
+				FormOpenDental.ExitCode=312;//Stored version is higher that client version after an update was successful.
 				return;
 			}
-			if(isInDynamicModeFolder) {
-				//The following code should only be run in the case of the user opening an incorrect version within a separate dynamic mode folder.
-				//If this were to run on the main installation of Open Dental, it would continue to try and open itself again and again due to the check
-				//below. This prevents users from updating dynamic mode folders.
-				string installedVersionExePath=ODFileUtils.CombinePaths(installationFolder,MiscUtils.GetCurrentExeFileName());
-				//This is the version that is installed in their base directory.
-				string installedVersionRaw="";
-				Version versionInstalled=null;
-				try {
-					installedVersionRaw=FileVersionInfo.GetVersionInfo(installedVersionExePath).ProductVersion;
-					versionInstalled=new Version(installedVersionRaw);
-				}
-				catch(Exception ex) {
-					FriendlyException.Show(Lans.g("Prefs","Unable to get the file information from")+" "+installedVersionExePath,ex);
-					return;
-				}
-				//This means their main installation is the correct version.
-				if(versionStored==versionInstalled) {
-					try {
-						Process.Start(installedVersionExePath);
-					}
-					catch(Exception ex) {
-						FriendlyException.Show(Lans.g("Prefs","Unable to start installed version. Please open the program from the installation "
-							+"directory."),ex);
-					}
-					return;//Will close Open Dental
-				}
-			}
-			//Path to the executable that does or will exist in the dynamic mode folder for the server version
-			string serverVersionExePath=ODFileUtils.CombinePaths(currentServerVersionFolder,MiscUtils.GetCurrentExeFileName());
-			//The files do not exist or the server version is a different dynamic mode or is the incorrect version due to human error
-			if(!File.Exists(serverVersionExePath) || FileVersionInfo.GetVersionInfo(serverVersionExePath).ProductVersion!=versionStored.ToString()) {
-				if(!TryCreateDirectory(currentServerVersionFolder)) {
-					return;
-				}
-				//Move server files to dynamic mode folder
-				try {
-					//do not kill services as this could be an update computer for another server
-					if(!UpdateClientFromServerUpdateFiles(versionStored,versionCurrent,currentServerVersionFolder,killServices:false,
-						useLocalUpdateFileCopier:true,openCopiedFiles:false)) {
-						return;
-					}
-				}
-				catch(Exception ex) {
-					ex.DoNothing();//Swallow silently and shut down Open Dental.
-					return;
-				}
-			}
-			//Correct file now exists for sure. Launch this version.
+			string folderUpdate=ODFileUtils.CombinePaths(PrefC.GetTempFolderPath(),"ForkRelease");
+			ReleaseDownloadResult releaseDownloadResult=null;
 			try {
-				Process.Start(serverVersionExePath,GenerateArgumentsFromInfo(chooseDatabaseInfo,commandLineArgs));
+				ProgressWin progressWin=new ProgressWin();
+				progressWin.StartingMessage=Lan.g("Prefs","Downloading the release...");
+				progressWin.ActionMain=() => releaseDownloadResult=ForkReleases.DownloadAndVerify(folderUpdate);
+				progressWin.ShowCancelButton=false;
+				progressWin.ShowDialog();
 			}
 			catch(Exception ex) {
-				FriendlyException.Show(Lans.g("Prefs","Unable to execute the correct version."),ex);
+				FormOpenDental.ExitCode=ForkVersionGuard.EXIT_CODE_RELEASE_INVALID;
+				FriendlyException.Show(Lan.g("Prefs","The published release could not be downloaded. Nothing was changed on this workstation."),ex);
+				return;
 			}
-		}
-
-		///<summary>Model can be null, if so then return blank. Otherwise generate command line arguments based on the arguments passed from FormOpenDental.FormOpenShown(). 
-		///This ensures when launching a version of OD using dynamic mode that the exact command line arguments are preserved and passed along to the next instance.</summary>
-		private static string GenerateArgumentsFromInfo(ChooseDatabaseInfo chooseDatabaseInfo,CommandLineArgs commandLineArgs) {
-			if(chooseDatabaseInfo==null || chooseDatabaseInfo.CentralConnectionCur==null) {
-				return "";
+			if(releaseDownloadResult==null || !releaseDownloadResult.IsOk) {
+				FormOpenDental.ExitCode=ForkVersionGuard.EXIT_CODE_RELEASE_INVALID;
+				List<string> listProblems=releaseDownloadResult?.ListProblems??new List<string>();
+				MessageBox.Show(Lan.g("Prefs","The published release failed its checks, so it was not installed. Nothing was changed on this workstation.")
+					+"\r\n"+string.Join("\r\n",listProblems.Take(10))+(listProblems.Count>10?"\r\n...":"")+"\r\n\r\n"
+					+Lan.g("Prefs","Publish the release again from the update server."));
+				return;
 			}
-			//Preserve all of the command line arguments that were originally passed into this instance of the program.
-			string arguments=commandLineArgs.GetCommandLineArgs();
-			//However, preserve the information that the user entered into the Choose Database window if command line arguments were not used.
-			if(commandLineArgs.ArrayCommandLineArgs.Length==0) {
-				arguments="UserName=\""+chooseDatabaseInfo.CentralConnectionCur.OdUser+"\" "
-				+"WebServiceUri=\""+chooseDatabaseInfo.CentralConnectionCur.ServiceURI+"\" "
-				+"OdPassword=\""+chooseDatabaseInfo.CentralConnectionCur.OdPassword+"\" "
-				+"ServerName=\""+chooseDatabaseInfo.CentralConnectionCur.ServerName+"\" "
-				+"DatabaseName=\""+chooseDatabaseInfo.CentralConnectionCur.DatabaseName+"\" "
-				+"MySqlUser=\""+chooseDatabaseInfo.CentralConnectionCur.MySqlUser+"\" "
-				+"MySqlPassword=\""+chooseDatabaseInfo.CentralConnectionCur.MySqlPassword+"\" ";
+			ReleaseIdentity releaseIdentityPublished=new ReleaseIdentity {
+				ReleaseVersion=releaseDownloadResult.Manifest.ReleaseVersion,
+				BuildId=releaseDownloadResult.Manifest.BuildId
+			};
+			if(MessageBox.Show(Lan.g("Prefs","Files will now be copied.")+"\r\n"
+				+Lan.g("Prefs","This workstation will be updated from")+" "+releaseIdentityRunning+" "+Lan.g("Prefs","to")+" "+releaseIdentityPublished+".",
+				"",MessageBoxButtons.OKCancel)!=DialogResult.OK)
+			{
+				return;
 			}
-			return arguments;
+			bool useLocalUpdateFileCopier=!File.Exists(ODFileUtils.CombinePaths(folderUpdate,"UpdateFileCopier.exe"));
+			OpenFileCopier(folderUpdate,Application.StartupPath,killServices:true,useLocalUpdateFileCopier,openCopiedFiles:true);
 		}
-
-		///<summary>Returns true if the directory passed in was created or already exists.
-		///Otherwise; returns false after displaying an error message to the user.</summary>
-		private static bool TryCreateDirectory(string fullPath) {
-			try {
-				Directory.CreateDirectory(fullPath);
-			}
-			catch(Exception ex) {
-				FriendlyException.Show(Lans.g("Prefs","Unable to create the following directory:")+" "+fullPath,ex);
-				return false;
-			}
-			return true;
-		}
-		
-		///<summary>Used to download Setup.exe from Open Dental's update website when the update files in the database were wrong. This build never
-		///contacts Open Dental's servers, so it tells the user to install the database's version manually instead.</summary>
-		private static void DownloadAndRunSetup(Version versionStored,Version versionCurrent) {
-			MessageBox.Show(Lan.g("Prefs","Downloading updates from Open Dental is not available in this build.")+"\r\n"
-				+Lan.g("Prefs","Install version")+" "+versionStored.ToString(3)+" "+Lan.g("Prefs","on this workstation manually, or go to the computer "
-				+"where the update was run and use Help | Update | Setup | Recopy."));
-		}
-
-		///<summary>Used to read the update manifest from Open Dental's update website. This build never contacts Open Dental's servers, so this always
-		///returns false and explains why in updateInfoMajor.</summary>
-		public static bool ShouldDownloadUpdate(string remoteUri,string updateCode,out string updateInfoMajor,out string updateInfoMinor) {
-			updateInfoMajor=Lan.g("FormUpdate","Checking for updates with Open Dental is not available in this build.  ");
-			updateInfoMinor="";
-			return false;
-		}
-
-		///<summary>Used to download Setup.exe from Open Dental's update website and run it. This build never contacts Open Dental's servers, so this
-		///only shows a message. destinationPath includes filename (Setup.exe).</summary>
-		public static void DownloadInstallPatchFromURI(string downloadUri,string destinationPath,bool runSetupAfterDownload,bool showShutdownWindow,string destinationPath2) {
-			MessageBox.Show(Lan.g("FormUpdate","Downloading updates from Open Dental is not available in this build. Install new versions manually."));
-		}
+		#endregion Release channel
 
 		///<summary>This ONLY runs when first opening the program.  Gets run early in the sequence. Returns false if the program should exit.</summary>
 		public static bool CheckMySqlVersion() {
@@ -771,81 +433,6 @@ namespace OpenDental {
 			}
 		}
 
-		///<summary></summary>
-		private static bool CheckProgramVersionClassic() {
-			Version versionStored=new Version(PrefC.GetString(PrefName.ProgramVersion));
-			Version versionCurrent=new Version(Application.ProductVersion);
-			string database=MiscData.GetCurrentDatabase();
-			if(versionStored<versionCurrent) {
-				Prefs.UpdateString(PrefName.ProgramVersion,versionCurrent.ToString());
-				UpdateHistory updateHistory=new UpdateHistory(versionCurrent.ToString());
-				UpdateHistories.Insert(updateHistory);
-				Cache.Refresh(InvalidType.Prefs);
-			}
-			if(versionStored<=versionCurrent) {
-				return true;
-			}
-			if(PrefC.AtoZfolderUsed==DataStorageType.LocalAtoZ) {
-				string setupBinPath=ODFileUtils.CombinePaths(ImageStore.GetPreferredAtoZpath(),"Setup.exe");
-				if(File.Exists(setupBinPath)) {
-					if(MessageBox.Show("You are attempting to run version "+versionCurrent.ToString(3)+",\r\n"
-						+"But the database "+database+"\r\n"
-						+"is already using version "+versionStored.ToString(3)+".\r\n"
-						+"A newer version must have already been installed on at least one computer.\r\n"  
-						+"The setup program stored in your A to Z folder will now be launched.\r\n"
-						+"Or, if you hit Cancel, then you will have the option to download again."
-						,"",MessageBoxButtons.OKCancel)==DialogResult.Cancel) {
-						if(MessageBox.Show("Download again?","",MessageBoxButtons.OKCancel)
-							==DialogResult.OK) {
-							using FormUpdate formUpdate=new FormUpdate();
-							formUpdate.ShowDialog();
-						}
-						Application.Exit();
-						return false;
-					}
-					try {
-						Process.Start(setupBinPath);
-					}
-					catch {
-						MessageBox.Show("Could not launch Setup.exe");
-					}
-				}
-				else if(MessageBox.Show("A newer version has been installed on at least one computer,"+
-						"but Setup.exe could not be found in any of the following paths: "+
-						ImageStore.GetPreferredAtoZpath()+".  Download again?","",MessageBoxButtons.OKCancel)==DialogResult.OK) {
-					using FormUpdate FormU=new FormUpdate();
-					FormU.ShowDialog();
-				}
-				Application.Exit();
-				return false;
-			}
-			//Not using image path.
-			//perform program update automatically.
-			string patchName="Setup.exe";
-			string updateUri=PrefC.GetString(PrefName.UpdateWebsitePath);
-			string updateCode=PrefC.GetString(PrefName.UpdateCode);
-			string updateInfoMajor="";
-			string updateInfoMinor="";
-			if(ShouldDownloadUpdate(updateUri,updateCode,out updateInfoMajor,out updateInfoMinor)) {
-				if(MessageBox.Show(updateInfoMajor+Lan.g("Prefs","Perform program update now?"),"",
-					MessageBoxButtons.YesNo)==DialogResult.Yes) {
-					string tempFile=ODFileUtils.CombinePaths(PrefC.GetTempFolderPath(),patchName);//Resort to a more common temp file name.
-					DownloadInstallPatchFromURI(updateUri+updateCode+"/"+patchName,//Source URI
-						tempFile,true,true,null);//Local destination file.
-					if(File.Exists(tempFile)) {//If user canceled in DownloadInstallPatchFromURI file will not exist.
-						try{
-							File.Delete(tempFile);//Cleanup install file.
-						}
-						catch(Exception ex) {
-							ex.DoNothing();
-						}
-					}
-				}
-			}
-			Application.Exit();//always exits, whether launch of setup worked or not
-			return false;
-		}
-
 		///<summary>Tries to install the OpenDentalService if needed.  Returns false if failed.
 		///Set isSilent to false to show meaningful error messages, otherwise fails silently.</summary>
 		public static bool TryInstallOpenDentalService(bool isSilent) {
@@ -917,103 +504,6 @@ namespace OpenDental {
 				,mySqlPassHash
 				,DataConnection.GetMysqlUserLow()
 				,DataConnection.GetMysqlPassLow());
-		}
-
-		///<summary>Performs both upgrades and downgrades by recopying update files from DB to temp folder, then from temp folder to the path specified.
-		///Returns whether the whole process from downloading the files to copying them was successful.</summary>
-		///<param name="versionStored">A version object that represents the ProgramVersion preference in the database.</param>
-		///<param name="versionCurrent">A version object that represents the currently running version (Application.ProductVersion).</param>
-		///<param name="destDir">The directory that the server files will be copied to.</param>
-		///<param name="killServices">Indicates whether the file copier should kill all services before copying the update files.</param>
-		///<param name="useLocalUpdateFileCopier">If set, this will use the update file copier in the local installation directory rather than the 
-		///one downloaded from the server.</param>
-		///<param name="openCopiedFiles">Tells the file copier to open the copied files after completion.</param>
-		private static bool UpdateClientFromServerUpdateFiles(Version versionStored,Version versionCurrent,string destDir,bool killServices,
-			bool useLocalUpdateFileCopier,bool openCopiedFiles) 
-		{
-			string folderUpdate=ODFileUtils.CombinePaths(PrefC.GetTempFolderPath(),"UpdateFiles");
-			if(!DownloadUpdateFilesFromDatabase(folderUpdate)) {
-				return false;//if something failed while downloading.
-			}
-			//look at the manifest to see if it's the version we need
-			string manifestVersion="";
-			ODException.SwallowAnyException(() => {
-				manifestVersion=File.ReadAllText(ODFileUtils.CombinePaths(folderUpdate,"Manifest.txt"));
-			});
-			if(manifestVersion!=versionStored.ToString(3)) {//manifest version is wrong
-				string mainPath=ODFileUtils.CombinePaths(folderUpdate,"Manifest.txt");
-				string message=Lan.g("Prefs","The expected version information was not found in this file:")+" "+mainPath+".  "
-					+Lan.g("Prefs","There is probably a permission issue on that folder which should be fixed.\r\n\r\n"
-					+"The suggested solution is to return to the computer where the update was just run.  Go to Help | "
-					+"Update | Setup, and click the Recopy button.");
-				//If they were copying the files to a dynamic mode folder, do not install the exe. Give them the troubleshooting message with no option.
-				if(destDir!=Application.StartupPath) {
-					MessageBox.Show(message);
-					Environment.Exit(0);
-					return false;
-				}
-				else {
-					//No point trying the Setup.exe because that's probably wrong too.
-					//Just go straight to downloading and running the Setup.exe.
-					if(MessageBox.Show(message+"\r\n\r\n"+Lan.g("Prefs","If, instead, you click OK in this window, then a fresh Setup file will be "
-						+"downloaded and run."),"",MessageBoxButtons.OKCancel)!=DialogResult.OK)//they don't want to download again.
-					{
-						FormOpenDental.ExitCode=312;//Stored version is higher that client version after an update was successful.
-						Environment.Exit(FormOpenDental.ExitCode);
-						return false;
-					}
-					DownloadAndRunSetup(versionStored,versionCurrent);
-					Environment.Exit(0);
-					return false;
-				}		
-			}
-			//Manifest version matches. Show window if they are updating their main installation of Open Dental.
-			if(destDir==Application.StartupPath) {//if this is copying the files to the installation folder
-				if(MessageBox.Show(Lan.g("Prefs","Files will now be copied.")+"\r\n"
-					+Lan.g("Prefs","Workstation version will be updated from ")+versionCurrent.ToString(3)
-					+Lan.g("Prefs"," to ")+versionStored.ToString(3),
-					"",MessageBoxButtons.OKCancel)
-					!=DialogResult.OK)//they don't want to update for some reason.
-				{
-					Environment.Exit(0);
-					return false;
-				}
-			}
-			return OpenFileCopier(folderUpdate,destDir,killServices,useLocalUpdateFileCopier,openCopiedFiles);
-		}
-
-		///<summary>Downloads the update files from the database and places them in the given folder. Returns false if anything went wrong.</summary>
-		///<param name="tempFolderUpdate">The temporary folder used to store the update files before being copied.</param>
-		private static bool DownloadUpdateFilesFromDatabase(string tempFolderUpdate) {
-			if(Directory.Exists(tempFolderUpdate)) {
-				try {
-					Directory.Delete(tempFolderUpdate,true);
-				}
-				catch(Exception ex) {
-					FriendlyException.Show(Lan.g("Prefs","Unable to delete update files from local temp folder. Try closing and reopening the program."),ex);
-					FormOpenDental.ExitCode=301;//UpdateFiles folder cannot be deleted
-					Environment.Exit(FormOpenDental.ExitCode);
-					return false;
-				}
-			}
-			StringBuilder stringBuilder=new StringBuilder();
-			DocumentMisc documentMiscUpdateFilesPart=null;
-			int count=1;
-			string fileName=count.ToString().PadLeft(4,'0');
-			while((documentMiscUpdateFilesPart=DocumentMiscs.GetByTypeAndFileName(fileName,DocumentMiscType.UpdateFilesSegment))!=null) {
-				stringBuilder.Append(documentMiscUpdateFilesPart.RawBase64);
-				count++;
-				fileName=count.ToString().PadLeft(4,'0');
-			}
-			ODException.SwallowAnyException(() => {
-				//strBuilder.ToString() has a tendency to fail when the string contains roughly 170MB of data.
-				//If that becomes a typical size for our Update Files folder we should consider not storing the data as Base64.
-				byte[] byteArray=Convert.FromBase64String(stringBuilder.ToString());
-				using(ZipFile zipFileUnzipped=ZipFile.Read(byteArray)) {
-					zipFileUnzipped.ExtractAll(tempFolderUpdate);
-				}
-			});//fail silently
-			return true;
 		}
 
 		///<summary>Sets up the executable file and opens the UpdateFileCopier with the correct command line arguments passed in. Returns whether

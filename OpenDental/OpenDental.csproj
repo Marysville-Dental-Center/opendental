@@ -3046,6 +3046,12 @@
     <Compile Include="Forms\FormSheetFieldGrid.designer.cs">
       <DependentUpon>FormSheetFieldGrid.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\FormAdoptDatabase.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormAdoptDatabase.Designer.cs">
+      <DependentUpon>FormAdoptDatabase.cs</DependentUpon>
+    </Compile>
     <Compile Include="Forms\FormUpdateInProgress.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -9298,6 +9304,13 @@
       <Project>{033B77F4-2E98-49A7-901F-5F388DEDF83E}</Project>
       <Name>SparksToothChart</Name>
     </ProjectReference>
+    <!-- Build order only: UpdateFileCopier.exe is copied next to OpenDental.exe after the build (CopyUpdateFileCopier below), because the
+         release channel ships it with every published release (docs/release-process.md). Not referenced as an assembly. -->
+    <ProjectReference Include="..\UpdateFileCopier\UpdateFileCopier.csproj">
+      <Project>{814E9B5F-DBFA-4506-BAF2-B47112F3FC81}</Project>
+      <Name>UpdateFileCopier</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
     <ProjectReference Include="..\WpfControlsOD\WpfControlsOD.csproj">
       <Project>{118540cc-3536-4e8b-94d4-402ca48a4cb0}</Project>
       <Name>WpfControlsOD</Name>
@@ -9322,6 +9335,9 @@
     </COMReference>
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <Target Name="CopyUpdateFileCopier" AfterTargets="Build" Condition="Exists('..\UpdateFileCopier\bin\$(Configuration)\UpdateFileCopier.exe')">
+    <Copy SourceFiles="..\UpdateFileCopier\bin\$(Configuration)\UpdateFileCopier.exe" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+  </Target>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

@@ -73,7 +73,7 @@ namespace OpenDentBusiness.Eclaims {
 					+"&Username="+HttpUtility.UrlEncode(clearinghouseClin.LoginID)
 					+"&Password="+HttpUtility.UrlEncode(clearinghouseClin.Password)
 					+"&UploaderName=OpenDental"//CONSTANT
-					+"&UploaderVersion="+myVersion.Major.ToString()+"."+myVersion.Minor.ToString()+"."+myVersion.Build.ToString();//eg 12.3.24
+					+"&UploaderVersion="+myVersion.Major.ToString()+"."+myVersion.Minor.ToString()+"."+Math.Max(myVersion.Build,0).ToString();//eg 12.3.24 (release "0.0" has no build part)
 				webReq.KeepAlive=false;
 				webReq.Method="POST";
 				webReq.ContentType="application/x-www-form-urlencoded";

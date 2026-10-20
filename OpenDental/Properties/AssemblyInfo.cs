@@ -35,5 +35,9 @@ using System.Runtime.InteropServices;
 [assembly: System.Windows.Media.DisableDpiAwareness]
 
 [assembly: AssemblyVersion("24.3.63.0")]
+//The release (product) version of this program: our own scheme, shown in About (Application.ProductVersion) and written to release manifests.
+//It is never compared with Open Dental version numbers. AssemblyVersion above stays on the Open Dental 24.3.63 compatibility line, which the
+//database version checks use until the fork markers take over (OpenDentBusiness ForkVersions.CompatVersion). See docs/release-process.md.
+[assembly: AssemblyInformationalVersion("0.0")]
 
 //[assembly: AssemblyFileVersion("1.0.0.0")]

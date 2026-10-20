@@ -1215,6 +1215,14 @@ namespace OpenDental{
 			if(!doVersionsMatch) {
 				return false;
 			}
+			//Fork version guard (backlog Risk R1). Runs before anything writes to the database (index re-enabling, the MySQL version backup and
+			//repair, any conversion), in Debug builds too. It only reads the version preferences and fork markers.
+			if(!PrefL.CheckForkVersionGuard(this,isSilentUpdate)) {
+				if(isSilentUpdate) {
+					Environment.Exit(ExitCode);
+				}
+				return false;
+			}
 			//Check to see if this is a backup that needs it's indexes re-enabled. This check takes milliseconds if there are no indexes to re-enable.
 			Shared.EnableIndexesIfNeeded(isSilentUpdate);
 			//The preference cache has been filled from the local database connection at this point.
@@ -1276,7 +1284,7 @@ namespace OpenDental{
 			//ClientWeb version can be older than this version, but that will be caught in a moment.
 			string dbVersionOld = PrefC.GetString(PrefName.DataBaseVersion);
 			if(isSilentUpdate) {
-				if(!PrefL.ConvertDB(true,Application.ProductVersion,this,false)) {//refreshes Prefs if converted successfully.
+				if(!PrefL.ConvertDB(true,this,false)) {//refreshes Prefs if converted successfully.
 					if(ExitCode==0) {//Unknown error occurred
 						ExitCode=200;//Convert Database has failed during execution (Unknown Error)
 					}
@@ -1288,6 +1296,13 @@ namespace OpenDental{
 				if(!PrefL.ConvertDB(this,chooseDatabaseInfo?.UseDynamicMode??false)) {//refreshes Prefs if converted successfully.
 					return false;
 				}
+			}
+			//Again after conversion: the legacy chain may have brought an older database to 24.3.63, where the guard can now ask for adoption.
+			if(!PrefL.CheckForkVersionGuard(this,isSilentUpdate)) {
+				if(isSilentUpdate) {
+					Environment.Exit(ExitCode);
+				}
+				return false;
 			}
 			if(!isSilentUpdate) {
 				PrefL.MySqlVersion55Remind();
@@ -3132,7 +3147,7 @@ namespace OpenDental{
 					//1. there is a mismatch between the current software version and the program version stored in the db (ProgramVersion pref)
 					//2. the UpdateInProgressOnComputerName pref is set (regardless of whether or not the computer name matches this machine name)
 					//3. the CorruptedDatabase flag is set
-					if(!ODBuild.IsDebug() && !IsDbConnectionSafe(out errorMsg)) {//Running version verses ProgramVersion preference can be different in debug.
+					if(!IsDbConnectionSafe(out errorMsg)) {//The version guard runs in Debug builds too; the release comparison inside is Release only.
 						timerSignals.Stop();
 						MessageBox.Show(this,errorMsg);
 						ProcessKillCommand();
@@ -3392,14 +3407,26 @@ namespace OpenDental{
 		private bool IsDbConnectionSafe(out string errorMsg) {
 			errorMsg="";
 			Prefs.RefreshCache();//this is a db call, but will only happen once when an inactive workstation is re-activated
-			//The logic below mimics parts of PrefL.CheckProgramVersion().
-			Version versionStored=new Version(PrefC.GetString(PrefName.ProgramVersion));
-			Version versionCurrent=new Version(Application.ProductVersion);
-			if(versionStored!=versionCurrent) {
-				errorMsg=Lan.g(this,"You are attempting to run version")+" "+versionCurrent.ToString(3)+", "
-					+Lan.g(this,"but the database is using version")+" "+versionStored.ToString(3)+".\r\n\r\n"
+			//The fork version guard, as at startup (Debug builds too). DataBaseVersion and ProgramVersion are not compared with this program's version:
+			//on an adopted database they hold the sentinel, and the release version is our own scheme.
+			ForkDbState forkDbState=ForkVersions.ReadState();
+			ForkGuardResult forkGuardResult=ForkVersionGuard.Evaluate(forkDbState);
+			if(!forkGuardResult.CanProceed || forkGuardResult.HasPendingMigrations) {
+				errorMsg=(forkGuardResult.Message=="" ? Lan.g(this,"The database was updated by another workstation.") : forkGuardResult.Message)+"\r\n\r\n"
 					+Lan.g(this,"You will have to restart")+" "+PrefC.GetString(PrefName.SoftwareName)+" "+Lan.g(this,"to correct the version mismatch.");
 				return false;
+			}
+			if(!ODBuild.IsDebug() && !PrefL.IsUpdateServer()) {
+				//The update server published a different build since this one started (ForkProgramVersion holds "release+buildId"). The update server
+				//itself may run a build it chose not to publish.
+				ReleaseIdentity releaseIdentityPublished=ForkReleases.ParseProgramVersion(forkDbState.ForkProgramVersion);
+				ReleaseIdentity releaseIdentityRunning=ForkReleases.GetRunningIdentity();
+				if(releaseIdentityPublished!=null && releaseIdentityPublished.BuildId!=releaseIdentityRunning.BuildId) {
+					errorMsg=Lan.g(this,"You are running release")+" "+releaseIdentityRunning+", "
+						+Lan.g(this,"but the update server published release")+" "+releaseIdentityPublished+".\r\n\r\n"
+						+Lan.g(this,"You will have to restart")+" "+PrefC.GetString(PrefName.SoftwareName)+" "+Lan.g(this,"to correct the version mismatch.");
+					return false;
+				}
 			}
 			string updateComputerName=PrefC.GetString(PrefName.UpdateInProgressOnComputerName);
 			if(!string.IsNullOrEmpty(updateComputerName)) {
