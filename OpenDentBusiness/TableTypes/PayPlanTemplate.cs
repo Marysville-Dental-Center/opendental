@@ -33,6 +33,9 @@ namespace OpenDentBusiness{
 		public string Note;
 		///<summary>Templates can not be deleted, but can be hidden if not needed any more.</summary>
 		public bool IsHidden;
+		///<summary>FK to sheetdef.SheetDefNum. Added in Open Dental 24.4: the default payment plan sheet for plans made from this template. 0 keeps
+		///the built-in printout.</summary>
+		public long SheetDefNum;
 
 		///<summary></summary>
 		public PayPlanTemplate Copy(){

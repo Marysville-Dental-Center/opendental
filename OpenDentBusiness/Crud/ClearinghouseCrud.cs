@@ -78,6 +78,7 @@ namespace OpenDentBusiness.Crud{
 				clearinghouse.IsClaimExportAllowed   = PIn.Bool  (row["IsClaimExportAllowed"].ToString());
 				clearinghouse.IsAttachmentSendAllowed= PIn.Bool  (row["IsAttachmentSendAllowed"].ToString());
 				clearinghouse.LocationID             = PIn.String(row["LocationID"].ToString());
+				clearinghouse.EnableXConnect         = PIn.Bool  (row["EnableXConnect"].ToString());
 				retVal.Add(clearinghouse);
 			}
 			return retVal;
@@ -120,6 +121,7 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("IsClaimExportAllowed");
 			table.Columns.Add("IsAttachmentSendAllowed");
 			table.Columns.Add("LocationID");
+			table.Columns.Add("EnableXConnect");
 			foreach(Clearinghouse clearinghouse in listClearinghouses) {
 				table.Rows.Add(new object[] {
 					POut.Long  (clearinghouse.ClearinghouseNum),
@@ -153,6 +155,7 @@ namespace OpenDentBusiness.Crud{
 					POut.Bool  (clearinghouse.IsClaimExportAllowed),
 					POut.Bool  (clearinghouse.IsAttachmentSendAllowed),
 					            clearinghouse.LocationID,
+					POut.Bool  (clearinghouse.EnableXConnect),
 				});
 			}
 			return table;
@@ -172,7 +175,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="ClearinghouseNum,";
 			}
-			command+="Description,ExportPath,Payors,Eformat,ISA05,SenderTIN,ISA07,ISA08,ISA15,Password,ResponsePath,CommBridge,ClientProgram,LastBatchNumber,ModemPort,LoginID,SenderName,SenderTelephone,GS03,ISA02,ISA04,ISA16,SeparatorData,SeparatorSegment,ClinicNum,HqClearinghouseNum,IsEraDownloadAllowed,IsClaimExportAllowed,IsAttachmentSendAllowed,LocationID) VALUES(";
+			command+="Description,ExportPath,Payors,Eformat,ISA05,SenderTIN,ISA07,ISA08,ISA15,Password,ResponsePath,CommBridge,ClientProgram,LastBatchNumber,ModemPort,LoginID,SenderName,SenderTelephone,GS03,ISA02,ISA04,ISA16,SeparatorData,SeparatorSegment,ClinicNum,HqClearinghouseNum,IsEraDownloadAllowed,IsClaimExportAllowed,IsAttachmentSendAllowed,LocationID,EnableXConnect) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(clearinghouse.ClearinghouseNum)+",";
 			}
@@ -206,7 +209,8 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Int   ((int)clearinghouse.IsEraDownloadAllowed)+","
 				+    POut.Bool  (clearinghouse.IsClaimExportAllowed)+","
 				+    POut.Bool  (clearinghouse.IsAttachmentSendAllowed)+","
-				+"'"+POut.String(clearinghouse.LocationID)+"')";
+				+"'"+POut.String(clearinghouse.LocationID)+"',"
+				+    POut.Bool  (clearinghouse.EnableXConnect)+")";
 			if(clearinghouse.ExportPath==null) {
 				clearinghouse.ExportPath="";
 			}
@@ -239,7 +243,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="ClearinghouseNum,";
 			}
-			command+="Description,ExportPath,Payors,Eformat,ISA05,SenderTIN,ISA07,ISA08,ISA15,Password,ResponsePath,CommBridge,ClientProgram,LastBatchNumber,ModemPort,LoginID,SenderName,SenderTelephone,GS03,ISA02,ISA04,ISA16,SeparatorData,SeparatorSegment,ClinicNum,HqClearinghouseNum,IsEraDownloadAllowed,IsClaimExportAllowed,IsAttachmentSendAllowed,LocationID) VALUES(";
+			command+="Description,ExportPath,Payors,Eformat,ISA05,SenderTIN,ISA07,ISA08,ISA15,Password,ResponsePath,CommBridge,ClientProgram,LastBatchNumber,ModemPort,LoginID,SenderName,SenderTelephone,GS03,ISA02,ISA04,ISA16,SeparatorData,SeparatorSegment,ClinicNum,HqClearinghouseNum,IsEraDownloadAllowed,IsClaimExportAllowed,IsAttachmentSendAllowed,LocationID,EnableXConnect) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(clearinghouse.ClearinghouseNum)+",";
 			}
@@ -273,7 +277,8 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Int   ((int)clearinghouse.IsEraDownloadAllowed)+","
 				+    POut.Bool  (clearinghouse.IsClaimExportAllowed)+","
 				+    POut.Bool  (clearinghouse.IsAttachmentSendAllowed)+","
-				+"'"+POut.String(clearinghouse.LocationID)+"')";
+				+"'"+POut.String(clearinghouse.LocationID)+"',"
+				+    POut.Bool  (clearinghouse.EnableXConnect)+")";
 			if(clearinghouse.ExportPath==null) {
 				clearinghouse.ExportPath="";
 			}
@@ -323,7 +328,8 @@ namespace OpenDentBusiness.Crud{
 				+"IsEraDownloadAllowed   =  "+POut.Int   ((int)clearinghouse.IsEraDownloadAllowed)+", "
 				+"IsClaimExportAllowed   =  "+POut.Bool  (clearinghouse.IsClaimExportAllowed)+", "
 				+"IsAttachmentSendAllowed=  "+POut.Bool  (clearinghouse.IsAttachmentSendAllowed)+", "
-				+"LocationID             = '"+POut.String(clearinghouse.LocationID)+"' "
+				+"LocationID             = '"+POut.String(clearinghouse.LocationID)+"', "
+				+"EnableXConnect         =  "+POut.Bool  (clearinghouse.EnableXConnect)+" "
 				+"WHERE ClearinghouseNum = "+POut.Long(clearinghouse.ClearinghouseNum);
 			if(clearinghouse.ExportPath==null) {
 				clearinghouse.ExportPath="";
@@ -456,6 +462,10 @@ namespace OpenDentBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="LocationID = '"+POut.String(clearinghouse.LocationID)+"'";
 			}
+			if(clearinghouse.EnableXConnect != oldClearinghouse.EnableXConnect) {
+				if(command!="") { command+=",";}
+				command+="EnableXConnect = "+POut.Bool(clearinghouse.EnableXConnect)+"";
+			}
 			if(command=="") {
 				return false;
 			}
@@ -562,6 +572,9 @@ namespace OpenDentBusiness.Crud{
 				return true;
 			}
 			if(clearinghouse.LocationID != oldClearinghouse.LocationID) {
+				return true;
+			}
+			if(clearinghouse.EnableXConnect != oldClearinghouse.EnableXConnect) {
 				return true;
 			}
 			return false;

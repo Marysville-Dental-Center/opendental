@@ -47,10 +47,11 @@ namespace OpenDentBusiness.Crud{
 			ReqNeeded reqNeeded;
 			foreach(DataRow row in table.Rows) {
 				reqNeeded=new ReqNeeded();
-				reqNeeded.ReqNeededNum   = PIn.Long  (row["ReqNeededNum"].ToString());
-				reqNeeded.Descript       = PIn.String(row["Descript"].ToString());
-				reqNeeded.SchoolCourseNum= PIn.Long  (row["SchoolCourseNum"].ToString());
-				reqNeeded.SchoolClassNum = PIn.Long  (row["SchoolClassNum"].ToString());
+				reqNeeded.ReqNeededNum      = PIn.Long  (row["ReqNeededNum"].ToString());
+				reqNeeded.Descript          = PIn.String(row["Descript"].ToString());
+				reqNeeded.SchoolCourseNum   = PIn.Long  (row["SchoolCourseNum"].ToString());
+				reqNeeded.SchoolClassNum    = PIn.Long  (row["SchoolClassNum"].ToString());
+				reqNeeded.SchoolCourseDefNum= PIn.Long  (row["SchoolCourseDefNum"].ToString());
 				retVal.Add(reqNeeded);
 			}
 			return retVal;
@@ -66,12 +67,14 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("Descript");
 			table.Columns.Add("SchoolCourseNum");
 			table.Columns.Add("SchoolClassNum");
+			table.Columns.Add("SchoolCourseDefNum");
 			foreach(ReqNeeded reqNeeded in listReqNeededs) {
 				table.Rows.Add(new object[] {
 					POut.Long  (reqNeeded.ReqNeededNum),
 					            reqNeeded.Descript,
 					POut.Long  (reqNeeded.SchoolCourseNum),
 					POut.Long  (reqNeeded.SchoolClassNum),
+					POut.Long  (reqNeeded.SchoolCourseDefNum),
 				});
 			}
 			return table;
@@ -91,14 +94,15 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="ReqNeededNum,";
 			}
-			command+="Descript,SchoolCourseNum,SchoolClassNum) VALUES(";
+			command+="Descript,SchoolCourseNum,SchoolClassNum,SchoolCourseDefNum) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(reqNeeded.ReqNeededNum)+",";
 			}
 			command+=
 				 "'"+POut.String(reqNeeded.Descript)+"',"
 				+    POut.Long  (reqNeeded.SchoolCourseNum)+","
-				+    POut.Long  (reqNeeded.SchoolClassNum)+")";
+				+    POut.Long  (reqNeeded.SchoolClassNum)+","
+				+    POut.Long  (reqNeeded.SchoolCourseDefNum)+")";
 			if(useExistingPK || PrefC.RandomKeys) {
 				Db.NonQ(command);
 			}
@@ -123,14 +127,15 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="ReqNeededNum,";
 			}
-			command+="Descript,SchoolCourseNum,SchoolClassNum) VALUES(";
+			command+="Descript,SchoolCourseNum,SchoolClassNum,SchoolCourseDefNum) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(reqNeeded.ReqNeededNum)+",";
 			}
 			command+=
 				 "'"+POut.String(reqNeeded.Descript)+"',"
 				+    POut.Long  (reqNeeded.SchoolCourseNum)+","
-				+    POut.Long  (reqNeeded.SchoolClassNum)+")";
+				+    POut.Long  (reqNeeded.SchoolClassNum)+","
+				+    POut.Long  (reqNeeded.SchoolCourseDefNum)+")";
 			if(useExistingPK || isRandomKeys) {
 				Db.NonQ(command);
 			}
@@ -143,9 +148,10 @@ namespace OpenDentBusiness.Crud{
 		///<summary>Updates one ReqNeeded in the database.</summary>
 		public static void Update(ReqNeeded reqNeeded) {
 			string command="UPDATE reqneeded SET "
-				+"Descript       = '"+POut.String(reqNeeded.Descript)+"', "
-				+"SchoolCourseNum=  "+POut.Long  (reqNeeded.SchoolCourseNum)+", "
-				+"SchoolClassNum =  "+POut.Long  (reqNeeded.SchoolClassNum)+" "
+				+"Descript          = '"+POut.String(reqNeeded.Descript)+"', "
+				+"SchoolCourseNum   =  "+POut.Long  (reqNeeded.SchoolCourseNum)+", "
+				+"SchoolClassNum    =  "+POut.Long  (reqNeeded.SchoolClassNum)+", "
+				+"SchoolCourseDefNum=  "+POut.Long  (reqNeeded.SchoolCourseDefNum)+" "
 				+"WHERE ReqNeededNum = "+POut.Long(reqNeeded.ReqNeededNum);
 			Db.NonQ(command);
 		}
@@ -164,6 +170,10 @@ namespace OpenDentBusiness.Crud{
 			if(reqNeeded.SchoolClassNum != oldReqNeeded.SchoolClassNum) {
 				if(command!="") { command+=",";}
 				command+="SchoolClassNum = "+POut.Long(reqNeeded.SchoolClassNum)+"";
+			}
+			if(reqNeeded.SchoolCourseDefNum != oldReqNeeded.SchoolCourseDefNum) {
+				if(command!="") { command+=",";}
+				command+="SchoolCourseDefNum = "+POut.Long(reqNeeded.SchoolCourseDefNum)+"";
 			}
 			if(command=="") {
 				return false;
@@ -184,6 +194,9 @@ namespace OpenDentBusiness.Crud{
 				return true;
 			}
 			if(reqNeeded.SchoolClassNum != oldReqNeeded.SchoolClassNum) {
+				return true;
+			}
+			if(reqNeeded.SchoolCourseDefNum != oldReqNeeded.SchoolCourseDefNum) {
 				return true;
 			}
 			return false;

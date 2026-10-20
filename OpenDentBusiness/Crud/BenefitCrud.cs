@@ -63,6 +63,7 @@ namespace OpenDentBusiness.Crud{
 				benefit.SecDateTEdit     = PIn.DateT (row["SecDateTEdit"].ToString());
 				benefit.CodeGroupNum     = PIn.Long  (row["CodeGroupNum"].ToString());
 				benefit.TreatArea        = (OpenDentBusiness.TreatmentArea)PIn.Int(row["TreatArea"].ToString());
+				benefit.ToothRange       = PIn.String(row["ToothRange"].ToString());
 				retVal.Add(benefit);
 			}
 			return retVal;
@@ -90,6 +91,7 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("SecDateTEdit");
 			table.Columns.Add("CodeGroupNum");
 			table.Columns.Add("TreatArea");
+			table.Columns.Add("ToothRange");
 			foreach(Benefit benefit in listBenefits) {
 				table.Rows.Add(new object[] {
 					POut.Long  (benefit.BenefitNum),
@@ -108,6 +110,7 @@ namespace OpenDentBusiness.Crud{
 					POut.DateT (benefit.SecDateTEdit,false),
 					POut.Long  (benefit.CodeGroupNum),
 					POut.Int   ((int)benefit.TreatArea),
+					            benefit.ToothRange,
 				});
 			}
 			return table;
@@ -127,7 +130,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="BenefitNum,";
 			}
-			command+="PlanNum,PatPlanNum,CovCatNum,BenefitType,Percent,MonetaryAmt,TimePeriod,QuantityQualifier,Quantity,CodeNum,CoverageLevel,SecDateTEntry,CodeGroupNum,TreatArea) VALUES(";
+			command+="PlanNum,PatPlanNum,CovCatNum,BenefitType,Percent,MonetaryAmt,TimePeriod,QuantityQualifier,Quantity,CodeNum,CoverageLevel,SecDateTEntry,CodeGroupNum,TreatArea,ToothRange) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(benefit.BenefitNum)+",";
 			}
@@ -146,7 +149,8 @@ namespace OpenDentBusiness.Crud{
 				+    DbHelper.Now()+","
 				//SecDateTEdit can only be set by MySQL
 				+    POut.Long  (benefit.CodeGroupNum)+","
-				+    POut.Int   ((int)benefit.TreatArea)+")";
+				+    POut.Int   ((int)benefit.TreatArea)+","
+				+"'"+POut.String(benefit.ToothRange)+"')";
 			if(useExistingPK || PrefC.RandomKeys) {
 				Db.NonQ(command);
 			}
@@ -171,7 +175,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="BenefitNum,";
 			}
-			command+="PlanNum,PatPlanNum,CovCatNum,BenefitType,Percent,MonetaryAmt,TimePeriod,QuantityQualifier,Quantity,CodeNum,CoverageLevel,SecDateTEntry,CodeGroupNum,TreatArea) VALUES(";
+			command+="PlanNum,PatPlanNum,CovCatNum,BenefitType,Percent,MonetaryAmt,TimePeriod,QuantityQualifier,Quantity,CodeNum,CoverageLevel,SecDateTEntry,CodeGroupNum,TreatArea,ToothRange) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(benefit.BenefitNum)+",";
 			}
@@ -190,7 +194,8 @@ namespace OpenDentBusiness.Crud{
 				+    DbHelper.Now()+","
 				//SecDateTEdit can only be set by MySQL
 				+    POut.Long  (benefit.CodeGroupNum)+","
-				+    POut.Int   ((int)benefit.TreatArea)+")";
+				+    POut.Int   ((int)benefit.TreatArea)+","
+				+"'"+POut.String(benefit.ToothRange)+"')";
 			if(useExistingPK || isRandomKeys) {
 				Db.NonQ(command);
 			}
@@ -217,7 +222,8 @@ namespace OpenDentBusiness.Crud{
 				//SecDateTEntry not allowed to change
 				//SecDateTEdit can only be set by MySQL
 				+"CodeGroupNum     =  "+POut.Long  (benefit.CodeGroupNum)+", "
-				+"TreatArea        =  "+POut.Int   ((int)benefit.TreatArea)+" "
+				+"TreatArea        =  "+POut.Int   ((int)benefit.TreatArea)+", "
+				+"ToothRange       = '"+POut.String(benefit.ToothRange)+"' "
 				+"WHERE BenefitNum = "+POut.Long(benefit.BenefitNum);
 			Db.NonQ(command);
 		}
@@ -279,6 +285,10 @@ namespace OpenDentBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="TreatArea = "+POut.Int   ((int)benefit.TreatArea)+"";
 			}
+			if(benefit.ToothRange != oldBenefit.ToothRange) {
+				if(command!="") { command+=",";}
+				command+="ToothRange = '"+POut.String(benefit.ToothRange)+"'";
+			}
 			if(command=="") {
 				return false;
 			}
@@ -330,6 +340,9 @@ namespace OpenDentBusiness.Crud{
 				return true;
 			}
 			if(benefit.TreatArea != oldBenefit.TreatArea) {
+				return true;
+			}
+			if(benefit.ToothRange != oldBenefit.ToothRange) {
 				return true;
 			}
 			return false;

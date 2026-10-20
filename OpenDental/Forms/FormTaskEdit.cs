@@ -592,10 +592,10 @@ namespace OpenDental {
 		private void FillListCategory() {
 			listCategory.Items.Clear();
 			List<Def> listDefsCategories=Defs.GetDefsForCategory(DefCat.TaskCategories);
-			listDefsCategories=listDefsCategories.FindAll(x => !x.IsHidden || x.DefNum==TaskCur.TriageCategory);
+			listDefsCategories=listDefsCategories.FindAll(x => !x.IsHidden || x.DefNum==TaskCur.Category);
 			listCategory.Items.AddNone<Def>();
 			listCategory.Items.AddList(listDefsCategories,x => x.ItemName);
-			listCategory.SetSelectedKey<Def>(TaskCur.TriageCategory,x => x.DefNum);
+			listCategory.SetSelectedKey<Def>(TaskCur.Category,x => x.DefNum);
 		}
 
 		private void butNow_Click(object sender,EventArgs e) {
@@ -735,7 +735,7 @@ namespace OpenDental {
 				MsgBox.Show(this,"Invalid Triage Category. Please select a valid Triage Category.");
 				return;
 			}
-			TaskCur.TriageCategory=defSelectedCategory.DefNum;
+			TaskCur.Category=defSelectedCategory.DefNum;
 		}
 
 		private void listObjectType_MouseDown(object sender,System.Windows.Forms.MouseEventArgs e) {

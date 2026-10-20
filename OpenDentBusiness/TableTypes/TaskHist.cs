@@ -68,8 +68,10 @@ namespace OpenDentBusiness {
 		public string DescriptOverride;
 		///<summary>Copied from Task.</summary>
 		public bool IsReadOnly;
+		///<summary>Copied from Task. Renamed from TriageCategory in Open Dental 25.2.</summary>
+		public long Category;
 		///<summary>Copied from Task.</summary>
-		public long TriageCategory;
+		public int TriagePosition;
 		#endregion Copies of Task Fields
 		
 		#region Not Db Columns
@@ -107,7 +109,8 @@ namespace OpenDentBusiness {
 			//SecDateT can only be set by MySQL
 			DescriptOverride=task.DescriptOverride;
 			IsReadOnly=task.IsReadOnly;
-			TriageCategory=task.TriageCategory;
+			Category=task.Category;
+			TriagePosition=task.TriagePosition;
 			#region Not Db Columns
 			IsUnread=task.IsUnread;
 			ParentDesc=task.ParentDesc;

@@ -76,6 +76,15 @@ namespace OpenDentBusiness{
 		public EnumOcrCaptureType ImageCaptureType;
 		///<summary>Set true by default for radiographs and tooth charts. When set to true, it will print additional heading text including patient name, DOB, and today's date.</summary>
 		public bool PrintHeading;
+		///<summary>Added in Open Dental 24.4 for chart letters. 0 for every ordinary document; any other value marks the document as a chart letter,
+		///which is listed in the Chart module instead of the Imaging tree. The meaning of the non-zero values is not published; the chart letter
+		///feature package defines them.</summary>
+		public byte ChartLetterStatus;
+		///<summary>FK to userod.UserNum. Added in Open Dental 24.4. Chart letters only: the user who last changed the letter. 0 for ordinary
+		///documents.</summary>
+		public long UserNum;
+		///<summary>Added in Open Dental 24.4. Chart letters only: a hash of the saved file, used to notice edits. Empty for ordinary documents.</summary>
+		public string ChartLetterHash;
 
 		///<summary>Returns a copy/clone of this Document.</summary>
 		public Document Copy() {

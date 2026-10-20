@@ -59,6 +59,7 @@ namespace OpenDentBusiness.Crud{
 				imageDraw.ImageAnnotVendor= (OpenDentBusiness.EnumImageAnnotVendor)PIn.Int(row["ImageAnnotVendor"].ToString());
 				imageDraw.Details         = PIn.String(row["Details"].ToString());
 				imageDraw.PearlLayer      = (OpenDentBusiness.Pearl.EnumCategoryOD)PIn.Int(row["PearlLayer"].ToString());
+				imageDraw.BetterDiagLayer = (OpenDentBusiness.EnumCategoryBetterDiag)PIn.Int(row["BetterDiagLayer"].ToString());
 				retVal.Add(imageDraw);
 			}
 			return retVal;
@@ -82,6 +83,7 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("ImageAnnotVendor");
 			table.Columns.Add("Details");
 			table.Columns.Add("PearlLayer");
+			table.Columns.Add("BetterDiagLayer");
 			foreach(ImageDraw imageDraw in listImageDraws) {
 				table.Rows.Add(new object[] {
 					POut.Long  (imageDraw.ImageDrawNum),
@@ -96,6 +98,7 @@ namespace OpenDentBusiness.Crud{
 					POut.Int   ((int)imageDraw.ImageAnnotVendor),
 					            imageDraw.Details,
 					POut.Int   ((int)imageDraw.PearlLayer),
+					POut.Int   ((int)imageDraw.BetterDiagLayer),
 				});
 			}
 			return table;
@@ -115,7 +118,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="ImageDrawNum,";
 			}
-			command+="DocNum,MountNum,ColorDraw,ColorBack,DrawingSegment,DrawText,FontSize,DrawType,ImageAnnotVendor,Details,PearlLayer) VALUES(";
+			command+="DocNum,MountNum,ColorDraw,ColorBack,DrawingSegment,DrawText,FontSize,DrawType,ImageAnnotVendor,Details,PearlLayer,BetterDiagLayer) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(imageDraw.ImageDrawNum)+",";
 			}
@@ -130,7 +133,8 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Int   ((int)imageDraw.DrawType)+","
 				+    POut.Int   ((int)imageDraw.ImageAnnotVendor)+","
 				+    DbHelper.ParamChar+"paramDetails,"
-				+    POut.Int   ((int)imageDraw.PearlLayer)+")";
+				+    POut.Int   ((int)imageDraw.PearlLayer)+","
+				+    POut.Int   ((int)imageDraw.BetterDiagLayer)+")";
 			if(imageDraw.DrawingSegment==null) {
 				imageDraw.DrawingSegment="";
 			}
@@ -163,7 +167,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="ImageDrawNum,";
 			}
-			command+="DocNum,MountNum,ColorDraw,ColorBack,DrawingSegment,DrawText,FontSize,DrawType,ImageAnnotVendor,Details,PearlLayer) VALUES(";
+			command+="DocNum,MountNum,ColorDraw,ColorBack,DrawingSegment,DrawText,FontSize,DrawType,ImageAnnotVendor,Details,PearlLayer,BetterDiagLayer) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(imageDraw.ImageDrawNum)+",";
 			}
@@ -178,7 +182,8 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Int   ((int)imageDraw.DrawType)+","
 				+    POut.Int   ((int)imageDraw.ImageAnnotVendor)+","
 				+    DbHelper.ParamChar+"paramDetails,"
-				+    POut.Int   ((int)imageDraw.PearlLayer)+")";
+				+    POut.Int   ((int)imageDraw.PearlLayer)+","
+				+    POut.Int   ((int)imageDraw.BetterDiagLayer)+")";
 			if(imageDraw.DrawingSegment==null) {
 				imageDraw.DrawingSegment="";
 			}
@@ -209,7 +214,8 @@ namespace OpenDentBusiness.Crud{
 				+"DrawType        =  "+POut.Int   ((int)imageDraw.DrawType)+", "
 				+"ImageAnnotVendor=  "+POut.Int   ((int)imageDraw.ImageAnnotVendor)+", "
 				+"Details         =  "+DbHelper.ParamChar+"paramDetails, "
-				+"PearlLayer      =  "+POut.Int   ((int)imageDraw.PearlLayer)+" "
+				+"PearlLayer      =  "+POut.Int   ((int)imageDraw.PearlLayer)+", "
+				+"BetterDiagLayer =  "+POut.Int   ((int)imageDraw.BetterDiagLayer)+" "
 				+"WHERE ImageDrawNum = "+POut.Long(imageDraw.ImageDrawNum);
 			if(imageDraw.DrawingSegment==null) {
 				imageDraw.DrawingSegment="";
@@ -269,6 +275,10 @@ namespace OpenDentBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="PearlLayer = "+POut.Int   ((int)imageDraw.PearlLayer)+"";
 			}
+			if(imageDraw.BetterDiagLayer != oldImageDraw.BetterDiagLayer) {
+				if(command!="") { command+=",";}
+				command+="BetterDiagLayer = "+POut.Int   ((int)imageDraw.BetterDiagLayer)+"";
+			}
 			if(command=="") {
 				return false;
 			}
@@ -320,6 +330,9 @@ namespace OpenDentBusiness.Crud{
 				return true;
 			}
 			if(imageDraw.PearlLayer != oldImageDraw.PearlLayer) {
+				return true;
+			}
+			if(imageDraw.BetterDiagLayer != oldImageDraw.BetterDiagLayer) {
 				return true;
 			}
 			return false;

@@ -66,6 +66,7 @@ namespace OpenDentBusiness.Crud{
 				payPlanCharge.FKey            = PIn.Long  (row["FKey"].ToString());
 				payPlanCharge.LinkType        = (OpenDentBusiness.PayPlanLinkType)PIn.Int(row["LinkType"].ToString());
 				payPlanCharge.IsOffset        = PIn.Bool  (row["IsOffset"].ToString());
+				payPlanCharge.IsDownPayment   = PIn.Bool  (row["IsDownPayment"].ToString());
 				retVal.Add(payPlanCharge);
 			}
 			return retVal;
@@ -95,6 +96,7 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("FKey");
 			table.Columns.Add("LinkType");
 			table.Columns.Add("IsOffset");
+			table.Columns.Add("IsDownPayment");
 			foreach(PayPlanCharge payPlanCharge in listPayPlanCharges) {
 				table.Rows.Add(new object[] {
 					POut.Long  (payPlanCharge.PayPlanChargeNum),
@@ -115,6 +117,7 @@ namespace OpenDentBusiness.Crud{
 					POut.Long  (payPlanCharge.FKey),
 					POut.Int   ((int)payPlanCharge.LinkType),
 					POut.Bool  (payPlanCharge.IsOffset),
+					POut.Bool  (payPlanCharge.IsDownPayment),
 				});
 			}
 			return table;
@@ -134,7 +137,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="PayPlanChargeNum,";
 			}
-			command+="PayPlanNum,Guarantor,PatNum,ChargeDate,Principal,Interest,Note,ProvNum,ClinicNum,ChargeType,ProcNum,SecDateTEntry,StatementNum,FKey,LinkType,IsOffset) VALUES(";
+			command+="PayPlanNum,Guarantor,PatNum,ChargeDate,Principal,Interest,Note,ProvNum,ClinicNum,ChargeType,ProcNum,SecDateTEntry,StatementNum,FKey,LinkType,IsOffset,IsDownPayment) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(payPlanCharge.PayPlanChargeNum)+",";
 			}
@@ -155,7 +158,8 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Long  (payPlanCharge.StatementNum)+","
 				+    POut.Long  (payPlanCharge.FKey)+","
 				+    POut.Int   ((int)payPlanCharge.LinkType)+","
-				+    POut.Bool  (payPlanCharge.IsOffset)+")";
+				+    POut.Bool  (payPlanCharge.IsOffset)+","
+				+    POut.Bool  (payPlanCharge.IsDownPayment)+")";
 			if(payPlanCharge.Note==null) {
 				payPlanCharge.Note="";
 			}
@@ -195,7 +199,7 @@ namespace OpenDentBusiness.Crud{
 						if(useExistingPK) {
 							sbCommands.Append("PayPlanChargeNum,");
 						}
-						sbCommands.Append("PayPlanNum,Guarantor,PatNum,ChargeDate,Principal,Interest,Note,ProvNum,ClinicNum,ChargeType,ProcNum,SecDateTEntry,StatementNum,FKey,LinkType,IsOffset) VALUES ");
+						sbCommands.Append("PayPlanNum,Guarantor,PatNum,ChargeDate,Principal,Interest,Note,ProvNum,ClinicNum,ChargeType,ProcNum,SecDateTEntry,StatementNum,FKey,LinkType,IsOffset,IsDownPayment) VALUES ");
 						countRows=0;
 					}
 					else {
@@ -220,7 +224,8 @@ namespace OpenDentBusiness.Crud{
 					sbRow.Append(POut.Long(payPlanCharge.StatementNum)); sbRow.Append(",");
 					sbRow.Append(POut.Long(payPlanCharge.FKey)); sbRow.Append(",");
 					sbRow.Append(POut.Int((int)payPlanCharge.LinkType)); sbRow.Append(",");
-					sbRow.Append(POut.Bool(payPlanCharge.IsOffset)); sbRow.Append(")");
+					sbRow.Append(POut.Bool(payPlanCharge.IsOffset)); sbRow.Append(",");
+					sbRow.Append(POut.Bool(payPlanCharge.IsDownPayment)); sbRow.Append(")");
 					if(sbCommands.Length+sbRow.Length+1 > TableBase.MaxAllowedPacketCount && countRows > 0) {
 						Db.NonQ(sbCommands.ToString());
 						sbCommands=null;
@@ -255,7 +260,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="PayPlanChargeNum,";
 			}
-			command+="PayPlanNum,Guarantor,PatNum,ChargeDate,Principal,Interest,Note,ProvNum,ClinicNum,ChargeType,ProcNum,SecDateTEntry,StatementNum,FKey,LinkType,IsOffset) VALUES(";
+			command+="PayPlanNum,Guarantor,PatNum,ChargeDate,Principal,Interest,Note,ProvNum,ClinicNum,ChargeType,ProcNum,SecDateTEntry,StatementNum,FKey,LinkType,IsOffset,IsDownPayment) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(payPlanCharge.PayPlanChargeNum)+",";
 			}
@@ -276,7 +281,8 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Long  (payPlanCharge.StatementNum)+","
 				+    POut.Long  (payPlanCharge.FKey)+","
 				+    POut.Int   ((int)payPlanCharge.LinkType)+","
-				+    POut.Bool  (payPlanCharge.IsOffset)+")";
+				+    POut.Bool  (payPlanCharge.IsOffset)+","
+				+    POut.Bool  (payPlanCharge.IsDownPayment)+")";
 			if(payPlanCharge.Note==null) {
 				payPlanCharge.Note="";
 			}
@@ -309,7 +315,8 @@ namespace OpenDentBusiness.Crud{
 				+"StatementNum    =  "+POut.Long  (payPlanCharge.StatementNum)+", "
 				+"FKey            =  "+POut.Long  (payPlanCharge.FKey)+", "
 				+"LinkType        =  "+POut.Int   ((int)payPlanCharge.LinkType)+", "
-				+"IsOffset        =  "+POut.Bool  (payPlanCharge.IsOffset)+" "
+				+"IsOffset        =  "+POut.Bool  (payPlanCharge.IsOffset)+", "
+				+"IsDownPayment   =  "+POut.Bool  (payPlanCharge.IsDownPayment)+" "
 				+"WHERE PayPlanChargeNum = "+POut.Long(payPlanCharge.PayPlanChargeNum);
 			if(payPlanCharge.Note==null) {
 				payPlanCharge.Note="";
@@ -383,6 +390,10 @@ namespace OpenDentBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="IsOffset = "+POut.Bool(payPlanCharge.IsOffset)+"";
 			}
+			if(payPlanCharge.IsDownPayment != oldPayPlanCharge.IsDownPayment) {
+				if(command!="") { command+=",";}
+				command+="IsDownPayment = "+POut.Bool(payPlanCharge.IsDownPayment)+"";
+			}
 			if(command=="") {
 				return false;
 			}
@@ -444,6 +455,9 @@ namespace OpenDentBusiness.Crud{
 				return true;
 			}
 			if(payPlanCharge.IsOffset != oldPayPlanCharge.IsOffset) {
+				return true;
+			}
+			if(payPlanCharge.IsDownPayment != oldPayPlanCharge.IsDownPayment) {
 				return true;
 			}
 			return false;

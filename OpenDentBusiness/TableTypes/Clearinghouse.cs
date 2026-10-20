@@ -81,6 +81,9 @@ namespace OpenDentBusiness{
 		public bool IsAttachmentSendAllowed;
 		/// <summary>A unique identifier provided by the clearinghouse to identify the practice in their system. This is separate from the issue of clinics, where we already enforce only one clinic per clearinghouse. Example: DentalXChange XConnect API key.</summary>
 		public string LocationID;
+		///<summary>Added in Open Dental 25.2: turns on DentalXChange XConnect claim validation for this clearinghouse. Column only until the
+		///XConnect validation item is ported.</summary>
+		public bool EnableXConnect;
 
 		public Clearinghouse() {
 

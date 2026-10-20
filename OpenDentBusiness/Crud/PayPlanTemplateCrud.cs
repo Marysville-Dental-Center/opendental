@@ -60,6 +60,7 @@ namespace OpenDentBusiness.Crud{
 				payPlanTemplate.DynamicPayPlanTPOption= (OpenDentBusiness.DynamicPayPlanTPOptions)PIn.Int(row["DynamicPayPlanTPOption"].ToString());
 				payPlanTemplate.Note                  = PIn.String(row["Note"].ToString());
 				payPlanTemplate.IsHidden              = PIn.Bool  (row["IsHidden"].ToString());
+				payPlanTemplate.SheetDefNum           = PIn.Long  (row["SheetDefNum"].ToString());
 				retVal.Add(payPlanTemplate);
 			}
 			return retVal;
@@ -83,6 +84,7 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("DynamicPayPlanTPOption");
 			table.Columns.Add("Note");
 			table.Columns.Add("IsHidden");
+			table.Columns.Add("SheetDefNum");
 			foreach(PayPlanTemplate payPlanTemplate in listPayPlanTemplates) {
 				table.Rows.Add(new object[] {
 					POut.Long  (payPlanTemplate.PayPlanTemplateNum),
@@ -97,6 +99,7 @@ namespace OpenDentBusiness.Crud{
 					POut.Int   ((int)payPlanTemplate.DynamicPayPlanTPOption),
 					            payPlanTemplate.Note,
 					POut.Bool  (payPlanTemplate.IsHidden),
+					POut.Long  (payPlanTemplate.SheetDefNum),
 				});
 			}
 			return table;
@@ -116,7 +119,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="PayPlanTemplateNum,";
 			}
-			command+="PayPlanTemplateName,ClinicNum,APR,InterestDelay,PayAmt,NumberOfPayments,ChargeFrequency,DownPayment,DynamicPayPlanTPOption,Note,IsHidden) VALUES(";
+			command+="PayPlanTemplateName,ClinicNum,APR,InterestDelay,PayAmt,NumberOfPayments,ChargeFrequency,DownPayment,DynamicPayPlanTPOption,Note,IsHidden,SheetDefNum) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(payPlanTemplate.PayPlanTemplateNum)+",";
 			}
@@ -131,7 +134,8 @@ namespace OpenDentBusiness.Crud{
 				+		 POut.Double(payPlanTemplate.DownPayment)+","
 				+    POut.Int   ((int)payPlanTemplate.DynamicPayPlanTPOption)+","
 				+"'"+POut.String(payPlanTemplate.Note)+"',"
-				+    POut.Bool  (payPlanTemplate.IsHidden)+")";
+				+    POut.Bool  (payPlanTemplate.IsHidden)+","
+				+    POut.Long  (payPlanTemplate.SheetDefNum)+")";
 			if(useExistingPK || PrefC.RandomKeys) {
 				Db.NonQ(command);
 			}
@@ -167,7 +171,7 @@ namespace OpenDentBusiness.Crud{
 						if(useExistingPK) {
 							sbCommands.Append("PayPlanTemplateNum,");
 						}
-						sbCommands.Append("PayPlanTemplateName,ClinicNum,APR,InterestDelay,PayAmt,NumberOfPayments,ChargeFrequency,DownPayment,DynamicPayPlanTPOption,Note,IsHidden) VALUES ");
+						sbCommands.Append("PayPlanTemplateName,ClinicNum,APR,InterestDelay,PayAmt,NumberOfPayments,ChargeFrequency,DownPayment,DynamicPayPlanTPOption,Note,IsHidden,SheetDefNum) VALUES ");
 						countRows=0;
 					}
 					else {
@@ -186,7 +190,8 @@ namespace OpenDentBusiness.Crud{
 					sbRow.Append(POut.Double(payPlanTemplate.DownPayment)); sbRow.Append(",");
 					sbRow.Append(POut.Int((int)payPlanTemplate.DynamicPayPlanTPOption)); sbRow.Append(",");
 					sbRow.Append("'"+POut.String(payPlanTemplate.Note)+"'"); sbRow.Append(",");
-					sbRow.Append(POut.Bool(payPlanTemplate.IsHidden)); sbRow.Append(")");
+					sbRow.Append(POut.Bool(payPlanTemplate.IsHidden)); sbRow.Append(",");
+					sbRow.Append(POut.Long(payPlanTemplate.SheetDefNum)); sbRow.Append(")");
 					if(sbCommands.Length+sbRow.Length+1 > TableBase.MaxAllowedPacketCount && countRows > 0) {
 						Db.NonQ(sbCommands.ToString());
 						sbCommands=null;
@@ -221,7 +226,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="PayPlanTemplateNum,";
 			}
-			command+="PayPlanTemplateName,ClinicNum,APR,InterestDelay,PayAmt,NumberOfPayments,ChargeFrequency,DownPayment,DynamicPayPlanTPOption,Note,IsHidden) VALUES(";
+			command+="PayPlanTemplateName,ClinicNum,APR,InterestDelay,PayAmt,NumberOfPayments,ChargeFrequency,DownPayment,DynamicPayPlanTPOption,Note,IsHidden,SheetDefNum) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(payPlanTemplate.PayPlanTemplateNum)+",";
 			}
@@ -236,7 +241,8 @@ namespace OpenDentBusiness.Crud{
 				+	   POut.Double(payPlanTemplate.DownPayment)+","
 				+    POut.Int   ((int)payPlanTemplate.DynamicPayPlanTPOption)+","
 				+"'"+POut.String(payPlanTemplate.Note)+"',"
-				+    POut.Bool  (payPlanTemplate.IsHidden)+")";
+				+    POut.Bool  (payPlanTemplate.IsHidden)+","
+				+    POut.Long  (payPlanTemplate.SheetDefNum)+")";
 			if(useExistingPK || isRandomKeys) {
 				Db.NonQ(command);
 			}
@@ -259,7 +265,8 @@ namespace OpenDentBusiness.Crud{
 				+"DownPayment           =  "+POut.Double(payPlanTemplate.DownPayment)+", "
 				+"DynamicPayPlanTPOption=  "+POut.Int   ((int)payPlanTemplate.DynamicPayPlanTPOption)+", "
 				+"Note                  = '"+POut.String(payPlanTemplate.Note)+"', "
-				+"IsHidden              =  "+POut.Bool  (payPlanTemplate.IsHidden)+" "
+				+"IsHidden              =  "+POut.Bool  (payPlanTemplate.IsHidden)+", "
+				+"SheetDefNum           =  "+POut.Long  (payPlanTemplate.SheetDefNum)+" "
 				+"WHERE PayPlanTemplateNum = "+POut.Long(payPlanTemplate.PayPlanTemplateNum);
 			Db.NonQ(command);
 		}
@@ -311,6 +318,10 @@ namespace OpenDentBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="IsHidden = "+POut.Bool(payPlanTemplate.IsHidden)+"";
 			}
+			if(payPlanTemplate.SheetDefNum != oldPayPlanTemplate.SheetDefNum) {
+				if(command!="") { command+=",";}
+				command+="SheetDefNum = "+POut.Long(payPlanTemplate.SheetDefNum)+"";
+			}
 			if(command=="") {
 				return false;
 			}
@@ -354,6 +365,9 @@ namespace OpenDentBusiness.Crud{
 				return true;
 			}
 			if(payPlanTemplate.IsHidden != oldPayPlanTemplate.IsHidden) {
+				return true;
+			}
+			if(payPlanTemplate.SheetDefNum != oldPayPlanTemplate.SheetDefNum) {
 				return true;
 			}
 			return false;

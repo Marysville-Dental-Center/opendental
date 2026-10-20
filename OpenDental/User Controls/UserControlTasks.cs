@@ -1024,7 +1024,7 @@ namespace OpenDental {
 				string stateString="";
 				attStr="";
 				categoryStr="";
-				Color colorTaskCategory=Defs.GetColor(DefCat.TaskCategories,_listTasks[i].TriageCategory,listDefsTaskCategory);
+				Color colorTaskCategory=Defs.GetColor(DefCat.TaskCategories,_listTasks[i].Category,listDefsTaskCategory);
 				Color colorTaskPriority=Defs.GetColor(DefCat.TaskPriorities,_listTasks[i].PriorityDefNum,listDefsTaskPriority);
 				if(_listTaskAttachments.Any(x => x.TaskNum==_listTasks[i].TaskNum)) {
 					attStr="X";//Has attachments

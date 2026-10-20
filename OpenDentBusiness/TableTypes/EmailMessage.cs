@@ -82,7 +82,8 @@ namespace OpenDentBusiness {
 		///<summary>Enum:EmailMessageSource  This is used to identify where in the program this message originated from. This is used for sent email messages.</summary>
 		[CrudColumn(SpecialType=CrudSpecialColType.EnumAsString)]
 		public EmailMessageSource MsgType;
-		///<summary>Reason the message failed to send. Blank if sent successful.</summary>
+		///<summary>Reason the message failed to send. Blank if sent successful. Widened from varchar(255) to text in Open Dental 25.3 so the full error is kept.</summary>
+		[CrudColumn(SpecialType=CrudSpecialColType.IsText)]
 		public string FailReason;
 
 		///<summary>Constructor</summary>
@@ -290,6 +291,9 @@ namespace OpenDentBusiness {
 		NewPatThankYou,
 		///<summary>Payment Portal Msg-To-Pay message</summary>
 		MsgToPay,
+		///<summary>Added in Open Dental 25.2: eClipboard Web. Stored as text (msgtype is saved by name), so the name must match. Reserved so stored rows
+		///load; eClipboard is not part of this program and never writes it.</summary>
+		EClipboardWeb,
 	}
 
 }

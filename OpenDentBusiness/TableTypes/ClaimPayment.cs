@@ -18,7 +18,8 @@ namespace OpenDentBusiness{
 		public string CheckNum;
 		///<summary>Bank and branch.</summary>
 		public string BankBranch;
-		///<summary>Note for this check if needed.</summary>
+		///<summary>Note for this check if needed.  varchar(255) in Open Dental 25.3.48 although the published 25.3 documentation says text; the 26.1
+		///schema step widens it.</summary>
 		public string Note;
 		///<summary>FK to clinic.ClinicNum.  0 if no clinic (unassigned).</summary>
 		public long ClinicNum;

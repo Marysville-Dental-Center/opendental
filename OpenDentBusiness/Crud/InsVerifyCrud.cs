@@ -58,6 +58,7 @@ namespace OpenDentBusiness.Crud{
 				insVerify.DateTimeEntry                = PIn.DateT (row["DateTimeEntry"].ToString());
 				insVerify.HoursAvailableForVerification= PIn.Double(row["HoursAvailableForVerification"].ToString());
 				insVerify.SecDateTEdit                 = PIn.DateT (row["SecDateTEdit"].ToString());
+				insVerify.SecurityHash                 = PIn.String(row["SecurityHash"].ToString());
 				retVal.Add(insVerify);
 			}
 			return retVal;
@@ -80,6 +81,7 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("DateTimeEntry");
 			table.Columns.Add("HoursAvailableForVerification");
 			table.Columns.Add("SecDateTEdit");
+			table.Columns.Add("SecurityHash");
 			foreach(InsVerify insVerify in listInsVerifys) {
 				table.Rows.Add(new object[] {
 					POut.Long  (insVerify.InsVerifyNum),
@@ -93,6 +95,7 @@ namespace OpenDentBusiness.Crud{
 					POut.DateT (insVerify.DateTimeEntry,false),
 					POut.Double(insVerify.HoursAvailableForVerification),
 					POut.DateT (insVerify.SecDateTEdit,false),
+					            insVerify.SecurityHash,
 				});
 			}
 			return table;
@@ -112,7 +115,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="InsVerifyNum,";
 			}
-			command+="DateLastVerified,UserNum,VerifyType,FKey,DefNum,DateLastAssigned,Note,DateTimeEntry,HoursAvailableForVerification) VALUES(";
+			command+="DateLastVerified,UserNum,VerifyType,FKey,DefNum,DateLastAssigned,Note,DateTimeEntry,HoursAvailableForVerification,SecurityHash) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(insVerify.InsVerifyNum)+",";
 			}
@@ -125,8 +128,9 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Date  (insVerify.DateLastAssigned)+","
 				+    DbHelper.ParamChar+"paramNote,"
 				+    DbHelper.Now()+","
-				+		 POut.Double(insVerify.HoursAvailableForVerification)+")";
+				+		 POut.Double(insVerify.HoursAvailableForVerification)+","
 				//SecDateTEdit can only be set by MySQL
+				+"'"+POut.String(insVerify.SecurityHash)+"')";
 			if(insVerify.Note==null) {
 				insVerify.Note="";
 			}
@@ -155,7 +159,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="InsVerifyNum,";
 			}
-			command+="DateLastVerified,UserNum,VerifyType,FKey,DefNum,DateLastAssigned,Note,DateTimeEntry,HoursAvailableForVerification) VALUES(";
+			command+="DateLastVerified,UserNum,VerifyType,FKey,DefNum,DateLastAssigned,Note,DateTimeEntry,HoursAvailableForVerification,SecurityHash) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(insVerify.InsVerifyNum)+",";
 			}
@@ -168,8 +172,9 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Date  (insVerify.DateLastAssigned)+","
 				+    DbHelper.ParamChar+"paramNote,"
 				+    DbHelper.Now()+","
-				+	   POut.Double(insVerify.HoursAvailableForVerification)+")";
+				+	   POut.Double(insVerify.HoursAvailableForVerification)+","
 				//SecDateTEdit can only be set by MySQL
+				+"'"+POut.String(insVerify.SecurityHash)+"')";
 			if(insVerify.Note==null) {
 				insVerify.Note="";
 			}
@@ -194,8 +199,9 @@ namespace OpenDentBusiness.Crud{
 				+"DateLastAssigned             =  "+POut.Date  (insVerify.DateLastAssigned)+", "
 				+"Note                         =  "+DbHelper.ParamChar+"paramNote, "
 				//DateTimeEntry not allowed to change
-				+"HoursAvailableForVerification=  "+POut.Double(insVerify.HoursAvailableForVerification)+" "
+				+"HoursAvailableForVerification=  "+POut.Double(insVerify.HoursAvailableForVerification)+", "
 				//SecDateTEdit can only be set by MySQL
+				+"SecurityHash                 = '"+POut.String(insVerify.SecurityHash)+"' "
 				+"WHERE InsVerifyNum = "+POut.Long(insVerify.InsVerifyNum);
 			if(insVerify.Note==null) {
 				insVerify.Note="";
@@ -241,6 +247,10 @@ namespace OpenDentBusiness.Crud{
 				command+="HoursAvailableForVerification = "+POut.Double(insVerify.HoursAvailableForVerification)+"";
 			}
 			//SecDateTEdit can only be set by MySQL
+			if(insVerify.SecurityHash != oldInsVerify.SecurityHash) {
+				if(command!="") { command+=",";}
+				command+="SecurityHash = '"+POut.String(insVerify.SecurityHash)+"'";
+			}
 			if(command=="") {
 				return false;
 			}
@@ -283,6 +293,9 @@ namespace OpenDentBusiness.Crud{
 				return true;
 			}
 			//SecDateTEdit can only be set by MySQL
+			if(insVerify.SecurityHash != oldInsVerify.SecurityHash) {
+				return true;
+			}
 			return false;
 		}
 

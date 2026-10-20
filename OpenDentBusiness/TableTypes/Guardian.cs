@@ -31,12 +31,15 @@ namespace OpenDentBusiness{
 
 	}
 
-	///<summary></summary>
+	///<summary>Stored in guardian.Relationship. Numbering matches Open Dental 25.1 and later (published database documentation): None was added
+	///as 0 and the two values that used to be 0 (Father) and 6 (Sitter) moved to 6 and 23. Databases from 24.x are renumbered by the fork
+	///migration step in OpenDentBusiness/Misc/ForkMigrations/OdParity25_3.cs. Keep the values contiguous: the guardian edit windows map a
+	///position in Enum.GetNames to the value.</summary>
 	public enum GuardianRelationship {
-		///<summary>0 - Added due to feature request.  Needed for EHR.</summary>
-		Father,
+		///<summary>0 - Not a relationship. Only used by eForm imports; never stored in a guardian row and never offered in pickers.</summary>
+		None=0,
 		///<summary>1 - Added due to feature request.  Needed for EHR.</summary>
-		Mother,
+		Mother=1,
 		///<summary>2 - Added due to feature request.</summary>
 		Stepfather,
 		///<summary>3 - Added due to feature request.</summary>
@@ -45,8 +48,8 @@ namespace OpenDentBusiness{
 		Grandfather,
 		///<summary>5 - Added due to feature request.</summary>
 		Grandmother,
-		///<summary>6 - Added due to feature request.</summary>
-		Sitter,
+		///<summary>6 - Added due to feature request.  Needed for EHR.  Was 0 before 25.1.</summary>
+		Father=6,
 		///<summary>7 - Added for EHR.</summary>
 		Brother,
 		///<summary>8 - Added for EHR.</summary>
@@ -79,6 +82,8 @@ namespace OpenDentBusiness{
 		Friend,
 		///<summary>22 - Added for EHR.</summary>
 		Grandchild,
+		///<summary>23 - Added due to feature request.  Was 6 before 25.1.</summary>
+		Sitter=23,
 	}
 
 }

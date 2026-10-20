@@ -64,7 +64,9 @@ namespace OpenDentBusiness {
 		///<summary>Enum:EmailType Type of markup for the template.</summary>
 		[CrudColumn(SpecialType = CrudSpecialColType.EnumAsString)]
 		public EmailType EmailTemplateType;
-
+		///<summary>FK to userod.UserNum. Added in Open Dental 25.3: the user who sent this ASAP message, 0 if unknown. Kept for data compatibility;
+		///Web Sched ASAP is not part of this program.</summary>
+		public long UserNum;
 
 		///<summary></summary>
 		public AsapComm Copy() {

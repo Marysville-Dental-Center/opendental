@@ -22,6 +22,12 @@ namespace OpenDentBusiness {
 		public bool IsHidden;
 		///<summary> If true, this codegroup will show in Age Limitations grid. Control of showing in Freq Lim is done separately using IsHidden.</summary>
 		public bool ShowInAgeLimit;
+		///<summary>Added in Open Dental 25.1: whether this code group shows as a row in the frequency limitations grid. Before 25.1 that was
+		///!IsHidden; the fork migration copies it over once, when it adds the column to a 24.3 database. Callers are switched by the code group
+		///feature package.</summary>
+		public bool ShowInFrequency;
+		///<summary>Added in Open Dental 25.3: whether this code group shows in the Other Benefits grid of the insurance benefits window.</summary>
+		public bool ShowInOther;
 
 		public CodeGroup Copy() {
 			return (CodeGroup)this.MemberwiseClone();

@@ -19,7 +19,9 @@ namespace OpenDentBusiness {
 		///<summary>The raw file data encoded as base64.  Only used if there is no AtoZ folder.</summary>
 		[CrudColumn(SpecialType=CrudSpecialColType.IsText)]
 		public string RawBase64;
-		
+		///<summary>FK to claim.ClaimNum. Added in Open Dental 25.2: the preauthorization this EOB is attached to instead of a claim payment. 0 for
+		///ordinary EOBs.</summary>
+		public long ClaimNumPreAuth;
 
 		public EobAttach Copy() {
 			return (EobAttach)MemberwiseClone();

@@ -62,6 +62,9 @@ namespace OpenDentBusiness{
 		public long MobileAppDeviceNum;
 		///<summary>Holds the salted hash of the following paysplit fields: Guarantor, PayAmt, IsClosed, IsLocked. </summary>
 		public string SecurityHash;
+		///<summary>FK to sheetdef.SheetDefNum. Added in Open Dental 24.4: the payment plan sheet used to print this plan. 0 keeps the built-in
+		///printout.</summary>
+		public long SheetDefNum;
 
 		public PayPlan() {
 			Signature="";

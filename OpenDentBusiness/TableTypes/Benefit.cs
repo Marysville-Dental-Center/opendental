@@ -61,10 +61,14 @@ namespace OpenDentBusiness{
 		public long CodeGroupNum;
 		///<summary>Enum:TreatmentArea . Only for frequency limitations, ignored for all other benefits. Enforced by the UI. Example 3 fillings per year [mouth]. Tests: 140 through 147. 0 means default.</summary>
 		public TreatmentArea TreatArea;
+		///<summary>Added in Open Dental 25.3: comma-separated tooth numbers this benefit row is limited to. Empty for benefits that apply to every
+		///tooth. The column is nullable (varchar(255) DEFAULT NULL), which loads as an empty string.</summary>
+		public string ToothRange;
 
 		public Benefit() {
 			Percent=-1;
 			MonetaryAmt=-1;
+			ToothRange="";
 		}
 		
 		public string ToString(bool isLeadingIncluded=false) {

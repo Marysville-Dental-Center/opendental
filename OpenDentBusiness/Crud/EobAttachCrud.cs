@@ -52,6 +52,7 @@ namespace OpenDentBusiness.Crud{
 				eobAttach.DateTCreated   = PIn.DateT (row["DateTCreated"].ToString());
 				eobAttach.FileName       = PIn.String(row["FileName"].ToString());
 				eobAttach.RawBase64      = PIn.String(row["RawBase64"].ToString());
+				eobAttach.ClaimNumPreAuth= PIn.Long  (row["ClaimNumPreAuth"].ToString());
 				retVal.Add(eobAttach);
 			}
 			return retVal;
@@ -68,6 +69,7 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("DateTCreated");
 			table.Columns.Add("FileName");
 			table.Columns.Add("RawBase64");
+			table.Columns.Add("ClaimNumPreAuth");
 			foreach(EobAttach eobAttach in listEobAttachs) {
 				table.Rows.Add(new object[] {
 					POut.Long  (eobAttach.EobAttachNum),
@@ -75,6 +77,7 @@ namespace OpenDentBusiness.Crud{
 					POut.DateT (eobAttach.DateTCreated,false),
 					            eobAttach.FileName,
 					            eobAttach.RawBase64,
+					POut.Long  (eobAttach.ClaimNumPreAuth),
 				});
 			}
 			return table;
@@ -94,7 +97,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="EobAttachNum,";
 			}
-			command+="ClaimPaymentNum,DateTCreated,FileName,RawBase64) VALUES(";
+			command+="ClaimPaymentNum,DateTCreated,FileName,RawBase64,ClaimNumPreAuth) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(eobAttach.EobAttachNum)+",";
 			}
@@ -102,7 +105,8 @@ namespace OpenDentBusiness.Crud{
 				     POut.Long  (eobAttach.ClaimPaymentNum)+","
 				+    POut.DateT (eobAttach.DateTCreated)+","
 				+"'"+POut.String(eobAttach.FileName)+"',"
-				+    DbHelper.ParamChar+"paramRawBase64)";
+				+    DbHelper.ParamChar+"paramRawBase64,"
+				+    POut.Long  (eobAttach.ClaimNumPreAuth)+")";
 			if(eobAttach.RawBase64==null) {
 				eobAttach.RawBase64="";
 			}
@@ -131,7 +135,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="EobAttachNum,";
 			}
-			command+="ClaimPaymentNum,DateTCreated,FileName,RawBase64) VALUES(";
+			command+="ClaimPaymentNum,DateTCreated,FileName,RawBase64,ClaimNumPreAuth) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(eobAttach.EobAttachNum)+",";
 			}
@@ -139,7 +143,8 @@ namespace OpenDentBusiness.Crud{
 				     POut.Long  (eobAttach.ClaimPaymentNum)+","
 				+    POut.DateT (eobAttach.DateTCreated)+","
 				+"'"+POut.String(eobAttach.FileName)+"',"
-				+    DbHelper.ParamChar+"paramRawBase64)";
+				+    DbHelper.ParamChar+"paramRawBase64,"
+				+    POut.Long  (eobAttach.ClaimNumPreAuth)+")";
 			if(eobAttach.RawBase64==null) {
 				eobAttach.RawBase64="";
 			}
@@ -159,7 +164,8 @@ namespace OpenDentBusiness.Crud{
 				+"ClaimPaymentNum=  "+POut.Long  (eobAttach.ClaimPaymentNum)+", "
 				+"DateTCreated   =  "+POut.DateT (eobAttach.DateTCreated)+", "
 				+"FileName       = '"+POut.String(eobAttach.FileName)+"', "
-				+"RawBase64      =  "+DbHelper.ParamChar+"paramRawBase64 "
+				+"RawBase64      =  "+DbHelper.ParamChar+"paramRawBase64, "
+				+"ClaimNumPreAuth=  "+POut.Long  (eobAttach.ClaimNumPreAuth)+" "
 				+"WHERE EobAttachNum = "+POut.Long(eobAttach.EobAttachNum);
 			if(eobAttach.RawBase64==null) {
 				eobAttach.RawBase64="";
@@ -187,6 +193,10 @@ namespace OpenDentBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="RawBase64 = "+DbHelper.ParamChar+"paramRawBase64";
 			}
+			if(eobAttach.ClaimNumPreAuth != oldEobAttach.ClaimNumPreAuth) {
+				if(command!="") { command+=",";}
+				command+="ClaimNumPreAuth = "+POut.Long(eobAttach.ClaimNumPreAuth)+"";
+			}
 			if(command=="") {
 				return false;
 			}
@@ -213,6 +223,9 @@ namespace OpenDentBusiness.Crud{
 				return true;
 			}
 			if(eobAttach.RawBase64 != oldEobAttach.RawBase64) {
+				return true;
+			}
+			if(eobAttach.ClaimNumPreAuth != oldEobAttach.ClaimNumPreAuth) {
 				return true;
 			}
 			return false;

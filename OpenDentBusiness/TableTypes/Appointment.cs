@@ -96,6 +96,9 @@ namespace OpenDentBusiness{
 		public string SecurityHash;
 		///<summary>One-indexed order of patnum specific planned appointments. Column moved from the deprecated table plannedappt.</summary>
 		public int ItemOrderPlanned;
+		///<summary>Added in Open Dental 25.2 (schema) for appointment mirroring: also show a linked copy of this appointment in the secondary
+		///provider's operatory. Column only until the mirroring feature is ported.</summary>
+		public bool IsMirrored;
 		//NOTE: If adding any more columns, be sure to add them to HistAppointment and to the constructor for HistAppointment.
 
 		///<summary>Used only for serialization purposes</summary>
