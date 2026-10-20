@@ -72,6 +72,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CryptoTests", "tests\Crypto
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VendorDirectTests", "tests\VendorDirectTests\VendorDirectTests.csproj", "{D4197705-EDEA-4FA8-80A2-7F0D7E3B7EA3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReleaseFlowTests", "tests\ReleaseFlowTests\ReleaseFlowTests.csproj", "{9C3E2F41-6B7D-4E18-A5C2-3D8F1E0B7A64}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -119,6 +121,18 @@ Global
 		{D4197705-EDEA-4FA8-80A2-7F0D7E3B7EA3}.Release|Any CPU.Build.0 = Release|x86
 		{D4197705-EDEA-4FA8-80A2-7F0D7E3B7EA3}.Release|x86.ActiveCfg = Release|x86
 		{D4197705-EDEA-4FA8-80A2-7F0D7E3B7EA3}.Release|x86.Build.0 = Release|x86
+		{9C3E2F41-6B7D-4E18-A5C2-3D8F1E0B7A64}.Debug|Any CPU.ActiveCfg = Debug|x86
+		{9C3E2F41-6B7D-4E18-A5C2-3D8F1E0B7A64}.Debug|Any CPU.Build.0 = Debug|x86
+		{9C3E2F41-6B7D-4E18-A5C2-3D8F1E0B7A64}.Debug|x86.ActiveCfg = Debug|x86
+		{9C3E2F41-6B7D-4E18-A5C2-3D8F1E0B7A64}.Debug|x86.Build.0 = Debug|x86
+		{9C3E2F41-6B7D-4E18-A5C2-3D8F1E0B7A64}.ODXam|Any CPU.ActiveCfg = Release|x86
+		{9C3E2F41-6B7D-4E18-A5C2-3D8F1E0B7A64}.ODXam|Any CPU.Build.0 = Release|x86
+		{9C3E2F41-6B7D-4E18-A5C2-3D8F1E0B7A64}.ODXam|x86.ActiveCfg = Release|x86
+		{9C3E2F41-6B7D-4E18-A5C2-3D8F1E0B7A64}.ODXam|x86.Build.0 = Release|x86
+		{9C3E2F41-6B7D-4E18-A5C2-3D8F1E0B7A64}.Release|Any CPU.ActiveCfg = Release|x86
+		{9C3E2F41-6B7D-4E18-A5C2-3D8F1E0B7A64}.Release|Any CPU.Build.0 = Release|x86
+		{9C3E2F41-6B7D-4E18-A5C2-3D8F1E0B7A64}.Release|x86.ActiveCfg = Release|x86
+		{9C3E2F41-6B7D-4E18-A5C2-3D8F1E0B7A64}.Release|x86.Build.0 = Release|x86
 		{8136317D-C936-49B6-9E31-D90F02D2F207}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{8136317D-C936-49B6-9E31-D90F02D2F207}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8136317D-C936-49B6-9E31-D90F02D2F207}.Debug|x86.ActiveCfg = Debug|x86
