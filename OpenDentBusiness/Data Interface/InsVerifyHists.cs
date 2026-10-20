@@ -27,14 +27,40 @@ namespace OpenDentBusiness{
 			return Crud.InsVerifyHistCrud.SelectOne(insVerifyHistNum);
 		}
 
-		///<summary></summary>
+		///<summary>A history row made from an insverify row (the InsVerifyHist constructor) carries that row's SecurityHash unchanged. It stays valid,
+		///because the hashed fields are copied too, and an invalid one stays invalid, so a warning on the source row follows it into the history. Only a
+		///blank hash (a row built without a source, or a source never hashed) is computed here.</summary>
 		public static long Insert(InsVerifyHist insVerifyHist) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				insVerifyHist.InsVerifyHistNum=Meth.GetLong(MethodBase.GetCurrentMethod(),insVerifyHist);
 				return insVerifyHist.InsVerifyHistNum;
 			}
+			if(string.IsNullOrEmpty(insVerifyHist.SecurityHash)) {
+				insVerifyHist.SecurityHash=HashFields(insVerifyHist);
+			}
 			return Crud.InsVerifyHistCrud.Insert(insVerifyHist);
 		}
+
+		#region SecurityHash
+		///<summary>Returns the keyed hash over the copied assignment fields (user, status definition, assignment date). Equal to InsVerifies.HashFields
+		///of the insverify row this history row was copied from.</summary>
+		public static string HashFields(InsVerifyHist insVerifyHist) {
+			Meth.NoCheckMiddleTierRole();
+			return InsVerifies.HashText(InsVerifies.GetUnhashedText(insVerifyHist.UserNum,insVerifyHist.DefNum,insVerifyHist.DateLastAssigned));
+		}
+
+		///<summary>Validates insVerifyHist.SecurityHash, with the same rules as InsVerifies.IsInsVerifyHashValid.</summary>
+		public static bool IsInsVerifyHistHashValid(InsVerifyHist insVerifyHist) {
+			Meth.NoCheckMiddleTierRole();
+			if(insVerifyHist==null || insVerifyHist.SecurityHash==null) {
+				return true;
+			}
+			if(insVerifyHist.SecDateTEdit<Misc.SecurityHash.GetHashingDate()) {
+				return true;
+			}
+			return Misc.SecurityHash.IsHashValid(insVerifyHist.SecurityHash,HashFields(insVerifyHist));
+		}
+		#endregion SecurityHash
 
 		///<summary></summary>
 		public static void Delete(long insVerifyHistNum) {

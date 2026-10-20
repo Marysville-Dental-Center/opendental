@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Globalization;
 using System.Reflection;
 using System.Text;
 using System.Linq;
@@ -191,19 +192,99 @@ namespace OpenDentBusiness{
 			}
 			//Security.CurUser.UserNum gets set on MT by the DtoProcessor so it matches the user from the client WS.
 			insSub.SecUserNumEntry=Security.CurUser.UserNum;
+			insSub.SecurityHash=HashFields(insSub);
 			insSub.InsSubNum=Crud.InsSubCrud.Insert(insSub,useExistingPK);
 			InsEditPatLogs.MakeLogEntry(insSub,null,InsEditPatLogType.Subscriber);
 			return insSub.InsSubNum;
 		}
 
-		///<summary></summary>
+		///<summary>Also sets insSub.SecurityHash (see SetHashForUpdate), which costs one extra read of the row.</summary>
 		public static void Update(InsSub insSub) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				Meth.GetVoid(MethodBase.GetCurrentMethod(),insSub);
 				return;
 			}
+			SetHashForUpdate(insSub,Crud.InsSubCrud.SelectOne(insSub.InsSubNum));
 			Crud.InsSubCrud.Update(insSub);
 		}
+
+		#region SecurityHash
+		///<summary>Returns the keyed hash over the fields that tie a subscriber to coverage: plan, subscriber, subscriber ID and term date (without time).
+		///Computed by CodeBase.TamperHash.</summary>
+		public static string HashFields(InsSub insSub) {
+			Meth.NoCheckMiddleTierRole();
+			string unhashedText=POut.Long(insSub.PlanNum)+"|"+POut.Long(insSub.Subscriber)+"|"+(insSub.SubscriberID??"")+"|"
+				+insSub.DateTerm.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture);
+			return InsVerifies.HashText(unhashedText);
+		}
+
+		///<summary>Validates insSub.SecurityHash. True if it matches the hash of the row's fields, if it was written by Open Dental (see
+		///SecurityHash.IsHashValid), or if the row was last edited before SecurityHash.GetHashingDate.</summary>
+		public static bool IsInsSubHashValid(InsSub insSub) {
+			Meth.NoCheckMiddleTierRole();
+			if(insSub==null || insSub.SecurityHash==null || insSub.InsSubNum==0) {//null or 0: not from the database (new, or GetSub's empty InsSub).
+				return true;
+			}
+			if(insSub.SecDateTEdit<Misc.SecurityHash.GetHashingDate()) {
+				return true;
+			}
+			return Misc.SecurityHash.IsHashValid(insSub.SecurityHash,HashFields(insSub));
+		}
+
+		///<summary>Sets insSub.SecurityHash before insSub is written over insSubOld, the row as it is in the database. A new hash is computed when the
+		///stored hash is blank, still valid, or Open Dental's (SecurityHash.DoRehashOnSave), so every save of a hashed field by the program is hashed.
+		///Otherwise the row was changed outside the program: the stored hash is kept, so the integrity warning stays. insSubOld null (no such row) gets a
+		///new hash.</summary>
+		private static void SetHashForUpdate(InsSub insSub,InsSub insSubOld) {
+			Meth.NoCheckMiddleTierRole();
+			if(insSubOld==null || Misc.SecurityHash.DoRehashOnSave(insSubOld.SecurityHash,HashFields(insSubOld))) {
+				insSub.SecurityHash=HashFields(insSub);
+				return;
+			}
+			insSub.SecurityHash=insSubOld.SecurityHash;
+		}
+
+		///<summary>For code that changes hashed inssub columns with its own UPDATE statement (plan merges, patient merges, database maintenance).
+		///listInsSubsOld are the rows as they were read before that UPDATE. Each row is read again and gets the hash of its new values, unless its old
+		///hash showed a change made outside the program, which is kept (SetHashForUpdate). Rows that no longer exist are skipped. Returns the number of
+		///rows rehashed.</summary>
+		public static int RehashAfterDirectUpdate(List<InsSub> listInsSubsOld) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetInt(MethodBase.GetCurrentMethod(),listInsSubsOld);
+			}
+			if(listInsSubsOld==null || listInsSubsOld.Count==0) {
+				return 0;
+			}
+			List<InsSub> listInsSubsNew=GetMany(listInsSubsOld.Select(x => x.InsSubNum).Distinct().ToList());
+			int count=0;
+			for(int i=0;i<listInsSubsNew.Count;i++) {
+				InsSub insSubNew=listInsSubsNew[i];
+				InsSub insSubOld=listInsSubsOld.First(x => x.InsSubNum==insSubNew.InsSubNum);
+				string hashStored=insSubNew.SecurityHash;
+				SetHashForUpdate(insSubNew,insSubOld);
+				if(insSubNew.SecurityHash==hashStored) {
+					continue;
+				}
+				string command="UPDATE inssub SET SecurityHash='"+POut.String(insSubNew.SecurityHash)+"' WHERE InsSubNum="+POut.Long(insSubNew.InsSubNum);
+				Db.NonQ(command);
+				count++;
+			}
+			return count;
+		}
+
+		///<summary>Moves every subscriber of planNumFrom to planNumTo, as merging two plans does, and rehashes the moved rows (RehashAfterDirectUpdate).
+		///</summary>
+		public static void ChangePlanNum(long planNumFrom,long planNumTo) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				Meth.GetVoid(MethodBase.GetCurrentMethod(),planNumFrom,planNumTo);
+				return;
+			}
+			List<InsSub> listInsSubsOld=GetListForPlanNum(planNumFrom);
+			string command="UPDATE inssub SET PlanNum="+POut.Long(planNumTo)+" WHERE PlanNum="+POut.Long(planNumFrom);
+			Db.NonQ(command);
+			RehashAfterDirectUpdate(listInsSubsOld);
+		}
+		#endregion SecurityHash
 
 		///<summary>Throws exception if dependencies.  Also deletes PatPlans tied to the InsSub.</summary>
 		public static void Delete(long insSubNum) {
