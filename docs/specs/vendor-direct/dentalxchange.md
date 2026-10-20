@@ -15,7 +15,7 @@ DentalXChange's SOAP web services (DWS: eligibility, ERAs, payer list, claim val
 ## Attachment "Submitted" flag (Open Dental 24.4)
 
 - `claim.AttachedFlags` gets the keyword `Submitted` once the claim's DentalXChange attachment has been sent (`ClaimConnect.SendAttachmentImages`, used by the paste, snip and image-picker windows). It also gets `Misc`, as before, so the 837 writes the attachment ID in its PWK segment; `Mail` is dropped.
-- New images clear the flag in memory until every call has succeeded. Clear Attachment, and saving a claim that has no attachments, remove it.
+- New images clear the flag in memory until every call has succeeded. Clear Attachment removes it, and so does every Edit Claim save once the claim has no attachments left, whatever the clearinghouse (XConnect included) or claim status (`FormClaimEdit.UpdateClaim` calls `ClaimAttaches.SyncDxcSubmittedWithAttachments`).
 - Every writer keeps keywords it does not manage: Edit Claim's check boxes keep `Submitted` and `Unsup` (`ClaimAttaches.RebuildFromCheckBoxes`).
 - The 837 builders ignore `Submitted` (`ClaimAttaches.HasPaperworkFlags`), so `Mail,Submitted` asks for no paperwork, and they skip "Attachment ID missing" once the attachment was submitted. XConnect's attachment messages and the DWS "attachment required" prompt are skipped too.
 - Edit Claim's DentalXChange tab, Attachment History and the paste and image-picker windows show the state. Before a window adds images to an attachment that was already submitted, it asks once.
@@ -27,6 +27,7 @@ DentalXChange's SOAP web services (DWS: eligibility, ERAs, payer list, claim val
 - **Save (Edit Claim, Waiting to Send):** validates for at most 10 seconds and never blocks saving. A failed call gives a non-modal note; problems open the Claim Validation window non-modally.
 - **Send (Edit Claim):** errors keep the claim unsent and open the window; warning-only claims go after Send Anyway. A failed call keeps the claim unsent, as in 24.3.
 - **Send Claims window:** each claim is validated; one combined window lists the problems grouped by claim. Claims with errors (or a failed call) stay in the queue, warning-only claims go after Send Anyway, and clean claims go. Re-validating in the window can free a claim.
+- **Send from the "Outstanding ... claims" prompt** (after a primary claim is received): the electronic claims whose clearinghouse has XConnect on are validated before sending, with the same combined window and the same rules; claims with errors or a failed call stay waiting to send. The validation runs at that call site (`ClaimL.FilterQueueItemsByXConnect`), not in `SendClaimSendQueueItems`, so the Send Claims window does not validate twice.
 - **Claim Validation window** (`FormXConnectValidation`): patient, claim date and carrier; Severity, Location, Message, How to fix, Status. Unresolved rows are yellow; problems a re-validation no longer returns turn white and say Resolved. Buttons: Edit Claim, Re-validate, Send Anyway (send paths, warnings only), Close.
 - Only primary, secondary and tertiary claims are validated; preauthorizations are skipped.
 - **Log:** every call is an `etrans` pair: the request as `Claim_XConnect` (36) and the response as `ClaimAck_XConnect` (37), linked through `AckEtransNum`. A call without a response logs the request with a note.

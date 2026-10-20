@@ -175,6 +175,59 @@ namespace VendorDirectTests.DentalXChange {
 			response.response.warnings=new[] { "Check the payer ID","Check the payer ID" };
 			Assert.AreEqual(1,XConnectValidation.GetIssues(response,"").Count);
 		}
+		[TestMethod]
+		public void XConnectClaim_EveryAttachmentRemoved_SaveDropsSubmitted() {
+			//A claim on an XConnect clearinghouse whose DentalXChange attachment was sent. Edit Claim removes every attachment and saves.
+			Clearinghouse clearinghouse=MakeClearinghouse();
+			clearinghouse.IsAttachmentSendAllowed=true;//Edit Claim skips the check box flags for this clearinghouse.
+			Assert.IsTrue(XConnect.IsEnabled(clearinghouse));
+			Claim claim=new Claim { ClaimNum=9,ClaimType="P",AttachedFlags="Misc,Submitted",AttachmentID="" };
+			claim.Attachments.Add(new ClaimAttach { DisplayedFileName="xray.jpg",ActualFileName="xray_1.jpg" });
+			claim.Attachments.RemoveAt(0);//menuItemRemove_Click
+			//What FormClaimEdit.UpdateClaim() does on every save.
+			claim.AttachedFlags=ClaimAttaches.SyncDxcSubmittedWithAttachments(claim.AttachedFlags,claim.Attachments);
+			Assert.AreEqual("Misc",claim.AttachedFlags);
+			//The 837 asks for the attachment ID again, and XConnect shows attachment messages again.
+			Assert.IsTrue(ClaimAttaches.IsAttachmentIdMissing(claim.AttachedFlags,claim.AttachmentID,ClaimAttaches.HasPaperworkFlags(claim.AttachedFlags)));
+			XConnectWebResponse response=MakeResponse();
+			response.response.claimItems=new[] { new XConnectClaimItemResponse { itemStatus=new XConnectStatus { message="Attachment required: X-rays" } } };
+			Assert.AreEqual(1,XConnectValidation.GetIssues(response,claim.AttachedFlags).Count);
+			//Edit Claim makes that call on every save, after the block that runs only when attachments cannot be sent electronically.
+			string source=DxcTestFiles.ReadRepoFile(@"OpenDental\Forms\FormClaimEdit.cs");
+			int indexStart=source.IndexOf("private ClaimEdit.UpdateData UpdateClaim(){");
+			Assert.IsTrue(indexStart>=0,"UpdateClaim() not found.");
+			int indexEnd=source.IndexOf("ClaimEdit.UpdateClaim(_claim,",indexStart);
+			Assert.IsTrue(indexEnd>indexStart,"The save call in UpdateClaim() not found.");
+			string body=source.Substring(indexStart,indexEnd-indexStart);
+			int indexBlock=body.IndexOf("if(!_clearinghouse.IsAttachmentSendAllowed) {");
+			int indexSync=body.IndexOf("_claim.AttachedFlags=ClaimAttaches.SyncDxcSubmittedWithAttachments(_claim.AttachedFlags,_claim.Attachments);");
+			Assert.IsTrue(indexBlock>=0 && indexSync>indexBlock,"UpdateClaim() syncs the Submitted flag after the check box block.");
+			StringAssert.Contains(body.Substring(indexBlock,indexSync-indexBlock),"#endregion","The call is after the block, so it runs for every clearinghouse.");
+		}
+
+		[TestMethod]
+		public void OutstandingClaimsPrompt_ValidatesWithXConnectBeforeSending() {
+			//"Outstanding secondary claims > Send" sends through SendClaimSendQueueItems(). XConnect validation happens at that call site, before the
+			//send, and not inside SendClaimSendQueueItems(), which the Send Claims window calls after validating the claims itself.
+			string source=DxcTestFiles.ReadRepoFile(@"OpenDental\Logic\ClaimL.cs");
+			int indexPrompt=source.IndexOf("public static void PromptForPrimaryOrSecondaryClaim(");
+			int indexSend=source.IndexOf("internal static List<ClaimSendQueueItem> SendClaimSendQueueItems(");
+			int indexRegion=source.IndexOf("#region XConnect claim validation",Math.Max(indexSend,0));
+			Assert.IsTrue(indexPrompt>=0 && indexSend>indexPrompt && indexRegion>indexSend);
+			string prompt=source.Substring(indexPrompt,indexSend-indexPrompt);
+			int indexFilter=prompt.IndexOf("FilterQueueItemsByXConnect(");
+			int indexSendCall=prompt.IndexOf("SendClaimSendQueueItems(listClaimSendQueueItemsToSend,");
+			Assert.IsTrue(indexFilter>=0 && indexSendCall>indexFilter,"Validated, then only the claims that passed are sent.");
+			string send=source.Substring(indexSend,indexRegion-indexSend);
+			Assert.IsFalse(send.Contains("ValidateXConnect") || send.Contains("FilterQueueItemsByXConnect"),"Not validated twice from Send Claims.");
+			int indexFilterMethod=source.IndexOf("private static List<ClaimSendQueueItem> FilterQueueItemsByXConnect(");
+			int indexBatch=source.IndexOf("public static List<long> ShowXConnectResultsForBatch(",Math.Max(indexFilterMethod,0));
+			Assert.IsTrue(indexFilterMethod>=0 && indexBatch>indexFilterMethod);
+			string filter=source.Substring(indexFilterMethod,indexBatch-indexFilterMethod);
+			StringAssert.Contains(filter,"XConnect.IsEnabled(");
+			StringAssert.Contains(filter,"ValidateXConnect(listClaimNumsToValidate[i],XConnect.TimeoutValidateOnSend)");
+			StringAssert.Contains(filter,"ShowXConnectResultsForBatch(listResults)");
+		}
 		#endregion GetIssues
 
 		#region Re-validation and send decision
