@@ -108,10 +108,11 @@ appointment history and security-log entries are included. Existing work comes i
 insurance-history claimprocs for some new patients.
 
 **Insurance.** One claim per visit and plan: PPO write-offs, coverage percentages by category, deductibles waived for preventive
-care, annual maximums, frequency limits, age limits, implant exclusions, crown waiting periods and third-molar exclusions by
-tooth range. Claims are unsent, sent or received according to their age; received ones are paid (now and then denied, reduced or
-followed by a supplemental payment) on insurance checks batched by carrier and date. Secondary claims are held until the primary
-pays. Major treatment gets preauthorizations.
+care, annual maximums, frequency limits, age limits, implant exclusions, crown waiting periods and exclusions limited to teeth
+(surgical removal of third molars; core build-ups on teeth 4 to 13 on every third plan), which the estimates honor. Claims are
+unsent, sent or received according to their age; received ones are paid (now and then denied, reduced or followed by a
+supplemental payment) on insurance checks batched by carrier and date. Secondary claims are held until the primary pays. Major
+treatment gets preauthorizations.
 
 **Money.** Payments at checkout and later (by payment habit), split per procedure; prepayments; senior, courtesy and invoice
 discounts; monthly finance charges and the collections billing type for non-payers; payment plans; monthly statements while a
@@ -148,7 +149,7 @@ The data by version:
 | 24.4 | Dated fees (yearly increases, a PPO contract change, an increase dated after the as-of date that must not apply yet, a provider's own fees) and fee schedule notes; chart letters (`document.ChartLetterStatus`, `UserNum`, `ChartLetterHash`, some with a second version); payment plans and templates with a chosen sheet (`SheetDefNum`); BetterDiagnostics drawings (`imagedraw.ImageAnnotVendor` 2, `BetterDiagLayer`); Query Monitor filters |
 | 25.1 | Code group frequency flag; card terminal per workstation; card-holder names; eForm field AutoImport and PrefillFromGuar; insurance verification hashes; hidden medications still on patients; down-payment charges on payment plans; guardian relationships in the renumbered form (Mother 1, Father 6, Sitter 23) |
 | 25.2 | Mirrored appointments (hygiene visits with a dentist exam, from September 2025) and their history rows; the view setting; English copies of translated eForm labels and pick lists (some forms in Spanish); eForm Patient List (8) and Ins Pick (9) fields with pending insurance (`inspending`); EOBs on preauthorizations (`eobattach.ClaimNumPreAuth`); XConnect flag; eClipboard sheets considered; `inssub.SecurityHash`; signer of practice signature boxes (`sheetfield.UserSigned`); statements remembering "show transactions since zero balance"; task categories; branding rows |
-| 25.3 | Tooth-range benefits; Other Benefits code groups; accounting payees, notes and review flags; ASAP texts with the sending user; statements in API mode (4) and invoices whose `InsEst` holds the adjustment total; Check sheets (type 28); e-mail failure reasons (text since 25.3); task triage positions (an HQ column; a few rows prove it survives) |
+| 25.3 | Tooth-range exclusions (on Exclusions rows only, stored expanded); Other Benefits code groups; accounting payees, notes and review flags; ASAP texts with the sending user; statements in API mode (4) and invoices whose `InsEst` holds the adjustment total; Check sheets (type 28); e-mail failure reasons (text since 25.3); task triage positions (an HQ column; a few rows prove it survives) |
 | 25.3, excluded features | Chat (`chat`, `chatmsg` with `SeqCount`, `chatattach`, `chatreaction`, `chatuserattach`, `chatuserod`, `sequencecounter`) and dental school (`schoolcoursedef`, `schoolcoursesched`, `schoolapproval`, the new `schoolcourse`, `reqneeded` and `reqstudent` columns, hidden student and instructor providers): a few rows each, so the rehearsal proves they survive untouched |
 | Office only | `patient._portal_active_email` (generated column with a unique key): active patients have unique e-mail addresses, and some inactive family members share the guarantor's address, which the key allows |
 
@@ -172,6 +173,24 @@ work must not treat these as facts:
 | `branding.BrandingType` | 0 name, 1 logo path, 2 colours | 1 is LogoFilePath in 25.2 and LogoImage in 26.1 |
 | `refattach.RefToStatus`, `asapcomm.SmsSendStatus` | 3 | Existing enums; values chosen to look plausible |
 
+### Stored formats
+
+The rehearsal and the A-INS and A-EF parsers must meet only values Open Dental 25.3.48 itself stores, so these columns follow the
+formats the published database docs give (as recorded in the feature specs) and the fork's own eForm classes:
+
+| Column | Stored form | Source |
+|---|---|---|
+| `benefit.ToothRange` | Internal tooth numbers (or primary letters), comma-separated, ranges expanded, no hyphens: an entered "4-13" is stored as `4,5,6,7,8,9,10,11,12,13`. Only on Exclusions rows (`BenefitType` 4); blank or NULL elsewhere, since tooth ranges on age limitations arrive in 26.1 | features-25.3 (v25_3-family-exclusions-tooth, Rules); `benefit.ToothRange` in the 25.3 database docs |
+| `eformfield`/`eformfielddef` `PickListVis`, `PickListDb` | Pipe-delimited, one `PickListDb` item per visible item, at least two (`Male\|Female\|Unknown` and `M\|F\|U`). Translated forms translate `PickListVis` item by item and keep the English list in `PickListVisEnglish` | `EFormField.cs` (PickListVis, PickListDb) |
+| `ConditionalValue` | Several trigger values are pipe-delimited; each matches an item of the parent's visible pick list, or "X" for a checkbox | `EFormField.cs` (ConditionalValue) |
+| Ins Pick (FieldType 9) | `PickListVis` = the three option labels, `None\|Existing\|New`; `PickListDb` unused (blank). `ValueString` = "" (None), `New`, `InsSubNum:n` (the patient's own subscription) or `InsPendingNum:n` (a family member's pending row, which import copies for this patient). New reveals the Patient List and the `ins1CarrierName`, `ins1GroupNum` and `ins1SubscriberID` text fields through conditional logic (parent = the Ins Pick label, value = `New`). Import creates `inspending` rows, never plans | features-25.2 (v25_2-eforms-ins-pick-field, "Field data") from the 25.2 database docs |
+| Patient List (FieldType 8) | `ValueLabel` = JSON `EFormPatListLayout` (`{"Label":"Subscriber"}`); `ValueString` = the picked subscriber's PatNum as text, or "" | features-25.2 (v25_2-eforms-patient-list-field, "Data") from the 25.2 database docs |
+| MedicationList (FieldType 7) | `ValueLabel` = JSON `EFormMedListLayout` (Title and the defaults); `ValueString` = JSON list of `EFormMed` (`[{"MedName":"Ibuprofen","StrengthFreq":""}]`, `[]` when empty) | `EFormField.cs` (ValueLabel, ValueString, EFormMed, EFormMedListLayout) |
+
+Assumptions where the docs are silent: the Ins Pick slot is taken from `DbLink` `ins1` (the convention is not documented; see
+features-25.2, open question 2); `EFormPatListLayout` is written with only the `Label` property the docs mention; for the two JSON
+label types, `ValueLabelEnglish` holds the same JSON with the English label.
+
 ## Validation reports
 
 `validate` writes a JSON report:
@@ -188,7 +207,8 @@ work must not treat these as facts:
 - `check.*` totals count rows that break an invariant of the generated data (0 = pass): aging buckets add up, family ledger equals
   `BalTotal`, `InsEst` equals the outstanding claim estimates, payments equal their splits, insurance checks equal their claimprocs,
   deposits equal their items, journal transactions balance, claim fees equal their procedures, active e-mails are unique, no
-  orphaned claimprocs, procedures or splits.
+  orphaned claimprocs, procedures or splits, and the stored formats below hold (`check.benefit_tooth_range_format`,
+  `check.eform_pick_lists`, `check.eform_value_formats`).
 
 Two reports of the same data are identical: nothing in them depends on time or machine except the server version.
 
@@ -237,11 +257,14 @@ vstest.console.exe tools\SyntheticData\SyntheticData.Tests\bin\Debug\SyntheticDa
 
 Unit tests cover the random numbers (pinned sequence), the local-only and `synth*` guards, names and contact ranges, SQL literal
 formatting, dump parsing, aging, the report comparer, the coverage list and the widened-column list (old widths, DRIFT entries)
-against `schema-changes.json`, and the lengths of the generator's long values; enum numbers that
+against `schema-changes.json`, the lengths of the generator's long values, and the stored formats (tooth ranges only on
+Exclusions and expanded, pipe-delimited pick lists with matching item counts, conditional values that match their parent, Ins Pick
+values, and JSON that deserializes into OpenDentBusiness's `EFormMedListLayout` and `EFormMed`); enum numbers that
 existed in 24.3 are cross-checked against OpenDentBusiness. The database tests (scratch databases `synth_test_*`, dropped
 afterwards; inconclusive without a local server) check the schema against `od_253_schema`, determinism, all consistency checks,
-coverage for two seeds, fictional data, dated fees on procedures, guardian numbering, the filler, refusal to write non-`synth`
-databases, and a simulated adoption that must show only allowed differences until a forbidden change is made.
+coverage for two seeds, fictional data, dated fees on procedures, the stored formats of the generated rows, guardian numbering,
+the filler, refusal to write non-`synth` databases, and a simulated adoption that must show only allowed differences until a
+forbidden change is made.
 
 ## Layout
 
@@ -249,7 +272,7 @@ databases, and a simulated adoption that must show only allowed differences unti
 |---|---|
 | `Program.cs`, `Options.cs` | Command line |
 | `Infrastructure/` | Local-only guard, connection, schema reader and builder, buffered row sink, random numbers |
-| `Generation/` | Settings, names, catalog (codes, coverage categories, code groups), practice set-up, schedules, the family simulator (clinical, ledger, extras), practice-wide rows, filler |
+| `Generation/` | Settings, names, catalog (codes, coverage categories, code groups), practice set-up, schedules, the family simulator (clinical, ledger, extras), eForm value shapes, practice-wide rows, filler |
 | `Validation/` | Report, validator, comparer, coverage list |
 | `sql/business-totals.sql` | Business totals and checks |
 | `allowed-differences.adoption.json` | Differences adoption may make |
