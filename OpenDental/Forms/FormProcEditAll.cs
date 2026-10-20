@@ -354,7 +354,8 @@ namespace OpenDental {
 					procFeeHelper.ListFees=null;
 				}
 				else {
-					procFeeHelper.ListFees=Fees.GetListExact(feeSchedNum,clinic.ClinicNum,provider.ProvNum);
+					//All dates, so that a completed procedure finds the fee that was in effect on its procedure date.
+					procFeeHelper.ListFees=Fees.GetListExactAllDates(feeSchedNum,clinic.ClinicNum,provider.ProvNum);
 					if(procFeeHelper.ListFees.Count==0) {
 						procFeeHelper.ListFees=null;
 					}

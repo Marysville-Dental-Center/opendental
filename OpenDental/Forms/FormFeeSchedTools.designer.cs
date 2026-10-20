@@ -81,6 +81,17 @@ namespace OpenDental {
 			this.butPickSchedTo = new OpenDental.UI.Button();
 			this.butCopy = new OpenDental.UI.Button();
 			this.label1 = new System.Windows.Forms.Label();
+			this.labelDateAsOf = new System.Windows.Forms.Label();
+			this.textDateAsOf = new OpenDental.ValidDate();
+			this.labelDateAsOfNote = new System.Windows.Forms.Label();
+			this.labelDateEffectiveCopy = new System.Windows.Forms.Label();
+			this.textDateEffectiveCopy = new OpenDental.ValidDate();
+			this.labelDateEffectiveCopyNote = new System.Windows.Forms.Label();
+			this.checkExportFuture = new OpenDental.UI.CheckBox();
+			this.labelDateEffectiveImport = new System.Windows.Forms.Label();
+			this.textDateEffectiveImport = new OpenDental.ValidDate();
+			this.labelDateEffectiveNew = new System.Windows.Forms.Label();
+			this.textDateEffectiveNew = new OpenDental.ValidDate();
 			this.groupBox7.SuspendLayout();
 			this.groupGlobalUpdateFees.SuspendLayout();
 			this.groupBox5.SuspendLayout();
@@ -122,9 +133,12 @@ namespace OpenDental {
 			this.groupBox7.Controls.Add(this.butPickSched);
 			this.groupBox7.Controls.Add(this.label8);
 			this.groupBox7.Controls.Add(this.labelGroup);
+			this.groupBox7.Controls.Add(this.labelDateAsOf);
+			this.groupBox7.Controls.Add(this.textDateAsOf);
+			this.groupBox7.Controls.Add(this.labelDateAsOfNote);
 			this.groupBox7.Location = new System.Drawing.Point(12, 31);
 			this.groupBox7.Name = "groupBox7";
-			this.groupBox7.Size = new System.Drawing.Size(391, 107);
+			this.groupBox7.Size = new System.Drawing.Size(391, 130);
 			this.groupBox7.TabIndex = 0;
 			this.groupBox7.TabStop = false;
 			this.groupBox7.Text = "Select Fees";
@@ -224,7 +238,7 @@ namespace OpenDental {
 			this.groupGlobalUpdateFees.Controls.Add(this.comboGlobalUpdateClinics);
 			this.groupGlobalUpdateFees.Controls.Add(this.label4);
 			this.groupGlobalUpdateFees.Controls.Add(this.butUpdate);
-			this.groupGlobalUpdateFees.Location = new System.Drawing.Point(413, 209);
+			this.groupGlobalUpdateFees.Location = new System.Drawing.Point(413, 237);
 			this.groupGlobalUpdateFees.Name = "groupGlobalUpdateFees";
 			this.groupGlobalUpdateFees.Size = new System.Drawing.Size(248, 230);
 			this.groupGlobalUpdateFees.TabIndex = 5;
@@ -283,9 +297,12 @@ namespace OpenDental {
 			// 
 			this.groupBox5.Controls.Add(this.butImport);
 			this.groupBox5.Controls.Add(this.butExport);
-			this.groupBox5.Location = new System.Drawing.Point(12, 302);
+			this.groupBox5.Controls.Add(this.checkExportFuture);
+			this.groupBox5.Controls.Add(this.labelDateEffectiveImport);
+			this.groupBox5.Controls.Add(this.textDateEffectiveImport);
+			this.groupBox5.Location = new System.Drawing.Point(12, 345);
 			this.groupBox5.Name = "groupBox5";
-			this.groupBox5.Size = new System.Drawing.Size(214, 81);
+			this.groupBox5.Size = new System.Drawing.Size(391, 81);
 			this.groupBox5.TabIndex = 3;
 			this.groupBox5.TabStop = false;
 			this.groupBox5.Text = "Export/Import";
@@ -316,16 +333,18 @@ namespace OpenDental {
 			this.groupBox3.Controls.Add(this.butIncrease);
 			this.groupBox3.Controls.Add(this.textPercent);
 			this.groupBox3.Controls.Add(this.label2);
+			this.groupBox3.Controls.Add(this.labelDateEffectiveNew);
+			this.groupBox3.Controls.Add(this.textDateEffectiveNew);
 			this.groupBox3.Location = new System.Drawing.Point(413, 32);
 			this.groupBox3.Name = "groupBox3";
-			this.groupBox3.Size = new System.Drawing.Size(248, 167);
+			this.groupBox3.Size = new System.Drawing.Size(248, 195);
 			this.groupBox3.TabIndex = 2;
 			this.groupBox3.TabStop = false;
 			this.groupBox3.Text = "Increase by %";
 			// 
 			// label5
 			// 
-			this.label5.Location = new System.Drawing.Point(87, 140);
+			this.label5.Location = new System.Drawing.Point(87, 168);
 			this.label5.Name = "label5";
 			this.label5.Size = new System.Drawing.Size(90, 18);
 			this.label5.TabIndex = 11;
@@ -381,7 +400,7 @@ namespace OpenDental {
 			// 
 			// butIncrease
 			// 
-			this.butIncrease.Location = new System.Drawing.Point(6, 137);
+			this.butIncrease.Location = new System.Drawing.Point(6, 165);
 			this.butIncrease.Name = "butIncrease";
 			this.butIncrease.Size = new System.Drawing.Size(75, 24);
 			this.butIncrease.TabIndex = 2;
@@ -408,7 +427,7 @@ namespace OpenDental {
 			// 
 			this.groupBox2.Controls.Add(this.label11);
 			this.groupBox2.Controls.Add(this.butClear);
-			this.groupBox2.Location = new System.Drawing.Point(12, 393);
+			this.groupBox2.Location = new System.Drawing.Point(12, 436);
 			this.groupBox2.Name = "groupBox2";
 			this.groupBox2.Size = new System.Drawing.Size(214, 79);
 			this.groupBox2.TabIndex = 4;
@@ -445,9 +464,12 @@ namespace OpenDental {
 			this.groupBox1.Controls.Add(this.butPickSchedTo);
 			this.groupBox1.Controls.Add(this.butCopy);
 			this.groupBox1.Controls.Add(this.label1);
-			this.groupBox1.Location = new System.Drawing.Point(12, 149);
+			this.groupBox1.Controls.Add(this.labelDateEffectiveCopy);
+			this.groupBox1.Controls.Add(this.textDateEffectiveCopy);
+			this.groupBox1.Controls.Add(this.labelDateEffectiveCopyNote);
+			this.groupBox1.Location = new System.Drawing.Point(12, 168);
 			this.groupBox1.Name = "groupBox1";
-			this.groupBox1.Size = new System.Drawing.Size(391, 141);
+			this.groupBox1.Size = new System.Drawing.Size(391, 167);
 			this.groupBox1.TabIndex = 1;
 			this.groupBox1.TabStop = false;
 			this.groupBox1.Text = "Copy To";
@@ -524,7 +546,7 @@ namespace OpenDental {
 			// 
 			// butCopy
 			// 
-			this.butCopy.Location = new System.Drawing.Point(88, 100);
+			this.butCopy.Location = new System.Drawing.Point(88, 129);
 			this.butCopy.Name = "butCopy";
 			this.butCopy.Size = new System.Drawing.Size(75, 24);
 			this.butCopy.TabIndex = 6;
@@ -540,9 +562,99 @@ namespace OpenDental {
 			this.label1.Text = "Fee Schedule";
 			this.label1.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
 			// 
+			// labelDateAsOf
+			//
+			this.labelDateAsOf.Location = new System.Drawing.Point(3, 101);
+			this.labelDateAsOf.Name = "labelDateAsOf";
+			this.labelDateAsOf.Size = new System.Drawing.Size(84, 17);
+			this.labelDateAsOf.TabIndex = 41;
+			this.labelDateAsOf.Text = "Date Effective";
+			this.labelDateAsOf.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			//
+			// textDateAsOf
+			//
+			this.textDateAsOf.Location = new System.Drawing.Point(88, 100);
+			this.textDateAsOf.Name = "textDateAsOf";
+			this.textDateAsOf.Size = new System.Drawing.Size(90, 20);
+			this.textDateAsOf.TabIndex = 42;
+			//
+			// labelDateAsOfNote
+			//
+			this.labelDateAsOfNote.Location = new System.Drawing.Point(182, 101);
+			this.labelDateAsOfNote.Name = "labelDateAsOfNote";
+			this.labelDateAsOfNote.Size = new System.Drawing.Size(200, 17);
+			this.labelDateAsOfNote.TabIndex = 43;
+			this.labelDateAsOfNote.Text = "fees in effect on this date (Increase)";
+			this.labelDateAsOfNote.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			//
+			// labelDateEffectiveCopy
+			//
+			this.labelDateEffectiveCopy.Location = new System.Drawing.Point(3, 101);
+			this.labelDateEffectiveCopy.Name = "labelDateEffectiveCopy";
+			this.labelDateEffectiveCopy.Size = new System.Drawing.Size(84, 17);
+			this.labelDateEffectiveCopy.TabIndex = 44;
+			this.labelDateEffectiveCopy.Text = "Date Effective";
+			this.labelDateEffectiveCopy.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			//
+			// textDateEffectiveCopy
+			//
+			this.textDateEffectiveCopy.Location = new System.Drawing.Point(88, 100);
+			this.textDateEffectiveCopy.Name = "textDateEffectiveCopy";
+			this.textDateEffectiveCopy.Size = new System.Drawing.Size(90, 20);
+			this.textDateEffectiveCopy.TabIndex = 45;
+			//
+			// labelDateEffectiveCopyNote
+			//
+			this.labelDateEffectiveCopyNote.Location = new System.Drawing.Point(182, 101);
+			this.labelDateEffectiveCopyNote.Name = "labelDateEffectiveCopyNote";
+			this.labelDateEffectiveCopyNote.Size = new System.Drawing.Size(200, 17);
+			this.labelDateEffectiveCopyNote.TabIndex = 46;
+			this.labelDateEffectiveCopyNote.Text = "blank = always in effect";
+			this.labelDateEffectiveCopyNote.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			//
+			// checkExportFuture
+			//
+			this.checkExportFuture.Location = new System.Drawing.Point(6, 52);
+			this.checkExportFuture.Name = "checkExportFuture";
+			this.checkExportFuture.Size = new System.Drawing.Size(160, 17);
+			this.checkExportFuture.TabIndex = 47;
+			this.checkExportFuture.Text = "Export includes future fees";
+			//
+			// labelDateEffectiveImport
+			//
+			this.labelDateEffectiveImport.Location = new System.Drawing.Point(180, 23);
+			this.labelDateEffectiveImport.Name = "labelDateEffectiveImport";
+			this.labelDateEffectiveImport.Size = new System.Drawing.Size(110, 17);
+			this.labelDateEffectiveImport.TabIndex = 48;
+			this.labelDateEffectiveImport.Text = "Import Date Effective";
+			this.labelDateEffectiveImport.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			//
+			// textDateEffectiveImport
+			//
+			this.textDateEffectiveImport.Location = new System.Drawing.Point(292, 22);
+			this.textDateEffectiveImport.Name = "textDateEffectiveImport";
+			this.textDateEffectiveImport.Size = new System.Drawing.Size(90, 20);
+			this.textDateEffectiveImport.TabIndex = 49;
+			//
+			// labelDateEffectiveNew
+			//
+			this.labelDateEffectiveNew.Location = new System.Drawing.Point(3, 138);
+			this.labelDateEffectiveNew.Name = "labelDateEffectiveNew";
+			this.labelDateEffectiveNew.Size = new System.Drawing.Size(122, 18);
+			this.labelDateEffectiveNew.TabIndex = 50;
+			this.labelDateEffectiveNew.Text = "New Effective Date";
+			this.labelDateEffectiveNew.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			//
+			// textDateEffectiveNew
+			//
+			this.textDateEffectiveNew.Location = new System.Drawing.Point(127, 137);
+			this.textDateEffectiveNew.Name = "textDateEffectiveNew";
+			this.textDateEffectiveNew.Size = new System.Drawing.Size(90, 20);
+			this.textDateEffectiveNew.TabIndex = 51;
+			//
 			// FormFeeSchedTools
-			// 
-			this.ClientSize = new System.Drawing.Size(675, 485);
+			//
+			this.ClientSize = new System.Drawing.Size(675, 527);
 			this.Controls.Add(this.checkShowGroups);
 			this.Controls.Add(this.groupBox7);
 			this.Controls.Add(this.groupGlobalUpdateFees);
@@ -616,5 +728,16 @@ namespace OpenDental {
 		private Label labelGroupTo;
 		private UI.Button butPickGroupTo;
 		private UI.Button butPickGroup;
+		private Label labelDateAsOf;
+		private ValidDate textDateAsOf;
+		private Label labelDateAsOfNote;
+		private Label labelDateEffectiveCopy;
+		private ValidDate textDateEffectiveCopy;
+		private Label labelDateEffectiveCopyNote;
+		private OpenDental.UI.CheckBox checkExportFuture;
+		private Label labelDateEffectiveImport;
+		private ValidDate textDateEffectiveImport;
+		private Label labelDateEffectiveNew;
+		private ValidDate textDateEffectiveNew;
 	}
 }

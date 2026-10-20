@@ -842,6 +842,8 @@ namespace OpenDentBusiness {
 				return procedure.ProcFee;
 			}
 			double procFeeRet;
+			//Fees in effect on the procedure date for a completed procedure, today otherwise (fee effective dates, Open Dental 24.4).
+			DateTime dateAsOfFees=Fees.GetDateAsOfForProc(procedure);
 			InsPlan insPlanPrimary=null;
 			PatPlan patPlanPrimary=listPatPlans.Find(x => x.Ordinal==1);
 			if(patPlanPrimary!=null) {
@@ -853,14 +855,14 @@ namespace OpenDentBusiness {
 			//Get fee schedule and fee amount for medical or dental.
 			if(PrefC.GetBool(PrefName.MedicalFeeUsedForNewProcs) && !string.IsNullOrEmpty(procedure.MedicalCode)) {
 				long feeSch=FeeScheds.GetMedFeeSched(pat,listInsPlans,listPatPlans,listInsSubs,procedure.ProvNum);
-				procFeeRet=Fees.GetAmount0(ProcedureCodes.GetProcCode(procedure.MedicalCode).CodeNum,feeSch,procedure.ClinicNum,procedure.ProvNum,listFees);
+				procFeeRet=Fees.GetAmount0(ProcedureCodes.GetProcCode(procedure.MedicalCode).CodeNum,feeSch,procedure.ClinicNum,procedure.ProvNum,listFees,dateAsOfFees);
 			}
 			else {
 				long feeSch=FeeScheds.GetFeeSched(pat,listInsPlans,listPatPlans,listInsSubs,procedure.ProvNum);
-				procFeeRet=Fees.GetAmount0(procedure.CodeNum,feeSch,procedure.ClinicNum,procedure.ProvNum,listFees);
+				procFeeRet=Fees.GetAmount0(procedure.CodeNum,feeSch,procedure.ClinicNum,procedure.ProvNum,listFees,dateAsOfFees);
 			}
 			if(insPlanPrimary!=null && insPlanPrimary.PlanType=="p") {//PPO
-				double ucrFee=Fees.GetAmount0(procedure.CodeNum,Providers.GetProv(Patients.GetProvNum(pat)).FeeSched,procedure.ClinicNum,procedure.ProvNum,listFees);
+				double ucrFee=Fees.GetAmount0(procedure.CodeNum,Providers.GetProv(Patients.GetProvNum(pat)).FeeSched,procedure.ClinicNum,procedure.ProvNum,listFees,dateAsOfFees);
 				if(procFeeRet < ucrFee || PrefC.GetBool(PrefName.InsPpoAlwaysUseUcrFee)) {
 					procFeeRet=ucrFee;
 				}
@@ -882,7 +884,7 @@ namespace OpenDentBusiness {
 							listBenefits)==0) 
 				{
 					//Get the fee from the provider's fee schedule (ucr fee)
-					procFeeRet=Fees.GetAmount0(procedure.CodeNum,Providers.GetProv(Patients.GetProvNum(pat)).FeeSched,procedure.ClinicNum,procedure.ProvNum,listFees);
+					procFeeRet=Fees.GetAmount0(procedure.CodeNum,Providers.GetProv(Patients.GetProvNum(pat)).FeeSched,procedure.ClinicNum,procedure.ProvNum,listFees,dateAsOfFees);
 				}
 			}
 			return procFeeRet;
@@ -1475,17 +1477,18 @@ namespace OpenDentBusiness {
 		///freqLimitationMessage and annualMaxMessage will be blank if no limitations have been met.</summary>
 		public static double GetDiscountAmountForDiscountPlan(Procedure procedure,long patNum,DateTime dateStart,DateTime dateStop,long feeSchedNum,DiscountPlan discountPlan=null,double runningTotal=0,List<Procedure> listAddHistProcs=null)
 		{
-			Fee procFee=Fees.GetFee(procedure.CodeNum,feeSchedNum,procedure.ClinicNum,procedure.ProvNum);
+			DateTime dateAsOfFees=Fees.GetDateAsOfForProc(procedure);
+			Fee procFee=Fees.GetFee(procedure.CodeNum,feeSchedNum,procedure.ClinicNum,procedure.ProvNum,dateAsOf:dateAsOfFees);
 			if(procFee==null) {//No fee for discount plan's feesched
 				Provider procProv=Providers.GetProv(procedure.ProvNum);
-				procFee=Fees.GetFee(procedure.CodeNum,procProv.FeeSched,procedure.ClinicNum,procProv.ProvNum);
+				procFee=Fees.GetFee(procedure.CodeNum,procProv.FeeSched,procedure.ClinicNum,procProv.ProvNum,dateAsOf:dateAsOfFees);
 				if(procFee==null) {//No fee for discount plan's feesched and proc's provider
 					Patient pat=Patients.GetPat(procedure.PatNum);
 					Provider patProv=Providers.GetProv(pat.PriProv);
-					procFee=Fees.GetFee(procedure.CodeNum,patProv.FeeSched,procedure.ClinicNum,patProv.ProvNum);
+					procFee=Fees.GetFee(procedure.CodeNum,patProv.FeeSched,procedure.ClinicNum,patProv.ProvNum,dateAsOf:dateAsOfFees);
 					if(procFee==null) {//No fee for pat's pri prov feesched and pat's pri prov
 						patProv=Providers.GetProv(PrefC.GetLong(PrefName.PracticeDefaultProv));
-						procFee=Fees.GetFee(procedure.CodeNum,patProv.FeeSched,procedure.ClinicNum,patProv.ProvNum);
+						procFee=Fees.GetFee(procedure.CodeNum,patProv.FeeSched,procedure.ClinicNum,patProv.ProvNum,dateAsOf:dateAsOfFees);
 					}
 				}
 			}

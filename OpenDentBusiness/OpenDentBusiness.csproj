@@ -489,6 +489,7 @@
     <Compile Include="Data Interface\Etrans835Attaches.cs" />
     <Compile Include="Data Interface\InsEditPatLogs.cs" />
     <Compile Include="Data Interface\FeeSchedGroups.cs" />
+    <Compile Include="Data Interface\FeeSchedNotes.cs" />
     <Compile Include="Eclaims\EdsMedical.cs" />
     <Compile Include="InternalTools\EServices\Crud\APIBillingCrud.cs" />
     <Compile Include="InternalTools\EServices\TableTypes\APIBilling.cs" />
