@@ -35,6 +35,8 @@ namespace OpenDental {
 		Appointment,
 		Claim,
 		ClaimProc,
+		InsSub,
+		InsVerify,
 		Patient,
 		Payment,
 		PayPlan
