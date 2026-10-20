@@ -117,7 +117,7 @@ namespace OpenDentBusiness {
 				string distinguishedName=directoryEntry.Properties["distinguishedName"].Value.ToString();
 				string domainGuid=directoryEntry.Guid.ToString();
 				string domainGuidPref=PrefC.GetString(PrefName.DomainObjectGuid);
-				string domainUser=(domainGuidPref+'\\'+Environment.UserName);
+				string domainUser=DomainLogin.BuildDomainUser(domainGuidPref,Environment.UserName);
 				if(domainGuidPref.IsNullOrEmpty()) {
 					//Domain login was setup before we started recording the domain's ObjectGuid. We will save it now for future use.
 					Prefs.UpdateString(PrefName.DomainObjectGuid,domainGuid);
@@ -502,10 +502,7 @@ namespace OpenDentBusiness {
 			//We found a user via matching just the username passed in.  Now we need to check to see if they have exceeded the log in failure attempts.
 			//For now we are hardcoding a 5 minute delay when the user has failed to log in 5 times in a row.  
 			//An admin user can reset the password or the failure attempt count for the user failing to log in via the Security window.
-			if(userodDb.DateTFail.Year > 1880 //The user has failed to log in recently
-				&& dateTimeNowDb.Subtract(userodDb.DateTFail) < TimeSpan.FromMinutes(5) //The last failure has been within the last 5 minutes.
-				&& userodDb.FailedAttempts >= 5) //The user failed 5 or more times.
-			{
+			if(IsLockedOut(userodDb,dateTimeNowDb)) {
 				if(hasExceptions) {
 					throw new ApplicationException(Lans.g("Userods","Account has been locked due to failed log in attempts."
 						+"\r\nCall your security admin to unlock your account or wait at least 5 minutes."));
@@ -514,15 +511,7 @@ namespace OpenDentBusiness {
 			}
 			bool isPasswordValid=Authentication.CheckPassword(userodDb,plaintext,isEcw);
 			Userod userodNew=userodDb.Copy();
-			//If the last failed log in attempt was more than 5 minutes ago, reset the columns in the database so the user can try 5 more times.
-			if(userodDb.DateTFail.Year > 1880 && dateTimeNowDb.Subtract(userodDb.DateTFail) > TimeSpan.FromMinutes(5)) {
-				userodNew.FailedAttempts=0;
-				userodNew.DateTFail=DateTime.MinValue;
-			}
-			if(!isPasswordValid) {
-				userodNew.DateTFail=dateTimeNowDb;
-				userodNew.FailedAttempts+=1;
-			}
+			ApplyLogOnAttempt(userodNew,isPasswordValid,dateTimeNowDb);
 			//Synchronize the database with the results of the log in attempt above
 			Crud.UserodCrud.Update(userodNew,userodDb);
 			if(isPasswordValid) {
@@ -540,6 +529,47 @@ namespace OpenDentBusiness {
 				throw new ODException(Lans.g("Userods","Invalid username or password."),ODException.ErrorCodes.CheckUserAndPasswordFailed);
 			}
 			return null;
+		}
+
+		///<summary>True when the user has failed to log on 5 or more times and the last failure was less than 5 minutes before dateTimeNow.
+		///The same rule covers Open Dental passwords and domain (Active Directory) credentials.</summary>
+		public static bool IsLockedOut(Userod userod,DateTime dateTimeNow) {
+			Meth.NoCheckMiddleTierRole();
+			return userod.DateTFail.Year > 1880 //The user has failed to log in recently
+				&& dateTimeNow.Subtract(userod.DateTFail) < TimeSpan.FromMinutes(5) //The last failure has been within the last 5 minutes.
+				&& userod.FailedAttempts >= 5;//The user failed 5 or more times.
+		}
+
+		///<summary>Updates the lockout columns of userod in memory for one log on attempt. A last failure more than 5 minutes ago is forgotten first,
+		///so the user can try 5 more times. A failure records dateTimeNow and adds one to FailedAttempts.</summary>
+		public static void ApplyLogOnAttempt(Userod userod,bool isSuccess,DateTime dateTimeNow) {
+			Meth.NoCheckMiddleTierRole();
+			if(userod.DateTFail.Year > 1880 && dateTimeNow.Subtract(userod.DateTFail) > TimeSpan.FromMinutes(5)) {
+				userod.FailedAttempts=0;
+				userod.DateTFail=DateTime.MinValue;
+			}
+			if(!isSuccess) {
+				userod.DateTFail=dateTimeNow;
+				if(userod.FailedAttempts<byte.MaxValue) {
+					userod.FailedAttempts+=1;
+				}
+			}
+		}
+
+		///<summary>Records one log on attempt that was checked somewhere other than CheckUserAndPassword, such as a domain (Active Directory) log on
+		///in a change-user prompt. Uses the database time and the same lockout rules as CheckUserAndPassword.</summary>
+		public static void RecordLogOnAttempt(long userNum,bool isSuccess) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				Meth.GetVoid(MethodBase.GetCurrentMethod(),userNum,isSuccess);
+				return;
+			}
+			Userod userodDb=GetUserNoCache(userNum);
+			if(userodDb==null) {
+				return;
+			}
+			Userod userodNew=userodDb.Copy();
+			ApplyLogOnAttempt(userodNew,isSuccess,MiscData.GetNowDateTime());
+			Crud.UserodCrud.Update(userodNew,userodDb);
 		}
 
 		///<summary>Only used from Middle Tier. Will throw an exception if it fails for any reason.  This will directly access the config file on the disk, read the values, and set 
