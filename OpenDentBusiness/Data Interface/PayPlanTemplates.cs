@@ -61,6 +61,22 @@ namespace OpenDentBusiness{
 			payPlanTerms.DynamicPayPlanTPOption=payPlanTemplate.DynamicPayPlanTPOption;
 			return payPlanTerms;
 		}
+
+		///<summary>The SheetDefNum a payment plan gets when it is made from this template: the template's sheet when it is still a PaymentPlan sheet
+		///def, otherwise 0 (the default sheet).</summary>
+		public static long GetSheetDefNumForPayPlan(PayPlanTemplate payPlanTemplate) {
+			Meth.NoCheckMiddleTierRole();
+			if(payPlanTemplate==null || !SheetDefs.IsValidPayPlanSheetDefNum(payPlanTemplate.SheetDefNum)) {
+				return 0;
+			}
+			return payPlanTemplate.SheetDefNum;
+		}
+
+		///<summary>Copies the template's sheet choice to the payment plan (see GetSheetDefNumForPayPlan). Does not save the plan.</summary>
+		public static void ApplySheetDefToPayPlan(PayPlanTemplate payPlanTemplate,PayPlan payPlan) {
+			Meth.NoCheckMiddleTierRole();
+			payPlan.SheetDefNum=GetSheetDefNumForPayPlan(payPlanTemplate);
+		}
 		#endregion Methods - Misc
 
 		//Only pull out the methods below as you need them.  Otherwise, leave them commented out.

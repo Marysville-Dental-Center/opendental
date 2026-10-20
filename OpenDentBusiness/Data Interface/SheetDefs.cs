@@ -287,7 +287,49 @@ namespace OpenDentBusiness{
 			Db.NonQ(command);
 			command="DELETE FROM sheetfielddef WHERE SheetDefNum="+POut.Long(sheetDefNum);
 			Db.NonQ(command);
+			ClearPayPlanSheetDefNum(sheetDefNum);
 			Crud.SheetDefCrud.Delete(sheetDefNum);
+		}
+
+		///<summary>Payment plans and payment plan templates that chose this sheet def go back to the default payment plan sheet (SheetDefNum 0), so
+		///they never point at a deleted sheet. Called when a sheet def is deleted. payplan.SecurityHash does not cover SheetDefNum.</summary>
+		public static void ClearPayPlanSheetDefNum(long sheetDefNum) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				Meth.GetVoid(MethodBase.GetCurrentMethod(),sheetDefNum);
+				return;
+			}
+			if(sheetDefNum==0) {
+				return;
+			}
+			Db.NonQ("UPDATE payplan SET SheetDefNum=0 WHERE SheetDefNum="+POut.Long(sheetDefNum));
+			Db.NonQ("UPDATE payplantemplate SET SheetDefNum=0 WHERE SheetDefNum="+POut.Long(sheetDefNum));
+		}
+
+		///<summary>The PaymentPlan sheet defs a payment plan or a template can choose, ordered like GetInternalOrCustom (description, then
+		///SheetDefNum). Without fields. The choice "Default" (SheetDefNum 0) is not in the list.</summary>
+		public static List<SheetDef> GetPayPlanSheetDefChoices() {
+			Meth.NoCheckMiddleTierRole();
+			return GetCustomForType(SheetTypeEnum.PaymentPlan).OrderBy(x => x.Description).ThenBy(x => x.SheetDefNum).ToList();
+		}
+
+		///<summary>True when sheetDefNum is 0 (the default) or a PaymentPlan sheet def that still exists. Any other value must not be stored in
+		///payplan.SheetDefNum or payplantemplate.SheetDefNum.</summary>
+		public static bool IsValidPayPlanSheetDefNum(long sheetDefNum) {
+			Meth.NoCheckMiddleTierRole();
+			if(sheetDefNum==0) {
+				return true;
+			}
+			return GetFirstOrDefault(x => x.SheetDefNum==sheetDefNum && x.SheetType==SheetTypeEnum.PaymentPlan)!=null;
+		}
+
+		///<summary>The sheet def, with fields, used to print a payment plan whose SheetDefNum is the one passed in. 0, a deleted sheet def or a sheet
+		///def that is not a PaymentPlan sheet falls back to the 24.3 logic: the first custom PaymentPlan sheet, otherwise the internal one.</summary>
+		public static SheetDef GetForPayPlan(long sheetDefNum) {
+			Meth.NoCheckMiddleTierRole();
+			if(sheetDefNum!=0 && IsValidPayPlanSheetDefNum(sheetDefNum)) {
+				return GetSheetDef(sheetDefNum);
+			}
+			return GetInternalOrCustom(SheetInternalType.PaymentPlan);
 		}
 
 		///<summary>Sheetdefs and sheetfielddefs are archived separately.
