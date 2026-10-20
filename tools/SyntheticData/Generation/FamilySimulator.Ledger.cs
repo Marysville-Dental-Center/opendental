@@ -270,7 +270,7 @@ namespace SyntheticData.Generation {
 			string code=proc.Code.Code;
 			int age=person.AgeOn(date);
 			bool isExcluded=(plan.ExcludesImplants && (code=="Z6010" || code=="Z6065"))
-				|| (plan.ExcludesThirdMolarSurgery && code=="Z7210" && new[] { "1","16","17","32" }.Contains(proc.ToothNum))
+				|| plan.IsExcludedOnTooth(code,proc.ToothNum)
 				|| (plan.CrownWaitMonths>0 && covCat?.Description=="Crowns" && coverage.DateEffective.AddMonths(plan.CrownWaitMonths)>date);
 			if(isExcluded) {
 				return (fee,0,0,0,0);

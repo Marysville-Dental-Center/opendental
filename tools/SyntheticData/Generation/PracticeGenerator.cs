@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Text.RegularExpressions;
 using SyntheticData.Infrastructure;
 
 namespace SyntheticData.Generation {
@@ -572,6 +573,14 @@ namespace SyntheticData.Generation {
 				}
 				plan.DictPercentByCovCat[covCat.CovCatNum]=percent;
 			}
+			if(plan.ExcludesThirdMolarSurgery) {
+				//Surgical removal of third molars is not covered.
+				plan.ListToothExclusions.Add(("Z7210",ToothRangeForDb("1,16,17,32")));
+			}
+			if(plan.PlanNum%3==0) {
+				//Core build-ups are not covered on premolars and front teeth. Entered as a range; stored expanded.
+				plan.ListToothExclusions.Add(("Z2950",ToothRangeForDb("4-13")));
+			}
 			world.ListPlans.Add(plan);
 			world.Sink.Insert("insplan",new Row {
 				["PlanNum"]=plan.PlanNum,
@@ -613,8 +622,8 @@ namespace SyntheticData.Generation {
 			AddBenefit(world,planNum,0,OdValues.BenLimitations,-1,-1,timePeriod,OdValues.QtyNumberOfServices,2,OdValues.CovNone,codeGroupNum:CodeGroupNum(world,"Exams"));
 			AddBenefit(world,planNum,0,OdValues.BenLimitations,-1,-1,timePeriod,OdValues.QtyNumberOfServices,2,OdValues.CovNone,codeGroupNum:CodeGroupNum(world,"Prophy"));
 			AddBenefit(world,planNum,0,OdValues.BenLimitations,-1,-1,OdValues.TimeNone,OdValues.QtyAgeLimit,14,OdValues.CovNone,codeGroupNum:CodeGroupNum(world,"Fluoride"));
-			AddBenefit(world,planNum,0,OdValues.BenLimitations,-1,-1,OdValues.TimeNone,OdValues.QtyAgeLimit,16,OdValues.CovNone,codeGroupNum:CodeGroupNum(world,"Sealant"),
-				toothRange:"2,3,14,15,18,19,30,31",treatArea:OdValues.AreaTooth);
+			//No tooth range on age limitations: 25.3 limits ToothRange to Exclusions rows (age limits by tooth arrive in 26.1).
+			AddBenefit(world,planNum,0,OdValues.BenLimitations,-1,-1,OdValues.TimeNone,OdValues.QtyAgeLimit,16,OdValues.CovNone,codeGroupNum:CodeGroupNum(world,"Sealant"));
 			//Other Benefits grid (25.3): replacement frequencies for crowns and dentures.
 			AddBenefit(world,planNum,0,OdValues.BenLimitations,-1,-1,OdValues.TimeNone,OdValues.QtyYears,5,OdValues.CovNone,codeGroupNum:CodeGroupNum(world,"Crowns"));
 			AddBenefit(world,planNum,0,OdValues.BenLimitations,-1,-1,OdValues.TimeNone,OdValues.QtyYears,7,OdValues.CovNone,codeGroupNum:CodeGroupNum(world,"Dentures"));
@@ -622,24 +631,52 @@ namespace SyntheticData.Generation {
 			if(plan.ExcludesImplants) {
 				AddBenefit(world,planNum,0,OdValues.BenExclusions,-1,-1,OdValues.TimeNone,OdValues.QtyNone,0,OdValues.CovNone,codeGroupNum:CodeGroupNum(world,"Implants"));
 			}
-			if(plan.ExcludesThirdMolarSurgery) {
-				//Tooth-range exclusion (25.3): surgical removal of third molars is not covered.
-				AddBenefit(world,planNum,0,OdValues.BenExclusions,-1,-1,OdValues.TimeNone,OdValues.QtyNone,0,OdValues.CovNone,codeNum:world.Code("Z7210").CodeNum,
-					toothRange:"1,16,17,32",treatArea:OdValues.AreaTooth);
+			foreach((string code,string toothRange) exclusion in plan.ListToothExclusions) {
+				//Tooth-range exclusion (25.3, in 25.3.39 and later): the code is not covered on these teeth.
+				AddBenefit(world,planNum,0,OdValues.BenExclusions,-1,-1,OdValues.TimeNone,OdValues.QtyNone,0,OdValues.CovNone,codeNum:world.Code(exclusion.code).CodeNum,
+					toothRange:exclusion.toothRange,treatArea:OdValues.AreaTooth);
 			}
 			if(plan.CrownWaitMonths>0) {
 				AddBenefit(world,planNum,CovCatNum(world,"Crowns"),OdValues.BenWaitingPeriod,-1,-1,OdValues.TimeNone,OdValues.QtyMonths,plan.CrownWaitMonths,OdValues.CovNone);
 			}
-			if(planNum%3==0) {
-				//A range written the way the editor accepts it.
-				AddBenefit(world,planNum,0,OdValues.BenLimitations,-1,-1,OdValues.TimeNone,OdValues.QtyYears,3,OdValues.CovNone,codeNum:world.Code("Z2950").CodeNum,
-					toothRange:"4-13",treatArea:OdValues.AreaTooth);
-			}
 		}
+
+		///<summary>The stored form of a benefit tooth range (25.3): universal tooth numbers (or primary-tooth letters), comma-separated, with
+		///numeric ranges such as "4-13" expanded. The Edit Benefit window accepts hyphen ranges, but the database never holds a hyphen.</summary>
+		public static string ToothRangeForDb(string input) {
+			List<string> listTeeth=new List<string>();
+			foreach(string part in input.Split(new[] { ',' },StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim())) {
+				string[] arrayEnds=part.Split('-');
+				if(arrayEnds.Length==2 && int.TryParse(arrayEnds[0],out int first) && int.TryParse(arrayEnds[1],out int last) && first<=last) {
+					for(int tooth=first;tooth<=last;tooth++) {
+						listTeeth.Add(tooth.ToString(CultureInfo.InvariantCulture));
+					}
+					continue;
+				}
+				listTeeth.Add(part);
+			}
+			string toothRange=string.Join(",",listTeeth);
+			if(!IsStoredToothRange(toothRange)) {
+				throw new ArgumentException("Not a tooth range: "+input);
+			}
+			return toothRange;
+		}
+
+		///<summary>True for a tooth range in its stored 25.3 form: permanent tooth numbers 1-32, supernumerary numbers 51-82, primary letters A-T
+		///or supernumerary primary letters AS-TS, comma-separated, without spaces or hyphens.</summary>
+		public static bool IsStoredToothRange(string toothRange) {
+			return toothRange!=null && Regex.IsMatch(toothRange,"^"+_patternTooth+"(,"+_patternTooth+")*$");
+		}
+
+		private const string _patternTooth="([1-9]|[12][0-9]|3[0-2]|5[1-9]|[67][0-9]|8[0-2]|[A-T]S?)";
 
 		public static void AddBenefit(World world,long planNum,long covCatNum,int benefitType,int percent,decimal monetaryAmt,int timePeriod,int quantityQualifier,
 			int quantity,int coverageLevel,long patPlanNum=0,long codeGroupNum=0,long codeNum=0,string toothRange=null,int treatArea=0)
 		{
+			if(toothRange!=null && (benefitType!=OdValues.BenExclusions || !IsStoredToothRange(toothRange))) {
+				//25.3 stores tooth ranges only on Exclusions rows, and only in the expanded form.
+				throw new InvalidOperationException("Open Dental 25.3 cannot store tooth range '"+toothRange+"' on benefit type "+benefitType+".");
+			}
 			world.Sink.Insert("benefit",new Row {
 				["BenefitNum"]=world.Sink.NextId("benefit"),
 				["PlanNum"]=patPlanNum==0 ? planNum : 0,
@@ -761,7 +798,7 @@ namespace SyntheticData.Generation {
 		public const string LastVisitLabel="When was your last dental visit, and what was it for?";
 		public const string LastVisitFollowUpLabel="Please tell us more about your last visit or any problems since then";
 		///<summary>Answers to the last-visit question. Together the pick list is longer than 255 characters, the 24.3 to 25.2 limit of
-		///eformfield and eformfielddef PickListVis and PickListDb (text since 25.3). No answer contains the pick-list delimiter.</summary>
+		///eformfield and eformfielddef PickListVis and PickListDb (text since 25.3). No answer contains the pick-list delimiter '|'.</summary>
 		public static readonly string[] ArrayLastVisitAnswers={
 			"Within the last six months for a routine cleaning and checkup",
 			"Between six and twelve months ago for a routine cleaning and checkup",
@@ -770,9 +807,81 @@ namespace SyntheticData.Generation {
 			"Only when something hurts or when a tooth chips or breaks",
 			"This is my first visit to any dentist",
 		};
-		///<summary>The follow-up text box shows for every answer except the first. The trigger list is longer than 255 characters, the
-		///24.3 to 25.2 limit of ConditionalValue (text since 25.3).</summary>
-		public static readonly string LastVisitFollowUpTrigger=string.Join(",",ArrayLastVisitAnswers.Skip(1));
+		///<summary>The follow-up text box shows for every answer except the first. Several conditional values are pipe-delimited. The
+		///trigger list is longer than 255 characters, the 24.3 to 25.2 limit of ConditionalValue (text since 25.3).</summary>
+		public static readonly string LastVisitFollowUpTrigger=EFormJson.JoinPickList(ArrayLastVisitAnswers.Skip(1));
+
+		public const string InsuranceQuestionLabel="Do you have dental insurance?";
+		public const string InsPickLabel="Primary Insurance";
+		///<summary>The three Ins Pick options (25.2) in their visible, translatable form. PickListDb is not used by Ins Pick.</summary>
+		public const string InsPickOptions="None|Existing|New";
+
+		///<summary>One eForm field definition.</summary>
+		public class EFormFieldSpec {
+			public int FieldType;
+			public string DbLink="";
+			public string Label="";
+			public string PickList="";
+			public bool AutoImport;
+			public bool PrefillFromGuar;
+			public bool IsRequired;
+			public string ConditionalParent="";
+			public string ConditionalValue="";
+
+			public EFormFieldSpec(int fieldType,string dbLink,string label,string pickList="") {
+				FieldType=fieldType;
+				DbLink=dbLink;
+				Label=label;
+				PickList=pickList;
+			}
+		}
+
+		///<summary>New Patient Registration (24.4), with an Ins Pick (9, 25.2) whose New answer reveals a Patient List (8, 25.1) for the
+		///subscriber and the ins1 text fields through conditional logic, and the AutoImport and PrefillFromGuar flags (25.1).</summary>
+		public static readonly EFormFieldSpec[] ArrayRegistrationFields={
+			new EFormFieldSpec(OdValues.EfLabel,"","Welcome. Please tell us about yourself."),
+			new EFormFieldSpec(OdValues.EfTextField,"FName","First Name") { AutoImport=true,IsRequired=true },
+			new EFormFieldSpec(OdValues.EfTextField,"LName","Last Name") { AutoImport=true,IsRequired=true },
+			new EFormFieldSpec(OdValues.EfDateField,"Birthdate","Birthdate") { AutoImport=true,IsRequired=true },
+			new EFormFieldSpec(OdValues.EfTextField,"Address","Street Address") { AutoImport=true,PrefillFromGuar=true },
+			new EFormFieldSpec(OdValues.EfTextField,"City","City") { AutoImport=true,PrefillFromGuar=true },
+			new EFormFieldSpec(OdValues.EfTextField,"HmPhone","Home Phone") { PrefillFromGuar=true },
+			new EFormFieldSpec(OdValues.EfTextField,"Email","E-mail") { AutoImport=true },
+			new EFormFieldSpec(OdValues.EfRadioButtons,"Gender","Gender","Male|Female|Unknown") { AutoImport=true },
+			new EFormFieldSpec(OdValues.EfCheckBox,"",InsuranceQuestionLabel),
+			new EFormFieldSpec(OdValues.EfInsPick,"ins1",InsPickLabel,InsPickOptions) { AutoImport=true,ConditionalParent=InsuranceQuestionLabel,
+				ConditionalValue="X" },
+			new EFormFieldSpec(OdValues.EfPatientList,"","Subscriber") { ConditionalParent=InsPickLabel,ConditionalValue=EFormJson.InsPickNew },
+			new EFormFieldSpec(OdValues.EfTextField,"ins1CarrierName","Insurance Company") { AutoImport=true,ConditionalParent=InsPickLabel,
+				ConditionalValue=EFormJson.InsPickNew },
+			new EFormFieldSpec(OdValues.EfTextField,"ins1GroupNum","Group Number") { AutoImport=true,ConditionalParent=InsPickLabel,
+				ConditionalValue=EFormJson.InsPickNew },
+			new EFormFieldSpec(OdValues.EfTextField,"ins1SubscriberID","Subscriber ID") { AutoImport=true,ConditionalParent=InsPickLabel,
+				ConditionalValue=EFormJson.InsPickNew },
+			new EFormFieldSpec(OdValues.EfPageBreak,"",""),
+			new EFormFieldSpec(OdValues.EfSigBox,"","Signature") { IsRequired=true },
+		};
+
+		///<summary>Medical History (24.4): the medication list, Yes/No radio buttons and the long last-visit question with its follow-up.</summary>
+		public static readonly EFormFieldSpec[] ArrayMedicalFields={
+			new EFormFieldSpec(OdValues.EfLabel,"","Medical History"),
+			new EFormFieldSpec(OdValues.EfMedicationList,"","Current medications") { AutoImport=true },
+			new EFormFieldSpec(OdValues.EfRadioButtons,"allergy:Penicillin","Allergic to penicillin?","Yes|No"),
+			new EFormFieldSpec(OdValues.EfRadioButtons,"problem:High blood pressure","High blood pressure?","Yes|No"),
+			new EFormFieldSpec(OdValues.EfTextField,"","Anything else we should know?"),
+			new EFormFieldSpec(OdValues.EfRadioButtons,"",LastVisitLabel,EFormJson.JoinPickList(ArrayLastVisitAnswers)),
+			new EFormFieldSpec(OdValues.EfTextField,"",LastVisitFollowUpLabel) { ConditionalParent=LastVisitLabel,ConditionalValue=LastVisitFollowUpTrigger },
+			new EFormFieldSpec(OdValues.EfSigBox,"","Signature"),
+		};
+
+		///<summary>PickListDb for a field: radio buttons store a database value for each visible item (one to one, pipe-delimited); gender
+		///stores its single-letter codes. Ins Pick does not use PickListDb, and other types have no pick list.</summary>
+		public static string PickListDb(int fieldType,string pickListVis) {
+			if(fieldType!=OdValues.EfRadioButtons || pickListVis=="") {
+				return "";
+			}
+			return EFormJson.JoinPickList(EFormJson.SplitPickList(pickListVis).Select(x => x=="Male" ? "M" : x=="Female" ? "F" : x=="Unknown" ? "U" : x));
+		}
 
 		///<summary>eForm definitions (24.4) with every field type, including PatientList (8, 25.1) and InsPick (9, 25.2), and the
 		///AutoImport and PrefillFromGuar flags (25.1).</summary>
@@ -782,48 +891,19 @@ namespace SyntheticData.Generation {
 			world.Sink.Insert("eformdef",new Row { ["EFormDefNum"]=world.EFormDefRegistration,["FormType"]=OdValues.EFormPatientForm,
 				["Description"]="New Patient Registration",["DateTCreated"]=created,["MaxWidth"]=650,["RevID"]=3,["ShowLabelsBold"]=true,
 				["SpaceBelowEachField"]=8,["SpaceToRightEachField"]=10,["SaveImageCategory"]=world.Def(OdValues.DefImageCats,"Forms") });
-			var listReg=new (int type,string dbLink,string label,string pickList,bool autoImport,bool prefill,bool required,string condParent,string condValue)[] {
-				(OdValues.EfLabel,"","Welcome. Please tell us about yourself.","",false,false,false,"",""),
-				(OdValues.EfTextField,"FName","First Name","",true,false,true,"",""),
-				(OdValues.EfTextField,"LName","Last Name","",true,false,true,"",""),
-				(OdValues.EfDateField,"Birthdate","Birthdate","",true,false,true,"",""),
-				(OdValues.EfTextField,"Address","Street Address","",true,true,false,"",""),
-				(OdValues.EfTextField,"City","City","",true,true,false,"",""),
-				(OdValues.EfTextField,"HmPhone","Home Phone","",false,true,false,"",""),
-				(OdValues.EfTextField,"Email","E-mail","",true,false,false,"",""),
-				(OdValues.EfRadioButtons,"Gender","Gender","Male,Female,Unknown",true,false,false,"",""),
-				(OdValues.EfCheckBox,"","Do you have dental insurance?","",false,false,false,"",""),
-				(OdValues.EfInsPick,"ins1","Primary Insurance","",true,false,false,"Do you have dental insurance?","X"),
-				(OdValues.EfPatientList,"","Other family members we see","",false,false,false,"",""),
-				(OdValues.EfPageBreak,"","","",false,false,false,"",""),
-				(OdValues.EfSigBox,"","Signature","",false,false,true,"",""),
-			};
-			for(int i=0;i<listReg.Length;i++) {
-				var field=listReg[i];
-				long fieldDefNum=AddEFormFieldDef(world,world.EFormDefRegistration,field.type,field.dbLink,field.label,field.pickList,i,field.autoImport,field.prefill,
-					field.required,field.condParent,field.condValue);
-				world.ListRegistrationFields.Add((fieldDefNum,field.type,field.dbLink,field.label,field.pickList,i));
+			for(int i=0;i<ArrayRegistrationFields.Length;i++) {
+				EFormFieldSpec field=ArrayRegistrationFields[i];
+				long fieldDefNum=AddEFormFieldDef(world,world.EFormDefRegistration,field,i);
+				world.ListRegistrationFields.Add((fieldDefNum,field.FieldType,field.DbLink,field.Label,field.PickList,i));
 			}
 			world.EFormDefMedical=world.Sink.NextId("eformdef");
 			world.Sink.Insert("eformdef",new Row { ["EFormDefNum"]=world.EFormDefMedical,["FormType"]=OdValues.EFormMedicalHistory,
 				["Description"]="Medical History",["DateTCreated"]=created.AddDays(1),["MaxWidth"]=650,["RevID"]=2,["SpaceBelowEachField"]=8,
 				["SpaceToRightEachField"]=10,["SaveImageCategory"]=world.Def(OdValues.DefImageCats,"Forms") });
-			var listMed=new (int type,string dbLink,string label,string pickList)[] {
-				(OdValues.EfLabel,"","Medical History",""),
-				(OdValues.EfMedicationList,"","Current medications",""),
-				(OdValues.EfRadioButtons,"allergy:Penicillin","Allergic to penicillin?","Yes,No"),
-				(OdValues.EfRadioButtons,"problem:High blood pressure","High blood pressure?","Yes,No"),
-				(OdValues.EfTextField,"","Anything else we should know?",""),
-				(OdValues.EfRadioButtons,"",LastVisitLabel,string.Join(",",ArrayLastVisitAnswers)),
-				(OdValues.EfTextField,"",LastVisitFollowUpLabel,""),
-				(OdValues.EfSigBox,"","Signature",""),
-			};
-			for(int i=0;i<listMed.Length;i++) {
-				var field=listMed[i];
-				bool isFollowUp=field.label==LastVisitFollowUpLabel;
-				long fieldDefNum=AddEFormFieldDef(world,world.EFormDefMedical,field.type,field.dbLink,field.label,field.pickList,i,field.type==OdValues.EfMedicationList,
-					false,false,isFollowUp ? LastVisitLabel : "",isFollowUp ? LastVisitFollowUpTrigger : "");
-				world.ListMedicalFields.Add((fieldDefNum,field.type,field.dbLink,field.label,field.pickList,i));
+			for(int i=0;i<ArrayMedicalFields.Length;i++) {
+				EFormFieldSpec field=ArrayMedicalFields[i];
+				long fieldDefNum=AddEFormFieldDef(world,world.EFormDefMedical,field,i);
+				world.ListMedicalFields.Add((fieldDefNum,field.FieldType,field.DbLink,field.Label,field.PickList,i));
 			}
 			string[] arrayRules={"Birthdate","Email","Address"};
 			for(int i=0;i<arrayRules.Length;i++) {
@@ -832,33 +912,31 @@ namespace SyntheticData.Generation {
 			}
 		}
 
-		private static long AddEFormFieldDef(World world,long eFormDefNum,int fieldType,string dbLink,string label,string pickList,int itemOrder,bool autoImport,
-			bool prefillFromGuar,bool isRequired,string conditionalParent,string conditionalValue)
-		{
+		private static long AddEFormFieldDef(World world,long eFormDefNum,EFormFieldSpec field,int itemOrder) {
 			long fieldDefNum=world.Sink.NextId("eformfielddef");
-			if(conditionalParent!="") {
-				world.DictEFormConditions[fieldDefNum]=(conditionalParent,conditionalValue);
+			if(field.ConditionalParent!="") {
+				world.DictEFormConditions[fieldDefNum]=(field.ConditionalParent,field.ConditionalValue);
 			}
 			world.Sink.Insert("eformfielddef",new Row {
 				["EFormFieldDefNum"]=fieldDefNum,
 				["EFormDefNum"]=eFormDefNum,
-				["FieldType"]=fieldType,
-				["DbLink"]=dbLink,
-				["ValueLabel"]=label,
+				["FieldType"]=field.FieldType,
+				["DbLink"]=field.DbLink,
+				["ValueLabel"]=EFormJson.ValueLabel(field.FieldType,field.Label),
 				["ItemOrder"]=itemOrder,
-				["PickListVis"]=pickList,
-				["PickListDb"]=pickList.Replace("Unknown","U").Replace("Male","M").Replace("Female","F"),
-				["IsHorizStacking"]=fieldType==OdValues.EfRadioButtons,
-				["IsTextWrap"]=fieldType==OdValues.EfLabel,
-				["Width"]=fieldType==OdValues.EfTextField ? 300 : 0,
+				["PickListVis"]=field.PickList,
+				["PickListDb"]=PickListDb(field.FieldType,field.PickList),
+				["IsHorizStacking"]=field.FieldType==OdValues.EfRadioButtons,
+				["IsTextWrap"]=field.FieldType==OdValues.EfLabel,
+				["Width"]=field.FieldType==OdValues.EfTextField ? 300 : 0,
 				["FontScale"]=100,
-				["IsRequired"]=isRequired,
-				["ConditionalParent"]=conditionalParent,
-				["ConditionalValue"]=conditionalValue,
-				["ReportableName"]=fieldType==OdValues.EfRadioButtons ? "rpt"+itemOrder : "",
+				["IsRequired"]=field.IsRequired,
+				["ConditionalParent"]=field.ConditionalParent,
+				["ConditionalValue"]=field.ConditionalValue,
+				["ReportableName"]=field.FieldType==OdValues.EfRadioButtons ? "rpt"+itemOrder : "",
 				["MinWidth"]=0,
-				["AutoImport"]=autoImport,
-				["PrefillFromGuar"]=prefillFromGuar,
+				["AutoImport"]=field.AutoImport,
+				["PrefillFromGuar"]=field.PrefillFromGuar,
 			});
 			return fieldDefNum;
 		}

@@ -33,8 +33,15 @@ namespace SyntheticData.Generation {
 		public bool ExcludesImplants;
 		///<summary>Third molars excluded from surgical removal (25.3 tooth-range exclusion).</summary>
 		public bool ExcludesThirdMolarSurgery;
+		///<summary>Tooth-limited exclusions (25.3): the procedure code is not covered on these teeth. The tooth range is in its stored form
+		///(see PracticeGenerator.ToothRangeForDb). Written as Exclusions benefits and honored by the claim estimates.</summary>
+		public List<(string code,string toothRange)> ListToothExclusions=new List<(string,string)>();
 		public int CrownWaitMonths;
 		public bool UsesEft;
+
+		public bool IsExcludedOnTooth(string code,string toothNum) {
+			return !string.IsNullOrEmpty(toothNum) && ListToothExclusions.Any(x => x.code==code && x.toothRange.Split(',').Contains(toothNum));
+		}
 	}
 
 	public class InsCoverage {

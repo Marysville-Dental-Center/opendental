@@ -405,14 +405,125 @@ namespace SyntheticData.Tests {
 					Assert.IsTrue(groupNum.Length>25 && groupNum.Length<=50,groupNum);
 				}
 			}
-			string pickList=string.Join(",",PracticeGenerator.ArrayLastVisitAnswers);
+			string pickList=EFormJson.JoinPickList(PracticeGenerator.ArrayLastVisitAnswers);
 			Assert.IsTrue(pickList.Length>255,"pick list "+pickList.Length);
 			Assert.IsTrue(PracticeGenerator.LastVisitFollowUpTrigger.Length>255,"trigger "+PracticeGenerator.LastVisitFollowUpTrigger.Length);
-			Assert.IsFalse(PracticeGenerator.ArrayLastVisitAnswers.Any(x => x.Contains(",")));
+			Assert.IsFalse(PracticeGenerator.ArrayLastVisitAnswers.Any(x => x.Contains("|")));
 			Assert.IsTrue(FamilySimulator.LongBounceReport("a@example.com").Length>255);
 			Assert.AreEqual(PracticeWideGenerator.ClaimPaymentNoteReferenceWidth,
 				PracticeWideGenerator.LongEftNote("EFT trace 12345678","Synthetic Mutual Dental").Length);
 			Assert.AreEqual(255,PracticeWideGenerator.LongEftNote("EFT trace 1","X").Length);
+		}
+	}
+
+	///<summary>Stored formats that Open Dental 25.3.48 itself produces: benefit tooth ranges, eForm pick lists, conditional values and the
+	///JSON and Ins Pick values of the 25.1-25.2 eForm field types. DatabaseTests and the check.* totals verify the generated rows.</summary>
+	[TestClass]
+	public class StoredFormatTests {
+		private static readonly Regex _regexToothRange=new Regex(
+			"^([1-9]|[12][0-9]|3[0-2]|5[1-9]|[67][0-9]|8[0-2]|[A-T]S?)(,([1-9]|[12][0-9]|3[0-2]|5[1-9]|[67][0-9]|8[0-2]|[A-T]S?))*$");
+
+		[TestMethod]
+		public void ToothRanges_AreStoredExpandedWithoutHyphens() {
+			Assert.AreEqual("4,5,6,7,8,9,10,11,12,13",PracticeGenerator.ToothRangeForDb("4-13"));
+			Assert.AreEqual("1,16,17,32",PracticeGenerator.ToothRangeForDb("1,16,17,32"));
+			Assert.AreEqual("2,3,4,15,A,T",PracticeGenerator.ToothRangeForDb("2-4, 15,A,T"));
+			foreach(string toothRange in new[] { "4,5,6,7,8,9,10,11,12,13","1,16,17,32","A,AS,T,51,82" }) {
+				Assert.IsTrue(PracticeGenerator.IsStoredToothRange(toothRange),toothRange);
+				Assert.IsTrue(_regexToothRange.IsMatch(toothRange),toothRange);
+			}
+			foreach(string toothRange in new[] { "4-13","","2, 3","33","0","U","a",",2","2,",null }) {
+				Assert.IsFalse(PracticeGenerator.IsStoredToothRange(toothRange),toothRange??"null");
+			}
+			TestUtil.AssertThrows<ArgumentException>(() => PracticeGenerator.ToothRangeForDb("13-4"));
+		}
+
+		///<summary>The generator refuses a tooth range on anything but an Exclusions row (BenefitType 4), and any range that is not in the
+		///stored form. The generated rows themselves are checked by DatabaseTests.Data_UsesThe25_3StoredFormats.</summary>
+		[TestMethod]
+		public void ToothRanges_OnlyOnExclusions() {
+			World world=new World();
+			foreach(int benefitType in new[] { OdValues.BenCoInsurance,OdValues.BenDeductible,OdValues.BenLimitations,OdValues.BenWaitingPeriod }) {
+				TestUtil.AssertThrows<InvalidOperationException>(() => PracticeGenerator.AddBenefit(world,1,0,benefitType,-1,-1,OdValues.TimeNone,
+					OdValues.QtyAgeLimit,16,OdValues.CovNone,toothRange:"2,3,14,15",treatArea:OdValues.AreaTooth));
+			}
+			TestUtil.AssertThrows<InvalidOperationException>(() => PracticeGenerator.AddBenefit(world,1,0,OdValues.BenExclusions,-1,-1,OdValues.TimeNone,
+				OdValues.QtyNone,0,OdValues.CovNone,toothRange:"4-13",treatArea:OdValues.AreaTooth));
+			Assert.AreEqual(4,OdValues.BenExclusions);
+		}
+
+		private static IEnumerable<PracticeGenerator.EFormFieldSpec> AllFields() {
+			return PracticeGenerator.ArrayRegistrationFields.Concat(PracticeGenerator.ArrayMedicalFields);
+		}
+
+		[TestMethod]
+		public void PickLists_ArePipeDelimited_OneDbItemPerVisibleItem() {
+			int radioButtons=0;
+			foreach(PracticeGenerator.EFormFieldSpec field in AllFields()) {
+				string pickListDb=PracticeGenerator.PickListDb(field.FieldType,field.PickList);
+				if(field.FieldType==OdValues.EfRadioButtons) {
+					radioButtons++;
+					string[] arrayVis=EFormJson.SplitPickList(field.PickList);
+					string[] arrayDb=EFormJson.SplitPickList(pickListDb);
+					Assert.IsTrue(arrayVis.Length>=2,field.Label);
+					Assert.AreEqual(arrayVis.Length,arrayDb.Length,field.Label);
+				}
+				else if(field.FieldType==OdValues.EfInsPick) {
+					CollectionAssert.AreEqual(new[] { "None","Existing","New" },EFormJson.SplitPickList(field.PickList),"Ins Pick shows three options.");
+					Assert.AreEqual("",pickListDb,"Ins Pick does not use PickListDb.");
+				}
+				else {
+					Assert.AreEqual("",field.PickList,field.Label);
+					Assert.AreEqual("",pickListDb,field.Label);
+				}
+			}
+			Assert.AreEqual(4,radioButtons);
+			Assert.AreEqual("M|F|U",PracticeGenerator.PickListDb(OdValues.EfRadioButtons,"Male|Female|Unknown"));
+			Assert.AreEqual("Yes|No",PracticeGenerator.PickListDb(OdValues.EfRadioButtons,"Yes|No"));
+		}
+
+		///<summary>Each conditional value (pipe-delimited when there are several) matches an answer of its parent field, so the child can show.</summary>
+		[TestMethod]
+		public void ConditionalValues_MatchTheParentsAnswers() {
+			int conditions=0;
+			foreach(PracticeGenerator.EFormFieldSpec[] arrayFields in new[] { PracticeGenerator.ArrayRegistrationFields,PracticeGenerator.ArrayMedicalFields }) {
+				foreach(PracticeGenerator.EFormFieldSpec field in arrayFields.Where(x => x.ConditionalParent!="")) {
+					conditions++;
+					PracticeGenerator.EFormFieldSpec parent=arrayFields.Single(x => x.Label==field.ConditionalParent);
+					string[] arrayAnswers=parent.FieldType==OdValues.EfCheckBox ? new[] { "X" } : EFormJson.SplitPickList(parent.PickList);
+					foreach(string value in EFormJson.SplitPickList(field.ConditionalValue)) {
+						CollectionAssert.Contains(arrayAnswers,value,field.Label);
+					}
+				}
+			}
+			Assert.AreEqual(6,conditions);
+			Assert.AreEqual(PracticeGenerator.ArrayLastVisitAnswers.Length-1,EFormJson.SplitPickList(PracticeGenerator.LastVisitFollowUpTrigger).Length);
+		}
+
+		///<summary>The JSON shapes deserialize into Open Dental's own eForm classes.</summary>
+		[TestMethod]
+		public void MedicationList_AndPatientList_UseTheDocumentedJson() {
+			string medLabel=EFormJson.ValueLabel(OdValues.EfMedicationList,"Current medications");
+			OpenDentBusiness.EFormMedListLayout layout=Newtonsoft.Json.JsonConvert.DeserializeObject<OpenDentBusiness.EFormMedListLayout>(medLabel);
+			Assert.AreEqual("Current medications",layout.Title);
+			Assert.IsTrue(layout.ImportCol1);
+			List<OpenDentBusiness.EFormMed> listMeds=Newtonsoft.Json.JsonConvert.DeserializeObject<List<OpenDentBusiness.EFormMed>>(
+				EFormJson.MedicationList(new[] { "Ibuprofen","Lisinopril" }));
+			CollectionAssert.AreEqual(new[] { "Ibuprofen","Lisinopril" },listMeds.Select(x => x.MedName).ToList());
+			Assert.AreEqual("[]",EFormJson.MedicationList(new string[0]));
+			JObject patList=JObject.Parse(EFormJson.ValueLabel(OdValues.EfPatientList,"Subscriber"));
+			Assert.AreEqual("Subscriber",(string)patList["Label"]);
+			Assert.AreEqual("Gender",EFormJson.ValueLabel(OdValues.EfRadioButtons,"Gender"));
+		}
+
+		[TestMethod]
+		public void InsPickValues_FollowTheDbDocs() {
+			Regex regex=new Regex("^(|New|InsSubNum:[0-9]+|InsPendingNum:[0-9]+)$");
+			foreach(string value in new[] { "",EFormJson.InsPickNew,EFormJson.InsPickExistingSub(42),EFormJson.InsPickExistingPending(7) }) {
+				Assert.IsTrue(regex.IsMatch(value),value);
+			}
+			Assert.AreEqual("InsSubNum:42",EFormJson.InsPickExistingSub(42));
+			Assert.AreEqual("InsPendingNum:7",EFormJson.InsPickExistingPending(7));
 		}
 	}
 

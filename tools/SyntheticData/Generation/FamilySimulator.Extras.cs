@@ -107,9 +107,43 @@ namespace SyntheticData.Generation {
 			}
 		}
 
-		///<summary>eForms filled for new patients since eForms reached the desktop (24.4): registration with Ins Pick (25.2) and Patient List
-		///(25.1) fields, a medical history with the medication list, English copies of translated labels (25.2), statuses including the
-		///legacy Imported value, and pending insurance (inspending, 25.2) from the Ins Pick answer.</summary>
+		///<summary>A pending insurance row (inspending, 25.2) written for this family, so a later form can pick it as Existing.</summary>
+		private class PendingIns {
+			public long InsPendingNum;
+			public Person Subscriber;
+			public DateTime DateCreated;
+			public string CarrierName;
+			public string GroupNum;
+			public string GroupName;
+			public string Employer;
+			public string SubscriberId;
+			public string Phone;
+		}
+
+		private readonly List<PendingIns> _listPendingIns=new List<PendingIns>();
+
+		///<summary>The relationship of a family member to a subscriber in the same family (Spouse or Child), or -1 when this simple family
+		///model cannot tell.</summary>
+		private int RelationshipTo(Person person,Person subscriber) {
+			if(person==subscriber) {
+				return OdValues.RelatSelf;
+			}
+			bool isSpouseOfGuarantor(Person x) => !x.IsGuarantor && x.Position==OdValues.PosMarried;
+			if((subscriber.IsGuarantor && isSpouseOfGuarantor(person)) || (person.IsGuarantor && isSpouseOfGuarantor(subscriber))) {
+				return OdValues.RelatSpouse;
+			}
+			if((subscriber.IsGuarantor || isSpouseOfGuarantor(subscriber)) && !person.IsGuarantor && !isSpouseOfGuarantor(person)
+				&& person.AgeOn(AsOf)<26)
+			{
+				return OdValues.RelatChild;
+			}
+			return -1;
+		}
+
+		///<summary>eForms filled for new patients since eForms reached the desktop (24.4): registration with an Ins Pick field (25.2) whose
+		///New answer reveals a Patient List field (25.1) for the subscriber and the ins1 text fields, a medical history with the medication
+		///list, English copies of translated labels (25.2), statuses including the legacy Imported value, and pending insurance (inspending,
+		///25.2) from the Ins Pick answer. Value formats follow the published database docs; see README.md, "eForm value formats".</summary>
 		private void WriteEForms(Person person) {
 			if(person.DateFirstVisit<_dateEFormsStarted || person.DateFirstVisit>AsOf || person.Status==OdValues.PatNonPatient) {
 				return;
@@ -122,13 +156,40 @@ namespace SyntheticData.Generation {
 			bool hasEnglishCopies=dateShown>=_dateEFormEnglishCopies;
 			int status=dateShown<new DateTime(2025,6,1) && _rng.Chance(0.25) ? OdValues.EFormStatusLegacyImported
 				: (AsOf-dateShown).Days<10 && _rng.Chance(0.5) ? OdValues.EFormStatusShowInEClipboard : OdValues.EFormStatusFilled;
-			bool reportsInsurance=person.ListCoverages.Count==0 && person.AgeOn(AsOf)>=18 && Chance(0.35);
 			if(_isShowcase && status==OdValues.EFormStatusShowInEClipboard) {
 				status=OdValues.EFormStatusFilled;
 			}
-			string carrierName=reportsInsurance ? NameBank.CarrierName(_rng) : "";
-			string groupNum=reportsInsurance ? "G"+_rng.Between(100000,999999) : "";
-			string subscriberId=reportsInsurance ? "SYN"+_rng.Between(100000000,999999999) : "";
+			//Ins Pick answer: Existing names the patient's own subscription ("InsSubNum:n") or a family member's pending row ("InsPendingNum:n");
+			//New ("New") reveals the subscriber and ins1 fields; None is "".
+			string insPick="";
+			Person subscriber=null;
+			int relationship=OdValues.RelatSelf;
+			PendingIns pendingPicked=null;
+			InsCoverage coverage=person.ListCoverages.OrderBy(x => x.Ordinal).FirstOrDefault();
+			if(coverage!=null) {
+				insPick=EFormJson.InsPickExistingSub(coverage.InsSubNum);
+			}
+			else {
+				PendingIns pendingFamily=_listPendingIns.FirstOrDefault(x => x.DateCreated<dateShown && RelationshipTo(person,x.Subscriber)>0);
+				if(pendingFamily!=null && _rng.Chance(0.8)) {
+					pendingPicked=pendingFamily;
+					insPick=EFormJson.InsPickExistingPending(pendingFamily.InsPendingNum);
+					subscriber=pendingFamily.Subscriber;
+					relationship=RelationshipTo(person,subscriber);
+				}
+				else if(person.AgeOn(AsOf)>=18 && Chance(0.35)) {
+					insPick=EFormJson.InsPickNew;
+					subscriber=person;
+					if(person!=_guarantor && _guarantor.AgeOn(AsOf)>=18 && RelationshipTo(person,_guarantor)>0 && _rng.Chance(0.4)) {
+						subscriber=_guarantor;
+					}
+					relationship=RelationshipTo(person,subscriber);
+				}
+			}
+			bool isNew=insPick==EFormJson.InsPickNew;
+			string carrierName=isNew ? NameBank.CarrierName(_rng) : "";
+			string groupNum=isNew ? "G"+_rng.Between(100000,999999) : "";
+			string subscriberId=isNew ? "SYN"+_rng.Between(100000000,999999999) : "";
 			long eFormNum=_sink.NextId("eform");
 			_sink.Insert("eform",new Row {
 				["EFormNum"]=eFormNum,["FormType"]=OdValues.EFormPatientForm,["PatNum"]=person.PatNum,["DateTimeShown"]=dateShown,
@@ -136,7 +197,6 @@ namespace SyntheticData.Generation {
 				["EFormDefNum"]=_world.EFormDefRegistration,["Status"]=status,["RevID"]=3,["ShowLabelsBold"]=true,["SpaceBelowEachField"]=8,
 				["SpaceToRightEachField"]=10,["SaveImageCategory"]=_world.Def(OdValues.DefImageCats,"Forms"),
 			});
-			string familyList=string.Join(", ",_listMembers.Where(x => x!=person).Select(x => x.NameFL));
 			foreach((long fieldDefNum,int fieldType,string dbLink,string label,string pickList,int itemOrder) field in _world.ListRegistrationFields) {
 				string value="";
 				switch(field.dbLink) {
@@ -148,25 +208,41 @@ namespace SyntheticData.Generation {
 					case "HmPhone": value=_familyPhone; break;
 					case "Email": value=person.Email; break;
 					case "Gender": value=person.Gender==OdValues.GenderFemale ? "F" : person.Gender==OdValues.GenderMale ? "M" : "U"; break;
-					case "ins1": value=reportsInsurance ? carrierName+"|"+groupNum+"|"+subscriberId : ""; break;
+					case "ins1CarrierName": value=carrierName; break;
+					case "ins1GroupNum": value=groupNum; break;
+					case "ins1SubscriberID": value=subscriberId; break;
 				}
 				if(field.fieldType==OdValues.EfCheckBox) {
-					value=reportsInsurance || person.ListCoverages.Count>0 ? "X" : "";
+					value=insPick!="" ? "X" : "";
+				}
+				else if(field.fieldType==OdValues.EfInsPick) {
+					value=insPick;
 				}
 				else if(field.fieldType==OdValues.EfPatientList) {
-					value=familyList;
+					//The picked subscriber's PatNum, shown only when the Ins Pick answer is New.
+					value=isNew ? subscriber.PatNum.ToString() : "";
 				}
 				else if(field.fieldType==OdValues.EfSigBox) {
 					value=status==OdValues.EFormStatusShowInEClipboard ? "" : "SYNSIG:"+World.Sha256Hex("sig"+eFormNum).Substring(0,40);
 				}
 				WriteEFormField(eFormNum,person,field,value,isSpanish,hasEnglishCopies);
 			}
-			if(reportsInsurance && status!=OdValues.EFormStatusShowInEClipboard) {
+			if((isNew || pendingPicked!=null) && status!=OdValues.EFormStatusShowInEClipboard) {
+				//Import creates pending insurance, never plans. An Existing pending row is copied for this patient (family duplicates are expected).
+				PendingIns pending=new PendingIns {
+					InsPendingNum=_sink.NextId("inspending"),Subscriber=subscriber,DateCreated=dateShown.AddHours(1),
+					CarrierName=isNew ? carrierName : pendingPicked.CarrierName,GroupNum=isNew ? groupNum : pendingPicked.GroupNum,
+					GroupName=isNew ? carrierName.Split(' ')[0]+" Group" : pendingPicked.GroupName,Employer=isNew ? NameBank.Company(_rng) : pendingPicked.Employer,
+					SubscriberId=isNew ? subscriberId : pendingPicked.SubscriberId,Phone=isNew ? NameBank.Phone(_rng) : pendingPicked.Phone,
+				};
 				_sink.Insert("inspending",new Row {
-					["InsPendingNum"]=_sink.NextId("inspending"),["PatNum"]=person.PatNum,["PatNumSubscriber"]=person.PatNum,["Ordinal"]=1,
-					["Relationship"]=OdValues.RelatSelf,["GroupNum"]=groupNum,["GroupName"]=carrierName.Split(' ')[0]+" Group",
-					["Employer"]=NameBank.Company(_rng),["SubscriberID"]=subscriberId,["Phone"]=NameBank.Phone(_rng),["CarrierName"]=carrierName,
+					["InsPendingNum"]=pending.InsPendingNum,["PatNum"]=person.PatNum,["PatNumSubscriber"]=subscriber.PatNum,["Ordinal"]=1,
+					["Relationship"]=relationship,["GroupNum"]=pending.GroupNum,["GroupName"]=pending.GroupName,["Employer"]=pending.Employer,
+					["SubscriberID"]=pending.SubscriberId,["Phone"]=pending.Phone,["CarrierName"]=pending.CarrierName,
 				});
+				if(isNew) {
+					_listPendingIns.Add(pending);
+				}
 			}
 			if(Chance(0.4)) {
 				long eFormMedNum=_sink.NextId("eform");
@@ -180,7 +256,7 @@ namespace SyntheticData.Generation {
 				foreach((long fieldDefNum,int fieldType,string dbLink,string label,string pickList,int itemOrder) field in _world.ListMedicalFields) {
 					string value="";
 					if(field.fieldType==OdValues.EfMedicationList) {
-						value=string.Join("\r\n",_world.ListMedications.Where(x => !x.isHidden).Take(_rng.Between(0,2)).Select(x => x.name));
+						value=EFormJson.MedicationList(_world.ListMedications.Where(x => !x.isHidden).Take(_rng.Between(0,2)).Select(x => x.name));
 					}
 					else if(field.fieldType==OdValues.EfRadioButtons && field.label==PracticeGenerator.LastVisitLabel) {
 						lastVisitAnswer=_rng.Pick(PracticeGenerator.ArrayLastVisitAnswers);
@@ -209,9 +285,16 @@ namespace SyntheticData.Generation {
 			["Welcome. Please tell us about yourself."]="Bienvenido. Cuéntenos sobre usted.",
 			["First Name"]="Nombre",["Last Name"]="Apellido",["Birthdate"]="Fecha de nacimiento",["Street Address"]="Dirección",["City"]="Ciudad",
 			["Home Phone"]="Teléfono de casa",["E-mail"]="Correo electrónico",["Gender"]="Género",["Do you have dental insurance?"]="¿Tiene seguro dental?",
-			["Primary Insurance"]="Seguro principal",["Other family members we see"]="Otros familiares que atendemos",["Signature"]="Firma",
+			["Primary Insurance"]="Seguro principal",["Subscriber"]="Titular del seguro",["Insurance Company"]="Compañía de seguros",
+			["Group Number"]="Número de grupo",["Subscriber ID"]="Número de identificación del titular",["Signature"]="Firma",
 			["Medical History"]="Historial médico",["Current medications"]="Medicamentos actuales",["Allergic to penicillin?"]="¿Alergia a la penicilina?",
 			["High blood pressure?"]="¿Presión arterial alta?",["Anything else we should know?"]="¿Algo más que debamos saber?",
+		};
+
+		///<summary>Spanish pick-list items. Items without a translation stay in English.</summary>
+		private static readonly Dictionary<string,string> _dictSpanishPickItems=new Dictionary<string,string> {
+			["Male"]="Masculino",["Female"]="Femenino",["Unknown"]="Desconocido",["Yes"]="Sí",["No"]="No",
+			["None"]="Ninguno",["Existing"]="Existente",["New"]="Nuevo",
 		};
 
 		private void WriteEFormField(long eFormNum,Person person,(long fieldDefNum,int fieldType,string dbLink,string label,string pickList,int itemOrder) field,
@@ -220,18 +303,20 @@ namespace SyntheticData.Generation {
 			string label=isSpanish && _dictSpanish.TryGetValue(field.label,out string spanish) ? spanish : field.label;
 			string pickListVis=field.pickList;
 			if(isSpanish && field.pickList!="") {
-				pickListVis=field.pickList.Replace("Male","Masculino").Replace("Female","Femenino").Replace("Unknown","Desconocido").Replace("Yes","Sí");
+				//Translated item by item, so the visible list keeps one item per PickListDb item.
+				pickListVis=EFormJson.JoinPickList(EFormJson.SplitPickList(field.pickList)
+					.Select(x => _dictSpanishPickItems.TryGetValue(x,out string item) ? item : x));
 			}
 			bool hasCondition=_world.DictEFormConditions.TryGetValue(field.fieldDefNum,out (string parent,string value) condition);
 			_sink.Insert("eformfield",new Row {
 				["EFormFieldNum"]=_sink.NextId("eformfield"),["EFormNum"]=eFormNum,["PatNum"]=person.PatNum,["FieldType"]=field.fieldType,
-				["DbLink"]=field.dbLink,["ValueLabel"]=label,["ValueString"]=value,["ItemOrder"]=field.itemOrder,["PickListVis"]=pickListVis,
-				["PickListDb"]=field.pickList.Replace("Unknown","U").Replace("Male","M").Replace("Female","F"),
+				["DbLink"]=field.dbLink,["ValueLabel"]=EFormJson.ValueLabel(field.fieldType,label),["ValueString"]=value,["ItemOrder"]=field.itemOrder,
+				["PickListVis"]=pickListVis,["PickListDb"]=PracticeGenerator.PickListDb(field.fieldType,field.pickList),
 				["IsHorizStacking"]=field.fieldType==OdValues.EfRadioButtons,["IsTextWrap"]=field.fieldType==OdValues.EfLabel,
 				["Width"]=field.fieldType==OdValues.EfTextField ? 300 : 0,["FontScale"]=100,["IsRequired"]=field.dbLink=="FName" || field.dbLink=="LName",
 				["ConditionalParent"]=hasCondition ? condition.parent : "",["ConditionalValue"]=hasCondition ? condition.value : "",["ReportableName"]="",
 				["AutoImport"]=field.dbLink!="" && field.dbLink!="HmPhone",["PrefillFromGuar"]=field.dbLink=="Address" || field.dbLink=="City" || field.dbLink=="HmPhone",
-				["ValueLabelEnglish"]=hasEnglishCopies || isSpanish ? field.label : "",
+				["ValueLabelEnglish"]=hasEnglishCopies || isSpanish ? EFormJson.ValueLabel(field.fieldType,field.label) : "",
 				["PickListVisEnglish"]=(hasEnglishCopies || isSpanish) ? field.pickList : "",
 			});
 		}

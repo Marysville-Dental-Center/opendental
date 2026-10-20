@@ -296,3 +296,29 @@ SELECT '' k, COUNT(*) v FROM procedurelog pl WHERE NOT EXISTS(SELECT 1 FROM pati
 
 -- name: check.orphan_split_procedures
 SELECT '' k, COUNT(*) v FROM paysplit ps WHERE ps.ProcNum<>0 AND NOT EXISTS(SELECT 1 FROM procedurelog pl WHERE pl.ProcNum=ps.ProcNum);
+
+-- name: check.benefit_tooth_range_format
+-- 25.3 stores a tooth range only on Exclusions rows (BenefitType 4), as comma-separated tooth numbers or letters with ranges expanded.
+SELECT '' k, COUNT(*) v FROM benefit WHERE ToothRange IS NOT NULL AND ToothRange<>'' AND (BenefitType<>4
+	OR ToothRange NOT REGEXP '(?-i)^([1-9]|[12][0-9]|3[0-2]|5[1-9]|[67][0-9]|8[0-2]|[A-T]S?)(,([1-9]|[12][0-9]|3[0-2]|5[1-9]|[67][0-9]|8[0-2]|[A-T]S?))*$');
+
+-- name: check.eform_pick_lists
+-- Radio buttons: pipe-delimited PickListVis and PickListDb with the same number of items, at least two. Ins Pick: three visible options.
+SELECT '' k, COUNT(*) v FROM (
+	SELECT FieldType,PickListVis,PickListDb FROM eformfield
+	UNION ALL SELECT FieldType,PickListVis,PickListDb FROM eformfielddef
+) f
+WHERE (f.FieldType=4 AND (f.PickListDb NOT LIKE '%|%'
+		OR LENGTH(f.PickListVis)-LENGTH(REPLACE(f.PickListVis,'|',''))<>LENGTH(f.PickListDb)-LENGTH(REPLACE(f.PickListDb,'|',''))))
+	OR (f.FieldType=9 AND LENGTH(f.PickListVis)-LENGTH(REPLACE(f.PickListVis,'|',''))<>2);
+
+-- name: check.eform_value_formats
+-- MedicationList (7): ValueLabel a JSON layout, ValueString a JSON list. Patient List (8): ValueLabel a JSON layout, ValueString a PatNum
+-- or blank. Ins Pick (9): ValueString blank, New, InsSubNum:n or InsPendingNum:n, and the number names an existing row.
+SELECT '' k, COUNT(*) v FROM eformfield f WHERE
+	(f.FieldType=7 AND (f.ValueLabel NOT LIKE '{%}' OR f.ValueString NOT LIKE '[%]'))
+	OR (f.FieldType=8 AND (f.ValueLabel NOT LIKE '{%}' OR f.ValueString NOT REGEXP '^[0-9]*$'
+		OR (f.ValueString<>'' AND NOT EXISTS(SELECT 1 FROM patient p WHERE p.PatNum=f.ValueString))))
+	OR (f.FieldType=9 AND (f.ValueString NOT REGEXP '(?-i)^(|New|InsSubNum:[0-9]+|InsPendingNum:[0-9]+)$'
+		OR (f.ValueString LIKE 'InsSubNum:%' AND NOT EXISTS(SELECT 1 FROM inssub s WHERE s.InsSubNum=SUBSTRING(f.ValueString,11)))
+		OR (f.ValueString LIKE 'InsPendingNum:%' AND NOT EXISTS(SELECT 1 FROM inspending i WHERE i.InsPendingNum=SUBSTRING(f.ValueString,15)))));

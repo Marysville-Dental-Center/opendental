@@ -3,7 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Newtonsoft.Json.Linq;
 using SyntheticData.Generation;
 using SyntheticData.Infrastructure;
 using SyntheticData.Validation;
@@ -179,6 +181,45 @@ namespace SyntheticData.Tests {
 				Assert.AreEqual(0,mismatches);
 				Assert.IsTrue(db.ScalarLong("SELECT COUNT(DISTINCT ProcFee) FROM procedurelog pl INNER JOIN procedurecode pc ON pc.CodeNum=pl.CodeNum "
 					+"WHERE pc.ProcCode='Z1110' AND pl.ProcStatus=2")>=2,"Cleanings before and after the January increase have different fees.");
+			}
+		}
+
+		///<summary>The generated rows hold only values Open Dental 25.3.48 itself stores: expanded tooth ranges on Exclusions rows only,
+		///pipe-delimited pick lists with one PickListDb item per visible item, and the documented MedicationList, Patient List and Ins Pick
+		///values.</summary>
+		[TestMethod]
+		public void Data_UsesThe25_3StoredFormats() {
+			SkipIfNeeded();
+			using(Db db=Db.Open(_server,DbA)) {
+				List<object[]> listRanges=db.Rows("SELECT BenefitType,ToothRange FROM benefit WHERE ToothRange IS NOT NULL AND ToothRange<>''");
+				Assert.IsTrue(listRanges.Count>0);
+				foreach(object[] row in listRanges) {
+					Assert.AreEqual(4L,Convert.ToInt64(row[0]),"ToothRange only on Exclusions: "+row[1]);
+					Assert.IsTrue(Regex.IsMatch((string)row[1],@"^\d+(,\d+)*$"),(string)row[1]);
+				}
+				Assert.IsTrue(listRanges.Any(x => (string)x[1]=="4,5,6,7,8,9,10,11,12,13"),"An entered range 4-13 is stored expanded.");
+				List<object[]> listPickLists=db.Rows("SELECT FieldType,PickListVis,PickListDb FROM eformfield WHERE PickListVis<>'' "
+					+"UNION ALL SELECT FieldType,PickListVis,PickListDb FROM eformfielddef WHERE PickListVis<>''");
+				Assert.IsTrue(listPickLists.Count>0);
+				foreach(object[] row in listPickLists) {
+					string[] arrayVis=((string)row[1]).Split('|');
+					Assert.IsTrue(arrayVis.Length>=2,(string)row[1]);
+					if(Convert.ToInt32(row[0])==OdValues.EfInsPick) {
+						Assert.AreEqual(3,arrayVis.Length,(string)row[1]);
+						Assert.AreEqual("",(string)row[2]);
+						continue;
+					}
+					Assert.AreEqual(arrayVis.Length,((string)row[2]).Split('|').Length,(string)row[1]+" / "+(string)row[2]);
+				}
+				Assert.IsTrue(db.ScalarLong("SELECT COUNT(*) FROM eformfield WHERE ConditionalValue LIKE '%|%'")>0,"Several trigger values, pipe-delimited.");
+				Assert.IsTrue(db.ScalarLong("SELECT COUNT(*) FROM eformfield WHERE FieldType=9 AND ValueString='New'")>0);
+				Assert.IsTrue(db.ScalarLong("SELECT COUNT(*) FROM eformfield WHERE FieldType=9 AND ValueString LIKE 'InsSubNum:%'")>0);
+				Assert.IsTrue(db.ScalarLong("SELECT COUNT(*) FROM eformfield WHERE FieldType=8 AND ValueString<>''")>0);
+				foreach(object[] row in db.Rows("SELECT ValueLabel,ValueString FROM eformfield WHERE FieldType=7")) {
+					Assert.IsFalse(string.IsNullOrEmpty((string)JObject.Parse((string)row[0])["Title"]),(string)row[0]);
+					Assert.IsNotNull(JArray.Parse((string)row[1]));
+				}
+				Assert.AreEqual(0,Validator.FailedChecks(_reportA).Count(x => x.StartsWith("check.benefit_") || x.StartsWith("check.eform_")));
 			}
 		}
 
