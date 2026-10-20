@@ -67,6 +67,7 @@ namespace OpenDental{
 			}
 			checkOnlyScheduledProvs.Checked=ApptViewCur.OnlyScheduledProvs;
 			checkOnlyScheduledProvDays.Checked=ApptViewCur.OnlyScheduledProvDays;
+			checkShowMirroredAppts.Checked=ApptViewCur.ShowMirroredAppts;//25.3 mirroring, default off.
 			if(ApptViewCur.OnlySchedBeforeTime > new TimeSpan(0,0,0)) {
 				textBeforeTime.Text=(DateTime.Today+ApptViewCur.OnlySchedBeforeTime).ToShortTimeString();
 			}
@@ -748,6 +749,7 @@ namespace OpenDental{
 			ApptViewCur.IsApptBubblesDisabled=checkApptBubblesDisabled.Checked;
 			ApptViewCur.OnlyScheduledProvs=checkOnlyScheduledProvs.Checked;
 			ApptViewCur.OnlyScheduledProvDays=checkOnlyScheduledProvDays.Checked;
+			ApptViewCur.ShowMirroredAppts=checkShowMirroredAppts.Checked;//25.3 mirroring.
 			ApptViewCur.OnlySchedBeforeTime=timeBefore.TimeOfDay;
 			ApptViewCur.OnlySchedAfterTime=timeAfter.TimeOfDay;
 			long clinicOld=ApptViewCur.ClinicNum;

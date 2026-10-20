@@ -232,7 +232,8 @@ namespace OpenDental {
 				Appointments.Update(appointment,appointmentOld);
 				Appointments.TryAddPerVisitProcCodesToAppt(appointment,appointmentOld.AptStatus);
 				_otherResult=OtherResult.CreateNew;
-				SecurityLogs.MakeLogEntry(EnumPermType.AppointmentCreate,appointment.PatNum,appointment.AptDateTime.ToString(),appointment.AptNum,datePrevious);
+				SecurityLogs.MakeLogEntry(EnumPermType.AppointmentCreate,appointment.PatNum,
+					Appointments.AppendAuditDetail(appointment.AptDateTime.ToString(),Appointments.GetCreateSummary(appointment)),appointment.AptNum,datePrevious);//25.3 audit detail
 				//If there is an existing HL7 def enabled, send a SIU message if there is an outbound SIU message defined
 				if(HL7Defs.IsExistingHL7Enabled()) {
 					//S12 - New Appt Booking event
@@ -483,8 +484,10 @@ namespace OpenDental {
 					}
 					appointment=Appointments.AssignFieldsForOperatory(appointment);
 					appointment.AptStatus=ApptStatus.Scheduled;
+					//25.3 audit detail: old and new date/time, operatory, provider and hygienist.
 					SecurityLogs.MakeLogEntry(EnumPermType.AppointmentMove,appointment.PatNum,
-						appointment.ProcDescript+", from "+appointmentOld.AptDateTime.ToString()+", to "+appointment.AptDateTime.ToString(),
+						Appointments.AppendAuditDetail(appointment.ProcDescript+", from "+appointmentOld.AptDateTime.ToString()+", to "+appointment.AptDateTime.ToString(),
+							Appointments.GetMoveSummary(appointmentOld,appointment)),
 						appointment.AptNum,appointmentOld.DateTStamp);
 					Appointments.Update(appointment,appointmentOld);
 					Appointments.TryAddPerVisitProcCodesToAppt(appointment,appointmentOld.AptStatus);

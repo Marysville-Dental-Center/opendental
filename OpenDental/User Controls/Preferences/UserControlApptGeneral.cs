@@ -114,6 +114,7 @@ namespace OpenDental {
 			textApptAutoRefreshRange.Text=PrefC.GetString(PrefName.ApptAutoRefreshRange);
 			checkPreventChangesToComplAppts.Checked=PrefC.GetBool(PrefName.ApptPreventChangesToCompleted);
 			checkApptsAllowOverlap.Checked=PrefC.GetBool(PrefName.ApptsAllowOverlap);
+			checkApptMirrorSecondary.Checked=PrefC.GetBool(PrefName.ApptMirrorSecondary);//25.3 mirroring: default of the Mirror checkbox on new appointments.
 			checkBrokenApptRequiredOnMove.Checked=PrefC.GetBool(PrefName.BrokenApptRequiredOnMove);
 		}
 
@@ -141,6 +142,7 @@ namespace OpenDental {
 			Changed|=Prefs.UpdateString(PrefName.ApptAutoRefreshRange,textApptAutoRefreshRange.Text);
 			Changed|=Prefs.UpdateBool(PrefName.ApptPreventChangesToCompleted,checkPreventChangesToComplAppts.Checked);
 			Changed|=Prefs.UpdateBool(PrefName.ApptsAllowOverlap,checkApptsAllowOverlap.Checked);
+			Changed|=Prefs.UpdateBool(PrefName.ApptMirrorSecondary,checkApptMirrorSecondary.Checked);
 			Changed|=Prefs.UpdateBool(PrefName.BrokenApptRequiredOnMove,checkBrokenApptRequiredOnMove.Checked);
 			if(comboBrokenApptAdjType.SelectedIndex!=-1) {
 				Changed|=Prefs.UpdateLong(PrefName.BrokenAppointmentAdjustmentType,comboBrokenApptAdjType.GetSelectedDefNum());
