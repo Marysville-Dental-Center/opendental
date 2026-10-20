@@ -20,6 +20,7 @@
       "ServiceManager\\ServiceManager.csproj",
       "SparksToothChart\\SparksToothChart.csproj",
       "tests\\AttributionTests\\AttributionTests.csproj",
+      "tests\\ChartLetterTests\\ChartLetterTests.csproj",
       "tests\\CryptoTests\\CryptoTests.csproj",
       "tests\\ForkMigrationTests\\ForkMigrationTests.csproj",
       "tests\\RegistryTests\\RegistryTests.csproj",
