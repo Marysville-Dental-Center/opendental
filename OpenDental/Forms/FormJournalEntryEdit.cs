@@ -14,6 +14,8 @@ namespace OpenDental{
 		//private ArrayList NegIndex=new ArrayList();
 		///<summary></summary>
 		public JournalEntry JournalEntryCur;
+		///<summary>The transaction being edited, whose entries the Next check number button does not count. 0 for a new transaction.</summary>
+		public long TransactionNumExcludeFromNextCheck;
 		private Account _accountPicked;
 
 		///<summary></summary>
@@ -47,6 +49,8 @@ namespace OpenDental{
 			}
 			textMemo.Text=JournalEntryCur.Memo;
 			textCheckNumber.Text=JournalEntryCur.CheckNumber;
+			textPayee.Text=JournalEntryCur.Payee;
+			textNotes.Text=JournalEntryCur.Notes;
 			if(JournalEntryCur.ReconcileNum==0){//not attached
 				labelReconcile.Visible=false;
 				textReconcile.Visible=false;
@@ -62,6 +66,8 @@ namespace OpenDental{
 
 		///<summary>Need to set AccountPicked before calling this.</summary>
 		private void FillAccount(){
+			//The next check number button is for checking accounts, which are asset accounts.
+			butNextCheckNumber.Visible=(_accountPicked!=null && _accountPicked.AcctType==AccountType.Asset);
 			if(_accountPicked==null){
 				textAccount.Text="";
 				butChange.Text=Lan.g(this,"Pick");
@@ -93,6 +99,15 @@ namespace OpenDental{
 			}
 			_accountPicked=formAccountPick.SelectedAccount;
 			FillAccount();
+		}
+
+		private void butNextCheckNumber_Click(object sender,EventArgs e) {
+			if(_accountPicked==null) {
+				return;
+			}
+			textCheckNumber.Text=JournalEntries.GetNextCheckNumber(_accountPicked.AccountNum,TransactionNumExcludeFromNextCheck);
+			textCheckNumber.Focus();
+			textCheckNumber.SelectAll();//so the user can type over it
 		}
 
 		private void butDelete_Click(object sender,System.EventArgs e) {
@@ -134,6 +149,8 @@ namespace OpenDental{
 			JournalEntryCur.CreditAmt=PIn.Double(textCredit.Text);
 			JournalEntryCur.Memo=textMemo.Text;
 			JournalEntryCur.CheckNumber=textCheckNumber.Text;
+			JournalEntryCur.Payee=textPayee.Text;
+			JournalEntryCur.Notes=textNotes.Text;
 			DialogResult=DialogResult.OK;
 		}
 

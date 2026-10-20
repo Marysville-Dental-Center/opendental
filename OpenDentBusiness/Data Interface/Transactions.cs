@@ -48,9 +48,11 @@ namespace OpenDentBusiness{
 			return Crud.TransactionCrud.SelectOne(command);
 		}
 
-		///<summary></summary>
+		///<summary>transaction.NeedsReview is always written as 0: Open Dental 25.3 keeps the column only for compatibility and flags review on
+		///journalentry.NeedsReview instead.</summary>
 		public static long Insert(Transaction transaction) {
 			transaction.SecUserNumEdit=Security.CurUser.UserNum;//Before middle tier check to catch user at workstation
+			transaction.NeedsReview=false;//Deprecated column. The review flag lives on the journal entries.
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				transaction.TransactionNum=Meth.GetLong(MethodBase.GetCurrentMethod(),transaction);
 				return transaction.TransactionNum;
@@ -58,9 +60,10 @@ namespace OpenDentBusiness{
 			return Crud.TransactionCrud.Insert(transaction);
 		}
 
-		///<summary></summary>
+		///<summary>Always writes transaction.NeedsReview as 0 (see Insert).</summary>
 		public static void Update(Transaction transaction) {
 			transaction.SecUserNumEdit=Security.CurUser.UserNum;//Before middle tier check to catch user at workstation
+			transaction.NeedsReview=false;//Deprecated column. The review flag lives on the journal entries.
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				Meth.GetVoid(MethodBase.GetCurrentMethod(),transaction);
 				return;

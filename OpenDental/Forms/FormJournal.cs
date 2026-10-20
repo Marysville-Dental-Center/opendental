@@ -45,6 +45,7 @@ namespace OpenDental{
 				textDateFrom.Text=dateOneYearPlus.ToShortDateString();
 			}
 			//textDateFrom.Text="1/1/19";
+			gridMain.HScrollVisible=true;//The Payee and Notes columns make the grid wider than the window.
 			LayoutToolBar();
 			FillGrid();
 			gridMain.ScrollToEnd();
@@ -105,9 +106,11 @@ namespace OpenDental{
 			gridToFill.Columns.Add(col);
 			col=new GridColumn(Lan.g("TableJournal","Date"),70,HorizontalAlignment.Left);
 			gridToFill.Columns.Add(col);
-			col=new GridColumn(Lan.g("TableJournal","Memo"),isPrinting?200:220,HorizontalAlignment.Left);
+			col=new GridColumn(Lan.g("TableJournal","Memo"),isPrinting?150:170,HorizontalAlignment.Left);
 			gridToFill.Columns.Add(col);
-			col=new GridColumn(Lan.g("TableJournal","Splits"),isPrinting?200:220,HorizontalAlignment.Left);
+			col=new GridColumn(Lan.g("TableJournal","Payee"),isPrinting?110:120,HorizontalAlignment.Left);
+			gridToFill.Columns.Add(col);
+			col=new GridColumn(Lan.g("TableJournal","Splits"),isPrinting?150:170,HorizontalAlignment.Left);
 			gridToFill.Columns.Add(col);
 			col=new GridColumn(Lan.g("TableJournal","Debit"+(Accounts.DebitIsPos(_account.AcctType)?"(+)":"(-)")),80,HorizontalAlignment.Right);
 			gridToFill.Columns.Add(col);
@@ -121,6 +124,11 @@ namespace OpenDental{
 			gridToFill.Columns.Add(col);
 			col=new GridColumn(Lan.g("TableJournal","Clear"),40,HorizontalAlignment.Center);
 			gridToFill.Columns.Add(col);
+			if(!isPrinting) {
+				//Notes can be long, so the screen shows their first line in a narrow last column; the printout leaves them out.
+				col=new GridColumn(Lan.g("TableJournal","Notes"),150,HorizontalAlignment.Left);
+				gridToFill.Columns.Add(col);
+			}
 			DateTime dateFrom=PIn.Date(textDateFrom.Text);
 			DateTime dateTo=string.IsNullOrEmpty(textDateTo.Text)?DateTime.MaxValue:PIn.Date(textDateTo.Text);
 			double filterAmtFrom=textAmountFrom.IsValid()?PIn.Double(textAmountFrom.Text):0;
@@ -154,13 +162,14 @@ namespace OpenDental{
 						continue;
 					}
 				}
-				if(textFindText.Text!="" && new[] { _listJournalEntries[i].Memo,_listJournalEntries[i].CheckNumber,_listJournalEntries[i].Splits }.All(x => !x.ToUpper().Contains(textFindText.Text.ToUpper()))) {
-					continue;//For "Find Text" textbox
+				if(!JournalEntries.MatchesFindText(_listJournalEntries[i],textFindText.Text)) {
+					continue;//For "Find Text" textbox. Also searches Payee and Notes.
 				}
 				row=new GridRow();
 				row.Cells.Add(_listJournalEntries[i].CheckNumber);
 				row.Cells.Add(_listJournalEntries[i].DateDisplayed.ToShortDateString());
 				row.Cells.Add(_listJournalEntries[i].Memo);
+				row.Cells.Add(_listJournalEntries[i].Payee);
 				row.Cells.Add(_listJournalEntries[i].Splits);
 				if(i==0) {
 					//don't show these for starting balances
@@ -175,10 +184,29 @@ namespace OpenDental{
 				row.Cells.Add(Userods.GetName(_listJournalEntries[i].SecUserNumEntry));
 				row.Cells.Add(Userods.GetName(_listJournalEntries[i].SecUserNumEdit));
 				row.Cells.Add(_listJournalEntries[i].ReconcileNum==0?"":"X");
+				if(!isPrinting) {
+					row.Cells.Add(GetNotesFirstLine(_listJournalEntries[i].Notes));
+				}
+				if(_listJournalEntries[i].NeedsReview) {
+					row.ColorText=Color.Red;//The only effect of Needs Review.
+				}
 				row.Tag=_listJournalEntries[i].TransactionNum;
 				gridToFill.ListGridRows.Add(row);
 			}
 			gridToFill.EndUpdate();
+		}
+
+		///<summary>The first line of an entry's notes, for the narrow Notes column. Marked with an ellipsis when there is more.</summary>
+		private static string GetNotesFirstLine(string notes) {
+			if(string.IsNullOrEmpty(notes)) {
+				return "";
+			}
+			string notesTrimmed=notes.Trim();
+			int indexNewLine=notesTrimmed.IndexOfAny(new[] { '\r','\n' });
+			if(indexNewLine<0) {
+				return notesTrimmed;
+			}
+			return notesTrimmed.Substring(0,indexNewLine)+"...";
 		}
 
 		private void Add_Click(){

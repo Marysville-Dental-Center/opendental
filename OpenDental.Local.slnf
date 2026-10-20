@@ -19,6 +19,7 @@
       "PasswordVaultWrapper\\PasswordVaultWrapper.csproj",
       "ServiceManager\\ServiceManager.csproj",
       "SparksToothChart\\SparksToothChart.csproj",
+      "tests\\AccountingTests\\AccountingTests.csproj",
       "tests\\AttributionTests\\AttributionTests.csproj",
       "tests\\CryptoTests\\CryptoTests.csproj",
       "tests\\FeeTests\\FeeTests.csproj",
