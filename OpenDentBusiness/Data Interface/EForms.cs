@@ -21,25 +21,46 @@ namespace OpenDentBusiness{
 			if(eForm==null) {
 				return null;//eForm was deleted.
 			}
+			NormalizeStatus(eForm);
 			eForm.ListEFormFields=EFormFields.GetForForm(eFormNum);
 			return eForm;
 		}
 
 		///<summary>Gets a list of eForms for a single patient from the database.
-		///Optionally provide a list of EnumEFormStatus values to filter on.</summary>
+		///Optionally provide a list of EnumEFormStatus values to filter on. Rows that still hold the removed statuses 3 (Imported) and 4
+		///(UnmatchedToPatient) count as Filled.</summary>
 		public static List<EForm> GetForPatient(long patNum,params EnumEFormStatus[] listEFormStatusFilter) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT){
 				return Meth.GetObject<List<EForm>>(MethodBase.GetCurrentMethod(),patNum,listEFormStatusFilter);
 			}
 			string command="SELECT * FROM eform WHERE PatNum="+POut.Long(patNum)+" ";
 			if(!listEFormStatusFilter.IsNullOrEmpty()) {
-				command+=" AND eform.Status IN("+string.Join(",",listEFormStatusFilter.Select(x => POut.Int((int)x)))+") ";
+				command+=" AND eform.Status IN("+string.Join(",",GetStatusValuesForFilter(listEFormStatusFilter).Select(x => POut.Int(x)))+") ";
 			}
 			List<EForm> listEForms=Crud.EFormCrud.SelectMany(command);
 			for(int i = 0;i<listEForms.Count;i++) {
+				NormalizeStatus(listEForms[i]);
 				listEForms[i].ListEFormFields=EFormFields.GetForForm(listEForms[i].EFormNum);
 			}
 			return listEForms;
+		}
+
+		///<summary>The stored numbers that match a status filter. Filled also matches 3 and 4, which Open Dental 25.1 and 25.2 removed and which load as
+		///Filled.</summary>
+		public static List<int> GetStatusValuesForFilter(params EnumEFormStatus[] listEFormStatusFilter) {
+			Meth.NoCheckMiddleTierRole();
+			List<int> listValues=listEFormStatusFilter.Select(x => (int)x).Distinct().ToList();
+			if(listEFormStatusFilter.Contains(EnumEFormStatus.Filled)) {
+				listValues.AddRange(EFormStatusCompat.ArrayRemovedValues.Where(x => !listValues.Contains(x)));
+			}
+			return listValues;
+		}
+
+		///<summary>The generated CRUD casts the stored number straight to the enum. This maps the removed values 3 and 4 (and any unknown number) to
+		///Filled, so an eForm filled by Open Dental before 25.2 loads like any other filled form.</summary>
+		public static void NormalizeStatus(EForm eForm) {
+			Meth.NoCheckMiddleTierRole();
+			eForm.Status=EFormStatusCompat.FromDb((int)eForm.Status);
 		}
 
 		///<summary></summary>
@@ -65,6 +86,7 @@ namespace OpenDentBusiness{
 				List<EFormField> listEFormFields=listEForms[i].ListEFormFields;
 				for(int j=0;j<listEFormFields.Count;j++) {
 					listEFormFields[j].EFormNum=listEForms[i].EFormNum;
+					EFormFields.EnsureEnglishCopies(listEFormFields[j]);
 					Crud.EFormFieldCrud.Insert(listEFormFields[j]);
 				}
 			}
@@ -133,7 +155,7 @@ namespace OpenDentBusiness{
 							return eFormValidation;
 						}
 					}
-					else if(listEFormFields[i].IsRequired) {
+					else if(listEFormFields[i].IsRequired && !listEFormFields[i].IsHiddenCondit) {
 						if(listEFormFieldsAllergyChecks.All(x=>x.ValueString=="") &&  listEFormFieldsAllergiesOther.All(x=>x.ValueString=="")) {
 							eFormValidation.ErrorMsg="If you do not have any allergies, you must check '"+listEFormFields[i].ValueLabel+"'";
 							eFormValidation.PageNum=pageNum;
@@ -152,8 +174,8 @@ namespace OpenDentBusiness{
 							return eFormValidation;
 						}
 					}
-					else if(listEFormFields[i].IsRequired) {
-						if(listEFormFieldsProblemChecks.All(x=>x.ValueString=="") && listEFormFieldsProblemsOther.All(x=>x.ValueString!="")) {
+					else if(listEFormFields[i].IsRequired && !listEFormFields[i].IsHiddenCondit) {
+						if(listEFormFieldsProblemChecks.All(x=>x.ValueString=="") && listEFormFieldsProblemsOther.All(x=>x.ValueString=="")) {
 							eFormValidation.ErrorMsg="If you do not have any problems, you must check '"+listEFormFields[i].ValueLabel+"'";
 							eFormValidation.PageNum=pageNum;
 							return eFormValidation;
@@ -193,21 +215,34 @@ namespace OpenDentBusiness{
 			return eFormValidation;//If we get to here, this object should still have default values and everything passed validation.
 		}
 
-		///<summary>This is not called from OD proper. Required fields are only enforced in eClipboard. Returns an object that stores the error message and the page number that the problem field is located on. Use the page number to go directly to the problem field. If the return object has an empty error message, everything passed validation.</summary>
+		///<summary>Checks the required fields. eClipboard used to be the only place they were checked; with eClipboard cut, the desktop fill window
+		///(FrmEFormFillEdit) calls this on Save. Fields hidden by conditional logic are never required. Checkboxes are only checked here when they are
+		///allergiesNone or problemsNone, and those are checked in Validate. Returns an object that stores the error message and the page number that the problem field is located on. Use the page number to go directly to the problem field. If the return object has an empty error message, everything passed validation.</summary>
 		public static EFormValidation ValidateRequired(EForm eForm,bool isMedNoneChecked){
 			Meth.NoCheckMiddleTierRole();
 			EFormValidation eFormValidation=new EFormValidation();
 			List<EFormField> listEFormFields=eForm.ListEFormFields;
+			EFormFields.SetIsHiddenConditFlags(listEFormFields);
 			int pageNum=1;
 			for(int i=0;i<listEFormFields.Count;i++) {
 				if(listEFormFields[i].FieldType==EnumEFormFieldType.PageBreak) {
 					pageNum++;
 					continue;
 				}
+				if(listEFormFields[i].IsHiddenCondit) {
+					continue;
+				}
+				if(listEFormFields[i].FieldType==EnumEFormFieldType.CheckBox) {
+					continue;//Since 25.1 only allergiesNone and problemsNone checkboxes may be required, and Validate handles those.
+				}
 				if(listEFormFields[i].FieldType==EnumEFormFieldType.MedicationList
 					&& listEFormFields[i].IsRequired)
 				{
-					List<EFormMed> listEFormMeds=JsonConvert.DeserializeObject<List<EFormMed>>(listEFormFields[i].ValueString);
+					List<EFormMed> listEFormMeds=null;
+					if(!string.IsNullOrEmpty(listEFormFields[i].ValueString)) {
+						listEFormMeds=JsonConvert.DeserializeObject<List<EFormMed>>(listEFormFields[i].ValueString);
+					}
+					listEFormMeds=listEFormMeds??new List<EFormMed>();
 					if(listEFormMeds.Count==0 && !isMedNoneChecked){
 						eFormValidation.ErrorMsg="Medication List is a required field";
 						eFormValidation.PageNum=pageNum;
@@ -217,8 +252,8 @@ namespace OpenDentBusiness{
 				if(listEFormFields[i].DbLink!="allergiesNone" && listEFormFields[i].DbLink!="problemsNone") {
 					//This is for all the other fields. This does work with radiobuttons, for example
 					if(listEFormFields[i].IsRequired 
-						&& listEFormFields[i].ValueString.IsNullOrEmpty()
-						&& !listEFormFields[i].IsHiddenCondit) 
+						&& string.IsNullOrWhiteSpace(listEFormFields[i].ValueString)
+						&& !listEFormFields[i].IsHiddenCondit)
 					{
 						eFormValidation.ErrorMsg=listEFormFields[i].ValueLabel+" is a required field";
 						eFormValidation.PageNum=pageNum;

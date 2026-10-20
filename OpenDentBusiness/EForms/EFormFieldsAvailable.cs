@@ -90,6 +90,49 @@ namespace OpenDentBusiness {
 			return listStrings;
 		}
 
+		///<summary>The database links whose fields can be set to Auto Import (Open Dental 25.1, eformfielddef.AutoImport), as Open Dental's 25.3
+		///database documentation lists them. "allergy:" and "problem:" are prefixes. addressSameEntireFamily, wirelessPhoneSameEntireFamily and the
+		///ins1/ins2 PlanFromList links are listed for parity, but this version offers no field with those links yet.</summary>
+		public static List<string> GetList_AutoImport(){
+			return new List<string>(){
+				"addressSameEntireFamily","Address","Address2","allergy:","allergiesNone","allergiesOther","Birthdate","City","Email","FName","Gender",
+				"HmPhone","ICEName","ICEPhone","ins1PlanFromList","ins2PlanFromList","LName","MiddleI","Position","PreferConfirmMethod",
+				"PreferContactMethod","PreferRecallMethod","Preferred","problem:","problemsNone","problemsOther","referredFrom","SSN","State",
+				"StudentStatus","WirelessPhone","wirelessPhoneSameEntireFamily","WkPhone","Zip"
+			};
+		}
+
+		///<summary>True if a field with this database link may be set to Auto Import. False for no link.</summary>
+		public static bool IsAutoImportAllowed(string dbLink){
+			if(string.IsNullOrEmpty(dbLink) || dbLink=="None"){
+				return false;
+			}
+			if(dbLink.StartsWith("allergy:") || dbLink.StartsWith("problem:")){
+				return true;
+			}
+			return GetList_AutoImport().Contains(dbLink);
+		}
+
+		///<summary>The database links whose fields can be set to Prefill from Guarantor (Open Dental 25.1, eformfielddef.PrefillFromGuar), as Open
+		///Dental's 25.3 database documentation lists them.</summary>
+		public static List<string> GetList_PrefillFromGuar(){
+			return new List<string>(){ "Address","Address2","City","State","Zip","WirelessPhone" };
+		}
+
+		///<summary>True if a field with this database link may be set to Prefill from Guarantor.</summary>
+		public static bool IsPrefillFromGuarAllowed(string dbLink){
+			if(string.IsNullOrEmpty(dbLink)){
+				return false;
+			}
+			return GetList_PrefillFromGuar().Contains(dbLink);
+		}
+
+		///<summary>Since Open Dental 25.1 only the allergiesNone and problemsNone checkboxes may be Required. For them it means the patient must check
+		///at least one allergy (or problem) or check None.</summary>
+		public static bool CanCheckBoxBeRequired(string dbLink){
+			return dbLink=="allergiesNone" || dbLink=="problemsNone";
+		}
+
 		///<summary>For a given fieldName, returns a picklist of all possible Db options.</summary>
 		public static List<string> GetRadioDbAll(string fieldName) {
 			List<string> listStrings=new List<string>();
