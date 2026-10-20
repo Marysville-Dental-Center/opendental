@@ -51,6 +51,21 @@ namespace OpenDental {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				groupGlobalUpdateFees.Enabled=false;
 			}
+			//Increase by % starts from the fees in effect today unless the user picks another date.
+			textDateAsOf.Text=DateTime.Today.ToShortDateString();
+		}
+
+		///<summary>Reads an optional date box. Blank gives MinValue. Shows a message and returns false when the text is not a valid date.</summary>
+		private bool TryGetDate(ValidDate validDate,out DateTime date) {
+			date=DateTime.MinValue;
+			if(!validDate.IsValid()) {
+				MsgBox.Show(this,"Please fix the date first.");
+				return false;
+			}
+			if(validDate.Text.Trim()!="") {
+				date=PIn.Date(validDate.Text).Date;
+			}
+			return true;
 		}
 
 		private void FillComboBoxes() {
@@ -192,12 +207,13 @@ namespace OpenDental {
 		}
 
 		private void butClear_Click(object sender, System.EventArgs e) {
+			//Clear removes every row of the combination: past, current and future-dated fees.
 			if(PrefC.HasClinicsEnabled) {
-				if(!MsgBox.Show(this,MsgBoxButtons.OKCancel,"This will clear all values from the selected fee schedule for the currently selected clinic and provider.  Are you sure you want to continue?")) {
+				if(!MsgBox.Show(this,MsgBoxButtons.OKCancel,"This will clear all values from the selected fee schedule for the currently selected clinic and provider, including fees with a future effective date.  Are you sure you want to continue?")) {
 					return;
 				}
 			}
-			else if(!MsgBox.Show(this,MsgBoxButtons.OKCancel,"This will clear all values from the selected fee schedule for the currently selected provider.  Are you sure you want to continue?")) {
+			else if(!MsgBox.Show(this,MsgBoxButtons.OKCancel,"This will clear all values from the selected fee schedule for the currently selected provider, including fees with a future effective date.  Are you sure you want to continue?")) {
 				return;
 			}
 			List<long> listClinicNums=new List<long>();
@@ -302,11 +318,23 @@ namespace OpenDental {
 					}
 				}
 			}
-			if(!MsgBox.Show(this,MsgBoxButtons.OKCancel,"All fees that exactly match the \"Copy To\" fee schedule/clinic/provider combination will be deleted.  Then new fees will be copied in.  Are you sure you want to continue?")){
+			if(!TryGetDate(textDateEffectiveCopy,out DateTime dateEffectiveCopy)) {
+				return;
+			}
+			string msgCopy;
+			if(dateEffectiveCopy.Year<1880) {
+				msgCopy=Lan.g(this,"All fees that exactly match the \"Copy To\" fee schedule/clinic/provider combination will be deleted, including fees with a future effective date.  Then new fees will be copied in.  Are you sure you want to continue?");
+			}
+			else {
+				msgCopy=Lan.g(this,"Fees that exactly match the \"Copy To\" fee schedule/clinic/provider combination and take effect on or after")+" "
+					+dateEffectiveCopy.ToShortDateString()+" "+Lan.g(this,"will be deleted.  Then the fees in effect today will be copied in with that effective date.  "
+					+"Earlier fees are kept.  Are you sure you want to continue?");
+			}
+			if(MessageBox.Show(msgCopy,"",MessageBoxButtons.OKCancel)!=DialogResult.OK){
 				return;
 			}
 			ProgressWin progressOD=new ProgressWin();
-			progressOD.ActionMain=() => FeeScheds.CopyFeeSchedule(feeSched,fromClinicNum,fromProvNum,feeSchedTo,listClinicNumsTo,toProvNum);
+			progressOD.ActionMain=() => FeeScheds.CopyFeeSchedule(feeSched,fromClinicNum,fromProvNum,feeSchedTo,listClinicNumsTo,toProvNum,dateEffectiveCopy);
 			progressOD.StartingMessage="Preparing to copy fees...";
 			progressOD.IsBlocks=true;
 			progressOD.ShowDialog();
@@ -362,11 +390,26 @@ namespace OpenDental {
 				MsgBox.Show(this,"Percent must be between -99 and 99.");
 				return;
 			}
-			if(!MsgBox.Show(this,MsgBoxButtons.OKCancel,"This will overwrite all values of the selected fee schedule/clinic/provider combo.  Previously entered fee "
-				+"amounts will be lost.  It is recommended to first create a backup copy of the original fee schedule, then update the original fee schedule "
-				+"with the new fees.  Are you sure you want to continue?"))
-			{
+			if(!TryGetDate(textDateAsOf,out DateTime dateAsOf) || !TryGetDate(textDateEffectiveNew,out DateTime dateEffectiveNew)) {
 				return;
+			}
+			if(dateAsOf.Year<1880) {
+				dateAsOf=DateTime.Today;//blank base date: the fees in effect now
+			}
+			if(dateEffectiveNew.Year<1880) {
+				if(!MsgBox.Show(this,MsgBoxButtons.OKCancel,"This will overwrite all values of the selected fee schedule/clinic/provider combo.  Previously entered fee "
+					+"amounts will be lost.  It is recommended to first create a backup copy of the original fee schedule, then update the original fee schedule "
+					+"with the new fees.  Are you sure you want to continue?"))
+				{
+					return;
+				}
+			}
+			else {
+				string msgIncrease=Lan.g(this,"The increased fees will take effect on")+" "+dateEffectiveNew.ToShortDateString()+".  "
+					+Lan.g(this,"The fees in effect before that date are not changed.  Are you sure you want to continue?");
+				if(MessageBox.Show(msgIncrease,"",MessageBoxButtons.OKCancel)!=DialogResult.OK) {
+					return;
+				}
 			}
 			long clinicNum=0;
 			if(PrefC.HasClinicsEnabled && !comboClinic.IsUnassignedSelected){
@@ -393,7 +436,7 @@ namespace OpenDental {
 			if(comboProvider.SelectedIndex>0){
 				provNum=_listProviders[comboProvider.SelectedIndex-1].ProvNum;
 			}
-			List<Fee> listFees=Fees.GetListExact(feeSchedNum,clinicNum,provNum);
+			List<Fee> listFees=Fees.GetListExactAsOf(feeSchedNum,clinicNum,provNum,dateAsOf);
 			bool doIncreaseFees=EvaluateOverrides(clinicNum,provNum,feeSchedNum,listFees);
 			if(!doIncreaseFees) {
 				return;//either no fees would be updated or the user chose to cancel and review so don't increase fees.
@@ -407,25 +450,20 @@ namespace OpenDental {
 			}
 			ProgressWin progressOD=new ProgressWin();
 			progressOD.ActionMain=() => {
-				listFees=Fees.IncreaseNew(feeSchedNum,percent,round,listFees,clinicNum,provNum);
-				if(PrefC.GetBool(PrefName.ShowFeeSchedGroups)) {
-					FeeSchedGroups.UpsertGroupFees(listFees.FindAll(x => x.Amount!=0));
-				}
+				//Saves in place, or at the new effective date (and keeps fee schedule groups in sync).
+				listFees=Fees.SaveIncrease(listFees,percent,round,dateEffectiveNew);
 				string procCode;
 				for(int i=0;i<listFees.Count;i++) {
-					if(listFees[i].Amount==0) {
-						continue;
-					}
 					try {
 						procCode=ProcedureCodes.GetStringProcCode(listFees[i].CodeNum);
 					}
 					catch(Exception) {//if CodeNum is not in the procedurecode table, don't make securitylog entry
 						continue;
 					}
-					Fees.Update(listFees[i],doCheckFeeSchedGroups:false);//only a few hundred calls, max
 					string logText="Procedure: "+procCode+", "
 						+"Fee: "+listFees[i].Amount.ToString("c")+", "
-						+"Fee Schedule: "+FeeScheds.GetDescription(listFees[i].FeeSched);
+						+"Fee Schedule: "+FeeScheds.GetDescription(listFees[i].FeeSched)
+						+Fees.GetDateEffectiveLogText(listFees[i].DateEffective);
 					if(PrefC.HasClinicsEnabled) {
 						if(Clinics.GetAbbr(clinicNum)=="") {
 							logText+=", at Headquarters";
@@ -571,7 +609,8 @@ namespace OpenDental {
 			}
 			filePath=saveFileDialog.FileName;
 			ProgressWin progressOD=new ProgressWin();
-			progressOD.ActionMain=() => FeeScheds.ExportFeeSchedule(feeSched.FeeSchedNum,clinicNum,provNum,filePath);
+			bool doIncludeFutureFees=checkExportFuture.Checked;
+			progressOD.ActionMain=() => FeeScheds.ExportFeeSchedule(feeSched.FeeSchedNum,clinicNum,provNum,filePath,doIncludeFutureFees);
 			progressOD.StartingMessage=Lan.g(this,"Preparing to export fees")+"...";
 			progressOD.IsBlocks=true;
 			progressOD.ShowDialog();
@@ -583,8 +622,16 @@ namespace OpenDental {
 		}
 
 		private void butImport_Click(object sender,EventArgs e) {
-			if(!MsgBox.Show(this,MsgBoxButtons.OKCancel,"If you want a clean slate, you should clear the current fee schedule first.  When imported, any fees that are found in the text file will overwrite values of the selected fee schedule/clinic/provider combo.  Are you sure you want to continue?")) 
-			{
+			//Blank means always in effect (0001-01-01), the same as Copy To. Lines with their own date (an export with future fees) use that date.
+			if(!TryGetDate(textDateEffectiveImport,out DateTime dateEffectiveImport)) {
+				return;
+			}
+			string msgImport=Lan.g(this,"If you want a clean slate, you should clear the current fee schedule first.  When imported, any fees that are found in the text file will overwrite values of the selected fee schedule/clinic/provider combo");
+			if(dateEffectiveImport.Year>1880) {
+				msgImport+=" "+Lan.g(this,"that take effect on")+" "+dateEffectiveImport.ToShortDateString();
+			}
+			msgImport+=".  "+Lan.g(this,"Are you sure you want to continue?");
+			if(MessageBox.Show(msgImport,"",MessageBoxButtons.OKCancel)!=DialogResult.OK) {
 				return;
 			}
 			string importFilePath;
@@ -630,7 +677,7 @@ namespace OpenDental {
 				provNum=_listProviders[comboProvider.SelectedIndex-1].ProvNum;
 			}
 			ProgressWin progressOD=new ProgressWin();
-			progressOD.ActionMain=() => FeeL.ImportFees(importFilePath,feeSched.FeeSchedNum,clinicNum,provNum);
+			progressOD.ActionMain=() => Fees.ImportFees(File.ReadAllLines(importFilePath).ToList(),feeSched.FeeSchedNum,clinicNum,provNum,dateEffectiveImport);
 			progressOD.StartingMessage="Importing fees...";
 			progressOD.IsBlocks=true;
 			try{
