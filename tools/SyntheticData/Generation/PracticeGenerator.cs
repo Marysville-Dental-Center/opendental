@@ -530,6 +530,12 @@ namespace SyntheticData.Generation {
 			}
 		}
 
+		///<summary>A fictional group number longer than the 24.3 limit of 25 characters and within the 25.2 limit of 50, for example
+		///"SYN-482913-DENTAL-PPO-OPTION-02" (31) or "SYN-482913-DENTAL-INDEMNITY-OPTION-01" (37).</summary>
+		public static string LongGroupNumber(int number,bool isPpo,int planIndex) {
+			return "SYN-"+number+"-DENTAL-"+(isPpo ? "PPO" : "INDEMNITY")+"-OPTION-"+(planIndex+1).ToString("00");
+		}
+
 		private static void AddPlan(World world,Rng rng,long carrierNum,string carrierName,int carrierIndex,int planIndex) {
 			InsPlanInfo plan=new InsPlanInfo {
 				PlanNum=world.Sink.NextId("insplan"),
@@ -545,8 +551,18 @@ namespace SyntheticData.Generation {
 				UsesEft=rng.Chance(0.5),
 			};
 			plan.GroupName=carrierName.Split(' ')[0]+" Group "+(planIndex+1);
-			//25.2 made GroupNum nullable; a few plans have no group number at all.
-			plan.GroupNum=(carrierIndex+planIndex)%5==4 ? null : "G"+rng.Between(100000,999999);
+			//GroupNum was already nullable in 24.3: a few plans have no group number at all. 25.2 widened it from 25 to 50 characters, so
+			//some plans carry the long employer-style group numbers that need the new width (26 to 50 characters).
+			int groupKind=(carrierIndex+planIndex)%5;
+			if(groupKind==4) {
+				plan.GroupNum=null;
+			}
+			else if(groupKind==2) {
+				plan.GroupNum=LongGroupNumber(rng.Between(100000,999999),plan.IsPpo,planIndex);
+			}
+			else {
+				plan.GroupNum="G"+rng.Between(100000,999999);
+			}
 			plan.FeeSched=plan.IsPpo ? (rng.Chance(0.5) ? world.FeeSchedPpoA : world.FeeSchedPpoB) : 0;
 			bool isCopay=!plan.IsPpo && carrierIndex%4==3 && planIndex==0;
 			foreach(CovCatDef covCat in world.ListCovCats) {
@@ -742,6 +758,22 @@ namespace SyntheticData.Generation {
 			});
 		}
 
+		public const string LastVisitLabel="When was your last dental visit, and what was it for?";
+		public const string LastVisitFollowUpLabel="Please tell us more about your last visit or any problems since then";
+		///<summary>Answers to the last-visit question. Together the pick list is longer than 255 characters, the 24.3 to 25.2 limit of
+		///eformfield and eformfielddef PickListVis and PickListDb (text since 25.3). No answer contains the pick-list delimiter.</summary>
+		public static readonly string[] ArrayLastVisitAnswers={
+			"Within the last six months for a routine cleaning and checkup",
+			"Between six and twelve months ago for a routine cleaning and checkup",
+			"Between one and three years ago for a cleaning or a filling",
+			"More than three years ago or I do not remember when",
+			"Only when something hurts or when a tooth chips or breaks",
+			"This is my first visit to any dentist",
+		};
+		///<summary>The follow-up text box shows for every answer except the first. The trigger list is longer than 255 characters, the
+		///24.3 to 25.2 limit of ConditionalValue (text since 25.3).</summary>
+		public static readonly string LastVisitFollowUpTrigger=string.Join(",",ArrayLastVisitAnswers.Skip(1));
+
 		///<summary>eForm definitions (24.4) with every field type, including PatientList (8, 25.1) and InsPick (9, 25.2), and the
 		///AutoImport and PrefillFromGuar flags (25.1).</summary>
 		private static void CreateEFormDefs(World world) {
@@ -782,12 +814,15 @@ namespace SyntheticData.Generation {
 				(OdValues.EfRadioButtons,"allergy:Penicillin","Allergic to penicillin?","Yes,No"),
 				(OdValues.EfRadioButtons,"problem:High blood pressure","High blood pressure?","Yes,No"),
 				(OdValues.EfTextField,"","Anything else we should know?",""),
+				(OdValues.EfRadioButtons,"",LastVisitLabel,string.Join(",",ArrayLastVisitAnswers)),
+				(OdValues.EfTextField,"",LastVisitFollowUpLabel,""),
 				(OdValues.EfSigBox,"","Signature",""),
 			};
 			for(int i=0;i<listMed.Length;i++) {
 				var field=listMed[i];
+				bool isFollowUp=field.label==LastVisitFollowUpLabel;
 				long fieldDefNum=AddEFormFieldDef(world,world.EFormDefMedical,field.type,field.dbLink,field.label,field.pickList,i,field.type==OdValues.EfMedicationList,
-					false,false,"","");
+					false,false,isFollowUp ? LastVisitLabel : "",isFollowUp ? LastVisitFollowUpTrigger : "");
 				world.ListMedicalFields.Add((fieldDefNum,field.type,field.dbLink,field.label,field.pickList,i));
 			}
 			string[] arrayRules={"Birthdate","Email","Address"};
@@ -801,6 +836,9 @@ namespace SyntheticData.Generation {
 			bool prefillFromGuar,bool isRequired,string conditionalParent,string conditionalValue)
 		{
 			long fieldDefNum=world.Sink.NextId("eformfielddef");
+			if(conditionalParent!="") {
+				world.DictEFormConditions[fieldDefNum]=(conditionalParent,conditionalValue);
+			}
 			world.Sink.Insert("eformfielddef",new Row {
 				["EFormFieldDefNum"]=fieldDefNum,
 				["EFormDefNum"]=eFormDefNum,

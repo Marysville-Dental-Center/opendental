@@ -105,6 +105,8 @@ namespace SyntheticData.Generation {
 			=new List<(long,int,string,string,string,int)>();
 		public List<(long fieldDefNum,int fieldType,string dbLink,string label,string pickList,int itemOrder)> ListMedicalFields
 			=new List<(long,int,string,string,string,int)>();
+		///<summary>Conditional eForm field definitions: the parent field's label and the trigger value(s), copied onto each filled field.</summary>
+		public Dictionary<long,(string parent,string value)> DictEFormConditions=new Dictionary<long,(string,string)>();
 		public List<(long medicationNum,string name,bool isHidden)> ListMedications=new List<(long,string,bool)>();
 		public List<long> ListAllergyDefNums=new List<long>();
 		public List<long> ListDiseaseDefNums=new List<long>();

@@ -789,16 +789,35 @@ namespace SyntheticData.Generation {
 			if(isEmail && !isReceipt && !isInvoice && person.Email!="" && Chance(0.25)) {
 				//The e-mail that carried the statement. A few bounced; FailReason became text in 25.3.
 				bool failed=_rng.Chance(0.08) || (_isShowcase && !_hasBouncedEmail);
+				//The showcase family's first bounce, and every fourth statement's bounce, keeps the full delivery report: longer than 255
+				//characters, the limit before 25.3.
+				bool isLongBounce=failed && ((_isShowcase && !_hasBouncedEmail) || statementNum%4==0);
 				_hasBouncedEmail|=failed;
+				string failReason="";
+				if(isLongBounce) {
+					failReason=LongBounceReport(person.Email);
+				}
+				else if(failed) {
+					failReason="Recipient mailbox unavailable (550). Synthetic bounce.";
+				}
 				DateTime sent=date.AddHours(19).AddMinutes(_rng.Next(60));
 				_sink.Insert("emailmessage",new Row {
 					["EmailMessageNum"]=_sink.NextId("emailmessage"),["PatNum"]=person.PatNum,["ToAddress"]=person.Email,["FromAddress"]="billing@example.com",
 					["Subject"]="Your statement from Fictional Family Dental",["BodyText"]="Your statement is attached. Thank you.",["MsgDateTime"]=sent,
 					["SentOrReceived"]=failed ? 17 : 1,["RecipientAddress"]=person.Email,["RawEmailIn"]="",["ProvNumWebMail"]=0L,["PatNumSubj"]=person.PatNum,
 					["CcAddress"]="",["BccAddress"]="",["HideIn"]=0,["AptNum"]=0L,["UserNum"]=_world.UserNumAdmin,["HtmlType"]=0,["SecDateTEntry"]=sent,
-					["SecDateTEdit"]=sent,["MsgType"]="Statement",["FailReason"]=failed ? "Recipient mailbox unavailable (550). Synthetic bounce." : "",
+					["SecDateTEdit"]=sent,["MsgType"]="Statement",["FailReason"]=failReason,
 				});
 			}
+		}
+
+		///<summary>A fictional delivery-status report for a bounced e-mail, longer than 255 characters. Hosts use the reserved .invalid
+		///domain; nothing is sent anywhere.</summary>
+		public static string LongBounceReport(string toAddress) {
+			return "Delivery to "+toAddress+" failed permanently. The receiving server mx1.mail.synthetic.invalid answered: 550 5.1.1 The mailbox "
+				+"you tried to reach does not exist or is no longer accepting mail. The message was retried 3 times over 48 hours from relay "
+				+"smtp.practice.synthetic.invalid before it was returned. Check the address for typing mistakes or extra spaces, then ask the "
+				+"patient for a current e-mail address. Synthetic bounce.";
 		}
 
 		private void WritePatients() {

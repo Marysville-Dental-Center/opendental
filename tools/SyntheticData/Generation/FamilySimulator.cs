@@ -29,7 +29,8 @@ namespace SyntheticData.Generation {
 		///<summary>Family 0 is the showcase family: its random choices are steered so that every 24.4 to 25.3 feature gets at least one
 		///row in any size and seed (pre-authorized crown on a payment plan with a down payment and a chosen sheet, signed consent,
 		///chart letter, eForms with Ins Pick and pending insurance, task category, BetterDiagnostics drawing, hidden medication, card on
-		///file, bounced statement e-mail). The data stays consistent; only the dice are loaded.</summary>
+		///file, bounced statement e-mail with a long delivery report, a planned restorative appointment whose procedure description is
+		///longer than 255 characters). The data stays consistent; only the dice are loaded.</summary>
 		private readonly bool _isShowcase;
 		private static readonly DateTime _dateShowcaseFirstVisit=new DateTime(2025,8,4);
 
@@ -66,6 +67,7 @@ namespace SyntheticData.Generation {
 			foreach(Person person in _listMembers) {
 				SimulateClinical(person);
 			}
+			AddShowcaseRestorativePlan();
 			CreatePaymentPlans();
 			FollowUpPayments();
 			FinanceCharges();
@@ -864,6 +866,47 @@ namespace SyntheticData.Generation {
 				AddCommlog(person,aptDateTime.AddDays(-2).Date.AddHours(10),"Appointment Related",OdValues.CommModeText,OdValues.CommSent,
 					"Reminder sent for the appointment on "+aptDateTime.ToString("MMM d")+".");
 			}
+		}
+
+		///<summary>Showcase family only: a phased restorative plan for an adult patient, waiting on the planned-appointment list. Its 24
+		///fillings give a procedure description longer than 255 characters, the limit of histappointment.ProcDescript before 25.2 (text
+		///since), and the front desk's edit of the planned appointment is recorded in the appointment history.</summary>
+		private void AddShowcaseRestorativePlan() {
+			if(!_isShowcase) {
+				return;
+			}
+			DateTime dateTP=AsOf.AddDays(-14);
+			List<Person> listAdults=_listMembers.Where(x => x.Status==OdValues.PatPatient && x.AgeOn(AsOf)>=18 && x.DateFirstVisit<=dateTP).ToList();
+			Person person=listAdults.FirstOrDefault(x => !x.IsGuarantor)??listAdults.FirstOrDefault();
+			if(person==null) {
+				return;
+			}
+			List<ProcRecord> listProcs=new List<ProcRecord>();
+			foreach(string tooth in new[] { "2","4","5","12","13","15","18","20","21","28","29","31" }) {
+				ProcRecord proc=NewProc(person,"Z2393",person.Dentist.ProvNum,dateTP);
+				proc.ToothNum=tooth;
+				proc.Surf="MOD";
+				listProcs.Add(proc);
+			}
+			foreach(string tooth in new[] { "6","7","8","9","10","11","22","23","24","25","26","27" }) {
+				ProcRecord proc=NewProc(person,"Z2331",person.Dentist.ProvNum,dateTP);
+				proc.ToothNum=tooth;
+				proc.Surf=int.Parse(tooth)<17 ? "MF" : "DL";
+				listProcs.Add(proc);
+			}
+			long plannedAptNum=_sink.NextId("appointment");
+			foreach(ProcRecord proc in listProcs) {
+				proc.Status=OdValues.ProcTP;
+				proc.DateTP=dateTP;
+				proc.PlannedAptNum=plannedAptNum;
+				_listProcs.Add(proc);
+			}
+			(string pattern,string _)=BuildPattern(listProcs,false);
+			string procDescript=string.Join(", ",listProcs.Select(x => x.Describe()));
+			WriteAppointment(person,plannedAptNum,OdValues.AptPlanned,new DateTime(1,1,1),0,person.Dentist.ProvNum,0,false,pattern,"",procDescript,false,
+				"Phased restorative plan; patient will schedule after reviewing the estimate.",false);
+			AddHistAppointment(person,plannedAptNum,OdValues.HistChanged,dateTP.AddDays(2).AddHours(11),OdValues.AptPlanned,new DateTime(1,1,1),0,
+				procDescript,false);
 		}
 
 		private void AddHistAppointment(Person person,long aptNum,int action,DateTime histDateTime,int aptStatus,DateTime aptDateTime,long opNum,string procDescript,

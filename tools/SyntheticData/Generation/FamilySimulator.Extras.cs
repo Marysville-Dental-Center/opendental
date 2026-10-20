@@ -176,13 +176,23 @@ namespace SyntheticData.Generation {
 					["Status"]=status,["RevID"]=2,["ShowLabelsBold"]=false,["SpaceBelowEachField"]=8,["SpaceToRightEachField"]=10,
 					["SaveImageCategory"]=_world.Def(OdValues.DefImageCats,"Forms"),
 				});
+				string lastVisitAnswer="";
 				foreach((long fieldDefNum,int fieldType,string dbLink,string label,string pickList,int itemOrder) field in _world.ListMedicalFields) {
 					string value="";
 					if(field.fieldType==OdValues.EfMedicationList) {
 						value=string.Join("\r\n",_world.ListMedications.Where(x => !x.isHidden).Take(_rng.Between(0,2)).Select(x => x.name));
 					}
+					else if(field.fieldType==OdValues.EfRadioButtons && field.label==PracticeGenerator.LastVisitLabel) {
+						lastVisitAnswer=_rng.Pick(PracticeGenerator.ArrayLastVisitAnswers);
+						value=lastVisitAnswer;
+					}
 					else if(field.fieldType==OdValues.EfRadioButtons) {
 						value=_rng.Chance(0.1) ? "Yes" : "No";
+					}
+					else if(field.label==PracticeGenerator.LastVisitFollowUpLabel && lastVisitAnswer!=PracticeGenerator.ArrayLastVisitAnswers[0]
+						&& _rng.Chance(0.3))
+					{
+						value="Had some sensitivity on the lower left after my last cleaning.";
 					}
 					else if(field.fieldType==OdValues.EfSigBox) {
 						value="SYNSIG:"+World.Sha256Hex("sigmed"+eFormMedNum).Substring(0,40);
@@ -212,14 +222,14 @@ namespace SyntheticData.Generation {
 			if(isSpanish && field.pickList!="") {
 				pickListVis=field.pickList.Replace("Male","Masculino").Replace("Female","Femenino").Replace("Unknown","Desconocido").Replace("Yes","Sí");
 			}
+			bool hasCondition=_world.DictEFormConditions.TryGetValue(field.fieldDefNum,out (string parent,string value) condition);
 			_sink.Insert("eformfield",new Row {
 				["EFormFieldNum"]=_sink.NextId("eformfield"),["EFormNum"]=eFormNum,["PatNum"]=person.PatNum,["FieldType"]=field.fieldType,
 				["DbLink"]=field.dbLink,["ValueLabel"]=label,["ValueString"]=value,["ItemOrder"]=field.itemOrder,["PickListVis"]=pickListVis,
 				["PickListDb"]=field.pickList.Replace("Unknown","U").Replace("Male","M").Replace("Female","F"),
 				["IsHorizStacking"]=field.fieldType==OdValues.EfRadioButtons,["IsTextWrap"]=field.fieldType==OdValues.EfLabel,
 				["Width"]=field.fieldType==OdValues.EfTextField ? 300 : 0,["FontScale"]=100,["IsRequired"]=field.dbLink=="FName" || field.dbLink=="LName",
-				["ConditionalParent"]=field.fieldType==OdValues.EfInsPick ? "Do you have dental insurance?" : "",
-				["ConditionalValue"]=field.fieldType==OdValues.EfInsPick ? "X" : "",["ReportableName"]="",
+				["ConditionalParent"]=hasCondition ? condition.parent : "",["ConditionalValue"]=hasCondition ? condition.value : "",["ReportableName"]="",
 				["AutoImport"]=field.dbLink!="" && field.dbLink!="HmPhone",["PrefillFromGuar"]=field.dbLink=="Address" || field.dbLink=="City" || field.dbLink=="HmPhone",
 				["ValueLabelEnglish"]=hasEnglishCopies || isSpanish ? field.label : "",
 				["PickListVisEnglish"]=(hasEnglishCopies || isSpanish) ? field.pickList : "",

@@ -26,21 +26,52 @@ namespace SyntheticData.Generation {
 		private static void WriteClaimPayments(World world,Rng rng) {
 			long checkType=world.Def(OdValues.DefInsurancePaymentType,"Insurance Check");
 			long eftType=world.Def(OdValues.DefInsurancePaymentType,"Insurance EFT");
+			int eftCount=0;
 			foreach(ClaimPaymentBatch batch in world.DictClaimPayments.Values.OrderBy(x => x.ClaimPaymentNum)) {
 				DepositBatch deposit=world.DepositFor(batch.CheckDate);
 				if(deposit!=null) {
 					deposit.InsuranceAmount+=batch.Amount;
 					batch.DepositNum=deposit.DepositNum;
 				}
+				string checkNum=batch.IsEft ? "EFT"+batch.ClaimPaymentNum : rng.Between(100000,999999).ToString();
+				string note="";
+				if(batch.Amount==0) {
+					note="Zero payment: all procedures denied";
+				}
+				else if(batch.IsEft) {
+					note="EFT trace "+rng.Between(10000000,99999999);
+					//Every fifth EFT, starting with the first, keeps the full remittance text the payer sent.
+					if(eftCount%5==0) {
+						note=LongEftNote(note,batch.CarrierName);
+					}
+					eftCount++;
+				}
 				world.Sink.Insert("claimpayment",new Row {
 					["ClaimPaymentNum"]=batch.ClaimPaymentNum,["CheckDate"]=batch.CheckDate,["CheckAmt"]=batch.Amount,
-					["CheckNum"]=batch.IsEft ? "EFT"+batch.ClaimPaymentNum : rng.Between(100000,999999).ToString(),["BankBranch"]="",
-					["Note"]=batch.Amount==0 ? "Zero payment: all procedures denied" : batch.IsEft ? "EFT trace "+rng.Between(10000000,99999999) : "",["ClinicNum"]=world.ClinicNum,["DepositNum"]=batch.DepositNum,
+					["CheckNum"]=checkNum,["BankBranch"]="",
+					["Note"]=note,["ClinicNum"]=world.ClinicNum,["DepositNum"]=batch.DepositNum,
 					["CarrierName"]=batch.CarrierName,["DateIssued"]=batch.CheckDate.AddDays(-3),["IsPartial"]=false,["PayType"]=batch.IsEft ? eftType : checkType,
 					["SecUserNumEntry"]=rng.Pick(world.ListFrontDeskUsers),["SecDateEntry"]=batch.CheckDate,["SecDateTEdit"]=batch.CheckDate.AddHours(14),
 					["PayGroup"]=0L,
 				});
 			}
+		}
+
+		///<summary>The width of claimpayment.Note in the reference schema. Open Dental's 25.3 docs make it text, but the office's 25.3.48
+		///database (fox-db-schema.sql) still has varchar(255) (the DRIFT entry in schema-changes.json), so a longer note cannot be stored
+		///before adoption: strict mode refuses it.</summary>
+		public const int ClaimPaymentNoteReferenceWidth=255;
+
+		///<summary>An automated EFT remittance note filled to exactly the reference width, so an adoption or migration step that redefines
+		///the column narrower than 255 characters truncates it and the rehearsal sees the change. Payer wording is fictional.</summary>
+		public static string LongEftNote(string trace,string carrierName) {
+			string note=trace+". Remittance from "+carrierName+": payment covers the claims listed on the attached explanation of benefits. "
+				+"Amounts withheld under the network agreement are shown per procedure; questions about this deposit go to the payer's provider "
+				+"services line with the trace number above. Synthetic remittance text, padded to the column width.";
+			if(note.Length<ClaimPaymentNoteReferenceWidth) {
+				note=note.PadRight(ClaimPaymentNoteReferenceWidth,'.');
+			}
+			return note.Substring(0,ClaimPaymentNoteReferenceWidth);
 		}
 
 		///<summary>EOBs scanned onto insurance payments, and (25.2) onto preauthorizations through eobattach.ClaimNumPreAuth.</summary>
