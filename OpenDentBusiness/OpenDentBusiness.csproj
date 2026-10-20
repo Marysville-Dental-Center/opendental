@@ -726,6 +726,9 @@
     <Compile Include="Bridges\PostcardMania\**\*.cs" />
     <Compile Include="Bridges\QuickBooksOnline\**\*.cs" />
     <Compile Include="VendorDirect\**\*.cs" />
+    <!-- Fork version guard, adoption and fork migrations (backlog M1-01/M1-03), and the fork release channel (M1-03). -->
+    <Compile Include="Misc\ForkMigrations\**\*.cs" />
+    <Compile Include="Misc\ForkRelease\**\*.cs" />
     <Compile Include="WebBridges\Erx\DoseSpot\**\*.cs" />
     <Compile Include="WebBridges\Microsoft365\**\*.cs" />
     <Compile Include="WebBridges\Usps\**\*.cs" />

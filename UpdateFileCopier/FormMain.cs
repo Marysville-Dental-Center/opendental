@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading;
 using System.Windows.Forms;
 using System.Drawing;
+using OpenDentBusiness;//Only ReleaseManifest, linked from OpenDentBusiness/Misc/ForkRelease/ReleaseManifest.cs.
 
 namespace UpdateFileCopier {
 	public partial class FormMain:Form {
@@ -20,6 +21,9 @@ namespace UpdateFileCopier {
 		private bool _hasFilesInUse=false;
 		///<summary>Set to true if any files in the UpdateFiles folder failed to copy over.</summary>
 		private bool _hasCopyFailed=false;
+		///<summary>Set to true if the source folder is not exactly the release its manifest describes (product name, file list, sizes, SHA-256).
+		///Nothing is copied then.</summary>
+		private bool _hasVerifyFailed=false;
 		///<summary>If anything goes wrong with the file copying, this string should be used to hold more details about the error to show later.</summary>
 		private string _error="";
 		///<summary>This indicates whether the file copier should kill all services before copying files.</summary>
@@ -127,12 +131,17 @@ namespace UpdateFileCopier {
 			SetLabelText("Preparing to Copy Files...");
 			//Delay the thread for 300 milliseconds to make sure the above processes have really exited.
 			Thread.Sleep(300);
-			//Any file exclusions will have happened when originally copying files into the AtoZ folder.  Ex: FreeDentalConfig.xml
-			//And that happens in OpenDental.PrefL.CheckProgramVersion().
-			List<FileInfoHelper> listSourceFiles=GetFilesFromDir(_sourceDirectory);
-			List<FileInfoHelper> listDestFiles=GetFilesFromDir(_destDirectory);
+			//Any file exclusions happened when the release was published (OpenDentBusiness.ForkReleases.ShouldPublishFile). Ex: FreeDentalConfig.xml
 			_hasFilesInUse=false;
 			_hasCopyFailed=false;
+			_hasVerifyFailed=false;
+			//Only a fork release whose manifest names our product and whose every file matches its SHA-256 is ever copied.
+			if(!VerifyRelease(_sourceDirectory)) {
+				_hasVerifyFailed=true;
+				return;
+			}
+			List<FileInfoHelper> listSourceFiles=GetFilesFromDir(_sourceDirectory);
+			List<FileInfoHelper> listDestFiles=GetFilesFromDir(_destDirectory);
 			//Recreate the temp directories that will be used in the copying process
 			if(!CreateTempDirectories()) {
 				_hasCopyFailed=true;
@@ -147,6 +156,11 @@ namespace UpdateFileCopier {
 				_hasCopyFailed=true;
 				return;
 			}
+			//Check the local copy again: it is what gets moved into the installation folder.
+			if(!VerifyRelease(TempPathSource)) {
+				_hasVerifyFailed=true;
+				return;
+			}
 			if(!MoveFilesToDestDir(listSourceFiles)) {
 				RevertDestFiles(listDestFiles);//Revert the files in the destination directory back to the way they were before trying to update them.
 				_hasCopyFailed=true;
@@ -158,6 +172,31 @@ namespace UpdateFileCopier {
 		///<summary></summary>
 		private void OnThreadComplete(ODThread odThread) {
 			LaunchOpenDental();
+		}
+
+		///<summary>Checks the folder against its release manifest (OpenDentBusiness.ReleaseManifest, compiled into this program). Returns false and sets
+		///_error if the manifest is missing, unreadable or for another product, or if any file is missing, extra, or has the wrong size or SHA-256.
+		///</summary>
+		private bool VerifyRelease(string folder) {
+			SetLabelText("Verifying the release...");
+			string pathManifest=ODFileUtils.CombinePaths(folder,ReleaseManifest.FILE_NAME);
+			try {
+				if(!File.Exists(pathManifest)) {
+					_error="The update folder has no release manifest ("+ReleaseManifest.FILE_NAME+"). Nothing was copied.";
+					return false;
+				}
+				ReleaseManifest releaseManifest=ReleaseManifest.Parse(File.ReadAllText(pathManifest));
+				List<string> listProblems=releaseManifest.VerifyFolder(folder);
+				if(listProblems.Count>0) {
+					_error="The update files do not match their release manifest. Nothing was copied.\r\n"+string.Join("\r\n",listProblems.Take(10));
+					return false;
+				}
+			}
+			catch(Exception ex) {
+				_error="The release manifest could not be checked: "+ex.Message+" Nothing was copied.";
+				return false;
+			}
+			return true;
 		}
 
 		///<summary>Tries to recreate the two temporary directories that will be used in the copying process.
@@ -290,7 +329,7 @@ namespace UpdateFileCopier {
 		private bool MoveFilesToDestDir(List<FileInfoHelper> listSourceFiles) {
 			string sourceManifest="";
 			foreach(FileInfoHelper sourceFile in listSourceFiles) {
-				if(sourceFile.FileInfoCur.Name=="Manifest.txt") {
+				if(sourceFile.SubDir=="" && sourceFile.FileInfoCur.Name==ReleaseManifest.FILE_NAME) {
 					sourceManifest=ODFileUtils.CombinePaths(TempPathSource+sourceFile.SubDir,sourceFile.FileInfoCur.Name);
 					continue;
 				}
@@ -309,10 +348,10 @@ namespace UpdateFileCopier {
 					return false;
 				}
 			}
-			//Save the Manifest.txt file for last so that any subsequent attempts launching Open Dental will try to launch the FileUpdateCopier again.
+			//Save the release manifest for last, so the installation folder only claims a release once all of its files are in place.
 			if(sourceManifest!="") {
 				try {
-					File.Copy(sourceManifest,Path.Combine(_destDirectory,"Manifest.txt"),true);
+					File.Copy(sourceManifest,Path.Combine(_destDirectory,ReleaseManifest.FILE_NAME),true);
 				}
 				catch {
 					//SetLabelText("Copying Manifest.txt from temp to destination failed.");
@@ -371,6 +410,10 @@ namespace UpdateFileCopier {
 				}
 				SetLabelText(error,isLongText:true);
 				butRetry.Visible=true;
+			}
+			else if(_hasVerifyFailed) {
+				//A failed check is not retried: the files will not change. The workstation keeps its current program.
+				SetLabelText(_error+"\r\n\r\nPublish the release again from the update server, then start the program.",isLongText:true);
 			}
 			else if(_hasCopyFailed) {
 				SetLabelText("Some files failed to copy.  Verify network access and permissions are correct, then click Retry.");
