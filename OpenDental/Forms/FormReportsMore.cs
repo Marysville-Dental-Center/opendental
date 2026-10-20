@@ -326,6 +326,9 @@ namespace OpenDental {
 					Close();
 				break;
 			}
+			if(ReportNonModalSelection_==ReportNonModalSelection.Shown) {
+				Close();//The report's non-modal window opens once this window is closed. See ShowNonModalReport.
+			}
 		}
 
 		///<summary>Handles form and logic for most given displayReports.
@@ -433,7 +436,16 @@ namespace OpenDental {
 					}
 					SecurityLogs.MakeLogEntry(EnumPermType.Reports,0,"Daily Payments report run.");
 					break;
-				case "ODProcedures"://Procedures
+				case DisplayReports.ReportNames.Procedures://Daily Procedures before 24.4: its row is the itemized Procedures report now.
+				case DisplayReports.ReportNames.ProceduresIndividual://Procedures (itemized, non-modal)
+					if(Security.CurUser.ProvNum==0 && !Security.IsAuthorized(EnumPermType.ReportDailyAllProviders,true)) {
+						MsgBox.Show("FormReportsMore","The current user needs to be a provider or have the 'All Providers' permission for Daily reports");
+						break;
+					}
+					SecurityLogs.MakeLogEntry(EnumPermType.Reports,0,"Procedures report run.");
+					ShowNonModalReport(new FormRpProcedures());
+					return ReportNonModalSelection.Shown;
+				case DisplayReports.ReportNames.ProductionByProcedure://Production by Procedure
 					if(Security.CurUser.ProvNum==0 && !Security.IsAuthorized(EnumPermType.ReportDailyAllProviders,true)) {
 						MsgBox.Show("FormReportsMore","The current user needs to be a provider or have the 'All Providers' permission for Daily reports");
 						break;
@@ -441,7 +453,7 @@ namespace OpenDental {
 					using(FormRpProcSheet formRpProcSheet=new FormRpProcSheet()) {
 						formRpProcSheet.ShowDialog();
 					}
-					SecurityLogs.MakeLogEntry(EnumPermType.Reports,0,"Daily Procedures report run.");
+					SecurityLogs.MakeLogEntry(EnumPermType.Reports,0,"Production by Procedure report run.");
 					break;
 				case DisplayReports.ReportNames.ODProcOverpaid:
 					SecurityLogs.MakeLogEntry(EnumPermType.Reports,0,"Procedures overpaid report run.");
@@ -712,11 +724,37 @@ namespace OpenDental {
 				case DisplayReports.ReportNames.EraAutoProcessed:
 					SecurityLogs.MakeLogEntry(EnumPermType.Reports,0,"ERAs Automatically Processed report run.");
 					return ReportNonModalSelection.EraAutoProcessed;
+				case DisplayReports.ReportNames.InsPendingSupplementals://Insurance Pending Supplementals (non-modal)
+					SecurityLogs.MakeLogEntry(EnumPermType.Reports,0,"Insurance Pending Supplementals report run.");
+					ShowNonModalReport(new FormRpInsPendingSupplementals());
+					return ReportNonModalSelection.Shown;
 				default:
 					MsgBox.Show("FormReportsMore","Error finding the report");
 					break;
 			}
 			return ReportNonModalSelection.None;
+		}
+
+		///<summary>Shows a non-modal report window after the current message is handled. Called from the Standard Reports window, that window closes
+		///first and the main window becomes active again; showing the report afterwards keeps it in front of the main window. The main window's own
+		///switch (FormOpenDental.NonModalReportSelectionHelper) does not need to know these reports: OpenReportHelper returns
+		///ReportNonModalSelection.Shown for them, which that switch ignores.</summary>
+		private static void ShowNonModalReport(Form form) {
+			Form formMain=Application.OpenForms.OfType<FormOpenDental>().FirstOrDefault();
+			if(formMain==null || formMain.IsDisposed || !formMain.IsHandleCreated) {
+				form.Show();
+				return;
+			}
+			formMain.BeginInvoke(new Action(() => {
+				if(form.IsDisposed) {
+					return;
+				}
+				form.Show();
+				if(form.WindowState==FormWindowState.Minimized) {
+					form.WindowState=FormWindowState.Normal;
+				}
+				form.BringToFront();
+			}));
 		}
 
 		private void butLaserLabels_Click(object sender,EventArgs e) {
@@ -768,7 +806,9 @@ namespace OpenDental {
 		ODProcsOverpaid,
 		DPPOvercharged,
 		PatPortionUncollected,
-		EraAutoProcessed
+		EraAutoProcessed,
+		///<summary>OpenReportHelper already opened the report's non-modal window (the reports added from 24.4 on). Nothing more to do.</summary>
+		Shown,
 	}
 
 }
