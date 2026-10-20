@@ -13,7 +13,7 @@ using OpenDentBusiness.ForkMigrations;
 namespace ForkMigrationTests {
 	[TestClass]
 	public partial class Fresh243MigrationTests {
-		private const string DB_NAME="forkmig_fresh243";
+		private static readonly string DB_NAME=TestDb.ScratchName("fresh243");
 		private static string _skipReason;
 		private static ForkMigrationResult _resultFirstRun;
 		private static SchemaSnapshot _snapshotBefore;
@@ -24,6 +24,7 @@ namespace ForkMigrationTests {
 			if(_skipReason!=null) {
 				return;
 			}
+			TestDb.DropStaleScratchDatabases();
 			TestDb.CreateFresh24_3(DB_NAME);
 			_snapshotBefore=SchemaSnapshot.FromDatabase(DB_NAME);
 			SeedSynthetic24_3Data();
@@ -39,7 +40,7 @@ namespace ForkMigrationTests {
 				TestDb.Drop(DB_NAME);
 			}
 			catch(Exception) {
-				//The next run drops it.
+				//A later run drops it once it is stale (TestDb.DropStaleScratchDatabases).
 			}
 		}
 

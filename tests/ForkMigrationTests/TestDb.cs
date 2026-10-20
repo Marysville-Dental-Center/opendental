@@ -3,9 +3,11 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using DataConnectionBase;
 using MySqlConnector;
 using OpenDentBusiness;
@@ -19,6 +21,54 @@ namespace ForkMigrationTests {
 		public const string Password="";
 		///<summary>The 25.3.48 reference schema loaded into MariaDB from the schema-only dump (README of the port). Optional.</summary>
 		public const string DbNameOd253Schema="od_253_schema";
+		private const string PREFIX="forkmig_";
+		///<summary>Scratch databases left behind by a run that started this long ago are dropped by later runs. No run takes nearly this long.
+		///</summary>
+		private static readonly TimeSpan _timeSpanStale=TimeSpan.FromHours(12);
+		///<summary>Unique to this test run: the start time (UTC, yyMMddHHmmss), the process id and a random number. Several runs share the one local
+		///MariaDB server, from other worktrees or other test runners at the same time, so fixed names would let one run drop or rebuild a
+		///database another run is still testing.</summary>
+		private static readonly string _runId=DateTime.UtcNow.ToString("yyMMddHHmmss")+"_"+System.Diagnostics.Process.GetCurrentProcess().Id+"_"
+			+new Random().Next(1000,10000);
+
+		///<summary>The name of this run's scratch database for the given purpose, like forkmig_261019191500_1234_5678_fresh243. At most 64
+		///characters, the MariaDB limit.</summary>
+		public static string ScratchName(string purpose) {
+			string name=PREFIX+_runId+"_"+purpose;
+			if(name.Length>64) {
+				throw new ArgumentException("Scratch database name too long: "+name);
+			}
+			return name;
+		}
+
+		///<summary>Drops this fixture's scratch databases that earlier runs left behind (a crash, or FORKMIGRATION_KEEP_DB=1), once they are older
+		///than _timeSpanStale. Never drops the databases of a run that may still be going, and never a name without this run's naming scheme, such
+		///as the fixed names older versions of these tests used.</summary>
+		public static void DropStaleScratchDatabases() {
+			Regex regex=new Regex("^"+PREFIX+@"(\d{12})_\d+_\d+_[a-z0-9_]+$");
+			List<string> listNames;
+			using(MySqlConnection connection=OpenServer()) {
+				listNames=Column(connection,"SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME LIKE 'forkmig\\_%'");
+			}
+			foreach(string name in listNames) {
+				Match match=regex.Match(name);
+				DateTime dateStarted;
+				if(!match.Success || !DateTime.TryParseExact(match.Groups[1].Value,"yyMMddHHmmss",CultureInfo.InvariantCulture,
+					DateTimeStyles.AssumeUniversal|DateTimeStyles.AdjustToUniversal,out dateStarted))
+				{
+					continue;
+				}
+				if(DateTime.UtcNow-dateStarted<_timeSpanStale) {
+					continue;
+				}
+				try {
+					Drop(name);
+				}
+				catch(Exception) {
+					//Another run may be dropping it at the same time.
+				}
+			}
+		}
 
 		///<summary>Null when the server answers; otherwise why database tests are skipped.</summary>
 		public static string GetSkipReason() {
@@ -61,7 +111,7 @@ namespace ForkMigrationTests {
 		}
 
 		public static void Drop(string name) {
-			if(!name.StartsWith("forkmig_")) {
+			if(!name.StartsWith(PREFIX)) {
 				throw new ArgumentException("Tests only drop databases whose name starts with forkmig_.");
 			}
 			using(MySqlConnection connection=OpenServer()) {

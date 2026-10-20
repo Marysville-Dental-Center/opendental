@@ -63,7 +63,12 @@ namespace OpenDentBusiness.ForkMigrations {
 				+"AND TABLE_TYPE='BASE TABLE' ORDER BY TABLE_NAME";
 			DataTable tableNames=Db.GetTable(command);
 			foreach(DataRow row in tableNames.Rows) {
-				snapshot.AddTable(SchemaTable.FromDatabase(databaseName,row[0].ToString()));
+				SchemaTable table=SchemaTable.FromDatabase(databaseName,row[0].ToString());
+				if(table==null) {
+					throw new ApplicationException("Table "+row[0]+" of database "+databaseName+" disappeared while its schema was being read. "
+						+"Something else is changing this database.");
+				}
+				snapshot.AddTable(table);
 			}
 			return snapshot;
 		}

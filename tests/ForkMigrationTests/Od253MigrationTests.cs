@@ -13,7 +13,7 @@ using OpenDentBusiness.ForkMigrations;
 namespace ForkMigrationTests {
 	[TestClass]
 	public class Od253MigrationTests {
-		private const string DB_NAME="forkmig_od253";
+		private static readonly string DB_NAME=TestDb.ScratchName("od253");
 		private static string _skipReason;
 		private static Dictionary<string,string> _dictChecksumsBefore;
 		private static SchemaSnapshot _snapshotBefore;
@@ -27,6 +27,7 @@ namespace ForkMigrationTests {
 			if(_skipReason!=null) {
 				return;
 			}
+			TestDb.DropStaleScratchDatabases();
 			TestDb.Recreate(DB_NAME);
 			using(MySqlConnection connection=TestDb.OpenServer()) {
 				TestDb.Exec(connection,"USE `"+DB_NAME+"`");
@@ -86,7 +87,7 @@ namespace ForkMigrationTests {
 				TestDb.Drop(DB_NAME);
 			}
 			catch(Exception) {
-				//The next run drops it.
+				//A later run drops it once it is stale (TestDb.DropStaleScratchDatabases).
 			}
 		}
 
