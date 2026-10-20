@@ -1,6 +1,10 @@
-# Open Dental (Marysville Dental Center)
+# Open PMS - Dental
 
-This is Marysville Dental Center's working copy of the [Open Dental](https://www.opendental.com) source code. `main` follows Open Dental **v24.3**, currently **24.3.63.0**, and our own development branches off it.
+Open PMS - Dental is a fork of Open Dental (c) Open Dental Software, Inc. and contributors, licensed under the GNU GPL v2. It is not affiliated with or endorsed by Open Dental Software, Inc.
+
+This is Marysville Dental Center's fork of the [Open Dental](https://www.opendental.com) source code. `main` started from Open Dental **v24.3**, at **24.3.63.0**, and our own development branches off it. See [NOTICE](NOTICE) for attribution and [LICENSE](LICENSE) for the GNU GPL v2. Every copyright line and GPL notice from Open Dental is kept.
+
+The program's namespaces, assemblies, executable and window titles still carry Open Dental's names. They are renamed in a final, separate step; until then, the product name appears in the About box, in the product identity sent to vendors, and in this repository's documents.
 
 Open Dental is a Windows desktop practice management system written in C#: WinForms, with some WPF, on .NET Framework 4.8, backed by MySQL/MariaDB.
 
