@@ -159,8 +159,12 @@ namespace OpenDentBusiness{
 		///<param name="dateSelectedStart">The start date of the selected range that will be copied to.</param>
 		///<param name="dateSelectedEnd">The end date of the selected range that will be copied to.</param>
 		///<param name="numRepeat">The number of times the given blockout range will be copied.</param>
+		///<param name="includeUnflagged">25.1: false when the user lacks the Blockouts permission. Blockouts without the NS or DC flag are then
+		///neither copied nor replaced.</param>
+		///<param name="includeFlagged">25.1: false when the user lacks the BlockoutsFlagged permission. Blockouts with the NS flag are then
+		///neither copied nor replaced. DC-flagged blockouts are never copied.</param>
 		public static string CopyBlockouts(long apptViewNum,bool isWeek,bool includeWeekend,bool doReplace,DateTime dateCopyStart,
-			DateTime dateCopyEnd,DateTime dateSelectedStart,DateTime dateSelectedEnd,int numRepeat) 
+			DateTime dateCopyEnd,DateTime dateSelectedStart,DateTime dateSelectedEnd,int numRepeat,bool includeUnflagged=true,bool includeFlagged=true) 
 		{
 			Meth.NoCheckMiddleTierRole();
 			//etter to do this locally as it may take some time and we do not want Middle Tier to timeout.
@@ -172,6 +176,8 @@ namespace OpenDentBusiness{
 				.FindAll(x => x.ItemValue.Contains(BlockoutType.DontCopy.GetDescription()));
 			//No SchedList only contains blockouts that are NOT marked "Do not Cut/Copy/Paste"
 			listSchedulesToCopy.RemoveAll(x => listDefsUserBlockout.Any(y => y.DefNum==x.BlockoutType));
+			//25.1: only the kinds of blockouts the user may manage are copied.
+			listSchedulesToCopy.RemoveAll(x => !IsBlockoutIncluded(x.BlockoutType,includeUnflagged,includeFlagged));
 			int weekDelta=0;
 			if(isWeek) {
 				TimeSpan timeSpan=dateSelectedStart-dateCopyStart;
@@ -192,7 +198,7 @@ namespace OpenDentBusiness{
 			List<Schedule> listSchedulesPossibleOverlap=null;
 			if(doReplace) {
 				//If replacing all, do one bulk ClearBlockouts.
-				ClearBlockouts(dateSelectedStart,dateEnd,listOpNums,includeWeekend);
+				ClearBlockouts(dateSelectedStart,dateEnd,listOpNums,includeWeekend,includeUnflagged,includeFlagged);
 			}
 			else {
 				//If we are not replacing, pull all schedules in the entire date range so we do not need to access the database every time.
@@ -249,7 +255,14 @@ namespace OpenDentBusiness{
 				logText+=Lans.g("Schedule","and pasted to");
 			}
 			logText+=" "+dateEnd.ToShortDateString();
-			SecurityLogs.MakeLogEntry(EnumPermType.Blockouts,0,logText);
+			//25.1: one entry per kind of blockout pasted, under that kind's permission.
+			List<EnumPermType> listPermTypes=listSchedulesToCopy.Select(x => GetBlockoutPermType(x.BlockoutType)).Distinct().OrderBy(x => (int)x).ToList();
+			if(listPermTypes.Count==0) {
+				listPermTypes.Add(includeUnflagged ? EnumPermType.Blockouts : EnumPermType.BlockoutsFlagged);
+			}
+			for(int i=0;i<listPermTypes.Count;i++) {
+				SecurityLogs.MakeLogEntry(listPermTypes[i],0,logText);
+			}
 			return "";
 		}
 
@@ -257,8 +270,12 @@ namespace OpenDentBusiness{
 		///If several blockouts are cleared, specify the dateTime for the blockouts cleared and BlockoutAction.Clear.
 		///If several blockouts are cleared for a specific operatory, specify the dateTime, operatory, and BlockoutAction.Clear
 		///If several blockouts are cleared for specific operatory and clinic, specify the dateTime, operatory, clinic, and BlockoutAction.Clear
-		///Otherwise, supply blockout and action taken.</summary>
-		public static void BlockoutLogHelper(BlockoutAction blockoutAction,Schedule scheduleBlockout=null,DateTime dateTime=new DateTime(),long opNum=0,long clinicNum=-1) {
+		///Otherwise, supply blockout and action taken.
+		///25.1: an entry for a blockout whose type has the NS or DC flag uses PermType BlockoutsFlagged, others use Blockouts. For a clear (no
+		///blockout), pass the permission of the kind that was cleared in permTypeClear.</summary>
+		public static void BlockoutLogHelper(BlockoutAction blockoutAction,Schedule scheduleBlockout=null,DateTime dateTime=new DateTime(),long opNum=0,long clinicNum=-1,
+			EnumPermType permTypeClear=EnumPermType.Blockouts)
+		{
 			string logText="";
 			if(scheduleBlockout==null) {//Day cleared
 				logText+=Lans.g("Schedule","Blockouts")+" ";
@@ -323,7 +340,11 @@ namespace OpenDentBusiness{
 				logText+=" "+Lans.g("Schedule","on")+" "+scheduleBlockout.SchedDate.ToShortDateString()+" "
 					+Lans.g("Schedule","for")+" "+scheduleBlockout.StartTime.ToShortTimeString()+" - "+scheduleBlockout.StopTime.ToShortTimeString();
 			}
-			SecurityLogs.MakeLogEntry(EnumPermType.Blockouts,0,logText);
+			EnumPermType permType=permTypeClear;
+			if(scheduleBlockout!=null) {
+				permType=GetBlockoutPermType(scheduleBlockout);
+			}
+			SecurityLogs.MakeLogEntry(permType,0,logText);
 		}
 
 		#endregion		
@@ -1010,16 +1031,26 @@ namespace OpenDentBusiness{
 		}
 
 		///<summary>Clears all blockouts for day.</summary>
-		public static void ClearBlockoutsForDay(DateTime date){
+		///<summary>Deletes the blockouts on the date. 25.1: includeUnflagged and includeFlagged limit the clear to the kinds of blockouts the user
+		///may manage (see IsBlockoutIncluded). Returns the number of blockouts left in place because of that limit.</summary>
+		public static int ClearBlockoutsForDay(DateTime date,bool includeUnflagged=true,bool includeFlagged=true){
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				Meth.GetVoid(MethodBase.GetCurrentMethod(),date);
-				return;
+				return Meth.GetInt(MethodBase.GetCurrentMethod(),date,includeUnflagged,includeFlagged);
 			}
 			//Get ScheduleNums that are to be deleted so we can delete scheduleops
-			string command="SELECT ScheduleNum FROM schedule WHERE SchedDate="+POut.Date(date)+" AND SchedType="+POut.Int((int)ScheduleType.Blockout);
-			List<long> listScheduleNums=Db.GetListLong(command);
+			string command="SELECT ScheduleNum,BlockoutType FROM schedule WHERE SchedDate="+POut.Date(date)+" AND SchedType="+POut.Int((int)ScheduleType.Blockout);
+			DataTable table=Db.GetTable(command);
+			List<long> listScheduleNums=new List<long>();
+			int countSkipped=0;
+			for(int i=0;i<table.Rows.Count;i++) {
+				if(!IsBlockoutIncluded(PIn.Long(table.Rows[i]["BlockoutType"].ToString()),includeUnflagged,includeFlagged)) {
+					countSkipped++;
+					continue;
+				}
+				listScheduleNums.Add(PIn.Long(table.Rows[i]["ScheduleNum"].ToString()));
+			}
 			if(listScheduleNums.Count==0) {
-				return;//nothing to delete
+				return countSkipped;//nothing to delete
 			}
 			string schedNumStr=string.Join(",",listScheduleNums.Select(x => POut.Long(x)));
 			//first delete schedules
@@ -1029,12 +1060,14 @@ namespace OpenDentBusiness{
 			command="DELETE FROM scheduleop WHERE ScheduleNum IN("+schedNumStr+")";
 			Db.NonQ(command);
 			Signalods.SetInvalidSched(date);
+			return countSkipped;
 		}
 
-		public static void ClearBlockoutsForOp(long opNum, DateTime dateClear) {
+		///<summary>Removes the operatory from the blockouts on the date. 25.1: includeUnflagged and includeFlagged limit the clear to the kinds of
+		///blockouts the user may manage (see IsBlockoutIncluded). Returns the number of blockouts left in place because of that limit.</summary>
+		public static int ClearBlockoutsForOp(long opNum, DateTime dateClear,bool includeUnflagged=true,bool includeFlagged=true) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				Meth.GetVoid(MethodBase.GetCurrentMethod(),opNum,dateClear);
-				return;
+				return Meth.GetInt(MethodBase.GetCurrentMethod(),opNum,dateClear,includeUnflagged,includeFlagged);
 			}
 			//A schedule may be attached to more than one operatory.
 			List<Schedule> listSchedules=GetForDate(dateClear);
@@ -1042,6 +1075,7 @@ namespace OpenDentBusiness{
 			//Find the sched ops that we want to delete.
 			List<ScheduleOp> listScheduleOps = ScheduleOps.GetForSchedList(listSchedules);
 			listScheduleOps.RemoveAll(x => x.OperatoryNum!=opNum);
+			int countSkipped=RemoveExcludedScheduleOps(listSchedules,listScheduleOps,includeUnflagged,includeFlagged);
 			ScheduleOps.DeleteBatch(listScheduleOps.Select(x => x.ScheduleOpNum).ToList());
 			//If deleting the sched op above caused the schedule to be orphaned it should be deleted.
 			DeleteOrphanedBlockouts(listScheduleOps.Select(x => x.ScheduleNum).ToList());
@@ -1051,12 +1085,14 @@ namespace OpenDentBusiness{
 			schedule.Ops=new List<long>() { opNum };
 			listSchedulesSetInvalid.Add(schedule);
 			Signalods.SetInvalidSchedForOps(listSchedulesSetInvalid);
+			return countSkipped;
 		}
 
-		public static void ClearBlockoutsForClinic(long clinicNum,DateTime dateClear) {
+		///<summary>Removes the clinic's operatories from the blockouts on the date. 25.1: includeUnflagged and includeFlagged limit the clear to the
+		///kinds of blockouts the user may manage (see IsBlockoutIncluded). Returns the number of blockouts left in place because of that limit.</summary>
+		public static int ClearBlockoutsForClinic(long clinicNum,DateTime dateClear,bool includeUnflagged=true,bool includeFlagged=true) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				Meth.GetVoid(MethodBase.GetCurrentMethod(),clinicNum,dateClear);
-				return;
+				return Meth.GetInt(MethodBase.GetCurrentMethod(),clinicNum,dateClear,includeUnflagged,includeFlagged);
 			}
 			//A schedule may be attached to more than one operatory.
 			List<Schedule> listSchedules = GetForDate(dateClear);
@@ -1065,6 +1101,7 @@ namespace OpenDentBusiness{
 			List<long> listOpNums = Operatories.GetOpsForClinic(clinicNum).Select(x=>x.OperatoryNum).ToList();
 			List<ScheduleOp> listScheduleOps = ScheduleOps.GetForSchedList(listSchedules);
 			listScheduleOps.RemoveAll(x => !listOpNums.Contains(x.OperatoryNum));
+			int countSkipped=RemoveExcludedScheduleOps(listSchedules,listScheduleOps,includeUnflagged,includeFlagged);
 			ScheduleOps.DeleteBatch(listScheduleOps.Select(x => x.ScheduleOpNum).ToList());
 			//If deleting the sched op above caused the schedule to be orphaned it should be deleted.
 			DeleteOrphanedBlockouts(listScheduleOps.Select(x => x.ScheduleNum).ToList());
@@ -1074,7 +1111,103 @@ namespace OpenDentBusiness{
 			schedule.Ops=listScheduleOps.Select(x => x.OperatoryNum).ToList();;
 			listSchedulesSetInvalid.Add(schedule);
 			Signalods.SetInvalidSchedForOps(listSchedulesSetInvalid);
+			return countSkipped;
 		}
+
+		///<summary>Takes out of listScheduleOps the rows whose blockout is of a kind that is not included, and returns how many blockouts that
+		///leaves in place.</summary>
+		private static int RemoveExcludedScheduleOps(List<Schedule> listSchedules,List<ScheduleOp> listScheduleOps,bool includeUnflagged,bool includeFlagged) {
+			Meth.NoCheckMiddleTierRole();//Private static.
+			List<long> listScheduleNumsExcluded=listSchedules.FindAll(x => !IsBlockoutIncluded(x.BlockoutType,includeUnflagged,includeFlagged))
+				.Select(x => x.ScheduleNum).ToList();
+			int countSkipped=listScheduleOps.Where(x => listScheduleNumsExcluded.Contains(x.ScheduleNum)).Select(x => x.ScheduleNum).Distinct().Count();
+			listScheduleOps.RemoveAll(x => listScheduleNumsExcluded.Contains(x.ScheduleNum));
+			return countSkipped;
+		}
+
+		#region Blockout permissions (Open Dental 25.1)
+		///<summary>True when a blockout type's ItemValue holds the NS (no scheduling) or DC (no cut/copy/paste) flag.</summary>
+		public static bool IsBlockoutTypeFlagged(string defItemValue) {
+			Meth.NoCheckMiddleTierRole();
+			if(string.IsNullOrEmpty(defItemValue)) {
+				return false;
+			}
+			return defItemValue.Contains(BlockoutType.NoSchedule.GetDescription()) || defItemValue.Contains(BlockoutType.DontCopy.GetDescription());
+		}
+
+		///<summary>True when the blockout type (a BlockoutTypes definition, hidden ones included) has the NS or DC flag. False if not found.</summary>
+		public static bool IsBlockoutTypeFlagged(long blockoutTypeDefNum) {
+			Meth.NoCheckMiddleTierRole();
+			Def def=Defs.GetDef(DefCat.BlockoutTypes,blockoutTypeDefNum);
+			if(def==null) {
+				return false;
+			}
+			return IsBlockoutTypeFlagged(def.ItemValue);
+		}
+
+		///<summary>BlockoutsFlagged (266) for a flagged type, Blockouts (13) otherwise.</summary>
+		public static EnumPermType GetBlockoutPermType(bool isFlagged) {
+			Meth.NoCheckMiddleTierRole();
+			if(isFlagged) {
+				return EnumPermType.BlockoutsFlagged;
+			}
+			return EnumPermType.Blockouts;
+		}
+
+		///<summary>The permission that covers blockouts of this type.</summary>
+		public static EnumPermType GetBlockoutPermType(long blockoutTypeDefNum) {
+			Meth.NoCheckMiddleTierRole();
+			return GetBlockoutPermType(IsBlockoutTypeFlagged(blockoutTypeDefNum));
+		}
+
+		///<summary>The permission that covers this blockout. Web Sched ASAP blockouts and other non-blockout schedules use Blockouts.</summary>
+		public static EnumPermType GetBlockoutPermType(Schedule schedule) {
+			Meth.NoCheckMiddleTierRole();
+			if(schedule==null || schedule.SchedType!=ScheduleType.Blockout) {
+				return EnumPermType.Blockouts;
+			}
+			return GetBlockoutPermType(schedule.BlockoutType);
+		}
+
+		///<summary>Whether a user with the given permissions may add, edit, cut, copy, paste, clear or delete blockouts of this kind. Flagged types
+		///need BlockoutsFlagged, unflagged types need Blockouts.</summary>
+		public static bool CanManageBlockoutType(bool isFlagged,bool hasPermBlockouts,bool hasPermBlockoutsFlagged) {
+			Meth.NoCheckMiddleTierRole();
+			if(isFlagged) {
+				return hasPermBlockoutsFlagged;
+			}
+			return hasPermBlockouts;
+		}
+
+		///<summary>Changing a blockout from one type to another needs the permissions of both types.</summary>
+		public static bool CanChangeBlockoutType(bool isFlaggedOld,bool isFlaggedNew,bool hasPermBlockouts,bool hasPermBlockoutsFlagged) {
+			Meth.NoCheckMiddleTierRole();
+			return CanManageBlockoutType(isFlaggedOld,hasPermBlockouts,hasPermBlockoutsFlagged)
+				&& CanManageBlockoutType(isFlaggedNew,hasPermBlockouts,hasPermBlockoutsFlagged);
+		}
+
+		///<summary>The blockout types a user may pick: unflagged types need Blockouts and flagged types need BlockoutsFlagged.</summary>
+		public static List<Def> FilterBlockoutTypesForUser(List<Def> listDefsBlockoutTypes,bool hasPermBlockouts,bool hasPermBlockoutsFlagged) {
+			Meth.NoCheckMiddleTierRole();
+			if(listDefsBlockoutTypes==null) {
+				return new List<Def>();
+			}
+			return listDefsBlockoutTypes.FindAll(x => CanManageBlockoutType(IsBlockoutTypeFlagged(x.ItemValue),hasPermBlockouts,hasPermBlockoutsFlagged));
+		}
+
+		///<summary>Whether a blockout of this type is part of a bulk action (clear, copy, paste) that is limited to unflagged and/or flagged types.</summary>
+		public static bool IsBlockoutIncluded(long blockoutTypeDefNum,bool includeUnflagged,bool includeFlagged) {
+			Meth.NoCheckMiddleTierRole();
+			if(includeUnflagged && includeFlagged) {
+				return true;
+			}
+			if(!includeUnflagged && !includeFlagged) {
+				return false;
+			}
+			bool isFlagged=IsBlockoutTypeFlagged(blockoutTypeDefNum);
+			return isFlagged ? includeFlagged : includeUnflagged;
+		}
+		#endregion Blockout permissions (Open Dental 25.1)
 
 		///<summary>Will only check for orphaned blockouts for those schedulenums passed in. Inserts an invalid schedule signalod.</summary>
 		private static void DeleteOrphanedBlockouts(List<long> listScheduleNums) {
@@ -1749,12 +1882,15 @@ namespace OpenDentBusiness{
 		}
 
 		///<summary>Clears all Blockout schedule entries for the given date ranges and the given ops.</summary>
-		public static void ClearBlockouts(DateTime dateStart,DateTime dateEnd,List<long> listOpNums,bool includeWeekend) {
+		///<summary>25.1: includeUnflagged and includeFlagged limit the clear to the kinds of blockouts the user may manage (see IsBlockoutIncluded).</summary>
+		public static void ClearBlockouts(DateTime dateStart,DateTime dateEnd,List<long> listOpNums,bool includeWeekend,bool includeUnflagged=true,
+			bool includeFlagged=true)
+		{
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				Meth.GetVoid(MethodBase.GetCurrentMethod(),dateStart,dateEnd,listOpNums,includeWeekend);
+				Meth.GetVoid(MethodBase.GetCurrentMethod(),dateStart,dateEnd,listOpNums,includeWeekend,includeUnflagged,includeFlagged);
 				return;
 			}
-			string command=$@"SELECT schedule.ScheduleNum,scheduleop.ScheduleOpNum,schedule.SchedDate,scheduleop.OperatoryNum
+			string command=$@"SELECT schedule.ScheduleNum,scheduleop.ScheduleOpNum,schedule.SchedDate,scheduleop.OperatoryNum,schedule.BlockoutType
 				FROM schedule 
 				INNER JOIN scheduleop ON schedule.ScheduleNum=scheduleop.ScheduleNum
 				WHERE schedule.SchedType={POut.Int((int)ScheduleType.Blockout)}
@@ -1765,6 +1901,11 @@ namespace OpenDentBusiness{
 			}
 			command+=$"AND scheduleop.OperatoryNum IN({string.Join(",",listOpNums.Select(x => POut.Long(x)))})";
 			DataTable table=Db.GetTable(command);
+			//25.1: leave the kinds of blockouts the user may not manage.
+			List<DataRow> listDataRowsExcluded=table.Select().Where(x => !IsBlockoutIncluded(PIn.Long(x["BlockoutType"].ToString()),includeUnflagged,includeFlagged)).ToList();
+			for(int i=0;i<listDataRowsExcluded.Count;i++) {
+				table.Rows.Remove(listDataRowsExcluded[i]);
+			}
 			if(table.Rows.Count==0) {
 				return;
 			}
