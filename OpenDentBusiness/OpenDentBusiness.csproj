@@ -537,6 +537,12 @@
     <Compile Include="InternalTools\WebChat\TableTypes\WebChatSession.cs" />
     <Compile Include="Misc\ConvertDatabases7.cs" />
     <Compile Include="Misc\ConvertDatabases8.cs" />
+    <Compile Include="Misc\ForkMigrations\ForkMigrationContext.cs" />
+    <Compile Include="Misc\ForkMigrations\ForkMigrationRunner.cs" />
+    <Compile Include="Misc\ForkMigrations\ForkMigrationStep.cs" />
+    <Compile Include="Misc\ForkMigrations\OdParity25_3.cs" />
+    <Compile Include="Misc\ForkMigrations\SchemaSnapshot.cs" />
+    <Compile Include="Misc\ForkMigrations\SchemaVerifier.cs" />
     <Compile Include="Misc\Currency.cs" />
     <Compile Include="Misc\FamilyBalancer.cs" />
     <Compile Include="Misc\FHIRUtils.cs" />
@@ -2027,6 +2033,9 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Misc\ForkMigrations\Reference\OdSchema-25.3.48.sql">
+      <LogicalName>OdSchema-25.3.48.sql</LogicalName>
+    </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <SubType>Designer</SubType>
       <Generator>PublicResXFileCodeGenerator</Generator>
