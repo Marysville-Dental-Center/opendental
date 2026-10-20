@@ -113,9 +113,18 @@ namespace OpenDental {
 			this.checkSaveDXCSoap = new OpenDental.UI.CheckBox();
 			this.textLocationID = new System.Windows.Forms.TextBox();
 			this.label2 = new System.Windows.Forms.Label();
+			this.groupDentalXChange = new OpenDental.UI.GroupBox();
+			this.checkEnableXConnect = new OpenDental.UI.CheckBox();
+			this.labelXConnectKey = new System.Windows.Forms.Label();
+			this.labelPartnerIdentity = new System.Windows.Forms.Label();
+			this.labelPartnerClient = new System.Windows.Forms.Label();
+			this.textPartnerClient = new System.Windows.Forms.TextBox();
+			this.labelPartnerServiceID = new System.Windows.Forms.Label();
+			this.textPartnerServiceID = new System.Windows.Forms.TextBox();
 			this.groupBox1.SuspendLayout();
 			this.groupBox3.SuspendLayout();
 			this.groupBox2.SuspendLayout();
+			this.groupDentalXChange.SuspendLayout();
 			this.SuspendLayout();
 			// 
 			// checkAllowAttachSend
@@ -870,9 +879,84 @@ namespace OpenDental {
 			this.label2.Text = "Location ID";
 			this.label2.TextAlign = System.Drawing.ContentAlignment.TopRight;
 			// 
+			// groupDentalXChange
+			// 
+			this.groupDentalXChange.Controls.Add(this.checkEnableXConnect);
+			this.groupDentalXChange.Controls.Add(this.labelXConnectKey);
+			this.groupDentalXChange.Controls.Add(this.labelPartnerIdentity);
+			this.groupDentalXChange.Controls.Add(this.labelPartnerClient);
+			this.groupDentalXChange.Controls.Add(this.textPartnerClient);
+			this.groupDentalXChange.Controls.Add(this.labelPartnerServiceID);
+			this.groupDentalXChange.Controls.Add(this.textPartnerServiceID);
+			this.groupDentalXChange.Location = new System.Drawing.Point(650, 482);
+			this.groupDentalXChange.Name = "groupDentalXChange";
+			this.groupDentalXChange.Size = new System.Drawing.Size(296, 170);
+			this.groupDentalXChange.TabIndex = 27;
+			this.groupDentalXChange.Text = "DentalXChange";
+			this.groupDentalXChange.Visible = false;
+			// 
+			// checkEnableXConnect
+			// 
+			this.checkEnableXConnect.Location = new System.Drawing.Point(8, 18);
+			this.checkEnableXConnect.Name = "checkEnableXConnect";
+			this.checkEnableXConnect.Size = new System.Drawing.Size(280, 20);
+			this.checkEnableXConnect.TabIndex = 0;
+			this.checkEnableXConnect.Text = "Enable XConnect (validates claims on save and send)";
+			// 
+			// labelXConnectKey
+			// 
+			this.labelXConnectKey.Location = new System.Drawing.Point(8, 39);
+			this.labelXConnectKey.Name = "labelXConnectKey";
+			this.labelXConnectKey.Size = new System.Drawing.Size(280, 30);
+			this.labelXConnectKey.TabIndex = 1;
+			this.labelXConnectKey.Text = "Enter the office's XConnect API key in the API Key box. XConnect uses the login above and that key.";
+			// 
+			// labelPartnerIdentity
+			// 
+			this.labelPartnerIdentity.Location = new System.Drawing.Point(8, 72);
+			this.labelPartnerIdentity.Name = "labelPartnerIdentity";
+			this.labelPartnerIdentity.Size = new System.Drawing.Size(280, 42);
+			this.labelPartnerIdentity.TabIndex = 2;
+			this.labelPartnerIdentity.Text = "Partner identity issued by DentalXChange to this office, for all clinics. While blank, claim upload, eligibility, ERAs and the payer list are off.";
+			// 
+			// labelPartnerClient
+			// 
+			this.labelPartnerClient.Location = new System.Drawing.Point(8, 119);
+			this.labelPartnerClient.Name = "labelPartnerClient";
+			this.labelPartnerClient.Size = new System.Drawing.Size(80, 17);
+			this.labelPartnerClient.TabIndex = 3;
+			this.labelPartnerClient.Text = "Client";
+			this.labelPartnerClient.TextAlign = System.Drawing.ContentAlignment.TopRight;
+			// 
+			// textPartnerClient
+			// 
+			this.textPartnerClient.Location = new System.Drawing.Point(94, 116);
+			this.textPartnerClient.MaxLength = 255;
+			this.textPartnerClient.Name = "textPartnerClient";
+			this.textPartnerClient.Size = new System.Drawing.Size(190, 20);
+			this.textPartnerClient.TabIndex = 4;
+			// 
+			// labelPartnerServiceID
+			// 
+			this.labelPartnerServiceID.Location = new System.Drawing.Point(8, 143);
+			this.labelPartnerServiceID.Name = "labelPartnerServiceID";
+			this.labelPartnerServiceID.Size = new System.Drawing.Size(80, 17);
+			this.labelPartnerServiceID.TabIndex = 5;
+			this.labelPartnerServiceID.Text = "Service ID";
+			this.labelPartnerServiceID.TextAlign = System.Drawing.ContentAlignment.TopRight;
+			// 
+			// textPartnerServiceID
+			// 
+			this.textPartnerServiceID.Location = new System.Drawing.Point(94, 140);
+			this.textPartnerServiceID.MaxLength = 255;
+			this.textPartnerServiceID.Name = "textPartnerServiceID";
+			this.textPartnerServiceID.Size = new System.Drawing.Size(190, 20);
+			this.textPartnerServiceID.TabIndex = 6;
+			// 
 			// FormClearinghouseEdit
 			// 
 			this.ClientSize = new System.Drawing.Size(958, 696);
+			this.Controls.Add(this.groupDentalXChange);
 			this.Controls.Add(this.textLocationID);
 			this.Controls.Add(this.label2);
 			this.Controls.Add(this.checkSaveDXCSoap);
@@ -923,6 +1007,8 @@ namespace OpenDental {
 			this.groupBox3.PerformLayout();
 			this.groupBox2.ResumeLayout(false);
 			this.groupBox2.PerformLayout();
+			this.groupDentalXChange.ResumeLayout(false);
+			this.groupDentalXChange.PerformLayout();
 			this.ResumeLayout(false);
 			this.PerformLayout();
 
@@ -1005,6 +1091,14 @@ namespace OpenDental {
 		private OpenDental.UI.CheckBox checkSaveAttachments;
 		private OpenDental.UI.CheckBox checkSaveDXCSoap;
 		private TextBox textLocationID;
+		private OpenDental.UI.GroupBox groupDentalXChange;
+		private OpenDental.UI.CheckBox checkEnableXConnect;
+		private System.Windows.Forms.Label labelXConnectKey;
+		private System.Windows.Forms.Label labelPartnerIdentity;
+		private System.Windows.Forms.Label labelPartnerClient;
+		private System.Windows.Forms.TextBox textPartnerClient;
+		private System.Windows.Forms.Label labelPartnerServiceID;
+		private System.Windows.Forms.TextBox textPartnerServiceID;
 		private Label label2;
 	}
 }

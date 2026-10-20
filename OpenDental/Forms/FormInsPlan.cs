@@ -2458,11 +2458,17 @@ namespace OpenDental {
 				Cursor = Cursors.Default;
 				return;
 			}
-			// Set Credentials
-			DCICredential.serviceID = "DCI Web Service ID: 001513";
+			// Set Credentials. The partner identity is the office's own (DxcPartnerIdentity); nothing is compiled in.
+			OpenDentBusiness.VendorDirect.DentalXChange.DxcPartnerIdentity dxcPartnerIdentity=OpenDentBusiness.VendorDirect.DentalXChange.DxcPartnerIdentity.GetCur();
+			if(!dxcPartnerIdentity.IsConfigured) {
+				MessageBox.Show(OpenDentBusiness.VendorDirect.DentalXChange.DxcPartnerIdentity.GetNotConfiguredMessage());
+				Cursor = Cursors.Default;
+				return;
+			}
+			DCICredential.serviceID = dxcPartnerIdentity.ServiceID;
 			DCICredential.username = loginID;   // ABCuser
 			DCICredential.password = passWord;  // testing1
-			DCICredential.client = "Practice-Web";
+			DCICredential.client = dxcPartnerIdentity.Client;
 			DCICredential.version = "1";
 			// Set Request Document
 			//textAddress.Text = PrepareEligibilityRequest();

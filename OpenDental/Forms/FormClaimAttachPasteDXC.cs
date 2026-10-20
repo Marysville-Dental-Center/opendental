@@ -22,6 +22,9 @@ namespace OpenDental {
 		private List<AttachmentItem> _listAttachmentItems=new List<AttachmentItem>();
 		///<summary>Stores a list of the image Ids from DXC to be saved locally.</summary>
 		private List<int> _listImageReferenceIds;
+		///<summary>Open Dental 24.4: true once the user agreed to add images to an attachment that was already submitted to DentalXChange, or once
+		///this window has sent images itself, so the question is asked at most once per window.</summary>
+		private bool _isAddToSubmittedConfirmed;
 
 		public FormClaimAttachPasteDXC() {
 			InitializeComponent();
@@ -30,6 +33,9 @@ namespace OpenDental {
 		}
 
 		private void FormClaimAttachPasteDXC_Load(object sender,EventArgs e) {
+			if(ClaimAttaches.IsDxcAttachmentSubmitted(ClaimCur.AttachedFlags)) {
+				Text+=" - "+Lan.g(this,"attachments already submitted");
+			}
 			List<Def> listDefsClaimAttachments=GetImageCatDefs();
 			if(listDefsClaimAttachments.Count>0) {//At least one Claim Attachment image definition exists.
 				labelClaimAttachWarning.Visible=false;
@@ -236,24 +242,8 @@ namespace OpenDental {
 
 		///<summary>Sends the passed-in attachments to ClaimConnect.  Will set the attachment id to the claim if needed.</summary>
 		private void AddAttachments(List<ClaimConnect.ImageAttachment> listImageAttachments) {
-			if(string.IsNullOrWhiteSpace(ClaimCur.AttachmentID)) {
-				//If an attachment has not already been created, create one.
-				string attachmentId=ClaimConnect.OpenAttachment(ClaimCur,textNarrative.Text);
-				//Update claim if attachmentID was set. Must happen here so that the validation will consider the new attachmentID.
-				ClaimCur.AttachmentID=attachmentId;
-				_listImageReferenceIds=ClaimConnect.AddAttachmentImage(ClaimCur,listImageAttachments);
-				ClaimConnect.SubmitAttachment(ClaimCur);
-				//Set the claims attached flag to 'Misc' so that the attachmentID will write to the PWK segment 
-				//when the claim is generated as an 837.
-				ClaimCur.AttachedFlags="Misc";
-			}
-			else {//An attachment already exists for this claim.
-				_listImageReferenceIds=ClaimConnect.AddAttachmentImage(ClaimCur,listImageAttachments);
-				if(ClaimCur.Narrative!=textNarrative.Text) {
-					ClaimConnect.AddNarrative(ClaimCur,textNarrative.Text);
-				}
-			}
-			ClaimCur.Narrative=textNarrative.Text;
+			//Opens, fills and submits the attachment, or adds to the existing one, and sets AttachedFlags (Misc and, once sent, Submitted).
+			_listImageReferenceIds=ClaimConnect.SendAttachmentImages(ClaimCur,listImageAttachments,textNarrative.Text);
 			Claims.Update(ClaimCur);
 		}
 
@@ -268,6 +258,9 @@ namespace OpenDental {
 
 		///<summary>Sends attachments to DXC and saves locally. Mostly copied from FormClaimAttachment.</summary>
 		private bool SendAttachmentsToDXCAndSaveLocally() {
+			if(!ClaimL.ConfirmAddToSubmittedDxcAttachment(ClaimCur,ref _isAddToSubmittedConfirmed)) {
+				return false;
+			}
 			//Additional validation occurs in FormClaimAttachPasteDXCItem as well
 			if(_listAttachmentItems.Any(x => x.HasTypeBeenSet==false)) {
 				MsgBox.Show(this,"The image type for one or more attachments has not been set");

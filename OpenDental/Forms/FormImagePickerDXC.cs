@@ -27,6 +27,10 @@ namespace OpenDental {
 		private string _patFolder;
 
 		///<summary>Check that the imageFolder exists and is accessible before calling this form.</summary>
+		///<summary>Open Dental 24.4: true once the user agreed to add images to an attachment that was already submitted to DentalXChange, or once
+		///this window has sent images itself, so the question is asked at most once per window.</summary>
+		private bool _isAddToSubmittedConfirmed;
+
 		public FormImagePickerDXC() {
 			InitializeComponent();
 			InitializeLayoutManager();
@@ -47,6 +51,9 @@ namespace OpenDental {
 		private void FormImagePickerPatient_Load(object sender,EventArgs e) {
 			//Jordan wants not visible for now
 			checkIsXrayMirrored.Visible=false;
+			if(ClaimAttaches.IsDxcAttachmentSubmitted(ClaimCur.AttachedFlags)) {
+				Text+=" - "+Lan.g(this,"attachments already submitted");
+			}
 			FillTree();
 			ValidateClaimDXC();
 			WindowState=FormWindowState.Maximized;
@@ -178,29 +185,16 @@ namespace OpenDental {
 		private void AddAttachments() {
 			List<ClaimConnect.ImageAttachment> listClaimConnectImageAttachments=new List<ClaimConnect.ImageAttachment>();
 			listClaimConnectImageAttachments.Add(_claimConnectImageAttachment);
-			if(string.IsNullOrWhiteSpace(ClaimCur.AttachmentID)) {
-				//If an attachment has not already been created, create one.
-				string attachmentId=ClaimConnect.OpenAttachment(ClaimCur,textNarrative.Text);
-				//Update claim if attachmentID was set. Must happen here so that the validation will consider the new attachmentID.
-				ClaimCur.AttachmentID=attachmentId;
-				_listImageReferenceIds=ClaimConnect.AddAttachmentImage(ClaimCur,listClaimConnectImageAttachments);
-				ClaimConnect.SubmitAttachment(ClaimCur);
-				//Set the claims attached flag to 'Misc' so that the attachmentID will write to the PWK segment 
-				//when the claim is generated as an 837.
-				ClaimCur.AttachedFlags="Misc";
-			}
-			else {//An attachment already exists for this claim.
-				_listImageReferenceIds=ClaimConnect.AddAttachmentImage(ClaimCur,listClaimConnectImageAttachments);
-				if(ClaimCur.Narrative!=textNarrative.Text) {
-					ClaimConnect.AddNarrative(ClaimCur,textNarrative.Text);
-				}
-			}
-			ClaimCur.Narrative=textNarrative.Text;
+			//Opens, fills and submits the attachment, or adds to the existing one, and sets AttachedFlags (Misc and, once sent, Submitted).
+			_listImageReferenceIds=ClaimConnect.SendAttachmentImages(ClaimCur,listClaimConnectImageAttachments,textNarrative.Text);
 			Claims.Update(ClaimCur);
 		}
 
 		///<summary>Sends attachments to DXC and saves locally. Mostly copied from FormClaimAttachSnipDXC.</summary>
 		private bool SendSelectedToDXCAndSaveLocally() {
+			if(!ClaimL.ConfirmAddToSubmittedDxcAttachment(ClaimCur,ref _isAddToSubmittedConfirmed)) {
+				return false;
+			}
 			string fileName="";
 			//Disposed at end of method.
 			Bitmap bitmap=null;
