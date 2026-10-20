@@ -1,6 +1,7 @@
 // Tests that the prebuilt Bridges.dll stays deleted (docs/specs/vendor-direct/README.md, package Z2): no project, solution entry, source file or
 // built assembly needs it or the binaries only it pulled in (Intuit, Serilog, Microsoft Graph and its closure, Dropbox.Api), every type the
 // program used from it is in-repo source inside OpenDentBusiness, and the HQ provisioning leftovers and vendor logos removed with it stay gone.
+// Dependencies that other kept DLLs still need (MSAL's IdentityModel.Abstractions, SSH.NET's Bcl.AsyncInterfaces) must still reach the program.
 // Reads the source and the built assemblies only; nothing leaves this computer and no database is needed.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
@@ -28,7 +29,7 @@ namespace VendorDirectTests.BridgesRemoval {
 			"Serilog.Sinks.File.dll","Serilog.Sinks.Literate.dll","Serilog.Sinks.RollingFile.dll","Serilog.Sinks.Trace.dll","SerilogTraceListener.dll",
 			"Microsoft.Azure.Documents.Client.dll","Microsoft.DotNet.PlatformAbstractions.dll",
 			"Microsoft.Graph.dll","Microsoft.Graph.Core.dll","Azure.Core.dll","System.Memory.Data.dll","System.Text.Json.dll",
-			"System.Text.Encodings.Web.dll","Microsoft.Bcl.AsyncInterfaces.dll","System.Net.Http.WinHttpHandler.dll",
+			"System.Text.Encodings.Web.dll","System.Net.Http.WinHttpHandler.dll",
 			"Microsoft.IdentityModel.Tokens.dll","Microsoft.IdentityModel.Logging.dll","Microsoft.IdentityModel.Protocols.dll",
 			"Microsoft.IdentityModel.Protocols.OpenIdConnect.dll","Microsoft.IdentityModel.JsonWebTokens.dll",
 			"Dropbox.Api.dll" };
@@ -84,6 +85,8 @@ namespace VendorDirectTests.BridgesRemoval {
 			//MSAL stays for the Microsoft 365 sign-in, with the one IdentityModel assembly it needs.
 			Assert.IsTrue(File.Exists(Path.Combine(folder,"Microsoft.Identity.Client.dll")));
 			Assert.IsTrue(File.Exists(Path.Combine(folder,"Microsoft.IdentityModel.Abstractions.dll")));
+			//The Graph SDK was not the only user of Microsoft.Bcl.AsyncInterfaces: SSH.NET references it too.
+			Assert.IsTrue(File.Exists(Path.Combine(folder,"Microsoft.Bcl.AsyncInterfaces.dll")),"SSH.NET's dependency must stay in Required dlls.");
 		}
 
 		[TestMethod]
@@ -92,7 +95,7 @@ namespace VendorDirectTests.BridgesRemoval {
 			//"Bridges\" alone is the in-repo bridges folder of OpenDental, OpenDentBusiness and WpfControlsOD, and VBbridges.dll is a different
 			//binary, so look for the Bridges assembly forms only.
 			Regex regex=new Regex(@"(?<![A-Za-z])Bridges\.dll|xBridges|Include=""Bridges[,""]|Intuit\.Ipp|IppDotNetSdk|Serilog|Microsoft\.Graph|Azure\.Core|Dropbox\.Api"
-				+@"|System\.Text\.Json|Encodings\.Web|Bcl\.AsyncInterfaces|WinHttpHandler|System\.Memory\.Data|Documents\.Client|PlatformAbstractions"
+				+@"|System\.Text\.Json|Encodings\.Web|WinHttpHandler|System\.Memory\.Data|Documents\.Client|PlatformAbstractions"
 				+@"|Microsoft\.IdentityModel\.(Tokens|Logging|Protocols|JsonWebTokens)",RegexOptions.IgnoreCase);
 			List<string> listOffenders=new List<string>();
 			foreach(string relative in GetFiles(root,"*.csproj").Concat(GetFiles(root,"*.sln")).Concat(GetFiles(root,"*.slnf"))
@@ -162,6 +165,43 @@ namespace VendorDirectTests.BridgesRemoval {
 			string config=File.ReadAllText(Path.Combine(folder,"OpenDental.exe.config"));
 			StringAssert.Matches(config,new Regex(@"name=""Microsoft\.IdentityModel\.Abstractions""[^>]*/>\s*<bindingRedirect oldVersion=""0\.0\.0\.0-6\.23\.1\.0"""),
 				"OpenDental.exe.config needs the binding redirect MSAL relies on.");
+		}
+
+		[TestMethod]
+		public void SshNetDependency_StillReachesTheProgram() {
+			//Renci.SshNet (SSH.NET 2024.1.0, net462) references Microsoft.Bcl.AsyncInterfaces 1.0.0.0. The Graph SDK used to bring the 6.0.0.0 copy and
+			//its redirect in, so OpenDentalCloud now references it itself. Without it, SFTP A to Z storage and the TSI uploads fail when SftpClient loads.
+			Assert.IsTrue(Regex.IsMatch(ReadRepoFile(@"OpenDentalCloud\OpenDentalCloud.csproj"),
+				@"<Reference Include=""Microsoft\.Bcl\.AsyncInterfaces[,""][^>]*>\s*<HintPath>\.\.\\Required dlls\\Microsoft\.Bcl\.AsyncInterfaces\.dll</HintPath>"),
+				"OpenDentalCloud should reference Required dlls\\Microsoft.Bcl.AsyncInterfaces.dll next to Renci.SshNet.");
+			string folder=Path.Combine(GetRoot(),@"OpenDental\bin\Debug");
+			if(!File.Exists(Path.Combine(folder,"OpenDental.exe"))) {
+				Assert.Inconclusive(@"OpenDental\bin\Debug is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
+			}
+			Assert.IsTrue(File.Exists(Path.Combine(folder,"Renci.SshNet.dll")));
+			//A HintPath alone does not carry it to the hosts: the compiler drops unused references, and the hosts' build will not take 6.0.0.0 for
+			//SSH.NET's 1.0.0.0. OpenDentalCloud must use it, so its own reference is what every host copies.
+			Assert.IsTrue(GetReferencedAssemblyNames(Path.Combine(folder,"OpenDentalCloud.dll")).Contains("Microsoft.Bcl.AsyncInterfaces"),
+				"OpenDentalCloud.dll should reference Microsoft.Bcl.AsyncInterfaces.");
+			Assert.IsTrue(File.Exists(Path.Combine(folder,"Microsoft.Bcl.AsyncInterfaces.dll")),"SSH.NET's dependency is not copied to the program folder.");
+			string pathConfig=Path.Combine(folder,"OpenDental.exe.config");
+			StringAssert.Matches(File.ReadAllText(pathConfig),
+				new Regex(@"name=""Microsoft\.Bcl\.AsyncInterfaces""[^>]*/>\s*<bindingRedirect oldVersion=""0\.0\.0\.0-6\.0\.0\.0"" newVersion=""6\.0\.0\.0"""),
+				"OpenDental.exe.config needs the binding redirect SSH.NET relies on.");
+			//Load SftpClient the way the program does: from its folder, with its config, in a domain of its own so nothing stays loaded or locked.
+			AppDomainSetup setup=new AppDomainSetup();
+			setup.ApplicationBase=folder;
+			setup.ConfigurationFile=pathConfig;
+			AppDomain domain=AppDomain.CreateDomain("SshNetLoadProbe",null,setup);
+			try {
+				SshNetLoadProbe probe=(SshNetLoadProbe)domain.CreateInstanceFromAndUnwrap(typeof(SshNetLoadProbe).Assembly.Location,
+					typeof(SshNetLoadProbe).FullName);
+				string error=probe.LoadType("Renci.SshNet","Renci.SshNet.SftpClient");
+				Assert.IsNull(error,"Renci.SshNet.SftpClient does not load from "+folder+": "+error);
+			}
+			finally {
+				AppDomain.Unload(domain);
+			}
 		}
 
 		[TestMethod]
@@ -240,6 +280,24 @@ namespace VendorDirectTests.BridgesRemoval {
 				.Where(x => Regex.IsMatch(x,@"^(CareCredit_Button|google_signin|PaySimple_Button|payconnect-btn|Dropbox_Api)",RegexOptions.IgnoreCase))
 				.ToList();
 			Assert.AreEqual(0,listLeft.Count,"Still in OpenDental\\Resources: "+string.Join(", ",listLeft));
+		}
+	}
+
+	///<summary>Runs in a separate AppDomain whose base folder and config are the program's, and loads a type there the way the program would.
+	///Uses only mscorlib, so this test assembly needs none of its own references in that domain.</summary>
+	public class SshNetLoadProbe:MarshalByRefObject {
+		///<summary>Loads the type and everything its signatures name. Returns null on success, or the exception chain.</summary>
+		public string LoadType(string assemblyName,string typeName) {
+			try {
+				Type type=Assembly.Load(assemblyName).GetType(typeName,true);
+				type.GetInterfaces();
+				type.GetMethods();
+				type.GetConstructors();
+				return null;
+			}
+			catch(Exception ex) {
+				return ex.ToString();
+			}
 		}
 	}
 }
