@@ -961,6 +961,12 @@ namespace OpenDental {
 			//Everything that is not HQ's triage task list will have the attachments column
 			gridColumn=new GridColumn(Lan.g("TableTasks","Att"),30,HorizontalAlignment.Center);//Attachment(s)
 			gridMain.Columns.Add(gridColumn);
+			//Task categories (Open Dental 25.2): the column shows only when the TaskCategoryShow preference is on.
+			bool isCategoryShown=Tasks.IsCategoryShown();
+			if(isCategoryShown) {
+				gridColumn=new GridColumn(Lan.g("TableTasks","Category"),90);
+				gridMain.Columns.Add(gridColumn);
+			}
 			gridColumn=new GridColumn(Lan.g("TableTasks","Description"),80);//any width
 			gridMain.Columns.Add(gridColumn);
 			gridMain.ListGridRows.Clear();
@@ -972,7 +978,6 @@ namespace OpenDental {
 			//These strings are always inserted into cells, so they are always set to "" even if there is no job or attachment.
  			string jobNumString="";
 			string attStr="";
-			string categoryStr="";
 			int imageindex;
 			List<Def> listDefsTaskCategory=Defs.GetDefsForCategory(DefCat.TaskCategories);
 			List<Def> listDefsTaskPriority=Defs.GetDefsForCategory(DefCat.TaskPriorities);
@@ -1008,6 +1013,9 @@ namespace OpenDental {
 				gridRow.Cells.Add("");
 				//Everything that is not HQ's triage task list will have the attachments column
 				gridRow.Cells.Add("");//Att
+				if(isCategoryShown) {
+					gridRow.Cells.Add("");//Category. Task lists have no category.
+				}
 				gridRow.Cells.Add(dateStr+objDesc+tasklistdescript);
 				gridRow.Tag=listTaskLists[i];
 				gridMain.ListGridRows.Add(gridRow);
@@ -1023,8 +1031,14 @@ namespace OpenDental {
 				jobNumString="";
 				string stateString="";
 				attStr="";
-				categoryStr="";
-				Color colorTaskCategory=Defs.GetColor(DefCat.TaskCategories,_listTasks[i].Category,listDefsTaskCategory);
+				GridCell gridCellCategory=null;
+				if(isCategoryShown) {
+					gridCellCategory=new GridCell(Tasks.GetCategoryText(_listTasks[i].Category,listDefsTaskCategory));
+					Color colorTaskCategory=Tasks.GetCategoryColor(_listTasks[i].Category,listDefsTaskCategory);
+					if(colorTaskCategory!=Color.Empty) {
+						gridCellCategory.ColorBackG=colorTaskCategory;
+					}
+				}
 				Color colorTaskPriority=Defs.GetColor(DefCat.TaskPriorities,_listTasks[i].PriorityDefNum,listDefsTaskPriority);
 				if(_listTaskAttachments.Any(x => x.TaskNum==_listTasks[i].TaskNum)) {
 					attStr="X";//Has attachments
@@ -1125,6 +1139,9 @@ namespace OpenDental {
 					gridRow.Cells.Add("");// +/- is irrelevant
 					//Everything that is not HQ's triage task list will have the attachments column
 					gridRow.Cells.Add(attStr);//Att
+					if(isCategoryShown) {
+						gridRow.Cells.Add(gridCellCategory);
+					}
 					gridRow.Cells.Add(dateStr+objDesc+_listTasks[i].DescriptOverride);
 				}
 				else if(_listTaskNumsExpanded.Contains(_listTasks[i].TaskNum)) {//Expanded
@@ -1136,6 +1153,9 @@ namespace OpenDental {
 					}
 					//Everything that is not HQ's triage task list will have the attachments column
 					gridRow.Cells.Add(attStr);//Att
+					if(isCategoryShown) {
+						gridRow.Cells.Add(gridCellCategory);
+					}
 					gridRow.Cells.Add(dateStr+objDesc+_listTasks[i].Descript+notes);
 				}
 				else {//not expanded
@@ -1144,6 +1164,9 @@ namespace OpenDental {
 						gridRow.Cells.Add("+");
 						//Everything that is not HQ's triage task list will have the attachments column
 						gridRow.Cells.Add(attStr);//Att
+						if(isCategoryShown) {
+							gridRow.Cells.Add(gridCellCategory);
+						}
 						string stringRow=dateStr+objDesc;
 						if(_listTasks[i].Descript.Length>250) {
 							stringRow+=_listTasks[i].Descript.Substring(0,250)+"(...)";//546,300 tasks have average Descript length of 142.1 characters.
@@ -1163,6 +1186,9 @@ namespace OpenDental {
 						gridRow.Cells.Add("");
 						//Everything that is not HQ's triage task list will have the attachments column
 						gridRow.Cells.Add(attStr);//Att
+						if(isCategoryShown) {
+							gridRow.Cells.Add(gridCellCategory);
+						}
 						gridRow.Cells.Add(dateStr+objDesc+_listTasks[i].Descript+notes);
 					}
 				}

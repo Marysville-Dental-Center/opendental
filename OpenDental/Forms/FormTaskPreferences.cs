@@ -36,6 +36,7 @@ namespace OpenDental {
 			validNumY.Text=ComputerPrefs.LocalComputer.TaskY.ToString();
 			checkTaskSortApptDateTime.Checked=PrefC.GetBool(PrefName.TaskSortApptDateTime);
 			checkTaskToApptOneToOne.Checked=PrefC.GetBool(PrefName.TasksForApptAllowMultiple);
+			checkTaskCategoryShow.Checked=PrefC.GetBool(PrefName.TaskCategoryShow);
 			FillComboGlobalFilter();
 			FillComboImageCategoryFolders();
 		}
@@ -133,6 +134,8 @@ namespace OpenDental {
 			isChanged |= Prefs.UpdateBool(PrefName.TasksShowOpenTickets,checkShowOpenTickets.Checked);
 			isChanged |= Prefs.UpdateBool(PrefName.TaskSortApptDateTime,checkTaskSortApptDateTime.Checked);
 			isChanged |= Prefs.UpdateBool(PrefName.TasksForApptAllowMultiple,checkTaskToApptOneToOne.Checked);
+			//Turning this off only hides the Category drop-down and column. Task categories already assigned are kept.
+			isChanged |= Prefs.UpdateBool(PrefName.TaskCategoryShow,checkTaskCategoryShow.Checked);
 			isChanged |= Prefs.UpdateInt(PrefName.TasksGlobalFilterType,(int)comboFilterDefault.GetSelected<EnumTaskFilterType>());
 			isChanged |= Prefs.UpdateLong(PrefName.TaskAttachmentCategory,comboImageCategoryFolders.GetSelected<Def>()?.DefNum??0);//If 'none' is selected, def will be null so set the pref to 0
 			if(ComputerPrefs.LocalComputer.TaskKeepListHidden!=checkBoxTaskKeepListHidden.Checked) {
