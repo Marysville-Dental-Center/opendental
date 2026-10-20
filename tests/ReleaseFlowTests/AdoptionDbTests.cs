@@ -204,6 +204,37 @@ namespace ReleaseFlowTests {
 		}
 
 		[TestMethod]
+		public void AdoptedCopy_WithSomeMarkersRemoved_IsRefused_AndNeverAdoptedAgain() {
+			foreach(string[] arrayRemoved in new[] { new[] { "ForkSchemaLevel" },new[] { "ForkSchemaLevel","OdSchemaCompat" } }) {
+				CreateOpenDentalCopy("25.3.48.0",is253:true);
+				Adoption.Run(null,new FakeRunner("3"),_dateTimeUtc);
+				ScratchDb.SetPref(DB_NAME,"ForkSchemaLevel","3");//As if the fork migration steps had run up to level 3.
+				ScratchDb.Exec(DB_NAME,"DELETE FROM preference WHERE PrefName IN ('"+string.Join("','",arrayRemoved)+"')");
+				string label=string.Join("+",arrayRemoved)+" removed";
+				ForkDbState forkDbState=ForkVersions.ReadState();
+				Assert.IsFalse(forkDbState.IsAdoptionIncomplete,label);
+				FakeRunner fakeRunner=new FakeRunner("3");
+				ForkGuardResult forkGuardResult=ForkVersionGuard.Evaluate(forkDbState,fakeRunner);
+				Assert.AreEqual(ForkGuardAction.Refuse,forkGuardResult.Action,label+": "+forkGuardResult.Message);
+				Assert.AreEqual(ForkVersionGuard.EXIT_CODE_INCONSISTENT,forkGuardResult.ExitCode,label);
+				Assert.IsFalse(forkGuardResult.IsAdoptionResume,label);
+				AdoptionPreflight adoptionPreflight=Adoption.Preflight();
+				Assert.IsFalse(adoptionPreflight.CanAdopt,label);
+				Assert.IsFalse(adoptionPreflight.IsResume,label);
+				string prefsBefore=ScratchDb.Scalar(DB_NAME,"SELECT GROUP_CONCAT(CONCAT(PrefName,'=',ValueString) ORDER BY PrefNum SEPARATOR '|') FROM preference");
+				try {
+					Adoption.Run(null,fakeRunner,_dateTimeUtc.AddHours(1));
+					Assert.Fail(label+": adoption must not run again.");
+				}
+				catch(ApplicationException) {
+				}
+				Assert.AreEqual(0,fakeRunner.CountRuns,label+": no fork migration step ran again.");
+				Assert.IsNull(ScratchDb.GetPref(DB_NAME,"ForkSchemaLevel"),label+": ForkSchemaLevel was not reset to the baseline.");
+				Assert.AreEqual(prefsBefore,ScratchDb.Scalar(DB_NAME,"SELECT GROUP_CONCAT(CONCAT(PrefName,'=',ValueString) ORDER BY PrefNum SEPARATOR '|') FROM preference"),label);
+			}
+		}
+
+		[TestMethod]
 		public void Markers_AreWrittenAsPlainPreferenceRows() {
 			CreateOpenDentalCopy("24.3.63.0",is253:false);
 			Assert.IsNull(ForkVersions.GetMarker("ForkProgramVersion"));

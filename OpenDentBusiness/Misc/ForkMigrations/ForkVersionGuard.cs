@@ -67,6 +67,13 @@ namespace OpenDentBusiness {
 			if(forkDbState.IsForkMarked) {
 				return EvaluateMarked(forkDbState,versionDb,versionProgram,runner);
 			}
+			if(forkDbState.IsAdoptedWithMarkersMissing) {
+				//ForkAdoptedFrom says the adoption finished, but ForkSchemaLevel is gone. Not an unfinished adoption: never resumed, never migrated again.
+				return Result(ForkGuardAction.Refuse,EXIT_CODE_INCONSISTENT,
+					"This database was adopted by this program ("+forkDbState.ForkAdoptedFrom+"), but its version markers are missing (ForkSchemaLevel '"
+					+(forkDbState.ForkSchemaLevel??"missing")+"', OdSchemaCompat '"+(forkDbState.OdSchemaCompat??"missing")+"').\r\n"
+					+"Restore a backup of the adopted database. Do not edit the version preferences by hand. Nothing was changed.");
+			}
 			if(forkDbState.IsAdoptionIncomplete) {
 				return Result(ForkGuardAction.NeedsAdoption,EXIT_CODE_NEEDS_ADOPTION,
 					"An adoption of this database was started but did not finish ("+forkDbState.ForkAdoptedFrom+").\r\n"

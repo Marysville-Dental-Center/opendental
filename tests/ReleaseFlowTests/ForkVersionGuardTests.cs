@@ -122,6 +122,36 @@ namespace ReleaseFlowTests {
 		}
 
 		[TestMethod]
+		public void Adopted_WithOnlySomeMarkersRemoved_IsRefused_NotResumed() {
+			//ForkAdoptedFrom still records the finished adoption. Treating this as an unfinished adoption would reset ForkSchemaLevel to the baseline
+			//and run every fork migration step again on a migrated database.
+			ForkDbState forkDbStateNoLevel=Adopted("7");
+			forkDbStateNoLevel.ForkSchemaLevel=null;
+			ForkDbState forkDbStateNoLevelNoCompat=Adopted("7");
+			forkDbStateNoLevelNoCompat.ForkSchemaLevel=null;
+			forkDbStateNoLevelNoCompat.OdSchemaCompat=null;
+			ForkDbState forkDbStateNoLevelNoVersions=Adopted("7");
+			forkDbStateNoLevelNoVersions.ForkSchemaLevel=null;
+			forkDbStateNoLevelNoVersions.DataBaseVersion="25.3.48.0";
+			forkDbStateNoLevelNoVersions.ProgramVersion="25.3.48.0";
+			foreach(ForkDbState forkDbState in new[] { forkDbStateNoLevel,forkDbStateNoLevelNoCompat,forkDbStateNoLevelNoVersions }) {
+				Assert.IsFalse(forkDbState.IsAdoptionIncomplete);
+				Assert.IsTrue(forkDbState.IsAdoptedWithMarkersMissing);
+				foreach(IForkMigrationRunner runner in new IForkMigrationRunner[] { _runnerBaseline,new FakeRunner("10") }) {
+					ForkGuardResult forkGuardResult=ForkVersionGuard.Evaluate(forkDbState,runner);
+					Assert.AreEqual(ForkGuardAction.Refuse,forkGuardResult.Action,forkGuardResult.Message);
+					Assert.AreEqual(ForkVersionGuard.EXIT_CODE_INCONSISTENT,forkGuardResult.ExitCode);
+					Assert.IsFalse(forkGuardResult.IsAdoptionResume);
+					Assert.IsFalse(forkGuardResult.Message.Contains("did not finish"),forkGuardResult.Message);
+					AssertNoDowngradeOffer(forkGuardResult);
+				}
+				AdoptionPreflight adoptionPreflight=Adoption.Preflight(forkDbState);
+				Assert.IsFalse(adoptionPreflight.CanAdopt,"The adoption tool does not adopt it again.");
+				Assert.IsFalse(adoptionPreflight.IsResume);
+			}
+		}
+
+		[TestMethod]
 		public void Adopted_WithVersionPrefsChanged_IsRefused() {
 			ForkDbState forkDbState=Adopted();
 			forkDbState.DataBaseVersion="25.3.48.0";
@@ -141,6 +171,11 @@ namespace ReleaseFlowTests {
 			ForkGuardResult forkGuardResult=ForkVersionGuard.Evaluate(forkDbState,_runnerBaseline);
 			Assert.AreEqual(ForkGuardAction.NeedsAdoption,forkGuardResult.Action);
 			Assert.IsTrue(forkGuardResult.IsAdoptionResume);
+			//Interrupted after OdSchemaCompat was written but before ForkSchemaLevel: still a resume.
+			forkDbState.OdSchemaCompat="25.3.48";
+			Assert.IsTrue(forkDbState.IsAdoptionIncomplete);
+			Assert.IsTrue(ForkVersionGuard.Evaluate(forkDbState,_runnerBaseline).IsAdoptionResume);
+			Assert.IsTrue(Adoption.Preflight(forkDbState).IsResume);
 		}
 
 		[TestMethod]

@@ -81,6 +81,21 @@ namespace OpenDentBusiness {
 			return versionA.CompareTo(versionB);
 		}
 
+		///<summary>One field of a ForkAdoptedFrom value ("source=25.3.48.0;started=...;adopted=..."), or null when the value is blank or has no such
+		///field.</summary>
+		public static string ParseAdoptedFromField(string adoptedFrom,string field) {
+			if(string.IsNullOrEmpty(adoptedFrom)) {
+				return null;
+			}
+			foreach(string part in adoptedFrom.Split(';')) {
+				int indexEquals=part.IndexOf('=');
+				if(indexEquals>0 && part.Substring(0,indexEquals).Trim()==field) {
+					return part.Substring(indexEquals+1).Trim();
+				}
+			}
+			return null;
+		}
+
 		#region Marker rows
 		///<summary>The raw value of a preference row, or null when the row does not exist. Reads the database, not the cache.</summary>
 		public static string GetMarker(string prefName) {
@@ -152,9 +167,23 @@ namespace OpenDentBusiness {
 			get { return ForkSchemaLevel!=null; }
 		}
 
-		///<summary>True when an adoption was started but did not finish (ForkAdoptedFrom says "started" and there is no ForkSchemaLevel yet).</summary>
+		///<summary>True when ForkAdoptedFrom records a finished adoption (it has the "adopted=" field). Adoption writes that field last, after
+		///ForkSchemaLevel and OdSchemaCompat.</summary>
+		public bool IsAdoptionRecordFinished {
+			get { return ForkVersions.ParseAdoptedFromField(ForkAdoptedFrom,"adopted")!=null; }
+		}
+
+		///<summary>True when an adoption was started but did not finish: ForkAdoptedFrom has only "source=" and "started=" (no "adopted=") and there
+		///is no ForkSchemaLevel yet. A record that says "adopted=" without ForkSchemaLevel is not an unfinished adoption: the markers of an adopted
+		///database were removed, and the version guard refuses it (IsAdoptedWithMarkersMissing).</summary>
 		public bool IsAdoptionIncomplete {
-			get { return !IsForkMarked && ForkAdoptedFrom!=null; }
+			get { return !IsForkMarked && ForkAdoptedFrom!=null && !IsAdoptionRecordFinished; }
+		}
+
+		///<summary>True when ForkAdoptedFrom records a finished adoption but ForkSchemaLevel or OdSchemaCompat is missing or blank. Such a database
+		///was adopted and migrated; it is never adopted or migrated again.</summary>
+		public bool IsAdoptedWithMarkersMissing {
+			get { return IsAdoptionRecordFinished && (string.IsNullOrWhiteSpace(ForkSchemaLevel) || string.IsNullOrWhiteSpace(OdSchemaCompat)); }
 		}
 
 		public ForkDbState Copy() {

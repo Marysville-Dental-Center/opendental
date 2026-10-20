@@ -59,6 +59,13 @@ namespace OpenDentBusiness {
 				adoptionPreflight.Message="This database is already adopted ("+(forkDbState.ForkAdoptedFrom??"no adoption record")+"). Nothing to do.";
 				return adoptionPreflight;
 			}
+			if(forkDbState.IsAdoptionRecordFinished) {
+				//The adoption finished (and its fork migration steps ran), but ForkSchemaLevel was removed since. Adopting again would reset the schema
+				//level to the baseline and run every step a second time on a migrated database.
+				adoptionPreflight.Message="This database was already adopted ("+forkDbState.ForkAdoptedFrom+"), but its version markers (ForkSchemaLevel, "
+					+"OdSchemaCompat) were removed. It is not adopted again. Restore a backup of the adopted database.";
+				return adoptionPreflight;
+			}
 			if(forkDbState.IsAdoptionIncomplete) {
 				Version versionStarted=ParseAdoptedFromSource(forkDbState.ForkAdoptedFrom);
 				if(!ForkVersions.IsAdoptable(versionStarted)) {
@@ -254,16 +261,7 @@ namespace OpenDentBusiness {
 
 		///<summary>One field of a ForkAdoptedFrom value, or null.</summary>
 		public static string ParseAdoptedFromField(string adoptedFrom,string field) {
-			if(string.IsNullOrEmpty(adoptedFrom)) {
-				return null;
-			}
-			foreach(string part in adoptedFrom.Split(';')) {
-				int indexEquals=part.IndexOf('=');
-				if(indexEquals>0 && part.Substring(0,indexEquals).Trim()==field) {
-					return part.Substring(indexEquals+1).Trim();
-				}
-			}
-			return null;
+			return ForkVersions.ParseAdoptedFromField(adoptedFrom,field);
 		}
 
 		private static string FormatUtc(DateTime dateTimeUtc) {
