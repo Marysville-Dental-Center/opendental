@@ -682,7 +682,13 @@ namespace OpenDental {
 				//doesn't have a primary/secondary claim at the time the primary claim gets created. Even if the user created the claim manually, the chances that the procedures on the
 				//medical/primary have more than one claim are low.
 				ClaimSendQueueItem[] listQueues=Claims.GetQueueList(listClaimsPromptingFor.Select(x=>x.ClaimNum).ToList(),0,0);
-				List<ClaimSendQueueItem> listClaimSendQueueItemsSent=SendClaimSendQueueItems(listQueues.ToList(),0);//Use clearinghouseNum of 0 to indicate automatic calculation of clearinghouse
+				//Open Dental 25.2: claims are validated with XConnect when they are sent; claims with errors stay in the queue. Done here and not in
+				//SendClaimSendQueueItems(), because the Send Claims window has already validated the claims it sends.
+				List<ClaimSendQueueItem> listClaimSendQueueItemsToSend=FilterQueueItemsByXConnect(listQueues.ToList(),listClaimsPromptingFor);
+				if(listClaimSendQueueItemsToSend.Count==0) {
+					return;
+				}
+				List<ClaimSendQueueItem> listClaimSendQueueItemsSent=SendClaimSendQueueItems(listClaimSendQueueItemsToSend,0);//Use clearinghouseNum of 0 to indicate automatic calculation of clearinghouse
 				for(int i=0;i<listClaimSendQueueItemsSent.Count;i++) {
 					if(listClaimSendQueueItemsSent[i].ClaimStatus!="S") {
 						continue;
@@ -908,6 +914,54 @@ namespace OpenDental {
 				return true;//Re-validation in the window resolved everything.
 			}
 			return decisionLatest==XConnectSendDecision.ConfirmWarnings && formXConnectValidation.IsSendAnywayClicked;
+		}
+
+		///<summary>Validation before the 'Outstanding ... claims' prompt sends claims (Open Dental 25.2). Validates, with XConnect, each electronic queue
+		///item whose clinic-level clearinghouse has XConnect on, then shows one Claim Validation window for the claims with problems
+		///(ShowXConnectResultsForBatch). Returns the queue items that may be sent: those not validated with XConnect, plus the validated ones that
+		///passed or whose warnings the user chose to send anyway. Claims with errors or a failed call are left out and stay waiting to send. Returns
+		///an empty list if the user cancels validation.</summary>
+		private static List<ClaimSendQueueItem> FilterQueueItemsByXConnect(List<ClaimSendQueueItem> listClaimSendQueueItems,List<Claim> listClaims) {
+			List<long> listClaimNumsToValidate=new List<long>();
+			for(int i=0;i<listClaimSendQueueItems.Count;i++) {
+				ClaimSendQueueItem claimSendQueueItem=listClaimSendQueueItems[i];
+				if(!claimSendQueueItem.CanSendElect) {
+					continue;//Not sent electronically, so DentalXChange does not see it.
+				}
+				Claim claim=listClaims.FirstOrDefault(x => x.ClaimNum==claimSendQueueItem.ClaimNum)??Claims.GetClaim(claimSendQueueItem.ClaimNum);
+				if(claim==null) {
+					continue;//Deleted by another workstation; SendClaimSendQueueItems() deals with it.
+				}
+				//suppressError: SendClaimSendQueueItems() reports a missing clearinghouse.
+				Clearinghouse clearinghouseClin=Clearinghouses.OverrideFields(ClearinghouseL.GetClearinghouseHq(claimSendQueueItem.ClearinghouseNum,true),
+					claim.ClinicNum);
+				if(XConnect.IsEnabled(clearinghouseClin)) {
+					listClaimNumsToValidate.Add(claim.ClaimNum);
+				}
+			}
+			if(listClaimNumsToValidate.Count==0) {
+				return listClaimSendQueueItems;
+			}
+			List<XConnectValidationResult> listResults=new List<XConnectValidationResult>();
+			ProgressWin progressWin=new ProgressWin();
+			progressWin.StartingMessage=Lans.g("XConnect","Validating the claims with DentalXChange...");
+			progressWin.ActionMain=() => {
+				for(int i=0;i<listClaimNumsToValidate.Count;i++) {
+					listResults.Add(ValidateXConnect(listClaimNumsToValidate[i],XConnect.TimeoutValidateOnSend));
+				}
+			};
+			try {
+				progressWin.ShowDialog();
+			}
+			catch(Exception ex) {
+				FriendlyException.Show(Lans.g("XConnect","XConnect validation failed. No claims were sent."),ex);
+				return new List<ClaimSendQueueItem>();
+			}
+			if(progressWin.IsCancelled || listResults.Count!=listClaimNumsToValidate.Count) {
+				return new List<ClaimSendQueueItem>();
+			}
+			List<long> listClaimNumsToSend=ShowXConnectResultsForBatch(listResults);
+			return listClaimSendQueueItems.FindAll(x => !listClaimNumsToValidate.Contains(x.ClaimNum) || listClaimNumsToSend.Contains(x.ClaimNum));
 		}
 
 		///<summary>Batch sends (Send Claims window): one combined window for every claim with problems, grouped by claim. Returns the ClaimNums that may
