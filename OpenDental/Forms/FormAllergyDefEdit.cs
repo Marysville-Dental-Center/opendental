@@ -47,6 +47,7 @@ namespace OpenDental {
 		private void butMedicationSelect_Click(object sender,EventArgs e) {
 			using FormMedications formMedications=new FormMedications();
 			formMedications.IsSelectionMode=true;
+			formMedications.CanSelectHidden=false;//Hidden medications are not offered here.
 			formMedications.ShowDialog();
 			if(formMedications.DialogResult!=DialogResult.OK){
 				return;

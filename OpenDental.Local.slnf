@@ -26,6 +26,7 @@
       "tests\\FeeTests\\FeeTests.csproj",
       "tests\\ForkMigrationTests\\ForkMigrationTests.csproj",
       "tests\\PayPlanTests\\PayPlanTests.csproj",
+      "tests\\MedicationTests\\MedicationTests.csproj",
       "tests\\RegistryTests\\RegistryTests.csproj",
       "tests\\TaskCategoryTests\\TaskCategoryTests.csproj",
       "tests\\ReleaseFlowTests\\ReleaseFlowTests.csproj",

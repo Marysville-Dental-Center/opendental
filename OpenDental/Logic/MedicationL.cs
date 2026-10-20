@@ -20,6 +20,9 @@ namespace OpenDental {
 			public string Notes;
 			///<summary>RxNorm Code identifier.</summary>
 			public long RxCui;
+			///<summary>Hidden in the master list (Open Dental 25.1).  Exported for reference; import never reads it, so imported medications start visible.
+			///</summary>
+			public bool IsHidden;
 
 			public MedicationExport(Medication medication=null) {
 				if(medication==null) {
@@ -29,6 +32,7 @@ namespace OpenDental {
 				GenericName=Medications.GetGenericName(medication.GenericNum);
 				Notes=medication.Notes;
 				RxCui=medication.RxCui;
+				IsHidden=medication.IsHidden;
 			}
 		}
 

@@ -47,6 +47,7 @@ namespace OpenDental {
 			this.butConvertBrand = new OpenDental.UI.Button();
 			this.butConvertGeneric = new OpenDental.UI.Button();
 			this.gridMissing = new OpenDental.UI.GridOD();
+			this.checkShowHidden = new OpenDental.UI.CheckBox();
 			this.tabMedications.SuspendLayout();
 			this.tabAllMedications.SuspendLayout();
 			this.tabMissing.SuspendLayout();
@@ -116,6 +117,15 @@ namespace OpenDental {
 			this.label1.Text = "Search";
 			this.label1.TextAlign = System.Drawing.ContentAlignment.TopRight;
 			// 
+			// checkShowHidden
+			// 
+			this.checkShowHidden.Location = new System.Drawing.Point(578, 10);
+			this.checkShowHidden.Name = "checkShowHidden";
+			this.checkShowHidden.Size = new System.Drawing.Size(110, 20);
+			this.checkShowHidden.TabIndex = 43;
+			this.checkShowHidden.Text = "Show Hidden";
+			this.checkShowHidden.Click += new System.EventHandler(this.checkShowHidden_Click);
+			// 
 			// tabMedications
 			// 
 			this.tabMedications.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
@@ -131,6 +141,7 @@ namespace OpenDental {
 			// 
 			// tabAllMedications
 			// 
+			this.tabAllMedications.Controls.Add(this.checkShowHidden);
 			this.tabAllMedications.Controls.Add(this.butExportMedications);
 			this.tabAllMedications.Controls.Add(this.butImportMedications);
 			this.tabAllMedications.Controls.Add(this.gridAllMedications);
@@ -247,5 +258,6 @@ namespace OpenDental {
 		private UI.Button butImportMedications;
 		private UI.Button butExportMedications;
 		private UI.Button butConvertGeneric;
+		private OpenDental.UI.CheckBox checkShowHidden;
 	}
 }

@@ -177,6 +177,7 @@ namespace OpenDental {
 			//select medication from list.  Additional meds can be added to the list from within that dlg
 			using FormMedications formMedications=new FormMedications();
 			formMedications.IsSelectionMode=true;
+			formMedications.CanSelectHidden=false;//Hidden medications are not offered here.
 			formMedications.ShowDialog();
 			if(formMedications.DialogResult!=DialogResult.OK) {
 				return;
