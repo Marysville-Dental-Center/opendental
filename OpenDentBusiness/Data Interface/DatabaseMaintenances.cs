@@ -15,7 +15,7 @@ using OpenDentBusiness.Crud;
 using OpenDentBusiness.FileIO;
 
 namespace OpenDentBusiness {
-	public class DatabaseMaintenances {
+	public partial class DatabaseMaintenances {
 		private const string _lanThis="FormDatabaseMaintenance";
 
 		#region Get Methods
