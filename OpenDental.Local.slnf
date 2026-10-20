@@ -25,6 +25,8 @@
       "tests\\RegistryTests\\RegistryTests.csproj",
       "tests\\ReleaseFlowTests\\ReleaseFlowTests.csproj",
       "tests\\VendorDirectTests\\VendorDirectTests.csproj",
+      "tools\\SyntheticData\\SyntheticData.csproj",
+      "tools\\SyntheticData\\SyntheticData.Tests\\SyntheticData.Tests.csproj",
       "UnitTests\\UnitTests.csproj",
       "UnitTestsCore\\UnitTestsCore.csproj",
       "UpdateFileCopier\\UpdateFileCopier.csproj",
