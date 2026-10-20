@@ -246,7 +246,7 @@ namespace OpenDental {
 						defCatOptions.CanDelete=true;
 						defCatOptions.DoShowNoColor=true;
 						defCatOptions.EnableColor=true;
-						defCatOptions.HelpText=Lans.g("FormDefinitions","The categories for tasks. HQ Only as of now.");
+						defCatOptions.HelpText=Lans.g("FormDefinitions","Categories that can be assigned to tasks. They show in the Task window and in task lists when Show task category is turned on in Tasks Preferences. A category's color shades its cell in task lists. Changes affect all tasks where the definition is used.");
 						break;
 					case DefCat.TaskPriorities:
 						defCatOptions.EnableColor=true;

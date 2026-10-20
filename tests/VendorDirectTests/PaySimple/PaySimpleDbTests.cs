@@ -18,7 +18,7 @@ using OpenDentBusiness.VendorDirect;
 namespace VendorDirectTests.PaySimple {
 	[TestClass]
 	public class PaySimpleDbTests {
-		private const string DB_NAME="vendordirect_paysimple_tests";
+		private static readonly string DB_NAME=ScratchDb.Name("vendordirect_paysimple_tests");
 		private const string USER="APIUserTest01";
 		private const string KEY="fake-key-for-tests-only";
 		private static string _skipReason;

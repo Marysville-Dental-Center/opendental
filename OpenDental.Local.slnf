@@ -26,6 +26,7 @@
       "tests\\ForkMigrationTests\\ForkMigrationTests.csproj",
       "tests\\PayPlanTests\\PayPlanTests.csproj",
       "tests\\RegistryTests\\RegistryTests.csproj",
+      "tests\\TaskCategoryTests\\TaskCategoryTests.csproj",
       "tests\\ReleaseFlowTests\\ReleaseFlowTests.csproj",
       "tests\\VendorDirectTests\\VendorDirectTests.csproj",
       "tools\\SyntheticData\\SyntheticData.csproj",

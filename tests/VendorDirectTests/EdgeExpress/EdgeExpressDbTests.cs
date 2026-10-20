@@ -16,7 +16,7 @@ using OpenDentBusiness.WebTypes.Shared.XWeb;
 namespace VendorDirectTests.EdgeExpressTests {
 	[TestClass]
 	public class EdgeExpressDbTests {
-		private const string DB_NAME="vendordirect_edgeexpress_tests";
+		private static readonly string DB_NAME=ScratchDb.Name("vendordirect_edgeexpress_tests");
 		private const string CONNECTION="Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=3";
 		private const long PAT_NUM=501;
 		private const string XWEB_ID_CLINIC_1="800000000001";

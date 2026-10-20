@@ -12,7 +12,7 @@ using OpenDentBusiness.Qbo;
 namespace VendorDirectTests.Qbo {
 	[TestClass]
 	public class QboDbTests {
-		private const string DB_NAME="vendordirect_qbo_tests";
+		private static readonly string DB_NAME=ScratchDb.Name("vendordirect_qbo_tests");
 		private static string _skipReason;
 		private static long _programNum;
 

@@ -10,7 +10,7 @@ using OpenDentBusiness;
 namespace VendorDirectTests.PayConnectV2 {
 	[TestClass]
 	public class PayConnect2SettingsDbTests {
-		private const string DB_NAME="vendordirect_payconnect_tests";
+		private static readonly string DB_NAME=ScratchDb.Name("vendordirect_payconnect_tests");
 		private const string API_KEY="test-integrator-key-0002";
 		private static string _skipReason;
 		private static long _programNum;

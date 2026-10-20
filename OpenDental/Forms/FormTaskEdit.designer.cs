@@ -107,7 +107,7 @@ namespace OpenDental {
 			this.textAttachments = new System.Windows.Forms.TextBox();
 			this.checkIsReadOnly = new OpenDental.UI.CheckBox();
 			this.labelCategory = new System.Windows.Forms.Label();
-			this.listCategory = new OpenDental.UI.ListBox();
+			this.comboCategory = new OpenDental.UI.ComboBox();
 			this.splitContainer = new OpenDental.UI.SplitContainer();
 			this.splitterPanel1 = new OpenDental.UI.SplitterPanel();
 			this.splitterPanel2 = new OpenDental.UI.SplitterPanel();
@@ -889,21 +889,22 @@ namespace OpenDental {
 			// 
 			// labelCategory
 			// 
-			this.labelCategory.Location = new System.Drawing.Point(1003, -1);
+			this.labelCategory.Location = new System.Drawing.Point(605, 45);
 			this.labelCategory.Name = "labelCategory";
-			this.labelCategory.Size = new System.Drawing.Size(120, 20);
+			this.labelCategory.Size = new System.Drawing.Size(140, 20);
 			this.labelCategory.TabIndex = 182;
-			this.labelCategory.Text = "Triage Category";
+			this.labelCategory.Text = "Category";
 			this.labelCategory.TextAlign = System.Drawing.ContentAlignment.BottomLeft;
+			this.labelCategory.Visible = false;
 			// 
-			// listCategory
+			// comboCategory
 			// 
-			this.listCategory.Location = new System.Drawing.Point(1006, 23);
-			this.listCategory.Name = "listCategory";
-			this.listCategory.Size = new System.Drawing.Size(168, 485);
-			this.listCategory.TabIndex = 183;
-			this.listCategory.Text = "listCategory";
-			this.listCategory.SelectionChangeCommitted += new System.EventHandler(this.listCategory_SelectionChangeCommitted);
+			this.comboCategory.Location = new System.Drawing.Point(605, 66);
+			this.comboCategory.Name = "comboCategory";
+			this.comboCategory.Size = new System.Drawing.Size(140, 21);
+			this.comboCategory.TabIndex = 183;
+			this.comboCategory.Visible = false;
+			this.comboCategory.SelectionChangeCommitted += new System.EventHandler(this.comboCategory_SelectionChangeCommitted);
 			// 
 			// splitContainer
 			// 
@@ -962,7 +963,7 @@ namespace OpenDental {
 			this.ClientSize = new System.Drawing.Size(1185, 686);
 			this.Controls.Add(this.butSubscribers);
 			this.Controls.Add(this.splitContainer);
-			this.Controls.Add(this.listCategory);
+			this.Controls.Add(this.comboCategory);
 			this.Controls.Add(this.labelCategory);
 			this.Controls.Add(this.checkIsReadOnly);
 			this.Controls.Add(this.textAttachments);
@@ -1107,7 +1108,7 @@ namespace OpenDental {
 		private TextBox textAttachments;
 		private OpenDental.UI.CheckBox checkIsReadOnly;
 		private Label labelCategory;
-		private UI.ListBox listCategory;
+		private UI.ComboBox comboCategory;
 		private UI.SplitContainer splitContainer;
 		private UI.SplitterPanel splitterPanel1;
 		private UI.SplitterPanel splitterPanel2;
