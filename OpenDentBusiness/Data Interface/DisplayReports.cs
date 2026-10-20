@@ -145,6 +145,37 @@ namespace OpenDentBusiness{
 			public const string DPPOvercharged="ODDynamicPayPlanOvercharged";
 			public const string MonthlyProductionGoal="ODMonthlyProductionGoal";
 			public const string EraAutoProcessed="ODEraAutoProcessed";
+			///<summary>The Daily Procedures report of 24.3 and earlier, with its Individual/Grouped choice. From 24.4 its row is the itemized
+			///Procedures report (ProceduresIndividual); a database that still has this name opens that report too.</summary>
+			public const string Procedures="ODProcedures";
+			///<summary>24.4: the itemized, interactive Procedures report (Daily). The name is the one our 24.3.63 Report Setup code already lists.
+			///</summary>
+			public const string ProceduresIndividual="ODProceduresIndividual";
+			///<summary>24.4: Production by Procedure (Daily), the old "Grouped By Procedure Code" mode. The name is the one our 24.3.63 Report Setup
+			///code already lists.</summary>
+			public const string ProductionByProcedure="ODProductionByProcedure";
+			///<summary>25.2: Insurance Pending Supplementals (Lists). Proposed name: Open Dental's published documentation does not list report
+			///names, so confirm it against an adopted database (port-backlog A-RPT).</summary>
+			public const string InsPendingSupplementals="ODInsPendingSupplementals";
+
+			///<summary>Every internal name that FormReportsMore.OpenReportHelper opens. A displayreport row whose name is not in this list is a report this
+			///program does not know, for example one a later Open Dental version added. Kept in step with the dispatcher by a test.</summary>
+			public static readonly string[] ArrayKnownNames=new string[] {
+				"ODToday","ODYesterday","ODThisMonth","ODLastMonth","ODThisYear",ODMoreOptions,"ODProviderPayrollSummary","ODProviderPayrollDetailed",
+				"ODAdjustments","ODPayments",Procedures,ProceduresIndividual,ProductionByProcedure,ODProcOverpaid,"ODWriteoffs",IncompleteProcNotes,
+				"ODRoutingSlips","ODNetProdDetailDaily",UnfinalizedInsPay,PatPortionUncollected,"ODAgingAR",ClaimsNotSent,"ODCapitation",
+				"ODFinanceCharge",OutstandingInsClaims,ProcNotBilledIns,"ODPPOWriteoffs","ODPaymentPlans","ODReceivablesBreakdown","ODUnearnedIncome",
+				"ODInsuranceOverpaid","ODPresentedTreatmentProd","ODTreatmentPresentationStats","ODInsurancePayPlansPastDue",InsAging,CustomAging,
+				"ODActivePatients","ODAppointments","ODBirthdays","ODBrokenAppointments","ODInsurancePlans","ODNewPatients","ODPatientsRaw",
+				"ODPatientNotes","ODPrescriptions","ODProcedureCodes","ODReferralsRaw","ODReferralAnalysis",ReferredProcTracking,TreatmentFinder,
+				"ODRawScreeningData","ODRawPopulationData","ODDentalSealantMeasure","ODEligibilityFile","ODEncounterFile","ODDiscountPlan",
+				MonthlyProductionGoal,"ODHiddenPaySplits",DPPOvercharged,EraAutoProcessed,InsPendingSupplementals,
+			};
+
+			///<summary>True if this program opens a report with this internal name. Case-sensitive, as the dispatcher is.</summary>
+			public static bool IsKnown(string internalName) {
+				return Array.IndexOf(ArrayKnownNames,internalName)>=0;
+			}
 		}
 	}
 }
