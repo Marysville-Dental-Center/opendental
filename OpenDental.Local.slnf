@@ -30,6 +30,7 @@
       "tests\\MedicationTests\\MedicationTests.csproj",
       "tests\\RegistryTests\\RegistryTests.csproj",
       "tests\\TaskCategoryTests\\TaskCategoryTests.csproj",
+      "tests\\RowHashTests\\RowHashTests.csproj",
       "tests\\ReleaseFlowTests\\ReleaseFlowTests.csproj",
       "tests\\ReportTests\\ReportTests.csproj",
       "tests\\SignatureTests\\SignatureTests.csproj",
