@@ -41,6 +41,9 @@ namespace OpenDentBusiness{
 		///updates.  Not user editable with the UI.</summary>
 		[CrudColumn(SpecialType=CrudSpecialColType.TimeStamp)]
 		public DateTime SecDateTEdit;
+		///<summary>Added in Open Dental 25.1 (inssub in 25.2): row-integrity hash over the protected fields, to notice edits made outside the program.
+		///Open Dental's values cannot be checked by this program; the row-integrity package rehashes them with this program's own hash.</summary>
+		public string SecurityHash;
 
 
 		///<summary>Returns a copy of this InsSub.</summary>

@@ -73,6 +73,7 @@ namespace OpenDentBusiness.Crud{
 				payPlan.DynamicPayPlanTPOption= (OpenDentBusiness.DynamicPayPlanTPOptions)PIn.Int(row["DynamicPayPlanTPOption"].ToString());
 				payPlan.MobileAppDeviceNum    = PIn.Long  (row["MobileAppDeviceNum"].ToString());
 				payPlan.SecurityHash          = PIn.String(row["SecurityHash"].ToString());
+				payPlan.SheetDefNum           = PIn.Long  (row["SheetDefNum"].ToString());
 				retVal.Add(payPlan);
 			}
 			return retVal;
@@ -109,6 +110,7 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("DynamicPayPlanTPOption");
 			table.Columns.Add("MobileAppDeviceNum");
 			table.Columns.Add("SecurityHash");
+			table.Columns.Add("SheetDefNum");
 			foreach(PayPlan payPlan in listPayPlans) {
 				table.Rows.Add(new object[] {
 					POut.Long  (payPlan.PayPlanNum),
@@ -136,6 +138,7 @@ namespace OpenDentBusiness.Crud{
 					POut.Int   ((int)payPlan.DynamicPayPlanTPOption),
 					POut.Long  (payPlan.MobileAppDeviceNum),
 					            payPlan.SecurityHash,
+					POut.Long  (payPlan.SheetDefNum),
 				});
 			}
 			return table;
@@ -155,7 +158,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="PayPlanNum,";
 			}
-			command+="PatNum,Guarantor,PayPlanDate,APR,Note,PlanNum,CompletedAmt,InsSubNum,PaySchedule,NumberOfPayments,PayAmt,DownPayment,IsClosed,Signature,SigIsTopaz,PlanCategory,IsDynamic,ChargeFrequency,DatePayPlanStart,IsLocked,DateInterestStart,DynamicPayPlanTPOption,MobileAppDeviceNum,SecurityHash) VALUES(";
+			command+="PatNum,Guarantor,PayPlanDate,APR,Note,PlanNum,CompletedAmt,InsSubNum,PaySchedule,NumberOfPayments,PayAmt,DownPayment,IsClosed,Signature,SigIsTopaz,PlanCategory,IsDynamic,ChargeFrequency,DatePayPlanStart,IsLocked,DateInterestStart,DynamicPayPlanTPOption,MobileAppDeviceNum,SecurityHash,SheetDefNum) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(payPlan.PayPlanNum)+",";
 			}
@@ -183,7 +186,8 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Date  (payPlan.DateInterestStart)+","
 				+    POut.Int   ((int)payPlan.DynamicPayPlanTPOption)+","
 				+    POut.Long  (payPlan.MobileAppDeviceNum)+","
-				+"'"+POut.String(payPlan.SecurityHash)+"')";
+				+"'"+POut.String(payPlan.SecurityHash)+"',"
+				+    POut.Long  (payPlan.SheetDefNum)+")";
 			if(payPlan.Note==null) {
 				payPlan.Note="";
 			}
@@ -227,7 +231,7 @@ namespace OpenDentBusiness.Crud{
 						if(useExistingPK) {
 							sbCommands.Append("PayPlanNum,");
 						}
-						sbCommands.Append("PatNum,Guarantor,PayPlanDate,APR,Note,PlanNum,CompletedAmt,InsSubNum,PaySchedule,NumberOfPayments,PayAmt,DownPayment,IsClosed,Signature,SigIsTopaz,PlanCategory,IsDynamic,ChargeFrequency,DatePayPlanStart,IsLocked,DateInterestStart,DynamicPayPlanTPOption,MobileAppDeviceNum,SecurityHash) VALUES ");
+						sbCommands.Append("PatNum,Guarantor,PayPlanDate,APR,Note,PlanNum,CompletedAmt,InsSubNum,PaySchedule,NumberOfPayments,PayAmt,DownPayment,IsClosed,Signature,SigIsTopaz,PlanCategory,IsDynamic,ChargeFrequency,DatePayPlanStart,IsLocked,DateInterestStart,DynamicPayPlanTPOption,MobileAppDeviceNum,SecurityHash,SheetDefNum) VALUES ");
 						countRows=0;
 					}
 					else {
@@ -259,7 +263,8 @@ namespace OpenDentBusiness.Crud{
 					sbRow.Append(POut.Date(payPlan.DateInterestStart)); sbRow.Append(",");
 					sbRow.Append(POut.Int((int)payPlan.DynamicPayPlanTPOption)); sbRow.Append(",");
 					sbRow.Append(POut.Long(payPlan.MobileAppDeviceNum)); sbRow.Append(",");
-					sbRow.Append("'"+POut.String(payPlan.SecurityHash)+"'"); sbRow.Append(")");
+					sbRow.Append("'"+POut.String(payPlan.SecurityHash)+"'"); sbRow.Append(",");
+					sbRow.Append(POut.Long(payPlan.SheetDefNum)); sbRow.Append(")");
 					if(sbCommands.Length+sbRow.Length+1 > TableBase.MaxAllowedPacketCount && countRows > 0) {
 						Db.NonQ(sbCommands.ToString());
 						sbCommands=null;
@@ -294,7 +299,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="PayPlanNum,";
 			}
-			command+="PatNum,Guarantor,PayPlanDate,APR,Note,PlanNum,CompletedAmt,InsSubNum,PaySchedule,NumberOfPayments,PayAmt,DownPayment,IsClosed,Signature,SigIsTopaz,PlanCategory,IsDynamic,ChargeFrequency,DatePayPlanStart,IsLocked,DateInterestStart,DynamicPayPlanTPOption,MobileAppDeviceNum,SecurityHash) VALUES(";
+			command+="PatNum,Guarantor,PayPlanDate,APR,Note,PlanNum,CompletedAmt,InsSubNum,PaySchedule,NumberOfPayments,PayAmt,DownPayment,IsClosed,Signature,SigIsTopaz,PlanCategory,IsDynamic,ChargeFrequency,DatePayPlanStart,IsLocked,DateInterestStart,DynamicPayPlanTPOption,MobileAppDeviceNum,SecurityHash,SheetDefNum) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(payPlan.PayPlanNum)+",";
 			}
@@ -322,7 +327,8 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Date  (payPlan.DateInterestStart)+","
 				+    POut.Int   ((int)payPlan.DynamicPayPlanTPOption)+","
 				+    POut.Long  (payPlan.MobileAppDeviceNum)+","
-				+"'"+POut.String(payPlan.SecurityHash)+"')";
+				+"'"+POut.String(payPlan.SecurityHash)+"',"
+				+    POut.Long  (payPlan.SheetDefNum)+")";
 			if(payPlan.Note==null) {
 				payPlan.Note="";
 			}
@@ -366,7 +372,8 @@ namespace OpenDentBusiness.Crud{
 				+"DateInterestStart     =  "+POut.Date  (payPlan.DateInterestStart)+", "
 				+"DynamicPayPlanTPOption=  "+POut.Int   ((int)payPlan.DynamicPayPlanTPOption)+", "
 				+"MobileAppDeviceNum    =  "+POut.Long  (payPlan.MobileAppDeviceNum)+", "
-				+"SecurityHash          = '"+POut.String(payPlan.SecurityHash)+"' "
+				+"SecurityHash          = '"+POut.String(payPlan.SecurityHash)+"', "
+				+"SheetDefNum           =  "+POut.Long  (payPlan.SheetDefNum)+" "
 				+"WHERE PayPlanNum = "+POut.Long(payPlan.PayPlanNum);
 			if(payPlan.Note==null) {
 				payPlan.Note="";
@@ -478,6 +485,10 @@ namespace OpenDentBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="SecurityHash = '"+POut.String(payPlan.SecurityHash)+"'";
 			}
+			if(payPlan.SheetDefNum != oldPayPlan.SheetDefNum) {
+				if(command!="") { command+=",";}
+				command+="SheetDefNum = "+POut.Long(payPlan.SheetDefNum)+"";
+			}
 			if(command=="") {
 				return false;
 			}
@@ -568,6 +579,9 @@ namespace OpenDentBusiness.Crud{
 				return true;
 			}
 			if(payPlan.SecurityHash != oldPayPlan.SecurityHash) {
+				return true;
+			}
+			if(payPlan.SheetDefNum != oldPayPlan.SheetDefNum) {
 				return true;
 			}
 			return false;

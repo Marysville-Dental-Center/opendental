@@ -89,6 +89,7 @@ namespace OpenDentBusiness.Crud{
 				computerPref.GraphicsUseDirectX11   = (OpenDentBusiness.YN)PIn.Int(row["GraphicsUseDirectX11"].ToString());
 				computerPref.Zoom                   = PIn.Int   (row["Zoom"].ToString());
 				computerPref.VideoRectangle         = PIn.String(row["VideoRectangle"].ToString());
+				computerPref.CreditCardTerminalId   = PIn.String(row["CreditCardTerminalId"].ToString());
 				retVal.Add(computerPref);
 			}
 			return retVal;
@@ -133,6 +134,7 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("GraphicsUseDirectX11");
 			table.Columns.Add("Zoom");
 			table.Columns.Add("VideoRectangle");
+			table.Columns.Add("CreditCardTerminalId");
 			foreach(ComputerPref computerPref in listComputerPrefs) {
 				table.Rows.Add(new object[] {
 					POut.Long  (computerPref.ComputerPrefNum),
@@ -168,6 +170,7 @@ namespace OpenDentBusiness.Crud{
 					POut.Int   ((int)computerPref.GraphicsUseDirectX11),
 					POut.Int   (computerPref.Zoom),
 					            computerPref.VideoRectangle,
+					            computerPref.CreditCardTerminalId,
 				});
 			}
 			return table;
@@ -187,7 +190,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="ComputerPrefNum,";
 			}
-			command+="ComputerName,GraphicsUseHardware,GraphicsSimple,SensorType,SensorBinned,SensorPort,SensorExposure,GraphicsDoubleBuffering,PreferredPixelFormatNum,AtoZpath,TaskKeepListHidden,TaskDock,TaskX,TaskY,DirectXFormat,ScanDocSelectSource,ScanDocShowOptions,ScanDocDuplex,ScanDocGrayscale,ScanDocResolution,ScanDocQuality,ClinicNum,ApptViewNum,RecentApptView,PatSelectSearchMode,NoShowLanguage,NoShowDecimal,ComputerOS,HelpButtonXAdjustment,GraphicsUseDirectX11,Zoom,VideoRectangle) VALUES(";
+			command+="ComputerName,GraphicsUseHardware,GraphicsSimple,SensorType,SensorBinned,SensorPort,SensorExposure,GraphicsDoubleBuffering,PreferredPixelFormatNum,AtoZpath,TaskKeepListHidden,TaskDock,TaskX,TaskY,DirectXFormat,ScanDocSelectSource,ScanDocShowOptions,ScanDocDuplex,ScanDocGrayscale,ScanDocResolution,ScanDocQuality,ClinicNum,ApptViewNum,RecentApptView,PatSelectSearchMode,NoShowLanguage,NoShowDecimal,ComputerOS,HelpButtonXAdjustment,GraphicsUseDirectX11,Zoom,VideoRectangle,CreditCardTerminalId) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(computerPref.ComputerPrefNum)+",";
 			}
@@ -223,7 +226,8 @@ namespace OpenDentBusiness.Crud{
 				+		 POut.Double(computerPref.HelpButtonXAdjustment)+","
 				+    POut.Int   ((int)computerPref.GraphicsUseDirectX11)+","
 				+    POut.Int   (computerPref.Zoom)+","
-				+"'"+POut.String(computerPref.VideoRectangle)+"')";
+				+"'"+POut.String(computerPref.VideoRectangle)+"',"
+				+"'"+POut.String(computerPref.CreditCardTerminalId)+"')";
 			if(useExistingPK || PrefC.RandomKeys) {
 				Db.NonQ(command);
 			}
@@ -248,7 +252,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="ComputerPrefNum,";
 			}
-			command+="ComputerName,GraphicsUseHardware,GraphicsSimple,SensorType,SensorBinned,SensorPort,SensorExposure,GraphicsDoubleBuffering,PreferredPixelFormatNum,AtoZpath,TaskKeepListHidden,TaskDock,TaskX,TaskY,DirectXFormat,ScanDocSelectSource,ScanDocShowOptions,ScanDocDuplex,ScanDocGrayscale,ScanDocResolution,ScanDocQuality,ClinicNum,ApptViewNum,RecentApptView,PatSelectSearchMode,NoShowLanguage,NoShowDecimal,ComputerOS,HelpButtonXAdjustment,GraphicsUseDirectX11,Zoom,VideoRectangle) VALUES(";
+			command+="ComputerName,GraphicsUseHardware,GraphicsSimple,SensorType,SensorBinned,SensorPort,SensorExposure,GraphicsDoubleBuffering,PreferredPixelFormatNum,AtoZpath,TaskKeepListHidden,TaskDock,TaskX,TaskY,DirectXFormat,ScanDocSelectSource,ScanDocShowOptions,ScanDocDuplex,ScanDocGrayscale,ScanDocResolution,ScanDocQuality,ClinicNum,ApptViewNum,RecentApptView,PatSelectSearchMode,NoShowLanguage,NoShowDecimal,ComputerOS,HelpButtonXAdjustment,GraphicsUseDirectX11,Zoom,VideoRectangle,CreditCardTerminalId) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(computerPref.ComputerPrefNum)+",";
 			}
@@ -284,7 +288,8 @@ namespace OpenDentBusiness.Crud{
 				+	   POut.Double(computerPref.HelpButtonXAdjustment)+","
 				+    POut.Int   ((int)computerPref.GraphicsUseDirectX11)+","
 				+    POut.Int   (computerPref.Zoom)+","
-				+"'"+POut.String(computerPref.VideoRectangle)+"')";
+				+"'"+POut.String(computerPref.VideoRectangle)+"',"
+				+"'"+POut.String(computerPref.CreditCardTerminalId)+"')";
 			if(useExistingPK || isRandomKeys) {
 				Db.NonQ(command);
 			}
@@ -328,7 +333,8 @@ namespace OpenDentBusiness.Crud{
 				+"HelpButtonXAdjustment  =  "+POut.Double(computerPref.HelpButtonXAdjustment)+", "
 				+"GraphicsUseDirectX11   =  "+POut.Int   ((int)computerPref.GraphicsUseDirectX11)+", "
 				+"Zoom                   =  "+POut.Int   (computerPref.Zoom)+", "
-				+"VideoRectangle         = '"+POut.String(computerPref.VideoRectangle)+"' "
+				+"VideoRectangle         = '"+POut.String(computerPref.VideoRectangle)+"', "
+				+"CreditCardTerminalId   = '"+POut.String(computerPref.CreditCardTerminalId)+"' "
 				+"WHERE ComputerPrefNum = "+POut.Long(computerPref.ComputerPrefNum);
 			Db.NonQ(command);
 		}
@@ -464,6 +470,10 @@ namespace OpenDentBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="VideoRectangle = '"+POut.String(computerPref.VideoRectangle)+"'";
 			}
+			if(computerPref.CreditCardTerminalId != oldComputerPref.CreditCardTerminalId) {
+				if(command!="") { command+=",";}
+				command+="CreditCardTerminalId = '"+POut.String(computerPref.CreditCardTerminalId)+"'";
+			}
 			if(command=="") {
 				return false;
 			}
@@ -570,6 +580,9 @@ namespace OpenDentBusiness.Crud{
 				return true;
 			}
 			if(computerPref.VideoRectangle != oldComputerPref.VideoRectangle) {
+				return true;
+			}
+			if(computerPref.CreditCardTerminalId != oldComputerPref.CreditCardTerminalId) {
 				return true;
 			}
 			return false;

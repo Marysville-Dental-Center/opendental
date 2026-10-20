@@ -5,6 +5,7 @@ using System.Data;
 using System.Linq;
 using System.Reflection;
 using OpenDentBusiness;
+using OpenDentBusiness.ForkMigrations;
 
 namespace DevDbTool {
 	///<summary>Checks that a database matches what this build of the business layer expects: version preferences, conversion flags, and
@@ -28,10 +29,15 @@ namespace DevDbTool {
 			}
 		}
 
-		public static SchemaCheck Run(string databaseName) {
+		///<summary>isForkMigrated: the database should have every fork migration (the normal case). False for a plain 24.3.63 database made with
+		///--no-fork-migrations: columns that only the fork migrations add are then listed as notes, not problems.</summary>
+		public static SchemaCheck Run(string databaseName,bool isForkMigrated=true) {
 			SchemaCheck check=new SchemaCheck();
 			check.CheckPrefs();
-			check.CheckTables(databaseName);
+			check.CheckTables(databaseName,isForkMigrated);
+			if(isForkMigrated) {
+				check.CheckForkMigrations(databaseName);
+			}
 			check.CheckAdminUser();
 			check.CheckEngines(databaseName);
 			return check;
@@ -76,7 +82,8 @@ namespace DevDbTool {
 				+"optional prefs that the convert scripts never insert).");
 		}
 
-		private void CheckTables(string databaseName) {
+		private void CheckTables(string databaseName,bool isForkMigrated) {
+			List<string> listMissing=new List<string>();
 			string command="SELECT LOWER(TABLE_NAME),LOWER(COLUMN_NAME) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='"
 				+POut.String(databaseName)+"'";
 			Dictionary<string,HashSet<string>> dictColumns=DataCore.GetTable(command).Rows.Cast<DataRow>()
@@ -98,16 +105,44 @@ namespace DevDbTool {
 				}
 				CountTables++;
 				if(!dictColumns.TryGetValue(tableName,out HashSet<string> setColumns)) {
-					ListProblems.Add("Missing table: "+tableName+" ("+type.FullName+")");
+					listMissing.Add("Missing table: "+tableName+" ("+type.FullName+")");
 					continue;
 				}
 				foreach(FieldInfo field in GetDbFields(type)) {
 					CountColumns++;
 					if(!setColumns.Contains(field.Name.ToLowerInvariant())) {
-						ListProblems.Add("Missing column: "+tableName+"."+field.Name);
+						listMissing.Add("Missing column: "+tableName+"."+field.Name);
 					}
 				}
 			}
+			if(isForkMigrated) {
+				ListProblems.AddRange(listMissing);
+			}
+			else if(listMissing.Count>0) {
+				ListNotes.Add(listMissing.Count+" tables or columns of the table classes are missing, as expected before the fork migrations "
+					+"(--no-fork-migrations).");
+			}
+		}
+
+		///<summary>Every fork migration finished, and the schema matches Open Dental 25.3.48 apart from the documented exceptions.</summary>
+		private void CheckForkMigrations(string databaseName) {
+			List<ForkMigrationStep> listPending=ForkMigrationRunner.GetPendingSteps();
+			foreach(ForkMigrationStep step in listPending) {
+				ListProblems.Add("Fork migration "+step+" has not run.");
+			}
+			string inProgress=DevDatabase.GetPrefRaw(ForkMigrationRunner.PrefNameInProgress);
+			if(!string.IsNullOrEmpty(inProgress)) {
+				ListProblems.Add("Fork migration "+inProgress+" was interrupted.");
+			}
+			if(listPending.Count>0) {
+				return;//The schema comparison would only repeat what the pending steps add.
+			}
+			SchemaVerifyResult result=SchemaVerifier.VerifyDatabase(databaseName);
+			foreach(SchemaDifference difference in result.ListMismatches) {
+				ListProblems.Add("Schema differs from Open Dental "+SchemaVerifier.ReferenceVersion+": "+difference);
+			}
+			ListNotes.Add("Schema matches Open Dental "+SchemaVerifier.ReferenceVersion+(result.IsMatch ? "" : " except as listed")+" ("
+				+result.ListAllowed.Count+" documented exception(s), for example tables Open Dental no longer has).");
 		}
 
 		///<summary>Concrete table types, as the CRUD generator enumerates them.</summary>

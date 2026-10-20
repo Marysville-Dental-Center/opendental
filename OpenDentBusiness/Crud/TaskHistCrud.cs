@@ -72,7 +72,8 @@ namespace OpenDentBusiness.Crud{
 				taskHist.SecDateTEdit     = PIn.DateT (row["SecDateTEdit"].ToString());
 				taskHist.DescriptOverride = PIn.String(row["DescriptOverride"].ToString());
 				taskHist.IsReadOnly       = PIn.Bool  (row["IsReadOnly"].ToString());
-				taskHist.TriageCategory   = PIn.Long  (row["TriageCategory"].ToString());
+				taskHist.Category         = PIn.Long  (row["Category"].ToString());
+				taskHist.TriagePosition   = PIn.Int   (row["TriagePosition"].ToString());
 				retVal.Add(taskHist);
 			}
 			return retVal;
@@ -109,7 +110,8 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("SecDateTEdit");
 			table.Columns.Add("DescriptOverride");
 			table.Columns.Add("IsReadOnly");
-			table.Columns.Add("TriageCategory");
+			table.Columns.Add("Category");
+			table.Columns.Add("TriagePosition");
 			foreach(TaskHist taskHist in listTaskHists) {
 				table.Rows.Add(new object[] {
 					POut.Long  (taskHist.TaskHistNum),
@@ -137,7 +139,8 @@ namespace OpenDentBusiness.Crud{
 					POut.DateT (taskHist.SecDateTEdit,false),
 					            taskHist.DescriptOverride,
 					POut.Bool  (taskHist.IsReadOnly),
-					POut.Long  (taskHist.TriageCategory),
+					POut.Long  (taskHist.Category),
+					POut.Int   (taskHist.TriagePosition),
 				});
 			}
 			return table;
@@ -157,7 +160,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="TaskHistNum,";
 			}
-			command+="UserNumHist,DateTStamp,IsNoteChange,TaskNum,TaskListNum,DateTask,KeyNum,Descript,TaskStatus,IsRepeating,DateType,FromNum,ObjectType,DateTimeEntry,UserNum,DateTimeFinished,PriorityDefNum,ReminderGroupId,ReminderType,ReminderFrequency,DateTimeOriginal,DescriptOverride,IsReadOnly,TriageCategory) VALUES(";
+			command+="UserNumHist,DateTStamp,IsNoteChange,TaskNum,TaskListNum,DateTask,KeyNum,Descript,TaskStatus,IsRepeating,DateType,FromNum,ObjectType,DateTimeEntry,UserNum,DateTimeFinished,PriorityDefNum,ReminderGroupId,ReminderType,ReminderFrequency,DateTimeOriginal,DescriptOverride,IsReadOnly,Category,TriagePosition) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(taskHist.TaskHistNum)+",";
 			}
@@ -186,7 +189,8 @@ namespace OpenDentBusiness.Crud{
 				//SecDateTEdit can only be set by MySQL
 				+"'"+POut.String(taskHist.DescriptOverride)+"',"
 				+    POut.Bool  (taskHist.IsReadOnly)+","
-				+    POut.Long  (taskHist.TriageCategory)+")";
+				+    POut.Long  (taskHist.Category)+","
+				+    POut.Int   (taskHist.TriagePosition)+")";
 			if(taskHist.Descript==null) {
 				taskHist.Descript="";
 			}
@@ -215,7 +219,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="TaskHistNum,";
 			}
-			command+="UserNumHist,DateTStamp,IsNoteChange,TaskNum,TaskListNum,DateTask,KeyNum,Descript,TaskStatus,IsRepeating,DateType,FromNum,ObjectType,DateTimeEntry,UserNum,DateTimeFinished,PriorityDefNum,ReminderGroupId,ReminderType,ReminderFrequency,DateTimeOriginal,DescriptOverride,IsReadOnly,TriageCategory) VALUES(";
+			command+="UserNumHist,DateTStamp,IsNoteChange,TaskNum,TaskListNum,DateTask,KeyNum,Descript,TaskStatus,IsRepeating,DateType,FromNum,ObjectType,DateTimeEntry,UserNum,DateTimeFinished,PriorityDefNum,ReminderGroupId,ReminderType,ReminderFrequency,DateTimeOriginal,DescriptOverride,IsReadOnly,Category,TriagePosition) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(taskHist.TaskHistNum)+",";
 			}
@@ -244,7 +248,8 @@ namespace OpenDentBusiness.Crud{
 				//SecDateTEdit can only be set by MySQL
 				+"'"+POut.String(taskHist.DescriptOverride)+"',"
 				+    POut.Bool  (taskHist.IsReadOnly)+","
-				+    POut.Long  (taskHist.TriageCategory)+")";
+				+    POut.Long  (taskHist.Category)+","
+				+    POut.Int   (taskHist.TriagePosition)+")";
 			if(taskHist.Descript==null) {
 				taskHist.Descript="";
 			}
@@ -285,7 +290,8 @@ namespace OpenDentBusiness.Crud{
 				//SecDateTEdit can only be set by MySQL
 				+"DescriptOverride = '"+POut.String(taskHist.DescriptOverride)+"', "
 				+"IsReadOnly       =  "+POut.Bool  (taskHist.IsReadOnly)+", "
-				+"TriageCategory   =  "+POut.Long  (taskHist.TriageCategory)+" "
+				+"Category         =  "+POut.Long  (taskHist.Category)+", "
+				+"TriagePosition   =  "+POut.Int   (taskHist.TriagePosition)+" "
 				+"WHERE TaskHistNum = "+POut.Long(taskHist.TaskHistNum);
 			if(taskHist.Descript==null) {
 				taskHist.Descript="";
@@ -387,9 +393,13 @@ namespace OpenDentBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="IsReadOnly = "+POut.Bool(taskHist.IsReadOnly)+"";
 			}
-			if(taskHist.TriageCategory != oldTaskHist.TriageCategory) {
+			if(taskHist.Category != oldTaskHist.Category) {
 				if(command!="") { command+=",";}
-				command+="TriageCategory = "+POut.Long(taskHist.TriageCategory)+"";
+				command+="Category = "+POut.Long(taskHist.Category)+"";
+			}
+			if(taskHist.TriagePosition != oldTaskHist.TriagePosition) {
+				if(command!="") { command+=",";}
+				command+="TriagePosition = "+POut.Int(taskHist.TriagePosition)+"";
 			}
 			if(command=="") {
 				return false;
@@ -475,7 +485,10 @@ namespace OpenDentBusiness.Crud{
 			if(taskHist.IsReadOnly != oldTaskHist.IsReadOnly) {
 				return true;
 			}
-			if(taskHist.TriageCategory != oldTaskHist.TriageCategory) {
+			if(taskHist.Category != oldTaskHist.Category) {
+				return true;
+			}
+			if(taskHist.TriagePosition != oldTaskHist.TriagePosition) {
 				return true;
 			}
 			return false;

@@ -46,8 +46,10 @@ namespace OpenDentBusiness {
 		///<summary>0 based.</summary>
 		public int ItemOrder;
 		///<summary>Pipe delimited list of strings, used for radioButtons, future comboBoxes, etc. This is the list of items that are visible to the patient. Setup enforces same number of items in PickListDb for 1:1 match. This list allows customization of what the patient sees vs what's in the db. Example: Vis=Hispanic, Db=2135-2. Example: Vis=Do Not Call, Db=DoNotCall. For radiobuttons, the number of items in the lists determines the number of radiobuttons to show to the patient. These editable lists also allow excluding some db options from being visible to patient. Example: Ins Relationship has 9 options, but only 4 of them are really used in dentistry. Just leave the other 5 off and force them to pick one of the 4. But it is also not required for them to pick one. Example: For Marital Status, you might only show Married and Child, excluding Divorced and Single from the pick list. The unselected state then represents no change, so an existing patient could leave both radio buttons unchecked and their status would remain Divorced or Single. However, we currently lack a feature to let them uncheck a radiobutton that is already checked. This is a rare edge case that nearly nobody will care about. You can also have a row with no db value. For example, a visible value of Separated might have no corresponding db value entered. In that case, an import would not cause any change to the existing db value. These lists also allow two radioButtons to represent one db item. Example: Gender Other in db can be expanded to show patient both Nonbinary and Other. When patient picks either of these, it goes into the db as Other. The lists also allow any or all items to be empty with no label. Example: Y/N radiobuttons for a series of allergies. Y/N label at top, but none of the radiobuttons need labels. When translation is added later, it will translate this list, not the PickListDb. PickListVis will, by default, simply be exactly the same as PickListDb. In this state, what the patient sees is the same as what's in the db. Must have at least two items for now.</summary>
+		[CrudColumn(SpecialType=CrudSpecialColType.IsText)]
 		public string PickListVis;
 		///<summary>Pipe delimited list of strings, used for radioButtons, future comboBoxes, etc. This is the list of items as they would be stored in the database. See PickListVis above for examples of how to use. The value chosen from this list is what will be stored in the ValueString field. Never show this value to the patient.</summary>
+		[CrudColumn(SpecialType=CrudSpecialColType.IsText)]
 		public string PickListDb;
 		///<summary>Typically false. Set to true to cause this field to get stacked horizontally compared to its previous sibling. Example might be to set State and Zip fields to true. This request will be ignored if screen is too small, like on a phone. The following types are not allowed to stack: SigBox, PageBreak, MedicationList.</summary>
 		public bool IsHorizStacking;
@@ -62,6 +64,7 @@ namespace OpenDentBusiness {
 		///<summary>This string is the label of the field that acts as the parent for conditional logic. Empty string by default indicates no parent. Truncated to the first 255 characters. </summary>
 		public string ConditionalParent;
 		///<summary>When this field has a conditional parent, it will only show if the value of this field matches the value of the parent. For radio buttons, it matches the value of one of the radiobuttons. It matches the value in PickListVis, but if there is a DbLink and the PickListVis is empty string, then it will match the value from the PickListDb. It can also contain multiple values delimited by |. Example: "Child|Spouse". If parent matches any of the values, then this field will show. For checkboxes, a match is "X". For age conditions, it must start with "<" or ">". Example ">14".</summary>
+		[CrudColumn(SpecialType=CrudSpecialColType.IsText)]
 		public string ConditionalValue;
 		///<summary>Enum:EnumEFormLabelAlign 0-TopLeft, 1-LeftLeft, 2-Right. Only used in RadioButtons for now.</summary>
 		public EnumEFormLabelAlign LabelAlign;
@@ -81,6 +84,20 @@ namespace OpenDentBusiness {
 		public int WidthLabel;
 		///<summary>The amount of space to the right of each field. Overrides the form and global defaults. -1 indicates to use default. That way, 0 means 0 space. Not used for SigBox or MedicationList which use form level instead.</summary>
 		public int SpaceToRight;
+		///<summary>Added in Open Dental 25.1: when set, the value is written into the patient record as soon as the patient finishes the form, without a
+		///manual import step.</summary>
+		public bool AutoImport;
+		///<summary>Added in Open Dental 25.1: when the patient has no value for the linked field, prefill it from the guarantor (mainly addresses for
+		///children).</summary>
+		public bool PrefillFromGuar;
+		///<summary>Added in Open Dental 25.2: English copy of ValueLabel, kept when the form is translated so conditional logic can find the field in any
+		///language.</summary>
+		[CrudColumn(SpecialType=CrudSpecialColType.IsText)]
+		public string ValueLabelEnglish;
+		///<summary>Added in Open Dental 25.2 (widened to text in 25.3): English copy of PickListVis for translated forms, used by conditional logic
+		///and import.</summary>
+		[CrudColumn(SpecialType=CrudSpecialColType.IsText)]
+		public string PickListVisEnglish;
 
 
 		[CrudColumn(IsNotDbColumn=true)]
@@ -106,6 +123,8 @@ namespace OpenDentBusiness {
 			SpaceBelow=-1;
 			ReportableName="";
 			SpaceToRight=-1;
+			ValueLabelEnglish="";
+			PickListVisEnglish="";
 		}
 
 		public EFormField Copy(){
@@ -141,7 +160,15 @@ namespace OpenDentBusiness {
 		PageBreak,
 		///<summary>7-A Medication List is a complex field. It consists of a list of medications with an optional second column for strength and frequency. Each medication has a Delete button to its right. There is also an Add button and a None checkbox at the bottom. The None checkbox only shows when the list is empty and allows satisfying a 'required' flag. There is no way to indicate 'no changes', but the office is free to add a separate No Changes checkbox below this list which doesn't actually do anything but which can serve as a visual indicator.</summary>
 		[Description("Medication List")]
-		MedicationList
+		MedicationList,
+		///<summary>8-Added in Open Dental 25.1 (released as a feature in 25.2): pick a family member. Reserved so stored rows load; the field itself is
+		///built by the eForms feature package.</summary>
+		[Description("Patient List")]
+		PatientList=8,
+		///<summary>9-Added in Open Dental 25.2: patient-entered insurance (see inspending). Reserved so stored rows load; the field itself is built by the
+		///eForms feature package.</summary>
+		[Description("Ins Pick")]
+		InsPick=9,
 	}
 
 	///<summary>This object is serialized as json and stored in EFormField.ValueLabel. It includes the Title, column headers, column widths, etc. No actual medication info, just layout.</summary>

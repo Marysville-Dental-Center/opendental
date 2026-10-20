@@ -60,6 +60,7 @@ namespace OpenDentBusiness.Crud{
 				insSub.SecUserNumEntry= PIn.Long  (row["SecUserNumEntry"].ToString());
 				insSub.SecDateEntry   = PIn.Date  (row["SecDateEntry"].ToString());
 				insSub.SecDateTEdit   = PIn.DateT (row["SecDateTEdit"].ToString());
+				insSub.SecurityHash   = PIn.String(row["SecurityHash"].ToString());
 				retVal.Add(insSub);
 			}
 			return retVal;
@@ -84,6 +85,7 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("SecUserNumEntry");
 			table.Columns.Add("SecDateEntry");
 			table.Columns.Add("SecDateTEdit");
+			table.Columns.Add("SecurityHash");
 			foreach(InsSub insSub in listInsSubs) {
 				table.Rows.Add(new object[] {
 					POut.Long  (insSub.InsSubNum),
@@ -99,6 +101,7 @@ namespace OpenDentBusiness.Crud{
 					POut.Long  (insSub.SecUserNumEntry),
 					POut.DateT (insSub.SecDateEntry,false),
 					POut.DateT (insSub.SecDateTEdit,false),
+					            insSub.SecurityHash,
 				});
 			}
 			return table;
@@ -118,7 +121,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="InsSubNum,";
 			}
-			command+="PlanNum,Subscriber,DateEffective,DateTerm,ReleaseInfo,AssignBen,SubscriberID,BenefitNotes,SubscNote,SecUserNumEntry,SecDateEntry) VALUES(";
+			command+="PlanNum,Subscriber,DateEffective,DateTerm,ReleaseInfo,AssignBen,SubscriberID,BenefitNotes,SubscNote,SecUserNumEntry,SecDateEntry,SecurityHash) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(insSub.InsSubNum)+",";
 			}
@@ -133,8 +136,9 @@ namespace OpenDentBusiness.Crud{
 				+    DbHelper.ParamChar+"paramBenefitNotes,"
 				+    DbHelper.ParamChar+"paramSubscNote,"
 				+    POut.Long  (insSub.SecUserNumEntry)+","
-				+    DbHelper.Now()+")";
+				+    DbHelper.Now()+","
 				//SecDateTEdit can only be set by MySQL
+				+"'"+POut.String(insSub.SecurityHash)+"')";
 			if(insSub.BenefitNotes==null) {
 				insSub.BenefitNotes="";
 			}
@@ -167,7 +171,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="InsSubNum,";
 			}
-			command+="PlanNum,Subscriber,DateEffective,DateTerm,ReleaseInfo,AssignBen,SubscriberID,BenefitNotes,SubscNote,SecUserNumEntry,SecDateEntry) VALUES(";
+			command+="PlanNum,Subscriber,DateEffective,DateTerm,ReleaseInfo,AssignBen,SubscriberID,BenefitNotes,SubscNote,SecUserNumEntry,SecDateEntry,SecurityHash) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(insSub.InsSubNum)+",";
 			}
@@ -182,8 +186,9 @@ namespace OpenDentBusiness.Crud{
 				+    DbHelper.ParamChar+"paramBenefitNotes,"
 				+    DbHelper.ParamChar+"paramSubscNote,"
 				+    POut.Long  (insSub.SecUserNumEntry)+","
-				+    DbHelper.Now()+")";
+				+    DbHelper.Now()+","
 				//SecDateTEdit can only be set by MySQL
+				+"'"+POut.String(insSub.SecurityHash)+"')";
 			if(insSub.BenefitNotes==null) {
 				insSub.BenefitNotes="";
 			}
@@ -212,10 +217,11 @@ namespace OpenDentBusiness.Crud{
 				+"AssignBen      =  "+POut.Bool  (insSub.AssignBen)+", "
 				+"SubscriberID   = '"+POut.String(insSub.SubscriberID)+"', "
 				+"BenefitNotes   =  "+DbHelper.ParamChar+"paramBenefitNotes, "
-				+"SubscNote      =  "+DbHelper.ParamChar+"paramSubscNote "
+				+"SubscNote      =  "+DbHelper.ParamChar+"paramSubscNote, "
 				//SecUserNumEntry excluded from update
 				//SecDateEntry not allowed to change
 				//SecDateTEdit can only be set by MySQL
+				+"SecurityHash   = '"+POut.String(insSub.SecurityHash)+"' "
 				+"WHERE InsSubNum = "+POut.Long(insSub.InsSubNum);
 			if(insSub.BenefitNotes==null) {
 				insSub.BenefitNotes="";
@@ -270,6 +276,10 @@ namespace OpenDentBusiness.Crud{
 			//SecUserNumEntry excluded from update
 			//SecDateEntry not allowed to change
 			//SecDateTEdit can only be set by MySQL
+			if(insSub.SecurityHash != oldInsSub.SecurityHash) {
+				if(command!="") { command+=",";}
+				command+="SecurityHash = '"+POut.String(insSub.SecurityHash)+"'";
+			}
 			if(command=="") {
 				return false;
 			}
@@ -320,6 +330,9 @@ namespace OpenDentBusiness.Crud{
 			//SecUserNumEntry excluded from update
 			//SecDateEntry not allowed to change
 			//SecDateTEdit can only be set by MySQL
+			if(insSub.SecurityHash != oldInsSub.SecurityHash) {
+				return true;
+			}
 			return false;
 		}
 

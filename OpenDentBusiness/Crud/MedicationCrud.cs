@@ -54,6 +54,7 @@ namespace OpenDentBusiness.Crud{
 				medication.Notes        = PIn.String(row["Notes"].ToString());
 				medication.DateTStamp   = PIn.DateT (row["DateTStamp"].ToString());
 				medication.RxCui        = PIn.Long  (row["RxCui"].ToString());
+				medication.IsHidden     = PIn.Bool  (row["IsHidden"].ToString());
 				retVal.Add(medication);
 			}
 			return retVal;
@@ -71,6 +72,7 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("Notes");
 			table.Columns.Add("DateTStamp");
 			table.Columns.Add("RxCui");
+			table.Columns.Add("IsHidden");
 			foreach(Medication medication in listMedications) {
 				table.Rows.Add(new object[] {
 					POut.Long  (medication.MedicationNum),
@@ -79,6 +81,7 @@ namespace OpenDentBusiness.Crud{
 					            medication.Notes,
 					POut.DateT (medication.DateTStamp,false),
 					POut.Long  (medication.RxCui),
+					POut.Bool  (medication.IsHidden),
 				});
 			}
 			return table;
@@ -98,7 +101,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="MedicationNum,";
 			}
-			command+="MedName,GenericNum,Notes,RxCui) VALUES(";
+			command+="MedName,GenericNum,Notes,RxCui,IsHidden) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(medication.MedicationNum)+",";
 			}
@@ -107,7 +110,8 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Long  (medication.GenericNum)+","
 				+    DbHelper.ParamChar+"paramNotes,"
 				//DateTStamp can only be set by MySQL
-				+    POut.Long  (medication.RxCui)+")";
+				+    POut.Long  (medication.RxCui)+","
+				+    POut.Bool  (medication.IsHidden)+")";
 			if(medication.Notes==null) {
 				medication.Notes="";
 			}
@@ -147,7 +151,7 @@ namespace OpenDentBusiness.Crud{
 						if(useExistingPK) {
 							sbCommands.Append("MedicationNum,");
 						}
-						sbCommands.Append("MedName,GenericNum,Notes,RxCui) VALUES ");
+						sbCommands.Append("MedName,GenericNum,Notes,RxCui,IsHidden) VALUES ");
 						countRows=0;
 					}
 					else {
@@ -160,7 +164,8 @@ namespace OpenDentBusiness.Crud{
 					sbRow.Append(POut.Long(medication.GenericNum)); sbRow.Append(",");
 					sbRow.Append("'"+POut.String(medication.Notes)+"'"); sbRow.Append(",");
 					//DateTStamp can only be set by MySQL
-					sbRow.Append(POut.Long(medication.RxCui)); sbRow.Append(")");
+					sbRow.Append(POut.Long(medication.RxCui)); sbRow.Append(",");
+					sbRow.Append(POut.Bool(medication.IsHidden)); sbRow.Append(")");
 					if(sbCommands.Length+sbRow.Length+1 > TableBase.MaxAllowedPacketCount && countRows > 0) {
 						Db.NonQ(sbCommands.ToString());
 						sbCommands=null;
@@ -195,7 +200,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="MedicationNum,";
 			}
-			command+="MedName,GenericNum,Notes,RxCui) VALUES(";
+			command+="MedName,GenericNum,Notes,RxCui,IsHidden) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(medication.MedicationNum)+",";
 			}
@@ -204,7 +209,8 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Long  (medication.GenericNum)+","
 				+    DbHelper.ParamChar+"paramNotes,"
 				//DateTStamp can only be set by MySQL
-				+    POut.Long  (medication.RxCui)+")";
+				+    POut.Long  (medication.RxCui)+","
+				+    POut.Bool  (medication.IsHidden)+")";
 			if(medication.Notes==null) {
 				medication.Notes="";
 			}
@@ -225,7 +231,8 @@ namespace OpenDentBusiness.Crud{
 				+"GenericNum   =  "+POut.Long  (medication.GenericNum)+", "
 				+"Notes        =  "+DbHelper.ParamChar+"paramNotes, "
 				//DateTStamp can only be set by MySQL
-				+"RxCui        =  "+POut.Long  (medication.RxCui)+" "
+				+"RxCui        =  "+POut.Long  (medication.RxCui)+", "
+				+"IsHidden     =  "+POut.Bool  (medication.IsHidden)+" "
 				+"WHERE MedicationNum = "+POut.Long(medication.MedicationNum);
 			if(medication.Notes==null) {
 				medication.Notes="";
@@ -254,6 +261,10 @@ namespace OpenDentBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="RxCui = "+POut.Long(medication.RxCui)+"";
 			}
+			if(medication.IsHidden != oldMedication.IsHidden) {
+				if(command!="") { command+=",";}
+				command+="IsHidden = "+POut.Bool(medication.IsHidden)+"";
+			}
 			if(command=="") {
 				return false;
 			}
@@ -281,6 +292,9 @@ namespace OpenDentBusiness.Crud{
 			}
 			//DateTStamp can only be set by MySQL
 			if(medication.RxCui != oldMedication.RxCui) {
+				return true;
+			}
+			if(medication.IsHidden != oldMedication.IsHidden) {
 				return true;
 			}
 			return false;

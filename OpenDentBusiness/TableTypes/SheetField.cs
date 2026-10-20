@@ -96,6 +96,9 @@ namespace OpenDentBusiness{
 		public bool CanElectronicallySign;
 		///<summary>When true, only allows the signature box to be signed by a provider.</summary>
 		public bool IsSigProvRestricted;
+		///<summary>FK to userod.UserNum. Added in Open Dental 25.2: for signature boxes signed by a logged-in provider user, the user who signed.
+		///0 otherwise.</summary>
+		public long UserSigned;
 
 		///<summary>Used only for serialization purposes</summary>
 		[XmlElement("ItemColor",typeof(int))]

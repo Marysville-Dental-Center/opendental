@@ -22,6 +22,9 @@ namespace DevDbTool {
 		public bool Force;
 		public bool WithSampleData;
 		public bool VerifyOnly;
+		///<summary>Stop at the frozen 24.3.63 convert chain: do not run the fork migrations (OpenDentBusiness/Misc/ForkMigrations), and do not expect
+		///their tables and columns when verifying. Gives a plain 24.3.63 database, for testing the migrations themselves.</summary>
+		public bool SkipForkMigrations;
 		public bool AllowRemoteServer;
 		public bool ShowHelp;
 
@@ -48,6 +51,8 @@ Usage: DevDbTool.exe [options]
   --with-sample-data      Add a few fictional providers, operatories, patients and appointments
   --atoz <path>           Create this A to Z images folder and point the DocPath preference at it
   --verify-only           Only check an existing database; change nothing
+  --no-fork-migrations    Stop at the 24.3.63 convert scripts: skip the fork migrations (and do not expect
+                          their schema when verifying)
   --allow-remote-server   Allow a server other than localhost or 127.0.0.1
 
 Exit codes: 0 success, 1 error, 2 refused or bad arguments, 3 created but outbound
@@ -98,6 +103,9 @@ network requests were attempted (and blocked), 4 verification failed.";
 						break;
 					case "--verify-only":
 						options.VerifyOnly=true;
+						break;
+					case "--no-fork-migrations":
+						options.SkipForkMigrations=true;
 						break;
 					case "--allow-remote-server":
 						options.AllowRemoteServer=true;

@@ -59,7 +59,8 @@ namespace OpenDentBusiness {
 		public long UnschedStatus;
 		///<summary>Copied from Appointment.</summary>
 		public bool IsNewPatient;
-		///<summary>Copied from Appointment.</summary>
+		///<summary>Copied from Appointment. Widened from varchar(255) to text in Open Dental 25.2 to match appointment.ProcDescript.</summary>
+		[CrudColumn(SpecialType=CrudSpecialColType.IsText)]
 		public string ProcDescript;
 		///<summary>Copied from Appointment.</summary>
 		public long Assistant;
@@ -111,6 +112,8 @@ namespace OpenDentBusiness {
 		public string SecurityHash;
 		///<summary>Copied from Appointment.</summary>
 		public int ItemOrderPlanned;
+		///<summary>Copied from Appointment.</summary>
+		public bool IsMirrored;
 		#endregion Copies of Task Fields
 
 		///<summary>Pass in the old appointment that needs to be recorded.</summary>

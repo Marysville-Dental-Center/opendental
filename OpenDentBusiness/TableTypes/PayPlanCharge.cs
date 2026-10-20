@@ -56,6 +56,9 @@ namespace OpenDentBusiness{
 		public PayPlanLinkType LinkType;
 		///<summary>Set to true if this charge is created to offset an overcharge. Dynamic payment plans can get into this rare scenario where a charge has been inserted into the database for too much value. There is a 'fix' that users can apply from within the dynamic payment plan overcharge report which will create offsetting negative charges. The Income Transfer logic needs to know that this is an overcharge in order to remove value from corresponding charge that is linked to the same production entry (proc, adj, etc).</summary>
 		public bool IsOffset;
+		///<summary>Added in Open Dental 25.1: marks a debit charge as (part of) the down payment. A plan may have several. On a database that comes
+		///from 24.3, the fork migration sets it once from the "Down payment" charge note that 24.3 used to recognize down payments.</summary>
+		public bool IsDownPayment;
 
 		///<summary>True if this payplan charge is a credit adjustment. A credit adjustment will reduce the amount of the payment plan. However, can be true if a positive or negative dynamic payment plan adjustment.</summary>
 		[XmlIgnore,JsonIgnore]

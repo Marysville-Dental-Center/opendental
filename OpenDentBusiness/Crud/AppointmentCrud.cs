@@ -82,6 +82,7 @@ namespace OpenDentBusiness.Crud{
 				appointment.PatternSecondary     = PIn.String(row["PatternSecondary"].ToString());
 				appointment.SecurityHash         = PIn.String(row["SecurityHash"].ToString());
 				appointment.ItemOrderPlanned     = PIn.Int   (row["ItemOrderPlanned"].ToString());
+				appointment.IsMirrored           = PIn.Bool  (row["IsMirrored"].ToString());
 				retVal.Add(appointment);
 			}
 			return retVal;
@@ -128,6 +129,7 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("PatternSecondary");
 			table.Columns.Add("SecurityHash");
 			table.Columns.Add("ItemOrderPlanned");
+			table.Columns.Add("IsMirrored");
 			foreach(Appointment appointment in listAppointments) {
 				table.Rows.Add(new object[] {
 					POut.Long  (appointment.AptNum),
@@ -165,6 +167,7 @@ namespace OpenDentBusiness.Crud{
 					            appointment.PatternSecondary,
 					            appointment.SecurityHash,
 					POut.Int   (appointment.ItemOrderPlanned),
+					POut.Bool  (appointment.IsMirrored),
 				});
 			}
 			return table;
@@ -184,7 +187,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="AptNum,";
 			}
-			command+="PatNum,AptStatus,Pattern,Confirmed,TimeLocked,Op,Note,ProvNum,ProvHyg,AptDateTime,NextAptNum,UnschedStatus,IsNewPatient,ProcDescript,Assistant,ClinicNum,IsHygiene,DateTimeArrived,DateTimeSeated,DateTimeDismissed,InsPlan1,InsPlan2,DateTimeAskedToArrive,ProcsColored,ColorOverride,AppointmentTypeNum,SecUserNumEntry,SecDateTEntry,Priority,ProvBarText,PatternSecondary,SecurityHash,ItemOrderPlanned) VALUES(";
+			command+="PatNum,AptStatus,Pattern,Confirmed,TimeLocked,Op,Note,ProvNum,ProvHyg,AptDateTime,NextAptNum,UnschedStatus,IsNewPatient,ProcDescript,Assistant,ClinicNum,IsHygiene,DateTimeArrived,DateTimeSeated,DateTimeDismissed,InsPlan1,InsPlan2,DateTimeAskedToArrive,ProcsColored,ColorOverride,AppointmentTypeNum,SecUserNumEntry,SecDateTEntry,Priority,ProvBarText,PatternSecondary,SecurityHash,ItemOrderPlanned,IsMirrored) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(appointment.AptNum)+",";
 			}
@@ -222,7 +225,8 @@ namespace OpenDentBusiness.Crud{
 				+"'"+POut.String(appointment.ProvBarText)+"',"
 				+"'"+POut.String(appointment.PatternSecondary)+"',"
 				+"'"+POut.String(appointment.SecurityHash)+"',"
-				+    POut.Int   (appointment.ItemOrderPlanned)+")";
+				+    POut.Int   (appointment.ItemOrderPlanned)+","
+				+    POut.Bool  (appointment.IsMirrored)+")";
 			if(appointment.Note==null) {
 				appointment.Note="";
 			}
@@ -259,7 +263,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="AptNum,";
 			}
-			command+="PatNum,AptStatus,Pattern,Confirmed,TimeLocked,Op,Note,ProvNum,ProvHyg,AptDateTime,NextAptNum,UnschedStatus,IsNewPatient,ProcDescript,Assistant,ClinicNum,IsHygiene,DateTimeArrived,DateTimeSeated,DateTimeDismissed,InsPlan1,InsPlan2,DateTimeAskedToArrive,ProcsColored,ColorOverride,AppointmentTypeNum,SecUserNumEntry,SecDateTEntry,Priority,ProvBarText,PatternSecondary,SecurityHash,ItemOrderPlanned) VALUES(";
+			command+="PatNum,AptStatus,Pattern,Confirmed,TimeLocked,Op,Note,ProvNum,ProvHyg,AptDateTime,NextAptNum,UnschedStatus,IsNewPatient,ProcDescript,Assistant,ClinicNum,IsHygiene,DateTimeArrived,DateTimeSeated,DateTimeDismissed,InsPlan1,InsPlan2,DateTimeAskedToArrive,ProcsColored,ColorOverride,AppointmentTypeNum,SecUserNumEntry,SecDateTEntry,Priority,ProvBarText,PatternSecondary,SecurityHash,ItemOrderPlanned,IsMirrored) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(appointment.AptNum)+",";
 			}
@@ -297,7 +301,8 @@ namespace OpenDentBusiness.Crud{
 				+"'"+POut.String(appointment.ProvBarText)+"',"
 				+"'"+POut.String(appointment.PatternSecondary)+"',"
 				+"'"+POut.String(appointment.SecurityHash)+"',"
-				+    POut.Int   (appointment.ItemOrderPlanned)+")";
+				+    POut.Int   (appointment.ItemOrderPlanned)+","
+				+    POut.Bool  (appointment.IsMirrored)+")";
 			if(appointment.Note==null) {
 				appointment.Note="";
 			}
@@ -355,7 +360,8 @@ namespace OpenDentBusiness.Crud{
 				+"ProvBarText          = '"+POut.String(appointment.ProvBarText)+"', "
 				+"PatternSecondary     = '"+POut.String(appointment.PatternSecondary)+"', "
 				+"SecurityHash         = '"+POut.String(appointment.SecurityHash)+"', "
-				+"ItemOrderPlanned     =  "+POut.Int   (appointment.ItemOrderPlanned)+" "
+				+"ItemOrderPlanned     =  "+POut.Int   (appointment.ItemOrderPlanned)+", "
+				+"IsMirrored           =  "+POut.Bool  (appointment.IsMirrored)+" "
 				+"WHERE AptNum = "+POut.Long(appointment.AptNum);
 			if(appointment.Note==null) {
 				appointment.Note="";
@@ -502,6 +508,10 @@ namespace OpenDentBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="ItemOrderPlanned = "+POut.Int(appointment.ItemOrderPlanned)+"";
 			}
+			if(appointment.IsMirrored != oldAppointment.IsMirrored) {
+				if(command!="") { command+=",";}
+				command+="IsMirrored = "+POut.Bool(appointment.IsMirrored)+"";
+			}
 			if(command=="") {
 				return false;
 			}
@@ -620,6 +630,9 @@ namespace OpenDentBusiness.Crud{
 				return true;
 			}
 			if(appointment.ItemOrderPlanned != oldAppointment.ItemOrderPlanned) {
+				return true;
+			}
+			if(appointment.IsMirrored != oldAppointment.IsMirrored) {
 				return true;
 			}
 			return false;

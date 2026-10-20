@@ -43,6 +43,8 @@ namespace OpenDentBusiness{
 		public EnumWaitingRmName WaitingRmName;
 		///<summary>If set to true, then the only days that will show in Week view will be days that have providers scheduled or an appointment scheduled.</summary>
 		public bool OnlyScheduledProvDays;
+		///<summary>Added in Open Dental 25.2 (schema): whether this view draws mirrored copies of appointments (see appointment.IsMirrored).</summary>
+		public bool ShowMirroredAppts;
 
 		///<summary>Returns a copy of this ApptView.</summary>
 		public ApptView Copy() {

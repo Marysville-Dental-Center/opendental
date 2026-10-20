@@ -8,10 +8,12 @@ date, and runs it to:
 
   1. create the database on a local MariaDB/MySQL server, dropping it first with -Force;
   2. load the seed dump UnitTests\Resources\dump.txt, a version 21.1.9 database;
-  3. upgrade it to this build's version with the convert scripts in OpenDentBusiness;
+  3. upgrade it to this build's version with the convert scripts in OpenDentBusiness (frozen at 24.3.63), then run the fork migrations
+     (OpenDentBusiness\Misc\ForkMigrations) that bring the schema to Open Dental 25.3.48;
   4. apply the default auto codes, procedure buttons and appointment quick-add procedures;
   5. record ProgramVersion, create an A to Z images folder, and optionally add fictional sample data;
-  6. verify the version preferences and that every table and column the code expects exists.
+  6. verify the version preferences, that every table and column the code expects exists, and that the schema matches Open Dental 25.3.48
+     apart from the documented exceptions.
 
 The tool talks only to the database server. Outbound HTTP is blocked, and any attempt is reported with exit code 3.
 The default user Admin has a blank password.
@@ -50,6 +52,10 @@ Leave DocPath as the seed dump has it (C:\OpenDentImages\) and create no folder.
 .PARAMETER WriteConfig
 Write OpenDental\bin\<Configuration>\FreeDentalConfig.xml from tools\FreeDentalConfig.dev.xml so that OpenDental.exe
 opens this database. An existing file is kept as FreeDentalConfig.xml.bak.
+
+.PARAMETER SkipForkMigrations
+Stop after the 24.3.63 convert scripts: a plain 24.3.63 database without the fork migrations, for testing the migrations
+(OpenDentBusiness\Misc\ForkMigrations) themselves. With -VerifyOnly, check such a database without expecting the migrated schema.
 
 .PARAMETER VerifyOnly
 Only check an existing database. Nothing is changed.
@@ -95,6 +101,7 @@ param(
 	[switch]$NoAtoZ,
 	[switch]$WriteConfig,
 	[switch]$VerifyOnly,
+	[switch]$SkipForkMigrations,
 	[switch]$SkipBuild,
 	[string]$MSBuildPath = '',
 	[ValidateSet('Debug', 'Release')]
@@ -188,6 +195,9 @@ else {
 }
 if ($AllowRemoteServer) {
 	$toolArgs += '--allow-remote-server'
+}
+if ($SkipForkMigrations) {
+	$toolArgs += '--no-fork-migrations'
 }
 
 $previousPassword = $env:DEVDB_PASSWORD

@@ -38,6 +38,10 @@ namespace OpenDentBusiness{
 		///updates.  Not user editable with the UI.</summary>
 		[CrudColumn(SpecialType=CrudSpecialColType.TimeStamp)]
 		public DateTime SecDateTEdit;
+		///<summary>Added in Open Dental 24.4: the date from which this fee amount applies. 0001-01-01 (the default) means always effective. Several rows
+		///for the same schedule, code, clinic and provider can exist with different dates. Column only until the fee effective date feature is
+		///ported; until then every row the program writes keeps the default.</summary>
+		public DateTime DateEffective;
 
 		///<summary></summary>
 		public Fee Copy(){

@@ -56,6 +56,7 @@ namespace OpenDentBusiness.Crud{
 				reqStudent.PatNum         = PIn.Long  (row["PatNum"].ToString());
 				reqStudent.InstructorNum  = PIn.Long  (row["InstructorNum"].ToString());
 				reqStudent.DateCompleted  = PIn.Date  (row["DateCompleted"].ToString());
+				reqStudent.ProcNum        = PIn.Long  (row["ProcNum"].ToString());
 				retVal.Add(reqStudent);
 			}
 			return retVal;
@@ -76,6 +77,7 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("PatNum");
 			table.Columns.Add("InstructorNum");
 			table.Columns.Add("DateCompleted");
+			table.Columns.Add("ProcNum");
 			foreach(ReqStudent reqStudent in listReqStudents) {
 				table.Rows.Add(new object[] {
 					POut.Long  (reqStudent.ReqStudentNum),
@@ -87,6 +89,7 @@ namespace OpenDentBusiness.Crud{
 					POut.Long  (reqStudent.PatNum),
 					POut.Long  (reqStudent.InstructorNum),
 					POut.DateT (reqStudent.DateCompleted,false),
+					POut.Long  (reqStudent.ProcNum),
 				});
 			}
 			return table;
@@ -106,7 +109,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="ReqStudentNum,";
 			}
-			command+="ReqNeededNum,Descript,SchoolCourseNum,ProvNum,AptNum,PatNum,InstructorNum,DateCompleted) VALUES(";
+			command+="ReqNeededNum,Descript,SchoolCourseNum,ProvNum,AptNum,PatNum,InstructorNum,DateCompleted,ProcNum) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(reqStudent.ReqStudentNum)+",";
 			}
@@ -118,7 +121,8 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Long  (reqStudent.AptNum)+","
 				+    POut.Long  (reqStudent.PatNum)+","
 				+    POut.Long  (reqStudent.InstructorNum)+","
-				+    POut.Date  (reqStudent.DateCompleted)+")";
+				+    POut.Date  (reqStudent.DateCompleted)+","
+				+    POut.Long  (reqStudent.ProcNum)+")";
 			if(useExistingPK || PrefC.RandomKeys) {
 				Db.NonQ(command);
 			}
@@ -143,7 +147,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="ReqStudentNum,";
 			}
-			command+="ReqNeededNum,Descript,SchoolCourseNum,ProvNum,AptNum,PatNum,InstructorNum,DateCompleted) VALUES(";
+			command+="ReqNeededNum,Descript,SchoolCourseNum,ProvNum,AptNum,PatNum,InstructorNum,DateCompleted,ProcNum) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(reqStudent.ReqStudentNum)+",";
 			}
@@ -155,7 +159,8 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Long  (reqStudent.AptNum)+","
 				+    POut.Long  (reqStudent.PatNum)+","
 				+    POut.Long  (reqStudent.InstructorNum)+","
-				+    POut.Date  (reqStudent.DateCompleted)+")";
+				+    POut.Date  (reqStudent.DateCompleted)+","
+				+    POut.Long  (reqStudent.ProcNum)+")";
 			if(useExistingPK || isRandomKeys) {
 				Db.NonQ(command);
 			}
@@ -175,7 +180,8 @@ namespace OpenDentBusiness.Crud{
 				+"AptNum         =  "+POut.Long  (reqStudent.AptNum)+", "
 				+"PatNum         =  "+POut.Long  (reqStudent.PatNum)+", "
 				+"InstructorNum  =  "+POut.Long  (reqStudent.InstructorNum)+", "
-				+"DateCompleted  =  "+POut.Date  (reqStudent.DateCompleted)+" "
+				+"DateCompleted  =  "+POut.Date  (reqStudent.DateCompleted)+", "
+				+"ProcNum        =  "+POut.Long  (reqStudent.ProcNum)+" "
 				+"WHERE ReqStudentNum = "+POut.Long(reqStudent.ReqStudentNum);
 			Db.NonQ(command);
 		}
@@ -215,6 +221,10 @@ namespace OpenDentBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="DateCompleted = "+POut.Date(reqStudent.DateCompleted)+"";
 			}
+			if(reqStudent.ProcNum != oldReqStudent.ProcNum) {
+				if(command!="") { command+=",";}
+				command+="ProcNum = "+POut.Long(reqStudent.ProcNum)+"";
+			}
 			if(command=="") {
 				return false;
 			}
@@ -249,6 +259,9 @@ namespace OpenDentBusiness.Crud{
 				return true;
 			}
 			if(reqStudent.DateCompleted.Date != oldReqStudent.DateCompleted.Date) {
+				return true;
+			}
+			if(reqStudent.ProcNum != oldReqStudent.ProcNum) {
 				return true;
 			}
 			return false;

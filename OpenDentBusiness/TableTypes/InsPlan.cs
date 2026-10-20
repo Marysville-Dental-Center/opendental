@@ -13,7 +13,7 @@ namespace OpenDentBusiness{
 		public long PlanNum;
 		///<summary>Optional</summary>
 		public string GroupName;
-		///<summary>Optional.  In Canada, this is called the Plan Number.</summary>
+		///<summary>Optional.  In Canada, this is called the Plan Number.  Up to 50 characters (widened from 25 in Open Dental 25.2).</summary>
 		public string GroupNum;
 		///<summary>Note for this plan.  Same for all subscribers.</summary>
 		[CrudColumn(SpecialType=CrudSpecialColType.IsText)]

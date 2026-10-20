@@ -61,6 +61,9 @@ namespace OpenDentBusiness.Crud{
 				journalEntry.SecDateTEntry  = PIn.DateT (row["SecDateTEntry"].ToString());
 				journalEntry.SecUserNumEdit = PIn.Long  (row["SecUserNumEdit"].ToString());
 				journalEntry.SecDateTEdit   = PIn.DateT (row["SecDateTEdit"].ToString());
+				journalEntry.Payee          = PIn.String(row["Payee"].ToString());
+				journalEntry.Notes          = PIn.String(row["Notes"].ToString());
+				journalEntry.NeedsReview    = PIn.Bool  (row["NeedsReview"].ToString());
 				retVal.Add(journalEntry);
 			}
 			return retVal;
@@ -86,6 +89,9 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("SecDateTEntry");
 			table.Columns.Add("SecUserNumEdit");
 			table.Columns.Add("SecDateTEdit");
+			table.Columns.Add("Payee");
+			table.Columns.Add("Notes");
+			table.Columns.Add("NeedsReview");
 			foreach(JournalEntry journalEntry in listJournalEntrys) {
 				table.Rows.Add(new object[] {
 					POut.Long  (journalEntry.JournalEntryNum),
@@ -102,6 +108,9 @@ namespace OpenDentBusiness.Crud{
 					POut.DateT (journalEntry.SecDateTEntry,false),
 					POut.Long  (journalEntry.SecUserNumEdit),
 					POut.DateT (journalEntry.SecDateTEdit,false),
+					            journalEntry.Payee,
+					            journalEntry.Notes,
+					POut.Bool  (journalEntry.NeedsReview),
 				});
 			}
 			return table;
@@ -121,7 +130,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="JournalEntryNum,";
 			}
-			command+="TransactionNum,AccountNum,DateDisplayed,DebitAmt,CreditAmt,Memo,Splits,CheckNumber,ReconcileNum,SecUserNumEntry,SecDateTEntry,SecUserNumEdit) VALUES(";
+			command+="TransactionNum,AccountNum,DateDisplayed,DebitAmt,CreditAmt,Memo,Splits,CheckNumber,ReconcileNum,SecUserNumEntry,SecDateTEntry,SecUserNumEdit,Payee,Notes,NeedsReview) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(journalEntry.JournalEntryNum)+",";
 			}
@@ -137,8 +146,11 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Long  (journalEntry.ReconcileNum)+","
 				+    POut.Long  (journalEntry.SecUserNumEntry)+","
 				+    DbHelper.Now()+","
-				+    POut.Long  (journalEntry.SecUserNumEdit)+")";
+				+    POut.Long  (journalEntry.SecUserNumEdit)+","
 				//SecDateTEdit can only be set by MySQL
+				+"'"+POut.String(journalEntry.Payee)+"',"
+				+    DbHelper.ParamChar+"paramNotes,"
+				+    POut.Bool  (journalEntry.NeedsReview)+")";
 			if(journalEntry.Memo==null) {
 				journalEntry.Memo="";
 			}
@@ -147,11 +159,15 @@ namespace OpenDentBusiness.Crud{
 				journalEntry.Splits="";
 			}
 			OdSqlParameter paramSplits=new OdSqlParameter("paramSplits",OdDbType.Text,POut.StringParam(journalEntry.Splits));
+			if(journalEntry.Notes==null) {
+				journalEntry.Notes="";
+			}
+			OdSqlParameter paramNotes=new OdSqlParameter("paramNotes",OdDbType.Text,POut.StringParam(journalEntry.Notes));
 			if(useExistingPK || PrefC.RandomKeys) {
-				Db.NonQ(command,paramMemo,paramSplits);
+				Db.NonQ(command,paramMemo,paramSplits,paramNotes);
 			}
 			else {
-				journalEntry.JournalEntryNum=Db.NonQ(command,true,"JournalEntryNum","journalEntry",paramMemo,paramSplits);
+				journalEntry.JournalEntryNum=Db.NonQ(command,true,"JournalEntryNum","journalEntry",paramMemo,paramSplits,paramNotes);
 			}
 			return journalEntry.JournalEntryNum;
 		}
@@ -171,7 +187,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="JournalEntryNum,";
 			}
-			command+="TransactionNum,AccountNum,DateDisplayed,DebitAmt,CreditAmt,Memo,Splits,CheckNumber,ReconcileNum,SecUserNumEntry,SecDateTEntry,SecUserNumEdit) VALUES(";
+			command+="TransactionNum,AccountNum,DateDisplayed,DebitAmt,CreditAmt,Memo,Splits,CheckNumber,ReconcileNum,SecUserNumEntry,SecDateTEntry,SecUserNumEdit,Payee,Notes,NeedsReview) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(journalEntry.JournalEntryNum)+",";
 			}
@@ -187,8 +203,11 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Long  (journalEntry.ReconcileNum)+","
 				+    POut.Long  (journalEntry.SecUserNumEntry)+","
 				+    DbHelper.Now()+","
-				+    POut.Long  (journalEntry.SecUserNumEdit)+")";
+				+    POut.Long  (journalEntry.SecUserNumEdit)+","
 				//SecDateTEdit can only be set by MySQL
+				+"'"+POut.String(journalEntry.Payee)+"',"
+				+    DbHelper.ParamChar+"paramNotes,"
+				+    POut.Bool  (journalEntry.NeedsReview)+")";
 			if(journalEntry.Memo==null) {
 				journalEntry.Memo="";
 			}
@@ -197,11 +216,15 @@ namespace OpenDentBusiness.Crud{
 				journalEntry.Splits="";
 			}
 			OdSqlParameter paramSplits=new OdSqlParameter("paramSplits",OdDbType.Text,POut.StringParam(journalEntry.Splits));
+			if(journalEntry.Notes==null) {
+				journalEntry.Notes="";
+			}
+			OdSqlParameter paramNotes=new OdSqlParameter("paramNotes",OdDbType.Text,POut.StringParam(journalEntry.Notes));
 			if(useExistingPK || isRandomKeys) {
-				Db.NonQ(command,paramMemo,paramSplits);
+				Db.NonQ(command,paramMemo,paramSplits,paramNotes);
 			}
 			else {
-				journalEntry.JournalEntryNum=Db.NonQ(command,true,"JournalEntryNum","journalEntry",paramMemo,paramSplits);
+				journalEntry.JournalEntryNum=Db.NonQ(command,true,"JournalEntryNum","journalEntry",paramMemo,paramSplits,paramNotes);
 			}
 			return journalEntry.JournalEntryNum;
 		}
@@ -220,8 +243,11 @@ namespace OpenDentBusiness.Crud{
 				+"ReconcileNum   =  "+POut.Long  (journalEntry.ReconcileNum)+", "
 				//SecUserNumEntry excluded from update
 				//SecDateTEntry not allowed to change
-				+"SecUserNumEdit =  "+POut.Long  (journalEntry.SecUserNumEdit)+" "
+				+"SecUserNumEdit =  "+POut.Long  (journalEntry.SecUserNumEdit)+", "
 				//SecDateTEdit can only be set by MySQL
+				+"Payee          = '"+POut.String(journalEntry.Payee)+"', "
+				+"Notes          =  "+DbHelper.ParamChar+"paramNotes, "
+				+"NeedsReview    =  "+POut.Bool  (journalEntry.NeedsReview)+" "
 				+"WHERE JournalEntryNum = "+POut.Long(journalEntry.JournalEntryNum);
 			if(journalEntry.Memo==null) {
 				journalEntry.Memo="";
@@ -231,7 +257,11 @@ namespace OpenDentBusiness.Crud{
 				journalEntry.Splits="";
 			}
 			OdSqlParameter paramSplits=new OdSqlParameter("paramSplits",OdDbType.Text,POut.StringParam(journalEntry.Splits));
-			Db.NonQ(command,paramMemo,paramSplits);
+			if(journalEntry.Notes==null) {
+				journalEntry.Notes="";
+			}
+			OdSqlParameter paramNotes=new OdSqlParameter("paramNotes",OdDbType.Text,POut.StringParam(journalEntry.Notes));
+			Db.NonQ(command,paramMemo,paramSplits,paramNotes);
 		}
 
 		///<summary>Updates one JournalEntry in the database.  Uses an old object to compare to, and only alters changed fields.  This prevents collisions and concurrency problems in heavily used tables.  Returns true if an update occurred.</summary>
@@ -280,6 +310,18 @@ namespace OpenDentBusiness.Crud{
 				command+="SecUserNumEdit = "+POut.Long(journalEntry.SecUserNumEdit)+"";
 			}
 			//SecDateTEdit can only be set by MySQL
+			if(journalEntry.Payee != oldJournalEntry.Payee) {
+				if(command!="") { command+=",";}
+				command+="Payee = '"+POut.String(journalEntry.Payee)+"'";
+			}
+			if(journalEntry.Notes != oldJournalEntry.Notes) {
+				if(command!="") { command+=",";}
+				command+="Notes = "+DbHelper.ParamChar+"paramNotes";
+			}
+			if(journalEntry.NeedsReview != oldJournalEntry.NeedsReview) {
+				if(command!="") { command+=",";}
+				command+="NeedsReview = "+POut.Bool(journalEntry.NeedsReview)+"";
+			}
 			if(command=="") {
 				return false;
 			}
@@ -291,9 +333,13 @@ namespace OpenDentBusiness.Crud{
 				journalEntry.Splits="";
 			}
 			OdSqlParameter paramSplits=new OdSqlParameter("paramSplits",OdDbType.Text,POut.StringParam(journalEntry.Splits));
+			if(journalEntry.Notes==null) {
+				journalEntry.Notes="";
+			}
+			OdSqlParameter paramNotes=new OdSqlParameter("paramNotes",OdDbType.Text,POut.StringParam(journalEntry.Notes));
 			command="UPDATE journalentry SET "+command
 				+" WHERE JournalEntryNum = "+POut.Long(journalEntry.JournalEntryNum);
-			Db.NonQ(command,paramMemo,paramSplits);
+			Db.NonQ(command,paramMemo,paramSplits,paramNotes);
 			return true;
 		}
 
@@ -333,6 +379,15 @@ namespace OpenDentBusiness.Crud{
 				return true;
 			}
 			//SecDateTEdit can only be set by MySQL
+			if(journalEntry.Payee != oldJournalEntry.Payee) {
+				return true;
+			}
+			if(journalEntry.Notes != oldJournalEntry.Notes) {
+				return true;
+			}
+			if(journalEntry.NeedsReview != oldJournalEntry.NeedsReview) {
+				return true;
+			}
 			return false;
 		}
 

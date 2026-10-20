@@ -60,6 +60,7 @@ namespace OpenDentBusiness.Crud{
 				fee.SecUserNumEntry= PIn.Long  (row["SecUserNumEntry"].ToString());
 				fee.SecDateEntry   = PIn.Date  (row["SecDateEntry"].ToString());
 				fee.SecDateTEdit   = PIn.DateT (row["SecDateTEdit"].ToString());
+				fee.DateEffective  = PIn.Date  (row["DateEffective"].ToString());
 				retVal.Add(fee);
 			}
 			return retVal;
@@ -83,6 +84,7 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("SecUserNumEntry");
 			table.Columns.Add("SecDateEntry");
 			table.Columns.Add("SecDateTEdit");
+			table.Columns.Add("DateEffective");
 			foreach(Fee fee in listFees) {
 				table.Rows.Add(new object[] {
 					POut.Long  (fee.FeeNum),
@@ -97,6 +99,7 @@ namespace OpenDentBusiness.Crud{
 					POut.Long  (fee.SecUserNumEntry),
 					POut.DateT (fee.SecDateEntry,false),
 					POut.DateT (fee.SecDateTEdit,false),
+					POut.DateT (fee.DateEffective,false),
 				});
 			}
 			return table;
@@ -116,7 +119,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="FeeNum,";
 			}
-			command+="Amount,OldCode,FeeSched,UseDefaultFee,UseDefaultCov,CodeNum,ClinicNum,ProvNum,SecUserNumEntry,SecDateEntry) VALUES(";
+			command+="Amount,OldCode,FeeSched,UseDefaultFee,UseDefaultCov,CodeNum,ClinicNum,ProvNum,SecUserNumEntry,SecDateEntry,DateEffective) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(fee.FeeNum)+",";
 			}
@@ -130,8 +133,9 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Long  (fee.ClinicNum)+","
 				+    POut.Long  (fee.ProvNum)+","
 				+    POut.Long  (fee.SecUserNumEntry)+","
-				+    DbHelper.Now()+")";
+				+    DbHelper.Now()+","
 				//SecDateTEdit can only be set by MySQL
+				+    POut.Date  (fee.DateEffective)+")";
 			if(useExistingPK || PrefC.RandomKeys) {
 				Db.NonQ(command);
 			}
@@ -167,7 +171,7 @@ namespace OpenDentBusiness.Crud{
 						if(useExistingPK) {
 							sbCommands.Append("FeeNum,");
 						}
-						sbCommands.Append("Amount,OldCode,FeeSched,UseDefaultFee,UseDefaultCov,CodeNum,ClinicNum,ProvNum,SecUserNumEntry,SecDateEntry) VALUES ");
+						sbCommands.Append("Amount,OldCode,FeeSched,UseDefaultFee,UseDefaultCov,CodeNum,ClinicNum,ProvNum,SecUserNumEntry,SecDateEntry,DateEffective) VALUES ");
 						countRows=0;
 					}
 					else {
@@ -185,8 +189,9 @@ namespace OpenDentBusiness.Crud{
 					sbRow.Append(POut.Long(fee.ClinicNum)); sbRow.Append(",");
 					sbRow.Append(POut.Long(fee.ProvNum)); sbRow.Append(",");
 					sbRow.Append(POut.Long(fee.SecUserNumEntry)); sbRow.Append(",");
-					sbRow.Append(DbHelper.Now()); sbRow.Append(")");
+					sbRow.Append(DbHelper.Now()); sbRow.Append(",");
 					//SecDateTEdit can only be set by MySQL
+					sbRow.Append(POut.Date(fee.DateEffective)); sbRow.Append(")");
 					if(sbCommands.Length+sbRow.Length+1 > TableBase.MaxAllowedPacketCount && countRows > 0) {
 						Db.NonQ(sbCommands.ToString());
 						sbCommands=null;
@@ -221,7 +226,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="FeeNum,";
 			}
-			command+="Amount,OldCode,FeeSched,UseDefaultFee,UseDefaultCov,CodeNum,ClinicNum,ProvNum,SecUserNumEntry,SecDateEntry) VALUES(";
+			command+="Amount,OldCode,FeeSched,UseDefaultFee,UseDefaultCov,CodeNum,ClinicNum,ProvNum,SecUserNumEntry,SecDateEntry,DateEffective) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(fee.FeeNum)+",";
 			}
@@ -235,8 +240,9 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Long  (fee.ClinicNum)+","
 				+    POut.Long  (fee.ProvNum)+","
 				+    POut.Long  (fee.SecUserNumEntry)+","
-				+    DbHelper.Now()+")";
+				+    DbHelper.Now()+","
 				//SecDateTEdit can only be set by MySQL
+				+    POut.Date  (fee.DateEffective)+")";
 			if(useExistingPK || isRandomKeys) {
 				Db.NonQ(command);
 			}
@@ -256,10 +262,11 @@ namespace OpenDentBusiness.Crud{
 				+"UseDefaultCov  =  "+POut.Bool  (fee.UseDefaultCov)+", "
 				+"CodeNum        =  "+POut.Long  (fee.CodeNum)+", "
 				+"ClinicNum      =  "+POut.Long  (fee.ClinicNum)+", "
-				+"ProvNum        =  "+POut.Long  (fee.ProvNum)+" "
+				+"ProvNum        =  "+POut.Long  (fee.ProvNum)+", "
 				//SecUserNumEntry excluded from update
 				//SecDateEntry not allowed to change
 				//SecDateTEdit can only be set by MySQL
+				+"DateEffective  =  "+POut.Date  (fee.DateEffective)+" "
 				+"WHERE FeeNum = "+POut.Long(fee.FeeNum);
 			Db.NonQ(command);
 		}
@@ -302,6 +309,10 @@ namespace OpenDentBusiness.Crud{
 			//SecUserNumEntry excluded from update
 			//SecDateEntry not allowed to change
 			//SecDateTEdit can only be set by MySQL
+			if(fee.DateEffective.Date != oldFee.DateEffective.Date) {
+				if(command!="") { command+=",";}
+				command+="DateEffective = "+POut.Date(fee.DateEffective)+"";
+			}
 			if(command=="") {
 				return false;
 			}
@@ -341,6 +352,9 @@ namespace OpenDentBusiness.Crud{
 			//SecUserNumEntry excluded from update
 			//SecDateEntry not allowed to change
 			//SecDateTEdit can only be set by MySQL
+			if(fee.DateEffective.Date != oldFee.DateEffective.Date) {
+				return true;
+			}
 			return false;
 		}
 

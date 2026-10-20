@@ -80,6 +80,7 @@ namespace OpenDentBusiness.Crud{
 				catch{
 					asapComm.EmailTemplateType =(OpenDentBusiness.EmailType)0;
 				}
+				asapComm.UserNum             = PIn.Long  (row["UserNum"].ToString());
 				retVal.Add(asapComm);
 			}
 			return retVal;
@@ -114,6 +115,7 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("Note");
 			table.Columns.Add("GuidMessageToMobile");
 			table.Columns.Add("EmailTemplateType");
+			table.Columns.Add("UserNum");
 			foreach(AsapComm asapComm in listAsapComms) {
 				table.Rows.Add(new object[] {
 					POut.Long  (asapComm.AsapCommNum),
@@ -139,6 +141,7 @@ namespace OpenDentBusiness.Crud{
 					            asapComm.Note,
 					            asapComm.GuidMessageToMobile,
 					POut.Int   ((int)asapComm.EmailTemplateType),
+					POut.Long  (asapComm.UserNum),
 				});
 			}
 			return table;
@@ -158,7 +161,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="AsapCommNum,";
 			}
-			command+="FKey,FKeyType,ScheduleNum,PatNum,ClinicNum,ShortGUID,DateTimeEntry,DateTimeExpire,DateTimeSmsScheduled,SmsSendStatus,EmailSendStatus,DateTimeSmsSent,DateTimeEmailSent,EmailMessageNum,ResponseStatus,DateTimeOrig,TemplateText,TemplateEmail,TemplateEmailSubj,Note,GuidMessageToMobile,EmailTemplateType) VALUES(";
+			command+="FKey,FKeyType,ScheduleNum,PatNum,ClinicNum,ShortGUID,DateTimeEntry,DateTimeExpire,DateTimeSmsScheduled,SmsSendStatus,EmailSendStatus,DateTimeSmsSent,DateTimeEmailSent,EmailMessageNum,ResponseStatus,DateTimeOrig,TemplateText,TemplateEmail,TemplateEmailSubj,Note,GuidMessageToMobile,EmailTemplateType,UserNum) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(asapComm.AsapCommNum)+",";
 			}
@@ -184,7 +187,8 @@ namespace OpenDentBusiness.Crud{
 				+"'"+POut.String(asapComm.TemplateEmailSubj)+"',"
 				+    DbHelper.ParamChar+"paramNote,"
 				+    DbHelper.ParamChar+"paramGuidMessageToMobile,"
-				+"'"+POut.String(asapComm.EmailTemplateType.ToString())+"')";
+				+"'"+POut.String(asapComm.EmailTemplateType.ToString())+"',"
+				+    POut.Long  (asapComm.UserNum)+")";
 			if(asapComm.TemplateText==null) {
 				asapComm.TemplateText="";
 			}
@@ -236,7 +240,7 @@ namespace OpenDentBusiness.Crud{
 						if(useExistingPK) {
 							sbCommands.Append("AsapCommNum,");
 						}
-						sbCommands.Append("FKey,FKeyType,ScheduleNum,PatNum,ClinicNum,ShortGUID,DateTimeEntry,DateTimeExpire,DateTimeSmsScheduled,SmsSendStatus,EmailSendStatus,DateTimeSmsSent,DateTimeEmailSent,EmailMessageNum,ResponseStatus,DateTimeOrig,TemplateText,TemplateEmail,TemplateEmailSubj,Note,GuidMessageToMobile,EmailTemplateType) VALUES ");
+						sbCommands.Append("FKey,FKeyType,ScheduleNum,PatNum,ClinicNum,ShortGUID,DateTimeEntry,DateTimeExpire,DateTimeSmsScheduled,SmsSendStatus,EmailSendStatus,DateTimeSmsSent,DateTimeEmailSent,EmailMessageNum,ResponseStatus,DateTimeOrig,TemplateText,TemplateEmail,TemplateEmailSubj,Note,GuidMessageToMobile,EmailTemplateType,UserNum) VALUES ");
 						countRows=0;
 					}
 					else {
@@ -266,7 +270,8 @@ namespace OpenDentBusiness.Crud{
 					sbRow.Append("'"+POut.String(asapComm.TemplateEmailSubj)+"'"); sbRow.Append(",");
 					sbRow.Append("'"+POut.String(asapComm.Note)+"'"); sbRow.Append(",");
 					sbRow.Append("'"+POut.String(asapComm.GuidMessageToMobile)+"'"); sbRow.Append(",");
-					sbRow.Append("'"+POut.String(asapComm.EmailTemplateType.ToString())+"'"); sbRow.Append(")");
+					sbRow.Append("'"+POut.String(asapComm.EmailTemplateType.ToString())+"'"); sbRow.Append(",");
+					sbRow.Append(POut.Long(asapComm.UserNum)); sbRow.Append(")");
 					if(sbCommands.Length+sbRow.Length+1 > TableBase.MaxAllowedPacketCount && countRows > 0) {
 						Db.NonQ(sbCommands.ToString());
 						sbCommands=null;
@@ -301,7 +306,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="AsapCommNum,";
 			}
-			command+="FKey,FKeyType,ScheduleNum,PatNum,ClinicNum,ShortGUID,DateTimeEntry,DateTimeExpire,DateTimeSmsScheduled,SmsSendStatus,EmailSendStatus,DateTimeSmsSent,DateTimeEmailSent,EmailMessageNum,ResponseStatus,DateTimeOrig,TemplateText,TemplateEmail,TemplateEmailSubj,Note,GuidMessageToMobile,EmailTemplateType) VALUES(";
+			command+="FKey,FKeyType,ScheduleNum,PatNum,ClinicNum,ShortGUID,DateTimeEntry,DateTimeExpire,DateTimeSmsScheduled,SmsSendStatus,EmailSendStatus,DateTimeSmsSent,DateTimeEmailSent,EmailMessageNum,ResponseStatus,DateTimeOrig,TemplateText,TemplateEmail,TemplateEmailSubj,Note,GuidMessageToMobile,EmailTemplateType,UserNum) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(asapComm.AsapCommNum)+",";
 			}
@@ -327,7 +332,8 @@ namespace OpenDentBusiness.Crud{
 				+"'"+POut.String(asapComm.TemplateEmailSubj)+"',"
 				+    DbHelper.ParamChar+"paramNote,"
 				+    DbHelper.ParamChar+"paramGuidMessageToMobile,"
-				+"'"+POut.String(asapComm.EmailTemplateType.ToString())+"')";
+				+"'"+POut.String(asapComm.EmailTemplateType.ToString())+"',"
+				+    POut.Long  (asapComm.UserNum)+")";
 			if(asapComm.TemplateText==null) {
 				asapComm.TemplateText="";
 			}
@@ -377,7 +383,8 @@ namespace OpenDentBusiness.Crud{
 				+"TemplateEmailSubj   = '"+POut.String(asapComm.TemplateEmailSubj)+"', "
 				+"Note                =  "+DbHelper.ParamChar+"paramNote, "
 				+"GuidMessageToMobile =  "+DbHelper.ParamChar+"paramGuidMessageToMobile, "
-				+"EmailTemplateType   = '"+POut.String(asapComm.EmailTemplateType.ToString())+"' "
+				+"EmailTemplateType   = '"+POut.String(asapComm.EmailTemplateType.ToString())+"', "
+				+"UserNum             =  "+POut.Long  (asapComm.UserNum)+" "
 				+"WHERE AsapCommNum = "+POut.Long(asapComm.AsapCommNum);
 			if(asapComm.TemplateText==null) {
 				asapComm.TemplateText="";
@@ -486,6 +493,10 @@ namespace OpenDentBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="EmailTemplateType = '"+POut.String(asapComm.EmailTemplateType.ToString())+"'";
 			}
+			if(asapComm.UserNum != oldAsapComm.UserNum) {
+				if(command!="") { command+=",";}
+				command+="UserNum = "+POut.Long(asapComm.UserNum)+"";
+			}
 			if(command=="") {
 				return false;
 			}
@@ -576,6 +587,9 @@ namespace OpenDentBusiness.Crud{
 				return true;
 			}
 			if(asapComm.EmailTemplateType != oldAsapComm.EmailTemplateType) {
+				return true;
+			}
+			if(asapComm.UserNum != oldAsapComm.UserNum) {
 				return true;
 			}
 			return false;
