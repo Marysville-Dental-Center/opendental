@@ -14,7 +14,7 @@ using OpenDentBusiness.Microsoft365;
 namespace VendorDirectTests.Email {
 	[TestClass]
 	public class EmailOAuthDbTests {
-		private const string DB_NAME="vendordirect_email_ui_tests";
+		private static readonly string DB_NAME=ScratchDb.Name("vendordirect_email_ui_tests");
 		private const string CLIENT_ID_GOOGLE="123456789012-exampleclient.apps.googleusercontent.com";
 		private const string CLIENT_ID_MICROSOFT="0b6c1f7e-3f0e-4c55-9a51-1d2f5e6a7b8c";
 		private const string TENANT_ID="9d8c7b6a-5e4f-4a3b-8c2d-1e0f9a8b7c6d";

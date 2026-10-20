@@ -15,7 +15,7 @@ using OpenDentBusiness.VendorDirect;
 namespace VendorDirectTests.CareCreditTests {
 	[TestClass]
 	public class CareCreditDbTests {
-		private const string DB_NAME="vendordirect_carecredit_tests";
+		private static readonly string DB_NAME=ScratchDb.Name("vendordirect_carecredit_tests");
 		private static string _skipReason;
 
 		[ClassInitialize]

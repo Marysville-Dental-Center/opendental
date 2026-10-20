@@ -149,7 +149,7 @@ namespace VendorDirectTests.Usps {
 
 	[TestClass]
 	public class UspsAddressesDbTests {
-		private const string DB_NAME="vendordirect_usps_tests";
+		private static readonly string DB_NAME=ScratchDb.Name("vendordirect_usps_tests");
 		private static string _skipReason;
 
 		[ClassInitialize]
