@@ -166,6 +166,37 @@ namespace OpenDentBusiness{
 			}
 		}
 
+		///<summary>The duplicate rule for a sync (SynchList). Throws an ApplicationException if a row that the sync would insert or change has the same
+		///fee schedule, code, clinic, provider and start date as another row of listFeesNew. Rows that are unchanged from listFeesDb are not checked
+		///against each other: databases from before fee effective dates had no unique key on fee, so they can hold exact duplicates (Database
+		///Maintenance's FeeDeleteDuplicates removes them), and such rows must not stop the user from saving other fees of the same schedule.</summary>
+		public static void ValidateNoDuplicateDatesForSync(List<Fee> listFeesNew,List<Fee> listFeesDb) {
+			Meth.NoCheckMiddleTierRole();
+			Dictionary<long,Fee> dictFeesDb=new Dictionary<long,Fee>();
+			if(listFeesDb!=null) {
+				for(int i=0;i<listFeesDb.Count;i++) {
+					if(listFeesDb[i].FeeNum!=0) {
+						dictFeesDb[listFeesDb[i].FeeNum]=listFeesDb[i];
+					}
+				}
+			}
+			Dictionary<string,int> dictCounts=new Dictionary<string,int>();
+			for(int i=0;i<listFeesNew.Count;i++) {
+				string key=GetKeyWithDate(listFeesNew[i]);
+				dictCounts.TryGetValue(key,out int count);
+				dictCounts[key]=count+1;
+			}
+			for(int i=0;i<listFeesNew.Count;i++) {
+				Fee fee=listFeesNew[i];
+				bool isInsertOrChange=fee.FeeNum==0
+					|| !dictFeesDb.TryGetValue(fee.FeeNum,out Fee feeDb)
+					|| Crud.FeeCrud.UpdateComparison(fee,feeDb);//includes DateEffective
+				if(isInsertOrChange && dictCounts[GetKeyWithDate(fee)]>1) {
+					throw new ApplicationException(GetDuplicateMessage(fee));
+				}
+			}
+		}
+
 		private static string GetKeyWithDate(Fee fee) {
 			return fee.FeeSched+","+fee.CodeNum+","+fee.ClinicNum+","+fee.ProvNum+","+fee.DateEffective.ToString("yyyy-MM-dd");
 		}
@@ -602,8 +633,8 @@ namespace OpenDentBusiness{
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetBool(MethodBase.GetCurrentMethod(),listFeesNew,listFeesDb,doCheckFeeSchedGroups);
 			}
-			//Two rows with the same key and start date are not allowed.
-			ValidateNoDuplicateDates(listFeesNew);
+			//Two rows with the same key and start date are not allowed, but legacy duplicates that this sync leaves untouched don't block it.
+			ValidateNoDuplicateDatesForSync(listFeesNew,listFeesDb);
 			if(PrefC.GetBool(PrefName.ShowFeeSchedGroups) && doCheckFeeSchedGroups) {
 				FeeSchedGroups.SyncGroupFees(listFeesNew,listFeesDb);
 			}

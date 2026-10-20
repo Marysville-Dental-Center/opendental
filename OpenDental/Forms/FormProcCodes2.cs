@@ -388,7 +388,17 @@ namespace OpenDental {
 			//first, synch the old list
 			Cursor=Cursors.WaitCursor;
 			if(doIncludeSynch && _listFeesDb!=null){
-				Fees.SynchList(_listFees,_listFeesDb);
+				try {
+					Fees.SynchList(_listFees,_listFeesDb);
+				}
+				catch(ApplicationException ex) {
+					//An edited fee has the same fee schedule, code, clinic, provider and effective date as another row. Nothing was written. This can
+					//happen when the edited fee is itself one of a pair of duplicates left over from before fee effective dates.
+					Cursor=Cursors.Default;
+					MessageBox.Show(Lan.g(this,"Fee changes could not be saved.")+"\r\n"+ex.Message+"\r\n"
+						+Lan.g(this,"Run Database Maintenance to remove duplicate fees (FeeDeleteDuplicates), then enter the fees again."));
+					Cursor=Cursors.WaitCursor;
+				}
 				_needsSynch=false;
 			}
 			//Then, fill a new list
