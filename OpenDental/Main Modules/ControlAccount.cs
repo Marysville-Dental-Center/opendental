@@ -1361,13 +1361,14 @@ namespace OpenDental {
 			statement.IsReceipt=false;
 			statement.IsInvoice=true;
 			statement.StatementType=StmtType.NotSet;
+			statement.ShowTransSinceBalZero=Statements.GetShowTransSinceBalZeroDefault();
 			statement.DateRangeFrom=DateTime.MinValue;
 			statement.DateRangeTo=DateTime.Today;
 			statement.Note=PrefC.GetString(PrefName.BillingDefaultsInvoiceNote);
 			statement.NoteBold="";
 			statement.IsBalValid=true;
 			statement.BalTotal=guarantor.BalTotal;
-			statement.InsEst=guarantor.InsEst;
+			statement.InsEst=0;//Since Open Dental 25.1 an invoice's InsEst is its adjustment total, stored once the adjustments are attached below.
 			if(listDataRowsSuperFam.Count > 0) {
 				statement.SuperFamily=_patient.SuperFamily;
 			}
@@ -1419,6 +1420,8 @@ namespace OpenDental {
 					Procedures.Update(procedureNew,procedureOld);
 				}
 			}
+			Statements.SetInvoiceAdjustmentTotal(statement);
+			Statements.Update(statement);//Store the adjustment total now that the adjustments are attached.
 			//All printing and emailing will be done from within the form:
 			using FormStatementOptions formStatementOptions=new FormStatementOptions();
 			formStatementOptions.StatementCur=statement;
@@ -1721,6 +1724,7 @@ namespace OpenDental {
 			statement.SinglePatient=!statement.Intermingled;
 			statement.IsReceipt=true;
 			statement.StatementType=StmtType.NotSet;
+			statement.ShowTransSinceBalZero=Statements.GetShowTransSinceBalZeroDefault();
 			statement.DateRangeFrom=DateTime.Today;
 			statement.DateRangeTo=DateTime.Today;
 			statement.Note="";
@@ -1847,6 +1851,7 @@ namespace OpenDental {
 			statement.Intermingled=PrefC.GetBool(PrefName.IntermingleFamilyDefault);
 			statement.IsReceipt=false;
 			statement.StatementType=StmtType.NotSet;
+			statement.ShowTransSinceBalZero=Statements.GetShowTransSinceBalZeroDefault();
 			statement.DateRangeFrom=DateTime.MinValue;
 			if(textDateStart.IsValid()) {
 				if(textDateStart.Text!="") {
@@ -1886,6 +1891,7 @@ namespace OpenDental {
 			statement.Intermingled=PrefC.GetBool(PrefName.IntermingleFamilyDefault);
 			statement.IsReceipt=false;
 			statement.StatementType=StmtType.NotSet;
+			statement.ShowTransSinceBalZero=Statements.GetShowTransSinceBalZeroDefault();
 			statement.DateRangeFrom=DateTime.MinValue;
 			statement.DateRangeFrom=DateTime.MinValue;
 			if(textDateStart.IsValid()) {
@@ -1929,6 +1935,7 @@ namespace OpenDental {
 			statement.SinglePatient=!statement.Intermingled;
 			statement.IsReceipt=false;
 			statement.StatementType=StmtType.NotSet;
+			statement.ShowTransSinceBalZero=Statements.GetShowTransSinceBalZeroDefault();
 			statement.DateRangeFrom=DateTime.Today;
 			statement.DateRangeTo=DateTime.Today;
 			statement.Note="";

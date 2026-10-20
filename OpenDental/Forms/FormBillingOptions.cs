@@ -947,6 +947,7 @@ namespace OpenDental{
 				dictionaryPatAgingData.TryGetValue(listPatAgings[i].PatNum,out patAgingData);
 				//appointment reminders are not handled here since it would be too slow.
 				DateTime dateBalZeroCur=patAgingData?.DateBalZero??DateTime.MinValue;//dateBalZeroCur will be DateTime.MinValue if PatNum isn't in dict
+				statement.ShowTransSinceBalZero=checkBoxBillShowTransSinceZero.Checked;//Remembered per statement since Open Dental 25.2.
 				if(checkBoxBillShowTransSinceZero.Checked && dateBalZeroCur.Year > 1880) {
 					statement.DateRangeFrom=dateBalZeroCur;
 				}

@@ -20,8 +20,12 @@ namespace OpenDental{
 		private Patient _patientSuperHead;
 		private List<Def> _listDefsImageCat;
 		private bool _isFromBilling=false;
-		///<summary>Tracks the state of this setting when it differs from the default.</summary>
+		///<summary>Tracks the state of the "Show all transactions since zero or negative balance" checkbox. Callers may still set it, but since Open
+		///Dental 25.2 the checkbox starts from the statement's own ShowTransSinceBalZero instead.</summary>
 		public bool ShowBillTransSinceZero;
+		///<summary>Bulk edit only: the state the "Show all transactions since zero or negative balance" checkbox started in. The statements' setting
+		///and date ranges change only when the user changes the checkbox.</summary>
+		private CheckState _checkStateShowTransSinceZeroBulkStart;
 		///<summary>This is true if on load the single statement IsNew.</summary>
 		private bool _isStatementNew;
 		///<summary>This is true if the Delete button is clicked.  Used to determine FormClosing action.</summary>
@@ -61,13 +65,9 @@ namespace OpenDental{
 					SetEnabled(false);
 				}
 				textDate.Text=StatementCur.DateSent.ToShortDateString();
-				//Allow the temporary value of this setting to override the default if there's a difference
-				//ShowBillTransSinceZero will have been updated only if _isFromBilling is true (ie the user arrived here from the Billing forms)
-				if(_isFromBilling){
-					checkBoxBillShowTransSinceZero.Checked=ShowBillTransSinceZero;
-				} else {
-					checkBoxBillShowTransSinceZero.Checked=PrefC.GetBool(PrefName.BillingShowTransSinceBalZero);
-				}
+				//Since Open Dental 25.2 each statement remembers this setting. New statements get it from the preference, or from Billing Options when
+				//Billing made them, so the statement's own value is shown here rather than the preference.
+				checkBoxBillShowTransSinceZero.Checked=StatementCur.ShowTransSinceBalZero;
 				listMode.Items.Clear();
 				listMode.Items.AddEnums<StatementMode>();
 				listMode.SetSelectedEnum(StatementCur.Mode_);
@@ -230,6 +230,15 @@ namespace OpenDental{
 					checkIntermingled.CheckState=CheckState.Unchecked;
 					checkIntermingled.Checked=ListStatements[0].Intermingled;
 				}
+				//ShowTransSinceBalZero--------------------------------------------------------------------------------
+				checkBoxBillShowTransSinceZero.ThreeState=true;
+				checkBoxBillShowTransSinceZero.CheckState=CheckState.Indeterminate;
+				if(ListStatements.All(x => x.ShowTransSinceBalZero==ListStatements[0].ShowTransSinceBalZero)) {
+					checkBoxBillShowTransSinceZero.ThreeState=false;
+					checkBoxBillShowTransSinceZero.CheckState=CheckState.Unchecked;
+					checkBoxBillShowTransSinceZero.Checked=ListStatements[0].ShowTransSinceBalZero;
+				}
+				_checkStateShowTransSinceZeroBulkStart=checkBoxBillShowTransSinceZero.CheckState;
 				//DateStart-------------------------------------------------------------------------------------
 				textDateStart.Text="?";
 				allSame=true;
@@ -328,7 +337,7 @@ namespace OpenDental{
 		}
 
 		private void checkBoxBillShowTransSinceZero_CheckedChanged(object sender,EventArgs e) {
-			if(checkBoxBillShowTransSinceZero.Checked) {
+			if(checkBoxBillShowTransSinceZero.CheckState==CheckState.Checked) {//Indeterminate (bulk edit, statements differ) leaves the dates editable.
 				textDateStart.Enabled=false;
 				textDateEnd.Enabled=false;
 			}
@@ -1249,20 +1258,8 @@ namespace OpenDental{
 				StatementCur.IsInvoice=checkIsInvoice.Checked;
 				StatementCur.StatementType=checkLimited.Checked?StmtType.LimitedStatement:StmtType.NotSet;//right now only either LimitedStatement or NotSet
 				StatementCur.DateRangeFrom=PIn.Date(textDateStart.Text);//handles blank
-				if(checkBoxBillShowTransSinceZero.Checked) {
-					Patient patient=Patients.GetPat(StatementCur.PatNum);
-					List<PatAging> listPatAgings=Patients.GetAgingListSimple(new List<long> {}, new List<long> { patient.Guarantor },true);
-					DataTable tableBals=Ledgers.GetDateBalanceBegan(listPatAgings,checkSuperStatement.Checked);
-					if(tableBals.Rows.Count > 0) {
-						DateTime dateFrom=PIn.Date(tableBals.Rows[0]["DateZeroBal"].ToString());
-						if(dateFrom==DateTime.MinValue) {//patient has a zero or credit balance.
-							StatementCur.DateRangeFrom=DateTime.Now;
-						}
-						else {
-							StatementCur.DateRangeFrom=dateFrom;
-						}
-					}
-				}
+				StatementCur.ShowTransSinceBalZero=checkBoxBillShowTransSinceZero.Checked;//Remembered per statement since Open Dental 25.2.
+				Statements.ApplyShowTransSinceBalZero(StatementCur,checkSuperStatement.Checked);//Only when the statement's own setting is on.
 				if(textDateEnd.Text==""){
 					StatementCur.DateRangeTo=new DateTime(2200,1,1);//max val
 				}
@@ -1272,6 +1269,8 @@ namespace OpenDental{
 				StatementCur.Note=textNote.Text;
 				StatementCur.NoteBold=textNoteBold.Text;
 				StatementCur.IsInvoiceCopy=checkIsInvoiceCopy.Checked;
+				//Since Open Dental 25.1 an invoice stores its adjustment total in InsEst. Insert and Update store it too; this keeps StatementCur in step.
+				Statements.SetInvoiceAdjustmentTotal(StatementCur);
 				if(StatementCur.IsInvoice || !StatementCur.IsNew) {
 					Statements.Update(StatementCur);
 					StatementCur.IsNew=false;
@@ -1285,7 +1284,11 @@ namespace OpenDental{
 			}
 			//From here on, we are only working with multiple statements
 			DataTable tablePatsDates=new DataTable();
-			if(checkBoxBillShowTransSinceZero.Checked) {//populate lookup table of patients and dates
+			//The statements' own setting, and the date ranges that follow from it, change only when the user changed the checkbox.
+			bool isShowTransSinceZeroChanged=checkBoxBillShowTransSinceZero.CheckState!=_checkStateShowTransSinceZeroBulkStart
+				&& checkBoxBillShowTransSinceZero.CheckState!=CheckState.Indeterminate;
+			bool doApplyShowTransSinceZero=isShowTransSinceZeroChanged && checkBoxBillShowTransSinceZero.CheckState==CheckState.Checked;
+			if(doApplyShowTransSinceZero) {//populate lookup table of patients and dates
 				List<Patient> listPatients=Patients.GetMultPats(ListStatements.Select(x=>x.PatNum).ToList()).ToList();
 				List<PatAging> listPatAgings=Patients.GetAgingListSimple(listPatients.Select(x=>x.BillingType).Distinct().ToList(),new List<long> { });
 				tablePatsDates=Ledgers.GetDateBalanceBegan(listPatAgings,checkSuperStatement.Checked);
@@ -1329,7 +1332,10 @@ namespace OpenDental{
 				if(textNoteBold.Text!="?"){
 					ListStatements[i].NoteBold=textNoteBold.Text;
 				}
-				if(checkBoxBillShowTransSinceZero.Checked) {
+				if(isShowTransSinceZeroChanged) {
+					ListStatements[i].ShowTransSinceBalZero=checkBoxBillShowTransSinceZero.Checked;
+				}
+				if(doApplyShowTransSinceZero) {
 					DateTime dateFrom=DateTime.MinValue;
 					DataRow[] dataRowArray=tablePatsDates.Select("PatNum='"+ListStatements[i].PatNum.ToString()+"'");
 					if(dataRowArray.Length>0){
