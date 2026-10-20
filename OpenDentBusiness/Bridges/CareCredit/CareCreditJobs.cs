@@ -110,6 +110,11 @@ namespace OpenDentBusiness.Bridges {
 	public static class CareCreditJobs {
 		///<summary>When this process last pulled back each row, by CareCreditWebResponseNum.</summary>
 		private static readonly ConcurrentDictionary<long,DateTime> _dictLastPoll=new ConcurrentDictionary<long,DateTime>();
+		///<summary>Consecutive pullback refusals (HTTP 403/404) per CareCreditWebResponseNum in this process.</summary>
+		private static readonly ConcurrentDictionary<long,int> _dictRefusals=new ConcurrentDictionary<long,int>();
+		///<summary>A row is given up on only after this many consecutive refusals. Rows made under Open Dental's partner context before migration are
+		///refused every time, so they stop quickly; our own rows survive a transient refusal and keep polling until they expire.</summary>
+		private const int MAX_REFUSALS=3;
 		///<summary>Pause between batch submissions, so a large batch doesn't hit Synchrony's (unpublished) rate limits.</summary>
 		public static TimeSpan BatchSubmitDelay=TimeSpan.FromMilliseconds(500);
 
@@ -138,6 +143,7 @@ namespace OpenDentBusiness.Bridges {
 						: CareCreditWebStatus.Expired;
 					CareCreditWebResponses.UpdateProcessingWebStatus(careCreditWebResponse,statusExpired);
 					_dictLastPoll.TryRemove(careCreditWebResponse.CareCreditWebResponseNum,out _);
+					_dictRefusals.TryRemove(careCreditWebResponse.CareCreditWebResponseNum,out _);
 					continue;
 				}
 				DateTime dateTimeLastPoll;
@@ -160,7 +166,14 @@ namespace OpenDentBusiness.Bridges {
 						return countPolled;//Every other row would fail the same way. The setup window shows the error.
 					}
 					if(ex.ErrorCode==403 || ex.ErrorCode==404) {
-						//Refused for this reference, e.g. a row made under Open Dental's partner context before migration. Don't retry forever.
+						//Refused for this reference, e.g. a row made under Open Dental's partner context before migration. Retry a few times in case the
+						//refusal is transient, then stop instead of retrying forever (spec 3.8). Rows that are never given up on still expire normally.
+						int countRefusals=_dictRefusals.AddOrUpdate(careCreditWebResponse.CareCreditWebResponseNum,1,(key,count) => count+1);
+						if(countRefusals<MAX_REFUSALS) {
+							continue;
+						}
+						_dictRefusals.TryRemove(careCreditWebResponse.CareCreditWebResponseNum,out _);
+						_dictLastPoll.TryRemove(careCreditWebResponse.CareCreditWebResponseNum,out _);
 						CareCreditWebResponse careCreditWebResponseOld=careCreditWebResponse.Copy();
 						careCreditWebResponse.LastResponseStr=CareCreditQSBatchResponse.ToLocalErrorJson(
 							"Pullback refused (HTTP "+ex.ErrorCode+"). The transaction may have been made under a different integration.",isInvalidInput:false);
@@ -177,6 +190,7 @@ namespace OpenDentBusiness.Bridges {
 					return countPolled;//Network down: try again next cycle.
 				}
 				countPolled++;
+				_dictRefusals.TryRemove(careCreditWebResponse.CareCreditWebResponseNum,out _);//A successful pullback resets the refusal count.
 				//A pass can outlive its lease, and a window can pull back its own row, so apply the result to the row as saved now, not to the snapshot
 				//from the start of the pass. (ApplyResult's claim is what guarantees one payment; this skips work another process already did.)
 				CareCreditWebResponse careCreditWebResponseDb=actions.FuncGetRow(careCreditWebResponse.CareCreditWebResponseNum);
