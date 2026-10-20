@@ -316,7 +316,7 @@ namespace OpenDental {
 					comboProvider.Enabled=false;
 					butPickProv.Enabled=false;
 				}
-				if(!Security.IsAuthorized(EnumPermType.ClaimProcFeeBilledToInsEdit,true)) {
+				if(!Security.IsAuthorized(EnumPermType.ClaimProcFieldsBilledToInsEdit,true)) {
 					textFeeBilled.ReadOnly=true;
 				}
 				//butOK.Enabled=false;
@@ -1307,7 +1307,7 @@ namespace OpenDental {
 				_claimProc.DateCP=PIn.Date(textDateCP.Text);
 			}
 			_claimProc.CodeSent=textCodeSent.Text;
-			if(Security.IsAuthorized(EnumPermType.ClaimProcFeeBilledToInsEdit,true)) {
+			if(Security.IsAuthorized(EnumPermType.ClaimProcFieldsBilledToInsEdit,true)) {
 				_claimProc.FeeBilled=PIn.Double(textFeeBilled.Text);
 			}
 			_claimProc.Remarks=textRemarks.Text;

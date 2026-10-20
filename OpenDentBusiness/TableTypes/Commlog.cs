@@ -129,7 +129,10 @@ namespace OpenDentBusiness{
 		///<summary>8</summary>
 		NewPatThankYou,
 		///<summary>9</summary>
-		MsgToPay
+		MsgToPay,
+		///<summary>10 - Open Dental 25.1. Commlogs that Open Dental's mass email service wrote. This program does not write them; they only load.</summary>
+		[Description("Mass Email")]
+		MassEmail,
 	}
 
 	///<summary></summary>

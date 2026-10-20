@@ -81,6 +81,9 @@ namespace OpenDentBusiness {
 		ChartModule,
 		///<summary>27-Not designed to be saved to the db.  Useful when needing a "none" or "all" default option for UI.</summary>
 		None,
+		///<summary>28-Open Dental 25.3. A check printed from an accounting transaction. Reserved until check printing is ported (A-SHEET); it is kept
+		///out of the sheet type list for new sheet defs until then.</summary>
+		Check=28,
 	}
 
 	///<summary>For sheetFields</summary>

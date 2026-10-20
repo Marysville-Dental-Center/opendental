@@ -88,7 +88,7 @@ namespace OpenDental {
 				row.Cells.Add("Manual blue book fee schedule");
 				row.Cells.Add("Insurance Plan");
 			}
-			else if(insBlueBookRule.RuleType==InsBlueBookRuleType.UcrFee) {
+			else if(insBlueBookRule.RuleType==InsBlueBookRuleType.ProviderFee) {
 				row.Cells.Add("UCR fee");
 				row.Cells.Add("All");
 			}
@@ -108,9 +108,9 @@ namespace OpenDental {
 
 		private void GridInsBlueBookRules_CellDoubleClick(object sender,ODGridClickEventArgs e) {
 			InsBlueBookRule insBlueBookRule=(InsBlueBookRule)gridInsBlueBookRules.ListGridRows[e.Row].Tag;
-			if(insBlueBookRule.RuleType==InsBlueBookRuleType.ManualBlueBookSchedule || insBlueBookRule.RuleType==InsBlueBookRuleType.UcrFee) {
+			if(insBlueBookRule.RuleType==InsBlueBookRuleType.ManualBlueBookSchedule || insBlueBookRule.RuleType==InsBlueBookRuleType.ProviderFee) {
 				MsgBox.Show(this,"The rules "+ODPrimitiveExtensions.GetDescription(InsBlueBookRuleType.ManualBlueBookSchedule)+" and "
-					+ODPrimitiveExtensions.GetDescription(InsBlueBookRuleType.UcrFee)+" cannot be edited.");
+					+ODPrimitiveExtensions.GetDescription(InsBlueBookRuleType.ProviderFee)+" cannot be edited.");
 				return;
 			}
 			using FormInsBlueBookRuleEdit formInsBlueBookRuleEdit=new FormInsBlueBookRuleEdit(insBlueBookRule);

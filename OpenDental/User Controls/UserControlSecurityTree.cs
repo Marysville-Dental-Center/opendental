@@ -292,6 +292,8 @@ namespace OpenDental {
 				node.Nodes.Add(node2);
 				node2=SetNode(EnumPermType.Blockouts);
 				node.Nodes.Add(node2);
+				node2=SetNode(EnumPermType.BlockoutsFlagged);
+				node.Nodes.Add(node2);
 			treePermissions.Nodes.Add(node);
 			#endregion
 			#region Family Module
@@ -347,7 +349,7 @@ namespace OpenDental {
 					node2.Nodes.Add(node3);
 					node3=SetNode(EnumPermType.ClaimProcClaimAttachedProvEdit);
 					node2.Nodes.Add(node3);
-					node3=SetNode(EnumPermType.ClaimProcFeeBilledToInsEdit);
+					node3=SetNode(EnumPermType.ClaimProcFieldsBilledToInsEdit);
 					node2.Nodes.Add(node3);
 					node3=SetNode(EnumPermType.ClaimProcReceivedEdit);
 					node2.Nodes.Add(node3);
@@ -376,6 +378,8 @@ namespace OpenDental {
 				node.Nodes.Add(node2);
 				node2=SetNode("Payment Plan");
 					node3=SetNode(EnumPermType.PayPlanEdit);
+					node2.Nodes.Add(node3);
+					node3=SetNode(EnumPermType.PayPlanUnlock);
 					node2.Nodes.Add(node3);
 					node3=SetNode(EnumPermType.PayPlanChargeDateEdit);
 					node2.Nodes.Add(node3);
@@ -412,6 +416,8 @@ namespace OpenDental {
 					node3=SetNode(EnumPermType.ProcExistingEdit);
 					node2.Nodes.Add(node3);
 					node3=SetNode(EnumPermType.ProcEditShowFee);
+					node2.Nodes.Add(node3);
+					node3=SetNode(EnumPermType.ProcTPEditFee);
 					node2.Nodes.Add(node3);
 					node3=SetNode(EnumPermType.ProcDelete);
 					node2.Nodes.Add(node3);
@@ -475,6 +481,10 @@ namespace OpenDental {
 				node2=SetNode(EnumPermType.ImageDelete);
 				node.Nodes.Add(node2);
 				node2=SetNode(EnumPermType.ImageEdit);
+				node.Nodes.Add(node2);
+				node2=SetNode(EnumPermType.ImageSignatureCreate);
+				node.Nodes.Add(node2);
+				node2=SetNode(EnumPermType.SignedImageEdit);
 				node.Nodes.Add(node2);
 				node2=SetNode(EnumPermType.ImageExport);
 				node.Nodes.Add(node2);
@@ -670,7 +680,8 @@ namespace OpenDental {
 				if(permType==EnumPermType.SecurityAdmin
 					|| permType==EnumPermType.StartupMultiUserOld
 					|| permType==EnumPermType.StartupSingleUserOld
-					|| permType==EnumPermType.EhrKeyAdd) 
+					|| permType==EnumPermType.EhrKeyAdd
+					|| GroupPermissions.IsReserved(permType))//HQ-only values, kept so Open Dental rows load. Never granted.
 				{
 					continue;
 				}

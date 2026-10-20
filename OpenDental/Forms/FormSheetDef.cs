@@ -43,7 +43,7 @@ namespace OpenDental {
 			Func<SheetTypeEnum,string> funcItemToString=new Func<SheetTypeEnum,string>((sheetType) => { return Lan.g("enumSheetTypeEnum",sheetType.GetDescription()); });
 			//not allowed to change sheettype once created.
 			List<SheetTypeEnum> listSheetTypeEnums =Enum.GetValues(typeof(SheetTypeEnum)).Cast<SheetTypeEnum>().ToList();
-			listSheetTypeEnums=listSheetTypeEnums.FindAll(x => !x.In(SheetTypeEnum.None,SheetTypeEnum.MedLabResults) && !SheetDefs.IsDashboardType(x));
+			listSheetTypeEnums=listSheetTypeEnums.FindAll(x => !x.In(SheetTypeEnum.None,SheetTypeEnum.MedLabResults,SheetTypeEnum.Check) && !SheetDefs.IsDashboardType(x));//Check (28) is reserved until check printing is ported.
 			listSheetTypeEnums=listSheetTypeEnums.OrderBy(x=>funcItemToString(x)).ToList(); //Order alphabetical.
 			listSheetType.Items.AddList(listSheetTypeEnums, funcItemToString); //funcItemToString contains the text displayed for each item
 			if(!IsInitial) {

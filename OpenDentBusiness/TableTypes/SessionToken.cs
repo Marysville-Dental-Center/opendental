@@ -38,5 +38,8 @@ namespace OpenDentBusiness {
     ODHQ,
     ///<summary>4 - The patient verified him or herself with just a name and birthdate.</summary>
     PatientPortalVerifyUser,
+    ///<summary>5 - Reserved (Open Dental 25.2). A two-factor code was sent to the patient by a hosted web app this program does not have.</summary>
+    [ReservedEnumValue("Hosted web apps are Open Dental services.")]
+    TwoFactorAuth,
   }
 }

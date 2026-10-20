@@ -108,6 +108,15 @@ namespace OpenDentBusiness {
 		///<summary>13. This means the action done was for the Payment Portal.</summary>
 		[Description("Payment Portal")]
 		PaymentPortal,
+		///<summary>14. Reserved (Open Dental 25.1). BetterDiagnostics AI, a hosted service this program does not have.</summary>
+		[Description("BetterDiagnostics")]
+		BetterDiag,
+		///<summary>15. Reserved (Open Dental 25.1). Mass email, a hosted service this program does not have.</summary>
+		[Description("Mass Email")]
+		MassEmail,
+		///<summary>16. Open Dental 25.1. The Pearl imaging bridge. Pearl is not an eService, but Open Dental logs it in this table.</summary>
+		[Description("Pearl")]
+		Pearl,
 
 	}
 
@@ -547,10 +556,11 @@ namespace OpenDentBusiness {
 		[Description("Payment Portal - User arrived at the payment portal via message-to-pay")]
 		[EServiceLogType(eServiceType.PaymentPortal)]
 		PayPortalArrivedWithPayGuid,
-		///<summary>105 - Payment Portal - User provided patient information on patient information view</summary>
-		[Description("Payment Portal - User provided patient information on patient information view")]
+		///<summary>105 - Web apps - User provided patient information on the patient selection view. Named PayPortalSelectedPatient before
+		///Open Dental 25.3, when the hosted web apps started sharing it.</summary>
+		[Description("Web App - User provided patient information on the patient selection view")]
 		[EServiceLogType(eServiceType.PaymentPortal)]
-		PayPortalSelectedPatient,
+		SelectedPatient,
 		///<summary>106 - Payment Portal - Switched to selected patient's clinic</summary>
 		[Description("Payment Portal - Switched to selected patient's clinic")]
 		[EServiceLogType(eServiceType.PaymentPortal)]
@@ -595,10 +605,76 @@ namespace OpenDentBusiness {
 		[Description("Payment Portal - The user printed their receipt")]
 		[EServiceLogType(eServiceType.PaymentPortal)]
 		PayPortalClickedPrint,
-		///<summary>117 - Payment Portal - The user received an error</summary>
-		[Description("Payment Portal - The user received an error")]
+		///<summary>117 - Web apps - The user received an error. Named PayPortalPaymentPortalError before Open Dental 25.3.</summary>
+		[Description("Web App - The user received an error")]
 		[EServiceLogType(eServiceType.PaymentPortal)]
-		PayPortalPaymentPortalError,
+		WebAppError,
+		//118 to 133 were added by Open Dental 25.1 and 25.3 for hosted services this program does not have. They are reserved so that eservicelog
+		//rows written by Open Dental load with a name. Nothing in this program logs them.
+		///<summary>118 - Reserved. BetterDiagnostics returned success.</summary>
+		[Description("BetterDiagnostics - API call succeeded")]
+		[EServiceLogType(eServiceType.BetterDiag)]
+		BetterDiagPass,
+		///<summary>119 - Reserved. BetterDiagnostics returned a failure.</summary>
+		[Description("BetterDiagnostics - API call failed")]
+		[EServiceLogType(eServiceType.BetterDiag)]
+		BetterDiagFail,
+		///<summary>120 - Reserved. The BetterDiagnostics call threw an exception.</summary>
+		[Description("BetterDiagnostics - API exception")]
+		[EServiceLogType(eServiceType.BetterDiag)]
+		BetterDiagException,
+		///<summary>121 - Reserved. eClipboard could not save a submitted eForm to Imaging.</summary>
+		[Description("eClipboard - Error saving a submitted eForm to Imaging")]
+		[EServiceLogType(eServiceType.EClipboard)]
+		ECCheckinErrorEFormToImaging,
+		///<summary>122 - Reserved. Mass email addresses were uploaded.</summary>
+		[Description("Mass Email - Addresses uploaded")]
+		[EServiceLogType(eServiceType.MassEmail)]
+		MassEmailUpload,
+		///<summary>123 - Reserved. Uploading mass email addresses failed.</summary>
+		[Description("Mass Email - Address upload error")]
+		[EServiceLogType(eServiceType.MassEmail)]
+		MassEmailUploadError,
+		///<summary>124 - Reserved. Receipt for a sent mass email.</summary>
+		[Description("Mass Email - Receipt")]
+		[EServiceLogType(eServiceType.MassEmail)]
+		MassEmailReceipt,
+		///<summary>125 - Reserved. eClipboard insurance card scan (OCR) error.</summary>
+		[Description("eClipboard - Insurance card scanner error")]
+		[EServiceLogType(eServiceType.EClipboard)]
+		OcrInsuranceCardScannerError,
+		///<summary>126 - Reserved. An image was sent to Pearl (logged at most once a day per clinic).</summary>
+		[Description("Pearl - Image sent")]
+		[EServiceLogType(eServiceType.Pearl)]
+		PearlSentImage,
+		///<summary>127 - Reserved. Web Sched loaded.</summary>
+		[Description("Web Sched - Application loaded")]
+		[EServiceLogType(eServiceType.WSExistingPat)]
+		AppLoaded,
+		///<summary>128 - Reserved. Web Sched user picked a two-factor method.</summary>
+		[Description("Web Sched - Verification method selected")]
+		[EServiceLogType(eServiceType.WSExistingPat)]
+		VerificationMethodSelected,
+		///<summary>129 - Reserved. Web Sched user reached the insurance view.</summary>
+		[Description("Web Sched - Insurance information shown")]
+		[EServiceLogType(eServiceType.WSExistingPat)]
+		InsuranceInfoPresented,
+		///<summary>130 - Reserved. Web Sched user picked an appointment reason.</summary>
+		[Description("Web Sched - Appointment reason selected")]
+		[EServiceLogType(eServiceType.WSExistingPat)]
+		ApptReasonSelected,
+		///<summary>131 - Reserved. Web Sched asked the user to confirm the appointment.</summary>
+		[Description("Web Sched - Appointment confirmation shown")]
+		[EServiceLogType(eServiceType.WSExistingPat)]
+		ApptConfirmPresented,
+		///<summary>132 - Reserved. Web Sched user confirmed the appointment.</summary>
+		[Description("Web Sched - Appointment confirmed")]
+		[EServiceLogType(eServiceType.WSExistingPat)]
+		ApptConfirmAttempted,
+		///<summary>133 - Reserved. Web Sched user chose to schedule another appointment.</summary>
+		[Description("Web Sched - Schedule another appointment")]
+		[EServiceLogType(eServiceType.WSExistingPat)]
+		ScheduleAnotherAppt,
 	}
 
 	public class EServiceLogType:Attribute {

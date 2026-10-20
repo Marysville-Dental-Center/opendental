@@ -59,7 +59,9 @@ namespace OpenDentBusiness{
 		///<summary>6. Sum of flags for bleeding(1), suppuration(2), plaque(4), and calculus(8).</summary>
 		BleedSupPlaqCalc,
 		///<summary>7. But this type is never saved to the db. It is always calculated on the fly.</summary>
-		CAL
+		CAL,
+		///<summary>8. Open Dental 24.4. Attached gingiva, calculated on the fly like CAL and never saved to the db.</summary>
+		AttGing,
 	}
 
 	///<summary>Blood,pus,plaque,and calculus. Used in ContrPerio.PerioCell</summary>
