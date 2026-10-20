@@ -262,7 +262,10 @@ namespace OpenDentBusiness{
 					|| journalEntryNew.CreditAmt != listJournalEntriesOld[i].CreditAmt
 					|| journalEntryNew.Memo != listJournalEntriesOld[i].Memo
 					|| journalEntryNew.Splits != listJournalEntriesOld[i].Splits
-					|| journalEntryNew.CheckNumber!= listJournalEntriesOld[i].CheckNumber) 
+					|| journalEntryNew.CheckNumber!= listJournalEntriesOld[i].CheckNumber
+					|| journalEntryNew.Payee != listJournalEntriesOld[i].Payee
+					|| journalEntryNew.Notes != listJournalEntriesOld[i].Notes
+					|| journalEntryNew.NeedsReview != listJournalEntriesOld[i].NeedsReview)
 				{
 					Update(journalEntryNew);
 				}
@@ -353,7 +356,144 @@ namespace OpenDentBusiness{
 			return true;
 		}
 
-		
+		#region Payee, Notes, Needs Review and next check number (Open Dental 25.3 parity)
+		///<summary>The check number used when an account has no purely numeric check number yet.</summary>
+		public const long CHECK_NUMBER_FIRST=1001;
+		///<summary>Maximum length of journalentry.Payee (varchar(255)).</summary>
+		public const int PAYEE_MAX_LENGTH=255;
+		///<summary>Maximum length of journalentry.Notes (text).</summary>
+		public const int NOTES_MAX_LENGTH=65535;
+
+		///<summary>The next check number for an account: one more than the highest purely numeric check number among its journal entries, or
+		///CHECK_NUMBER_FIRST when there is none. Check numbers like "DEP" or "AW" are ignored. Entries of transactionNumExclude (the transaction
+		///being edited) are not counted, so a transaction that already holds the highest number does not push the suggestion past itself.</summary>
+		public static string GetNextCheckNumber(long accountNum,long transactionNumExclude=0) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetString(MethodBase.GetCurrentMethod(),accountNum,transactionNumExclude);
+			}
+			//The REGEXP only narrows the rows; CalcNextCheckNumber does the real check, so collation or regex flavor cannot change the answer.
+			string command="SELECT DISTINCT CheckNumber FROM journalentry "
+				+"WHERE AccountNum="+POut.Long(accountNum)+" "
+				+"AND CheckNumber REGEXP '^[[:space:]]*[0-9]+[[:space:]]*$'";
+			if(transactionNumExclude!=0) {
+				command+=" AND TransactionNum!="+POut.Long(transactionNumExclude);
+			}
+			List<string> listCheckNumbers=Db.GetListString(command);
+			return CalcNextCheckNumber(listCheckNumbers);
+		}
+
+		///<summary>One more than the highest purely numeric value in the list (surrounding spaces allowed), or CHECK_NUMBER_FIRST when there is none.
+		///Leading zeros of the highest number are kept, so "000123" is followed by "000124". Values too large for a long are ignored.</summary>
+		public static string CalcNextCheckNumber(IEnumerable<string> listCheckNumbers) {
+			Meth.NoCheckMiddleTierRole();
+			long numMax=-1;
+			int widthMax=0;
+			foreach(string checkNumberRaw in listCheckNumbers??new List<string>()) {
+				if(checkNumberRaw==null) {
+					continue;
+				}
+				string checkNumber=checkNumberRaw.Trim();
+				if(checkNumber=="" || !checkNumber.All(x => x>='0' && x<='9')) {
+					continue;
+				}
+				long num;
+				if(!long.TryParse(checkNumber,System.Globalization.NumberStyles.None,System.Globalization.CultureInfo.InvariantCulture,out num)
+					|| num==long.MaxValue)
+				{
+					continue;
+				}
+				if(num>numMax || (num==numMax && checkNumber.Length>widthMax)) {
+					numMax=num;
+					widthMax=checkNumber.Length;
+				}
+			}
+			if(numMax<0) {
+				return CHECK_NUMBER_FIRST.ToString(System.Globalization.CultureInfo.InvariantCulture);
+			}
+			return (numMax+1).ToString(System.Globalization.CultureInfo.InvariantCulture).PadLeft(widthMax,'0');
+		}
+
+		///<summary>True if the entry should be shown for the Find Text box of Transaction History: the text appears, ignoring case, in its Memo, check
+		///number, splits, Payee or Notes. An empty search matches everything.</summary>
+		public static bool MatchesFindText(JournalEntry journalEntry,string findText) {
+			Meth.NoCheckMiddleTierRole();
+			if(string.IsNullOrEmpty(findText)) {
+				return true;
+			}
+			string findUpper=findText.ToUpper();
+			return new[] { journalEntry.Memo,journalEntry.CheckNumber,journalEntry.Splits,journalEntry.Payee,journalEntry.Notes }
+				.Any(x => !string.IsNullOrEmpty(x) && x.ToUpper().Contains(findUpper));
+		}
+
+		///<summary>True when every entry has the same Memo, Payee and Notes, the fields that the simple view of Edit Transaction and the
+		///"same for all" checkbox of the compound view apply to the whole transaction. True for an empty list.</summary>
+		public static bool AreSharedFieldsSame(List<JournalEntry> listJournalEntries) {
+			Meth.NoCheckMiddleTierRole();
+			if(listJournalEntries==null || listJournalEntries.Count<2) {
+				return true;
+			}
+			JournalEntry journalEntryFirst=listJournalEntries[0];
+			return listJournalEntries.All(x => (x.Memo??"")==(journalEntryFirst.Memo??"")
+				&& (x.Payee??"")==(journalEntryFirst.Payee??"")
+				&& (x.Notes??"")==(journalEntryFirst.Notes??""));
+		}
+
+		///<summary>Copies Memo, Payee and Notes from the source entry to every entry in the list. Used by the "same for all" checkbox.</summary>
+		public static void CopySharedFields(JournalEntry journalEntrySource,List<JournalEntry> listJournalEntries) {
+			Meth.NoCheckMiddleTierRole();
+			for(int i=0;i<listJournalEntries.Count;i++) {
+				listJournalEntries[i].Memo=journalEntrySource.Memo;
+				listJournalEntries[i].Payee=journalEntrySource.Payee;
+				listJournalEntries[i].Notes=journalEntrySource.Notes;
+			}
+		}
+
+		///<summary>The Needs Review state of a transaction: true if any of its entries has the flag.</summary>
+		public static bool IsAnyNeedsReview(List<JournalEntry> listJournalEntries) {
+			Meth.NoCheckMiddleTierRole();
+			return listJournalEntries!=null && listJournalEntries.Any(x => x.NeedsReview);
+		}
+
+		///<summary>Writes the Needs Review flag on every entry of a transaction, as the Edit Transaction checkbox does.</summary>
+		public static void SetNeedsReview(List<JournalEntry> listJournalEntries,bool needsReview) {
+			Meth.NoCheckMiddleTierRole();
+			for(int i=0;i<listJournalEntries.Count;i++) {
+				listJournalEntries[i].NeedsReview=needsReview;
+			}
+		}
+
+		///<summary>The Payee of a transaction for display and audit: the distinct non-empty payees of its entries, in entry order, joined by ", ".
+		///Empty when no entry has one.</summary>
+		public static string GetPayeeSummary(List<JournalEntry> listJournalEntries) {
+			Meth.NoCheckMiddleTierRole();
+			if(listJournalEntries==null) {
+				return "";
+			}
+			return string.Join(", ",listJournalEntries.Select(x => x.Payee??"").Where(x => x!="").Distinct());
+		}
+
+		///<summary>Audit text for the Payee and Needs Review changes between the saved entries of a transaction and the entries about to be saved,
+		///for the AccountingCreate and AccountingEdit log entries, like "Payee: 'A' -> 'B'. Needs Review: off -> on." Empty when neither changed. For
+		///a new transaction pass an empty old list.</summary>
+		public static string GetAuditChangeText(List<JournalEntry> listJournalEntriesOld,List<JournalEntry> listJournalEntriesNew) {
+			Meth.NoCheckMiddleTierRole();
+			List<string> listChanges=new List<string>();
+			string payeeOld=GetPayeeSummary(listJournalEntriesOld);
+			string payeeNew=GetPayeeSummary(listJournalEntriesNew);
+			if(payeeOld!=payeeNew) {
+				listChanges.Add(Lans.g("JournalEntries","Payee")+": '"+payeeOld+"' -> '"+payeeNew+"'");
+			}
+			bool needsReviewOld=IsAnyNeedsReview(listJournalEntriesOld);
+			bool needsReviewNew=IsAnyNeedsReview(listJournalEntriesNew);
+			if(needsReviewOld!=needsReviewNew) {
+				listChanges.Add(Lans.g("JournalEntries","Needs Review")+": "+(needsReviewOld?"on":"off")+" -> "+(needsReviewNew?"on":"off"));
+			}
+			if(listChanges.Count==0) {
+				return "";
+			}
+			return string.Join(". ",listChanges)+".";
+		}
+		#endregion Payee, Notes, Needs Review and next check number
 	}
 }
 
