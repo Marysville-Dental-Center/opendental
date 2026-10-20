@@ -1,0 +1,41 @@
+Open PMS - Dental
+=================
+
+Open PMS - Dental is a fork of Open Dental (c) Open Dental Software, Inc. and contributors, licensed under the GNU GPL v2. It is not affiliated with or endorsed by Open Dental Software, Inc.
+
+Origin
+------
+This program is based on the Open Dental source code, version 24.3.63.0, as
+published under the GNU General Public License, version 2. Changes made in
+this fork are described in the git history and in docs/decoupling-plan.md.
+Features from later Open Dental versions are re-implemented from Open
+Dental's public documentation; no Open Dental binaries are decompiled.
+
+"Open Dental" is a name of Open Dental Software, Inc. It is used here only to
+say where this program comes from. Some internal names (namespaces,
+assemblies, executable and window titles) still read "Open Dental" until a
+later rename step; they do not mean this program is Open Dental's product.
+
+Copyright and license
+---------------------
+Open Dental: Copyright (C) 2003 and later years, Jordan Sparks, D.M.D.,
+Open Dental Software, Inc. and contributors. Licensed under the GNU General
+Public License, version 2. See LICENSE.
+
+Changes in this fork: Copyright (C) their contributors. Licensed under the
+GNU General Public License, version 2, the same as the code they change.
+Files that say "version 2 or later" may also be used under a later version.
+
+Every copyright line and license notice in the source files is kept as it
+is. The full text of the GNU General Public License, version 2, is in
+LICENSE.
+
+Third-party components
+----------------------
+Third-party libraries keep their own licenses. Their license texts are
+shown in the program under Help > About > View Licenses. CDT codes are
+copyrighted by the American Dental Association; by this project's ground
+rules, no CDT code text or ADA claim-form artwork is included.
+
+This program comes with ABSOLUTELY NO WARRANTY, to the extent permitted by
+law. See sections 11 and 12 of LICENSE.

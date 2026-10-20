@@ -22,14 +22,14 @@ namespace OpenDental{
 
 		private void FormAbout_Load(object sender, System.EventArgs e) {
 			string softwareName=PrefC.GetString(PrefName.SoftwareName);
-			if(Programs.GetCur(ProgramName.BencoPracticeManagement).Enabled) {
-				pictureOpenDental.Image=Properties.Resources.bencoLogo;
-			}
-			if(softwareName!="Open Dental Software" && !Programs.GetCur(ProgramName.BencoPracticeManagement).Enabled) {
-				pictureOpenDental.Visible=false;
-			}
-			labelVersion.Text=Lan.g(this,"Version:")+" "+Application.ProductVersion;
-			UpdateHistory updateHistory=UpdateHistories.GetForVersion(Application.ProductVersion);
+			//Fork identity (decoupling Phase 4). The product name and the attribution are not translated: they are a name and a legal notice.
+			//The Open Dental and reseller logos are no longer shown; this program is not Open Dental's product.
+			labelProductName.Text=AboutBoxInfo.ProductName;
+			labelAttribution.Text=AboutBoxInfo.Attribution;
+			Assembly assemblyProgram=typeof(FormAbout).Assembly;
+			labelVersion.Text=Lan.g(this,"Version:")+" "+AboutBoxInfo.GetReleaseVersion(assemblyProgram);
+			//UpdateHistory rows are keyed by the assembly version (see PrefL), not by the release version.
+			UpdateHistory updateHistory=UpdateHistories.GetForVersion(AboutBoxInfo.GetAssemblyVersion(assemblyProgram));
 			if(updateHistory!=null) {
 				labelVersion.Text+="  "+Lan.g(this,"Since:")+" "+updateHistory.DateTimeUpdated.ToShortDateString();
 			}
@@ -60,5 +60,41 @@ namespace OpenDental{
 			formLicense.ShowDialog();
 		}
 
+	}
+
+	///<summary>The fork identity the About box shows: product name, attribution to Open Dental, and release version. Kept apart from the form
+	///so it can be tested without a database or a window.</summary>
+	public static class AboutBoxInfo {
+		///<summary>The product name. The window titles, assemblies and the SoftwareName preference keep their Open Dental names until the final
+		///cosmetic rename step.</summary>
+		public const string ProductName=CodeBase.VendorDirect.ProductIdentity.ProductName;
+		///<summary>The attribution required by the owner, also in README.md and NOTICE. Never translated or shortened.</summary>
+		public const string Attribution="Open PMS - Dental is a fork of Open Dental (c) Open Dental Software, Inc. and contributors, licensed under "
+			+"the GNU GPL v2. It is not affiliated with or endorsed by Open Dental Software, Inc.";
+
+		///<summary>The release version of the program: the assembly's AssemblyInformationalVersion when it is set, otherwise its assembly version.
+		///Returns "0.0" if neither is available.</summary>
+		public static string GetReleaseVersion(Assembly assembly) {
+			if(assembly==null) {
+				return "0.0";
+			}
+			AssemblyInformationalVersionAttribute attribute=null;
+			try {
+				attribute=(AssemblyInformationalVersionAttribute)System.Attribute.GetCustomAttribute(assembly,typeof(AssemblyInformationalVersionAttribute));
+			}
+			catch(Exception) {
+				//Fall back to the assembly version.
+			}
+			if(attribute!=null && !string.IsNullOrWhiteSpace(attribute.InformationalVersion)) {
+				return attribute.InformationalVersion.Trim();
+			}
+			return GetAssemblyVersion(assembly);
+		}
+
+		///<summary>The assembly version, for example "24.3.63.0", or "0.0" if it can't be read.</summary>
+		public static string GetAssemblyVersion(Assembly assembly) {
+			System.Version version=assembly?.GetName().Version;
+			return (version==null) ? "0.0" : version.ToString();
+		}
 	}
 }
