@@ -131,5 +131,35 @@ namespace OpenDentBusiness {
 			return Db.GetTable(command);
 		}
 
+		///<summary>The name a letter merge field has in the data file header and so in the template's merge fields: referral fields such as
+		///"referral.LName" become "RefLName"; every other field keeps its name.</summary>
+		public static string GetDataFieldName(string field) {
+			Meth.NoCheckMiddleTierRole();
+			if(field!=null && field.StartsWith("referral.")) {
+				return "Ref"+field.Substring(9);
+			}
+			return field??"";
+		}
+
+		///<summary>The merge values for one patient, keyed by data field name (see GetDataFieldName), from the first row of the table that
+		///GetLetterMergeInfo returned (after it has been made readable). Columns are matched to the letter's fields by position, as the data file
+		///does. Line breaks are kept, unlike in the tab-delimited data file.</summary>
+		public static Dictionary<string,string> GetMergeValues(LetterMerge letter,DataTable tableReadable) {
+			Meth.NoCheckMiddleTierRole();
+			Dictionary<string,string> dictValues=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
+			List<string> listFields=letter?.Fields;
+			if(listFields==null) {
+				return dictValues;
+			}
+			for(int i=0;i<listFields.Count;i++) {
+				string value="";
+				if(tableReadable!=null && tableReadable.Rows.Count>0 && i<tableReadable.Columns.Count) {
+					value=tableReadable.Rows[0][i].ToString().Replace("\r\n","\n").Replace("\r","\n");
+				}
+				dictValues[GetDataFieldName(listFields[i])]=value;
+			}
+			return dictValues;
+		}
+
 	}
 }

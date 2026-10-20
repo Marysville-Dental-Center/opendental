@@ -478,6 +478,39 @@ namespace OpenDentBusiness {
 			return buffer;
 		}
 
+		///<summary>The document's file bytes wherever they are stored: the patient's folder, cloud storage, or the row's RawBase64 when images are
+		///stored in the database. Empty if there is no file. Used for chart letters, whose hash and signature are bound to these bytes.</summary>
+		public static byte[] GetDocumentFileBytes(Document doc,string patFolder) {
+			if(PrefC.AtoZfolderUsed==DataStorageType.InDatabase) {
+				if(string.IsNullOrEmpty(doc.RawBase64)) {
+					return new byte[0];
+				}
+				return Convert.FromBase64String(doc.RawBase64);
+			}
+			byte[] arrayBytes=GetBytes(doc,patFolder);
+			return arrayBytes??new byte[0];
+		}
+
+		///<summary>Stores a chart letter's file for a document row that was already inserted. In the patient's folder, a name that is already taken
+		///by a stray file gets an "x" prefix, as Documents.Insert does, so no file is ever overwritten; save the row afterwards. When images are
+		///stored in the database, fills doc.RawBase64. Does not log; ChartLetters logs chart letter changes itself.</summary>
+		public static void SaveChartLetterFile(Document doc,byte[] arrayBytes,string patFolder) {
+			if(PrefC.AtoZfolderUsed==DataStorageType.LocalAtoZ) {
+				while(File.Exists(ODFileUtils.CombinePaths(patFolder,doc.FileName))) {
+					doc.FileName="x"+doc.FileName;
+				}
+				using(FileStream fileStream=new FileStream(ODFileUtils.CombinePaths(patFolder,doc.FileName),FileMode.CreateNew,FileAccess.Write)) {
+					fileStream.Write(arrayBytes,0,arrayBytes.Length);
+				}
+			}
+			else if(CloudStorage.IsCloudStorage) {
+				CloudStorage.Upload(patFolder,doc.FileName,arrayBytes);
+			}
+			else {//InDatabase
+				doc.RawBase64=Convert.ToBase64String(arrayBytes);
+			}
+		}
+
 		/// <summary>Imports any document, not just images.  Also handles dicom by calculating initial windowing.  Also processes Exif rotation info on jpg files.</summary>
 		public static Document Import(string pathImportFrom,long docCategory,Patient pat) {
 			string patFolder="";

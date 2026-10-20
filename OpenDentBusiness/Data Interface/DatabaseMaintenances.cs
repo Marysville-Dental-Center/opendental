@@ -4212,7 +4212,7 @@ namespace OpenDentBusiness {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetString(MethodBase.GetCurrentMethod(),verbose,dbmMode);
 			}
-			string command="SELECT DocNum FROM document WHERE DocCategory=0";
+			string command="SELECT DocNum FROM document WHERE DocCategory=0 AND ChartLetterStatus=0";//Chart letters have no category on purpose.
 			DataTable table=Db.GetTable(command);
 			string log="";
 			switch(dbmMode) {
