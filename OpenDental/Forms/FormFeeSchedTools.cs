@@ -396,7 +396,17 @@ namespace OpenDental {
 			if(dateAsOf.Year<1880) {
 				dateAsOf=DateTime.Today;//blank base date: the fees in effect now
 			}
-			if(dateEffectiveNew.Year<1880) {
+			if(dateEffectiveNew.Year<1880 && dateAsOf.Date!=DateTime.Today) {
+				//Blank means immediately. The base fees are not the ones in effect today, so Fees.SaveIncrease writes rows dated today instead of
+				//changing rows that earlier (or later) procedures use. Rows already in effect today are still changed in place.
+				string msgIncrease=Lan.g(this,"The increased fees will take effect today")+" ("+DateTime.Today.ToShortDateString()+").  "
+					+Lan.g(this,"Base fees that are also in effect today are overwritten.  For the other codes, a fee dated today is saved and the "
+					+"base fees are not changed.  Are you sure you want to continue?");
+				if(MessageBox.Show(msgIncrease,"",MessageBoxButtons.OKCancel)!=DialogResult.OK) {
+					return;
+				}
+			}
+			else if(dateEffectiveNew.Year<1880) {
 				if(!MsgBox.Show(this,MsgBoxButtons.OKCancel,"This will overwrite all values of the selected fee schedule/clinic/provider combo.  Previously entered fee "
 					+"amounts will be lost.  It is recommended to first create a backup copy of the original fee schedule, then update the original fee schedule "
 					+"with the new fees.  Are you sure you want to continue?"))

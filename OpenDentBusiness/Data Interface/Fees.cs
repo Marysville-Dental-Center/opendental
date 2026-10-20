@@ -1052,33 +1052,46 @@ namespace OpenDentBusiness{
 		}
 
 		///<summary>Saves the result of Increase by %. listFeesBase are the rows the increase starts from (one per code, normally the rows in effect on
-		///the base date for one fee schedule, clinic and provider). Amounts of 0 and -1 (blank override) are left alone. With no new effective date
-		///(before 1880) the base rows are updated in place, as before effective dates existed. With a new effective date, each result goes to the row
-		///with that key and date: updated if it exists, inserted otherwise; the base rows are not changed. Fee schedule groups are kept in sync.
+		///the base date for one fee schedule, clinic and provider). Amounts of 0 and -1 (blank override) are left alone. With a new effective date,
+		///each result goes to the row with that key and date: updated if it exists, inserted otherwise; the base rows are not changed. No new effective
+		///date (before 1880) means "immediately": a base row that is the row in effect today is updated in place, as before effective dates existed;
+		///any other base row (from a past or future base date) is left alone and its result goes to the row with that key dated today, so that the
+		///new fee is the one in effect now and older rows used by earlier procedures keep their amounts. Fee schedule groups are kept in sync.
 		///Returns the saved rows (with the new amounts), for logging.</summary>
 		public static List<Fee> SaveIncrease(List<Fee> listFeesBase,int percent,int round,DateTime dateEffectiveNew) {
 			Meth.NoCheckMiddleTierRole();
 			List<Fee> listFeesIncreased=IncreaseNew(0,percent,round,listFeesBase,0,0).FindAll(x => x.Amount!=0 && x.Amount!=-1);
 			List<Fee> listFeesSaved=new List<Fee>();
-			if(dateEffectiveNew.Year<1880) {
-				if(PrefC.GetBool(PrefName.ShowFeeSchedGroups)) {
-					FeeSchedGroups.UpsertGroupFees(listFeesIncreased);
-				}
+			Dictionary<string,List<Fee>> dictFeesByCombo=new Dictionary<string,List<Fee>>();
+			bool isImmediate=dateEffectiveNew.Year<1880;
+			List<Fee> listFeesDated=listFeesIncreased;
+			if(isImmediate) {
+				//Only rows in effect today may be changed in place. The rest get a row dated today instead.
+				HashSet<long> hashSetFeeNumsToday=new HashSet<long>();
 				for(int i=0;i<listFeesIncreased.Count;i++) {
-					Update(listFeesIncreased[i],doCheckFeeSchedGroups:false);
-					listFeesSaved.Add(listFeesIncreased[i]);
+					if(listFeesIncreased[i].FeeNum==0) {
+						continue;
+					}
+					List<Fee> listFeesInEffect=GetRowsInEffect(GetComboFeesAllDates(dictFeesByCombo,listFeesIncreased[i]),DateTime.Today);
+					if(listFeesInEffect.Exists(x => x.FeeNum==listFeesIncreased[i].FeeNum)) {
+						hashSetFeeNumsToday.Add(listFeesIncreased[i].FeeNum);
+					}
 				}
-				return listFeesSaved;
+				List<Fee> listFeesInPlace=listFeesIncreased.FindAll(x => hashSetFeeNumsToday.Contains(x.FeeNum));
+				listFeesDated=listFeesIncreased.FindAll(x => !hashSetFeeNumsToday.Contains(x.FeeNum));
+				if(PrefC.GetBool(PrefName.ShowFeeSchedGroups)) {
+					FeeSchedGroups.UpsertGroupFees(listFeesInPlace);
+				}
+				for(int i=0;i<listFeesInPlace.Count;i++) {
+					Update(listFeesInPlace[i],doCheckFeeSchedGroups:false);
+					listFeesSaved.Add(listFeesInPlace[i]);
+				}
+				dateEffectiveNew=DateTime.Today;
 			}
 			dateEffectiveNew=dateEffectiveNew.Date;
-			Dictionary<string,List<Fee>> dictFeesByCombo=new Dictionary<string,List<Fee>>();
-			for(int i=0;i<listFeesIncreased.Count;i++) {
-				Fee feeIncreased=listFeesIncreased[i];
-				string combo=feeIncreased.FeeSched+","+feeIncreased.ClinicNum+","+feeIncreased.ProvNum;
-				if(!dictFeesByCombo.TryGetValue(combo,out List<Fee> listFeesCombo)) {
-					listFeesCombo=GetListExactAllDates(feeIncreased.FeeSched,feeIncreased.ClinicNum,feeIncreased.ProvNum);
-					dictFeesByCombo[combo]=listFeesCombo;
-				}
+			for(int i=0;i<listFeesDated.Count;i++) {
+				Fee feeIncreased=listFeesDated[i];
+				List<Fee> listFeesCombo=GetComboFeesAllDates(dictFeesByCombo,feeIncreased);
 				Fee feeAtDate=GetFeeExactDate(listFeesCombo,feeIncreased.CodeNum,feeIncreased.FeeSched,feeIncreased.ClinicNum,feeIncreased.ProvNum,
 					dateEffectiveNew);
 				if(feeAtDate==null) {
@@ -1099,6 +1112,17 @@ namespace OpenDentBusiness{
 				listFeesSaved.Add(feeAtDate);
 			}
 			return listFeesSaved;
+		}
+
+		///<summary>For SaveIncrease: every row (all dates) of the fee's schedule, clinic and provider, read from the database once per combination.
+		///</summary>
+		private static List<Fee> GetComboFeesAllDates(Dictionary<string,List<Fee>> dictFeesByCombo,Fee fee) {
+			string combo=fee.FeeSched+","+fee.ClinicNum+","+fee.ProvNum;
+			if(!dictFeesByCombo.TryGetValue(combo,out List<Fee> listFeesCombo)) {
+				listFeesCombo=GetListExactAllDates(fee.FeeSched,fee.ClinicNum,fee.ProvNum);
+				dictFeesByCombo[combo]=listFeesCombo;
+			}
+			return listFeesCombo;
 		}
 
 		///<summary>For an export that includes future fees: the fees that take over after dateAsOf for one code, as the lookup for this schedule, clinic

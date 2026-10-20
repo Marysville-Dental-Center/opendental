@@ -319,6 +319,53 @@ namespace FeeTests {
 		}
 
 		[TestMethod]
+		public void Db_SaveIncrease_BlankDateFromPastBaseDate_TakesEffectTodayAndKeepsHistory() {
+			FeeSched feeSched=NewFeeSched();
+			ProcedureCode procedureCode=NewCode();//2025 row, then a later row in effect today
+			ProcedureCode procedureCode2=NewCode();//one row, in effect on the base date and today
+			DateTime dateBase=new DateTime(2025,6,1);
+			DateTime dateLater=DateTime.Today.AddDays(-30);//after the base date, before today
+			Fee fee2025=InsertFee(feeSched.FeeSchedNum,procedureCode.CodeNum,100,_date2025);
+			Fee feeLater=InsertFee(feeSched.FeeSchedNum,procedureCode.CodeNum,110,dateLater);
+			Fee feeAlways=InsertFee(feeSched.FeeSchedNum,procedureCode2.CodeNum,50,DateTime.MinValue);
+			List<Fee> listFeesBase=Fees.GetListExactAsOf(feeSched.FeeSchedNum,0,0,dateBase);
+			Assert.AreEqual(fee2025.FeeNum,listFeesBase.Single(x => x.CodeNum==procedureCode.CodeNum).FeeNum);
+			List<Fee> listFeesSaved=Fees.SaveIncrease(listFeesBase,10,2,DateTime.MinValue);
+			Assert.AreEqual(2,listFeesSaved.Count);
+			//The fee in effect today is the increase, on a row dated today; the older rows keep their amounts.
+			Assert.AreEqual(110,Fees.GetFee(procedureCode.CodeNum,feeSched.FeeSchedNum,0,0).Amount);
+			Assert.AreEqual(DateTime.Today,Fees.GetFee(procedureCode.CodeNum,feeSched.FeeSchedNum,0,0).DateEffective);
+			Assert.AreEqual(100,Fees.GetOneByFeeNum(fee2025.FeeNum).Amount);
+			Assert.AreEqual(110,Fees.GetOneByFeeNum(feeLater.FeeNum).Amount);
+			Assert.AreEqual(3,Fees.GetListExactAllDates(feeSched.FeeSchedNum,0,0).Count(x => x.CodeNum==procedureCode.CodeNum));
+			//A procedure completed in 2025 still gets the 2025 fee.
+			Assert.AreEqual(100,Fees.GetFee(procedureCode.CodeNum,feeSched.FeeSchedNum,0,0,dateAsOf:dateBase).Amount);
+			//A base row that is also in effect today is changed in place.
+			Assert.AreEqual(55,Fees.GetOneByFeeNum(feeAlways.FeeNum).Amount);
+			Assert.AreEqual(1,Fees.GetListExactAllDates(feeSched.FeeSchedNum,0,0).Count(x => x.CodeNum==procedureCode2.CodeNum));
+			//Running it again from the same base updates today's row instead of adding another one.
+			Fees.SaveIncrease(Fees.GetListExactAsOf(feeSched.FeeSchedNum,0,0,dateBase),20,2,DateTime.MinValue);
+			Assert.AreEqual(120,Fees.GetFee(procedureCode.CodeNum,feeSched.FeeSchedNum,0,0).Amount);
+			Assert.AreEqual(3,Fees.GetListExactAllDates(feeSched.FeeSchedNum,0,0).Count(x => x.CodeNum==procedureCode.CodeNum));
+			Assert.AreEqual(100,Fees.GetOneByFeeNum(fee2025.FeeNum).Amount);
+		}
+
+		[TestMethod]
+		public void Db_SaveIncrease_BlankDateFromFutureBaseDate_LeavesFutureRowAlone() {
+			FeeSched feeSched=NewFeeSched();
+			ProcedureCode procedureCode=NewCode();
+			Fee feeAlways=InsertFee(feeSched.FeeSchedNum,procedureCode.CodeNum,100,DateTime.MinValue);
+			Fee feeFuture=InsertFee(feeSched.FeeSchedNum,procedureCode.CodeNum,150,_date2099);
+			Fees.SaveIncrease(Fees.GetListExactAsOf(feeSched.FeeSchedNum,0,0,_date2099),10,2,DateTime.MinValue);
+			Assert.AreEqual(150,Fees.GetOneByFeeNum(feeFuture.FeeNum).Amount);
+			Assert.AreEqual(100,Fees.GetOneByFeeNum(feeAlways.FeeNum).Amount);
+			Fee feeToday=Fees.GetFee(procedureCode.CodeNum,feeSched.FeeSchedNum,0,0);
+			Assert.AreEqual(165,feeToday.Amount);
+			Assert.AreEqual(DateTime.Today,feeToday.DateEffective);
+			Assert.AreEqual(150,Fees.GetFee(procedureCode.CodeNum,feeSched.FeeSchedNum,0,0,dateAsOf:_date2099).Amount);
+		}
+
+		[TestMethod]
 		public void Db_ExportWithFutureFees_ImportReproducesTheSchedule() {
 			FeeSched feeSched=NewFeeSched();
 			FeeSched feeSchedCopy=NewFeeSched();
