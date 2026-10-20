@@ -21,6 +21,8 @@
       "SparksToothChart\\SparksToothChart.csproj",
       "tests\\CryptoTests\\CryptoTests.csproj",
       "tests\\VendorDirectTests\\VendorDirectTests.csproj",
+      "tools\\SyntheticData\\SyntheticData.csproj",
+      "tools\\SyntheticData\\SyntheticData.Tests\\SyntheticData.Tests.csproj",
       "UnitTests\\UnitTests.csproj",
       "UnitTestsCore\\UnitTestsCore.csproj",
       "UpdateFileCopier\\UpdateFileCopier.csproj",
