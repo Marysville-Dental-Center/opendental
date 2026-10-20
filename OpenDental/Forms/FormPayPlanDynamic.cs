@@ -1304,6 +1304,7 @@ namespace OpenDental {
 				comboCategory.GetSelectedDefNum());
 			PayPlanL.MakeSecLogEntries(_dynamicPaymentPlanData.PayPlan,_payPlanOld,signatureBoxWrapper.GetSigChanged(),
 			_isSigOldValid,signatureBoxWrapper.SigIsBlank,signatureBoxWrapper.IsValid,false);
+			LogSheetChange();
 			DialogResult=DialogResult.OK;
 		}
 
@@ -1362,6 +1363,14 @@ namespace OpenDental {
 				}
 			}
 			comboSheetDef.SelectedIndex=indexSelected;
+		}
+
+		///<summary>24.4: logs a change of the plan's print sheet once the plan is saved. The logged value becomes the new starting point, so a
+		///later save in this window (Sign and Print, then OK) does not log the same change twice.</summary>
+		private void LogSheetChange() {
+			if(PayPlanTemplates.MakeLogEntryIfSheetChanged(_dynamicPaymentPlanData.PayPlan,_payPlanOld)) {
+				_payPlanOld.SheetDefNum=_dynamicPaymentPlanData.PayPlan.SheetDefNum;
+			}
 		}
 
 		///<summary>The SheetDefNum chosen in the Sheet box. When sheets are not used for printing, the plan's stored value is kept as it is.</summary>
@@ -1451,6 +1460,7 @@ namespace OpenDental {
 			}
 			PayPlanL.MakeSecLogEntries(_dynamicPaymentPlanData.PayPlan,_payPlanOld,signatureBoxWrapper.GetSigChanged(),
 				_isSigOldValid,signatureBoxWrapper.SigIsBlank,signatureBoxWrapper.IsValid,isPrinting);
+			LogSheetChange();
 			//When sign & print is clicked (saves the plan) on new plan to let users know it has been saved and some thing can no longer be edited.
 			//Refresh local class wide variables.
 			LoadPayDataFromDB();

@@ -3,6 +3,7 @@
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenDentBusiness;
@@ -153,6 +154,58 @@ namespace PayPlanTests {
 			PayPlans.Update(payPlan);
 			sheet=PayPlans.PayPlanToSheet(PayPlans.GetOne(payPlan.PayPlanNum));
 			Assert.AreEqual(sheetDefFirst.SheetDefNum,sheet.SheetDefNum,"0 keeps the 24.3 choice.");
+		}
+
+		private static DataTable GetPayPlanEditLogs(PayPlan payPlan) {
+			return DataCore.GetTable("SELECT PatNum,LogText FROM securitylog WHERE PermType="+POut.Int((int)EnumPermType.PayPlanEdit)
+				+" AND FKey="+POut.Long(payPlan.PayPlanNum)+" AND LogText LIKE '%sheet changed%' ORDER BY SecurityLogNum");
+		}
+
+		[TestMethod]
+		public void SheetChange_OnSavedPlan_IsLoggedWithBothNames() {
+			Patient patient=PayPlanDb.CreatePatient("SheetLog");
+			SheetDef sheetDefA=SheetDefT.CreateSheetDef(SheetTypeEnum.PaymentPlan,"A logged sheet");
+			SheetDef sheetDefB=SheetDefT.CreateSheetDef(SheetTypeEnum.PaymentPlan,"B logged sheet");
+			PayPlan payPlanOld=InsertPayPlan(patient.PatNum,0);
+			payPlanOld.IsNew=false;
+			PayPlan payPlan=payPlanOld.Copy();
+			payPlan.SheetDefNum=sheetDefA.SheetDefNum;
+			Assert.IsTrue(PayPlanTemplates.MakeLogEntryIfSheetChanged(payPlan,payPlanOld));
+			PayPlan payPlanNext=payPlan.Copy();
+			payPlanNext.SheetDefNum=sheetDefB.SheetDefNum;
+			Assert.IsTrue(PayPlanTemplates.MakeLogEntryIfSheetChanged(payPlanNext,payPlan));
+			DataTable table=GetPayPlanEditLogs(payPlan);
+			Assert.AreEqual(2,table.Rows.Count);
+			Assert.AreEqual("Payment Plan sheet changed from Default to A logged sheet.",table.Rows[0]["LogText"].ToString());
+			Assert.AreEqual("Payment Plan sheet changed from A logged sheet to B logged sheet.",table.Rows[1]["LogText"].ToString());
+			Assert.AreEqual(patient.PatNum.ToString(),table.Rows[0]["PatNum"].ToString());
+		}
+
+		[TestMethod]
+		public void SheetChange_UnchangedOrNewPlan_IsNotLogged() {
+			Patient patient=PayPlanDb.CreatePatient("SheetNoLog");
+			SheetDef sheetDef=SheetDefT.CreateSheetDef(SheetTypeEnum.PaymentPlan,"Unlogged sheet");
+			PayPlan payPlanOld=InsertPayPlan(patient.PatNum,sheetDef.SheetDefNum);
+			payPlanOld.IsNew=false;
+			Assert.IsFalse(PayPlanTemplates.MakeLogEntryIfSheetChanged(payPlanOld.Copy(),payPlanOld),"Same sheet.");
+			PayPlan payPlanNewOld=payPlanOld.Copy();
+			payPlanNewOld.IsNew=true;
+			PayPlan payPlan=payPlanOld.Copy();
+			payPlan.SheetDefNum=0;
+			Assert.IsFalse(PayPlanTemplates.MakeLogEntryIfSheetChanged(payPlan,payPlanNewOld),"A new plan logs its creation instead.");
+			Assert.AreEqual(0,GetPayPlanEditLogs(payPlanOld).Rows.Count);
+		}
+
+		[TestMethod]
+		public void SheetChange_FromADeletedSheet_NamesItDeleted() {
+			Patient patient=PayPlanDb.CreatePatient("SheetLogDeleted");
+			PayPlan payPlanOld=InsertPayPlan(patient.PatNum,0);
+			payPlanOld.IsNew=false;
+			payPlanOld.SheetDefNum=987654321;
+			PayPlan payPlan=payPlanOld.Copy();
+			payPlan.SheetDefNum=0;
+			Assert.IsTrue(PayPlanTemplates.MakeLogEntryIfSheetChanged(payPlan,payPlanOld));
+			Assert.AreEqual("Payment Plan sheet changed from (deleted) to Default.",GetPayPlanEditLogs(payPlan).Rows[0]["LogText"].ToString());
 		}
 	}
 }

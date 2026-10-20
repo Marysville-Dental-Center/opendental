@@ -1257,6 +1257,11 @@ namespace OpenDental{
 			PayPlans.Update(_payPlan);//always saved to db before opening this form
 			PayPlanL.MakeSecLogEntries(_payPlan,_payPlanOld,signatureBoxWrapper.GetSigChanged(),
 				_isSigOldValid,signatureBoxWrapper.SigIsBlank,signatureBoxWrapper.IsValid,isPrinting);
+			//24.4: log a change of the print sheet. The logged value becomes the new starting point, so saving again in this window (Print, then OK)
+			//does not log the same change twice.
+			if(!IsNew && PayPlanTemplates.MakeLogEntryIfSheetChanged(_payPlan,_payPlanOld)) {
+				_payPlanOld.SheetDefNum=_payPlan.SheetDefNum;
+			}
 			for(int i=0;i<_listPayPlanCharges.Count;i++) {
 				_listPayPlanCharges[i].ClinicNum=comboClinic.ClinicNumSelected;
 				_listPayPlanCharges[i].ProvNum=comboProv.GetSelectedProvNum();
