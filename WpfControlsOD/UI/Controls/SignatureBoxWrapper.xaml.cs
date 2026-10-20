@@ -119,5 +119,16 @@ How to use the SignatureBoxWrapper control:
 			signatureBoxWrapper.SetScaleAndZoom(scaleMS,zoomLocal);
 		}
 
+		///<summary>The user who signs in this box when it is not Security.CurUser, after a Change User. The E button stamps this user's name.
+		///Passes through to the wrapped WinForms control.</summary>
+		public OpenDentBusiness.Userod UserSig {
+			get {
+				return signatureBoxWrapper.UserSig;
+			}
+			set {
+				signatureBoxWrapper.UserSig=value;
+			}
+		}
+
 	}
 }

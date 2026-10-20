@@ -14,6 +14,9 @@ namespace OpenDental {
 		private bool _isSimpleSwitch;
 		///<summary>Gets set to the user that just successfully logged in when in Simple Switch mode.</summary>
 		public Userod UserodSimpleSwitch;
+		///<summary>True when UserodSimpleSwitch was chosen through domain (Active Directory) credentials instead of an Open Dental password.
+		///Callers say so in their security log entries.</summary>
+		public bool IsDomainAuthenticated;
 		///<summary>If set AND available, this will be the user automatically selected when the form opens.</summary>
 		private string _userNameAutoSelect;
 		///<summary>This form will not always be able to directly refresh the userod cache (Security) so it will be up to calling methods.
@@ -68,6 +71,8 @@ namespace OpenDental {
 				labelSwipeBadge.Visible=false;
 			}
 			FillListBox();
+			//Changing user (signatures, notes) may use domain credentials when domain login is set up. Program start has its own domain flow.
+			checkUseDomainLogin.Visible=_isSimpleSwitch && DomainLogin.IsEnabled();
 			this.Focus();//Attempted fix, customers had issue with UI not defaulting focus to this form on startup.
 			textSelectOnLoad.Select();//Give focus to appropriate text box.
 			Plugins.HookAddCode(this,"FormLogOn.Load_end",_isSimpleSwitch);
@@ -104,6 +109,58 @@ namespace OpenDental {
 
 		private void textFilterName_TextChanged(object sender,EventArgs e) {
 			FillListBox();
+		}
+
+		///<summary>Domain mode asks for a domain user name instead of picking an Open Dental user.</summary>
+		private void checkUseDomainLogin_CheckedChanged(object sender,EventArgs e) {
+			bool isDomain=checkUseDomainLogin.Checked;
+			bool isManualEntry=PrefC.GetBool(PrefName.UserNameManualEntry);
+			listUser.Visible=!isDomain && !isManualEntry;
+			labelFilterName.Visible=!isDomain && !isManualEntry;
+			textFilterName.Visible=!isDomain && !isManualEntry;
+			checkShowCEMTUsers.Visible=!isDomain && !isManualEntry && Userods.HasUsersForCEMTNoCache();
+			labelSwipeBadge.Visible=!isDomain && !PrefC.GetBool(PrefName.SecurityBadgesRequirePassword);
+			textUser.Visible=isDomain || isManualEntry;
+			label1.Text=isDomain ? Lan.g(this,"Domain user") : Lan.g(this,"User");
+			textPassword.Text="";
+			if(isDomain) {
+				textUser.Text="";
+				textUser.Select();
+			}
+		}
+
+		///<summary>Simple switch with domain credentials. Sets UserodSimpleSwitch and closes on success. The password is not kept.</summary>
+		private void SwitchWithDomainLogin() {
+			DomainSwitchResult domainSwitchResult;
+			Cursor=Cursors.WaitCursor;
+			try {
+				domainSwitchResult=DomainLogin.AuthenticateForSwitch(textUser.Text,textPassword.Text);
+			}
+			finally {
+				Cursor=Cursors.Default;
+			}
+			textPassword.Text="";
+			if(!string.IsNullOrEmpty(domainSwitchResult.DomainObjectGuidDiscovered)) {
+				//Domain login was set up before Open Dental recorded the domain's ObjectGuid. Save it now, as program start does.
+				Prefs.UpdateString(PrefName.DomainObjectGuid,domainSwitchResult.DomainObjectGuidDiscovered);
+			}
+			if(!domainSwitchResult.IsSuccess) {
+				MessageBox.Show(this,domainSwitchResult.Message);
+				return;
+			}
+			Userod userod=domainSwitchResult.ListUserods[0];
+			if(domainSwitchResult.ListUserods.Count>1) {//The same pick list that program start shows.
+				InputBox inputBox=new InputBox(Lan.g(this,"Select an Open Dental user to log in with:"),domainSwitchResult.ListUserods.Select(x => x.UserName).ToList());
+				inputBox.ShowDialog();
+				if(!inputBox.IsDialogOK) {
+					return;
+				}
+				userod=domainSwitchResult.ListUserods[inputBox.SelectedIndex];
+			}
+			UserodSimpleSwitch=userod;
+			IsDomainAuthenticated=true;
+			Plugins.HookAddCode(this,"FormLogOn.butOK_Click_end");
+			DialogResult=DialogResult.OK;
 		}
 
 		///<summary>Looks for input from badge reader. Will open FrmUserodHistory if there is a user matching the input ID. The timer interval should be faster a user could type.</summary>
@@ -165,6 +222,11 @@ namespace OpenDental {
 			if(_doClearCaches) {
 				Cache.ClearCaches();
 			}
+			if(_isSimpleSwitch && checkUseDomainLogin.Visible && checkUseDomainLogin.Checked) {
+				SwitchWithDomainLogin();
+				return;
+			}
+			IsDomainAuthenticated=false;
 			bool isEcw=Programs.UsingEcwTightOrFullMode();
 			string userName="";
 			if(PrefC.GetBool(PrefName.UserNameManualEntry)) {

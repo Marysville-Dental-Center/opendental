@@ -35,6 +35,10 @@ namespace OpenDental {
 		private List<RectangleF> _listRectangleFsChars=new List<RectangleF>();
 		private List<SignatureBoxWrapper> _listSignatureBoxWrappers=new List<SignatureBoxWrapper>();
 		private List<RichTextBox> _listRichTextBoxesSignatures=new List<RichTextBox>();
+		///<summary>Signature boxes whose signer was changed with Change User, and whether domain credentials were used. The signer is the box's UserSig.</summary>
+		private Dictionary<SignatureBoxWrapper,bool> _dictSigBoxDomainAuth=new Dictionary<SignatureBoxWrapper,bool>();
+		///<summary>Change User buttons and signer captions: the control, its signature box's field, and its X offset from the field in sheet pixels.</summary>
+		private List<Tuple<Control,SheetField,int>> _listChangeUserControls=new List<Tuple<Control,SheetField,int>>();
 		///<summary>Only used here to draw the dashed margin lines.</summary>
 		private Margins _marginsPrint=new Margins(0,0,40,60);
 		///<summary>The location where the PDF file has been created.</summary>
@@ -1689,6 +1693,8 @@ namespace OpenDental {
 			LayoutManager.MoveSize(panelMain,new Size(width,height));
 			string strErr="";
 			_listSignatureBoxWrappers=new List<SignatureBoxWrapper>();
+			_listChangeUserControls.Clear();
+			_dictSigBoxDomainAuth.Clear();//A change of user lasts until the box is rebuilt, which happens after a save.
 			List<SheetField> listSheetFieldsSorted=new List<SheetField>();
 			listSheetFieldsSorted.AddRange(SheetCur.SheetFields);//Creates a sortable list that will not change sort order of the original list.
 			listSheetFieldsSorted.Sort(SheetFields.SortDrawingOrderLayers);
@@ -1792,10 +1798,88 @@ namespace OpenDental {
 					LayoutManager.Add(richTextBox,panelMain);
 					richTextBox.BringToFront();
 					_listRichTextBoxesSignatures.Add(richTextBox);
+					//25.2: who signed after a change of user.
+					string signedBy=SheetSignatureSigners.GetSignedByText(SheetCur.SheetFields[i].UserSigned,Userods.GetName);
+					if(signedBy!="") {
+						RichTextBox richTextBoxBy=new RichTextBox();
+						richTextBoxBy.BorderStyle=BorderStyle.None;
+						richTextBoxBy.TabStop=false;
+						richTextBoxBy.Location=new Point(LayoutManager.Scale(SheetCur.SheetFields[i].XPos)+1,LayoutManager.Scale(SheetCur.SheetFields[i].YPos+SheetCur.SheetFields[i].Height-29));
+						richTextBoxBy.Width=SheetCur.SheetFields[i].Width-2;
+						richTextBoxBy.ScrollBars=RichTextBoxScrollBars.None;
+						richTextBoxBy.SelectionAlignment=HorizontalAlignment.Left;
+						richTextBoxBy.Text=signedBy;
+						richTextBoxBy.Multiline=false;
+						richTextBoxBy.Height=LayoutManager.Scale(14);
+						richTextBoxBy.ReadOnly=true;
+						richTextBoxBy.Font=new Font("Arial",LayoutManager.ScaleF(8.25f));
+						LayoutManager.Add(richTextBoxBy,panelMain);
+						richTextBoxBy.BringToFront();
+						_listRichTextBoxesSignatures.Add(richTextBoxBy);
+					}
 				}
 				_listSignatureBoxWrappers.Add(signatureBoxWrapper);
+				AddChangeUserButton(signatureBoxWrapper,SheetCur.SheetFields[i]);
 			}
 			return strErr;
+		}
+
+		///<summary>25.1: a Change User button under each signature box that allows electronic signing or is restricted to providers, so a provider can
+		///sign on someone else's workstation without logging off. Not in kiosk or terminal mode. The switch belongs to this box only.</summary>
+		private void AddChangeUserButton(SignatureBoxWrapper signatureBoxWrapper,SheetField sheetField) {
+			if(!SheetSignatureSigners.CanChangeUser(sheetField,SheetCur.SheetType,IsInTerminal) || IsReadOnly || Security.CurUser==null) {
+				return;
+			}
+			OpenDental.UI.Button butChangeUser=new OpenDental.UI.Button();
+			butChangeUser.Text=Lan.g(this,"Change User");
+			butChangeUser.TabStop=false;
+			butChangeUser.Size=new Size(LayoutManager.Scale(80),LayoutManager.Scale(20));
+			butChangeUser.Location=new Point(LayoutManager.Scale(sheetField.XPos+sheetField.Width-80),LayoutManager.Scale(sheetField.YPos+sheetField.Height+1));
+			Label labelSigner=new Label();
+			labelSigner.AutoSize=false;
+			labelSigner.Location=new Point(LayoutManager.Scale(sheetField.XPos),LayoutManager.Scale(sheetField.YPos+sheetField.Height+1));
+			labelSigner.Size=new Size(LayoutManager.Scale(Math.Max(sheetField.Width-82,10)),LayoutManager.Scale(20));
+			labelSigner.TextAlign=ContentAlignment.MiddleLeft;
+			labelSigner.Font=new Font("Arial",LayoutManager.ScaleF(8.25f));
+			labelSigner.BackColor=Color.Transparent;
+			if(signatureBoxWrapper.UserSig!=null) {
+				labelSigner.Text=Lan.g(this,"Signer:")+" "+signatureBoxWrapper.UserSig.UserName;
+			}
+			butChangeUser.Click+=(sender,e) => ChangeSigBoxUser(signatureBoxWrapper,sheetField,labelSigner);
+			LayoutManager.Add(butChangeUser,panelMain);
+			LayoutManager.Add(labelSigner,panelMain);
+			_listChangeUserControls.Add(Tuple.Create((Control)butChangeUser,sheetField,sheetField.Width-80));
+			_listChangeUserControls.Add(Tuple.Create((Control)labelSigner,sheetField,0));
+			butChangeUser.BringToFront();
+			labelSigner.BringToFront();
+		}
+
+		///<summary>A SheetEdit log entry for each box signed after a change of user, naming the signer, with the sheet's PatNum and SheetNum.</summary>
+		private void LogSignedAfterSwitch(List<Tuple<SheetField,Userod,bool>> listSignedAfterSwitch) {
+			for(int i=0;i<listSignedAfterSwitch.Count;i++) {
+				SecurityLogs.MakeLogEntry(EnumPermType.SheetEdit,SheetCur.PatNum,
+					SheetSignatureSigners.GetSignedLogText(SheetCur,listSignedAfterSwitch[i].Item1,listSignedAfterSwitch[i].Item2,listSignedAfterSwitch[i].Item3),
+					SheetCur.SheetNum,DateTime.MinValue);
+			}
+		}
+
+		///<summary>Switches the signer of one signature box. Security.CurUser does not change. Clears the box's signature.</summary>
+		private void ChangeSigBoxUser(SignatureBoxWrapper signatureBoxWrapper,SheetField sheetField,Label labelSigner) {
+			using FormLogOn formLogOn=new FormLogOn(isSimpleSwitch:true);
+			formLogOn.ShowDialog();
+			if(formLogOn.DialogResult!=DialogResult.OK || formLogOn.UserodSimpleSwitch==null) {
+				return;
+			}
+			Userod userod=formLogOn.UserodSimpleSwitch;
+			signatureBoxWrapper.ClearSignature();
+			signatureBoxWrapper.UserSig=userod;
+			_dictSigBoxDomainAuth[signatureBoxWrapper]=formLogOn.IsDomainAuthenticated;
+			signatureBoxWrapper.Enabled=SheetSignatureSigners.CanUserSign(sheetField,userod);
+			signatureBoxWrapper.SetAllowDigitalSig(SheetSignatureSigners.CanUserESign(sheetField,userod,IsInTerminal),true);
+			labelSigner.Text=Lan.g(this,"Signer:")+" "+userod.UserName;
+			if(!signatureBoxWrapper.Enabled) {
+				MsgBox.Show(this,"This signature box is restricted to providers, and the selected user is not linked to a provider.");
+			}
 		}
 
 		///<summary>Loads one image from disk or cloud into sheetFieldDef.ImageField. We call this again if image changes for some reason.  This fails if sheetField.BitmapLoaded already has an image, so you have to clear that bitmap if you want to force a refresh.</summary>
@@ -1898,6 +1982,15 @@ namespace OpenDental {
 				SheetField sheetField=(SheetField)panelMain.Controls[i].Tag;
 				Point point=new Point(LayoutManager.Scale(sheetField.XPos),LayoutManager.Scale(sheetField.YPos));
 				LayoutManager.MoveLocation(panelMain.Controls[i],point);
+			}
+			//Change User buttons and signer captions follow their signature box.
+			for(int i=0;i<_listChangeUserControls.Count;i++) {
+				if(_listChangeUserControls[i].Item1.IsDisposed) {
+					continue;
+				}
+				SheetField sheetField=_listChangeUserControls[i].Item2;
+				Point point=new Point(LayoutManager.Scale(sheetField.XPos+_listChangeUserControls[i].Item3),LayoutManager.Scale(sheetField.YPos+sheetField.Height+1));
+				LayoutManager.MoveLocation(_listChangeUserControls[i].Item1,point);
 			}
 		}
 
@@ -2050,6 +2143,8 @@ namespace OpenDental {
 				SheetFields.Sync(SheetCur.SheetFields.FindAll(x => !x.FieldType.In(SheetFieldType.SigBox,SheetFieldType.SigBoxPractice)),SheetCur.SheetNum,isSigBoxOnly:false);
 			}
 			List<SheetField> listSheetFieldsSigBoxes=new List<SheetField>();
+			//Boxes signed after a change of user: field, signer, and whether domain credentials were used. Logged after the save.
+			List<Tuple<SheetField,Userod,bool>> listSignedAfterSwitch=new List<Tuple<SheetField,Userod,bool>>();
 			//SigBoxes must come after ALL other types in order for the keyData to be in the right order.
 			SheetField sheetField;
 			for(int i=0;i<panelMain.Controls.Count;i++){
@@ -2088,6 +2183,12 @@ namespace OpenDental {
 						sheetField.DateTimeSig=DateTime.Now;
 					}
 				}
+				//25.2: record the signer when the box was signed after a change of user and that user is a provider.
+				sheetField.UserSigned=SheetSignatureSigners.GetUserSignedToSave(sheetField,isSigChanged:true,isSigned:signature!="",sigBox.UserSig);
+				if(signature!="" && sigBox.UserSig!=null) {
+					_dictSigBoxDomainAuth.TryGetValue(sigBox,out bool isDomainAuth);
+					listSignedAfterSwitch.Add(Tuple.Create(sheetField,sigBox.UserSig,isDomainAuth));
+				}
 				listSheetFieldsSigBoxes.Add(sheetField);
 			}
 			//Create PDF for referral letter that has a grid and/or tooth chart.
@@ -2119,6 +2220,7 @@ namespace OpenDental {
 				Sheets.Update(SheetCur);
 				//now sync SigBoxes
 				SheetFields.Sync(listSheetFieldsSigBoxes,SheetCur.SheetNum,isSigBoxOnly:true);
+				LogSignedAfterSwitch(listSignedAfterSwitch);
 				//SheetFields.GetFieldsAndParameters(SheetCur);
 				//Each (SheetField)control (had in old versions) a tag pointing at a SheetCur.SheetField, and GetFieldsAndParameters() causes us to overwrite SheetCur.SheetFields.
 				//This leaves the tag pointing at nothing, so we need to call LayoutFields() to re-link the controls and data.
@@ -2130,6 +2232,7 @@ namespace OpenDental {
 			}
 			//now sync SigBoxes
 			SheetFields.Sync(listSheetFieldsSigBoxes,SheetCur.SheetNum,isSigBoxOnly:true);
+			LogSignedAfterSwitch(listSignedAfterSwitch);
 			DisposeOfImages();
 			SheetFields.GetFieldsAndParameters(SheetCur);
 			//Method GetFieldsAndParameters() resyncs the sheet with the DB therefore wiping out any connected bitmaps

@@ -13,6 +13,10 @@ namespace OpenDental{
 		private bool _isSigned;
 		private List<Def> _listDefsTxPriority;
 		public ProcTP ProcTPCur;
+		///<summary>The fee when the window opened, for the ProcTPEditFee log.</summary>
+		private double _feeAmtOld;
+		///<summary>Explains a read-only fee box. Null when the fee is editable.</summary>
+		private System.Windows.Forms.ToolTip _toolTipFee;
 
 		///<summary></summary>
 		public FormProcTPEdit(ProcTP procTP,DateTime dateTP,bool isSigned)
@@ -64,7 +68,14 @@ namespace OpenDental{
 			else {
 				textFeeAllowed.Text="";
 			}
-			if(!Clinics.IsMedicalPracticeOrClinic(Clinics.ClinicNum)) { 
+			//Treatment Planned Procedure Edit Fee (25.2). Saved treatment plan rows are snapshots, not procedures; covering them is our choice.
+			_feeAmtOld=ProcTPCur.FeeAmt;
+			if(!ProcTPFeeEdit.CanEditFee(ProcStat.TP,Security.IsAuthorized(EnumPermType.ProcTPEditFee,true))) {
+				textFeeAmt.ReadOnly=true;
+				_toolTipFee=new System.Windows.Forms.ToolTip();
+				_toolTipFee.SetToolTip(textFeeAmt,ProcTPFeeEdit.GetNoPermissionTip());
+			}
+			if(!Clinics.IsMedicalPracticeOrClinic(Clinics.ClinicNum)) {
 				return;	
 			}
 			labelToothNum.Visible=false;
@@ -117,8 +128,12 @@ namespace OpenDental{
 			}
 			ProcTPs.InsertOrUpdate(ProcTPCur,false);//IsNew not applicable here
 			SecurityLogs.MakeLogEntry(EnumPermType.TreatPlanEdit,ProcTPCur.PatNum,"Edit proc: "+ProcTPCur.Descript);
+			if(ProcTPFeeEdit.ShouldLog(ProcStat.TP,_feeAmtOld,ProcTPCur.FeeAmt)) {
+				SecurityLogs.MakeLogEntry(EnumPermType.ProcTPEditFee,ProcTPCur.PatNum,
+					ProcTPFeeEdit.GetLogText(ProcTPCur.ProcCode,_feeAmtOld,ProcTPCur.FeeAmt)+" ("+Lan.g(this,"saved treatment plan")+")");
+			}
 			DialogResult=DialogResult.OK;
 		}
 
 	}
-}
+}

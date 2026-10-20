@@ -38,6 +38,8 @@ namespace OpenDental{
 		///<summary>True if sheetTP has a practice signature box.</summary>
 		private bool _hasSigPractice;
 		private bool _hasSigPracticeChanged;
+		///<summary>Boxes whose signer was changed with Change User, and whether domain credentials were used. The signer is the box's UserSig.</summary>
+		private Dictionary<SignatureBoxWrapper,bool> _dictSigBoxDomainAuth=new Dictionary<SignatureBoxWrapper,bool>();
 
 		///<summary></summary>
 		public FormTPsign(){
@@ -177,6 +179,59 @@ namespace OpenDental{
 			{
 				signatureBoxWrapper.SetAllowDigitalSig(true,true);
 			}
+			AddChangeUserButton(sheetField,signatureBoxWrapper);
+		}
+
+		///<summary>25.1: a Change User button under the box's label, so a provider can sign on someone else's workstation without logging off.
+		///Only for boxes that allow electronic signing or are restricted to providers, and only when the user may sign treatment plans.</summary>
+		private void AddChangeUserButton(SheetField sheetField,SignatureBoxWrapper signatureBoxWrapper) {
+			if(!SheetSignatureSigners.IsChangeUserBox(sheetField) || !butSave.Enabled) {
+				return;
+			}
+			int xPos=signatureBoxWrapper.Location.X-LayoutManager.Scale(155);
+			OpenDental.UI.Button butChangeUser=new OpenDental.UI.Button();
+			butChangeUser.Text=Lan.g(this,"Change User");
+			butChangeUser.Size=new Size(LayoutManager.Scale(95),LayoutManager.Scale(22));
+			butChangeUser.Location=new Point(xPos+LayoutManager.Scale(55),signatureBoxWrapper.Location.Y+LayoutManager.Scale(44));
+			Label labelSigner=new Label();
+			labelSigner.Location=new Point(xPos,signatureBoxWrapper.Location.Y+LayoutManager.Scale(67));
+			labelSigner.Size=new Size(LayoutManager.Scale(150),LayoutManager.Scale(17));
+			labelSigner.TextAlign=ContentAlignment.MiddleRight;
+			butChangeUser.Click+=(sender,e) => ChangeSigBoxUser(sheetField,signatureBoxWrapper,labelSigner);
+			LayoutManager.Add(butChangeUser,panelSig);
+			LayoutManager.Add(labelSigner,panelSig);
+		}
+
+		///<summary>Switches the signer of one box. Security.CurUser does not change. Clears the box's signature.</summary>
+		private void ChangeSigBoxUser(SheetField sheetField,SignatureBoxWrapper signatureBoxWrapper,Label labelSigner) {
+			using FormLogOn formLogOn=new FormLogOn(isSimpleSwitch:true);
+			formLogOn.ShowDialog();
+			if(formLogOn.DialogResult!=DialogResult.OK || formLogOn.UserodSimpleSwitch==null) {
+				return;
+			}
+			Userod userod=formLogOn.UserodSimpleSwitch;
+			signatureBoxWrapper.ClearSignature();
+			signatureBoxWrapper.UserSig=userod;
+			_dictSigBoxDomainAuth[signatureBoxWrapper]=formLogOn.IsDomainAuthenticated;
+			signatureBoxWrapper.Enabled=SheetSignatureSigners.CanUserSign(sheetField,userod);
+			signatureBoxWrapper.SetAllowDigitalSig(SheetSignatureSigners.CanUserESign(sheetField,userod,isInTerminal:false),true);
+			labelSigner.Text=Lan.g(this,"Signer:")+" "+userod.UserName;
+			if(!signatureBoxWrapper.Enabled) {
+				MsgBox.Show(this,"This signature box is restricted to providers, and the selected user is not linked to a provider.");
+			}
+		}
+
+		///<summary>Log text for a box signed after a change of user, or "" when the box's signer was not changed or it was not signed.</summary>
+		private string GetSwitchedSignerLogText(SignatureBoxWrapper signatureBoxWrapper,bool isSigChanged,string signature) {
+			if(!isSigChanged || signatureBoxWrapper.UserSig==null || string.IsNullOrEmpty(signature)) {
+				return "";
+			}
+			_dictSigBoxDomainAuth.TryGetValue(signatureBoxWrapper,out bool isDomainAuth);
+			string text=", "+Lan.g(this,"signed by")+" "+signatureBoxWrapper.UserSig.UserName+" "+Lan.g(this,"after a change of user");
+			if(isDomainAuth) {
+				text+=" "+Lan.g(this,"(domain authentication)");
+			}
+			return text;
 		}
 
 		///<summary>Causes the toolbar to be laid out again.</summary>
@@ -389,7 +444,12 @@ namespace OpenDental{
 		}
 
 		private void butSave_Click(object sender,EventArgs e) {
+			//Captured before saving: the PDF step below can change these flags.
+			bool isSigChanged=_sigChanged;
+			bool isSigPracticeChanged=_hasSigPractice && _hasSigPracticeChanged;
 			SaveSignature();//"saves" signature to TPCur, does not save to DB.
+			string logTextSigners=GetSwitchedSignerLogText(signatureBoxWrapper,isSigChanged,TreatPlanCur.Signature)
+				+GetSwitchedSignerLogText(signatureBoxWrapperPractice,isSigPracticeChanged,TreatPlanCur.SignaturePractice);
 			TreatPlans.Update(TreatPlanCur,_treatPlanOld);//save signature to DB.
 			TreatPlanCur.ListProcTPs=ProcTPs.RefreshForTP(TreatPlanCur.TreatPlanNum);
 			if(DoPrintUsingSheets) {
@@ -416,7 +476,7 @@ namespace OpenDental{
 					TreatPlans.Update(TreatPlanCur); //update docnum. must be called after signature is updated.
 				}
 			}
-			SecurityLogs.MakeLogEntry(EnumPermType.TreatPlanEdit,TreatPlanCur.PatNum,"Sign TP");
+			SecurityLogs.MakeLogEntry(EnumPermType.TreatPlanEdit,TreatPlanCur.PatNum,"Sign TP"+logTextSigners);
 			DialogResult=DialogResult.OK;
 		}
 
