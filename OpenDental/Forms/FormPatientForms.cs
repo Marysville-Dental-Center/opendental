@@ -24,9 +24,7 @@ namespace OpenDental {
 		}
 
 		private void FormPatientForms_Load(object sender,EventArgs e) {
-			if(!ODBuild.IsDebug()) {//if release
-				butAddEForm.Visible=false;
-			}
+			//Add eForm and Setup > eForms show in Release builds too (Open Dental 24.4): eForms are filled in the office on a workstation.
 			_patient=Patients.GetPat(PatNum);
 			Text=Lan.g(this,"Patient Forms for")+" "+_patient.GetNameFL();
 			LayoutMenu();
@@ -38,11 +36,10 @@ namespace OpenDental {
 			MenuItemOD menuItemSetup=new MenuItemOD("Setup");
 			menuMain.Add(menuItemSetup);
 			menuItemSetup.Add("Sheets",menuItemSheets_Click);
-			if(ODBuild.IsDebug()) {
-				menuItemSetup.Add("eForms",menuItemEForms_Click);
-			}
+			menuItemSetup.Add("eForms",menuItemEForms_Click);
 			menuItemSetup.Add("Image Categories",menuItemImageCats_Click);
 			menuItemSetup.Add("Options",menuItemOptions_Click);
+			//eFormImportRule is documented as unused since Open Dental 25.1, so its setup window stays hidden.
 			//if(ODBuild.IsDebug()) {
 			//	menuItemSetup.Add("Import Rules",menuItemImportRules_Click);
 			//}

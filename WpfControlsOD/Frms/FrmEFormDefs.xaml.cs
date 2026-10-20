@@ -176,24 +176,14 @@ namespace OpenDental {
 			eFormDef.ListEFormFieldDefs=EFormFieldDefs.GetDeepCopy().FindAll(x=>x.EFormDefNum==eFormDef.EFormDefNum);
 			eFormDef.EFormDefNum=0;
 			for(int i=0;i<eFormDef.ListEFormFieldDefs.Count;i++){
-				eFormDef.ListEFormFieldDefs[0].EFormDefNum=0;
+				eFormDef.ListEFormFieldDefs[i].EFormDefNum=0;
 			}
 			XmlSerializer xmlSerializer=new XmlSerializer(typeof(EFormDef));
 			string fileName="eFormDefCustom.xml";
 			SaveFileDialog saveFileDialog=new SaveFileDialog();
 			saveFileDialog.Filter = "XML files (*.xml)|*.xml|All files (*.*)|*.*";
-			if(ODBuild.IsDebug()) {
-				if(Environment.MachineName.ToLower()=="ryanr"){
-					saveFileDialog.InitialDirectory="C:\\Users\\ryanr\\Desktop";
-				}
-				if(Environment.MachineName.ToLower()=="jordanhome"){
-					saveFileDialog.InitialDirectory=@"E:\Documents\GIT REPOS\Versioned\OpenDental\OpenDentBusiness\Resources\EForms";
-				}
-			}
-			else { 
-				if(Directory.Exists(PrefC.GetString(PrefName.ExportPath))) {
-					saveFileDialog.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
-				}
+			if(Directory.Exists(PrefC.GetString(PrefName.ExportPath))) {
+				saveFileDialog.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
 			}
 			saveFileDialog.FileName=fileName;
 			if(saveFileDialog.ShowDialog()==false) {

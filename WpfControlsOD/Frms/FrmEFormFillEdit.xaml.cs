@@ -60,9 +60,6 @@ namespace OpenDental {
 			_maskedSSNOld=EFormCur.ListEFormFields.Find(x=>x.DbLink=="SSN")?.ValueString;//null is ok
 			textDescription.Text=EFormCur.Description;
 			textDateTime.Text=EFormCur.DateTimeShown.ToShortDateString()+" "+EFormCur.DateTimeShown.ToShortTimeString();
-			if(!EFormCur.ListEFormFields.Exists(x=>x.IsRequired)){
-				labelRequired.Visible=false;
-			}
 			if(EFormCur.SaveImageCategory==0){
 				groupSaveImages.Visible=false;
 			}
@@ -268,19 +265,19 @@ namespace OpenDental {
 			_wasUnchanged=false;
 			_wasSaved=false;
 			ctrlEFormFill.FillFieldsFromControls();
-			if(ODBuild.IsDebug() && Environment.MachineName.ToLower()=="jordanhome"){
-				//This is how we test required fields in OD proper.
-				//There are certainly other ways of doing it.
-				//Med list was tricky because that checkbox is not actually present in the filled field.
-				EFormValidation eFormValidationR=EForms.ValidateRequired(EFormCur,ctrlEFormFill.GetMedListIsNoneChecked());
-				if(eFormValidationR.ErrorMsg!="") {
-					ctrlEFormFill.SetVisibilities(eFormValidationR.PageNum);
-					MsgBox.Show(eFormValidationR.ErrorMsg);
-					_wasError=true;
-					return;
-				}
+			if(!EFormCur.IsNew && !Security.IsAuthorized(EnumPermType.EFormEdit,EFormCur.DateTimeShown)) {
+				_wasError=true;
+				return;
 			}
-			//Next line no longer enforces required fields. That should only be done in eClipboard, not OD proper.
+			//eClipboard, where Open Dental checks required fields, is cut, so they are checked here on every save. Fields hidden by conditional logic
+			//are not required. The med list None checkbox is not stored in the field, so it is read from the control.
+			EFormValidation eFormValidationR=EForms.ValidateRequired(EFormCur,ctrlEFormFill.GetMedListIsNoneChecked());
+			if(eFormValidationR.ErrorMsg!="") {
+				ctrlEFormFill.SetVisibilities(eFormValidationR.PageNum);
+				MsgBox.Show(eFormValidationR.ErrorMsg);
+				_wasError=true;
+				return;
+			}
 			EFormValidation eFormValidation = EForms.Validate(EFormCur,_maskedSSNOld);
 			if(eFormValidation.ErrorMsg!="") {
 				ctrlEFormFill.SetVisibilities(eFormValidation.PageNum);
@@ -314,6 +311,13 @@ namespace OpenDental {
 				isChanged=true;
 			}
 			isChanged|=EFormFields.IsAnyChanged(EFormCur.ListEFormFields,_listEFormFieldsOld);
+			//A form that passes the required-field check is submitted as Filled. The save that makes it Filled also writes its Auto Import fields into
+			//the patient record (Open Dental 25.1). Forms that were already Filled, for example by Open Dental's eClipboard, are not imported again.
+			bool doAutoImport=EFormImport.ShouldAutoImportOnSave(EFormCur.Status);
+			if(EFormCur.Status!=EnumEFormStatus.Filled){
+				EFormCur.Status=EnumEFormStatus.Filled;
+				isChanged=true;
+			}
 			if(!isChanged){
 				_wasUnchanged=true;
 				return;
@@ -350,6 +354,9 @@ namespace OpenDental {
 				EFormFields.Insert(EFormCur.ListEFormFields[i]);//ignores any existing PK when inserting
 			}
 			SecurityLogs.MakeLogEntry(EnumPermType.EFormEdit,EFormCur.PatNum,"EForm: "+EFormCur.Description+" from "+EFormCur.DateTimeShown.ToShortDateString());
+			if(doAutoImport && EFormCur.PatNum!=0){
+				EFormImport.ImportAutoFields(EFormCur);//logs its own changes
+			}
 		}
 
 		#endregion Methods - private

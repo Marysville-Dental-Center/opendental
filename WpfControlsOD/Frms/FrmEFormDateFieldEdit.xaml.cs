@@ -32,6 +32,29 @@ namespace OpenDental {
 			PreviewKeyDown+=FrmEFormDateFieldEdit_PreviewKeyDown;
 			checkIsWidthPercentage.Click+=CheckIsWidthPercentage_Click;
 			checkIsHorizStacking.Click+=CheckIsHorizStacking_Click;
+			checkAutoImport.Click+=(sender,e) => SetAutoImportControls();
+			comboDbLink.SelectionTrulyChanged+=(sender,e) => SetAutoImportControls();
+		}
+
+		///<summary>Auto Import (Open Dental 25.1) is only offered for linked fields that support it, and it makes the field required so an empty answer
+		///can never wipe stored data.</summary>
+		private void SetAutoImportControls(){
+			string dbLink="";
+			if(comboDbLink.SelectedIndex>0){
+				dbLink=comboDbLink.GetSelected<string>();
+			}
+			bool isAutoImportAllowed=EFormFieldsAvailable.IsAutoImportAllowed(dbLink);
+			checkAutoImport.IsEnabled=isAutoImportAllowed;
+			if(!isAutoImportAllowed){
+				checkAutoImport.Checked=false;
+			}
+			if(checkAutoImport.Checked==true){
+				checkIsRequired.Checked=true;
+				checkIsRequired.IsEnabled=false;
+			}
+			else{
+				checkIsRequired.IsEnabled=true;
+			}
 		}
 
 		private void FrmEFormsDateFieldEdit_Load(object sender, EventArgs e) {
@@ -54,6 +77,8 @@ namespace OpenDental {
 				comboDbLink.SelectedIndex=idxSelect;
 			}
 			checkIsRequired.Checked=EFormFieldCur.IsRequired;
+			checkAutoImport.Checked=EFormFieldCur.AutoImport;
+			SetAutoImportControls();
 			//groupLayout start
 			checkBorder.Checked=EFormFieldCur.Border==EnumEFormBorder.ThreeD;
 			textVIntWidth.Value=EFormFieldCur.Width;
@@ -225,7 +250,8 @@ namespace OpenDental {
 			else{
 				EFormFieldCur.DbLink=comboDbLink.GetSelected<string>();
 			}
-			EFormFieldCur.IsRequired=checkIsRequired.Checked==true;
+			EFormFieldCur.AutoImport=checkAutoImport.Checked==true && EFormFieldsAvailable.IsAutoImportAllowed(EFormFieldCur.DbLink);
+			EFormFieldCur.IsRequired=checkIsRequired.Checked==true || EFormFieldCur.AutoImport;
 			//groupLayout start
 			if(checkBorder.Checked==true){
 				EFormFieldCur.Border=EnumEFormBorder.ThreeD;
