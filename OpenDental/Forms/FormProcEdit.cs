@@ -52,6 +52,8 @@ namespace OpenDental {
 		private Userod _Userod=Security.CurUser;
 		///<summary>True if the user clicked the Change User button.</summary>
 		private bool _hasUserChanged;
+		///<summary>True when the user typed a new fee while the procedure was TP or TPi. Logged under ProcTPEditFee on save.</summary>
+		private bool _isTpFeeTyped;
 		///<summary></summary>
 		private long _provNumSelectedOrder;
 		///<summary>If this procedure is attached to an ordering referral, then this varible will not be null.</summary>
@@ -140,6 +142,7 @@ namespace OpenDental {
 				labelTaxEst.Visible=false;
 				textTaxAmt.Visible=false;
 			}
+			SetTpFeeEditable();
 			_listClaims=_loadData.ListClaims;
 			_procedureCode=ProcedureCodes.GetProcCode(_procedure.CodeNum);
 			if(_procedure.ProcStatus==ProcStat.C && PrefC.GetBool(PrefName.ProcLockingIsAllowed) && !_procedure.IsLocked) {
@@ -1380,6 +1383,9 @@ namespace OpenDental {
 			if(_procedure.ProcFee==procFee){
 				return;
 			}
+			if(ProcTPFeeEdit.IsTreatPlanStatus(_procedure.ProcStatus)) {
+				_isTpFeeTyped=true;//Logged under ProcTPEditFee on save.
+			}
 			_procedure.ProcFee=procFee;
 			_isEstimateRecompute=true;
 			Procedures.ComputeEstimates(_procedure,_patient.PatNum,ref _listClaimProcs,false,_listInsPlans,_listPatPlans,_listBenefits,
@@ -1388,6 +1394,17 @@ namespace OpenDental {
 				null,false,false,_listSubstitutionLinks,false,
 				null,_lookupFees);
 			FillIns();
+		}
+
+		///<summary>Treatment Planned Procedure Edit Fee (25.2): for TP and TPi procedures, only users with ProcTPEditFee may type a fee. Others see the fee
+		///read-only. Automatic fee updates (code change, status change to TP) still happen. Called on load and when the status changes.</summary>
+		private void SetTpFeeEditable(ProcStat? procStat=null) {
+			if(_orthoProcLink!=null) {
+				return;//Fee is already disabled for procedures linked to an ortho case.
+			}
+			bool canEdit=ProcTPFeeEdit.CanEditFee(procStat??_procedure.ProcStatus,Security.IsAuthorized(EnumPermType.ProcTPEditFee,true));
+			textProcFee.ReadOnly=!canEdit;
+			toolTip1.SetToolTip(textProcFee,canEdit ? "" : ProcTPFeeEdit.GetNoPermissionTip());
 		}
 
 		private void textTooth_Validating(object sender, System.ComponentModel.CancelEventArgs e) {
@@ -1668,6 +1685,7 @@ namespace OpenDental {
 					butLock.Visible=true;
 				}
 			}
+			SetTpFeeEditable();
 		}
 
 		private void butSetComplete_Click(object sender, System.EventArgs e) {
@@ -2421,6 +2439,10 @@ namespace OpenDental {
 				Procedures.Update(_procedure,_procedureOld,false,isProcLinkedToOrthoCase:isProcLinkedToOrthoCase);
 			}
 			Procedures.FormProcEditUpdate(_procedure,_procedureOld,_procedureCode,isProcLinkedToOrthoCase,IsNew,listBoxTeeth.Text);
+			if(_isTpFeeTyped && ProcTPFeeEdit.ShouldLog(ProcStat.TP,_procedureOld.ProcFee,_procedure.ProcFee)) {
+				SecurityLogs.MakeLogEntry(EnumPermType.ProcTPEditFee,_procedure.PatNum,
+					ProcTPFeeEdit.GetLogText(_procedureCode.ProcCode,_procedureOld.ProcFee,_procedure.ProcFee),_procedure.ProcNum,DateTime.MinValue);
+			}
 			for(int i=0;i<_listClaimProcs.Count;i++) {
 				_listClaimProcs[i].ClinicNum=comboClinic.ClinicNumSelected;//These changes save in Form_Closing ComputeEstimates depending on DialogResult
 			}
@@ -2479,6 +2501,11 @@ namespace OpenDental {
 			using FormLogOn formLogOn=new FormLogOn(isSimpleSwitch:true);
 			formLogOn.ShowDialog();
 			if(formLogOn.DialogResult==DialogResult.OK) { //if successful
+				if(formLogOn.IsDomainAuthenticated) {
+					SecurityLogs.MakeLogEntry(EnumPermType.ProcedureNoteUser,_patient.PatNum,
+						DomainLogin.GetSwitchLogText(Lan.g(this,"Procedure note"),_Userod,formLogOn.UserodSimpleSwitch,isDomainAuthenticated:true),
+						_procedure.ProcNum,DateTime.MinValue);
+				}
 				_Userod=formLogOn.UserodSimpleSwitch; //assign temp user
 				bool canUserSignNote=Userods.CanUserSignNote(_Userod);//only show if user can sign
 				signatureBoxWrapper.Enabled=canUserSignNote;
