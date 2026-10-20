@@ -82,6 +82,9 @@ namespace DevDbTool {
 			devDatabase.LoadDump(dumpPath);
 			devDatabase.ConnectToDatabase(skipValidation:false);
 			devDatabase.Upgrade();
+			if(!options.SkipForkMigrations) {
+				devDatabase.RunForkMigrations();
+			}
 			devDatabase.ApplyDefaults();
 			devDatabase.StampProgramVersion();
 			if(options.AtoZPath!="") {
@@ -105,7 +108,7 @@ namespace DevDbTool {
 
 		private static int Verify(Options options) {
 			Info("Verifying "+options.Database);
-			SchemaCheck check=SchemaCheck.Run(options.Database);
+			SchemaCheck check=SchemaCheck.Run(options.Database,!options.SkipForkMigrations);
 			foreach(string note in check.ListNotes) {
 				Info("  "+note);
 			}
