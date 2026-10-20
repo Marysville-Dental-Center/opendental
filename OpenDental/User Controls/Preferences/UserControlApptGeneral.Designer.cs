@@ -36,6 +36,7 @@ namespace OpenDental {
 			this.checkApptAllowFutureComplete = new OpenDental.UI.CheckBox();
 			this.checkUnscheduledListNoRecalls = new OpenDental.UI.CheckBox();
 			this.checkApptsAllowOverlap = new OpenDental.UI.CheckBox();
+			this.checkApptMirrorSecondary = new OpenDental.UI.CheckBox();
 			this.labelApptWithoutProcsDefaultLength = new System.Windows.Forms.Label();
 			this.checkPreventChangesToComplAppts = new OpenDental.UI.CheckBox();
 			this.checkApptAllowEmptyComplete = new OpenDental.UI.CheckBox();
@@ -63,7 +64,7 @@ namespace OpenDental {
 			// 
 			this.groupBoxProduction.Controls.Add(this.checkApptModuleAdjInProd);
 			this.groupBoxProduction.Controls.Add(this.checkApptModuleProductionUsesOps);
-			this.groupBoxProduction.Location = new System.Drawing.Point(20, 435);
+			this.groupBoxProduction.Location = new System.Drawing.Point(20, 453);
 			this.groupBoxProduction.Name = "groupBoxProduction";
 			this.groupBoxProduction.Size = new System.Drawing.Size(450, 49);
 			this.groupBoxProduction.TabIndex = 327;
@@ -102,9 +103,10 @@ namespace OpenDental {
 			this.groupBoxOD2.Controls.Add(this.labelApptWithoutProcsDefaultLength);
 			this.groupBoxOD2.Controls.Add(this.checkPreventChangesToComplAppts);
 			this.groupBoxOD2.Controls.Add(this.checkApptAllowEmptyComplete);
+			this.groupBoxOD2.Controls.Add(this.checkApptMirrorSecondary);
 			this.groupBoxOD2.Location = new System.Drawing.Point(20, 239);
 			this.groupBoxOD2.Name = "groupBoxOD2";
-			this.groupBoxOD2.Size = new System.Drawing.Size(450, 190);
+			this.groupBoxOD2.Size = new System.Drawing.Size(450, 208);
 			this.groupBoxOD2.TabIndex = 325;
 			this.groupBoxOD2.Text = "Appointment Behavior";
 			// 
@@ -189,6 +191,16 @@ namespace OpenDental {
 			this.checkApptsAllowOverlap.Size = new System.Drawing.Size(406, 17);
 			this.checkApptsAllowOverlap.TabIndex = 322;
 			this.checkApptsAllowOverlap.Text = "Appointments allow overlap";
+			//
+			// checkApptMirrorSecondary
+			//
+			this.checkApptMirrorSecondary.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			this.checkApptMirrorSecondary.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.checkApptMirrorSecondary.Location = new System.Drawing.Point(34, 185);
+			this.checkApptMirrorSecondary.Name = "checkApptMirrorSecondary";
+			this.checkApptMirrorSecondary.Size = new System.Drawing.Size(406, 17);
+			this.checkApptMirrorSecondary.TabIndex = 330;
+			this.checkApptMirrorSecondary.Text = "New appointments mirror into the secondary provider's operatory";
 			// 
 			// labelApptWithoutProcsDefaultLength
 			// 
@@ -388,6 +400,7 @@ namespace OpenDental {
 
 		private OpenDental.UI.CheckBox checkBrokenApptRequiredOnMove;
 		private OpenDental.UI.CheckBox checkApptsAllowOverlap;
+		private OpenDental.UI.CheckBox checkApptMirrorSecondary;
 		private OpenDental.UI.CheckBox checkPreventChangesToComplAppts;
 		private ValidNum textApptAutoRefreshRange;
 		private System.Windows.Forms.Label labelApptAutoRefreshRange;

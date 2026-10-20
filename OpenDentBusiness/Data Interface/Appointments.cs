@@ -686,6 +686,7 @@ namespace OpenDentBusiness{
 			table.Columns.Add("insColor2");
 			table.Columns.Add("insToSend[!]");
 			table.Columns.Add("IsHygiene");
+			table.Columns.Add("IsMirrored");//25.3 mirroring: 1 when the appointment also shows in the secondary provider's operatory.
 			table.Columns.Add("lab");
 			table.Columns.Add("language");
 			table.Columns.Add("medOrPremed[+]");
@@ -740,7 +741,7 @@ namespace OpenDentBusiness{
 				+"patient.ChartNumber patChartNumber,patient.City patCity,appointment.ColorOverride apptColorOverride,appointment.Confirmed apptConfirmed,"
 				+"patient.CreditType patCreditType,appointment.DateTimeAskedToArrive apptDateTimeAskedToArrive,"
 				+"patient.Email patEmail,guar.FamFinUrgNote guarFamFinUrgNote,patient.FName patFName,patient.Guarantor patGuarantor,"
-				+"patient.HmPhone patHmPhone,patient.ImageFolder patImageFolder,appointment.IsHygiene apptIsHygiene,appointment.IsNewPatient apptIsNewPatient,"
+				+"patient.HmPhone patHmPhone,patient.ImageFolder patImageFolder,appointment.IsHygiene apptIsHygiene,appointment.IsMirrored apptIsMirrored,appointment.IsNewPatient apptIsNewPatient,"
 				+"patient.Language patLanguage,patient.LName patLName,patient.MedUrgNote patMedUrgNote,"
 				+"patient.MiddleI patMiddleI,appointment.Note apptNote,appointment.Op apptOp,appointment.PatNum apptPatNum,"
 				+"appointment.Pattern apptPattern, appointment.PatternSecondary apptPatternSecondary," 
@@ -1201,6 +1202,7 @@ namespace OpenDentBusiness{
 				}
 				dataRow["Priority"]=tableRaw.Rows[d]["Priority"].ToString();
 				dataRow["IsHygiene"]=tableRaw.Rows[d]["apptIsHygiene"].ToString();
+				dataRow["IsMirrored"]=tableRaw.Rows[d]["apptIsMirrored"].ToString();
 				dataRow["lab"]="";
 				long apptAptNum=PIn.Long(tableRaw.Rows[d]["apptAptNum"].ToString());
 				if(isPlanned) {
@@ -3066,6 +3068,7 @@ namespace OpenDentBusiness{
 			Appointment appointment=new Appointment();
 			appointment.PatNum=patient.PatNum;
 			appointment.IsNewPatient=isNewPatAppt;
+			appointment.IsMirrored=GetIsMirroredDefault();//25.3: new appointments take the ApptMirrorSecondary default.
 			//if the pattern passed in is blank, set the time using the default pattern for an appointment with no attached procedures.
 			appointment.Pattern=String.IsNullOrWhiteSpace(pattern) ? GetApptTimePatternForNoProcs() : pattern;
 			if(patient.PriProv==0) {
@@ -3599,8 +3602,9 @@ namespace OpenDentBusiness{
 				}
 				else {
 					if(createSecLog) {
+						//25.3 audit detail: operatory, providers, length and the mirror flag of the new appointment.
 						SecurityLogs.MakeLogEntry(EnumPermType.AppointmentCreate,patient.PatNum,
-							appointment.AptDateTime.ToString()+", "+appointment.ProcDescript,
+							AppendAuditDetail(appointment.AptDateTime.ToString()+", "+appointment.ProcDescript,GetCreateSummary(appointment)),
 							appointment.AptNum,dateTPrevious);
 					}
 					isAptCreatedOrEdited=true;
@@ -3638,9 +3642,12 @@ namespace OpenDentBusiness{
 					}
 				}
 				if(createSecLog) {
+					//25.3 audit detail: list each changed field, including attached procedure codes.
+					string changeSummary=GetChangeSummaryForSave(appointmentOld,appointment,listProceduresForAppt,listProcNumsAttachedStart,listProceduresSelected);
 					if(appointmentOld.AptStatus==ApptStatus.Complete) {//seperate log entry for completed appointments
 						SecurityLogs.MakeLogEntry(EnumPermType.AppointmentCompleteEdit,patient.PatNum,
-							appointment.AptDateTime.ToShortDateString()+", "+appointment.ProcDescript+logEntryMessage,appointment.AptNum,dateTPrevious);
+							AppendAuditDetail(appointment.AptDateTime.ToShortDateString()+", "+appointment.ProcDescript+logEntryMessage,changeSummary),
+							appointment.AptNum,dateTPrevious);
 					}
 					else {
 						string logText=appointment.AptDateTime.ToShortDateString()+", "+appointment.ProcDescript;
@@ -3648,7 +3655,7 @@ namespace OpenDentBusiness{
 							logText+=", Set Complete";//Podium expects this exact text in the security log when the appointment was set complete.
 						}
 						logText+=logEntryMessage;
-						SecurityLogs.MakeLogEntry(EnumPermType.AppointmentEdit,patient.PatNum,logText,appointment.AptNum,dateTPrevious);
+						SecurityLogs.MakeLogEntry(EnumPermType.AppointmentEdit,patient.PatNum,AppendAuditDetail(logText,changeSummary),appointment.AptNum,dateTPrevious);
 					}
 				}
 				isAptCreatedOrEdited=true;
@@ -4570,19 +4577,23 @@ namespace OpenDentBusiness{
 					logtext+=" "+Lans.g("MoveAppointment","hygienist changed");
 				}
 				if(logtext!="") {
+					//25.3 audit detail: name the old and new providers.
 					SecurityLogs.MakeLogEntry(EnumPermType.AppointmentEdit,appointment.PatNum,
-						Lans.g("MoveAppointment","Appointment on")+" "+appointment.AptDateTime.ToString()+logtext,appointment.AptNum,secLogSource,appointment.DateTStamp, userNum);
+						AppendAuditDetail(Lans.g("MoveAppointment","Appointment on")+" "+appointment.AptDateTime.ToString()+logtext,GetMoveSummary(appointmentOld,appointment)),
+						appointment.AptNum,secLogSource,appointment.DateTStamp, userNum);
 				}
 			}
-			else { 
+			else {
+				//25.3 audit detail: old and new date/time, operatory, provider and hygienist.
+				string moveSummary=GetMoveSummary(appointmentOld,appointment);
 				if(appointment.AptStatus==ApptStatus.Complete) { //separate log entry for editing completed appointments
 					SecurityLogs.MakeLogEntry(EnumPermType.AppointmentCompleteEdit,appointment.PatNum,
-						Lans.g("MoveAppointment","moved")+" "+appointment.ProcDescript+" "+Lans.g("MoveAppointment","from")+" "+appointmentOld.AptDateTime.ToString()+", "+Lans.g("MoveAppointment","to")+" "+appointment.AptDateTime.ToString(),
+						AppendAuditDetail(Lans.g("MoveAppointment","moved")+" "+appointment.ProcDescript+" "+Lans.g("MoveAppointment","from")+" "+appointmentOld.AptDateTime.ToString()+", "+Lans.g("MoveAppointment","to")+" "+appointment.AptDateTime.ToString(),moveSummary),
 						appointment.AptNum,secLogSource,appointmentOld.DateTStamp, userNum);
 				}
 				else {
 					SecurityLogs.MakeLogEntry(EnumPermType.AppointmentMove,appointment.PatNum,
-						appointment.ProcDescript+" "+Lans.g("MoveAppointment","from")+" "+appointmentOld.AptDateTime.ToString()+", "+Lans.g("MoveAppointment","to")+" "+appointment.AptDateTime.ToString(),
+						AppendAuditDetail(appointment.ProcDescript+" "+Lans.g("MoveAppointment","from")+" "+appointmentOld.AptDateTime.ToString()+", "+Lans.g("MoveAppointment","to")+" "+appointment.AptDateTime.ToString(),moveSummary),
 						appointment.AptNum,secLogSource,appointmentOld.DateTStamp,userNum);
 				}
 			}
@@ -4698,6 +4709,7 @@ namespace OpenDentBusiness{
 		///Otherwise, simply sets the corresponding PatNum and then the status to "Unscheduled".</summary>
 		public static Appointment MakeNewAppointment(Patient patient,DateTime aptDateTime,long opNum,bool useApptDrawingSettings) {
 			Appointment appointment=new Appointment();
+			appointment.IsMirrored=GetIsMirroredDefault();//25.3: new appointments take the ApptMirrorSecondary default.
 			if(patient!=null) {
 				//Anything referencing PatCur must be in here.
 				appointment.PatNum=patient.PatNum;
@@ -5666,6 +5678,456 @@ namespace OpenDentBusiness{
 				PhoneNumber=phoneNumber;
 			}
 		}
+
+		#region Mirroring (Open Dental 25.3)
+		///<summary>Minutes covered by one character of Pattern and PatternSecondary.</summary>
+		public const int MINUTES_PER_PATTERN_CHAR=5;
+
+		///<summary>The provider whose time PatternSecondary describes. For a hygiene appointment the hygienist is primary, so the dentist (ProvNum)
+		///is secondary. Otherwise the dentist is primary and the hygienist (ProvHyg) is secondary. Returns 0 when there is no secondary provider.</summary>
+		public static long GetSecondaryProvNum(bool isHygiene,long provNum,long provHyg) {
+			Meth.NoCheckMiddleTierRole();
+			if(isHygiene) {
+				return provNum;
+			}
+			return provHyg;
+		}
+
+		///<summary>The contiguous runs of 'X' in PatternSecondary, as minute offsets from the appointment start. Each character is 5 minutes.
+		///Returns an empty list when the pattern is empty or holds no 'X'.</summary>
+		public static List<ApptMirrorRun> GetMirrorRuns(string patternSecondary) {
+			Meth.NoCheckMiddleTierRole();
+			List<ApptMirrorRun> listApptMirrorRuns=new List<ApptMirrorRun>();
+			if(string.IsNullOrEmpty(patternSecondary)) {
+				return listApptMirrorRuns;
+			}
+			int idxRunStart=-1;
+			for(int i=0;i<=patternSecondary.Length;i++) {
+				bool isX=(i<patternSecondary.Length && char.ToUpperInvariant(patternSecondary[i])=='X');
+				if(isX && idxRunStart==-1) {
+					idxRunStart=i;
+					continue;
+				}
+				if(!isX && idxRunStart!=-1) {
+					listApptMirrorRuns.Add(new ApptMirrorRun(idxRunStart*MINUTES_PER_PATTERN_CHAR,(i-idxRunStart)*MINUTES_PER_PATTERN_CHAR));
+					idxRunStart=-1;
+				}
+			}
+			return listApptMirrorRuns;
+		}
+
+		///<summary>True for the statuses that put an appointment on the schedule, so that it can have a mirror: Scheduled, Complete and Broken.
+		///Planned, Unscheduled List and patient notes never mirror.</summary>
+		public static bool IsMirrorableStatus(ApptStatus apptStatus) {
+			Meth.NoCheckMiddleTierRole();
+			return ListScheduledApptStatuses.Contains(apptStatus);
+		}
+
+		///<summary>Finds the operatory where the secondary provider works, among the visible operatories only. Returns 0 if there is none, or if
+		///it is the appointment's own operatory. Order of preference: (1) an operatory the provider is scheduled into on that day by a provider
+		///schedule block, preferring blocks that overlap the mirror's time; (2) an operatory whose default dentist (when the secondary provider is
+		///the dentist) or default hygienist (otherwise) is that provider. Ties go to the lowest ItemOrder.</summary>
+		public static long GetMirrorOpNum(long provNumSecondary,bool isSecondaryDentist,DateTime dateTimeMirrorStart,DateTime dateTimeMirrorStop,
+			long opNumOriginal,List<Operatory> listOperatoriesVisible,List<Schedule> listSchedules)
+		{
+			Meth.NoCheckMiddleTierRole();
+			if(provNumSecondary==0 || listOperatoriesVisible==null || listOperatoriesVisible.Count==0) {
+				return 0;
+			}
+			Operatory operatory=null;
+			if(listSchedules!=null) {
+				List<Schedule> listSchedulesProv=listSchedules.FindAll(x => x.SchedType==ScheduleType.Provider
+					&& x.ProvNum==provNumSecondary
+					&& x.SchedDate.Date==dateTimeMirrorStart.Date
+					&& x.Ops!=null && x.Ops.Count>0);
+				List<Schedule> listSchedulesOverlap=listSchedulesProv.FindAll(x => x.StartTime<dateTimeMirrorStop.TimeOfDay
+					&& x.StopTime>dateTimeMirrorStart.TimeOfDay);
+				operatory=GetLowestOp(listOperatoriesVisible.FindAll(x => listSchedulesOverlap.Any(y => y.Ops.Contains(x.OperatoryNum))));
+				if(operatory==null) {
+					operatory=GetLowestOp(listOperatoriesVisible.FindAll(x => listSchedulesProv.Any(y => y.Ops.Contains(x.OperatoryNum))));
+				}
+			}
+			if(operatory==null) {
+				if(isSecondaryDentist) {
+					operatory=GetLowestOp(listOperatoriesVisible.FindAll(x => x.ProvDentist==provNumSecondary));
+				}
+				else {
+					operatory=GetLowestOp(listOperatoriesVisible.FindAll(x => x.ProvHygienist==provNumSecondary));
+				}
+			}
+			if(operatory==null || operatory.OperatoryNum==opNumOriginal) {
+				return 0;
+			}
+			return operatory.OperatoryNum;
+		}
+
+		///<summary>Null if the list is empty.</summary>
+		private static Operatory GetLowestOp(List<Operatory> listOperatories) {
+			return listOperatories.OrderBy(x => x.ItemOrder).ThenBy(x => x.OperatoryNum).FirstOrDefault();
+		}
+
+		///<summary>The mirror blocks to draw for one appointment: one block per run of 'X' in PatternSecondary, all in the secondary provider's
+		///operatory. Mirrors are derived and never stored. Returns an empty list when the appointment is not mirrored, the view does not show mirrors,
+		///the appointment is not on the schedule, there is no secondary provider, PatternSecondary has no 'X', or no other visible operatory
+		///belongs to the secondary provider.</summary>
+		public static List<ApptMirror> GetMirrors(Appointment appointment,bool doesViewShowMirrors,List<Operatory> listOperatoriesVisible,
+			List<Schedule> listSchedules)
+		{
+			Meth.NoCheckMiddleTierRole();
+			List<ApptMirror> listApptMirrors=new List<ApptMirror>();
+			if(appointment==null || !appointment.IsMirrored || !doesViewShowMirrors) {
+				return listApptMirrors;
+			}
+			if(!IsMirrorableStatus(appointment.AptStatus) || appointment.AptDateTime.Year<1880) {
+				return listApptMirrors;
+			}
+			long provNumSecondary=GetSecondaryProvNum(appointment.IsHygiene,appointment.ProvNum,appointment.ProvHyg);
+			if(provNumSecondary==0) {
+				return listApptMirrors;
+			}
+			List<ApptMirrorRun> listApptMirrorRuns=GetMirrorRuns(appointment.PatternSecondary);
+			if(listApptMirrorRuns.Count==0) {
+				return listApptMirrors;
+			}
+			DateTime dateTimeStart=appointment.AptDateTime.AddMinutes(listApptMirrorRuns[0].MinutesOffset);
+			ApptMirrorRun apptMirrorRunLast=listApptMirrorRuns[listApptMirrorRuns.Count-1];
+			DateTime dateTimeStop=appointment.AptDateTime.AddMinutes(apptMirrorRunLast.MinutesOffset+apptMirrorRunLast.MinutesLength);
+			long opNumMirror=GetMirrorOpNum(provNumSecondary,isSecondaryDentist:appointment.IsHygiene,dateTimeStart,dateTimeStop,appointment.Op,
+				listOperatoriesVisible,listSchedules);
+			if(opNumMirror==0) {
+				return listApptMirrors;
+			}
+			for(int i=0;i<listApptMirrorRuns.Count;i++) {
+				ApptMirror apptMirror=new ApptMirror();
+				apptMirror.AptNum=appointment.AptNum;
+				apptMirror.OpNum=opNumMirror;
+				apptMirror.ProvNumSecondary=provNumSecondary;
+				apptMirror.DateTimeStart=appointment.AptDateTime.AddMinutes(listApptMirrorRuns[i].MinutesOffset);
+				apptMirror.MinutesLength=listApptMirrorRuns[i].MinutesLength;
+				listApptMirrors.Add(apptMirror);
+			}
+			return listApptMirrors;
+		}
+
+		///<summary>The default of IsMirrored for a new appointment, from the ApptMirrorSecondary preference.</summary>
+		public static bool GetIsMirroredDefault() {
+			Meth.NoCheckMiddleTierRole();
+			return PrefC.GetBool(PrefName.ApptMirrorSecondary);
+		}
+		#endregion Mirroring (Open Dental 25.3)
+
+		#region Audit detail (Open Dental 25.3)
+		///<summary>Audit text is kept to this many characters. Longer text is cut and ends with an ellipsis.</summary>
+		public const int MAX_AUDIT_TEXT_LENGTH=4000;
+		///<summary>Separates old and new values in audit detail lines, as in "Operatory: OP1 → OP2".</summary>
+		public const string AUDIT_ARROW=" → ";
+
+		///<summary>Lists what changed between two versions of an appointment, one "Field: old → new" line per change, for AppointmentEdit and
+		///AppointmentCompleteEdit entries. Covers providers, assistant, operatory, date and time, length, status, confirmation, priority, the
+		///hygiene, new patient and mirror flags, appointment type, clinic, attached procedure codes (pass the codes before and after; either list
+		///may be null to skip), and whether the note changed (never its text). Returns "" when nothing changed.</summary>
+		public static string GetChangeSummary(Appointment appointmentOld,Appointment appointmentNew,List<string> listProcCodesOld=null,
+			List<string> listProcCodesNew=null,ApptAuditNames apptAuditNames=null)
+		{
+			Meth.NoCheckMiddleTierRole();
+			if(appointmentOld==null || appointmentNew==null) {
+				return "";
+			}
+			if(apptAuditNames==null) {
+				apptAuditNames=new ApptAuditNames();
+			}
+			List<string> listLines=new List<string>();
+			AddProvLine(listLines,Lans.g("Appointments","Provider"),appointmentOld.ProvNum,appointmentNew.ProvNum,apptAuditNames);
+			AddProvLine(listLines,Lans.g("Appointments","Hygienist"),appointmentOld.ProvHyg,appointmentNew.ProvHyg,apptAuditNames);
+			if(appointmentOld.Assistant!=appointmentNew.Assistant) {
+				listLines.Add(MakeLine(Lans.g("Appointments","Assistant"),
+					GetNameOrNone(appointmentOld.Assistant,apptAuditNames.FuncGetEmployeeName),
+					GetNameOrNone(appointmentNew.Assistant,apptAuditNames.FuncGetEmployeeName)));
+			}
+			if(appointmentOld.Op!=appointmentNew.Op) {
+				listLines.Add(MakeLine(Lans.g("Appointments","Operatory"),
+					GetNameOrNone(appointmentOld.Op,apptAuditNames.FuncGetOpAbbr),
+					GetNameOrNone(appointmentNew.Op,apptAuditNames.FuncGetOpAbbr)));
+			}
+			if(appointmentOld.AptDateTime!=appointmentNew.AptDateTime) {
+				listLines.Add(MakeLine(Lans.g("Appointments","Date/Time"),FormatDateTime(appointmentOld.AptDateTime),FormatDateTime(appointmentNew.AptDateTime)));
+			}
+			int minutesOld=(appointmentOld.Pattern??"").Length*MINUTES_PER_PATTERN_CHAR;
+			int minutesNew=(appointmentNew.Pattern??"").Length*MINUTES_PER_PATTERN_CHAR;
+			if(minutesOld!=minutesNew) {
+				listLines.Add(MakeLine(Lans.g("Appointments","Length"),minutesOld+" "+Lans.g("Appointments","min"),minutesNew+" "+Lans.g("Appointments","min")));
+			}
+			if(appointmentOld.AptStatus!=appointmentNew.AptStatus) {
+				listLines.Add(MakeLine(Lans.g("Appointments","Status"),GetStatusText(appointmentOld.AptStatus),GetStatusText(appointmentNew.AptStatus)));
+			}
+			if(appointmentOld.Confirmed!=appointmentNew.Confirmed) {
+				listLines.Add(MakeLine(Lans.g("Appointments","Confirmed"),
+					GetNameOrNone(appointmentOld.Confirmed,apptAuditNames.FuncGetConfirmedName),
+					GetNameOrNone(appointmentNew.Confirmed,apptAuditNames.FuncGetConfirmedName)));
+			}
+			if(appointmentOld.Priority!=appointmentNew.Priority) {
+				listLines.Add(MakeLine(Lans.g("Appointments","Priority"),appointmentOld.Priority.ToString(),appointmentNew.Priority.ToString()));
+			}
+			AddFlagLine(listLines,Lans.g("Appointments","Hygiene"),appointmentOld.IsHygiene,appointmentNew.IsHygiene);
+			AddFlagLine(listLines,Lans.g("Appointments","New Patient"),appointmentOld.IsNewPatient,appointmentNew.IsNewPatient);
+			AddFlagLine(listLines,Lans.g("Appointments","Mirror"),appointmentOld.IsMirrored,appointmentNew.IsMirrored);
+			if(appointmentOld.AppointmentTypeNum!=appointmentNew.AppointmentTypeNum) {
+				listLines.Add(MakeLine(Lans.g("Appointments","Appointment Type"),
+					GetNameOrNone(appointmentOld.AppointmentTypeNum,apptAuditNames.FuncGetApptTypeName),
+					GetNameOrNone(appointmentNew.AppointmentTypeNum,apptAuditNames.FuncGetApptTypeName)));
+			}
+			if(appointmentOld.ClinicNum!=appointmentNew.ClinicNum) {
+				listLines.Add(MakeLine(Lans.g("Appointments","Clinic"),
+					GetNameOrNone(appointmentOld.ClinicNum,apptAuditNames.FuncGetClinicAbbr),
+					GetNameOrNone(appointmentNew.ClinicNum,apptAuditNames.FuncGetClinicAbbr)));
+			}
+			if(listProcCodesOld!=null && listProcCodesNew!=null) {
+				List<string> listAdded=GetCodesMissingFrom(listProcCodesNew,listProcCodesOld);
+				List<string> listRemoved=GetCodesMissingFrom(listProcCodesOld,listProcCodesNew);
+				if(listAdded.Count>0) {
+					listLines.Add(Lans.g("Appointments","Procedures added")+": "+string.Join(", ",listAdded));
+				}
+				if(listRemoved.Count>0) {
+					listLines.Add(Lans.g("Appointments","Procedures removed")+": "+string.Join(", ",listRemoved));
+				}
+			}
+			if((appointmentOld.Note??"")!=(appointmentNew.Note??"")) {
+				listLines.Add(Lans.g("Appointments","Note changed"));
+			}
+			return string.Join("\r\n",listLines);
+		}
+
+		///<summary>GetChangeSummary for the Edit Appointment save: the attached codes before are the procedures attached when the window opened,
+		///and after are the procedures selected now.</summary>
+		private static string GetChangeSummaryForSave(Appointment appointmentOld,Appointment appointmentNew,List<Procedure> listProceduresForAppt,
+			List<long> listProcNumsAttachedStart,List<Procedure> listProceduresSelected)
+		{
+			List<string> listProcCodesOld=null;
+			List<string> listProcCodesNew=null;
+			try {
+				if(listProceduresForAppt!=null && listProcNumsAttachedStart!=null && listProceduresSelected!=null) {
+					listProcCodesOld=listProceduresForAppt.FindAll(x => listProcNumsAttachedStart.Contains(x.ProcNum))
+						.Select(x => ProcedureCodes.GetStringProcCode(x.CodeNum)).ToList();
+					listProcCodesNew=listProceduresSelected.Select(x => ProcedureCodes.GetStringProcCode(x.CodeNum)).ToList();
+				}
+			}
+			catch(Exception ex) {
+				ex.DoNothing();//The codes are detail only; the entry is still written without them.
+				listProcCodesOld=null;
+				listProcCodesNew=null;
+			}
+			return GetChangeSummary(appointmentOld,appointmentNew,listProcCodesOld,listProcCodesNew);
+		}
+
+		///<summary>Detail for an AppointmentMove entry (drag, pinboard drop, Move-to, scheduling from the Unscheduled List): the date and time, and
+		///the operatory, provider and hygienist when they changed. Returns "" when none of them changed.</summary>
+		public static string GetMoveSummary(Appointment appointmentOld,Appointment appointmentNew,ApptAuditNames apptAuditNames=null) {
+			Meth.NoCheckMiddleTierRole();
+			if(appointmentOld==null || appointmentNew==null) {
+				return "";
+			}
+			if(apptAuditNames==null) {
+				apptAuditNames=new ApptAuditNames();
+			}
+			List<string> listLines=new List<string>();
+			if(appointmentOld.AptDateTime!=appointmentNew.AptDateTime) {
+				listLines.Add(MakeLine(Lans.g("Appointments","Date/Time"),FormatDateTime(appointmentOld.AptDateTime),FormatDateTime(appointmentNew.AptDateTime)));
+			}
+			if(appointmentOld.Op!=appointmentNew.Op) {
+				listLines.Add(MakeLine(Lans.g("Appointments","Operatory"),
+					GetNameOrNone(appointmentOld.Op,apptAuditNames.FuncGetOpAbbr),
+					GetNameOrNone(appointmentNew.Op,apptAuditNames.FuncGetOpAbbr)));
+			}
+			AddProvLine(listLines,Lans.g("Appointments","Provider"),appointmentOld.ProvNum,appointmentNew.ProvNum,apptAuditNames);
+			AddProvLine(listLines,Lans.g("Appointments","Hygienist"),appointmentOld.ProvHyg,appointmentNew.ProvHyg,apptAuditNames);
+			return string.Join("\r\n",listLines);
+		}
+
+		///<summary>Detail for an AppointmentCreate entry: where the new appointment is, who it is with, how long it is, and whether it mirrors.
+		///Fields that are empty are left out.</summary>
+		public static string GetCreateSummary(Appointment appointment,ApptAuditNames apptAuditNames=null) {
+			Meth.NoCheckMiddleTierRole();
+			if(appointment==null) {
+				return "";
+			}
+			if(apptAuditNames==null) {
+				apptAuditNames=new ApptAuditNames();
+			}
+			List<string> listLines=new List<string>();
+			if(appointment.Op!=0) {
+				listLines.Add(Lans.g("Appointments","Operatory")+": "+GetNameOrNone(appointment.Op,apptAuditNames.FuncGetOpAbbr));
+			}
+			if(appointment.ProvNum!=0) {
+				listLines.Add(Lans.g("Appointments","Provider")+": "+GetNameOrNone(appointment.ProvNum,apptAuditNames.FuncGetProvAbbr));
+			}
+			if(appointment.ProvHyg!=0) {
+				listLines.Add(Lans.g("Appointments","Hygienist")+": "+GetNameOrNone(appointment.ProvHyg,apptAuditNames.FuncGetProvAbbr));
+			}
+			if(!string.IsNullOrEmpty(appointment.Pattern)) {
+				listLines.Add(Lans.g("Appointments","Length")+": "+(appointment.Pattern.Length*MINUTES_PER_PATTERN_CHAR)+" "+Lans.g("Appointments","min"));
+			}
+			if(appointment.IsMirrored) {
+				listLines.Add(Lans.g("Appointments","Mirror")+": "+GetOnOff(true));
+			}
+			return string.Join("\r\n",listLines);
+		}
+
+		///<summary>Detail for an entry that sends an appointment to the Unscheduled List: the status and the slot it held before.</summary>
+		public static string GetUnscheduleSummary(Appointment appointmentOld,ApptAuditNames apptAuditNames=null) {
+			Meth.NoCheckMiddleTierRole();
+			if(appointmentOld==null) {
+				return "";
+			}
+			if(apptAuditNames==null) {
+				apptAuditNames=new ApptAuditNames();
+			}
+			string slot=FormatDateTime(appointmentOld.AptDateTime);
+			if(appointmentOld.Op!=0) {
+				slot+=", "+GetNameOrNone(appointmentOld.Op,apptAuditNames.FuncGetOpAbbr);
+			}
+			return MakeLine(Lans.g("Appointments","Status"),GetStatusText(appointmentOld.AptStatus),GetStatusText(ApptStatus.UnschedList))+"\r\n"
+				+Lans.g("Appointments","Previous slot")+": "+slot;
+		}
+
+		///<summary>Joins the existing log text and the detail on a new line, then keeps the result within MAX_AUDIT_TEXT_LENGTH.</summary>
+		public static string AppendAuditDetail(string logText,string detail) {
+			Meth.NoCheckMiddleTierRole();
+			logText=logText??"";
+			if(!string.IsNullOrEmpty(detail)) {
+				logText+="\r\n"+detail;
+			}
+			return TruncateAuditText(logText);
+		}
+
+		///<summary>Cuts text that is longer than MAX_AUDIT_TEXT_LENGTH so that it ends with an ellipsis and is exactly that long.</summary>
+		public static string TruncateAuditText(string text) {
+			Meth.NoCheckMiddleTierRole();
+			if(text==null || text.Length<=MAX_AUDIT_TEXT_LENGTH) {
+				return text;
+			}
+			return text.Substring(0,MAX_AUDIT_TEXT_LENGTH-1)+"…";
+		}
+
+		///<summary>Readable name of an appointment status for audit text.</summary>
+		public static string GetStatusText(ApptStatus apptStatus) {
+			Meth.NoCheckMiddleTierRole();
+			switch(apptStatus) {
+				case ApptStatus.UnschedList:
+					return Lans.g("Appointments","Unscheduled List");
+				case ApptStatus.PtNote:
+					return Lans.g("Appointments","Patient Note");
+				case ApptStatus.PtNoteCompleted:
+					return Lans.g("Appointments","Patient Note Completed");
+				default:
+					return Lans.g("Appointments",apptStatus.ToString());
+			}
+		}
+
+		private static void AddProvLine(List<string> listLines,string label,long provNumOld,long provNumNew,ApptAuditNames apptAuditNames) {
+			if(provNumOld==provNumNew) {
+				return;
+			}
+			listLines.Add(MakeLine(label,GetNameOrNone(provNumOld,apptAuditNames.FuncGetProvAbbr),GetNameOrNone(provNumNew,apptAuditNames.FuncGetProvAbbr)));
+		}
+
+		private static void AddFlagLine(List<string> listLines,string label,bool valueOld,bool valueNew) {
+			if(valueOld==valueNew) {
+				return;
+			}
+			listLines.Add(MakeLine(label,GetOnOff(valueOld),GetOnOff(valueNew)));
+		}
+
+		private static string GetOnOff(bool value) {
+			return value ? Lans.g("Appointments","on") : Lans.g("Appointments","off");
+		}
+
+		private static string MakeLine(string label,string valueOld,string valueNew) {
+			return label+": "+valueOld+AUDIT_ARROW+valueNew;
+		}
+
+		private static string GetNameOrNone(long key,Func<long,string> funcGetName) {
+			if(key==0) {
+				return Lans.g("Appointments","none");
+			}
+			string name=null;
+			try {
+				name=funcGetName?.Invoke(key);
+			}
+			catch(Exception ex) {
+				ex.DoNothing();//A missing cache entry must never stop the save that writes the audit entry.
+			}
+			if(string.IsNullOrWhiteSpace(name)) {
+				return "#"+key.ToString();
+			}
+			return name;
+		}
+
+		private static string FormatDateTime(DateTime dateTime) {
+			if(dateTime.Year<1880) {
+				return Lans.g("Appointments","none");
+			}
+			return dateTime.ToShortDateString()+" "+dateTime.ToShortTimeString();
+		}
+
+		///<summary>The codes in listCodesA that are not matched one-for-one by codes in listCodesB, keeping duplicates. Order follows listCodesA.</summary>
+		private static List<string> GetCodesMissingFrom(List<string> listCodesA,List<string> listCodesB) {
+			List<string> listCodesBRemaining=new List<string>(listCodesB);
+			List<string> listMissing=new List<string>();
+			for(int i=0;i<listCodesA.Count;i++) {
+				if(listCodesBRemaining.Remove(listCodesA[i])) {
+					continue;
+				}
+				listMissing.Add(listCodesA[i]);
+			}
+			return listMissing;
+		}
+		#endregion Audit detail (Open Dental 25.3)
+	}
+
+	///<summary>One run of the secondary provider's time in PatternSecondary. Not a database table.</summary>
+	public class ApptMirrorRun {
+		///<summary>Minutes from the appointment start to the start of the run.</summary>
+		public int MinutesOffset;
+		///<summary>Length of the run in minutes.</summary>
+		public int MinutesLength;
+
+		public ApptMirrorRun(int minutesOffset,int minutesLength) {
+			MinutesOffset=minutesOffset;
+			MinutesLength=minutesLength;
+		}
+
+		public override string ToString() {
+			return MinutesOffset+"+"+MinutesLength;
+		}
+	}
+
+	///<summary>A mirror of an appointment in its secondary provider's operatory (Open Dental 25.3 appointment mirroring). Derived each time the
+	///schedule is drawn and never stored. Not a database table.</summary>
+	public class ApptMirror {
+		///<summary>The original appointment. Clicks on a mirror act on this appointment.</summary>
+		public long AptNum;
+		///<summary>The secondary provider's operatory, where the mirror is drawn.</summary>
+		public long OpNum;
+		///<summary>The secondary provider, whose color the mirror uses.</summary>
+		public long ProvNumSecondary;
+		public DateTime DateTimeStart;
+		public int MinutesLength;
+
+		public DateTime DateTimeStop {
+			get {
+				return DateTimeStart.AddMinutes(MinutesLength);
+			}
+		}
+	}
+
+	///<summary>Name lookups for appointment audit text. Each defaults to the cache; tests replace them.</summary>
+	public class ApptAuditNames {
+		public Func<long,string> FuncGetProvAbbr=x => Providers.GetAbbr(x,includeHidden:true);
+		public Func<long,string> FuncGetOpAbbr=x => Operatories.GetAbbrev(x);
+		public Func<long,string> FuncGetEmployeeName=x => Employees.GetNameFL(x);
+		public Func<long,string> FuncGetApptTypeName=x => AppointmentTypes.GetName(x);
+		public Func<long,string> FuncGetClinicAbbr=x => Clinics.GetAbbr(x);
+		public Func<long,string> FuncGetConfirmedName=x => Defs.GetName(DefCat.ApptConfirmed,x);
 	}
 	
 	///<summary>Holds information about a provider's Schedule. Not actual database table.</summary>

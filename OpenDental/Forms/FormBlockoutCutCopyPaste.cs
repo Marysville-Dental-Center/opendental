@@ -37,6 +37,14 @@ namespace OpenDental {
 		}
 
 		private void butClearDay_Click(object sender,EventArgs e) {
+			//25.1: only the kinds of blockouts the user may manage are cleared.
+			bool hasPermBlockouts=Security.IsAuthorized(EnumPermType.Blockouts,true);
+			bool hasPermBlockoutsFlagged=Security.IsAuthorized(EnumPermType.BlockoutsFlagged,true);
+			if(!hasPermBlockouts && !hasPermBlockoutsFlagged) {
+				Security.IsAuthorized(EnumPermType.Blockouts);//Shows the "not authorized" message.
+				return;
+			}
+			int countSkipped;
 			if(PrefC.HasClinicsEnabled) {
 				string clinicAbbr=(Clinics.ClinicNum==0?Lan.g(this,"Headquarters"):Clinics.GetAbbr(Clinics.ClinicNum));
 				if(MessageBox.Show(Lan.g(this,"Clear all blockouts for day for clinic: ")+clinicAbbr+Lan.g(this,"?")+"\r\n"
@@ -45,17 +53,30 @@ namespace OpenDental {
 				{ 
 					return;
 				}
-				Schedules.ClearBlockoutsForClinic(Clinics.ClinicNum,DateSelected);//currently selected clinic only, works for daily or weekly
-				Schedules.BlockoutLogHelper(BlockoutAction.Clear,dateTime:DateSelected,clinicNum:Clinics.ClinicNum);
+				countSkipped=Schedules.ClearBlockoutsForClinic(Clinics.ClinicNum,DateSelected,hasPermBlockouts,hasPermBlockoutsFlagged);//currently selected clinic only, works for daily or weekly
+				LogClear(Clinics.ClinicNum,hasPermBlockouts,hasPermBlockoutsFlagged);
 			}
 			else {
 				if(!MsgBox.Show(this,MsgBoxButtons.OKCancel,"Clear all blockouts for day? (This may include blockouts not shown in the current appointment view)")) {
 					return;
 				}
-				Schedules.ClearBlockoutsForDay(DateSelected);//works for daily or weekly
-				Schedules.BlockoutLogHelper(BlockoutAction.Clear,dateTime:DateSelected);
+				countSkipped=Schedules.ClearBlockoutsForDay(DateSelected,hasPermBlockouts,hasPermBlockoutsFlagged);//works for daily or weekly
+				LogClear(-1,hasPermBlockouts,hasPermBlockoutsFlagged);
+			}
+			if(countSkipped>0) {
+				MessageBox.Show(countSkipped+" "+Lan.g(this,"blockout(s) were not cleared because you do not have permission for their blockout type."));
 			}
 			Close();
+		}
+
+		///<summary>25.1: one clear entry per kind of blockout the user was allowed to clear, under that kind's permission.</summary>
+		private void LogClear(long clinicNum,bool hasPermBlockouts,bool hasPermBlockoutsFlagged) {
+			if(hasPermBlockouts) {
+				Schedules.BlockoutLogHelper(BlockoutAction.Clear,dateTime:DateSelected,clinicNum:clinicNum,permTypeClear:EnumPermType.Blockouts);
+			}
+			if(hasPermBlockoutsFlagged) {
+				Schedules.BlockoutLogHelper(BlockoutAction.Clear,dateTime:DateSelected,clinicNum:clinicNum,permTypeClear:EnumPermType.BlockoutsFlagged);
+			}
 		}
 
 		private void FillClipboard(){
@@ -144,8 +165,10 @@ namespace OpenDental {
 				return;
 			}
 			Cursor=Cursors.WaitCursor;
+			//25.1: NS-flagged blockouts need BlockoutsFlagged and unflagged ones need Blockouts. DC-flagged ones are never copied.
 			string errors=Schedules.CopyBlockouts(ApptViewNum,isWeek,checkWeekend.Checked,checkReplace.Checked,_dateCopyStart,_dateCopyEnd,
-				dateSelectedStart,dateSelectedEnd,numRepeat);
+				dateSelectedStart,dateSelectedEnd,numRepeat,Security.IsAuthorized(EnumPermType.Blockouts,true),
+				Security.IsAuthorized(EnumPermType.BlockoutsFlagged,true));
 			Cursor=Cursors.Default;
 			if(!string.IsNullOrEmpty(errors)) {
 				MessageBox.Show(errors);//Error was translated inside of the S class method.

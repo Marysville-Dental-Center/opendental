@@ -374,6 +374,7 @@ namespace OpenDental{
 			}
 			//IsNewPatient is set well before opening this form.
 			checkIsNewPatient.Checked=_appointment.IsNewPatient;
+			checkIsMirrored.Checked=_appointment.IsMirrored;//25.3 mirroring. New appointments already carry the ApptMirrorSecondary default.
 			butColor.BackColor=_appointment.ColorOverride;
 			contrApptProvSlider.MinPerIncr=PrefC.GetInt(PrefName.AppointmentTimeIncrement);
 			if(Programs.UsingEcwTightOrFullMode() && !_isInsertRequired) {
@@ -2585,6 +2586,7 @@ namespace OpenDental{
 				_appointment.Assistant=comboAssistant.GetSelected<Employee>().EmployeeNum;
 			}
 			_appointment.IsNewPatient=checkIsNewPatient.Checked;
+			_appointment.IsMirrored=checkIsMirrored.Checked;//25.3 mirroring. The change is listed in the AppointmentEdit audit entry.
 			_appointment.DateTimeAskedToArrive=dateTimeAskedToArrive;
 			_appointment.DateTimeArrived=dateTimeArrived;
 			_appointment.DateTimeSeated=dateTimeSeated;
@@ -2742,8 +2744,8 @@ namespace OpenDental{
 				if(_appointmentOld.AptStatus==ApptStatus.Complete) {
 					permissions=EnumPermType.AppointmentCompleteEdit;
 				}
-				SecurityLogs.MakeLogEntry(permissions,_appointment.PatNum,_appointment.ProcDescript+", "+_appointment.AptDateTime.ToString()
-					+", Sent to Unscheduled List",_appointment.AptNum,datePrevious);
+				SecurityLogs.MakeLogEntry(permissions,_appointment.PatNum,Appointments.AppendAuditDetail(_appointment.ProcDescript+", "+_appointment.AptDateTime.ToString()
+					+", Sent to Unscheduled List",Appointments.GetUnscheduleSummary(_appointmentOld)),_appointment.AptNum,datePrevious);
 			}
 			if(PrefC.GetBool(PrefName.ApptsRequireProc)
 				&& (_appointment.AptStatus==ApptStatus.Scheduled || _appointment.AptStatus==ApptStatus.Planned)
