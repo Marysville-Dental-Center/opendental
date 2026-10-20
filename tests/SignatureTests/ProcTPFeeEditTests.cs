@@ -31,6 +31,35 @@ namespace SignatureTests {
 			Assert.IsFalse(ProcTPFeeEdit.ShouldLog(ProcStat.EO,50,60));
 		}
 
+		///<summary>TP (fee 100) -> EO, where the box is editable, type 50 -> back to TP -> save. The box is read-only again, but the typed fee must not
+		///reach the database without the permission, and with the permission it must be logged.</summary>
+		[TestMethod]
+		public void SaveCheck_TpToEoAndBackToTp_TypedFee() {
+			Assert.IsTrue(ProcTPFeeEdit.CanEditFee(ProcStat.EO,false),"The box opens up under EO.");
+			Assert.IsTrue(ProcTPFeeEdit.ShouldBlockOnSave(ProcStat.TP,true,100,50,false),"Without the permission the save is refused.");
+			Assert.IsTrue(ProcTPFeeEdit.ShouldBlockOnSave(ProcStat.TPi,true,100,50,false));
+			Assert.IsFalse(ProcTPFeeEdit.ShouldBlockOnSave(ProcStat.TP,true,100,50,true),"With the permission the save goes through.");
+			Assert.IsTrue(ProcTPFeeEdit.ShouldLogOnSave(ProcStat.TP,true,100,50),"And is logged, though the fee was typed under EO.");
+		}
+
+		[TestMethod]
+		public void SaveCheck_OnlyTypedChangesOnTreatmentPlannedSaves() {
+			Assert.IsFalse(ProcTPFeeEdit.ShouldBlockOnSave(ProcStat.EO,true,100,50,false),"Saved as EO: no TP permission needed.");
+			Assert.IsFalse(ProcTPFeeEdit.ShouldBlockOnSave(ProcStat.C,true,100,50,false),"Saved as C: no TP permission needed.");
+			Assert.IsFalse(ProcTPFeeEdit.ShouldBlockOnSave(ProcStat.TP,false,100,120,false),"Automatic fee updates are not typed.");
+			Assert.IsFalse(ProcTPFeeEdit.ShouldBlockOnSave(ProcStat.TP,true,100,100,false),"Typed back to the original fee.");
+			Assert.IsFalse(ProcTPFeeEdit.ShouldLogOnSave(ProcStat.EO,true,100,50),"Saved as EO: no ProcTPEditFee log.");
+			Assert.IsFalse(ProcTPFeeEdit.ShouldLogOnSave(ProcStat.TP,false,100,120),"Automatic fee updates are not logged.");
+			Assert.IsFalse(ProcTPFeeEdit.ShouldLogOnSave(ProcStat.TP,true,100,100));
+		}
+
+		[TestMethod]
+		public void BlockedText_NamesThePermissionAndTheRestoredFee() {
+			string text=ProcTPFeeEdit.GetBlockedOnSaveText(100);
+			StringAssert.Contains(text,"Treatment Planned Procedure Edit Fee");
+			StringAssert.Contains(text,(100.0).ToString("F"));
+		}
+
 		[TestMethod]
 		public void LogText_NamesTheCodeAndBothFees() {
 			string text=ProcTPFeeEdit.GetLogText("D0120",50,62.5);

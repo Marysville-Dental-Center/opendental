@@ -52,7 +52,8 @@ namespace OpenDental {
 		private Userod _Userod=Security.CurUser;
 		///<summary>True if the user clicked the Change User button.</summary>
 		private bool _hasUserChanged;
-		///<summary>True when the user typed a new fee while the procedure was TP or TPi. Logged under ProcTPEditFee on save.</summary>
+		///<summary>True when the user typed a new fee, under any status. Cleared when the fee is replaced automatically (code change, change to TP with a
+		///zero fee). On save, a typed fee on a TP or TPi procedure needs ProcTPEditFee and is logged under it.</summary>
 		private bool _isTpFeeTyped;
 		///<summary></summary>
 		private long _provNumSelectedOrder;
@@ -1383,9 +1384,8 @@ namespace OpenDental {
 			if(_procedure.ProcFee==procFee){
 				return;
 			}
-			if(ProcTPFeeEdit.IsTreatPlanStatus(_procedure.ProcStatus)) {
-				_isTpFeeTyped=true;//Logged under ProcTPEditFee on save.
-			}
+			//Set under any status: the box is editable under EO, EC, etc., and the status can be switched back to TP before saving.
+			_isTpFeeTyped=true;//Checked and logged under ProcTPEditFee on save when the saved status is TP or TPi.
 			_procedure.ProcFee=procFee;
 			_isEstimateRecompute=true;
 			Procedures.ComputeEstimates(_procedure,_patient.PatNum,ref _listClaimProcs,false,_listInsPlans,_listPatPlans,_listBenefits,
@@ -1498,7 +1498,8 @@ namespace OpenDental {
 			}
 			_procedure.CodeNum=formProcCodes.CodeNumSelected;
 			_procedure.ProcFee=Procedures.GetProcFee(_patient,_listPatPlans,_listInsSubs,_listInsPlans,_procedure);
-			switch(procedureCode.TreatArea){ 
+			_isTpFeeTyped=false;//The fee schedule fee replaced any typed fee.
+			switch(procedureCode.TreatArea){
 				case TreatmentArea.Quad:
 					_procedure.Surf="UR";
 					break;
@@ -1618,6 +1619,7 @@ namespace OpenDental {
 				if(_procedure.ProcFee==0) {
 					_procedure.ProcFee=Procedures.GetProcFee(_patient,_listPatPlans,_listInsSubs,_listInsPlans,_procedure,listFees:_listFees);
 					textProcFee.Text=_procedure.ProcFee.ToString("f");
+					_isTpFeeTyped=false;//The fee schedule fee replaced any typed fee.
 				}
 			}
 			if(comboProcStatus.GetSelected<ProcStat>()==ProcStat.C) {
@@ -2328,6 +2330,26 @@ namespace OpenDental {
 			};
 			string translationSource=nameof(FormProcEdit);
 			#endregion Setup helper functions and translation source
+			#region Treatment Planned Procedure Edit Fee, checked against the status being saved, before anything is written.
+			//The fee box is read-only only while the status is TP or TPi. A fee typed under another status survives a switch back to TP, so check here too.
+			double procFeeTyped=PIn.Double(textProcFee.Text);
+			if(ProcTPFeeEdit.ShouldBlockOnSave(_procedure.ProcStatus,_isTpFeeTyped,_procedureOld.ProcFee,procFeeTyped,
+				Security.IsAuthorized(EnumPermType.ProcTPEditFee,true)))
+			{
+				actionMsgBox.Invoke(ProcTPFeeEdit.GetBlockedOnSaveText(_procedureOld.ProcFee));
+				_procedure.ProcFee=_procedureOld.ProcFee;
+				textProcFee.Text=_procedure.ProcFee.ToString("n");
+				_isTpFeeTyped=false;
+				_isEstimateRecompute=true;
+				Procedures.ComputeEstimates(_procedure,_patient.PatNum,ref _listClaimProcs,false,_listInsPlans,_listPatPlans,_listBenefits,
+					null,null,true,
+					_patient.Age,_listInsSubs,
+					null,false,false,_listSubstitutionLinks,false,
+					null,_lookupFees);
+				FillIns();
+				return;//Not saved. The user sees the restored fee and can save again.
+			}
+			#endregion Treatment Planned Procedure Edit Fee, checked against the status being saved, before anything is written.
 			#region Sync UI with object fields.
 			if(textProcFee.Text=="") {
 				textProcFee.Text="0";
@@ -2439,7 +2461,7 @@ namespace OpenDental {
 				Procedures.Update(_procedure,_procedureOld,false,isProcLinkedToOrthoCase:isProcLinkedToOrthoCase);
 			}
 			Procedures.FormProcEditUpdate(_procedure,_procedureOld,_procedureCode,isProcLinkedToOrthoCase,IsNew,listBoxTeeth.Text);
-			if(_isTpFeeTyped && ProcTPFeeEdit.ShouldLog(ProcStat.TP,_procedureOld.ProcFee,_procedure.ProcFee)) {
+			if(ProcTPFeeEdit.ShouldLogOnSave(_procedure.ProcStatus,_isTpFeeTyped,_procedureOld.ProcFee,_procedure.ProcFee)) {
 				SecurityLogs.MakeLogEntry(EnumPermType.ProcTPEditFee,_procedure.PatNum,
 					ProcTPFeeEdit.GetLogText(_procedureCode.ProcCode,_procedureOld.ProcFee,_procedure.ProcFee),_procedure.ProcNum,DateTime.MinValue);
 			}
