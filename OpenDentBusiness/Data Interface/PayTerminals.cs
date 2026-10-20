@@ -112,6 +112,24 @@ namespace OpenDentBusiness{
 			return Crud.PayTerminalCrud.SelectMany(command);
 		}
 		
+		///<summary>The index in listPayTerminals (a clinic's terminals, as the PayConnect window lists them) of the terminal whose TerminalID is
+		///terminalIdLast, the one this workstation used last. Falls back to 0, the first terminal, when that terminal isn't in the list (another
+		///clinic's, or deleted) or nothing was remembered. -1 for an empty list.</summary>
+		public static int GetIndexToSelect(List<PayTerminal> listPayTerminals,string terminalIdLast) {
+			if(listPayTerminals==null || listPayTerminals.Count==0) {
+				return -1;
+			}
+			string terminalIdTrimmed=(terminalIdLast??"").Trim();
+			if(terminalIdTrimmed=="") {
+				return 0;
+			}
+			int index=listPayTerminals.FindIndex(x => x!=null && (x.TerminalID??"").Trim()==terminalIdTrimmed);
+			if(index<0) {
+				return 0;
+			}
+			return index;
+		}
+
 		///<summary>Gets one PayTerminal from the db.</summary>
 		public static PayTerminal GetOne(long payTerminalNum){
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT){

@@ -444,6 +444,45 @@ namespace CodeBase {
 			}
 		}
 
+		///<summary>The last maxLines lines written to the dated log files of subDirectory (as WriteLine writes them), oldest first. Reads every
+		///yy-MM-dd folder and its numbered files in order, sharing them with a writer that still has one open. Returns an empty list if nothing was
+		///logged or the folder can't be read. Never throws.</summary>
+		public static List<string> GetRecentLines(string subDirectory,int maxLines) {
+			List<string> listLines=new List<string>();
+			if(maxLines<=0) {
+				return listLines;
+			}
+			try {
+				DirectoryInfo directoryInfo=new DirectoryInfo(GetDirectory(ScrubSubDirPath(subDirectory)));
+				if(!directoryInfo.Exists) {
+					return listLines;
+				}
+				//Folder and file names (yy-MM-dd, then "yy-MM-dd (001).txt") sort in the order they were written, within a century.
+				List<FileInfo> listFiles=directoryInfo.GetDirectories()
+					.OrderBy(x => x.Name,StringComparer.Ordinal)
+					.SelectMany(x => x.GetFiles("*.txt").OrderBy(y => y.Name,StringComparer.Ordinal))
+					.ToList();
+				for(int i=listFiles.Count-1;i>=0 && listLines.Count<maxLines;i--) {
+					List<string> listLinesFile=new List<string>();
+					using(FileStream fileStream=new FileStream(listFiles[i].FullName,FileMode.Open,FileAccess.Read,FileShare.ReadWrite|FileShare.Delete))
+					using(StreamReader streamReader=new StreamReader(fileStream)) {
+						string line;
+						while((line=streamReader.ReadLine())!=null) {
+							if(line!="") {
+								listLinesFile.Add(line);
+							}
+						}
+					}
+					int countTake=Math.Min(maxLines-listLines.Count,listLinesFile.Count);
+					listLines.InsertRange(0,listLinesFile.Skip(listLinesFile.Count-countTake));
+				}
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+			}
+			return listLines;
+		}
+
 		public static bool SingleFileLoggerExists(string subDirectory) {
 			subDirectory=ScrubSubDirPath(subDirectory);
 			FileInfo fi = new FileInfo(ODFileUtils.CombinePaths(GetDirectory(subDirectory),subDirectory+".txt"));
