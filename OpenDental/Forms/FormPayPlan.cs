@@ -171,17 +171,9 @@ namespace OpenDental{
 				butClosePlan.Enabled=false;
 				labelClosed.Visible=true;
 			}
+			FillComboSheetDef();
 			if(PrefC.GetBool(PrefName.PayPlansUseSheets)) {
-				Sheet sheet=null;
-				sheet=PayPlanToSheet(_payPlan);
-				//check to see if sig box is on the sheet
-				//hides butPrint and adds butSignPrint,groupbox,and sigwrapper
-				for(int i = 0;i<sheet.SheetFields.Count;i++) {
-					if(sheet.SheetFields[i].FieldType==SheetFieldType.SigBox) {
-						butPrint.Visible=false;
-						butSignPrint.Visible=true;					
-					}
-				}
+				SetPrintButtonsForSheet();
 			}
 			checkExcludePast.Checked=PrefC.GetBool(PrefName.PayPlansExcludePastActivity);
 			FillCharges();
@@ -356,7 +348,7 @@ namespace OpenDental{
 			List<PayPlanCharge> listPayPlanChargesDebits = _listPayPlanCharges.FindAll(x => x.ChargeType == PayPlanChargeType.Debit).OrderBy(x => x.ChargeDate).ToList();
 			//If the payment plan consists of more than 1 payment, remove any downpayments from listDebits so it's ChargeDate is not used when refilling the "textDateFirstPay.Text". 
 			if(listPayPlanChargesDebits.Count>1) {
-				listPayPlanChargesDebits.RemoveAll(x=>x.Note.Contains("Down payment"));
+				listPayPlanChargesDebits.RemoveAll(x=>x.IsDownPayment);
 			}
 			if(listPayPlanChargesDebits.Count>0) {
 				textDateFirstPay.Text=listPayPlanChargesDebits[0].ChargeDate.ToShortDateString();
@@ -1012,13 +1004,53 @@ namespace OpenDental{
 
 		///<summary>Creates a new sheet from a given Pay plan.</summary>
 		private Sheet PayPlanToSheet(PayPlan payPlan) {
-			Sheet sheet=SheetUtil.CreateSheet(SheetDefs.GetInternalOrCustom(SheetInternalType.PaymentPlan),_patient.PatNum);
+			//24.4: the sheet chosen for this plan; 0 or a deleted sheet falls back to the first custom PaymentPlan sheet, then the internal one.
+			Sheet sheet=SheetUtil.CreateSheet(SheetDefs.GetForPayPlan(GetSelectedSheetDefNum()),_patient.PatNum);
 			sheet.Parameters.Add(new SheetParameter(true,"payplan") { ParamValue=payPlan });
 			sheet.Parameters.Add(new SheetParameter(true,"Principal") { ParamValue=_totPrinc.ToString("n") });
 			sheet.Parameters.Add(new SheetParameter(true,"totalFinanceCharge") { ParamValue=_totInt });
 			sheet.Parameters.Add(new SheetParameter(true,"totalCostOfLoan") { ParamValue=_totPrincIntAdj.ToString("n") });
 			SheetFiller.FillFields(sheet);
 			return sheet;
+		}
+
+		///<summary>24.4: fills the Sheet box with "Default" (0) and every custom PaymentPlan sheet, and selects the plan's sheet. The box is only shown
+		///when the preference PayPlansUseSheets is on. A plan whose sheet was deleted shows Default.</summary>
+		private void FillComboSheetDef() {
+			bool useSheets=PrefC.GetBool(PrefName.PayPlansUseSheets);
+			labelSheetDef.Visible=useSheets;
+			comboSheetDef.Visible=useSheets;
+			comboSheetDef.Items.Clear();
+			comboSheetDef.Items.Add(Lan.g(this,"Default"),0L);
+			List<SheetDef> listSheetDefs=SheetDefs.GetPayPlanSheetDefChoices();
+			int indexSelected=0;
+			for(int i=0;i<listSheetDefs.Count;i++) {
+				comboSheetDef.Items.Add(listSheetDefs[i].Description,listSheetDefs[i].SheetDefNum);
+				if(listSheetDefs[i].SheetDefNum==_payPlan.SheetDefNum) {
+					indexSelected=i+1;
+				}
+			}
+			comboSheetDef.SelectedIndex=indexSelected;
+		}
+
+		///<summary>The SheetDefNum chosen in the Sheet box. When sheets are not used for printing, the plan's stored value is kept as it is.</summary>
+		private long GetSelectedSheetDefNum() {
+			if(!PrefC.GetBool(PrefName.PayPlansUseSheets) || comboSheetDef.SelectedIndex<0) {
+				return _payPlan.SheetDefNum;
+			}
+			return (long)comboSheetDef.Items.GetObjectAt(comboSheetDef.SelectedIndex);
+		}
+
+		///<summary>A sheet with a signature box opens for signing before it prints (Sign and Print); other sheets print directly. Looks at the sheet chosen
+		///in the Sheet box.</summary>
+		private void SetPrintButtonsForSheet() {
+			bool hasSigBox=SheetDefs.GetForPayPlan(GetSelectedSheetDefNum()).SheetFieldDefs.Any(x => x.FieldType==SheetFieldType.SigBox);
+			butPrint.Visible=!hasSigBox;
+			butSignPrint.Visible=hasSigBox;
+		}
+
+		private void comboSheetDef_SelectionChangeCommitted(object sender,EventArgs e) {
+			SetPrintButtonsForSheet();
 		}
 
 		private void checkExcludePast_CheckedChanged(object sender,EventArgs e) {
@@ -1191,6 +1223,7 @@ namespace OpenDental{
 			_payPlan.Note=textNote.Text;
 			_payPlan.CompletedAmt=PIn.Double(textCompletedAmt.Text);
 			_payPlan.PlanCategory=comboCategory.GetSelectedDefNum();
+			_payPlan.SheetDefNum=GetSelectedSheetDefNum();//24.4
 			//PlanNum set already
 			if(IsInsPayPlan) { //if insurance payment plan, remove all other credits and create one credit for the completed amt.
 				_listPayPlanCharges.RemoveAll(x => x.ChargeType==PayPlanChargeType.Credit);//remove all production

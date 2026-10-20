@@ -325,7 +325,7 @@ namespace OpenDental {
 					}
 					row.Tag=new DynamicPayPlanRowData() {
 						ListPayPlanCharges=new List<PayPlanCharge>(){listPayPlanCharges[i]},
-						IsDownPayment=descript.Contains("Down Payment")
+						IsDownPayment=listPayPlanCharges[i].IsDownPayment//25.1 flag (A-PAY)
 					};
 					listGridRowsMerged.Add(row);
 					datePrevCharge=listPayPlanCharges[i].ChargeDate;
@@ -364,7 +364,8 @@ namespace OpenDental {
 				double interest=listPayPlanChargesForDate.Sum(x=>x.Interest);
 				double due=principal+interest;
 				string descript="#"+(i+1);
-				if(listPayPlanChargesForDate.Any(x=>x.Note=="Down Payment")) {
+				bool isDownPayment=listPayPlanChargesForDate.Any(x=>x.IsDownPayment);//25.1 flag (A-PAY)
+				if(isDownPayment) {
 					descript+=" Down Payment";
 				}
 				GridRow row=new GridRow();
@@ -380,7 +381,7 @@ namespace OpenDental {
 				}
 				row.Tag=new DynamicPayPlanRowData() {
 					ListPayPlanCharges=listPayPlanChargesForDate,
-					IsDownPayment=descript.Contains("Down Payment")
+					IsDownPayment=isDownPayment
 				};
 				listGridRowsMerged.Add(row);
 			}
@@ -418,7 +419,7 @@ namespace OpenDental {
 					numCharges++;
 				}
 				string descript="#"+numCharges+": Charge";
-				if(listPayPlanCharges[i].Note=="Down Payment") {
+				if(listPayPlanCharges[i].IsDownPayment) {//25.1 flag (A-PAY)
 					descript+=" Down Payment";
 				}
 				listDescriptions.Add(descript);
