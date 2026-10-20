@@ -1,0 +1,13 @@
+{
+  "Description": "Differences the adoption step (M1-03, owner decisions of 2026-10-18) is expected to make. Everything else must be identical before and after adoption. Table, Column and Name accept * wildcards.",
+  "Rules": [
+    { "Kind": "ColumnRemoved", "Table": "patient", "Column": "_portal_active_email", "Reason": "Owner decision: adoption drops the office-specific generated column and its unique key." },
+    { "Kind": "TotalChanged", "Name": "patients.portal_active_email_nonnull", "Reason": "The column it counts is dropped by adoption." },
+    { "Kind": "ColumnChanged", "Table": "*", "Column": "SecurityHash", "Reason": "Adoption rehashes every row with the fork's HMAC (risk R2, item 6)." },
+    { "Kind": "*", "Table": "preference", "Reason": "Adoption writes fork markers and version sentinels and blanks the update and HQ preferences." },
+    { "Kind": "*", "Table": "documentmisc", "Reason": "Adoption deletes Open Dental's UpdateFiles rows." },
+    { "Kind": "*", "Table": "securitylog", "Reason": "Adoption may log its own actions." },
+    { "Kind": "*", "Table": "securityloghash", "Reason": "Adoption may log its own actions." },
+    { "Kind": "*", "Table": "updatehistory", "Reason": "Adoption records the fork version." }
+  ]
+}
