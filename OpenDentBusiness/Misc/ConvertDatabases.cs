@@ -12,6 +12,10 @@ namespace OpenDentBusiness {
 	public partial class ConvertDatabases {
 		private static Version _latestVersion;
 		private static List<ConvertDatabasesMethodInfo> _listConvertMethods;
+		///<summary>The legacy ToX_Y_Z chain is frozen here. It stays only to import older databases up to 24.3.63; every later schema change is a fork
+		///migration step (OpenDentBusiness/Misc/ForkMigrations, keyed by the ForkSchemaLevel marker). Adding a ToX_Y_Z method above this version, or
+		///running the chain on a database above it, throws.</summary>
+		public static readonly Version FrozenVersion=ForkVersions.CompatVersion;
 
 		///<summary>Gets a list of convert databases method infos and their corresponding version information based on their method name.</summary>
 		private static List<ConvertDatabasesMethodInfo> ListConvertMethods {
@@ -49,6 +53,11 @@ namespace OpenDentBusiness {
 			}
 			//Make sure that the list of methods are sorted in ascending order (least to greatest).
 			listConvertMethods.Sort((ConvertDatabasesMethodInfo x,ConvertDatabasesMethodInfo y) => { return x.VersionCur.CompareTo(y.VersionCur); });
+			ConvertDatabasesMethodInfo convertMethodAboveFrozen=listConvertMethods.FirstOrDefault(x => x.VersionCur>FrozenVersion);
+			if(convertMethodAboveFrozen!=null) {
+				throw new ApplicationException("The legacy conversion chain is frozen at "+FrozenVersion.ToString(3)+", but "
+					+convertMethodAboveFrozen.MethodInfoCur.Name+" was added. Add a fork migration step instead.");
+			}
 			return listConvertMethods;
 		}
 
@@ -56,6 +65,11 @@ namespace OpenDentBusiness {
 		///The old way of converting the database was to manually daisy chain methods together.
 		///The new way is to just add a method that follows a strict naming pattern which this method will invoke when needed.</summary>
 		public static void InvokeConvertMethods() {
+			if(FromVersion!=null && FromVersion>FrozenVersion) {
+				//Open Dental databases above 24.3.63 are adopted (ForkMigrations/Adoption.cs), never converted by this chain.
+				throw new ApplicationException("The legacy conversion chain cannot convert a database at "+FromVersion.ToString(4)+"; it ends at "
+					+FrozenVersion.ToString(4)+".");
+			}
 			DataConnection.CommandTimeout=43200;//12 hours, because conversion commands may take longer to run.
 			ConvertDatabases.To2_8_2();//begins going through the chain of conversion steps
 			Logger.DoVerboseLoggingArgs doVerboseLogging=Logger.DoVerboseLogging;
