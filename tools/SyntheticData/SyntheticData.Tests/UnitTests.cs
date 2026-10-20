@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json.Linq;
 using SyntheticData.Generation;
@@ -358,6 +359,60 @@ namespace SyntheticData.Tests {
 			Assert.AreEqual(14,setTables.Count);
 			CollectionAssert.AreEquivalent(setTables.ToList(),setCoverageTables.Where(x => x!="deletedobject").ToList());
 			CollectionAssert.AreEquivalent(setColumns.ToList(),setCoverageColumns.Where(x => x!="patient._portal_active_email").ToList());
+		}
+
+		///<summary>The widened-column list must match the 24.3-25.3 "alter" entries of schema-changes.json, with the old length taken from
+		///each entry's note ("Previous type: varchar(N)", or the varchar(N) the office still has for a DRIFT entry), and the columns the
+		///reference schema has not widened must be exactly the DRIFT entries.</summary>
+		[TestMethod]
+		public void WidenedColumns_MatchAlterEntries() {
+			string path=TestUtil.FindRepoFile(Path.Combine("docs","specs","schema-changes.json"));
+			if(path==null) {
+				Assert.Inconclusive("docs/specs/schema-changes.json not found.");
+			}
+			JArray array=JArray.Parse(File.ReadAllText(path));
+			Dictionary<string,int> dictExpected=new Dictionary<string,int>(StringComparer.OrdinalIgnoreCase);
+			HashSet<string> setDrift=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+			foreach(JObject entry in array.Cast<JObject>().Where(x => (string)x["range"]=="24.3-25.3" && (string)x["change"]=="alter")) {
+				string item=(string)entry["table"]+"."+(string)entry["column"];
+				string notes=(string)entry["notes"]??"";
+				Match match=Regex.Match(notes,@"varchar\((\d+)\)",RegexOptions.IgnoreCase);
+				Assert.IsTrue(match.Success,item+": no old varchar width in the notes: "+notes);
+				dictExpected[item]=int.Parse(match.Groups[1].Value);
+				if(notes.StartsWith("DRIFT",StringComparison.OrdinalIgnoreCase)) {
+					setDrift.Add(item);
+				}
+			}
+			Assert.AreEqual(10,dictExpected.Count);
+			CollectionAssert.AreEquivalent(dictExpected.Keys.ToList(),Coverage.DictWidenedOldLength.Keys.ToList());
+			foreach(KeyValuePair<string,int> pair in dictExpected) {
+				Assert.AreEqual(pair.Value,Coverage.DictWidenedOldLength[pair.Key],pair.Key);
+				Assert.IsTrue(Coverage.NewOrChangedColumns.Contains(pair.Key),pair.Key+" is not in NewOrChangedColumns.");
+			}
+			CollectionAssert.AreEquivalent(setDrift.ToList(),Coverage.DictWideningNotInReference.Keys.ToList());
+			Assert.AreEqual(26,Coverage.RequiredMaxLength("insplan.GroupNum"));
+			Assert.AreEqual(255,Coverage.RequiredMaxLength("claimpayment.Note"));
+		}
+
+		///<summary>The generator's long values must actually need the new widths, and the claimpayment note must fit the reference schema.</summary>
+		[TestMethod]
+		public void LongValues_ExceedOldWidths() {
+			for(int planIndex=0;planIndex<3;planIndex++) {
+				foreach(bool isPpo in new[] { true,false }) {
+					string groupNum=PracticeGenerator.LongGroupNumber(999999,isPpo,planIndex);
+					Assert.IsTrue(groupNum.Length>25 && groupNum.Length<=50,groupNum);
+					groupNum=PracticeGenerator.LongGroupNumber(100000,isPpo,planIndex);
+					Assert.IsTrue(groupNum.Length>25 && groupNum.Length<=50,groupNum);
+				}
+			}
+			string pickList=string.Join(",",PracticeGenerator.ArrayLastVisitAnswers);
+			Assert.IsTrue(pickList.Length>255,"pick list "+pickList.Length);
+			Assert.IsTrue(PracticeGenerator.LastVisitFollowUpTrigger.Length>255,"trigger "+PracticeGenerator.LastVisitFollowUpTrigger.Length);
+			Assert.IsFalse(PracticeGenerator.ArrayLastVisitAnswers.Any(x => x.Contains(",")));
+			Assert.IsTrue(FamilySimulator.LongBounceReport("a@example.com").Length>255);
+			Assert.AreEqual(PracticeWideGenerator.ClaimPaymentNoteReferenceWidth,
+				PracticeWideGenerator.LongEftNote("EFT trace 12345678","Synthetic Mutual Dental").Length);
+			Assert.AreEqual(255,PracticeWideGenerator.LongEftNote("EFT trace 1","X").Length);
 		}
 	}
 

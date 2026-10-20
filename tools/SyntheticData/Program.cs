@@ -163,6 +163,15 @@ namespace SyntheticData {
 			foreach(string item in result.ListKnownEmpty) {
 				Info("  left empty on purpose: "+item+" ("+Coverage.DictKnownEmpty[item]+")");
 			}
+			int widened=Coverage.DictWidenedOldLength.Count;
+			Info("Widened columns holding a value longer than the old width: "+(widened-result.ListNotWidenedColumns.Count)+" of "+widened+".");
+			foreach(KeyValuePair<string,long> pair in result.DictMaxLengths.OrderBy(x => x.Key)) {
+				string note=Coverage.DictWideningNotInReference.ContainsKey(pair.Key) ? " (old width kept by the reference schema; filled to it)" : "";
+				Info("  "+pair.Key+": longest "+pair.Value+", old width "+Coverage.DictWidenedOldLength[pair.Key]+note);
+			}
+			foreach(string item in result.ListNotWidenedColumns) {
+				Console.Error.WriteLine("  widening not exercised: "+item);
+			}
 		}
 
 		private static void PrintTotals(ValidationReport report) {

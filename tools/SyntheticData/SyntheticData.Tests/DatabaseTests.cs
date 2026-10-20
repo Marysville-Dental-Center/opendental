@@ -117,8 +117,8 @@ namespace SyntheticData.Tests {
 			using(Db db=Db.Open(_server)) {
 				foreach(string database in new[] { DbA,DbC }) {
 					Coverage.Result result=Coverage.Check(db,database);
-					Assert.IsTrue(result.IsComplete,database+": "+string.Join(", ",result.ListEmptyTables.Concat(result.ListUnfilledColumns)
-						.Concat(result.ListMissingColumns).Concat(result.ListMissingTables)));
+					Assert.IsTrue(result.IsComplete,database+": "+string.Join(", ",result.AllProblems));
+					Assert.AreEqual(Coverage.DictWidenedOldLength.Count,result.DictMaxLengths.Count,database);
 				}
 			}
 		}

@@ -87,8 +87,9 @@ completed, paid or posted after the as-of date.
 and a `SyntheticDataInfo` row recording seed, size and as-of date), definitions (adjustment, payment, billing, image, blockout,
 commlog, task priority and the 25.2 task categories), user groups with permissions (including 264-271), users (one with a
 domain login), employees, providers, operatories, procedure codes, fee schedules (standard, two PPO networks, copay, out of
-network), coverage categories and spans, code groups, carriers, employers, insurance plans (one in five without a group number:
-`insplan.GroupNum` became nullable in 25.2), benefits, recall types, appointment views, sheet and eForm definitions, medications,
+network), coverage categories and spans, code groups, carriers, employers, insurance plans (one in five without a group number,
+which `insplan.GroupNum` already allowed in 24.3, and one in five with a 26 to 50 character group number, which needs the 25.2
+widening from 25 to 50 characters), benefits, recall types, appointment views, sheet and eForm definitions, medications,
 allergies, problems, referrals, task lists, payment plan templates, clearinghouses, workstations, accounts.
 
 **Schedules.** Working days without holidays (holidays are practice notes), one provider schedule per provider per day linked to
@@ -121,7 +122,26 @@ income, monthly expense checks) with monthly reconciliations; the monthly A/R sn
 ### The 24.4 to 25.3 tables and columns
 
 Every entry of [schema-changes.json](../../docs/specs/schema-changes.json) with range 24.3-25.3 holds data (`coverage`, and
-`Validation/Coverage.cs`, which a test keeps in step with the JSON file):
+`Validation/Coverage.cs`, which a test keeps in step with the JSON file).
+
+Holding data is not enough for the ten columns those versions **widened** (the `alter` entries): a value that fits the old width
+would survive a step that wrongly redefines the column at the old width. So `coverage` also requires each widened column's longest
+value to exceed its old width, and prints the longest value of each:
+
+| Column | Old width | Long values |
+|---|---|---|
+| `insplan.GroupNum` | varchar(25), 50 since 25.2 | Employer-style group numbers of 31 to 37 characters on one plan in five (one in five has none) |
+| `histappointment.ProcDescript` | varchar(255), text since 25.2 | The showcase family's planned restorative appointment (24 fillings) and its history row |
+| `eformfield`/`eformfielddef` `PickListVis`, `PickListDb` | varchar(255), text since 25.3 | The medical history's "last dental visit" question, a 338-character pick list |
+| `eformfield`/`eformfielddef` `ConditionalValue` | varchar(255), text since 25.3 | Its follow-up text box, shown for five of the six answers (a 276-character trigger list) |
+| `emailmessage.FailReason` | varchar(255), text since 25.3 | Full delivery reports on the showcase family's first bounce and about one bounce in four |
+| `claimpayment.Note` | varchar(255) | Remittance text on every fifth EFT, filled to exactly 255 characters (see below) |
+
+`claimpayment.Note` is the exception: Open Dental's 25.3 documentation makes it `text`, but the office's 25.3.48 database (the
+reference schema) still has `varchar(255)` (the DRIFT entry in the JSON file), so nothing longer can be stored before adoption.
+Coverage requires the old width to be filled exactly, which still catches a step that narrows the column.
+
+The data by version:
 
 | Version | Data |
 |---|---|
@@ -134,7 +154,8 @@ Every entry of [schema-changes.json](../../docs/specs/schema-changes.json) with 
 
 Family 0 is the **showcase family**: its random choices are steered (always insured with a PPO plan, a pre-authorized crown on a
 payment plan with a down payment and a chosen sheet, a signed consent, a chart letter, eForms with Ins Pick and pending
-insurance, a categorized task, a BetterDiagnostics drawing, a hidden medication, a card on file, a bounced statement e-mail), so
+insurance, a categorized task, a BetterDiagnostics drawing, a hidden medication, a card on file, a bounced statement e-mail with
+its full delivery report, a planned restorative appointment with a long procedure description), so
 coverage is complete for every seed and size, not just the default one. The data stays consistent; only the dice are loaded.
 
 ### Values that are not published
@@ -215,7 +236,8 @@ vstest.console.exe tools\SyntheticData\SyntheticData.Tests\bin\Debug\SyntheticDa
 ```
 
 Unit tests cover the random numbers (pinned sequence), the local-only and `synth*` guards, names and contact ranges, SQL literal
-formatting, dump parsing, aging, the report comparer and the coverage list against `schema-changes.json`; enum numbers that
+formatting, dump parsing, aging, the report comparer, the coverage list and the widened-column list (old widths, DRIFT entries)
+against `schema-changes.json`, and the lengths of the generator's long values; enum numbers that
 existed in 24.3 are cross-checked against OpenDentBusiness. The database tests (scratch databases `synth_test_*`, dropped
 afterwards; inconclusive without a local server) check the schema against `od_253_schema`, determinism, all consistency checks,
 coverage for two seeds, fictional data, dated fees on procedures, guardian numbering, the filler, refusal to write non-`synth`
