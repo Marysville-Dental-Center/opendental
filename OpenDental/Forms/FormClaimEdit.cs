@@ -811,6 +811,7 @@ namespace OpenDental{
 			else {
 				textAttachID.Text=_claim.AttachmentID;
 			}
+			FillDxcAttachmentState();
 			//medical/inst
 			textBillType.Text=_claim.UniformBillType;
 			textAdmissionType.Text=_claim.AdmissionTypeCode;
@@ -2911,31 +2912,10 @@ namespace OpenDental{
 				return;
 			}
 			if(XConnect.IsEnabled(clearinghouseClin)) {
-				XConnectWebResponse xConnectWebResponse=null;
-				try {
-					xConnectWebResponse=XConnect.ValidateClaim(_claim);
-					if((xConnectWebResponse?.response?.claimStatus?.message?.Length??0)>0) {//Errors will go in the messages array of the object
-						MessageBox.Show("XConnect Validation Failed: "+xConnectWebResponse.status.code+"\r\n"
-							+Lan.g(this,"Cannot send claim until missing/invalid data is fixed:")+"\r\n"
-							+string.Join("\r\n",xConnectWebResponse.response.claimStatus.message));
-						return;
-					}
-					for(int i=0;i<xConnectWebResponse.response.claimItems.Count();i++) {
-						XConnectClaimItemResponse xConnectClaimItemResponse=xConnectWebResponse.response.claimItems[i];
-						if(string.IsNullOrEmpty(xConnectClaimItemResponse.itemStatus.message)) {
-							continue;
-						}
-						if(!xConnectClaimItemResponse.itemStatus.message.ToLower().Contains("attachment")) {
-							continue;
-						}
-						//Response has an attachment needed message by this point
-						MsgBox.Show(this,"An attachment is required for this claim. Use the right click attachment workflow to add an attachment to this claim.");
-						break;
-					}
-				}
-				catch(Exception ex) {
-					MsgBox.Show("XConnect Validation Call Failed: "+ex.Message);
-					return;//Allowing user to continue would defeat the purpose of validation before sending. The point is to save DXC phone calls regarding validation issues.
+				//Open Dental 25.2: errors keep the claim unsent and open the Claim Validation window; warnings can be sent after confirming.
+				bool isEditClaimClicked;
+				if(!ClaimL.ValidateXConnectBeforeSend(_claim,clearinghouseClin,out isEditClaimClicked)) {
+					return;
 				}
 			}
 			else if(clearinghouseClin.IsAttachmentSendAllowed && clearinghouseClin.CommBridge==EclaimsCommBridge.ClaimConnect) {
@@ -2961,7 +2941,7 @@ namespace OpenDental{
 					}
 				}
 				if(validateClaimResponse!=null //the catches above don't alway return
-					&& validateClaimResponse.IsAttachmentRequired) 
+					&& validateClaimResponse.IsAttachmentRequired && !ClaimAttaches.IsDxcAttachmentSubmitted(_claim.AttachedFlags)) 
 				{
 					//Do not open Claim Attachment window for ClaimConnect
 					//if(MsgBox.Show(this,MsgBoxButtons.YesNo,"An attachment is required for this claim. Would you like to open the claim attachment form?")) {
@@ -3583,13 +3563,8 @@ namespace OpenDental{
 				if(textAttachID.Text!="") {
 					listStringFlags.Add("Misc");
 				}
-				_claim.AttachedFlags="";
-				for(int i=0;i<listStringFlags.Count;i++){
-					if(i>0){
-						_claim.AttachedFlags+=",";
-					}
-					_claim.AttachedFlags+=listStringFlags[i];
-				}
+				//Keeps Submitted (Open Dental 24.4), Unsup and any other keyword the check boxes do not manage.
+				_claim.AttachedFlags=ClaimAttaches.RebuildFromCheckBoxes(_claim.AttachedFlags,listStringFlags);
 			}
 			#endregion
 			//Use the DXC attachmentID if it is not blank, otherwise use the NEA attachmentID. In the case they are both blank it does not matter,
@@ -3999,36 +3974,8 @@ namespace OpenDental{
 					return;
 				}
 				if(XConnect.IsEnabled(clearinghouseClin)) {
-					XConnectWebResponse xConnectWebResponse=null;
-					try {
-						xConnectWebResponse=XConnect.ValidateClaim(_claim);
-						if((xConnectWebResponse?.response?.claimStatus?.message?.Length??0)>0) {//Errors will go in the messages array of the object
-							if(MessageBox.Show("XConnect Validation Failed: "+xConnectWebResponse.status.code+"\r\n"
-								+Lan.g(this,"Cannot send claim until missing/invalid data is fixed:")+"\r\n"
-								+string.Join("\r\n",xConnectWebResponse.response.claimStatus.message+"\r\n"
-								+"Continue anyway?"),
-								"",MessageBoxButtons.OKCancel)==DialogResult.OK)
-							{
-								SaveCleanup();
-							}
-							return;
-						}
-						for(int i=0;i<xConnectWebResponse.response.claimItems.Count();i++) {
-							XConnectClaimItemResponse xConnectClaimItemResponse=xConnectWebResponse.response.claimItems[i];
-							if(string.IsNullOrEmpty(xConnectClaimItemResponse.itemStatus.message)) {
-								continue;
-							}
-							if(!xConnectClaimItemResponse.itemStatus.message.ToLower().Contains("attachment")) {
-								continue;
-							}
-							//Response has an attachment needed message by this point
-							MsgBox.Show(this,"An attachment is required for this claim. Use the right click attachment workflow to add an attachment to this claim.");
-							break;
-						}
-					}
-					catch(Exception ex) {
-						MsgBox.Show("XConnect Validation Call Failed: "+ex.Message);
-					}
+					//Open Dental 25.2: validation on save never blocks saving. A failed call gives a note; problems open the Claim Validation window.
+					ClaimL.ValidateXConnectAfterSave(_claim,clearinghouseClin);
 				}
 				else if(clearinghouseClin.IsAttachmentSendAllowed && clearinghouseClin.CommBridge==EclaimsCommBridge.ClaimConnect) {//No missing data, but can send attachments electronically
 					//Validating for attachments is currently only supported for ClaimConnect customers
@@ -4043,10 +3990,12 @@ namespace OpenDental{
 						FriendlyException.Show(ex.Message,ex);
 					}
 					if(validateClaimResponse!=null//catches do not return
-						&& validateClaimResponse.IsAttachmentRequired) 
+						&& validateClaimResponse.IsAttachmentRequired && !ClaimAttaches.IsDxcAttachmentSubmitted(_claim.AttachedFlags)) 
 					{
-						if(_claim.AttachedFlags!="Misc") {//No need to visit the database again if this is already the case
-							_claim.AttachedFlags="Misc";
+						//Misc replaces the check box flags; Submitted, Unsup and other program-set keywords stay.
+						string attachedFlagsMisc=ClaimAttaches.RebuildFromCheckBoxes(_claim.AttachedFlags,new List<string> { ClaimAttaches.FlagMisc });
+						if(_claim.AttachedFlags!=attachedFlagsMisc) {//No need to visit the database again if this is already the case
+							_claim.AttachedFlags=attachedFlagsMisc;
 							Claims.Update(_claim);
 						}
 						//Do not open Claim Attachment window for ClaimConnect
@@ -4056,15 +4005,21 @@ namespace OpenDental{
 						//}
 						MsgBox.Show(this,"An attachment is required for this claim. Use the right click attachment workflow to add an attachment to this claim.");
 					}
-					else if(_claim.Attachments.Count==0 && _claim.AttachedFlags!="Mail") {//Don't set to 'Mail' on claims with attachments or make unneccessary DB trips.
-						_claim.AttachedFlags="Mail";
-						Claims.Update(_claim);
-					}
-					if(validateClaimResponse!=null && validateClaimResponse.ValidationErrors.Any(x=>x.ToLower().Contains("payer does not support attachments"))) {
-						if(_claim.AttachedFlags!="") {
-							_claim.AttachedFlags+=","; //Flags exist already, so add a comma before adding "Unsup"
+					else if(_claim.Attachments.Count==0) {//Don't set to 'Mail' on claims with attachments or make unneccessary DB trips.
+						//No attachments: Mail, and no Submitted flag (Open Dental 24.4: the flag goes when every attachment is gone).
+						string attachedFlagsMail=ClaimAttaches.ClearDxcAttachmentSubmitted(
+							ClaimAttaches.RebuildFromCheckBoxes(_claim.AttachedFlags,new List<string> { ClaimAttaches.FlagMail }));
+						if(_claim.AttachedFlags!=attachedFlagsMail) {
+							_claim.AttachedFlags=attachedFlagsMail;
+							Claims.Update(_claim);
 						}
-						_claim.AttachedFlags+="Unsup";
+					}
+					if(validateClaimResponse!=null && validateClaimResponse.ValidationErrors.Any(x=>x.ToLower().Contains("payer does not support attachments"))
+						&& !ClaimAttaches.HasFlag(_claim.AttachedFlags,ClaimAttaches.FlagUnsup))
+					{
+						List<string> listAttachedFlags=ClaimAttaches.ParseAttachedFlags(_claim.AttachedFlags);
+						listAttachedFlags.Add(ClaimAttaches.FlagUnsup);
+						_claim.AttachedFlags=ClaimAttaches.JoinAttachedFlags(listAttachedFlags);
 						Claims.Update(_claim);
 					}
 				}
@@ -4079,6 +4034,22 @@ namespace OpenDental{
 			}
 			Plugins.HookAddCode(this,"FormClaimEdit.butOK_Click_end",_claim);
 			SaveCleanup();
+		}
+
+		///<summary>Shows on the DentalXChange tab whether the claim's DentalXChange attachment has been sent (Open Dental 24.4, the Submitted
+		///keyword in claim.AttachedFlags).</summary>
+		private void FillDxcAttachmentState() {
+			if(ClaimAttaches.IsDxcAttachmentSubmitted(_claim.AttachedFlags)) {
+				labelDxcAttachmentState.Text=Lan.g(this,"Attachments submitted to DentalXChange.")
+					+(string.IsNullOrEmpty(_claim.AttachmentID) ? "" : " "+Lan.g(this,"Attachment ID:")+" "+_claim.AttachmentID);
+				return;
+			}
+			if(!string.IsNullOrEmpty(_claim.AttachmentID)) {
+				labelDxcAttachmentState.Text=Lan.g(this,"Attachment ID:")+" "+_claim.AttachmentID+". "
+					+Lan.g(this,"Not marked as submitted; add or resend the attachment with the right-click options.");
+				return;
+			}
+			labelDxcAttachmentState.Text=Lan.g(this,"No attachments submitted to DentalXChange.");
 		}
 
 		private void SaveCleanup(){

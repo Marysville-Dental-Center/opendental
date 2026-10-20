@@ -10,6 +10,7 @@ using OpenDentBusiness;
 using System.Collections.Generic;
 using CodeBase;
 using OpenDentBusiness.Eclaims;
+using OpenDentBusiness.VendorDirect.DentalXChange;
 
 namespace OpenDental{
 	/// <summary>
@@ -39,6 +40,9 @@ namespace OpenDental{
 		///May not be null.  Assign a new list of clearinghouse objects to this if creating a new clearinghouse.</summary>
 		public List<Clearinghouse> ListClearinghousesClinOld;
 		private long _clinicNumLastSelected=-1;
+		///<summary>True once the DentalXChange partner identity boxes have been filled from the database. They hold one office-wide value, so
+		///switching clinics does not refill them.</summary>
+		private bool _isPartnerIdentityLoaded;
 
 		///<summary></summary>
 		public FormClearinghouseEdit()
@@ -193,8 +197,26 @@ namespace OpenDental{
 					checkSaveAttachments.Visible=true;
 				}
 			}
+			FillDentalXChange();
 			UpdateClientProgramLabel();
 			Plugins.HookAddCode(this,"FormClearingHouseEdit.FillFields_end",ClearinghouseCur);
+		}
+
+		///<summary>The DentalXChange box, shown only for ClaimConnect: the XConnect switch (per clinic, Open Dental 25.2) and the office's partner
+		///identity (one value for the whole office, edited from Unassigned/Default). For ClaimConnect the Location ID box is the XConnect API key.</summary>
+		private void FillDentalXChange() {
+			bool isClaimConnect=ClearinghouseCur.CommBridge==EclaimsCommBridge.ClaimConnect;
+			groupDentalXChange.Visible=isClaimConnect;
+			label2.Text=isClaimConnect ? Lan.g(this,"API Key") : Lan.g(this,"Location ID");
+			checkEnableXConnect.Checked=ClearinghouseCur.EnableXConnect;
+			if(!_isPartnerIdentityLoaded) {
+				DxcPartnerIdentity dxcPartnerIdentity=DxcPartnerIdentity.GetCur();
+				textPartnerClient.Text=dxcPartnerIdentity.Client;
+				textPartnerServiceID.Text=dxcPartnerIdentity.ServiceID;
+				_isPartnerIdentityLoaded=true;
+			}
+			textPartnerClient.ReadOnly=ClinicNum!=0;
+			textPartnerServiceID.ReadOnly=ClinicNum!=0;
 		}
 
 		private void UpdateClientProgramLabel() {
@@ -300,6 +322,7 @@ namespace OpenDental{
 				ClearinghouseHq.IsEraDownloadAllowed=listBoxEraBehavior.GetSelected<EraBehaviors>();
 				ClearinghouseHq.IsAttachmentSendAllowed=checkAllowAttachSend.Checked;
 				ClearinghouseHq.LocationID=textLocationID.Text;
+				ClearinghouseHq.EnableXConnect=checkEnableXConnect.Checked;
 				#endregion
 			}
 			else { 
@@ -313,6 +336,7 @@ namespace OpenDental{
 				_clearinghouseClin.IsClaimExportAllowed=checkIsClaimExportAllowed.Checked;
 				_clearinghouseClin.IsEraDownloadAllowed=listBoxEraBehavior.GetSelected<EraBehaviors>();
 				_clearinghouseClin.IsAttachmentSendAllowed=checkAllowAttachSend.Checked;
+				_clearinghouseClin.EnableXConnect=checkEnableXConnect.Checked;
 				if(textExportPath.Text==ClearinghouseHq.ExportPath) {
 					_clearinghouseClin.ExportPath="";//The value is the same as the default.  Save blank so that default can be updated dynamically.
 				}
@@ -633,6 +657,11 @@ namespace OpenDental{
 				Clearinghouses.Update(ClearinghouseHq,ClearinghouseHqOld);
 			}
 			Clearinghouses.Sync(ListClearinghousesClin,ListClearinghousesClinOld);
+			List<string> listXConnectLogLines=Clearinghouses.GetXConnectChangeLogLines(ClearinghouseHqOld,ClearinghouseHq,ListClearinghousesClinOld,
+				ListClearinghousesClin,clinicNum => Clinics.GetAbbr(clinicNum));
+			for(int i=0;i<listXConnectLogLines.Count;i++) {
+				SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,listXConnectLogLines[i]);
+			}
 			//After saving, reveal all passwords.
 			RevealClearinghousePass(ClearinghouseHq);
 			for(int i=0;i<ListClearinghousesClin.Count;i++) {
@@ -645,6 +674,11 @@ namespace OpenDental{
 			}
 			//If the DXC attachment saving preferences changed send a signal to have all clients update their preference cache.
 			bool hasPrefChanged=Prefs.UpdateBool(PrefName.SaveDXCSOAPAsXML,checkSaveDXCSoap.Checked);//Can't do this in the if check or we risk not running the right side of the OR.
+			if(_isPartnerIdentityLoaded && DxcPartnerIdentity.Save(textPartnerClient.Text,textPartnerServiceID.Text)) {
+				SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,"DentalXChange partner identity changed"
+					+(DxcPartnerIdentity.GetCur().IsConfigured ? "." : "; it is now blank, so DentalXChange web services are off."));
+				hasPrefChanged=true;
+			}
 			if(ClearinghouseCur.CommBridge==EclaimsCommBridge.ClaimConnect) {
 				hasPrefChanged|=Prefs.UpdateBool(PrefName.SaveDXCAttachments,checkSaveAttachments.Checked);
 			}

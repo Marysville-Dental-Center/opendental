@@ -673,24 +673,8 @@ namespace OpenDental {
 
 		///<summary>Sends the passed-in attachments to ClaimConnect.  Will set the attachment id to the claim if needed.</summary>
 		private void AddAttachments(List<ClaimConnect.ImageAttachment> listImageAttachments) {
-			if(string.IsNullOrWhiteSpace(_claim.AttachmentID)) {
-				//If an attachment has not already been created, create one.
-				string attachmentId=ClaimConnect.OpenAttachment(_claim,textNarrative.Text);
-				//Update claim if attachmentID was set. Must happen here so that the validation will consider the new attachmentID.
-				_claim.AttachmentID=attachmentId;
-				_listImageReferenceIds=ClaimConnect.AddAttachmentImage(_claim,listImageAttachments);
-				ClaimConnect.SubmitAttachment(_claim);
-				//Set the claims attached flag to 'Misc' so that the attachmentID will write to the PWK segment 
-				//when the claim is generated as an 837.
-				_claim.AttachedFlags="Misc";
-			}
-			else {//An attachment already exists for this claim.
-				_listImageReferenceIds=ClaimConnect.AddAttachmentImage(_claim, listImageAttachments);
-				if(_claim.Narrative!=textNarrative.Text) {
-					ClaimConnect.AddNarrative(_claim,textNarrative.Text);
-				}
-			}
-			_claim.Narrative=textNarrative.Text;
+			//Opens, fills and submits the attachment, or adds to the existing one, and sets AttachedFlags (Misc and, once sent, Submitted).
+			_listImageReferenceIds=ClaimConnect.SendAttachmentImages(_claim,listImageAttachments,textNarrative.Text);
 			Claims.Update(_claim);
 		}
 

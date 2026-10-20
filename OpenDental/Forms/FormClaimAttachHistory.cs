@@ -37,11 +37,22 @@ namespace OpenDental {
 			FillGrid();
 		}
 
+		///<summary>Open Dental 24.4: whether the claim's DentalXChange attachment has been submitted (the Submitted keyword in AttachedFlags).</summary>
+		private void FillSubmittedState() {
+			if(ClaimAttaches.IsDxcAttachmentSubmitted(ClaimCur.AttachedFlags)) {
+				gridMain.Title=Lan.g(this,"Attachment Images Sent - Submitted");
+			}
+			else {
+				gridMain.Title=Lan.g(this,"Attachment Images Sent");
+			}
+		}
+
 		///<summary>Wipes out the existing attachmentID, narrative, and list of ClaimAttaches. Makes a securitylog for the old ID, and clears the 'Misc' attached flag on the claim. This must be done when a non-DXC attachmentID has been detected so that claim validation will work as expected.</summary>
 		private void ClearAttachmentID() {
 			//Blindly set the claim's attached flags back to 'Mail' so that, deep down in the 837 text generation logic, the PWK segment will not be written
 			//which will allow DentalXChange to validate the claim as if it is brand new with no attachments. See X837_5010.GenerateMessageText().
-			ClaimCur.AttachedFlags="Mail";
+			//This also drops Submitted (Open Dental 24.4): every attachment is gone.
+			ClaimCur.AttachedFlags=ClaimAttaches.FlagMail;
 			string oldAttachmentID=ClaimCur.AttachmentID;
 			ClaimCur.AttachmentID="";
 			ClaimCur.Narrative="";//Clear narrative for new attachment
@@ -142,6 +153,7 @@ namespace OpenDental {
 				gridMain.ListGridRows.Add(gridRow);
 			}
 			gridMain.EndUpdate();
+			FillSubmittedState();
 		}
 
 		private void textNarrative_TextChanged(object sender,EventArgs e) {

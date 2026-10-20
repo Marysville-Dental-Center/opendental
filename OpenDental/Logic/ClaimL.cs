@@ -10,6 +10,8 @@ using OpenDentBusiness.Eclaims;
 using System.Drawing;
 using System.Text.RegularExpressions;
 using System.Text;
+using OpenDental.UI;
+using OpenDentBusiness.VendorDirect.DentalXChange;
 
 namespace OpenDental {
 	public class ClaimL {
@@ -805,6 +807,147 @@ namespace OpenDental {
 			Eclaims.SendBatch(clearinghouseClinic,listClaimSendQueueItemsRetVal,medType,formClaimFormItemEdit,
 				FormClaimPrint.FillRenaissance,new FormTerminalConnection());//this also calls SetClaimSentOrPrinted which creates the etrans entry.
 			return listClaimSendQueueItemsRetVal;
+		}
+
+		#region XConnect claim validation (Open Dental 25.2)
+		///<summary>Validates one claim with XConnect, using the claim's clinic-level clearinghouse. Never throws: problems loading the claim or
+		///calling DentalXChange are reported in CallFailedMessage. A claim whose clearinghouse does not use XConnect comes back skipped.</summary>
+		public static XConnectValidationResult ValidateXConnect(long claimNum,TimeSpan timeout) {
+			Claim claim=Claims.GetClaim(claimNum);
+			if(claim==null) {
+				XConnectValidationResult resultMissing=new XConnectValidationResult();
+				resultMissing.ClaimNum=claimNum;
+				resultMissing.SkippedReason=Lans.g("XConnect","The claim has been deleted.");
+				return resultMissing;
+			}
+			Clearinghouse clearinghouseClin;
+			try {
+				clearinghouseClin=ClaimConnect.GetClearingHouseForClaim(claim);
+			}
+			catch(Exception ex) {
+				XConnectValidationResult resultNoClearinghouse=XConnectValidation.MakeResult(claim);
+				resultNoClearinghouse.SkippedReason=ex.Message;
+				return resultNoClearinghouse;
+			}
+			return XConnectValidation.Validate(claim,clearinghouseClin,timeout);
+		}
+
+		///<summary>Validation when Edit Claim saves a claim that is waiting to be sent (Open Dental 25.2). Never blocks saving: the claim is already
+		///saved. Waits at most XConnect.TimeoutValidateOnSave. A failed call gives a non-modal note; problems open the Claim Validation window
+		///non-modally. Does nothing when XConnect is off for the clearinghouse.</summary>
+		public static void ValidateXConnectAfterSave(Claim claim,Clearinghouse clearinghouseClin) {
+			if(!XConnect.IsEnabled(clearinghouseClin) || !XConnectValidation.ShouldValidate(claim)) {
+				return;
+			}
+			XConnectValidationResult result=null;
+			ProgressWin progressWin=new ProgressWin();
+			progressWin.StartingMessage=Lans.g("XConnect","Validating the claim with DentalXChange...");
+			progressWin.ActionMain=() => result=XConnectValidation.Validate(claim,clearinghouseClin,XConnect.TimeoutValidateOnSave);
+			try {
+				progressWin.ShowDialog();
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+			}
+			if(result==null) {//Cancelled or failed to start
+				return;
+			}
+			if(result.IsCallFailed) {
+				MsgBoxCopyPaste msgBoxCopyPaste=new MsgBoxCopyPaste(Lans.g("XConnect","The claim was saved, but DentalXChange could not validate it:")
+					+Environment.NewLine+result.CallFailedMessage+Environment.NewLine+Lans.g("XConnect","It will be validated again when it is sent."));
+				msgBoxCopyPaste.Show();//Non-modal: saving never waits on DentalXChange.
+				return;
+			}
+			if(!result.NeedsAttention) {
+				return;
+			}
+			FormXConnectValidation formXConnectValidation=new FormXConnectValidation(new List<XConnectValidationResult> { result },
+				FormXConnectValidation.EnumOpenedFrom.Save);
+			formXConnectValidation.Show();
+		}
+
+		///<summary>Validation before Edit Claim sends one claim (Open Dental 25.2). Returns true if the claim may be sent: no problems, warnings the
+		///user chose to send anyway, or XConnect off. Errors and failed calls keep the claim unsent. isEditClaimClicked is true when the user chose
+		///Edit Claim in the window.</summary>
+		public static bool ValidateXConnectBeforeSend(Claim claim,Clearinghouse clearinghouseClin,out bool isEditClaimClicked) {
+			isEditClaimClicked=false;
+			if(!XConnect.IsEnabled(clearinghouseClin) || !XConnectValidation.ShouldValidate(claim)) {
+				return true;
+			}
+			XConnectValidationResult result=null;
+			ProgressWin progressWin=new ProgressWin();
+			progressWin.StartingMessage=Lans.g("XConnect","Validating the claim with DentalXChange...");
+			progressWin.ActionMain=() => result=XConnectValidation.Validate(claim,clearinghouseClin,XConnect.TimeoutValidateOnSend);
+			try {
+				progressWin.ShowDialog();
+			}
+			catch(Exception ex) {
+				FriendlyException.Show(Lans.g("XConnect","XConnect validation failed."),ex);
+				return false;
+			}
+			if(progressWin.IsCancelled || result==null) {
+				return false;
+			}
+			XConnectSendDecision decision=XConnectValidation.GetSendDecision(result);
+			if(decision==XConnectSendDecision.Send) {
+				return true;
+			}
+			if(decision==XConnectSendDecision.CallFailed) {
+				//As in 24.3: sending without validation would defeat the point of validating.
+				MessageBox.Show(Lans.g("XConnect","XConnect validation call failed:")+" "+result.CallFailedMessage+Environment.NewLine
+					+Lans.g("XConnect","The claim was not sent."));
+				return false;
+			}
+			using FormXConnectValidation formXConnectValidation=new FormXConnectValidation(new List<XConnectValidationResult> { result },
+				FormXConnectValidation.EnumOpenedFrom.ClaimEditSend);
+			formXConnectValidation.ShowDialog();
+			isEditClaimClicked=formXConnectValidation.IsEditClaimClicked;
+			XConnectValidationResult resultLatest=formXConnectValidation.ListResults.FirstOrDefault()??result;
+			XConnectSendDecision decisionLatest=XConnectValidation.GetSendDecision(resultLatest);
+			if(decisionLatest==XConnectSendDecision.Send && !isEditClaimClicked) {
+				return true;//Re-validation in the window resolved everything.
+			}
+			return decisionLatest==XConnectSendDecision.ConfirmWarnings && formXConnectValidation.IsSendAnywayClicked;
+		}
+
+		///<summary>Batch sends (Send Claims window): one combined window for every claim with problems, grouped by claim. Returns the ClaimNums that may
+		///be sent: those without problems and, when the user chose Send Anyway, those with warnings only. Shows nothing when no claim needs
+		///attention.</summary>
+		public static List<long> ShowXConnectResultsForBatch(List<XConnectValidationResult> listResults) {
+			List<XConnectValidationResult> listResultsWithProblems=listResults.FindAll(x => x.NeedsAttention);
+			if(listResultsWithProblems.Count==0) {
+				return XConnectValidation.GetClaimNumsToSend(listResults,false);
+			}
+			using FormXConnectValidation formXConnectValidation=new FormXConnectValidation(listResultsWithProblems,
+				FormXConnectValidation.EnumOpenedFrom.ClaimsSend);
+			formXConnectValidation.ShowDialog();
+			//Results after any re-validation in the window replace the originals.
+			List<XConnectValidationResult> listResultsFinal=listResults
+				.Select(x => formXConnectValidation.ListResults.FirstOrDefault(y => y.ClaimNum==x.ClaimNum)??x)
+				.ToList();
+			return XConnectValidation.GetClaimNumsToSend(listResultsFinal,formXConnectValidation.IsSendAnywayClicked);
+		}
+		#endregion XConnect claim validation (Open Dental 25.2)
+
+		///<summary>Open Dental 24.4, DentalXChange attachment Submitted flag: before an attachment window sends images for a claim whose attachment
+		///was already submitted, asks once whether to add them, so the same attachments are not sent twice by accident. isConfirmed is the window's
+		///own flag: once true (the user agreed, or the window found nothing submitted and sends the first images itself) the question is not asked
+		///again. Returns false if the user cancels.</summary>
+		public static bool ConfirmAddToSubmittedDxcAttachment(Claim claim,ref bool isConfirmed) {
+			if(isConfirmed) {
+				return true;
+			}
+			if(claim==null || !ClaimAttaches.IsDxcAttachmentSubmitted(claim.AttachedFlags)) {
+				isConfirmed=true;
+				return true;
+			}
+			if(!MsgBox.Show("ClaimL",MsgBoxButtons.OKCancel,"This claim's attachments were already submitted to DentalXChange. "
+				+"Images sent now are added to the same attachment. Send them?"))
+			{
+				return false;
+			}
+			isConfirmed=true;
+			return true;
 		}
 
 		///<summary>Sets the ClaimSendQueueItem.IsValid flag. Checks if the ClaimSendQueueItem passed in has any missing data.</summary>

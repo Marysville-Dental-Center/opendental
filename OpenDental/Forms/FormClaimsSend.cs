@@ -12,10 +12,16 @@ using CodeBase;
 using OpenDental.UI;
 using OpenDentBusiness;
 using OpenDentBusiness.Eclaims;
+using OpenDentBusiness.VendorDirect.DentalXChange;
 
 namespace OpenDental{
 ///<summary></summary>
 	public partial class FormClaimsSend:FormODBase {
+		///<summary>Open Dental 25.2: the latest XConnect validation of each claim validated in this window, by ClaimNum.</summary>
+		private Dictionary<long,XConnectValidationResult> _dictXConnectResults=new Dictionary<long,XConnectValidationResult>();
+		///<summary>The text ValidateClaims added to a claim's Missing Info for XConnect errors, so it can come off again when the problems are
+		///resolved in the Claim Validation window.</summary>
+		private Dictionary<long,string> _dictXConnectMissingData=new Dictionary<long,string>();
 		///<summary>The list of all claims regardless of any filters.  Filled on load.  Make sure to update this list with any updates (e.g. after validating claims)</summary>
 		private ClaimSendQueueItem[] _claimSendQueueItemArrayQueueAll;
 		///<summary></summary>
@@ -781,6 +787,9 @@ namespace OpenDental{
 				MsgBox.Show(this,"No claims to send.");
 				return;
 			}
+			if(!ApplyXConnectResultsToSelection()) {
+				return;
+			}
 			List<ClaimSendQueueItem> listClaimSendQueueItemsSelected=gridMain.SelectedTags<ClaimSendQueueItem>();
 			Cursor=Cursors.WaitCursor;
 			List<ClaimSendQueueItem> listClaimSendQueueItems=ClaimL.SendClaimSendQueueItems(listClaimSendQueueItemsSelected,hqClearinghouseNum);
@@ -862,32 +871,22 @@ namespace OpenDental{
 				//Claims with providers who have expired terms should still be able to be resent. Job F4401
 				//Because of this, we implement FromClaimEdit and FormClaimSend checks for term dates separately.
 				listClaimSendQueueItemsToValidate[i]=ValidateProvidersTerms(listClaimSendQueueItemsToValidate[i],listClaims);
+				_dictXConnectMissingData.Remove(listClaimSendQueueItemsToValidate[i].ClaimNum);
 				if(listClaimSendQueueItemsToValidate[i].MissingData=="" && XConnect.IsEnabled(clearinghouseClin)) {
-					Claim claim=listClaims.FirstOrDefault(x => x.ClaimNum==listClaimSendQueueItems[i].ClaimNum);
-					XConnectWebResponse xConnectWebResponse=null;
-					try {
-						xConnectWebResponse=XConnect.ValidateClaim(claim);
-						if((xConnectWebResponse?.response?.claimStatus?.message?.Length??0)>0) {//Errors will go in the messages array of the object
-							listClaimSendQueueItemsToValidate[i].MissingData+=(listClaimSendQueueItemsToValidate[i].MissingData==""?"":", ")
-								+string.Join("\r\n",xConnectWebResponse.response.claimStatus.message);
+					//Open Dental 25.2: errors and failed calls keep the claim unsent (Missing Info); warnings can be sent after confirming.
+					Claim claim=listClaims.FirstOrDefault(x => x.ClaimNum==listClaimSendQueueItemsToValidate[i].ClaimNum);
+					if(claim!=null) {
+						XConnectValidationResult xConnectValidationResult=XConnectValidation.Validate(claim,clearinghouseClin,XConnect.TimeoutValidateOnSend);
+						_dictXConnectResults[claim.ClaimNum]=xConnectValidationResult;
+						string summary=XConnectValidation.GetSummary(xConnectValidationResult);
+						XConnectSendDecision decision=XConnectValidation.GetSendDecision(xConnectValidationResult);
+						if(decision==XConnectSendDecision.Block || decision==XConnectSendDecision.CallFailed) {
+							listClaimSendQueueItemsToValidate[i].MissingData+=(listClaimSendQueueItemsToValidate[i].MissingData==""?"":", ")+summary;
+							_dictXConnectMissingData[claim.ClaimNum]=summary;
 						}
-						for(int j=0;j<xConnectWebResponse.response.claimItems.Count();j++) {
-							XConnectClaimItemResponse xConnectClaimItemResponse=xConnectWebResponse.response.claimItems[j];
-							if(!string.IsNullOrEmpty(xConnectClaimItemResponse.itemStatus.message)) {//This message contains the attachment requirements
-								if(!listClaimSendQueueItemsToValidate[i].Warnings.ToLower().Contains("attachment id missing") 
-									&& xConnectClaimItemResponse.itemStatus.message.ToLower().Contains("attachment"))
-								{
-									if(listClaimSendQueueItemsToValidate[i].Warnings!="") {
-										listClaimSendQueueItemsToValidate[i].Warnings+=", ";
-									}
-									listClaimSendQueueItemsToValidate[i].Warnings+="Attachment ID missing";
-								}
-							}
+						else if(decision==XConnectSendDecision.ConfirmWarnings) {
+							listClaimSendQueueItemsToValidate[i].Warnings+=(listClaimSendQueueItemsToValidate[i].Warnings==""?"":", ")+summary;
 						}
-					}
-					catch(Exception ex) {
-						listClaimSendQueueItemsToValidate[i].MissingData+=(listClaimSendQueueItemsToValidate[i].MissingData==""?"":", ")
-							+"XConnect Validation Call Failed: "+ex.Message;
 					}
 				}
 				if(listClaimSendQueueItemsToValidate[i].MissingData=="") {
@@ -903,6 +902,69 @@ namespace OpenDental{
 			}
 			FillGrid(true);//Used here to display changes immediately
 			Cursor.Current=Cursors.Default;
+		}
+
+		///<summary>Open Dental 25.2: shows one Claim Validation window, grouped by claim, for the selected claims XConnect found problems with. Then
+		///deselects the claims that stay in the queue: errors, failed calls, and warning-only claims unless the user chose Send Anyway. A claim
+		///whose errors the window's re-validation resolved loses its XConnect Missing Info and can go. Returns false if nothing is left to send.</summary>
+		private bool ApplyXConnectResultsToSelection() {
+			List<ClaimSendQueueItem> listClaimSendQueueItemsSelected=gridMain.SelectedTags<ClaimSendQueueItem>();
+			List<XConnectValidationResult> listResults=new List<XConnectValidationResult>();
+			for(int i=0;i<listClaimSendQueueItemsSelected.Count;i++) {
+				XConnectValidationResult result;
+				if(_dictXConnectResults.TryGetValue(listClaimSendQueueItemsSelected[i].ClaimNum,out result)) {
+					listResults.Add(result);
+				}
+			}
+			if(!listResults.Any(x => x.NeedsAttention)) {
+				return true;
+			}
+			List<long> listClaimNumsAllowed=ClaimL.ShowXConnectResultsForBatch(listResults);
+			for(int i=0;i<gridMain.ListGridRows.Count;i++) {
+				if(!gridMain.SelectedIndices.Contains(i)) {
+					continue;
+				}
+				ClaimSendQueueItem claimSendQueueItem=(ClaimSendQueueItem)gridMain.ListGridRows[i].Tag;
+				if(!_dictXConnectResults.ContainsKey(claimSendQueueItem.ClaimNum)) {
+					continue;
+				}
+				if(!listClaimNumsAllowed.Contains(claimSendQueueItem.ClaimNum)) {
+					gridMain.SetSelected(i,false);
+					continue;
+				}
+				string missingDataXConnect;
+				if(_dictXConnectMissingData.TryGetValue(claimSendQueueItem.ClaimNum,out missingDataXConnect)) {
+					//Resolved in the window: take the XConnect part off Missing Info, here and in the queue.
+					claimSendQueueItem.MissingData=RemoveMissingDataPart(claimSendQueueItem.MissingData,missingDataXConnect);
+					claimSendQueueItem.IsValid=claimSendQueueItem.MissingData=="";
+					for(int j=0;j<_claimSendQueueItemArrayQueueAll.Length;j++) {
+						if(_claimSendQueueItemArrayQueueAll[j].ClaimNum==claimSendQueueItem.ClaimNum) {
+							_claimSendQueueItemArrayQueueAll[j].MissingData=claimSendQueueItem.MissingData;
+							_claimSendQueueItemArrayQueueAll[j].IsValid=claimSendQueueItem.IsValid;
+						}
+					}
+					_dictXConnectMissingData.Remove(claimSendQueueItem.ClaimNum);
+				}
+			}
+			if(gridMain.SelectedTags<ClaimSendQueueItem>().Count==0) {
+				MsgBox.Show(this,"No claims to send.");
+				return false;
+			}
+			return true;
+		}
+
+		///<summary>missingData without part, which ValidateClaims added after a comma or as the whole text.</summary>
+		private static string RemoveMissingDataPart(string missingData,string part) {
+			if(string.IsNullOrEmpty(missingData) || string.IsNullOrEmpty(part)) {
+				return missingData??"";
+			}
+			if(missingData==part) {
+				return "";
+			}
+			if(missingData.EndsWith(", "+part)) {
+				return missingData.Substring(0,missingData.Length-part.Length-2);
+			}
+			return missingData;
 		}
 
 		private void toolBarButReports_Click() {

@@ -87,6 +87,7 @@
 			this.tabControlAttach = new OpenDental.UI.TabControl();
 			this.tabDXC = new OpenDental.UI.TabPage();
 			this.labelWorkflowMsg = new System.Windows.Forms.Label();
+			this.labelDxcAttachmentState = new System.Windows.Forms.Label();
 			this.tabNEA = new OpenDental.UI.TabPage();
 			this.groupAttachments = new OpenDental.UI.GroupBox();
 			this.label65 = new System.Windows.Forms.Label();
@@ -994,6 +995,7 @@
 			// tabDXC
 			// 
 			this.tabDXC.Controls.Add(this.labelWorkflowMsg);
+			this.tabDXC.Controls.Add(this.labelDxcAttachmentState);
 			this.tabDXC.Location = new System.Drawing.Point(2, 21);
 			this.tabDXC.Name = "tabDXC";
 			this.tabDXC.Padding = new System.Windows.Forms.Padding(3);
@@ -1008,6 +1010,14 @@
 			this.labelWorkflowMsg.Size = new System.Drawing.Size(263, 27);
 			this.labelWorkflowMsg.TabIndex = 155;
 			this.labelWorkflowMsg.Text = "Use right-click options on Claim";
+			//
+			// labelDxcAttachmentState
+			//
+			this.labelDxcAttachmentState.Location = new System.Drawing.Point(6, 45);
+			this.labelDxcAttachmentState.Name = "labelDxcAttachmentState";
+			this.labelDxcAttachmentState.Size = new System.Drawing.Size(650, 40);
+			this.labelDxcAttachmentState.TabIndex = 156;
+			this.labelDxcAttachmentState.Text = "No attachments submitted to DentalXChange.";
 			// 
 			// tabNEA
 			// 
@@ -4121,5 +4131,6 @@
 		private UI.GridOD gridEDSSent;
 		private UI.WarningIntegrity warningIntegrity;
 		private System.Windows.Forms.Label labelWorkflowMsg;
+		private System.Windows.Forms.Label labelDxcAttachmentState;
 	}
 }
