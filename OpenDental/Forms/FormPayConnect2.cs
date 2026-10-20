@@ -43,6 +43,9 @@ namespace OpenDental {
 		private bool _didHostedFormSucceed;
 		///<summary>True while every call goes to the vendor's sandbox. Shown in the title and on the receipt so test rows can't pass for real ones.</summary>
 		private bool _isSandbox;
+		///<summary>True once the current transaction charged the saved card's token. Its response only echoes the cardholder name this program sent,
+		///so it is never saved on the card; any other card (hosted page, terminal) was entered by the cardholder.</summary>
+		private bool _didChargeSavedToken;
 
 		public FormPayConnect2(long clinicNum,Patient patient,CreditCard creditCard,decimal amount,bool isAddingCard=false) {
 			_clinicNum=clinicNum;
@@ -71,9 +74,18 @@ namespace OpenDental {
 					name=listPayTerminals[i].TerminalID;
 				}
 				comboTerminal.Items.Add(name,listPayTerminals[i]);
-				if(i==0) {
-					comboTerminal.SelectedIndex=0;
-				}
+			}
+			//25.1: preselect the terminal this workstation used last, if it belongs to this clinic; else the first one, as before.
+			string terminalIdLast="";
+			try {
+				terminalIdLast=ComputerPrefs.GetCreditCardTerminalId();
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+			}
+			int indexTerminal=PayTerminals.GetIndexToSelect(listPayTerminals,terminalIdLast);
+			if(indexTerminal>=0) {
+				comboTerminal.SelectedIndex=indexTerminal;
 			}
 			textAmount.Text=_amount.ToString();
 			_isSandbox=PayConnect2.GetUseSandbox();
@@ -123,6 +135,26 @@ namespace OpenDental {
 			else if(radioTerminal.Checked) {
 				comboTerminal.Enabled=true;
 			}
+			FillSavedCardField();
+		}
+
+		///<summary>25.2: for a payment on a saved card, shows which card will be charged in the read-only Credit Card field (never more than the last 4
+		///digits). Hidden when the card is entered on the hosted page or a terminal.</summary>
+		private void FillSavedCardField() {
+			bool isVisible=PayConnect2.IsSavedCardFieldVisible(_creditCard,radioTerminal.Checked);
+			labelCreditCard.Visible=isVisible;
+			textCreditCard.Visible=isVisible;
+			textCreditCard.Text=isVisible ? PayConnect2.GetSavedCardDisplayText(_creditCard) : "";
+		}
+
+		///<summary>25.1: remembers the terminal on this workstation's computerpref row. A failure to save it never stops the payment.</summary>
+		private void RememberTerminal(string terminalId) {
+			try {
+				ComputerPrefs.UpdateCreditCardTerminalId(terminalId);
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+			}
 		}
 
 		/// <summary>Returns -1 if an error occured. Takes whatever is in textAmount and tries to prepare it for use with PayConnect.</summary>
@@ -145,6 +177,7 @@ namespace OpenDental {
 		private bool ProcessTransaction() {
 			_wasPaymentAttemptedBefore=WasPaymentAttempted;
 			WasPaymentAttempted=true;
+			_didChargeSavedToken=false;
 			int amountInCents=GetAmountFieldAsCents();
 			string magData="";
 			if(radioTerminal.Checked) {
@@ -170,8 +203,10 @@ namespace OpenDental {
 					}
 					//The library sends a correlation ID as invoiceNumber and, if the answer is lost, looks the transaction up by it.
 					request.InvoiceNumber=PayConnect2.NewCorrelationId();
+					RememberTerminal(terminalId);
+					long patNumForLog=GetPatNumForLog();
 					UI.ProgressWin progressOD=new UI.ProgressWin();
-					progressOD.ActionMain=()=> {_payConnect2Response=PayConnect2.PostCreateTerminalTransaction(request,_clinicNum);};
+					progressOD.ActionMain=()=> {_payConnect2Response=PayConnect2.PostCreateTerminalTransaction(request,_clinicNum,patNumForLog);};
 					progressOD.ShowCancelButton=false;//This is neccessary as cancelling on our side will not cancel the transaction on the terminal, which could lead to the payment being processed but not show in the patients account.
 					progressOD.StartingMessage=Lan.g(this,"Processing payment on terminal");
 					progressOD.StopNotAllowedMessage=Lan.g(this,"Not allowed to stop. Please wait up to 2 minutes.");
@@ -179,6 +214,8 @@ namespace OpenDental {
 						progressOD.ShowDialog();
 					}
 					catch(Exception ex){
+						PayConnect2.LogException("terminal "+PayConnect2.GetOperationName(request.TransType,request.Frequency),_clinicNum,GetPatNumForLog(),
+							request.Amount,request.InvoiceNumber,ex);
 						SecurityLogs.MakeLogEntry(EnumPermType.CreditCardTerminal,GetPatNumForLog(),"No response received. PayConnect invoice number: "+request.InvoiceNumber);
 						MessageBox.Show(Lan.g(this,"A payment was initiated but no response was received. The payment may or may not have processed."
 							+" Verify payment with your Credit Card merchant.")+" "+Lan.g(this,"Invoice number")+": "+request.InvoiceNumber,ex.Message);
@@ -234,7 +271,7 @@ namespace OpenDental {
 						GetStatusResponse getStatusResponse=_payConnect2Response.GetStatusResponse;
 						if(getStatusResponse==null && _didHostedFormSucceed && !string.IsNullOrEmpty(_embedOrderId)) {
 							//The hosted page reported SUCCESS but the status call after it failed: look the transaction up by the session's order ID.
-							PayConnect2Response responseByOrderId=PayConnect2.GetTransactionStatus(_clinicNum,"",orderId:_embedOrderId);
+							PayConnect2Response responseByOrderId=PayConnect2.GetTransactionStatus(_clinicNum,"",orderId:_embedOrderId,patNum:GetPatNumForLog());
 							if(responseByOrderId.ResponseType==ResponseType.GetStatus && responseByOrderId.GetStatusResponse!=null) {
 								_payConnect2Response=responseByOrderId;
 								getStatusResponse=responseByOrderId.GetStatusResponse;
@@ -256,11 +293,12 @@ namespace OpenDental {
 					}
 					//We have a saved card with a token
 					else {
+						_didChargeSavedToken=true;
 						try {
 							_payConnect2Response=PayConnect2.PostCreateTransactionByToken(_patient,_creditCard,amountInCents,_clinicNum);
 						}
 						catch(Exception ex) {
-							ex.DoNothing();
+							PayConnect2.LogException("sale",_clinicNum,GetPatNumForLog(),amountInCents,"",ex);
 							MsgBox.Show(this,"Invalid data, unable to send sale transaction");
 							return false;
 						}
@@ -279,11 +317,12 @@ namespace OpenDental {
 						MsgBox.Show(this,"Amount must be greater than 0.00");
 						return false;
 					}
+					_didChargeSavedToken=true;
 					try {
 						_payConnect2Response=PayConnect2.PostCreateTransactionByToken(_patient,_creditCard,amountInCents,_clinicNum,PayConnect2.TransactionType.AuthorizeOnly);
 					}
 					catch(Exception ex) {
-							ex.DoNothing();
+							PayConnect2.LogException("authorize",_clinicNum,GetPatNumForLog(),amountInCents,"",ex);
 							MsgBox.Show(this,"Invalid data, unable to send auth transaction");
 							return false;
 					}
@@ -303,7 +342,7 @@ namespace OpenDental {
 					if(amountInCents>0) {
 						refundReferenceIDRequest.Amount=amountInCents;
 					}
-					_payConnect2Response=PayConnect2.PostRefundWithReferenceID(refundReferenceIDRequest,_clinicNum);
+					_payConnect2Response=PayConnect2.PostRefundWithReferenceID(refundReferenceIDRequest,_clinicNum,GetPatNumForLog());
 					if(!CheckOutcome(_payConnect2Response,"")) {
 						return false;
 					}
@@ -316,7 +355,7 @@ namespace OpenDental {
 					}
 					VoidReferenceIDRequest voidReferenceIDRequest=new VoidReferenceIDRequest();
 					voidReferenceIDRequest.ReferenceId=textRefNumber.Text;
-					_payConnect2Response=PayConnect2.PutVoidWithReferenceID(voidReferenceIDRequest,_clinicNum);
+					_payConnect2Response=PayConnect2.PutVoidWithReferenceID(voidReferenceIDRequest,_clinicNum,GetPatNumForLog());
 					if(!CheckOutcome(_payConnect2Response,"")) {
 						return false;
 					}
@@ -335,7 +374,9 @@ namespace OpenDental {
 				}
 			}
 			decimal surchargeAmount=_response.AmountSurcharged;
-			ReceiptStr=PayConnect.BuildReceiptString(TransType,_response.RefNumber,_patient.GetNameFLnoPref(),_response.CardNumber,magData,_response.AuthCode,_response.Description,messages:null,_response.Amount,doShowSignatureLine,_clinicNum,_response.CardType,surchargeAmount:surchargeAmount,cardHolder:_response.CardHolder);
+			//25.1: the receipt names the cardholder: from PayConnect's response, else (for a saved card's token) the name saved on the card.
+			string cardHolder=PayConnect2.GetCardHolderForReceipt(_response.CardHolder,_didChargeSavedToken ? _creditCard : null);
+			ReceiptStr=PayConnect.BuildReceiptString(TransType,_response.RefNumber,_patient.GetNameFLnoPref(),_response.CardNumber,magData,_response.AuthCode,_response.Description,messages:null,_response.Amount,doShowSignatureLine,_clinicNum,_response.CardType,surchargeAmount:surchargeAmount,cardHolder:cardHolder);
 			if(_isSandbox) {
 				ReceiptStr="SANDBOX TEST - NOT A REAL CHARGE"+Environment.NewLine+ReceiptStr;
 			}
@@ -410,7 +451,7 @@ namespace OpenDental {
 				byte[] byteArrayImageBytes=memoryStream.ToArray();
 				addSignatureRequest.Signature=Convert.ToBase64String(byteArrayImageBytes);
 			}
-			return PayConnect2.PutSignatureWithReferenceID(addSignatureRequest,_clinicNum);
+			return PayConnect2.PutSignatureWithReferenceID(addSignatureRequest,_clinicNum,GetPatNumForLog());
 		}
 
 		///<summary>Checks all UI state and preconditions needed to save a card.</summary>
@@ -422,7 +463,7 @@ namespace OpenDental {
 				//error occured, let calling form handle it.
 				return;
 			}
-			PayConnect2Response statusResponse=PayConnect2.GetTransactionStatus(_clinicNum,_response.RefNumber);
+			PayConnect2Response statusResponse=PayConnect2.GetTransactionStatus(_clinicNum,_response.RefNumber,patNum:GetPatNumForLog());
 			if(statusResponse.GetStatusResponse?.PaymentMethod?.CardPaymentMethod==null) {
 				return;
 			}
@@ -445,6 +486,8 @@ namespace OpenDental {
 			_creditCard.PayConnectTokenExp=expiryDate;//Token expiration is the same as CC expiration.
 			_creditCard.PayConnectToken=_response.PaymentToken;
 			_creditCard.CCSource=CreditCardSource.PayConnect;
+			//25.1: keep the name on the card, so later charges (recurring ones too) can print it. Only for a card the cardholder just entered.
+			PayConnect2.SetCardHolderNameFromVendor(_creditCard,cardPaymentMethod.CardHolder,!_didChargeSavedToken);
 			if(_creditCard.IsNew) {
 				_creditCard.ClinicNum=_clinicNum;
 				_creditCard.Procedures=PrefC.GetString(PrefName.DefaultCCProcs);
@@ -519,7 +562,7 @@ namespace OpenDental {
 					embedSessionRequest.Amount=amountInCents;
 				}
 			}
-			_payConnect2Response=PayConnect2.PostEmbedSession(embedSessionRequest,_clinicNum);
+			_payConnect2Response=PayConnect2.PostEmbedSession(embedSessionRequest,_clinicNum,GetPatNumForLog());
 			_didHostedFormSucceed=false;
 			if(_payConnect2Response.ResponseType==PayConnect2.ResponseType.EmbedSession) {
 				string url=_payConnect2Response.EmbedSessionResponse.Url;
@@ -563,6 +606,7 @@ namespace OpenDental {
 					if(PayConnect2.IsTrackTwoData(response.Response?.CardToken)) {
 						MagstripCardParser magstripCardParser=new MagstripCardParser(response.Response.CardToken,EnumMagstripCardParseTrack.TrackTwo);
 						if(PayConnect2.LooksLikeCardNumber(magstripCardParser.AccountNumber)) {
+							PayConnect2.LogHostedFormError(_clinicNum,GetPatNumForLog(),_isAddingCard,"The card reader returned the card number instead of a token; it was not saved.");
 							SetHostedFormError(Lan.g(this,"The card reader returned the card number instead of a token, so the card was not saved. Key the card in instead."));
 							MsgBox.Show(this,"The card reader returned the card number instead of a token, so the card was not saved. Key the card in instead.");
 							return;
@@ -574,9 +618,9 @@ namespace OpenDental {
 				}
 				else {
 					//Immediately call the GetStatus endpoint for easier processing. If that fails, try the session's order ID.
-					_payConnect2Response=GetTransactionStatus(_clinicNum,response.Response?.ReferenceId);
+					_payConnect2Response=GetTransactionStatus(_clinicNum,response.Response?.ReferenceId,patNum:GetPatNumForLog());
 					if(_payConnect2Response.ResponseType==ResponseType.Error && !string.IsNullOrEmpty(_embedOrderId)) {
-						PayConnect2Response responseByOrderId=GetTransactionStatus(_clinicNum,"",orderId:_embedOrderId);
+						PayConnect2Response responseByOrderId=GetTransactionStatus(_clinicNum,"",orderId:_embedOrderId,patNum:GetPatNumForLog());
 						if(responseByOrderId.ResponseType==ResponseType.GetStatus) {
 							_payConnect2Response=responseByOrderId;
 						}
@@ -586,7 +630,9 @@ namespace OpenDental {
 				return;
 			}
 			if(hostedFormMessage.Status=="ERROR") {
-				SetHostedFormError(response.Response?.Message??Lan.g(this,"The payment form reported an error."));
+				string message=response.Response?.Message??Lan.g(this,"The payment form reported an error.");
+				PayConnect2.LogHostedFormError(_clinicNum,GetPatNumForLog(),_isAddingCard,message);
+				SetHostedFormError(message);
 				return;
 			}
 			if(hostedFormMessage.Status=="SESSION_EXPIRED") {
@@ -622,10 +668,12 @@ namespace OpenDental {
 				label1.Visible=false;
 				butRefresh.Enabled=false;
 			}
+			FillSavedCardField();
 			SetFormSizeToNormal();
 		}
 
 		private void radioWebService_CheckedChanged(object sender,EventArgs e) {
+			FillSavedCardField();
 			if(radioWebService.Checked) {
 				checkSaveToken.Enabled=true;
 				comboTerminal.Enabled=false;

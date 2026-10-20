@@ -45,6 +45,8 @@ namespace OpenDental{
 			this.butSave = new OpenDental.UI.Button();
 			this.butRefresh = new OpenDental.UI.Button();
 			this.label1 = new System.Windows.Forms.Label();
+			this.labelCreditCard = new System.Windows.Forms.Label();
+			this.textCreditCard = new System.Windows.Forms.TextBox();
 			this.groupTransType.SuspendLayout();
 			this.groupProcessMethod.SuspendLayout();
 			((System.ComponentModel.ISupportInitialize)(this.webViewMain)).BeginInit();
@@ -258,9 +260,31 @@ namespace OpenDental{
 			this.label1.Text = "Click to update the amount";
 			this.label1.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
 			// 
+			// labelCreditCard
+			// 
+			this.labelCreditCard.Location = new System.Drawing.Point(160, 153);
+			this.labelCreditCard.Name = "labelCreditCard";
+			this.labelCreditCard.Size = new System.Drawing.Size(150, 16);
+			this.labelCreditCard.TabIndex = 51;
+			this.labelCreditCard.Text = "Credit Card";
+			this.labelCreditCard.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			this.labelCreditCard.Visible = false;
+			// 
+			// textCreditCard
+			// 
+			this.textCreditCard.Location = new System.Drawing.Point(160, 170);
+			this.textCreditCard.Name = "textCreditCard";
+			this.textCreditCard.ReadOnly = true;
+			this.textCreditCard.Size = new System.Drawing.Size(160, 20);
+			this.textCreditCard.TabIndex = 52;
+			this.textCreditCard.TabStop = false;
+			this.textCreditCard.Visible = false;
+			// 
 			// FormPayConnect2
 			// 
 			this.ClientSize = new System.Drawing.Size(943, 477);
+			this.Controls.Add(this.textCreditCard);
+			this.Controls.Add(this.labelCreditCard);
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.butRefresh);
 			this.Controls.Add(this.butSave);
@@ -312,5 +336,7 @@ namespace OpenDental{
 		private UI.Button butSave;
 		private UI.Button butRefresh;
 		private System.Windows.Forms.Label label1;
+		private System.Windows.Forms.Label labelCreditCard;
+		private System.Windows.Forms.TextBox textCreditCard;
 	}
 }

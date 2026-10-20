@@ -25,6 +25,8 @@ namespace OpenDental{
 		private void InitializeComponent() {
 			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormCreditCardEdit));
 			this.labelClinic = new System.Windows.Forms.Label();
+			this.labelCardHolderName = new System.Windows.Forms.Label();
+			this.textCardHolderName = new System.Windows.Forms.TextBox();
 			this.textClinic = new System.Windows.Forms.TextBox();
 			this.groupChargeFrequency = new OpenDental.UI.GroupBox();
 			this.comboDays = new OpenDental.UI.ComboBox();
@@ -593,9 +595,31 @@ namespace OpenDental{
 			this.label3.Text = "Card Number";
 			this.label3.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
 			// 
+			// labelCardHolderName
+			// 
+			this.labelCardHolderName.Location = new System.Drawing.Point(280, 91);
+			this.labelCardHolderName.Name = "labelCardHolderName";
+			this.labelCardHolderName.Size = new System.Drawing.Size(90, 16);
+			this.labelCardHolderName.TabIndex = 139;
+			this.labelCardHolderName.Text = "Card Holder";
+			this.labelCardHolderName.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.labelCardHolderName.Visible = false;
+			// 
+			// textCardHolderName
+			// 
+			this.textCardHolderName.Location = new System.Drawing.Point(371, 90);
+			this.textCardHolderName.Name = "textCardHolderName";
+			this.textCardHolderName.ReadOnly = true;
+			this.textCardHolderName.Size = new System.Drawing.Size(136, 20);
+			this.textCardHolderName.TabIndex = 7;
+			this.textCardHolderName.TabStop = false;
+			this.textCardHolderName.Visible = false;
+			// 
 			// FormCreditCardEdit
 			// 
 			this.ClientSize = new System.Drawing.Size(524, 657);
+			this.Controls.Add(this.textCardHolderName);
+			this.Controls.Add(this.labelCardHolderName);
 			this.Controls.Add(this.labelClinic);
 			this.Controls.Add(this.textClinic);
 			this.Controls.Add(this.groupChargeFrequency);
@@ -631,6 +655,8 @@ namespace OpenDental{
 
 		private System.Windows.Forms.Label label3;
 		private System.Windows.Forms.TextBox textCardNumber;
+		private System.Windows.Forms.Label labelCardHolderName;
+		private System.Windows.Forms.TextBox textCardHolderName;
 		private System.Windows.Forms.Label label4;
 		private System.Windows.Forms.TextBox textExpDate;
 		private UI.Button butSave;

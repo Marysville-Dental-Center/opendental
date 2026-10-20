@@ -450,6 +450,7 @@ namespace OpenDental {
 						newCreditCard.PayConnectTokenExp=new DateTime(expiryYear,expiryMonth,DateTime.DaysInMonth(expiryYear,expiryMonth));//Testing has shown that this is now the same as the CC expiry.
 						newCreditCard.PayConnectToken=cardData.CardToken;
 						newCreditCard.CCSource=CreditCardSource.PayConnect;
+						PayConnect2.SetCardHolderNameFromVendor(newCreditCard,cardData.CardHolder,wasCardEntered:true);//25.1: keep the name on the card.
 						newCreditCard.ClinicNum=Clinics.ClinicNum;
 						newCreditCard.Procedures=PrefC.GetString(PrefName.DefaultCCProcs);
 						CreditCards.Insert(newCreditCard);
