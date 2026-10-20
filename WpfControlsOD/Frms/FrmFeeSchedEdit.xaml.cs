@@ -54,6 +54,18 @@ namespace OpenDental {
 			else {
 				checkIsGlobal.Checked=FeeSchedCur.IsGlobal;
 			}
+			//Notes belong to a saved fee schedule.
+			butNotes.IsEnabled=(!FeeSchedCur.IsNew && FeeSchedCur.FeeSchedNum>0);
+		}
+
+		private void butNotes_Click(object sender,EventArgs e) {
+			if(FeeSchedCur.IsNew || FeeSchedCur.FeeSchedNum==0) {
+				return;
+			}
+			FrmFeeSchedNotes frmFeeSchedNotes=new FrmFeeSchedNotes();
+			frmFeeSchedNotes.FeeSchedNum=FeeSchedCur.FeeSchedNum;
+			frmFeeSchedNotes.ClinicNumFilter=(Clinics.ClinicNum>0 ? Clinics.ClinicNum : -1);
+			frmFeeSchedNotes.ShowDialog();
 		}
 
 		private void checkIsGlobal_Click(object sender,EventArgs e) {
@@ -133,6 +145,9 @@ namespace OpenDental {
 		private void FrmFeeSchedEdit_PreviewKeyDown(object sender,KeyEventArgs e) {
 			if(butSave.IsAltKey(Key.S,e)) {
 				butSave_Click(this,new EventArgs());
+			}
+			if(butNotes.IsAltKey(Key.N,e)) {
+				butNotes_Click(this,new EventArgs());
 			}
 		}
 

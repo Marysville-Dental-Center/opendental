@@ -506,6 +506,12 @@
     <Compile Include="Frms\FrmFeeSchedEdit.xaml.cs">
       <DependentUpon>FrmFeeSchedEdit.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Frms\FrmFeeSchedNoteEdit.xaml.cs">
+      <DependentUpon>FrmFeeSchedNoteEdit.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Frms\FrmFeeSchedNotes.xaml.cs">
+      <DependentUpon>FrmFeeSchedNotes.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Frms\FrmGradingScaleItemEdit.xaml.cs">
       <DependentUpon>FrmGradingScaleItemEdit.xaml</DependentUpon>
     </Compile>
@@ -1155,6 +1161,14 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Frms\FrmFeeSchedEdit.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Frms\FrmFeeSchedNoteEdit.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Frms\FrmFeeSchedNotes.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
