@@ -157,8 +157,9 @@ namespace OpenDental {
 			else{
 				OrthoChartLogs.Log("FillLockedInitial(), _userNumLocked="+_userNumLocked.ToString()+" so I am locked out.",Environment.MachineName,_patient.PatNum,_userodCurUser.UserNum);
 				//The lock could be by any user, including the current user on a different instance of OD.
+				//-5 (a workstation switched users locally to sign) and -1 are held locks too (25.1).
 				LockControls();
-				labelLocked.Text="Locked by: "+Userods.GetName(_userNumLocked);
+				labelLocked.Text="Locked by: "+PatientNotes.GetOrthoLockedByText(_userNumLocked,Userods.GetName);
 			}
 		}
 
@@ -174,7 +175,7 @@ namespace OpenDental {
 				return;
 			}
 			long userNum=PatientNotes.GetUserNumOrthoLocked(_patient.PatNum);
-			if(userNum==-5){//-5 indicates that an instance of OD changed users locally to that form.
+			if(userNum==PatientNotes.ORTHO_LOCK_LOCAL_SWITCH){//-5 indicates that an instance of OD changed users locally to that form.
 				if(_userNumLogging!=userNum) {
 					OrthoChartLogs.Log($"timerLocked_Tick(), _userNum=-5, indicating that an instance of OD changed from '{_userNumLogging}' to '{userNum}' user locally.",Environment.MachineName,_patient.PatNum,_userodCurUser.UserNum);
 					_userNumLogging=userNum;
@@ -218,7 +219,7 @@ namespace OpenDental {
 			LogRefreshOrthoChartRowsInMemory();
 			FillGrid();//This will show us true db state, including deleting any empty row.
 			LockControls();
-			labelLocked.Text="Locked by: "+Userods.GetName(userNum);
+			labelLocked.Text="Locked by: "+PatientNotes.GetOrthoLockedByText(userNum,Userods.GetName);
 			_userNumLocked=userNum;
 			if(ODBuild.IsDebug()) {
 				//Helpful to know who when you have multiple windows open for testing.
@@ -259,7 +260,7 @@ namespace OpenDental {
 		private void buttonTakeControl_Click(object sender, EventArgs e){
 			//It's been a few seconds since we looked at the db, so check again
 			long userNum=PatientNotes.GetUserNumOrthoLocked(_patient.PatNum);
-			if(userNum==-5) {//We are taking control from a workstation that changed users to sign an orthochartrow.
+			if(userNum==PatientNotes.ORTHO_LOCK_LOCAL_SWITCH) {//We are taking control from a workstation that changed users to sign an orthochartrow.
 				OrthoChartLogs.Log("buttonTakeControl_Click(), userNum=-5, so we are taking control from a workstation that changed users to sign an orthochartrow. Changing userNum to "+_userNumLocked.ToString(),
 					Environment.MachineName,_patient.PatNum,_userodCurUser.UserNum);
 				userNum=_userNumLocked;//Change the userNum back to the user that was in control prior to changing users on other instance of OD.
@@ -1044,6 +1045,10 @@ namespace OpenDental {
 			if(formLogOnChangeUser.DialogResult!=DialogResult.OK) {
 				return;
 			}
+			if(formLogOnChangeUser.IsDomainAuthenticated) {
+				SecurityLogs.MakeLogEntry(EnumPermType.OrthoChartEditUser,_patient.PatNum,
+					DomainLogin.GetSwitchLogText(Lan.g(this,"Ortho chart"),_userodCurUser,formLogOnChangeUser.UserodSimpleSwitch,isDomainAuthenticated:true));
+			}
 			long userNumOld=_userodCurUser.UserNum;
 			_userodCurUser=formLogOnChangeUser.UserodSimpleSwitch;
 			long userNumNew=_userodCurUser.UserNum;//_curUser.UserNum is now the changed user.
@@ -1056,7 +1061,8 @@ namespace OpenDental {
 			}
 			//Current user had a lock and lost it
 			//so we need to also change the userLocked here and in db
-			PatientNotes.SetUserNumOrthoLocked(_patient.PatNum,-5);//-5 means user changed locally on form. Do not call SaveToDb() on other instance of OD.
+			//-5 means user changed locally on form, and is held while the switch is in effect (25.1). Do not call SaveToDb() on other instance of OD.
+			PatientNotes.SetUserNumOrthoLocked(_patient.PatNum,PatientNotes.ORTHO_LOCK_LOCAL_SWITCH);
 			_userNumLocked=_userodCurUser.UserNum;			
 			labelLocked.Text="Locked by: "+Userods.GetName(_userodCurUser.UserNum);
 			_isLockedByMe=true;//Changed user now has a lock.

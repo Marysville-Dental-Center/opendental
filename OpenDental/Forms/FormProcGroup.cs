@@ -326,8 +326,13 @@ namespace OpenDental{
 		private void butChangeUser_Click(object sender,EventArgs e) {
 			using FormLogOn formLogOn=new FormLogOn(isSimpleSwitch:true);
 			formLogOn.ShowDialog();
-			if(formLogOn.DialogResult!=DialogResult.OK) { 
-				return;	
+			if(formLogOn.DialogResult!=DialogResult.OK) {
+				return;
+			}
+			if(formLogOn.IsDomainAuthenticated) {
+				SecurityLogs.MakeLogEntry(EnumPermType.GroupNoteEditSigned,_patient.PatNum,
+					DomainLogin.GetSwitchLogText(Lan.g(this,"Group note"),_userod,formLogOn.UserodSimpleSwitch,isDomainAuthenticated:true),
+					ProcedureGroup.ProcNum,DateTime.MinValue);
 			}
 			_userod=formLogOn.UserodSimpleSwitch; //assign temp user
 			bool canUserSignNote=Userods.CanUserSignNote(_userod);//only show if user can sign
