@@ -18,6 +18,7 @@
 		<ui:Label Width="98" Height="18" Margin="52,126,0,0" Text="Database Link" HAlign="Right" VAlign="Center" />
 		<ui:Label Height="18" Margin="368,126,0,0" Text="used to link to a database field" VAlign="Center" Width="193" />
 		<ui:CheckBox x:Name="checkIsRequired" Height="20" Margin="50,148,0,0" Width="114" Text="Required" CheckAlign="MiddleRight"/>
+		<ui:CheckBox x:Name="checkAutoImport" Height="20" Margin="170,148,0,0" Width="100" Text="Auto Import" CheckAlign="MiddleRight"/>
 		<ui:GroupBox Height="184" Margin="31,170,0,0" Width="454" Text="Layout" TabIndexOD="2">
 			<ui:CheckBox x:Name="checkBorder" Height="20" Margin="4,17,0,0" Width="129" Text="Show Border Box" CheckAlign="MiddleRight"/>
 			<ui:Label x:Name="labelWidth" Width="60" Height="18" Margin="59,41,0,0" Text="Width" HAlign="Right" VAlign="Center" />

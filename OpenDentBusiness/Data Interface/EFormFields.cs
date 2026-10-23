@@ -11,6 +11,7 @@ using System.Windows.Markup;
 using System.Windows.Documents;
 using Newtonsoft.Json;
 using System.Linq;
+using CodeBase;
 
 namespace OpenDentBusiness{
 	///<summary></summary>
@@ -31,7 +32,136 @@ namespace OpenDentBusiness{
 				eFormField.EFormFieldNum=Meth.GetLong(MethodBase.GetCurrentMethod(),eFormField);
 				return eFormField.EFormFieldNum;
 			}
+			EnsureEnglishCopies(eFormField);
 			return Crud.EFormFieldCrud.Insert(eFormField);
+		}
+
+		///<summary>Open Dental 25.2: every eformfield row keeps the English label and pick list next to the possibly translated ones, so conditional
+		///logic works in any language. FromDef sets them before translation. This fills them from the current text only when they are still empty,
+		///for fields that were made some other way (older code paths, imports of old files).</summary>
+		public static void EnsureEnglishCopies(EFormField eFormField){
+			Meth.NoCheckMiddleTierRole();
+			if(string.IsNullOrEmpty(eFormField.ValueLabelEnglish)){
+				eFormField.ValueLabelEnglish=eFormField.ValueLabel??"";
+			}
+			if(string.IsNullOrEmpty(eFormField.PickListVisEnglish)){
+				eFormField.PickListVisEnglish=eFormField.PickListVis??"";
+			}
+		}
+
+		///<summary>The English label of the field, which is what a child's ConditionalParent names. Falls back to ValueLabel for fields that have no
+		///English copy, such as fields built from defs in the designer.</summary>
+		public static string GetLabelEnglish(EFormField eFormField){
+			Meth.NoCheckMiddleTierRole();
+			if(!string.IsNullOrEmpty(eFormField.ValueLabelEnglish)){
+				return eFormField.ValueLabelEnglish;
+			}
+			return eFormField.ValueLabel??"";
+		}
+
+		///<summary>The English pick list items, index for index with PickListVis. Falls back to PickListVis when there is no English copy or when the
+		///counts differ.</summary>
+		public static List<string> GetPickListVisEnglish(EFormField eFormField){
+			Meth.NoCheckMiddleTierRole();
+			List<string> listVis=(eFormField.PickListVis??"").Split('|').ToList();
+			if(string.IsNullOrEmpty(eFormField.PickListVisEnglish)){
+				return listVis;
+			}
+			List<string> listEnglish=eFormField.PickListVisEnglish.Split('|').ToList();
+			if(listEnglish.Count!=listVis.Count){
+				return listVis;
+			}
+			return listEnglish;
+		}
+
+		///<summary>Sets IsHiddenCondit on every field from the conditional logic: a child shows only when its parent (named by ConditionalParent, the
+		///parent's English label) has the value in ConditionalValue. Children of hidden parents are hidden too. Comparisons use the English label and
+		///pick list, so a translated form behaves like the English one. Used when filling, validating required fields and auto-importing.</summary>
+		public static void SetIsHiddenConditFlags(List<EFormField> listEFormFields){
+			Meth.NoCheckMiddleTierRole();
+			for(int i=0;i<listEFormFields.Count;i++) {
+				listEFormFields[i].IsHiddenCondit=false;
+			}
+			for(int i=0;i<listEFormFields.Count;i++) {
+				SetConditFlagChildren(listEFormFields[i],listEFormFields,0);
+			}
+		}
+
+		private static void SetConditFlagChildren(EFormField eFormFieldParent,List<EFormField> listEFormFields,int depth){
+			if(depth>50){
+				return;//protects against a circular chain of parents typed by hand
+			}
+			string labelParent=GetLabelEnglish(eFormFieldParent);
+			if(labelParent==""){
+				//this field can't be used as a parent to hide anything right now because it has no value set.
+				return;
+			}
+			if(!eFormFieldParent.FieldType.In(EnumEFormFieldType.CheckBox,EnumEFormFieldType.RadioButtons,EnumEFormFieldType.DateField)){
+				//only these three types can be parents
+				return;
+			}
+			string labelParentTrunc=labelParent.Substring(0,Math.Min(labelParent.Length,255));
+			for(int i=0;i<listEFormFields.Count;i++) {
+				if(listEFormFields[i].ConditionalParent=="" || listEFormFields[i]==eFormFieldParent) {
+					continue;
+				}
+				if(labelParentTrunc!=listEFormFields[i].ConditionalParent){
+					continue;
+				}
+				SetConditFlagChild(eFormFieldParent,listEFormFields[i],listEFormFields,depth);
+			}
+		}
+
+		private static void SetConditFlagChild(EFormField eFormFieldParent,EFormField eFormFieldChild,List<EFormField> listEFormFields,int depth){
+			if(eFormFieldParent.IsHiddenCondit){//parent is already hidden
+				eFormFieldChild.IsHiddenCondit=true;//also hide all children
+				SetConditFlagChildren(eFormFieldChild,listEFormFields,depth+1);
+				return;
+			}
+			if(!IsConditionMet(eFormFieldParent,eFormFieldChild)){
+				eFormFieldChild.IsHiddenCondit=true;
+				SetConditFlagChildren(eFormFieldChild,listEFormFields,depth+1);
+			}
+		}
+
+		///<summary>True if the child's ConditionalValue matches the parent's current value. Radio buttons compare the English item, checkboxes the
+		///"X" value, and date fields an age rule like "&lt;18" or "&gt;65" (if the rule or date can't be read, the child shows).</summary>
+		public static bool IsConditionMet(EFormField eFormFieldParent,EFormField eFormFieldChild){
+			Meth.NoCheckMiddleTierRole();
+			if(eFormFieldParent.FieldType==EnumEFormFieldType.RadioButtons){
+				string valParent=GetValParent(eFormFieldParent);
+				List<string> listVals=eFormFieldChild.ConditionalValue.Split('|').ToList();
+				return listVals.Contains(valParent);
+			}
+			if(eFormFieldParent.FieldType==EnumEFormFieldType.CheckBox){
+				return eFormFieldParent.ValueString==eFormFieldChild.ConditionalValue;
+			}
+			if(eFormFieldParent.FieldType==EnumEFormFieldType.DateField){
+				DateTime dateBirth=DateTime.MinValue;
+				try{
+					dateBirth=DateTime.Parse(eFormFieldParent.ValueString);
+				}
+				catch{}
+				if(dateBirth==DateTime.MinValue){
+					return true;
+				}
+				int agePatient=Patients.DateToAge(dateBirth);
+				int ageCondition=-1;
+				if(eFormFieldChild.ConditionalValue.StartsWith("<") || eFormFieldChild.ConditionalValue.StartsWith(">")){
+					try{
+						ageCondition=int.Parse(eFormFieldChild.ConditionalValue.Substring(1));
+					}
+					catch{ }
+				}
+				if(ageCondition==-1){
+					return true;
+				}
+				if(eFormFieldChild.ConditionalValue.StartsWith("<")){
+					return agePatient<ageCondition;
+				}
+				return agePatient>ageCondition;
+			}
+			return false;
 		}
 
 		///<summary></summary>
@@ -70,6 +200,11 @@ namespace OpenDentBusiness{
 			eFormField.MinWidth=eFormFieldDef.MinWidth;
 			eFormField.WidthLabel=eFormFieldDef.WidthLabel;
 			eFormField.SpaceToRight=eFormFieldDef.SpaceToRight;
+			eFormField.AutoImport=eFormFieldDef.AutoImport;
+			eFormField.PrefillFromGuar=eFormFieldDef.PrefillFromGuar;
+			//Defs are always English. Keep that text before any translation (Open Dental 25.2), so conditional logic still works when translated.
+			eFormField.ValueLabelEnglish=eFormFieldDef.ValueLabel??"";
+			eFormField.PickListVisEnglish=eFormFieldDef.PickListVis??"";
 			//not a db field, but critical:
 			eFormField.EFormFieldDefNum=eFormFieldDef.EFormFieldDefNum;
 			return eFormField;
@@ -100,6 +235,8 @@ namespace OpenDentBusiness{
 			eFormFieldDef.MinWidth=eFormField.MinWidth;
 			eFormFieldDef.WidthLabel=eFormField.WidthLabel;
 			eFormFieldDef.SpaceToRight=eFormField.SpaceToRight;
+			eFormFieldDef.AutoImport=eFormField.AutoImport;
+			eFormFieldDef.PrefillFromGuar=eFormField.PrefillFromGuar;
 			eFormFieldDef.EFormFieldDefNum=eFormField.EFormFieldDefNum;//this is the special non-db field
 			return eFormFieldDef;
 		}
@@ -164,11 +301,16 @@ namespace OpenDentBusiness{
 				return "";
 			}
 			List<string> listPickListDb=eFormField.PickListDb.Split('|').ToList();
-			List<string> listPickListVis=eFormField.PickListVis.Split('|').ToList();
+			//Conditional values are stored in English (Open Dental 25.2), so return the English item even on a translated form.
+			List<string> listPickListVisTranslated=eFormField.PickListVis.Split('|').ToList();
+			List<string> listPickListVis=GetPickListVisEnglish(eFormField);
 			int idxDb=listPickListDb.IndexOf(eFormField.ValueString);
-			if(idxDb!=-1){
+			if(idxDb!=-1 && eFormField.DbLink!=""){
 				//The value string was found in the PickListDb.
 				//We must test to see if the this radiobutton has an empty string in PickListVis
+				if(idxDb>=listPickListVis.Count){
+					return listPickListDb[idxDb];
+				}
 				string retVal=listPickListVis[idxDb];
 				if(retVal==""){
 					return listPickListDb[idxDb];
@@ -183,8 +325,12 @@ namespace OpenDentBusiness{
 			//This radioButton group does not have a DbLink
 			//Our UI requires values on labels when no DbLink, although I suppose that could change some day.
 			//Anyway, we don't have to worry about empty strings here.
-			int idxVis=listPickListVis.IndexOf(eFormField.ValueString);
-			if(idxVis!=-1){
+			//The value string holds the item as shown, which is translated on a translated form.
+			int idxVis=listPickListVisTranslated.IndexOf(eFormField.ValueString);
+			if(idxVis==-1){
+				idxVis=listPickListVis.IndexOf(eFormField.ValueString);
+			}
+			if(idxVis!=-1 && idxVis<listPickListVis.Count){
 				return listPickListVis[idxVis];
 			}
 			//value not found in PickListVis

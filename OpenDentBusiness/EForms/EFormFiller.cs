@@ -417,10 +417,51 @@ namespace OpenDentBusiness {
 					eForm.ListEFormFields[i].ValueString=patient.Zip;
 				}
 			}
+			Patient patientGuarantor=null;
+			if(patient.Guarantor!=patient.PatNum) {
+				patientGuarantor=family.ListPats.FirstOrDefault(x => x.PatNum==patient.Guarantor);
+			}
+			ApplyPrefillFromGuarantor(eForm,patient,patientGuarantor);
 			List<EnumStaticTextField> listEnumStaticTextFields=GetAllStaticTextFieldsForEForm(eForm);
 			StaticTextFieldDependency staticTextFieldDependency=StaticTextData.GetStaticTextDependencies(listEnumStaticTextFields);
 			List<StaticTextReplacement> listStaticTextReplacements=SheetFiller.GetStaticTextReplacements(listEnumStaticTextFields,patient,family,staticTextData:null,staticTextFieldDependency,aptNum:0);
 			ReplaceStaticTextFields(listStaticTextReplacements,eForm,patient,family);
+		}
+
+		///<summary>Open Dental 25.1 "Prefill from guarantor": a field marked PrefillFromGuar whose link is one of the eligible fields
+		///(EFormFieldsAvailable.GetList_PrefillFromGuar) starts with the guarantor's value when the patient's own stored value is empty. Nothing happens
+		///when the patient is their own guarantor or the guarantor is null. The patient can still change the value before saving. Fields are only
+		///changed when still empty, so this runs after the normal fill.</summary>
+		public static void ApplyPrefillFromGuarantor(EForm eForm,Patient patient,Patient patientGuarantor){
+			if(patient==null || patientGuarantor==null || patientGuarantor.PatNum==patient.PatNum) {
+				return;
+			}
+			for(int i=0;i<eForm.ListEFormFields.Count;i++){
+				EFormField eFormField=eForm.ListEFormFields[i];
+				if(!eFormField.PrefillFromGuar || !EFormFieldsAvailable.IsPrefillFromGuarAllowed(eFormField.DbLink)) {
+					continue;
+				}
+				if(!string.IsNullOrEmpty(GetPatientValueForPrefill(patient,eFormField.DbLink))) {
+					continue;//the patient has their own value
+				}
+				if(!string.IsNullOrEmpty(eFormField.ValueString)) {
+					continue;
+				}
+				eFormField.ValueString=GetPatientValueForPrefill(patientGuarantor,eFormField.DbLink)??"";
+			}
+		}
+
+		///<summary>The stored patient value for a field that can be prefilled from the guarantor. Null for any other link.</summary>
+		public static string GetPatientValueForPrefill(Patient patient,string dbLink){
+			switch(dbLink){
+				case "Address": return patient.Address;
+				case "Address2": return patient.Address2;
+				case "City": return patient.City;
+				case "State": return patient.State;
+				case "Zip": return patient.Zip;
+				case "WirelessPhone": return patient.WirelessPhone;
+				default: return null;
+			}
 		}
 
 		public static List<EnumStaticTextField> GetAllStaticTextFieldsForEForm(EForm eForm){

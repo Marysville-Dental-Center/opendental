@@ -701,9 +701,7 @@ namespace OpenDental{
 			Bridges.ICat.StartFileWatcher();
 			Bridges.TigerView.StartFileWatcher();
 			_menuItemXChargeReconcile.Available=false;
-			if(!ODBuild.IsDebug()){//if release
-				_menuItemEForms.Available=false;
-			}
+			//Setup > eForms is available in Release builds too (Open Dental 24.4). eForms are filled on a workstation in the office.
 			TurnOffHqSupplementalBackups();
 			Logger.LogToPath("BackupReminder",LogPath.Startup,LogPhase.Unspecified);
 			//Users can have strange values in their preference table which can cause unhandled exceptions when the parsed date is manipulated.
@@ -4588,7 +4586,7 @@ namespace OpenDental{
 			FrmEFormDefs frmEFormDefs=new FrmEFormDefs();
 			frmEFormDefs.ShowDialog();
 			//Nothing to refresh
-			SecurityLogs.MakeLogEntry(EnumPermType.SheetEdit,0,"EForms");
+			SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,"EForms");//Setup, as from Patient Forms, since this opens setup
 		}
 
 		private void menuItemEmail_Click(object sender, System.EventArgs e) {

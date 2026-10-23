@@ -91,6 +91,16 @@ namespace OpenDental {
 			FillGrid();
 		}
 
+		///<summary>Shows the Database Integrity triangle when the selected row's verification rows (patient eligibility, plan benefits) or its subscriber
+		///row have a SecurityHash that no longer matches: they were changed outside the program.</summary>
+		private void SetIntegrityWarning(InsVerifyGridObject insVerifyGridObject,InsSub insSub) {
+			if(!InsVerifies.IsInsVerifyHashValid(insVerifyGridObject.InsVerifyPat) || !InsVerifies.IsInsVerifyHashValid(insVerifyGridObject.InsVerifyPlan)) {
+				warningIntegrity1.SetTypeAndVisibility(EnumWarningIntegrityType.InsVerify,false);
+				return;
+			}
+			warningIntegrity1.SetTypeAndVisibility(EnumWarningIntegrityType.InsSub,InsSubs.IsInsSubHashValid(insSub));
+		}
+
 		private void FillDisplayInfo(InsVerifyGridObject insVerifyGridObject) {
 			//Always blank out the old selected information before filling with the new information.
 			textSubscriberName.Text="";
@@ -105,6 +115,7 @@ namespace OpenDental {
 			textInsPlanEmployer.Text="";
 			textInsVerifyReadOnlyNote.Text="";
 			textPatBirthdate.Text="";
+			warningIntegrity1.SetTypeAndVisibility(EnumWarningIntegrityType.InsVerify,true);//hides it
 			if(insVerifyGridObject==null) {
 				//Remove selections from the vericiation grids because the selections are intended to match the UI inside of the Insurance Plan an Subscriber group boxes.
 				gridMain.SetAll(false);
@@ -116,6 +127,7 @@ namespace OpenDental {
 				return;
 			}
 			InsSub insSubVerify=InsSubs.GetOne(patPlanVerify.InsSubNum);
+			SetIntegrityWarning(insVerifyGridObject,insSubVerify);
 			textSubscriberID.Text=insSubVerify.SubscriberID;
 			Patient patientSubscriberVerify=Patients.GetPat(insSubVerify.Subscriber);
 			if(patientSubscriberVerify!=null) {

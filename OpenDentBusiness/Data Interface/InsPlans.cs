@@ -1348,9 +1348,8 @@ namespace OpenDentBusiness {
 			//etrans.PlanNum
 			command="UPDATE etrans SET PlanNum="+POut.Long(planNumTo)+" WHERE PlanNum="+POut.Long(planNum);
 			Db.NonQ(command);
-			//inssub.PlanNum
-			command="UPDATE inssub SET PlanNum="+POut.Long(planNumTo)+" WHERE PlanNum="+POut.Long(planNum);
-			Db.NonQ(command);
+			//inssub.PlanNum (PlanNum is a hashed inssub field, so the moved rows are rehashed)
+			InsSubs.ChangePlanNum(planNum,planNumTo);
 			//payplan.PlanNum
 			command="UPDATE payplan SET PlanNum="+POut.Long(planNumTo)+" WHERE PlanNum="+POut.Long(planNum);
 			Db.NonQ(command);

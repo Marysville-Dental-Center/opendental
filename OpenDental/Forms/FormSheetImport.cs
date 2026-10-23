@@ -3481,9 +3481,10 @@ namespace OpenDental {
 					if(_listImportRows[i].DoAdd){
 						MedicationPat medicationPat=new MedicationPat();
 						medicationPat.PatNum=_patient.PatNum;
-						Medication medication=Medications.GetFirstOrDefault(x=>x.MedName.ToLower()==_listImportRows[i].MedName.ToLower());
+						//Hidden medications (Open Dental 25.1) are not offered for linking.
+						Medication medication=EFormImport.FindMedicationForImport(_listImportRows[i].MedName);
 						if(medication is null){
-							//There is no existing med (def) in the db with that name, so use the weaker unlinked strategy
+							//There is no existing visible med (def) in the db with that name, so use the weaker unlinked strategy
 							medicationPat.MedDescript=_listImportRows[i].MedName;
 						}
 						else{
@@ -3575,6 +3576,10 @@ namespace OpenDental {
 			string logText=SecurityLogHelper();
 			if(logText!="") {
 				SecurityLogs.MakeLogEntry(EnumPermType.SheetEdit,_patient.PatNum,logText,0,LogSources.None,DateTime.Now);
+			}
+			if(EFormCur!=null) {
+				//Since Open Dental 25.2 the eForm's status does not record the import (it stays Filled or None). The audit trail does.
+				SecurityLogs.MakeLogEntry(EnumPermType.EFormImport,_patient.PatNum,"eForm #"+EFormCur.EFormNum+" ("+EFormCur.Description+") imported");
 			}
 			MsgBox.Show(this,"Done.");
 			DialogResult=DialogResult.OK;

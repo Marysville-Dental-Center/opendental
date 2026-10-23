@@ -3947,6 +3947,8 @@ namespace OpenDentBusiness {
 				Db.NonQ(command);
 			}
 			//At this point, the 'patFrom' is a regular patient and is absoloutely not a guarantor.
+			//inssub.Subscriber is a hashed field and changes below, so remember patFrom's subscriber rows to rehash them afterwards.
+			List<InsSub> listInsSubsFrom=InsSubs.GetListForSubscriber(patFrom);
 			//Now modify all PatNum foreign keys from 'patFrom' to 'patTo' to complete the majority of the
 			//merge of the records between the two accounts.			
 			for(int i=0;i<StringArrayPatNumForeignKeys.Length;i++) {
@@ -3961,6 +3963,7 @@ namespace OpenDentBusiness {
 					+" WHERE "+tableAndKeyName[1]+"="+POut.Long(patFrom);
 				Db.NonQ(command);
 			}
+			InsSubs.RehashAfterDirectUpdate(listInsSubsFrom);
 			//We have changed the PatNum in the paysplit table.
 			//The PatNum field is included in the generation of the PaySplit.SecurityHash field.
 			//Rehash all their paysplits to match the new PatNum.
