@@ -42,6 +42,7 @@ namespace OpenDental{
 				throw new ApplicationException(Lan.g("AppointmentL","Recall has already been scheduled for ")+recall.DateScheduled.ToShortDateString());
 			}
 			Appointment appointment=new Appointment();
+			appointment.IsMirrored=Appointments.GetIsMirroredDefault();//25.3: new appointments take the ApptMirrorSecondary default.
 			appointment.AptDateTime=dateAppt;		
 			List<string> listProcCodes=RecallTypes.GetProcs(recall.RecallTypeNum);
 			List<Procedure> listProcedures=Appointments.FillAppointmentForRecall(appointment,recall,listRecalls,patient,listProcCodes,listInsPlans,listInsSubs);
@@ -64,16 +65,18 @@ namespace OpenDental{
 			if(procedureCode!=null) {
 				suppressHistory=(procedureCode.ProcCode.In("D9986","D9987"));
 			}
+			Appointment appointmentOld=appointment.Copy();//25.3 audit detail: the status before.
 			Appointments.SetAptStatus(appointment,ApptStatus.Broken,suppressHistory); //Appointments S-Class handles Signalods
+			string changeSummary=Appointments.GetChangeSummary(appointmentOld,appointment);
 			if(appointment.AptStatus!=ApptStatus.Complete) { //seperate log entry for completed appointments.
 				SecurityLogs.MakeLogEntry(EnumPermType.AppointmentEdit,patient.PatNum,
-					appointment.ProcDescript+", "+appointment.AptDateTime.ToString()
-					+", Broken from the Appts module.",appointment.AptNum,datePrevious);
+					Appointments.AppendAuditDetail(appointment.ProcDescript+", "+appointment.AptDateTime.ToString()
+					+", Broken from the Appts module.",changeSummary),appointment.AptNum,datePrevious);
 			}
 			else {
 				SecurityLogs.MakeLogEntry(EnumPermType.AppointmentCompleteEdit,patient.PatNum,
-					appointment.ProcDescript+", "+appointment.AptDateTime.ToString()
-					+", Broken from the Appts module.",appointment.AptNum,datePrevious);
+					Appointments.AppendAuditDetail(appointment.ProcDescript+", "+appointment.AptDateTime.ToString()
+					+", Broken from the Appts module.",changeSummary),appointment.AptNum,datePrevious);
 			}
 			#region HL7
 			//If there is an existing HL7 def enabled, send a SIU message if there is an outbound SIU message defined
@@ -311,16 +314,18 @@ namespace OpenDental{
 		/// Creates SecurityLogs and considers HL7.</summary>
 		public static void SetApptUnschedHelper(Appointment appointment,Patient patient=null,bool doFireApptEvent=true) {
 			DateTime datePrevious=appointment.DateTStamp;
+			Appointment appointmentOld=appointment.Copy();//25.3 audit detail: the status and slot it held before.
 			Appointments.SetAptStatus(appointment,ApptStatus.UnschedList); //Appointments S-Class handles Signalods
 			#region SecurityLogs
+			string unscheduleSummary=Appointments.GetUnscheduleSummary(appointmentOld);
 			if(appointment.AptStatus!=ApptStatus.Complete) { //seperate log entry for editing completed appts.
 				SecurityLogs.MakeLogEntry(EnumPermType.AppointmentMove,appointment.PatNum,
-					appointment.ProcDescript+", "+appointment.AptDateTime.ToString()+", Sent to Unscheduled List",
+					Appointments.AppendAuditDetail(appointment.ProcDescript+", "+appointment.AptDateTime.ToString()+", Sent to Unscheduled List",unscheduleSummary),
 					appointment.AptNum,datePrevious);
 			}
 			else {
 				SecurityLogs.MakeLogEntry(EnumPermType.AppointmentCompleteEdit,appointment.PatNum,
-					appointment.ProcDescript+", "+appointment.AptDateTime.ToString()+", Sent to Unscheduled List",
+					Appointments.AppendAuditDetail(appointment.ProcDescript+", "+appointment.AptDateTime.ToString()+", Sent to Unscheduled List",unscheduleSummary),
 					appointment.AptNum,datePrevious);
 			}
 			#endregion
@@ -429,6 +434,7 @@ namespace OpenDental{
 				return PlannedApptStatus.Failure;
 			}
 			Appointment appointment=new Appointment();
+			appointment.IsMirrored=Appointments.GetIsMirroredDefault();//25.3: new appointments take the ApptMirrorSecondary default.
 			appointment.PatNum=patient.PatNum;
 			appointment.ProvNum=patient.PriProv;
 			appointment.ClinicNum=patient.ClinicNum;

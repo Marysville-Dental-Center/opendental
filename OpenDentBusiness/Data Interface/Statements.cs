@@ -15,7 +15,7 @@ using System.Xml.Serialization;
 namespace OpenDentBusiness {
 
 	///<summary></summary>
-	public class Statements{
+	public partial class Statements{
 		#region Get Methods
 		///<Summary>Gets one statement from the database.</Summary>
 		public static Statement GetStatement(long statementNum) {

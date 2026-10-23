@@ -170,6 +170,193 @@ namespace OpenDentBusiness {
 		}
 	}
 	
+	///<summary>The local log of failed PayConnect calls. Open Dental 25.3 writes these to its eConnector log; this program has no eConnector, and
+	///every PayConnect call goes from the desktop straight to DentalXChange, so each workstation logs its own failures: one line per failed call,
+	///in the PayConnect subfolder of the Logger folder, kept DaysKept days. A line never carries a full card number, a CVV, a card token, a password
+	///or a key: of the card, only the last 4 characters.</summary>
+	public class PayConnectErrorLog {
+		///<summary>The Logger subfolder.</summary>
+		public const string SubDirectory="PayConnect";
+		///<summary>How long log files are kept (the Logger default).</summary>
+		public const int DaysKept=90;
+		///<summary>How many lines PayConnect Setup shows.</summary>
+		public const int RecentLinesShown=50;
+		///<summary>Longest message kept in a line.</summary>
+		private const int MAX_MESSAGE_LENGTH=500;
+		///<summary>A run of 12 to 19 digits, optionally split by spaces or dashes: what a card number looks like.</summary>
+		private static readonly Regex _regexCardNumber=new Regex(@"(?<![0-9])[0-9](?:[ -]?[0-9]){11,18}(?![0-9])");
+		///<summary>Tests only: when set, each line goes here (without Logger's timestamp) instead of to the log folder.</summary>
+		public static Action<string> ActionWriteLineForTests;
+
+		///<summary>One failed call. Every field is optional.</summary>
+		public class Entry {
+			public string Workstation="";
+			public string UserName="";
+			///<summary>The clinic whose merchant account was used. 0 for the practice, or when the call had no clinic (setup's test connection).</summary>
+			public long ClinicNum;
+			public long PatNum;
+			///<summary>What was attempted, for example "sale", "recurring sale", "refund", "void", "card token form", "status".</summary>
+			public string Operation="";
+			public int? AmountCents;
+			///<summary>0 when no answer arrived.</summary>
+			public int HttpStatus;
+			///<summary>Whether the request reached PayConnect (PayConnect2.PayConnectRequestOutcome), or blank.</summary>
+			public string Outcome="";
+			///<summary>PayConnect's own response code (an error object's "code", or the status of an answer that is not an approval), or blank when
+			///PayConnect sent none or no answer arrived.</summary>
+			public string VendorCode="";
+			///<summary>This program's classification of the error (PayConnect2.PayConnectErrorKind, or HostedForm, Exception, NotApproved), or blank.</summary>
+			public string ErrorKind="";
+			///<summary>PayConnect's message, or ours. Scrubbed of anything that looks like a card number.</summary>
+			public string Message="";
+			///<summary>Last 4 characters of the card or token only.</summary>
+			public string CardLast4="";
+			///<summary>The correlation ID sent as invoiceNumber, so the transaction can be looked up in the PayConnect portal. Opaque.</summary>
+			public string InvoiceNumber="";
+		}
+
+		///<summary>An entry for this workstation and the logged-on user (blank when nobody is logged on).</summary>
+		public static Entry MakeEntry(string operation,long clinicNum,long patNum) {
+			Entry entry=new Entry();
+			entry.Operation=operation??"";
+			entry.ClinicNum=clinicNum;
+			entry.PatNum=patNum;
+			try {
+				entry.Workstation=ODEnvironment.MachineName??"";
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+			}
+			try {
+				entry.UserName=Security.CurUser?.UserName??"";
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+			}
+			return entry;
+		}
+
+		///<summary>The log line for an entry: tab-separated Name=value fields, in a fixed order. Logger adds the time.</summary>
+		public static string FormatLine(Entry entry) {
+			List<string> listFields=new List<string>();
+			listFields.Add("ERROR");
+			listFields.Add("Workstation="+ScrubText(entry.Workstation,100));
+			listFields.Add("User="+ScrubText(entry.UserName,100));
+			listFields.Add("Clinic="+entry.ClinicNum.ToString(System.Globalization.CultureInfo.InvariantCulture));
+			listFields.Add("PatNum="+entry.PatNum.ToString(System.Globalization.CultureInfo.InvariantCulture));
+			listFields.Add("Operation="+ScrubText(entry.Operation,100));
+			listFields.Add("Amount="+(entry.AmountCents.HasValue ? FormatAmount(entry.AmountCents.Value) : ""));
+			listFields.Add("HTTP="+(entry.HttpStatus>0 ? entry.HttpStatus.ToString(System.Globalization.CultureInfo.InvariantCulture) : ""));
+			listFields.Add("Outcome="+ScrubText(entry.Outcome,50));
+			listFields.Add("Code="+ScrubText(entry.VendorCode,50));
+			listFields.Add("Kind="+ScrubText(entry.ErrorKind,50));
+			listFields.Add("Card="+GetLast4(entry.CardLast4));
+			listFields.Add("Invoice="+ScrubText(entry.InvoiceNumber,50,doMaskCardNumbers:false));
+			listFields.Add("Message="+ScrubText(entry.Message,MAX_MESSAGE_LENGTH));
+			return string.Join("\t",listFields);
+		}
+
+		///<summary>Writes one line for the entry. Never throws: a logging failure must never break a payment.</summary>
+		public static void Write(Entry entry) {
+			if(entry==null) {
+				return;
+			}
+			WriteLine(FormatLine(entry));
+		}
+
+		///<summary>The summary line written after a recurring-charge run that charged PayConnect cards.</summary>
+		public static string FormatRecurringSummary(int countCards,int countApproved,int countDeclined,int countFailed) {
+			string workstation="";
+			try {
+				workstation=ODEnvironment.MachineName??"";
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+			}
+			string userName="";
+			try {
+				userName=Security.CurUser?.UserName??"";
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+			}
+			return string.Join("\t",new[] {
+				"SUMMARY",
+				"Workstation="+ScrubText(workstation,100),
+				"User="+ScrubText(userName,100),
+				"Operation=recurring charges",
+				"Cards="+countCards.ToString(System.Globalization.CultureInfo.InvariantCulture),
+				"Approved="+countApproved.ToString(System.Globalization.CultureInfo.InvariantCulture),
+				"Declined="+countDeclined.ToString(System.Globalization.CultureInfo.InvariantCulture),
+				"Failed="+countFailed.ToString(System.Globalization.CultureInfo.InvariantCulture),
+			});
+		}
+
+		///<summary>Writes the summary line of a recurring-charge run. Nothing is written when the run charged no PayConnect card.</summary>
+		public static void WriteRecurringSummary(int countCards,int countApproved,int countDeclined,int countFailed) {
+			if(countCards<=0) {
+				return;
+			}
+			WriteLine(FormatRecurringSummary(countCards,countApproved,countDeclined,countFailed));
+		}
+
+		///<summary>The last lines of this workstation's PayConnect log, oldest first, for PayConnect Setup.</summary>
+		public static List<string> GetRecentLines(int maxLines=RecentLinesShown) {
+			return Logger.GetRecentLines(SubDirectory,maxLines);
+		}
+
+		///<summary>The last 4 letters or digits of a card number, masked number or token, or "" if it has fewer than 4. Anything else is dropped
+		///first, so "XXXXXXXXXXXX1234" and "4111 1111 1111 1234" both give "1234".</summary>
+		public static string GetLast4(string cardOrToken) {
+			if(string.IsNullOrEmpty(cardOrToken)) {
+				return "";
+			}
+			string alphanumeric=new string(cardOrToken.Where(x => char.IsLetterOrDigit(x) && x<128).ToArray());
+			if(alphanumeric.Length<4) {
+				return "";
+			}
+			return alphanumeric.Substring(alphanumeric.Length-4);
+		}
+
+		///<summary>Text made safe for one log field: tabs and line breaks become spaces, anything that looks like a card number is replaced (unless
+		///doMaskCardNumbers is false, for our own opaque IDs), and the result is trimmed and cut to maxLength.</summary>
+		public static string ScrubText(string text,int maxLength=MAX_MESSAGE_LENGTH,bool doMaskCardNumbers=true) {
+			if(string.IsNullOrEmpty(text)) {
+				return "";
+			}
+			StringBuilder stringBuilder=new StringBuilder(text.Length);
+			foreach(char c in text) {
+				stringBuilder.Append(char.IsControl(c) ? ' ' : c);
+			}
+			string scrubbed=stringBuilder.ToString();
+			if(doMaskCardNumbers) {
+				scrubbed=_regexCardNumber.Replace(scrubbed,"[card number removed]");
+			}
+			scrubbed=scrubbed.Trim();
+			if(scrubbed.Length>maxLength) {
+				scrubbed=scrubbed.Substring(0,maxLength);
+			}
+			return scrubbed;
+		}
+
+		private static string FormatAmount(int amountCents) {
+			return (amountCents/100m).ToString("0.00",System.Globalization.CultureInfo.InvariantCulture);
+		}
+
+		private static void WriteLine(string line) {
+			try {
+				if(ActionWriteLineForTests!=null) {
+					ActionWriteLineForTests(line);
+					return;
+				}
+				Logger.WriteLine(line,SubDirectory,DaysKept);
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+			}
+		}
+	}
+
 	///<summary>The method of completing PayConnect credit card transactions.</summary>
 	public enum PayConnectProcessingMethod {
 		///<summary>Performs transactions by making a web call to PayConnect's service.</summary>

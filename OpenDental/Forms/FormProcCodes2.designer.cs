@@ -93,6 +93,8 @@ namespace OpenDental {
 			this.label20 = new System.Windows.Forms.Label();
 			this.label19 = new System.Windows.Forms.Label();
 			this.label22 = new System.Windows.Forms.Label();
+			this.labelFeesAsOf = new System.Windows.Forms.Label();
+			this.textFeesAsOf = new OpenDental.ValidDate();
 			this.groupBox1.SuspendLayout();
 			this.groupProcCodeSetup.SuspendLayout();
 			this.groupBox2.SuspendLayout();
@@ -821,9 +823,31 @@ namespace OpenDental {
 			this.label22.Text = "= Provider";
 			this.label22.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 			// 
+			// labelFeesAsOf
+			//
+			this.labelFeesAsOf.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			this.labelFeesAsOf.Location = new System.Drawing.Point(779, 665);
+			this.labelFeesAsOf.Name = "labelFeesAsOf";
+			this.labelFeesAsOf.Size = new System.Drawing.Size(64, 18);
+			this.labelFeesAsOf.TabIndex = 31;
+			this.labelFeesAsOf.Text = "Fees as of";
+			this.labelFeesAsOf.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			//
+			// textFeesAsOf
+			//
+			this.textFeesAsOf.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			this.textFeesAsOf.Location = new System.Drawing.Point(845, 665);
+			this.textFeesAsOf.Name = "textFeesAsOf";
+			this.textFeesAsOf.Size = new System.Drawing.Size(76, 20);
+			this.textFeesAsOf.TabIndex = 32;
+			this.textFeesAsOf.Leave += new System.EventHandler(this.textFeesAsOf_Leave);
+			this.textFeesAsOf.KeyDown += new System.Windows.Forms.KeyEventHandler(this.textFeesAsOf_KeyDown);
+			//
 			// FormProcCodes
-			// 
+			//
 			this.ClientSize = new System.Drawing.Size(1014, 696);
+			this.Controls.Add(this.labelFeesAsOf);
+			this.Controls.Add(this.textFeesAsOf);
 			this.Controls.Add(this.butTools);
 			this.Controls.Add(this.groupBox5);
 			this.Controls.Add(this.butEditFeeSched);
@@ -923,5 +947,7 @@ namespace OpenDental {
 		private UI.ComboBox comboFeeSchedGroup1;
 		private UI.ComboBox comboFeeSchedGroup2;
 		private UI.ComboBox comboFeeSchedGroup3;
+		private Label labelFeesAsOf;
+		private ValidDate textFeesAsOf;
 	}
 }

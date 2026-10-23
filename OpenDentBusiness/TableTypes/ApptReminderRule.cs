@@ -281,6 +281,12 @@ namespace OpenDentBusiness {
 		[ReminderRuleType(IsForAppointment=false)]
 		[Description("Payment Portal Msg-To-Pay")]
 		PayPortalMsgToPay,
+		///<summary>11 - Reserved (Open Dental 25.2). eClipboard web links for existing patients, sent by hand from an appointment. eClipboard is not
+		///in this program, so no rule of this type is created here.</summary>
+		[ReminderRuleType(IsForAppointment=true)]
+		[Description("eClipboard Web")]
+		[ReservedEnumValue("eClipboard is an Open Dental hosted service.")]
+		EClipboardWeb,
 	}
 
 	public class ReminderRuleTypeAttribute : Attribute {

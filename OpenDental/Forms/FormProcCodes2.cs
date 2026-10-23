@@ -53,6 +53,15 @@ namespace OpenDental {
 		///<summary>Set to true when IsSelectionMode is true and the user should be able to select multiple procedure codes instead of just one.
 		///ListSelectedProcCodes will contain all of the procedure codes that the user selected.</summary>
 		public bool CanAllowMultipleSelections;
+		///<summary>The "Fees as of" date: the fee columns show the fees in effect on this date. Today unless the user picks another date. When it is
+		///not today, typing a fee creates or updates the row that starts on this date (fee.DateEffective).</summary>
+		private DateTime _dateFeesAsOf=DateTime.Today;
+		///<summary>Built from _listFees on every FillGrid, so each cell is a dictionary lookup instead of a scan of every fee.</summary>
+		private FeeIndex _feeIndex;
+		///<summary>The grid column under the last right-click, for the View Fee Schedule Notes menu.</summary>
+		private int _colRightClick=-1;
+		private ContextMenu _contextMenuGrid;
+		private MenuItem _menuItemFeeSchedNotes;
 
 		///<summary>When canShowHidden is true to the "Hidden" checkbox and "default" button are visible.</summary>
 		public FormProcCodes(bool canShowHidden=false) {
@@ -118,6 +127,13 @@ namespace OpenDental {
 			LayoutManager.MoveLocation(comboFeeSchedGroup2,new Point(LayoutManager.Scale(14),LayoutManager.Scale(96)));
 			LayoutManager.MoveLocation(comboFeeSchedGroup3,new Point(LayoutManager.Scale(14),LayoutManager.Scale(96)));
 			FillComboBoxes();
+			textFeesAsOf.Text=_dateFeesAsOf.ToShortDateString();
+			_menuItemFeeSchedNotes=new MenuItem(Lan.g(this,"View Fee Schedule Notes"),menuItemFeeSchedNotes_Click);
+			_contextMenuGrid=new ContextMenu();
+			_contextMenuGrid.MenuItems.Add(_menuItemFeeSchedNotes);
+			_contextMenuGrid.Popup+=contextMenuGrid_Popup;
+			gridMain.ContextMenu=_contextMenuGrid;
+			gridMain.MouseDown+=gridMain_MouseDown;
 			SynchAndFillListFees(false);
 			_needsSynch=false;
 			for(int i=0;i<Enum.GetNames(typeof(ProcCodeListSort)).Length;i++) {
@@ -372,7 +388,17 @@ namespace OpenDental {
 			//first, synch the old list
 			Cursor=Cursors.WaitCursor;
 			if(doIncludeSynch && _listFeesDb!=null){
-				Fees.SynchList(_listFees,_listFeesDb);
+				try {
+					Fees.SynchList(_listFees,_listFeesDb);
+				}
+				catch(ApplicationException ex) {
+					//An edited fee has the same fee schedule, code, clinic, provider and effective date as another row. Nothing was written. This can
+					//happen when the edited fee is itself one of a pair of duplicates left over from before fee effective dates.
+					Cursor=Cursors.Default;
+					MessageBox.Show(Lan.g(this,"Fee changes could not be saved.")+"\r\n"+ex.Message+"\r\n"
+						+Lan.g(this,"Run Database Maintenance to remove duplicate fees (FeeDeleteDuplicates), then enter the fees again."));
+					Cursor=Cursors.WaitCursor;
+				}
 				_needsSynch=false;
 			}
 			//Then, fill a new list
@@ -526,7 +552,14 @@ namespace OpenDental {
 					clinic3Num=comboClinic3.ClinicNumSelected;
 				}
 			}
+			_feeIndex=new FeeIndex(_listFees,_dateFeesAsOf);
 			gridMain.BeginUpdate();
+			if(_dateFeesAsOf==DateTime.Today) {
+				gridMain.Title=Lan.g("TableProcedures","Procedures");
+			}
+			else {
+				gridMain.Title=Lan.g("TableProcedures","Procedures")+" - "+Lan.g(this,"fees as of")+" "+_dateFeesAsOf.ToShortDateString();
+			}
 			gridMain.Columns.Clear();
 			//The order of these columns are important for gridMain_CellDoubleClick(), gridMain_CellLeave(), and GridMain_CellEnter()
 			GridColumn col=new GridColumn(Lan.g("TableProcedures","Category"),90);
@@ -588,14 +621,14 @@ namespace OpenDental {
 				row.Cells.Add(listProcedureCodes[i].Descript);
 				row.Cells.Add(listProcedureCodes[i].AbbrDesc);
 				row.Cells.Add(listProcedureCodes[i].ProcCode);
-				Fee fee1=Fees.GetFee(listProcedureCodes[i].CodeNum,feeSched1.FeeSchedNum,clinic1Num,provider1Num,_listFees);
+				Fee fee1=_feeIndex.GetFee(listProcedureCodes[i].CodeNum,feeSched1.FeeSchedNum,clinic1Num,provider1Num,feeSched1.IsGlobal);
 				Fee fee2=null;
 				if(feeSched2!=null) {
-					fee2=Fees.GetFee(listProcedureCodes[i].CodeNum,feeSched2.FeeSchedNum,clinic2Num,provider2Num,_listFees);
+					fee2=_feeIndex.GetFee(listProcedureCodes[i].CodeNum,feeSched2.FeeSchedNum,clinic2Num,provider2Num,feeSched2.IsGlobal);
 				}
 				Fee fee3=null;
 				if(feeSched3!=null) {
-					fee3=Fees.GetFee(listProcedureCodes[i].CodeNum,feeSched3.FeeSchedNum,clinic3Num,provider3Num,_listFees);
+					fee3=_feeIndex.GetFee(listProcedureCodes[i].CodeNum,feeSched3.FeeSchedNum,clinic3Num,provider3Num,feeSched3.IsGlobal);
 				}
 				if(fee1==null || fee1.Amount==-1) {
 					row.Cells.Add("");
@@ -721,7 +754,7 @@ namespace OpenDental {
 						clinicNum=comboClinic1.ClinicNumSelected;
 					}
 				}
-				fee=Fees.GetFee(codeNum,feeSched.FeeSchedNum,clinicNum,provNum,_listFees);
+				fee=Fees.GetFee(codeNum,feeSched.FeeSchedNum,clinicNum,provNum,_listFees,_dateFeesAsOf);
 			}
 			else if(e.Col==5) {
 				if(comboFeeSched2.SelectedIndex==0) {//It's on the "none" option
@@ -742,7 +775,7 @@ namespace OpenDental {
 						clinicNum=comboClinic2.ClinicNumSelected;
 					}
 				}
-				fee=Fees.GetFee(codeNum,feeSched.FeeSchedNum,clinicNum,provNum,_listFees);
+				fee=Fees.GetFee(codeNum,feeSched.FeeSchedNum,clinicNum,provNum,_listFees,_dateFeesAsOf);
 			}
 			else if(e.Col==6) {
 				if(comboFeeSched3.SelectedIndex==0) {//It's on the "none" option
@@ -763,9 +796,13 @@ namespace OpenDental {
 						clinicNum=comboClinic3.ClinicNumSelected;
 					}
 				}
-				fee=Fees.GetFee(codeNum,feeSched.FeeSchedNum,clinicNum,provNum,_listFees);
+				fee=Fees.GetFee(codeNum,feeSched.FeeSchedNum,clinicNum,provNum,_listFees,_dateFeesAsOf);
 			}
 			Fee feeOrig=fee?.Copy();
+			//With "Fees as of" set to another day than today, a typed fee goes to the row that starts on that day: an existing row of that key and
+			//date is updated, otherwise a row is added. With today, the row shown is edited, as before effective dates existed.
+			bool isDatedEdit=(_dateFeesAsOf!=DateTime.Today);
+			DateTime dateEffectiveNew=(isDatedEdit ? _dateFeesAsOf : Fees.DateEffectiveAlways);
 			//Fees set in the 3 ifs above.  If too slow, we will just put the fee into a Tag during FillGrid() and run FillGrid less
 			//Fee fee=_feeCache.GetFee(codeNum,feeSched.FeeSchedNum,clinicNum,provNum);
 			DateTime datePrevious=DateTime.MinValue;
@@ -817,13 +854,14 @@ namespace OpenDental {
 				gridMain.ListGridRows[e.Row].Cells[e.Col].Text=feeAmtNew.ToString("n"); //Fix the number formatting and display it.
 			}
 			if(feeSched.IsGlobal) { //Global fee schedules have only one fee so blindly insert/update the fee. There will be no more localized copy.
-				if(fee==null) { //Fee doesn't exist, insert
+				if(fee==null || (feeAmtNewStr!="" && isDatedEdit && fee.DateEffective.Date!=_dateFeesAsOf)) { //Fee doesn't exist (on this date), insert
 					fee=new Fee();
 					fee.FeeSched=feeSched.FeeSchedNum;
 					fee.CodeNum=codeNum;
 					fee.Amount=feeAmtNew;
 					fee.ClinicNum=0;
 					fee.ProvNum=0;
+					fee.DateEffective=dateEffectiveNew;
 					_listFees.Add(fee);
 				}
 				else { //Fee does exist, update or delete.
@@ -849,6 +887,7 @@ namespace OpenDental {
 						fee.Amount=-1.0;
 						fee.ClinicNum=clinicNum;
 						fee.ProvNum=provNum;
+						fee.DateEffective=dateEffectiveNew;
 						_listFees.Add(fee);
 						if(isEditingGroup
 							&& feeSchedGroupSelected!=null
@@ -860,7 +899,8 @@ namespace OpenDental {
 								if(feeSchedGroupSelected.ListClinicNumsAll[i]==clinicNum) {
 									continue;
 								}
-								List<Fee> listFees=_listFees.FindAll(x => x.FeeSched==feeSched.FeeSchedNum && x.CodeNum==codeNum && x.ClinicNum==feeSchedGroupSelected.ListClinicNumsAll[i] && x.ProvNum==provNum);
+								List<Fee> listFees=_listFees.FindAll(x => x.FeeSched==feeSched.FeeSchedNum && x.CodeNum==codeNum && x.ClinicNum==feeSchedGroupSelected.ListClinicNumsAll[i] && x.ProvNum==provNum
+									&& x.DateEffective.Date==dateEffectiveNew);
 								if(listFees.IsNullOrEmpty()) {
 									Fee feeAdd=new Fee();
 									feeAdd.FeeSched=feeSched.FeeSchedNum;
@@ -868,6 +908,7 @@ namespace OpenDental {
 									feeAdd.Amount=-1.0;
 									feeAdd.ClinicNum=feeSchedGroupSelected.ListClinicNumsAll[i];
 									feeAdd.ProvNum=provNum;
+									feeAdd.DateEffective=dateEffectiveNew;
 									_listFees.Add(feeAdd);
 									continue;
 								}
@@ -885,18 +926,21 @@ namespace OpenDental {
 							&& feeSchedGroupSelected.ListClinicNumsAll.Contains(clinicNum)
 							&& feeSchedGroupSelected.ListClinicNumsAll.Any(x => x!=clinicNum))
 						{
-							_listFees.RemoveAll(x => x.FeeSched==feeSched.FeeSchedNum && x.CodeNum==codeNum && feeSchedGroupSelected.ListClinicNumsAll.Contains(x.ClinicNum) && x.ProvNum==provNum);
+							_listFees.RemoveAll(x => x.FeeSched==feeSched.FeeSchedNum && x.CodeNum==codeNum && feeSchedGroupSelected.ListClinicNumsAll.Contains(x.ClinicNum) && x.ProvNum==provNum
+								&& x.DateEffective.Date==fee.DateEffective.Date);
 						}
 					}
 				}
-				//The fee did not previously exist, or the fee found isn't for the currently set settings.
-				else if(fee==null || fee.ClinicNum!=clinicNum || fee.ProvNum!=provNum) {
+				//The fee did not previously exist, or the fee found isn't for the currently set settings (or, with a "Fees as of" date, starts on
+				//another day).
+				else if(fee==null || fee.ClinicNum!=clinicNum || fee.ProvNum!=provNum || (isDatedEdit && fee.DateEffective.Date!=_dateFeesAsOf)) {
 					fee=new Fee();
 					fee.FeeSched=feeSched.FeeSchedNum;
 					fee.CodeNum=codeNum;
 					fee.Amount=feeAmtNew;
 					fee.ClinicNum=clinicNum;
 					fee.ProvNum=provNum;
+					fee.DateEffective=dateEffectiveNew;
 					_listFees.Add(fee);
 					if(isEditingGroup
 						&& feeSchedGroupSelected!=null
@@ -908,7 +952,8 @@ namespace OpenDental {
 							if(feeSchedGroupSelected.ListClinicNumsAll[i]==clinicNum) {
 								continue;
 							}
-							List<Fee> listFees=_listFees.FindAll(x => x.FeeSched==feeSched.FeeSchedNum && x.CodeNum==codeNum && x.ClinicNum==feeSchedGroupSelected.ListClinicNumsAll[i] && fee.ProvNum==provNum);
+							List<Fee> listFees=_listFees.FindAll(x => x.FeeSched==feeSched.FeeSchedNum && x.CodeNum==codeNum && x.ClinicNum==feeSchedGroupSelected.ListClinicNumsAll[i] && fee.ProvNum==provNum
+								&& x.DateEffective.Date==dateEffectiveNew);
 							if(listFees.IsNullOrEmpty()) {
 								Fee feeAdd=new Fee();
 								feeAdd.FeeSched=feeSched.FeeSchedNum;
@@ -916,6 +961,7 @@ namespace OpenDental {
 								feeAdd.Amount=feeAmtNew;
 								feeAdd.ClinicNum=feeSchedGroupSelected.ListClinicNumsAll[i];
 								feeAdd.ProvNum=provNum;
+								feeAdd.DateEffective=dateEffectiveNew;
 								_listFees.Add(feeAdd);
 								continue;
 							}
@@ -937,7 +983,8 @@ namespace OpenDental {
 							if(feeSchedGroupSelected.ListClinicNumsAll[i]==clinicNum) {
 								continue;
 							}
-							List<Fee> listFees=_listFees.FindAll(x => x.FeeSched==feeSched.FeeSchedNum && x.CodeNum==codeNum && x.ClinicNum==feeSchedGroupSelected.ListClinicNumsAll[i] && fee.ProvNum==provNum);
+							List<Fee> listFees=_listFees.FindAll(x => x.FeeSched==feeSched.FeeSchedNum && x.CodeNum==codeNum && x.ClinicNum==feeSchedGroupSelected.ListClinicNumsAll[i] && fee.ProvNum==provNum
+								&& x.DateEffective.Date==fee.DateEffective.Date);
 							if(listFees.IsNullOrEmpty()) {
 								Fee feeAdd=new Fee();
 								feeAdd.FeeSched=feeSched.FeeSchedNum;
@@ -945,6 +992,7 @@ namespace OpenDental {
 								feeAdd.Amount=feeAmtNew;
 								feeAdd.ClinicNum=feeSchedGroupSelected.ListClinicNumsAll[i];
 								feeAdd.ProvNum=provNum;
+								feeAdd.DateEffective=fee.DateEffective;
 								_listFees.Add(feeAdd);
 								continue;
 							}
@@ -958,6 +1006,7 @@ namespace OpenDental {
 			SecurityLog securityLog=SecurityLogs.MakeLogEntryNoInsert(EnumPermType.ProcFeeEdit,0,"Procedure: "+ProcedureCodes.GetStringProcCode(fee.CodeNum)
 				+", Fee: "+fee.Amount.ToString("c")
 				+", Fee Schedule: "+FeeScheds.GetDescription(fee.FeeSched)
+				+Fees.GetDateEffectiveLogText(fee.DateEffective)
 				+". Manual edit in grid from Procedure Codes list.",fee.CodeNum,LogSources.None);
 			_listSecurityLogs.Add(securityLog);
 			_listSecurityLogs.Add(SecurityLogs.MakeLogEntryNoInsert(EnumPermType.LogFeeEdit,0,"Fee changed",fee.FeeNum,LogSources.None,
@@ -1479,6 +1528,107 @@ namespace OpenDental {
 			SynchAndFillListFees(_needsSynch);
 			FillGrid();
 		}
+
+		#region Fees as of, fee schedule notes
+		private void textFeesAsOf_KeyDown(object sender,KeyEventArgs e) {
+			if(e.KeyCode==Keys.Enter) {
+				ApplyFeesAsOf();
+				e.SuppressKeyPress=true;
+			}
+		}
+
+		private void textFeesAsOf_Leave(object sender,EventArgs e) {
+			ApplyFeesAsOf();
+		}
+
+		///<summary>Reads the "Fees as of" box. Blank means today. Saves pending grid edits before the columns change date.</summary>
+		private void ApplyFeesAsOf() {
+			if(!textFeesAsOf.IsValid()) {
+				MsgBox.Show(this,"Please enter a valid date.");
+				textFeesAsOf.Text=_dateFeesAsOf.ToShortDateString();
+				return;
+			}
+			DateTime dateAsOf=DateTime.Today;
+			if(textFeesAsOf.Text.Trim()!="") {
+				dateAsOf=PIn.Date(textFeesAsOf.Text).Date;
+			}
+			textFeesAsOf.Text=dateAsOf.ToShortDateString();
+			if(dateAsOf==_dateFeesAsOf) {
+				return;
+			}
+			if(_needsSynch) {
+				SynchAndFillListFees(true);
+			}
+			_dateFeesAsOf=dateAsOf;
+			FillGrid();
+		}
+
+		private void gridMain_MouseDown(object sender,MouseEventArgs e) {
+			if(e.Button==MouseButtons.Right) {
+				_colRightClick=gridMain.PointToCol(e.X);
+			}
+		}
+
+		private void contextMenuGrid_Popup(object sender,EventArgs e) {
+			_menuItemFeeSchedNotes.Enabled=(GetFeeSchedForColumn(_colRightClick)!=null);
+		}
+
+		///<summary>The fee schedule shown in a fee column (4 to 6), or null for other columns or a "None" column.</summary>
+		private FeeSched GetFeeSchedForColumn(int col) {
+			if(col==4 && comboFeeSched1.SelectedIndex>-1 && comboFeeSched1.SelectedIndex<_listFeeScheds.Count) {
+				return _listFeeScheds[comboFeeSched1.SelectedIndex];
+			}
+			if(col==5 && comboFeeSched2.SelectedIndex>0) {
+				return _listFeeScheds[comboFeeSched2.SelectedIndex-1];
+			}
+			if(col==6 && comboFeeSched3.SelectedIndex>0) {
+				return _listFeeScheds[comboFeeSched3.SelectedIndex-1];
+			}
+			return null;
+		}
+
+		///<summary>The clinic of a fee column (4 to 6): the selected clinic, or the first clinic of the selected fee schedule group. 0 when clinics are off.
+		///</summary>
+		private long GetClinicNumForColumn(int col) {
+			if(!PrefC.HasClinicsEnabled) {
+				return 0;
+			}
+			if(col==4) {
+				if(checkGroups1.Checked && comboFeeSchedGroup1.SelectedIndex>-1) {
+					return comboFeeSchedGroup1.GetSelected<FeeSchedGroup>().ListClinicNumsAll.FirstOrDefault();
+				}
+				return Math.Max(0,comboClinic1.ClinicNumSelected);
+			}
+			if(col==5) {
+				if(checkGroups2.Checked && comboFeeSchedGroup2.SelectedIndex>-1) {
+					return comboFeeSchedGroup2.GetSelected<FeeSchedGroup>().ListClinicNumsAll.FirstOrDefault();
+				}
+				return Math.Max(0,comboClinic2.ClinicNumSelected);
+			}
+			if(col==6) {
+				if(checkGroups3.Checked && comboFeeSchedGroup3.SelectedIndex>-1) {
+					return comboFeeSchedGroup3.GetSelected<FeeSchedGroup>().ListClinicNumsAll.FirstOrDefault();
+				}
+				return Math.Max(0,comboClinic3.ClinicNumSelected);
+			}
+			return 0;
+		}
+
+		///<summary>Right-click on a fee column: the notes of that column's fee schedule, read-only, filtered to its clinic (all notes for the default
+		///clinic).</summary>
+		private void menuItemFeeSchedNotes_Click(object sender,EventArgs e) {
+			FeeSched feeSched=GetFeeSchedForColumn(_colRightClick);
+			if(feeSched==null) {
+				return;
+			}
+			FrmFeeSchedNotes frmFeeSchedNotes=new FrmFeeSchedNotes();
+			frmFeeSchedNotes.FeeSchedNum=feeSched.FeeSchedNum;
+			frmFeeSchedNotes.IsReadOnly=true;
+			long clinicNum=GetClinicNumForColumn(_colRightClick);
+			frmFeeSchedNotes.ClinicNumFilter=(clinicNum>0 ? clinicNum : -1);
+			frmFeeSchedNotes.ShowDialog();
+		}
+		#endregion Fees as of, fee schedule notes
 
 		private void butOK_Click(object sender,System.EventArgs e) {
 			if(gridMain.SelectedIndices.Length==0) {

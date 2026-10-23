@@ -201,7 +201,9 @@ namespace OpenDentBusiness {
 
 		///<summary>Creates charge rows for display on the form from the data table input. Similar to CreateRowForPayPlanCharge but for use with sheets/datatables. The payPlanCharge argument will only have Principal, Interest, and ChargeDate set if it is for a Dynamic Pay Plan aggregate row.</summary>
 		public static DataRow CreateRowForPayPlanChargeDT(DataTable table,PayPlanCharge payPlanCharge,int payPlanChargeOrdinal,bool isDynamic,bool hasExpectedChargesAwaitingCompletion=false) {
+			EnsureDownPaymentColumn(table);
 			DataRow retVal=table.NewRow();
+			retVal[COLUMN_IS_DOWN_PAYMENT]=payPlanCharge.IsDownPayment;
 			string chargeDate=payPlanCharge.ChargeDate.ToShortDateString();
 			string interestAmt=payPlanCharge.Interest.ToString("f");
 			string paymentDue=(payPlanCharge.Principal+payPlanCharge.Interest).ToString("n");
@@ -266,10 +268,13 @@ namespace OpenDentBusiness {
 
 		///<summary>Creates pay plan rows for display on the form from the data table input.</summary>
 		public static DataRow CreateRowForPayPlanListDT(DataTable table,DataRow payPlanList,int payPlanListOrdinal,bool isDynamic) {
+			EnsureDownPaymentColumn(table);
 			DataRow retVal=table.NewRow();
 			string descript;
 			string note=payPlanList[2].ToString().Trim().ToLower();
-			if(note.Contains("downpayment") || note.Contains("down payment")) {//description
+			bool isDownPayment=IsDownPaymentRow(payPlanList);
+			retVal[COLUMN_IS_DOWN_PAYMENT]=isDownPayment;
+			if(isDownPayment) {//25.1: payplancharge.IsDownPayment, not the note text, marks the down payment.
 				descript=payPlanList[2].ToString();
 			}
 			else if(note.Contains("increased interest:")) {//description
@@ -301,6 +306,26 @@ namespace OpenDentBusiness {
 			}
 			retVal[8]=payPlanList[8].ToString();//8 Balance (filled later)
 			return retVal;
+		}
+
+		///<summary>Hidden column of the payment plan sheet tables that carries payplancharge.IsDownPayment from the charge rows to the sorted rows.
+		///The "param" prefix keeps it out of the printed grid, like paramIsBold.</summary>
+		public const string COLUMN_IS_DOWN_PAYMENT="paramIsDownPayment";
+
+		///<summary>Adds the hidden down payment column to a payment plan sheet table that does not have it yet.</summary>
+		private static void EnsureDownPaymentColumn(DataTable table) {
+			if(!table.Columns.Contains(COLUMN_IS_DOWN_PAYMENT)) {
+				table.Columns.Add(new DataColumn(COLUMN_IS_DOWN_PAYMENT,typeof(bool)));
+			}
+		}
+
+		///<summary>True when the payment plan sheet row was made from a down payment charge (payplancharge.IsDownPayment).</summary>
+		public static bool IsDownPaymentRow(DataRow row) {
+			if(row==null || row.Table==null || !row.Table.Columns.Contains(COLUMN_IS_DOWN_PAYMENT)) {
+				return false;
+			}
+			object value=row[COLUMN_IS_DOWN_PAYMENT];
+			return value is bool && (bool)value;
 		}
 
 		///<summary>Creates pay plan split rows for display on the form from the data table input. Similar to CreateRowForPayPlanSplit but for use with sheets/datatables.</summary>
@@ -461,8 +486,9 @@ namespace OpenDentBusiness {
 				payplanChargeMerged.Principal=principal;
 				payplanChargeMerged.Interest=interest;
 				payplanChargeMerged.ChargeDate=listChargeDates[i];
-				if(listPayPlanChargesForDate.Any(x=>x.Note=="Down Payment")) {
+				if(listPayPlanChargesForDate.Any(x=>x.IsDownPayment)) {
 					payplanChargeMerged.Note="Down payment";
+					payplanChargeMerged.IsDownPayment=true;
 				}
 				listPayPlanChargesMerged.Add(payplanChargeMerged);
 			}
@@ -540,8 +566,10 @@ namespace OpenDentBusiness {
 			int chargesCount=0;//Not the same as listPayPlanCharges.Count
 			//Add charge for down payment
 			if(terms.DownPayment!=0) {
-				listPayPlanCharges.Add(PayPlanEdit.CreateDebitCharge(payPlan,fam,provNum,clinicNum,terms.DownPayment,0,DateTime_.Today
-					,Lans.g("PayPlanEdit","Down payment")));
+				PayPlanCharge payPlanChargeDownPayment=PayPlanEdit.CreateDebitCharge(payPlan,fam,provNum,clinicNum,terms.DownPayment,0,DateTime_.Today
+					,Lans.g("PayPlanEdit","Down payment"));
+				payPlanChargeDownPayment.IsDownPayment=true;
+				listPayPlanCharges.Add(payPlanChargeDownPayment);
 			}
 			//Add charges
 			while(CompareDecimal.IsGreaterThanZero(principalDecrementingAmt) && chargesCount < payPlanChargesCeiling) {//the ceiling prevents infinite loop
@@ -1082,7 +1110,7 @@ namespace OpenDentBusiness {
 					}
 					chargeCur=CreateDebitChargeDynamic(payplan,famCur,entry.ProvNum,entry.ClinicNum,principalForCharge,interestForPeriod
 						,periodDate,"",entry.PriKey,entry.LinkType);
-					if(listChargesInDB.Exists(x => x.ChargeDate==chargeCur.ChargeDate && !x.Note.Contains("Down Payment"))) {
+					if(listChargesInDB.Exists(x => x.ChargeDate==chargeCur.ChargeDate && !x.IsDownPayment)) {
 						principalForPeriod-=chargeCur.Principal;
 						continue;
 					}
@@ -1190,7 +1218,7 @@ namespace OpenDentBusiness {
 					//get the expected period that this charge would be for.
 					int periodCount=CalcPeriodsForFrequency(terms.DateFirstPayment.Date,terms.Frequency);
 					DateTime nextExpectedDate =PayPlanEdit.CalcNextPeriodDate(payplan.DatePayPlanStart,periodCount,payplan.ChargeFrequency);
-					List<PayPlanCharge> listPayPlanChargesExpected=listPayPlanChargesInDb.FindAll(x=>x.ChargeDate==nextExpectedDate && !x.Note.Contains("Down Payment"));
+					List<PayPlanCharge> listPayPlanChargesExpected=listPayPlanChargesInDb.FindAll(x=>x.ChargeDate==nextExpectedDate && !x.IsDownPayment);
 					//Check to see if a charge has already been made for today.
 					if(nextExpectedDate==DateTime_.Today && !listPayPlanChargesExpected.IsNullOrEmpty()) {
 						//Any prepayments should be automatically applied to charges that are due today.
@@ -1984,7 +2012,7 @@ namespace OpenDentBusiness {
 				sb.AppendLine(Lans.g("FormPayPlanDynamic","Down payment must be less than or equal to total amount."));
 			}
 			if(doCheckApr && !CompareDouble.IsZero(payPlanTerms.APR) && PrefC.GetBool(PrefName.PayPlanRequireLockForAPR) && !isLocked){
-				sb.AppendLine(Lans.g("FormPayPlanDynamic","Payment plans with APR must be locked. Remove the APR or check the box for Permanent Lock."));
+				sb.AppendLine(Lans.g("FormPayPlanDynamic","Payment plans with APR must be locked. Remove the APR or check the Locked box."));
 			}
 			Action<string> actionNotAuthorized=(msg) => {
 				sb.AppendLine(Lans.g("FormPayPlanDynamic",msg));
@@ -2023,8 +2051,16 @@ namespace OpenDentBusiness {
 		///<summary>Updates the passed in PayPlan completed ammount, and sets the plan to locked if plan wasn't locked before. 
 		///Creates charges if the start date of the plan is today, or if there are downpayments to create. 
 		///Synchronizes the Passed in PayPlanLinks with overrides if any are set.</summary>
-		public static DynamicPaymentPlanModuleData SaveDynamicPaymentPlanAndTerms(PayPlanTerms payPlanTerms,DynamicPaymentPlanModuleData dynamicPaymentPlanModuleData,bool isLocking,long defNumPlanCategory) { 
+		///<param name="isUnlocking">25.1: true when the user cleared the Locked box of a saved, locked plan. Needs the PayPlanUnlock permission
+		///(throws otherwise), clears payplan.IsLocked and writes a PayPlanUnlock audit entry. Ignored when isLocking is true or the plan is not
+		///locked. isLocking=false alone never unlocks a plan.</param>
+		public static DynamicPaymentPlanModuleData SaveDynamicPaymentPlanAndTerms(PayPlanTerms payPlanTerms,DynamicPaymentPlanModuleData dynamicPaymentPlanModuleData,bool isLocking,long defNumPlanCategory,bool isUnlocking=false) {
 			Meth.NoCheckMiddleTierRole();
+			bool doUnlock=isUnlocking && !isLocking && dynamicPaymentPlanModuleData.PayPlan.IsLocked && !dynamicPaymentPlanModuleData.PayPlan.IsNew;
+			if(doUnlock && !CanUnlockPayPlan()) {
+				throw new ODException(Lans.g("FormPayPlanDynamic","Not authorized to unlock payment plans.")+"\r\n"
+					+GroupPermissions.GetDesc(EnumPermType.PayPlanUnlock));
+			}
 			//Apply the passed in terms to the payment plan.
 			dynamicPaymentPlanModuleData.PayPlan=ApplyPayPlanTermsToDynamicPaymentPlan(dynamicPaymentPlanModuleData.PayPlan,payPlanTerms,defNumPlanCategory);
 			//Store the changes. Issue out any additional charges needed for down payments.
@@ -2061,14 +2097,28 @@ namespace OpenDentBusiness {
 				}
 				payPlan.IsLocked=true;
 			}
+			else if(doUnlock) {
+				payPlan.IsLocked=false;
+			}
 			payPlan.IsNew=false;
 			PayPlans.Update(payPlan);//always saved to db before opening this form
 			PayPlanLinks.Sync(listPayPlanLink,payPlan.PayPlanNum);
+			if(doUnlock) {
+				SecurityLogs.MakeLogEntry(EnumPermType.PayPlanUnlock,payPlan.PatNum,Lans.g("FormPayPlanDynamic","Payment plan unlocked."),
+					payPlan.PayPlanNum,DateTime.MinValue);
+			}
 			dynamicPaymentPlanModuleData.PayPlan=payPlan;
 			dynamicPaymentPlanModuleData.ListPayPlanChargesDb=listPayPlanChargesDB;
 			dynamicPaymentPlanModuleData.ListPayPlanProductionEntries=listPayPlanProductionEntries;
 			dynamicPaymentPlanModuleData.ListPayPlanLinks=listPayPlanLink;
 			return dynamicPaymentPlanModuleData;			
+		}
+
+		///<summary>25.1: true when the current user may clear the Locked box of a saved dynamic payment plan (the Pay Plan Unlock permission). Shows
+		///no message.</summary>
+		public static bool CanUnlockPayPlan() {
+			Meth.NoCheckMiddleTierRole();
+			return Security.IsAuthorized(EnumPermType.PayPlanUnlock,suppressMessage:true);
 		}
 
 		///<summary>Inserts down payment charges if the PayPlanTerms have a downpayment set, and no charges have been issued yet. Returns the lsit of charges inserted.</summary>

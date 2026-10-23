@@ -48,44 +48,45 @@ namespace OpenDentBusiness.Crud{
 			Statement statement;
 			foreach(DataRow row in table.Rows) {
 				statement=new Statement();
-				statement.StatementNum       = PIn.Long  (row["StatementNum"].ToString());
-				statement.PatNum             = PIn.Long  (row["PatNum"].ToString());
-				statement.SuperFamily        = PIn.Long  (row["SuperFamily"].ToString());
-				statement.DateSent           = PIn.Date  (row["DateSent"].ToString());
-				statement.DateRangeFrom      = PIn.Date  (row["DateRangeFrom"].ToString());
-				statement.DateRangeTo        = PIn.Date  (row["DateRangeTo"].ToString());
-				statement.Note               = PIn.String(row["Note"].ToString());
-				statement.NoteBold           = PIn.String(row["NoteBold"].ToString());
-				statement.Mode_              = (OpenDentBusiness.StatementMode)PIn.Int(row["Mode_"].ToString());
-				statement.HidePayment        = PIn.Bool  (row["HidePayment"].ToString());
-				statement.SinglePatient      = PIn.Bool  (row["SinglePatient"].ToString());
-				statement.Intermingled       = PIn.Bool  (row["Intermingled"].ToString());
-				statement.IsSent             = PIn.Bool  (row["IsSent"].ToString());
-				statement.DocNum             = PIn.Long  (row["DocNum"].ToString());
-				statement.DateTStamp         = PIn.DateT (row["DateTStamp"].ToString());
-				statement.IsReceipt          = PIn.Bool  (row["IsReceipt"].ToString());
-				statement.IsInvoice          = PIn.Bool  (row["IsInvoice"].ToString());
-				statement.IsInvoiceCopy      = PIn.Bool  (row["IsInvoiceCopy"].ToString());
-				statement.EmailSubject       = PIn.String(row["EmailSubject"].ToString());
-				statement.EmailBody          = PIn.String(row["EmailBody"].ToString());
-				statement.IsBalValid         = PIn.Bool  (row["IsBalValid"].ToString());
-				statement.InsEst             = PIn.Double(row["InsEst"].ToString());
-				statement.BalTotal           = PIn.Double(row["BalTotal"].ToString());
+				statement.StatementNum         = PIn.Long  (row["StatementNum"].ToString());
+				statement.PatNum               = PIn.Long  (row["PatNum"].ToString());
+				statement.SuperFamily          = PIn.Long  (row["SuperFamily"].ToString());
+				statement.DateSent             = PIn.Date  (row["DateSent"].ToString());
+				statement.DateRangeFrom        = PIn.Date  (row["DateRangeFrom"].ToString());
+				statement.DateRangeTo          = PIn.Date  (row["DateRangeTo"].ToString());
+				statement.Note                 = PIn.String(row["Note"].ToString());
+				statement.NoteBold             = PIn.String(row["NoteBold"].ToString());
+				statement.Mode_                = (OpenDentBusiness.StatementMode)PIn.Int(row["Mode_"].ToString());
+				statement.HidePayment          = PIn.Bool  (row["HidePayment"].ToString());
+				statement.SinglePatient        = PIn.Bool  (row["SinglePatient"].ToString());
+				statement.Intermingled         = PIn.Bool  (row["Intermingled"].ToString());
+				statement.IsSent               = PIn.Bool  (row["IsSent"].ToString());
+				statement.DocNum               = PIn.Long  (row["DocNum"].ToString());
+				statement.DateTStamp           = PIn.DateT (row["DateTStamp"].ToString());
+				statement.IsReceipt            = PIn.Bool  (row["IsReceipt"].ToString());
+				statement.IsInvoice            = PIn.Bool  (row["IsInvoice"].ToString());
+				statement.IsInvoiceCopy        = PIn.Bool  (row["IsInvoiceCopy"].ToString());
+				statement.EmailSubject         = PIn.String(row["EmailSubject"].ToString());
+				statement.EmailBody            = PIn.String(row["EmailBody"].ToString());
+				statement.IsBalValid           = PIn.Bool  (row["IsBalValid"].ToString());
+				statement.InsEst               = PIn.Double(row["InsEst"].ToString());
+				statement.BalTotal             = PIn.Double(row["BalTotal"].ToString());
 				string statementType=row["StatementType"].ToString();
 				if(statementType=="") {
-					statement.StatementType    =(OpenDentBusiness.StmtType)0;
+					statement.StatementType      =(OpenDentBusiness.StmtType)0;
 				}
 				else try{
-					statement.StatementType    =(OpenDentBusiness.StmtType)Enum.Parse(typeof(OpenDentBusiness.StmtType),statementType);
+					statement.StatementType      =(OpenDentBusiness.StmtType)Enum.Parse(typeof(OpenDentBusiness.StmtType),statementType);
 				}
 				catch{
-					statement.StatementType    =(OpenDentBusiness.StmtType)0;
+					statement.StatementType      =(OpenDentBusiness.StmtType)0;
 				}
-				statement.ShortGUID          = PIn.String(row["ShortGUID"].ToString());
-				statement.StatementURL       = PIn.String(row["StatementURL"].ToString());
-				statement.StatementShortURL  = PIn.String(row["StatementShortURL"].ToString());
-				statement.SmsSendStatus      = (OpenDentBusiness.AutoCommStatus)PIn.Int(row["SmsSendStatus"].ToString());
-				statement.LimitedCustomFamily= (OpenDentBusiness.EnumLimitedCustomFamily)PIn.Int(row["LimitedCustomFamily"].ToString());
+				statement.ShortGUID            = PIn.String(row["ShortGUID"].ToString());
+				statement.StatementURL         = PIn.String(row["StatementURL"].ToString());
+				statement.StatementShortURL    = PIn.String(row["StatementShortURL"].ToString());
+				statement.SmsSendStatus        = (OpenDentBusiness.AutoCommStatus)PIn.Int(row["SmsSendStatus"].ToString());
+				statement.LimitedCustomFamily  = (OpenDentBusiness.EnumLimitedCustomFamily)PIn.Int(row["LimitedCustomFamily"].ToString());
+				statement.ShowTransSinceBalZero= PIn.Bool  (row["ShowTransSinceBalZero"].ToString());
 				retVal.Add(statement);
 			}
 			return retVal;
@@ -126,6 +127,7 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("StatementShortURL");
 			table.Columns.Add("SmsSendStatus");
 			table.Columns.Add("LimitedCustomFamily");
+			table.Columns.Add("ShowTransSinceBalZero");
 			foreach(Statement statement in listStatements) {
 				table.Rows.Add(new object[] {
 					POut.Long  (statement.StatementNum),
@@ -157,6 +159,7 @@ namespace OpenDentBusiness.Crud{
 					            statement.StatementShortURL,
 					POut.Int   ((int)statement.SmsSendStatus),
 					POut.Int   ((int)statement.LimitedCustomFamily),
+					POut.Bool  (statement.ShowTransSinceBalZero),
 				});
 			}
 			return table;
@@ -176,7 +179,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="StatementNum,";
 			}
-			command+="PatNum,SuperFamily,DateSent,DateRangeFrom,DateRangeTo,Note,NoteBold,Mode_,HidePayment,SinglePatient,Intermingled,IsSent,DocNum,IsReceipt,IsInvoice,IsInvoiceCopy,EmailSubject,EmailBody,IsBalValid,InsEst,BalTotal,StatementType,ShortGUID,StatementURL,StatementShortURL,SmsSendStatus,LimitedCustomFamily) VALUES(";
+			command+="PatNum,SuperFamily,DateSent,DateRangeFrom,DateRangeTo,Note,NoteBold,Mode_,HidePayment,SinglePatient,Intermingled,IsSent,DocNum,IsReceipt,IsInvoice,IsInvoiceCopy,EmailSubject,EmailBody,IsBalValid,InsEst,BalTotal,StatementType,ShortGUID,StatementURL,StatementShortURL,SmsSendStatus,LimitedCustomFamily,ShowTransSinceBalZero) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(statement.StatementNum)+",";
 			}
@@ -208,7 +211,8 @@ namespace OpenDentBusiness.Crud{
 				+"'"+POut.String(statement.StatementURL)+"',"
 				+"'"+POut.String(statement.StatementShortURL)+"',"
 				+    POut.Int   ((int)statement.SmsSendStatus)+","
-				+    POut.Int   ((int)statement.LimitedCustomFamily)+")";
+				+    POut.Int   ((int)statement.LimitedCustomFamily)+","
+				+    POut.Bool  (statement.ShowTransSinceBalZero)+")";
 			if(statement.Note==null) {
 				statement.Note="";
 			}
@@ -256,7 +260,7 @@ namespace OpenDentBusiness.Crud{
 						if(useExistingPK) {
 							sbCommands.Append("StatementNum,");
 						}
-						sbCommands.Append("PatNum,SuperFamily,DateSent,DateRangeFrom,DateRangeTo,Note,NoteBold,Mode_,HidePayment,SinglePatient,Intermingled,IsSent,DocNum,IsReceipt,IsInvoice,IsInvoiceCopy,EmailSubject,EmailBody,IsBalValid,InsEst,BalTotal,StatementType,ShortGUID,StatementURL,StatementShortURL,SmsSendStatus,LimitedCustomFamily) VALUES ");
+						sbCommands.Append("PatNum,SuperFamily,DateSent,DateRangeFrom,DateRangeTo,Note,NoteBold,Mode_,HidePayment,SinglePatient,Intermingled,IsSent,DocNum,IsReceipt,IsInvoice,IsInvoiceCopy,EmailSubject,EmailBody,IsBalValid,InsEst,BalTotal,StatementType,ShortGUID,StatementURL,StatementShortURL,SmsSendStatus,LimitedCustomFamily,ShowTransSinceBalZero) VALUES ");
 						countRows=0;
 					}
 					else {
@@ -292,7 +296,8 @@ namespace OpenDentBusiness.Crud{
 					sbRow.Append("'"+POut.String(statement.StatementURL)+"'"); sbRow.Append(",");
 					sbRow.Append("'"+POut.String(statement.StatementShortURL)+"'"); sbRow.Append(",");
 					sbRow.Append(POut.Int((int)statement.SmsSendStatus)); sbRow.Append(",");
-					sbRow.Append(POut.Int((int)statement.LimitedCustomFamily)); sbRow.Append(")");
+					sbRow.Append(POut.Int((int)statement.LimitedCustomFamily)); sbRow.Append(",");
+					sbRow.Append(POut.Bool(statement.ShowTransSinceBalZero)); sbRow.Append(")");
 					if(sbCommands.Length+sbRow.Length+1 > TableBase.MaxAllowedPacketCount && countRows > 0) {
 						Db.NonQ(sbCommands.ToString());
 						sbCommands=null;
@@ -327,7 +332,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="StatementNum,";
 			}
-			command+="PatNum,SuperFamily,DateSent,DateRangeFrom,DateRangeTo,Note,NoteBold,Mode_,HidePayment,SinglePatient,Intermingled,IsSent,DocNum,IsReceipt,IsInvoice,IsInvoiceCopy,EmailSubject,EmailBody,IsBalValid,InsEst,BalTotal,StatementType,ShortGUID,StatementURL,StatementShortURL,SmsSendStatus,LimitedCustomFamily) VALUES(";
+			command+="PatNum,SuperFamily,DateSent,DateRangeFrom,DateRangeTo,Note,NoteBold,Mode_,HidePayment,SinglePatient,Intermingled,IsSent,DocNum,IsReceipt,IsInvoice,IsInvoiceCopy,EmailSubject,EmailBody,IsBalValid,InsEst,BalTotal,StatementType,ShortGUID,StatementURL,StatementShortURL,SmsSendStatus,LimitedCustomFamily,ShowTransSinceBalZero) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(statement.StatementNum)+",";
 			}
@@ -359,7 +364,8 @@ namespace OpenDentBusiness.Crud{
 				+"'"+POut.String(statement.StatementURL)+"',"
 				+"'"+POut.String(statement.StatementShortURL)+"',"
 				+    POut.Int   ((int)statement.SmsSendStatus)+","
-				+    POut.Int   ((int)statement.LimitedCustomFamily)+")";
+				+    POut.Int   ((int)statement.LimitedCustomFamily)+","
+				+    POut.Bool  (statement.ShowTransSinceBalZero)+")";
 			if(statement.Note==null) {
 				statement.Note="";
 			}
@@ -384,34 +390,35 @@ namespace OpenDentBusiness.Crud{
 		///<summary>Updates one Statement in the database.</summary>
 		public static void Update(Statement statement) {
 			string command="UPDATE statement SET "
-				+"PatNum             =  "+POut.Long  (statement.PatNum)+", "
-				+"SuperFamily        =  "+POut.Long  (statement.SuperFamily)+", "
-				+"DateSent           =  "+POut.Date  (statement.DateSent)+", "
-				+"DateRangeFrom      =  "+POut.Date  (statement.DateRangeFrom)+", "
-				+"DateRangeTo        =  "+POut.Date  (statement.DateRangeTo)+", "
-				+"Note               =  "+DbHelper.ParamChar+"paramNote, "
-				+"NoteBold           =  "+DbHelper.ParamChar+"paramNoteBold, "
-				+"Mode_              =  "+POut.Int   ((int)statement.Mode_)+", "
-				+"HidePayment        =  "+POut.Bool  (statement.HidePayment)+", "
-				+"SinglePatient      =  "+POut.Bool  (statement.SinglePatient)+", "
-				+"Intermingled       =  "+POut.Bool  (statement.Intermingled)+", "
-				+"IsSent             =  "+POut.Bool  (statement.IsSent)+", "
-				+"DocNum             =  "+POut.Long  (statement.DocNum)+", "
+				+"PatNum               =  "+POut.Long  (statement.PatNum)+", "
+				+"SuperFamily          =  "+POut.Long  (statement.SuperFamily)+", "
+				+"DateSent             =  "+POut.Date  (statement.DateSent)+", "
+				+"DateRangeFrom        =  "+POut.Date  (statement.DateRangeFrom)+", "
+				+"DateRangeTo          =  "+POut.Date  (statement.DateRangeTo)+", "
+				+"Note                 =  "+DbHelper.ParamChar+"paramNote, "
+				+"NoteBold             =  "+DbHelper.ParamChar+"paramNoteBold, "
+				+"Mode_                =  "+POut.Int   ((int)statement.Mode_)+", "
+				+"HidePayment          =  "+POut.Bool  (statement.HidePayment)+", "
+				+"SinglePatient        =  "+POut.Bool  (statement.SinglePatient)+", "
+				+"Intermingled         =  "+POut.Bool  (statement.Intermingled)+", "
+				+"IsSent               =  "+POut.Bool  (statement.IsSent)+", "
+				+"DocNum               =  "+POut.Long  (statement.DocNum)+", "
 				//DateTStamp can only be set by MySQL
-				+"IsReceipt          =  "+POut.Bool  (statement.IsReceipt)+", "
-				+"IsInvoice          =  "+POut.Bool  (statement.IsInvoice)+", "
-				+"IsInvoiceCopy      =  "+POut.Bool  (statement.IsInvoiceCopy)+", "
-				+"EmailSubject       = '"+POut.String(statement.EmailSubject)+"', "
-				+"EmailBody          =  "+DbHelper.ParamChar+"paramEmailBody, "
-				+"IsBalValid         =  "+POut.Bool  (statement.IsBalValid)+", "
-				+"InsEst             =  "+POut.Double(statement.InsEst)+", "
-				+"BalTotal           =  "+POut.Double(statement.BalTotal)+", "
-				+"StatementType      = '"+POut.String(statement.StatementType.ToString())+"', "
-				+"ShortGUID          = '"+POut.String(statement.ShortGUID)+"', "
-				+"StatementURL       = '"+POut.String(statement.StatementURL)+"', "
-				+"StatementShortURL  = '"+POut.String(statement.StatementShortURL)+"', "
-				+"SmsSendStatus      =  "+POut.Int   ((int)statement.SmsSendStatus)+", "
-				+"LimitedCustomFamily=  "+POut.Int   ((int)statement.LimitedCustomFamily)+" "
+				+"IsReceipt            =  "+POut.Bool  (statement.IsReceipt)+", "
+				+"IsInvoice            =  "+POut.Bool  (statement.IsInvoice)+", "
+				+"IsInvoiceCopy        =  "+POut.Bool  (statement.IsInvoiceCopy)+", "
+				+"EmailSubject         = '"+POut.String(statement.EmailSubject)+"', "
+				+"EmailBody            =  "+DbHelper.ParamChar+"paramEmailBody, "
+				+"IsBalValid           =  "+POut.Bool  (statement.IsBalValid)+", "
+				+"InsEst               =  "+POut.Double(statement.InsEst)+", "
+				+"BalTotal             =  "+POut.Double(statement.BalTotal)+", "
+				+"StatementType        = '"+POut.String(statement.StatementType.ToString())+"', "
+				+"ShortGUID            = '"+POut.String(statement.ShortGUID)+"', "
+				+"StatementURL         = '"+POut.String(statement.StatementURL)+"', "
+				+"StatementShortURL    = '"+POut.String(statement.StatementShortURL)+"', "
+				+"SmsSendStatus        =  "+POut.Int   ((int)statement.SmsSendStatus)+", "
+				+"LimitedCustomFamily  =  "+POut.Int   ((int)statement.LimitedCustomFamily)+", "
+				+"ShowTransSinceBalZero=  "+POut.Bool  (statement.ShowTransSinceBalZero)+" "
 				+"WHERE StatementNum = "+POut.Long(statement.StatementNum);
 			if(statement.Note==null) {
 				statement.Note="";
@@ -540,6 +547,10 @@ namespace OpenDentBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="LimitedCustomFamily = "+POut.Int   ((int)statement.LimitedCustomFamily)+"";
 			}
+			if(statement.ShowTransSinceBalZero != oldStatement.ShowTransSinceBalZero) {
+				if(command!="") { command+=",";}
+				command+="ShowTransSinceBalZero = "+POut.Bool(statement.ShowTransSinceBalZero)+"";
+			}
 			if(command=="") {
 				return false;
 			}
@@ -644,6 +655,9 @@ namespace OpenDentBusiness.Crud{
 				return true;
 			}
 			if(statement.LimitedCustomFamily != oldStatement.LimitedCustomFamily) {
+				return true;
+			}
+			if(statement.ShowTransSinceBalZero != oldStatement.ShowTransSinceBalZero) {
 				return true;
 			}
 			return false;

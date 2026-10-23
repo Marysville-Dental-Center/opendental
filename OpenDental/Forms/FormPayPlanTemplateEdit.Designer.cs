@@ -50,6 +50,8 @@ namespace OpenDental {
 			this.label6 = new System.Windows.Forms.Label();
 			this.comboBoxClinic = new OpenDental.UI.ComboBoxClinicPicker();
 			this.checkHidden = new OpenDental.UI.CheckBox();
+			this.labelSheetDef = new System.Windows.Forms.Label();
+			this.comboSheetDef = new OpenDental.UI.ComboBox();
 			this.groupTreatmentPlanned.SuspendLayout();
 			this.groupBoxFrequency.SuspendLayout();
 			this.SuspendLayout();
@@ -301,10 +303,28 @@ namespace OpenDental {
 			this.checkHidden.Size = new System.Drawing.Size(88, 17);
 			this.checkHidden.TabIndex = 208;
 			this.checkHidden.Text = "Hidden";
-			// 
+			//
+			// labelSheetDef
+			//
+			this.labelSheetDef.Location = new System.Drawing.Point(40, 321);
+			this.labelSheetDef.Name = "labelSheetDef";
+			this.labelSheetDef.Size = new System.Drawing.Size(132, 17);
+			this.labelSheetDef.TabIndex = 209;
+			this.labelSheetDef.Text = "Sheet Definition";
+			this.labelSheetDef.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			//
+			// comboSheetDef
+			//
+			this.comboSheetDef.Location = new System.Drawing.Point(174, 319);
+			this.comboSheetDef.Name = "comboSheetDef";
+			this.comboSheetDef.Size = new System.Drawing.Size(200, 21);
+			this.comboSheetDef.TabIndex = 210;
+			//
 			// FormPayPlanTemplateEdit
-			// 
+			//
 			this.ClientSize = new System.Drawing.Size(503, 354);
+			this.Controls.Add(this.labelSheetDef);
+			this.Controls.Add(this.comboSheetDef);
 			this.Controls.Add(this.checkHidden);
 			this.Controls.Add(this.comboBoxClinic);
 			this.Controls.Add(this.label1);
@@ -363,5 +383,7 @@ namespace OpenDental {
 		private System.Windows.Forms.Label label1;
 		private UI.ComboBoxClinicPicker comboBoxClinic;
 		private UI.CheckBox checkHidden;
+		private System.Windows.Forms.Label labelSheetDef;
+		private UI.ComboBox comboSheetDef;
 	}
 }

@@ -20,6 +20,7 @@ using System.ComponentModel;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json;
 using System.Net.Http;
+using OpenDentBusiness.VendorDirect.DentalXChange;
 
 namespace OpenDentBusiness.Eclaims {
 	/// <summary>
@@ -43,6 +44,8 @@ namespace OpenDentBusiness.Eclaims {
 		///<summary>Returns true if the communications were successful, and false if they failed. If they failed, a rollback will happen automatically by deleting the previously created X12 file. The batchnum is supplied for the possible rollback.</summary>
 		public static bool Launch(Clearinghouse clearinghouseClin,int batchNum) {//called from Eclaims.cs. Clinic-level clearinghouse passed in.
 			try {
+				//The uploader name is the office's own DentalXChange partner name. Nothing is sent until the office has entered it.
+				DxcPartnerIdentity dxcPartnerIdentity=DxcPartnerIdentity.GetConfiguredOrThrow();
 				//Step 1: Post authentication request:
 				Version myVersion=new Version(Application.ProductVersion);
 				HttpWebRequest webReq;
@@ -72,8 +75,8 @@ namespace OpenDentBusiness.Eclaims {
 					+"&Source=EDI"//CONSTANT; file format
 					+"&Username="+HttpUtility.UrlEncode(clearinghouseClin.LoginID)
 					+"&Password="+HttpUtility.UrlEncode(clearinghouseClin.Password)
-					+"&UploaderName=OpenDental"//CONSTANT
-					+"&UploaderVersion="+myVersion.Major.ToString()+"."+myVersion.Minor.ToString()+"."+myVersion.Build.ToString();//eg 12.3.24
+					+"&UploaderName="+HttpUtility.UrlEncode(dxcPartnerIdentity.Client)//The partner name DentalXChange issued to the office
+					+"&UploaderVersion="+myVersion.Major.ToString()+"."+myVersion.Minor.ToString()+"."+Math.Max(myVersion.Build,0).ToString();//eg 12.3.24 (release "0.0" has no build part)
 				webReq.KeepAlive=false;
 				webReq.Method="POST";
 				webReq.ContentType="application/x-www-form-urlencoded";
@@ -262,7 +265,10 @@ namespace OpenDentBusiness.Eclaims {
 		///<summary>Uses the DwsService() endpoint per DentalXChange's request.</summary>
 		public static string Benefits270(Clearinghouse clearinghouseClin,string x12message,out Etrans etransHtml,Dentalxchange2016.Format outputFormat=Dentalxchange2016.Format.EDI) {
 			etransHtml=null;
-			Dentalxchange2016.Credentials cred=DxcCredentials.GetDentalxchangeCredentials(null,clearinghouseClin);//Null claim because we have a clearinghouse	
+			if(!DxcPartnerIdentity.GetCur().IsConfigured) {
+				return DxcPartnerIdentity.GetNotConfiguredMessage();
+			}
+			Dentalxchange2016.Credentials cred=DxcCredentials.GetDentalxchangeCredentials(null,clearinghouseClin);//Null claim because we have a clearinghouse
 			cred.version=Application.ProductVersion;
 			Dentalxchange2016.textRequest request=new Dentalxchange2016.textRequest();
 			request.outputFormatSpecified=true;
@@ -592,6 +598,36 @@ namespace OpenDentBusiness.Eclaims {
 			}
 		}
 
+		///<summary>Sends listImages to DentalXChange for the claim, through XConnect or the partner service, and updates the claim in memory: the
+		///attachment ID, the narrative and claim.AttachedFlags. The caller saves the claim (Claims.Update) after this returns.
+		///Without an attachment ID it opens the attachment, adds the images and submits it. With one, the images and a changed narrative go into the
+		///existing attachment. Either way, once every call has succeeded the flags get Misc (so the 837 writes the PWK segment) and Submitted
+		///(Open Dental 24.4: the attachment has been sent). If a call throws, the claim's flags are left without Submitted and the exception
+		///propagates. Returns the ImageReferenceIds DentalXChange assigned.</summary>
+		public static List<int> SendAttachmentImages(Claim claim,List<ImageAttachment> listImages,string narrative) {
+			string attachedFlagsOld=claim.AttachedFlags;
+			//New images are not sent yet. Cleared in memory only, so a failure below leaves the saved claim as it was.
+			claim.AttachedFlags=ClaimAttaches.ClearDxcAttachmentSubmitted(attachedFlagsOld);
+			List<int> listImageReferenceIds;
+			if(string.IsNullOrWhiteSpace(claim.AttachmentID)) {
+				//If an attachment has not already been created, create one.
+				string attachmentId=OpenAttachment(claim,narrative);
+				//Must be set here so that the following calls and the validation use the new attachment ID.
+				claim.AttachmentID=attachmentId;
+				listImageReferenceIds=AddAttachmentImage(claim,listImages);
+				SubmitAttachment(claim);
+			}
+			else {//An attachment already exists for this claim. Images added to it go to DentalXChange with it.
+				listImageReferenceIds=AddAttachmentImage(claim,listImages);
+				if(claim.Narrative!=narrative) {
+					AddNarrative(claim,narrative);
+				}
+			}
+			claim.Narrative=narrative;
+			claim.AttachedFlags=ClaimAttaches.MarkDxcAttachmentSubmitted(claim.AttachedFlags);
+			return listImageReferenceIds;
+		}
+
 		///<summary>Helper method to construct the attachment request object.
 		///This method throws when claim fkeys are invalid.
 		///Callers of this method should consider this scenario.</summary>
@@ -751,7 +787,10 @@ namespace OpenDentBusiness.Eclaims {
 		///May throw exceptions, surround with try/catch. Returns a string of error responses, will be empty on success.</summary>
 		public static string GetPayerList(Clearinghouse clearinghouse) {
 			Meth.NoCheckMiddleTierRole();
-			Dentalxchange2016.Credentials credentials=DxcCredentials.GetDentalxchangeCredentials(null,clearinghouse);//Null claim because we have a clearinghouse	
+			if(!DxcPartnerIdentity.GetCur().IsConfigured) {
+				return DxcPartnerIdentity.GetNotConfiguredMessage();
+			}
+			Dentalxchange2016.Credentials credentials=DxcCredentials.GetDentalxchangeCredentials(null,clearinghouse);//Null claim because we have a clearinghouse
 			credentials.version=Application.ProductVersion;
 			Dentalxchange2016.payerListInfoRequest payerListInfoRequest=new Dentalxchange2016.payerListInfoRequest();
 			payerListInfoRequest.outputFormatSpecified=true;
@@ -813,17 +852,11 @@ namespace OpenDentBusiness.Eclaims {
 					progress.UpdateProgress(Lans.g(progress.LanThis,"Canceled by user."));
 					return false;
 			}
-			Dentalxchange2016.Credentials cred=new Dentalxchange2016.Credentials();
-			if(PrefC.GetBool(PrefName.CustomizedForPracticeWeb)) {//even though they currently use code from a different part of the program.
-				cred.Client="Practice-Web";
-				cred.ServiceID="DCI Web Service ID: 001513";
+			if(!DxcPartnerIdentity.GetCur().IsConfigured) {
+				ErrorMessage=DxcPartnerIdentity.GetNotConfiguredMessage();
+				return false;
 			}
-			else {
-				cred.Client="OpenDental";
-				cred.ServiceID="DCI Web Service ID: 002778";
-			}
-			cred.Username=clearinghouse.LoginID;
-			cred.Password=clearinghouse.Password;
+			Dentalxchange2016.Credentials cred=DxcCredentials.GetDentalxchangeCredentials(null,clearinghouse);
 			Dentalxchange2016.unProcessedEraRequest request=new Dentalxchange2016.unProcessedEraRequest();
 			Dentalxchange2016.DwsService service=new Dentalxchange2016.DwsService();
 			service.Url=Introspection.GetOverride(Introspection.IntrospectionEntity.DentalXChangeDwsURL,"https://webservices.dentalxchange.com/dws/DwsService");
@@ -1140,23 +1173,28 @@ namespace OpenDentBusiness.Eclaims {
 
 			///<summary>Creates the credentials needed for all Dentalxchange methods.
 			///This is needed because there are 2 separate web services that use these credentials.
-			///DxcCredentials has implict operators to fix this nuance</summary>
+			///DxcCredentials has implict operators to fix this nuance.
+			///Client and ServiceID are the office's own DentalXChange partner identity (DxcPartnerIdentity); nothing is compiled in. Throws an
+			///ODException, before any network call, while the office has not entered it.</summary>
 			public static DxcCredentials GetDentalxchangeCredentials(Claim claim,Clearinghouse clearHouse=null) {
+				DxcPartnerIdentity dxcPartnerIdentity=DxcPartnerIdentity.GetConfiguredOrThrow();
 				Clearinghouse clearingHouse=clearHouse;
 				if(clearingHouse==null) {//No clearing house provided.
 					clearingHouse=GetClearingHouseForClaim(claim);
 				}
+				return Create(dxcPartnerIdentity,clearingHouse);
+			}
+
+			///<summary>The credentials from a partner identity and a clinic-level clearinghouse. Throws an ODException if the identity is not set up.</summary>
+			public static DxcCredentials Create(DxcPartnerIdentity dxcPartnerIdentity,Clearinghouse clearinghouseClin) {
+				if(dxcPartnerIdentity==null || !dxcPartnerIdentity.IsConfigured) {
+					throw new ODException(DxcPartnerIdentity.GetNotConfiguredMessage());
+				}
 				DxcCredentials cred=new DxcCredentials();
-				if(PrefC.GetBool(PrefName.CustomizedForPracticeWeb)) {//even though they currently use code from a different part of the program.
-					cred.Client="Practice-Web";
-					cred.ServiceID="DCI Web Service ID: 001513";
-				}
-				else {
-					cred.Client="OpenDental";
-					cred.ServiceID="DCI Web Service ID: 002778";
-				}
-				cred.Username=clearingHouse.LoginID;
-				cred.Password=clearingHouse.Password;
+				cred.Client=dxcPartnerIdentity.Client;
+				cred.ServiceID=dxcPartnerIdentity.ServiceID;
+				cred.Username=clearinghouseClin.LoginID;
+				cred.Password=clearinghouseClin.Password;
 				return cred;
 			}
 		}
@@ -1213,13 +1251,27 @@ namespace OpenDentBusiness.Eclaims {
 		public XConnect() {
 		}
 
+		///<summary>For tests only: answers XConnect claim validation requests instead of the network.</summary>
+		public static HttpMessageHandler HttpHandlerForTests;
+		///<summary>How long validation may take when a claim is saved (Open Dental 25.2: about 10 seconds; saving never waits longer).</summary>
+		public static readonly TimeSpan TimeoutValidateOnSave=TimeSpan.FromSeconds(10);
+		///<summary>How long validation may take before a claim is sent.</summary>
+		public static readonly TimeSpan TimeoutValidateOnSend=TimeSpan.FromSeconds(30);
+		public const string BaseUrl="https://api.dentalxchange.com";
+		public const string ValidationEndpoint="/claims/validation";
+
+		///<summary>True when XConnect is on for this clinic-level clearinghouse (Open Dental 25.2): the comm bridge is ClaimConnect, Enable XConnect is
+		///checked, and the office's XConnect API key (kept in LocationID) is not blank. XConnect sends the office's own login and API key; it does
+		///not need the DentalXChange partner identity.</summary>
 		public static bool IsEnabled(Clearinghouse clearinghouseClin) {
-			//The XConnect API Key is entered into the ClaimConnect clearinghouse LocationID field.
-			if(clearinghouseClin.CommBridge!=EclaimsCommBridge.ClaimConnect){
+			if(clearinghouseClin==null || clearinghouseClin.CommBridge!=EclaimsCommBridge.ClaimConnect){
 				return false;
 			}
+			if(!clearinghouseClin.EnableXConnect) {
+				return false;
+			}
+			//The XConnect API Key is entered into the ClaimConnect clearinghouse LocationID field.
 			if(string.IsNullOrWhiteSpace(clearinghouseClin.LocationID)){
-				
 				return false;
 			}
 			return true;
@@ -1267,8 +1319,15 @@ namespace OpenDentBusiness.Eclaims {
 			return APIRequest.Inst.SendRequest<T>(endpointURL,httpMethod,null,bodyJSON,HttpContentType.Json,_httpClient,queryParameters,deserializationSettings);
 		}
 
-		///<summary>Throws Exceptions. Returns an error message if validation failed. Otherwise returns an empty string.</summary>
+		///<summary>Throws Exceptions. Validates the claim with XConnect and returns DentalXChange's response. Every call is logged as etrans rows
+		///(LogValidation). Uses TimeoutValidateOnSend.</summary>
 		public static XConnectWebResponse ValidateClaim(Claim claim) {
+			return ValidateClaim(claim,TimeoutValidateOnSend);
+		}
+
+		///<summary>Throws Exceptions, including an ODException when the call times out. Validates the claim with XConnect, logs the request and the
+		///response as etrans rows (Claim_XConnect, ClaimAck_XConnect), and returns the response.</summary>
+		public static XConnectWebResponse ValidateClaim(Claim claim,TimeSpan timeout) {
 			XConnectValidateClaim xConnectValidateClaim=new XConnectValidateClaim();
 			XConnect.SetData(claim);
 			if(!XConnect.ValidateData()) {
@@ -1280,8 +1339,136 @@ namespace OpenDentBusiness.Eclaims {
 			if(xConnectValidateClaim.claim.patient.sequenceCode=="") {
 				throw new ODException("XConnect validation only accepts Primary, Secondary and Tertiary claims.");
 			}
-			_httpMethod=HttpMethod.Post;
-			return CallAPI<XConnectWebResponse>(_clearinghouseForClaim,"/claims/validation",xConnectValidateClaim,_httpMethod);
+			Clearinghouse clearinghouseClin=_clearinghouseForClaim;
+			string requestJson=SerializeRequest(xConnectValidateClaim);
+			XConnectValidationCall xConnectValidationCall;
+			try {
+				xConnectValidationCall=PostValidation(clearinghouseClin,requestJson,timeout);
+			}
+			catch(Exception) {
+				LogValidation(claim,clearinghouseClin,requestJson,null);
+				throw;
+			}
+			LogValidation(claim,clearinghouseClin,requestJson,xConnectValidationCall.ResponseJson);
+			return xConnectValidationCall.Response;
+		}
+
+		///<summary>The JSON body XConnect receives, the way CallAPI serializes it (nulls left out, enums as names).</summary>
+		public static string SerializeRequest(object payload) {
+			JsonSerializerSettings jsonSerializerSettings=new JsonSerializerSettings{NullValueHandling=NullValueHandling.Ignore};
+			jsonSerializerSettings.Converters.Add(new StringEnumConverter());
+			return JsonConvert.SerializeObject(payload,Newtonsoft.Json.Formatting.None,jsonSerializerSettings);
+		}
+
+		///<summary>Throws. Posts requestJson to the validation endpoint with the office's login, password and XConnect API key (LocationID) as
+		///headers. No partner identity is sent. A response that is not 2xx is still returned when its body is an XConnect response with a status,
+		///because DentalXChange reports some validation failures that way; otherwise an ODException says what came back. A timeout gives an
+		///ODException that says so.</summary>
+		public static XConnectValidationCall PostValidation(Clearinghouse clearinghouseClin,string requestJson,TimeSpan timeout) {
+			if(string.IsNullOrWhiteSpace(clearinghouseClin.LocationID)) {
+				throw new ODException(Lans.g("XConnect","The XConnect API key is blank. Enter it in the clearinghouse's setup."));
+			}
+			HttpClient httpClient=HttpHandlerForTests==null ? new HttpClient() : new HttpClient(HttpHandlerForTests,false);
+			try {
+				httpClient.Timeout=timeout;
+				using HttpRequestMessage httpRequestMessage=new HttpRequestMessage(HttpMethod.Post,BaseUrl+ValidationEndpoint);
+				httpRequestMessage.Headers.Add("username",clearinghouseClin.LoginID??"");
+				httpRequestMessage.Headers.Add("password",clearinghouseClin.Password??"");
+				httpRequestMessage.Headers.Add("API-Key",clearinghouseClin.LocationID.Trim());
+				httpRequestMessage.Content=new StringContent(requestJson,Encoding.UTF8,"application/json");
+				HttpResponseMessage httpResponseMessage;
+				try {
+					httpResponseMessage=httpClient.SendAsync(httpRequestMessage).GetAwaiter().GetResult();
+				}
+				catch(System.Threading.Tasks.TaskCanceledException ex) {
+					throw new ODException(Lans.g("XConnect","DentalXChange did not answer within")+" "+(int)timeout.TotalSeconds+" "
+						+Lans.g("XConnect","seconds."),ex);
+				}
+				string responseJson=httpResponseMessage.Content==null ? "" : httpResponseMessage.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+				XConnectWebResponse xConnectWebResponse=null;
+				try {
+					xConnectWebResponse=JsonConvert.DeserializeObject<XConnectWebResponse>(responseJson??"",
+						new JsonSerializerSettings { MissingMemberHandling=MissingMemberHandling.Ignore });
+				}
+				catch(JsonException ex) {
+					ex.DoNothing();
+				}
+				if(!httpResponseMessage.IsSuccessStatusCode && (xConnectWebResponse==null || xConnectWebResponse.status==null)) {
+					string body=responseJson??"";
+					if(body.Length>300) {
+						body=body.Substring(0,300)+"...";
+					}
+					throw new ODException(Lans.g("XConnect","DentalXChange returned HTTP")+" "+(int)httpResponseMessage.StatusCode+". "+body);
+				}
+				if(xConnectWebResponse==null) {
+					throw new ODException(Lans.g("XConnect","DentalXChange returned a response that could not be read."));
+				}
+				XConnectValidationCall xConnectValidationCall=new XConnectValidationCall();
+				xConnectValidationCall.RequestJson=requestJson;
+				xConnectValidationCall.ResponseJson=responseJson;
+				xConnectValidationCall.Response=xConnectWebResponse;
+				xConnectValidationCall.HttpStatusCode=(int)httpResponseMessage.StatusCode;
+				return xConnectValidationCall;
+			}
+			finally {
+				httpClient.Dispose();
+			}
+		}
+
+		///<summary>Logs one validation call (Open Dental 25.2): the request as a Claim_XConnect etrans row and, when a response came back, the
+		///response as a ClaimAck_XConnect row that the request points to through AckEtransNum. Returns the request row. Never throws: a logging
+		///failure must not hide the validation result.</summary>
+		public static Etrans LogValidation(Claim claim,Clearinghouse clearinghouseClin,string requestJson,string responseJson) {
+			try {
+				long clearinghouseNum=clearinghouseClin==null ? 0
+					: (clearinghouseClin.HqClearinghouseNum!=0 ? clearinghouseClin.HqClearinghouseNum : clearinghouseClin.ClearinghouseNum);
+				long carrierNum=0;
+				InsPlan insPlan=InsPlans.GetPlan(claim.PlanNum,null);
+				if(insPlan!=null) {
+					carrierNum=insPlan.CarrierNum;
+				}
+				Etrans etransAck=null;
+				if(responseJson!=null) {
+					etransAck=MakeValidationEtrans(claim,clearinghouseNum,carrierNum,EtransType.ClaimAck_XConnect,responseJson);
+					Etranss.Insert(etransAck);
+				}
+				Etrans etransRequest=MakeValidationEtrans(claim,clearinghouseNum,carrierNum,EtransType.Claim_XConnect,requestJson??"");
+				if(etransAck!=null) {
+					etransRequest.AckEtransNum=etransAck.EtransNum;
+				}
+				else {
+					etransRequest.Note=Lans.g("XConnect","No response from DentalXChange.");
+				}
+				Etranss.Insert(etransRequest);
+				return etransRequest;
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+				return null;
+			}
+		}
+
+		private static Etrans MakeValidationEtrans(Claim claim,long clearinghouseNum,long carrierNum,EtransType etransType,string messageText) {
+			EtransMessageText etransMessageText=new EtransMessageText();
+			etransMessageText.MessageText=messageText;
+			EtransMessageTexts.Insert(etransMessageText);
+			Etrans etrans=new Etrans();
+			etrans.ClaimNum=claim.ClaimNum;
+			etrans.PatNum=claim.PatNum;
+			etrans.PlanNum=claim.PlanNum;
+			etrans.InsSubNum=claim.InsSubNum;
+			etrans.CarrierNum=carrierNum;
+			etrans.UserNum=Security.CurUser?.UserNum??0;
+			etrans.DateTimeTrans=DateTime.Now;
+			etrans.ClearingHouseNum=clearinghouseNum;
+			etrans.Etype=etransType;
+			etrans.EtransMessageTextNum=etransMessageText.EtransMessageTextNum;
+			etrans.Note="";
+			etrans.AckCode="";
+			etrans.TranSetId835="";
+			etrans.CarrierNameRaw="";
+			etrans.PatientNameRaw="";
+			return etrans;
 		}
 
 		///<summary>Copied from X837_5010</summary>
@@ -2956,6 +3143,14 @@ namespace OpenDentBusiness.Eclaims {
 		public int transactionId;
 		///<summary>Optional.</summary>
 		public XConnectClaimStatus response;
+	}
+
+	///<summary>One XConnect validation call: what was sent, what came back, and the parsed response.</summary>
+	public class XConnectValidationCall {
+		public string RequestJson;
+		public string ResponseJson;
+		public XConnectWebResponse Response;
+		public int HttpStatusCode;
 	}
 
 	///<summary>https://developer.dentalxchange.com/claim-api#tag/ProviderModel</summary>

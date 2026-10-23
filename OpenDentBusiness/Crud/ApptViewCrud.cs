@@ -63,6 +63,7 @@ namespace OpenDentBusiness.Crud{
 				apptView.WidthOpMinimum       = PIn.Int   (row["WidthOpMinimum"].ToString());
 				apptView.WaitingRmName        = (OpenDentBusiness.EnumWaitingRmName)PIn.Int(row["WaitingRmName"].ToString());
 				apptView.OnlyScheduledProvDays= PIn.Bool  (row["OnlyScheduledProvDays"].ToString());
+				apptView.ShowMirroredAppts    = PIn.Bool  (row["ShowMirroredAppts"].ToString());
 				retVal.Add(apptView);
 			}
 			return retVal;
@@ -90,6 +91,7 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("WidthOpMinimum");
 			table.Columns.Add("WaitingRmName");
 			table.Columns.Add("OnlyScheduledProvDays");
+			table.Columns.Add("ShowMirroredAppts");
 			foreach(ApptView apptView in listApptViews) {
 				table.Rows.Add(new object[] {
 					POut.Long  (apptView.ApptViewNum),
@@ -108,6 +110,7 @@ namespace OpenDentBusiness.Crud{
 					POut.Int   (apptView.WidthOpMinimum),
 					POut.Int   ((int)apptView.WaitingRmName),
 					POut.Bool  (apptView.OnlyScheduledProvDays),
+					POut.Bool  (apptView.ShowMirroredAppts),
 				});
 			}
 			return table;
@@ -127,7 +130,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="ApptViewNum,";
 			}
-			command+="Description,ItemOrder,RowsPerIncr,OnlyScheduledProvs,OnlySchedBeforeTime,OnlySchedAfterTime,StackBehavUR,StackBehavLR,ClinicNum,ApptTimeScrollStart,IsScrollStartDynamic,IsApptBubblesDisabled,WidthOpMinimum,WaitingRmName,OnlyScheduledProvDays) VALUES(";
+			command+="Description,ItemOrder,RowsPerIncr,OnlyScheduledProvs,OnlySchedBeforeTime,OnlySchedAfterTime,StackBehavUR,StackBehavLR,ClinicNum,ApptTimeScrollStart,IsScrollStartDynamic,IsApptBubblesDisabled,WidthOpMinimum,WaitingRmName,OnlyScheduledProvDays,ShowMirroredAppts) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(apptView.ApptViewNum)+",";
 			}
@@ -146,7 +149,8 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Bool  (apptView.IsApptBubblesDisabled)+","
 				+    POut.Int   (apptView.WidthOpMinimum)+","
 				+    POut.Int   ((int)apptView.WaitingRmName)+","
-				+    POut.Bool  (apptView.OnlyScheduledProvDays)+")";
+				+    POut.Bool  (apptView.OnlyScheduledProvDays)+","
+				+    POut.Bool  (apptView.ShowMirroredAppts)+")";
 			if(useExistingPK || PrefC.RandomKeys) {
 				Db.NonQ(command);
 			}
@@ -171,7 +175,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="ApptViewNum,";
 			}
-			command+="Description,ItemOrder,RowsPerIncr,OnlyScheduledProvs,OnlySchedBeforeTime,OnlySchedAfterTime,StackBehavUR,StackBehavLR,ClinicNum,ApptTimeScrollStart,IsScrollStartDynamic,IsApptBubblesDisabled,WidthOpMinimum,WaitingRmName,OnlyScheduledProvDays) VALUES(";
+			command+="Description,ItemOrder,RowsPerIncr,OnlyScheduledProvs,OnlySchedBeforeTime,OnlySchedAfterTime,StackBehavUR,StackBehavLR,ClinicNum,ApptTimeScrollStart,IsScrollStartDynamic,IsApptBubblesDisabled,WidthOpMinimum,WaitingRmName,OnlyScheduledProvDays,ShowMirroredAppts) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(apptView.ApptViewNum)+",";
 			}
@@ -190,7 +194,8 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Bool  (apptView.IsApptBubblesDisabled)+","
 				+    POut.Int   (apptView.WidthOpMinimum)+","
 				+    POut.Int   ((int)apptView.WaitingRmName)+","
-				+    POut.Bool  (apptView.OnlyScheduledProvDays)+")";
+				+    POut.Bool  (apptView.OnlyScheduledProvDays)+","
+				+    POut.Bool  (apptView.ShowMirroredAppts)+")";
 			if(useExistingPK || isRandomKeys) {
 				Db.NonQ(command);
 			}
@@ -217,7 +222,8 @@ namespace OpenDentBusiness.Crud{
 				+"IsApptBubblesDisabled=  "+POut.Bool  (apptView.IsApptBubblesDisabled)+", "
 				+"WidthOpMinimum       =  "+POut.Int   (apptView.WidthOpMinimum)+", "
 				+"WaitingRmName        =  "+POut.Int   ((int)apptView.WaitingRmName)+", "
-				+"OnlyScheduledProvDays=  "+POut.Bool  (apptView.OnlyScheduledProvDays)+" "
+				+"OnlyScheduledProvDays=  "+POut.Bool  (apptView.OnlyScheduledProvDays)+", "
+				+"ShowMirroredAppts    =  "+POut.Bool  (apptView.ShowMirroredAppts)+" "
 				+"WHERE ApptViewNum = "+POut.Long(apptView.ApptViewNum);
 			Db.NonQ(command);
 		}
@@ -285,6 +291,10 @@ namespace OpenDentBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="OnlyScheduledProvDays = "+POut.Bool(apptView.OnlyScheduledProvDays)+"";
 			}
+			if(apptView.ShowMirroredAppts != oldApptView.ShowMirroredAppts) {
+				if(command!="") { command+=",";}
+				command+="ShowMirroredAppts = "+POut.Bool(apptView.ShowMirroredAppts)+"";
+			}
 			if(command=="") {
 				return false;
 			}
@@ -340,6 +350,9 @@ namespace OpenDentBusiness.Crud{
 				return true;
 			}
 			if(apptView.OnlyScheduledProvDays != oldApptView.OnlyScheduledProvDays) {
+				return true;
+			}
+			if(apptView.ShowMirroredAppts != oldApptView.ShowMirroredAppts) {
 				return true;
 			}
 			return false;

@@ -55,6 +55,7 @@ namespace OpenDentBusiness.Crud{
 				transaction.SecUserNumEdit       = PIn.Long  (row["SecUserNumEdit"].ToString());
 				transaction.SecDateTEdit         = PIn.DateT (row["SecDateTEdit"].ToString());
 				transaction.TransactionInvoiceNum= PIn.Long  (row["TransactionInvoiceNum"].ToString());
+				transaction.NeedsReview          = PIn.Bool  (row["NeedsReview"].ToString());
 				retVal.Add(transaction);
 			}
 			return retVal;
@@ -74,6 +75,7 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("SecUserNumEdit");
 			table.Columns.Add("SecDateTEdit");
 			table.Columns.Add("TransactionInvoiceNum");
+			table.Columns.Add("NeedsReview");
 			foreach(Transaction transaction in listTransactions) {
 				table.Rows.Add(new object[] {
 					POut.Long  (transaction.TransactionNum),
@@ -84,6 +86,7 @@ namespace OpenDentBusiness.Crud{
 					POut.Long  (transaction.SecUserNumEdit),
 					POut.DateT (transaction.SecDateTEdit,false),
 					POut.Long  (transaction.TransactionInvoiceNum),
+					POut.Bool  (transaction.NeedsReview),
 				});
 			}
 			return table;
@@ -103,7 +106,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="TransactionNum,";
 			}
-			command+="DateTimeEntry,UserNum,DepositNum,PayNum,SecUserNumEdit,TransactionInvoiceNum) VALUES(";
+			command+="DateTimeEntry,UserNum,DepositNum,PayNum,SecUserNumEdit,TransactionInvoiceNum,NeedsReview) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(transaction.TransactionNum)+",";
 			}
@@ -114,7 +117,8 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Long  (transaction.PayNum)+","
 				+    POut.Long  (transaction.SecUserNumEdit)+","
 				//SecDateTEdit can only be set by MySQL
-				+    POut.Long  (transaction.TransactionInvoiceNum)+")";
+				+    POut.Long  (transaction.TransactionInvoiceNum)+","
+				+    POut.Bool  (transaction.NeedsReview)+")";
 			if(useExistingPK || PrefC.RandomKeys) {
 				Db.NonQ(command);
 			}
@@ -139,7 +143,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="TransactionNum,";
 			}
-			command+="DateTimeEntry,UserNum,DepositNum,PayNum,SecUserNumEdit,TransactionInvoiceNum) VALUES(";
+			command+="DateTimeEntry,UserNum,DepositNum,PayNum,SecUserNumEdit,TransactionInvoiceNum,NeedsReview) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(transaction.TransactionNum)+",";
 			}
@@ -150,7 +154,8 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Long  (transaction.PayNum)+","
 				+    POut.Long  (transaction.SecUserNumEdit)+","
 				//SecDateTEdit can only be set by MySQL
-				+    POut.Long  (transaction.TransactionInvoiceNum)+")";
+				+    POut.Long  (transaction.TransactionInvoiceNum)+","
+				+    POut.Bool  (transaction.NeedsReview)+")";
 			if(useExistingPK || isRandomKeys) {
 				Db.NonQ(command);
 			}
@@ -169,7 +174,8 @@ namespace OpenDentBusiness.Crud{
 				+"PayNum               =  "+POut.Long  (transaction.PayNum)+", "
 				+"SecUserNumEdit       =  "+POut.Long  (transaction.SecUserNumEdit)+", "
 				//SecDateTEdit can only be set by MySQL
-				+"TransactionInvoiceNum=  "+POut.Long  (transaction.TransactionInvoiceNum)+" "
+				+"TransactionInvoiceNum=  "+POut.Long  (transaction.TransactionInvoiceNum)+", "
+				+"NeedsReview          =  "+POut.Bool  (transaction.NeedsReview)+" "
 				+"WHERE TransactionNum = "+POut.Long(transaction.TransactionNum);
 			Db.NonQ(command);
 		}
@@ -196,6 +202,10 @@ namespace OpenDentBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="TransactionInvoiceNum = "+POut.Long(transaction.TransactionInvoiceNum)+"";
 			}
+			if(transaction.NeedsReview != oldTransaction.NeedsReview) {
+				if(command!="") { command+=",";}
+				command+="NeedsReview = "+POut.Bool(transaction.NeedsReview)+"";
+			}
 			if(command=="") {
 				return false;
 			}
@@ -221,6 +231,9 @@ namespace OpenDentBusiness.Crud{
 			}
 			//SecDateTEdit can only be set by MySQL
 			if(transaction.TransactionInvoiceNum != oldTransaction.TransactionInvoiceNum) {
+				return true;
+			}
+			if(transaction.NeedsReview != oldTransaction.NeedsReview) {
 				return true;
 			}
 			return false;

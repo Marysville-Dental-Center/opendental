@@ -16,7 +16,7 @@ using OpenDentBusiness.VendorDirect;
 namespace VendorDirectTests.Pdmp {
 	[TestClass]
 	public class PdmpPropertyDbTests {
-		private const string DB_NAME="vendordirect_pdmp_tests";
+		private static readonly string DB_NAME=ScratchDb.Name("vendordirect_pdmp_tests");
 		private const string CONNECTION="Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=20";
 		private static string _skipReason;
 

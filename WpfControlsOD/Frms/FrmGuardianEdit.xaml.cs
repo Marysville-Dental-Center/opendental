@@ -81,7 +81,11 @@ End of Checklist================================================================
 			else { //Existing guardian record.
 				checkIsGuardian.Checked=_guardian.IsGuardian;
 			}
+			if(_guardian.Relationship==GuardianRelationship.None) {
+				_guardian.Relationship=GuardianRelationship.Father;//Same default as before None was added (25.1 numbering).
+			}
 			_listGuardianRelationshipNames=new List<string>(Enum.GetNames(typeof(GuardianRelationship)));
+			_listGuardianRelationshipNames.Remove(GuardianRelationship.None.ToString());//None is for eForm imports only.
 			_listGuardianRelationshipNames.Sort();
 			for(int i=0;i<_listGuardianRelationshipNames.Count;i++){
 				comboRelationship.Items.Add(Lang.g("enumGuardianRelationship",_listGuardianRelationshipNames[i]));
@@ -121,9 +125,14 @@ End of Checklist================================================================
 			//PatNumChild already set
 			//PatNumGuardian already set
 			_guardian.IsGuardian=checkIsGuardian.Checked==true;
-			string guardianRelationshipName=comboRelationship.GetSelected<string>();
-			List <string> listRelationshipNamesRaw=new List<string>(Enum.GetNames(typeof(GuardianRelationship)));
-			_guardian.Relationship=(GuardianRelationship)listRelationshipNamesRaw.IndexOf(guardianRelationshipName);
+			if(comboRelationship.SelectedIndex<0) {
+				MsgBox.Show(this,"Please select a relationship.");
+				return;
+			}
+			//The combo shows the sorted, untranslated names in _listGuardianRelationshipNames. Parse by name: None is left out of the list, so a
+			//position in the list is not the enum value.
+			string guardianRelationshipName=_listGuardianRelationshipNames[comboRelationship.SelectedIndex];
+			_guardian.Relationship=(GuardianRelationship)Enum.Parse(typeof(GuardianRelationship),guardianRelationshipName);
 			if(_guardian.IsNew) {
 				Guardians.Insert(_guardian);
 			}

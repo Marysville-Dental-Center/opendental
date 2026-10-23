@@ -179,6 +179,28 @@ namespace OpenDentBusiness {
 		}
 
 		///<summary>Sets the GraphicsSimple column to 1.  Added to fix machines (lately tablets) that are having graphics problems and cannot start OpenDental.</summary>
+		///<summary>Remembers terminalId as the card terminal this workstation used last (computerpref.CreditCardTerminalId, Open Dental 25.1), so the
+		///PayConnect window preselects it next time. Writes only when the value changes.</summary>
+		public static void UpdateCreditCardTerminalId(string terminalId) {
+			Meth.NoCheckMiddleTierRole();
+			terminalId=(terminalId??"").Trim();
+			if(terminalId.Length>255) {
+				return;//Not a terminal ID PayConnect issued; the column is varchar(255).
+			}
+			ComputerPref computerPref=LocalComputer;
+			if(computerPref.CreditCardTerminalId==terminalId) {
+				return;
+			}
+			computerPref.CreditCardTerminalId=terminalId;
+			Update(computerPref);
+		}
+
+		///<summary>The card terminal this workstation used last, or "".</summary>
+		public static string GetCreditCardTerminalId() {
+			Meth.NoCheckMiddleTierRole();
+			return LocalComputer.CreditCardTerminalId??"";
+		}
+
 		public static void SetToSimpleGraphics(string computerName) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				Meth.GetVoid(MethodBase.GetCurrentMethod(),computerName);

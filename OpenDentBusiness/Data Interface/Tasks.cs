@@ -70,6 +70,54 @@ namespace OpenDentBusiness{
 		}
 		#endregion
 
+		#region Task Categories
+		//Open Dental 25.2 made task categories (task.Category, DefCat.TaskCategories) available to every office, behind the TaskCategoryShow
+		//preference. Turning the preference off only hides the UI; task.Category values are always kept.
+
+		///<summary>True when the TaskCategoryShow preference is on: the Task window shows the Category drop-down and task lists show a Category
+		///column.</summary>
+		public static bool IsCategoryShown() {
+			Meth.NoCheckMiddleTierRole();
+			return PrefC.GetBool(PrefName.TaskCategoryShow);
+		}
+
+		///<summary>The categories the Task window offers for a task whose current category is categoryCur, in definition order: every category
+		///that is not hidden, plus categoryCur when it is hidden, so that saving the task does not drop it. Does not include the None choice.
+		///listDefs is every definition in DefCat.TaskCategories (hidden included); pass null to read the cache.</summary>
+		public static List<Def> GetCategoryChoices(long categoryCur,List<Def> listDefs=null) {
+			Meth.NoCheckMiddleTierRole();
+			listDefs=listDefs??Defs.GetDefsForCategory(DefCat.TaskCategories);
+			return listDefs.FindAll(x => !x.IsHidden || (categoryCur!=0 && x.DefNum==categoryCur));
+		}
+
+		///<summary>The text of the Category column for a task: the category's name, or "" when the task has no category (0) or its definition
+		///no longer exists. listDefs is every definition in DefCat.TaskCategories; pass null to read the cache.</summary>
+		public static string GetCategoryText(long category,List<Def> listDefs=null) {
+			Meth.NoCheckMiddleTierRole();
+			if(category==0) {
+				return "";
+			}
+			listDefs=listDefs??Defs.GetDefsForCategory(DefCat.TaskCategories);
+			return Defs.GetName(DefCat.TaskCategories,category,listDefs);
+		}
+
+		///<summary>The background color of the Category cell for a task: the category's color, or Color.Empty when the task has no category, its
+		///definition no longer exists, or the definition has no color (Task Categories may be saved with no color). listDefs is every definition
+		///in DefCat.TaskCategories; pass null to read the cache.</summary>
+		public static System.Drawing.Color GetCategoryColor(long category,List<Def> listDefs=null) {
+			Meth.NoCheckMiddleTierRole();
+			if(category==0) {
+				return System.Drawing.Color.Empty;
+			}
+			listDefs=listDefs??Defs.GetDefsForCategory(DefCat.TaskCategories);
+			Def def=listDefs.LastOrDefault(x => x.DefNum==category);
+			if(def==null || def.ItemColor.A==0) {
+				return System.Drawing.Color.Empty;
+			}
+			return def.ItemColor;
+		}
+		#endregion Task Categories
+
 		///<summary>Defines delegate signature to be used for Tasks.NavTaskDelegate.</summary>
 		public delegate void NavToTaskDelegate(long taskNum);
 		///<summary>Sent in from FormOpenDental. Allows static method for business layer to cause task navigation in FormOpenDental.</summary>

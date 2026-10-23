@@ -42,7 +42,8 @@ namespace OpenDental{
 			this.groupBox3 = new OpenDental.UI.GroupBox();
 			this.labelDatabase = new System.Windows.Forms.Label();
 			this.labelMachineName = new System.Windows.Forms.Label();
-			this.pictureOpenDental = new OpenDental.UI.ODPictureBox();
+			this.labelProductName = new System.Windows.Forms.Label();
+			this.labelAttribution = new System.Windows.Forms.Label();
 			this.butDiagnostics = new OpenDental.UI.Button();
 			this.labelMariaDBCopyright = new System.Windows.Forms.Label();
 			this.groupBox3.SuspendLayout();
@@ -60,7 +61,7 @@ namespace OpenDental{
 			// labelCopyright
 			// 
 			this.labelCopyright.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.labelCopyright.Location = new System.Drawing.Point(12, 269);
+			this.labelCopyright.Location = new System.Drawing.Point(12, 309);
 			this.labelCopyright.Name = "labelCopyright";
 			this.labelCopyright.Size = new System.Drawing.Size(550, 20);
 			this.labelCopyright.TabIndex = 3;
@@ -70,7 +71,7 @@ namespace OpenDental{
 			// labelMySQLCopyright
 			// 
 			this.labelMySQLCopyright.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.labelMySQLCopyright.Location = new System.Drawing.Point(12, 309);
+			this.labelMySQLCopyright.Location = new System.Drawing.Point(12, 349);
 			this.labelMySQLCopyright.Name = "labelMySQLCopyright";
 			this.labelMySQLCopyright.Size = new System.Drawing.Size(433, 20);
 			this.labelMySQLCopyright.TabIndex = 6;
@@ -80,7 +81,7 @@ namespace OpenDental{
 			// butLicense
 			// 
 			this.butLicense.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.butLicense.Location = new System.Drawing.Point(521, 324);
+			this.butLicense.Location = new System.Drawing.Point(521, 364);
 			this.butLicense.Name = "butLicense";
 			this.butLicense.Size = new System.Drawing.Size(88, 25);
 			this.butLicense.TabIndex = 50;
@@ -90,7 +91,7 @@ namespace OpenDental{
 			// label9
 			// 
 			this.label9.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.label9.Location = new System.Drawing.Point(12, 289);
+			this.label9.Location = new System.Drawing.Point(12, 329);
 			this.label9.Name = "label9";
 			this.label9.Size = new System.Drawing.Size(433, 20);
 			this.label9.TabIndex = 51;
@@ -174,20 +175,30 @@ namespace OpenDental{
 			this.labelMachineName.Text = "Client or Remote Application Machine Name: ";
 			this.labelMachineName.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 			// 
-			// pictureOpenDental
-			// 
-			this.pictureOpenDental.HasBorder = false;
-			this.pictureOpenDental.Image = global::OpenDental.Properties.Resources.ODLogo;
-			this.pictureOpenDental.Location = new System.Drawing.Point(143, 5);
-			this.pictureOpenDental.Name = "pictureOpenDental";
-			this.pictureOpenDental.Size = new System.Drawing.Size(106, 48);
-			this.pictureOpenDental.TabIndex = 58;
-			this.pictureOpenDental.TextNullImage = null;
-			// 
+			// labelProductName
+			//
+			this.labelProductName.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold);
+			this.labelProductName.Location = new System.Drawing.Point(12, 10);
+			this.labelProductName.Name = "labelProductName";
+			this.labelProductName.Size = new System.Drawing.Size(239, 40);
+			this.labelProductName.TabIndex = 58;
+			this.labelProductName.Text = "Open PMS - Dental";
+			this.labelProductName.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			//
+			// labelAttribution
+			//
+			this.labelAttribution.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.labelAttribution.Location = new System.Drawing.Point(12, 248);
+			this.labelAttribution.Name = "labelAttribution";
+			this.labelAttribution.Size = new System.Drawing.Size(597, 58);
+			this.labelAttribution.TabIndex = 61;
+			this.labelAttribution.Text = "Open PMS - Dental is a fork of Open Dental.";
+			this.labelAttribution.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			//
 			// butDiagnostics
 			// 
 			this.butDiagnostics.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.butDiagnostics.Location = new System.Drawing.Point(429, 324);
+			this.butDiagnostics.Location = new System.Drawing.Point(429, 364);
 			this.butDiagnostics.Name = "butDiagnostics";
 			this.butDiagnostics.Size = new System.Drawing.Size(88, 25);
 			this.butDiagnostics.TabIndex = 59;
@@ -197,7 +208,7 @@ namespace OpenDental{
 			// labelMariaDBCopyright
 			// 
 			this.labelMariaDBCopyright.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.labelMariaDBCopyright.Location = new System.Drawing.Point(12, 329);
+			this.labelMariaDBCopyright.Location = new System.Drawing.Point(12, 369);
 			this.labelMariaDBCopyright.Name = "labelMariaDBCopyright";
 			this.labelMariaDBCopyright.Size = new System.Drawing.Size(433, 20);
 			this.labelMariaDBCopyright.TabIndex = 60;
@@ -206,10 +217,11 @@ namespace OpenDental{
 			// 
 			// FormAbout
 			// 
-			this.ClientSize = new System.Drawing.Size(628, 370);
+			this.ClientSize = new System.Drawing.Size(628, 410);
 			this.Controls.Add(this.butDiagnostics);
 			this.Controls.Add(this.labelMariaDBCopyright);
-			this.Controls.Add(this.pictureOpenDental);
+			this.Controls.Add(this.labelAttribution);
+			this.Controls.Add(this.labelProductName);
 			this.Controls.Add(this.groupBox3);
 			this.Controls.Add(this.panelHL);
 			this.Controls.Add(this.label9);
@@ -242,7 +254,8 @@ namespace OpenDental{
 		private Label labelServComment;
 		private System.Windows.Forms.Panel panelHL;
 		private OpenDental.UI.GroupBox groupBox3;
-		private UI.ODPictureBox pictureOpenDental;
+		private Label labelProductName;
+		private Label labelAttribution;
 		private Label labelMachineName;
 		private UI.Button butDiagnostics;
 		private Label labelDatabase;

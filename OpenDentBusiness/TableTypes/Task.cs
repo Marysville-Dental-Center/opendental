@@ -69,8 +69,12 @@ namespace OpenDentBusiness{
 		public string DescriptOverride;
 		///<summary>Determines if this task can be edited by most users. Currently only used at HQ.</summary>
 		public bool IsReadOnly;
-		///<summary>FK to definition.DefNum. The category for this task. Currently only used at HQ.</summary>
-		public long TriageCategory;
+		///<summary>FK to definition.DefNum (DefCat.TaskCategories). The category for this task, shown when the TaskCategoryShow preference is on.
+		///Renamed from TriageCategory in Open Dental 25.2; the index keeps its old name, TriageCategory.</summary>
+		public long Category;
+		///<summary>Added in Open Dental 25.3 for Open Dental HQ: the position the task held in the HQ triage list. Kept for data compatibility only;
+		///never shown.</summary>
+		public int TriagePosition;
 		//NOTE: If adding any more columns, be sure to add them to TaskHist and to the constructor for TaskHist.
 
 		///<summary></summary>
@@ -108,7 +112,8 @@ namespace OpenDentBusiness{
 				&& ReminderFrequency==taskObj.ReminderFrequency
 				&& DescriptOverride==taskObj.DescriptOverride
 				&& IsReadOnly==taskObj.IsReadOnly
-				&& TriageCategory==taskObj.TriageCategory)
+				&& Category==taskObj.Category
+				&& TriagePosition==taskObj.TriagePosition)
 			{
 				return true;
 			}

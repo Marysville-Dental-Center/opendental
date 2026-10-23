@@ -13,6 +13,8 @@ namespace OpenDental{
 		private long _clinicNum;
 		private List<Operatory> _listOperatories;
 		private List<Def> _listDefsBlockoutCategories;
+		///<summary>25.1: the blockout type when the window opened. 0 for a new blockout.</summary>
+		private long _blockoutTypeOriginal;
 
 		///<summary>Setting clinicNum to 0 will show all operatories, otherwise only operatories for the clinic passed in will show.  
 		///If a list of defs is passed in it will fill the blockout type select box.  If no list is passed in, it will show all defs.</summary>
@@ -29,7 +31,14 @@ namespace OpenDental{
 			listType.Items.Clear();
 			//This list will be null if there isn't a passed in list.  We pass in lists if we want to show a special modified list.
 			if(_listDefsBlockoutCategories==null) {
-				_listDefsBlockoutCategories=Defs.GetDefsForCategory(DefCat.BlockoutTypes,true);
+				//25.1: only the types this user may manage. Unflagged types need Blockouts, NS/DC-flagged types need BlockoutsFlagged.
+				_listDefsBlockoutCategories=Schedules.FilterBlockoutTypesForUser(Defs.GetDefsForCategory(DefCat.BlockoutTypes,true),
+					Security.IsAuthorized(EnumPermType.Blockouts,true),Security.IsAuthorized(EnumPermType.BlockoutsFlagged,true));
+			}
+			_blockoutTypeOriginal=IsNew ? 0 : _schedule.BlockoutType;
+			//25.1: Delete follows the permission for the blockout's own type.
+			if(!IsNew && !Security.IsAuthorized(Schedules.GetBlockoutPermType(_schedule.BlockoutType),true)) {
+				butDelete.Enabled=false;
 			}
 			for(int i=0;i<_listDefsBlockoutCategories.Count;i++){
 				listType.Items.Add(_listDefsBlockoutCategories[i].ItemName);
@@ -76,6 +85,9 @@ namespace OpenDental{
 		}
 
 		private void butDelete_Click(object sender, System.EventArgs e) {
+			if(!IsNew && !Security.IsAuthorized(Schedules.GetBlockoutPermType(_blockoutTypeOriginal))) {//25.1
+				return;
+			}
 			if(MessageBox.Show(Lan.g(this,"Delete Blockout?"),"",MessageBoxButtons.OKCancel)!=DialogResult.OK){
 			  return;   
 			}
@@ -102,8 +114,16 @@ namespace OpenDental{
 				MsgBox.Show(this,"Incorrect time format");
 				return;
 			}
+			long blockoutTypeNew=_listDefsBlockoutCategories[listType.SelectedIndex].DefNum;
+			//25.1: the new type's permission, and on an edit also the original type's permission (changing between kinds needs both).
+			if(!Security.IsAuthorized(Schedules.GetBlockoutPermType(blockoutTypeNew))) {
+				return;
+			}
+			if(!IsNew && !Security.IsAuthorized(Schedules.GetBlockoutPermType(_blockoutTypeOriginal))) {
+				return;
+			}
 			_schedule.Note=textNote.Text;
-			_schedule.BlockoutType=_listDefsBlockoutCategories[listType.SelectedIndex].DefNum;
+			_schedule.BlockoutType=blockoutTypeNew;
 			_schedule.Ops=new List<long>();
 			for(int i=0;i<listOp.SelectedIndices.Count;i++){
 				_schedule.Ops.Add(_listOperatories[listOp.SelectedIndices[i]].OperatoryNum);

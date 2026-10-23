@@ -74,8 +74,9 @@ namespace OpenDentBusiness{
 		///<summary>12</summary>
 		[Description("Schedules - Practice and Provider")]
 		Schedules,
-		///<summary>13</summary>
-		[Description("Blockouts")]
+		///<summary>13 - Blockouts whose type has no NS (no scheduling) or DC (no cut/copy/paste) flag: add, edit, cut, copy, paste, clear and delete.
+		///Flagged blockouts are covered by BlockoutsFlagged (266). Audit entries are written for each of those actions.</summary>
+		[Description("Blockouts (types without the NS or DC flag)")]
 		Blockouts,
 		///<summary>14. Uses date restrictions.</summary>
 		[Description("Claim Sent Edit")]
@@ -108,11 +109,12 @@ namespace OpenDentBusiness{
 		///<summary>24. At least one user must have this permission.</summary>
 		[Description("Security Admin")]
 		SecurityAdmin,
-		///<summary>25. </summary>
-		[Description("Appointment Create")]
+		///<summary>25. Since 25.2 the display text also says that it covers scheduling a planned appointment by dragging it off the Pinboard.</summary>
+		[Description("Appointment Create. Includes scheduling a planned appointment from the Pinboard")]
 		AppointmentCreate,
-		///<summary>26</summary>
-		[Description("Appointment Move. Dragging, moving to pinboard, or setting unscheduled")]
+		///<summary>26. Since 25.2 the display text says that it covers appointments of any status. It does not cover moving an appointment from the
+		///Unscheduled List, or sending a planned appointment to the Pinboard.</summary>
+		[Description("Appointment Move. Dragging, sending to the Pinboard, or setting unscheduled, for any appointment status")]
 		AppointmentMove,
 		///<summary>27.  AppointmentDelete permission required in order to delete appointments.</summary>
 		[Description("Appointment Edit. Includes breaking appointments and deleting appointments from the unscheduled list. Does not include moving or resizing. Also see Completed Appointment Edit.")]
@@ -165,7 +167,7 @@ namespace OpenDentBusiness{
 		///<summary>43. Uses date restrictions.</summary>
 		[Description("Commlog Edit")]
 		CommlogEdit,
-		///<summary>44. Uses date restrictions.</summary>
+		///<summary>44. Uses date restrictions. Deleting an image that carries a signature also needs SignedImageEdit (265).</summary>
 		[Description("Image Delete")]
 		ImageDelete,
 		///<summary>45. Uses date restrictions.</summary>
@@ -300,7 +302,8 @@ namespace OpenDentBusiness{
 		///<summary>88- Security permission for assignment of benefits.</summary>
 		[Description("Insurance Plan Change Assignment of Benefits")]
 		InsPlanChangeAssign,
-		///<summary>89- Audit trail for images and documents in the image module.  There is no user interface in the security window for this permission because it is only used for tracking.</summary>
+		///<summary>89- Uses date restrictions. Flipping, rotating, resizing and cropping an image, and changing its Item Info details.
+		///Editing an image that carries a signature also needs SignedImageEdit (265).</summary>
 		[Description("Image Edit")]
 		ImageEdit,
 		///<summary>90- Allows editing of all measure events.  Also used to track changes made to events.</summary>
@@ -395,10 +398,11 @@ namespace OpenDentBusiness{
 		///(Sent, Waiting to Send, Received, etc).</summary>
 		[Description("Claim Delete")]
 		ClaimDelete,
-		///<summary>119 - Covers editing the Write-off and Write-off Override fields for claimprocs as well as deleting/creating claimprocs.
+		///<summary>119 - Covers editing the Write-off and Write-off Override fields for claimprocs. It also blocks creating and deleting claimprocs,
+		///so a write-off outside the date limit cannot be replaced by deleting the claimproc and making a new one.
 		///<para>Uses date/days restriction based on the attached proc.DateEntryC; unless it's a total payment, then uses claimproc.SecDateEntry.</para>
 		///<para>Applies to all plan types (i.e. PPO, Category%, Capitation, etc).</para></summary>
-		[Description("Insurance Write-off Edit")]
+		[Description("Insurance Write-off Edit. Also needed to create or delete claim procedures")]
 		InsWriteOffEdit,
 		///<summary>120 - Allows users to change appointment confirmation status.</summary>
 		[Description("Appointment Confirmation Status Edit")]
@@ -790,9 +794,10 @@ namespace OpenDentBusiness{
 		///<summary>251 - Only used at OD HQ. Ability to listen to live calls.</summary>
 		[Description("Listen to Live Calls")]
 		ChanSpy,
-		///<summary>252 - Ability to edit Fee Billed to Insurance in FormClaimProc</summary>
-		[Description("Claim Procedure Fee Billed to Ins Edit")]
-		ClaimProcFeeBilledToInsEdit,
+		///<summary>252 - Editing the Fee Billed and the Code Sent to insurance in FormClaimProc, for new and existing claimprocs.
+		///Named ClaimProcFeeBilledToInsEdit before 25.3; the number did not change, so stored rows stay valid.</summary>
+		[Description("Edit the fee or the procedure code billed to insurance on claim procedures")]
+		ClaimProcFieldsBilledToInsEdit,
 		///<summary>253 - Allow users to merge allergies.</summary>
 		[Description("Allergy Merge")]
 		AllergyMerge,
@@ -826,6 +831,38 @@ namespace OpenDentBusiness{
 		///<summary>263 - Allows disbanding of Super Families.</summary>
 		[Description("Super Family Disband")]
 		SuperFamilyDisband,
+		//264 to 272 were added by Open Dental 24.4 to 25.3. The numbers are stored in grouppermission.PermType and securitylog.PermType and must
+		//match the published Open Dental 25.3 database documentation exactly. Values marked [IsODHQ] are reserved: they only exist so that rows
+		//written by Open Dental load and display. They are hidden from the security tree and never granted (see GroupPermissions.IsReserved).
+		///<summary>264 - Adding a note and signature to an image that has no signature yet. No date restriction.</summary>
+		[Description("Image Signature Create")]
+		ImageSignatureCreate,
+		///<summary>265 - Changing or removing the note and signature of a signed image. Also needed, on top of ImageEdit or ImageDelete, to edit or
+		///delete a signed image. No date restriction.</summary>
+		[Description("Signed Image Edit")]
+		SignedImageEdit,
+		///<summary>266 - Blockouts whose type has the NS (no scheduling) or DC (no cut/copy/paste) flag: add, edit, cut, copy, paste, clear and
+		///delete. Unflagged blockouts are covered by Blockouts (13).</summary>
+		[Description("Blockouts flagged as NoSched or DisableCopyPaste")]
+		BlockoutsFlagged,
+		///<summary>267 - Clearing the Locked checkbox of a saved payment plan, which unlocks its terms. Saving still needs PayPlanEdit.</summary>
+		[Description("Pay Plan Unlock")]
+		PayPlanUnlock,
+		///<summary>268 - Reserved. Open Dental HQ only: sending notifications to customers.</summary>
+		[Description("Send Alerts From HQ"),IsODHQ]
+		SendAlertsFromHQ,
+		///<summary>269 - Reserved. Open Dental HQ only: mass texts to employees.</summary>
+		[Description("Text All Employees"),IsODHQ]
+		TextAllEmployees,
+		///<summary>270 - Changing the fee of a treatment-planned procedure by hand.</summary>
+		[Description("Treatment Planned Procedure Edit Fee")]
+		ProcTPEditFee,
+		///<summary>271 - Audit trail only: an eForm was imported. Never granted, so it does not show in the security tree.</summary>
+		[Description("eForm Import")]
+		EFormImport,
+		///<summary>272 - Reserved. Open Dental HQ only: audit entries for changes to the phone table.</summary>
+		[Description("Phone Extension"),IsODHQ]
+		PhoneExtension,
 	}
 }
 

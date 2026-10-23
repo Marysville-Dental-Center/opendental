@@ -72,6 +72,7 @@ namespace OpenDentBusiness.Crud{
 				creditCard.PaymentType       = PIn.Long  (row["PaymentType"].ToString());
 				creditCard.IsRecurringActive = PIn.Bool  (row["IsRecurringActive"].ToString());
 				creditCard.Nickname          = PIn.String(row["Nickname"].ToString());
+				creditCard.CardHolderName    = PIn.String(row["CardHolderName"].ToString());
 				retVal.Add(creditCard);
 			}
 			return retVal;
@@ -108,6 +109,7 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("PaymentType");
 			table.Columns.Add("IsRecurringActive");
 			table.Columns.Add("Nickname");
+			table.Columns.Add("CardHolderName");
 			foreach(CreditCard creditCard in listCreditCards) {
 				table.Rows.Add(new object[] {
 					POut.Long  (creditCard.CreditCardNum),
@@ -135,6 +137,7 @@ namespace OpenDentBusiness.Crud{
 					POut.Long  (creditCard.PaymentType),
 					POut.Bool  (creditCard.IsRecurringActive),
 					            creditCard.Nickname,
+					            creditCard.CardHolderName,
 				});
 			}
 			return table;
@@ -154,7 +157,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="CreditCardNum,";
 			}
-			command+="PatNum,Address,Zip,XChargeToken,CCNumberMasked,CCExpiration,ItemOrder,ChargeAmt,DateStart,DateStop,Note,PayPlanNum,PayConnectToken,PayConnectTokenExp,Procedures,CCSource,ClinicNum,ExcludeProcSync,PaySimpleToken,ChargeFrequency,CanChargeWhenNoBal,PaymentType,IsRecurringActive,Nickname) VALUES(";
+			command+="PatNum,Address,Zip,XChargeToken,CCNumberMasked,CCExpiration,ItemOrder,ChargeAmt,DateStart,DateStop,Note,PayPlanNum,PayConnectToken,PayConnectTokenExp,Procedures,CCSource,ClinicNum,ExcludeProcSync,PaySimpleToken,ChargeFrequency,CanChargeWhenNoBal,PaymentType,IsRecurringActive,Nickname,CardHolderName) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(creditCard.CreditCardNum)+",";
 			}
@@ -182,7 +185,8 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Bool  (creditCard.CanChargeWhenNoBal)+","
 				+    POut.Long  (creditCard.PaymentType)+","
 				+    POut.Bool  (creditCard.IsRecurringActive)+","
-				+"'"+POut.String(creditCard.Nickname)+"')";
+				+"'"+POut.String(creditCard.Nickname)+"',"
+				+"'"+POut.String(creditCard.CardHolderName)+"')";
 			if(creditCard.Procedures==null) {
 				creditCard.Procedures="";
 			}
@@ -211,7 +215,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="CreditCardNum,";
 			}
-			command+="PatNum,Address,Zip,XChargeToken,CCNumberMasked,CCExpiration,ItemOrder,ChargeAmt,DateStart,DateStop,Note,PayPlanNum,PayConnectToken,PayConnectTokenExp,Procedures,CCSource,ClinicNum,ExcludeProcSync,PaySimpleToken,ChargeFrequency,CanChargeWhenNoBal,PaymentType,IsRecurringActive,Nickname) VALUES(";
+			command+="PatNum,Address,Zip,XChargeToken,CCNumberMasked,CCExpiration,ItemOrder,ChargeAmt,DateStart,DateStop,Note,PayPlanNum,PayConnectToken,PayConnectTokenExp,Procedures,CCSource,ClinicNum,ExcludeProcSync,PaySimpleToken,ChargeFrequency,CanChargeWhenNoBal,PaymentType,IsRecurringActive,Nickname,CardHolderName) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(creditCard.CreditCardNum)+",";
 			}
@@ -239,7 +243,8 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Bool  (creditCard.CanChargeWhenNoBal)+","
 				+    POut.Long  (creditCard.PaymentType)+","
 				+    POut.Bool  (creditCard.IsRecurringActive)+","
-				+"'"+POut.String(creditCard.Nickname)+"')";
+				+"'"+POut.String(creditCard.Nickname)+"',"
+				+"'"+POut.String(creditCard.CardHolderName)+"')";
 			if(creditCard.Procedures==null) {
 				creditCard.Procedures="";
 			}
@@ -279,7 +284,8 @@ namespace OpenDentBusiness.Crud{
 				+"CanChargeWhenNoBal=  "+POut.Bool  (creditCard.CanChargeWhenNoBal)+", "
 				+"PaymentType       =  "+POut.Long  (creditCard.PaymentType)+", "
 				+"IsRecurringActive =  "+POut.Bool  (creditCard.IsRecurringActive)+", "
-				+"Nickname          = '"+POut.String(creditCard.Nickname)+"' "
+				+"Nickname          = '"+POut.String(creditCard.Nickname)+"', "
+				+"CardHolderName    = '"+POut.String(creditCard.CardHolderName)+"' "
 				+"WHERE CreditCardNum = "+POut.Long(creditCard.CreditCardNum);
 			if(creditCard.Procedures==null) {
 				creditCard.Procedures="";
@@ -387,6 +393,10 @@ namespace OpenDentBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="Nickname = '"+POut.String(creditCard.Nickname)+"'";
 			}
+			if(creditCard.CardHolderName != oldCreditCard.CardHolderName) {
+				if(command!="") { command+=",";}
+				command+="CardHolderName = '"+POut.String(creditCard.CardHolderName)+"'";
+			}
 			if(command=="") {
 				return false;
 			}
@@ -473,6 +483,9 @@ namespace OpenDentBusiness.Crud{
 				return true;
 			}
 			if(creditCard.Nickname != oldCreditCard.Nickname) {
+				return true;
+			}
+			if(creditCard.CardHolderName != oldCreditCard.CardHolderName) {
 				return true;
 			}
 			return false;

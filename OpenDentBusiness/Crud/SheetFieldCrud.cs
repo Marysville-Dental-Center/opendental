@@ -76,6 +76,7 @@ namespace OpenDentBusiness.Crud{
 				sheetField.SheetFieldDefNum        = PIn.Long  (row["SheetFieldDefNum"].ToString());
 				sheetField.CanElectronicallySign   = PIn.Bool  (row["CanElectronicallySign"].ToString());
 				sheetField.IsSigProvRestricted     = PIn.Bool  (row["IsSigProvRestricted"].ToString());
+				sheetField.UserSigned              = PIn.Long  (row["UserSigned"].ToString());
 				retVal.Add(sheetField);
 			}
 			return retVal;
@@ -115,6 +116,7 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("SheetFieldDefNum");
 			table.Columns.Add("CanElectronicallySign");
 			table.Columns.Add("IsSigProvRestricted");
+			table.Columns.Add("UserSigned");
 			foreach(SheetField sheetField in listSheetFields) {
 				table.Rows.Add(new object[] {
 					POut.Long  (sheetField.SheetFieldNum),
@@ -145,6 +147,7 @@ namespace OpenDentBusiness.Crud{
 					POut.Long  (sheetField.SheetFieldDefNum),
 					POut.Bool  (sheetField.CanElectronicallySign),
 					POut.Bool  (sheetField.IsSigProvRestricted),
+					POut.Long  (sheetField.UserSigned),
 				});
 			}
 			return table;
@@ -164,7 +167,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="SheetFieldNum,";
 			}
-			command+="SheetNum,FieldType,FieldName,FieldValue,FontSize,FontName,FontIsBold,XPos,YPos,Width,Height,GrowthBehavior,RadioButtonValue,RadioButtonGroup,IsRequired,TabOrder,ReportableName,TextAlign,IsLocked,ItemColor,DateTimeSig,TabOrderMobile,UiLabelMobile,UiLabelMobileRadioButton,SheetFieldDefNum,CanElectronicallySign,IsSigProvRestricted) VALUES(";
+			command+="SheetNum,FieldType,FieldName,FieldValue,FontSize,FontName,FontIsBold,XPos,YPos,Width,Height,GrowthBehavior,RadioButtonValue,RadioButtonGroup,IsRequired,TabOrder,ReportableName,TextAlign,IsLocked,ItemColor,DateTimeSig,TabOrderMobile,UiLabelMobile,UiLabelMobileRadioButton,SheetFieldDefNum,CanElectronicallySign,IsSigProvRestricted,UserSigned) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(sheetField.SheetFieldNum)+",";
 			}
@@ -195,7 +198,8 @@ namespace OpenDentBusiness.Crud{
 				+    DbHelper.ParamChar+"paramUiLabelMobileRadioButton,"
 				+    POut.Long  (sheetField.SheetFieldDefNum)+","
 				+    POut.Bool  (sheetField.CanElectronicallySign)+","
-				+    POut.Bool  (sheetField.IsSigProvRestricted)+")";
+				+    POut.Bool  (sheetField.IsSigProvRestricted)+","
+				+    POut.Long  (sheetField.UserSigned)+")";
 			if(sheetField.FieldValue==null) {
 				sheetField.FieldValue="";
 			}
@@ -243,7 +247,7 @@ namespace OpenDentBusiness.Crud{
 						if(useExistingPK) {
 							sbCommands.Append("SheetFieldNum,");
 						}
-						sbCommands.Append("SheetNum,FieldType,FieldName,FieldValue,FontSize,FontName,FontIsBold,XPos,YPos,Width,Height,GrowthBehavior,RadioButtonValue,RadioButtonGroup,IsRequired,TabOrder,ReportableName,TextAlign,IsLocked,ItemColor,DateTimeSig,TabOrderMobile,UiLabelMobile,UiLabelMobileRadioButton,SheetFieldDefNum,CanElectronicallySign,IsSigProvRestricted) VALUES ");
+						sbCommands.Append("SheetNum,FieldType,FieldName,FieldValue,FontSize,FontName,FontIsBold,XPos,YPos,Width,Height,GrowthBehavior,RadioButtonValue,RadioButtonGroup,IsRequired,TabOrder,ReportableName,TextAlign,IsLocked,ItemColor,DateTimeSig,TabOrderMobile,UiLabelMobile,UiLabelMobileRadioButton,SheetFieldDefNum,CanElectronicallySign,IsSigProvRestricted,UserSigned) VALUES ");
 						countRows=0;
 					}
 					else {
@@ -278,7 +282,8 @@ namespace OpenDentBusiness.Crud{
 					sbRow.Append("'"+POut.String(sheetField.UiLabelMobileRadioButton)+"'"); sbRow.Append(",");
 					sbRow.Append(POut.Long(sheetField.SheetFieldDefNum)); sbRow.Append(",");
 					sbRow.Append(POut.Bool(sheetField.CanElectronicallySign)); sbRow.Append(",");
-					sbRow.Append(POut.Bool(sheetField.IsSigProvRestricted)); sbRow.Append(")");
+					sbRow.Append(POut.Bool(sheetField.IsSigProvRestricted)); sbRow.Append(",");
+					sbRow.Append(POut.Long(sheetField.UserSigned)); sbRow.Append(")");
 					if(sbCommands.Length+sbRow.Length+1 > TableBase.MaxAllowedPacketCount && countRows > 0) {
 						Db.NonQ(sbCommands.ToString());
 						sbCommands=null;
@@ -313,7 +318,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="SheetFieldNum,";
 			}
-			command+="SheetNum,FieldType,FieldName,FieldValue,FontSize,FontName,FontIsBold,XPos,YPos,Width,Height,GrowthBehavior,RadioButtonValue,RadioButtonGroup,IsRequired,TabOrder,ReportableName,TextAlign,IsLocked,ItemColor,DateTimeSig,TabOrderMobile,UiLabelMobile,UiLabelMobileRadioButton,SheetFieldDefNum,CanElectronicallySign,IsSigProvRestricted) VALUES(";
+			command+="SheetNum,FieldType,FieldName,FieldValue,FontSize,FontName,FontIsBold,XPos,YPos,Width,Height,GrowthBehavior,RadioButtonValue,RadioButtonGroup,IsRequired,TabOrder,ReportableName,TextAlign,IsLocked,ItemColor,DateTimeSig,TabOrderMobile,UiLabelMobile,UiLabelMobileRadioButton,SheetFieldDefNum,CanElectronicallySign,IsSigProvRestricted,UserSigned) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(sheetField.SheetFieldNum)+",";
 			}
@@ -344,7 +349,8 @@ namespace OpenDentBusiness.Crud{
 				+    DbHelper.ParamChar+"paramUiLabelMobileRadioButton,"
 				+    POut.Long  (sheetField.SheetFieldDefNum)+","
 				+    POut.Bool  (sheetField.CanElectronicallySign)+","
-				+    POut.Bool  (sheetField.IsSigProvRestricted)+")";
+				+    POut.Bool  (sheetField.IsSigProvRestricted)+","
+				+    POut.Long  (sheetField.UserSigned)+")";
 			if(sheetField.FieldValue==null) {
 				sheetField.FieldValue="";
 			}
@@ -395,7 +401,8 @@ namespace OpenDentBusiness.Crud{
 				+"UiLabelMobileRadioButton=  "+DbHelper.ParamChar+"paramUiLabelMobileRadioButton, "
 				+"SheetFieldDefNum        =  "+POut.Long  (sheetField.SheetFieldDefNum)+", "
 				+"CanElectronicallySign   =  "+POut.Bool  (sheetField.CanElectronicallySign)+", "
-				+"IsSigProvRestricted     =  "+POut.Bool  (sheetField.IsSigProvRestricted)+" "
+				+"IsSigProvRestricted     =  "+POut.Bool  (sheetField.IsSigProvRestricted)+", "
+				+"UserSigned              =  "+POut.Long  (sheetField.UserSigned)+" "
 				+"WHERE SheetFieldNum = "+POut.Long(sheetField.SheetFieldNum);
 			if(sheetField.FieldValue==null) {
 				sheetField.FieldValue="";
@@ -523,6 +530,10 @@ namespace OpenDentBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="IsSigProvRestricted = "+POut.Bool(sheetField.IsSigProvRestricted)+"";
 			}
+			if(sheetField.UserSigned != oldSheetField.UserSigned) {
+				if(command!="") { command+=",";}
+				command+="UserSigned = "+POut.Long(sheetField.UserSigned)+"";
+			}
 			if(command=="") {
 				return false;
 			}
@@ -626,6 +637,9 @@ namespace OpenDentBusiness.Crud{
 				return true;
 			}
 			if(sheetField.IsSigProvRestricted != oldSheetField.IsSigProvRestricted) {
+				return true;
+			}
+			if(sheetField.UserSigned != oldSheetField.UserSigned) {
 				return true;
 			}
 			return false;

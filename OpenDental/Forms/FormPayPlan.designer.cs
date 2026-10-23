@@ -102,6 +102,8 @@ namespace OpenDental {
 			this.checkExcludePast = new OpenDental.UI.CheckBox();
 			this.comboCategory = new OpenDental.UI.ComboBox();
 			this.label2 = new System.Windows.Forms.Label();
+			this.comboSheetDef = new OpenDental.UI.ComboBox();
+			this.labelSheetDef = new System.Windows.Forms.Label();
 			this.butAdj = new OpenDental.UI.Button();
 			this.textAdjustment = new OpenDental.ValidDouble();
 			this.warningIntegrity1 = new OpenDental.UI.WarningIntegrity();
@@ -814,7 +816,24 @@ namespace OpenDental {
 			this.label2.TabIndex = 188;
 			this.label2.Text = "Category";
 			this.label2.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
+			//
+			// comboSheetDef
+			//
+			this.comboSheetDef.Location = new System.Drawing.Point(266, 161);
+			this.comboSheetDef.Name = "comboSheetDef";
+			this.comboSheetDef.Size = new System.Drawing.Size(108, 21);
+			this.comboSheetDef.TabIndex = 201;
+			this.comboSheetDef.SelectionChangeCommitted += new System.EventHandler(this.comboSheetDef_SelectionChangeCommitted);
+			//
+			// labelSheetDef
+			//
+			this.labelSheetDef.Location = new System.Drawing.Point(230, 163);
+			this.labelSheetDef.Name = "labelSheetDef";
+			this.labelSheetDef.Size = new System.Drawing.Size(36, 17);
+			this.labelSheetDef.TabIndex = 202;
+			this.labelSheetDef.Text = "Sheet";
+			this.labelSheetDef.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			//
 			// butAdj
 			// 
 			this.butAdj.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
@@ -909,6 +928,8 @@ namespace OpenDental {
 			this.Controls.Add(this.butAdj);
 			this.Controls.Add(this.label2);
 			this.Controls.Add(this.comboCategory);
+			this.Controls.Add(this.labelSheetDef);
+			this.Controls.Add(this.comboSheetDef);
 			this.Controls.Add(this.checkExcludePast);
 			this.Controls.Add(this.butSignPrint);
 			this.Controls.Add(this.labelClosed);
@@ -1040,6 +1061,8 @@ namespace OpenDental {
 		private ValidNum textPaymentCount;
 		private OpenDental.UI.CheckBox checkExcludePast;
 		private UI.ComboBox comboCategory;
+		private UI.ComboBox comboSheetDef;
+		private System.Windows.Forms.Label labelSheetDef;
 		private Label label2;
 		private UI.Button butAdj;
 		private ValidDouble textAdjustment;

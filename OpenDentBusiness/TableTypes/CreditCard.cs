@@ -73,6 +73,8 @@ namespace OpenDentBusiness {
 		public bool IsRecurringActive=true;
 		///<summary>Nickname or alias. Currently only used in Web API for PaySimple.</summary>
 		public string Nickname;
+		///<summary>Added in Open Dental 25.1: name on the card for a stored card or token. Only some merchant integrations fill it.</summary>
+		public string CardHolderName;
 
 		public bool IsXWeb() {
 			return CCSource.In(CreditCardSource.XWeb, CreditCardSource.XWebPortalLogin, CreditCardSource.XWebPaymentPortal, CreditCardSource.XWebPaymentPortalGuest);

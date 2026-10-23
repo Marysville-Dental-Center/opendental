@@ -66,10 +66,22 @@ namespace OpenDentBusiness {
 		ShowInEClipboard,
 		///<summary>2 - This status gets set from eClipboard after filling.</summary>
 		Filled,
-		///<summary>3 - .</summary>
-		Imported,
-		///<summary>4 - Import was attempted, but could not match a known patient in the database. Once it's matched to a patient, it gets converted to Imported status.</summary>
-		UnmatchedToPatient
+		//3 (Imported) and 4 (UnmatchedToPatient) were removed by Open Dental 25.1 and 25.2. Stored rows that still hold them load as Filled; see
+		//EFormStatusCompat.FromDb. The 24.3 upgrade seed (ForkMigrations/Seed25_3.cs) rewrites such rows to 2.
+	}
+
+	///<summary>Reads eform.Status values written by older versions.</summary>
+	public static class EFormStatusCompat {
+		///<summary>3 was Imported and 4 was UnmatchedToPatient before Open Dental 25.2.</summary>
+		public static readonly int[] ArrayRemovedValues=new int[] { 3,4 };
+
+		///<summary>Maps a stored eform.Status number to the current enum. The removed values 3 and 4, and any other unknown number, load as Filled.</summary>
+		public static EnumEFormStatus FromDb(int value) {
+			if(Enum.IsDefined(typeof(EnumEFormStatus),value)) {
+				return (EnumEFormStatus)value;
+			}
+			return EnumEFormStatus.Filled;
+		}
 	}
 
 	//<summary>Not a db field. These are the different internal eForm types that show up on the left grid of FrmEFormDefs. For example, we might have two different internal eForms called PatientRegistration and PatientLetter but they would both have an EnumEFormType set to PatientForm.</summary>

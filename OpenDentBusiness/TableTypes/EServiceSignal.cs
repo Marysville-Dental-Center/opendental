@@ -160,6 +160,21 @@ namespace OpenDentBusiness {
 		OCR,
 		///<summary>49 - Used by ShortGuidLookup to redirect from an OD-generated Short URL to a long URL provided by customer.</summary>
 		UrlRedirect,
+		//50 to 56 were added by Open Dental 24.4 to 25.3 for hosted services this program does not have. Reserved so that stored values load.
+		///<summary>50 - Reserved (Open Dental 24.4). Developer Portal API.</summary>
+		DeveloperPortalApi,
+		///<summary>51 - Reserved (Open Dental 24.4). Developer Portal UI.</summary>
+		DeveloperPortalUI,
+		///<summary>52 - Reserved (Open Dental 24.4). HQ email transmission service.</summary>
+		EmailHqService,
+		///<summary>53 - Reserved (Open Dental 25.1). BetterDiagnostics AI.</summary>
+		BetterDiagnostics,
+		///<summary>54 - Reserved (Open Dental 25.1). Mass email signup.</summary>
+		EmailMassAccess,
+		///<summary>55 - Reserved (Open Dental 25.3). Web Sched existing patient UI.</summary>
+		WebSchedExistingPatientUI,
+		///<summary>56 - Reserved (Open Dental 25.3). Web Sched existing patient API.</summary>
+		WebSchedExistingPatientApi,
 	}
 	
 	///<summary>Used to determine that status of the entire service.  Order of enum is important, from lowest to highest importance.</summary>

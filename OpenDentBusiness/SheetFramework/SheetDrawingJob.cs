@@ -1058,6 +1058,7 @@ namespace OpenDentBusiness {
 		public void DrawFieldSigBox(SheetField field,Sheet sheet,Graphics g,XGraphics gx) {
 			Bitmap sigImage=new Bitmap(field.Width,field.Height);
 			string strSigned=null;//will be set if SheetType is not TreatmentPlan or PaymentPlan, FieldValue.Length>0, and DateTimeSig.Year>1880
+			string strSignedBy="";//"By: user" when sheetfield.UserSigned is set
 			if(sheet.SheetType==SheetTypeEnum.TreatmentPlan) {
 				sigImage=GetSigTPHelper(sheet,field);
 			}
@@ -1083,6 +1084,8 @@ namespace OpenDentBusiness {
 					if(field.DateTimeSig.Year>1880) {
 						strSigned=(wrapper.GetIsTypedFromWebForms() ? Lans.g("","Typed Signature in Webforms: ") : Lans.g("","Signed: "))+field.DateTimeSig.ToString();
 					}
+					//25.2: who signed after a change of user, on the line above "Signed:".
+					strSignedBy=SheetSignatureSigners.GetSignedByText(field.UserSigned,Userods.GetName);
 				}
 			}
 			string fontName=(string.IsNullOrEmpty(sheet.FontName) ? FontFamily.GenericMonospace.ToString() : sheet.FontName);
@@ -1098,6 +1101,11 @@ namespace OpenDentBusiness {
 					GraphicsHelper.DrawString(g,strSigned,font,Brushes.Black,boundsSigned,HorizontalAlignment.Left);
 					font.Dispose();
 				}
+				if(strSignedBy!="") {
+					Rectangle boundsSignedBy=new Rectangle(bounds.X+1,bounds.Y+bounds.Height-29,sigWidth-2,14);
+					using Font fontBy=new Font(fontName,(float)fontSizeSigned,FontStyle.Regular);
+					GraphicsHelper.DrawString(g,strSignedBy,fontBy,Brushes.Black,boundsSignedBy,HorizontalAlignment.Left);
+				}
 			}
 			else {
 				gx.DrawImage(XImage.FromGdiPlusImage(sigImage),p(field.XPos),p(field.YPos-_yPosPrint),p(sigWidth),p(sigHeight));
@@ -1105,6 +1113,11 @@ namespace OpenDentBusiness {
 					RectangleF boundsSigned=new RectangleF(field.XPos+1,field.YPos-_yPosPrint+field.Height-15,sigWidth-2,14);//Height 14 taken from FormSheetFillEdit
 					XFont xfont=new XFont(fontName,fontSizeSigned,XFontStyle.Regular);
 					GraphicsHelper.DrawStringX(gx,strSigned,xfont,Brushes.Black,boundsSigned,HorizontalAlignment.Left);
+				}
+				if(strSignedBy!="") {
+					RectangleF boundsSignedBy=new RectangleF(field.XPos+1,field.YPos-_yPosPrint+field.Height-29,sigWidth-2,14);
+					XFont xfontBy=new XFont(fontName,fontSizeSigned,XFontStyle.Regular);
+					GraphicsHelper.DrawStringX(gx,strSignedBy,xfontBy,Brushes.Black,boundsSignedBy,HorizontalAlignment.Left);
 				}
 			}
 			sigImage.Dispose();

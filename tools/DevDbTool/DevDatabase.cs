@@ -5,6 +5,7 @@ using System.IO;
 using System.Text;
 using DataConnectionBase;
 using OpenDentBusiness;
+using OpenDentBusiness.ForkMigrations;
 
 namespace DevDbTool {
 	///<summary>Thrown when the tool declines to do something that could destroy data or that the arguments do not allow.</summary>
@@ -122,6 +123,18 @@ namespace DevDbTool {
 			Program.Info("Conversion finished: database version "+GetPrefRaw(PrefName.DataBaseVersion));
 		}
 
+		///<summary>Runs the fork migrations that take over from the frozen 24.3.63 convert chain (OpenDentBusiness/Misc/ForkMigrations), which bring
+		///the schema to Open Dental 25.3.48. They run through the adoption tool's code (Adoption.Run), the only way the fork version markers are
+		///written: the startup version guard (ForkVersionGuard) asks for adoption on a 24.3.63 database while this build has fork migration steps, and
+		///refuses a database that has ForkSchemaLevel without the adoption markers. Needs ProgramVersion stamped first (StampProgramVersion), because
+		///adoption accepts only a database whose DataBaseVersion and ProgramVersion agree.</summary>
+		public void RunForkMigrations() {
+			Adoption.Run(x => Program.Info("  "+x));
+			Cache.Refresh(InvalidType.Prefs);
+			Program.Info("Adopted: DataBaseVersion "+GetPrefRaw(PrefName.DataBaseVersion)+", fork schema level "
+				+GetPrefRaw(ForkVersions.PREF_FORK_SCHEMA_LEVEL)+", OdSchemaCompat "+GetPrefRaw(ForkVersions.PREF_OD_SCHEMA_COMPAT)+".");
+		}
+
 		///<summary>The post-conversion steps from FreshFromDump that make the database usable: default auto codes, procedure buttons and
 		///appointment quick-add procedures. Skipped on purpose: setting the Admin password to 'pass' (Middle Tier unit tests only) and the
 		///CDCREC rows the HL7 unit tests need.</summary>
@@ -164,7 +177,13 @@ namespace DevDbTool {
 
 		///<summary>Reads a preference straight from the table, bypassing the cache.</summary>
 		public static string GetPrefRaw(PrefName prefName) {
-			DataTable table=DataCore.GetTable("SELECT ValueString FROM preference WHERE PrefName='"+POut.String(prefName.ToString())+"'");
+			return GetPrefRaw(prefName.ToString());
+		}
+
+		///<summary>Reads a preference straight from the table by name, for rows that are not in the PrefName enum (such as the fork migration
+		///markers).</summary>
+		public static string GetPrefRaw(string prefName) {
+			DataTable table=DataCore.GetTable("SELECT ValueString FROM preference WHERE PrefName='"+POut.String(prefName)+"'");
 			if(table.Rows.Count==0) {
 				return null;
 			}

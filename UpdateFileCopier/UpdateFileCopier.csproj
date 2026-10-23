@@ -146,6 +146,9 @@
     <Compile Include="..\CodeBase\Utilities\ODPrimitiveExtensions.cs">
       <Link>ODPrimitiveExtensions.cs</Link>
     </Compile>
+    <Compile Include="..\OpenDentBusiness\Misc\ForkRelease\ReleaseManifest.cs">
+      <Link>ReleaseManifest.cs</Link>
+    </Compile>
     <Compile Include="FormMain.cs">
       <SubType>Form</SubType>
     </Compile>

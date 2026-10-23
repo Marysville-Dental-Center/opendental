@@ -47,12 +47,22 @@ namespace OpenDental{
 				FromVersion=new Version("19.2.3.0");
 				ODException.SwallowAnyException(() => Prefs.UpdateString(PrefName.DataBaseVersion,"19.2.3.0"));
 			}
+			if(ToVersion>ConvertDatabases.FrozenVersion) {
+				//The legacy chain is frozen at 24.3.63. Later schema changes are fork migration steps (PrefL.ConvertDB hands off to them).
+				throw new ApplicationException("The legacy conversion chain ends at "+ConvertDatabases.FrozenVersion.ToString(4)+"; it cannot convert to "
+					+ToVersion.ToString(4)+".");
+			}
 			if(FromVersion==ToVersion) {
 				return true;//no conversion necessary
 			}
 			if(FromVersion.CompareTo(ToVersion)>0){//"Cannot convert database to an older version."
-				//no longer necessary to catch it here.  It will be handled soon enough in CheckProgramVersion
-				return true;
+				//PrefL.CheckForkVersionGuard refuses these databases before this point. Never continue to a binary update or a downgrade offer.
+				FormOpenDental.ExitCode=ForkVersionGuard.EXIT_CODE_UNSUPPORTED_VERSION;
+				if(!isSilent) {
+					MessageBox.Show(Lan.g(this,"The database version")+" "+FromVersion.ToString(4)+" "+Lan.g(this,"is newer than this program supports")
+						+" ("+ToVersion.ToString(4)+"). "+Lan.g(this,"Nothing was changed."));
+				}
+				return false;
 			}
 			if(FromVersion < new Version("2.8.0")) {
 				FormOpenDental.ExitCode=130;//Database must be upgraded to 2.8 to continue
@@ -104,12 +114,12 @@ namespace OpenDental{
 			if((webServiceServerName=="" && useDynamicMode)
 				|| (webServiceServerName!="" && !ODEnvironment.IdIsThisComputer(webServiceServerName.ToLower())))
 			{
-				if(isSilent) {
-					FormOpenDental.ExitCode=141;//Updates are only allowed from a designated web server
-					return false;//if you are in debug mode and you really need to update the DB, you can manually clear the WebServiceServerName preference.
+				FormOpenDental.ExitCode=141;//Updates are only allowed from a designated web server
+				if(!isSilent) {
+					//Open Dental offered to "downgrade" this workstation here. The fork never offers a downgrade: the update server converts the database.
+					MessageBox.Show(Lan.g(this,"The database must be updated from the update server first:")+" "+webServiceServerName);
 				}
-				//This will be handled in CheckProgramVersion, giving the user option to downgrade or exit program.
-				return true;
+				return false;//if you are in debug mode and you really need to update the DB, you can manually clear the WebServiceServerName preference.
 			}
 			//At this point, the current instance of the program has the ability to execute an upgrade.
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {

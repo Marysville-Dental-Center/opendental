@@ -77,6 +77,9 @@ namespace OpenDentBusiness{
 		public AutoCommStatus SmsSendStatus;
 		/// <summary>Enum:EnumLimitedCustomFamily Indicates the scope of a custom limited statement. Special behavior in getSuperFamAccount for Family and SuperFamily.</summary>
 		public EnumLimitedCustomFamily LimitedCustomFamily;
+		///<summary>Added in Open Dental 25.2: remembers the "show transactions since the balance was last zero" option for this statement. On a
+		///database that comes from 24.3, the fork migration fills existing rows once from the BillingShowTransSinceBalZero preference.</summary>
+		public bool ShowTransSinceBalZero;
 
 
 		///<summary>List of attached adjustment.AdjNums for this statement.  Limit in db: 16M char.</summary>
@@ -381,7 +384,7 @@ namespace OpenDentBusiness{
 		SuperFamily=3
 	}
 
-	///<summary>0-Mail, 1-InPerson, 2-Email, 3-Electronic</summary>
+	///<summary>0-Mail, 1-InPerson, 2-Email, 3-Electronic, 4-API</summary>
 	public enum StatementMode{
 		///<summary>0</summary>
 		Mail,
@@ -390,6 +393,8 @@ namespace OpenDentBusiness{
 		///<summary>2</summary>
 		Email,
 		///<summary>3</summary>
-		Electronic
+		Electronic,
+		///<summary>4 - Added in Open Dental 25.3: made by a third-party API. Reserved so stored statements load; this program never creates it.</summary>
+		API=4,
 	}
 }

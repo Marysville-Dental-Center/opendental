@@ -96,6 +96,8 @@ namespace OpenDental {
 			this.signatureBoxWrapper = new OpenDental.UI.SignatureBoxWrapper();
 			this.comboCategory = new OpenDental.UI.ComboBox();
 			this.label2 = new System.Windows.Forms.Label();
+			this.comboSheetDef = new OpenDental.UI.ComboBox();
+			this.labelSheetDef = new System.Windows.Forms.Label();
 			this.tabControl1 = new OpenDental.UI.TabControl();
 			this.tabSchedule = new OpenDental.UI.TabPage();
 			this.butAddCharge = new OpenDental.UI.Button();
@@ -793,6 +795,23 @@ namespace OpenDental {
 			this.label2.TabIndex = 188;
 			this.label2.Text = "Category";
 			this.label2.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			//
+			// comboSheetDef
+			//
+			this.comboSheetDef.Location = new System.Drawing.Point(236, 663);
+			this.comboSheetDef.Name = "comboSheetDef";
+			this.comboSheetDef.Size = new System.Drawing.Size(134, 21);
+			this.comboSheetDef.TabIndex = 201;
+			this.comboSheetDef.SelectionChangeCommitted += new System.EventHandler(this.comboSheetDef_SelectionChangeCommitted);
+			//
+			// labelSheetDef
+			//
+			this.labelSheetDef.Location = new System.Drawing.Point(190, 665);
+			this.labelSheetDef.Name = "labelSheetDef";
+			this.labelSheetDef.Size = new System.Drawing.Size(45, 17);
+			this.labelSheetDef.TabIndex = 202;
+			this.labelSheetDef.Text = "Sheet";
+			this.labelSheetDef.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
 			// 
 			// tabControl1
 			// 
@@ -1045,7 +1064,7 @@ namespace OpenDental {
 			this.checkProductionLock.Name = "checkProductionLock";
 			this.checkProductionLock.Size = new System.Drawing.Size(133, 18);
 			this.checkProductionLock.TabIndex = 199;
-			this.checkProductionLock.Text = "Permanent Lock";
+			this.checkProductionLock.Text = "Locked";
 			this.checkProductionLock.CheckedChanged += new System.EventHandler(this.CheckProductionLock_CheckedChanged);
 			// 
 			// labelOverchargedWarning
@@ -1091,6 +1110,8 @@ namespace OpenDental {
 			this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(252)))), ((int)(((byte)(253)))), ((int)(((byte)(254)))));
 			this.ClientSize = new System.Drawing.Size(1043, 696);
 			this.Controls.Add(this.warningIntegrity1);
+			this.Controls.Add(this.labelSheetDef);
+			this.Controls.Add(this.comboSheetDef);
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.labelTotalTx);
 			this.Controls.Add(this.textTotalTxAmt);
@@ -1197,6 +1218,8 @@ namespace OpenDental {
 		private ValidNum textPaymentCount;
 		private UI.ComboBox comboCategory;
 		private System.Windows.Forms.Label label2;
+		private UI.ComboBox comboSheetDef;
+		private System.Windows.Forms.Label labelSheetDef;
 		private UI.Button butUnlock;
 		private UI.Button butSaveTerms;
 		private UI.Button butCancelTerms;

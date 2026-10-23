@@ -45,6 +45,7 @@ namespace OpenDental {
 			this.labelFilterName = new System.Windows.Forms.Label();
 			this.textFilterName = new System.Windows.Forms.TextBox();
 			this.labelSwipeBadge = new System.Windows.Forms.Label();
+			this.checkUseDomainLogin = new OpenDental.UI.CheckBox();
 			this.SuspendLayout();
 			// 
 			// butOK
@@ -134,11 +135,22 @@ namespace OpenDental {
 			this.labelSwipeBadge.TabIndex = 28;
 			this.labelSwipeBadge.Text = "or swipe your badge";
 			this.labelSwipeBadge.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			// 
+			//
+			// checkUseDomainLogin
+			//
+			this.checkUseDomainLogin.Location = new System.Drawing.Point(291, 125);
+			this.checkUseDomainLogin.Name = "checkUseDomainLogin";
+			this.checkUseDomainLogin.Size = new System.Drawing.Size(213, 24);
+			this.checkUseDomainLogin.TabIndex = 29;
+			this.checkUseDomainLogin.Text = "Use Windows (domain) login";
+			this.checkUseDomainLogin.Visible = false;
+			this.checkUseDomainLogin.CheckedChanged += new System.EventHandler(this.checkUseDomainLogin_CheckedChanged);
+			//
 			// FormLogOn
-			// 
+			//
 			this.AcceptButton = this.butOK;
 			this.ClientSize = new System.Drawing.Size(532, 367);
+			this.Controls.Add(this.checkUseDomainLogin);
 			this.Controls.Add(this.labelSwipeBadge);
 			this.Controls.Add(this.textFilterName);
 			this.Controls.Add(this.labelFilterName);
@@ -171,5 +183,6 @@ namespace OpenDental {
 		private System.Windows.Forms.Label labelFilterName;
 		private System.Windows.Forms.TextBox textFilterName;
 		private System.Windows.Forms.Label labelSwipeBadge;
+		private OpenDental.UI.CheckBox checkUseDomainLogin;
 	}
 }

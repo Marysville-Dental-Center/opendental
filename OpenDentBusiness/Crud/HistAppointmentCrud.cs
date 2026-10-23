@@ -87,6 +87,7 @@ namespace OpenDentBusiness.Crud{
 				histAppointment.PatternSecondary     = PIn.String(row["PatternSecondary"].ToString());
 				histAppointment.SecurityHash         = PIn.String(row["SecurityHash"].ToString());
 				histAppointment.ItemOrderPlanned     = PIn.Int   (row["ItemOrderPlanned"].ToString());
+				histAppointment.IsMirrored           = PIn.Bool  (row["IsMirrored"].ToString());
 				retVal.Add(histAppointment);
 			}
 			return retVal;
@@ -138,6 +139,7 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("PatternSecondary");
 			table.Columns.Add("SecurityHash");
 			table.Columns.Add("ItemOrderPlanned");
+			table.Columns.Add("IsMirrored");
 			foreach(HistAppointment histAppointment in listHistAppointments) {
 				table.Rows.Add(new object[] {
 					POut.Long  (histAppointment.HistApptNum),
@@ -180,6 +182,7 @@ namespace OpenDentBusiness.Crud{
 					            histAppointment.PatternSecondary,
 					            histAppointment.SecurityHash,
 					POut.Int   (histAppointment.ItemOrderPlanned),
+					POut.Bool  (histAppointment.IsMirrored),
 				});
 			}
 			return table;
@@ -199,7 +202,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="HistApptNum,";
 			}
-			command+="HistUserNum,HistDateTStamp,HistApptAction,ApptSource,AptNum,PatNum,AptStatus,Pattern,Confirmed,TimeLocked,Op,Note,ProvNum,ProvHyg,AptDateTime,NextAptNum,UnschedStatus,IsNewPatient,ProcDescript,Assistant,ClinicNum,IsHygiene,DateTimeArrived,DateTimeSeated,DateTimeDismissed,InsPlan1,InsPlan2,DateTimeAskedToArrive,ProcsColored,ColorOverride,AppointmentTypeNum,SecUserNumEntry,SecDateTEntry,Priority,ProvBarText,PatternSecondary,SecurityHash,ItemOrderPlanned) VALUES(";
+			command+="HistUserNum,HistDateTStamp,HistApptAction,ApptSource,AptNum,PatNum,AptStatus,Pattern,Confirmed,TimeLocked,Op,Note,ProvNum,ProvHyg,AptDateTime,NextAptNum,UnschedStatus,IsNewPatient,ProcDescript,Assistant,ClinicNum,IsHygiene,DateTimeArrived,DateTimeSeated,DateTimeDismissed,InsPlan1,InsPlan2,DateTimeAskedToArrive,ProcsColored,ColorOverride,AppointmentTypeNum,SecUserNumEntry,SecDateTEntry,Priority,ProvBarText,PatternSecondary,SecurityHash,ItemOrderPlanned,IsMirrored) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(histAppointment.HistApptNum)+",";
 			}
@@ -222,7 +225,7 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Long  (histAppointment.NextAptNum)+","
 				+    POut.Long  (histAppointment.UnschedStatus)+","
 				+    POut.Bool  (histAppointment.IsNewPatient)+","
-				+"'"+POut.String(histAppointment.ProcDescript)+"',"
+				+    DbHelper.ParamChar+"paramProcDescript,"
 				+    POut.Long  (histAppointment.Assistant)+","
 				+    POut.Long  (histAppointment.ClinicNum)+","
 				+    POut.Bool  (histAppointment.IsHygiene)+","
@@ -242,20 +245,25 @@ namespace OpenDentBusiness.Crud{
 				+"'"+POut.String(histAppointment.ProvBarText)+"',"
 				+"'"+POut.String(histAppointment.PatternSecondary)+"',"
 				+"'"+POut.String(histAppointment.SecurityHash)+"',"
-				+    POut.Int   (histAppointment.ItemOrderPlanned)+")";
+				+    POut.Int   (histAppointment.ItemOrderPlanned)+","
+				+    POut.Bool  (histAppointment.IsMirrored)+")";
 			if(histAppointment.Note==null) {
 				histAppointment.Note="";
 			}
 			OdSqlParameter paramNote=new OdSqlParameter("paramNote",OdDbType.Text,POut.StringNote(histAppointment.Note));
+			if(histAppointment.ProcDescript==null) {
+				histAppointment.ProcDescript="";
+			}
+			OdSqlParameter paramProcDescript=new OdSqlParameter("paramProcDescript",OdDbType.Text,POut.StringParam(histAppointment.ProcDescript));
 			if(histAppointment.ProcsColored==null) {
 				histAppointment.ProcsColored="";
 			}
 			OdSqlParameter paramProcsColored=new OdSqlParameter("paramProcsColored",OdDbType.Text,POut.StringParam(histAppointment.ProcsColored));
 			if(useExistingPK || PrefC.RandomKeys) {
-				Db.NonQ(command,paramNote,paramProcsColored);
+				Db.NonQ(command,paramNote,paramProcDescript,paramProcsColored);
 			}
 			else {
-				histAppointment.HistApptNum=Db.NonQ(command,true,"HistApptNum","histAppointment",paramNote,paramProcsColored);
+				histAppointment.HistApptNum=Db.NonQ(command,true,"HistApptNum","histAppointment",paramNote,paramProcDescript,paramProcsColored);
 			}
 			return histAppointment.HistApptNum;
 		}
@@ -275,7 +283,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="HistApptNum,";
 			}
-			command+="HistUserNum,HistDateTStamp,HistApptAction,ApptSource,AptNum,PatNum,AptStatus,Pattern,Confirmed,TimeLocked,Op,Note,ProvNum,ProvHyg,AptDateTime,NextAptNum,UnschedStatus,IsNewPatient,ProcDescript,Assistant,ClinicNum,IsHygiene,DateTimeArrived,DateTimeSeated,DateTimeDismissed,InsPlan1,InsPlan2,DateTimeAskedToArrive,ProcsColored,ColorOverride,AppointmentTypeNum,SecUserNumEntry,SecDateTEntry,Priority,ProvBarText,PatternSecondary,SecurityHash,ItemOrderPlanned) VALUES(";
+			command+="HistUserNum,HistDateTStamp,HistApptAction,ApptSource,AptNum,PatNum,AptStatus,Pattern,Confirmed,TimeLocked,Op,Note,ProvNum,ProvHyg,AptDateTime,NextAptNum,UnschedStatus,IsNewPatient,ProcDescript,Assistant,ClinicNum,IsHygiene,DateTimeArrived,DateTimeSeated,DateTimeDismissed,InsPlan1,InsPlan2,DateTimeAskedToArrive,ProcsColored,ColorOverride,AppointmentTypeNum,SecUserNumEntry,SecDateTEntry,Priority,ProvBarText,PatternSecondary,SecurityHash,ItemOrderPlanned,IsMirrored) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(histAppointment.HistApptNum)+",";
 			}
@@ -298,7 +306,7 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Long  (histAppointment.NextAptNum)+","
 				+    POut.Long  (histAppointment.UnschedStatus)+","
 				+    POut.Bool  (histAppointment.IsNewPatient)+","
-				+"'"+POut.String(histAppointment.ProcDescript)+"',"
+				+    DbHelper.ParamChar+"paramProcDescript,"
 				+    POut.Long  (histAppointment.Assistant)+","
 				+    POut.Long  (histAppointment.ClinicNum)+","
 				+    POut.Bool  (histAppointment.IsHygiene)+","
@@ -318,20 +326,25 @@ namespace OpenDentBusiness.Crud{
 				+"'"+POut.String(histAppointment.ProvBarText)+"',"
 				+"'"+POut.String(histAppointment.PatternSecondary)+"',"
 				+"'"+POut.String(histAppointment.SecurityHash)+"',"
-				+    POut.Int   (histAppointment.ItemOrderPlanned)+")";
+				+    POut.Int   (histAppointment.ItemOrderPlanned)+","
+				+    POut.Bool  (histAppointment.IsMirrored)+")";
 			if(histAppointment.Note==null) {
 				histAppointment.Note="";
 			}
 			OdSqlParameter paramNote=new OdSqlParameter("paramNote",OdDbType.Text,POut.StringNote(histAppointment.Note));
+			if(histAppointment.ProcDescript==null) {
+				histAppointment.ProcDescript="";
+			}
+			OdSqlParameter paramProcDescript=new OdSqlParameter("paramProcDescript",OdDbType.Text,POut.StringParam(histAppointment.ProcDescript));
 			if(histAppointment.ProcsColored==null) {
 				histAppointment.ProcsColored="";
 			}
 			OdSqlParameter paramProcsColored=new OdSqlParameter("paramProcsColored",OdDbType.Text,POut.StringParam(histAppointment.ProcsColored));
 			if(useExistingPK || isRandomKeys) {
-				Db.NonQ(command,paramNote,paramProcsColored);
+				Db.NonQ(command,paramNote,paramProcDescript,paramProcsColored);
 			}
 			else {
-				histAppointment.HistApptNum=Db.NonQ(command,true,"HistApptNum","histAppointment",paramNote,paramProcsColored);
+				histAppointment.HistApptNum=Db.NonQ(command,true,"HistApptNum","histAppointment",paramNote,paramProcDescript,paramProcsColored);
 			}
 			return histAppointment.HistApptNum;
 		}
@@ -357,7 +370,7 @@ namespace OpenDentBusiness.Crud{
 				+"NextAptNum           =  "+POut.Long  (histAppointment.NextAptNum)+", "
 				+"UnschedStatus        =  "+POut.Long  (histAppointment.UnschedStatus)+", "
 				+"IsNewPatient         =  "+POut.Bool  (histAppointment.IsNewPatient)+", "
-				+"ProcDescript         = '"+POut.String(histAppointment.ProcDescript)+"', "
+				+"ProcDescript         =  "+DbHelper.ParamChar+"paramProcDescript, "
 				+"Assistant            =  "+POut.Long  (histAppointment.Assistant)+", "
 				+"ClinicNum            =  "+POut.Long  (histAppointment.ClinicNum)+", "
 				+"IsHygiene            =  "+POut.Bool  (histAppointment.IsHygiene)+", "
@@ -377,17 +390,22 @@ namespace OpenDentBusiness.Crud{
 				+"ProvBarText          = '"+POut.String(histAppointment.ProvBarText)+"', "
 				+"PatternSecondary     = '"+POut.String(histAppointment.PatternSecondary)+"', "
 				+"SecurityHash         = '"+POut.String(histAppointment.SecurityHash)+"', "
-				+"ItemOrderPlanned     =  "+POut.Int   (histAppointment.ItemOrderPlanned)+" "
+				+"ItemOrderPlanned     =  "+POut.Int   (histAppointment.ItemOrderPlanned)+", "
+				+"IsMirrored           =  "+POut.Bool  (histAppointment.IsMirrored)+" "
 				+"WHERE HistApptNum = "+POut.Long(histAppointment.HistApptNum);
 			if(histAppointment.Note==null) {
 				histAppointment.Note="";
 			}
 			OdSqlParameter paramNote=new OdSqlParameter("paramNote",OdDbType.Text,POut.StringNote(histAppointment.Note));
+			if(histAppointment.ProcDescript==null) {
+				histAppointment.ProcDescript="";
+			}
+			OdSqlParameter paramProcDescript=new OdSqlParameter("paramProcDescript",OdDbType.Text,POut.StringParam(histAppointment.ProcDescript));
 			if(histAppointment.ProcsColored==null) {
 				histAppointment.ProcsColored="";
 			}
 			OdSqlParameter paramProcsColored=new OdSqlParameter("paramProcsColored",OdDbType.Text,POut.StringParam(histAppointment.ProcsColored));
-			Db.NonQ(command,paramNote,paramProcsColored);
+			Db.NonQ(command,paramNote,paramProcDescript,paramProcsColored);
 		}
 
 		///<summary>Updates one HistAppointment in the database.  Uses an old object to compare to, and only alters changed fields.  This prevents collisions and concurrency problems in heavily used tables.  Returns true if an update occurred.</summary>
@@ -464,7 +482,7 @@ namespace OpenDentBusiness.Crud{
 			}
 			if(histAppointment.ProcDescript != oldHistAppointment.ProcDescript) {
 				if(command!="") { command+=",";}
-				command+="ProcDescript = '"+POut.String(histAppointment.ProcDescript)+"'";
+				command+="ProcDescript = "+DbHelper.ParamChar+"paramProcDescript";
 			}
 			if(histAppointment.Assistant != oldHistAppointment.Assistant) {
 				if(command!="") { command+=",";}
@@ -540,6 +558,10 @@ namespace OpenDentBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="ItemOrderPlanned = "+POut.Int(histAppointment.ItemOrderPlanned)+"";
 			}
+			if(histAppointment.IsMirrored != oldHistAppointment.IsMirrored) {
+				if(command!="") { command+=",";}
+				command+="IsMirrored = "+POut.Bool(histAppointment.IsMirrored)+"";
+			}
 			if(command=="") {
 				return false;
 			}
@@ -547,13 +569,17 @@ namespace OpenDentBusiness.Crud{
 				histAppointment.Note="";
 			}
 			OdSqlParameter paramNote=new OdSqlParameter("paramNote",OdDbType.Text,POut.StringNote(histAppointment.Note));
+			if(histAppointment.ProcDescript==null) {
+				histAppointment.ProcDescript="";
+			}
+			OdSqlParameter paramProcDescript=new OdSqlParameter("paramProcDescript",OdDbType.Text,POut.StringParam(histAppointment.ProcDescript));
 			if(histAppointment.ProcsColored==null) {
 				histAppointment.ProcsColored="";
 			}
 			OdSqlParameter paramProcsColored=new OdSqlParameter("paramProcsColored",OdDbType.Text,POut.StringParam(histAppointment.ProcsColored));
 			command="UPDATE histappointment SET "+command
 				+" WHERE HistApptNum = "+POut.Long(histAppointment.HistApptNum);
-			Db.NonQ(command,paramNote,paramProcsColored);
+			Db.NonQ(command,paramNote,paramProcDescript,paramProcsColored);
 			return true;
 		}
 
@@ -669,6 +695,9 @@ namespace OpenDentBusiness.Crud{
 				return true;
 			}
 			if(histAppointment.ItemOrderPlanned != oldHistAppointment.ItemOrderPlanned) {
+				return true;
+			}
+			if(histAppointment.IsMirrored != oldHistAppointment.IsMirrored) {
 				return true;
 			}
 			return false;

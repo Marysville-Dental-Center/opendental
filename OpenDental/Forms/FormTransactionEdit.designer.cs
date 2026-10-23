@@ -52,6 +52,12 @@ namespace OpenDental {
 			this.textMemo = new System.Windows.Forms.TextBox();
 			this.textCheckNumber = new System.Windows.Forms.TextBox();
 			this.label7 = new System.Windows.Forms.Label();
+			this.butNextCheckNumber = new OpenDental.UI.Button();
+			this.labelPayee = new System.Windows.Forms.Label();
+			this.textPayee = new System.Windows.Forms.TextBox();
+			this.labelNotes = new System.Windows.Forms.Label();
+			this.textNotes = new System.Windows.Forms.TextBox();
+			this.checkNeedsReview = new OpenDental.UI.CheckBox();
 			this.textAmount = new OpenDental.ValidDouble();
 			this.panelCompound = new System.Windows.Forms.Panel();
 			this.butExport = new OpenDental.UI.Button();
@@ -153,6 +159,14 @@ namespace OpenDental {
 			this.checkSimple.Text = "Simple";
 			this.checkSimple.Click += new System.EventHandler(this.checkSimple_Click);
 			// 
+			// checkNeedsReview
+			// 
+			this.checkNeedsReview.Location = new System.Drawing.Point(371, 62);
+			this.checkNeedsReview.Name = "checkNeedsReview";
+			this.checkNeedsReview.Size = new System.Drawing.Size(154, 20);
+			this.checkNeedsReview.TabIndex = 27;
+			this.checkNeedsReview.Text = "Needs Review";
+			// 
 			// label5
 			// 
 			this.label5.Location = new System.Drawing.Point(8, 37);
@@ -182,6 +196,11 @@ namespace OpenDental {
 			// 
 			// panelSimple
 			// 
+			this.panelSimple.Controls.Add(this.textNotes);
+			this.panelSimple.Controls.Add(this.labelNotes);
+			this.panelSimple.Controls.Add(this.textPayee);
+			this.panelSimple.Controls.Add(this.labelPayee);
+			this.panelSimple.Controls.Add(this.butNextCheckNumber);
 			this.panelSimple.Controls.Add(this.butChange);
 			this.panelSimple.Controls.Add(this.textAccount);
 			this.panelSimple.Controls.Add(this.textMemo);
@@ -193,7 +212,7 @@ namespace OpenDental {
 			this.panelSimple.Controls.Add(this.label4);
 			this.panelSimple.Location = new System.Drawing.Point(21, 112);
 			this.panelSimple.Name = "panelSimple";
-			this.panelSimple.Size = new System.Drawing.Size(494, 186);
+			this.panelSimple.Size = new System.Drawing.Size(494, 232);
 			this.panelSimple.TabIndex = 0;
 			// 
 			// butChange
@@ -237,6 +256,53 @@ namespace OpenDental {
 			this.label7.TabIndex = 23;
 			this.label7.Text = "Check Number";
 			this.label7.TextAlign = System.Drawing.ContentAlignment.TopRight;
+			// 
+			// butNextCheckNumber
+			// 
+			this.butNextCheckNumber.Location = new System.Drawing.Point(250, 108);
+			this.butNextCheckNumber.Name = "butNextCheckNumber";
+			this.butNextCheckNumber.Size = new System.Drawing.Size(75, 24);
+			this.butNextCheckNumber.TabIndex = 24;
+			this.butNextCheckNumber.Text = "Next";
+			this.butNextCheckNumber.Visible = false;
+			this.butNextCheckNumber.Click += new System.EventHandler(this.butNextCheckNumber_Click);
+			// 
+			// labelPayee
+			// 
+			this.labelPayee.Location = new System.Drawing.Point(8, 140);
+			this.labelPayee.Name = "labelPayee";
+			this.labelPayee.Size = new System.Drawing.Size(100, 20);
+			this.labelPayee.TabIndex = 25;
+			this.labelPayee.Text = "Payee";
+			this.labelPayee.TextAlign = System.Drawing.ContentAlignment.TopRight;
+			// 
+			// textPayee
+			// 
+			this.textPayee.Location = new System.Drawing.Point(111, 137);
+			this.textPayee.MaxLength = 255;
+			this.textPayee.Name = "textPayee";
+			this.textPayee.Size = new System.Drawing.Size(230, 20);
+			this.textPayee.TabIndex = 26;
+			// 
+			// labelNotes
+			// 
+			this.labelNotes.Location = new System.Drawing.Point(8, 166);
+			this.labelNotes.Name = "labelNotes";
+			this.labelNotes.Size = new System.Drawing.Size(100, 20);
+			this.labelNotes.TabIndex = 27;
+			this.labelNotes.Text = "Notes";
+			this.labelNotes.TextAlign = System.Drawing.ContentAlignment.TopRight;
+			// 
+			// textNotes
+			// 
+			this.textNotes.AcceptsReturn = true;
+			this.textNotes.Location = new System.Drawing.Point(111, 163);
+			this.textNotes.MaxLength = 65535;
+			this.textNotes.Multiline = true;
+			this.textNotes.Name = "textNotes";
+			this.textNotes.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+			this.textNotes.Size = new System.Drawing.Size(311, 62);
+			this.textNotes.TabIndex = 28;
 			// 
 			// textAmount
 			// 
@@ -520,6 +586,7 @@ namespace OpenDental {
 			this.Controls.Add(this.groupBox1);
 			this.Controls.Add(this.panelSimple);
 			this.Controls.Add(this.panelCompound);
+			this.Controls.Add(this.checkNeedsReview);
 			this.Controls.Add(this.checkSimple);
 			this.Controls.Add(this.butDelete);
 			this.Controls.Add(this.textDateTimeEntered);
@@ -589,5 +656,11 @@ namespace OpenDental {
 		private Label label1;
 		private UI.Button butOpenInvoice;
 		private UI.Button butAttachInvoice;
+		private UI.Button butNextCheckNumber;
+		private Label labelPayee;
+		private TextBox textPayee;
+		private Label labelNotes;
+		private TextBox textNotes;
+		private OpenDental.UI.CheckBox checkNeedsReview;
 	}
 }

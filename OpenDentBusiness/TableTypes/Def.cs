@@ -228,8 +228,8 @@ namespace OpenDentBusiness {
 		///<summary>53 - Images the office prompts the patient to submit when checking in via eClipboard</summary>
 		[Description("eClipboard Images")]
 		EClipboardImageCapture,
-		///<summary>54 - HQ Only task categories.</summary>
-		[Description("Task Categories HqOnly")]
+		///<summary>54 - Task categories (task.Category). HQ only before Open Dental 25.2; shown to every office when the TaskCategoryShow preference is on.</summary>
+		[Description("Task Categories")]
 		TaskCategories,
 		///<summary>55 - Operatory Types. This field is only informational. The value isn't used for functionality.</summary>
 		[Description("Operatory Types")]

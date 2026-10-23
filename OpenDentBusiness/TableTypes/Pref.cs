@@ -213,6 +213,11 @@ namespace OpenDentBusiness {
 		///<summary>Boolean.  Defaults to false. Only used for the clinicpref table, not the preference table. When true, this clinic will use the 
 		///Appointment General Message rules for ClinicNum 0.</summary>
 		ApptGeneralMessageUseDefaults,
+		///<summary>Open Dental 25.2. Boolean, defaults to false. The default of appointment.IsMirrored for new appointments: when true, a new
+		///appointment also shows, mirrored, in the secondary provider's operatory. Name confirmed by Open Dental's published 25.3 database
+		///documentation (appointment.IsMirrored, apptview.ShowMirroredAppts).</summary>
+		[PrefName(ValueType=PrefValueType.BOOL)]
+		ApptMirrorSecondary,
 		///<summary>Boolean defaults to 0.  If true, adds the adjustment total to the net production in appointment module.</summary>
 		ApptModuleAdjustmentsInProd,
 		///<summary>Boolean defaults to 0, when true appt module will default to week view</summary>
@@ -2342,6 +2347,10 @@ namespace OpenDentBusiness {
 		TaskAncestorsAllSetInVersion55,
 		///<summary>Stores the image category that task attachment documents will be saved to. If 0, user will be unable to add or edit task attachments, just view existing attachments. 0 by default</summary>
 		TaskAttachmentCategory,
+		///<summary>Open Dental 25.2. Boolean, defaults to false. When true, tasks show and edit task.Category (a definition in the task categories
+		///list). Name confirmed by Open Dental's published 25.3 database documentation (task.Category).</summary>
+		[PrefName(ValueType=PrefValueType.BOOL)]
+		TaskCategoryShow,
 		TaskListAlwaysShowsAtBottom,
 		///<summary>Deprecated.  Not used anywhere.  Previously used for the popup window to show how many new tasks for cur user after login.</summary>
 		TasksCheckOnStartup,

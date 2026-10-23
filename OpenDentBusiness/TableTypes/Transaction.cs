@@ -26,6 +26,9 @@ namespace OpenDentBusiness{
 		public DateTime SecDateTEdit;
 		///<summary>FK to transactioninvoice.TransactionInvoiceNum.  A document that can be attached to the transaction.</summary>
 		public long TransactionInvoiceNum;
+		///<summary>Added in Open Dental 25.3: transaction-level review flag. Open Dental marks it deprecated in favor of journalentry.NeedsReview;
+		///kept for data compatibility.</summary>
+		public bool NeedsReview;
 
 		///<summary></summary>
 		public Transaction Copy() {

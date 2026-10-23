@@ -56,6 +56,10 @@ namespace OpenDental{
 			textDateTimeEdited.Text=_transaction.SecDateTEdit.ToString();
 			textUserEntered.Text=Userods.GetName(_transaction.UserNum);
 			textUserEdited.Text=Userods.GetName(_transaction.SecUserNumEdit);
+			//Needs Review is checked if any entry has the flag. transaction.NeedsReview is deprecated and never read.
+			checkNeedsReview.Checked=JournalEntries.IsAnyNeedsReview(_listJournalEntries);
+			//The next check number button is for checking accounts, which are asset accounts.
+			butNextCheckNumber.Visible=(_accountOfOrigin!=null && _accountOfOrigin.AcctType==AccountType.Asset);
 			if(_listJournalEntries.Count>0) {
 				textDate.Text=_listJournalEntries[0].DateDisplayed.ToShortDateString();
 			}
@@ -80,8 +84,8 @@ namespace OpenDental{
 				FillCompound();
 			}
 			//so count must be 0 or 2
-			else if(_listJournalEntries.Count==2 && _listJournalEntries[0].Memo != _listJournalEntries[1].Memo){
-				//would be simple view, except memo's are different
+			else if(_listJournalEntries.Count==2 && !JournalEntries.AreSharedFieldsSame(_listJournalEntries)){
+				//would be simple view, except the memos, payees or notes are different
 				checkSimple.Checked=false;
 				FillCompound();
 			}
@@ -121,8 +125,8 @@ namespace OpenDental{
 		private void FillCompound(){
 			panelSimple.Visible=false;
 			panelCompound.Visible=true;
-			bool isMemoSame=true;
-			string memo="";
+			//The "Memo Same For All" checkbox also carries Payee and Notes, so it is checked only when all three agree.
+			bool isMemoSame=JournalEntries.AreSharedFieldsSame(_listJournalEntries);
 			double debits=0;
 			double credits=0;
 			gridMain.BeginUpdate();
@@ -151,7 +155,9 @@ namespace OpenDental{
 			}
 			col=new GridColumn(str,70,HorizontalAlignment.Right);
 			gridMain.Columns.Add(col);
-			col=new GridColumn(Lan.g("TableTransSplits","Memo"),200);
+			col=new GridColumn(Lan.g("TableTransSplits","Memo"),120);
+			gridMain.Columns.Add(col);
+			col=new GridColumn(Lan.g("TableTransSplits","Payee"),80);
 			gridMain.Columns.Add(col);
 			gridMain.ListGridRows.Clear();
 			GridRow row;
@@ -171,15 +177,8 @@ namespace OpenDental{
 					row.Cells.Add(_listJournalEntries[i].CreditAmt.ToString("n"));
 				}
 				row.Cells.Add(_listJournalEntries[i].Memo);
+				row.Cells.Add(_listJournalEntries[i].Payee);
 				gridMain.ListGridRows.Add(row);
-				if(i==0){
-					memo=_listJournalEntries[i].Memo;
-				}
-				else{
-					if(memo!=_listJournalEntries[i].Memo){
-						isMemoSame=false;
-					}
-				}
 				credits+=_listJournalEntries[i].CreditAmt;
 				debits+=_listJournalEntries[i].DebitAmt;
 			}
@@ -199,6 +198,8 @@ namespace OpenDental{
 				butChange.Text=Lan.g(this,"Pick");
 				textAmount.Text="";
 				textMemo.Text="";
+				textPayee.Text="";
+				textNotes.Text="";
 				_listJournalEntries=new List<JournalEntry>();
 				return;
 			}
@@ -243,6 +244,8 @@ namespace OpenDental{
 				}
 				textMemo.Text=_listJournalEntries[0].Memo;
 				textCheckNumber.Text=_listJournalEntries[0].CheckNumber;
+				textPayee.Text=_listJournalEntries[0].Payee;
+				textNotes.Text=_listJournalEntries[0].Notes;
 				_listJournalEntries=new List<JournalEntry>();
 				return;
 			}
@@ -285,6 +288,8 @@ namespace OpenDental{
 				butChange.Text=Lan.g(this,"Change");
 			}
 			textMemo.Text=journalEntry.Memo;
+			textPayee.Text=journalEntry.Payee;
+			textNotes.Text=journalEntry.Notes;
 			if(journalEntry.CheckNumber!=""){
 				textCheckNumber.Text=journalEntry.CheckNumber;
 			}
@@ -312,8 +317,8 @@ namespace OpenDental{
 					checkSimple.Checked=false;
 					return;
 				}
-				if(_listJournalEntries.Count==2 && _listJournalEntries[0].Memo != _listJournalEntries[1].Memo ) {
-					//warn if notes are different
+				if(_listJournalEntries.Count==2 && !JournalEntries.AreSharedFieldsSame(_listJournalEntries)) {
+					//warn if memos, payees or notes are different
 					if(!MsgBox.Show(this,MsgBoxButtons.OKCancel,"Note might be lost. Continue?")){
 						checkSimple.Checked=false;
 						return;
@@ -327,23 +332,34 @@ namespace OpenDental{
 			}
 		}
 
+		private void butNextCheckNumber_Click(object sender,EventArgs e) {
+			if(_accountOfOrigin==null) {
+				return;
+			}
+			//Entries of this transaction are not counted, so re-numbering the newest check does not skip a number.
+			textCheckNumber.Text=JournalEntries.GetNextCheckNumber(_accountOfOrigin.AccountNum,IsNew ? 0 : _transaction.TransactionNum);
+			textCheckNumber.Focus();
+			textCheckNumber.SelectAll();//so the user can type over it
+		}
+
 		private void butAdd_Click(object sender,EventArgs e) {
 			JournalEntry journalEntry=new JournalEntry();
 			journalEntry.TransactionNum=_transaction.TransactionNum;
 			if(checkMemoSame.Checked && _listJournalEntries.Count>0){
 				journalEntry.Memo=_listJournalEntries[0].Memo;
+				journalEntry.Payee=_listJournalEntries[0].Payee;
+				journalEntry.Notes=_listJournalEntries[0].Notes;
 			}
 			//date gets set when closing.  Everthing else gets set within following form.
 			using FormJournalEntryEdit formJournalEntryEdit=new FormJournalEntryEdit();
 			formJournalEntryEdit.IsNew=true;
 			formJournalEntryEdit.JournalEntryCur=journalEntry;
+			formJournalEntryEdit.TransactionNumExcludeFromNextCheck=IsNew ? 0 : _transaction.TransactionNum;
 			formJournalEntryEdit.ShowDialog();
 			if(formJournalEntryEdit.DialogResult==DialogResult.OK) {
 				_listJournalEntries.Add(formJournalEntryEdit.JournalEntryCur);
 				if(checkMemoSame.Checked) {
-					for(int i=0;i<_listJournalEntries.Count;i++) {
-						_listJournalEntries[i].Memo=formJournalEntryEdit.JournalEntryCur.Memo;
-					}
+					JournalEntries.CopySharedFields(formJournalEntryEdit.JournalEntryCur,_listJournalEntries);
 				}
 			}
 			FillCompound();
@@ -352,15 +368,14 @@ namespace OpenDental{
 		private void gridMain_CellDoubleClick(object sender,ODGridClickEventArgs e) {
 			using FormJournalEntryEdit formJournalEntryEdit=new FormJournalEntryEdit();
 			formJournalEntryEdit.JournalEntryCur=_listJournalEntries[e.Row];
+			formJournalEntryEdit.TransactionNumExcludeFromNextCheck=IsNew ? 0 : _transaction.TransactionNum;
 			formJournalEntryEdit.ShowDialog();
 			if(formJournalEntryEdit.JournalEntryCur==null){//user deleted
 				_listJournalEntries.RemoveAt(e.Row);
 			}
 			else if(formJournalEntryEdit.DialogResult==DialogResult.OK){
 				if(checkMemoSame.Checked) {
-					for(int i=0;i<_listJournalEntries.Count;i++) {
-						_listJournalEntries[i].Memo=formJournalEntryEdit.JournalEntryCur.Memo;
-					}
+					JournalEntries.CopySharedFields(formJournalEntryEdit.JournalEntryCur,_listJournalEntries);
 				}
 			}
 			FillCompound();
@@ -579,6 +594,8 @@ namespace OpenDental{
 			}
 			journalEntry.Memo=textMemo.Text;
 			journalEntry.CheckNumber=textCheckNumber.Text;
+			journalEntry.Payee=textPayee.Text;
+			journalEntry.Notes=textNotes.Text;
 			_listJournalEntries.Add(journalEntry);
 			//then, for the other
 			journalEntry=new JournalEntry();
@@ -599,6 +616,8 @@ namespace OpenDental{
 			}
 			journalEntry.Memo=textMemo.Text;
 			journalEntry.CheckNumber=textCheckNumber.Text;
+			journalEntry.Payee=textPayee.Text;
+			journalEntry.Notes=textNotes.Text;
 			_listJournalEntries.Add(journalEntry);
 		}
 
@@ -704,6 +723,9 @@ namespace OpenDental{
 				}
 				_listJournalEntries[i].Splits=splits;
 			}
+			//The Needs Review checkbox writes the flag on every entry of the transaction.
+			JournalEntries.SetNeedsReview(_listJournalEntries,checkNeedsReview.Checked);
+			string auditChanges=JournalEntries.GetAuditChangeText(_listJournalEntriesOld,_listJournalEntries);
 			JournalEntries.UpdateList(_listJournalEntriesOld,_listJournalEntries);
 			DateTime dateTimePrevious=_transaction.SecDateTEdit;
 			Transactions.Update(_transaction);//this catches DepositNum, the only user-editable field.
@@ -713,7 +735,8 @@ namespace OpenDental{
 			}
 			if(IsNew) {
 				SecurityLogs.MakeLogEntry(EnumPermType.AccountingCreate,0,
-					date.ToShortDateString()+" "+_accountOfOrigin.Description+" "+tot.ToString("c"),_transaction.TransactionNum,DateTime.MinValue);
+					AppendAuditChanges(date.ToShortDateString()+" "+_accountOfOrigin.Description+" "+tot.ToString("c"),auditChanges),
+					_transaction.TransactionNum,DateTime.MinValue);
 				DialogResult=DialogResult.OK;
 				return;
 			}
@@ -722,8 +745,16 @@ namespace OpenDental{
 				txt+=" "+_accountOfOrigin.Description;
 			}
 			txt+=" "+tot.ToString("c");
-			SecurityLogs.MakeLogEntry(EnumPermType.AccountingEdit,0,txt,_transaction.TransactionNum,dateTimePrevious);
+			SecurityLogs.MakeLogEntry(EnumPermType.AccountingEdit,0,AppendAuditChanges(txt,auditChanges),_transaction.TransactionNum,dateTimePrevious);
 			DialogResult=DialogResult.OK;
+		}
+
+		///<summary>Adds the Payee and Needs Review changes, if any, to an accounting audit entry.</summary>
+		private static string AppendAuditChanges(string logText,string auditChanges) {
+			if(string.IsNullOrEmpty(auditChanges)) {
+				return logText;
+			}
+			return logText+". "+auditChanges;
 		}
 
 	}

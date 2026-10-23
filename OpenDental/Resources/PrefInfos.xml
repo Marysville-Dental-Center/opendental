@@ -960,6 +960,24 @@ Usually blank</ControlText>
     <HeightWindow>0</HeightWindow>
   </PrefInf>
   <PrefInf>
+    <PrefName>ApptMirrorSecondary</PrefName>
+    <Category>ApptGeneral</Category>
+    <ControlName>checkApptMirrorSecondary</ControlName>
+    <ControlText>New appointments mirror into the secondary provider's operatory</ControlText>
+    <Details>Default for the Mirror checkbox on new appointments. A mirrored appointment also shows in the operatory of its secondary provider (the hygienist, or the dentist for a hygiene appointment), sized by that provider's time. Appointment views choose whether mirrors are shown.</Details>
+    <WidthWindow>0</WidthWindow>
+    <HeightWindow>0</HeightWindow>
+  </PrefInf>
+  <PrefInf>
+    <PrefName>TaskCategoryShow</PrefName>
+    <Category>ManageGeneral</Category>
+    <ControlName>checkTaskCategoryShow</ControlName>
+    <ControlText>Show task category</ControlText>
+    <Details>Shows a Category drop-down on tasks and a Category column in task lists. The choices come from the Task Categories definitions.</Details>
+    <WidthWindow>0</WidthWindow>
+    <HeightWindow>0</HeightWindow>
+  </PrefInf>
+  <PrefInf>
     <PrefName>ApptModuleProductionUsesOps</PrefName>
     <Category>ApptGeneral</Category>
     <ControlName>checkApptModuleProductionUsesOps</ControlName>

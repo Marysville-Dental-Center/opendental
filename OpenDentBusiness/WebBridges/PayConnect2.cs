@@ -287,13 +287,15 @@ namespace OpenDentBusiness {
 			if(cc==null || string.IsNullOrWhiteSpace(cc.PayConnectToken) || pat==null) {
 				throw new ODException("Error making payment by token");
 			}
-			return PostCreateTransactionByToken(pat,cc.CCExpiration.ToString("MMyy"),cc.PayConnectToken,cc.Zip,payAmtInCents,clinicNum,transactionType,transactionFreq);
+			return PostCreateTransactionByToken(pat,cc.CCExpiration.ToString("MMyy"),cc.PayConnectToken,cc.Zip,payAmtInCents,clinicNum,transactionType,transactionFreq,
+				cc.CardHolderName);
 		}
 
 		///<summary>Charges or authorizes a saved card token. Sends a new correlation ID as invoiceNumber; if the response is lost, the transaction list is
-		///searched for it (see PostCreateTransaction). The required cardHolder field carries the patient's name, because creditcard rows have no
-		///cardholder name.</summary>
-		public static PayConnect2Response PostCreateTransactionByToken(Patient pat,string ccExpiration,string token,string zipCode,int payAmtInCents,long clinicNum,TransactionType transactionType=TransactionType.Sale, TransactionFrequency transactionFreq=TransactionFrequency.OneTime) {
+		///searched for it (see PostCreateTransaction). The required cardHolder field carries the name saved on the card (creditcard.CardHolderName,
+		///added in Open Dental 25.1) when there is one, else the patient's name (GetCardHolderForRequest). A failure is written to the local
+		///PayConnect error log.</summary>
+		public static PayConnect2Response PostCreateTransactionByToken(Patient pat,string ccExpiration,string token,string zipCode,int payAmtInCents,long clinicNum,TransactionType transactionType=TransactionType.Sale, TransactionFrequency transactionFreq=TransactionFrequency.OneTime,string cardHolderName="") {
 			long integrationType=GetIntegrationType(clinicNum);
 			PayConnect2Response response;
 			if(integrationType==1) {//Surcharge account
@@ -303,9 +305,9 @@ namespace OpenDentBusiness {
 				req.Amount=payAmtInCents;
 				req.CardToken=token;
 				req.Expiry=ccExpiration;
-				req.CardHolder=pat.GetNameFLnoPref();
+				req.CardHolder=GetCardHolderForRequest(pat,cardHolderName);
 				req.ZipCode=zipCode;
-				response=PostCreateSurchargeTransaction(req,clinicNum);
+				response=PostCreateSurchargeTransaction(req,clinicNum,pat.PatNum);
 			}
 			else {
 				CreateTransactionRequest req=new CreateTransactionRequest();
@@ -314,61 +316,71 @@ namespace OpenDentBusiness {
 				req.Amount=payAmtInCents;
 				req.CardToken=token;
 				req.Expiry=ccExpiration;
-				req.CardHolder=pat.GetNameFLnoPref();
+				req.CardHolder=GetCardHolderForRequest(pat,cardHolderName);
 				if(!zipCode.IsNullOrEmpty()) {
 					req.ZipCode=zipCode;
 				}
-				response=PostCreateTransaction(req,clinicNum);
+				response=PostCreateTransaction(req,clinicNum,pat.PatNum);
 			}
 			return response;
 		}
 
 		///<summary>Creates a token transaction. Sets InvoiceNumber to a new correlation ID if blank. Never retried automatically: if the request was sent
 		///but no answer came, the transaction list is searched for the correlation ID, and a match comes back as a GetStatus response with Outcome
-		///Reconciled.</summary>
-		public static PayConnect2Response PostCreateTransaction(CreateTransactionRequest requestBody,long clinicNum) {
+		///Reconciled. A failure is written to the local PayConnect error log, with patNum when the caller knows it.</summary>
+		public static PayConnect2Response PostCreateTransaction(CreateTransactionRequest requestBody,long clinicNum,long patNum=0) {
 			if(string.IsNullOrWhiteSpace(requestBody.InvoiceNumber)) {
 				requestBody.InvoiceNumber=NewCorrelationId();
 			}
-			return SendCreate(ApiRoute.CreateTransaction,clinicNum,requestBody.InvoiceNumber,SerializeBody(requestBody));
+			PayConnect2Response response=SendCreate(ApiRoute.CreateTransaction,clinicNum,requestBody.InvoiceNumber,SerializeBody(requestBody));
+			return LogIfFailed(response,GetOperationName(requestBody.TransType,requestBody.Frequency),clinicNum,patNum,requestBody.Amount,
+				requestBody.CardToken,requestBody.InvoiceNumber);
 		}
 
 		///<summary>As PostCreateTransaction, for surcharge accounts.</summary>
-		public static PayConnect2Response PostCreateSurchargeTransaction(CreateSurchargeTransactionRequest requestBody,long clinicNum) {
+		public static PayConnect2Response PostCreateSurchargeTransaction(CreateSurchargeTransactionRequest requestBody,long clinicNum,long patNum=0) {
 			if(string.IsNullOrWhiteSpace(requestBody.InvoiceNumber)) {
 				requestBody.InvoiceNumber=NewCorrelationId();
 			}
-			return SendCreate(ApiRoute.CreateTransactionSurcharge,clinicNum,requestBody.InvoiceNumber,SerializeBody(requestBody));
+			PayConnect2Response response=SendCreate(ApiRoute.CreateTransactionSurcharge,clinicNum,requestBody.InvoiceNumber,SerializeBody(requestBody));
+			return LogIfFailed(response,GetOperationName(requestBody.TransType,requestBody.Frequency),clinicNum,patNum,requestBody.Amount,
+				requestBody.CardToken,requestBody.InvoiceNumber);
 		}
 
 		///<summary>Sale or authorization on a counter terminal. Waits up to TimeoutTerminal. Correlation and reconciliation as PostCreateTransaction.</summary>
-		public static PayConnect2Response PostCreateTerminalTransaction(CreateTerminalTransactionRequest requestBody,long clinicNum) {
+		public static PayConnect2Response PostCreateTerminalTransaction(CreateTerminalTransactionRequest requestBody,long clinicNum,long patNum=0) {
 			if(string.IsNullOrWhiteSpace(requestBody.InvoiceNumber)) {
 				requestBody.InvoiceNumber=NewCorrelationId();
 			}
-			return SendCreate(ApiRoute.CreateTerminalTransaction,clinicNum,requestBody.InvoiceNumber,SerializeBody(requestBody));
+			PayConnect2Response response=SendCreate(ApiRoute.CreateTerminalTransaction,clinicNum,requestBody.InvoiceNumber,SerializeBody(requestBody));
+			return LogIfFailed(response,"terminal "+GetOperationName(requestBody.TransType,requestBody.Frequency),clinicNum,patNum,requestBody.Amount,
+				"",requestBody.InvoiceNumber);
 		}
 
 		///<summary>Voids a transaction before its batch settles. The 2.12 schema accepts only referenceId.</summary>
-		public static PayConnect2Response PutVoidWithReferenceID(VoidReferenceIDRequest requestBody,long clinicNum) {
-			return SendForClinic(ApiRoute.VoidTransaction,HttpMethod.Put,clinicNum,SerializeBody(requestBody));
+		public static PayConnect2Response PutVoidWithReferenceID(VoidReferenceIDRequest requestBody,long clinicNum,long patNum=0) {
+			PayConnect2Response response=SendForClinic(ApiRoute.VoidTransaction,HttpMethod.Put,clinicNum,SerializeBody(requestBody));
+			return LogIfFailed(response,"void",clinicNum,patNum);
 		}
 
 		//Deprecated May 1st 2023 per DXC: refunds without a reference. Voids and refunds by invoice number are gone from the 2.12 schema too.
 
 		///<summary>Refunds a settled transaction, in full or (with Amount) in part.</summary>
-		public static PayConnect2Response PostRefundWithReferenceID(RefundReferenceIDRequest requestBody,long clinicNum) {
-			return SendForClinic(ApiRoute.RefundTransaction,HttpMethod.Post,clinicNum,SerializeBody(requestBody));
+		public static PayConnect2Response PostRefundWithReferenceID(RefundReferenceIDRequest requestBody,long clinicNum,long patNum=0) {
+			PayConnect2Response response=SendForClinic(ApiRoute.RefundTransaction,HttpMethod.Post,clinicNum,SerializeBody(requestBody));
+			return LogIfFailed(response,"refund",clinicNum,patNum,requestBody.Amount);
 		}
 
 		///<summary>Attaches a signature image to a transaction.</summary>
-		public static PayConnect2Response PutSignatureWithReferenceID(AddSignatureReferenceIDRequest requestBody,long clinicNum) {
-			return SendForClinic(ApiRoute.AddSignature,HttpMethod.Put,clinicNum,SerializeBody(requestBody));
+		public static PayConnect2Response PutSignatureWithReferenceID(AddSignatureReferenceIDRequest requestBody,long clinicNum,long patNum=0) {
+			PayConnect2Response response=SendForClinic(ApiRoute.AddSignature,HttpMethod.Put,clinicNum,SerializeBody(requestBody));
+			return LogIfFailed(response,"signature",clinicNum,patNum);
 		}
 
 		///<summary>Looks up one transaction by reference ID, transaction ID or embed-session order ID (any combination).</summary>
-		public static PayConnect2Response GetTransactionStatus(long clinicNum,string refNumber,int transactionId=0,string orderId="") {
-			return SendForClinic(ApiRoute.GetStatus,HttpMethod.Get,clinicNum,"",BuildStatusQuery(refNumber,transactionId,orderId));
+		public static PayConnect2Response GetTransactionStatus(long clinicNum,string refNumber,int transactionId=0,string orderId="",long patNum=0) {
+			PayConnect2Response response=SendForClinic(ApiRoute.GetStatus,HttpMethod.Get,clinicNum,"",BuildStatusQuery(refNumber,transactionId,orderId));
+			return LogIfFailed(response,"status",clinicNum,patNum);
 		}
 
 		///<summary>The query string for the status route, each value URL-encoded. "" if no value is given.</summary>
@@ -396,9 +408,9 @@ namespace OpenDentBusiness {
 				apiCredentials=GetCredentials(clinicNum);
 			}
 			catch(PayConnectNotConfiguredException ex) {
-				return MakeNotConfiguredResponse(ex.Message);
+				return LogIfFailed(MakeNotConfiguredResponse(ex.Message),"transaction list",clinicNum);
 			}
-			return GetTransactionList(apiCredentials,dateFrom,dateTo,page,limit);
+			return LogIfFailed(GetTransactionList(apiCredentials,dateFrom,dateTo,page,limit),"transaction list",clinicNum);
 		}
 
 		private static PayConnect2Response GetTransactionList(ApiCredentials apiCredentials,DateTime dateFrom,DateTime dateTo,int page,int limit) {
@@ -458,22 +470,29 @@ namespace OpenDentBusiness {
 			return null;
 		}
 
-		///<summary>The merchant's terminals, for the setup window's import button.</summary>
-		public static PayConnect2Response GetTerminals(ApiCredentials apiCredentials) {
+		///<summary>The merchant's terminals, for the setup window's import button. clinicNum is only for the error log.</summary>
+		public static PayConnect2Response GetTerminals(ApiCredentials apiCredentials,long clinicNum=0) {
+			PayConnect2Response response;
 			if(Mock!=null) {
-				return MockRequestResponse();
+				response=MockRequestResponse();
 			}
-			return Send(ApiRoute.GetTerminals,HttpMethod.Get,apiCredentials,"");
+			else {
+				response=Send(ApiRoute.GetTerminals,HttpMethod.Get,apiCredentials,"");
+			}
+			return LogIfFailed(response,"terminal list",clinicNum);
 		}
 
 		///<summary>Gets a hosted card-entry URL (and its orderId). The API key and Secret stay in this process; only the URL goes to the browser control.</summary>
-		public static PayConnect2Response PostEmbedSession(EmbedSessionRequest requestBody,long clinicNum) {
-			return SendForClinic(ApiRoute.EmbedSession,HttpMethod.Post,clinicNum,SerializeBody(requestBody));
+		public static PayConnect2Response PostEmbedSession(EmbedSessionRequest requestBody,long clinicNum,long patNum=0) {
+			PayConnect2Response response=SendForClinic(ApiRoute.EmbedSession,HttpMethod.Post,clinicNum,SerializeBody(requestBody));
+			string operation=(requestBody.Type==IframeType.Tokenizer) ? "card token form" : "payment form";
+			return LogIfFailed(response,operation,clinicNum,patNum,requestBody.Amount);
 		}
 
 		/// <summary>Merchant details for the clinic, using merchantSecret in place of the stored Secret when given.</summary>
 		public static PayConnect2Response GetMerchantInfo(long clinicNum,string merchantSecret) {
-			return SendForClinic(ApiRoute.GetMerchantInfo,HttpMethod.Get,clinicNum,"","",merchantSecret);
+			PayConnect2Response response=SendForClinic(ApiRoute.GetMerchantInfo,HttpMethod.Get,clinicNum,"","",merchantSecret);
+			return LogIfFailed(response,"merchant info",clinicNum);
 		}
 
 		///<summary>Test connection from the setup window, with the typed values before they are saved: GET /merchants. On success the response carries
@@ -484,12 +503,16 @@ namespace OpenDentBusiness {
 				apiCredentials=MakeCredentials(apiKey,secret,useSandbox);
 			}
 			catch(PayConnectNotConfiguredException ex) {
-				return MakeNotConfiguredResponse(ex.Message);
+				return LogIfFailed(MakeNotConfiguredResponse(ex.Message),"test connection",0);
 			}
+			PayConnect2Response response;
 			if(Mock!=null) {
-				return MockRequestResponse();
+				response=MockRequestResponse();
 			}
-			return Send(ApiRoute.GetMerchantInfo,HttpMethod.Get,apiCredentials,"");
+			else {
+				response=Send(ApiRoute.GetMerchantInfo,HttpMethod.Get,apiCredentials,"");
+			}
+			return LogIfFailed(response,"test connection",0);
 		}
 
 		///<summary>A new correlation ID: "OPMS-" and 12 hex characters of a new Guid. Opaque; never carries patient data.</summary>
@@ -497,6 +520,191 @@ namespace OpenDentBusiness {
 			return CorrelationIdPrefix+Guid.NewGuid().ToString("N").Substring(0,12);
 		}
 		#endregion API calls
+
+		#region Error log
+		///<summary>Writes one line to the local PayConnect error log (PayConnectErrorLog) when response is an error (a decline, a rejected key, a
+		///validation error, no answer, or missing settings), or a create answered with a status that is not an approval. Successes, including a lost
+		///answer found approved in the transaction list, are not logged. Of the card only the last 4 characters of cardToken are written; never the token, the keys or the request body. Returns
+		///response.</summary>
+		public static PayConnect2Response LogIfFailed(PayConnect2Response response,string operation,long clinicNum,long patNum=0,int? amountCents=null,
+			string cardToken="",string invoiceNumber="")
+		{
+			if(response==null || (response.ResponseType!=ResponseType.Error && GetCreateStatusNotApproved(response)==null)) {
+				return response;
+			}
+			PayConnectErrorLog.Write(MakeErrorLogEntry(response,operation,clinicNum,patNum,amountCents,cardToken,invoiceNumber));
+			return response;
+		}
+
+		///<summary>For a create (sale, authorization, terminal) that PayConnect answered with 2xx but whose status is not an approval (IsApprovedStatus),
+		///for example Declined: that status, or "" when blank. Null for an approval and for any other response.</summary>
+		public static string GetCreateStatusNotApproved(PayConnect2Response response) {
+			string status;
+			switch(response?.ResponseType) {
+				case ResponseType.CreateTransaction:
+					status=response.TransactionResponse?.Status;
+					break;
+				case ResponseType.CreateSurchargeTransaction:
+					status=response.TransactionSurchargeResponse?.Status;
+					break;
+				case ResponseType.TerminalTransaction:
+					status=response.TerminalTransactionResponse?.Status;
+					break;
+				default:
+					return null;
+			}
+			if(IsApprovedStatus(status)) {
+				return null;
+			}
+			return (status??"").Trim();
+		}
+
+		///<summary>The error-log entry for a failed response. Public for tests.</summary>
+		public static PayConnectErrorLog.Entry MakeErrorLogEntry(PayConnect2Response response,string operation,long clinicNum,long patNum,int? amountCents,
+			string cardToken,string invoiceNumber)
+		{
+			PayConnectErrorLog.Entry entry=PayConnectErrorLog.MakeEntry(operation,clinicNum,patNum);
+			entry.AmountCents=amountCents;
+			entry.CardLast4=PayConnectErrorLog.GetLast4(cardToken);
+			entry.InvoiceNumber=string.IsNullOrEmpty(response.CorrelationId) ? (invoiceNumber??"") : response.CorrelationId;
+			entry.HttpStatus=(int)response.httpStatusCode;
+			entry.Outcome=response.Outcome.ToString();
+			ErrorResponse errorResponse=response.ErrorResponse;
+			if(errorResponse!=null) {
+				if(errorResponse.HttpStatus>0) {
+					entry.HttpStatus=errorResponse.HttpStatus;
+				}
+				entry.VendorCode=errorResponse.VendorCode??"";
+				entry.ErrorKind=errorResponse.Kind.ToString();
+				if(errorResponse.ErrorType==ErrorType.Validation) {
+					entry.ErrorKind+="/VALIDATION";
+				}
+				entry.Message=string.IsNullOrEmpty(errorResponse.Message) ? (errorResponse.Error as string??"") : errorResponse.Message;
+				//Where Message is our own sentence (a rejected key or Secret), PayConnect's message is added so the line still carries it.
+				string vendorMessage=errorResponse.VendorMessage??"";
+				if(vendorMessage!="" && entry.Message.IndexOf(vendorMessage,StringComparison.Ordinal)<0) {
+					entry.Message=(entry.Message=="") ? vendorMessage : entry.Message+" PayConnect: "+vendorMessage;
+				}
+			}
+			string statusNotApproved=GetCreateStatusNotApproved(response);
+			if(response.ResponseType!=ResponseType.Error && statusNotApproved!=null) {
+				entry.VendorCode=statusNotApproved;//For example Declined: the only code PayConnect gives for a 2xx that is not an approval.
+				entry.ErrorKind="NotApproved";
+				entry.Message="PayConnect answered with status: "+(statusNotApproved=="" ? "(blank)" : statusNotApproved);
+			}
+			return entry;
+		}
+
+		///<summary>Logs an error that the hosted card-entry page reported (status ERROR), which never passes through an API call here.</summary>
+		public static void LogHostedFormError(long clinicNum,long patNum,bool isAddingCard,string message) {
+			PayConnectErrorLog.Entry entry=PayConnectErrorLog.MakeEntry(isAddingCard ? "card token form" : "payment form",clinicNum,patNum);
+			entry.ErrorKind="HostedForm";
+			entry.Message=message??"";
+			PayConnectErrorLog.Write(entry);
+		}
+
+		///<summary>Logs a PayConnect attempt that failed with an exception in this program, before or while the request was sent.</summary>
+		public static void LogException(string operation,long clinicNum,long patNum,int? amountCents,string invoiceNumber,Exception ex) {
+			PayConnectErrorLog.Entry entry=PayConnectErrorLog.MakeEntry(operation,clinicNum,patNum);
+			entry.AmountCents=amountCents;
+			entry.InvoiceNumber=invoiceNumber??"";
+			entry.ErrorKind="Exception";
+			entry.Message=(ex==null) ? "" : ex.GetType().Name+": "+ex.Message;
+			PayConnectErrorLog.Write(entry);
+		}
+
+		///<summary>The log name of a create: "sale", "authorize" or "refund", with "recurring " in front for a recurring charge.</summary>
+		public static string GetOperationName(TransactionType transactionType,TransactionFrequency transactionFrequency) {
+			string operation;
+			switch(transactionType) {
+				case TransactionType.AuthorizeOnly:
+					operation="authorize";
+					break;
+				case TransactionType.Refund:
+					operation="refund";
+					break;
+				default:
+					operation="sale";
+					break;
+			}
+			if(transactionFrequency==TransactionFrequency.Recurring) {
+				operation="recurring "+operation;
+			}
+			return operation;
+		}
+		#endregion Error log
+
+		#region Cardholder and saved card
+		///<summary>The value sent in the required cardHolder field of a token charge: the name saved on the card when there is one, else the patient's
+		///name, as before Open Dental 25.1 added creditcard.CardHolderName.</summary>
+		public static string GetCardHolderForRequest(Patient patient,string cardHolderName) {
+			string cardHolderNameClean=CleanCardHolderName(cardHolderName);
+			if(cardHolderNameClean!="") {
+				return cardHolderNameClean;
+			}
+			return patient?.GetNameFLnoPref()??"";
+		}
+
+		///<summary>A cardholder name as PayConnect returned it, made fit for creditcard.CardHolderName (varchar 255): control characters removed, spaces
+		///collapsed, trimmed, cut to 255. "" when there is no name, or when the value holds a run of digits that could be a card number: that is never
+		///stored.</summary>
+		public static string CleanCardHolderName(string cardHolder) {
+			if(string.IsNullOrWhiteSpace(cardHolder)) {
+				return "";
+			}
+			string clean=string.Join(" ",new string(cardHolder.Select(x => char.IsControl(x) ? ' ' : x).ToArray())
+				.Split(new[] { ' ' },StringSplitOptions.RemoveEmptyEntries));
+			if(PayConnectErrorLog.ScrubText(clean,int.MaxValue)!=clean) {
+				return "";//Holds something that looks like a card number.
+			}
+			if(clean.Length>255) {
+				clean=clean.Substring(0,255).TrimEnd();
+			}
+			return clean;
+		}
+
+		///<summary>Saves the cardholder name PayConnect returned for a card that was just keyed, swiped or tapped (hosted page, tokenizer or terminal)
+		///on creditCard.CardHolderName. Leaves the card alone when the transaction charged the card's saved token (the response only echoes the name
+		///this program sent) or when PayConnect returned no name. Returns true if the name changed.</summary>
+		public static bool SetCardHolderNameFromVendor(CreditCard creditCard,string cardHolderFromVendor,bool wasCardEntered) {
+			if(creditCard==null || !wasCardEntered) {
+				return false;
+			}
+			string clean=CleanCardHolderName(cardHolderFromVendor);
+			if(clean=="" || clean==(creditCard.CardHolderName??"")) {
+				return false;
+			}
+			creditCard.CardHolderName=clean;
+			return true;
+		}
+
+		///<summary>The cardholder printed on a receipt: the name in PayConnect's response, else the name saved on the card, else "".</summary>
+		public static string GetCardHolderForReceipt(string cardHolderFromResponse,CreditCard creditCard) {
+			string fromResponse=CleanCardHolderName(cardHolderFromResponse);
+			if(fromResponse!="") {
+				return fromResponse;
+			}
+			return CleanCardHolderName(creditCard?.CardHolderName);
+		}
+
+		///<summary>The text of the read-only Credit Card field in the PayConnect window (25.2) for a payment on a saved card: the masked number, with
+		///every character but the last 4 shown as X, or "(saved card)" when the card has no masked number.</summary>
+		public static string GetSavedCardDisplayText(CreditCard creditCard) {
+			string last4=PayConnectErrorLog.GetLast4(creditCard?.CCNumberMasked);
+			if(last4=="") {
+				return Lans.g("PayConnect","(saved card)");
+			}
+			string masked=creditCard.CCNumberMasked.Trim();
+			int countMasked=Math.Max(12,masked.Length-4);
+			return new string('X',countMasked)+last4;
+		}
+
+		///<summary>Whether the PayConnect window shows the read-only Credit Card field: only when a saved card (one with a PayConnect token) was passed
+		///in and the web service is used. A card entered on the hosted page or a terminal is not known before the transaction.</summary>
+		public static bool IsSavedCardFieldVisible(CreditCard creditCard,bool isTerminal) {
+			return creditCard!=null && !string.IsNullOrEmpty(creditCard.PayConnectToken) && !isTerminal;
+		}
+		#endregion Cardholder and saved card
 
 		#region Transport
 		private static string SerializeBody(object requestBody) {
@@ -535,14 +743,19 @@ namespace OpenDentBusiness {
 		}
 
 		///<summary>As PostCreateTransaction, with explicit credentials. Used by tests and by callers that already hold the credentials.</summary>
-		public static PayConnect2Response PostCreateTransaction(CreateTransactionRequest requestBody,ApiCredentials apiCredentials) {
+		public static PayConnect2Response PostCreateTransaction(CreateTransactionRequest requestBody,ApiCredentials apiCredentials,long clinicNum=0,long patNum=0) {
 			if(string.IsNullOrWhiteSpace(requestBody.InvoiceNumber)) {
 				requestBody.InvoiceNumber=NewCorrelationId();
 			}
+			PayConnect2Response response;
 			if(Mock!=null) {
-				return MockRequestResponse();
+				response=MockRequestResponse();
 			}
-			return SendCreate(ApiRoute.CreateTransaction,apiCredentials,requestBody.InvoiceNumber,SerializeBody(requestBody));
+			else {
+				response=SendCreate(ApiRoute.CreateTransaction,apiCredentials,requestBody.InvoiceNumber,SerializeBody(requestBody));
+			}
+			return LogIfFailed(response,GetOperationName(requestBody.TransType,requestBody.Frequency),clinicNum,patNum,requestBody.Amount,
+				requestBody.CardToken,requestBody.InvoiceNumber);
 		}
 
 		private static PayConnect2Response SendCreate(ApiRoute route,ApiCredentials apiCredentials,string invoiceNumber,string body) {
@@ -645,6 +858,7 @@ namespace OpenDentBusiness {
 			response.CorrelationId=invoiceNumber;
 			response.httpStatusCode=HttpStatusCode.OK;
 			response.ErrorResponse=MakeErrorResponse(PayConnectErrorKind.Vendor,"PayConnect declined the transaction (status: "+statusShown+").");
+			response.ErrorResponse.VendorCode=(status??"").Trim();//The vendor's status is the only code its transaction list gives.
 			return response;
 		}
 
@@ -738,6 +952,16 @@ namespace OpenDentBusiness {
 			JToken jTokenError=jObject?["error"];
 			JToken jTokenErrorType=jObject?["errorType"];
 			string errorType=(jTokenErrorType!=null && jTokenErrorType.Type==JTokenType.String) ? (string)jTokenErrorType : "";
+			//PayConnect's own code and message, kept for every kind of error (the error log needs them even when Message is our own sentence).
+			string vendorCode="";
+			string vendorMessage="";
+			if(jTokenError!=null && jTokenError.Type==JTokenType.String) {
+				vendorMessage=(string)jTokenError;
+			}
+			else if(jTokenError is JObject jObjectError) {
+				vendorCode=GetString(jObjectError,"code");
+				vendorMessage=GetString(jObjectError,"message");
+			}
 			ErrorResponse errorResponse;
 			if(errorType.Equals("VALIDATION",StringComparison.OrdinalIgnoreCase) || (code==400 && jTokenError is JArray)) {
 				List<ValidationErrorBody> listValidationErrors=ParseValidationErrors(jTokenError);
@@ -760,19 +984,15 @@ namespace OpenDentBusiness {
 				errorResponse=MakeErrorResponse(PayConnectErrorKind.SecretRejected,MSG_SECRET_REJECTED);
 			}
 			else {
-				string vendorMessage="";
-				if(jTokenError!=null && jTokenError.Type==JTokenType.String) {
-					vendorMessage=(string)jTokenError;
+				string message=vendorMessage;
+				if(string.IsNullOrWhiteSpace(message)) {
+					message="PayConnect returned an error (HTTP "+code.ToString(CultureInfo.InvariantCulture)+").";
 				}
-				else if(jTokenError is JObject && jTokenError["message"]!=null && jTokenError["message"].Type==JTokenType.String) {
-					vendorMessage=(string)jTokenError["message"];
-				}
-				if(string.IsNullOrWhiteSpace(vendorMessage)) {
-					vendorMessage="PayConnect returned an error (HTTP "+code.ToString(CultureInfo.InvariantCulture)+").";
-				}
-				errorResponse=MakeErrorResponse(PayConnectErrorKind.Vendor,vendorMessage);
+				errorResponse=MakeErrorResponse(PayConnectErrorKind.Vendor,message);
 			}
 			errorResponse.HttpStatus=code;
+			errorResponse.VendorCode=vendorCode.Trim();
+			errorResponse.VendorMessage=vendorMessage.Trim();
 			return errorResponse;
 		}
 
@@ -2260,6 +2480,12 @@ namespace OpenDentBusiness {
 			public List<ValidationErrorBody> ListValidationErrors=new List<ValidationErrorBody>();
 			///<summary>The HTTP status, or 0 when no response arrived.</summary>
 			public int HttpStatus;
+			///<summary>PayConnect's own response code: the "code" of an error object (ResponseError.Code), or, for an answer whose status is not an
+			///approval, that status. Blank when PayConnect sent none. Not PayConnectErrorKind, which is this program's classification.</summary>
+			public string VendorCode="";
+			///<summary>PayConnect's own error message, as sent (a string "error", or the "message" of an error object). Blank when there was none.
+			///Message can differ from it: for a rejected key or Secret, Message is our sentence for the user.</summary>
+			public string VendorMessage="";
 		}
 
 		[DataContract]

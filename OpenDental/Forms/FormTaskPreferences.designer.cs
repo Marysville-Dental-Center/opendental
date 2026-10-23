@@ -41,6 +41,7 @@ namespace OpenDental{
 			this.checkShowLegacyRepeatingTasks = new OpenDental.UI.CheckBox();
 			this.groupBoxDatabase = new OpenDental.UI.GroupBox();
 			this.checkTaskToApptOneToOne = new OpenDental.UI.CheckBox();
+			this.checkTaskCategoryShow = new OpenDental.UI.CheckBox();
 			this.labelImageCategoryFolder = new System.Windows.Forms.Label();
 			this.comboImageCategoryFolders = new OpenDental.UI.ComboBox();
 			this.labelGlobalFilter = new System.Windows.Forms.Label();
@@ -55,7 +56,7 @@ namespace OpenDental{
 			// butSave
 			// 
 			this.butSave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.butSave.Location = new System.Drawing.Point(297, 333);
+			this.butSave.Location = new System.Drawing.Point(297, 351);
 			this.butSave.Name = "butSave";
 			this.butSave.Size = new System.Drawing.Size(75, 24);
 			this.butSave.TabIndex = 12;
@@ -102,7 +103,7 @@ namespace OpenDental{
 			this.groupBoxComputerDefaults.Controls.Add(this.labelX);
 			this.groupBoxComputerDefaults.Controls.Add(this.checkBoxTaskKeepListHidden);
 			this.groupBoxComputerDefaults.Enabled = false;
-			this.groupBoxComputerDefaults.Location = new System.Drawing.Point(12, 239);
+			this.groupBoxComputerDefaults.Location = new System.Drawing.Point(12, 257);
 			this.groupBoxComputerDefaults.Name = "groupBoxComputerDefaults";
 			this.groupBoxComputerDefaults.Size = new System.Drawing.Size(360, 86);
 			this.groupBoxComputerDefaults.TabIndex = 76;
@@ -216,6 +217,7 @@ namespace OpenDental{
 			// 
 			// groupBoxDatabase
 			// 
+			this.groupBoxDatabase.Controls.Add(this.checkTaskCategoryShow);
 			this.groupBoxDatabase.Controls.Add(this.checkTaskToApptOneToOne);
 			this.groupBoxDatabase.Controls.Add(this.labelImageCategoryFolder);
 			this.groupBoxDatabase.Controls.Add(this.comboImageCategoryFolders);
@@ -229,7 +231,7 @@ namespace OpenDental{
 			this.groupBoxDatabase.Controls.Add(this.checkTasksNewTrackedByUser);
 			this.groupBoxDatabase.Location = new System.Drawing.Point(12, 12);
 			this.groupBoxDatabase.Name = "groupBoxDatabase";
-			this.groupBoxDatabase.Size = new System.Drawing.Size(360, 221);
+			this.groupBoxDatabase.Size = new System.Drawing.Size(360, 239);
 			this.groupBoxDatabase.TabIndex = 80;
 			this.groupBoxDatabase.Text = "Global Settings";
 			// 
@@ -243,9 +245,19 @@ namespace OpenDental{
 			this.checkTaskToApptOneToOne.TabIndex = 143;
 			this.checkTaskToApptOneToOne.Text = "Allow multiple Tasks attached to one Appointment";
 			// 
+			// checkTaskCategoryShow
+			// 
+			this.checkTaskCategoryShow.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			this.checkTaskCategoryShow.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.checkTaskCategoryShow.Location = new System.Drawing.Point(12, 162);
+			this.checkTaskCategoryShow.Name = "checkTaskCategoryShow";
+			this.checkTaskCategoryShow.Size = new System.Drawing.Size(342, 14);
+			this.checkTaskCategoryShow.TabIndex = 144;
+			this.checkTaskCategoryShow.Text = "Show task category";
+			// 
 			// labelImageCategoryFolder
 			// 
-			this.labelImageCategoryFolder.Location = new System.Drawing.Point(3, 193);
+			this.labelImageCategoryFolder.Location = new System.Drawing.Point(3, 211);
 			this.labelImageCategoryFolder.Name = "labelImageCategoryFolder";
 			this.labelImageCategoryFolder.Size = new System.Drawing.Size(228, 19);
 			this.labelImageCategoryFolder.TabIndex = 142;
@@ -254,14 +266,14 @@ namespace OpenDental{
 			// 
 			// comboImageCategoryFolders
 			// 
-			this.comboImageCategoryFolders.Location = new System.Drawing.Point(234, 193);
+			this.comboImageCategoryFolders.Location = new System.Drawing.Point(234, 211);
 			this.comboImageCategoryFolders.Name = "comboImageCategoryFolders";
 			this.comboImageCategoryFolders.Size = new System.Drawing.Size(120, 21);
 			this.comboImageCategoryFolders.TabIndex = 141;
 			// 
 			// labelGlobalFilter
 			// 
-			this.labelGlobalFilter.Location = new System.Drawing.Point(54, 166);
+			this.labelGlobalFilter.Location = new System.Drawing.Point(54, 184);
 			this.labelGlobalFilter.Name = "labelGlobalFilter";
 			this.labelGlobalFilter.Size = new System.Drawing.Size(177, 19);
 			this.labelGlobalFilter.TabIndex = 140;
@@ -282,7 +294,7 @@ namespace OpenDental{
 			// 
 			// comboFilterDefault
 			// 
-			this.comboFilterDefault.Location = new System.Drawing.Point(234, 166);
+			this.comboFilterDefault.Location = new System.Drawing.Point(234, 184);
 			this.comboFilterDefault.Name = "comboFilterDefault";
 			this.comboFilterDefault.Size = new System.Drawing.Size(120, 21);
 			this.comboFilterDefault.TabIndex = 139;
@@ -295,7 +307,7 @@ namespace OpenDental{
 			// 
 			// FormTaskPreferences
 			// 
-			this.ClientSize = new System.Drawing.Size(384, 369);
+			this.ClientSize = new System.Drawing.Size(384, 387);
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.groupBoxComputerDefaults);
 			this.Controls.Add(this.groupBoxDatabase);
@@ -335,5 +347,6 @@ namespace OpenDental{
 		private System.Windows.Forms.Label labelImageCategoryFolder;
 		private UI.ComboBox comboImageCategoryFolders;
 		private UI.CheckBox checkTaskToApptOneToOne;
+		private UI.CheckBox checkTaskCategoryShow;
 	}
 }

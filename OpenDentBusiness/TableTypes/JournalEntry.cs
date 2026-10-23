@@ -40,6 +40,13 @@ namespace OpenDentBusiness{
 		///<summary>The last time this journal entry was edited.</summary>
 		[CrudColumn(SpecialType=CrudSpecialColType.TimeStamp)]
 		public DateTime SecDateTEdit;
+		///<summary>Added in Open Dental 25.3: who the money went to. Up to 255 characters.</summary>
+		public string Payee="";
+		///<summary>Added in Open Dental 25.3: long free-text notes, separate from Memo.</summary>
+		[CrudColumn(SpecialType=CrudSpecialColType.IsText)]
+		public string Notes="";
+		///<summary>Added in Open Dental 25.3: flags the entry for review. Its only effect is highlighting the row.</summary>
+		public bool NeedsReview;
 		///<summary></summary>
 		[CrudColumn(IsNotDbColumn=true)]
 		public string DescriptionAccount="";

@@ -44,6 +44,7 @@
 			this.labelApptNote = new System.Windows.Forms.Label();
 			this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
 			this.checkTimeLocked = new OpenDental.UI.CheckBox();
+			this.checkIsMirrored = new OpenDental.UI.CheckBox();
 			this.contextMenuTimeArrived = new System.Windows.Forms.ContextMenu();
 			this.menuItemArrivedNow = new System.Windows.Forms.MenuItem();
 			this.contextMenuTimeSeated = new System.Windows.Forms.ContextMenu();
@@ -273,6 +274,14 @@
 			this.checkTimeLocked.Text = "Time Locked";
 			this.checkTimeLocked.Click += new System.EventHandler(this.checkTimeLocked_Click);
 			// 
+			// checkIsMirrored
+			// 
+			this.checkIsMirrored.Location = new System.Drawing.Point(125, 210);
+			this.checkIsMirrored.Name = "checkIsMirrored";
+			this.checkIsMirrored.Size = new System.Drawing.Size(105, 16);
+			this.checkIsMirrored.TabIndex = 149;
+			this.checkIsMirrored.Text = "Mirror";
+			// 
 			// contextMenuTimeArrived
 			// 
 			this.contextMenuTimeArrived.MenuItems.AddRange(new System.Windows.Forms.MenuItem[] {
@@ -387,6 +396,7 @@
 			this.panel1.Controls.Add(this.labelStatus);
 			this.panel1.Controls.Add(this.label2);
 			this.panel1.Controls.Add(this.checkTimeLocked);
+			this.panel1.Controls.Add(this.checkIsMirrored);
 			this.panel1.Location = new System.Drawing.Point(302, 2);
 			this.panel1.Name = "panel1";
 			this.panel1.Size = new System.Drawing.Size(234, 511);
@@ -960,6 +970,7 @@
 		private OpenDental.UI.Button butDeleteProc;
 		private OpenDental.UI.Button butComplete;
 		private OpenDental.UI.CheckBox checkTimeLocked;
+		private OpenDental.UI.CheckBox checkIsMirrored;
 		private OpenDental.UI.Button butPickHyg;
 		private OpenDental.UI.Button butPickDentist;
 		private OpenDental.UI.GridOD gridFields;

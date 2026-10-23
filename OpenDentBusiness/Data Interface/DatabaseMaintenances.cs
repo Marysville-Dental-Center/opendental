@@ -15,7 +15,7 @@ using OpenDentBusiness.Crud;
 using OpenDentBusiness.FileIO;
 
 namespace OpenDentBusiness {
-	public class DatabaseMaintenances {
+	public partial class DatabaseMaintenances {
 		private const string _lanThis="FormDatabaseMaintenance";
 
 		#region Get Methods
@@ -4557,8 +4557,9 @@ namespace OpenDentBusiness {
 			if(DataConnection.DBtype==DatabaseType.Oracle) {
 				return Lans.g("FormDatabaseMaintenance","Currently not Oracle compatible.  Please call support.");
 			}
-			string command="SELECT FeeNum,FeeSched,CodeNum,Amount,ClinicNum,ProvNum FROM fee "
-				+"GROUP BY FeeSched,CodeNum,ClinicNum,ProvNum HAVING COUNT(CodeNum)>1";
+			//Rows that differ only by fee.DateEffective are dated fees (Open Dental 24.4), not duplicates.
+			string command="SELECT FeeNum,FeeSched,CodeNum,Amount,ClinicNum,ProvNum,DateEffective FROM fee "
+				+"GROUP BY FeeSched,CodeNum,ClinicNum,ProvNum,DateEffective HAVING COUNT(CodeNum)>1";
 			DataTable table=Db.GetTable(command);
 			int count=table.Rows.Count;
 			string log="";
@@ -4592,6 +4593,7 @@ namespace OpenDentBusiness {
 							+" AND CodeNum="+table.Rows[i]["CodeNum"].ToString()
 							+" AND ClinicNum="+table.Rows[i]["ClinicNum"].ToString()
 							+" AND ProvNum="+table.Rows[i]["ProvNum"].ToString()
+							+" AND DateEffective="+POut.Date(PIn.Date(table.Rows[i]["DateEffective"].ToString()))
 							+" AND FeeNum!="+table.Rows[i]["FeeNum"].ToString();//This is the random fee we will keep.
 						List<long> listFeeNums=Db.GetListLong(command);
 						Fees.DeleteMany(listFeeNums);

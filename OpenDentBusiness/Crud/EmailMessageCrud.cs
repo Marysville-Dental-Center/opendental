@@ -179,7 +179,7 @@ namespace OpenDentBusiness.Crud{
 				+    DbHelper.Now()+","
 				//SecDateTEdit can only be set by MySQL
 				+"'"+POut.String(emailMessage.MsgType.ToString())+"',"
-				+"'"+POut.String(emailMessage.FailReason)+"')";
+				+    DbHelper.ParamChar+"paramFailReason)";
 			if(emailMessage.ToAddress==null) {
 				emailMessage.ToAddress="";
 			}
@@ -208,11 +208,15 @@ namespace OpenDentBusiness.Crud{
 				emailMessage.BccAddress="";
 			}
 			OdSqlParameter paramBccAddress=new OdSqlParameter("paramBccAddress",OdDbType.Text,POut.StringParam(emailMessage.BccAddress));
+			if(emailMessage.FailReason==null) {
+				emailMessage.FailReason="";
+			}
+			OdSqlParameter paramFailReason=new OdSqlParameter("paramFailReason",OdDbType.Text,POut.StringParam(emailMessage.FailReason));
 			if(useExistingPK || PrefC.RandomKeys) {
-				Db.NonQ(command,paramToAddress,paramFromAddress,paramSubject,paramBodyText,paramRawEmailIn,paramCcAddress,paramBccAddress);
+				Db.NonQ(command,paramToAddress,paramFromAddress,paramSubject,paramBodyText,paramRawEmailIn,paramCcAddress,paramBccAddress,paramFailReason);
 			}
 			else {
-				emailMessage.EmailMessageNum=Db.NonQ(command,true,"EmailMessageNum","emailMessage",paramToAddress,paramFromAddress,paramSubject,paramBodyText,paramRawEmailIn,paramCcAddress,paramBccAddress);
+				emailMessage.EmailMessageNum=Db.NonQ(command,true,"EmailMessageNum","emailMessage",paramToAddress,paramFromAddress,paramSubject,paramBodyText,paramRawEmailIn,paramCcAddress,paramBccAddress,paramFailReason);
 			}
 			return emailMessage.EmailMessageNum;
 		}
@@ -257,7 +261,7 @@ namespace OpenDentBusiness.Crud{
 				+    DbHelper.Now()+","
 				//SecDateTEdit can only be set by MySQL
 				+"'"+POut.String(emailMessage.MsgType.ToString())+"',"
-				+"'"+POut.String(emailMessage.FailReason)+"')";
+				+    DbHelper.ParamChar+"paramFailReason)";
 			if(emailMessage.ToAddress==null) {
 				emailMessage.ToAddress="";
 			}
@@ -286,11 +290,15 @@ namespace OpenDentBusiness.Crud{
 				emailMessage.BccAddress="";
 			}
 			OdSqlParameter paramBccAddress=new OdSqlParameter("paramBccAddress",OdDbType.Text,POut.StringParam(emailMessage.BccAddress));
+			if(emailMessage.FailReason==null) {
+				emailMessage.FailReason="";
+			}
+			OdSqlParameter paramFailReason=new OdSqlParameter("paramFailReason",OdDbType.Text,POut.StringParam(emailMessage.FailReason));
 			if(useExistingPK || isRandomKeys) {
-				Db.NonQ(command,paramToAddress,paramFromAddress,paramSubject,paramBodyText,paramRawEmailIn,paramCcAddress,paramBccAddress);
+				Db.NonQ(command,paramToAddress,paramFromAddress,paramSubject,paramBodyText,paramRawEmailIn,paramCcAddress,paramBccAddress,paramFailReason);
 			}
 			else {
-				emailMessage.EmailMessageNum=Db.NonQ(command,true,"EmailMessageNum","emailMessage",paramToAddress,paramFromAddress,paramSubject,paramBodyText,paramRawEmailIn,paramCcAddress,paramBccAddress);
+				emailMessage.EmailMessageNum=Db.NonQ(command,true,"EmailMessageNum","emailMessage",paramToAddress,paramFromAddress,paramSubject,paramBodyText,paramRawEmailIn,paramCcAddress,paramBccAddress,paramFailReason);
 			}
 			return emailMessage.EmailMessageNum;
 		}
@@ -318,7 +326,7 @@ namespace OpenDentBusiness.Crud{
 				//SecDateTEntry not allowed to change
 				//SecDateTEdit can only be set by MySQL
 				+"MsgType         = '"+POut.String(emailMessage.MsgType.ToString())+"', "
-				+"FailReason      = '"+POut.String(emailMessage.FailReason)+"' "
+				+"FailReason      =  "+DbHelper.ParamChar+"paramFailReason "
 				+"WHERE EmailMessageNum = "+POut.Long(emailMessage.EmailMessageNum);
 			if(emailMessage.ToAddress==null) {
 				emailMessage.ToAddress="";
@@ -348,7 +356,11 @@ namespace OpenDentBusiness.Crud{
 				emailMessage.BccAddress="";
 			}
 			OdSqlParameter paramBccAddress=new OdSqlParameter("paramBccAddress",OdDbType.Text,POut.StringParam(emailMessage.BccAddress));
-			Db.NonQ(command,paramToAddress,paramFromAddress,paramSubject,paramBodyText,paramRawEmailIn,paramCcAddress,paramBccAddress);
+			if(emailMessage.FailReason==null) {
+				emailMessage.FailReason="";
+			}
+			OdSqlParameter paramFailReason=new OdSqlParameter("paramFailReason",OdDbType.Text,POut.StringParam(emailMessage.FailReason));
+			Db.NonQ(command,paramToAddress,paramFromAddress,paramSubject,paramBodyText,paramRawEmailIn,paramCcAddress,paramBccAddress,paramFailReason);
 		}
 
 		///<summary>Updates one EmailMessage in the database.  Uses an old object to compare to, and only alters changed fields.  This prevents collisions and concurrency problems in heavily used tables.  Returns true if an update occurred.</summary>
@@ -430,7 +442,7 @@ namespace OpenDentBusiness.Crud{
 			}
 			if(emailMessage.FailReason != oldEmailMessage.FailReason) {
 				if(command!="") { command+=",";}
-				command+="FailReason = '"+POut.String(emailMessage.FailReason)+"'";
+				command+="FailReason = "+DbHelper.ParamChar+"paramFailReason";
 			}
 			if(command=="") {
 				return false;
@@ -463,9 +475,13 @@ namespace OpenDentBusiness.Crud{
 				emailMessage.BccAddress="";
 			}
 			OdSqlParameter paramBccAddress=new OdSqlParameter("paramBccAddress",OdDbType.Text,POut.StringParam(emailMessage.BccAddress));
+			if(emailMessage.FailReason==null) {
+				emailMessage.FailReason="";
+			}
+			OdSqlParameter paramFailReason=new OdSqlParameter("paramFailReason",OdDbType.Text,POut.StringParam(emailMessage.FailReason));
 			command="UPDATE emailmessage SET "+command
 				+" WHERE EmailMessageNum = "+POut.Long(emailMessage.EmailMessageNum);
-			Db.NonQ(command,paramToAddress,paramFromAddress,paramSubject,paramBodyText,paramRawEmailIn,paramCcAddress,paramBccAddress);
+			Db.NonQ(command,paramToAddress,paramFromAddress,paramSubject,paramBodyText,paramRawEmailIn,paramCcAddress,paramBccAddress,paramFailReason);
 			return true;
 		}
 

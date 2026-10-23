@@ -16,7 +16,7 @@ using VendorDirectTests.Foundation;
 namespace VendorDirectTests.Gmail {
 	[TestClass]
 	public class GmailSettingsDbTests {
-		private const string DB_NAME="vendordirect_gmail_tests";
+		private static readonly string DB_NAME=ScratchDb.Name("vendordirect_gmail_tests");
 		private static string _skipReason;
 
 		[ClassInitialize]

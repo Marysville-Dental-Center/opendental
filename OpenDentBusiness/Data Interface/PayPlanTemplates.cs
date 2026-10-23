@@ -61,6 +61,50 @@ namespace OpenDentBusiness{
 			payPlanTerms.DynamicPayPlanTPOption=payPlanTemplate.DynamicPayPlanTPOption;
 			return payPlanTerms;
 		}
+
+		///<summary>The SheetDefNum a payment plan gets when it is made from this template: the template's sheet when it is still a PaymentPlan sheet
+		///def, otherwise 0 (the default sheet).</summary>
+		public static long GetSheetDefNumForPayPlan(PayPlanTemplate payPlanTemplate) {
+			Meth.NoCheckMiddleTierRole();
+			if(payPlanTemplate==null || !SheetDefs.IsValidPayPlanSheetDefNum(payPlanTemplate.SheetDefNum)) {
+				return 0;
+			}
+			return payPlanTemplate.SheetDefNum;
+		}
+
+		///<summary>Copies the template's sheet choice to the payment plan (see GetSheetDefNumForPayPlan). Does not save the plan.</summary>
+		public static void ApplySheetDefToPayPlan(PayPlanTemplate payPlanTemplate,PayPlan payPlan) {
+			Meth.NoCheckMiddleTierRole();
+			payPlan.SheetDefNum=GetSheetDefNumForPayPlan(payPlanTemplate);
+		}
+
+		///<summary>The name a payment plan sheet choice has in the audit trail: "Default" for 0, the sheet def's description, or "(deleted)" when
+		///the sheet def no longer exists.</summary>
+		public static string GetSheetDefNameForLog(long sheetDefNum) {
+			Meth.NoCheckMiddleTierRole();
+			if(sheetDefNum==0) {
+				return "Default";
+			}
+			SheetDef sheetDef=SheetDefs.GetFirstOrDefault(x => x.SheetDefNum==sheetDefNum);
+			if(sheetDef==null) {
+				return "(deleted)";
+			}
+			return sheetDef.Description;
+		}
+
+		///<summary>24.4: logs a PayPlanEdit entry when a saved payment plan's print sheet changed ("Payment Plan sheet changed from X to Y.").
+		///Nothing is logged for a new plan (its creation is logged instead) or when the sheet did not change. Returns true when an entry was made.
+		///</summary>
+		public static bool MakeLogEntryIfSheetChanged(PayPlan payPlan,PayPlan payPlanOld) {
+			Meth.NoCheckMiddleTierRole();
+			if(payPlan==null || payPlanOld==null || payPlanOld.IsNew || payPlanOld.SheetDefNum==payPlan.SheetDefNum) {
+				return false;
+			}
+			SecurityLogs.MakeLogEntry(EnumPermType.PayPlanEdit,payPlan.PatNum,
+				"Payment Plan sheet changed from "+GetSheetDefNameForLog(payPlanOld.SheetDefNum)+" to "+GetSheetDefNameForLog(payPlan.SheetDefNum)+".",
+				payPlan.PayPlanNum,DateTime.MinValue);
+			return true;
+		}
 		#endregion Methods - Misc
 
 		//Only pull out the methods below as you need them.  Otherwise, leave them commented out.

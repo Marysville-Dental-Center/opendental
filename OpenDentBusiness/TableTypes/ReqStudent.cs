@@ -25,6 +25,8 @@ namespace OpenDentBusiness{
 		public long InstructorNum;
 		///<summary>The date that the requirement was completed.</summary>
 		public DateTime DateCompleted;
+		///<summary>FK to procedurelog.ProcNum. Added in Open Dental 25.3: the procedure that satisfied the requirement. Kept for data compatibility.</summary>
+		public long ProcNum;
 
 		///<summary></summary>
 		public ReqStudent Copy(){
@@ -38,6 +40,7 @@ namespace OpenDentBusiness{
 			r.PatNum=PatNum;
 			r.InstructorNum=InstructorNum;
 			r.DateCompleted=DateCompleted;
+			r.ProcNum=ProcNum;
 			return r;
 		}
 	}

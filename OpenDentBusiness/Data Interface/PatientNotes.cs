@@ -149,7 +149,36 @@ namespace OpenDentBusiness{
 				patNoteTo.DateOrthoPlacementOverride=patNoteFrom.DateOrthoPlacementOverride;
 			}
 			PatientNotes.Update(patNoteTo,patTo.Guarantor);//Will cause the guarantor's FamFinancial field to be updated.
-		}	
+		}
+
+		///<summary>patientnote.UserNumOrthoLocked value: nobody holds the ortho chart lock.</summary>
+		public const long ORTHO_LOCK_NONE=0;
+		///<summary>patientnote.UserNumOrthoLocked value: another session with the same user name just took control.</summary>
+		public const long ORTHO_LOCK_SAME_USER_TAKEOVER=-1;
+		///<summary>patientnote.UserNumOrthoLocked value (Open Dental 25.1 description): the workstation holding the lock switched users locally to sign an
+		///ortho chart row. It is held while that switch is in effect, and other workstations treat it as a held lock.</summary>
+		public const long ORTHO_LOCK_LOCAL_SWITCH=-5;
+
+		///<summary>True when the UserNumOrthoLocked value means someone holds the ortho chart lock. Every value but 0 does, including -1 and -5.</summary>
+		public static bool IsOrthoLockHeld(long userNumOrthoLocked) {
+			Meth.NoCheckMiddleTierRole();
+			return userNumOrthoLocked!=ORTHO_LOCK_NONE;
+		}
+
+		///<summary>Who holds the ortho chart lock, for the "Locked by" label. getUserName turns a UserNum into a name.</summary>
+		public static string GetOrthoLockedByText(long userNumOrthoLocked,Func<long,string> getUserName) {
+			Meth.NoCheckMiddleTierRole();
+			if(userNumOrthoLocked==ORTHO_LOCK_NONE) {
+				return Lans.g("PatientNotes","Nobody");
+			}
+			if(userNumOrthoLocked==ORTHO_LOCK_LOCAL_SWITCH) {
+				return Lans.g("PatientNotes","a workstation that changed user to sign");
+			}
+			if(userNumOrthoLocked==ORTHO_LOCK_SAME_USER_TAKEOVER) {
+				return Lans.g("PatientNotes","another session of the same user");
+			}
+			return getUserName(userNumOrthoLocked);
+		}
 
 		///<summary>Returns 0 if not locked. This gets hit every 4 seconds by every open ortho chart, but that's a pretty low load.</summary>
 		public static long GetUserNumOrthoLocked(long patNum){

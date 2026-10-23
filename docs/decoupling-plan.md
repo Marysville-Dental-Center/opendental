@@ -102,6 +102,13 @@ Delete `InternalTools`, eServices UI and code, the Thinfinity/ODCloud/AppStream 
 
 New name, branding, and an installer (Open Dental's installer isn't in the repo, so this means WiX or Inno Setup). Our own docs and help base URL. Releases through GitHub, plus a self-hosted update manifest for local propagation.
 
+**Status (2026-10-19):**
+
+- **Name: decided.** The product is **Open PMS - Dental** (`CodeBase/Utilities/VendorDirect/ProductIdentity.cs` holds the name sent to vendors).
+- **Attribution: done.** README.md (top), a new `NOTICE` file at the repository root, and the About box all state: "Open PMS - Dental is a fork of Open Dental (c) Open Dental Software, Inc. and contributors, licensed under the GNU GPL v2. It is not affiliated with or endorsed by Open Dental Software, Inc." Every GPL notice and copyright line is kept, including the Open Dental, MySQL, MariaDB and ADA lines in the About box. Tests: `tests/AttributionTests`.
+- **About box: done.** It shows the product name and the release version: `AssemblyInformationalVersion` when set (M1-03 sets it to 0.0), otherwise the assembly version. The "Since" date still looks up `updatehistory` by the assembly version, which is what the program records there. The Open Dental and reseller logos are no longer shown.
+- **Not yet:** the internal rename (window titles, namespaces, assemblies, executable, the `SoftwareName` default) is the final cosmetic step and comes last. Icons and artwork, the installer, our own help base URL, GitHub releases and the self-hosted update manifest are still to do; the MariaDB release flow is planned in M1-03 and later packages.
+
 ### Phase 5: Office migration path. Size: L.
 
 - Port the 24.3 → 25.3 schema changes above, with the matching features, at least where the office already has data in them.
@@ -115,6 +122,6 @@ Prioritized from the release notes. The 25.3 → 26.1 schema changes need a 26.1
 ## Open decisions
 
 1. **Integrations to keep**, each re-implemented with our own vendor credentials: QuickBooks Online, Microsoft 365 email, USPS address validation, the local REST API.
-2. **Project name.**
+2. **Project name.** Decided: Open PMS - Dental (see Phase 4).
 3. **Procedure codes for new installs**: CDT import by the user (needs an ADA license), or ship only non-CDT codes.
 4. **eServices**: drop permanently, or plan self-hosted replacements (Web Sched, texting, patient forms) as later modules.

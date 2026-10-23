@@ -40,6 +40,9 @@ namespace OpenDentBusiness{
 		public string Details;
 		/// <summary>Enum:Pearl.EnumCategoryOD This is how we hide and show layers for Pearl objects in the Imaging module.</summary>
 		public Pearl.EnumCategoryOD PearlLayer;
+		///<summary>Enum:EnumCategoryBetterDiag. Added in Open Dental 24.4: the BetterDiagnostics finding layer of an AI annotation. Kept so drawings in
+		///existing data load; BetterDiagnostics is not part of this program and never writes it.</summary>
+		public EnumCategoryBetterDiag BetterDiagLayer;
 
 		///<summary>Used only for serialization purposes</summary>
 		[XmlElement("ColorDraw",typeof(int))]
@@ -239,7 +242,52 @@ namespace OpenDentBusiness{
 		///<summary>0 - Open Dental drawings and text.</summary>
 		OpenDental,
 		///<summary>1 - Pearl AI annotations.</summary>
-		Pearl
+		Pearl,
+		///<summary>2 - BetterDiagnostics AI annotations (Open Dental 24.4). Reserved so stored drawings load; never written by this program.</summary>
+		BetterDiagnostics,
+	}
+
+	///<summary>Stored in imagedraw.BetterDiagLayer. Numbers as published in the Open Dental 25.3 database documentation (24.4 added 0 to 13, 25.1
+	///renamed 8 and added 14 to 18). Reserved so stored drawings load.</summary>
+	public enum EnumCategoryBetterDiag {
+		///<summary>0</summary>
+		None=0,
+		///<summary>1</summary>
+		Dentin=1,
+		///<summary>2</summary>
+		Enamel=2,
+		///<summary>3</summary>
+		Pulp=3,
+		///<summary>4</summary>
+		Restoration=4,
+		///<summary>5</summary>
+		Crown=5,
+		///<summary>6</summary>
+		Cavity=6,
+		///<summary>7</summary>
+		BoneLoss=7,
+		///<summary>8</summary>
+		PeriapicalRadiolucency=8,
+		///<summary>9</summary>
+		BoneLevel=9,
+		///<summary>10</summary>
+		Iac=10,
+		///<summary>11</summary>
+		NasalFloor=11,
+		///<summary>12</summary>
+		NormalTmj=12,
+		///<summary>13</summary>
+		Sinus=13,
+		///<summary>14</summary>
+		RootStumps=14,
+		///<summary>15</summary>
+		MissingTooth=15,
+		///<summary>16</summary>
+		Calculus=16,
+		///<summary>17</summary>
+		Disclaimer=17,
+		///<summary>18</summary>
+		MarginalDiscrepancy=18,
 	}
 }
 

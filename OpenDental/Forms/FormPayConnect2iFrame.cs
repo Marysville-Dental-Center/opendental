@@ -133,6 +133,7 @@ namespace OpenDental {
 					if(PayConnect2.IsTrackTwoData(response.Response?.CardToken)) {
 						MagstripCardParser magstripCardParser=new MagstripCardParser(response.Response.CardToken,EnumMagstripCardParseTrack.TrackTwo);
 						if(PayConnect2.LooksLikeCardNumber(magstripCardParser.AccountNumber)) {
+							PayConnect2.LogHostedFormError(_clinicNum,0,_isAddingCard,"The card reader returned the card number instead of a token; it was not saved.");
 							_response=new PayConnect2Response();
 							MsgBox.Show(this,"The card reader returned the card number instead of a token, so the card was not saved. Key the card in instead.");
 							return;
@@ -159,6 +160,7 @@ namespace OpenDental {
 				if(string.IsNullOrEmpty(message)) {
 					message=Lan.g(this,"The payment form reported an error.");
 				}
+				PayConnect2.LogHostedFormError(_clinicNum,0,_isAddingCard,message);
 				_response=new PayConnect2Response();
 				_response.ResponseType=ResponseType.Error;
 				_response.ErrorResponse=new ErrorResponse();

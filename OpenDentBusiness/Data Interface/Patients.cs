@@ -17,7 +17,7 @@ using OpenDentBusiness.HL7;
 namespace OpenDentBusiness {
 	
 	///<summary></summary>
-	public class Patients {
+	public partial class Patients {
 		public const string LANGUAGE_DECLINED_TO_SPECIFY="Declined to Specify";
 
 		///<summary>This is the array used in the MergeTwoPatientPointOfNoReturn method. Add new Table.PatNum combos whenever a table has a new PatNum field.</summary>

@@ -28,6 +28,7 @@ namespace OpenDental {
 		private void butChangeMedInto_Click(object sender,EventArgs e) {
 			using FormMedications formMedications=new FormMedications();
 			formMedications.IsSelectionMode=true;
+			formMedications.CanSelectHidden=true;//Merging can pick hidden medications.
 			formMedications.ShowDialog();
 			if(formMedications.DialogResult==DialogResult.OK) {
 				_medicationInto=Medications.GetMedication(formMedications.SelectedMedicationNum);
@@ -42,6 +43,7 @@ namespace OpenDental {
 		private void butChangeMedFrom_Click(object sender,EventArgs e) {
 			using FormMedications formMedications=new FormMedications();
 			formMedications.IsSelectionMode=true;
+			formMedications.CanSelectHidden=true;//Merging can pick hidden medications.
 			formMedications.ShowDialog();
 			if(formMedications.DialogResult==DialogResult.OK) {
 				_medicationFrom=Medications.GetMedication(formMedications.SelectedMedicationNum);

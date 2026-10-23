@@ -35,7 +35,9 @@ namespace OpenDentBusiness{
 		public long EFormDefNum;
 		///<summary>Enum:EnumEClipFreq 0=Once, 1=EachTime, 2=TimeSpan. The frequency that a form will be submitted by patients. ResubmitInterval can only be set if Frequency is TimeSpan.</summary>
 		public EnumEClipFreq Frequency;
-
+		///<summary>Added in Open Dental 25.2: comma-separated sheetdef numbers that count toward this eForm's frequency rule. Kept for data
+		///compatibility; eClipboard is not part of this program.</summary>
+		public string SheetDefNumsConsidered;
 
 		///<summary>Used only for serialization purposes</summary>
 		[XmlElement("ResubmitInterval",typeof(long))]

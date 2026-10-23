@@ -330,6 +330,8 @@ namespace OpenDental {
 				listOrthoSchedules=OrthoSchedules.GetMany(listSchedulePlanLinksFKey);
 			}
 			bool changeFees=false;
+			bool isTpFeeChangeAllowed=true;
+			string logTextTpFee="";
 			Provider provider=comboProv.GetSelected<Provider>();
 			ProcFeeHelper procFeeHelper=new ProcFeeHelper(patNum);
 			if(provider!=null) {
@@ -354,7 +356,8 @@ namespace OpenDental {
 					procFeeHelper.ListFees=null;
 				}
 				else {
-					procFeeHelper.ListFees=Fees.GetListExact(feeSchedNum,clinic.ClinicNum,provider.ProvNum);
+					//All dates, so that a completed procedure finds the fee that was in effect on its procedure date.
+					procFeeHelper.ListFees=Fees.GetListExactAllDates(feeSchedNum,clinic.ClinicNum,provider.ProvNum);
 					if(procFeeHelper.ListFees.Count==0) {
 						procFeeHelper.ListFees=null;
 					}
@@ -366,6 +369,13 @@ namespace OpenDental {
 					}
 					else {//Show the prompt if not already shown, and change fees if user picks 'Yes'.
 						changeFees=MsgBox.Show(MsgBoxButtons.YesNo,promptText);
+					}
+				}
+				//Treatment Planned Procedure Edit Fee (25.2): a provider change that would change the fee of a TP or TPi procedure needs the permission.
+				if(changeFees && listProceduresNew.Any(x => ProcTPFeeEdit.IsTreatPlanStatus(x.ProcStatus))) {
+					isTpFeeChangeAllowed=Security.IsAuthorized(EnumPermType.ProcTPEditFee,true);
+					if(!isTpFeeChangeAllowed) {
+						MessageBox.Show(this,Lan.g(this,"Fees of treatment planned procedures were not changed.")+"\r\n"+ProcTPFeeEdit.GetNoPermissionTip());
 					}
 				}
 			}
@@ -391,9 +401,14 @@ namespace OpenDental {
 					listClaimProcsForProc.ForEach(x => x.ClinicNum=ListProcedures[i].ClinicNum);
 					hasChanged=true;
 				}
-				if(changeFees) {
+				bool isTpProc=ProcTPFeeEdit.IsTreatPlanStatus(ListProcedures[i].ProcStatus);
+				if(changeFees && (isTpFeeChangeAllowed || !isTpProc)) {
+					double feeOld=ListProcedures[i].ProcFee;
 					ListProcedures[i].ProcFee=Procedures.GetProcFee(procFeeHelper.Pat,procFeeHelper.ListPatPlans,procFeeHelper.ListInsSubs,
 						procFeeHelper.ListInsPlans,ListProcedures[i],procFeeHelper.ListBenefitsPrimary,procFeeHelper.ListFees);
+					if(ProcTPFeeEdit.ShouldLog(ListProcedures[i].ProcStatus,feeOld,ListProcedures[i].ProcFee)) {
+						logTextTpFee+=ProcTPFeeEdit.GetLogText(ProcedureCodes.GetStringProcCode(ListProcedures[i].CodeNum),feeOld,ListProcedures[i].ProcFee)+"\r\n";
+					}
 					hasChanged=true;
 				}
 				if(hasChanged) {
@@ -454,6 +469,9 @@ namespace OpenDental {
 			}
 			if(logTextProcOther!="") {
 				SecurityLogs.MakeLogEntry(EnumPermType.ProcEdit,patNum,logTextProcOther);
+			}
+			if(logTextTpFee!="") {
+				SecurityLogs.MakeLogEntry(EnumPermType.ProcTPEditFee,patNum,logTextTpFee.TrimEnd());
 			}
 			#endregion
 			DialogResult=DialogResult.OK;

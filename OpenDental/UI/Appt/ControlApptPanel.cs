@@ -63,6 +63,11 @@ namespace OpenDental.UI{
 		private bool _isPrinting=false;
 		///<summary>Keeps track of where the appointments are located.</summary>
 		private List<ApptLayoutInfo> _listApptLayoutInfos;
+		///<summary>25.3 mirroring: where the mirror blocks are drawn, in main bitmap coordinates. Rebuilt with the appointment layout.</summary>
+		private List<ApptMirrorLayoutInfo> _listApptMirrorLayoutInfos=new List<ApptMirrorLayoutInfo>();
+		///<summary>25.3 mirroring: true when the last mouse down landed on a mirror instead of an appointment. The original is then selected, but it
+		///can't be dragged or resized, and the appointment menu disables the actions that move or copy it.</summary>
+		private bool _isMirrorClicked;
 		///<summary>Typical values would be 10,15,5,or 7.5.  Derived from minPerIncr_10 / RowsPerIncr_2 =5. </summary>
 		private float _minPerRow=10f;
 		///<summary>List of all DayOfWeek days that will be displayed when in Week view.</summary>
@@ -663,6 +668,15 @@ namespace OpenDental.UI{
 			}
 		}
 
+		///<summary>25.3 mirroring: true when the last mouse down landed on a mirror of the selected appointment rather than on the appointment.</summary>
+		[Browsable(false)]
+		[DefaultValue(false)]
+		public bool IsMirrorClicked{
+			get{
+				return _isMirrorClicked;
+			}
+		}
+
 		///<summary>-1 means none.  Selected appt will have thick outline.</summary>
 		[Browsable(false)]
 		[DefaultValue((long)-1)]
@@ -967,7 +981,7 @@ namespace OpenDental.UI{
 			_pointMouseOrigin=e.Location;
 			_timeClicked=timeClicked.Value;
 			//MessageBox.Show(_timeClicked.ToShortTimeString());
-			int idxAppt=HitTestAppt(e.Location);
+			int idxAppt=HitTestApptOrMirror(e.Location,out _isMirrorClicked);
 			DataRow dataRow=null;
 			if(idxAppt!=-1){
 				dataRow=TableAppointments.Rows[idxAppt];
@@ -989,6 +1003,13 @@ namespace OpenDental.UI{
 					SelectedAptNum=clickedAptNum;
 					OnSelectedApptChanged(patNumNew,aptNumOld,SelectedAptNum);//this must be raised prior to OnApptRightClicked in order for patient to change.
 					OnApptRightClicked(e.Location);
+				}
+				else if(_isMirrorClicked) {//left button on a mirror: select the original, but never drag or resize it.
+					_isLeftMouseDown=false;
+					_isResizingAppt=false;
+					BubbleDraw(e.Location,idxAppt,isMirror:true);//hides the bubble while the mouse is down
+					SelectedAptNum=clickedAptNum;
+					OnSelectedApptChanged(patNumNew,aptNumOld,SelectedAptNum);
 				}
 				else{//left button
 					if(HitTestApptBottom(e.Location,idxAppt)) {
@@ -1037,11 +1058,11 @@ namespace OpenDental.UI{
 					contrTempAppt.Visible=false;
 					Invalidate();
 				}
-				int idxAppt=HitTestAppt(e.Location);
-				BubbleDraw(e.Location,idxAppt);//could be -1 to not show
+				int idxAppt=HitTestApptOrMirror(e.Location,out bool isMirror);
+				BubbleDraw(e.Location,idxAppt,isMirror);//could be -1 to not show. A mirror shows the original's bubble.
 				HeaderTipDraw(e.Location);
 				//decide what the pointer should look like.
-				if(HitTestApptBottom(e.Location,idxAppt)) {
+				if(!isMirror && HitTestApptBottom(e.Location,idxAppt)) {
 					Cursor=Cursors.SizeNS;
 				}
 				else {
@@ -1171,6 +1192,7 @@ namespace OpenDental.UI{
 						OnApptNullFound();
 						return;
 					}
+					Appointment apptBeforeResize=curApt.Copy();//25.3 audit detail: the length before.
 					curApt.Pattern=pattern;
 					DateTime datePrevious=curApt.DateTStamp;
 					Schedule overlappingBlockout=Appointments.GetBlockoutsOverlappingNoSchedule(curApt).OrderBy(x => x.StartTime).FirstOrDefault();
@@ -1188,7 +1210,8 @@ namespace OpenDental.UI{
 						pattern="///";
 					}
 					Appointments.SetPattern(curApt,pattern); //Appointments S-Class handles Signalods
-					SecurityLogs.MakeLogEntry(EnumPermType.AppointmentEdit,curApt.PatNum,Lan.g(this,"Appointment resized from the appointment module."), curApt.AptNum,datePrevious);//Generate FKey to the appointment to show the audit entry in the ApptEdit window.
+					SecurityLogs.MakeLogEntry(EnumPermType.AppointmentEdit,curApt.PatNum,Appointments.AppendAuditDetail(Lan.g(this,"Appointment resized from the appointment module."),
+						Appointments.GetChangeSummary(apptBeforeResize,curApt)), curApt.AptNum,datePrevious);//Generate FKey to the appointment to show the audit entry in the ApptEdit window.
 					OnApptResized(curApt);
 					#endregion Resizing, not moving.
 					return;					
@@ -3230,6 +3253,139 @@ namespace OpenDental.UI{
 				DrawOneAppt(g,dataRow,patternShowing,rect.Width,rect.Height);
 				g.Restore(graphicsState);//back to the way it was 4 lines up
 			}
+			//25.3 mirroring: mirrors are drawn on top, in the secondary provider's operatory. They are not in TableAppointments, so they never count
+			//toward production, appointment counts or the waiting room.
+			_listApptMirrorLayoutInfos=PlaceMirrors(TableAppointments,ListOpsVisible,ListSchedules,_listApptLayoutInfos,
+				ApptViewCur!=null && ApptViewCur.ShowMirroredAppts,_heightLine,IsWeeklyView,MinPerIncr,ListDayOfWeeks.Count,RowsPerIncr,_widthMain,
+				_widthNarrowedOnRight,DateStart,DateEnd,ListDayOfWeeks);
+			for(int i=0;i<_listApptMirrorLayoutInfos.Count;i++) {
+				DrawOneMirror(g,TableAppointments.Rows[_listApptMirrorLayoutInfos[i].IdxInTableAppointments],_listApptMirrorLayoutInfos[i]);
+			}
+		}
+
+		///<summary>25.3 mirroring: the Appointment fields that mirroring needs, read from a row of TableAppointments. Null if the table has no
+		///IsMirrored column (for example a table built by older code).</summary>
+		public static Appointment GetApptForMirror(DataRow dataRow) {
+			if(dataRow==null || !dataRow.Table.Columns.Contains("IsMirrored") || !dataRow.Table.Columns.Contains("PatternSecondary")) {
+				return null;
+			}
+			Appointment appointment=new Appointment();
+			appointment.AptNum=PIn.Long(dataRow["AptNum"].ToString());
+			appointment.AptDateTime=PIn.DateT(dataRow["AptDateTime"].ToString());
+			appointment.AptStatus=(ApptStatus)PIn.Int(dataRow["AptStatus"].ToString());
+			appointment.Op=PIn.Long(dataRow["Op"].ToString());
+			appointment.IsHygiene=PIn.Bool(dataRow["IsHygiene"].ToString());
+			appointment.ProvNum=PIn.Long(dataRow["ProvNum"].ToString());
+			appointment.ProvHyg=PIn.Long(dataRow["ProvHyg"].ToString());
+			appointment.PatternSecondary=PIn.String(dataRow["PatternSecondary"].ToString());
+			appointment.IsMirrored=PIn.Bool(dataRow["IsMirrored"].ToString());
+			return appointment;
+		}
+
+		///<summary>25.3 mirroring: places the mirror blocks, in main bitmap coordinates, using the same column and time math as PlaceAppointments.
+		///Mirrors don't take part in the overlap layout of the secondary operatory's own appointments. When a mirror would cover one of them, it is
+		///drawn in the right half of the column so that the appointment stays readable. Static with parameters so that it can be unit tested.</summary>
+		public static List<ApptMirrorLayoutInfo> PlaceMirrors(DataTable tableAppointments,List<Operatory> listOperatories,List<Schedule> listSchedules,
+			List<ApptLayoutInfo> listApptLayoutInfos,bool doesViewShowMirrors,float heightLine,bool isWeeklyView,float minPerIncr,int numOfWeekDaysToDisplay,
+			float rowsPerIncr,int widthMain,float widthNarrowedOnRight,DateTime dateStart,DateTime dateEnd,List<DayOfWeek> listDayOfWeeks)
+		{
+			List<ApptMirrorLayoutInfo> listApptMirrorLayoutInfos=new List<ApptMirrorLayoutInfo>();
+			if(!doesViewShowMirrors || tableAppointments==null || listOperatories==null || listOperatories.Count==0 || minPerIncr<=0) {
+				return listApptMirrorLayoutInfos;
+			}
+			float widthCol=(float)widthMain/listOperatories.Count;
+			float widthWeekDay=0;
+			float widthWeekAppt=0;
+			if(isWeeklyView) {
+				if(numOfWeekDaysToDisplay<=0 || listDayOfWeeks==null) {
+					return listApptMirrorLayoutInfos;
+				}
+				widthWeekDay=(float)widthMain/numOfWeekDaysToDisplay;
+				widthWeekAppt=widthWeekDay/listOperatories.Count;
+			}
+			for(int i=0;i<tableAppointments.Rows.Count;i++) {
+				Appointment appointment=GetApptForMirror(tableAppointments.Rows[i]);
+				if(appointment==null || !appointment.IsMirrored) {
+					continue;
+				}
+				if(appointment.AptDateTime.Date<dateStart.Date || appointment.AptDateTime.Date>dateEnd.Date) {
+					continue;
+				}
+				List<ApptMirror> listApptMirrors=Appointments.GetMirrors(appointment,doesViewShowMirrors,listOperatories,listSchedules);
+				for(int m=0;m<listApptMirrors.Count;m++) {
+					ApptMirror apptMirror=listApptMirrors[m];
+					int idxOp=listOperatories.FindIndex(x => x.OperatoryNum==apptMirror.OpNum);
+					if(idxOp<0) {
+						continue;
+					}
+					DayOfWeek dayOfWeek=apptMirror.DateTimeStart.DayOfWeek;
+					float x;
+					float width;
+					if(isWeeklyView) {
+						int idxDay=listDayOfWeeks.IndexOf(dayOfWeek);
+						if(idxDay<0) {
+							continue;
+						}
+						x=widthWeekDay*idxDay+widthWeekAppt*idxOp;
+						width=widthWeekAppt;
+					}
+					else {
+						x=widthCol*idxOp;
+						width=widthCol-widthNarrowedOnRight;
+					}
+					float y=(apptMirror.DateTimeStart.Hour*60+apptMirror.DateTimeStart.Minute)/minPerIncr*heightLine*rowsPerIncr;
+					float height=apptMirror.MinutesLength/minPerIncr*heightLine*rowsPerIncr;
+					RectangleF rectangleF=new RectangleF(Point.Round(new PointF(x,y)),new SizeF(width,height));
+					bool isOverAppt=listApptLayoutInfos!=null && listApptLayoutInfos.Any(z => z.RectangleBounds.Width>0
+						&& Rectangle.Truncate(z.RectangleBounds).IntersectsWith(Rectangle.Truncate(rectangleF)));
+					if(isOverAppt && width>=10) {
+						rectangleF=new RectangleF(rectangleF.X+width/2f,rectangleF.Y,width/2f,rectangleF.Height);
+					}
+					ApptMirrorLayoutInfo apptMirrorLayoutInfo=new ApptMirrorLayoutInfo();
+					apptMirrorLayoutInfo.IdxInTableAppointments=i;
+					apptMirrorLayoutInfo.ApptMirror=apptMirror;
+					apptMirrorLayoutInfo.RectangleBounds=rectangleF;
+					listApptMirrorLayoutInfos.Add(apptMirrorLayoutInfo);
+				}
+			}
+			return listApptMirrorLayoutInfos;
+		}
+
+		///<summary>25.3 mirroring: draws one mirror block. A mirror is a light, hatched block in the secondary provider's color with a dashed outline
+		///and a "Mirror" label, so that it never looks like a real appointment. Printing follows the chosen print colors.</summary>
+		private void DrawOneMirror(Graphics g,DataRow dataRow,ApptMirrorLayoutInfo apptMirrorLayoutInfo){
+			RectangleF rect=apptMirrorLayoutInfo.RectangleBounds;
+			if(rect.Width<2 || rect.Height<2) {
+				return;
+			}
+			Color colorProv=Providers.GetColor(apptMirrorLayoutInfo.ApptMirror.ProvNumSecondary);
+			if(_isPrinting && PrintColorBehavior==ApptPrintColorBehavior.Grayscale) {
+				colorProv=DesaturateColor(colorProv);
+			}
+			else if(_isPrinting && PrintColorBehavior==ApptPrintColorBehavior.LessColor) {
+				colorProv=Color.Gray;
+			}
+			GraphicsState graphicsState=g.Save();
+			g.TranslateTransform(rect.X,rect.Y);
+			g.SetClip(new RectangleF(0,0,rect.Width+1,rect.Height+1),CombineMode.Intersect);
+			RectangleF rectLocal=new RectangleF(0,0,rect.Width-1,rect.Height-1);
+			using SolidBrush brushFill=new SolidBrush(Color.FromArgb(70,colorProv));
+			using HatchBrush hatchBrush=new HatchBrush(HatchStyle.BackwardDiagonal,Color.FromArgb(150,colorProv),Color.Transparent);
+			using Pen penOutline=new Pen(Color.FromArgb(170,Color.Black),1f);
+			penOutline.DashStyle=DashStyle.Dash;
+			g.FillRectangle(brushFill,rectLocal);
+			g.FillRectangle(hatchBrush,rectLocal);
+			g.DrawRectangle(penOutline,rectLocal.X,rectLocal.Y,rectLocal.Width,rectLocal.Height);
+			if(rect.Width>=14) {
+				string text=Lan.g(this,"Mirror")+": "+PIn.String(dataRow["patientName"].ToString());
+				string procs=PIn.String(dataRow["procs"].ToString());
+				if(!string.IsNullOrWhiteSpace(procs)) {
+					text+="\r\n"+procs;
+				}
+				RectangleF rectText=new RectangleF(2,1,Math.Max(rect.Width-4,1),Math.Max(rect.Height-2,1));
+				g.DrawString(text,_font,_brushTextBlack,rectText);
+			}
+			g.Restore(graphicsState);
 		}
 
 		///<summary></summary>
@@ -4275,6 +4431,21 @@ namespace OpenDental.UI{
 			if(SelectedAptNum<1){
 				return;//don't draw anything
 			}
+			//25.3 mirroring: the selected appointment's mirrors get a dashed outline, so the link between them is visible.
+			for(int i=0;i<_listApptMirrorLayoutInfos.Count;i++) {
+				int idxRow=_listApptMirrorLayoutInfos[i].IdxInTableAppointments;
+				if(idxRow>=TableAppointments.Rows.Count || PIn.Long(TableAppointments.Rows[idxRow]["AptNum"].ToString())!=SelectedAptNum) {
+					continue;
+				}
+				RectangleF rectangleMirror=new RectangleF(TranslateMainToContr(_listApptMirrorLayoutInfos[i].RectangleBounds.Location),
+					_listApptMirrorLayoutInfos[i].RectangleBounds.Size);
+				if(rectangleMirror.Bottom<0 || rectangleMirror.Top>_heightMainVisible+_heightProvOpHeaders){//if outside visible area
+					continue;
+				}
+				using Pen penMirror=new Pen(Color.Black,2f);
+				penMirror.DashStyle=DashStyle.Dash;
+				g.DrawRectangle(penMirror,rectangleMirror.X,rectangleMirror.Y,rectangleMirror.Width,rectangleMirror.Height);
+			}
 			for(int i=0;i<TableAppointments.Rows.Count;i++) {
 				DataRow dataRow=TableAppointments.Rows[i];
 				long aptNum=PIn.Long(dataRow["AptNum"].ToString());
@@ -4363,7 +4534,8 @@ namespace OpenDental.UI{
 
 		#region Methods - Private DrawInfoBubble
 		///<summary>Before calling this, do a hit test for appts.  Fills the bubble with data and then positions it.  In coordinates of this ControlApptsPanel (mouse).</summary>
-		private void BubbleDraw(Point point,int idxAppt) {
+		///<summary>isMirror: the pointer is on a mirror of the appointment at idxAppt (25.3 mirroring), which shows the original's bubble.</summary>
+		private void BubbleDraw(Point point,int idxAppt,bool isMirror=false) {
 			if((ApptViewCur==null && PrefC.GetBool(PrefName.AppointmentBubblesDisabled))
 					|| (ApptViewCur!=null && ApptViewCur.IsApptBubblesDisabled))
 			{
@@ -4387,7 +4559,7 @@ namespace OpenDental.UI{
 			if(idxAppt!=-1 && idxAppt < TableAppointments.Rows.Count){
 				dataRow=TableAppointments.Rows[idxAppt];
 			}
-			if(dataRow==null || HitTestApptBottom(point,idxAppt)){
+			if(dataRow==null || (!isMirror && HitTestApptBottom(point,idxAppt))){
 				//not hovering over an appointment at all, or getting ready to resize, so hide any existing bubble
 				if(_isBubbleVisible) {
 					_isBubbleVisible=false;
@@ -5134,6 +5306,45 @@ namespace OpenDental.UI{
 			return -1;
 		}
 		
+		///<summary>25.3 mirroring: the index within TableAppointments of the original whose mirror is at these coordinates, or -1 if none. Pass in the
+		///point in coordinates of this control/mouse.</summary>
+		private int HitTestMirror(Point point) {
+			if(_listApptMirrorLayoutInfos==null || _listApptMirrorLayoutInfos.Count==0) {
+				return -1;
+			}
+			if(ListOpsVisible.Count==0 || ListDayOfWeeks.IsNullOrEmpty()) {//no ops visible.
+				return -1;
+			}
+			if(_heightProvOpHeaders>point.Y){
+				return -1;
+			}
+			if(hScrollBar1.Visible && point.Y>=hScrollBar1.Location.Y) {
+				return -1;
+			}
+			PointF pointF=TranslateContrToMain(point);
+			for(int i=0;i<_listApptMirrorLayoutInfos.Count;i++){
+				if(_listApptMirrorLayoutInfos[i].RectangleBounds.Contains(pointF)
+					&& _listApptMirrorLayoutInfos[i].IdxInTableAppointments<TableAppointments.Rows.Count)
+				{
+					return _listApptMirrorLayoutInfos[i].IdxInTableAppointments;
+				}
+			}
+			return -1;
+		}
+
+		///<summary>An appointment wins over a mirror drawn on top of it, so a mirror never hides the appointment underneath from clicks. Returns
+		///the index within TableAppointments, or -1. isMirror is true when the hit was a mirror (the index is then its original's).</summary>
+		private int HitTestApptOrMirror(Point point,out bool isMirror) {
+			isMirror=false;
+			int idxAppt=HitTestAppt(point);
+			if(idxAppt!=-1) {
+				return idxAppt;
+			}
+			idxAppt=HitTestMirror(point);
+			isMirror=(idxAppt!=-1);
+			return idxAppt;
+		}
+
 		///<summary>If the given point is in the bottom 8 (or 6 or 4) pixels of an appointment, then this returns true.  Always pass in appointment idx from previous HitTestAppt.</summary>
 		private bool HitTestApptBottom(Point point,int idxAppt) {
 			if(ListOpsVisible.Count==0 || ListDayOfWeeks.IsNullOrEmpty()) {//no ops visible.
@@ -5303,8 +5514,8 @@ namespace OpenDental.UI{
 			//not repeating.  Just a single timed event for delay purposes.
 			//This is just to catch the rare situation where someone hovers on an appt, then doesn't move.
 			//Without a mouseMove event, nothing would draw the bubble.
-			int idxAppt=HitTestAppt(_pointBubbleTimer);
-			BubbleDraw(_pointBubbleTimer,idxAppt);
+			int idxAppt=HitTestApptOrMirror(_pointBubbleTimer,out bool isMirror);
+			BubbleDraw(_pointBubbleTimer,idxAppt,isMirror);
 			timerBubble.Enabled =false;
 		}
 		#endregion Methods - Private Mouse Event Helpers
@@ -5369,6 +5580,19 @@ namespace OpenDental.UI{
 
 		public ApptLayoutInfo Copy(){
 			return (ApptLayoutInfo)MemberwiseClone();
+		}
+	}
+
+	///<summary>25.3 mirroring: where one mirror block is drawn. Mirrors are derived from their original appointment and never stored.</summary>
+	public class ApptMirrorLayoutInfo {
+		///<summary>Index of the original appointment within TableAppointments. Clicks on the mirror act on that appointment.</summary>
+		public int IdxInTableAppointments;
+		public ApptMirror ApptMirror;
+		///<summary>In main bitmap coordinates.</summary>
+		public RectangleF RectangleBounds;
+
+		public override string ToString(){
+			return "mirror of idx "+IdxInTableAppointments.ToString();
 		}
 	}
 	#endregion Other Classes

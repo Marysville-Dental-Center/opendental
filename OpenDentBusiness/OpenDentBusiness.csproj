@@ -215,6 +215,7 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="System.DirectoryServices" />
+    <Reference Include="System.DirectoryServices.AccountManagement" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.EnterpriseServices" />
     <Reference Include="System.Management" />
@@ -279,10 +280,17 @@
     <Compile Include="Crud\ApptThankYouSentCrud.cs" />
     <Compile Include="Crud\AsapCommCrud.cs" />
     <Compile Include="Crud\AutoCommExcludeDateCrud.cs" />
+    <Compile Include="Crud\BrandingCrud.cs" />
     <Compile Include="Crud\BugSubmissionCrud.cs" />
     <Compile Include="Crud\BugSubmissionHashCrud.cs" />
     <Compile Include="Crud\CertCrud.cs" />
     <Compile Include="Crud\CertEmployeeCrud.cs" />
+    <Compile Include="Crud\ChatAttachCrud.cs" />
+    <Compile Include="Crud\ChatCrud.cs" />
+    <Compile Include="Crud\ChatMsgCrud.cs" />
+    <Compile Include="Crud\ChatReactionCrud.cs" />
+    <Compile Include="Crud\ChatUserAttachCrud.cs" />
+    <Compile Include="Crud\ChatUserodCrud.cs" />
     <Compile Include="Crud\ChildCrud.cs" />
     <Compile Include="Crud\ChildParentCrud.cs" />
     <Compile Include="Crud\ChildParentLinkCrud.cs" />
@@ -309,6 +317,7 @@
     <Compile Include="Crud\FaqCrud.cs" />
     <Compile Include="Crud\EClipboardSheetDefCrud.cs" />
     <Compile Include="Crud\FeeSchedGroupCrud.cs" />
+    <Compile Include="Crud\FeeSchedNoteCrud.cs" />
     <Compile Include="Crud\HieClinicCrud.cs" />
     <Compile Include="Crud\HieQueueCrud.cs" />
     <Compile Include="Crud\ImageDrawCrud.cs" />
@@ -317,6 +326,7 @@
     <Compile Include="Crud\InsBlueBookLogCrud.cs" />
     <Compile Include="Crud\InsBlueBookRuleCrud.cs" />
     <Compile Include="Crud\InsEditPatLogCrud.cs" />
+    <Compile Include="Crud\InsPendingCrud.cs" />
     <Compile Include="Crud\InsPlanPreferenceCrud.cs" />
     <Compile Include="Crud\JobActiveLinkCrud.cs" />
     <Compile Include="Crud\JobNotificationCrud.cs" />
@@ -357,9 +367,14 @@
     <Compile Include="Crud\PromotionCrud.cs" />
     <Compile Include="Crud\PromotionLogCrud.cs" />
     <Compile Include="Crud\ProviderClinicLinkCrud.cs" />
+    <Compile Include="Crud\QueryFilterCrud.cs" />
     <Compile Include="Crud\ReactivationCrud.cs" />
     <Compile Include="Crud\ReferralClinicLinkCrud.cs" />
     <Compile Include="Crud\ScheduledProcessCrud.cs" />
+    <Compile Include="Crud\SchoolApprovalCrud.cs" />
+    <Compile Include="Crud\SchoolCourseDefCrud.cs" />
+    <Compile Include="Crud\SchoolCourseSchedCrud.cs" />
+    <Compile Include="Crud\SequenceCounterCrud.cs" />
     <Compile Include="Crud\SessionTokenCrud.cs" />
     <Compile Include="Crud\StatementProdCrud.cs" />
     <Compile Include="Crud\TaskAttachmentCrud.cs" />
@@ -475,6 +490,7 @@
     <Compile Include="Data Interface\Etrans835Attaches.cs" />
     <Compile Include="Data Interface\InsEditPatLogs.cs" />
     <Compile Include="Data Interface\FeeSchedGroups.cs" />
+    <Compile Include="Data Interface\FeeSchedNotes.cs" />
     <Compile Include="Eclaims\EdsMedical.cs" />
     <Compile Include="InternalTools\EServices\Crud\APIBillingCrud.cs" />
     <Compile Include="InternalTools\EServices\TableTypes\APIBilling.cs" />
@@ -545,6 +561,9 @@
     <Compile Include="Misc\ReplaceTags.cs" />
     <Compile Include="Misc\Result.cs" />
     <Compile Include="Misc\SecurityHash.cs" />
+    <Compile Include="Misc\DomainLogin.cs" />
+    <Compile Include="Misc\SheetSignatureSigners.cs" />
+    <Compile Include="Misc\ProcTPFeeEdit.cs" />
     <Compile Include="ODEvents\MiddleTierConnectionEvent.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
@@ -573,12 +592,21 @@
     <Compile Include="TableTypes\ApptGeneralMessageSent.cs" />
     <Compile Include="TableTypes\ApptNewPatThankYouSent.cs" />
     <Compile Include="TableTypes\AutoCommExcludeDate.cs" />
+    <Compile Include="TableTypes\Branding.cs" />
+    <Compile Include="TableTypes\Chat.cs" />
+    <Compile Include="TableTypes\ChatAttach.cs" />
+    <Compile Include="TableTypes\ChatMsg.cs" />
+    <Compile Include="TableTypes\ChatReaction.cs" />
+    <Compile Include="TableTypes\ChatUserAttach.cs" />
+    <Compile Include="TableTypes\ChatUserod.cs" />
     <Compile Include="TableTypes\ChildParentLink.cs" />
     <Compile Include="TableTypes\ChildRoomLog.cs" />
     <Compile Include="TableTypes\Child.cs" />
     <Compile Include="TableTypes\ChildParent.cs" />
     <Compile Include="TableTypes\ChildRoom.cs" />
     <Compile Include="TableTypes\EFormImportRule.cs" />
+    <Compile Include="TableTypes\FeeSchedNote.cs" />
+    <Compile Include="TableTypes\InsPending.cs" />
     <Compile Include="TableTypes\LanguagePat.cs" />
     <Compile Include="TableTypes\CodeGroup.cs" />
     <Compile Include="TableTypes\CertEmployee.cs" />
@@ -643,10 +671,15 @@
     <Compile Include="TableTypes\ProcMultiVisit.cs" />
     <Compile Include="TableTypes\Promotion.cs" />
     <Compile Include="TableTypes\PromotionLog.cs" />
+    <Compile Include="TableTypes\QueryFilter.cs" />
     <Compile Include="TableTypes\Reactivation.cs" />
     <Compile Include="TableTypes\ProviderClinicLink.cs" />
     <Compile Include="TableTypes\ReferralClinicLink.cs" />
     <Compile Include="TableTypes\ScheduledProcess.cs" />
+    <Compile Include="TableTypes\SchoolApproval.cs" />
+    <Compile Include="TableTypes\SchoolCourseDef.cs" />
+    <Compile Include="TableTypes\SchoolCourseSched.cs" />
+    <Compile Include="TableTypes\SequenceCounter.cs" />
     <Compile Include="TableTypes\SessionToken.cs" />
     <Compile Include="TableTypes\StatementProd.cs" />
     <Compile Include="TableTypes\ImageDraw.cs" />
@@ -692,9 +725,13 @@
     <Compile Include="Bridges\PostcardMania\**\*.cs" />
     <Compile Include="Bridges\QuickBooksOnline\**\*.cs" />
     <Compile Include="VendorDirect\**\*.cs" />
+    <!-- Fork version guard, adoption and fork migrations (backlog M1-01 to M1-03; each migration step is its own file, so new steps need no csproj edit), and the fork release channel (M1-03). -->
+    <Compile Include="Misc\ForkMigrations\**\*.cs" />
+    <Compile Include="Misc\ForkRelease\**\*.cs" />
     <Compile Include="WebBridges\Erx\DoseSpot\**\*.cs" />
     <Compile Include="WebBridges\Microsoft365\**\*.cs" />
     <Compile Include="WebBridges\Usps\**\*.cs" />
+    <Compile Include="Misc\ReservedEnumValueAttribute.cs" />
     <Compile Include="WebBridges\APIRequest.cs" />
     <Compile Include="WebBridges\AvaTax.cs" />
     <Compile Include="WebBridges\EdgeExpress.cs" />
@@ -1560,6 +1597,7 @@
     <Compile Include="Reports\RpInsOverpaid.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Reports\RpInsPendingSupplementals.cs" />
     <Compile Include="Reports\RpNewPatients.cs" />
     <Compile Include="Reports\RpOutstandingIns.cs" />
     <Compile Include="Reports\RpPayPlan.cs" />
@@ -2027,6 +2065,9 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Misc\ForkMigrations\Reference\OdSchema-25.3.48.sql">
+      <LogicalName>OdSchema-25.3.48.sql</LogicalName>
+    </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <SubType>Designer</SubType>
       <Generator>PublicResXFileCodeGenerator</Generator>

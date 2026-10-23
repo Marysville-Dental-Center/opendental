@@ -23,6 +23,8 @@ namespace OpenDentBusiness{
 		public DateTime DateTStamp;
 		///<summary>RxNorm Code identifier.  We should have used a string type.  Used by EHR in CQM.  But the queries should use medicationpat.RxCui, NOT this RxCui, because all medicationpats (meds and orders) coming back from NewCrop will not have a FK to this medication table.  When this RxCui is modified by the user, then medicationpat.RxCui is automatically updated where medicationpat.MedicationNum matches this medication.</summary>
 		public long RxCui;
+		///<summary>Added in Open Dental 25.1: hides the medication from selection lists without deleting it.</summary>
+		public bool IsHidden;
 		/// <summary>This is a non-DB column used during the import process.</summary>
 		[CrudColumn(IsNotDbColumn =true)]
 		public string GenericName;

@@ -16,7 +16,7 @@ using OpenDentBusiness.VendorDirect;
 namespace VendorDirectTests.PayConnectV1Removal {
 	[TestClass]
 	public class PayConnect1RemovedDbTests {
-		private const string DB_NAME="vendordirect_payconnect1_removed_tests";
+		private static readonly string DB_NAME=ScratchDb.Name("vendordirect_payconnect1_removed_tests");
 		private const string CONNECTION="Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=3";
 		private static string _skipReason;
 		private static long _programNum;

@@ -77,6 +77,8 @@ namespace OpenDentBusiness {
 		public int Zoom;
 		///<summary>This is x,y,w,h format for the desktop location of the Video window. This is saved each time the Video window closes. If the Video window is maximized, then the form will instead be like this: "100,120,600,800,Max". The rectangle here defines the RestoreBounds when user unmaximizes.</summary>
 		public string VideoRectangle;
+		///<summary>Added in Open Dental 25.1: the card terminal last used on this workstation, so it is pre-selected next time.</summary>
+		public string CreditCardTerminalId;
 
 		public ComputerPref Copy(){
 			return (ComputerPref)MemberwiseClone();

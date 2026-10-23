@@ -98,8 +98,10 @@ namespace OpenDental {
 
 		private void LoadTask() {
 			textTaskNum.Text=TaskCur.TaskNum.ToString();//Assign TaskNum
-			labelCategory.Visible=false;
-			listCategory.Visible=false;
+			//Task categories are for every office since Open Dental 25.2, behind the TaskCategoryShow preference.
+			bool isCategoryShown=Tasks.IsCategoryShown();
+			labelCategory.Visible=isCategoryShown;
+			comboCategory.Visible=isCategoryShown;
 			Width=splitContainer.Right+25;
 			FillTextAttachments();
 			if(IsNew) {
@@ -590,12 +592,11 @@ namespace OpenDental {
 		}
 
 		private void FillListCategory() {
-			listCategory.Items.Clear();
-			List<Def> listDefsCategories=Defs.GetDefsForCategory(DefCat.TaskCategories);
-			listDefsCategories=listDefsCategories.FindAll(x => !x.IsHidden || x.DefNum==TaskCur.TriageCategory);
-			listCategory.Items.AddNone<Def>();
-			listCategory.Items.AddList(listDefsCategories,x => x.ItemName);
-			listCategory.SetSelectedKey<Def>(TaskCur.TriageCategory,x => x.DefNum);
+			//None, then the categories that are not hidden. A hidden category that the task already has stays in the list, so it is kept.
+			comboCategory.Items.Clear();
+			comboCategory.Items.AddDefNone();
+			comboCategory.Items.AddDefs(Tasks.GetCategoryChoices(TaskCur.Category));
+			comboCategory.SetSelectedDefNum(TaskCur.Category);
 		}
 
 		private void butNow_Click(object sender,EventArgs e) {
@@ -729,13 +730,9 @@ namespace OpenDental {
 		private void comboTaskPriorities_SelectionChangeCommitted(object sender,EventArgs e) {
 		}
 
-		private void listCategory_SelectionChangeCommitted(object sender,EventArgs e) {
-			Def defSelectedCategory=listCategory.GetSelected<Def>();
-			if(defSelectedCategory==null) {
-				MsgBox.Show(this,"Invalid Triage Category. Please select a valid Triage Category.");
-				return;
-			}
-			TaskCur.TriageCategory=defSelectedCategory.DefNum;
+		private void comboCategory_SelectionChangeCommitted(object sender,EventArgs e) {
+			//None is a DefNum of 0, which means the task has no category.
+			TaskCur.Category=comboCategory.GetSelectedDefNum();
 		}
 
 		private void listObjectType_MouseDown(object sender,System.Windows.Forms.MouseEventArgs e) {
@@ -1374,7 +1371,7 @@ namespace OpenDental {
 			butChange.Enabled=!doSetReadOnly;
 			butEditAutoNote.Enabled=!doSetReadOnly;
 			groupReminder.Enabled=!doSetReadOnly;
-			listCategory.Enabled=!doSetReadOnly;
+			comboCategory.Enabled=!doSetReadOnly;
 			long taskListNum= Security.CurUser.TaskListInBox;
 			//Always block deleting tasks if they don't have permission
 			if(!Security.IsAuthorized(EnumPermType.TaskDelete,suppressMessage: true)){

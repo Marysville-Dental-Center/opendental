@@ -88,6 +88,9 @@ namespace OpenDentBusiness {
 		///<summary>26 - Sets whether tasks popups that are blocked still play the sound notification. If true, sound will play. If false, sound will be blocked as well.</summary>
 		TaskBlockedMakeSound,
 		///<summary>27 - Stores the width of the left Image Selector (tree) of the Imaging module in the ValueString. Does not store expanded/collapsed, so this width would be the expanded width. There is no limit. Does not use FKey.</summary>
-		ImageSelectorWidth
+		ImageSelectorWidth,
+		///<summary>28 - Reserved (Open Dental 25.3). Open Dental HQ only: the default office map for a user. This program never writes it.</summary>
+		[CodeBase.IsODHQ]
+		DefaultMapSetting,
 	}
 }

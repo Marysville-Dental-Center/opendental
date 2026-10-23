@@ -47,13 +47,15 @@ namespace OpenDentBusiness.Crud{
 			CodeGroup codeGroup;
 			foreach(DataRow row in table.Rows) {
 				codeGroup=new CodeGroup();
-				codeGroup.CodeGroupNum  = PIn.Long  (row["CodeGroupNum"].ToString());
-				codeGroup.GroupName     = PIn.String(row["GroupName"].ToString());
-				codeGroup.ProcCodes     = PIn.String(row["ProcCodes"].ToString());
-				codeGroup.ItemOrder     = PIn.Int   (row["ItemOrder"].ToString());
-				codeGroup.CodeGroupFixed= (OpenDentBusiness.EnumCodeGroupFixed)PIn.Int(row["CodeGroupFixed"].ToString());
-				codeGroup.IsHidden      = PIn.Bool  (row["IsHidden"].ToString());
-				codeGroup.ShowInAgeLimit= PIn.Bool  (row["ShowInAgeLimit"].ToString());
+				codeGroup.CodeGroupNum   = PIn.Long  (row["CodeGroupNum"].ToString());
+				codeGroup.GroupName      = PIn.String(row["GroupName"].ToString());
+				codeGroup.ProcCodes      = PIn.String(row["ProcCodes"].ToString());
+				codeGroup.ItemOrder      = PIn.Int   (row["ItemOrder"].ToString());
+				codeGroup.CodeGroupFixed = (OpenDentBusiness.EnumCodeGroupFixed)PIn.Int(row["CodeGroupFixed"].ToString());
+				codeGroup.IsHidden       = PIn.Bool  (row["IsHidden"].ToString());
+				codeGroup.ShowInAgeLimit = PIn.Bool  (row["ShowInAgeLimit"].ToString());
+				codeGroup.ShowInFrequency= PIn.Bool  (row["ShowInFrequency"].ToString());
+				codeGroup.ShowInOther    = PIn.Bool  (row["ShowInOther"].ToString());
 				retVal.Add(codeGroup);
 			}
 			return retVal;
@@ -72,6 +74,8 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("CodeGroupFixed");
 			table.Columns.Add("IsHidden");
 			table.Columns.Add("ShowInAgeLimit");
+			table.Columns.Add("ShowInFrequency");
+			table.Columns.Add("ShowInOther");
 			foreach(CodeGroup codeGroup in listCodeGroups) {
 				table.Rows.Add(new object[] {
 					POut.Long  (codeGroup.CodeGroupNum),
@@ -81,6 +85,8 @@ namespace OpenDentBusiness.Crud{
 					POut.Int   ((int)codeGroup.CodeGroupFixed),
 					POut.Bool  (codeGroup.IsHidden),
 					POut.Bool  (codeGroup.ShowInAgeLimit),
+					POut.Bool  (codeGroup.ShowInFrequency),
+					POut.Bool  (codeGroup.ShowInOther),
 				});
 			}
 			return table;
@@ -100,7 +106,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="CodeGroupNum,";
 			}
-			command+="GroupName,ProcCodes,ItemOrder,CodeGroupFixed,IsHidden,ShowInAgeLimit) VALUES(";
+			command+="GroupName,ProcCodes,ItemOrder,CodeGroupFixed,IsHidden,ShowInAgeLimit,ShowInFrequency,ShowInOther) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(codeGroup.CodeGroupNum)+",";
 			}
@@ -110,7 +116,9 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Int   (codeGroup.ItemOrder)+","
 				+    POut.Int   ((int)codeGroup.CodeGroupFixed)+","
 				+    POut.Bool  (codeGroup.IsHidden)+","
-				+    POut.Bool  (codeGroup.ShowInAgeLimit)+")";
+				+    POut.Bool  (codeGroup.ShowInAgeLimit)+","
+				+    POut.Bool  (codeGroup.ShowInFrequency)+","
+				+    POut.Bool  (codeGroup.ShowInOther)+")";
 			if(codeGroup.ProcCodes==null) {
 				codeGroup.ProcCodes="";
 			}
@@ -139,7 +147,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="CodeGroupNum,";
 			}
-			command+="GroupName,ProcCodes,ItemOrder,CodeGroupFixed,IsHidden,ShowInAgeLimit) VALUES(";
+			command+="GroupName,ProcCodes,ItemOrder,CodeGroupFixed,IsHidden,ShowInAgeLimit,ShowInFrequency,ShowInOther) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(codeGroup.CodeGroupNum)+",";
 			}
@@ -149,7 +157,9 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Int   (codeGroup.ItemOrder)+","
 				+    POut.Int   ((int)codeGroup.CodeGroupFixed)+","
 				+    POut.Bool  (codeGroup.IsHidden)+","
-				+    POut.Bool  (codeGroup.ShowInAgeLimit)+")";
+				+    POut.Bool  (codeGroup.ShowInAgeLimit)+","
+				+    POut.Bool  (codeGroup.ShowInFrequency)+","
+				+    POut.Bool  (codeGroup.ShowInOther)+")";
 			if(codeGroup.ProcCodes==null) {
 				codeGroup.ProcCodes="";
 			}
@@ -166,12 +176,14 @@ namespace OpenDentBusiness.Crud{
 		///<summary>Updates one CodeGroup in the database.</summary>
 		public static void Update(CodeGroup codeGroup) {
 			string command="UPDATE codegroup SET "
-				+"GroupName     = '"+POut.String(codeGroup.GroupName)+"', "
-				+"ProcCodes     =  "+DbHelper.ParamChar+"paramProcCodes, "
-				+"ItemOrder     =  "+POut.Int   (codeGroup.ItemOrder)+", "
-				+"CodeGroupFixed=  "+POut.Int   ((int)codeGroup.CodeGroupFixed)+", "
-				+"IsHidden      =  "+POut.Bool  (codeGroup.IsHidden)+", "
-				+"ShowInAgeLimit=  "+POut.Bool  (codeGroup.ShowInAgeLimit)+" "
+				+"GroupName      = '"+POut.String(codeGroup.GroupName)+"', "
+				+"ProcCodes      =  "+DbHelper.ParamChar+"paramProcCodes, "
+				+"ItemOrder      =  "+POut.Int   (codeGroup.ItemOrder)+", "
+				+"CodeGroupFixed =  "+POut.Int   ((int)codeGroup.CodeGroupFixed)+", "
+				+"IsHidden       =  "+POut.Bool  (codeGroup.IsHidden)+", "
+				+"ShowInAgeLimit =  "+POut.Bool  (codeGroup.ShowInAgeLimit)+", "
+				+"ShowInFrequency=  "+POut.Bool  (codeGroup.ShowInFrequency)+", "
+				+"ShowInOther    =  "+POut.Bool  (codeGroup.ShowInOther)+" "
 				+"WHERE CodeGroupNum = "+POut.Long(codeGroup.CodeGroupNum);
 			if(codeGroup.ProcCodes==null) {
 				codeGroup.ProcCodes="";
@@ -207,6 +219,14 @@ namespace OpenDentBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="ShowInAgeLimit = "+POut.Bool(codeGroup.ShowInAgeLimit)+"";
 			}
+			if(codeGroup.ShowInFrequency != oldCodeGroup.ShowInFrequency) {
+				if(command!="") { command+=",";}
+				command+="ShowInFrequency = "+POut.Bool(codeGroup.ShowInFrequency)+"";
+			}
+			if(codeGroup.ShowInOther != oldCodeGroup.ShowInOther) {
+				if(command!="") { command+=",";}
+				command+="ShowInOther = "+POut.Bool(codeGroup.ShowInOther)+"";
+			}
 			if(command=="") {
 				return false;
 			}
@@ -239,6 +259,12 @@ namespace OpenDentBusiness.Crud{
 				return true;
 			}
 			if(codeGroup.ShowInAgeLimit != oldCodeGroup.ShowInAgeLimit) {
+				return true;
+			}
+			if(codeGroup.ShowInFrequency != oldCodeGroup.ShowInFrequency) {
+				return true;
+			}
+			if(codeGroup.ShowInOther != oldCodeGroup.ShowInOther) {
 				return true;
 			}
 			return false;

@@ -661,6 +661,8 @@ In FormClosing:
 		}
 
 		private Userod _userSig;
+		///<summary>The user who signs in this box when it is not Security.CurUser: set by a Change User button (procedure notes, group notes, ortho
+		///chart, and since 25.1 sheet and treatment plan signature boxes). The E button stamps this user's name. Null means Security.CurUser.</summary>
 		public Userod UserSig {
 			get {
 				return _userSig;
@@ -672,7 +674,10 @@ In FormClosing:
 
 		private void butESign_Click(object sender,EventArgs e) {
 			Userod curUser=_userSig??Security.CurUser;
-			Provider provCur=Providers.GetProv(curUser.ProvNum);
+			Provider provCur=null;
+			if(curUser!=null) {
+				provCur=Providers.GetProv(curUser.ProvNum);
+			}
 			string digitalSignature=Lans.g(this,"Digitally Signed by ");
 			if(provCur!=null) {
 				digitalSignature+=provCur.GetLongDesc();

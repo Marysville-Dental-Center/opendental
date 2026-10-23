@@ -70,6 +70,7 @@ namespace OpenDental {
 			this.labelStartTime = new System.Windows.Forms.Label();
 			this.checkDynamicScroll = new OpenDental.UI.CheckBox();
 			this.checkApptBubblesDisabled = new OpenDental.UI.CheckBox();
+			this.checkShowMirroredAppts = new OpenDental.UI.CheckBox();
 			this.textWidthOpMinimum = new System.Windows.Forms.TextBox();
 			this.label5 = new System.Windows.Forms.Label();
 			this.listWaitingRmNameFormat = new OpenDental.UI.ListBox();
@@ -419,6 +420,15 @@ namespace OpenDental {
 			this.checkApptBubblesDisabled.TabIndex = 136;
 			this.checkApptBubblesDisabled.Text = "Disable appointment bubbles";
 			// 
+			// checkShowMirroredAppts
+			// 
+			this.checkShowMirroredAppts.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.checkShowMirroredAppts.Location = new System.Drawing.Point(30, 124);
+			this.checkShowMirroredAppts.Name = "checkShowMirroredAppts";
+			this.checkShowMirroredAppts.Size = new System.Drawing.Size(175, 17);
+			this.checkShowMirroredAppts.TabIndex = 137;
+			this.checkShowMirroredAppts.Text = "Show mirrored appointments";
+			// 
 			// textWidthOpMinimum
 			// 
 			this.textWidthOpMinimum.Location = new System.Drawing.Point(247, 46);
@@ -491,6 +501,7 @@ namespace OpenDental {
 			this.Controls.Add(this.textWidthOpMinimum);
 			this.Controls.Add(this.label5);
 			this.Controls.Add(this.checkApptBubblesDisabled);
+			this.Controls.Add(this.checkShowMirroredAppts);
 			this.Controls.Add(this.checkDynamicScroll);
 			this.Controls.Add(this.labelStartTime);
 			this.Controls.Add(this.textScrollTime);
@@ -565,6 +576,7 @@ namespace OpenDental {
 		private Label labelStartTime;
 		private OpenDental.UI.CheckBox checkDynamicScroll;
 		private OpenDental.UI.CheckBox checkApptBubblesDisabled;
+		private OpenDental.UI.CheckBox checkShowMirroredAppts;
 		private TextBox textWidthOpMinimum;
 		private Label label5;
 		private UI.ListBox listWaitingRmNameFormat;

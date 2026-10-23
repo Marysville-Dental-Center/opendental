@@ -9,8 +9,256 @@ using System.Threading;
 using CodeBase;
 
 namespace OpenDentBusiness{
-	///<summary></summary>
+	///<summary>Fees for procedure codes, by fee schedule, clinic and provider. Since Open Dental 24.4 a fee row also has a start date (fee.DateEffective):
+	///several rows can exist for one fee schedule, code, clinic and provider, and a lookup picks the row in effect on an as-of date. See the region
+	///"Effective dates" below for the rules.</summary>
 	public class Fees {
+		#region Effective dates
+		///<summary>The DateEffective of a fee that has no start date: 0001-01-01, the column default. Such a fee is always in effect.</summary>
+		public static readonly DateTime DateEffectiveAlways=DateTime.MinValue;
+		///<summary>The as-of date set by ScopeDateAsOf for the code running on this thread. MinValue when no scope is open.</summary>
+		[ThreadStatic]
+		private static DateTime _dateAsOfScope;
+
+		///<summary>Returns the as-of date a fee lookup uses. A real date passed in wins. Otherwise the date of the innermost ScopeDateAsOf open on this
+		///thread, otherwise today. Screens without a date filter, charting and treatment planning all end up with today.</summary>
+		public static DateTime GetDateAsOf(DateTime dateAsOf=default(DateTime)) {
+			Meth.NoCheckMiddleTierRole();
+			if(dateAsOf.Year>1880) {
+				return dateAsOf.Date;
+			}
+			if(_dateAsOfScope.Year>1880) {
+				return _dateAsOfScope;
+			}
+			return DateTime.Today;
+		}
+
+		///<summary>Until the returned object is disposed, fee lookups on this thread that are not given a date use dateAsOf. Used around insurance
+		///estimates so that code which looks up fees deep inside them (allowed fees, blue book, fixed benefits) uses the procedure's date without every
+		///method passing it along. A date before 1880 means "no override". Scopes nest; disposing restores the previous date.</summary>
+		public static IDisposable ScopeDateAsOf(DateTime dateAsOf) {
+			Meth.NoCheckMiddleTierRole();
+			return new DateAsOfScope(dateAsOf);
+		}
+
+		///<summary>The as-of date for fees of one procedure. A completed procedure uses its procedure date (when it isn't in the future), so setting a
+		///backdated procedure complete, or estimating it later, uses the fees that were in effect when the work was done. Everything else (treatment
+		///planned, existing, and so on) uses today.</summary>
+		public static DateTime GetDateAsOfForProc(Procedure procedure) {
+			Meth.NoCheckMiddleTierRole();
+			if(procedure!=null && procedure.ProcStatus==ProcStat.C && procedure.ProcDate.Year>1880 && procedure.ProcDate.Date<=DateTime.Today) {
+				return procedure.ProcDate.Date;
+			}
+			return DateTime.Today;
+		}
+
+		///<summary>True if the fee's start date is on or before the as-of date.</summary>
+		public static bool IsInEffect(Fee fee,DateTime dateAsOf) {
+			Meth.NoCheckMiddleTierRole();
+			return fee.DateEffective.Date<=dateAsOf.Date;
+		}
+
+		///<summary>Text for security logs and messages: ", effective 2026-01-01", or "" for a fee that is always in effect.</summary>
+		public static string GetDateEffectiveLogText(DateTime dateEffective) {
+			Meth.NoCheckMiddleTierRole();
+			if(dateEffective.Year<1880) {
+				return "";
+			}
+			return ", "+Lans.g("Fees","effective")+" "+dateEffective.ToString("yyyy-MM-dd");
+		}
+
+		///<summary>The date-aware lookup every fee lookup ends in. For the given code and schedule it picks, at each override level, the row with the
+		///latest DateEffective on or before dateAsOf, then applies the usual override order: provider and clinic, provider only (clinic 0), clinic
+		///only (provider 0), then the schedule's default (clinic 0, provider 0). For a global schedule clinicNum and provNum are ignored. With
+		///doGetExactMatch, only the exact clinic and provider level is searched. Returns null if nothing matches. Rows with the same key and date are
+		///not allowed, but if there are some, the first one in the list wins. No database or cache access, so it can be unit tested.</summary>
+		public static Fee GetFeeFromList(List<Fee> listFees,long codeNum,long feeSchedNum,long clinicNum,long provNum,bool isGlobal,DateTime dateAsOf,
+			bool doGetExactMatch=false)
+		{
+			Meth.NoCheckMiddleTierRole();
+			if(listFees==null) {
+				return null;
+			}
+			if(isGlobal && !doGetExactMatch) {
+				clinicNum=0;
+				provNum=0;
+			}
+			dateAsOf=dateAsOf.Date;
+			//0: exact clinic and provider. 1: provider override (clinic 0). 2: clinic override (provider 0). 3: default (clinic 0, provider 0).
+			Fee[] arrayFeesBest=new Fee[4];
+			for(int i=0;i<listFees.Count;i++) {
+				Fee fee=listFees[i];
+				if(fee==null || fee.CodeNum!=codeNum || fee.FeeSched!=feeSchedNum) {
+					continue;
+				}
+				if(fee.DateEffective.Date>dateAsOf) {
+					continue;//starts later
+				}
+				int level;
+				if(fee.ClinicNum==clinicNum && fee.ProvNum==provNum) {
+					level=0;
+				}
+				else if(fee.ClinicNum==0 && fee.ProvNum==provNum) {
+					level=1;
+				}
+				else if(fee.ClinicNum==clinicNum && fee.ProvNum==0) {
+					level=2;
+				}
+				else if(fee.ClinicNum==0 && fee.ProvNum==0) {
+					level=3;
+				}
+				else {
+					continue;
+				}
+				if(arrayFeesBest[level]==null || fee.DateEffective>arrayFeesBest[level].DateEffective) {
+					arrayFeesBest[level]=fee;
+				}
+			}
+			if(arrayFeesBest[0]!=null) {
+				return arrayFeesBest[0];
+			}
+			if(doGetExactMatch || isGlobal) {
+				return null;
+			}
+			return arrayFeesBest[1]??arrayFeesBest[2]??arrayFeesBest[3];
+		}
+
+		///<summary>Returns the row with exactly this key and start date, or null. Used to decide between updating a dated row and inserting one.</summary>
+		public static Fee GetFeeExactDate(List<Fee> listFees,long codeNum,long feeSchedNum,long clinicNum,long provNum,DateTime dateEffective) {
+			Meth.NoCheckMiddleTierRole();
+			if(listFees==null) {
+				return null;
+			}
+			return listFees.Find(x => x!=null && x.CodeNum==codeNum && x.FeeSched==feeSchedNum && x.ClinicNum==clinicNum && x.ProvNum==provNum
+				&& x.DateEffective.Date==dateEffective.Date);
+		}
+
+		///<summary>Reduces a list of fee rows to one row per fee schedule, code, clinic and provider: the row in effect on dateAsOf (today if not
+		///given). Keys whose rows all start later are left out. The order of the input list is kept. This is what screens without a date filter show.
+		///</summary>
+		public static List<Fee> GetRowsInEffect(List<Fee> listFees,DateTime dateAsOf=default(DateTime)) {
+			Meth.NoCheckMiddleTierRole();
+			dateAsOf=GetDateAsOf(dateAsOf);
+			Dictionary<FeeRowKey,Fee> dictBest=new Dictionary<FeeRowKey,Fee>();
+			for(int i=0;i<listFees.Count;i++) {
+				Fee fee=listFees[i];
+				if(fee.DateEffective.Date>dateAsOf) {
+					continue;
+				}
+				FeeRowKey feeRowKey=new FeeRowKey(fee);
+				if(!dictBest.TryGetValue(feeRowKey,out Fee feeBest) || fee.DateEffective>feeBest.DateEffective) {
+					dictBest[feeRowKey]=fee;
+				}
+			}
+			HashSet<Fee> hashSetKeep=new HashSet<Fee>(dictBest.Values);
+			return listFees.FindAll(x => hashSetKeep.Contains(x));
+		}
+
+		///<summary>Throws an ApplicationException if two of the fees have the same fee schedule, code, clinic, provider and start date.</summary>
+		public static void ValidateNoDuplicateDates(List<Fee> listFees) {
+			Meth.NoCheckMiddleTierRole();
+			HashSet<string> hashSetKeys=new HashSet<string>();
+			for(int i=0;i<listFees.Count;i++) {
+				string key=GetKeyWithDate(listFees[i]);
+				if(!hashSetKeys.Add(key)) {
+					throw new ApplicationException(GetDuplicateMessage(listFees[i]));
+				}
+			}
+		}
+
+		///<summary>The duplicate rule for a sync (SynchList). Throws an ApplicationException if a row that the sync would insert or change has the same
+		///fee schedule, code, clinic, provider and start date as another row of listFeesNew. Rows that are unchanged from listFeesDb are not checked
+		///against each other: databases from before fee effective dates had no unique key on fee, so they can hold exact duplicates (Database
+		///Maintenance's FeeDeleteDuplicates removes them), and such rows must not stop the user from saving other fees of the same schedule.</summary>
+		public static void ValidateNoDuplicateDatesForSync(List<Fee> listFeesNew,List<Fee> listFeesDb) {
+			Meth.NoCheckMiddleTierRole();
+			Dictionary<long,Fee> dictFeesDb=new Dictionary<long,Fee>();
+			if(listFeesDb!=null) {
+				for(int i=0;i<listFeesDb.Count;i++) {
+					if(listFeesDb[i].FeeNum!=0) {
+						dictFeesDb[listFeesDb[i].FeeNum]=listFeesDb[i];
+					}
+				}
+			}
+			Dictionary<string,int> dictCounts=new Dictionary<string,int>();
+			for(int i=0;i<listFeesNew.Count;i++) {
+				string key=GetKeyWithDate(listFeesNew[i]);
+				dictCounts.TryGetValue(key,out int count);
+				dictCounts[key]=count+1;
+			}
+			for(int i=0;i<listFeesNew.Count;i++) {
+				Fee fee=listFeesNew[i];
+				bool isInsertOrChange=fee.FeeNum==0
+					|| !dictFeesDb.TryGetValue(fee.FeeNum,out Fee feeDb)
+					|| Crud.FeeCrud.UpdateComparison(fee,feeDb);//includes DateEffective
+				if(isInsertOrChange && dictCounts[GetKeyWithDate(fee)]>1) {
+					throw new ApplicationException(GetDuplicateMessage(fee));
+				}
+			}
+		}
+
+		private static string GetKeyWithDate(Fee fee) {
+			return fee.FeeSched+","+fee.CodeNum+","+fee.ClinicNum+","+fee.ProvNum+","+fee.DateEffective.ToString("yyyy-MM-dd");
+		}
+
+		private static string GetDuplicateMessage(Fee fee) {
+			string date=(fee.DateEffective.Year<1880 ? Lans.g("Fees","no start date") : fee.DateEffective.ToString("yyyy-MM-dd"));
+			return Lans.g("Fees","A fee with the same fee schedule, procedure code, clinic, provider and effective date already exists.")
+				+" (FeeSched "+fee.FeeSched+", CodeNum "+fee.CodeNum+", ClinicNum "+fee.ClinicNum+", ProvNum "+fee.ProvNum+", "+date+")";
+		}
+
+		///<summary>Key of a fee row without its date.</summary>
+		private struct FeeRowKey:IEquatable<FeeRowKey> {
+			public readonly long FeeSched;
+			public readonly long CodeNum;
+			public readonly long ClinicNum;
+			public readonly long ProvNum;
+
+			public FeeRowKey(Fee fee) {
+				FeeSched=fee.FeeSched;
+				CodeNum=fee.CodeNum;
+				ClinicNum=fee.ClinicNum;
+				ProvNum=fee.ProvNum;
+			}
+
+			public bool Equals(FeeRowKey other) {
+				return FeeSched==other.FeeSched && CodeNum==other.CodeNum && ClinicNum==other.ClinicNum && ProvNum==other.ProvNum;
+			}
+
+			public override bool Equals(object obj) {
+				return obj is FeeRowKey && Equals((FeeRowKey)obj);
+			}
+
+			public override int GetHashCode() {
+				unchecked {
+					int hash=FeeSched.GetHashCode();
+					hash=hash*31+CodeNum.GetHashCode();
+					hash=hash*31+ClinicNum.GetHashCode();
+					hash=hash*31+ProvNum.GetHashCode();
+					return hash;
+				}
+			}
+		}
+
+		private class DateAsOfScope:IDisposable {
+			private readonly DateTime _datePrevious;
+			private bool _isDisposed;
+
+			public DateAsOfScope(DateTime dateAsOf) {
+				_datePrevious=_dateAsOfScope;
+				_dateAsOfScope=(dateAsOf.Year>1880 ? dateAsOf.Date : _datePrevious);
+			}
+
+			public void Dispose() {
+				if(_isDisposed) {
+					return;
+				}
+				_isDisposed=true;
+				_dateAsOfScope=_datePrevious;
+			}
+		}
+		#endregion Effective dates
+
 		#region Get Methods
 		///<summary>Gets the list of fees by clinic num from the db.</summary>
 		public static List<Fee> GetByClinicNum(long clinicNum) {
@@ -43,7 +291,7 @@ namespace OpenDentBusiness{
 				}
 				return listFeeLims;
 			}
-			string command="SELECT FeeNum,Amount,FeeSched,CodeNum,ClinicNum,ProvNum,SecDateTEdit FROM fee "
+			string command="SELECT FeeNum,Amount,FeeSched,CodeNum,ClinicNum,ProvNum,SecDateTEdit,DateEffective FROM fee "
 				+"WHERE FeeSched IN ("+string.Join(",",listFeeSchedNums.Select(x => POut.Long(x)))+") "
 				+"AND ClinicNum IN ("+string.Join(",",listClinicNums.Select(x => POut.Long(x)))+")";
 			List<FeeLim> listFeeLimsRet=Db.GetTable(command).AsEnumerable()
@@ -55,119 +303,73 @@ namespace OpenDentBusiness{
 					ClinicNum=PIn.Long(x["ClinicNum"].ToString()),
 					ProvNum=PIn.Long(x["ProvNum"].ToString()),
 					SecDateTEdit=PIn.DateT(x["SecDateTEdit"].ToString()),
+					DateEffective=PIn.Date(x["DateEffective"].ToString()),
 				}).ToList();
 			return listFeeLimsRet;
 		}
 
-		///<summary>Counts the number of fees in the db for this fee sched, including all clinic and prov overrides.</summary>
+		///<summary>Counts the number of fees in the db for this fee sched, including all clinic and prov overrides. Dated rows of one code, clinic and
+		///provider count once.</summary>
 		public static int GetCountByFeeSchedNum(long feeSchedNum) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetInt(MethodBase.GetCurrentMethod(),feeSchedNum);
 			}
-			string command="SELECT COUNT(*) FROM fee WHERE FeeSched ="+POut.Long(feeSchedNum);
+			string command="SELECT COUNT(DISTINCT CodeNum,ClinicNum,ProvNum) FROM fee WHERE FeeSched ="+POut.Long(feeSchedNum);
 			return PIn.Int(Db.GetCount(command));
 		}
 
-		///<summary>Searches for the given codeNum and feeSchedNum and finds the most appropriate match for the clinicNum and provNum.  If listFees is null, it will go to db.</summary>
-		public static Fee GetFee(long codeNum,long feeSchedNum,long clinicNum,long provNum,List<Fee> listFees=null) {
+		///<summary>Searches for the given codeNum and feeSchedNum and finds the most appropriate match for the clinicNum and provNum, among the rows in
+		///effect on dateAsOf (see GetDateAsOf: today unless a date or a ScopeDateAsOf is given). If listFees is null, it will go to db.</summary>
+		public static Fee GetFee(long codeNum,long feeSchedNum,long clinicNum,long provNum,List<Fee> listFees=null,DateTime dateAsOf=default(DateTime)) {
 			Meth.NoCheckMiddleTierRole();
+			dateAsOf=GetDateAsOf(dateAsOf);
 			//use listFees if supplied regardless of the FeesUseCache pref since the fee cache is not really thread safe
 			if(listFees!=null) {
-				return GetFeeFromList(listFees,codeNum,feeSchedNum,clinicNum,provNum);
+				return GetFeeFromList(listFees,codeNum,feeSchedNum,clinicNum,provNum,dateAsOf);
 			}
-			return GetFeeFromDb(codeNum,feeSchedNum,clinicNum,provNum);
+			return GetFeeFromDb(codeNum,feeSchedNum,clinicNum,provNum,dateAsOf:dateAsOf);
 		}
 
-		///<summary>Searches the db for a fee with the exact codeNum, feeSchedNum, clinicNum, and provNum provided.  Returns null if no exact match found.
-		///The goal of this method is to have a way to check the database for "duplicate" fees before adding more fees to the db. Set doGetExactMatch to
-		///true to exactly match all passed in parameters.</summary>
-		public static Fee GetFeeFromDb(long codeNum,long feeSchedNum,long clinicNum=0,long provNum=0,bool doGetExactMatch=false) {
+		///<summary>Searches the db for the fee in effect on dateAsOf (today if not given) for codeNum and feeSchedNum, using the clinic and provider
+		///override order. Set doGetExactMatch to true to search only the exact clinicNum and provNum given; then it returns null if no such row is in
+		///effect. The goal of the exact match is to have a way to check the database for "duplicate" fees before adding more fees to the db.</summary>
+		public static Fee GetFeeFromDb(long codeNum,long feeSchedNum,long clinicNum=0,long provNum=0,bool doGetExactMatch=false,
+			DateTime dateAsOf=default(DateTime))
+		{
+			//Resolve the date on the client: a ScopeDateAsOf only exists on the calling thread.
+			dateAsOf=GetDateAsOf(dateAsOf);
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				return Meth.GetObject<Fee>(MethodBase.GetCurrentMethod(),codeNum,feeSchedNum,clinicNum,provNum,doGetExactMatch);
+				return Meth.GetObject<Fee>(MethodBase.GetCurrentMethod(),codeNum,feeSchedNum,clinicNum,provNum,doGetExactMatch,dateAsOf);
 			}
-			if(FeeScheds.IsGlobal(feeSchedNum) && !doGetExactMatch) {
+			bool isGlobal=FeeScheds.IsGlobal(feeSchedNum);
+			if(isGlobal && !doGetExactMatch) {
 				clinicNum=0;
 				provNum=0;
 			}
-			//If the logic changes here, then we need to change FeeCache.GetFee.
-			string command=
-				//Search for exact match first.  This would include a clinic and provider override.
-				@"SELECT fee.*
-				FROM fee
-				WHERE fee.CodeNum="+POut.Long(codeNum)+@"
-				AND fee.FeeSched="+POut.Long(feeSchedNum)+@"
-				AND fee.ClinicNum="+POut.Long(clinicNum)+@"
-				AND fee.ProvNum="+POut.Long(provNum);
-			if(doGetExactMatch) {
-				return Crud.FeeCrud.SelectOne(command);
-			}
-			//Provider override 
-			command+=@"
-				UNION ALL
-				SELECT fee.*
-				FROM fee
-				WHERE fee.CodeNum="+POut.Long(codeNum)+@"
-				AND fee.FeeSched="+POut.Long(feeSchedNum)+@"
-				AND fee.ClinicNum=0
-				AND fee.ProvNum="+POut.Long(provNum);
-			//Clinic override
-			command+=@"
-				UNION ALL
-				SELECT fee.*
-				FROM fee
-				WHERE fee.CodeNum="+POut.Long(codeNum)+@"
-				AND fee.FeeSched="+POut.Long(feeSchedNum)+@"
-				AND fee.ClinicNum="+POut.Long(clinicNum)+@"
-				AND fee.ProvNum=0";
-			//Unassigned clinic with no override
-			command+=@"
-				UNION ALL
-				SELECT fee.*
-				FROM fee
-				WHERE fee.CodeNum="+POut.Long(codeNum)+@"
-				AND fee.FeeSched="+POut.Long(feeSchedNum)+@"
-				AND fee.ClinicNum=0
-				AND fee.ProvNum=0";
-			return Crud.FeeCrud.SelectOne(command);
+			//All rows of every override level that could apply, then the same date-aware rules as for a list.
+			string command="SELECT * FROM fee "
+				+"WHERE CodeNum="+POut.Long(codeNum)+" "
+				+"AND FeeSched="+POut.Long(feeSchedNum)+" "
+				+"AND ClinicNum IN(0,"+POut.Long(clinicNum)+") "
+				+"AND ProvNum IN(0,"+POut.Long(provNum)+") "
+				+"AND DateEffective<="+POut.Date(dateAsOf);
+			List<Fee> listFees=Crud.FeeCrud.SelectMany(command);
+			return GetFeeFromList(listFees,codeNum,feeSchedNum,clinicNum,provNum,isGlobal,dateAsOf,doGetExactMatch);
 		}
 
-		///<summary>Same logic as above, in Fees.GetFeeNoCache().  Also, same logic as in FeeCache.GetFee().
-		///Typical to pass in a list of fees for just one or a few feescheds so that the search goes quickly.
+		///<summary>Same logic as GetFeeFromDb. Typical to pass in a list of fees for just one or a few feescheds so that the search goes quickly.
 		///When doGetExactMatch is true, this will return either the fee that matches the parameters exactly, or null if no such fee exists.
 		///When doGetExactMatch is false, and the fee schedule is global, we ignore the clinicNum and provNum and return the HQ fee that matches the given codeNum and feeSchedNum.
 		///When doGetExactMatch is false, and the fee schedule is not global, and no exact match exists we attempt to return the closest matching fee in this order:
 		///1 - The fee with the same codeNum, feeSchedNum, and providerNum, with a clinicNum of 0
 		///2 - The fee with the same codeNum, feeSchedNum, and clinicNum, with a providerNum of 0
 		///3 - The fee with the same codeNum, feeSchedNum, and both a clinicNum and providerNum of 0
-		///If no partial match can be found, return null.</summary>
-		private static Fee GetFeeFromList(List<Fee> listFees,long codeNum,long feeSched=0,long clinicNum=0,long provNum=0,bool doGetExactMatch=false){
+		///At each level only rows in effect on dateAsOf count, and the latest of them wins. If no partial match can be found, return null.</summary>
+		private static Fee GetFeeFromList(List<Fee> listFees,long codeNum,long feeSched,long clinicNum,long provNum,DateTime dateAsOf,
+			bool doGetExactMatch=false)
+		{
 			Meth.NoCheckMiddleTierRole();
-			if(FeeScheds.IsGlobal(feeSched) && !doGetExactMatch) {//speed things up here with less loops
-				clinicNum=0;
-				provNum=0;
-			}
-			Fee fee=listFees.Find(f => f.CodeNum==codeNum && f.FeeSched==feeSched && f.ClinicNum==clinicNum && f.ProvNum==provNum);
-			if(fee!=null){
-				return fee;//match found.  Would include a clinic and provider override.
-			}
-			if(doGetExactMatch || FeeScheds.IsGlobal(feeSched)) {
-				return null;//couldn't find exact match
-			}
-			//no exact match exists, so we look for closest match
-			//2: Prov override
-			fee=listFees.Find(f => f.CodeNum==codeNum && f.FeeSched==feeSched && f.ClinicNum==0 && f.ProvNum==provNum);
-			if(fee!=null){
-				return fee;
-			}
-			//3: Clinic override
-			fee=listFees.Find(f => f.CodeNum==codeNum && f.FeeSched==feeSched && f.ClinicNum==clinicNum && f.ProvNum==0);
-			if(fee!=null){
-				return fee;
-			}
-			//4: Just unassigned clinic default
-			fee=listFees.Find(f => f.CodeNum==codeNum && f.FeeSched==feeSched && f.ClinicNum==0 && f.ProvNum==0);
-			//whether it's null or not:
-			return fee;
+			return GetFeeFromList(listFees,codeNum,feeSched,clinicNum,provNum,FeeScheds.IsGlobal(feeSched),dateAsOf,doGetExactMatch);
 		}
 
 		public static List<Fee> GetListExactForClinicsFromDb(long codeNum,long feeSchedNum,long provNum,List<long> listClinicNums) {
@@ -385,18 +587,32 @@ namespace OpenDentBusiness{
 			return Crud.FeeCrud.SelectMany(command);
 		}
 
-		///<summary>Gets fees that exactly match criteria.</summary>
+		///<summary>Gets fees that exactly match criteria: one row per code, the one in effect today. Rows that start later are left out.</summary>
 		public static List<Fee> GetListExact(long feeSched,long clinicNum,long provNum){
+			Meth.NoCheckMiddleTierRole();
+			return GetListExactAsOf(feeSched,clinicNum,provNum,DateTime.Today);
+		}
+
+		///<summary>Gets fees that exactly match criteria: one row per code, the one in effect on dateAsOf.</summary>
+		public static List<Fee> GetListExactAsOf(long feeSched,long clinicNum,long provNum,DateTime dateAsOf){
+			Meth.NoCheckMiddleTierRole();
+			dateAsOf=GetDateAsOf(dateAsOf);
+			List<Fee> listFees=GetListExactAllDates(feeSched,clinicNum,provNum).FindAll(x => IsInEffect(x,dateAsOf));
+			return GetRowsInEffect(listFees,dateAsOf);
+		}
+
+		///<summary>Gets every row that exactly matches criteria, whatever its start date: past, current and future rows.</summary>
+		public static List<Fee> GetListExactAllDates(long feeSched,long clinicNum,long provNum){
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetObject<List<Fee>>(MethodBase.GetCurrentMethod(),feeSched,clinicNum,provNum);
 			}
 			string command="SELECT * FROM fee WHERE "
 				+"FeeSched="+POut.Long(feeSched)+" AND ClinicNum="+POut.Long(clinicNum)+" AND ProvNum="+POut.Long(provNum)+" "
-				+"GROUP BY CodeNum";//There should not be duplicates, but group by codeNum, just in case.
+				+"ORDER BY CodeNum,DateEffective,FeeNum";
 			return Crud.FeeCrud.SelectMany(command);
 		}
-		
-		///<summary>Overload gets fees that exactly match criteria with a clinic list.</summary>
+
+		///<summary>Overload gets fees that exactly match criteria with a clinic list: per code and clinic, the row in effect today.</summary>
 		public static List<Fee> GetListExact(long feeSched,List<long> listClinicNums,long provNum){
 			if(listClinicNums.IsNullOrEmpty()) {
 				return new List<Fee>();
@@ -406,8 +622,9 @@ namespace OpenDentBusiness{
 			}
 			string command="SELECT * FROM fee WHERE "
 				+"FeeSched="+POut.Long(feeSched)+" AND ClinicNum IN ("+string.Join(",",listClinicNums.Select(x => POut.Long(x)))
-				+") AND ProvNum="+POut.Long(provNum);
-			return Crud.FeeCrud.SelectMany(command);
+				+") AND ProvNum="+POut.Long(provNum)+" "
+				+"AND DateEffective<="+POut.Date(DateTime.Today);
+			return GetRowsInEffect(Crud.FeeCrud.SelectMany(command),DateTime.Today);
 		}
 
 		///<summary>Pass in new list and original list.  This will synch everything with Db.  Leave doCheckFeeSchedGroups set to true unless calling from 
@@ -416,56 +633,62 @@ namespace OpenDentBusiness{
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetBool(MethodBase.GetCurrentMethod(),listFeesNew,listFeesDb,doCheckFeeSchedGroups);
 			}
+			//Two rows with the same key and start date are not allowed, but legacy duplicates that this sync leaves untouched don't block it.
+			ValidateNoDuplicateDatesForSync(listFeesNew,listFeesDb);
 			if(PrefC.GetBool(PrefName.ShowFeeSchedGroups) && doCheckFeeSchedGroups) {
 				FeeSchedGroups.SyncGroupFees(listFeesNew,listFeesDb);
 			}
 			return Crud.FeeCrud.Sync(listFeesNew,listFeesDb,Security.CurUser.UserNum);
 		}
 
-		///<summary>Gets from Db.  Returns all fees associated to the procedure code passed in.</summary>
+		///<summary>Gets from Db.  Returns the fees associated to the procedure code passed in that are in effect today, one per fee schedule, clinic and
+		///provider.</summary>
 		public static List<Fee> GetFeesForCode(long codeNum,List<long> listClinicNums=null) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetObject<List<Fee>>(MethodBase.GetCurrentMethod(),codeNum,listClinicNums);
 			}
-			string command="SELECT * FROM fee WHERE CodeNum="+POut.Long(codeNum)+" ";
+			string command="SELECT * FROM fee WHERE CodeNum="+POut.Long(codeNum)+" "
+				+"AND DateEffective<="+POut.Date(DateTime.Today)+" ";
 			if(listClinicNums!=null && listClinicNums.Count>0) {
 				command+="AND ClinicNum IN("+string.Join(",",listClinicNums.Select(x => POut.Long(x)))+")";
 			}
 			//ordering was being done in the form. Easier to do it here.
 			command+=" ORDER BY ClinicNum,ProvNum";
-			return Crud.FeeCrud.SelectMany(command);
+			return GetRowsInEffect(Crud.FeeCrud.SelectMany(command),DateTime.Today);
 		}
 
-		///<summary>Gets fees from Db, not including any prov or clinic overrides.</summary>
+		///<summary>Gets fees from Db, not including any prov or clinic overrides. One per fee schedule: the row in effect today.</summary>
 		public static List<Fee> GetFeesForCodeNoOverrides(long codeNum) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetObject<List<Fee>>(MethodBase.GetCurrentMethod(),codeNum);
 			}
 			string command="SELECT * FROM fee WHERE CodeNum="+POut.Long(codeNum)+" "
-				+"AND ClinicNum=0 AND ProvNum=0";
-			return Crud.FeeCrud.SelectMany(command);
+				+"AND ClinicNum=0 AND ProvNum=0 "
+				+"AND DateEffective<="+POut.Date(DateTime.Today);
+			return GetRowsInEffect(Crud.FeeCrud.SelectMany(command),DateTime.Today);
 		}
 
 		///<summary>Returns an amount if a fee has been entered.  Prefers local clinic fees over HQ fees.  Otherwise returns -1.
-		///Not usually used directly.  If you don't pass in a list of Fees, it will go directly to the Db.</summary>
-		public static double GetAmount(long codeNum,long feeSched,long clinicNum,long provNum,List<Fee> listFees=null) {
+		///Not usually used directly.  If you don't pass in a list of Fees, it will go directly to the Db. Uses the fee in effect on dateAsOf (see
+		///GetDateAsOf).</summary>
+		public static double GetAmount(long codeNum,long feeSched,long clinicNum,long provNum,List<Fee> listFees=null,DateTime dateAsOf=default(DateTime)) {
 			Meth.NoCheckMiddleTierRole();
 			if(FeeScheds.GetIsHidden(feeSched)) {
 				return -1;//you cannot obtain fees for hidden fee schedules
 			}
-			Fee fee=GetFee(codeNum,feeSched,clinicNum,provNum,listFees);
+			Fee fee=GetFee(codeNum,feeSched,clinicNum,provNum,listFees,dateAsOf);
 			if(fee==null) {
 				return -1;
 			}
 			return fee.Amount;
 		}
 
-		///<summary>Almost the same as GetAmount.  But never returns -1;  Returns an amount if a fee has been entered.  
+		///<summary>Almost the same as GetAmount.  But never returns -1;  Returns an amount if a fee has been entered.
 		///Prefers local clinic fees over HQ fees. Returns 0 if code can't be found.
 		///If you don't pass in a list of fees, it will go directly to the database.</summary>
-		public static double GetAmount0(long codeNum,long feeSched,long clinicNum=0,long provNum=0,List<Fee> listFees=null) {
+		public static double GetAmount0(long codeNum,long feeSched,long clinicNum=0,long provNum=0,List<Fee> listFees=null,DateTime dateAsOf=default(DateTime)) {
 			Meth.NoCheckMiddleTierRole();
-			double amountRet=GetAmount(codeNum,feeSched,clinicNum,provNum,listFees);
+			double amountRet=GetAmount(codeNum,feeSched,clinicNum,provNum,listFees,dateAsOf);
 			if(amountRet==-1) {
 				return 0;
 			}
@@ -482,7 +705,7 @@ namespace OpenDentBusiness{
 			Provider providerFirst=Providers.GetFirst();//Used in order to preserve old behavior...  If this fails, then old code would have failed.
 			Provider provider=Providers.GetFirstOrDefault(x => x.ProvNum==provNum)??providerFirst;
 			//get the fee based on code and prov fee sched
-			double ppoFee=GetAmount0(procedure.CodeNum,provider.FeeSched,procedure.ClinicNum,provNum);
+			double ppoFee=GetAmount0(procedure.CodeNum,provider.FeeSched,procedure.ClinicNum,provNum,dateAsOf:GetDateAsOfForProc(procedure));
 			double ucrFee=procedure.ProcFee;
 			if(ucrFee > ppoFee) {
 				return procedure.Quantity * ucrFee;
@@ -540,6 +763,10 @@ namespace OpenDentBusiness{
 				fee.FeeNum=Meth.GetLong(MethodBase.GetCurrentMethod(),fee,doCheckFeeSchedGroups);
 				return fee.FeeNum;
 			}
+			//Two rows with the same key and start date are not allowed.
+			if(IsDuplicateInDb(fee)) {
+				throw new ApplicationException(GetDuplicateMessage(fee));
+			}
 			//Security.CurUser.UserNum gets set on MT by the DtoProcessor so it matches the user from the client WS.
 			fee.SecUserNumEntry=Security.CurUser.UserNum;
 			if(PrefC.GetBool(PrefName.ShowFeeSchedGroups) && doCheckFeeSchedGroups) {
@@ -548,11 +775,41 @@ namespace OpenDentBusiness{
 			return Crud.FeeCrud.Insert(fee);
 		}
 
+		///<summary>True if another row with the fee's schedule, code, clinic, provider and start date is in the database.</summary>
+		private static bool IsDuplicateInDb(Fee fee) {
+			string command="SELECT COUNT(*) FROM fee "
+				+"WHERE FeeSched="+POut.Long(fee.FeeSched)+" "
+				+"AND CodeNum="+POut.Long(fee.CodeNum)+" "
+				+"AND ClinicNum="+POut.Long(fee.ClinicNum)+" "
+				+"AND ProvNum="+POut.Long(fee.ProvNum)+" "
+				+"AND DateEffective="+POut.Date(fee.DateEffective)+" "
+				+"AND FeeNum!="+POut.Long(fee.FeeNum);
+			return PIn.Long(Db.GetCount(command))>0;
+		}
+
 		/// <summary>Bulk Insert.  Only set doCheckFeeSchedGroups to false from FeeSchedGroups.</summary>
 		public static void InsertMany(List<Fee> listFees,bool doCheckFeeSchedGroups=true) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				Meth.GetVoid(MethodBase.GetCurrentMethod(),listFees,doCheckFeeSchedGroups);
 				return;
+			}
+			//Two rows with the same key and start date are not allowed, within the batch or against rows already in the database.
+			ValidateNoDuplicateDates(listFees);
+			List<IGrouping<string,Fee>> listGroupings=listFees.GroupBy(x => x.FeeSched+","+x.ClinicNum+","+x.ProvNum).ToList();
+			for(int i=0;i<listGroupings.Count;i++) {
+				Fee feeFirst=listGroupings[i].First();
+				List<long> listCodeNums=listGroupings[i].Select(x => x.CodeNum).Distinct().ToList();
+				string command="SELECT CodeNum,DateEffective FROM fee "
+					+"WHERE FeeSched="+POut.Long(feeFirst.FeeSched)+" "
+					+"AND ClinicNum="+POut.Long(feeFirst.ClinicNum)+" "
+					+"AND ProvNum="+POut.Long(feeFirst.ProvNum)+" "
+					+"AND CodeNum IN("+string.Join(",",listCodeNums.Select(x => POut.Long(x)))+")";
+				HashSet<string> hashSetExisting=new HashSet<string>(Db.GetTable(command).Select()
+					.Select(x => PIn.Long(x["CodeNum"].ToString())+","+PIn.Date(x["DateEffective"].ToString()).ToString("yyyy-MM-dd")));
+				Fee feeDuplicate=listGroupings[i].FirstOrDefault(x => hashSetExisting.Contains(x.CodeNum+","+x.DateEffective.ToString("yyyy-MM-dd")));
+				if(feeDuplicate!=null) {
+					throw new ApplicationException(GetDuplicateMessage(feeDuplicate));
+				}
 			}
 			//Security.CurUser.UserNum gets set on MT by the DtoProcessor so it matches the user from the client WS.
 			for(int i=0;i<listFees.Count;i++) {
@@ -641,7 +898,23 @@ namespace OpenDentBusiness{
 			DeleteMany(listFeeNums);
 		}
 
-		/// <summary>Deletes all fees with the exact specified FeeSchedule, ClinicNum, and ProvNum combination.</summary>
+		///<summary>Deletes the fees with the exact specified FeeSchedule, ClinicNum, and ProvNum combination that start on or after dateFrom. A dateFrom
+		///before 1880 deletes every row of the combination, like DeleteFees. Used by Copy To with an effective date: rows that start before the copied
+		///fees (the current fees and their history) are kept.</summary>
+		public static void DeleteFeesOnOrAfter(long feeSched,long clinicNum,long provNum,DateTime dateFrom) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				Meth.GetVoid(MethodBase.GetCurrentMethod(),feeSched,clinicNum,provNum,dateFrom);
+				return;
+			}
+			string command="DELETE FROM fee WHERE "
+				+"FeeSched="+POut.Long(feeSched)+" AND ClinicNum="+POut.Long(clinicNum)+" AND ProvNum="+POut.Long(provNum);
+			if(dateFrom.Year>1880) {
+				command+=" AND DateEffective>="+POut.Date(dateFrom);
+			}
+			Db.NonQ(command);
+		}
+
+		/// <summary>Deletes all fees with the exact specified FeeSchedule, ClinicNum, and ProvNum combination, whatever their start date.</summary>
 		public static void DeleteFees(long feeSched,long clinicNum,long provNum) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				Meth.GetVoid(MethodBase.GetCurrentMethod(),feeSched,clinicNum,provNum);
@@ -653,8 +926,235 @@ namespace OpenDentBusiness{
 		}
 		#endregion Delete
 
+		#region Fee tools
+		///<summary>One line of a fee file read by ImportFees.</summary>
+		public class FeeImportLine {
+			///<summary>First column.</summary>
+			public string ProcCode="";
+			///<summary>Second column, trimmed. Blank means "delete the fee".</summary>
+			public string AmountText="";
+			///<summary>True when the line has a date in the fifth column (the format written by export with future fees).</summary>
+			public bool HasDate;
+			///<summary>The fifth column when HasDate.</summary>
+			public DateTime DateEffective;
+		}
+
+		///<summary>Reads fee file lines: tab separated, procedure code, amount, then (ignored) abbreviation and description, then an optional start date
+		///as yyyy-MM-dd. The date column is only written by an export that includes future fees; a blank date column, or a file without one, uses the
+		///date chosen in the import window. Lines with fewer than two columns are skipped. No database access.</summary>
+		public static List<FeeImportLine> ParseImportLines(IEnumerable<string> listLines) {
+			Meth.NoCheckMiddleTierRole();
+			List<FeeImportLine> listFeeImportLines=new List<FeeImportLine>();
+			foreach(string line in listLines) {
+				if(line==null) {
+					continue;
+				}
+				string[] arrayFields=line.Split(new string[1] {"\t"},StringSplitOptions.None);
+				if(arrayFields.Length<2) {
+					continue;
+				}
+				FeeImportLine feeImportLine=new FeeImportLine();
+				feeImportLine.ProcCode=arrayFields[0];
+				feeImportLine.AmountText=arrayFields[1].Trim();
+				if(arrayFields.Length>=5 && arrayFields[4].Trim()!="") {
+					DateTime dateEffective;
+					if(DateTime.TryParseExact(arrayFields[4].Trim(),"yyyy-MM-dd",System.Globalization.CultureInfo.InvariantCulture,
+						System.Globalization.DateTimeStyles.None,out dateEffective))
+					{
+						feeImportLine.HasDate=true;
+						feeImportLine.DateEffective=dateEffective.Date;
+					}
+				}
+				listFeeImportLines.Add(feeImportLine);
+			}
+			return listFeeImportLines;
+		}
+
+		///<summary>Imports fee file lines into one fee schedule, clinic and provider. Each fee gets the line's date, or dateEffectiveDefault when the
+		///line has none (a date before 1880 means "always in effect"). An existing row with exactly that key and date is updated, otherwise a row is
+		///inserted, so importing next year's fees with a future date leaves the current fees alone. A blank amount deletes the row with that date, if
+		///there is one. When the same code and date appear twice in the file, the first line wins. Makes the same security log entries as the old
+		///import. Fires progress events. Returns the number of fees inserted, updated or deleted.</summary>
+		public static int ImportFees(List<string> listLines,long feeSchedNum,long clinicNum,long provNum,DateTime dateEffectiveDefault) {
+			Meth.NoCheckMiddleTierRole();
+			List<FeeImportLine> listFeeImportLines=ParseImportLines(listLines);
+			List<Fee> listFeesDb=GetListExactAllDates(feeSchedNum,clinicNum,provNum);
+			HashSet<string> hashSetDone=new HashSet<string>();
+			string feeSchedDesc=FeeScheds.GetDescription(feeSchedNum);
+			int countChanged=0;
+			for(int i=0;i<listFeeImportLines.Count;i++) {
+				FeeImportLine feeImportLine=listFeeImportLines[i];
+				FireImportProgress(i,listFeeImportLines.Count);
+				long codeNum=ProcedureCodes.GetCodeNum(feeImportLine.ProcCode);
+				if(codeNum==0) {
+					continue;
+				}
+				DateTime dateEffective=(feeImportLine.HasDate ? feeImportLine.DateEffective : dateEffectiveDefault);
+				dateEffective=(dateEffective.Year<1880 ? DateEffectiveAlways : dateEffective.Date);
+				if(!hashSetDone.Add(codeNum+","+dateEffective.ToString("yyyy-MM-dd"))) {
+					continue;//this code and date was already in the file
+				}
+				Fee fee=GetFeeExactDate(listFeesDb,codeNum,feeSchedNum,clinicNum,provNum,dateEffective);
+				string feeOldStr="";
+				DateTime datePrevious=DateTime.MinValue;
+				if(fee!=null) {
+					feeOldStr="Old Fee: "+fee.Amount.ToString("c")+", ";
+					datePrevious=fee.SecDateTEdit;
+				}
+				if(feeImportLine.AmountText=="") {//an empty entry deletes an existing fee, but does not insert a blank override
+					if(fee==null) {
+						continue;
+					}
+					Delete(fee);
+					listFeesDb.Remove(fee);
+					SecurityLogs.MakeLogEntry(EnumPermType.ProcFeeEdit,0,"Procedure: "+feeImportLine.ProcCode+", "
+						+feeOldStr
+						+"Fee Schedule: "+feeSchedDesc+GetDateEffectiveLogText(dateEffective)+". "
+						+"Fee deleted using the Import button in the Fee Tools window.",codeNum,DateTime.MinValue);
+					SecurityLogs.MakeLogEntry(EnumPermType.LogFeeEdit,0,"Fee deleted",fee.FeeNum,datePrevious);
+					countChanged++;
+					continue;
+				}
+				double amount=PIn.Double(feeImportLine.AmountText);
+				if(fee==null) {
+					fee=new Fee();
+					fee.Amount=amount;
+					fee.FeeSched=feeSchedNum;
+					fee.CodeNum=codeNum;
+					fee.ClinicNum=clinicNum;//Either 0 because you're importing on an HQ schedule or local clinic because the feesched is localizable.
+					fee.ProvNum=provNum;
+					fee.DateEffective=dateEffective;
+					Insert(fee);
+					listFeesDb.Add(fee);
+				}
+				else {
+					fee.Amount=amount;
+					Update(fee);
+				}
+				SecurityLogs.MakeLogEntry(EnumPermType.ProcFeeEdit,0,"Procedure: "+feeImportLine.ProcCode+", "
+					+feeOldStr
+					+"New Fee: "+fee.Amount.ToString("c")+", "
+					+"Fee Schedule: "+feeSchedDesc+GetDateEffectiveLogText(dateEffective)+". "
+					+"Fee changed using the Import button in the Fee Tools window.",codeNum,DateTime.MinValue);
+				SecurityLogs.MakeLogEntry(EnumPermType.LogFeeEdit,0,"Fee changed",fee.FeeNum,datePrevious);
+				countChanged++;
+			}
+			return countChanged;
+		}
+
+		private static void FireImportProgress(int index,int count) {
+			if(count==0) {
+				return;
+			}
+			double percent=(double)index*100d/(double)count;
+			ODEvent.Fire(ODEventType.ProgressBar,new ProgressBarHelper(
+				"Importing fees...",((int)percent).ToString(),blockValue:(int)percent,progressStyle:ProgBarStyle.Blocks));
+		}
+
+		///<summary>Saves the result of Increase by %. listFeesBase are the rows the increase starts from (one per code, normally the rows in effect on
+		///the base date for one fee schedule, clinic and provider). Amounts of 0 and -1 (blank override) are left alone. With a new effective date,
+		///each result goes to the row with that key and date: updated if it exists, inserted otherwise; the base rows are not changed. No new effective
+		///date (before 1880) means "immediately": a base row that is the row in effect today is updated in place, as before effective dates existed;
+		///any other base row (from a past or future base date) is left alone and its result goes to the row with that key dated today, so that the
+		///new fee is the one in effect now and older rows used by earlier procedures keep their amounts. Fee schedule groups are kept in sync.
+		///Returns the saved rows (with the new amounts), for logging.</summary>
+		public static List<Fee> SaveIncrease(List<Fee> listFeesBase,int percent,int round,DateTime dateEffectiveNew) {
+			Meth.NoCheckMiddleTierRole();
+			List<Fee> listFeesIncreased=IncreaseNew(0,percent,round,listFeesBase,0,0).FindAll(x => x.Amount!=0 && x.Amount!=-1);
+			List<Fee> listFeesSaved=new List<Fee>();
+			Dictionary<string,List<Fee>> dictFeesByCombo=new Dictionary<string,List<Fee>>();
+			bool isImmediate=dateEffectiveNew.Year<1880;
+			List<Fee> listFeesDated=listFeesIncreased;
+			if(isImmediate) {
+				//Only rows in effect today may be changed in place. The rest get a row dated today instead.
+				HashSet<long> hashSetFeeNumsToday=new HashSet<long>();
+				for(int i=0;i<listFeesIncreased.Count;i++) {
+					if(listFeesIncreased[i].FeeNum==0) {
+						continue;
+					}
+					List<Fee> listFeesInEffect=GetRowsInEffect(GetComboFeesAllDates(dictFeesByCombo,listFeesIncreased[i]),DateTime.Today);
+					if(listFeesInEffect.Exists(x => x.FeeNum==listFeesIncreased[i].FeeNum)) {
+						hashSetFeeNumsToday.Add(listFeesIncreased[i].FeeNum);
+					}
+				}
+				List<Fee> listFeesInPlace=listFeesIncreased.FindAll(x => hashSetFeeNumsToday.Contains(x.FeeNum));
+				listFeesDated=listFeesIncreased.FindAll(x => !hashSetFeeNumsToday.Contains(x.FeeNum));
+				if(PrefC.GetBool(PrefName.ShowFeeSchedGroups)) {
+					FeeSchedGroups.UpsertGroupFees(listFeesInPlace);
+				}
+				for(int i=0;i<listFeesInPlace.Count;i++) {
+					Update(listFeesInPlace[i],doCheckFeeSchedGroups:false);
+					listFeesSaved.Add(listFeesInPlace[i]);
+				}
+				dateEffectiveNew=DateTime.Today;
+			}
+			dateEffectiveNew=dateEffectiveNew.Date;
+			for(int i=0;i<listFeesDated.Count;i++) {
+				Fee feeIncreased=listFeesDated[i];
+				List<Fee> listFeesCombo=GetComboFeesAllDates(dictFeesByCombo,feeIncreased);
+				Fee feeAtDate=GetFeeExactDate(listFeesCombo,feeIncreased.CodeNum,feeIncreased.FeeSched,feeIncreased.ClinicNum,feeIncreased.ProvNum,
+					dateEffectiveNew);
+				if(feeAtDate==null) {
+					Fee feeNew=new Fee();
+					feeNew.FeeSched=feeIncreased.FeeSched;
+					feeNew.CodeNum=feeIncreased.CodeNum;
+					feeNew.ClinicNum=feeIncreased.ClinicNum;
+					feeNew.ProvNum=feeIncreased.ProvNum;
+					feeNew.Amount=feeIncreased.Amount;
+					feeNew.DateEffective=dateEffectiveNew;
+					Insert(feeNew);//also writes the other clinics of a fee schedule group
+					listFeesCombo.Add(feeNew);
+					listFeesSaved.Add(feeNew);
+					continue;
+				}
+				feeAtDate.Amount=feeIncreased.Amount;
+				Update(feeAtDate);//also writes the other clinics of a fee schedule group
+				listFeesSaved.Add(feeAtDate);
+			}
+			return listFeesSaved;
+		}
+
+		///<summary>For SaveIncrease: every row (all dates) of the fee's schedule, clinic and provider, read from the database once per combination.
+		///</summary>
+		private static List<Fee> GetComboFeesAllDates(Dictionary<string,List<Fee>> dictFeesByCombo,Fee fee) {
+			string combo=fee.FeeSched+","+fee.ClinicNum+","+fee.ProvNum;
+			if(!dictFeesByCombo.TryGetValue(combo,out List<Fee> listFeesCombo)) {
+				listFeesCombo=GetListExactAllDates(fee.FeeSched,fee.ClinicNum,fee.ProvNum);
+				dictFeesByCombo[combo]=listFeesCombo;
+			}
+			return listFeesCombo;
+		}
+
+		///<summary>For an export that includes future fees: the fees that take over after dateAsOf for one code, as the lookup for this schedule, clinic
+		///and provider would find them. Returns one row per date on which the looked-up fee changes, in date order. listFees must hold every row that
+		///could apply (all dates). No database access except FeeScheds.IsGlobal.</summary>
+		public static List<Fee> GetFutureChanges(List<Fee> listFees,long codeNum,long feeSchedNum,long clinicNum,long provNum,DateTime dateAsOf) {
+			Meth.NoCheckMiddleTierRole();
+			return GetFutureChanges(listFees,codeNum,feeSchedNum,clinicNum,provNum,FeeScheds.IsGlobal(feeSchedNum),dateAsOf);
+		}
+
+		///<summary>Same as the other overload, with isGlobal given so it needs no database.</summary>
+		public static List<Fee> GetFutureChanges(List<Fee> listFees,long codeNum,long feeSchedNum,long clinicNum,long provNum,bool isGlobal,DateTime dateAsOf) {
+			Meth.NoCheckMiddleTierRole();
+			dateAsOf=dateAsOf.Date;
+			List<Fee> listFeesRet=new List<Fee>();
+			List<DateTime> listDates=listFees.FindAll(x => x.CodeNum==codeNum && x.FeeSched==feeSchedNum && x.DateEffective.Date>dateAsOf)
+				.Select(x => x.DateEffective.Date).Distinct().OrderBy(x => x).ToList();
+			Fee feePrevious=GetFeeFromList(listFees,codeNum,feeSchedNum,clinicNum,provNum,isGlobal,dateAsOf);
+			for(int i=0;i<listDates.Count;i++) {
+				Fee fee=GetFeeFromList(listFees,codeNum,feeSchedNum,clinicNum,provNum,isGlobal,listDates[i]);
+				if(fee==null || fee==feePrevious) {
+					continue;
+				}
+				listFeesRet.Add(fee);
+				feePrevious=fee;
+			}
+			return listFeesRet;
+		}
+		#endregion Fee tools
+
 		#region Misc Methods
-		///<summary>Increases the fees passed in by percent.  Round should be the number of decimal places, either 0,1,or 2.
+		///<summary>Increases the fees passed in by percent.Round should be the number of decimal places, either 0,1,or 2.
 		///This method will not manipulate listFees passed in, although there is no particular reason for this choice.
 		///Simply increases every fee passed in by the percent specified and returns the results.
 		///The following parameters are ignored: feeSchedNum, clinicNum, and provNum.</summary>

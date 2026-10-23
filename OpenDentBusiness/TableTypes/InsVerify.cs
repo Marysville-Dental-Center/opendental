@@ -33,6 +33,9 @@ namespace OpenDentBusiness {
 		///<summary>Automatically updated by MySQL every time a row is added or changed.</summary>
 		[CrudColumn(SpecialType=CrudSpecialColType.TimeStamp)]
 		public DateTime SecDateTEdit;
+		///<summary>Added in Open Dental 25.1 (inssub in 25.2): row-integrity hash over the protected fields, to notice edits made outside the program.
+		///Open Dental's values cannot be checked by this program; the row-integrity package rehashes them with this program's own hash.</summary>
+		public string SecurityHash;
 		//NOTE: If adding any more columns, be sure to add them to InsVerifyHist and to the constructor for InsVerifyHist.
 
 		#region Not Db Columns

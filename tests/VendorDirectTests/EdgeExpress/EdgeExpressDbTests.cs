@@ -16,7 +16,7 @@ using OpenDentBusiness.WebTypes.Shared.XWeb;
 namespace VendorDirectTests.EdgeExpressTests {
 	[TestClass]
 	public class EdgeExpressDbTests {
-		private const string DB_NAME="vendordirect_edgeexpress_tests";
+		private static readonly string DB_NAME=ScratchDb.Name("vendordirect_edgeexpress_tests");
 		private const string CONNECTION="Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=3";
 		private const long PAT_NUM=501;
 		private const string XWEB_ID_CLINIC_1="800000000001";
@@ -88,7 +88,8 @@ namespace VendorDirectTests.EdgeExpressTests {
 						+"PayConnectTokenExp date NOT NULL DEFAULT '0001-01-01',Procedures text NOT NULL,CCSource tinyint(4) NOT NULL,"
 						+"ClinicNum bigint(20) NOT NULL,ExcludeProcSync tinyint(4) NOT NULL,PaySimpleToken varchar(255) NOT NULL,"
 						+"ChargeFrequency varchar(150) NOT NULL,CanChargeWhenNoBal tinyint(4) NOT NULL,PaymentType bigint(20) NOT NULL,"
-						+"IsRecurringActive tinyint(4) NOT NULL,Nickname varchar(255) NOT NULL,PRIMARY KEY (CreditCardNum),KEY PatNum (PatNum)) "
+						+"IsRecurringActive tinyint(4) NOT NULL,Nickname varchar(255) NOT NULL,CardHolderName varchar(255) NOT NULL,"//CardHolderName: 25.1.
+						+"PRIMARY KEY (CreditCardNum),KEY PatNum (PatNum)) "
 						+"ENGINE=MyISAM DEFAULT CHARSET=utf8mb3");
 					Exec(connection,"CREATE TABLE securitylog (SecurityLogNum bigint(20) NOT NULL AUTO_INCREMENT,PermType smallint(6) NOT NULL,"
 						+"UserNum bigint(20) NOT NULL,LogDateTime datetime NOT NULL DEFAULT '0001-01-01 00:00:00',LogText text DEFAULT NULL,"

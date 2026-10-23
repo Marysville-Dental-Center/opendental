@@ -14,7 +14,7 @@ using OpenDentBusiness.VendorDirect;
 namespace VendorDirectTests.PayUi {
 	[TestClass]
 	public class PaymentWindowRulesDbTests {
-		private const string DB_NAME="vendordirect_payui_tests";
+		private static readonly string DB_NAME=ScratchDb.Name("vendordirect_payui_tests");
 		private const string CONNECTION="Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=3";
 		private static string _skipReason;
 		private static long _programNumPayConnect;

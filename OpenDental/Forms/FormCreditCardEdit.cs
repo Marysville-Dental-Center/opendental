@@ -117,6 +117,12 @@ namespace OpenDental {
 				textExpDate.Text=CreditCardCur.CCExpiration.ToString("MMyy");
 			}
 			textZip.Text=CreditCardCur.Zip;
+			//25.1: the cardholder name PayConnect returned when the card was added. Read-only, shown only when there is one.
+			if(!string.IsNullOrWhiteSpace(CreditCardCur.CardHolderName)) {
+				textCardHolderName.Text=CreditCardCur.CardHolderName;
+				labelCardHolderName.Visible=true;
+				textCardHolderName.Visible=true;
+			}
 			if(_isEdgeExpressEnabled || _isXChargeEnabled || _isPayConnectEnabled || _isPaySimpleEnabled) {//Only fill information if using X-Charge, PayConnect, or PaySimple.
 				if(CreditCardCur.ChargeAmt>0) {
 					textChargeAmt.Text=CreditCardCur.ChargeAmt.ToString("F");

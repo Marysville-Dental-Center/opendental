@@ -38,6 +38,11 @@ namespace OpenDental {
 			this.butSave = new OpenDental.UI.Button();
 			this.labelReconcile = new System.Windows.Forms.Label();
 			this.textReconcile = new System.Windows.Forms.TextBox();
+			this.butNextCheckNumber = new OpenDental.UI.Button();
+			this.labelPayee = new System.Windows.Forms.Label();
+			this.textPayee = new System.Windows.Forms.TextBox();
+			this.labelNotes = new System.Windows.Forms.Label();
+			this.textNotes = new System.Windows.Forms.TextBox();
 			this.SuspendLayout();
 			// 
 			// labelMemo
@@ -91,6 +96,53 @@ namespace OpenDental {
 			this.label2.Text = "Check Number";
 			this.label2.TextAlign = System.Drawing.ContentAlignment.TopRight;
 			// 
+			// butNextCheckNumber
+			// 
+			this.butNextCheckNumber.Location = new System.Drawing.Point(248, 143);
+			this.butNextCheckNumber.Name = "butNextCheckNumber";
+			this.butNextCheckNumber.Size = new System.Drawing.Size(75, 24);
+			this.butNextCheckNumber.TabIndex = 28;
+			this.butNextCheckNumber.Text = "Next";
+			this.butNextCheckNumber.Visible = false;
+			this.butNextCheckNumber.Click += new System.EventHandler(this.butNextCheckNumber_Click);
+			// 
+			// labelPayee
+			// 
+			this.labelPayee.Location = new System.Drawing.Point(5, 175);
+			this.labelPayee.Name = "labelPayee";
+			this.labelPayee.Size = new System.Drawing.Size(104, 16);
+			this.labelPayee.TabIndex = 29;
+			this.labelPayee.Text = "Payee";
+			this.labelPayee.TextAlign = System.Drawing.ContentAlignment.TopRight;
+			// 
+			// textPayee
+			// 
+			this.textPayee.Location = new System.Drawing.Point(110, 171);
+			this.textPayee.MaxLength = 255;
+			this.textPayee.Name = "textPayee";
+			this.textPayee.Size = new System.Drawing.Size(230, 20);
+			this.textPayee.TabIndex = 30;
+			// 
+			// labelNotes
+			// 
+			this.labelNotes.Location = new System.Drawing.Point(5, 201);
+			this.labelNotes.Name = "labelNotes";
+			this.labelNotes.Size = new System.Drawing.Size(104, 16);
+			this.labelNotes.TabIndex = 31;
+			this.labelNotes.Text = "Notes";
+			this.labelNotes.TextAlign = System.Drawing.ContentAlignment.TopRight;
+			// 
+			// textNotes
+			// 
+			this.textNotes.AcceptsReturn = true;
+			this.textNotes.Location = new System.Drawing.Point(110, 197);
+			this.textNotes.MaxLength = 65535;
+			this.textNotes.Multiline = true;
+			this.textNotes.Name = "textNotes";
+			this.textNotes.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+			this.textNotes.Size = new System.Drawing.Size(311, 60);
+			this.textNotes.TabIndex = 32;
+			// 
 			// label5
 			// 
 			this.label5.Location = new System.Drawing.Point(7, 63);
@@ -140,7 +192,7 @@ namespace OpenDental {
 			this.butDelete.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
 			this.butDelete.Icon = OpenDental.UI.EnumIcons.DeleteX;
 			this.butDelete.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			this.butDelete.Location = new System.Drawing.Point(10, 205);
+			this.butDelete.Location = new System.Drawing.Point(10, 285);
 			this.butDelete.Name = "butDelete";
 			this.butDelete.Size = new System.Drawing.Size(75, 26);
 			this.butDelete.TabIndex = 8;
@@ -150,7 +202,7 @@ namespace OpenDental {
 			// butSave
 			// 
 			this.butSave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.butSave.Location = new System.Drawing.Point(369, 205);
+			this.butSave.Location = new System.Drawing.Point(369, 285);
 			this.butSave.Name = "butSave";
 			this.butSave.Size = new System.Drawing.Size(75, 26);
 			this.butSave.TabIndex = 6;
@@ -159,7 +211,7 @@ namespace OpenDental {
 			// 
 			// labelReconcile
 			// 
-			this.labelReconcile.Location = new System.Drawing.Point(110, 183);
+			this.labelReconcile.Location = new System.Drawing.Point(110, 263);
 			this.labelReconcile.Name = "labelReconcile";
 			this.labelReconcile.Size = new System.Drawing.Size(230, 21);
 			this.labelReconcile.TabIndex = 27;
@@ -168,7 +220,7 @@ namespace OpenDental {
 			// 
 			// textReconcile
 			// 
-			this.textReconcile.Location = new System.Drawing.Point(110, 207);
+			this.textReconcile.Location = new System.Drawing.Point(110, 287);
 			this.textReconcile.Name = "textReconcile";
 			this.textReconcile.ReadOnly = true;
 			this.textReconcile.Size = new System.Drawing.Size(112, 20);
@@ -176,7 +228,12 @@ namespace OpenDental {
 			// 
 			// FormJournalEntryEdit
 			// 
-			this.ClientSize = new System.Drawing.Size(456, 240);
+			this.ClientSize = new System.Drawing.Size(456, 320);
+			this.Controls.Add(this.textNotes);
+			this.Controls.Add(this.labelNotes);
+			this.Controls.Add(this.textPayee);
+			this.Controls.Add(this.labelPayee);
+			this.Controls.Add(this.butNextCheckNumber);
 			this.Controls.Add(this.textReconcile);
 			this.Controls.Add(this.labelReconcile);
 			this.Controls.Add(this.butChange);
@@ -221,5 +278,10 @@ namespace OpenDental {
 		private OpenDental.UI.Button butChange;
 		private Label labelReconcile;
 		private TextBox textReconcile;
+		private OpenDental.UI.Button butNextCheckNumber;
+		private Label labelPayee;
+		private TextBox textPayee;
+		private Label labelNotes;
+		private TextBox textNotes;
 	}
 }

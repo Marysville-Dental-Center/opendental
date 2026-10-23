@@ -15,7 +15,7 @@ using OpenDentBusiness.VendorDirect;
 namespace VendorDirectTests.Erx {
 	[TestClass]
 	public class ErxDbTests {
-		private const string DB_NAME="vendordirect_erx_tests";
+		private static readonly string DB_NAME=ScratchDb.Name("vendordirect_erx_tests");
 		private const string CONNECTION="Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=20";
 		private const string NPI="1234567893";
 		private static string _skipReason;

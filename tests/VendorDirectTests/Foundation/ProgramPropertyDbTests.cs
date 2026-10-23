@@ -14,7 +14,7 @@ using OpenDentBusiness.VendorDirect;
 namespace VendorDirectTests.Foundation {
 	[TestClass]
 	public class ProgramPropertyDbTests {
-		private const string DB_NAME="vendordirect_f0_tests";
+		private static readonly string DB_NAME=ScratchDb.Name("vendordirect_f0_tests");
 		private static string _skipReason;
 
 		[ClassInitialize]

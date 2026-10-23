@@ -11,7 +11,7 @@ using OpenDentBusiness.Eclaims;
 
 namespace OpenDentBusiness{
 	///<summary></summary>
-	public class ClaimProcs{
+	public partial class ClaimProcs{
 		#region Get Methods
 
 		///<summary>Can be used to calculate the patient portion estimate for a procedure from a list of claimprocs and list of adjustments.</summary>
@@ -1877,10 +1877,25 @@ namespace OpenDentBusiness{
 		///Otherwise duplicate lab claimprocs can be created if cp.Status was only changed in memory.</summary>
 		public static void ComputeBaseEst(ClaimProc claimProc,Procedure procedure,InsPlan insPlan,long patPlanNum,List<Benefit> listBenefits,List<ClaimProcHist> listClaimProcHists
 			,List<ClaimProcHist> listClaimProcHistsLoop,List<PatPlan> listPatPlans,double paidOtherInsTot,double paidOtherInsBase,int patientAge,double writeOffOtherIns
-			,List<InsPlan> listInsPlans,List<InsSub> listInsSubs,List<SubstitutionLink> listSubstitutionLinks,bool useProcDateOnProc,//=false,List<Fee> listFees=null) 
+			,List<InsPlan> listInsPlans,List<InsSub> listInsSubs,List<SubstitutionLink> listSubstitutionLinks,bool useProcDateOnProc,//=false,List<Fee> listFees=null)
 			Lookup<FeeKey2,Fee> lookupFees,BlueBookEstimateData blueBookEstimateData,bool doCheckCanadianLabs=true)
 		{
 			Meth.NoCheckMiddleTierRole();
+			//Every fee looked up for this estimate (allowed, PPO, fixed benefit, blue book) is the one in effect on the procedure's date when it is
+			//complete, today otherwise. The scope reaches the lookups inside InsPlans and the blue book code too.
+			using(Fees.ScopeDateAsOf(Fees.GetDateAsOfForProc(procedure))) {
+				ComputeBaseEstAsOf(claimProc,procedure,insPlan,patPlanNum,listBenefits,listClaimProcHists,listClaimProcHistsLoop,listPatPlans,paidOtherInsTot,
+					paidOtherInsBase,patientAge,writeOffOtherIns,listInsPlans,listInsSubs,listSubstitutionLinks,useProcDateOnProc,lookupFees,blueBookEstimateData,
+					doCheckCanadianLabs);
+			}
+		}
+
+		///<summary>ComputeBaseEst inside its fee date scope.</summary>
+		private static void ComputeBaseEstAsOf(ClaimProc claimProc,Procedure procedure,InsPlan insPlan,long patPlanNum,List<Benefit> listBenefits,List<ClaimProcHist> listClaimProcHists
+			,List<ClaimProcHist> listClaimProcHistsLoop,List<PatPlan> listPatPlans,double paidOtherInsTot,double paidOtherInsBase,int patientAge,double writeOffOtherIns
+			,List<InsPlan> listInsPlans,List<InsSub> listInsSubs,List<SubstitutionLink> listSubstitutionLinks,bool useProcDateOnProc,
+			Lookup<FeeKey2,Fee> lookupFees,BlueBookEstimateData blueBookEstimateData,bool doCheckCanadianLabs)
+		{
 			if(claimProc.Status==ClaimProcStatus.Received && !PrefC.GetBool(PrefName.InsEstRecalcReceived)) {
 				return;
 			}
