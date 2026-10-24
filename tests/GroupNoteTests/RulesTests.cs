@@ -23,7 +23,7 @@ namespace GroupNoteTests {
 			return new Procedure { ProcNum=procNum,ProcStatus=procStat,ProcDate=date,ProvNum=provNum,ClinicNum=clinicNum,IsLocked=isLocked,CodeNum=procNum };
 		}
 
-		private static string Reason(Procedure procedure,string procCode="D0120",bool isFutureAllowed=false) {
+		private static string Reason(Procedure procedure,string procCode="GNT01",bool isFutureAllowed=false) {
 			return GroupNotes.GetAttachBlockReason(procedure,procCode,isFutureAllowed,_today);
 		}
 

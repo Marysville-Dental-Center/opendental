@@ -21,7 +21,7 @@ namespace GroupNoteTests {
 			_table.Columns.Add("CommlogNum");
 		}
 
-		private DataRow Proc(long procNum,string procCode="D1110") {
+		private DataRow Proc(long procNum,string procCode="GNT01") {
 			DataRow dataRow=_table.NewRow();
 			dataRow["ProcNum"]=procNum.ToString();
 			dataRow["ProcCode"]=procCode;
