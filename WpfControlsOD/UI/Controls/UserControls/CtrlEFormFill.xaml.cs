@@ -195,6 +195,9 @@ namespace OpenDental {
 		///<summary>Stores the indices of all the EFormFields that are at the rightmost position of a horizontal stack.</summary>
 		public List<int> ListIndicesLastInHorizStack;
 		public int PagesPrinted;
+		///<summary>The patient the form is for. Set by the fill window. Patient List and Ins Pick fields (Open Dental 25.2) read that patient's family live
+		///from the database. When 0, the fields' own PatNum is used.</summary>
+		public long PatNum;
 		///<summary>Set this whenever comboBox changes. It's the current language being used.  Will be empty string if languages are not set up in pref LanguagesUsedByPatients or if the default language is being used in the parent FrmEFormDefs.</summary>
 		public string LanguageShowing="";
 		///<summary>Passed in from parent. Based on EFormDef or EForm ShowLabelsBold.</summary>
@@ -657,6 +660,12 @@ namespace OpenDental {
 				}
 				if(ListEFormFields[i].FieldType==EnumEFormFieldType.MedicationList){
 					AddMedicationList(borderBox,ListEFormFields[i]);
+				}
+				if(ListEFormFields[i].FieldType==EnumEFormFieldType.PatientList){
+					AddPatientList(borderBox,ListEFormFields[i]);
+				}
+				if(ListEFormFields[i].FieldType==EnumEFormFieldType.InsPick){
+					AddInsPick(borderBox,ListEFormFields[i]);
 				}
 				if(ListEFormFields[i].FieldType==EnumEFormFieldType.PageBreak){
 					AddPageBreak(borderBox,ListEFormFields[i]);
@@ -2141,6 +2150,230 @@ namespace OpenDental {
 			checkBoxNone.Height=heightRow;
 			checkBoxNone.FontSize=fontSize;
 			SetMedListNoneVis(stackPanelVert);
+		}
+
+		///<summary>Open Dental 25.2 Patient List field: a label, then a read-only box with the picked family member's name and a Pick button. The Pick window
+		///lists the form patient's family, read live from the database. ValueString holds the picked PatNum.</summary>
+		private void AddPatientList(Border borderBox,EFormField eFormField){
+			StackPanel stackPanel2=new StackPanel();
+			borderBox.Child=stackPanel2;
+			stackPanel2.Width=EFormFields.CalcFieldWidth(eFormField,ListEFormFields,stackPanel.ActualWidth,SpaceToRightEachField);
+			if(eFormField.Border==EnumEFormBorder.ThreeD){
+				stackPanel2.Margin=new Thickness(0,top:4,0,bottom:4);
+			}
+			EFormPatListLayout eFormPatListLayout=EFormPatListLayout.Deserialize(eFormField.ValueLabel);
+			string strLabel=eFormPatListLayout.Label;
+			if(IsSetupMode){
+				strLabel=LanguagePats.TranslateEFormField(eFormField.EFormFieldDefNum,LanguageShowing,strLabel);
+			}
+			WpfControls.UI.Label label=CreateFieldLabel(eFormField,strLabel,isParentAllowed:false);
+			label.Margin=new Thickness(0,0,0,bottom:2);
+			stackPanel2.Children.Add(label);
+			Grid gridRow=new Grid();
+			ColumnDefinition columnDefinition=new ColumnDefinition();
+			columnDefinition.Width=new GridLength(1,GridUnitType.Star);
+			gridRow.ColumnDefinitions.Add(columnDefinition);
+			columnDefinition=new ColumnDefinition();
+			columnDefinition.Width=new GridLength(1,GridUnitType.Auto);
+			gridRow.ColumnDefinitions.Add(columnDefinition);
+			WpfControls.UI.TextBox textBox=new WpfControls.UI.TextBox();
+			textBox.ReadOnly=true;
+			textBox.Height=20;
+			textBox.FontSize=FontSize*eFormField.FontScale/100;
+			if(eFormField.Border==EnumEFormBorder.ThreeD){
+				textBox.IsUnderline=true;
+			}
+			if(!IsSetupMode){
+				textBox.Text=GetPatientListName(EFormInsPick.GetPatNumPicked(eFormField));
+			}
+			gridRow.Children.Add(textBox);
+			WpfControls.UI.Button button=new WpfControls.UI.Button();
+			button.Text=Lang.g("CtrlEFormFill","Pick");
+			button.Width=60;
+			button.Height=22;
+			button.Margin=new Thickness(left:5,0,0,0);
+			button.FontSize=FontSize*eFormField.FontScale/100;
+			Grid.SetColumn(button,1);
+			gridRow.Children.Add(button);
+			stackPanel2.Children.Add(gridRow);
+			if(IsSetupMode){
+				return;
+			}
+			button.Click+=(sender,e)=>{
+				FrmEFormPatientPick frmEFormPatientPick=new FrmEFormPatientPick(GetPatNumForm(eFormField),eFormField.EFormNum);
+				frmEFormPatientPick.PatNumSelected=EFormInsPick.GetPatNumPicked(eFormField);
+				frmEFormPatientPick.ShowDialog();
+				if(!frmEFormPatientPick.IsDialogOK){
+					return;
+				}
+				eFormField.ValueString=frmEFormPatientPick.PatNumSelected.ToString();
+				textBox.Text=GetPatientListName(frmEFormPatientPick.PatNumSelected);
+				ClearSignatures();
+			};
+		}
+
+		///<summary>Open Dental 25.2 Ins Pick field: a label, three radio buttons (None, New, Existing) and, for Existing, a read-only summary of the picked
+		///insurance. Existing opens a window listing the family's insurance and pending insurance. New shows the child fields through conditional logic.
+		///ValueString: empty for None, "New", or "InsSubNum:####" / "InsPendingNum:####". An empty answer shows as None.</summary>
+		private void AddInsPick(Border borderBox,EFormField eFormField){
+			StackPanel stackPanel2=new StackPanel();
+			borderBox.Child=stackPanel2;
+			stackPanel2.Width=EFormFields.CalcFieldWidth(eFormField,ListEFormFields,stackPanel.ActualWidth,SpaceToRightEachField);
+			if(eFormField.Border==EnumEFormBorder.ThreeD){
+				stackPanel2.Margin=new Thickness(0,top:4,0,bottom:4);
+			}
+			List<string> listOptions=EFormInsPick.GetOptions(eFormField.PickListVis);
+			string strLabel=eFormField.ValueLabel;
+			if(IsSetupMode){
+				string strTranslations=LanguagePats.TranslateEFormField(eFormField.EFormFieldDefNum,LanguageShowing,strLabel+"|"+string.Join("|",listOptions));
+				List<string> listTranslations=strTranslations.Split('|').ToList();
+				if(listTranslations.Count==4){
+					strLabel=listTranslations[0];
+					listOptions=listTranslations.GetRange(1,3);
+				}
+			}
+			WpfControls.UI.Label label=CreateFieldLabel(eFormField,strLabel,isParentAllowed:true);
+			label.Margin=new Thickness(0,0,0,bottom:3);
+			stackPanel2.Children.Add(label);
+			WrapPanel wrapPanelRadio=new WrapPanel();
+			wrapPanelRadio.Orientation=Orientation.Horizontal;
+			stackPanel2.Children.Add(wrapPanelRadio);
+			WpfControls.UI.Label labelSummary=new WpfControls.UI.Label();
+			labelSummary.HorizontalAlignment=HorizontalAlignment.Stretch;
+			labelSummary.VerticalAlignment=VerticalAlignment.Stretch;
+			labelSummary.FontSize=FontSize*eFormField.FontScale/100;
+			labelSummary.Margin=new Thickness(left:18,top:2,0,0);
+			labelSummary.Visible=false;
+			stackPanel2.Children.Add(labelSummary);
+			List<WpfControls.UI.RadioButton> listRadioButtons=new List<WpfControls.UI.RadioButton>();
+			int idxChecked=EFormInsPick.GetOptionIndex(eFormField.ValueString);
+			for(int i=0;i<listOptions.Count;i++){
+				WpfControls.UI.RadioButton radioButton=new WpfControls.UI.RadioButton();
+				radioButton.HorizontalAlignment=HorizontalAlignment.Stretch;
+				radioButton.VerticalAlignment=VerticalAlignment.Stretch;
+				radioButton.textBlock.Margin=new Thickness(left:1,0,0,0);
+				radioButton.Margin=new Thickness(0,0,right:_marginRightOfRadioButton,0);
+				radioButton.Text=listOptions[i];
+				radioButton.FontSize=FontSize*eFormField.FontScale/100;
+				if(!IsSetupMode && i==idxChecked){
+					radioButton.Checked=true;
+				}
+				listRadioButtons.Add(radioButton);
+				wrapPanelRadio.Children.Add(radioButton);
+			}
+			if(IsSetupMode){
+				return;
+			}
+			SetInsPickSummary(labelSummary,eFormField);
+			for(int i=0;i<listRadioButtons.Count;i++){
+				int idxOption=i;
+				listRadioButtons[i].Click+=(sender,e)=>{
+					string valueOld=eFormField.ValueString??"";
+					if(idxOption==0){
+						eFormField.ValueString="";
+					}
+					else if(idxOption==1){
+						eFormField.ValueString=EFormInsPick.VALUE_NEW;
+					}
+					else{
+						FrmEFormInsPickExisting frmEFormInsPickExisting=new FrmEFormInsPickExisting(GetPatNumForm(eFormField));
+						frmEFormInsPickExisting.ValueSelected=EFormInsPick.IsExisting(valueOld) ? valueOld : "";
+						frmEFormInsPickExisting.ShowDialog();
+						if(frmEFormInsPickExisting.IsDialogOK){
+							eFormField.ValueString=frmEFormInsPickExisting.ValueSelected;
+						}
+						else{//put the radio buttons back the way they were
+							int idxOld=EFormInsPick.GetOptionIndex(valueOld);
+							for(int r=0;r<listRadioButtons.Count;r++){
+								listRadioButtons[r].Checked=r==idxOld;
+							}
+						}
+					}
+					SetInsPickSummary(labelSummary,eFormField);
+					if(eFormField.ValueString!=valueOld){
+						SetVisibilities(_pageShowing,forceRefresh:true);
+						ClearSignatures();
+					}
+				};
+			}
+		}
+
+		///<summary>Shows what an Existing Ins Pick answer refers to: carrier and subscriber name, read live. Hidden for None and New.</summary>
+		private void SetInsPickSummary(WpfControls.UI.Label labelSummary,EFormField eFormField){
+			string summary=EFormInsPick.GetExistingSummary(eFormField.ValueString);
+			labelSummary.Text=summary;
+			labelSummary.Visible=summary!="";
+		}
+
+		///<summary>The label of a Patient List or Ins Pick field with the red star for required and, in setup, the conditional markers.</summary>
+		private WpfControls.UI.Label CreateFieldLabel(EFormField eFormField,string strLabel,bool isParentAllowed){
+			WpfControls.UI.Label label=new WpfControls.UI.Label();
+			label.Inlines.Clear();
+			label.HorizontalAlignment=HorizontalAlignment.Stretch;
+			label.VerticalAlignment=VerticalAlignment.Stretch;
+			if(strLabel==""){
+				label.Height=0;
+			}
+			Run runMainPlain=new Run(strLabel);
+			if(ShowLabelsBold){
+				label.FontSize=FontSize*eFormField.FontScale*_scaleFontLabel/100;
+				runMainPlain.FontWeight=FontWeights.Medium;
+			}
+			else{
+				label.FontSize=FontSize*eFormField.FontScale/100;
+			}
+			label.Inlines.Add(runMainPlain);
+			if(eFormField.IsRequired) {
+				Run runStar=new Run(" *");
+				runStar.FontWeight=FontWeights.Bold;
+				runStar.Foreground=Brushes.Red;
+				label.Inlines.Add(runStar);
+			}
+			if(isParentAllowed
+				&& IsSetupMode
+				&& eFormField.ValueLabel!=""
+				&& ListEFormFields.Exists(x=>x.ConditionalParent==eFormField.ValueLabel.Substring(0,Math.Min(eFormField.ValueLabel.Length,255))))
+			{
+				Run runConditP=new Run(" (CND)");
+				runConditP.Foreground=Brushes.Red;
+				label.Inlines.Add(runConditP);
+			}
+			if(IsSetupMode
+				&& eFormField.ConditionalParent!=""
+				&& ListEFormFields.Exists(x=>x.ValueLabel==eFormField.ConditionalParent))
+			{
+				Run runCondit=new Run(" (cnd)");
+				runCondit.Foreground=Brushes.Red;
+				label.Inlines.Add(runCondit);
+			}
+			return label;
+		}
+
+		///<summary>The form patient, for the live family lookups of Patient List and Ins Pick.</summary>
+		private long GetPatNumForm(EFormField eFormField){
+			if(PatNum!=0){
+				return PatNum;
+			}
+			if(eFormField.PatNum!=0){
+				return eFormField.PatNum;
+			}
+			EFormField eFormFieldWithPat=ListEFormFields.Find(x=>x.PatNum!=0);
+			if(eFormFieldWithPat!=null){
+				return eFormFieldWithPat.PatNum;
+			}
+			return 0;
+		}
+
+		///<summary>First and last name only, since the patient may be filling at a kiosk.</summary>
+		private string GetPatientListName(long patNum){
+			if(patNum==0){
+				return "";
+			}
+			Patient patient=Patients.GetLim(patNum);
+			if(patient==null){
+				return "";
+			}
+			return patient.FName+" "+patient.LName;
 		}
 
 		private void AddPageBreak(Border borderBox,EFormField eFormField) {

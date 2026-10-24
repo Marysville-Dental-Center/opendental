@@ -61,6 +61,12 @@ Like in that form, edits to the fields do not get saved to the db as they are ed
 
 		///<summary></summary>
 		private void CtrlEFormFill_EventDoubleClickField(object sender,int idx) {
+			if(ctrlEFormFill.ListEFormFields[idx].FieldType==EnumEFormFieldType.PatientList
+				|| ctrlEFormFill.ListEFormFields[idx].FieldType==EnumEFormFieldType.InsPick)
+			{
+				EditPatientListOrInsPick(idx);
+				return;
+			}
 			if(ctrlEFormFill.ListEFormFields[idx].FieldType==EnumEFormFieldType.TextField){
 				FrmEFormTextBoxEdit frmEFormTextBoxEdit=new FrmEFormTextBoxEdit();
 				frmEFormTextBoxEdit.EFormFieldCur=ctrlEFormFill.ListEFormFields[idx];
@@ -532,6 +538,167 @@ Like in that form, edits to the fields do not get saved to the db as they are ed
 			}
 			ctrlEFormFill.RefreshLayout();
 			ctrlEFormFill.SetSelected(idxNew);
+		}
+
+		private void butPatientList_Click(object sender,EventArgs e) {
+			//See comments in butTextField_Click.
+			EFormFieldDef eFormFieldDef=new EFormFieldDef();
+			EFormFieldDefs.Insert(eFormFieldDef);
+			EFormField eFormField=EFormFields.FromDef(eFormFieldDef);
+			eFormField.IsNew=true;
+			eFormField.FontScale=100;
+			eFormField.FieldType=EnumEFormFieldType.PatientList;
+			eFormField.Border=GetMajorityBorderType();
+			eFormField.ValueLabel=new EFormPatListLayout().Serialize();
+			int idxNew=ctrlEFormFill.GetSelectedIndex();
+			if(idxNew==-1){
+				idxNew=EFormFields.GetLastIdxThisPage(ctrlEFormFill.ListEFormFields,ctrlEFormFill.GetPageShowing());
+			}
+			ctrlEFormFill.ListEFormFields.Insert(idxNew,eFormField);
+			if(!ShowEditPatientListOrInsPick(eFormField) || eFormField.IsDeleted){
+				EFormFieldDefs.Delete(eFormField.EFormFieldDefNum);
+				ctrlEFormFill.ListEFormFields.Remove(eFormField);
+				return;
+			}
+			ctrlEFormFill.RefreshLayout();
+			ctrlEFormFill.SetSelected(idxNew);
+		}
+
+		private void butInsPick_Click(object sender,EventArgs e) {
+			//See comments in butTextField_Click.
+			EFormFieldDef eFormFieldDef=new EFormFieldDef();
+			EFormFieldDefs.Insert(eFormFieldDef);
+			EFormField eFormField=EFormFields.FromDef(eFormFieldDef);
+			eFormField.IsNew=true;
+			eFormField.FontScale=100;
+			eFormField.FieldType=EnumEFormFieldType.InsPick;
+			eFormField.Border=GetMajorityBorderType();
+			//Suggest the first slot not used yet by another Ins Pick field.
+			if(!ctrlEFormFill.ListEFormFields.Exists(x=>x.FieldType==EnumEFormFieldType.InsPick && x.DbLink==EFormInsPick.DBLINK_INS1)){
+				eFormField.DbLink=EFormInsPick.DBLINK_INS1;
+				eFormField.ValueLabel="Primary Insurance";
+			}
+			else if(!ctrlEFormFill.ListEFormFields.Exists(x=>x.FieldType==EnumEFormFieldType.InsPick && x.DbLink==EFormInsPick.DBLINK_INS2)){
+				eFormField.DbLink=EFormInsPick.DBLINK_INS2;
+				eFormField.ValueLabel="Secondary Insurance";
+			}
+			else{
+				eFormField.ValueLabel="Insurance";
+			}
+			eFormField.PickListVis=string.Join("|",EFormInsPick.GetOptionsDefault());
+			eFormField.PickListDb="";
+			int idxNew=ctrlEFormFill.GetSelectedIndex();
+			if(idxNew==-1){
+				idxNew=EFormFields.GetLastIdxThisPage(ctrlEFormFill.ListEFormFields,ctrlEFormFill.GetPageShowing());
+			}
+			ctrlEFormFill.ListEFormFields.Insert(idxNew,eFormField);
+			if(!ShowEditPatientListOrInsPick(eFormField) || eFormField.IsDeleted){
+				EFormFieldDefs.Delete(eFormField.EFormFieldDefNum);
+				ctrlEFormFill.ListEFormFields.Remove(eFormField);
+				return;
+			}
+			byte ordinal=EFormInsPick.GetOrdinal(eFormField.DbLink);
+			if(ordinal>0 && MsgBox.Show(MsgBoxButtons.YesNo,Lang.g(this,"Also add the subscriber and insurance fields that show when")+" '"
+				+EFormInsPick.GetOptions(eFormField.PickListVis)[1]+"' "+Lang.g(this,"is picked?")))
+			{
+				AddInsPickChildFields(eFormField,ctrlEFormFill.ListEFormFields.IndexOf(eFormField)+1);
+			}
+			ctrlEFormFill.RefreshLayout();
+			ctrlEFormFill.SetSelected(ctrlEFormFill.ListEFormFields.IndexOf(eFormField));
+		}
+
+		///<summary>Adds the child fields of an Ins Pick field right after it: a Patient List for the subscriber, the relationship radio buttons and the
+		///carrier, phone, group, employer and subscriber ID boxes of the field's slot (ins1 or ins2 links). Each shows only when the New choice is picked.
+		///Every field gets an empty def row now, for its PK, as the Add buttons do.</summary>
+		private void AddInsPickChildFields(EFormField eFormFieldInsPick,int idxInsert){
+			string prefix="ins"+EFormInsPick.GetOrdinal(eFormFieldInsPick.DbLink);
+			string condParent=eFormFieldInsPick.ValueLabel.Substring(0,Math.Min(eFormFieldInsPick.ValueLabel.Length,255));
+			string condValue=EFormInsPick.GetOptions(eFormFieldInsPick.PickListVis)[1];
+			List<EFormField> listEFormFieldsNew=new List<EFormField>();
+			EFormField eFormField=CreateChildField(EnumEFormFieldType.PatientList,"",condParent,condValue);
+			EFormPatListLayout eFormPatListLayout=new EFormPatListLayout();
+			eFormPatListLayout.Label="Subscriber";
+			eFormField.ValueLabel=eFormPatListLayout.Serialize();
+			eFormField.IsRequired=true;
+			listEFormFieldsNew.Add(eFormField);
+			eFormField=CreateChildField(EnumEFormFieldType.RadioButtons,prefix+"Relat",condParent,condValue);
+			eFormField.ValueLabel="Relationship to Subscriber";
+			eFormField.PickListDb=string.Join("|",EFormFieldsAvailable.GetRadioDbDefault(prefix+"Relat"));
+			eFormField.PickListVis=string.Join("|",EFormFieldsAvailable.GetRadioVisDefault(prefix+"Relat"));
+			eFormField.IsRequired=true;
+			listEFormFieldsNew.Add(eFormField);
+			List<(string suffix,string label,bool isRequired)> listTexts=new List<(string,string,bool)>(){
+				("CarrierName","Insurance Carrier",true),
+				("CarrierPhone","Carrier Phone",false),
+				("GroupName","Group Name",false),
+				("GroupNum","Group Number",false),
+				("EmployerName","Employer",false),
+				("SubscriberID","Subscriber ID",true)
+			};
+			for(int i=0;i<listTexts.Count;i++){
+				eFormField=CreateChildField(EnumEFormFieldType.TextField,prefix+listTexts[i].suffix,condParent,condValue);
+				eFormField.ValueLabel=listTexts[i].label;
+				eFormField.IsRequired=listTexts[i].isRequired;
+				listEFormFieldsNew.Add(eFormField);
+			}
+			ctrlEFormFill.ListEFormFields.InsertRange(idxInsert,listEFormFieldsNew);
+		}
+
+		private EFormField CreateChildField(EnumEFormFieldType enumEFormFieldType,string dbLink,string condParent,string condValue){
+			EFormFieldDef eFormFieldDef=new EFormFieldDef();
+			EFormFieldDefs.Insert(eFormFieldDef);
+			EFormField eFormField=EFormFields.FromDef(eFormFieldDef);
+			eFormField.IsNew=true;
+			eFormField.FontScale=100;
+			eFormField.FieldType=enumEFormFieldType;
+			eFormField.Border=GetMajorityBorderType();
+			eFormField.DbLink=dbLink;
+			eFormField.ConditionalParent=condParent;
+			eFormField.ConditionalValue=condValue;
+			eFormField.SpaceBelow=-1;
+			eFormField.SpaceToRight=-1;
+			return eFormField;
+		}
+
+		///<summary>Opens the edit window of a Patient List or Ins Pick field. Returns false if the user cancelled.</summary>
+		private bool ShowEditPatientListOrInsPick(EFormField eFormField){
+			string languageShowing="";
+			if(comboLanguage.SelectedIndex>0){
+				languageShowing=comboLanguage.SelectedItem.ToString();
+			}
+			if(eFormField.FieldType==EnumEFormFieldType.PatientList){
+				FrmEFormPatientListEdit frmEFormPatientListEdit=new FrmEFormPatientListEdit();
+				frmEFormPatientListEdit.EFormFieldCur=eFormField;
+				frmEFormPatientListEdit.ListEFormFields=ctrlEFormFill.ListEFormFields;
+				frmEFormPatientListEdit.LanguageShowing=languageShowing;
+				frmEFormPatientListEdit.ShowDialog();
+				_isChangedLanCache|=frmEFormPatientListEdit.IsChangedLanCache;
+				return !frmEFormPatientListEdit.IsDialogCancel;
+			}
+			FrmEFormInsPickEdit frmEFormInsPickEdit=new FrmEFormInsPickEdit();
+			frmEFormInsPickEdit.EFormFieldCur=eFormField;
+			frmEFormInsPickEdit.ListEFormFields=ctrlEFormFill.ListEFormFields;
+			frmEFormInsPickEdit.LanguageShowing=languageShowing;
+			frmEFormInsPickEdit.ShowDialog();
+			_isChangedLanCache|=frmEFormInsPickEdit.IsChangedLanCache;
+			return !frmEFormInsPickEdit.IsDialogCancel;
+		}
+
+		///<summary>Double-click on an existing Patient List or Ins Pick field. See comments in CtrlEFormFill_EventDoubleClickField for TextField.</summary>
+		private void EditPatientListOrInsPick(int idx){
+			if(!ShowEditPatientListOrInsPick(ctrlEFormFill.ListEFormFields[idx])){
+				return;
+			}
+			if(ctrlEFormFill.ListEFormFields[idx].IsDeleted){
+				if(ctrlEFormFill.ListEFormFields[idx].IsNew){//the field was added in this session previously
+					EFormFieldDefs.Delete(ctrlEFormFill.ListEFormFields[idx].EFormFieldDefNum);//also deletes languagepats.
+				}
+				else{
+					ctrlEFormFill.ListEFormFieldDefNumsToDelete.Add(ctrlEFormFill.ListEFormFields[idx].EFormFieldDefNum);//these will get deleted when user clicks Save
+				}
+				ctrlEFormFill.ListEFormFields.RemoveAt(idx);
+			}
+			ctrlEFormFill.RefreshLayout();
 		}
 
 		private void butPageBreak_Click(object sender,EventArgs e) {

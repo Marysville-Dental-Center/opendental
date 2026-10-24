@@ -144,9 +144,124 @@ namespace OpenDentBusiness {
 			return (eFormField.ValueString??"").Trim();
 		}
 
+		///<summary>A read-only summary of an Existing answer, read live: carrier name and the subscriber's first and last name (kiosk-safe), with
+		///"(pending)" for pending insurance. Empty for None, New, or a row that no longer exists.</summary>
+		public static string GetExistingSummary(string valueString) {
+			long insSubNum=GetInsSubNum(valueString);
+			if(insSubNum>0) {
+				InsSub insSub=InsSubs.GetOne(insSubNum);
+				if(insSub==null) {
+					return "";
+				}
+				InsPlan insPlan=InsPlans.GetPlan(insSub.PlanNum,null);
+				string carrierName=insPlan==null ? "" : Carriers.GetName(insPlan.CarrierNum);
+				return carrierName+" ("+Lans.g("EFormInsPick","subscriber")+": "+GetNameFirstLast(insSub.Subscriber)+")";
+			}
+			long insPendingNum=GetInsPendingNum(valueString);
+			if(insPendingNum>0) {
+				InsPending insPending=InsPendings.GetOne(insPendingNum);
+				if(insPending==null) {
+					return "";
+				}
+				return insPending.CarrierName+" ("+Lans.g("EFormInsPick","subscriber")+": "+GetNameFirstLast(insPending.PatNumSubscriber)+") "
+					+Lans.g("EFormInsPick","(pending)");
+			}
+			return "";
+		}
+
+		///<summary>The choices for an Existing answer: every subscription of a family member, then the family's pending insurance (one row per distinct
+		///insurance). Each has the value to store ("InsSubNum:####" or "InsPendingNum:####") and a line showing carrier, subscriber and subscriber ID.</summary>
+		public static List<EFormInsPickChoice> GetExistingChoices(long patNumForm) {
+			List<EFormInsPickChoice> listChoices=new List<EFormInsPickChoice>();
+			if(patNumForm==0) {
+				return listChoices;
+			}
+			Family family=Patients.GetFamily(patNumForm);
+			List<InsSub> listInsSubs=InsSubs.RefreshForFam(family);
+			List<InsPlan> listInsPlans=InsPlans.RefreshForSubList(listInsSubs);
+			for(int i=0;i<listInsSubs.Count;i++) {
+				InsPlan insPlan=InsPlans.GetPlan(listInsSubs[i].PlanNum,listInsPlans);
+				if(insPlan==null || insPlan.IsHidden) {
+					continue;
+				}
+				EFormInsPickChoice choice=new EFormInsPickChoice();
+				choice.Value=ToValueInsSub(listInsSubs[i].InsSubNum);
+				choice.Display=Carriers.GetName(insPlan.CarrierNum)+" - "+Lans.g("EFormInsPick","subscriber")+": "+GetNameFirstLast(listInsSubs[i].Subscriber)
+					+" - "+Lans.g("EFormInsPick","ID")+": "+listInsSubs[i].SubscriberID;
+				listChoices.Add(choice);
+			}
+			List<InsPending> listInsPendings=InsPendings.GetForPats(family.ListPats.Select(x => x.PatNum).ToList());
+			List<InsPending> listInsPendingsShown=new List<InsPending>();
+			for(int i=0;i<listInsPendings.Count;i++) {
+				if(listInsPendingsShown.Exists(x => InsPendings.IsSameInsurance(x,listInsPendings[i]))) {
+					continue;
+				}
+				listInsPendingsShown.Add(listInsPendings[i]);
+				EFormInsPickChoice choice=new EFormInsPickChoice();
+				choice.Value=ToValueInsPending(listInsPendings[i].InsPendingNum);
+				choice.Display=listInsPendings[i].CarrierName+" - "+Lans.g("EFormInsPick","subscriber")+": "+GetNameFirstLast(listInsPendings[i].PatNumSubscriber)
+					+" - "+Lans.g("EFormInsPick","ID")+": "+listInsPendings[i].SubscriberID+" "+Lans.g("EFormInsPick","(pending)");
+				choice.IsPending=true;
+				listChoices.Add(choice);
+			}
+			return listChoices;
+		}
+
+		///<summary>First and last name only.</summary>
+		public static string GetNameFirstLast(long patNum) {
+			Patient patient=Patients.GetLim(patNum);
+			if(patient==null) {
+				return "";
+			}
+			return patient.FName+" "+patient.LName;
+		}
+
+		///<summary>Returns an error message for the Patient List Add window, or empty string. First name, last name and a real birthdate are required.</summary>
+		public static string ValidateNewFamilyMember(string fName,string lName,DateTime birthdate) {
+			if(string.IsNullOrWhiteSpace(fName) || string.IsNullOrWhiteSpace(lName)) {
+				return Lans.g("EFormInsPick","First and last name are required.");
+			}
+			if(birthdate.Year<1880 || birthdate.Date>DateTime.Today) {
+				return Lans.g("EFormInsPick","A valid birthdate is required.");
+			}
+			return "";
+		}
+
+		///<summary>The Add button of a Patient List field: creates a person in the form patient's family, with the guarantor's address and home phone,
+		///status Non-patient (our design: a subscriber is often not a patient), and the guarantor's provider and clinic. Logs PatientCreate. The caller
+		///checks the PatientCreate permission and validates with ValidateNewFamilyMember.</summary>
+		public static Patient AddFamilyMember(long patNumForm,string fName,string lName,DateTime birthdate,long eFormNum) {
+			Patient patientForm=Patients.GetPat(patNumForm);
+			if(patientForm==null) {
+				throw new ApplicationException(Lans.g("EFormInsPick","The form has no patient."));
+			}
+			Patient patientGuar=Patients.GetPat(patientForm.Guarantor)??patientForm;
+			string strForm=eFormNum==0 ? "a new eForm" : "eForm #"+eFormNum;
+			Patient patient=Patients.CreateNewPatient(lName.Trim(),fName.Trim(),birthdate.Date,patientGuar.PriProv,patientGuar.ClinicNum,
+				"Created from eForm Patient List field, "+strForm,patStatus:PatientStatus.NonPatient);
+			Patient patientOld=patient.Copy();
+			patient.Guarantor=patientGuar.PatNum;
+			patient.Address=patientGuar.Address;
+			patient.Address2=patientGuar.Address2;
+			patient.City=patientGuar.City;
+			patient.State=patientGuar.State;
+			patient.Zip=patientGuar.Zip;
+			patient.HmPhone=patientGuar.HmPhone;
+			Patients.Update(patient,patientOld);
+			return patient;
+		}
+
 		///<summary>Subscriber IDs are stored without dashes or spaces (inspending.SubscriberID: "No dashes").</summary>
 		public static string NormalizeSubscriberID(string subscriberID) {
 			return (subscriberID??"").Replace("-","").Replace(" ","").Trim();
 		}
+	}
+
+	///<summary>One row of the Existing insurance picker of an Ins Pick field.</summary>
+	public class EFormInsPickChoice {
+		///<summary>"InsSubNum:####" or "InsPendingNum:####".</summary>
+		public string Value="";
+		public string Display="";
+		public bool IsPending;
 	}
 }

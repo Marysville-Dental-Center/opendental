@@ -52,6 +52,7 @@ namespace OpenDental {
 			_listEFormFieldsOld=EFormFields.GetDeepCopy(EFormCur.ListEFormFields);
 			Lang.F(this);
 			ctrlEFormFill.ListEFormFields=EFormCur.ListEFormFields;//two references to same list of objects
+			ctrlEFormFill.PatNum=EFormCur.PatNum;//Patient List and Ins Pick fields read this patient's family
 			ctrlEFormFill.ShowLabelsBold=EFormCur.ShowLabelsBold;
 			ctrlEFormFill.SpaceBelowEachField=EFormCur.SpaceBelowEachField;
 			ctrlEFormFill.SpaceToRightEachField=EFormCur.SpaceToRightEachField;
@@ -143,6 +144,7 @@ namespace OpenDental {
 			SecurityLogs.MakeLogEntry(EnumPermType.EFormEdit,EFormCur.PatNum,Lang.g(this,"eForm with ID")+" "+EFormCur.EFormNum+" "+Lang.g(this,"moved to PatNum")+" "+frmPatientSelect.PatNumSelected);
 			SecurityLogs.MakeLogEntry(EnumPermType.EFormEdit,frmPatientSelect.PatNumSelected,Lang.g(this,"eForm with ID")+" "+EFormCur.EFormNum+" "+Lang.g(this,"moved from PatNum")+" "+EFormCur.PatNum);
 			EFormCur.PatNum=frmPatientSelect.PatNumSelected;
+			ctrlEFormFill.PatNum=EFormCur.PatNum;
 		}
 
 		private void butSave_Click(object sender,EventArgs e) {

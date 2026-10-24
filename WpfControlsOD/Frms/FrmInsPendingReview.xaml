@@ -1,0 +1,56 @@
+<local:FrmODBase x:Class="OpenDental.FrmInsPendingReview"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:local="clr-namespace:OpenDental"
+             xmlns:ui="clr-namespace:WpfControls.UI"
+             mc:Ignorable="d"
+             Width="900" Height="610"
+             Text="Pending Insurance" MinMaxBoxes="False" >
+	<Grid Background="#FFFCFDFE" >
+		<ui:GroupBox x:Name="groupPending" Width="400" Height="480" Margin="12,10,0,0" Text="Pending Insurance (as the patient entered it)">
+			<ui:Label Width="110" Height="18" Margin="5,26,0,0" Text="Patient" HAlign="Right" VAlign="Center" />
+			<ui:TextBox x:Name="textPatient" Width="250" Height="20" Margin="118,25,0,0" ReadOnly="True" ColorBack="#FFF0F0F0" />
+			<ui:Label Width="110" Height="18" Margin="5,53,0,0" Text="Subscriber" HAlign="Right" VAlign="Center" />
+			<ui:ComboBox x:Name="comboSubscriber" Width="250" Height="21" Margin="118,52,0,0" />
+			<ui:Label Width="110" Height="18" Margin="5,80,0,0" Text="Relationship" HAlign="Right" VAlign="Center" />
+			<ui:ComboBox x:Name="comboRelationship" Width="150" Height="21" Margin="118,79,0,0" />
+			<ui:Label Width="110" Height="18" Margin="5,107,0,0" Text="Wanted Ordinal" HAlign="Right" VAlign="Center" />
+			<ui:TextVInt x:Name="textVIntOrdinal" Width="40" Height="20" Margin="118,106,0,0" MinVal="0" MaxVal="9" />
+			<ui:Label Height="18" Margin="164,107,0,0" Text="1 primary, 2 secondary, 0 not stated" VAlign="Center" Width="220" />
+			<ui:Label Width="110" Height="18" Margin="5,140,0,0" Text="Carrier Name" HAlign="Right" VAlign="Center" />
+			<ui:TextBox x:Name="textCarrierName" Width="250" Height="20" Margin="118,139,0,0" />
+			<ui:Label Width="110" Height="18" Margin="5,167,0,0" Text="Carrier Phone" HAlign="Right" VAlign="Center" />
+			<ui:TextBox x:Name="textPhone" Width="150" Height="20" Margin="118,166,0,0" />
+			<ui:Label Width="110" Height="18" Margin="5,194,0,0" Text="Group Name" HAlign="Right" VAlign="Center" />
+			<ui:TextBox x:Name="textGroupName" Width="250" Height="20" Margin="118,193,0,0" />
+			<ui:Label Width="110" Height="18" Margin="5,221,0,0" Text="Group Number" HAlign="Right" VAlign="Center" />
+			<ui:TextBox x:Name="textGroupNum" Width="150" Height="20" Margin="118,220,0,0" />
+			<ui:Label Width="110" Height="18" Margin="5,248,0,0" Text="Employer" HAlign="Right" VAlign="Center" />
+			<ui:TextBox x:Name="textEmployer" Width="250" Height="20" Margin="118,247,0,0" />
+			<ui:Label Width="110" Height="18" Margin="5,275,0,0" Text="Subscriber ID" HAlign="Right" VAlign="Center" />
+			<ui:TextBox x:Name="textSubscriberID" Width="150" Height="20" Margin="118,274,0,0" />
+			<ui:Label x:Name="labelPendingHelp" Height="60" Margin="20,310,0,0" Width="360" VAlign="Top" Text="Pending insurance is not used for estimates or claims. Fix anything the patient mistyped, then convert it to a real plan on the right." />
+			<ui:Button x:Name="butSaveEdits" Width="110" Height="24" Margin="118,380,0,0" Text="Save Changes" Click="butSaveEdits_Click" />
+			<ui:Button x:Name="butDelete" Width="84" Height="24" Margin="20,440,0,0" Text="Delete" Icon="DeleteX" Click="butDelete_Click" />
+		</ui:GroupBox>
+		<ui:GroupBox x:Name="groupConvert" Width="460" Height="530" Margin="420,10,0,0" Text="Convert to Insurance Plan">
+			<ui:Label Height="18" Margin="10,22,0,0" Text="1. Carrier (exact and near matches of the carrier name)" Width="340" VAlign="Center" />
+			<ui:Button x:Name="butSearchCarriers" Width="75" Height="24" Margin="370,18,0,0" Text="Search" Click="butSearchCarriers_Click" />
+			<ui:ListBox x:Name="listCarriers" Width="435" Height="100" Margin="10,44,0,0" />
+			<ui:Label Height="18" Margin="10,152,0,0" Text="2. Plan" Width="100" VAlign="Center" />
+			<ui:CheckBox x:Name="checkAllPlans" Height="20" Margin="200,151,0,0" Width="245" Text="Show all plans for this carrier" Click="checkAllPlans_Click" />
+			<ui:ListBox x:Name="listPlans" Width="435" Height="100" Margin="10,174,0,0" />
+			<ui:Label Height="18" Margin="10,282,0,0" Text="3. Subscription" Width="110" VAlign="Center" />
+			<ui:Label x:Name="labelSubscription" Height="18" Margin="120,282,0,0" Width="325" VAlign="Center" />
+			<ui:Label Height="18" Margin="10,309,0,0" Text="4. Ordinal" Width="110" VAlign="Center" />
+			<ui:TextVInt x:Name="textVIntOrdinalConvert" Width="40" Height="20" Margin="120,308,0,0" MinVal="1" MaxVal="9" />
+			<ui:Label Height="18" Margin="166,309,0,0" Text="other plans move down to make room" VAlign="Center" Width="270" />
+			<ui:Label x:Name="labelAlso" Height="18" Margin="10,338,0,0" Text="5. Also convert for these family members (same subscriber, ID and carrier)" Width="435" VAlign="Center" />
+			<ui:ListBox x:Name="listAlso" Width="435" Height="80" Margin="10,360,0,0" SelectionMode="CheckBoxes" />
+			<ui:Button x:Name="butConvert" Width="180" Height="26" Margin="265,460,0,0" Text="Convert to Insurance Plan" Click="butConvert_Click" />
+		</ui:GroupBox>
+		<ui:Button x:Name="butClose" HorizontalAlignment="Right" Width="75" VerticalAlignment="Bottom" Height="24" Margin="0,0,20,18" Text="_Close" Click="butClose_Click" />
+	</Grid>
+</local:FrmODBase>
