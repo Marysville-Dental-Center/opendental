@@ -5,6 +5,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using System.Text;
@@ -42,8 +43,14 @@ namespace OpenDental{
 		///<summary>True if the user clicked the Change User button.</summary>
 		private bool _hasUserChanged;
 		private List<PatFieldDef> _listPatFieldDefs;
-		///<summary>True if group note is attached to at least one completed proc.  Used for determining which permission to use.</summary>
-		private bool _attachedToCompletedProc;
+		///<summary>Statuses of the procedures attached when the window opened. Decides which permission applies (see GroupNotes): a group note on at least
+		///one completed procedure, or on none (25.1), is treated as complete.</summary>
+		private List<ProcStat> _listProcStatsAtLoad;
+		///<summary>The permission and date that guard editing this group note, from _listProcStatsAtLoad.</summary>
+		private EnumPermType _permissionNote;
+		private DateTime _datePermission;
+		///<summary>25.1: true if the user may change the date, the provider and the attached procedures in this window.</summary>
+		private bool _canEditStructure;
 		private const string _autoNotePromptRegex=@"\[Prompt:""[a-zA-Z_0-9 ]+""\]";
 
 		public FormProcGroup() {
@@ -72,11 +79,15 @@ namespace OpenDental{
 			_patient=Patients.GetPat(ProcedureGroup.PatNum);
 			_family=Patients.GetFamily(ProcedureGroup.PatNum);
 			_procedureGroupOld=ProcedureGroup.Copy();
+			ListProcedures=ListProcedures.FindAll(x => x!=null && x.ProcNum!=0);
 			ListProceduresOld=new List<Procedure>();
 			for(int i=0;i<ListProcedures.Count;i++){
 				ListProceduresOld.Add(ListProcedures[i].Copy());
 			}
+			_listProcStatsAtLoad=ListProcedures.Select(x => x.ProcStatus).ToList();
 			textProcDate.Text=ProcedureGroup.ProcDate.ToShortDateString();
+			comboProv.Items.AddProvsAbbr(Providers.GetProvsForClinic(ProcedureGroup.ClinicNum));
+			comboProv.SetSelectedProvNum(ProcedureGroup.ProvNum);
 			textDateEntry.Text=ProcedureGroup.DateEntryC.ToShortDateString();
 			textUser.Text=Userods.GetName(ProcedureGroup.UserNum);//might be blank. Will change automatically if user changes note or alters sig.
 			textNotes.Text=ProcedureGroup.Note;
@@ -93,6 +104,9 @@ namespace OpenDental{
 			if(Security.IsGlobalDateLock(permissions,ProcedureGroup.ProcDate)) {
 				butLock.Enabled=false;
 			}
+			//Edit Note on Completed Procedure when a completed procedure is attached or nothing is attached (25.1), otherwise TP Procedure Delete.
+			_permissionNote=GroupNotes.GetNotePermission(_listProcStatsAtLoad);
+			_datePermission=GroupNotes.GetPermissionDate(ProcedureGroup,_listProcStatsAtLoad);
 			if(ProcedureGroup.IsLocked) {//Whether locking is currently allowed, this proc group may have been locked previously.
 				butSave.Enabled=false;
 				butDelete.Enabled=false;
@@ -105,14 +119,9 @@ namespace OpenDental{
 			}
 			else {
 				butInvalidate.Visible=false;
-				permissions=EnumPermType.ProcDelete;
-				DateTime dateForPerm=ProcedureGroup.DateEntryC;
+				permissions=_permissionNote;
+				DateTime dateForPerm=_datePermission;
 				//because islocked overrides security:
-				_attachedToCompletedProc=(ProcGroupItems.GetCountCompletedProcsForGroup(ProcedureGroup.ProcNum)!=0);
-				if(_attachedToCompletedProc) {
-					permissions=EnumPermType.ProcCompleteNote;
-					dateForPerm=ProcedureGroup.ProcDate;
-				}
 				//This is mainly to make sure that the global security lock date is considered.
 				if(!Security.IsAuthorized(permissions,dateForPerm)) {
 					butSave.Enabled=false;
@@ -155,6 +164,14 @@ namespace OpenDental{
 				labelPermAlert.Visible=true;
 				labelPermAlert.Text=Lans.g(this,"Notes can only be signed by providers.");
 			}
+			//25.1: the date, the provider and the attached procedures can be changed when the note itself can be, and the user has the permission for
+			//changing a procedure (Edit Completed Procedure when the group note is treated as complete, otherwise TP Procedure Delete).
+			_canEditStructure=butSave.Enabled && !textNotes.ReadOnly
+				&& Security.IsAuthorized(GroupNotes.GetStructurePermission(_listProcStatsAtLoad),_datePermission,true,true);
+			textProcDate.ReadOnly=!_canEditStructure;
+			comboProv.Enabled=_canEditStructure;
+			butAdd.Enabled=_canEditStructure;
+			butRemove.Enabled=_canEditStructure;
 			_listPatFieldDefs=PatFieldDefs.GetDeepCopy(true);
 			textNotes.Select(textNotes.Text.Length,0);
 			_isStartingUp=false;
@@ -236,9 +253,92 @@ namespace OpenDental{
 							break;
 					}
 				}
+				row.Tag=ListProcedures[i];
 				gridProc.ListGridRows.Add(row);
 			}
 			gridProc.EndUpdate();
+		}
+
+		///<summary>25.1: attaches procedures picked from the patient's chart. Any status, date or provider is allowed. Group notes, locked procedures and
+		///deleted or invalidated procedures are refused. Saved when the window is saved.</summary>
+		private void butAdd_Click(object sender,EventArgs e) {
+			using FormSheetProcSelect formSheetProcSelect=new FormSheetProcSelect();
+			formSheetProcSelect.PatNum=ProcedureGroup.PatNum;
+			formSheetProcSelect.ShowDialog();
+			if(formSheetProcSelect.DialogResult!=DialogResult.OK || formSheetProcSelect.ListProcNumsSelected==null) {
+				return;
+			}
+			List<string> listRefused=new List<string>();
+			bool isChanged=false;
+			for(int i=0;i<formSheetProcSelect.ListProcNumsSelected.Count;i++) {
+				long procNum=formSheetProcSelect.ListProcNumsSelected[i];
+				if(procNum==ProcedureGroup.ProcNum && procNum!=0) {
+					listRefused.Add(Lan.g(this,"You cannot attach a group note to another group note."));
+					continue;
+				}
+				if(ListProcedures.Any(x => x.ProcNum==procNum)) {
+					continue;//already attached
+				}
+				Procedure procedure=Procedures.GetOneProc(procNum,false);
+				string blockReason=GroupNotes.GetAttachBlockReason(procedure);
+				if(blockReason!=null) {
+					string procText=(procedure==null) ? "" : ProcedureCodes.GetStringProcCode(procedure.CodeNum,doThrowIfMissing:false)+" "+procedure.ProcDate.ToShortDateString()+": ";
+					listRefused.Add(procText+Lan.g(this,blockReason));
+					continue;
+				}
+				ListProcedures.Add(procedure);
+				isChanged=true;
+			}
+			if(isChanged) {
+				OnAttachedProceduresChanged();
+			}
+			if(listRefused.Count>0) {
+				MessageBox.Show(Lan.g(this,"These procedures were not attached:")+"\r\n"+string.Join("\r\n",listRefused.Distinct()));
+			}
+		}
+
+		///<summary>25.1: detaches the selected procedures. Saved when the window is saved.</summary>
+		private void butRemove_Click(object sender,EventArgs e) {
+			List<Procedure> listProceduresSelected=gridProc.SelectedTags<Procedure>();
+			if(listProceduresSelected.Count==0) {
+				MsgBox.Show(this,"Please select procedures to remove first.");
+				return;
+			}
+			ListProcedures.RemoveAll(x => listProceduresSelected.Contains(x));
+			OnAttachedProceduresChanged();
+		}
+
+		private void OnAttachedProceduresChanged() {
+			//The attached procedures are part of the signature key, so the signature that was loaded no longer applies.
+			ClearLoadedSignature();
+			FillProcedures();
+		}
+
+		private void textProcDate_TextChanged(object sender,EventArgs e) {
+			if(_isStartingUp) {
+				return;
+			}
+			//The date is part of the signature key.
+			ClearLoadedSignature();
+		}
+
+		///<summary>Clears the signature that was loaded with the group note, as editing the note does, when something it is bound to changes. A signature
+		///drawn since the window opened is kept, because it is bound to the data when the window is saved.</summary>
+		private void ClearLoadedSignature() {
+			if(_isStartingUp || _hasSigChanged) {
+				return;
+			}
+			signatureBoxWrapper.ClearSignature();
+		}
+
+		///<summary>The procedures attached now that weren't attached when the window opened.</summary>
+		private List<Procedure> GetProceduresAdded() {
+			return ListProcedures.FindAll(x => !ListProceduresOld.Any(y => y.ProcNum==x.ProcNum));
+		}
+
+		///<summary>The procedures attached when the window opened that aren't attached now.</summary>
+		private List<Procedure> GetProceduresRemoved() {
+			return ListProceduresOld.FindAll(x => !ListProcedures.Any(y => y.ProcNum==x.ProcNum));
 		}
 
 		private void RefreshGrids(){
@@ -310,17 +410,11 @@ namespace OpenDental{
 			}
 		}
 
+		///<summary>Unchanged from 24.3 (see GroupNotes.GetSignatureKey), so existing signatures stay valid. Reads the links from the database, so it must
+		///run after added or removed procedures are saved.</summary>
 		private string GetSignatureKey(){
-			string keyData=ProcedureGroup.ProcDate.ToShortDateString();
-			keyData+=ProcedureGroup.DateEntryC.ToShortDateString();
-			keyData+=ProcedureGroup.UserNum.ToString();//Security.CurUser.UserName;
-			keyData+=ProcedureGroup.Note;
 			ListProcGroupItems=ProcGroupItems.GetForGroup(ProcedureGroup.ProcNum);//Orders the list to ensure same key in all cases.
-			for(int i=0;i<ListProcGroupItems.Count;i++){
-				keyData+=ListProcGroupItems[i].ProcGroupItemNum.ToString();
-			}
-			keyData=keyData.Replace("\r\n","\n");//We need all newlines to be the same, a mix of \r\n and \n can invalidate the procedure signature.
-			return keyData;
+			return GroupNotes.GetSignatureKey(ProcedureGroup,ListProcGroupItems);
 		}
 
 		private void butChangeUser_Click(object sender,EventArgs e) {
@@ -412,6 +506,23 @@ namespace OpenDental{
 				MsgBox.Show(this,"Please fix data entry errors first.");
 				return false;
 			}
+			if(_canEditStructure) {
+				DateTime dateProc=PIn.Date(textProcDate.Text);
+				if(dateProc.Year<1880) {
+					MsgBox.Show(this,"Please enter a procedure date.");
+					return false;
+				}
+				if(dateProc.Date!=_procedureGroupOld.ProcDate.Date) {
+					if(dateProc.Date>DateTime.Today && !PrefC.GetBool(PrefName.FutureTransDatesAllowed)) {
+						MsgBox.Show(this,"Group notes cannot be dated in the future.");
+						return false;
+					}
+					//The new date must not fall before the user's date limit or the global lock date either.
+					if(GroupNotes.IsTreatedAsComplete(_listProcStatsAtLoad) && !Security.IsAuthorized(_permissionNote,dateProc)) {
+						return false;
+					}
+				}
+			}
 			bool hasAutoNotePrompt=Regex.IsMatch(textNotes.Text,_autoNotePromptRegex);
 			//If ProcNoteSigsBlockedAutoNoteIncomplete is true, do not allow the user to save a changed signature if there are still autonote prompts.
 			if(_hasSigChanged && !signatureBoxWrapper.SigIsBlank && hasAutoNotePrompt && PrefC.GetBool(PrefName.ProcNoteSigsBlockedAutoNoteIncomplete)) {
@@ -427,6 +538,18 @@ namespace OpenDental{
 
 		private void SaveAndClose() {
 			ProcedureGroup.Note=textNotes.Text;
+			List<Procedure> listProceduresAdded=new List<Procedure>();
+			List<Procedure> listProceduresRemoved=new List<Procedure>();
+			if(_canEditStructure) {
+				ProcedureGroup.ProcDate=PIn.Date(textProcDate.Text);
+				ProcedureGroup.ProvNum=comboProv.GetSelectedProvNum();
+				listProceduresAdded=GetProceduresAdded();
+				listProceduresRemoved=GetProceduresRemoved();
+				if(listProceduresAdded.Count>0 || listProceduresRemoved.Count>0) {
+					//Before the signature is saved: the signature key is built from the links in the database.
+					ListProcGroupItems=ProcGroupItems.SyncForGroup(ProcedureGroup.ProcNum,ListProcedures.Select(x => x.ProcNum).ToList());
+				}
+			}
 			try {
 				SaveSignature();
 			}
@@ -434,6 +557,12 @@ namespace OpenDental{
 				MessageBox.Show(Lan.g(this,"Error saving signature.")+"\r\n"+ex.Message);
 			}
 			Procedures.Update(ProcedureGroup,_procedureGroupOld);
+			string logText=GroupNotes.GetEditLogText(_procedureGroupOld,ProcedureGroup,listProceduresAdded,listProceduresRemoved,
+				x => ProcedureCodes.GetStringProcCode(x,doThrowIfMissing:false),x => Providers.GetAbbr(x));
+			if(logText!="") {
+				//Logged as a procedure edit on the group note.
+				SecurityLogs.MakeLogEntry(EnumPermType.ProcEdit,ProcedureGroup.PatNum,logText,ProcedureGroup.ProcNum,_procedureGroupOld.DateTStamp);
+			}
 			DialogResult=DialogResult.OK;
 			IsOpen=false;
 		}
@@ -449,19 +578,16 @@ namespace OpenDental{
 				MessageBox.Show(ex.Message+"\r\n"+Lan.g(this,"Please call support."));//GroupNotes should never fail deletion.
 				return;
 			}
+			ListProcGroupItems=ProcGroupItems.GetForGroup(ProcedureGroup.ProcNum);
 			for(int i=0;i<ListProcGroupItems.Count;i++){
 				ProcGroupItems.Delete(ListProcGroupItems[i].ProcGroupItemNum);
 			}
 			//This log entry is similar to the log entry made when right-clicking in the Chart and using the delete option,
 			//except there is an extra : in the description for this log entry, so we programmers can know for sure where the entry was made from.
-			if(_attachedToCompletedProc) {
-				SecurityLogs.MakeLogEntry(EnumPermType.ProcCompleteStatusEdit,_patient.PatNum,
-					":"+ProcedureCodes.GetStringProcCode(ProcedureGroup.CodeNum).ToString()+" ("+ProcedureGroup.ProcStatus+"), "+ProcedureGroup.ProcDate.ToShortDateString());
-			}
-			else {
-				SecurityLogs.MakeLogEntry(EnumPermType.ProcDelete,_patient.PatNum,
-					":"+ProcedureCodes.GetStringProcCode(ProcedureGroup.CodeNum).ToString()+" ("+ProcedureGroup.ProcStatus+"), "+ProcedureGroup.ProcDate.ToShortDateString());
-			}
+			//Change Status or Delete a Completed Procedure when the group note was treated as complete (on a completed procedure, or on none).
+			SecurityLogs.MakeLogEntry(GroupNotes.GetDeleteLogPermission(_listProcStatsAtLoad),_patient.PatNum,
+				":"+ProcedureCodes.GetStringProcCode(ProcedureGroup.CodeNum).ToString()+" ("+ProcedureGroup.ProcStatus+"), "+ProcedureGroup.ProcDate.ToShortDateString());
+			ListProcedures=new List<Procedure>();//Nothing is attached any more, so the Chart doesn't clear aggregated notes.
 			DialogResult=DialogResult.OK;
 			IsOpen=false;
 		}		
@@ -515,6 +641,7 @@ namespace OpenDental{
 			}
 			if(ProcedureGroup.IsNew) {
 				Procedures.Delete(ProcedureGroup.ProcNum);
+				ListProcGroupItems=ProcGroupItems.GetForGroup(ProcedureGroup.ProcNum);
 				for(int i=0;i<ListProcGroupItems.Count;i++) {
 					ProcGroupItems.Delete(ListProcGroupItems[i].ProcGroupItemNum);
 				}
