@@ -2580,7 +2580,11 @@ namespace OpenDentBusiness {
 			else {
 				benefit.BenefitType=(InsBenefitType)input.TypeIndex;
 			}
-			if(input.IsPat) {
+			if(input.IsPat && patPlanNum==0) {
+				//Not attached to anything otherwise.
+				listErrors.Add(new BenefitValidationError(EnumBenefitField.Pat,Lans.g("Benefits","Not allowed to check the Pat box because no patient is available.")));
+			}
+			else if(input.IsPat) {
 				benefit.PatPlanNum=patPlanNum;
 				benefit.PlanNum=0;
 			}
