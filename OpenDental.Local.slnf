@@ -31,6 +31,7 @@
       "tests\\TaskCategoryTests\\TaskCategoryTests.csproj",
       "tests\\ReleaseFlowTests\\ReleaseFlowTests.csproj",
       "tests\\ReportTests\\ReportTests.csproj",
+      "tests\\SheetTests\\SheetTests.csproj",
       "tests\\SignatureTests\\SignatureTests.csproj",
       "tests\\VendorDirectTests\\VendorDirectTests.csproj",
       "tools\\SyntheticData\\SyntheticData.csproj",
