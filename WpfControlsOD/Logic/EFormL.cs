@@ -33,7 +33,7 @@ namespace WpfControls {
 				if(eFormFieldParent.FieldType==EnumEFormFieldType.InsPick){
 					listPick=EFormInsPick.GetOptions(eFormFieldParent.PickListVis);
 				}
-				if(eFormFieldParent.DbLink!=""){
+				if(eFormFieldParent.FieldType==EnumEFormFieldType.RadioButtons && eFormFieldParent.DbLink!=""){//Ins Pick has no PickListDb
 					//parent has a db link, so we might need to use some of those values if the Vis items are empty
 					List<string> listPickDb=eFormFieldParent.PickListDb.Split('|').ToList();
 					for(int i=0;i<listPick.Count;i++){
