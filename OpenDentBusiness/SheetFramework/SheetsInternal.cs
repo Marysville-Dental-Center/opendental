@@ -96,6 +96,8 @@ namespace OpenDentBusiness{
 					return sheetDef;
 				case SheetInternalType.COVID19:
 					return GetSheetFromResource(Properties.Resources.COVID19);
+				case SheetInternalType.Check:
+					return GetSheetFromResource(Properties.Resources.InternalCheck);
 				default:
 					throw new ApplicationException("Invalid SheetInternalType.");
 			}
@@ -332,6 +334,9 @@ namespace OpenDentBusiness{
 					break;
 				case SheetTypeEnum.ChartModule:
 					retVal=SheetInternalType.ChartModule;
+					break;
+				case SheetTypeEnum.Check:
+					retVal=SheetInternalType.Check;
 					break;
 				case SheetTypeEnum.MedicalHistory://This SheetTypeEnum is grouped into PatientForm
 				case SheetTypeEnum.PatientForm://This should be handled outside of this method because it has 5 internal form types

@@ -110,6 +110,11 @@ namespace OpenDentBusiness {
 					deposit=Deposits.GetOne((long)GetParamByName(sheet,"DepositNum").ParamValue);
 					FillFieldsForDepositSlip(sheet,deposit);
 					break;
+				case SheetTypeEnum.Check:
+					long transactionNum=(long)GetParamByName(sheet,CheckSheets.PARAM_TRANSACTION_NUM).ParamValue;
+					Account accountCheck=Accounts.GetAccount((long)GetParamByName(sheet,CheckSheets.PARAM_ACCOUNT_NUM).ParamValue);
+					FillFieldsForCheck(sheet,accountCheck,JournalEntries.GetForTrans(transactionNum));
+					break;
 				case SheetTypeEnum.Statement:
 					patient=(patient==null || patient.PatNum!=sheet.PatNum ? Patients.GetPat(sheet.PatNum) : patient);
 					FillFieldsForStatement(sheet,stmt,dataSet,patient,family?.Guarantor);
@@ -2650,6 +2655,19 @@ namespace OpenDentBusiness {
 					case "sheet.DateTimeSheet":
 						field.FieldValue=sheet.DateTimeSheet.ToString();
 						break;
+				}
+			}
+		}
+
+		///<summary>Fills the output fields of a Check sheet from the asset-account entry of an accounting transaction (Open Dental 25.3).</summary>
+		public static void FillFieldsForCheck(Sheet sheet,Account account,List<JournalEntry> listJournalEntries) {
+			Dictionary<string,string> dictValues=CheckSheets.GetFieldValues(account,listJournalEntries);
+			for(int i=0;i<sheet.SheetFields.Count;i++) {
+				if(sheet.SheetFields[i].FieldType!=SheetFieldType.OutputText) {
+					continue;
+				}
+				if(dictValues.TryGetValue(sheet.SheetFields[i].FieldName,out string value)) {
+					sheet.SheetFields[i].FieldValue=value;
 				}
 			}
 		}
