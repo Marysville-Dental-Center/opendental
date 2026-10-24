@@ -2336,13 +2336,18 @@ namespace OpenDental{
 				MsgBox.Show(this,"Please select an item first.");
 				return;
 			}
+			//Moving deletes the original, so a signed image (or a mount holding one) also needs SignedImageEdit (24.4).
 			if(IsMountShowing()) {
 				if(!Security.IsAuthorized(EnumPermType.ImageDelete,GetMountShowing().DateCreated)) {
 					return;
 				}
+				Document[] documentArrayMount=Documents.GetDocumentsForMountItems(MountItems.GetItemsForMount(GetMountShowing().MountNum));
+				if(!ImageSignaturePermissions.IsAuthorizedForSigned(documentArrayMount)) {
+					return;
+				}
 			}
 			else {
-				if(!Security.IsAuthorized(EnumPermType.ImageDelete,GetDocumentShowing(0).DateCreated)) {
+				if(!ImageSignaturePermissions.IsAuthorizedToDelete(GetDocumentShowing(0))) {
 					return;
 				}
 			}
@@ -2809,6 +2814,10 @@ namespace OpenDental{
 				return;
 			}
 			if(imageSelector.GetSelectedType()!=EnumImageNodeType.Document){
+				return;
+			}
+			//24.4: ImageSignatureCreate to sign an unsigned image, SignedImageEdit to change or remove a signature.
+			if(!ImageSignaturePermissions.IsAuthorizedToSign(GetDocumentShowing(0))) {
 				return;
 			}
 			//Show the underlying panel note box while the signature is being filled.
