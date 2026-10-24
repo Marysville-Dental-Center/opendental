@@ -2066,7 +2066,7 @@ namespace OpenDentBusiness{
 				if(claimProc.CopayAmt==-1) {
 					claimProc.CopayAmt=0;
 				}
-				if(insPlan != null && InsPlans.UsesUcrFeeForExclusions(insPlan.ExclusionFeeRule) && (Benefits.IsExcluded(ProcedureCodes.GetStringProcCode(codeNum),listBenefits,insPlan.PlanNum,patPlanNum)
+				if(insPlan != null && InsPlans.UsesUcrFeeForExclusions(insPlan.ExclusionFeeRule) && (Benefits.IsExcluded(ProcedureCodes.GetStringProcCode(codeNum),listBenefits,insPlan.PlanNum,patPlanNum,toothNum,procedure.ToothRange)
 					|| Benefits.GetPercent(ProcedureCodes.GetStringProcCode(codeNum),insPlan.PlanType,insPlan.PlanNum,patPlanNum,listBenefits)==0)) 
 				{
 					claimProc.WriteOffEst=0;//Never any writeoff for excluded procedures in this case.
@@ -2111,7 +2111,7 @@ namespace OpenDentBusiness{
 			}
 			if(listClaimProcHistsLoop!=null && listClaimProcHists!=null) {
 				claimProc.DedEst=Benefits.GetDeductibleByCode(listBenefits,insPlan.PlanNum,patPlanNum,dateProc,ProcedureCodes.GetStringProcCode(codeNum)
-					,listClaimProcHists,listClaimProcHistsLoop,insPlan,claimProc.PatNum);
+					,listClaimProcHists,listClaimProcHistsLoop,insPlan,claimProc.PatNum,toothNum,procedure.ToothRange);
 			}
 			if(Benefits.GetPercent(ProcedureCodes.GetProcCode(codeNum).ProcCode,insPlan.PlanType,insPlan.PlanNum,patPlanNum,listBenefits)==0) {//this is binary
 				claimProc.DedEst=0;//Procedure is not covered. Do not apply deductible. This does not take into account percent override.
@@ -2236,7 +2236,7 @@ namespace OpenDentBusiness{
 			}
 			//Exclusions---------------------------------------------------------------------------------------
 			//We are not going to consider date of proc.  Just simple exclusions
-			if(Benefits.IsExcluded(ProcedureCodes.GetStringProcCode(codeNum),listBenefits,insPlan.PlanNum,patPlanNum)) {
+			if(Benefits.IsExcluded(ProcedureCodes.GetStringProcCode(codeNum),listBenefits,insPlan.PlanNum,patPlanNum,toothNum,procedure.ToothRange)) {
 				claimProc.BaseEst=0;
 				claimProc.InsEstTotal=0;
 				if(claimProc.EstimateNote!="") {
@@ -2271,7 +2271,7 @@ namespace OpenDentBusiness{
 			}
 			//procDate;//was already calculated in the deductible section.
 			//Writeoff Estimate------------------------------------------------------------------------------------------
-			if(insPlan != null && InsPlans.UsesUcrFeeForExclusions(insPlan.ExclusionFeeRule) && (Benefits.IsExcluded(ProcedureCodes.GetStringProcCode(codeNum),listBenefits,insPlan.PlanNum,patPlanNum)
+			if(insPlan != null && InsPlans.UsesUcrFeeForExclusions(insPlan.ExclusionFeeRule) && (Benefits.IsExcluded(ProcedureCodes.GetStringProcCode(codeNum),listBenefits,insPlan.PlanNum,patPlanNum,toothNum,procedure.ToothRange)
 				|| Benefits.GetPercent(ProcedureCodes.GetStringProcCode(codeNum),insPlan.PlanType,insPlan.PlanNum,patPlanNum,listBenefits)==0)) 
 			{
 				switch(insPlan.PlanType) {

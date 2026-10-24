@@ -879,7 +879,7 @@ namespace OpenDentBusiness {
 				if(listBenefits==null) {
 					listBenefits=Benefits.GetForPlanOrPatPlan(priInsPlan.PlanNum,priPatPlan.PatPlanNum);
 				}
-				if(Benefits.IsExcluded(ProcedureCodes.GetStringProcCode(procedure.CodeNum),listBenefits,priInsPlan.PlanNum,priPatPlan.PatPlanNum)
+				if(Benefits.IsExcluded(ProcedureCodes.GetStringProcCode(procedure.CodeNum),listBenefits,priInsPlan.PlanNum,priPatPlan.PatPlanNum,procedure.ToothNum,procedure.ToothRange)
 					|| Benefits.GetPercent(ProcedureCodes.GetStringProcCode(procedure.CodeNum),priInsPlan.PlanType,priInsPlan.PlanNum,priPatPlan.PatPlanNum,
 							listBenefits)==0) 
 				{
@@ -3008,6 +3008,8 @@ namespace OpenDentBusiness {
 						long procNum=PIn.Long(rowCur["ProcNum"].ToString());
 						long procNumLab=PIn.Long(rowCur["ProcNumLab"].ToString());
 						double procFeeCur=PIn.Double(rowCur["ProcFee"].ToString());
+						string procToothNum=rowCur["ToothNum"].ToString();//For exclusions limited to teeth.
+						string procToothRange=rowCur["ToothRange"].ToString();
 						long patNum=PIn.Long(rowCur["PatNum"].ToString());
 						long patPriPlanFeeSchedNum=PIn.Long(rowCur["planFeeSched"].ToString());
 						long patPlanNum=PIn.Long(rowCur["patPlanNum"].ToString());
@@ -3087,7 +3089,7 @@ namespace OpenDentBusiness {
 						#region Exclusions
 						if(InsPlans.UsesUcrFeeForExclusions(exclusionRule)) {
 							List<Benefit> listBenefits=listBenefitsAll.FindAll(x => x.PatPlanNum==patPlanNum || x.PlanNum==planNum);
-							if(!listBenefits.IsNullOrEmpty() && (Benefits.IsExcluded(ProcedureCodes.GetStringProcCode(codeNum),listBenefits,planNum,patPlanNum)
+							if(!listBenefits.IsNullOrEmpty() && (Benefits.IsExcluded(ProcedureCodes.GetStringProcCode(codeNum),listBenefits,planNum,patPlanNum,procToothNum,procToothRange)
 								|| Benefits.GetPercent(ProcedureCodes.GetStringProcCode(codeNum),planType,planNum,patPlanNum,listBenefits)==0)) 
 							{
 								//Get the fee from the provider's fee schedule (ucr fee)
@@ -3197,7 +3199,7 @@ namespace OpenDentBusiness {
 					#region Get Query String
 					//Get all TP procedures in this batch's ProcNum range.
 					string command="SELECT procedurelog.PatNum,procedurelog.ProcNum,procedurelog.CodeNum,procedurelog.ClinicNum,procedurelog.ProvNum,"
-						+"procedurelog.ProcFee,patient.PriProv,patient.FeeSched patFeeSched,procedurelog.ProcNumLab,"
+						+"procedurelog.ProcFee,patient.PriProv,patient.FeeSched patFeeSched,procedurelog.ProcNumLab,procedurelog.ToothNum,procedurelog.ToothRange,"
 						+(isMedFeeUsedForNewProcs?"COALESCE(procedurecode.CodeNum,0) medCodeNum,":"0 medCodeNum,")
 						+"IFNULL(MAX(CASE WHEN p.PatNum IS NOT NULL THEN insplan.PlanType ELSE '' END),'') PlanType,"//greater of "",c,f,or p. p is what we care about.
 						+"IFNULL(MAX(CASE WHEN patplan.Ordinal=1 THEN insplan.FeeSched ELSE 0 END),0) planFeeSched, "//handles multiple primary patplans

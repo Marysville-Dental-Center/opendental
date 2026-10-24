@@ -118,6 +118,9 @@ namespace OpenDentBusiness{
 				ProcedureCode proccode=ProcedureCodes.GetProcCode(CodeNum);
 				retVal+=", "+proccode.ProcCode+" - "+proccode.AbbrDesc;
 			}
+			if(!string.IsNullOrWhiteSpace(ToothRange)) {//Open Dental 25.3: an exclusion limited to teeth.
+				retVal+=", teeth "+Tooth.DisplayToothList(ToothRange);
+			}
 			return retVal;
 		}
 
@@ -257,7 +260,8 @@ namespace OpenDentBusiness{
 				|| CodeNum           != ben.CodeNum 
 				|| CoverageLevel     != ben.CoverageLevel
 				|| CodeGroupNum      != ben.CodeGroupNum
-				|| TreatArea         != ben.TreatArea) 
+				|| TreatArea         != ben.TreatArea
+				|| (ToothRange??"")  != (ben.ToothRange??"")) 
 			{
 				return false;
 			}
