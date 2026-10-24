@@ -224,11 +224,12 @@ namespace OpenDental {
 				MsgBox.Show(this,"Please enter a valid time.");
 				return;
 			}
+			//24.4: editing a signed image needs SignedImageEdit. Checked here too because Enter saves even when the Save button is disabled.
+			if(!_isDocCreate && !ImageSignaturePermissions.IsAuthorizedForSigned(_documentOld)) {
+				return;//The message names the permission.
+			}
 			//We had a security bug where users could change the date to a more recent date, and then subsequently delete.
 			//The code below is for that specific scenario.
-			if(!_isDocCreate && !ImageSignaturePermissions.IsAuthorizedForSigned(_documentOld)) {
-				return;//24.4: editing a signed image needs SignedImageEdit. The message names it.
-			}
 			DateTime dateTimeEntered=PIn.DateT(textDate.Text+" "+textTime.Text);
 			if(dateTimeEntered>_document.DateCreated) {
 				//user is trying to change the date to some date after the previously linked date
