@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using CodeBase;
 
 namespace OpenDentBusiness {
 	public class EFormFiller {
@@ -417,6 +418,7 @@ namespace OpenDentBusiness {
 					eForm.ListEFormFields[i].ValueString=patient.Zip;
 				}
 			}
+			FillInsPickFields(eForm,listPatPlans);
 			Patient patientGuarantor=null;
 			if(patient.Guarantor!=patient.PatNum) {
 				patientGuarantor=family.ListPats.FirstOrDefault(x => x.PatNum==patient.Guarantor);
@@ -426,6 +428,31 @@ namespace OpenDentBusiness {
 			StaticTextFieldDependency staticTextFieldDependency=StaticTextData.GetStaticTextDependencies(listEnumStaticTextFields);
 			List<StaticTextReplacement> listStaticTextReplacements=SheetFiller.GetStaticTextReplacements(listEnumStaticTextFields,patient,family,staticTextData:null,staticTextFieldDependency,aptNum:0);
 			ReplaceStaticTextFields(listStaticTextReplacements,eForm,patient,family);
+		}
+
+		///<summary>Ins Pick fields (Open Dental 25.2). A field for slot N starts as Existing with the patient's current insurance at that ordinal, so an
+		///unchanged answer imports nothing; with no insurance there it starts empty (None). Its child fields describe new insurance only, so the values
+		///the normal fill copied into them from the current plans are cleared. A field without a slot is left empty. Our design: Open Dental does not
+		///document how these fields are prefilled.</summary>
+		public static void FillInsPickFields(EForm eForm,List<PatPlan> listPatPlans){
+			List<EFormField> listEFormFieldsInsPick=eForm.ListEFormFields.FindAll(x => x.FieldType==EnumEFormFieldType.InsPick);
+			for(int i=0;i<listEFormFieldsInsPick.Count;i++){
+				listEFormFieldsInsPick[i].ValueString="";
+				byte ordinal=EFormInsPick.GetOrdinal(listEFormFieldsInsPick[i].DbLink);
+				PatPlan patPlan=null;
+				if(ordinal>0){
+					patPlan=listPatPlans.OrderBy(x => x.Ordinal).ElementAtOrDefault(ordinal-1);
+				}
+				if(patPlan!=null){
+					listEFormFieldsInsPick[i].ValueString=EFormInsPick.ToValueInsSub(patPlan.InsSubNum);
+				}
+				List<EFormField> listChildren=EFormInsPick.GetChildFields(listEFormFieldsInsPick[i],eForm.ListEFormFields);
+				for(int c=0;c<listChildren.Count;c++){
+					if(listChildren[c].FieldType.In(EnumEFormFieldType.TextField,EnumEFormFieldType.RadioButtons,EnumEFormFieldType.PatientList)){
+						listChildren[c].ValueString="";
+					}
+				}
+			}
 		}
 
 		///<summary>Open Dental 25.1 "Prefill from guarantor": a field marked PrefillFromGuar whose link is one of the eligible fields

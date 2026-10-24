@@ -90,9 +90,19 @@ namespace OpenDentBusiness {
 			return listStrings;
 		}
 
+		///<summary>Ins Pick fields (Open Dental 25.2). The link names the insurance slot: ins1PlanFromList for the first, ins2PlanFromList for the second.
+		///A field with no link still works but asks for a pending row with ordinal 0.</summary>
+		public static List<string> GetList_InsPick(){
+			List<string> listStrings=new List<string>();
+			listStrings.Add("None");//Required for UI to work properly
+			listStrings.Add(EFormInsPick.DBLINK_INS1);
+			listStrings.Add(EFormInsPick.DBLINK_INS2);
+			return listStrings;
+		}
+
 		///<summary>The database links whose fields can be set to Auto Import (Open Dental 25.1, eformfielddef.AutoImport), as Open Dental's 25.3
-		///database documentation lists them. "allergy:" and "problem:" are prefixes. addressSameEntireFamily, wirelessPhoneSameEntireFamily and the
-		///ins1/ins2 PlanFromList links are listed for parity, but this version offers no field with those links yet.</summary>
+		///database documentation lists them. "allergy:" and "problem:" are prefixes. addressSameEntireFamily and wirelessPhoneSameEntireFamily are listed
+		///for parity, but this version offers no field with those links yet. The ins1/ins2 PlanFromList links are the Ins Pick fields.</summary>
 		public static List<string> GetList_AutoImport(){
 			return new List<string>(){
 				"addressSameEntireFamily","Address","Address2","allergy:","allergiesNone","allergiesOther","Birthdate","City","Email","FName","Gender",

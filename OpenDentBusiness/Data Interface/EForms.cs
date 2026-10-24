@@ -249,13 +249,20 @@ namespace OpenDentBusiness{
 						return eFormValidation;
 					}
 				}
+				if(listEFormFields[i].FieldType==EnumEFormFieldType.InsPick) {
+					continue;//An empty Ins Pick answer means None (Open Dental 25.2 docs), which is a valid answer, so Required can't apply.
+				}
 				if(listEFormFields[i].DbLink!="allergiesNone" && listEFormFields[i].DbLink!="problemsNone") {
-					//This is for all the other fields. This does work with radiobuttons, for example
-					if(listEFormFields[i].IsRequired 
+					//This is for all the other fields. This does work with radiobuttons, for example. A Patient List field holds the picked PatNum.
+					if(listEFormFields[i].IsRequired
 						&& string.IsNullOrWhiteSpace(listEFormFields[i].ValueString)
 						&& !listEFormFields[i].IsHiddenCondit)
 					{
-						eFormValidation.ErrorMsg=listEFormFields[i].ValueLabel+" is a required field";
+						string label=listEFormFields[i].ValueLabel;
+						if(listEFormFields[i].FieldType==EnumEFormFieldType.PatientList) {
+							label=EFormPatListLayout.Deserialize(label).Label;
+						}
+						eFormValidation.ErrorMsg=label+" is a required field";
 						eFormValidation.PageNum=pageNum;
 						return eFormValidation;
 					}
@@ -360,6 +367,25 @@ namespace OpenDentBusiness{
 					eForm.ListEFormFields[i].ValueLabel=listTranslations[0];
 					listTranslations.RemoveAt(0);
 					eForm.ListEFormFields[i].PickListVis=string.Join("|",listTranslations);
+					continue;
+				}
+				if(eForm.ListEFormFields[i].FieldType==EnumEFormFieldType.InsPick){
+					//Same format as radio buttons: "label|None|New|Existing". The English copies stay for conditional logic.
+					string strLabelsInsPick=eForm.ListEFormFields[i].ValueLabel+"|"+eForm.ListEFormFields[i].PickListVis;
+					string strTranslationsInsPick=LanguagePats.TranslateEFormField(eForm.ListEFormFields[i].EFormFieldDefNum,langDisplay:"",strLabelsInsPick,langIso3:langIso3);
+					List<string> listTranslationsInsPick=strTranslationsInsPick.Split('|').ToList();
+					if(listTranslationsInsPick.Count!=4){
+						continue;//no complete translation
+					}
+					eForm.ListEFormFields[i].ValueLabel=listTranslationsInsPick[0];
+					listTranslationsInsPick.RemoveAt(0);
+					eForm.ListEFormFields[i].PickListVis=string.Join("|",listTranslationsInsPick);
+					continue;
+				}
+				if(eForm.ListEFormFields[i].FieldType==EnumEFormFieldType.PatientList){
+					EFormPatListLayout eFormPatListLayout=EFormPatListLayout.Deserialize(eForm.ListEFormFields[i].ValueLabel);
+					eFormPatListLayout.Label=LanguagePats.TranslateEFormField(eForm.ListEFormFields[i].EFormFieldDefNum,langDisplay:"",eFormPatListLayout.Label,langIso3:langIso3);
+					eForm.ListEFormFields[i].ValueLabel=eFormPatListLayout.Serialize();
 					continue;
 				}
 				if(eForm.ListEFormFields[i].FieldType==EnumEFormFieldType.MedicationList){

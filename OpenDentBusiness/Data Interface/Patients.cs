@@ -73,6 +73,8 @@ namespace OpenDentBusiness {
 					"hiequeue.PatNum",
 					"histappointment.PatNum",
 					"hl7msg.PatNum",
+					"inspending.PatNum",
+					"inspending.PatNumSubscriber",
 					"inssub.Subscriber",
 					"installmentplan.PatNum",
 					"intervention.PatNum",
@@ -1755,6 +1757,8 @@ namespace OpenDentBusiness {
 				+"Guarantor=PatNum "
 				+"WHERE PatNum ="+pat.PatNum.ToString();
 			Db.NonQ(command);
+			//Pending insurance (Open Dental 25.2) of a patient that never got saved has no use. Database Maintenance also finds rows of deleted patients.
+			InsPendings.DeleteForPatient(pat.PatNum);
 			//no need to call PhoneNumbers.SyncPat since only the status and guar are changed here
 		}
 
@@ -3964,6 +3968,8 @@ namespace OpenDentBusiness {
 				Db.NonQ(command);
 			}
 			InsSubs.RehashAfterDirectUpdate(listInsSubsFrom);
+			//inspending rows moved with the loop above. A row whose patient is now also its subscriber must be Self.
+			InsPendings.FixRelationshipAfterMerge(patTo);
 			//We have changed the PatNum in the paysplit table.
 			//The PatNum field is included in the generation of the PaySplit.SecurityHash field.
 			//Rehash all their paysplits to match the new PatNum.
