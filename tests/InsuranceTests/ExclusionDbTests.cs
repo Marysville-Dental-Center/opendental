@@ -173,19 +173,25 @@ namespace InsuranceTests {
 			InsPlan insPlan=insuranceInfo.PriInsPlan;
 			ProcedureCode procedureCodeIn=ProcedureCodeT.CreateProcCode("Z5115");
 			ProcedureCode procedureCodeOut=ProcedureCodeT.CreateProcCode("Z5120");
+			ProcedureCode procedureCodeShort=ProcedureCodeT.CreateProcCode("Z511");
 			ProcedureCodes.RefreshCache();
 			CodeGroup codeGroup=CodeGroupDbTests.NewCodeGroup("Z5110-Z5119",showInAgeLimit:true);
 			BenefitT.CreatePercentForProc(insPlan.PlanNum,procedureCodeIn.CodeNum,100);
 			BenefitT.CreatePercentForProc(insPlan.PlanNum,procedureCodeOut.CodeNum,100);
+			BenefitT.CreatePercentForProc(insPlan.PlanNum,procedureCodeShort.CodeNum,100);
 			Benefits.Insert(Benefits.CreateAgeLimitationBenefit(codeGroup.CodeGroupNum,18,insPlan.PlanNum));
 			insuranceInfo.ListBenefits=Benefits.Refresh(insuranceInfo.ListPatPlans,insuranceInfo.ListInsSubs);
 			Procedure procedureIn=ProcedureT.CreateProcedure(patient,"Z5115",ProcStat.TP,"",100);
 			Procedure procedureOut=ProcedureT.CreateProcedure(patient,"Z5120",ProcStat.TP,"",100);
+			Procedure procedureShort=ProcedureT.CreateProcedure(patient,"Z511",ProcStat.TP,"",100);
 			List<ClaimProc> listClaimProcs=ProcedureT.ComputeEstimates(patient,insuranceInfo);
 			ClaimProc claimProcIn=listClaimProcs.Single(x => x.ProcNum==procedureIn.ProcNum);
 			Assert.AreEqual(0,claimProcIn.InsEstTotal,"Z5115 is in the range of the age-limited group and the patient is 30.");
 			StringAssert.Contains(claimProcIn.EstimateNote,"Age limitation");
 			Assert.AreEqual(100,listClaimProcs.Single(x => x.ProcNum==procedureOut.ProcNum).InsEstTotal);
+			ClaimProc claimProcShort=listClaimProcs.Single(x => x.ProcNum==procedureShort.ProcNum);
+			Assert.AreEqual(100,claimProcShort.InsEstTotal,"Z511 is only a substring of the group text, not a member.");
+			Assert.IsFalse(claimProcShort.EstimateNote.Contains("Age limitation"));
 		}
 	}
 }

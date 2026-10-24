@@ -891,8 +891,7 @@ namespace OpenDentBusiness {
 			//Age limit for code group------------------------------------------------------------------------------------
 			List<CodeGroup> listCodeGroups=CodeGroups.GetDeepCopy(isShort:false);
 			for(int i=0;i<listCodeGroups.Count;i++) {
-				string procCodes = listCodeGroups[i].ProcCodes;
-				if(!procCodes.Contains(procCodeStr)) {
+				if(!CodeGroups.IsProcInCodeGroup(procCodeStr,listCodeGroups[i])) {//range aware, whole codes only
 					continue;
 				}
 				Benefit benefitAgeLimit=listBenefitsShort.Find(x=>x.CodeGroupNum==listCodeGroups[i].CodeGroupNum && IsAgeLimit(x));
@@ -1696,7 +1695,7 @@ namespace OpenDentBusiness {
 				}
 				//See if the procedure's code is in the benefit's codegroup
 				CodeGroup codeGroup=CodeGroups.GetOne(listBenefitsShort[i].CodeGroupNum);
-				if(!codeGroup.ProcCodes.ToLower().Contains(procCodeStr.ToLower())) {
+				if(!CodeGroups.IsProcInCodeGroup(procCodeStr,codeGroup)) {//range aware, whole codes only, any case
 					continue;
 				}
 				//Benefit is pat-specific
