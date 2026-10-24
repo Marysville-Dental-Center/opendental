@@ -711,14 +711,20 @@ namespace OpenDentBusiness {
 
 		/// <summary>Saves to either AtoZ folder or to db.  Saves image as a jpg.  Compression will be according to user setting.</summary>
 		public static EobAttach ImportEobAttach(Bitmap image,long claimPaymentNum) {
+			return ImportEobAttach(image,claimPaymentNum,claimNumPreAuth:0);
+		}
+
+		/// <summary>Saves to either AtoZ folder or to db.  Saves image as a jpg.  Compression will be according to user setting.
+		/// The EOB belongs to the claim payment, or (Open Dental 25.2) to the preauthorization when claimNumPreAuth is set; exactly one of the two.</summary>
+		public static EobAttach ImportEobAttach(Bitmap image,long claimPaymentNum,long claimNumPreAuth) {
+			EobAttach eob=new EobAttach();
+			SetEobOwner(eob,claimPaymentNum,claimNumPreAuth);
 			string eobFolder="";
 			if(PrefC.AtoZfolderUsed==DataStorageType.LocalAtoZ || CloudStorage.IsCloudStorage) {
 				eobFolder=GetEobFolder();
 			}
-			EobAttach eob=new EobAttach();
 			eob.FileName=".jpg";
 			eob.DateTCreated = DateTime.Now;
-			eob.ClaimPaymentNum=claimPaymentNum;
 			EobAttaches.Insert(eob);//creates filename and saves to db
 			eob=EobAttaches.GetOne(eob.EobAttachNum);
 			long qualityL=(long)ComputerPrefs.LocalComputer.ScanDocQuality;
@@ -740,22 +746,30 @@ namespace OpenDentBusiness {
 					EobAttaches.Update(eob);//because SaveEobAttach stuck the image in EobAttach.RawBase64.
 					//no thumbnail
 				}
-				//No security log for creation of EOB's because they don't show up in the images module.
+				//No security log for creation of claim payment EOB's because they don't show up in the images module. Preauth EOBs are logged.
 			}
 			catch {
 				EobAttaches.Delete(eob.EobAttachNum);
 				throw;
 			}
+			LogPreAuthEob(EnumPermType.ImageCreate,eob);
 			return eob;
 		}
 
 		/// <summary></summary>
 		public static EobAttach ImportEobAttach(string pathImportFrom,long claimPaymentNum) {
+			return ImportEobAttach(pathImportFrom,claimPaymentNum,claimNumPreAuth:0);
+		}
+
+		/// <summary>The EOB belongs to the claim payment, or (Open Dental 25.2) to the preauthorization when claimNumPreAuth is set; exactly one of the
+		/// two.</summary>
+		public static EobAttach ImportEobAttach(string pathImportFrom,long claimPaymentNum,long claimNumPreAuth) {
+			EobAttach eob=new EobAttach();
+			SetEobOwner(eob,claimPaymentNum,claimNumPreAuth);
 			string eobFolder="";
 			if(PrefC.AtoZfolderUsed==DataStorageType.LocalAtoZ || CloudStorage.IsCloudStorage) {
 				eobFolder=GetEobFolder();
 			}
-			EobAttach eob=new EobAttach();
 			if(Path.GetExtension(pathImportFrom)=="") {//If the file has no extension
 				eob.FileName=".jpg";
 			}
@@ -763,12 +777,11 @@ namespace OpenDentBusiness {
 				eob.FileName=Path.GetExtension(pathImportFrom);
 			}
 			eob.DateTCreated=File.GetLastWriteTime(pathImportFrom);
-			eob.ClaimPaymentNum=claimPaymentNum;
 			EobAttaches.Insert(eob);//creates filename and saves to db
 			eob=EobAttaches.GetOne(eob.EobAttachNum);
 			try {
 				SaveEobAttach(eob,pathImportFrom,eobFolder);
-				//No security log for creation of EOB's because they don't show up in the images module.
+				//No security log for creation of claim payment EOB's because they don't show up in the images module. Preauth EOBs are logged.
 				if(PrefC.AtoZfolderUsed==DataStorageType.InDatabase) {
 					EobAttaches.Update(eob);
 				}
@@ -777,7 +790,35 @@ namespace OpenDentBusiness {
 				EobAttaches.Delete(eob.EobAttachNum);
 				throw;
 			}
+			LogPreAuthEob(EnumPermType.ImageCreate,eob);
 			return eob;
+		}
+
+		///<summary>Sets the one owner of a new EOB. Throws when neither or both keys are set, because every eobattach row belongs to exactly one claim
+		///payment or one preauthorization.</summary>
+		private static void SetEobOwner(EobAttach eob,long claimPaymentNum,long claimNumPreAuth) {
+			eob.ClaimPaymentNum=Math.Max(0,claimPaymentNum);
+			eob.ClaimNumPreAuth=Math.Max(0,claimNumPreAuth);
+			if(!EobAttaches.HasValidOwner(eob)) {
+				throw new ArgumentException(Lans.g("ContrImages","An EOB must belong to exactly one insurance payment or one preauthorization."));
+			}
+		}
+
+		///<summary>The security log text for an EOB on a preauthorization (Open Dental 25.2). Always contains "Preauth EOB".</summary>
+		public static string GetPreAuthEobLogText(EnumPermType perm,string fileName) {
+			string action=(perm==EnumPermType.ImageDelete ? Lans.g("ContrImages","deleted") : Lans.g("ContrImages","attached"));
+			return "Preauth EOB "+action+": "+fileName;
+		}
+
+		///<summary>Security log for an EOB on a preauthorization (Open Dental 25.2): ImageCreate when one is attached, ImageDelete when one is removed,
+		///with the patient of the preauthorization and "Preauth EOB" in the text. Claim payment EOBs keep having no log entry.</summary>
+		private static void LogPreAuthEob(EnumPermType perm,EobAttach eob) {
+			if(eob==null || eob.ClaimNumPreAuth<=0) {
+				return;
+			}
+			Claim claim=Claims.GetClaim(eob.ClaimNumPreAuth);
+			long patNum=(claim==null ? 0 : claim.PatNum);
+			SecurityLogs.MakeLogEntry(perm,patNum,GetPreAuthEobLogText(perm,eob.FileName));
 		}
 
 		public static EhrAmendment ImportAmdAttach(Bitmap image,EhrAmendment amd) {
@@ -1174,6 +1215,8 @@ namespace OpenDentBusiness {
 				Documents.Delete(documents[i]);
 				ImageDraws.DeleteByDocNum(documents[i].DocNum);
 				PearlRequests.DeleteByDocNum(documents[i].DocNum);
+				//24.4: deleting a signed image needs SignedImageEdit, so it is logged under that permission too.
+				ImageSignaturePermissions.LogSignedImageDeleted(documents[i]);
 			}//end documents
 		}
 
@@ -1195,6 +1238,17 @@ namespace OpenDentBusiness {
 			}
 			//db
 			EobAttaches.Delete(eob.EobAttachNum);
+			LogPreAuthEob(EnumPermType.ImageDelete,eob);
+		}
+
+		///<summary>Deletes every EOB attached to a preauthorization: the files in the EOBs folder (or cloud) and the rows. Used when the preauthorization
+		///itself is deleted. Returns how many were deleted.</summary>
+		public static int DeleteEobAttachesForPreAuth(long claimNumPreAuth) {
+			List<EobAttach> listEobAttaches=EobAttaches.RefreshForPreAuth(claimNumPreAuth);
+			for(int i=0;i<listEobAttaches.Count;i++) {
+				DeleteEobAttach(listEobAttaches[i]);
+			}
+			return listEobAttaches.Count;
 		}
 
 		///<summary>Also handles deletion of db object.</summary>

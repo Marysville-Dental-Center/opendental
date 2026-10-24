@@ -8,14 +8,40 @@ using System.Text;
 namespace OpenDentBusiness{
 	///<summary></summary>
 	public class EobAttaches{
-		///<summary>Gets all EobAttaches for a given claimpayment.</summary>
+		///<summary>Gets all EobAttaches for a given claimpayment. Empty for 0, so the EOBs of preauthorizations (ClaimPaymentNum 0) never show up as the
+		///EOBs of an unsaved payment.</summary>
 		public static List<EobAttach> Refresh(long claimPaymentNum) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetObject<List<EobAttach>>(MethodBase.GetCurrentMethod(),claimPaymentNum);
 			}
+			if(claimPaymentNum<=0) {
+				return new List<EobAttach>();
+			}
 			string command="SELECT * FROM eobattach WHERE ClaimPaymentNum="+POut.Long(claimPaymentNum)+" "
 				+"ORDER BY DateTCreated";
 			return Crud.EobAttachCrud.SelectMany(command);
+		}
+
+		///<summary>Gets the EOBs attached to one preauthorization (Open Dental 25.2, eobattach.ClaimNumPreAuth), oldest first. Empty for 0.</summary>
+		public static List<EobAttach> RefreshForPreAuth(long claimNumPreAuth) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetObject<List<EobAttach>>(MethodBase.GetCurrentMethod(),claimNumPreAuth);
+			}
+			if(claimNumPreAuth<=0) {
+				return new List<EobAttach>();
+			}
+			string command="SELECT * FROM eobattach WHERE ClaimNumPreAuth="+POut.Long(claimNumPreAuth)+" "
+				+"ORDER BY DateTCreated";
+			return Crud.EobAttachCrud.SelectMany(command);
+		}
+
+		///<summary>Gets the EOBs of either a claim payment or a preauthorization. Exactly one of the two keys is expected to be set; the preauth wins
+		///when both are.</summary>
+		public static List<EobAttach> RefreshForOwner(long claimPaymentNum,long claimNumPreAuth) {
+			if(claimNumPreAuth>0) {
+				return RefreshForPreAuth(claimNumPreAuth);
+			}
+			return Refresh(claimPaymentNum);
 		}
 
 		///<summary>Gets all EobAttaches for a given claimpaymentnum. For used by Api Team, please notify before changing.
@@ -62,16 +88,43 @@ namespace OpenDentBusiness{
 			return filePath;
 		}
 
-		///<summary>Tests to see whether an attachment exists on this claimpayment.</summary>
+		///<summary>Tests to see whether an attachment exists on this claimpayment. False for 0.</summary>
 		public static bool Exists(long claimPaymentNum) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetBool(MethodBase.GetCurrentMethod(),claimPaymentNum);
+			}
+			if(claimPaymentNum<=0) {
+				return false;
 			}
 			string command="SELECT COUNT(*) FROM eobattach WHERE ClaimPaymentNum="+POut.Long(claimPaymentNum);
 			if(Db.GetScalar(command)=="0") {
 				return false;
 			}
 			return true;
+		}
+
+		///<summary>Tests whether at least one EOB is attached to this preauthorization. False for 0.</summary>
+		public static bool ExistsForPreAuth(long claimNumPreAuth) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetBool(MethodBase.GetCurrentMethod(),claimNumPreAuth);
+			}
+			if(claimNumPreAuth<=0) {
+				return false;
+			}
+			string command="SELECT COUNT(*) FROM eobattach WHERE ClaimNumPreAuth="+POut.Long(claimNumPreAuth);
+			if(Db.GetScalar(command)=="0") {
+				return false;
+			}
+			return true;
+		}
+
+		///<summary>Each eobattach row has exactly one owner: a claim payment (ClaimPaymentNum above 0, ClaimNumPreAuth 0) or a preauthorization
+		///(ClaimNumPreAuth above 0, ClaimPaymentNum 0).</summary>
+		public static bool HasValidOwner(EobAttach eobAttach) {
+			if(eobAttach==null) {
+				return false;
+			}
+			return (eobAttach.ClaimPaymentNum>0)!=(eobAttach.ClaimNumPreAuth>0) && eobAttach.ClaimPaymentNum>=0 && eobAttach.ClaimNumPreAuth>=0;
 		}
 
 		///<summary>Set the extension before calling.  Inserts a new eobattach into db, creates a filename based on EobAttachNum, and then updates the db with this filename.  Should always refresh the eobattach after calling this method in order to get the correct filename for RemotingRole.ClientWeb.</summary>
