@@ -1328,6 +1328,11 @@ namespace OpenDentBusiness {
 					}
 				}
 			}
+			//25.1: a group note's procedures can have other dates. It shows after the last procedure attached to it, and one with nothing attached
+			//sorts by its own date.
+			if(!componentsToLoad.UseMobileOrder && rows.Any(x => x["ProcNum"].ToString()!="0" && x["ProcCode"].ToString()==ProcedureCodes.GroupProcCode)) {
+				GroupNotes.PlaceAfterAttachedProcs(rows,ProcGroupItems.GetPatientData(patNum));
+			}
 			#endregion Sorting
 			for(int i=0;i<rows.Count;i++) {
 				table.Rows.Add(rows[i]);
