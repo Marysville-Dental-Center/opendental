@@ -21,6 +21,8 @@ namespace OpenDental
 		private List<InsPlan> _listInsPlans;
 		private List<PatPlan> _listPatPlans;
 		private List<InsSub> _listInsSubs;
+		///<summary>The preauthorization these claimprocs belong to. EOBs scanned here are attached to it (Open Dental 25.2, eobattach.ClaimNumPreAuth).</summary>
+		private long _claimNumPreAuth;
 
 		///<summary></summary>
 		public FormClaimPayPreAuth(Patient patient,Family family,List<InsPlan> listInsPlans,List<PatPlan> listPatPlans,List<InsSub> listInsSubs) {
@@ -37,6 +39,48 @@ namespace OpenDental
 		private void FormClaimPayPreAuth_Load(object sender,EventArgs e) {
 			_listProcedures=Procedures.Refresh(_patient.PatNum);
 			FillGrid();
+			_claimNumPreAuth=GetClaimNumPreAuth(ListClaimProcs);
+			if(_claimNumPreAuth==0) {//Should not happen; the preauth is always saved before estimates are entered.
+				labelEobIsScanned.Visible=false;
+				textEobIsScanned.Visible=false;
+				butViewEob.Visible=false;
+			}
+			FillEobStatus();
+		}
+
+		///<summary>The ClaimNum shared by the claimprocs, or 0 when there is none.</summary>
+		public static long GetClaimNumPreAuth(List<ClaimProc> listClaimProcs) {
+			if(listClaimProcs==null) {
+				return 0;
+			}
+			ClaimProc claimProc=listClaimProcs.Find(x => x.ClaimNum>0);
+			if(claimProc==null) {
+				return 0;
+			}
+			return claimProc.ClaimNum;
+		}
+
+		///<summary>Shows whether an EOB is attached to the preauthorization. The button scans when there is none and views when there is one, as in the
+		///insurance payment window.</summary>
+		private void FillEobStatus() {
+			if(EobAttaches.ExistsForPreAuth(_claimNumPreAuth)) {
+				textEobIsScanned.Text=Lan.g(this,"Yes");
+				butViewEob.Text=Lan.g(this,"View EOB");
+			}
+			else {
+				textEobIsScanned.Text=Lan.g(this,"No");
+				butViewEob.Text=Lan.g(this,"Scan EOB");
+			}
+		}
+
+		private void butViewEob_Click(object sender,EventArgs e) {
+			if(_claimNumPreAuth==0) {
+				return;
+			}
+			using FormImages formImages=new FormImages();
+			formImages.ClaimNumPreAuth=_claimNumPreAuth;
+			formImages.ShowDialog();
+			FillEobStatus();
 		}
 
 		private void FormClaimPayTotal_Shown(object sender,EventArgs e) {

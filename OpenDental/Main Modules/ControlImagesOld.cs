@@ -50,6 +50,9 @@ namespace OpenDental {
 		private bool[] _boolArrayIdxsFlaggedForUpdate=null;
 		///<summary>If this is not zero, then this indicates a different mode special for claimpayment.</summary>
 		private long _claimPaymentNum;
+		///<summary>If this is not zero, the same EOB mode as for a claimpayment, but for the EOBs of this preauthorization (Open Dental 25.2,
+		///eobattach.ClaimNumPreAuth). Only one of _claimPaymentNum and _claimNumPreAuth is ever set.</summary>
+		private long _claimNumPreAuth;
 		///<summary>Tracker to keep track of how many pages are loaded on our webBrowser object.</summary>
 		private int _countWebBrowserLoads=0;
 		DateTime _dateTimeMouseMoved=new DateTime(1,1,1);
@@ -732,6 +735,11 @@ namespace OpenDental {
 				if(_rectangleCrop.Width<=0 || _rectangleCrop.Height<=0) {
 					return;
 				}
+				if(!ImageSignaturePermissions.IsAuthorizedForSigned(_documentShowing)) {//24.4
+					_rectangleCrop=new Rectangle(0,0,-1,-1);
+					InvalidateSettings(ImageSettingFlags.NONE,false);//Refresh display (since message box was covering).
+					return;
+				}
 				if(!MsgBox.Show(this,MsgBoxButtons.OKCancel,"Crop to Rectangle?")) {
 					_rectangleCrop=new Rectangle(0,0,-1,-1);
 					InvalidateSettings(ImageSettingFlags.NONE,false);//Refresh display (since message box was covering).
@@ -770,6 +778,7 @@ namespace OpenDental {
 				_documentShowing.CropW=(int)Math.Ceiling(finalCropRect[2]);
 				_documentShowing.CropH=(int)Math.Ceiling(finalCropRect[3]);
 				Documents.Update(_documentShowing);
+				ImageSignaturePermissions.LogSignedImageEdited(_documentShowing,"was changed using the Crop button");//24.4
 				if(nodeIdTag.NodeType==EnumNodeType.Doc) {
 					DeleteThumbnailImage(_documentShowing);
 					Rectangle newCropRect=DocCropRect(_documentShowing,_intArrayWidthsImagesCur[_idxSelectedInMount],_intArrayHeightsImagesCur[_idxSelectedInMount]);
@@ -1083,8 +1092,8 @@ namespace OpenDental {
 			//Clear current tree contents.
 			treeMain.SelectedNode=null;
 			treeMain.Nodes.Clear();
-			if(_claimPaymentNum!=0) {
-				List<EobAttach> listEobs=EobAttaches.Refresh(_claimPaymentNum);
+			if(IsEobMode) {
+				List<EobAttach> listEobs=EobAttaches.RefreshForOwner(_claimPaymentNum,_claimNumPreAuth);
 				for(int i=0;i<listEobs.Count;i++) {
 					TreeNode node=new TreeNode(listEobs[i].FileName);
 					node.Tag=MakeIdEob(listEobs[i].EobAttachNum);
@@ -1269,7 +1278,7 @@ namespace OpenDental {
 			contextTree.MenuItems.Clear();
 			contextTree.MenuItems.Add("Print",new System.EventHandler(menuTree_Click));
 			contextTree.MenuItems.Add("Delete",new System.EventHandler(menuTree_Click));
-			if(_claimPaymentNum==0 && _ehrAmendment==null) {//not an eob and not an amendment
+			if(!IsEobMode && _ehrAmendment==null) {//not an eob and not an amendment
 				contextTree.MenuItems.Add("Info",new System.EventHandler(menuTree_Click));
 			}
 		}
@@ -1308,7 +1317,7 @@ namespace OpenDental {
 			ODToolBarButton button;
 			ToolBarMain.Buttons.Add(new ODToolBarButton("",1,Lan.g(this,"Print"),"Print"));
 			ToolBarMain.Buttons.Add(new ODToolBarButton("",2,Lan.g(this,"Delete"),"Delete"));
-			if(_claimPaymentNum==0) {
+			if(!IsEobMode) {
 				ToolBarMain.Buttons.Add(new ODToolBarButton("",3,Lan.g(this,"Item Info"),"Info"));
 				ToolBarMain.Buttons.Add(new ODToolBarButton(Lan.g(this,"Sign"),-1,Lan.g(this,"Sign this document"),"Sign"));
 			}
@@ -1318,7 +1327,7 @@ namespace OpenDental {
 			ToolBarMain.Buttons.Add(button);
 			ToolBarMain.Buttons.Add(new ODToolBarButton("",14,Lan.g(this,"Scan Document"),"ScanDoc"));
 			ToolBarMain.Buttons.Add(new ODToolBarButton("",18,Lan.g(this,"Scan Multi-Page Document"),"ScanMultiDoc"));
-			if(_claimPaymentNum==0) {
+			if(!IsEobMode) {
 				ToolBarMain.Buttons.Add(new ODToolBarButton("",16,Lan.g(this,"Scan Radiograph"),"ScanXRay"));
 				ToolBarMain.Buttons.Add(new ODToolBarButton("",15,Lan.g(this,"Scan Photo"),"ScanPhoto"));
 			}
@@ -1327,7 +1336,7 @@ namespace OpenDental {
 			ToolBarMain.Buttons.Add(new ODToolBarButton(Lan.g(this,"Export"),19,Lan.g(this,"Export To File"),"Export"));
 			ToolBarMain.Buttons.Add(new ODToolBarButton(Lan.g(this,"Copy"),17,Lan.g(this,"Copy displayed image to clipboard"),"Copy"));
 			ToolBarMain.Buttons.Add(new ODToolBarButton(Lan.g(this,"Paste"),6,Lan.g(this,"Paste From Clipboard"),"Paste"));
-			if(_claimPaymentNum==0) {
+			if(!IsEobMode) {
 				button=new ODToolBarButton(Lan.g(this,"Templates"),-1,"","Forms");
 				button.Style=ODToolBarButtonStyle.DropDownButton;
 				menuForms=new ContextMenu();
@@ -1380,7 +1389,7 @@ namespace OpenDental {
 				ToolBarMain.Buttons.Add(new ODToolBarButton(ODToolBarButtonStyle.Separator));
 				ToolBarMain.Buttons.Add(new ODToolBarButton(Lan.g(this,"Close"),-1,Lan.g(this,"Close window"),"Close"));
 			}
-			if(_claimPaymentNum==0) {
+			if(!IsEobMode) {
 				button=new ODToolBarButton("",7,Lan.g(this,"Crop Tool"),"Crop");
 				button.Style=ODToolBarButtonStyle.ToggleButton;
 				button.IsTogglePushed=_isCropMode;
@@ -1394,7 +1403,7 @@ namespace OpenDental {
 			ToolBarPaint.Buttons.Add(new ODToolBarButton("",8,Lan.g(this,"Zoom In"),"ZoomIn"));
 			ToolBarPaint.Buttons.Add(new ODToolBarButton("",9,Lan.g(this,"Zoom Out"),"ZoomOut"));
 			ToolBarPaint.Buttons.Add(new ODToolBarButton("100",-1,Lan.g(this,"Zoom 100"),"Zoom100"));
-			if(_claimPaymentNum==0) {
+			if(!IsEobMode) {
 				ToolBarPaint.Buttons.Add(new ODToolBarButton(ODToolBarButtonStyle.Separator));
 				button=new ODToolBarButton(Lan.g(this,"Rotate:"),-1,"","");
 				button.Style=ODToolBarButtonStyle.Label;
@@ -1475,9 +1484,29 @@ namespace OpenDental {
 			}
 		}
 
+		///<summary>True when this control shows the EOBs of a claim payment or of a preauthorization instead of patient images.</summary>
+		private bool IsEobMode {
+			get {
+				return _claimPaymentNum!=0 || _claimNumPreAuth!=0;
+			}
+		}
+
+		///<summary>EOB mode for the EOBs scanned onto a preauthorization (Open Dental 25.2). Works exactly like ModuleSelectedClaimPayment.</summary>
+		public void ModuleSelectedPreAuth(long claimNumPreAuth) {
+			_claimPaymentNum=0;
+			_claimNumPreAuth=claimNumPreAuth;
+			ModuleSelectedEob();
+		}
+
 		///<summary>This overload is for batch claim payment (EOB) images.</summary>
 		public void ModuleSelectedClaimPayment(long claimPaymentNum) {
 			_claimPaymentNum=claimPaymentNum;
+			_claimNumPreAuth=0;
+			ModuleSelectedEob();
+		}
+
+		///<summary>Shared by the claim payment and preauthorization EOB modes.</summary>
+		private void ModuleSelectedEob() {
 			//Just in case this control has not been initialized yet.  Does not hurt to call multiple times.  Simply returns if already initilized.
 			InitializeOnStartup();
 			LayoutToolBar();//again
@@ -1935,6 +1964,9 @@ namespace OpenDental {
 			if(((NodeIdTag)treeMain.SelectedNode.Tag).NodeType==EnumNodeType.None || _documentShowing==null) {
 				return;
 			}
+			if(!ImageSignaturePermissions.IsAuthorizedForSigned(_documentShowing)) {//24.4
+				return;
+			}
 			_documentShowing.IsFlipped=!_documentShowing.IsFlipped;
 			//Since the document is always flipped and then rotated in the mathematical functions below, and since we
 			//always want the selected image to rotate left to right no matter what orientation the image is in,
@@ -1948,6 +1980,7 @@ namespace OpenDental {
 				_documentShowing.DegreesRotated=(short)(_documentShowing.DegreesRotated%360);
 			}
 			Documents.Update(_documentShowing);
+			ImageSignaturePermissions.LogSignedImageEdited(_documentShowing,"flipped horizontally");//24.4
 			DeleteThumbnailImage(_documentShowing);
 			InvalidateSettings(ImageSettingFlags.FLIP,false);//Refresh display.
 		}
@@ -1996,7 +2029,7 @@ namespace OpenDental {
 			}
 			NodeIdTag nodeIdTag=new NodeIdTag();
 			bool copied=true;
-			if(_claimPaymentNum!=0) {//eob
+			if(IsEobMode) {//eob
 				EobAttach eob=null;
 				Action actionCloseUploadProgress=null;
 				if(CloudStorage.IsCloudStorage) {
@@ -2004,7 +2037,7 @@ namespace OpenDental {
 				}
 				for(int i=0;i<fileNames.Count;i++) {
 					try {
-						eob=ImageStore.ImportEobAttach(fileNames[i],_claimPaymentNum);
+						eob=ImageStore.ImportEobAttach(fileNames[i],_claimPaymentNum,_claimNumPreAuth);
 					}
 					catch(Exception ex) {
 						actionCloseUploadProgress?.Invoke();
@@ -2174,10 +2207,10 @@ namespace OpenDental {
 				nodeIdTag=(NodeIdTag)treeMain.SelectedNode.Tag;
 			}
 			Cursor=Cursors.WaitCursor;
-			if(_claimPaymentNum!=0) {
+			if(IsEobMode) {
 				EobAttach eob=null;
 				try {
-					eob=ImageStore.ImportEobAttach(bitmapPaste,_claimPaymentNum);
+					eob=ImageStore.ImportEobAttach(bitmapPaste,_claimPaymentNum,_claimNumPreAuth);
 				}
 				catch {
 					MessageBox.Show(Lan.g(this,"Error saving eob."));
@@ -2322,11 +2355,15 @@ namespace OpenDental {
 			if(((NodeIdTag)treeMain.SelectedNode.Tag).NodeType==EnumNodeType.None || _documentShowing==null) {
 				return;
 			}
+			if(!ImageSignaturePermissions.IsAuthorizedForSigned(_documentShowing)) {//24.4
+				return;
+			}
 			_documentShowing.DegreesRotated-=90;
 			while(_documentShowing.DegreesRotated<0) {
 				_documentShowing.DegreesRotated+=360;
 			}
 			Documents.Update(_documentShowing);
+			ImageSignaturePermissions.LogSignedImageEdited(_documentShowing,"rotated left 90 degrees");//24.4
 			DeleteThumbnailImage(_documentShowing);
 			InvalidateSettings(ImageSettingFlags.ROTATE,false);//Refresh display.
 		}
@@ -2335,9 +2372,13 @@ namespace OpenDental {
 			if(((NodeIdTag)treeMain.SelectedNode.Tag).NodeType==EnumNodeType.None || _documentShowing==null) {
 				return;
 			}
+			if(!ImageSignaturePermissions.IsAuthorizedForSigned(_documentShowing)) {//24.4
+				return;
+			}
 			_documentShowing.DegreesRotated+=90;
 			_documentShowing.DegreesRotated%=360;
 			Documents.Update(_documentShowing);
+			ImageSignaturePermissions.LogSignedImageEdited(_documentShowing,"rotated right 90 degrees");//24.4
 			DeleteThumbnailImage(_documentShowing);
 			InvalidateSettings(ImageSettingFlags.ROTATE,false);//Refresh display.
 		}
@@ -2445,10 +2486,10 @@ namespace OpenDental {
 				imgType=ImageType.Document;
 			}
 			bool saved=true;
-			if(_claimPaymentNum!=0) {//eob
+			if(IsEobMode) {//eob
 				EobAttach eob=null;
 				try {
-					eob=ImageStore.ImportEobAttach(bitmapScanned,_claimPaymentNum);
+					eob=ImageStore.ImportEobAttach(bitmapScanned,_claimPaymentNum,_claimNumPreAuth);
 				}
 				catch(Exception ex) {
 					saved=false;
@@ -2604,10 +2645,10 @@ namespace OpenDental {
 			}
 			NodeIdTag nodeIdTag=new NodeIdTag();
 			bool copied=true;
-			if(_claimPaymentNum!=0) {//eob
+			if(IsEobMode) {//eob
 				EobAttach eob=null;
 				try {
-					eob=ImageStore.ImportEobAttach(tempFile,_claimPaymentNum);
+					eob=ImageStore.ImportEobAttach(tempFile,_claimPaymentNum,_claimNumPreAuth);
 				}
 				catch(Exception ex) {
 					MessageBox.Show(Lan.g(this,"Unable to copy file, May be in use: ") + ex.Message + ": " + tempFile);
@@ -2677,6 +2718,13 @@ namespace OpenDental {
 			if(treeMain.SelectedNode==null ||				//No selection
 				treeMain.SelectedNode.Tag==null ||			//Internal error
 				treeMain.SelectedNode.Parent==null) {		//This is a folder node.
+				return;
+			}
+			if(_documentShowing==null) {
+				return;
+			}
+			//24.4: ImageSignatureCreate to sign an unsigned image, SignedImageEdit to change or remove a signature.
+			if(!ImageSignaturePermissions.IsAuthorizedToSign(_documentShowing)) {
 				return;
 			}
 			//Show the underlying panel note box while the signature is being filled.
@@ -2850,7 +2898,7 @@ namespace OpenDental {
 		private void LayoutAll() {
 			LayoutManager.Move(ToolBarMain,new Rectangle(0,0,Width,LayoutManager.Scale(25)));
 			LayoutManager.Move(treeMain,new Rectangle(0,ToolBarMain.Bottom+4,LayoutManager.Scale(228),Height-(ToolBarMain.Height+6)));
-			if(_claimPaymentNum!=0 || _ehrAmendment!=null) {//eob or amendment
+			if(IsEobMode || _ehrAmendment!=null) {//eob or amendment
 				LayoutManager.Move(ToolBarPaint,new Rectangle(treeMain.Right+5,ToolBarMain.Bottom,Width-(treeMain.Width+5),LayoutManager.Scale(25)));
 			}
 			else {//ordinary images module
@@ -3591,7 +3639,8 @@ namespace OpenDental {
 			if(nodeIdTag.NodeType==EnumNodeType.Doc) {
 				doc=docToDelete??Documents.GetByNum(nodeIdTag.PriKey);
 				if(securityCheck) {
-					if(!Security.IsAuthorized(EnumPermType.ImageDelete,doc.DateCreated)) {
+					//24.4: a signed image also needs SignedImageEdit.
+					if(!ImageSignaturePermissions.IsAuthorizedToDelete(doc)) {
 						return;
 					}
 				}

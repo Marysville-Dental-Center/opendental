@@ -227,6 +227,8 @@ namespace OpenDental{
 				this.Text=Lan.g(this,"Edit Preauthorization");
 				groupBoxPendingPayment.Visible=false;
 				labelWorkflowMsg.Text="Use right-click options on Preauthorization";
+				//25.2: View EOB shows the EOBs scanned onto this preauth, and is only enabled when there is one.
+				butViewEob.Enabled=EobAttaches.ExistsForPreAuth(_claim.ClaimNum);
 			}
 			comboClaimType.Items.Add(Lan.g(this,"Primary"));
 			comboClaimType.Items.Add(Lan.g(this,"Secondary"));
@@ -1980,6 +1982,8 @@ namespace OpenDental{
 					using FormClaimPayPreAuth formClaimPayPreAuth=new FormClaimPayPreAuth(_patient,_family,_listInsPlans,_listPatPlans,_listInsSubs);
 					formClaimPayPreAuth.ListClaimProcs=listClaimProcs;
 					formClaimPayPreAuth.ShowDialog();
+					//An EOB scanned in that window stays attached to the preauth even if its estimates are cancelled.
+					butViewEob.Enabled=EobAttaches.ExistsForPreAuth(_claim.ClaimNum);
 					if(formClaimPayPreAuth.DialogResult!=DialogResult.OK) {
 						return;
 					}
@@ -2171,6 +2175,10 @@ namespace OpenDental{
 		}
 		
 		private void butViewEob_Click(object sender,EventArgs e) {
+			if(_claim.ClaimType=="PreAuth") {
+				ViewPreAuthEobs();
+				return;
+			}
 			List<long> listLongClaimPaymentNums=_listClaimProcsForClaim.FindAll(x => x.ClaimPaymentNum!=0).Select(x => x.ClaimPaymentNum).ToList();
 			List<ClaimPayment> listClaimPayments=ClaimPayments.GetClaimPaymentsWithEobAttach(listLongClaimPaymentNums);
 			ClaimPayment claimPayment=null;
@@ -2191,6 +2199,19 @@ namespace OpenDental{
 			using FormImages formImages=new FormImages();
 			formImages.ClaimPaymentNum=claimPayment.ClaimPaymentNum;
 			formImages.ShowDialog();
+		}
+
+		///<summary>Open Dental 25.2: opens the EOBs scanned onto this preauthorization (eobattach.ClaimNumPreAuth). They can be added and removed there.</summary>
+		private void ViewPreAuthEobs() {
+			if(!EobAttaches.ExistsForPreAuth(_claim.ClaimNum)) {
+				MsgBox.Show(this,"There are no EOBs for this preauthorization.");
+				butViewEob.Enabled=false;
+				return;
+			}
+			using FormImages formImages=new FormImages();
+			formImages.ClaimNumPreAuth=_claim.ClaimNum;
+			formImages.ShowDialog();
+			butViewEob.Enabled=EobAttaches.ExistsForPreAuth(_claim.ClaimNum);
 		}
 
 		///<summary>Called when there are multiple ClaimPayments that have EOBs attached to them and we don't know what one the user would like to view.</summary>
@@ -3779,7 +3800,18 @@ namespace OpenDental{
 				return;
 			}
 			List<long> listETrans835Attaches=Etrans835Attaches.GetForClaimNums(_claim.ClaimNum).Select(x => x.Etrans835AttachNum).ToList();
+			//25.2: EOBs attached to a preauth are deleted with it (files and rows), which needs ImageDelete.
+			List<EobAttach> listEobAttachesPreAuth=new List<EobAttach>();
 			if(_claim.ClaimType=="PreAuth"){
+				listEobAttachesPreAuth=EobAttaches.RefreshForPreAuth(_claim.ClaimNum);
+				if(listEobAttachesPreAuth.Count>0) {
+					DateTime dateTimeOldestEob=listEobAttachesPreAuth.Min(x => x.DateTCreated);
+					if(!Security.IsAuthorized(EnumPermType.ImageDelete,dateTimeOldestEob,suppressMessage:true)) {
+						MessageBox.Show(Lan.g(this,"This preauthorization has EOBs attached. Deleting it also deletes them, which needs the permission")+":\r\n"
+							+GroupPermissions.GetDesc(EnumPermType.ImageDelete));
+						return;
+					}
+				}
 				string msgAttaches="";
 				if(listETrans835Attaches.Count>0) {
 					msgAttaches="This claim is attached to at least one ERA."
@@ -3787,6 +3819,12 @@ namespace OpenDental{
 					+"\r\n";
 				}
 				if(MessageBox.Show(msgAttaches+Lan.g(this,"Delete PreAuthorization?"),"",MessageBoxButtons.OKCancel)!=DialogResult.OK){
+					return;
+				}
+				if(listEobAttachesPreAuth.Count>0
+					&& MessageBox.Show(Lan.g(this,"EOBs attached to this preauthorization")+": "+listEobAttachesPreAuth.Count+"\r\n"
+					+Lan.g(this,"They will be deleted too. Continue?"),"",MessageBoxButtons.OKCancel)!=DialogResult.OK)
+				{
 					return;
 				}
 			}
@@ -3811,6 +3849,15 @@ namespace OpenDental{
 					if(MessageBox.Show(msgAttaches+Lan.g(this,"Delete Claim?"),"",MessageBoxButtons.OKCancel)!=DialogResult.OK){
 						return;
 					}
+				}
+			}
+			if(listEobAttachesPreAuth.Count>0) {
+				try {
+					ImageStore.DeleteEobAttachesForPreAuth(_claim.ClaimNum);//Logs ImageDelete with "Preauth EOB" for each.
+				}
+				catch(Exception ex) {
+					MessageBox.Show(Lan.g(this,"Could not delete the EOBs of this preauthorization, so it was not deleted.")+"\r\n"+ex.Message);
+					return;
 				}
 			}
 			ClaimL.DeleteClaimHelper(_claim,listETrans835Attaches);
