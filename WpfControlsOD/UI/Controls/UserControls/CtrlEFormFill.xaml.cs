@@ -2366,14 +2366,7 @@ namespace OpenDental {
 
 		///<summary>First and last name only, since the patient may be filling at a kiosk.</summary>
 		private string GetPatientListName(long patNum){
-			if(patNum==0){
-				return "";
-			}
-			Patient patient=Patients.GetLim(patNum);
-			if(patient==null){
-				return "";
-			}
-			return patient.FName+" "+patient.LName;
+			return EFormInsPick.GetNameFirstLast(patNum);
 		}
 
 		private void AddPageBreak(Border borderBox,EFormField eFormField) {

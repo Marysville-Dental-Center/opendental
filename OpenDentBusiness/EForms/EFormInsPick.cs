@@ -210,10 +210,10 @@ namespace OpenDentBusiness {
 		///<summary>First and last name only.</summary>
 		public static string GetNameFirstLast(long patNum) {
 			Patient patient=Patients.GetLim(patNum);
-			if(patient==null) {
-				return "";
+			if(patient==null || patient.PatNum==0) {
+				return "";//GetLim returns an empty patient when the row is missing
 			}
-			return patient.FName+" "+patient.LName;
+			return (patient.FName+" "+patient.LName).Trim();
 		}
 
 		///<summary>Returns an error message for the Patient List Add window, or empty string. First name, last name and a real birthdate are required.</summary>
