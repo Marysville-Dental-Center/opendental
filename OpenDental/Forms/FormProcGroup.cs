@@ -318,7 +318,10 @@ namespace OpenDental{
 			if(_isStartingUp) {
 				return;
 			}
-			//The date is part of the signature key.
+			//The date is part of the signature key. Reformatting the same date (when the box loses focus) doesn't count.
+			if(DateTime.TryParse(textProcDate.Text,out DateTime dateProc) && dateProc.Date==_procedureGroupOld.ProcDate.Date) {
+				return;
+			}
 			ClearLoadedSignature();
 		}
 
