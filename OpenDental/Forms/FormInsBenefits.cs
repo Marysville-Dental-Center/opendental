@@ -670,7 +670,7 @@ namespace OpenDental {
 			gridBenefits.Columns.Clear();
 			GridColumn col=new GridColumn(Lan.g(this,"Pat"),35,HorizontalAlignment.Center);
 			gridBenefits.Columns.Add(col);
-			col=new GridColumn(Lan.g(this,"Level"),65);
+			col=new GridColumn(Lan.g(this,"Level"),60);
 			col.ListDisplayStrings=GetEnumStrings<BenefitCoverageLevel>("enumBenefitCoverageLevel");
 			gridBenefits.Columns.Add(col);
 			col=new GridColumn(Lan.g(this,"Type"),90);
@@ -678,27 +678,27 @@ namespace OpenDental {
 			listStringsType.AddRange(GetEnumStrings<InsBenefitType>("enumInsBenefitType"));
 			col.ListDisplayStrings=listStringsType;
 			gridBenefits.Columns.Add(col);
-			col=new GridColumn(Lan.g(this,"Category"),110);
+			col=new GridColumn(Lan.g(this,"Category"),95);
 			List<string> listStringsCategory=new List<string>() { "" };
 			listStringsCategory.AddRange(_listCovCats.Select(x => x.Description));
 			col.ListDisplayStrings=listStringsCategory;
 			gridBenefits.Columns.Add(col);
 			col=new GridColumn("%",35,HorizontalAlignment.Center,isEditable:true);
 			gridBenefits.Columns.Add(col);
-			col=new GridColumn(Lan.g(this,"Amt"),55,HorizontalAlignment.Right,isEditable:true);
+			col=new GridColumn(Lan.g(this,"Amt"),50,HorizontalAlignment.Right,isEditable:true);
 			gridBenefits.Columns.Add(col);
-			col=new GridColumn(Lan.g(this,"Time Period"),95);
+			col=new GridColumn(Lan.g(this,"Time Period"),85);
 			col.ListDisplayStrings=GetEnumStrings<BenefitTimePeriod>("enumBenefitTimePeriod");
 			gridBenefits.Columns.Add(col);
 			col=new GridColumn(Lan.g(this,"Qty"),35,HorizontalAlignment.Center,isEditable:true);
 			gridBenefits.Columns.Add(col);
-			col=new GridColumn(Lan.g(this,"Qualifier"),90);
+			col=new GridColumn(Lan.g(this,"Qualifier"),80);
 			col.ListDisplayStrings=GetEnumStrings<BenefitQuantity>("enumBenefitQuantity");
 			gridBenefits.Columns.Add(col);
-			col=new GridColumn(Lan.g(this,"Treat Area"),75);
+			col=new GridColumn(Lan.g(this,"Treat Area"),65);
 			col.ListDisplayStrings=GetEnumStrings<TreatmentArea>("enumTreatmentArea");
 			gridBenefits.Columns.Add(col);
-			col=new GridColumn(Lan.g(this,"Teeth"),70,isEditable:true);
+			col=new GridColumn(Lan.g(this,"Teeth"),55,isEditable:true);
 			gridBenefits.Columns.Add(col);
 			gridBenefits.ListGridRows.Clear();
 			for(int i=0;i<_listBenefitsGrid.Count;i++) {
@@ -768,7 +768,14 @@ namespace OpenDental {
 			row.Cells.Add(MakeComboCell(gridBenefits.Columns[COL_TREAT_AREA],(int)benefit.TreatArea));
 			row.Cells.Add(Benefits.GetToothRangeDisplay(benefit));
 			row.Tag=otherBenefitRow;
+			otherBenefitRow.SignatureApplied=GetRowSignature(row);
 			return row;
+		}
+
+		///<summary>The texts and combo choices of a row, to tell whether a cell was really changed since the row was last applied. Leaving a cell
+		///without changing anything must not check (and possibly block) an old benefit that the newer rules would refuse.</summary>
+		private string GetRowSignature(GridRow gridRow) {
+			return string.Join("\t",gridRow.Cells.Select(x => x.Text+"\v"+x.ComboSelectedIndex));
 		}
 
 		private GridCell MakeComboCell(GridColumn gridColumn,int index) {
@@ -834,6 +841,10 @@ namespace OpenDental {
 			if(!(gridRow.Tag is OtherBenefitRow otherBenefitRow) || gridRow.Cells.Count<=COL_TEETH) {
 				return;
 			}
+			if(GetRowSignature(gridRow)==otherBenefitRow.SignatureApplied) {
+				SetOtherBenefitRowErrors(gridRow,otherBenefitRow,new List<BenefitValidationError>());//unchanged, or changed back
+				return;
+			}
 			OtherBenefitsRowInput input=new OtherBenefitsRowInput();
 			input.IsPat=gridRow.Cells[COL_PAT].Text=="X";
 			input.CoverageLevel=(BenefitCoverageLevel)Math.Max(0,gridRow.Cells[COL_LEVEL].ComboSelectedIndex);
@@ -861,6 +872,7 @@ namespace OpenDental {
 					otherBenefitRow.IsInList=false;
 				}
 				SetOtherBenefitRowErrors(gridRow,otherBenefitRow,new List<BenefitValidationError>());
+				otherBenefitRow.SignatureApplied=GetRowSignature(gridRow);
 				return;
 			}
 			Benefit benefit=Benefits.GetFromOtherBenefitsRow(otherBenefitRow.Benefit,input,_planNum,_patPlanNum,
@@ -889,6 +901,7 @@ namespace OpenDental {
 				otherBenefitRow.IsInList=true;
 			}
 			gridRow.Cells[COL_TEETH].Text=Benefits.GetToothRangeDisplay(benefitCur);//tidied, or cleared when not an exclusion
+			otherBenefitRow.SignatureApplied=GetRowSignature(gridRow);
 			gridBenefits.Invalidate();
 		}
 
@@ -1902,6 +1915,8 @@ namespace OpenDental {
 		private class OtherBenefitRow {
 			public Benefit Benefit;
 			public bool IsInList;
+			///<summary>The row's cells as they were when the benefit last matched them (see GetRowSignature).</summary>
+			public string SignatureApplied="";
 
 			public OtherBenefitRow(Benefit benefit,bool isInList) {
 				Benefit=benefit;
