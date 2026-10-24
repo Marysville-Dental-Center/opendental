@@ -404,6 +404,13 @@ using OpenDental.UI;
 		[DefaultValue(false)]
 		public bool EditableUsesRTF { get; set; } =false;
 
+		///<summary>Optional, for GridSelectionMode.OneCell. When set, the grid calls it with (column index, row index) before it opens a text box or a
+		///combo box on a cell of an editable or combo column. Returning false leaves that one cell read-only, so that rows of one grid can differ, for
+		///example a category that is read-only on some rows only. Null means every cell of those columns can be edited.</summary>
+		[Browsable(false)]
+		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+		public Func<int,int,bool> FuncCellIsEditable { get; set; }=null;
+
 		///<summary></summary>
 		[Category("OD")]
 		[Description("js Not allowed to be used in OD proper. Set to true to show an add button on the right side of the title bar.")]
@@ -2159,11 +2166,11 @@ using OpenDental.UI;
 //LostFocus happens before click.  That's where textEdit is cleared.
 					comboBox.Visible=false;
 					_selectedCell=new Point(_mouseDownCol,_mouseDownRow);
-					if(Columns[_selectedCell.X].IsEditable || Columns[_selectedCell.X].ListDisplayStrings!=null) {
-						if(Columns[_selectedCell.X].IsEditable) {
+					if(IsCellEditBox(_selectedCell.X,_selectedCell.Y) || IsCellComboBox(_selectedCell.X,_selectedCell.Y)) {
+						if(IsCellEditBox(_selectedCell.X,_selectedCell.Y)) {
 							CreateEditBox();
 						}
-						else if(Columns[_selectedCell.X].ListDisplayStrings!=null) {
+						else {
 							CreateComboBox();
 						}
 						//When the additional control is created, added to the controls, and given focus, the chain of events stops and the OnClick event never gets fired.
@@ -2328,6 +2335,9 @@ using OpenDental.UI;
 					if(_selectedCellOld.Y==ListGridRows.Count-1) {
 						return;//can't move down
 					}
+					if(!IsCellComboBox(_selectedCellOld.X,_selectedCellOld.Y+1)) {
+						return;//the cell below is read-only
+					}
 					_selectedCell=new Point(_selectedCellOld.X,_selectedCellOld.Y+1);
 					CreateComboBox();
 					return;
@@ -2483,6 +2493,9 @@ using OpenDental.UI;
 					if(_selectedCellOld.Y==ListGridRows.Count-1) {
 						return;//can't move down
 					}
+					if(!IsCellEditBox(_selectedCellOld.X,_selectedCellOld.Y+1)) {
+						return;//the cell below is read-only
+					}
 					_selectedCell=new Point(_selectedCellOld.X,_selectedCellOld.Y+1);
 					CreateEditBox();
 					return;
@@ -2493,7 +2506,7 @@ using OpenDental.UI;
 				if(EditableAcceptsCR) {//When multiline it moves down inside the text instead of down to the next cell.
 					return;
 				}
-				if(_selectedCellOld.Y<ListGridRows.Count-1) {
+				if(_selectedCellOld.Y<ListGridRows.Count-1 && IsCellEditBox(_selectedCellOld.X,_selectedCellOld.Y+1)) {
 					textEdit.Dispose();
 					textEdit=null;
 					_selectedCell=new Point(_selectedCellOld.X,_selectedCellOld.Y+1);
@@ -2504,7 +2517,7 @@ using OpenDental.UI;
 				if(EditableAcceptsCR) {//When multiline it moves up inside the text instead of up to the next cell.
 					return;
 				}
-				if(_selectedCellOld.Y>0) {
+				if(_selectedCellOld.Y>0 && IsCellEditBox(_selectedCellOld.X,_selectedCellOld.Y-1)) {
 					textEdit.Dispose();
 					textEdit=null;
 					_selectedCell=new Point(_selectedCellOld.X,_selectedCellOld.Y-1);
@@ -2522,34 +2535,55 @@ using OpenDental.UI;
 			Focus();//Fires comboBox_LostFocus, which is where we call CellLeave.
 			//find the next editable cell to the right.
 			for(int i= _selectedCellOld.X+1; i < Columns.Count; i++) {
-				if(Columns[i].IsEditable){//textbox
+				if(IsCellEditBox(i,_selectedCellOld.Y)){//textbox
 					_selectedCell=new Point(i,_selectedCellOld.Y);
 					CreateEditBox();
 					return;
 				}
-				if(Columns[i].ListDisplayStrings!=null) {//dropdown
+				if(IsCellComboBox(i,_selectedCellOld.Y)) {//dropdown
 					_selectedCell=new Point(i,_selectedCellOld.Y);
 					CreateComboBox();
 					return;
 				}
 			}
-			//can't move to the right, so attempt to move down.
-			if(_selectedCellOld.Y==ListGridRows.Count-1) {
-				return;//can't move down
-			}
-			//At this point, we know that we can move either down or down and left.
-			for(int i=0; i < Columns.Count; i++) {
-				if(Columns[i].IsEditable) {
-					_selectedCell=new Point(i,_selectedCellOld.Y+1);
-					CreateEditBox();
-					return;
-				}
-				if(Columns[i].ListDisplayStrings!=null){
-					_selectedCell=new Point(i,_selectedCellOld.Y+1);
-					CreateComboBox();
-					return;
+			//can't move to the right, so attempt to move down. Rows whose cells are all read-only are skipped.
+			for(int row=_selectedCellOld.Y+1;row<ListGridRows.Count;row++) {
+				for(int i=0; i < Columns.Count; i++) {
+					if(IsCellEditBox(i,row)) {
+						_selectedCell=new Point(i,row);
+						CreateEditBox();
+						return;
+					}
+					if(IsCellComboBox(i,row)){
+						_selectedCell=new Point(i,row);
+						CreateComboBox();
+						return;
+					}
 				}
 			}
+		}
+
+		///<summary>True when the cell gets a text box when selected: its column is editable and FuncCellIsEditable, if set, allows it.</summary>
+		private bool IsCellEditBox(int col,int row) {
+			if(col<0 || col>=Columns.Count || !Columns[col].IsEditable) {
+				return false;
+			}
+			if(FuncCellIsEditable==null || row<0 || row>=ListGridRows.Count) {
+				return true;
+			}
+			return FuncCellIsEditable(col,row);
+		}
+
+		///<summary>True when the cell gets a combo box when selected: its column has ListDisplayStrings and is not a text column, and
+		///FuncCellIsEditable, if set, allows it.</summary>
+		private bool IsCellComboBox(int col,int row) {
+			if(col<0 || col>=Columns.Count || Columns[col].IsEditable || Columns[col].ListDisplayStrings==null) {
+				return false;
+			}
+			if(FuncCellIsEditable==null || row<0 || row>=ListGridRows.Count) {
+				return true;
+			}
+			return FuncCellIsEditable(col,row);
 		}
 		
 		void textEdit_KeyUp(object sender,KeyEventArgs e) {
@@ -3302,7 +3336,7 @@ using OpenDental.UI;
 			}
 			_selectedCell=setCell;
 			textEdit?.Dispose();
-			if(Columns[_selectedCell.X].IsEditable) {
+			if(IsCellEditBox(_selectedCell.X,_selectedCell.Y)) {
 				CreateEditBox();
 			}
 			Invalidate();

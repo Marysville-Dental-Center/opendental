@@ -49,6 +49,9 @@ namespace OpenDental {
 			this.labelTreatmentArea = new System.Windows.Forms.Label();
 			this.comboCodeGroup = new OpenDental.UI.ComboBox();
 			this.labelCodeGroup = new System.Windows.Forms.Label();
+			this.labelTeeth = new System.Windows.Forms.Label();
+			this.textTeeth = new System.Windows.Forms.TextBox();
+			this.labelTeethHint = new System.Windows.Forms.Label();
 			this.groupQuantity.SuspendLayout();
 			this.groupBox1.SuspendLayout();
 			this.SuspendLayout();
@@ -108,6 +111,7 @@ namespace OpenDental {
 			this.listBenefitType.Name = "listBenefitType";
 			this.listBenefitType.Size = new System.Drawing.Size(114, 105);
 			this.listBenefitType.TabIndex = 7;
+			this.listBenefitType.SelectedIndexChanged += new System.EventHandler(this.listBenefitType_SelectedIndexChanged);
 			// 
 			// labelType
 			// 
@@ -290,9 +294,36 @@ namespace OpenDental {
 			this.labelCodeGroup.Text = "or Code Group";
 			this.labelCodeGroup.TextAlign = System.Drawing.ContentAlignment.TopRight;
 			// 
+			// labelTeeth
+			// 
+			this.labelTeeth.Location = new System.Drawing.Point(26, 446);
+			this.labelTeeth.Name = "labelTeeth";
+			this.labelTeeth.Size = new System.Drawing.Size(100, 16);
+			this.labelTeeth.TabIndex = 32;
+			this.labelTeeth.Text = "Teeth";
+			this.labelTeeth.TextAlign = System.Drawing.ContentAlignment.TopRight;
+			// 
+			// textTeeth
+			// 
+			this.textTeeth.Location = new System.Drawing.Point(128, 443);
+			this.textTeeth.Name = "textTeeth";
+			this.textTeeth.Size = new System.Drawing.Size(114, 20);
+			this.textTeeth.TabIndex = 8;
+			// 
+			// labelTeethHint
+			// 
+			this.labelTeethHint.Location = new System.Drawing.Point(125, 466);
+			this.labelTeethHint.Name = "labelTeethHint";
+			this.labelTeethHint.Size = new System.Drawing.Size(190, 44);
+			this.labelTeethHint.TabIndex = 33;
+			this.labelTeethHint.Text = "Exclusions only. Blank for every tooth. Example: 2,15 or 23-26";
+			// 
 			// FormBenefitEdit
 			// 
 			this.ClientSize = new System.Drawing.Size(578, 561);
+			this.Controls.Add(this.labelTeethHint);
+			this.Controls.Add(this.textTeeth);
+			this.Controls.Add(this.labelTeeth);
 			this.Controls.Add(this.labelTreatmentArea);
 			this.Controls.Add(this.listTreatArea);
 			this.Controls.Add(this.groupBox1);
@@ -336,6 +367,9 @@ namespace OpenDental {
 		private OpenDental.UI.ListBox listCategory;
 		private TextBox textProcCode;
 		private OpenDental.UI.ListBox listBenefitType;
+		private Label labelTeeth;
+		private TextBox textTeeth;
+		private Label labelTeethHint;
 		private Label labelType;
 		private Label labelPercent;
 		private OpenDental.UI.ListBox listTimePeriod;
