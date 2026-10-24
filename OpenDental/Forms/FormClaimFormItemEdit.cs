@@ -287,6 +287,8 @@ namespace OpenDental {
 				"DateLastSRP",
 				"DateOther",
 				"DateOtherQualifier",
+				"HospitalizationDateFrom",
+				"HospitalizationDateTo",
 				"IsOutsideLab",
 				"IsNotOutsideLab",
 				"OutsideLabFee"

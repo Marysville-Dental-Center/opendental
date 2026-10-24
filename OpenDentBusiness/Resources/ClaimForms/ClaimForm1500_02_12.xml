@@ -2198,5 +2198,29 @@
 			<Width>20</Width>
 			<Height>14</Height>
 		</ClaimFormItem>
+		<ClaimFormItem>
+			<IsNew>false</IsNew>
+			<ClaimFormItemNum>0</ClaimFormItemNum>
+			<ClaimFormNum>0</ClaimFormNum>
+			<ImageFileName />
+			<FieldName>HospitalizationDateFrom</FieldName>
+			<FormatString>MM    dd    yy</FormatString>
+			<XPos>565</XPos>
+			<YPos>587</YPos>
+			<Width>80</Width>
+			<Height>14</Height>
+		</ClaimFormItem>
+		<ClaimFormItem>
+			<IsNew>false</IsNew>
+			<ClaimFormItemNum>0</ClaimFormItemNum>
+			<ClaimFormNum>0</ClaimFormNum>
+			<ImageFileName />
+			<FieldName>HospitalizationDateTo</FieldName>
+			<FormatString>MM    dd    yy</FormatString>
+			<XPos>700</XPos>
+			<YPos>587</YPos>
+			<Width>80</Width>
+			<Height>14</Height>
+		</ClaimFormItem>
   </Items>
 </ClaimForm>

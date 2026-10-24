@@ -440,6 +440,8 @@ namespace OpenDental{
 					case "TreatingDentistSigDate":
 					case "DateIllnessInjuryPreg":
 					case "DateOther":
+					case "HospitalizationDateFrom":
+					case "HospitalizationDateTo":
 						if(_claimForm.Items[i].FormatString=="")
 							_stringArrayDisplays[i]="";//DateTime.Today.ToShortDateString();
 						else
