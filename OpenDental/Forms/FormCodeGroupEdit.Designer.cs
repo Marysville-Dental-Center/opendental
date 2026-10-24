@@ -36,6 +36,9 @@ namespace OpenDental {
 			this.label4 = new System.Windows.Forms.Label();
 			this.label5 = new System.Windows.Forms.Label();
 			this.checkShowInAgeLim = new System.Windows.Forms.CheckBox();
+			this.checkShowInOther = new System.Windows.Forms.CheckBox();
+			this.checkHidden = new System.Windows.Forms.CheckBox();
+			this.butDelete = new OpenDental.UI.Button();
 			this.SuspendLayout();
 			// 
 			// butSave
@@ -125,9 +128,9 @@ namespace OpenDental {
 			// 
 			this.label4.Location = new System.Drawing.Point(146, 214);
 			this.label4.Name = "label4";
-			this.label4.Size = new System.Drawing.Size(295, 14);
+			this.label4.Size = new System.Drawing.Size(410, 14);
 			this.label4.TabIndex = 0;
-			this.label4.Text = "Codes should be comma separated.";
+			this.label4.Text = "Codes and ranges separated by commas (e.g. D2391-D2394,D2740)";
 			// 
 			// label5
 			// 
@@ -148,9 +151,45 @@ namespace OpenDental {
 			this.checkShowInAgeLim.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
 			this.checkShowInAgeLim.UseVisualStyleBackColor = true;
 			// 
+			// checkShowInOther
+			// 
+			this.checkShowInOther.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.checkShowInOther.Location = new System.Drawing.Point(169, 28);
+			this.checkShowInOther.Name = "checkShowInOther";
+			this.checkShowInOther.Size = new System.Drawing.Size(160, 20);
+			this.checkShowInOther.TabIndex = 7;
+			this.checkShowInOther.Text = "Show In Other Benefits";
+			this.checkShowInOther.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.checkShowInOther.UseVisualStyleBackColor = true;
+			// 
+			// checkHidden
+			// 
+			this.checkHidden.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.checkHidden.Location = new System.Drawing.Point(169, 51);
+			this.checkHidden.Name = "checkHidden";
+			this.checkHidden.Size = new System.Drawing.Size(160, 20);
+			this.checkHidden.TabIndex = 8;
+			this.checkHidden.Text = "Hidden (retired)";
+			this.checkHidden.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.checkHidden.UseVisualStyleBackColor = true;
+			// 
+			// butDelete
+			// 
+			this.butDelete.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.butDelete.Icon = OpenDental.UI.EnumIcons.DeleteX;
+			this.butDelete.Location = new System.Drawing.Point(12, 264);
+			this.butDelete.Name = "butDelete";
+			this.butDelete.Size = new System.Drawing.Size(75, 24);
+			this.butDelete.TabIndex = 98;
+			this.butDelete.Text = "&Delete";
+			this.butDelete.Click += new System.EventHandler(this.butDelete_Click);
+			// 
 			// FormCodeGroupEdit
 			// 
 			this.ClientSize = new System.Drawing.Size(671, 300);
+			this.Controls.Add(this.butDelete);
+			this.Controls.Add(this.checkHidden);
+			this.Controls.Add(this.checkShowInOther);
 			this.Controls.Add(this.checkShowInAgeLim);
 			this.Controls.Add(this.label5);
 			this.Controls.Add(this.label4);
@@ -186,5 +225,8 @@ namespace OpenDental {
 		private System.Windows.Forms.Label label4;
 		private System.Windows.Forms.Label label5;
 		private System.Windows.Forms.CheckBox checkShowInAgeLim;
+		private System.Windows.Forms.CheckBox checkShowInOther;
+		private System.Windows.Forms.CheckBox checkHidden;
+		private UI.Button butDelete;
 	}
 }
