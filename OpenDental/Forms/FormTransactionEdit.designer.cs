@@ -499,9 +499,9 @@ namespace OpenDental {
 			this.butSave.TabIndex = 2;
 			this.butSave.Text = "&Save";
 			this.butSave.Click += new System.EventHandler(this.butSave_Click);
-			//
+			// 
 			// butPrintCheck
-			//
+			// 
 			this.butPrintCheck.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
 			this.butPrintCheck.Location = new System.Drawing.Point(562, 432);
 			this.butPrintCheck.Name = "butPrintCheck";
@@ -510,7 +510,7 @@ namespace OpenDental {
 			this.butPrintCheck.Text = "Print Check";
 			this.butPrintCheck.Visible = false;
 			this.butPrintCheck.Click += new System.EventHandler(this.butPrintCheck_Click);
-			//
+			// 
 			// labelReconcileDate
 			// 
 			this.labelReconcileDate.Location = new System.Drawing.Point(9, 87);

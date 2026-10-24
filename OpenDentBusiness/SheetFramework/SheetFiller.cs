@@ -237,7 +237,6 @@ namespace OpenDentBusiness {
 			return listProcCodeNums;
 		}
 
-		///<summary>Pat can be null sometimes.  For example, in deposit slip.</summary>
 		///<summary>The insurance plan type shown by the insType and ins2Type static text fields.</summary>
 		public static string GetInsTypeDescription(string planType) {
 			switch(planType) {//(ppo, etc)
@@ -253,6 +252,7 @@ namespace OpenDentBusiness {
 			return "";
 		}
 
+		///<summary>Pat can be null sometimes.  For example, in deposit slip.</summary>
 		public static List<StaticTextReplacement> GetStaticTextReplacements(List<EnumStaticTextField> listEnumStaticTextFields,Patient patient,Family family,StaticTextData staticTextData,StaticTextFieldDependency staticTextFieldDependency,long aptNum,SheetTypeEnum sheetType=SheetTypeEnum.None) {
 			#region Instantiate Strings
 			string activeProblems="";
