@@ -430,46 +430,16 @@ namespace OpenDentBusiness{
 			return GetCodeNumsForProcCodes(codeGroup.ProcCodes);
 		}
 
-		//<summary>Returns a list of CodeNums that have a ProcCode that starts with any of the comma and dash separated ProcCodes passed in. Example: Insurance benefit logic invokes this method and must match procedure codes that start the same.</summary>
+		///<summary>Returns the CodeNums of the procedure codes listed in a comma separated list of codes and code ranges, such as the text of a code
+		///group or an insurance history preference ("D0100-D0999,D2140-D2161,D2750"). Ranges follow ProcCodeRanges: same letter prefix on both ends and
+		///numeric parts of the same length, so any prefix works and leading zeros are kept; a code with a dash in it, such as D1110-2, is one code.</summary>
 		public static List<long> GetCodeNumsForProcCodes(string stringCommaDashDCodes) {
 			Meth.NoCheckMiddleTierRole();
-			List<string> listDCodes=stringCommaDashDCodes.Split(",",StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim()).ToList();
-			//Get dash ranges separated out and added to list
-			List<string> listDashEntries=listDCodes.FindAll(x=>x.Contains("-"));
-			for(int i=0;i<listDashEntries.Count;i++) {
-				List<string> list2DCodes=listDashEntries[i].Split("-",StringSplitOptions.RemoveEmptyEntries).ToList();
-				//Could be a code that has a dash within it. Example: D1110-2
-				if(!list2DCodes[0].Contains("D") || !list2DCodes[1].Contains("D")) {
-					continue;
-				}
-				string strStart=list2DCodes[0].Replace("D","");
-				string strEnd=list2DCodes[1].Replace("D","");
-				int startRange;
-				int endRange;
-				try {
-					startRange=Int32.Parse(strStart);
-					endRange=Int32.Parse(strEnd);
-				}
-				catch {
-					continue;
-				}
-				int count=endRange-startRange+1;
-				if(count<0) {//if codes in range are in reverse order
-					continue;
-				}
-				List<int> listRange=Enumerable.Range(startRange,count).ToList();
-				for(int j=0;j<listRange.Count;j++) {
-					string strCodeNumber=listRange[j].ToString();
-					if(strCodeNumber.Length==3) {//Preceding 0's get lost when parsing.  Example: D0272 would be parsed as 272.
-						listDCodes.Add("D0"+strCodeNumber);
-						continue;
-					}
-					listDCodes.Add("D"+strCodeNumber);
-				}
-				//Remove the string item with the dash itself
-				listDCodes.Remove(listDashEntries[i]);
+			ProcCodeRanges procCodeRanges=ProcCodeRanges.Get(stringCommaDashDCodes);
+			if(procCodeRanges.ListEntries.Count==0) {
+				return new List<long>();
 			}
-			return GetWhereFromList(x => listDCodes.Contains(x.ProcCode)).Select(x => x.CodeNum).ToList();
+			return GetWhereFromList(x => procCodeRanges.Contains(x.ProcCode)).Select(x => x.CodeNum).ToList();
 		}
 
 		///<summary>Gets the CodeNums for the passed in InsHist preference.</summary>
