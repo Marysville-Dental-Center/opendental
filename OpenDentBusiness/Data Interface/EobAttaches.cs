@@ -118,6 +118,19 @@ namespace OpenDentBusiness{
 			return true;
 		}
 
+		///<summary>The preauthorization that the claimprocs of the Enter Estimates for PreAuth window belong to: the first ClaimNum above 0, or 0.
+		///</summary>
+		public static long GetClaimNumPreAuth(List<ClaimProc> listClaimProcs) {
+			if(listClaimProcs==null) {
+				return 0;
+			}
+			ClaimProc claimProc=listClaimProcs.Find(x => x!=null && x.ClaimNum>0);
+			if(claimProc==null) {
+				return 0;
+			}
+			return claimProc.ClaimNum;
+		}
+
 		///<summary>Each eobattach row has exactly one owner: a claim payment (ClaimPaymentNum above 0, ClaimNumPreAuth 0) or a preauthorization
 		///(ClaimNumPreAuth above 0, ClaimPaymentNum 0).</summary>
 		public static bool HasValidOwner(EobAttach eobAttach) {

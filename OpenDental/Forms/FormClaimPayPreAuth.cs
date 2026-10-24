@@ -39,25 +39,13 @@ namespace OpenDental
 		private void FormClaimPayPreAuth_Load(object sender,EventArgs e) {
 			_listProcedures=Procedures.Refresh(_patient.PatNum);
 			FillGrid();
-			_claimNumPreAuth=GetClaimNumPreAuth(ListClaimProcs);
+			_claimNumPreAuth=EobAttaches.GetClaimNumPreAuth(ListClaimProcs);
 			if(_claimNumPreAuth==0) {//Should not happen; the preauth is always saved before estimates are entered.
 				labelEobIsScanned.Visible=false;
 				textEobIsScanned.Visible=false;
 				butViewEob.Visible=false;
 			}
 			FillEobStatus();
-		}
-
-		///<summary>The ClaimNum shared by the claimprocs, or 0 when there is none.</summary>
-		public static long GetClaimNumPreAuth(List<ClaimProc> listClaimProcs) {
-			if(listClaimProcs==null) {
-				return 0;
-			}
-			ClaimProc claimProc=listClaimProcs.Find(x => x.ClaimNum>0);
-			if(claimProc==null) {
-				return 0;
-			}
-			return claimProc.ClaimNum;
 		}
 
 		///<summary>Shows whether an EOB is attached to the preauthorization. The button scans when there is none and views when there is one, as in the
