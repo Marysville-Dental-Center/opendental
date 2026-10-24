@@ -1322,6 +1322,7 @@ namespace OpenDental {
 					_listImportRows.Add(importRow);
 				}
 				#endregion ins2
+				FillRowsInsPick();
 			}
 			#endregion Patient Form
 			#region Medical History (Sheets)
@@ -3231,6 +3232,7 @@ namespace OpenDental {
 						MsgBox.Show(this,"Required secondary insurance fields are missing on this sheet.  You cannot import secondary insurance with this sheet until it contains all of required fields.  Required fields: Relationship, Subscriber, SubscriberID, CarrierName, and CarrierPhone.");
 					}
 				}
+				ImportInsPickRows();
 				//Every USPS lookup is billed and counts against the office's quota, so an address the import didn't change is not checked again.
 				bool isAddressChanged=_patient.Address!=_patientOld.Address
 					|| _patient.Address2!=_patientOld.Address2
@@ -3701,6 +3703,75 @@ namespace OpenDental {
 				return _listImportRows[i].ImpValDisplay;
 			}
 			return "";
+		}
+
+		///<summary>eForm Ins Pick fields (Open Dental 25.2) import as pending insurance (inspending), never as plans; staff convert pending rows from the
+		///Family module. The ins1/ins2 rows of a slot that has an Ins Pick field are left out, because those fields are its children and the plan
+		///import would bypass the review. Each Ins Pick field gets one row showing what the import would make, or why it can't.</summary>
+		private void FillRowsInsPick() {
+			if(EFormCur==null) {
+				return;
+			}
+			List<EFormField> listEFormFieldsInsPick=EFormCur.ListEFormFields.FindAll(x => x.FieldType==EnumEFormFieldType.InsPick);
+			if(listEFormFieldsInsPick.Count==0) {
+				return;
+			}
+			for(int i=0;i<listEFormFieldsInsPick.Count;i++) {
+				byte ordinal=EFormInsPick.GetOrdinal(listEFormFieldsInsPick[i].DbLink);
+				if(ordinal==0) {
+					continue;
+				}
+				_listImportRows.RemoveAll(x => (!x.IsSectionHeader && x.FieldName!=null && x.FieldName.StartsWith("ins"+ordinal))
+					|| (x.IsSectionHeader && x.FieldName=="Insurance Policy "+ordinal));
+			}
+			_listImportRows.Add(CreateSeparator("Pending Insurance"));
+			EFormFields.SetIsHiddenConditFlags(EFormCur.ListEFormFields);
+			List<PatPlan> listPatPlans=PatPlans.Refresh(_patient.PatNum);
+			List<InsPending> listInsPendings=InsPendings.GetForPat(_patient.PatNum);
+			for(int i=0;i<listEFormFieldsInsPick.Count;i++) {
+				EFormField eFormField=listEFormFieldsInsPick[i];
+				InsPickImportResult insPickImportResult=EFormImport.GetInsPickImport(EFormCur,eFormField,_family,listPatPlans,listInsPendings);
+				ImportRow importRow=new ImportRow();
+				importRow.FieldName="InsPick"+i;//never starts with ins1/ins2, which the plan import uses
+				importRow.FieldDisplay=eFormField.ValueLabel;
+				byte ordinal=EFormInsPick.GetOrdinal(eFormField.DbLink);
+				PatPlan patPlan=null;
+				if(ordinal>0) {
+					patPlan=listPatPlans.OrderBy(x => x.Ordinal).ElementAtOrDefault(ordinal-1);
+				}
+				importRow.OldValDisplay=patPlan==null ? "" : EFormInsPick.GetExistingSummary(EFormInsPick.ToValueInsSub(patPlan.InsSubNum));
+				List<string> listOptions=EFormInsPick.GetOptions(eFormField.PickListVis);
+				importRow.NewValDisplay=listOptions[EFormInsPick.GetOptionIndex(eFormField.ValueString)];
+				if(EFormInsPick.IsExisting(eFormField.ValueString)) {
+					importRow.NewValDisplay+=": "+EFormInsPick.GetExistingSummary(eFormField.ValueString);
+				}
+				importRow.TypeObj=typeof(InsPending);
+				importRow.ImpValObj=insPickImportResult.InsPending;//null when there is nothing to make
+				if(insPickImportResult.Error!="") {
+					importRow.ImpValDisplay=insPickImportResult.Error;
+					importRow.IsImportRed=true;
+				}
+				else {
+					importRow.ImpValDisplay=insPickImportResult.Description;
+				}
+				importRow.DoImport=insPickImportResult.InsPending!=null;
+				_listImportRows.Add(importRow);
+			}
+		}
+
+		///<summary>Inserts the pending insurance of the Ins Pick rows marked for import, unless the same row was made meanwhile (for example by Auto
+		///Import), and logs each one.</summary>
+		private void ImportInsPickRows() {
+			List<ImportRow> listImportRows=_listImportRows.FindAll(x => x.DoImport && x.TypeObj==typeof(InsPending) && x.ImpValObj is InsPending);
+			for(int i=0;i<listImportRows.Count;i++) {
+				InsPending insPending=(InsPending)listImportRows[i].ImpValObj;
+				if(InsPendings.GetForPat(insPending.PatNum).Exists(x => InsPendings.IsSameForPatient(x,insPending))) {
+					continue;
+				}
+				InsPendings.Insert(insPending);
+				SecurityLogs.MakeLogEntry(EnumPermType.EFormImport,_patient.PatNum,"Pending insurance created from eForm #"+EFormCur.EFormNum
+					+" ("+EFormCur.Description+"): "+InsPendings.GetDescription(insPending,_family));
+			}
 		}
 
 		///<summary>Returns a separator and sets the FieldName to the passed in string.</summary>
