@@ -38,6 +38,16 @@ namespace OpenDental {
 			sheetPrintingJob.Print(sheet,copies,isRxControlled,stmt,medLab,isPrintDocument,isPreviewMode);
 		}
 
+		///<summary>Prints a filled Check sheet (Open Dental 25.3). The printer window writes the usual Printing audit entry once a printer is chosen;
+		///for a check it reads, for example, "Check #1001, $1,250.00, Payee sheet from (date) printed". Check sheets are never saved, so the
+		///description is only used for that entry and the print job name.</summary>
+		public static void PrintCheck(Sheet sheet,string auditDescription) {
+			if(!string.IsNullOrWhiteSpace(auditDescription)) {
+				sheet.Description=auditDescription;
+			}
+			Print(sheet);
+		}
+
 		///<Summary>DataSet should be prefilled with AccountModules.GetAccount() before calling this method if printing a statement.  Returns null if document failed to print.</Summary>
 		public static void Print(Sheet sheet,DataSet dataSet,int copies=1,bool isRxControlled=false,Statement stmt=null,MedLab medLab=null,
 			bool isPrintDocument=true,bool isPreviewMode=false,bool isPrintRemote=false,long printerNumOverride=0)

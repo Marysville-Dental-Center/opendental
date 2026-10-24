@@ -102,6 +102,10 @@ namespace OpenDental {
 			if(!SheetDefCur.SheetType.In(SheetTypeEnum.PatientLetter,SheetTypeEnum.ReferralLetter)) {
 				listStaticTextFields.RemoveAll(x => x.In(EnumStaticTextField.apptDateMonthSpelled,EnumStaticTextField.apptProcs,EnumStaticTextField.apptProvNameFormal));
 			}
+			//A check has no patient, so only the fields that need none are offered.
+			if(SheetDefCur.SheetType==SheetTypeEnum.Check) {
+				listStaticTextFields.RemoveAll(x => !CheckSheets.IsStaticTextFieldAllowed(x));
+			}
 			for(int i=0;i<listStaticTextFields.Count;i++) {
 				listFields.Items.Add(listStaticTextFields[i].GetDescription());
 			}

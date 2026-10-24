@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Windows.Forms;
 using CodeBase;
 using OpenDental.UI;
@@ -60,6 +61,8 @@ namespace OpenDental{
 			checkNeedsReview.Checked=JournalEntries.IsAnyNeedsReview(_listJournalEntries);
 			//The next check number button is for checking accounts, which are asset accounts.
 			butNextCheckNumber.Visible=(_accountOfOrigin!=null && _accountOfOrigin.AcctType==AccountType.Asset);
+			//Checks print from asset accounts (Open Dental 25.3), from the simple view and from split transactions alike.
+			butPrintCheck.Visible=CheckSheets.CanPrintFrom(_accountOfOrigin);
 			if(_listJournalEntries.Count>0) {
 				textDate.Text=_listJournalEntries[0].DateDisplayed.ToShortDateString();
 			}
@@ -656,22 +659,121 @@ namespace OpenDental{
 			DialogResult=DialogResult.OK;
 		}
 
+		private void butPrintCheck_Click(object sender,EventArgs e) {
+			if(!CheckSheets.CanPrintFrom(_accountOfOrigin)) {
+				return;
+			}
+			bool isSaving=butSave.Enabled;//False when the user may not edit this transaction: the check then prints as it was saved.
+			if(isSaving) {
+				//Check what is on screen first, so that a check that cannot be printed is not saved.
+				string errorScreen=CheckSheets.GetPrintError(_accountOfOrigin,GetEntriesOnScreen());
+				if(errorScreen!="") {
+					MsgBox.Show(errorScreen);
+					return;
+				}
+				if(!SaveTransaction()) {
+					return;
+				}
+			}
+			List<JournalEntry> listJournalEntriesSaved=JournalEntries.GetForTrans(_transaction.TransactionNum);
+			string error=CheckSheets.GetPrintError(_accountOfOrigin,listJournalEntriesSaved);
+			if(error!="") {
+				MsgBox.Show(error);
+				if(isSaving) {
+					DialogResult=DialogResult.OK;//The transaction was saved.
+				}
+				return;
+			}
+			SheetDef sheetDef=GetCheckSheetDef();
+			if(sheetDef!=null) {
+				JournalEntry journalEntryCheck=CheckSheets.GetCheckEntry(listJournalEntriesSaved,_accountOfOrigin.AccountNum);
+				while(true) {
+					PrintCheck(sheetDef,journalEntryCheck);
+					if(MsgBox.Show(this,MsgBoxButtons.YesNo,"Did the check print correctly?")) {
+						break;
+					}
+					if(!MsgBox.Show(this,MsgBoxButtons.YesNo,"Print the check again? The check number stays the same.")) {
+						break;
+					}
+				}
+			}
+			if(isSaving) {
+				//Saved above. Closing with OK also keeps Transaction History from deleting a new transaction.
+				DialogResult=DialogResult.OK;
+			}
+		}
+
+		///<summary>The journal entries the transaction would have if it were saved now, without changing what the window holds.</summary>
+		private List<JournalEntry> GetEntriesOnScreen() {
+			if(!checkSimple.Checked) {
+				return _listJournalEntries.Select(x => x.Copy()).ToList();
+			}
+			//In the simple view the list is empty until saving, when CreateTwoEntries builds the two entries from the screen.
+			List<JournalEntry> listJournalEntriesKeep=_listJournalEntries;
+			_listJournalEntries=new List<JournalEntry>();
+			CreateTwoEntries();
+			List<JournalEntry> listJournalEntriesOnScreen=_listJournalEntries;
+			_listJournalEntries=listJournalEntriesKeep;
+			return listJournalEntriesOnScreen;
+		}
+
+		///<summary>The Check sheet to print on: the office's custom check sheet, the one the user picks when there are several, or the internal one.
+		///Null if the user cancels the pick.</summary>
+		private SheetDef GetCheckSheetDef() {
+			List<SheetDef> listSheetDefs=SheetDefs.GetCustomForType(SheetTypeEnum.Check);
+			if(listSheetDefs.Count==0) {
+				return SheetsInternal.GetSheetDef(SheetInternalType.Check);
+			}
+			SheetDef sheetDef;
+			if(listSheetDefs.Count==1) {
+				sheetDef=listSheetDefs[0];
+			}
+			else {
+				FrmSheetPicker frmSheetPicker=new FrmSheetPicker();
+				frmSheetPicker.SheetType=SheetTypeEnum.Check;
+				frmSheetPicker.ShowDialog();
+				if(!frmSheetPicker.IsDialogOK || frmSheetPicker.ListSheetDefsSelected.Count==0) {
+					return null;
+				}
+				sheetDef=frmSheetPicker.ListSheetDefsSelected[0];
+			}
+			SheetDefs.GetFieldsAndParameters(sheetDef);
+			return sheetDef;
+		}
+
+		///<summary>Fills a Check sheet from the saved transaction and prints it. The Printing audit entry names the check number, amount and payee.</summary>
+		private void PrintCheck(SheetDef sheetDef,JournalEntry journalEntryCheck) {
+			Sheet sheet=SheetUtil.CreateSheet(sheetDef,0);//Not inserted. Check sheets are never saved.
+			SheetParameter.SetParameter(sheet,CheckSheets.PARAM_TRANSACTION_NUM,_transaction.TransactionNum);
+			SheetParameter.SetParameter(sheet,CheckSheets.PARAM_ACCOUNT_NUM,_accountOfOrigin.AccountNum);
+			SheetFiller.FillFields(sheet);
+			SheetUtil.CalculateHeights(sheet);
+			SheetPrinting.PrintCheck(sheet,CheckSheets.GetAuditDescription(journalEntryCheck));
+		}
+
 		private void butSave_Click(object sender, System.EventArgs e) {
+			if(SaveTransaction()) {
+				DialogResult=DialogResult.OK;
+			}
+		}
+
+		///<summary>Validates and saves the transaction with its audit entry. Returns false, having told the user why, if it was not saved.</summary>
+		private bool SaveTransaction() {
 			if(!textDate.IsValid()) {
 				MsgBox.Show(this,"Please fix data entry errors first.");
-				return;
+				return false;
 			}
 			DateTime date=PIn.Date(textDate.Text);
 			//Prevent backdating----------------------------------------------------------------------------------------
 			if(IsNew) {
 				if(!Security.IsAuthorized(EnumPermType.AccountingCreate,date)) {
-					return;
+					return false;
 				}
 			}
 			else {
 				//We enforce security here based on date displayed, not date entered
 				if(!Security.IsAuthorized(EnumPermType.AccountingEdit,date)) {
-					return;
+					return false;
 				}
 			}
 			if(checkSimple.Checked){//simple view
@@ -679,23 +781,23 @@ namespace OpenDental{
 				if(!textAmount.IsValid())
 				{
 					MsgBox.Show(this,"Please fix data entry errors first.");
-					return;
+					return false;
 				}
 				if(_accountPicked==null){
 					MsgBox.Show(this,"Please select an account first.");
-					return;
+					return false;
 				}
 				CreateTwoEntries();
 			}
 			else{//compound view
 				if(textCredit.Text!=textDebit.Text){
 					MsgBox.Show(this,"Debits and Credits must be equal.");
-					return;
+					return false;
 				}
 				for(int i=0;i<_listJournalEntries.Count;i++){
 					if(_listJournalEntries[i].AccountNum==0){
 						MsgBox.Show(this,"Accounts must be selected for each entry first.");
-						return;
+						return false;
 					}
 				}
 			}
@@ -737,8 +839,7 @@ namespace OpenDental{
 				SecurityLogs.MakeLogEntry(EnumPermType.AccountingCreate,0,
 					AppendAuditChanges(date.ToShortDateString()+" "+_accountOfOrigin.Description+" "+tot.ToString("c"),auditChanges),
 					_transaction.TransactionNum,DateTime.MinValue);
-				DialogResult=DialogResult.OK;
-				return;
+				return true;
 			}
 			string txt=date.ToShortDateString();
 			if(_accountOfOrigin!=null){
@@ -746,7 +847,7 @@ namespace OpenDental{
 			}
 			txt+=" "+tot.ToString("c");
 			SecurityLogs.MakeLogEntry(EnumPermType.AccountingEdit,0,AppendAuditChanges(txt,auditChanges),_transaction.TransactionNum,dateTimePrevious);
-			DialogResult=DialogResult.OK;
+			return true;
 		}
 
 		///<summary>Adds the Payee and Needs Review changes, if any, to an accounting audit entry.</summary>
