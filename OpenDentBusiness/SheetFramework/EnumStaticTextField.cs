@@ -110,6 +110,8 @@ namespace OpenDentBusiness {
 		ins2Deductible,
 		ins2DeductibleUsed,
 		ins2Employer,
+		///<summary>Open Dental 24.4. Secondary counterpart of insFeeSchedule.</summary>
+		ins2FeeSchedule,
 		ins2FreqBW,
 		ins2FreqExams,
 		ins2FreqPanoFMX,
@@ -117,7 +119,15 @@ namespace OpenDentBusiness {
 		ins2Percentages,
 		ins2PlanGroupName,
 		ins2PlanGroupNumber,
+		///<summary>Open Dental 24.4. Secondary counterpart of insPlanNote.</summary>
+		ins2PlanNote,
 		ins2Remaining,
+		///<summary>Open Dental 24.4. Secondary counterpart of insSubBirthDate.</summary>
+		ins2SubBirthDate,
+		///<summary>Open Dental 24.4. Secondary counterpart of insSubNote.</summary>
+		ins2SubNote,
+		///<summary>Open Dental 24.4. Secondary counterpart of insType.</summary>
+		ins2Type,
 		ins2Used,
 		medicalSummary,
 		MedUrgNote,
@@ -147,6 +157,8 @@ namespace OpenDentBusiness {
 		siteDescription,
 		SSN,
 		subscriberID,
+		///<summary>Open Dental 24.4. Secondary counterpart of subscriberID.</summary>
+		subscriber2ID,
 		subscriberNameFL,
 		subscriber2NameFL,
 		timeNow,

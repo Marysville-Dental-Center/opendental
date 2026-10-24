@@ -164,7 +164,9 @@ namespace OpenDentBusiness {
 				StaticTextFieldDependency.ListBenefits | StaticTextFieldDependency.ListInsSubs | StaticTextFieldDependency.ListPatPlans},
 			{EnumStaticTextField.ins2Employer,StaticTextFieldDependency.ListInsPlans | 
 				StaticTextFieldDependency.ListBenefits | StaticTextFieldDependency.ListInsSubs | StaticTextFieldDependency.ListPatPlans},
-			{EnumStaticTextField.ins2FreqBW,StaticTextFieldDependency.ListInsPlans | 
+			{EnumStaticTextField.ins2FeeSchedule,StaticTextFieldDependency.ListInsPlans |
+				StaticTextFieldDependency.ListBenefits | StaticTextFieldDependency.ListInsSubs | StaticTextFieldDependency.ListPatPlans},
+			{EnumStaticTextField.ins2FreqBW,StaticTextFieldDependency.ListInsPlans |
 				StaticTextFieldDependency.ListBenefits | StaticTextFieldDependency.ListInsSubs | StaticTextFieldDependency.ListPatPlans},
 			{EnumStaticTextField.ins2FreqExams,StaticTextFieldDependency.ListInsPlans | 
 				StaticTextFieldDependency.ListBenefits | StaticTextFieldDependency.ListInsSubs | StaticTextFieldDependency.ListPatPlans},
@@ -174,7 +176,15 @@ namespace OpenDentBusiness {
 				StaticTextFieldDependency.ListBenefits | StaticTextFieldDependency.ListInsSubs | StaticTextFieldDependency.ListPatPlans},
 			{EnumStaticTextField.ins2PlanGroupName,StaticTextFieldDependency.ListInsPlans | 
 				StaticTextFieldDependency.ListBenefits | StaticTextFieldDependency.ListInsSubs | StaticTextFieldDependency.ListPatPlans},
-			{EnumStaticTextField.ins2Pending,StaticTextFieldDependency.HistList | StaticTextFieldDependency.ListInsPlans | 
+			{EnumStaticTextField.ins2PlanNote,StaticTextFieldDependency.ListInsPlans |
+				StaticTextFieldDependency.ListBenefits | StaticTextFieldDependency.ListInsSubs | StaticTextFieldDependency.ListPatPlans},
+			{EnumStaticTextField.ins2SubBirthDate,StaticTextFieldDependency.ListInsPlans |
+				StaticTextFieldDependency.ListBenefits | StaticTextFieldDependency.ListInsSubs | StaticTextFieldDependency.ListPatPlans},
+			{EnumStaticTextField.ins2SubNote,StaticTextFieldDependency.ListInsPlans |
+				StaticTextFieldDependency.ListBenefits | StaticTextFieldDependency.ListInsSubs | StaticTextFieldDependency.ListPatPlans},
+			{EnumStaticTextField.ins2Type,StaticTextFieldDependency.ListInsPlans |
+				StaticTextFieldDependency.ListBenefits | StaticTextFieldDependency.ListInsSubs | StaticTextFieldDependency.ListPatPlans},
+			{EnumStaticTextField.ins2Pending,StaticTextFieldDependency.HistList | StaticTextFieldDependency.ListInsPlans |
 				StaticTextFieldDependency.ListBenefits | StaticTextFieldDependency.ListInsSubs | StaticTextFieldDependency.ListPatPlans},
 			{EnumStaticTextField.ins2Percentages,StaticTextFieldDependency.HistList | StaticTextFieldDependency.ListInsPlans | 
 				StaticTextFieldDependency.ListBenefits | StaticTextFieldDependency.ListInsSubs | StaticTextFieldDependency.ListPatPlans},
@@ -211,6 +221,8 @@ namespace OpenDentBusiness {
 			{EnumStaticTextField.siteDescription,StaticTextFieldDependency.Pat},
 			{EnumStaticTextField.SSN,StaticTextFieldDependency.Pat},
 			{EnumStaticTextField.subscriberID,
+					StaticTextFieldDependency.ListPatPlans | StaticTextFieldDependency.ListInsPlans | StaticTextFieldDependency.ListInsSubs},
+			{EnumStaticTextField.subscriber2ID,
 					StaticTextFieldDependency.ListPatPlans | StaticTextFieldDependency.ListInsPlans | StaticTextFieldDependency.ListInsSubs},
 			{EnumStaticTextField.subscriberNameFL,
 					StaticTextFieldDependency.ListPatPlans | StaticTextFieldDependency.ListInsPlans | StaticTextFieldDependency.ListInsSubs},

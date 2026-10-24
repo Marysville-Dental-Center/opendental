@@ -238,6 +238,21 @@ namespace OpenDentBusiness {
 		}
 
 		///<summary>Pat can be null sometimes.  For example, in deposit slip.</summary>
+		///<summary>The insurance plan type shown by the insType and ins2Type static text fields.</summary>
+		public static string GetInsTypeDescription(string planType) {
+			switch(planType) {//(ppo, etc)
+				case "p":
+					return Lans.g("InsurancePlans","PPO Percentage");
+				case "f":
+					return Lans.g("InsurancePlans","Medicaid or Flat Copay");
+				case "c":
+					return Lans.g("InsurancePlans","Capitation");
+				case "":
+					return Lans.g("InsurancePlans","Category Percentage");
+			}
+			return "";
+		}
+
 		public static List<StaticTextReplacement> GetStaticTextReplacements(List<EnumStaticTextField> listEnumStaticTextFields,Patient patient,Family family,StaticTextData staticTextData,StaticTextFieldDependency staticTextFieldDependency,long aptNum,SheetTypeEnum sheetType=SheetTypeEnum.None) {
 			#region Instantiate Strings
 			string activeProblems="";
@@ -318,14 +333,19 @@ namespace OpenDentBusiness {
 			string ins2Deductible="";
 			string ins2DeductibleUsed="";
 			string ins2Employer="";
+			string ins2FeeSchedule="";
 			string ins2FreqBW="";
 			string ins2FreqExams="";
 			string ins2FreqPanoFMX="";
 			string ins2PlanGroupNumber="";
 			string ins2PlanGroupName="";
+			string ins2PlanNote="";
 			string ins2Pending="";
 			string ins2Percentages="";
 			string ins2Remaining="";
+			string ins2SubBirthDate="";
+			string ins2SubNote="";
+			string ins2Type="";
 			string ins2Used="";
 			string medicalSummary="";
 			string currentMedications="";
@@ -343,6 +363,7 @@ namespace OpenDentBusiness {
 			string referredTo=""; //(typically Drs. could be multiline. Include date)
 			string serviceNote="";
 			string subscriberId="";
+			string subscriber2Id="";
 			string subscriberNameFL="";
 			string subscriber2NameFL="";
 			string tpResponsPartyAddress="";
@@ -657,20 +678,7 @@ namespace OpenDentBusiness {
 					insFreqBW=Benefits.GetFrequencyDisplay(FrequencyType.BW,benefitList,plan.PlanNum);
 					insFreqExams=Benefits.GetFrequencyDisplay(FrequencyType.Exam,benefitList,plan.PlanNum);
 					insFreqPanoFMX=Benefits.GetFrequencyDisplay(FrequencyType.PanoFMX,benefitList,plan.PlanNum);
-					switch(plan.PlanType) {//(ppo, etc)
-						case "p":
-							insType=Lans.g("InsurancePlans","PPO Percentage");
-							break;
-						case "f":
-							insType=Lans.g("InsurancePlans","Medicaid or Flat Copay");
-							break;
-						case "c":
-							insType=Lans.g("InsurancePlans","Capitation");
-							break;
-						case "":
-							insType=Lans.g("InsurancePlans","Category Percentage");
-							break;
-					}
+					insType=GetInsTypeDescription(plan.PlanType);
 					insEmployer=Employers.GetEmployer(plan.EmployerNum).EmpName; //blank if no Employer listed
 				}
 				subNum=PatPlans.GetInsSubNum(listPatPlans,PatPlans.GetOrdinal(PriSecMed.Secondary,listPatPlans,listInsPlans,listInsSubs));
@@ -682,6 +690,25 @@ namespace OpenDentBusiness {
 				if(plan!=null) { //secondary insurance
 					ins2PlanGroupName=plan.GroupName;
 					ins2PlanGroupNumber=plan.GroupNum;
+					//Open Dental 24.4: the secondary counterparts of insFeeSchedule, insPlanNote, insSubBirthDate, insSubNote, insType and subscriberID.
+					ins2FeeSchedule=FeeScheds.GetDescription(plan.FeeSched);
+					ins2PlanNote=plan.PlanNote;
+					ins2SubNote=sub.SubscNote;
+					ins2Type=GetInsTypeDescription(plan.PlanType);
+					subscriber2Id=sub.SubscriberID;
+					Patient subscriber2;
+					if(sub.Subscriber==patient.PatNum) {
+						subscriber2=patient;
+					}
+					else if(guar!=null && sub.Subscriber==guar.PatNum) {
+						subscriber2=guar;
+					}
+					else {
+						subscriber2=Patients.GetPat(sub.Subscriber);
+					}
+					if(subscriber2!=null) {
+						ins2SubBirthDate=subscriber2.Birthdate.ToShortDateString();
+					}
 					carrier=Carriers.GetCarrier(plan.CarrierNum);
 					carrier2Name=carrier.CarrierName;
 					carrier2Address=carrier.Address;
@@ -1150,6 +1177,11 @@ namespace OpenDentBusiness {
 					case EnumStaticTextField.ins2Deductible: staticTextReplacement.NewValue=ins2Deductible; break;
 					case EnumStaticTextField.ins2DeductibleUsed: staticTextReplacement.NewValue=ins2DeductibleUsed; break;
 					case EnumStaticTextField.ins2Employer: staticTextReplacement.NewValue=ins2Employer; break;
+					case EnumStaticTextField.ins2FeeSchedule: staticTextReplacement.NewValue=ins2FeeSchedule; break;
+					case EnumStaticTextField.ins2PlanNote: staticTextReplacement.NewValue=ins2PlanNote; break;
+					case EnumStaticTextField.ins2SubBirthDate: staticTextReplacement.NewValue=ins2SubBirthDate; break;
+					case EnumStaticTextField.ins2SubNote: staticTextReplacement.NewValue=ins2SubNote; break;
+					case EnumStaticTextField.ins2Type: staticTextReplacement.NewValue=ins2Type; break;
 					case EnumStaticTextField.ins2FreqBW: staticTextReplacement.NewValue=ins2FreqBW.TrimEnd(); break;
 					case EnumStaticTextField.ins2FreqExams: staticTextReplacement.NewValue=ins2FreqExams.TrimEnd(); break;
 					case EnumStaticTextField.ins2FreqPanoFMX: staticTextReplacement.NewValue=ins2FreqPanoFMX.TrimEnd(); break;
@@ -1187,6 +1219,7 @@ namespace OpenDentBusiness {
 					case EnumStaticTextField.siteDescription: staticTextReplacement.NewValue=Sites.GetDescription(patient.SiteNum); break;
 					case EnumStaticTextField.SSN: staticTextReplacement.NewValue=patient.SSN; break;
 					case EnumStaticTextField.subscriberID: staticTextReplacement.NewValue=subscriberId; break;
+					case EnumStaticTextField.subscriber2ID: staticTextReplacement.NewValue=subscriber2Id; break;
 					case EnumStaticTextField.subscriberNameFL: staticTextReplacement.NewValue=subscriberNameFL; break;
 					case EnumStaticTextField.subscriber2NameFL: staticTextReplacement.NewValue=subscriber2NameFL; break;
 					case EnumStaticTextField.timeNow: staticTextReplacement.NewValue=DateTime.Now.ToShortTimeString(); break;
