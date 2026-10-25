@@ -31,6 +31,7 @@ Package B-PERIO from [../specs/port-backlog.md](../specs/port-backlog.md), M1 Ti
   - `ContrPerio.GetPerioCell` worked out tooth and side from fixed row boundaries (12, 20, 30); it now uses the section layout.
   - FormPerio's voice-navigation helpers (`GetColRowForMobility`, `GetColRowForTooth`, `GoToProbing`, `GoToSequenceType`) used fixed rows; they now call the new `ContrPerio.GetTableRowForSection(section,sequenceType)`.
   - FormPerio's text-chart printout: print size 602x642 becomes 602x681, the F/L side letters move down with the rows, and the summary below the grid starts 20 px lower (a 21 px gap instead of 40, so the summary still fits on the page).
+- The perio image attached to a claim (Claim Edit > *Perio*, and the Canadian attach-perio button, both `FormClaimEdit.butAttachPerioHelper`) builds its own grid and draws it into a bitmap of fixed size. The 24.3 sizes (grid and grid bitmap 665 high, attached image 715 high with the grid at y=50) cut off the bottom 16 px of the taller grid: the bottom border and the last mandibular facial probing row. All three heights grow by the same 3*13 px (grid 602x704, grid bitmap Scale(704), image Scale(754)), which leaves the 23 px of spare room the 24.3 image had. Worked out from the row arithmetic for every zoom from 100% to 400% at 100% Windows scaling, the bitmap height always holds the grid (a higher Windows scaling only makes the bitmap larger, because the claim's own grid ignores it). Widths are unchanged; at some zooms other than 100% the grid's right edge (up to a few px) already fell outside the Scale(602) width in 24.3, and that is left as it was.
 
 ### v24_4-chart-perio-recession-term
 
@@ -54,9 +55,14 @@ Package B-PERIO from [../specs/port-backlog.md](../specs/port-backlog.md), M1 Ti
 - `OpenDental/Forms/FormPerioSetup.cs`, `FormPerioSetup.Designer.cs`: the Recession check box (the window is 30 px taller).
 - `OpenDental/Forms/FormPerioGraphicalSetup.cs`: the Gingival Margin label.
 - `OpenDental/Forms/FormPerioGraphical.cs`: removed implants and the birthdate line.
-- New test project `tests/BPERIOTests` (53 tests), registered in `OpenDental.sln` and `OpenDental.Local.slnf`.
+- `OpenDental/Forms/FormClaimEdit.cs` (outside this package, see below): the three sizes in `butAttachPerioHelper`.
+- New test project `tests/BPERIOTests` (55 tests), registered in `OpenDental.sln` and `OpenDental.Local.slnf`.
 
 No schema change, no fork migration step (the level range 2027000501-2027000599 is unused), no CRUD change, and no foundation registry changed.
+
+### Outside this package's files (outsideOwned)
+
+- `OpenDental/Forms/FormClaimEdit.cs`, a shared hot file: three numbers in `butAttachPerioHelper` (`665` becomes `665+3*13` twice, `715` becomes `715+3*13`), no other change. The claim perio attachment is a consumer of `ContrPerio` and could not stay correct otherwise. Other packages that edit FormClaimEdit at the same time should merge cleanly: the hunk is three lines inside that one method.
 
 ## INFERRED behaviors (not public; settle by the owner's testing)
 
@@ -81,18 +87,18 @@ No schema change, no fork migration step (the level range 2027000501-2027000599 
 
 ## Tests
 
-`tests/BPERIOTests` (MSTest v1, x86, .NET 4.8), 53 tests:
+`tests/BPERIOTests` (MSTest v1, x86, .NET 4.8), 55 tests:
 
 - `PerioRulesTests` (no database): attached gingiva values, blanks, zero and negatives; calculated types; the Recession label matrix and hyperplasia; the preference name stays out of `PrefName`; implant rule (statuses, hidden graphics, replacement implant); birthdate format by culture and the 1880 cut-off.
 - `PerioDbTests` (scratch database): Insert, InsertMany, Update and Sync never write AttGing or CAL rows; the Recession preference reads off without a row, writes no row when saved off, inserts once, updates, and reads a row written elsewhere.
-- `ContrPerioTests` (scratch database; the real `ContrPerio` control, created and drawn off screen): row layout, height and the new row numbers; tooth and side of cells; auto Att Ging values, blanks, old exams, stored rows ignored, recalculation on entry and clearing, never saved, skipped by the arrow keys, never red (pixel check against a red MGJ); Recession labels per displayed exam, label flips on entering and clearing hyperplasia with the change event, stored values unchanged; implant marker until removal and after a replacement.
-- `PerioUiSourceTests`: FormPerio no longer uses fixed rows, prints the taller grid and relabels from the term; Perio Setup loads, saves and logs the option on both save paths; Graphical Perio Setup label; Graphical Perio implant check and birthdate line order.
+- `ContrPerioTests` (scratch database; the real `ContrPerio` control, created and drawn off screen): row layout, height and the new row numbers; tooth and side of cells; auto Att Ging values, blanks, old exams, stored rows ignored, recalculation on entry and clearing, never saved, skipped by the arrow keys, never red (pixel check against a red MGJ); the claim perio attachment, drawn at the sizes read from `FormClaimEdit.butAttachPerioHelper`, holds the grid's bottom border and the probing depth in its bottom row (six exams, with an empty cell as the negative control); Recession labels per displayed exam, label flips on entering and clearing hyperplasia with the change event, stored values unchanged; implant marker until removal and after a replacement.
+- `PerioUiSourceTests`: FormPerio no longer uses fixed rows, prints the taller grid and relabels from the term; the claim perio attachment's grid, grid bitmap and image are at least 642+3*13 px high and the image holds the grid bitmap below the header; Perio Setup loads, saves and logs the option on both save paths; Graphical Perio Setup label; Graphical Perio implant check and birthdate line order.
 
 Database tests use one scratch database per run (`bperio_<UTC time>_<pid>_<random>`, Open Dental 25.3.48 reference schema, synthetic rows only) on 127.0.0.1:3306, dropped at the end; stale ones from crashed runs are dropped after 12 hours. `BPERIO_TEST_DB=skip` skips them, `BPERIO_KEEP_DB=1` keeps the database.
 
-Not tested automatically: the FormPerio, Perio Setup and Graphical Perio windows themselves (the desktop client is never launched by tests), real printing and print preview, the Sparks3D/DirectX graphical chart, and voice commands.
+Not tested automatically: the FormPerio, Perio Setup, Graphical Perio and Claim Edit windows themselves (the desktop client is never launched by tests), saving the claim attachment file, real printing and print preview, the Sparks3D/DirectX graphical chart, and voice commands.
 
-Run for this package: `BPERIOTests` and `RegistryTests` (its `PrefNameTests` keeps `PerioUseRecessionTerm` out of `PrefName`), plus `NoHqTests`. Last run: Debug x86 build 0 errors, 376 warnings (baseline); BPERIOTests 53/53, RegistryTests 33/33, NoHqTests 49/49; `tools/Test-NoHqHosts.ps1` passed. One earlier RegistryTests run failed `Seed25_3DbTests.OpenDental25_3Database_IsLeftAlone` with "Table 'registry_m1_02_tests.preference' doesn't exist" and passed when run again: that test class uses a fixed database name, so runs from other worktrees at the same time can drop it under each other. It is not caused by this package; the fix (a unique per-run name) belongs to the RegistryTests owner.
+Run for this package: `BPERIOTests` and `RegistryTests` (its `PrefNameTests` keeps `PerioUseRecessionTerm` out of `PrefName`), plus `NoHqTests`. Last run (fix r1, the claim perio attachment): Debug x86 build 0 errors, 376 warnings (baseline); BPERIOTests 55/55, RegistryTests 33/33, NoHqTests 49/49; `tools/Test-NoHqHosts.ps1` passed. With the 24.3 sizes put back in FormClaimEdit, the two new claim attachment tests fail ("Grid control height 665"; "The bottom border (y=679) is inside the 665 pixel high bitmap"). One earlier RegistryTests run failed `Seed25_3DbTests.OpenDental25_3Database_IsLeftAlone` with "Table 'registry_m1_02_tests.preference' doesn't exist" and passed when run again: that test class uses a fixed database name, so runs from other worktrees at the same time can drop it under each other. It is not caused by this package; the fix (a unique per-run name) belongs to the RegistryTests owner.
 
 ## Questions for the owner
 
