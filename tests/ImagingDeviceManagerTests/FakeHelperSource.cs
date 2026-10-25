@@ -90,6 +90,8 @@ namespace ImagingDeviceManager.Tests {
 		public int BlockingCloseMs;
 		///<summary>MSG_ENABLEDS fails with TWCC_OPERATIONERROR (the helper could not be started) and the source stays in state 4.</summary>
 		public bool EnableFails;
+		///<summary>Runs inside each MSG_ENABLEDS, after the session started and before the source wakes the host.</summary>
+		public Action ActionOnEnable;
 		///<summary>Not contract behaviour: after the first refused disable, one MSG_XFERREADY arrives while nothing is offered (pending
 		///count 0), before the real notification. Checks that the host ignores a repeated XFERREADY with nothing pending.</summary>
 		public bool SpuriousXferReadyAfterRefusal;
@@ -558,6 +560,7 @@ namespace ImagingDeviceManager.Tests {
 					_endDueMs=_dsm.NowMs+EndAfterMs;
 				}
 				Reschedule();
+				ActionOnEnable?.Invoke();
 				if(_endDueMs>=0 && EndAfterMs==0) {
 					_dsm.WakeHostNow();
 				}

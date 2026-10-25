@@ -20,8 +20,9 @@ namespace ImagingDeviceManager.TwainProtocol {
 	///<summary>A TWAIN application session: the state machine from the TWAIN specification (state 1, nothing loaded, through
 	///state 7, transferring), driven synchronously on the calling thread. While a data source is enabled, a local Windows
 	///message loop runs and hands every message to the data source (DAT_EVENT / MSG_PROCESSEVENT), the classic Windows way
-	///that every data source supports. Not thread safe: use it from one UI thread, like the callers do.</summary>
-	internal sealed class TwainSession:IDisposable {
+	///that every data source supports. Not thread safe: use it from one UI thread, like the callers do (Cancel is the exception).
+	///The message loop and the stops the library starts itself are in TwainSessionStop.cs.</summary>
+	internal sealed partial class TwainSession:IDisposable {
 		private const int TimerIdTimeout=0x7A11;
 		private const int MaxConsecutiveEventFailures=50;
 		private readonly DsmLoader _dsmLoader;
@@ -568,11 +569,9 @@ namespace ImagingDeviceManager.TwainProtocol {
 		}
 
 		private void CloseSourceCore() {
-			if(State>=6) {
-				ResetPendingTransfers();
-			}
-			if(State==5) {
-				DisableSource();
+			if(State>=5) {
+				//Images still pending go to the drain sink on the by-name path (StopToState4), as for any stop the library starts.
+				StopToState4(State>=6 ? TwainStopReason.Closed : TwainStopReason.None);
 			}
 			if(State==4) {
 				DsmEntry(Tw.DAT_IDENTITY,Tw.MSG_CLOSEDS,_pSourceIdentity);
@@ -785,11 +784,12 @@ namespace ImagingDeviceManager.TwainProtocol {
 				return null;
 			}
 			_isAcquiring=true;
+			BeginAcquire();
 			DibImage dib=null;
 			try {
 				bool isMulti=MultiTransfer;
 				if(State==5) {
-					DisableSource();//Should not happen; start from a clean state 4.
+					DisableSourceSafely(TwainStopReason.None);//Should not happen; start from a clean state 4.
 				}
 				if(State==4) {
 					if(!EnableAndWaitForTransfer(hwnd,isMulti ? -1 : 1)) {
@@ -801,14 +801,14 @@ namespace ImagingDeviceManager.TwainProtocol {
 				if(outcome!=TransferOutcome.Done) {
 					dib=null;
 					if(State>=6) {
-						ResetPendingTransfers();
+						StopToState4(TwainStopReason.Error);//The series ends; on the by-name path the pending images are kept.
 					}
 				}
 				else if(!isMulti && State>=6) {
-					ResetPendingTransfers();//Single mode takes one image and discards the rest of the batch.
+					HandleExtraImages();//Single mode takes one image; scans discard the rest of the batch.
 				}
 				if(State==5) {
-					DisableSource();//Batch finished: close the scanner's dialog. IsDone() is now true.
+					DisableSourceSafely(TwainStopReason.None);//Batch finished: close the scanner's dialog. IsDone() is now true.
 				}
 				return dib;
 			}
@@ -827,6 +827,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 				if(!MultiTransfer && State>=4) {
 					CloseSource();
 				}
+				EndAcquire();
 			}
 		}
 
@@ -844,10 +845,11 @@ namespace ImagingDeviceManager.TwainProtocol {
 				return 0;
 			}
 			_isAcquiring=true;
+			BeginAcquire();
 			int pageCount=0;
 			try {
 				if(State==5) {
-					DisableSource();
+					DisableSourceSafely(TwainStopReason.None);
 				}
 				if(State==4) {
 					if(!EnableAndWaitForTransfer(hwnd,-1)) {
@@ -857,15 +859,9 @@ namespace ImagingDeviceManager.TwainProtocol {
 				while(State==6) {
 					DibImage dib;
 					TransferOutcome outcome=TransferOne(out dib);
-					if(outcome==TransferOutcome.Cancelled) {
+					if(outcome!=TransferOutcome.Done) {//Cancelled or failed: the rest of the batch is discarded (kept on the by-name path).
 						if(State>=6) {
-							ResetPendingTransfers();
-						}
-						break;
-					}
-					if(outcome==TransferOutcome.Failed) {
-						if(State>=6) {
-							ResetPendingTransfers();
+							StopToState4(TwainStopReason.Error);
 						}
 						break;
 					}
@@ -873,7 +869,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 					onPage(dib);
 				}
 				if(State==5) {
-					DisableSource();
+					DisableSourceSafely(TwainStopReason.None);
 				}
 				if(ErrorCode==EZTwainErrorCode.EZTEC_NONE && pageCount==0) {
 					SetError(EZTwainErrorCode.EZTEC_0_PAGES,"No pages were scanned.");
@@ -895,6 +891,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 				if(State>=4) {
 					CloseSource();
 				}
+				EndAcquire();
 			}
 		}
 
@@ -945,14 +942,13 @@ namespace ImagingDeviceManager.TwainProtocol {
 			}
 			if(dsMessage==Tw.MSG_CLOSEDSREQ) {
 				ReadEndCondition();//Before the disable: a successful disable clears the end reason in the source.
-			}
-			if(State==5) {
-				DisableSource();
-			}
-			if(dsMessage==Tw.MSG_CLOSEDSREQ) {
+				if(State==5) {
+					DisableSourceSafely(TwainStopReason.None);
+				}
 				SetError(EZTwainErrorCode.EZTEC_USER_CANCEL,GetCloseRequestText());
+				return false;
 			}
-			//Otherwise RunMessageLoop already set the error (timeout or program closing).
+			StopAfterLoop();//A stop request, or the loop failed (its error is set).
 			return false;
 		}
 
@@ -1052,24 +1048,6 @@ namespace ImagingDeviceManager.TwainProtocol {
 			}
 		}
 
-		private void DisableSource() {
-			IntPtr pUserInterface=Marshal.AllocHGlobal(Marshal.SizeOf(typeof(TW_USERINTERFACE)));
-			try {
-				TW_USERINTERFACE userInterface=new TW_USERINTERFACE();
-				userInterface.ShowUI=(ushort)(HideUI ? 0 : 1);
-				userInterface.hParent=_proxyWindow==null ? IntPtr.Zero : _proxyWindow.Handle;
-				Marshal.StructureToPtr(userInterface,pUserInterface,false);
-				SourceEntry(Tw.DG_CONTROL,Tw.DAT_USERINTERFACE,Tw.MSG_DISABLEDS,pUserInterface);
-			}
-			finally {
-				Marshal.FreeHGlobal(pUserInterface);
-			}
-			State=4;
-			if(_proxyWindow!=null) {
-				_proxyWindow.AttachTo(IntPtr.Zero);
-			}
-		}
-
 		///<summary>Discards all pending transfers. Moves from state 6 or 7 to state 5.</summary>
 		private void ResetPendingTransfers() {
 			IntPtr pPending=Marshal.AllocHGlobal(Marshal.SizeOf(typeof(TW_PENDINGXFERS)));
@@ -1088,97 +1066,6 @@ namespace ImagingDeviceManager.TwainProtocol {
 			}
 			finally {
 				Marshal.FreeHGlobal(pPending);
-			}
-		}
-
-		///<summary>Brings the session back to state 4 after an unexpected exception.</summary>
-		private void AbortToState4() {
-			try {
-				if(State>=6) {
-					ResetPendingTransfers();
-				}
-				if(State==5) {
-					DisableSource();
-				}
-			}
-			catch {
-				//The source is in an unknown state. CloseSource will still try to close it.
-			}
-		}
-
-		///<summary>Pumps messages while the source is enabled. Returns MSG_XFERREADY or MSG_CLOSEDSREQ from the source, or
-		///MSG_NULL (with the error set) if the loop had to stop for another reason.</summary>
-		private ushort RunMessageLoop() {
-			IntPtr pMsg=Marshal.AllocHGlobal(NativeMethods.MsgBufferSize);
-			IntPtr pEvent=Marshal.AllocHGlobal(Marshal.SizeOf(typeof(TW_EVENT)));
-			IntPtr hwndProxy=_proxyWindow.Handle;
-			bool hasTimer=false;
-			int countFailures=0;
-			try {
-				if(LoopTimeoutMilliseconds>0) {
-					NativeMethods.SetTimer(hwndProxy,(UIntPtr)TimerIdTimeout,(uint)LoopTimeoutMilliseconds,IntPtr.Zero);
-					hasTimer=true;
-				}
-				while(true) {
-					int result=NativeMethods.GetMessage(pMsg,IntPtr.Zero,0,0);
-					if(result==-1) {
-						SetError(EZTwainErrorCode.EZTEC_INTERNAL,"Windows message loop error "+Marshal.GetLastWin32Error()+".");
-						return Tw.MSG_NULL;
-					}
-					if(result==0) {
-						//WM_QUIT: the program is shutting down. Stop scanning and pass the quit message on to the outer loop.
-						int exitCode=Marshal.ReadInt32(pMsg,NativeMethods.MsgOffsetWParam);
-						SetError(EZTwainErrorCode.EZTEC_USER_CANCEL,"The program is closing.");
-						NativeMethods.PostQuitMessage(exitCode);
-						return Tw.MSG_NULL;
-					}
-					IntPtr hwndMsg=Marshal.ReadIntPtr(pMsg,NativeMethods.MsgOffsetHwnd);
-					int message=Marshal.ReadInt32(pMsg,NativeMethods.MsgOffsetMessage);
-					if(hasTimer && message==NativeMethods.WM_TIMER && hwndMsg==hwndProxy
-						&& Marshal.ReadIntPtr(pMsg,NativeMethods.MsgOffsetWParam)==(IntPtr)TimerIdTimeout)
-					{
-						SetError(EZTwainErrorCode.EZTEC_INTERNAL,"Timed out waiting for the scanner.");
-						return Tw.MSG_NULL;
-					}
-					TW_EVENT twEvent=new TW_EVENT { pEvent=pMsg,TWMessage=Tw.MSG_NULL };
-					Marshal.StructureToPtr(twEvent,pEvent,false);
-					ushort rc=SourceEntry(Tw.DG_CONTROL,Tw.DAT_EVENT,Tw.MSG_PROCESSEVENT,pEvent);
-					twEvent=(TW_EVENT)Marshal.PtrToStructure(pEvent,typeof(TW_EVENT));
-					if(twEvent.TWMessage==Tw.MSG_XFERREADY || twEvent.TWMessage==Tw.MSG_CLOSEDSREQ) {
-						return twEvent.TWMessage;
-					}
-					if(rc==Tw.TWRC_FAILURE) {
-						//Normal answers are DSEVENT or NOTDSEVENT. A source that keeps saying it is not open (or not enabled)
-						//is gone; without this check the program would wait forever with its window disabled. Other failures
-						//are ignored because some sources answer FAILURE for messages that are not theirs.
-						ushort conditionCode=LastConditionCode;
-						if(conditionCode==Tw.TWCC_BADDEST || conditionCode==Tw.TWCC_NODS || conditionCode==Tw.TWCC_SEQERROR) {
-							countFailures++;
-						}
-						else {
-							countFailures=0;
-						}
-						if(countFailures>=MaxConsecutiveEventFailures) {
-							SetError(EZTwainErrorCode.EZTEC_DS_FAILURE,"The scanner stopped responding. "+GetConditionText(conditionCode));
-							return Tw.MSG_NULL;
-						}
-					}
-					else {
-						countFailures=0;
-					}
-					if(rc==Tw.TWRC_DSEVENT) {
-						continue;//The source handled the message (its own dialog).
-					}
-					NativeMethods.TranslateMessage(pMsg);
-					NativeMethods.DispatchMessage(pMsg);
-				}
-			}
-			finally {
-				if(hasTimer) {
-					NativeMethods.KillTimer(hwndProxy,(UIntPtr)TimerIdTimeout);
-				}
-				Marshal.FreeHGlobal(pEvent);
-				Marshal.FreeHGlobal(pMsg);
 			}
 		}
 
