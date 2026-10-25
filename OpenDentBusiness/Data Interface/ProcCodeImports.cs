@@ -112,12 +112,19 @@ namespace OpenDentBusiness {
 		private static readonly Regex _regexCdt=new Regex(@"^D\d{4}$",RegexOptions.Compiled);
 
 		#region Parse
-		///<summary>The text of a code file: UTF-8 (with or without a byte order mark) when the bytes are valid UTF-8, otherwise the computer's ANSI code
-		///page, which spreadsheet programs often use for text exports.</summary>
+		///<summary>The text of a code file: UTF-16 when it starts with a UTF-16 byte order mark (a spreadsheet's "Unicode Text" export), UTF-8 (with or
+		///without a byte order mark) when the bytes are valid UTF-8, otherwise the computer's ANSI code page, which spreadsheet programs often use for
+		///text exports.</summary>
 		public static string DecodeFileBytes(byte[] arrayBytes) {
 			Meth.NoCheckMiddleTierRole();
 			if(arrayBytes==null || arrayBytes.Length==0) {
 				return "";
+			}
+			if(arrayBytes.Length>=2 && arrayBytes[0]==0xFF && arrayBytes[1]==0xFE) {
+				return Encoding.Unicode.GetString(arrayBytes,2,arrayBytes.Length-2);
+			}
+			if(arrayBytes.Length>=2 && arrayBytes[0]==0xFE && arrayBytes[1]==0xFF) {
+				return Encoding.BigEndianUnicode.GetString(arrayBytes,2,arrayBytes.Length-2);
 			}
 			try {
 				return new UTF8Encoding(false,true).GetString(arrayBytes).TrimStart('﻿');
@@ -303,15 +310,19 @@ namespace OpenDentBusiness {
 			return listRows;
 		}
 
-		///<summary>Splits on tabs when the line has any, otherwise on commas, where a field may be in double quotes ("" inside quotes is one quote).</summary>
+		///<summary>Splits on tabs when the line has any, otherwise on commas. With either delimiter a field may be in double quotes, as spreadsheet
+		///programs write a cell that holds the delimiter or a quote in both their tab and comma separated exports: a field that starts with a quote
+		///(spaces before it are ignored) ends at the closing quote, and "" inside it is one quote. A quote anywhere else in a field is kept as text.</summary>
 		public static List<string> SplitLine(string line) {
 			Meth.NoCheckMiddleTierRole();
+			char delimiter=',';
 			if(line.Contains("\t")) {
-				return line.Split('\t').ToList();
+				delimiter='\t';
 			}
 			List<string> listFields=new List<string>();
 			StringBuilder stringBuilder=new StringBuilder();
 			bool isInQuotes=false;
+			bool isFieldQuoted=false;//The current field started with a quote. Text after its closing quote is kept as is.
 			for(int i=0;i<line.Length;i++) {
 				char c=line[i];
 				if(isInQuotes) {
@@ -329,12 +340,15 @@ namespace OpenDentBusiness {
 					}
 					continue;
 				}
-				if(c=='"') {
-					isInQuotes=true;
-				}
-				else if(c==',') {
+				if(c==delimiter) {
 					listFields.Add(stringBuilder.ToString());
 					stringBuilder.Clear();
+					isFieldQuoted=false;
+				}
+				else if(c=='"' && !isFieldQuoted && stringBuilder.ToString().Trim()=="") {
+					stringBuilder.Clear();
+					isInQuotes=true;
+					isFieldQuoted=true;
 				}
 				else {
 					stringBuilder.Append(c);

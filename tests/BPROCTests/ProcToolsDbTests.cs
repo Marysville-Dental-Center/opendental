@@ -217,6 +217,34 @@ namespace BPROCTests {
 		}
 
 		[TestMethod]
+		public void CdtImport_TabFileWithQuotedCells_StoresDescriptionsWithoutQuotes() {
+			List<string> listCodes=GetUnusedDCodes(3);
+			Assert.AreEqual(3,listCodes.Count);
+			long defNumCat=InsertCategory("Synthetic BPROC quotes cat "+(++_counter));
+			ProcedureCode procedureCodeSame=ProcedureCodeT.CreateProcCode(listCodes[0],descript:"Synthetic, with comma",abbrDesc:"SynSm",procCat:defNumCat);
+			ProcedureCode procedureCodeOld=ProcedureCodeT.CreateProcCode(listCodes[1],descript:"Synthetic old text",abbrDesc:"SynOl",procCat:defNumCat);
+			ProcedureCodes.RefreshCache();
+			//What a spreadsheet's tab separated export writes for cells with a comma or a quote.
+			string fileText="ProcCode\tDescript\r\n"
+				+listCodes[0]+"\t\"Synthetic, with comma\"\r\n"
+				+listCodes[1]+"\t\"Say \"\"hi\"\", synthetic\"\r\n"
+				+listCodes[2]+"\t\"Synthetic added, with comma\"\r\n";
+			List<ProcCodeImportRow> listRows=ProcCodeImports.Parse(fileText,out List<string> listErrors);
+			Assert.AreEqual(0,listErrors.Count,string.Join("; ",listErrors));
+			ProcCodeImportPlan procCodeImportPlan=ProcCodeImports.CreatePlanFromDb(listRows,EnumDentalCodeSystem.CDT);
+			Assert.AreEqual(1,procCodeImportPlan.CountUnchanged,"The code whose description matches is not overwritten.");
+			ProcCodeImportResult procCodeImportResult=ProcCodeImports.Apply(procCodeImportPlan);
+			Assert.AreEqual(1,procCodeImportResult.CountAdded);
+			Assert.AreEqual(1,procCodeImportResult.CountDescriptionsUpdated);
+			Assert.AreEqual("Synthetic, with comma",ProcedureCodes.GetProcCodeFromDb(procedureCodeSame.CodeNum).Descript);
+			Assert.AreEqual("Say \"hi\", synthetic",ProcedureCodes.GetProcCodeFromDb(procedureCodeOld.CodeNum).Descript);
+			Assert.AreEqual("Synthetic added, with comma",PIn.String(DataCore.GetScalar("SELECT Descript FROM procedurecode WHERE ProcCode='"
+				+POut.String(listCodes[2])+"'")));
+			Assert.AreEqual("0",DataCore.GetScalar("SELECT COUNT(*) FROM procedurecode WHERE ProcCode IN('"+string.Join("','",listCodes)+"') "
+				+"AND Descript LIKE '\"%'"),"No description starts with a quote.");
+		}
+
+		[TestMethod]
 		public void CdaImport_AddsMissing_LeavesExistingAlone() {
 			string codeExisting="9998"+(++_counter%10);
 			string codeNew="9997"+(_counter%10);

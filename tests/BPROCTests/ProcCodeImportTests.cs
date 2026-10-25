@@ -134,6 +134,48 @@ namespace BPROCTests {
 			Assert.IsTrue(ProcCodeImports.ParseBool("Yes"));
 			Assert.IsFalse(ProcCodeImports.ParseBool(""));
 		}
+
+		[TestMethod]
+		public void SplitLine_TabsWithQuotes_AsSpreadsheetsWriteThem() {
+			//A spreadsheet's tab separated export puts quotes around a cell with a comma or a quote and doubles the quotes inside it.
+			CollectionAssert.AreEqual(new[] { "D9901","Synthetic, with comma","Say \"hi\"" },
+				ProcCodeImports.SplitLine("D9901\t\"Synthetic, with comma\"\t\"Say \"\"hi\"\"\"").ToArray());
+			CollectionAssert.AreEqual(new[] { "D9902","Synthetic\ttab inside","" },
+				ProcCodeImports.SplitLine("D9902\t\"Synthetic\ttab inside\"\t").ToArray(),"A quoted field may hold the delimiter.");
+			CollectionAssert.AreEqual(new[] { "D9903","","x" },ProcCodeImports.SplitLine("D9903\t\"\"\tx").ToArray(),"An empty quoted field.");
+			//A quote that does not start a field is text, so a hand-made file with an inch mark still splits on every tab.
+			CollectionAssert.AreEqual(new[] { "D9904","Synthetic 1/2\" item","SynA" },
+				ProcCodeImports.SplitLine("D9904\tSynthetic 1/2\" item\tSynA").ToArray());
+			CollectionAssert.AreEqual(new[] { "D9905","Synthetic 1/2\" item","SynB" },
+				ProcCodeImports.SplitLine("D9905,Synthetic 1/2\" item,SynB").ToArray(),"The same for commas.");
+			//Spaces before the opening quote are ignored; text after the closing quote is kept.
+			CollectionAssert.AreEqual(new[] { "a","b,c","d\"e\"x" },ProcCodeImports.SplitLine("a, \"b,c\",\"d\"\"e\"\"\"x").ToArray());
+		}
+
+		[TestMethod]
+		public void Parse_TabHeaderWithQuotedCells_DescriptionsHaveNoQuotes() {
+			string text="Procedure Code\tDescription\tAbbreviation\r\n"
+				+"D9901\t\"Synthetic, with comma\"\t\"Say \"\"hi\"\"\"\r\n"
+				+"D9902\tSynthetic plain\tSynP\r\n";
+			List<ProcCodeImportRow> listRows=ProcCodeImports.Parse(text,out List<string> listErrors);
+			Assert.AreEqual(0,listErrors.Count,string.Join("; ",listErrors));
+			Assert.AreEqual(2,listRows.Count);
+			Assert.AreEqual("Synthetic, with comma",listRows[0].Descript);
+			Assert.AreEqual("Say \"hi\"",listRows[0].AbbrDesc);
+			Assert.AreEqual("Synthetic plain",listRows[1].Descript);
+		}
+
+		[TestMethod]
+		public void DecodeFileBytes_Utf16UnicodeTextExport() {
+			string text="D9901\t\"Synthetic, with comma\"\r\n";
+			byte[] arrayUtf16Le=Encoding.Unicode.GetPreamble().Concat(Encoding.Unicode.GetBytes(text)).ToArray();
+			Assert.AreEqual(text,ProcCodeImports.DecodeFileBytes(arrayUtf16Le),"A spreadsheet's Unicode Text export is UTF-16 with a byte order mark.");
+			byte[] arrayUtf16Be=Encoding.BigEndianUnicode.GetPreamble().Concat(Encoding.BigEndianUnicode.GetBytes(text)).ToArray();
+			Assert.AreEqual(text,ProcCodeImports.DecodeFileBytes(arrayUtf16Be));
+			List<ProcCodeImportRow> listRows=ProcCodeImports.Parse(ProcCodeImports.DecodeFileBytes(arrayUtf16Le),out List<string> listErrors);
+			Assert.AreEqual(0,listErrors.Count,string.Join("; ",listErrors));
+			Assert.AreEqual("Synthetic, with comma",listRows.Single().Descript);
+		}
 		#endregion Parse
 
 		#region Plan
@@ -215,6 +257,29 @@ namespace BPROCTests {
 			Assert.AreEqual(1,procCodeImportPlan.CountUnchanged);
 			Assert.AreEqual(1,procCodeImportPlan.CountDeletedNotPresent);
 			Assert.AreEqual(0,procCodeImportPlan.CountNotInCodeSystem);
+		}
+
+		[TestMethod]
+		public void CreatePlan_TabFileWithQuotedCells_LeavesSameDescriptionsAlone() {
+			//The office saved its spreadsheet as tab separated text: cells with a comma or a quote are in quotes.
+			List<ProcedureCode> listExisting=new List<ProcedureCode> {
+				Existing(401,"D9981","Synthetic, with comma","Abbr",1),
+				Existing(402,"D9982","Synthetic \"quoted\" text","Abbr",1),
+				Existing(403,"D9983","Synthetic old text","Abbr",1),
+			};
+			string text="ProcCode\tDescript\r\n"
+				+"D9981\t\"Synthetic, with comma\"\r\n"
+				+"D9982\t\"Synthetic \"\"quoted\"\" text\"\r\n"
+				+"D9983\t\"Synthetic new text, with comma\"\r\n"
+				+"D9984\t\"Synthetic added, with comma\"\r\n";
+			List<ProcCodeImportRow> listRows=ProcCodeImports.Parse(text,out List<string> listErrors);
+			Assert.AreEqual(0,listErrors.Count,string.Join("; ",listErrors));
+			ProcCodeImportPlan procCodeImportPlan=ProcCodeImports.CreatePlan(listRows,listExisting,Cats(),EnumDentalCodeSystem.CDT);
+			Assert.AreEqual(2,procCodeImportPlan.CountUnchanged,"Quoted cells that match the database are not changes.");
+			ProcCodeImportChange procCodeImportChange=procCodeImportPlan.ListChanges.Single();
+			Assert.AreEqual(403,procCodeImportChange.CodeNum);
+			Assert.AreEqual("Synthetic new text, with comma",procCodeImportChange.DescriptNew);
+			Assert.AreEqual("Synthetic added, with comma",procCodeImportPlan.ListAdds.Single().ProcedureCode.Descript);
 		}
 
 		[TestMethod]
