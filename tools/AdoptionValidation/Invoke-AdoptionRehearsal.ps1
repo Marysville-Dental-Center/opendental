@@ -6,8 +6,8 @@ Runs the M1-Z adoption rehearsal on synthetic data on the local MariaDB.
 Builds tools\AdoptionValidation (unless -SkipBuild) and runs AdoptionValidation.exe rehearse. See tools\AdoptionValidation\README.md and
 docs\adoption-runbook.md.
 
-The tool only connects to localhost, 127.0.0.1 or ::1, only writes databases whose names start with "synth_m1z_", and blocks outbound
-HTTP. The password, if any, is read from the SYNTH_DB_PASSWORD environment variable.
+The tool only connects to localhost, 127.0.0.1 or ::1, only writes databases whose names start with "synth_m1z_" (or -Prefix), and blocks
+outbound HTTP. The password, if any, is read from the SYNTH_DB_PASSWORD environment variable.
 
 .EXAMPLE
 .\tools\AdoptionValidation\Invoke-AdoptionRehearsal.ps1
@@ -23,11 +23,12 @@ param(
 	[int]$Runs=2,
 	[long]$Seed=0,
 	[int]$FillRemaining=-1,
-	[ValidateSet('','dump','sql')]
+	[ValidateSet('','server','dump')]
 	[string]$Copy='',
 	[string]$Out,
 	[switch]$Keep,
 	[switch]$SkipRoundTrip,
+	[string]$Prefix,
 	[string]$Server='127.0.0.1',
 	[int]$Port=3306,
 	[string]$User='root',
@@ -59,5 +60,6 @@ if($Copy) { $arguments+=@('--copy',$Copy) }
 if($Out) { $arguments+=@('--out',$Out) }
 if($Keep) { $arguments+='--keep' }
 if($SkipRoundTrip) { $arguments+='--skip-roundtrip' }
+if($Prefix) { $arguments+=@('--prefix',$Prefix) }
 & $exe @arguments
 exit $LASTEXITCODE

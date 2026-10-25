@@ -16,46 +16,61 @@ namespace AdoptionValidation {
 		public const int ExitNetworkAttempted=3;
 		public const int ExitValidationFailed=6;
 
-		public const string Usage=@"AdoptionValidation: the M1-Z adoption rehearsal on synthetic data, and the headless steps of the office runbook
-(docs/adoption-runbook.md).
+		public const string Usage=@"AdoptionValidation: the M1-Z adoption rehearsal on synthetic data, and the steps of the office runbook that run without the
+program (docs/adoption-runbook.md).
 
 Usage:
   AdoptionValidation rehearse [--size small|medium|large] [--seed N] [--as-of yyyy-MM-dd] [--runs 2] [--fill-remaining 2]
-                              [--families N] [--years N] [--copy dump|sql] [--out DIR] [--keep] [--skip-roundtrip] [--tag TAG]
-                              [--schema-sql PATH | --schema-from DB] [--allowed FILE]
-  AdoptionValidation restore --dump FILE --database NEW_DB
+                              [--families N] [--years N] [--copy server|dump] [--out DIR] [--keep] [--skip-roundtrip]
+                              [--prefix synth_m1z_] [--tag TAG] [--schema-sql PATH | --schema-from DB] [--allowed FILE]
+  AdoptionValidation connections --database DB
+  AdoptionValidation float-check --database DB
+  AdoptionValidation copy --original ORIGINAL --database NEW_DB
   AdoptionValidation adopt --database COPY --original ORIGINAL --confirm COPY [--log FILE]
   AdoptionValidation credentials --database DB
   AdoptionValidation startup-check --database DB
+  AdoptionValidation restore --dump FILE --database NEW_DB
   AdoptionValidation roundtrip --database synth_...
 
 Commands:
-  rehearse       Generate a synthetic Open Dental 25.3.48 database (default: medium), record its baseline, back it up and restore a
-                 copy, adopt the copy (the same code as the adopt command), and validate: row counts, checksums, business totals,
-                 the 24.4-25.3 columns through OpenDentBusiness, the dropped office column, the removed update files, the version
-                 sentinels and an Open Dental-style startup check. Then everything a second time on the adopted copy. Repeats the
-                 whole run --runs times (default 2) and checks the runs agree. Every step is timed. Writes rehearsal-result.json,
-                 rehearsal-result.md and the reports to --out. Scratch databases are named synth_m1z_<tag>_r<n>_src and _adopted
-                 and are dropped afterwards unless --keep.
-  restore        Restores a backup file as a NEW database (runbook steps 0.6 and 3.2). Refuses a database name that exists, and a
-                 file that names a database (USE, CREATE/DROP/ALTER DATABASE, a table name qualified with a database): a
-                 --databases or --all-databases dump would also write to the database it names. Loads with mariadb --one-database.
-  adopt          Adopts a restored copy without starting the program (runbook steps 4 and 5): Adoption.Preflight and Adoption.Run,
+  rehearse       Generate a synthetic Open Dental 25.3.48 database (default: medium), record its baseline, copy it the way the
+                 runbook does (default; --copy dump backs it up with mariadb-dump and restores it instead), adopt the copy (the
+                 same code as the adopt command), and validate: row counts, checksums, business totals, the rows adoption may
+                 change, the 24.4-25.3 columns through OpenDentBusiness, the dropped office column, the removed update files, the
+                 version sentinels and an Open Dental-style startup check. Then everything a second time on the adopted copy.
+                 Repeats the whole run --runs times (default 2) and checks the runs agree. Every step is timed. Writes
+                 rehearsal-result.json, rehearsal-result.md and the reports to --out. Scratch databases are named
+                 <prefix><tag>_r<n>_src, _adopted and _snap and are dropped afterwards unless --keep.
+  connections    Lists every other connection that has a default database (who is connected, from which computer). Read-only.
+                 Exit code 0 when none uses DB, 6 when one does (runbook steps 1.1, 10.1, 11.1 and Rollback).
+  float-check    Counts the FLOAT and DOUBLE values of DB that a logical backup (mariadb-dump) would not restore exactly (runbook
+                 step 0.2). Read-only; names columns, never values. Exit code 0 when there are none, 6 when there are some.
+  copy           Copies ORIGINAL into the NEW database on the same server (runbook step 3.2): CREATE TABLE ... LIKE, the
+                 AUTO_INCREMENT counters and INSERT ... SELECT, so the copy is exact (FLOAT values included) and no row leaves the
+                 server. Refuses a name that exists, a missing original, the same name twice, any connection to either, and
+                 views, triggers, routines or events it would not carry; then checks every table's row count and AUTO_INCREMENT.
+  adopt          Adopts the copy without starting the program (runbook steps 4 and 5): Adoption.Preflight and Adoption.Run,
                  the fork migration with every step again, the schema verifier and SecurityHash.RehashNow, exactly as the rehearsal
-                 does. Before it changes anything it checks that --confirm repeats --database, that --original is a different,
-                 unadopted Open Dental database, that nobody else is connected to either, and that a copy not adopted yet has the
-                 original's tables and row counts. Run it again to finish an interrupted adoption; on a finished one it changes
-                 nothing but its security log entry. --log appends everything it prints to FILE.
+                 does, then checks row by row against --original what adoption changed in preference, documentmisc, securitylog,
+                 securityloghash and updatehistory. Before it changes anything it checks that --confirm repeats --database, that
+                 --original is a different, unadopted Open Dental database, that nobody else is connected to either, and that a
+                 copy not adopted yet has the original's tables and row counts. On a finished adoption it changes nothing but its
+                 security log entry. If it stops or fails, do not run it again on that copy: drop the copy and make a new one
+                 (runbook step 4). --log appends everything it prints to FILE.
   credentials    Lists the stored passwords of a database that the fork cannot read (to re-enter after adoption). Read-only;
                  names and rows only, never values.
   startup-check  Shows what an Open Dental client of each version would do at startup on the database (the model of its
                  version checks). Read-only. Exit code 0 when every Open Dental release client refuses the database, 6 when one
                  would use it.
+  restore        Restores a backup file as a NEW database. Refuses a database name that exists, and a file that names a database
+                 (USE, CREATE/DROP/ALTER DATABASE, a table name qualified with a database): a --databases or --all-databases dump
+                 would also write to the database it names. Loads with mariadb --one-database. Not used by the runbook.
   roundtrip      Runs only the data-layer round trip on an adopted scratch database (it writes; synth* databases only).
 
 Connection: --server (localhost, 127.0.0.1 or ::1 only), --port 3306, --user root; the password, if any, from the
-SYNTH_DB_PASSWORD environment variable. Exit codes: 0 pass, 1 error, 2 usage or refused, 3 network access attempted,
-6 a validation failed.";
+SYNTH_DB_PASSWORD environment variable. On the office's admin PC the port is the local end of an SSH forward to the
+database server (runbook step 0.0). Exit codes: 0 pass, 1 error, 2 usage or refused, 3 network access attempted,
+6 a validation failed (or, for connections and float-check, something was found).";
 
 		public static int Main(string[] args) {
 			NetworkGuard.Install();
@@ -122,10 +137,10 @@ SYNTH_DB_PASSWORD environment variable. Exit codes: 0 pass, 1 error, 2 usage or 
 					case "--years": options.Years=ParseInt(arg,Next()); break;
 					case "--copy":
 						string copy=Next().ToLowerInvariant();
-						if(copy!="dump" && copy!="sql") {
-							throw new ArgumentException("--copy is dump or sql.");
+						if(copy!="dump" && copy!="server" && copy!="sql") {
+							throw new ArgumentException("--copy is server (the runbook's copy, the default) or dump.");
 						}
-						options.Copy=copy=="dump" ? CopyMethod.Dump : CopyMethod.Sql;
+						options.Copy=copy=="dump" ? CopyMethod.Dump : CopyMethod.Server;
 						break;
 					case "--out": options.OutDir=Next(); break;
 					case "--keep": options.Keep=true; break;
@@ -134,6 +149,13 @@ SYNTH_DB_PASSWORD environment variable. Exit codes: 0 pass, 1 error, 2 usage or 
 						options.Tag=Next();
 						if(!LocalOnly.IsWritableDatabaseName(Rehearsal.DbPrefix+options.Tag+"_r9_adopted")) {
 							throw new ArgumentException("--tag may only hold lower-case letters, digits and underscores.");
+						}
+						break;
+					case "--prefix":
+						options.Prefix=Next();
+						if(!options.Prefix.EndsWith("_") || !LocalOnly.IsWritableDatabaseName(options.Prefix+"x")) {
+							throw new ArgumentException("--prefix must start with synth, end with an underscore and hold only lower-case letters, digits and "
+								+"underscores, for example synth_m1z_.");
 						}
 						break;
 					case "--schema-sql": options.SchemaSql=Next(); options.SchemaFrom=null; break;
@@ -161,6 +183,47 @@ SYNTH_DB_PASSWORD environment variable. Exit codes: 0 pass, 1 error, 2 usage or 
 					}
 					log("Rehearsal: "+(result.Passed ? "PASS" : "FAIL"));
 					return result.Passed ? ExitPass : ExitValidationFailed;
+				case "connections":
+					RequireDatabase(database);
+					using(Db db=Db.Open(options.Server)) {
+						List<string> listAll=HeadlessAdoption.AllOtherConnections(db);
+						List<string> listUsing=HeadlessAdoption.OtherConnections(db,new[] { database });
+						log("Connections to "+options.Server.Describe()+" other than this one, with a database: "+(listAll.Count==0 ? "none." : listAll.Count+"."));
+						foreach(string connection in listAll) {
+							log("  "+connection);
+						}
+						log(listUsing.Count==0 ? "No connection uses "+database+"."
+							: listUsing.Count+" connection(s) use "+database+": close the program on the computer each one names (from ...).");
+						return listUsing.Count==0 ? ExitPass : ExitValidationFailed;
+					}
+				case "float-check":
+					RequireDatabase(database);
+					using(Db db=Db.Open(options.Server)) {
+						FloatCheck.Result floatResult=FloatCheck.Run(db,database);
+						log(database+": "+floatResult.Describe()+".");
+						if(floatResult.Total>0) {
+							log("Programs read these values through the same 6-digit text, so they show the same before and after a dump, but CHECKSUM TABLE differs. "
+								+"The runbook's copies are exact (steps 3.1 and 3.2); a logical backup (nightly dump) of this database is not, for these values.");
+						}
+						return floatResult.Total==0 ? ExitPass : ExitValidationFailed;
+					}
+				case "copy":
+					RequireDatabase(database);
+					if(string.IsNullOrEmpty(original)) {
+						throw new ArgumentException("--original is required: the database to copy.");
+					}
+					LocalOnly.EnsureSafeIdentifier(original);
+					try {
+						using(Db db=Db.Open(options.Server)) {
+							DatabaseCopier.CopyOnServer(db,original,database,log);
+						}
+					}
+					catch(ApplicationException ex) {
+						log("Copy: FAIL. "+ex.Message);
+						return ExitError;
+					}
+					log("Copy: PASS. Compare the two databases now (runbook step 3.3).");
+					return ExitPass;
 				case "restore":
 					RequireDatabase(database);
 					if(string.IsNullOrEmpty(pathDump)) {
@@ -269,23 +332,25 @@ SYNTH_DB_PASSWORD environment variable. Exit codes: 0 pass, 1 error, 2 usage or 
 					Stopwatch stopwatch=Stopwatch.StartNew();
 					action();
 					Log("  ("+stopwatch.Elapsed.TotalSeconds.ToString("0.0",CultureInfo.InvariantCulture)+" s)");
-				});
+				},server,original);
 			}
 			catch(Exception ex) {
 				Exception exInner=ex is System.Reflection.TargetInvocationException && ex.InnerException!=null ? ex.InnerException : ex;
 				Log("Adoption stopped: "+exInner.Message);
-				Log("Every step can be run again: run the same command again to finish. If it stops again, go to Rollback (runbook).");
+				Log("Adopt: STOPPED. Do not run adopt on "+database+" again: keep this log, drop "+database+", make a new copy from "+original
+					+" and adopt that (runbook step 4). "+original+" is unchanged.");
 				return ExitError;
 			}
 			if(result.Passed) {
 				Log("Adopt: PASS. "+database+" is adopted, matches Open Dental "+OpenDentBusiness.ForkMigrations.SchemaVerifier.ReferenceVersion
-					+" and is rehashed. Validate it now (runbook step 6), before anyone starts the program.");
+					+", is rehashed, and changed only the rows adoption changes. Validate it now (runbook step 6.1), before anyone starts the program.");
 				return ExitPass;
 			}
 			foreach(string failure in result.ListFailures) {
 				Log("FAIL: "+failure);
 			}
-			Log("Adopt: FAIL. Go to Rollback (runbook); keep "+database+" and this log for the analysis.");
+			Log("Adopt: FAIL. Do not use "+database+": keep this log, drop "+database+", make a new copy from "+original+" and adopt that (runbook step 4); "
+				+"a second failure means Rollback. "+original+" is unchanged.");
 			return ExitValidationFailed;
 		}
 

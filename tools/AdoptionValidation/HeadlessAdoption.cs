@@ -18,8 +18,11 @@ namespace AdoptionValidation {
 	///list, signals, login records). The post-adoption report (runbook step 6) must see only what adoption wrote, so it is taken before anyone starts
 	///the program, as in the rehearsal.
 	///
-	///Running it again is safe and is how an interrupted run is finished: an unfinished adoption is finished, a finished one is skipped, and the
-	///migration, the verifier and the rehash change nothing the second time (rehearsal checks I1 to I4).</summary>
+	///Running it again on a finished adoption is safe: adoption is skipped, and the migration, the verifier and the rehash change nothing the second
+	///time (rehearsal checks I1 to I4). An adoption interrupted before Adoption.Run writes ForkSchemaLevel (its step 6) is finished by running it
+	///again. One interrupted later is not: the copy then counts as adopted while its adoption record is unfinished, and the run fails, closed (exit
+	///code 6, or 1 when a fork migration step was cut off). So the runbook never relies on resuming: after any stop it drops the copy and makes a
+	///new one from the untouched original (runbook step 4).</summary>
 	public static class HeadlessAdoption {
 		public const string REHASH_LOG_TEXT="Security hashes recalculated after adoption by AdoptionValidation adopt (runbook step 5)";
 
@@ -40,6 +43,8 @@ namespace AdoptionValidation {
 			public DateTime DateRehashWindow;
 			public List<HashCount> ListHashesAfter=new List<HashCount>();
 			public bool IsRehashLogged;
+			///<summary>The row-by-row check against the original (AdoptionRowCheck); null when no original was given.</summary>
+			public AdoptionRowCheck.Result RowCheck;
 			public List<string> ListFailures=new List<string>();
 
 			public bool Passed {
@@ -56,13 +61,17 @@ namespace AdoptionValidation {
 		}
 
 		///<summary>Runs the steps on the database the business layer is connected to (BusinessLayer.Connect). step runs one named step; the
-		///rehearsal times it with it. Throws when the preflight refuses the database or adoption fails; every other check is collected in
-		///ListFailures.</summary>
-		public static Result Run(string database,Action<string> log,Action<string,Action> step=null) {
+		///rehearsal times it with it. With original (and the server to reach it), it ends with the row-by-row check of what adoption changed against
+		///that unchanged original (AdoptionRowCheck). Throws when the preflight refuses the database or adoption fails; every other check is
+		///collected in ListFailures.</summary>
+		public static Result Run(string database,Action<string> log,Action<string,Action> step=null,ServerSettings server=null,string original=null) {
 			log=log??(x => { });
 			step=step??((name,action) => action());
 			if(!string.Equals(BusinessLayer.CurrentDatabase(),database,StringComparison.OrdinalIgnoreCase)) {
 				throw new ApplicationException("The business layer is connected to "+BusinessLayer.CurrentDatabase()+", not "+database+".");
+			}
+			if(original!=null && server==null) {
+				throw new ArgumentException("The row check against the original needs the server settings.");
 			}
 			Result result=new Result { Database=database };
 			result.ListHashesStart=BusinessLayer.CountHashes();
@@ -127,6 +136,23 @@ namespace AdoptionValidation {
 				log("Warning: the security log entry for the rehash could not be written: "+ex.Message);
 			}
 			log("Rehash finished.");
+			if(original!=null) {
+				step("Row check against the original",() => {
+					using(Db db=Db.Open(server)) {
+						result.RowCheck=AdoptionRowCheck.Run(db,original,database);
+					}
+				});
+				log("Row check against "+original+" (what adoption may change in preference, documentmisc, securitylog, securityloghash and updatehistory):");
+				foreach(string line in result.RowCheck.ListLines) {
+					log("  "+line);
+				}
+				foreach(string failure in result.RowCheck.ListFailures) {
+					log("  FAIL: "+failure);
+				}
+				if(!result.RowCheck.Passed) {
+					result.ListFailures.Add("The row check against "+original+" found "+result.RowCheck.ListFailures.Count+" change(s) adoption does not make.");
+				}
+			}
 			return result;
 		}
 
@@ -193,8 +219,10 @@ namespace AdoptionValidation {
 			return date==null ? "" : date.Value.ToString("yyyy-MM-dd HH:mm:ss",CultureInfo.InvariantCulture)+" UTC";
 		}
 
-		///<summary>Connections other than this one whose default database is one of the given databases.</summary>
+		///<summary>Connections other than this one whose default database is one of the given databases. Refuses when this account cannot see other
+		///accounts' connections (EnsureSeesAllConnections): the list would then be empty whoever is connected.</summary>
 		public static List<string> OtherConnections(Db db,IEnumerable<string> listDatabases) {
+			EnsureSeesAllConnections(db);
 			//This process's own idle pooled connections would count too; there are none in the tool, but the tests share a process. The server may
 			//take a moment to remove a closed connection, so a non-empty list is read again a few times before it counts.
 			MySqlConnector.MySqlConnection.ClearAllPools();
@@ -211,6 +239,32 @@ namespace AdoptionValidation {
 				}
 			}
 			return listConnections;
+		}
+
+		///<summary>Every connection other than this one that has a default database, whichever database it is: the "connections" command (runbook
+		///steps 1.1, 10.1, 11.1 and Rollback) prints them, so the operator sees which computer (the host) is still connected.</summary>
+		public static List<string> AllOtherConnections(Db db) {
+			EnsureSeesAllConnections(db);
+			MySqlConnector.MySqlConnection.ClearAllPools();
+			return db.Rows("SELECT ID,USER,HOST,DB,COMMAND,TIME FROM information_schema.PROCESSLIST WHERE DB IS NOT NULL AND ID<>CONNECTION_ID() ORDER BY DB,ID")
+				.Select(x => "connection "+x[0]+" by "+x[1]+" from "+x[2]+" to "+x[3]+" ("+x[4]+", "+x[5]+" s)").ToList();
+		}
+
+		///<summary>information_schema.PROCESSLIST shows other accounts' connections only to an account with the PROCESS privilege on *.*. Without it,
+		///"nobody is connected" would be true of any server. Throws RefusedException.</summary>
+		public static void EnsureSeesAllConnections(Db db) {
+			string grantee=Convert.ToString(db.Scalar("SELECT CONCAT('''',SUBSTRING_INDEX(CURRENT_USER(),'@',1),'''@''',SUBSTRING_INDEX(CURRENT_USER(),'@',-1),'''')"));
+			List<string> listPrivileges=db.Rows("SELECT PRIVILEGE_TYPE FROM information_schema.USER_PRIVILEGES WHERE GRANTEE="+SqlLiteral.Quote(grantee))
+				.Select(x => Convert.ToString(x[0])).ToList();
+			if(!HasProcessPrivilege(listPrivileges)) {
+				throw new RefusedException("The MariaDB account "+grantee+" lacks the PROCESS privilege on *.*, so it cannot see other accounts' connections and the "
+					+"check that nobody is connected would see nothing. Use the administrator account of runbook step 0.0 (GRANT ALL PRIVILEGES ON *.*).");
+			}
+		}
+
+		///<summary>True when the global privileges of the account (information_schema.USER_PRIVILEGES) include PROCESS.</summary>
+		public static bool HasProcessPrivilege(IEnumerable<string> listPrivileges) {
+			return listPrivileges.Any(x => string.Equals((x??"").Trim(),"PROCESS",StringComparison.OrdinalIgnoreCase));
 		}
 
 		///<summary>The version preferences and fork markers of any local database, read with plain SQL.</summary>

@@ -15,15 +15,28 @@ namespace AdoptionValidation {
 		///<summary>Tables with a SecurityHash column that the rehash (SecurityHash.RehashNow) writes.</summary>
 		public static readonly string[] ArrayHashedTables={ "appointment","claim","claimproc","inssub","insverify","insverifyhist","patient","payplan","paysplit" };
 
-		///<summary>Connects the business layer (DataCore, Db, the caches) directly to the database. Local server only.</summary>
+		///<summary>Connects the business layer (DataCore, Db, the caches) directly to the database. Local server only, on the port the command line
+		///gives (through an SSH local forward, runbook step 0.0, that port is the database server's MariaDB).</summary>
 		public static void Connect(ServerSettings server,string database) {
 			LocalOnly.EnsureLocalHost(server.Server);
 			LocalOnly.EnsureSafeIdentifier(database);
 			RemotingClient.MiddleTierRole=MiddleTierRole.ClientDirect;
-			new DataConnection().SetDb(server.Server,database,server.User,server.Password,"","",DatabaseType.MySql,true);
+			new DataConnection().SetDb(ServerAndPort(server),database,server.User,server.Password,"","",DatabaseType.MySql,true);
 			if(Security.CurUser==null) {
 				Security.CurUser=new Userod();//Adoption runs before anyone logs in; a few log helpers read the current user.
 			}
+		}
+
+		///<summary>The server as DataConnection takes it, "host:port". DataConnection reads the port only from this string and otherwise uses 3306, so
+		///without it the business layer would connect to a different server than the tools' own connections whenever --port is not 3306 (an SSH local
+		///forward). An IPv6 address cannot carry a port there, so it is refused.</summary>
+		public static string ServerAndPort(ServerSettings server) {
+			LocalOnly.EnsureLocalHost(server.Server);
+			string host=server.Server.Trim();
+			if(host.Contains(":")) {
+				throw new ArgumentException("Connect with --server 127.0.0.1 or localhost: the business layer cannot take a port with the IPv6 address "+host+".");
+			}
+			return host+":"+server.Port.ToString(System.Globalization.CultureInfo.InvariantCulture);
 		}
 
 		public static string CurrentDatabase() {

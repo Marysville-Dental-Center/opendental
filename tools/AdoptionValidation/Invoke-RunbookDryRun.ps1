@@ -1,29 +1,36 @@
 <#
 .SYNOPSIS
-Runs steps 3.1 to 6 of docs\adoption-runbook.md, with the runbook's own commands, against a copy instead of the office database: the dry
-run of runbook step 0.6.
+Runs the tool commands of docs\adoption-runbook.md, from the FLOAT check of step 0.2 to step 6.1 and the go-live checks of steps 10.1 and 10.2,
+exactly as the runbook gives them, with a new copy instead of the office's adopted database: the dry run of runbook step 0.6.
 
 .DESCRIPTION
-Plays the day of the switch, in order, with -Original standing in for the office database "opendental" and -Copy for "opendental_pms":
+Plays the day of the switch, in order, on the admin PC, with -Original standing in for the office database "opendental" and -Copy for
+"opendental_pms":
 
-  3.1  back up -Original with mariadb-dump (the runbook's options)
-  3.2  restore the backup as the new database -Copy (AdoptionValidation restore)
-  3.3  baseline reports of both, compared: 0 differences
-  4-5  adopt and rehash -Copy without starting the program (AdoptionValidation adopt)
-  6    post-adoption report compared with the copy's baseline under allowed-differences.adoption.json: 0 unexpected differences;
-       the Open Dental startup check: every release client refuses the copy
-  10   the go-live check: no connection uses -Original, and -Original still equals its baseline
+  0.2   FLOAT check of -Original (AdoptionValidation float-check; recorded, not a failure)
+  1.1   no connection uses -Original (AdoptionValidation connections)
+  3.2   copy -Original into the new database -Copy on the server (AdoptionValidation copy)
+  3.3   reports of both, compared: 0 differences
+  4-5   adopt and rehash -Copy without starting the program, with the row check against -Original (AdoptionValidation adopt)
+  6.1   post-adoption report compared with the copy's report under allowed-differences.adoption.json: 0 unexpected differences;
+        the Open Dental startup check: every release client refuses the copy
+  10.1  no connection uses -Original (AdoptionValidation connections)
+  10.2  -Original still equals its report of step 3.3
 
-It stops at the first unexpected result. Every report and log, and the time of each step, go to -Folder (dry-run-timings.txt). The backup
-file holds the data of -Original; it is deleted at the end unless -KeepBackup. The script never writes to -Original and never drops a
-database: drop -Copy afterwards (runbook step 0.6).
+This is everything before the program's first start (step 6.2). Step 3.1, the folder copy of the database that is the rollback point, runs on
+the database server itself (bash) and is not part of this script; neither is anything on the workstations.
 
-The tools connect to this machine only. The MariaDB root password, if any, is read from the SYNTH_DB_PASSWORD environment variable and
-passed to the MariaDB client programs through MYSQL_PWD, never on the command line.
+It stops at the first unexpected result. Every report and log, and the time of each step, go to -Folder (dry-run-timings.txt). The script
+never writes to -Original and never drops a database: drop -Copy afterwards (runbook step 0.6). No row of -Original leaves the database
+server: the copy is made by the server, and the reports hold row counts, checksums and totals.
+
+The tools connect to 127.0.0.1 only, on -Port: on the office's admin PC the local end of the SSH forward to the database server (runbook step
+0.0), here the developers' local server. -User is the MariaDB account; its password, if any, is read from the SYNTH_DB_PASSWORD environment
+variable, never from the command line.
 
 .EXAMPLE
-.\Invoke-RunbookDryRun.ps1 -Original od_prep -Copy od_prep_pms -Folder D:\Adoption\dry-run
-The office dry run of runbook step 0.6, from the folder that holds the tools.
+.\Invoke-RunbookDryRun.ps1 -Original opendental -Copy od_prep_pms -Folder C:\Adoption\dry-run -Port 13306 -User adoption_admin
+The office dry run of runbook step 0.6, on the admin PC, from the folder that holds the tools, through the SSH forward of step 0.0.
 
 .EXAMPLE
 .\tools\AdoptionValidation\Invoke-RunbookDryRun.ps1 -Original synth_m1z_dry_r1_src -Copy synth_m1z_dry_pms -Folder C:\Temp\dry-run -AsOf 2026-09-30
@@ -36,8 +43,8 @@ param(
 	[Parameter(Mandatory=$true)][string]$Folder,
 	[string]$AsOf=(Get-Date -Format 'yyyy-MM-dd'),
 	[string]$Tools,
-	[string]$MariaDbBin,
-	[switch]$KeepBackup
+	[ValidateRange(1,65535)][int]$Port=3306,
+	[string]$User='root'
 )
 $ErrorActionPreference='Stop'
 
@@ -51,6 +58,9 @@ if($Original -eq $Copy) {
 }
 if($AsOf -notmatch '^\d{4}-\d{2}-\d{2}$') {
 	throw '-AsOf is a date written yyyy-MM-dd.'
+}
+if($User -notmatch '^[A-Za-z0-9_.-]{1,80}$') {
+	throw "'$User' is not a valid MariaDB account name."
 }
 
 #The tools: next to this script (a copied bin folder), or the build output of the source tree.
@@ -75,49 +85,20 @@ foreach($path in @($adoptionValidation,$syntheticData,$allowed)) {
 	}
 }
 
-#The MariaDB client programs.
-if(-not $MariaDbBin) {
-	$MariaDbBin=$env:MARIADB_BIN
-}
-if(-not $MariaDbBin) {
-	$command=Get-Command 'mariadb-dump.exe' -ErrorAction SilentlyContinue
-	if($command) {
-		$MariaDbBin=Split-Path $command.Source
-	}
-}
-if(-not $MariaDbBin) {
-	#ProgramW6432 is the 64-bit Program Files folder, also from a 32-bit PowerShell.
-	$roots=@($env:ProgramW6432,$env:ProgramFiles) | Where-Object { $_ -and (Test-Path $_) } | Select-Object -Unique
-	$found=Get-ChildItem -Path $roots -Directory -Filter 'MariaDB*' -ErrorAction SilentlyContinue | Sort-Object Name -Descending |
-		Where-Object { Test-Path (Join-Path $_.FullName 'bin\mariadb-dump.exe') } | Select-Object -First 1
-	if($found) {
-		$MariaDbBin=Join-Path $found.FullName 'bin'
-	}
-}
-if(-not $MariaDbBin -or -not (Test-Path (Join-Path $MariaDbBin 'mariadb-dump.exe')) -or -not (Test-Path (Join-Path $MariaDbBin 'mariadb.exe'))) {
-	throw 'mariadb-dump.exe and mariadb.exe were not found. Pass -MariaDbBin (the MariaDB bin folder) or set MARIADB_BIN.'
-}
-$mariadbDump=Join-Path $MariaDbBin 'mariadb-dump.exe'
-$mariadb=Join-Path $MariaDbBin 'mariadb.exe'
-$env:MARIADB_BIN=$MariaDbBin
-
 if(Test-Path $Folder) {
 	if(Get-ChildItem -Path $Folder -Force | Select-Object -First 1) {
-		throw "$Folder is not empty. Use a new folder, so no earlier report or backup is overwritten."
+		throw "$Folder is not empty. Use a new folder, so no earlier report is overwritten."
 	}
 }
 else {
 	New-Item -ItemType Directory -Path $Folder | Out-Null
 }
 $Folder=(Resolve-Path $Folder).Path
-$backup=Join-Path $Folder "$Original-pre-adoption.sql"
-$connection=@('--host=127.0.0.1','--port=3306','--user=root','--protocol=TCP')
-$passwordSaved=$env:MYSQL_PWD
-if($env:SYNTH_DB_PASSWORD) {
-	$env:MYSQL_PWD=$env:SYNTH_DB_PASSWORD
-}
+#Every tool command gets the same connection: this machine, the given port and account.
+$connection=@('--server','127.0.0.1','--port',"$Port",'--user',$User)
 
 $timings=New-Object System.Collections.Generic.List[object]
+$notes=New-Object System.Collections.Generic.List[string]
 function Invoke-Step([string]$Name,[scriptblock]$Block) {
 	Write-Host "== $Name"
 	$stopwatch=[System.Diagnostics.Stopwatch]::StartNew()
@@ -130,72 +111,83 @@ function Assert-ExitCode([string]$What,[string]$Expected) {
 		throw "$What returned exit code $LASTEXITCODE; expected 0 ($Expected)."
 	}
 }
-#Runs a tool, shows its output and keeps a copy in the folder.
+#Runs a tool with the connection arguments, shows its output and keeps a copy in the folder.
 function Invoke-Tool([string]$Exe,[string[]]$Arguments,[string]$OutFile) {
-	& $Exe @Arguments | Tee-Object -Variable lines | Out-Host
+	$all=@($Arguments)+$connection
+	& $Exe @all | Tee-Object -Variable lines | Out-Host
 	$lines | Out-File -FilePath (Join-Path $Folder $OutFile) -Encoding utf8
 }
 
 $failure=$null
 try {
-	Invoke-Step '3.1 Back up the original (mariadb-dump)' {
-		& $mariadbDump @connection --lock-tables --routines --triggers --events --hex-blob --default-character-set=utf8mb4 "--result-file=$backup" $Original
-		Assert-ExitCode 'mariadb-dump' 'a complete backup'
-		Write-Host ("   {0:N0} bytes" -f (Get-Item $backup).Length)
+	Invoke-Step '0.2 FLOAT values a logical backup would round (float-check)' {
+		Invoke-Tool $adoptionValidation @('float-check','--database',$Original) 'float-check.txt'
+		if($LASTEXITCODE -eq 6) {
+			$notes.Add("float-check found FLOAT values a logical backup (mariadb-dump) would round (float-check.txt); the runbook's copies are exact.")
+		}
+		elseif($LASTEXITCODE -ne 0) {
+			throw "AdoptionValidation float-check returned exit code $LASTEXITCODE; expected 0 or 6 (a count of values)."
+		}
 	}
-	Invoke-Step '3.2 Restore the copy (AdoptionValidation restore)' {
-		Invoke-Tool $adoptionValidation @('restore','--dump',$backup,'--database',$Copy) 'restore.txt'
-		Assert-ExitCode 'AdoptionValidation restore' 'the copy restored'
+	Invoke-Step '1.1 No connection uses the original (connections)' {
+		Invoke-Tool $adoptionValidation @('connections','--database',$Original) 'connections-before.txt'
+		Assert-ExitCode 'AdoptionValidation connections' "nobody connected to $Original"
 	}
-	Invoke-Step '3.3 Baseline reports and comparison' {
+	Invoke-Step '3.2 Copy the original on the server (AdoptionValidation copy)' {
+		Invoke-Tool $adoptionValidation @('copy','--original',$Original,'--database',$Copy) 'copy.txt'
+		Assert-ExitCode 'AdoptionValidation copy' 'Copy: PASS'
+	}
+	Invoke-Step '3.3 Reports of both and their comparison' {
 		Invoke-Tool $syntheticData @('validate','--database',$Original,'--as-of',$AsOf,'--out',(Join-Path $Folder 'baseline-original.json')) 'baseline-original.txt'
 		Assert-ExitCode 'SyntheticData validate (original)' 'a report'
 		Invoke-Tool $syntheticData @('validate','--database',$Copy,'--as-of',$AsOf,'--out',(Join-Path $Folder 'baseline-copy.json')) 'baseline-copy.txt'
 		Assert-ExitCode 'SyntheticData validate (copy)' 'a report'
-		Invoke-Tool $syntheticData @('compare',(Join-Path $Folder 'baseline-original.json'),(Join-Path $Folder 'baseline-copy.json')) 'compare-baselines.txt'
+		& $syntheticData compare (Join-Path $Folder 'baseline-original.json') (Join-Path $Folder 'baseline-copy.json') |
+			Tee-Object -Variable lines | Out-Host
+		$lines | Out-File -FilePath (Join-Path $Folder 'compare-baselines.txt') -Encoding utf8
 		Assert-ExitCode 'SyntheticData compare (baselines)' 'Unexpected differences: 0, the copy equals the original'
 	}
 	Invoke-Step '4-5 Adopt and rehash the copy (AdoptionValidation adopt)' {
-		& $adoptionValidation adopt --database $Copy --original $Original --confirm $Copy --log (Join-Path $Folder 'adoption-log.txt')
+		$all=@('adopt','--database',$Copy,'--original',$Original,'--confirm',$Copy,'--log',(Join-Path $Folder 'adoption-log.txt'))+$connection
+		& $adoptionValidation @all
 		Assert-ExitCode 'AdoptionValidation adopt' 'Adopt: PASS'
 	}
-	Invoke-Step '6 Post-adoption report, comparison and startup check' {
+	Invoke-Step '6.1 Post-adoption report, comparison and startup check' {
 		Invoke-Tool $syntheticData @('validate','--database',$Copy,'--as-of',$AsOf,'--out',(Join-Path $Folder 'after-adoption.json')) 'after-adoption.txt'
 		Assert-ExitCode 'SyntheticData validate (adopted copy)' 'a report'
-		Invoke-Tool $syntheticData @('compare',(Join-Path $Folder 'baseline-copy.json'),(Join-Path $Folder 'after-adoption.json'),'--allowed',$allowed) 'compare.txt'
+		& $syntheticData compare (Join-Path $Folder 'baseline-copy.json') (Join-Path $Folder 'after-adoption.json') --allowed $allowed |
+			Tee-Object -Variable lines | Out-Host
+		$lines | Out-File -FilePath (Join-Path $Folder 'compare.txt') -Encoding utf8
 		Assert-ExitCode 'SyntheticData compare (after adoption)' 'Unexpected differences: 0'
 		Invoke-Tool $adoptionValidation @('startup-check','--database',$Copy) 'startup-check.txt'
 		Assert-ExitCode 'AdoptionValidation startup-check' 'every Open Dental release client refuses the adopted copy'
 	}
-	Invoke-Step '10 Go-live check: the original is unused and unchanged' {
-		$connections=& $mariadb @connection --batch --skip-column-names -e "SELECT ID,USER,HOST,COMMAND FROM information_schema.PROCESSLIST WHERE DB='$Original' AND ID<>CONNECTION_ID()"
-		Assert-ExitCode 'mariadb (process list)' 'the process list'
-		if($connections) {
-			throw "Connections use $Original`: $($connections -join '; ')"
-		}
-		Write-Host "   No connection uses $Original."
+	Invoke-Step '10.1 No connection uses the original (connections)' {
+		Invoke-Tool $adoptionValidation @('connections','--database',$Original) 'connections-golive.txt'
+		Assert-ExitCode 'AdoptionValidation connections' "nobody connected to $Original"
+	}
+	Invoke-Step '10.2 The original is unchanged' {
 		Invoke-Tool $syntheticData @('validate','--database',$Original,'--as-of',$AsOf,'--out',(Join-Path $Folder 'golive-original.json')) 'golive-original.txt'
 		Assert-ExitCode 'SyntheticData validate (original again)' 'a report'
-		Invoke-Tool $syntheticData @('compare',(Join-Path $Folder 'baseline-original.json'),(Join-Path $Folder 'golive-original.json')) 'compare-original.txt'
+		& $syntheticData compare (Join-Path $Folder 'baseline-original.json') (Join-Path $Folder 'golive-original.json') |
+			Tee-Object -Variable lines | Out-Host
+		$lines | Out-File -FilePath (Join-Path $Folder 'compare-original.txt') -Encoding utf8
 		Assert-ExitCode 'SyntheticData compare (original)' 'Unexpected differences: 0, nothing wrote to the original'
 	}
 }
 catch {
 	$failure=$_.Exception.Message
 }
-finally {
-	$env:MYSQL_PWD=$passwordSaved
-	if(-not $KeepBackup -and (Test-Path $backup)) {
-		Remove-Item -LiteralPath $backup
-		Write-Host "Deleted the backup file $backup (it holds the data of $Original)."
-	}
-}
 
 $total=($timings | Measure-Object -Property Seconds -Sum).Sum
 $summary=@()
-$summary+="Runbook dry run, steps 3.1 to 6 and the go-live check: $Original -> $Copy, as of $AsOf, $(Get-Date -Format 'yyyy-MM-dd HH:mm')."
+$summary+="Runbook dry run, the tool commands of steps 0.2, 1.1 and 3.2 to 6.1 (everything before the program's first start) and the go-live checks of steps 10.1 and 10.2: $Original -> $Copy on 127.0.0.1:$Port as $User, as of $AsOf, $(Get-Date -Format 'yyyy-MM-dd HH:mm')."
+$summary+='Step 3.1 (the folder copy on the database server) is not part of this script.'
 $summary+=($timings | Format-Table -AutoSize | Out-String).TrimEnd()
 $summary+=("Total: {0:0.0} s" -f $total)
+foreach($note in $notes) {
+	$summary+="Note: $note"
+}
 if($failure) {
 	$summary+="Dry run: FAIL. $failure"
 }

@@ -25,8 +25,8 @@ namespace AdoptionValidation.Tests {
 		private static RehearsalResult _result;
 
 		///<summary>Every check a run must report, in order.</summary>
-		public static readonly string[] ArrayCheckIds={ "G1","G2","A1","A2","A3","A4","M1","M2","H1","V1","V2","V3","V4","V5","V6","V7","V8","V9","V10","R1",
-			"R2","I1","I2","I3","I4" };
+		public static readonly string[] ArrayCheckIds={ "G1","G2","A1","A2","A3","A4","M1","M2","H1","V1","V2","V3","V4","V5","V6","V7","V8","V9","V10","V11",
+			"R1","R2","I1","I2","I3","I4" };
 
 		[ClassInitialize]
 		public static void ClassInitialize(TestContext testContext) {
@@ -120,15 +120,14 @@ namespace AdoptionValidation.Tests {
 			SkipIfNeeded();
 			foreach(RunResult run in _result.ListRuns) {
 				List<string> listNames=run.ListSteps.Select(x => x.Name).ToList();
-				foreach(string prefix in new[] { "Generate","Record baseline","Adopt (","Fork migration","Schema verifier","Rehash","Record post-adoption",
-					"Data-layer round trip","Second pass" })
+				foreach(string prefix in new[] { "Generate","Record baseline","FLOAT values","Copy on the server (AdoptionValidation copy)","Validate the copy",
+					"Adopt (","Fork migration","Schema verifier","Rehash","Row check against the original","Record post-adoption","Data-layer round trip","Second pass" })
 				{
 					Assert.IsTrue(listNames.Any(x => x.StartsWith(prefix)),"Run "+run.RunNumber+" has no step "+prefix);
 				}
-				if(DatabaseCopier.FindClientTools()!=null) {
-					Assert.IsTrue(listNames.Contains("Back up (mariadb-dump)") && listNames.Contains("Restore the copy"),"A real backup and restore is timed.");
-				}
+				Assert.IsFalse(listNames.Contains("Back up (mariadb-dump)"),"By default the rehearsal copies the way the runbook does, without a dump.");
 				Assert.IsTrue(run.ListSteps.All(x => x.Seconds>=0) && run.TotalSeconds>0);
+				StringAssert.Contains(run.FloatCheck,"no value that a logical backup (mariadb-dump) would round","The synthetic FLOAT values are short.");
 			}
 		}
 
@@ -245,13 +244,19 @@ namespace AdoptionValidation.Tests {
 			int indexRehash=listSteps.FindIndex(x => x.StartsWith("Rehash"));
 			int indexReport=listSteps.FindIndex(x => x.StartsWith("Record post-adoption"));
 			int indexRoundTrip=listSteps.FindIndex(x => x.StartsWith("Data-layer round trip"));
-			Assert.IsTrue(listSteps.IndexOf("Preflight")<indexAdopt && indexAdopt<listSteps.IndexOf("Fork migration (all steps again)")
-				&& listSteps.IndexOf("Schema verifier")<indexRehash && indexRehash<indexReport && indexReport<indexRoundTrip,string.Join(", ",listSteps));
+			int indexCopy=listSteps.FindIndex(x => x.StartsWith("Copy on the server"));
+			int indexRowCheck=listSteps.IndexOf("Row check against the original");
+			Assert.IsTrue(indexCopy<listSteps.IndexOf("Preflight") && listSteps.IndexOf("Preflight")<indexAdopt
+				&& indexAdopt<listSteps.IndexOf("Fork migration (all steps again)") && listSteps.IndexOf("Schema verifier")<indexRehash && indexRehash<indexRowCheck
+				&& indexRowCheck<indexReport && indexReport<indexRoundTrip,string.Join(", ",listSteps));
 			foreach(string expected in new[] { "It can be adopted.","Dropped index patient.portal_active_email_uniq.","Dropped column patient._portal_active_email.",
-				"DataBaseVersion and ProgramVersion set to 99.0.0.0.","Adoption finished.","0 changes.","The schema matches Open Dental 25.3.48 exactly","Rehash finished." })
+				"DataBaseVersion and ProgramVersion set to 99.0.0.0.","Adoption finished.","0 changes.","The schema matches Open Dental 25.3.48 exactly","Rehash finished.",
+				"Row check against "+Source(1),"preference: 5 added (","documentmisc: 4 Open Dental update-file row(s) deleted, none left; 0 other row(s) deleted",
+				"securitylog: 2 entries added (1 adoption, 1 rehash)","updatehistory: identical row by row." })
 			{
 				Assert.IsTrue(run.ListAdoptionLog.Any(x => x.Contains(expected)),expected+"\r\n"+string.Join("\r\n",run.ListAdoptionLog));
 			}
+			Assert.IsFalse(run.ListAdoptionLog.Any(x => x.Contains("FAIL")),string.Join("\r\n",run.ListAdoptionLog));
 			using(Db db=Db.Open(_server,Adopted(1))) {
 				Assert.AreEqual(2,db.ScalarLong("SELECT COUNT(*) FROM securitylog WHERE LogText LIKE '"+HeadlessAdoption.REHASH_LOG_TEXT+"%'"),
 					"The rehash is logged once by the adoption and once by the second pass.");
@@ -300,17 +305,9 @@ namespace AdoptionValidation.Tests {
 		[TestMethod]
 		public void Adopt_RefusesAndChangesNothing_WhenTheCopyOrTheOriginalIsWrong() {
 			SkipIfNeeded();
-			(string dump,string client)? tools=DatabaseCopier.FindClientTools();
-			if(tools==null) {
-				Assert.Inconclusive("mariadb-dump and mariadb are not installed.");
-			}
-			string folder=Path.Combine(_outDir,"adopt-refusals");
-			Directory.CreateDirectory(folder);
-			string pathBackup=Path.Combine(folder,"source.sql");
-			DatabaseCopier.Backup(_server,Source(1),pathBackup,tools.Value.dump);
 			string copy=Rehearsal.DbPrefix+Tag+"_refusals";
-			DatabaseCopier.Restore(_server,pathBackup,copy,tools.Value.client);
 			List<string> listLog=new List<string>();
+			Assert.AreEqual(Program.ExitPass,Program.Run(new[] { "copy","--original",Source(1),"--database",copy },listLog.Add),string.Join("\r\n",listLog));
 			AssertThrows<ArgumentException>(() => Program.Run(new[] { "adopt","--database",copy,"--original",Source(1),"--confirm","opendental" },listLog.Add));
 			AssertThrows<ArgumentException>(() => Program.Run(new[] { "adopt","--database",copy,"--confirm",copy },listLog.Add));
 			Assert.AreEqual(Program.ExitUsage,Program.Run(new[] { "adopt","--database",copy,"--original",copy,"--confirm",copy },listLog.Add));
@@ -343,15 +340,13 @@ namespace AdoptionValidation.Tests {
 			}
 		}
 
-		///<summary>The dry run of runbook step 0.6: Invoke-RunbookDryRun.ps1 runs steps 3.1 to 6 and the go-live check with the runbook's own commands
-		///(mariadb-dump, AdoptionValidation restore, SyntheticData validate and compare, AdoptionValidation adopt and startup-check) on a copy of the
-		///rehearsal's source, out of process, as the office runs them. Then step 4 is run again, as the runbook says to after an interruption.</summary>
+		///<summary>The dry run of runbook step 0.6 in the office's topology: Invoke-RunbookDryRun.ps1 runs the tool commands of steps 0.2, 1.1, 3.2 to
+		///6.1 and the go-live checks 10.1 and 10.2 exactly as the runbook gives them (AdoptionValidation float-check, connections, copy, adopt and
+		///startup-check, SyntheticData validate and compare), out of process, on a copy of the rehearsal's source, through a relay on another port
+		///that stands in for the SSH forward of step 0.0. Then step 4 is run again, through the relay too, on the adopted copy.</summary>
 		[TestMethod]
-		public void RunbookDryRun_PassesWithTheRunbookCommands() {
+		public void RunbookDryRun_PassesThroughAForwardedPort_WithTheRunbookCommands() {
 			SkipIfNeeded();
-			if(DatabaseCopier.FindClientTools()==null) {
-				Assert.Inconclusive("mariadb-dump and mariadb are not installed.");
-			}
 			string tools=AppDomain.CurrentDomain.BaseDirectory;
 			string script=Path.Combine(tools,"Invoke-RunbookDryRun.ps1");
 			for(DirectoryInfo dir=new DirectoryInfo(tools);!File.Exists(script) && dir!=null;dir=dir.Parent) {
@@ -360,47 +355,307 @@ namespace AdoptionValidation.Tests {
 			Assert.IsTrue(File.Exists(script),"Invoke-RunbookDryRun.ps1 not found");
 			string copy=Rehearsal.DbPrefix+Tag+"_dryrun";
 			string folder=Path.Combine(_outDir,"dry-run");
-			ProcessStartInfo processStartInfo=new ProcessStartInfo("powershell.exe","-NoProfile -ExecutionPolicy Bypass -File \""+script+"\" -Original "+Source(1)
-				+" -Copy "+copy+" -Folder \""+folder+"\" -AsOf 2026-09-30 -Tools \""+tools.TrimEnd('\\')+"\"") {
-				UseShellExecute=false,
-				CreateNoWindow=true,
-				RedirectStandardOutput=true,
-				RedirectStandardError=true,
-			};
 			string output;
 			int exitCode;
-			using(Process process=Process.Start(processStartInfo)) {
-				System.Threading.Tasks.Task<string> taskErr=process.StandardError.ReadToEndAsync();
-				output=process.StandardOutput.ReadToEnd();
-				Assert.IsTrue(process.WaitForExit(600000),"The dry run did not finish in 10 minutes.");
-				output+=taskErr.Result;
-				exitCode=process.ExitCode;
+			using(TcpRelay relay=new TcpRelay(_server.Port)) {
+				ProcessStartInfo processStartInfo=new ProcessStartInfo("powershell.exe","-NoProfile -ExecutionPolicy Bypass -File \""+script+"\" -Original "+Source(1)
+					+" -Copy "+copy+" -Folder \""+folder+"\" -AsOf 2026-09-30 -Tools \""+tools.TrimEnd('\\')+"\" -Port "+relay.Port+" -User "+_server.User) {
+					UseShellExecute=false,
+					CreateNoWindow=true,
+					RedirectStandardOutput=true,
+					RedirectStandardError=true,
+				};
+				using(Process process=Process.Start(processStartInfo)) {
+					System.Threading.Tasks.Task<string> taskErr=process.StandardError.ReadToEndAsync();
+					output=process.StandardOutput.ReadToEnd();
+					Assert.IsTrue(process.WaitForExit(900000),"The dry run did not finish in 15 minutes.");
+					output+=taskErr.Result;
+					exitCode=process.ExitCode;
+				}
+				Assert.AreEqual(0,exitCode,output);
+				//Twelve tool runs, each with at least one connection, and adopt's business layer with its own: all of them through the relay.
+				Assert.IsTrue(relay.CountAccepted>=13,relay.CountAccepted+" connections through the relay\r\n"+output);
+				//Step 4 again, in process and through the relay: it repeats the finished adoption and changes nothing but its own security log entry.
+				List<string> listLog=new List<string>();
+				ValidationReport before;
+				using(Db db=Db.Open(_server)) {
+					before=Validator.Run(db,copy,null,null);
+				}
+				int countBefore=relay.CountAccepted;
+				Assert.AreEqual(Program.ExitPass,Program.Run(new[] { "adopt","--database",copy,"--original",Source(1),"--confirm",copy,"--port",
+					relay.Port.ToString(CultureInfo.InvariantCulture) },listLog.Add),string.Join("\r\n",listLog));
+				Assert.IsTrue(relay.CountAccepted>countBefore,"adopt connected through the relay");
+				Assert.IsTrue(listLog.Any(x => x.Contains("already has an adoption record")) && listLog.Any(x => x.Contains("Adoption is skipped")));
+				Assert.IsTrue(listLog.Any(x => x.Contains("securitylog: 3 entries added (1 adoption, 2 rehash)")),string.Join("\r\n",listLog));
+				using(Db db=Db.Open(_server)) {
+					List<Difference> listDiffs=ReportComparer.Compare(before,Validator.Run(db,copy,null,null),null);
+					Assert.IsTrue(listDiffs.All(x => x.Table=="securitylog" || x.Table=="securityloghash"),ReportComparer.Format(listDiffs));
+				}
 			}
-			Assert.AreEqual(0,exitCode,output);
 			StringAssert.Contains(output,"Dry run: PASS");
+			foreach(string step in new[] { "== 0.2 ","== 1.1 ","== 3.2 ","== 3.3 ","== 4-5 ","== 6.1 ","== 10.1 ","== 10.2 " }) {
+				StringAssert.Contains(output,step);
+			}
+			StringAssert.Contains(File.ReadAllText(Path.Combine(folder,"float-check.txt")),"no value that a logical backup (mariadb-dump) would round");
+			StringAssert.Contains(File.ReadAllText(Path.Combine(folder,"connections-before.txt")),"No connection uses "+Source(1)+".");
+			StringAssert.Contains(File.ReadAllText(Path.Combine(folder,"copy.txt")),"Copy: PASS");
+			StringAssert.Contains(File.ReadAllText(Path.Combine(folder,"compare-baselines.txt")),"Unexpected differences: 0");
 			StringAssert.Contains(File.ReadAllText(Path.Combine(folder,"compare.txt")),"Unexpected differences: 0");
 			StringAssert.Contains(File.ReadAllText(Path.Combine(folder,"compare-original.txt")),"Unexpected differences: 0");
-			StringAssert.Contains(File.ReadAllText(Path.Combine(folder,"adoption-log.txt")),"Adopt: PASS");
+			string adoptionLog=File.ReadAllText(Path.Combine(folder,"adoption-log.txt"));
+			StringAssert.Contains(adoptionLog,"Adopt: PASS");
+			StringAssert.Contains(adoptionLog,"Row check against "+Source(1));
 			StringAssert.Contains(File.ReadAllText(Path.Combine(folder,"startup-check.txt")),"Every Open Dental release client refuses this database.");
-			Assert.IsTrue(File.Exists(Path.Combine(folder,"dry-run-timings.txt")));
-			Assert.IsFalse(Directory.GetFiles(folder,"*.sql").Any(),"The backup file is deleted at the end.");
+			StringAssert.Contains(File.ReadAllText(Path.Combine(folder,"connections-golive.txt")),"No connection uses "+Source(1)+".");
+			StringAssert.Contains(File.ReadAllText(Path.Combine(folder,"dry-run-timings.txt")),"Dry run: PASS");
+			Assert.IsFalse(Directory.GetFiles(folder,"*.sql").Any(),"No backup file: the copy is made on the server.");
 			using(Db db=Db.Open(_server)) {
 				ForkMigrationsState(db,copy,out string version,out long markers);
 				Assert.AreEqual("99.0.0.0",version);
 				Assert.AreEqual(1,markers);
+				ForkMigrationsState(db,Source(1),out version,out markers);
+				Assert.AreEqual("25.3.48.0",version,"The dry run never writes to the original.");
+				Assert.AreEqual(0,markers);
 			}
-			//Step 4 again, in process: it finishes or repeats the adoption, and changes nothing but its own security log entry.
+		}
+
+		///<summary>The business layer connects through the port it is given, not 3306: through the SSH forward of runbook step 0.0, every query of
+		///adopt and startup-check reaches the database server, not whatever answers on the admin PC's own port 3306.</summary>
+		[TestMethod]
+		public void BusinessLayer_ConnectsThroughTheGivenPort() {
+			SkipIfNeeded();
+			using(TcpRelay relay=new TcpRelay(_server.Port)) {
+				ServerSettings server=new ServerSettings { Port=relay.Port };
+				BusinessLayer.Connect(server,Source(1));
+				Assert.AreEqual(Source(1),BusinessLayer.CurrentDatabase());
+				StringAssert.Contains(DataConnectionBase.DataConnection.GetCurrentConnectionString(),"Port="+relay.Port.ToString(CultureInfo.InvariantCulture));
+				Assert.IsTrue(relay.CountAccepted>=1,"The business layer's connection went through the relay.");
+				Assert.AreEqual("25.3.48.0",BusinessLayer.GetPref("DataBaseVersion"));
+			}
+		}
+
+		///<summary>Runbook step 3.2's copy: on the server, only into a new name, and only when nobody is connected.</summary>
+		[TestMethod]
+		public void Copy_RefusesAndCreatesNothing_WhenTheNamesAreWrongOrSomeoneIsConnected() {
+			SkipIfNeeded();
+			string target=Rehearsal.DbPrefix+Tag+"_copyrefused";
 			List<string> listLog=new List<string>();
-			ValidationReport before;
-			using(Db db=Db.Open(_server)) {
-				before=Validator.Run(db,copy,null,null);
+			RefusedException ex=AssertThrows<RefusedException>(() => Program.Run(new[] { "copy","--original",Source(1),"--database",Source(2) },listLog.Add));
+			StringAssert.Contains(ex.Message,"already exists");
+			ex=AssertThrows<RefusedException>(() => Program.Run(new[] { "copy","--original",Source(1),"--database",Source(1) },listLog.Add));
+			StringAssert.Contains(ex.Message,"the same");
+			ex=AssertThrows<RefusedException>(() => Program.Run(new[] { "copy","--original",Rehearsal.DbPrefix+Tag+"_missing","--database",target },listLog.Add));
+			StringAssert.Contains(ex.Message,"does not exist");
+			using(Db dbHeld=Db.Open(_server,Source(1))) {
+				ex=AssertThrows<RefusedException>(() => Program.Run(new[] { "copy","--original",Source(1),"--database",target },listLog.Add));
+				StringAssert.Contains(ex.Message,"Other connections use these databases");
 			}
-			Assert.AreEqual(Program.ExitPass,Program.Run(new[] { "adopt","--database",copy,"--original",Source(1),"--confirm",copy },listLog.Add),
-				string.Join("\r\n",listLog));
-			Assert.IsTrue(listLog.Any(x => x.Contains("already has an adoption record")) && listLog.Any(x => x.Contains("Adoption is skipped")));
 			using(Db db=Db.Open(_server)) {
-				List<Difference> listDiffs=ReportComparer.Compare(before,Validator.Run(db,copy,null,null),null);
-				Assert.IsTrue(listDiffs.All(x => x.Table=="securitylog" || x.Table=="securityloghash"),ReportComparer.Format(listDiffs));
+				Assert.IsFalse(db.DatabaseExists(target),"Nothing was created.");
+				Assert.AreEqual(0,HeadlessAdoption.CompareRowCounts(db,Source(1),Source(2)).Count,"Neither database was written.");
+			}
+		}
+
+		///<summary>Runbook steps 1.1 and 10.1: the connections command sees other connections, says which computer, and fails when one uses the
+		///database.</summary>
+		[TestMethod]
+		public void Connections_FailsWhileSomeoneUsesTheDatabase() {
+			SkipIfNeeded();
+			List<string> listLog=new List<string>();
+			Assert.AreEqual(Program.ExitPass,Program.Run(new[] { "connections","--database",Source(2) },listLog.Add),string.Join("\r\n",listLog));
+			StringAssert.Contains(listLog.Last(),"No connection uses "+Source(2)+".");
+			listLog.Clear();
+			using(Db dbHeld=Db.Open(_server,Source(2))) {
+				Assert.AreEqual(Program.ExitValidationFailed,Program.Run(new[] { "connections","--database",Source(2) },listLog.Add));
+			}
+			Assert.IsTrue(listLog.Any(x => x.Contains(" to "+Source(2)+" (") && x.Contains(" from ")),string.Join("\r\n",listLog));
+			StringAssert.Contains(listLog.Last(),"1 connection(s) use "+Source(2));
+		}
+
+		///<summary>Why the runbook copies on the server: mariadb-dump writes a FLOAT with 6 significant digits, so a backup and restore rounds longer
+		///values (34.285713 comes back as 34.2857). float-check finds exactly those values; the validator's column checksums now see the change (before
+		///they did not, only CHECKSUM TABLE did); and the server-side copy keeps every value and AUTO_INCREMENT exactly.</summary>
+		[TestMethod]
+		public void Copy_IsExact_WhereADumpRoundsFloatValues() {
+			SkipIfNeeded();
+			string withFloats=Rehearsal.DbPrefix+Tag+"_floats";
+			string copied=Rehearsal.DbPrefix+Tag+"_floats_copy";
+			string restored=Rehearsal.DbPrefix+Tag+"_floats_dump";
+			List<string> listLog=new List<string>();
+			Assert.AreEqual(Program.ExitPass,Program.Run(new[] { "copy","--original",Source(1),"--database",withFloats },listLog.Add),string.Join("\r\n",listLog));
+			string table;
+			string column;
+			string key;
+			using(Db db=Db.Open(_server)) {
+				ValidationReport reportSource=Validator.Run(db,Source(1),null,null);
+				ValidationReport reportCopy=Validator.Run(db,withFloats,null,null);
+				Assert.AreEqual(0,ReportComparer.Compare(reportSource,reportCopy,null).Count,ReportComparer.Format(ReportComparer.Compare(reportSource,reportCopy,null)));
+				AssertSameAutoIncrement(db,Source(1),withFloats);
+				//A FLOAT column of a table with at least three rows, as Open Dental's imagedraw.FontSize.
+				//A FLOAT column of a table with at least three rows (information_schema is read one table at a time, with the database named, so the
+				//server looks only at this database).
+				Dictionary<string,long> dictRows=db.Rows("SELECT TABLE_NAME,TABLE_ROWS FROM information_schema.TABLES WHERE TABLE_SCHEMA='"+withFloats+"'")
+					.ToDictionary(x => Convert.ToString(x[0]),x => Convert.ToInt64(x[1]??0L));
+				object[] row=db.Rows("SELECT TABLE_NAME,COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='"+withFloats+"' AND DATA_TYPE='float' "
+					+"ORDER BY TABLE_NAME='imagedraw' DESC,TABLE_NAME,ORDINAL_POSITION").FirstOrDefault(x => dictRows[Convert.ToString(x[0])]>=3);
+				Assert.IsNotNull(row,"The synthetic data has a FLOAT column with rows.");
+				table=Convert.ToString(row[0]);
+				column=Convert.ToString(row[1]);
+				key=Convert.ToString(db.Scalar("SELECT COLUMN_NAME FROM information_schema.STATISTICS WHERE TABLE_SCHEMA='"+withFloats+"' AND TABLE_NAME='"+table
+					+"' AND INDEX_NAME='PRIMARY'"));
+				Assert.AreEqual(0,FloatCheck.Run(db,withFloats).Total,"The synthetic FLOAT values are short.");
+				List<long> listKeys=db.Rows("SELECT `"+key+"` FROM `"+withFloats+"`.`"+table+"` ORDER BY `"+key+"` LIMIT 3").Select(x => Convert.ToInt64(x[0])).ToList();
+				//Two values a dump rounds (a computed font size, 7 digits), one it keeps.
+				db.Execute("UPDATE `"+withFloats+"`.`"+table+"` SET `"+column+"`=34.285713 WHERE `"+key+"`="+listKeys[0]);
+				db.Execute("UPDATE `"+withFloats+"`.`"+table+"` SET `"+column+"`=0.1234567 WHERE `"+key+"`="+listKeys[1]);
+				db.Execute("UPDATE `"+withFloats+"`.`"+table+"` SET `"+column+"`=8.25 WHERE `"+key+"`="+listKeys[2]);
+				FloatCheck.Result floatCheck=FloatCheck.Run(db,withFloats);
+				Assert.AreEqual(2,floatCheck.Total,floatCheck.Describe());
+				Assert.AreEqual(table+"."+column,floatCheck.ListColumns.Single().Table+"."+floatCheck.ListColumns.Single().Column);
+			}
+			listLog.Clear();
+			Assert.AreEqual(Program.ExitValidationFailed,Program.Run(new[] { "float-check","--database",withFloats },listLog.Add),string.Join("\r\n",listLog));
+			StringAssert.Contains(string.Join("\r\n",listLog),"2 value(s) in 1 column(s) that a logical backup (mariadb-dump) would round");
+			//The server-side copy is exact.
+			Assert.AreEqual(Program.ExitPass,Program.Run(new[] { "copy","--original",withFloats,"--database",copied },listLog.Add),string.Join("\r\n",listLog));
+			using(Db db=Db.Open(_server)) {
+				ValidationReport reportWithFloats=Validator.Run(db,withFloats,null,null);
+				List<Difference> listCopy=ReportComparer.Compare(reportWithFloats,Validator.Run(db,copied,null,null),null);
+				Assert.AreEqual(0,listCopy.Count,ReportComparer.Format(listCopy));
+				Assert.AreEqual(2,FloatCheck.Run(db,copied).Total,"The copy keeps the long values.");
+				AssertSameAutoIncrement(db,withFloats,copied);
+				//A dump and restore rounds them, and the comparison now names the column.
+				(string dump,string client)? tools=DatabaseCopier.FindClientTools();
+				if(tools==null) {
+					Assert.Inconclusive("mariadb-dump and mariadb are not installed; the dump half of this test did not run.");
+				}
+				string pathDump=Path.Combine(_outDir,"floats.sql");
+				DatabaseCopier.Backup(_server,withFloats,pathDump,tools.Value.dump);
+				DatabaseCopier.Restore(_server,pathDump,restored,tools.Value.client);
+				List<Difference> listDump=ReportComparer.Compare(reportWithFloats,Validator.Run(db,restored,null,null),null);
+				Assert.IsTrue(listDump.Any(x => x.Kind==DifferenceKind.ColumnChanged && x.Table==table && x.Column==column),ReportComparer.Format(listDump));
+				Assert.IsTrue(listDump.All(x => x.Table==table && (x.Column==column || x.Kind==DifferenceKind.ChecksumTableChanged)),ReportComparer.Format(listDump));
+				Assert.AreEqual(0,FloatCheck.Run(db,restored).Total,"The restored values are the rounded ones.");
+				Assert.AreEqual(1,db.ScalarLong("SELECT COUNT(*) FROM `"+restored+"`.`"+table+"` WHERE `"+column+"`=CAST(34.2857 AS FLOAT)"));
+			}
+		}
+
+		private static void AssertSameAutoIncrement(Db db,string databaseA,string databaseB) {
+			Dictionary<string,string> ReadCounters(string database) {
+				return db.Rows("SELECT TABLE_NAME,AUTO_INCREMENT FROM information_schema.TABLES WHERE TABLE_SCHEMA='"+database+"'")
+					.ToDictionary(x => Convert.ToString(x[0]),x => Convert.ToString(x[1]));
+			}
+			Dictionary<string,string> dictA=ReadCounters(databaseA);
+			Dictionary<string,string> dictB=ReadCounters(databaseB);
+			List<string> listDifferent=dictA.Where(x => !dictB.TryGetValue(x.Key,out string value) || value!=x.Value).Select(x => x.Key+" "+x.Value).ToList();
+			Assert.IsTrue(dictA.Count==dictB.Count && listDifferent.Count==0,"AUTO_INCREMENT of "+databaseA+" and "+databaseB+": "+string.Join(", ",listDifferent));
+		}
+
+		///<summary>Negative control for the row check (carry-over C3): the report comparison allows any change to preference, documentmisc, securitylog
+		///and securityloghash as whole tables; adopt's row check against the original does not.</summary>
+		[TestMethod]
+		public void RowCheck_CatchesChangesTheWholeTableRulesAllow() {
+			SkipIfNeeded();
+			string tampered=Rehearsal.DbPrefix+Tag+"_tampered";
+			List<string> listLog=new List<string>();
+			Assert.AreEqual(Program.ExitPass,Program.Run(new[] { "copy","--original",Adopted(2),"--database",tampered },listLog.Add),string.Join("\r\n",listLog));
+			using(Db db=Db.Open(_server)) {
+				//The round trip deleted its test rows at the end of 50 tables, so their counters are past the largest key: the copy keeps them too.
+				//information_schema is read with the database and table named for each of its tables, so the server looks only at those.
+				Assert.AreEqual(1,db.ScalarLong("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='"+Adopted(2)+"' AND TABLE_NAME='benefit' "
+					+"AND COLUMN_NAME='BenefitNum' AND EXTRA LIKE '%auto_increment%'"));
+				Assert.IsTrue(db.ScalarLong("SELECT AUTO_INCREMENT FROM information_schema.TABLES WHERE TABLE_SCHEMA='"+Adopted(2)+"' AND TABLE_NAME='benefit'")
+					>db.ScalarLong("SELECT MAX(BenefitNum) FROM `"+Adopted(2)+"`.benefit")+1,"The round trip left a gap at the end of benefit.");
+				AssertSameAutoIncrement(db,Adopted(2),tampered);
+				Assert.IsTrue(AdoptionRowCheck.Run(db,Source(2),tampered).Passed,"An untouched adopted copy passes.");
+				ValidationReport before=Validator.Run(db,tampered,null,null);
+				db.Use(tampered);
+				Assert.AreEqual(1,db.Execute("UPDATE preference SET ValueString='Synthetic Practice Renamed' WHERE PrefName='PracticeTitle'"));
+				Assert.AreEqual(1,db.Execute("UPDATE securitylog SET LogText=CONCAT(LogText,' edited') ORDER BY SecurityLogNum LIMIT 1"));
+				Assert.AreEqual(1,db.Execute("DELETE FROM documentmisc WHERE DocMiscType="+OfficeFixture.DocMiscShareScreenExeSegment));
+				Assert.AreEqual(1,db.Execute("INSERT INTO updatehistory (DateTimeUpdated,ProgramVersion,Signature) VALUES ('2026-10-24 20:00:00','99.0.0.0','')"));
+				AdoptionRowCheck.Result result=AdoptionRowCheck.Run(db,Source(2),tampered);
+				string failures=string.Join("\r\n",result.ListFailures);
+				Assert.IsFalse(result.Passed);
+				StringAssert.Contains(failures,"Preference PracticeTitle");
+				StringAssert.Contains(failures,"Existing securitylog rows were removed or changed");
+				StringAssert.Contains(failures,"documentmisc row(s) that are not Open Dental update files were deleted");
+				StringAssert.Contains(failures,"updatehistory changed");
+				//The report comparison under allowed-differences.adoption.json lets the first three through; updatehistory has no rule any more.
+				AllowedDifferences allowed=AllowedDifferences.Load(Path.Combine(Path.GetDirectoryName(Validator.ReadTotalsSqlPath()),"..",
+					"allowed-differences.adoption.json"));
+				List<Difference> listDiffs=ReportComparer.Compare(before,Validator.Run(db,tampered,null,null),allowed);
+				Assert.IsTrue(listDiffs.Where(x => x.Table=="preference" || x.Table=="securitylog" || x.Table=="documentmisc").All(x => x.IsAllowed),
+					ReportComparer.Format(listDiffs));
+				Assert.IsTrue(listDiffs.Any(x => x.Table=="updatehistory" && !x.IsAllowed),ReportComparer.Format(listDiffs));
+			}
+		}
+
+		///<summary>Carry-over C1: an adoption interrupted before Adoption.Run writes ForkSchemaLevel (here after it deleted the update files, its step 3)
+		///is finished by running adopt again, and ends like an uninterrupted one. One interrupted after it (here in the fork migration, step 7) is not:
+		///adopt fails, closed. The runbook does neither: it drops such a copy and makes a new one (step 4), which is shown last.</summary>
+		[TestMethod]
+		public void InterruptedAdoption_IsFinishedBeforeTheMarkers_FailsClosedAfter_AndANewCopyAdopts() {
+			SkipIfNeeded();
+			string early=Rehearsal.DbPrefix+Tag+"_cutearly";
+			string late=Rehearsal.DbPrefix+Tag+"_cutlate";
+			List<string> listLog=new List<string>();
+			Assert.AreEqual(Program.ExitPass,Program.Run(new[] { "copy","--original",Source(1),"--database",early },listLog.Add),string.Join("\r\n",listLog));
+			Assert.AreEqual(Program.ExitPass,Program.Run(new[] { "copy","--original",Source(1),"--database",late },listLog.Add),string.Join("\r\n",listLog));
+			//Interrupted after step 3.
+			BusinessLayer.Connect(_server,early);
+			AssertThrows<ApplicationException>(() => OpenDentBusiness.Adoption.Run(x => {
+				if(x.StartsWith("Deleted ")) {
+					throw new ApplicationException("interrupted for the test");
+				}
+			}));
+			HeadlessAdoption.Result resumed=HeadlessAdoption.Run(early,null,null,_server,Source(1));
+			Assert.IsTrue(resumed.Passed,string.Join("\r\n",resumed.ListFailures));
+			Assert.IsTrue(resumed.Preflight.IsResume,"The rerun finishes the adoption that was started.");
+			using(Db db=Db.Open(_server)) {
+				//Equal to run 1's adopted copy right after adoption, apart from the time of adoption.
+				AllowedDifferences allowedTimes=new AllowedDifferences { Rules=Rehearsal.ArraySnapshotTables.Select(x => new AllowedRule { Kind="*",Table=x,
+					Reason="time of adoption" }).ToList() };
+				List<Difference> listDiffs=ReportComparer.Compare(ValidationReport.Load(_result.ListRuns[0].ReportAdoptedPath),Validator.Run(db,early,null,null),allowedTimes);
+				Assert.IsTrue(listDiffs.All(x => x.IsAllowed),ReportComparer.Format(listDiffs));
+			}
+			//Interrupted in the fork migration, after ForkSchemaLevel was written.
+			BusinessLayer.Connect(_server,late);
+			OpenDentBusiness.IForkMigrationRunner runnerReal=OpenDentBusiness.ForkMigrationHandOff.Runner;
+			AssertThrows<ApplicationException>(() => OpenDentBusiness.Adoption.Run(null,new CutOffRunner(runnerReal)));
+			listLog.Clear();
+			int exitLate=Program.Run(new[] { "adopt","--database",late,"--original",Source(1),"--confirm",late },listLog.Add);
+			Assert.AreNotEqual(Program.ExitPass,exitLate,string.Join("\r\n",listLog));
+			Assert.IsTrue(listLog.Any(x => x.StartsWith("Adopt: FAIL") || x.StartsWith("Adopt: STOPPED")),string.Join("\r\n",listLog));
+			Assert.IsTrue(listLog.Any(x => x.Contains("make a new copy from "+Source(1))),string.Join("\r\n",listLog));
+			//The runbook's step 4 after a failure: drop the copy, copy again, adopt.
+			using(Db db=Db.Open(_server)) {
+				db.Execute("DROP DATABASE `"+late+"`");
+			}
+			listLog.Clear();
+			Assert.AreEqual(Program.ExitPass,Program.Run(new[] { "copy","--original",Source(1),"--database",late },listLog.Add),string.Join("\r\n",listLog));
+			Assert.AreEqual(Program.ExitPass,Program.Run(new[] { "adopt","--database",late,"--original",Source(1),"--confirm",late },listLog.Add),
+				string.Join("\r\n",listLog));
+		}
+
+		///<summary>A fork migration runner that is cut off in its first step, as a killed process would be.</summary>
+		private class CutOffRunner : OpenDentBusiness.IForkMigrationRunner {
+			private readonly OpenDentBusiness.IForkMigrationRunner _runner;
+
+			public CutOffRunner(OpenDentBusiness.IForkMigrationRunner runner) {
+				_runner=runner;
+			}
+
+			public string LatestLevel {
+				get { return _runner.LatestLevel; }
+			}
+
+			public int CompareLevels(string levelA,string levelB) {
+				return _runner.CompareLevels(levelA,levelB);
+			}
+
+			public void RunPending(Action<string> actionLog) {
+				throw new ApplicationException("cut off in the fork migration for the test");
 			}
 		}
 

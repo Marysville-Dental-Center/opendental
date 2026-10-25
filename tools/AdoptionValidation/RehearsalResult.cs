@@ -45,6 +45,8 @@ namespace AdoptionValidation {
 		public int Tables;
 		public long Rows;
 		public string FixtureSummary;
+		///<summary>FloatCheck of the source: the FLOAT and DOUBLE values a logical backup would round (runbook step 0.2).</summary>
+		public string FloatCheck;
 		public List<StepTiming> ListSteps=new List<StepTiming>();
 		public List<CheckResult> ListChecks=new List<CheckResult>();
 		public List<string> ListAdoptionLog=new List<string>();
@@ -63,7 +65,7 @@ namespace AdoptionValidation {
 		public List<string> ListCredentials=new List<string>();
 		public string SchemaVerifierReport="";
 		public string ReportBaselinePath;
-		///<summary>The restored copy's report: the runbook's baseline-copy.json, which the post-adoption report is compared with (step 6).</summary>
+		///<summary>The copy's report: the runbook's baseline-copy.json, which the post-adoption report is compared with (step 6.1).</summary>
 		public string ReportCopyPath;
 		public string ReportAdoptedPath;
 		public string Error;
@@ -148,6 +150,8 @@ namespace AdoptionValidation {
 				sb.AppendLine();
 				sb.AppendLine("Office fixture: "+first.FixtureSummary);
 				sb.AppendLine();
+				sb.AppendLine("FLOAT check of the source (runbook step 0.2): "+first.FloatCheck+".");
+				sb.AppendLine();
 				sb.AppendLine("### Key business totals");
 				sb.AppendLine();
 				sb.AppendLine("| Total | Before | After |");
@@ -209,7 +213,7 @@ namespace AdoptionValidation {
 					}
 					sb.AppendLine();
 				}
-				sb.AppendLine("### Stored passwords to re-enter (credential inventory of the restored copy)");
+				sb.AppendLine("### Stored passwords to re-enter (credential inventory of the copy)");
 				sb.AppendLine();
 				foreach(string item in first.ListCredentials) {
 					sb.AppendLine("- "+Escape(item));

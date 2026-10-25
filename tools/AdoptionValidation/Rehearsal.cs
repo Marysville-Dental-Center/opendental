@@ -27,22 +27,27 @@ namespace AdoptionValidation {
 		public int FillRemaining=2;
 		public string OutDir;
 		public bool Keep;
-		///<summary>Null: a real backup and restore when the client programs are installed, otherwise an SQL copy.</summary>
+		///<summary>Null: the runbook's server-side copy (step 3.2). Dump: a mariadb-dump backup and restore instead.</summary>
 		public CopyMethod? Copy;
 		public string SchemaSql=SchemaBuilder.DefaultSchemaSqlPath;
 		public string SchemaFrom=SchemaBuilder.DefaultReferenceDatabase;
 		///<summary>Part of every scratch database name; unique per rehearsal unless given.</summary>
 		public string Tag;
+		///<summary>Start of every scratch database name (default synth_m1z_). Must keep the names writable (synth...).</summary>
+		public string Prefix=Rehearsal.DbPrefix;
 		public bool SkipRoundTrip;
 		public string AllowedPath;
 	}
 
 	///<summary>The M1-Z switch-gate rehearsal on synthetic data (docs/specs/port-backlog.md, M1-Z; docs/adoption-runbook.md). Each run generates a
-	///fresh database, records its baseline, backs it up and restores a copy, adopts the copy, migrates, verifies, rehashes and validates, then does
-	///it all a second time on the adopted copy to prove idempotence. Several runs prove the whole thing repeats exactly. Every step is timed.
+	///fresh database, records its baseline, copies it as the runbook does, adopts the copy, migrates, verifies, rehashes and validates, then does it
+	///all a second time on the adopted copy to prove idempotence. Several runs prove the whole thing repeats exactly. Every step is timed.
 	///</summary>
 	public class Rehearsal {
 		public const string DbPrefix="synth_m1z_";
+		///<summary>The tables that hold the time of adoption. The report comparisons can only allow them whole, so the runs and the second pass are
+		///compared on them row by row (RowComparer), from a snapshot taken right after adoption (the run's _snap database).</summary>
+		public static readonly string[] ArraySnapshotTables={ "preference","securitylog","securityloghash" };
 		private readonly RehearsalOptions _options;
 		private readonly Action<string> _log;
 		private RunResult _run;
@@ -72,16 +77,19 @@ namespace AdoptionValidation {
 			}
 			List<ValidationReport> listBaselines=new List<ValidationReport>();
 			List<ValidationReport> listAdopted=new List<ValidationReport>();
+			List<string> listSnapshots=new List<string>();
 			for(int i=1;i<=_options.Runs;i++) {
 				_run=new RunResult { RunNumber=i };
 				rehearsalResult.ListRuns.Add(_run);
-				string source=DbPrefix+tag+"_r"+i+"_src";
-				string adopted=DbPrefix+tag+"_r"+i+"_adopted";
+				string source=_options.Prefix+tag+"_r"+i+"_src";
+				string adopted=_options.Prefix+tag+"_r"+i+"_adopted";
+				string snapshot=_options.Prefix+tag+"_r"+i+"_snap";
+				listSnapshots.Add(snapshot);
 				_log("=== Run "+i+" of "+_options.Runs+": "+source+" -> "+adopted);
 				ValidationReport baseline=null;
 				ValidationReport afterAdoption=null;
 				try {
-					RunOnce(source,adopted,out baseline,out afterAdoption);
+					RunOnce(source,adopted,snapshot,out baseline,out afterAdoption);
 				}
 				catch(Exception ex) {
 					Exception exInner=ex is TargetInvocationException && ex.InnerException!=null ? ex.InnerException : ex;
@@ -97,8 +105,15 @@ namespace AdoptionValidation {
 				listAdopted.Add(afterAdoption);
 				_log("Run "+i+": "+(_run.Passed ? "PASS" : "FAIL")+" in "+_run.TotalSeconds.ToString("0.0")+" s");
 			}
-			if(_options.Runs>1) {
-				CompareRuns(rehearsalResult,listBaselines,listAdopted);
+			try {
+				if(_options.Runs>1) {
+					CompareRuns(rehearsalResult,listBaselines,listAdopted,listSnapshots);
+				}
+			}
+			finally {
+				if(!_options.Keep) {
+					Cleanup(listSnapshots.ToArray());
+				}
 			}
 			string pathJson=Path.Combine(_options.OutDir,"rehearsal-result.json");
 			rehearsalResult.Save(pathJson);
@@ -107,15 +122,15 @@ namespace AdoptionValidation {
 			return rehearsalResult;
 		}
 
-		private void RunOnce(string source,string adopted,out ValidationReport baseline,out ValidationReport afterAdoption) {
+		private void RunOnce(string source,string adopted,string snapshot,out ValidationReport baseline,out ValidationReport afterAdoption) {
 			baseline=null;
 			afterAdoption=null;
 			ServerSettings server=_options.Server;
 			AllowedDifferences allowed=AllowedDifferences.Load(FindAllowedPath());
-			CopyMethod copyMethod=_options.Copy??(DatabaseCopier.FindClientTools()!=null ? CopyMethod.Dump : CopyMethod.Sql);
+			CopyMethod copyMethod=_options.Copy??CopyMethod.Server;
 			_run.DatabaseSource=source;
 			_run.DatabaseAdopted=adopted;
-			_run.CopyMethod=copyMethod==CopyMethod.Dump ? "mariadb-dump backup and restore" : "SQL copy on the server";
+			_run.CopyMethod=copyMethod==CopyMethod.Dump ? "mariadb-dump backup and restore" : "the runbook's server-side copy, AdoptionValidation copy";
 			using(Db db=Db.Open(server)) {
 				//1. Generate the synthetic 25.3.48 database.
 				GenerationSettings settings=new GenerationSettings { Seed=_options.Seed,Size=_options.Size,AsOf=_options.AsOf,Families=_options.Families,
@@ -143,27 +158,35 @@ namespace AdoptionValidation {
 					+(Coverage.AllItems.Count()-coverage.AllProblems.Count())+" of "+Coverage.AllItems.Count()+" 24.4-25.3 items; "
 					+baseline.Totals.Count(x => x.Key.StartsWith("check."))+" consistency checks, "+listFailedChecks.Count+" failed"
 					+(listErrors.Count>0 ? "; total errors: "+string.Join(", ",listErrors) : ""));
-				//3. Backup and restore the copy that is adopted, with the runbook's restore (step 3.2): it checks the file and only creates a new database,
-				//so a copy left by an earlier --keep run with the same tag is dropped first.
+				//The FLOAT and DOUBLE values a logical backup would round (runbook step 0.2): the synthetic values are short, so none is expected.
+				FloatCheck.Result floatCheck=Time("FLOAT values a logical backup would round (float-check)",() => FloatCheck.Run(db,source));
+				_run.FloatCheck=floatCheck.Describe();
+				//3. The copy that is adopted, made the way runbook step 3.2 makes it (or, with --copy dump, by a mariadb-dump backup and the restore). Both
+				//only create a new database, so a copy left by an earlier --keep run with the same tag is dropped first.
+				LocalOnly.EnsureWritableDatabaseName(adopted);
+				db.Execute("DROP DATABASE IF EXISTS `"+adopted+"`");
 				if(copyMethod==CopyMethod.Dump) {
-					(string dump,string client) tools=DatabaseCopier.FindClientTools().Value;
+					(string dump,string client)? toolsFound=DatabaseCopier.FindClientTools();
+					if(toolsFound==null) {
+						throw new ApplicationException("--copy dump needs mariadb-dump and mariadb (set MARIADB_BIN to their folder).");
+					}
+					(string dump,string client) tools=toolsFound.Value;
 					string pathBackup=Path.Combine(_options.OutDir,source+".sql");
 					Time("Back up (mariadb-dump)",() => DatabaseCopier.Backup(server,source,pathBackup,tools.dump),
 						() => new FileInfo(pathBackup).Length.ToString("N0")+" bytes");
-					LocalOnly.EnsureWritableDatabaseName(adopted);
-					db.Execute("DROP DATABASE IF EXISTS `"+adopted+"`");
 					Time("Restore the copy",() => DatabaseCopier.Restore(server,pathBackup,adopted,tools.client));
 					File.Delete(pathBackup);
 				}
 				else {
-					Time("Copy the database (SQL)",() => DatabaseCopier.CopyWithSql(db,source,adopted));
+					Time("Copy on the server (AdoptionValidation copy)",() => DatabaseCopier.CopyOnServer(db,source,adopted,x => _log("  "+x)));
 				}
-				//The runbook's baseline-copy.json (step 3.3): step 6 compares the adopted copy with it.
-				ValidationReport copyReport=Time("Validate the restored copy",() => Validator.Run(db,adopted,null,null));
+				//The runbook's baseline-copy.json (step 3.3): step 6.1 compares the adopted copy with it.
+				ValidationReport copyReport=Time("Validate the copy",() => Validator.Run(db,adopted,null,null));
 				copyReport.Save(_run.ReportCopyPath=Path.Combine(_options.OutDir,"run"+_run.RunNumber+"-1-copy.json"));
 				List<Difference> listCopyDiffs=ReportComparer.Compare(baseline,copyReport,null);
-				Check("G2","Restored copy equals the baseline",listCopyDiffs.Count==0,
-					listCopyDiffs.Count==0 ? "row counts, CHECKSUM TABLE, every column checksum and every total equal" : ReportComparer.Format(listCopyDiffs));
+				Check("G2",copyMethod==CopyMethod.Dump ? "Restored copy equals the baseline" : "The copy equals the baseline",listCopyDiffs.Count==0,
+					(listCopyDiffs.Count==0 ? "row counts, CHECKSUM TABLE, every column checksum (FLOAT values exactly) and every total equal"
+					: ReportComparer.Format(listCopyDiffs))+"; float-check of the source: "+floatCheck.Describe());
 				_run.ListCredentials=Time("Credential inventory",() => CredentialInventory.Run(db,adopted)).Select(x => x.ToString()).ToList();
 				//4. Before adoption: the fork refuses the copy, and an Open Dental client would use it (control case for the startup model).
 				BusinessLayer.Connect(server,adopted);
@@ -174,11 +197,12 @@ namespace AdoptionValidation {
 				StartupScenarioResult control=listBefore.First(x => x.Scenario.StartsWith("Open Dental 25.3.48, update server"));
 				Check("A2","Startup model: an Open Dental 25.3.48 client uses the unadopted copy (control)",control.Outcome==OdStartupOutcome.Proceeds,
 					control.Summary+"; a 25.4.30 update server: "+listBefore.First(x => x.Scenario.StartsWith("Open Dental 25.4.30, update server")).Summary);
-				//5. to 7. Preflight, adoption (Adoption.Run, what FormAdoptDatabase calls), the fork migration with every step again, the schema verifier
-				//and the rehash (SecurityHash.RehashNow, what Database Maintenance's Security Hashes tool calls): HeadlessAdoption, the code that runbook
-				//steps 4 and 5 run as "AdoptionValidation adopt". The office runs this exact sequence, and takes its post-adoption report (step 6) before
-				//anyone starts the program, as below.
-				HeadlessAdoption.Result adoption=HeadlessAdoption.Run(adopted,x => { _run.ListAdoptionLog.Add(x); _log("  "+x); },(name,action) => Time(name,action));
+				//5. to 7. Preflight, adoption (Adoption.Run, what FormAdoptDatabase calls), the fork migration with every step again, the schema verifier,
+				//the rehash (SecurityHash.RehashNow, what Database Maintenance's Security Hashes tool calls) and the row check against the source:
+				//HeadlessAdoption, the code that runbook steps 4 and 5 run as "AdoptionValidation adopt". The office runs this exact sequence, and takes its
+				//post-adoption report (step 6.1) before anyone starts the program, as below.
+				HeadlessAdoption.Result adoption=HeadlessAdoption.Run(adopted,x => { _run.ListAdoptionLog.Add(x); _log("  "+x); },(name,action) => Time(name,action),
+					server,source);
 				AdoptionPreflight preflight=adoption.Preflight;
 				Check("A3","Preflight accepts the copy",preflight.CanAdopt && !preflight.IsResume && preflight.VersionSource==new Version(25,3,48,0),
 					preflight.Message);
@@ -215,6 +239,7 @@ namespace AdoptionValidation {
 				List<Difference> listDiffs=ReportComparer.Compare(copyReport,afterAdoption,allowed);
 				ValidateAgainstBaseline(copyReport,afterAdoption,listDiffs);
 				ValidateAdoptionEffects(fixture);
+				SnapshotTables(db,adopted,snapshot);
 				//9. Open Dental-style startup check on the adopted copy.
 				List<StartupScenarioResult> listAfter=Time("Open Dental-style startup check",() => RunStartupScenarios("adopted copy"));
 				_run.ListStartupScenarios.AddRange(listAfter);
@@ -224,6 +249,11 @@ namespace AdoptionValidation {
 					listRelease.Count(x => x.IsRefused)+" of "+listRelease.Count+" release-client scenarios exit without converting, writing, installing services or "
 					+"copying binaries; "+string.Join("; ",listRelease.Where(x => !x.IsRefused).Select(x => x.Scenario+": "+x.Summary))
 					+" (a Debug build of Open Dental skips its version check: "+listAfter.First(x => !x.IsReleaseClient).Outcome+"; Open Dental ships Release builds only)");
+				//The tables the allowed list can only allow whole, row by row against the source (what adopt prints in runbook steps 4 and 5).
+				AdoptionRowCheck.Result rowCheck=adoption.RowCheck;
+				Check("V11","Row by row, adoption changed only its own rows of preference, documentmisc, securitylog, securityloghash and updatehistory",
+					rowCheck!=null && rowCheck.Passed,rowCheck==null ? "no row check" : string.Join(" ",rowCheck.ListLines)
+					+(rowCheck.Passed ? "" : " Failures: "+string.Join(" ",rowCheck.ListFailures)));
 				//10. Data-layer round trip. It writes (and normalizes some cells, moving their rows' audit timestamps), so the runs are compared on the
 				//report from before it; the second pass is compared with the report from after it.
 				ValidationReport afterFirstPass=afterAdoption;
@@ -231,11 +261,9 @@ namespace AdoptionValidation {
 					_run.RoundTrip=Time("Data-layer round trip (load and save through OpenDentBusiness)",() => DataLayerRoundTrip.Run(db,adopted,_log));
 					RoundTripSummary roundTrip=_run.RoundTrip;
 					List<string> listNormalizations=roundTrip.ListNormalizations;
-					Check("R1","Every 24.4-25.3 column loads, saves and writes through OpenDentBusiness",roundTrip.Passed,
-						roundTrip.Tables.Count+" tables, "+roundTrip.ColumnCount+" columns, "+roundTrip.RowsSaved.ToString("N0")+" rows loaded and saved, "
-						+roundTrip.Tables.Sum(x => x.ColumnsWritten)+" new values written and read back; documented exceptions: "
-						+string.Join("; ",roundTrip.Tables.SelectMany(x => x.ListDocumentedExceptions).Select(x => x.Split(':')[0]))
-						+"; first-save normalizations (same meaning in the program): "+(listNormalizations.Count==0 ? "none" : string.Join("; ",listNormalizations))
+					Check("R1","Every 24.4-25.3 column loads and saves through OpenDentBusiness; every writable one writes",roundTrip.Passed,
+						DescribeRoundTrip(roundTrip)+"; first-save normalizations (same meaning in the program): "
+						+(listNormalizations.Count==0 ? "none" : string.Join("; ",listNormalizations))
 						+(roundTrip.Passed ? "" : "; failures: "+string.Join(" | ",roundTrip.Tables.Where(x => !x.Passed).Select(x => x.Describe()))));
 					ValidationReport afterRoundTrip=Time("Record post-round-trip report",() => Validator.Run(db,adopted,null,null));
 					List<Difference> listRoundTripDiffs=ReportComparer.Compare(afterAdoption,afterRoundTrip,roundTrip.GetAllowedNormalizations());
@@ -248,8 +276,22 @@ namespace AdoptionValidation {
 					afterFirstPass=afterRoundTrip;
 				}
 				//11. Idempotence: everything a second time.
-				IdempotencePass(db,adopted,afterFirstPass);
+				IdempotencePass(db,source,adopted,snapshot,afterFirstPass);
 			}
+		}
+
+		///<summary>What the round trip covered, column by column: R1's detail, and the counts the validation report quotes.</summary>
+		public static string DescribeRoundTrip(RoundTripSummary roundTrip) {
+			int countLoaded=roundTrip.Tables.Sum(x => x.ColumnsLoaded);
+			int countWritten=roundTrip.Tables.Sum(x => x.ColumnsWritten);
+			List<string> listNotWritten=roundTrip.Tables.SelectMany(x => x.ListNotUpdatable.Select(y => x.Table+"."+y)).ToList();
+			List<string> listNotLoaded=roundTrip.Tables.Where(x => x.Columns.Count>x.ColumnsLoaded).SelectMany(x => x.ListDocumentedExceptions
+				.Select(y => y.Split(':')[0]).Select(y => y.Contains(".") ? y : y+" ("+(x.Columns.Count-x.ColumnsLoaded)+" columns)")).ToList();
+			return roundTrip.Tables.Count+" tables, "+roundTrip.ColumnCount+" columns new or changed since 24.3: "+countLoaded+" loaded and saved unchanged ("
+				+roundTrip.RowsSaved.ToString("N0")+" rows saved), and "+countWritten+" of them given a new value, written and read back; "
+				+listNotWritten.Count+" loaded and saved but not given a new value, because Insert or the server sets them (CRUD types TimeStamp, DateEntry, "
+				+"DateTEntry, ExcludeFromUpdate: "+string.Join(", ",listNotWritten)+"); "
+				+(roundTrip.ColumnCount-countLoaded)+" not loaded, documented exceptions preserved untouched ("+string.Join(", ",listNotLoaded)+")";
 		}
 
 		private void ValidateAgainstBaseline(ValidationReport baseline,ValidationReport after,List<Difference> listDiffs) {
@@ -258,13 +300,15 @@ namespace AdoptionValidation {
 			HashSet<string> setTouched=new HashSet<string>(listDiffs.Where(x => x.Table!=null).Select(x => x.Table),StringComparer.OrdinalIgnoreCase);
 			_run.ListTablesTouched=setTouched.OrderBy(x => x).ToList();
 			_run.TablesUntouched=baseline.Tables.Count(x => !setTouched.Contains(x.Name));
+			int countUntouchedWithRows=baseline.Tables.Count(x => !setTouched.Contains(x.Name) && x.Rows>0);
 			List<Difference> listRows=listDiffs.Where(x => x.Kind==DifferenceKind.RowsChanged).ToList();
 			Check("V1","Row counts unchanged except where adoption deletes or adds rows",listRows.All(x => x.IsAllowed) && baseline.TableCount==after.TableCount,
 				baseline.TableCount+" tables before, "+after.TableCount+" after; "+(baseline.TotalRows).ToString("N0")+" rows before, "+after.TotalRows.ToString("N0")
 				+" after; changed: "+(listRows.Count==0 ? "none" : string.Join(", ",listRows.Select(x => x.Table+" "+x.Before+" -> "+x.After))));
 			Check("V2","Checksums of untouched tables identical",listDiffs.Where(x => x.Table!=null).All(x => x.IsAllowed),
-				_run.TablesUntouched+" of "+baseline.TableCount+" tables have identical row counts, CHECKSUM TABLE and column checksums; touched (each by an "
-				+"allowed adoption change): "+string.Join(", ",_run.ListTablesTouched));
+				_run.TablesUntouched+" of "+baseline.TableCount+" tables ("+countUntouchedWithRows+" that hold rows and "+(_run.TablesUntouched-countUntouchedWithRows)
+				+" empty in both) have identical row counts, CHECKSUM TABLE and column checksums; touched (each by an allowed adoption change): "
+				+string.Join(", ",_run.ListTablesTouched));
 			Check("V3","Every difference is an allowed adoption difference",_run.ListUnexpectedDifferences.Count==0,
 				_run.ListAllowedDifferences.Count+" allowed, "+_run.ListUnexpectedDifferences.Count+" unexpected"
 				+(_run.ListUnexpectedDifferences.Count==0 ? "" : ": "+string.Join("; ",_run.ListUnexpectedDifferences.Take(20))));
@@ -308,7 +352,7 @@ namespace AdoptionValidation {
 				guard.Action+", pending migrations "+guard.HasPendingMigrations);
 		}
 
-		private void IdempotencePass(Db db,string adopted,ValidationReport afterFirstPass) {
+		private void IdempotencePass(Db db,string source,string adopted,string snapshot,ValidationReport afterFirstPass) {
 			Stopwatch stopwatch=Stopwatch.StartNew();
 			AdoptionPreflight preflight=Adoption.Preflight();
 			string refusal="";
@@ -320,28 +364,59 @@ namespace AdoptionValidation {
 				refusal=ex.Message;
 			}
 			Check("I1","A second adoption is refused",!preflight.CanAdopt && preflight.IsAlreadyAdopted && refusal!="not refused",refusal);
-			//The operator running runbook step 4 ("AdoptionValidation adopt") again, as the runbook says to after an interruption.
-			HeadlessAdoption.Result again=HeadlessAdoption.Run(adopted,null);
+			//An operator running runbook step 4 ("AdoptionValidation adopt") a second time on the adopted copy, row check included.
+			HeadlessAdoption.Result again=HeadlessAdoption.Run(adopted,null,null,_options.Server,source);
 			ForkMigrationResult migrationResult=again.Migration;
 			SchemaVerifyResult verifyResult=again.Verify;
 			Check("I2","A second fork migration changes nothing and the schema still matches",again.WasAlreadyAdopted && again.Adoption==null
-				&& migrationResult.ListChanges.Count==0 && !again.HasPendingMigrations && verifyResult.IsMatch && verifyResult.ListDifferences.Count==0,
+				&& migrationResult.ListChanges.Count==0 && !again.HasPendingMigrations && verifyResult.IsMatch && verifyResult.ListDifferences.Count==0
+				&& again.RowCheck!=null && again.RowCheck.Passed,
 				"adoption skipped (already adopted); "+migrationResult.ListStepsRun.Count+" steps run, "+migrationResult.ListChanges.Count+" changes; verifier "
-				+verifyResult.ListDifferences.Count+" differences");
+				+verifyResult.ListDifferences.Count+" differences; row check against the source "+(again.RowCheck!=null && again.RowCheck.Passed ? "passed"
+				: "failed: "+string.Join(" ",again.RowCheck?.ListFailures??new List<string>())));
 			ValidationReport afterRerun=Validator.Run(db,adopted,null,null);
 			List<Difference> listDiffs=ReportComparer.Compare(afterFirstPass,afterRerun,null);
-			//The run's own security log entry for the rehash (and its securityloghash row) is the only change it may make.
+			//Every table but securitylog and securityloghash by its report; those two gain the rerun's own entry, so they are compared row by row with the
+			//snapshot taken right after adoption, and so is preference.
 			List<Difference> listUnexpected=listDiffs.Where(x => x.Table!="securitylog" && x.Table!="securityloghash").ToList();
 			List<Difference> listHashDiffs=listDiffs.Where(x => x.Column=="SecurityHash").ToList();
 			bool isSameHashes=again.ListHashesStart.Select(x => x.ToString()).SequenceEqual(again.ListHashesAfter.Select(x => x.ToString()));
 			Check("I3","A second rehash changes nothing",listHashDiffs.Count==0 && isSameHashes && again.IsRehashComplete,
 				listHashDiffs.Count==0 && isSameHashes ? "every hash already current: "+string.Join(", ",again.ListHashesStart.Select(x => x.Table+" "+x.Current))
 				: ReportComparer.Format(listHashDiffs));
-			long securityLogAdded=afterRerun.Tables.First(x => x.Name=="securitylog").Rows-afterFirstPass.Tables.First(x => x.Name=="securitylog").Rows;
-			Check("I4","The whole second pass leaves the database unchanged",listUnexpected.Count==0 && securityLogAdded==(again.IsRehashLogged ? 1 : 0),
-				listUnexpected.Count==0 ? "row counts and every checksum equal to the first pass, apart from the rerun's own security log entry ("+securityLogAdded
-					+" row)" : ReportComparer.Format(listUnexpected));
-			_run.ListSteps.Add(new StepTiming { Name="Second pass (adoption, migration, verifier, rehash, report)",Seconds=stopwatch.Elapsed.TotalSeconds });
+			long expectedAdded=again.IsRehashLogged ? 1 : 0;
+			RowComparer.TableDiff diffPreference=RowComparer.Compare(db,snapshot,adopted,"preference");
+			RowComparer.TableDiff diffLog=RowComparer.Compare(db,snapshot,adopted,"securitylog");
+			RowComparer.TableDiff diffLogHash=RowComparer.Compare(db,snapshot,adopted,"securityloghash");
+			List<string> listRowProblems=new List<string>();
+			if(!diffPreference.IsIdentical) {
+				listRowProblems.Add(diffPreference.Describe());
+			}
+			foreach(RowComparer.TableDiff diff in new[] { diffLog,diffLogHash }) {
+				if(diff.CountOnlyFirst>0 || diff.CountChanged>0 || diff.ListColumnsInOneOnly.Count>0 || diff.CountOnlySecond!=expectedAdded) {
+					listRowProblems.Add(diff.Describe()+" (expected only "+expectedAdded+" added row)");
+				}
+			}
+			Check("I4","The whole second pass leaves the database unchanged",listUnexpected.Count==0 && listRowProblems.Count==0,
+				listUnexpected.Count==0 && listRowProblems.Count==0
+					? "every table except securitylog and securityloghash has the row counts and checksums of the first pass; row by row against the snapshot "
+						+"taken after adoption, preference is identical, and securitylog and securityloghash only gained the rerun's own entry ("
+						+diffLog.CountOnlySecond+" and "+diffLogHash.CountOnlySecond+" row), with no existing row changed or removed"
+					: ReportComparer.Format(listUnexpected)+" "+string.Join("; ",listRowProblems));
+			_run.ListSteps.Add(new StepTiming { Name="Second pass (adoption, migration, verifier, rehash, row check, report)",Seconds=stopwatch.Elapsed.TotalSeconds });
+		}
+
+		///<summary>Copies the tables that hold the time of adoption (ArraySnapshotTables) into the scratch database snapshot, for the row-by-row
+		///comparisons of I4 and X2.</summary>
+		private static void SnapshotTables(Db db,string database,string snapshot) {
+			LocalOnly.EnsureWritableDatabaseName(snapshot);
+			LocalOnly.EnsureWritableDatabaseName(database);
+			db.Execute("DROP DATABASE IF EXISTS `"+snapshot+"`");
+			db.Execute("CREATE DATABASE `"+snapshot+"` CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci");
+			foreach(string table in ArraySnapshotTables) {
+				db.Execute("CREATE TABLE `"+snapshot+"`.`"+table+"` LIKE `"+database+"`.`"+table+"`");
+				db.Execute("INSERT INTO `"+snapshot+"`.`"+table+"` SELECT * FROM `"+database+"`.`"+table+"`");
+			}
 		}
 
 		private List<StartupScenarioResult> RunStartupScenarios(string databaseLabel) {
@@ -366,37 +441,81 @@ namespace AdoptionValidation {
 			return list;
 		}
 
-		private void CompareRuns(RehearsalResult rehearsalResult,List<ValidationReport> listBaselines,List<ValidationReport> listAdopted) {
+		private void CompareRuns(RehearsalResult rehearsalResult,List<ValidationReport> listBaselines,List<ValidationReport> listAdopted,List<string> listSnapshots) {
 			if(listBaselines.Any(x => x==null) || listAdopted.Any(x => x==null)) {
 				rehearsalResult.ListCrossRunChecks.Add(new CheckResult { Id="X0",Name="Every run produced its reports",Passed=false,Detail="a run failed early" });
 				return;
 			}
 			List<string> listBaselineDiffs=new List<string>();
 			List<string> listAdoptedDiffs=new List<string>();
-			AllowedDifferences allowedTimes=new AllowedDifferences { Rules=new List<AllowedRule> {
-				new AllowedRule { Kind="*",Table="preference",Reason="ForkAdoptedFrom records the adoption time." },
-				new AllowedRule { Kind="*",Table="securitylog",Reason="The adoption log entry records the time." },
-				new AllowedRule { Kind="*",Table="securityloghash",Reason="Follows securitylog." },
-			}};
+			//The reports compare every table but the three that hold the time of adoption; those are compared row by row below.
+			AllowedDifferences allowedTimes=new AllowedDifferences { Rules=ArraySnapshotTables.Select(x => new AllowedRule { Kind="*",Table=x,
+				Reason="compared row by row instead" }).ToList() };
 			for(int i=1;i<listBaselines.Count;i++) {
 				listBaselineDiffs.AddRange(ReportComparer.Compare(listBaselines[0],listBaselines[i],null).Select(x => "run "+(i+1)+": "+x));
 				listAdoptedDiffs.AddRange(ReportComparer.Compare(listAdopted[0],listAdopted[i],allowedTimes).Where(x => !x.IsAllowed).Select(x => "run "+(i+1)+": "+x));
 			}
+			long countLogTimes=0;
+			long countLogHashes=0;
+			try {
+				CompareSnapshots(listSnapshots,listAdoptedDiffs,ref countLogTimes,ref countLogHashes);
+			}
+			catch(Exception ex) {
+				listAdoptedDiffs.Add("the row-by-row comparison failed: "+ex.Message);
+			}
 			rehearsalResult.ListCrossRunChecks.Add(new CheckResult { Id="X1",Name="Every run starts from an identical database",Passed=listBaselineDiffs.Count==0,
 				Detail=listBaselineDiffs.Count==0 ? listBaselines.Count+" baselines identical (row counts, every checksum, every total)"
 					: string.Join("; ",listBaselineDiffs.Take(20)) });
-			rehearsalResult.ListCrossRunChecks.Add(new CheckResult { Id="X2",Name="Every run ends with an identical adopted database",Passed=listAdoptedDiffs.Count==0,
-				Detail=listAdoptedDiffs.Count==0 ? listAdopted.Count+" adopted databases identical, apart from the adoption time in preference and securitylog"
+			rehearsalResult.ListCrossRunChecks.Add(new CheckResult { Id="X2",Name="Every run ends with an identical adopted database, apart from the time of adoption",
+				Passed=listAdoptedDiffs.Count==0,
+				Detail=listAdoptedDiffs.Count==0 ? listAdopted.Count+" adopted databases identical: every table except preference, securitylog and securityloghash "
+					+"by its report (row counts, CHECKSUM TABLE, every column checksum, every total); those three row by row, where they differ only in the time "
+					+"of adoption: the value of ForkAdoptedFrom, securitylog.LogDateTime ("+countLogTimes+" rows) and the securityloghash.LogHash computed from "
+					+"it ("+countLogHashes+" rows)"
 					: string.Join("; ",listAdoptedDiffs.Take(20)) });
 			List<string> listOutcomes=rehearsalResult.ListRuns.Select(x => string.Join(",",x.ListChecks.Select(y => y.Id+"="+y.Passed))).Distinct().ToList();
 			rehearsalResult.ListCrossRunChecks.Add(new CheckResult { Id="X3",Name="Every run gives the same check results",Passed=listOutcomes.Count==1,
 				Detail=listOutcomes.Count==1 ? rehearsalResult.ListRuns.Count+" runs, "+rehearsalResult.ListRuns[0].ListChecks.Count+" checks each" : string.Join(" / ",listOutcomes) });
 		}
 
-		private void Cleanup(string source,string adopted) {
+		///<summary>X2's row-by-row part: run 1's snapshot of the tables that hold the time of adoption against every other run's.</summary>
+		private void CompareSnapshots(List<string> listSnapshots,List<string> listAdoptedDiffs,ref long countLogTimes,ref long countLogHashes) {
+			using(Db db=Db.Open(_options.Server)) {
+				for(int i=1;i<listSnapshots.Count;i++) {
+					//Row by row: preference may differ only in ForkAdoptedFrom's value; securitylog only in LogDateTime, and securityloghash only in the LogHash
+					//computed from it. Everything else in them, every row and every other column, must be identical.
+					RowComparer.TableDiff diffPreference=RowComparer.Compare(db,listSnapshots[0],listSnapshots[i],"preference");
+					foreach(RowComparer.ChangedRow changed in diffPreference.ListChanged) {
+						string name=Convert.ToString(db.Scalar("SELECT PrefName FROM `"+listSnapshots[0]+"`.preference WHERE PrefNum="
+							+changed.Key.ToString(CultureInfo.InvariantCulture)));
+						if(name!=ForkVersions.PREF_FORK_ADOPTED_FROM || changed.ListColumns.Count!=1 || changed.ListColumns[0]!="ValueString") {
+							listAdoptedDiffs.Add("run "+(i+1)+": preference "+name+" (PrefNum "+changed.Key+") differs in "+string.Join(", ",changed.ListColumns));
+						}
+					}
+					if(diffPreference.CountOnlyFirst>0 || diffPreference.CountOnlySecond>0 || diffPreference.ListColumnsInOneOnly.Count>0
+						|| diffPreference.CountChanged>diffPreference.ListChanged.Count)
+					{
+						listAdoptedDiffs.Add("run "+(i+1)+": "+diffPreference.Describe());
+					}
+					RowComparer.TableDiff diffLog=RowComparer.Compare(db,listSnapshots[0],listSnapshots[i],"securitylog",new[] { "LogDateTime" });
+					RowComparer.TableDiff diffLogHash=RowComparer.Compare(db,listSnapshots[0],listSnapshots[i],"securityloghash",new[] { "LogHash" });
+					foreach(RowComparer.TableDiff diff in new[] { diffLog,diffLogHash }) {
+						if(!diff.IsIdentical) {
+							listAdoptedDiffs.Add("run "+(i+1)+": "+diff.Describe());
+						}
+					}
+					countLogTimes+=db.ScalarLong("SELECT COUNT(*) FROM `"+listSnapshots[0]+"`.securitylog a INNER JOIN `"+listSnapshots[i]+"`.securitylog b "
+						+"USING(SecurityLogNum) WHERE NOT (a.LogDateTime<=>b.LogDateTime)");
+					countLogHashes+=db.ScalarLong("SELECT COUNT(*) FROM `"+listSnapshots[0]+"`.securityloghash a INNER JOIN `"+listSnapshots[i]+"`.securityloghash b "
+						+"USING(SecurityLogHashNum) WHERE NOT (BINARY a.LogHash<=>BINARY b.LogHash)");
+				}
+			}
+		}
+
+		private void Cleanup(params string[] arrayDatabases) {
 			try {
 				using(Db db=Db.Open(_options.Server)) {
-					foreach(string database in new[] { source,adopted }) {
+					foreach(string database in arrayDatabases) {
 						LocalOnly.EnsureWritableDatabaseName(database);
 						db.Execute("DROP DATABASE IF EXISTS `"+database+"`");
 					}
