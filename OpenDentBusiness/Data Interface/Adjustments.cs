@@ -432,6 +432,9 @@ namespace OpenDentBusiness{
 		///This uses the SalesTaxDefaultProvider if it is set.</summary>
 		public static void CreateAdjustmentForSalesTax(Procedure procedure,bool canSkipIsTaxed=false) {
 			Meth.NoCheckMiddleTierRole();
+			if(SalesTaxProcs.IsSalesTaxProc(procedure)) {//A sales-tax procedure carries tax; it is never taxed itself (Open Dental 24.4).
+				return;
+			}
 			if(!canSkipIsTaxed && !ProcedureCodes.GetProcCode(procedure.CodeNum).IsTaxed) {
 				return;
 			}

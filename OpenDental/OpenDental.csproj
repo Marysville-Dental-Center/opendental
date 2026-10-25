@@ -5280,6 +5280,10 @@
     <Compile Include="Main Modules\ControlAccount.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Include="Main Modules\ControlAccount.SalesTax.cs">
+      <DependentUpon>ControlAccount.cs</DependentUpon>
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Include="Main Modules\ControlChart.cs">
       <SubType>UserControl</SubType>
     </Compile>

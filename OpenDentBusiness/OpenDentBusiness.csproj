@@ -1499,6 +1499,7 @@
     <Compile Include="Data Interface\RxAlerts.cs" />
     <Compile Include="Data Interface\RxDefs.cs" />
     <Compile Include="Data Interface\RxPats.cs" />
+    <Compile Include="Data Interface\SalesTaxProcs.cs" />
     <Compile Include="Data Interface\ScheduleOps.cs" />
     <Compile Include="Data Interface\Schedules.cs" />
     <Compile Include="Data Interface\SchoolClasses.cs" />

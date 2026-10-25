@@ -3746,7 +3746,7 @@ namespace OpenDentBusiness {
 			#region Sales Tax
 			//At the end of recalculating writeoffs, we need to update sales tax estimate for treatment planned procs.
 			if(proc.ProcStatus==ProcStat.TP) {
-				proc.TaxAmt=ClaimProcs.ComputeSalesTax(proc,claimProcs,true);
+				proc.TaxAmt=SalesTaxProcs.IsSalesTaxProc(proc) ? 0 : ClaimProcs.ComputeSalesTax(proc,claimProcs,true);//A sales-tax procedure is never taxed.
 			}
 			#endregion
 		}
