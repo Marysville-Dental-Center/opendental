@@ -1752,6 +1752,12 @@
     <Compile Include="Forms\FormProgramLinkHideClinics.designer.cs">
       <DependentUpon>FormProgramLinkHideClinics.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\FormFileMonitor.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormFileMonitor.designer.cs">
+      <DependentUpon>FormFileMonitor.cs</DependentUpon>
+    </Compile>
     <Compile Include="Forms\FormQueryMonitor.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -1947,6 +1953,9 @@
     </Compile>
     <Compile Include="Main Modules\FormOpenDental.Designer.cs">
       <DependentUpon>FormOpenDental.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Main Modules\FormOpenDentalBShell.cs">
+      <SubType>Form</SubType>
     </Compile>
     <Compile Include="Main Modules\FormOpenDentalMenus.cs">
       <SubType>Form</SubType>

@@ -420,7 +420,8 @@ namespace OpenDental{
 				}
 			}
 			else if(e.Button.Tag.GetType()==typeof(Program)) {
-				WpfControls.ProgramL.Execute(((Program)e.Button.Tag).ProgramNum,PatientCur);
+				WpfControls.ProgramL.Execute(((Program)e.Button.Tag).ProgramNum,PatientCur,
+					ProgramLinkSelectedProcs.FromTreatPlanTags(gridMain.SelectedIndices.Select(x => gridMain.ListGridRows[x].Tag)));
 			}
 			Plugins.HookAddCode(this,"ContrTreat.ToolBarMain_ButtonClick_end",PatientCur,e);
 		}

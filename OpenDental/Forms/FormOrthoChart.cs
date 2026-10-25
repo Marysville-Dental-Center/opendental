@@ -56,6 +56,7 @@ namespace OpenDental {
 		///<summary>Opens this patient's ortho chart with a specific chart tab opened.  tabIndex correlates to the index of OrthoChartTabs.Listt.</summary>
 		public FormOrthoChart(Patient patient,int tabIndex) {
 			_patient=patient;
+			_patStatusAtOpen=_patient.PatStatus;
 			_patientNote=PatientNotes.Refresh(_patient.PatNum,_patient.Guarantor);
 			_prevRow=-1;
 			InitializeComponent();
@@ -171,6 +172,9 @@ namespace OpenDental {
 		/// Note: userNum is set to -1 when another user with the same username took control. This is handled the same as userNum = anything else.</summary>
 		private void timerLocked_Tick(object sender, EventArgs e){
 			//Every 4 seconds.
+			if(CloseIfPatientGone()) {
+				return;
+			}
 			if(_isReadOnly){//Don't bother using timer logic, locking ability has been disabled.
 				return;
 			}
@@ -312,7 +316,7 @@ namespace OpenDental {
 		///<summary>Sets the title of the form to the TabName of the first tab in the cache and then refreshes the current tabs.</summary>
 		private void FillTabs() {
 			//Set the title of this form to the first tab in the list.  The button to launch the Ortho Chart from the Chart module will be the same.
-			Text=_listOrthoChartTabs[0].TabName;//It is considered database corruption if this fails.
+			Text=_listOrthoChartTabs[0].TabName+" - "+_patient.GetNameFL();//It is considered database corruption if this fails. 25.3: names the patient.
 			OrthoChartTab orthoChartTabSelected=null;
 			if(tabControl.SelectedIndex >= 0) {
 				orthoChartTabSelected=(OrthoChartTab)tabControl.SelectedTab.Tag;
@@ -1247,10 +1251,13 @@ namespace OpenDental {
 			if(!_hasChanged && !signatureBoxWrapper.SigChanged) {
 				DeleteRowsIfEmpty();
 				DialogResult=DialogResult.OK;
+				CloseIfNonModal();
 				return;
 			}
 			SaveToDb();
 			DialogResult=DialogResult.OK;
+			OrthoChartSaved?.Invoke(_patient.PatNum);
+			CloseIfNonModal();
 		}
 
 		///<summary>Used in 4 places: timerLock_tick (if someone took control from us), OK_click, and FormClosing. It the first case, where the form remains open, it's immediately followed by OrthoChartRows.GetAllForPatient to get data from from db.</summary>
@@ -1310,16 +1317,164 @@ namespace OpenDental {
 				return;
 			}
 			//Must be closing automatically without user input. Example: auto shutdown.
+			//25.3: also log off, program close and a merged or deleted patient, now that the window can stay open in the background.
 			if(!_isLockedByMe) {
 				//this user does not have a lock, so nothing to save.
+				return;//Saving or unlocking here would overwrite or release another user's lock.
 			}
 			//Form was opened in read only mode so we don't want to SaveToDb or unlock.
 			if(_isReadOnly){//Clicking cancel or [X] sets DialogResult.Cancel so we shouldn't get here, but just in case.
 				return;
 			}
-			SaveToDb();//There may be nothing to save, but this also gets rid of extra empty row.
-			PatientNotes.SetUserNumOrthoLocked(_patient.PatNum,0);//Unlock
+			OrthoChartCloseActions orthoChartCloseActions=OrthoChartWindowRules.GetCloseActions(_orthoChartCloseKind,_isLockedByMe,_isReadOnly);
+			if(orthoChartCloseActions.DoSave) {
+				SaveToDb();//There may be nothing to save, but this also gets rid of extra empty row.
+			}
+			if(orthoChartCloseActions.DoDeleteEmptyRows) {
+				DeleteRowsIfEmpty();
+			}
+			if(orthoChartCloseActions.DoReleaseLock) {
+				PatientNotes.SetUserNumOrthoLocked(_patient.PatNum,0);//Unlock
+			}
 		}
+
+		#region Non-modal window (25.3)
+		///<summary>The open window of each patient, by PatNum. Open Dental 25.3: the Ortho Chart no longer blocks the rest of the program, and each
+		///patient has at most one window.</summary>
+		private static Dictionary<long,FormOrthoChart> _dictFormsOpenByPatNum=new Dictionary<long,FormOrthoChart>();
+		///<summary>Raised with the PatNum after this window wrote the chart to the database.</summary>
+		public event Action<long> OrthoChartSaved;
+		///<summary>How the program (not the user) is closing this window. Forced unless a prompt or the patient check set it.</summary>
+		private OrthoChartCloseKind _orthoChartCloseKind=OrthoChartCloseKind.Forced;
+		///<summary>The patient's status when the window opened. A change to archived (a merge does that) or deleted closes the window.</summary>
+		private PatientStatus _patStatusAtOpen;
+		private bool _isClosingForPatientGone;
+
+		///<summary>Opens the patient's ortho chart without blocking the program, owned by formOwner (the main window), on the given tab. If the patient
+		///already has a window, brings it to the front on that tab instead. actionSaved (can be null) runs with the PatNum each time the window saves.
+		///</summary>
+		public static FormOrthoChart ShowNonModal(Form formOwner,Patient patient,int tabIndex,Action<long> actionSaved) {
+			if(patient==null) {
+				return null;
+			}
+			FormOrthoChart formOrthoChart=GetOpenForPatient(patient.PatNum);
+			if(formOrthoChart!=null) {
+				formOrthoChart.OrthoChartSaved-=actionSaved;//Never twice.
+				formOrthoChart.OrthoChartSaved+=actionSaved;
+				formOrthoChart.SelectTab(tabIndex);
+				if(formOrthoChart.WindowState==FormWindowState.Minimized) {
+					formOrthoChart.WindowState=FormWindowState.Normal;
+				}
+				formOrthoChart.BringToFront();
+				formOrthoChart.Activate();
+				return formOrthoChart;
+			}
+			formOrthoChart=new FormOrthoChart(patient,tabIndex);
+			formOrthoChart.OrthoChartSaved+=actionSaved;
+			long patNum=patient.PatNum;
+			formOrthoChart.FormClosed+=(sender,e) => {
+				if(_dictFormsOpenByPatNum.TryGetValue(patNum,out FormOrthoChart formOrthoChartOpen) && formOrthoChartOpen==sender) {
+					_dictFormsOpenByPatNum.Remove(patNum);
+				}
+			};
+			_dictFormsOpenByPatNum[patNum]=formOrthoChart;
+			if(formOwner==null || formOwner.IsDisposed) {
+				formOrthoChart.Show();
+			}
+			else {
+				formOrthoChart.Show(formOwner);
+			}
+			return formOrthoChart;
+		}
+
+		///<summary>The patient's open window, or null.</summary>
+		public static FormOrthoChart GetOpenForPatient(long patNum) {
+			if(!_dictFormsOpenByPatNum.TryGetValue(patNum,out FormOrthoChart formOrthoChart)) {
+				return null;
+			}
+			if(formOrthoChart==null || formOrthoChart.IsDisposed) {
+				_dictFormsOpenByPatNum.Remove(patNum);
+				return null;
+			}
+			return formOrthoChart;
+		}
+
+		///<summary>Before a log off or program close that the user started: asks about each open window with unsaved edits whether to save them, and
+		///closes those windows. Returns false when the user chose Cancel, which stops the log off. Windows without edits close with the others.</summary>
+		public static bool PromptCloseAllForLogOff() {
+			List<FormOrthoChart> listFormOrthoCharts=_dictFormsOpenByPatNum.Values.Where(x => x!=null && !x.IsDisposed).ToList();
+			for(int i=0;i<listFormOrthoCharts.Count;i++) {
+				FormOrthoChart formOrthoChart=listFormOrthoCharts[i];
+				bool canClose=true;
+				formOrthoChart.InvokeIfRequired(() => canClose=formOrthoChart.PromptCloseForLogOff());
+				if(!canClose) {
+					return false;
+				}
+			}
+			return true;
+		}
+
+		private bool PromptCloseForLogOff() {
+			ActiveControl=null;//Ends an edit in progress so it counts (gridMain_CellLeave).
+			if(!OrthoChartWindowRules.NeedsClosePrompt(_isLockedByMe,_isReadOnly,_hasChanged || signatureBoxWrapper.SigChanged)) {
+				return true;
+			}
+			if(WindowState==FormWindowState.Minimized) {
+				WindowState=FormWindowState.Normal;
+			}
+			Activate();
+			DialogResult dialogResultSave=MessageBox.Show(this,Lan.g(this,"Save changes to the ortho chart for")+" "+_patient.GetNameFL()+"?",
+				Lan.g(this,"Ortho Chart"),MessageBoxButtons.YesNoCancel);
+			if(dialogResultSave==DialogResult.Cancel) {
+				return false;
+			}
+			_orthoChartCloseKind=(dialogResultSave==DialogResult.Yes) ? OrthoChartCloseKind.PromptSave : OrthoChartCloseKind.PromptDiscard;
+			Close();
+			return true;
+		}
+
+		///<summary>A window shown with Show() does not close when DialogResult is set.</summary>
+		private void CloseIfNonModal() {
+			if(!Modal) {
+				Close();
+			}
+		}
+
+		///<summary>Switches to the tab, as asked by a second open of the same patient's chart.</summary>
+		private void SelectTab(int tabIndex) {
+			if(tabIndex<0 || tabIndex>=tabControl.TabPages.Count || tabControl.SelectedIndex==tabIndex) {
+				return;
+			}
+			tabControl.SelectedIndex=tabIndex;//triggers FillGrid()
+		}
+
+		///<summary>Closes the window with a message when its patient was merged into another, archived or deleted while it was open. Returns true when
+		///the window is closing. Nothing is saved: the rows belong to another patient after a merge.</summary>
+		private bool CloseIfPatientGone() {
+			if(_isClosingForPatientGone) {
+				return true;
+			}
+			bool isGone;
+			try {
+				isGone=OrthoChartWindowRules.IsPatientGone(_patStatusAtOpen,
+					OrthoChartWindowRules.ToPatientStatus(OrthoChartWindowRules.GetPatStatusNoCache(_patient.PatNum)));
+			}
+			catch(Exception ex) {
+				ex.DoNothing();//For example a lost connection. The lock check below reports that.
+				return false;
+			}
+			if(!isGone) {
+				return false;
+			}
+			_isClosingForPatientGone=true;
+			timerLocked.Stop();
+			OrthoChartLogs.Log("CloseIfPatientGone(), the patient was merged, archived or deleted.",Environment.MachineName,_patient.PatNum,_userodCurUser.UserNum);
+			_orthoChartCloseKind=OrthoChartCloseKind.PatientGone;
+			MsgBox.Show(this,"This patient was merged into another patient, archived or deleted. The ortho chart will close, and changes that were not saved are not kept.");
+			Close();
+			return true;
+		}
+		#endregion Non-modal window (25.3)
 
 		///<summary>Stores the signature string and whether the signature is Topaz. Use ToString() to store it in the database.
 		///This class saves us from adding a IsSigTopaz column to the orthochart table.</summary>
