@@ -455,7 +455,75 @@ namespace VEDSTests {
 			Assert.AreEqual(1,_fakeHttpHandler.Requests.Count);
 			Assert.AreEqual("EDS validation passed.",EdsClaimValidation.GetSummary(EdsClaimValidation.GetLastResult(testClaim.Claim.ClaimNum)));
 			EdsValidationResult resultMissing=EdsClaimValidation.ValidateClaimNum(987654321,0,EDS.TimeoutValidateOnSend);
-			Assert.IsTrue(resultMissing.IsSkipped);
+			Assert.IsFalse(resultMissing.IsSkipped,"A deleted claim is not 'not validated, send as before'.");
+			Assert.IsTrue(resultMissing.IsNotSendable);
+			Assert.AreEqual(EdsSendDecision.Block,EdsClaimValidation.GetSendDecision(resultMissing));
+			Assert.AreEqual(EdsClaimChecks.CHECK_CLAIM_NOT_SENDABLE,resultMissing.ListIssues.Single().CheckId);
+		}
+
+		[TestMethod]
+		public void Batch_ClaimSentDeletedOrHeldDuringTheWindow_IsNeverSent() {
+			//Send Claims validates a batch; the validation window's Edit Claim (or another workstation) then sends one claim, deletes another and holds a
+			//third. Re-validation and the final list of claims to send must leave all three out, even with Send Anyway.
+			Clearinghouse clearinghouse=CreateEdsClearinghouse(ElectronicClaimFormat.None,false);
+			long hqEds=Clearinghouses.GetDeepCopy().First(x => x.CommBridge==EclaimsCommBridge.EDS).ClearinghouseNum;
+			TestClaim testClaimSent=CreateClaim(electId:"");//A warning (blank payer ID): listed in the window, sent only with Send Anyway.
+			TestClaim testClaimDeleted=CreateClaim(electId:"");
+			TestClaim testClaimHeld=CreateClaim(electId:"");
+			TestClaim testClaimKept=CreateClaim(electId:"");
+			TestClaim testClaimProbablySent=CreateClaim(electId:"");
+			List<TestClaim> listTestClaims=new List<TestClaim> { testClaimSent,testClaimDeleted,testClaimHeld,testClaimKept,testClaimProbablySent };
+			//1. The batch, as EdsValidationL.ValidateBatchForSend validates it.
+			List<EdsValidationResult> listResults=listTestClaims
+				.Select(x => EdsClaimValidation.ValidateLocal(x.Claim,clearinghouse,GetQueueItem(x.Claim,clearinghouse))).ToList();
+			Assert.IsTrue(listResults.All(x => EdsClaimValidation.GetSendDecision(x)==EdsSendDecision.ConfirmWarnings));
+			List<long> listClaimNumsAll=listTestClaims.Select(x => x.Claim.ClaimNum).ToList();
+			CollectionAssert.AreEqual(listClaimNumsAll,EdsClaimValidation.GetClaimNumsToSendForBatch(listResults,true));
+			//2. While the window is open: sent, deleted, held, and one marked probably sent (still in the queue).
+			Claim claimSent=Claims.GetClaim(testClaimSent.Claim.ClaimNum);
+			claimSent.ClaimStatus="S";
+			Claims.Update(claimSent);
+			Claims.Delete(Claims.GetClaim(testClaimDeleted.Claim.ClaimNum));
+			Claim claimHeld=Claims.GetClaim(testClaimHeld.Claim.ClaimNum);
+			claimHeld.ClaimStatus="H";
+			Claims.Update(claimHeld);
+			Claim claimProbablySent=Claims.GetClaim(testClaimProbablySent.Claim.ClaimNum);
+			claimProbablySent.ClaimStatus="P";
+			Claims.Update(claimProbablySent);
+			List<long> listClaimNumsExpected=new List<long> { testClaimKept.Claim.ClaimNum,testClaimProbablySent.Claim.ClaimNum };
+			//Without a re-validation, the final list still reads the claims again.
+			CollectionAssert.AreEqual(listClaimNumsExpected,EdsClaimValidation.GetClaimNumsToSendForBatch(listResults,true));
+			CollectionAssert.AreEquivalent(new[] { testClaimSent.Claim.ClaimNum,testClaimDeleted.Claim.ClaimNum,testClaimHeld.Claim.ClaimNum },
+				EdsClaimValidation.GetClaimNumsNotWaitingToSend(listClaimNumsAll));
+			//3. The window re-validates each claim (Edit Claim, or Re-validate), as FormEdsValidation does from the Send Claims window.
+			List<EdsValidationResult> listResultsFinal=listResults
+				.Select(x => EdsClaimValidation.MergeRevalidation(x,EdsClaimValidation.ValidateClaimNum(x.ClaimNum,hqEds,EDS.TimeoutValidateOnSend,true)))
+				.ToList();
+			EdsValidationResult resultSent=listResultsFinal[0];
+			Assert.IsTrue(resultSent.IsNotSendable,"Not 'clean, send': the claim was sent already.");
+			StringAssert.Contains(resultSent.NotSendableReason,"Sent - Verified");
+			Assert.IsFalse(resultSent.ListIssues.Any(x => x.IsResolved),"The earlier warning is not shown as resolved.");
+			Assert.AreEqual(testClaimSent.Claim.ClaimNum,resultSent.ClaimNum);
+			EdsValidationResult resultDeleted=listResultsFinal[1];
+			Assert.IsFalse(resultDeleted.IsSkipped,"Not 'skipped, send as before'.");
+			Assert.IsTrue(resultDeleted.IsNotSendable);
+			Assert.AreEqual(listResults[1].PatientName,resultDeleted.PatientName,"The batch window still names the deleted claim.");
+			Assert.IsTrue(listResultsFinal[2].IsNotSendable);
+			Assert.IsFalse(listResultsFinal[3].IsNotSendable);
+			Assert.IsFalse(listResultsFinal[4].IsNotSendable,"Probably sent (P) is listed in the Send Claims queue.");
+			for(int i=0;i<3;i++) {
+				Assert.AreEqual(EdsSendDecision.Block,EdsClaimValidation.GetSendDecision(listResultsFinal[i]));
+			}
+			CollectionAssert.AreEqual(listClaimNumsExpected,EdsClaimValidation.GetClaimNumsToSend(listResultsFinal,true),"Send Anyway does not send them.");
+			CollectionAssert.AreEqual(listClaimNumsExpected,EdsClaimValidation.GetClaimNumsToSendForBatch(listResultsFinal,true));
+			CollectionAssert.AreEqual(new long[0],EdsClaimValidation.GetClaimNumsToSendForBatch(listResultsFinal,false),"Warnings need Send Anyway.");
+			Assert.IsNotNull(EdsClaimValidation.GetLastResult(testClaimSent.Claim.ClaimNum));
+			Assert.IsFalse(EdsClaimValidation.GetLastResult(testClaimSent.Claim.ClaimNum).IsNotSendable,
+				"The claim's EDS tab keeps its last real validation.");
+			//Edit Claim's own Send may resend a sent claim on purpose: only a deleted claim is refused there.
+			Assert.IsFalse(EdsClaimValidation.ValidateClaimNum(testClaimSent.Claim.ClaimNum,hqEds,EDS.TimeoutValidateOnSend).IsNotSendable);
+			Assert.IsTrue(EdsClaimValidation.ValidateClaimNum(testClaimDeleted.Claim.ClaimNum,hqEds,EDS.TimeoutValidateOnSend).IsNotSendable);
+			Assert.AreEqual(0,_fakeHttpHandler.Requests.Count,"The attachment service is off: no network call.");
 		}
 
 		[TestMethod]

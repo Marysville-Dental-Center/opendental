@@ -63,6 +63,49 @@ namespace VEDSTests {
 		}
 
 		[TestMethod]
+		public void NotSendable_IsNeverSent_EvenWithSendAnyway() {
+			EdsValidationResult resultDeleted=EdsClaimValidation.MakeNotSendableResult(null,7,"The claim has been deleted.");
+			Assert.IsTrue(resultDeleted.IsNotSendable);
+			Assert.IsFalse(resultDeleted.IsSkipped);
+			Assert.AreEqual(7,resultDeleted.ClaimNum);
+			Assert.AreEqual(EdsSendDecision.Block,EdsClaimValidation.GetSendDecision(resultDeleted));
+			Assert.IsTrue(resultDeleted.NeedsAttention,"Listed in the validation window.");
+			Assert.AreEqual(EdsClaimChecks.CHECK_CLAIM_NOT_SENDABLE,resultDeleted.ListIssues.Single().CheckId);
+			//The flag decides, whatever else the result says.
+			EdsValidationResult resultFlagOnly=new EdsValidationResult { ClaimNum=8,NotSendableReason="Sent.",SkippedReason="Not EDS" };
+			Assert.AreEqual(EdsSendDecision.Block,EdsClaimValidation.GetSendDecision(resultFlagOnly));
+			List<EdsValidationResult> listResults=new List<EdsValidationResult> { Result(1),resultDeleted,resultFlagOnly,
+				Result(2,Issue(EdsIssueSeverity.Warning,EdsIssueSource.Eds,"A","w")) };
+			CollectionAssert.AreEqual(new long[] { 1 },EdsClaimValidation.GetClaimNumsToSend(listResults,false));
+			CollectionAssert.AreEqual(new long[] { 1,2 },EdsClaimValidation.GetClaimNumsToSend(listResults,true));
+			EdsClaimValidation.SetLastResult(resultDeleted);
+			Assert.IsNull(EdsClaimValidation.GetLastResult(7),"Not kept as the claim's last validation.");
+			Assert.IsFalse(EdsClaimValidation.IsWaitingToSend(null));
+			Assert.IsTrue(EdsClaimValidation.IsWaitingToSend(new Claim { ClaimStatus="W" }));
+			Assert.IsTrue(EdsClaimValidation.IsWaitingToSend(new Claim { ClaimStatus="P" }));
+			foreach(string status in new[] { "U","H","S","R","I" }) {
+				Assert.IsFalse(EdsClaimValidation.IsWaitingToSend(new Claim { ClaimStatus=status }),status);
+			}
+		}
+
+		[TestMethod]
+		public void Revalidation_NotSendable_KeepsTheHeader_AndResolvesNothing() {
+			EdsValidationResult resultPrevious=Result(3,Issue(EdsIssueSeverity.Warning,EdsIssueSource.Local,"A","w"));
+			resultPrevious.PatNum=11;
+			resultPrevious.PatientName="Synthetic, Pat";
+			resultPrevious.DateService=new DateTime(2026,10,1);
+			resultPrevious.CarrierName="Synthetic Carrier";
+			EdsValidationResult resultMerged=EdsClaimValidation.MergeRevalidation(resultPrevious,
+				EdsClaimValidation.MakeNotSendableResult(null,3,"The claim has been deleted."));
+			Assert.IsTrue(resultMerged.IsNotSendable);
+			Assert.AreEqual("Synthetic, Pat",resultMerged.PatientName);
+			Assert.AreEqual(new DateTime(2026,10,1),resultMerged.DateService);
+			Assert.AreEqual("Synthetic Carrier",resultMerged.CarrierName);
+			Assert.AreEqual(EdsClaimChecks.CHECK_CLAIM_NOT_SENDABLE,resultMerged.ListIssues.Single().CheckId,"The earlier warning is not shown as resolved.");
+			Assert.AreEqual(EdsSendDecision.Block,EdsClaimValidation.GetSendDecision(resultMerged));
+		}
+
+		[TestMethod]
 		public void Revalidation_MarksProblemsThatWentAwayResolved() {
 			EdsValidationResult resultPrevious=Result(1,Issue(EdsIssueSeverity.Error,EdsIssueSource.Local,"A","first"),
 				Issue(EdsIssueSeverity.Warning,EdsIssueSource.Eds,"B","second"));

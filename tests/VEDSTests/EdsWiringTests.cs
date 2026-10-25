@@ -55,6 +55,22 @@ namespace VEDSTests {
 		}
 
 		[TestMethod]
+		public void ClaimsSend_NeverResendsClaimsSentOrDeletedFromTheWindow() {
+			//Edit Claim opened from the batch validation window can send, delete or hold a claim. The window re-validates it as a claim that must be
+			//waiting to send, the final list is read again from the database, and the Send Claims window deselects and drops such claims.
+			string window=Read(@"OpenDental\Forms\FormEdsValidation.cs");
+			StringAssert.Contains(window,"bool isWaitingToSendRequired=_openedFrom==EnumOpenedFrom.ClaimsSend;");
+			StringAssert.Contains(window,"_hqClearinghouseNumOverride,EDS.TimeoutValidateOnSend,isWaitingToSendRequired);");
+			string logic=Read(@"OpenDental\Logic\EdsValidationL.cs");
+			StringAssert.Contains(logic,"batchOutcome.ListClaimNumsAllowed=EdsClaimValidation.GetClaimNumsToSendForBatch(listResultsFinal,isSendAnywayConfirmed);");
+			Assert.IsFalse(logic.Contains("batchOutcome.ListClaimNumsAllowed=EdsClaimValidation.GetClaimNumsToSend("),"Every path reads the claims again.");
+			StringAssert.Contains(logic,"if(!EdsClaimValidation.IsWaitingToSend(claim)) {");
+			string send=Read(@"OpenDental\Forms\FormClaimsSend.Eds.cs");
+			StringAssert.Contains(send,"if(batchOutcome.ListClaimNumsNotWaiting.Contains(claimSendQueueItem.ClaimNum)");
+			StringAssert.Contains(send,"FillGrid(true);");
+		}
+
+		[TestMethod]
 		public void ClaimAttachmentWindow_ShowsTheLastValidation() {
 			StringAssert.Contains(Read(@"OpenDental\Forms\FormClaimAttachment.cs"),"EdsValidationL.GetLastValidationText(_claim.ClaimNum)");
 		}
