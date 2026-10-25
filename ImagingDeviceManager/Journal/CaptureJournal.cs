@@ -21,20 +21,29 @@ namespace ImagingDeviceManager.Journal {
 		public const string DeliveredNone="None";
 		///<summary>Ends the base name of a DeliveredNone copy, so that rotation leaves it alone.</summary>
 		public const string OnlyCopySuffix="-only";
+		///<summary>[Twain] JournalKeep when capture.ini sets none, and in place of 0: the journal has no off switch (design 7.1, 10.6).</summary>
+		public const int KeepDefault=200;
 		private readonly CaptureFolders _folders;
+		///<summary>The warning about JournalKeep=0 is logged once.</summary>
+		private bool _isKeepWarningLogged;
 
 		public CaptureJournal(CaptureFolders folders) {
 			_folders=folders;
 		}
 
-		///<summary>Writes a copy of dib with its sidecar, then rotates. keep is [Twain] JournalKeep; 0 turns the journal off. delivered is one
-		///of the Delivered values, detail says more about it (the quarantine file, or why there is none), or null. Returns the image path,
-		///or null when no copy was written; problems go to log. Never throws.</summary>
+		///<summary>Writes a copy of dib with its sidecar, then rotates. keep is [Twain] JournalKeep; 0 or less is not allowed, because the
+		///journal must not be turned off, and keeps KeepDefault copies (logged once). delivered is one of the Delivered values, detail says
+		///more about it (the quarantine file, or why there is none), or null. Returns the image path, or null when no copy was written;
+		///problems go to log. Never throws.</summary>
 		public string Write(DibImage dib,CaptureRecord record,string delivered,string detail,int keep,Action<string> log) {
 			log=log??(text => { });
 			if(keep<=0) {
-				log("No journal copy: [Twain] JournalKeep is 0.");
-				return null;
+				if(!_isKeepWarningLogged) {
+					_isKeepWarningLogged=true;
+					log("[Twain] JournalKeep="+keep+" is not allowed: the journal cannot be turned off. The newest "+KeepDefault
+						+" copies are kept.");
+				}
+				keep=KeepDefault;
 			}
 			try {
 				string folder;

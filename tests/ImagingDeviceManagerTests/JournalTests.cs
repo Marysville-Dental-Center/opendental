@@ -133,12 +133,15 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		[TestMethod]
-		public void Journal_KeepZero_IsOff() {
+		public void Journal_KeepZero_NotAllowed_DefaultKept_LoggedOnce() {
 			CaptureJournal journal=new CaptureJournal(CaptureFolders.CreateForFolder(_folder));
 			List<string> listLog=new List<string>();
-			Assert.IsNull(journal.Write(Gray8(2,2),CaptureRecord.Create(DateTime.Now,"S","id"),CaptureJournal.DeliveredCaller,null,0,listLog.Add));
-			Assert.IsFalse(Directory.Exists(Path.Combine(_folder,CaptureFolders.SubfolderJournal)));
-			Assert.IsTrue(listLog.Any(x => x.Contains("JournalKeep is 0")));
+			for(int i=0;i<2;i++) {
+				Assert.IsNotNull(journal.Write(Gray8(2,2),CaptureRecord.Create(DateTime.Now,"S","id"),CaptureJournal.DeliveredCaller,null,0,listLog.Add),
+					"The journal cannot be turned off.");
+			}
+			Assert.AreEqual(2,Directory.GetFiles(Path.Combine(_folder,CaptureFolders.SubfolderJournal),"*.bmp").Length);
+			Assert.AreEqual(1,listLog.Count(x => x.Contains("JournalKeep=0 is not allowed")),string.Join("\r\n",listLog));
 		}
 	}
 
@@ -248,10 +251,11 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		[TestMethod]
-		public void JournalKeepZero_NoCopy() {
+		public void JournalKeepZero_CopyStillWritten() {
 			_harness.WriteConfig("[Twain]","JournalKeep=0");
 			EZTwain.DIB_Free(AcquireByName());
-			Assert.AreEqual(0,FacadeHarness.ListImages(_harness.FolderJournal).Count);
+			Assert.AreEqual(1,FacadeHarness.ListImages(_harness.FolderJournal).Count);
+			StringAssert.Contains(File.ReadAllText(_harness.PathCaptureLog),"JournalKeep=0 is not allowed");
 		}
 
 		[TestMethod]

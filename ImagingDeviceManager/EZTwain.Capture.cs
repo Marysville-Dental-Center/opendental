@@ -146,7 +146,7 @@ namespace ImagingDeviceManager {
 			CaptureRecord record=CaptureRecord.Create(receivedAt,sourceName,acquireId);
 			record.PatNum=patNum;
 			record.ListSettings=CaptureSettingsSnapshot.Build(_configInEffect,IsThreadModalInEffect(),Session.IsSafeDisableInEffect);
-			int journalKeep=_configInEffect==null ? 200 : _configInEffect.JournalKeep;
+			int journalKeep=_configInEffect==null ? CaptureJournal.KeepDefault : _configInEffect.JournalKeep;
 			string pathImage=Journal.Write(dib,record,delivered,detail,journalKeep,LogCapture);
 			if(pathImage!=null) {
 				LogCapture("Journal copy "+Path.GetFileName(pathImage)+" of an image from \""+record.SourceName+"\" (acquire "+acquireId
