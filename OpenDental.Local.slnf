@@ -21,6 +21,7 @@
       "SparksToothChart\\SparksToothChart.csproj",
       "tests\\AccountingTests\\AccountingTests.csproj",
       "tests\\ApptTests\\ApptTests.csproj",
+      "tests\\BSHELLTests\\BSHELLTests.csproj",
       "tests\\AttributionTests\\AttributionTests.csproj",
       "tests\\ChartLetterTests\\ChartLetterTests.csproj",
       "tests\\CryptoTests\\CryptoTests.csproj",
