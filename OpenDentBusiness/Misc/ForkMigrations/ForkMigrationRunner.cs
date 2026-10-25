@@ -61,8 +61,10 @@ namespace OpenDentBusiness.ForkMigrations {
 			ForkMigrationAttribute attribute=step.Attribute;//Throws when missing.
 			string level=attribute.Level.ToString();
 			DateTime date;
-			if(level.Length!=10 || !DateTime.TryParseExact(level.Substring(0,8),"yyyyMMdd",System.Globalization.CultureInfo.InvariantCulture,
-				System.Globalization.DateTimeStyles.None,out date) || date.Year<2026)
+			//yyyy00PPNN (month 00, from 2027 on): a level range the single-wave build assigned to package PP. It sorts after the 2026 levels.
+			bool isPackageRangeLevel=level.Length==10 && level.Substring(4,2)=="00" && string.CompareOrdinal(level.Substring(0,4),"2027")>=0;
+			if(!isPackageRangeLevel && (level.Length!=10 || !DateTime.TryParseExact(level.Substring(0,8),"yyyyMMdd",System.Globalization.CultureInfo.InvariantCulture,
+				System.Globalization.DateTimeStyles.None,out date) || date.Year<2026))
 			{
 				throw new ApplicationException("Fork migration step "+step.GetType().FullName+" has level "+level+"; levels are yyyyMMddNN, from 2026 on.");
 			}
