@@ -46,7 +46,7 @@ New:
 - `OpenDental/Logic/EdsValidationL.cs`: Edit Claim send and save, and Send Claims batch flows (progress window, validation window).
 - `OpenDental/Forms/FormEdsValidation.cs` and `.Designer.cs`: the validation window.
 - `OpenDental/Forms/FormClaimsSend.Eds.cs`: a partial-class file holding the batch hook.
-- `tests/VEDSTests/`: the test project (78 tests).
+- `tests/VEDSTests/`: the test project (82 tests).
 
 Changed (small, local hooks):
 - `OpenDentBusiness/Eclaims/Eclaims.cs`: one call at the end of `GetMissingData`.
@@ -86,6 +86,12 @@ Changed (small, local hooks):
     - **No duplicates.** When EDS answers again, its fresh answer replaces the local warning.
     - **Default setup.** With the attachment service off, EDS is never asked, so the check stays silent.
     - **Middle Tier.** `GetMissingData` runs on the server, which cannot see the workstation's memory. There the check runs only in the validation window flows (`ValidateLocal` runs on the workstation).
+12. **Claims sent, deleted or held while the batch window is open** (fix round `port/v-eds-s1`). The validation window opened from Send Claims has Edit Claim, and Edit Claim can send, delete or change the status of the claim; another workstation can too. `FormClaimsSend.RefreshAndValidateSelections` dropped sent and deleted claims before the window opened, and nothing looked again afterwards, so the batch could send a claim a second time (a duplicate e-claim) or crash on a deleted claim (`ClaimL.SendClaimSendQueueItems` reads `Claims.GetClaim(...).MedType`). Now:
+    - **A result that cannot be sent.** `EdsValidationResult.NotSendableReason` (`IsNotSendable`) marks a claim that must not go out. `GetSendDecision` gives Block for it, whatever else the result says, so Send Anyway does not send it either. The result carries one error row (`ClaimNotSendable`) that says why, so the window lists it. It is not kept as the claim's last validation, and a re-validation that returns it shows the earlier problems neither as open nor as Resolved; the claim's patient, date and carrier stay in the row.
+    - **Deleted claims.** `ValidateClaimNum` (Re-validate, and the re-validation after Edit Claim) and `ValidateLocal` return such a result for a deleted claim, in every window. Before, a deleted claim was "skipped", which counts as Send.
+    - **Claims no longer waiting to send.** From the Send Claims window only, `ValidateClaimNum(...,isWaitingToSendRequired:true)` also returns such a result for a claim whose status is no longer W (waiting to send) or P (probably sent), the two statuses the Send Claims queue lists: sent (S), received (R), unsent (U) or on hold (H, I). Edit Claim's own Send does not apply this rule, because it may resend a sent claim on purpose.
+    - **The final list is read again.** When the batch window closes (and on the path without a window), `EdsValidationL.ValidateBatchForSend` computes `ListClaimNumsAllowed` with `EdsClaimValidation.GetClaimNumsToSendForBatch`, which reads the claims from the database and drops every claim that was deleted or is no longer W/P, re-validated or not. Claims in that state when the batch starts are not validated at all. Both kinds go in the new `BatchOutcome.ListClaimNumsNotWaiting`.
+    - **Send Claims.** `ApplyEdsResultsToSelection` deselects those claims, warns once ("...will not be sent again and will be removed from the grid"), and refreshes the grid (`FillGrid(true)`, which keeps the other selections), so they disappear from the queue as `RefreshAndValidateSelections` would show it.
 
 ## Deviations from the spec
 
@@ -97,22 +103,22 @@ Changed (small, local hooks):
 ## Interplay with packages built in parallel
 
 - **V-DXC2** (`FormClaimAttachment`, DentalXChange PDFs): this package only adds five lines to the EDS branch of `FormClaimAttachment_Shown`. EDS attachments still refuse PDFs (V-DXC2 rule 3), unchanged.
-- **M2-CLAIMRCV**: the "send other outstanding claims" prompt (`ClaimL`, not owned here) gets the local EDS checks through `GetMissingData`, but does not call EDS. To add that, call `EdsValidationL.ValidateBatchForSend(listQueueItems,0)` before sending and keep only `ListClaimNumsAllowed`, as `FormClaimsSend.Eds.cs` does.
+- **M2-CLAIMRCV**: the "send other outstanding claims" prompt (`ClaimL`, not owned here) gets the local EDS checks through `GetMissingData`, but does not call EDS. To add that, call `EdsValidationL.ValidateBatchForSend(listQueueItems,0)` before sending, then drop every claim in `ListClaimNumsNotWaiting` and every claim in `ListClaimNumsValidated` that is not in `ListClaimNumsAllowed`, as `FormClaimsSend.Eds.cs` does.
 - **V-DXC1 / XConnect**: independent; it uses a different comm bridge. The EDS batch hook runs right after `ApplyXConnectResultsToSelection()`.
 - **Other packages editing `FormClaimEdit.cs` or `FormClaimsSend.cs`** (B-CLAIM, V-PAYSUITE later): the edits are single insertions at three points: the Send path after `GetMissingData`, the save path after the ClaimConnect block, and `FillForm` after `FillDxcAttachmentState()`. The designer edit adds one control to `tabEDS`.
 - **`OpenDental.sln` / `OpenDental.Local.slnf` / `OpenDental.csproj`**: additions at the end of the test-project list and next to the XConnect window entries; they may conflict textually with other packages' additions at merge time (keep both).
 
 ## Tests
 
-`tests/VEDSTests` (MSTest v1, x86, .NET 4.8; in `OpenDental.sln` and `OpenDental.Local.slnf`), 78 tests:
+`tests/VEDSTests` (MSTest v1, x86, .NET 4.8; in `OpenDental.sln` and `OpenDental.Local.slnf`), 82 tests:
 
 - **Pure:**
   - NPI check digit, cross-checked against CMS's formulation;
   - taxonomy format;
   - every local check, including the payer-ID warning (no Missing Info, Send Anyway offered) and the narrative check from EDS's last answer;
   - reading synthetic EDS answers, including the procedure codes that need a narrative;
-  - send decisions;
-  - re-validation merge;
+  - send decisions, including a claim that cannot be sent (never sent, even with Send Anyway; not kept as the last result; which statuses count as waiting to send);
+  - re-validation merge, including a claim that can no longer be sent (header kept, nothing marked Resolved);
   - the Missing Info round trip;
   - gates;
   - summaries and the last-result text.
@@ -131,9 +137,11 @@ Changed (small, local hooks):
   - non-EDS claims skipped;
   - an attachment already sent;
   - the enhanced-validator seam;
-  - `ValidateClaimNum` with and without a clearinghouse override.
+  - `ValidateClaimNum` with and without a clearinghouse override, and for a deleted claim (cannot be sent, not skipped);
+  - a batch whose claims are sent, deleted, held or marked probably sent after validation (INFERRED 12): re-validated as the batch window does, and also without a re-validation, neither the sent, the deleted nor the held claim is in the final list (`GetClaimNumsToSendForBatch`, which `ListClaimNumsAllowed` comes from), even with Send Anyway; the P claim still goes; Edit Claim's own re-validation still allows resending a sent claim.
 - **Source wiring:**
   - the hooks sit where rule 1 needs them;
+  - the batch window re-validates with the waiting-to-send rule, every batch path reads the claims again, and Send Claims deselects and drops the claims that are no longer waiting;
   - the new files are in the projects;
   - the new files have no links or promotional words;
   - `EDS.cs` talks only to `web2.edsedi.com`.
