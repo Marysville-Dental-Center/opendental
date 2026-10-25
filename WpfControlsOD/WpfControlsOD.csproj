@@ -142,6 +142,7 @@
     <Compile Include="Bridges\DivvyPostcardService.cs" />
     <Compile Include="Bridges\Dolphin.cs" />
     <Compile Include="Bridges\DrCeph.cs" />
+    <Compile Include="Bridges\DTXStudio.cs" />
     <Compile Include="Bridges\Dxis.cs" />
     <Compile Include="Bridges\ECW.cs" />
     <Compile Include="Bridges\EvaSoft.cs" />
@@ -169,6 +170,7 @@
     <Compile Include="Bridges\OrthoCad.cs" />
     <Compile Include="Bridges\OrthoInsight3d.cs" />
     <Compile Include="Bridges\Oryx.cs" />
+    <Compile Include="Bridges\Overjet.cs" />
     <Compile Include="Bridges\Owandy.cs" />
     <Compile Include="Bridges\PandaPerio.cs" />
     <Compile Include="Bridges\PandaPerioAdvanced.cs" />
