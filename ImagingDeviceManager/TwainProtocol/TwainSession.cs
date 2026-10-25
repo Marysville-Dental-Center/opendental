@@ -171,12 +171,16 @@ namespace ImagingDeviceManager.TwainProtocol {
 			}
 		}
 
-		///<summary>After MSG_CLOSEDSREQ and before MSG_DISABLEDS: reads why the session ended (EndConditionCode) and, for any code other
-		///than TWCC_SUCCESS, the source's text for it (EndConditionText). A notification carries no condition code, so this is the only
-		///way to tell a failure from a cancel (design 7.1, twain-contract 1.1 section 8).</summary>
+		///<summary>After MSG_CLOSEDSREQ and before MSG_DISABLEDS: reads why the session ended (EndConditionCode) and, on the by-name path,
+		///for any code other than TWCC_SUCCESS, the source's text for it (EndConditionText). A notification carries no condition code, so
+		///this is the only way to tell a failure from a cancel (design 7.1, twain-contract 1.1 section 8). Scans only read the code (DAT_STATUS
+		///is mandatory for every source): the optional DAT_STATUSUTF8 is not sent to them, and nothing is logged.</summary>
 		private void ReadEndCondition() {
 			EndConditionCode=ReadStatus(true);
 			EndConditionText=null;
+			if(!IsOpenedByName) {
+				return;
+			}
 			if(EndConditionCode==null) {
 				Log("The source ended the session; its status could not be read.");
 				return;

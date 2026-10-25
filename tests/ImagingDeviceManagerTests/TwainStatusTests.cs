@@ -71,6 +71,9 @@ namespace ImagingDeviceManager.Tests {
 			Assert.IsNull(_harness.Session.Acquire(IntPtr.Zero));
 			Assert.AreEqual("The scan was cancelled.",_harness.Session.ErrorText,"Scans keep their text.");
 			Assert.AreEqual(FakeHelperSource.CodeNoSensor,_harness.Session.EndConditionCode,"The code is still read.");
+			Assert.AreEqual(0,_harness.Fake.CallsNamed("STATUSUTF8").Count,"The optional DAT_STATUSUTF8 is not sent to a scanner.");
+			Assert.IsNull(_harness.Session.EndConditionText);
+			Assert.IsFalse(_harness.HasLog("ended the session"),_harness.LogText);
 		}
 
 		[TestMethod]
