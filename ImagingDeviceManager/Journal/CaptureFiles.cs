@@ -42,7 +42,7 @@ namespace ImagingDeviceManager.Journal {
 				+"-"+random;
 		}
 
-		///<summary>True for a base name NewBaseName makes. Rotation and counting touch only those.</summary>
+		///<summary>True for a base name NewBaseName makes, without a suffix. Rotation touches only those.</summary>
 		public static bool IsCaptureBaseName(string baseName) {
 			return baseName!=null && _regexBaseName.IsMatch(baseName);
 		}
@@ -124,17 +124,20 @@ namespace ImagingDeviceManager.Journal {
 			return dictFields;
 		}
 
-		///<summary>Writes an image and its sidecar into folder under a new base name; funcSidecar gets the base name and returns the
-		///sidecar's text. The image is written to a temporary file and then moved to its name, so a crash never leaves half an image under a
-		///capture name; an existing file is never replaced. Returns the image's path, or null with error when the image could not be
-		///written. When only the sidecar fails, the image is kept (it may be the only copy), the path is returned and error says so.</summary>
-		public static string WritePair(string folder,DateTime receivedAt,byte[] bytesImage,Func<string,string> funcSidecar,out string error) {
+		///<summary>Writes an image and its sidecar into folder under a new base name, followed by baseNameSuffix (for example the journal's
+		///"-only"); funcSidecar gets the base name and returns the sidecar's text. The image is written to a temporary file and then moved
+		///to its name, so a crash never leaves half an image under a capture name; an existing file is never replaced. Returns the image's
+		///path, or null with error when the image could not be written. When only the sidecar fails, the image is kept (it may be the only
+		///copy), the path is returned and error says so.</summary>
+		public static string WritePair(string folder,DateTime receivedAt,byte[] bytesImage,Func<string,string> funcSidecar,out string error,
+			string baseNameSuffix="")
+		{
 			error="";
 			string pathImage=null;
 			string baseName=null;
 			Exception exceptionLast=null;
 			for(int attempt=0;attempt<3 && pathImage==null;attempt++) {
-				baseName=NewBaseName(receivedAt);
+				baseName=NewBaseName(receivedAt)+(baseNameSuffix??"");
 				string pathCandidate=Path.Combine(folder,baseName+ImageExtension);
 				string pathTemp=Path.Combine(folder,baseName+".tmp");
 				try {

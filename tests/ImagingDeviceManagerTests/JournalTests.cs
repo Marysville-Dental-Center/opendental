@@ -100,6 +100,9 @@ namespace ImagingDeviceManager.Tests {
 			File.WriteAllText(Path.Combine(_folder,"readme.txt"),"not a copy");
 			File.WriteAllBytes(Path.Combine(_folder,"saved by hand.bmp"),new byte[] { 1 });
 			string error;
+			string pathOnly=CaptureFiles.WritePair(_folder,new DateTime(2026,10,25,8,0,0),CaptureFiles.ToBmpBytes(Gray8(4,3)),baseName => "Kind=test\r\n",
+				out error,CaptureJournal.OnlyCopySuffix);
+			StringAssert.EndsWith(pathOnly,"-only.bmp");
 			Assert.AreEqual(2,CaptureJournal.Rotate(_folder,3,out error));
 			Assert.AreEqual("",error);
 			for(int i=0;i<5;i++) {
@@ -109,6 +112,8 @@ namespace ImagingDeviceManager.Tests {
 			}
 			Assert.IsTrue(File.Exists(Path.Combine(_folder,"readme.txt")));
 			Assert.IsTrue(File.Exists(Path.Combine(_folder,"saved by hand.bmp")));
+			Assert.IsTrue(File.Exists(pathOnly),"An only copy is never rotated away, although it is the oldest.");
+			Assert.IsTrue(File.Exists(FacadeHarness.SidecarOf(pathOnly)));
 			Assert.AreEqual(0,CaptureJournal.Rotate(_folder,3,out error),"Nothing more to remove.");
 		}
 

@@ -254,9 +254,31 @@ namespace ImagingDeviceManager.Tests {
 			List<string> listJournal=FacadeHarness.ListImages(_harness.FolderJournal);
 			Assert.AreEqual(1,listJournal.Count);
 			Assert.AreEqual(CaptureJournal.DeliveredNone,CaptureFiles.ReadSidecar(FacadeHarness.SidecarOf(listJournal[0]))["Delivered"]);
+			StringAssert.EndsWith(listJournal[0],CaptureJournal.OnlyCopySuffix+CaptureFiles.ImageExtension);
 			Assert.AreEqual(1,_harness.Ui.ListNotices.Count);
 			StringAssert.Contains(_harness.Ui.ListNotices[0],"could not be saved to the capture quarantine folder");
 			StringAssert.Contains(_harness.Ui.ListNotices[0],"A copy is in the capture journal folder.");
+		}
+
+		[TestMethod]
+		public void QuarantineUnusable_OnlyCopy_NotRotatedAway() {
+			Directory.CreateDirectory(Path.Combine(_harness.FolderImaging,"Capture"));
+			File.WriteAllText(_harness.FolderQuarantine,"a file where the folder should be");
+			CancelWhileReadingOut();
+			_harness.WriteSafeDisableConfig("JournalKeep=1");
+			Assert.AreEqual(IntPtr.Zero,AcquireByName(IntPtr.Zero));
+			string pathOnly=FacadeHarness.ListImages(_harness.FolderJournal).Single();
+			Helper.ActionOnEnable=null;
+			Helper.EndAfterMs=0;
+			for(int i=0;i<3;i++) {
+				IntPtr hdib=AcquireByName(IntPtr.Zero);
+				Assert.AreNotEqual(IntPtr.Zero,hdib,EZTwain.LastErrorText());
+				EZTwain.DIB_Free(hdib);
+			}
+			List<string> listJournal=FacadeHarness.ListImages(_harness.FolderJournal);
+			Assert.AreEqual(2,listJournal.Count,"JournalKeep=1 copy, plus the only copy.");
+			CollectionAssert.Contains(listJournal,pathOnly);
+			Assert.IsTrue(File.Exists(FacadeHarness.SidecarOf(pathOnly)));
 		}
 
 		[TestMethod]

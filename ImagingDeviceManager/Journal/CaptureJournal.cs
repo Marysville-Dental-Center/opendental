@@ -11,12 +11,16 @@ namespace ImagingDeviceManager.Journal {
 	///<summary>The capture journal (design 7.1 "Journal"): a copy of every image a device acquisition transferred, written to
 	///Capture\journal before the image goes back to the caller, with a sidecar. It is a recovery buffer of copies, not the record: today's
 	///Mount/Acquire loop discards an image whose save fails, and the journal copy is then the only one. Rotation keeps the newest
-	///[Twain] JournalKeep copies and removes only journal copies.</summary>
+	///[Twain] JournalKeep copies and removes only journal copies. A copy the library knows to be the only one (DeliveredNone: its
+	///quarantine write failed) is named with OnlyCopySuffix, which rotation never removes: like the quarantine, it stays until an
+	///administrator recovers it.</summary>
 	internal sealed class CaptureJournal {
 		///<summary>Delivered values: what happened to the image apart from this copy.</summary>
 		public const string DeliveredCaller="Caller";
 		public const string DeliveredQuarantine="Quarantine";
 		public const string DeliveredNone="None";
+		///<summary>Ends the base name of a DeliveredNone copy, so that rotation leaves it alone.</summary>
+		public const string OnlyCopySuffix="-only";
 		private readonly CaptureFolders _folders;
 
 		public CaptureJournal(CaptureFolders folders) {
@@ -47,7 +51,8 @@ namespace ImagingDeviceManager.Journal {
 				//The image file's name is known only once it is written, so the sidecar names the image by its base name.
 				string errorWrite;
 				string pathImage=CaptureFiles.WritePair(folder,record.ReceivedAt,bytes,
-					baseName => BuildSidecar(record,delivered,detail,baseName+CaptureFiles.ImageExtension,dib,sha256),out errorWrite);
+					baseName => BuildSidecar(record,delivered,detail,baseName+CaptureFiles.ImageExtension,dib,sha256),out errorWrite,
+					delivered==DeliveredNone ? OnlyCopySuffix : "");
 				if(pathImage==null) {
 					log("No journal copy: "+errorWrite);
 					return null;
@@ -82,13 +87,14 @@ namespace ImagingDeviceManager.Journal {
 			return CaptureFiles.BuildSidecar(new[] {
 				"Capture journal copy: a recovery copy, not the record. The image file is the DIB the program received, unchanged, as a .bmp file.",
 				"PatNum is empty when the caller did not pass one (the Mount/Acquire loop passes none). Delivered=Caller: the program received",
-				"the image and may have stored it; Quarantine: it went to the capture quarantine instead; None: this copy is the only one.",
+				"the image and may have stored it; Quarantine: it went to the capture quarantine instead; None: this copy is the only one,",
+				"its name ends in "+OnlyCopySuffix+", and rotation never removes it.",
 			},listFields);
 		}
 
 		///<summary>Keeps the keep newest journal copies in folder and removes the older ones with their sidecars. Only files named by
-		///CaptureFiles count and are removed; anything else in the folder is left alone. Returns how many images it removed; error says
-		///what could not be removed. Never throws.</summary>
+		///CaptureFiles without a suffix count and are removed; only copies (OnlyCopySuffix) and anything else in the folder are left alone.
+		///Returns how many images it removed; error says what could not be removed. Never throws.</summary>
 		public static int Rotate(string folder,int keep,out string error) {
 			error="";
 			int countRemoved=0;
