@@ -1264,6 +1264,7 @@
     <Compile Include="InternalTools\Job Manager\TableTypes\JobNote.cs" />
     <Compile Include="InternalTools\Job Manager\TableTypes\VersionRelease.cs" />
     <Compile Include="Data Interface\ProcButtonQuicks.cs" />
+    <Compile Include="Data Interface\ProcAddHelper.cs" />
     <Compile Include="Data Interface\Resellers.cs" />
     <Compile Include="Data Interface\ResellerServices.cs" />
     <Compile Include="Data Interface\SecurityLogHashes.cs" />
