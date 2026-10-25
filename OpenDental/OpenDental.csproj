@@ -5296,6 +5296,9 @@
     <Compile Include="Main Modules\ControlManage.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Include="Main Modules\ControlManage.ReportsTo.cs">
+      <DependentUpon>ControlManage.cs</DependentUpon>
+    </Compile>
     <Compile Include="Main Modules\ControlTreat.cs">
       <SubType>UserControl</SubType>
     </Compile>
