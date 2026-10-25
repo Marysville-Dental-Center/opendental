@@ -12,6 +12,13 @@ using PdfSharp.Pdf;
 
 namespace OpenDentBusiness {
 	public static class ImageHelper {
+		///<summary>True if PDFs shown inside the Imaging module may run the JavaScript in them (preference ImagingAllowPdfJavascript, Open Dental 26.1).
+		///False by default, and also false when the preference cannot be read, so scripts stay off unless an administrator turns them on. The viewer
+		///applies it before each PDF it opens. PDFs opened in a separate window (preference PdfLaunchWindow) are not affected.</summary>
+		public static bool IsPdfJavascriptAllowed() {
+			return PrefC.GetBoolSilent(PrefName.ImagingAllowPdfJavascript,false);
+		}
+
 		///<summary>This alters the bitmap in raw memory without creating a copy.</summary>
 		public static void ApplyColorSettings(Bitmap bitmap,int windowingMin,int windowingMax){
 			if(windowingMax==0 || (windowingMax==255 && windowingMin==0)){

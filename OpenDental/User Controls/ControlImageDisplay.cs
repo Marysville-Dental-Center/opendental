@@ -911,6 +911,7 @@ Here is the desired behavior:
 			}
 			IsPrinting=true;
 			//Open the PDF in WebView2 so that we can print.
+			_odWebView2.SetScriptEnabled(ImageHelper.IsPdfJavascriptAllowed());//JavaScript in PDFs only when the preference allows it, read for every PDF.
 			_odWebView2.ODWebView2Navigate(filePath);
 		}
 
@@ -4621,6 +4622,7 @@ Here is the desired behavior:
 					if(_odWebView2.CoreWebView2==null) {
 						await _odWebView2.Init();//Throws exception if Microsoft WebView2 Runtime is not installed so need to have in try-catch.
 					}
+					_odWebView2.SetScriptEnabled(ImageHelper.IsPdfJavascriptAllowed());//JavaScript in PDFs only when the preference allows it, read for every PDF.
 					_odWebView2.ODWebView2Navigate(_odWebView2FilePath);
 				}
 			}
