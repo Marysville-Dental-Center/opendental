@@ -1239,16 +1239,16 @@ namespace OpenDentBusiness {
 		///a different language input methodology that requires the composition of symbols in order to display their language correctly.
 		///E.g. the Korean symbol '역' (dur) will not display correctly inside ODTextBoxes without this set to true.</summary>
 		ImeCompositionCompatibility,
+		///<summary>Open Dental 25.4. Boolean, false by default. When true, a manual income transfer may move only money that came from patient
+		///payments, and no more than a payment still holds. Name proposed by this fork (Open Dental's is not public). Seeded by Seed26_1.</summary>
+		[PrefName(ValueType=PrefValueType.BOOL)]
+		IncomeTransfersLimitToPatPayments,
 		///<summary>YN_DEFAULT_FALSE. When enabled (1-Yes), income transfers are automatically made upon receiving a claim. 
 		///The income transfers are to reallocate patient payments associated to insurance production that has been overpaid to underpaid production on the same claim.
 		///Any income transfers made on behalf of this preference will ONLY move money between production associated to the same claim.
 		///Money will be transferred to unearned in the event that the entire claim has been overpaid.
 		///The default behavior is (0-Unknown) which will defer to the RigorousAccounting preference which will ONLY run when it is set to 0=Fully Enforced.
 		///Income transfers will NOT be automatically created when this preference is disabled (2-No).</summary>
-		///<summary>Open Dental 25.4. Boolean, false by default. When true, a manual income transfer may move only money that came from patient
-		///payments, and no more than a payment still holds. Name proposed by this fork (Open Dental's is not public). Seeded by Seed26_1.</summary>
-		[PrefName(ValueType=PrefValueType.BOOL)]
-		IncomeTransfersLimitToPatPayments,
 		[PrefName(ValueType=PrefValueType.YN_DEFAULT_FALSE)]
 		IncomeTransfersMadeUponClaimReceived,
 		///<summary>Boolean. True by default. When true, negative production can be transferred to unearned as income via paysplits. When false, income transfers will not be allowed when negative production needs to be allocated.</summary>
