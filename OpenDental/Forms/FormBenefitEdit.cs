@@ -76,15 +76,16 @@ namespace OpenDental {
 			listCoverageLevel.SetSelectedEnum(BenefitCur.CoverageLevel);
 			listTreatArea.Items.Clear();
 			listTreatArea.Items.Add("Default",TreatmentArea.None);
-			listTreatArea.Items.AddEnums<TreatmentArea>();
-			listTreatArea.Items.RemoveAt(1); // There are now two instances of TreatmentArea.None, remove the one that will display as "None"
+			listTreatArea.Items.AddListEnum(Enum.GetValues(typeof(TreatmentArea)).Cast<TreatmentArea>().Where(x => x!=TreatmentArea.None));//"Default" is None
 			listTreatArea.SetSelectedEnum(BenefitCur.TreatArea);
 			textTeeth.Text=Benefits.GetToothRangeDisplay(BenefitCur);
 			SetTeethEnabled();
+			LoadRedesign();//Open Dental 25.2 layout: Applies to, inputs by type, preview line.
 		}
 
 		private void listBenefitType_SelectedIndexChanged(object sender,EventArgs e) {
 			SetTeethEnabled();
+			SetInputsEnabledForType();
 		}
 
 		///<summary>Teeth (benefit.ToothRange, Open Dental 25.3) only apply to exclusions. Text already typed is kept so the user can switch back.</summary>
@@ -128,7 +129,10 @@ namespace OpenDental {
 			BenefitTimePeriod timePeriod=listTimePeriod.GetSelected<BenefitTimePeriod>();
 			BenefitCoverageLevel coverageLevel=listCoverageLevel.GetSelected<BenefitCoverageLevel>();
 			TreatmentArea treatArea=(TreatmentArea)listTreatArea.SelectedIndex;
-			if(textProcCode.Text!="" && codeNum==0) {
+			if(!ReadAppliesTo(ref covCatNum,ref codeNum,ref codeGroupNum)) {//Only the input picked under Applies to is saved.
+				return;
+			}
+			if(radioProcCode.Checked && textProcCode.Text!="" && codeNum==0) {
 				MsgBox.Show(this,"Invalid procedure code.");
 				return;
 			}
@@ -173,6 +177,7 @@ namespace OpenDental {
 			//The same rules the Other Benefits grid uses when a cell is edited in place. The Pat box is passed on its own: with no patient plan
 			//(_patPlanNum==0) a checked box leaves both PlanNum and PatPlanNum at 0 above, and only the box state shows that it was checked.
 			List<BenefitValidationError> listErrors=Benefits.GetValidationErrors(benefit,_patPlanNum,isPat:checkPat.Checked);
+			listErrors.AddRange(BenefitEditRules.GetIgnoredFieldErrors(benefit,_benefitLoaded));//25.2: a value the type ignores, naming the field.
 			if(listErrors.Count>0) {
 				MessageBox.Show(this,listErrors[0].Message);
 				return;
