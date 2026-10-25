@@ -142,7 +142,8 @@ namespace AdoptionValidation {
 						result.RowCheck=AdoptionRowCheck.Run(db,original,database);
 					}
 				});
-				log("Row check against "+original+" (what adoption may change in preference, documentmisc, securitylog, securityloghash and updatehistory):");
+				log("Row check against "+original+" (what adoption may change in preference, documentmisc, securitylog, securityloghash, displayreport and "
+					+"updatehistory):");
 				foreach(string line in result.RowCheck.ListLines) {
 					log("  "+line);
 				}

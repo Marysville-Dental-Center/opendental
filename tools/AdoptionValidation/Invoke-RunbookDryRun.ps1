@@ -7,11 +7,13 @@ exactly as the runbook gives them, with a new copy instead of the office's adopt
 Plays the day of the switch, in order, on the admin PC, with -Original standing in for the office database "opendental" and -Copy for
 "opendental_pms":
 
-  0.2   FLOAT check of -Original (AdoptionValidation float-check; recorded, not a failure)
+  0.2   FLOAT check of -Original (AdoptionValidation float-check; recorded, not a failure), and what adoption's fork migration will change
+        in its rows (AdoptionValidation migration-preview: the report rows it renames, recorded)
   1.1   no connection uses -Original (AdoptionValidation connections)
   3.2   copy -Original into the new database -Copy on the server (AdoptionValidation copy)
   3.3   reports of both, compared: 0 differences
-  4-5   adopt and rehash -Copy without starting the program, with the row check against -Original (AdoptionValidation adopt)
+  4-5   adopt and rehash -Copy without starting the program, with the row check against -Original (AdoptionValidation adopt); its log
+        names exactly the report row renames migration-preview listed
   6.1   post-adoption report compared with the copy's report under allowed-differences.adoption.json: 0 unexpected differences;
         the Open Dental startup check: every release client refuses the copy
   10.1  no connection uses -Original (AdoptionValidation connections)
@@ -131,6 +133,13 @@ try {
 			throw "AdoptionValidation float-check returned exit code $LASTEXITCODE; expected 0 or 6 (a count of values)."
 		}
 	}
+	Invoke-Step '0.2 What the fork migration will change (migration-preview)' {
+		Invoke-Tool $adoptionValidation @('migration-preview','--database',$Original) 'migration-preview.txt'
+		Assert-ExitCode 'AdoptionValidation migration-preview' 'a list of the report rows adoption renames, possibly none'
+		$script:renames=@(Get-Content (Join-Path $Folder 'migration-preview.txt') | ForEach-Object { [regex]::Matches($_,'Renamed displayreport \S+ to \S+ \(same description\)') } |
+			ForEach-Object { $_.Value })
+		$notes.Add("migration-preview: adoption's fork migration renames $($script:renames.Count) displayreport row(s) (migration-preview.txt).")
+	}
 	Invoke-Step '1.1 No connection uses the original (connections)' {
 		Invoke-Tool $adoptionValidation @('connections','--database',$Original) 'connections-before.txt'
 		Assert-ExitCode 'AdoptionValidation connections' "nobody connected to $Original"
@@ -153,6 +162,14 @@ try {
 		$all=@('adopt','--database',$Copy,'--original',$Original,'--confirm',$Copy,'--log',(Join-Path $Folder 'adoption-log.txt'))+$connection
 		& $adoptionValidation @all
 		Assert-ExitCode 'AdoptionValidation adopt' 'Adopt: PASS'
+		#Step 4 of the runbook: the fork migration renames exactly the report rows the preview listed (adopt's row check holds it to the same plan).
+		$logged=@(Get-Content (Join-Path $Folder 'adoption-log.txt') | ForEach-Object { [regex]::Matches($_,'Renamed displayreport \S+ to \S+ \(same description\)') } |
+			ForEach-Object { $_.Value })
+		$missing=@($script:renames | Where-Object { $logged -notcontains $_ })
+		$extra=@($logged | Where-Object { $script:renames -notcontains $_ })
+		if($missing.Count -gt 0 -or $extra.Count -gt 0) {
+			throw "The fork migration's renames in adoption-log.txt differ from migration-preview.txt: missing $($missing -join '; '), not previewed $($extra -join '; ')."
+		}
 	}
 	Invoke-Step '6.1 Post-adoption report, comparison and startup check' {
 		Invoke-Tool $syntheticData @('validate','--database',$Copy,'--as-of',$AsOf,'--out',(Join-Path $Folder 'after-adoption.json')) 'after-adoption.txt'

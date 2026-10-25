@@ -8,6 +8,7 @@ using System.Linq;
 using System.Reflection;
 using OpenDentBusiness;
 using OpenDentBusiness.ForkMigrations;
+using OpenDentBusiness.ForkMigrations.Features;
 using SyntheticData.Generation;
 using SyntheticData.Infrastructure;
 using SyntheticData.Validation;
@@ -161,6 +162,9 @@ namespace AdoptionValidation {
 				//The FLOAT and DOUBLE values a logical backup would round (runbook step 0.2): the synthetic values are short, so none is expected.
 				FloatCheck.Result floatCheck=Time("FLOAT values a logical backup would round (float-check)",() => FloatCheck.Run(db,source));
 				_run.FloatCheck=floatCheck.Describe();
+				//What adoption's fork migration will change in the source's rows (runbook step 0.2): the fixture's report rows under unknown names.
+				MigrationPreview.Result preview=Time("Fork migration preview (migration-preview)",() => MigrationPreview.Run(db,source));
+				_run.ListMigrationPreview=preview.Lines();
 				//3. The copy that is adopted, made the way runbook step 3.2 makes it (or, with --copy dump, by a mariadb-dump backup and the restore). Both
 				//only create a new database, so a copy left by an earlier --keep run with the same tag is dropped first.
 				LocalOnly.EnsureWritableDatabaseName(adopted);
@@ -223,6 +227,7 @@ namespace AdoptionValidation {
 					verifyResult.CountTablesActual+" of "+verifyResult.CountTablesExpected+" tables; "+verifyResult.ListDifferences.Count+" differences, "
 					+verifyResult.ListMismatches.Count+" mismatches"+(verifyResult.ListDifferences.Count==0 ? " (no documented exception needed)" : ": "
 					+string.Join("; ",verifyResult.ListDifferences.Take(10).Select(x => x.Table+"."+x.Item))));
+				CheckReportRenames(preview,adoption,adoptionResult);
 				//7. Rehash (Database Maintenance, Tools, Security Hashes), done by HeadlessAdoption above.
 				_run.ListHashesBefore=adoption.ListHashesStart;
 				_run.ListHashesAfter=adoption.ListHashesAfter;
@@ -251,7 +256,7 @@ namespace AdoptionValidation {
 					+" (a Debug build of Open Dental skips its version check: "+listAfter.First(x => !x.IsReleaseClient).Outcome+"; Open Dental ships Release builds only)");
 				//The tables the allowed list can only allow whole, row by row against the source (what adopt prints in runbook steps 4 and 5).
 				AdoptionRowCheck.Result rowCheck=adoption.RowCheck;
-				Check("V11","Row by row, adoption changed only its own rows of preference, documentmisc, securitylog, securityloghash and updatehistory",
+				Check("V11","Row by row, adoption changed only its own rows of preference, documentmisc, securitylog, securityloghash, displayreport and updatehistory",
 					rowCheck!=null && rowCheck.Passed,rowCheck==null ? "no row check" : string.Join(" ",rowCheck.ListLines)
 					+(rowCheck.Passed ? "" : " Failures: "+string.Join(" ",rowCheck.ListFailures)));
 				//10. Data-layer round trip. It writes (and normalizes some cells, moving their rows' audit timestamps), so the runs are compared on the
@@ -292,6 +297,39 @@ namespace AdoptionValidation {
 				+listNotWritten.Count+" loaded and saved but not given a new value, because Insert or the server sets them (CRUD types TimeStamp, DateEntry, "
 				+"DateTEntry, ExcludeFromUpdate: "+string.Join(", ",listNotWritten)+"); "
 				+(roundTrip.ColumnCount-countLoaded)+" not loaded, documented exceptions preserved untouched ("+string.Join(", ",listNotLoaded)+")";
+		}
+
+		///<summary>M3: the one fork migration step that changes rows of an Open Dental 25.3.48 database, the report rows step, renames exactly the rows
+		///migration-preview lists for the source (the office fixture's report rows under names this program does not know), InternalName only, and
+		///the adoption log names each rename.</summary>
+		private void CheckReportRenames(MigrationPreview.Result preview,HeadlessAdoption.Result adoption,AdoptionResult adoptionResult) {
+			List<string> listExpected=OfficeFixture.ArrayReportRowsRenamed.Select(x => x.internalName+" to "+x.nameFork).OrderBy(x => x,StringComparer.Ordinal).ToList();
+			List<string> listPreview=preview.ListRenames.Select(x => x.RowRenamed.InternalName+" to "+x.Target.InternalName).OrderBy(x => x,StringComparer.Ordinal).ToList();
+			List<string> listLogged=OfficeFixture.ArrayReportRowsRenamed.Where(x => adoptionResult.ListLog.Any(y => y.Trim()==ReportRows25_3.DescribeRename(x.internalName,x.nameFork)))
+				.Select(x => x.internalName).ToList();
+			List<string> listRowProblems=new List<string>();
+			foreach((string internalName,string description,int category,string nameFork) report in OfficeFixture.ArrayReportRowsRenamed) {
+				if(BusinessLayer.Count("SELECT COUNT(*) FROM displayreport WHERE InternalName='"+report.nameFork+"' AND Description='"+report.description.Replace("'","''")+"'")!=1
+					|| BusinessLayer.Count("SELECT COUNT(*) FROM displayreport WHERE InternalName='"+report.internalName+"'")!=0)
+				{
+					listRowProblems.Add(report.internalName+" not renamed to "+report.nameFork);
+				}
+			}
+			foreach((string internalName,string description,int category) report in OfficeFixture.ArrayReportRowsKept) {
+				if(BusinessLayer.Count("SELECT COUNT(*) FROM displayreport WHERE InternalName='"+report.internalName+"'")!=1) {
+					listRowProblems.Add(report.internalName+" not kept");
+				}
+			}
+			AdoptionRowCheck.Result rowCheck=adoption.RowCheck;
+			List<string> listRowCheckFailures=rowCheck==null ? new List<string> { "no row check" } : rowCheck.ListFailures.Where(x => x.Contains("displayreport")).ToList();
+			string lineRowCheck=rowCheck?.ListLines.FirstOrDefault(x => x.StartsWith("displayreport:"))??"";
+			bool isPassed=listPreview.SequenceEqual(listExpected) && listLogged.Count==listExpected.Count && listRowProblems.Count==0 && listRowCheckFailures.Count==0
+				&& rowCheck!=null && rowCheck.ListReportRenames.Count==listExpected.Count;
+			Check("M3","Adoption's fork migration renames exactly the report rows migration-preview lists, InternalName only",isPassed,
+				"migration-preview of the source: "+listPreview.Count+" rename(s) ("+string.Join("; ",listPreview)+"); the adoption log names "+listLogged.Count+" of them "
+				+"(\"Renamed displayreport ... (same description)\"); row check: "+lineRowCheck+" The fixture's other report rows are kept ("
+				+string.Join(", ",OfficeFixture.ArrayReportRowsKept.Select(x => x.internalName))+")"
+				+(listRowProblems.Count+listRowCheckFailures.Count==0 ? "" : "; problems: "+string.Join("; ",listRowProblems.Concat(listRowCheckFailures))));
 		}
 
 		private void ValidateAgainstBaseline(ValidationReport baseline,ValidationReport after,List<Difference> listDiffs) {

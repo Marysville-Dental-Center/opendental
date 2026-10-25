@@ -10,6 +10,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SyntheticData.Generation;
 using SyntheticData.Infrastructure;
 using SyntheticData.Validation;
+using DisplayReportNames=OpenDentBusiness.DisplayReports.ReportNames;
 
 namespace AdoptionValidation.Tests {
 	///<summary>Runs the whole M1-Z rehearsal (small preset, two runs) on scratch databases synth_m1z_t&lt;time&gt;_&lt;pid&gt;_* on the local server, keeps
@@ -25,8 +26,8 @@ namespace AdoptionValidation.Tests {
 		private static RehearsalResult _result;
 
 		///<summary>Every check a run must report, in order.</summary>
-		public static readonly string[] ArrayCheckIds={ "G1","G2","A1","A2","A3","A4","M1","M2","H1","V1","V2","V3","V4","V5","V6","V7","V8","V9","V10","V11",
-			"R1","R2","I1","I2","I3","I4" };
+		public static readonly string[] ArrayCheckIds={ "G1","G2","A1","A2","A3","A4","M1","M2","M3","H1","V1","V2","V3","V4","V5","V6","V7","V8","V9","V10",
+			"V11","R1","R2","I1","I2","I3","I4" };
 
 		[ClassInitialize]
 		public static void ClassInitialize(TestContext testContext) {
@@ -150,6 +151,57 @@ namespace AdoptionValidation.Tests {
 			}
 		}
 
+		///<summary>Runbook step 0.2's migration-preview lists, read-only, the report rows adoption's fork migration renames on an Open Dental 25.3.48
+		///database: the office fixture's three rows under names this program does not know, and nothing on the adopted copy.</summary>
+		[TestMethod]
+		public void MigrationPreview_ListsTheReportRowsAdoptionRenames_AndWritesNothing() {
+			SkipIfNeeded();
+			ValidationReport before;
+			using(Db db=Db.Open(_server)) {
+				before=Validator.Run(db,Source(2),null,null);
+			}
+			List<string> listLog=new List<string>();
+			Assert.AreEqual(Program.ExitPass,Program.Run(new[] { "migration-preview","--database",Source(2) },listLog.Add),string.Join("\r\n",listLog));
+			string output=string.Join("\r\n",listLog);
+			foreach((string internalName,string description,int category,string nameFork) report in OfficeFixture.ArrayReportRowsRenamed) {
+				StringAssert.Contains(output,"Renamed displayreport "+report.internalName+" to "+report.nameFork+" (same description)");
+			}
+			StringAssert.Contains(output,"Adoption's fork migration will rename 3 displayreport row(s), changing only their InternalName");
+			Assert.IsFalse(output.Contains("ODSyntheticFutureReport") || output.Contains("ODToday"),"Rows of other reports are not listed.\r\n"+output);
+			using(Db db=Db.Open(_server)) {
+				List<Difference> listDiffs=ReportComparer.Compare(before,Validator.Run(db,Source(2),null,null),null);
+				Assert.AreEqual(0,listDiffs.Count,"migration-preview only reads.\r\n"+ReportComparer.Format(listDiffs));
+				MigrationPreview.Result resultAdopted=MigrationPreview.Run(db,Adopted(2));
+				Assert.AreEqual(0,resultAdopted.ListRenames.Count,string.Join("\r\n",resultAdopted.Lines()));
+				Assert.IsTrue(resultAdopted.ListPlans.All(x => x.RowExisting!=null),"After adoption every report has this program's name.");
+			}
+		}
+
+		///<summary>On the adopted copy the fixture's report rows under unknown names carry this program's names, with the same number, description,
+		///category and order; every other report row, and every other column, is unchanged.</summary>
+		[TestMethod]
+		public void Adoption_RenamesOnlyTheReportRowsUnderUnknownNames() {
+			SkipIfNeeded();
+			using(Db db=Db.Open(_server)) {
+				RowComparer.TableDiff diff=RowComparer.Compare(db,Source(1),Adopted(1),"displayreport");
+				Assert.AreEqual(0,diff.CountOnlyFirst+diff.CountOnlySecond,diff.Describe());
+				Assert.AreEqual(OfficeFixture.ArrayReportRowsRenamed.Length,diff.CountChanged,diff.Describe());
+				Assert.IsTrue(diff.ListChanged.All(x => x.ListColumns.SequenceEqual(new[] { "InternalName" })),diff.Describe());
+				foreach((string internalName,string description,int category,string nameFork) report in OfficeFixture.ArrayReportRowsRenamed) {
+					long num=db.ScalarLong("SELECT DisplayReportNum FROM `"+Source(1)+"`.displayreport WHERE InternalName='"+report.internalName+"'");
+					Assert.AreEqual(report.nameFork,Convert.ToString(db.Scalar("SELECT InternalName FROM `"+Adopted(1)+"`.displayreport WHERE DisplayReportNum="+num)));
+				}
+				foreach((string internalName,string description,int category) report in OfficeFixture.ArrayReportRowsKept) {
+					Assert.AreEqual(1,db.ScalarLong("SELECT COUNT(*) FROM `"+Adopted(1)+"`.displayreport WHERE InternalName='"+report.internalName+"'"),report.internalName);
+				}
+			}
+			RunResult run=_result.ListRuns[0];
+			Assert.IsTrue(run.ListAllowedDifferences.Any(x => x.StartsWith("ColumnChanged displayreport.InternalName")),string.Join("\r\n",run.ListAllowedDifferences));
+			Assert.IsFalse(run.ListAllowedDifferences.Any(x => x.Contains("displayreport.") && !x.StartsWith("ColumnChanged displayreport.InternalName")),
+				string.Join("\r\n",run.ListAllowedDifferences));
+			StringAssert.Contains(run.ListChecks.Single(x => x.Id=="M3").Detail,"3 rename(s)");
+		}
+
 		///<summary>Adoption and the rehash write SecurityHash only. The rows' ON UPDATE audit timestamps (DateTStamp, SecDateTEdit) must not move; before
 		///the M1-Z fix, SecurityHash's UPDATE statements stamped every rehashed row with the adoption time.</summary>
 		[TestMethod]
@@ -252,7 +304,13 @@ namespace AdoptionValidation.Tests {
 			foreach(string expected in new[] { "It can be adopted.","Dropped index patient.portal_active_email_uniq.","Dropped column patient._portal_active_email.",
 				"DataBaseVersion and ProgramVersion set to 99.0.0.0.","Adoption finished.","0 changes.","The schema matches Open Dental 25.3.48 exactly","Rehash finished.",
 				"Row check against "+Source(1),"preference: 5 added (","documentmisc: 4 Open Dental update-file row(s) deleted, none left; 0 other row(s) deleted",
-				"securitylog: 2 entries added (1 adoption, 1 rehash)","updatehistory: identical row by row." })
+				"securitylog: 2 entries added (1 adoption, 1 rehash)","updatehistory: identical row by row.",
+				"Fork migration step 2026101971 Report rows for Procedures, Production by Procedure and Insurance Pending Supplementals changed the database:",
+				"  Renamed displayreport ODSyntheticProdByProc to ODProductionByProcedure (same description)",
+				"  Renamed displayreport ODSyntheticProcsItemized to ODProceduresIndividual (same description)",
+				"  Renamed displayreport ODSyntheticInsPendingSupp to ODInsPendingSupplementals (same description)",
+				"displayreport: 3 of the 3 rename(s) migration-preview lists, InternalName only (",
+				"; no other row or column changed, none added or removed." })
 			{
 				Assert.IsTrue(run.ListAdoptionLog.Any(x => x.Contains(expected)),expected+"\r\n"+string.Join("\r\n",run.ListAdoptionLog));
 			}
@@ -393,10 +451,12 @@ namespace AdoptionValidation.Tests {
 				}
 			}
 			StringAssert.Contains(output,"Dry run: PASS");
-			foreach(string step in new[] { "== 0.2 ","== 1.1 ","== 3.2 ","== 3.3 ","== 4-5 ","== 6.1 ","== 10.1 ","== 10.2 " }) {
+			foreach(string step in new[] { "== 0.2 FLOAT","== 0.2 What the fork migration","== 1.1 ","== 3.2 ","== 3.3 ","== 4-5 ","== 6.1 ","== 10.1 ","== 10.2 " }) {
 				StringAssert.Contains(output,step);
 			}
 			StringAssert.Contains(File.ReadAllText(Path.Combine(folder,"float-check.txt")),"no value that a logical backup (mariadb-dump) would round");
+			StringAssert.Contains(File.ReadAllText(Path.Combine(folder,"migration-preview.txt")),"Adoption's fork migration will rename 3 displayreport row(s)");
+			StringAssert.Contains(output,"migration-preview: adoption's fork migration renames 3 displayreport row(s)");
 			StringAssert.Contains(File.ReadAllText(Path.Combine(folder,"connections-before.txt")),"No connection uses "+Source(1)+".");
 			StringAssert.Contains(File.ReadAllText(Path.Combine(folder,"copy.txt")),"Copy: PASS");
 			StringAssert.Contains(File.ReadAllText(Path.Combine(folder,"compare-baselines.txt")),"Unexpected differences: 0");
@@ -573,6 +633,8 @@ namespace AdoptionValidation.Tests {
 				Assert.AreEqual(1,db.Execute("UPDATE securitylog SET LogText=CONCAT(LogText,' edited') ORDER BY SecurityLogNum LIMIT 1"));
 				Assert.AreEqual(1,db.Execute("DELETE FROM documentmisc WHERE DocMiscType="+OfficeFixture.DocMiscShareScreenExeSegment));
 				Assert.AreEqual(1,db.Execute("INSERT INTO updatehistory (DateTimeUpdated,ProgramVersion,Signature) VALUES ('2026-10-24 20:00:00','99.0.0.0','')"));
+				//A report row the fork migration does not rename, renamed: the displayreport.InternalName rule lets any rename through.
+				Assert.AreEqual(1,db.Execute("UPDATE displayreport SET InternalName='ODSyntheticFutureRenamed' WHERE InternalName='ODSyntheticFutureReport'"));
 				AdoptionRowCheck.Result result=AdoptionRowCheck.Run(db,Source(2),tampered);
 				string failures=string.Join("\r\n",result.ListFailures);
 				Assert.IsFalse(result.Passed);
@@ -580,12 +642,26 @@ namespace AdoptionValidation.Tests {
 				StringAssert.Contains(failures,"Existing securitylog rows were removed or changed");
 				StringAssert.Contains(failures,"documentmisc row(s) that are not Open Dental update files were deleted");
 				StringAssert.Contains(failures,"updatehistory changed");
-				//The report comparison under allowed-differences.adoption.json lets the first three through; updatehistory has no rule any more.
+				StringAssert.Contains(failures,"the fork migration renames only the rows migration-preview lists");
+				Assert.AreEqual(3,result.ListReportRenames.Count,"The planned renames are still found.");
+				//The report comparison under allowed-differences.adoption.json lets the first three and the rename through; updatehistory has no rule
+				//any more.
 				AllowedDifferences allowed=AllowedDifferences.Load(Path.Combine(Path.GetDirectoryName(Validator.ReadTotalsSqlPath()),"..",
 					"allowed-differences.adoption.json"));
 				List<Difference> listDiffs=ReportComparer.Compare(before,Validator.Run(db,tampered,null,null),allowed);
-				Assert.IsTrue(listDiffs.Where(x => x.Table=="preference" || x.Table=="securitylog" || x.Table=="documentmisc").All(x => x.IsAllowed),
-					ReportComparer.Format(listDiffs));
+				Assert.IsTrue(listDiffs.Where(x => x.Table=="preference" || x.Table=="securitylog" || x.Table=="documentmisc" || x.Table=="displayreport")
+					.All(x => x.IsAllowed),ReportComparer.Format(listDiffs));
+				Assert.IsTrue(listDiffs.Any(x => x.Table=="displayreport" && x.Column=="InternalName"),ReportComparer.Format(listDiffs));
+				//Undoing a planned rename is caught too, and so is any other column of displayreport, which the report comparison does not allow.
+				Assert.AreEqual(1,db.Execute("UPDATE displayreport SET InternalName='ODSyntheticProdByProc' WHERE InternalName='"
+					+DisplayReportNames.ProductionByProcedure+"'"));
+				Assert.AreEqual(1,db.Execute("UPDATE displayreport SET Description='Today, renamed' WHERE InternalName='ODToday'"));
+				result=AdoptionRowCheck.Run(db,Source(2),tampered);
+				failures=string.Join("\r\n",result.ListFailures);
+				StringAssert.Contains(failures,"(ODSyntheticProdByProc) was not renamed to "+DisplayReportNames.ProductionByProcedure);
+				StringAssert.Contains(failures,"changed (Description)");
+				listDiffs=ReportComparer.Compare(before,Validator.Run(db,tampered,null,null),allowed);
+				Assert.IsTrue(listDiffs.Any(x => x.Table=="displayreport" && x.Column=="Description" && !x.IsAllowed),ReportComparer.Format(listDiffs));
 				Assert.IsTrue(listDiffs.Any(x => x.Table=="updatehistory" && !x.IsAllowed),ReportComparer.Format(listDiffs));
 			}
 		}

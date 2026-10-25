@@ -8,8 +8,8 @@ using SyntheticData.Infrastructure;
 namespace AdoptionValidation {
 	///<summary>Rows an office's Open Dental 25.3.48 database carries but SyntheticData leaves out, because they change how a client starts: Open
 	///Dental's update files in documentmisc, the addresses of Open Dental's servers in preferences, version history, and stored passwords that Open
-	///Dental encrypted with its own key. The rehearsal adds them to the generated database before the baseline, so adoption has real work to do and
-	///the checks can see it done. Everything here is synthetic: the "update files" are a short placeholder text, never program files, the server
+	///Dental encrypted with its own key, and report rows under internal names this program does not know, which the fork migration renames. The
+	///rehearsal adds them to the generated database before the baseline, so adoption has real work to do and the checks can see it done. Everything here is synthetic: the "update files" are a short placeholder text, never program files, the server
 	///addresses are built from the fork's blocked-host list (CodeBase.VendorDirect.HqHosts) so no host name is written in this file, and the
 	///"ciphertexts" are random bytes from the seed.</summary>
 	public static class OfficeFixture {
@@ -28,6 +28,21 @@ namespace AdoptionValidation {
 		public const string PREF_HQ_TEXT="SyntheticHelpText";
 		///<summary>The bridge the fixture stores an Open Dental-encrypted password for.</summary>
 		public const string PROGRAM_NAME="XVWeb";
+		///<summary>Report rows as Open Dental's own conversion to 24.4 and 25.2 might have written them: the three reports this program names itself
+		///(ReportRows25_3), under internal names this program does not know (Open Dental's real names are not published), with descriptions the
+		///fork migration recognises. Adoption's fork migration renames each to this program's name, InternalName only. (internal name, description,
+		///category, this program's name.)</summary>
+		public static readonly (string internalName,string description,int category,string nameFork)[] ArrayReportRowsRenamed={
+			("ODSyntheticProdByProc","Production by Procedure",1,"ODProductionByProcedure"),
+			("ODSyntheticProcsItemized","Procedures (Individual)",1,"ODProceduresIndividual"),
+			("ODSyntheticInsPendingSupp","Insurance Pending Supplementals",3,"ODInsPendingSupplementals"),
+		};
+		///<summary>Report rows adoption must keep: one under a name this program does not know with a description of no report it names (a report a
+		///later Open Dental added, say), and one under a name it knows.</summary>
+		public static readonly (string internalName,string description,int category)[] ArrayReportRowsKept={
+			("ODSyntheticFutureReport","Synthetic Future Report",3),
+			("ODToday","Today",0),
+		};
 
 		public class Summary {
 			public int UpdateFileRows;
@@ -35,11 +50,16 @@ namespace AdoptionValidation {
 			public List<string> ListHqPrefs=new List<string>();
 			public int UpdateHistoryRows;
 			public List<string> ListCredentialRows=new List<string>();
+			public int ReportRowsRenamed;
+			public int ReportRowsKept;
 
 			public override string ToString() {
 				return UpdateFileRows+" Open Dental update-file rows and "+OtherDocumentMiscRows+" other documentmisc row; "+ListHqPrefs.Count
 					+" preferences with Open Dental addresses, 2 that must be kept; "+UpdateHistoryRows+" updatehistory rows; "+ListCredentialRows.Count
-					+" stored passwords in Open Dental's encryption ("+string.Join(", ",ListCredentialRows)+").";
+					+" stored passwords in Open Dental's encryption ("+string.Join(", ",ListCredentialRows)+"); "+(ReportRowsRenamed+ReportRowsKept)
+					+" displayreport rows: "+ReportRowsRenamed+" for the reports this program names itself under names it does not know, which the fork migration "
+					+"renames ("+string.Join(", ",ArrayReportRowsRenamed.Select(x => x.internalName+" to "+x.nameFork))+"), and "+ReportRowsKept+" it keeps ("
+					+string.Join(", ",ArrayReportRowsKept.Select(x => x.internalName))+").";
 			}
 		}
 
@@ -108,6 +128,16 @@ namespace AdoptionValidation {
 			sink.Insert("programproperty",new Row { ["ProgramPropertyNum"]=sink.NextId("programproperty"),["ProgramNum"]=programNum,
 				["PropertyDesc"]="Password",["PropertyValue"]=FakeCiphertext(rng),["IsMasked"]=1,["IsHighSecurity"]=1 });
 			summary.ListCredentialRows.Add("programproperty "+PROGRAM_NAME+" Password");
+			//Report rows Open Dental's conversion may have written under names this program does not know, and two that must stay as they are.
+			int itemOrder=90;
+			foreach((string internalName,string description,int category,string nameFork) report in ArrayReportRowsRenamed) {
+				InsertReportRow(sink,report.internalName,report.description,report.category,itemOrder++);
+			}
+			foreach((string internalName,string description,int category) report in ArrayReportRowsKept) {
+				InsertReportRow(sink,report.internalName,report.description,report.category,itemOrder++);
+			}
+			summary.ReportRowsRenamed=ArrayReportRowsRenamed.Length;
+			summary.ReportRowsKept=ArrayReportRowsKept.Length;
 			sink.FlushAll();
 			int countClearinghouses=db.Execute("UPDATE clearinghouse SET Password="+SqlLiteral.Quote(FakeCiphertext(rng))
 				+" WHERE Description='Fictional Claims Exchange'");
@@ -115,6 +145,11 @@ namespace AdoptionValidation {
 				summary.ListCredentialRows.Add("clearinghouse Fictional Claims Exchange");
 			}
 			return summary;
+		}
+
+		private static void InsertReportRow(DataSink sink,string internalName,string description,int category,int itemOrder) {
+			sink.Insert("displayreport",new Row { ["DisplayReportNum"]=sink.NextId("displayreport"),["InternalName"]=internalName,["ItemOrder"]=itemOrder,
+				["Description"]=description,["Category"]=category,["IsHidden"]=0,["IsVisibleInSubMenu"]=0 });
 		}
 
 		///<summary>32 random bytes in base64, without the fork's "osd1$" prefix: what an Open Dental ciphertext looks like to the fork.</summary>

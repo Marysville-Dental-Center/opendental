@@ -47,6 +47,8 @@ namespace AdoptionValidation {
 		public string FixtureSummary;
 		///<summary>FloatCheck of the source: the FLOAT and DOUBLE values a logical backup would round (runbook step 0.2).</summary>
 		public string FloatCheck;
+		///<summary>migration-preview of the source: what adoption's fork migration will change in its rows (runbook step 0.2).</summary>
+		public List<string> ListMigrationPreview=new List<string>();
 		public List<StepTiming> ListSteps=new List<StepTiming>();
 		public List<CheckResult> ListChecks=new List<CheckResult>();
 		public List<string> ListAdoptionLog=new List<string>();
@@ -152,6 +154,16 @@ namespace AdoptionValidation {
 				sb.AppendLine();
 				sb.AppendLine("FLOAT check of the source (runbook step 0.2): "+first.FloatCheck+".");
 				sb.AppendLine();
+				if(first.ListMigrationPreview.Count>0) {
+					sb.AppendLine("Fork migration preview of the source (`migration-preview`, runbook step 0.2):");
+					sb.AppendLine();
+					sb.AppendLine("```");
+					foreach(string line in first.ListMigrationPreview) {
+						sb.AppendLine(line);
+					}
+					sb.AppendLine("```");
+					sb.AppendLine();
+				}
 				sb.AppendLine("### Key business totals");
 				sb.AppendLine();
 				sb.AppendLine("| Total | Before | After |");

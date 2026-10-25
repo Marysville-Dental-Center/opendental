@@ -25,6 +25,7 @@ Usage:
                               [--prefix synth_m1z_] [--tag TAG] [--schema-sql PATH | --schema-from DB] [--allowed FILE]
   AdoptionValidation connections --database DB
   AdoptionValidation float-check --database DB
+  AdoptionValidation migration-preview --database DB
   AdoptionValidation copy --original ORIGINAL --database NEW_DB
   AdoptionValidation adopt --database COPY --original ORIGINAL --confirm COPY [--log FILE]
   AdoptionValidation credentials --database DB
@@ -45,14 +46,19 @@ Commands:
                  Exit code 0 when none uses DB, 6 when one does (runbook steps 1.1, 10.1, 11.1 and Rollback).
   float-check    Counts the FLOAT and DOUBLE values of DB that a logical backup (mariadb-dump) would not restore exactly (runbook
                  step 0.2). Read-only; names columns, never values. Exit code 0 when there are none, 6 when there are some.
-  copy           Copies ORIGINAL into the NEW database on the same server (runbook step 3.2): CREATE TABLE ... LIKE, the
+  migration-preview
+                 Lists what adoption's fork migration will change in the rows of DB, an Open Dental 25.3.48 database (runbook step
+                 0.2): the displayreport rows of Production by Procedure, Procedures (individual) and Insurance Pending
+                 Supplementals that Open Dental wrote under an internal name this program does not know, which step 2026101971
+                 renames (InternalName only); adopt's row check later requires exactly these renames. Read-only. Exit code 0.
+  copy         Copies ORIGINAL into the NEW database on the same server (runbook step 3.2): CREATE TABLE ... LIKE, the
                  AUTO_INCREMENT counters and INSERT ... SELECT, so the copy is exact (FLOAT values included) and no row leaves the
                  server. Refuses a name that exists, a missing original, the same name twice, any connection to either, and
                  views, triggers, routines or events it would not carry; then checks every table's row count and AUTO_INCREMENT.
   adopt          Adopts the copy without starting the program (runbook steps 4 and 5): Adoption.Preflight and Adoption.Run,
                  the fork migration with every step again, the schema verifier and SecurityHash.RehashNow, exactly as the rehearsal
                  does, then checks row by row against --original what adoption changed in preference, documentmisc, securitylog,
-                 securityloghash and updatehistory. Before it changes anything it checks that --confirm repeats --database, that
+                 securityloghash, displayreport and updatehistory. Before it changes anything it checks that --confirm repeats --database, that
                  --original is a different, unadopted Open Dental database, that nobody else is connected to either, and that a
                  copy not adopted yet has the original's tables and row counts. On a finished adoption it changes nothing but its
                  security log entry. If it stops or fails, do not run it again on that copy: drop the copy and make a new one
@@ -207,6 +213,14 @@ database server (runbook step 0.0). Exit codes: 0 pass, 1 error, 2 usage or refu
 						}
 						return floatResult.Total==0 ? ExitPass : ExitValidationFailed;
 					}
+				case "migration-preview":
+					RequireDatabase(database);
+					using(Db db=Db.Open(options.Server)) {
+						foreach(string line in MigrationPreview.Run(db,database).Lines()) {
+							log(line);
+						}
+					}
+					return ExitPass;
 				case "copy":
 					RequireDatabase(database);
 					if(string.IsNullOrEmpty(original)) {
@@ -342,8 +356,12 @@ database server (runbook step 0.0). Exit codes: 0 pass, 1 error, 2 usage or refu
 				return ExitError;
 			}
 			if(result.Passed) {
+				List<string> listRenames=result.RowCheck?.ListReportRenames??new List<string>();
 				Log("Adopt: PASS. "+database+" is adopted, matches Open Dental "+OpenDentBusiness.ForkMigrations.SchemaVerifier.ReferenceVersion
-					+", is rehashed, and changed only the rows adoption changes. Validate it now (runbook step 6.1), before anyone starts the program.");
+					+", is rehashed, and changed only the rows adoption changes (row check above"
+					+(listRenames.Count==0 ? "; the fork migration renamed no report row" : "; the fork migration renamed "+listRenames.Count+" report row(s), as "
+						+"migration-preview lists: "+string.Join("; ",listRenames))
+					+"). Validate it now (runbook step 6.1), before anyone starts the program.");
 				return ExitPass;
 			}
 			foreach(string failure in result.ListFailures) {

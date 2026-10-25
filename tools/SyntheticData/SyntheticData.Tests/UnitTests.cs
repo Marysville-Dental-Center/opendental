@@ -357,6 +357,31 @@ namespace SyntheticData.Tests {
 			Assert.IsTrue(list.Any(x => x.Table=="updatehistory" && x.Kind==DifferenceKind.RowsChanged && !x.IsAllowed));
 		}
 
+		///<summary>The fork migration renames report rows Open Dental wrote under names the fork does not know: only displayreport.InternalName is
+		///allowed to change (adopt's row check says which rows and to what), never another column of displayreport, nor its row count.</summary>
+		[TestMethod]
+		public void DisplayReportInternalName_IsAllowed_OtherDisplayReportChangesAreNot() {
+			ValidationReport before=Report();
+			TableReport reports=new TableReport { Name="displayreport",Rows=5,ChecksumTable="444" };
+			reports.Columns["InternalName"]="70";
+			reports.Columns["Description"]="80";
+			before.Tables.Add(reports);
+			ValidationReport after=Report();
+			TableReport reportsAfter=new TableReport { Name="displayreport",Rows=5,ChecksumTable="445" };
+			reportsAfter.Columns["InternalName"]="71";
+			reportsAfter.Columns["Description"]="80";
+			after.Tables.Add(reportsAfter);
+			List<Difference> list=ReportComparer.Compare(before,after,Adoption());
+			Assert.IsTrue(list.Where(x => x.Table=="displayreport").All(x => x.IsAllowed),ReportComparer.Format(list));
+			Assert.IsTrue(list.Any(x => x.Table=="displayreport" && x.Kind==DifferenceKind.ColumnChanged && x.Column=="InternalName"));
+			Assert.IsTrue(list.Any(x => x.Table=="displayreport" && x.Kind==DifferenceKind.ChecksumTableChanged && x.IsAllowed),"Explained by the rename.");
+			reportsAfter.Columns["Description"]="81";
+			reportsAfter.Rows=6;
+			list=ReportComparer.Compare(before,after,Adoption());
+			Assert.IsTrue(list.Any(x => x.Table=="displayreport" && x.Column=="Description" && !x.IsAllowed),ReportComparer.Format(list));
+			Assert.IsTrue(list.Any(x => x.Table=="displayreport" && x.Kind==DifferenceKind.RowsChanged && !x.IsAllowed),ReportComparer.Format(list));
+		}
+
 		///<summary>MariaDB writes a FLOAT as text with 6 significant digits, so the column checksum widens it to DOUBLE, which it writes exactly.</summary>
 		[TestMethod]
 		public void ColumnChecksum_ReadsFloatsExactly() {

@@ -51,6 +51,10 @@ namespace AdoptionValidation.Tests {
 			AssertThrows<ArgumentException>(() => Program.Run(new[] { "rehearse","--prefix","synth_rv" },listLog.Add));
 			AssertThrows<RefusedException>(() => Program.Run(new[] { "connections","--database","opendental","--server","192.168.10.10" },listLog.Add));
 			AssertThrows<RefusedException>(() => Program.Run(new[] { "float-check","--database","opendental","--server","fox-db" },listLog.Add));
+			AssertThrows<ArgumentException>(() => Program.Run(new[] { "migration-preview" },listLog.Add));
+			AssertThrows<RefusedException>(() => Program.Run(new[] { "migration-preview","--database","open;dental" },listLog.Add));
+			AssertThrows<RefusedException>(() => Program.Run(new[] { "migration-preview","--database","opendental","--server","fox-db" },listLog.Add));
+			StringAssert.Contains(Program.Usage,"migration-preview --database DB");
 			StringAssert.Contains(Program.Usage,"copy --original ORIGINAL --database NEW_DB");
 			StringAssert.Contains(Program.Usage,"connections --database DB");
 			StringAssert.Contains(Program.Usage,"float-check --database DB");
