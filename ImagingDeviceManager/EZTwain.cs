@@ -94,6 +94,7 @@ namespace ImagingDeviceManager {
 		///RestrictSources=1 in capture.ini, a source not listed in [Twain] AllowedSources is refused with a notice.</summary>
 		public static bool OpenDefaultSource() {
 			Session.ClearError();
+			CloseEnabledSourceFirst();
 			ApplyCaptureConfig();
 			return Session.OpenSource(null);
 		}
@@ -103,6 +104,7 @@ namespace ImagingDeviceManager {
 		///AllowedSources is refused with a notice.</summary>
 		public static bool OpenSource(string sourceName) {
 			Session.ClearError();
+			CloseEnabledSourceFirst();
 			ApplyCaptureConfig();
 			return Session.OpenSource(sourceName);
 		}
@@ -110,7 +112,7 @@ namespace ImagingDeviceManager {
 		///<summary>Closes the open source, discarding any images not yet transferred, and closes the Data Source Manager. The manager's
 		///library stays loaded for the next scan.</summary>
 		public static bool CloseSource() {
-			Session.CloseSource();
+			CloseSourceGuarded();
 			return true;
 		}
 
@@ -193,12 +195,26 @@ namespace ImagingDeviceManager {
 		#region Acquire
 		///<summary>Acquires one image and returns its handle, or IntPtr.Zero (check LastErrorCode: 19 means the user cancelled).
 		///Opens the default source if none is open. Runs modally: the top-level window containing hwnd is disabled until the
-		///scan ends. Unless SetMultiTransfer(true) was called, the source is closed afterwards. Free the handle with DIB_Free.</summary>
+		///scan ends; for a source opened by name (OpenSource), every visible window of the calling thread is (see
+		///DisableThreadWindowsDuringAcquire). Unless SetMultiTransfer(true) was called, the source is closed afterwards. Free the handle
+		///with DIB_Free.</summary>
 		public static IntPtr Acquire(IntPtr hwnd) {
+			return Acquire(hwnd,0);
+		}
+
+		///<summary>Acquire, for a caller that knows the patient the image will be filed under. patNum goes only into the sidecar of the
+		///journal copy of the image, for recovery; 0 means unknown.</summary>
+		public static IntPtr Acquire(IntPtr hwnd,long patNum) {
 			if(Session.State<4) {
 				ApplyCaptureConfig();//Acquire opens the default source.
 			}
-			DibImage dib=Session.Acquire(hwnd);
+			DibImage dib;
+			if(Session.State>=4 && Session.IsOpenedByName && !Session.IsAcquiring) {
+				dib=AcquireByName(hwnd,patNum);
+			}
+			else {
+				dib=Session.Acquire(hwnd);
+			}
 			return DibHandleTable.Add(dib);
 		}
 

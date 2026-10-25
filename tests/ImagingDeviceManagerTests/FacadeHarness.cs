@@ -45,6 +45,7 @@ namespace ImagingDeviceManager.Tests {
 			Host=new CaptureHost {
 				LoadConfig=() => LocalCaptureConfig.Load(PathConfig),
 				Ui=Ui,
+				ThreadWindows=new Win32ThreadWindowApi(),
 				AdjustSettings=settings => settings.RefusedDisableWait=TimeSpan.FromMilliseconds(2000),
 			};
 			EZTwain.Reset(Load,Host);

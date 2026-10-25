@@ -95,6 +95,24 @@ namespace ImagingDeviceManager.TwainProtocol {
 		public static extern bool SetForegroundWindow(IntPtr hWnd);
 
 		[DllImport("user32.dll")]
+		public static extern IntPtr GetForegroundWindow();
+
+		[DllImport("user32.dll")]
+		public static extern uint GetWindowThreadProcessId(IntPtr hWnd,out uint lpdwProcessId);
+
+		[DllImport("kernel32.dll")]
+		public static extern uint GetCurrentThreadId();
+
+		[DllImport("kernel32.dll")]
+		public static extern uint GetCurrentProcessId();
+
+		public delegate bool EnumWindowsProc(IntPtr hWnd,IntPtr lParam);
+
+		[DllImport("user32.dll")]
+		[return: MarshalAs(UnmanagedType.Bool)]
+		public static extern bool EnumThreadWindows(uint dwThreadId,EnumWindowsProc lpfn,IntPtr lParam);
+
+		[DllImport("user32.dll")]
 		public static extern UIntPtr SetTimer(IntPtr hWnd,UIntPtr nIDEvent,uint uElapse,IntPtr lpTimerFunc);
 
 		[DllImport("user32.dll")]
