@@ -28,6 +28,8 @@ namespace ImagingDeviceManager.TwainProtocol {
 		///<summary>On the by-name path, the window passed to Acquire when the source was enabled. Once it is destroyed (an automatic logoff
 		///closes the hidden parent form, for example), the acquisition stops and nothing more goes back to the caller.</summary>
 		private IntPtr _hwndWatched;
+		///<summary>When the [Twain] AcquireTimeoutMinutes stop is due (NowMs), while the loop waits for the notification. 0: none.</summary>
+		private long _acquireDeadlineMs;
 
 		///<summary>How often the message loop wakes up to check for stop requests, in milliseconds.</summary>
 		public int TickMilliseconds { get; set; }=200;
@@ -92,7 +94,37 @@ namespace ImagingDeviceManager.TwainProtocol {
 			if(_isCancelRequested) {
 				return TwainStopReason.Cancel;
 			}
+			if(_acquireDeadlineMs>0 && NowMs>=_acquireDeadlineMs) {
+				return TwainStopReason.Timeout;
+			}
 			return TwainStopReason.None;
+		}
+
+		///<summary>Before an enable: arms the optional acquire timeout (design 7.1, [Twain] AcquireTimeoutMinutes). It is honoured only on
+		///the by-name path, for single acquisitions (CAP_XFERCOUNT=1), of a source listed in [Twain] DisableIsSafeSources whose
+		///safe-disable MSG_SET succeeded, because only then can the library stop the source without losing an image. Otherwise the log
+		///says why it is not.</summary>
+		private void ArmAcquireTimeout(int xferCount) {
+			_acquireDeadlineMs=0;
+			TwainCaptureSettings settings=Settings??new TwainCaptureSettings();
+			if(settings.AcquireTimeout<=TimeSpan.Zero || !IsOpenedByName) {
+				return;
+			}
+			string reasonNotHonoured=null;
+			if(xferCount!=1) {
+				reasonNotHonoured="it applies to single acquisitions (CAP_XFERCOUNT=1) only";
+			}
+			else if(!settings.IsDisableSafeSource(SourceName)) {
+				reasonNotHonoured="the source is not listed in [Twain] DisableIsSafeSources";
+			}
+			else if(!IsSafeDisableInEffect) {
+				reasonNotHonoured="the source did not accept the safe-disable capability";
+			}
+			if(reasonNotHonoured!=null) {
+				Log("[Twain] AcquireTimeoutMinutes is not honoured for \""+SourceName+"\": "+reasonNotHonoured+".");
+				return;
+			}
+			_acquireDeadlineMs=NowMs+(long)settings.AcquireTimeout.TotalMilliseconds;
 		}
 
 		///<summary>Before an enable: on the by-name path, watch the window the caller passed (design 7.1 "Parent destroyed or logoff").
@@ -126,6 +158,10 @@ namespace ImagingDeviceManager.TwainProtocol {
 					return;
 				case TwainStopReason.Quit:
 					SetError(EZTwainErrorCode.EZTEC_USER_CANCEL,"The program is closing.");
+					return;
+				case TwainStopReason.Timeout:
+					SetError(EZTwainErrorCode.EZTEC_USER_CANCEL,"No image arrived within the acquire timeout ([Twain] AcquireTimeoutMinutes);"
+						+" the acquisition was stopped.");
 					return;
 				default:
 					SetError(EZTwainErrorCode.EZTEC_INTERNAL,"The acquisition stopped.");

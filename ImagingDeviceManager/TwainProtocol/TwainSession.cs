@@ -933,6 +933,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 				isShowUI=GetShowUIForSource(isShowUI);
 			}
 			SetSafeDisableCapability();
+			ArmAcquireTimeout(xferCount);
 			WatchParent(hwnd);
 			EndConditionCode=null;
 			EndConditionText=null;
@@ -946,6 +947,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 				dsMessage=RunMessageLoop();
 			}
 			finally {
+				_acquireDeadlineMs=0;//The timeout covers only the wait for the notification.
 				//Re-enable before the source's dialog closes so that Windows hands activation back to the program.
 				ReenableWindow(hwndDisabled);
 			}
