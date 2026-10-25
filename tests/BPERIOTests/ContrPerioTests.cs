@@ -39,11 +39,11 @@ namespace BPERIOTests {
 
 		///<summary>Creates the grid at 96 dpi with the patient's exams, selects one (the latest by default) and loads it, as FormPerio.FillGrid does.
 		///</summary>
-		private static ContrPerio LoadChart(int idxExam=-1,bool showCurrentOnly=true) {
+		private static ContrPerio LoadChart(int idxExam=-1,bool showCurrentOnly=true,Size? sizeControl=null) {
 			FormOpenDental.PatNumCur=PAT_NUM;//ContrPerio reads the patient's procedures for the implant marker.
 			ContrPerio contrPerio=new ContrPerio();
 			contrPerio.LayoutManager.Is96dpi=true;
-			contrPerio.Size=new Size(608,685);//as in FormPerio.designer.cs
+			contrPerio.Size=sizeControl??new Size(608,685);//default as in FormPerio.designer.cs
 			Assert.IsTrue(contrPerio.GetRectangleBoundsShowing().Height>2,"The grid was not laid out.");
 			contrPerio.ListPerioExams=PerioExams.Refresh(PAT_NUM);
 			contrPerio.ListPerioMeasures=PerioMeasures.GetForPatient(PAT_NUM);
@@ -109,6 +109,51 @@ namespace BPERIOTests {
 			//24.3: 642 at 96 dpi (FormPerio's print size). Each auto Att Ging row adds a 12 pixel row plus its line.
 			Assert.AreEqual(642+3*13,contrPerio.GetRectangleBoundsShowing().Height);
 			Assert.IsTrue(contrPerio.GetRectangleBoundsShowing().Height<=685,"The grid fits the 608x685 control in FormPerio.");
+		}
+
+		[TestMethod]
+		public void Layout_ClaimPerioAttachment_HoldsTheWholeGrid() {
+			//Claim Edit > Perio: FormClaimEdit.butAttachPerioHelper builds its own grid and draws it into a bitmap that becomes the claim attachment.
+			//The sizes are read from that code (96 dpi). The bottom row (the sixth exam's mandibular facial probing) and the bottom border must be in it.
+			PerioUiSourceTests.ClaimPerioAttachmentSizes sizes=PerioUiSourceTests.ReadClaimPerioAttachmentSizes();
+			long perioExamNum=0;
+			for(int i=0;i<6;i++) {
+				perioExamNum=InsertExam(DateTime.Today.AddDays(i-5));
+			}
+			InsertMeasure(perioExamNum,PerioSequenceType.Probing,30,b:2);
+			ContrPerio contrPerio=LoadChart(showCurrentOnly:false,sizeControl:sizes.SizeGrid);
+			float[] arrayRowPos=(float[])typeof(ContrPerio).GetField("_rowPosArray",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(contrPerio);
+			int rowProbing=contrPerio.GetTableRowForSection(contrPerio.GetSection(30,isFacial:true),PerioSequenceType.Probing);
+			Assert.AreEqual(arrayRowPos.Length-1,rowProbing,"The latest of six exams is the bottom row.");
+			Assert.AreEqual("2",contrPerio.GetCellText(Col(30,PerioSurf.B),rowProbing));
+			int yBottomBorder=contrPerio.GetRectangleBoundsShowing().Height-2;//the grid's bottom line, drawn at the full height of the rows
+			Assert.IsTrue(yBottomBorder<sizes.SizeBitmapGrid.Height,"The bottom border (y="+yBottomBorder+") is inside the "+sizes.SizeBitmapGrid.Height
+				+" pixel high bitmap.");
+			using Bitmap bitmap=new Bitmap(sizes.SizeBitmapGrid.Width,sizes.SizeBitmapGrid.Height);
+			using(Graphics g=Graphics.FromImage(bitmap)) {
+				contrPerio.DrawChart(g);
+			}
+			Color colorBorder=bitmap.GetPixel(bitmap.Width/2,yBottomBorder);
+			Assert.IsTrue(colorBorder.R<60 && colorBorder.G<60 && colorBorder.B<60,"The bottom border is drawn.");
+			//The claim's grid is read-only (AllowPerioEdit false), so its values are drawn gray. Negative control: an empty cell of the same row.
+			Assert.IsTrue(HasInkInCell(contrPerio,bitmap,Col(30,PerioSurf.B),rowProbing,yBottomBorder),"The probing depth in the bottom row is drawn.");
+			Assert.IsFalse(HasInkInCell(contrPerio,bitmap,Col(29,PerioSurf.B),rowProbing,yBottomBorder),"Negative control: tooth 29 has no probing.");
+		}
+
+		///<summary>True if anything darker than light gray is drawn inside the cell, between its grid lines.</summary>
+		private static bool HasInkInCell(ContrPerio contrPerio,Bitmap bitmap,int col,int row,int yBottomBorder) {
+			float[] arrayColPos=(float[])typeof(ContrPerio).GetField("_colPosArray",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(contrPerio);
+			float[] arrayRowPos=(float[])typeof(ContrPerio).GetField("_rowPosArray",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(contrPerio);
+			int bottom=row+1<arrayRowPos.Length ? (int)arrayRowPos[row+1] : yBottomBorder;
+			for(int x=(int)arrayColPos[col]+1;x<(int)arrayColPos[col+1];x++) {
+				for(int y=(int)arrayRowPos[row]+1;y<bottom;y++) {
+					Color color=bitmap.GetPixel(x,y);
+					if(color.R<200 && color.G<200 && color.B<200) {
+						return true;
+					}
+				}
+			}
+			return false;
 		}
 
 		[TestMethod]

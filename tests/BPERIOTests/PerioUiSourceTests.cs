@@ -3,6 +3,7 @@
 // itself (ContrPerio) is tested for real in ContrPerioTests.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
+using System.Drawing;
 using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -42,6 +43,64 @@ namespace BPERIOTests {
 			Match match=Regex.Match(designer,@"this\.contrPerio\.Size = new System\.Drawing\.Size\((\d+), (\d+)\);");
 			Assert.IsTrue(match.Success);
 			Assert.IsTrue(int.Parse(match.Groups[2].Value)>=642+3*13,"The 96 dpi grid with the auto Att Ging rows is 681 pixels high.");
+		}
+
+		[TestMethod]
+		public void ClaimEdit_PerioAttachmentIsTallEnoughForTheNewRows() {
+			//Claim Edit > Perio (and the Canadian attach perio button) builds its own grid and draws it into the image attached to the claim. With the
+			//24.3 sizes (grid bitmap 665 high) the bottom 16 pixels of the 681 pixel grid were cut off. ContrPerioTests draws the grid at these sizes.
+			ClaimPerioAttachmentSizes sizes=ReadClaimPerioAttachmentSizes();
+			Assert.IsTrue(sizes.SizeGrid.Height>=642+3*13,"Grid control height "+sizes.SizeGrid.Height);
+			Assert.IsTrue(sizes.SizeBitmapGrid.Height>=642+3*13,"Grid bitmap height "+sizes.SizeBitmapGrid.Height);
+			Assert.IsTrue(sizes.SizeBitmapImage.Height>=sizes.YGrid+sizes.SizeBitmapGrid.Height,
+				"The attached image ("+sizes.SizeBitmapImage.Height+" high) holds the whole grid bitmap below the name and practice title (y="+sizes.YGrid+").");
+			Assert.IsTrue(sizes.SizeBitmapImage.Width>=sizes.SizeBitmapGrid.Width);
+		}
+
+		///<summary>The 96 dpi sizes that FormClaimEdit.butAttachPerioHelper uses for the perio image attached to a claim: the grid control, the bitmap
+		///the grid is drawn into, the attached image, and the y position of the grid bitmap in that image.</summary>
+		internal class ClaimPerioAttachmentSizes {
+			public Size SizeGrid;
+			public Size SizeBitmapGrid;
+			public Size SizeBitmapImage;
+			public int YGrid;
+		}
+
+		///<summary>Reads the sizes from FormClaimEdit.butAttachPerioHelper. Sizes may be written as sums of products, such as 665+3*13.</summary>
+		internal static ClaimPerioAttachmentSizes ReadClaimPerioAttachmentSizes() {
+			string code=TestDb.ReadRepoFile("OpenDental","Forms","FormClaimEdit.cs");
+			int indexStart=code.IndexOf("private void butAttachPerioHelper() {",StringComparison.Ordinal);
+			Assert.IsTrue(indexStart>0,"FormClaimEdit.butAttachPerioHelper not found.");
+			int indexEnd=code.IndexOf("private void ",indexStart+1,StringComparison.Ordinal);
+			string method=code.Substring(indexStart,indexEnd-indexStart);
+			const string SIZE=@"\s*([0-9+*\s]+?)\s*";
+			ClaimPerioAttachmentSizes sizes=new ClaimPerioAttachmentSizes();
+			sizes.SizeGrid=MatchSize(method,@"contrPerioGrid\.Size\s*=\s*new System\.Drawing\.Size\("+SIZE+","+SIZE+@"\);");
+			sizes.SizeBitmapGrid=MatchSize(method,@"Bitmap bitmap\s*=\s*new Bitmap\(LayoutManager\.Scale\("+SIZE+@"\),\s*LayoutManager\.Scale\("+SIZE+@"\)\);");
+			sizes.SizeBitmapImage=MatchSize(method,@"Bitmap bitmapBig\s*=\s*new Bitmap\(LayoutManager\.Scale\("+SIZE+@"\),\s*LayoutManager\.Scale\("+SIZE+@"\)\);");
+			Point pointGrid=(Point)MatchSize(method,@"g\.DrawImage\(bitmap,"+SIZE+","+SIZE+@"\);");
+			Assert.AreEqual(0,pointGrid.X);
+			sizes.YGrid=pointGrid.Y;
+			return sizes;
+		}
+
+		private static Size MatchSize(string code,string pattern) {
+			Match match=Regex.Match(code,pattern);
+			Assert.IsTrue(match.Success,"Not found in FormClaimEdit.butAttachPerioHelper: "+pattern);
+			return new Size(EvaluateSum(match.Groups[1].Value),EvaluateSum(match.Groups[2].Value));
+		}
+
+		///<summary>Evaluates a sum of products of whole numbers, such as 665+3*13.</summary>
+		private static int EvaluateSum(string expression) {
+			int sum=0;
+			foreach(string term in expression.Split('+')) {
+				int product=1;
+				foreach(string factor in term.Split('*')) {
+					product*=int.Parse(factor.Trim());
+				}
+				sum+=product;
+			}
+			return sum;
 		}
 		#endregion Attached gingiva (v24_4-chart-perio-attached-gingiva)
 
