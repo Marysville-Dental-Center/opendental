@@ -1278,6 +1278,9 @@ namespace OpenDental {
 				return;
 			}
 			dateSearch.Text=formApptsOther.StringDateJumpTo;
+			if(!PrefC.GetBool(PrefName.AppointmentMakeRecallSearchesOpenings)) {//26.1: the appointment is only pinned.
+				return;
+			}
 			if(!groupSearch.Visible) {//if search not already visible
 				ShowSearch();
 			}
@@ -4394,6 +4397,10 @@ namespace OpenDental {
 						break;
 					}
 					dateSearch.Text=strDateJumpTo;
+					if(!PrefC.GetBool(PrefName.AppointmentMakeRecallSearchesOpenings)) {//26.1: the appointments are only pinned.
+						RefreshPeriod(listPinApptNums:listSelectedAptNums);
+						break;
+					}
 					if(!groupSearch.Visible) {//if search not already visible
 						ShowSearch();
 					}
