@@ -57,6 +57,13 @@ The three settings are fork-owned preference rows read with the new `PrefC.GetRa
 7. Middle Tier: a Middle Tier client sends no SQL, so its read delay starts when it inserts a signal (which follows most saves). The signal look-back is applied by the client (adjusted time sent to the server, duplicates dropped on return); the Middle Tier server never applies it to a client call, and its own cache polling (`DtoProcessor`) is not looked back.
 8. The look-back is not applied to `Signalods.GetCountForTypes` (shut-down and sites checks), so a shut-down signal is never counted twice.
 
+## Deviations from the spec
+
+1. Preference names: the spec proposes `ReportsIncompleteProcsAllNoNotes`, `ReplicationReadDelayMs` and `ReplicationSignalLookbackMs` (to verify against the office data). We store `Fork...` rows outside `PrefName` until Open Dental's keys are confirmed (see above), so no `Pref.cs` or `PrefInfos.xml` change was needed.
+2. Same-day box: the spec says to disable it while "Include all procedures with no notes" is checked. It is also checked while disabled (the option implies it), and its own state comes back when the new box is cleared.
+3. Report Server audit: beyond the spec's fix (`logentry+=` and mode switches), every field is now compared whatever the mode, and a password change is noted without the value.
+4. Incomplete Procedure Notes: the distinct-procedure count fix applies to all options, not only the new one (a 24.3 defect the tests found).
+
 ## Files touched
 
 Owned by B-SERVER:
@@ -86,6 +93,8 @@ Outside the owned list (each a minimal hook):
 - `PemPathLabelTests`: the three designer files have the label and `textSslCaPem` and no SkySQL wording; the code behind still saves the same stored values. (The GUI is not launched.)
 - `ReplicationDelayTests`: parsing and clamping, the delay window, stream keys, the look-back floor and second rounding, de-duplication per stream, pruning, turning it off.
 - `ReplicationDelayDbTests`: two scratch databases stand in for the main server and a replica (the read-only server connection is pointed at the replica). Settings round-trip (rows inserted once, clamped); reads go to the replica with the delay off, to the main server for exactly the delay after a write, and back afterwards; cache fills right after a save come from the main server; a late-arriving signal is missed with the write delay off and found exactly once with it on; both settings are ignored without a read-only server or replication servers.
+
+Checks on the final branch: build 0 errors, 376 warnings (baseline, none in the changed files); `BSERVERTests` 40/40, `RegistryTests` 33/33, `ReportTests` 28/28, `NoHqTests` 49/49; `tools/Test-NoHqHosts.ps1` passed. Not tested: the WinForms windows themselves (the GUI is not launched; the designer files are checked as text), and a real Middle Tier or a real replication pair (two scratch databases stand in for the main server and the replica).
 
 ## Interplay with packages built in parallel
 
