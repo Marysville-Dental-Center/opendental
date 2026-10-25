@@ -118,6 +118,49 @@ namespace ImagingTests {
 			Assert.IsTrue(listDeleteLogs.All(x => x.LogText.Contains("Preauth EOB deleted")));
 		}
 
+		///<summary>What every window that deletes a claim removes first (ClaimL.TryDeletePreAuthEobs): the preauth's own EOBs, oldest first. Another
+		///preauth keeps its EOBs, and a claim that is not a preauth never takes any, even when a row names its ClaimNum.</summary>
+		[TestMethod]
+		public void ClaimDelete_TakesOnlyThePreAuthsOwnEobs() {
+			Patient patient=ImagingDb.CreatePatient("pdel1");
+			Claim claimPreAuthA=Claims.GetClaim(ImagingDb.CreatePreAuth(patient,DateTime.Today.AddDays(-20)));
+			Claim claimPreAuthB=Claims.GetClaim(ImagingDb.CreatePreAuth(patient,DateTime.Today.AddDays(-10)));
+			Claim claimPreAuthNone=Claims.GetClaim(ImagingDb.CreatePreAuth(patient,DateTime.Today.AddDays(-5)));
+			Claim claimPrimary=Claims.GetClaim(Claims.Insert(new Claim { PatNum=patient.PatNum,ClaimType="P",ClaimStatus="S",
+				DateSent=DateTime.Today,DateService=DateTime.Today }));
+			InsertRawEob(0,claimPreAuthA.ClaimNum,DateTime.Today.AddDays(-2),"del1_a_newer.pdf");
+			InsertRawEob(0,claimPreAuthA.ClaimNum,DateTime.Today.AddDays(-9),"del1_a_older.pdf");
+			InsertRawEob(0,claimPreAuthB.ClaimNum,DateTime.Today.AddDays(-3),"del1_b.pdf");
+			InsertRawEob(0,claimPrimary.ClaimNum,DateTime.Today.AddDays(-1),"del1_not_a_preauth.pdf");
+			CollectionAssert.AreEqual(new[] { "del1_a_older.pdf","del1_a_newer.pdf" },
+				EobAttaches.GetForClaimDelete(claimPreAuthA).Select(x => x.FileName).ToArray(),"Oldest first.");
+			Assert.AreEqual("del1_b.pdf",EobAttaches.GetForClaimDelete(claimPreAuthB).Single().FileName);
+			Assert.AreEqual(0,EobAttaches.GetForClaimDelete(claimPreAuthNone).Count);
+			Assert.AreEqual(0,EobAttaches.GetForClaimDelete(claimPrimary).Count,"Only a preauth takes EOBs with it.");
+		}
+
+		///<summary>Deleting a preauth that has EOBs needs ImageDelete, and its date restriction is checked against the oldest EOB.</summary>
+		[TestMethod]
+		public void ClaimDelete_NeedsImageDeleteForTheOldestEob() {
+			Patient patient=ImagingDb.CreatePatient("pdel2");
+			long claimNum=ImagingDb.CreatePreAuth(patient,DateTime.Today.AddDays(-50));
+			InsertRawEob(0,claimNum,DateTime.Now.AddDays(-5),"del2_newer.pdf");
+			InsertRawEob(0,claimNum,DateTime.Now.AddDays(-40),"del2_older.pdf");
+			List<EobAttach> listEobAttaches=EobAttaches.GetForClaimDelete(Claims.GetClaim(claimNum));
+			Assert.AreEqual(2,listEobAttaches.Count);
+			List<EobAttach> listEobAttachesNewer=listEobAttaches.FindAll(x => x.FileName=="del2_newer.pdf");
+			ImagingDb.LogInWith(EnumPermType.ClaimDelete);
+			Assert.IsFalse(EobAttaches.IsAuthorizedToDeleteWithPreAuth(listEobAttaches),"ClaimDelete alone does not delete images.");
+			Assert.IsTrue(EobAttaches.IsAuthorizedToDeleteWithPreAuth(new List<EobAttach>()),"No EOBs, no ImageDelete needed.");
+			ImagingDb.LogInWithDays((EnumPermType.ClaimDelete,0),(EnumPermType.ImageDelete,30));
+			Assert.IsFalse(EobAttaches.IsAuthorizedToDeleteWithPreAuth(listEobAttaches),"The oldest EOB is past the 30-day limit.");
+			Assert.IsTrue(EobAttaches.IsAuthorizedToDeleteWithPreAuth(listEobAttachesNewer));
+			ImagingDb.LogInWithDays((EnumPermType.ClaimDelete,0),(EnumPermType.ImageDelete,60));
+			Assert.IsTrue(EobAttaches.IsAuthorizedToDeleteWithPreAuth(listEobAttaches));
+			ImagingDb.LogInWith(EnumPermType.ClaimDelete,EnumPermType.ImageDelete);
+			Assert.IsTrue(EobAttaches.IsAuthorizedToDeleteWithPreAuth(listEobAttaches),"No date restriction.");
+		}
+
 		[TestMethod]
 		public void Owner_ExactlyOne_NothingInsertedOtherwise() {
 			string path=MakeEobFile();

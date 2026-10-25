@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Text;
 
@@ -138,6 +139,28 @@ namespace OpenDentBusiness{
 				return false;
 			}
 			return (eobAttach.ClaimPaymentNum>0)!=(eobAttach.ClaimNumPreAuth>0) && eobAttach.ClaimPaymentNum>=0 && eobAttach.ClaimNumPreAuth>=0;
+		}
+
+		///<summary>The EOBs that have to be deleted along with this claim (Open Dental 25.2): the ones attached to it when it is a preauthorization,
+		///oldest first. Empty, without a query, for null and for every other claim type, so deleting an ordinary claim never touches eobattach.
+		///</summary>
+		public static List<EobAttach> GetForClaimDelete(Claim claim) {
+			Meth.NoCheckMiddleTierRole();
+			if(claim==null || claim.ClaimType!="PreAuth") {
+				return new List<EobAttach>();
+			}
+			return RefreshForPreAuth(claim.ClaimNum);
+		}
+
+		///<summary>Whether the current user may delete these EOBs along with their preauthorization: ImageDelete, with its date restriction checked
+		///against the oldest EOB's DateTCreated. True when there are none. Shows no message; the caller says why the delete is refused.</summary>
+		public static bool IsAuthorizedToDeleteWithPreAuth(List<EobAttach> listEobAttaches) {
+			Meth.NoCheckMiddleTierRole();
+			if(listEobAttaches==null || listEobAttaches.Count==0) {
+				return true;
+			}
+			DateTime dateTimeOldestEob=listEobAttaches.Min(x => x.DateTCreated);
+			return Security.IsAuthorized(EnumPermType.ImageDelete,dateTimeOldestEob,suppressMessage:true);
 		}
 
 		///<summary>Set the extension before calling.  Inserts a new eobattach into db, creates a filename based on EobAttachNum, and then updates the db with this filename.  Should always refresh the eobattach after calling this method in order to get the correct filename for RemotingRole.ClientWeb.</summary>

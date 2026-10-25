@@ -136,5 +136,21 @@ namespace ImagingTests {
 			Assert.AreEqual(0,EobAttaches.GetClaimNumPreAuth(new List<ClaimProc>()));
 			Assert.AreEqual(42,EobAttaches.GetClaimNumPreAuth(new List<ClaimProc> { null,new ClaimProc { ClaimNum=0 },new ClaimProc { ClaimNum=42 } }));
 		}
+
+		///<summary>Only a preauthorization takes EOBs with it when it is deleted. Every other claim is let through at once, without a query.</summary>
+		[TestMethod]
+		public void ClaimDelete_OnlyAPreAuthTakesEobsWithIt() {
+			Assert.AreEqual(0,EobAttaches.GetForClaimDelete(null).Count);
+			foreach(string claimType in new[] { "P","S","Tertiary","Med","Cap","Other","" }) {
+				Assert.AreEqual(0,EobAttaches.GetForClaimDelete(new Claim { ClaimNum=42,ClaimType=claimType }).Count,"ClaimType "+claimType);
+			}
+			Assert.AreEqual(0,EobAttaches.GetForClaimDelete(new Claim { ClaimNum=0,ClaimType="PreAuth" }).Count,"An unsaved preauth has none.");
+		}
+
+		[TestMethod]
+		public void ClaimDelete_NoEobsNeedsNoImageDelete() {
+			Assert.IsTrue(EobAttaches.IsAuthorizedToDeleteWithPreAuth(null));
+			Assert.IsTrue(EobAttaches.IsAuthorizedToDeleteWithPreAuth(new List<EobAttach>()));
+		}
 	}
 }
