@@ -4538,7 +4538,7 @@ namespace OpenDental{
 				case "System":
 					return "JP";
 				case "Code":
-					return _listClaimProcs[procIndex].CodeSent;
+					return ProcCodesOther.GetCodeForClaim(_listClaimProcs[procIndex].CodeSent,procedureCode);//RAMQ codes print without their trailing R.
 				case "Fee":
 					decimal totalProcFees=(decimal)_listClaimProcs[procIndex].FeeBilled;
 					if(CultureInfo.CurrentCulture.Name.EndsWith("CA")) {//Canadian. en-CA or fr-CA
