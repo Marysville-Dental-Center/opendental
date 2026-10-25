@@ -2860,15 +2860,18 @@ namespace OpenDental {
 
 		///<summary></summary>
 		private void butPin_Click(object sender,EventArgs e) {
-			if(!Security.IsAuthorized(EnumPermType.AppointmentMove)) {
-				return;
-			}
 			if(gridPlanned.SelectedIndices.Length==0) {
 				MsgBox.Show(this,"Please select an item first");
 				return;
 			}
 			if(Pd.Patient.PatStatus.In(PatientStatus.Archived,PatientStatus.Deceased)) {
 				MsgBox.Show(this,"Appointments cannot be scheduled for "+Pd.Patient.PatStatus.ToString().ToLower()+" patients.");
+				return;
+			}
+			//25.3: pinning a planned appointment copies it and needs no Appointment Move; a row whose scheduled appointment would be moved does.
+			if(gridPlanned.SelectedIndices.Any(x => ApptPermissionRules.IsPlannedRowPinAMove((ApptStatus)PIn.Long(_listDataRowsPlannedAppts[x]["AptStatus"].ToString())))
+				&& !Security.IsAuthorized(EnumPermType.AppointmentMove))
+			{
 				return;
 			}
 			List<long> listAptNums=new List<long>();
