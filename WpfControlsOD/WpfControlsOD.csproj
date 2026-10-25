@@ -126,6 +126,8 @@
     <Compile Include="Bridges\Carestream.cs" />
     <Compile Include="Bridges\Cerec.cs" />
     <Compile Include="Bridges\CleaRay.cs" />
+    <Compile Include="Bridges\Clerri.cs" />
+    <Compile Include="Bridges\CleverOne.cs" />
     <Compile Include="Bridges\Cliniview.cs" />
     <Compile Include="Bridges\ClioSoft.cs" />
     <Compile Include="Bridges\DBSWin.cs" />

@@ -100,6 +100,14 @@ namespace WpfControls {
 				CleaRay.SendData(program,patient);
 				return;
 			}
+			else if(program.ProgName==ProgramName.Clerri.ToString()) {
+				Clerri.SendData(program,patient);
+				return;
+			}
+			else if(program.ProgName==ProgramName.CleverOne.ToString()) {
+				CleverOne.SendData(program,patient);
+				return;
+			}
 			else if(program.ProgName==ProgramName.CliniView.ToString()) {
 				Cliniview.SendData(program,patient);
 				return;
