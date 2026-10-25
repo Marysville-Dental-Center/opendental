@@ -14,9 +14,29 @@ namespace ImagingDeviceManager.Tests {
 	///<summary>Records what the library would show the operator.</summary>
 	internal sealed class RecordingCaptureUi:ICaptureUi {
 		public readonly List<string> ListNotices=new List<string>();
+		public readonly List<RecordedStatus> ListStatus=new List<RecordedStatus>();
+
+		///<summary>A status window that was shown.</summary>
+		public sealed class RecordedStatus:IAcquireStatusView {
+			public AcquireStatusController Controller;
+			public bool IsClosed;
+
+			public void Close() {
+				IsClosed=true;
+			}
+		}
+
+		///<summary>The last status window shown, or null.</summary>
+		public RecordedStatus StatusLast => ListStatus.LastOrDefault();
 
 		public void ShowNotice(string text) {
 			ListNotices.Add(text);
+		}
+
+		public IAcquireStatusView ShowStatus(AcquireStatusController controller) {
+			RecordedStatus recordedStatus=new RecordedStatus { Controller=controller };
+			ListStatus.Add(recordedStatus);
+			return recordedStatus;
 		}
 
 		public bool IsLibraryWindow(IntPtr hwnd) {

@@ -23,6 +23,19 @@ namespace ImagingDeviceManager.UI {
 			}
 		}
 
+		public IAcquireStatusView ShowStatus(AcquireStatusController controller) {
+			try {
+				AcquireStatusWindow window=new AcquireStatusWindow(controller);
+				Track(window.Handle,window);
+				window.Show();
+				return window;
+			}
+			catch(Exception ex) {
+				Trace.WriteLine("ImagingDeviceManager: the acquisition status window could not be shown: "+ex.Message);
+				return null;
+			}
+		}
+
 		public bool IsLibraryWindow(IntPtr hwnd) {
 			return hwnd!=IntPtr.Zero && _hashSetWindows.Contains(hwnd);
 		}

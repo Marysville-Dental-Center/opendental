@@ -55,7 +55,7 @@ namespace ImagingDeviceManager {
 			TwainSession session=Session;
 			DeviceAcquireScope scope=null;
 			if(session.State<6 && IsThreadModalInEffect()) {
-				scope=DeviceAcquireScope.Begin(Host,LogCapture);
+				scope=DeviceAcquireScope.Begin(Host,session,null,LogCapture);
 			}
 			try {
 				return session.Acquire(hwnd);
@@ -71,7 +71,7 @@ namespace ImagingDeviceManager {
 			TwainSession session=Session;
 			DeviceAcquireScope scope=null;
 			if(session.State>=5 && session.IsOpenedByName && !session.IsAcquiring && IsThreadModalInEffect()) {
-				scope=DeviceAcquireScope.Begin(Host,LogCapture);
+				scope=DeviceAcquireScope.Begin(Host,session,null,LogCapture);
 			}
 			try {
 				session.CloseSource();

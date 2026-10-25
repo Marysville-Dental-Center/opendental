@@ -57,6 +57,10 @@ namespace ImagingDeviceManager.Acquire {
 		public void ShowNotice(string text) {
 		}
 
+		public IAcquireStatusView ShowStatus(AcquireStatusController controller) {
+			return null;
+		}
+
 		public bool IsLibraryWindow(IntPtr hwnd) {
 			return false;
 		}
