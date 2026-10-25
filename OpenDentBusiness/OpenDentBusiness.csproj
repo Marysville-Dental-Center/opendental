@@ -487,6 +487,7 @@
     <Compile Include="InternalTools\Cloud\Crud\CloudBillingCrud.cs" />
     <Compile Include="InternalTools\Cloud\TableTypes\CloudBilling.cs" />
     <Compile Include="Data Interface\BugSubmissions.cs" />
+    <Compile Include="Misc\LocalDiagnostics.cs" />
     <Compile Include="Data Interface\ClaimTrackings.cs" />
     <Compile Include="Data Interface\ClinicErxs.cs" />
     <Compile Include="Data Interface\CommOptOuts.cs" />
