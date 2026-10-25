@@ -31,6 +31,9 @@ namespace OpenDental{
 			this.label11 = new System.Windows.Forms.Label();
 			this.groupBox3 = new OpenDental.UI.GroupBox();
 			this.checkBillingEmailIncludeAutograph = new OpenDental.UI.CheckBox();
+			this.labelBillingEmailType = new System.Windows.Forms.Label();
+			this.comboBillingEmailType = new OpenDental.UI.ComboBox();
+			this.butBillingEmailEditHtml = new OpenDental.UI.Button();
 			this.textBillingEmailBody = new OpenDental.ODtextBox();
 			this.label8 = new System.Windows.Forms.Label();
 			this.label9 = new System.Windows.Forms.Label();
@@ -134,6 +137,9 @@ namespace OpenDental{
 			// 
 			this.groupBox3.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
+			this.groupBox3.Controls.Add(this.butBillingEmailEditHtml);
+			this.groupBox3.Controls.Add(this.comboBillingEmailType);
+			this.groupBox3.Controls.Add(this.labelBillingEmailType);
 			this.groupBox3.Controls.Add(this.checkBillingEmailIncludeAutograph);
 			this.groupBox3.Controls.Add(this.textBillingEmailBody);
 			this.groupBox3.Controls.Add(this.label8);
@@ -145,6 +151,31 @@ namespace OpenDental{
 			this.groupBox3.Size = new System.Drawing.Size(850, 200);
 			this.groupBox3.TabIndex = 248;
 			this.groupBox3.Text = "Email Statements";
+			// 
+			// labelBillingEmailType
+			// 
+			this.labelBillingEmailType.Location = new System.Drawing.Point(296, 177);
+			this.labelBillingEmailType.Name = "labelBillingEmailType";
+			this.labelBillingEmailType.Size = new System.Drawing.Size(94, 18);
+			this.labelBillingEmailType.TabIndex = 266;
+			this.labelBillingEmailType.Text = "Email type";
+			this.labelBillingEmailType.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			// 
+			// comboBillingEmailType
+			// 
+			this.comboBillingEmailType.Location = new System.Drawing.Point(392, 176);
+			this.comboBillingEmailType.Name = "comboBillingEmailType";
+			this.comboBillingEmailType.Size = new System.Drawing.Size(140, 21);
+			this.comboBillingEmailType.TabIndex = 267;
+			// 
+			// butBillingEmailEditHtml
+			// 
+			this.butBillingEmailEditHtml.Location = new System.Drawing.Point(540, 174);
+			this.butBillingEmailEditHtml.Name = "butBillingEmailEditHtml";
+			this.butBillingEmailEditHtml.Size = new System.Drawing.Size(100, 24);
+			this.butBillingEmailEditHtml.TabIndex = 268;
+			this.butBillingEmailEditHtml.Text = "Edit HTML...";
+			this.butBillingEmailEditHtml.Click += new System.EventHandler(this.butBillingEmailEditHtml_Click);
 			// 
 			// checkBillingEmailIncludeAutograph
 			// 
@@ -166,7 +197,7 @@ namespace OpenDental{
 			this.textBillingEmailBody.Name = "textBillingEmailBody";
 			this.textBillingEmailBody.QuickPasteType = OpenDentBusiness.EnumQuickPasteType.Statement;
 			this.textBillingEmailBody.ScrollBars = System.Windows.Forms.RichTextBoxScrollBars.Vertical;
-			this.textBillingEmailBody.Size = new System.Drawing.Size(827, 76);
+			this.textBillingEmailBody.Size = new System.Drawing.Size(827, 72);
 			this.textBillingEmailBody.TabIndex = 1;
 			this.textBillingEmailBody.Text = "";
 			// 
@@ -622,5 +653,8 @@ namespace OpenDental{
 		private OpenDental.UI.CheckBox checkIncludeAdjust;
 		private OpenDental.UI.CheckBox checkIncludeClinicNum;
 		private UI.CheckBox checkBillingEmailIncludeAutograph;
+		private System.Windows.Forms.Label labelBillingEmailType;
+		private UI.ComboBox comboBillingEmailType;
+		private UI.Button butBillingEmailEditHtml;
 	}
 }
