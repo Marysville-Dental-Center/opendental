@@ -1,5 +1,5 @@
-// Integration tests for B-TIME against a scratch MariaDB database on this computer. The database gets the Open Dental 25.3.48 schema from the
-// reference snapshot embedded in OpenDentBusiness (SchemaVerifier) and is filled with synthetic rows only. The tests are skipped (inconclusive)
+// Integration tests for B-TIME against a scratch MariaDB database on this computer. The database gets the current reference schema
+// (SchemaVerifier.GetReference(), the one the CRUD matches) from the snapshot embedded in OpenDentBusiness and is filled with synthetic rows only. The tests are skipped (inconclusive)
 // when no server answers at 127.0.0.1:3306 as root with a blank password, or when BTIME_TEST_DB=skip.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
@@ -45,7 +45,7 @@ namespace BTIMETests {
 			//The server answers, so from here on a failure is a real failure, not a reason to skip.
 			using(MySqlConnection connection=new MySqlConnection(CONNECTION+";Database="+_dbName)) {
 				connection.Open();
-				foreach(SchemaTable table in SchemaVerifier.GetReference25_3_48().Tables) {
+				foreach(SchemaTable table in SchemaVerifier.GetReference().Tables) {
 					Exec(connection,table.ToDdl());
 				}
 			}

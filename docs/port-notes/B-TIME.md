@@ -90,3 +90,7 @@ Not tested: the WinForms windows themselves (the desktop client is never launche
 2. Should Reports To also list the supervisor themselves, or indirect reports?
 3. Should the Reports To choice be saved between sessions (needs a new `UserOdFkeyType` value from the registry owner)?
 4. Should Manage Time Cards get the Reports To filter and print its time cards with the single-format totals row?
+
+## Integration (branch `port/int-2`)
+
+- `TimeClockDbTests` built its scratch database from `SchemaVerifier.GetReference25_3_48()`. On top of the foundation (M2-01) the generated `EmployeeCrud` writes the 26.1 column `employee.Title`, so the two tests that insert an employee failed with "Unknown column 'Title'". The scratch database now uses `SchemaVerifier.GetReference()` (26.1.70), the schema the CRUD matches, as BPERIOTests does since `port/int-1`. No test was changed or removed.

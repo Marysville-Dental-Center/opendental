@@ -3,8 +3,8 @@
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <!-- Tests for the time clock and time cards (package B-TIME in docs/specs/port-backlog.md): the Time Card window's Totals for Period grid in
        decimal and colon format (v25_1-manage-timecard-totals-grid) and the Reports To filter of the Manage module time clock
-       (v25_3-manage-timeclock-reportsto). Database tests use a scratch MariaDB database with the Open Dental 25.3.48 schema and synthetic rows
-       only. Every .cs file under this folder is compiled. -->
+       (v25_3-manage-timeclock-reportsto). Database tests use a scratch MariaDB database with the current reference schema (Open Dental 26.1.70)
+       and synthetic rows only. Every .cs file under this folder is compiled. -->
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
