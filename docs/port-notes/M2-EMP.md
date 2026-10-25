@@ -1,6 +1,6 @@
 # Port note: M2-EMP, employee titles and future clock-outs
 
-Branch `port/m2-emp`, built from `port/foundation` (which already holds M2-01's 26.1 schema and CRUD and M2-02's 26.1 registries) in the single-wave run. Backlog section: [port-backlog.md, M2-EMP](../specs/port-backlog.md#m2-emp-employee-titles-and-future-clock-outs). Feature specs: [features-26.1.md](../specs/features-26.1.md) (`v26_1-manage-timecard-future-clockout`, `v26_1-lists-employee-title`). No fork migration step: the schema (`employee.Title` and its key) comes from M2-01, the definition category setup from M2-02. Level range 2027004101 to 2027004199 is unused.
+Branch `port/m2-emp` (fix round s1 on `port/m2-emp-s1`: the printed time card), built from `port/foundation` (which already holds M2-01's 26.1 schema and CRUD and M2-02's 26.1 registries) in the single-wave run. Backlog section: [port-backlog.md, M2-EMP](../specs/port-backlog.md#m2-emp-employee-titles-and-future-clock-outs). Feature specs: [features-26.1.md](../specs/features-26.1.md) (`v26_1-manage-timecard-future-clockout`, `v26_1-lists-employee-title`). No fork migration step: the schema (`employee.Title` and its key) comes from M2-01, the definition category setup from M2-02. Level range 2027004101 to 2027004199 is unused.
 
 Sources: the public 26.1 and 26.2 release notes the specs cite, the published 26.1 database documents (names and numbers only), and the 24.3 code of this fork. No Open Dental binary or install was used, and no documentation text was copied.
 
@@ -32,6 +32,12 @@ Sources: the public 26.1 and 26.2 release notes the specs cite, the published 26
 - **Clock buttons** (`ClockEvents`): an event whose clock-out is still ahead counts as clocked in. `IsClockedIn` returns true; `ClockIn` refuses ("Already clocked in until ...") instead of starting a second, overlapping event; `ClockOut` for Home or Lunch replaces the entered clock-out with now (the employee leaves earlier than entered), and a Break starts a break as usual.
 - **Manage module** (`ControlManage.SelectEmpI`, one-line hook): for such an event the Clock Out button and status list are enabled and Clock In is disabled, as for any clocked-in employee.
 - **Time card** (`FormTimeCard`): the Out column (In for breaks) shows the date in front of the time when it falls on a later date than the clock-in, and widens only when some row needs that. Totals count the stored times as they are.
+- **Printed time card** (`FormTimeCard.pd_PrintPage`, fix round s1): the printout draws every cell one line high, and its Out/In column is 60 units (hundredths of an inch). The first build printed the screen's "10/26/2026 6:00 AM" there, which wrapped at the space and left only the date on paper, for overnight shifts of 24.3 data too. Now:
+  1. A clock event's second time prints time first, then the date of a later day ("6:00 AM 10/26/2026", `ClockEvents.GetSecondTimePrintText`), through the new `GetPrintCellText`. Same-day rows print the time alone, as in 24.3.
+  2. When some event shows such a date, the Out/In column widens until the widest of those texts fits, measured with the print font, and the Note column (the last one) gives up the same width, so the printout keeps its total width inside the margins (`ClockEvents.GetSecondTimePrintWidthMoved`). The Note column keeps at least 30 units, room for its header.
+  3. Without later-day rows nothing changes: same widths and text as 24.3.
+
+  On en-US the whole text fits without clinics (Note 130 becomes about 70, or about 55 with seconds). With clinics (Note 80) the column grows by at most 50, so a long one such as "11:59 PM 12/31/2026" wraps its date away. The time still prints in full, because it comes first.
 
 ## Files touched
 
@@ -52,12 +58,13 @@ Nothing public describes Open Dental's 26.1 rules for future clock-outs or the t
 - Security log: one entry per save of a future clock-out whose times changed, under TimecardsEditAll. The spec says "as clock-event edits are logged today", but 24.3 logs only clock-event deletes, so this entry is new and limited to future clock-outs.
 - The "now" for the clock buttons follows `LocalTimeOverridesServerTime`, like the stamps `ClockIn` and `ClockOut` write.
 - Employees list: the Title column sits after "MI", 100 pixels wide; the search box does not search titles (display only).
+- Printed time card: the date of a later-day second time follows the time (the screen puts it first, where right alignment lines the times up). The room comes from the Note column only, down to 30 units; Clinic and the other columns keep their 24.3 widths.
 
 ## Deviations from the spec
 
 - Rule 5 ("still shows as clocked in"): shown as "Manual Entry", see above.
 - Confirmation text: one added sentence, see above.
-- `FormTimeCard` gained the later-date display; the spec lists the file as a touchpoint without saying what changes.
+- `FormTimeCard` gained the later-date display, on screen and on paper; the spec lists the file as a touchpoint without saying what changes.
 - `ControlManage.cs` is not in the package's owned list; the one-line hook keeps the Manage module's buttons consistent with rule 5.
 
 ## Interplay with packages built at the same time
@@ -71,12 +78,12 @@ Nothing public describes Open Dental's 26.1 rules for future clock-outs or the t
 
 New project `tests/M2EMPTests` (MSTest v1, x86, .NET 4.8; in `OpenDental.sln` and `OpenDental.Local.slnf`):
 
-- `FutureClockOutTests`: the date rules (tomorrow with and without TimecardsEditAll, breaks, changing to or from a break, clock-in tomorrow, today and earlier), `HasFutureClockOut`, the time card cell text and column width, the log text.
+- `FutureClockOutTests`: the date rules (tomorrow with and without TimecardsEditAll, breaks, changing to or from a break, clock-in tomorrow, today and earlier), `HasFutureClockOut`, the time card cell text and column width, the log text. The printed time card: the print text (time first), the width moved from the Note column (none without a later-day row, rounding, never negative, the Note minimum), and a measurement with the real print font in printer units on en-US. That last test shows the first build's text leaving only the date in the 60-unit column. It then checks that the clock-out time always prints in full, and that without clinics the date fits too, with and without seconds.
 - `EmployeeTitleTests`: DefCat 56, picker contents (order, hidden only when current, other categories and missing numbers), title text with "(hidden)".
 - `EmployeeClockDbTests`: scratch MariaDB database with the 26.1.70 reference schema and a unique per-run name (`m2emp_<time>_<pid>_<random>_emp`), dropped afterwards: title save and load through `Employees`, title text and picker from the cache, in-use title cannot be deleted, `UpdateClockStatus` with a clock-out tomorrow ("Manual Entry", where 24.3 said "Home") and with past clock-outs (unchanged), clock in refused and clock out replacing the entered clock-out, past clock-outs unchanged, stored times kept.
-- `WindowHookTests`: source checks that the windows call these rules (the program is never started).
+- `WindowHookTests`: source checks that the windows call these rules (the program is never started), including that `pd_PrintPage` widens the Out/In column before laying out the columns and prints every cell through `GetPrintCellText`.
 
-Targeted run: `M2EMPTests` and `M202Tests` (Employee Titles definition rules), plus `NoHqTests` from the shared runner. Not tested: the windows themselves (no GUI run), and the Manage module buttons beyond the source check.
+Targeted run: `M2EMPTests` and `M202Tests` (Employee Titles definition rules), plus `NoHqTests` from the shared runner. Not tested: the windows themselves (no GUI run), an actual printout (the print test measures with a screen graphics object set to printer units, not a printer), and the Manage module buttons beyond the source check.
 
 ## Questions for the owner
 
@@ -84,3 +91,4 @@ Targeted run: `M2EMPTests` and `M202Tests` (Employee Titles definition rules), p
 2. A clock-out on a later day always spans two dates, which Calc Daily reports as an error. Is that acceptable, or should future clock-outs be limited to later today (which 24.3 already allowed) plus overnight shifts?
 3. Should every clock-event edit be logged with old and new times (the spec assumed it already was), or only future clock-outs as now?
 4. Should the Employees list search box also match titles?
+5. Printed time card with clinics: should the Clinic column also give room, so a long later-day date always prints in full, or is the time alone acceptable there?
