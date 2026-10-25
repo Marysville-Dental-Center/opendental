@@ -35,7 +35,10 @@ namespace OpenDentBusiness {
 		///claimproc attached to a claim for their procedures, those claims and the received ones, and the patients' patplans. Rules for each received
 		///claim R (not a preauthorization) with ordinal r:
 		///1. Candidates: other claims of R's patient, not preauthorizations, with a claimproc (not a preauth claimproc) on one of R's procedures, and
-		///an ordinal above r.
+		///an ordinal above r. Exception kept from 24.3: when R is a primary claim (type P), a secondary claim (type S) is always a candidate and
+		///comes directly after R, ahead of any other later insurance, even when its current ordinal is not above r. Ordinals are today's patplans,
+		///so they can disagree with the claims: dropping the primary plan (PatPlans.Delete) moves the secondary plan to ordinal 1, the ordinal the
+		///dropped primary claim falls back to, and plans can be reordered after their claims were made.
 		///2. The next ordinal is the lowest candidate ordinal whose claim is not received yet. A later insurance that already received the procedures
 		///is passed over (claims received out of order); a later insurance with no claim for them (for example a medical plan between two dental
 		///plans) is never a candidate.
@@ -70,31 +73,39 @@ namespace OpenDentBusiness {
 					&& listProcNums.Contains(x.ProcNum));
 				List<long> listClaimNumsOthers=listClaimProcsOthers.Select(x => x.ClaimNum).Distinct().ToList();
 				List<Claim> listClaimsCandidates=new List<Claim>();
-				List<int> listOrdinalsCandidates=new List<int>();
+				//The place of each candidate after R: twice its ordinal, so that a secondary claim placed directly after a primary R (an odd rank)
+				//never shares its place with the claim of a later insurance.
+				List<int> listRanksCandidates=new List<int>();
 				for(int c=0;c<listClaimNumsOthers.Count;c++) {
 					Claim claim=listClaims.Find(x => x.ClaimNum==listClaimNumsOthers[c]);
 					if(claim==null || claim.ClaimType=="PreAuth" || claim.PatNum!=claimReceived.PatNum) {
 						continue;
 					}
 					int ordinal=GetClaimOrdinal(claim,listPatPlansForPat);
+					int rank=ordinal*2;
 					if(ordinal<=ordinalReceived) {
-						continue;
+						if(claimReceived.ClaimType!="P" || claim.ClaimType!="S") {
+							continue;
+						}
+						//24.3 offered every unsent secondary claim after a primary claim, whatever the ordinals. For example the primary plan was dropped
+						//after its claims were made: the secondary plan is ordinal 1 now, the same as the dropped primary claim's fallback.
+						rank=ordinalReceived*2+1;
 					}
 					listClaimsCandidates.Add(claim);
-					listOrdinalsCandidates.Add(ordinal);
+					listRanksCandidates.Add(rank);
 				}
-				int ordinalNext=int.MaxValue;
+				int rankNext=int.MaxValue;
 				for(int c=0;c<listClaimsCandidates.Count;c++) {
-					if(listClaimsCandidates[c].ClaimStatus!="R" && listOrdinalsCandidates[c]<ordinalNext) {
-						ordinalNext=listOrdinalsCandidates[c];
+					if(listClaimsCandidates[c].ClaimStatus!="R" && listRanksCandidates[c]<rankNext) {
+						rankNext=listRanksCandidates[c];
 					}
 				}
-				if(ordinalNext==int.MaxValue) {
+				if(rankNext==int.MaxValue) {
 					continue;//Every later insurance has received these procedures already, or there is none.
 				}
 				for(int c=0;c<listClaimsCandidates.Count;c++) {
 					Claim claim=listClaimsCandidates[c];
-					if(listOrdinalsCandidates[c]!=ordinalNext || !listStatuses.Contains(claim.ClaimStatus)) {
+					if(listRanksCandidates[c]!=rankNext || !listStatuses.Contains(claim.ClaimStatus)) {
 						continue;
 					}
 					if(!listClaimProcsOthers.Any(x => x.ClaimNum==claim.ClaimNum && x.Status==ClaimProcStatus.NotReceived)) {
@@ -111,7 +122,8 @@ namespace OpenDentBusiness {
 
 		///<summary>The claim's insurance ordinal: the patient's patplan for the claim's InsSubNum (1 for the first insurance). When that patplan is
 		///gone (the plan was dropped after the claim was made), primary claims count as 1 and secondary claims as 2; anything else returns 0
-		///(unknown).</summary>
+		///(unknown). Dropping a plan moves the later plans up one ordinal, so this can equal a later claim's ordinal; SelectNextOrdinalClaims keeps
+		///secondary claims after a received primary claim in that case.</summary>
 		public static int GetClaimOrdinal(Claim claim,List<PatPlan> listPatPlansForPat) {
 			Meth.NoCheckMiddleTierRole();
 			if(claim==null) {

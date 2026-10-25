@@ -103,6 +103,29 @@ namespace M2CLAIMRCVTests {
 		}
 
 		[TestMethod]
+		public void PrimaryPlanDropped_SecondaryClaimIsStillOfferedAndRecalculated() {
+			Family family=Family.Dental(3);
+			Claim claimPrimary=family.AddClaim(1,"P","R",ClaimProcStatus.Received,0);
+			Claim claimSecondary=family.AddClaim(2,"S","H",ClaimProcStatus.NotReceived,0);
+			Claim claimTertiary=family.AddClaim(3,"Other","H",ClaimProcStatus.NotReceived,0);
+			//The office drops the primary plan (FormInsPlan's Drop) while its claim is still outstanding; the later plans move up one ordinal.
+			PatPlan patPlanPrimary=PatPlans.Refresh(family.Patient.PatNum).Find(x => x.InsSubNum==family.ListInsSubs[0].InsSubNum);
+			PatPlans.Delete(patPlanPrimary.PatPlanNum);
+			List<PatPlan> listPatPlans=PatPlans.Refresh(family.Patient.PatNum);
+			Assert.AreEqual(2,listPatPlans.Count);
+			Assert.AreEqual(1,listPatPlans.Find(x => x.InsSubNum==family.ListInsSubs[1].InsSubNum).Ordinal,"The secondary plan is ordinal 1 now.");
+			Assert.AreEqual(2,listPatPlans.Find(x => x.InsSubNum==family.ListInsSubs[2].InsSubNum).Ordinal);
+			List<ClaimProc> listClaimProcs=ClaimProcs.RefreshForClaim(claimPrimary.ClaimNum);
+			Assert.IsTrue(listClaimProcs.Count>0,"The dropped plan's claim keeps its claimprocs.");
+			//Edit Claim's prompt, the ERA claim payment window and the ERA automation (which moves these claims to Waiting to Send) use this lookup.
+			CollectionAssert.AreEqual(new List<long> { claimSecondary.ClaimNum },Nums(Claims.GetPrimaryOrSecondaryClaimsNotReceived(listClaimProcs)),
+				"As in 24.3, the secondary claim is offered after the dropped primary claim is received; the tertiary claim waits.");
+			Claims.CalculateAndUpdateSecondariesFromPrimaries(new List<Claim> { Claims.GetClaim(claimPrimary.ClaimNum) });
+			Assert.AreEqual(100,Claims.GetClaim(claimSecondary.ClaimNum).ClaimFee,0.001,"The secondary claim's totals were recalculated.");
+			Assert.AreEqual(999,Claims.GetClaim(claimTertiary.ClaimNum).ClaimFee,0.001,"The tertiary claim waits for the secondary claim.");
+		}
+
+		[TestMethod]
 		public void FifthInsurance_AfterTheFourth() {
 			Family family=Family.Dental(5);
 			for(int ordinal=1;ordinal<=3;ordinal++) {

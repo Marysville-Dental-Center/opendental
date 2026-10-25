@@ -203,7 +203,8 @@ namespace M2CLAIMRCVTests {
 		[TestMethod]
 		public void DroppedPlan_FallsBackToTheClaimType() {
 			Rows rows=new Rows(2);
-			//The primary claim's plan was dropped and is no longer a patplan: a primary claim counts as ordinal 1.
+			//The primary claim's plan was dropped and a new primary plan (no claim for these procedures) took ordinal 1, so the secondary plan is
+			//still ordinal 2: a primary claim whose patplan is gone counts as ordinal 1.
 			Claim claimPrimaryDropped=rows.AddClaimForSub(77,"P","R",ClaimProcStatus.Received,PAT_NUM,PROC_A);
 			Claim claimSecondary=rows.AddClaim(2,"S","H",ClaimProcStatus.NotReceived,PROC_A);
 			AssertClaims(rows.Select(claimPrimaryDropped),"Dropped primary plan.",claimSecondary);
@@ -211,6 +212,55 @@ namespace M2CLAIMRCVTests {
 			Claim claimOtherDropped=rowsOther.AddClaimForSub(78,"Other","R",ClaimProcStatus.Received,PAT_NUM,PROC_A);
 			rowsOther.AddClaim(1,"P","U",ClaimProcStatus.NotReceived,PROC_A);
 			AssertClaims(rowsOther.Select(claimOtherDropped),"An 'Other' claim whose plan is gone has no known ordinal, so nothing is offered.");
+		}
+
+		[TestMethod]
+		public void DroppedPrimary_SecondaryMovedToOrdinalOne_IsStillOffered() {
+			//PatPlans.Delete lowers every later patplan's ordinal by one: after the primary plan is dropped, the secondary plan is the only patplan,
+			//at ordinal 1, the same ordinal the dropped primary claim falls back to. 24.3 offered the secondary claim here.
+			Rows rows=new Rows(1);
+			Claim claimPrimaryDropped=rows.AddClaimForSub(77,"P","R",ClaimProcStatus.Received,PAT_NUM,PROC_A);
+			Claim claimSecondary=rows.AddClaimForSub(Rows.SubNum(1),"S","H",ClaimProcStatus.NotReceived,PAT_NUM,PROC_A);
+			AssertClaims(rows.Select(claimPrimaryDropped),"The secondary claim is offered after the dropped primary claim is received.",claimSecondary);
+			AssertClaims(rows.Select(claimPrimaryDropped,includeHoldForInProcess:true),"It is recalculated too.",claimSecondary);
+		}
+
+		[TestMethod]
+		public void DroppedPrimary_TertiaryWaitsForTheSecondary() {
+			//Primary dropped: the secondary plan is ordinal 1 now and the tertiary plan ordinal 2.
+			Rows rows=new Rows(2);
+			Claim claimPrimaryDropped=rows.AddClaimForSub(77,"P","R",ClaimProcStatus.Received,PAT_NUM,PROC_A);
+			Claim claimSecondary=rows.AddClaim(1,"S","H",ClaimProcStatus.NotReceived,PROC_A);
+			Claim claimTertiary=rows.AddClaim(2,"Other","H",ClaimProcStatus.NotReceived,PROC_A);
+			AssertClaims(rows.Select(claimPrimaryDropped),"Only the secondary claim; the tertiary claim does not jump ahead of it.",claimSecondary);
+			claimSecondary.ClaimStatus="R";
+			rows.ForClaim(claimSecondary).ForEach(x => x.Status=ClaimProcStatus.Received);
+			AssertClaims(rows.Select(claimSecondary),"Receiving the secondary claim offers the tertiary claim.",claimTertiary);
+			AssertClaims(rows.Select(claimPrimaryDropped),"Secondary received first: the tertiary claim is next.",claimTertiary);
+		}
+
+		[TestMethod]
+		public void ReorderedPlans_SecondaryStillFollowsThePrimary() {
+			//The plans were swapped after the claims were made: the primary claim's plan is ordinal 2 now, the secondary claim's plan ordinal 1.
+			Rows rows=new Rows(3);
+			Claim claimPrimary=rows.AddClaim(2,"P","R",ClaimProcStatus.Received,PROC_A);
+			Claim claimSecondary=rows.AddClaim(1,"S","U",ClaimProcStatus.NotReceived,PROC_A);
+			rows.AddClaim(3,"Other","H",ClaimProcStatus.NotReceived,PROC_A);
+			AssertClaims(rows.Select(claimPrimary),"24.3 order: the secondary claim comes first after a primary claim.",claimSecondary);
+		}
+
+		[TestMethod]
+		public void LowerOrdinal_OnlySecondaryAfterPrimaryIsKept() {
+			//The 24.3 exception is for a secondary claim after a primary claim only: other claims at a lower ordinal are prior insurance.
+			Rows rows=new Rows(3);
+			rows.AddClaim(1,"P","U",ClaimProcStatus.NotReceived,PROC_A);
+			rows.AddClaim(2,"S","H",ClaimProcStatus.NotReceived,PROC_A);
+			Claim claimTertiary=rows.AddClaim(3,"Other","R",ClaimProcStatus.Received,PROC_A);
+			AssertClaims(rows.Select(claimTertiary),"A received tertiary claim offers neither the primary nor the secondary claim.");
+			Rows rowsSecondary=new Rows(2);
+			rowsSecondary.AddClaim(1,"P","U",ClaimProcStatus.NotReceived,PROC_A);
+			Claim claimSecondary=rowsSecondary.AddClaim(2,"S","R",ClaimProcStatus.Received,PROC_A);
+			AssertClaims(rowsSecondary.Select(claimSecondary),"A received secondary claim does not offer the primary claim.");
 		}
 
 		[TestMethod]
