@@ -54,6 +54,11 @@
       <Project>{9FCFB60D-959B-4448-A317-D56C95457C3F}</Project>
       <Name>xImagingCapture</Name>
     </ProjectReference>
+    <!-- CameraConfig tests read and write capture.ini through LocalCaptureConfig. -->
+    <ProjectReference Include="..\..\ImagingDeviceManager\xImagingDeviceManager.csproj">
+      <Project>{783079E6-A13F-4F43-A28D-9D7731F945D1}</Project>
+      <Name>xImagingDeviceManager</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
