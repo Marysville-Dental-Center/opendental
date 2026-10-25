@@ -348,6 +348,44 @@ namespace M2RECURTests {
 				Prefs.UpdateBool(PrefName.RecurringChargesInactivateDeclinedCards,true);
 			}
 		}
+
+		[TestMethod]
+		public void Chargerator_MarkDeclinedOnAChargeThatSucceeded_NoEmail() {
+			//PaySimple's catch calls MarkDeclined for any error, also one thrown after the card was charged (a note, the receipt, a card row
+			//deleted during the run). The card was charged, so the patient is never told it did not go through.
+			Patient patient=RecurDb.CreatePatient("Charged",email:"charged@example.com");
+			RecurringChargeData chargeData=MakeDeclinedCharge(patient,20,_dateTimeRun);
+			chargeData.IsDeclinedByProcessor=false;
+			chargeData.RecurringCharge.ChargeStatus=RecurringChargeStatus.ChargeSuccessful;
+			chargeData.RecurringCharge.ErrorMsg="";
+			RecurringChargerator recurringChargerator=new RecurringChargerator(new TestLog(),true);
+			recurringChargerator.ActionSendFailEmail=SendOk;
+			MethodInfo methodInfoMarkDeclined=typeof(RecurringChargerator).GetMethod("MarkDeclined",BindingFlags.Instance|BindingFlags.NonPublic);
+			methodInfoMarkDeclined.Invoke(recurringChargerator,new object[] { chargeData,"Error processing card: Object reference not set",LogLevel.Information });
+			Assert.IsFalse(chargeData.IsDeclinedByProcessor);
+			Assert.AreEqual(RecurringChargeStatus.ChargeSuccessful,chargeData.RecurringCharge.ChargeStatus,"The status stays as it was.");
+			Assert.AreEqual(RecurringChargeFailEmailStatus.NotNeeded,recurringChargerator.SendFailEmailIfNeeded(chargeData).Status);
+			Assert.AreEqual(0,_listEmailMessagesSent.Count);
+			Assert.AreEqual(0,recurringChargerator.FailEmailsSent+recurringChargerator.FailEmailsNotSent+recurringChargerator.FailEmailsSkipped);
+			StringAssert.Contains(chargeData.RecurringCharge.ErrorMsg,"Error processing card:","The error is still recorded.");
+			Assert.IsFalse(chargeData.RecurringCharge.ErrorMsg.Contains(RecurringChargeFailEmails.ERROR_MSG_SENT_PREFIX));
+			Assert.IsFalse(chargeData.RecurringCharge.ErrorMsg.Contains(RecurringChargeFailEmails.ERROR_MSG_NOT_SENT_PREFIX));
+			Assert.AreEqual(0,GetCommlogs(patient.PatNum).Count);
+		}
+
+		[TestMethod]
+		public void SucceededCharge_NeverEmailedEvenIfFlagged() {
+			//The second guard: whatever set the flag, a charge whose status is ChargeSuccessful is not e-mailed.
+			Patient patient=RecurDb.CreatePatient("Flagged",email:"flagged@example.com");
+			RecurringChargeData chargeData=MakeDeclinedCharge(patient,20,_dateTimeRun);
+			chargeData.RecurringCharge.ChargeStatus=RecurringChargeStatus.ChargeSuccessful;
+			Assert.IsTrue(chargeData.IsDeclinedByProcessor);
+			string errorMsgBefore=chargeData.RecurringCharge.ErrorMsg;
+			RecurringChargeFailEmailResult result=RecurringChargeFailEmails.SendIfNeeded(chargeData,_dateTimeRun,SendOk);
+			Assert.AreEqual(RecurringChargeFailEmailStatus.NotNeeded,result.Status);
+			Assert.AreEqual(0,_listEmailMessagesSent.Count);
+			Assert.AreEqual(errorMsgBefore,chargeData.RecurringCharge.ErrorMsg,"Nothing is added when no e-mail is due.");
+		}
 	}
 
 	///<summary>Collects what the chargerator logs.</summary>

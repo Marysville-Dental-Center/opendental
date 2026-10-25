@@ -53,6 +53,8 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
+    <!-- HttpMessageHandler: PaySimple requests go to a fake handler (PaySimpleDeclineTests). -->
+    <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
     <Reference Include="System.Xml.Linq" />
   </ItemGroup>

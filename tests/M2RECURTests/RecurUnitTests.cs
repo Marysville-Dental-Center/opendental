@@ -51,9 +51,44 @@ namespace M2RECURTests {
 			int indexUpdate=body.IndexOf("RecurringCharges.Update(chargeData.RecurringCharge);",StringComparison.Ordinal);
 			Assert.IsTrue(indexEmail>0,"SendCharges calls the failure e-mail hook.");
 			Assert.IsTrue(indexEmail<indexUpdate,"The hook runs before the row is saved, so the outcome line is saved with it.");
-			StringAssert.Contains(GetMethodBody(source,"private void MarkDeclined("),"chargeData.IsDeclinedByProcessor=true;");
+			string bodyMarkDeclined=GetMethodBody(source,"private void MarkDeclined(");
+			int indexGuard=bodyMarkDeclined.IndexOf("if(chargeData.RecurringCharge.ChargeStatus!=RecurringChargeStatus.ChargeSuccessful) {",StringComparison.Ordinal);
+			int indexFlag=bodyMarkDeclined.IndexOf("chargeData.IsDeclinedByProcessor=true;",StringComparison.Ordinal);
+			Assert.IsTrue(indexGuard>0 && indexFlag>indexGuard,"MarkDeclined never flags a charge that succeeded.");
 			StringAssert.Contains(GetMethodBody(source,"private void ClearStats("),"ClearFailEmailStats();");
 			Assert.IsFalse(GetMethodBody(source,"private void MarkFailed(").Contains("IsDeclinedByProcessor"),"A plain failure is not a decline.");
+			//PaySimple's catch marks every exception declined; only PaySimple's own decline keeps the flag.
+			string bodyPaySimple=GetMethodBody(source,"public void SendPaySimple(");
+			int indexMarkDeclined=bodyPaySimple.IndexOf("MarkDeclined(chargeData,Lans.g(_lanThis,\"Error processing card:\")+\" \"+ex.Message,LogLevel.Information);",
+				StringComparison.Ordinal);
+			int indexPaySimpleDecline=bodyPaySimple.IndexOf("chargeData.IsDeclinedByProcessor=chargeData.IsDeclinedByProcessor && IsPaySimpleDecline(ex);",
+				StringComparison.Ordinal);
+			Assert.IsTrue(indexMarkDeclined>0 && indexPaySimpleDecline>indexMarkDeclined,"SendPaySimple keeps the flag only for PaySimple's own decline.");
+		}
+
+		[TestMethod]
+		public void IsPaySimpleDecline_OnlyPaySimplesOwnAnswer() {
+			//The two messages PaySimpleApi.ToSaleResponse throws (PaySimpleDeclineTests runs them through the real code).
+			Assert.IsTrue(RecurringChargerator.IsPaySimpleDecline(new Exception("Payment was declined by PaySimple.\r\nMessage From PaySimple: Insufficient funds")));
+			Assert.IsTrue(RecurringChargerator.IsPaySimpleDecline(new Exception("Payment was not approved by PaySimple.  Auth Code from PaySimple:\r\nDECLINE")));
+			//A result PaySimple never confirmed (may have been charged), and the office's setup problems.
+			Assert.IsFalse(RecurringChargerator.IsPaySimpleDecline(new PaySimpleResultUnknownException("OPMS-0123")));
+			Assert.IsFalse(RecurringChargerator.IsPaySimpleDecline(new CodeBase.ODException("PaySimple Username, Key, or PayType is empty.")));
+			Assert.IsFalse(RecurringChargerator.IsPaySimpleDecline(new CodeBase.ODException("PaySimple Username or Key is empty.")));
+			Assert.IsFalse(RecurringChargerator.IsPaySimpleDecline(new CodeBase.ODException("PaySimple is not enabled.")));
+			Assert.IsFalse(RecurringChargerator.IsPaySimpleDecline(new PaySimpleCredentialsException()));
+			//An ODException that happens to carry decline text is still not PaySimple's answer.
+			Assert.IsFalse(RecurringChargerator.IsPaySimpleDecline(new CodeBase.ODException("Payment was declined by PaySimple.")));
+			//PaySimple's error objects, HTTP and transport errors.
+			Assert.IsFalse(RecurringChargerator.IsPaySimpleDecline(new PaySimpleException("Invalid input","InvalidInput",new List<string> { "Account id 1 does not exist" })));
+			Assert.IsFalse(RecurringChargerator.IsPaySimpleDecline(new PaySimpleHttpException(503,"PaySimple returned HTTP 503")));
+			Assert.IsFalse(RecurringChargerator.IsPaySimpleDecline(new System.Net.Http.HttpRequestException("Simulated network failure.")));
+			Assert.IsFalse(RecurringChargerator.IsPaySimpleDecline(new System.Net.WebException("The remote name could not be resolved")));
+			Assert.IsFalse(RecurringChargerator.IsPaySimpleDecline(new Exception("Could not reach PaySimple. Simulated",new System.Net.Http.HttpRequestException("x"))));
+			Assert.IsFalse(RecurringChargerator.IsPaySimpleDecline(new Exception("Unexpected response from PaySimple")));
+			//Errors after the card was charged.
+			Assert.IsFalse(RecurringChargerator.IsPaySimpleDecline(new NullReferenceException()));
+			Assert.IsFalse(RecurringChargerator.IsPaySimpleDecline(null));
 		}
 
 		[TestMethod]
