@@ -314,6 +314,7 @@ namespace OpenDental {
 					&& Security.IsAuthorized(EnumPermType.ClaimSend,suppressMessage:true)) 
 				{
 					List<ClaimProc> listClaimProcs=createClaimDataWrapper.CreateClaimData_.ListClaimProcs.FindAll(x=>x.ClaimNum==claimLeadOrdinal.ClaimNum);
+					MedicalEobL.PromptToAttachMedicalEob(claimLeadOrdinal,listClaimProcs);//Open Dental 25.2: before the primary claims are sent.
 					//Consider the preferences for automatically changing the claim status or prompting the user to take action on other insurance.
 					if(PrefC.GetBool(PrefName.ClaimMedReceivedPromptForPrimaryClaim) && claimLeadOrdinal.MedType.In(EnumClaimMedType.Medical,EnumClaimMedType.Institutional)) {
 						PromptForPrimaryOrSecondaryClaim(listClaimProcs,false);//Check for unsent primary claimprocs.

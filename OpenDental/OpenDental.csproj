@@ -2193,6 +2193,7 @@
     <Compile Include="Logic\ApptViewItemL.cs" />
     <Compile Include="Logic\AutomationL.cs" />
     <Compile Include="Logic\ClaimL.cs" />
+    <Compile Include="Logic\MedicalEobL.cs" />
     <Compile Include="Logic\ClearinghouseL.cs" />
     <Compile Include="Logic\DefL.cs" />
     <Compile Include="Logic\EmailAttachL.cs" />

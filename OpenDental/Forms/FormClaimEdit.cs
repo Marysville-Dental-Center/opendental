@@ -4124,6 +4124,7 @@ namespace OpenDental{
 			if(comboClaimStatus.SelectedIndex==_listClaimStatuses.IndexOf(ClaimStatus.Received) && _isPaymentEntered) {
 				//Is the user authorized to send claims.
 				if(_claim.ClaimType!="PreAuth" && Security.IsAuthorized(EnumPermType.ClaimSend,true)) {
+					MedicalEobL.PromptToAttachMedicalEob(_claim,_listClaimProcsForClaim);//Open Dental 25.2: before the primary claims are sent.
 					//Consider the preferences for automatically changing the claim status or prompting the user to take action on other insurance.
 					if(PrefC.GetBool(PrefName.ClaimMedReceivedPromptForPrimaryClaim) && _claim.MedType.In(EnumClaimMedType.Medical,EnumClaimMedType.Institutional)) {
 						ClaimL.PromptForPrimaryOrSecondaryClaim(_listClaimProcsForClaim,false);//Check for unsent primary claimprocs.

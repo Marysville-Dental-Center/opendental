@@ -71,6 +71,10 @@ namespace OpenDental {
 			checkClaimPrimaryReceivedRecalcSecondary.Checked=PrefC.GetBool(PrefName.ClaimPrimaryReceivedRecalcSecondary);
 			checkClaimMedReceivedPromptForPrimaryClaim.Checked=PrefC.GetBool(PrefName.ClaimMedReceivedPromptForPrimaryClaim);
 			checkClaimMedReceivedForcePrimaryStatus.Checked=PrefC.GetBool(PrefName.ClaimMedReceivedForcePrimaryStatus);
+			//Open Dental 25.2 (B-CLAIM): shown once the preference name is confirmed and registered in PrefName.
+			bool isMedicalEobPrefRegistered=ClaimAttaches.TryGetMedicalEobPrefName(out PrefName prefNameMedicalEob);
+			checkClaimMedReceivedPromptForMedicalEob.Visible=isMedicalEobPrefRegistered;
+			checkClaimMedReceivedPromptForMedicalEob.Checked=isMedicalEobPrefRegistered && PrefC.GetBoolSilent(prefNameMedicalEob,false);
 		}
 
 		public bool SaveAccountClaimReceive() {
@@ -92,6 +96,9 @@ namespace OpenDental {
 			Changed|=Prefs.UpdateBool(PrefName.ClaimPrimaryReceivedRecalcSecondary,checkClaimPrimaryReceivedRecalcSecondary.Checked);
 			Changed|=Prefs.UpdateBool(PrefName.ClaimMedReceivedPromptForPrimaryClaim,checkClaimMedReceivedPromptForPrimaryClaim.Checked);
 			Changed|=Prefs.UpdateBool(PrefName.ClaimMedReceivedForcePrimaryStatus,checkClaimMedReceivedForcePrimaryStatus.Checked);
+			if(ClaimAttaches.TryGetMedicalEobPrefName(out PrefName prefNameMedicalEob)) {
+				Changed|=Prefs.UpdateBool(prefNameMedicalEob,checkClaimMedReceivedPromptForMedicalEob.Checked);
+			}
 			return true;
 		}
 		#endregion Methods - Public

@@ -808,6 +808,7 @@ namespace OpenDental {
 			FeeL.SaveAllowedFeesFromClaimPayment(listClaimProcs,_listInsPlans);
 			Etranss.ReceiveEraPayment(_claim,_hx835_Claim,ListClaimProcs,checkIncludeWOPercCoPay.Checked,_isSupplementalPay,_insPlan);
 			if(Security.IsAuthorized(EnumPermType.ClaimSend,suppressMessage:true)) {
+				MedicalEobL.PromptToAttachMedicalEob(_claim,ListClaimProcs);//Open Dental 25.2: before the primary claims are sent.
 				if(PrefC.GetBool(PrefName.ClaimMedReceivedPromptForPrimaryClaim) && _claim.MedType.In(EnumClaimMedType.Medical,EnumClaimMedType.Institutional)) {//Check for unsent primary claimprocs.
 					ClaimL.PromptForPrimaryOrSecondaryClaim(ListClaimProcs,false);
 				}
