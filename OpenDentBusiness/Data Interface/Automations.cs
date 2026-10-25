@@ -131,7 +131,9 @@ namespace OpenDentBusiness{
 				//matching automation item has been found
 				//Get possible list of conditions that exist for this automation item
 				List<AutomationCondition> listAutomationConditions=AutomationConditions.GetListByAutomationNum(listAutomations[i].AutomationNum);
-				if(listAutomationConditions.Count>0 && !CheckAutomationConditions(listAutomationConditions,patNum,triggerObj)) {
+				if(listAutomationConditions.Count>0
+					&& !CheckAutomationConditions(listAutomationConditions,patNum,triggerObj,listAutomations[i],automationTrigger,listProcCodes))
+				{
 					continue;
 				}
 				SheetDef sheetDef;
@@ -365,7 +367,10 @@ namespace OpenDentBusiness{
 			return didAutomationHappen;
 		}
 
-		private static bool CheckAutomationConditions<T>(List<AutomationCondition> listAutomationConditions,long patNum,T triggerObj=default(T)) {
+		///<summary>automation, automationTrigger and listProcCodes are what fired; the 26.1 clinic mismatch condition needs them.</summary>
+		private static bool CheckAutomationConditions<T>(List<AutomationCondition> listAutomationConditions,long patNum,T triggerObj=default(T),
+			Automation automation=null,EnumAutomationTrigger? automationTrigger=null,List<string> listProcCodes=null)
+		{
 			//Make sure every condition returns true
 			for(int i=0;i<listAutomationConditions.Count;i++) {
 				switch(listAutomationConditions[i].CompareField) {
@@ -440,6 +445,14 @@ namespace OpenDentBusiness{
 					case AutoCondField.ClaimContainsProcCode:
 						//ONLY TO BE USED FOR CreateClaim AND OpenClaim AUTOMATION TRIGGERS
 						if(!DoesClaimContainProcCode(listAutomationConditions[i],patNum,triggerObj)) {
+							return false;
+						}
+						break;
+					case AutoCondField.PatientProcedureClinicMismatch:
+						//26.1. ONLY TO BE USED FOR ProcedureComplete AUTOMATION TRIGGER. False with clinics off.
+						if(automationTrigger==null
+							|| !AutomationClinicMismatches.IsConditionMet(automation,automationTrigger.Value,listProcCodes,patNum,triggerObj))
+						{
 							return false;
 						}
 						break;

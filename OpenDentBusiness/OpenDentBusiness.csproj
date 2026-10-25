@@ -1209,6 +1209,7 @@
     <Compile Include="Data Interface\ApptFields.cs" />
     <Compile Include="Data Interface\AutomationConditions.cs" />
     <Compile Include="Data Interface\Automations.cs" />
+    <Compile Include="Data Interface\AutomationClinicMismatches.cs" />
     <Compile Include="Data Interface\CDSPermissions.cs" />
     <Compile Include="Data Interface\ConnectionGroups.cs" />
     <Compile Include="Data Interface\ConnGroupAttaches.cs" />
