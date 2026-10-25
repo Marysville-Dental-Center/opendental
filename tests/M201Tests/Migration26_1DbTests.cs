@@ -315,7 +315,11 @@ namespace M201Tests {
 		[TestMethod]
 		public void Od261_StepsChangeNothing() {
 			Assert.AreEqual(ForkMigrationRunner.GetSteps().Count,_resultOd261.ListStepsRun.Count);
-			Assert.AreEqual(0,_resultOd261.ListChanges.Count,string.Join("\r\n",_resultOd261.ListChanges));
+			//Seed26_1 (package M2-02) inserts the fork's own 25.4 and 26.1 preference rows on every database that lacks them: Open Dental publishes
+			//no preference names, so an Open Dental 26.1 database has none of them. They live in the preference table, which is left out below.
+			string prefixSeed26_1=new OpenDentBusiness.ForkMigrations.Seeds26_1.Seed26_1Step().Level+": Inserted preference ";
+			List<string> listChanges=_resultOd261.ListChanges.Where(x => !x.StartsWith(prefixSeed26_1)).ToList();
+			Assert.AreEqual(0,listChanges.Count,string.Join("\r\n",listChanges));
 			Assert.AreEqual(0,_resultSchemaOd261.ListDifferences.Count,_resultSchemaOd261.GetReport());
 			Dictionary<string,string> dictBefore=_dictChecksumsOd261Before.Where(x => x.Key!="preference").ToDictionary(x => x.Key,x => x.Value);
 			Dictionary<string,string> dictAfter=_dictChecksumsOd261After.Where(x => x.Key!="preference").ToDictionary(x => x.Key,x => x.Value);
