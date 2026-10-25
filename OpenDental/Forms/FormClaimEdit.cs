@@ -814,6 +814,7 @@ namespace OpenDental{
 				textAttachID.Text=_claim.AttachmentID;
 			}
 			FillDxcAttachmentState();
+			labelEdsValidationState.Text=EdsValidationL.GetEdsTabText(_claim,_clearinghouse);//Open Dental 26.1: the claim's last EDS validation
 			//medical/inst
 			textBillType.Text=_claim.UniformBillType;
 			textAdmissionType.Text=_claim.AdmissionTypeCode;
@@ -2928,6 +2929,10 @@ namespace OpenDental{
 			//string warnings;
 			//string missingData=
 			claimSendQueueItemsArrayCA[0]=Eclaims.GetMissingData(clearinghouseClin,claimSendQueueItemsArrayCA[0]);
+			//Open Dental 26.1: a claim that goes to EDS shows every problem, local and from EDS, in one validation window (Logic/EdsValidationL).
+			if(!EdsValidationL.ValidateBeforeSend(_claim,clearinghouseClin,claimSendQueueItemsArrayCA[0])) {
+				return;
+			}
 			if(claimSendQueueItemsArrayCA[0].MissingData!=""){
 				MessageBox.Show(Lan.g(this,"Cannot send claim until missing/invalid data is fixed:")+"\r\n"+claimSendQueueItemsArrayCA[0].MissingData);
 				return;
@@ -4071,6 +4076,10 @@ namespace OpenDental{
 						_claim.AttachedFlags=ClaimAttaches.JoinAttachedFlags(listAttachedFlags);
 						Claims.Update(_claim);
 					}
+				}
+				else if(IsNew && EdsValidationL.IsEds(clearinghouseClin)) {
+					//Open Dental 26.1: a new claim that goes to EDS is validated when saved. Never blocks saving (Logic/EdsValidationL).
+					EdsValidationL.ValidateAfterSave(_claim,clearinghouseClin,claimSendQueueItemsArray[0]);
 				}
 				//if(MsgBox.Show(this,true,"Send electronic claim immediately?")){
 				//	List<ClaimSendQueueItem> queueItems=new List<ClaimSendQueueItem>();

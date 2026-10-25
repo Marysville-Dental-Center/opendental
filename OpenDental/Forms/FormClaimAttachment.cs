@@ -95,6 +95,11 @@ namespace OpenDental {
 			}
 			else if (_eclaimsCommBridge==EclaimsCommBridge.EDS) {
 				_areAttachmentsRequired=ValidateAttachmentsNeededEDS();
+				//Open Dental 26.1: the claim's last full EDS validation (Logic/EdsValidationL) goes under the attachment check.
+				string lastValidationEds=EdsValidationL.GetLastValidationText(_claim.ClaimNum);
+				if(lastValidationEds!="") {
+					textClaimStatus.Text+="\r\n\r\n"+lastValidationEds;
+				}
 			}
 			//Save this for later when we need to revert back to it
 			_titleOriginal=Text;
