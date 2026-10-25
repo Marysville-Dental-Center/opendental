@@ -41,6 +41,7 @@
       "tests\\ReportTests\\ReportTests.csproj",
       "tests\\SheetTests\\SheetTests.csproj",
       "tests\\SignatureTests\\SignatureTests.csproj",
+      "tests\\VBRIDGE1Tests\\VBRIDGE1Tests.csproj",
       "tests\\VendorDirectTests\\VendorDirectTests.csproj",
       "tools\\SyntheticData\\SyntheticData.csproj",
       "tools\\SyntheticData\\SyntheticData.Tests\\SyntheticData.Tests.csproj",

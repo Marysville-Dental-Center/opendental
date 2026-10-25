@@ -118,6 +118,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ImagingTests", "tests\Imagi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GroupNoteTests", "tests\GroupNoteTests\GroupNoteTests.csproj", "{F28C4AED-9001-4598-83C0-592B63AECD7B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VBRIDGE1Tests", "tests\VBRIDGE1Tests\VBRIDGE1Tests.csproj", "{84D1488E-28F1-4C88-8474-674532E97728}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -765,6 +767,18 @@ Global
 		{F28C4AED-9001-4598-83C0-592B63AECD7B}.Release|Any CPU.Build.0 = Release|x86
 		{F28C4AED-9001-4598-83C0-592B63AECD7B}.Release|x86.ActiveCfg = Release|x86
 		{F28C4AED-9001-4598-83C0-592B63AECD7B}.Release|x86.Build.0 = Release|x86
+		{84D1488E-28F1-4C88-8474-674532E97728}.Debug|Any CPU.ActiveCfg = Debug|x86
+		{84D1488E-28F1-4C88-8474-674532E97728}.Debug|Any CPU.Build.0 = Debug|x86
+		{84D1488E-28F1-4C88-8474-674532E97728}.Debug|x86.ActiveCfg = Debug|x86
+		{84D1488E-28F1-4C88-8474-674532E97728}.Debug|x86.Build.0 = Debug|x86
+		{84D1488E-28F1-4C88-8474-674532E97728}.ODXam|Any CPU.ActiveCfg = Release|x86
+		{84D1488E-28F1-4C88-8474-674532E97728}.ODXam|Any CPU.Build.0 = Release|x86
+		{84D1488E-28F1-4C88-8474-674532E97728}.ODXam|x86.ActiveCfg = Release|x86
+		{84D1488E-28F1-4C88-8474-674532E97728}.ODXam|x86.Build.0 = Release|x86
+		{84D1488E-28F1-4C88-8474-674532E97728}.Release|Any CPU.ActiveCfg = Release|x86
+		{84D1488E-28F1-4C88-8474-674532E97728}.Release|Any CPU.Build.0 = Release|x86
+		{84D1488E-28F1-4C88-8474-674532E97728}.Release|x86.ActiveCfg = Release|x86
+		{84D1488E-28F1-4C88-8474-674532E97728}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
