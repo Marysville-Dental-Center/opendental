@@ -301,12 +301,13 @@ namespace OpenDentBusiness {
 		#endregion
 
 		#region Insert
-		///<summary></summary>
+		///<summary>For an invoice, InsEst is stored as the invoice's adjustment total (see SetInvoiceAdjustmentTotal).</summary>
 		public static long Insert(Statement statement) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				statement.StatementNum=Meth.GetLong(MethodBase.GetCurrentMethod(),statement);
 				return statement.StatementNum;
 			}
+			SetInvoiceAdjustmentTotal(statement);
 			return Crud.StatementCrud.Insert(statement);
 		}
 
@@ -330,20 +331,23 @@ namespace OpenDentBusiness {
 
 		#region Update
 
-		///<summary></summary>
+		///<summary>For an invoice, InsEst is stored as the invoice's adjustment total (see SetInvoiceAdjustmentTotal). Through the middle tier the
+		///caller's object keeps the InsEst it had, so a caller that goes on using the object calls SetInvoiceAdjustmentTotal first.</summary>
 		public static void Update(Statement statement) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				Meth.GetVoid(MethodBase.GetCurrentMethod(),statement);
 				return;
 			}
+			SetInvoiceAdjustmentTotal(statement);
 			Crud.StatementCrud.Update(statement);
 		}
 
-		///<summary></summary>
+		///<summary>For an invoice, InsEst is stored as the invoice's adjustment total (see SetInvoiceAdjustmentTotal).</summary>
 		public static bool Update(Statement statement,Statement statementOld) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetBool(MethodBase.GetCurrentMethod(),statement,statementOld);
 			}
+			SetInvoiceAdjustmentTotal(statement);
 			return Crud.StatementCrud.Update(statement,statementOld);
 		}
 
@@ -587,6 +591,7 @@ namespace OpenDentBusiness {
 			statement.SinglePatient=!statement.Intermingled;
 			statement.IsReceipt=true;
 			statement.StatementType=StmtType.NotSet;
+			statement.ShowTransSinceBalZero=GetShowTransSinceBalZeroDefault();
 			statement.DateRangeFrom=DateTime.Today;
 			statement.DateRangeTo=DateTime.Today;
 			statement.Note="";
@@ -618,6 +623,7 @@ namespace OpenDentBusiness {
 			statement.IsReceipt=false;
 			statement.IsInvoice=false;
 			statement.StatementType=StmtType.LimitedStatement;
+			statement.ShowTransSinceBalZero=GetShowTransSinceBalZeroDefault();
 			statement.DateRangeFrom=DateTime.MinValue;
 			statement.DateRangeTo=DateTime.Today;
 			statement.Note="";
@@ -749,6 +755,7 @@ namespace OpenDentBusiness {
 			string command="SELECT * FROM statement "
 										+"WHERE PatNum IN("+string.Join(",",listPatients.Select(x => POut.Long(x.PatNum)).ToList())+") "
 										+"AND IsSent=1 "
+										+"AND IsInvoice=0 "//Since Open Dental 25.1 an invoice's InsEst holds its adjustment total, not the insurance estimate.
 										+"ORDER BY StatementNum DESC LIMIT 1";
 			Statement statement=OpenDentBusiness.Crud.StatementCrud.SelectOne(command);
 			if(statement==null) {
@@ -931,16 +938,23 @@ namespace OpenDentBusiness {
 			DataTable dataTable=SheetFramework.SheetDataTableUtil.GetTable_StatementMain(dataSet,statement);
 			StringBuilder stringBuilderExportCSV=new StringBuilder();
 			long stateNum=statement.StatementNum;
+			//Since Open Dental 25.1 an invoice's InsEst holds its adjustment total, so it is labeled as such and not subtracted from the total.
+			string headerInsEst="Ins Estimate,";
+			double totalAmount=statement.BalTotal-statement.InsEst;
+			if(statement.IsInvoice) {
+				headerInsEst="Adjustment Total,";
+				totalAmount=statement.BalTotal;
+			}
 			stringBuilderExportCSV.AppendLine("Invoice/Statement Number,"
-				+"Date Created," 
-				+"Procedure Total," 
-				+"Ins Estimate," 
+				+"Date Created,"
+				+"Procedure Total,"
+				+headerInsEst
 				+"Total Amount,");
 			stringBuilderExportCSV.AppendLine($"\"{stateNum}\","
 				+$"\"{statement.DateSent.ToShortDateString()}\","
-				+$"\"{statement.BalTotal}\"," 
-				+$"\"{statement.InsEst}\"," 
-				+$"\"{statement.BalTotal-statement.InsEst}\",");
+				+$"\"{statement.BalTotal}\","
+				+$"\"{statement.InsEst}\","
+				+$"\"{totalAmount}\",");
 			stringBuilderExportCSV.AppendLine("");
 			stringBuilderExportCSV.AppendLine("");
 			stringBuilderExportCSV.AppendLine("Date,"
@@ -980,6 +994,7 @@ namespace OpenDentBusiness {
 			statement.SinglePatient=isSinglePatient;
 			statement.Intermingled=PrefC.GetBool(PrefName.BillingDefaultsIntermingle);
 			statement.StatementType=StmtType.NotSet;
+			statement.ShowTransSinceBalZero=GetShowTransSinceBalZeroDefault();
 			statement.DateRangeTo=DateTime.Today;//This is needed for payment plan accuracy.//new DateTime(2200,1,1);
 			if(dateEnd!=DateTime.MinValue) {
 				statement.DateRangeTo=dateEnd;
@@ -993,7 +1008,7 @@ namespace OpenDentBusiness {
 				if(billingDefaultsLastDaysPref>0) {//0 days means ignore preference and show everything.
 					statement.DateRangeFrom=DateTime.Today.AddDays(-billingDefaultsLastDaysPref);
 				}
-				if(PrefC.GetBool(PrefName.BillingShowTransSinceBalZero)) {
+				if(statement.ShowTransSinceBalZero) {
 					Patient patientForAging=Patients.GetPat(statement.PatNum);
 					List<PatAging> listPatAgings=Patients.GetAgingListSimple(new List<long> {}, new List<long> { patientForAging.Guarantor },true);
 					DataTable tableBals=Ledgers.GetDateBalanceBegan(listPatAgings,isSuperBills:false);//More Options selection has a super family option. We would need new checkbox here.
@@ -1027,6 +1042,67 @@ namespace OpenDentBusiness {
 				patNum=statement.ListPatNums.First();
 			}
 			return patNum;
+		}
+		#endregion
+
+		#region Invoice adjustment total (Open Dental 25.1) and Show transactions since zero balance (Open Dental 25.2)
+		///<summary>The total of the adjustments attached to an invoice (adjustment.StatementNum), rounded to cents. Charges count positive and
+		///credits negative, as AdjAmt stores them. 0 for a statement that has not been inserted yet.</summary>
+		public static double GetInvoiceAdjustmentTotal(long statementNum) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetDouble(MethodBase.GetCurrentMethod(),statementNum);
+			}
+			if(statementNum==0) {
+				return 0;
+			}
+			string command="SELECT COALESCE(SUM(AdjAmt),0) FROM adjustment WHERE StatementNum="+POut.Long(statementNum);
+			return Math.Round(PIn.Double(Db.GetScalar(command)),2);
+		}
+
+		///<summary>Since Open Dental 25.1, an invoice keeps the total of its adjustments in InsEst instead of the family insurance estimate. For an
+		///invoice, sets statement.InsEst to GetInvoiceAdjustmentTotal. Any other statement is left alone and keeps the insurance estimate. Insert and
+		///Update call this for every invoice they save.</summary>
+		public static void SetInvoiceAdjustmentTotal(Statement statement) {
+			Meth.NoCheckMiddleTierRole();
+			if(statement==null || !statement.IsInvoice) {
+				return;
+			}
+			statement.InsEst=GetInvoiceAdjustmentTotal(statement.StatementNum);
+		}
+
+		///<summary>The ShowTransSinceBalZero value for a new statement: the BillingShowTransSinceBalZero preference. Statements made by Billing take
+		///the Billing Options checkbox instead.</summary>
+		public static bool GetShowTransSinceBalZeroDefault() {
+			Meth.NoCheckMiddleTierRole();
+			return PrefC.GetBool(PrefName.BillingShowTransSinceBalZero);
+		}
+
+		///<summary>For a statement whose own ShowTransSinceBalZero is set, moves DateRangeFrom to the date the account balance was last zero or
+		///negative (Ledgers.GetDateBalanceBegan), or to today when the balance is zero or a credit now. This is what the statement window does when it
+		///saves or prints a statement. It reads the statement's own value and never the preference, so a statement printed again keeps the setting it
+		///was made with. Returns false, changing nothing, when the statement's value is false or there is no balance history for the account.</summary>
+		public static bool ApplyShowTransSinceBalZero(Statement statement,bool isSuperStatement) {
+			Meth.NoCheckMiddleTierRole();
+			if(statement==null || !statement.ShowTransSinceBalZero) {
+				return false;
+			}
+			Patient patient=Patients.GetPat(statement.PatNum);
+			if(patient==null) {
+				return false;
+			}
+			List<PatAging> listPatAgings=Patients.GetAgingListSimple(new List<long>(),new List<long> { patient.Guarantor },true);
+			DataTable tableBals=Ledgers.GetDateBalanceBegan(listPatAgings,isSuperStatement);
+			if(tableBals.Rows.Count==0) {
+				return false;
+			}
+			DateTime dateFrom=PIn.Date(tableBals.Rows[0]["DateZeroBal"].ToString());
+			if(dateFrom==DateTime.MinValue) {//The account has a zero or credit balance.
+				statement.DateRangeFrom=DateTime.Today;
+			}
+			else {
+				statement.DateRangeFrom=dateFrom;
+			}
+			return true;
 		}
 		#endregion
 	}
@@ -1175,4 +1251,4 @@ namespace OpenDentBusiness {
 		public Family Family;
 	}
 
-}
+}
