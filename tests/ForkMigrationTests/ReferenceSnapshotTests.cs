@@ -34,7 +34,7 @@ namespace ForkMigrationTests {
 			Assert.IsNull(patient.GetColumn(SchemaVerifier.PortalActiveEmailColumn),"The office-specific column is not Open Dental schema.");
 			Assert.IsNull(patient.GetIndex(SchemaVerifier.PortalActiveEmailIndex));
 			Assert.IsTrue(reference.Tables.All(x => x.Engine=="MyISAM"),"Every Open Dental table is MyISAM.");
-			string ddl=SchemaVerifier.ReadReferenceDdl();
+			string ddl=SchemaVerifier.ReadReferenceDdl(SchemaVerifier.ReferenceResourceName25_3_48);
 			StringAssert.DoesNotMatch(ddl,new System.Text.RegularExpressions.Regex("AUTO_INCREMENT=[0-9]"),"No row counters in the reference.");
 		}
 
@@ -70,7 +70,8 @@ namespace ForkMigrationTests {
 			}
 			//Line endings depend on the checkout (core.autocrlf), so they are not compared.
 			Assert.AreEqual(built,NormalizeLineEndings(File.ReadAllText(pathReference,Encoding.UTF8)),"The committed reference differs from the dump. Regenerate it.");
-			Assert.AreEqual(built,NormalizeLineEndings(SchemaVerifier.ReadReferenceDdl()),"The embedded reference is stale. Rebuild OpenDentBusiness.");
+			Assert.AreEqual(built,NormalizeLineEndings(SchemaVerifier.ReadReferenceDdl(SchemaVerifier.ReferenceResourceName25_3_48)),
+				"The embedded reference is stale. Rebuild OpenDentBusiness.");
 		}
 
 		private static string NormalizeLineEndings(string text) {
@@ -90,11 +91,12 @@ namespace ForkMigrationTests {
 				result.ListDifferences.Select(x => x.Table+"."+x.Item).ToList(),result.GetReport());
 		}
 
-		///<summary>Every table class (except the HQ-only ones) has a table in Open Dental 25.3.48, and every database field of the class is a column of
-		///it. This is what lets the program read and write an Open Dental 25.3.48 database.</summary>
+		///<summary>Every table class (except the HQ-only ones) has a table in the schema a migrated database has (the default reference, Open Dental
+		///26.1.70 since M2-01), and every database field of the class is a column of it. This is what lets the program read and write a migrated
+		///database.</summary>
 		[TestMethod]
 		public void TableClasses_MapToReferenceColumns() {
-			SchemaSnapshot reference=SchemaVerifier.GetReference25_3_48();
+			SchemaSnapshot reference=SchemaVerifier.GetReference();
 			List<string> listProblems=new List<string>();
 			foreach(Type type in GetTableTypes()) {
 				string tableName=CrudTableAttribute.GetTableName(type).ToLowerInvariant();
@@ -119,7 +121,7 @@ namespace ForkMigrationTests {
 		///excluded).</summary>
 		[TestMethod]
 		public void ChangedTables_ClassesMapEveryReferenceColumn() {
-			SchemaSnapshot reference=SchemaVerifier.GetReference25_3_48();
+			SchemaSnapshot reference=SchemaVerifier.GetReference();
 			Dictionary<string,Type> dictTypes=GetTableTypes().ToDictionary(x => CrudTableAttribute.GetTableName(x).ToLowerInvariant(),x => x);
 			List<string> listProblems=new List<string>();
 			foreach(string tableName in ChangedTables) {
