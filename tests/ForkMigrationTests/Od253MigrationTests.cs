@@ -101,7 +101,11 @@ namespace ForkMigrationTests {
 
 		[TestMethod]
 		public void Migration_ChangesNoSchemaAndNoData() {
-			Assert.AreEqual(0,_result.ListChanges.Count,string.Join("\r\n",_result.ListChanges));
+			//The 25.4 and 26.1 preference rows (Seed26_1, package M2-02) are new on every database: Open Dental publishes no preference names, so
+			//these are the fork's own rows. They live in the preference table, which the checksums below leave out.
+			string prefixSeed26_1=new OpenDentBusiness.ForkMigrations.Seeds26_1.Seed26_1Step().Level+": Inserted preference ";
+			List<string> listChanges=_result.ListChanges.Where(x => !x.StartsWith(prefixSeed26_1)).ToList();
+			Assert.AreEqual(0,listChanges.Count,string.Join("\r\n",listChanges));
 			Assert.AreEqual(0,_resultSchemaAfterRun.ListDifferences.Count,_resultSchemaAfterRun.GetReport());
 			//Byte-identical tables: no renumbering, no back-fill, nothing. Only the runner's own preference rows were added.
 			CollectionAssert.AreEquivalent(_dictChecksumsBefore.ToList(),_dictChecksumsAfter.ToList());
