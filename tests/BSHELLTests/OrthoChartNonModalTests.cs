@@ -120,7 +120,7 @@ namespace BSHELLTests {
 				indexNoLock=closing.IndexOf("if(!_isLockedByMe) {\n\t\t\t\t//this user does not have a lock, so nothing to save.\n\t\t\t\treturn;",StringComparison.Ordinal);
 			}
 			Assert.IsTrue(indexNoLock>0,"Before 25.3 this branch fell through to SaveToDb and the unlock.");
-			int indexRules=closing.IndexOf("OrthoChartWindowRules.GetCloseActions(_orthoChartCloseKind,_isLockedByMe,_isReadOnly)",StringComparison.Ordinal);
+			int indexRules=closing.IndexOf("OrthoChartWindowRules.GetCloseActions(OrthoChartWindowRules.GetProgramCloseKind(_orthoChartCloseKind),",StringComparison.Ordinal);
 			Assert.IsTrue(indexRules>indexNoLock);
 		}
 

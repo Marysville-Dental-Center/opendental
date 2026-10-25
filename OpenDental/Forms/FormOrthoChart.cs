@@ -1297,12 +1297,18 @@ namespace OpenDental {
 		}
 
 		private void FormOrthoChart_FormClosing(object sender,FormClosingEventArgs e) {
-			if(DialogResult==DialogResult.Cancel) {
+			//25.3: the window is non-modal, so DialogResult alone no longer tells a user close from a program close (OrthoChartWindowRules).
+			OrthoChartClosingPath orthoChartClosingPath=OrthoChartWindowRules.GetClosingPath(Modal,DialogResult,e.CloseReason,_orthoChartCloseKind);
+			if(orthoChartClosingPath==OrthoChartClosingPath.DeferToOwner) {
+				return;//The main window's FormClosing calls CloseOpenForms, which asks about unsaved edits and then closes this window.
+			}
+			if(orthoChartClosingPath==OrthoChartClosingPath.AskThenDiscard) {//[X], Esc, Alt+F4. Before 25.3: DialogResult==DialogResult.Cancel.
 				if(_isReadOnly){//Form was opened in read only mode so don't warn about unsaved changes.
 					return;
 				}
 				if(_hasChanged || signatureBoxWrapper.SigChanged){
 					if(!MsgBox.Show(this,MsgBoxButtons.OKCancel,"Unsaved changes will be lost.")) {
+						DialogResult=DialogResult.None;//A window shown with Show() keeps the Cancel that [X] set; a later close must not see it.
 						e.Cancel=true;
 						return;
 					}
@@ -1313,7 +1319,7 @@ namespace OpenDental {
 				}
 			}
 			signatureBoxWrapper?.SetTabletState(0);
-			if(DialogResult!=DialogResult.None){
+			if(orthoChartClosingPath!=OrthoChartClosingPath.Program){//Before 25.3: DialogResult!=DialogResult.None.
 				return;
 			}
 			//Must be closing automatically without user input. Example: auto shutdown.
@@ -1326,7 +1332,8 @@ namespace OpenDental {
 			if(_isReadOnly){//Clicking cancel or [X] sets DialogResult.Cancel so we shouldn't get here, but just in case.
 				return;
 			}
-			OrthoChartCloseActions orthoChartCloseActions=OrthoChartWindowRules.GetCloseActions(_orthoChartCloseKind,_isLockedByMe,_isReadOnly);
+			OrthoChartCloseActions orthoChartCloseActions=OrthoChartWindowRules.GetCloseActions(OrthoChartWindowRules.GetProgramCloseKind(_orthoChartCloseKind),
+				_isLockedByMe,_isReadOnly);
 			if(orthoChartCloseActions.DoSave) {
 				SaveToDb();//There may be nothing to save, but this also gets rid of extra empty row.
 			}
@@ -1335,6 +1342,7 @@ namespace OpenDental {
 			}
 			if(orthoChartCloseActions.DoReleaseLock) {
 				PatientNotes.SetUserNumOrthoLocked(_patient.PatNum,0);//Unlock
+				_isLockedByMe=false;//Windows asks before it ends the session; if it then does not, the window stays open and no longer holds the lock.
 			}
 		}
 
@@ -1342,10 +1350,13 @@ namespace OpenDental {
 		///<summary>The open window of each patient, by PatNum. Open Dental 25.3: the Ortho Chart no longer blocks the rest of the program, and each
 		///patient has at most one window.</summary>
 		private static Dictionary<long,FormOrthoChart> _dictFormsOpenByPatNum=new Dictionary<long,FormOrthoChart>();
+		///<summary>Guards _dictFormsOpenByPatNum: a forced close (MarkAllForForcedClose) can run on a background thread.</summary>
+		private static readonly object _lockDictFormsOpen=new object();
 		///<summary>Raised with the PatNum after this window wrote the chart to the database.</summary>
 		public event Action<long> OrthoChartSaved;
-		///<summary>How the program (not the user) is closing this window. Forced unless a prompt or the patient check set it.</summary>
-		private OrthoChartCloseKind _orthoChartCloseKind=OrthoChartCloseKind.Forced;
+		///<summary>How this window is being closed. UserCancel (a user close, which asks about unsaved edits) unless the program set another kind
+		///right before closing it: MarkAllForForcedClose, the log off prompt or the patient check. See OrthoChartWindowRules.GetClosingPath.</summary>
+		private OrthoChartCloseKind _orthoChartCloseKind=OrthoChartCloseKind.UserCancel;
 		///<summary>The patient's status when the window opened. A change to archived (a merge does that) or deleted closes the window.</summary>
 		private PatientStatus _patStatusAtOpen;
 		private bool _isClosingForPatientGone;
@@ -1373,11 +1384,15 @@ namespace OpenDental {
 			formOrthoChart.OrthoChartSaved+=actionSaved;
 			long patNum=patient.PatNum;
 			formOrthoChart.FormClosed+=(sender,e) => {
-				if(_dictFormsOpenByPatNum.TryGetValue(patNum,out FormOrthoChart formOrthoChartOpen) && formOrthoChartOpen==sender) {
-					_dictFormsOpenByPatNum.Remove(patNum);
+				lock(_lockDictFormsOpen) {
+					if(_dictFormsOpenByPatNum.TryGetValue(patNum,out FormOrthoChart formOrthoChartOpen) && formOrthoChartOpen==sender) {
+						_dictFormsOpenByPatNum.Remove(patNum);
+					}
 				}
 			};
-			_dictFormsOpenByPatNum[patNum]=formOrthoChart;
+			lock(_lockDictFormsOpen) {
+				_dictFormsOpenByPatNum[patNum]=formOrthoChart;
+			}
 			if(formOwner==null || formOwner.IsDisposed) {
 				formOrthoChart.Show();
 			}
@@ -1389,20 +1404,40 @@ namespace OpenDental {
 
 		///<summary>The patient's open window, or null.</summary>
 		public static FormOrthoChart GetOpenForPatient(long patNum) {
-			if(!_dictFormsOpenByPatNum.TryGetValue(patNum,out FormOrthoChart formOrthoChart)) {
-				return null;
+			lock(_lockDictFormsOpen) {
+				if(!_dictFormsOpenByPatNum.TryGetValue(patNum,out FormOrthoChart formOrthoChart)) {
+					return null;
+				}
+				if(formOrthoChart==null || formOrthoChart.IsDisposed) {
+					_dictFormsOpenByPatNum.Remove(patNum);
+					return null;
+				}
+				return formOrthoChart;
 			}
-			if(formOrthoChart==null || formOrthoChart.IsDisposed) {
-				_dictFormsOpenByPatNum.Remove(patNum);
-				return null;
+		}
+
+		///<summary>A copy of the open windows, safe to use from any thread.</summary>
+		private static List<FormOrthoChart> GetOpenWindows() {
+			lock(_lockDictFormsOpen) {
+				return _dictFormsOpenByPatNum.Values.Where(x => x!=null && !x.IsDisposed).ToList();
 			}
-			return formOrthoChart;
+		}
+
+		///<summary>Called by FormOpenDental.CloseOpenForms when the program forces the close (forced or automatic log off, shutdown by another
+		///workstation): every open window then closes without asking and keeps its edits, as before 25.3. Can be called from any thread. Without this
+		///mark a close is a user close, which asks about unsaved edits.</summary>
+		public static void MarkAllForForcedClose() {
+			List<FormOrthoChart> listFormOrthoCharts=GetOpenWindows();
+			for(int i=0;i<listFormOrthoCharts.Count;i++) {
+				FormOrthoChart formOrthoChart=listFormOrthoCharts[i];
+				ODException.SwallowAnyException(() => formOrthoChart.InvokeIfRequired(() => formOrthoChart._orthoChartCloseKind=OrthoChartCloseKind.Forced));
+			}
 		}
 
 		///<summary>Before a log off or program close that the user started: asks about each open window with unsaved edits whether to save them, and
-		///closes those windows. Returns false when the user chose Cancel, which stops the log off. Windows without edits close with the others.</summary>
+		///closes every window. Returns false when the user chose Cancel, which stops the log off, or a window did not close.</summary>
 		public static bool PromptCloseAllForLogOff() {
-			List<FormOrthoChart> listFormOrthoCharts=_dictFormsOpenByPatNum.Values.Where(x => x!=null && !x.IsDisposed).ToList();
+			List<FormOrthoChart> listFormOrthoCharts=GetOpenWindows();
 			for(int i=0;i<listFormOrthoCharts.Count;i++) {
 				FormOrthoChart formOrthoChart=listFormOrthoCharts[i];
 				bool canClose=true;
@@ -1414,22 +1449,32 @@ namespace OpenDental {
 			return true;
 		}
 
+		///<summary>Closes this window for a log off or program close that the user started, first asking Save / Don't Save / Cancel when it holds the
+		///lock and has unsaved edits. Returns false when the user chose Cancel or the window is still open; a later close is then a user close again.
+		///</summary>
 		private bool PromptCloseForLogOff() {
 			ActiveControl=null;//Ends an edit in progress so it counts (gridMain_CellLeave).
-			if(!OrthoChartWindowRules.NeedsClosePrompt(_isLockedByMe,_isReadOnly,_hasChanged || signatureBoxWrapper.SigChanged)) {
-				return true;
+			OrthoChartCloseKind orthoChartCloseKind=OrthoChartCloseKind.PromptDiscard;//Nothing of ours unsaved: release our lock, drop today's empty row.
+			if(OrthoChartWindowRules.NeedsClosePrompt(_isLockedByMe,_isReadOnly,_hasChanged || signatureBoxWrapper.SigChanged)) {
+				if(WindowState==FormWindowState.Minimized) {
+					WindowState=FormWindowState.Normal;
+				}
+				Activate();
+				DialogResult dialogResultSave=MessageBox.Show(this,Lan.g(this,"Save changes to the ortho chart for")+" "+_patient.GetNameFL()+"?",
+					Lan.g(this,"Ortho Chart"),MessageBoxButtons.YesNoCancel);
+				if(dialogResultSave==DialogResult.Cancel) {
+					return false;
+				}
+				if(dialogResultSave==DialogResult.Yes) {
+					orthoChartCloseKind=OrthoChartCloseKind.PromptSave;
+				}
 			}
-			if(WindowState==FormWindowState.Minimized) {
-				WindowState=FormWindowState.Normal;
-			}
-			Activate();
-			DialogResult dialogResultSave=MessageBox.Show(this,Lan.g(this,"Save changes to the ortho chart for")+" "+_patient.GetNameFL()+"?",
-				Lan.g(this,"Ortho Chart"),MessageBoxButtons.YesNoCancel);
-			if(dialogResultSave==DialogResult.Cancel) {
+			_orthoChartCloseKind=orthoChartCloseKind;
+			Close();
+			if(!IsDisposedOrClosed(this)) {
+				_orthoChartCloseKind=OrthoChartCloseKind.UserCancel;//Never left marked: a later close by the user asks again.
 				return false;
 			}
-			_orthoChartCloseKind=(dialogResultSave==DialogResult.Yes) ? OrthoChartCloseKind.PromptSave : OrthoChartCloseKind.PromptDiscard;
-			Close();
 			return true;
 		}
 

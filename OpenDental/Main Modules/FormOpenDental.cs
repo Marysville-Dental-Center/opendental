@@ -6702,6 +6702,9 @@ namespace OpenDental{
 			if(!isForceClose && !FormOrthoChart.PromptCloseAllForLogOff()) {//25.3: ortho charts can be open in the background with unsaved edits.
 				return false;
 			}
+			if(isForceClose && !isSnip) {//25.3: forced, so open ortho charts close without asking. Any other close of one is a user close that asks.
+				FormOrthoChart.MarkAllForForcedClose();
+			}
 			List<Form> listFormsToClose=GetOpenForms();
 			#region Close forms and quit threads.  Some form closing events rely on the closing events of parent forms.
 			if(controlImages!=null) {//controlImagesJ never initialized when using the old imaging module 

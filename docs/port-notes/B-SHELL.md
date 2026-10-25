@@ -52,12 +52,20 @@ Sources used: the public 25.1, 25.2 and 25.3 release-note pages named in the fea
 - Closing rules (`OpenDentBusiness/Misc/MainWindow/OrthoChartWindowRules.cs`):
   - The edit lock (`patientnote.UserNumOrthoLocked`) is released whenever the window closes, for any reason, but only by the window that holds it.
   - Fix: before, a window closed by the program (not by the user) saved and unlocked even when it did not hold the lock. With a window able to sit in the background showing someone else's chart read-only, that could overwrite or release another user's lock; it now returns without saving or unlocking.
-  - [X] still prompts for unsaved edits, as before.
-- Log off, user switch or program close started by the user (`CloseOpenForms(isForceClose:false)`, one line in `FormOpenDental.cs`): every ortho chart window that holds the lock and has unsaved edits asks Save / Don't Save / Cancel; Cancel stops the log off. Forced and automatic closes save without asking, as before.
+  - Which close is which (`GetClosingPath(isModal,dialogResult,closeReason,closeKind)`, called first in `FormOrthoChart_FormClosing`). A window opened with `Show()` keeps `DialogResult` at None when it is closed with Esc (`FormODBase.ProcessCmdKey` calls `Close()`), Alt+F4, the window menu or the taskbar; only the drawn [X] sets Cancel, and WinForms sets Cancel only for a modal window. So `DialogResult` alone can no longer tell a user close from a program close. The rules:
+    - The main window is closing (`CloseReason.FormOwnerClosing`, non-modal window): nothing happens in the ortho chart window. WinForms raises this on owned windows before the main window's own FormClosing, so saving or unlocking here would happen even when the user then cancels the program close, and the main window would then ask about edits that were already saved. The main window's FormClosing calls `CloseOpenForms(false)`, which asks and closes the window.
+    - The program marked the window (Forced, PromptSave, PromptDiscard, PatientGone), or the close reason says nobody is there to answer (`WindowsShutDown`, `ApplicationExitCall`, `TaskManagerClosing`, owner closing a modal window): closes without asking, with the marked kind or Forced. A marked kind wins over a Cancel left in `DialogResult`.
+    - Otherwise, with `DialogResult` Cancel or None: a user close. "Unsaved changes will be lost" is asked when there are edits, as in 24.3; OK discards them (lock released, today's empty row deleted), Cancel keeps the window open and puts `DialogResult` back to None so a later close doesn't see the old Cancel.
+    - `DialogResult` OK: Save already saved and unlocked.
+  - The window's close kind defaults to `UserCancel` (a user close). Forced is set only by `FormOrthoChart.MarkAllForForcedClose()`, which `CloseOpenForms` calls (one line in `FormOpenDental.cs`) when the program forces the close (forced or automatic log off, shutdown by another workstation, the kill command).
+  - [X], Esc and Alt+F4 prompt for unsaved edits, as in 24.3.
+- Log off, user switch or program close started by the user (`CloseOpenForms(isForceClose:false)`, one line in `FormOpenDental.cs`): every ortho chart window that holds the lock and has unsaved edits asks Save / Don't Save / Cancel; Cancel stops the log off. Every window is closed right there (windows without edits release their lock and drop today's empty row); if one is still open after `Close()` the log off stops and the window goes back to a user close. Forced and automatic closes save without asking, as before.
+- The dictionary of open windows is locked, because a forced close can run on a background thread.
+- After a program close releases the lock, the window no longer counts as holding it. This matters only when Windows asks to end the session (the window saves then) and the session then doesn't end, which leaves the window open.
 - Patient merged, archived or deleted while the window is open: checked on the existing 4-second timer (also for read-only windows). The window closes with a message, saves nothing (after a merge the rows belong to another patient) and releases its lock.
 - Signature boxes, Take Control and the A-SIG change-user code are unchanged.
 - Not built: releasing the lock after a period of inactivity. The spec marks it "consider" and VERIFY; 25.3.48's behaviour is not public.
-- INFERRED: the merge check (a merge sets the patient merged from to Archived, so a change to Archived or Deleted, or a missing row, closes the window), the log off prompt, and saving on forced closes.
+- INFERRED: the merge check (a merge sets the patient merged from to Archived, so a change to Archived or Deleted, or a missing row, closes the window), the log off prompt, and saving on forced closes. Also INFERRED: Windows shutting down, `Application.Exit` and a close message from outside the program count as forced (they save without asking). For the modal window of 24.3, Windows shutting down asked "Unsaved changes will be lost" first; the window is never modal now.
 
 ### v25_2-chart-medical-rows-bold (built)
 
@@ -88,7 +96,7 @@ Changed, owned by B-SHELL, each edit local:
 - `ControlChart.cs`: selection argument, 3 ortho chart openings, `OrthoChartSaved`, 2 bold lines
 - `ControlTreat.cs`, `ControlAccount.cs`: selection argument
 - `ControlAppt.cs`: ortho chart opening
-- `FormOpenDental.cs`: blur hook, ortho chart prompt in `CloseOpenForms`, 2 domain-login lines
+- `FormOpenDental.cs`: blur hook, ortho chart prompt and forced-close mark in `CloseOpenForms`, 2 domain-login lines
 - `FormOpenDentalMenus.cs`: File Monitor menu item
 - `FormOrthoChart.cs`
 - `FormProgramLinkEdit.cs`
@@ -123,8 +131,9 @@ No `PrefName`, `PrefInfos.xml`, permission, enum-file, TableTypes, Crud or seed-
 
 ## Tests
 
-`tests/BSHELLTests` (MSTest v1, x86, .NET 4.8), 51 tests:
+`tests/BSHELLTests` (MSTest v1, x86, .NET 4.8), 66 tests:
 - Unit tests for the `[SelectedProcNums]` rules, the replacement picker (`FrmMessageReplacements.GetReplacementFieldList`), the blur rules and bitmap blur, the cover window (built but never shown), the File Monitor scope, feed and relative paths (including failures and other threads), the ortho chart close rules and the patient-gone rule, and the discontinued-link rules.
+- `OrthoChartClosingTests`: every way the ortho chart window can close, through `OrthoChartWindowRules.GetClosingPath`: Esc or Alt+F4 on the non-modal window with edits asks and does not save; the drawn [X] and the modal window ask as before; a cancelled prompt followed by Save at log off saves without a second prompt (also with a Cancel left in `DialogResult`); a forced close after a cancelled prompt doesn't ask and saves; the main window closing does nothing in the ortho chart window; Windows shutdown, `Application.Exit` and outside close messages are forced; across all close kinds, reasons and results only a user close ever asks. Source tests pin the default kind, the forced mark in `CloseOpenForms`, the `DialogResult` reset after a cancelled prompt and the still-open check in the log off prompt.
 - Source wiring tests for the windows that can't be opened in a test run: module calls, main window hooks, ortho chart opening and closing, bold labels, the Program Link windows, the domain-login switch.
 - Database tests on a scratch database with a unique per-run name (`bshelltest_<time>_<pid>_<random>`, tables from the 25.3.48 reference schema, dropped afterwards): the DXC step (disable, buttons, idempotent, already cleaned up), the blur preference read and save, `GetPatStatusNoCache`, and real `FileAtoZ`/`ImageStore` calls producing File Monitor rows.
 
