@@ -60,10 +60,13 @@ forward is the one, visible, way from there to `fox-db`.
 | **[admin PC]** | One Windows 10 or 11 PC of the office, the same one throughout | PowerShell. Every window starts with the lines of step 0.0.4; the tools then reach `fox-db` through the forward of step 0.0.3, as the MariaDB account of step 0.0.2. |
 | **[workstation]** | Each computer of the step 0.5 list | Its own settings and programs. |
 
-**No row of the office database leaves `fox-db` in this procedure.** The copy that is adopted is made by the server itself (step 3.2), and
-the rollback point is a folder copy on the server (step 3.1). The admin PC only receives reports (row counts, checksums and business
-totals), logs, and the list of places where passwords are stored (never the passwords). Keeping a second copy of the rollback point off the
-server, on the office's backup disk, is the owner's decision (validation report, "For the owner", item 5).
+**No copy of the office database is made off `fox-db` in this procedure.** The copy that is adopted is made by the server itself (step
+3.2), and the rollback point is a folder copy on the server (step 3.1). The tools on the admin PC read through the forward (encrypted by
+SSH) only what they work on, and keep none of it: `adopt` reads the preferences it changes and, for the rehash, the keys, dates, amounts and
+statuses of the rows it hashes; `credentials` reads the rows that hold stored passwords to tell their format, and prints only where they are.
+What they write to the admin PC's disk is reports and logs: row counts, checksums, business totals, and names of tables, columns,
+preferences, program links and computers. Keeping a second copy of the rollback point off the server, on the office's backup disk, is the
+owner's decision (validation report, "For the owner", item 5).
 
 ## Names used below
 
@@ -74,7 +77,7 @@ server, on the office's backup disk, is the owner's decision (validation report,
 | `opendental_pms` | The adopted copy. Any name works; it must not exist yet. |
 | `od_prep_pms` | The adopted copy of the preparation dry run (step 0.6, only with the owner's agreement). A name that must not exist yet. |
 | `adoption_admin` | The MariaDB account the tools use (step 0.0.2). |
-| `<datadir>` | MariaDB's data folder on `fox-db` (`@@datadir`, step 0.0.1; normally `/var/lib/mysql/`). The database `opendental` is the folder `<datadir>opendental`. |
+| `<datadir>` | MariaDB's data folder on `fox-db` (`@@datadir`, step 0.0.1; normally `/var/lib/mysql/`). The database `opendental` is the folder `<datadir>opendental`. The bash commands below write it as `/var/lib/mysql/`: if step 0.0.1 shows another folder, use that one instead, and the database's real name instead of `opendental`. |
 | `<backup>` | `/var/backups/opendental-adoption` on `fox-db`: the folder copies and dumps of this procedure. Never inside `<datadir>`. |
 | `C:\Adoption` | A folder on the admin PC for the reports and logs. |
 | `<tools>` | A folder on the admin PC holding a copy of the built `tools\AdoptionValidation\bin\Release` (or `bin\Debug`) folder: `AdoptionValidation.exe`, `SyntheticData.exe`, their DLLs, `allowed-differences.adoption.json`, `sql\business-totals.sql` and `Invoke-RunbookDryRun.ps1`. They need .NET Framework 4.8, which Windows 10 and 11 include, and no MariaDB program on the PC. |
@@ -126,6 +129,11 @@ and so stops it too.
 
 - **Not Linux** (for example `Win64`): the office database has moved to a Windows server. Stop: this runbook is written for the Ubuntu server,
   and the developers must revise it before the day.
+- **`@@bind_address`** must let a program on `fox-db` itself reach MariaDB at `127.0.0.1`, where the forward of step 0.0.3 arrives: `0.0.0.0`,
+  `::`, `*`, blank or `NULL` (every address), or a list that includes `127.0.0.1`. If it names only another address (for example only the
+  server's network address), stop and ask the developers before the day. Do not change the server's settings yourself: the workstations
+  depend on them.
+- **A port other than `3306`**: write it down and use it in place of the second `3306` in the forward of step 0.0.3.
 - **No SSH login** to `fox-db` (no SSH server, or no account that can use `sudo`): stop and ask the developers. Do not open MariaDB on
   `fox-db` to the network for the tools instead; they refuse any address but the PC's own anyway.
 - **A table that is not MyISAM**, or a routine, trigger, event or view: stop and tell the developers. The folder copy of step 3.1 is a
@@ -156,7 +164,7 @@ long as the tools are used:
 ssh -N -L 127.0.0.1:13306:127.0.0.1:3306 <admin>@fox-db
 ```
 
-The first time, `ssh` shows the server's key fingerprint: compare it with `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub` run [server],
+(The second `3306` is the port of step 0.0.1.) The first time, `ssh` shows the server's key fingerprint: compare it with `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub` run [server],
 and answer `yes` only if they match. Type the password of `<admin>`; nothing more is printed while the forward runs. From then on, port 13306 of
 the admin PC is MariaDB on `fox-db`. (13306, not 3306, so that it can never be mistaken for a MariaDB the admin PC might run itself.) If the
 window is closed or the connection drops, start it again; the tools then fail to connect, and change nothing.
@@ -220,12 +228,29 @@ list the passwords to re-enter, to time the steps, and to run every tool command
 data on the office server; but the owner's decisions so far rule out office data for the rehearsal, and this one is **still open**
 (validation report, "For the owner", item 3). Record the owner's answer on the checklist. If the answer is no, skip to 0.7.
 
-Do all of 0.6 **outside office hours**, with nobody working and every Open Dental program closed: the copy and the reports read every table,
-and `copy` and `adopt` refuse to run while anyone is connected.
+Do all of 0.6 **outside office hours**, with nobody working: the copy and the reports read every table, and `connections`, `copy` and
+`adopt` refuse to run while anyone is connected to `opendental`, **the Open Dental services included** (they stay connected day and night).
 
-0.6.1. **[server] Folder copy first**, exactly as step 3.1 but into `<backup>/prep`: `/var/backups/opendental-adoption/prep` in the `mkdir`
-and `chmod`, and `/var/backups/opendental-adoption/prep/opendental-files` in the `test`, `cp` and `diff`. It is the safety net for the night,
-and it times step 3.1. Expect `IDENTICAL` and `active`. Write down how long MariaDB was stopped.
+0.6.0. **Nobody connected, for the night.** First check the disk space (step 0.8). Every Open Dental program closed on every workstation. On
+each computer of the step 0.3 list, in
+PowerShell as administrator, stop (do not remove) every Open Dental service that is running: `Get-Service OpenDent* | Stop-Service -Force`,
+and `Stop-Service -Name <name> -Force` for each service of the list under another name. Pause the programs and jobs of step 0.4. Then
+[admin PC] (window as in 0.0.4) `& $av connections --database opendental @db`: expect "No connection uses opendental." (exit code 0); a line
+names the computer that is still connected. Until 0.6.5, the services' work (eServices such as the patient portal and text messages,
+statements, scheduled processes) waits.
+
+0.6.1. **[server] Folder copy first**, as in step 3.1 but into `<backup>/prep`. It is the safety net for the night, and it times step 3.1
+(the two `date` lines):
+
+```bash
+sudo mkdir -p /var/backups/opendental-adoption/prep && sudo chmod 700 /var/backups/opendental-adoption /var/backups/opendental-adoption/prep
+date
+sudo test ! -e /var/backups/opendental-adoption/prep/opendental-files && sudo systemctl stop mariadb && sudo cp -a /var/lib/mysql/opendental /var/backups/opendental-adoption/prep/opendental-files && sudo diff -rq /var/lib/mysql/opendental /var/backups/opendental-adoption/prep/opendental-files && echo IDENTICAL
+sudo systemctl start mariadb; systemctl is-active mariadb; date
+```
+
+Expect `IDENTICAL` and `active`, and write down the time between the two dates (`<datadir>`: see "Names used below"). Without
+`IDENTICAL`: stop the preparation, start the services again (0.6.5), and give the output to the developers.
 
 0.6.2. **[admin PC] Dry run of the tool commands** (one command, from a window started as in 0.0.4):
 
@@ -248,6 +273,10 @@ clearinghouse, preference, ...) and never the value. Collect the passwords from 
 `sudo rm -r /var/backups/opendental-adoption/prep` (a copy of office data; the nightly backups remain). Keep `C:\Adoption\dry-run` and
 `credentials-prep.txt`.
 
+0.6.5. **Services back on, the same night.** On each computer of the step 0.3 list, start again the services that 0.6.0 stopped
+(`Start-Service -Name <name>`), and resume the programs and jobs of step 0.4. Check [admin PC]: `& $av connections --database opendental @db`
+lists the services' connections again (exit code 6).
+
 0.7. **If the owner says no to 0.6:**
 
 - **Passwords:** the exact list is made on the day, in step 7, by running `credentials` on `opendental_pms`. So before the day, collect the
@@ -261,9 +290,18 @@ clearinghouse, preference, ...) and never the value. Collect the passwords from 
   `& $av rehearse --size large --runs 1 --keep --skip-roundtrip --tag office --schema-from opendental --out C:\Adoption\rehearsal @db`
   (it reads only the table definitions of `opendental`, never its rows, and writes only `synth_m1z_office_*` databases), then
   `& '<tools>\Invoke-RunbookDryRun.ps1' -Original synth_m1z_office_r1_src -Copy synth_m1z_office_pms -Folder C:\Adoption\dry-run-synthetic -AsOf 2026-09-30 -Port 13306 -User adoption_admin`,
-  and step 3.1's folder copy with `synth_m1z_office_r1_src` in place of `opendental` and `<backup>/synthetic` as the target. Expect
-  `Rehearsal: PASS`, `Dry run: PASS`, `IDENTICAL` and `active`. Then [server] drop `synth_m1z_office_r1_src`, `synth_m1z_office_r1_adopted`,
-  `synth_m1z_office_r1_snap` and `synth_m1z_office_pms`, and `sudo rm -r /var/backups/opendental-adoption/synthetic`.
+  and [server] step 3.1's folder copy of the synthetic database. It stops MariaDB for a moment, so first stop the Open Dental services as
+  in 0.6.0, and start them again afterwards as in 0.6.5:
+
+  ```bash
+  sudo mkdir -p /var/backups/opendental-adoption/synthetic && sudo chmod 700 /var/backups/opendental-adoption /var/backups/opendental-adoption/synthetic
+  sudo test ! -e /var/backups/opendental-adoption/synthetic/files && sudo systemctl stop mariadb && sudo cp -a /var/lib/mysql/synth_m1z_office_r1_src /var/backups/opendental-adoption/synthetic/files && sudo diff -rq /var/lib/mysql/synth_m1z_office_r1_src /var/backups/opendental-adoption/synthetic/files && echo IDENTICAL
+  sudo systemctl start mariadb; systemctl is-active mariadb
+  ```
+
+  Expect `Rehearsal: PASS`, `Dry run: PASS`, `IDENTICAL` and `active`. Then [server] drop `synth_m1z_office_r1_src`, `synth_m1z_office_r1_adopted`,
+  `synth_m1z_office_r1_snap` and `synth_m1z_office_pms` (`sudo mariadb -e "DROP DATABASE <name>"`, each name checked twice), and
+  `sudo rm -r /var/backups/opendental-adoption/synthetic`.
 
 0.8. **Disk space.** [server] `sudo du -sh <datadir>opendental` and `df -h <datadir> /var/backups`. The disk of `<datadir>` needs free space of
 at least 1.5 times the size of the `opendental` folder (for `opendental_pms`), and the disk of `/var/backups` at least 1.2 times (the folder
@@ -276,9 +314,11 @@ after the switch). After the deadline the original database is archived (step 11
 
 ## 1. Start of the outage
 
-1.1. Tell everyone to close Open Dental. [admin PC] (window as in 0.0.4, forward running) `& $av connections --database opendental @db`. Expect
-"No connection uses opendental." (exit code 0). A line "connection ... from <computer>:<port> to opendental" names the computer that is still
-connected: close Open Dental there, and run the command again until it passes.
+1.1. Tell everyone to close Open Dental. [admin PC] (window as in 0.0.4, forward running) `& $av connections --database opendental @db`. Each
+line "connection ... from <computer>:<port> to opendental" names a computer that is still connected. The Open Dental services stay connected
+until step 2 stops them, so lines from the computers that run them (step 0.3 list) are expected here (exit code 6). For any other computer:
+close Open Dental there, and run the command again until only the services' lines remain, or "No connection uses opendental." (exit code 0).
+Step 3.1 repeats this check after step 2, and there it must say "No connection uses opendental.".
 
 1.2. Pause anything else that writes to the database (step 0.4 programs and jobs).
 
@@ -336,18 +376,20 @@ untouched original.
 
 ## 3. Back up and copy
 
-3.1. **[server] The rollback point: a folder copy of the database, with MariaDB stopped.** First [admin PC] repeat 1.1 (`connections`, exit
-code 0). Write down the time you start (steps 10, 11 and "Work entered in the original after the backup" refer to it). With the `<datadir>`
-of step 0.0.1:
+3.1. **[server] The rollback point: a folder copy of the database, with MariaDB stopped.** First [admin PC] repeat 1.1: now that step 2 has
+stopped the services, it must say "No connection uses opendental." (exit code 0). Write down the time the first `date` prints (steps 10, 11
+and "Work entered in the original after the backup" refer to it). The commands use the data folder `/var/lib/mysql/`; if step 0.0.1 showed
+another `<datadir>`, use that instead:
 
 ```bash
 sudo mkdir -p /var/backups/opendental-adoption && sudo chmod 700 /var/backups/opendental-adoption
+date
 sudo test ! -e /var/backups/opendental-adoption/opendental-files && sudo systemctl stop mariadb && sudo cp -a /var/lib/mysql/opendental /var/backups/opendental-adoption/opendental-files && sudo diff -rq /var/lib/mysql/opendental /var/backups/opendental-adoption/opendental-files && echo IDENTICAL
 sudo systemctl start mariadb; systemctl is-active mariadb
 ```
 
-Expect `IDENTICAL`, then `active`. The second line stops at the first part that fails: the target folder already exists (`cp` would copy
-into it), MariaDB did not stop, the copy failed, or `diff` found a difference. The third line always starts MariaDB again. Without
+Expect `IDENTICAL`, then `active`. The long line stops at the first part that fails: the target folder already exists (`cp` would copy
+into it), MariaDB did not stop, the copy failed, or `diff` found a difference. The last line always starts MariaDB again. Without
 `IDENTICAL`: move the target folder aside if it exists (`sudo mv /var/backups/opendental-adoption/opendental-files /var/backups/opendental-adoption/opendental-files-failed`)
 and run the step again; a second failure: Rollback. If MariaDB does not start: stop, read `sudo journalctl -u mariadb -n 50`, and go to
 Rollback when it runs again.
@@ -619,7 +661,7 @@ Sign each line with time and initials.
 
 | # | Step | Expected | Done |
 |---|---|---|---|
-| 0.0.1 | Platform recorded | Ubuntu 24.04, MariaDB 10.11 (`...ubuntu0.24.04.1`, compile OS linux), `<datadir>` and port written down; MyISAM 422; no routine, trigger, event or view; other databases noted | |
+| 0.0.1 | Platform recorded | Ubuntu 24.04, MariaDB 10.11 (`...ubuntu0.24.04.1`, compile OS linux), `<datadir>` and port written down; bind address lets `127.0.0.1` in; MyISAM 422; no routine, trigger, event or view; other databases noted | |
 | 0.0.2 | `adoption_admin` created, history file removed | Password in the password manager | |
 | 0.0.3, 0.0.4 | Forward and tools checked from the admin PC | `connections` lists the workstations' connections, or none | |
 | 0.1 | Validation report signed, release build ready | Owner signature | |
@@ -628,16 +670,16 @@ Sign each line with time and initials.
 | 0.4 | Direct database users and jobs listed | List filed | |
 | 0.5 | Workstations listed, with folder, database and MariaDB user | List filed | |
 | 0.6 | Owner's answer on the preparation dry run | Yes / no, signed | |
-| 0.6 | If yes, outside office hours: folder copy, dry run, `credentials` | `IDENTICAL`, `active`; `Dry run: PASS`; times filed | |
-| 0.6.4 | If yes: `od_prep_pms` dropped, prep folder copy deleted | Done the same night | |
+| 0.6 | If yes, outside office hours: services stopped, nobody connected, folder copy, dry run, `credentials` | `connections` exit 0; `IDENTICAL`, `active`; `Dry run: PASS`; times filed | |
+| 0.6.4, 0.6.5 | If yes: `od_prep_pms` dropped, prep folder copy deleted, services started again | Done the same night | |
 | 0.7 | If no: passwords collected, window planned from the rehearsal (+200%); tools and server check if done | Plan filed | |
 | 0.8 | Disk space | 1.5 × / 1.2 × the database folder free (2.7 × on one disk) | |
 | 0.9 | Rollback deadline agreed | Date and time | |
-| 1.1 | Everyone out | `connections`: no connection uses `opendental` | |
+| 1.1 | Everyone out | `connections`: only the services' connections left, or none | |
 | 1.2 | Other writers paused | Checked | |
 | 2 | Open Dental services stopped and removed, tasks disabled, A to Z Setup moved | Both service queries empty, tasks `Disabled`, on every computer of 0.3 | |
 | 2.1 | Open Dental removed from every workstation (not just shortcuts), `FreeDentalConfig.xml` renamed; account revoked on `opendental` where possible | Table of step 8, first column complete | |
-| 3.1 | Folder copy, start time noted | `IDENTICAL`, `active`; off-server copy if the owner agreed | |
+| 3.1 | Nobody connected; folder copy, start time noted | `connections` exit 0; `IDENTICAL`, `active`; off-server copy if the owner agreed | |
 | 3.2 | `copy` into `opendental_pms` | `Copy: PASS` | |
 | 3.3 | Reports compared | 0 unexpected differences | |
 | 4, 5 | `adopt` (adoption, migration check, verifier, rehash, row check) | `Adopt: PASS`, exit 0, log saved; "Blanked" list initialled | |

@@ -18,7 +18,9 @@ before anyone starts the program, as the office does. The signed-off results are
   port is the local end of the SSH forward of runbook step 0.0; the forward is the only way from there to the database server. The business
   layer gets the same port (`BusinessLayer.ServerAndPort`). Outbound HTTP is routed to a dead local proxy and makes the run fail with exit
   code 3.
-- **No row leaves the database server.** `copy` makes the copy on the server (`INSERT ... SELECT`); the tools bring back only reports (counts,
+- **No copy of the database is made off the database server.** `copy` makes the copy on the server (`INSERT ... SELECT`), and the row checks
+  (`RowComparer`) run on the server. The tools read only what they work on (`adopt` reads the preferences it changes and, for the rehash,
+  the keys, dates, amounts and statuses it hashes; `credentials` reads the rows that hold stored passwords) and write only reports (counts,
   checksums, totals), logs and the places where passwords are stored.
 - **`rehearse` writes only scratch databases** named `<prefix><tag>_r<n>_src`, `_adopted` and `_snap` (prefix `synth_m1z_` unless `--prefix`),
   and drops them at the end unless `--keep`. `credentials`, `startup-check`, `connections` and `float-check` only read, and work on any local

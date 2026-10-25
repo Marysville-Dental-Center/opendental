@@ -267,9 +267,11 @@ to a PC). Fix: runbook step 0.0 records the platform read-only (`lsb_release`, `
 the table engines, routines, triggers, events and views) and stops on a server that is not Linux and on any table that is not MyISAM. The
 commands on the server are bash (`sudo mariadb`, `systemctl`, `cp`, `diff`); the tools run on a Windows admin PC and reach the server's MariaDB through an SSH
 local forward (`ssh -N -L 127.0.0.1:13306:127.0.0.1:3306`), as a dedicated account with a password (`adoption_admin`, created in step 0.0.2,
-dropped in step 11.2), so `LocalOnly` stays meaningful: the forward is the one visible way to the server. No row of the office database leaves
-the server: the copy is made by the server (F12), and the admin PC gets only reports, logs and the password locations. Two defects of the
-tools came out of this, and are fixed with tests:
+dropped in step 11.2), so `LocalOnly` stays meaningful: the forward is the one visible way to the server. No copy of the office database is
+made off the server: the copy is made by the server (F12). The tools on the admin PC read through the forward only what they work on (`adopt`
+reads the preferences it changes and, for the rehash, the keys, dates, amounts and statuses it hashes; `credentials` reads the rows that hold
+stored passwords) and write only reports, logs and the password locations to its disk. Two defects of the tools came out of this, and are
+fixed with tests:
 - `BusinessLayer.Connect` passed the host without the port to `DataConnection`, which then uses 3306. Through a forward on another port,
   `adopt`'s business layer (the adoption itself, the verifier, the rehash) would have connected to port 3306 of the admin PC, not to the
   server its own checks had looked at. It now passes `host:port` (`BusinessLayer_PassesThePortToDataConnection`,
@@ -280,6 +282,13 @@ tools came out of this, and are fixed with tests:
 
 The dry run ran in this topology: the tools on the PC through a relay on port 13306 standing in for the forward (a test does the same on a
 random port in every run). What could not run here, because there is no Ubuntu server in this environment, is listed under "Not covered".
+
+Three more gaps of the new procedure were closed before sign-off. The Open Dental services stay connected to `opendental` day and night, so
+`connections`, `copy` and `adopt` would have refused on the preparation night: step 0.6 now stops the services first and starts them again
+the same night, and on the day step 1.1 expects their connections until step 2 stops them (step 3.1 then requires none). The forward
+arrives at `127.0.0.1` on `fox-db`, so step 0.0.1 now checks that MariaDB listens there (`@@bind_address`) and which port to forward to.
+And the tools do read some rows through the forward while they work (the rehash's keys, dates, amounts and statuses), so the runbook and
+this report now say that no copy of the database is made off the server, not that no row leaves it.
 
 **F12. Fixed (second review, carry-over C5): a logical backup rounds FLOAT values, and the cutover check would then have stopped a correct
 switch.** MariaDB writes a FLOAT as text with 6 significant digits, so `mariadb-dump` with the runbook's options turns 0.1234567 into
@@ -386,8 +395,9 @@ itself also connects with a database name. Left for a later clean-up.
 2. Decide whether to confirm the lock-out once with the licensed Open Dental 25.3.48 client on a synthetic adopted copy (F3; R1 item 5).
 3. Decide whether the preparation may make a copy of the office database on the office server, outside office hours, to list the passwords,
    time the steps and dry-run the tool commands on real data (runbook step 0.6). This is office data on office hardware, not a development
-   copy; the copy is made by the server and nothing leaves it. If not, runbook step 0.7 applies: the password list is made during the outage,
-   and the window is planned from the rehearsal with a larger margin.
+   copy; the copy is made by the server and stays there, and it is dropped the same night. The Open Dental services are stopped while it
+   runs (they would count as connected), so eServices wait until they are started again the same night. If not, runbook step 0.7 applies: the password list is made during the outage, and the window
+   is planned from the rehearsal with a larger margin.
 4. Agree the rollback deadline (runbook step 0.9).
 5. Decide whether the rollback point (runbook step 3.1, a folder copy of the database on `fox-db`) may also be copied to the office's backup
    disk. Without that second copy it is on the server only: it protects against a failed adoption and against mistakes, not against losing the

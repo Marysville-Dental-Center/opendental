@@ -21,8 +21,10 @@ This is everything before the program's first start (step 6.2). Step 3.1, the fo
 the database server itself (bash) and is not part of this script; neither is anything on the workstations.
 
 It stops at the first unexpected result. Every report and log, and the time of each step, go to -Folder (dry-run-timings.txt). The script
-never writes to -Original and never drops a database: drop -Copy afterwards (runbook step 0.6). No row of -Original leaves the database
-server: the copy is made by the server, and the reports hold row counts, checksums and totals.
+never writes to -Original and never drops a database: drop -Copy afterwards (runbook step 0.6). No copy of -Original is made off the
+database server: the copy is made by the server. The tools read through the connection only what they work on (adopt's rehash, for
+example, reads the keys, dates, amounts and statuses it hashes) and write to -Folder only reports and logs: row counts, checksums, totals,
+and names of tables, columns, preferences and computers.
 
 The tools connect to 127.0.0.1 only, on -Port: on the office's admin PC the local end of the SSH forward to the database server (runbook step
 0.0), here the developers' local server. -User is the MariaDB account; its password, if any, is read from the SYNTH_DB_PASSWORD environment
