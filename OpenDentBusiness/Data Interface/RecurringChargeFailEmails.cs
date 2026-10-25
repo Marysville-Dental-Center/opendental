@@ -17,7 +17,7 @@ namespace OpenDentBusiness {
 	///docs/port-notes/M2-RECUR.md):</para>
 	///<para>1. Only a charge the card processor answered with a decline is e-mailed (RecurringChargeData.IsDeclinedByProcessor). A charge that failed
 	///because of the office's setup, or whose outcome is unknown, is not: the patient can do nothing about it, and an unknown outcome may have been
-	///charged.</para>
+	///charged. Neither is a charge that succeeded, whatever error came after it.</para>
 	///<para>2. The e-mail goes to the card's patient, or to the guarantor when the patient has no valid address. Patients who opted out of e-mail
 	///(commoptout, All or Statements) are skipped.</para>
 	///<para>3. It is sent from the default address of the charge's clinic (or the practice), through that address's own server.</para>
@@ -169,6 +169,10 @@ namespace OpenDentBusiness {
 			if(chargeData?.RecurringCharge==null || !chargeData.IsDeclinedByProcessor || !IsEnabled()) {
 				return new RecurringChargeFailEmailResult(RecurringChargeFailEmailStatus.NotNeeded,"");
 			}
+			if(chargeData.RecurringCharge.ChargeStatus==RecurringChargeStatus.ChargeSuccessful) {
+				//The card was charged; an error after that (a note, the receipt, a card row deleted during the run) is no reason to e-mail.
+				return new RecurringChargeFailEmailResult(RecurringChargeFailEmailStatus.NotNeeded,"");
+			}
 			RecurringChargeFailEmailResult result;
 			try {
 				result=SendForDeclinedCharge(chargeData,dateTimeNow,actionSendEmail??((emailMessage,emailAddress) => EmailMessages.SendEmail(emailMessage,emailAddress)));
@@ -267,7 +271,7 @@ namespace OpenDentBusiness {
 
 	///<summary>What happened to the failure e-mail of one recurring charge.</summary>
 	public enum RecurringChargeFailEmailStatus {
-		///<summary>No e-mail is due: the option is off, or the charge was not declined.</summary>
+		///<summary>No e-mail is due: the option is off, the charge was not declined, or it succeeded.</summary>
 		NotNeeded,
 		///<summary>Sent.</summary>
 		Sent,

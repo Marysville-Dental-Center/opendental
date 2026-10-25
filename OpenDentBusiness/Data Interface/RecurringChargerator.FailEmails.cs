@@ -3,6 +3,7 @@
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using CodeBase;
 
 namespace OpenDentBusiness {
@@ -35,6 +36,26 @@ namespace OpenDentBusiness {
 					break;
 			}
 			return result;
+		}
+
+		///<summary>The start of each message PaySimple.PaySimpleApi.ToSaleResponse throws when PaySimple answered a charge with something other than
+		///approved. M2RECURTests runs charges through ToSaleResponse to keep these in step with it.</summary>
+		private static readonly string[] _arrayPaySimpleDeclineStarts=new string[] {
+			"Payment was declined by PaySimple.",
+			"Payment was not approved by PaySimple.",
+		};
+
+		///<summary>For SendPaySimple's catch, which marks every exception declined (Open Dental's behaviour, kept for "inactivate declined cards").
+		///True only when PaySimple answered the charge and did not approve it: the plain Exception that PaySimpleApi.ToSaleResponse throws, also when
+		///the charge was found by its OrderId after a lost answer. False for everything else, so none of it e-mails the patient: any ODException
+		///(PaySimpleResultUnknownException, whose charge may have gone through; missing credentials or PayType, a disabled program, rejected
+		///credentials), PaySimple's error objects (PaySimpleException), HTTP and network errors, and errors after the card was charged.</summary>
+		public static bool IsPaySimpleDecline(Exception ex) {
+			if(ex==null || ex is ODException || ex.GetType()!=typeof(Exception) || ex.InnerException!=null) {
+				return false;
+			}
+			string message=ex.Message??"";
+			return _arrayPaySimpleDeclineStarts.Any(x => message.StartsWith(x,StringComparison.Ordinal));
 		}
 
 		///<summary>Called by ClearStats at the start of a run.</summary>

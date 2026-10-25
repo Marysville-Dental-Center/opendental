@@ -254,7 +254,8 @@ namespace OpenDentBusiness {
 		public bool CanChargeWhenNoBal;
 		public long PaymentType;
 		public bool CCIsRecurringActive;
-		///<summary>Set while charging: the card processor answered with a decline (RecurringChargerator.MarkDeclined), whatever ChargeStatus says.
+		///<summary>Set while charging: the card processor answered with a decline (RecurringChargerator.MarkDeclined; for PaySimple only its own
+		///decline, IsPaySimpleDecline), whatever "inactivate declined cards" makes of ChargeStatus. Never set for a charge that succeeded.
 		///Decides the failure e-mail (RecurringChargeFailEmails).</summary>
 		public bool IsDeclinedByProcessor;
 	}
@@ -1132,6 +1133,7 @@ namespace OpenDentBusiness {
 			}
 			catch(Exception ex) {
 				MarkDeclined(chargeData,Lans.g(_lanThis,"Error processing card:")+" "+ex.Message,LogLevel.Information);
+				chargeData.IsDeclinedByProcessor=chargeData.IsDeclinedByProcessor && IsPaySimpleDecline(ex);//Only PaySimple's own decline e-mails the patient.
 				string clinicDesc="";
 				if(PrefC.HasClinicsEnabled && dictClinicNumDesc.ContainsKey(clinicNumCur)) {
 					clinicDesc=dictClinicNumDesc[clinicNumCur];
@@ -1161,7 +1163,9 @@ namespace OpenDentBusiness {
 
 		///<summary>Call to mark a recurring charge as declined in the specific scenario when the transaction has reached the processor gateway and the processor has responded with something other than success (per Nathan in task #3119214 job #24498).</summary>
 		private void MarkDeclined(RecurringChargeData chargeData,string errorMsg,LogLevel logLevel=LogLevel.Error) {
-			chargeData.IsDeclinedByProcessor=true;
+			if(chargeData.RecurringCharge.ChargeStatus!=RecurringChargeStatus.ChargeSuccessful) {//An error after the card was charged is not a decline.
+				chargeData.IsDeclinedByProcessor=true;
+			}
 			if(chargeData.RecurringCharge.ChargeStatus==RecurringChargeStatus.NotYetCharged
 				&& PrefC.GetBool(PrefName.RecurringChargesInactivateDeclinedCards))
 			{
