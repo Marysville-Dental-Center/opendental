@@ -1312,8 +1312,18 @@ Here is the desired behavior:
 			}
 		}
 
-		///<summary>Three to four objects will end up on clipboard: 1:NodeTypeAndKey, 2:Bitmap(if it's an image type), 3:FileDrop, 4:Database name (if NodeTypeAndKey is not null). For images, the filedrop will point to a temp copy of the saved bitmap.  For non-images, filedrop will point to the original file.</summary>
+		///<summary>Copies the image as shown, drawings included.</summary>
 		public void ToolBarCopy_Click(object sender, EventArgs e){
+			CopyToClipboard(includeDrawings:true);
+		}
+
+		///<summary>Copies the image with its crop, rotation, flip and brightness/contrast, but without drawings, text, measurements or AI annotations. PDFs and other files that are not images are copied like plain Copy.</summary>
+		public void ToolBarCopyWithoutDrawings_Click(object sender,EventArgs e){
+			CopyToClipboard(includeDrawings:false);
+		}
+
+		///<summary>Three to four objects will end up on clipboard: 1:NodeTypeAndKey, 2:Bitmap(if it's an image type), 3:FileDrop, 4:Database name (if NodeTypeAndKey is not null). For images, the filedrop will point to a temp copy of the saved bitmap.  For non-images, filedrop will point to the original file. With includeDrawings false, the bitmap and the file have no drawings. Pasting inside this program uses NodeTypeAndKey, which never copies drawings.</summary>
+		private void CopyToClipboard(bool includeDrawings){
 			//not enabled when pdf selected
 			NodeTypeAndKey nodeTypeAndKey=null;
 			Bitmap bitmapCopy=null;
@@ -1345,7 +1355,9 @@ Here is the desired behavior:
 					g.SetClip(new Rectangle(0,0,_listMountItems[_idxSelectedInMount].Width,_listMountItems[_idxSelectedInMount].Height));
 					//translate from UL of mount item to UL of mount
 					g.TranslateTransform(-_listMountItems[_idxSelectedInMount].Xpos,-_listMountItems[_idxSelectedInMount].Ypos);
-					DrawDrawings(0,g);
+					if(includeDrawings){
+						DrawDrawings(0,g);
+					}
 					//file is always copy of image instead of original file, even for dicom.  NodeTypeAndKey still allows true dicom copy/paste.
 					fileName=Path.GetTempPath()+_documentArrayShowing[_idxSelectedInMount].FileName;
 					bitmapCopy.Save(fileName);
@@ -1362,7 +1374,7 @@ Here is the desired behavior:
 				bitmapCopy=new Bitmap(_mountShowing.Width,_mountShowing.Height);
 				using Graphics g=Graphics.FromImage(bitmapCopy);
 				g.TranslateTransform(bitmapCopy.Width/2,bitmapCopy.Height/2);//Center of image
-				DrawMount(g);
+				DrawMount(g,includeDrawings);
 				fileName=Path.GetTempPath()+PatientCur.LName+PatientCur.FName+".jpg";
 				bitmapCopy.Save(fileName);
 			}
@@ -1370,7 +1382,7 @@ Here is the desired behavior:
 				nodeTypeAndKey=new NodeTypeAndKey(EnumImageNodeType.Document,GetDocumentShowing(0).DocNum);
 				if(ImageHelper.HasImageExtension(GetDocumentShowing(0).FileName) || GetDocumentShowing(0).FileName.EndsWith(".dcm")){
 					fileName=Path.GetTempPath()+GetDocumentShowing(0).FileName;
-					if(!ImageHelper.HasImageBeenEdited(GetDocumentShowing(0))) {//Do a file copy since no changes were made
+					if(!ImageCopyRules.MustDrawForCopy(GetDocumentShowing(0),includeDrawings)) {//Do a file copy since no changes were made
 						string filePathSource=Documents.GetPath(GetDocumentShowing(0).DocNum);
 						while(File.Exists(fileName)) {
 							Random random=new Random();
@@ -1385,7 +1397,7 @@ Here is the desired behavior:
 						//translate to center of drawing area (and center of crop area)
 						g.TranslateTransform(bitmapCopy.Width/2,bitmapCopy.Height/2);
 						//We are now at center of page and crop area, and working in image coords
-						DrawDocument(g);//including drawings
+						DrawDocument(g,includeDrawings);//including drawings unless Copy without drawings
 						ImageStore.SaveBitmapJpg(bitmapCopy,fileName,quality:40);//60% compression
 					}
 				}
@@ -1435,13 +1447,13 @@ Here is the desired behavior:
 			}
 			Cursor=Cursors.Default;
 			if(IsMountItemSelected()){
-				SecurityLogs.MakeLogEntry(EnumPermType.Copy,patNum,"Patient image "+_documentArrayShowing[_idxSelectedInMount].FileName+" copied to clipboard");
+				SecurityLogs.MakeLogEntry(EnumPermType.Copy,patNum,ImageCopyRules.GetLogText("Patient image "+_documentArrayShowing[_idxSelectedInMount].FileName+" copied to clipboard",includeDrawings));
 			}
 			else if(IsMountShowing()){
-				SecurityLogs.MakeLogEntry(EnumPermType.Copy,patNum,"Patient mount "+_mountShowing.Description+" copied to clipboard");
+				SecurityLogs.MakeLogEntry(EnumPermType.Copy,patNum,ImageCopyRules.GetLogText("Patient mount "+_mountShowing.Description+" copied to clipboard",includeDrawings));
 			}
 			else if(IsDocumentShowing()){
-				SecurityLogs.MakeLogEntry(EnumPermType.Copy,patNum,"Patient image "+GetDocumentShowing(0).FileName+" copied to clipboard");
+				SecurityLogs.MakeLogEntry(EnumPermType.Copy,patNum,ImageCopyRules.GetLogText("Patient image "+GetDocumentShowing(0).FileName+" copied to clipboard",includeDrawings));
 			}
 		}
 
@@ -2398,34 +2410,37 @@ Here is the desired behavior:
 			if(GetSelectedType()==EnumImageNodeType.None){
 				return;//Probably the user has no patient or tree object selected
 			}
-			switch(((MenuItem)sender).Index) {
-				case 0:
-					ToolBarCopy_Click(this,new EventArgs());
-					break;
-				case 1://paste
-					ToolBarPaste_Click(this,new EventArgs());
-					break;
-				case 2:
-					ToolBarFlip_Click();
-					break;
-				case 3:
-					ToolBarRotateL_Click();
-					break;
-				case 4:
-					ToolBarRotateR_Click();
-					break;
-				case 5:
-					ToolBarRotate180_Click();
-					break;
-				case 6://info
-					ToolBarDelete_Click(this,new EventArgs());
-					break;
-				case 7://info
-					ToolBarInfo_Click(this,new EventArgs());
-					break;
-				case 8://Tasks
-					ToolBarTasks_Click(this,new EventArgs());
-					break;
+			//By menu item rather than by position, so inserting an item does not shift the others.
+			MenuItem menuItem=(MenuItem)sender;
+			if(menuItem==menuItemCopy) {
+				ToolBarCopy_Click(this,new EventArgs());
+			}
+			else if(menuItem==menuItemCopyWithoutDrawings) {
+				ToolBarCopyWithoutDrawings_Click(this,new EventArgs());
+			}
+			else if(menuItem==menuItemPaste) {
+				ToolBarPaste_Click(this,new EventArgs());
+			}
+			else if(menuItem==menuItemFlipHoriz) {
+				ToolBarFlip_Click();
+			}
+			else if(menuItem==menuItemRotateLeft) {
+				ToolBarRotateL_Click();
+			}
+			else if(menuItem==menuItemRotateRight) {
+				ToolBarRotateR_Click();
+			}
+			else if(menuItem==menuItemRotate180) {
+				ToolBarRotate180_Click();
+			}
+			else if(menuItem==menuItemDelete) {
+				ToolBarDelete_Click(this,new EventArgs());
+			}
+			else if(menuItem==menuItemInfo) {
+				ToolBarInfo_Click(this,new EventArgs());
+			}
+			else if(menuItem==menuItemTasks) {
+				ToolBarTasks_Click(this,new EventArgs());
 			}
 		}
 
@@ -3929,8 +3944,8 @@ Here is the desired behavior:
 			EventSelectTreeNode?.Invoke(this,nodeTypeAndKey2);
 		}
 
-		///<summary></summary>
-		private void DrawDocument(Graphics g){
+		///<summary>includeDrawings false leaves out the drawings, for Copy without drawings.</summary>
+		private void DrawDocument(Graphics g,bool includeDrawings=true){
 			Document document=GetDocumentShowing(0);
 			//we're at the center of the crop area, and working in image coordinates
 			if(document.CropW>0 && document.CropH>0){
@@ -3948,7 +3963,9 @@ Here is the desired behavior:
 			//Translate from center of image to UL corner of image
 			g.TranslateTransform(-GetBitmapShowing(0).Width/2,-GetBitmapShowing(0).Height/2);
 			g.DrawImage(GetBitmapShowing(0),0,0,GetBitmapShowing(0).Width,GetBitmapShowing(0).Height);
-			DrawDrawings(-document.DegreesRotated,g);
+			if(includeDrawings){
+				DrawDrawings(-document.DegreesRotated,g);
+			}
 			g.ResetClip();
 			if(_rectangleCrop.Width>0 && _rectangleCrop.Height>0) {//Drawn last so it's on top.
 				g.ResetTransform();//panel coords
@@ -3993,8 +4010,8 @@ Here is the desired behavior:
 			}
 		}
 
-		///<summary>Used for drawing on screen in real time and also for drawing to printer.</summary>
-		private void DrawMount(Graphics g){
+		///<summary>Used for drawing on screen in real time and also for drawing to printer. includeDrawings false leaves out the drawings, for Copy without drawings.</summary>
+		private void DrawMount(Graphics g,bool includeDrawings=true){
 			//we're at center of the mount, and working in mount coordinates
 			//translate to UL of mount
 			g.TranslateTransform(-_mountShowing.Width/2f,-_mountShowing.Height/2f);
@@ -4023,7 +4040,9 @@ Here is the desired behavior:
 				g.DrawRectangle(penOutline,_listMountItems[i].Xpos,_listMountItems[i].Ypos,
 					_listMountItems[i].Width,_listMountItems[i].Height);//silver is 50% black
 			}
-			DrawDrawings(0,g);
+			if(includeDrawings){
+				DrawDrawings(0,g);
+			}
 			//yellow outline of selected
 			if(_idxSelectedInMount!=-1){
 				g.DrawRectangle(Pens.Yellow,_listMountItems[_idxSelectedInMount].Xpos,_listMountItems[_idxSelectedInMount].Ypos,

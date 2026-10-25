@@ -254,7 +254,10 @@ namespace OpenDental{
 			contextMenuExport.Add(new WpfControls.UI.MenuItem(Lan.g(this,"Move to Patient..."),ToolBarMoveToPatient));
 			contextMenuExport.Add(new WpfControls.UI.MenuItem(Lan.g(this,"Export TIFF"),ToolBarExportTIFF));
 			toolBarMain.Add(Lan.g(this,"Export"),ToolBarExport_Click,WpfControls.UI.EnumIcons.Export,WpfControls.UI.ToolBarButtonStyle.DropDownButton,Lan.g(this,"Export to File"),contextMenuExport,TB.Export.ToString());
-			toolBarMain.Add(Lan.g(this,"Copy"),ToolBarCopy_Click,WpfControls.UI.EnumIcons.Copy,toolTipText:Lan.g(this,"Copy displayed image to clipboard"),tag:TB.Copy.ToString());
+			WpfControls.UI.ContextMenu contextMenuCopy=new WpfControls.UI.ContextMenu();
+			contextMenuCopy.Add(new WpfControls.UI.MenuItem(Lan.g(this,"Copy"),ToolBarCopy_Click));
+			contextMenuCopy.Add(new WpfControls.UI.MenuItem(Lan.g(this,"Copy without drawings"),ToolBarCopyWithoutDrawings_Click));
+			toolBarMain.Add(Lan.g(this,"Copy"),ToolBarCopy_Click,WpfControls.UI.EnumIcons.Copy,WpfControls.UI.ToolBarButtonStyle.DropDownButton,Lan.g(this,"Copy displayed image to clipboard"),contextMenuCopy,TB.Copy.ToString());
 			toolBarMain.Add(Lan.g(this,"Paste"),ToolBarPaste_Click,WpfControls.UI.EnumIcons.Paste,toolTipText:Lan.g(this,"Paste From Clipboard"));
 			WpfControls.UI.ContextMenu contextMenuForms = new WpfControls.UI.ContextMenu();
 			string formDir=FileAtoZ.CombinePaths(ImageStore.GetPreferredAtoZpath(),"Forms");
@@ -2248,6 +2251,10 @@ namespace OpenDental{
 
 		private void ToolBarCopy_Click(object sender, EventArgs e){
 			GetOrMakeControlImageDisplay().ToolBarCopy_Click(sender,e);
+		}
+
+		private void ToolBarCopyWithoutDrawings_Click(object sender,EventArgs e){
+			GetOrMakeControlImageDisplay().ToolBarCopyWithoutDrawings_Click(sender,e);
 		}
 
 		private void ToolBarDelete_Click(object sender, EventArgs e){
