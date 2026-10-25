@@ -306,6 +306,10 @@ namespace EFormTests {
 			Carrier carrier=Carriers.GetCarrier(result.CarrierNum);
 			Assert.AreEqual("Brand New Synthetic Carrier",carrier.CarrierName);
 			Assert.AreEqual("(555)555-0144",carrier.Phone);
+			Assert.AreEqual(1,Count("securitylog","PermType="+(int)EnumPermType.CarrierCreate+" AND PatNum="+patientChild.PatNum
+				+" AND LogText LIKE 'Carrier ''Brand New Synthetic Carrier'' created%'"),"the new carrier is logged under CarrierCreate");
+			Assert.AreEqual(0,Count("securitylog","PermType="+(int)EnumPermType.InsPlanCreate+" AND PatNum="+patientChild.PatNum
+				+" AND LogText LIKE 'Carrier %'"));
 			InsPlan insPlan=InsPlans.GetPlan(result.PlanNum,null);
 			Assert.AreEqual("NG1",insPlan.GroupNum);
 			Assert.AreEqual("NewCo",Employers.GetName(insPlan.EmployerNum));

@@ -211,7 +211,8 @@ namespace EFormTests {
 
 		[TestMethod]
 		public void ConvertPermissions() {
-			CollectionAssert.AreEqual(new List<EnumPermType>() { EnumPermType.InsPlanCreate,EnumPermType.PatPlanCreate },
+			//A new carrier needs CarrierCreate, as in the plan and carrier windows, so offices that limit it still stop duplicate carriers.
+			CollectionAssert.AreEqual(new List<EnumPermType>() { EnumPermType.CarrierCreate,EnumPermType.InsPlanCreate,EnumPermType.PatPlanCreate },
 				InsPendings.GetPermissionsForConvert(carrierNum:0,planNum:0));
 			CollectionAssert.AreEqual(new List<EnumPermType>() { EnumPermType.InsPlanEdit,EnumPermType.PatPlanCreate },
 				InsPendings.GetPermissionsForConvert(carrierNum:5,planNum:9));

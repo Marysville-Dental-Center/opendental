@@ -8,15 +8,18 @@ using WpfControls.UI;
 namespace OpenDental {
 	///<summary>Review of one pending insurance row (inspending, Open Dental 25.2), opened from the Family module. Staff can fix the details, delete the row
 	///(needs InsPlanEdit, our choice), or convert it to real insurance in one window: pick or create the carrier, pick or create the plan, reuse or
-	///create the subscription, choose the ordinal, and optionally convert the same insurance for other family members. Conversion needs InsPlanCreate
-	///when a carrier or plan is created, InsPlanEdit to attach to an existing plan, and PatPlanCreate.</summary>
+	///create the subscription, choose the ordinal, and optionally convert the same insurance for other family members. Conversion needs CarrierCreate
+	///when a carrier is created, InsPlanCreate when a carrier or plan is created, InsPlanEdit to attach to an existing plan, and PatPlanCreate.</summary>
 	public partial class FrmInsPendingReview:FrmODBase {
 		private long _insPendingNum;
 		private InsPending _insPending;
 		private Family _family;
 		private List<Patient> _listPatientsFamily;
-		///<summary>Carriers shown after the first "new carrier" row, index for index.</summary>
+		///<summary>Carriers shown in the carrier list, index for index after the "new carrier" row when there is one.</summary>
 		private List<Carrier> _listCarriers=new List<Carrier>();
+		///<summary>True when the carrier list starts with the "new carrier" row. Only users with CarrierCreate get it, as in the plan and carrier
+		///windows, so offices that limit CarrierCreate to stop duplicate carriers are not bypassed by patient-typed names.</summary>
+		private bool _hasNewCarrierRow;
 		///<summary>Plans shown after the first "new plan" row, index for index.</summary>
 		private List<InsPlan> _listInsPlans=new List<InsPlan>();
 		private List<InsPending> _listInsPendingsAlso=new List<InsPending>();
@@ -166,11 +169,15 @@ namespace OpenDental {
 			FillCarriers();
 		}
 
-		///<summary>Row 0 creates a new carrier from the name and phone; the others are exact and near matches. An exact match is selected.</summary>
+		///<summary>For users with CarrierCreate, row 0 creates a new carrier from the name and phone; the other rows are exact and near matches. An exact
+		///match is selected, otherwise the new carrier row when there is one, otherwise nothing.</summary>
 		private void FillCarriers() {
 			_listCarriers=InsPendings.GetCarrierMatches(textCarrierName.Text);
+			_hasNewCarrierRow=Security.IsAuthorized(EnumPermType.CarrierCreate,true);
 			listCarriers.Items.Clear();
-			listCarriers.Items.Add("<"+Lang.g(this,"New carrier")+": "+textCarrierName.Text.Trim()+">");
+			if(_hasNewCarrierRow) {
+				listCarriers.Items.Add("<"+Lang.g(this,"New carrier")+": "+textCarrierName.Text.Trim()+">");
+			}
 			for(int i=0;i<_listCarriers.Count;i++) {
 				string text=_listCarriers[i].CarrierName;
 				if(!string.IsNullOrEmpty(_listCarriers[i].Phone)) {
@@ -182,15 +189,27 @@ namespace OpenDental {
 				listCarriers.Items.Add(text,_listCarriers[i]);
 			}
 			int idx=_listCarriers.FindIndex(x => string.Equals((x.CarrierName??"").Trim(),textCarrierName.Text.Trim(),StringComparison.OrdinalIgnoreCase));
-			listCarriers.SetSelected(idx+1);//0 when there is no exact match
+			if(idx==-1 && !_hasNewCarrierRow) {
+				listCarriers.SelectedIndex=-1;//No exact match and no permission to create one. The user picks a near match or searches again.
+			}
+			else {
+				listCarriers.SelectedIndex=idx+GetCarrierRowOffset();//the new carrier row when there is no exact match
+			}
 			FillPlans();
 		}
 
+		///<summary>1 when the carrier list starts with the "new carrier" row, otherwise 0.</summary>
+		private int GetCarrierRowOffset() {
+			return _hasNewCarrierRow ? 1 : 0;
+		}
+
+		///<summary>0 for the "new carrier" row or when nothing is selected.</summary>
 		private long GetCarrierNumSelected() {
-			if(listCarriers.SelectedIndex<1) {
+			int idx=listCarriers.SelectedIndex-GetCarrierRowOffset();
+			if(listCarriers.SelectedIndex==-1 || idx<0 || idx>=_listCarriers.Count) {
 				return 0;
 			}
-			return _listCarriers[listCarriers.SelectedIndex-1].CarrierNum;
+			return _listCarriers[idx].CarrierNum;
 		}
 
 		private long GetPlanNumSelected() {
@@ -276,7 +295,12 @@ namespace OpenDental {
 				return;
 			}
 			if(listCarriers.SelectedIndex==-1 || listPlans.SelectedIndex==-1) {
-				MsgBox.Show(this,"Please pick a carrier and a plan, or the New rows.");
+				if(_hasNewCarrierRow) {
+					MsgBox.Show(this,"Please pick a carrier and a plan, or the New rows.");
+				}
+				else {
+					MsgBox.Show(this,"Please pick an existing carrier and a plan, or the New plan row. Creating a carrier needs the Carrier Create permission.");
+				}
 				return;
 			}
 			long carrierNum=GetCarrierNumSelected();

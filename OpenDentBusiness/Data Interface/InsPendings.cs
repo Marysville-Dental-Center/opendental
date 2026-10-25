@@ -279,11 +279,14 @@ namespace OpenDentBusiness {
 			return Crud.InsPlanCrud.SelectMany(command);
 		}
 
-		///<summary>The permissions a conversion needs: InsPlanCreate when a carrier or plan is created, InsPlanEdit when attaching to an existing plan, and
-		///PatPlanCreate for the new patplan rows.</summary>
+		///<summary>The permissions a conversion needs: CarrierCreate when a carrier is created (as in the plan and carrier windows), InsPlanCreate when a
+		///carrier or plan is created, InsPlanEdit when attaching to an existing plan, and PatPlanCreate for the new patplan rows.</summary>
 		public static List<EnumPermType> GetPermissionsForConvert(long carrierNum,long planNum) {
 			Meth.NoCheckMiddleTierRole();
 			List<EnumPermType> listPerms=new List<EnumPermType>();
+			if(carrierNum==0) {
+				listPerms.Add(EnumPermType.CarrierCreate);
+			}
 			if(carrierNum==0 || planNum==0) {
 				listPerms.Add(EnumPermType.InsPlanCreate);
 			}
@@ -325,7 +328,7 @@ namespace OpenDentBusiness {
 				Signalods.SetInvalid(InvalidType.Carriers);
 				Carriers.RefreshCache();
 				result.IsCarrierCreated=true;
-				SecurityLogs.MakeLogEntry(EnumPermType.InsPlanCreate,insPending.PatNum,"Carrier '"+carrier.CarrierName+"' created "+strSource+".");
+				SecurityLogs.MakeLogEntry(EnumPermType.CarrierCreate,insPending.PatNum,"Carrier '"+carrier.CarrierName+"' created "+strSource+".");
 			}
 			else {
 				carrier=Carriers.GetCarrier(carrierNum);
