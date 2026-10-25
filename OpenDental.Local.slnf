@@ -30,6 +30,7 @@
       "tests\\ImagingTests\\ImagingTests.csproj",
       "tests\\GroupNoteTests\\GroupNoteTests.csproj",
       "tests\\M202Tests\\M202Tests.csproj",
+      "tests\\M2DUNTests\\M2DUNTests.csproj",
       "tests\\ForkMigrationTests\\ForkMigrationTests.csproj",
       "tests\\M201Tests\\M201Tests.csproj",
       "tests\\PayPlanTests\\PayPlanTests.csproj",
