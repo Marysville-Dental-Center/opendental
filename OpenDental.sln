@@ -122,6 +122,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "M201Tests", "tests\M201Test
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "M202Tests", "tests\M202Tests\M202Tests.csproj", "{EA796942-1A3A-450A-BA55-4AA3429F2FF9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "M2EMPTests", "tests\M2EMPTests\M2EMPTests.csproj", "{26FE86B9-AA28-49EE-9C67-3179A92D3FEA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -793,6 +795,18 @@ Global
 		{EA796942-1A3A-450A-BA55-4AA3429F2FF9}.Release|Any CPU.Build.0 = Release|x86
 		{EA796942-1A3A-450A-BA55-4AA3429F2FF9}.Release|x86.ActiveCfg = Release|x86
 		{EA796942-1A3A-450A-BA55-4AA3429F2FF9}.Release|x86.Build.0 = Release|x86
+		{26FE86B9-AA28-49EE-9C67-3179A92D3FEA}.Debug|Any CPU.ActiveCfg = Debug|x86
+		{26FE86B9-AA28-49EE-9C67-3179A92D3FEA}.Debug|Any CPU.Build.0 = Debug|x86
+		{26FE86B9-AA28-49EE-9C67-3179A92D3FEA}.Debug|x86.ActiveCfg = Debug|x86
+		{26FE86B9-AA28-49EE-9C67-3179A92D3FEA}.Debug|x86.Build.0 = Debug|x86
+		{26FE86B9-AA28-49EE-9C67-3179A92D3FEA}.ODXam|Any CPU.ActiveCfg = Release|x86
+		{26FE86B9-AA28-49EE-9C67-3179A92D3FEA}.ODXam|Any CPU.Build.0 = Release|x86
+		{26FE86B9-AA28-49EE-9C67-3179A92D3FEA}.ODXam|x86.ActiveCfg = Release|x86
+		{26FE86B9-AA28-49EE-9C67-3179A92D3FEA}.ODXam|x86.Build.0 = Release|x86
+		{26FE86B9-AA28-49EE-9C67-3179A92D3FEA}.Release|Any CPU.ActiveCfg = Release|x86
+		{26FE86B9-AA28-49EE-9C67-3179A92D3FEA}.Release|Any CPU.Build.0 = Release|x86
+		{26FE86B9-AA28-49EE-9C67-3179A92D3FEA}.Release|x86.ActiveCfg = Release|x86
+		{26FE86B9-AA28-49EE-9C67-3179A92D3FEA}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
