@@ -12,7 +12,8 @@ namespace ImagingDeviceManager.Tests {
 	internal enum FakeHelperEnd {
 		///<summary>Done, or closing the window: every image taken is delivered (XFERREADY), or CLOSEDSREQ when there is none.</summary>
 		Done,
-		///<summary>The sensor or its software fails: CLOSEDSREQ with EndCode as the end reason, or XFERREADY if images were taken.</summary>
+		///<summary>The sensor or its software fails: CLOSEDSREQ with EndCode as the end reason, or XFERREADY if images were taken (DAT_STATUS
+		///then returns TWCC_SUCCESS: an end reason follows only a CLOSEDSREQ, section 8).</summary>
 		Fail,
 		///<summary>Nobody ends it: the helper runs until the application disables or closes the source.</summary>
 		Never,
@@ -29,9 +30,12 @@ namespace ImagingDeviceManager.Tests {
 	}
 
 	///<summary>The "single-shot helper DS" profile: a simulated source that behaves as twain-contract 1.1 sections 2-11 describe the
-	///sensor data source, including its section 9 limitations. Each MSG_ENABLEDS starts a simulated helper (the sensor software in
+	///sensor data source, including its section 9 limitations: ShowUI is ignored (CAP_UICONTROLLABLE FALSE), CAP_DEVICEONLINE is always
+	///TRUE, a disable without safe disable loses undelivered images for the host, an image that cannot be read ends the batch
+	///(FailReadAtImage), and there is one notification per enable. Each MSG_ENABLEDS starts a simulated helper (the sensor software in
 	///its own window); the operator's actions are scripted (ListExposures, End, EndAfterMs, EndCode). The numbers of its custom
-	///capabilities and condition codes are the published ones, used here only as data of this simulated source.
+	///capabilities and condition codes are the published ones, used here only as data of this simulated source. Script options marked
+	///"not contract behaviour" are for tests of the library, not part of the profile.
 	///
 	///Timed behaviour runs on the FakeTwainDsm clock and wakes the application's message loop with a timer, so the default times
 	///are scaled down from the contract's (15 s becomes ForcedEndMs) to keep tests fast.</summary>
@@ -90,6 +94,10 @@ namespace ImagingDeviceManager.Tests {
 		public int BlockingCloseMs;
 		///<summary>MSG_ENABLEDS fails with TWCC_OPERATIONERROR (the helper could not be started) and the source stays in state 4.</summary>
 		public bool EnableFails;
+		///<summary>Sections 5 and 9: the n-th image of a session (n of 2 or more) cannot be read. MSG_ENDXFER after image n-1 returns 0, as at
+		///the end of the batch, the source goes to state 5, and image n and the later ones are not delivered: they count as kept for
+		///redelivery (section 10.3). 0: every image can be read.</summary>
+		public int FailReadAtImage;
 		///<summary>Runs inside each MSG_ENABLEDS, after the session started and before the source wakes the host.</summary>
 		public Action ActionOnEnable;
 		///<summary>Not contract behaviour: after the first refused disable, one MSG_XFERREADY arrives while nothing is offered (pending
@@ -129,6 +137,8 @@ namespace ImagingDeviceManager.Tests {
 		///<summary>Images the helper saved that are not delivered yet. The first is the one offered or in transfer in states 6-7.</summary>
 		private readonly List<FakePage> _listUndelivered=new List<FakePage>();
 		private bool _isCurrentTransferred;
+		///<summary>Images of the session ended with MSG_ENDXFER so far.</summary>
+		private int _countEnded;
 		private int _rowCursor;
 		private ushort _notificationPending;
 		private bool _isSpuriousPending;
@@ -211,14 +221,13 @@ namespace ImagingDeviceManager.Tests {
 		private void Advance() {
 			long now=_dsm==null ? 0 : _dsm.NowMs;
 			if(_isRunning && _endDueMs>=0 && now>=_endDueMs) {
-				_endReason=_endReasonScheduled;
-				EndSession();
+				EndSession(_endReasonScheduled);
 			}
 			if(_isRunning && _closeDueMs>=0 && now>=_closeDueMs) {
-				EndSession();
+				EndSession(0);
 			}
 			if(_isRunning && _forcedEndDueMs>=0 && now>=_forcedEndDueMs) {
-				EndSession();
+				EndSession(0);
 			}
 			Reschedule();
 		}
@@ -243,13 +252,15 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		///<summary>The helper has ended: the source sends exactly one notification (section 5): MSG_XFERREADY if it has images to offer,
-		///otherwise MSG_CLOSEDSREQ.</summary>
-		private void EndSession() {
+		///otherwise MSG_CLOSEDSREQ, which alone carries endReason (section 8: a custom code after a MSG_CLOSEDSREQ that had a reason,
+		///otherwise TWCC_SUCCESS).</summary>
+		private void EndSession(ushort endReason) {
 			_isRunning=false;
 			_endDueMs=-1;
 			_closeDueMs=-1;
 			_forcedEndDueMs=-1;
 			_notificationPending=_listUndelivered.Count>0 ? Tw.MSG_XFERREADY : Tw.MSG_CLOSEDSREQ;
+			_endReason=_notificationPending==Tw.MSG_CLOSEDSREQ ? endReason : (ushort)0;
 			_dsm?.WakeHostNow();
 		}
 
@@ -556,6 +567,7 @@ namespace ImagingDeviceManager.Tests {
 				_hasRefusedOnce=false;
 				_isLastDisableRefused=false;
 				_endReason=0;
+				_countEnded=0;
 				_closeDueMs=-1;
 				_forcedEndDueMs=-1;
 				_endDueMs=-1;
@@ -685,6 +697,12 @@ namespace ImagingDeviceManager.Tests {
 							CountKeptForRedelivery++;//Its transfer failed or was abandoned: it stays undelivered.
 						}
 						_listUndelivered.RemoveAt(0);
+						_countEnded++;
+					}
+					if(FailReadAtImage>=2 && _countEnded==FailReadAtImage-1 && _listUndelivered.Count>0) {
+						//The next image cannot be read: MSG_ENDXFER returns 0 and the rest of the batch is not delivered (sections 5, 9).
+						CountKeptForRedelivery+=_listUndelivered.Count;
+						_listUndelivered.Clear();
 					}
 					_isLastDisableRefused=false;
 					_isCurrentTransferred=false;
@@ -746,7 +764,7 @@ namespace ImagingDeviceManager.Tests {
 				return Fail(Tw.TWCC_SEQERROR);
 			}
 			if(page.FailCondition!=0) {
-				return Fail(page.FailCondition);
+				return Fail(page.FailCondition);//Generic-source behaviour (FakePage.FailCondition); the contract's read failure is FailReadAtImage.
 			}
 			IntPtr hDib=_dsm.SourceAllocate(page.NativeDib.Length);
 			IntPtr pDib=NativeMethods.GlobalLock(hDib);
@@ -765,7 +783,7 @@ namespace ImagingDeviceManager.Tests {
 				return Fail(Tw.TWCC_SEQERROR);
 			}
 			if(page.FailCondition!=0) {
-				return Fail(page.FailCondition);
+				return Fail(page.FailCondition);//Generic-source behaviour (FakePage.FailCondition); the contract's read failure is FailReadAtImage.
 			}
 			TW_IMAGEMEMXFER xfer=(TW_IMAGEMEMXFER)Marshal.PtrToStructure(data,typeof(TW_IMAGEMEMXFER));
 			int bytesPerRow=page.Width;

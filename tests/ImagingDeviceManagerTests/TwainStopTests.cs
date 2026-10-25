@@ -319,19 +319,41 @@ namespace ImagingDeviceManager.Tests {
 
 		[TestMethod]
 		public void TransferFailure_ByName_RemainingImagesDrained() {
-			for(int i=0;i<3;i++) {
-				Helper.ListExposures.Add(SessionHarness.Exposure(8+i));
-			}
-			Helper.ListExposures[1].FailCondition=Tw.TWCC_LOWMEMORY;
-			Assert.IsTrue(Session.OpenSource(Helper.ProductName));
+			//A generic source that moves on to the next image after a failed transfer (FakePage.FailCondition).
+			_harness.Fake.IsStrict=true;
+			AddGenericPages(3);
+			_harness.Fake.ListPages[1].FailCondition=Tw.TWCC_LOWMEMORY;
+			Assert.IsTrue(Session.OpenSource("Fake Sensor"));
 			Session.MultiTransfer=true;
 			Assert.IsNotNull(Session.Acquire(IntPtr.Zero));
 			Assert.IsNull(Session.Acquire(IntPtr.Zero));
 			Assert.AreEqual(EZTwainErrorCode.EZTEC_XFER_FAILURE,Session.ErrorCode);
+			Assert.IsTrue(Session.IsLastTransferFailed);
 			Assert.AreEqual(1,Sink.ListDrained.Count,"The image after the failed one is kept.");
 			Assert.AreEqual(10,Sink.ListDrained[0].Image.Width);
-			Assert.AreEqual(1,Helper.CountKeptForRedelivery,"The failed image stays undelivered in the source.");
 			_harness.AssertDisabledOnlyInState5();
+		}
+
+		[TestMethod]
+		public void Batch_UnreadableImage_EndsAtCountZero_DisabledInState5() {
+			//twain-contract 1.1 sections 5 and 9: when the next image cannot be read, MSG_ENDXFER returns 0 as at the end of the batch.
+			for(int i=0;i<3;i++) {
+				Helper.ListExposures.Add(SessionHarness.Exposure(8+i));
+			}
+			Helper.FailReadAtImage=2;
+			Assert.IsTrue(Session.OpenSource(Helper.ProductName));
+			Session.MultiTransfer=true;
+			DibImage dib=Session.Acquire(IntPtr.Zero);
+			Assert.IsNotNull(dib,Session.ErrorText);
+			Assert.AreEqual(8,dib.Width);
+			Assert.IsTrue(Session.IsDone(),"The batch ends at count 0; the Mount/Acquire batch loop stops.");
+			Assert.AreEqual(4,Session.State,"Disabled, still open.");
+			CollectionAssert.AreEqual(new[] { 5 },_harness.Fake.ListDisableStates.ToArray());
+			Assert.AreEqual(0,_harness.Fake.CallsNamed("RESET").Count);
+			Assert.AreEqual(0,Sink.ListDrained.Count);
+			Assert.AreEqual(1,Helper.CountDelivered);
+			Assert.AreEqual(2,Helper.CountKeptForRedelivery,"The rest of the batch is not delivered.");
+			Session.CloseSource();
 		}
 		#endregion Safe stop order
 

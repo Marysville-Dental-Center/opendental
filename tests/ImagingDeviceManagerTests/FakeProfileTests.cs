@@ -186,6 +186,38 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		[TestMethod]
+		public void Helper_UnreadableImage_EndXferReturnsZero_RestNotDelivered() {
+			for(int i=0;i<3;i++) {
+				_helper.ListExposures.Add(Exposure(10+i));
+			}
+			_helper.FailReadAtImage=2;
+			using(FakeRawClient client=OpenHelper()) {
+				client.Enable();
+				Assert.AreEqual(Tw.MSG_XFERREADY,client.WaitForNotification(1000));
+				short count;
+				client.Pending(Tw.MSG_GET,out count);
+				Assert.AreEqual(3,count);
+				TransferAll(client,1);//MSG_ENDXFER returns 0 after the first image, as at the end of the batch.
+				Assert.AreEqual(5,_helper.State);
+				Assert.AreEqual(1,_helper.CountDelivered);
+				Assert.AreEqual(2,_helper.CountKeptForRedelivery);
+				Assert.AreEqual(Tw.TWRC_SUCCESS,client.Disable());
+			}
+		}
+
+		[TestMethod]
+		public void Helper_FailWithImages_XferReady_NoEndReason() {
+			_helper.ListExposures.Add(Exposure(10));
+			_helper.End=FakeHelperEnd.Fail;
+			_helper.EndCode=FakeHelperSource.CodeSoftwareFailed;
+			using(FakeRawClient client=OpenHelper()) {
+				client.Enable();
+				Assert.AreEqual(Tw.MSG_XFERREADY,client.WaitForNotification(1000));
+				Assert.AreEqual(Tw.TWCC_SUCCESS,client.Status(),"An end reason follows only a MSG_CLOSEDSREQ (section 8).");
+			}
+		}
+
+		[TestMethod]
 		public void Helper_ClosedWithoutImage_CloseRequestWithSuccessCode() {
 			using(FakeRawClient client=OpenHelper()) {
 				client.Enable();

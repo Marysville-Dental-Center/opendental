@@ -21,7 +21,9 @@ namespace ImagingDeviceManager.Tests {
 		public byte[][] TwainRows;
 		///<summary>Packed DIB for native transfers.</summary>
 		public byte[] NativeDib;
-		///<summary>Non-zero: the transfer of this page fails with this TWAIN condition code.</summary>
+		///<summary>Non-zero: the transfer of this page fails with this TWAIN condition code, and MSG_ENDXFER then moves on to the next page.
+		///Generic-source behaviour: the contract 1.1 profile (FakeHelperSource) honours it too, but its contract says only that such an
+		///image stays undelivered (section 10.3); the contract's own read failure, which ends the batch, is FakeHelperSource.FailReadAtImage.</summary>
 		public ushort FailCondition;
 		///<summary>The transfer of this page returns TWRC_CANCEL.</summary>
 		public bool IsCancelled;
