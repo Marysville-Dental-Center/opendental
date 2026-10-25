@@ -3999,6 +3999,8 @@ namespace OpenDental.UI{
 							text=dataRoww["wkPhone"].ToString();
 						}
 						break;
+					case EnumApptViewElement.PreAuthFlag://26.1, drawn in ControlApptPanel.PreAuth.cs
+						return DrawElementPreAuthFlag(g,pointDraw,stackBehavior,align,dataRoww,listApptViewItems[idxItem],widthAppt,heightAppt,isNote);
 				}
 			#endregion Fill Text
 			object[] parameters={ dataRoww["PatNum"].ToString(),listApptViewItems[idxItem].PatFieldDefNum,text };
@@ -5002,6 +5004,9 @@ namespace OpenDental.UI{
 						h=g.MeasureString(s,font,widthBubble-(int)x).Height;
 						g.DrawString(s,font,brush,new RectangleF(x,y,widthBubble-(int)x,h));
 						y+=h;
+						continue;
+					case DisplayFields26_1.ApptBubblePreAuthFlag://26.1, drawn in ControlApptPanel.PreAuth.cs
+						y=DrawBubblePreAuthFlag(g,font,dataRow,x,y,widthBubble);
 						continue;
 				}
 			}
