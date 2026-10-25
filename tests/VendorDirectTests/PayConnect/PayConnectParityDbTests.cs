@@ -1,21 +1,24 @@
 // Database tests for the Open Dental 25.1 PayConnect columns (backlog package V-PC): computerpref.CreditCardTerminalId (the last terminal used on
 // this workstation) and creditcard.CardHolderName (the cardholder on receipts). Each run builds a scratch MariaDB database on this computer whose
-// tables are copied from the local 25.3.48 reference schema (od_253_schema, schema only, no rows). Skipped (inconclusive) when no server answers at
-// 127.0.0.1:3306 as root with a blank password, when od_253_schema is missing, or when VENDORDIRECT_TEST_DB=skip.
+// tables are created from the schema reference embedded in OpenDentBusiness (SchemaVerifier.GetReference(), Open Dental 26.1.70 since M2-01), the
+// schema the table classes and CRUD match, so a column the CRUD writes (such as the 25.4 payterminal.CCIntegration) is always there. Schema only, no
+// rows. Skipped (inconclusive) when no server answers at 127.0.0.1:3306 as root with a blank password, or when VENDORDIRECT_TEST_DB=skip.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using CodeBase;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
 using OpenDentBusiness;
+using OpenDentBusiness.ForkMigrations;
 
 namespace VendorDirectTests.PayConnectV2 {
 	[TestClass]
 	public class PayConnectParityDbTests {
 		private static readonly string DB_NAME=ScratchDb.Name("vendordirect_payconnect_parity_tests");
-		private const string DB_REFERENCE="od_253_schema";
 		private const string CONNECTION="Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=15";
 		private static readonly string[] _arrayTables=new[] { "computerpref","creditcard","payterminal","preference" };
 		private static string _skipReason;
@@ -29,18 +32,14 @@ namespace VendorDirectTests.PayConnectV2 {
 			try {
 				using(MySqlConnection connection=new MySqlConnection(CONNECTION)) {
 					connection.Open();
-					using(MySqlCommand mySqlCommand=new MySqlCommand("SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME='"+DB_REFERENCE+"'",
-						connection))
-					{
-						if(Convert.ToInt32(mySqlCommand.ExecuteScalar())==0) {
-							_skipReason="The 25.3.48 reference schema "+DB_REFERENCE+" is not loaded on this server.";
-							return;
-						}
-					}
 					Exec(connection,"DROP DATABASE IF EXISTS "+DB_NAME);
 					Exec(connection,"CREATE DATABASE "+DB_NAME+" CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci");
+					Exec(connection,"USE "+DB_NAME);
+					//The tables exactly as the current reference defines them. A copy of the 25.3.48 tables (CREATE TABLE ... LIKE od_253_schema.x)
+					//lacks the 25.4/26.1 columns the regenerated CRUD writes, and every insert fails with "Unknown column".
+					SchemaSnapshot snapshotReference=SchemaVerifier.GetReference();
 					foreach(string table in _arrayTables) {
-						Exec(connection,"CREATE TABLE "+DB_NAME+"."+table+" LIKE "+DB_REFERENCE+"."+table);
+						Exec(connection,snapshotReference.GetTable(table).ToDdl());
 					}
 					Exec(connection,"INSERT INTO "+DB_NAME+".preference (PrefName,ValueString) VALUES ('RandomPrimaryKeys','0')");
 				}
@@ -101,6 +100,36 @@ namespace VendorDirectTests.PayConnectV2 {
 			Assert.AreEqual("T-900",ComputerPrefs.GetForComputer(ODEnvironment.MachineName).CreditCardTerminalId);
 			Assert.AreEqual(0,PayTerminals.GetIndexToSelect(PayTerminals.Refresh(0),ComputerPrefs.GetCreditCardTerminalId()),
 				"Another clinic's terminal falls back to the first.");
+			DataCore.NonQ("DELETE FROM payterminal");
+		}
+
+		[TestMethod]
+		public void ScratchTables_HaveEveryColumnTheCrudWrites() {
+			//Guards the regression where the scratch tables were copied from 25.3.48 while the CRUD, regenerated for 26.1.70, wrote
+			//payterminal.CCIntegration (Open Dental 25.4) into a table without it. The CRUD writes every public field that is a database column.
+			Dictionary<string,Type> dictTypes=new Dictionary<string,Type> {
+				{ "computerpref",typeof(ComputerPref) },{ "creditcard",typeof(CreditCard) },{ "payterminal",typeof(PayTerminal) },{ "preference",typeof(Pref) } };
+			List<string> listMissing=new List<string>();
+			foreach(KeyValuePair<string,Type> pair in dictTypes) {
+				HashSet<string> hashSetColumns=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+				foreach(System.Data.DataRow row in DataCore.GetTable("SHOW COLUMNS FROM "+pair.Key).Rows) {
+					hashSetColumns.Add(row["Field"].ToString());
+				}
+				foreach(FieldInfo field in pair.Value.GetFields()) {
+					CrudColumnAttribute crudColumnAttribute=(CrudColumnAttribute)field.GetCustomAttributes(typeof(CrudColumnAttribute),true).FirstOrDefault();
+					if(crudColumnAttribute!=null && crudColumnAttribute.IsNotDbColumn) {
+						continue;
+					}
+					if(!hashSetColumns.Contains(field.Name)) {
+						listMissing.Add(pair.Key+"."+field.Name);
+					}
+				}
+			}
+			Assert.AreEqual(0,listMissing.Count,"Columns the CRUD writes but the scratch tables lack: "+string.Join(", ",listMissing));
+			PayTerminals.Insert(new PayTerminal { Name="Synthetic terminal",ClinicNum=0,TerminalID="T-300",CCIntegration="PayConnect" });
+			PayTerminal payTerminalDb=PayTerminals.Refresh(0).Find(x => x.TerminalID=="T-300");
+			Assert.IsNotNull(payTerminalDb);
+			Assert.AreEqual("PayConnect",payTerminalDb.CCIntegration,"payterminal.CCIntegration (Open Dental 25.4) round-trips through the CRUD.");
 			DataCore.NonQ("DELETE FROM payterminal");
 		}
 
