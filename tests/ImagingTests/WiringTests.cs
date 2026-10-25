@@ -134,5 +134,52 @@ namespace ImagingTests {
 			int idxDeleteClaim=source.IndexOf("ClaimL.DeleteClaimHelper(_claim,listETrans835Attaches);");
 			Assert.IsTrue(idxDeleteEobs>0 && idxDeleteEobs<idxDeleteClaim,"The EOBs go before the preauth.");
 		}
+
+		///<summary>The shared helper makes the checks of the Edit Preauthorization Delete button, with the same messages, in the same order.</summary>
+		[TestMethod]
+		public void PreAuthEobDeleteHelper_SameChecksAndMessagesAsEditPreAuth() {
+			string helper=MethodBody(Read("OpenDental","Logic","ClaimL.cs"),"public static bool TryDeletePreAuthEobs(Claim claim)");
+			Assert.IsTrue(Regex.IsMatch(helper,@"EobAttaches\.GetForClaimDelete\(claim\);\s*if\(listEobAttaches\.Count==0\) \{\s*return true;"),
+				"Any other claim, and a preauth with no EOBs, goes ahead at once.");
+			AssertBefore(helper,"if(listEobAttaches.Count==0) {","if(!EobAttaches.IsAuthorizedToDeleteWithPreAuth(listEobAttaches)) {");
+			AssertBefore(helper,"if(!EobAttaches.IsAuthorizedToDeleteWithPreAuth(listEobAttaches)) {","MessageBoxButtons.OKCancel)!=DialogResult.OK)");
+			AssertBefore(helper,"MessageBoxButtons.OKCancel)!=DialogResult.OK)","ImageStore.DeleteEobAttachesForPreAuth(claim.ClaimNum);");
+			AssertBefore(helper,"ImageStore.DeleteEobAttachesForPreAuth(claim.ClaimNum);","catch(Exception ex) {");
+			Assert.AreEqual(3,Count(helper,"return false;"),"No ImageDelete, cancelled, or the EOBs could not be deleted.");
+			StringAssert.Contains(helper,"\"EOBs attached to this preauthorization\")+\": \"+listEobAttaches.Count+","The confirmation names the count.");
+			StringAssert.Contains(helper,"GroupPermissions.GetDesc(EnumPermType.ImageDelete)");
+			//The same English text, under the same translation category as the window, so both read the same in every language.
+			string formClaimEdit=Read("OpenDental","Forms","FormClaimEdit.cs");
+			string[] arrayTexts=new[] {
+				"This preauthorization has EOBs attached. Deleting it also deletes them, which needs the permission",
+				"EOBs attached to this preauthorization",
+				"They will be deleted too. Continue?",
+				"Could not delete the EOBs of this preauthorization, so it was not deleted.",
+			};
+			for(int i=0;i<arrayTexts.Length;i++) {
+				StringAssert.Contains(helper,"Lan.g(\"FormClaimEdit\",\""+arrayTexts[i]+"\")");
+				StringAssert.Contains(formClaimEdit,"Lan.g(this,\""+arrayTexts[i]+"\")");
+			}
+		}
+
+		///<summary>The two other windows that delete a claim run the helper after their own refusals and confirmation, and before any claimproc or
+		///the claim is deleted. A false from the helper ends the delete.</summary>
+		[TestMethod]
+		public void DeleteClaimElsewhere_PreAuthEobsGoFirst() {
+			string send=MethodBody(Read("OpenDental","Forms","FormClaimsSend.cs"),"private void menuItemDeleteClaim_Click(object sender,EventArgs e)");
+			Assert.AreEqual(1,Count(send,"ClaimL.TryDeletePreAuthEobs("));
+			Assert.IsTrue(Regex.IsMatch(send,@"if\(!ClaimL\.TryDeletePreAuthEobs\(claim\)\) \{\s*return;\s*\}"),"A false ends the delete.");
+			AssertBefore(send,"Cannot delete, there are claim procedures attached to this claim.","ClaimL.TryDeletePreAuthEobs(claim)");
+			AssertBefore(send,"ClaimL.TryDeletePreAuthEobs(claim)","ClaimProcs.DeleteMany(listClaimProcs);");
+			AssertBefore(send,"ClaimL.TryDeletePreAuthEobs(claim)","Claims.Delete(claim,");
+			//The institutional claim window (kept in the source tree, not in OpenDental.csproj).
+			string inst=MethodBody(Read("OpenDental","Forms","FormClaimInstEdit.cs"),"private void butDelete_Click(object sender, System.EventArgs e)");
+			Assert.AreEqual(1,Count(inst,"ClaimL.TryDeletePreAuthEobs("));
+			Assert.IsTrue(Regex.IsMatch(inst,@"if\(!ClaimL\.TryDeletePreAuthEobs\(ClaimCur\)\) \{\s*return;\s*\}"),"A false ends the delete.");
+			AssertBefore(inst,"Delete PreAuthorization?","ClaimL.TryDeletePreAuthEobs(ClaimCur)");
+			AssertBefore(inst,"Delete Claim?","ClaimL.TryDeletePreAuthEobs(ClaimCur)");
+			AssertBefore(inst,"ClaimL.TryDeletePreAuthEobs(ClaimCur)","ClaimProcs.Delete(");
+			AssertBefore(inst,"ClaimL.TryDeletePreAuthEobs(ClaimCur)","Claims.Delete(ClaimCur);");
+		}
 	}
 }

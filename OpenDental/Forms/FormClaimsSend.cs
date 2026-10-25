@@ -272,6 +272,10 @@ namespace OpenDental{
 					MsgBox.Show(this,"Cannot delete, there are claim procedures attached to this claim.");
 					return;
 				}
+				//25.2: a preauthorization's attached EOBs are deleted first. False: refused, cancelled or failed, and the claim stays.
+				if(!ClaimL.TryDeletePreAuthEobs(claim)) {
+					return;
+				}
 				ClaimProcs.DeleteMany(listClaimProcs);
 				List<long> listEtrans835AttachNums=Etrans835Attaches.GetForClaimNums(claim.ClaimNum).Select(x => x.Etrans835AttachNum).ToList();
 				Claims.Delete(claim,listEtrans835AttachNums);

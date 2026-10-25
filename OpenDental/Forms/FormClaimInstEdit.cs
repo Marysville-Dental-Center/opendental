@@ -2342,6 +2342,10 @@ namespace OpenDental{
 					return;
 				}
 			}
+			//25.2: a preauthorization's attached EOBs are deleted first. False: refused, cancelled or failed, and the claim stays.
+			if(!ClaimL.TryDeletePreAuthEobs(ClaimCur)) {
+				return;
+			}
 			Procedure proc;
 			if(ClaimCur.ClaimType=="PreAuth"//all preauth claimprocs are just duplicates
 				|| ClaimCur.ClaimType=="Cap"){//all cap claimprocs are just duplicates

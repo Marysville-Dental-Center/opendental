@@ -585,6 +585,37 @@ namespace OpenDental {
 			Claims.Delete(claim,list835Attaches);
 		}
 
+		///<summary>Open Dental 25.2: a preauthorization takes the EOBs attached to it (eobattach.ClaimNumPreAuth) with it when it is deleted, files and
+		///rows, so none is left behind. Call it right after a window's own delete confirmation and before any claimproc or the claim itself is deleted.
+		///Returns true at once for any other claim and for a preauthorization with no EOBs. Otherwise it needs ImageDelete for the date of the oldest
+		///EOB, asks a second confirmation that names how many EOBs there are, and deletes them. Returns false when the claim must not be deleted:
+		///ImageDelete is missing or the EOBs could not be deleted (each with a message), or the user cancelled. Same checks and messages as the Delete button of FormClaimEdit (which asks for ImageDelete before its own confirmation), translated under
+		///FormClaimEdit so they read the same everywhere.</summary>
+		public static bool TryDeletePreAuthEobs(Claim claim) {
+			List<EobAttach> listEobAttaches=EobAttaches.GetForClaimDelete(claim);
+			if(listEobAttaches.Count==0) {
+				return true;
+			}
+			if(!EobAttaches.IsAuthorizedToDeleteWithPreAuth(listEobAttaches)) {
+				MessageBox.Show(Lan.g("FormClaimEdit","This preauthorization has EOBs attached. Deleting it also deletes them, which needs the permission")+":\r\n"
+					+GroupPermissions.GetDesc(EnumPermType.ImageDelete));
+				return false;
+			}
+			if(MessageBox.Show(Lan.g("FormClaimEdit","EOBs attached to this preauthorization")+": "+listEobAttaches.Count+"\r\n"
+				+Lan.g("FormClaimEdit","They will be deleted too. Continue?"),"",MessageBoxButtons.OKCancel)!=DialogResult.OK)
+			{
+				return false;
+			}
+			try {
+				ImageStore.DeleteEobAttachesForPreAuth(claim.ClaimNum);//Logs ImageDelete with "Preauth EOB" for each.
+			}
+			catch(Exception ex) {
+				MessageBox.Show(Lan.g("FormClaimEdit","Could not delete the EOBs of this preauthorization, so it was not deleted.")+"\r\n"+ex.Message);
+				return false;
+			}
+			return true;
+		}
+
 		///<summary>Copied from FormClaimEdit. For a given procNumParent, return a list of ClaimProcs for that lab(s) that is on the claim.</summary>
 		private static List<ClaimProc> GetListClaimProcsForProcNumLabsParent(long procNumParent,List<Procedure> listProcedures, List<ClaimProc> listClaimProcs,Claim claim) {
 			List<ClaimProc> listClaimProcsForLabOnClaim=new List<ClaimProc>();
