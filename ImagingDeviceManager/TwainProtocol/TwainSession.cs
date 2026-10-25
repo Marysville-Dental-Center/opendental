@@ -70,6 +70,15 @@ namespace ImagingDeviceManager.TwainProtocol {
 		///<summary>The source's text for EndConditionCode from DAT_STATUSUTF8, cut at the first NUL. Null for TWCC_SUCCESS, and when the
 		///source or the DSM does not provide one (DAT_STATUSUTF8 is optional); the code alone is then the reason.</summary>
 		public string EndConditionText { get; private set; }
+		///<summary>The [Twain] keys of capture.ini that change how by-name acquisitions run and stop. The facade sets it before each
+		///acquisition; the default turns every feature off.</summary>
+		public TwainCaptureSettings Settings { get; set; }=new TwainCaptureSettings();
+		///<summary>Where images go that the caller can no longer take (see ITwainDrainSink). Null: pending images are discarded with
+		///MSG_RESET as before.</summary>
+		public ITwainDrainSink DrainSink { get; set; }
+		///<summary>True when, before the last enable, the source accepted MSG_SET TRUE on [Twain] SafeDisableCap. Only then does the
+		///library count a disable as safe (design 7.1).</summary>
+		public bool IsSafeDisableInEffect { get; private set; }
 		///<summary>CAP_UICONTROLLABLE as the open source reported it at the last by-name enable; null when it was not read or the source
 		///does not support it.</summary>
 		public bool? IsUiControllable { get; private set; }
@@ -598,29 +607,37 @@ namespace ImagingDeviceManager.TwainProtocol {
 			if(!RequireState4("capability 0x"+capability.ToString("X4"))) {
 				return false;
 			}
-			IntPtr hContainer=_memory.Allocate(TwContainer.OneValueSize);
-			if(hContainer==IntPtr.Zero) {
+			ushort? rc=SendCapabilitySet(capability,itemType,value);
+			if(rc==null) {
 				SetError(EZTwainErrorCode.EZTEC_MEMORY,"Out of memory.");
 				return false;
+			}
+			if(rc==Tw.TWRC_SUCCESS || rc==Tw.TWRC_CHECKSTATUS) {
+				return true;
+			}
+			SetErrorFromCondition(EZTwainErrorCode.EZTEC_CAP_SET,"The scanner did not accept a setting (capability 0x"+capability.ToString("X4")+").");
+			return false;
+		}
+
+		///<summary>DAT_CAPABILITY / MSG_SET with a TW_ONEVALUE. Returns the source's return code, or null (nothing sent) when the
+		///container could not be allocated. Sets no error.</summary>
+		private ushort? SendCapabilitySet(ushort capability,ushort itemType,int value) {
+			IntPtr hContainer=_memory.Allocate(TwContainer.OneValueSize);
+			if(hContainer==IntPtr.Zero) {
+				return null;
 			}
 			IntPtr pCapability=Marshal.AllocHGlobal(Marshal.SizeOf(typeof(TW_CAPABILITY)));
 			try {
 				IntPtr pContainer=_memory.Lock(hContainer);
 				if(pContainer==IntPtr.Zero) {
-					SetError(EZTwainErrorCode.EZTEC_MEMORY,"Out of memory.");
-					return false;
+					return null;
 				}
 				Marshal.WriteInt16(pContainer,0,(short)itemType);
 				Marshal.WriteInt32(pContainer,TwContainer.OneValueItemOffset,value);
 				_memory.Unlock(hContainer);
 				TW_CAPABILITY twCapability=new TW_CAPABILITY { Cap=capability,ConType=Tw.TWON_ONEVALUE,hContainer=hContainer };
 				Marshal.StructureToPtr(twCapability,pCapability,false);
-				ushort rc=SourceEntry(Tw.DG_CONTROL,Tw.DAT_CAPABILITY,Tw.MSG_SET,pCapability);
-				if(rc==Tw.TWRC_SUCCESS || rc==Tw.TWRC_CHECKSTATUS) {
-					return true;
-				}
-				SetErrorFromCondition(EZTwainErrorCode.EZTEC_CAP_SET,"The scanner did not accept a setting (capability 0x"+capability.ToString("X4")+").");
-				return false;
+				return SourceEntry(Tw.DG_CONTROL,Tw.DAT_CAPABILITY,Tw.MSG_SET,pCapability);
 			}
 			finally {
 				Marshal.FreeHGlobal(pCapability);
@@ -631,6 +648,17 @@ namespace ImagingDeviceManager.TwainProtocol {
 		///<summary>Reads the current value of a capability. Supports TW_ONEVALUE, TW_ENUMERATION and TW_RANGE containers holding
 		///integer, boolean or FIX32 items (FIX32 is returned as its raw 32 bit pattern).</summary>
 		public bool TryGetCapabilityCurrent(ushort capability,out int value) {
+			return TryGetCapability(capability,Tw.MSG_GETCURRENT,out value);
+		}
+
+		///<summary>MSG_QUERYSUPPORT: the TWQC_ bits of the operations the source supports on the capability. False when the source does
+		///not answer it (LastConditionCode says why: TWCC_CAPUNSUPPORTED for a capability it does not have).</summary>
+		public bool TryQuerySupport(ushort capability,out int support) {
+			return TryGetCapability(capability,Tw.MSG_QUERYSUPPORT,out support);
+		}
+
+		///<summary>A DAT_CAPABILITY message that returns a container (MSG_GETCURRENT, MSG_QUERYSUPPORT), read as one value.</summary>
+		private bool TryGetCapability(ushort capability,ushort msg,out int value) {
 			value=0;
 			if(State<4) {
 				return false;
@@ -640,7 +668,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 			try {
 				TW_CAPABILITY twCapability=new TW_CAPABILITY { Cap=capability,ConType=Tw.TWON_DONTCARE16,hContainer=IntPtr.Zero };
 				Marshal.StructureToPtr(twCapability,pCapability,false);
-				ushort rc=SourceEntry(Tw.DG_CONTROL,Tw.DAT_CAPABILITY,Tw.MSG_GETCURRENT,pCapability);
+				ushort rc=SourceEntry(Tw.DG_CONTROL,Tw.DAT_CAPABILITY,msg,pCapability);
 				if(rc!=Tw.TWRC_SUCCESS) {
 					return false;
 				}
@@ -895,6 +923,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 			if(IsOpenedByName) {
 				isShowUI=GetShowUIForSource(isShowUI);
 			}
+			SetSafeDisableCapability();
 			EndConditionCode=null;
 			EndConditionText=null;
 			_proxyWindow.AttachTo(hwnd);
@@ -943,6 +972,41 @@ namespace ImagingDeviceManager.TwainProtocol {
 			bool isSet=SetCapability(capability,itemType,value);
 			SetError(errorCodeOld,errorTextOld);
 			return isSet;
+		}
+
+		///<summary>Safe disable (design 7.1, W13): on the by-name path, for a source listed in [Twain] DisableIsSafeSources, sets the
+		///[Twain] SafeDisableCap capability (TWTY_BOOL) TRUE in state 4 before each MSG_ENABLEDS, after MSG_QUERYSUPPORT. A source keeps
+		///it until MSG_CLOSEDS, so setting it again is harmless. TWCC_CAPUNSUPPORTED (a build without the feature) is logged and the
+		///feature counts as absent. IsSafeDisableInEffect is true only when the MSG_SET returned TWRC_SUCCESS.</summary>
+		private void SetSafeDisableCapability() {
+			IsSafeDisableInEffect=false;
+			TwainCaptureSettings settings=Settings??new TwainCaptureSettings();
+			if(!IsOpenedByName || settings.SafeDisableCap==null || !settings.IsDisableSafeSource(SourceName)) {
+				return;
+			}
+			ushort capability=settings.SafeDisableCap.Value;
+			int support;
+			if(TryQuerySupport(capability,out support)) {
+				if((support & Tw.TWQC_SET)==0) {
+					Log("\""+SourceName+"\" does not allow setting the safe-disable capability "+ToHex(capability)
+						+" (MSG_QUERYSUPPORT "+ToHex(support)+"). A disable is not treated as safe.");
+					return;
+				}
+			}
+			else if(LastConditionCode==Tw.TWCC_CAPUNSUPPORTED) {
+				Log("\""+SourceName+"\" does not support the safe-disable capability "+ToHex(capability)+". A disable is not treated as safe.");
+				return;
+			}
+			//Any other answer to MSG_QUERYSUPPORT (a source older than TWAIN 1.6 may not have it): MSG_SET decides.
+			ushort? rc=SendCapabilitySet(capability,Tw.TWTY_BOOL,1);
+			if(rc==Tw.TWRC_SUCCESS) {
+				IsSafeDisableInEffect=true;
+				Log("Safe disable is in effect for \""+SourceName+"\" (capability "+ToHex(capability)+").");
+				return;
+			}
+			Log("\""+SourceName+"\" did not accept TRUE for the safe-disable capability "+ToHex(capability)+" ("
+				+(rc==null ? "out of memory" : (rc==Tw.TWRC_FAILURE ? "condition code "+ToHex(LastConditionCode) : "return code "+rc))
+				+"). A disable is not treated as safe.");
 		}
 
 		///<summary>Honest CAP_UICONTROLLABLE (design 7.1): a source that reports FALSE cannot run without its own window, so it always
