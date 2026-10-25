@@ -9,7 +9,7 @@ using SyntheticData.Infrastructure;
 using Db=SyntheticData.Infrastructure.Db;
 
 namespace AdoptionValidation {
-	///<summary>Adopts a restored copy without starting the program: Adoption.Preflight and Adoption.Run (what the Adopt Database window calls), the
+	///<summary>Adopts a copy of the office database without starting the program: Adoption.Preflight and Adoption.Run (what the Adopt Database window calls), the
 	///fork migration with every step again, the schema verifier, and SecurityHash.RehashNow (what Database Maintenance, Tools, Security Hashes calls),
 	///in that order. The rehearsal adopts its copy with this class, and runbook steps 4 and 5 run it through "AdoptionValidation adopt", so the office
 	///runs exactly the sequence that was rehearsed.
@@ -164,7 +164,7 @@ namespace AdoptionValidation {
 			LocalOnly.EnsureSafeIdentifier(database);
 			LocalOnly.EnsureSafeIdentifier(original);
 			if(string.Equals(database,original,StringComparison.OrdinalIgnoreCase)) {
-				throw new RefusedException("--database and --original are the same ("+database+"). Adopt the restored copy, never the original.");
+				throw new RefusedException("--database and --original are the same ("+database+"). Adopt the copy, never the original.");
 			}
 			foreach(string name in new[] { original,database }) {
 				if(!db.DatabaseExists(name)) {
@@ -180,7 +180,7 @@ namespace AdoptionValidation {
 			if(stateOriginal.IsForkMarked || stateOriginal.ForkAdoptedFrom!=null || !ForkVersions.IsAdoptable(ForkVersions.ParseVersion(stateOriginal.DataBaseVersion))) {
 				throw new RefusedException("--original "+original+" is not an unadopted Open Dental database on the allowlist (DataBaseVersion "
 					+(stateOriginal.DataBaseVersion??"missing")+(stateOriginal.ForkAdoptedFrom==null ? "" : ", ForkAdoptedFrom "+stateOriginal.ForkAdoptedFrom)
-					+"). It must name the Open Dental database the copy was restored from.");
+					+"). It must name the Open Dental database the copy was made from.");
 			}
 			ForkDbState stateCopy=ReadState(db,database);
 			if(stateCopy.IsForkMarked || stateCopy.ForkAdoptedFrom!=null) {
@@ -192,17 +192,17 @@ namespace AdoptionValidation {
 			if(listDiffs.Count>0) {
 				throw new RefusedException("The copy "+database+" is not an exact copy of "+original+" (tables or row counts differ: "
 					+string.Join("; ",listDiffs.Take(10))+(listDiffs.Count>10 ? "; and "+(listDiffs.Count-10)+" more" : "")
-					+"). Restore the copy again (runbook step 3.2) and compare (step 3.3).");
+					+"). Drop it, make the copy again (runbook step 3.2) and compare (step 3.3).");
 			}
 			log("The copy "+database+" has the same "+TableNames(db,original).Count+" tables and row counts as "+original+".");
-			//Two identical databases could still be named the wrong way round. The copy was restored after the original's tables were created, so its
+			//Two identical databases could still be named the wrong way round. The copy was made after the original's tables were created, so its
 			//oldest table is younger than the original's oldest one.
 			DateTime? dateCopyOldest=OldestTableCreated(db,database);
 			DateTime? dateOriginalOldest=OldestTableCreated(db,original);
 			if(dateCopyOldest!=null && dateOriginalOldest!=null) {
 				if(dateCopyOldest<=dateOriginalOldest) {
 					throw new RefusedException("The tables of "+database+" (oldest created "+Format(dateCopyOldest)+") are not newer than those of "+original
-						+" (oldest created "+Format(dateOriginalOldest)+"): "+database+" does not look like the copy restored from "+original
+						+" (oldest created "+Format(dateOriginalOldest)+"): "+database+" does not look like the copy made from "+original
 						+". Are --database and --original the wrong way round?");
 				}
 				log("The copy's tables were created "+Format(dateCopyOldest)+" or later, after the original's ("+Format(dateOriginalOldest)+").");

@@ -491,9 +491,8 @@ namespace AdoptionValidation.Tests {
 				ValidationReport reportCopy=Validator.Run(db,withFloats,null,null);
 				Assert.AreEqual(0,ReportComparer.Compare(reportSource,reportCopy,null).Count,ReportComparer.Format(ReportComparer.Compare(reportSource,reportCopy,null)));
 				AssertSameAutoIncrement(db,Source(1),withFloats);
-				//A FLOAT column of a table with at least three rows, as Open Dental's imagedraw.FontSize.
-				//A FLOAT column of a table with at least three rows (information_schema is read one table at a time, with the database named, so the
-				//server looks only at this database).
+				//A FLOAT column of a table with at least three rows, as Open Dental's imagedraw.FontSize (information_schema is read with the database
+				//named, so the server looks only at this database).
 				Dictionary<string,long> dictRows=db.Rows("SELECT TABLE_NAME,TABLE_ROWS FROM information_schema.TABLES WHERE TABLE_SCHEMA='"+withFloats+"'")
 					.ToDictionary(x => Convert.ToString(x[0]),x => Convert.ToInt64(x[1]??0L));
 				object[] row=db.Rows("SELECT TABLE_NAME,COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='"+withFloats+"' AND DATA_TYPE='float' "

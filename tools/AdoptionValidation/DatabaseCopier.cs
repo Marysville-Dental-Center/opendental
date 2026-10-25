@@ -74,7 +74,7 @@ namespace AdoptionValidation {
 				+"--result-file=\""+pathFile+"\" "+database,null,server);
 		}
 
-		///<summary>Restores a backup file as a new database: the runbook's restore (AdoptionValidation restore, runbook steps 0.6 and 3.2) and the
+		///<summary>Restores a backup file as a new database: AdoptionValidation restore and the
 		///rehearsal's. It never writes to a database that exists already, and it refuses a file that names a database (DumpCheck): a --databases or
 		///--all-databases dump would otherwise replay its DROP TABLE, CREATE TABLE and INSERT statements into the database it names, the live one.
 		///The client also runs with --one-database, so any USE that got past the check would only make it skip statements. Then it creates the
@@ -95,8 +95,7 @@ namespace AdoptionValidation {
 			List<DumpCheck.Problem> listProblems=DumpCheck.Scan(pathFile);
 			if(listProblems.Count>0) {
 				throw new RefusedException("The backup file "+pathFile+" names a database, so loading it would also write to that database (it may be a "
-					+"--databases or --all-databases dump). Nothing was restored. Make a single-database dump (runbook step 3.1) or restore a file-level "
-					+"copy under a new folder name (runbook step 0.6). Found: "+string.Join("; ",listProblems));
+					+"--databases or --all-databases dump). Nothing was restored. Make a single-database dump. Found: "+string.Join("; ",listProblems));
 			}
 			using(Db db=Db.Open(server)) {
 				//No IF NOT EXISTS: if the name was taken since the check above, this fails instead of loading into it.

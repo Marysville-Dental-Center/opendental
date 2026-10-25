@@ -233,7 +233,7 @@ database server (runbook step 0.0). Exit codes: 0 pass, 1 error, 2 usage or refu
 				case "adopt":
 					RequireDatabase(database);
 					if(string.IsNullOrEmpty(original)) {
-						throw new ArgumentException("--original is required: the Open Dental database the copy was restored from.");
+						throw new ArgumentException("--original is required: the Open Dental database the copy was made from.");
 					}
 					LocalOnly.EnsureSafeIdentifier(original);
 					if(confirm!=database) {
@@ -285,7 +285,7 @@ database server (runbook step 0.0). Exit codes: 0 pass, 1 error, 2 usage or refu
 			}
 		}
 
-		///<summary>Runbook steps 0.6 and 3.2: restores a backup file as a new database (DatabaseCopier.Restore checks the file first).</summary>
+		///<summary>Restores a backup file as a new database (DatabaseCopier.Restore checks the file first). The runbook no longer uses it.</summary>
 		private static int RunRestore(ServerSettings server,string pathDump,string database,Action<string> log) {
 			(string dump,string client)? tools=DatabaseCopier.FindClientTools();
 			if(tools==null) {
@@ -304,7 +304,7 @@ database server (runbook step 0.0). Exit codes: 0 pass, 1 error, 2 usage or refu
 			return ExitPass;
 		}
 
-		///<summary>Runbook steps 4 and 5: the headless adoption of a restored copy (HeadlessAdoption, the code the rehearsal adopts with).</summary>
+		///<summary>Runbook steps 4 and 5: the headless adoption of the copy (HeadlessAdoption, the code the rehearsal adopts with).</summary>
 		private static int RunAdopt(ServerSettings server,string database,string original,string pathLog,Action<string> logConsole) {
 			void Log(string text) {
 				logConsole(text);
@@ -313,7 +313,7 @@ database server (runbook step 0.0). Exit codes: 0 pass, 1 error, 2 usage or refu
 						new System.Text.UTF8Encoding(false));
 				}
 			}
-			Log("AdoptionValidation adopt: "+database+", restored copy of "+original+", on "+server.Describe()+".");
+			Log("AdoptionValidation adopt: "+database+", copy of "+original+", on "+server.Describe()+".");
 			try {
 				using(Db db=Db.Open(server)) {
 					HeadlessAdoption.CheckCopy(db,database,original,Log);
