@@ -141,7 +141,7 @@ After moving a database over from Open Dental, run the rehash once so every veri
 - `SecurityHash.UpdateHashing()` runs automatically, in background threads, on the workstation that performs the next program version update (`PrefL`).
 - `SecurityHash.RehashNow()` runs the same work on demand, on the calling thread, even if it already ran in this process. **Database Maintenance, Tools tab, Security Hashes** runs it after a confirmation prompt. The tool needs the Security Admin permission and a direct database connection (not the middle tier), and it makes a security log entry.
 
-It rehashes every patient with a blank or legacy hash, and every appointment, claim, claim procedure, payment split, payment plan, insurance subscriber, insurance verification and verification history row in the verified date range. Like Open Dental's own update-time rehash, it also rewrites the hash of a recent row that was tampered with. Run it right after migrating, before anyone edits data directly in the database.
+It rehashes every patient with a blank or legacy hash, and every appointment, claim, claim procedure, payment split, payment plan, insurance subscriber, insurance verification and verification history row in the verified date range. Like Open Dental's own update-time rehash, it also rewrites the hash of a recent row that was tampered with. Writing a hash is not an edit: the rehash keeps each row's `DateTStamp` or `SecDateTEdit` (it writes `Col=Col` for every ON UPDATE timestamp column of the table), so the rows' last-changed times survive the move. Run it right after migrating, before anyone edits data directly in the database.
 
 Until the rehash runs, legacy hashes are accepted without verification. Rows written by this program are verified normally.
 
