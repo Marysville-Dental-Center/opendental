@@ -3,6 +3,7 @@
 // (v25_3-security-claimproc-billedtoins).
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
+using System.Collections.Generic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenDentBusiness;
 
@@ -47,6 +48,37 @@ namespace BCLAIMTests {
 			BClaimDb.LogInWithDays((EnumPermType.InsWriteOffEdit,30));
 			Assert.IsTrue(ClaimProcs.IsInsWriteOffEditAuthorized(new ClaimProc { ProcNum=0,SecDateEntry=DateTime.Today.AddDays(-2) },null,true));
 			Assert.IsFalse(ClaimProcs.IsInsWriteOffEditAuthorized(new ClaimProc { ProcNum=0,SecDateEntry=DateTime.Today.AddDays(-45) },null,true));
+		}
+
+		///<summary>Manual ERA posting (FormEtrans835ClaimPay): one Writeoff column for every claimproc the posting saves, so it is editable only
+		///when 119 allows all of them. Supplemental posting: the received claimproc and the supplemental copy the ERA import pre-inserts share the
+		///procedure, so a procedure entered 90 days ago locks the column for a user limited to 30 days.</summary>
+		[TestMethod]
+		public void WriteOff_EraPostingNeedsThePermissionForEveryClaimProc() {
+			BClaimDb.LogInWithDays((EnumPermType.InsWriteOffEdit,30));
+			Procedure procedureRecent=NewProcedure(5);
+			Procedure procedureOld=NewProcedure(90);
+			procedureOld.ProcNum=9002;
+			List<Procedure> listProcedures=new List<Procedure> { procedureRecent,procedureOld };
+			ClaimProc claimProcRecent=new ClaimProc { ClaimProcNum=11,ProcNum=procedureRecent.ProcNum,Status=ClaimProcStatus.NotReceived };
+			ClaimProc claimProcOldReceived=new ClaimProc { ClaimProcNum=12,ProcNum=procedureOld.ProcNum,Status=ClaimProcStatus.Received };
+			ClaimProc claimProcOldSupplemental=new ClaimProc { ClaimProcNum=13,ProcNum=procedureOld.ProcNum,Status=ClaimProcStatus.Supplemental,
+				IsNew=true,SecDateEntry=DateTime.Today };
+			Assert.IsTrue(ClaimProcs.IsInsWriteOffEditAuthorizedForAll(new List<ClaimProc> { claimProcRecent },listProcedures));
+			Assert.IsFalse(ClaimProcs.IsInsWriteOffEditAuthorizedForAll(new List<ClaimProc> { claimProcOldReceived,claimProcOldSupplemental },
+				listProcedures),"A supplemental payment on an old procedure: the write-off cannot be typed.");
+			Assert.IsFalse(ClaimProcs.IsInsWriteOffEditAuthorizedForAll(new List<ClaimProc> { claimProcRecent,claimProcOldReceived },listProcedures),
+				"One procedure outside the limit locks the column.");
+			//The total payment row an ERA adds is not saved yet: it is created today.
+			ClaimProc claimProcTotalNew=new ClaimProc { ClaimProcNum=0,ProcNum=0,Status=ClaimProcStatus.Received,IsNew=true };
+			Assert.IsTrue(ClaimProcs.IsInsWriteOffEditAuthorizedForAll(new List<ClaimProc> { claimProcTotalNew,claimProcRecent },listProcedures));
+			//A saved total payment uses its own entry date.
+			ClaimProc claimProcTotalOld=new ClaimProc { ClaimProcNum=14,ProcNum=0,Status=ClaimProcStatus.Received,SecDateEntry=DateTime.Today.AddDays(-45) };
+			Assert.IsFalse(ClaimProcs.IsInsWriteOffEditAuthorizedForAll(new List<ClaimProc> { claimProcTotalOld,claimProcRecent },listProcedures));
+			//Without 119 at all, not even a new total payment's write-off can be typed.
+			BClaimDb.LogInWithDays((EnumPermType.ProcEdit,0));
+			Assert.IsFalse(ClaimProcs.IsInsWriteOffEditAuthorizedForAll(new List<ClaimProc> { claimProcTotalNew },listProcedures));
+			Assert.IsFalse(ClaimProcs.IsInsWriteOffEditAuthorizedForAll(new List<ClaimProc> { claimProcRecent },listProcedures));
 		}
 
 		[TestMethod]
