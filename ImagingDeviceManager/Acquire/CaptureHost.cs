@@ -14,6 +14,10 @@ namespace ImagingDeviceManager.Acquire {
 		public ICaptureUi Ui;
 		///<summary>The calling thread's top-level windows, for thread-modal acquisitions.</summary>
 		public IThreadWindowApi ThreadWindows;
+		///<summary>The foreground window, restored after a series of thread-modal acquisitions.</summary>
+		public IForegroundApi Foreground;
+		///<summary>Runs the foreground restore about 1 s after an acquisition.</summary>
+		public IDelayScheduler Scheduler;
 		///<summary>Tests only: changes the session settings read from capture.ini, for example to shorten the wait after a refused
 		///disable, which capture.ini does not set. Null in production.</summary>
 		public Action<TwainCaptureSettings> AdjustSettings;
@@ -24,6 +28,8 @@ namespace ImagingDeviceManager.Acquire {
 				LoadConfig=LocalCaptureConfig.Load,
 				Ui=new WinFormsCaptureUi(),
 				ThreadWindows=new Win32ThreadWindowApi(),
+				Foreground=new Win32ForegroundApi(),
+				Scheduler=new WinFormsDelayScheduler(),
 			};
 		}
 
@@ -34,6 +40,8 @@ namespace ImagingDeviceManager.Acquire {
 				LoadConfig=() => LocalCaptureConfig.Load((string)null),
 				Ui=new NullCaptureUi(),
 				ThreadWindows=new Win32ThreadWindowApi(),
+				Foreground=new NullForegroundApi(),
+				Scheduler=new NullDelayScheduler(),
 			};
 		}
 
@@ -49,6 +57,41 @@ namespace ImagingDeviceManager.Acquire {
 				//LocalCaptureConfig.Load never throws; a stand-in might.
 			}
 			return LocalCaptureConfig.Load((string)null);
+		}
+	}
+
+	///<summary>No foreground window, and nothing is ever restored.</summary>
+	internal sealed class NullForegroundApi:IForegroundApi {
+		public IntPtr GetForegroundWindow() {
+			return IntPtr.Zero;
+		}
+
+		public void SetForegroundWindow(IntPtr hwnd) {
+		}
+
+		public bool IsWindow(IntPtr hwnd) {
+			return false;
+		}
+
+		public bool IsWindowVisible(IntPtr hwnd) {
+			return false;
+		}
+
+		public bool IsWindowEnabled(IntPtr hwnd) {
+			return false;
+		}
+
+		public bool IsOwnProcessWindow(IntPtr hwnd) {
+			return false;
+		}
+	}
+
+	///<summary>Never runs anything.</summary>
+	internal sealed class NullDelayScheduler:IDelayScheduler {
+		public void Schedule(int delayMs,Action action) {
+		}
+
+		public void Cancel() {
 		}
 	}
 

@@ -44,6 +44,65 @@ namespace ImagingDeviceManager.Tests {
 		}
 	}
 
+	///<summary>Scripted windows for ForegroundRestorer: each window belongs to this process or to another one.</summary>
+	internal sealed class FakeForegroundApi:IForegroundApi {
+		public IntPtr HwndForeground;
+		public readonly HashSet<IntPtr> HashSetOwnWindows=new HashSet<IntPtr>();
+		public readonly HashSet<IntPtr> HashSetOtherWindows=new HashSet<IntPtr>();
+		public readonly HashSet<IntPtr> HashSetDisabled=new HashSet<IntPtr>();
+		public readonly HashSet<IntPtr> HashSetHidden=new HashSet<IntPtr>();
+		public readonly List<IntPtr> ListSetForeground=new List<IntPtr>();
+
+		public IntPtr GetForegroundWindow() {
+			return HwndForeground;
+		}
+
+		public void SetForegroundWindow(IntPtr hwnd) {
+			ListSetForeground.Add(hwnd);
+			HwndForeground=hwnd;
+		}
+
+		public bool IsWindow(IntPtr hwnd) {
+			return HashSetOwnWindows.Contains(hwnd) || HashSetOtherWindows.Contains(hwnd);
+		}
+
+		public bool IsWindowVisible(IntPtr hwnd) {
+			return IsWindow(hwnd) && !HashSetHidden.Contains(hwnd);
+		}
+
+		public bool IsWindowEnabled(IntPtr hwnd) {
+			return IsWindow(hwnd) && !HashSetDisabled.Contains(hwnd);
+		}
+
+		public bool IsOwnProcessWindow(IntPtr hwnd) {
+			return HashSetOwnWindows.Contains(hwnd);
+		}
+	}
+
+	///<summary>Holds the scheduled action until the test runs it.</summary>
+	internal sealed class ManualDelayScheduler:IDelayScheduler {
+		public Action ActionPending;
+		public int DelayMsPending;
+		public int CountCancel;
+
+		public void Schedule(int delayMs,Action action) {
+			ActionPending=action;
+			DelayMsPending=delayMs;
+		}
+
+		public void Cancel() {
+			ActionPending=null;
+			CountCancel++;
+		}
+
+		///<summary>Runs the pending action, as the timer would.</summary>
+		public void Elapse() {
+			Action action=ActionPending;
+			ActionPending=null;
+			action?.Invoke();
+		}
+	}
+
 	///<summary>The EZTwain facade on a FakeTwainDsm that also offers a FakeHelperSource (the contract 1.1 profile), with capture.ini and
 	///the capture folders in a temporary folder and the windows recorded. Each test class creates one in its TestInitialize and disposes
 	///it in TestCleanup.</summary>
@@ -51,6 +110,8 @@ namespace ImagingDeviceManager.Tests {
 		public readonly FakeTwainDsm Fake=new FakeTwainDsm();
 		public readonly FakeHelperSource Helper=new FakeHelperSource();
 		public readonly RecordingCaptureUi Ui=new RecordingCaptureUi();
+		public readonly FakeForegroundApi Foreground=new FakeForegroundApi();
+		public readonly ManualDelayScheduler Scheduler=new ManualDelayScheduler();
 		///<summary>Stands in for %ProgramData%\OpenPMS-Dental\Imaging.</summary>
 		public readonly string FolderImaging;
 		public readonly string PathConfig;
@@ -66,6 +127,8 @@ namespace ImagingDeviceManager.Tests {
 				LoadConfig=() => LocalCaptureConfig.Load(PathConfig),
 				Ui=Ui,
 				ThreadWindows=new Win32ThreadWindowApi(),
+				Foreground=Foreground,
+				Scheduler=Scheduler,
 				AdjustSettings=settings => settings.RefusedDisableWait=TimeSpan.FromMilliseconds(2000),
 			};
 			EZTwain.Reset(Load,Host);

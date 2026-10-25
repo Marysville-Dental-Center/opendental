@@ -20,6 +20,7 @@ namespace ImagingDeviceManager {
 		private static CaptureHost _hostDefault;
 		///<summary>capture.ini as read before the last open.</summary>
 		private static LocalCaptureConfig _configInEffect;
+		private static ForegroundRestorer _foregroundRestorer;
 
 		internal static CaptureHost Host {
 			get {
@@ -30,6 +31,16 @@ namespace ImagingDeviceManager {
 					_hostDefault=CaptureHost.CreateDefault();
 				}
 				return _hostDefault;
+			}
+		}
+
+		///<summary>One for all acquisitions, so that a series keeps the window recorded at its start.</summary>
+		private static ForegroundRestorer ForegroundRestorerShared {
+			get {
+				if(_foregroundRestorer==null) {
+					_foregroundRestorer=new ForegroundRestorer(Host.Foreground,Host.Scheduler);
+				}
+				return _foregroundRestorer;
 			}
 		}
 
@@ -55,7 +66,7 @@ namespace ImagingDeviceManager {
 			TwainSession session=Session;
 			DeviceAcquireScope scope=null;
 			if(session.State<6 && IsThreadModalInEffect()) {
-				scope=DeviceAcquireScope.Begin(Host,session,null,LogCapture);
+				scope=DeviceAcquireScope.Begin(Host,ForegroundRestorerShared,session,null,LogCapture);
 			}
 			try {
 				return session.Acquire(hwnd);
@@ -71,7 +82,7 @@ namespace ImagingDeviceManager {
 			TwainSession session=Session;
 			DeviceAcquireScope scope=null;
 			if(session.State>=5 && session.IsOpenedByName && !session.IsAcquiring && IsThreadModalInEffect()) {
-				scope=DeviceAcquireScope.Begin(Host,session,null,LogCapture);
+				scope=DeviceAcquireScope.Begin(Host,ForegroundRestorerShared,session,null,LogCapture);
 			}
 			try {
 				session.CloseSource();
@@ -92,6 +103,7 @@ namespace ImagingDeviceManager {
 		private static void ResetCapture(CaptureHost host) {
 			HostOverride=host;
 			_configInEffect=null;
+			_foregroundRestorer=null;
 			DisableThreadWindowsDuringAcquire=true;
 		}
 
