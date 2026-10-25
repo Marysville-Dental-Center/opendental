@@ -96,6 +96,7 @@ namespace ImagingDeviceManager {
 		private static DibImage AcquireByName(IntPtr hwnd,long patNum) {
 			TwainSession session=Session;
 			string sourceName=session.SourceName;//Single mode closes the source before Acquire returns.
+			bool isMulti=session.MultiTransfer;
 			CaptureCallState call=new CaptureCallState();
 			CaptureCallState callOuter=_callCurrent;
 			_callCurrent=call;
@@ -126,6 +127,7 @@ namespace ImagingDeviceManager {
 				HasImage=dib!=null,
 				ErrorCode=session.ErrorCode,
 				IsTransferFailed=session.IsLastTransferFailed,
+				IsMultiTransfer=isMulti,
 				EndConditionCode=session.EndConditionCode,
 				EndConditionText=session.EndConditionText,
 			};

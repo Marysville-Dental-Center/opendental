@@ -46,6 +46,16 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		[TestMethod]
+		public void TransferFailure_Batch_NoticeToo_TheBatchLoopShowsNoText() {
+			AcquireOutcome outcome=new AcquireOutcome { ErrorCode=EZTwainErrorCode.EZTEC_XFER_FAILURE,IsTransferFailed=true,IsMultiTransfer=true };
+			Assert.AreEqual(CaptureNoticeText.ImageNotReceived,AcquireNotices.GetErrorText(outcome));
+			CollectionAssert.AreEqual(new List<string> { CaptureNoticeText.ImageNotReceived },AcquireNotices.Select(new CaptureCallState(),outcome));
+			outcome.ErrorCode=EZTwainErrorCode.EZTEC_USER_CANCEL;
+			outcome.IsTransferFailed=false;
+			Assert.AreEqual(0,AcquireNotices.Select(new CaptureCallState(),outcome).Count,"A batch that ends normally stays silent.");
+		}
+
+		[TestMethod]
 		public void SourceStoppedResponding_ErrorTextAndNotice_TheLoopIgnoresIt() {
 			AcquireOutcome outcome=new AcquireOutcome { ErrorCode=EZTwainErrorCode.EZTEC_DS_FAILURE };
 			Assert.AreEqual(CaptureNoticeText.ImageNotReceived,AcquireNotices.GetErrorText(outcome));
@@ -152,6 +162,20 @@ namespace ImagingDeviceManager.Tests {
 			Assert.AreEqual(CaptureNoticeText.ImageNotReceived,EZTwain.LastErrorText(),"The Mount/Acquire loop shows it in its message box.");
 			Assert.AreEqual(0,_harness.Ui.ListNotices.Count,"No second message.");
 			StringAssert.Contains(System.IO.File.ReadAllText(_harness.PathCaptureLog),"transfer from the scanner failed");
+		}
+
+		[TestMethod]
+		public void TransferFailure_ByNameBatch_ImageNotReceivedNotice() {
+			_harness.Fake.ListPages.Add(FakePage.CreateGray8(8,4,300,(x,y) => (byte)x));
+			_harness.Fake.ListPages.Add(FakePage.CreateGray8(9,4,300,(x,y) => (byte)x));
+			_harness.Fake.ListPages[0].FailCondition=Tw.TWCC_OPERATIONERROR;
+			Assert.IsTrue(EZTwain.OpenSource("Fake Sensor"));
+			EZTwain.SetMultiTransfer(true);//Device type TwainMulti: its loop ends on IntPtr.Zero and shows no text.
+			Assert.AreEqual(IntPtr.Zero,EZTwain.Acquire(IntPtr.Zero));
+			Assert.AreEqual(CaptureNoticeText.ImageNotReceived,EZTwain.LastErrorText());
+			Assert.AreEqual(1,_harness.Ui.ListNotices.Count);
+			StringAssert.StartsWith(_harness.Ui.ListNotices[0],CaptureNoticeText.ImageNotReceived,"The library tells the operator itself.");
+			EZTwain.CloseSource();
 		}
 
 		[TestMethod]
