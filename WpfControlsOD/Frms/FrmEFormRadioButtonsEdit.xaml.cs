@@ -42,6 +42,7 @@ namespace OpenDental {
 			gridMain.CellSelectionCommitted+=GridMain_CellSelectionCommitted;
 			checkIsWidthPercentage.Click+=CheckIsWidthPercentage_Click;
 			checkIsHorizStacking.Click+=CheckIsHorizStacking_Click;
+			checkAutoImport.Click+=(sender,e)=>SetAutoImportControls();
 		}
 
 		private void FrmEFormsRadioButtonsEdit_Load(object sender, EventArgs e) {
@@ -79,6 +80,8 @@ namespace OpenDental {
 			}
 			SetVisAllerProb();
 			checkIsRequired.Checked=EFormFieldCur.IsRequired;
+			checkAutoImport.Checked=EFormFieldCur.AutoImport;
+			SetAutoImportControls();
 			//groupLayout start
 			if(EFormFieldCur.LabelAlign==EnumEFormLabelAlign.TopLeft){
 				radioLabelTop.Checked=true;
@@ -171,8 +174,30 @@ namespace OpenDental {
 			public string Lang;
 		}
 
+		///<summary>Auto Import (Open Dental 25.1) is only offered for linked fields that support it, and it makes the group required so an empty answer
+		///can never wipe stored data.</summary>
+		private void SetAutoImportControls(){
+			string dbLink="";
+			if(comboDbLink.SelectedIndex>0){
+				dbLink=(string)comboDbLink.SelectedItem;
+			}
+			bool isAutoImportAllowed=EFormFieldsAvailable.IsAutoImportAllowed(dbLink);
+			checkAutoImport.IsEnabled=isAutoImportAllowed;
+			if(!isAutoImportAllowed){
+				checkAutoImport.Checked=false;
+			}
+			if(checkAutoImport.Checked==true){
+				checkIsRequired.Checked=true;
+				checkIsRequired.IsEnabled=false;
+			}
+			else{
+				checkIsRequired.IsEnabled=true;
+			}
+		}
+
 		///<summary>This sets visibilities for some allergie/problem controls.</summary>
 		private void SetVisAllerProb(){
+			SetAutoImportControls();
 			if((string)comboDbLink.SelectedItem=="allergy:"){
 				labelAllergProb.Visible=true;
 				textMedAllerProb.Visible=true;
@@ -652,7 +677,8 @@ Any or all items are allowed to have no label by leaving that value in the first
 			else{
 				EFormFieldCur.DbLink=(string)comboDbLink.SelectedItem;
 			}
-			EFormFieldCur.IsRequired=checkIsRequired.Checked==true;
+			EFormFieldCur.AutoImport=checkAutoImport.Checked==true && EFormFieldsAvailable.IsAutoImportAllowed(EFormFieldCur.DbLink);
+			EFormFieldCur.IsRequired=checkIsRequired.Checked==true || EFormFieldCur.AutoImport;
 			if(radioLabelTop.Checked==true){
 				EFormFieldCur.LabelAlign=EnumEFormLabelAlign.TopLeft;
 				EFormFieldCur.WidthLabel=0;

@@ -64,7 +64,10 @@ namespace OpenDental {
 				comboDbLink.SelectedItem=EFormFieldCur.DbLink;
 			}
 			SetVisAllerProb();
-			checkIsRequired.Checked=EFormFieldCur.IsRequired;
+			//Since Open Dental 25.1 only the allergiesNone and problemsNone checkboxes may be Required. Clear it on any other checkbox.
+			checkIsRequired.Checked=EFormFieldCur.IsRequired && EFormFieldsAvailable.CanCheckBoxBeRequired(EFormFieldCur.DbLink);
+			checkAutoImport.Checked=EFormFieldCur.AutoImport;
+			SetVisAllerProb();
 			//groupLayout start
 			checkBorder.Checked=EFormFieldCur.Border==EnumEFormBorder.ThreeD;
 			textVIntWidth.Value=EFormFieldCur.Width;
@@ -234,6 +237,17 @@ namespace OpenDental {
 
 		///<summary>This sets visibility based on selected index of comboDbLink.</summary>
 		private void SetVisAllerProb(){
+			//Auto Import (Open Dental 25.1) is only offered for links that support it. Unlike text, date and radio fields, an auto-import checkbox is
+			//not made required: its checked state is imported as it is.
+			string dbLink="";
+			if(comboDbLink.SelectedIndex>0){
+				dbLink=(string)comboDbLink.SelectedItem;
+			}
+			bool isAutoImportAllowed=EFormFieldsAvailable.IsAutoImportAllowed(dbLink);
+			checkAutoImport.IsEnabled=isAutoImportAllowed;
+			if(!isAutoImportAllowed){
+				checkAutoImport.Checked=false;
+			}
 			if((string)comboDbLink.SelectedItem=="allergy:"){
 				labelAllergProb.Visible=true;
 				textMedAllerProb.Visible=true;
@@ -255,7 +269,7 @@ namespace OpenDental {
 			textMedAllerProb.Visible=false;
 			butChange.Visible=false;
 			textMedAllerProb.Text="";
-			checkIsRequired.Visible=true;
+			checkIsRequired.Visible=EFormFieldsAvailable.CanCheckBoxBeRequired(dbLink);
 		}
 
 		private void butDelete_Click(object sender,EventArgs e) {
@@ -399,7 +413,8 @@ namespace OpenDental {
 			else{
 				EFormFieldCur.DbLink=(string)comboDbLink.SelectedItem;
 			}
-			EFormFieldCur.IsRequired=checkIsRequired.Checked==true && checkIsRequired.Visible;
+			EFormFieldCur.IsRequired=checkIsRequired.Checked==true && checkIsRequired.Visible && EFormFieldsAvailable.CanCheckBoxBeRequired(EFormFieldCur.DbLink);
+			EFormFieldCur.AutoImport=checkAutoImport.Checked==true && EFormFieldsAvailable.IsAutoImportAllowed(EFormFieldCur.DbLink);
 			//groupLayout start
 			if(checkBorder.Checked==true){
 				EFormFieldCur.Border=EnumEFormBorder.ThreeD;

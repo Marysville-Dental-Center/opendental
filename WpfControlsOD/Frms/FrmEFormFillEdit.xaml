@@ -19,7 +19,6 @@
 		<ui:Button x:Name="butPrint" Width="80" Height="24" Margin="0,581,30,0" Text="Print" Click="butPrint_Click" HorizontalAlignment="Right" />
 		<ui:Button x:Name="butSave" Width="75" Height="24" Margin="0,0,10,10" Text="Save" Click="butSave_Click" RenderTransformOrigin="0.413,-0.625" HorizontalAlignment="Right" VerticalAlignment="Bottom"   />
 		<ui:Button x:Name="butChangePat" Width="80" Height="24" Margin="0,371,30,0" Text="Change Pat" HorizontalAlignment="Right" Click="butChangePat_Click" />
-		<ui:Label x:Name="labelRequired" Width="120" Height="53" Margin="465,97,0,0" Text="Required fields are not enforced here" VAlign="Center" ColorText="Red" />
 		<ui:GroupBox x:Name="groupSaveImages" Height="95" Margin="0,430,5,0" Width="136" Text="Save to Images" HorizontalAlignment="Right">
 			<ui:ComboBox x:Name="comboImageCat" Width="130" Height="21" Margin="0,41,0,0" HorizontalAlignment="Center" />
 			<ui:Label Width="120" Height="18" Margin="0,21,0,0" Text="Category" VAlign="Center" />

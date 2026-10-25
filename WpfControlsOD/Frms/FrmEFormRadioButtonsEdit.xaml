@@ -24,6 +24,7 @@
 		<ui:Button x:Name="butDown" Width="79" Height="24" Margin="794,540,0,0" Text="Down" Click="butDown_Click"  />
 		<ui:Button x:Name="butHelp" Width="89" Height="24" Margin="878,217,0,0" Text="Advanced Help" Click="butHelp_Click"  />
 		<ui:CheckBox x:Name="checkIsRequired" Height="20" Margin="50,174,0,0" Width="114" Text="Required" CheckAlign="MiddleRight"/>
+		<ui:CheckBox x:Name="checkAutoImport" Height="20" Margin="170,174,0,0" Width="100" Text="Auto Import" CheckAlign="MiddleRight"/>
 		<ui:GroupBox Height="80" Margin="31,549,0,0" Width="454" Text="Conditional Logic. This field will show...">
 			<ui:Label Width="128" Height="18" Margin="31,27,0,0" Text="... if the parent field" HAlign="Right" VAlign="Center" />
 			<ui:TextBox x:Name="textCondParent" Width="213" Height="20" Margin="159,25,0,0"/>

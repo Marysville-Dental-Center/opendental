@@ -3,665 +3,492 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
-using Newtonsoft.Json;
+using CodeBase;
 
 namespace OpenDentBusiness {
+	///<summary>Writes eForm answers into the patient record. The office reviews and imports most answers in FormSheetImport. Fields marked Auto Import
+	///(Open Dental 25.1, eformfield.AutoImport) are written here, without review, by the save that first stores the filled form.</summary>
 	public class EFormImport {
-		///<summary>Always succeeds silently. Not used because we instead use FormSheetImport. We are using this code as inspiration for that location.</summary>
-		[Obsolete()]
-		public static void Import(EForm eForm){
-			//Any changes to this list should also be duplicated in EFormFiller and EFormFieldsAvailable.
-			//This code was copied from FormSheetImport
+		//Any changes to the DbLinks handled here should also be duplicated in EFormFiller and EFormFieldsAvailable.
+
+		///<summary>Call before the save. Auto import runs once, on the save that first inserts the form, and only for a form tied to a patient. A form
+		///already in the database (saved earlier on the desktop, or filled and handled by Open Dental) is never imported again by opening and saving
+		///it, whatever its status: Open Dental leaves desktop-filled forms at None, so the status cannot tell whether a form was imported.</summary>
+		public static bool ShouldAutoImportOnSave(EForm eForm) {
+			return eForm.IsNew && eForm.PatNum!=0;
+		}
+
+		///<summary>True if this field's answer is written into the database without review: it is marked Auto Import, its link supports it, it is not
+		///hidden by conditional logic, and it has an answer. Text, date and radio-button fields with no answer are skipped, so an empty answer never
+		///wipes stored data. Checkboxes are imported as they are. Call EFormFields.SetIsHiddenConditFlags first.</summary>
+		public static bool IsAutoImportField(EFormField eFormField) {
+			if(!eFormField.AutoImport || eFormField.IsHiddenCondit) {
+				return false;
+			}
+			if(!EFormFieldsAvailable.IsAutoImportAllowed(eFormField.DbLink)) {
+				return false;
+			}
+			if(!eFormField.FieldType.In(EnumEFormFieldType.TextField,EnumEFormFieldType.DateField,EnumEFormFieldType.RadioButtons,EnumEFormFieldType.CheckBox)) {
+				return false;
+			}
+			if(eFormField.FieldType!=EnumEFormFieldType.CheckBox && string.IsNullOrWhiteSpace(eFormField.ValueString)) {
+				return false;
+			}
+			return true;
+		}
+
+		///<summary>The fields of the form that auto import would write. Sets the conditional-logic flags on the form's fields.</summary>
+		public static List<EFormField> GetAutoImportFields(EForm eForm) {
+			EFormFields.SetIsHiddenConditFlags(eForm.ListEFormFields);
+			return eForm.ListEFormFields.FindAll(x => IsAutoImportField(x));
+		}
+
+		///<summary>Copies the patient and patient-note answers of these fields onto the objects passed in. Fields with other links are ignored. Returns
+		///one line per value that changed, for the audit trail. Values that can't be read (an unknown gender, an invalid date) are skipped. Does not
+		///touch the database.</summary>
+		public static List<string> ApplyPatientFields(List<EFormField> listEFormFields,Patient patient,PatientNote patientNote) {
+			List<string> listChanges=new List<string>();
+			for(int i=0;i<listEFormFields.Count;i++) {
+				string value=listEFormFields[i].ValueString??"";
+				string dbLink=listEFormFields[i].DbLink;
+				switch(dbLink) {
+					case "Address":
+						SetString(listChanges,dbLink,patient.Address,value,x => patient.Address=x);
+						break;
+					case "Address2":
+						SetString(listChanges,dbLink,patient.Address2,value,x => patient.Address2=x);
+						break;
+					case "Birthdate":
+						DateTime dateBirth=PIn.Date(value);
+						if(dateBirth.Year<1880) {
+							break;//not a usable date
+						}
+						if(patient.Birthdate.Date!=dateBirth.Date) {
+							listChanges.Add(dbLink+" changed from '"+patient.Birthdate.ToShortDateString()+"' to '"+dateBirth.ToShortDateString()+"'");
+							patient.Birthdate=dateBirth.Date;
+						}
+						break;
+					case "City":
+						SetString(listChanges,dbLink,patient.City,value,x => patient.City=x);
+						break;
+					case "Email":
+						SetString(listChanges,dbLink,patient.Email,value,x => patient.Email=x);
+						break;
+					case "FName":
+						SetString(listChanges,dbLink,patient.FName,value,x => patient.FName=x);
+						break;
+					case "Gender":
+						if(Enum.TryParse(value,out PatientGender patientGender) && Enum.IsDefined(typeof(PatientGender),patientGender)) {
+							SetEnum(listChanges,dbLink,patient.Gender,patientGender,x => patient.Gender=x);
+						}
+						break;
+					case "HmPhone":
+						SetString(listChanges,dbLink,patient.HmPhone,value,x => patient.HmPhone=x);
+						break;
+					case "ICEName":
+						SetString(listChanges,dbLink,patientNote.ICEName,value,x => patientNote.ICEName=x);
+						break;
+					case "ICEPhone":
+						SetString(listChanges,dbLink,patientNote.ICEPhone,value,x => patientNote.ICEPhone=x);
+						break;
+					case "LName":
+						SetString(listChanges,dbLink,patient.LName,value,x => patient.LName=x);
+						break;
+					case "MiddleI":
+						SetString(listChanges,dbLink,patient.MiddleI,value,x => patient.MiddleI=x);
+						break;
+					case "Position":
+						if(Enum.TryParse(value,out PatientPosition patientPosition) && Enum.IsDefined(typeof(PatientPosition),patientPosition)) {
+							SetEnum(listChanges,dbLink,patient.Position,patientPosition,x => patient.Position=x);
+						}
+						break;
+					case "PreferConfirmMethod":
+						if(TryParseContactMethod(value,out ContactMethod contactMethodConfirm)) {
+							SetEnum(listChanges,dbLink,patient.PreferConfirmMethod,contactMethodConfirm,x => patient.PreferConfirmMethod=x);
+						}
+						break;
+					case "PreferContactMethod":
+						if(TryParseContactMethod(value,out ContactMethod contactMethodContact)) {
+							SetEnum(listChanges,dbLink,patient.PreferContactMethod,contactMethodContact,x => patient.PreferContactMethod=x);
+						}
+						break;
+					case "PreferRecallMethod":
+						if(TryParseContactMethod(value,out ContactMethod contactMethodRecall)) {
+							SetEnum(listChanges,dbLink,patient.PreferRecallMethod,contactMethodRecall,x => patient.PreferRecallMethod=x);
+						}
+						break;
+					case "Preferred":
+						SetString(listChanges,dbLink,patient.Preferred,value,x => patient.Preferred=x);
+						break;
+					case "SSN":
+						string ssn=value;
+						if(CultureInfo.CurrentCulture.Name=="en-US") {
+							ssn=ssn.Replace("-","");//stored without dashes
+						}
+						if(patient.SSN!=ssn) {
+							listChanges.Add("SSN changed");//the number itself is not written to the audit trail
+							patient.SSN=ssn;
+						}
+						break;
+					case "State":
+						SetString(listChanges,dbLink,patient.State,value,x => patient.State=x);
+						break;
+					case "StudentStatus":
+						if(value.In("N","P","F")) {
+							SetString(listChanges,dbLink,patient.StudentStatus,value,x => patient.StudentStatus=x);
+						}
+						break;
+					case "WirelessPhone":
+						SetString(listChanges,dbLink,patient.WirelessPhone,value,x => patient.WirelessPhone=x);
+						break;
+					case "WkPhone":
+						SetString(listChanges,dbLink,patient.WkPhone,value,x => patient.WkPhone=x);
+						break;
+					case "Zip":
+						SetString(listChanges,dbLink,patient.Zip,value,x => patient.Zip=x);
+						break;
+				}
+			}
+			return listChanges;
+		}
+
+		private static void SetString(List<string> listChanges,string fieldName,string valueOld,string valueNew,Action<string> actionSet) {
+			if((valueOld??"")==valueNew) {
+				return;
+			}
+			listChanges.Add(fieldName+" changed from '"+valueOld+"' to '"+valueNew+"'");
+			actionSet(valueNew);
+		}
+
+		private static void SetEnum<T>(List<string> listChanges,string fieldName,T valueOld,T valueNew,Action<T> actionSet) where T:struct {
+			if(valueOld.Equals(valueNew)) {
+				return;
+			}
+			listChanges.Add(fieldName+" changed from '"+valueOld+"' to '"+valueNew+"'");
+			actionSet(valueNew);
+		}
+
+		private static bool TryParseContactMethod(string value,out ContactMethod contactMethod) {
+			return Enum.TryParse(value,out contactMethod) && Enum.IsDefined(typeof(ContactMethod),contactMethod);
+		}
+
+		///<summary>Writes the Auto Import fields of a form into the patient record, logs each change, and adds one EFormImport audit entry for the form.
+		///Returns the changes made (empty if there was nothing to import). Status is not changed: since Open Dental 25.2 an eForm's status does not
+		///record imports, the audit trail does.</summary>
+		public static List<string> ImportAutoFields(EForm eForm) {
+			List<string> listChangesAll=new List<string>();
+			List<EFormField> listEFormFields=GetAutoImportFields(eForm);
+			if(listEFormFields.Count==0) {
+				return listChangesAll;
+			}
 			Patient patientOld=Patients.GetPat(eForm.PatNum);
+			if(patientOld==null) {
+				return listChangesAll;
+			}
+			string strSource="eForm #"+eForm.EFormNum+" ("+eForm.Description+")";
 			Patient patient=patientOld.Copy();
 			PatientNote patientNote=PatientNotes.Refresh(patient.PatNum,patient.Guarantor);
-			List<Allergy> listAllergiesPat=Allergies.GetAll(eForm.PatNum,showInactive:false);//just active allergies
-			List<AllergyDef> listAllergyDefs=AllergyDefs.GetAll(includeHidden:false);//from db. AllergyDefs are oddly not cached.
-			List<MedicationPat> listMedicationPats=MedicationPats.Refresh(patient.PatNum,includeDiscontinued:false);
-			List<Disease> listDiseasesPat=Diseases.Refresh(patient.PatNum,showActiveOnly:true);
-			for(int i=0;i<eForm.ListEFormFields.Count;i++) {
-				if(eForm.ListEFormFields[i].DbLink==""){
+			List<string> listChangesPatient=ApplyPatientFields(listEFormFields,patient,patientNote);
+			if(listChangesPatient.Count>0) {
+				Patients.Update(patient,patientOld);
+				PatientNotes.Update(patientNote,patient.Guarantor);
+				SecurityLogs.MakeLogEntry(EnumPermType.PatientEdit,patient.PatNum,"Auto import from "+strSource+":\r\n"+string.Join("\r\n",listChangesPatient));
+				listChangesAll.AddRange(listChangesPatient);
+			}
+			List<string> listChangesAllergies=ImportAllergies(listEFormFields,eForm.ListEFormFields,patient.PatNum);
+			if(listChangesAllergies.Count>0) {
+				SecurityLogs.MakeLogEntry(EnumPermType.PatAllergyListEdit,patient.PatNum,"Auto import from "+strSource+":\r\n"+string.Join("\r\n",listChangesAllergies));
+				listChangesAll.AddRange(listChangesAllergies);
+			}
+			List<string> listChangesProblems=ImportProblems(listEFormFields,eForm.ListEFormFields,patient.PatNum);
+			if(listChangesProblems.Count>0) {
+				SecurityLogs.MakeLogEntry(EnumPermType.PatProblemListEdit,patient.PatNum,"Auto import from "+strSource+":\r\n"+string.Join("\r\n",listChangesProblems));
+				listChangesAll.AddRange(listChangesProblems);
+			}
+			EFormField eFormFieldReferral=listEFormFields.Find(x => x.DbLink=="referredFrom");
+			if(eFormFieldReferral!=null) {
+				string changeReferral=ImportReferredFrom(patient.PatNum,eFormFieldReferral.ValueString);
+				if(changeReferral!="") {
+					SecurityLogs.MakeLogEntry(EnumPermType.RefAttachAdd,patient.PatNum,changeReferral+" (auto import from "+strSource+")");
+					listChangesAll.Add(changeReferral);
 				}
-				if(eForm.ListEFormFields[i].DbLink=="Address") {
-					patient.Address=eForm.ListEFormFields[i].ValueString;
-				}
-				if(eForm.ListEFormFields[i].DbLink=="Address2") {
-					patient.Address2=eForm.ListEFormFields[i].ValueString;
-				}
-				//if(eForm.ListEFormFields[i].DbLink=="addressAndHmPhoneIsSameEntireFamily") {
+			}
+			if(listChangesAll.Count>0) {
+				SecurityLogs.MakeLogEntry(EnumPermType.EFormImport,patient.PatNum,"Auto import from "+strSource+": "+listChangesAll.Count+" change(s).");
+			}
+			return listChangesAll;
+		}
 
-				//}
-				if(eForm.ListEFormFields[i].DbLink=="allergiesNone") {
-					//change the StatusIsActive to false since they checked "None" for allergies
-					if(listAllergiesPat.Count==0){
+		///<summary>allergiesNone, allergiesOther and allergy: fields. listEFormFieldsAll is every field of the form; typed-in allergies already covered
+		///by an allergy: field are skipped.</summary>
+		private static List<string> ImportAllergies(List<EFormField> listEFormFields,List<EFormField> listEFormFieldsAll,long patNum) {
+			List<string> listChanges=new List<string>();
+			if(!listEFormFields.Exists(x => x.DbLink.In("allergiesNone","allergiesOther") || x.DbLink.StartsWith("allergy:"))) {
+				return listChanges;
+			}
+			List<Allergy> listAllergiesPat=Allergies.GetAll(patNum,showInactive:false);//just active allergies
+			List<AllergyDef> listAllergyDefs=AllergyDefs.GetAll(includeHidden:false);//AllergyDefs are not cached
+			for(int i=0;i<listEFormFields.Count;i++) {
+				EFormField eFormField=listEFormFields[i];
+				if(eFormField.DbLink=="allergiesNone") {
+					if(eFormField.ValueString!="X") {
 						continue;
 					}
-					if(eForm.ListEFormFields[i].ValueString=="X") {
-						for(int a=0;a<listAllergiesPat.Count;a++) {
-							listAllergiesPat[a].StatusIsActive=false;
-							Allergies.Update(listAllergiesPat[a]);
-						}
+					for(int a=0;a<listAllergiesPat.Count;a++) {
+						listAllergiesPat[a].StatusIsActive=false;
+						Allergies.Update(listAllergiesPat[a]);
+						listChanges.Add("Allergy set inactive: "+GetAllergyName(listAllergiesPat[a],listAllergyDefs));
 					}
-					listAllergiesPat=Allergies.GetAll(eForm.PatNum,showInactive:false);//refresh if needed for a future loop
+					listAllergiesPat=Allergies.GetAll(patNum,showInactive:false);
+					continue;
 				}
-				if(eForm.ListEFormFields[i].DbLink=="allergiesOther") {
-					List<string> listStrsInput=eForm.ListEFormFields[i].ValueString.Split(new char[]{','},StringSplitOptions.RemoveEmptyEntries).Select(x=>x.Trim()).ToList();
-					//get list of allergies already covered by checkboxes
-					List<string> listStrAllergiesChecks=eForm.ListEFormFields.FindAll(x=>x.DbLink.StartsWith("allergy:")).Select(x=>x.DbLink.Substring(8)).ToList();
-					for(int a=0;a<listStrsInput.Count;a++){
+				if(eFormField.DbLink=="allergiesOther") {
+					List<string> listStrsInput=eFormField.ValueString.Split(new char[]{','},StringSplitOptions.RemoveEmptyEntries).Select(x=>x.Trim()).Where(x=>x!="").ToList();
+					List<string> listStrAllergiesChecks=listEFormFieldsAll.FindAll(x=>x.DbLink.StartsWith("allergy:")).Select(x=>x.DbLink.Substring(8)).ToList();
+					for(int a=0;a<listStrsInput.Count;a++) {
 						if(listStrAllergiesChecks.Contains(listStrsInput[a])) {
-							continue;//this allergy is already covered by a checkbox
+							continue;//covered by a checkbox or radio button
 						}
 						AllergyDef allergyDef=listAllergyDefs.Find(x=>x.Description.ToLower()==listStrsInput[a].ToLower());
-						if(allergyDef==null){
-							//this allergy that they typed in does not have any matching allergyDef, so we will use "Other".
+						if(allergyDef==null) {
+							//No matching definition: the catch-all "Other" definition, with the typed text in Reaction.
 							AllergyDef allergyDefOther=listAllergyDefs.Find(x=>x.Description=="Other");
-							if(allergyDefOther==null){//this will only happen once, and then all patients will reuse it for years.
+							if(allergyDefOther==null) {
 								allergyDefOther=new AllergyDef();
 								allergyDefOther.Description="Other";
 								AllergyDefs.Insert(allergyDefOther);
 								listAllergyDefs=AllergyDefs.GetAll(includeHidden:false);
-								//DataValid.SetInvalid would be used instead if this was cached.
 							}
-							//allergyDefOther is now guaranteed to be valid
-							Allergy allergyOther=listAllergiesPat.Find(x=>x.AllergyDefNum==allergyDefOther.AllergyDefNum && x.Reaction==listStrsInput[a]);
-							if(allergyOther==null){
-								//This patient does not have an active "Other" allergy representing the allergy that was typed in
-								allergyOther=new Allergy();
-								allergyOther.PatNum=patient.PatNum;
-								allergyOther.AllergyDefNum=allergyDefOther.AllergyDefNum;
-								allergyOther.Reaction=listStrsInput[a];
-								allergyOther.StatusIsActive=true;
-								Allergies.Insert(allergyOther);
-								listAllergiesPat=Allergies.GetAll(eForm.PatNum,showInactive:false);//refresh if needed for a future loop
+							if(listAllergiesPat.Exists(x=>x.AllergyDefNum==allergyDefOther.AllergyDefNum && x.Reaction==listStrsInput[a])) {
 								continue;
 							}
-							//This patient already has an active "Other" allergy representing the allergy that was typed in
-							//so db will not need to change.
+							Allergy allergyOther=new Allergy();
+							allergyOther.PatNum=patNum;
+							allergyOther.AllergyDefNum=allergyDefOther.AllergyDefNum;
+							allergyOther.Reaction=listStrsInput[a];
+							allergyOther.StatusIsActive=true;
+							Allergies.Insert(allergyOther);
+							listChanges.Add("Allergy added: Other ("+listStrsInput[a]+")");
+							listAllergiesPat=Allergies.GetAll(patNum,showInactive:false);
 							continue;
 						}
-						//we found an allergyDef with the exact spelling that user typed in.
-						Allergy allergyMatch=listAllergiesPat.Find(x=>x.AllergyDefNum==allergyDef.AllergyDefNum);
-						if(allergyMatch==null){
-							//But this patient does not have it attached as one of their allergies
-							allergyMatch=new Allergy();
-							allergyMatch.PatNum=patient.PatNum;
-							allergyMatch.AllergyDefNum=allergyDef.AllergyDefNum;
-							allergyMatch.StatusIsActive=true;
-							Allergies.Insert(allergyMatch);
-							listAllergiesPat=Allergies.GetAll(eForm.PatNum,showInactive:false);//refresh if needed for a future loop
+						if(listAllergiesPat.Exists(x=>x.AllergyDefNum==allergyDef.AllergyDefNum)) {
 							continue;
 						}
-						//This patient already has an active allergy matching the allergy that was typed in
-						//so db will not need to change.
+						Allergy allergyMatch=new Allergy();
+						allergyMatch.PatNum=patNum;
+						allergyMatch.AllergyDefNum=allergyDef.AllergyDefNum;
+						allergyMatch.StatusIsActive=true;
+						Allergies.Insert(allergyMatch);
+						listChanges.Add("Allergy added: "+allergyDef.Description);
+						listAllergiesPat=Allergies.GetAll(patNum,showInactive:false);
 					}
+					continue;
 				}
-				if(eForm.ListEFormFields[i].DbLink.StartsWith("allergy:")){
-					string strAllergyCheck=eForm.ListEFormFields[i].DbLink.Substring(8);
-					AllergyDef allergyDef=listAllergyDefs.Find(x=>x.Description.ToLower()==strAllergyCheck.ToLower());
-					if(allergyDef==null){
-						//This shouldn't normally happen, but it certainly is possible because user could change an allergyDef name after adding the checkbox,
-						//or this could be an imported form with no allergyDef in the db representing the value in this checkbox.
-						//We will just add this for them. That way, all imported forms will correctly work.
-						allergyDef=new AllergyDef();
-						allergyDef.Description=strAllergyCheck;
-						AllergyDefs.Insert(allergyDef);
-						listAllergyDefs=AllergyDefs.GetAll(includeHidden:false);
-						//DataValid.SetInvalid would be used instead if this was cached.
+				if(eFormField.DbLink.StartsWith("allergy:")) {
+					bool? hasAllergy=GetYesNo(eFormField);
+					if(hasAllergy==null) {
+						continue;//no answer means no change
 					}
-					//allergyDef is now guaranteed to have a value
-					Allergy allergyPat=listAllergiesPat.Find(x=>x.AllergyDefNum==allergyDef.AllergyDefNum);
-					if(allergyPat==null){
-						//This patient does not have an active allergy matching the allergy checked.
-						//Notice that we do not look at inactive allergies and consider flipping them back to active.
-						//Once someone has an allergy, it doesn't go away. We don't need to consider that fancy edge case.
-						//The worst consequence is that they might end up with one active and one inactive. No big deal.
-						if(eForm.ListEFormFields[i].ValueString=="X"){
-							allergyPat=new Allergy();
-							allergyPat.PatNum=patient.PatNum;
-							allergyPat.AllergyDefNum=allergyDef.AllergyDefNum;
-							allergyPat.StatusIsActive=true;
-							Allergies.Insert(allergyPat);
-							listAllergiesPat=Allergies.GetAll(eForm.PatNum,showInactive:false);//refresh if needed for a future loop
+					string strAllergy=eFormField.DbLink.Substring(8);
+					AllergyDef allergyDef=listAllergyDefs.Find(x=>x.Description.ToLower()==strAllergy.ToLower());
+					Allergy allergyPat=null;
+					if(allergyDef!=null) {
+						allergyPat=listAllergiesPat.Find(x=>x.AllergyDefNum==allergyDef.AllergyDefNum);
+					}
+					if(hasAllergy.Value && allergyPat==null) {
+						if(allergyDef==null) {
+							//The definition was renamed or never existed in this database. Add it so the answer is kept.
+							allergyDef=new AllergyDef();
+							allergyDef.Description=strAllergy;
+							AllergyDefs.Insert(allergyDef);
+							listAllergyDefs=AllergyDefs.GetAll(includeHidden:false);
 						}
-						else{
-							//db is already accurate
-						}
+						allergyPat=new Allergy();
+						allergyPat.PatNum=patNum;
+						allergyPat.AllergyDefNum=allergyDef.AllergyDefNum;
+						allergyPat.StatusIsActive=true;
+						Allergies.Insert(allergyPat);
+						listChanges.Add("Allergy added: "+allergyDef.Description);
+						listAllergiesPat=Allergies.GetAll(patNum,showInactive:false);
 					}
-					else{
-						//This patient does have an active allergy matching the allergy checked
-						if(eForm.ListEFormFields[i].ValueString=="X"){
-							//db is already accurate
-						}
-						else{
-							allergyPat.StatusIsActive=false;//make it inactive
-							Allergies.Update(allergyPat);
-							listAllergiesPat=Allergies.GetAll(eForm.PatNum,showInactive:false);//refresh if needed for a future loop
-						}
-					}
-				}
-				if(eForm.ListEFormFields[i].DbLink=="Birthdate") {
-					patient.Birthdate=PIn.Date(eForm.ListEFormFields[i].ValueString);
-				}
-				if(eForm.ListEFormFields[i].DbLink=="City") {
-					patient.City=eForm.ListEFormFields[i].ValueString;
-				}
-				if(eForm.ListEFormFields[i].DbLink=="Email") {
-					patient.Email=eForm.ListEFormFields[i].ValueString;
-				}
-				if(eForm.ListEFormFields[i].DbLink=="FName") {
-					patient.FName=eForm.ListEFormFields[i].ValueString;
-				}
-				if(eForm.ListEFormFields[i].DbLink=="Gender") {
-					if(eForm.ListEFormFields[i].ValueString!=""){
-						patient.Gender=(PatientGender)Enum.Parse(typeof(PatientGender),eForm.ListEFormFields[i].ValueString);
+					else if(!hasAllergy.Value && allergyPat!=null) {
+						allergyPat.StatusIsActive=false;
+						Allergies.Update(allergyPat);
+						listChanges.Add("Allergy set inactive: "+allergyDef.Description);
+						listAllergiesPat=Allergies.GetAll(patNum,showInactive:false);
 					}
 				}
-				if(eForm.ListEFormFields[i].DbLink=="HmPhone") {
-					patient.HmPhone=eForm.ListEFormFields[i].ValueString;
-				}
-				if(eForm.ListEFormFields[i].DbLink=="ICEName") {
-					patientNote.ICEName=eForm.ListEFormFields[i].ValueString;
-				}
-				if(eForm.ListEFormFields[i].DbLink=="ICEPhone") {
-					patientNote.ICEPhone=eForm.ListEFormFields[i].ValueString;
-				}
-					/*
-				//We're not even going to try to import insurance at this point
-				if(eForm.ListEFormFields[i].DbLink=="ins1CarrierName") {
-					if(carrier1!=null){
-						eForm.ListEFormFields[i].ValueString=carrier1.CarrierName;
-					}
-				}
-				if(eForm.ListEFormFields[i].DbLink=="ins1CarrierPhone") {
-					if(carrier1!=null) {
-						eForm.ListEFormFields[i].ValueString=carrier1.Phone;
-					}
-				}
-				if(eForm.ListEFormFields[i].DbLink=="ins1EmployerName") {
-					if(insPlan1!=null) {
-						eForm.ListEFormFields[i].ValueString=Employers.GetName(insPlan1.EmployerNum);
-					}
-				}
-				if(eForm.ListEFormFields[i].DbLink=="ins1GroupName") {
-					if(insPlan1!=null) {
-						eForm.ListEFormFields[i].ValueString=insPlan1.GroupName;
-					}
-				}
-				if(eForm.ListEFormFields[i].DbLink=="ins1GroupNum") {
-					if(insPlan1!=null) {
-						eForm.ListEFormFields[i].ValueString=insPlan1.GroupNum;
-					}
-				}
-				if(eForm.ListEFormFields[i].DbLink=="ins1Relat") {
-					if(listPatPlans.Count==0){
-						eForm.ListEFormFields[i].ValueString="";
-					}
-					else{
-						eForm.ListEFormFields[i].ValueString=listPatPlans[0].Relationship.ToString();
-					}
-				}
-				if(eForm.ListEFormFields[i].DbLink=="ins1SubscriberID") {
-					if(insPlan1!=null) {
-						eForm.ListEFormFields[i].ValueString=insSub1.SubscriberID;
-					}
-				}
-				if(eForm.ListEFormFields[i].DbLink=="ins1SubscriberNameF") {
-					if(insPlan1!=null) {
-						eForm.ListEFormFields[i].ValueString=family.GetNameInFamFirst(insSub1.Subscriber);
-					}
-				}
-				if(eForm.ListEFormFields[i].DbLink=="ins2CarrierName") {
-					if(carrier2!=null) {
-						eForm.ListEFormFields[i].ValueString=carrier2.CarrierName;
-					}
-				}
-				if(eForm.ListEFormFields[i].DbLink=="ins2CarrierPhone") {
-					if(carrier2!=null) {
-						eForm.ListEFormFields[i].ValueString=carrier2.Phone;
-					}
-				}
-				if(eForm.ListEFormFields[i].DbLink=="ins2EmployerName") {
-					if(insplan2!=null) {
-						eForm.ListEFormFields[i].ValueString=Employers.GetName(insplan2.EmployerNum);
-					}
-				}
-				if(eForm.ListEFormFields[i].DbLink=="ins2GroupName") {
-					if(insplan2!=null) {
-						eForm.ListEFormFields[i].ValueString=insplan2.GroupName;
-					}
-				}
-				if(eForm.ListEFormFields[i].DbLink=="ins2GroupNum") {
-					if(insplan2!=null) {
-						eForm.ListEFormFields[i].ValueString=insplan2.GroupNum;
-					}
-				}
-				if(eForm.ListEFormFields[i].DbLink=="ins2Relat") {
-					if(listPatPlans.Count<2){
-						eForm.ListEFormFields[i].ValueString="";
-					}
-					else{
-						eForm.ListEFormFields[i].ValueString=listPatPlans[1].Relationship.ToString();
-					}
-				}
-				if(eForm.ListEFormFields[i].DbLink=="ins2SubscriberID") {
-					if(insplan2!=null) {
-						eForm.ListEFormFields[i].ValueString=sub2.SubscriberID;
-					}
-				}
-				if(eForm.ListEFormFields[i].DbLink=="ins2SubscriberNameF") {
-					if(insplan2!=null) {
-						eForm.ListEFormFields[i].ValueString=family.GetNameInFamFirst(sub2.Subscriber);
-					}
-				}*/
-				if(eForm.ListEFormFields[i].DbLink=="LName") {
-					patient.LName=eForm.ListEFormFields[i].ValueString;
-				}
-				if(eForm.ListEFormFields[i].FieldType==EnumEFormFieldType.MedicationList) {
-					EFormMedListLayout eFormMedListLayout=JsonConvert.DeserializeObject<EFormMedListLayout>(eForm.ListEFormFields[i].ValueLabel);
-					if(eFormMedListLayout.ImportCol1){
-						List<EFormMed> listEFormMeds=new List<EFormMed>();
-						if(!String.IsNullOrEmpty(eForm.ListEFormFields[i].ValueString)){
-							listEFormMeds=JsonConvert.DeserializeObject<List<EFormMed>>(eForm.ListEFormFields[i].ValueString);
-						}
-						//Remove meds from patient that are not in the import list.
-						bool isRemoved=false;
-						for(int a=0;a<listMedicationPats.Count;a++){
-							Medication medication=Medications.GetMedication(listMedicationPats[a].MedicationNum);
-							string strMed=listMedicationPats[a].MedDescript;//used if this medicationPat came from an eRx or eForm import and medication is null
-							if(medication!=null){
-								strMed=medication.MedName;
-							}
-							EFormMed eFormMed=listEFormMeds.Find(x=>x.MedName==strMed);
-							if(eFormMed!=null){//in the import list
-								continue;
-							}
-							listMedicationPats[a].DateStop=DateTime.Today.AddDays(-1);
-							MedicationPats.Update(listMedicationPats[a]);
-							isRemoved=true;
-						}
-						if(isRemoved){
-							listMedicationPats=MedicationPats.Refresh(patient.PatNum,includeDiscontinued:false);
-						}
-						//Add any missing meds to patient
-						//If the med is already present, import the freq & quant.
-						for(int m=0;m<listEFormMeds.Count;m++){
-							MedicationPat medicationPat=null;
-							for(int a=0;a<listMedicationPats.Count;a++){
-								Medication medication=Medications.GetMedication(listMedicationPats[a].MedicationNum);
-								string strMed=listMedicationPats[a].MedDescript;//used if this medicationPat came from an eRx or eForm import and medication is null
-								if(medication!=null){
-									strMed=medication.MedName;
-								}
-								if(strMed==listEFormMeds[m].MedName){
-									medicationPat=listMedicationPats[a];
-									break;
-								}
-							}
-							if(medicationPat!=null){
-								//already present, but we need to import col2
-								bool imported2=false;
-								if(eFormMedListLayout.ImportCol2AppendDate){
-									if(medicationPat.PatNote!=""){
-										medicationPat.PatNote+="\r\n";
-									}
-									medicationPat.PatNote+=DateTime.Today.ToShortDateString()+"-"+listEFormMeds[m].StrengthFreq;
-									imported2=true;
-								}
-								if(eFormMedListLayout.ImportCol2OverwriteDate){
-									medicationPat.PatNote=DateTime.Today.ToShortDateString()+"-"+listEFormMeds[m].StrengthFreq;
-									imported2=true;
-								}
-								if(eFormMedListLayout.ImportCol2Append){
-									if(medicationPat.PatNote!=""){
-										medicationPat.PatNote+="\r\n";
-									}
-									medicationPat.PatNote+=listEFormMeds[m].StrengthFreq;
-									imported2=true;
-								}
-								if(eFormMedListLayout.ImportCol2Overwrite){
-									medicationPat.PatNote=listEFormMeds[m].StrengthFreq;
-									imported2=true;
-								}
-								if(imported2){
-									MedicationPats.Update(medicationPat);
-									listMedicationPats=MedicationPats.Refresh(patient.PatNum,includeDiscontinued:false);
-								}
-								continue;
-							}
-							//missing in pat
-							medicationPat=new MedicationPat();
-							medicationPat.PatNum=patient.PatNum;
-							medicationPat.MedDescript=listEFormMeds[m].MedName;
-							if(eFormMedListLayout.ImportCol2AppendDate
-								|| eFormMedListLayout.ImportCol2OverwriteDate)
-							{
-								medicationPat.PatNote=DateTime.Today.ToShortDateString()+"-"+listEFormMeds[m].StrengthFreq;
-							}
-							if(eFormMedListLayout.ImportCol2Append
-								|| eFormMedListLayout.ImportCol2Overwrite)
-							{
-								medicationPat.PatNote=listEFormMeds[m].StrengthFreq;
-							}
-							MedicationPats.Insert(medicationPat);
-							listMedicationPats=MedicationPats.Refresh(patient.PatNum,includeDiscontinued:false);
-						}
-						//for(int a=0;a<listMedicationPats.Count;a++){
-						//	Medication medication=Medications.GetMedication(listMedicationPats[a].MedicationNum);
-						//	string strMed=listMedicationPats[a].MedDescript;//used if this medicationPat came from an eRx or eForm import and medication is null
-						//	if(medication!=null){
-						//		strMed=medication.MedName;
-						//	}
-						//	EFormMed eFormMed=new EFormMed();
-						//	eFormMed.MedName=strMed;
-						//	if(eFormMedListLayout.PrefillCol2){
-						//		eFormMed.StrengthFreq=listMedicationPats[a].PatNote;
-						//	}
-						//	listEFormMeds.Add(eFormMed);
-						//}
-						//eForm.ListEFormFields[i].ValueString=JsonConvert.SerializeObject(listEFormMeds);
-					}
-				}
-				/*
-				//if(eForm.ListEFormFields[i].DbLink=="medsNone") {
-				//	//change the date discontinued since they checked "None" for meds
-				//	if(listMedicationPats.Count==0){
-				//		continue;
-				//	}
-				//	if(eForm.ListEFormFields[i].ValueString=="X") {
-				//		for(int a=0;a<listMedicationPats.Count;a++) {
-				//			listMedicationPats[a].DateStop=DateTime.Today.AddDays(-1);//yesterday so it shows as discontinued
-				//			MedicationPats.Update(listMedicationPats[a]);
-				//		}
-				//	}
-				//	listMedicationPats=MedicationPats.Refresh(patient.PatNum,includeDiscontinued:false);//refresh if needed for a future loop
-				//}*/
-				/*if(eForm.ListEFormFields[i].DbLink=="medsOther") {
-					List<string> listStrsInput=eForm.ListEFormFields[i].ValueString.Split(new char[]{','},StringSplitOptions.RemoveEmptyEntries).Select(x=>x.Trim()).ToList();
-					//get list of meds already covered by checkboxes
-					List<string> listStrMedsChecks=eForm.ListEFormFields.FindAll(x=>x.DbLink.StartsWith("med:")).Select(x=>x.DbLink.Substring(4)).ToList();
-					for(int a=0;a<listStrsInput.Count;a++){
-						if(listStrMedsChecks.Contains(listStrsInput[a])) {
-							continue;//this med is already covered by a checkbox
-						}
-						Medication medication=Medications.GetFirstOrDefault(x=>x.MedName.ToLower()==listStrsInput[a].ToLower());
-						if(medication==null){
-							//This will be very common.
-							//The description that they typed in does not have any matching med in the master list.
-							//Unlike allergies and problems, meds don't use a dummy "Other" med.
-							//Instead, we leave MedicationNum=0, and set MedDescript.
-							MedicationPat medicationPat=listMedicationPats.Find(x=>x.MedDescript==listStrsInput[a]);
-							if(medicationPat==null){
-								//This patient does not have an active med representing the med that was typed in
-								medicationPat=new MedicationPat();
-								medicationPat.PatNum=patient.PatNum;
-								medicationPat.MedDescript=listStrsInput[a];
-								MedicationPats.Insert(medicationPat);
-								listMedicationPats=MedicationPats.Refresh(patient.PatNum,includeDiscontinued:false);//refresh if needed for a future loop
-								continue;
-							}
-							//This patient already has an active med matching the med that was typed in,
-							//so db will not need to change.
-							continue;
-						}
-						//we found a medication with the exact spelling that user typed in.
-						MedicationPat medicationPatMatch=listMedicationPats.Find(x=>x.MedicationNum==medication.MedicationNum);
-						if(medicationPatMatch==null){
-							//But this patient does not have it attached as one of their meds
-							medicationPatMatch=new MedicationPat();
-							medicationPatMatch.PatNum=patient.PatNum;
-							medicationPatMatch.MedicationNum=medication.MedicationNum;
-							MedicationPats.Insert(medicationPatMatch);
-							listMedicationPats=MedicationPats.Refresh(patient.PatNum,includeDiscontinued:false);//refresh if needed for a future loop
-							continue;
-						}
-						//This patient already has an active med matching the med that was typed in
-						//so db will not need to change.
-					}
-				}*/
-				/*if(eForm.ListEFormFields[i].DbLink.StartsWith("med:")){
-					string strMedicationPatCheck=eForm.ListEFormFields[i].DbLink.Substring(4);
-					Medication medication=Medications.GetFirstOrDefault(x=>x.MedName.ToLower()==strMedicationPatCheck.ToLower());
-					if(medication==null){
-						//This shouldn't normally happen, but it certainly is possible because user could change a medication name after adding the checkbox,
-						//or this could be an imported form with no medication in the db representing the value in this checkbox.
-						//Because this was added by a dental office user instead of a patient, we treat it as official and accurate.
-						//We will just add this for them. That way, all imported forms will correctly work.
-						medication=new Medication();
-						medication.MedName=strMedicationPatCheck;
-						Medications.Insert(medication);
-						medication.GenericNum=medication.MedicationNum;//quirk of meds
-						Medications.Update(medication);
-						Signalods.SetInvalid(InvalidType.Medications);
-						Medications.RefreshCache();
-					}
-					//medication is now guaranteed to have a value
-					MedicationPat medicationPat=listMedicationPats.Find(x=>x.MedicationNum==medication.MedicationNum);
-					if(medicationPat==null){
-						//This patient does not have an active med matching the med checked and the master list.
-						//But they might have a medicationPat with  MedicationNum=0 and a matching MedDescript.
-						medicationPat=listMedicationPats.Find(x=>x.MedDescript.ToLower()==strMedicationPatCheck.ToLower());
-						if(medicationPat==null){
-							//This patient does not have any active med matching the med checked.
-							//Notice that we do not look at inactive meds and consider flipping them back to active.
-							//We don't need to consider that fancy edge case.
-							//The worst consequence is that they might end up with one active and one inactive. No big deal.
-							if(eForm.ListEFormFields[i].ValueString=="X"){
-								medicationPat=new MedicationPat();
-								medicationPat.PatNum=patient.PatNum;
-								//We do link to an official medication instead of using MedDescript because this is a checkbox, not a typed med.
-								medicationPat.MedicationNum=medication.MedicationNum;
-								MedicationPats.Insert(medicationPat);
-								listMedicationPats=MedicationPats.Refresh(patient.PatNum,includeDiscontinued:false);//refresh if needed for a future loop
-							}
-							else{
-								//db is already accurate
-							}
-						}
-						else{
-							//This patient does have an active med matching the med checked
-							if(eForm.ListEFormFields[i].ValueString=="X"){
-								//db is already accurate
-							}
-							else{
-								medicationPat.DateStop=DateTime.Today.AddDays(-1);//yesterday so it shows as discontinued
-								MedicationPats.Update(medicationPat);
-								listMedicationPats=MedicationPats.Refresh(patient.PatNum,includeDiscontinued:false);//refresh if needed for a future loop
-							}
-						}
-					}
-					else{
-						//This patient does have an active med matching the med checked
-						if(eForm.ListEFormFields[i].ValueString=="X"){
-							//db is already accurate
-						}
-						else{
-							medicationPat.DateStop=DateTime.Today.AddDays(-1);//yesterday so it shows as discontinued
-							MedicationPats.Update(medicationPat);
-							listMedicationPats=MedicationPats.Refresh(patient.PatNum,includeDiscontinued:false);//refresh if needed for a future loop
-						}
-					}
-				}*/
-				if(eForm.ListEFormFields[i].DbLink=="MiddleI") {
-					patient.MiddleI=eForm.ListEFormFields[i].ValueString;
-				}
-				if(eForm.ListEFormFields[i].DbLink=="Position") {
-					if(eForm.ListEFormFields[i].ValueString!=""){
-						patient.Position=(PatientPosition)Enum.Parse(typeof(PatientPosition),eForm.ListEFormFields[i].ValueString);
-					}
-				}
-				if(eForm.ListEFormFields[i].DbLink=="PreferConfirmMethod") {
-					if(eForm.ListEFormFields[i].ValueString!=""){
-						patient.PreferConfirmMethod=(ContactMethod)Enum.Parse(typeof(ContactMethod),eForm.ListEFormFields[i].ValueString);
-					}
-				}
-				if(eForm.ListEFormFields[i].DbLink=="PreferContactMethod") {
-					if(eForm.ListEFormFields[i].ValueString!=""){
-						patient.PreferContactMethod=(ContactMethod)Enum.Parse(typeof(ContactMethod),eForm.ListEFormFields[i].ValueString);
-					}
-				}
-				if(eForm.ListEFormFields[i].DbLink=="PreferRecallMethod") {
-					if(eForm.ListEFormFields[i].ValueString!=""){
-						patient.PreferRecallMethod=(ContactMethod)Enum.Parse(typeof(ContactMethod),eForm.ListEFormFields[i].ValueString);
-					}
-				}
-				if(eForm.ListEFormFields[i].DbLink=="Preferred") {
-					patient.Preferred=eForm.ListEFormFields[i].ValueString;
-				}
-				if(eForm.ListEFormFields[i].DbLink=="problemsNone") {
-					//change to inactive since they checked "None" for problems
-					if(listDiseasesPat.Count==0){
+			}
+			return listChanges;
+		}
+
+		private static string GetAllergyName(Allergy allergy,List<AllergyDef> listAllergyDefs) {
+			AllergyDef allergyDef=listAllergyDefs.Find(x => x.AllergyDefNum==allergy.AllergyDefNum);
+			if(allergyDef==null) {
+				return "#"+allergy.AllergyDefNum;
+			}
+			if(allergyDef.Description=="Other" && !string.IsNullOrEmpty(allergy.Reaction)) {
+				return "Other ("+allergy.Reaction+")";
+			}
+			return allergyDef.Description;
+		}
+
+		///<summary>For allergy: and problem: fields. True for a checked box or a "Y" radio button, false for an unchecked box or "N", null for a
+		///radio group with no answer.</summary>
+		public static bool? GetYesNo(EFormField eFormField) {
+			if(eFormField.ValueString=="X" || eFormField.ValueString=="Y") {
+				return true;
+			}
+			if(eFormField.ValueString=="N") {
+				return false;
+			}
+			if(eFormField.FieldType==EnumEFormFieldType.CheckBox && string.IsNullOrEmpty(eFormField.ValueString)) {
+				return false;
+			}
+			return null;
+		}
+
+		///<summary>problemsNone, problemsOther and problem: fields. Same rules as allergies.</summary>
+		private static List<string> ImportProblems(List<EFormField> listEFormFields,List<EFormField> listEFormFieldsAll,long patNum) {
+			List<string> listChanges=new List<string>();
+			if(!listEFormFields.Exists(x => x.DbLink.In("problemsNone","problemsOther") || x.DbLink.StartsWith("problem:"))) {
+				return listChanges;
+			}
+			List<Disease> listDiseasesPat=Diseases.Refresh(patNum,showActiveOnly:true);
+			for(int i=0;i<listEFormFields.Count;i++) {
+				EFormField eFormField=listEFormFields[i];
+				if(eFormField.DbLink=="problemsNone") {
+					if(eFormField.ValueString!="X") {
 						continue;
 					}
-					if(eForm.ListEFormFields[i].ValueString=="X") {
-						for(int a=0;a<listDiseasesPat.Count;a++) {
-							listDiseasesPat[a].ProbStatus=ProblemStatus.Inactive;
-							listDiseasesPat[a].DateStop=DateTime.Today.AddDays(-1);//yesterday
-							Diseases.Update(listDiseasesPat[a]);
-						}
+					for(int a=0;a<listDiseasesPat.Count;a++) {
+						listDiseasesPat[a].ProbStatus=ProblemStatus.Inactive;
+						listDiseasesPat[a].DateStop=DateTime.Today.AddDays(-1);//yesterday
+						Diseases.Update(listDiseasesPat[a]);
+						listChanges.Add("Problem set inactive: "+DiseaseDefs.GetName(listDiseasesPat[a].DiseaseDefNum));
 					}
-					listDiseasesPat=Diseases.Refresh(patient.PatNum,showActiveOnly:true);//refresh if needed for a future loop
+					listDiseasesPat=Diseases.Refresh(patNum,showActiveOnly:true);
+					continue;
 				}
-				if(eForm.ListEFormFields[i].DbLink=="problemsOther") {
-					List<string> listStrsInput=eForm.ListEFormFields[i].ValueString.Split(new char[]{','},StringSplitOptions.RemoveEmptyEntries).Select(x=>x.Trim()).ToList();
-					//get list of problems already covered by checkboxes
-					List<string> listStrProbsChecks=eForm.ListEFormFields.FindAll(x=>x.DbLink.StartsWith("problem:")).Select(x=>x.DbLink.Substring(8)).ToList();
-					for(int a=0;a<listStrsInput.Count;a++){
+				if(eFormField.DbLink=="problemsOther") {
+					List<string> listStrsInput=eFormField.ValueString.Split(new char[]{','},StringSplitOptions.RemoveEmptyEntries).Select(x=>x.Trim()).Where(x=>x!="").ToList();
+					List<string> listStrProbsChecks=listEFormFieldsAll.FindAll(x=>x.DbLink.StartsWith("problem:")).Select(x=>x.DbLink.Substring(8)).ToList();
+					for(int a=0;a<listStrsInput.Count;a++) {
 						if(listStrProbsChecks.Contains(listStrsInput[a])) {
-							continue;//this problem is already covered by a checkbox
+							continue;
 						}
 						DiseaseDef diseaseDef=DiseaseDefs.GetFirstOrDefault(x=>x.DiseaseName.ToLower()==listStrsInput[a].ToLower());
-						if(diseaseDef==null){
-							//the disease that they typed in does not have any matching diseaseDef, so we will use "Other".
-							DiseaseDef diseaseDefOther=DiseaseDefs.GetFirstOrDefault(x=>x.DiseaseName=="Other");
-							if(diseaseDefOther==null){//this will only happen once, and then all patients will reuse it for years.
-								diseaseDefOther=new DiseaseDef();
-								diseaseDefOther.DiseaseName="Other";
-								DiseaseDefs.Insert(diseaseDefOther);
-								Signalods.SetInvalid(InvalidType.Diseases);
-								DiseaseDefs.RefreshCache();
-							}
-							//diseaseDefOther is now guaranteed to be valid
-							Disease diseaseOther=listDiseasesPat.Find(x=>x.DiseaseDefNum==diseaseDefOther.DiseaseDefNum && x.PatNote==listStrsInput[a]);
-							if(diseaseOther==null){
-								//This patient does not have an active "Other" disease representing the disease that was typed in
-								diseaseOther=new Disease();
-								diseaseOther.PatNum=patient.PatNum;
-								diseaseOther.DiseaseDefNum=diseaseDefOther.DiseaseDefNum;
-								diseaseOther.PatNote=listStrsInput[a];
-								diseaseOther.ProbStatus=ProblemStatus.Active;
-								Diseases.Insert(diseaseOther);
-								listDiseasesPat=Diseases.Refresh(patient.PatNum,showActiveOnly:true);//refresh if needed for a future loop
+						if(diseaseDef==null) {
+							DiseaseDef diseaseDefOther=GetOrInsertDiseaseDef("Other");
+							if(listDiseasesPat.Exists(x=>x.DiseaseDefNum==diseaseDefOther.DiseaseDefNum && x.PatNote==listStrsInput[a])) {
 								continue;
 							}
-							//This patient already has an active "Other" disease representing the disease that was typed in
-							//so db will not need to change.
+							Disease diseaseOther=new Disease();
+							diseaseOther.PatNum=patNum;
+							diseaseOther.DiseaseDefNum=diseaseDefOther.DiseaseDefNum;
+							diseaseOther.PatNote=listStrsInput[a];
+							diseaseOther.ProbStatus=ProblemStatus.Active;
+							Diseases.Insert(diseaseOther);
+							listChanges.Add("Problem added: Other ("+listStrsInput[a]+")");
+							listDiseasesPat=Diseases.Refresh(patNum,showActiveOnly:true);
 							continue;
 						}
-						//we found a disease with the exact spelling that user typed in.
-						Disease diseaseMatch=listDiseasesPat.Find(x=>x.DiseaseDefNum==diseaseDef.DiseaseDefNum);
-						if(diseaseMatch==null){
-							//But this patient does not have it attached as one of their diseases
-							diseaseMatch=new Disease();
-							diseaseMatch.PatNum=patient.PatNum;
-							diseaseMatch.DiseaseDefNum=diseaseDef.DiseaseDefNum;
-							diseaseMatch.ProbStatus=ProblemStatus.Active;
-							Diseases.Insert(diseaseMatch);
-							listDiseasesPat=Diseases.Refresh(patient.PatNum,showActiveOnly:true);//refresh if needed for a future loop
+						if(listDiseasesPat.Exists(x=>x.DiseaseDefNum==diseaseDef.DiseaseDefNum)) {
 							continue;
 						}
-						//This patient already has an active disease matching the disease that was typed in
-						//so db will not need to change.
+						Disease diseaseMatch=new Disease();
+						diseaseMatch.PatNum=patNum;
+						diseaseMatch.DiseaseDefNum=diseaseDef.DiseaseDefNum;
+						diseaseMatch.ProbStatus=ProblemStatus.Active;
+						Diseases.Insert(diseaseMatch);
+						listChanges.Add("Problem added: "+diseaseDef.DiseaseName);
+						listDiseasesPat=Diseases.Refresh(patNum,showActiveOnly:true);
 					}
+					continue;
 				}
-				if(eForm.ListEFormFields[i].DbLink.StartsWith("problem:")){
-					string strDiseaseCheck=eForm.ListEFormFields[i].DbLink.Substring(8);
-					DiseaseDef diseaseDef=DiseaseDefs.GetFirstOrDefault(x=>x.DiseaseName.ToLower()==strDiseaseCheck.ToLower());
-					if(diseaseDef==null){
-						//This shouldn't normally happen, but it certainly is possible because user could change a diseaseDef name after adding the checkbox,
-						//or this could be an imported form with no diseaseDef in the db representing the value in this checkbox.
-						//We will just add this for them. That way, all imported forms will correctly work.
-						diseaseDef=new DiseaseDef();
-						diseaseDef.DiseaseName=strDiseaseCheck;
-						DiseaseDefs.Insert(diseaseDef);
-						Signalods.SetInvalid(InvalidType.Diseases);
-						DiseaseDefs.RefreshCache();
+				if(eFormField.DbLink.StartsWith("problem:")) {
+					bool? hasProblem=GetYesNo(eFormField);
+					if(hasProblem==null) {
+						continue;
 					}
-					//diseaseDef is now guaranteed to have a value
-					Disease diseasePat=listDiseasesPat.Find(x=>x.DiseaseDefNum==diseaseDef.DiseaseDefNum);
-					if(diseasePat==null){
-						//This patient does not have an active disease matching the disease checked.
-						//Notice that we do not look at inactive diseases and consider flipping them back to active.
-						//We don't need to consider that fancy edge case.
-						//The worst consequence is that they might end up with one active and one inactive. No big deal.
-						if(eForm.ListEFormFields[i].ValueString=="X"){
-							diseasePat=new Disease();
-							diseasePat.PatNum=patient.PatNum;
-							diseasePat.DiseaseDefNum=diseaseDef.DiseaseDefNum;
-							diseasePat.ProbStatus=ProblemStatus.Active;
-							Diseases.Insert(diseasePat);
-							listDiseasesPat=Diseases.Refresh(patient.PatNum,showActiveOnly:true);//refresh if needed for a future loop
+					string strProblem=eFormField.DbLink.Substring(8);
+					DiseaseDef diseaseDef=DiseaseDefs.GetFirstOrDefault(x=>x.DiseaseName.ToLower()==strProblem.ToLower());
+					Disease diseasePat=null;
+					if(diseaseDef!=null) {
+						diseasePat=listDiseasesPat.Find(x=>x.DiseaseDefNum==diseaseDef.DiseaseDefNum);
+					}
+					if(hasProblem.Value && diseasePat==null) {
+						if(diseaseDef==null) {
+							diseaseDef=GetOrInsertDiseaseDef(strProblem);
 						}
-						else{
-							//db is already accurate
-						}
+						diseasePat=new Disease();
+						diseasePat.PatNum=patNum;
+						diseasePat.DiseaseDefNum=diseaseDef.DiseaseDefNum;
+						diseasePat.ProbStatus=ProblemStatus.Active;
+						Diseases.Insert(diseasePat);
+						listChanges.Add("Problem added: "+diseaseDef.DiseaseName);
+						listDiseasesPat=Diseases.Refresh(patNum,showActiveOnly:true);
 					}
-					else{
-						//This patient does have an active disease matching the disease checked
-						if(eForm.ListEFormFields[i].ValueString=="X"){
-							//db is already accurate
-						}
-						else{
-							diseasePat.ProbStatus=ProblemStatus.Inactive;
-							diseasePat.DateStop=DateTime.Today.AddDays(-1);//yesterday
-							Diseases.Update(diseasePat);
-							listDiseasesPat=Diseases.Refresh(patient.PatNum,showActiveOnly:true);//refresh if needed for a future loop
-						}
+					else if(!hasProblem.Value && diseasePat!=null) {
+						diseasePat.ProbStatus=ProblemStatus.Inactive;
+						diseasePat.DateStop=DateTime.Today.AddDays(-1);//yesterday
+						Diseases.Update(diseasePat);
+						listChanges.Add("Problem set inactive: "+diseaseDef.DiseaseName);
+						listDiseasesPat=Diseases.Refresh(patNum,showActiveOnly:true);
 					}
-				}
-				if(eForm.ListEFormFields[i].DbLink=="referredFrom") {
-					Referral referral=Referrals.GetOther();
-					RefAttach refAttach=new RefAttach();
-					refAttach.RefType=ReferralType.RefFrom;
-					refAttach.ItemOrder=1;
-					refAttach.PatNum=patient.PatNum;
-					refAttach.RefDate=DateTime.Today;
-					refAttach.ReferralNum=referral.ReferralNum;
-					refAttach.Note=eForm.ListEFormFields[i].ValueString;
-				}
-				if(eForm.ListEFormFields[i].DbLink=="SSN") {
-					if(CultureInfo.CurrentCulture.Name=="en-US"){
-						patient.SSN=eForm.ListEFormFields[i].ValueString.Replace("-","");//strip any dashes
-					}
-					else{
-						patient.SSN=eForm.ListEFormFields[i].ValueString;
-					}
-				}
-				if(eForm.ListEFormFields[i].DbLink=="State") {
-					patient.State=eForm.ListEFormFields[i].ValueString;
-				}
-				if(eForm.ListEFormFields[i].DbLink=="StateNoValidation") {
-					patient.State=eForm.ListEFormFields[i].ValueString;
-				}
-				if(eForm.ListEFormFields[i].DbLink=="StudentStatus") {
-					patient.StudentStatus=eForm.ListEFormFields[i].ValueString;//N, P, or F
-				}
-				if(eForm.ListEFormFields[i].DbLink=="WirelessPhone") {
-					patient.WirelessPhone=eForm.ListEFormFields[i].ValueString;
-				}
-				if(eForm.ListEFormFields[i].DbLink=="WkPhone") {
-					patient.WkPhone=eForm.ListEFormFields[i].ValueString;
-				}
-				if(eForm.ListEFormFields[i].DbLink=="Zip") {
-					patient.Zip=eForm.ListEFormFields[i].ValueString;
 				}
 			}
-			Patients.Update(patient,patientOld);
-			PatientNotes.Update(patientNote,patient.Guarantor);
-			for(int i=0;i<listAllergiesPat.Count;i++) {
-				Allergies.Update(listAllergiesPat[i]);
+			return listChanges;
+		}
+
+		private static DiseaseDef GetOrInsertDiseaseDef(string diseaseName) {
+			DiseaseDef diseaseDef=DiseaseDefs.GetFirstOrDefault(x=>x.DiseaseName==diseaseName);
+			if(diseaseDef!=null) {
+				return diseaseDef;
 			}
+			diseaseDef=new DiseaseDef();
+			diseaseDef.DiseaseName=diseaseName;
+			DiseaseDefs.Insert(diseaseDef);
+			Signalods.SetInvalid(InvalidType.Diseases);
+			DiseaseDefs.RefreshCache();
+			return diseaseDef;
+		}
+
+		///<summary>The referral named in a referredFrom answer is attached as "referred from" only when the patient has no referral source yet and
+		///exactly one visible referral has that name (first and last, ignoring case). Otherwise nothing changes and the office picks the referral
+		///in the import review, as before. Returns a line for the audit trail, or empty string.</summary>
+		private static string ImportReferredFrom(long patNum,string strReferral) {
+			if(string.IsNullOrWhiteSpace(strReferral)) {
+				return "";
+			}
+			if(Referrals.GetReferralForPat(patNum)!=null) {
+				return "";//the manual import doesn't change an existing referral source either
+			}
+			string strName=strReferral.Trim();
+			List<Referral> listReferrals=Referrals.GetWhere(x => !x.IsHidden && string.Equals(x.GetNameFL().Trim(),strName,StringComparison.OrdinalIgnoreCase));
+			if(listReferrals.Count!=1) {
+				return "";
+			}
+			RefAttach refAttach=new RefAttach();
+			refAttach.RefType=ReferralType.RefFrom;
+			refAttach.ItemOrder=1;
+			refAttach.PatNum=patNum;
+			refAttach.RefDate=DateTime.Today;
+			refAttach.ReferralNum=listReferrals[0].ReferralNum;
+			RefAttaches.Insert(refAttach);
+			return "Referred From "+listReferrals[0].GetNameFL();
+		}
+
+		///<summary>The master-list medication that a typed eForm medication name links to on import: an exact name match (ignoring case) among the
+		///medications that are not hidden (Open Dental 25.1, medication.IsHidden). Null if there is none, in which case the import stores the typed name
+		///on the patient's medication without a link.</summary>
+		public static Medication FindMedicationForImport(string medName) {
+			if(string.IsNullOrWhiteSpace(medName)) {
+				return null;
+			}
+			string medNameLower=medName.Trim().ToLower();
+			return Medications.GetFirstOrDefault(x => !x.IsHidden && x.MedName.ToLower()==medNameLower);
 		}
 	}
 }

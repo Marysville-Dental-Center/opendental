@@ -34,6 +34,41 @@ namespace OpenDental {
 			comboDbLink.SelectionTrulyChanged+=ComboDbLink_SelectionTrulyChanged;
 			checkIsWidthPercentage.Click+=CheckIsWidthPercentage_Click;
 			checkIsHorizStacking.Click+=CheckIsHorizStacking_Click;
+			checkAutoImport.Click+=CheckAutoImport_Click;
+		}
+
+		private void CheckAutoImport_Click(object sender,EventArgs e) {
+			SetAutoImportControls();
+		}
+
+		private string GetDbLinkSelected(){
+			if(comboDbLink.SelectedIndex<=0){//None
+				return "";
+			}
+			return comboDbLink.GetSelected<string>();
+		}
+
+		///<summary>Auto Import (Open Dental 25.1) is only offered for linked fields that support it, and it makes the field required so an empty answer
+		///can never wipe stored data. Prefill from Guarantor is only offered for the eligible address and phone links.</summary>
+		private void SetAutoImportControls(){
+			string dbLink=GetDbLinkSelected();
+			bool isAutoImportAllowed=EFormFieldsAvailable.IsAutoImportAllowed(dbLink);
+			checkAutoImport.IsEnabled=isAutoImportAllowed;
+			if(!isAutoImportAllowed){
+				checkAutoImport.Checked=false;
+			}
+			if(checkAutoImport.Checked==true){
+				checkIsRequired.Checked=true;
+				checkIsRequired.IsEnabled=false;
+			}
+			else{
+				checkIsRequired.IsEnabled=true;
+			}
+			bool isPrefillAllowed=EFormFieldsAvailable.IsPrefillFromGuarAllowed(dbLink);
+			checkPrefillFromGuar.IsEnabled=isPrefillAllowed;
+			if(!isPrefillAllowed){
+				checkPrefillFromGuar.Checked=false;
+			}
 		}
 
 		private void FrmEFormsTextBoxEdit_Load(object sender, EventArgs e) {
@@ -56,6 +91,9 @@ namespace OpenDental {
 				comboDbLink.SelectedIndex=idxSelect;
 			}
 			checkIsRequired.Checked=EFormFieldCur.IsRequired;
+			checkAutoImport.Checked=EFormFieldCur.AutoImport;
+			checkPrefillFromGuar.Checked=EFormFieldCur.PrefillFromGuar;
+			SetAutoImportControls();
 			//groupLayout start
 			checkBorder.Checked=EFormFieldCur.Border==EnumEFormBorder.ThreeD;
 			textVIntWidth.Value=EFormFieldCur.Width;
@@ -111,6 +149,7 @@ namespace OpenDental {
 			if(textLabel.Text==""){
 				textLabel.Text=(string)comboDbLink.SelectedItem;
 			}
+			SetAutoImportControls();
 		}
 
 		private void CheckIsHorizStacking_Click(object sender,EventArgs e) {
@@ -249,7 +288,9 @@ namespace OpenDental {
 			else{
 				EFormFieldCur.DbLink=comboDbLink.GetSelected<string>();
 			}
-			EFormFieldCur.IsRequired=checkIsRequired.Checked==true;
+			EFormFieldCur.AutoImport=checkAutoImport.Checked==true && EFormFieldsAvailable.IsAutoImportAllowed(EFormFieldCur.DbLink);
+			EFormFieldCur.IsRequired=checkIsRequired.Checked==true || EFormFieldCur.AutoImport;
+			EFormFieldCur.PrefillFromGuar=checkPrefillFromGuar.Checked==true && EFormFieldsAvailable.IsPrefillFromGuarAllowed(EFormFieldCur.DbLink);
 			//groupLayout start
 			if(checkBorder.Checked==true){
 				EFormFieldCur.Border=EnumEFormBorder.ThreeD;
