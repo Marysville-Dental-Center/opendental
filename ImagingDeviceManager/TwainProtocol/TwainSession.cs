@@ -125,7 +125,8 @@ namespace ImagingDeviceManager.TwainProtocol {
 			}
 		}
 
-		///<summary>"0x8002", the form condition codes and capability numbers take in log lines and notices.</summary>
+		///<summary>"0x" and four hex digits (for example "0x0101"), the form condition codes and capability numbers take in log lines and
+		///notices.</summary>
 		public static string ToHex(int value) {
 			return "0x"+value.ToString("X4");
 		}
