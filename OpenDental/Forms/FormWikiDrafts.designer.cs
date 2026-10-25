@@ -114,9 +114,9 @@ namespace OpenDental {
 			this.butDelete.TabIndex = 85;
 			this.butDelete.Text = "Delete";
 			this.butDelete.Click += new System.EventHandler(this.butDelete_Click);
-			//
+			// 
 			// butCompare
-			//
+			// 
 			this.butCompare.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
 			this.butCompare.Location = new System.Drawing.Point(1067, 94);
 			this.butCompare.Name = "butCompare";
@@ -124,9 +124,9 @@ namespace OpenDental {
 			this.butCompare.TabIndex = 86;
 			this.butCompare.Text = "Compare";
 			this.butCompare.Click += new System.EventHandler(this.butCompare_Click);
-			//
+			// 
 			// labelNotAuthorized
-			//
+			// 
 			this.labelNotAuthorized.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
 			this.labelNotAuthorized.Location = new System.Drawing.Point(1064, 128);
 			this.labelNotAuthorized.Name = "labelNotAuthorized";
@@ -134,9 +134,9 @@ namespace OpenDental {
 			this.labelNotAuthorized.TabIndex = 87;
 			this.labelNotAuthorized.Text = "This page is locked. Editing drafts needs the Wiki Admin permission.";
 			this.labelNotAuthorized.Visible = false;
-			//
+			// 
 			// FormWikiDrafts
-			//
+			// 
 			this.ClientSize = new System.Drawing.Size(1154, 638);
 			this.Controls.Add(this.labelNotAuthorized);
 			this.Controls.Add(this.butCompare);

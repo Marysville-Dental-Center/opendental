@@ -152,18 +152,18 @@ namespace OpenDental{
 			this.checkReportServer.Size = new System.Drawing.Size(145, 22);
 			this.checkReportServer.TabIndex = 21;
 			this.checkReportServer.Text = "Run on report server";
-			//
+			// 
 			// checkLimit
-			//
+			// 
 			this.checkLimit.Location = new System.Drawing.Point(12, 38);
 			this.checkLimit.Name = "checkLimit";
 			this.checkLimit.Size = new System.Drawing.Size(110, 20);
 			this.checkLimit.TabIndex = 22;
 			this.checkLimit.Text = "Limit results to";
 			this.checkLimit.Click += new System.EventHandler(this.checkLimit_Click);
-			//
+			// 
 			// textLimit
-			//
+			// 
 			this.textLimit.Location = new System.Drawing.Point(124, 38);
 			this.textLimit.MaxLength = 4;
 			this.textLimit.MaxVal = 5000;
@@ -176,9 +176,9 @@ namespace OpenDental{
 			this.textLimit.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
 			this.textLimit.KeyDown += new System.Windows.Forms.KeyEventHandler(this.textLimit_KeyDown);
 			this.textLimit.Leave += new System.EventHandler(this.textLimit_Leave);
-			//
+			// 
 			// labelLimitInfo
-			//
+			// 
 			this.labelLimitInfo.Location = new System.Drawing.Point(266, 38);
 			this.labelLimitInfo.Name = "labelLimitInfo";
 			this.labelLimitInfo.Size = new System.Drawing.Size(300, 20);
@@ -186,9 +186,9 @@ namespace OpenDental{
 			this.labelLimitInfo.Text = "Showing first 100 matches";
 			this.labelLimitInfo.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 			this.labelLimitInfo.Visible = false;
-			//
+			// 
 			// FormWikiSearch
-			//
+			// 
 			this.ClientSize = new System.Drawing.Size(1184, 662);
 			this.Controls.Add(this.labelLimitInfo);
 			this.Controls.Add(this.textLimit);
