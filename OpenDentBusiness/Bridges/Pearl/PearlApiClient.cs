@@ -93,6 +93,9 @@ namespace OpenDentBusiness.Pearl {
 				return null;
 			}
 			string organizationId=ProgramProperties.GetPropVal(ProgramName.Pearl,Bridges.Pearl.PEARL_ORGANIZATION_ID_PROPERTY);
+			//V-PEARL1: a request polled again (timed out, processing failed) may not have been uploaded in this session, so there may be no token yet.
+			RefreshAuthTokenIfNeeded(ProgramProperties.GetPropVal(ProgramName.Pearl,Bridges.Pearl.PEARL_CLIENT_ID_PROPERTY),
+				ProgramProperties.GetPropVal(ProgramName.Pearl,Bridges.Pearl.PEARL_CLIENT_SECRET_PROPERTY));
 			Result result=GetImageByRequestId(organizationId,requestId).result;
 			return result;
 		}
