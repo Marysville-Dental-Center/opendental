@@ -58,6 +58,7 @@ namespace OpenDentBusiness.Crud{
 				dunning.DaysInAdvance= PIn.Int   (row["DaysInAdvance"].ToString());
 				dunning.ClinicNum    = PIn.Long  (row["ClinicNum"].ToString());
 				dunning.IsSuperFamily= PIn.Bool  (row["IsSuperFamily"].ToString());
+				dunning.EmailType    = (OpenDentBusiness.EmailType)PIn.Int(row["EmailType"].ToString());
 				retVal.Add(dunning);
 			}
 			return retVal;
@@ -80,6 +81,7 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("DaysInAdvance");
 			table.Columns.Add("ClinicNum");
 			table.Columns.Add("IsSuperFamily");
+			table.Columns.Add("EmailType");
 			foreach(Dunning dunning in listDunnings) {
 				table.Rows.Add(new object[] {
 					POut.Long  (dunning.DunningNum),
@@ -93,6 +95,7 @@ namespace OpenDentBusiness.Crud{
 					POut.Int   (dunning.DaysInAdvance),
 					POut.Long  (dunning.ClinicNum),
 					POut.Bool  (dunning.IsSuperFamily),
+					POut.Int   ((int)dunning.EmailType),
 				});
 			}
 			return table;
@@ -112,7 +115,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="DunningNum,";
 			}
-			command+="DunMessage,BillingType,AgeAccount,InsIsPending,MessageBold,EmailSubject,EmailBody,DaysInAdvance,ClinicNum,IsSuperFamily) VALUES(";
+			command+="DunMessage,BillingType,AgeAccount,InsIsPending,MessageBold,EmailSubject,EmailBody,DaysInAdvance,ClinicNum,IsSuperFamily,EmailType) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(dunning.DunningNum)+",";
 			}
@@ -126,7 +129,8 @@ namespace OpenDentBusiness.Crud{
 				+    DbHelper.ParamChar+"paramEmailBody,"
 				+    POut.Int   (dunning.DaysInAdvance)+","
 				+    POut.Long  (dunning.ClinicNum)+","
-				+    POut.Bool  (dunning.IsSuperFamily)+")";
+				+    POut.Bool  (dunning.IsSuperFamily)+","
+				+    POut.Int   ((int)dunning.EmailType)+")";
 			if(dunning.DunMessage==null) {
 				dunning.DunMessage="";
 			}
@@ -163,7 +167,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="DunningNum,";
 			}
-			command+="DunMessage,BillingType,AgeAccount,InsIsPending,MessageBold,EmailSubject,EmailBody,DaysInAdvance,ClinicNum,IsSuperFamily) VALUES(";
+			command+="DunMessage,BillingType,AgeAccount,InsIsPending,MessageBold,EmailSubject,EmailBody,DaysInAdvance,ClinicNum,IsSuperFamily,EmailType) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(dunning.DunningNum)+",";
 			}
@@ -177,7 +181,8 @@ namespace OpenDentBusiness.Crud{
 				+    DbHelper.ParamChar+"paramEmailBody,"
 				+    POut.Int   (dunning.DaysInAdvance)+","
 				+    POut.Long  (dunning.ClinicNum)+","
-				+    POut.Bool  (dunning.IsSuperFamily)+")";
+				+    POut.Bool  (dunning.IsSuperFamily)+","
+				+    POut.Int   ((int)dunning.EmailType)+")";
 			if(dunning.DunMessage==null) {
 				dunning.DunMessage="";
 			}
@@ -211,7 +216,8 @@ namespace OpenDentBusiness.Crud{
 				+"EmailBody    =  "+DbHelper.ParamChar+"paramEmailBody, "
 				+"DaysInAdvance=  "+POut.Int   (dunning.DaysInAdvance)+", "
 				+"ClinicNum    =  "+POut.Long  (dunning.ClinicNum)+", "
-				+"IsSuperFamily=  "+POut.Bool  (dunning.IsSuperFamily)+" "
+				+"IsSuperFamily=  "+POut.Bool  (dunning.IsSuperFamily)+", "
+				+"EmailType    =  "+POut.Int   ((int)dunning.EmailType)+" "
 				+"WHERE DunningNum = "+POut.Long(dunning.DunningNum);
 			if(dunning.DunMessage==null) {
 				dunning.DunMessage="";
@@ -271,6 +277,10 @@ namespace OpenDentBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="IsSuperFamily = "+POut.Bool(dunning.IsSuperFamily)+"";
 			}
+			if(dunning.EmailType != oldDunning.EmailType) {
+				if(command!="") { command+=",";}
+				command+="EmailType = "+POut.Int   ((int)dunning.EmailType)+"";
+			}
 			if(command=="") {
 				return false;
 			}
@@ -323,6 +333,9 @@ namespace OpenDentBusiness.Crud{
 				return true;
 			}
 			if(dunning.IsSuperFamily != oldDunning.IsSuperFamily) {
+				return true;
+			}
+			if(dunning.EmailType != oldDunning.EmailType) {
 				return true;
 			}
 			return false;

@@ -21,6 +21,8 @@ namespace ForkMigrationTests {
 		public const string Password="";
 		///<summary>The 25.3.48 reference schema loaded into MariaDB from the schema-only dump (README of the port). Optional.</summary>
 		public const string DbNameOd253Schema="od_253_schema";
+		///<summary>The 26.1.70 reference schema loaded into MariaDB by tools/New-OdReferenceDatabase.ps1. Optional.</summary>
+		public const string DbNameOd261Schema="od_261_schema";
 		private const string PREFIX="forkmig_";
 		///<summary>Scratch databases left behind by a run that started this long ago are dropped by later runs. No run takes nearly this long.
 		///</summary>

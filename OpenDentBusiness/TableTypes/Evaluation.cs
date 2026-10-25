@@ -28,6 +28,9 @@ namespace OpenDentBusiness{
 		///<summary>Any note that the instructor wishes to place at the bottom of this evaluation.</summary>
 		[CrudColumn(SpecialType=CrudSpecialColType.IsText)]
 		public string Notes;
+		///<summary>Added in Open Dental 25.4: a grade the instructor entered to replace the computed one. -1 means no override. Dental-school
+		///features are excluded from this program; the column exists for schema compatibility.</summary>
+		public float GradeOverride=-1;
 
 		///<summary></summary>
 		public Evaluation Copy() {

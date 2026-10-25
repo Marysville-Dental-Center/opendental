@@ -1,5 +1,6 @@
 // Runs the fork migration on a database shaped like the office's Open Dental 25.3.48 database: the reference schema plus the office-specific
-// patient._portal_active_email column, filled with synthetic rows in 25.3 form. Nothing may change, and no data migration may run again.
+// patient._portal_active_email column, filled with synthetic rows in 25.3 form. The 25.3 steps may change nothing, and no data migration may run
+// again; the Open Dental 25.4 and 26.1 steps (M2-01) then bring the schema to 26.1.70 without touching any other table.
 // No office data is used. Skipped (inconclusive) when the local MariaDB does not answer.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
@@ -17,9 +18,14 @@ namespace ForkMigrationTests {
 		private static string _skipReason;
 		private static Dictionary<string,string> _dictChecksumsBefore;
 		private static SchemaSnapshot _snapshotBefore;
+		///<summary>The 25.3 steps alone: every step below the first Open Dental 25.4 step.</summary>
 		private static ForkMigrationResult _result;
 		private static SchemaVerifyResult _resultSchemaAfterRun;
 		private static Dictionary<string,string> _dictChecksumsAfter;
+		private static SchemaVerifyResult _resultVerify25_3_48;
+		///<summary>Then every step, as the adoption tool runs them.</summary>
+		private static ForkMigrationResult _resultAll;
+		private static Dictionary<string,string> _dictChecksumsAfterAll;
 
 		[ClassInitialize]
 		public static void ClassInitialize(TestContext testContext) {
@@ -42,10 +48,22 @@ namespace ForkMigrationTests {
 			TestDb.Connect(DB_NAME);
 			_snapshotBefore=SchemaSnapshot.FromDatabase(DB_NAME);
 			_dictChecksumsBefore=TestDb.ChecksumAllTables(DB_NAME,"preference");
-			//A database without fork markers: the adoption tool runs every step.
-			_result=ForkMigrationRunner.Run(new ForkMigrationOptions { RunAll=true });
+			//A database without fork markers: the adoption tool runs every step. First the 25.3 steps alone.
+			long levelFirst26_1=new OdParity25_4Schema().Level;
+			_result=ForkMigrationRunner.Run(new ForkMigrationOptions { RunAll=true,
+				ListSteps=ForkMigrationRunner.GetSteps().Where(x => x.Level<levelFirst26_1).ToList() });
 			_resultSchemaAfterRun=SchemaVerifier.Compare(_snapshotBefore,SchemaSnapshot.FromDatabase(DB_NAME));
 			_dictChecksumsAfter=TestDb.ChecksumAllTables(DB_NAME,"preference");
+			_resultVerify25_3_48=SchemaVerifier.VerifyDatabase25_3_48(DB_NAME);
+			//Then every step.
+			_resultAll=ForkMigrationRunner.Run(new ForkMigrationOptions { RunAll=true });
+			_dictChecksumsAfterAll=TestDb.ChecksumAllTables(DB_NAME,"preference");
+		}
+
+		///<summary>Tables the Open Dental 25.4 and 26.1 steps change or add: every table where the two references differ.</summary>
+		private static HashSet<string> GetTablesChangedBy26_1() {
+			SchemaVerifyResult result=SchemaVerifier.Compare(SchemaVerifier.GetReference26_1_70(),SchemaVerifier.GetReference25_3_48());
+			return new HashSet<string>(result.ListDifferences.Select(x => x.Table),StringComparer.OrdinalIgnoreCase);
 		}
 
 		///<summary>Rows in Open Dental 25.3 form that a second conversion would damage. All made up.</summary>
@@ -101,6 +119,7 @@ namespace ForkMigrationTests {
 
 		[TestMethod]
 		public void Migration_ChangesNoSchemaAndNoData() {
+			Assert.IsTrue(_result.ListStepsRun.Count>0);
 			Assert.AreEqual(0,_result.ListChanges.Count,string.Join("\r\n",_result.ListChanges));
 			Assert.AreEqual(0,_resultSchemaAfterRun.ListDifferences.Count,_resultSchemaAfterRun.GetReport());
 			//Byte-identical tables: no renumbering, no back-fill, nothing. Only the runner's own preference rows were added.
@@ -111,6 +130,11 @@ namespace ForkMigrationTests {
 
 		[TestMethod]
 		public void Verifier_AllowsOnlyTheOfficeCustomization() {
+			//After the 25.3 steps, against 25.3.48.
+			Assert.IsTrue(_resultVerify25_3_48.IsMatch,_resultVerify25_3_48.GetReport());
+			CollectionAssert.AreEquivalent(new[] { "patient."+SchemaVerifier.PortalActiveEmailColumn,"patient."+SchemaVerifier.PortalActiveEmailIndex },
+				_resultVerify25_3_48.ListDifferences.Select(x => x.Table+"."+x.Item).ToList(),_resultVerify25_3_48.GetReport());
+			//After every step, against 26.1.70.
 			SchemaVerifyResult result=SchemaVerifier.VerifyDatabase(DB_NAME);
 			Assert.IsTrue(result.IsMatch,result.GetReport());
 			CollectionAssert.AreEquivalent(new[] { "patient."+SchemaVerifier.PortalActiveEmailColumn,"patient."+SchemaVerifier.PortalActiveEmailIndex },
@@ -120,9 +144,28 @@ namespace ForkMigrationTests {
 
 		[TestMethod]
 		public void Verifier_WithoutExceptionsFlagsTheOfficeCustomization() {
-			SchemaVerifyResult result=SchemaVerifier.Compare(SchemaVerifier.GetReference25_3_48(),SchemaSnapshot.FromDatabase(DB_NAME));
+			SchemaVerifyResult result=SchemaVerifier.Compare(SchemaVerifier.GetReference(),SchemaSnapshot.FromDatabase(DB_NAME));
 			Assert.IsFalse(result.IsMatch);
 			Assert.AreEqual(2,result.ListMismatches.Count,result.GetReport());
+		}
+
+		///<summary>On the 25.3.48 office database, only the Open Dental 25.4 and 26.1 steps change anything, and only the tables those versions
+		///change: every other table is byte-identical after the whole migration.</summary>
+		[TestMethod]
+		public void Steps26_1_ChangeOnlyThe26_1Tables() {
+			long levelFirst26_1=new OdParity25_4Schema().Level;
+			Assert.IsTrue(_resultAll.ListChanges.Count>0);
+			List<string> listChangesBefore26_1=_resultAll.ListChanges.Where(x => long.Parse(x.Substring(0,x.IndexOf(':')))<levelFirst26_1).ToList();
+			Assert.AreEqual(0,listChangesBefore26_1.Count,string.Join("\r\n",listChangesBefore26_1));
+			HashSet<string> setTables26_1=GetTablesChangedBy26_1();
+			List<string> listChanged=_dictChecksumsBefore.Keys.Where(x => !setTables26_1.Contains(x))
+				.Where(x => !_dictChecksumsAfterAll.ContainsKey(x) || _dictChecksumsAfterAll[x]!=_dictChecksumsBefore[x]).ToList();
+			Assert.AreEqual(0,listChanged.Count,"Tables changed outside 25.4/26.1: "+string.Join(", ",listChanged));
+			//The office rows a second conversion would damage are as they were.
+			Assert.AreEqual("6,23,1",DataCore.GetScalar("SELECT GROUP_CONCAT(Relationship ORDER BY PatNumChild) FROM guardian"));
+			Assert.AreEqual("0",DataCore.GetScalar("SELECT IsDownPayment FROM payplancharge WHERE PayPlanNum=7"));
+			Assert.AreEqual("0",DataCore.GetScalar("SELECT ShowTransSinceBalZero FROM statement WHERE PatNum=1 AND DateSent='2025-03-01'"));
+			Assert.AreEqual("1,0",DataCore.GetScalar("SELECT GROUP_CONCAT(IsHidden ORDER BY ItemOrder) FROM codegroup"));
 		}
 
 		///<summary>What the adoption step does with the office customization, using the context helpers: afterwards the database is exactly Open Dental

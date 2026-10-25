@@ -300,6 +300,7 @@
     <Compile Include="Crud\CloudAddressCrud.cs" />
     <Compile Include="Crud\CodeGroupCrud.cs" />
     <Compile Include="Crud\CommlogHistCrud.cs" />
+    <Compile Include="Crud\DeletedObjCrud.cs" />
     <Compile Include="Crud\DiscountPlanSubCrud.cs" />
     <Compile Include="Crud\EClipboardImageCaptureCrud.cs" />
     <Compile Include="Crud\EClipboardImageCaptureDefCrud.cs" />
@@ -362,6 +363,8 @@
     <Compile Include="Crud\PayPlanLinkCrud.cs" />
     <Compile Include="Crud\PayPlanTemplateCrud.cs" />
     <Compile Include="Crud\PayTerminalCrud.cs" />
+    <Compile Include="Crud\PaySuitePaymentCrud.cs" />
+    <Compile Include="Crud\PaySuitePaymentDetailCrud.cs" />
     <Compile Include="Crud\PearlRequestCrud.cs" />
     <Compile Include="Crud\PharmClinicCrud.cs" />
     <Compile Include="Crud\ProcMultiVisitCrud.cs" />
@@ -374,6 +377,8 @@
     <Compile Include="Crud\ScheduledProcessCrud.cs" />
     <Compile Include="Crud\SchoolApprovalCrud.cs" />
     <Compile Include="Crud\SchoolCourseDefCrud.cs" />
+    <Compile Include="Crud\SchoolCourseEnrolleeCrud.cs" />
+    <Compile Include="Crud\SchoolCourseInstructorCrud.cs" />
     <Compile Include="Crud\SchoolCourseSchedCrud.cs" />
     <Compile Include="Crud\SequenceCounterCrud.cs" />
     <Compile Include="Crud\SessionTokenCrud.cs" />
@@ -604,6 +609,7 @@
     <Compile Include="TableTypes\ChatReaction.cs" />
     <Compile Include="TableTypes\ChatUserAttach.cs" />
     <Compile Include="TableTypes\ChatUserod.cs" />
+    <Compile Include="TableTypes\DeletedObj.cs" />
     <Compile Include="TableTypes\ChildParentLink.cs" />
     <Compile Include="TableTypes\ChildRoomLog.cs" />
     <Compile Include="TableTypes\Child.cs" />
@@ -671,6 +677,8 @@
     <Compile Include="TableTypes\PayPlanTemplate.cs" />
     <Compile Include="TableTypes\PayPlanLink.cs" />
     <Compile Include="TableTypes\PayTerminal.cs" />
+    <Compile Include="TableTypes\PaySuitePayment.cs" />
+    <Compile Include="TableTypes\PaySuitePaymentDetail.cs" />
     <Compile Include="TableTypes\PearlRequest.cs" />
     <Compile Include="TableTypes\PharmClinic.cs" />
     <Compile Include="TableTypes\ProcMultiVisit.cs" />
@@ -683,6 +691,8 @@
     <Compile Include="TableTypes\ScheduledProcess.cs" />
     <Compile Include="TableTypes\SchoolApproval.cs" />
     <Compile Include="TableTypes\SchoolCourseDef.cs" />
+    <Compile Include="TableTypes\SchoolCourseEnrollee.cs" />
+    <Compile Include="TableTypes\SchoolCourseInstructor.cs" />
     <Compile Include="TableTypes\SchoolCourseSched.cs" />
     <Compile Include="TableTypes\SequenceCounter.cs" />
     <Compile Include="TableTypes\SessionToken.cs" />
@@ -2078,6 +2088,9 @@
   <ItemGroup>
     <EmbeddedResource Include="Misc\ForkMigrations\Reference\OdSchema-25.3.48.sql">
       <LogicalName>OdSchema-25.3.48.sql</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Misc\ForkMigrations\Reference\OdSchema-26.1.70.sql">
+      <LogicalName>OdSchema-26.1.70.sql</LogicalName>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <SubType>Designer</SubType>

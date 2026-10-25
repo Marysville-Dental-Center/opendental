@@ -42,6 +42,10 @@ namespace OpenDentBusiness {
 		public DateTime DateTBackupScheduled;
 		///<summary>Deprecated. Moved to the supplementalbackups database. Pass code for next supplemental backup expected from this customer.</summary>
 		public string BackupPassCode;
+		///<summary>Added in Open Dental 25.4 and set only by Open Dental's headquarters (clinic access for licensing). Kept for schema compatibility;
+		///this program never reads or sets it.</summary>
+		[CrudColumn(SpecialType=CrudSpecialColType.DateT)]
+		public DateTime DateTClinicAccess;
 
 		public RegistrationKey Copy(){
 			return (RegistrationKey)this.MemberwiseClone();

@@ -15,6 +15,9 @@ namespace OpenDentBusiness{
 		public string EvalTitle;
 		///<summary>FK to gradingscale.GradingScaleNum.  The default grading scale for this evaluation.  Each criterion will typically use the same scale, but that is not required.</summary>
 		public long GradingScaleNum;
+		///<summary>Added in Open Dental 25.4. FK to schoolcoursedef.SchoolCourseDefNum when this evaluation template belongs to a course definition;
+		///0 when it belongs to a course. Schema compatibility only (dental-school features are excluded).</summary>
+		public long SchoolCourseDefNum;
 
 		///<summary></summary>
 		public EvaluationDef Copy() {

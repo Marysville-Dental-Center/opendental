@@ -77,6 +77,7 @@ namespace OpenDentBusiness.Crud{
 				eFormField.PrefillFromGuar   = PIn.Bool  (row["PrefillFromGuar"].ToString());
 				eFormField.ValueLabelEnglish = PIn.String(row["ValueLabelEnglish"].ToString());
 				eFormField.PickListVisEnglish= PIn.String(row["PickListVisEnglish"].ToString());
+				eFormField.DateTimeSig       = PIn.DateT (row["DateTimeSig"].ToString());
 				retVal.Add(eFormField);
 			}
 			return retVal;
@@ -118,6 +119,7 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("PrefillFromGuar");
 			table.Columns.Add("ValueLabelEnglish");
 			table.Columns.Add("PickListVisEnglish");
+			table.Columns.Add("DateTimeSig");
 			foreach(EFormField eFormField in listEFormFields) {
 				table.Rows.Add(new object[] {
 					POut.Long  (eFormField.EFormFieldNum),
@@ -150,6 +152,7 @@ namespace OpenDentBusiness.Crud{
 					POut.Bool  (eFormField.PrefillFromGuar),
 					            eFormField.ValueLabelEnglish,
 					            eFormField.PickListVisEnglish,
+					POut.DateT (eFormField.DateTimeSig,false),
 				});
 			}
 			return table;
@@ -169,7 +172,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="EFormFieldNum,";
 			}
-			command+="EFormNum,PatNum,FieldType,DbLink,ValueLabel,ValueString,ItemOrder,PickListVis,PickListDb,IsHorizStacking,IsTextWrap,Width,FontScale,IsRequired,ConditionalParent,ConditionalValue,LabelAlign,SpaceBelow,ReportableName,IsLocked,Border,IsWidthPercentage,MinWidth,WidthLabel,SpaceToRight,AutoImport,PrefillFromGuar,ValueLabelEnglish,PickListVisEnglish) VALUES(";
+			command+="EFormNum,PatNum,FieldType,DbLink,ValueLabel,ValueString,ItemOrder,PickListVis,PickListDb,IsHorizStacking,IsTextWrap,Width,FontScale,IsRequired,ConditionalParent,ConditionalValue,LabelAlign,SpaceBelow,ReportableName,IsLocked,Border,IsWidthPercentage,MinWidth,WidthLabel,SpaceToRight,AutoImport,PrefillFromGuar,ValueLabelEnglish,PickListVisEnglish,DateTimeSig) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(eFormField.EFormFieldNum)+",";
 			}
@@ -202,7 +205,8 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Bool  (eFormField.AutoImport)+","
 				+    POut.Bool  (eFormField.PrefillFromGuar)+","
 				+    DbHelper.ParamChar+"paramValueLabelEnglish,"
-				+    DbHelper.ParamChar+"paramPickListVisEnglish)";
+				+    DbHelper.ParamChar+"paramPickListVisEnglish,"
+				+    POut.DateT (eFormField.DateTimeSig)+")";
 			if(eFormField.ValueLabel==null) {
 				eFormField.ValueLabel="";
 			}
@@ -255,7 +259,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="EFormFieldNum,";
 			}
-			command+="EFormNum,PatNum,FieldType,DbLink,ValueLabel,ValueString,ItemOrder,PickListVis,PickListDb,IsHorizStacking,IsTextWrap,Width,FontScale,IsRequired,ConditionalParent,ConditionalValue,LabelAlign,SpaceBelow,ReportableName,IsLocked,Border,IsWidthPercentage,MinWidth,WidthLabel,SpaceToRight,AutoImport,PrefillFromGuar,ValueLabelEnglish,PickListVisEnglish) VALUES(";
+			command+="EFormNum,PatNum,FieldType,DbLink,ValueLabel,ValueString,ItemOrder,PickListVis,PickListDb,IsHorizStacking,IsTextWrap,Width,FontScale,IsRequired,ConditionalParent,ConditionalValue,LabelAlign,SpaceBelow,ReportableName,IsLocked,Border,IsWidthPercentage,MinWidth,WidthLabel,SpaceToRight,AutoImport,PrefillFromGuar,ValueLabelEnglish,PickListVisEnglish,DateTimeSig) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(eFormField.EFormFieldNum)+",";
 			}
@@ -288,7 +292,8 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Bool  (eFormField.AutoImport)+","
 				+    POut.Bool  (eFormField.PrefillFromGuar)+","
 				+    DbHelper.ParamChar+"paramValueLabelEnglish,"
-				+    DbHelper.ParamChar+"paramPickListVisEnglish)";
+				+    DbHelper.ParamChar+"paramPickListVisEnglish,"
+				+    POut.DateT (eFormField.DateTimeSig)+")";
 			if(eFormField.ValueLabel==null) {
 				eFormField.ValueLabel="";
 			}
@@ -357,7 +362,8 @@ namespace OpenDentBusiness.Crud{
 				+"AutoImport        =  "+POut.Bool  (eFormField.AutoImport)+", "
 				+"PrefillFromGuar   =  "+POut.Bool  (eFormField.PrefillFromGuar)+", "
 				+"ValueLabelEnglish =  "+DbHelper.ParamChar+"paramValueLabelEnglish, "
-				+"PickListVisEnglish=  "+DbHelper.ParamChar+"paramPickListVisEnglish "
+				+"PickListVisEnglish=  "+DbHelper.ParamChar+"paramPickListVisEnglish, "
+				+"DateTimeSig       =  "+POut.DateT (eFormField.DateTimeSig)+" "
 				+"WHERE EFormFieldNum = "+POut.Long(eFormField.EFormFieldNum);
 			if(eFormField.ValueLabel==null) {
 				eFormField.ValueLabel="";
@@ -509,6 +515,10 @@ namespace OpenDentBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="PickListVisEnglish = "+DbHelper.ParamChar+"paramPickListVisEnglish";
 			}
+			if(eFormField.DateTimeSig != oldEFormField.DateTimeSig) {
+				if(command!="") { command+=",";}
+				command+="DateTimeSig = "+POut.DateT(eFormField.DateTimeSig)+"";
+			}
 			if(command=="") {
 				return false;
 			}
@@ -634,6 +644,9 @@ namespace OpenDentBusiness.Crud{
 				return true;
 			}
 			if(eFormField.PickListVisEnglish != oldEFormField.PickListVisEnglish) {
+				return true;
+			}
+			if(eFormField.DateTimeSig != oldEFormField.DateTimeSig) {
 				return true;
 			}
 			return false;

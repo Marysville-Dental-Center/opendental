@@ -136,7 +136,7 @@ namespace OpenDentBusiness.Crud{
 				+		 POut.Double(claimPayment.CheckAmt)+","
 				+"'"+POut.String(claimPayment.CheckNum)+"',"
 				+"'"+POut.String(claimPayment.BankBranch)+"',"
-				+"'"+POut.String(claimPayment.Note)+"',"
+				+    DbHelper.ParamChar+"paramNote,"
 				+    POut.Long  (claimPayment.ClinicNum)+","
 				+    POut.Long  (claimPayment.DepositNum)+","
 				+"'"+POut.String(claimPayment.CarrierName)+"',"
@@ -147,11 +147,15 @@ namespace OpenDentBusiness.Crud{
 				+    DbHelper.Now()+","
 				//SecDateTEdit can only be set by MySQL
 				+    POut.Long  (claimPayment.PayGroup)+")";
+			if(claimPayment.Note==null) {
+				claimPayment.Note="";
+			}
+			OdSqlParameter paramNote=new OdSqlParameter("paramNote",OdDbType.Text,POut.StringParam(claimPayment.Note));
 			if(useExistingPK || PrefC.RandomKeys) {
-				Db.NonQ(command);
+				Db.NonQ(command,paramNote);
 			}
 			else {
-				claimPayment.ClaimPaymentNum=Db.NonQ(command,true,"ClaimPaymentNum","claimPayment");
+				claimPayment.ClaimPaymentNum=Db.NonQ(command,true,"ClaimPaymentNum","claimPayment",paramNote);
 			}
 			return claimPayment.ClaimPaymentNum;
 		}
@@ -180,7 +184,7 @@ namespace OpenDentBusiness.Crud{
 				+	   POut.Double(claimPayment.CheckAmt)+","
 				+"'"+POut.String(claimPayment.CheckNum)+"',"
 				+"'"+POut.String(claimPayment.BankBranch)+"',"
-				+"'"+POut.String(claimPayment.Note)+"',"
+				+    DbHelper.ParamChar+"paramNote,"
 				+    POut.Long  (claimPayment.ClinicNum)+","
 				+    POut.Long  (claimPayment.DepositNum)+","
 				+"'"+POut.String(claimPayment.CarrierName)+"',"
@@ -191,11 +195,15 @@ namespace OpenDentBusiness.Crud{
 				+    DbHelper.Now()+","
 				//SecDateTEdit can only be set by MySQL
 				+    POut.Long  (claimPayment.PayGroup)+")";
+			if(claimPayment.Note==null) {
+				claimPayment.Note="";
+			}
+			OdSqlParameter paramNote=new OdSqlParameter("paramNote",OdDbType.Text,POut.StringParam(claimPayment.Note));
 			if(useExistingPK || isRandomKeys) {
-				Db.NonQ(command);
+				Db.NonQ(command,paramNote);
 			}
 			else {
-				claimPayment.ClaimPaymentNum=Db.NonQ(command,true,"ClaimPaymentNum","claimPayment");
+				claimPayment.ClaimPaymentNum=Db.NonQ(command,true,"ClaimPaymentNum","claimPayment",paramNote);
 			}
 			return claimPayment.ClaimPaymentNum;
 		}
@@ -207,7 +215,7 @@ namespace OpenDentBusiness.Crud{
 				+"CheckAmt       =  "+POut.Double(claimPayment.CheckAmt)+", "
 				+"CheckNum       = '"+POut.String(claimPayment.CheckNum)+"', "
 				+"BankBranch     = '"+POut.String(claimPayment.BankBranch)+"', "
-				+"Note           = '"+POut.String(claimPayment.Note)+"', "
+				+"Note           =  "+DbHelper.ParamChar+"paramNote, "
 				+"ClinicNum      =  "+POut.Long  (claimPayment.ClinicNum)+", "
 				+"DepositNum     =  "+POut.Long  (claimPayment.DepositNum)+", "
 				+"CarrierName    = '"+POut.String(claimPayment.CarrierName)+"', "
@@ -219,7 +227,11 @@ namespace OpenDentBusiness.Crud{
 				//SecDateTEdit can only be set by MySQL
 				+"PayGroup       =  "+POut.Long  (claimPayment.PayGroup)+" "
 				+"WHERE ClaimPaymentNum = "+POut.Long(claimPayment.ClaimPaymentNum);
-			Db.NonQ(command);
+			if(claimPayment.Note==null) {
+				claimPayment.Note="";
+			}
+			OdSqlParameter paramNote=new OdSqlParameter("paramNote",OdDbType.Text,POut.StringParam(claimPayment.Note));
+			Db.NonQ(command,paramNote);
 		}
 
 		///<summary>Updates one ClaimPayment in the database.  Uses an old object to compare to, and only alters changed fields.  This prevents collisions and concurrency problems in heavily used tables.  Returns true if an update occurred.</summary>
@@ -243,7 +255,7 @@ namespace OpenDentBusiness.Crud{
 			}
 			if(claimPayment.Note != oldClaimPayment.Note) {
 				if(command!="") { command+=",";}
-				command+="Note = '"+POut.String(claimPayment.Note)+"'";
+				command+="Note = "+DbHelper.ParamChar+"paramNote";
 			}
 			if(claimPayment.ClinicNum != oldClaimPayment.ClinicNum) {
 				if(command!="") { command+=",";}
@@ -279,9 +291,13 @@ namespace OpenDentBusiness.Crud{
 			if(command=="") {
 				return false;
 			}
+			if(claimPayment.Note==null) {
+				claimPayment.Note="";
+			}
+			OdSqlParameter paramNote=new OdSqlParameter("paramNote",OdDbType.Text,POut.StringParam(claimPayment.Note));
 			command="UPDATE claimpayment SET "+command
 				+" WHERE ClaimPaymentNum = "+POut.Long(claimPayment.ClaimPaymentNum);
-			Db.NonQ(command);
+			Db.NonQ(command,paramNote);
 			return true;
 		}
 

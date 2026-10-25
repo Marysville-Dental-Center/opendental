@@ -80,6 +80,8 @@ namespace OpenDentBusiness{
 		///<summary>Added in Open Dental 25.2: remembers the "show transactions since the balance was last zero" option for this statement. On a
 		///database that comes from 24.3, the fork migration fills existing rows once from the BillingShowTransSinceBalZero preference.</summary>
 		public bool ShowTransSinceBalZero;
+		///<summary>Added in Open Dental 26.1: build the statement's main grid in service date view instead of the transaction view.</summary>
+		public bool IsServiceDateView;
 
 
 		///<summary>List of attached adjustment.AdjNums for this statement.  Limit in db: 16M char.</summary>
@@ -369,7 +371,10 @@ namespace OpenDentBusiness{
 		/////<summary>Marks the statement as Invoice, must have procedures and/or adjustments attached.</summary>
 		//Invoice,
 		///<summary>Contains information about specific procedures.</summary>
-		LimitedStatement
+		LimitedStatement,
+		///<summary>Added in Open Dental 25.4: marks a walkout statement. Stored by name in statement.StatementType; it prints like a regular
+		///statement.</summary>
+		Walkout,
 	}
 
 	///<summary>Indicates the scope of a limited custom statement. Special logic in AccountModules.GetSuperFamAccount when set</summary>

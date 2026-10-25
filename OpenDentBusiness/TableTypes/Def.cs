@@ -27,6 +27,8 @@ namespace OpenDentBusiness {
 		public Color ItemColor;
 		///<summary>If hidden, the item will not show on any list, but can still be referenced.</summary>
 		public bool IsHidden;
+		///<summary>Added in Open Dental 26.1: an extra value for the categories that need one more field than ItemValue. Empty for the others.</summary>
+		public string Supp="";
 
 		///<summary>Used only for serialization purposes</summary>
 		[XmlElement("ItemColor",typeof(int))]
@@ -234,6 +236,9 @@ namespace OpenDentBusiness {
 		///<summary>55 - Operatory Types. This field is only informational. The value isn't used for functionality.</summary>
 		[Description("Operatory Types")]
 		OperatoryTypes,
+		///<summary>56 - Employee job titles (employee.Title). Added in Open Dental 26.1; number as published in its database documentation.</summary>
+		[Description("Employee Titles")]
+		EmployeeTitles=56,
 	}
 
 	///<summary>For DefCat MiscColors(Category 21).</summary>

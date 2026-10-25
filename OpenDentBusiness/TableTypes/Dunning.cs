@@ -34,6 +34,8 @@ namespace OpenDentBusiness{
 		public long ClinicNum;
 		///<summary>Boolean. Is true when the message is specifically created for super families.</summary>
 		public bool IsSuperFamily;
+		///<summary>Added in Open Dental 26.1. Enum:EmailType Regular (0) by default. The format of the dunning e-mail: regular, HTML or raw HTML.</summary>
+		public EmailType EmailType;
 
 
 		///<summary>Returns a copy of this Dunning.</summary>

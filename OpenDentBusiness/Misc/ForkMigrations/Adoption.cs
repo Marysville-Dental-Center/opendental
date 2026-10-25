@@ -172,7 +172,7 @@ namespace OpenDentBusiness {
 			}
 			Log("Fork markers written: OdSchemaCompat "+ForkVersions.GetMarker(ForkVersions.PREF_OD_SCHEMA_COMPAT)+", ForkSchemaLevel "
 				+ForkVersions.GetMarker(ForkVersions.PREF_FORK_SCHEMA_LEVEL)+".");
-			//7. Fork migration steps (24.4 to 25.3.48 for a 24.3.63 source; idempotent no-ops for 25.3.48).
+			//7. Fork migration steps: 24.4 to 25.3.48 for a 24.3.63 source (idempotent no-ops for 25.3.48), then 25.4 to 26.1.70 for both.
 			if(ForkMigrationHandOff.HasSteps(runner)) {
 				Log("Running fork migration steps up to level "+runner.LatestLevel+".");
 				runner.RunPending(Log);
