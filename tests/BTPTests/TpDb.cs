@@ -16,7 +16,8 @@ namespace BTPTests {
 		public static readonly string DbName=TestDb.ScratchName("btp");
 		///<summary>Null when the database is ready; otherwise why the database tests are skipped.</summary>
 		public static string SkipReason;
-		private static bool _isBuilt;
+		///<summary>True once the scratch database exists, even if building it failed later, so cleanup still drops it.</summary>
+		private static bool _isCreated;
 
 		[AssemblyInitialize]
 		public static void AssemblyInitialize(TestContext testContext) {
@@ -27,11 +28,11 @@ namespace BTPTests {
 			}
 			try {
 				TestDb.DropStaleScratchDatabases();
+				_isCreated=true;//set first: a half-made database is dropped too
 				TestDb.CreateFresh24_3(DbName);
 				ForkMigrationRunner.Run();
 				Cache.Refresh(InvalidType.AllLocal);
 				Security.CurUser=Userods.GetUser(1)??new Userod { UserNum=1 };
-				_isBuilt=true;
 			}
 			catch(Exception ex) {
 				SkipReason="Could not build the scratch database: "+ex.GetBaseException().Message;
@@ -40,7 +41,7 @@ namespace BTPTests {
 
 		[AssemblyCleanup]
 		public static void AssemblyCleanup() {
-			if(!_isBuilt || Environment.GetEnvironmentVariable("FORKMIGRATION_KEEP_DB")=="1") {
+			if(!_isCreated || Environment.GetEnvironmentVariable("FORKMIGRATION_KEEP_DB")=="1") {
 				return;
 			}
 			try {

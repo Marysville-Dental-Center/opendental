@@ -110,4 +110,6 @@ Not edited:
   - auto-code recommendation with no auto codes set up;
   - quick button filtering and order;
   - typed codes.
+- The scratch database is dropped after the run even when building it failed part way (`TpDb.AssemblyCleanup`). A database left by a killed run is dropped by the next run once it's stale.
+- **Checks (2026-10-25):** `OpenDental.Local.slnf` builds with 0 errors and 376 warnings, the baseline (B-TP adds none). The targeted run of `BTPTests` and `NoHqTests` passes (36 and 49 tests). `tools/Test-NoHqHosts.ps1` passes.
 - **Untested:** the window and the toolbar in a running program (the GUI is never launched), the auto-code prompt path, Canadian surface letters (en-CA), and the middle tier.
