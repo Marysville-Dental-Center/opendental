@@ -227,7 +227,8 @@ Here is the desired behavior:
 		///<summary>Deletes the specified document from the database and refreshes the tree view. Set securityCheck false when creating a new document that might get cancelled.  Document is passed in because it might not be in the tree if the image folder it belongs to is now hidden.</summary>
 		public void DeleteDocument(bool isVerbose,bool doSecurityCheck,Document document) {
 			if(doSecurityCheck) {
-				if(!Security.IsAuthorized(EnumPermType.ImageDelete,document.DateCreated)) {
+				//24.4: a signed image also needs SignedImageEdit.
+				if(!ImageSignaturePermissions.IsAuthorizedToDelete(document)) {
 					return;
 				}
 			}
@@ -1483,6 +1484,10 @@ Here is the desired behavior:
 				if(!Security.IsAuthorized(EnumPermType.ImageDelete,_mountShowing.DateCreated)) {
 					return;
 				}
+				//24.4: a mount whose items include a signed image also needs SignedImageEdit.
+				if(!ImageSignaturePermissions.IsAuthorizedForSigned(_documentArrayShowing)) {
+					return;
+				}
 				if(!MsgBox.Show(this,MsgBoxButtons.YesNo,"Delete the entire mount and all images?")){
 					return;
 				}
@@ -1680,7 +1685,7 @@ Here is the desired behavior:
 
 		public void ToolBarFlip_Click(){
 			if(IsDocumentShowing()) {
-				if(!Security.IsAuthorized(EnumPermType.ImageEdit,GetDocumentShowing(0).DateCreated)) {
+				if(!ImageSignaturePermissions.IsAuthorizedToEdit(GetDocumentShowing(0))) {
 					return;
 				}	
 				Document documentOld=GetDocumentShowing(0).Copy();
@@ -1700,9 +1705,10 @@ Here is the desired behavior:
 				string logText="Document Edited: "+GetDocumentShowing(0).FileName+" with category "
 					+defDocCategory.ItemName+" flipped horizontally";
 				SecurityLogs.MakeLogEntry(EnumPermType.ImageEdit,PatientCur.PatNum,logText);
+				ImageSignaturePermissions.LogSignedImageEdited(GetDocumentShowing(0),"flipped horizontally");//24.4
 			}
 			if(IsMountItemSelected()){ 
-				if(!Security.IsAuthorized(EnumPermType.ImageEdit,_documentArrayShowing[_idxSelectedInMount].DateCreated)) {
+				if(!ImageSignaturePermissions.IsAuthorizedToEdit(_documentArrayShowing[_idxSelectedInMount])) {
 					return;
 				}	
 				Document documentOld=_documentArrayShowing[_idxSelectedInMount].Copy();
@@ -1719,6 +1725,7 @@ Here is the desired behavior:
 				string logText="Document Edited: "+_documentArrayShowing[_idxSelectedInMount].FileName+" within mount "
 					+_mountShowing.Description+" with category "+defDocCategory.ItemName+" flipped horizontally";
 				SecurityLogs.MakeLogEntry(EnumPermType.ImageEdit,PatientCur.PatNum,logText);
+				ImageSignaturePermissions.LogSignedImageEdited(_documentArrayShowing[_idxSelectedInMount],"flipped horizontally");//24.4
 			}
 			ThumbnailRefresh();
 			panelMain.Invalidate();
@@ -2110,7 +2117,7 @@ Here is the desired behavior:
 
 		public void ToolBarRotateL_Click(){
 			if(IsDocumentShowing()) {
-				if(!Security.IsAuthorized(EnumPermType.ImageEdit,GetDocumentShowing(0).DateCreated)) {
+				if(!ImageSignaturePermissions.IsAuthorizedToEdit(GetDocumentShowing(0))) {
 					return;
 				}	
 				if(GetDocumentShowing(0).CropW>0
@@ -2131,9 +2138,10 @@ Here is the desired behavior:
 				string logText="Document Edited: "+GetDocumentShowing(0).FileName+" with category "
 					+defDocCategory.ItemName+" rotated left 90 degrees";
 				SecurityLogs.MakeLogEntry(EnumPermType.ImageEdit,PatientCur.PatNum,logText);
+				ImageSignaturePermissions.LogSignedImageEdited(GetDocumentShowing(0),"rotated left 90 degrees");//24.4
 			}
 			if(IsMountItemSelected()) {
-				if(!Security.IsAuthorized(EnumPermType.ImageEdit,_documentArrayShowing[_idxSelectedInMount].DateCreated)) {
+				if(!ImageSignaturePermissions.IsAuthorizedToEdit(_documentArrayShowing[_idxSelectedInMount])) {
 					return;
 				}
 				if(_documentArrayShowing[_idxSelectedInMount].CropW>0
@@ -2162,6 +2170,7 @@ Here is the desired behavior:
 				string logText="Document Edited: "+_documentArrayShowing[_idxSelectedInMount].FileName+" within mount "
 					+_mountShowing.Description+" with category "+defDocCategory.ItemName+" rotated left 90 degrees";
 				SecurityLogs.MakeLogEntry(EnumPermType.ImageEdit,PatientCur.PatNum,logText);
+				ImageSignaturePermissions.LogSignedImageEdited(_documentArrayShowing[_idxSelectedInMount],"rotated left 90 degrees");//24.4
 			}
 			ThumbnailRefresh();
 			panelMain.Invalidate();
@@ -2169,7 +2178,7 @@ Here is the desired behavior:
 
 		public void ToolBarRotateR_Click(){
 			if(IsDocumentShowing()) {
-				if(!Security.IsAuthorized(EnumPermType.ImageEdit,GetDocumentShowing(0).DateCreated)) {
+				if(!ImageSignaturePermissions.IsAuthorizedToEdit(GetDocumentShowing(0))) {
 					return;
 				}
 				if(GetDocumentShowing(0).CropW>0
@@ -2188,9 +2197,10 @@ Here is the desired behavior:
 				string logText="Document Edited: "+GetDocumentShowing(0).FileName+" with category "
 					+defDocCategory.ItemName+" rotated right 90 degrees";
 				SecurityLogs.MakeLogEntry(EnumPermType.ImageEdit,PatientCur.PatNum,logText);
+				ImageSignaturePermissions.LogSignedImageEdited(GetDocumentShowing(0),"rotated right 90 degrees");//24.4
 			}
 			if(IsMountItemSelected()) {
-				if(!Security.IsAuthorized(EnumPermType.ImageEdit,_documentArrayShowing[_idxSelectedInMount].DateCreated)) {
+				if(!ImageSignaturePermissions.IsAuthorizedToEdit(_documentArrayShowing[_idxSelectedInMount])) {
 					return;
 				}	
 				if(_documentArrayShowing[_idxSelectedInMount].CropW>0
@@ -2216,6 +2226,7 @@ Here is the desired behavior:
 				string logText="Document Edited: "+_documentArrayShowing[_idxSelectedInMount].FileName+" within mount "
 					+_mountShowing.Description+" with category "+defDocCategory.ItemName+" rotated right 90 degrees";
 				SecurityLogs.MakeLogEntry(EnumPermType.ImageEdit,PatientCur.PatNum,logText);
+				ImageSignaturePermissions.LogSignedImageEdited(_documentArrayShowing[_idxSelectedInMount],"rotated right 90 degrees");//24.4
 			}
 			ThumbnailRefresh();
 			panelMain.Invalidate();
@@ -2223,7 +2234,7 @@ Here is the desired behavior:
 
 		public void ToolBarRotate180_Click(){
 			if(IsDocumentShowing()){
-				if(!Security.IsAuthorized(EnumPermType.ImageEdit,GetDocumentShowing(0).DateCreated)) {
+				if(!ImageSignaturePermissions.IsAuthorizedToEdit(GetDocumentShowing(0))) {
 					return;
 				}
 				if(GetDocumentShowing(0).CropW>0
@@ -2246,9 +2257,10 @@ Here is the desired behavior:
 				string logText="Document Edited: "+GetDocumentShowing(0).FileName+" with category "
 					+defDocCategory.ItemName+" rotated 180 degrees";
 				SecurityLogs.MakeLogEntry(EnumPermType.ImageEdit,PatientCur.PatNum,logText);
+				ImageSignaturePermissions.LogSignedImageEdited(GetDocumentShowing(0),"rotated 180 degrees");//24.4
 			}
 			if(IsMountItemSelected()) {
-				if(!Security.IsAuthorized(EnumPermType.ImageEdit,_documentArrayShowing[_idxSelectedInMount].DateCreated)) {
+				if(!ImageSignaturePermissions.IsAuthorizedToEdit(_documentArrayShowing[_idxSelectedInMount])) {
 					return;
 				}	
 				if(_documentArrayShowing[_idxSelectedInMount].CropW>0
@@ -2271,6 +2283,7 @@ Here is the desired behavior:
 				string logText="Document Edited: "+_documentArrayShowing[_idxSelectedInMount].FileName+" within mount "
 					+_mountShowing.Description+" with category "+defDocCategory.ItemName+" rotated 180 degrees";
 				SecurityLogs.MakeLogEntry(EnumPermType.ImageEdit,PatientCur.PatNum,logText);
+				ImageSignaturePermissions.LogSignedImageEdited(_documentArrayShowing[_idxSelectedInMount],"rotated 180 degrees");//24.4
 			}
 			ThumbnailRefresh();
 			panelMain.Invalidate();
@@ -2278,7 +2291,7 @@ Here is the desired behavior:
 
 		public void ToolBarSize_Click(){
 			if(IsDocumentShowing()){
-				if(!Security.IsAuthorized(EnumPermType.ImageEdit,_documentArrayShowing[0].DateCreated)) {
+				if(!ImageSignaturePermissions.IsAuthorizedToEdit(_documentArrayShowing[0])) {
 					return;
 				}	
 				if(GetDocumentShowing(0)==null){
@@ -2301,10 +2314,11 @@ Here is the desired behavior:
 					string logText="Document Edited: "+_documentArrayShowing[0].FileName+" with category "
 						+defDocCategory.ItemName+" was adjusted using the Size button";
 					SecurityLogs.MakeLogEntry(EnumPermType.ImageEdit,PatientCur.PatNum,logText);
+					ImageSignaturePermissions.LogSignedImageEdited(_documentArrayShowing[0],"was adjusted using the Size button");//24.4
 				}
 			}
 			if(IsMountItemSelected()){
-				if(!Security.IsAuthorized(EnumPermType.ImageEdit,_documentArrayShowing[_idxSelectedInMount].DateCreated)) {
+				if(!ImageSignaturePermissions.IsAuthorizedToEdit(_documentArrayShowing[_idxSelectedInMount])) {
 					return;
 				}	
 				if(_documentArrayShowing[_idxSelectedInMount]==null){
@@ -2322,6 +2336,7 @@ Here is the desired behavior:
 					string logText="Document Edited: "+_documentArrayShowing[_idxSelectedInMount].FileName+" within mount "
 						+_mountShowing.Description+" with category "+defDocCategory.ItemName+" was adjusted using the Size button";
 					SecurityLogs.MakeLogEntry(EnumPermType.ImageEdit,PatientCur.PatNum,logText);
+					ImageSignaturePermissions.LogSignedImageEdited(_documentArrayShowing[_idxSelectedInMount],"was adjusted using the Size button");//24.4
 				}
 			}
 			ThumbnailRefresh();
@@ -2563,7 +2578,7 @@ Here is the desired behavior:
 			//return;
 			EventGotODFocus?.Invoke(this,new EventArgs());
 			if(IsDocumentShowing() && _cropPanAdj==EnumCropPanAdj.Crop) {
-				if(!Security.IsAuthorized(EnumPermType.ImageEdit,_documentArrayShowing[0].DateCreated)) {
+				if(!ImageSignaturePermissions.IsAuthorizedToEdit(_documentArrayShowing[0])) {
 					return;
 				}
 			}
@@ -3366,6 +3381,13 @@ Here is the desired behavior:
 					panelMain.Invalidate();
 					return;
 				}
+				//24.4: moving a signed image within the mount, or swapping it with one, edits it, so it also needs SignedImageEdit.
+				Document documentSwapped=(idxNewPos==_idxSelectedInMount ? null : _documentArrayShowing[idxNewPos]);
+				if(!ImageSignaturePermissions.IsAuthorizedForSigned(new List<Document> { _documentArrayShowing[_idxSelectedInMount],documentSwapped })) {
+					_isDraggingMount=false;
+					panelMain.Invalidate();
+					return;
+				}
 				Document documentOld=_documentArrayShowing[_idxSelectedInMount].Copy();
 				if(idxNewPos!=_idxSelectedInMount && _documentArrayShowing[idxNewPos]!=null){
 					//user dragged to an occupied spot, so swap
@@ -3489,6 +3511,7 @@ Here is the desired behavior:
 				string logText="Document Edited: "+_documentArrayShowing[_idxSelectedInMount].FileName+" within mount "
 					+_mountShowing.Description+" with category "+defDocCategory.ItemName+" was moved using the Adjust button";
 				SecurityLogs.MakeLogEntry(EnumPermType.ImageEdit,PatientCur.PatNum,logText);
+				ImageSignaturePermissions.LogSignedImageEdited(_documentArrayShowing[_idxSelectedInMount],"was moved using the Adjust button");//24.4
 				panelMain.Invalidate();
 				return;
 			}
@@ -3550,6 +3573,7 @@ Here is the desired behavior:
 				string logText="Document Edited: "+_documentArrayShowing[0].FileName
 					+" with category "+defDocCategory.ItemName+" was changed using the Crop button";
 				SecurityLogs.MakeLogEntry(EnumPermType.ImageEdit,PatientCur.PatNum,logText);
+				ImageSignaturePermissions.LogSignedImageEdited(_documentArrayShowing[0],"was changed using the Crop button");//24.4
 				panelMain.Invalidate();
 				ThumbnailRefresh();
 			}

@@ -1197,6 +1197,11 @@ namespace OpenDental{
 						return;
 					}
 				}
+				//24.4: the category is part of Item Info, so moving a signed image also needs SignedImageEdit, as in FrmDocInfo.
+				if(!ImageSignaturePermissions.IsAuthorizedForSigned(document)) {
+					FillImageSelector(true);//The drag snaps back.
+					return;
+				}
 				string docOldCat=Defs.GetDef(DefCat.ImageCats,document.DocCategory).ItemName;
 				string docNewCat=Defs.GetDef(DefCat.ImageCats,e.DefNumNew).ItemName;
 				string logText=Lan.g(this,"Document moved")+": "+document.FileName;
@@ -1212,9 +1217,16 @@ namespace OpenDental{
 				Document docOld=document.Copy();
 				document.DocCategory=e.DefNumNew;
 				Documents.Update(document,docOld);
+				ImageSignaturePermissions.LogSignedImageEdited(document,"moved to category "+docNewCat);//24.4
 			}
 			else if(e.MountNum!=0){
 				Mount mountShowing=GetMountShowing();
+				//24.4: moving a mount moves its items too, so a mount that holds signed images needs SignedImageEdit.
+				Document[] documentArrayMountItems=Documents.GetDocumentsForMountItems(MountItems.GetItemsForMount(mountShowing.MountNum));
+				if(!ImageSignaturePermissions.IsAuthorizedForSigned(documentArrayMountItems)) {
+					FillImageSelector(true);//The drag snaps back.
+					return;
+				}
 				string mountOriginalCat=Defs.GetDef(DefCat.ImageCats,mountShowing.DocCategory).ItemName;
 				string mountNewCat=Defs.GetDef(DefCat.ImageCats,e.DefNumNew).ItemName;
 				SecurityLogs.MakeLogEntry(EnumPermType.ImageEdit,mountShowing.PatNum,Lan.g(this,"Mount moved from")+" "+mountOriginalCat+" "
@@ -1222,6 +1234,13 @@ namespace OpenDental{
 				mountShowing.DocCategory=e.DefNumNew;
 				Mounts.Update(mountShowing);
 				Documents.UpdateDocCategoryForMountItems(mountShowing.MountNum,mountShowing.DocCategory);
+				for(int i=0;i<documentArrayMountItems.Length;i++) {
+					if(documentArrayMountItems[i]==null) {//Empty mount position.
+						continue;
+					}
+					documentArrayMountItems[i].DocCategory=mountShowing.DocCategory;//Same as the row now, so the log names the new category.
+					ImageSignaturePermissions.LogSignedImageEdited(documentArrayMountItems[i],"moved to category "+mountNewCat);//24.4, signed items only
+				}
 			}
 			FillImageSelector(true);
 		}
@@ -2336,13 +2355,18 @@ namespace OpenDental{
 				MsgBox.Show(this,"Please select an item first.");
 				return;
 			}
+			//Moving deletes the original, so a signed image (or a mount holding one) also needs SignedImageEdit (24.4).
 			if(IsMountShowing()) {
 				if(!Security.IsAuthorized(EnumPermType.ImageDelete,GetMountShowing().DateCreated)) {
 					return;
 				}
+				Document[] documentArrayMount=Documents.GetDocumentsForMountItems(MountItems.GetItemsForMount(GetMountShowing().MountNum));
+				if(!ImageSignaturePermissions.IsAuthorizedForSigned(documentArrayMount)) {
+					return;
+				}
 			}
 			else {
-				if(!Security.IsAuthorized(EnumPermType.ImageDelete,GetDocumentShowing(0).DateCreated)) {
+				if(!ImageSignaturePermissions.IsAuthorizedToDelete(GetDocumentShowing(0))) {
 					return;
 				}
 			}
@@ -2809,6 +2833,10 @@ namespace OpenDental{
 				return;
 			}
 			if(imageSelector.GetSelectedType()!=EnumImageNodeType.Document){
+				return;
+			}
+			//24.4: ImageSignatureCreate to sign an unsigned image, SignedImageEdit to change or remove a signature.
+			if(!ImageSignaturePermissions.IsAuthorizedToSign(GetDocumentShowing(0))) {
 				return;
 			}
 			//Show the underlying panel note box while the signature is being filled.

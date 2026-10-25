@@ -18,6 +18,8 @@ namespace OpenDental {
 		//public bool IsNew;
 		//private Patient PatCur;
 		private Document _document;
+		///<summary>The note and signature as they were when the window opened, for the 24.4 signature security log.</summary>
+		private Document _documentOld;
 		///<summary>This keeps the noteChanged event from erasing the signature when first loading.</summary>
 		private bool _isStartingUp;
 		private bool _isSignatureChanged;
@@ -30,6 +32,7 @@ namespace OpenDental {
 		public FrmDocSign(Document document,Patient patient) {
 			InitializeComponent();
 			_document=document;
+			_documentOld=document.Copy();
 			_patient=patient;
 			Load+=FrmDocSign_Load;
 			textNote.TextChanged+=textNote_TextChanged;
@@ -41,6 +44,12 @@ namespace OpenDental {
 		public void FrmDocSign_Load(object sender, EventArgs e){
 			_formFrame.Location=new System.Drawing.Point(PointLLStart.X,PointLLStart.Y-_formFrame.Height+4);
 			Lang.F(this);
+			//24.4: ImageSignatureCreate for an unsigned image, SignedImageEdit for a signed one. The callers check first; this is the backstop.
+			if(!ImageSignaturePermissions.IsAuthorizedToSign(_document)) {
+				IsDialogCancel=true;
+				Close();
+				return;
+			}
 			_patFolderName=ImageStore.GetPatientFolder(_patient,ImageStore.GetPreferredAtoZpath());
 			_isStartingUp=true;
 			textNote.Text=_document.Note;
@@ -86,6 +95,7 @@ namespace OpenDental {
 			_document.Note=textNote.Text;
 			SaveSignature();
 			Documents.Update(_document);
+			ImageSignaturePermissions.LogSignatureChange(_documentOld,_document);
 			IsDialogOK=true;
 		}
 

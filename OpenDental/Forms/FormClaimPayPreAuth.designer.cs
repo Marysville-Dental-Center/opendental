@@ -39,6 +39,9 @@ namespace OpenDental {
 			this.gridMain = new OpenDental.UI.GridOD();
 			this.textTotal = new OpenDental.ValidDouble();
 			this.butSave = new OpenDental.UI.Button();
+			this.labelEobIsScanned = new System.Windows.Forms.Label();
+			this.textEobIsScanned = new System.Windows.Forms.TextBox();
+			this.butViewEob = new OpenDental.UI.Button();
 			this.SuspendLayout();
 			// 
 			// label1
@@ -88,10 +91,43 @@ namespace OpenDental {
 			this.butSave.TabIndex = 1;
 			this.butSave.Text = "&Save";
 			this.butSave.Click += new System.EventHandler(this.butSave_Click);
+			//
+			// labelEobIsScanned
+			//
+			this.labelEobIsScanned.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.labelEobIsScanned.Location = new System.Drawing.Point(172, 331);
+			this.labelEobIsScanned.Name = "labelEobIsScanned";
+			this.labelEobIsScanned.Size = new System.Drawing.Size(90, 16);
+			this.labelEobIsScanned.TabIndex = 126;
+			this.labelEobIsScanned.Text = "EOB is Scanned";
+			this.labelEobIsScanned.TextAlign = System.Drawing.ContentAlignment.TopRight;
+			//
+			// textEobIsScanned
+			//
+			this.textEobIsScanned.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.textEobIsScanned.Location = new System.Drawing.Point(268, 328);
+			this.textEobIsScanned.MaxLength = 25;
+			this.textEobIsScanned.Name = "textEobIsScanned";
+			this.textEobIsScanned.ReadOnly = true;
+			this.textEobIsScanned.Size = new System.Drawing.Size(40, 20);
+			this.textEobIsScanned.TabIndex = 127;
+			//
+			// butViewEob
+			//
+			this.butViewEob.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.butViewEob.Location = new System.Drawing.Point(316, 326);
+			this.butViewEob.Name = "butViewEob";
+			this.butViewEob.Size = new System.Drawing.Size(75, 24);
+			this.butViewEob.TabIndex = 128;
+			this.butViewEob.Text = "Scan EOB";
+			this.butViewEob.Click += new System.EventHandler(this.butViewEob_Click);
 			// 
 			// FormClaimPayPreAuth
 			// 
 			this.ClientSize = new System.Drawing.Size(686, 366);
+			this.Controls.Add(this.butViewEob);
+			this.Controls.Add(this.textEobIsScanned);
+			this.Controls.Add(this.labelEobIsScanned);
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.textTotal);
 			this.Controls.Add(this.label1);
@@ -114,5 +150,8 @@ namespace OpenDental {
 		private System.Windows.Forms.Label label1;
 		private OpenDental.UI.Button butSave;
 		private OpenDental.UI.GridOD gridMain;
+		private System.Windows.Forms.Label labelEobIsScanned;
+		private System.Windows.Forms.TextBox textEobIsScanned;
+		private OpenDental.UI.Button butViewEob;
 	}
 }

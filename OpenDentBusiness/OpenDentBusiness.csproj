@@ -1546,6 +1546,7 @@
     <Compile Include="HL7old\EcwSegmentPID.cs" />
     <Compile Include="HL7old\EcwSIU.cs" />
     <Compile Include="Imaging\ImageHelper.cs" />
+    <Compile Include="Imaging\ImageSignaturePermissions.cs" />
     <Compile Include="Imaging\ImageStore.cs" />
     <Compile Include="Db Multi Table\MiscData.cs" />
     <Compile Include="Remoting\DataTransferObject.cs" />

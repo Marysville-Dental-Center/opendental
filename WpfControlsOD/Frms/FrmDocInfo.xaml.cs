@@ -58,6 +58,10 @@ namespace OpenDental {
 			else if(!Security.IsAuthorized(EnumPermType.ImageEdit,_documentOld.DateCreated,suppressMessage:true)) {
 				butSave.IsEnabled=false;
 			}
+			else if(!ImageSignaturePermissions.IsAuthorizedForSigned(_documentOld,suppressMessage:true)) {
+				//24.4: a signed image also needs SignedImageEdit. The window still opens so the info can be read.
+				butSave.IsEnabled=false;
+			}
 			if(IsMountItem){
 				labelCategory.Visible=false;
 				listCategory.Visible=false;
@@ -190,6 +194,8 @@ namespace OpenDental {
 			listPermissions.Add(EnumPermType.ImageDelete);
 			listPermissions.Add(EnumPermType.ImageCreate);
 			listPermissions.Add(EnumPermType.ImageExport);
+			listPermissions.Add(EnumPermType.ImageSignatureCreate);
+			listPermissions.Add(EnumPermType.SignedImageEdit);
 			FrmAuditOneType frmAuditOneType=new FrmAuditOneType(0,listPermissions,Lang.g(this,"Audit Trail for Document"),_document.DocNum);
 			frmAuditOneType.ShowDialog();
 		}
@@ -217,6 +223,10 @@ namespace OpenDental {
 			if(!DateTime.TryParse(textTime.Text,out date)) {
 				MsgBox.Show(this,"Please enter a valid time.");
 				return;
+			}
+			//24.4: editing a signed image needs SignedImageEdit. Checked here too because Enter saves even when the Save button is disabled.
+			if(!_isDocCreate && !ImageSignaturePermissions.IsAuthorizedForSigned(_documentOld)) {
+				return;//The message names the permission.
 			}
 			//We had a security bug where users could change the date to a more recent date, and then subsequently delete.
 			//The code below is for that specific scenario.
@@ -253,6 +263,7 @@ namespace OpenDental {
 			}
 			if(Documents.Update(_document,_documentOld)) {
 				ImageStore.LogDocument(Lang.g(this,"Document Edited")+": ",EnumPermType.ImageEdit,_document,_documentOld.DateTStamp);
+				ImageSignaturePermissions.LogSignedImageEdited(_documentOld,Lang.g(this,"Item Info"));
 			}
 			IsDialogOK=true;
 		}
