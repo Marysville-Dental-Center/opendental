@@ -470,12 +470,14 @@
     <Compile Include="Db Multi Table\PatientDataGenerated.cs" />
     <Compile Include="Eclaims\Lantek.cs" />
     <Compile Include="Eclaims\VyneDental.cs" />
+    <Compile Include="EForms\EFormFieldChildren.cs" />
     <Compile Include="EForms\EFormFieldsAvailable.cs" />
     <Compile Include="EForms\EFormFiller.cs" />
     <Compile Include="EForms\EFormImport.cs" />
     <Compile Include="EForms\EFormInsPick.cs" />
     <Compile Include="EForms\EFormInternal.cs" />
     <Compile Include="EForms\EFormPatListLayout.cs" />
+    <Compile Include="EForms\PatientFormsList.cs" />
     <Compile Include="Email\BasicEmailAttachment.cs" />
     <Compile Include="Imaging\MountHelper.cs" />
     <Compile Include="Data Interface\DiscountPlanSubs.cs" />

@@ -3579,9 +3579,15 @@ namespace OpenDental {
 			if(logText!="") {
 				SecurityLogs.MakeLogEntry(EnumPermType.SheetEdit,_patient.PatNum,logText,0,LogSources.None,DateTime.Now);
 			}
+			if(SheetCur!=null) {
+				//Recorded with the SheetNum so the Patient Forms window can show the sheet as Imported (PatientFormsList.IsImportLog).
+				SecurityLogs.MakeLogEntry(EnumPermType.SheetEdit,_patient.PatNum,PatientFormsList.GetImportLogTextSheet(SheetCur.SheetNum,SheetCur.Description),
+					SheetCur.SheetNum,DateTime.MinValue);
+			}
 			if(EFormCur!=null) {
-				//Since Open Dental 25.2 the eForm's status does not record the import (it stays Filled or None). The audit trail does.
-				SecurityLogs.MakeLogEntry(EnumPermType.EFormImport,_patient.PatNum,"eForm #"+EFormCur.EFormNum+" ("+EFormCur.Description+") imported");
+				//Since Open Dental 25.2 the eForm's status does not record the import (it stays Filled or None). The audit trail does, with the EFormNum.
+				SecurityLogs.MakeLogEntry(EnumPermType.EFormImport,_patient.PatNum,PatientFormsList.GetImportLogTextEForm(EFormCur.EFormNum,EFormCur.Description),
+					EFormCur.EFormNum,DateTime.MinValue);
 			}
 			MsgBox.Show(this,"Done.");
 			DialogResult=DialogResult.OK;

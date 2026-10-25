@@ -23,6 +23,7 @@
       "tests\\ApptTests\\ApptTests.csproj",
       "tests\\AttributionTests\\AttributionTests.csproj",
       "tests\\BACCTTests\\BACCTTests.csproj",
+      "tests\\BEFTests\\BEFTests.csproj",
       "tests\\BERATests\\BERATests.csproj",
       "tests\\BIMGTests\\BIMGTests.csproj",
       "tests\\BMEDTests\\BMEDTests.csproj",
