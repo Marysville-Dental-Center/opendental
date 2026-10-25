@@ -52,6 +52,8 @@ namespace ImagingCapture.Tests {
 	internal sealed class FakeFrameSource:IFrameSource {
 		private readonly FrameExchange _frameExchange=new FrameExchange();
 		private readonly Dictionary<int,FakeControl> _dictControls=new Dictionary<int,FakeControl>();
+		///<summary>Every ReadControl call per control, whatever its outcome. Locked: a poll thread may read while the test asks.</summary>
+		private readonly Dictionary<int,int> _dictReadCalls=new Dictionary<int,int>();
 		private readonly List<UvcMode> _listModes;
 		private long _sequenceStill;
 		private bool _isStillRequested;
@@ -113,6 +115,12 @@ namespace ImagingCapture.Tests {
 		}
 
 		public UvcControlValue ReadControl(UvcControlInterface controlInterface,int property) {
+			lock(_dictReadCalls) {
+				int key=GetKey(controlInterface,property);
+				int countCalls;
+				_dictReadCalls.TryGetValue(key,out countCalls);
+				_dictReadCalls[key]=countCalls+1;
+			}
 			if(IsDisposed) {
 				return new UvcControlValue(UvcControlStatus.Closed,0,0,0);
 			}
@@ -159,8 +167,13 @@ namespace ImagingCapture.Tests {
 			GetControl(controlInterface,property,true).Status=status;
 		}
 
+		///<summary>ReadControl calls for this control so far, including those that failed.</summary>
 		public int GetReadCount(UvcControlInterface controlInterface,int property) {
-			return GetControl(controlInterface,property,false)?.CountReads??0;
+			lock(_dictReadCalls) {
+				int countCalls;
+				_dictReadCalls.TryGetValue(GetKey(controlInterface,property),out countCalls);
+				return countCalls;
+			}
 		}
 
 		///<summary>Publishes a preview frame whose pixels come from funcColor(x,y) as 0xRRGGBB, and raises FrameReady.</summary>
@@ -200,13 +213,17 @@ namespace ImagingCapture.Tests {
 		}
 
 		private FakeControl GetControl(UvcControlInterface controlInterface,int property,bool create) {
-			int key=((int)controlInterface<<16)|(property&0xFFFF);
+			int key=GetKey(controlInterface,property);
 			FakeControl fakeControl;
 			if(!_dictControls.TryGetValue(key,out fakeControl) && create) {
 				fakeControl=new FakeControl();
 				_dictControls[key]=fakeControl;
 			}
 			return fakeControl;
+		}
+
+		private static int GetKey(UvcControlInterface controlInterface,int property) {
+			return ((int)controlInterface<<16)|(property&0xFFFF);
 		}
 
 		private void ThrowIfDisposed() {
