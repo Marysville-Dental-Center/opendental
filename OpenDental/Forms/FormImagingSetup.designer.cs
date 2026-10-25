@@ -39,6 +39,7 @@ namespace OpenDental {
 			this.textScanDocResolution = new OpenDental.ValidNum();
 			this.checkScanDocGrayscale = new OpenDental.UI.CheckBox();
 			this.checkScanDocSelectSource = new OpenDental.UI.CheckBox();
+			this.butScanDocSelectSourceDetails = new OpenDental.UI.Button();
 			this.label7 = new System.Windows.Forms.Label();
 			this.textScanDocQuality = new OpenDental.ValidNum();
 			this.groupBox2 = new OpenDental.UI.GroupBox();
@@ -81,6 +82,7 @@ namespace OpenDental {
 			this.groupBox1.Controls.Add(this.radioScanDocShowOptions);
 			this.groupBox1.Controls.Add(this.groupScanningOptions);
 			this.groupBox1.Controls.Add(this.checkScanDocSelectSource);
+			this.groupBox1.Controls.Add(this.butScanDocSelectSourceDetails);
 			this.groupBox1.Controls.Add(this.label7);
 			this.groupBox1.Controls.Add(this.textScanDocQuality);
 			this.groupBox1.Controls.Add(this.label12);
@@ -194,6 +196,15 @@ namespace OpenDental {
 			this.checkScanDocSelectSource.Size = new System.Drawing.Size(256, 18);
 			this.checkScanDocSelectSource.TabIndex = 23;
 			this.checkScanDocSelectSource.Text = "Show Select Scanner Window";
+			//
+			// butScanDocSelectSourceDetails
+			//
+			this.butScanDocSelectSourceDetails.Location = new System.Drawing.Point(294, 17);
+			this.butScanDocSelectSourceDetails.Name = "butScanDocSelectSourceDetails";
+			this.butScanDocSelectSourceDetails.Size = new System.Drawing.Size(60, 22);
+			this.butScanDocSelectSourceDetails.TabIndex = 27;
+			this.butScanDocSelectSourceDetails.Text = "Details";
+			this.butScanDocSelectSourceDetails.Click += new System.EventHandler(this.butScanDocSelectSourceDetails_Click);
 			// 
 			// label7
 			// 
@@ -435,6 +446,7 @@ namespace OpenDental {
 		private Label label5;
 		private UI.Button butSetScanner;
 		private OpenDental.UI.CheckBox checkScanDocSelectSource;
+		private OpenDental.UI.Button butScanDocSelectSourceDetails;
 		private OpenDental.UI.CheckBox checkScanDocDuplex;
 		private Label label7;
 		private OpenDental.UI.CheckBox checkScanDocGrayscale;
