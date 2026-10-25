@@ -268,16 +268,18 @@ namespace OpenDental{
 			gridMain.Columns.Add(col);
 			//col=new ODGridColumn(Lan.g(this,"Altered"),50,HorizontalAlignment.Center);//use red now instead of separate col
 			//gridMain.Columns.Add(col);
+			//M2-EMP: a second time on a later date than the first (a clock-out entered for a later day) also shows its date, so its column widens.
+			int widthSecondTime=ClockEvents.GetSecondTimeColumnWidth(_listClockEvents,64);
 			if(IsBreaks){
 				col=new GridColumn(Lan.g(this,"Out"),64,HorizontalAlignment.Right);
 				gridMain.Columns.Add(col);
-				col=new GridColumn(Lan.g(this,"In"),64,HorizontalAlignment.Right);
+				col=new GridColumn(Lan.g(this,"In"),widthSecondTime,HorizontalAlignment.Right);
 				gridMain.Columns.Add(col);
 			}
 			else{
 				col=new GridColumn(Lan.g(this,"In"),64,HorizontalAlignment.Right);
 				gridMain.Columns.Add(col);
-				col=new GridColumn(Lan.g(this,"Out"),64,HorizontalAlignment.Right);
+				col=new GridColumn(Lan.g(this,"Out"),widthSecondTime,HorizontalAlignment.Right);
 				gridMain.Columns.Add(col);
 			}
 			col=new GridColumn(Lan.g(this,"Total"),50,HorizontalAlignment.Right);
@@ -367,12 +369,8 @@ namespace OpenDental{
 						row.Cells.Add("");//not clocked out yet
 					}
 					else{
-						if(PrefC.GetBool(PrefName.TimeCardShowSeconds)) {
-							row.Cells.Add(clockEvent.TimeDisplayed2.ToLongTimeString());
-						}
-						else {
-							row.Cells.Add(clockEvent.TimeDisplayed2.ToShortTimeString());
-						}
+						//M2-EMP: the time, with its date in front when it falls on a later date than the first time.
+						row.Cells.Add(ClockEvents.GetSecondTimeCellText(clockEvent,PrefC.GetBool(PrefName.TimeCardShowSeconds)));
 						if (clockEvent.TimeEntered2!=clockEvent.TimeDisplayed2){
 							row.Cells[row.Cells.Count-1].ColorText = Color.Red;
 						}

@@ -13,6 +13,8 @@ namespace OpenDental{
 	/// </summary>
 	public partial class FormClockEventEdit : FormODBase {
 		private ClockEvent _clockEvent;
+		///<summary>The event as it was when the window opened. The text boxes change _clockEvent as the user types.</summary>
+		private ClockEvent _clockEventOld;
 		/// <summary>Always 1:1 with values in listStatus.Items</summary>
 		private List<TimeClockStatus> _listTimeClockStatusesShown=new List<TimeClockStatus>();
 
@@ -26,6 +28,7 @@ namespace OpenDental{
 			InitializeLayoutManager();
 			Lan.F(this);
 			_clockEvent=clockEvent.Copy();
+			_clockEventOld=clockEvent.Copy();
 		}
 
 		private void FormClockEventEdit_Load(object sender, System.EventArgs e) {
@@ -400,7 +403,13 @@ namespace OpenDental{
 					return;
 				}
 			}
+			//Open Dental 26.1.63 (M2-EMP): a clock-out dated after today is allowed for TimecardsEditAll users once they confirm. Breaks still refuse it.
+			EnumClockEventFutureDate clockEventFutureDate=EnumClockEventFutureDate.Ok;
 			if(timeDisplayed2.Date > DateTime.Today) {
+				clockEventFutureDate=ClockEvents.CheckFutureDates(_clockEvent.ClockStatus,_listTimeClockStatusesShown[listStatus.SelectedIndex],
+					timeDisplayed1,timeDisplayed2,DateTime.Today,Security.IsAuthorized(EnumPermType.TimecardsEditAll,true));
+			}
+			if(clockEventFutureDate==EnumClockEventFutureDate.SecondTimeRefused) {
 				if(_clockEvent.ClockStatus==TimeClockStatus.Break){
 					MsgBox.Show(this,"Clock-in date cannot be a future date.");
 				}
@@ -477,6 +486,12 @@ namespace OpenDental{
 					}
 				}
 			}
+			if(clockEventFutureDate==EnumClockEventFutureDate.ClockOutConfirm
+				&& !MsgBox.Show(this,MsgBoxButtons.YesNo,"Clock-out is in the future. Save anyway?\r\n\r\n"
+				+"The entry spans more than one day, which Calc Daily reports as an error until the clock-out is corrected."))
+			{
+				return;
+			}
 			//timeEntered2 is largely taken care of, except for this one situation
 			if(textTimeDisplayed2.Text!="" && textTimeEntered2.Text=="") {
 				_clockEvent.TimeEntered2=MiscData.GetNowDateTime();
@@ -511,6 +526,12 @@ namespace OpenDental{
 				_clockEvent.ClinicNum=comboClinic.ClinicNumSelected;
 			}
 			ClockEvents.Update(_clockEvent);
+			if(clockEventFutureDate==EnumClockEventFutureDate.ClockOutConfirm
+				&& (_clockEvent.TimeDisplayed1!=_clockEventOld.TimeDisplayed1 || _clockEvent.TimeDisplayed2!=_clockEventOld.TimeDisplayed2))
+			{
+				SecurityLogs.MakeLogEntry(EnumPermType.TimecardsEditAll,0,
+					ClockEvents.GetFutureClockOutLogText(Employees.GetNameFL(_clockEvent.EmployeeNum),_clockEventOld,_clockEvent));
+			}
 			Employees.UpdateClockStatus(_clockEvent.EmployeeNum);
 			DialogResult=DialogResult.OK;
 		}

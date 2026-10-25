@@ -1427,6 +1427,7 @@
     <Compile Include="Data Interface\Clearinghouses.cs" />
     <Compile Include="Data Interface\Clinics.cs" />
     <Compile Include="Data Interface\ClockEvents.cs" />
+    <Compile Include="Data Interface\ClockEvents.FutureClockOut.cs" />
     <Compile Include="Data Interface\Commlogs.cs" />
     <Compile Include="Data Interface\ComputerPrefs.cs" />
     <Compile Include="Data Interface\Computers.cs" />
