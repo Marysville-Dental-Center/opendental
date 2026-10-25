@@ -57,7 +57,7 @@ namespace ImagingDeviceManager.Tests {
 			Assert.IsFalse(_fake.IsEnabled,"source still enabled");
 			Assert.IsFalse(_fake.IsSourceOpen,"source still open");
 			Assert.IsFalse(_fake.IsDsmOpen,"DSM still open");
-			Assert.AreEqual(1,EZTwain.Session.State,"TWAIN state");
+			Assert.AreEqual(2,EZTwain.Session.State,"TWAIN state: the DSM is closed and stays loaded");
 		}
 
 		private void AssertMatchesPage(Bitmap bitmap,FakePage page) {
@@ -153,6 +153,23 @@ namespace ImagingDeviceManager.Tests {
 			EZTwain.DIB_Free(hdib);
 			Assert.IsNull(DibHandleTable.Get(hdib));
 			AssertAllClosed();
+		}
+
+		[TestMethod]
+		public void SingleAcquisitions_KeepTheDsmLoaded() {
+			//Same calls as the Mount/Acquire loop: OpenSource and Acquire for every slot.
+			for(int i=0;i<3;i++) {
+				Assert.IsTrue(EZTwain.OpenSource("Fake Sensor"));
+				IntPtr hdib=EZTwain.Acquire(IntPtr.Zero);
+				Assert.AreNotEqual(IntPtr.Zero,hdib,EZTwain.LastErrorText());
+				EZTwain.DIB_Free(hdib);
+				AssertAllClosed();
+			}
+			Assert.AreEqual(3,_fake.ListLog.Count(x => x.StartsWith("OPENDSM")),"The DSM is opened and closed for each image.");
+			Assert.AreEqual(1,_countLoads,"The DSM library is loaded once.");
+			Assert.AreEqual(0,_fake.CountDispose,"It is not unloaded between acquisitions.");
+			EZTwain.Reset(null);
+			Assert.AreEqual(1,_fake.CountDispose,"Disposing the session unloads it.");
 		}
 
 		[TestMethod]

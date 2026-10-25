@@ -365,7 +365,10 @@ namespace ImagingDeviceManager.TwainProtocol {
 			}
 		}
 
-		///<summary>Moves down to state 1, closing the source first if one is open.</summary>
+		///<summary>Moves down to state 2, closing the source first if one is open. The DSM library stays loaded, with the proxy window,
+		///so the next acquisition does not load it again: the legacy Mount/Acquire loop opens and closes the source for every image,
+		///and unloading the DSM (and with it every handle and function pointer it handed out) each time is needless churn for it and
+		///for the source. Dispose unloads it.</summary>
 		public void CloseDsm() {
 			if(State>=4) {
 				CloseSourceCore();
@@ -382,9 +385,9 @@ namespace ImagingDeviceManager.TwainProtocol {
 				State=2;
 				_memory=null;
 			}
-			UnloadDsm();
 		}
 
+		///<summary>Unloads the DSM library and destroys the proxy window: state 1. Only when the DSM could not be opened, and in Dispose.</summary>
 		private void UnloadDsm() {
 			_memory=null;
 			if(_dsm!=null) {
@@ -542,8 +545,9 @@ namespace ImagingDeviceManager.TwainProtocol {
 			return null;
 		}
 
-		///<summary>Ends any transfers, disables and closes the source, and closes the DSM, ending in state 1. Ignored while an
-		///acquire is running (for example if a click is handled during the scan's message loop): the acquire cleans up itself.</summary>
+		///<summary>Ends any transfers, disables and closes the source, and closes the DSM, ending in state 2 (the DSM library stays
+		///loaded). Ignored while an acquire is running (for example if a click is handled during the scan's message loop): the
+		///acquire cleans up itself.</summary>
 		public void CloseSource() {
 			if(_isAcquiring) {
 				return;
@@ -1371,13 +1375,14 @@ namespace ImagingDeviceManager.TwainProtocol {
 				if(State>=4) {
 					CloseSourceCore();
 				}
-				if(State>=2) {
+				if(State>=3) {
 					CloseDsm();
 				}
 			}
 			catch {
 				//Best effort.
 			}
+			UnloadDsm();
 			if(_pAppIdentity!=IntPtr.Zero) {
 				Marshal.FreeHGlobal(_pAppIdentity);
 				_pAppIdentity=IntPtr.Zero;
