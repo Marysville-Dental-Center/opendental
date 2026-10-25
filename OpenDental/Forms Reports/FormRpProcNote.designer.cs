@@ -31,6 +31,7 @@ namespace OpenDental {
 			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormRpProcNote));
 			this.checkNoNotes = new OpenDental.UI.CheckBox();
 			this.checkUnsignedNote = new OpenDental.UI.CheckBox();
+			this.checkAllNoNotes = new OpenDental.UI.CheckBox();
 			this.label1 = new System.Windows.Forms.Label();
 			this.groupFilter = new OpenDental.UI.GroupBox();
 			this.checkShowExcludedCodes = new OpenDental.UI.CheckBox();
@@ -67,7 +68,16 @@ namespace OpenDental {
 			this.checkUnsignedNote.Size = new System.Drawing.Size(350, 21);
 			this.checkUnsignedNote.TabIndex = 1;
 			this.checkUnsignedNote.Text = "Include procedures with a note that is unsigned";
-			// 
+			//
+			// checkAllNoNotes
+			//
+			this.checkAllNoNotes.Location = new System.Drawing.Point(16, 61);
+			this.checkAllNoNotes.Name = "checkAllNoNotes";
+			this.checkAllNoNotes.Size = new System.Drawing.Size(350, 21);
+			this.checkAllNoNotes.TabIndex = 2;
+			this.checkAllNoNotes.Text = "Include all procedures with no notes";
+			this.checkAllNoNotes.CheckedChanged += new System.EventHandler(this.checkAllNoNotes_CheckedChanged);
+			//
 			// label1
 			// 
 			this.label1.Location = new System.Drawing.Point(384, 38);
@@ -86,17 +96,18 @@ namespace OpenDental {
 			this.groupFilter.Controls.Add(this.dateRangePicker);
 			this.groupFilter.Controls.Add(this.butRefresh);
 			this.groupFilter.Controls.Add(this.checkUnsignedNote);
+			this.groupFilter.Controls.Add(this.checkAllNoNotes);
 			this.groupFilter.Controls.Add(this.checkNoNotes);
 			this.groupFilter.Controls.Add(this.label1);
 			this.groupFilter.Location = new System.Drawing.Point(12, 0);
 			this.groupFilter.Name = "groupFilter";
-			this.groupFilter.Size = new System.Drawing.Size(859, 118);
+			this.groupFilter.Size = new System.Drawing.Size(859, 139);
 			this.groupFilter.TabIndex = 0;
 			this.groupFilter.Text = "Filters";
 			// 
 			// checkShowExcludedCodes
 			// 
-			this.checkShowExcludedCodes.Location = new System.Drawing.Point(16, 61);
+			this.checkShowExcludedCodes.Location = new System.Drawing.Point(16, 82);
 			this.checkShowExcludedCodes.Name = "checkShowExcludedCodes";
 			this.checkShowExcludedCodes.Size = new System.Drawing.Size(350, 21);
 			this.checkShowExcludedCodes.TabIndex = 53;
@@ -170,7 +181,7 @@ namespace OpenDental {
 			// 
 			this.dateRangePicker.BackColor = System.Drawing.Color.Transparent;
 			this.dateRangePicker.EnableWeekButtons = false;
-			this.dateRangePicker.Location = new System.Drawing.Point(169, 85);
+			this.dateRangePicker.Location = new System.Drawing.Point(169, 106);
 			this.dateRangePicker.MaximumSize = new System.Drawing.Size(0, 185);
 			this.dateRangePicker.MinimumSize = new System.Drawing.Size(300, 21);
 			this.dateRangePicker.Name = "dateRangePicker";
@@ -231,9 +242,9 @@ namespace OpenDental {
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
 			this.gridMain.ContextMenuStrip = this.contextMenuStrip;
-			this.gridMain.Location = new System.Drawing.Point(12, 124);
+			this.gridMain.Location = new System.Drawing.Point(12, 145);
 			this.gridMain.Name = "gridMain";
-			this.gridMain.Size = new System.Drawing.Size(859, 394);
+			this.gridMain.Size = new System.Drawing.Size(859, 373);
 			this.gridMain.TabIndex = 1;
 			this.gridMain.Title = "Incomplete Procedure Notes";
 			this.gridMain.TranslationName = "TableIncompleteProcNotes";
@@ -277,5 +288,6 @@ namespace OpenDental {
 		private ContextMenuStrip contextMenuStrip;
 		private ToolStripMenuItem goToChartToolStripMenuItem;
 		private OpenDental.UI.CheckBox checkShowExcludedCodes;
+		private OpenDental.UI.CheckBox checkAllNoNotes;
 	}
 }
