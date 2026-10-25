@@ -489,10 +489,21 @@ namespace ImagingDeviceManager.Tests {
 			AssertTwainDefaults(config);
 			Assert.AreEqual(0,config.GetSectionNames().Count);
 			Assert.IsTrue(config.Set("Twain","JournalKeep","40"));
+			Assert.AreEqual("",config.LastError,"Set clears the load error");
 			Assert.IsTrue(config.Save(),config.LastError);
+			//The save succeeded but whatever was only in the corrupt file is gone from the live file, so it warns.
+			StringAssert.Contains(config.LastError,path+".corrupt");
+			StringAssert.Contains(config.LastError,"[Twain]");
+			Assert.AreEqual(path,config.PathSaved);
 			CollectionAssert.AreEqual(bytesCorrupt,File.ReadAllBytes(path+".corrupt"));
 			Assert.AreEqual(Lines("[Twain]","JournalKeep=40"),ReadText(path));
-			Assert.AreEqual(40,LocalCaptureConfig.Load(path).JournalKeep);
+			LocalCaptureConfig configLoaded=LocalCaptureConfig.Load(path);
+			Assert.AreEqual("",configLoaded.LastError);
+			Assert.AreEqual(40,configLoaded.JournalKeep);
+			//The next save of a readable file has nothing to warn about.
+			Assert.IsTrue(configLoaded.Set("Twain","JournalKeep","41"));
+			Assert.IsTrue(configLoaded.Save());
+			Assert.AreEqual("",configLoaded.LastError);
 		}
 
 		[TestMethod]

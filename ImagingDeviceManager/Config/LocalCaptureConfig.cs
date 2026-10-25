@@ -61,8 +61,8 @@ namespace ImagingDeviceManager.Config {
 		///<summary>The file the last successful Save wrote. Null before that.</summary>
 		public string PathSaved { get; private set; }
 
-		///<summary>"" when the last load, Set or Save had no problem; otherwise a sentence for the user or the log. A Save that had to
-		///use PathFallback succeeds and leaves a warning here.</summary>
+		///<summary>"" when the last load, Set or Save had no problem; otherwise a sentence for the user or the log. A Save that succeeds
+		///leaves a warning here when it had to use PathFallback or when it replaced a corrupt file.</summary>
 		public string LastError {
 			get {
 				lock(_lock) {
@@ -413,7 +413,8 @@ namespace ImagingDeviceManager.Config {
 		///<summary>Writes the values Set since the last Save. It re-reads the target file first and changes only those values, so every
 		///other line and comment, and edits made by others since this file was loaded, are kept. Missing keys are added to the end of
 		///their section and missing sections to the end of the file. Tries PathPrimary, then PathFallback. Returns true when a file
-		///was written (or nothing needed writing); LastError then holds a warning if PathFallback had to be used. Returns false, with
+		///was written (or nothing needed writing); LastError then holds a warning if PathFallback had to be used or if a corrupt file
+		///was replaced. Returns false, with
 		///LastError, when no file could be written; the values stay pending.</summary>
 		public bool Save() {
 			lock(_lock) {
@@ -427,20 +428,27 @@ namespace ImagingDeviceManager.Config {
 						continue;
 					}
 					string error;
+					string warning="";
 					try {
-						error=SaveTo(pathTarget,pathTarget==PathPrimary ? _funcGrantUsersModify : null);
+						error=SaveTo(pathTarget,pathTarget==PathPrimary ? _funcGrantUsersModify : null,out warning);
 					}
 					catch(Exception ex) {
 						error=ex.Message;
 					}
 					if(error=="") {
+						List<string> listWarnings=new List<string>();
 						if(pathTarget!=PathPrimary && PathPrimary!=null) {
-							_lastError="Could not save capture settings to "+PathPrimary+" ("+listErrors[0]+"). They were saved to "+pathTarget+" instead.";
+							string warningFallback="Could not save capture settings to "+PathPrimary+" ("+listErrors[0]+"). They were saved to "+pathTarget+" instead.";
 							if(FileExistsSafe(PathPrimary)) {
-								_lastError+=" Settings are read from "+PathPrimary+" while it exists, so these values take effect only after an "
+								warningFallback+=" Settings are read from "+PathPrimary+" while it exists, so these values take effect only after an "
 									+"administrator removes that file or makes it writable.";
 							}
+							listWarnings.Add(warningFallback);
 						}
+						if(!string.IsNullOrEmpty(warning)) {
+							listWarnings.Add(warning);
+						}
+						_lastError=string.Join(" ",listWarnings);
 						return true;
 					}
 					listErrors.Add(error);
@@ -455,8 +463,10 @@ namespace ImagingDeviceManager.Config {
 			}
 		}
 
-		///<summary>Returns "" on success, otherwise why this target could not be written.</summary>
-		private string SaveTo(string pathTarget,Func<string,string> funcGrantUsersModify) {
+		///<summary>Returns "" on success, otherwise why this target could not be written. warning is "" or a problem that did not stop
+		///the save.</summary>
+		private string SaveTo(string pathTarget,Func<string,string> funcGrantUsersModify,out string warning) {
+			warning="";
 			string folder=Path.GetDirectoryName(Path.GetFullPath(pathTarget));
 			if(!Directory.Exists(folder)) {
 				try {
@@ -490,14 +500,18 @@ namespace ImagingDeviceManager.Config {
 			if(readStatus==ReadStatus.Unreadable) {
 				return errorRead+" It was not overwritten.";
 			}
+			string warningCorrupt="";
 			if(readStatus==ReadStatus.Corrupt) {
-				//Keep a copy of the unusable file, then write the settings in memory.
+				//Keep a copy of the unusable file, then write the settings in memory. Settings that were only in that file, such as an
+				//administrator's [Twain] block, are then missing from the live file, so the save reports it.
 				try {
 					File.Copy(pathTarget,pathTarget+".corrupt",true);
 				}
 				catch(Exception ex) {
 					return errorRead+" A copy could not be kept, so it was not overwritten: "+ex.Message;
 				}
+				warningCorrupt=errorRead+" It was kept as "+pathTarget+".corrupt and replaced with the current settings; check the ["
+					+SectionTwain+"] settings.";
 			}
 			if(readStatus!=ReadStatus.Ok) {
 				//Missing or corrupt: start from the settings in memory, which hold whatever file was loaded plus the pending values.
@@ -518,6 +532,7 @@ namespace ImagingDeviceManager.Config {
 			_listPending.Clear();
 			PathSaved=pathTarget;
 			Reparse();
+			warning=warningCorrupt;
 			return "";
 		}
 
