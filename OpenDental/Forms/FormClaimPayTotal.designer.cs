@@ -102,9 +102,9 @@
 			this.butDeductible.TabIndex = 120;
 			this.butDeductible.Text = "&Deductible";
 			this.butDeductible.Click += new System.EventHandler(this.butDeductible_Click);
-			//
+			// 
 			// butPayLabs
-			//
+			// 
 			this.butPayLabs.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
 			this.butPayLabs.Location = new System.Drawing.Point(264, 324);
 			this.butPayLabs.Name = "butPayLabs";
@@ -113,7 +113,7 @@
 			this.butPayLabs.Text = "Pay &Labs";
 			this.butPayLabs.Visible = false;
 			this.butPayLabs.Click += new System.EventHandler(this.butPayLabs_Click);
-			//
+			// 
 			// textWriteOff
 			// 
 			this.textWriteOff.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
