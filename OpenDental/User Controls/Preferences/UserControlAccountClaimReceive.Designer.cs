@@ -172,7 +172,7 @@ namespace OpenDental {
 			this.checkClaimPrimaryReceivedRecalcSecondary.Name = "checkClaimPrimaryReceivedRecalcSecondary";
 			this.checkClaimPrimaryReceivedRecalcSecondary.Size = new System.Drawing.Size(410, 17);
 			this.checkClaimPrimaryReceivedRecalcSecondary.TabIndex = 9;
-			this.checkClaimPrimaryReceivedRecalcSecondary.Text = "Auto update secondary claim estimates when primary is received";
+			this.checkClaimPrimaryReceivedRecalcSecondary.Text = "Auto update next insurance claim estimates when a claim is received";
 			// 
 			// checkClaimFinalizeWarning
 			// 
@@ -208,7 +208,7 @@ namespace OpenDental {
 			this.checkPromptForSecondaryClaim.Name = "checkPromptForSecondaryClaim";
 			this.checkPromptForSecondaryClaim.Size = new System.Drawing.Size(367, 17);
 			this.checkPromptForSecondaryClaim.TabIndex = 2;
-			this.checkPromptForSecondaryClaim.Text = "Prompt for secondary claims";
+			this.checkPromptForSecondaryClaim.Text = "Prompt for claims of the next insurance";
 			// 
 			// checkClaimPrimaryRecievedForceSecondaryStatus
 			// 
@@ -217,7 +217,7 @@ namespace OpenDental {
 			this.checkClaimPrimaryRecievedForceSecondaryStatus.Name = "checkClaimPrimaryRecievedForceSecondaryStatus";
 			this.checkClaimPrimaryRecievedForceSecondaryStatus.Size = new System.Drawing.Size(410, 17);
 			this.checkClaimPrimaryRecievedForceSecondaryStatus.TabIndex = 6;
-			this.checkClaimPrimaryRecievedForceSecondaryStatus.Text = "Remove \'Do Nothing\' for secondary claims with \'Hold until Pri received\'";
+			this.checkClaimPrimaryRecievedForceSecondaryStatus.Text = "Remove \'Do Nothing\' from the next insurance claims prompt";
 			// 
 			// checkProviderIncomeShows
 			// 

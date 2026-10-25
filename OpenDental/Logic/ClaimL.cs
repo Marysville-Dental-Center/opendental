@@ -642,28 +642,21 @@ namespace OpenDental {
 		/// <summary>
 		/// After a medical or primary dental claim is received it will prompt the user on what to do about the corresponding primary or secondary claim.  If isPromptForSecondaryClaim is true,
 		/// this is being used for the primary->secondary scenario.  If it is false, it is being used for the medical->primary scenario.
+		/// Open Dental 26.1: isPromptForSecondaryClaim true now means the next insurance after a received claim of any ordinal (a received secondary
+		/// claim prompts for the tertiary claims, and so on), with the generalized wording in ClaimReceiveRelated.
 		/// </summary>
 		public static void PromptForPrimaryOrSecondaryClaim(List<ClaimProc> listClaimProcsForClaim,bool isPromptForSecondaryClaim=true) {
 			List<Claim> listClaimsPromptingFor=Claims.GetPrimaryOrSecondaryClaimsNotReceived(listClaimProcsForClaim,isPromptForSecondaryClaim);
 			if(listClaimsPromptingFor.Count==0) {
 				return;//No primary/secondary claims for the procedures attached to the medical/primary.
 			}
-			string claimType="";
-			PrefName prefName;
-			if(isPromptForSecondaryClaim) {
-				claimType="secondary";
-				prefName=PrefName.ClaimPrimaryRecievedForceSecondaryStatus;
-			}
-			else {//if not prompting for secondary, must be for primary
-				claimType="primary";
-				prefName=PrefName.ClaimMedReceivedForcePrimaryStatus;
-			}
-			string msg=Lan.g("ContrAccount","There is at least one unsent "+claimType+" claim for the received procedures.");
+			PrefName prefName=ClaimReceiveRelated.GetForceStatusPrefName(isPromptForSecondaryClaim);
+			string msg=Lan.g("ContrAccount",ClaimReceiveRelated.GetMessage(isPromptForSecondaryClaim));
 			msg+="\r\n";
 			msg+=Lan.g("ContrAccount","Would you like to:");
 			string strChangeStatus=Lan.g("ContrAccount","Change the claim status to 'Waiting to send'");
-			string strSendClaims=Lan.g("ContrAccount","Send "+claimType+" claim(s) now");
-			string strPrintClaims=Lan.g("ContrAccount","Print "+claimType+" claim(s) now");
+			string strSendClaims=Lan.g("ContrAccount",ClaimReceiveRelated.GetSendText(isPromptForSecondaryClaim));
+			string strPrintClaims=Lan.g("ContrAccount",ClaimReceiveRelated.GetPrintText(isPromptForSecondaryClaim));
 			string strDoNothing=Lan.g("ContrAccount","Do nothing");
 			List<InputBoxParam> listInputBoxParams=new List<InputBoxParam>();
 			InputBoxParam inputBoxParam=new InputBoxParam();
@@ -686,7 +679,7 @@ namespace OpenDental {
 				listInputBoxParams.Add(inputBoxParam);
 			}
 			InputBox inputBox=new InputBox(listInputBoxParams);
-			inputBox.SetTitle(Lan.g("ContrAccount","Outstanding "+claimType+" claims"));
+			inputBox.SetTitle(Lan.g("ContrAccount",ClaimReceiveRelated.GetTitle(isPromptForSecondaryClaim)));
 			//inputBox.SizeInitial=new System.Windows.Size(450,220);
 			inputBox.ShowDialog();
 			if(inputBox.IsDialogCancel) {

@@ -238,7 +238,7 @@ namespace OpenDental{
 			_listClaimStatuses=GetListComboClaimStatus();
 			comboClaimStatus.Items.Clear();
 			for(int i=0;i<_listClaimStatuses.Count;i++) {
-				comboClaimStatus.Items.Add(_listClaimStatuses[i].GetDescription(false));
+				comboClaimStatus.Items.Add(ClaimReceiveRelated.GetClaimStatusText(_listClaimStatuses[i]));//H reads 'Hold Until Prior Received' (26.1)
 			}
 			comboSpecialProgram.Items.Clear();
 			string[] stringArrayEnumClaimSpecialPrograms=Enum.GetNames(typeof(EnumClaimSpecialProgram));
@@ -4134,8 +4134,9 @@ namespace OpenDental{
 				if(Security.IsAuthorized(EnumPermType.PaymentCreate,DateTime.Today,true)) {
 					PaymentEdit.MakeIncomeTransferForClaimProcs(_patient.PatNum,_listClaimProcsForClaim);
 				}
-				if(PrefC.GetBool(PrefName.ClaimPrimaryReceivedRecalcSecondary) && !receivedAsNoPay && _claim.ClaimType=="P") {
-					List<Claim> listClaims=Claims.GetPrimaryOrSecondaryClaimsNotReceived(_listClaimProcsForClaim);
+				//Open Dental 26.1: recalculate the next insurance's claims after a claim of any ordinal is received, not only after a primary claim.
+				if(ClaimReceiveRelated.IsRecalcNextInsuranceNeeded(_claim,receivedAsNoPay,PrefC.GetBool(PrefName.ClaimPrimaryReceivedRecalcSecondary))) {
+					List<Claim> listClaims=Claims.GetNextOrdinalClaimsNotReceived(_listClaimProcsForClaim,includeHoldForInProcess:true);
 					List<Benefit> listBenefits=Benefits.GetAllForPatPlans(_listPatPlans,_listInsSubs);
 					for(int i=0;i<listClaims.Count;i++) {
 						List<Procedure> listProcedures=Procedures.GetProcsForClaimNum(listClaims[i].ClaimNum);
