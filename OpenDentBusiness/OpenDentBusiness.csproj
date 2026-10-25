@@ -1869,6 +1869,7 @@
     <Compile Include="X12\X277.cs" />
     <Compile Include="X12\EraAutoSplit.cs" />
     <Compile Include="X12\EraCarcRules.cs" />
+    <Compile Include="X12\EraClaimMismatch.cs" />
     <Compile Include="X12\X999.cs" />
     <Compile Include="X12\X837_5010.cs" />
     <Compile Include="X12\DTP271.cs" />
