@@ -44,6 +44,7 @@
       "tests\\SheetTests\\SheetTests.csproj",
       "tests\\SignatureTests\\SignatureTests.csproj",
       "tests\\VendorDirectTests\\VendorDirectTests.csproj",
+      "tests\\VGPTests\\VGPTests.csproj",
       "tools\\SyntheticData\\SyntheticData.csproj",
       "tools\\SyntheticData\\SyntheticData.Tests\\SyntheticData.Tests.csproj",
       "UnitTests\\UnitTests.csproj",
