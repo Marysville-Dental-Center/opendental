@@ -13,6 +13,27 @@ namespace AdoptionValidation.Tests {
 	///class and generated CRUD for each of them, and how it compares and changes values.</summary>
 	[TestClass]
 	public class DataLayerRoundTripTests {
+		///<summary>R1's detail (and the validation report) says "stored back unchanged" only of columns whose cells the save did not change: a 24.4-25.3
+		///column with a first-save normalization is named with it. Normalizations of older columns of the same rows are not counted among them.</summary>
+		[TestMethod]
+		public void RoundTripDescription_CountsTheNewColumnsTheSaveNormalized() {
+			RoundTripSummary summary=new RoundTripSummary();
+			TableRoundTrip benefit=new TableRoundTrip { Table="benefit",Columns=new List<string> { "ToothRange" },ColumnsLoaded=1,ColumnsWritten=1,RowsSaved=370 };
+			benefit.DictNormalized["SecDateTEdit: ON UPDATE timestamp of a row the save normalized"]=363;
+			benefit.DictNormalized["ToothRange: NULL saved as ''"]=363;
+			benefit.ListNormalizedColumns.AddRange(new[] { "ToothRange","SecDateTEdit" });
+			TableRoundTrip document=new TableRoundTrip { Table="document",Columns=new List<string> { "A","B" },ColumnsLoaded=2,ColumnsWritten=2,RowsSaved=10 };
+			document.DictNormalized["ExternalSource: blank or unknown enum text saved as 'None'"]=10;
+			document.ListNormalizedColumns.Add("ExternalSource");
+			summary.Tables.Add(benefit);
+			summary.Tables.Add(document);
+			string text=Rehearsal.DescribeRoundTrip(summary);
+			StringAssert.Contains(text,"3 loaded and saved (380 rows saved), 2 of them stored back unchanged and 1 with first-save normalizations "
+				+"(benefit.ToothRange: NULL saved as '' (363 cells)); 3 of the 3 given a new value");
+			Assert.IsFalse(text.Contains("saved unchanged"),text);
+			CollectionAssert.AreEqual(new List<string> { "benefit.ToothRange: NULL saved as '' (363 cells)" },Rehearsal.ListNormalizedNewColumns(summary));
+		}
+
 		[TestMethod]
 		public void EveryNewOrChangedColumn_HasAClassFieldAndCrud_ExceptTheDocumentedOnes() {
 			Dictionary<string,Type> dictTypes=DataLayerRoundTrip.GetTableTypes();

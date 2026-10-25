@@ -266,7 +266,8 @@ namespace AdoptionValidation {
 					_run.RoundTrip=Time("Data-layer round trip (load and save through OpenDentBusiness)",() => DataLayerRoundTrip.Run(db,adopted,_log));
 					RoundTripSummary roundTrip=_run.RoundTrip;
 					List<string> listNormalizations=roundTrip.ListNormalizations;
-					Check("R1","Every 24.4-25.3 column loads and saves through OpenDentBusiness; every writable one writes",roundTrip.Passed,
+					Check("R1","The 24.4-25.3 columns load and save through OpenDentBusiness (documented exceptions aside); those that Insert or the server do not "
+						+"set take new values",roundTrip.Passed,
 						DescribeRoundTrip(roundTrip)+"; first-save normalizations (same meaning in the program): "
 						+(listNormalizations.Count==0 ? "none" : string.Join("; ",listNormalizations))
 						+(roundTrip.Passed ? "" : "; failures: "+string.Join(" | ",roundTrip.Tables.Where(x => !x.Passed).Select(x => x.Describe()))));
@@ -285,18 +286,30 @@ namespace AdoptionValidation {
 			}
 		}
 
-		///<summary>What the round trip covered, column by column: R1's detail, and the counts the validation report quotes.</summary>
+		///<summary>What the round trip covered, column by column: R1's detail, and the counts the validation report quotes. A loaded column is "stored
+		///back unchanged" only when the save changed none of its cells; the others are named with their first-save normalizations.</summary>
 		public static string DescribeRoundTrip(RoundTripSummary roundTrip) {
 			int countLoaded=roundTrip.Tables.Sum(x => x.ColumnsLoaded);
 			int countWritten=roundTrip.Tables.Sum(x => x.ColumnsWritten);
 			List<string> listNotWritten=roundTrip.Tables.SelectMany(x => x.ListNotUpdatable.Select(y => x.Table+"."+y)).ToList();
 			List<string> listNotLoaded=roundTrip.Tables.Where(x => x.Columns.Count>x.ColumnsLoaded).SelectMany(x => x.ListDocumentedExceptions
 				.Select(y => y.Split(':')[0]).Select(y => y.Contains(".") ? y : y+" ("+(x.Columns.Count-x.ColumnsLoaded)+" columns)")).ToList();
-			return roundTrip.Tables.Count+" tables, "+roundTrip.ColumnCount+" columns new or changed since 24.3: "+countLoaded+" loaded and saved unchanged ("
-				+roundTrip.RowsSaved.ToString("N0")+" rows saved), and "+countWritten+" of them given a new value, written and read back; "
+			List<string> listNormalized=ListNormalizedNewColumns(roundTrip);
+			int countNormalized=roundTrip.Tables.Sum(x => x.ListNormalizedColumns.Count(y => x.Columns.Contains(y)));
+			return roundTrip.Tables.Count+" tables, "+roundTrip.ColumnCount+" columns new or changed since 24.3: "+countLoaded+" loaded and saved ("
+				+roundTrip.RowsSaved.ToString("N0")+" rows saved), "+(countLoaded-countNormalized)+" of them stored back unchanged and "+countNormalized
+				+" with first-save normalizations"+(listNormalized.Count==0 ? "" : " ("+string.Join("; ",listNormalized)+")")+"; "
+				+countWritten+" of the "+countLoaded+" given a new value, written and read back; "
 				+listNotWritten.Count+" loaded and saved but not given a new value, because Insert or the server sets them (CRUD types TimeStamp, DateEntry, "
 				+"DateTEntry, ExcludeFromUpdate: "+string.Join(", ",listNotWritten)+"); "
 				+(roundTrip.ColumnCount-countLoaded)+" not loaded, documented exceptions preserved untouched ("+string.Join(", ",listNotLoaded)+")";
+		}
+
+		///<summary>The first-save normalizations of the 24.4-25.3 columns themselves, as "table.column: kind (n cells)" (the round trip saves whole
+		///rows, so it also lists normalizations of older columns).</summary>
+		public static List<string> ListNormalizedNewColumns(RoundTripSummary roundTrip) {
+			return roundTrip.Tables.SelectMany(x => x.DictNormalized.Where(y => x.Columns.Contains(y.Key.Split(':')[0]))
+				.Select(y => x.Table+"."+y.Key+" ("+y.Value+" cells)")).ToList();
 		}
 
 		///<summary>M3: the one fork migration step that changes rows of an Open Dental 25.3.48 database, the report rows step, renames exactly the rows
@@ -435,7 +448,7 @@ namespace AdoptionValidation {
 					listRowProblems.Add(diff.Describe()+" (expected only "+expectedAdded+" added row)");
 				}
 			}
-			Check("I4","The whole second pass leaves the database unchanged",listUnexpected.Count==0 && listRowProblems.Count==0,
+			Check("I4","The second pass changes nothing except adding its own security log entry",listUnexpected.Count==0 && listRowProblems.Count==0,
 				listUnexpected.Count==0 && listRowProblems.Count==0
 					? "every table except securitylog and securityloghash has the row counts and checksums of the first pass; row by row against the snapshot "
 						+"taken after adoption, preference is identical, and securitylog and securityloghash only gained the rerun's own entry ("
