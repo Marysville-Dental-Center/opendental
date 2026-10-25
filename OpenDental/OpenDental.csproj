@@ -990,6 +990,9 @@
     <Compile Include="Forms\FormDiseaseDefs.designer.cs">
       <DependentUpon>FormDiseaseDefs.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\FormDiseaseDefs.OtherConvert.cs">
+      <DependentUpon>FormDiseaseDefs.cs</DependentUpon>
+    </Compile>
     <Compile Include="Forms\FormDisplayFieldCategories.designer.cs">
       <DependentUpon>FormDisplayFieldCategories.cs</DependentUpon>
     </Compile>
@@ -4086,6 +4089,9 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Forms\FormAllergySetup.designer.cs">
+      <DependentUpon>FormAllergySetup.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormAllergySetup.OtherConvert.cs">
       <DependentUpon>FormAllergySetup.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\FormIcd9s.cs">

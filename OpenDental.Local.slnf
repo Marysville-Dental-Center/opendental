@@ -24,6 +24,7 @@
       "tests\\AttributionTests\\AttributionTests.csproj",
       "tests\\BACCTTests\\BACCTTests.csproj",
       "tests\\BERATests\\BERATests.csproj",
+      "tests\\BMEDTests\\BMEDTests.csproj",
       "tests\\BPAYTests\\BPAYTests.csproj",
       "tests\\BPERIOTests\\BPERIOTests.csproj",
       "tests\\ChartLetterTests\\ChartLetterTests.csproj",

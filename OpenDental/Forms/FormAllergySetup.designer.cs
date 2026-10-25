@@ -29,6 +29,8 @@ namespace OpenDental{
 			this.butAdd = new OpenDental.UI.Button();
 			this.butOK = new OpenDental.UI.Button();
 			this.buttonMerge = new OpenDental.UI.Button();
+			this.labelSearch = new System.Windows.Forms.Label();
+			this.textSearch = new System.Windows.Forms.TextBox();
 			this.SuspendLayout();
 			// 
 			// checkShowHidden
@@ -87,10 +89,32 @@ namespace OpenDental{
 			this.buttonMerge.TabIndex = 7;
 			this.buttonMerge.Text = "Merge";
 			this.buttonMerge.Click += new System.EventHandler(this.buttonMerge_Click);
-			// 
+			//
+			// labelSearch
+			//
+			this.labelSearch.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			this.labelSearch.Location = new System.Drawing.Point(293, 145);
+			this.labelSearch.Name = "labelSearch";
+			this.labelSearch.Size = new System.Drawing.Size(98, 17);
+			this.labelSearch.TabIndex = 8;
+			this.labelSearch.Text = "Search";
+			this.labelSearch.TextAlign = System.Drawing.ContentAlignment.BottomLeft;
+			this.labelSearch.Visible = false;
+			//
+			// textSearch
+			//
+			this.textSearch.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			this.textSearch.Location = new System.Drawing.Point(296, 164);
+			this.textSearch.Name = "textSearch";
+			this.textSearch.Size = new System.Drawing.Size(95, 20);
+			this.textSearch.TabIndex = 0;
+			this.textSearch.Visible = false;
+			//
 			// FormAllergySetup
-			// 
+			//
 			this.ClientSize = new System.Drawing.Size(396, 361);
+			this.Controls.Add(this.textSearch);
+			this.Controls.Add(this.labelSearch);
 			this.Controls.Add(this.buttonMerge);
 			this.Controls.Add(this.butOK);
 			this.Controls.Add(this.checkShowHidden);
@@ -101,6 +125,7 @@ namespace OpenDental{
 			this.Text = "Allergy Setup";
 			this.Load += new System.EventHandler(this.FormAllergySetup_Load);
 			this.ResumeLayout(false);
+			this.PerformLayout();
 
 		}
 
@@ -111,5 +136,7 @@ namespace OpenDental{
 		private OpenDental.UI.CheckBox checkShowHidden;
 		private UI.Button butOK;
 		private UI.Button buttonMerge;
+		private System.Windows.Forms.Label labelSearch;
+		private System.Windows.Forms.TextBox textSearch;
 	}
 }
