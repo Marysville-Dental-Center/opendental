@@ -105,6 +105,17 @@ Paths left as they are, on purpose:
 Not covered by an automated test: the one-line hook in `FormSheetImport` (a WinForms window; the helper it calls is tested) and the Clinics window
 itself (its business call is tested).
 
+## Checks (2026-10-25)
+
+The work was saved by an interrupted run as one "WIP (interrupted run)" commit; this run found it complete, built it and ran the checks without
+code changes.
+
+- Build of `OpenDental.Local.slnf` (Debug, x86): 0 errors, 376 warnings (the baseline; none new).
+- Targeted tests through the shared runner: `BAUDITTests` 29/29, `EFormTests` 60/60 (the eForm import's own `PatientEdit` entries),
+  `RowHashTests` 21/21 (the `securityloghash` rows), `NoHqTests` 49/49. No test was inconclusive.
+- `tools/Test-NoHqHosts.ps1`: passed.
+- No fork migration step, so `ForkMigrationTests` was not part of the targeted run.
+
 ## Questions for the owner
 
 1. Should a sheet or eForm import also log the other patient fields it changes (name, address, phones), as the Edit Patient window does? Today
