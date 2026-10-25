@@ -23,7 +23,10 @@ namespace OpenDentBusiness.VendorDirect.Eds {
 	public class EdsProcLine {
 		public int LineNumber;
 		public long ProcNum;
+		///<summary>The code the claim sends (claimproc.CodeSent), or the procedure's own code when that is blank.</summary>
 		public string ProcCode="";
+		///<summary>The procedure's own code, the one EDS's attachment validation is asked about (EDS's procID). Blank when unknown.</summary>
+		public string ProcCodeOfProcedure="";
 		public DateTime ProcDate;
 	}
 
@@ -63,6 +66,9 @@ namespace OpenDentBusiness.VendorDirect.Eds {
 		///it and report only what it does not.</summary>
 		public bool IsX12Validated;
 		public DateTime DateToday;
+		///<summary>The procedure codes that EDS's latest answer for this claim, on this workstation, said need a narrative
+		///(EdsClaimValidation.GetProcCodesNarrativeRequiredByEds). Empty until EDS has answered for the claim.</summary>
+		public List<string> ListProcCodesNarrativeRequiredByEds=new List<string>();
 
 		///<summary>True when the claim already has an EDS attachment ID or sent attachments.</summary>
 		public bool HasAttachments {
@@ -109,12 +115,16 @@ namespace OpenDentBusiness.VendorDirect.Eds {
 				edsProcLine.LineNumber=i+1;
 				edsProcLine.ProcNum=claimProc.ProcNum;
 				edsProcLine.ProcCode=claimProc.CodeSent??"";
-				if(edsProcLine.ProcCode=="" && procedure!=null) {
-					edsProcLine.ProcCode=ProcedureCodes.GetStringProcCode(procedure.CodeNum,doThrowIfMissing:false);
+				if(procedure!=null) {
+					edsProcLine.ProcCodeOfProcedure=ProcedureCodes.GetStringProcCode(procedure.CodeNum,doThrowIfMissing:false)??"";
+				}
+				if(edsProcLine.ProcCode=="") {
+					edsProcLine.ProcCode=edsProcLine.ProcCodeOfProcedure;
 				}
 				edsProcLine.ProcDate=procedure?.ProcDate??claimProc.ProcDate;
 				snapshot.ListProcLines.Add(edsProcLine);
 			}
+			snapshot.ListProcCodesNarrativeRequiredByEds=EdsClaimValidation.GetProcCodesNarrativeRequiredByEds(claim.ClaimNum);
 			List<ElectID> listElectIDsEds=ElectIDs.GetWhere(x => x.CommBridge==EclaimsCommBridge.EDS);
 			snapshot.IsEdsPayerListLoaded=listElectIDsEds.Count>0;
 			string payerIdTrimmed=snapshot.PayerId.Trim();

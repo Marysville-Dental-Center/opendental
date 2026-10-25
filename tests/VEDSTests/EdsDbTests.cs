@@ -168,6 +168,31 @@ namespace VEDSTests {
 		}
 
 		[TestMethod]
+		public void GetMissingData_BlankOrShortPayerId_IsAWarning_NotMissingData() {
+			//New carriers send electronically with a blank payer ID, and X12 claims then go out with the paper-claim payer ID. Missing Info stays empty,
+			//so Edit Claim and Send Claims can still send, Add Attachment is allowed, and ClaimEditRequireNoMissingData does not refuse the claim.
+			Clearinghouse clearinghouseEds=CreateEdsClearinghouse(ElectronicClaimFormat.None,false);
+			TestClaim testClaimBlank=CreateClaim(electId:"");
+			ClaimSendQueueItem queueItem=GetQueueItem(testClaimBlank.Claim,clearinghouseEds);
+			Assert.AreEqual("",queueItem.MissingData);
+			StringAssert.Contains(queueItem.Warnings,"EDS: Carrier ("+testClaimBlank.Carrier.CarrierName+"): The carrier has no electronic payer ID.");
+			ClaimSendQueueItem queueItemNewClaim=Eclaims.GetMissingData(clearinghouseEds,Claims.GetQueueList(testClaimBlank.Claim.ClaimNum,0,0).Single(),
+				true,true);//As ClaimL.CreateClaim checks a new claim.
+			Assert.AreEqual("",queueItemNewClaim.MissingData);
+			EdsValidationResult result=EdsClaimValidation.ValidateLocal(testClaimBlank.Claim,clearinghouseEds,queueItem);
+			Assert.AreEqual(EdsSendDecision.ConfirmWarnings,EdsClaimValidation.GetSendDecision(result),"Listed in the window, with Send Anyway.");
+			Assert.AreEqual(EdsIssueSeverity.Warning,result.ListIssues.Single(x => x.CheckId==EdsClaimChecks.CHECK_PAYER_ID_MISSING).Severity);
+			TestClaim testClaimShort=CreateClaim(electId:"ZZ");
+			queueItem=GetQueueItem(testClaimShort.Claim,clearinghouseEds);
+			Assert.AreEqual("",queueItem.MissingData);
+			StringAssert.Contains(queueItem.Warnings,"too short to be a payer ID");
+			Clearinghouse clearinghouseX12=CreateEdsClearinghouse(ElectronicClaimFormat.x837D_5010_dental,false);
+			queueItem=GetQueueItem(testClaimBlank.Claim,clearinghouseX12);
+			Assert.IsFalse((queueItem.MissingData??"").Contains("EDS:"),"With the X12 validator too, the EDS part adds nothing to Missing Info.");
+			StringAssert.Contains(queueItem.Warnings,"no electronic payer ID");
+		}
+
+		[TestMethod]
 		public void GetMissingData_WithX12_TheEdsPartComesLastAndSplitsOff() {
 			TestClaim testClaim=CreateClaim(procDate:DateTime.Today.AddDays(3));
 			Clearinghouse clearinghouseEds=CreateEdsClearinghouse(ElectronicClaimFormat.x837D_5010_dental,false);
@@ -314,6 +339,65 @@ namespace VEDSTests {
 			Assert.IsTrue(result.IsRemoteChecked);
 			Assert.AreEqual(0,result.ListIssues.Count);
 			Assert.AreEqual(EdsSendDecision.Send,EdsClaimValidation.GetSendDecision(result));
+		}
+
+		[TestMethod]
+		public void NarrativeCheck_RepeatsEdsLastAnswer_InGetMissingData() {
+			Clearinghouse clearinghouse=CreateEdsClearinghouse(ElectronicClaimFormat.None,true);
+			TestClaim testClaim=CreateClaim();
+			long claimNum=testClaim.Claim.ClaimNum;
+			string answerNarrative=EdsTestData.MakeAttachmentAnswer(false,("Z0001",true,new[] { "Narrative" },null));
+			ClaimSendQueueItem queueItem=GetQueueItem(testClaim.Claim,clearinghouse);
+			Assert.IsFalse((queueItem.Warnings??"").Contains("narrative"),"EDS has not answered for the claim: nothing to check yet.");
+			_fakeHttpHandler.Enqueue(HttpStatusCode.OK,answerNarrative);
+			EdsValidationResult result=EdsClaimValidation.Validate(testClaim.Claim,clearinghouse,queueItem,EDS.TimeoutValidateOnSend,true);
+			Assert.IsTrue(result.IsRemoteChecked,result.CallFailedMessage);
+			EdsValidationIssue issue=result.ListIssues.Single();
+			Assert.AreEqual(EdsClaimChecks.CHECK_NARRATIVE_REQUIRED,issue.CheckId);
+			Assert.AreEqual(EdsIssueSource.Eds,issue.Source);
+			CollectionAssert.AreEqual(new[] { "Z0001" },EdsClaimValidation.GetProcCodesNarrativeRequiredByEds(claimNum));
+			//The local check now knows: Missing Info's Warnings list it, without a network call.
+			queueItem=GetQueueItem(testClaim.Claim,clearinghouse);
+			Assert.AreEqual("",queueItem.MissingData,"A warning: sending, claim creation and attachments are not blocked.");
+			StringAssert.Contains(queueItem.Warnings,"EDS: Procedure line 1 (Z0001): EDS's last answer for this claim said the payer requires a narrative");
+			Assert.AreEqual(1,_fakeHttpHandler.Requests.Count,"GetMissingData never calls EDS.");
+			//EDS is down at the next send: the local check still lists the problem.
+			_fakeHttpHandler.Enqueue(HttpStatusCode.InternalServerError,"Synthetic server error");
+			result=EdsClaimValidation.Validate(testClaim.Claim,clearinghouse,queueItem,EDS.TimeoutValidateOnSend,true);
+			Assert.IsTrue(result.IsCallFailed);
+			issue=result.ListIssues.Single();
+			Assert.AreEqual(EdsClaimChecks.CHECK_NARRATIVE_REQUIRED,issue.CheckId);
+			Assert.AreEqual(EdsIssueSource.Local,issue.Source);
+			//EDS answers again: the problem is listed once, from EDS's fresh answer.
+			_fakeHttpHandler.Enqueue(HttpStatusCode.OK,answerNarrative);
+			result=EdsClaimValidation.Validate(testClaim.Claim,clearinghouse,queueItem,EDS.TimeoutValidateOnSend,true);
+			Assert.IsTrue(result.IsRemoteChecked,result.CallFailedMessage);
+			Assert.AreEqual(EdsIssueSource.Eds,result.ListIssues.Single().Source);
+			//The office enters the narrative: met.
+			testClaim.Claim.Narrative="Synthetic narrative text.";
+			Claims.Update(testClaim.Claim);
+			queueItem=GetQueueItem(testClaim.Claim,clearinghouse);
+			Assert.IsFalse((queueItem.Warnings??"").Contains("narrative"));
+			//EDS no longer asks for a narrative: the local check forgets it.
+			testClaim.Claim.Narrative="";
+			Claims.Update(testClaim.Claim);
+			_fakeHttpHandler.Enqueue(HttpStatusCode.OK,EdsTestData.MakeAttachmentAnswer(false));
+			result=EdsClaimValidation.Validate(testClaim.Claim,clearinghouse,GetQueueItem(testClaim.Claim,clearinghouse),EDS.TimeoutValidateOnSend,true);
+			Assert.IsTrue(result.IsRemoteChecked,result.CallFailedMessage);
+			Assert.AreEqual(0,EdsClaimValidation.GetProcCodesNarrativeRequiredByEds(claimNum).Count);
+			Assert.IsFalse((GetQueueItem(testClaim.Claim,clearinghouse).Warnings??"").Contains("narrative"));
+		}
+
+		[TestMethod]
+		public void NarrativeCheck_AttachmentServiceOff_HasNothingToGoOn() {
+			//Default setup: EDS is never asked, so the local narrative check stays silent (port note, deviations and owner question 7).
+			Clearinghouse clearinghouse=CreateEdsClearinghouse(ElectronicClaimFormat.None,false);
+			TestClaim testClaim=CreateClaim();
+			EdsValidationResult result=EdsClaimValidation.Validate(testClaim.Claim,clearinghouse,GetQueueItem(testClaim.Claim,clearinghouse),
+				EDS.TimeoutValidateOnSend,true);
+			Assert.AreEqual(0,_fakeHttpHandler.Requests.Count);
+			Assert.AreEqual(0,result.ListIssues.Count);
+			Assert.AreEqual(0,EdsClaimValidation.GetProcCodesNarrativeRequiredByEds(testClaim.Claim.ClaimNum).Count);
 		}
 
 		[TestMethod]

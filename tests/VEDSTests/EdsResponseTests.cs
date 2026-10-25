@@ -99,6 +99,19 @@ namespace VEDSTests {
 		}
 
 		[TestMethod]
+		public void NarrativeCodes_AreTheProceduresWhoseAnswerAsksForANarrative() {
+			string json=EdsTestData.MakeAttachmentAnswer(false,
+				("Z0001",true,new[] { "Narrative","Periapical" },null),
+				("Z0002",true,new[] { "Bitewings" },null),
+				("Z0003",false,new[] { "Narrative" },null),
+				("z0001",true,new[] { "Narrative" },null));
+			CollectionAssert.AreEqual(new[] { "Z0001" },EdsClaimChecks.GetProcCodesNarrativeRequired(Parse(json)),
+				"Only response=true with a Narrative document; each code once.");
+			Assert.AreEqual(0,EdsClaimChecks.GetProcCodesNarrativeRequired(null).Count);
+			Assert.AreEqual(0,EdsClaimChecks.GetProcCodesNarrativeRequired(Parse("{\"payers\":[null,{\"id\":\"1\"}]}")).Count);
+		}
+
+		[TestMethod]
 		public void SameRequirementFromTwoPayers_IsListedOnce() {
 			string json="{\"payers\":[{\"id\":\"1\",\"claimLevelResponse\":true},{\"id\":\"2\",\"claimLevelResponse\":true}]}";
 			Assert.AreEqual(1,EdsClaimChecks.GetIssuesFromAttachmentResponse(Parse(json),EdsTestData.MakeValidSnapshot()).Count);

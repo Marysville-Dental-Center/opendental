@@ -18,6 +18,9 @@ namespace OpenDentBusiness.VendorDirect.Eds {
 		public static IEdsEnhancedValidator EnhancedValidator;
 		///<summary>The last validation of each claim on this workstation, shown on the claim's EDS tab and in the claim attachment window.</summary>
 		private static readonly ConcurrentDictionary<long,EdsValidationResult> _dictLastResults=new ConcurrentDictionary<long,EdsValidationResult>();
+		///<summary>Per claim, the procedure codes that EDS's latest answer on this workstation said need a narrative. Read by the local narrative check
+		///(EdsClaimChecks, rule 2); replaced by each answer from EDS.</summary>
+		private static readonly ConcurrentDictionary<long,List<string>> _dictProcCodesNarrativeRequired=new ConcurrentDictionary<long,List<string>>();
 
 		#region Gates
 		///<summary>True when clearinghouseClin sends claims to EDS. Only such claims get the EDS checks.</summary>
@@ -211,6 +214,7 @@ namespace OpenDentBusiness.VendorDirect.Eds {
 					throw new ODException(Lans.g("EDS","EDS returned an empty answer."));
 				}
 				listIssuesRemote.AddRange(EdsClaimChecks.GetIssuesFromAttachmentResponse(listPayerResponses,snapshot));
+				SetProcCodesNarrativeRequiredByEds(claim.ClaimNum,EdsClaimChecks.GetProcCodesNarrativeRequired(listPayerResponses));
 				IEdsEnhancedValidator edsEnhancedValidator=EnhancedValidator;
 				if(edsEnhancedValidator!=null) {
 					List<EdsValidationIssue> listIssuesEnhanced=edsEnhancedValidator.Validate(claim,clearinghouseClin,timeout);
@@ -220,7 +224,9 @@ namespace OpenDentBusiness.VendorDirect.Eds {
 				}
 				result.IsRemoteChecked=true;
 				result.RemoteNote="";
-				List<EdsValidationIssue> listIssues=result.ListIssues.Where(x => x.Source==EdsIssueSource.Local).ToList();//An earlier answer is replaced.
+				//An earlier answer is replaced, and so is the local narrative check, which repeats EDS's earlier answer.
+				List<EdsValidationIssue> listIssues=result.ListIssues
+					.Where(x => x.Source==EdsIssueSource.Local && x.CheckId!=EdsClaimChecks.CHECK_NARRATIVE_REQUIRED).ToList();
 				listIssues.AddRange(listIssuesRemote);
 				result.ListIssues=EdsClaimChecks.Order(listIssues);
 			}
@@ -448,9 +454,28 @@ namespace OpenDentBusiness.VendorDirect.Eds {
 			_dictLastResults[result.ClaimNum]=result.Copy();
 		}
 
+		///<summary>The procedure codes that EDS's latest answer for the claim, on this workstation, said need a narrative. Empty when EDS has not
+		///answered for the claim since the program started. A copy.</summary>
+		public static List<string> GetProcCodesNarrativeRequiredByEds(long claimNum) {
+			List<string> listProcCodes;
+			if(_dictProcCodesNarrativeRequired.TryGetValue(claimNum,out listProcCodes)) {
+				return new List<string>(listProcCodes);
+			}
+			return new List<string>();
+		}
+
+		///<summary>Keeps what EDS's latest answer for the claim said about narratives, replacing the earlier answer.</summary>
+		public static void SetProcCodesNarrativeRequiredByEds(long claimNum,List<string> listProcCodes) {
+			if(claimNum==0) {
+				return;
+			}
+			_dictProcCodesNarrativeRequired[claimNum]=new List<string>(listProcCodes??new List<string>());
+		}
+
 		///<summary>Tests only.</summary>
 		public static void ClearLastResults() {
 			_dictLastResults.Clear();
+			_dictProcCodesNarrativeRequired.Clear();
 		}
 		#endregion Display
 	}

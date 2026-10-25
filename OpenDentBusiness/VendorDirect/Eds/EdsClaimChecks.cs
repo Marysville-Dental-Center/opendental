@@ -92,6 +92,7 @@ namespace OpenDentBusiness.VendorDirect.Eds {
 					Lans.g("EDS","Enter the subscriber ID in the patient's insurance plan (Family module).")));
 			}
 			AddDateIssues(listIssues,snapshot);
+			AddNarrativeIssues(listIssues,snapshot);
 			return Order(listIssues);
 		}
 
@@ -139,8 +140,10 @@ namespace OpenDentBusiness.VendorDirect.Eds {
 			string location=Lans.g("EDS","Carrier")+(snapshot.CarrierName=="" ? "" : " ("+snapshot.CarrierName+")");
 			string payerId=(snapshot.PayerId??"").Trim();
 			if(payerId.Length<3) {
-				//Shorter IDs go out as the paper-claim payer ID on X12 claims.
-				listIssues.Add(MakeLocal(EdsIssueSeverity.Error,CHECK_PAYER_ID_MISSING,location,
+				//Shorter IDs go out as the paper-claim payer ID on X12 claims (X837_5010.GetCarrierElectID), as they did before EDS validation, so this
+				//is a warning: it is listed and the user may Send Anyway. An error would put it in Missing Info, which also blocks claim creation
+				//(ClaimEditRequireNoMissingData) and the attachment buttons. Owner question 4 in docs/port-notes/V-EDS.md.
+				listIssues.Add(MakeLocal(EdsIssueSeverity.Warning,CHECK_PAYER_ID_MISSING,location,
 					payerId=="" ? Lans.g("EDS","The carrier has no electronic payer ID.") : Lans.g("EDS","The carrier's payer ID")+" "+payerId+" "
 						+Lans.g("EDS","is too short to be a payer ID."),
 					Lans.g("EDS","Enter the carrier's electronic payer ID in the insurance plan's carrier, or mark the carrier to not send claims electronically.")));
@@ -188,6 +191,29 @@ namespace OpenDentBusiness.VendorDirect.Eds {
 				}
 				listIssues.Add(MakeLocal(EdsIssueSeverity.Error,CHECK_PROC_DATE_FUTURE,GetProcLineLocation(edsProcLine),
 					Lans.g("EDS","The procedure date")+" "+edsProcLine.ProcDate.ToShortDateString()+" "+Lans.g("EDS","is in the future."),howToFix));
+			}
+		}
+
+		///<summary>Rule 2, "a narrative is present when a procedure code requires one". No public source says which procedure codes need a narrative,
+		///so the check uses what EDS's latest answer for this claim said (snapshot.ListProcCodesNarrativeRequiredByEds, kept on this workstation by
+		///EdsClaimValidation): a procedure line with one of those codes is a warning while the claim has neither a narrative nor an attachment, as
+		///in EDS's own answer. Silent until EDS has answered for the claim, so it needs the EDS attachment service.</summary>
+		private static void AddNarrativeIssues(List<EdsValidationIssue> listIssues,EdsClaimSnapshot snapshot) {
+			List<string> listProcCodes=(snapshot.ListProcCodesNarrativeRequiredByEds??new List<string>())
+				.Select(x => (x??"").Trim()).Where(x => x!="").ToList();
+			if(listProcCodes.Count==0 || snapshot.HasAttachments || !string.IsNullOrWhiteSpace(snapshot.Narrative)) {
+				return;
+			}
+			for(int i=0;i<snapshot.ListProcLines.Count;i++) {
+				EdsProcLine edsProcLine=snapshot.ListProcLines[i];
+				bool isRequired=listProcCodes.Any(x => string.Equals(x,(edsProcLine.ProcCode??"").Trim(),StringComparison.OrdinalIgnoreCase)
+					|| string.Equals(x,(edsProcLine.ProcCodeOfProcedure??"").Trim(),StringComparison.OrdinalIgnoreCase));
+				if(!isRequired) {
+					continue;
+				}
+				listIssues.Add(MakeLocal(EdsIssueSeverity.Warning,CHECK_NARRATIVE_REQUIRED,GetProcLineLocation(edsProcLine),
+					Lans.g("EDS","EDS's last answer for this claim said the payer requires a narrative for this procedure, and the claim has none."),
+					Lans.g("EDS","Enter the claim's narrative in Edit Claim, or add a Narrative attachment from Edit Claim's EDS tab (Add Attachment).")));
 			}
 		}
 		#endregion Local checks
@@ -248,6 +274,30 @@ namespace OpenDentBusiness.VendorDirect.Eds {
 				}
 			}
 			return Order(listIssues);
+		}
+
+		///<summary>The procedure codes (EDS's procID, the procedure's own code) for which EDS's answer says the payer requires a narrative: a procedure
+		///answer with response=true and a Narrative document, as GetIssuesFromAttachmentResponse reads it. Distinct, trimmed; empty for a null answer.
+		///</summary>
+		public static List<string> GetProcCodesNarrativeRequired(EDS.ListPayerResponses listPayerResponses) {
+			List<string> listProcCodes=new List<string>();
+			if(listPayerResponses?.Payers==null) {
+				return listProcCodes;
+			}
+			foreach(EDS.PayerResponse payerResponse in listPayerResponses.Payers.Where(x => x?.ProcedureResponses!=null)) {
+				foreach(EDS.ProcedureResponse procedureResponse in payerResponse.ProcedureResponses) {
+					if(procedureResponse==null || !procedureResponse.Response || procedureResponse.Documents==null
+						|| !procedureResponse.Documents.Any(x => x!=null && x.DocumentTypeCode==EDS.EnumDocumentTypeCode.Narrative))
+					{
+						continue;
+					}
+					string procCode=(procedureResponse.ProcID??"").Trim();
+					if(procCode!="" && !listProcCodes.Any(x => string.Equals(x,procCode,StringComparison.OrdinalIgnoreCase))) {
+						listProcCodes.Add(procCode);
+					}
+				}
+			}
+			return listProcCodes;
 		}
 
 		private static string GetDocumentText(EDS.ProcedureDocument procedureDocument) {

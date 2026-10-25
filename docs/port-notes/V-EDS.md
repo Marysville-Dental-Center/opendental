@@ -8,19 +8,21 @@ Spec: [features-26.1.md](../specs/features-26.1.md), item `v26_1-manage-eds-clai
 
 | Feature ID | Status | Summary |
 |---|---|---|
-| `v26_1-manage-eds-claim-validation` | **partial** | Spec rules 1 to 5 are built. The extra checks that EDS itself runs in Open Dental 26.1 are **partner-gated**: neither the checks nor the endpoint are public (26.1 open question 4). |
+| `v26_1-manage-eds-claim-validation` | **partial** | Spec rules 1, 3, 4 and 5 are built. Rule 2 is **partial**: its narrative check is built as a local check, but no public source says which procedure codes need a narrative, so it only repeats what EDS's last answer for the claim said. That answer needs the EDS attachment service, which is off by default, so in the default setup the narrative check never fires (see Deviations and owner question 7). The extra checks that EDS itself runs in Open Dental 26.1 are **partner-gated**: neither the checks nor the endpoint are public (26.1 open question 4). |
 
 What is built:
 
 - **Rule 1, when the claim is validated.** It is validated when Edit Claim sends any claim, new or existing; when Edit Claim saves a **new** claim that is waiting to be sent; and for every EDS claim in a batch from the Send Claims window. The online part calls EDS's attachment validation (`EDS.ValidateClaim`, `POST https://web2.edsedi.com/api/validateattachment`). That is the only EDS validation call in the public material: the 24.3 manual page `edsattachmentservice` and the code we already have. It uses the office's own EDS login, the clearinghouse's Login ID and password. The password is already stored with CodeBase Secrets (`Secrets.ConcealClearinghouse`) and is sent only in the HTTP Basic header.
 - **Rule 2, local EDS checks.** They run inside `Eclaims.GetMissingData` after the format validators and before any network call:
   - billing and treating provider: NPI check digit, plus taxonomy code present and in the 10-character format;
-  - payer ID present, and on the EDS payer list (as an electronic payer, and as a dental payer for a dental claim);
+  - payer ID present (a warning, see INFERRED 3), and on the EDS payer list (as an electronic payer, and as a dental payer for a dental claim);
   - subscriber ID present;
   - no claim or procedure date in the future;
-  - a narrative where EDS says a procedure needs one.
+  - a narrative for each procedure that **EDS's last answer** for this claim said needs one (INFERRED 11). This is the only local narrative check, and it is limited: it has nothing to go on until EDS has answered for the claim on this workstation, so it needs the EDS attachment service (off by default).
 
   Errors go into Missing Info and warnings into Warnings, each starting with `EDS: `.
+
+  An EDS error in Missing Info has the same effect as any other Missing Info, not only on sending. With **"Require claims to have no missing data"** (`PrefName.ClaimEditRequireNoMissingData`) on, `ClaimL.CreateClaim` refuses the new claim and deletes it. **Add Attachment** refuses too ("Cannot add attachments until missing data is fixed"), in Edit Claim (`OpenAttachmentForm`) and in the right-click attachment workflows of the Account and Treatment Plan modules. So only a problem that the claim must not go out with is an error. A problem that today's claims already go out with, such as a blank payer ID, is a warning.
 - **Rule 3, one list of problems.** One validation window per claim, `FormEdsValidation`, shows every problem: what the format validators found (one row), the local EDS checks, and what EDS returned. Errors block sending. Warnings show **Send Anyway**. The window also has Edit Claim and Re-validate, and a re-validation marks problems that went away as Resolved. A batch shows one window, grouped by claim.
 - **Rule 4, last result.** The claim's last validation is kept on the workstation and shown in two places: on Edit Claim's EDS tab (a new label) and under the attachment check in the claim attachment window's status box.
 - **Rule 5, EDS unreachable.** A failed call, a timeout (10 s on save, 30 s on send), a refused login or an unreadable answer is never a silent block. The window shows "EDS could not be reached: ..." and the user chooses Send Anyway or Close. Saving is never blocked.
@@ -39,12 +41,12 @@ What is partner-gated: EDS's own "enhanced" checks. `IEdsEnhancedValidator` (`Op
 New:
 - `OpenDentBusiness/VendorDirect/Eds/EdsValidationModels.cs`: issue and result types, send decisions, `IEdsEnhancedValidator`.
 - `OpenDentBusiness/VendorDirect/Eds/EdsClaimSnapshot.cs`: the claim data the checks look at, read once from the database.
-- `OpenDentBusiness/VendorDirect/Eds/EdsClaimChecks.cs`: the local checks, NPI and taxonomy rules, reading EDS's answer.
-- `OpenDentBusiness/VendorDirect/Eds/EdsClaimValidation.cs`: gates, the GetMissingData hook, local and remote validation, decisions, re-validation merge, last result.
+- `OpenDentBusiness/VendorDirect/Eds/EdsClaimChecks.cs`: the local checks (including the narrative check of INFERRED 11), NPI and taxonomy rules, reading EDS's answer.
+- `OpenDentBusiness/VendorDirect/Eds/EdsClaimValidation.cs`: gates, the GetMissingData hook, local and remote validation, decisions, re-validation merge, last result, and the procedure codes EDS last said need a narrative.
 - `OpenDental/Logic/EdsValidationL.cs`: Edit Claim send and save, and Send Claims batch flows (progress window, validation window).
 - `OpenDental/Forms/FormEdsValidation.cs` and `.Designer.cs`: the validation window.
 - `OpenDental/Forms/FormClaimsSend.Eds.cs`: a partial-class file holding the batch hook.
-- `tests/VEDSTests/`: the test project (71 tests).
+- `tests/VEDSTests/`: the test project (78 tests).
 
 Changed (small, local hooks):
 - `OpenDentBusiness/Eclaims/Eclaims.cs`: one call at the end of `GetMissingData`.
@@ -59,8 +61,11 @@ Changed (small, local hooks):
 1. **The online check is the attachment validation.** The 26.1 note says only that EDS claims get stronger validation. The 24.3 manual says Send or Save on a new claim validates it with EDS, and the only EDS validation call known publicly is `validateattachment`. So that is the call made, now also on Send for existing claims and in batches.
 2. **The online check needs the attachment service.** It runs only with "Allow attachment send" on, because the call belongs to EDS's attachment service, and turning it on is the office's opt-in.
 3. **Severities.**
-   - Errors: NPI check digit; taxonomy missing or not in the 10-character format; payer ID blank or under 3 characters (the X12 writer would send the paper-claim ID); claim or procedure date in the future.
-   - Warnings: payer not on the EDS payer list, or listed as a paper payer or (for a dental claim) a medical payer; an attachment or narrative that EDS says the payer requires while the claim has none.
+   - Errors: NPI check digit; taxonomy missing or not in the 10-character format; claim or procedure date in the future.
+   - Warnings:
+     - payer ID blank or under 3 characters. Before this package such claims went out: the X12 writer sends the paper-claim payer ID 06126 (`X837_5010.GetCarrierElectID`), and the X12 validator does not flag it. New carriers default to sending electronically with a blank payer ID. As an error it would stop those claims in Edit Claim and Send Claims, block Add Attachment, and make `ClaimEditRequireNoMissingData` delete new claims. As a warning it is listed in the validation window, with Send Anyway, until the owner answers question 4;
+     - payer not on the EDS payer list, or listed as a paper payer or (for a dental claim) a medical payer;
+     - an attachment or narrative that EDS says the payer requires while the claim has none, and the local narrative check that repeats EDS's last answer (INFERRED 11).
    - EDS unreachable: the user decides (rule 5).
 4. **Reading EDS's answer.** `claimLevelResponse=true`, or a procedure with `response=true`, means "attachment required", as the 24.3 attachment window reads it. It counts as met once the claim has an EDS attachment ID or sent attachments. A required narrative counts as met by the claim's narrative or by sent attachments, because EDS sends narratives inside Narrative-type attachments. EDS's comments and attachment reasons go into the message.
 5. **No duplicates with the X12 validator.** When the clearinghouse uses an X12 format, the checks that `X837_5010.Validate` already makes are left to it: NPI format, subscriber ID present, and an override taxonomy whose length is not 10. EDS adds what it does not check: the NPI check digit (CMS's published Luhn rule with the 80840 prefix), the taxonomy format, the payer, and the dates.
@@ -75,10 +80,17 @@ Changed (small, local hooks):
    For EDS claims, this replaces the batch-wide "Not allowed to send e-claims with missing information" refusal.
 9. **Edit Claim Send.** For an EDS claim, the "Cannot send claim until missing/invalid data is fixed" message is replaced by the validation window, which lists the same text as one "Claim data" row, so there is one list (rule 3).
 10. **Payer list.** The payer-list checks run only when EDS payer rows exist (`electid.CommBridge=EDS`, written by `EDS.GetPayerList`). Nothing in the fork calls `EDS.GetPayerList` today (Open Dental ran it from its service), so on most databases these checks stay silent.
+11. **Which procedures need a narrative (rule 2).** No public source says which procedure codes need a narrative, and the fork has no such list: the procedure code table has no flag for it, and CDT descriptors may not be copied. EDS's attachment validation does say it, per procedure: a procedure answer with `response=true` and a Narrative document.
+    - **What is remembered.** Each time EDS answers for a claim, `EdsClaimValidation` keeps the procedure codes EDS named, per claim, on this workstation and in memory, as with the last result (INFERRED 7). The next answer replaces them. EDS's procID is the procedure's own code (`ProcedureCodes.GetForClaim`), so a line matches on that code or on the code sent.
+    - **The check.** `EdsClaimChecks.GetLocalIssues` gives a warning for each claim line with one of those codes while the claim has neither a narrative nor an attachment (the same test as EDS's own answer). The warning reaches Send Claims and Missing Info's Warnings without a network call, and stays listed when EDS is unreachable at the next send.
+    - **No duplicates.** When EDS answers again, its fresh answer replaces the local warning.
+    - **Default setup.** With the attachment service off, EDS is never asked, so the check stays silent.
+    - **Middle Tier.** `GetMissingData` runs on the server, which cannot see the workstation's memory. There the check runs only in the validation window flows (`ValidateLocal` runs on the workstation).
 
 ## Deviations from the spec
 
-- Rule 2 lists the checks without severities; they are chosen above (INFERRED 3).
+- Rule 2 lists the checks without severities; they are chosen above (INFERRED 3). The payer-ID check is a warning, not an error, so claims that went out before still go out.
+- Rule 2, "a narrative is present when a procedure code requires one": only partly local. The check runs locally in `GetMissingData`, but it knows which procedures need a narrative only from EDS's last answer for the claim (INFERRED 11). That answer needs the EDS attachment service, which is off by default, so by default the check never fires. A fully local check needs a list of codes that require a narrative, and no public source gives one (owner question 7).
 - Rule 4 "store": stored in memory, not in the database (INFERRED 7).
 - EDS's own 26.1 checks are not built (partner-gated). The rules are built around the documented attachment validation.
 
@@ -92,13 +104,13 @@ Changed (small, local hooks):
 
 ## Tests
 
-`tests/VEDSTests` (MSTest v1, x86, .NET 4.8; in `OpenDental.sln` and `OpenDental.Local.slnf`), 71 tests:
+`tests/VEDSTests` (MSTest v1, x86, .NET 4.8; in `OpenDental.sln` and `OpenDental.Local.slnf`), 78 tests:
 
 - **Pure:**
   - NPI check digit, cross-checked against CMS's formulation;
   - taxonomy format;
-  - every local check;
-  - reading synthetic EDS answers;
+  - every local check, including the payer-ID warning (no Missing Info, Send Anyway offered) and the narrative check from EDS's last answer;
+  - reading synthetic EDS answers, including the procedure codes that need a narrative;
   - send decisions;
   - re-validation merge;
   - the Missing Info round trip;
@@ -107,6 +119,8 @@ Changed (small, local hooks):
 - **Database** (a scratch `forkmig_*_veds` database: a fresh 24.3.63 database plus the fork migration runner, synthetic data only, dropped afterwards):
   - the snapshot from the database;
   - the `GetMissingData` hook, for EDS and for other clearinghouses, with and without X12;
+  - a blank or 2-character payer ID: Missing Info stays empty, including the new-claim call that `ClaimL.CreateClaim` makes, and the problem is a warning;
+  - the narrative check across validations. Silent before EDS answers. After an answer asks for a narrative, it is listed in `GetMissingData` Warnings and stays listed when EDS is down. A fresh answer lists it once. It is met by the claim's narrative and forgotten when EDS stops asking. It is silent with the attachment service off;
   - the EDS call through a scripted `HttpMessageHandler`:
     - the URL, the Basic header with the revealed office login, and the JSON body (password never in the body);
     - warnings from EDS;
@@ -133,6 +147,10 @@ Not tested: the windows themselves (FormEdsValidation, the Edit Claim and Send C
 1. Can the office get EDS's documentation (and a test login) for the validation EDS added for Open Dental 26.1? Until then, those checks are partner-gated.
 2. Should the online check also run when the EDS attachment service is off? Today it does not, because `validateattachment` belongs to that service.
 3. Nothing calls `EDS.GetPayerList` in the fork, so the payer-list checks rarely have a list to compare with. Add an "Update EDS payer list" action? `FormClearinghouseEdit` is not owned by this package.
-4. Severities: should a blank or too-short payer ID be an error (today) or a warning (claims go out with the paper-claim ID)?
+4. Severities: a blank or too-short payer ID is a **warning** today, so these claims still go out with the paper-claim ID 06126 as before. Should it be an error? An error goes into Missing Info. That stops the claim in Edit Claim and Send Claims and blocks Add Attachment. With "Require claims to have no missing data" on, it also makes claim creation refuse and delete the new claim.
 5. Should the last validation result survive a restart? That needs a new `EtransType` value or a column (foundation-owned).
 6. Send Claims window: keep XConnect's rule that Close still sends the claims without problems, or make Close cancel the whole send?
+7. Narratives (rule 2): no public source says which procedure codes need a narrative, so the local check only repeats EDS's last answer for the claim, and with the attachment service off it never fires. How should this be filled in? Options:
+   - the office keeps its own list, for example a new procedure-code flag or a preference (foundation-owned schema);
+   - EDS's answers are remembered per payer and procedure code across claims (and persisted, see question 5);
+   - the check stays as it is.

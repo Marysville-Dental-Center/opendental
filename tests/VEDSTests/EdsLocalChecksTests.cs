@@ -141,15 +141,65 @@ namespace VEDSTests {
 		}
 
 		[TestMethod]
-		public void PayerId_MissingOrTooShort_IsAnError() {
+		public void PayerId_MissingOrTooShort_IsAWarning() {
+			//A warning, not an error: X12 claims with a shorter payer ID go out with the paper-claim payer ID, as they did before EDS validation, and an
+			//error would also block claim creation (ClaimEditRequireNoMissingData) and the attachment buttons through Missing Info.
 			EdsClaimSnapshot snapshot=EdsTestData.MakeValidSnapshot();
 			snapshot.PayerId=" ";
-			EdsValidationIssue issue=EdsClaimChecks.GetLocalIssues(snapshot).Single();
+			List<EdsValidationIssue> listIssues=EdsClaimChecks.GetLocalIssues(snapshot);
+			EdsValidationIssue issue=listIssues.Single();
 			Assert.AreEqual(EdsClaimChecks.CHECK_PAYER_ID_MISSING,issue.CheckId);
-			Assert.AreEqual(EdsIssueSeverity.Error,issue.Severity);
+			Assert.AreEqual(EdsIssueSeverity.Warning,issue.Severity);
 			Assert.AreEqual("Carrier (Synthetic Carrier)",issue.Location);
+			Assert.AreEqual("",EdsClaimValidation.FormatErrorsForMissingData(listIssues),"Nothing goes into Missing Info.");
+			StringAssert.StartsWith(EdsClaimValidation.FormatWarningsForQueue(listIssues),"EDS: Carrier (Synthetic Carrier): ");
+			EdsValidationResult result=new EdsValidationResult { ClaimNum=11,ListIssues=listIssues };
+			Assert.AreEqual(EdsSendDecision.ConfirmWarnings,EdsClaimValidation.GetSendDecision(result),"Send Anyway is offered.");
 			snapshot.PayerId="ZZ";
-			Assert.AreEqual(EdsClaimChecks.CHECK_PAYER_ID_MISSING,EdsClaimChecks.GetLocalIssues(snapshot).Single().CheckId);
+			issue=EdsClaimChecks.GetLocalIssues(snapshot).Single();
+			Assert.AreEqual(EdsClaimChecks.CHECK_PAYER_ID_MISSING,issue.CheckId);
+			Assert.AreEqual(EdsIssueSeverity.Warning,issue.Severity);
+		}
+
+		[TestMethod]
+		public void Narrative_RequiredByEdsLastAnswer_IsAWarning_UntilTheClaimHasOne() {
+			EdsClaimSnapshot snapshot=EdsTestData.MakeValidSnapshot();
+			snapshot.ListProcCodesNarrativeRequiredByEds=new List<string> { "Z0002" };
+			EdsValidationIssue issue=EdsClaimChecks.GetLocalIssues(snapshot).Single();
+			Assert.AreEqual(EdsClaimChecks.CHECK_NARRATIVE_REQUIRED,issue.CheckId);
+			Assert.AreEqual(EdsIssueSeverity.Warning,issue.Severity);
+			Assert.AreEqual(EdsIssueSource.Local,issue.Source);
+			Assert.AreEqual("Procedure line 2 (Z0002)",issue.Location);
+			Assert.AreNotEqual("",issue.HowToFix);
+			snapshot.Narrative="Synthetic narrative text.";
+			Assert.AreEqual(0,EdsClaimChecks.GetLocalIssues(snapshot).Count,"The claim's narrative meets it.");
+			snapshot.Narrative=" ";
+			snapshot.AttachmentID="EDS-SYNTH-1";
+			Assert.AreEqual(0,EdsClaimChecks.GetLocalIssues(snapshot).Count,"EDS narratives travel in Narrative attachments.");
+			snapshot.AttachmentID="";
+			snapshot.CountAttachments=1;
+			Assert.AreEqual(0,EdsClaimChecks.GetLocalIssues(snapshot).Count);
+		}
+
+		[TestMethod]
+		public void Narrative_MatchesTheProcedureOwnCode_AndIgnoresCase() {
+			EdsClaimSnapshot snapshot=EdsTestData.MakeValidSnapshot();
+			snapshot.ListProcLines[0].ProcCode="Z9001";//The code sent differs from the procedure's own code, which EDS is asked about.
+			snapshot.ListProcLines[0].ProcCodeOfProcedure="Z0001";
+			snapshot.ListProcCodesNarrativeRequiredByEds=new List<string> { " z0001 " };
+			Assert.AreEqual("Procedure line 1 (Z9001)",EdsClaimChecks.GetLocalIssues(snapshot).Single().Location);
+			snapshot.ListProcCodesNarrativeRequiredByEds=new List<string> { "Z0003","" };
+			Assert.AreEqual(0,EdsClaimChecks.GetLocalIssues(snapshot).Count,"A code that is not on the claim.");
+		}
+
+		[TestMethod]
+		public void Narrative_NoEdsAnswer_NothingToCheck() {
+			//No public source says which procedure codes need a narrative; until EDS has answered for the claim the check has nothing to go on.
+			EdsClaimSnapshot snapshot=EdsTestData.MakeValidSnapshot();
+			snapshot.ListProcCodesNarrativeRequiredByEds=new List<string>();
+			Assert.AreEqual(0,EdsClaimChecks.GetLocalIssues(snapshot).Count);
+			snapshot.ListProcCodesNarrativeRequiredByEds=null;
+			Assert.AreEqual(0,EdsClaimChecks.GetLocalIssues(snapshot).Count);
 		}
 
 		[TestMethod]
