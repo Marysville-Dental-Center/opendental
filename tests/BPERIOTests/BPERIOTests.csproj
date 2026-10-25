@@ -3,7 +3,7 @@
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <!-- Tests for the Perio Chart (package B-PERIO in docs/specs/port-backlog.md): the auto Att Ging row, the implant marker after removal, the
        "Recession" term option and the birthdate on the printed Graphical Perio Chart. Database tests use a scratch MariaDB database with the
-       Open Dental 25.3.48 schema and synthetic rows only. Every .cs file under this folder is compiled. -->
+       current reference schema (Open Dental 26.1.70) and synthetic rows only. Every .cs file under this folder is compiled. -->
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">x86</Platform>

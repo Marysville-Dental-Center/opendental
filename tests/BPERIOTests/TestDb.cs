@@ -1,6 +1,6 @@
-// Scratch database for the Perio Chart tests, on the local MariaDB only (127.0.0.1:3306, root, blank password). It gets the Open Dental
-// 25.3.48 schema from the reference snapshot embedded in OpenDentBusiness (SchemaVerifier) and synthetic rows only; nothing here reads or copies
-// an office database. Same naming and clean-up pattern as tests/ForkMigrationTests/TestDb.cs. Database tests are skipped (inconclusive) when no
+// Scratch database for the Perio Chart tests, on the local MariaDB only (127.0.0.1:3306, root, blank password). It gets the current reference
+// schema (SchemaVerifier.GetReference(), the one the CRUD matches) from the snapshot embedded in OpenDentBusiness and synthetic rows only;
+// nothing here reads or copies an office database. Same naming and clean-up pattern as tests/ForkMigrationTests/TestDb.cs. Database tests are skipped (inconclusive) when no
 // server answers, or when BPERIO_TEST_DB=skip.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
@@ -70,7 +70,7 @@ namespace BPERIOTests {
 			//The server answers, so from here on a failure is a real failure, not a reason to skip.
 			DropStaleScratchDatabases();
 			using(MySqlConnection connection=OpenServer(DbName)) {
-				foreach(SchemaTable table in SchemaVerifier.GetReference25_3_48().Tables) {
+				foreach(SchemaTable table in SchemaVerifier.GetReference().Tables) {
 					Exec(connection,table.ToDdl());
 				}
 			}
