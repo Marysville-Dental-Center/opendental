@@ -36,26 +36,7 @@ namespace OpenDental {
 			this.textDiscountPercentage = new System.Windows.Forms.TextBox();
 			this.labelDiscountPercentage = new System.Windows.Forms.Label();
 			this.groupBoxInsuranceHistory = new OpenDental.UI.GroupBox();
-			this.textInsHistBW = new System.Windows.Forms.TextBox();
-			this.labelInsHistPerioUR = new System.Windows.Forms.Label();
-			this.labelInsHistPerioUL = new System.Windows.Forms.Label();
-			this.labelInsHistPerioLR = new System.Windows.Forms.Label();
-			this.labelInsHistProphy = new System.Windows.Forms.Label();
-			this.labelInsHistPerioLL = new System.Windows.Forms.Label();
-			this.textInsHistProphy = new System.Windows.Forms.TextBox();
-			this.labelInsHistDebridement = new System.Windows.Forms.Label();
-			this.labelInsHistPerioMaint = new System.Windows.Forms.Label();
-			this.labelInsHistBW = new System.Windows.Forms.Label();
-			this.labelInsHistExam = new System.Windows.Forms.Label();
-			this.textInsHistFMX = new System.Windows.Forms.TextBox();
-			this.textInsHistPerioLR = new System.Windows.Forms.TextBox();
-			this.textInsHistExam = new System.Windows.Forms.TextBox();
-			this.textInsHistDebridement = new System.Windows.Forms.TextBox();
-			this.textInsHistPerioMaint = new System.Windows.Forms.TextBox();
-			this.textInsHistPerioUL = new System.Windows.Forms.TextBox();
-			this.labelInsHistFMX = new System.Windows.Forms.Label();
-			this.textInsHistPerioLL = new System.Windows.Forms.TextBox();
-			this.textInsHistPerioUR = new System.Windows.Forms.TextBox();
+			this.labelInsHistCodeGroups = new System.Windows.Forms.Label();
 			this.groupTreatPlanSort = new OpenDental.UI.GroupBox();
 			this.radioTreatPlanSortTooth = new System.Windows.Forms.RadioButton();
 			this.radioTreatPlanSortOrder = new System.Windows.Forms.RadioButton();
@@ -175,211 +156,20 @@ namespace OpenDental {
 			// 
 			// groupBoxInsuranceHistory
 			// 
-			this.groupBoxInsuranceHistory.Controls.Add(this.textInsHistBW);
-			this.groupBoxInsuranceHistory.Controls.Add(this.labelInsHistPerioUR);
-			this.groupBoxInsuranceHistory.Controls.Add(this.labelInsHistPerioUL);
-			this.groupBoxInsuranceHistory.Controls.Add(this.labelInsHistPerioLR);
-			this.groupBoxInsuranceHistory.Controls.Add(this.labelInsHistProphy);
-			this.groupBoxInsuranceHistory.Controls.Add(this.labelInsHistPerioLL);
-			this.groupBoxInsuranceHistory.Controls.Add(this.textInsHistProphy);
-			this.groupBoxInsuranceHistory.Controls.Add(this.labelInsHistDebridement);
-			this.groupBoxInsuranceHistory.Controls.Add(this.labelInsHistPerioMaint);
-			this.groupBoxInsuranceHistory.Controls.Add(this.labelInsHistBW);
-			this.groupBoxInsuranceHistory.Controls.Add(this.labelInsHistExam);
-			this.groupBoxInsuranceHistory.Controls.Add(this.textInsHistFMX);
-			this.groupBoxInsuranceHistory.Controls.Add(this.textInsHistPerioLR);
-			this.groupBoxInsuranceHistory.Controls.Add(this.textInsHistExam);
-			this.groupBoxInsuranceHistory.Controls.Add(this.textInsHistDebridement);
-			this.groupBoxInsuranceHistory.Controls.Add(this.textInsHistPerioMaint);
-			this.groupBoxInsuranceHistory.Controls.Add(this.textInsHistPerioUL);
-			this.groupBoxInsuranceHistory.Controls.Add(this.labelInsHistFMX);
-			this.groupBoxInsuranceHistory.Controls.Add(this.textInsHistPerioLL);
-			this.groupBoxInsuranceHistory.Controls.Add(this.textInsHistPerioUR);
+			this.groupBoxInsuranceHistory.Controls.Add(this.labelInsHistCodeGroups);
 			this.groupBoxInsuranceHistory.Location = new System.Drawing.Point(20, 309);
 			this.groupBoxInsuranceHistory.Name = "groupBoxInsuranceHistory";
-			this.groupBoxInsuranceHistory.Size = new System.Drawing.Size(450, 256);
+			this.groupBoxInsuranceHistory.Size = new System.Drawing.Size(450, 56);
 			this.groupBoxInsuranceHistory.TabIndex = 273;
 			this.groupBoxInsuranceHistory.Text = "Insurance History";
 			// 
-			// textInsHistBW
+			// labelInsHistCodeGroups
 			// 
-			this.textInsHistBW.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.textInsHistBW.Location = new System.Drawing.Point(341, 10);
-			this.textInsHistBW.Name = "textInsHistBW";
-			this.textInsHistBW.Size = new System.Drawing.Size(99, 20);
-			this.textInsHistBW.TabIndex = 253;
-			// 
-			// labelInsHistPerioUR
-			// 
-			this.labelInsHistPerioUR.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.labelInsHistPerioUR.Location = new System.Drawing.Point(197, 229);
-			this.labelInsHistPerioUR.Name = "labelInsHistPerioUR";
-			this.labelInsHistPerioUR.Size = new System.Drawing.Size(143, 17);
-			this.labelInsHistPerioUR.TabIndex = 268;
-			this.labelInsHistPerioUR.Text = "Perio Scaling UR Code";
-			this.labelInsHistPerioUR.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// labelInsHistPerioUL
-			// 
-			this.labelInsHistPerioUL.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.labelInsHistPerioUL.Location = new System.Drawing.Point(197, 205);
-			this.labelInsHistPerioUL.Name = "labelInsHistPerioUL";
-			this.labelInsHistPerioUL.Size = new System.Drawing.Size(143, 17);
-			this.labelInsHistPerioUL.TabIndex = 269;
-			this.labelInsHistPerioUL.Text = "Perio Scaling UL Code";
-			this.labelInsHistPerioUL.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// labelInsHistPerioLR
-			// 
-			this.labelInsHistPerioLR.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.labelInsHistPerioLR.Location = new System.Drawing.Point(197, 181);
-			this.labelInsHistPerioLR.Name = "labelInsHistPerioLR";
-			this.labelInsHistPerioLR.Size = new System.Drawing.Size(143, 17);
-			this.labelInsHistPerioLR.TabIndex = 271;
-			this.labelInsHistPerioLR.Text = "Perio Scaling LR Code";
-			this.labelInsHistPerioLR.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// labelInsHistProphy
-			// 
-			this.labelInsHistProphy.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.labelInsHistProphy.Location = new System.Drawing.Point(197, 85);
-			this.labelInsHistProphy.Name = "labelInsHistProphy";
-			this.labelInsHistProphy.Size = new System.Drawing.Size(143, 17);
-			this.labelInsHistProphy.TabIndex = 272;
-			this.labelInsHistProphy.Text = "Prophylaxis Code";
-			this.labelInsHistProphy.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// labelInsHistPerioLL
-			// 
-			this.labelInsHistPerioLL.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.labelInsHistPerioLL.Location = new System.Drawing.Point(197, 157);
-			this.labelInsHistPerioLL.Name = "labelInsHistPerioLL";
-			this.labelInsHistPerioLL.Size = new System.Drawing.Size(143, 17);
-			this.labelInsHistPerioLL.TabIndex = 270;
-			this.labelInsHistPerioLL.Text = "Perio Scaling LL Code";
-			this.labelInsHistPerioLL.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// textInsHistProphy
-			// 
-			this.textInsHistProphy.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.textInsHistProphy.Location = new System.Drawing.Point(341, 82);
-			this.textInsHistProphy.Name = "textInsHistProphy";
-			this.textInsHistProphy.Size = new System.Drawing.Size(99, 20);
-			this.textInsHistProphy.TabIndex = 256;
-			// 
-			// labelInsHistDebridement
-			// 
-			this.labelInsHistDebridement.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.labelInsHistDebridement.Location = new System.Drawing.Point(197, 109);
-			this.labelInsHistDebridement.Name = "labelInsHistDebridement";
-			this.labelInsHistDebridement.Size = new System.Drawing.Size(143, 17);
-			this.labelInsHistDebridement.TabIndex = 265;
-			this.labelInsHistDebridement.Text = "Full Debridement Code";
-			this.labelInsHistDebridement.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// labelInsHistPerioMaint
-			// 
-			this.labelInsHistPerioMaint.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.labelInsHistPerioMaint.Location = new System.Drawing.Point(197, 133);
-			this.labelInsHistPerioMaint.Name = "labelInsHistPerioMaint";
-			this.labelInsHistPerioMaint.Size = new System.Drawing.Size(143, 17);
-			this.labelInsHistPerioMaint.TabIndex = 266;
-			this.labelInsHistPerioMaint.Text = "Perio Maintenance Code";
-			this.labelInsHistPerioMaint.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// labelInsHistBW
-			// 
-			this.labelInsHistBW.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.labelInsHistBW.Location = new System.Drawing.Point(197, 13);
-			this.labelInsHistBW.Name = "labelInsHistBW";
-			this.labelInsHistBW.Size = new System.Drawing.Size(143, 17);
-			this.labelInsHistBW.TabIndex = 263;
-			this.labelInsHistBW.Text = "Bitewing Code";
-			this.labelInsHistBW.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// labelInsHistExam
-			// 
-			this.labelInsHistExam.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.labelInsHistExam.Location = new System.Drawing.Point(197, 61);
-			this.labelInsHistExam.Name = "labelInsHistExam";
-			this.labelInsHistExam.Size = new System.Drawing.Size(143, 17);
-			this.labelInsHistExam.TabIndex = 264;
-			this.labelInsHistExam.Text = "Exam Code";
-			this.labelInsHistExam.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// textInsHistFMX
-			// 
-			this.textInsHistFMX.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.textInsHistFMX.Location = new System.Drawing.Point(341, 34);
-			this.textInsHistFMX.Name = "textInsHistFMX";
-			this.textInsHistFMX.Size = new System.Drawing.Size(99, 20);
-			this.textInsHistFMX.TabIndex = 254;
-			// 
-			// textInsHistPerioLR
-			// 
-			this.textInsHistPerioLR.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.textInsHistPerioLR.Location = new System.Drawing.Point(341, 178);
-			this.textInsHistPerioLR.Name = "textInsHistPerioLR";
-			this.textInsHistPerioLR.Size = new System.Drawing.Size(99, 20);
-			this.textInsHistPerioLR.TabIndex = 260;
-			// 
-			// textInsHistExam
-			// 
-			this.textInsHistExam.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.textInsHistExam.Location = new System.Drawing.Point(341, 58);
-			this.textInsHistExam.Name = "textInsHistExam";
-			this.textInsHistExam.Size = new System.Drawing.Size(99, 20);
-			this.textInsHistExam.TabIndex = 255;
-			// 
-			// textInsHistDebridement
-			// 
-			this.textInsHistDebridement.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.textInsHistDebridement.Location = new System.Drawing.Point(341, 106);
-			this.textInsHistDebridement.Name = "textInsHistDebridement";
-			this.textInsHistDebridement.Size = new System.Drawing.Size(99, 20);
-			this.textInsHistDebridement.TabIndex = 257;
-			// 
-			// textInsHistPerioMaint
-			// 
-			this.textInsHistPerioMaint.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.textInsHistPerioMaint.Location = new System.Drawing.Point(341, 130);
-			this.textInsHistPerioMaint.Name = "textInsHistPerioMaint";
-			this.textInsHistPerioMaint.Size = new System.Drawing.Size(99, 20);
-			this.textInsHistPerioMaint.TabIndex = 258;
-			// 
-			// textInsHistPerioUL
-			// 
-			this.textInsHistPerioUL.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.textInsHistPerioUL.Location = new System.Drawing.Point(341, 202);
-			this.textInsHistPerioUL.Name = "textInsHistPerioUL";
-			this.textInsHistPerioUL.Size = new System.Drawing.Size(99, 20);
-			this.textInsHistPerioUL.TabIndex = 261;
-			// 
-			// labelInsHistFMX
-			// 
-			this.labelInsHistFMX.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.labelInsHistFMX.Location = new System.Drawing.Point(197, 37);
-			this.labelInsHistFMX.Name = "labelInsHistFMX";
-			this.labelInsHistFMX.Size = new System.Drawing.Size(143, 17);
-			this.labelInsHistFMX.TabIndex = 267;
-			this.labelInsHistFMX.Text = "Pano/FMX Code";
-			this.labelInsHistFMX.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// textInsHistPerioLL
-			// 
-			this.textInsHistPerioLL.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.textInsHistPerioLL.Location = new System.Drawing.Point(341, 154);
-			this.textInsHistPerioLL.Name = "textInsHistPerioLL";
-			this.textInsHistPerioLL.Size = new System.Drawing.Size(99, 20);
-			this.textInsHistPerioLL.TabIndex = 259;
-			// 
-			// textInsHistPerioUR
-			// 
-			this.textInsHistPerioUR.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.textInsHistPerioUR.Location = new System.Drawing.Point(341, 226);
-			this.textInsHistPerioUR.Name = "textInsHistPerioUR";
-			this.textInsHistPerioUR.Size = new System.Drawing.Size(99, 20);
-			this.textInsHistPerioUR.TabIndex = 262;
+			this.labelInsHistCodeGroups.Location = new System.Drawing.Point(10, 13);
+			this.labelInsHistCodeGroups.Name = "labelInsHistCodeGroups";
+			this.labelInsHistCodeGroups.Size = new System.Drawing.Size(430, 34);
+			this.labelInsHistCodeGroups.TabIndex = 253;
+			this.labelInsHistCodeGroups.Text = "Insurance History rows and their procedure codes are set in Setup, Code Groups: check Show In History on a code group and give it a History Proc Code.";
 			// 
 			// groupTreatPlanSort
 			// 
@@ -471,27 +261,8 @@ namespace OpenDental {
 		private OpenDental.UI.CheckBox checkTreatPlanShowCompleted;
 		private System.Windows.Forms.TextBox textDiscountPercentage;
 		private OpenDental.UI.CheckBox checkTreatPlanItemized;
-		private System.Windows.Forms.TextBox textInsHistProphy;
-		private System.Windows.Forms.Label labelInsHistProphy;
-		private System.Windows.Forms.Label labelInsHistBW;
-		private System.Windows.Forms.TextBox textInsHistPerioLR;
-		private System.Windows.Forms.TextBox textInsHistDebridement;
-		private System.Windows.Forms.Label labelInsHistPerioLR;
-		private System.Windows.Forms.Label labelInsHistExam;
-		private System.Windows.Forms.TextBox textInsHistPerioLL;
-		private System.Windows.Forms.TextBox textInsHistBW;
-		private System.Windows.Forms.Label labelInsHistPerioLL;
-		private System.Windows.Forms.Label labelInsHistDebridement;
-		private System.Windows.Forms.TextBox textInsHistPerioUL;
-		private System.Windows.Forms.TextBox textInsHistExam;
-		private System.Windows.Forms.Label labelInsHistPerioUL;
-		private System.Windows.Forms.Label labelInsHistPerioMaint;
-		private System.Windows.Forms.TextBox textInsHistPerioUR;
-		private System.Windows.Forms.TextBox textInsHistPerioMaint;
-		private System.Windows.Forms.Label labelInsHistPerioUR;
-		private System.Windows.Forms.Label labelInsHistFMX;
-		private System.Windows.Forms.TextBox textInsHistFMX;
 		private UI.GroupBox groupBoxInsuranceHistory;
+		private System.Windows.Forms.Label labelInsHistCodeGroups;
 		private UI.GroupBox groupBoxDiscounts;
 		private UI.GroupBox groupTreatPlan;
 	}

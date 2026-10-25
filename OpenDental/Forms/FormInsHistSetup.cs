@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Globalization;
 using System.Linq;
 using System.Windows.Forms;
@@ -7,6 +8,8 @@ using CodeBase;
 using OpenDentBusiness;
 
 namespace OpenDental {
+	///<summary>Insurance History. From Open Dental 26.1 the rows come from code groups marked Show In History (InsHistCategories), one per group and
+	///four for a Perio Four Quadrants group, in code group order. Before 26.1 there were ten fixed rows whose codes came from preferences.</summary>
 	public partial class FormInsHistSetup:FormODBase {
 		private Patient _patient;
 		///<summary>EO and C procedures associated with the InsHist and Received claimprocs for the inssub passed into the constructor.</summary>
@@ -15,7 +18,12 @@ namespace OpenDental {
 		private List<ClaimProc> _listClaimProcsForEoAndCProcs;
 		private InsSub _insSub;
 		private const string NO_INSHIST="No History";
-		private const string NO_INSHISTSET="Not Set";
+		///<summary>The rows, built from the code group cache when the window is created.</summary>
+		private List<InsHistCategory> _listInsHistCategories;
+		///<summary>One date box per row, in the order of _listInsHistCategories. Each box's Tag is its InsHistCategory.</summary>
+		private List<TextBox> _listTextBoxes=new List<TextBox>();
+		private const int ROW_TOP=51;
+		private const int ROW_HEIGHT=22;
 
 		//1. Find claiprocs for current plan
 		//2. Find EO and C procs for claimprocs on current plan
@@ -23,7 +31,7 @@ namespace OpenDental {
 		//4. Fill in date info based on EO or C proc list
 		//5. On OK click, fetch all claimprocs for EO and C procs
 			//5a. Date filled, no matching EO or C proc - User entered date themselves, make new proc with claimproc status inshist
-			//5b. Date filled, matching EO or C proc and user changed the date.- 
+			//5b. Date filled, matching EO or C proc and user changed the date.-
 				//Modify proc and claimproc for that category ONLY if the proc has a status of EO to be the date specified
 				//If the proc has a status of C and the new date is greater than the the current ProcDate, create a new EO procedure and InsHist ClaimProc with the new date entered.
 			//5c. No date, no proc - Do nothing
@@ -31,10 +39,48 @@ namespace OpenDental {
 
 		public FormInsHistSetup(long patNum,InsSub insSub) {
 			InitializeComponent();
+			AddCategoryRows();//Before the layout manager, so the rows are scaled like controls from the designer.
 			InitializeLayoutManager();
 			Lan.F(this);
 			_patient=Patients.GetPat(patNum);
 			_insSub=insSub;
+		}
+
+		///<summary>Adds a label and a date box for each row, or a note when no code group is marked Show In History, and sizes the window to fit.</summary>
+		private void AddCategoryRows() {
+			_listInsHistCategories=InsHistCategories.GetAll();
+			int y=ROW_TOP;
+			for(int i=0;i<_listInsHistCategories.Count;i++) {
+				Label label=new Label();
+				label.Location=new Point(7,y+2);
+				label.Size=new Size(138,17);
+				label.Text=_listInsHistCategories[i].Description;
+				label.TextAlign=ContentAlignment.MiddleRight;
+				label.Name="labelInsHist"+i;
+				Controls.Add(label);
+				TextBox textBox=new TextBox();
+				textBox.Location=new Point(146,y);
+				textBox.Size=new Size(96,20);
+				textBox.Name="textDateInsHist"+i;
+				textBox.TabIndex=i;
+				textBox.Tag=_listInsHistCategories[i];
+				textBox.Validating+=TextBoxValidating;
+				Controls.Add(textBox);
+				_listTextBoxes.Add(textBox);
+				y+=ROW_HEIGHT;
+			}
+			if(_listInsHistCategories.Count==0) {
+				Label labelNone=new Label();
+				labelNone.Location=new Point(12,y);
+				labelNone.Size=new Size(379,33);
+				labelNone.Text=Lan.g(this,"No code group is marked Show In History. Set up the rows in Setup, Code Groups.");
+				labelNone.Name="labelNoCategories";
+				Controls.Add(labelNone);
+				y+=40;
+			}
+			butSave.TabIndex=_listInsHistCategories.Count;
+			butSave.Location=new Point(306,y+2);
+			ClientSize=new Size(393,y+38);
 		}
 
 		private void FormInsHistSetup_Load(object sender,EventArgs e) {
@@ -58,68 +104,31 @@ namespace OpenDental {
 			}
 			//Remove all procedures that are not associate with this inssub.
 			_listProceduresEoAndC.RemoveAll(x => !x.ProcNum.In(listProcNums.ToArray()));
-			//Update the text property for each text box control that represents each InsHistPref.
-			List<Pref> listPrefs=Prefs.GetInsHistPrefs();
-			List<PrefName> listPrefNames=Prefs.GetInsHistPrefNames();
-			for(int i=0;i<listPrefNames.Count;i++) {
-				//Check to see if this InsHistPref has been set by the user.
-				bool isPrefSet=listPrefs.Exists(x => x.PrefName==listPrefNames[i].ToString() && !string.IsNullOrWhiteSpace(x.ValueString));
-				TextBox textBox=GetControlForPrefName(listPrefNames[i]);
-				if(!isPrefSet) {
-					//The user has not set this InsHistPref up.
-					textBox.Text=NO_INSHISTSET;
-					textBox.Enabled=false;
-					continue;
-				}
-				//The user has correctly set this InsHistPref up.
-				//Update the text box with the most recent procedure date that this inssub
-				List<long> listCodeNums=ProcedureCodes.GetCodeNumsForInsHistPref(listPrefNames[i]);
-				Procedure procedure=Procedures.GetMostRecentInsHistProc(_listProceduresEoAndC,listCodeNums,listPrefNames[i]);
+			//Show the most recent history date of each row for this inssub.
+			for(int i=0;i<_listTextBoxes.Count;i++) {
+				Procedure procedure=InsHistCategories.GetMostRecentProc(_listProceduresEoAndC,_listInsHistCategories[i]);
 				if(procedure!=null && procedure.ProcDate.Year > 1880) {
-					textBox.Text=procedure.ProcDate.ToShortDateString();
+					_listTextBoxes[i].Text=procedure.ProcDate.ToShortDateString();
 				}
 				else {
-					textBox.Text=NO_INSHIST;
+					_listTextBoxes[i].Text=Lan.g(this,NO_INSHIST);
 				}
 			}
 		}
-		
-		///<summary>Returns the text box control corresponding to the given procType</summary>
-		private TextBox GetControlForPrefName(PrefName prefName) {
-			switch(prefName) {
-				case PrefName.InsHistExamCodes:
-					return textDateExam;
-				case PrefName.InsHistProphyCodes:
-					return textDateProphy;
-				case PrefName.InsHistBWCodes:
-					return textDateBW;
-				case PrefName.InsHistPanoCodes:
-					return textDateFmxPano;
-				case PrefName.InsHistPerioURCodes:
-					return textDatePerioScalingUR;
-				case PrefName.InsHistPerioULCodes:
-					return textDatePerioScalingUL;
-				case PrefName.InsHistPerioLRCodes:
-					return textDatePerioScalingLR;
-				case PrefName.InsHistPerioLLCodes:
-					return textDatePerioScalingLL;
-				case PrefName.InsHistPerioMaintCodes:
-					return textDatePerioMaint;
-				case PrefName.InsHistDebridementCodes:
-					return textDateDebridgement;
-				default:
-					return null;
-			}
+
+		///<summary>True when the box holds no date to save: empty or the "No History" text.</summary>
+		private bool IsNoHistory(TextBox textBox) {
+			string text=textBox.Text.Trim();
+			return text==NO_INSHIST || text==Lan.g(this,NO_INSHIST);
 		}
 
 		///<summary></summary>
 		private bool IsValid() {
 			DateTime dateEntry;
-			List<PrefName> listPrefNames = Prefs.GetInsHistPrefNames();
-			for(int i=0;i<listPrefNames.Count;i++){
-				TextBox textBox=GetControlForPrefName(listPrefNames[i]);
+			for(int i=0;i<_listTextBoxes.Count;i++){
+				TextBox textBox=_listTextBoxes[i];
 				//Continue if no date is entered or the date entered is valid.
-				if(!textBox.Enabled || string.IsNullOrEmpty(textBox.Text) || textBox.Text.Trim()==NO_INSHIST) {
+				if(!textBox.Enabled || string.IsNullOrEmpty(textBox.Text) || IsNoHistory(textBox)) {
 					continue;
 				}
 				if(!DateTime.TryParse(textBox.Text,out dateEntry)) {
@@ -141,7 +150,7 @@ namespace OpenDental {
 			}
 			TextBox textBox=(TextBox)sender;
 			//If its disabled, empty or the default text return.
-			if(!textBox.Enabled || string.IsNullOrEmpty(textBox.Text) || textBox.Text.Trim()==NO_INSHIST) {
+			if(!textBox.Enabled || string.IsNullOrEmpty(textBox.Text) || IsNoHistory(textBox)) {
 				return;
 			}
 			bool allNums=true;
@@ -179,18 +188,17 @@ namespace OpenDental {
 			if(!IsValid()) {
 				return;
 			}
-			string error="";
+			List<string> listInvalidCodes=new List<string>();
 			List<Procedure> listProceduresToDelete=new List<Procedure>();
-			List<PrefName> listPrefNames = Prefs.GetInsHistPrefNames();
-			for(int i=0;i<listPrefNames.Count;i++){
-				TextBox textBox=GetControlForPrefName(listPrefNames[i]);
-				if(!textBox.Enabled || textBox.Text.Trim()==NO_INSHIST) {
+			for(int i=0;i<_listTextBoxes.Count;i++){
+				TextBox textBox=_listTextBoxes[i];
+				InsHistCategory insHistCategory=_listInsHistCategories[i];
+				if(!textBox.Enabled || IsNoHistory(textBox)) {
 					continue;
 				}
-				List<long> listCodeNumsForPref=ProcedureCodes.GetCodeNumsForInsHistPref(listPrefNames[i]);
-				Procedure procedure=Procedures.GetMostRecentInsHistProc(_listProceduresEoAndC,listCodeNumsForPref,listPrefNames[i]);
+				Procedure procedure=InsHistCategories.GetMostRecentProc(_listProceduresEoAndC,insHistCategory);
 				if(string.IsNullOrWhiteSpace(textBox.Text)) {
-					if(procedure!=null && procedure.ProcStatus==ProcStat.EO) {//Only delete EO procedures
+					if(procedure!=null && procedure.ProcStatus==ProcStat.EO && !listProceduresToDelete.Contains(procedure)) {//Only delete EO procedures
 						listProceduresToDelete.Add(procedure);//Delete proc if user deleted procedure date from textbox.
 					}
 					continue;
@@ -201,11 +209,11 @@ namespace OpenDental {
 					//Get all of the claimprocs for this procedure.
 					listClaimProcs=_listClaimProcsForEoAndCProcs.FindAll(x => x.ProcNum==procedure.ProcNum);
 				}
-				if(ProcedureCodes.GetByInsHistPref(listPrefNames[i]).CodeNum==0) {
-					error="One or more insurance history preferences has an invaid procedure code. Please check in the Treatment Plan module preferences for any invalid codes.";
-					continue;//Don't create an Existing Other procedure log for an invalid code
+				InsHistSaveResult insHistSaveResult=InsHistCategories.InsertOrUpdateProcedure(_patient,insHistCategory,dateEntered,_insSub.PlanNum,
+					_insSub.InsSubNum,procedure,listClaimProcs);
+				if(insHistSaveResult==InsHistSaveResult.InvalidCode) {
+					listInvalidCodes.Add(insHistCategory.Description);//Don't create an Existing Other procedure log for an invalid code
 				}
-				Procedures.InsertOrUpdateInsHistProcedure(_patient,listPrefNames[i],dateEntered,_insSub.PlanNum,_insSub.InsSubNum,procedure,listClaimProcs);
 			}
 			if(listProceduresToDelete.Count>0
 				&& !MsgBox.Show(this,MsgBoxButtons.YesNo,"Deleting the last procedure date for a category will delete the Existing Other procedure with that date for this patient.  Continue?"))
@@ -217,12 +225,13 @@ namespace OpenDental {
 					Procedures.Delete(listProceduresToDelete[i].ProcNum);
 				}
 				catch(Exception ex) {
-					//Tried deleting the procedure. Do nothing. 
+					//Tried deleting the procedure. Do nothing.
 					ex.DoNothing();
 				}
 			}
-			if(!error.IsNullOrEmpty()) {
-				MsgBox.Show(error);
+			if(listInvalidCodes.Count>0) {
+				MessageBox.Show(this,Lan.g(this,"These rows have no valid History Proc Code, so their dates were not saved. Fix the code in Setup, Code Groups:")
+					+"\r\n"+string.Join("\r\n",listInvalidCodes));
 			}
 			DialogResult=DialogResult.OK;
 		}
