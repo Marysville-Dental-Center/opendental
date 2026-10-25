@@ -1,0 +1,119 @@
+# Port note: V-GP, Global Payments V1 rename and Global Payments V2
+
+Branch `port/v-gp`, cut from `port/foundation` (M2-01 and M2-02 merged). Built in the single-wave run. Backlog section: [port-backlog.md, V-GP](../specs/port-backlog.md#v-gp-global-payments-v1-rename-and-v2). Feature specs: [features-25.4.md](../specs/features-25.4.md) (`v25_4-payments-globalpayments-v2`, `v25_4-payments-globalpayments-v1-rename`).
+
+## Sources
+
+Public material only. No Open Dental program was installed, observed or decompiled; no office data was used; every test uses synthetic data and a fake HTTP handler (no call reaches Global Payments).
+
+- Open Dental: the 25.4 release notes and public setup pages as summarized in the feature spec, and https://www.opendental.com/site/globalpaymentsv2setup.html (field list only). The published database documents (`OpenDentalDocumentation26-1.xml`): `CreditCardSource` 23 `MeetInTheCloudTerminal` ("MeetInTheCloud (UI: Global Payments V2) payment via terminal"), 25 and 26 (Payment Portal, excluded), `payterminal.CCIntegration` ("Credit Card integration associated with the pay terminal (e.g. PayConnect)"), `computerpref.CreditCardTerminalId` ("Also used by MeetInTheCloud (UI: Global Payments V2)"), `creditcard.XChargeToken` ("Used for GlobalPayments/EdgeExpress (UI: Global Payments V1) as well").
+- Global Payments' public developer documentation (developer.globalpayments.com, read 2026-10-25): "Create an Access Token" and the Access Token API reference (`POST /ucp/accesstoken`, `app_id`, `nonce`, `secret` = SHA-512 of nonce + app key, `grant_type=client_credentials`, `X-GP-Version: 2021-03-22`, sandbox `apis.sandbox.globalpay.com`, production `apis.globalpay.com`, `scope.accounts`, `seconds_to_expire`); "Cloud Integration" (`POST /ucp/device_commands` with `device_reference`, `action_type` AUTHORIZE / REFUND / TRANSACTION_LIST / PING, `transaction.amount`, the `DVC_` command ID, statuses INITIATED and COMPLETED, results usually within seconds and up to about 50 seconds); the Transactions API reference (`POST /ucp/transactions` with the required `account_name`, `channel`, `country`, `amount` in minor units, `currency`, `reference` 8-50 characters, `payment_method`; `POST /transactions/{id}/reversal`; the status list CAPTURED / DECLINED / REVERSED / ...; the `X-GP-Idempotency` header).
+- Nothing was copied: names, numbers and request shapes only; all text is this fork's.
+
+## Features
+
+| Feature ID | Status | Notes |
+|---|---|---|
+| `v25_4-payments-globalpayments-v1-rename` | built | Display rename only (owner: EdgeExpress itself stays partner-gated). `ProgramName.EdgeExpress`, the `program.ProgName` and every property row are unchanged. The setup window ("Global Payments V1 Setup"), the transaction types window, the payment window button, receipts' audit text, messages that point at Program Links, recurring-charge notes, the Credit Card Manage and recurring-charge grid columns, the card-processor choice when adding a card, and the token label in the card list say "Global Payments V1". The program row's description is renamed when Setup > Program Links opens (`GlobalPaymentsV1ProgramLinkSetup`), only while it still holds Open Dental's 24.3 default. The one-processor rule is enforced on its Save. |
+| `v25_4-payments-globalpayments-v2` | partial | Built: the program link (hidden until enabled), setup per clinic, terminals, terminal sales and refunds through Global Payments' Cloud Integration, sales and refunds on saved cards and voids through the Transactions API, saving a card when Global Payments returns a reusable payment method, recurring charges, receipts, security log, duplicate checks, the one-processor rule, the last terminal per workstation, Credit Card Manage and recurring-charge columns. Partner-gated (needs Global Payments documentation or credentials): saving a card on a terminal without a charge, the exact shape of a finished device-command answer, and whether Open Dental's single "Account Credential" is something an office can get for a direct integration. See "Partner-gated" below. |
+
+## What was built
+
+### Business layer (`OpenDentBusiness/VendorDirect/GlobalPayments/`, compiled by the existing `VendorDirect\**` wildcard)
+
+- `GlobalPaymentsV2.cs`: the program link (`ProgramName.MeetInTheCloud`, row inserted at runtime with `Enabled=0`, description "Global Payments V2"), its programproperty rows, `GetConfig(clinicNum)`, `IsConfigured`, `ShowButton`, terminals, the one-processor rule (`GetEnabledExclusiveConflicts`, `GetExclusiveConflictMessage`), duplicate checks, `SaveCard`, and the note, receipt and security-log text. `GlobalPaymentsV1`: the rename of the program row's description.
+  - Settings, per clinic with Headquarters (ClinicNum 0) as the default: `GlobalPaymentsV2AppId`, `GlobalPaymentsV2AppKey` (CodeBase Secrets `osd1$`, masked, high security; an unreadable value counts as not set, a plain value typed into the generic editor is accepted and encrypted on the next save), `GlobalPaymentsV2AccountName`, `PaymentType` (same name as PayConnect's and X-Charge's row, so `RecurringChargerator.CreatePayment` and the Definitions window's "payment type in use" check find it), `GlobalPaymentsV2PrintReceipt`, `GlobalPaymentsV2PreventSavingNewCC`, `GlobalPaymentsV2ForceRecurringCharge`; practice level: `GlobalPaymentsV2UseSandbox`.
+  - A clinic with its own App ID uses its own App ID, App Key and account name; any other clinic uses Headquarters' three (never a mix). The other settings fall back to Headquarters one by one.
+- `GpV2Client.cs`: the HTTP client. One `VendorHttp` client per host (only `apis.globalpay.com` and `apis.sandbox.globalpay.com`, HTTPS, no Open Dental host), every call a POST and never retried, the access token in memory only (`TokenCache`, refreshed 5 minutes before expiry, one new token and one resend on a 401), the app key never sent (only the SHA-512 secret), `X-GP-Idempotency` on Transactions API calls, redacted log lines only (endpoint, status; never a body, token, key or card token).
+- `GlobalPaymentsV2Results.cs`: `GlobalPaymentsV2Result` and a lenient reader of Global Payments' answers (`GpV2Json`): pending detection for device commands, the outcome (approved, declined, failed, cancelled, timed out, unknown), card brand, last four digits, auth code, entry mode, the reusable payment method (`PMT_...` only), expiry.
+- `GpV2Transactions.cs`: one transaction start to finish. A terminal sale or refund sends the device command once, then queries `TRANSACTION_LIST` every 2 seconds for up to 180 seconds; a network problem while waiting is retried until the deadline; "Stop waiting" queries once more, so a card charged just before is still recorded, and otherwise reports that the terminal may still finish. A money request that got no answer is reported as "unknown", never resent.
+- `RecurringChargerator.GlobalPaymentsV2.cs` (a partial of `RecurringChargerator`): cards saved through V2 (`CCSource` 23 with a token) are charged through the Transactions API (card not present, stored payment method, `stored_credential` RECURRING), with an idempotency key per charge row and day. An approved charge gets a payment (`PaymentSource` 23, `ExternalId` = the Global Payments transaction ID, receipt); a declined one a $0 payment, as the other processors; an unknown outcome is marked failed with no payment. The same card is not charged the same amount twice on one day unless duplicates are forced (the window's box; for automated runs the clinic's "Recurring charges force duplicates by default").
+
+### Desktop
+
+- `FormGlobalPaymentsV2Setup` (new, + designer): Enabled (all clinics), sandbox (all clinics), clinic picker, App ID, App Key (masked; "leave blank to keep"; editing needs ManageHighSecurityProgProperties), account name, payment type, print receipts by default, prevent saving new cards, recurring charges force duplicates by default, Test connection (gets an access token, lists the accounts and fills a blank account name), and the terminals grid (Terminal Name, Terminal ID; Add Terminal, double-click to edit, Delete, Test terminal = a PING device command, which moves no money). Saving refuses to enable while X-Charge or Global Payments V1 is enabled. The Payment Portal / eClipboard box of the public page is not built (excluded services). Registered with Program Links through `IProgramLinkSetup` (`GlobalPaymentsV2ProgramLinkSetup`); no edit to `FormProgramLinks`.
+- `FormGlobalPaymentsV2` (new, + designer): the transaction window. Type Sale / Refund / Void; card on a terminal (defaults to this workstation's last terminal, `computerpref.CreditCardTerminalId`, shared with PayConnect 2) or the saved V2 card selected in the payment window; amount; "Save card for later charges" (terminal sales only, default from the "store credit card tokens" preference, hidden when new cards are prevented); status text; Run; Cancel / Stop waiting. Runs off the UI thread. Every attempt goes to the security log under CreditCardTerminal with amount, last four digits, terminal and outcome. Asks before charging a patient the same amount again on the same day. An existing V2 payment can only be voided here (new charges go on a new payment).
+- `FormPayment.GlobalPaymentsV2.cs` (new partial of `FormPayment`): the "Global Payments V2" button, created at runtime in the Global Payments V1 button's place (only one of X-Charge, V1 and V2 can be enabled), shown only when V2 is enabled and set up for the payment's clinic. An approved sale or refund fills the amount (negative for a refund), note, receipt, `PaymentSource` 23 and `ExternalId`; the payment type default; prints the receipt when the clinic says so; saves the card when asked and Global Payments returned a reusable payment method (needs CreditCardEdit). A void adds the negative payment and closes the window. Cancelling the payment window after an approved V2 transaction voids it (reversal), as for the other processors.
+- Hooks in `FormPayment.cs`: one line in `CheckUIState`, one in `DisablePaymentControls`, four in `FormPayment_FormClosing` (before the note is read for the other processors' voids).
+- `FormPayTerminalEdit`: takes the integration of a new terminal and its clinic; trims the Terminal ID; a new terminal's Delete no longer falls through to deleting row 0.
+- `FormCreditRecurringCharges`: V2 counts as a card program (force-duplicates box from the clinic's setting), V2 column when several card programs are enabled; V1 column renamed.
+- `FormEdgeExpressSetup`, `FormXchargeSetup`: the one-processor rule on Save.
+- `FormCreditCardManage`: V2 column (cards saved through V2), V1 renamed.
+
+## Partner-gated (needs Global Payments documentation or credentials)
+
+- **Credentials.** Open Dental's setup asks for one "Account Credential" per clinic. Its format is not public; it is presumably issued under Open Dental's own partner arrangement with Global Payments. This fork authenticates with the office's own Global Payments API app (App ID and App Key), the method Global Payments documents publicly. Whether Global Payments gives a dental office production access to Cloud Integration with its own app is not public ("check with your relationship or sales manager for availability").
+- **Saving a card on a terminal without a charge** ("Save card" as its own transaction type in the spec): not publicly documented for Cloud Integration, so not offered. Cards are saved only when a sale's answer carries a reusable payment method (`payment_method.id` starting `PMT_`); whether a terminal sale returns one, and what request field asks for it, is not public. Until then "Save card" reports that Global Payments returned no card reference, and recurring charges have no V2 cards to charge (the recurring path is built and tested against the public Transactions API).
+- **Finished device-command answers.** The public sample shows the interim answer and a completed command with a `transaction` list, but no declined, cancelled or timed-out answer and no full status list. The reader is lenient and its rules are INFERRED (below); they need checking against the sandbox.
+- **Wallet taps (Apple Pay, Google Pay).** These happen on the terminal; nothing in the request distinguishes them. The entry mode is shown when the answer carries it.
+
+## INFERRED behaviours
+
+- `ProgramName.MeetInTheCloud` and `payterminal.CCIntegration` "MeetInTheCloud": the documents call the integration MeetInTheCloud ("UI: Global Payments V2") and say `CCIntegration` holds the integration "e.g. PayConnect" (= `ProgramName.PayConnect`). The real program row name is not published.
+- Property names (`GlobalPaymentsV2*`): Open Dental's are not public. A database Open Dental converted to 25.4 or later would not carry over its V2 settings (no such database is adoptable today).
+- Token storage: `creditcard.XChargeToken` with `CCSource` 23, as V1 does (the spec's "likely"). Only the last four digits are kept; never the card number.
+- The device's `device_reference` is the Terminal ID entered in setup (Open Dental: "the serial number of the card terminal device"; Global Payments: "each device has a unique value").
+- `X-GP-Version: 2021-03-22` on every endpoint (the Cloud Integration samples show another date format).
+- Amounts in minor units for device commands (the sample's "1234"; documented for the Transactions API).
+- Outcome rules: a transaction status decides first (CAPTURED, PREAUTHORIZED, FUNDED approve; DECLINED, REJECTED decline; FAILED, ERROR, FOR_REVIEW fail; CANCELLED, TIMEOUT, EXPIRED cancel; REVERSED approves a void only); then `payment_method.result` ("00" approves, any other code declines); then `action.result_code` (SUCCESS / DECLINED); a COMPLETED command with a transaction ID and no other code is approved; a command that ended without a transaction moved no money. Pending command statuses: blank, INITIATED, PENDING, IN_PROGRESS, PROCESSING, QUEUED, SENT, WAITING, RECEIVED.
+- Waiting: queries every 2 seconds, up to 180 seconds (PayConnect terminals use 190).
+- Account name for saved-card charges: the configured one, else the first account the access token lists with `TRN_POST_Authorize`.
+- Recurring `stored_credential` model/reason RECURRING, sequence SUBSEQUENT; saved-card charges `entry_mode` ECOM, `channel` CNP.
+- References: `RC{RecurringChargeNum}-{yyyyMMdd}` for recurring charges (also the idempotency key), `SL`/`RF` + UTC time + random for window charges, `VOID-{transaction}` as a void's idempotency key.
+- Duplicate check in the payment window: "same card" can't be known before the terminal reads it, so it is "same patient, same amount, same day, a completed V2 payment", and the user may go ahead.
+- The V1 program row's new description is "Global Payments V1" (see Deviations).
+
+## Deviations from the spec
+
+- No fork migration step; the level range 2027005001-2027005099 is unused. The two data changes are done at runtime instead, idempotently, when Setup > Program Links opens: `payterminal.CCIntegration` '' becomes 'PayConnect' (readers treat '' as PayConnect anyway), and the V1 description rename. Reason: levels in the package ranges (month 00) fail `ForkMigrationRunner.ValidateStep` on this base and would stop every migration; M2-EST (inactive step) and M2-UDS (validator change) handled this differently, and the runner is foundation-owned.
+- Program descriptions are "Global Payments V1" and "Global Payments V2", without the "from www.globalpaymentsintegrated.com" of Open Dental's list (ground rule 7: no vendor web addresses; same as the other vendor-direct rows).
+- Credentials: App ID + App Key (+ optional account name) instead of one "Account Credential" (see Partner-gated).
+- Business files live in `OpenDentBusiness/VendorDirect/GlobalPayments/` instead of `WebBridges/GlobalPaymentsV2`, so the shared `OpenDentBusiness.csproj` needs no edit (wildcard).
+- `PayTerminals.Refresh(clinicNum)` now returns PayConnect terminals only ('' or 'PayConnect'), so the PayConnect windows (V-PC's files) filter without being edited. `PayTerminals.GetForIntegration` is the general call.
+- No V2 option in Credit Card Manage's "Add" (saving a card without a charge is partner-gated) and no V2 button in the insurance payment window (`FormClaimPayEdit`, prepaid cards); the V1 panel there keeps its 24.3 text.
+
+## Changes outside the owned list (also in the report)
+
+- `OpenDentBusiness/TableTypes/Program.cs`: `ProgramName.MeetInTheCloud` appended after `PostcardMania` (M2-02's note leaves the vendor `ProgramName` values to the vendor packages).
+- `OpenDentBusiness/TableTypes/CreditCard.cs`: the token label "EdgeExpress" becomes "Global Payments V1"; V2 cards are labeled "Global Payments V2".
+- `OpenDentBusiness/Data Interface/Programs.cs`: `HasMultipleCreditCardProgramsEnabled` counts V2.
+- `OpenDentBusiness/Data Interface/Payments.cs`: the security-log source text "EdgeExpress" becomes "Global Payments V1".
+- `OpenDental/Forms/FormCreditCardManage.cs`, `OpenDental/Forms/FormXchargeSetup.cs`, `OpenDental/Forms/FormEdgeExpressSetup.designer.cs`, `OpenDental/Forms/FormEdgeExpressTrans.designer.cs`, `OpenDental/Forms/FormPayment.designer.cs`: display strings and the one-processor check (above).
+- `OpenDental/OpenDental.csproj`: five `Compile` entries, placed after `FormPayTerminalEdit` (away from M2-PAYW's `FormPayment.*` entries).
+- `OpenDental.sln`, `OpenDental.Local.slnf`: `tests/VGPTests` (next to `VendorDirectTests`).
+- `tests/VendorDirectTests/Foundation/FoundationLayoutTests.cs`: the pin of the last four `ProgramName` members now pins the four F0 names right after `ZImage`, so vendor packages can append. `tests/VendorDirectTests/EdgeExpress/EdgeExpressRequestTests.cs`: expects "Program Links > Global Payments V1".
+- No schema, CRUD, preference, permission or seed change: `payterminal.CCIntegration` (M2-01) and `CreditCardSource.MeetInTheCloudTerminal` (M2-02) were already on the base.
+
+## Interplay with packages built at the same time
+
+- **M2-RECUR** also makes `RecurringChargerator` partial (the same one-line change, so the merge is clean) and adds `IsDeclinedByProcessor` in `MarkDeclined`: V2 declines go through `MarkDeclined`, so they get its failure e-mails once merged. Its edits to `FormCreditRecurringCharges.cs` (the "done" message) and to `SendCharges` (after the card loop's switch) don't overlap V-GP's hunks.
+- **M2-PAYW** adds `FormPayment.*.cs` partials and hooks in other `FormPayment.cs` methods; no overlapping lines. Both add `OpenDental.csproj` entries, in different places.
+- **V-PAYSUITE, V-BRIDGE2** append their own `ProgramName` values after `PostcardMania` too: the enum and `FoundationLayoutTests` will conflict textually; keep every appended name (the order is free: `program.ProgName` stores the name, not the number) and V-GP's relaxed test.
+- **V-PC** (merged): `PayTerminals.Refresh` keeps returning its terminals; `PayTerminals.Insert` tags new terminals 'PayConnect'. `ComputerPrefs` is unchanged; the last-terminal field is shared, as the documents say.
+- **Fork migration levels**: if integration adopts M2-UDS's validator change (accepting month-00 package levels), V-GP still needs no step.
+
+## Tests
+
+New project `tests/VGPTests` (MSTest v1, x86, .NET 4.8; in `OpenDental.sln` and `OpenDental.Local.slnf`), 68 tests:
+
+- `GpV2ClientTests`: the SHA-512 secret (FIPS 180-2 vector), the access token request (endpoint, headers, body, the key never sent), token caching and refresh before expiry, a rejected key failing fast until reset, no call without credentials, hosts, device sale/refund/result/ping bodies, one new token on a 401, 5xx and network failures not retried, Transactions API sale/refund bodies with the idempotency key and the token's account list, declines as results, the reversal endpoint, logs without key/token/card token, requests only to Global Payments over HTTPS.
+- `GpV2ResultTests`: the answer reader and outcome table, minor units, references, the note (last four only, no token, no "Transaction ID:"/"Ref Number:" lines that FormPayment's cancel-void reads for other processors), receipt and log text.
+- `GpV2TransactionsTests` (fake clock): terminal approve after waiting, decline, a network blip while waiting, stop waiting (cancelled, and the last look finding a finished sale), timeout, unknown and rejected starts, input checks, saved-card approve and unknown, void approve and failure.
+- `GpV2DbTests` (scratch database, a fresh 24.3.63 upgraded by the fork migration runner, per-run name, dropped afterwards): program row and settings (disabled, masked high-security key, once), the terminal back-fill, terminal lists per integration, encrypted key and the link off until enabled, unreadable and plain-text keys, per-clinic credentials and fallback, the one-processor rule, the V1 rename (only the old default), duplicate checks, saving a card, and recurring charges through `RecurringChargerator.SendCharges` (approved payment with the transaction, no double charge unless forced, declined $0 payment, unknown outcome failed without payment, disabled link sends nothing).
+- `GpWiringSourceTests`: the payment window hooks and button visibility, project entries, the display-only V1 rename, the one-processor rule on all three setup windows, Program Links registration, the recurring routing order, vendor neutrality (no web addresses, logos or promotion), no Open Dental host and only the two Global Payments hosts, no Payment Portal setting.
+
+Checks (2026-10-25): build of `OpenDental.Local.slnf` (Debug, x86) 0 errors, 376 warnings (the baseline); `VGPTests` 68/68, `VendorDirectTests` 873/873, `NoHqTests` 49/49; `tools/Test-NoHqHosts.ps1` passed.
+
+## Not tested
+
+- No call to Global Payments (sandbox or production): every answer comes from a fake shaped like the public samples.
+- No UI was run (OpenDental.exe is not launched in this run): the setup window, the transaction window and the payment window button are covered by build and source checks only.
+- The runtime-created button's placement under display scaling.
+
+## Questions for the owner
+
+1. Will Global Payments give the office Cloud Integration access with its own API app (App ID and App Key), or only through a partner such as Open Dental? If only through a partner, V2 stays configurable but disabled, like EdgeExpress.
+2. Ask Global Payments (sandbox) how a terminal sale returns a reusable card (and how to ask for one), and for the full list of device-command statuses and a declined/cancelled answer, so the INFERRED reading rules can be confirmed.
+3. Keep the program descriptions as "Global Payments V1" / "Global Payments V2" (neutral), or use Open Dental's "Global Payments from www.globalpaymentsintegrated.com"?
+4. An office that has both X-Charge and EdgeExpress enabled today must turn one off before it can save either setup window again. Acceptable, or should the rule apply only when enabling?
+5. Should V2 also appear in the insurance payment window's prepaid-card buttons (`FormClaimPayEdit`)? Open Dental's public material doesn't say.
