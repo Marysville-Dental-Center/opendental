@@ -34,20 +34,24 @@ namespace M2TERMTests {
 	}
 
 	///<summary>One wording change: in File, the string literal OldText is gone and NewText is there Count times. IsTail: the texts are the
-	///end of a longer (interpolated) literal, like the end of $" ({percent}% of standard provider fee)".</summary>
+	///end of a longer (interpolated) literal, like the end of $" ({percent}% of standard provider fee)". ExportKeyCount: report columns whose
+	///header changed keep OldText as their export key (the spec keeps report export header keys stable), so OldText stays exactly that many times,
+	///and only in the export key statement right after the renamed column (see TermSources.GetReportColumns).</summary>
 	public class WordingChange {
 		public string File;
 		public string OldText;
 		public string NewText;
 		public int Count;
 		public bool IsTail;
+		public int ExportKeyCount;
 
-		public WordingChange(string file,string oldText,string newText,int count=1,bool isTail=false) {
+		public WordingChange(string file,string oldText,string newText,int count=1,bool isTail=false,int exportKeyCount=0) {
 			File=file;
 			OldText=oldText;
 			NewText=newText;
 			Count=count;
 			IsTail=isTail;
+			ExportKeyCount=exportKeyCount;
 		}
 
 		///<summary>How often the text appears in the source as a literal (or as the end of one, for IsTail).</summary>
@@ -109,10 +113,10 @@ namespace M2TERMTests {
 			new WordingChange(INS_BLUE_BOOKS,"% of UCR fee)","% of standard provider fee)",isTail:true),
 			//Edit Insurance Plan, Exclusions combo (the enum description).
 			new WordingChange(INS_PLAN,"Use UCR Fee","Use Standard Provider Fee"),
-			//Report column headers. Space is short there, so "standard fee".
-			new WordingChange(RP_CAPITATION,"UCR Fee","Standard Fee",2),
-			new WordingChange(RP_NET_PROD_DETAIL,"UCR","Standard Fee"),
-			new WordingChange(RP_PROVIDER_PAYROLL,"UCR Production","Standard Fee Production"),
+			//Report column headers. Space is short there, so "standard fee". The export keeps the old header as its column name.
+			new WordingChange(RP_CAPITATION,"UCR Fee","Standard Fee",2,exportKeyCount:2),
+			new WordingChange(RP_NET_PROD_DETAIL,"UCR","Standard Fee",exportKeyCount:1),
+			new WordingChange(RP_PROVIDER_PAYROLL,"UCR Production","Standard Fee Production",exportKeyCount:1),
 			new WordingChange(RP_PROD_INC,"UCR Poduction","Standard Fee Production"),
 		};
 
@@ -150,6 +154,32 @@ namespace M2TERMTests {
 			return Regex.Matches(source,@"AddColumn\(\s*""((?:[^""\\\r\n]|\\.)*)""").Cast<Match>().Select(x => x.Groups[1].Value).ToList();
 		}
 
+		///<summary>query.AddColumn("header",width,FieldValueType.Type,...); optionally followed, as the very next statement, by the one that renames
+		///the export column it just added: query.ExportTable.Columns[query.ExportTable.Columns.Count-1].ColumnName="key";</summary>
+		private static readonly Regex _regexReportColumn=new Regex(
+			@"AddColumn\(\s*""(?<header>(?:[^""\\\r\n]|\\.)*)""\s*,\s*(?<width>\d+)\s*,\s*FieldValueType\.(?<type>\w+)[^;]*;"
+			+@"(?:[ \t]*(?://[^\r\n]*)?\s*query\.ExportTable\.Columns\[\s*query\.ExportTable\.Columns\.Count\s*-\s*1\s*\]\.ColumnName\s*=\s*"
+			+@"""(?<key>(?:[^""\\\r\n]|\\.)*)""\s*;)?");
+
+		///<summary>Any statement that sets the name of an export column, wherever it is.</summary>
+		private static readonly Regex _regexExportKeyStatement=new Regex(@"\.ExportTable\.Columns\[[^\]]*\]\.ColumnName\s*=");
+
+		///<summary>The report columns added in the source, in order of appearance (both branches of an if-else included).</summary>
+		public static List<ReportColumn> GetReportColumns(string source) {
+			return _regexReportColumn.Matches(source).Cast<Match>().Select(x => new ReportColumn {
+				Header=x.Groups["header"].Value,
+				Width=int.Parse(x.Groups["width"].Value),
+				TypeName=x.Groups["type"].Value,
+				HasExportKeyStatement=x.Groups["key"].Success,
+				ExportKey=x.Groups["key"].Success ? x.Groups["key"].Value : x.Groups["header"].Value,
+			}).ToList();
+		}
+
+		///<summary>How many statements in the source set the name of an export column.</summary>
+		public static int CountExportKeyStatements(string source) {
+			return _regexExportKeyStatement.Matches(source).Count;
+		}
+
 		///<summary>How often the exact string literal "text" appears in the source.</summary>
 		public static int CountLiteral(string source,string text) {
 			string literal="\""+text.Replace("\\","\\\\").Replace("\"","\\\"")+"\"";
@@ -173,6 +203,21 @@ namespace M2TERMTests {
 				index=source.IndexOf(ending,index+ending.Length,StringComparison.Ordinal);
 			}
 			return count;
+		}
+	}
+
+	///<summary>A report column as a form adds it with QueryObject.AddColumn. Header is the text on screen and in print. ExportKey is the name of
+	///the export table's column, which the report window's Export writes as the file's header line: the header, unless the statement after the
+	///AddColumn renames the export column (HasExportKeyStatement).</summary>
+	public class ReportColumn {
+		public string Header;
+		public int Width;
+		public string TypeName;
+		public string ExportKey;
+		public bool HasExportKeyStatement;
+
+		public override string ToString() {
+			return "\""+Header+"\" (export key \""+ExportKey+"\")";
 		}
 	}
 

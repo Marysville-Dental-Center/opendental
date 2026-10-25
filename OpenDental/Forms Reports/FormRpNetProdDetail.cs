@@ -271,6 +271,7 @@ namespace OpenDental{
 			query.AddColumn("ProcCode",90,FieldValueType.String,font);
 			query.AddColumn("Provider",80,FieldValueType.String,font);
 			query.AddColumn("Standard Fee",80,FieldValueType.Number,font);
+			query.ExportTable.Columns[query.ExportTable.Columns.Count-1].ColumnName="UCR";//25.4 renamed the shown header only. The export keeps its column name.
 			query.AddColumn("OrigEstWO",100,FieldValueType.Number,font);
 			query.AddColumn("EstVsActualWO",80,FieldValueType.Number,font);
 			query.AddColumn("Adjustment",80,FieldValueType.Number,font);

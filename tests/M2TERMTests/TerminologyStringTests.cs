@@ -20,8 +20,15 @@ namespace M2TERMTests {
 				string source=TestPaths.ReadRepoFile(change.File);
 				int countOld=change.CountIn(source,change.OldText);
 				int countNew=change.CountIn(source,change.NewText);
-				if(countOld!=0) {
-					listFailures.Add(change+": the old text is still there "+countOld+" time(s).");
+				//A renamed report column keeps the old header as its export key, in the statement right after it.
+				int countOldAsExportKey=TermSources.GetReportColumns(source)
+					.Count(x => x.HasExportKeyStatement && x.Header==change.NewText && x.ExportKey==change.OldText);
+				if(countOldAsExportKey!=change.ExportKeyCount) {
+					listFailures.Add(change+": the old text is the export key of the renamed column "+countOldAsExportKey+" time(s), expected "
+						+change.ExportKeyCount+".");
+				}
+				if(countOld!=countOldAsExportKey) {
+					listFailures.Add(change+": the old text is still there "+(countOld-countOldAsExportKey)+" time(s) besides the export keys.");
 				}
 				if(countNew!=change.Count) {
 					listFailures.Add(change+": the new text is there "+countNew+" time(s), expected "+change.Count+".");

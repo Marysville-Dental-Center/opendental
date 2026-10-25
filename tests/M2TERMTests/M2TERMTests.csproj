@@ -3,7 +3,7 @@
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <!-- Tests for the Open Dental 25.4 "UCR" to "Standard Provider Fee" wording (package M2-TERM in docs/specs/port-backlog.md): the shown text in
        the owned windows, reports and enum descriptions, that the new text fits its controls, the report headers against the data columns they
-       sit over, and the Blue Book estimate log. Database tests use a scratch MariaDB database with a unique per-run name and synthetic rows only.
+       sit over, the report export keys that stay as they were, and the Blue Book estimate log. Database tests use a scratch MariaDB database with a unique per-run name and synthetic rows only.
        Every .cs file under this folder is compiled. -->
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -75,6 +75,11 @@
     <ProjectReference Include="..\..\OpenDentBusiness\OpenDentBusiness.csproj">
       <Project>{3D0FC76E-803C-4DE2-BDB1-47D63A4E2357}</Project>
       <Name>OpenDentBusiness</Name>
+    </ProjectReference>
+    <!-- For the report export keys (OpenDental.ReportingComplex.QueryObject's export table). No window is ever shown. -->
+    <ProjectReference Include="..\..\OpenDental\OpenDental.csproj">
+      <Project>{8136317D-C936-49B6-9E31-D90F02D2F207}</Project>
+      <Name>OpenDental</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
