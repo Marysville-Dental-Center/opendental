@@ -32,6 +32,26 @@ namespace OpenDental {
 			});
 			ChartLetterL.ChartLetterChanged+=ChartLetterL_ChartLetterChanged;
 			Disposed+=(sender,e) => ChartLetterL.ChartLetterChanged-=ChartLetterL_ChartLetterChanged;
+			//Letters still open in an editor when the program closes get a warning, and their pending saves are stored. If the module is not on
+			//the main window yet, ChartLetters_CheckOrphanedEdits does this the first time a patient is shown.
+			ChartLetterL.WatchProgramClosing(FindForm());
+		}
+
+		///<summary>After the module shows a patient, offers to store saves made into working copies of the patient's chart letters after their edit
+		///session ended (the program was closed or ended while the editor still had the letter open). Runs once the module has finished loading.
+		///</summary>
+		private void ChartLetters_CheckOrphanedEdits() {
+			if(_menuItemChartLetterNew==null || IsPatientNull() || !IsHandleCreated) {
+				return;
+			}
+			ChartLetterL.WatchProgramClosing(FindForm());//Only the first call with a window counts.
+			long patNum=Pd.PatNum;
+			BeginInvoke((Action)(() => {
+				if(IsDisposed || !_isModuleSelected || IsPatientNull() || Pd.PatNum!=patNum) {
+					return;
+				}
+				ChartLetterL.RecoverOrphanedEdits(Pd.Patient);
+			}));
 		}
 
 		///<summary>Shows the chart letter items that apply to the selection: New always (with a patient), the others only for one selected chart

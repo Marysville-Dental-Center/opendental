@@ -4776,6 +4776,7 @@ namespace OpenDental {
 					frmDatabaseIntegrity.ShowDialog();
 				}
 			}
+			ChartLetters_CheckOrphanedEdits();
 			Plugins.HookAddCode(this,"ContrChart.ModuleSelected_end",patNum);
 		}
 

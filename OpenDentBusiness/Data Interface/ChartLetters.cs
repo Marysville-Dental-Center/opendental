@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using CodeBase;
 
@@ -312,6 +313,74 @@ namespace OpenDentBusiness {
 			document.FileName=documentDb.FileName;
 		}
 
+		#region Recovery of edits saved after a session ended
+		///<summary>DocNum and ChartLetterHash of every chart letter row of the patient, all versions and deleted ones, without the file data.
+		///</summary>
+		public static DataTable GetHashTableForPatient(long patNum) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetTable(MethodBase.GetCurrentMethod(),patNum);
+			}
+			string command="SELECT DocNum,ChartLetterHash FROM document WHERE PatNum="+POut.Long(patNum)+" AND ChartLetterStatus>0";
+			return Db.GetTable(command);
+		}
+
+		///<summary>Stores the working copy of an edit that was saved after its session stopped watching it (see
+		///ChartLetterEditSession.FindOrphanedEdits). When the version the copy is based on is still the current version, the copy becomes a new
+		///version of the letter, as any save would. Otherwise (the letter got a newer version or was deleted since), the copy is stored as a
+		///separate chart letter with the base's date, description and provider, so neither edit hides the other. Both cases are logged. Returns the
+		///stored document, or null when the current version already has these bytes.</summary>
+		public static Document RecoverOrphanedEdit(ChartLetterOrphanedEdit chartLetterOrphanedEdit,Patient patient,long userNum,string patFolder) {
+			Meth.NoCheckMiddleTierRole();
+			if(patient==null || chartLetterOrphanedEdit==null || chartLetterOrphanedEdit.PatNum!=patient.PatNum) {
+				throw new ApplicationException(Lans.g("ChartLetters","The edit does not belong to this patient."));
+			}
+			byte[] fileBytes=ChartLetterEditSession.ReadShared(chartLetterOrphanedEdit.WorkingFilePath);
+			if(fileBytes.Length==0) {
+				throw new ApplicationException(Lans.g("ChartLetters","The chart letter has no content."));
+			}
+			Document documentBase=Documents.GetByNum(chartLetterOrphanedEdit.BaseDocNum,doReturnNullIfNotFound:true);
+			if(documentBase!=null && documentBase.PatNum!=patient.PatNum) {
+				documentBase=null;
+			}
+			if(documentBase!=null && GetStatus(documentBase)==EnumChartLetterStatus.Current) {
+				Document documentNew=SaveNewVersion(documentBase,patient,fileBytes,userNum,patFolder);
+				if(documentNew!=null) {
+					MakeLog(EnumPermType.ImageEdit,documentNew,Lans.g("ChartLetters","Chart letter edit saved after the program stopped tracking it, "
+						+"recovered as version")+" "+documentNew.DocNum,userNum);
+				}
+				return documentNew;
+			}
+			string description;
+			long provNum;
+			DateTime dateCreated;
+			if(documentBase==null) {
+				description=Path.GetFileNameWithoutExtension(chartLetterOrphanedEdit.WorkingFilePath);
+				provNum=patient.PriProv;
+				dateCreated=DateTime.Now;
+			}
+			else {
+				description=documentBase.Description;
+				provNum=documentBase.ProvNum;
+				dateCreated=documentBase.DateCreated;
+			}
+			string suffix=" "+Lans.g("ChartLetters","(recovered edit)");
+			description=(description??"").Trim();
+			if(description.Length+suffix.Length>255) {//document.Description is varchar(255).
+				description=description.Substring(0,Math.Max(0,255-suffix.Length));
+			}
+			description=(description+suffix).Trim();
+			if(dateCreated>DateTime.Now) {
+				dateCreated=DateTime.Now;
+			}
+			Document documentRecovered=CreateLetter(patient,fileBytes,Path.GetExtension(chartLetterOrphanedEdit.WorkingFilePath),description,provNum,
+				userNum,dateCreated,patFolder);
+			MakeLog(EnumPermType.ImageEdit,documentRecovered,Lans.g("ChartLetters","Chart letter edit saved after the program stopped tracking it, "
+				+"recovered as a separate letter because version")+" "+chartLetterOrphanedEdit.BaseDocNum+" "
+				+Lans.g("ChartLetters","is no longer the current version"),userNum);
+			return documentRecovered;
+		}
+		#endregion Recovery of edits saved after a session ended
+
 		private static string NormalizeExtension(string fileExtension) {
 			if(string.IsNullOrWhiteSpace(fileExtension)) {
 				return ".docx";
@@ -367,16 +436,25 @@ namespace OpenDentBusiness {
 		public Exception Error;
 	}
 
-	///<summary>Tracks one chart letter opened for editing. The letter's file is copied to a private working folder and opened there. Each time the
-	///editor saves the working copy, a new version is written (ChartLetters.SaveNewVersion). Saves are noticed by a FileSystemWatcher while the
-	///program runs; edits made while it is closed cannot be tracked and show later as a hash mismatch only if made to the stored file.</summary>
+	///<summary>Tracks one chart letter opened for editing. The letter's file is copied to a private working folder and the editor works on that
+	///copy, never on the stored file, so the bytes of every stored version stay as they were. Each time the editor saves the working copy, a new
+	///version is written (ChartLetters.SaveNewVersion). Saves are noticed by a FileSystemWatcher while the program runs.
+	///Next to the working copy, a session file (SIDECAR_FILE_NAME) records the patient, the version the copy is based on and that version's hash.
+	///It is rewritten after every stored version and kept open while the session lives, which tells other scans that the session is alive. When
+	///the program closes or stops unexpectedly while the editor still has the letter open, later saves land in the working copy only; the next
+	///scan of the working folders (FindOrphanedEdits) finds a copy whose hash no longer matches its session file, so the edit can be stored
+	///(ChartLetters.RecoverOrphanedEdit) instead of being lost.</summary>
 	public class ChartLetterEditSession:IDisposable {
+		///<summary>The session file in each working folder. Its extension never matches a letter's.</summary>
+		public const string SIDECAR_FILE_NAME="chartletter.session";
+		private const string SIDECAR_HEADER="ChartLetterEditSession 1";
 		private readonly object _lock=new object();
 		private readonly Patient _patient;
 		private readonly string _patFolder;
 		private readonly long _userNum;
 		private string _hashLast;
 		private FileSystemWatcher _fileSystemWatcher;
+		private FileStream _fileStreamSidecar;
 		private Timer _timer;
 		private int _debounceMs;
 		private int _countRetries;
@@ -396,8 +474,9 @@ namespace OpenDentBusiness {
 			_userNum=userNum;
 		}
 
-		///<summary>Copies the current version's file into a new subfolder of workingRoot, named after the description, and returns the session.
-		///Does not start watching (see StartWatching). Throws if the letter is not the current version or its file is missing.</summary>
+		///<summary>Copies the current version's file into a new subfolder of workingRoot named "DocNum_timestamp", writes the session file next to
+		///it and returns the session. The file is named after the description. Does not start watching (see StartWatching). Throws if the letter is
+		///not the current version or its file is missing.</summary>
 		public static ChartLetterEditSession Start(Document document,Patient patient,string patFolder,long userNum,string workingRoot) {
 			if(ChartLetters.GetStatus(document)!=EnumChartLetterStatus.Current) {
 				throw new ApplicationException(Lans.g("ChartLetters","Only the current version of a chart letter can be edited."));
@@ -414,8 +493,37 @@ namespace OpenDentBusiness {
 				name=Lans.g("ChartLetters","Chart Letter");
 			}
 			chartLetterEditSession.WorkingFilePath=Path.Combine(folder,name+Path.GetExtension(document.FileName));
-			File.WriteAllBytes(chartLetterEditSession.WorkingFilePath,fileBytes);
 			chartLetterEditSession._hashLast=ChartLetters.ComputeHash(fileBytes);
+			try {
+				//The session file first: a folder that has it but no working copy is simply removed by the next scan.
+				chartLetterEditSession.OpenSidecar(FileMode.CreateNew);
+				File.WriteAllBytes(chartLetterEditSession.WorkingFilePath,fileBytes);
+			}
+			catch(Exception) {
+				chartLetterEditSession.Dispose();
+				chartLetterEditSession.DeleteWorkingFolder();
+				throw;
+			}
+			return chartLetterEditSession;
+		}
+
+		///<summary>Takes over the working folder of an ended session whose working copy now holds exactly documentCurrent's bytes (nothing left to
+		///store), for example while the editor still has it open after the program was restarted. Rewrites the session file for documentCurrent
+		///and returns the session, not yet watching. Throws if documentCurrent is not the current version or the copy holds other bytes.</summary>
+		public static ChartLetterEditSession Resume(ChartLetterOrphanedEdit chartLetterOrphanedEdit,Document documentCurrent,Patient patient,
+			string patFolder,long userNum)
+		{
+			if(ChartLetters.GetStatus(documentCurrent)!=EnumChartLetterStatus.Current || documentCurrent.PatNum!=chartLetterOrphanedEdit.PatNum) {
+				throw new ApplicationException(Lans.g("ChartLetters","Only the current version of a chart letter can be edited."));
+			}
+			string hash=ChartLetters.ComputeHash(ReadShared(chartLetterOrphanedEdit.WorkingFilePath));
+			if(!ChartLetters.HashesMatch(hash,documentCurrent.ChartLetterHash)) {
+				throw new ApplicationException(Lans.g("ChartLetters","The working copy holds changes that are not stored yet."));
+			}
+			ChartLetterEditSession chartLetterEditSession=new ChartLetterEditSession(documentCurrent,patient,patFolder,userNum);
+			chartLetterEditSession.WorkingFilePath=chartLetterOrphanedEdit.WorkingFilePath;
+			chartLetterEditSession._hashLast=hash;
+			chartLetterEditSession.OpenSidecar(FileMode.Create);
 			return chartLetterEditSession;
 		}
 
@@ -439,10 +547,13 @@ namespace OpenDentBusiness {
 				documentOld=DocumentCur;
 				documentNew=ChartLetters.SaveNewVersion(DocumentCur,_patient,fileBytes,_userNum,_patFolder);
 				_hashLast=hash;
+				if(documentNew!=null) {
+					DocumentCur=documentNew;
+				}
+				TryWriteSidecar();
 				if(documentNew==null) {
 					return null;
 				}
-				DocumentCur=documentNew;
 			}
 			VersionSaved?.Invoke(this,new ChartLetterVersionEventArgs { DocumentOld=documentOld,DocumentNew=documentNew });
 			return documentNew;
@@ -464,6 +575,16 @@ namespace OpenDentBusiness {
 				_fileSystemWatcher.Renamed+=FileSystemWatcher_Event;
 				_fileSystemWatcher.EnableRaisingEvents=true;
 			}
+		}
+
+		///<summary>True while an editor still has the working copy open, so it may still save into it.</summary>
+		public bool IsEditorOpen() {
+			return IsWorkingCopyInUse(WorkingFilePath);
+		}
+
+		///<summary>Removes the working folder. Only for a disposed session whose editor is closed; false if the folder could not be removed.</summary>
+		public bool DeleteWorkingFolder() {
+			return DeleteFolder(Path.GetDirectoryName(WorkingFilePath));
 		}
 
 		private void FileSystemWatcher_Event(object sender,FileSystemEventArgs e) {
@@ -493,7 +614,44 @@ namespace OpenDentBusiness {
 			}
 		}
 
-		private static byte[] ReadShared(string path) {
+		///<summary>Opens the session file and keeps it open, readable by others but not writable, for the session's life. Writes the current
+		///contents.</summary>
+		private void OpenSidecar(FileMode fileMode) {
+			string path=Path.Combine(Path.GetDirectoryName(WorkingFilePath),SIDECAR_FILE_NAME);
+			_fileStreamSidecar=new FileStream(path,fileMode,FileAccess.ReadWrite,FileShare.Read);
+			WriteSidecar();
+		}
+
+		private void WriteSidecar() {
+			StringBuilder stringBuilder=new StringBuilder();
+			stringBuilder.AppendLine(SIDECAR_HEADER);
+			stringBuilder.AppendLine("PatNum="+_patient.PatNum);
+			stringBuilder.AppendLine("DocNum="+DocumentCur.DocNum);
+			stringBuilder.AppendLine("Hash="+_hashLast);
+			stringBuilder.AppendLine("UserNum="+_userNum);
+			stringBuilder.AppendLine("File="+Path.GetFileName(WorkingFilePath));
+			byte[] arrayBytes=Encoding.UTF8.GetBytes(stringBuilder.ToString());
+			_fileStreamSidecar.SetLength(0);
+			_fileStreamSidecar.Write(arrayBytes,0,arrayBytes.Length);
+			_fileStreamSidecar.Flush(true);
+		}
+
+		///<summary>A version was stored, so the session file must follow. If it cannot be written, a later scan still finds the stored bytes among
+		///the versions after the old base and treats the copy as stored.</summary>
+		private void TryWriteSidecar() {
+			if(_fileStreamSidecar==null) {
+				return;
+			}
+			try {
+				WriteSidecar();
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+			}
+		}
+
+		///<summary>Reads a file that an editor may still have open.</summary>
+		public static byte[] ReadShared(string path) {
 			using(FileStream fileStream=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.ReadWrite|FileShare.Delete))
 			using(MemoryStream memoryStream=new MemoryStream()) {
 				fileStream.CopyTo(memoryStream);
@@ -511,7 +669,208 @@ namespace OpenDentBusiness {
 				}
 				_timer?.Dispose();
 				_timer=null;
+				//The working folder stays: the editor may still save into it, and a later scan stores or removes it.
+				_fileStreamSidecar?.Dispose();
+				_fileStreamSidecar=null;
 			}
 		}
+
+		#region Ended sessions
+		///<summary>The working folders under workingRoot of this patient's letters whose session has ended: in an earlier run of the program, or
+		///disposed in this one. A folder whose session is still alive (its session file is held open, in this or another running copy of the
+		///program) is left out, as are folders without a session file and folders whose working copy cannot be read right now. Each result says
+		///whether the working copy holds saves that were never stored (its hash differs from the session file's and from every version stored
+		///after that base) and whether an editor still has it open.</summary>
+		public static List<ChartLetterOrphanedEdit> FindOrphanedEdits(string workingRoot,long patNum) {
+			List<ChartLetterOrphanedEdit> listOrphanedEdits=new List<ChartLetterOrphanedEdit>();
+			if(string.IsNullOrEmpty(workingRoot) || !Directory.Exists(workingRoot)) {
+				return listOrphanedEdits;
+			}
+			List<string> listFolders=Directory.GetDirectories(workingRoot)
+				.Where(x => Regex.IsMatch(Path.GetFileName(x),@"^\d+_\d+$"))
+				.OrderBy(x => Path.GetFileName(x),StringComparer.Ordinal)
+				.ToList();
+			DataTable tableHashes=null;
+			for(int i=0;i<listFolders.Count;i++) {
+				ChartLetterOrphanedEdit chartLetterOrphanedEdit=ReadSidecar(listFolders[i]);
+				if(chartLetterOrphanedEdit==null || chartLetterOrphanedEdit.PatNum!=patNum) {
+					continue;
+				}
+				if(!File.Exists(chartLetterOrphanedEdit.WorkingFilePath)) {
+					chartLetterOrphanedEdit.WorkingHash="";
+					chartLetterOrphanedEdit.IsInUse=IsWorkingCopyInUse(chartLetterOrphanedEdit.WorkingFilePath);
+					listOrphanedEdits.Add(chartLetterOrphanedEdit);
+					continue;
+				}
+				byte[] fileBytes;
+				try {
+					fileBytes=ReadShared(chartLetterOrphanedEdit.WorkingFilePath);
+				}
+				catch(Exception ex) {
+					ex.DoNothing();//The editor is writing it right now; the next scan looks again.
+					continue;
+				}
+				if(fileBytes.Length==0) {
+					continue;//An editor that truncates before writing.
+				}
+				chartLetterOrphanedEdit.WorkingHash=ChartLetters.ComputeHash(fileBytes);
+				chartLetterOrphanedEdit.IsInUse=IsWorkingCopyInUse(chartLetterOrphanedEdit.WorkingFilePath);
+				if(!ChartLetters.HashesMatch(chartLetterOrphanedEdit.WorkingHash,chartLetterOrphanedEdit.BaseHash)) {
+					if(tableHashes==null) {
+						tableHashes=ChartLetters.GetHashTableForPatient(patNum);
+					}
+					//A version stored after the base with these bytes: the session stored it but stopped before it could rewrite its session file.
+					chartLetterOrphanedEdit.HasUnstoredChanges=!tableHashes.Rows.Cast<DataRow>().Any(x =>
+						PIn.Long(x["DocNum"].ToString())>chartLetterOrphanedEdit.BaseDocNum
+						&& ChartLetters.HashesMatch(x["ChartLetterHash"].ToString(),chartLetterOrphanedEdit.WorkingHash));
+				}
+				listOrphanedEdits.Add(chartLetterOrphanedEdit);
+			}
+			return listOrphanedEdits;
+		}
+
+		///<summary>Removes an ended session's working folder, for example after its edit was stored. False if it could not be removed (an editor
+		///still holds a file in it).</summary>
+		public static bool DeleteFolder(ChartLetterOrphanedEdit chartLetterOrphanedEdit) {
+			return DeleteFolder(chartLetterOrphanedEdit.FolderPath);
+		}
+
+		///<summary>Moves an ended session's working folder into archiveRoot, for an edit the user chose not to store, so nothing is destroyed.
+		///Returns the new folder, or null if it could not be moved.</summary>
+		public static string ArchiveFolder(ChartLetterOrphanedEdit chartLetterOrphanedEdit,string archiveRoot) {
+			try {
+				Directory.CreateDirectory(archiveRoot);
+				string folderNew=Path.Combine(archiveRoot,Path.GetFileName(chartLetterOrphanedEdit.FolderPath));
+				while(Directory.Exists(folderNew)) {
+					folderNew+="x";
+				}
+				Directory.Move(chartLetterOrphanedEdit.FolderPath,folderNew);
+				return folderNew;
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+				return null;
+			}
+		}
+
+		///<summary>Null when the folder has no readable session file, or its session is still alive (the file is held open).</summary>
+		private static ChartLetterOrphanedEdit ReadSidecar(string folder) {
+			string path=Path.Combine(folder,SIDECAR_FILE_NAME);
+			if(!File.Exists(path)) {
+				return null;
+			}
+			string text;
+			try {
+				//A live session holds the file open for writing. Asking for no write sharing fails exactly while it does.
+				using(FileStream fileStream=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.Read))
+				using(StreamReader streamReader=new StreamReader(fileStream,Encoding.UTF8)) {
+					text=streamReader.ReadToEnd();
+				}
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+				return null;
+			}
+			Dictionary<string,string> dictValues=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
+			string[] arrayLines=text.Replace("\r","").Split('\n');
+			if(arrayLines.Length==0 || arrayLines[0].Trim()!=SIDECAR_HEADER) {
+				return null;
+			}
+			for(int i=1;i<arrayLines.Length;i++) {
+				int index=arrayLines[i].IndexOf('=');
+				if(index>0) {
+					dictValues[arrayLines[i].Substring(0,index).Trim()]=arrayLines[i].Substring(index+1).Trim();
+				}
+			}
+			if(!dictValues.TryGetValue("PatNum",out string patNum) || !dictValues.TryGetValue("DocNum",out string docNum)
+				|| !dictValues.TryGetValue("Hash",out string hash) || !dictValues.TryGetValue("File",out string fileName))
+			{
+				return null;
+			}
+			if(fileName=="" || fileName!=Path.GetFileName(fileName) || fileName.Equals(SIDECAR_FILE_NAME,StringComparison.OrdinalIgnoreCase)) {
+				return null;
+			}
+			dictValues.TryGetValue("UserNum",out string userNum);
+			ChartLetterOrphanedEdit chartLetterOrphanedEdit=new ChartLetterOrphanedEdit();
+			chartLetterOrphanedEdit.FolderPath=folder;
+			chartLetterOrphanedEdit.WorkingFilePath=Path.Combine(folder,fileName);
+			chartLetterOrphanedEdit.PatNum=PIn.Long(patNum,hasExceptions:false);
+			chartLetterOrphanedEdit.BaseDocNum=PIn.Long(docNum,hasExceptions:false);
+			chartLetterOrphanedEdit.BaseHash=hash;
+			chartLetterOrphanedEdit.UserNum=PIn.Long(userNum??"",hasExceptions:false);
+			if(chartLetterOrphanedEdit.PatNum==0 || chartLetterOrphanedEdit.BaseDocNum==0) {
+				return null;
+			}
+			return chartLetterOrphanedEdit;
+		}
+
+		///<summary>Whether an editor still has the working copy open. Word and LibreOffice put a lock file ("~$..." or ".~lock...#") next to a
+		///document they have open, and Word also keeps the file itself from being opened for writing. A lock file left by an editor that crashed
+		///counts as open too, which only keeps the folder around.</summary>
+		private static bool IsWorkingCopyInUse(string workingFilePath) {
+			string folder=Path.GetDirectoryName(workingFilePath);
+			try {
+				if(Directory.Exists(folder) && Directory.EnumerateFiles(folder).Select(x => Path.GetFileName(x))
+					.Any(x => x.StartsWith("~$") || x.StartsWith(".~lock.")))
+				{
+					return true;
+				}
+				if(!File.Exists(workingFilePath)) {
+					return false;
+				}
+				using(new FileStream(workingFilePath,FileMode.Open,FileAccess.ReadWrite,FileShare.None)) {
+				}
+				return false;
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+				return true;
+			}
+		}
+
+		private static bool DeleteFolder(string folder) {
+			try {
+				if(!Directory.Exists(folder)) {
+					return true;
+				}
+				//The session file goes last: if a file is still held by an editor, the folder keeps its session file and a later scan still finds it.
+				string pathSidecar=Path.Combine(folder,SIDECAR_FILE_NAME);
+				List<string> listFiles=Directory.GetFiles(folder,"*",SearchOption.AllDirectories)
+					.OrderBy(x => string.Equals(x,pathSidecar,StringComparison.OrdinalIgnoreCase))
+					.ToList();
+				for(int i=0;i<listFiles.Count;i++) {
+					File.SetAttributes(listFiles[i],FileAttributes.Normal);
+					File.Delete(listFiles[i]);
+				}
+				Directory.Delete(folder,true);
+				return true;
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+				return false;
+			}
+		}
+		#endregion Ended sessions
+	}
+
+	///<summary>The working copy of a chart letter whose edit session has ended (see ChartLetterEditSession.FindOrphanedEdits).</summary>
+	public class ChartLetterOrphanedEdit {
+		///<summary>The working folder, named "DocNum_timestamp".</summary>
+		public string FolderPath;
+		///<summary>The working copy in FolderPath.</summary>
+		public string WorkingFilePath;
+		public long PatNum;
+		///<summary>The version the working copy was last known to hold: the version opened, or the last version the session stored.</summary>
+		public long BaseDocNum;
+		///<summary>The hash of BaseDocNum's bytes when the session last wrote its session file.</summary>
+		public string BaseHash;
+		///<summary>The user who ran the session.</summary>
+		public long UserNum;
+		///<summary>The working copy's hash now. Blank when the working copy is missing.</summary>
+		public string WorkingHash="";
+		///<summary>The working copy holds a save that was never stored as a version.</summary>
+		public bool HasUnstoredChanges;
+		///<summary>An editor still has the working copy open, so more saves may come.</summary>
+		public bool IsInUse;
 	}
 }

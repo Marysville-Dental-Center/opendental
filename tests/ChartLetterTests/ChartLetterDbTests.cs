@@ -395,5 +395,179 @@ namespace ChartLetterTests {
 			Assert.AreEqual(2,listNames.Distinct().Count());
 			Assert.IsTrue(File.Exists(Path.Combine(PatFolder(patient),documentV2.FileName)));
 		}
+
+		private static string WorkingRoot(string name) {
+			string folder=Path.Combine(_folderRoot,"recovery_"+name);
+			Directory.CreateDirectory(folder);
+			return folder;
+		}
+
+		[TestMethod]
+		public void Recovery_SaveAfterSessionEnded_IsStoredAsNewVersion() {
+			Patient patient=MakePatient("ClOrphan");
+			Document document=Create(patient,"Orphan letter","Draft");
+			string workingRoot=WorkingRoot("orphan");
+			string workingFilePath;
+			using(ChartLetterEditSession chartLetterEditSession=ChartLetterEditSession.Start(document,patient,PatFolder(patient),_userNum1,workingRoot)) {
+				workingFilePath=chartLetterEditSession.WorkingFilePath;
+				Assert.IsTrue(File.Exists(Path.Combine(Path.GetDirectoryName(workingFilePath),ChartLetterEditSession.SIDECAR_FILE_NAME)));
+				Assert.AreEqual(0,ChartLetterEditSession.FindOrphanedEdits(workingRoot,patient.PatNum).Count,"A live session is not an orphan.");
+			}//Disposed without watching: the program closed or ended while the editor still had the letter open.
+			byte[] bytesSaved=Letter("Saved in the editor after the program closed");
+			File.WriteAllBytes(workingFilePath,bytesSaved);
+			Assert.AreEqual(EnumChartLetterHashMatch.Match,ChartLetters.GetHashMatch(document,ChartLetters.GetFileBytes(document,PatFolder(patient))),
+				"The stored file is untouched, so its hash alone would never show the lost save.");
+			Assert.AreEqual(0,ChartLetterEditSession.FindOrphanedEdits(workingRoot,patient.PatNum+1000000).Count,"Only this patient's letters.");
+			List<ChartLetterOrphanedEdit> listOrphanedEdits=ChartLetterEditSession.FindOrphanedEdits(workingRoot,patient.PatNum);
+			Assert.AreEqual(1,listOrphanedEdits.Count);
+			ChartLetterOrphanedEdit chartLetterOrphanedEdit=listOrphanedEdits[0];
+			Assert.IsTrue(chartLetterOrphanedEdit.HasUnstoredChanges);
+			Assert.IsFalse(chartLetterOrphanedEdit.IsInUse);
+			Assert.AreEqual(document.DocNum,chartLetterOrphanedEdit.BaseDocNum);
+			Assert.AreEqual(document.ChartLetterHash,chartLetterOrphanedEdit.BaseHash);
+			Assert.AreEqual(_userNum1,chartLetterOrphanedEdit.UserNum);
+			Document documentNew=ChartLetters.RecoverOrphanedEdit(chartLetterOrphanedEdit,patient,_userNum2,PatFolder(patient));
+			Assert.IsNotNull(documentNew);
+			Document documentNewDb=Documents.GetByNum(documentNew.DocNum,doReturnNullIfNotFound:true);
+			Assert.IsNotNull(documentNewDb,"A new version row exists.");
+			Assert.AreEqual((byte)EnumChartLetterStatus.Current,documentNewDb.ChartLetterStatus);
+			Assert.AreEqual(ChartLetters.ComputeHash(bytesSaved),documentNewDb.ChartLetterHash);
+			Assert.AreEqual(_userNum2,documentNewDb.UserNum);
+			Assert.AreEqual("Orphan letter",documentNewDb.Description);
+			CollectionAssert.AreEqual(bytesSaved,ChartLetters.GetFileBytes(documentNewDb,PatFolder(patient)));
+			Assert.AreEqual((byte)EnumChartLetterStatus.Superseded,Documents.GetByNum(document.DocNum).ChartLetterStatus);
+			Assert.AreEqual(1,ChartLetters.GetForPatient(patient.PatNum,false).Count);
+			Assert.AreEqual(2,ChartLetters.GetForPatient(patient.PatNum,true).Count);
+			Assert.AreEqual("1",DataCore.GetScalar("SELECT COUNT(*) FROM securitylog WHERE FKey="+documentNew.DocNum+" AND PermType="
+				+(int)EnumPermType.ImageEdit+" AND LogText LIKE 'Chart Letter: Chart letter edit saved after the program stopped tracking it, recovered as version%'"));
+			Assert.IsTrue(ChartLetterEditSession.DeleteFolder(chartLetterOrphanedEdit));
+			Assert.IsFalse(Directory.Exists(chartLetterOrphanedEdit.FolderPath));
+			Assert.AreEqual(0,ChartLetterEditSession.FindOrphanedEdits(workingRoot,patient.PatNum).Count);
+		}
+
+		[TestMethod]
+		public void Recovery_StoredVersionsUpdateTheSessionFile_NothingLeftToStore() {
+			Patient patient=MakePatient("ClOrphanClean");
+			Document document=Create(patient,"Clean","Draft");
+			string workingRoot=WorkingRoot("clean");
+			Document documentV2;
+			using(ChartLetterEditSession chartLetterEditSession=ChartLetterEditSession.Start(document,patient,PatFolder(patient),_userNum1,workingRoot)) {
+				File.WriteAllBytes(chartLetterEditSession.WorkingFilePath,Letter("Stored while the program ran"));
+				documentV2=chartLetterEditSession.CheckForChanges();
+				Assert.IsNotNull(documentV2);
+			}
+			List<ChartLetterOrphanedEdit> listOrphanedEdits=ChartLetterEditSession.FindOrphanedEdits(workingRoot,patient.PatNum);
+			Assert.AreEqual(1,listOrphanedEdits.Count);
+			Assert.IsFalse(listOrphanedEdits[0].HasUnstoredChanges,"Every save was stored.");
+			Assert.AreEqual(documentV2.DocNum,listOrphanedEdits[0].BaseDocNum,"The session file follows the stored versions.");
+			Assert.AreEqual(documentV2.ChartLetterHash,listOrphanedEdits[0].BaseHash);
+			//A session that stored a version but ended before it could rewrite its session file: the stored bytes are found among the versions
+			//after the base, so nothing is stored twice.
+			string workingRoot2=WorkingRoot("clean2");
+			string workingFilePath;
+			using(ChartLetterEditSession chartLetterEditSession=ChartLetterEditSession.Start(documentV2,patient,PatFolder(patient),_userNum1,workingRoot2)) {
+				workingFilePath=chartLetterEditSession.WorkingFilePath;
+			}
+			byte[] bytesV3=Letter("Stored, then the program ended");
+			File.WriteAllBytes(workingFilePath,bytesV3);
+			ChartLetters.SaveNewVersion(documentV2,patient,bytesV3,_userNum1,PatFolder(patient));
+			listOrphanedEdits=ChartLetterEditSession.FindOrphanedEdits(workingRoot2,patient.PatNum);
+			Assert.AreEqual(1,listOrphanedEdits.Count);
+			Assert.IsFalse(listOrphanedEdits[0].HasUnstoredChanges);
+			Assert.AreEqual(3,ChartLetters.GetForPatient(patient.PatNum,true).Count);
+		}
+
+		[TestMethod]
+		public void Recovery_BaseNoLongerCurrent_IsStoredAsSeparateLetter() {
+			Patient patient=MakePatient("ClOrphanStale");
+			Document document=Create(patient,"Stale base","Draft",DateTime.Now.AddDays(-1));
+			string workingRoot=WorkingRoot("stale");
+			string workingFilePath;
+			using(ChartLetterEditSession chartLetterEditSession=ChartLetterEditSession.Start(document,patient,PatFolder(patient),_userNum1,workingRoot)) {
+				workingFilePath=chartLetterEditSession.WorkingFilePath;
+			}
+			//Another user stores a newer version in the meantime.
+			Document documentOther=ChartLetters.SaveNewVersion(document,patient,Letter("Another user's version"),_userNum2,PatFolder(patient));
+			byte[] bytesSaved=Letter("Saved after the program closed, from the older version");
+			File.WriteAllBytes(workingFilePath,bytesSaved);
+			ChartLetterOrphanedEdit chartLetterOrphanedEdit=ChartLetterEditSession.FindOrphanedEdits(workingRoot,patient.PatNum).Single();
+			Assert.IsTrue(chartLetterOrphanedEdit.HasUnstoredChanges);
+			Document documentRecovered=ChartLetters.RecoverOrphanedEdit(chartLetterOrphanedEdit,patient,_userNum1,PatFolder(patient));
+			Document documentRecoveredDb=Documents.GetByNum(documentRecovered.DocNum);
+			Assert.AreEqual((byte)EnumChartLetterStatus.Current,documentRecoveredDb.ChartLetterStatus);
+			Assert.AreEqual("Stale base (recovered edit)",documentRecoveredDb.Description);
+			Assert.AreEqual(Documents.GetByNum(document.DocNum).DateCreated,documentRecoveredDb.DateCreated,"The letter's date is kept.");
+			Assert.AreEqual(document.ProvNum,documentRecoveredDb.ProvNum);
+			CollectionAssert.AreEqual(bytesSaved,ChartLetters.GetFileBytes(documentRecoveredDb,PatFolder(patient)));
+			Assert.AreEqual((byte)EnumChartLetterStatus.Current,Documents.GetByNum(documentOther.DocNum).ChartLetterStatus,
+				"The other user's version is not hidden.");
+			Assert.AreEqual(2,ChartLetters.GetForPatient(patient.PatNum,false).Count);
+			Assert.AreEqual("1",DataCore.GetScalar("SELECT COUNT(*) FROM securitylog WHERE FKey="+documentRecovered.DocNum+" AND PermType="
+				+(int)EnumPermType.ImageEdit+" AND LogText LIKE '%recovered as a separate letter because version "+document.DocNum+" %'"));
+		}
+
+		[TestMethod]
+		public void Recovery_DeclinedEditIsArchived_AndCleanCopyCanBeWatchedAgain() {
+			Patient patient=MakePatient("ClOrphanResume");
+			Document document=Create(patient,"Resume","Draft");
+			string workingRoot=WorkingRoot("resume");
+			string workingFilePath;
+			using(ChartLetterEditSession chartLetterEditSession=ChartLetterEditSession.Start(document,patient,PatFolder(patient),_userNum1,workingRoot)) {
+				workingFilePath=chartLetterEditSession.WorkingFilePath;
+			}
+			//Nothing saved yet: the copy can be watched again, as when the editor still has it open after a restart.
+			ChartLetterOrphanedEdit chartLetterOrphanedEdit=ChartLetterEditSession.FindOrphanedEdits(workingRoot,patient.PatNum).Single();
+			Assert.IsFalse(chartLetterOrphanedEdit.HasUnstoredChanges);
+			using(ChartLetterEditSession chartLetterEditSession=ChartLetterEditSession.Resume(chartLetterOrphanedEdit,document,patient,
+				PatFolder(patient),_userNum2))
+			{
+				Assert.AreEqual(workingFilePath,chartLetterEditSession.WorkingFilePath);
+				Assert.AreEqual(0,ChartLetterEditSession.FindOrphanedEdits(workingRoot,patient.PatNum).Count,"Alive again.");
+				File.WriteAllBytes(workingFilePath,Letter("Saved after the restart"));
+				Document documentV2=chartLetterEditSession.CheckForChanges();
+				Assert.IsNotNull(documentV2);
+				Assert.AreEqual(_userNum2,Documents.GetByNum(documentV2.DocNum).UserNum);
+			}
+			//A copy holding other bytes cannot be resumed; it must be stored or declined first.
+			byte[] bytesDeclined=Letter("Saved after the second close");
+			File.WriteAllBytes(workingFilePath,bytesDeclined);
+			chartLetterOrphanedEdit=ChartLetterEditSession.FindOrphanedEdits(workingRoot,patient.PatNum).Single();
+			Assert.IsTrue(chartLetterOrphanedEdit.HasUnstoredChanges);
+			Document documentCurrent=ChartLetters.GetForPatient(patient.PatNum,false).Single();
+			Expect.Throws<ApplicationException>(() => ChartLetterEditSession.Resume(chartLetterOrphanedEdit,documentCurrent,patient,PatFolder(patient),
+				_userNum1));
+			//Declined: moved aside, not deleted, and no longer offered.
+			string folderArchive=ChartLetterEditSession.ArchiveFolder(chartLetterOrphanedEdit,Path.Combine(workingRoot,"NotStored"));
+			Assert.IsNotNull(folderArchive);
+			Assert.IsFalse(Directory.Exists(chartLetterOrphanedEdit.FolderPath));
+			CollectionAssert.AreEqual(bytesDeclined,File.ReadAllBytes(Path.Combine(folderArchive,Path.GetFileName(workingFilePath))));
+			Assert.AreEqual(0,ChartLetterEditSession.FindOrphanedEdits(workingRoot,patient.PatNum).Count);
+			Assert.AreEqual(2,ChartLetters.GetForPatient(patient.PatNum,true).Count,"Nothing was stored for the declined edit.");
+		}
+
+		[TestMethod]
+		public void Recovery_EditorStillHoldingTheCopy_IsInUse() {
+			Patient patient=MakePatient("ClOrphanInUse");
+			Document document=Create(patient,"In use","Draft");
+			string workingRoot=WorkingRoot("inuse");
+			string workingFilePath;
+			using(ChartLetterEditSession chartLetterEditSession=ChartLetterEditSession.Start(document,patient,PatFolder(patient),_userNum1,workingRoot)) {
+				workingFilePath=chartLetterEditSession.WorkingFilePath;
+			}
+			byte[] bytesSaved=Letter("Saved while the editor keeps it open");
+			File.WriteAllBytes(workingFilePath,bytesSaved);
+			//An editor that keeps the file open and lets others only read it, as Word does.
+			using(new FileStream(workingFilePath,FileMode.Open,FileAccess.ReadWrite,FileShare.Read)) {
+				ChartLetterOrphanedEdit chartLetterOrphanedEdit=ChartLetterEditSession.FindOrphanedEdits(workingRoot,patient.PatNum).Single();
+				Assert.IsTrue(chartLetterOrphanedEdit.IsInUse);
+				Assert.IsTrue(chartLetterOrphanedEdit.HasUnstoredChanges,"The copy can still be read and stored.");
+				Assert.IsFalse(ChartLetterEditSession.DeleteFolder(chartLetterOrphanedEdit),"The folder stays while the editor holds the copy.");
+				Document documentNew=ChartLetters.RecoverOrphanedEdit(chartLetterOrphanedEdit,patient,_userNum1,PatFolder(patient));
+				CollectionAssert.AreEqual(bytesSaved,ChartLetters.GetFileBytes(Documents.GetByNum(documentNew.DocNum),PatFolder(patient)));
+			}
+			//A lock file next to the copy, as Word ("~$") and LibreOffice (".~lock.") leave while a document is open.
+			File.WriteAllText(Path.Combine(Path.GetDirectoryName(workingFilePath),".~lock.In use.docx#"),"lock");
+			Assert.IsTrue(ChartLetterEditSession.FindOrphanedEdits(workingRoot,patient.PatNum).Single().IsInUse);
+		}
 	}
 }

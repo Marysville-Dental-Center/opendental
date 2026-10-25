@@ -20,15 +20,36 @@ namespace OpenDental {
 		private static readonly List<ChartLetterEditSession> _listSessions=new List<ChartLetterEditSession>();
 		///<summary>DocNums whose hash mismatch was already logged in this program run, so opening a letter repeatedly does not flood the log.</summary>
 		private static readonly HashSet<long> _hashSetMismatchLogged=new HashSet<long>();
+		///<summary>Edits saved after their session ended that the user chose not to store (or may not store) in this program run, as working folder
+		///and hash, so the user is not asked again until the editor saves something new.</summary>
+		private static readonly HashSet<string> _hashSetRecoveryDeclined=new HashSet<string>();
 		private static bool _isEditHelpShown;
+		private static bool _isRecovering;
+		private static Form _formMain;
 		///<summary>Raised with the PatNum whenever a chart letter is created, gets a new version, is deleted or has its properties changed. May be
 		///raised on a background thread.</summary>
 		public static event EventHandler<long> ChartLetterChanged;
 
-		///<summary>Folder for the working and read-only copies. Kept apart from the program's temporary folder, which is cleaned up at times.
-		///</summary>
+		///<summary>Folder for the working copies of letters opened for editing, one subfolder per edit session. It is in the user's local
+		///application data, not in the temporary folder, because temporary-file clean-up (by Windows, other tools or this program) must not remove
+		///a working copy that holds a save that was never stored. If the program is ever renamed, this folder must still be scanned.</summary>
 		public static string GetWorkingRoot() {
+			string folderAppData=Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+			if(string.IsNullOrEmpty(folderAppData)) {
+				return Path.Combine(Path.GetTempPath(),"ChartLetters","Working");
+			}
+			return Path.Combine(folderAppData,"OpenDental","ChartLetters");
+		}
+
+		///<summary>Folder for the read-only, PDF and merge copies, which are never edited and can be removed at any time. Kept apart from the
+		///program's temporary folder, which is cleaned up at times.</summary>
+		public static string GetTempRoot() {
 			return Path.Combine(Path.GetTempPath(),"ChartLetters");
+		}
+
+		///<summary>Where working folders go whose unstored edit the user chose not to store, so nothing is destroyed.</summary>
+		public static string GetNotStoredRoot() {
+			return Path.Combine(GetWorkingRoot(),"NotStored");
 		}
 
 		#region Create
@@ -116,7 +137,7 @@ namespace OpenDental {
 				+"and select that file in the letter's setup."));
 			return null;
 #else
-			string folder=Path.Combine(GetWorkingRoot(),"Merge_"+DateTime.Now.ToString("yyyyMMddHHmmssfff"));
+			string folder=Path.Combine(GetTempRoot(),"Merge_"+DateTime.Now.ToString("yyyyMMddHHmmssfff"));
 			Directory.CreateDirectory(folder);
 			string dataFile=Path.Combine(folder,"data.txt");
 			WriteDataFile(dataFile,letterMerge,tableReadable);
@@ -187,7 +208,7 @@ namespace OpenDental {
 				return;
 			}
 			WarnIfHashMismatch(document,arrayBytes);
-			string folder=Path.Combine(GetWorkingRoot(),"ReadOnly_"+document.DocNum+"_"+DateTime.Now.ToString("yyyyMMddHHmmssfff"));
+			string folder=Path.Combine(GetTempRoot(),"ReadOnly_"+document.DocNum+"_"+DateTime.Now.ToString("yyyyMMddHHmmssfff"));
 			string path;
 			try {
 				Directory.CreateDirectory(folder);
@@ -202,10 +223,18 @@ namespace OpenDental {
 			StartProcess(path);
 		}
 
-		///<summary>Opens the current version for editing. Every save in the editor becomes a new version (new document row and file) while this
-		///program runs. Needs the procedure note permission for the letter's date.</summary>
+		///<summary>Opens the current version for editing. The editor works on a working copy; every save in the editor becomes a new version (new
+		///document row and file) while this program runs. Saves made after the program closed are offered for storing later (RecoverOrphanedEdits).
+		///Needs the procedure note permission for the letter's date.</summary>
 		public static void StartEdit(Document document,Patient patient) {
-			Document documentDb=Documents.GetByNum(document.DocNum,doReturnNullIfNotFound:true);
+			//First the patient's working copies left by sessions that ended: a save that was never stored is offered for storing, so the letter
+			//opened here includes it, and a copy an editor still has open is watched again instead of a second copy being opened.
+			Dictionary<long,Document> dictReplaced=RecoverOrphanedEdits(patient);
+			long docNum=document.DocNum;
+			if(dictReplaced.TryGetValue(docNum,out Document documentRecovered)) {
+				docNum=documentRecovered.DocNum;
+			}
+			Document documentDb=Documents.GetByNum(docNum,doReturnNullIfNotFound:true);
 			if(documentDb==null || !ChartLetters.IsChartLetter(documentDb)) {
 				MsgBox.Show(Lan.g(LAN,"The chart letter no longer exists."));
 				return;
@@ -243,17 +272,23 @@ namespace OpenDental {
 				FriendlyException.Show(Lan.g(LAN,"The chart letter could not be opened for editing."),ex);
 				return;
 			}
+			AddSession(chartLetterEditSession);
+			if(!_isEditHelpShown) {
+				_isEditHelpShown=true;
+				MsgBox.Show(Lan.g(LAN,"Each time you save the document in the editor, a new version of the chart letter is stored and the older one is "
+					+"kept for the audit trail. Keep this program running until you have closed the document. Saves made after the program closes "
+					+"are offered for storing the next time the patient's chart is opened on this computer."));
+			}
+			StartProcess(chartLetterEditSession.WorkingFilePath);
+		}
+
+		///<summary>Watches the session's working copy for the rest of this program run.</summary>
+		private static void AddSession(ChartLetterEditSession chartLetterEditSession) {
 			chartLetterEditSession.VersionSaved+=ChartLetterEditSession_VersionSaved;
 			chartLetterEditSession.StartWatching();
 			lock(_lock) {
 				_listSessions.Add(chartLetterEditSession);
 			}
-			if(!_isEditHelpShown) {
-				_isEditHelpShown=true;
-				MsgBox.Show(Lan.g(LAN,"Each time you save the document in the editor, a new version of the chart letter is stored and the older one is "
-					+"kept for the audit trail. Keep this program running until you have closed the document."));
-			}
-			StartProcess(chartLetterEditSession.WorkingFilePath);
 		}
 
 		private static void ChartLetterEditSession_VersionSaved(object sender,ChartLetterVersionEventArgs e) {
@@ -265,6 +300,194 @@ namespace OpenDental {
 				RaiseChanged(e.DocumentNew.PatNum);
 			}
 		}
+		#endregion Open, edit, delete
+
+		#region Edits saved after a session ended
+		///<summary>Looks for working copies of this patient's letters whose edit session ended: the program closed or stopped while the editor
+		///still had the letter open, so later saves went only into the working copy. For each copy that holds a save that was never stored, tells
+		///the user and offers to store it: as a new version when the version it is based on is still current, otherwise as a separate letter. A
+		///declined edit's folder is moved to GetNotStoredRoot(), never deleted. Copies with nothing to store are removed, or watched again while an
+		///editor still has them open. Returns, for each letter that got a new version here, its old DocNum and the new version.</summary>
+		public static Dictionary<long,Document> RecoverOrphanedEdits(Patient patient) {
+			Dictionary<long,Document> dictReplaced=new Dictionary<long,Document>();
+			if(patient==null || patient.PatNum==0 || _isRecovering || Security.CurUser==null) {
+				return dictReplaced;
+			}
+			_isRecovering=true;//The questions below let other events run, which may start another scan.
+			try {
+				List<ChartLetterOrphanedEdit> listOrphanedEdits;
+				try {
+					listOrphanedEdits=ChartLetterEditSession.FindOrphanedEdits(GetWorkingRoot(),patient.PatNum);
+				}
+				catch(Exception ex) {
+					ex.DoNothing();//Nothing found this time; the next scan tries again.
+					return dictReplaced;
+				}
+				bool isChanged=false;
+				for(int i=0;i<listOrphanedEdits.Count;i++) {
+					ChartLetterOrphanedEdit chartLetterOrphanedEdit=listOrphanedEdits[i];
+					if(!chartLetterOrphanedEdit.HasUnstoredChanges) {
+						ResumeOrRemove(chartLetterOrphanedEdit,null,patient);
+						continue;
+					}
+					string keyDeclined=chartLetterOrphanedEdit.FolderPath+"|"+chartLetterOrphanedEdit.WorkingHash;
+					if(_hashSetRecoveryDeclined.Contains(keyDeclined)) {
+						continue;
+					}
+					Document documentBase=Documents.GetByNum(chartLetterOrphanedEdit.BaseDocNum,doReturnNullIfNotFound:true);
+					if(documentBase!=null && documentBase.PatNum!=patient.PatNum) {
+						documentBase=null;
+					}
+					bool isBaseCurrent=documentBase!=null && ChartLetters.GetStatus(documentBase)==EnumChartLetterStatus.Current;
+					string title;
+					if(documentBase==null) {
+						title=Path.GetFileNameWithoutExtension(chartLetterOrphanedEdit.WorkingFilePath);
+					}
+					else {
+						title=GetFileTitle(documentBase);
+					}
+					bool isAuthorized=Security.IsAuthorized(ChartLetters.PERM_EDIT,documentBase?.DateCreated??DateTime.Today,suppressMessage:true);
+					if(!isBaseCurrent) {
+						isAuthorized&=Security.IsAuthorized(ChartLetters.PERM_CREATE,DateTime.Today,suppressMessage:true);
+					}
+					if(!isAuthorized) {
+						_hashSetRecoveryDeclined.Add(keyDeclined);
+						MsgBox.Show(Lan.g(LAN,"The chart letter")+" \""+title+"\" "+Lan.g(LAN,"was saved in the editor after this program stopped tracking "
+							+"it, and those changes are not stored yet. You are not allowed to store them. They are kept on this computer for a user who "
+							+"is allowed to edit chart letters:")+"\r\n"+chartLetterOrphanedEdit.FolderPath);
+						continue;
+					}
+					string text=Lan.g(LAN,"The chart letter")+" \""+title+"\" "+Lan.g(LAN,"was saved in the editor after this program stopped tracking it "
+						+"(the program was closed or ended unexpectedly). Those changes are not stored yet.")+"\r\n\r\n";
+					if(isBaseCurrent) {
+						text+=Lan.g(LAN,"Store them now as a new version of the letter?");
+					}
+					else {
+						text+=Lan.g(LAN,"The letter has been changed or deleted since. Store the changes now as a separate chart letter?");
+					}
+					if(!MsgBox.Show(MsgBoxButtons.YesNo,text)) {
+						_hashSetRecoveryDeclined.Add(keyDeclined);
+						if(!chartLetterOrphanedEdit.IsInUse) {
+							string folderArchive=ChartLetterEditSession.ArchiveFolder(chartLetterOrphanedEdit,GetNotStoredRoot());
+							if(folderArchive!=null) {
+								MsgBox.Show(Lan.g(LAN,"The changes were not stored. The edited file is kept in:")+"\r\n"+folderArchive);
+							}
+						}
+						continue;
+					}
+					string patFolder=GetPatFolder(patient);
+					if(patFolder==null) {
+						break;
+					}
+					Document documentStored;
+					try {
+						documentStored=ChartLetters.RecoverOrphanedEdit(chartLetterOrphanedEdit,patient,Security.CurUser.UserNum,patFolder);
+					}
+					catch(Exception ex) {
+						_hashSetRecoveryDeclined.Add(keyDeclined);
+						FriendlyException.Show(Lan.g(LAN,"The changes could not be stored. The edited file is kept in:")+"\r\n"
+							+chartLetterOrphanedEdit.FolderPath,ex);
+						continue;
+					}
+					isChanged=true;
+					if(documentStored!=null && isBaseCurrent) {
+						dictReplaced[chartLetterOrphanedEdit.BaseDocNum]=documentStored;
+					}
+					ResumeOrRemove(chartLetterOrphanedEdit,documentStored,patient);
+				}
+				if(isChanged) {
+					RaiseChanged(patient.PatNum);
+				}
+			}
+			finally {
+				_isRecovering=false;
+			}
+			return dictReplaced;
+		}
+
+		///<summary>For a working copy with nothing left to store: removes its folder when no editor has it open. Otherwise watches it again for the
+		///rest of this run, so further saves become versions right away, as long as it holds exactly the current version (documentMatching, or
+		///the base when null) and the user may edit that letter. A folder left alone is looked at again by the next scan.</summary>
+		private static void ResumeOrRemove(ChartLetterOrphanedEdit chartLetterOrphanedEdit,Document documentMatching,Patient patient) {
+			if(!chartLetterOrphanedEdit.IsInUse) {
+				ChartLetterEditSession.DeleteFolder(chartLetterOrphanedEdit);
+				return;
+			}
+			Document document=documentMatching??Documents.GetByNum(chartLetterOrphanedEdit.BaseDocNum,doReturnNullIfNotFound:true);
+			if(document==null || document.PatNum!=patient.PatNum || ChartLetters.GetStatus(document)!=EnumChartLetterStatus.Current
+				|| !ChartLetters.HashesMatch(document.ChartLetterHash,chartLetterOrphanedEdit.WorkingHash)
+				|| !Security.IsAuthorized(ChartLetters.PERM_EDIT,document.DateCreated,suppressMessage:true))
+			{
+				return;
+			}
+			string patFolder;
+			try {
+				patFolder=ImageStore.GetPatientFolder(patient,ImageStore.GetPreferredAtoZpath());
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+				return;
+			}
+			ChartLetterEditSession chartLetterEditSession;
+			try {
+				chartLetterEditSession=ChartLetterEditSession.Resume(chartLetterOrphanedEdit,document,patient,patFolder,Security.CurUser.UserNum);
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+				return;
+			}
+			AddSession(chartLetterEditSession);
+		}
+
+		///<summary>Watches the main window closing, once, so letters still open in an editor can be dealt with (see FormMain_FormClosing).</summary>
+		public static void WatchProgramClosing(Form formMain) {
+			if(formMain==null || _formMain!=null) {
+				return;
+			}
+			_formMain=formMain;
+			_formMain.FormClosing+=FormMain_FormClosing;
+		}
+
+		///<summary>Runs after the main window's own closing code, once the close goes ahead. Stores saves still waiting for the editor to go quiet,
+		///removes the working folders of letters no longer open in an editor, and warns about the ones that still are: saves made in them from now
+		///on are not stored until the patient's chart is opened again on this computer, when the user is asked to store them.</summary>
+		private static void FormMain_FormClosing(object sender,FormClosingEventArgs e) {
+			if(e.Cancel) {
+				return;//The close was stopped, or the main window closes in a second pass.
+			}
+			List<ChartLetterEditSession> listSessions;
+			lock(_lock) {
+				listSessions=new List<ChartLetterEditSession>(_listSessions);
+				_listSessions.Clear();
+			}
+			List<string> listTitlesOpen=new List<string>();
+			for(int i=0;i<listSessions.Count;i++) {
+				listSessions[i].VersionSaved-=ChartLetterEditSession_VersionSaved;//The chart module is going away.
+				try {
+					listSessions[i].CheckForChanges();
+				}
+				catch(Exception ex) {
+					ex.DoNothing();//Left in the working copy, so the next scan offers it.
+				}
+				bool isEditorOpen=listSessions[i].IsEditorOpen();
+				listSessions[i].Dispose();
+				if(isEditorOpen) {
+					listTitlesOpen.Add(GetFileTitle(listSessions[i].DocumentCur));
+				}
+				else {
+					listSessions[i].DeleteWorkingFolder();
+				}
+			}
+			if(listTitlesOpen.Count==0 || e.CloseReason==CloseReason.WindowsShutDown || e.CloseReason==CloseReason.TaskManagerClosing) {
+				return;
+			}
+			MsgBox.Show(Lan.g(LAN,"These chart letters are still open in the editor:")+"\r\n"+string.Join("\r\n",listTitlesOpen.Select(x => "- "+x))
+				+"\r\n\r\n"+Lan.g(LAN,"Changes saved in the editor from now on are not stored right away. The next time the patient's chart is opened "
+				+"in this program on this computer, you will be asked to store them."));
+		}
+		#endregion Edits saved after a session ended
+
+		#region Delete and properties
 
 		///<summary>Soft-deletes the letter after confirming. Needs the procedure note permission for the letter's date. Returns true if deleted.
 		///</summary>
@@ -312,7 +535,7 @@ namespace OpenDental {
 			}
 			return false;
 		}
-		#endregion Open, edit, delete
+		#endregion Delete and properties
 
 		#region PDF copy
 		///<summary>Stores a PDF copy of the letter in the image category, so it can be sent or printed from the Imaging module. Converting needs a
@@ -335,7 +558,7 @@ namespace OpenDental {
 				MsgBox.Show(Lan.g(LAN,"The chart letter's file could not be found:")+" "+document.FileName);
 				return null;
 			}
-			string folder=Path.Combine(GetWorkingRoot(),"Pdf_"+document.DocNum+"_"+DateTime.Now.ToString("yyyyMMddHHmmssfff"));
+			string folder=Path.Combine(GetTempRoot(),"Pdf_"+document.DocNum+"_"+DateTime.Now.ToString("yyyyMMddHHmmssfff"));
 			Directory.CreateDirectory(folder);
 			string pathDocument=Path.Combine(folder,GetFileTitle(document)+Path.GetExtension(document.FileName));
 			File.WriteAllBytes(pathDocument,arrayBytes);
