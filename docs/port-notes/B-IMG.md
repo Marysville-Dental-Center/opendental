@@ -103,8 +103,9 @@ New project `tests/BIMGTests` (MSTest v1, x86, .NET 4.8), in `OpenDental.sln` an
 Untested: the windows themselves were not opened (no GUI run), so the pixels of a copied image and the look of the split button and the Details
 button are checked by the owner.
 
-Checks on this branch: the build of `OpenDental.Local.slnf` has 0 errors and 376 warnings (the baseline); every test assembly passes (BIMGTests
-30 of 30, the database tests included); `tools/Test-NoHqHosts.ps1` passes.
+Checks on this branch: the build of `OpenDental.Local.slnf` has 0 errors and 376 warnings (the baseline); the targeted test assemblies pass
+(BIMGTests 30 of 30, the database tests included; ImagingTests 43 of 43, which also reads `ControlImageDisplay.cs`; NoHqTests 49 of 49);
+`tools/Test-NoHqHosts.ps1` passes. A verifier should run `BIMGTests` and `ImagingTests`.
 
 ## Interplay with packages built in parallel
 
