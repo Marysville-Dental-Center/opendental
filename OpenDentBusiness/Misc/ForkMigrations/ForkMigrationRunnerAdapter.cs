@@ -29,7 +29,14 @@ namespace OpenDentBusiness.ForkMigrations {
 			Action<string> log=actionLog??(x => { });
 			ForkMigrationResult result=ForkMigrationRunner.Run();
 			foreach(ForkMigrationStep step in result.ListStepsRun) {
-				log("Fork migration step "+step+(result.ListStepsChanged.Contains(step) ? " changed the database." : " found nothing to change."));
+				bool isChanged=result.ListStepsChanged.Contains(step);
+				log("Fork migration step "+step+(isChanged ? " changed the database:" : " found nothing to change."));
+				if(isChanged) {
+					//Every change, so the log names what the step did (for example which report row it renamed), not only that it did something.
+					foreach(string change in GetChangesOfStep(result,step)) {
+						log("  "+change);
+					}
+				}
 			}
 			log("Fork migrations: "+result.ListStepsRun.Count+" step(s) run, "+result.ListStepsSkipped.Count+" already done. Fork schema level "
 				+ForkVersions.GetMarker(ForkVersions.PREF_FORK_SCHEMA_LEVEL)+".");
@@ -46,6 +53,12 @@ namespace OpenDentBusiness.ForkMigrations {
 				ForkVersions.SetMarker(ForkVersions.PREF_OD_SCHEMA_COMPAT,SchemaVerifier.ReferenceVersion);
 			}
 			log("The schema matches Open Dental "+SchemaVerifier.ReferenceVersion+" (OdSchemaCompat).");
+		}
+
+		///<summary>The change lines of one step (ForkMigrationContext.Log prefixes each with the step's level), without the prefix.</summary>
+		public static List<string> GetChangesOfStep(ForkMigrationResult result,ForkMigrationStep step) {
+			string prefix=step.Level+": ";
+			return result.ListChanges.Where(x => x.StartsWith(prefix,StringComparison.Ordinal)).Select(x => x.Substring(prefix.Length)).ToList();
 		}
 	}
 }

@@ -172,7 +172,8 @@ namespace OpenDentBusiness {
 			}
 			Log("Fork markers written: OdSchemaCompat "+ForkVersions.GetMarker(ForkVersions.PREF_OD_SCHEMA_COMPAT)+", ForkSchemaLevel "
 				+ForkVersions.GetMarker(ForkVersions.PREF_FORK_SCHEMA_LEVEL)+".");
-			//7. Fork migration steps (24.4 to 25.3.48 for a 24.3.63 source; idempotent no-ops for 25.3.48).
+			//7. Fork migration steps (24.4 to 25.3.48 for a 24.3.63 source). For 25.3.48 the schema and seed steps find nothing to change; the report
+			//rows step may rename report rows Open Dental wrote under names this program does not know (ReportRows25_3.PlanRenames predicts it).
 			if(ForkMigrationHandOff.HasSteps(runner)) {
 				Log("Running fork migration steps up to level "+runner.LatestLevel+".");
 				runner.RunPending(Log);
