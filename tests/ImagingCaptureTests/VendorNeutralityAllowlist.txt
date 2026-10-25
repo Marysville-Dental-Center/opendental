@@ -1,0 +1,7 @@
+# Occurrences of a denied name that VendorNeutralityTests accepts. One per line: the path from the repository root (with '/'),
+# then the hash of the denied name, as in VendorNeutralityTests. Lines starting with '#' are comments.
+# Keep this list short: a name is allowed only where the code must keep it, such as a value kept for compatibility.
+# Allowlist_EveryEntryIsStillNeeded fails when an entry no longer matches anything.
+
+# The imaging device type value kept for compatibility with the program's device type enumeration. Nothing implements it.
+ImagingDeviceManager/Enums.cs 0c6947fda12f6b9a18b81f7c46cdbe0130e2d329d1708487a49f867fc2c1c47e
