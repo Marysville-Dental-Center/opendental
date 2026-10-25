@@ -1,6 +1,6 @@
 # Adoption runbook: moving the office from Open Dental 25.3.48 to Open PMS - Dental
 
-Status: 2026-10-25, second revision after review (M1-Z r2); milestone M1 switch gate (M1-Z in [specs/port-backlog.md](specs/port-backlog.md)).
+Status: 2026-10-25, third revision after review (M1-Z r3); milestone M1 switch gate (M1-Z in [specs/port-backlog.md](specs/port-backlog.md)).
 Rehearsed on synthetic data with [tools/AdoptionValidation](../tools/AdoptionValidation/README.md); results in
 [m1-validation-report.md](m1-validation-report.md). The tool commands of steps 0.2, 1.1, 3.2 to 6.1 (everything before the program's first
 start), 10.1 and 10.2 are the commands the dry run ran, in its order, through a forwarded port as on the admin PC (step 0.0). The commands
@@ -24,7 +24,12 @@ same code):
 3. deletes Open Dental's update files (`documentmisc` rows of types `UpdateFiles` and `UpdateFilesSegment`) without reading them
 4. blanks the preferences that point at Open Dental's servers
 5. sets `DataBaseVersion` and `ProgramVersion` to `99.0.0.0`, so Open Dental programs can no longer use the database
-6. writes the fork's version markers and runs the fork migration steps (for a 25.3.48 database they find nothing to change)
+6. writes the fork's version markers and runs the fork migration steps. For a 25.3.48 database the schema and seed steps find nothing to
+   change. One step may rename report rows: Open Dental 24.4 and 25.2 added three reports (Production by Procedure, Procedures (individual),
+   Insurance Pending Supplementals) whose `displayreport` rows Open Dental's own update wrote under internal names that are not published.
+   A row of one of them under a name this program does not know, with a matching description, gets this program's name (its `InternalName`
+   only), so this program opens that report and the report permissions carry over. Step 0.2 lists these renames in advance
+   (`migration-preview`); step 4 checks that adoption made exactly them.
 7. records the finish and adds a security log entry
 
 All tables are MyISAM: there are no transactions. If anything goes wrong, the way back is the original. That is why the procedure never
@@ -43,7 +48,8 @@ after the switch must then be re-entered by hand. Decide the rollback deadline b
 Starting this program and logging in writes to the database: this computer's row and its heartbeat, the Database Maintenance list, signals,
 login records, security log entries. Step 6.1 compares the adopted copy with its report from before adoption and accepts only the kinds of
 change adoption and the rehash make; four tables, `preference`, `documentmisc`, `securitylog` and `securityloghash`, it can only accept as a
-whole, and step 4 has checked those row by row. So the copy, the adoption, the rehash and that comparison are done with the
+whole, and one column, `displayreport.InternalName`, as a whole column, and step 4 has checked those row by row. So the copy, the adoption,
+the rehash and that comparison are done with the
 command-line tools, exactly as rehearsed, and **nobody starts this program on `opendental_pms` until step 6.1 has passed**. From step 6.2 on,
 the program's own writes are normal use.
 
@@ -88,19 +94,19 @@ owner's decision (validation report, "For the owner", item 5).
 
 Measured by the dry run of these steps with these commands (`Invoke-RunbookDryRun.ps1`) on a development PC (MariaDB 10.11, SSD), synthetic
 data, through a forwarded port as on the admin PC (validation report, "Runbook dry run"). That server was shared with other test runs at the
-time, so these are upper bounds: the same medium copy took 15 s in one rehearsal run and 65 s in another. Step 3.1 runs on the server and was
+time, so these are upper bounds: the same medium copy took 28 s in one rehearsal run, 24 s in another and 17 s in the dry run. Step 3.1 runs on the server and was
 not measured: it copies the database folder once and reads it twice (`cp` and `diff`), so allow two to three times what copying a file of the
 database's size takes on `fox-db`, plus a minute to stop and start MariaDB.
 
-| Step | Medium: 101,881 rows, 1,355 patients, 36 MB of tables | Large: 777,822 rows, 9,158 patients, 286 MB of tables |
+| Step | Medium: 101,886 rows, 1,355 patients, 36 MB of tables | Large: 777,827 rows, 9,158 patients, 286 MB of tables |
 |---|---:|---:|
-| 0.2 and 1.1 FLOAT check, no connection to the original | 0.8 s | 2.0 s |
-| 3.2 Copy on the server (`AdoptionValidation copy`) | 51.1 s | 86.5 s |
-| 3.3 Two reports and their comparison | 6.0 s | 36.1 s |
-| 4 and 5 Adoption, fork migration again, verifier, rehash, row check (`AdoptionValidation adopt`) | 4.9 s | 14.2 s |
-| 6.1 Post-adoption report, comparison, startup check | 4.1 s | 23.3 s |
-| 10.1 and 10.2 Go-live checks of the original | 3.4 s | 27.1 s |
-| **Total** | **70.3 s** | **189.2 s** |
+| 0.2 and 1.1 FLOAT check, fork migration preview, no connection to the original | 1.4 s | 2.5 s |
+| 3.2 Copy on the server (`AdoptionValidation copy`) | 17.1 s | 70.7 s |
+| 3.3 Two reports and their comparison | 5.6 s | 29.9 s |
+| 4 and 5 Adoption, fork migration again, verifier, rehash, row check (`AdoptionValidation adopt`) | 6.6 s | 12.0 s |
+| 6.1 Post-adoption report, comparison, startup check | 3.6 s | 16.6 s |
+| 10.1 and 10.2 Go-live checks of the original | 3.8 s | 16.1 s |
+| **Total** | **38.1 s** | **147.8 s** |
 
 The copy and the reports grow with the data; adoption is dominated by one `ALTER TABLE patient` and the rehash by the number of patients.
 The office database also holds documents, logs and history the synthetic data does not, and the server is not this PC, and the forward adds
@@ -201,6 +207,22 @@ rounds those: every program shows them with the same 6 digits before and after, 
 logical backup to copy the database (steps 3.1 and 3.2 copy the stored values exactly), so nothing is to be done on the day; keep the file
 for the owner, because it says what the office's own nightly backups would round if they are `mariadb-dump` files (validation report, F12).
 
+Then, at any time (it reads only the `displayreport` table and the version preferences), the **fork migration preview**: [admin PC]
+`& $av migration-preview --database opendental @db | Tee-Object C:\Adoption\migration-preview.txt` (exit code 0). It lists what adoption's
+fork migration (step 4) will change in the rows of `opendental`: the report rows of item 6 of "What adoption does". It prints one line for
+each of the three reports:
+
+- `... is renamed; the adoption log says "Renamed displayreport <old name> to <new name> (same description)".`: a rename;
+- `... already has this name; nothing is renamed.`: nothing to do for that report;
+- `... rows under names this program does not know have a matching description ...; nothing is renamed.` (two candidates, so neither is
+  taken) or `... no row has this name or a matching description under an unknown name; nothing is renamed.`: nothing changes in the
+  database, but this program will not find that report's row (Report Setup will not list it). Give the line to the developers before the
+  day; it does not stop the switch.
+
+The line `Adoption's fork migration will rename N displayreport row(s), changing only their InternalName: ...` (or `... will rename no
+displayreport row.`) sums them up. **Write each rename (old name, new name, DisplayReportNum) on the checklist**, or "none": step 4 must show
+exactly these, and step 6.1 shows them as `ColumnChanged displayreport.InternalName`. No rename at all is just as normal.
+
 0.3. **Inventory of Open Dental services and jobs** (for step 2): on every Windows computer of the office that runs Open Dental, its services
 or its scheduled tasks (the workstations, and any Windows server; `fox-db` runs none of them, being Ubuntu):
 
@@ -259,8 +281,9 @@ Expect `IDENTICAL` and `active`, and write down the time between the two dates (
 & '<tools>\Invoke-RunbookDryRun.ps1' -Original opendental -Copy od_prep_pms -Folder C:\Adoption\dry-run -AsOf <date> -Port 13306 -User adoption_admin
 ```
 
-It runs steps 0.2 (FLOAT check), 1.1, 3.2, 3.3, 4, 5 and 6.1 and the go-live checks 10.1 and 10.2 with the commands below, with `od_prep_pms`
-standing in for `opendental_pms`. It never writes to `opendental` and stops at the first unexpected result. Expect `Dry run: PASS`.
+It runs steps 0.2 (FLOAT check and fork migration preview), 1.1, 3.2, 3.3, 4, 5 and 6.1 and the go-live checks 10.1 and 10.2 with the
+commands below, with `od_prep_pms` standing in for `opendental_pms`, and checks that `adopt`'s log names exactly the report row renames the
+preview listed. It never writes to `opendental` and stops at the first unexpected result. Expect `Dry run: PASS`.
 `C:\Adoption\dry-run\dry-run-timings.txt` holds the time of every step: plan the outage window from it and 0.6.1, plus 50% (see Timing). Any
 other result: stop, keep the folder (its reports hold row counts, checksums and business totals, no patient data) and give `compare.txt`,
 `adoption-log.txt` and `dry-run-timings.txt` to the developers, with the owner's agreement for the totals. The switch waits until a dry run
@@ -285,7 +308,7 @@ lists the services' connections again (exit code 6).
   is only typing.
 - **Window:** from the rehearsal's figures. Read the database size (table metadata only, no rows): [server]
   `sudo mariadb -e "SELECT ROUND(SUM(DATA_LENGTH+INDEX_LENGTH)/1048576) AS MB FROM information_schema.TABLES WHERE TABLE_SCHEMA='opendental'"`.
-  Scale the large dry run's total (Timing: 189 s for 286 MB of tables) by size, for example for 3 GB: 189 s × 3000 / 286, about 33 minutes.
+  Scale the large dry run's total (Timing: 148 s for 286 MB of tables) by size, for example for 3 GB: 148 s × 3000 / 286, about 26 minutes.
   Add step 3.1 (Timing) and 200% for the unknown server, then password re-entry, the workstations and the smoke test.
 - **Tools and server check (optional, recommended):** outside office hours, with synthetic data only, through the forward:
   `& $av rehearse --size large --runs 1 --keep --skip-roundtrip --tag office --schema-from opendental --out C:\Adoption\rehearsal @db`
@@ -448,14 +471,24 @@ prints each step with its time; `adoption-log.txt` keeps everything. Expect, in 
   are preferences that held an address of Open Dental's servers (such as `UpdateServerAddress`, `WebServiceHQServerURL`, `UpdateWebsitePath`).
   The second person initials the list on the checklist.
 - "DataBaseVersion and ProgramVersion set to 99.0.0.0." and the fork markers
-- every fork migration step "found nothing to change", "The schema matches Open Dental 25.3.48 (OdSchemaCompat)." and "Adoption finished."
+- every fork migration step "found nothing to change", except step 2026101971 ("Report rows for Procedures, Production by Procedure and
+  Insurance Pending Supplementals") when step 0.2 listed renames: it "changed the database:", followed by one line "Renamed displayreport
+  <old name> to <new name> (same description)" for each rename of the step 0.2 list and no other line; then "The schema matches Open Dental
+  25.3.48 (OdSchemaCompat)." and "Adoption finished."
 - "Fork migration, every step again: 9 steps run, 0 changes." and "The schema matches Open Dental 25.3.48 exactly (422 of 422 tables)."
 - the rehash of step 5
-- "Row check against opendental ..." with five lines and no line starting `FAIL`: `preference` (the markers added, `DataBaseVersion` and
+- "Row check against opendental ..." with six lines and no line starting `FAIL`: `preference` (the markers added, `DataBaseVersion` and
   `ProgramVersion` set to 99.0.0.0, the preferences of the "Blanked" line blanked, "no other row changed or removed"), `documentmisc` (the
   update-file rows deleted, "0 other row(s) deleted; 0 added; 0 changed"), `securitylog` ("2 entries added (1 adoption, 1 rehash); no existing
-  row changed or removed"), `securityloghash` and `updatehistory` ("identical row by row")
-- "Adopt: PASS." and exit code 0
+  row changed or removed"), `securityloghash`, `displayreport` ("N of the N rename(s) migration-preview lists, InternalName only (...); no
+  other row or column changed, none added or removed", or "identical row by row (migration-preview lists no rename)") and `updatehistory`
+  ("identical row by row")
+- "Adopt: PASS." with the report rows renamed (or "the fork migration renamed no report row"), and exit code 0
+
+The second person compares the renames in the log with the step 0.2 list on the checklist. `adopt`'s row check has already held them to
+`opendental` as it is now; if they differ from the step 0.2 list, someone changed Report Setup in Open Dental since then: run
+`migration-preview` on `opendental` again (it only reads), and if its list now equals the log, note that on the checklist and go on;
+otherwise stop and go to Rollback.
 
 **If it stops or fails, do not run it again on the same copy.** "Adopt: STOPPED" (exit code 1) or "Adopt: FAIL" (exit code 6): rename
 `adoption-log.txt` to `adoption-log-1.txt` and keep it, [server] `sudo mariadb -e "DROP DATABASE opendental_pms"`, and repeat 3.2, 3.3 and 4 on
@@ -491,6 +524,8 @@ person reads them all):
   payplan, paysplit);
 - lines for the tables `preference`, `documentmisc`, `securitylog` and `securityloghash`. A report can only allow these four tables as a
   whole; step 4's row check compared them with `opendental` row by row and printed exactly what changed in them;
+- `ColumnChanged displayreport.InternalName`, only if step 0.2 listed renames: the report rows the fork migration renamed. A report can only
+  allow the column as a whole; step 4's row check printed which rows and to what names, and that nothing else in `displayreport` changed;
 - `ChecksumTableChanged` lines "explained by the differences listed for this table", for the tables above.
 
 A line for any other table in the Allowed section: stop, go to Rollback, and give `compare.txt` to the developers. Every business total
@@ -666,7 +701,7 @@ Sign each line with time and initials.
 | 0.0.2 | `adoption_admin` created, history file removed | Password in the password manager | |
 | 0.0.3, 0.0.4 | Forward and tools checked from the admin PC | `connections` lists the workstations' connections, or none | |
 | 0.1 | Validation report signed, release build ready | Owner signature | |
-| 0.2 | Versions; FLOAT check filed | 25.3.48.0 / 25.3.48.0, not corrupted, no update running; `float-check` exit 0 or 6, file kept | |
+| 0.2 | Versions; FLOAT check filed; fork migration preview | 25.3.48.0 / 25.3.48.0, not corrupted, no update running; `float-check` exit 0 or 6, file kept; `migration-preview` exit 0, each report row rename written here (old name, new name, DisplayReportNum), or "none" | |
 | 0.3 | Services and tasks listed, per computer (both service queries) | List filed | |
 | 0.4 | Direct database users and jobs listed | List filed | |
 | 0.5 | Workstations listed, with folder, database and MariaDB user | List filed | |
@@ -683,8 +718,8 @@ Sign each line with time and initials.
 | 3.1 | Nobody connected; folder copy, start time noted | `connections` exit 0; `IDENTICAL`, `active`; off-server copy if the owner agreed | |
 | 3.2 | `copy` into `opendental_pms` | `Copy: PASS` | |
 | 3.3 | Reports compared | 0 unexpected differences | |
-| 4, 5 | `adopt` (adoption, migration check, verifier, rehash, row check) | `Adopt: PASS`, exit 0, log saved; "Blanked" list initialled | |
-| 6.1 | Validation before the first start | 0 unexpected differences, Allowed section read; startup check exit 0 | |
+| 4, 5 | `adopt` (adoption, migration check, verifier, rehash, row check) | `Adopt: PASS`, exit 0, log saved; "Blanked" list initialled; report row renames equal the 0.2 list | |
+| 6.1 | Validation before the first start | 0 unexpected differences, Allowed section read (`displayreport.InternalName` only if 0.2 listed renames); startup check exit 0 | |
 | 6.2 | First start, smoke test, aging report | OK | |
 | 7 | Passwords re-entered | `credentials` list empty or explained | |
 | 8 | Every workstation switched | Table of step 8 complete | |
