@@ -350,6 +350,9 @@
     <Compile Include="Frms\FrmDatabaseIntegrity.xaml.cs">
       <DependentUpon>FrmDatabaseIntegrity.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Frms\FrmChartLetterProperties.xaml.cs">
+      <DependentUpon>FrmChartLetterProperties.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Frms\FrmDocInfo.xaml.cs">
       <DependentUpon>FrmDocInfo.xaml</DependentUpon>
     </Compile>
@@ -949,6 +952,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Frms\FrmDatabaseIntegrity.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Frms\FrmChartLetterProperties.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

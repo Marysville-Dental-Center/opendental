@@ -1311,6 +1311,9 @@ namespace OpenDentBusiness {
 					rows.Add(row);
 				}
 				#endregion eForms
+				#region chart letters
+				rows.AddRange(GetChartLetterRows(table,patNum,isAuditMode));
+				#endregion chart letters
 			}
 			#region Sorting
 			if(componentsToLoad.UseMobileOrder) {
@@ -1333,6 +1336,56 @@ namespace OpenDentBusiness {
 				table.Rows.Add(rows[i]);
 			}
 			return table;
+		}
+
+		///<summary>One progress notes row per chart letter (24.4), keyed by DocNum with SheetNum 0. In audit mode, old versions and deleted letters
+		///are included and marked in the description. The table supplies the columns.</summary>
+		public static List<DataRow> GetChartLetterRows(DataTable table,long patNum,bool isAuditMode) {
+			Meth.NoCheckMiddleTierRole();
+			List<DataRow> listRows=new List<DataRow>();
+			DataTable tableRaw=ChartLetters.GetTableForProgNotes(patNum,isAuditMode);
+			for(int i=0;i<tableRaw.Rows.Count;i++) {
+				DataRow row=table.NewRow();
+				foreach(DataColumn dataColumn in table.Columns) {//Every column defaults to blank or 0, like the other kinds of rows.
+					if(dataColumn.DataType==typeof(DateTime)) {
+						row[dataColumn]=DateTime.MinValue;
+					}
+					else {
+						row[dataColumn]="";
+					}
+				}
+				foreach(string columnName in new[] { "AptNum","ClinicNum","CommlogNum","EFormNum","EmailMessageNum","FormPatNum","LabCaseNum","ProcNum",
+					"RxNum","SheetNum","TaskNum","WebChatSessionNum","EmailMessageHideIn","EmailMessageHtmlType" })
+				{
+					if(table.Columns.Contains(columnName)) {
+						row[columnName]=0;
+					}
+				}
+				row["colorBackG"]=Color.White.ToArgb();
+				row["colorText"]=Color.Black.ToArgb();
+				DateTime dateT=PIn.DateT(tableRaw.Rows[i]["DateCreated"].ToString());
+				if(dateT.Year>1880) {
+					row["dateEntryC"]=dateT.ToString(Lans.GetShortDateTimeFormat());
+					row["dateTP"]=dateT.ToString(Lans.GetShortDateTimeFormat());
+					row["procDate"]=dateT.ToString(Lans.GetShortDateTimeFormat());
+					if(dateT.TimeOfDay!=TimeSpan.Zero) {
+						row["procTime"]=dateT.ToString("h:mm")+dateT.ToString("%t").ToLower();
+					}
+				}
+				row["ProcDate"]=dateT;
+				row["description"]=ChartLetters.GetProgNoteDescription(tableRaw.Rows[i]["Description"].ToString(),
+					PIn.Byte(tableRaw.Rows[i]["ChartLetterStatus"].ToString()));
+				row["DocNum"]=tableRaw.Rows[i]["DocNum"].ToString();
+				row["PatNum"]=tableRaw.Rows[i]["PatNum"].ToString();
+				long provNum=PIn.Long(tableRaw.Rows[i]["ProvNum"].ToString());
+				row["ProvNum"]=provNum;
+				row["prov"]=provNum==0 ? "" : Providers.GetAbbr(provNum,includeHidden:true);
+				long userNum=PIn.Long(tableRaw.Rows[i]["UserNum"].ToString());
+				row["user"]=userNum==0 ? "" : Userods.GetName(userNum);
+				row["signature"]=tableRaw.Rows[i]["IsSigned"].ToString()=="1" ? Lans.g("ChartModule","Signed") : "";
+				listRows.Add(row);
+			}
+			return listRows;
 		}
 
 		public static string GetProcDescriptPlanned(Appointment appointmentLinkToPlanned,List<Procedure> listProceduresPlannedAppt,DateTime dateSched,string procDescript) {
@@ -1902,6 +1955,9 @@ namespace OpenDentBusiness {
 			else if(x["SheetNum"].ToString()!="0") {
 				xInd=6;
 			}
+			else if(x.Table.Columns.Contains("DocNum") && x["DocNum"].ToString()!="0" && x["DocNum"].ToString()!="") {
+				xInd=7;//chart letters
+			}
 			int yInd=0;
 			if(y["AptNum"].ToString()!="0") {
 				yInd=0;
@@ -1929,6 +1985,9 @@ namespace OpenDentBusiness {
 			}
 			else if(y["SheetNum"].ToString()!="0") {
 				yInd=6;
+			}
+			else if(y.Table.Columns.Contains("DocNum") && y["DocNum"].ToString()!="0" && y["DocNum"].ToString()!="") {
+				yInd=7;//chart letters
 			}
 			if(xInd!=yInd) {
 				return xInd.CompareTo(yInd);
@@ -1958,7 +2017,10 @@ namespace OpenDentBusiness {
 				if(pkColumnName==null){
 					throw new ApplicationException("Please set the rows ProgNotesRowAttribute.PKColumnName");
 				}
-				rowPK=PIn.Long(row[pkColumnName].ToString());
+				if(!row.Table.Columns.Contains(pkColumnName)) {
+					continue;
+				}
+				rowPK=PIn.Long(row[pkColumnName].ToString(),false);
 				if(rowPK==0){
 					continue;
 				}
@@ -2330,6 +2392,10 @@ namespace OpenDentBusiness {
 		///<summary>11 - EForm.</summary>
 		[ProgNotesRow("EFormNum")]
 		EForm,
+		///<summary>12 - Chart letter: DocNum is not 0 and the row is not a sheet. Must stay after Sheet, because sheet rows also carry the DocNum of
+		///their saved copy.</summary>
+		[ProgNotesRow("DocNum")]
+		ChartLetter,
 	}
 
 	/// <summary>

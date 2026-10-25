@@ -1555,6 +1555,7 @@ namespace OpenDental {
 			}
 			ShowMenuItemHelper(menuItemGroupMultiVisit,x => CanGroupMultiVisit(x.DataRow,isCheckDb:false,isSilent:true));
 			ShowMenuItemHelper(menuItemViewMultiVisitGroup,x => CanUngroupMultiVisit(x.DataRow,isCheckDb:false,isSilent:true));
+			ChartLetters_MenuPopup();
 		}
 
 		private void menuToothChart_Popup(object sender,EventArgs e) {
@@ -2317,6 +2318,9 @@ namespace OpenDental {
 					}
 					//It will refresh below
 					break;
+				case ProgNotesRowType.ChartLetter:
+					ChartLetters_OpenReadOnly(rowPk);//A read-only copy opens in another program; nothing here changes.
+					return;
 				case ProgNotesRowType.FormPat:
 					FormPat formPat=FormPats.GetOne(rowPk);
 					using(FormFormPatEdit formFormPatEdit=new FormFormPatEdit()) {
@@ -4588,6 +4592,7 @@ namespace OpenDental {
 				gridTreatPlans,
 			},true);
 			Lan.C(this,menuProgRight,menuErx,menuToothChart);
+			ChartLetters_InitializeOnStartup();
 			LayoutToolBar();
 			//Passed-in controls will maintain their location and be shown but are not part of the dynamic layout fields.
 			_sheetLayoutController=new SheetLayoutController(LayoutManager,this,ToolBarMain,tabControlImages,panelImages);
@@ -4771,6 +4776,7 @@ namespace OpenDental {
 					frmDatabaseIntegrity.ShowDialog();
 				}
 			}
+			ChartLetters_CheckOrphanedEdits();
 			Plugins.HookAddCode(this,"ContrChart.ModuleSelected_end",patNum);
 		}
 
@@ -6018,7 +6024,9 @@ namespace OpenDental {
 					return false;
 				}
 			}
-			else if(dataRow["SheetNum"].ToString()!="0") {//if this is a sheet
+			else if(dataRow["SheetNum"].ToString()!="0"//if this is a sheet
+				|| (dataRow["DocNum"].ToString()!="0" && dataRow["DocNum"].ToString()!=""))//or a chart letter, which shows with sheets and eForms
+			{
 				if(!checkSheets.Checked) {
 					return false;
 				}

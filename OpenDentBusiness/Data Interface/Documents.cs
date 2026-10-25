@@ -643,6 +643,8 @@ namespace OpenDentBusiness {
 				command+=POut.Long(listDefs[i].DefNum);
 			}
 			command+=") OR DocCategory < 0)";
+			//Chart letters (24.4) have DocCategory 0 on purpose, which keeps them out of the Imaging tree. Never move them into a category.
+			command+=" AND ChartLetterStatus=0";
 			tableRaw=dataConnection.GetTable(command);
 			if(tableRaw.Rows.Count>0){//Are there any invisible documents?
 				command="UPDATE document SET DocCategory='"+Defs.GetFirstForCategory(DefCat.ImageCats,true).DefNum
@@ -657,7 +659,8 @@ namespace OpenDentBusiness {
 				dataConnection.NonQ(command);
 			}
 			//Load all documents into the result table.
-			command="SELECT DocNum,DocCategory,DateCreated,Description,ImgType,MountItemNum FROM document WHERE PatNum='"+POut.Long(patNum)+"'";
+			command="SELECT DocNum,DocCategory,DateCreated,Description,ImgType,MountItemNum FROM document WHERE PatNum='"+POut.Long(patNum)+"' "
+				+"AND ChartLetterStatus=0";//Chart letters are listed in the Chart module, never in the Imaging tree.
 			tableRaw=dataConnection.GetTable(command);
 			for(int i=0;i<tableRaw.Rows.Count;i++){
 				//Make sure hidden documents are never added (there is a small possibility that one is added after all are made visible).
@@ -770,7 +773,8 @@ namespace OpenDentBusiness {
 			tableReturn.Columns.Add("serverDateTime");
 			command="SELECT "+DbHelper.Now();
 			DateTime dateTimeServer=PIn.DateT(Db.GetScalar(command)); //run first for rigorous inclusion of documents
-			command="SELECT DocNum,FileName,Description,PatNum,Note,DateCreated,DocCategory,ToothNumbers,ProvNum,PrintHeading,DateTStamp FROM document WHERE PatNum='"+POut.Long(patNum)+"' AND MountItemNum=0"; //select all documents not associated with mounts
+			command="SELECT DocNum,FileName,Description,PatNum,Note,DateCreated,DocCategory,ToothNumbers,ProvNum,PrintHeading,DateTStamp FROM document WHERE PatNum='"+POut.Long(patNum)+"' AND MountItemNum=0"
+				+" AND ChartLetterStatus=0"; //select all documents not associated with mounts, leaving out chart letters as the Imaging tree does
 			tableDocuments=Db.GetTable(command);
 			command="SELECT MountNum,Description,PatNum,Note,DocCategory,DateCreated,ProvNum FROM mount WHERE PatNum='"+POut.Long(patNum)+"'"; //select all mounts for patient
 			tableMounts=Db.GetTable(command);

@@ -236,6 +236,7 @@
     <Reference Include="Tamir.SharpSSH">
       <HintPath>..\Required dlls\Tamir.SharpSSH.dll</HintPath>
     </Reference>
+    <Reference Include="System.IO.Compression" />
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
@@ -1503,6 +1504,7 @@
     <Compile Include="Data Interface\SigButDefs.cs" />
     <Compile Include="Data Interface\SigElementDefs.cs" />
     <Compile Include="Data Interface\Statements.cs" />
+    <Compile Include="Data Interface\ChartLetters.cs" />
     <Compile Include="Data Interface\Documents.cs" />
     <Compile Include="Db Multi Table\Family.cs" />
     <Compile Include="Db\Db.cs" />
@@ -1564,6 +1566,7 @@
     <Compile Include="Db\DbHelper.cs" />
     <Compile Include="Db\DbSchema.cs" />
     <Compile Include="Misc\HouseCallsQueries.cs" />
+    <Compile Include="Misc\DocxMailMerge.cs" />
     <Compile Include="Misc\LetterMergesQueries.cs" />
     <Compile Include="Db\OdSqlParameter.cs" />
     <Compile Include="Misc\TimeSpanExtension.cs" />
