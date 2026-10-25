@@ -36,6 +36,7 @@ namespace OpenDental {
 			textNote.Text=PrefC.GetString(PrefName.BillingDefaultsNote);
 			checkCreatePDF.Checked=PrefC.GetBool(PrefName.BillingElectCreatePDF);
 			checkBoxBillShowTransSinceZero.Checked=PrefC.GetBool(PrefName.BillingShowTransSinceBalZero);
+			checkInserterBarcode.Checked=StatementInserterBarcode.IsEnabled();//25.3
 			checkIncludeAdjust.Checked=PrefC.GetBool(PrefName.BillingElectIncludeAdjustDescript);
 			checkIncludeClinicNum.Checked=PrefC.GetBool(PrefName.BillingElectIncludeClinicNums);
 			listElectBilling.Items.AddList(new string[] { "No electronic billing","DentalXChange","Output to file","ClaimX / ExtraDent","EDS" }, x => x);
@@ -360,7 +361,8 @@ namespace OpenDental {
 				| (listElectBilling.SelectedIndex==4 && Prefs.UpdateString(PrefName.BillingElectStmtOutputPathEds,textStatementURL.Text))
 				| Prefs.UpdateBool(PrefName.BillingDefaultsSinglePatient,checkSinglePatient.Checked)
 				| Prefs.UpdateBool(PrefName.BillingShowTransSinceBalZero,checkBoxBillShowTransSinceZero.Checked)
-				| Prefs.UpdateBool(PrefName.BillingElectIncludeAdjustDescript,checkIncludeAdjust.Checked))
+				| Prefs.UpdateBool(PrefName.BillingElectIncludeAdjustDescript,checkIncludeAdjust.Checked)
+				| StatementInserterBarcode.SetEnabled(checkInserterBarcode.Checked))//25.3
 			{
 				DataValid.SetInvalid(InvalidType.Prefs);
 			}

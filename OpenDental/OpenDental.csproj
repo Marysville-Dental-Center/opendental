@@ -2214,6 +2214,7 @@
     <Compile Include="Logic\PatRestrictionL.cs" />
     <Compile Include="Logic\PrefL.cs" />
     <Compile Include="Logic\PrinterL.cs" />
+    <Compile Include="Logic\PrinterL.PrintOptions.cs" />
     <Compile Include="Logic\ProcedureL.cs" />
     <Compile Include="Logic\ProgramL.cs" />
     <Compile Include="Logic\RefAttachL.cs" />
@@ -4472,6 +4473,9 @@
     <Compile Include="Forms\FormSheetFieldCheckBox.designer.cs">
       <DependentUpon>FormSheetFieldCheckBox.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\FormSheetFieldCheckBox.Instructions.cs">
+      <DependentUpon>FormSheetFieldCheckBox.cs</DependentUpon>
+    </Compile>
     <Compile Include="Forms\FormSheetFieldLine.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -4523,10 +4527,16 @@
     <Compile Include="Forms\FormSheetFillEdit.designer.cs">
       <DependentUpon>FormSheetFillEdit.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\FormSheetFillEdit.AutoSaveImages.cs">
+      <DependentUpon>FormSheetFillEdit.cs</DependentUpon>
+    </Compile>
     <Compile Include="Forms\FormSheetDefEdit.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Forms\FormSheetDefEdit.designer.cs">
+      <DependentUpon>FormSheetDefEdit.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormSheetDefEdit.InserterBarcode.cs">
       <DependentUpon>FormSheetDefEdit.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\FormDisplayFieldCategories.cs">

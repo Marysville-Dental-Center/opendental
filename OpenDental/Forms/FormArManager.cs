@@ -2470,15 +2470,15 @@ namespace OpenDental {
 		}
 
 		private void butUnsentExport_Click(object sender,EventArgs e) {
-			gridUnsent.Export("TSI Unsent Accounts");
+			gridUnsent.ShowExportMenu(butUnsentExport,"TSI Unsent Accounts");//25.3: Export .csv or Export .txt
 		}
 
 		private void butSentExport_Click(object sender,EventArgs e) {
-			gridSent.Export("TSI Sent Accounts");
+			gridSent.ShowExportMenu(butSentExport,"TSI Sent Accounts");//25.3: Export .csv or Export .txt
 		}
 
 		private void butExcludedExport_Click(object sender,EventArgs e) {
-			gridExcluded.Export("TSI Excluded Accounts");
+			gridExcluded.ShowExportMenu(butExcludedExport,"TSI Excluded Accounts");//25.3: Export .csv or Export .txt
 		}
 	}
 }

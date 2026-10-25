@@ -95,7 +95,7 @@ namespace OpenDentBusiness {
 					FileAtoZ.Copy(savedPdfPath,filePathAndName,FileAtoZSourceDestination.LocalToAtoZ);
 				}
 				EmailAttach emailAttach=new EmailAttach();
-				emailAttach.DisplayedFileName="Statement.pdf";
+				emailAttach.DisplayedFileName=Statements.GetEmailPdfDisplayName(patient);//25.3: "Statement_LastName.pdf"
 				emailAttach.ActualFileName=fileName;
 				return emailAttach;
 			};
