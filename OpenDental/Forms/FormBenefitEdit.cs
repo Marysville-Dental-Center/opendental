@@ -87,10 +87,25 @@ namespace OpenDental {
 			SetTeethEnabled();
 		}
 
-		///<summary>Teeth (benefit.ToothRange, Open Dental 25.3) only apply to exclusions. Text already typed is kept so the user can switch back.</summary>
+		private void listQuantityQualifier_SelectedIndexChanged(object sender,EventArgs e) {
+			SetTeethEnabled();
+		}
+
+		///<summary>Teeth (benefit.ToothRange) only apply to exclusions (Open Dental 25.3) and age limitations (26.1). Text already typed is kept so the
+		///user can switch back; it is not saved for other benefits.</summary>
 		private void SetTeethEnabled() {
-			bool isExclusion=listBenefitType.SelectedIndex>-1 && listBenefitType.GetSelected<InsBenefitType>()==InsBenefitType.Exclusions;
-			textTeeth.Enabled=isExclusion;
+			textTeeth.Enabled=CanHaveTeeth();
+		}
+
+		private bool CanHaveTeeth() {
+			if(listBenefitType.SelectedIndex<0) {
+				return false;
+			}
+			BenefitQuantity benefitQuantity=BenefitQuantity.None;
+			if(listQuantityQualifier.SelectedIndex>-1) {
+				benefitQuantity=listQuantityQualifier.GetSelected<BenefitQuantity>();
+			}
+			return Benefits.CanHaveTeeth(listBenefitType.GetSelected<InsBenefitType>(),benefitQuantity);
 		}
 
 		private void butSave_Click(object sender, System.EventArgs e) {
@@ -133,7 +148,7 @@ namespace OpenDental {
 				return;
 			}
 			string toothRange="";
-			if(benefitType==InsBenefitType.Exclusions) {
+			if(Benefits.CanHaveTeeth(benefitType,quantityQualifier)) {
 				try {
 					toothRange=Tooth.ParseToothList(textTeeth.Text);
 				}
