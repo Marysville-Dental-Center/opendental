@@ -70,6 +70,7 @@ namespace OpenDental{
 			this.labelStartDate = new System.Windows.Forms.Label();
 			this.textNote = new OpenDental.ODtextBox();
 			this.label4 = new System.Windows.Forms.Label();
+			this.checkInserterBarcode = new OpenDental.UI.CheckBox();
 			this.groupBox3.SuspendLayout();
 			this.groupBoxBilling.SuspendLayout();
 			this.groupBox2.SuspendLayout();
@@ -543,10 +544,20 @@ namespace OpenDental{
     "You may use the variable [InstallmentPlanTerms] below to show the terms of the i" +
     "nstallment plan.";
 			this.label4.TextAlign = System.Drawing.ContentAlignment.BottomLeft;
-			// 
+			//
+			// checkInserterBarcode
+			//
+			this.checkInserterBarcode.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.checkInserterBarcode.Location = new System.Drawing.Point(24, 562);
+			this.checkInserterBarcode.Name = "checkInserterBarcode";
+			this.checkInserterBarcode.Size = new System.Drawing.Size(320, 20);
+			this.checkInserterBarcode.TabIndex = 254;
+			this.checkInserterBarcode.Text = "Print inserter barcode on statements";
+			//
 			// FormBillingDefaults
-			// 
+			//
 			this.ClientSize = new System.Drawing.Size(877, 588);
+			this.Controls.Add(this.checkInserterBarcode);
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.checkBoxBillShowTransSinceZero);
 			this.Controls.Add(this.checkSinglePatient);
@@ -622,5 +633,6 @@ namespace OpenDental{
 		private OpenDental.UI.CheckBox checkIncludeAdjust;
 		private OpenDental.UI.CheckBox checkIncludeClinicNum;
 		private UI.CheckBox checkBillingEmailIncludeAutograph;
+		private OpenDental.UI.CheckBox checkInserterBarcode;
 	}
 }

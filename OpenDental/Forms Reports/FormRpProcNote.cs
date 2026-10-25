@@ -251,7 +251,7 @@ namespace OpenDental{
 		}
 
 		private void butExport_Click(object sender,System.EventArgs e) {
-			gridMain.Export("Incomplete Procedure Notes");
+			gridMain.ShowExportMenu(butExport,"Incomplete Procedure Notes");//25.3: Export .csv or Export .txt
 		}
 
 	}
