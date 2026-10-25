@@ -367,7 +367,9 @@ namespace ImagingDeviceManager.Config {
 		#region Set and Save
 		///<summary>Sets a value in memory; Save writes it. Section "" means keys before the first header. The value is trimmed. Returns
 		///false, with LastError, when a name or the value cannot be written to an INI line: a section containing ']' or ';', a key
-		///that is empty, starts with '[' or contains '=' or ';', a value containing ';', or any line break.</summary>
+		///that is empty, starts with '[' or contains '=' or ';', a value containing ';', or a control character other than tab in any
+		///of them (a line break; or NUL, which would make the file read as corrupt). Strings from native code, such as a camera's
+		///name, may end in NUL and must be cut there before they are Set.</summary>
 		public bool Set(string section,string key,string value) {
 			lock(_lock) {
 				_lastError="";
@@ -375,14 +377,16 @@ namespace ImagingDeviceManager.Config {
 				string keyTrimmed=key?.Trim();
 				string valueTrimmed=(value ?? "").Trim();
 				string error="";
-				if(sectionTrimmed==null || sectionTrimmed.IndexOfAny(new[] { ']',';','\r','\n' })>=0) {
+				if(sectionTrimmed==null || sectionTrimmed.IndexOfAny(new[] { ']',';' })>=0 || HasControlChar(sectionTrimmed)) {
 					error="Invalid capture.ini section name: "+section;
 				}
-				else if(string.IsNullOrEmpty(keyTrimmed) || keyTrimmed.StartsWith("[") || keyTrimmed.IndexOfAny(new[] { '=',';','\r','\n' })>=0) {
+				else if(string.IsNullOrEmpty(keyTrimmed) || keyTrimmed.StartsWith("[") || keyTrimmed.IndexOfAny(new[] { '=',';' })>=0
+					|| HasControlChar(keyTrimmed))
+				{
 					error="Invalid capture.ini key name: "+key;
 				}
-				else if(valueTrimmed.IndexOfAny(new[] { ';','\r','\n' })>=0) {
-					error="A capture.ini value cannot contain ';' or a line break: "+keyTrimmed;
+				else if(valueTrimmed.IndexOf(';')>=0 || HasControlChar(valueTrimmed)) {
+					error="A capture.ini value cannot contain ';', a line break or another control character: "+keyTrimmed;
 				}
 				if(error!="") {
 					_lastError=error;
@@ -393,6 +397,17 @@ namespace ImagingDeviceManager.Config {
 				Reparse();
 				return true;
 			}
+		}
+
+		///<summary>True when the text has a control character other than tab: CR, LF, NUL, the other C0 characters, DEL or a C1
+		///character.</summary>
+		private static bool HasControlChar(string text) {
+			foreach(char c in text) {
+				if(char.IsControl(c) && c!='\t') {
+					return true;
+				}
+			}
+			return false;
 		}
 
 		///<summary>Writes the values Set since the last Save. It re-reads the target file first and changes only those values, so every

@@ -728,9 +728,18 @@ namespace ImagingDeviceManager.Tests {
 				new[] { "Twain","AllowedSources","a;b" },
 				new[] { "Twain","AllowedSources","a\nb" },
 				new[] { "Twain","AllowedSources","a\rb" },
+				//NUL would make the saved file read as corrupt. A string from native code can easily end in one.
+				new[] { "Twain","AllowedSources","a\0b" },
+				new[] { "Camera","Name","Cam\0" },
+				new[] { "Twain","AllowedSources","a\u0001b" },
+				new[] { "Twain","AllowedSources","a\u007Fb" },
+				new[] { "Twain","AllowedSources","a\u0085b" },
 				new[] { "Tw]ain","K","1" },
 				new[] { "Tw;ain","K","1" },
 				new[] { "Tw\nain","K","1" },
+				new[] { "Tw\0ain","K","1" },
+				new[] { "Twain","K\0","1" },
+				new[] { "Twain","K\u001Bx","1" },
 				new[] { "Twain","K=1","1" },
 				new[] { "Twain","K;1","1" },
 				new[] { "Twain","[K","1" },
@@ -750,8 +759,13 @@ namespace ImagingDeviceManager.Tests {
 			Assert.AreEqual(15,config.JournalKeep);
 			Assert.IsTrue(config.Set("Twain","AllowedSources",null));
 			Assert.IsTrue(config.ContainsKey("Twain","AllowedSources"));
+			//Tab is the one control character allowed inside a value.
+			Assert.IsTrue(config.Set("Twain","DisableIsSafeSources","a\tb"));
 			Assert.IsTrue(config.Save(),config.LastError);
-			Assert.AreEqual(Lines("[Twain]","JournalKeep=15","AllowedSources="),ReadText(path));
+			Assert.AreEqual(Lines("[Twain]","JournalKeep=15","AllowedSources=","DisableIsSafeSources=a\tb"),ReadText(path));
+			LocalCaptureConfig configLoaded=LocalCaptureConfig.Load(path);
+			Assert.AreEqual("",configLoaded.LastError);
+			CollectionAssert.AreEqual(new[] { "a\tb" },configLoaded.DisableIsSafeSources);
 		}
 		#endregion Set and Save
 
