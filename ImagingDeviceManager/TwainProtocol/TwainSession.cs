@@ -152,8 +152,16 @@ namespace ImagingDeviceManager.TwainProtocol {
 		///<summary>DG_CONTROL / DAT_STATUS / MSG_GET on the open source (toSource, from state 4) or on the DSM. The read clears the code.
 		///Null when there is nothing to ask or the call fails.</summary>
 		private ushort? ReadStatus(bool toSource) {
+			TW_STATUS status;
+			return ReadStatus(toSource,out status) ? status.ConditionCode : (ushort?)null;
+		}
+
+		///<summary>ReadStatus with the whole TW_STATUS, including Data, the source's additional data for the code (TWAIN 2.1 and later).
+		///False when there is nothing to ask or the call fails.</summary>
+		private bool ReadStatus(bool toSource,out TW_STATUS status) {
+			status=new TW_STATUS();
 			if(_dsm==null || State<3) {
-				return null;
+				return false;
 			}
 			IntPtr pStatus=Marshal.AllocHGlobal(Marshal.SizeOf(typeof(TW_STATUS)));
 			try {
@@ -161,10 +169,10 @@ namespace ImagingDeviceManager.TwainProtocol {
 				IntPtr dest=(toSource && State>=4) ? _pSourceIdentity : IntPtr.Zero;
 				ushort rc=_dsm.Entry(_pAppIdentity,dest,Tw.DG_CONTROL,Tw.DAT_STATUS,Tw.MSG_GET,pStatus);
 				if(rc!=Tw.TWRC_SUCCESS) {
-					return null;
+					return false;
 				}
-				TW_STATUS status=(TW_STATUS)Marshal.PtrToStructure(pStatus,typeof(TW_STATUS));
-				return status.ConditionCode;
+				status=(TW_STATUS)Marshal.PtrToStructure(pStatus,typeof(TW_STATUS));
+				return true;
 			}
 			finally {
 				Marshal.FreeHGlobal(pStatus);
@@ -176,7 +184,8 @@ namespace ImagingDeviceManager.TwainProtocol {
 		///this is the only way to tell a failure from a cancel (design 7.1, twain-contract 1.1 section 8). Scans only read the code (DAT_STATUS
 		///is mandatory for every source): the optional DAT_STATUSUTF8 is not sent to them, and nothing is logged.</summary>
 		private void ReadEndCondition() {
-			EndConditionCode=ReadStatus(true);
+			TW_STATUS status;
+			EndConditionCode=ReadStatus(true,out status) ? status.ConditionCode : (ushort?)null;
 			EndConditionText=null;
 			if(!IsOpenedByName) {
 				return;
@@ -188,19 +197,20 @@ namespace ImagingDeviceManager.TwainProtocol {
 			if(EndConditionCode.Value==Tw.TWCC_SUCCESS) {
 				return;
 			}
-			EndConditionText=TryGetStatusText(EndConditionCode.Value);
+			EndConditionText=TryGetStatusText(status);
 			Log("\""+SourceName+"\" ended the session with condition code "+ToHex(EndConditionCode.Value)
 				+(EndConditionText==null ? " (no text from DAT_STATUSUTF8)." : ": "+EndConditionText));
 		}
 
-		///<summary>DG_CONTROL / DAT_STATUSUTF8 / MSG_GET on the source for conditionCode. The handle it returns is freed like every other
-		///handle from the source (ITwainMemory). Null when the source or the DSM does not support the triplet (TWCC_BADPROTOCOL from
+		///<summary>DG_CONTROL / DAT_STATUSUTF8 / MSG_GET on the source for status, the TW_STATUS a DAT_STATUS just returned, passed
+		///unchanged: the source translates all of it, Data included (TWAIN 2.4 pp.7-99, 8-61). The handle it returns is freed like every
+		///other handle from the source (ITwainMemory). Null when the source or the DSM does not support the triplet (TWCC_BADPROTOCOL from
 		///twain-contract 1.0 sources, or a legacy twain_32.dll that does not pass it through), or the text is empty.</summary>
-		private string TryGetStatusText(ushort conditionCode) {
+		private string TryGetStatusText(TW_STATUS status) {
 			IntPtr pStatusUtf8=Marshal.AllocHGlobal(Marshal.SizeOf(typeof(TW_STATUSUTF8)));
 			try {
 				TW_STATUSUTF8 statusUtf8=new TW_STATUSUTF8();
-				statusUtf8.Status.ConditionCode=conditionCode;
+				statusUtf8.Status=status;
 				Marshal.StructureToPtr(statusUtf8,pStatusUtf8,false);
 				if(SourceEntry(Tw.DG_CONTROL,Tw.DAT_STATUSUTF8,Tw.MSG_GET,pStatusUtf8)!=Tw.TWRC_SUCCESS) {
 					return null;

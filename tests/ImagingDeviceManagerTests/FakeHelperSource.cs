@@ -95,6 +95,9 @@ namespace ImagingDeviceManager.Tests {
 		///<summary>Not contract behaviour: after the first refused disable, one MSG_XFERREADY arrives while nothing is offered (pending
 		///count 0), before the real notification. Checks that the host ignores a repeated XFERREADY with nothing pending.</summary>
 		public bool SpuriousXferReadyAfterRefusal;
+		///<summary>Not contract behaviour (the contract leaves TW_STATUS.Data at 0): the Data that DAT_STATUS returns with an end reason, so
+		///that a test can check that DAT_STATUSUTF8 gets that whole TW_STATUS back.</summary>
+		public ushort EndStatusData;
 		#endregion Script and installation settings
 
 		#region Observations
@@ -110,6 +113,8 @@ namespace ImagingDeviceManager.Tests {
 		///could still offer them (sections 5, 10.2, 10.3).</summary>
 		public int CountKeptForRedelivery;
 		public int CountStatusText;
+		///<summary>The TW_STATUS the last DAT_STATUSUTF8 was asked to translate.</summary>
+		public TW_STATUS LastStatusTranslated;
 		public bool IsHelperRunning => _isRunning;
 		///<summary>The condition code of the most recent failed call, until DAT_STATUS reads it.</summary>
 		public ushort LastFailureCode => _lastFailureCode;
@@ -275,14 +280,16 @@ namespace ImagingDeviceManager.Tests {
 		///session, kept until a disable succeeds; otherwise TWCC_SUCCESS.</summary>
 		private ushort Status(IntPtr data) {
 			ushort code;
+			ushort dataStatus=0;
 			if(_lastFailureCode!=0) {
 				code=_lastFailureCode;
 				_lastFailureCode=0;
 			}
 			else {
 				code=_endReason;
+				dataStatus=_endReason==0 ? (ushort)0 : EndStatusData;
 			}
-			Marshal.StructureToPtr(new TW_STATUS { ConditionCode=code },data,false);
+			Marshal.StructureToPtr(new TW_STATUS { ConditionCode=code,Data=dataStatus },data,false);
 			return Tw.TWRC_SUCCESS;
 		}
 
@@ -307,6 +314,7 @@ namespace ImagingDeviceManager.Tests {
 				return Fail(Tw.TWCC_BADPROTOCOL);
 			}
 			TW_STATUSUTF8 statusUtf8=(TW_STATUSUTF8)Marshal.PtrToStructure(data,typeof(TW_STATUSUTF8));
+			LastStatusTranslated=statusUtf8.Status;
 			byte[] text=Encoding.UTF8.GetBytes(GetText(statusUtf8.Status.ConditionCode)+"\0");
 			IntPtr handle=_dsm.SourceAllocate(text.Length);
 			IntPtr p=NativeMethods.GlobalLock(handle);

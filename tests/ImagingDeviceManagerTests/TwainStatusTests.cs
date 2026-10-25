@@ -40,6 +40,17 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		[TestMethod]
+		public void CloseRequest_StatusText_GetsTheWholeStatusBack() {
+			_harness.Helper.End=FakeHelperEnd.Fail;
+			_harness.Helper.EndCode=FakeHelperSource.CodeSoftwareFailed;
+			_harness.Helper.EndStatusData=0x1234;
+			Assert.IsNull(_harness.AcquireByName());
+			Assert.AreEqual(1,_harness.Fake.CallsNamed("STATUS").Count,"One read after MSG_CLOSEDSREQ; DAT_STATUSUTF8 reuses it.");
+			Assert.AreEqual(FakeHelperSource.CodeSoftwareFailed,_harness.Helper.LastStatusTranslated.ConditionCode);
+			Assert.AreEqual(0x1234,_harness.Helper.LastStatusTranslated.Data,"TW_STATUSUTF8.Status is the TW_STATUS DAT_STATUS returned.");
+		}
+
+		[TestMethod]
 		public void CloseRequest_PlainCancel_SilentWithoutText() {
 			Assert.IsNull(_harness.AcquireByName());
 			TwainSession session=_harness.Session;
