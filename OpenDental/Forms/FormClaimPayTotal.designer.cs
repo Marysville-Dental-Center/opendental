@@ -30,6 +30,7 @@
 			this.label4 = new System.Windows.Forms.Label();
 			this.butWriteOff = new OpenDental.UI.Button();
 			this.butDeductible = new OpenDental.UI.Button();
+			this.butPayLabs = new OpenDental.UI.Button();
 			this.textWriteOff = new OpenDental.ValidDouble();
 			this.textInsPayAmt = new OpenDental.ValidDouble();
 			this.textDedApplied = new OpenDental.ValidDouble();
@@ -101,7 +102,18 @@
 			this.butDeductible.TabIndex = 120;
 			this.butDeductible.Text = "&Deductible";
 			this.butDeductible.Click += new System.EventHandler(this.butDeductible_Click);
-			// 
+			//
+			// butPayLabs
+			//
+			this.butPayLabs.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.butPayLabs.Location = new System.Drawing.Point(264, 324);
+			this.butPayLabs.Name = "butPayLabs";
+			this.butPayLabs.Size = new System.Drawing.Size(90, 25);
+			this.butPayLabs.TabIndex = 125;
+			this.butPayLabs.Text = "Pay &Labs";
+			this.butPayLabs.Visible = false;
+			this.butPayLabs.Click += new System.EventHandler(this.butPayLabs_Click);
+			//
 			// textWriteOff
 			// 
 			this.textWriteOff.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
@@ -234,6 +246,7 @@
 			this.Controls.Add(this.label2);
 			this.Controls.Add(this.butWriteOff);
 			this.Controls.Add(this.butDeductible);
+			this.Controls.Add(this.butPayLabs);
 			this.Controls.Add(this.textWriteOff);
 			this.Controls.Add(this.textInsPayAmt);
 			this.Controls.Add(this.textDedApplied);
@@ -260,6 +273,7 @@
 		private OpenDental.UI.Button butSave;
 		private OpenDental.UI.Button butDeductible;
 		private OpenDental.UI.Button butWriteOff;
+		private OpenDental.UI.Button butPayLabs;
 		private System.Windows.Forms.Label label2;
 		private System.Windows.Forms.Label label3;
 		private System.Windows.Forms.Label label4;
