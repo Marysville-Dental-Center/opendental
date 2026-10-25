@@ -33,6 +33,9 @@ namespace RegistryTests {
 			{"X835Status.FinalizedAllDetached","Same as X835Status.None."},
 			{"X835Status.Finalized","Same as X835Status.None."},
 			{"TsiServiceCode.BadCheck","The comment says 3; the member is the third one (2), in Open Dental 24.3 and 25.3 alike."},
+			//Changed by Open Dental 25.4 (package M2-02 follows the 25.4 and 26.1 documents; M202Tests pins them).
+			{"EnumPermType.PhoneExtension","25.3 published 272; the 25.4 and 26.1 documents publish 274 (272 became BlockoutAdd)."},
+			{"ErxStatus.PendingPodio","Renamed Pending in Open Dental 25.4; the number, 6, is unchanged."},
 		};
 
 		[TestMethod]

@@ -175,6 +175,10 @@ namespace OpenDentBusiness {
 		WebSchedExistingPatientUI,
 		///<summary>56 - Reserved (Open Dental 25.3). Web Sched existing patient API.</summary>
 		WebSchedExistingPatientApi,
+		///<summary>57 - Reserved (Open Dental 26.1). Chat service.</summary>
+		Chat,
+		///<summary>58 - Reserved (Open Dental 26.1). AI transcription service.</summary>
+		TranscriptionAI,
 	}
 	
 	///<summary>Used to determine that status of the entire service.  Order of enum is important, from lowest to highest importance.</summary>

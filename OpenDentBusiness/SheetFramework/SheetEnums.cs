@@ -153,7 +153,12 @@ namespace OpenDentBusiness {
 		///<summary>16-A signature box, either Topaz pad or directly on the screen with stylus/mouse.  The signature is encrypted based an a hash of all 
 		///other field values in the entire sheet, excluding other SigBoxes.  The order is critical.</summary>
 		[Description("Practice Signature")]
-		SigBoxPractice
+		SigBoxPractice,
+		///<summary>17-Reserved (Open Dental 26.1). Static text shown only in the Sheets mobile layout of Open Dental's hosted apps. The published
+		///documents print no number for it; it follows SigBoxPractice in their list, so it is 17. Desktop sheets never create it, and rows that hold
+		///it are not drawn.</summary>
+		[Description("Mobile Static Text")]
+		MobileStaticText,
 		//<summary></summary>
 		//RadioButton
 

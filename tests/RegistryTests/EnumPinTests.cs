@@ -32,9 +32,9 @@ namespace RegistryTests {
 				("PayPlanEdit",149),("ProcExistingEdit",163),
 				("ClaimProcFieldsBilledToInsEdit",252),("SuperFamilyDisband",263),
 				("ImageSignatureCreate",264),("SignedImageEdit",265),("BlockoutsFlagged",266),("PayPlanUnlock",267),("SendAlertsFromHQ",268),
-				("TextAllEmployees",269),("ProcTPEditFee",270),("EFormImport",271),("PhoneExtension",272));
+				("TextAllEmployees",269),("ProcTPEditFee",270),("EFormImport",271));
 			AssertNotDefined<EnumPermType>("ClaimProcFeeBilledToInsEdit");
-			Assert.AreEqual(272,Enum.GetValues(typeof(EnumPermType)).Cast<int>().Max(),"25.3 ends at 272. 273 and up belong to 25.4 (M2-02).");
+			//25.3 published PhoneExtension as 272. Open Dental 25.4 moved it to 274 and gave 272 to BlockoutAdd; M202Tests pins 272 to 276.
 		}
 
 		[TestMethod]
@@ -135,10 +135,13 @@ namespace RegistryTests {
 		///values, removed values). UI-only members that are never stored are listed as exceptions.</summary>
 		[TestMethod]
 		public void ChangedEnums_HaveNoMembersOutsideThePublishedList() {
+			//Members that Open Dental 25.4 and 26.1 added are not in the 25.3 document; M202Tests pins them against the 25.4 and 26.1 documents.
 			Dictionary<Type,string[]> dictExceptions=new Dictionary<Type,string[]> {
-				{ typeof(EnumPermType),new[] { "EditReadOnlyTasks" } },//227, HQ only. The published document skips members that have no summary comment.
-				{ typeof(AlertType),new string[0] },
-				{ typeof(FormType),new string[0] },
+				{ typeof(EnumPermType),new[] { "EditReadOnlyTasks",//227, HQ only. The published document skips members that have no summary comment.
+					"BlockoutAdd","BlockoutDelete","PatientSelected","LogScraperHQ" } },//25.4 and 26.1
+				{ typeof(AlertType),new[] { "TreatmentPlanImagesFolderInaccesible","PaymentPlanImagesFolderInaccesible","CannotCreateOrAccessPatientFolder",
+					"DefaultEmailNotSet","PaySuite","EServiceListenerError" } },//25.4 and 26.1
+				{ typeof(FormType),new[] { "FrmPaySuiteReconciliation" } },//25.4
 				{ typeof(CommItemSource),new string[0] },
 				{ typeof(EtransType),new string[0] },
 				{ typeof(InvalidType),new string[0] },
@@ -147,15 +150,16 @@ namespace RegistryTests {
 				{ typeof(DisplayFieldCategory),new string[0] },
 				{ typeof(InsBlueBookRuleType),new string[0] },
 				{ typeof(SchedStatus),new string[0] },
-				{ typeof(UserOdFkeyType),new string[0] },
+				{ typeof(UserOdFkeyType),new[] { "DefaultTestingTeamJM" } },//25.4
 				{ typeof(EnumPearlStatus),new string[0] },
 				{ typeof(PerioSequenceType),new string[0] },
 				{ typeof(ApptReminderType),new string[0] },
 				{ typeof(SmsMessageSource),new string[0] },
 				{ typeof(SessionTokenType),new string[0] },
-				{ typeof(eServiceType),new string[0] },
-				{ typeof(eServiceAction),new string[0] },
-				{ typeof(eServiceCode),new string[0] },
+				{ typeof(eServiceType),new[] { "AddressValidation" } },//25.4
+				{ typeof(eServiceAction),new[] { "ODTouchDeviceEnabled","ODTouchDeviceDisabled","MobileDeviceAdded","MobileDeviceDeleted",
+					"AddressValidation" } },//25.4
+				{ typeof(eServiceCode),new[] { "Chat","TranscriptionAI" } },//26.1
 			};
 			List<string> listProblems=new List<string>();
 			foreach(KeyValuePair<Type,string[]> pair in dictExceptions) {

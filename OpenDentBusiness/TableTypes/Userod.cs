@@ -148,6 +148,18 @@ namespace OpenDentBusiness{
 		OpenDentalService,
 		///<summary>Used by the Open Dental API Service.</summary>
 		OpenDentalAPIService,
+		//7 to 11 were added by Open Dental 26.1 (histappointment.ApptSource, OpenDentalDiffDocumentation26-1.xml). The documents print no numbers
+		//for this enum; the values follow the published order. Reserved: they are Open Dental HQ and hosted services this program does not have.
+		///<summary>7 - Reserved. Secure email service.</summary>
+		SecureEmailService,
+		///<summary>8 - Reserved. ODXam.</summary>
+		ODXam,
+		///<summary>9 - Reserved. eClipboard.</summary>
+		EClipboard,
+		///<summary>10 - Reserved. Open Dental log scraper.</summary>
+		OpenDentalLogScraper,
+		///<summary>11 - Reserved. The 32-bit Open Dental program.</summary>
+		OpenDental32Bit,
 	}
 
 	//public class DtoUserodRefresh:DtoQueryBase {

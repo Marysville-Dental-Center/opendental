@@ -92,5 +92,8 @@ namespace OpenDentBusiness {
 		///<summary>28 - Reserved (Open Dental 25.3). Open Dental HQ only: the default office map for a user. This program never writes it.</summary>
 		[CodeBase.IsODHQ]
 		DefaultMapSetting,
+		///<summary>29 - Reserved (Open Dental 25.4). Open Dental HQ only: a user's default testing team in the Job Manager. This program never writes it.</summary>
+		[CodeBase.IsODHQ]
+		DefaultTestingTeamJM,
 	}
 }
