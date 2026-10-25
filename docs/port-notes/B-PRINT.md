@@ -106,16 +106,25 @@ setting's name are not public, so all of the following is this fork's design (**
   added). WPF printing (`WpfControlsOD/Logic/PrinterL`) now prints to the printer the situation rules pick and shows the window when Prompt is on.
 - The last choice (printer, copies, collate) is remembered per print situation until the program closes; a page range is never remembered.
   A remembered printer that is no longer installed is ignored. **INFERRED:** memory is not cleared on log-off.
+- The remembered choice only pre-fills the window. A print that shows no window, WinForms or WPF, prints to the printer the situation's
+  rules pick (Setup, Printers; the Windows default when none), one copy, collated, every page (`PrintOptions.GetChoiceToPrint` /
+  `GetChoiceForUnpromptedPrint`, used by `PrintOptionsWpf.TryPrintFixedDocument`; WinForms `PrinterL.SetPrinter` already behaved so). The
+  memory is shared by WinForms and WPF printing and every WPF print uses the Default situation, so a choice made in any print preview's window
+  never sends a later eForm, child care map or message-box print to another printer or in several copies.
 - Page ranges: System.Drawing calls the page handler for every page whatever the range says, so `PageRangePrintController` lets the handler
-  draw every page (its page state must advance) but sends only the pages in the range to the printer, and stops after the last one. WPF uses
-  `PageRangeDocumentPaginator`.
+  draw every page (its page state must advance) but sends only the pages in the range to the printer. Pages before and after the range are
+  drawn on a small scratch bitmap and thrown away. The controller never ends the print early: the handler runs to its own last page, because
+  `FormQuery.pd2_PrintPage` resets its page state (`_headerPrinted`, `_tablePrinted`, `_totalsPrinted`, `_summaryPrinted`) only there, and a
+  print cut short after the range left that state behind for the next preview or print (no title on page 1, or the totals and summary right
+  after page 1's rows). WPF uses `PageRangeDocumentPaginator`.
 - The controller is the only thing that applies the range. `PageRangePrintController.ApplyTo` (called by `PrinterL.TrySetPrinter` and the old
   `PrinterL.SetPrinter(PrintDocument,...)`) wraps the document's controller and then puts `PrinterSettings.PrintRange` back to `AllPages`.
   Three print paths apply `FromPage`/`ToPage` themselves: `FormReportComplex.pd2_PrintPage` (every standard report),
   `FormQuery.pd2_PrintPage` (User Query) and `RdlViewer.Print` (RDL reports through `FormReportForRdl`/`FormReportCustom`). They skip the
   earlier pages and send page `FromPage` first, so with both applying the range, pages 3-5 printed only page 5 and pages 2-2 printed nothing.
-  With `AllPages` they draw every page and the controller sends `FromPage` to `ToPage`, exactly as for the handlers that ignore the range
-  (and as the 24.3 Windows dialog printed these reports). No change in those three files.
+  With `AllPages` they draw every page to the end and the controller sends `FromPage` to `ToPage`, exactly as for the handlers that ignore
+  the range. The printed pages are the ones 24.3 printed for the same range; the difference is that the handler also lays out the pages
+  after the range (not drawn on paper), so it finishes and resets its own state as after a full print. No change in those three files.
 - Kept: the `Printing` audit entry, virtual (print-to-file) printers (choosing another printer turns print-to-file off), remote printing
   (never prompts), the printer-number override.
 
@@ -198,7 +207,7 @@ seed rows). The only new stored value is the runtime preference row `BillingStat
 
 ## Tests
 
-`tests/BPRINTTests` (69 tests): export text rules and a grid export, e-mail names, Code 39 patterns against the published symbology, barcode
+`tests/BPRINTTests` (71 tests): export text rules and a grid export, e-mail names, Code 39 patterns against the published symbology, barcode
 content/placement/clear zone, stamping synthetic PDF print documents, the Billing window batch matching, Print Options rules, page-range
 printing (System.Drawing, inconclusive without an installed printer; WPF on an STA thread), the copy-to-Imaging rules, and source checks of the
 windows. Database tests (one scratch database `forkmig_<run>_bprint`, dropped at the end): the preference row, the barcode on printed pages,
@@ -207,6 +216,13 @@ per-statement layouts, and the layout's copy option.
 Page ranges are printed to a print preview with three kinds of page handler: one that skips the earlier pages itself (as `FormQuery` and
 `FormReportComplex` do), one that reads the range when printing starts (as `RdlViewer` does) and one that ignores the range. For pages 3-5 of
 7 and 2-2 each sends exactly those pages, once each. With the `AllPages` reset removed, the first two fail (pages 3-5 gave only page 5).
+A fourth handler is modelled on `FormQuery` (title on the first page only, state reset only when the handler reaches its own end, nothing
+reset when printing starts, only the page and row counters reset before each print as `PrintReport` does): pages 1-2 of 5 and then all pages
+print the title on page 1 and all five pages again; pages 1-5 of 6 (table and totals inside the range, summary after it) and then all pages
+print six pages, not page 1 with the totals and summary under its rows. With the old early stop after `ToPage` both fail.
+`UnpromptedPrint_UsesTheRulesPrinterWithOneCopy_NeverTheRememberedChoice` remembers another printer with three copies for the Default
+situation and checks that a print without the window resolves to the rules' printer with one copy, while the window still opens with the
+remembered choice.
 The copy-to-Imaging tests follow one kiosk form through the kiosk save, a second kiosk OK, two unchanged office OKs and an office correction:
 one copy until the correction, then a second.
 
@@ -222,3 +238,18 @@ real printer, scanning a printed barcode with an inserter, and the middle-tier p
 - Kiosk and terminal sheets never reached Imaging unless staff changed them. Fixed by copying at the patient's save in the terminal (the
   reviewers' second option); the reviewers' first option (a pending copy detected from document dates) was not used, for the reasons under
   Deviations.
+
+## Review fixes (branch `port/b-print-s1`)
+
+- WPF prints without the Print Options window used the remembered choice of the Default situation (printer, copies, collation), which every
+  WinForms print preview's window also writes, so a choice of 2 copies on printer B in any preview sent every later eForm, child care map,
+  message-box and error-report print there in 2 copies. Fixed: `PrintOptionsWpf.TryPrintFixedDocument` gets its choice from
+  `PrintOptions.GetChoiceToPrint`, which returns the remembered choice only when the window will be shown (to pre-fill it) and otherwise the
+  rules' printer with one copy (`GetChoiceForUnpromptedPrint`), matching WinForms `PrinterL.SetPrinter`. Test:
+  `PrintOptionsTests.UnpromptedPrint_UsesTheRulesPrinterWithOneCopy_NeverTheRememberedChoice`, plus a source check in `WiringTests`.
+  (Reviewer items 1 and 3 describe the same defect.)
+- User Query printing after a page-range print lost its title and could stop after page 1, because `PageRangePrintController.OnEndPage`
+  ended the print after `ToPage` and `FormQuery` resets its page state only at its own end. Fixed: the controller no longer ends the print
+  early; pages after the range are laid out on the scratch bitmap and discarded. Tests:
+  `PrintOptionsTests.PageRange_QueryLikeHandler_ARangePrintLeavesNoStateBehindForTheNextPrint` (new `FormQuery`-like document) and the
+  updated `PageRange_OnlyThePagesInTheRangeReachThePrinter` (the handler now draws all 5 pages, 2 of them printed).
