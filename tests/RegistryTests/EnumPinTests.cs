@@ -147,7 +147,7 @@ namespace RegistryTests {
 				{ typeof(DisplayFieldCategory),new string[0] },
 				{ typeof(InsBlueBookRuleType),new string[0] },
 				{ typeof(SchedStatus),new string[0] },
-				{ typeof(UserOdFkeyType),new string[0] },
+				{ typeof(UserOdFkeyType),new[] { "PatientFormsView" } },//114, fork only (package B-EF): Patient Forms view per user.
 				{ typeof(EnumPearlStatus),new string[0] },
 				{ typeof(PerioSequenceType),new string[0] },
 				{ typeof(ApptReminderType),new string[0] },
