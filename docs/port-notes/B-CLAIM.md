@@ -23,10 +23,12 @@ A save that changes `claimproc.InsEstTotalOverride` or `claimproc.AllowedOverrid
 - Logic: `ClaimProcs.GetOverrideChangeText`, `CreateAuditTrailEntryForOverrides` and `CreateAuditTrailEntriesForOverrides` in the new partial file `OpenDentBusiness/Data Interface/ClaimProcs.AuditTrail25.cs`.
 - Hooks, one or two lines each:
   - `FormClaimProc.butSave_Click`, only when the window saves the claimproc itself (`_doSaveToDb`). This covers estimates edited from the Procedure window, the Treatment Plan module (through the Procedure window), Edit Claim and the institutional claim window.
-  - `ClaimProcs.CreateAuditTrailEntryForClaimProcPayment`. It already runs when the payment windows save (`FormClaimPayTotal`, manual ERA posting in `FormEtrans835ClaimPay`) and on "auto receive claims with no assignment of benefits". It covers allowed amounts typed in those grids, plus edits made in Edit Claim Procedure opened from them (those windows pass `doSaveToDb=false`, so each claimproc gets one entry).
-  - `ClaimProcs.SetInsEstTotalOverride`: a received preauthorization's estimates are copied into the procedure's estimate override.
+  - `ClaimProcs.CreateAuditTrailEntryForClaimProcPayment`. It already runs when `FormClaimPayTotal` saves and on "auto receive claims with no assignment of benefits". It covers allowed amounts typed in that grid, plus edits made in Edit Claim Procedure opened from it (that window passes `doSaveToDb=false`, so each claimproc gets one entry). It skips the overrides when `isPaymentFromERA` is true, because manual ERA posting audits them against the database instead (next item).
+  - `FormEtrans835ClaimPay` (manual ERA posting). Before this window opens, `EtransL.ImportEraClaimData` calls `Etranss.TryImportEraClaimData(isAutomatic:false)`, which puts the 835 allowed amounts into the claimprocs' `AllowedOverride` in memory. The window's own old copies therefore already hold the ERA values. So `FormEtrans835ClaimPay_Load` also reads the claim's claimprocs from the database (`_listClaimProcsDb`, before anything is saved). Then `butSave_Click`, right after `Etranss.ReceiveEraPayment` saves, calls `ClaimProcs.CreateAuditTrailEntriesForOverrides(ListClaimProcs,_listClaimProcsDb)`. A claimproc saved with a blank allowed override and posted from an ERA with $80 allowed gets "Allowed override changed from blank to $80.00". A value the user retypes in the grid (or in Edit Claim Procedure opened from it) is in the same single entry, compared with the database. The list is `ListClaimProcs`, every claimproc `ReceiveEraPayment` saves, not only the grid rows (rows it hides are unchanged and log nothing).
+    - The database copies include the supplemental claimprocs that `TryImportEraClaimData` pre-inserts (copies of the received claimprocs). Their entry compares with that inserted copy, the same as supplemental rows in `FormClaimPayTotal`. A new total payment row has no database copy and gets no override entry (it is a new row, like in the other paths).
+  - `ClaimProcs.SetInsEstTotalOverride`: a received preauthorization's estimates are copied into the procedure's estimate override. This also covers preauthorizations posted from an ERA (`ReceiveEraPayment` calls it).
   - `FormClaimEdit`, preauthorization payment path: overrides edited in the preauth payment window.
-  - `Etranss.TryImportEraClaimData`, automatic branch: allowed overrides that ERA auto-processing clears.
+  - `Etranss.TryImportEraClaimData`, automatic branch: allowed overrides that ERA auto-processing clears. Its old copies are taken on entry, before the ERA values are applied, so it needs no database read.
 - **INFERRED** permission type (Open Dental's is not public; the published 25.1 docs add no permission for it). As the spec proposes: Claim Procedure Received Edit (125) for Received and Supplemental claimprocs, and Proc Edit (100, logging only) for every other status.
 - **INFERRED**, not logged: overrides that the program recomputes by itself. These are the ortho-case estimate overrides (`ClaimProcs` ortho path), and `ComputeBaseEst` capping the allowed override at the fee outside an edit window. Logging them would add an entry on every ortho visit with no user change behind it.
 - Known gap: when Edit Claim Procedure is opened with `doSaveToDb=false` and its caller then cancels, nothing is saved. The fork logs override changes only where the save happens, so no wrong override entry is written in that case. The window's other entries are still written on OK, even when the caller then cancels: the write-off and payment entries (as in 24.3) and the new Fee Billed / Code Sent entry, because Edit Claim Procedure is the only place those two fields are edited.
@@ -80,8 +82,8 @@ Outside the owned files: `GroupPermissions.HasAuditTrail` now lists 252, so the 
 
 - New: `OpenDentBusiness/Data Interface/ClaimProcs.AuditTrail25.cs`, `ClaimProcs.WriteOffPermission.cs`, `ClaimAttaches.MedicalEob.cs`; `OpenDental/Logic/MedicalEobL.cs`; `tests/BCLAIMTests/*`; this note.
 - Changed (B-CLAIM-owned):
-  - `OpenDentBusiness/Data Interface/ClaimProcs.cs` (3 lines), `ClaimAttaches.cs` (`partial`), `Etranss.cs` (1 line)
-  - `OpenDental/Forms/FormClaimProc.cs`, `FormClaimEdit.cs` (3 lines), `FormEtrans835ClaimPay.cs` (1 line)
+  - `OpenDentBusiness/Data Interface/ClaimProcs.cs` (5 lines), `ClaimAttaches.cs` (`partial`), `Etranss.cs` (1 line)
+  - `OpenDental/Forms/FormClaimProc.cs`, `FormClaimEdit.cs` (3 lines), `FormEtrans835ClaimPay.cs` (6 lines: the Medical EOB prompt, and the database copies and override audit for ERA posting)
   - `OpenDental/Logic/ClaimL.cs` (1 line)
   - `OpenDental/User Controls/Preferences/UserControlAccountClaimReceive.cs` and `.Designer.cs`
 - Changed outside the owned list:
@@ -93,19 +95,20 @@ Outside the owned files: `GroupPermissions.HasAuditTrail` now lists 252, so the 
 ## Interplay with packages built in parallel
 
 - **M1-02 / M2-02 (registries):** registering the Medical EOB preference name lights the feature up (see above). The `RegistryTests` permission tests still pass with 252 in the audit trail.
-- **M2-EST, M2-HIST (ClaimProcs.cs):** the B-CLAIM edits there are three lines in `CreateAuditTrailEntryForClaimProcPayment` and `SetInsEstTotalOverride`. Everything else is in new partial files.
+- **M2-EST, M2-HIST (ClaimProcs.cs):** the B-CLAIM edits there are a few lines in `CreateAuditTrailEntryForClaimProcPayment` (the override call, guarded by `!isPaymentFromERA`) and `SetInsEstTotalOverride`. Everything else is in new partial files.
 - **M2-CLAIMRCV (FormClaimEdit, ClaimL, FormEtrans835ClaimPay):** the 26.1 "prompt for the next insurance" rework keeps the medical-to-primary branch. The `MedicalEobL.PromptToAttachMedicalEob` call should stay just before that branch. `HookSourceTests.MedicalEobPrompt_RunsBeforeEachPrimaryClaimsPrompt` checks it.
-- **B-ERA, B-ACCT (dependencies):** they are built against the existing ERA and claim code. The only ERA hook is one line after `ReceiveEraPayment` in the automatic branch.
+- **B-ERA, B-ACCT (dependencies), M2-ERA:** they are built against the existing ERA and claim code. The ERA hooks are one line after `ReceiveEraPayment` in the automatic branch of `Etranss.TryImportEraClaimData`, and in `FormEtrans835ClaimPay` (B-ERA and M2-ERA also list it): the `_listClaimProcsDb` field, one line in `FormEtrans835ClaimPay_Load` and one line after `Etranss.ReceiveEraPayment` in `butSave_Click`. If another package adds a save of the claimprocs before that point, or posts ERA payments through another window, it should keep the database copies taken before its first save and call `ClaimProcs.CreateAuditTrailEntriesForOverrides` once after its last save. `HookSourceTests.OverrideAudit_ManualEraPostingComparesWithTheDatabase` checks the hooks.
 - **V-DXC1 (merged), V-EDS, V-PAYSUITE:** claim attachments added by the prompt are ordinary `claimattach` rows. The DentalXChange Submitted keyword is not touched.
 - **B-SHELL:** `ControlAccount` and `ControlTreat` are not changed by B-CLAIM.
 
 ## Tests
 
-`BCLAIMTests` (42 tests):
+`BCLAIMTests` (47 tests):
 
 - Rule and text tests with no database.
 - Database tests on a scratch database with a unique per-run name, dropped afterwards, using synthetic Z codes and carriers:
   - override audit from each business path (direct, payment audit path, preauth estimates, list matching);
+  - manual ERA posting, in the window's order (working copies with the ERA allowed amount, old copies taken after that, database copies, `Etranss.ReceiveEraPayment`, then both audits): exactly one "blank to $80.00" entry; a value retyped in the grid gives one entry against the database; a pre-inserted supplemental claimproc is logged and the untouched received one is not; the ERA payment audit path no longer logs overrides itself;
   - the 252 audit;
   - 119 with a 30-day limit for edit, delete and create, and total payments;
   - 252 for users with and without it;
@@ -117,7 +120,7 @@ Related existing assemblies run: `RegistryTests`, `VendorDirectTests`, `ImagingT
 Not tested by running code:
 
 - The WinForms dialogs (`MedicalEobL` questions and file dialog, `FormClaimProc` field states, the preferences checkbox). The GUI is not launched; source checks only.
-- The ERA automatic-branch hook. It needs an 835 fixture; source check only.
+- The ERA automatic-branch hook, and `Etranss.TryImportEraClaimData` itself on the manual path. They need an 835 fixture; source checks only. The manual-path tests set the ERA values on the working copies the way `TryImportEraClaimData` does.
 - The Medical EOB prompt end to end, which cannot fire until the preference is registered.
 
 ## Owner questions

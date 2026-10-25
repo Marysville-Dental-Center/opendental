@@ -67,9 +67,12 @@ namespace BCLAIMTests {
 
 		[TestMethod]
 		public void OverrideAudit_HookedIntoTheSharedSavePaths() {
-			string claimProcs=Read("OpenDentBusiness","Data Interface","ClaimProcs.cs");
-			StringAssert.Contains(GetMethodBody(claimProcs,"public static void CreateAuditTrailEntryForClaimProcPayment("),
-				"CreateAuditTrailEntryForOverrides(claimProcNew,claimProcOld);");
+			string claimProcs=Read("OpenDentBusiness","Data Interface","ClaimProcs.cs").Replace("\r\n","\n");
+			string payment=GetMethodBody(claimProcs,"public static void CreateAuditTrailEntryForClaimProcPayment(");
+			StringAssert.Contains(payment,"if(!isPaymentFromERA) {");
+			int indexGuard=payment.IndexOf("if(!isPaymentFromERA) {",StringComparison.Ordinal);
+			int indexOverrides=payment.IndexOf("CreateAuditTrailEntryForOverrides(claimProcNew,claimProcOld);",StringComparison.Ordinal);
+			Assert.IsTrue(indexOverrides>indexGuard && indexOverrides-indexGuard<200,"An ERA posting audits overrides against the database instead.");
 			StringAssert.Contains(GetMethodBody(claimProcs,"public static void SetInsEstTotalOverride("),
 				"CreateAuditTrailEntryForOverrides(listClaimProcs[i],claimProcOld);");
 			string etranss=Read("OpenDentBusiness","Data Interface","Etranss.cs");
@@ -77,6 +80,20 @@ namespace BCLAIMTests {
 				"ClaimProcs.CreateAuditTrailEntriesForOverrides(listClaimProcsForClaim,listClaimProcsOld);");
 			string claimEdit=Read("OpenDental","Forms","FormClaimEdit.cs");
 			StringAssert.Contains(claimEdit,"ClaimProcs.CreateAuditTrailEntriesForOverrides(formClaimPayPreAuth.ListClaimProcs,listClaimProcsPreAuthOld);");
+		}
+
+		[TestMethod]
+		public void OverrideAudit_ManualEraPostingComparesWithTheDatabase() {
+			//ListClaimProcs already holds the 835 allowed amounts when FormEtrans835ClaimPay loads, so its old copies cannot show the change.
+			string source=Read("OpenDental","Forms","FormEtrans835ClaimPay.cs");
+			string load=GetMethodBody(source,"private void FormEtrans835ClaimPay_Load(");
+			StringAssert.Contains(load,"_listClaimProcsDb=ClaimProcs.RefreshForClaims(new List<long> { _claim.ClaimNum });");
+			string save=GetMethodBody(source,"private void butSave_Click(");
+			int indexReceive=save.IndexOf("Etranss.ReceiveEraPayment(",StringComparison.Ordinal);
+			int indexAudit=save.IndexOf("ClaimProcs.CreateAuditTrailEntriesForOverrides(ListClaimProcs,_listClaimProcsDb);",StringComparison.Ordinal);
+			Assert.IsTrue(indexReceive>=0 && indexAudit>indexReceive,"The overrides are audited after ReceiveEraPayment saves the claimprocs.");
+			Assert.AreEqual(indexAudit,save.LastIndexOf("ClaimProcs.CreateAuditTrailEntriesForOverrides(",StringComparison.Ordinal),"Once per save.");
+			StringAssert.Contains(save,"ClaimProcs.CreateAuditTrailEntryForClaimProcPayment(listClaimProcs[i],claimProcOld,isInsPayCreate:true,isPaymentFromERA:true);");
 		}
 
 		[TestMethod]

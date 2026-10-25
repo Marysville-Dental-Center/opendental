@@ -754,7 +754,9 @@ namespace OpenDentBusiness{
 				SecurityLogs.MakeLogEntry(permissionInsPay,patNum,$"Insurance payment {strProcLog}"
 					+$"changed from {strClaimProcOldInsPayAmt} to {strClaimProcNewInsPayAmt}"+strERA);
 			}
-			CreateAuditTrailEntryForOverrides(claimProcNew,claimProcOld);//Open Dental 25.1: Ins Est Total and Allowed override changes.
+			if(!isPaymentFromERA) {//An ERA posting audits its overrides against the database copies (FormEtrans835ClaimPay), once per claimproc.
+				CreateAuditTrailEntryForOverrides(claimProcNew,claimProcOld);//Open Dental 25.1: Ins Est Total and Allowed override changes.
+			}
 		}
 		#endregion
 
