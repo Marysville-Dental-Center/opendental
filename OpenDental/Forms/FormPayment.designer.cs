@@ -441,7 +441,7 @@
 			this.panelEdgeExpress.Name = "panelEdgeExpress";
 			this.panelEdgeExpress.Size = new System.Drawing.Size(75, 26);
 			this.panelEdgeExpress.TabIndex = 119;
-			this.panelEdgeExpress.Text = "EdgeExpress";
+			this.panelEdgeExpress.Text = "Global Payments V1";
 			this.panelEdgeExpress.Visible = false;
 			this.panelEdgeExpress.MouseClick += new System.Windows.Forms.MouseEventHandler(this.panelEdgeExpress_MouseClick);
 			// 

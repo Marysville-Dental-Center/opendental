@@ -178,7 +178,7 @@ namespace OpenDental{
 			this.Controls.Add(this.butSave);
 			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEdgeExpressTrans";
-			this.Text = "EdgeExpress Transaction Types";
+			this.Text = "Global Payments V1 Transaction Types";
 			this.Load += new System.EventHandler(this.FormEdgeExpressTrans_Load);
 			this.groupCardEntry.ResumeLayout(false);
 			this.ResumeLayout(false);

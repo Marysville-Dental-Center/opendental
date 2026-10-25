@@ -7,6 +7,7 @@ using System.Windows.Forms;
 using CodeBase;
 using OpenDentBusiness;
 using OpenDentBusiness.VendorDirect;
+using OpenDentBusiness.VendorDirect.GlobalPayments;
 using EdgeExpressProps=OpenDentBusiness.ProgramProperties.PropertyDescs.EdgeExpress;
 using EdgeExpressPropsDirect=OpenDentBusiness.EdgeExpress.PropertyDescs;
 
@@ -216,7 +217,7 @@ namespace OpenDental {
 				isClientEnabled=ProgramProperties.GetPropValFromList(_listProgramProperties,"Username",listUserClinicNums[i]).Length>0
 					&& ProgramProperties.GetPropValFromList(_listProgramProperties,"Password",listUserClinicNums[i]).Length>0;
 				if(isClientEnabled && !_listDefs.Any(x => x.DefNum.ToString()==propValPayType)) {
-					MsgBox.Show(this,"Please select the payment type for all clinics with EdgeExpress enabled.");
+					MsgBox.Show(this,"Please select the payment type for all clinics with Global Payments V1 enabled.");
 					return false;
 				}
 			}
@@ -312,7 +313,7 @@ namespace OpenDental {
 				clinicNum=comboClinic.ClinicNumSelected;
 			}
 			ProgramProperty programProperty=ProgramProperties.GetOnlinePaymentsEnabledForClinic(clinicNum,ProgramName.EdgeExpress);
-			string msg=Lan.g(this,"Online payments is already enabled for another processor and must be disabled in order to use EdgeExpress online payments. "
+			string msg=Lan.g(this,"Online payments is already enabled for another processor and must be disabled in order to use Global Payments V1 online payments. "
 				+"Would you like to disable the other processor for online payments?");
 			if(programProperty!=null) {
 				if(MessageBox.Show(msg,"",MessageBoxButtons.OKCancel)==DialogResult.Cancel) {
@@ -326,7 +327,13 @@ namespace OpenDental {
 
 		private void butSave_Click(object sender,System.EventArgs e) {
 			if(_program==null) {//should never happen
-				MsgBox.Show(this,"EdgeExpress entry is missing from the database.");
+				MsgBox.Show(this,"Global Payments V1 entry is missing from the database.");
+				return;
+			}
+			//25.4: only one of X-Charge, Global Payments V1 and Global Payments V2 can be enabled.
+			string conflictGlobalPayments=checkEnabled.Checked ? GlobalPaymentsV2.GetExclusiveConflictMessage(ProgramName.EdgeExpress) : "";
+			if(conflictGlobalPayments!="") {
+				MessageBox.Show(this,conflictGlobalPayments);
 				return;
 			}
 			//EdgeExpress will be enabled for the clinic if the enabled checkbox is checked and the 3 XWeb fields are not blank. Don't let them switch

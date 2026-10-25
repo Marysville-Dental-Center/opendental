@@ -407,6 +407,13 @@ namespace OpenDental{
 				MsgBox.Show(this,"X-Charge entry is missing from the database.");
 				return;
 			}
+			//25.4: only one of X-Charge, Global Payments V1 and Global Payments V2 can be enabled.
+			string conflictGlobalPayments=checkEnabled.Checked
+				? OpenDentBusiness.VendorDirect.GlobalPayments.GlobalPaymentsV2.GetExclusiveConflictMessage(ProgramName.Xcharge) : "";
+			if(conflictGlobalPayments!="") {
+				MessageBox.Show(this,conflictGlobalPayments);
+				return;
+			}
 			#region Validate Path and Local Path Override
 			//Check for the path override first.
 			if(checkEnabled.Checked && textOverride.Text.Trim().Length>0) {

@@ -62,6 +62,12 @@ namespace OpenDental {
 				checkForceDuplicates.Checked=PIn.Bool(ProgramProperties.GetPropValForClinicOrDefault(program.ProgramNum,
 					ProgramProperties.PropertyDescs.EdgeExpress.ForceRecurringCharge,Clinics.ClinicNum));
 			}
+			if(Programs.IsEnabled(ProgramName.MeetInTheCloud)) {//25.4 Global Payments V2: cards saved through it are charged by RecurringChargerator.
+				program=Programs.GetCur(ProgramName.MeetInTheCloud);
+				labelUpdated.Visible=false;
+				checkForceDuplicates.Visible=true;
+				checkForceDuplicates.Checked=OpenDentBusiness.VendorDirect.GlobalPayments.GlobalPaymentsV2.GetConfig(Clinics.ClinicNum).ForceDuplicates;
+			}
 			if(Programs.IsEnabled(ProgramName.Xcharge)) {
 				program=Programs.GetCur(ProgramName.Xcharge);
 				labelUpdated.Visible=true;
@@ -91,7 +97,7 @@ namespace OpenDental {
 				}
 			}
 			if(program==null) {
-				MsgBox.Show(this,"The PayConnect, PaySimple, or EdgeExpress program link must be enabled in order to use the CC Recurring Charges feature.");
+				MsgBox.Show(this,"The PayConnect, PaySimple, Global Payments V1, or Global Payments V2 program link must be enabled in order to use the CC Recurring Charges feature.");
 				Close();
 				return;
 			}
@@ -160,7 +166,10 @@ namespace OpenDental {
 				gridMain.Columns.Add(new GridColumn(Lan.g("TableRecurring","Charge Amt"),85,HorizontalAlignment.Right));
 				if(Programs.HasMultipleCreditCardProgramsEnabled()) {
 					if(Programs.IsEnabled(ProgramName.EdgeExpress)) {
-						gridMain.Columns.Add(new GridColumn("EdgeExpress",90,HorizontalAlignment.Center));
+						gridMain.Columns.Add(new GridColumn("Global Payments V1",90,HorizontalAlignment.Center));
+					}
+					if(Programs.IsEnabled(ProgramName.MeetInTheCloud)) {
+						gridMain.Columns.Add(new GridColumn("Global Payments V2",90,HorizontalAlignment.Center));
 					}
 					if(Programs.IsEnabled(ProgramName.Xcharge)) {
 						gridMain.Columns.Add(new GridColumn("X-Charge",70,HorizontalAlignment.Center));
@@ -183,7 +192,10 @@ namespace OpenDental {
 				gridMain.Columns.Add(new GridColumn(Lan.g("TableRecurring","Charge Amt"),100,HorizontalAlignment.Right));
 				if(Programs.HasMultipleCreditCardProgramsEnabled()) {
 					if(Programs.IsEnabled(ProgramName.EdgeExpress)) {
-						gridMain.Columns.Add(new GridColumn("EdgeExpress",80,HorizontalAlignment.Center));
+						gridMain.Columns.Add(new GridColumn("Global Payments V1",80,HorizontalAlignment.Center));
+					}
+					if(Programs.IsEnabled(ProgramName.MeetInTheCloud)) {
+						gridMain.Columns.Add(new GridColumn("Global Payments V2",80,HorizontalAlignment.Center));
 					}
 					if(Programs.IsEnabled(ProgramName.Xcharge)) {
 						gridMain.Columns.Add(new GridColumn("X-Charge",80,HorizontalAlignment.Center));
@@ -262,6 +274,11 @@ namespace OpenDental {
 						else {
 							row.Cells.Add("");
 						}
+					}
+					if(Programs.IsEnabled(ProgramName.MeetInTheCloud)) {
+						bool isGlobalPaymentsV2Card=!string.IsNullOrEmpty(listRecurringChargeDatas[i].XChargeToken)
+							&& listRecurringChargeDatas[i].CCSource==CreditCardSource.MeetInTheCloudTerminal;
+						row.Cells.Add(isGlobalPaymentsV2Card ? "X" : "");
 					}
 					if(Programs.IsEnabled(ProgramName.Xcharge)) {
 						if(!string.IsNullOrEmpty(listRecurringChargeDatas[i].XChargeToken) && listRecurringChargeDatas[i].CCSource==CreditCardSource.XServer) {

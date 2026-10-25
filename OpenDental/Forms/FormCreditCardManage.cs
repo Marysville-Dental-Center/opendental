@@ -43,7 +43,10 @@ namespace OpenDental {
 			gridMain.Columns.Add(new GridColumn("Charge Frequency",140));
 			gridMain.Columns.Add(new GridColumn("Pay Plan",70,HorizontalAlignment.Center));
 			if(Programs.IsEnabled(ProgramName.EdgeExpress)) {
-				gridMain.Columns.Add(new GridColumn("EdgeExpress",90,HorizontalAlignment.Center));
+				gridMain.Columns.Add(new GridColumn("Global Payments V1",90,HorizontalAlignment.Center));
+			}
+			if(Programs.IsEnabled(ProgramName.MeetInTheCloud)) {//25.4: cards saved through Global Payments V2.
+				gridMain.Columns.Add(new GridColumn("Global Payments V2",90,HorizontalAlignment.Center));
 			}
 			if(Programs.IsEnabled(ProgramName.Xcharge)) {
 				gridMain.Columns.Add(new GridColumn("X-Charge",70,HorizontalAlignment.Center));
@@ -120,6 +123,9 @@ namespace OpenDental {
 					else {
 						row.Cells.Add("");
 					}
+				}
+				if(Programs.IsEnabled(ProgramName.MeetInTheCloud)) {
+					row.Cells.Add(!string.IsNullOrEmpty(creditCard.XChargeToken) && creditCard.CCSource==CreditCardSource.MeetInTheCloudTerminal ? "X" : "");
 				}
 				if(Programs.IsEnabled(ProgramName.Xcharge)) {
 					if(!string.IsNullOrEmpty(creditCard.XChargeToken) && !creditCard.IsXWeb() && creditCard.CCSource==CreditCardSource.XServer) {
@@ -214,7 +220,7 @@ namespace OpenDental {
 			}
 			#endregion
 			if(isEnabled(ProgramName.EdgeExpress,ProgramProperties.PropertyDescs.EdgeExpress.PreventSavingNewCC)) {
-				dictionaryEnabledProcessors["EdgeExpress"]=idx++;
+				dictionaryEnabledProcessors["Global Payments V1"]=idx++;//EdgeExpress, renamed in 25.4.
 				hasEdgeExpress=true;
 			}
 			if(isEnabled(ProgramName.Xcharge,ProgramProperties.PropertyDescs.XCharge.XChargePreventSavingNewCC)) {
@@ -245,7 +251,7 @@ namespace OpenDental {
 				if(inputBox.IsDialogCancel) {
 					return;
 				}
-				hasEdgeExpress=dictionaryEnabledProcessors.ContainsKey("EdgeExpress") && inputBox.SelectedIndices.Contains(dictionaryEnabledProcessors["EdgeExpress"]);
+				hasEdgeExpress=dictionaryEnabledProcessors.ContainsKey("Global Payments V1") && inputBox.SelectedIndices.Contains(dictionaryEnabledProcessors["Global Payments V1"]);
 				hasXCharge=dictionaryEnabledProcessors.ContainsKey("X-Charge") && inputBox.SelectedIndices.Contains(dictionaryEnabledProcessors["X-Charge"]);
 				hasPayConnect=dictionaryEnabledProcessors.ContainsKey("PayConnect") && inputBox.SelectedIndices.Contains(dictionaryEnabledProcessors["PayConnect"]);
 				hasPaySimple=dictionaryEnabledProcessors.ContainsKey("PaySimple") && inputBox.SelectedIndices.Contains(dictionaryEnabledProcessors["PaySimple"]);
@@ -258,7 +264,7 @@ namespace OpenDental {
 			if(hasEdgeExpress) {
 				//The X-Web ID, Terminal ID, Auth Key (stored encrypted) and payment type, set and well formed for the current clinic.
 				if(!PaymentWindowRules.ShowEdgeExpress(Clinics.ClinicNum)) {
-					MsgBox.Show(this,"EdgeExpress is not set up properly for the current clinic. Fix this and try again.");
+					MsgBox.Show(this,"Global Payments V1 is not set up properly for the current clinic. Fix this and try again.");
 					return;
 				}
 				bool doUseRCM=MsgBox.Show("EdgeExpress",MsgBoxButtons.YesNo,"Would you like to add this card via the terminal?\r\n"
