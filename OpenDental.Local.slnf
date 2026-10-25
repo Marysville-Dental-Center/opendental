@@ -29,6 +29,7 @@
       "tests\\InsuranceTests\\InsuranceTests.csproj",
       "tests\\ImagingTests\\ImagingTests.csproj",
       "tests\\GroupNoteTests\\GroupNoteTests.csproj",
+      "tests\\M202Tests\\M202Tests.csproj",
       "tests\\ForkMigrationTests\\ForkMigrationTests.csproj",
       "tests\\PayPlanTests\\PayPlanTests.csproj",
       "tests\\MedicationTests\\MedicationTests.csproj",

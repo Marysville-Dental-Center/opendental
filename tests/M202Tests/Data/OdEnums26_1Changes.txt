@@ -1,0 +1,60 @@
+# Enum values that Open Dental 25.4 and 26.1 added, renamed or renumbered, from the published database documentation:
+#   diff25-4 = https://www.opendental.com/OpenDentalDiffDocumentation25-4.xml
+#   diff26-1 = https://www.opendental.com/OpenDentalDiffDocumentation26-1.xml
+#   full25-3, full25-4, full26-1 = https://www.opendental.com/OpenDentalDocumentation25-3.xml, 25-4.xml, 26-1.xml
+# Names and numbers only. Read 2026-10-24.
+# Format: Enum|Published member|Number (blank when the documents print none)|Status|Source
+# Status: published = number printed; order = no number printed, the number follows the published order (inferred);
+#         other-package = the enum lives in a table class package M2-01 owns, checked once it is there; not-added = deliberately left out.
+EnumPermType|BlockoutEdit|13|published|diff25-4,full25-4,full26-1
+EnumPermType|SchoolAdminStudentEdit|77|published|diff25-4
+EnumPermType|SchoolAdminInstructorEdit|78|published|diff25-4
+EnumPermType|SchoolAdminAcesss|81|published|diff25-4
+EnumPermType|BlockoutAdd|272|published|diff25-4,full25-4,full26-1
+EnumPermType|BlockoutDelete|273|published|diff25-4,full25-4,full26-1
+EnumPermType|PhoneExtension|274|published|full25-4,full26-1 (full25-3 and diff25-3 print 272; diff25-4 does not list it because the name was not new)
+EnumPermType|PatientSelected|275|published|diff25-4,full25-4,full26-1
+EnumPermType|LogScraperHQ|276|published|diff26-1,full26-1
+AlertType|TreatmentPlanImagesFolderInaccesible|46|published|diff25-4
+AlertType|PaymentPlanImagesFolderInaccesible|47|published|diff25-4
+AlertType|CannotCreateOrAccessPatientFolder|48|published|diff25-4
+AlertType|DefaultEmailNotSet|49|published|diff25-4
+AlertType|PaySuite|50|published|diff25-4
+AlertType|EServiceListenerError|51|published|diff26-1
+FormType|FrmPaySuiteReconciliation|21|published|diff25-4
+CreditCardSource|MeetInTheCloudTerminal|23|published|diff25-4,full26-1 (no 24 is listed)
+CreditCardSource|MeetInTheCloudPaymentPortal|25|published|diff25-4,full26-1
+CreditCardSource|MeetInTheCloudPaymentPortalGuest|26|published|diff25-4,full26-1
+LogSources|Era835Import|26|published|diff25-4
+LogSources|ODTouch|27|published|diff25-4
+LogSources|eClipboard|28|published|diff25-4
+ErxStatus|Pending|6|published|diff25-4 (was PendingPodio)
+UserOdFkeyType|DefaultTestingTeamJM|29|published|diff25-4
+eServiceType|AddressValidation|17|published|diff25-4
+eServiceAction|ODTouchDeviceEnabled|134|published|diff25-4
+eServiceAction|ODTouchDeviceDisabled|135|published|diff25-4
+eServiceAction|MobileDeviceAdded|136|published|diff25-4
+eServiceAction|MobileDeviceDeleted|137|published|diff25-4
+eServiceAction|AddressValidation|138|published|diff25-4
+eServiceCode|Chat|57|published|diff26-1
+eServiceCode|TranscriptionAI|58|published|diff26-1
+AutoCondField|PatientProcedureClinicMismatch|14|published|diff26-1
+EnumImageAnnotVendor|BetterDiagnosticsPatientView|3|published|diff26-1
+SheetFieldType|MobileStaticText|17|order|diff26-1,full26-1 (listed after SigBoxPractice 16, no number printed)
+EServiceTypes|SecureEmailService|7|order|diff26-1,full26-1 (histappointment.ApptSource lists None..OpenDentalAPIService, then these five, no numbers)
+EServiceTypes|ODXam|8|order|diff26-1,full26-1
+EServiceTypes|EClipboard|9|order|diff26-1,full26-1
+EServiceTypes|OpenDentalLogScraper|10|order|diff26-1,full26-1
+EServiceTypes|OpenDental32Bit|11|order|diff26-1,full26-1
+YN|Unknown|0|published|diff25-4 (newly documented for insplan columns)
+YN|Yes|1|published|diff25-4
+YN|No|2|published|diff25-4
+TrustedEtransTypes|None|0|published|diff25-4 (newly documented)
+TrustedEtransTypes|RealTimeEligibility|1|published|diff25-4
+EmailType|Regular|0|published|diff26-1 (dunning.EmailType)
+EmailType|Html|1|published|diff26-1
+EmailType|RawHtml|2|published|diff26-1
+DefCat|EmployeeTitles|56|other-package|diff26-1,full26-1 (Def.cs, package M2-01)
+EnumBrandingType|LogoImage|1|other-package|diff26-1 (Branding.cs, package M2-01)
+EnumDeletedObjType|Schedules|1|other-package|diff26-1 (DeletedObj.cs, package M2-01)
+ProcStat|None|0|not-added|diff26-1 (printed as "0 - Not used."; a documentation placeholder)
