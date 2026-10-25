@@ -98,8 +98,8 @@ namespace AdoptionValidation {
 				log("  "+change);
 			}
 			if(result.Migration.ListChanges.Count>0) {
-				result.ListFailures.Add("The fork migration changed "+result.Migration.ListChanges.Count+" thing(s) on the adopted copy; on an Open Dental 25.3.48 "
-					+"database it must find nothing to change.");
+				result.ListFailures.Add("The fork migration, run again with every step, changed "+result.Migration.ListChanges.Count+" thing(s) on the adopted "
+					+"copy; after adoption's own run it must find nothing left to change.");
 			}
 			result.HasPendingMigrations=ForkVersionGuard.Evaluate(ForkVersions.ReadState()).HasPendingMigrations;
 			if(result.HasPendingMigrations) {

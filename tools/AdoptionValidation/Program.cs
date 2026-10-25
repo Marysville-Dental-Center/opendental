@@ -51,18 +51,19 @@ Commands:
                  0.2): the displayreport rows of Production by Procedure, Procedures (individual) and Insurance Pending
                  Supplementals that Open Dental wrote under an internal name this program does not know, which step 2026101971
                  renames (InternalName only); adopt's row check later requires exactly these renames. Read-only. Exit code 0.
-  copy         Copies ORIGINAL into the NEW database on the same server (runbook step 3.2): CREATE TABLE ... LIKE, the
+  copy           Copies ORIGINAL into the NEW database on the same server (runbook step 3.2): CREATE TABLE ... LIKE, the
                  AUTO_INCREMENT counters and INSERT ... SELECT, so the copy is exact (FLOAT values included) and no row leaves the
                  server. Refuses a name that exists, a missing original, the same name twice, any connection to either, and
                  views, triggers, routines or events it would not carry; then checks every table's row count and AUTO_INCREMENT.
   adopt          Adopts the copy without starting the program (runbook steps 4 and 5): Adoption.Preflight and Adoption.Run,
                  the fork migration with every step again, the schema verifier and SecurityHash.RehashNow, exactly as the rehearsal
                  does, then checks row by row against --original what adoption changed in preference, documentmisc, securitylog,
-                 securityloghash, displayreport and updatehistory. Before it changes anything it checks that --confirm repeats --database, that
-                 --original is a different, unadopted Open Dental database, that nobody else is connected to either, and that a
-                 copy not adopted yet has the original's tables and row counts. On a finished adoption it changes nothing but its
-                 security log entry. If it stops or fails, do not run it again on that copy: drop the copy and make a new one
-                 (runbook step 4). --log appends everything it prints to FILE.
+                 securityloghash, displayreport (only the renames migration-preview lists) and updatehistory. Before it changes
+                 anything it checks that --confirm repeats --database, that --original is a different, unadopted Open Dental
+                 database, that nobody else is connected to either, and that a copy not adopted yet has the original's tables and
+                 row counts. On a finished adoption it changes nothing but its security log entry. If it stops or fails, do not
+                 run it again on that copy: drop the copy and make a new one (runbook step 4). --log appends everything it prints
+                 to FILE.
   credentials    Lists the stored passwords of a database that the fork cannot read (to re-enter after adoption). Read-only;
                  names and rows only, never values.
   startup-check  Shows what an Open Dental client of each version would do at startup on the database (the model of its

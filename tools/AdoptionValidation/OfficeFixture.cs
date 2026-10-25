@@ -9,9 +9,10 @@ namespace AdoptionValidation {
 	///<summary>Rows an office's Open Dental 25.3.48 database carries but SyntheticData leaves out, because they change how a client starts: Open
 	///Dental's update files in documentmisc, the addresses of Open Dental's servers in preferences, version history, and stored passwords that Open
 	///Dental encrypted with its own key, and report rows under internal names this program does not know, which the fork migration renames. The
-	///rehearsal adds them to the generated database before the baseline, so adoption has real work to do and the checks can see it done. Everything here is synthetic: the "update files" are a short placeholder text, never program files, the server
-	///addresses are built from the fork's blocked-host list (CodeBase.VendorDirect.HqHosts) so no host name is written in this file, and the
-	///"ciphertexts" are random bytes from the seed.</summary>
+	///rehearsal adds them to the generated database before the baseline, so adoption has real work to do and the checks can see it done.
+	///Everything here is synthetic: the "update files" are a short placeholder text, never program files, the server addresses are built from
+	///the fork's blocked-host list (CodeBase.VendorDirect.HqHosts) so no host name is written in this file, the "ciphertexts" are random bytes
+	///from the seed, and the report rows' internal names are made up (Open Dental's are not published).</summary>
 	public static class OfficeFixture {
 		///<summary>DocMiscType values of Open Dental's own rows (DocumentMiscType in OpenDentBusiness).</summary>
 		public const int DocMiscUpdateFiles=0;
