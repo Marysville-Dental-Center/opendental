@@ -260,7 +260,7 @@ formatting, dump parsing, aging, the report comparer, the coverage list and the 
 against `schema-changes.json`, the lengths of the generator's long values, and the stored formats (tooth ranges only on
 Exclusions and expanded, pipe-delimited pick lists with matching item counts, conditional values that match their parent, Ins Pick
 values, and JSON that deserializes into OpenDentBusiness's `EFormMedListLayout` and `EFormMed`); enum numbers that
-existed in 24.3 are cross-checked against OpenDentBusiness. The database tests (scratch databases `synth_test_*`, dropped
+existed in 24.3 are cross-checked against OpenDentBusiness. The database tests (scratch databases `synth_test_*` with a per-run suffix, so concurrent runs never collide, dropped
 afterwards; inconclusive without a local server) check the schema against `od_253_schema`, determinism, all consistency checks,
 coverage for two seeds, fictional data, dated fees on procedures, the stored formats of the generated rows, guardian numbering,
 the filler, refusal to write non-`synth` databases, and a simulated adoption that must show only allowed differences until a
