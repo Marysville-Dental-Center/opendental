@@ -270,7 +270,7 @@ namespace OpenDental{
 			query.AddColumn("Patient",70,FieldValueType.String,font);
 			query.AddColumn("ProcCode",90,FieldValueType.String,font);
 			query.AddColumn("Provider",80,FieldValueType.String,font);
-			query.AddColumn("UCR",80,FieldValueType.Number,font);
+			query.AddColumn("Standard Fee",80,FieldValueType.Number,font);
 			query.AddColumn("OrigEstWO",100,FieldValueType.Number,font);
 			query.AddColumn("EstVsActualWO",80,FieldValueType.Number,font);
 			query.AddColumn("Adjustment",80,FieldValueType.Number,font);
