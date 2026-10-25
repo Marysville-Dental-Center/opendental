@@ -16,10 +16,17 @@ namespace ImagingDeviceManager.Journal {
 		private readonly string _folderImaging;
 		///<summary>False for tests: a folder standing in for the Imaging folder, whose ACL is never changed.</summary>
 		private readonly bool _isDefault;
+		///<summary>For tests that are not the default: the steps that add and check for the Users rule, or null to change no ACL.</summary>
+		private readonly Func<string,string> _funcGrantUsersModify;
+		private readonly Func<string,bool> _funcHasUsersModify;
 
-		private CaptureFolders(string folderImaging,bool isDefault) {
+		private CaptureFolders(string folderImaging,bool isDefault,Func<string,string> funcGrantUsersModify=null,
+			Func<string,bool> funcHasUsersModify=null)
+		{
 			_folderImaging=string.IsNullOrWhiteSpace(folderImaging) ? null : folderImaging;
 			_isDefault=isDefault;
+			_funcGrantUsersModify=funcGrantUsersModify;
+			_funcHasUsersModify=funcHasUsersModify;
 		}
 
 		///<summary>The folders under %ProgramData%\OpenPMS-Dental\Imaging, the folder of capture.ini.</summary>
@@ -31,6 +38,13 @@ namespace ImagingDeviceManager.Journal {
 		///<summary>For tests: folderImaging stands in for the Imaging folder, and no ACL is changed.</summary>
 		public static CaptureFolders CreateForFolder(string folderImaging) {
 			return new CaptureFolders(folderImaging,false);
+		}
+
+		///<summary>For tests: as CreateForFolder, with stand-ins for the steps that add and check for the Users rule.</summary>
+		public static CaptureFolders CreateForFolder(string folderImaging,Func<string,string> funcGrantUsersModify,
+			Func<string,bool> funcHasUsersModify)
+		{
+			return new CaptureFolders(folderImaging,false,funcGrantUsersModify,funcHasUsersModify);
 		}
 
 		///<summary>The full path of a capture subfolder, whether or not it exists. Null when the Imaging folder is unknown.</summary>
@@ -54,7 +68,7 @@ namespace ImagingDeviceManager.Journal {
 				if(_isDefault) {
 					return LocalCaptureConfig.EnsureImagingFolder(subfolder,out error);
 				}
-				return LocalCaptureConfig.EnsureImagingFolder(_folderImaging,subfolder,null,null,out error);
+				return LocalCaptureConfig.EnsureImagingFolder(_folderImaging,subfolder,_funcGrantUsersModify,_funcHasUsersModify,out error);
 			}
 			catch(Exception ex) {
 				error=ex.Message;

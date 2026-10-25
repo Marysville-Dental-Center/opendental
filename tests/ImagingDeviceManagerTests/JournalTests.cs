@@ -133,6 +133,20 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		[TestMethod]
+		public void CaptureLog_FolderUsableWithAWarning_WarningLoggedOnce() {
+			Directory.CreateDirectory(Path.Combine(_folder,"Capture"));//It exists, so a rule that cannot be added leaves it usable with a warning.
+			CaptureFolders folders=CaptureFolders.CreateForFolder(_folder,path => "Access is denied.",path => false);
+			CaptureLog captureLog=new CaptureLog(folders,() => new DateTime(2026,10,25,9,0,0));
+			captureLog.Write("first");
+			captureLog.Write("second");
+			string[] arrayLines=File.ReadAllLines(Path.Combine(_folder,"Capture",CaptureLog.FileName));
+			Assert.AreEqual(3,arrayLines.Length,string.Join("\r\n",arrayLines));
+			StringAssert.Contains(arrayLines[0],"Could not give the Users group access");
+			StringAssert.EndsWith(arrayLines[1]," first");
+			StringAssert.EndsWith(arrayLines[2]," second");
+		}
+
+		[TestMethod]
 		public void Journal_KeepZero_NotAllowed_DefaultKept_LoggedOnce() {
 			CaptureJournal journal=new CaptureJournal(CaptureFolders.CreateForFolder(_folder));
 			List<string> listLog=new List<string>();
