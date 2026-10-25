@@ -557,6 +557,9 @@
     <Compile Include="Frms\FrmProviderPick.xaml.cs">
       <DependentUpon>FrmProviderPick.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Frms\FrmQueryFilters.xaml.cs">
+      <DependentUpon>FrmQueryFilters.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Frms\FrmQuickPaste.xaml.cs">
       <DependentUpon>FrmQuickPaste.xaml</DependentUpon>
     </Compile>
@@ -1228,6 +1231,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Frms\FrmProviderPick.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Frms\FrmQueryFilters.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

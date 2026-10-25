@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Data.Common;
 using System.Diagnostics;
 using System.Linq;
@@ -22,8 +23,51 @@ namespace DataConnectionBase {
 		///parameters replaced with actual parameter value), and will include the method name of the calling method in DataConnection (i.e. GetTable, NonQ, etc).</summary>
 		public bool IsMonitoring=false;
 		public bool HasStackTrace=false;
+		///<summary>The filter texts of the Query Monitor's active filter group. A query whose command text contains any of them (ignoring case) is
+		///run as usual but never reported, so it stays out of the feed and the log. Replaced as a whole array, so readers on other threads always see
+		///a complete list. Never null. Payloads (Middle Tier) are never filtered.</summary>
+		private volatile string[] _arrayFilterTexts=new string[0];
 
 		public event ODEventHandler Fired;
+
+		///<summary>The filter texts currently applied to monitored queries. Empty when nothing is filtered.</summary>
+		public string[] FilterTexts {
+			get {
+				return (string[])_arrayFilterTexts.Clone();
+			}
+		}
+
+		///<summary>Replaces the filter texts applied to monitored queries. Null, empty and whitespace-only texts are dropped, because they would match
+		///every query. Pass null or an empty list to stop filtering.</summary>
+		public void SetFilterTexts(IEnumerable<string> listFilterTexts) {
+			if(listFilterTexts==null) {
+				_arrayFilterTexts=new string[0];
+				return;
+			}
+			_arrayFilterTexts=listFilterTexts.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+		}
+
+		///<summary>True when the command text matches one of this monitor's filter texts.</summary>
+		public bool IsFiltered(string command) {
+			return IsCommandFiltered(command,_arrayFilterTexts);
+		}
+
+		///<summary>True when the command text contains any of the filter texts, ignoring case. Null, empty and whitespace-only filter texts never
+		///match. A null command never matches.</summary>
+		public static bool IsCommandFiltered(string command,IEnumerable<string> listFilterTexts) {
+			if(command==null || listFilterTexts==null) {
+				return false;
+			}
+			foreach(string filterText in listFilterTexts) {
+				if(string.IsNullOrWhiteSpace(filterText)) {
+					continue;
+				}
+				if(command.IndexOf(filterText,StringComparison.OrdinalIgnoreCase)>=0) {
+					return true;
+				}
+			}
+			return false;
+		}
 
 		public QueryMonitor() {
 			#region ODThread Database Context
@@ -105,6 +149,12 @@ namespace DataConnectionBase {
 				//order by descending length of parameter name so that replacing parameter '@Note' doesn't replace part of parameter '@NoteBold'
 				cmd.Parameters.OfType<DbParameter>().OrderByDescending(x => x.ParameterName.Length)
 					.ForEach(x => dbQueryObj.Command=dbQueryObj.Command.Replace(x.ParameterName,"'"+SOut.String(x.Value.ToString())+"'"));
+				if(IsFiltered(dbQueryObj.Command)) {
+					//Hidden by the active Query Monitor filter group: run it without reporting it, and skip the stack trace and timing work.
+					dbQueryObj=null;
+					queryAction();
+					return;
+				}
 				stackTrace=new StackTrace();
 				dbQueryObj.MethodName=stackTrace.GetFrame(3).GetMethod().Name;
 			  if(HasStackTrace || hasStackTrace) {

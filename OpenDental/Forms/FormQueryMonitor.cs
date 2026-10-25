@@ -22,6 +22,10 @@ namespace OpenDental {
 		private DbQueryObj _dbQueryObj=null;
 		/// <summary> True if monitoring Middle Tier Payloads, false if monitoring queries on a direct DB connection </summary>
 		public bool IsPayloadMonitor=RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT;
+		///<summary>The current user's active filter group, or "" when nothing is filtered. Never used in payload mode.</summary>
+		private string _groupNameActive="";
+		///<summary>The filter texts of the active group. A query containing any of them (ignoring case) stays out of the feed and the log.</summary>
+		private List<string> _listFilterTexts=new List<string>();
 
 		public FormQueryMonitor() {
 			InitializeComponent();
@@ -43,11 +47,73 @@ namespace OpenDental {
 			contextMenu.MenuItems.Add(menuItemStackTrace);
 			contextMenu.Popup+=MenuItemPopupShowStackTrace;
 			if(!IsPayloadMonitor){
+				LoadActiveFilterGroup();
 				return;
 			}
 			Text=Lan.g(this,"Payload Monitor");
 			gridFeed.Title=Lan.g(this,"Payload Feed");
-			
+			//Payloads are never filtered.
+			butFilter.Visible=false;
+			labelFilterGroup.Visible=false;
+			QueryMonitor.Monitor.SetFilterTexts(null);
+		}
+
+		///<summary>Reads the current user's active filter group and its filter texts, applies them to the query monitor and shows the group name.
+		///A group that no longer has any filter counts as none.</summary>
+		private void LoadActiveFilterGroup() {
+			string groupName="";
+			List<string> listFilterTexts=new List<string>();
+			try {
+				groupName=QueryFilterActiveGroups.GetActiveGroup(QueryFilterActiveGroups.GetKey(Security.CurUser.UserNum));
+				if(groupName!="") {
+					listFilterTexts=QueryFilters.GetFilterTextsForGroup(QueryFilters.GetForGroup(groupName),groupName);
+				}
+			}
+			catch(Exception ex) {
+				ex.DoNothing();//For example a database without the queryfilter table. Show everything.
+				listFilterTexts=new List<string>();
+			}
+			if(listFilterTexts.Count==0) {
+				groupName="";
+			}
+			_groupNameActive=groupName;
+			_listFilterTexts=listFilterTexts;
+			QueryMonitor.Monitor.SetFilterTexts(_listFilterTexts);
+			if(_groupNameActive=="") {
+				labelFilterGroup.Text=Lan.g(this,"Filter group")+": "+Lan.g(this,"none");
+			}
+			else {
+				labelFilterGroup.Text=Lan.g(this,"Filter group")+": "+_groupNameActive;
+			}
+		}
+
+		///<summary>True when the query is hidden by the active filter group. Payloads are never hidden.</summary>
+		private bool IsFiltered(DbQueryObj dbQueryObj) {
+			if(IsPayloadMonitor || dbQueryObj==null || dbQueryObj.IsPayload) {
+				return false;
+			}
+			return QueryMonitor.IsCommandFiltered(dbQueryObj.Command,_listFilterTexts);
+		}
+
+		private void butFilter_Click(object sender,EventArgs e) {
+			FrmQueryFilters frmQueryFilters=new FrmQueryFilters();
+			frmQueryFilters.ShowDialog();
+			if(!frmQueryFilters.IsDialogOK) {
+				return;
+			}
+			LoadActiveFilterGroup();
+			//Queries already captured that the new filters hide leave the feed (and so the log) too.
+			List<Guid> listGuidsHidden=_dictionaryQueries.Where(x => IsFiltered(x.Value)).Select(x => x.Key).ToList();
+			if(listGuidsHidden.Count==0) {
+				return;
+			}
+			for(int i=0;i<listGuidsHidden.Count;i++) {
+				_dictionaryQueries.Remove(listGuidsHidden[i]);
+			}
+			if(_dbQueryObj!=null && IsFiltered(_dbQueryObj)) {
+				_dbQueryObj=null;
+			}
+			RefillGrid();
 		}
 
 		private void MenuItemShowStackTrace_Click(object sender,EventArgs e) {
@@ -130,6 +196,9 @@ namespace OpenDental {
 				if(!_concurrentQueueDbQueryObjs.TryDequeue(out DbQueryObj query)) {
 					break;
 				}
+				if(IsFiltered(query)) {
+					continue;//Hidden by the active filter group. The monitor normally drops these before they get here.
+				}
 				if((IsPayloadMonitor && query.IsPayload) || (!IsPayloadMonitor && !query.IsPayload)){ //Payload monitor and query is payload, OR query monitor and query is query
 					listDbQueryObjs.Add(query);
 				}
@@ -174,6 +243,11 @@ namespace OpenDental {
 			for(int i=0;i< dbQueryObjArray.Count();i++) {
 				_dictionaryQueries[dbQueryObjArray[i].GUID]=dbQueryObjArray[i];//Refresh the object within the dictionary so that any new information(e.g.Elapsed) gets updated.
 			}
+			RefillGrid();
+		}
+
+		///<summary>Shows the last 500 captured queries.</summary>
+		private void RefillGrid() {
 			//Arbitrarily limit the number of rows showing in the grid.
 			//The top of the grid is the oldest query so take the last X items.
 			//Use TakeLast(X) instead of a loop because a bunch of queries could have been queued (e.g. pasting schedules can queue thousands).
@@ -270,7 +344,7 @@ namespace OpenDental {
 			try{
 			OpenDentBusiness.FileIO.FileAtoZ.WriteAllTextRelative(logFolderPath,logFileName,
 				$"Query Monitor Log - {DateTime.Now.ToString()}, OD User: {Security.CurUser.UserName}, Computer: {ODEnvironment.MachineName}\r\n"+
-				$"{string.Join("\r\n",_dictionaryQueries.Values.Select(x => x.ToString()))}");
+				$"{string.Join("\r\n",_dictionaryQueries.Values.Where(x => !IsFiltered(x)).Select(x => x.ToString()))}");
 			}
 			catch(Exception ex) {
 				MsgBox.Show(Lan.g(this,"Error creating log file")+$":\r\n{ex.Message}");
@@ -315,6 +389,7 @@ namespace OpenDental {
 
 		private void FormQueryMonitor_FormClosing(object sender,FormClosingEventArgs e) {
 			ODException.SwallowAnyException(() => { QueryMonitorEvent.Fired-=DbMonitorEvent_Fired; });
+			ODException.SwallowAnyException(() => { QueryMonitor.Monitor.SetFilterTexts(null); });
 		}
 
 	}

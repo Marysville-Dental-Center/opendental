@@ -1465,6 +1465,7 @@
     <Compile Include="Data Interface\Programs.cs" />
     <Compile Include="Data Interface\ProviderIdents.cs" />
     <Compile Include="Data Interface\QuestionDefs.cs" />
+    <Compile Include="Data Interface\QueryFilters.cs" />
     <Compile Include="Data Interface\Questions.cs" />
     <Compile Include="Data Interface\QuickPasteCats.cs" />
     <Compile Include="Data Interface\QuickPasteNotes.cs" />

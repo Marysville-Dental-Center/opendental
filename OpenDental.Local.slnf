@@ -28,6 +28,7 @@
       "tests\\ForkMigrationTests\\ForkMigrationTests.csproj",
       "tests\\PayPlanTests\\PayPlanTests.csproj",
       "tests\\MedicationTests\\MedicationTests.csproj",
+      "tests\\QueryMonitorTests\\QueryMonitorTests.csproj",
       "tests\\RegistryTests\\RegistryTests.csproj",
       "tests\\TaskCategoryTests\\TaskCategoryTests.csproj",
       "tests\\RowHashTests\\RowHashTests.csproj",

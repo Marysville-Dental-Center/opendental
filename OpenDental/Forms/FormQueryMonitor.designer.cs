@@ -43,6 +43,8 @@ namespace OpenDental {
 			this.splitContainer = new OpenDental.UI.SplitContainer();
 			this.splitterPanel1 = new OpenDental.UI.SplitterPanel();
 			this.splitterPanel2 = new OpenDental.UI.SplitterPanel();
+			this.butFilter = new OpenDental.UI.Button();
+			this.labelFilterGroup = new System.Windows.Forms.Label();
 			this.groupBox1.SuspendLayout();
 			this.splitContainer.SuspendLayout();
 			this.splitterPanel1.SuspendLayout();
@@ -235,9 +237,30 @@ namespace OpenDental {
 			this.splitterPanel2.Size = new System.Drawing.Size(936, 263);
 			this.splitterPanel2.TabIndex = 14;
 			// 
+			// butFilter
+			// 
+			this.butFilter.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			this.butFilter.Location = new System.Drawing.Point(949, 243);
+			this.butFilter.Name = "butFilter";
+			this.butFilter.Size = new System.Drawing.Size(75, 24);
+			this.butFilter.TabIndex = 20;
+			this.butFilter.Text = "Filter";
+			this.butFilter.Click += new System.EventHandler(this.butFilter_Click);
+			// 
+			// labelFilterGroup
+			// 
+			this.labelFilterGroup.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			this.labelFilterGroup.Location = new System.Drawing.Point(946, 270);
+			this.labelFilterGroup.Name = "labelFilterGroup";
+			this.labelFilterGroup.Size = new System.Drawing.Size(86, 60);
+			this.labelFilterGroup.TabIndex = 21;
+			this.labelFilterGroup.Text = "Filter group: none";
+			// 
 			// FormQueryMonitor
 			// 
 			this.ClientSize = new System.Drawing.Size(1036, 512);
+			this.Controls.Add(this.labelFilterGroup);
+			this.Controls.Add(this.butFilter);
 			this.Controls.Add(this.splitContainer);
 			this.Controls.Add(this.buttonClear);
 			this.Controls.Add(this.butCopy);
@@ -276,5 +299,7 @@ namespace OpenDental {
 		private UI.SplitContainer splitContainer;
 		private UI.SplitterPanel splitterPanel1;
 		private UI.SplitterPanel splitterPanel2;
+		private UI.Button butFilter;
+		private System.Windows.Forms.Label labelFilterGroup;
 	}
 }
