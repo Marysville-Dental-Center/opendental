@@ -294,8 +294,22 @@ namespace OpenDentBusiness {
 		///and saves the final file name.</summary>
 		private static void InsertWithFile(Document document,Patient patient,byte[] fileBytes,string patFolder) {
 			Documents.Insert(document,patient);//Assigns a unique file name from the extension.
+			CopyFileNameFromDb(document);
 			ImageStore.SaveChartLetterFile(document,fileBytes,patFolder);
 			Documents.Update(document);
+		}
+
+		///<summary>Documents.Insert(document,patient) gives the row a unique file name (from the patient's name and the DocNum) on the server. Under
+		///Middle Tier only the DocNum comes back to the workstation, so the object still holds just the extension. This reads the name back from
+		///the row, as ImageStore.Import does after inserting, so the file is never written under the bare extension (which would overwrite the
+		///file of another letter or version in cloud storage) and the row's name is not overwritten by the following update.</summary>
+		public static void CopyFileNameFromDb(Document document) {
+			Meth.NoCheckMiddleTierRole();
+			Document documentDb=Documents.GetByNum(document.DocNum,doReturnNullIfNotFound:true);
+			if(documentDb==null) {
+				throw new ApplicationException(Lans.g("ChartLetters","The chart letter's row could not be read back after it was inserted."));
+			}
+			document.FileName=documentDb.FileName;
 		}
 
 		private static string NormalizeExtension(string fileExtension) {

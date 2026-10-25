@@ -371,5 +371,29 @@ namespace ChartLetterTests {
 			Assert.AreEqual(0,listUnknown.Count);
 			Assert.AreEqual("FName: Synthetic\nLName: ClMerge",DocxMailMerge.GetDocumentText(merged));
 		}
+
+		[TestMethod]
+		public void InsertedFileName_IsReadBackFromTheRow() {
+			//Under Middle Tier, Documents.Insert(document,patient) sends back only the DocNum: the workstation's object keeps the bare extension
+			//while the server gives the row a unique name. Simulated here with a second object that only learns the DocNum.
+			Patient patient=MakePatient("ClMtName");
+			Document documentServer=new Document { PatNum=patient.PatNum,FileName=".docx",Description="Mt",DateCreated=DateTime.Now.AddMinutes(-1),
+				ImgType=ImageType.File };
+			Document documentClient=documentServer.Copy();
+			Documents.Insert(documentServer,patient);
+			documentClient.DocNum=documentServer.DocNum;
+			Assert.AreEqual(".docx",documentClient.FileName,"The state a Middle Tier workstation is in after the insert.");
+			ChartLetters.CopyFileNameFromDb(documentClient);
+			Assert.AreEqual("ClMtNameSynthetic"+documentServer.DocNum+".docx",documentClient.FileName);
+			Assert.AreEqual(Documents.GetByNum(documentServer.DocNum).FileName,documentClient.FileName);
+			//Every letter and every version gets its own name, never the bare extension.
+			Document documentLetter=Create(patient,"Named","Text");
+			Document documentV2=ChartLetters.SaveNewVersion(documentLetter,patient,Letter("Text two"),_userNum1,PatFolder(patient));
+			List<string> listNames=ChartLetters.GetForPatient(patient.PatNum,true).Select(x => x.FileName).ToList();
+			Assert.AreEqual(2,listNames.Count);
+			Assert.IsTrue(listNames.All(x => x.Length>".docx".Length && x.StartsWith("ClMtNameSynthetic")),string.Join(", ",listNames));
+			Assert.AreEqual(2,listNames.Distinct().Count());
+			Assert.IsTrue(File.Exists(Path.Combine(PatFolder(patient),documentV2.FileName)));
+		}
 	}
 }
