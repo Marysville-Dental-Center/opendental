@@ -202,6 +202,41 @@ namespace OpenDentBusiness {
 			return listProcsUnassigned.Count==0 && listProcsForClaimProcs.All(x => x.Count>0);
 		}
 
+		///<summary>True when automatic payment entry (Etranss.TryImportEraClaimData) would need a By Total row to post this ERA claim, and so would refuse
+		///it. Repeats the By Total arithmetic of TryImportEraClaimData for an original payment on which every line matches a procedure (check that first
+		///with DoAllProcsMatch): the claim's deductible, allowed amount and insurance payment, less the sums of its lines, must all round to zero, and so
+		///must the write-off when canWriteOff (CanAutoPostWriteOff) is true; a negative write-off difference counts as zero, as there. An adjustment on
+		///the claim itself that is not listed, such as OA-23, makes the claim payment differ from the sum of the lines and needs a By Total row.
+		///Not for supplemental payments, reversals or claims the payer split (the auto split never handles those).</summary>
+		public static bool WouldNeedByTotalPayment(Hx835_Claim claimPaid,bool canWriteOff) {
+			Meth.NoCheckMiddleTierRole();
+			decimal dedApplied=claimPaid.PatientDeductAmt-claimPaid.ListProcs.Sum(x => x.DeductibleAmt);
+			decimal allowed=claimPaid.AllowedAmt-claimPaid.ListProcs.Sum(x => x.AllowedAmt);
+			decimal insPaid=claimPaid.InsPaid-claimPaid.ListProcs.Sum(x => x.InsPaid);
+			decimal writeOff=0;
+			if(canWriteOff) {
+				writeOff=Math.Max(0m,claimPaid.WriteoffAmt-claimPaid.ListProcs.Sum(x => x.WriteoffAmt));
+			}
+			return new List<decimal> { dedApplied,allowed,insPaid,writeOff }.Any(x => Math.Round(x,2,MidpointRounding.AwayFromZero)!=0);
+		}
+
+		///<summary>True when automatic payment entry posts the ERA's write-offs for this claim (preference EraAutoPostWriteOff), as decided in
+		///Etranss.TryImportEraClaimData for an original (not supplemental) payment. Reads the preference cache.</summary>
+		public static bool CanAutoPostWriteOff(Hx835_Claim claimPaid,Claim claim) {
+			Meth.NoCheckMiddleTierRole();
+			EnumEraAutoPostWriteOff eraAutoPostWriteOff=PrefC.GetEnum<EnumEraAutoPostWriteOff>(PrefName.EraAutoPostWriteOff);
+			if(eraAutoPostWriteOff==EnumEraAutoPostWriteOff.Always) {
+				return true;
+			}
+			if(eraAutoPostWriteOff==EnumEraAutoPostWriteOff.PriFromERA) {
+				return claimPaid.CodeClp02.In("1","19");//"Processed as Primary", "Processed as Primary, Forwarded to Additional Payer(s)"
+			}
+			if(eraAutoPostWriteOff==EnumEraAutoPostWriteOff.PriFromPlan) {
+				return claim.ClaimType=="P";
+			}
+			return false;
+		}
+
 		///<summary>Why a claim with a split plan can't be split, from its database state. Blank when it can be.</summary>
 		public static string GetClaimSkipReason(Claim claim,List<ClaimProc> listClaimProcsForClaim) {
 			Meth.NoCheckMiddleTierRole();
@@ -218,8 +253,8 @@ namespace OpenDentBusiness {
 		///option is on and the claim qualifies, moves the procedures that carry listed CARCs to a new unsent claim and returns a copy of the ERA claim
 		///without those lines; automatic processing then checks and posts that copy to the remaining claim. Otherwise returns claimPaid unchanged and
 		///changes nothing, and CanClaimBeAutoProcessed reports the listed CARCs as in 24.3 (with the reason the claim was not split).
-		///A split happens only when the remaining claim passes every other automatic processing check and every remaining line matches a procedure,
-		///so a split claim is always followed by its payment. Updates the given lists in place: listClaimProcsForClaim loses the moved claimprocs,
+		///A split happens only when the remaining claim passes every other automatic processing check, every remaining line matches a procedure and
+		///its payment needs no By Total row (WouldNeedByTotalPayment), so a split claim is always followed by its payment. Updates the given lists in place: listClaimProcsForClaim loses the moved claimprocs,
 		///and listClaimProcsAll gets their new ClaimNum (so payment finalization leaves them out). Adds a line to automationResult.ListAutoSplitNotes,
 		///puts the same line at the top of the etrans note, and writes a ClaimEdit security log entry for the original claim.</summary>
 		public static Hx835_Claim SplitDeniedProcsIfNeeded(bool isFullyAutomatic,X835 x835,Hx835_Claim claimPaid,Claim claim,Patient patient,
@@ -250,6 +285,14 @@ namespace OpenDentBusiness {
 			if(!DoAllProcsMatch(claimPaidRemaining,listClaimProcsRemaining)) {
 				automationResult.SetAutoSplitSkipReason(claimPaid,
 					Lans.g("X835","Auto split was not possible: the procedures left on the claim do not all match the ERA."));
+				return claimPaid;
+			}
+			//Automatic payment entry refuses a claim that would need a By Total row (TryImportEraClaimData), for example when an adjustment on the claim
+			//itself that is not listed makes the claim payment differ from the sum of the lines. Check it here, so that a split is never left without
+			//its payment.
+			if(WouldNeedByTotalPayment(claimPaidRemaining,CanAutoPostWriteOff(claimPaidRemaining,claim))) {
+				automationResult.SetAutoSplitSkipReason(claimPaid,
+					Lans.g("X835","Auto split was not possible: the rest of the claim would need a By Total payment."));
 				return claimPaid;
 			}
 			//The remaining claim must pass the other automatic processing checks on its own, or nothing is split. A scratch result keeps those checks'

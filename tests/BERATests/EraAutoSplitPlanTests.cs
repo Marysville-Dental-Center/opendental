@@ -159,6 +159,53 @@ namespace BERATests {
 		}
 
 		[TestMethod]
+		public void ByTotal_BalancedRemainingClaim_NotNeeded() {
+			Hx835_Claim claim=ClaimOnePaidOneDenied();
+			Hx835_Claim claimRemaining=EraAutoSplit.GetRemainingClaim(claim,new List<Hx835_Proc> { claim.ListProcs[1] });
+			Assert.IsFalse(EraAutoSplit.WouldNeedByTotalPayment(claimRemaining,canWriteOff:true));
+			Assert.IsFalse(EraAutoSplit.WouldNeedByTotalPayment(claimRemaining,canWriteOff:false));
+		}
+
+		[TestMethod]
+		public void ByTotal_UnlistedClaimLevelAdjustment_Needed() {
+			//OA-23 $5 on the claim: the payer pays $43 for a claim whose paid line says $48 (as X835 sets it, AllowedAmt follows InsPaid).
+			Hx835_Claim claim=ClaimOnePaidOneDenied();
+			claim.ListClaimAdjustments.Add(EraAdj("OA","23",5));
+			claim.InsPaid-=5;
+			claim.AllowedAmt-=5;
+			Hx835_Claim claimRemaining=EraAutoSplit.GetRemainingClaim(claim,new List<Hx835_Proc> { claim.ListProcs[1] });
+			Assert.IsTrue(EraAutoSplit.WouldNeedByTotalPayment(claimRemaining,canWriteOff:false));
+			Assert.IsTrue(EraAutoSplit.WouldNeedByTotalPayment(claimRemaining,canWriteOff:true));
+		}
+
+		[TestMethod]
+		public void ByTotal_ClaimLevelDeductible_Needed() {
+			//PR-1 $10 on the claim: deductible and patient responsibility the lines don't carry.
+			Hx835_Claim claim=ClaimOnePaidOneDenied();
+			claim.ListClaimAdjustments.Add(EraAdj("PR","1",10));
+			claim.InsPaid-=10;
+			claim.PatientDeductAmt+=10;
+			claim.PatientRespAmt+=10;
+			Hx835_Claim claimRemaining=EraAutoSplit.GetRemainingClaim(claim,new List<Hx835_Proc> { claim.ListProcs[1] });
+			Assert.IsTrue(EraAutoSplit.WouldNeedByTotalPayment(claimRemaining,canWriteOff:false));
+		}
+
+		[TestMethod]
+		public void ByTotal_WriteOffDifference_CountsOnlyWhenWriteOffsArePostedAndPositive() {
+			Hx835_Claim claim=ClaimOnePaidOneDenied();
+			claim.WriteoffAmt+=3;//A write-off on the claim that the lines don't carry.
+			Hx835_Claim claimRemaining=EraAutoSplit.GetRemainingClaim(claim,new List<Hx835_Proc> { claim.ListProcs[1] });
+			Assert.IsTrue(EraAutoSplit.WouldNeedByTotalPayment(claimRemaining,canWriteOff:true));
+			Assert.IsFalse(EraAutoSplit.WouldNeedByTotalPayment(claimRemaining,canWriteOff:false));
+			//A negative difference counts as zero, as in Etranss.TryImportEraClaimData.
+			claimRemaining.WriteoffAmt-=6;
+			Assert.IsFalse(EraAutoSplit.WouldNeedByTotalPayment(claimRemaining,canWriteOff:true));
+			//Differences below a cent round away.
+			claimRemaining.WriteoffAmt+=3.004m;
+			Assert.IsFalse(EraAutoSplit.WouldNeedByTotalPayment(claimRemaining,canWriteOff:true));
+		}
+
+		[TestMethod]
 		public void ClaimSkipReason_ReceivedPreauthOrCapitation() {
 			List<ClaimProc> listClaimProcs=new List<ClaimProc> { NewClaimProc(1,1001,"Z0120",60) };
 			Assert.AreEqual("",EraAutoSplit.GetClaimSkipReason(new Claim { ClaimStatus="S",ClaimType="P" },listClaimProcs));

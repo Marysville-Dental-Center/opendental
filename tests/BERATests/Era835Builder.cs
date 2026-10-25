@@ -30,13 +30,14 @@ namespace BERATests {
 			return amount.ToString("0.##",CultureInfo.InvariantCulture);
 		}
 
-		///<summary>An 835 with one CLP for claimIdentifier. The claim totals are the sums of the lines; BPR02 is the claim's payment.</summary>
+		///<summary>An 835 with one CLP for claimIdentifier. The claim charge is the sum of the lines. The claim payment (CLP04) balances as a payer
+		///reports it: the sum of the lines' payments less the adjustments on the claim itself. BPR02 is the claim's payment.</summary>
 		public static string Build(string claimIdentifier,string lName,string fName,DateTime dateService,List<Era835Line> listLines,
 			List<(string GroupCode,string ReasonCode,decimal Amount)> listClaimAdjs=null)
 		{
 			listClaimAdjs=listClaimAdjs??new List<(string,string,decimal)>();
 			decimal fee=listLines.Sum(x => x.Fee);
-			decimal insPaid=listLines.Sum(x => x.InsPaid);
+			decimal insPaid=listLines.Sum(x => x.InsPaid)-listClaimAdjs.Sum(x => x.Amount);
 			decimal patResp=listLines.SelectMany(x => x.ListAdjs).Where(x => x.GroupCode=="PR").Sum(x => x.Amount)
 				+listClaimAdjs.Where(x => x.GroupCode=="PR").Sum(x => x.Amount);
 			string isa="ISA*00*"+"".PadRight(10)+"*00*"+"".PadRight(10)+"*ZZ*"+"SYNTHPAYER".PadRight(15)+"*ZZ*"+"SYNTHOFFICE".PadRight(15)

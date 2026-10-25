@@ -197,6 +197,57 @@ namespace BERATests {
 		}
 
 		[TestMethod]
+		public void UnlistedClaimLevelAdjustment_RestWouldNeedByTotal_NothingIsSplit() {
+			//OA-23 $5 on the claim itself is not listed, but it makes the claim payment ($43) differ from the paid line ($48), so payment entry of the
+			//rest of the claim would need a By Total row, which automatic processing refuses. The split must not happen without its payment.
+			EraCase eraCase=CreateClaim(("Z0120",60),("Z0220",40));
+			AddEra(eraCase,new List<Era835Line> {
+					new Era835Line("Z0120",60,48,ProcNum(eraCase,0),("CO","45",12m)),
+					new Era835Line("Z0220",40,0,ProcNum(eraCase,1),("CO","97",40m)),
+				},
+				new List<(string,string,decimal)> { ("OA","23",5m) });
+			Assert.AreEqual(43m,eraCase.X835.ListClaimsPaid.Single().InsPaid);
+			EraAutomationResult result=Etranss.TryAutoProcessEraEob(eraCase.X835,eraCase.ListAttaches,isFullyAutomatic:false);
+			Assert.AreEqual(0,result.CountClaimsProcessed);
+			Assert.AreEqual(0,result.ListAutoSplitNotes.Count);
+			string error=result.ListClaimErrors.Single();
+			StringAssert.Contains(error,"CO-97 on procedure Z0220");
+			StringAssert.Contains(error,"Auto split was not possible: the rest of the claim would need a By Total payment.");
+			Assert.AreEqual(1,Etrans835Attaches.GetForEtrans(eraCase.Etrans.EtransNum).Count);
+			Assert.AreEqual(eraCase.Claim.ClaimNum,GetClaimProcForProc(ProcNum(eraCase,0)).ClaimNum);
+			Assert.AreEqual(eraCase.Claim.ClaimNum,GetClaimProcForProc(ProcNum(eraCase,1)).ClaimNum);
+			Assert.AreEqual(ClaimProcStatus.NotReceived,GetClaimProcForProc(ProcNum(eraCase,0)).Status);
+			Assert.AreEqual("S",Claims.GetClaim(eraCase.Claim.ClaimNum).ClaimStatus);
+			Assert.AreEqual(1,Claims.Refresh(eraCase.Patient.PatNum).Count,"No new claim.");
+			Assert.IsFalse((eraCase.X835.EtransSource.Note??"").Contains("Auto split"));
+			string countLogs=DataCore.GetScalar("SELECT COUNT(*) FROM securitylog WHERE PermType="+(int)EnumPermType.ClaimEdit+" AND FKey="+eraCase.Claim.ClaimNum
+				+" AND LogText LIKE '%split automatically%'");
+			Assert.AreEqual("0",countLogs);
+		}
+
+		[TestMethod]
+		public void CanAutoPostWriteOff_FollowsEraAutoPostWriteOff() {
+			int valueOld=PrefC.GetInt(PrefName.EraAutoPostWriteOff);
+			try {
+				Hx835_Claim claimPaidPrimary=new Hx835_Claim { CodeClp02="1" };//Processed as Primary
+				Hx835_Claim claimPaidSecondary=new Hx835_Claim { CodeClp02="2" };//Processed as Secondary
+				Claim claimPrimary=new Claim { ClaimType="P" };
+				Claim claimSecondary=new Claim { ClaimType="S" };
+				Prefs.UpdateInt(PrefName.EraAutoPostWriteOff,(int)EnumEraAutoPostWriteOff.Always);
+				Assert.IsTrue(EraAutoSplit.CanAutoPostWriteOff(claimPaidSecondary,claimSecondary));
+				Prefs.UpdateInt(PrefName.EraAutoPostWriteOff,(int)EnumEraAutoPostWriteOff.PriFromERA);
+				Assert.IsTrue(EraAutoSplit.CanAutoPostWriteOff(claimPaidPrimary,claimSecondary));
+				Assert.IsFalse(EraAutoSplit.CanAutoPostWriteOff(claimPaidSecondary,claimPrimary));
+				Prefs.UpdateInt(PrefName.EraAutoPostWriteOff,(int)EnumEraAutoPostWriteOff.PriFromPlan);
+				Assert.IsTrue(EraAutoSplit.CanAutoPostWriteOff(claimPaidSecondary,claimPrimary));
+				Assert.IsFalse(EraAutoSplit.CanAutoPostWriteOff(claimPaidPrimary,claimSecondary));
+			}
+			finally {
+				Prefs.UpdateInt(PrefName.EraAutoPostWriteOff,valueOld);
+			}
+		}
+
+		[TestMethod]
 		public void QualifiedEntryOfAnotherGroup_DoesNotHoldTheClaim() {
 			Prefs.UpdateString(PrefName.EraNoAutoProcessCarcCodes,"PR-97");
 			EraCase eraCase=CreateOnePaidOneDenied();
