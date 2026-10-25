@@ -165,6 +165,200 @@ namespace BPRINTTests {
 				Assert.AreEqual(2,countingDocument.CountPrintPageCalls);
 			}
 		}
+
+		///<summary>A document whose page handler applies the printer settings' page range itself, the way FormQuery.pd2_PrintPage and
+		///FormReportComplex.pd2_PrintPage do: inside the first page event it lays out the pages before FromPage without drawing them, so the first
+		///sheet it sends out is page FromPage, and it stops after ToPage. Each sheet records the document pages drawn on it.</summary>
+		private class SelfFilteringDocument:PrintDocument,IRecordsPages {
+			public int PageCount;
+			private int _currentPage;
+			private List<int> _listPagesOnSheet=new List<int>();
+
+			public List<int> ListPagesOnLastSheet {
+				get {
+					return _listPagesOnSheet;
+				}
+			}
+
+			protected override void OnBeginPrint(PrintEventArgs e) {
+				_currentPage=1;
+				base.OnBeginPrint(e);
+			}
+
+			private void DrawPage(PrintPageEventArgs e) {
+				PrinterSettings printerSettings=e.PageSettings.PrinterSettings;
+				bool isPrintablePage=printerSettings.PrintRange==PrintRange.AllPages
+					|| (printerSettings.FromPage<=_currentPage && printerSettings.ToPage>=_currentPage);
+				if(isPrintablePage) {
+					e.Graphics.DrawString("Page "+_currentPage,SystemFonts.DefaultFont,Brushes.Black,10,10);
+					_listPagesOnSheet.Add(_currentPage);
+				}
+				_currentPage++;
+			}
+
+			protected override void OnPrintPage(PrintPageEventArgs e) {
+				_listPagesOnSheet=new List<int>();
+				PrinterSettings printerSettings=e.PageSettings.PrinterSettings;
+				do {
+					DrawPage(e);
+				} while(printerSettings.PrintRange!=PrintRange.AllPages && printerSettings.FromPage>=_currentPage && _currentPage<=PageCount);
+				e.HasMorePages=_currentPage<=PageCount
+					&& !(printerSettings.PrintRange!=PrintRange.AllPages && printerSettings.ToPage<_currentPage);
+			}
+		}
+
+		///<summary>A document that reads the page range once when printing starts and then sends only those pages, the way RdlViewer.Print does.</summary>
+		private class RangeAtStartDocument:PrintDocument,IRecordsPages {
+			public int PageCount;
+			private int _currentPage;
+			private int _lastPage;
+			private List<int> _listPagesOnSheet=new List<int>();
+
+			public List<int> ListPagesOnLastSheet {
+				get {
+					return _listPagesOnSheet;
+				}
+			}
+
+			protected override void OnBeginPrint(PrintEventArgs e) {
+				_currentPage=1;
+				_lastPage=PageCount;
+				if(PrinterSettings.PrintRange==PrintRange.SomePages) {
+					_currentPage=Math.Max(1,PrinterSettings.FromPage);
+					_lastPage=Math.Min(PageCount,PrinterSettings.ToPage);
+				}
+				base.OnBeginPrint(e);
+			}
+
+			protected override void OnPrintPage(PrintPageEventArgs e) {
+				e.Graphics.DrawString("Page "+_currentPage,SystemFonts.DefaultFont,Brushes.Black,10,10);
+				_listPagesOnSheet=new List<int> { _currentPage };
+				_currentPage++;
+				e.HasMorePages=_currentPage<=_lastPage;
+			}
+		}
+
+		///<summary>A document that ignores the page range and records each page it draws.</summary>
+		private class IgnoringRangeDocument:PrintDocument,IRecordsPages {
+			public int PageCount;
+			private int _currentPage;
+			private List<int> _listPagesOnSheet=new List<int>();
+
+			public List<int> ListPagesOnLastSheet {
+				get {
+					return _listPagesOnSheet;
+				}
+			}
+
+			protected override void OnBeginPrint(PrintEventArgs e) {
+				_currentPage=1;
+				base.OnBeginPrint(e);
+			}
+
+			protected override void OnPrintPage(PrintPageEventArgs e) {
+				e.Graphics.DrawString("Page "+_currentPage,SystemFonts.DefaultFont,Brushes.Black,10,10);
+				_listPagesOnSheet=new List<int> { _currentPage };
+				_currentPage++;
+				e.HasMorePages=_currentPage<=PageCount;
+			}
+		}
+
+		private interface IRecordsPages {
+			List<int> ListPagesOnLastSheet { get; }
+		}
+
+		///<summary>A print preview controller that records, for each sheet that reaches it, the document pages drawn on that sheet.</summary>
+		private class RecordingPreviewPrintController:PreviewPrintController {
+			public List<string> ListSheets=new List<string>();
+
+			public override void OnEndPage(PrintDocument document,PrintPageEventArgs e) {
+				ListSheets.Add(string.Join(",",((IRecordsPages)document).ListPagesOnLastSheet));
+				base.OnEndPage(document,e);
+			}
+		}
+
+		///<summary>Prints the document the way PrinterL does after the Print Options window chose pages fromPage to toPage, and returns the document
+		///pages on each sheet that reached the printer (here a print preview).</summary>
+		private static List<string> PrintChosenPages(PrintDocument printDocument,int fromPage,int toPage) {
+			RecordingPreviewPrintController recordingPreviewPrintController=new RecordingPreviewPrintController();
+			printDocument.PrintController=recordingPreviewPrintController;
+			new PrintOptionsChoice { PrinterName=printDocument.PrinterSettings.PrinterName,IsAllPages=false,FromPage=fromPage,ToPage=toPage }
+				.ApplyTo(printDocument.PrinterSettings);
+			PageRangePrintController.ApplyTo(printDocument);
+			printDocument.Print();
+			Assert.AreEqual(recordingPreviewPrintController.ListSheets.Count,recordingPreviewPrintController.GetPreviewPageInfo().Length);
+			return recordingPreviewPrintController.ListSheets;
+		}
+
+		[TestMethod]
+		public void PageRange_HandlerThatSkipsPagesItself_PrintsExactlyTheChosenPages() {
+			SkipWithoutPrinter();
+			using(SelfFilteringDocument selfFilteringDocument=new SelfFilteringDocument { PageCount=7 }) {
+				CollectionAssert.AreEqual(new[] { "3","4","5" },PrintChosenPages(selfFilteringDocument,3,5),"Reports and User Query: pages 3 to 5, once each.");
+			}
+			using(SelfFilteringDocument selfFilteringDocument=new SelfFilteringDocument { PageCount=7 }) {
+				CollectionAssert.AreEqual(new[] { "2" },PrintChosenPages(selfFilteringDocument,2,2),"A single page.");
+			}
+			using(SelfFilteringDocument selfFilteringDocument=new SelfFilteringDocument { PageCount=7 }) {
+				CollectionAssert.AreEqual(new[] { "1","2" },PrintChosenPages(selfFilteringDocument,1,2));
+			}
+			using(SelfFilteringDocument selfFilteringDocument=new SelfFilteringDocument { PageCount=4 }) {
+				CollectionAssert.AreEqual(new[] { "3","4" },PrintChosenPages(selfFilteringDocument,3,9),"Past the end: what exists.");
+			}
+		}
+
+		[TestMethod]
+		public void PageRange_HandlerThatReadsTheRangeAtStart_PrintsExactlyTheChosenPages() {
+			SkipWithoutPrinter();
+			using(RangeAtStartDocument rangeAtStartDocument=new RangeAtStartDocument { PageCount=7 }) {
+				CollectionAssert.AreEqual(new[] { "3","4","5" },PrintChosenPages(rangeAtStartDocument,3,5),"RDL reports: pages 3 to 5, once each.");
+			}
+			using(RangeAtStartDocument rangeAtStartDocument=new RangeAtStartDocument { PageCount=7 }) {
+				CollectionAssert.AreEqual(new[] { "2" },PrintChosenPages(rangeAtStartDocument,2,2));
+			}
+		}
+
+		[TestMethod]
+		public void PageRange_HandlerThatIgnoresTheRange_PrintsExactlyTheChosenPages() {
+			SkipWithoutPrinter();
+			using(IgnoringRangeDocument ignoringRangeDocument=new IgnoringRangeDocument { PageCount=7 }) {
+				CollectionAssert.AreEqual(new[] { "3","4","5" },PrintChosenPages(ignoringRangeDocument,3,5));
+			}
+			using(IgnoringRangeDocument ignoringRangeDocument=new IgnoringRangeDocument { PageCount=7 }) {
+				CollectionAssert.AreEqual(new[] { "2" },PrintChosenPages(ignoringRangeDocument,2,2));
+			}
+		}
+
+		[TestMethod]
+		public void PageRange_ApplyTo_TheControllerAloneAppliesTheRange_AndAReprintWithoutRangeGetsTheOwnController() {
+			using(PrintDocument printDocument=new PrintDocument()) {
+				PrintController printControllerOwn=new StandardPrintController();
+				printDocument.PrintController=printControllerOwn;
+				printDocument.PrinterSettings.PrintRange=PrintRange.SomePages;
+				printDocument.PrinterSettings.FromPage=3;
+				printDocument.PrinterSettings.ToPage=5;
+				PageRangePrintController.ApplyTo(printDocument);
+				PageRangePrintController pageRangePrintController=printDocument.PrintController as PageRangePrintController;
+				Assert.IsNotNull(pageRangePrintController);
+				Assert.AreSame(printControllerOwn,pageRangePrintController.PrintControllerInner);
+				Assert.AreEqual(PrintRange.AllPages,printDocument.PrinterSettings.PrintRange,
+					"Handlers that skip pages themselves must not apply the range a second time.");
+				Assert.AreEqual(PrintRange.AllPages,printDocument.DefaultPageSettings.PrinterSettings.PrintRange,
+					"The page events see the same settings.");
+				//Printed again with All: the document's own controller comes back.
+				PageRangePrintController.ApplyTo(printDocument);
+				Assert.AreSame(printControllerOwn,printDocument.PrintController);
+				//Printed again with another range: one wrapper around the own controller, never a wrapper around a wrapper.
+				printDocument.PrinterSettings.PrintRange=PrintRange.SomePages;
+				printDocument.PrinterSettings.FromPage=2;
+				printDocument.PrinterSettings.ToPage=2;
+				PageRangePrintController.ApplyTo(printDocument);
+				printDocument.PrinterSettings.PrintRange=PrintRange.SomePages;
+				PageRangePrintController.ApplyTo(printDocument);
+				Assert.AreSame(printControllerOwn,((PageRangePrintController)printDocument.PrintController).PrintControllerInner);
+				PageRangePrintController.ApplyTo(null);//no error
+			}
+		}
 		#endregion Page range printing (System.Drawing)
 
 		#region Page range printing (WPF)

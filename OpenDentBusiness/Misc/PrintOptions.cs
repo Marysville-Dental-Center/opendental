@@ -166,6 +166,33 @@ namespace OpenDentBusiness {
 			_toPage=toPage;
 		}
 
+		///<summary>Sets up page-range printing for a document whose printer settings were just chosen (PrinterL.SetPrinter). When the settings ask for
+		///some pages (PrintRange.SomePages), the document's PrintController is wrapped in a PageRangePrintController for FromPage to ToPage, and the
+		///settings' PrintRange goes back to AllPages, so this controller is the only thing that leaves pages out. Some page handlers apply
+		///FromPage/ToPage themselves (ReportComplex reports, User Query, RDL reports): they skip the earlier pages and send page FromPage first. With
+		///both applying the range, pages 3-5 would print only page 5. With PrintRange at AllPages those handlers draw every page and the controller
+		///sends FromPage to ToPage, the same as for a handler that ignores the range. A document printed again without a range gets its own
+		///controller back.</summary>
+		public static void ApplyTo(PrintDocument printDocument) {
+			if(printDocument==null) {
+				return;
+			}
+			//A document printed again keeps no range from the last time.
+			PrintController printControllerBase=printDocument.PrintController;
+			if(printControllerBase is PageRangePrintController pageRangePrintController) {
+				printControllerBase=pageRangePrintController.PrintControllerInner;
+			}
+			if(printDocument.PrinterSettings.PrintRange!=PrintRange.SomePages) {
+				if(printDocument.PrintController!=printControllerBase) {
+					printDocument.PrintController=printControllerBase;
+				}
+				return;
+			}
+			printDocument.PrintController=new PageRangePrintController(printControllerBase,
+				printDocument.PrinterSettings.FromPage,printDocument.PrinterSettings.ToPage);
+			printDocument.PrinterSettings.PrintRange=PrintRange.AllPages;
+		}
+
 		///<summary>The controller that does the real printing.</summary>
 		public PrintController PrintControllerInner {
 			get {

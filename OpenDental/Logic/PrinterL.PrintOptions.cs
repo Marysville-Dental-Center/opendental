@@ -33,24 +33,11 @@ namespace OpenDental {
 		}
 
 		///<summary>System.Drawing printing calls the page handler for every page whatever the page range says, so when the Print Options window chose
-		///a range (PrintRange.SomePages), only those pages are sent to the printer (PageRangePrintController).</summary>
+		///a range (PrintRange.SomePages), only those pages are sent to the printer (PageRangePrintController). The controller is then the only
+		///thing that applies the range: the settings go back to all pages, so the handlers that skip pages themselves (reports, User Query) do not
+		///apply it a second time (PageRangePrintController.ApplyTo).</summary>
 		private static void ApplyPageRange(PrintDocument printDocument) {
-			if(printDocument==null) {
-				return;
-			}
-			//A document printed again keeps no range from the last time.
-			PrintController printControllerBase=printDocument.PrintController;
-			if(printControllerBase is PageRangePrintController pageRangePrintController) {
-				printControllerBase=pageRangePrintController.PrintControllerInner;
-			}
-			if(printDocument.PrinterSettings.PrintRange!=PrintRange.SomePages) {
-				if(printDocument.PrintController!=printControllerBase) {
-					printDocument.PrintController=printControllerBase;
-				}
-				return;
-			}
-			printDocument.PrintController=new PageRangePrintController(printControllerBase,
-				printDocument.PrinterSettings.FromPage,printDocument.PrinterSettings.ToPage);
+			PageRangePrintController.ApplyTo(printDocument);
 		}
 	}
 }

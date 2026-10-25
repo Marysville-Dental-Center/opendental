@@ -170,8 +170,29 @@ namespace BPRINTTests {
 			string printOptions=Read(@"OpenDental\Logic\PrinterL.PrintOptions.cs");
 			StringAssert.Contains(printOptions,"FrmPrintOptions frmPrintOptions=new FrmPrintOptions();");
 			StringAssert.Contains(printOptions,"PrintOptions.Remember(printSituation,printOptionsChoice);");
-			StringAssert.Contains(printOptions,"new PageRangePrintController(");
+			StringAssert.Contains(printOptions,"PageRangePrintController.ApplyTo(printDocument);");
 			StringAssert.Contains(Read(@"OpenDental\UI\FormPrintPreview.cs"),"PrinterL.TryPrint(_printout,isPromptForced:true)");
+		}
+
+		///<summary>Reports, User Query and RDL reports apply FromPage/ToPage in their own page handlers and reach the page-range controller through
+		///PrinterL.TryPrint or PrinterL.SetPrinter. PageRangePrintController.ApplyTo puts the settings back to all pages, so the range is applied
+		///once (PrintOptionsTests.PageRange_HandlerThatSkipsPagesItself_PrintsExactlyTheChosenPages).</summary>
+		[TestMethod]
+		public void PageRange_ReportsThatSkipPagesThemselves_GoThroughTheController() {
+			string printerL=Read(@"OpenDental\Logic\PrinterL.cs");
+			StringAssert.Contains(printerL,"ApplyPageRange(printout.PrintDoc);");
+			StringAssert.Contains(printerL,"ApplyPageRange(printDocument);");
+			string printOptions=Read(@"OpenDentBusiness\Misc\PrintOptions.cs");
+			StringAssert.Contains(printOptions,"printDocument.PrinterSettings.PrintRange=PrintRange.AllPages;");
+			string reportComplex=Read(@"OpenDental\ReportingComplex\FormReportComplex.cs");
+			StringAssert.Contains(reportComplex,"ev.PageSettings.PrinterSettings.FromPage>=_currentPage");
+			StringAssert.Contains(reportComplex,"PrinterL.TryPrint(_printout)");
+			string query=Read(@"OpenDental\Forms Reports\FormQuery.cs");
+			StringAssert.Contains(query,"ev.PageSettings.PrinterSettings.FromPage>=_currentPage");
+			StringAssert.Contains(query,"PrinterL.TryPrint(ODprintout.CurPrintout)");
+			StringAssert.Contains(Read(@"OpenDental\ReportingForRdl\FormReportForRdl.cs"),"PrinterL.SetPrinter(pd,PrintSituation.Default,0,");
+			StringAssert.Contains(Read(@"OpenDental\ReportingForRdl\FormReportCustom.cs"),"PrinterL.SetPrinter(pd,PrintSituation.Default,0,");
+			StringAssert.Contains(Read(@"RdlViewer\RdlViewer.cs"),"case PrintRange.SomePages:");
 		}
 
 		[TestMethod]
