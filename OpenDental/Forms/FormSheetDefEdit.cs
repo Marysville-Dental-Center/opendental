@@ -1697,7 +1697,13 @@ namespace OpenDental {
 			wasWarned=true;
 			string msg=Lan.g(this,"This sheet already has the following field")+":\r\n"+string.Join("\r\n",listNames.Take(10))
 				+(listNames.Count>10 ? "\r\n..." : "")+"\r\n\r\n"+Lan.g(this,"Click OK to continue adding it, or Cancel to not add it.");
-			return MsgBox.Show(MsgBoxButtons.OKCancel,msg);
+			bool isAddAccepted=MsgBox.Show(MsgBoxButtons.OKCancel,msg);
+			//The modal box consumes the CTRL and ALT key_up events (CTRL+V paste, ALT+click stamp), so reset the keys after OK and after Cancel, as
+			//CopyControlsToMemory does after its own box. Otherwise clicks keep toggling the selection or stamping copies.
+			_isCtrlDown=false;
+			_isAltDown=false;
+			Cursor=Cursors.Default;
+			return isAddAccepted;
 		}
 
 		///<summary>Creates copies of given defDefault for every given value in listLanguages and inserts them into _sheetDefCur.SheetFieldDefs via AddNewSheeFieldDef(...) Either called when user selects a new language to translate to or when the user adds a SheetFieldDef to the 'Default' view.</summary>
@@ -2584,6 +2590,8 @@ namespace OpenDental {
 			if(_listSheetFieldDefsCopyPaste==null || _listSheetFieldDefsCopyPaste.Count==0) {
 				return;
 			}
+			//Whether this paste is an ALT+click stamp, saved before the duplicate field box below because that box resets the modifier keys.
+			bool isAltStamp=_isAltDown;
 			if(!_isDuplicatePasteAccepted) {
 				if(!ConfirmDuplicateFields(_listSheetFieldDefsCopyPaste,out bool wasWarned)) {
 					return;
@@ -2627,7 +2635,7 @@ namespace OpenDental {
 				AddNewSheetFieldDef(sheetFieldDef);
 				listSheetFieldDefsNew.Add(sheetFieldDef);
 			}
-			if(!_isAltDown) {
+			if(!isAltStamp) {
 				_pasteOffsetY+=((_pasteOffset+10)/100)*10; //this will shift the pastes down 10 pixels every 10 pastes.
 				_pasteOffset=(_pasteOffset+10)%100; //cascades and allows for 90 consecutive pastes without overlap
 			}

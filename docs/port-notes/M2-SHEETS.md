@@ -39,11 +39,12 @@ Sources: the 25.4 release notes (https://www.opendental.com/site/version25_4.htm
   - never checked: static text, lines, rectangles, images, patient images, signature boxes, grids, combo boxes, special fields, screen charts, mobile headers, fields without a name, and "misc" fields without a user-defined name.
 - `FormSheetDefEdit.ConfirmDuplicateFields` asks before adding: after the field dialog of Add Output Text, Add Input Field and Add Check Box, and before a paste (Ctrl+V, the Paste button, Alt+click stamping). The message lists the duplicated fields (up to 10); OK adds them, Cancel does not.
 - No double prompts: copying fields that conflict already asks (existing 24.3 prompt in `CopyControlsToMemory`); when the user agrees there, pasting that copy does not ask again. Likewise, after the user agrees once to paste a copy, further pastes of the same copy (stamping) do not ask again.
+- Modifier keys after the box (fix round s1). The box is modal, so it swallows the key-up of the Ctrl (Ctrl+V) or Alt (Alt+click stamp) that started the paste, and `FormSheetDefEdit_KeyUp` never clears `_isCtrlDown` or `_isAltDown`. Before the fix, after the box a Ctrl+V paste left Ctrl "down" (clicks toggled the selection; V, Z or C alone pasted, undid or copied), and an Alt+click stamp left Alt "down" (every click stamped another copy after OK, or asked again after Cancel) until Alt was pressed again. `ConfirmDuplicateFields` now resets `_isCtrlDown`, `_isAltDown` and the cursor whenever it has shown the box, after OK and after Cancel, as `CopyControlsToMemory` already does after its own box. `PasteControlsFromMemory` saves the Alt state before the box (`isAltStamp`) and uses it for the cascade offset rule, so an Alt+click stamp still does not move the offset of the next Ctrl+V. The add-field paths share the reset; it is harmless there (no key is held when a button opens a field dialog).
 
 ## Files touched
 
 - New (business layer): `OpenDentBusiness/SheetFramework/SheetScripts.cs` (script classification, right-to-left detection, language names, `SheetScriptGroup`), `SheetFonts.cs` (fallback, glyph coverage, PDF embedding probe), `SheetTextDrawing.cs` (print and PDF text drawing, `ApplyDirection`).
-- Changed, owned: `OpenDentBusiness/SheetFramework/SheetDrawingJob.cs` (16 call sites renamed to the helper, one font name), `OpenDentBusiness/Data Interface/SheetFieldDefs.cs` (three methods appended), `OpenDental/Forms/FormSheetDefEdit.cs` (warning method, four hooks, one field, language names, designer font and direction), `OpenDental/Forms/FormSheetFillEdit.cs` (five one-line hooks).
+- Changed, owned: `OpenDentBusiness/SheetFramework/SheetDrawingJob.cs` (16 call sites renamed to the helper, one font name), `OpenDentBusiness/Data Interface/SheetFieldDefs.cs` (three methods appended), `OpenDental/Forms/FormSheetDefEdit.cs` (warning method with the modifier key reset, four hooks, one field, the saved Alt state for the paste offset, language names, designer font and direction), `OpenDental/Forms/FormSheetFillEdit.cs` (five one-line hooks).
 - Owned but unchanged: `OpenDental/SheetFramework/SheetPrinting.cs` (its print and PDF entry points only call `SheetDrawingJob`).
 - Shared, small: `OpenDentBusiness/OpenDentBusiness.csproj` (3 compile entries), `OpenDental.sln` and `OpenDental.Local.slnf` (the test project).
 - Tests: `tests/M2SHEETSTests/` (new).
@@ -74,14 +75,14 @@ Sources: the 25.4 release notes (https://www.opendental.com/site/version25_4.htm
 
 ## Tests
 
-`tests/M2SHEETSTests` (MSTest v1, x86): 48 tests, all passing on the build computer (Windows 11, local MariaDB 10.11).
+`tests/M2SHEETSTests` (MSTest v1, x86): 49 tests, all passing on the build computer (Windows 11, local MariaDB 10.11).
 
 - `ScriptTests`: WinAnsi and Latin detection, right-to-left detection (first strong letter), complex scripts, script groups, language names.
 - `FontFallbackTests`: the fallback rule with made-up fonts (order, kana and Hangul priority, best coverage, characters that draw nothing), and the real fonts of the test computer (inconclusive when a font is missing): Arial keeps Cyrillic and Greek; Chinese in Arial uses Microsoft YaHei, Korean Malgun Gothic, Hindi Nirmala UI, Hebrew in a font without Hebrew Segoe UI; Microsoft YaHei cannot be embedded.
 - `PdfTextTests`: whole sheet PDFs through `SheetDrawingJob.CreatePdf`, read back with PDFsharp: Latin output byte-identical to the old helper with a WinAnsi font; Cyrillic and Greek as Type0/Identity-H fonts with every code point in the ToUnicode map; Korean in an embedded Malgun Gothic; Hebrew, Arabic, Hindi, Thai and mixed text as one transparent 300 dpi image each; Chinese as an image; the resolution cap for a huge field; a sheet with every script and field kind. Set `M2SHEETS_PDF_DIR` to keep that PDF for a look.
 - `PrintTextTests`: `ApplyDirection`; Latin print output pixel-identical to `GraphicsHelper.DrawString`; right-to-left text on the designed side; every script draws.
 - `DuplicateFieldTests`: every identity rule above.
-- `WiringTests`: the windows and `SheetDrawingJob` call the helpers (source checks; OpenDental.exe cannot be loaded by tests).
+- `WiringTests`: the windows and `SheetDrawingJob` call the helpers (source checks; the Sheet Def editor needs a database and a modal box, so its key handling is not driven by tests). `SheetDefEdit_DuplicateFieldBoxResetsTheModifierKeys` (fix round s1) reads the method bodies of the editor (comments, strings and chars skipped when matching braces) and checks that Ctrl+V and Alt+click reach the paste, that nothing returns between the duplicate field box and the reset of Ctrl, Alt and the cursor (so OK and Cancel both reset, and only when the box was shown), and that the paste saves the Alt state before the box and decides the cascade offset only from that saved state.
 - `UnicodeDbTests`: text in 11 scripts round-trips through the `sheetfield`, `sheetdef` and `sheetfielddef` CRUD on a scratch database built from the 26.1.70 reference schema.
 
 Related existing assemblies run: `SheetTests` (check sheet PDFs through `SheetDrawingJob`), `SignatureTests` (signature lines and the A-SIG source checks), `NoHqTests`.
@@ -95,7 +96,7 @@ Related existing assemblies run: `SheetTests` (check sheet PDFs through `SheetDr
 
 ## Not tested
 
-- The windows themselves (Sheet Def editor warning dialog, Fill Sheet drawing, editing and caret placement with fallback fonts and right-to-left text): OpenDental.exe is not launched in this run; only the source wiring and the shared drawing code are tested.
+- The windows themselves (Sheet Def editor warning dialog and the key state after it, Fill Sheet drawing, editing and caret placement with fallback fonts and right-to-left text): OpenDental.exe is not launched in this run; only the source wiring and the shared drawing code are tested.
 - A physical printer: the print path was drawn to bitmaps with the same code.
 - Other Windows versions and font sets: tested on Windows 11 only. Fallback choices and which fonts PDFsharp can embed depend on the installed fonts and on whether Windows ships a font as a single file or as a collection.
 - Growth-behaviour heights with fallback fonts (`SheetUtil`, M2-SDV's file).
