@@ -434,6 +434,7 @@
     <Compile Include="Data Interface\ChildRooms.cs" />
     <Compile Include="Data Interface\Children.cs" />
     <Compile Include="Data Interface\CodeGroups.cs" />
+    <Compile Include="Data Interface\InsHistCategories.cs" />
     <Compile Include="Data Interface\EFormDefs.cs" />
     <Compile Include="Data Interface\EFormFieldDefs.cs" />
     <Compile Include="Data Interface\EFormFields.cs" />

@@ -516,7 +516,7 @@ namespace OpenDentBusiness{
 			if(benefit==null) {
 				return new List<long>();
 			}
-			List<long> listCodeNums=ProcedureCodes.GetCodeNumsForPref(prefNameInsHist);
+			List<long> listCodeNums=InsHistCategories.GetCodeNumsForInsHistPref(prefNameInsHist);//26.1: the history code groups, not the obsolete preference.
 			if(procedureCode==null || listCodeNums.Contains(procedureCode.CodeNum)) {
 				return listCodeNums;//The proc is not included or is part of the group
 			}

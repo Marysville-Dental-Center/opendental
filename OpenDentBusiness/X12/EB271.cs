@@ -480,7 +480,7 @@ namespace OpenDentBusiness
 					return dateResult;
 				}
 				try {
-					dateResult=DateTime.ParseExact(x12SegmentDtp.Get(3),"yyyymmdd",CultureInfo.InvariantCulture);
+					dateResult=DateTime.ParseExact(x12SegmentDtp.Get(3),"yyyyMMdd",CultureInfo.InvariantCulture);//CCYYMMDD; "mm" read minutes.
 				}
 				catch(Exception ex) {
 					return DateTime.MinValue;
@@ -500,6 +500,64 @@ namespace OpenDentBusiness
 			}
 			prefName=GetPrefNameMatchedMsg(x12SegmentMsg.Get(1));
 			return prefName;
+		}
+
+		///<summary>Open Dental 26.1 (Insurance History from code groups): the DTP*304 date (latest visit) of a limitation line that names what it is
+		///for, with a MSG segment or a procedure code (EB13). DateTime.MinValue when there is none, or when the date is not valid, before 1880 or in
+		///the future. Unlike GetInsHistDate(PrefName), the line does not have to match one of the four MSG texts 24.3 knew.</summary>
+		public DateTime GetInsHistDate() {
+			if(Segment==null || SupplementalSegments==null || Segment.Get(1)!="F") {//Not a limitation.
+				return DateTime.MinValue;
+			}
+			X12Segment x12SegmentDtp=SupplementalSegments.FirstOrDefault(x => x.SegmentID=="DTP" && x.Get(1)=="304");
+			if(x12SegmentDtp==null) {
+				return DateTime.MinValue;
+			}
+			if(!SupplementalSegments.Any(x => x.SegmentID=="MSG") && GetProcCodeInsHist()=="") {
+				return DateTime.MinValue;
+			}
+			return ParseInsHistDate(x12SegmentDtp.Get(3));
+		}
+
+		///<summary>A DTP*304 date (CCYYMMDD). DateTime.MinValue when it is not valid, before 1880 or in the future.</summary>
+		public static DateTime ParseInsHistDate(string text) {
+			if(!DateTime.TryParseExact((text??"").Trim(),"yyyyMMdd",CultureInfo.InvariantCulture,DateTimeStyles.None,out DateTime date)) {
+				return DateTime.MinValue;
+			}
+			if(date.Year<1880 || date>DateTime.Today) {
+				return DateTime.MinValue;
+			}
+			return date;
+		}
+
+		///<summary>Open Dental 26.1: the code group category (CodeGroupFixed) the line's MSG segment names, matched to an Insurance History row first.
+		///None when there is no MSG segment or it names no fixed category.</summary>
+		public EnumCodeGroupFixed GetCodeGroupFixedInsHist() {
+			X12Segment x12SegmentMsg=SupplementalSegments?.FirstOrDefault(x => x.SegmentID=="MSG");
+			if(x12SegmentMsg==null) {
+				return EnumCodeGroupFixed.None;
+			}
+			return GetCodeGroupFixedMatchedMsg(x12SegmentMsg.Get(1));
+		}
+
+		///<summary>The procedure code the line names (EB13-2), matched to an Insurance History row's HistProcCode when the MSG names no fixed category.
+		///"" when there is none.</summary>
+		public string GetProcCodeInsHist() {
+			if(Segment==null) {
+				return "";
+			}
+			return Segment.Get(13,2).Trim();
+		}
+
+		///<summary>What the line is for, for the log of skipped history lines: the MSG text and the procedure code.</summary>
+		public string GetInsHistDescription() {
+			X12Segment x12SegmentMsg=SupplementalSegments?.FirstOrDefault(x => x.SegmentID=="MSG");
+			string description=x12SegmentMsg==null ? "" : x12SegmentMsg.Get(1);
+			string procCode=GetProcCodeInsHist();
+			if(procCode!="") {
+				description+=(description=="" ? "" : " ")+"("+procCode+")";
+			}
+			return description;
 		}
 
 		///<summary>Gives us a raw string of the original EB segment as well as all supplemental segments.  It's somewhat reconstructed rather than strictly the original.
@@ -857,12 +915,32 @@ namespace OpenDentBusiness
 			return prefName;
 		}
 
-		///<summary>Inserts or updates proc insurance history based on given 271 EB segments.</summary>
+		///<summary>Open Dental 26.1: the code group category for a 271 MSG01 value, the same four texts GetPrefNameMatchedMsg knows. None for any other
+		///text.</summary>
+		public static EnumCodeGroupFixed GetCodeGroupFixedMatchedMsg(string msgVal) {
+			switch(GetPrefNameMatchedMsg(msgVal??"")) {
+				case PrefName.InsHistBWCodes:
+					return EnumCodeGroupFixed.BW;
+				case PrefName.InsHistExamCodes:
+					return EnumCodeGroupFixed.Exam;
+				case PrefName.InsHistPanoCodes:
+					return EnumCodeGroupFixed.PanoFMX;
+				case PrefName.InsHistProphyCodes:
+					return EnumCodeGroupFixed.Prophy;
+				default:
+					return EnumCodeGroupFixed.None;
+			}
+		}
+
+		///<summary>Inserts or updates proc insurance history based on given 271 EB segments. From Open Dental 26.1 each line goes to an Insurance History
+		///row from code groups (InsHistCategories.GetForEligibility): first by the category its MSG names, otherwise by its procedure code. A line that
+		///matches no row, or a row without a valid History Proc Code, is skipped and logged (verbose log, InsHistory folder, and listSkipped).</summary>
 		///<param name="listEb271s">List of 271 EB segments to look for ins history dates</param>
 		///<param name="patNum">The patNum for the given EB segments.</param>
 		///<param name="insSub">The patients InsSub associated to the plan of the retrieved 271 EB segments.</param>
+		///<param name="listSkipped">Optional. Gets one line per skipped history line.</param>
 		///<returns>Count of inserted/updated insurance histories from given list of EB segments.</returns>
-		public static int SetInsuranceHistoryDates(List<EB271> listEb271s,long patNum,InsSub insSub) {
+		public static int SetInsuranceHistoryDates(List<EB271> listEb271s,long patNum,InsSub insSub,List<string> listSkipped=null) {
 			if(listEb271s==null || listEb271s.Count==0){//Avoid queries.
 				return 0;
 			}
@@ -872,23 +950,42 @@ namespace OpenDentBusiness
 				.FindAll(y => y.InsSubNum==insSub.InsSubNum && y.Status.In(ClaimProcStatus.InsHist,ClaimProcStatus.Received));
 			int countValidInsHist=0;
 			Patient patient=Patients.GetLim(patNum);
+			List<InsHistCategory> listInsHistCategories=InsHistCategories.GetAll();
 			for(int i = 0;i<listEb271s.Count;i++) {
-				PrefName prefName=listEb271s[i].GetPrefNameInsHistDate();
-				DateTime dateInsHist=listEb271s[i].GetInsHistDate(prefName);
-				if(dateInsHist==DateTime.MinValue) {//When dateInsHist is not MinValue, prefName is guarenteed to be valid.
+				DateTime dateInsHist=listEb271s[i].GetInsHistDate();
+				if(dateInsHist==DateTime.MinValue) {
 					continue;//No insurance history date found for this eb271.
 				}
-				List<long> listCodeNums=ProcedureCodes.GetCodeNumsForInsHistPref(prefName);
-				Procedure procedure=Procedures.GetMostRecentInsHistProc(listProceduresEoAndC,listCodeNums,prefName);
+				InsHistCategory insHistCategory=InsHistCategories.GetForEligibility(listInsHistCategories,listEb271s[i].GetCodeGroupFixedInsHist(),
+					listEb271s[i].GetProcCodeInsHist(),out string reason);
+				if(insHistCategory==null) {
+					LogSkippedInsHist(listSkipped,patNum,listEb271s[i],dateInsHist,reason);
+					continue;
+				}
+				Procedure procedure=InsHistCategories.GetMostRecentProc(listProceduresEoAndC,insHistCategory);
 				List<ClaimProc> listClaimProcsForProc=new List<ClaimProc>();
 				if(procedure!=null) {
 					//Get all of the claimprocs for this procedure.
 					listClaimProcsForProc=listClaimProcsForInsHistProcs.FindAll(x => x.ProcNum==procedure.ProcNum);
 				}
-				Procedures.InsertOrUpdateInsHistProcedure(patient,prefName,dateInsHist,insSub.PlanNum,insSub.InsSubNum,procedure,listClaimProcsForProc);
+				InsHistSaveResult insHistSaveResult=InsHistCategories.InsertOrUpdateProcedure(patient,insHistCategory,dateInsHist,insSub.PlanNum,
+					insSub.InsSubNum,procedure,listClaimProcsForProc);
+				if(insHistSaveResult==InsHistSaveResult.InvalidCode) {
+					LogSkippedInsHist(listSkipped,patNum,listEb271s[i],dateInsHist,
+						Lans.g("EB271","the History Proc Code of")+" '"+insHistCategory.Description+"' "+Lans.g("EB271","is not a valid procedure code"));
+					continue;
+				}
 				countValidInsHist++;
 			}
 			return countValidInsHist;
+		}
+
+		///<summary>Adds a skipped insurance history line to listSkipped (when not null) and to the verbose log.</summary>
+		private static void LogSkippedInsHist(List<string> listSkipped,long patNum,EB271 eb271,DateTime dateInsHist,string reason) {
+			string line=Lans.g("EB271","Insurance history date from eligibility not saved")+": "+eb271.GetInsHistDescription()+" "
+				+dateInsHist.ToShortDateString()+", "+reason+" (PatNum "+patNum+")";
+			listSkipped?.Add(line);
+			Logger.LogVerbose(line,"InsHistory");
 		}
 
 	public class EB01 {
