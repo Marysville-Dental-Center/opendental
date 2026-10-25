@@ -127,6 +127,94 @@ namespace BPAYTests {
 			Assert.AreEqual(1,BPayDb.GetPayPlanEditLogTexts(payPlan.PayPlanNum).Count);
 		}
 
+		///<summary>A dynamic plan whose first charge is issued today (so a debit is linked to a procedure, and PayPlanCharges.GetFromProc finds the
+		///plan), with its completed amount brought up to date first, as a saved plan has it. Returns the plan as the database holds it.</summary>
+		private static PayPlan CreateDynamicPlanWithIssuedCharge(Patient patient,List<Procedure> listProcedures,DynamicPayPlanTPOptions tpOption) {
+			PayPlan payPlan=PayPlanT.CreateDynamicPaymentPlan(patient.PatNum,patient.PatNum,DateTime.Today,0,0,50,listProcedures,new List<Adjustment>(),
+				PayPlanFrequency.Monthly,dynamicPayPlanTPOptions:tpOption,runService:false,doInsertChargeForToday:true);
+			PayPlans.UpdateTreatmentCompletedAmtsDynamicPaymentPlan(new List<PayPlan> { PayPlans.GetOne(payPlan.PayPlanNum) },"baseline");
+			return PayPlans.GetOne(payPlan.PayPlanNum);
+		}
+
+		///<summary>The procedure that the plan's issued debit is for.</summary>
+		private static Procedure GetChargedProcedure(PayPlan payPlan,List<Procedure> listProcedures) {
+			Procedure procedure=listProcedures.FirstOrDefault(x => PayPlanCharges.GetFromProc(x.ProcNum)
+				.Any(y => y.PayPlanNum==payPlan.PayPlanNum && y.ChargeType==PayPlanChargeType.Debit));
+			Assert.IsNotNull(procedure,"Set up: a debit of the plan is linked to one of its procedures.");
+			return procedure;
+		}
+
+		[TestMethod]
+		public void DynamicPlanWithIssuedCharge_TreatAsComplete_ProcedureSetComplete_LogsNothing() {
+			Patient patient=BPayDb.CreatePatient("DynTac");
+			Procedure procedure=BPayDb.CreateProcedure(patient,ProcStat.TP,300);
+			List<Procedure> listProcedures=new List<Procedure> { procedure };
+			PayPlan payPlan=CreateDynamicPlanWithIssuedCharge(patient,listProcedures,DynamicPayPlanTPOptions.TreatAsComplete);
+			Assert.AreEqual(300,payPlan.CompletedAmt,0.001,"Set up: Treat as Complete counts the TP procedure.");
+			GetChargedProcedure(payPlan,listProcedures);
+			int countLogsBefore=BPayDb.GetPayPlanEditLogTexts(payPlan.PayPlanNum).Count;
+			Procedure procedureOld=Procedures.GetOneProc(procedure.ProcNum,false);
+			procedure=procedureOld.Copy();
+			procedure.ProcStatus=ProcStat.C;
+			Procedures.Update(procedure,procedureOld);//calls PayPlanCharges.UpdateAttachedPayPlanCharges
+			Assert.AreEqual(300,PayPlans.GetOne(payPlan.PayPlanNum).CompletedAmt,0.001);
+			CollectionAssert.AreEqual(new List<string>(),BPayDb.GetPayPlanEditLogTexts(payPlan.PayPlanNum).Skip(countLogsBefore).ToList(),
+				"The amount did not change, so nothing is logged (24.3 wrote 300 to 0, then 0 to 300).");
+		}
+
+		[TestMethod]
+		public void DynamicPlanWithIssuedCharge_AwaitComplete_ProcedureSetBackToTp_LogsTheNetChangeOnce() {
+			Patient patient=BPayDb.CreatePatient("DynAwait");
+			List<Procedure> listProcedures=new List<Procedure> {
+				BPayDb.CreateProcedure(patient,ProcStat.C,300),
+				BPayDb.CreateProcedure(patient,ProcStat.C,200),
+			};
+			PayPlan payPlan=CreateDynamicPlanWithIssuedCharge(patient,listProcedures,DynamicPayPlanTPOptions.AwaitComplete);
+			Assert.AreEqual(500,payPlan.CompletedAmt,0.001,"Set up: both procedures are complete.");
+			Procedure procedureOld=Procedures.GetOneProc(GetChargedProcedure(payPlan,listProcedures).ProcNum,false);
+			double completedAmtExpected=500-procedureOld.ProcFee;
+			int countLogsBefore=BPayDb.GetPayPlanEditLogTexts(payPlan.PayPlanNum).Count;
+			Procedure procedure=procedureOld.Copy();
+			procedure.ProcStatus=ProcStat.TP;
+			Procedures.Update(procedure,procedureOld);
+			Assert.AreEqual(completedAmtExpected,PayPlans.GetOne(payPlan.PayPlanNum).CompletedAmt,0.001);
+			List<string> listLogs=BPayDb.GetPayPlanEditLogTexts(payPlan.PayPlanNum).Skip(countLogsBefore).ToList();
+			Assert.AreEqual(1,listLogs.Count,"One entry with the net change (24.3 logged 500 to 0, then 0 to the new amount): "+string.Join(" | ",listLogs));
+			Assert.AreEqual("Payment Plan "+PayPlanAudits.GetCompletedAmtChangeText(500,completedAmtExpected,PayPlanAudits.GetProcedureTrigger(procedure)),
+				listLogs[0]);
+			StringAssert.StartsWith(listLogs[0],"Payment Plan Tx Completed Amt changed from 500.00 to ");
+			StringAssert.EndsWith(listLogs[0],"changed status.");
+		}
+
+		[TestMethod]
+		public void DynamicPlanWithIssuedCharge_ProcedureChargesDeleted_IsNotZeroed() {
+			Patient patient=BPayDb.CreatePatient("DynDelete");
+			Procedure procedure=BPayDb.CreateProcedure(patient,ProcStat.C,250);
+			List<Procedure> listProcedures=new List<Procedure> { procedure };
+			PayPlan payPlan=CreateDynamicPlanWithIssuedCharge(patient,listProcedures,DynamicPayPlanTPOptions.AwaitComplete);
+			Assert.AreEqual(250,payPlan.CompletedAmt,0.001);
+			GetChargedProcedure(payPlan,listProcedures);
+			int countLogsBefore=BPayDb.GetPayPlanEditLogTexts(payPlan.PayPlanNum).Count;
+			//Procedures.Delete calls this. Dynamic debits have ProcNum 0, so nothing of the plan is deleted, and the credit-based sum does not apply.
+			PayPlanCharges.DeleteForProc(procedure.ProcNum);
+			Assert.AreEqual(250,PayPlans.GetOne(payPlan.PayPlanNum).CompletedAmt,0.001,"24.3 set a dynamic plan's amount to 0 here.");
+			Assert.AreEqual(countLogsBefore,BPayDb.GetPayPlanEditLogTexts(payPlan.PayPlanNum).Count);
+		}
+
+		[TestMethod]
+		public void CreditBasedRecalculation_SkipsDynamicPlans() {
+			Patient patient=BPayDb.CreatePatient("DynSkip");
+			Procedure procedure=BPayDb.CreateProcedure(patient,ProcStat.C,120);
+			PayPlan payPlanDynamic=CreateDynamicPlanWithIssuedCharge(patient,new List<Procedure> { procedure },DynamicPayPlanTPOptions.AwaitComplete);
+			PayPlan payPlanOldStyle=PayPlanT.CreatePayPlanWithCredits(patient.PatNum,40,DateTime.Today,listProcs:new List<Procedure> { procedure });
+			int countLogsDynamic=BPayDb.GetPayPlanEditLogTexts(payPlanDynamic.PayPlanNum).Count;
+			PayPlans.UpdateTreatmentCompletedAmt(new List<PayPlan> { payPlanDynamic,PayPlans.GetOne(payPlanOldStyle.PayPlanNum) },"test");
+			Assert.AreEqual(120,PayPlans.GetOne(payPlanDynamic.PayPlanNum).CompletedAmt,0.001);
+			Assert.AreEqual(countLogsDynamic,BPayDb.GetPayPlanEditLogTexts(payPlanDynamic.PayPlanNum).Count);
+			Assert.AreEqual(120,PayPlans.GetOne(payPlanOldStyle.PayPlanNum).CompletedAmt,0.001,"Old-style plans are still recalculated from their credits.");
+			Assert.AreEqual(1,BPayDb.GetPayPlanEditLogTexts(payPlanOldStyle.PayPlanNum).Count);
+		}
+
 		private static DynamicPaymentPlanModuleData SaveDynamic(long payPlanNum,decimal amountOverride=-1) {
 			DynamicPaymentPlanModuleData moduleData=PayPlanEdit.GetDynamicPaymentPlanModuleData(PayPlans.GetOne(payPlanNum));
 			if(amountOverride>=0) {//as the Amount Override column of the window does

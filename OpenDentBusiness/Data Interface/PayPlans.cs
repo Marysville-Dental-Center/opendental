@@ -543,13 +543,20 @@ namespace OpenDentBusiness{
 		///Used when a procedure attached to a payment plan charge is set complete or deleted.
 		///The treatment completed amount only takes into account payplancharge credits that have already occurred
 		///(no charges attached to TP'd procs).
-		///25.1: each plan whose amount changed gets a PayPlanEdit audit entry with the amounts and, when given, auditTrigger (what caused it).</summary>
+		///25.1: each plan whose amount changed gets a PayPlanEdit audit entry with the amounts and, when given, auditTrigger (what caused it).
+		///Dynamic plans are skipped: they store no credits, so this sum would be 0 for them. Their amount comes from their production
+		///(UpdateTreatmentCompletedAmtsDynamicPaymentPlan).</summary>
 		public static void UpdateTreatmentCompletedAmt(List<PayPlan> listPayPlans,string auditTrigger="") {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				Meth.GetVoid(MethodBase.GetCurrentMethod(),listPayPlans,auditTrigger);
 				return;
 			}
 			foreach(PayPlan payPlanCur in listPayPlans) {
+				if(payPlanCur.IsDynamic) {
+					//B-PAY: callers find plans through their charges (PayPlanCharges.GetFromProc), which also matches a dynamic plan's debits. 24.3 wrote 0
+					//here and the dynamic pass put the amount back, so each recalculation was audited twice (X to 0, then 0 to Y).
+					continue;
+				}
 				double completedAmt=0;
 				List<PayPlanCharge> listCharges=PayPlanCharges.GetForPayPlan(payPlanCur.PayPlanNum);
 				completedAmt=listCharges.Where(x => x.ChargeType==PayPlanChargeType.Credit)
