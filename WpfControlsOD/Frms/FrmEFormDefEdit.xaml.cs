@@ -153,12 +153,15 @@ Like in that form, edits to the fields do not get saved to the db as they are ed
 				frmEFormCheckBoxEdit.EFormFieldCur=ctrlEFormFill.ListEFormFields[idx];
 				frmEFormCheckBoxEdit.EFormDefCur=EFormDefCur;
 				frmEFormCheckBoxEdit.ListEFormFields=ctrlEFormFill.ListEFormFields;
+				frmEFormCheckBoxEdit.FuncEditField=EditFieldFromChildren;
 				if(comboLanguage.SelectedIndex>0){
 					frmEFormCheckBoxEdit.LanguageShowing=comboLanguage.SelectedItem.ToString();
 				}
 				frmEFormCheckBoxEdit.ShowDialog();
 				_isChangedLanCache|=frmEFormCheckBoxEdit.IsChangedLanCache;
-				if(frmEFormCheckBoxEdit.IsDialogCancel){
+				//A child opened from the Children window may have been deleted, which moves this field in the list.
+				idx=ctrlEFormFill.ListEFormFields.IndexOf(frmEFormCheckBoxEdit.EFormFieldCur);
+				if(frmEFormCheckBoxEdit.IsDialogCancel || idx==-1){
 					return;
 				}
 				if(ctrlEFormFill.ListEFormFields[idx].IsDeleted){
@@ -183,12 +186,15 @@ Like in that form, edits to the fields do not get saved to the db as they are ed
 				frmEFormRadioButtonsEdit.EFormFieldCur=ctrlEFormFill.ListEFormFields[idx];
 				frmEFormRadioButtonsEdit.EFormDefCur=EFormDefCur;
 				frmEFormRadioButtonsEdit.ListEFormFields=ctrlEFormFill.ListEFormFields;
+				frmEFormRadioButtonsEdit.FuncEditField=EditFieldFromChildren;
 				if(comboLanguage.SelectedIndex>0){
 					frmEFormRadioButtonsEdit.LanguageShowing=comboLanguage.SelectedItem.ToString();
 				}
 				frmEFormRadioButtonsEdit.ShowDialog();
 				_isChangedLanCache|=frmEFormRadioButtonsEdit.IsChangedLanCache;
-				if(frmEFormRadioButtonsEdit.IsDialogCancel){
+				//A child opened from the Children window may have been deleted, which moves this field in the list.
+				idx=ctrlEFormFill.ListEFormFields.IndexOf(frmEFormRadioButtonsEdit.EFormFieldCur);
+				if(frmEFormRadioButtonsEdit.IsDialogCancel || idx==-1){
 					return;
 				}
 				if(ctrlEFormFill.ListEFormFields[idx].IsDeleted){
@@ -252,6 +258,17 @@ Like in that form, edits to the fields do not get saved to the db as they are ed
 				ctrlEFormFill.RefreshLayout();
 				return;
 			}
+		}
+
+		///<summary>Opens a field's editor from the Children window of its parent's editor (Open Dental 25.1), the same way double clicking the field in
+		///the designer does, including delete. Returns false if the field is no longer in the form.</summary>
+		private bool EditFieldFromChildren(EFormField eFormField) {
+			int idx=ctrlEFormFill.ListEFormFields.IndexOf(eFormField);
+			if(idx==-1){
+				return false;
+			}
+			CtrlEFormFill_EventDoubleClickField(this,idx);
+			return true;
 		}
 
 		private void FrmEFormDefEdit_FormClosed(object sender,EventArgs e) {
