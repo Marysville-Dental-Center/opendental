@@ -32,6 +32,7 @@
       "tests\\M202Tests\\M202Tests.csproj",
       "tests\\ForkMigrationTests\\ForkMigrationTests.csproj",
       "tests\\M201Tests\\M201Tests.csproj",
+      "tests\\M2SHEETSTests\\M2SHEETSTests.csproj",
       "tests\\PayPlanTests\\PayPlanTests.csproj",
       "tests\\MedicationTests\\MedicationTests.csproj",
       "tests\\QueryMonitorTests\\QueryMonitorTests.csproj",
