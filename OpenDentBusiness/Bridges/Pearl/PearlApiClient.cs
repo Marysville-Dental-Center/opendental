@@ -10,15 +10,15 @@ using System.Net.Http.Headers;
 
 namespace OpenDentBusiness.Pearl {
 	public class PearlApiClient : IPearlApiClient {
-		public static IPearlApiClient Inst=new PearlApiClient();
+		public static IPearlApiClient Inst=new PearlApiClientLogging(new PearlApiClient());//V-PEARL2: per-image lines of the "Log Level" log.
 		private static object _lockAuthToken=new object();
 		private static DateTime _dateTimeLastAuthTokenRefresh;
 		///<summary>HttpClient used for communicating with Pearl API.</summary>
-		private static HttpClient _httpPearlClient=new HttpClient(){ 
+		private static HttpClient _httpPearlClient=new HttpClient(PearlLog.CreateHttpHandler(isPresignedUpload:false)){ 
 			BaseAddress=new Uri("https://native-integration-prod.hellopearl.com")
 		};
 		///<summary>HttpClient used exclusively for uploading images to the Pearl provided Amazon S3 bucket via a pre-signed URL. </summary>
-		private static HttpClient _httpAwsClient=new HttpClient();
+		private static HttpClient _httpAwsClient=new HttpClient(PearlLog.CreateHttpHandler(isPresignedUpload:true));
 		///<summary>Event used to show the UI mini panel as soon as the image has started uploading/processing.</summary>
 		public static event EventHandler EventRefreshDisplay=null;
 
@@ -31,7 +31,7 @@ namespace OpenDentBusiness.Pearl {
 				if(DateTime_.Now<_dateTimeLastAuthTokenRefresh) {
 					return;
 				}
-				HttpClient httpClientTemp=new HttpClient();
+				HttpClient httpClientTemp=new HttpClient(PearlLog.CreateHttpHandler(isPresignedUpload:false));
 				httpClientTemp.BaseAddress=new Uri("https://native-integration-prod.hellopearl.com");
 				AuthTokenResponse result=GetAuthToken(clientId,clientSecret);
 				httpClientTemp.DefaultRequestHeaders.Authorization=new AuthenticationHeaderValue(result.token_type,result.access_token);
