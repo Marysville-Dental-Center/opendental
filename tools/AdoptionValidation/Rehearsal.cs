@@ -218,7 +218,8 @@ namespace AdoptionValidation {
 				//6. Fork migration (every step again) and schema verifier.
 				ForkMigrationResult migrationResult=adoption.Migration;
 				_run.ListMigrationLog.AddRange(migrationResult.ListChanges);
-				Check("M1","Fork migration changes nothing on the adopted copy",migrationResult.ListChanges.Count==0,
+				//Adoption.Run's own fork migration may rename report rows (M3); this is the run of every step again after it.
+				Check("M1","The fork migration, run again with every step after adoption, changes nothing",migrationResult.ListChanges.Count==0,
 					migrationResult.ListStepsRun.Count+" steps run ("+string.Join(", ",migrationResult.ListStepsRun.Select(x => x.Level))+"), "
 					+migrationResult.ListChanges.Count+" changes"+(migrationResult.ListChanges.Count==0 ? "" : ": "+string.Join("; ",migrationResult.ListChanges.Take(10))));
 				SchemaVerifyResult verifyResult=adoption.Verify;
