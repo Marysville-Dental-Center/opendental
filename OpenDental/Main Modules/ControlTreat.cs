@@ -183,6 +183,7 @@ namespace OpenDental{
 			ToolBarMain.Buttons.Add(new ODToolBarButton(Lan.g(this,"Print TP"),2,"","Print"));
 			ToolBarMain.Buttons.Add(new ODToolBarButton(Lan.g(this,"Email TP"),-1,"","Email"));
 			ToolBarMain.Buttons.Add(new ODToolBarButton(Lan.g(this,"Sign TP"),-1,"","Sign"));
+			ToolBarMain.Buttons.Add(new ODToolBarButton(Lan.g(this,"Add Procs"),-1,Lan.g(this,"Add procedures to the Active treatment plan"),"AddProcs"));
 			ProgramL.LoadToolBar(ToolBarMain,EnumToolBar.TreatmentPlanModule);
 			ToolBarMain.Invalidate();
 			Plugins.HookAddCode(this,"ContrTreat.LayoutToolBar_end",PatientCur);
@@ -416,6 +417,9 @@ namespace OpenDental{
 						break;
 					case "Consent":
 						ToolBarConsent_Click(e.Button);
+						break;
+					case "AddProcs":
+						ToolBarMainAddProcs_Click();//ControlTreat.AddProcs.cs
 						break;
 				}
 			}
@@ -3118,6 +3122,7 @@ namespace OpenDental{
 				ToolBarMain.Buttons["Print"].Enabled=true;
 				ToolBarMain.Buttons["Email"].Enabled=true;
 				ToolBarMain.Buttons["Sign"].Enabled=true;
+				ToolBarMain.Buttons["AddProcs"].Enabled=true;
 				butSaveTP.Enabled=true;
 				ToolBarMain.Invalidate();
 				if(_listPatPlans.Count==0) {//patient doesn't have insurance
@@ -3156,6 +3161,7 @@ namespace OpenDental{
 			ToolBarMain.Buttons["Print"].Enabled=false;
 			ToolBarMain.Buttons["Email"].Enabled=false;
 			ToolBarMain.Buttons["Sign"].Enabled=false;
+			ToolBarMain.Buttons["AddProcs"].Enabled=(PatientCur!=null);//A patient with no plan yet can start one: the Active plan is created.
 			ToolBarMain.Invalidate();
 			//listPreAuth.Enabled=false;
 		}
