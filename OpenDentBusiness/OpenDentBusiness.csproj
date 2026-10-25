@@ -1544,6 +1544,7 @@
     <Compile Include="Data Interface\Documents.cs" />
     <Compile Include="Db Multi Table\Family.cs" />
     <Compile Include="Db\Db.cs" />
+    <Compile Include="Db\ReplicationDelay.cs" />
     <Compile Include="Db Multi Table\Ledgers.cs" />
     <Compile Include="Data Interface\MountDefs.cs" />
     <Compile Include="Data Interface\MountItemDefs.cs" />
@@ -1645,6 +1646,7 @@
     <Compile Include="Reports\ReportsComplex.cs" />
     <Compile Include="Reports\RpPaySheet.cs" />
     <Compile Include="Reports\RpProcNote.cs" />
+    <Compile Include="Reports\ReportServerAudit.cs" />
     <Compile Include="Reports\RpProcCodes.cs" />
     <Compile Include="Reports\RpProcNotBilledIns.cs" />
     <Compile Include="Reports\RpProcSheet.cs" />
