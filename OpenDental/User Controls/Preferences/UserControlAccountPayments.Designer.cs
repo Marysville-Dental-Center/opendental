@@ -49,6 +49,7 @@ namespace OpenDental {
 			this.checkPaymentCompletedDisableMerchantButtons = new OpenDental.UI.CheckBox();
 			this.comboPaymentClinicSetting = new OpenDental.UI.ComboBox();
 			this.checkIncTxfrTreatNegProdAsIncome = new OpenDental.UI.CheckBox();
+			this.checkIncomeTransfersLimitToPatPayments = new OpenDental.UI.CheckBox();
 			this.label38 = new System.Windows.Forms.Label();
 			this.checkAllowEmailCCReceipt = new OpenDental.UI.CheckBox();
 			this.checkPaymentsPromptForPayType = new OpenDental.UI.CheckBox();
@@ -64,7 +65,7 @@ namespace OpenDental {
 			this.groupBoxUnearnedIncome.Controls.Add(this.checkShowAllocateUnearnedPaymentPrompt);
 			this.groupBoxUnearnedIncome.Controls.Add(this.checkAllowPrepayProvider);
 			this.groupBoxUnearnedIncome.Controls.Add(this.label28);
-			this.groupBoxUnearnedIncome.Location = new System.Drawing.Point(20, 467);
+			this.groupBoxUnearnedIncome.Location = new System.Drawing.Point(20, 490);
 			this.groupBoxUnearnedIncome.Name = "groupBoxUnearnedIncome";
 			this.groupBoxUnearnedIncome.Size = new System.Drawing.Size(450, 87);
 			this.groupBoxUnearnedIncome.TabIndex = 323;
@@ -124,7 +125,7 @@ namespace OpenDental {
 			this.groupBoxPayPlans.Controls.Add(this.checkHideDueNow);
 			this.groupBoxPayPlans.Controls.Add(this.label59);
 			this.groupBoxPayPlans.Controls.Add(this.label27);
-			this.groupBoxPayPlans.Location = new System.Drawing.Point(20, 205);
+			this.groupBoxPayPlans.Location = new System.Drawing.Point(20, 228);
 			this.groupBoxPayPlans.Name = "groupBoxPayPlans";
 			this.groupBoxPayPlans.Size = new System.Drawing.Size(450, 256);
 			this.groupBoxPayPlans.TabIndex = 322;
@@ -262,12 +263,13 @@ namespace OpenDental {
 			this.groupBoxPayments.Controls.Add(this.checkStoreCCTokens);
 			this.groupBoxPayments.Controls.Add(this.checkPaymentCompletedDisableMerchantButtons);
 			this.groupBoxPayments.Controls.Add(this.checkIncTxfrTreatNegProdAsIncome);
+			this.groupBoxPayments.Controls.Add(this.checkIncomeTransfersLimitToPatPayments);
 			this.groupBoxPayments.Controls.Add(this.label38);
 			this.groupBoxPayments.Controls.Add(this.checkAllowEmailCCReceipt);
 			this.groupBoxPayments.Controls.Add(this.checkPaymentsPromptForPayType);
 			this.groupBoxPayments.Location = new System.Drawing.Point(20, 20);
 			this.groupBoxPayments.Name = "groupBoxPayments";
-			this.groupBoxPayments.Size = new System.Drawing.Size(450, 179);
+			this.groupBoxPayments.Size = new System.Drawing.Size(450, 202);
 			this.groupBoxPayments.TabIndex = 307;
 			this.groupBoxPayments.Text = "Payments";
 			// 
@@ -319,6 +321,16 @@ namespace OpenDental {
 			this.checkIncTxfrTreatNegProdAsIncome.Size = new System.Drawing.Size(427, 17);
 			this.checkIncTxfrTreatNegProdAsIncome.TabIndex = 305;
 			this.checkIncTxfrTreatNegProdAsIncome.Text = "Income transfers treat negative production as income";
+			// 
+			// checkIncomeTransfersLimitToPatPayments
+			// 
+			this.checkIncomeTransfersLimitToPatPayments.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			this.checkIncomeTransfersLimitToPatPayments.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.checkIncomeTransfersLimitToPatPayments.Location = new System.Drawing.Point(13, 175);
+			this.checkIncomeTransfersLimitToPatPayments.Name = "checkIncomeTransfersLimitToPatPayments";
+			this.checkIncomeTransfersLimitToPatPayments.Size = new System.Drawing.Size(427, 17);
+			this.checkIncomeTransfersLimitToPatPayments.TabIndex = 309;
+			this.checkIncomeTransfersLimitToPatPayments.Text = "Limit manual income transfers to the amount of patient payments";
 			// 
 			// label38
 			// 
@@ -382,6 +394,7 @@ namespace OpenDental {
 		#endregion
 		private OpenDental.UI.CheckBox checkPaymentCompletedDisableMerchantButtons;
 		private OpenDental.UI.CheckBox checkIncTxfrTreatNegProdAsIncome;
+		private OpenDental.UI.CheckBox checkIncomeTransfersLimitToPatPayments;
 		private OpenDental.UI.CheckBox checkStoreCCTokens;
 		private UI.ComboBox comboPaymentClinicSetting;
 		private System.Windows.Forms.Label label38;

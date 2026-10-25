@@ -1467,6 +1467,7 @@
     <Compile Include="Data Interface\PayPlanCharges.cs" />
     <Compile Include="Data Interface\PayPlans.cs" />
     <Compile Include="Data Interface\PaySplits.cs" />
+    <Compile Include="Data Interface\IncomeTransferLimits.cs" />
     <Compile Include="Data Interface\PerioExams.cs" />
     <Compile Include="Data Interface\PerioMeasures.cs" />
     <Compile Include="Data Interface\PlannedAppts.cs" />

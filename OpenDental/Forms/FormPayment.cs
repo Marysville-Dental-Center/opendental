@@ -570,6 +570,7 @@ namespace OpenDental {
 					incomeTransferData.ListSplitsCur.ForEach(x => x.PayNum=_payment.PayNum);
 					_listPaySplits=incomeTransferData.ListSplitsCur;
 					Reinitialize(doRefreshConstructData: true);
+					IncomeTransferLimit_RememberAutomaticSplits();//M2-PAYW
 				}
 				else {
 					MsgBoxCopyPaste msgBoxCopyPaste=new MsgBoxCopyPaste(incomeTransferData.StringBuilderErrors.ToString().TrimEnd());
@@ -2879,6 +2880,9 @@ namespace OpenDental {
 				//Income transfers will not have a payment type selected (they aren't really payments) so an empty string should be passed to plug-ins. 
 				//Older versions would actually pass along the text of the last selected item from the Payment Type list box but that is misleading.
 				paymentTypeParam="";
+				if(!IncomeTransferLimit_IsValid()) {//M2-PAYW
+					return false;
+				}
 				Dictionary<long,List<PaySplit>> dictProcNegSplits=_listPaySplits.FindAll(x => x.ProcNum > 0)
 					.GroupBy(x => x.ProcNum)
 					.ToDictionary(x => x.Key,x => x.ToList());
