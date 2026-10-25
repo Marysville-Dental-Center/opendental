@@ -19,32 +19,36 @@ namespace OpenDentBusiness {
 		}
 
 		///<summary>The rows of the service-date view of a patient (isFamily false) or of the patient's whole family (patNum is then the guarantor), in
-		///display order. options.IsFamily is set from isFamily.</summary>
+		///display order. options.IsFamily is set from isFamily. A receipt (options.IsReceipt) reads the payment plan payments too, whatever
+		///PayPlansVersion is, so it lists every patient payment of its range (26.1 spec rule 3).</summary>
 		public static List<ServiceDateViewRow> GetRows(long patNum,bool isFamily,ServiceDateViewOptions options) {
 			Meth.NoCheckMiddleTierRole();//GetCoreTable makes the middle tier call.
 			options=options??new ServiceDateViewOptions();
 			options.IsFamily=isFamily;
-			return ServiceDateViews.Build(ServiceDateViews.ReadCoreRows(GetCoreTable(patNum,isFamily)),options);
+			bool includePayPlanSplits=options.IsReceipt && options.InvoiceItems==null;//Build treats an invoice as an invoice even when IsReceipt is set.
+			return ServiceDateViews.Build(ServiceDateViews.ReadCoreRows(GetCoreTable(patNum,isFamily,includePayPlanSplits)),options);
 		}
 
 		///<summary>One row per procedure and per transaction, each dated by the service it belongs to: the query of the 24.3 report, plus the
 		///ClinicNum, ProvNum, ParentNum (PayNum, ClaimNum or PayPlanNum), CodeNum, ProcCode, ToothNum, ToothRange and Surf columns. When isFamily is
-		///true, patNum is the guarantor and the whole family is included.</summary>
-		public static DataTable GetCoreTable(long patNum,bool isFamily) {
+		///true, patNum is the guarantor and the whole family is included. Patient payment splits attached to a payment plan are returned only under
+		///PayPlansVersion 2, as in the 24.3 report, unless includePayPlanSplits is true (receipts): they then come back in every version, as
+		///'PatPay PayPlan' or 'PatPay Att. PayPlan' rows.</summary>
+		public static DataTable GetCoreTable(long patNum,bool isFamily,bool includePayPlanSplits=false) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				return Meth.GetTable(MethodBase.GetCurrentMethod(),patNum,isFamily);
+				return Meth.GetTable(MethodBase.GetCurrentMethod(),patNum,isFamily,includePayPlanSplits);
 			}
 			int payPlanVersion=PIn.Int(PrefC.GetStringNoCache(PrefName.PayPlansVersion));
 			if(payPlanVersion==0) {
 				payPlanVersion=1;
 			}
-			string command=GetCoreQuery(patNum,isFamily,payPlanVersion);
+			string command=GetCoreQuery(patNum,isFamily,payPlanVersion,includePayPlanSplits);
 			return ReportsComplex.RunFuncOnReportServer(() => Db.GetTable(command));
 		}
 
-		///<summary>Get core data ordered by procedure date and transactions attached to procs first, with specific ordering for transaction type. 
+		///<summary>Get core data ordered by procedure date and transactions attached to procs first, with specific ordering for transaction type.
 		///Using aging preference to get payment plan info. Defining transaction type separate from reference for specific ordering.</summary>
-		private static string GetCoreQuery(long patNum,bool isFamily,int payPlanVersion) {
+		private static string GetCoreQuery(long patNum,bool isFamily,int payPlanVersion,bool includePayPlanSplits) {
 			Meth.NoCheckMiddleTierRole();//Private method.
 			string wherePatOrFam=isFamily ? $"patient.Guarantor={POut.Long(patNum)}":$"patient.PatNum={POut.Long(patNum)}";
 			#region Procedures
@@ -102,7 +106,9 @@ namespace OpenDentBusiness {
 				WHERE {wherePatOrFam} ";
 			#endregion
 			#region Pat Payments
-			//Get all payments, except where they should only show inside payplan
+			//Get all payments, except where they should only show inside payplan. Receipts (includePayPlanSplits) get the payment plan payments in
+			//every version.
+			bool hasPayPlanSplits=(payPlanVersion==2 || includePayPlanSplits);
 			command+=$@"
 				UNION ALL 
 				SELECT (CASE WHEN paysplit.ProcNum > 0 AND paysplit.PayPlanNum > 0 THEN 'PatPay Att. PayPlan' 
@@ -127,7 +133,7 @@ namespace OpenDentBusiness {
 				paysplit.ClinicNum,paysplit.ProvNum,paysplit.PayNum AS 'ParentNum',0 AS 'CodeNum','' AS 'ProcCode','' AS 'ToothNum','' AS 'ToothRange','' AS 'Surf' 
 				FROM paysplit 
 				INNER JOIN patient ON patient.PatNum=paysplit.PatNum 
-				WHERE {(payPlanVersion==2 ? "TRUE": "paysplit.PayPlanNum=0")} 
+				WHERE {(hasPayPlanSplits ? "TRUE": "paysplit.PayPlanNum=0")}
 				AND {wherePatOrFam} ";
 			#endregion
 			#region Ins Payments

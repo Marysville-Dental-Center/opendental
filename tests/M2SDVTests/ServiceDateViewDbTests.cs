@@ -37,6 +37,7 @@ namespace M2SDVTests {
 		private static long _payNum1;
 		private static long _payNum2;
 		private static long _claimNumReceived;
+		private static long _payPlanNum;
 
 		[ClassInitialize]
 		public static void ClassInitialize(TestContext testContext) {
@@ -109,10 +110,10 @@ namespace M2SDVTests {
 				dateCP:DateTime.MinValue,claimPaymentNum:0);
 			//A patient payment plan for procedure 2: its credit, and one charge due. Which rows the report shows depends on PayPlansVersion.
 			PayPlan payPlan=new PayPlan { PatNum=_patientAnn.PatNum,Guarantor=_patientAnn.PatNum,PayPlanDate=_date2,CompletedAmt=30,Note="" };
-			long payPlanNum=OpenDentBusiness.Crud.PayPlanCrud.Insert(payPlan);
-			OpenDentBusiness.Crud.PayPlanChargeCrud.Insert(new PayPlanCharge { PayPlanNum=payPlanNum,PatNum=_patientAnn.PatNum,Guarantor=_patientAnn.PatNum,
+			_payPlanNum=OpenDentBusiness.Crud.PayPlanCrud.Insert(payPlan);
+			OpenDentBusiness.Crud.PayPlanChargeCrud.Insert(new PayPlanCharge { PayPlanNum=_payPlanNum,PatNum=_patientAnn.PatNum,Guarantor=_patientAnn.PatNum,
 				ChargeDate=_date2,Principal=30,ChargeType=PayPlanChargeType.Credit,ProcNum=_procNum2,ProvNum=_provNum,Note="" });
-			OpenDentBusiness.Crud.PayPlanChargeCrud.Insert(new PayPlanCharge { PayPlanNum=payPlanNum,PatNum=_patientAnn.PatNum,Guarantor=_patientAnn.PatNum,
+			OpenDentBusiness.Crud.PayPlanChargeCrud.Insert(new PayPlanCharge { PayPlanNum=_payPlanNum,PatNum=_patientAnn.PatNum,Guarantor=_patientAnn.PatNum,
 				ChargeDate=_date3,Principal=10,ChargeType=PayPlanChargeType.Debit,ProvNum=_provNum,Note="" });
 		}
 
@@ -179,7 +180,7 @@ namespace M2SDVTests {
 			return OpenDentBusiness.Crud.PaymentCrud.Insert(payment);
 		}
 
-		private static void InsertSplit(long payNum,long patNum,double amount,DateTime date,long procNum) {
+		private static long InsertSplit(long payNum,long patNum,double amount,DateTime date,long procNum,long payPlanNum=0) {
 			PaySplit paySplit=new PaySplit();
 			paySplit.PayNum=payNum;
 			paySplit.PatNum=patNum;
@@ -188,7 +189,8 @@ namespace M2SDVTests {
 			paySplit.DateEntry=date;
 			paySplit.ProcNum=procNum;
 			paySplit.ProvNum=_provNum;
-			OpenDentBusiness.Crud.PaySplitCrud.Insert(paySplit);
+			paySplit.PayPlanNum=payPlanNum;
+			return OpenDentBusiness.Crud.PaySplitCrud.Insert(paySplit);
 		}
 
 		private static long InsertClaim(long patNum,DateTime dateService,string claimStatus) {
@@ -458,6 +460,52 @@ namespace M2SDVTests {
 			Assert.AreEqual(2,listPayNums.Count);
 			Assert.IsTrue(listPayNums.All(x => x==_payNum1));
 			Assert.IsFalse(table.Rows.OfType<DataRow>().Any(x => (long)x["ClaimNum"]!=0),"No insurance on a receipt.");
+		}
+
+		[TestMethod]
+		public void Statement_ServiceDateView_Receipt_PayPlanPaymentsInEveryPayPlanVersion() {
+			//A payment made today on Ann's payment plan: one split on the plan alone and one on the plan's procedure (procedure 2).
+			long payNumPlan=InsertPayment(_patientAnn.PatNum,DateTime.Today,30);
+			long splitNumPlan=InsertSplit(payNumPlan,_patientAnn.PatNum,25,DateTime.Today,0,payPlanNum:_payPlanNum);
+			long splitNumPlanProc=InsertSplit(payNumPlan,_patientAnn.PatNum,5,DateTime.Today,_procNum2,payPlanNum:_payPlanNum);
+			string versionOld=PrefC.GetStringNoCache(PrefName.PayPlansVersion);
+			try {
+				foreach(int version in new[] { 1,3,4,2 }) {
+					Prefs.UpdateStringNoCache(PrefName.PayPlansVersion,version.ToString());
+					Cache.Refresh(InvalidType.Prefs);
+					string where="PayPlansVersion "+version;
+					Statement statement=NewStatement(_patientAnn.PatNum);
+					statement.IsReceipt=true;
+					statement.DateRangeFrom=DateTime.Today;
+					statement.DateRangeTo=DateTime.Today;
+					statement.IsServiceDateView=true;
+					DataSet dataSet=GetDataSet(statement);
+					DataTable table=SheetDataTableUtil.GetTable_StatementMain(dataSet,statement);
+					List<DataRow> listRows=table.Rows.OfType<DataRow>().ToList();
+					Assert.IsFalse(listRows.Any(x => x["description"].ToString()==Lans.g("Statements","No Account Activity")),where);
+					CollectionAssert.AreEquivalent(new[] { 25m,5m },listRows.Where(x => (long)x["PayNum"]==payNumPlan).Select(x => (decimal)x["creditsDouble"]).ToList(),
+						where+": both splits of today's payment plan payment.");
+					Assert.IsTrue(listRows.All(x => (long)x["PayNum"]==0 || (long)x["PayNum"]==payNumPlan),where+": only today's payments.");
+					CollectionAssert.AreEqual(new[] { _procNum2.ToString() },listRows.Select(x => x["ProcNum"].ToString()).Where(x => x!="0").ToList(),
+						where+": the procedure the attached split pays.");
+					//The regular receipt (the account table's rows with a PayNum) has them under versions 2 and 4 only: AccountModules skips payment plan
+					//splits in versions 1 and 3. The service-date receipt follows the 26.1 rule (every payment of the day) in every version.
+					bool isInAccountTable=dataSet.Tables["account"].Rows.OfType<DataRow>().Any(x => PIn.Long(x["PayNum"].ToString())==payNumPlan);
+					Assert.AreEqual(version==2 || version==4,isInAccountTable,where+": regular receipt.");
+					//The view itself (window, Account grid, other statements) keeps the 24.3 report's rule: payment plan payments under version 2 only.
+					List<ServiceDateViewRow> listRowsView=RpServiceDateView.GetRows(_patientAnn.PatNum,true,new ServiceDateViewOptions());
+					Assert.AreEqual(version==2,listRowsView.Any(x => x.ParentNum==payNumPlan && ServiceDateViews.IsPatPayType(x.TranType)),where+": the view.");
+					List<ServiceDateViewCoreRow> listCoreRows=ServiceDateViews.ReadCoreRows(RpServiceDateView.GetCoreTable(_patientAnn.PatNum,true,true));
+					CollectionAssert.AreEquivalent(new[] { "PatPay PayPlan","PatPay Att. PayPlan" },
+						listCoreRows.Where(x => x.ParentNum==payNumPlan).Select(x => x.TranType).ToList(),where);
+				}
+			}
+			finally {
+				Prefs.UpdateStringNoCache(PrefName.PayPlansVersion,versionOld);
+				Cache.Refresh(InvalidType.Prefs);
+				DataCore.NonQ("DELETE FROM paysplit WHERE SplitNum IN ("+POut.Long(splitNumPlan)+","+POut.Long(splitNumPlanProc)+")");
+				DataCore.NonQ("DELETE FROM payment WHERE PayNum="+POut.Long(payNumPlan));
+			}
 		}
 
 		[TestMethod]

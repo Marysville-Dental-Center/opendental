@@ -182,9 +182,10 @@ namespace M2SDVTests {
 			return DataCore.GetTable(command);
 		}
 
+		///<summary>The core query as the 24.3 report ran it: includePayPlanSplits false (only receipts set it).</summary>
 		private static string GetCoreQuery(long patNum,bool isFamily,int payPlanVersion) {
 			MethodInfo methodInfo=typeof(RpServiceDateView).GetMethod("GetCoreQuery",BindingFlags.NonPublic|BindingFlags.Static);
-			return (string)methodInfo.Invoke(null,new object[] { patNum,isFamily,payPlanVersion });
+			return (string)methodInfo.Invoke(null,new object[] { patNum,isFamily,payPlanVersion,false });
 		}
 	}
 }

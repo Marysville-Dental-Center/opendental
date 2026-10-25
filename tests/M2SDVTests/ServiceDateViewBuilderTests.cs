@@ -184,6 +184,21 @@ namespace M2SDVTests {
 		}
 
 		[TestMethod]
+		public void Build_Receipt_KeepsPaymentPlanPayments() {
+			List<ServiceDateViewCoreRow> listCore=new List<ServiceDateViewCoreRow> {
+				Proc(10,_date1,100,procCredits:5),
+				Tran("PatPay Att. PayPlan",25,_date1,_date3,0,5,procNum:10,parentNum:6),//Today, on the plan's procedure.
+				Tran("PatPay PayPlan",26,_date3,_date3,0,25,parentNum:6),//Today, on the plan alone.
+				Tran("PayPlan Credit",4,_date2,_date2,0,100,parentNum:9),
+			};
+			ServiceDateViewOptions options=new ServiceDateViewOptions { IsReceipt=true,DateFrom=_date3,DateTo=_date3 };
+			List<ServiceDateViewRow> listRows=ServiceDateViews.Build(listCore,options);
+			CollectionAssert.AreEqual(new[] { "Proc","PatPay Att. PayPlan","Day Total","Unallocated","PatPay PayPlan","Day Total","Overall Total" },
+				Types(listRows));
+			Assert.AreEqual(30m,listRows.Last().Credit);
+		}
+
+		[TestMethod]
 		public void Build_Invoice_ItsChargesWithTheCreditsAppliedToThem() {
 			List<ServiceDateViewCoreRow> listCore=new List<ServiceDateViewCoreRow> {
 				Proc(10,_date1,100,procCredits:25),
