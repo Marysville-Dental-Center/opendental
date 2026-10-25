@@ -225,9 +225,9 @@ namespace OpenDental {
 			this.labelURI.TabIndex = 106;
 			this.labelURI.Text = "URI";
 			this.labelURI.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			//
+			// 
 			// groupReplication
-			//
+			// 
 			this.groupReplication.Controls.Add(this.labelReplicationReadDelay);
 			this.groupReplication.Controls.Add(this.textReplicationReadDelayMs);
 			this.groupReplication.Controls.Add(this.labelReplicationSignalLookback);
@@ -238,18 +238,18 @@ namespace OpenDental {
 			this.groupReplication.Size = new System.Drawing.Size(450, 156);
 			this.groupReplication.TabIndex = 110;
 			this.groupReplication.Text = "Replication";
-			//
+			// 
 			// labelReplicationReadDelay
-			//
+			// 
 			this.labelReplicationReadDelay.Location = new System.Drawing.Point(16, 21);
 			this.labelReplicationReadDelay.Name = "labelReplicationReadDelay";
 			this.labelReplicationReadDelay.Size = new System.Drawing.Size(320, 17);
 			this.labelReplicationReadDelay.TabIndex = 111;
 			this.labelReplicationReadDelay.Text = "Read delay after write (ms)";
 			this.labelReplicationReadDelay.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			//
+			// 
 			// textReplicationReadDelayMs
-			//
+			// 
 			this.textReplicationReadDelayMs.Location = new System.Drawing.Point(339, 19);
 			this.textReplicationReadDelayMs.MaxVal = 60000;
 			this.textReplicationReadDelayMs.MinVal = 0;
@@ -257,18 +257,18 @@ namespace OpenDental {
 			this.textReplicationReadDelayMs.Size = new System.Drawing.Size(60, 20);
 			this.textReplicationReadDelayMs.TabIndex = 112;
 			this.textReplicationReadDelayMs.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
-			//
+			// 
 			// labelReplicationSignalLookback
-			//
+			// 
 			this.labelReplicationSignalLookback.Location = new System.Drawing.Point(16, 47);
 			this.labelReplicationSignalLookback.Name = "labelReplicationSignalLookback";
 			this.labelReplicationSignalLookback.Size = new System.Drawing.Size(320, 17);
 			this.labelReplicationSignalLookback.TabIndex = 113;
 			this.labelReplicationSignalLookback.Text = "Write delay for signals (ms)";
 			this.labelReplicationSignalLookback.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			//
+			// 
 			// textReplicationSignalLookbackMs
-			//
+			// 
 			this.textReplicationSignalLookbackMs.Location = new System.Drawing.Point(339, 45);
 			this.textReplicationSignalLookbackMs.MaxVal = 60000;
 			this.textReplicationSignalLookbackMs.MinVal = 0;
@@ -276,17 +276,17 @@ namespace OpenDental {
 			this.textReplicationSignalLookbackMs.Size = new System.Drawing.Size(60, 20);
 			this.textReplicationSignalLookbackMs.TabIndex = 114;
 			this.textReplicationSignalLookbackMs.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
-			//
+			// 
 			// labelReplicationInfo
-			//
+			// 
 			this.labelReplicationInfo.Location = new System.Drawing.Point(6, 72);
 			this.labelReplicationInfo.Name = "labelReplicationInfo";
 			this.labelReplicationInfo.Size = new System.Drawing.Size(438, 78);
 			this.labelReplicationInfo.TabIndex = 115;
 			this.labelReplicationInfo.Text = "Read delay: after this workstation saves, reads meant for the read-only server use the main server for this long. Write delay: signal checks look back this much further, so signals that reach a replica late are not missed. 0 (off) to 60000. Used only with a read-only server or replication servers.";
-			//
+			// 
 			// UserControlServerConnections
-			//
+			// 
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
 			this.BackColor = System.Drawing.Color.White;
 			this.Controls.Add(this.checkUseReadOnlyServer);

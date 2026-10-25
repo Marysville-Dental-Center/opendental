@@ -68,16 +68,16 @@ namespace OpenDental {
 			this.checkUnsignedNote.Size = new System.Drawing.Size(350, 21);
 			this.checkUnsignedNote.TabIndex = 1;
 			this.checkUnsignedNote.Text = "Include procedures with a note that is unsigned";
-			//
+			// 
 			// checkAllNoNotes
-			//
+			// 
 			this.checkAllNoNotes.Location = new System.Drawing.Point(16, 61);
 			this.checkAllNoNotes.Name = "checkAllNoNotes";
 			this.checkAllNoNotes.Size = new System.Drawing.Size(350, 21);
 			this.checkAllNoNotes.TabIndex = 2;
 			this.checkAllNoNotes.Text = "Include all procedures with no notes";
 			this.checkAllNoNotes.CheckedChanged += new System.EventHandler(this.checkAllNoNotes_CheckedChanged);
-			//
+			// 
 			// label1
 			// 
 			this.label1.Location = new System.Drawing.Point(384, 38);

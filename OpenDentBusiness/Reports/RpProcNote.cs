@@ -11,7 +11,7 @@ namespace OpenDentBusiness {
 		///<summary>B-SERVER (v24_4-reports-incomplete-procnotes-all): the Report Setup default for "Include all procedures with no notes". A
 		///fork-owned preference row, not in the PrefName enum, because Open Dental's own key is not public. A missing row reads as false.</summary>
 		public const string PREF_ALL_NO_NOTES="ForkReportsIncompleteProcsAllNoNotes";
-
+			
 		///<summary>The Report Setup default for "Include all procedures with no notes". Never throws.</summary>
 		public static bool GetAllNoNotesDefault() {
 			return PIn.Bool(PrefC.GetRawOrDefault(PREF_ALL_NO_NOTES,"0"));
@@ -99,8 +99,8 @@ namespace OpenDentBusiness {
 						WHERE procedurelog.ProcDate BETWEEN "+POut.Date(dateStart)+" AND "+POut.Date(dateEnd)+@"
 						AND (procedurelog.ProcStatus="+POut.Int((int)ProcStat.C)+" OR (procedurelog.ProcStatus="+POut.Int((int)ProcStat.EC)
 						+@" AND procedurecode.ProcCode='~GRP~'))"
-						+@" AND procnote.EntryDateTime=(SELECT MAX(lastnote.EntryDateTime)
-							FROM procnote lastnote
+						+@" AND procnote.EntryDateTime=(SELECT MAX(lastnote.EntryDateTime) 
+							FROM procnote lastnote 
 							WHERE procnote.ProcNum=lastnote.ProcNum)"
 						+@" GROUP BY procedurelog.ProcNum
 							HAVING LENGTH(procnote.Note)>0
@@ -123,8 +123,8 @@ namespace OpenDentBusiness {
 					LEFT JOIN procnote unsignedNotes ON unsignedNotes.ProcNum=procedurelog.ProcNum
 						AND unsignedNotes.Signature=''
 						AND	TRIM(unsignedNotes.Note)!=''
-						AND unsignedNotes.EntryDateTime= (SELECT MAX(n2.EntryDateTime)
-								FROM procnote n2
+						AND unsignedNotes.EntryDateTime= (SELECT MAX(n2.EntryDateTime) 
+								FROM procnote n2 
 								WHERE unsignedNotes.ProcNum = n2.ProcNum) ";
 			}
 			string selectHasNoNote=",(CASE WHEN MAX(hasNotes.PatNum) IS NULL THEN 'X' ELSE '' END) AS HasNoNote ";
@@ -140,14 +140,14 @@ namespace OpenDentBusiness {
 				(CASE WHEN COUNT(DISTINCT procedurelog.ProcNum)=1 THEN MAX(procedurelog.Surf) ELSE '' END) Surf "
 				+(includeNoNotes || includeUnsignedNotes?",(CASE WHEN MAX(n1.ProcNum) IS NOT NULL THEN 'X' ELSE '' END) AS Incomplete ":"")
 				+(includeNoNotes?selectHasNoNote:"")
-				+(includeUnsignedNotes?",(CASE WHEN MAX(unsignedNotes.ProcNum) IS NOT NULL THEN 'X' ELSE '' END) AS HasUnsignedNote ":"")+@"
+				+(includeUnsignedNotes?",(CASE WHEN MAX(unsignedNotes.ProcNum) IS NOT NULL THEN 'X' ELSE '' END) AS HasUnsignedNote ":"")+@" 
 				FROM procedurelog
-				INNER JOIN patient ON procedurelog.PatNum = patient.PatNum
-				INNER JOIN procedurecode ON procedurelog.CodeNum = procedurecode.CodeNum
-				"+(includeNoNotes || includeUnsignedNotes?"LEFT":"INNER")+@" JOIN procnote n1 ON procedurelog.ProcNum = n1.ProcNum
+				INNER JOIN patient ON procedurelog.PatNum = patient.PatNum 
+				INNER JOIN procedurecode ON procedurelog.CodeNum = procedurecode.CodeNum 
+				"+(includeNoNotes || includeUnsignedNotes?"LEFT":"INNER")+@" JOIN procnote n1 ON procedurelog.ProcNum = n1.ProcNum 
 					AND (n1.Note LIKE '%""""%' OR n1.Note REGEXP '"+@"\\[Prompt:""[a-zA-Z_0-9 ]+""\\]') "//looks for either "" (pre 17.3) or [Prompt:"{word}"] (post 17.3)
-				+@" AND n1.EntryDateTime= (SELECT MAX(n2.EntryDateTime)
-				FROM procnote n2
+				+@" AND n1.EntryDateTime= (SELECT MAX(n2.EntryDateTime) 
+				FROM procnote n2 
 				WHERE n1.ProcNum = n2.ProcNum) "
 				+whereNoNote+" "
 				+whereUnsignedNote+@"

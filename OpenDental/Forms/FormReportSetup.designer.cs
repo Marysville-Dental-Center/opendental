@@ -424,15 +424,15 @@ namespace OpenDental{
 			this.checkReportsIncompleteProcsUnsigned.TabIndex = 212;
 			this.checkReportsIncompleteProcsUnsigned.Text = "Include procedures with a note that is unsigned in the Incomplete Procedures Repo" +
     "rt";
-			//
+			// 
 			// checkReportsIncompleteProcsAllNoNotes
-			//
+			// 
 			this.checkReportsIncompleteProcsAllNoNotes.Location = new System.Drawing.Point(20, 193);
 			this.checkReportsIncompleteProcsAllNoNotes.Name = "checkReportsIncompleteProcsAllNoNotes";
 			this.checkReportsIncompleteProcsAllNoNotes.Size = new System.Drawing.Size(511, 17);
 			this.checkReportsIncompleteProcsAllNoNotes.TabIndex = 222;
 			this.checkReportsIncompleteProcsAllNoNotes.Text = "Include all procedures with no notes in the Incomplete Procedures Report";
-			//
+			// 
 			// checkReportsIncompleteProcsNoNotes
 			// 
 			this.checkReportsIncompleteProcsNoNotes.Location = new System.Drawing.Point(20, 159);
