@@ -49,14 +49,14 @@ Measured by the rehearsal on a development PC (MariaDB 10.11, SSD), synthetic da
 
 | Step | Medium: 101,881 rows, 1,355 patients, 20 MB dump | Large: 777,822 rows, 9,158 patients, 162 MB dump |
 |---|---:|---:|
-| Backup (`mariadb-dump`) | 3.3 s | 4.7 s |
-| Restore into the copy | 6.2 s | 23.5 s |
-| Validation report (once; steps 3.3 and 6 need three) | 1.9 s | 12.7 s |
-| Adoption, including the fork migration steps | 0.6 s | 1.0 s |
-| Schema verifier | 0.3 s | 0.2 s |
-| Rehash | 1.4 s | 7.5 s |
+| Backup (`mariadb-dump`) | 3.1 s | 4.7 s |
+| Restore into the copy | 5.9 s | 25.3 s |
+| Validation report (once; steps 3.3 and 6 need three) | 1.8 s | 13.4 s |
+| Adoption, including the fork migration steps | 0.6 s | 1.1 s |
+| Schema verifier | 0.3 s | 0.3 s |
+| Rehash | 0.8 s | 4.6 s |
 
-Restore and the reports grow with the data (about 0.15 s per MB of dump for the restore here); adoption is dominated by one
+Restore and the reports grow with the data (about 0.16 s per MB of dump for the restore here); adoption is dominated by one
 `ALTER TABLE patient` and the rehash by the number of patients. The office database also holds documents, logs and history the synthetic
 data does not, so **time the backup and the restore on the office server in the week before** (step 0.6; neither changes the office
 database) and plan the outage window as: backup + restore + 3 reports + adoption + rehash + password re-entry + smoke test, plus a margin of
