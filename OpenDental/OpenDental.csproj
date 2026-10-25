@@ -1948,6 +1948,9 @@
     <Compile Include="Main Modules\ControlTreat.designer.cs">
       <DependentUpon>ControlTreat.cs</DependentUpon>
     </Compile>
+    <Compile Include="Main Modules\ControlTreat.AddProcs.cs">
+      <DependentUpon>ControlTreat.cs</DependentUpon>
+    </Compile>
     <Compile Include="Main Modules\FormOpenDental.Designer.cs">
       <DependentUpon>FormOpenDental.cs</DependentUpon>
     </Compile>
@@ -2851,6 +2854,12 @@
     </Compile>
     <Compile Include="Forms\FormTreatPlanCurEdit.designer.cs">
       <DependentUpon>FormTreatPlanCurEdit.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormTreatPlanAddProcs.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormTreatPlanAddProcs.Designer.cs">
+      <DependentUpon>FormTreatPlanAddProcs.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\FormSheetExport.cs">
       <SubType>Form</SubType>

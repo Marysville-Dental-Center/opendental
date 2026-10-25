@@ -565,6 +565,13 @@ namespace OpenDentBusiness{
 			ProcTPs.SetPriorityForTreatPlanProcs(priorityDefNum,treatPlan.TreatPlanNum,listProcNums);
 		}
 
+		///<summary>True when procedures can be added to this plan from the Treatment Plan module's Add Procs button (Open Dental 25.3): only an Active
+		///plan. Inactive plans (including Unassigned) and Saved plans can't be targeted. See ProcAddHelper.AddToActivePlan.</summary>
+		public static bool CanAddProcsTo(TreatPlan treatPlan) {
+			Meth.NoCheckMiddleTierRole();
+			return treatPlan!=null && treatPlan.TPStatus==TreatPlanStatus.Active;
+		}
+
 		public static TreatPlan GetUnassigned(long patNum) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetObject<TreatPlan>(MethodBase.GetCurrentMethod(),patNum);

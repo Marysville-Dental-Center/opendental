@@ -30,6 +30,7 @@
       "tests\\BPERIOTests\\BPERIOTests.csproj",
       "tests\\BPROCTests\\BPROCTests.csproj",
       "tests\\BTASKTests\\BTASKTests.csproj",
+      "tests\\BTPTests\\BTPTests.csproj",
       "tests\\ChartLetterTests\\ChartLetterTests.csproj",
       "tests\\CryptoTests\\CryptoTests.csproj",
       "tests\\EFormTests\\EFormTests.csproj",
