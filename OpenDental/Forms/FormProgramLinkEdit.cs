@@ -62,6 +62,7 @@ namespace OpenDental{
 			DisableUIElementsBasedOnClinicRestriction();//Disable the UI Elements if needed.
 			HideClinicControls(PrefC.HasClinicsEnabled);//Hide the "Hide Button for Clinics" button based upon the user's clinics being on or off.
 			ShowPLButHiddenLabel();//Display warning label for "Hide Button for Clinics" if needed.
+			SetCommandLineHint();//V-BRIDGE2: Trophy (Enhanced) Command line tags (FormProgramLinkEdit.Bridges2.cs).
 		}
 
 		private void FormProgramLinkEdit_Shown(object sender,EventArgs e) {

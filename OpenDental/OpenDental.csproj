@@ -2783,6 +2783,16 @@
     <Compile Include="Forms\FormUspsAddressSetup.Designer.cs">
       <DependentUpon>FormUspsAddressSetup.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\FormClerriSetup.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormClerriSetup.Designer.cs">
+      <DependentUpon>FormClerriSetup.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormProgramLinkEdit.Bridges2.cs">
+      <DependentUpon>FormProgramLinkEdit.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Logic\VendorDirect\CleverOneProgramLinkSetup.cs" />
     <Compile Include="Logic\EdgeExpressL.cs" />
     <Compile Include="Logic\VendorDirect\DropboxStartupCheck.cs" />
     <Compile Include="Logic\VendorDirect\IProgramLinkSetup.cs" />
@@ -6569,6 +6579,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormUspsAddressSetup.resx">
       <DependentUpon>FormUspsAddressSetup.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\FormClerriSetup.resx">
+      <DependentUpon>FormClerriSetup.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormPodiumSetup.resx">
       <DependentUpon>FormPodiumSetup.cs</DependentUpon>
