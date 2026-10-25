@@ -71,6 +71,8 @@ namespace OpenDental{
 			gridMain.Columns.Add(col);
 			col=new GridColumn(Lan.g("FormEmployeeSelect","MI"),30);
 			gridMain.Columns.Add(col);
+			col=new GridColumn(Lan.g("FormEmployeeSelect","Title"),100);//Open Dental 26.1 (M2-EMP)
+			gridMain.Columns.Add(col);
 			col=new GridColumn(Lan.g("FormEmployeeSelect","Hid"),30,HorizontalAlignment.Center);
 			gridMain.Columns.Add(col);
 			col=new GridColumn(Lan.g("FormEmployeeSelect","Reports To"),70);
@@ -85,11 +87,13 @@ namespace OpenDental{
 			gridMain.Columns.Add(col);
 			gridMain.ListGridRows.Clear();
 			GridRow row;
+			List<Def> listDefsTitles=Defs.GetDefsForCategory(DefCat.EmployeeTitles);//hidden titles included; they show with "(hidden)"
 			for(int i=0;i<_listEmployeesShowing.Count;i++){
 				row=new GridRow();
 				row.Cells.Add(_listEmployeesShowing[i].FName);
 				row.Cells.Add(_listEmployeesShowing[i].LName);
 				row.Cells.Add(_listEmployeesShowing[i].MiddleI);
+				row.Cells.Add(Employees.GetTitleText(_listEmployeesShowing[i].Title,listDefsTitles));
 				row.Cells.Add(_listEmployeesShowing[i].IsHidden?"X":"");
 				Employee employee=Employees.GetEmp(_listEmployeesShowing[i].ReportsTo);
 				if(employee is null){

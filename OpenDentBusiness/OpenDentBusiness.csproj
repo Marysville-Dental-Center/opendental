@@ -1441,6 +1441,7 @@
     <Compile Include="Data Interface\EmailMessages.cs" />
     <Compile Include="Data Interface\EmailTemplates.cs" />
     <Compile Include="Data Interface\Employees.cs" />
+    <Compile Include="Data Interface\Employees.Titles.cs" />
     <Compile Include="Data Interface\Employers.cs" />
     <Compile Include="Data Interface\Etranss.cs" />
     <Compile Include="Data Interface\Fees.cs" />

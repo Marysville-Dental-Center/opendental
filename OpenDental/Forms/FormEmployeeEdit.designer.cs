@@ -46,6 +46,8 @@ namespace OpenDental {
 			this.checkIsWorkingHome = new OpenDental.UI.CheckBox();
 			this.label5 = new System.Windows.Forms.Label();
 			this.comboReportsTo = new OpenDental.UI.ComboBox();
+			this.labelTitle = new System.Windows.Forms.Label();
+			this.comboTitle = new OpenDental.UI.ComboBox();
 			this.SuspendLayout();
 			// 
 			// textLName
@@ -114,7 +116,7 @@ namespace OpenDental {
 			this.butSave.Location = new System.Drawing.Point(361, 389);
 			this.butSave.Name = "butSave";
 			this.butSave.Size = new System.Drawing.Size(75, 25);
-			this.butSave.TabIndex = 11;
+			this.butSave.TabIndex = 12;
 			this.butSave.Text = "&Save";
 			this.butSave.Click += new System.EventHandler(this.butSave_Click);
 			// 
@@ -218,19 +220,19 @@ namespace OpenDental {
 			// checkIsFurloughed
 			// 
 			this.checkIsFurloughed.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
-			this.checkIsFurloughed.Location = new System.Drawing.Point(46, 286);
+			this.checkIsFurloughed.Location = new System.Drawing.Point(46, 312);
 			this.checkIsFurloughed.Name = "checkIsFurloughed";
 			this.checkIsFurloughed.Size = new System.Drawing.Size(117, 18);
-			this.checkIsFurloughed.TabIndex = 9;
+			this.checkIsFurloughed.TabIndex = 10;
 			this.checkIsFurloughed.Text = "Furloughed";
 			// 
 			// checkIsWorkingHome
 			// 
 			this.checkIsWorkingHome.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
-			this.checkIsWorkingHome.Location = new System.Drawing.Point(12, 310);
+			this.checkIsWorkingHome.Location = new System.Drawing.Point(12, 336);
 			this.checkIsWorkingHome.Name = "checkIsWorkingHome";
 			this.checkIsWorkingHome.Size = new System.Drawing.Size(151, 18);
-			this.checkIsWorkingHome.TabIndex = 10;
+			this.checkIsWorkingHome.TabIndex = 11;
 			this.checkIsWorkingHome.Text = "Working From Home";
 			this.checkIsWorkingHome.Visible = false;
 			// 
@@ -250,10 +252,28 @@ namespace OpenDental {
 			this.comboReportsTo.Size = new System.Drawing.Size(174, 21);
 			this.comboReportsTo.TabIndex = 8;
 			// 
+			// labelTitle
+			// 
+			this.labelTitle.Location = new System.Drawing.Point(59, 289);
+			this.labelTitle.Name = "labelTitle";
+			this.labelTitle.Size = new System.Drawing.Size(90, 14);
+			this.labelTitle.TabIndex = 50;
+			this.labelTitle.Text = "Title";
+			this.labelTitle.TextAlign = System.Drawing.ContentAlignment.TopRight;
+			// 
+			// comboTitle
+			// 
+			this.comboTitle.Location = new System.Drawing.Point(150, 285);
+			this.comboTitle.Name = "comboTitle";
+			this.comboTitle.Size = new System.Drawing.Size(174, 21);
+			this.comboTitle.TabIndex = 9;
+			// 
 			// FormEmployeeEdit
 			// 
 			this.AcceptButton = this.butSave;
 			this.ClientSize = new System.Drawing.Size(458, 431);
+			this.Controls.Add(this.comboTitle);
+			this.Controls.Add(this.labelTitle);
 			this.Controls.Add(this.comboReportsTo);
 			this.Controls.Add(this.label5);
 			this.Controls.Add(this.butSave);
@@ -313,6 +333,8 @@ namespace OpenDental {
 		private OpenDental.UI.CheckBox checkIsWorkingHome;
 		private Label label5;
 		private UI.ComboBox comboReportsTo;
+		private Label labelTitle;
+		private UI.ComboBox comboTitle;
 		private ValidPhone textWirelessPhone;
 	}
 }

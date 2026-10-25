@@ -8,7 +8,7 @@ using System.Reflection;
 
 namespace OpenDentBusiness{
 	///<summary></summary>
-	public class Employees{
+	public partial class Employees{
 		#region Update
 		///<summary>Will throw exception if the employee has no name.</summary>
 		public static void Update(Employee employee) {
