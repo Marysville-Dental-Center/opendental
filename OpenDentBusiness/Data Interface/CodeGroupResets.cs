@@ -27,6 +27,9 @@ namespace OpenDentBusiness {
 		///<summary>Index into CodeGroupResetPlan.ListCodeGroupsNew of the default group that matches this group (same fixed type, or failing that the
 		///same name); -1 when none does.</summary>
 		public int IndexDefault=-1;
+		///<summary>True when the matching default group has no default codes for the chosen code system and takes this group's ProcCodes instead
+		///(see CodeGroupResets.KeepCodesForEmptyDefaults).</summary>
+		public bool IsProcCodesKept;
 	}
 
 	///<summary>What Reset Code Groups will do, worked out before anything is changed so that the user can be told.</summary>
@@ -52,6 +55,16 @@ namespace OpenDentBusiness {
 		public int GetCountDeleted() {
 			return ListItems.Count(x => x.Action!=EnumCodeGroupResetAction.KeepRetired);
 		}
+
+		///<summary>Existing groups whose codes are carried into a default group that has no default codes for the code system.</summary>
+		public List<CodeGroupResetItem> GetCodesKept() {
+			return ListItems.FindAll(x => x.IsProcCodesKept);
+		}
+
+		///<summary>Default groups that will be created with no codes: no default codes for the code system and no existing group to take them from.</summary>
+		public List<CodeGroup> GetDefaultsWithoutCodes() {
+			return ListCodeGroupsNew.FindAll(x => string.IsNullOrWhiteSpace(x.ProcCodes));
+		}
 	}
 
 	///<summary>What a reset did.</summary>
@@ -64,12 +77,15 @@ namespace OpenDentBusiness {
 		public int CountDeleted;
 		public int CountKeptRetired;
 		public int CountBenefitsRepointed;
+		///<summary>Default groups that took the codes of the existing group they replace because they have no default codes for the code system.</summary>
+		public int CountProcCodesKept;
 	}
 
 	///<summary>Reset Code Groups in Procedure Code Tools (Open Dental 25.3.54 and 25.4): deletes the office's code groups and creates the default set
 	///for the code system the user picks (CodeGroupDefaults). Fork rules, so that no benefit is orphaned: a benefit that uses a group is moved to the
 	///new default group with the same CodeGroupFixed or, failing that, the same name; a group in use that matches no default group is kept as a
-	///hidden (retired) group, which benefits and estimates keep using, and only when the user accepts (doKeepUnmatched).</summary>
+	///hidden (retired) group, which benefits and estimates keep using, and only when the user accepts (doKeepUnmatched); a default group with no
+	///default codes for the code system (most CDA groups) keeps the codes of the existing group it replaces (KeepCodesForEmptyDefaults).</summary>
 	public class CodeGroupResets {
 		///<summary>Works out the reset without touching the database. dictBenefitCounts: benefit rows per CodeGroupNum (see GetBenefitCounts).</summary>
 		public static CodeGroupResetPlan CreatePlan(EnumDentalCodeSystem codeSystem,List<CodeGroup> listCodeGroupsExisting,
@@ -98,7 +114,33 @@ namespace OpenDentBusiness {
 				}
 				codeGroupResetPlan.ListItems.Add(codeGroupResetItem);
 			}
+			KeepCodesForEmptyDefaults(codeGroupResetPlan);
 			return codeGroupResetPlan;
+		}
+
+		///<summary>Fork rule, so that benefits moved to a default group still match procedures (INFERRED, see docs/port-notes/B-PROC.md): a default
+		///group with no default codes for the code system (the CDA list has codes only for Fluoride and Sealant) takes the ProcCodes of an existing
+		///group that matches it, used by benefits or not, so frequency limitations, Insurance History and the sheets' date-last fields keep finding
+		///the office's procedures. When several existing groups match, the one with the most benefits wins, then the first in ItemOrder. Existing
+		///groups without codes are passed over; a default with no source stays empty and GetPlanSummary names it.</summary>
+		private static void KeepCodesForEmptyDefaults(CodeGroupResetPlan codeGroupResetPlan) {
+			for(int i=0;i<codeGroupResetPlan.ListCodeGroupsNew.Count;i++) {
+				CodeGroup codeGroupNew=codeGroupResetPlan.ListCodeGroupsNew[i];
+				if(!string.IsNullOrWhiteSpace(codeGroupNew.ProcCodes)) {
+					continue;
+				}
+				int indexDefault=i;
+				//ListItems is in ItemOrder and OrderByDescending is a stable sort, so a tie goes to the first group in ItemOrder.
+				CodeGroupResetItem codeGroupResetItemSource=codeGroupResetPlan.ListItems
+					.Where(x => x.IndexDefault==indexDefault && !string.IsNullOrWhiteSpace(x.CodeGroupOld.ProcCodes))
+					.OrderByDescending(x => x.CountBenefits)
+					.FirstOrDefault();
+				if(codeGroupResetItemSource==null) {
+					continue;
+				}
+				codeGroupNew.ProcCodes=codeGroupResetItemSource.CodeGroupOld.ProcCodes;
+				codeGroupResetItemSource.IsProcCodesKept=true;
+			}
 		}
 
 		///<summary>The index of the default group that replaces the group passed in: the one with the same CodeGroupFixed when the group has a fixed
@@ -192,6 +234,7 @@ namespace OpenDentBusiness {
 				Crud.CodeGroupCrud.DeleteMany(listCodeGroupNumsDelete);
 			}
 			codeGroupResetResult.CountDeleted=listCodeGroupNumsDelete.Count;
+			codeGroupResetResult.CountProcCodesKept=codeGroupResetPlan.GetCodesKept().Count;
 			codeGroupResetResult.IsDone=true;
 			SecurityLogs.MakeLogEntry(EnumPermType.ProcCodeEdit,0,GetLogText(codeGroupResetResult));
 			return codeGroupResetResult;
@@ -215,17 +258,41 @@ namespace OpenDentBusiness {
 						+Lans.g("CodeGroups","benefits")+")");
 				}
 			}
+			string codeSystemName=codeGroupResetPlan.CodeSystem.ToString();
+			List<CodeGroupResetItem> listCodeGroupResetItemsCodesKept=codeGroupResetPlan.GetCodesKept();
+			if(listCodeGroupResetItemsCodesKept.Count>0) {
+				listLines.Add("");
+				listLines.Add(Lans.g("CodeGroups","These code groups have no default codes for")+" "+codeSystemName+": "
+					+Lans.g("CodeGroups","your current codes are kept:"));
+				for(int i=0;i<listCodeGroupResetItemsCodesKept.Count;i++) {
+					CodeGroupResetItem codeGroupResetItem=listCodeGroupResetItemsCodesKept[i];
+					listLines.Add("  "+codeGroupResetPlan.ListCodeGroupsNew[codeGroupResetItem.IndexDefault].GroupName+": "
+						+Lans.g("CodeGroups","codes of")+" "+codeGroupResetItem.CodeGroupOld.GroupName+" ("+codeGroupResetItem.CountBenefits+" "
+						+Lans.g("CodeGroups","benefits")+")");
+				}
+			}
+			List<CodeGroup> listCodeGroupsWithoutCodes=codeGroupResetPlan.GetDefaultsWithoutCodes();
+			if(listCodeGroupsWithoutCodes.Count>0) {
+				listLines.Add("");
+				listLines.Add(Lans.g("CodeGroups","These default code groups have no default codes for")+" "+codeSystemName+" "
+					+Lans.g("CodeGroups","and will be created empty. Add their codes in Setup, Code Groups:")+" "
+					+string.Join(", ",listCodeGroupsWithoutCodes.Select(x => x.GroupName)));
+			}
 			return string.Join("\r\n",listLines);
 		}
 
 		///<summary>The ProcCodeEdit log text: the code system and the counts.</summary>
 		public static string GetLogText(CodeGroupResetResult codeGroupResetResult) {
 			Meth.NoCheckMiddleTierRole();
-			return Lans.g("CodeGroups","Code groups reset to the default")+" "+codeGroupResetResult.CodeSystem.ToString()+" "+Lans.g("CodeGroups","code groups")+": "
+			string logText=Lans.g("CodeGroups","Code groups reset to the default")+" "+codeGroupResetResult.CodeSystem.ToString()+" "+Lans.g("CodeGroups","code groups")+": "
 				+codeGroupResetResult.CountCreated+" "+Lans.g("CodeGroups","created")+", "
 				+codeGroupResetResult.CountDeleted+" "+Lans.g("CodeGroups","deleted")+", "
 				+codeGroupResetResult.CountKeptRetired+" "+Lans.g("CodeGroups","kept as hidden")+", "
-				+codeGroupResetResult.CountBenefitsRepointed+" "+Lans.g("CodeGroups","benefits moved to the new groups")+".";
+				+codeGroupResetResult.CountBenefitsRepointed+" "+Lans.g("CodeGroups","benefits moved to the new groups");
+			if(codeGroupResetResult.CountProcCodesKept>0) {
+				logText+=", "+codeGroupResetResult.CountProcCodesKept+" "+Lans.g("CodeGroups","groups with no default codes kept their current codes");
+			}
+			return logText+".";
 		}
 	}
 }

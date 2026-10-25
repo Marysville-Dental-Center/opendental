@@ -21,10 +21,10 @@ namespace BPROCTests {
 		}
 
 		#region Helpers
-		private static CodeGroup InsertGroup(string groupName,EnumCodeGroupFixed codeGroupFixed=EnumCodeGroupFixed.None) {
+		private static CodeGroup InsertGroup(string groupName,EnumCodeGroupFixed codeGroupFixed=EnumCodeGroupFixed.None,string procCodes="Z0001") {
 			CodeGroup codeGroup=new CodeGroup();
 			codeGroup.GroupName=groupName;
-			codeGroup.ProcCodes="Z0001";
+			codeGroup.ProcCodes=procCodes;
 			codeGroup.ItemOrder=500+(++_counter);
 			codeGroup.CodeGroupFixed=codeGroupFixed;
 			codeGroup.ShowInFrequency=true;
@@ -149,6 +149,8 @@ namespace BPROCTests {
 			ClearCodeGroups();
 			CodeGroup codeGroupCustom=InsertGroup("Synthetic custom twice "+_counter);
 			Benefit benefit=InsertBenefit(codeGroupCustom.CodeGroupNum);
+			CodeGroup codeGroupBw=InsertGroup("Synthetic bitewings twice "+_counter,EnumCodeGroupFixed.BW,"99011,99012");
+			Benefit benefitBw=InsertBenefit(codeGroupBw.CodeGroupNum);
 			CodeGroupResets.Reset(EnumDentalCodeSystem.CDA,doKeepUnmatched:true);
 			CodeGroupResetResult codeGroupResetResult=CodeGroupResets.Reset(EnumDentalCodeSystem.CDA,doKeepUnmatched:true);
 			Assert.IsTrue(codeGroupResetResult.IsDone);
@@ -158,6 +160,36 @@ namespace BPROCTests {
 			Assert.AreEqual("13401",listCodeGroups.Single(x => x.CodeGroupFixed==EnumCodeGroupFixed.Sealant).ProcCodes);
 			Assert.AreEqual(codeGroupCustom.CodeGroupNum,GetBenefitCodeGroupNum(benefit.BenefitNum));
 			Assert.IsTrue(listCodeGroups.Single(x => x.CodeGroupNum==codeGroupCustom.CodeGroupNum).IsHidden);
+			//The BW benefit was moved twice, and its group still has the office's codes (CDA has no default BW codes).
+			CodeGroup codeGroupBwAfter=listCodeGroups.Single(x => x.CodeGroupFixed==EnumCodeGroupFixed.BW);
+			Assert.AreEqual(codeGroupBwAfter.CodeGroupNum,GetBenefitCodeGroupNum(benefitBw.BenefitNum));
+			Assert.AreEqual("99011,99012",codeGroupBwAfter.ProcCodes);
+			Assert.AreEqual(1,codeGroupResetResult.CountProcCodesKept,"Only BW: Sealant and Fluoride have CDA codes, the others were empty.");
+			Assert.AreEqual("0",DataCore.GetScalar("SELECT COUNT(*) FROM benefit WHERE CodeGroupNum!=0 "
+				+"AND CodeGroupNum NOT IN(SELECT CodeGroupNum FROM codegroup)"));
+		}
+
+		[TestMethod]
+		public void Reset_Cda_GroupInUseKeepsItsCodes() {
+			ClearCodeGroups();
+			CodeGroup codeGroupExam=InsertGroup("Synthetic exams "+_counter,EnumCodeGroupFixed.Exam,"99001");
+			Benefit benefit=InsertBenefit(codeGroupExam.CodeGroupNum);
+			int countLogsBefore=CountLogs(EnumPermType.ProcCodeEdit,"kept their current codes");
+			CodeGroupResetResult codeGroupResetResult=CodeGroupResets.Reset(EnumDentalCodeSystem.CDA,doKeepUnmatched:false);
+			Assert.IsTrue(codeGroupResetResult.IsDone,"A group that matches a default is not unmatched.");
+			Assert.AreEqual(1,codeGroupResetResult.CountBenefitsRepointed);
+			Assert.AreEqual(1,codeGroupResetResult.CountProcCodesKept);
+			List<CodeGroup> listCodeGroups=GetGroupsFromDb();
+			Assert.IsFalse(listCodeGroups.Any(x => x.CodeGroupNum==codeGroupExam.CodeGroupNum),"The old group is deleted.");
+			long codeGroupNumNew=GetBenefitCodeGroupNum(benefit.BenefitNum);
+			Assert.AreNotEqual(codeGroupExam.CodeGroupNum,codeGroupNumNew);
+			CodeGroup codeGroupNew=listCodeGroups.Single(x => x.CodeGroupNum==codeGroupNumNew);
+			Assert.AreEqual(EnumCodeGroupFixed.Exam,codeGroupNew.CodeGroupFixed);
+			Assert.AreEqual("Exam",codeGroupNew.GroupName);
+			Assert.AreEqual("99001",codeGroupNew.ProcCodes,"Not empty: the CDA default has no Exam codes, so the office's codes are kept.");
+			Assert.AreEqual("12111",listCodeGroups.Single(x => x.CodeGroupFixed==EnumCodeGroupFixed.Fluoride).ProcCodes);
+			Assert.AreEqual("",listCodeGroups.Single(x => x.CodeGroupFixed==EnumCodeGroupFixed.SRP).ProcCodes,"No group to keep codes from.");
+			Assert.AreEqual(countLogsBefore+1,CountLogs(EnumPermType.ProcCodeEdit,"1 groups with no default codes kept their current codes"));
 			Assert.AreEqual("0",DataCore.GetScalar("SELECT COUNT(*) FROM benefit WHERE CodeGroupNum!=0 "
 				+"AND CodeGroupNum NOT IN(SELECT CodeGroupNum FROM codegroup)"));
 		}

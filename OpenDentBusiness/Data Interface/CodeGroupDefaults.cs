@@ -36,7 +36,8 @@ namespace OpenDentBusiness {
 
 		///<summary>In ItemOrder. The CDT lists are the defaults of the 24.3 conversion (GetDefaultProcCodesForPrefName). For CDA, Open Dental's
 		///conversion only knew the Fluoride (12111) and Sealant (13401) codes; the other CDA lists start empty and the office fills them in Setup,
-		///Code Groups (INFERRED, see docs/port-notes/B-PROC.md).</summary>
+		///Code Groups, except that Reset Code Groups keeps the codes of the existing group an empty default replaces (INFERRED, see
+		///docs/port-notes/B-PROC.md).</summary>
 		private static readonly List<CodeGroupDefault> _listDefaults=new List<CodeGroupDefault> {
 			new CodeGroupDefault("BW","D0272,D0274","",EnumCodeGroupFixed.BW),
 			new CodeGroupDefault("Exam","D0120,D0150","",EnumCodeGroupFixed.Exam),

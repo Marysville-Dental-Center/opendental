@@ -117,6 +117,59 @@ namespace BPROCTests {
 		}
 
 		[TestMethod]
+		public void CreatePlan_Cda_EmptyDefaultKeepsTheCurrentCodes() {
+			CodeGroup codeGroupExamFixed=Group(31,"Exam",EnumCodeGroupFixed.Exam,0);
+			codeGroupExamFixed.ProcCodes="99001";
+			CodeGroup codeGroupExamName=Group(32," exam ",itemOrder:1);
+			codeGroupExamName.ProcCodes="99002";
+			CodeGroup codeGroupBw=Group(33,"Bitewings",EnumCodeGroupFixed.BW,2);//unused: its codes are kept too
+			codeGroupBw.ProcCodes="99003,99004";
+			CodeGroup codeGroupSrp=Group(34,"SRP",EnumCodeGroupFixed.SRP,3);//no codes: nothing to keep
+			codeGroupSrp.ProcCodes="";
+			CodeGroup codeGroupFluoride=Group(35,"Fluoride",EnumCodeGroupFixed.Fluoride,4);//the default has CDA codes: they win
+			codeGroupFluoride.ProcCodes="99005";
+			CodeGroup codeGroupProphyA=Group(36,"Prophy",EnumCodeGroupFixed.Prophy,5);
+			codeGroupProphyA.ProcCodes="99006";
+			CodeGroup codeGroupProphyB=Group(37,"prophy",itemOrder:6);
+			codeGroupProphyB.ProcCodes="99007";
+			List<CodeGroup> listExisting=new List<CodeGroup> { codeGroupExamFixed,codeGroupExamName,codeGroupBw,codeGroupSrp,codeGroupFluoride,
+				codeGroupProphyA,codeGroupProphyB };
+			Dictionary<long,int> dictBenefitCounts=new Dictionary<long,int> { { 31,1 },{ 32,3 },{ 34,2 },{ 35,1 },{ 36,2 },{ 37,2 } };
+			CodeGroupResetPlan codeGroupResetPlan=CodeGroupResets.CreatePlan(EnumDentalCodeSystem.CDA,listExisting,dictBenefitCounts);
+			List<CodeGroup> listNew=codeGroupResetPlan.ListCodeGroupsNew;
+			Assert.AreEqual("99002",listNew.Single(x => x.CodeGroupFixed==EnumCodeGroupFixed.Exam).ProcCodes,"Most benefits wins.");
+			Assert.AreEqual("99003,99004",listNew.Single(x => x.CodeGroupFixed==EnumCodeGroupFixed.BW).ProcCodes,"Unused groups keep their codes too.");
+			Assert.AreEqual("",listNew.Single(x => x.CodeGroupFixed==EnumCodeGroupFixed.SRP).ProcCodes);
+			Assert.AreEqual("12111",listNew.Single(x => x.CodeGroupFixed==EnumCodeGroupFixed.Fluoride).ProcCodes,"Default codes are not replaced.");
+			Assert.AreEqual("99006",listNew.Single(x => x.CodeGroupFixed==EnumCodeGroupFixed.Prophy).ProcCodes,"A tie goes to the first in ItemOrder.");
+			CollectionAssert.AreEquivalent(new long[] { 32,33,36 },codeGroupResetPlan.GetCodesKept().Select(x => x.CodeGroupOld.CodeGroupNum).ToArray());
+			Assert.AreEqual(EnumCodeGroupResetAction.Repoint,codeGroupResetPlan.ListItems.Single(x => x.CodeGroupOld.CodeGroupNum==31).Action);
+			//The defaults themselves are never changed.
+			Assert.AreEqual("",CodeGroupDefaults.GetDefaults(EnumDentalCodeSystem.CDA).Single(x => x.CodeGroupFixed==EnumCodeGroupFixed.Exam).ProcCodes);
+			string summary=CodeGroupResets.GetPlanSummary(codeGroupResetPlan);
+			StringAssert.Contains(summary,"no default codes for CDA: your current codes are kept");
+			StringAssert.Contains(summary,"Exam: codes of  exam  (3 benefits)");
+			StringAssert.Contains(summary,"BW: codes of Bitewings (0 benefits)");
+			//Groups that stay empty are named.
+			StringAssert.Contains(summary,"and will be created empty");
+			Assert.IsTrue(codeGroupResetPlan.GetDefaultsWithoutCodes().Any(x => x.CodeGroupFixed==EnumCodeGroupFixed.SRP));
+			Assert.IsFalse(codeGroupResetPlan.GetDefaultsWithoutCodes().Any(x => x.CodeGroupFixed==EnumCodeGroupFixed.Exam));
+		}
+
+		[TestMethod]
+		public void CreatePlan_Cdt_DefaultCodesAlwaysWin() {
+			CodeGroup codeGroupExam=Group(41,"Exam",EnumCodeGroupFixed.Exam,0);
+			codeGroupExam.ProcCodes="D9001";
+			CodeGroupResetPlan codeGroupResetPlan=CodeGroupResets.CreatePlan(EnumDentalCodeSystem.CDT,new List<CodeGroup> { codeGroupExam },
+				new Dictionary<long,int> { { 41,4 } });
+			Assert.AreEqual("D0120,D0150",codeGroupResetPlan.ListCodeGroupsNew.Single(x => x.CodeGroupFixed==EnumCodeGroupFixed.Exam).ProcCodes);
+			Assert.AreEqual(0,codeGroupResetPlan.GetCodesKept().Count);
+			Assert.AreEqual(0,codeGroupResetPlan.GetDefaultsWithoutCodes().Count);
+			string summary=CodeGroupResets.GetPlanSummary(codeGroupResetPlan);
+			Assert.IsFalse(summary.Contains("no default codes"),summary);
+		}
+
+		[TestMethod]
 		public void CreatePlan_NoGroupsInUse_NothingUnmatched() {
 			List<CodeGroup> listExisting=new List<CodeGroup> { Group(21,"Night guards"),Group(22,"BW",EnumCodeGroupFixed.BW) };
 			CodeGroupResetPlan codeGroupResetPlan=CodeGroupResets.CreatePlan(EnumDentalCodeSystem.CDA,listExisting,new Dictionary<long,int>());
@@ -136,6 +189,9 @@ namespace BPROCTests {
 			StringAssert.Contains(logText,"4 deleted");
 			StringAssert.Contains(logText,"1 kept as hidden");
 			StringAssert.Contains(logText,"7 benefits");
+			Assert.IsFalse(logText.Contains("kept their current codes"),"Only named when codes were kept.");
+			codeGroupResetResult.CountProcCodesKept=2;
+			StringAssert.Contains(CodeGroupResets.GetLogText(codeGroupResetResult),"2 groups with no default codes kept their current codes.");
 		}
 	}
 }
