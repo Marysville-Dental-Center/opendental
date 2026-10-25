@@ -35,6 +35,7 @@
       "tests\\QueryMonitorTests\\QueryMonitorTests.csproj",
       "tests\\RegistryTests\\RegistryTests.csproj",
       "tests\\TaskCategoryTests\\TaskCategoryTests.csproj",
+      "tests\\VDXC2Tests\\VDXC2Tests.csproj",
       "tests\\RowHashTests\\RowHashTests.csproj",
       "tests\\StatementTests\\StatementTests.csproj",
       "tests\\ReleaseFlowTests\\ReleaseFlowTests.csproj",
