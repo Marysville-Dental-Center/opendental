@@ -239,14 +239,14 @@ namespace OpenDentBusiness {
 				//See discussion over in FormSheetFillEdit.Paint.
 				Font font=new Font(fontName,field.Height*0.58f,FontStyle.Regular);
 				Rectangle bounds=new Rectangle(field.XPos,field.YPos-_yPosPrint,field.Width,field.Height);
-				GraphicsHelper.DrawString(g,comboChoice,font,Brushes.Black,bounds,HorizontalAlignment.Left);
+				SheetTextDrawing.DrawString(g,comboChoice,font,Brushes.Black,bounds,HorizontalAlignment.Left);
 				font.Dispose();
 				font=null;
 			}
 			else{
 				XFont xfont=new XFont(fontName,field.Height*0.58f,XFontStyle.Regular);
 				RectangleF rect=new RectangleF(field.XPos,field.YPos-_yPosPrint,field.Width,field.Height);
-				GraphicsHelper.DrawStringX(gx,comboChoice,xfont,XBrushes.Black,rect,HorizontalAlignment.Left);
+				SheetTextDrawing.DrawStringX(gx,comboChoice,xfont,XBrushes.Black,rect,HorizontalAlignment.Left,fontName);
 				xfont=null;
 			}
 		}
@@ -553,11 +553,11 @@ namespace OpenDentBusiness {
 							}
 							if(gx==null) {
 								g.FillRectangle(Brushes.White,sheetField.XPos-10,gridSheetRow.YPos-_yPosPrint,odGrid.Width+10,heightGridTitle);
-								g.DrawString(patName,new Font("Arial",10,FontStyle.Bold),new SolidBrush(Color.Black),sheetField.XPos-10,gridSheetRow.YPos-_yPosPrint);
+								g.DrawString(patName,new Font(SheetFonts.GetFontNameForText("Arial",patName),10,FontStyle.Bold),new SolidBrush(Color.Black),sheetField.XPos-10,gridSheetRow.YPos-_yPosPrint);
 							}
 							else {
 								gx.DrawRectangle(Brushes.White,p(sheetField.XPos-10),p(gridSheetRow.YPos-_yPosPrint-1),p(odGrid.Width+10),p(heightGridTitle));
-								GraphicsHelper.DrawStringX(gx,patName,
+								SheetTextDrawing.DrawStringX(gx,patName,
 									new XFont(font.FontFamily.ToString(),font.Size,XFontStyle.Bold),XBrushes.Black,
 									new RectangleF(sheetField.XPos-10,gridSheetRow.YPos-_yPosPrint-1,odGrid.Width+10,heightGridTitle),HorizontalAlignment.Left);
 								//gx.DrawString(patName,new XFont(_font.FontFamily.ToString(),_font.Size,XFontStyle.Bold),new SolidBrush(Color.Black),field.XPos-10,yPosGrid);
@@ -575,7 +575,7 @@ namespace OpenDentBusiness {
 							}
 							else {
 								gx.DrawRectangle(Brushes.White,sheetField.XPos,gridSheetRow.YPos-_yPosPrint-1,odGrid.Width,heightGridTitle);
-								GraphicsHelper.DrawStringX(gx,text,
+								SheetTextDrawing.DrawStringX(gx,text,
 									new XFont(font.FontFamily.ToString(),font.Size,XFontStyle.Bold),XBrushes.Black,
 									new RectangleF(sheetField.XPos,gridSheetRow.YPos-_yPosPrint-1,odGrid.Width,heightGridTitle),HorizontalAlignment.Center);
 								//gx.DrawString("Payment Plans",new XFont(_font.FontFamily.ToString(),_font.Size,XFontStyle.Bold),new SolidBrush(Color.Black),field.XPos+(field.Width-sSize.Width)/2,yPosGrid);
@@ -592,7 +592,7 @@ namespace OpenDentBusiness {
 							}
 							else {
 								gx.DrawRectangle(Brushes.White,sheetField.XPos,gridSheetRow.YPos-_yPosPrint-1,odGrid.Width,heightGridTitle);
-								GraphicsHelper.DrawStringX(gx,"Payments",
+								SheetTextDrawing.DrawStringX(gx,"Payments",
 									new XFont(font.FontFamily.ToString(),font.Size,XFontStyle.Bold),XBrushes.Black,
 									new RectangleF(sheetField.XPos,gridSheetRow.YPos-_yPosPrint-1,odGrid.Width,heightGridTitle),HorizontalAlignment.Center);
 							}
@@ -605,7 +605,7 @@ namespace OpenDentBusiness {
 							}
 							else {
 								gx.DrawRectangle(Brushes.White,sheetField.XPos,gridSheetRow.YPos-_yPosPrint-1,odGrid.Width,heightGridTitle);
-								GraphicsHelper.DrawStringX(gx,"Family Insurance Benefits",
+								SheetTextDrawing.DrawStringX(gx,"Family Insurance Benefits",
 									new XFont(font.FontFamily.ToString(),font.Size,XFontStyle.Bold),XBrushes.Black,
 									new RectangleF(sheetField.XPos,gridSheetRow.YPos-_yPosPrint-1,odGrid.Width,heightGridTitle),HorizontalAlignment.Center);
 								//gx.DrawString("Payment Plans",new XFont(_font.FontFamily.ToString(),_font.Size,XFontStyle.Bold),new SolidBrush(Color.Black),field.XPos+(field.Width-sSize.Width)/2,yPosGrid);
@@ -619,7 +619,7 @@ namespace OpenDentBusiness {
 							}
 							else {
 								gx.DrawRectangle(Brushes.White,sheetField.XPos,gridSheetRow.YPos-_yPosPrint-1,odGrid.Width,heightGridTitle);
-								GraphicsHelper.DrawStringX(gx,"Individual Insurance Benefits",
+								SheetTextDrawing.DrawStringX(gx,"Individual Insurance Benefits",
 									new XFont(font.FontFamily.ToString(),font.Size,XFontStyle.Bold),XBrushes.Black,
 									new RectangleF(sheetField.XPos,gridSheetRow.YPos-_yPosPrint-1,odGrid.Width,heightGridTitle),HorizontalAlignment.Center);
 								//gx.DrawString("Payment Plans",new XFont(_font.FontFamily.ToString(),_font.Size,XFontStyle.Bold),new SolidBrush(Color.Black),field.XPos+(field.Width-sSize.Width)/2,yPosGrid);
@@ -686,7 +686,7 @@ namespace OpenDentBusiness {
 							else {
 								gx.DrawRectangle(Brushes.White,p(sheet.Width-sheetField.Width-60),p(gridSheetRow.YPos-_yPosPrint+_yAdjCurRow),p(sheetField.Width),p(heightGridTitle));
 								using(Font _font=new Font("Arial",9,FontStyle.Bold)) {
-									GraphicsHelper.DrawStringX(gx,textAmountDue+payPlanDue.ToString("c"),new XFont(_font.FontFamily.ToString(),_font.Size,XFontStyle.Bold),XBrushes.Black,new RectangleF(sheet.Width-sheetField.Width-60,gridSheetRow.YPos-_yPosPrint+_yAdjCurRow,sheetField.Width,heightGridTitle),HorizontalAlignment.Right);
+									SheetTextDrawing.DrawStringX(gx,textAmountDue+payPlanDue.ToString("c"),new XFont(_font.FontFamily.ToString(),_font.Size,XFontStyle.Bold),XBrushes.Black,new RectangleF(sheet.Width-sheetField.Width-60,gridSheetRow.YPos-_yPosPrint+_yAdjCurRow,sheetField.Width,heightGridTitle),HorizontalAlignment.Right);
 								}
 							}
 							break;
@@ -713,10 +713,10 @@ namespace OpenDentBusiness {
 								gx.DrawRectangle(Brushes.White,p(sheet.Width-sheetField.Width-60),p(gridSheetRow.YPos-_yPosPrint+_yAdjCurRow),p(sheetField.Width),p(heightGridTitle));
 								using(Font _font = new Font("Arial",9,FontStyle.Bold)) {
 									if(PrefC.GetBool(PrefName.InvoicePaymentsGridShowNetProd)) {
-										GraphicsHelper.DrawStringX(gx,"Total Payments & WriteOffs: "+totalPayments.ToString("c"),new XFont(_font.FontFamily.ToString(),_font.Size,XFontStyle.Bold),XBrushes.Black,new RectangleF(sheet.Width-sheetField.Width-60,gridSheetRow.YPos-_yPosPrint+_yAdjCurRow,sheetField.Width,heightGridTitle),HorizontalAlignment.Right);
+										SheetTextDrawing.DrawStringX(gx,"Total Payments & WriteOffs: "+totalPayments.ToString("c"),new XFont(_font.FontFamily.ToString(),_font.Size,XFontStyle.Bold),XBrushes.Black,new RectangleF(sheet.Width-sheetField.Width-60,gridSheetRow.YPos-_yPosPrint+_yAdjCurRow,sheetField.Width,heightGridTitle),HorizontalAlignment.Right);
 									}
 									else {
-										GraphicsHelper.DrawStringX(gx,"Total Payments: "+totalPayments.ToString("c"),new XFont(_font.FontFamily.ToString(),_font.Size,XFontStyle.Bold),XBrushes.Black,new RectangleF(sheet.Width-sheetField.Width-60,gridSheetRow.YPos-_yPosPrint+_yAdjCurRow,sheetField.Width,heightGridTitle),HorizontalAlignment.Right);
+										SheetTextDrawing.DrawStringX(gx,"Total Payments: "+totalPayments.ToString("c"),new XFont(_font.FontFamily.ToString(),_font.Size,XFontStyle.Bold),XBrushes.Black,new RectangleF(sheet.Width-sheetField.Width-60,gridSheetRow.YPos-_yPosPrint+_yAdjCurRow,sheetField.Width,heightGridTitle),HorizontalAlignment.Right);
 									}
 								}
 							}
@@ -1098,13 +1098,13 @@ namespace OpenDentBusiness {
 				if(!string.IsNullOrEmpty(strSigned)) {//not a TreatmentPlan or PaymentPlan, FielValue.Length>0, and DateTimeSig.Year>1880
 					Rectangle boundsSigned=new Rectangle(bounds.X+1,bounds.Y+bounds.Height-15,sigWidth-2,14);//Height 14 taken from FormSheetFillEdit
 					Font font=new Font(fontName,(float)fontSizeSigned,FontStyle.Regular);
-					GraphicsHelper.DrawString(g,strSigned,font,Brushes.Black,boundsSigned,HorizontalAlignment.Left);
+					SheetTextDrawing.DrawString(g,strSigned,font,Brushes.Black,boundsSigned,HorizontalAlignment.Left);
 					font.Dispose();
 				}
 				if(strSignedBy!="") {
 					Rectangle boundsSignedBy=new Rectangle(bounds.X+1,bounds.Y+bounds.Height-29,sigWidth-2,14);
 					using Font fontBy=new Font(fontName,(float)fontSizeSigned,FontStyle.Regular);
-					GraphicsHelper.DrawString(g,strSignedBy,fontBy,Brushes.Black,boundsSignedBy,HorizontalAlignment.Left);
+					SheetTextDrawing.DrawString(g,strSignedBy,fontBy,Brushes.Black,boundsSignedBy,HorizontalAlignment.Left);
 				}
 			}
 			else {
@@ -1112,12 +1112,12 @@ namespace OpenDentBusiness {
 				if(!string.IsNullOrEmpty(strSigned)) {//not a TreatmentPlan or PaymentPlan, FielValue.Length>0, and DateTimeSig.Year>1880
 					RectangleF boundsSigned=new RectangleF(field.XPos+1,field.YPos-_yPosPrint+field.Height-15,sigWidth-2,14);//Height 14 taken from FormSheetFillEdit
 					XFont xfont=new XFont(fontName,fontSizeSigned,XFontStyle.Regular);
-					GraphicsHelper.DrawStringX(gx,strSigned,xfont,Brushes.Black,boundsSigned,HorizontalAlignment.Left);
+					SheetTextDrawing.DrawStringX(gx,strSigned,xfont,Brushes.Black,boundsSigned,HorizontalAlignment.Left);
 				}
 				if(strSignedBy!="") {
 					RectangleF boundsSignedBy=new RectangleF(field.XPos+1,field.YPos-_yPosPrint+field.Height-29,sigWidth-2,14);
 					XFont xfontBy=new XFont(fontName,fontSizeSigned,XFontStyle.Regular);
-					GraphicsHelper.DrawStringX(gx,strSignedBy,xfontBy,Brushes.Black,boundsSignedBy,HorizontalAlignment.Left);
+					SheetTextDrawing.DrawStringX(gx,strSignedBy,xfontBy,Brushes.Black,boundsSignedBy,HorizontalAlignment.Left);
 				}
 			}
 			sigImage.Dispose();
@@ -1134,7 +1134,7 @@ namespace OpenDentBusiness {
 				if(field.ItemColor.ToArgb()!=Color.FromArgb(0).ToArgb()){
 					brushText=new SolidBrush(field.ItemColor);
 				}
-				boundsActual=GraphicsHelper.DrawString(g,field.FieldValue,font,brushText,bounds,field.TextAlign);
+				boundsActual=SheetTextDrawing.DrawString(g,field.FieldValue,font,brushText,bounds,field.TextAlign);
 				brushText?.Dispose();
 				font?.Dispose();
 			}
@@ -1168,7 +1168,7 @@ namespace OpenDentBusiness {
 				if(field.ItemColor.ToArgb()!=Color.FromArgb(0).ToArgb()){
 					xbrushText=new XSolidBrush(field.ItemColor);
 				}
-				boundsActual=GraphicsHelper.DrawStringX(gx,field.FieldValue,xfont,xbrushText,rect,field.TextAlign);
+				boundsActual=SheetTextDrawing.DrawStringX(gx,field.FieldValue,xfont,xbrushText,rect,field.TextAlign,field.FontName);
 				//xfont.Dispose();
 				//xfont=null;
 			}

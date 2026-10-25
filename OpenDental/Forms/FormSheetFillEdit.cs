@@ -1043,7 +1043,7 @@ namespace OpenDental {
 				if(SheetCur.SheetFields[i].FontIsBold) {
 					fontStyle=FontStyle.Bold;
 				}
-				using Font font=new Font(SheetCur.SheetFields[i].FontName,LayoutManager.UnscaleMS(SheetCur.SheetFields[i].FontSize),fontStyle);
+				using Font font=new Font(SheetFonts.GetFontNameForText(SheetCur.SheetFields[i].FontName,SheetCur.SheetFields[i].FieldValue),LayoutManager.UnscaleMS(SheetCur.SheetFields[i].FontSize),fontStyle);
 				Color colorText=SheetCur.SheetFields[i].ItemColor;
 				if(SheetCur.SheetFields[i].FieldType==SheetFieldType.InputField){
 					colorText=Color.Black;
@@ -1063,6 +1063,7 @@ namespace OpenDental {
 					}
 				}
 				using Brush brushText=new SolidBrush(colorText);
+				SheetTextDrawing.ApplyDirection(stringFormat,SheetCur.SheetFields[i].FieldValue);
 				g.DrawString(SheetCur.SheetFields[i].FieldValue,font,brushText,rectangle,stringFormat);
 				stringFormat?.Dispose();
 			}
@@ -1128,7 +1129,7 @@ namespace OpenDental {
 				//combobox has no font options like fontname, size, color, bold, or align
 				//We need the size of the text to scale with the height of the combobox. This is to match old behavior. Comboboxes have a default size when added, and we want it to look like 11 at that height.
 				//A static textbox field has a default font size of 11 and a height of 19. To create consistency with comboBoxes, we take the default height of the comboBox 19 and multiply it by 0.58 (rounded) = 11 font size.
-				using Font font=new Font(FontFamily.GenericSansSerif,SheetCur.SheetFields[i].Height*.58f);
+				using Font font=new Font(SheetFonts.GetFontNameForText(FontFamily.GenericSansSerif.Name,SheetFields.GetComboSelectedOption(SheetCur.SheetFields[i])),SheetCur.SheetFields[i].Height*.58f);
 				string str=SheetFields.GetComboSelectedOption(SheetCur.SheetFields[i]);
 				g.DrawString(str,font,Brushes.Black,rectangle);
 			}
@@ -1405,7 +1406,7 @@ namespace OpenDental {
 			//TextRenderer was added to C# so that we could draw to match the textbox perfectly if we wanted.
 			//But we need the other way around.  We don't want to be forced to use TextRenderer everywhere just so a temp textbox matches.
 			//The final solution will be to switch to WPF which is consistent for drawing and textboxes.
-			textBox.Font=new Font(sheetField.FontName,fontSize,style);
+			textBox.Font=new Font(SheetFonts.GetFontNameForText(sheetField.FontName,text),fontSize,style);
 			if(LayoutManager.Scale(sheetField.Height)<=textBox.Font.Height+5 && sheetField.GrowthBehavior==GrowthBehaviorEnum.None) {
 				textBox.Multiline=false;
 			}
@@ -1595,7 +1596,7 @@ namespace OpenDental {
 			if(sheetField.FontIsBold){
 				fontStyle=FontStyle.Bold;
 			}
-			Font font=new Font(sheetField.FontName,sheetField.FontSize,fontStyle);
+			Font font=new Font(SheetFonts.GetFontNameForText(sheetField.FontName,text),sheetField.FontSize,fontStyle);
 			//We're only allowed to measure 32 chars at a time
 			int cStart=0;//the starting idx of the group of 32 or less chars that we're about to measure
 			StringFormat stringFormat = new StringFormat();
@@ -1605,6 +1606,7 @@ namespace OpenDental {
 			if(sheetField.TextAlign==HorizontalAlignment.Center){
 				stringFormat.Alignment=StringAlignment.Center;
 			}
+			SheetTextDrawing.ApplyDirection(stringFormat,text);
 			while(true){
 				if(cStart>text.Length-1){//example 5>4
 					break;
