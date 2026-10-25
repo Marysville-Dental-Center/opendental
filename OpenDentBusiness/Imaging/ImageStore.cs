@@ -511,8 +511,9 @@ namespace OpenDentBusiness {
 			}
 		}
 
-		/// <summary>Imports any document, not just images.  Also handles dicom by calculating initial windowing.  Also processes Exif rotation info on jpg files.</summary>
-		public static Document Import(string pathImportFrom,long docCategory,Patient pat) {
+		/// <summary>Imports any document, not just images.  Also handles dicom by calculating initial windowing.  Also processes Exif rotation info on jpg files.
+		/// Set doAvoidOverwrite to give the new file a numbered suffix when a file of its name is already in the patient's folder; otherwise the import fails then.</summary>
+		public static Document Import(string pathImportFrom,long docCategory,Patient pat,bool doAvoidOverwrite=false) {
 			string patFolder="";
 			if(PrefC.AtoZfolderUsed==DataStorageType.LocalAtoZ || CloudStorage.IsCloudStorage)  {
 				patFolder=GetPatientFolder(pat,GetPreferredAtoZpath());
@@ -568,6 +569,9 @@ namespace OpenDentBusiness {
 			}
 			doc.DocCategory = docCategory;
 			doc=Documents.InsertAndGet(doc,pat);//this assigns a filename and saves to db
+			if(doAvoidOverwrite) {
+				SetFileNameNotInFolder(doc,patFolder);
+			}
 			try {
 				SaveDocument(doc,pathImportFrom,patFolder);//Makes log entry
 				if(PrefC.AtoZfolderUsed==DataStorageType.InDatabase) {
@@ -579,6 +583,24 @@ namespace OpenDentBusiness {
 				throw ex;
 			}
 			return doc;
+		}
+
+		///<summary>For Import with doAvoidOverwrite (the Base64 Documents tool, backlog package B-DBM): when a file named doc.FileName is already in
+		///patFolder, or another document of the patient has that name, renames doc to name_2.ext, name_3.ext and so on, and saves the new name.
+		///Does nothing for in-database storage (blank patFolder).</summary>
+		private static void SetFileNameNotInFolder(Document doc,string patFolder) {
+			if(string.IsNullOrEmpty(patFolder)) {
+				return;
+			}
+			List<string> listFileNamesUsed=Documents.GetAllWithPat(doc.PatNum).Where(x => x.DocNum!=doc.DocNum).Select(x => x.FileName).ToList();
+			string fileName=doc.FileName;
+			for(int i=2;FileAtoZ.Exists(FileAtoZ.CombinePaths(patFolder,fileName)) || listFileNamesUsed.Contains(fileName);i++) {
+				fileName=Path.GetFileNameWithoutExtension(doc.FileName)+"_"+i+Path.GetExtension(doc.FileName);
+			}
+			if(fileName!=doc.FileName) {
+				doc.FileName=fileName;
+				Documents.Update(doc);
+			}
 		}
 
 		/// <summary>Saves to AtoZ folder, Cloud, or to db.  Saves image as a jpg.  Compression will differ depending on imageType. Throws exception if it can't save. doPrintHeading is set to true for ToothChart and radiographs.</summary>
