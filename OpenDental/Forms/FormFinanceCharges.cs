@@ -15,6 +15,9 @@ namespace OpenDental{
 		private List<Provider> _listProviders;
 		private int _chargesAdded=0;
 		private int _chargesProcessed=0;
+		///<summary>Total of the charges created by the current run, for its Audit Trail entry. Charges are added on several threads; guarded by _lockCharges.</summary>
+		private double _chargesTotal=0;
+		private readonly object _lockCharges=new object();
 
 		///<summary></summary>
 		public FormFinanceCharges(){
@@ -24,6 +27,7 @@ namespace OpenDental{
 		}
 
 		private void FormFinanceCharges_Load(object sender, System.EventArgs e) {
+			FinanceChargeAudit.LogOpened();
 			if(PrefC.GetLong(PrefName.FinanceChargeAdjustmentType)==0){
 				MsgBox.Show(this,"No finance charge adjustment type has been set.  Please go to Setup | Account to fix this.");
 				DialogResult=DialogResult.Cancel;
@@ -313,6 +317,11 @@ namespace OpenDental{
 				}
 			}
 			string chargeType=(radioFinanceCharge.Checked?"Finance":"Billing");//For display only
+			_chargesAdded=0;//Counts are per run, so a run after a cancelled one reports and logs only its own charges.
+			_chargesProcessed=0;
+			lock(_lockCharges) {
+				_chargesTotal=0;
+			}
 			List<PatAging> listPatAgings=GetFinanceBillingAgingList();//Get the Aging List for Finance and Billing
 			long adjType=PrefC.GetLong(PrefName.FinanceChargeAdjustmentType);
 			List<Adjustment> listAdjustments = new List<Adjustment>();
@@ -346,9 +355,11 @@ namespace OpenDental{
 			progressOD.StartingMessage=Lan.g(this,"Gathering patients with aged balances")+"...";
 			progressOD.ShowDialog();
 			if(progressOD.IsCancelled) {
+				FinanceChargeAudit.LogRun(GetFinanceChargeRun(date,isCancelled:true));
 				MessageBox.Show(Lan.g(this,$"{_chargesAdded} {chargeType} charges added out of {listPatAgings.Count}"));
 				return;
 			}
+			FinanceChargeAudit.LogRun(GetFinanceChargeRun(date,isCancelled:false));
 			if(radioFinanceCharge.Checked) {
 				if(Prefs.UpdateString(PrefName.FinanceChargeAPR,textAPR.Text) 
 					| Prefs.UpdateString(PrefName.FinanceChargeLastRun,POut.Date(date,false))
@@ -427,7 +438,42 @@ namespace OpenDental{
 					return; 
 				}
 			}
-			_chargesAdded++;
+			System.Threading.Interlocked.Increment(ref _chargesAdded);
+		}
+
+		///<summary>The settings and result of the run, for its Audit Trail entry (26.1).</summary>
+		private FinanceChargeRun GetFinanceChargeRun(DateTime date,bool isCancelled) {
+			FinanceChargeRun financeChargeRun=new FinanceChargeRun();
+			financeChargeRun.IsBillingCharge=radioBillingCharge.Checked;
+			financeChargeRun.DateCharge=date;
+			financeChargeRun.Apr=PIn.Double(textAPR.Text);
+			financeChargeRun.AtLeast=PIn.Double(textAtLeast.Text);
+			financeChargeRun.OnlyIfOver=PIn.Double(textOver.Text);
+			financeChargeRun.IsCompound=checkCompound.Checked;
+			financeChargeRun.BillingChargeAmount=PIn.Double(textBillingCharge.Text);
+			financeChargeRun.DaysOver=90;
+			if(radio30.Checked) {
+				financeChargeRun.DaysOver=30;
+			}
+			else if(radio60.Checked) {
+				financeChargeRun.DaysOver=60;
+			}
+			financeChargeRun.ListBillingTypes=listBillType.SelectedIndices.Select(x => _listDefsBillingType[x].ItemName).ToList();
+			if(radioSpecificProv.Checked) {
+				financeChargeRun.ProviderAbbr=Providers.GetAbbr(comboSpecificProv.GetSelectedProvNum());
+			}
+			financeChargeRun.CountCharges=_chargesAdded;
+			lock(_lockCharges) {
+				financeChargeRun.TotalAmount=_chargesTotal;
+			}
+			financeChargeRun.IsCancelled=isCancelled;
+			return financeChargeRun;
+		}
+
+		private void AddToChargesTotal(double amount) {
+			lock(_lockCharges) {
+				_chargesTotal+=amount;
+			}
 		}
 
 		/// <summary>Returns true if a finance charge is added, false if one is not added</summary>
@@ -458,6 +504,7 @@ namespace OpenDental{
 			adjustment.AdjAmt=Math.Max(adjustment.AdjAmt,PIn.Double(atLeast));
 			adjustment.ProvNum = priProv;
 			Adjustments.Insert(adjustment);
+			AddToChargesTotal(adjustment.AdjAmt);
 			TsiTransLogs.CheckAndInsertLogsIfAdjTypeExcluded(adjustment);
 			Signalods.SetInvalid(InvalidType.BillingList);
 			return true;
@@ -474,6 +521,7 @@ namespace OpenDental{
 			AdjustmentCur.AdjAmt = PIn.Double(billingChargeAmount);
 			AdjustmentCur.ProvNum = priProv;
 			Adjustments.Insert(AdjustmentCur);
+			AddToChargesTotal(AdjustmentCur.AdjAmt);
 			TsiTransLogs.CheckAndInsertLogsIfAdjTypeExcluded(AdjustmentCur);
 			Signalods.SetInvalid(InvalidType.BillingList);
 		}

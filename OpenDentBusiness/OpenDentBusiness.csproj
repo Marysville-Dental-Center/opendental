@@ -1230,6 +1230,7 @@
     <Compile Include="Data Interface\Cdcrecs.cs" />
     <Compile Include="Data Interface\CentralConnections.cs" />
     <Compile Include="Data Interface\ChartViews.cs" />
+    <Compile Include="Misc\Shell26_1.cs" />
     <Compile Include="Data Interface\CodeSystems.cs" />
     <Compile Include="Data Interface\Cpts.cs" />
     <Compile Include="Data Interface\Cvxs.cs" />

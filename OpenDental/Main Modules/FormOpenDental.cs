@@ -257,6 +257,7 @@ namespace OpenDental{
 					return;
 				}
 				_patNumCur=value;
+				PatientSelectedAudit.LogIfEnabled(value);//Patient Selected audit entry (25.4), when the office turned it on.
 				ODEvent.Fire(ODEventType.Patient,value);
 			}
 		}
@@ -5794,8 +5795,7 @@ namespace OpenDental{
 				return;
 			}
 			using FormFinanceCharges formFinanceCharges=new FormFinanceCharges();
-			formFinanceCharges.ShowDialog();
-			SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,"Run Finance Charges");
+			formFinanceCharges.ShowDialog();//The window writes its own Audit Trail entries when it opens and for each run (26.1).
 		}
 
 		private void menuItemCCRecurring_Click(object sender,EventArgs e) {
