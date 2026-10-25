@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using System.Text;
 using ImagingDeviceManager.Imaging;
 
 namespace ImagingDeviceManager.TwainProtocol {
@@ -54,6 +55,24 @@ namespace ImagingDeviceManager.TwainProtocol {
 		public ITwainMemory GlobalMemory { get; set; }=GlobalTwainMemory.Instance;
 		///<summary>The memory functions in use while the DSM is open (state 3 and above), or null. See ITwainMemory.</summary>
 		public ITwainMemory Memory => _memory;
+		///<summary>True when the open source was opened by product name (OpenSource(name): the Mount/Acquire device path), false for the
+		///default source (scans), which keeps its earlier behaviour.</summary>
+		public bool IsOpenedByName { get; private set; }
+		///<summary>The condition code DAT_STATUS returned right after the most recent TWRC_FAILURE. Every failure is followed at once by
+		///that read, because the read clears the code in the source (TWAIN 2.4 p.7-99), so a later read would describe something else.
+		///TWCC_BUMMER when the status could not be read.</summary>
+		public ushort LastConditionCode { get; private set; }
+		///<summary>Why the source ended the last session with MSG_CLOSEDSREQ: the condition code DAT_STATUS on the source returned after
+		///the notification and before MSG_DISABLEDS. TWCC_SUCCESS is a plain cancel; a source may report its own codes (0x8000 and up)
+		///for failures, and keeps the code until a disable succeeds (twain-contract 1.1 section 8). Null when the last enable ended
+		///another way, or the status could not be read. Reset by each enable.</summary>
+		public ushort? EndConditionCode { get; private set; }
+		///<summary>The source's text for EndConditionCode from DAT_STATUSUTF8, cut at the first NUL. Null for TWCC_SUCCESS, and when the
+		///source or the DSM does not provide one (DAT_STATUSUTF8 is optional); the code alone is then the reason.</summary>
+		public string EndConditionText { get; private set; }
+		///<summary>A line for the capture log, raised on the session's thread: tolerated failures, refusals, contract deviations and
+		///images handed to the drain sink. Handlers must not throw.</summary>
+		public event Action<string> Logged;
 
 		public TwainSession(DsmLoader dsmLoader) {
 			_dsmLoader=dsmLoader;
@@ -73,10 +92,43 @@ namespace ImagingDeviceManager.TwainProtocol {
 			ErrorText=errorText??"";
 		}
 
-		///<summary>Reads the condition code after a failed triplet. Pass toSource=false for triplets sent to the DSM.</summary>
-		private ushort GetConditionCode(bool toSource) {
+		private void Log(string text) {
+			try {
+				Logged?.Invoke(text);
+			}
+			catch {
+				//Logging never changes what the session does.
+			}
+		}
+
+		///<summary>"0x8002", the form condition codes and capability numbers take in log lines and notices.</summary>
+		public static string ToHex(int value) {
+			return "0x"+value.ToString("X4");
+		}
+
+		///<summary>Sends a triplet to the open source. After TWRC_FAILURE it reads the condition code at once (LastConditionCode).</summary>
+		private ushort SourceEntry(uint dg,ushort dat,ushort msg,IntPtr data) {
+			ushort rc=_dsm.Entry(_pAppIdentity,_pSourceIdentity,dg,dat,msg,data);
+			if(rc==Tw.TWRC_FAILURE) {
+				LastConditionCode=ReadStatus(true)??Tw.TWCC_BUMMER;
+			}
+			return rc;
+		}
+
+		///<summary>Sends a DG_CONTROL triplet to the DSM itself. After TWRC_FAILURE it reads the DSM's condition code at once.</summary>
+		private ushort DsmEntry(ushort dat,ushort msg,IntPtr data) {
+			ushort rc=_dsm.Entry(_pAppIdentity,IntPtr.Zero,Tw.DG_CONTROL,dat,msg,data);
+			if(rc==Tw.TWRC_FAILURE) {
+				LastConditionCode=ReadStatus(false)??Tw.TWCC_BUMMER;
+			}
+			return rc;
+		}
+
+		///<summary>DG_CONTROL / DAT_STATUS / MSG_GET on the open source (toSource, from state 4) or on the DSM. The read clears the code.
+		///Null when there is nothing to ask or the call fails.</summary>
+		private ushort? ReadStatus(bool toSource) {
 			if(_dsm==null || State<3) {
-				return Tw.TWCC_BUMMER;
+				return null;
 			}
 			IntPtr pStatus=Marshal.AllocHGlobal(Marshal.SizeOf(typeof(TW_STATUS)));
 			try {
@@ -84,7 +136,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 				IntPtr dest=(toSource && State>=4) ? _pSourceIdentity : IntPtr.Zero;
 				ushort rc=_dsm.Entry(_pAppIdentity,dest,Tw.DG_CONTROL,Tw.DAT_STATUS,Tw.MSG_GET,pStatus);
 				if(rc!=Tw.TWRC_SUCCESS) {
-					return Tw.TWCC_BUMMER;
+					return null;
 				}
 				TW_STATUS status=(TW_STATUS)Marshal.PtrToStructure(pStatus,typeof(TW_STATUS));
 				return status.ConditionCode;
@@ -92,6 +144,83 @@ namespace ImagingDeviceManager.TwainProtocol {
 			finally {
 				Marshal.FreeHGlobal(pStatus);
 			}
+		}
+
+		///<summary>After MSG_CLOSEDSREQ and before MSG_DISABLEDS: reads why the session ended (EndConditionCode) and, for any code other
+		///than TWCC_SUCCESS, the source's text for it (EndConditionText). A notification carries no condition code, so this is the only
+		///way to tell a failure from a cancel (design 7.1, twain-contract 1.1 section 8).</summary>
+		private void ReadEndCondition() {
+			EndConditionCode=ReadStatus(true);
+			EndConditionText=null;
+			if(EndConditionCode==null) {
+				Log("The source ended the session; its status could not be read.");
+				return;
+			}
+			if(EndConditionCode.Value==Tw.TWCC_SUCCESS) {
+				return;
+			}
+			EndConditionText=TryGetStatusText(EndConditionCode.Value);
+			Log("\""+SourceName+"\" ended the session with condition code "+ToHex(EndConditionCode.Value)
+				+(EndConditionText==null ? " (no text from DAT_STATUSUTF8)." : ": "+EndConditionText));
+		}
+
+		///<summary>DG_CONTROL / DAT_STATUSUTF8 / MSG_GET on the source for conditionCode. The handle it returns is freed like every other
+		///handle from the source (ITwainMemory). Null when the source or the DSM does not support the triplet (TWCC_BADPROTOCOL from
+		///twain-contract 1.0 sources, or a legacy twain_32.dll that does not pass it through), or the text is empty.</summary>
+		private string TryGetStatusText(ushort conditionCode) {
+			IntPtr pStatusUtf8=Marshal.AllocHGlobal(Marshal.SizeOf(typeof(TW_STATUSUTF8)));
+			try {
+				TW_STATUSUTF8 statusUtf8=new TW_STATUSUTF8();
+				statusUtf8.Status.ConditionCode=conditionCode;
+				Marshal.StructureToPtr(statusUtf8,pStatusUtf8,false);
+				if(SourceEntry(Tw.DG_CONTROL,Tw.DAT_STATUSUTF8,Tw.MSG_GET,pStatusUtf8)!=Tw.TWRC_SUCCESS) {
+					return null;
+				}
+				statusUtf8=(TW_STATUSUTF8)Marshal.PtrToStructure(pStatusUtf8,typeof(TW_STATUSUTF8));
+				if(statusUtf8.UTF8string==IntPtr.Zero) {
+					return null;
+				}
+				try {
+					return ReadUtf8Handle(statusUtf8.UTF8string,statusUtf8.Size);
+				}
+				finally {
+					_memory.Free(statusUtf8.UTF8string);
+				}
+			}
+			catch {
+				return null;
+			}
+			finally {
+				Marshal.FreeHGlobal(pStatusUtf8);
+			}
+		}
+
+		///<summary>Text of at most size bytes (and at most 64 KB, or the block size when the allocator knows it) in a handle, cut at the
+		///first NUL and trimmed. Null when empty.</summary>
+		private string ReadUtf8Handle(IntPtr handle,uint size) {
+			const int sizeMax=64*1024;
+			long length=Math.Min(size,(uint)sizeMax);
+			long sizeBlock=_memory.GetSize(handle);
+			if(sizeBlock>0) {
+				length=Math.Min(length,sizeBlock);
+			}
+			if(length<=0) {
+				return null;
+			}
+			IntPtr pText=_memory.Lock(handle);
+			if(pText==IntPtr.Zero) {
+				return null;
+			}
+			byte[] bytes=new byte[length];
+			try {
+				Marshal.Copy(pText,bytes,0,bytes.Length);
+			}
+			finally {
+				_memory.Unlock(handle);
+			}
+			int lengthText=Array.IndexOf(bytes,(byte)0);
+			string text=Encoding.UTF8.GetString(bytes,0,lengthText<0 ? bytes.Length : lengthText).Trim();
+			return text=="" ? null : text;
 		}
 
 		public static string GetConditionText(ushort conditionCode) {
@@ -128,9 +257,9 @@ namespace ImagingDeviceManager.TwainProtocol {
 			return errorCodeDefault;
 		}
 
-		private void SetErrorFromCondition(EZTwainErrorCode errorCodeDefault,string prefix,bool toSource) {
-			ushort conditionCode=GetConditionCode(toSource);
-			SetError(MapConditionCode(conditionCode,errorCodeDefault),prefix+" "+GetConditionText(conditionCode));
+		///<summary>Sets the error from LastConditionCode, which the failed triplet just read.</summary>
+		private void SetErrorFromCondition(EZTwainErrorCode errorCodeDefault,string prefix) {
+			SetError(MapConditionCode(LastConditionCode,errorCodeDefault),prefix+" "+GetConditionText(LastConditionCode));
 		}
 		#endregion Errors
 
@@ -194,7 +323,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 			IntPtr pHwnd=Marshal.AllocHGlobal(IntPtr.Size);
 			try {
 				Marshal.WriteIntPtr(pHwnd,_proxyWindow.Handle);
-				ushort rc=_dsm.Entry(_pAppIdentity,IntPtr.Zero,Tw.DG_CONTROL,Tw.DAT_PARENT,Tw.MSG_OPENDSM,pHwnd);
+				ushort rc=DsmEntry(Tw.DAT_PARENT,Tw.MSG_OPENDSM,pHwnd);
 				if(rc!=Tw.TWRC_SUCCESS) {
 					SetError(EZTwainErrorCode.EZTEC_OPEN_DSM,"The TWAIN Data Source Manager ("+_dsm.LibraryName+") could not be opened.");
 					UnloadDsm();
@@ -221,7 +350,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 				TW_ENTRYPOINT entryPoint=new TW_ENTRYPOINT();
 				entryPoint.Size=(uint)Marshal.SizeOf(typeof(TW_ENTRYPOINT));
 				Marshal.StructureToPtr(entryPoint,pEntryPoint,false);
-				ushort rc=_dsm.Entry(_pAppIdentity,IntPtr.Zero,Tw.DG_CONTROL,Tw.DAT_ENTRYPOINT,Tw.MSG_GET,pEntryPoint);
+				ushort rc=DsmEntry(Tw.DAT_ENTRYPOINT,Tw.MSG_GET,pEntryPoint);
 				if(rc!=Tw.TWRC_SUCCESS) {
 					return null;
 				}
@@ -245,7 +374,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 				IntPtr pHwnd=Marshal.AllocHGlobal(IntPtr.Size);
 				try {
 					Marshal.WriteIntPtr(pHwnd,_proxyWindow==null ? IntPtr.Zero : _proxyWindow.Handle);
-					_dsm.Entry(_pAppIdentity,IntPtr.Zero,Tw.DG_CONTROL,Tw.DAT_PARENT,Tw.MSG_CLOSEDSM,pHwnd);
+					DsmEntry(Tw.DAT_PARENT,Tw.MSG_CLOSEDSM,pHwnd);
 				}
 				finally {
 					Marshal.FreeHGlobal(pHwnd);
@@ -295,13 +424,13 @@ namespace ImagingDeviceManager.TwainProtocol {
 			IntPtr pIdentity=Marshal.AllocHGlobal(Marshal.SizeOf(typeof(TW_IDENTITY)));
 			try {
 				WriteIdentity(pIdentity,new TW_IDENTITY());
-				ushort rc=_dsm.Entry(_pAppIdentity,IntPtr.Zero,Tw.DG_CONTROL,Tw.DAT_IDENTITY,Tw.MSG_GETFIRST,pIdentity);
+				ushort rc=DsmEntry(Tw.DAT_IDENTITY,Tw.MSG_GETFIRST,pIdentity);
 				while(rc==Tw.TWRC_SUCCESS) {
 					listIdentities.Add(ReadIdentity(pIdentity));
 					if(listIdentities.Count>1000) {
 						break;//Protect against a DSM that never ends the list.
 					}
-					rc=_dsm.Entry(_pAppIdentity,IntPtr.Zero,Tw.DG_CONTROL,Tw.DAT_IDENTITY,Tw.MSG_GETNEXT,pIdentity);
+					rc=DsmEntry(Tw.DAT_IDENTITY,Tw.MSG_GETNEXT,pIdentity);
 				}
 			}
 			finally {
@@ -323,7 +452,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 				_proxyWindow.AttachTo(hwnd);
 				hwndDisabled=DisableRootWindow(hwnd);
 				WriteIdentity(pIdentity,new TW_IDENTITY());
-				ushort rc=_dsm.Entry(_pAppIdentity,IntPtr.Zero,Tw.DG_CONTROL,Tw.DAT_IDENTITY,Tw.MSG_USERSELECT,pIdentity);
+				ushort rc=DsmEntry(Tw.DAT_IDENTITY,Tw.MSG_USERSELECT,pIdentity);
 				if(rc==Tw.TWRC_SUCCESS) {
 					return true;
 				}
@@ -331,7 +460,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 					SetError(EZTwainErrorCode.EZTEC_USER_CANCEL,"No scanner was selected.");
 					return false;
 				}
-				SetErrorFromCondition(EZTwainErrorCode.EZTEC_DSM_FAILURE,"The scanner selection dialog could not be shown.",false);
+				SetErrorFromCondition(EZTwainErrorCode.EZTEC_DSM_FAILURE,"The scanner selection dialog could not be shown.");
 				return false;
 			}
 			finally {
@@ -364,7 +493,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 			bool isDefault=string.IsNullOrEmpty(sourceName);
 			if(isDefault) {
 				WriteIdentity(_pSourceIdentity,new TW_IDENTITY());
-				ushort rcDefault=_dsm.Entry(_pAppIdentity,IntPtr.Zero,Tw.DG_CONTROL,Tw.DAT_IDENTITY,Tw.MSG_GETDEFAULT,_pSourceIdentity);
+				ushort rcDefault=DsmEntry(Tw.DAT_IDENTITY,Tw.MSG_GETDEFAULT,_pSourceIdentity);
 				if(rcDefault!=Tw.TWRC_SUCCESS) {
 					SetError(EZTwainErrorCode.EZTEC_OPEN_DEFAULT_DS,"No default scanner is set, or no TWAIN scanner driver is installed.");
 					CloseDsm();
@@ -380,16 +509,17 @@ namespace ImagingDeviceManager.TwainProtocol {
 				}
 				WriteIdentity(_pSourceIdentity,identityFound.Value);
 			}
-			ushort rc=_dsm.Entry(_pAppIdentity,IntPtr.Zero,Tw.DG_CONTROL,Tw.DAT_IDENTITY,Tw.MSG_OPENDS,_pSourceIdentity);
+			ushort rc=DsmEntry(Tw.DAT_IDENTITY,Tw.MSG_OPENDS,_pSourceIdentity);
 			if(rc!=Tw.TWRC_SUCCESS) {
 				string name=ReadIdentity(_pSourceIdentity).ProductName;
 				SetErrorFromCondition(isDefault ? EZTwainErrorCode.EZTEC_OPEN_DEFAULT_DS : EZTwainErrorCode.EZTEC_OPEN_DS,
-					"The scanner \""+name+"\" could not be opened.",false);
+					"The scanner \""+name+"\" could not be opened.");
 				CloseDsm();
 				return false;
 			}
 			State=4;
 			SourceName=ReadIdentity(_pSourceIdentity).ProductName??"";
+			IsOpenedByName=!isDefault;
 			_xferMech=Tw.TWSX_NATIVE;
 			_isVanilla=false;
 			return true;
@@ -429,10 +559,11 @@ namespace ImagingDeviceManager.TwainProtocol {
 				DisableSource();
 			}
 			if(State==4) {
-				_dsm.Entry(_pAppIdentity,IntPtr.Zero,Tw.DG_CONTROL,Tw.DAT_IDENTITY,Tw.MSG_CLOSEDS,_pSourceIdentity);
+				DsmEntry(Tw.DAT_IDENTITY,Tw.MSG_CLOSEDS,_pSourceIdentity);
 				State=3;
 			}
 			SourceName="";
+			IsOpenedByName=false;
 			MultiTransfer=false;
 			_xferMech=Tw.TWSX_NATIVE;
 			if(State==3) {
@@ -477,11 +608,11 @@ namespace ImagingDeviceManager.TwainProtocol {
 				_memory.Unlock(hContainer);
 				TW_CAPABILITY twCapability=new TW_CAPABILITY { Cap=capability,ConType=Tw.TWON_ONEVALUE,hContainer=hContainer };
 				Marshal.StructureToPtr(twCapability,pCapability,false);
-				ushort rc=_dsm.Entry(_pAppIdentity,_pSourceIdentity,Tw.DG_CONTROL,Tw.DAT_CAPABILITY,Tw.MSG_SET,pCapability);
+				ushort rc=SourceEntry(Tw.DG_CONTROL,Tw.DAT_CAPABILITY,Tw.MSG_SET,pCapability);
 				if(rc==Tw.TWRC_SUCCESS || rc==Tw.TWRC_CHECKSTATUS) {
 					return true;
 				}
-				SetErrorFromCondition(EZTwainErrorCode.EZTEC_CAP_SET,"The scanner did not accept a setting (capability 0x"+capability.ToString("X4")+").",true);
+				SetErrorFromCondition(EZTwainErrorCode.EZTEC_CAP_SET,"The scanner did not accept a setting (capability 0x"+capability.ToString("X4")+").");
 				return false;
 			}
 			finally {
@@ -502,7 +633,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 			try {
 				TW_CAPABILITY twCapability=new TW_CAPABILITY { Cap=capability,ConType=Tw.TWON_DONTCARE16,hContainer=IntPtr.Zero };
 				Marshal.StructureToPtr(twCapability,pCapability,false);
-				ushort rc=_dsm.Entry(_pAppIdentity,_pSourceIdentity,Tw.DG_CONTROL,Tw.DAT_CAPABILITY,Tw.MSG_GETCURRENT,pCapability);
+				ushort rc=SourceEntry(Tw.DG_CONTROL,Tw.DAT_CAPABILITY,Tw.MSG_GETCURRENT,pCapability);
 				if(rc!=Tw.TWRC_SUCCESS) {
 					return false;
 				}
@@ -752,6 +883,8 @@ namespace ImagingDeviceManager.TwainProtocol {
 			}
 			int pixelFlavor;
 			_isVanilla=TryGetCapabilityCurrent(Tw.ICAP_PIXELFLAVOR,out pixelFlavor) && pixelFlavor==Tw.TWPF_VANILLA;
+			EndConditionCode=null;
+			EndConditionText=null;
 			_proxyWindow.AttachTo(hwnd);
 			IntPtr hwndDisabled=DisableRootWindow(hwnd);
 			ushort dsMessage;
@@ -769,14 +902,26 @@ namespace ImagingDeviceManager.TwainProtocol {
 				State=6;
 				return true;
 			}
+			if(dsMessage==Tw.MSG_CLOSEDSREQ) {
+				ReadEndCondition();//Before the disable: a successful disable clears the end reason in the source.
+			}
 			if(State==5) {
 				DisableSource();
 			}
 			if(dsMessage==Tw.MSG_CLOSEDSREQ) {
-				SetError(EZTwainErrorCode.EZTEC_USER_CANCEL,"The scan was cancelled.");
+				SetError(EZTwainErrorCode.EZTEC_USER_CANCEL,GetCloseRequestText());
 			}
 			//Otherwise RunMessageLoop already set the error (timeout or program closing).
 			return false;
+		}
+
+		///<summary>ErrorText after MSG_CLOSEDSREQ. The error code stays EZTEC_USER_CANCEL, so callers end the series as they do on a
+		///cancel; on the by-name path the text names the reason when the source reported one.</summary>
+		private string GetCloseRequestText() {
+			if(!IsOpenedByName || EndConditionCode==null || EndConditionCode.Value==Tw.TWCC_SUCCESS) {
+				return "The scan was cancelled.";
+			}
+			return "The device's software closed without an image: "+(EndConditionText??"condition code "+ToHex(EndConditionCode.Value))+".";
 		}
 
 		///<summary>Sets a capability, keeping the error code clear if the source refuses. Returns whether it was accepted.</summary>
@@ -796,7 +941,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 				userInterface.ModalUI=0;
 				userInterface.hParent=_proxyWindow.Handle;
 				Marshal.StructureToPtr(userInterface,pUserInterface,false);
-				ushort rc=_dsm.Entry(_pAppIdentity,_pSourceIdentity,Tw.DG_CONTROL,Tw.DAT_USERINTERFACE,Tw.MSG_ENABLEDS,pUserInterface);
+				ushort rc=SourceEntry(Tw.DG_CONTROL,Tw.DAT_USERINTERFACE,Tw.MSG_ENABLEDS,pUserInterface);
 				if(rc==Tw.TWRC_SUCCESS || rc==Tw.TWRC_CHECKSTATUS) {//CHECKSTATUS: the source shows its dialog even though it was asked not to.
 					State=5;
 					return true;
@@ -805,7 +950,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 					SetError(EZTwainErrorCode.EZTEC_USER_CANCEL,"The scan was cancelled.");
 					return false;
 				}
-				SetErrorFromCondition(EZTwainErrorCode.EZTEC_ENABLE_FAILED,"The scanner could not be started.",true);
+				SetErrorFromCondition(EZTwainErrorCode.EZTEC_ENABLE_FAILED,"The scanner could not be started.");
 				return false;
 			}
 			finally {
@@ -820,7 +965,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 				userInterface.ShowUI=(ushort)(HideUI ? 0 : 1);
 				userInterface.hParent=_proxyWindow==null ? IntPtr.Zero : _proxyWindow.Handle;
 				Marshal.StructureToPtr(userInterface,pUserInterface,false);
-				_dsm.Entry(_pAppIdentity,_pSourceIdentity,Tw.DG_CONTROL,Tw.DAT_USERINTERFACE,Tw.MSG_DISABLEDS,pUserInterface);
+				SourceEntry(Tw.DG_CONTROL,Tw.DAT_USERINTERFACE,Tw.MSG_DISABLEDS,pUserInterface);
 			}
 			finally {
 				Marshal.FreeHGlobal(pUserInterface);
@@ -837,13 +982,13 @@ namespace ImagingDeviceManager.TwainProtocol {
 			try {
 				Marshal.StructureToPtr(new TW_PENDINGXFERS(),pPending,false);
 				if(State==7) {
-					_dsm.Entry(_pAppIdentity,_pSourceIdentity,Tw.DG_CONTROL,Tw.DAT_PENDINGXFERS,Tw.MSG_ENDXFER,pPending);
+					SourceEntry(Tw.DG_CONTROL,Tw.DAT_PENDINGXFERS,Tw.MSG_ENDXFER,pPending);
 					TW_PENDINGXFERS pending=(TW_PENDINGXFERS)Marshal.PtrToStructure(pPending,typeof(TW_PENDINGXFERS));
 					State=pending.Count==0 ? 5 : 6;
 				}
 				if(State==6) {
 					Marshal.StructureToPtr(new TW_PENDINGXFERS(),pPending,false);
-					_dsm.Entry(_pAppIdentity,_pSourceIdentity,Tw.DG_CONTROL,Tw.DAT_PENDINGXFERS,Tw.MSG_RESET,pPending);
+					SourceEntry(Tw.DG_CONTROL,Tw.DAT_PENDINGXFERS,Tw.MSG_RESET,pPending);
 					State=5;
 				}
 			}
@@ -903,7 +1048,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 					}
 					TW_EVENT twEvent=new TW_EVENT { pEvent=pMsg,TWMessage=Tw.MSG_NULL };
 					Marshal.StructureToPtr(twEvent,pEvent,false);
-					ushort rc=_dsm.Entry(_pAppIdentity,_pSourceIdentity,Tw.DG_CONTROL,Tw.DAT_EVENT,Tw.MSG_PROCESSEVENT,pEvent);
+					ushort rc=SourceEntry(Tw.DG_CONTROL,Tw.DAT_EVENT,Tw.MSG_PROCESSEVENT,pEvent);
 					twEvent=(TW_EVENT)Marshal.PtrToStructure(pEvent,typeof(TW_EVENT));
 					if(twEvent.TWMessage==Tw.MSG_XFERREADY || twEvent.TWMessage==Tw.MSG_CLOSEDSREQ) {
 						return twEvent.TWMessage;
@@ -912,7 +1057,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 						//Normal answers are DSEVENT or NOTDSEVENT. A source that keeps saying it is not open (or not enabled)
 						//is gone; without this check the program would wait forever with its window disabled. Other failures
 						//are ignored because some sources answer FAILURE for messages that are not theirs.
-						ushort conditionCode=GetConditionCode(true);
+						ushort conditionCode=LastConditionCode;
 						if(conditionCode==Tw.TWCC_BADDEST || conditionCode==Tw.TWCC_NODS || conditionCode==Tw.TWCC_SEQERROR) {
 							countFailures++;
 						}
@@ -999,7 +1144,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 			try {
 				imageInfo.BitsPerSample=new short[8];
 				Marshal.StructureToPtr(imageInfo,pImageInfo,false);
-				ushort rc=_dsm.Entry(_pAppIdentity,_pSourceIdentity,Tw.DG_IMAGE,Tw.DAT_IMAGEINFO,Tw.MSG_GET,pImageInfo);
+				ushort rc=SourceEntry(Tw.DG_IMAGE,Tw.DAT_IMAGEINFO,Tw.MSG_GET,pImageInfo);
 				if(rc!=Tw.TWRC_SUCCESS) {
 					return false;
 				}
@@ -1016,7 +1161,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 			IntPtr pHandle=Marshal.AllocHGlobal(IntPtr.Size);
 			try {
 				Marshal.WriteIntPtr(pHandle,IntPtr.Zero);
-				ushort rc=_dsm.Entry(_pAppIdentity,_pSourceIdentity,Tw.DG_IMAGE,Tw.DAT_IMAGENATIVEXFER,Tw.MSG_GET,pHandle);
+				ushort rc=SourceEntry(Tw.DG_IMAGE,Tw.DAT_IMAGENATIVEXFER,Tw.MSG_GET,pHandle);
 				IntPtr hDib=Marshal.ReadIntPtr(pHandle);
 				if(rc==Tw.TWRC_XFERDONE) {
 					State=7;
@@ -1043,7 +1188,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 					State=7;
 					return TransferOutcome.Cancelled;
 				}
-				SetErrorFromCondition(EZTwainErrorCode.EZTEC_XFER_FAILURE,"The image transfer from the scanner failed.",true);
+				SetErrorFromCondition(EZTwainErrorCode.EZTEC_XFER_FAILURE,"The image transfer from the scanner failed.");
 				return TransferOutcome.Failed;
 			}
 			finally {
@@ -1101,7 +1246,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 					xfer.Memory.Length=(uint)bufferSize;
 					xfer.Memory.TheMem=pBuffer;
 					Marshal.StructureToPtr(xfer,pXfer,false);
-					ushort rc=_dsm.Entry(_pAppIdentity,_pSourceIdentity,Tw.DG_IMAGE,Tw.DAT_IMAGEMEMXFER,Tw.MSG_GET,pXfer);
+					ushort rc=SourceEntry(Tw.DG_IMAGE,Tw.DAT_IMAGEMEMXFER,Tw.MSG_GET,pXfer);
 					if(rc==Tw.TWRC_SUCCESS || rc==Tw.TWRC_XFERDONE) {
 						State=7;
 						xfer=(TW_IMAGEMEMXFER)Marshal.PtrToStructure(pXfer,typeof(TW_IMAGEMEMXFER));
@@ -1115,7 +1260,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 						State=7;
 						return TransferOutcome.Cancelled;
 					}
-					SetErrorFromCondition(EZTwainErrorCode.EZTEC_XFER_FAILURE,"The image transfer from the scanner failed.",true);
+					SetErrorFromCondition(EZTwainErrorCode.EZTEC_XFER_FAILURE,"The image transfer from the scanner failed.");
 					return TransferOutcome.Failed;
 				}
 				try {
@@ -1139,7 +1284,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 			IntPtr pSetup=Marshal.AllocHGlobal(Marshal.SizeOf(typeof(TW_SETUPMEMXFER)));
 			try {
 				Marshal.StructureToPtr(new TW_SETUPMEMXFER(),pSetup,false);
-				ushort rc=_dsm.Entry(_pAppIdentity,_pSourceIdentity,Tw.DG_CONTROL,Tw.DAT_SETUPMEMXFER,Tw.MSG_GET,pSetup);
+				ushort rc=SourceEntry(Tw.DG_CONTROL,Tw.DAT_SETUPMEMXFER,Tw.MSG_GET,pSetup);
 				if(rc!=Tw.TWRC_SUCCESS) {
 					return sizeDefault;
 				}
@@ -1175,7 +1320,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 			try {
 				TW_PALETTE8 palette8=new TW_PALETTE8 { Colors=new byte[1024] };
 				Marshal.StructureToPtr(palette8,pPalette,false);
-				ushort rc=_dsm.Entry(_pAppIdentity,_pSourceIdentity,Tw.DG_IMAGE,Tw.DAT_PALETTE8,Tw.MSG_GET,pPalette);
+				ushort rc=SourceEntry(Tw.DG_IMAGE,Tw.DAT_PALETTE8,Tw.MSG_GET,pPalette);
 				if(rc!=Tw.TWRC_SUCCESS) {
 					return null;
 				}
@@ -1204,11 +1349,11 @@ namespace ImagingDeviceManager.TwainProtocol {
 			IntPtr pPending=Marshal.AllocHGlobal(Marshal.SizeOf(typeof(TW_PENDINGXFERS)));
 			try {
 				Marshal.StructureToPtr(new TW_PENDINGXFERS(),pPending,false);
-				ushort rc=_dsm.Entry(_pAppIdentity,_pSourceIdentity,Tw.DG_CONTROL,Tw.DAT_PENDINGXFERS,Tw.MSG_ENDXFER,pPending);
+				ushort rc=SourceEntry(Tw.DG_CONTROL,Tw.DAT_PENDINGXFERS,Tw.MSG_ENDXFER,pPending);
 				if(rc!=Tw.TWRC_SUCCESS) {
 					//The source is confused. Discard everything so that it can be disabled.
 					Marshal.StructureToPtr(new TW_PENDINGXFERS(),pPending,false);
-					_dsm.Entry(_pAppIdentity,_pSourceIdentity,Tw.DG_CONTROL,Tw.DAT_PENDINGXFERS,Tw.MSG_RESET,pPending);
+					SourceEntry(Tw.DG_CONTROL,Tw.DAT_PENDINGXFERS,Tw.MSG_RESET,pPending);
 					State=5;
 					return;
 				}
