@@ -703,7 +703,7 @@ namespace OpenDental {
 			gridVitalSigns.Columns.Add(col);
 			col=new GridColumn("BMI",55);
 			gridVitalSigns.Columns.Add(col);
-			col=new GridColumn("Documentation for Followup or Ineligible",150);
+			col=new GridColumn("Notes",150);//vitalsign.Documentation, edited in the Notes box of Edit Vital Sign (Open Dental 25.3)
 			gridVitalSigns.Columns.Add(col);
 			_listVitalSigns=Vitalsigns.Refresh(_patient.PatNum);
 			gridVitalSigns.ListGridRows.Clear();
