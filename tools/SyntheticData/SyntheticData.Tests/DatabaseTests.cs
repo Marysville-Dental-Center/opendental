@@ -16,15 +16,11 @@ namespace SyntheticData.Tests {
 	///when no local server or no schema source is available.</summary>
 	[TestClass]
 	public class DatabaseTests {
-		///<summary>Unique to this run, so runs from other worktrees at the same time on the shared local server never create, fill or drop each
-		///other's databases. Lower-case letters, digits and underscores only, as LocalOnly requires.</summary>
-		private static readonly string _runSuffix=DateTime.UtcNow.ToString("yyMMddHHmmss")+"_"+System.Diagnostics.Process.GetCurrentProcess().Id
-			+"_"+new Random().Next(1000,10000);
-		private static readonly string DbA="synth_test_a_"+_runSuffix;
-		private static readonly string DbB="synth_test_b_"+_runSuffix;
-		private static readonly string DbC="synth_test_c_"+_runSuffix;
-		private static readonly string DbAdopted="synth_test_adopted_"+_runSuffix;
-		private static readonly string DbFill="synth_test_fill_"+_runSuffix;
+		private const string DbA="synth_test_a";
+		private const string DbB="synth_test_b";
+		private const string DbC="synth_test_c";
+		private const string DbAdopted="synth_test_adopted";
+		private const string DbFill="synth_test_fill";
 		private static readonly ServerSettings _server=new ServerSettings();
 		private static string _skipReason;
 		private static ValidationReport _reportA;
