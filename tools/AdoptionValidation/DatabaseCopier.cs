@@ -15,7 +15,8 @@ namespace AdoptionValidation {
 	}
 
 	///<summary>Makes the copy that adoption runs on. With CopyMethod.Dump this is a real backup (mariadb-dump) and restore, timed separately, so the
-	///rehearsal measures what the outage window needs. Only local servers and synth* target databases.</summary>
+	///rehearsal measures what the outage window needs. Only local servers. The restore only ever creates a new database; the SQL copy only writes
+	///synth* databases.</summary>
 	public static class DatabaseCopier {
 		///<summary>Folders searched for mariadb-dump.exe and mariadb.exe (or mysqldump.exe and mysql.exe), after the MARIADB_BIN environment
 		///variable and the PATH.</summary>
@@ -71,15 +72,41 @@ namespace AdoptionValidation {
 				+"--result-file=\""+pathFile+"\" "+database,null,server);
 		}
 
-		///<summary>Creates the database (utf8mb3, as Open Dental creates it) and loads the backup file into it.</summary>
+		///<summary>Restores a backup file as a new database: the runbook's restore (AdoptionValidation restore, runbook steps 0.6 and 3.2) and the
+		///rehearsal's. It never writes to a database that exists already, and it refuses a file that names a database (DumpCheck): a --databases or
+		///--all-databases dump would otherwise replay its DROP TABLE, CREATE TABLE and INSERT statements into the database it names, the live one.
+		///The client also runs with --one-database, so any USE that got past the check would only make it skip statements. Then it creates the
+		///database (utf8mb3, as Open Dental creates it) and loads the file into it. On a failure the partial database is left for inspection.
+		///</summary>
 		public static void Restore(ServerSettings server,string pathFile,string database,string pathClient) {
 			LocalOnly.EnsureLocalHost(server.Server);
-			LocalOnly.EnsureWritableDatabaseName(database);
+			LocalOnly.EnsureSafeIdentifier(database);
+			if(!File.Exists(pathFile)) {
+				throw new RefusedException("The backup file "+pathFile+" does not exist.");
+			}
 			using(Db db=Db.Open(server)) {
-				db.Execute("DROP DATABASE IF EXISTS `"+database+"`");
+				if(db.DatabaseExists(database)) {
+					throw new RefusedException("Database "+database+" already exists. The restore only creates a new database; choose a name that does not "
+						+"exist yet.");
+				}
+			}
+			List<DumpCheck.Problem> listProblems=DumpCheck.Scan(pathFile);
+			if(listProblems.Count>0) {
+				throw new RefusedException("The backup file "+pathFile+" names a database, so loading it would also write to that database (it may be a "
+					+"--databases or --all-databases dump). Nothing was restored. Make a single-database dump (runbook step 3.1) or restore a file-level "
+					+"copy under a new folder name (runbook step 0.6). Found: "+string.Join("; ",listProblems));
+			}
+			using(Db db=Db.Open(server)) {
+				//No IF NOT EXISTS: if the name was taken since the check above, this fails instead of loading into it.
 				db.Execute("CREATE DATABASE `"+database+"` CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci");
 			}
-			Run(pathClient,ConnectionArgs(server)+" --default-character-set=utf8mb4 "+database,pathFile,server);
+			try {
+				Run(pathClient,ConnectionArgs(server)+" --default-character-set=utf8mb4 --one-database "+database,pathFile,server);
+			}
+			catch(ApplicationException ex) {
+				throw new ApplicationException(ex.Message+" The new database "+database+" holds a partial copy; drop it (DROP DATABASE `"+database+"`;) "
+					+"before trying again.",ex);
+			}
 		}
 
 		///<summary>Copies every table with CREATE TABLE ... LIKE and INSERT ... SELECT (generated columns are recomputed). Rows are inserted in primary

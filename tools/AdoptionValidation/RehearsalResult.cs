@@ -63,6 +63,8 @@ namespace AdoptionValidation {
 		public List<string> ListCredentials=new List<string>();
 		public string SchemaVerifierReport="";
 		public string ReportBaselinePath;
+		///<summary>The restored copy's report: the runbook's baseline-copy.json, which the post-adoption report is compared with (step 6).</summary>
+		public string ReportCopyPath;
 		public string ReportAdoptedPath;
 		public string Error;
 
@@ -168,6 +170,14 @@ namespace AdoptionValidation {
 						sb.AppendLine("- "+Escape(difference));
 					}
 				}
+				sb.AppendLine();
+				sb.AppendLine("### Adoption log (what AdoptionValidation adopt prints in runbook steps 4 and 5)");
+				sb.AppendLine();
+				sb.AppendLine("```");
+				foreach(string line in first.ListAdoptionLog) {
+					sb.AppendLine(line);
+				}
+				sb.AppendLine("```");
 				sb.AppendLine();
 				sb.AppendLine("### Rehash record");
 				sb.AppendLine();

@@ -64,6 +64,10 @@
     <None Include="App.config" />
     <None Include="README.md" />
     <None Include="Invoke-AdoptionRehearsal.ps1" />
+    <!-- Runbook step 0.6: copied next to the program, so the folder copied to the database server (<tools> in the runbook) has it. -->
+    <None Include="Invoke-RunbookDryRun.ps1">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SyntheticData\SyntheticData.csproj">

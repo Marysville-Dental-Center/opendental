@@ -143,19 +143,24 @@ namespace AdoptionValidation {
 					+(Coverage.AllItems.Count()-coverage.AllProblems.Count())+" of "+Coverage.AllItems.Count()+" 24.4-25.3 items; "
 					+baseline.Totals.Count(x => x.Key.StartsWith("check."))+" consistency checks, "+listFailedChecks.Count+" failed"
 					+(listErrors.Count>0 ? "; total errors: "+string.Join(", ",listErrors) : ""));
-				//3. Backup and restore the copy that is adopted.
+				//3. Backup and restore the copy that is adopted, with the runbook's restore (step 3.2): it checks the file and only creates a new database,
+				//so a copy left by an earlier --keep run with the same tag is dropped first.
 				if(copyMethod==CopyMethod.Dump) {
 					(string dump,string client) tools=DatabaseCopier.FindClientTools().Value;
 					string pathBackup=Path.Combine(_options.OutDir,source+".sql");
 					Time("Back up (mariadb-dump)",() => DatabaseCopier.Backup(server,source,pathBackup,tools.dump),
 						() => new FileInfo(pathBackup).Length.ToString("N0")+" bytes");
+					LocalOnly.EnsureWritableDatabaseName(adopted);
+					db.Execute("DROP DATABASE IF EXISTS `"+adopted+"`");
 					Time("Restore the copy",() => DatabaseCopier.Restore(server,pathBackup,adopted,tools.client));
 					File.Delete(pathBackup);
 				}
 				else {
 					Time("Copy the database (SQL)",() => DatabaseCopier.CopyWithSql(db,source,adopted));
 				}
+				//The runbook's baseline-copy.json (step 3.3): step 6 compares the adopted copy with it.
 				ValidationReport copyReport=Time("Validate the restored copy",() => Validator.Run(db,adopted,null,null));
+				copyReport.Save(_run.ReportCopyPath=Path.Combine(_options.OutDir,"run"+_run.RunNumber+"-1-copy.json"));
 				List<Difference> listCopyDiffs=ReportComparer.Compare(baseline,copyReport,null);
 				Check("G2","Restored copy equals the baseline",listCopyDiffs.Count==0,
 					listCopyDiffs.Count==0 ? "row counts, CHECKSUM TABLE, every column checksum and every total equal" : ReportComparer.Format(listCopyDiffs));
@@ -169,45 +174,46 @@ namespace AdoptionValidation {
 				StartupScenarioResult control=listBefore.First(x => x.Scenario.StartsWith("Open Dental 25.3.48, update server"));
 				Check("A2","Startup model: an Open Dental 25.3.48 client uses the unadopted copy (control)",control.Outcome==OdStartupOutcome.Proceeds,
 					control.Summary+"; a 25.4.30 update server: "+listBefore.First(x => x.Scenario.StartsWith("Open Dental 25.4.30, update server")).Summary);
-				AdoptionPreflight preflight=Time("Preflight",() => Adoption.Preflight());
+				//5. to 7. Preflight, adoption (Adoption.Run, what FormAdoptDatabase calls), the fork migration with every step again, the schema verifier
+				//and the rehash (SecurityHash.RehashNow, what Database Maintenance's Security Hashes tool calls): HeadlessAdoption, the code that runbook
+				//steps 4 and 5 run as "AdoptionValidation adopt". The office runs this exact sequence, and takes its post-adoption report (step 6) before
+				//anyone starts the program, as below.
+				HeadlessAdoption.Result adoption=HeadlessAdoption.Run(adopted,x => { _run.ListAdoptionLog.Add(x); _log("  "+x); },(name,action) => Time(name,action));
+				AdoptionPreflight preflight=adoption.Preflight;
 				Check("A3","Preflight accepts the copy",preflight.CanAdopt && !preflight.IsResume && preflight.VersionSource==new Version(25,3,48,0),
 					preflight.Message);
-				//5. Adopt (the same call FormAdoptDatabase makes).
-				List<HashCount> listHashesStart=BusinessLayer.CountHashes();
-				AdoptionResult adoptionResult=Time("Adopt (Adoption.Run, including its fork migration steps)",
-					() => Adoption.Run(x => { _run.ListAdoptionLog.Add(x); _log("  "+x); }));
-				Check("A4","Adoption finished",ForkVersions.ReadState().IsAdoptionRecordFinished,
+				AdoptionResult adoptionResult=adoption.Adoption??new AdoptionResult();
+				Check("A4","Adoption finished",adoption.Adoption!=null && adoption.IsAdoptionFinished,
 					"dropped column "+adoptionResult.WasPortalEmailColumnDropped+", indexes "+string.Join(",",adoptionResult.ListIndexesDropped)+", "
 					+adoptionResult.CountUpdateFileRowsDeleted+" update-file rows deleted, "+adoptionResult.ListPrefsBlanked.Count+" preferences blanked ("
 					+string.Join(", ",adoptionResult.ListPrefsBlanked)+")");
 				//6. Fork migration (every step again) and schema verifier.
-				ForkMigrationResult migrationResult=Time("Fork migration (all steps again)",() => ForkMigrationRunner.Run(new ForkMigrationOptions { RunAll=true }));
+				ForkMigrationResult migrationResult=adoption.Migration;
 				_run.ListMigrationLog.AddRange(migrationResult.ListChanges);
 				Check("M1","Fork migration changes nothing on the adopted copy",migrationResult.ListChanges.Count==0,
 					migrationResult.ListStepsRun.Count+" steps run ("+string.Join(", ",migrationResult.ListStepsRun.Select(x => x.Level))+"), "
 					+migrationResult.ListChanges.Count+" changes"+(migrationResult.ListChanges.Count==0 ? "" : ": "+string.Join("; ",migrationResult.ListChanges.Take(10))));
-				SchemaVerifyResult verifyResult=Time("Schema verifier",() => SchemaVerifier.VerifyDatabase(adopted));
+				SchemaVerifyResult verifyResult=adoption.Verify;
 				_run.SchemaVerifierReport=verifyResult.GetReport();
 				Check("M2","Schema matches Open Dental 25.3.48 exactly",verifyResult.IsMatch && verifyResult.ListDifferences.Count==0,
 					verifyResult.CountTablesActual+" of "+verifyResult.CountTablesExpected+" tables; "+verifyResult.ListDifferences.Count+" differences, "
 					+verifyResult.ListMismatches.Count+" mismatches"+(verifyResult.ListDifferences.Count==0 ? " (no documented exception needed)" : ": "
 					+string.Join("; ",verifyResult.ListDifferences.Take(10).Select(x => x.Table+"."+x.Item))));
-				//7. Rehash (Database Maintenance, Tools, Security Hashes).
-				_run.ListHashesBefore=listHashesStart;
-				Time("Rehash (SecurityHash.RehashNow)",() => OpenDentBusiness.Misc.SecurityHash.RehashNow());
-				_run.ListHashesAfter=BusinessLayer.CountHashes();
+				//7. Rehash (Database Maintenance, Tools, Security Hashes), done by HeadlessAdoption above.
+				_run.ListHashesBefore=adoption.ListHashesStart;
+				_run.ListHashesAfter=adoption.ListHashesAfter;
 				HashCount patientAfter=_run.ListHashesAfter.FirstOrDefault(x => x.Table=="patient");
-				bool isRehashed=patientAfter!=null && patientAfter.Current==patientAfter.Rows && _run.ListHashesAfter.All(x => x.InWindowNotCurrent==0)
-					&& _run.ListHashesAfter.Sum(x => x.InWindow)>patientAfter.Rows;
+				bool isRehashed=adoption.IsRehashComplete && patientAfter!=null && _run.ListHashesAfter.Sum(x => x.InWindow)>patientAfter.Rows;
 				Check("H1","Rehash gives every patient, and every row in the verified window, a fork hash",isRehashed,
-					"rehash window from "+OpenDentBusiness.Misc.SecurityHash.GetHashingDate().ToString("yyyy-MM-dd",CultureInfo.InvariantCulture)+"; "
-					+string.Join("; ",_run.ListHashesAfter.Select(x => x.ToString())));
-				//8. Validate against the baseline.
+					"rehash window from "+adoption.DateRehashWindow.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture)+"; "
+					+string.Join("; ",_run.ListHashesAfter.Select(x => x.ToString()))+(adoption.IsRehashLogged ? "; rehash recorded in the security log" : ""));
+				//8. Validate: the runbook's step 6, before anything else touches the copy. The adopted copy is compared with the restored copy's report
+				//(baseline-copy.json), which G2 showed equals the source's.
 				afterAdoption=Time("Record post-adoption report and compare",() => Validator.Run(db,adopted,null,null));
 				afterAdoption.Save(_run.ReportAdoptedPath=Path.Combine(_options.OutDir,"run"+_run.RunNumber+"-2-adopted.json"));
 				_run.DictTotalsAfter=new SortedDictionary<string,string>(afterAdoption.Totals,StringComparer.Ordinal);
-				List<Difference> listDiffs=ReportComparer.Compare(baseline,afterAdoption,allowed);
-				ValidateAgainstBaseline(baseline,afterAdoption,listDiffs);
+				List<Difference> listDiffs=ReportComparer.Compare(copyReport,afterAdoption,allowed);
+				ValidateAgainstBaseline(copyReport,afterAdoption,listDiffs);
 				ValidateAdoptionEffects(fixture);
 				//9. Open Dental-style startup check on the adopted copy.
 				List<StartupScenarioResult> listAfter=Time("Open Dental-style startup check",() => RunStartupScenarios("adopted copy"));
@@ -314,25 +320,27 @@ namespace AdoptionValidation {
 				refusal=ex.Message;
 			}
 			Check("I1","A second adoption is refused",!preflight.CanAdopt && preflight.IsAlreadyAdopted && refusal!="not refused",refusal);
-			ForkMigrationResult migrationResult=ForkMigrationRunner.Run(new ForkMigrationOptions { RunAll=true });
-			ForkGuardResult guard=ForkVersionGuard.Evaluate(ForkVersions.ReadState());
-			if(guard.HasPendingMigrations) {
-				ForkMigrationHandOff.Runner.RunPending(null);
-			}
-			SchemaVerifyResult verifyResult=SchemaVerifier.VerifyDatabase(adopted);
-			Check("I2","A second fork migration changes nothing and the schema still matches",migrationResult.ListChanges.Count==0 && verifyResult.IsMatch
-				&& verifyResult.ListDifferences.Count==0,migrationResult.ListStepsRun.Count+" steps run, "+migrationResult.ListChanges.Count+" changes; verifier "
+			//The operator running runbook step 4 ("AdoptionValidation adopt") again, as the runbook says to after an interruption.
+			HeadlessAdoption.Result again=HeadlessAdoption.Run(adopted,null);
+			ForkMigrationResult migrationResult=again.Migration;
+			SchemaVerifyResult verifyResult=again.Verify;
+			Check("I2","A second fork migration changes nothing and the schema still matches",again.WasAlreadyAdopted && again.Adoption==null
+				&& migrationResult.ListChanges.Count==0 && !again.HasPendingMigrations && verifyResult.IsMatch && verifyResult.ListDifferences.Count==0,
+				"adoption skipped (already adopted); "+migrationResult.ListStepsRun.Count+" steps run, "+migrationResult.ListChanges.Count+" changes; verifier "
 				+verifyResult.ListDifferences.Count+" differences");
-			List<HashCount> listHashesBefore=BusinessLayer.CountHashes();
-			ValidationReport beforeRehash=Validator.Run(db,adopted,null,null);
-			OpenDentBusiness.Misc.SecurityHash.RehashNow();
-			ValidationReport afterRehash=Validator.Run(db,adopted,null,null);
-			List<Difference> listRehashDiffs=ReportComparer.Compare(beforeRehash,afterRehash,null);
-			Check("I3","A second rehash changes nothing",listRehashDiffs.Count==0,
-				listRehashDiffs.Count==0 ? "every hash already current: "+string.Join(", ",listHashesBefore.Select(x => x.Table+" "+x.Current)) : ReportComparer.Format(listRehashDiffs));
-			List<Difference> listDiffs=ReportComparer.Compare(afterFirstPass,afterRehash,null);
-			Check("I4","The whole second pass leaves the database unchanged",listDiffs.Count==0,
-				listDiffs.Count==0 ? "row counts and every checksum equal to the first pass" : ReportComparer.Format(listDiffs));
+			ValidationReport afterRerun=Validator.Run(db,adopted,null,null);
+			List<Difference> listDiffs=ReportComparer.Compare(afterFirstPass,afterRerun,null);
+			//The run's own security log entry for the rehash (and its securityloghash row) is the only change it may make.
+			List<Difference> listUnexpected=listDiffs.Where(x => x.Table!="securitylog" && x.Table!="securityloghash").ToList();
+			List<Difference> listHashDiffs=listDiffs.Where(x => x.Column=="SecurityHash").ToList();
+			bool isSameHashes=again.ListHashesStart.Select(x => x.ToString()).SequenceEqual(again.ListHashesAfter.Select(x => x.ToString()));
+			Check("I3","A second rehash changes nothing",listHashDiffs.Count==0 && isSameHashes && again.IsRehashComplete,
+				listHashDiffs.Count==0 && isSameHashes ? "every hash already current: "+string.Join(", ",again.ListHashesStart.Select(x => x.Table+" "+x.Current))
+				: ReportComparer.Format(listHashDiffs));
+			long securityLogAdded=afterRerun.Tables.First(x => x.Name=="securitylog").Rows-afterFirstPass.Tables.First(x => x.Name=="securitylog").Rows;
+			Check("I4","The whole second pass leaves the database unchanged",listUnexpected.Count==0 && securityLogAdded==(again.IsRehashLogged ? 1 : 0),
+				listUnexpected.Count==0 ? "row counts and every checksum equal to the first pass, apart from the rerun's own security log entry ("+securityLogAdded
+					+" row)" : ReportComparer.Format(listUnexpected));
 			_run.ListSteps.Add(new StepTiming { Name="Second pass (adoption, migration, verifier, rehash, report)",Seconds=stopwatch.Elapsed.TotalSeconds });
 		}
 
