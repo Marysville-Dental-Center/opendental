@@ -101,6 +101,23 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		[TestMethod]
+		public void Cancel_WithoutSafeDisable_DisableBlocksWhileTheHelperCloses_ImageNotDelivered() {
+			//Why the library starts no disable of its own without safe disable (design 7.6): the source closes its helper, blocking the
+			//call, and an image it was still reading out is not delivered to the host.
+			Helper.ListExposures.Add(SessionHarness.Exposure(8));
+			Helper.EndAfterMs=60000;
+			Helper.BlockingCloseMs=150;
+			Helper.ActionOnEnable=() => Session.Cancel();
+			System.Diagnostics.Stopwatch stopwatch=System.Diagnostics.Stopwatch.StartNew();
+			Assert.IsNull(_harness.AcquireByName());
+			Assert.IsTrue(stopwatch.ElapsedMilliseconds>=140,"MSG_DISABLEDS blocked while the helper closed.");
+			Assert.IsFalse(Session.IsSafeDisableInEffect);
+			Assert.AreEqual(1,Helper.CountLostForHost);
+			Assert.AreEqual(0,Sink.ListDrained.Count);
+			Assert.AreEqual(1,_harness.Fake.ListDisableStates.Count,"Accepted at once: no wait.");
+		}
+
+		[TestMethod]
 		public void Cancel_ImageAlreadyReady_NoSink_DisabledAsBefore() {
 			Session.DrainSink=null;
 			Helper.ListExposures.Add(SessionHarness.Exposure(8));
