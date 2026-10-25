@@ -320,6 +320,9 @@ namespace OpenDentBusiness {
 			//Ez3Di:
 			program=Programs.GetCur(ProgramName.Ez3Di);
 			RemoveLinkageXMLFile(program);
+			//CleverOne (V-BRIDGE2): the same linkage.xml hand-off as EzDenti.
+			program=Programs.GetCur(ProgramName.CleverOne);
+			RemoveLinkageXMLFile(program);
 			//FloridaProbe: Has no file paths containing outgoing patient data from Open Dental.
 			//Guru: Has no file paths containing outgoing patient data from Open Dental.
 			//HandyDentist: Has no file paths containing outgoing patient data from Open Dental.

@@ -1,0 +1,207 @@
+// V-BRIDGE2 (Open Dental 25.4, v25_4-family-clerri): the Clerri program link. Launch only: a Family module button opens the office's Clerri
+// dashboard in the default browser. Open Dental's data sync with Clerri runs through its eConnector and API, which this fork removed; none is built.
+// Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.RegularExpressions;
+using CodeBase;
+
+namespace OpenDentBusiness.VendorDirect.ProgramLinks {
+	///<summary>The Clerri program link: a program row inserted at runtime with Enabled=0 (no ConvertDatabases or fork migration step), a Family module
+	///button, the office's Client Key per clinic (osd1$, masked, high security) and the dashboard address.
+	///Partner-gated: the address of Clerri's dashboard and how it takes the key and the patient are not public. The office enters the address Clerri
+	///gives it; the fork replaces only [ClientKey] and [PatNum] in it, so no other patient data can be sent, and opens it only if it is an https
+	///address. Every launch is written to the local program-link log (ProgramLinkLaunchLog).</summary>
+	public static class ClerriProgram {
+		///<summary>The program row's description, shown in Setup > Program Links. Read-only in the setup window.</summary>
+		public const string ProgDesc="Clerri";
+		///<summary>The text on the Family module button.</summary>
+		public const string ButtonText="Clerri";
+		///<summary>The only toolbar the button goes on.</summary>
+		public const EnumToolBar ToolBar=EnumToolBar.FamilyModule;
+		///<summary>The key Clerri issues to the office, per clinic (ClinicNum 0 is the default for clinics without their own). osd1$, masked, high
+		///security.</summary>
+		public const string PropClientKey="Client Key";
+		///<summary>The address of the office's Clerri dashboard, from Clerri, practice-wide (ClinicNum 0). Plain text. May hold [ClientKey] and
+		///[PatNum].</summary>
+		public const string PropDashboardAddress="Dashboard Address";
+		///<summary>Replaced with the clinic's Client Key, URL-encoded.</summary>
+		public const string TagClientKey="[ClientKey]";
+		///<summary>Replaced with the selected patient's PatNum, or blank when no patient is selected.</summary>
+		public const string TagPatNum="[PatNum]";
+
+		///<summary>Inserts the program row (Enabled=0) with its Family module button if it is missing, and the default Dashboard Address and Client
+		///Key rows if they are missing. An existing row's buttons are never changed. Never calls Clerri. Returns true if anything was inserted. The
+		///caller refreshes the caches and signals InvalidType.Programs and InvalidType.ToolButsAndMounts.</summary>
+		public static bool EnsureProgram() {
+			Meth.NoCheckMiddleTierRole();
+			bool isInsertedProgram=Programs.InsertIfMissing(ProgramName.Clerri,ProgDesc);
+			bool isInserted=isInsertedProgram;
+			Program program=Programs.GetCur(ProgramName.Clerri);
+			if(program==null || isInsertedProgram) {
+				Programs.RefreshCache();
+				program=Programs.GetCur(ProgramName.Clerri);
+			}
+			if(program==null) {
+				return isInserted;
+			}
+			long programNum=program.ProgramNum;
+			if(isInsertedProgram) {
+				InsertToolbarButton(programNum);
+			}
+			List<ProgramProperty> listProgramProperties=ProgramProperties.GetWhere(x => x.ProgramNum==programNum && x.ClinicNum==0);
+			if(!listProgramProperties.Any(x => x.PropertyDesc==PropDashboardAddress)) {
+				VendorCredentials.EnsureSetting(programNum,PropDashboardAddress);
+				isInserted=true;
+			}
+			ProgramProperty programPropertyKey=listProgramProperties.FirstOrDefault(x => x.PropertyDesc==PropClientKey);
+			if(programPropertyKey==null || !programPropertyKey.IsMasked || !programPropertyKey.IsHighSecurity) {
+				VendorCredentials.EnsureSecret(programNum,PropClientKey);
+				isInserted=true;
+			}
+			return isInserted;
+		}
+
+		///<summary>True if the program has its Family module button (Show Toolbar Button). Reads the cache.</summary>
+		public static bool IsToolbarButtonShown(long programNum) {
+			Meth.NoCheckMiddleTierRole();
+			return ToolButItems.GetForProgram(programNum).Any(x => x.ToolBar==ToolBar);
+		}
+
+		///<summary>Adds or removes the Family module button. Only the Family module button is touched. The caller refreshes the cache and signals
+		///InvalidType.ToolButsAndMounts.</summary>
+		public static void SetToolbarButtonShown(long programNum,bool isShown) {
+			Meth.NoCheckMiddleTierRole();
+			List<ToolButItem> listToolButItems=ToolButItems.GetForProgram(programNum).FindAll(x => x.ToolBar==ToolBar);
+			if(isShown) {
+				if(listToolButItems.Count==0) {
+					InsertToolbarButton(programNum);
+				}
+				return;
+			}
+			for(int i=0;i<listToolButItems.Count;i++) {
+				ToolButItems.Delete(listToolButItems[i]);
+			}
+		}
+
+		private static void InsertToolbarButton(long programNum) {
+			ToolButItem toolButItem=new ToolButItem();
+			toolButItem.ProgramNum=programNum;
+			toolButItem.ToolBar=ToolBar;
+			toolButItem.ButtonText=ButtonText;
+			ToolButItems.Insert(toolButItem);
+		}
+
+		///<summary>Rule from the public setup page: Show Toolbar Button can't be changed while the link is enabled, so it is editable only when the link
+		///is saved as disabled and the Enabled box is not checked.</summary>
+		public static bool CanChangeToolbarButton(bool isEnabledSaved,bool isEnabledChecked) {
+			Meth.NoCheckMiddleTierRole();
+			return !isEnabledSaved && !isEnabledChecked;
+		}
+
+		///<summary>Null if the dashboard address can be opened: an absolute https address with a host, once the tags are filled in. Otherwise why not.
+		///</summary>
+		public static string ValidateDashboardAddress(string dashboardAddress) {
+			Meth.NoCheckMiddleTierRole();
+			if(string.IsNullOrWhiteSpace(dashboardAddress)) {
+				return "Enter the dashboard address from Clerri.";
+			}
+			//Check the address as it will be opened, with sample values in the tags.
+			string sample=ReplaceTag(ReplaceTag(dashboardAddress.Trim(),TagClientKey,"key"),TagPatNum,"1");
+			if(!IsHttpsAddress(sample)) {
+				return "The dashboard address must be a complete address that starts with https://.";
+			}
+			return null;
+		}
+
+		///<summary>True if address is an absolute https URL with a host and no user name or password in it.</summary>
+		public static bool IsHttpsAddress(string address) {
+			Meth.NoCheckMiddleTierRole();
+			Uri uri;
+			if(!Uri.TryCreate((address??"").Trim(),UriKind.Absolute,out uri)) {
+				return false;
+			}
+			return uri.Scheme==Uri.UriSchemeHttps && uri.Host!="" && uri.UserInfo=="";
+		}
+
+		///<summary>The address to open: dashboardAddress with [ClientKey] replaced by the URL-encoded clientKey and [PatNum] by patNum (blank when 0).
+		///Tags match in any case. Nothing else is replaced, so no other patient data can reach the address. Returns null with error set if the address
+		///is not valid, or if it uses [ClientKey] and there is no key.</summary>
+		public static string BuildDashboardUrl(string dashboardAddress,string clientKey,long patNum,out string error) {
+			Meth.NoCheckMiddleTierRole();
+			error=ValidateDashboardAddress(dashboardAddress);
+			if(error!=null) {
+				return null;
+			}
+			string address=dashboardAddress.Trim();
+			if(ContainsTag(address,TagClientKey) && string.IsNullOrWhiteSpace(clientKey)) {
+				error="No Client Key is entered for this clinic or the default.";
+				return null;
+			}
+			address=ReplaceTag(address,TagClientKey,Uri.EscapeDataString((clientKey??"").Trim()));
+			address=ReplaceTag(address,TagPatNum,patNum>0 ? POut.Long(patNum) : "");
+			if(!IsHttpsAddress(address)) {
+				error="The dashboard address must be a complete address that starts with https://.";
+				return null;
+			}
+			return address;
+		}
+
+		///<summary>The address to open for the clinic and patient, from the program link's settings (the clinic's Client Key, else the default one).
+		///Returns null with error set when it can't be opened. Reads the cache; never calls Clerri.</summary>
+		public static string GetDashboardUrl(long programNum,long clinicNum,long patNum,out string error) {
+			Meth.NoCheckMiddleTierRole();
+			string dashboardAddress=ProgramProperties.GetValOrDefault(programNum,PropDashboardAddress,0);
+			SecretReadResult secretReadResult=ReadClientKey(programNum,clinicNum);
+			if(secretReadResult.NeedsReentry && ContainsTag(dashboardAddress,TagClientKey)) {
+				error="The saved Client Key can't be read. Enter it again in Setup, Program Links, Clerri.";
+				return null;
+			}
+			return BuildDashboardUrl(dashboardAddress,secretReadResult.PlainText,patNum,out error);
+		}
+
+		///<summary>The Client Key the clinic uses: its own row, or the default (ClinicNum 0) row when the clinic has none or a blank one. Reads the
+		///cache; never throws.</summary>
+		public static SecretReadResult ReadClientKey(long programNum,long clinicNum) {
+			Meth.NoCheckMiddleTierRole();
+			SecretReadResult secretReadResult=ReadClientKeyExact(programNum,clinicNum);
+			if(clinicNum!=0 && secretReadResult.Status==SecretReadStatus.Blank) {
+				secretReadResult=ReadClientKeyExact(programNum,0);
+			}
+			return secretReadResult;
+		}
+
+		///<summary>The Client Key saved for exactly this clinic (ClinicNum 0 is the default), without falling back. Blank if there is no row.</summary>
+		public static SecretReadResult ReadClientKeyExact(long programNum,long clinicNum) {
+			Meth.NoCheckMiddleTierRole();
+			string stored="";
+			try {
+				ProgramProperty programProperty=ProgramProperties.GetWhere(x => x.ProgramNum==programNum && x.PropertyDesc==PropClientKey
+					&& x.ClinicNum==clinicNum).OrderBy(x => x.ProgramPropertyNum).FirstOrDefault();
+				stored=programProperty?.PropertyValue??"";
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+			}
+			return SecretValue.Read(stored,LegacyPolicy.AcceptPlaintext);
+		}
+
+		///<summary>True if a readable Client Key is saved for any clinic or the default. Reads the cache.</summary>
+		public static bool HasAnyClientKey(long programNum) {
+			Meth.NoCheckMiddleTierRole();
+			List<ProgramProperty> listProgramProperties=ProgramProperties.GetWhere(x => x.ProgramNum==programNum && x.PropertyDesc==PropClientKey);
+			return listProgramProperties.Any(x => SecretValue.Read(x.PropertyValue,LegacyPolicy.AcceptPlaintext).HasValue);
+		}
+
+		///<summary>True if text holds the tag, in any case.</summary>
+		public static bool ContainsTag(string text,string tag) {
+			Meth.NoCheckMiddleTierRole();
+			return (text??"").IndexOf(tag,StringComparison.OrdinalIgnoreCase)>=0;
+		}
+
+		private static string ReplaceTag(string text,string tag,string value) {
+			return Regex.Replace(text??"",Regex.Escape(tag),(value??"").Replace("$","$$"),RegexOptions.IgnoreCase);
+		}
+	}
+}
