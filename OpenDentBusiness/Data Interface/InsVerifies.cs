@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Globalization;
 using System.Reflection;
 using System.Text;
 using System.Linq;
@@ -161,16 +162,18 @@ namespace OpenDentBusiness{
 			insVerify.InsVerifyNum=insVerifyExists.InsVerifyNum;
 			insVerify.VerifyType=verifyType;
 			insVerify.FKey=fKey;
+			SetHashForUpdate(insVerify,insVerifyExists);
 			Crud.InsVerifyCrud.Update(insVerify,insVerifyExists);
 			return insVerify.InsVerifyNum;
 		}
 
-		///<summary></summary>
+		///<summary>Also sets insVerify.SecurityHash (see SetHashForUpdate), which costs one extra read of the row.</summary>
 		public static void Update(InsVerify insVerify) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				Meth.GetVoid(MethodBase.GetCurrentMethod(),insVerify);
 				return;
 			}
+			SetHashForUpdate(insVerify,Crud.InsVerifyCrud.SelectOne(insVerify.InsVerifyNum));
 			Crud.InsVerifyCrud.Update(insVerify);
 		}
 		
@@ -183,6 +186,7 @@ namespace OpenDentBusiness{
 			InsVerify insVerify=new InsVerify();
 			insVerify.VerifyType=VerifyTypes.PatientEnrollment;
 			insVerify.FKey=patPlanNum;
+			insVerify.SecurityHash=HashFields(insVerify);
 			return Crud.InsVerifyCrud.Insert(insVerify);
 		}
 		
@@ -195,6 +199,7 @@ namespace OpenDentBusiness{
 			InsVerify insVerify=new InsVerify();
 			insVerify.VerifyType=VerifyTypes.InsuranceBenefit;
 			insVerify.FKey=planNum;
+			insVerify.SecurityHash=HashFields(insVerify);
 			return Crud.InsVerifyCrud.Insert(insVerify);
 		}
 		
@@ -447,18 +452,43 @@ namespace OpenDentBusiness{
 				return;
 			}
 			//Nathan OK'd the necessity for a complex update query like this to avoid looping through update statements.  This will be changed to a crud update method sometime in the future.
-			string command="";
 			List<long> listInsVerifyNums=Db.GetListLong(GetInsVerifyCleanupQuery(dateStart,dateEndStandard,dateEndMedicaid));
 			if(listInsVerifyNums.Count==0) {
 				return;
 			}
-			command="UPDATE insverify "
+			ClearAssignments(listInsVerifyNums);
+		}
+
+		///<summary>Blanks the assignment of the given insverify rows (user, status, note, assignment date), as the cleanup of expired rows does, and
+		///rehashes them. The hashed fields become blank, so each row gets the hash of the blank values, except a row changed outside the program, which
+		///keeps its old hash and its integrity warning (SetHashForUpdate).</summary>
+		public static void ClearAssignments(List<long> listInsVerifyNums) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				Meth.GetVoid(MethodBase.GetCurrentMethod(),listInsVerifyNums);
+				return;
+			}
+			if(listInsVerifyNums==null || listInsVerifyNums.Count==0) {
+				return;
+			}
+			List<InsVerify> listInsVerifiesOld=Crud.InsVerifyCrud.SelectMany("SELECT * FROM insverify WHERE InsVerifyNum IN ("
+				+string.Join(",",listInsVerifyNums.Select(x => POut.Long(x)))+")");
+			InsVerify insVerifyBlank=new InsVerify();
+			insVerifyBlank.DateLastAssigned=DateTime.MinValue;
+			List<long> listInsVerifyNumsRehash=listInsVerifiesOld
+				.FindAll(x => Misc.SecurityHash.DoRehashOnSave(x.SecurityHash,HashFields(x)))
+				.Select(x => x.InsVerifyNum).ToList();
+			string command="UPDATE insverify "
 				+"SET insverify.DateLastAssigned='0001-01-01', "
 				+"insverify.DefNum=0, "
 				+"insverify.Note='', "
 				+"insverify.UserNum=0 "
 				+"WHERE insverify.InsVerifyNum IN ("+string.Join(",",listInsVerifyNums)+")";
 			Db.NonQ(command);
+			if(listInsVerifyNumsRehash.Count>0) {
+				command="UPDATE insverify SET SecurityHash='"+POut.String(HashFields(insVerifyBlank))+"' "
+					+"WHERE InsVerifyNum IN ("+string.Join(",",listInsVerifyNumsRehash.Select(x => POut.Long(x)))+")";
+				Db.NonQ(command);
+			}
 		}
 
 		///<summary>Builds a query to select certain values from the insverifies table within a passed in timeframe.</summary>
@@ -978,6 +1008,62 @@ namespace OpenDentBusiness{
 			return Crud.InsVerifyCrud.SelectMany(command);
 		}
 		*/
+
+		#region SecurityHash
+		///<summary>Returns the keyed hash over the fields that drive the verification list: assigned user, status definition and assignment date. The
+		///date is hashed without its time, so the hash does not depend on whether the column holds a date (24.3) or a datetime (25.3).
+		///InsVerifyHists.HashFields gives the same value for a history row copied from this row. Computed by CodeBase.TamperHash.</summary>
+		public static string HashFields(InsVerify insVerify) {
+			Meth.NoCheckMiddleTierRole();
+			return HashText(GetUnhashedText(insVerify.UserNum,insVerify.DefNum,insVerify.DateLastAssigned));
+		}
+
+		///<summary>The text hashed for insverify and insverifyhist rows. Fields are separated, so that for example user 1 with status 23 and user 12 with
+		///status 3 give different text.</summary>
+		public static string GetUnhashedText(long userNum,long defNum,DateTime dateLastAssigned) {
+			Meth.NoCheckMiddleTierRole();
+			return POut.Long(userNum)+"|"+POut.Long(defNum)+"|"+dateLastAssigned.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture);
+		}
+
+		///<summary>TamperHash.Compute for a non-patient table. On failure, returns the exception's type name, as the other tables' HashFields do.</summary>
+		public static string HashText(string unhashedText) {
+			Meth.NoCheckMiddleTierRole();
+			try {
+				return TamperHash.Compute(unhashedText);
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+				return ex.GetType().Name;
+			}
+		}
+
+		///<summary>Validates insVerify.SecurityHash. True if it matches the hash of the row's fields, if it was written by Open Dental (see
+		///SecurityHash.IsHashValid), or if the row was last edited before SecurityHash.GetHashingDate, like the dated rows of the other hashed tables.</summary>
+		public static bool IsInsVerifyHashValid(InsVerify insVerify) {
+			Meth.NoCheckMiddleTierRole();
+			if(insVerify==null || insVerify.SecurityHash==null) {//null: made through the middle tier and not yet refreshed from the database.
+				return true;
+			}
+			if(insVerify.SecDateTEdit<Misc.SecurityHash.GetHashingDate()) {
+				return true;
+			}
+			return Misc.SecurityHash.IsHashValid(insVerify.SecurityHash,HashFields(insVerify));
+		}
+
+		///<summary>Sets insVerify.SecurityHash before insVerify is written over insVerifyOld, the row as it is in the database. A new hash is computed when
+		///the stored hash is blank, still valid, or Open Dental's (SecurityHash.DoRehashOnSave), so every save of a hashed field by the program is hashed.
+		///Otherwise the row was changed outside the program: the stored hash is kept, so the integrity warning stays. insVerifyOld null (no such row) gets
+		///a new hash.</summary>
+		private static void SetHashForUpdate(InsVerify insVerify,InsVerify insVerifyOld) {
+			Meth.NoCheckMiddleTierRole();
+			if(insVerifyOld==null || Misc.SecurityHash.DoRehashOnSave(insVerifyOld.SecurityHash,HashFields(insVerifyOld)))
+			{
+				insVerify.SecurityHash=HashFields(insVerify);
+				return;
+			}
+			insVerify.SecurityHash=insVerifyOld.SecurityHash;
+		}
+		#endregion SecurityHash
 	}
 
 	public enum PlanToVerify {

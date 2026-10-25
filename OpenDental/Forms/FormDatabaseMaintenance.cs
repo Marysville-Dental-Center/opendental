@@ -252,7 +252,8 @@ namespace OpenDental {
 				gridTools.ListGridRows.Add(row);
 			}
 			if(Security.IsAuthorized(EnumPermType.SecurityAdmin,true)) {
-				row=new GridRow(Lan.g(this,"Security Hashes"),Lan.g(this,"Recalculates the tamper-detection hashes of patients and recent appointments, claims and payments."));
+				row=new GridRow(Lan.g(this,"Security Hashes"),Lan.g(this,"Recalculates the tamper-detection hashes of patients and recent appointments, claims, payments, "
+					+"insurance subscribers and insurance verifications."));
 				row.Tag=new Action(SecurityHashesFix);
 				gridTools.ListGridRows.Add(row);
 			}
@@ -441,7 +442,11 @@ namespace OpenDental {
 			string msg=Lan.g(this,"This tool recalculates the tamper-detection hash (SecurityHash) of:")+"\r\n"
 				+"- "+Lan.g(this,"every patient whose hash is blank or was written by Open Dental")+"\r\n"
 				+"- "+Lan.g(this,"every appointment, claim, claim procedure, payment split and payment plan dated on or after")+" "
+					+OpenDentBusiness.Misc.SecurityHash.GetHashingDate().ToShortDateString()+"\r\n"
+				+"- "+Lan.g(this,"every insurance subscriber, insurance verification and verification history row edited on or after")+" "
 					+OpenDentBusiness.Misc.SecurityHash.GetHashingDate().ToShortDateString()+"\r\n\r\n"
+				+Lan.g(this,"To recalculate every patient, including patients changed outside the program, run the SecurityHashRehashPatientTable "
+					+"method (Checks tab, or the Old tab once it has been fixed).")+"\r\n\r\n"
 				+Lan.g(this,"Recent records that were changed directly in the database will no longer show the Database Integrity warning. "
 					+"Run it once after moving a database over from Open Dental, before anyone edits data directly in the database.")+"\r\n\r\n"
 				+Lan.g(this,"Continue?");

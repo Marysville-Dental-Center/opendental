@@ -116,6 +116,16 @@ A secret per-database key would add little. Anyone able to write these tables co
 
 `Patients.IsPatientHashValid` checks every patient. For the other tables, `IsAppointmentHashValid`, `IsClaimHashValid` and the others check only rows dated on or after `SecurityHash.GetHashingDate()`, which is one month ago or 2025-03-27, whichever is later. For appointments, that includes all future ones.
 
+The Open Dental 25.1 and 25.2 columns use the row key too, with `|` between fields and dates without their time (backlog package A-HASH):
+
+| Table | Hashed fields | Checked rows |
+|---|---|---|
+| `insverify` | `UserNum`, `DefNum`, `DateLastAssigned` | edited (`SecDateTEdit`) on or after the hashing date |
+| `insverifyhist` | the same fields, copied from `insverify`, so the copied hash stays valid | the same |
+| `inssub` | `PlanNum`, `Subscriber`, `SubscriberID`, `DateTerm` | the same |
+
+When the program saves one of these rows, it computes a new hash only if the stored one is blank, still valid, or Open Dental's (`SecurityHash.DoRehashOnSave`). A row changed outside the program keeps its old hash, even if a user then edits it, so the warning stays until an administrator runs the rehash tool. The Insurance Verification List shows the triangle for the selected row.
+
 ### First run against a database hashed by Open Dental
 
 The hashes Open Dental wrote can't be recomputed here. Comparing them with `osh1$` hashes would flag every recent row and every patient as tampered. Worse, the "only rehash rows that are already valid" logic would then never fix them. To prevent this:
@@ -131,9 +141,11 @@ After moving a database over from Open Dental, run the rehash once so every veri
 - `SecurityHash.UpdateHashing()` runs automatically, in background threads, on the workstation that performs the next program version update (`PrefL`).
 - `SecurityHash.RehashNow()` runs the same work on demand, on the calling thread, even if it already ran in this process. **Database Maintenance, Tools tab, Security Hashes** runs it after a confirmation prompt. The tool needs the Security Admin permission and a direct database connection (not the middle tier), and it makes a security log entry.
 
-It rehashes every patient with a blank or legacy hash, and every appointment, claim, claim procedure, payment split and payment plan in the verified date range. Like Open Dental's own update-time rehash, it also rewrites the hash of a recent row that was tampered with. Run it right after migrating, before anyone edits data directly in the database.
+It rehashes every patient with a blank or legacy hash, and every appointment, claim, claim procedure, payment split, payment plan, insurance subscriber, insurance verification and verification history row in the verified date range. Like Open Dental's own update-time rehash, it also rewrites the hash of a recent row that was tampered with. Run it right after migrating, before anyone edits data directly in the database.
 
 Until the rehash runs, legacy hashes are accepted without verification. Rows written by this program are verified normally.
+
+To rehash **every** patient, including patients changed outside the program, run the Database Maintenance method `SecurityHashRehashPatientTable` (Open Dental 25.1). Check counts the patients whose hash does not match (never hashed, Open Dental's, changed outside the program). Fix needs Security Admin, rewrites the hashes in batches of 1,000 (`SecurityHash.RehashPatientTable`, keeping `DateTStamp`), and makes one security log entry with the count. It is a one-off method, so after a fix it moves to the Old tab and a routine Fix All does not run it again.
 
 ## What the CDT library also did, and what replaced it
 

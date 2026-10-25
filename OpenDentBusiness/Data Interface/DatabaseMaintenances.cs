@@ -5403,6 +5403,7 @@ namespace OpenDentBusiness {
 							listInsSubs=Crud.InsSubCrud.SelectMany(command);
 							command="UPDATE inssub SET PlanNum="+POut.Long(insPlanNum)+" WHERE InsSubNum="+POut.Long(insSubNum);
 							Db.NonQ(command);
+							InsSubs.RehashAfterDirectUpdate(listInsSubs);//PlanNum is a hashed field.
 							for(int j=0;j<listInsSubs.Count;j++){
 								DbmLog dbmLogInsSub=new DbmLog(Security.CurUser.UserNum,listInsSubs[j].InsSubNum,DbmLogFKeyType.InsSub,DbmLogActionType.Update,
 									methodName,"Updated PlanNum from "+listInsSubs[j].PlanNum+" to "+insPlanNum+" InsPlanInvalidNum.");
@@ -10017,6 +10018,56 @@ namespace OpenDentBusiness {
 					int numberFixed=(int)Db.NonQ(command);
 					if(numberFixed>0 || verbose) {
 						log+=Lans.g("FormDatabaseMaintenance","Schedules deleted that were causing printing issues: ")+numberFixed.ToString()+"\r\n";
+					}
+					break;
+			}
+			return log;
+		}
+
+		///<summary>Open Dental 25.1 (also 24.4.48): rehash the whole patient table. Check counts the patients whose SecurityHash does not match their row:
+		///never hashed, written by Open Dental (which this program can't check, see SecurityHash.IsLegacyHash), or changed outside the program. Fix
+		///recomputes the hash of every patient (SecurityHash.RehashPatientTable, in batches), which also clears the integrity warning on patients changed
+		///outside the program, so it requires the Security Admin permission and makes one security log entry with the count. The usual hashing pass only
+		///fills blank and Open Dental hashes. One-off: after a fix it moves to the Old tab, so a routine Fix All doesn't rehash again.</summary>
+		[DbmMethodAttr(IsOneOff=true)]
+		public static string SecurityHashRehashPatientTable(bool verbose,DbmMode dbmMode) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetString(MethodBase.GetCurrentMethod(),verbose,dbmMode);
+			}
+			string log="";
+			switch(dbmMode) {
+				case DbmMode.Check:
+				case DbmMode.Breakdown:
+					long countLegacy;
+					long countBlank;
+					long countNotMatching=Misc.SecurityHash.CountPatientHashesNotMatching(out countLegacy,out countBlank);
+					if(countNotMatching<0) {
+						return verbose ? Lans.g("FormDatabaseMaintenance","The patient table has no SecurityHash column.")+"\r\n" : "";
+					}
+					if(countNotMatching>0 || verbose) {
+						log+=Lans.g("FormDatabaseMaintenance","Patients whose integrity hash does not match")+": "+countNotMatching;
+						if(countNotMatching>0) {
+							log+=" ("+Lans.g("FormDatabaseMaintenance","never hashed")+": "+countBlank+", "
+								+Lans.g("FormDatabaseMaintenance","written by Open Dental")+": "+countLegacy+", "
+								+Lans.g("FormDatabaseMaintenance","changed outside the program")+": "+(countNotMatching-countLegacy-countBlank)+")";
+						}
+						log+="\r\n";
+					}
+					break;
+				case DbmMode.Fix:
+					if(!Security.IsAuthorized(EnumPermType.SecurityAdmin,true)) {
+						return Lans.g("FormDatabaseMaintenance","Rehashing the patient table requires the Security Admin permission.")+"\r\n";
+					}
+					string progressText=Lans.g("FormDatabaseMaintenance","Rehashing patients");
+					long countFixed=Misc.SecurityHash.RehashPatientTable((countRead,countTotal) =>
+						ODEvent.Fire(ODEventType.ProgressBar,progressText+": "+countRead+" / "+countTotal));
+					if(countFixed<0) {
+						return verbose ? Lans.g("FormDatabaseMaintenance","The patient table has no SecurityHash column.")+"\r\n" : "";
+					}
+					SecurityLogs.MakeLogEntry(EnumPermType.SecurityAdmin,0,"Database Maintenance SecurityHashRehashPatientTable rehashed "+countFixed
+						+" patient rows.");
+					if(countFixed>0 || verbose) {
+						log+=Lans.g("FormDatabaseMaintenance","Patients rehashed")+": "+countFixed+"\r\n";
 					}
 					break;
 			}

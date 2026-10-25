@@ -19,11 +19,18 @@ namespace OpenDentBusiness.Misc {
 		private static bool _arePayPlansUpdated=false;
 		private static bool _areClaimsUpdated=false;
 		private static bool _areClaimProcsUpdated=false;
+		private static bool _areInsVerifiesUpdated=false;
+		private static bool _areInsVerifyHistsUpdated=false;
+		private static bool _areInsSubsUpdated=false;
 		private static List<Thread> _listHashThreads=new List<Thread>();
+		///<summary>Rows per statement when the whole patient table is rehashed (RehashPatientTable).</summary>
+		public const int PATIENT_BATCH_SIZE=1000;
 
 		///<summary>This method is NOT safe to invoke during database conversions. It is only to be called AFTER all conversions have taken place in order to avoid a rare table lockup. 
 		///Runs a hashing algorithm over all tables for which Open Dental is enforcing database integrity. Overwrites any existing SecurityHashes with new ones for recent entries, except Patient table.
-		///Patient rows are hashed only when their SecurityHash is blank or was written by Open Dental (see IsLegacyHash).
+		///Patient rows are hashed only when their SecurityHash is blank or was written by Open Dental (see IsLegacyHash); RehashPatientTable rehashes
+		///them all. Tables: appointment, claim, claimproc, patient, payplan, paysplit, and the 25.1/25.2 columns on inssub, insverify and insverifyhist
+		///(rows edited on or after GetHashingDate).
 		///This is also the admin rehash step after moving a database over from Open Dental. It runs automatically on the workstation that performs
 		///the next program version update (PrefL). RehashNow runs it on demand. Either way, it converts Open Dental's hashes for every patient, and for
 		///rows in the verified date range of the other tables, to the current TamperHash format. See CodeBase/Crypto/README.md.</summary>
@@ -35,6 +42,9 @@ namespace OpenDentBusiness.Misc {
 			RunAppointment();
 			RunClaim();
 			RunPayPlan();
+			RunInsSub();
+			RunInsVerify();
+			RunInsVerifyHist();
 			ThreadJoinHelper();//Used to dispose of HashAlgorithms in the threads above
 			string updating="Updating database.";
 			ODEvent.Fire(ODEventType.ConvertDatabases,updating);
@@ -59,6 +69,9 @@ namespace OpenDentBusiness.Misc {
 				_arePayPlansUpdated=false;
 				_areClaimsUpdated=false;
 				_areClaimProcsUpdated=false;
+				_areInsVerifiesUpdated=false;
+				_areInsVerifyHistsUpdated=false;
+				_areInsSubsUpdated=false;
 				UpdateHashing();
 			}
 			finally {
@@ -400,6 +413,188 @@ namespace OpenDentBusiness.Misc {
 				}
 			}
 		}
+
+		#region Insurance subscribers and verifications (Open Dental 25.1 and 25.2 columns)
+		///<summary>Rehashes inssub rows edited on or after GetHashingDate (SecDateTEdit). Hash: InsSubs.HashFields.</summary>
+		private static void RunInsSub() {
+			if(_areInsSubsUpdated) {
+				return;
+			}
+			if(!LargeTableHelper.ColumnExists(LargeTableHelper.GetCurrentDatabase(),"inssub","SecurityHash")) {
+				return;
+			}
+			ODEvent.Fire(ODEventType.ConvertDatabases,"Hashing insurance subscribers.");
+			_areInsSubsUpdated=true;
+			string command="SELECT * FROM inssub WHERE SecDateTEdit >= "+POut.Date(GetHashingDate());
+			List<InsSub> listInsSubs=Crud.InsSubCrud.SelectMany(command);
+			for(int i=0;i<listInsSubs.Count;i++) {
+				string hashNew=InsSubs.HashFields(listInsSubs[i]);
+				if(listInsSubs[i].SecurityHash!=hashNew) {
+					WriteHash("inssub","InsSubNum",listInsSubs[i].InsSubNum,hashNew);
+				}
+			}
+		}
+
+		///<summary>Rehashes insverify rows edited on or after GetHashingDate (SecDateTEdit). Hash: InsVerifies.HashFields.</summary>
+		private static void RunInsVerify() {
+			if(_areInsVerifiesUpdated) {
+				return;
+			}
+			if(!LargeTableHelper.ColumnExists(LargeTableHelper.GetCurrentDatabase(),"insverify","SecurityHash")) {
+				return;
+			}
+			ODEvent.Fire(ODEventType.ConvertDatabases,"Hashing insurance verifications.");
+			_areInsVerifiesUpdated=true;
+			string command="SELECT * FROM insverify WHERE SecDateTEdit >= "+POut.Date(GetHashingDate());
+			List<InsVerify> listInsVerifies=Crud.InsVerifyCrud.SelectMany(command);
+			for(int i=0;i<listInsVerifies.Count;i++) {
+				string hashNew=InsVerifies.HashFields(listInsVerifies[i]);
+				if(listInsVerifies[i].SecurityHash!=hashNew) {
+					WriteHash("insverify","InsVerifyNum",listInsVerifies[i].InsVerifyNum,hashNew);
+				}
+			}
+		}
+
+		///<summary>Rehashes insverifyhist rows edited on or after GetHashingDate (SecDateTEdit). Hash: InsVerifyHists.HashFields, which gives the
+		///same value as the insverify row it was copied from.</summary>
+		private static void RunInsVerifyHist() {
+			if(_areInsVerifyHistsUpdated) {
+				return;
+			}
+			if(!LargeTableHelper.ColumnExists(LargeTableHelper.GetCurrentDatabase(),"insverifyhist","SecurityHash")) {
+				return;
+			}
+			ODEvent.Fire(ODEventType.ConvertDatabases,"Hashing insurance verification history.");
+			_areInsVerifyHistsUpdated=true;
+			string command="SELECT * FROM insverifyhist WHERE SecDateTEdit >= "+POut.Date(GetHashingDate());
+			List<InsVerifyHist> listInsVerifyHists=Crud.InsVerifyHistCrud.SelectMany(command);
+			for(int i=0;i<listInsVerifyHists.Count;i++) {
+				string hashNew=InsVerifyHists.HashFields(listInsVerifyHists[i]);
+				if(listInsVerifyHists[i].SecurityHash!=hashNew) {
+					WriteHash("insverifyhist","InsVerifyHistNum",listInsVerifyHists[i].InsVerifyHistNum,hashNew);
+				}
+			}
+		}
+
+		///<summary>Writes one SecurityHash value. Only for the hard-coded table and key names above.</summary>
+		private static void WriteHash(string tableName,string priKeyName,long priKey,string hash) {
+			string command="UPDATE "+tableName+" SET SecurityHash='"+POut.String(hash)+"' WHERE "+priKeyName+"="+POut.Long(priKey);
+			Db.NonQ(command);
+		}
+
+		///<summary>Decides whether a row that the program is about to save gets a freshly computed hash, from the row as it is in the database. True when
+		///the stored hash still verifies, was written by Open Dental (see IsHashValid), or is blank (never hashed). False when the stored hash is one of
+		///ours and does not match the stored values: the row was changed outside the program. The program then keeps the old hash, even when the save
+		///changes a hashed field, so a user's edit never hides the outside change; the warning stays until an administrator runs the rehash tool. This is
+		///the rule Patients.Update follows.</summary>
+		public static bool DoRehashOnSave(string hashStored,string hashComputedFromStoredValues) {
+			if(string.IsNullOrEmpty(hashStored)) {
+				return true;
+			}
+			return IsHashValid(hashStored,hashComputedFromStoredValues);
+		}
+		#endregion Insurance subscribers and verifications (Open Dental 25.1 and 25.2 columns)
+
+		#region Whole patient table
+		///<summary>The patient hash for a PatNum (the only hashed patient field), as Patients.HashFields computes it.</summary>
+		public static string HashPatNum(long patNum) {
+			try {
+				return TamperHash.Compute(patNum.ToString(),isPatientTable:true);
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+				return ex.GetType().Name;
+			}
+		}
+
+		///<summary>Counts the patient rows whose SecurityHash does not match the hash computed from the row. countLegacy is the part of the result whose
+		///hash was written by Open Dental (it can't be checked here, see IsLegacyHash); countBlank the part that was never hashed. The rest no longer
+		///match: they were changed outside the program. Reads the table in batches. Returns -1 when there is no patient.SecurityHash column.</summary>
+		public static long CountPatientHashesNotMatching(out long countLegacy,out long countBlank) {
+			countLegacy=0;
+			countBlank=0;
+			if(!LargeTableHelper.ColumnExists(LargeTableHelper.GetCurrentDatabase(),"patient","SecurityHash")) {
+				return -1;
+			}
+			long count=0;
+			long patNumLast=0;
+			while(true) {
+				DataTable table=GetPatientBatch(patNumLast);
+				if(table.Rows.Count==0) {
+					break;
+				}
+				for(int i=0;i<table.Rows.Count;i++) {
+					long patNum=PIn.Long(table.Rows[i]["PatNum"].ToString());
+					string hashStored=PIn.String(table.Rows[i]["SecurityHash"].ToString());
+					patNumLast=patNum;
+					if(hashStored==HashPatNum(patNum)) {
+						continue;
+					}
+					count++;
+					if(string.IsNullOrEmpty(hashStored)) {
+						countBlank++;
+					}
+					else if(IsLegacyHash(hashStored)) {
+						countLegacy++;
+					}
+				}
+			}
+			return count;
+		}
+
+		///<summary>Recomputes patient.SecurityHash for every patient row, in batches of PATIENT_BATCH_SIZE, and writes only the hashes that differ.
+		///Unlike UpdateHashing, which only fills blank and Open Dental hashes, this also replaces a hash that no longer matches because the row was changed
+		///outside the program, so it clears those integrity warnings. The patient's DateTStamp is kept, because no patient data changes.
+		///actionProgress, if given, gets the number of rows read so far and the number of rows in the table after each batch.
+		///Returns the number of rows whose hash was rewritten, or -1 when there is no patient.SecurityHash column. Not for use during database conversions.
+		///</summary>
+		public static long RehashPatientTable(Action<long,long> actionProgress=null) {
+			if(!LargeTableHelper.ColumnExists(LargeTableHelper.GetCurrentDatabase(),"patient","SecurityHash")) {
+				return -1;
+			}
+			bool hasDateTStamp=LargeTableHelper.ColumnExists(LargeTableHelper.GetCurrentDatabase(),"patient","DateTStamp");
+			long countTotal=PIn.Long(Db.GetCount("SELECT COUNT(*) FROM patient"));
+			long countRead=0;
+			long countChanged=0;
+			long patNumLast=0;
+			while(true) {
+				DataTable table=GetPatientBatch(patNumLast);
+				if(table.Rows.Count==0) {
+					break;
+				}
+				StringBuilder stringBuilderCase=new StringBuilder();
+				List<long> listPatNumsChanged=new List<long>();
+				for(int i=0;i<table.Rows.Count;i++) {
+					long patNum=PIn.Long(table.Rows[i]["PatNum"].ToString());
+					string hashStored=PIn.String(table.Rows[i]["SecurityHash"].ToString());
+					patNumLast=patNum;
+					string hashNew=HashPatNum(patNum);
+					if(hashStored==hashNew) {
+						continue;
+					}
+					stringBuilderCase.Append(" WHEN "+POut.Long(patNum)+" THEN '"+POut.String(hashNew)+"'");
+					listPatNumsChanged.Add(patNum);
+				}
+				if(listPatNumsChanged.Count>0) {
+					string command="UPDATE patient SET SecurityHash=CASE PatNum"+stringBuilderCase+" END"
+						+(hasDateTStamp ? ",DateTStamp=DateTStamp" : "")
+						+" WHERE PatNum IN("+string.Join(",",listPatNumsChanged.Select(x => POut.Long(x)))+")";
+					Db.NonQ(command);
+					countChanged+=listPatNumsChanged.Count;
+				}
+				countRead+=table.Rows.Count;
+				actionProgress?.Invoke(countRead,countTotal);
+			}
+			_arePatientsUpdated=true;//Nothing is left for PatientWorker to do in this process.
+			return countChanged;
+		}
+
+		///<summary>The next PATIENT_BATCH_SIZE patients after patNumLast, in PatNum order: PatNum and SecurityHash only.</summary>
+		private static DataTable GetPatientBatch(long patNumLast) {
+			string command="SELECT PatNum,SecurityHash FROM patient WHERE PatNum>"+POut.Long(patNumLast)+" ORDER BY PatNum LIMIT "+PATIENT_BATCH_SIZE;
+			return Db.GetTable(command);
+		}
+		#endregion Whole patient table
 
 		/// <summary>Handles the disposing of HashAlgorithms during updates. /// </summary>
 		private static void ThreadJoinHelper() {
