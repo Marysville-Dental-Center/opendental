@@ -684,6 +684,7 @@
       <DependentUpon>InputBox.xaml</DependentUpon>
     </Compile>
     <Compile Include="Logic\EFormL.cs" />
+    <Compile Include="Logic\OtherEntryConvertL.cs" />
     <Compile Include="Logic\PatientL.cs" />
     <Compile Include="Logic\ProgramL.cs" />
     <Compile Include="Logic\VendorDirect\PdmpLaunch.cs" />

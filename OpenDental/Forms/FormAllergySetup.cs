@@ -24,11 +24,13 @@ namespace OpenDental {
 			if(!IsSelectionMode) {
 				butOK.Visible=false;
 			}
+			ShowSearchForOtherConvert();
 			FillGrid();
 		}
 
 		private void FillGrid() {
 			_listAllergyDefs=AllergyDefs.GetAll(checkShowHidden.Checked);
+			_listAllergyDefs=FilterForOtherConvert(_listAllergyDefs);
 			gridMain.BeginUpdate();
 			gridMain.Columns.Clear();
 			GridColumn col=new GridColumn(Lan.g("FormAllergySetup","Description"),160);
@@ -75,7 +77,11 @@ namespace OpenDental {
 			using FormAllergyDefEdit formAllergyDefEdit=new FormAllergyDefEdit();
 			formAllergyDefEdit.AllergyDefCur=new AllergyDef();
 			formAllergyDefEdit.AllergyDefCur.IsNew=true;
+			SetNewDefForOtherConvert(formAllergyDefEdit.AllergyDefCur);
 			formAllergyDefEdit.ShowDialog();
+			if(PickNewDefForOtherConvert(formAllergyDefEdit.DialogResult,formAllergyDefEdit.AllergyDefCur)) {
+				return;
+			}
 			FillGrid();
 		}
 

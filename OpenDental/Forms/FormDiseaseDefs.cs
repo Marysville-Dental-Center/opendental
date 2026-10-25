@@ -41,6 +41,7 @@ namespace OpenDental{
 		}
 
 		private void FormDiseaseDefs_Load(object sender,EventArgs e) {
+			ShowSearchForOtherConvert();
 			Action actionFillGrid=() => FillGrid();
 			SetFilterControlsAndAction(actionFillGrid,
 				(int)TimeSpan.FromSeconds(0.5).TotalMilliseconds,
@@ -220,6 +221,7 @@ namespace OpenDental{
 				SnomedCode="",
 				ItemOrder=DiseaseDefs.GetCount()
 			};
+			SetNewDefForOtherConvert(diseaseDef);
 			using FormDiseaseDefEdit formDiseaseDefEdit=new FormDiseaseDefEdit(diseaseDef);//also sets ItemOrder correctly if using alphabetical during the insert diseaseDef call.
 			formDiseaseDefEdit.IsNew=true;
 			formDiseaseDefEdit.ShowDialog();
@@ -247,6 +249,7 @@ namespace OpenDental{
 			_listDiseaseDefs.Add(formDiseaseDefEdit.DiseaseDefCur);
 			//Sync on FormClosing() will not happen; we don't need it since Adding a new DiseaseDef is the only change user can make in SelectionMode.
 			FillGrid();
+			PickNewDefForOtherConvert(formDiseaseDefEdit.DiseaseDefCur);
 		}
 
 		///<summary>Only visible when !IsSelectionMode, and disabled if any filtering has been done via the search boxes. 
