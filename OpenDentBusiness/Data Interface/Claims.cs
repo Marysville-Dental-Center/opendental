@@ -13,7 +13,7 @@ using System.Xml.Serialization;
 
 namespace OpenDentBusiness{
 	///<summary></summary>
-	public class Claims{
+	public partial class Claims{
 		#region Get Methods
 
 		///<summary>Returns a list of outstanding ClaimPaySplits for a given provider. 
@@ -209,9 +209,14 @@ namespace OpenDentBusiness{
 
 		///<summary>Returns 'Unsent' or 'Hold Until Pri Received' claims that have unsent claimprocs and are associated with the procedures of the claimprocs passed in.
 		///Set isSecondaryClaim true to only return secondary claims. Otherwise, only returns primary claims.
-		///Typically used for getting secondary claims after primary is received or primary claims after a medical claim is received.</summary>
+		///Typically used for getting secondary claims after primary is received or primary claims after a medical claim is received.
+		///Open Dental 26.1: isSecondaryClaim true returns the claims of the next insurance after each received claim, of any ordinal
+		///(GetNextOrdinalClaimsNotReceived in Claims.NextOrdinal.cs).</summary>
 		public static List<Claim> GetPrimaryOrSecondaryClaimsNotReceived(List<ClaimProc> listClaimProcsForClaims,bool isSecondaryClaim=true) {
 			Meth.NoCheckMiddleTierRole();
+			if(isSecondaryClaim) {
+				return GetNextOrdinalClaimsNotReceived(listClaimProcsForClaims);
+			}
 			//Get a list of ProcNums associated with the claimprocs passed in..
 			List<long> listProcNumsOnClaims=listClaimProcsForClaims.FindAll(x => x.ProcNum>0).Select(x => x.ProcNum).ToList();
 			//Get list of NotReceived ClaimProcs associated with claims and the list of ProcNums.
@@ -1056,7 +1061,8 @@ namespace OpenDentBusiness{
 			}
 			List<long> listClaimNums=listPrimaryClaims.Select(x=>x.ClaimNum).ToList();
 			List<ClaimProc> listClaimProcs=ClaimProcs.RefreshForClaims(listClaimNums);
-			List<Claim> listSecondaryClaims=Claims.GetPrimaryOrSecondaryClaimsNotReceived(listClaimProcs);
+			//Open Dental 26.1: the next insurance after any received claim, including claims on hold for an in-process multi-visit group.
+			List<Claim> listSecondaryClaims=Claims.GetNextOrdinalClaimsNotReceived(listClaimProcs,includeHoldForInProcess:true);
 			CalculateAndUpdateSecondaries(listSecondaryClaims);
 		}
 
@@ -1905,7 +1911,7 @@ namespace OpenDentBusiness{
 			claim.DateReceived=DateTime.Today;
 			claim.ClaimStatus="R";
 			Claims.Update(claim);
-			if(PrefC.GetBool(PrefName.ClaimPrimaryReceivedRecalcSecondary) && claim.ClaimType=="P") {
+			if(PrefC.GetBool(PrefName.ClaimPrimaryReceivedRecalcSecondary)) {//Open Dental 26.1: any ordinal, not only a primary claim. Preauths returned above.
 				Claims.CalculateAndUpdateSecondariesFromPrimaries(new List<Claim>{ claim });
 			}
 			return true;
