@@ -1,11 +1,13 @@
 // This file is part of the open source dental practice management software derived from Open Dental.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using ImagingDeviceManager.Imaging;
 
 namespace ImagingDeviceManager.TwainProtocol {
-	//The nested message loop, and every stop the library starts itself: Cancel, and the safe order of design 7.1.
+	//The nested message loop, and every stop the library starts itself: Cancel, the safe order of design 7.1, and the wait after a
+	//refused disable.
 	internal sealed partial class TwainSession {
 		///<summary>Wakes the message loop regularly so that stop requests are noticed even when no other message arrives.</summary>
 		private const int TimerIdTick=0x7A12;
@@ -19,6 +21,10 @@ namespace ImagingDeviceManager.TwainProtocol {
 		private volatile bool _isCancelRequested;
 		///<summary>Why the message loop stopped without a notification, for the code that runs after it.</summary>
 		private TwainStopReason _stopReason;
+		private readonly Stopwatch _stopwatch=Stopwatch.StartNew();
+		///<summary>WM_QUIT arrived while the session had to keep its message loop running; it is posted again afterwards.</summary>
+		private bool _isQuitPending;
+		private int _quitExitCode;
 
 		///<summary>How often the message loop wakes up to check for stop requests, in milliseconds.</summary>
 		public int TickMilliseconds { get; set; }=200;
@@ -26,6 +32,16 @@ namespace ImagingDeviceManager.TwainProtocol {
 		public TwainStopReason LastStopReason { get; private set; }
 		///<summary>Images handed to DrainSink since the last Acquire started.</summary>
 		public int DrainedImageCount { get; private set; }
+		///<summary>True while the session waits for the source after a refused MSG_DISABLEDS.</summary>
+		public bool IsWaitingForSource { get; private set; }
+		///<summary>True when, since the last Acquire started, a wait after a refused disable ended without a notification and the second
+		///consecutive MSG_DISABLEDS was sent: the source may still hold images of this series.</summary>
+		public bool SourceMayHoldImages { get; private set; }
+		///<summary>Raised with true when the session starts waiting for the source after a refused MSG_DISABLEDS (a status window then
+		///says "Waiting for the sensor software to finish."), and with false when the wait ends. Handlers must not throw.</summary>
+		public event Action<bool> WaitingForSourceChanged;
+
+		private long NowMs => _stopwatch.ElapsedMilliseconds;
 
 		///<summary>True when images the caller cannot take go to DrainSink instead of being discarded with MSG_RESET: only on the by-name
 		///path, and only with a sink. Scans keep discarding them.</summary>
@@ -54,6 +70,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 			_stopReason=TwainStopReason.None;
 			LastStopReason=TwainStopReason.None;
 			DrainedImageCount=0;
+			SourceMayHoldImages=false;
 		}
 
 		private void EndAcquire() {
@@ -93,6 +110,13 @@ namespace ImagingDeviceManager.TwainProtocol {
 		///MSG_XFERREADY or MSG_CLOSEDSREQ from the source, or MSG_NULL when it stopped for another reason: then _stopReason says why
 		///(Error with the error set when the loop itself failed).</summary>
 		private ushort RunMessageLoop() {
+			return PumpMessages(false,0);
+		}
+
+		///<summary>The nested message loop. Waiting for the transfer (isRefusalWait false) it also stops on a stop request. Waiting after
+		///a refused disable (isRefusalWait true) it ignores stop requests (the stop is already under way), keeps going after WM_QUIT
+		///(posted again afterwards) and returns MSG_NULL at deadlineMs or when the source stops responding; it sets no error.</summary>
+		private ushort PumpMessages(bool isRefusalWait,long deadlineMs) {
 			IntPtr pMsg=Marshal.AllocHGlobal(NativeMethods.MsgBufferSize);
 			IntPtr pEvent=Marshal.AllocHGlobal(Marshal.SizeOf(typeof(TW_EVENT)));
 			IntPtr hwndProxy=_proxyWindow.Handle;
@@ -100,16 +124,28 @@ namespace ImagingDeviceManager.TwainProtocol {
 			int countFailures=0;
 			try {
 				NativeMethods.SetTimer(hwndProxy,(UIntPtr)TimerIdTick,(uint)Math.Max(10,TickMilliseconds),IntPtr.Zero);
-				if(LoopTimeoutMilliseconds>0) {
+				if(LoopTimeoutMilliseconds>0 && !isRefusalWait) {
 					NativeMethods.SetTimer(hwndProxy,(UIntPtr)TimerIdTimeout,(uint)LoopTimeoutMilliseconds,IntPtr.Zero);
 					hasTimeoutTimer=true;
 				}
 				while(true) {
 					int result=NativeMethods.GetMessage(pMsg,IntPtr.Zero,0,0);
 					if(result==-1) {
-						SetError(EZTwainErrorCode.EZTEC_INTERNAL,"Windows message loop error "+Marshal.GetLastWin32Error()+".");
+						string error="Windows message loop error "+Marshal.GetLastWin32Error()+".";
+						if(isRefusalWait) {
+							Log(error);
+							return Tw.MSG_NULL;
+						}
+						SetError(EZTwainErrorCode.EZTEC_INTERNAL,error);
 						_stopReason=TwainStopReason.Error;
 						return Tw.MSG_NULL;
+					}
+					if(result==0 && isRefusalWait) {
+						//WM_QUIT while the source finishes: keep waiting (GetMessage works again once WM_QUIT is read) and post it again
+						//afterwards, so the program still closes.
+						_isQuitPending=true;
+						_quitExitCode=Marshal.ReadInt32(pMsg,NativeMethods.MsgOffsetWParam);
+						continue;
 					}
 					if(result==0) {
 						//WM_QUIT: the program is shutting down. Stop scanning and pass the quit message on to the outer loop.
@@ -127,10 +163,17 @@ namespace ImagingDeviceManager.TwainProtocol {
 						_stopReason=TwainStopReason.Error;
 						return Tw.MSG_NULL;
 					}
-					TwainStopReason stopReason=GetStopRequest();
-					if(stopReason!=TwainStopReason.None) {
-						_stopReason=stopReason;
-						return Tw.MSG_NULL;
+					if(isRefusalWait) {
+						if(NowMs>=deadlineMs) {
+							return Tw.MSG_NULL;
+						}
+					}
+					else {
+						TwainStopReason stopReason=GetStopRequest();
+						if(stopReason!=TwainStopReason.None) {
+							_stopReason=stopReason;
+							return Tw.MSG_NULL;
+						}
 					}
 					if(hwndMsg==hwndProxy && (message==WM_APP_CANCEL || (message==NativeMethods.WM_TIMER && wParam==(IntPtr)TimerIdTick))) {
 						continue;//The library's own wake-up: not for the source.
@@ -154,7 +197,12 @@ namespace ImagingDeviceManager.TwainProtocol {
 							countFailures=0;
 						}
 						if(countFailures>=MaxConsecutiveEventFailures) {
-							SetError(EZTwainErrorCode.EZTEC_DS_FAILURE,"The scanner stopped responding. "+GetConditionText(conditionCode));
+							string error="The scanner stopped responding. "+GetConditionText(conditionCode);
+							if(isRefusalWait) {
+								Log("\""+SourceName+"\" stopped responding while the session waited for it.");
+								return Tw.MSG_NULL;
+							}
+							SetError(EZTwainErrorCode.EZTEC_DS_FAILURE,error);
 							_stopReason=TwainStopReason.Error;
 							return Tw.MSG_NULL;
 						}
@@ -324,15 +372,136 @@ namespace ImagingDeviceManager.TwainProtocol {
 			DrainPending(TwainDrainReason.ExtraImage,TwainStopReason.None);
 		}
 
-		///<summary>MSG_DISABLEDS from state 5. A source that refuses is treated as disabled, as before.</summary>
+		///<summary>MSG_DISABLEDS from state 5. On the by-name path a refusal with a code listed in [Twain] RefusedDisableCodes means the
+		///source finishes first and then sends a notification (twain-contract 1.1 section 10.2), so the session waits for it
+		///(WaitAfterRefusedDisable). Any other refusal while the safe-disable capability is set is a contract deviation, logged and
+		///handled the same way, because waiting never loses an image. Otherwise, and for scans, a source that refuses is treated as
+		///disabled, as before.</summary>
 		private void DisableSourceSafely(TwainStopReason reason) {
 			if(SendDisable()) {
 				return;
 			}
-			if(IsOpenedByName) {
-				Log("\""+SourceName+"\" refused MSG_DISABLEDS (condition code "+ToHex(LastConditionCode)+"); it is treated as disabled.");
+			ushort conditionCode=LastConditionCode;
+			if(!IsOpenedByName) {
+				SetDisabledState();
+				return;
 			}
-			SetDisabledState();
+			TwainCaptureSettings settings=Settings??new TwainCaptureSettings();
+			bool isListed=settings.ListRefusedDisableCodes.Contains(conditionCode);
+			if(!isListed && !IsSafeDisableInEffect) {
+				Log("\""+SourceName+"\" refused MSG_DISABLEDS (condition code "+ToHex(conditionCode)+"); it is treated as disabled.");
+				SetDisabledState();
+				return;
+			}
+			if(isListed) {
+				Log("\""+SourceName+"\" refused MSG_DISABLEDS (condition code "+ToHex(conditionCode)+"). Waiting up to "
+					+GetWaitSeconds(settings)+" s for it to finish.");
+			}
+			else {
+				Log("Contract deviation: \""+SourceName+"\" refused MSG_DISABLEDS with condition code "+ToHex(conditionCode)
+					+", which [Twain] RefusedDisableCodes does not list, while the safe-disable capability is set. It is handled as a"
+					+" refused disable: waiting up to "+GetWaitSeconds(settings)+" s for it to finish.");
+			}
+			WaitAfterRefusedDisable(reason,settings);
+		}
+
+		private static string GetWaitSeconds(TwainCaptureSettings settings) {
+			return Math.Max(0,settings.RefusedDisableWait.TotalSeconds).ToString("0.#",System.Globalization.CultureInfo.InvariantCulture);
+		}
+
+		///<summary>After a refused MSG_DISABLEDS (design 7.1, twain-contract 1.1 section 10.2): keeps the message loop running for at most
+		///Settings.RefusedDisableWait, the library's own bound (the contract asks for at least 20 s).
+		///- MSG_XFERREADY: every image offered goes to the drain sink, then MSG_DISABLEDS again. One that arrives with nothing pending
+		///  (MSG_GET reports 0) is ignored.
+		///- MSG_CLOSEDSREQ: the end condition is read (DAT_STATUS), then MSG_DISABLEDS again.
+		///- A disable refused again keeps the wait going, within the same bound.
+		///- Neither in time: the second consecutive MSG_DISABLEDS, which the contract plans to succeed, leaving any images with the
+		///  source for redelivery; the log and the sink hear that the source may still hold images.
+		///Without a sink, offered images are discarded with MSG_RESET (they stay undelivered in the source).</summary>
+		private void WaitAfterRefusedDisable(TwainStopReason reason,TwainCaptureSettings settings) {
+			long deadlineMs=NowMs+(long)Math.Max(0,settings.RefusedDisableWait.TotalMilliseconds);
+			SetWaitingForSource(true);
+			try {
+				while(true) {
+					ushort notification=PumpMessages(true,deadlineMs);
+					if(notification==Tw.MSG_XFERREADY) {
+						if(State==5) {
+							short pending;
+							if(TryGetPendingCount(out pending) && pending==0) {
+								Log("\""+SourceName+"\" sent MSG_XFERREADY with nothing pending; ignored.");
+								continue;
+							}
+							State=6;
+						}
+						if(CanDrain) {
+							DrainPending(TwainDrainReason.RefusedDisable,reason);
+						}
+						else {
+							ResetPendingTransfers();
+						}
+					}
+					else if(notification==Tw.MSG_CLOSEDSREQ) {
+						ReadEndCondition();
+					}
+					else {
+						break;//The bound passed, or the source stopped responding.
+					}
+					if(State==5 && SendDisable()) {
+						return;
+					}
+					Log("\""+SourceName+"\" refused MSG_DISABLEDS again (condition code "+ToHex(LastConditionCode)+"); still waiting.");
+				}
+				bool isDisabled=State==5 && SendDisable();
+				Log("No notification from \""+SourceName+"\" within "+GetWaitSeconds(settings)+" s after the refused disable. The second"
+					+" consecutive MSG_DISABLEDS "+(isDisabled ? "succeeded" : "failed (condition code "+ToHex(LastConditionCode)
+					+"); the source is treated as disabled")+". The source may still hold images of this series.");
+				if(!isDisabled) {
+					SetDisabledState();
+				}
+				SourceMayHoldImages=true;
+				if(DrainSink!=null) {
+					try {
+						DrainSink.MayStillHoldImages(SourceName,reason);
+					}
+					catch(Exception ex) {
+						Log("The drain sink failed: "+ex.Message);
+					}
+				}
+			}
+			finally {
+				SetWaitingForSource(false);
+				if(_isQuitPending) {
+					_isQuitPending=false;
+					NativeMethods.PostQuitMessage(_quitExitCode);
+				}
+			}
+		}
+
+		private void SetWaitingForSource(bool isWaiting) {
+			IsWaitingForSource=isWaiting;
+			try {
+				WaitingForSourceChanged?.Invoke(isWaiting);
+			}
+			catch(Exception ex) {
+				Log("A WaitingForSourceChanged handler failed: "+ex.Message);
+			}
+		}
+
+		///<summary>DAT_PENDINGXFERS / MSG_GET. False when the source does not answer it.</summary>
+		private bool TryGetPendingCount(out short count) {
+			count=0;
+			IntPtr pPending=Marshal.AllocHGlobal(Marshal.SizeOf(typeof(TW_PENDINGXFERS)));
+			try {
+				Marshal.StructureToPtr(new TW_PENDINGXFERS(),pPending,false);
+				if(SourceEntry(Tw.DG_CONTROL,Tw.DAT_PENDINGXFERS,Tw.MSG_GET,pPending)!=Tw.TWRC_SUCCESS) {
+					return false;
+				}
+				count=((TW_PENDINGXFERS)Marshal.PtrToStructure(pPending,typeof(TW_PENDINGXFERS))).Count;
+				return true;
+			}
+			finally {
+				Marshal.FreeHGlobal(pPending);
+			}
 		}
 
 		///<summary>MSG_DISABLEDS. True, in state 4, when the source accepted it.</summary>
