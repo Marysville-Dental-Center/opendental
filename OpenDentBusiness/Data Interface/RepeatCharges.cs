@@ -487,6 +487,8 @@ namespace OpenDentBusiness {
 			retVal.RemoveAll(x => x < dateRun.AddMonths(-1).AddDays(-20));
 			//Remove any dates after today
 			retVal.RemoveAll(x => x > dateRun);
+			//26.1: with backdating turned off, also any date before today (RepeatChargeBackdating.cs).
+			RepeatChargeBackdating.RemoveBackdatedDates(retVal,dateRun);
 			//Remove billing dates past the end of the dateStop
 			int monthAdd=0;
 			//To account for a partial month, add a charge after the repeat charge stop date in certain circumstances (for each of these scenarios, the 
