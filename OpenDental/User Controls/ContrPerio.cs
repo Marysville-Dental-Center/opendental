@@ -18,7 +18,7 @@ using WpfControls.UI;
 namespace OpenDental
 {
 	///<summary>Summary description for ContrPerio.</summary>
-	public class ContrPerio : System.Windows.Forms.Control{
+	public partial class ContrPerio : System.Windows.Forms.Control{
 		#region Fields - public
 		///<summary>Perio security:  False will only allow user to see information but not edit.</summary>
 		public bool AllowPerioEdit;
@@ -748,15 +748,18 @@ namespace OpenDental
 		#endregion Methods - public
 
 		#region Methods - private
-		private void AdvanceCell(bool isReverse=false){
+		///<summary>setDirection is false for the arrow keys, which never change the direction (25.4).</summary>
+		private void AdvanceCell(bool isReverse=false,bool setDirection=true){
 			if(ListColRowsSelected.Count>1) {
 				return;//Don't advance when multiple ColRows are selected
 			}
-			ColRow colRowToSet=TryFindNextCell(ListColRowsSelected[0],isReverse);
+			int sectionFrom=GetSection(ListColRowsSelected[0].Row);
+			ColRow colRowToSet=TryFindNextCell(ListColRowsSelected[0],isReverse,setDirection);
 			if(colRowToSet==null) {
 				return;
 			}
 			SetNewCell(colRowToSet.Col,colRowToSet.Row);
+			AfterAdvanceDirection(sectionFrom,setDirection);//ContrPerio.Direction.cs
 		}
 
 		private void CalculateCAL(ColRow colRowProbingCell,bool alsoInvalidate){
@@ -1616,29 +1619,29 @@ namespace OpenDental
 			else if(e.KeyCode==Keys.Delete){
 				ClearValue();
 			}
-			else if(e.KeyCode==Keys.Left){
+			else if(e.KeyCode==Keys.Left){//25.4: the arrow keys never change the direction (setDirection:false)
 				if(ThreeAtATime){
 					for(int i=0;i<3;i++){
 						if(EnumAdvanceSequence_==EnumAdvanceSequence.FacialsFirst) {
-							AdvanceCell(GetSection(ListColRowsSelected.Last().Row).In(0,2));
+							AdvanceCell(GetSection(ListColRowsSelected.Last().Row).In(0,2),setDirection:false);
 						}
 						else if(EnumCurrentDirection_==EnumCurrentDirection.Left) {
-							AdvanceCell(isReverse:true);
+							AdvanceCell(isReverse:true,setDirection:false);
 						}
 						else {
-							AdvanceCell();
+							AdvanceCell(setDirection:false);
 						}
 					}
 				}
 				else{
 					if(EnumAdvanceSequence_==EnumAdvanceSequence.FacialsFirst) {
-						AdvanceCell(GetSection(ListColRowsSelected.Last().Row).In(0,2));
+						AdvanceCell(GetSection(ListColRowsSelected.Last().Row).In(0,2),setDirection:false);
 					}
 					else if(EnumCurrentDirection_==EnumCurrentDirection.Right) {
-						AdvanceCell();
+						AdvanceCell(setDirection:false);
 					}
 					else {
-						AdvanceCell(isReverse:true);
+						AdvanceCell(isReverse:true,setDirection:false);
 					}
 				}
 			}
@@ -1646,25 +1649,25 @@ namespace OpenDental
 				if(ThreeAtATime){
 					for(int i=0;i<3;i++){
 						if(EnumAdvanceSequence_==EnumAdvanceSequence.FacialsFirst) {
-							AdvanceCell(GetSection(ListColRowsSelected.Last().Row).In(1,3));
+							AdvanceCell(GetSection(ListColRowsSelected.Last().Row).In(1,3),setDirection:false);
 						}
 						else if(EnumCurrentDirection_==EnumCurrentDirection.Right) {
-							AdvanceCell(isReverse:true);
+							AdvanceCell(isReverse:true,setDirection:false);
 						}
 						else {
-							AdvanceCell();
+							AdvanceCell(setDirection:false);
 						}
 					}
 				}
 				else{
 					if(EnumAdvanceSequence_==EnumAdvanceSequence.FacialsFirst) {
-						AdvanceCell(GetSection(ListColRowsSelected.Last().Row).In(1,3));
+						AdvanceCell(GetSection(ListColRowsSelected.Last().Row).In(1,3),setDirection:false);
 					}
 					else if(EnumCurrentDirection_==EnumCurrentDirection.Right) {
-						AdvanceCell(isReverse:true);
+						AdvanceCell(isReverse:true,setDirection:false);
 					}
 					else {
-						AdvanceCell();
+						AdvanceCell(setDirection:false);
 					}
 				}
 			}
@@ -2370,11 +2373,17 @@ namespace OpenDental
 			}
 			//listAutoAdvancePositions should be in the order the preference specified(sequential order) so the next and previous positions will be the actual next and previous paths.
 			PerioAdvancePos perioAdvancePosNext=GetPerioAdvancePosFromList(perioAdvancePos,getNext:true,perioSequenceType,listPerioAdvancePoss);
+			//25.4: a direction chosen with the Current Direction buttons holds in its section, for entry and Backspace (not for the arrow keys, which
+			//pass setDirection false). isAgainstPath replaces isReverse below: entry in the chosen reverse direction also moves against the path.
+			bool isDirectionManual=setDirection && IsDirectionManual(section);
+			EnumCurrentDirection enumCurrentDirectionForward=PerioDirectionRules.GetForwardDirection(perioAdvancePos.EnumCurrentDirection2,
+				EnumCurrentDirection_,isDirectionManual);
+			bool isAgainstPath=PerioDirectionRules.IsAgainstPath(perioAdvancePos.EnumCurrentDirection2,enumCurrentDirectionForward,isReverse);
 			bool shouldAdvanceLeft=false;
 			if(perioAdvancePos.EnumCurrentDirection2==EnumCurrentDirection.Left){
 				shouldAdvanceLeft=true;
 			}
-			if(isReverse){
+			if(isAgainstPath){
 				shouldAdvanceLeft=!shouldAdvanceLeft;
 			}
 			int countNotUsed=0;
@@ -2383,25 +2392,22 @@ namespace OpenDental
 				startedOnCellOne=true;
 			}
 			//Advance colrowNext to the next cell position.
+			//The path, not the Maxillary First crossing rules inside TryAutoAdvanceLeft/Right, sets the direction here (setDirection:false).
 			if(shouldAdvanceLeft) {
-				colRowNext=TryAutoAdvanceLeft(colRowNext,section,setDirection,perioSequenceType);
+				colRowNext=TryAutoAdvanceLeft(colRowNext,section,setDirection:false,perioSequenceType);
 				if(colRowNext==null) {
 					return null;
-				}
-				if(EnumCurrentDirection_!=EnumCurrentDirection.Left) {
-					EnumCurrentDirection_=EnumCurrentDirection.Left;
-					DirectionChangedLeft?.Invoke(this,new EventArgs());
 				}
 			}
 			else {
-				colRowNext=TryAutoAdvanceRight(colRowNext,section,setDirection,perioSequenceType,startedOnSkipped,countNotUsed);
+				colRowNext=TryAutoAdvanceRight(colRowNext,section,setDirection:false,perioSequenceType,startedOnSkipped,countNotUsed);
 				if(colRowNext==null) {
 					return null;
 				}
-				if(EnumCurrentDirection_!=EnumCurrentDirection.Right) {
-					EnumCurrentDirection_=EnumCurrentDirection.Right;
-					DirectionChangedRight?.Invoke(this,new EventArgs());
-				}
+			}
+			//25.4: the direction shown is the direction of entry (the path's, or the one chosen with the buttons), also during Backspace.
+			if(setDirection) {
+				SetDirectionIfChanged(enumCurrentDirectionForward);
 			}
 			PerioCell perioCellNext=GetPerioCellFromColRow(colRowNext);
 			//TryAutoAdvanceLeft and TryAutoAdvanceRight are helper methods that get the next colrow position using the default auto advance path
@@ -2416,8 +2422,8 @@ namespace OpenDental
 				return colRowNext;
 			}
 			//The colrow returned in TryAutoAdvanceLeft or TryAutoAdvanceRight is on a differnt tooth, get the next tooth from the listAutoAdvancePositions.
-			if(isReverse) {
-				perioAdvancePosNext=perioAdvancePosPrev;//The next tooth should be the previous one. 
+			if(isAgainstPath) {
+				perioAdvancePosNext=perioAdvancePosPrev;//The next tooth should be the previous one.
 			}
 			if(perioAdvancePosNext==null) {
 				//The end of the list. Set the return colrow equal to the initial colrow. No need to move.
@@ -2425,7 +2431,7 @@ namespace OpenDental
 				return colRowNext;
 			}
 			//return the colrow for the next tooth in path.
-			colRowNext=GetAutoAdvanceColRow(perioAdvancePosNext.ToothNum,perioAdvancePosNext.IsFacial,perioSequenceType,isReverse);
+			colRowNext=GetAutoAdvanceColRow(perioAdvancePosNext.ToothNum,perioAdvancePosNext.IsFacial,perioSequenceType,isAgainstPath);
 			return colRowNext;
 		}
 
@@ -2466,9 +2472,10 @@ namespace OpenDental
 			else if(section==3) {
 				newSection=2;
 				newRow=GetTableRow(_idxExamSelected,newSection,perioSequenceType);
-				if(newRow!=-1 && setDirection)
+				if(newRow!=-1 && setDirection) {//25.4: the event was raised even when the direction did not change, so the buttons showed Right wrongly
 					EnumCurrentDirection_=EnumCurrentDirection.Right;
 					DirectionChangedRight?.Invoke(this,new EventArgs());
+				}
 			}
 			if(newRow==-1) {//MGJ and mobility aren't present in all 4 sections, so can't loop normally
 				if(_perioSequenceTypeArray[section][GetSectionRow(colRowNext.Row)]==PerioSequenceType.Mobility) {

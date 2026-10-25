@@ -1366,10 +1366,12 @@ namespace OpenDental{
 
 		private void gridP_DirectionChangedLeft(object sender, System.EventArgs e) {
 			radioLeft.Checked=true;
+			SetLabelFwdReverse();//25.4: the Forward/Reverse label follows at once
 		}
 
 		private void gridP_DirectionChangedRight(object sender, System.EventArgs e) {
 			radioRight.Checked=true;
+			SetLabelFwdReverse();//25.4: the Forward/Reverse label follows at once
 		}
 
 		private void gridODExam_CellClick(object sender,UI.ODGridClickEventArgs e) {
@@ -1409,15 +1411,17 @@ namespace OpenDental{
 
 		#region Methods - Event Handlers radio buttons
 		private void radioRight_Click(object sender, System.EventArgs e) {
-			contrPerio.EnumCurrentDirection_=EnumCurrentDirection.Right;
+			//25.4: applies to the next keystroke from the current cell and holds in this section. Input goes back to the chart's input box, so the
+			//user does not have to click the chart again, and the arrow keys move the cursor instead of switching these buttons.
+			contrPerio.SetDirectionManual(EnumCurrentDirection.Right);
 			SetLabelFwdReverse();
-			contrPerio.Focus();
+			textInputBox.Focus();
 		}
 
 		private void radioLeft_Click(object sender, System.EventArgs e) {
-			contrPerio.EnumCurrentDirection_=EnumCurrentDirection.Left;
+			contrPerio.SetDirectionManual(EnumCurrentDirection.Left);//25.4, see radioRight_Click
 			SetLabelFwdReverse();
-			contrPerio.Focus();
+			textInputBox.Focus();
 		}
 
 		private void radioFacialsFirst_Click(object sender,EventArgs e) {

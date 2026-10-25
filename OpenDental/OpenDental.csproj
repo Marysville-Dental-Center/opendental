@@ -8735,6 +8735,10 @@
     <Compile Include="User Controls\ContrPerio.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="User Controls\ContrPerio.Direction.cs">
+      <DependentUpon>ContrPerio.cs</DependentUpon>
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="User Controls\ODtextBox.cs">
       <SubType>Component</SubType>
     </Compile>
