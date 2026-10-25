@@ -567,6 +567,8 @@
     <Compile Include="Misc\SecurityHash.cs" />
     <Compile Include="Misc\DomainLogin.cs" />
     <Compile Include="Misc\SheetSignatureSigners.cs" />
+    <Compile Include="Misc\Code39Barcode.cs" />
+    <Compile Include="Misc\PrintOptions.cs" />
     <Compile Include="Misc\ProcTPFeeEdit.cs" />
     <Compile Include="ODEvents\MiddleTierConnectionEvent.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
@@ -584,6 +586,8 @@
     <Compile Include="Shared\ODCloudClient\Sirona.cs" />
     <Compile Include="Shared\ODCloudClient\x837Controller.cs" />
     <Compile Include="SheetFramework\CheckSheets.cs" />
+    <Compile Include="SheetFramework\SheetAutoSaveImages.cs" />
+    <Compile Include="SheetFramework\StatementInserterBarcode.cs" />
     <Compile Include="SheetFramework\GraphicsHelper.cs" />
     <Compile Include="SheetFramework\SheetDataTableUtil.cs" />
     <Compile Include="SheetFramework\SheetDrawingJob.cs" />
@@ -698,6 +702,7 @@
     <Compile Include="UI\GlobalFormOpenDental.cs" />
     <Compile Include="UI\GridCell.cs" />
     <Compile Include="UI\GridColumn.cs" />
+    <Compile Include="UI\GridODExport.cs" />
     <Compile Include="UI\GridOld.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -1511,6 +1516,7 @@
     <Compile Include="Data Interface\SigButDefs.cs" />
     <Compile Include="Data Interface\SigElementDefs.cs" />
     <Compile Include="Data Interface\Statements.cs" />
+    <Compile Include="Data Interface\Statements.EmailName.cs" />
     <Compile Include="Data Interface\ChartLetters.cs" />
     <Compile Include="Data Interface\Documents.cs" />
     <Compile Include="Db Multi Table\Family.cs" />

@@ -2208,6 +2208,7 @@
     <Compile Include="Logic\PatRestrictionL.cs" />
     <Compile Include="Logic\PrefL.cs" />
     <Compile Include="Logic\PrinterL.cs" />
+    <Compile Include="Logic\PrinterL.PrintOptions.cs" />
     <Compile Include="Logic\ProcedureL.cs" />
     <Compile Include="Logic\ProgramL.cs" />
     <Compile Include="Logic\RefAttachL.cs" />

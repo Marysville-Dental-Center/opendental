@@ -78,6 +78,7 @@
       <HintPath>..\Required dlls\PdfSharp.dll</HintPath>
     </Reference>
     <Reference Include="ReachFramework" />
+    <Reference Include="System.Printing" />
     <Reference Include="Sparks3D, Version=22.4.0.0, Culture=neutral, processorArchitecture=x86">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\Sparks3D\Sparks3D.dll</HintPath>
@@ -422,6 +423,9 @@
     <Compile Include="Frms\FrmPrintPreview.xaml.cs">
       <DependentUpon>FrmPrintPreview.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Frms\FrmPrintOptions.xaml.cs">
+      <DependentUpon>FrmPrintOptions.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Frms\FrmCommItem.xaml.cs">
       <DependentUpon>FrmCommItem.xaml</DependentUpon>
     </Compile>
@@ -695,6 +699,7 @@
     <Compile Include="Misc\Lang.cs" />
     <Compile Include="Misc\Printout.cs" />
     <Compile Include="Logic\PrinterL.cs" />
+    <Compile Include="Logic\PrintOptionsWpf.cs" />
     <Compile Include="UI\ColorOD.cs" />
     <Compile Include="UI\ColorODtemp.cs" />
     <Compile Include="UI\Controls\DatePicker.xaml.cs">
@@ -1069,6 +1074,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Frms\FrmPrintPreview.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Frms\FrmPrintOptions.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
