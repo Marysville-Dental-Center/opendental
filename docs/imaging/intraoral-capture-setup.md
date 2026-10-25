@@ -108,11 +108,11 @@ Mount / Acquire reads only the `[Twain]` section. Other sections are for later v
 | `ThreadModal` | `1` | `1` | While the sensor software is open for a Mount / Acquire slot, Open Dental's windows are locked and the Capture window offers Cancel. Use `0` only to troubleshoot, with the phantom and the test patient: then Open Dental's main window stays usable during a slot, there is no Capture window and no Cancel, and nothing stops a patient change in the middle of a series. Scans are never affected. |
 | `RestrictSources` | `0` | `1` on every computer | Only sources listed in `AllowedSources` can be opened, by Mount / Acquire and by the Scan buttons. Any other source is refused with "This TWAIN source is not enabled on this computer." |
 | `AllowedSources` | empty | first every scanner this computer already uses; then the sensor's source, but only on a computer that passed acceptance, or while its own acceptance runs (phantom and test patient only) | Product names separated by `\|`. Each must match a whole product name; case and surrounding spaces are ignored. The gate checks the source that would actually open, so a shortened Twain Name does not get round it. With `RestrictSources=1` and an empty list, nothing can be opened, not even a scanner. A name that contains `;` cannot be listed. |
-| `JournalKeep` | `200` | `200` or more | How many of the most recent journal copies are kept. `0` turns the journal off: never use `0`. Each copy is the uncompressed image, about 1 to 3 MB for an intraoral image, so 200 copies take roughly 0.2 to 0.6 GB. |
+| `JournalKeep` | `200` | `200` or more | How many of the most recent journal copies are kept. The journal cannot be turned off: `0` or less counts as `200`, and the capture log says so. Each copy is the uncompressed image, about 1 to 3 MB for an intraoral image, so 200 copies take roughly 0.2 to 0.6 GB. Only copies (section 11) are kept in addition. |
 | `DisableIsSafeSources` | empty | the sensor's product name, only when the installed contract version has safe disable: on the test computer for the safe-disable test, on other computers only after that test passed on the test computer | Open Dental asks the listed source for safe disable before each slot. |
 | `SafeDisableCap` | empty | the safe-disable capability number from the contract, in hex | Set together with `DisableIsSafeSources`. |
 | `RefusedDisableCodes` | empty | the contract's "disable refused" condition codes, in hex, separated by `\|` | Set together with `DisableIsSafeSources`. When the source refuses a stop with one of these codes, Open Dental waits up to 30 s for it to finish and keeps every image it then delivers. |
-| `AcquireTimeoutMinutes` | `0` (off) | `0` until the safe-disable test passed on this computer; then a value in the order of section 4.3 | Stops a slot in which no image arrived after this many minutes, which ends the series. It counts per slot, from the moment the sensor software opens. It is honoured only for Twain Radiograph slots of a source listed in `DisableIsSafeSources` that accepted safe disable for that slot; otherwise the capture log says why not. When it expires, the series ends without a notice, like a cancel. |
+| `AcquireTimeoutMinutes` | `0` (off) | `0` until the safe-disable test passed on this computer; then a value in the order of section 4.3 | Stops a slot in which no image arrived after this many minutes, which ends the series. It counts per slot, from the moment the sensor software opens. It is honoured only for Twain Radiograph slots of a source listed in `DisableIsSafeSources` that accepted safe disable and one image per slot for that slot; otherwise the capture log says why not. When it expires, the series ends without a notice, like a cancel. |
 | `Allow16Bit` | `0` | `0` | Not used by Mount / Acquire. |
 
 Leave `DisableIsSafeSources`, `SafeDisableCap` and `RefusedDisableCodes` empty when the installed contract version has no safe disable. Then Cancel shows a warning first, `AcquireTimeoutMinutes` is not honoured, and any stop that Open Dental starts can lose an exposure that the sensor software still holds (section 10.3).
@@ -268,10 +268,10 @@ Capture notices appear in a small window titled **Capture**. One window lists ev
 | "If an exposure was just taken, wait until it appears before cancelling." or "Cancel here may lose images already taken in this series; ..." | Cancel was clicked without safe disable. | Click Keep waiting, and close the sensor software or use Done instead (section 8.2). |
 | "Waiting for the sensor software to finish." | The source is finishing after a stop (up to 30 s). | Wait. |
 | "N image(s) received after the series stopped were saved to the capture quarantine folder (time). Do not re-expose. Ask an administrator to recover them (see the runbook)." | Images arrived after the series stopped, or the source sent more images than asked for. They are safe, but not filed. | Do not re-expose. Note the patient, the mount and the time. The administrator recovers them (section 10.2). |
-| "N image(s) received after the series stopped could not be saved to the capture quarantine folder (time): (reason). A copy is in the capture journal folder. Do not re-expose. ..." | As above, but the quarantine could not be written. When the notice mentions the journal, the journal copy is the only copy. | Do not re-expose. The administrator fixes the folder (permissions, disk space) and recovers the journal copy as in section 10.2. |
-| "The sensor software may still hold images from this series. Do not re-expose. See the runbook." | The source did not finish within 30 s after a stop. Images it took may still be in the sensor software. | Section 10.3. |
+| "N image(s) received after the series stopped could not be saved to the capture quarantine folder (time): (reason). A copy is in the capture journal folder. Do not re-expose. ..." | As above, but the quarantine could not be written. When the notice mentions the journal, the journal copy is the only copy. Its name ends in `-only`, and the journal never removes it. | Do not re-expose. The administrator fixes the folder (permissions, disk space) and recovers the journal copy as in section 10.2 before more X-rays are taken on this computer. |
+| "The sensor software may still hold images from this series. Do not re-expose. See the runbook." | The source did not finish within 30 s after a stop, or an image it offered after a stop could not be transferred. Images it took may still be in the sensor software. | Section 10.3. |
 | "Sensor software ended without an image: (reason). Do not re-expose until you have checked the sensor software." | The source ended the session with a reason: for example no sensor connected, no calibration, a session timeout, or a failure. The reason is the source's text, or a hex code whose meaning is in the source's contract. | Section 10.4. |
-| "Image not received. Do not re-expose until you have checked the sensor software." As Open Dental's message box, or as a notice. | A transfer failed, or the source stopped responding. | Section 10.4. |
+| "Image not received. Do not re-expose until you have checked the sensor software." As Open Dental's message box, or as a notice (when the source stopped responding, and in a Twain Multi batch). | A transfer failed, or the source stopped responding. | Section 10.4. |
 | "Unable to save: (message)" (Open Dental's own message box) | The image arrived but could not be stored. Its journal copy may be the only copy. | Section 10.1, before anything else. |
 
 ## 10. Failure procedures
@@ -313,14 +313,16 @@ Quarantine images are marked "patient unknown": Mount / Acquire does not tell th
 
 If `Reason` says that the source sent more images than the one asked for, also check the source's installation settings (section 2, step 5): a mode that overrides the image count is not at its neutral value.
 
+A journal copy whose name ends in `-only` (sidecar `Delivered=None`) is an image that should have gone to the quarantine but could not be written there. It is the only copy, and its patient is unknown too. Recover it the same way, from `Capture\journal`. Its sidecar has no `Reason`, `DrainReason` or `StopReason`; the capture log line "An image from ... could not be saved to the capture quarantine" with the same time gives the reason. Then move it out of the journal folder as in step 8; the journal never removes it.
+
 ### 10.3 "The sensor software may still hold images"
 
-Open Dental stopped the source, but the source did not finish within 30 s. Images it took may still be held by the sensor software. Open Dental did not receive them, so they are in neither the journal nor the quarantine.
+Open Dental stopped the source, but the source did not finish within 30 s, or an image it offered after the stop could not be transferred. Images it took may still be held by the sensor software. Open Dental did not receive them, so they are in neither the journal nor the quarantine.
 
 1. Do not re-expose.
 2. Recover them with the source's own recovery, as the source's documentation and contract describe. This happens outside Open Dental. Some sources offer undelivered images again only for their most recent session and only for a limited time, so do it promptly, and before anyone starts another series with that source on that computer.
 3. If the recovery produces image files, file them like a journal copy: match the time to the stopped slot, have a second person check, then Import (section 10.1, steps 5 to 8).
-4. Without safe disable there is no such notice. Treat any stop that Open Dental started during a slot in which an exposure may have been taken (Cancel anyway, an automatic logoff, closing Open Dental) the same way.
+4. Without safe disable there is no such notice. Treat any stop that Open Dental started during a slot in which an exposure may have been taken (Cancel anyway, an automatic logoff, closing Open Dental) the same way. The capture log shows each such stop as "Stopping ... safe disable in effect: no".
 
 ### 10.4 "Ended without an image" and "Image not received"
 
@@ -332,7 +334,7 @@ Open Dental stopped the source, but the source did not finish within 30 s. Image
 
 ### 10.5 Automatic logoff or Open Dental closing during a series
 
-The automatic logoff closes Open Dental's windows. The series then stops, and any image that arrives afterwards goes to the quarantine. The same happens when Open Dental is closed during a series. The logoff can also close a Capture notice before anyone reads it.
+The automatic logoff closes Open Dental's windows and shows the logon window. The series stops only once someone logs back in, and any image that arrives afterwards goes to the quarantine. When Open Dental is closed during a series, the series stops too, and late images also go to the quarantine. The logoff can also close a Capture notice before anyone reads it.
 
 1. Log back in. Do not re-expose.
 2. Open the mount and note the last filled slot.
@@ -346,17 +348,17 @@ Everything is under `%ProgramData%\OpenPMS-Dental\Imaging\Capture`:
 
 | Path | Contents |
 |---|---|
-| `journal\` | A copy of every image the sensor delivered to Mount / Acquire, written before Open Dental stores it, and of every quarantine image. Only the newest `JournalKeep` are kept. |
+| `journal\` | A copy of every image the sensor delivered to Mount / Acquire, written before Open Dental stores it, and of every quarantine image. Only the newest `JournalKeep` are kept, apart from only copies (names ending in `-only`), which stay until they are recovered. |
 | `quarantine\` | Images that arrived after a series stopped. Nothing is removed automatically. |
 | `capture-log.txt` | One line per event, with the time and the Windows user. Above 1 MB it becomes `capture-log.1.txt`, replacing the previous one. |
 
-**Files.** Each image is a `.bmp` file: the image exactly as the sensor delivered it, uncompressed. It has a `.txt` sidecar of the same name. Names look like `20261025-143012-123-000017-a3f9`: the receive time to the millisecond, then a counter and a random part. Names sort in the order the images arrived.
+**Files.** Each image is a `.bmp` file: the image exactly as the sensor delivered it, uncompressed. It has a `.txt` sidecar of the same name. Names look like `20261025-143012-123-000017-a3f9`: the receive time to the millisecond, then a counter and a random part. Names sort in the order the images arrived. A journal copy that is the only copy of its image has `-only` at the end of its name.
 
 **Journal sidecar fields:**
 
 - `ReceivedAt`, `Source`, `Computer`, `WindowsUser`, `AcquireId` (ties together the journal, quarantine and log entries of one acquisition);
 - `PatNum`: always empty with Mount / Acquire;
-- `Delivered`: `Caller` (Open Dental received it and may have stored it), `Quarantine` (it went to the quarantine; `DeliveredDetail` names the file) or `None` (this copy is the only one);
+- `Delivered`: `Caller` (Open Dental received it and may have stored it), `Quarantine` (it went to the quarantine; `DeliveredDetail` names the file) or `None` (this copy is the only one: the quarantine could not be written, and `DeliveredDetail` says why; its name ends in `-only`, and the journal never removes it);
 - `Width`, `Height`, `BitsPerPixel`, `XDpi`, `YDpi`, `Sha256`;
 - the `Twain.*` values in effect, `ThreadModalInEffect`, `SafeDisableInEffect`, and `ConfigFile` (which capture.ini was read).
 
@@ -374,14 +376,16 @@ Everything is under `%ProgramData%\OpenPMS-Dental\Imaging\Capture`:
 | "Safe disable is in effect for" | Safe disable was accepted for this slot. Expected on every slot once it is configured. |
 | "does not support the safe-disable capability" or "did not accept TRUE for the safe-disable capability" | The installed source has no safe disable, or the number is wrong. Check the contract and the keys. |
 | "[Twain] AcquireTimeoutMinutes is not honoured" | Says why the timeout was ignored. |
+| "Stopping "(source)" (reason); safe disable in effect: yes" or "...: no; an exposure the source still held may not be delivered" | Open Dental stopped the series itself: `Cancel`, `Timeout`, `ParentDestroyed` (for example an automatic logoff), `Quit`, `Closed` or `Error`. With "no", follow section 10.3. |
 | "refused MSG_DISABLEDS (condition code ...). Waiting up to 30 s" | Normal after a stop with safe disable. |
+| "was disabled after MSG_XFERREADY, (n) s into the wait" or "was disabled after MSG_CLOSEDSREQ, ..." | The source finished after the refused stop, and the stop completed. Normal with safe disable. |
 | "Contract deviation:" | The source refused a stop with a code that `RefusedDisableCodes` does not list. Check the codes against the contract; if they are right, report the lines to the supplier. |
-| "No notification from ... The source may still hold images" | Section 10.3. |
+| "No notification from ... The source may still hold images", "could not be transferred ... The source may still hold it", "refused MSG_ENDXFER" | Section 10.3. |
 | "ended the session with condition code" | The end reason behind an "ended without an image" notice. |
 | "Journal copy" / "Quarantine image" | Each copy written, with its file name and acquisition id. |
 | "delivered more images than the one asked for" | Extra images went to the quarantine. Check the installation settings. |
 
-**Permissions.** The local Users group needs Modify on these folders (section 3). When a permission problem stops the journal or the quarantine, the capture log says so.
+**Permissions.** The local Users group needs Modify on these folders (section 3). When a permission problem stops the journal or the quarantine, the capture log says so. When the Capture folder lacks that rule, the first capture-log line after Open Dental starts says "Could not give the Users group access to ...": run the `icacls` command of section 3 again.
 
 **Backup.** Add `%ProgramData%\OpenPMS-Dental\Imaging` to the computer's backup. It holds patient images.
 
@@ -412,11 +416,11 @@ Run this on the test computer first, with a phantom and a test patient record on
    2. **Unplug the sensor** before a slot, then close the sensor software: the notice "Sensor software ended without an image" gives the reason.
    3. **No calibration**, produced as the contract or the supplier describes: the reason is shown.
    4. **Save failure:** on the test patient, make storage fail just before an exposure (for example, remove write access to the test patient's image folder, or disconnect the image share), then restore it. "Unable to save" appears, and journal recovery (section 10.1) brings the image into the mount.
-   5. **Stop with images pending (safe disable):** on the phantom, with a Twain Multi batch, take 3 exposures and click Cancel before Done. No warning appears; all 3 images arrive in the quarantine with the quarantine notice. With Twain Radiograph, click Cancel while the sensor software is still processing an exposure: that image arrives in the quarantine. The capture log shows "refused MSG_DISABLEDS ... Waiting up to 30 s", and no "Contract deviation" or "may still hold images" lines.
-   6. **Stop while idle (safe disable):** click Cancel while the sensor software waits for an exposure. "Waiting for the sensor software to finish." appears briefly, then the series ends. The capture log shows the refused stop followed by success within the wait. Only after 5.5 and 5.6 pass, set `AcquireTimeoutMinutes` (section 4.3).
+   5. **Stop with images pending (safe disable):** on the phantom, with a Twain Multi batch, take 3 exposures and click Cancel before Done. No warning appears; all 3 images arrive in the quarantine with the quarantine notice. With Twain Radiograph, click Cancel while the sensor software is still processing an exposure: that image arrives in the quarantine. The capture log shows "refused MSG_DISABLEDS ... Waiting up to 30 s", then "... was disabled after MSG_XFERREADY", and no "Contract deviation" or "may still hold images" lines.
+   6. **Stop while idle (safe disable):** click Cancel while the sensor software waits for an exposure. "Waiting for the sensor software to finish." appears briefly, then the series ends. The capture log shows "refused MSG_DISABLEDS ... Waiting up to 30 s", then "... was disabled after MSG_CLOSEDSREQ, (n) s into the wait", and no "No notification" line. Only after 5.5 and 5.6 pass, set `AcquireTimeoutMinutes` (section 4.3).
    7. **The source's session timeout first:** with the source's session timeout shorter than `AcquireTimeoutMinutes`, leave a slot waiting. The source ends the session with its own reason ("Sensor software ended without an image: ...") before Open Dental's timeout.
    8. **Open Dental's timeout before the logoff:** with the source's session timeout neutral, leave a slot waiting. The series ends after `AcquireTimeoutMinutes`, without a notice, and Open Dental is still logged in.
-   9. **Automatic logoff during an acquisition:** give a test user a short logoff time (for example 2 minutes) and `AcquireTimeoutMinutes=0`. On the phantom with Twain Multi, take 2 exposures and wait without clicking Done. The logoff stops the series, both images are in the quarantine, and their sidecars' `StopReason` says why the series stopped. Restore the logoff time afterwards.
+   9. **Automatic logoff during an acquisition (safe disable):** give a test user a short logoff time (for example 2 minutes) and `AcquireTimeoutMinutes=0`. On the phantom with Twain Multi, take 2 exposures and wait without clicking Done. The logoff closes Open Dental's windows and shows the logon window; the series stops only after someone logs back in. Log back in. Then the Capture notice appears, both images are in the quarantine, and their sidecars' `StopReason` is `ParentDestroyed` or `Cancel` (closing the Capture window counts as Cancel). Without safe disable the images stay with the sensor software instead: the expected result is then that of section 10.3. Restore the logoff time afterwards.
 6. **Patient change and logoff time.** While the sensor software is open, try to select another patient in the main window: it is locked. Confirm that every capture user's automatic logoff time is longer than the longest series (section 4.3).
 7. **Storage.** Repeat one series in each storage mode the clinic uses.
 8. **Quarantine recovery.** Recover one quarantine image from step 5 with the procedure in section 10.2, on the test patient.
