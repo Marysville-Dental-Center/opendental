@@ -6,15 +6,28 @@ using System.Reflection;
 using System.Text;
 
 namespace OpenDentBusiness.ForkMigrations {
-	///<summary>Compares a database schema with the Open Dental schema it must match exactly. The reference is a snapshot of Open Dental 25.3.48
-	///(Reference/OdSchema-25.3.48.sql, embedded in this assembly), built from the schema-only dump of the office database. Tables, columns (type,
-	///NULL, default, extra, charset, position), keys, engine and charset must match, except for the documented exceptions in
-	///DocumentedExceptions25_3_48, each of which says why it is allowed.</summary>
+	///<summary>Compares a database schema with the Open Dental schema it must match exactly. Two references are embedded in this assembly:
+	///- Open Dental 26.1.70 (Reference/OdSchema-26.1.70.sql), the schema a migrated database must have now: the 25.3.48 reference plus the changes
+	///  of Open Dental's published 25.4 and 26.1 database documents, with the NULL/NOT NULL, defaults and keys the documents do not publish marked
+	///  INFERRED in the file. This is the default (ReferenceVersion, GetReference, VerifyDatabase).
+	///- Open Dental 25.3.48 (Reference/OdSchema-25.3.48.sql), built from the schema-only dump of the office database: what the 25.3 steps
+	///  (OdParity25_3.cs) produce and what an office database must have before it is adopted.
+	///Tables, columns (type, NULL, default, extra, charset, position), keys, engine and charset must match, except for the documented exceptions,
+	///each of which says why it is allowed.</summary>
 	public static class SchemaVerifier {
-		///<summary>The Open Dental version the embedded reference describes.</summary>
-		public const string ReferenceVersion="25.3.48";
-		///<summary>Name of the embedded reference snapshot (its LogicalName in OpenDentBusiness.csproj).</summary>
-		public const string ReferenceResourceName="OdSchema-25.3.48.sql";
+		///<summary>The Open Dental version a migrated database must match: the version of the default reference. Written to OdSchemaCompat when a
+		///database matches it.</summary>
+		public const string ReferenceVersion=ReferenceVersion26_1_70;
+		///<summary>Name of the default embedded reference snapshot (its LogicalName in OpenDentBusiness.csproj).</summary>
+		public const string ReferenceResourceName=ReferenceResourceName26_1_70;
+		///<summary>Open Dental 26.1.70: the target of the M2 migration.</summary>
+		public const string ReferenceVersion26_1_70="26.1.70";
+		///<summary>Name of the embedded 26.1.70 reference.</summary>
+		public const string ReferenceResourceName26_1_70="OdSchema-26.1.70.sql";
+		///<summary>Open Dental 25.3.48: the office database before adoption, and the schema after the 25.3 steps.</summary>
+		public const string ReferenceVersion25_3_48="25.3.48";
+		///<summary>Name of the embedded 25.3.48 reference.</summary>
+		public const string ReferenceResourceName25_3_48="OdSchema-25.3.48.sql";
 
 		///<summary>The office-specific generated column in patient that is not Open Dental schema. Adoption drops it with its unique key.</summary>
 		public const string PortalActiveEmailColumn="_portal_active_email";
@@ -42,7 +55,23 @@ namespace OpenDentBusiness.ForkMigrations {
 		};
 
 		private static SchemaSnapshot _reference25_3_48;
+		private static SchemaSnapshot _reference26_1_70;
 		private static readonly object _lockReference=new object();
+
+		///<summary>The documented differences that do not count as a mismatch against the default reference (Open Dental 26.1.70).</summary>
+		public static List<SchemaException> DocumentedExceptions {
+			get {
+				return DocumentedExceptions26_1_70;
+			}
+		}
+
+		///<summary>The documented differences that do not count as a mismatch against Open Dental 26.1.70. The same as for 25.3.48: 26.1 drops no
+		///table, so the HQ-only and legacy tables are still extra, and the office customization is still not Open Dental schema.</summary>
+		public static List<SchemaException> DocumentedExceptions26_1_70 {
+			get {
+				return DocumentedExceptions25_3_48;
+			}
+		}
 
 		///<summary>The documented differences that do not count as a mismatch against Open Dental 25.3.48.</summary>
 		public static List<SchemaException> DocumentedExceptions25_3_48 {
@@ -64,22 +93,43 @@ namespace OpenDentBusiness.ForkMigrations {
 			}
 		}
 
+		///<summary>The default reference snapshot: Open Dental 26.1.70, the schema a migrated database must have. Cached.</summary>
+		public static SchemaSnapshot GetReference() {
+			return GetReference26_1_70();
+		}
+
+		///<summary>The Open Dental 26.1.70 reference snapshot embedded in this assembly. Cached.</summary>
+		public static SchemaSnapshot GetReference26_1_70() {
+			lock(_lockReference) {
+				if(_reference26_1_70==null) {
+					_reference26_1_70=SchemaSnapshot.Parse(ReadReferenceDdl(ReferenceResourceName26_1_70));
+				}
+				return _reference26_1_70;
+			}
+		}
+
 		///<summary>The Open Dental 25.3.48 reference snapshot embedded in this assembly. Cached.</summary>
 		public static SchemaSnapshot GetReference25_3_48() {
 			lock(_lockReference) {
 				if(_reference25_3_48==null) {
-					_reference25_3_48=SchemaSnapshot.Parse(ReadReferenceDdl());
+					_reference25_3_48=SchemaSnapshot.Parse(ReadReferenceDdl(ReferenceResourceName25_3_48));
 				}
 				return _reference25_3_48;
 			}
 		}
 
-		///<summary>The text of the embedded reference snapshot.</summary>
+		///<summary>The text of the default embedded reference snapshot (Open Dental 26.1.70).</summary>
 		public static string ReadReferenceDdl() {
+			return ReadReferenceDdl(ReferenceResourceName);
+		}
+
+		///<summary>The text of an embedded reference snapshot, by its resource name (ReferenceResourceName26_1_70 or ReferenceResourceName25_3_48).
+		///</summary>
+		public static string ReadReferenceDdl(string resourceName) {
 			Assembly assembly=typeof(SchemaVerifier).Assembly;
-			using(Stream stream=assembly.GetManifestResourceStream(ReferenceResourceName)) {
+			using(Stream stream=assembly.GetManifestResourceStream(resourceName)) {
 				if(stream==null) {
-					throw new ApplicationException("The reference schema "+ReferenceResourceName+" is not embedded in "+assembly.GetName().Name+".");
+					throw new ApplicationException("The reference schema "+resourceName+" is not embedded in "+assembly.GetName().Name+".");
 				}
 				using(StreamReader reader=new StreamReader(stream,Encoding.UTF8)) {
 					return reader.ReadToEnd();
@@ -100,16 +150,23 @@ namespace OpenDentBusiness.ForkMigrations {
 					tablePatient.Columns[i].Position=i+1;
 				}
 			}
-			string header="Open Dental "+ReferenceVersion+" database schema: the reference for SchemaVerifier (Open PMS - Dental fork).\n"
-				+"Generated by SchemaVerifier.BuildReferenceDdlFromDump from a schema-only dump of an Open Dental "+ReferenceVersion+" database\n"
+			string header="Open Dental "+ReferenceVersion25_3_48+" database schema: the reference for SchemaVerifier (Open PMS - Dental fork).\n"
+				+"Generated by SchemaVerifier.BuildReferenceDdlFromDump from a schema-only dump of an Open Dental "+ReferenceVersion25_3_48+" database\n"
 				+"(no rows). Normalized: one CREATE TABLE per table, sorted by name, AUTO_INCREMENT values removed. Removed because it is not Open\n"
 				+"Dental schema: the office-specific column patient."+PortalActiveEmailColumn+" and its key "+PortalActiveEmailIndex+".\n"
 				+"Do not edit by hand; regenerate it.";
 			return snapshot.ToDdl(header);
 		}
 
-		///<summary>Compares the connected database with the Open Dental 25.3.48 reference, allowing the documented exceptions.</summary>
+		///<summary>Compares the database (default: the connected one) with the default reference, Open Dental 26.1.70, allowing the documented
+		///exceptions.</summary>
 		public static SchemaVerifyResult VerifyDatabase(string databaseName=null) {
+			return Compare(GetReference(),SchemaSnapshot.FromDatabase(databaseName),DocumentedExceptions);
+		}
+
+		///<summary>Compares the database (default: the connected one) with the Open Dental 25.3.48 reference, allowing the documented exceptions.
+		///For an office database before adoption, and for the result of the 25.3 steps alone.</summary>
+		public static SchemaVerifyResult VerifyDatabase25_3_48(string databaseName=null) {
 			return Compare(GetReference25_3_48(),SchemaSnapshot.FromDatabase(databaseName),DocumentedExceptions25_3_48);
 		}
 

@@ -57,6 +57,7 @@ namespace OpenDentBusiness.Crud{
 				evaluation.OverallGradeShowing= PIn.String(row["OverallGradeShowing"].ToString());
 				evaluation.OverallGradeNumber = PIn.Float (row["OverallGradeNumber"].ToString());
 				evaluation.Notes              = PIn.String(row["Notes"].ToString());
+				evaluation.GradeOverride      = PIn.Float (row["GradeOverride"].ToString());
 				retVal.Add(evaluation);
 			}
 			return retVal;
@@ -78,6 +79,7 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("OverallGradeShowing");
 			table.Columns.Add("OverallGradeNumber");
 			table.Columns.Add("Notes");
+			table.Columns.Add("GradeOverride");
 			foreach(Evaluation evaluation in listEvaluations) {
 				table.Rows.Add(new object[] {
 					POut.Long  (evaluation.EvaluationNum),
@@ -90,6 +92,7 @@ namespace OpenDentBusiness.Crud{
 					            evaluation.OverallGradeShowing,
 					POut.Float (evaluation.OverallGradeNumber),
 					            evaluation.Notes,
+					POut.Float (evaluation.GradeOverride),
 				});
 			}
 			return table;
@@ -109,7 +112,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="EvaluationNum,";
 			}
-			command+="InstructNum,StudentNum,SchoolCourseNum,EvalTitle,DateEval,GradingScaleNum,OverallGradeShowing,OverallGradeNumber,Notes) VALUES(";
+			command+="InstructNum,StudentNum,SchoolCourseNum,EvalTitle,DateEval,GradingScaleNum,OverallGradeShowing,OverallGradeNumber,Notes,GradeOverride) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(evaluation.EvaluationNum)+",";
 			}
@@ -122,7 +125,8 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Long  (evaluation.GradingScaleNum)+","
 				+"'"+POut.String(evaluation.OverallGradeShowing)+"',"
 				+    POut.Float (evaluation.OverallGradeNumber)+","
-				+    DbHelper.ParamChar+"paramNotes)";
+				+    DbHelper.ParamChar+"paramNotes,"
+				+    POut.Float (evaluation.GradeOverride)+")";
 			if(evaluation.Notes==null) {
 				evaluation.Notes="";
 			}
@@ -151,7 +155,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="EvaluationNum,";
 			}
-			command+="InstructNum,StudentNum,SchoolCourseNum,EvalTitle,DateEval,GradingScaleNum,OverallGradeShowing,OverallGradeNumber,Notes) VALUES(";
+			command+="InstructNum,StudentNum,SchoolCourseNum,EvalTitle,DateEval,GradingScaleNum,OverallGradeShowing,OverallGradeNumber,Notes,GradeOverride) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(evaluation.EvaluationNum)+",";
 			}
@@ -164,7 +168,8 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Long  (evaluation.GradingScaleNum)+","
 				+"'"+POut.String(evaluation.OverallGradeShowing)+"',"
 				+    POut.Float (evaluation.OverallGradeNumber)+","
-				+    DbHelper.ParamChar+"paramNotes)";
+				+    DbHelper.ParamChar+"paramNotes,"
+				+    POut.Float (evaluation.GradeOverride)+")";
 			if(evaluation.Notes==null) {
 				evaluation.Notes="";
 			}
@@ -189,7 +194,8 @@ namespace OpenDentBusiness.Crud{
 				+"GradingScaleNum    =  "+POut.Long  (evaluation.GradingScaleNum)+", "
 				+"OverallGradeShowing= '"+POut.String(evaluation.OverallGradeShowing)+"', "
 				+"OverallGradeNumber =  "+POut.Float (evaluation.OverallGradeNumber)+", "
-				+"Notes              =  "+DbHelper.ParamChar+"paramNotes "
+				+"Notes              =  "+DbHelper.ParamChar+"paramNotes, "
+				+"GradeOverride      =  "+POut.Float (evaluation.GradeOverride)+" "
 				+"WHERE EvaluationNum = "+POut.Long(evaluation.EvaluationNum);
 			if(evaluation.Notes==null) {
 				evaluation.Notes="";
@@ -237,6 +243,10 @@ namespace OpenDentBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="Notes = "+DbHelper.ParamChar+"paramNotes";
 			}
+			if(evaluation.GradeOverride != oldEvaluation.GradeOverride) {
+				if(command!="") { command+=",";}
+				command+="GradeOverride = "+POut.Float(evaluation.GradeOverride)+"";
+			}
 			if(command=="") {
 				return false;
 			}
@@ -278,6 +288,9 @@ namespace OpenDentBusiness.Crud{
 				return true;
 			}
 			if(evaluation.Notes != oldEvaluation.Notes) {
+				return true;
+			}
+			if(evaluation.GradeOverride != oldEvaluation.GradeOverride) {
 				return true;
 			}
 			return false;

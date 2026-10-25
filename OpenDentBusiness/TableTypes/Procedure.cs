@@ -167,6 +167,15 @@ namespace OpenDentBusiness {
 		///<summary>Not a database column.</summary>
 		[CrudColumn(IsNotDbColumn=true)]
 		public bool SigIsTopaz;
+		///<summary>Not a database column.  procnote.UserNum2 (Open Dental 26.1) of the most recent note: the user who made the second signature.</summary>
+		[CrudColumn(IsNotDbColumn=true)]
+		public long UserNum2;
+		///<summary>Not a database column.  procnote.Signature2 (Open Dental 26.1) of the most recent note: the second signature, as Signature.</summary>
+		[CrudColumn(IsNotDbColumn=true)]
+		public string Signature2="";
+		///<summary>Not a database column.  procnote.SigIsTopaz2 (Open Dental 26.1) of the most recent note.</summary>
+		[CrudColumn(IsNotDbColumn=true)]
+		public bool SigIsTopaz2;
 		/// <summary>Not a database column.  This variable is set to true if the procedure is part of a set several procedures. It is used when 
 		/// calculating auto codes to correctly determine the right procedure code for the "first" and "eachAdditional" auto code rules.</summary>
 		[CrudColumn(IsNotDbColumn=true)]
@@ -177,6 +186,9 @@ namespace OpenDentBusiness {
 		public ProcUrgency Urgency;
 		///<summary>The difference between the UCR fee and discount plan fee. Frequently recalculated when procedure is TP.</summary>
 		public double DiscountPlanAmt;
+		///<summary>Added in Open Dental 25.4: the "Do Not Bill Insurance" decision for this procedure, which its claimprocs copy when they are
+		///estimated. False on rows made before 25.4.</summary>
+		public bool NoBillIns;
 
 		private int _priorityOrder=int.MinValue;
 

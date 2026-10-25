@@ -12,7 +12,7 @@ namespace OpenDentBusiness {
 		public EnumBrandingType BrandingType;
 		///<summary>FK to clinic.ClinicNum. 0 is the practice default.</summary>
 		public long ClinicNum;
-		///<summary>The value for this type.</summary>
+		///<summary>The value for this type. mediumtext since Open Dental 26.1, so a logo image fits as base64.</summary>
 		[CrudColumn(SpecialType=CrudSpecialColType.IsText)]
 		public string ValueString;
 		///<summary>When the value last changed.</summary>
@@ -28,12 +28,14 @@ namespace OpenDentBusiness {
 		}
 	}
 
-	///<summary>Stored in branding.BrandingType. Numbers as published in the Open Dental 25.3 database documentation. 26.1 renames 1 to LogoImage.</summary>
+	///<summary>Stored in branding.BrandingType. Numbers and names as published in the Open Dental 26.1 database documentation. Value 1 was LogoFilePath
+	///in the 25.2 and 25.3 documentation; 26.1 calls it LogoImage and stores the logo itself (base64) instead of a file path. Either way, nothing in
+	///this program reads it.</summary>
 	public enum EnumBrandingType {
 		///<summary>0</summary>
 		None=0,
-		///<summary>1</summary>
-		LogoFilePath=1,
+		///<summary>1 - The logo image, base64 (26.1). Rows written before 26.1 may hold a file path.</summary>
+		LogoImage=1,
 		///<summary>2</summary>
 		MaterialColorPalette=2,
 		///<summary>3</summary>

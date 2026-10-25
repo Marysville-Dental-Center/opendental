@@ -59,6 +59,7 @@ namespace OpenDentBusiness.Crud{
 				chatUserod.DismissNotifySecs         = PIn.Int   (row["DismissNotifySecs"].ToString());
 				chatUserod.MuteImportantNotifications= PIn.Bool  (row["MuteImportantNotifications"].ToString());
 				chatUserod.DismissImportantNotifySecs= PIn.Int   (row["DismissImportantNotifySecs"].ToString());
+				chatUserod.PlayNotificationSound     = PIn.Bool  (row["PlayNotificationSound"].ToString());
 				retVal.Add(chatUserod);
 			}
 			return retVal;
@@ -82,6 +83,7 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("DismissNotifySecs");
 			table.Columns.Add("MuteImportantNotifications");
 			table.Columns.Add("DismissImportantNotifySecs");
+			table.Columns.Add("PlayNotificationSound");
 			foreach(ChatUserod chatUserod in listChatUserods) {
 				table.Rows.Add(new object[] {
 					POut.Long  (chatUserod.ChatUserodNum),
@@ -96,6 +98,7 @@ namespace OpenDentBusiness.Crud{
 					POut.Int   (chatUserod.DismissNotifySecs),
 					POut.Bool  (chatUserod.MuteImportantNotifications),
 					POut.Int   (chatUserod.DismissImportantNotifySecs),
+					POut.Bool  (chatUserod.PlayNotificationSound),
 				});
 			}
 			return table;
@@ -115,7 +118,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="ChatUserodNum,";
 			}
-			command+="UserNum,UserStatus,DateTimeStatusReset,Photo,PhotoCrop,OpenBackground,CloseKeepRunning,MuteNotifications,DismissNotifySecs,MuteImportantNotifications,DismissImportantNotifySecs) VALUES(";
+			command+="UserNum,UserStatus,DateTimeStatusReset,Photo,PhotoCrop,OpenBackground,CloseKeepRunning,MuteNotifications,DismissNotifySecs,MuteImportantNotifications,DismissImportantNotifySecs,PlayNotificationSound) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(chatUserod.ChatUserodNum)+",";
 			}
@@ -130,7 +133,8 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Bool  (chatUserod.MuteNotifications)+","
 				+    POut.Int   (chatUserod.DismissNotifySecs)+","
 				+    POut.Bool  (chatUserod.MuteImportantNotifications)+","
-				+    POut.Int   (chatUserod.DismissImportantNotifySecs)+")";
+				+    POut.Int   (chatUserod.DismissImportantNotifySecs)+","
+				+    POut.Bool  (chatUserod.PlayNotificationSound)+")";
 			if(chatUserod.Photo==null) {
 				chatUserod.Photo="";
 			}
@@ -159,7 +163,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="ChatUserodNum,";
 			}
-			command+="UserNum,UserStatus,DateTimeStatusReset,Photo,PhotoCrop,OpenBackground,CloseKeepRunning,MuteNotifications,DismissNotifySecs,MuteImportantNotifications,DismissImportantNotifySecs) VALUES(";
+			command+="UserNum,UserStatus,DateTimeStatusReset,Photo,PhotoCrop,OpenBackground,CloseKeepRunning,MuteNotifications,DismissNotifySecs,MuteImportantNotifications,DismissImportantNotifySecs,PlayNotificationSound) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(chatUserod.ChatUserodNum)+",";
 			}
@@ -174,7 +178,8 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Bool  (chatUserod.MuteNotifications)+","
 				+    POut.Int   (chatUserod.DismissNotifySecs)+","
 				+    POut.Bool  (chatUserod.MuteImportantNotifications)+","
-				+    POut.Int   (chatUserod.DismissImportantNotifySecs)+")";
+				+    POut.Int   (chatUserod.DismissImportantNotifySecs)+","
+				+    POut.Bool  (chatUserod.PlayNotificationSound)+")";
 			if(chatUserod.Photo==null) {
 				chatUserod.Photo="";
 			}
@@ -201,7 +206,8 @@ namespace OpenDentBusiness.Crud{
 				+"MuteNotifications         =  "+POut.Bool  (chatUserod.MuteNotifications)+", "
 				+"DismissNotifySecs         =  "+POut.Int   (chatUserod.DismissNotifySecs)+", "
 				+"MuteImportantNotifications=  "+POut.Bool  (chatUserod.MuteImportantNotifications)+", "
-				+"DismissImportantNotifySecs=  "+POut.Int   (chatUserod.DismissImportantNotifySecs)+" "
+				+"DismissImportantNotifySecs=  "+POut.Int   (chatUserod.DismissImportantNotifySecs)+", "
+				+"PlayNotificationSound     =  "+POut.Bool  (chatUserod.PlayNotificationSound)+" "
 				+"WHERE ChatUserodNum = "+POut.Long(chatUserod.ChatUserodNum);
 			if(chatUserod.Photo==null) {
 				chatUserod.Photo="";
@@ -257,6 +263,10 @@ namespace OpenDentBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="DismissImportantNotifySecs = "+POut.Int(chatUserod.DismissImportantNotifySecs)+"";
 			}
+			if(chatUserod.PlayNotificationSound != oldChatUserod.PlayNotificationSound) {
+				if(command!="") { command+=",";}
+				command+="PlayNotificationSound = "+POut.Bool(chatUserod.PlayNotificationSound)+"";
+			}
 			if(command=="") {
 				return false;
 			}
@@ -304,6 +314,9 @@ namespace OpenDentBusiness.Crud{
 				return true;
 			}
 			if(chatUserod.DismissImportantNotifySecs != oldChatUserod.DismissImportantNotifySecs) {
+				return true;
+			}
+			if(chatUserod.PlayNotificationSound != oldChatUserod.PlayNotificationSound) {
 				return true;
 			}
 			return false;

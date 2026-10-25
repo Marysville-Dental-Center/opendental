@@ -74,6 +74,8 @@ namespace OpenDentBusiness.Crud{
 				carrier.CobInsPaidBehaviorOverride= (OpenDentBusiness.EclaimCobInsPaidBehavior)PIn.Int(row["CobInsPaidBehaviorOverride"].ToString());
 				carrier.EraAutomationOverride     = (OpenDentBusiness.EraAutomationMode)PIn.Int(row["EraAutomationOverride"].ToString());
 				carrier.OrthoInsPayConsolidate    = (OpenDentBusiness.EnumOrthoInsPayConsolidate)PIn.Int(row["OrthoInsPayConsolidate"].ToString());
+				carrier.PaySuiteTransSup          = (OpenDentBusiness.EnumPaySuiteTransTypes)PIn.Int(row["PaySuiteTransSup"].ToString());
+				carrier.PreAuthCodes              = PIn.String(row["PreAuthCodes"].ToString());
 				retVal.Add(carrier);
 			}
 			return retVal;
@@ -112,6 +114,8 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("CobInsPaidBehaviorOverride");
 			table.Columns.Add("EraAutomationOverride");
 			table.Columns.Add("OrthoInsPayConsolidate");
+			table.Columns.Add("PaySuiteTransSup");
+			table.Columns.Add("PreAuthCodes");
 			foreach(Carrier carrier in listCarriers) {
 				table.Rows.Add(new object[] {
 					POut.Long  (carrier.CarrierNum),
@@ -141,6 +145,8 @@ namespace OpenDentBusiness.Crud{
 					POut.Int   ((int)carrier.CobInsPaidBehaviorOverride),
 					POut.Int   ((int)carrier.EraAutomationOverride),
 					POut.Int   ((int)carrier.OrthoInsPayConsolidate),
+					POut.Int   ((int)carrier.PaySuiteTransSup),
+					            carrier.PreAuthCodes,
 				});
 			}
 			return table;
@@ -160,7 +166,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="CarrierNum,";
 			}
-			command+="CarrierName,Address,Address2,City,State,Zip,Phone,ElectID,NoSendElect,IsCDA,CDAnetVersion,CanadianNetworkNum,IsHidden,CanadianEncryptionMethod,CanadianSupportedTypes,SecUserNumEntry,SecDateEntry,TIN,CarrierGroupName,ApptTextBackColor,IsCoinsuranceInverted,TrustedEtransFlags,CobInsPaidBehaviorOverride,EraAutomationOverride,OrthoInsPayConsolidate) VALUES(";
+			command+="CarrierName,Address,Address2,City,State,Zip,Phone,ElectID,NoSendElect,IsCDA,CDAnetVersion,CanadianNetworkNum,IsHidden,CanadianEncryptionMethod,CanadianSupportedTypes,SecUserNumEntry,SecDateEntry,TIN,CarrierGroupName,ApptTextBackColor,IsCoinsuranceInverted,TrustedEtransFlags,CobInsPaidBehaviorOverride,EraAutomationOverride,OrthoInsPayConsolidate,PaySuiteTransSup,PreAuthCodes) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(carrier.CarrierNum)+",";
 			}
@@ -190,12 +196,18 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Int   ((int)carrier.TrustedEtransFlags)+","
 				+    POut.Int   ((int)carrier.CobInsPaidBehaviorOverride)+","
 				+    POut.Int   ((int)carrier.EraAutomationOverride)+","
-				+    POut.Int   ((int)carrier.OrthoInsPayConsolidate)+")";
+				+    POut.Int   ((int)carrier.OrthoInsPayConsolidate)+","
+				+    POut.Int   ((int)carrier.PaySuiteTransSup)+","
+				+    DbHelper.ParamChar+"paramPreAuthCodes)";
+			if(carrier.PreAuthCodes==null) {
+				carrier.PreAuthCodes="";
+			}
+			OdSqlParameter paramPreAuthCodes=new OdSqlParameter("paramPreAuthCodes",OdDbType.Text,POut.StringParam(carrier.PreAuthCodes));
 			if(useExistingPK || PrefC.RandomKeys) {
-				Db.NonQ(command);
+				Db.NonQ(command,paramPreAuthCodes);
 			}
 			else {
-				carrier.CarrierNum=Db.NonQ(command,true,"CarrierNum","carrier");
+				carrier.CarrierNum=Db.NonQ(command,true,"CarrierNum","carrier",paramPreAuthCodes);
 			}
 			return carrier.CarrierNum;
 		}
@@ -215,7 +227,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="CarrierNum,";
 			}
-			command+="CarrierName,Address,Address2,City,State,Zip,Phone,ElectID,NoSendElect,IsCDA,CDAnetVersion,CanadianNetworkNum,IsHidden,CanadianEncryptionMethod,CanadianSupportedTypes,SecUserNumEntry,SecDateEntry,TIN,CarrierGroupName,ApptTextBackColor,IsCoinsuranceInverted,TrustedEtransFlags,CobInsPaidBehaviorOverride,EraAutomationOverride,OrthoInsPayConsolidate) VALUES(";
+			command+="CarrierName,Address,Address2,City,State,Zip,Phone,ElectID,NoSendElect,IsCDA,CDAnetVersion,CanadianNetworkNum,IsHidden,CanadianEncryptionMethod,CanadianSupportedTypes,SecUserNumEntry,SecDateEntry,TIN,CarrierGroupName,ApptTextBackColor,IsCoinsuranceInverted,TrustedEtransFlags,CobInsPaidBehaviorOverride,EraAutomationOverride,OrthoInsPayConsolidate,PaySuiteTransSup,PreAuthCodes) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(carrier.CarrierNum)+",";
 			}
@@ -245,12 +257,18 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Int   ((int)carrier.TrustedEtransFlags)+","
 				+    POut.Int   ((int)carrier.CobInsPaidBehaviorOverride)+","
 				+    POut.Int   ((int)carrier.EraAutomationOverride)+","
-				+    POut.Int   ((int)carrier.OrthoInsPayConsolidate)+")";
+				+    POut.Int   ((int)carrier.OrthoInsPayConsolidate)+","
+				+    POut.Int   ((int)carrier.PaySuiteTransSup)+","
+				+    DbHelper.ParamChar+"paramPreAuthCodes)";
+			if(carrier.PreAuthCodes==null) {
+				carrier.PreAuthCodes="";
+			}
+			OdSqlParameter paramPreAuthCodes=new OdSqlParameter("paramPreAuthCodes",OdDbType.Text,POut.StringParam(carrier.PreAuthCodes));
 			if(useExistingPK || isRandomKeys) {
-				Db.NonQ(command);
+				Db.NonQ(command,paramPreAuthCodes);
 			}
 			else {
-				carrier.CarrierNum=Db.NonQ(command,true,"CarrierNum","carrier");
+				carrier.CarrierNum=Db.NonQ(command,true,"CarrierNum","carrier",paramPreAuthCodes);
 			}
 			return carrier.CarrierNum;
 		}
@@ -283,9 +301,15 @@ namespace OpenDentBusiness.Crud{
 				+"TrustedEtransFlags        =  "+POut.Int   ((int)carrier.TrustedEtransFlags)+", "
 				+"CobInsPaidBehaviorOverride=  "+POut.Int   ((int)carrier.CobInsPaidBehaviorOverride)+", "
 				+"EraAutomationOverride     =  "+POut.Int   ((int)carrier.EraAutomationOverride)+", "
-				+"OrthoInsPayConsolidate    =  "+POut.Int   ((int)carrier.OrthoInsPayConsolidate)+" "
+				+"OrthoInsPayConsolidate    =  "+POut.Int   ((int)carrier.OrthoInsPayConsolidate)+", "
+				+"PaySuiteTransSup          =  "+POut.Int   ((int)carrier.PaySuiteTransSup)+", "
+				+"PreAuthCodes              =  "+DbHelper.ParamChar+"paramPreAuthCodes "
 				+"WHERE CarrierNum = "+POut.Long(carrier.CarrierNum);
-			Db.NonQ(command);
+			if(carrier.PreAuthCodes==null) {
+				carrier.PreAuthCodes="";
+			}
+			OdSqlParameter paramPreAuthCodes=new OdSqlParameter("paramPreAuthCodes",OdDbType.Text,POut.StringParam(carrier.PreAuthCodes));
+			Db.NonQ(command,paramPreAuthCodes);
 		}
 
 		///<summary>Updates one Carrier in the database.  Uses an old object to compare to, and only alters changed fields.  This prevents collisions and concurrency problems in heavily used tables.  Returns true if an update occurred.</summary>
@@ -386,12 +410,24 @@ namespace OpenDentBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="OrthoInsPayConsolidate = "+POut.Int   ((int)carrier.OrthoInsPayConsolidate)+"";
 			}
+			if(carrier.PaySuiteTransSup != oldCarrier.PaySuiteTransSup) {
+				if(command!="") { command+=",";}
+				command+="PaySuiteTransSup = "+POut.Int   ((int)carrier.PaySuiteTransSup)+"";
+			}
+			if(carrier.PreAuthCodes != oldCarrier.PreAuthCodes) {
+				if(command!="") { command+=",";}
+				command+="PreAuthCodes = "+DbHelper.ParamChar+"paramPreAuthCodes";
+			}
 			if(command=="") {
 				return false;
 			}
+			if(carrier.PreAuthCodes==null) {
+				carrier.PreAuthCodes="";
+			}
+			OdSqlParameter paramPreAuthCodes=new OdSqlParameter("paramPreAuthCodes",OdDbType.Text,POut.StringParam(carrier.PreAuthCodes));
 			command="UPDATE carrier SET "+command
 				+" WHERE CarrierNum = "+POut.Long(carrier.CarrierNum);
-			Db.NonQ(command);
+			Db.NonQ(command,paramPreAuthCodes);
 			return true;
 		}
 
@@ -468,6 +504,12 @@ namespace OpenDentBusiness.Crud{
 				return true;
 			}
 			if(carrier.OrthoInsPayConsolidate != oldCarrier.OrthoInsPayConsolidate) {
+				return true;
+			}
+			if(carrier.PaySuiteTransSup != oldCarrier.PaySuiteTransSup) {
+				return true;
+			}
+			if(carrier.PreAuthCodes != oldCarrier.PreAuthCodes) {
 				return true;
 			}
 			return false;

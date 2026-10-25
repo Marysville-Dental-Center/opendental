@@ -12,6 +12,8 @@ namespace OpenDentBusiness {
 		public string CourseID;
 		///<summary>Course title.</summary>
 		public string Descript;
+		///<summary>Added in Open Dental 25.4. FK to gradingscale.GradingScaleNum: the grading scale of courses made from this definition.</summary>
+		public long GradingScaleNum;
 
 		public SchoolCourseDef() {
 			CourseID="";

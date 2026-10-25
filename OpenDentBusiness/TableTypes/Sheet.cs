@@ -64,6 +64,9 @@ namespace OpenDentBusiness{
 		public int RevID;
 		///<summary>Only set when this sheet was created from a Web Form. FK to webforms_sheet.SheetID within the Web Forms server. Used to determine if this particular Web Form has been retrieved before in order to avoid creating duplicate sheet entries for a single Web Form.</summary>
 		public long WebFormSheetID;
+		///<summary>Added in Open Dental 25.4: when the patient submitted the sheet. MinValue when it was not submitted.</summary>
+		[CrudColumn(SpecialType=CrudSpecialColType.DateT)]
+		public DateTime DateTimeSubmitted;
 
 		public Sheet Copy(){
 			Sheet retVal=(Sheet)this.MemberwiseClone();

@@ -98,6 +98,9 @@ namespace OpenDentBusiness {
 		///and import.</summary>
 		[CrudColumn(SpecialType=CrudSpecialColType.IsText)]
 		public string PickListVisEnglish;
+		///<summary>Added in Open Dental 26.1: when the signature in this field was made. MinValue when unsigned or for other field types.</summary>
+		[CrudColumn(SpecialType=CrudSpecialColType.DateT)]
+		public DateTime DateTimeSig;
 
 
 		[CrudColumn(IsNotDbColumn=true)]

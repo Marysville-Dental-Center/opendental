@@ -75,6 +75,13 @@ namespace OpenDentBusiness{
 		public EraAutomationMode EraAutomationOverride;
 		///<summary>Enum:EnumOrthoInsPayConsolidate Global (0) by default. Determines how this carrier requires payments made to ortho claims made by the Auto Ortho Tool. This will override the OrthoInsPayConsolidated preference when not set to Global.</summary>
 		public EnumOrthoInsPayConsolidate OrthoInsPayConsolidate;
+		///<summary>Added in Open Dental 25.4. Enum:EnumPaySuiteTransTypes None (0) by default. Which PaySuite transactions this Canadian carrier
+		///supports. Schema and data compatibility; the PaySuite integration is a separate vendor package.</summary>
+		public EnumPaySuiteTransTypes PaySuiteTransSup;
+		///<summary>Added in Open Dental 26.1. Procedure codes and code ranges this carrier requires a preauthorization for: commas between items,
+		///a hyphen inside a range, no spaces. Empty when none.</summary>
+		[CrudColumn(SpecialType=CrudSpecialColType.IsText)]
+		public string PreAuthCodes="";
 
 		///<summary>Used only for serialization purposes</summary>
 		[XmlElement("ApptTextBackColor",typeof(int))]
@@ -170,6 +177,18 @@ namespace OpenDentBusiness{
 		None=0,
 		///<summary>1 - When used in bit-wise value enables the automated import of certain fields for 271s, otherwise disabled.</summary>
 		RealTimeEligibility=1
+	}
+
+	///<summary>Stored in carrier.PaySuiteTransSup (Open Dental 25.4). Numbers as published in the Open Dental 25.4 database documentation.</summary>
+	public enum EnumPaySuiteTransTypes {
+		///<summary>0 - No PaySuite transactions.</summary>
+		None=0,
+		///<summary>1 - Extended reversal.</summary>
+		ExtendedReversal=1,
+		///<summary>2 - Plan details.</summary>
+		PlanDetails=2,
+		///<summary>3 - Both extended reversal and plan details.</summary>
+		Both=3,
 	}
 
 	public enum EclaimCobInsPaidBehavior {

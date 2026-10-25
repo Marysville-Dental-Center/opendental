@@ -17,10 +17,11 @@ The legacy `ConvertDatabases` chain (`OpenDentBusiness/Misc/ConvertDatabases*.cs
 |---|---|---|
 | 2026101901 to 2026101906 | `OdParity25_3.cs`: the Open Dental 24.4, 25.1, 25.2 and 25.3 schema, then the 25.3.48 keys and definitions of existing columns | M1-01 |
 | 2026101907 | `Seed25_3Step.cs`: the `Seed25_3` preference, permission-grant and eForm status rows, only for a database that comes from 24.3 (judged by the `ForkAdoptedFrom` source on an adopted database, otherwise by `DataBaseVersion`) | M1-02 |
+| 2026102401 to 2026102403 | `OdParity26_1.cs`: the Open Dental 25.4 schema, the 26.1 schema, and `claimpayment.Note` widened to text (the 25.3.48 drift). Columns of one table are added in one `ALTER TABLE` (`OdParity26_1.AlterTable`), so a large MyISAM table such as `claimproc`, `procedurelog` or `procnote` is copied once. The only data migration: existing `evaluation` rows get `GradeOverride` -1 in the statement that adds the column; `NULL` claim payment notes become empty strings before the column turns `NOT NULL`. | M2-01 |
 
 ## Hand-off to the version guard and adoption
 
-`ForkMigrationRunnerAdapter` implements M1-03's `IForkMigrationRunner`, so `ForkMigrationHandOff` finds it. Startup (`PrefL.ConvertDB`) and adoption (`Adoption.Run`) run the steps through it; afterwards it sets `OdSchemaCompat` to `25.3.48` when the schema verifier finds an exact match. `tools/New-DevDatabase.ps1` adopts the database it builds, so a development database carries the same markers as an adopted office copy. Running `ForkMigrationRunner.Run()` directly (tests, the UnitTests database) leaves a database the startup guard refuses, because it has `ForkSchemaLevel` without the adoption markers.
+`ForkMigrationRunnerAdapter` implements M1-03's `IForkMigrationRunner`, so `ForkMigrationHandOff` finds it. Startup (`PrefL.ConvertDB`) and adoption (`Adoption.Run`) run the steps through it; afterwards it sets `OdSchemaCompat` to the verifier's reference version (`26.1.70` since M2-01) when the schema verifier finds an exact match. The adoption allowlist is unchanged (24.3.63 and 25.3.48): an office database is adopted at 25.3.48 and then runs every M1 and M2 step. `tools/New-DevDatabase.ps1` adopts the database it builds, so a development database carries the same markers as an adopted office copy. Running `ForkMigrationRunner.Run()` directly (tests, the UnitTests database) leaves a database the startup guard refuses, because it has `ForkSchemaLevel` without the adoption markers.
 
 ## Runner state
 
@@ -28,10 +29,17 @@ Kept in preference rows (no schema change): `ForkMigrationsApplied` (levels that
 
 ## Schema verifier
 
-`SchemaVerifier` compares a database with `Reference/OdSchema-25.3.48.sql`, the Open Dental 25.3.48 schema built from a schema-only dump by `SchemaVerifier.BuildReferenceDdlFromDump`. Tables, columns (type, NULL, default, extra, charset, position), keys, engine and charset must match, except for the documented exceptions in `SchemaVerifier.DocumentedExceptions25_3_48`:
+`SchemaVerifier` embeds two references:
+
+- `Reference/OdSchema-26.1.70.sql`, the default (`ReferenceVersion`, `GetReference()`, `VerifyDatabase()`): the schema a migrated database has. It is the 25.3.48 reference plus the changes of Open Dental's published database documents (the 25.4 and 26.1 diff documents, checked against the full 26.1 document: 427 tables, every column name, position and type). No Open Dental program or database was used. The documents publish names, order and types only, so every NULL/NOT NULL, default and key of a new or changed column is marked `INFERRED` in a comment above its table. `tools/New-OdReferenceDatabase.ps1` loads it as the empty local database `od_261_schema`.
+- `Reference/OdSchema-25.3.48.sql` (`GetReference25_3_48()`, `VerifyDatabase25_3_48()`): the Open Dental 25.3.48 schema built from a schema-only dump by `SchemaVerifier.BuildReferenceDdlFromDump`. The 25.3 steps read key and column definitions from it, and an office database must match it before adoption.
+
+Tables, columns (type, NULL, default, extra, charset, position), keys, engine and charset must match, except for the documented exceptions (`SchemaVerifier.DocumentedExceptions`, the same for both references):
 
 - `patient._portal_active_email` and its unique key `portal_active_email_uniq`: an office-specific customization, not Open Dental schema. The adoption step drops both.
 - The 54 Open Dental HQ-only tables that the 24.3 code declares, when present.
 - Legacy tables that long-lived databases (including our development seed) still carry: the `anesth*` tables, `files` and `instructor`.
 
-Tests: `tests/ForkMigrationTests`.
+Tests: `tests/ForkMigrationTests` (runner, 25.3 steps, both references) and `tests/M201Tests` (25.4 and 26.1 steps, the 26.1.70 reference, the regenerated CRUD; set `M201_OD_DOCS_DIR` to a folder with the published XML documents to also check the reference against them).
+
+Scratch databases that tests build from a reference file must use the reference the code expects, `OdSchema-26.1.70.sql` (or `GetReference()`), since the CRUD writes the 26.1 columns.

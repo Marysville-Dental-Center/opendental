@@ -47,10 +47,11 @@ namespace OpenDentBusiness.Crud{
 			EvaluationDef evaluationDef;
 			foreach(DataRow row in table.Rows) {
 				evaluationDef=new EvaluationDef();
-				evaluationDef.EvaluationDefNum= PIn.Long  (row["EvaluationDefNum"].ToString());
-				evaluationDef.SchoolCourseNum = PIn.Long  (row["SchoolCourseNum"].ToString());
-				evaluationDef.EvalTitle       = PIn.String(row["EvalTitle"].ToString());
-				evaluationDef.GradingScaleNum = PIn.Long  (row["GradingScaleNum"].ToString());
+				evaluationDef.EvaluationDefNum  = PIn.Long  (row["EvaluationDefNum"].ToString());
+				evaluationDef.SchoolCourseNum   = PIn.Long  (row["SchoolCourseNum"].ToString());
+				evaluationDef.EvalTitle         = PIn.String(row["EvalTitle"].ToString());
+				evaluationDef.GradingScaleNum   = PIn.Long  (row["GradingScaleNum"].ToString());
+				evaluationDef.SchoolCourseDefNum= PIn.Long  (row["SchoolCourseDefNum"].ToString());
 				retVal.Add(evaluationDef);
 			}
 			return retVal;
@@ -66,12 +67,14 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("SchoolCourseNum");
 			table.Columns.Add("EvalTitle");
 			table.Columns.Add("GradingScaleNum");
+			table.Columns.Add("SchoolCourseDefNum");
 			foreach(EvaluationDef evaluationDef in listEvaluationDefs) {
 				table.Rows.Add(new object[] {
 					POut.Long  (evaluationDef.EvaluationDefNum),
 					POut.Long  (evaluationDef.SchoolCourseNum),
 					            evaluationDef.EvalTitle,
 					POut.Long  (evaluationDef.GradingScaleNum),
+					POut.Long  (evaluationDef.SchoolCourseDefNum),
 				});
 			}
 			return table;
@@ -91,14 +94,15 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="EvaluationDefNum,";
 			}
-			command+="SchoolCourseNum,EvalTitle,GradingScaleNum) VALUES(";
+			command+="SchoolCourseNum,EvalTitle,GradingScaleNum,SchoolCourseDefNum) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(evaluationDef.EvaluationDefNum)+",";
 			}
 			command+=
 				     POut.Long  (evaluationDef.SchoolCourseNum)+","
 				+"'"+POut.String(evaluationDef.EvalTitle)+"',"
-				+    POut.Long  (evaluationDef.GradingScaleNum)+")";
+				+    POut.Long  (evaluationDef.GradingScaleNum)+","
+				+    POut.Long  (evaluationDef.SchoolCourseDefNum)+")";
 			if(useExistingPK || PrefC.RandomKeys) {
 				Db.NonQ(command);
 			}
@@ -123,14 +127,15 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="EvaluationDefNum,";
 			}
-			command+="SchoolCourseNum,EvalTitle,GradingScaleNum) VALUES(";
+			command+="SchoolCourseNum,EvalTitle,GradingScaleNum,SchoolCourseDefNum) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(evaluationDef.EvaluationDefNum)+",";
 			}
 			command+=
 				     POut.Long  (evaluationDef.SchoolCourseNum)+","
 				+"'"+POut.String(evaluationDef.EvalTitle)+"',"
-				+    POut.Long  (evaluationDef.GradingScaleNum)+")";
+				+    POut.Long  (evaluationDef.GradingScaleNum)+","
+				+    POut.Long  (evaluationDef.SchoolCourseDefNum)+")";
 			if(useExistingPK || isRandomKeys) {
 				Db.NonQ(command);
 			}
@@ -143,9 +148,10 @@ namespace OpenDentBusiness.Crud{
 		///<summary>Updates one EvaluationDef in the database.</summary>
 		public static void Update(EvaluationDef evaluationDef) {
 			string command="UPDATE evaluationdef SET "
-				+"SchoolCourseNum =  "+POut.Long  (evaluationDef.SchoolCourseNum)+", "
-				+"EvalTitle       = '"+POut.String(evaluationDef.EvalTitle)+"', "
-				+"GradingScaleNum =  "+POut.Long  (evaluationDef.GradingScaleNum)+" "
+				+"SchoolCourseNum   =  "+POut.Long  (evaluationDef.SchoolCourseNum)+", "
+				+"EvalTitle         = '"+POut.String(evaluationDef.EvalTitle)+"', "
+				+"GradingScaleNum   =  "+POut.Long  (evaluationDef.GradingScaleNum)+", "
+				+"SchoolCourseDefNum=  "+POut.Long  (evaluationDef.SchoolCourseDefNum)+" "
 				+"WHERE EvaluationDefNum = "+POut.Long(evaluationDef.EvaluationDefNum);
 			Db.NonQ(command);
 		}
@@ -164,6 +170,10 @@ namespace OpenDentBusiness.Crud{
 			if(evaluationDef.GradingScaleNum != oldEvaluationDef.GradingScaleNum) {
 				if(command!="") { command+=",";}
 				command+="GradingScaleNum = "+POut.Long(evaluationDef.GradingScaleNum)+"";
+			}
+			if(evaluationDef.SchoolCourseDefNum != oldEvaluationDef.SchoolCourseDefNum) {
+				if(command!="") { command+=",";}
+				command+="SchoolCourseDefNum = "+POut.Long(evaluationDef.SchoolCourseDefNum)+"";
 			}
 			if(command=="") {
 				return false;
@@ -184,6 +194,9 @@ namespace OpenDentBusiness.Crud{
 				return true;
 			}
 			if(evaluationDef.GradingScaleNum != oldEvaluationDef.GradingScaleNum) {
+				return true;
+			}
+			if(evaluationDef.SchoolCourseDefNum != oldEvaluationDef.SchoolCourseDefNum) {
 				return true;
 			}
 			return false;

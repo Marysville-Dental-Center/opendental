@@ -19,7 +19,9 @@ namespace OpenDentBusiness {
 		public long FKey;
 		///<summary>FK to definition.DefNum.  Links to the category InsVerifyStatus</summary>
 		public long DefNum;
-		///<summary>DateTime of either the last time this verification was assigned or the last time a status/note was set.</summary>
+		///<summary>DateTime of either the last time this verification was assigned or the last time a status/note was set. A date column until Open
+		///Dental 25.4 made it datetime; the 25.4 fork migration step widens it and keeps its key.</summary>
+		[CrudColumn(SpecialType=CrudSpecialColType.DateT)]
 		public DateTime DateLastAssigned;
 		///<summary>Note for this insurance verification.</summary>
 		[CrudColumn(SpecialType=CrudSpecialColType.IsText | CrudSpecialColType.CleanText)]

@@ -51,6 +51,7 @@ namespace OpenDentBusiness.Crud{
 				payTerminal.Name          = PIn.String(row["Name"].ToString());
 				payTerminal.ClinicNum     = PIn.Long  (row["ClinicNum"].ToString());
 				payTerminal.TerminalID    = PIn.String(row["TerminalID"].ToString());
+				payTerminal.CCIntegration = PIn.String(row["CCIntegration"].ToString());
 				retVal.Add(payTerminal);
 			}
 			return retVal;
@@ -66,12 +67,14 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("Name");
 			table.Columns.Add("ClinicNum");
 			table.Columns.Add("TerminalID");
+			table.Columns.Add("CCIntegration");
 			foreach(PayTerminal payTerminal in listPayTerminals) {
 				table.Rows.Add(new object[] {
 					POut.Long  (payTerminal.PayTerminalNum),
 					            payTerminal.Name,
 					POut.Long  (payTerminal.ClinicNum),
 					            payTerminal.TerminalID,
+					            payTerminal.CCIntegration,
 				});
 			}
 			return table;
@@ -91,14 +94,15 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="PayTerminalNum,";
 			}
-			command+="Name,ClinicNum,TerminalID) VALUES(";
+			command+="Name,ClinicNum,TerminalID,CCIntegration) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(payTerminal.PayTerminalNum)+",";
 			}
 			command+=
 				 "'"+POut.String(payTerminal.Name)+"',"
 				+    POut.Long  (payTerminal.ClinicNum)+","
-				+"'"+POut.String(payTerminal.TerminalID)+"')";
+				+"'"+POut.String(payTerminal.TerminalID)+"',"
+				+"'"+POut.String(payTerminal.CCIntegration)+"')";
 			if(useExistingPK || PrefC.RandomKeys) {
 				Db.NonQ(command);
 			}
@@ -123,14 +127,15 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="PayTerminalNum,";
 			}
-			command+="Name,ClinicNum,TerminalID) VALUES(";
+			command+="Name,ClinicNum,TerminalID,CCIntegration) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(payTerminal.PayTerminalNum)+",";
 			}
 			command+=
 				 "'"+POut.String(payTerminal.Name)+"',"
 				+    POut.Long  (payTerminal.ClinicNum)+","
-				+"'"+POut.String(payTerminal.TerminalID)+"')";
+				+"'"+POut.String(payTerminal.TerminalID)+"',"
+				+"'"+POut.String(payTerminal.CCIntegration)+"')";
 			if(useExistingPK || isRandomKeys) {
 				Db.NonQ(command);
 			}
@@ -145,7 +150,8 @@ namespace OpenDentBusiness.Crud{
 			string command="UPDATE payterminal SET "
 				+"Name          = '"+POut.String(payTerminal.Name)+"', "
 				+"ClinicNum     =  "+POut.Long  (payTerminal.ClinicNum)+", "
-				+"TerminalID    = '"+POut.String(payTerminal.TerminalID)+"' "
+				+"TerminalID    = '"+POut.String(payTerminal.TerminalID)+"', "
+				+"CCIntegration = '"+POut.String(payTerminal.CCIntegration)+"' "
 				+"WHERE PayTerminalNum = "+POut.Long(payTerminal.PayTerminalNum);
 			Db.NonQ(command);
 		}
@@ -164,6 +170,10 @@ namespace OpenDentBusiness.Crud{
 			if(payTerminal.TerminalID != oldPayTerminal.TerminalID) {
 				if(command!="") { command+=",";}
 				command+="TerminalID = '"+POut.String(payTerminal.TerminalID)+"'";
+			}
+			if(payTerminal.CCIntegration != oldPayTerminal.CCIntegration) {
+				if(command!="") { command+=",";}
+				command+="CCIntegration = '"+POut.String(payTerminal.CCIntegration)+"'";
 			}
 			if(command=="") {
 				return false;
@@ -184,6 +194,9 @@ namespace OpenDentBusiness.Crud{
 				return true;
 			}
 			if(payTerminal.TerminalID != oldPayTerminal.TerminalID) {
+				return true;
+			}
+			if(payTerminal.CCIntegration != oldPayTerminal.CCIntegration) {
 				return true;
 			}
 			return false;
