@@ -128,6 +128,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BACCTTests", "tests\BACCTTe
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BERATests", "tests\BERATests\BERATests.csproj", "{E9A37D6C-2707-4DA4-A2A6-ED796190985A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BPERIOTests", "tests\BPERIOTests\BPERIOTests.csproj", "{2F7967D7-D9C9-4793-B69C-6EC199A77B08}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -835,6 +837,18 @@ Global
 		{E9A37D6C-2707-4DA4-A2A6-ED796190985A}.Release|Any CPU.Build.0 = Release|x86
 		{E9A37D6C-2707-4DA4-A2A6-ED796190985A}.Release|x86.ActiveCfg = Release|x86
 		{E9A37D6C-2707-4DA4-A2A6-ED796190985A}.Release|x86.Build.0 = Release|x86
+		{2F7967D7-D9C9-4793-B69C-6EC199A77B08}.Debug|Any CPU.ActiveCfg = Debug|x86
+		{2F7967D7-D9C9-4793-B69C-6EC199A77B08}.Debug|Any CPU.Build.0 = Debug|x86
+		{2F7967D7-D9C9-4793-B69C-6EC199A77B08}.Debug|x86.ActiveCfg = Debug|x86
+		{2F7967D7-D9C9-4793-B69C-6EC199A77B08}.Debug|x86.Build.0 = Debug|x86
+		{2F7967D7-D9C9-4793-B69C-6EC199A77B08}.ODXam|Any CPU.ActiveCfg = Release|x86
+		{2F7967D7-D9C9-4793-B69C-6EC199A77B08}.ODXam|Any CPU.Build.0 = Release|x86
+		{2F7967D7-D9C9-4793-B69C-6EC199A77B08}.ODXam|x86.ActiveCfg = Release|x86
+		{2F7967D7-D9C9-4793-B69C-6EC199A77B08}.ODXam|x86.Build.0 = Release|x86
+		{2F7967D7-D9C9-4793-B69C-6EC199A77B08}.Release|Any CPU.ActiveCfg = Release|x86
+		{2F7967D7-D9C9-4793-B69C-6EC199A77B08}.Release|Any CPU.Build.0 = Release|x86
+		{2F7967D7-D9C9-4793-B69C-6EC199A77B08}.Release|x86.ActiveCfg = Release|x86
+		{2F7967D7-D9C9-4793-B69C-6EC199A77B08}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
