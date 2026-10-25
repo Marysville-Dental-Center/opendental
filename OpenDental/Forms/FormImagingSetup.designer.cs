@@ -196,9 +196,9 @@ namespace OpenDental {
 			this.checkScanDocSelectSource.Size = new System.Drawing.Size(256, 18);
 			this.checkScanDocSelectSource.TabIndex = 23;
 			this.checkScanDocSelectSource.Text = "Show Select Scanner Window";
-			//
+			// 
 			// butScanDocSelectSourceDetails
-			//
+			// 
 			this.butScanDocSelectSourceDetails.Location = new System.Drawing.Point(294, 17);
 			this.butScanDocSelectSourceDetails.Name = "butScanDocSelectSourceDetails";
 			this.butScanDocSelectSourceDetails.Size = new System.Drawing.Size(60, 22);
