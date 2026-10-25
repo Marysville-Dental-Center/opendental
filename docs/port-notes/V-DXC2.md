@@ -105,6 +105,22 @@ None are added. Sending uses the clearinghouse login, password and XConnect API 
 - **Source checks**: no case-sensitive `.pdf` test is left, the windows call `DxcPdfAttachment`, Snip and Paste don't, and PDFs are checked before the first call.
 - **Related existing assembly**: `VendorDirectTests` (V-DXC1's DentalXChange tests and the rest of the vendor-direct code).
 
+## Fix round r1 (`port/v-dxc2-r1`)
+
+The package's own tests passed. Two tests outside the package failed in the wave's runs: `ReleaseFlowTests.AdoptionDbTests.Markers_AreWrittenAsPlainPreferenceRows` ("Unknown database 'releaseflow_adoption'") and `AdoptedCopy_WithSomeMarkersRemoved_IsRefused_AndNeverAdoptedAgain` ("Table 'releaseflow_adoption.preference' doesn't exist").
+
+- **Cause.** No V-DXC2 code is involved: this package touches no adoption, fork version or preference code. `ReleaseFlowTests` used fixed scratch database names (`releaseflow_adoption`, `releaseflow_release`). In the single wave, many worktrees run tests against the one local MariaDB at the same time. Each `ScratchDb.Create` drops and recreates the database, so another run's test removed it, or emptied it, in the middle of ours. That gives exactly those two errors.
+- **Fix (test code only, outside owned).** `tests/ReleaseFlowTests/TestSupport.cs` now builds per-run names with `ScratchDb.ScratchName(purpose)`. The pattern is `releaseflow_<UTC yyMMddHHmmss>_<process id>_<random>_<purpose>`, the same as `tests/ForkMigrationTests/TestDb.cs`. `AdoptionDbTests` and `ReleaseChannelDbTests` use it.
+  - `Create` and `Drop` refuse any other name.
+  - A run's first database test drops scratch databases older than 12 hours (`DropStaleScratchDatabases`), so a crashed run's databases still get cleaned up.
+  - The old fixed names are never dropped: runs from worktrees that don't have this fix may still be using them.
+- **Tests.** New `tests/ReleaseFlowTests/ScratchDbTests.cs`, 4 tests:
+  - names are unique to the run and never the old fixed names;
+  - a name over 64 characters throws;
+  - `Create` and `Drop` refuse other databases;
+  - the stale cleanup drops only scratch databases older than 12 hours. It keeps a newer one, which may belong to a run still going, and any name outside the scheme.
+- **Interplay.** Any other package that patches `ReleaseFlowTests` the same way will conflict only in these test files. Keep either version: both give unique names per run.
+
 ## Untested
 
 - Nothing was sent to DentalXChange; no test account was available. Their acceptance of PDFs, the size limit and the file-name convention are unconfirmed.
