@@ -91,6 +91,11 @@ namespace ImagingDeviceManager.TwainProtocol {
 		///<summary>True when the last Acquire returned no image because the transfer of the image meant for the caller failed (not a
 		///cancel, and not an image drained during a stop). Reset by each Acquire.</summary>
 		public bool IsLastTransferFailed { get; private set; }
+		///<summary>The clock for receive times, local time. The facade sets the host's.</summary>
+		public Func<DateTime> FuncNow { get; set; }=() => DateTime.Now;
+		///<summary>When the image the last Acquire returned was received: the time its transfer ended, before any extra images were drained
+		///or the source was disabled. Null when it returned none. Reset by each Acquire.</summary>
+		public DateTime? LastImageReceivedAt { get; private set; }
 		///<summary>A line for the capture log, raised on the session's thread: tolerated failures, refusals, contract deviations and
 		///images handed to the drain sink. Handlers must not throw.</summary>
 		public event Action<string> Logged;
@@ -824,6 +829,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 				return null;
 			}
 			IsLastTransferFailed=false;
+			LastImageReceivedAt=null;
 			if(State<4 && !OpenSource(null)) {
 				return null;
 			}
@@ -864,6 +870,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 					}
 					return null;
 				}
+				LastImageReceivedAt=GetReceivedTime();
 				FinishAfterDelivery(isMulti);
 				return dib;
 			}
@@ -976,6 +983,16 @@ namespace ImagingDeviceManager.TwainProtocol {
 					NoteMayStillHoldImages(TwainStopReason.Error);
 				}
 				SetError(EZTwainErrorCode.EZTEC_INTERNAL,"The image was received, but stopping the device afterwards failed: "+ex.Message);
+			}
+		}
+
+		///<summary>The receive time of an image that was just transferred: FuncNow, or the local time if FuncNow fails.</summary>
+		private DateTime GetReceivedTime() {
+			try {
+				return FuncNow==null ? DateTime.Now : FuncNow();
+			}
+			catch {
+				return DateTime.Now;
 			}
 		}
 

@@ -57,6 +57,7 @@ namespace ImagingDeviceManager {
 			session.SourceRefusedByGate+=OnSourceRefusedByGate;
 			session.Logged+=LogCapture;
 			session.DrainSink=new FacadeDrainSink();
+			session.FuncNow=() => Host.Now();
 		}
 
 		private static CaptureJournal Journal {
@@ -114,7 +115,8 @@ namespace ImagingDeviceManager {
 					scope?.Dispose();
 				}
 				if(dib!=null) {
-					WriteJournalCopy(dib,sourceName,call.AcquireId,patNum,Host.Now(),CaptureJournal.DeliveredCaller,null);
+					//Stamped when the transfer ended, not now: extra images drained afterwards must sort after it.
+					WriteJournalCopy(dib,sourceName,call.AcquireId,patNum,session.LastImageReceivedAt??Host.Now(),CaptureJournal.DeliveredCaller,null);
 				}
 			}
 			finally {

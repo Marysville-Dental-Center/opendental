@@ -454,7 +454,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 					Reason=drainReason,
 					StopReason=stopReason,
 					SourceName=SourceName,
-					ReceivedAt=DateTime.Now,
+					ReceivedAt=GetReceivedTime(),
 				});
 			}
 			catch(Exception ex) {

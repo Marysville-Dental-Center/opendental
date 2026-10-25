@@ -225,6 +225,24 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		[TestMethod]
+		public void ByName_CallersCopyStampedAtItsTransfer_BeforeTheExtraImages() {
+			_harness.Helper.Mode=FakeHelperMode.Multi;//An installation setting turns CAP_XFERCOUNT=1 into a batch.
+			for(int i=0;i<3;i++) {
+				_harness.Helper.ListExposures.Add(SessionHarness.Exposure(8+i));
+			}
+			Assert.IsTrue(EZTwain.OpenSource(_harness.Helper.ProductName),EZTwain.LastErrorText());
+			EZTwain.DIB_Free(EZTwain.Acquire(IntPtr.Zero));
+			List<string> listImages=FacadeHarness.ListImages(_harness.FolderJournal);
+			Assert.AreEqual(3,listImages.Count);
+			List<Dictionary<string,string>> listSidecars=listImages.Select(x => CaptureFiles.ReadSidecar(FacadeHarness.SidecarOf(x))).ToList();
+			CollectionAssert.AreEqual(new[] { CaptureJournal.DeliveredCaller,CaptureJournal.DeliveredQuarantine,CaptureJournal.DeliveredQuarantine },
+				listSidecars.Select(x => x["Delivered"]).ToArray(),"Names sort in the order the images arrived: the caller's first.");
+			CollectionAssert.AreEqual(new[] { "8","9","10" },listSidecars.Select(x => x["Width"]).ToArray());
+			List<string> listTimes=listSidecars.Select(x => x["ReceivedAt"]).ToList();
+			CollectionAssert.AreEqual(listTimes.OrderBy(x => x,StringComparer.Ordinal).ToList(),listTimes);
+		}
+
+		[TestMethod]
 		public void JournalKeepZero_NoCopy() {
 			_harness.WriteConfig("[Twain]","JournalKeep=0");
 			EZTwain.DIB_Free(AcquireByName());
