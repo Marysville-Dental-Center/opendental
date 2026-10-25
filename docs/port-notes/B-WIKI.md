@@ -39,6 +39,7 @@ New `OpenDentBusiness/Misc/WikiStaticExport.cs`. Layout of the folder:
 - Kept current in a background thread, never interrupting the save; failures (for example an unreachable folder) are logged to the `WikiReadOnly` logger folder and shown as the last result in Wiki Setup:
   - after a page save (`FormWikiEdit`, including pages it creates for missing links), a history revert (`FormWikiHistory`), and the link fix-ups in `FormWiki`: that page is exported and `index.html` and the search data are rebuilt;
   - after a rename, an archive, a restore (`FormWiki`, `FormWikiSearch`), a master page change or a new folder (`FrmWikiSetup`): a full export.
+- Exports on one workstation run one at a time (an export lock held for the whole export). The last result is published under a separate small lock as the export's last step, so `WikiStaticExport.LastResult`, which Wiki Setup reads on the UI thread when it opens, returns at once with the last finished export even while another export is running or waiting on a slow or unreachable folder.
 - A full export removes only what an export wrote: page files named `<number>.html` that no longer have a page, and files listed in `_files\_manifest.txt` that no page uses any more. Anything else in the folder is left alone. Files are written through a temporary file so a reader never sees half a page.
 - `FormWikiFileFolder` (insert file link) tells the user, when the read-only copy is on, that files in the wiki folder are copied and files elsewhere are only linked.
 - Settings are two preference rows that are **not** in the `PrefName` enum, read from the preference cache and written with plain SQL, the pattern `DxcPartnerIdentity` uses: `ForkWikiReadOnlyExportPath` (blank or missing = off) and `ForkWikiReadOnlyAutoExport` (blank or missing = on). Rows are inserted the first time the office saves Wiki Setup, so an adopted database needs no migration. No `PrefName` or `PrefInfos.xml` change.
@@ -57,7 +58,7 @@ New `OpenDentBusiness/Misc/WikiStaticExport.cs`. Layout of the folder:
 - `OpenDental/Forms/`: `FormWiki.cs`, `FormWikiCompare.cs`, `FormWikiDrafts.cs` + designer, `FormWikiEdit.cs`, `FormWikiFileFolder.cs` + designer, `FormWikiHistory.cs`, `FormWikiSearch.cs` + designer (all owned).
 - `WpfControlsOD/Frms/FrmWikiSetup.xaml` + `.xaml.cs` (owned).
 - Shared project files (not owned, one small insertion each): `OpenDentBusiness/OpenDentBusiness.csproj` (two `Compile` lines), `OpenDental.sln` and `OpenDental.Local.slnf` (the new test project).
-- Tests: `tests/BWIKITests/` (new project, 37 tests). Database tests use a scratch MariaDB database named `bwiki_<UTC time>_<pid>_<random>` on 127.0.0.1, dropped at the end of the run (stale ones older than 12 hours are dropped by later runs); `BWIKI_TEST_DB=skip` skips them; `BWIKI_KEEP_EXPORT=1` keeps the synthetic exported folders for a look in a browser.
+- Tests: `tests/BWIKITests/` (new project, 38 tests). Database tests use a scratch MariaDB database named `bwiki_<UTC time>_<pid>_<random>` on 127.0.0.1, dropped at the end of the run (stale ones older than 12 hours are dropped by later runs); `BWIKI_TEST_DB=skip` skips them; `BWIKI_KEEP_EXPORT=1` keeps the synthetic exported folders for a look in a browser.
 
 ## INFERRED behavior (not public; chosen as the most reasonable minimal behavior)
 
@@ -85,10 +86,16 @@ New `OpenDentBusiness/Misc/WikiStaticExport.cs`. Layout of the folder:
 - **B-SERVER** (report server): `FormWikiSearch` passes the limit through `ReportsComplex.RunFuncOnReportServer`, so the limit applies on the report server too.
 - Merge: `OpenDental.sln`, `OpenDental.Local.slnf` and `OpenDentBusiness.csproj` get one small insertion each; conflicts with other packages' test projects are append-only.
 
+## Review fixes (branch `port/b-wiki-r1`)
+
+- **UI-thread freeze in Wiki Setup.** `LastResult` used to take the export lock, which `TryExport` holds for the whole export (database reads, rendering, every file write or copy). Opening Wiki Setup right after a save that started a full export (master page change, new folder, rename, archive, restore) therefore hung the program until that export, and any queued behind it, finished; with an unreachable share that is many seconds to minutes. Fixed in `OpenDentBusiness/Misc/WikiStaticExport.cs`: a separate `_lockResult` guards only the last result; `TryExport` assigns it under that lock as its last step (still inside the export lock); the getter takes only `_lockResult`. The export lock is unchanged, so exports still run one at a time.
+- New test `WikiStaticExportDbTests.LastResult_ReturnsAtOnceWhileAnExportIsBlocked`: a second database session holds `LOCK TABLES wikipage WRITE`, a worker thread starts a full `TryExport` and blocks at its read of the pages inside the export lock (the test waits until the server's process list shows that query waiting for the lock), then `LastResult` is read on another thread and must return within 5 seconds with the last finished export; after `UNLOCK TABLES` the export finishes and becomes the last result. With the old getter the test fails ("LastResult waited for the running export"); with the fix it passes.
+- `ReleaseFlowTests` failures reported for this package's run are not caused by B-WIKI: the package changes no release-flow or migration code and nothing under `tests/ReleaseFlowTests`, and those tests use fixed scratch database names (`releaseflow_adoption`, `releaseflow_release`) that concurrent runs in other worktrees drop and recreate. They are not in this package's targeted set and were not rerun here, since a run could in turn break another worktree's concurrent run.
+
 ## Checks (last run)
 
-- Build of `OpenDental.Local.slnf` (Debug, x86): 0 errors, warnings at the baseline.
-- Targeted tests: `BWIKITests` 37/37 (the database tests ran against a scratch database), `RegistryTests` 33/33, `NoHqTests` 49/49.
+- Build of `OpenDental.Local.slnf` (Debug, x86): 0 errors, warnings at the baseline (376).
+- Targeted tests: `BWIKITests` 38/38 (the database tests ran against a scratch database), `RegistryTests` 33/33, `NoHqTests` 49/49.
 - `tools/Test-NoHqHosts.ps1`: passed.
 
 ## Questions for the owner
