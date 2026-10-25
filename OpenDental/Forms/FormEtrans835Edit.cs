@@ -157,6 +157,8 @@ namespace OpenDental {
 				col.IsWidthDynamic=DisplayFields.EraClaimPaid.IsWidthDynamic(displayField.InternalName);
 				gridClaimDetails.Columns.Add(col);
 			}
+			//When the office's columns are wider than the grid, scroll sideways instead of squeezing the free-width columns.
+			gridClaimDetails.HScrollVisible=LayoutManager.Scale(_listDisplayFieldsClaimPaid.Sum(x => x.ColumnWidth))>gridClaimDetails.Width;
 			gridClaimDetails.ListGridRows.Clear();
 			_sumClaimInsPaid=0;
 			List<int> listMatchedRowIndices=new List<int>();

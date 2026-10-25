@@ -227,7 +227,7 @@ namespace OpenDentBusiness {
 			List<ClaimProc> listClaimProcsForClaim,List<Etrans835Attach> listAttaches,EraAutomationResult automationResult)
 		{
 			Meth.NoCheckMiddleTierRole();
-			if(x835==null || claimPaid==null || claim==null || patient==null || insPlan==null || automationResult==null || !IsEnabled()) {
+			if(x835?.EtransSource==null || claimPaid==null || claim==null || patient==null || insPlan==null || automationResult==null || !IsEnabled()) {
 				return claimPaid;
 			}
 			EraAutoSplitPlan plan=GetPlan(claimPaid,EraCarcRules.GetRulesFromPref(),isOptionOn:true);
@@ -264,7 +264,7 @@ namespace OpenDentBusiness {
 			long claimNumOriginal=claim.ClaimNum;
 			List<ClaimProc> listClaimProcsBefore=new List<ClaimProc>(listClaimProcsForClaim);
 			Claim claimSplit=Claims.InsertSplitClaimForEra(claim,listClaimProcsToSplit,listClaimProcsBefore,x835.EtransSource.EtransNum,claimPaid.ClpSegmentIndex,
-				isUnsent:true,out Etrans835Attach etrans835AttachSplit,patient);
+				isUnsent:true,out _,patient);
 			List<long> listClaimProcNumsSplit=listClaimProcsToSplit.Select(x => x.ClaimProcNum).ToList();
 			listClaimProcsForClaim.RemoveAll(x => listClaimProcNumsSplit.Contains(x.ClaimProcNum));
 			for(int i=0;i<listClaimProcsAll.Count;i++) {
@@ -281,10 +281,8 @@ namespace OpenDentBusiness {
 			string note=Lans.g("X835","Auto split:")+" "+patient.GetNameFL()+", "+Lans.g("X835","claim")+" #"+claimNumOriginal+": "+procCodes+" "
 				+Lans.g("X835","moved to new unsent claim")+" #"+claimSplit.ClaimNum+" ("+matches+").";
 			automationResult.ListAutoSplitNotes.Add(note);
-			if(x835.EtransSource!=null) {
-				string noteOld=x835.EtransSource.Note??"";
-				x835.EtransSource.Note=note+(noteOld.Trim()=="" ? "" : "\r\n"+noteOld);
-			}
+			string noteOld=x835.EtransSource.Note??"";
+			x835.EtransSource.Note=note+(noteOld.Trim()=="" ? "" : "\r\n"+noteOld);
 			SecurityLogs.MakeLogEntry(EnumPermType.ClaimEdit,claim.PatNum,
 				Lans.g("X835","Claim split automatically during ERA processing. Procedures")+" "+procCodes+" "+Lans.g("X835","moved to new claim")+" "
 				+claimSplit.ClaimNum+" "+Lans.g("X835","(status Unsent) because of")+" "+matches+".",
