@@ -257,7 +257,7 @@ namespace OpenDentBusiness {
 	}
 
 	///<summary>A class that can be used to process recurring charges.</summary>
-	public class RecurringChargerator {
+	public partial class RecurringChargerator {
 		///<summary>A DateTime that can be used to give all charges processed a uniform time.</summary>
 		protected DateTime _nowDateTime;
 		///<summary>The program being used to process payments.</summary>
@@ -446,7 +446,10 @@ namespace OpenDentBusiness {
 						chargeData.CCSource.In(listCreditCardSourcesOpenEdge.Select(x => x).ToArray());
 					bool usePayConnect=(!string.IsNullOrEmpty(chargeData.PayConnectToken) && Programs.IsEnabled(ProgramName.PayConnect));
 					bool usePaySimple=(!string.IsNullOrEmpty(chargeData.PaySimpleToken) && Programs.IsEnabled(ProgramName.PaySimple));
-					if(useEdgeExpress) {
+					if(IsGlobalPaymentsV2Charge(chargeData)) {//25.4: cards saved through Global Payments V2 (RecurringChargerator.GlobalPaymentsV2.cs).
+						SendGlobalPaymentsV2(chargeData,forceDuplicates);
+					}
+					else if(useEdgeExpress) {
 						_progCur=Programs.GetCur(ProgramName.EdgeExpress);
 						bool doForceDuplicatesThisCharge=forceDuplicates || (!_isManual && PIn.Bool(ProgramProperties.GetPropValForClinicOrDefault(
 							_progCur.ProgramNum,ProgramProperties.PropertyDescs.EdgeExpress.ForceRecurringCharge,chargeData.RecurringCharge.ClinicNum)));
@@ -620,7 +623,7 @@ namespace OpenDentBusiness {
 			catch(Exception ex) {
 				//Not set up for this clinic, or no answer from the card processor. Mark this card and carry on with the rest of the batch. The request may
 				//have reached the processor before the error, so the card is never charged again automatically.
-				string errorMsg=Lans.g(_lanThis,"Error from EdgeExpress:")+" "+(ex.InnerException?.Message??ex.Message)+" "
+				string errorMsg=Lans.g(_lanThis,"Error from Global Payments V1:")+" "+(ex.InnerException?.Message??ex.Message)+" "
 					+Lans.g(_lanThis,"Check the card processor's records before charging this card again.");
 				MarkFailed(chargeData,errorMsg);
 				strBuilderResultFile.AppendLine("PatNum: "+chargeData.RecurringCharge.PatNum+" "+errorMsg);
@@ -633,8 +636,8 @@ namespace OpenDentBusiness {
 				Success++;
 			}
 			else {
-				MarkDeclined(chargeData,Lans.g(_lanThis,"Response from EdgeExpress:")+" "+response.XWebResponseCode.ToString(),LogLevel.Information);
-				response.PayNote+="\r\n"+Lans.g(this,"Response from EdgeExpress:")+" "+response.XWebResponseCode.ToString();
+				MarkDeclined(chargeData,Lans.g(_lanThis,"Response from Global Payments V1:")+" "+response.XWebResponseCode.ToString(),LogLevel.Information);
+				response.PayNote+="\r\n"+Lans.g(this,"Response from Global Payments V1:")+" "+response.XWebResponseCode.ToString();
 				amount=0;//If the charge was declined, insert a payment with $0 amount instead of what was supposed to be charged.
 			}
 			strBuilderResultText.Append(response.GetFormattedNote(true));

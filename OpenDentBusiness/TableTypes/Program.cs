@@ -202,7 +202,12 @@ namespace OpenDentBusiness{
 		///<summary>USPS Addresses API v3 with the office's own consumer key.</summary>
 		USPSAddresses,
 		///<summary>PostcardMania (PCM Integrations) DirectMail API v3 with the office's own API key.</summary>
-		PostcardMania
+		PostcardMania,
+		///<summary>Global Payments V2 (Open Dental 25.4): card terminals through Global Payments' cloud terminal service, called directly with the
+		///office's own Global Payments API app. "MeetInTheCloud" is the internal name the published 25.4 database documents give this integration
+		///(CreditCardSource.MeetInTheCloudTerminal, computerpref.CreditCardTerminalId); the program row's name itself is not published (INFERRED).
+		///The UI says "Global Payments V2".</summary>
+		MeetInTheCloud
 	}
 
 	
