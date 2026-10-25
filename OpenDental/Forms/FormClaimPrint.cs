@@ -399,6 +399,14 @@ namespace OpenDental{
 			if(_claim.DateSent.Year > 1860) {
 				dateSignature=_claim.DateSent;
 			}
+			//Box 18 hospitalization dates (Open Dental 24.4). The EHR record is read only when the claim form prints them.
+			DateTime dateHospitalizationFrom=DateTime.MinValue;
+			DateTime dateHospitalizationTo=DateTime.MinValue;
+			if(ClaimFormCur.Items.Any(x => x.FieldName.In("HospitalizationDateFrom","HospitalizationDateTo"))
+				&& _claim.MedType==EnumClaimMedType.Medical)
+			{
+				EhrPatients.GetHospitalizationDates(_claim,patient,EhrPatients.GetOne(patient.PatNum),out dateHospitalizationFrom,out dateHospitalizationTo);
+			}
 			List<string> listStringsMissingTeeth=ToothInitials.GetMissingOrHiddenTeeth(listToothInitials);
 			ProcedureCode procedureCode;
 			for(int j=listStringsMissingTeeth.Count-1;j>=0;j--) {//loop backwards to keep index accurate as items are removed
@@ -2150,6 +2158,18 @@ namespace OpenDental{
 						break;
 					case "DateOtherQualifier":
 						_stringArrayDisplay[i]=_claim.DateOtherQualifier==DateOtherQualifier.None?"":((int)_claim.DateOtherQualifier).ToString("000");
+						break;
+					case "HospitalizationDateFrom":
+						if(dateHospitalizationFrom.Year>1880) {
+							_stringArrayDisplay[i]=string.IsNullOrEmpty(ClaimFormCur.Items[i].FormatString)?dateHospitalizationFrom.ToShortDateString():
+								dateHospitalizationFrom.ToString(ClaimFormCur.Items[i].FormatString);
+						}
+						break;
+					case "HospitalizationDateTo":
+						if(dateHospitalizationTo.Year>1880) {
+							_stringArrayDisplay[i]=string.IsNullOrEmpty(ClaimFormCur.Items[i].FormatString)?dateHospitalizationTo.ToShortDateString():
+								dateHospitalizationTo.ToString(ClaimFormCur.Items[i].FormatString);
+						}
 						break;
 					case "IsOutsideLab":
 						_stringArrayDisplay[i]=_claim.IsOutsideLab?"X":"";

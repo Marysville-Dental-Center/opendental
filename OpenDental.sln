@@ -112,6 +112,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReportTests", "tests\Report
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StatementTests", "tests\StatementTests\StatementTests.csproj", "{B6E2D4A7-3C51-4F89-9A0E-7D2C5B1F4E63}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SheetTests", "tests\SheetTests\SheetTests.csproj", "{06296DA9-27DC-4427-A1E8-49ECEBB66303}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -723,6 +725,18 @@ Global
 		{FFB86600-F496-4799-A303-0CA9DEA3DFAA}.Release|Any CPU.Build.0 = Release|x86
 		{FFB86600-F496-4799-A303-0CA9DEA3DFAA}.Release|x86.ActiveCfg = Release|x86
 		{FFB86600-F496-4799-A303-0CA9DEA3DFAA}.Release|x86.Build.0 = Release|x86
+		{06296DA9-27DC-4427-A1E8-49ECEBB66303}.Debug|Any CPU.ActiveCfg = Debug|x86
+		{06296DA9-27DC-4427-A1E8-49ECEBB66303}.Debug|Any CPU.Build.0 = Debug|x86
+		{06296DA9-27DC-4427-A1E8-49ECEBB66303}.Debug|x86.ActiveCfg = Debug|x86
+		{06296DA9-27DC-4427-A1E8-49ECEBB66303}.Debug|x86.Build.0 = Debug|x86
+		{06296DA9-27DC-4427-A1E8-49ECEBB66303}.ODXam|Any CPU.ActiveCfg = Release|x86
+		{06296DA9-27DC-4427-A1E8-49ECEBB66303}.ODXam|Any CPU.Build.0 = Release|x86
+		{06296DA9-27DC-4427-A1E8-49ECEBB66303}.ODXam|x86.ActiveCfg = Release|x86
+		{06296DA9-27DC-4427-A1E8-49ECEBB66303}.ODXam|x86.Build.0 = Release|x86
+		{06296DA9-27DC-4427-A1E8-49ECEBB66303}.Release|Any CPU.ActiveCfg = Release|x86
+		{06296DA9-27DC-4427-A1E8-49ECEBB66303}.Release|Any CPU.Build.0 = Release|x86
+		{06296DA9-27DC-4427-A1E8-49ECEBB66303}.Release|x86.ActiveCfg = Release|x86
+		{06296DA9-27DC-4427-A1E8-49ECEBB66303}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

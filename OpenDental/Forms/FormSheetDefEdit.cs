@@ -785,6 +785,10 @@ namespace OpenDental {
 				labelInternal.Visible=false;
 			}
 			List<SheetFieldType> listSheetFieldTypes=SheetDefs.GetVisibleButtons(SheetDef_.SheetType);
+			if(SheetDef_.SheetType==SheetTypeEnum.Check) {
+				//A check is printed straight from a transaction and never filled in, so only printable field types are offered.
+				listSheetFieldTypes=CheckSheets.FilterFieldTypes(listSheetFieldTypes);
+			}
 			butOutputText.Visible=listSheetFieldTypes.Contains(SheetFieldType.OutputText);
 			butInputField.Visible=listSheetFieldTypes.Contains(SheetFieldType.InputField);
 			butStaticText.Visible=listSheetFieldTypes.Contains(SheetFieldType.StaticText);

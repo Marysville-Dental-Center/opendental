@@ -580,6 +580,7 @@
     <Compile Include="Reports\RpServiceDateView.cs" />
     <Compile Include="Shared\ODCloudClient\Sirona.cs" />
     <Compile Include="Shared\ODCloudClient\x837Controller.cs" />
+    <Compile Include="SheetFramework\CheckSheets.cs" />
     <Compile Include="SheetFramework\GraphicsHelper.cs" />
     <Compile Include="SheetFramework\SheetDataTableUtil.cs" />
     <Compile Include="SheetFramework\SheetDrawingJob.cs" />
@@ -2475,6 +2476,7 @@
     <None Include="Resources\ReferralLetter.xml" />
     <None Include="Resources\Rx.xml" />
     <None Include="Resources\DepositSlip.xml" />
+    <None Include="Resources\InternalCheck.xml" />
     <None Include="Resources\Consent.xml" />
     <None Include="Resources\ExamSheet.xml" />
     <None Include="Resources\FinancialAgreement.xml" />

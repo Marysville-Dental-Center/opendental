@@ -95,6 +95,11 @@ namespace OpenDentBusiness{
 				case SheetTypeEnum.DepositSlip:
 					list.Add(new SheetParameter(true,"DepositNum"));
 					break;
+				case SheetTypeEnum.Check:
+					//The transaction the check is printed from, and the asset (checking) account the check is drawn on.
+					list.Add(new SheetParameter(true,CheckSheets.PARAM_TRANSACTION_NUM));
+					list.Add(new SheetParameter(true,CheckSheets.PARAM_ACCOUNT_NUM));
+					break;
 				case SheetTypeEnum.Screening:
 					list.Add(new SheetParameter(true,"ScreenGroupNum"));
 					list.Add(new SheetParameter(false,"PatNum"));

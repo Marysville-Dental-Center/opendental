@@ -809,6 +809,27 @@ namespace OpenDentBusiness.Properties {
         ///&lt;SheetDef xmlns:xsi=&quot;http://www.w3.org/2001/XMLSchema-instance&quot; xmlns:xsd=&quot;http://www.w3.org/2001/XMLSchema&quot;&gt;
         ///  &lt;IsNew&gt;false&lt;/IsNew&gt;
         ///  &lt;SheetDefNum&gt;0&lt;/SheetDefNum&gt;
+        ///  &lt;Description&gt;Check&lt;/Description&gt;
+        ///  &lt;SheetType&gt;Check&lt;/SheetType&gt;
+        ///  &lt;FontSize&gt;10&lt;/FontSize&gt;
+        ///  &lt;FontName&gt;Arial&lt;/FontName&gt;
+        ///  &lt;Width&gt;850&lt;/Width&gt;
+        ///  &lt;Height&gt;1100&lt;/Height&gt;
+        ///  &lt;IsLandscape&gt;false&lt;/IsLandscape&gt;
+        ///  &lt;PageCount&gt;1&lt;/PageCount&gt;
+        ///  &lt;IsMultiPage&gt;false&lt;/IsMultiPage&gt; [rest of string was truncated]&quot;;.
+        /// </summary>
+        public static string InternalCheck {
+            get {
+                return ResourceManager.GetString("InternalCheck", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+        ///&lt;SheetDef xmlns:xsi=&quot;http://www.w3.org/2001/XMLSchema-instance&quot; xmlns:xsd=&quot;http://www.w3.org/2001/XMLSchema&quot;&gt;
+        ///  &lt;IsNew&gt;false&lt;/IsNew&gt;
+        ///  &lt;SheetDefNum&gt;0&lt;/SheetDefNum&gt;
         ///  &lt;Description&gt;Label Appointment&lt;/Description&gt;
         ///  &lt;SheetType&gt;LabelAppointment&lt;/SheetType&gt;
         ///  &lt;FontSize&gt;10&lt;/FontSize&gt;

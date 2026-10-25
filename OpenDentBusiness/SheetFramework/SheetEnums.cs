@@ -81,8 +81,8 @@ namespace OpenDentBusiness {
 		ChartModule,
 		///<summary>27-Not designed to be saved to the db.  Useful when needing a "none" or "all" default option for UI.</summary>
 		None,
-		///<summary>28-Open Dental 25.3. A check printed from an accounting transaction. Reserved until check printing is ported (A-SHEET); it is kept
-		///out of the sheet type list for new sheet defs until then.</summary>
+		///<summary>28-Open Dental 25.3. A check printed from an asset-account accounting transaction. Requires SheetParameters for TransactionNum and
+		///AccountNum. Does not get saved to db.</summary>
 		Check=28,
 	}
 
@@ -206,6 +206,8 @@ namespace OpenDentBusiness {
 		[SheetInternal(DoShowInInternalList=false,DoShowInDashboardSetup=true)]
 		PatientDashboardToothChart,
 		COVID19,
+		///<summary>The internal Check layout (SheetTypeEnum.Check), loaded from Resources/InternalCheck.xml. Not stored in the database.</summary>
+		Check,
 	}
 
 	public enum OutInCheck{

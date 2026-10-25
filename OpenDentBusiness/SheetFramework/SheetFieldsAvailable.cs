@@ -97,6 +97,8 @@ namespace OpenDentBusiness{
 					return GetExamSheet(outInCheck);
 				case SheetTypeEnum.DepositSlip:
 					return GetDepositSlip(outInCheck);
+				case SheetTypeEnum.Check:
+					return GetCheck(outInCheck);
 				case SheetTypeEnum.Statement:
 					return GetStatement(outInCheck);
 				case SheetTypeEnum.MedLabResults:
@@ -577,6 +579,18 @@ namespace OpenDentBusiness{
 				list.Add(NewCheck("Gender"));
 				list.Add(NewCheck("misc"));
 				list.Add(NewCheck("Race")); //This is really race/ethnicity combined.
+			}
+			return list;
+		}
+
+		///<summary>Check sheets (Open Dental 25.3) are printed straight from an accounting transaction, so they only have output fields.</summary>
+		public static List<SheetFieldDef> GetCheck(OutInCheck outInCheck) {
+			List<SheetFieldDef> list=new List<SheetFieldDef>();
+			if(outInCheck!=OutInCheck.Out) {
+				return list;
+			}
+			for(int i=0;i<CheckSheets.ListFieldNames.Count;i++) {
+				list.Add(NewOutput(CheckSheets.ListFieldNames[i]));
 			}
 			return list;
 		}

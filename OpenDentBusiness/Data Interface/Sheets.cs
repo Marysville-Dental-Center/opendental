@@ -890,6 +890,7 @@ namespace OpenDentBusiness{
 				//case SheetTypeEnum.LabSlip:
 				//case SheetTypeEnum.ExamSheet:
 				case SheetTypeEnum.DepositSlip:
+				case SheetTypeEnum.Check:
 				//case SheetTypeEnum.Statement:
 				case SheetTypeEnum.PatientDashboardWidget:
 					return true;

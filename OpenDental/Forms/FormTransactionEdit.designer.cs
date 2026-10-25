@@ -77,6 +77,7 @@ namespace OpenDental {
 			this.butDelete = new OpenDental.UI.Button();
 			this.textDate = new OpenDental.ValidDate();
 			this.butSave = new OpenDental.UI.Button();
+			this.butPrintCheck = new OpenDental.UI.Button();
 			this.labelReconcileDate = new System.Windows.Forms.Label();
 			this.textReconcileDate = new System.Windows.Forms.TextBox();
 			this.textDateTimeEdited = new System.Windows.Forms.TextBox();
@@ -499,6 +500,17 @@ namespace OpenDental {
 			this.butSave.Text = "&Save";
 			this.butSave.Click += new System.EventHandler(this.butSave_Click);
 			// 
+			// butPrintCheck
+			// 
+			this.butPrintCheck.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+			this.butPrintCheck.Location = new System.Drawing.Point(562, 432);
+			this.butPrintCheck.Name = "butPrintCheck";
+			this.butPrintCheck.Size = new System.Drawing.Size(75, 26);
+			this.butPrintCheck.TabIndex = 27;
+			this.butPrintCheck.Text = "Print Check";
+			this.butPrintCheck.Visible = false;
+			this.butPrintCheck.Click += new System.EventHandler(this.butPrintCheck_Click);
+			// 
 			// labelReconcileDate
 			// 
 			this.labelReconcileDate.Location = new System.Drawing.Point(9, 87);
@@ -594,6 +606,7 @@ namespace OpenDental {
 			this.Controls.Add(this.labelDate);
 			this.Controls.Add(this.textDate);
 			this.Controls.Add(this.butSave);
+			this.Controls.Add(this.butPrintCheck);
 			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
@@ -613,6 +626,7 @@ namespace OpenDental {
 		}
 		#endregion
 		private OpenDental.UI.Button butSave;
+		private OpenDental.UI.Button butPrintCheck;
 		private OpenDental.UI.GridOD gridMain;
 		private ValidDate textDate;
 		private Label labelDate;

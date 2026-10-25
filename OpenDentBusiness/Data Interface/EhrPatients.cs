@@ -67,6 +67,25 @@ namespace OpenDentBusiness{
 			return Crud.EhrPatientCrud.SelectOne(patNum);
 		}
 
+		///<summary>Hospitalization dates related to current services, box 18 of the CMS-1500 (02/12) claim form (Open Dental 24.4). There is no claim
+		///column for them, so From is the patient's admit date and To is the EHR discharge date. Both stay DateTime.MinValue unless the claim is
+		///medical and the admit date is set; To is only used when it is on or after From. ehrPatient may be null.</summary>
+		public static void GetHospitalizationDates(Claim claim,Patient patient,EhrPatient ehrPatient,out DateTime dateFrom,out DateTime dateTo) {
+			Meth.NoCheckMiddleTierRole();
+			dateFrom=DateTime.MinValue;
+			dateTo=DateTime.MinValue;
+			if(claim==null || patient==null || claim.MedType!=EnumClaimMedType.Medical) {
+				return;
+			}
+			if(patient.AdmitDate.Year<1880) {
+				return;
+			}
+			dateFrom=patient.AdmitDate.Date;
+			if(ehrPatient!=null && ehrPatient.DischargeDate.Year>1880 && ehrPatient.DischargeDate.Date>=dateFrom) {
+				dateTo=ehrPatient.DischargeDate.Date;
+			}
+		}
+
 		public static List<EhrPatient> GetByPatNums(List<long> listPatNums) {
 			if(listPatNums.IsNullOrEmpty()) {
 				return new List<EhrPatient>();
