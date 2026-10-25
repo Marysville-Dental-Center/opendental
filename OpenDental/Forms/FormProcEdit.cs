@@ -111,6 +111,7 @@ namespace OpenDental {
 		}
 
 		private void FormProcInfo_Load(object sender,System.EventArgs e) {
+			NoteMerge_Load();//25.4 Procedure Note Merge (M2-NOTES), FormProcEdit.NoteMerge.cs
 			_loadData=ProcEdit.GetLoadData(_procedure,_patient,_family);
 			_orthoProcLink=_loadData.OrthoProcedureLink;
 			if(_orthoProcLink!=null) {
@@ -2306,6 +2307,7 @@ namespace OpenDental {
 
 		///<summary>MUST call EntriesAreValid first.  Used from OK_Click and from butSetComplete_Click</summary>
 		private void SaveAndClose() {
+			if(!NoteMerge_TryResolve()) { return; }//25.4 Procedure Note Merge (M2-NOTES), FormProcEdit.NoteMerge.cs
 			//
 			// This method is mimicked in OD mobile apps, please inform a mobile app developer if you think changes will be needed on that end as well.
 			//
