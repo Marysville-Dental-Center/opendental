@@ -188,8 +188,9 @@ namespace AdoptionValidation {
 			return value==null ? (DateTime?)null : Convert.ToDateTime(value,CultureInfo.InvariantCulture);
 		}
 
+		///<summary>The tools' sessions run in UTC (SyntheticData's Db), so information_schema's times are UTC.</summary>
 		private static string Format(DateTime? date) {
-			return date?.ToString("yyyy-MM-dd HH:mm:ss",CultureInfo.InvariantCulture)??"";
+			return date==null ? "" : date.Value.ToString("yyyy-MM-dd HH:mm:ss",CultureInfo.InvariantCulture)+" UTC";
 		}
 
 		///<summary>Connections other than this one whose default database is one of the given databases.</summary>
