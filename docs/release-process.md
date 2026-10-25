@@ -63,6 +63,8 @@ The legacy `ConvertDatabases` chain is frozen at 24.3.63 (`ConvertDatabases.Froz
 
 Adoption is explicit and runs once, on a restored copy. Normal startup never adopts. For a database on the allowlist (`24.3.63.0`, `25.3.48.0`), the startup message offers to open **Adopt Database** (`FormAdoptDatabase`). The administrator must confirm three things: that this is a restored copy with a backup, the exact database name, and one final OK.
 
+For the office switch, the runbook does not use this window: `AdoptionValidation adopt` (runbook step 4) runs the same `Adoption.Run` on the restored copy without starting the program, because starting it and logging in write to the database before the post-adoption validation (runbook step 6). The M1-Z rehearsal adopts with the same code.
+
 `Adoption.Run` performs these steps, in this order. Each step is idempotent. MyISAM has no transactions, so if a run is interrupted, running it again finishes it:
 
 1. Write `ForkAdoptedFrom` with the start time.
@@ -84,7 +86,7 @@ The preflight refuses these databases:
 - an adopted database whose markers were removed (`ForkAdoptedFrom` says `adopted=`)
 - a middle-tier connection
 
-Re-entering bridge passwords and rehashing `SecurityHash` columns are separate steps of the M1-Z rehearsal and of the office procedure in [adoption-runbook.md](adoption-runbook.md). Adoption doesn't do them.
+Re-entering bridge passwords and rehashing `SecurityHash` columns are separate steps of the M1-Z rehearsal and of the office procedure in [adoption-runbook.md](adoption-runbook.md). `Adoption.Run` doesn't do them; `AdoptionValidation adopt` runs the rehash right after it (runbook step 5).
 
 Before adopting the office copy, stop and uninstall the Open Dental services on the server (M1-Z). All workstations switch together. Rollback means restoring the pre-adoption backup.
 

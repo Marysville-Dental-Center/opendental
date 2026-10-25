@@ -237,7 +237,7 @@ verifier, the rehash and further checks, twice, and times every step. The steps 
 3. `validate --database synth_253_adopted --out after.json`.
 4. `compare before.json after.json --allowed allowed-differences.adoption.json`. The allowed differences are the ones adoption is
    meant to make: `patient._portal_active_email` and its unique key dropped (owner decision), `SecurityHash` rehashed, preference
-   rows (fork markers, version sentinel), Open Dental update files, adoption's own security-log rows. Everything else, for
+   rows (fork markers, version sentinel), Open Dental update files, the security-log rows of adoption and the rehash. Everything else, for
    example a second guardian renumbering, a `ShowTransSinceBalZero` back-fill or a repeated permission grant, is reported as
    unexpected and the exit code is 5.
 

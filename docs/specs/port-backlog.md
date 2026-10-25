@@ -438,7 +438,7 @@ M1-01 is the schema-migration package and comes first. M1-02 and M1-03 own diffe
 
 ### M1 switch gate (M1-Z): adoption rehearsal and cutover
 
-- **Status (2026-10-24):** rehearsed on synthetic data (owner decision: no office data). Tooling and integration tests in [`tools/AdoptionValidation/`](../../tools/AdoptionValidation/README.md), procedure in [`docs/adoption-runbook.md`](../adoption-runbook.md), results for the owner's sign-off in [`docs/m1-validation-report.md`](../m1-validation-report.md).
+- **Status (2026-10-24):** rehearsed on synthetic data (owner decision: no office data). Tooling and integration tests in [`tools/AdoptionValidation/`](../../tools/AdoptionValidation/README.md), procedure in [`docs/adoption-runbook.md`](../adoption-runbook.md), results for the owner's sign-off in [`docs/m1-validation-report.md`](../m1-validation-report.md). Revised after review (r1): runbook steps 3 to 6 run the rehearsal's own code without starting the program (`AdoptionValidation adopt`) and were dry-run with the runbook's commands; backups are restored only as new databases, never from a file that names a database; workstations are removed and the original is checked before go-live and before it is dropped.
 - **Size:** L (~10 dev-days, plus office time) · **Depends on:** M1-00, M1-01 to M1-03, every Tier A package, and the vendor packages the office uses
 - **Owns:** the adoption runbook (new, for example `docs/adoption-runbook.md`) and the validation tooling (new, for example `tools/AdoptionValidation/`), plus integration tests under `UnitTests/`.
 - **Work:**
