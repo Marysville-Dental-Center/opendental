@@ -166,14 +166,18 @@ namespace BWIKITests {
 			string wikiFolder=Path.Combine(_folderTemp,"AtoZ2","Wiki");
 			Directory.CreateDirectory(wikiFolder);
 			File.WriteAllBytes(Path.Combine(wikiFolder,"floor plan.png"),new byte[] { 1,2,3 });
+			//A synthetic file next to the wiki folder: an image name that climbs out of the wiki folder must not copy it.
+			File.WriteAllBytes(Path.Combine(_folderTemp,"AtoZ2","outside.png"),new byte[] { 4,5,6 });
 			WikiExportContext context=NewContext(wikiFolder);
 			WikiPage wikiPage=new WikiPage { WikiPageNum=5,PageTitle="Home",
-				PageContent="<h1>Home</h1>\r\nSee the map:\r\n[[img:floor plan.png]]\r\nand [[img:missing.png]]\r\n[[keywords: main]]" };
+				PageContent="<h1>Home</h1>\r\nSee the map:\r\n[[img:floor plan.png]]\r\nand [[img:missing.png]]\r\nnot [[img:..\\outside.png]]\r\n[[keywords: main]]" };
 			string html=WikiStaticExport.BuildPageHtml(context,wikiPage);
 			string copyName=WikiStaticExport.GetCopyName(Path.Combine(wikiFolder,"floor plan.png"));
 			StringAssert.Contains(html,"<img src=\"../_files/"+copyName+"\"");
 			StringAssert.Contains(html,"[image not available: missing.png]");
 			CollectionAssert.Contains(context.Result.ListFilesMissing,"missing.png");
+			StringAssert.Contains(html,"[image not available: ..\\outside.png]","Images outside the wiki folder are not copied.");
+			Assert.AreEqual(1,context.DictFilesToCopy.Count,"Only the image inside the wiki folder is copied.");
 			StringAssert.Contains(html,"<title>Home</title>");
 			StringAssert.Contains(html,"Read-only copy exported "+context.DateTimeExport.ToShortDateString());
 			StringAssert.Contains(html,"href=\"../index.html\"");

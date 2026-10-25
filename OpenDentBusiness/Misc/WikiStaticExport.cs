@@ -415,7 +415,8 @@ namespace OpenDentBusiness {
 				if(!string.IsNullOrEmpty(context.WikiFolder)) {
 					sourcePath=ODFileUtils.CombinePaths(context.WikiFolder,imageName);
 				}
-				if(sourcePath==null || !File.Exists(sourcePath)) {
+				//Only images inside the wiki folder are copied: a name such as ..\..\x.png never pulls a file from elsewhere into the copy.
+				if(sourcePath==null || !IsInsideFolderSafe(sourcePath,context.WikiFolder) || !File.Exists(sourcePath)) {
 					context.Result.ListFilesMissing.Add(imageName);
 					return "<span class=\"PageNotExists\">["+Html(Lans.g("WikiStaticExport","image not available:")+" "+imageName)+"]</span>";
 				}
@@ -745,6 +746,17 @@ namespace OpenDentBusiness {
 			string folderFull=NormalizeFolder(folder);
 			return string.Equals(pathFull,folderFull,StringComparison.OrdinalIgnoreCase)
 				|| pathFull.StartsWith(folderFull+"\\",StringComparison.OrdinalIgnoreCase);
+		}
+
+		///<summary>IsSameOrInside that returns false instead of throwing for a path that is not valid.</summary>
+		private static bool IsInsideFolderSafe(string path,string folder) {
+			try {
+				return IsSameOrInside(path,folder);
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+				return false;
+			}
 		}
 
 		private static string Html(string text) {

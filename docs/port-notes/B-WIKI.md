@@ -64,7 +64,7 @@ New `OpenDentBusiness/Misc/WikiStaticExport.cs`. Layout of the folder:
 - The whole read-only copy design. Open Dental's notes say only that a read-only wiki can be opened while the program is closed. The spec's static HTML export was built as proposed (its "alternative interpretation", a viewer program that reads the database, does not help when the server is down).
 - File names by `WikiPageNum` (stable across renames) rather than by title.
 - `index.html` and the search data are rebuilt after every save, not only when a title is added or removed (the search data holds page text, which changes with every save). A rename, archive or restore triggers a full export, so link texts and dead links in other pages stay right.
-- `[[file:]]` targets are copied only when they are inside the wiki image folder (`<A-to-Z>\Wiki`); other files are linked with `file://`, so they open only while their location can be reached. Images that cannot be found show a short "[image not available: name]" note.
+- `[[file:]]` targets are copied only when they are inside the wiki image folder (`<A-to-Z>\Wiki`); other files are linked with `file://`, so they open only while their location can be reached. Images that cannot be found show a short "[image not available: name]" note; so does an image whose name points outside the wiki folder (for example `[[img:..\x.png]]`), so a page can never pull a file from elsewhere into the copy.
 - Images are shown at their natural size (limited to the page width); the program's renderer reads each image to set width, height and EXIF rotation, which the export avoids so a missing image cannot break the page. Current browsers apply EXIF rotation themselves.
 - The read-only copy settings in Wiki Setup need the Setup permission (silent check: the controls are disabled without it), and every change and every Export Now writes a Setup security log entry.
 - The search limit is off by default (24.3 behavior until the user checks the box), with N = 100.
@@ -84,6 +84,12 @@ New `OpenDentBusiness/Misc/WikiStaticExport.cs`. Layout of the folder:
 - **B-DBM** (`v25_2-tools-dbm-invalid-chars-gdi`) cleans `wikipage.PageContent`; a cleaned page reaches the read-only copy at its next save or full export.
 - **B-SERVER** (report server): `FormWikiSearch` passes the limit through `ReportsComplex.RunFuncOnReportServer`, so the limit applies on the report server too.
 - Merge: `OpenDental.sln`, `OpenDental.Local.slnf` and `OpenDentBusiness.csproj` get one small insertion each; conflicts with other packages' test projects are append-only.
+
+## Checks (last run)
+
+- Build of `OpenDental.Local.slnf` (Debug, x86): 0 errors, warnings at the baseline.
+- Targeted tests: `BWIKITests` 37/37 (the database tests ran against a scratch database), `RegistryTests` 33/33, `NoHqTests` 49/49.
+- `tools/Test-NoHqHosts.ps1`: passed.
 
 ## Questions for the owner
 
