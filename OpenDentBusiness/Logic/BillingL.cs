@@ -396,6 +396,9 @@ namespace OpenDentBusiness {
 						emailMessage.MsgDateTime=DateTime.Now;
 						if(PrefC.GetBool(PrefName.BillingEmailIncludeAutograph)) {
 							EmailAutograph emailAutograph=EmailAutographs.GetForOutgoing(listEmailAutographs,emailAddress);
+							if(BillingEmailHtml.TryInsertAutograph(emailMessage,emailAutograph)) {//26.1: an HTML or raw HTML body takes the autograph as HTML.
+								emailAutograph=null;
+							}
 							if(emailAutograph!=null) {
 								//Always set the BodyText, we will additionally set HtmlText below if necessary (mimics FormEmailMessageEdit).
 								emailMessage.BodyText=EmailMessages.InsertAutograph(emailMessage.BodyText,emailAutograph);
