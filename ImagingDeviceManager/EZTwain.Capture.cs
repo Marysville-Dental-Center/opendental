@@ -120,7 +120,19 @@ namespace ImagingDeviceManager {
 			finally {
 				_callCurrent=callOuter;
 			}
-			ShowNotices(AcquireNotices.Select(call));
+			AcquireOutcome outcome=new AcquireOutcome {
+				HasImage=dib!=null,
+				ErrorCode=session.ErrorCode,
+				IsTransferFailed=session.IsLastTransferFailed,
+				EndConditionCode=session.EndConditionCode,
+				EndConditionText=session.EndConditionText,
+			};
+			string errorText=AcquireNotices.GetErrorText(outcome);
+			if(errorText!=null) {
+				LogCapture("\""+sourceName+"\": "+session.ErrorText+" (error "+(int)session.ErrorCode+").");
+				session.SetError(session.ErrorCode,errorText);
+			}
+			ShowNotices(AcquireNotices.Select(call,outcome));
 			return dib;
 		}
 
@@ -163,7 +175,7 @@ namespace ImagingDeviceManager {
 				scope?.Dispose();
 				_callCurrent=callOuter;
 			}
-			ShowNotices(AcquireNotices.Select(call));
+			ShowNotices(AcquireNotices.Select(call,null));
 		}
 
 		///<summary>All the notices of one facade call, in one non-modal window, and in the capture log.</summary>

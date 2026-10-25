@@ -66,7 +66,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 		///<summary>Why the source ended the last session with MSG_CLOSEDSREQ: the condition code DAT_STATUS on the source returned after
 		///the notification and before MSG_DISABLEDS. TWCC_SUCCESS is a plain cancel; a source may report its own codes (0x8000 and up)
 		///for failures, and keeps the code until a disable succeeds (twain-contract 1.1 section 8). Null when the last enable ended
-		///another way, or the status could not be read. Reset by each enable.</summary>
+		///another way, or the status could not be read. Reset by each Acquire and each enable.</summary>
 		public ushort? EndConditionCode { get; private set; }
 		///<summary>The source's text for EndConditionCode from DAT_STATUSUTF8, cut at the first NUL. Null for TWCC_SUCCESS, and when the
 		///source or the DSM does not provide one (DAT_STATUSUTF8 is optional); the code alone is then the reason.</summary>

@@ -140,12 +140,12 @@ namespace ImagingDeviceManager.Tests {
 		public void Select_QuarantineThenFailuresThenMayStillHold_InOneList() {
 			DateTime time1=new DateTime(2026,10,25,14,30,12);
 			CaptureCallState call=new CaptureCallState();
-			Assert.AreEqual(0,AcquireNotices.Select(call).Count,"Silent when nothing happened.");
+			Assert.AreEqual(0,AcquireNotices.Select(call,null).Count,"Silent when nothing happened.");
 			call.ListQuarantined.Add(new QuarantinedImage { ReceivedAt=time1,PathImage="a.bmp" });
 			call.ListQuarantined.Add(new QuarantinedImage { ReceivedAt=time1.AddSeconds(1),PathImage="b.bmp" });
 			call.ListQuarantined.Add(new QuarantinedImage { ReceivedAt=time1.AddSeconds(2),Error="no disk",PathJournal="j.bmp" });
 			call.IsMayStillHoldImages=true;
-			List<string> listNotices=AcquireNotices.Select(call);
+			List<string> listNotices=AcquireNotices.Select(call,null);
 			Assert.AreEqual(3,listNotices.Count);
 			Assert.AreEqual(CaptureNoticeText.Quarantined(2,time1,time1.AddSeconds(1)),listNotices[0]);
 			StringAssert.StartsWith(listNotices[1],"1 image(s) received after the series stopped could not be saved");

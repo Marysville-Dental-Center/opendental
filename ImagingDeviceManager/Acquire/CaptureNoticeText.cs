@@ -14,6 +14,8 @@ namespace ImagingDeviceManager.Acquire {
 		public const string CancelWarningBatch="Cancel here may lose images already taken in this series; use Done in the sensor software to keep them.";
 		public const string Waiting="Waiting for the sensor software to finish.";
 		public const string MayStillHoldImages="The sensor software may still hold images from this series. Do not re-expose. See the runbook.";
+		///<summary>LastErrorText of a by-name acquisition whose image transfer failed, and the notice for a source that stopped responding.</summary>
+		public const string ImageNotReceived="Image not received. Do not re-expose until you have checked the sensor software.";
 		///<summary>Unassigned captures older than this turn the status window's count into a warning (design 7.12 "Visibility").</summary>
 		public const int UnassignedWarningDays=30;
 
@@ -61,6 +63,16 @@ namespace ImagingDeviceManager.Acquire {
 				return null;
 			}
 			return isBatch ? CancelWarningBatch : CancelWarningSingle;
+		}
+
+		///<summary>The notice after MSG_CLOSEDSREQ with an end code other than TWCC_SUCCESS (design 7.1 "Error notice"). The reason is the
+		///source's DAT_STATUSUTF8 text, or else the code in hex, whose meaning is in the source's published contract.</summary>
+		public static string EndedWithoutImage(ushort conditionCode,string text) {
+			string reason=(text??"").Trim().TrimEnd('.').Trim();
+			if(reason=="") {
+				reason=TwainSession.ToHex(conditionCode);
+			}
+			return "Sensor software ended without an image: "+reason+". Do not re-expose until you have checked the sensor software.";
 		}
 
 		///<summary>"2026-10-25 14:30:12": receive times in notices and sidecars, local time.</summary>

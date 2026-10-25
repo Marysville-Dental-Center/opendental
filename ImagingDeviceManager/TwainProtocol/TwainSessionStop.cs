@@ -75,6 +75,8 @@ namespace ImagingDeviceManager.TwainProtocol {
 			_stopReason=TwainStopReason.None;
 			LastStopReason=TwainStopReason.None;
 			DrainedImageCount=0;
+			EndConditionCode=null;//The next image of a batch comes without an enable; its Acquire must not report an earlier end.
+			EndConditionText=null;
 			SourceMayHoldImages=false;
 		}
 
