@@ -28,8 +28,10 @@ namespace WpfControls {
 				return false;
 			}
 			string printerNameFromRules=GetPrinterNameForSituation(printSituation,out bool isPrompt);
-			PrintOptionsChoice printOptionsChoice=PrintOptions.GetInitialChoice(printSituation,printerNameFromRules,1,listPrinters);
-			if(isPrompt || isPromptForced) {
+			bool isWindowShown=isPrompt || isPromptForced;
+			//The remembered choice only pre-fills the window. Without the window: the rules' printer, one copy, as WinForms printing does.
+			PrintOptionsChoice printOptionsChoice=PrintOptions.GetChoiceToPrint(printSituation,printerNameFromRules,isWindowShown,listPrinters);
+			if(isWindowShown) {
 				FrmPrintOptions frmPrintOptions=new FrmPrintOptions();
 				frmPrintOptions.PrintSituation_=printSituation;
 				frmPrintOptions.PrintOptionsChoice_=printOptionsChoice;

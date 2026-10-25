@@ -205,6 +205,13 @@ namespace BPRINTTests {
 		[TestMethod]
 		public void WpfPrinting_UsesThePrintOptionsWindowToo() {
 			StringAssert.Contains(Read(@"WpfControlsOD\Logic\PrinterL.cs"),"return PrintOptionsWpf.TryPrintFixedDocument(printout.FixedDocument_,printout.Descript);");
+			//The remembered choice pre-fills the window only; a print without the window uses the rules' printer and one copy
+			//(PrintOptionsTests.UnpromptedPrint_UsesTheRulesPrinterWithOneCopy_NeverTheRememberedChoice).
+			string printOptionsWpf=Read(@"WpfControlsOD\Logic\PrintOptionsWpf.cs");
+			StringAssert.Contains(printOptionsWpf,"bool isWindowShown=isPrompt || isPromptForced;");
+			StringAssert.Contains(printOptionsWpf,"PrintOptions.GetChoiceToPrint(printSituation,printerNameFromRules,isWindowShown,listPrinters);");
+			Assert.IsFalse(printOptionsWpf.Contains("GetInitialChoice(") || printOptionsWpf.Contains("GetRemembered("),
+				"WPF printing gets the remembered choice only through GetChoiceToPrint.");
 			string preview=Read(@"WpfControlsOD\Frms\FrmPrintPreview.xaml.cs");
 			StringAssert.Contains(preview,"CommandManager.AddPreviewExecutedHandler(documentViewer,documentViewer_PreviewExecuted);");
 			StringAssert.Contains(preview,"isPromptForced:true");

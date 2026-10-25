@@ -106,6 +106,33 @@ namespace BPRINTTests {
 			Assert.AreEqual(1,PrintOptions.GetInitialChoice(PrintSituation.Default,"Front Desk Laser",0,_listPrinters).Copies);
 		}
 
+		///<summary>WPF printing (PrintOptionsWpf.TryPrintFixedDocument) without the Print Options window prints to the printer the rules pick with
+		///one copy, as WinForms printing does. A choice remembered from any Print Options window (every WinForms print preview's Print button shows
+		///one for the Default situation) only pre-fills the next window.</summary>
+		[TestMethod]
+		public void UnpromptedPrint_UsesTheRulesPrinterWithOneCopy_NeverTheRememberedChoice() {
+			PrintOptions.Remember(PrintSituation.Default,new PrintOptionsChoice { PrinterName="Back Office Inkjet",Copies=3,IsCollated=false });
+			PrintOptionsChoice printOptionsChoice=PrintOptions.GetChoiceToPrint(PrintSituation.Default,"Front Desk Laser",false,_listPrinters);
+			Assert.AreEqual("Front Desk Laser",printOptionsChoice.PrinterName,"The printer from Setup, Printers, not the one remembered.");
+			Assert.AreEqual(1,printOptionsChoice.Copies,"One copy, not the remembered three.");
+			Assert.IsTrue(printOptionsChoice.IsCollated);
+			Assert.IsTrue(printOptionsChoice.IsAllPages);
+			//When the window is shown, it opens with the remembered choice.
+			printOptionsChoice=PrintOptions.GetChoiceToPrint(PrintSituation.Default,"Front Desk Laser",true,_listPrinters);
+			Assert.AreEqual("Back Office Inkjet",printOptionsChoice.PrinterName);
+			Assert.AreEqual(3,printOptionsChoice.Copies);
+			Assert.IsFalse(printOptionsChoice.IsCollated);
+			//The same for another situation's rules.
+			PrintOptions.Remember(PrintSituation.Rx,new PrintOptionsChoice { PrinterName="Microsoft Print to PDF",Copies=2 });
+			printOptionsChoice=PrintOptions.GetChoiceToPrint(PrintSituation.Rx,"Back Office Inkjet",false,_listPrinters);
+			Assert.AreEqual("Back Office Inkjet",printOptionsChoice.PrinterName);
+			Assert.AreEqual(1,printOptionsChoice.Copies);
+			//No printer from the rules: "" (the Windows default printer), never another installed printer.
+			Assert.AreEqual("",PrintOptions.GetChoiceForUnpromptedPrint(null).PrinterName);
+			Assert.AreEqual("",PrintOptions.GetChoiceToPrint(PrintSituation.Default,"",false,_listPrinters).PrinterName);
+			Assert.AreEqual("Back Office Inkjet",PrintOptions.GetRemembered(PrintSituation.Default).PrinterName,"The memory itself is kept.");
+		}
+
 		[TestMethod]
 		public void SituationText_IsTheSituationsDescription() {
 			Assert.AreEqual("Statements",PrintOptions.GetSituationText(PrintSituation.Statement));
@@ -147,8 +174,9 @@ namespace BPRINTTests {
 				countingDocument.Print();
 				Assert.AreEqual(2,previewPrintController.GetPreviewPageInfo().Length,"Pages 2 and 3 were 'printed' (previewed).");
 				Assert.AreEqual(2,pageRangePrintController.PagesPrinted);
-				Assert.AreEqual(3,pageRangePrintController.PagesDrawn,"The handler drew page 1 for its page state, then printing stopped after page 3.");
-				Assert.AreEqual(3,countingDocument.CountPrintPageCalls);
+				Assert.AreEqual(5,pageRangePrintController.PagesDrawn,
+					"The handler drew every page for its page state (pages 1, 4 and 5 on scratch) and ended where it ends by itself.");
+				Assert.AreEqual(5,countingDocument.CountPrintPageCalls);
 				Assert.IsTrue(countingDocument.IsEndPrintCalled);
 			}
 		}
@@ -267,14 +295,119 @@ namespace BPRINTTests {
 			List<int> ListPagesOnLastSheet { get; }
 		}
 
+		///<summary>A document that describes in words what it drew on its last sheet.</summary>
+		private interface IDescribesSheet {
+			string LastSheetText { get; }
+		}
+
 		///<summary>A print preview controller that records, for each sheet that reaches it, the document pages drawn on that sheet.</summary>
 		private class RecordingPreviewPrintController:PreviewPrintController {
 			public List<string> ListSheets=new List<string>();
 
 			public override void OnEndPage(PrintDocument document,PrintPageEventArgs e) {
-				ListSheets.Add(string.Join(",",((IRecordsPages)document).ListPagesOnLastSheet));
+				if(document is IDescribesSheet describesSheet) {
+					ListSheets.Add(describesSheet.LastSheetText);
+				}
+				else {
+					ListSheets.Add(string.Join(",",((IRecordsPages)document).ListPagesOnLastSheet));
+				}
 				base.OnEndPage(document,e);
 			}
+		}
+
+		///<summary>A document modelled on User Query printing (FormQuery.pagePrinter and pd2_PrintPage): a title on the first page only
+		///(_headerPrinted), rows, then totals and a summary. Like FormQuery it resets its state only when its handler reaches its own end (the summary),
+		///never in OnBeginPrint; before each print or preview FormQuery.PrintReport resets only the page and row counters
+		///(ResetLikePrintReport). Each page holds LINES_PER_PAGE lines; the title takes two.</summary>
+		private class QueryLikeDocument:PrintDocument,IDescribesSheet {
+			public const int LINES_PER_PAGE=10;
+			public int RowCount;
+			///<summary>FormQuery._totalPages, shown in labelTotPages; set when the handler reaches its end.</summary>
+			public int TotalPages;
+			private bool _headerPrinted;
+			private int _linesPrinted;
+			private int _pagesPrinted;
+			private bool _tablePrinted;
+			private bool _totalsPrinted;
+			private bool _summaryPrinted;
+			private List<string> _listOnSheet=new List<string>();
+
+			public string LastSheetText {
+				get {
+					return string.Join(" ",_listOnSheet);
+				}
+			}
+
+			///<summary>What FormQuery.PrintReport resets before it creates the printout.</summary>
+			public void ResetLikePrintReport() {
+				_pagesPrinted=0;
+				_linesPrinted=0;
+			}
+
+			private void Draw(PrintPageEventArgs e,string text) {
+				e.Graphics.DrawString(text,SystemFonts.DefaultFont,Brushes.Black,10,10+12*_listOnSheet.Count);
+				_listOnSheet.Add(text);
+			}
+
+			protected override void OnPrintPage(PrintPageEventArgs e) {
+				_listOnSheet=new List<string>();
+				int linesLeft=LINES_PER_PAGE;
+				Draw(e,"Page "+(_pagesPrinted+1));
+				if(!_headerPrinted) {
+					Draw(e,"Title");
+					linesLeft-=2;
+					_headerPrinted=true;
+				}
+				int rowFirst=_linesPrinted+1;
+				while(linesLeft>0 && _linesPrinted<RowCount) {
+					_linesPrinted++;
+					linesLeft--;
+					if(_linesPrinted==RowCount) {
+						_tablePrinted=true;
+					}
+				}
+				if(_linesPrinted>=rowFirst) {
+					Draw(e,"Rows "+rowFirst+"-"+_linesPrinted);
+				}
+				if(RowCount==0) {
+					_tablePrinted=true;
+				}
+				if(_tablePrinted && !_totalsPrinted && linesLeft>0) {
+					Draw(e,"Totals");
+					linesLeft--;
+					_totalsPrinted=true;
+				}
+				if(_totalsPrinted && !_summaryPrinted && linesLeft>0) {
+					Draw(e,"Summary");
+					linesLeft--;
+					_summaryPrinted=true;
+				}
+				_pagesPrinted++;
+				if(_summaryPrinted) {
+					e.HasMorePages=false;
+					TotalPages=_pagesPrinted;
+					_pagesPrinted=0;
+					_linesPrinted=0;
+					_headerPrinted=false;
+					_tablePrinted=false;
+					_totalsPrinted=false;
+					_summaryPrinted=false;
+				}
+				else {
+					e.HasMorePages=true;
+				}
+			}
+		}
+
+		///<summary>Prints every page the way PrinterL does when the Print Options window chose All, and returns what was on each sheet.</summary>
+		private static List<string> PrintAllPages(PrintDocument printDocument) {
+			RecordingPreviewPrintController recordingPreviewPrintController=new RecordingPreviewPrintController();
+			printDocument.PrintController=recordingPreviewPrintController;
+			new PrintOptionsChoice { PrinterName=printDocument.PrinterSettings.PrinterName,IsAllPages=true }.ApplyTo(printDocument.PrinterSettings);
+			PageRangePrintController.ApplyTo(printDocument);
+			printDocument.Print();
+			Assert.AreEqual(recordingPreviewPrintController.ListSheets.Count,recordingPreviewPrintController.GetPreviewPageInfo().Length);
+			return recordingPreviewPrintController.ListSheets;
 		}
 
 		///<summary>Prints the document the way PrinterL does after the Print Options window chose pages fromPage to toPage, and returns the document
@@ -304,6 +437,41 @@ namespace BPRINTTests {
 			}
 			using(SelfFilteringDocument selfFilteringDocument=new SelfFilteringDocument { PageCount=4 }) {
 				CollectionAssert.AreEqual(new[] { "3","4" },PrintChosenPages(selfFilteringDocument,3,9),"Past the end: what exists.");
+			}
+		}
+
+		///<summary>User Query resets its page state only when its handler reaches its own end. A page range must not cut the handler short, or the
+		///next preview or print starts with the state the range print left behind (no title, or totals and summary right after page 1's rows).</summary>
+		[TestMethod]
+		public void PageRange_QueryLikeHandler_ARangePrintLeavesNoStateBehindForTheNextPrint() {
+			SkipWithoutPrinter();
+			string[] arrayAllSheets=new[] { "Page 1 Title Rows 1-8","Page 2 Rows 9-18","Page 3 Rows 19-28","Page 4 Rows 29-38","Page 5 Rows 39-40 Totals Summary" };
+			using(QueryLikeDocument queryLikeDocument=new QueryLikeDocument { RowCount=40 }) {
+				queryLikeDocument.ResetLikePrintReport();
+				CollectionAssert.AreEqual(arrayAllSheets,PrintAllPages(queryLikeDocument),"Five pages.");
+				queryLikeDocument.TotalPages=0;
+				queryLikeDocument.ResetLikePrintReport();
+				CollectionAssert.AreEqual(new[] { arrayAllSheets[0],arrayAllSheets[1] },PrintChosenPages(queryLikeDocument,1,2),"Pages 1-2 of 5.");
+				Assert.AreEqual(5,queryLikeDocument.TotalPages,"The handler reached its own end (and reset its state) although only pages 1-2 printed.");
+				//FormQuery.butPrint_Click then shows the preview again (PrintReport(true)), and the user prints everything.
+				queryLikeDocument.ResetLikePrintReport();
+				CollectionAssert.AreEqual(arrayAllSheets,PrintAllPages(queryLikeDocument),"The title is on page 1 again and all five pages print.");
+			}
+			//A range that ends after the table and totals but before the summary (on page 6).
+			string[] arrayAllSheetsSix=new[] { "Page 1 Title Rows 1-8","Page 2 Rows 9-18","Page 3 Rows 19-28","Page 4 Rows 29-38",
+				"Page 5 Rows 39-47 Totals","Page 6 Summary" };
+			using(QueryLikeDocument queryLikeDocument=new QueryLikeDocument { RowCount=47 }) {
+				queryLikeDocument.ResetLikePrintReport();
+				CollectionAssert.AreEqual(arrayAllSheetsSix,PrintAllPages(queryLikeDocument),"Six pages.");
+				queryLikeDocument.ResetLikePrintReport();
+				CollectionAssert.AreEqual(arrayAllSheetsSix.Take(5).ToArray(),PrintChosenPages(queryLikeDocument,1,5),"Pages 1-5 of 6.");
+				queryLikeDocument.ResetLikePrintReport();
+				CollectionAssert.AreEqual(arrayAllSheetsSix,PrintAllPages(queryLikeDocument),
+					"All six pages again, not page 1 with the totals and summary under its rows.");
+				queryLikeDocument.ResetLikePrintReport();
+				CollectionAssert.AreEqual(new[] { arrayAllSheetsSix[2] },PrintChosenPages(queryLikeDocument,3,3),"Page 3 alone.");
+				queryLikeDocument.ResetLikePrintReport();
+				CollectionAssert.AreEqual(arrayAllSheetsSix,PrintAllPages(queryLikeDocument));
 			}
 		}
 

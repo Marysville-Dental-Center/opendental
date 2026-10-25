@@ -118,6 +118,30 @@ namespace OpenDentBusiness {
 			return printOptionsChoice;
 		}
 
+		///<summary>The choice a WPF print starts from. When the Print Options window will be shown (isWindowShown), the window's starting values
+		///(GetInitialChoice: the choice remembered for the situation, otherwise the rules' printer). Otherwise GetChoiceForUnpromptedPrint: a choice
+		///remembered from the window only ever pre-fills the window, it never redirects a print that shows no window.</summary>
+		public static PrintOptionsChoice GetChoiceToPrint(PrintSituation printSituation,string printerNameFromRules,bool isWindowShown,
+			IList<string> listInstalledPrinters)
+		{
+			if(isWindowShown) {
+				return GetInitialChoice(printSituation,printerNameFromRules,1,listInstalledPrinters);
+			}
+			return GetChoiceForUnpromptedPrint(printerNameFromRules);
+		}
+
+		///<summary>What a print without the Print Options window prints with: the printer the situation's rules picked (Setup, Printers; "" for the
+		///Windows default), one copy, collated, every page. The same as WinForms printing (OpenDental.PrinterL.SetPrinter) without the window. Never
+		///the remembered choice.</summary>
+		public static PrintOptionsChoice GetChoiceForUnpromptedPrint(string printerNameFromRules) {
+			PrintOptionsChoice printOptionsChoice=new PrintOptionsChoice();
+			printOptionsChoice.PrinterName=printerNameFromRules??"";
+			printOptionsChoice.Copies=1;
+			printOptionsChoice.IsCollated=true;
+			printOptionsChoice.IsAllPages=true;
+			return printOptionsChoice;
+		}
+
 		///<summary>True if the 1-based page is inside the range. Every page is when isAllPages is true.</summary>
 		public static bool IsPageInRange(int pageNumber,bool isAllPages,int fromPage,int toPage) {
 			if(isAllPages) {
@@ -148,7 +172,9 @@ namespace OpenDentBusiness {
 
 	///<summary>Prints only the pages of a range. System.Drawing printing calls the document's PrintPage handler for every page whatever the
 	///printer settings say, so this controller still lets the handler draw each page (its page state must advance), but pages outside the range
-	///are drawn on a scratch bitmap and never reach the printer.</summary>
+	///are drawn on a scratch bitmap and never reach the printer. The handler always runs to its own last page, also when the range ends earlier:
+	///some handlers (User Query) reset their page state only when they reach their end, and a print cut short would leave that state behind for
+	///the next print or preview.</summary>
 	public class PageRangePrintController:PrintController {
 		private readonly PrintController _printControllerInner;
 		private readonly int _fromPage;
@@ -260,9 +286,8 @@ namespace OpenDentBusiness {
 			else {
 				DisposeScratch();
 			}
-			if(_pageNumber>=_toPage) {
-				e.HasMorePages=false;//Nothing after the range is printed, so stop drawing.
-			}
+			//No early stop after ToPage: the handler runs to its own last page, where handlers such as FormQuery.pd2_PrintPage reset their page
+			//state for the next print or preview. Pages after the range are drawn on the scratch bitmap and thrown away, like those before it.
 		}
 
 		public override void OnEndPrint(PrintDocument document,PrintEventArgs e) {
