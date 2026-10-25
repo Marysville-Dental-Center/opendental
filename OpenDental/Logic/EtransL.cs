@@ -81,10 +81,12 @@ namespace OpenDental {
 			formEtrans835Edit.Show(formParent);//Non-modal but belongs to the parent form passed in so that it never shows behind.
 		}
 
-		///<summary>Returns an EraData which contains lists of Etrans, Etrans835s, and Etrans835Attaches limited by the passed in filters.</summary>
+		///<summary>Returns an EraData which contains lists of Etrans, Etrans835s, and Etrans835Attaches limited by the passed in filters.
+		///doShowPreAuths and doShowZeroPayments are the ERAs Automatically Processed report's filters (M2-ERA, Open Dental 25.4); true shows them.</summary>
 		public static EraData GetEraDataFiltered(bool showStatusAndClinics,List<X835Status> listX835Statuses,List<long> listClinicNumsSelected,
 			string amountMin,string amountMax,DateTime dateFrom,DateTime dateTo,string carrierName,string checkTraceNum,string controlId,bool includeAutomatableCarriersOnly,
-			bool areAllClinicsSelected,List<X835AutoProcessed> listX835AutoProcessedsStatuses=null,bool includeAcknowledged=true) 
+			bool areAllClinicsSelected,List<X835AutoProcessed> listX835AutoProcessedsStatuses=null,bool includeAcknowledged=true,bool doShowPreAuths=true,
+			bool doShowZeroPayments=true)
 		{
 			ODEvent.Fire(ODEventType.ProgressBar,Lan.g("FormEtrans835s","Refreshing history."));
 			decimal insPaidMin=-1;
@@ -108,6 +110,10 @@ namespace OpenDental {
 			}
 			//Ensure listFilteredEtrans835s are listed in same order and with same total count as the listEtransFiltered.
 			eraData.ListEtrans835s=eraData.ListEtrans.Select(x => eraData.ListEtrans835s.FirstOrDefault(y => y.EtransNum==x.EtransNum)).ToList();
+			if(!doShowPreAuths || !doShowZeroPayments) {//M2-ERA (25.4): Show PreAuths and Show $0 Payments of the ERAs Automatically Processed report.
+				ODEvent.Fire(ODEventType.ProgressBar,Lan.g("FormEtrans835s","Filtering PreAuths and $0 payments."));
+				Etrans835s.RemoveHiddenForAutoProcessedReport(eraData.ListEtrans,eraData.ListEtrans835s,doShowPreAuths,doShowZeroPayments);
+			}
 			if(includeAutomatableCarriersOnly) {
 				ODEvent.Fire(ODEventType.ProgressBar,Lan.g("FormEtrans835s","Filtering by automatable carriers."));
 				FilterAutomatableERAs(eraData.ListEtrans,eraData.ListEtrans835s,eraData.ListAttached);

@@ -27,7 +27,8 @@ namespace OpenDental {
 
 		///<summary></summary>
 		private void FormRpEraAutoProcessed_Load(object sender,EventArgs e) {
-			base.SetFilterControlsAndAction(() => RefreshGridEras(),dateRangePicker,textCarrier,textCheckTrace,comboClinics,listAutoProcessStatuses,checkShowAcknowledged);
+			base.SetFilterControlsAndAction(() => RefreshGridEras(),dateRangePicker,textCarrier,textCheckTrace,comboClinics,listAutoProcessStatuses,checkShowAcknowledged,
+				checkShowPreAuths,checkShowZeroPayments);
 			SetFiltersAndDefaults();
 			BuildContextMenuGridEras();
 			BuildContextMenuGridClaims();
@@ -55,6 +56,18 @@ namespace OpenDental {
 				listAutoProcessStatuses.Items.Add(Lan.g(this,listX835AutoProcessedValues[i].GetDescription()),listX835AutoProcessedValues[i]);
 			}
 			listAutoProcessStatuses.SetAll(true);
+			//M2-ERA (25.4): Show PreAuths and Show $0 Payments start as this user left them (both on by default, as in 24.3).
+			EraAutoProcessedReportFilters eraAutoProcessedReportFilters=EraAutoProcessedReportFilters.GetForUser(GetUserNumCur());
+			checkShowPreAuths.Checked=eraAutoProcessedReportFilters.DoShowPreAuths;
+			checkShowZeroPayments.Checked=eraAutoProcessedReportFilters.DoShowZeroPayments;
+		}
+
+		///<summary>M2-ERA: the user whose report filter choices are remembered.</summary>
+		private long GetUserNumCur() {
+			if(Security.CurUser==null) {
+				return 0;
+			}
+			return Security.CurUser.UserNum;
 		}
 
 		///<summary>Builds the context menu for the ERAs grid.</summary>
@@ -117,13 +130,17 @@ namespace OpenDental {
 			List<X835AutoProcessed> listX835AutoProcessedsSelected=listAutoProcessStatuses.GetListSelected<X835AutoProcessed>();
 			bool doIncludeAcknowledged=checkShowAcknowledged.Checked;
 			bool areAllClinicsSelected=comboClinics.IsAllSelected;
+			//M2-ERA (25.4): hide ERAs whose claims are all PreAuths, or whose payment is $0, when unchecked. Remembered for this user.
+			bool doShowPreAuths=checkShowPreAuths.Checked;
+			bool doShowZeroPayments=checkShowZeroPayments.Checked;
+			EraAutoProcessedReportFilters.SetForUser(GetUserNumCur(),doShowPreAuths,doShowZeroPayments);
 			EraData eraData=new EraData();
 			List<Hx835_ShortClaimProc> listHx835_ShortClaimProcs=new List<Hx835_ShortClaimProc>();
 			progressOD=new ProgressWin();
 			progressOD.ActionMain=() => {
 				eraData=EtransL.GetEraDataFiltered(showStatusAndClinics,_listX835Statuses,listClinicNumsSelected,
 					amountMin:"",amountMax:"",dateFrom,dateTo,carrierName,checkTraceNum,controlId:"",includeAutomatableCarriersOnly:false,
-					areAllClinicsSelected,listX835AutoProcessedsSelected,doIncludeAcknowledged);
+					areAllClinicsSelected,listX835AutoProcessedsSelected,doIncludeAcknowledged,doShowPreAuths,doShowZeroPayments);
 				List<long> listClaimNums=eraData.ListAttached.Select(x => x.ClaimNum).ToList();
 				listHx835_ShortClaimProcs=Hx835_ShortClaimProc.RefreshForClaims(listClaimNums);
 			};

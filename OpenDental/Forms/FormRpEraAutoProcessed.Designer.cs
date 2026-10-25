@@ -39,6 +39,8 @@ namespace OpenDental{
 			this.labelAutoProcessStatus = new System.Windows.Forms.Label();
 			this.butSelectEob = new OpenDental.UI.Button();
 			this.gridClaimProcedureAdjustments = new OpenDental.UI.GridOD();
+			this.checkShowPreAuths = new OpenDental.UI.CheckBox();
+			this.checkShowZeroPayments = new OpenDental.UI.CheckBox();
 			this.SuspendLayout();
 			// 
 			// dateRangePicker
@@ -207,10 +209,32 @@ namespace OpenDental{
 			this.gridClaimProcedureAdjustments.TabIndex = 11;
 			this.gridClaimProcedureAdjustments.Title = "Claim Procedure Adjustments";
 			this.gridClaimProcedureAdjustments.TranslationName = "TableEtrans835s";
-			// 
+			//
+			// checkShowPreAuths
+			//
+			this.checkShowPreAuths.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.checkShowPreAuths.Checked = true;
+			this.checkShowPreAuths.Location = new System.Drawing.Point(1070, 7);
+			this.checkShowPreAuths.Name = "checkShowPreAuths";
+			this.checkShowPreAuths.Size = new System.Drawing.Size(142, 17);
+			this.checkShowPreAuths.TabIndex = 12;
+			this.checkShowPreAuths.Text = "Show PreAuths";
+			//
+			// checkShowZeroPayments
+			//
+			this.checkShowZeroPayments.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.checkShowZeroPayments.Checked = true;
+			this.checkShowZeroPayments.Location = new System.Drawing.Point(1070, 28);
+			this.checkShowZeroPayments.Name = "checkShowZeroPayments";
+			this.checkShowZeroPayments.Size = new System.Drawing.Size(142, 17);
+			this.checkShowZeroPayments.TabIndex = 13;
+			this.checkShowZeroPayments.Text = "Show $0 Payments";
+			//
 			// FormRpEraAutoProcessed
-			// 
+			//
 			this.ClientSize = new System.Drawing.Size(1224, 696);
+			this.Controls.Add(this.checkShowZeroPayments);
+			this.Controls.Add(this.checkShowPreAuths);
 			this.Controls.Add(this.gridClaimProcedureAdjustments);
 			this.Controls.Add(this.butSelectEob);
 			this.Controls.Add(this.listAutoProcessStatuses);
@@ -250,5 +274,7 @@ namespace OpenDental{
 		private System.Windows.Forms.Label labelAutoProcessStatus;
 		private UI.Button butSelectEob;
 		private UI.GridOD gridClaimProcedureAdjustments;
+		private OpenDental.UI.CheckBox checkShowPreAuths;
+		private OpenDental.UI.CheckBox checkShowZeroPayments;
 	}
 }
