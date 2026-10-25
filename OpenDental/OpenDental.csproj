@@ -4283,6 +4283,9 @@
     <Compile Include="Forms\FormSheetImport.designer.cs">
       <DependentUpon>FormSheetImport.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\FormSheetImport.PatFields.cs">
+      <DependentUpon>FormSheetImport.cs</DependentUpon>
+    </Compile>
     <Compile Include="Forms\FormTerminal.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -4506,6 +4509,9 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Forms\FormSheetFillEdit.designer.cs">
+      <DependentUpon>FormSheetFillEdit.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormSheetFillEdit.Submitted.cs">
       <DependentUpon>FormSheetFillEdit.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\FormSheetDefEdit.cs">

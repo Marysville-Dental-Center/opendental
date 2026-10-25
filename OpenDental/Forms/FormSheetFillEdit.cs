@@ -677,6 +677,7 @@ namespace OpenDental {
 			if(SheetCur.ShowInTerminal>0) {
 				textShowInTerminal.Text=SheetCur.ShowInTerminal.ToString();
 			}
+			LoadDateSubmitted();//Open Dental 25.4 sheet.DateTimeSubmitted, see FormSheetFillEdit.Submitted.cs
 			LoadImages();
 			//We need to double check any sheet Input, Output, and Static Text fields for growth behavior. If this sheet was sent over as a webform, the height for a specific field may have been adjusted to conform to a web or mobile web view. If the height was adjusted, we need to re-measure and adjust these fields once they are retreived in OD.
 			for(int i=0;i<SheetCur.SheetFields.Count;i++) {
@@ -2114,6 +2115,9 @@ namespace OpenDental {
 			}
 			catch(Exception) {
 				MsgBox.Show(this,"Please fix data entry errors first.");
+				return false;
+			}
+			if(!TrySetDateSubmitted()) {//Open Dental 25.4 sheet.DateTimeSubmitted, see FormSheetFillEdit.Submitted.cs
 				return false;
 			}
 			SheetCur.DateTimeSheet=dateTimeSheet;
