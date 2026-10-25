@@ -4923,6 +4923,12 @@
     <Compile Include="Forms\FormDiseaseDefs.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="Forms\FormDiseaseDefMerge.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormDiseaseDefMerge.Designer.cs">
+      <DependentUpon>FormDiseaseDefMerge.cs</DependentUpon>
+    </Compile>
     <Compile Include="Forms\FormDunningEdit.cs">
       <SubType>Form</SubType>
     </Compile>
