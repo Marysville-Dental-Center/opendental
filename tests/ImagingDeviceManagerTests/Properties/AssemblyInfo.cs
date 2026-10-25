@@ -3,9 +3,9 @@
 using System.Reflection;
 using System.Runtime.InteropServices;
 
-[assembly: AssemblyTitle("ImagingDeviceManager.Tests")]
+[assembly: AssemblyTitle("ImagingDeviceManagerTests")]
 [assembly: AssemblyDescription("Unit tests for the open source TWAIN scanning library.")]
-[assembly: AssemblyProduct("ImagingDeviceManager.Tests")]
+[assembly: AssemblyProduct("ImagingDeviceManagerTests")]
 [assembly: AssemblyCopyright("GNU General Public License v2")]
 [assembly: ComVisible(false)]
 [assembly: Guid("b1d6a0e4-3f52-4a8c-9e27-7c0d5f1e2a94")]

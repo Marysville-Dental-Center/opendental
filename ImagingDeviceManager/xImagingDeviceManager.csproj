@@ -48,23 +48,8 @@
     <Reference Include="System.Drawing" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="EZTwain.cs" />
-    <Compile Include="EZTwainErrorCode.cs" />
-    <Compile Include="Enums.cs" />
-    <Compile Include="ImagingDeviceException.cs" />
-    <Compile Include="Twain.cs" />
-    <Compile Include="Imaging\DibImage.cs" />
-    <Compile Include="Imaging\DibBuilder.cs" />
-    <Compile Include="Imaging\DibHandleTable.cs" />
-    <Compile Include="Imaging\PdfPageWriter.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="TwainProtocol\ITwainDsm.cs" />
-    <Compile Include="TwainProtocol\NativeMethods.cs" />
-    <Compile Include="TwainProtocol\NativeTwainDsm.cs" />
-    <Compile Include="TwainProtocol\ProxyWindow.cs" />
-    <Compile Include="TwainProtocol\TwainConstants.cs" />
-    <Compile Include="TwainProtocol\TwainSession.cs" />
-    <Compile Include="TwainProtocol\TwainStructs.cs" />
+    <!-- Every .cs file under this folder is compiled, so packages that add files never conflict over this project file. -->
+    <Compile Include="**\*.cs" Exclude="bin\**;obj\**" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

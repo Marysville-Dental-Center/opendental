@@ -15,4 +15,4 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 [assembly: Guid("5d2f3a6e-8b1c-4f0e-9a57-2c4d6e8f1a3b")]
 [assembly: AssemblyVersion("24.3.63.0")]
-[assembly: InternalsVisibleTo("ImagingDeviceManager.Tests")]
+[assembly: InternalsVisibleTo("ImagingDeviceManagerTests")]
