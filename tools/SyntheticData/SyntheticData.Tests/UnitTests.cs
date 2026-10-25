@@ -329,6 +329,40 @@ namespace SyntheticData.Tests {
 			List<Difference> list=ReportComparer.Compare(Report(),after,Adoption());
 			Assert.AreEqual(1,list.Count);
 			Assert.IsFalse(list[0].IsAllowed);
+			//It says what it means, and where the runbook says what to do.
+			StringAssert.Contains(list[0].Note,"every value reads the same");
+			StringAssert.Contains(list[0].ToString(),"[note: ");
+			StringAssert.Contains(list[0].ToString(),"step 3.3");
+			//With a column difference it is explained by it, and has no note.
+			after.Tables[1].Columns["Relationship"]="51";
+			list=ReportComparer.Compare(Report(),after,Adoption());
+			Difference checksum=list.Single(x => x.Kind==DifferenceKind.ChecksumTableChanged);
+			Assert.IsTrue(checksum.IsAllowed);
+			Assert.IsNull(checksum.Note);
+		}
+
+		///<summary>Adoption does not touch updatehistory, so the allowed list has no rule for it (it had a whole-table one).</summary>
+		[TestMethod]
+		public void UpdateHistoryChange_IsUnexpected() {
+			ValidationReport before=Report();
+			TableReport history=new TableReport { Name="updatehistory",Rows=4,ChecksumTable="333" };
+			history.Columns["ProgramVersion"]="60";
+			before.Tables.Add(history);
+			ValidationReport after=Report();
+			TableReport historyAfter=new TableReport { Name="updatehistory",Rows=5,ChecksumTable="334" };
+			historyAfter.Columns["ProgramVersion"]="61";
+			after.Tables.Add(historyAfter);
+			List<Difference> list=ReportComparer.Compare(before,after,Adoption());
+			Assert.IsTrue(list.Where(x => x.Table=="updatehistory").All(x => !x.IsAllowed || x.Kind==DifferenceKind.ChecksumTableChanged),ReportComparer.Format(list));
+			Assert.IsTrue(list.Any(x => x.Table=="updatehistory" && x.Kind==DifferenceKind.RowsChanged && !x.IsAllowed));
+		}
+
+		///<summary>MariaDB writes a FLOAT as text with 6 significant digits, so the column checksum widens it to DOUBLE, which it writes exactly.</summary>
+		[TestMethod]
+		public void ColumnChecksum_ReadsFloatsExactly() {
+			Assert.AreEqual("CAST(`FontSize` AS DOUBLE)",Validator.ExactText(new ColumnInfo { Name="FontSize",DataType="float" }));
+			Assert.AreEqual("`ClaimFee`",Validator.ExactText(new ColumnInfo { Name="ClaimFee",DataType="double" }));
+			Assert.AreEqual("`LName`",Validator.ExactText(new ColumnInfo { Name="LName",DataType="varchar" }));
 		}
 	}
 
