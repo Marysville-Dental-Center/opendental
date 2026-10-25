@@ -1283,6 +1283,7 @@
     <Compile Include="Data Interface\DisplayFields.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Data Interface\DisplayFields.Era.cs" />
     <Compile Include="Data Interface\DocumentMiscs.cs" />
     <Compile Include="Data Interface\DrugManufacturers.cs" />
     <Compile Include="Data Interface\DrugUnits.cs" />
