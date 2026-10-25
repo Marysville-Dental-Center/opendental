@@ -130,6 +130,36 @@ namespace BWIKITests {
 			}
 		}
 
+		///<summary>An open connection to this run's database outside the program's data layer and not pooled, so a table lock taken on it ends when
+		///it is closed. The caller disposes it.</summary>
+		public static MySqlConnection OpenSeparateConnection() {
+			MySqlConnection connection=new MySqlConnection(CONNECTION+";Database="+DbName+";Pooling=false");
+			connection.Open();
+			return connection;
+		}
+
+		///<summary>Waits until a query of this run's database that reads the table is waiting for a table lock. False when none does in time.</summary>
+		public static bool WaitForQueryWaitingOnLock(string tableName,TimeSpan timeSpanMax) {
+			DateTime dateTimeStop=DateTime.Now.Add(timeSpanMax);
+			using(MySqlConnection connection=OpenSeparateConnection()) {
+				while(true) {
+					using(MySqlCommand command=new MySqlCommand("SELECT COUNT(*) FROM information_schema.PROCESSLIST WHERE DB=@db "
+						+"AND STATE LIKE 'Waiting for table%' AND INFO LIKE @info",connection))
+					{
+						command.Parameters.AddWithValue("@db",DbName);
+						command.Parameters.AddWithValue("@info","%FROM "+tableName+"%");
+						if(Convert.ToInt64(command.ExecuteScalar())>0) {
+							return true;
+						}
+					}
+					if(DateTime.Now>dateTimeStop) {
+						return false;
+					}
+					System.Threading.Thread.Sleep(50);
+				}
+			}
+		}
+
 		///<summary>Removes every wiki row, user preference and signal, so each test starts from an empty wiki.</summary>
 		public static void ClearWiki() {
 			DataCore.NonQ("DELETE FROM wikipage");

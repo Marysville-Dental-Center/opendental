@@ -42,12 +42,15 @@ namespace OpenDentBusiness {
 		private static readonly Regex _regexPageFileName=new Regex(@"^\d+\.html$",RegexOptions.IgnoreCase);
 		///<summary>One export at a time: saves made in quick succession queue up behind each other.</summary>
 		private static readonly object _lockExport=new object();
+		///<summary>Guards _wikiExportResultLast only. Never held while an export runs, so reading LastResult never waits for an export.</summary>
+		private static readonly object _lockResult=new object();
 		private static WikiExportResult _wikiExportResultLast;
 
-		///<summary>The result of the most recent export run on this workstation, or null.</summary>
+		///<summary>The result of the most recent finished export on this workstation, or null. Returns at once, even while an export is running:
+		///Wiki Setup reads it on the UI thread.</summary>
 		public static WikiExportResult LastResult {
 			get {
-				lock(_lockExport) {
+				lock(_lockResult) {
 					return _wikiExportResultLast;
 				}
 			}
@@ -245,7 +248,10 @@ namespace OpenDentBusiness {
 					wikiExportResult.ErrorMessage=ex.Message;
 					Logger.WriteLine("Read-only wiki export to '"+folder+"' failed: "+MiscUtils.GetExceptionText(ex),LOG_SUBDIRECTORY);
 				}
-				_wikiExportResultLast=wikiExportResult;
+				//The last step, under its own lock: LastResult must never wait for the export lock.
+				lock(_lockResult) {
+					_wikiExportResultLast=wikiExportResult;
+				}
 				return wikiExportResult;
 			}
 		}

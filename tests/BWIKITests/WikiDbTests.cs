@@ -6,7 +6,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using MySqlConnector;
 using Newtonsoft.Json;
 using OpenDentBusiness;
 using OpenDentBusiness.FileIO;
@@ -421,6 +423,53 @@ namespace BWIKITests {
 			wikiExportResult=WikiStaticExport.TryExport(_folderExport,null,isFullExport:true,_dateTimeExport);
 			Assert.IsTrue(wikiExportResult.IsSuccess,wikiExportResult.ErrorMessage);
 			Assert.AreEqual(3,wikiExportResult.CountPagesWritten);
+		}
+
+		///<summary>Wiki Setup reads LastResult on the UI thread while a background export may be running (Save starts one when the master page
+		///changes). The read must not wait for the export.</summary>
+		[TestMethod]
+		public void LastResult_ReturnsAtOnceWhileAnExportIsBlocked() {
+			//A finished export to read back: a file where the folder should be fails at once.
+			string pathBlocked=Path.Combine(_folderRoot,"blocked_"+Guid.NewGuid().ToString("N").Substring(0,6));
+			File.WriteAllText(pathBlocked,"not a folder");
+			WikiExportResult wikiExportResultBefore=WikiStaticExport.TryExport(pathBlocked,null,isFullExport:true,_dateTimeExport);
+			Assert.AreSame(wikiExportResultBefore,WikiStaticExport.LastResult);
+			WikiExportResult wikiExportResultRunning=null;
+			Thread threadExport=null;
+			using(MySqlConnection connection=WikiScratchDb.OpenSeparateConnection()) {
+				//Another session holds a write lock on wikipage, so the export stops at its read of the pages, inside the export lock, the way it
+				//waits on a share that does not answer or on a large wiki.
+				WikiScratchDb.Exec(connection,"LOCK TABLES wikipage WRITE");
+				try {
+					threadExport=new Thread(() => {
+						wikiExportResultRunning=WikiStaticExport.TryExport(_folderExport,null,isFullExport:true,_dateTimeExport.AddHours(1));
+					});
+					threadExport.IsBackground=true;
+					threadExport.Start();
+					Assert.IsTrue(WikiScratchDb.WaitForQueryWaitingOnLock("wikipage",TimeSpan.FromSeconds(30)),"The export never reached its read of the pages.");
+					Assert.IsTrue(threadExport.IsAlive);
+					//Read on another thread, so a read that waits fails the test instead of hanging it.
+					WikiExportResult wikiExportResultRead=null;
+					Thread threadRead=new Thread(() => {
+						wikiExportResultRead=WikiStaticExport.LastResult;
+					});
+					threadRead.IsBackground=true;
+					threadRead.Start();
+					Assert.IsTrue(threadRead.Join(TimeSpan.FromSeconds(5)),"LastResult waited for the running export.");
+					Assert.IsTrue(threadExport.IsAlive,"The export was still blocked while LastResult was read.");
+					Assert.AreSame(wikiExportResultBefore,wikiExportResultRead,"The last finished export, not the one still running.");
+				}
+				finally {
+					WikiScratchDb.Exec(connection,"UNLOCK TABLES");
+					//So the export is done before the next test clears the tables.
+					threadExport?.Join(TimeSpan.FromSeconds(60));
+				}
+			}
+			Assert.IsFalse(threadExport.IsAlive,"The export finished once the table was unlocked.");
+			Assert.IsNotNull(wikiExportResultRunning);
+			Assert.IsTrue(wikiExportResultRunning.IsSuccess,wikiExportResultRunning.ErrorMessage);
+			Assert.AreEqual(3,wikiExportResultRunning.CountPagesWritten);
+			Assert.AreSame(wikiExportResultRunning,WikiStaticExport.LastResult,"Published when it finished.");
 		}
 
 		[TestMethod]
