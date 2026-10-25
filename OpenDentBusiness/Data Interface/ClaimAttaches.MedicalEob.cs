@@ -121,6 +121,29 @@ namespace OpenDentBusiness {
 			return claimAttach;
 		}
 
+		///<summary>Sets the claims of the "Outstanding primary/secondary claims" prompt (ClaimL.PromptForPrimaryOrSecondaryClaim) to Waiting to Send
+		///("W") before it queues, sends or prints them, and keeps their attachments. Those claims come from Claims.GetPrimaryOrSecondaryClaimsNotReceived,
+		///which does not load Claim.Attachments, and the one-argument Claims.Update rewrites claimattach from that list: on these claims it deleted every
+		///attachment, among them a medical EOB the Medical EOB prompt had attached just before. With doSaveToDb, each claim row is saved with
+		///Claims.Update(claim,claimOld), which does not touch claimattach. Without it (the caller recalculates the secondary claims and saves them
+		///through Claims.CalculateAndUpdate, which uses the one-argument Claims.Update), each claim's attachments are loaded so that save keeps them.
+		///</summary>
+		public static void SetClaimsWaitingToSend(List<Claim> listClaims,bool doSaveToDb) {
+			Meth.NoCheckMiddleTierRole();
+			for(int i=0;i<listClaims.Count;i++) {
+				Claim claimOld=listClaims[i].Copy();
+				listClaims[i].ClaimStatus="W";
+				if(doSaveToDb) {
+					Claims.Update(listClaims[i],claimOld);
+					continue;
+				}
+				Claim claimDb=Claims.GetClaim(listClaims[i].ClaimNum);
+				if(claimDb!=null) {
+					listClaims[i].Attachments=claimDb.Attachments;
+				}
+			}
+		}
+
 		///<summary>Attaches one of the medical claim payment's EOB files to the dental claim (AttachFileToClaim). The displayed name is
 		///"MedicalEOB_" plus the EOB's file name.</summary>
 		public static ClaimAttach AttachMedicalEob(long claimNumDental,EobAttach eobAttach) {

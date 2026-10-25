@@ -134,6 +134,63 @@ namespace BCLAIMTests {
 			Assert.AreEqual(1,Claims.GetClaim(claimDental.ClaimNum).Attachments.Count);
 		}
 
+		///<summary>The main path: the Medical EOB prompt attaches the EOB, then the "Outstanding primary claims" prompt sets the claim to Waiting to Send
+		///(and sends or prints it). That prompt reloads the claims without their attachments; saving them used to delete every claimattach row.
+		///</summary>
+		[TestMethod]
+		public void WaitingToSend_KeepsTheAttachedMedicalEobAndEarlierAttachments() {
+			BClaimDb.SetStorage(DataStorageType.LocalAtoZ);
+			ClaimScenario scenario=ClaimScenario.Create("Z9738");
+			(_,ClaimProc claimProcMedical)=CreateReceivedMedicalClaim(scenario);
+			Claim claimDental=CreateDentalClaim(scenario,"P","U");
+			ClaimAttach claimAttachEarlier=new ClaimAttach {
+				ClaimNum=claimDental.ClaimNum,DisplayedFileName="narrative.txt",ActualFileName="earlier_"+BClaimDb.NewSuffix()+".txt" };
+			ClaimAttaches.Insert(claimAttachEarlier);
+			string sourcePath=Path.Combine(BClaimDb.AtoZPath,"import_"+BClaimDb.NewSuffix()+".txt");
+			File.WriteAllText(sourcePath,"Synthetic medical EOB");
+			ClaimAttach claimAttachEob=ClaimAttaches.AttachFileToClaim(claimDental.ClaimNum,sourcePath,ClaimAttaches.MEDICAL_EOB_DISPLAY_PREFIX+"eob.txt");
+			Assert.AreEqual(2,Claims.GetClaim(claimDental.ClaimNum).Attachments.Count);
+			//What ClaimL.PromptForPrimaryOrSecondaryClaim does next, for "Change the claim status", "Send primary claim(s) now" and "Print".
+			List<Claim> listClaims=Claims.GetPrimaryOrSecondaryClaimsNotReceived(new List<ClaimProc> { claimProcMedical },isSecondaryClaim:false);
+			Assert.AreEqual(claimDental.ClaimNum,listClaims.Single().ClaimNum);
+			ClaimAttaches.SetClaimsWaitingToSend(listClaims,doSaveToDb:true);
+			Claim claimSaved=Claims.GetClaim(claimDental.ClaimNum);
+			Assert.AreEqual("W",claimSaved.ClaimStatus);
+			CollectionAssert.AreEquivalent(new[] { claimAttachEarlier.ActualFileName,claimAttachEob.ActualFileName },
+				claimSaved.Attachments.Select(x => x.ActualFileName).ToArray(),"Both attachments are still on the claim.");
+			Assert.AreEqual("EoB,Mail",claimSaved.AttachedFlags);
+		}
+
+		///<summary>The primary-to-secondary branch with "recalculate secondary estimates" on: the prompt only sets the status, and
+		///Claims.CalculateAndUpdateSecondaries saves the claims. Their attachments are loaded first, so that save keeps them too.</summary>
+		[TestMethod]
+		public void WaitingToSend_RecalculatedSecondaryClaimKeepsItsAttachments() {
+			ClaimScenario scenario=ClaimScenario.Create("Z9739");
+			InsPlan planSecondary=BClaimDb.CreatePlan("Synthetic Second Carrier "+BClaimDb.NewSuffix());
+			long insSubNumSecondary=InsSubT.CreateInsSub(scenario.Patient_.PatNum,planSecondary.PlanNum).InsSubNum;
+			PatPlanT.CreatePatPlan(1,scenario.Patient_.PatNum,scenario.InsSubNumDental);
+			PatPlanT.CreatePatPlan(2,scenario.Patient_.PatNum,insSubNumSecondary);
+			Claim claimPrimary=BClaimDb.CreateClaim(scenario.Patient_,scenario.PlanDental,scenario.InsSubNumDental,"P",EnumClaimMedType.Dental,"R",
+				scenario.Procedure_.ProcDate);
+			ClaimProc claimProcPrimary=BClaimDb.CreateClaimProc(scenario.Procedure_,scenario.PlanDental,scenario.InsSubNumDental,claimPrimary.ClaimNum,
+				ClaimProcStatus.Received);
+			Claim claimSecondary=BClaimDb.CreateClaim(scenario.Patient_,planSecondary,insSubNumSecondary,"S",EnumClaimMedType.Dental,"U",
+				scenario.Procedure_.ProcDate);
+			BClaimDb.CreateClaimProc(scenario.Procedure_,planSecondary,insSubNumSecondary,claimSecondary.ClaimNum,ClaimProcStatus.NotReceived);
+			ClaimAttach claimAttach=new ClaimAttach {
+				ClaimNum=claimSecondary.ClaimNum,DisplayedFileName="primary_eob.txt",ActualFileName="sec_"+BClaimDb.NewSuffix()+".txt" };
+			ClaimAttaches.Insert(claimAttach);
+			List<Claim> listClaims=Claims.GetPrimaryOrSecondaryClaimsNotReceived(new List<ClaimProc> { claimProcPrimary });
+			Assert.AreEqual(claimSecondary.ClaimNum,listClaims.Single().ClaimNum);
+			ClaimAttaches.SetClaimsWaitingToSend(listClaims,doSaveToDb:false);
+			Assert.AreEqual("W",listClaims[0].ClaimStatus);
+			Assert.AreEqual("U",Claims.GetClaim(claimSecondary.ClaimNum).ClaimStatus,"Not saved here; the recalculation saves it.");
+			Claims.CalculateAndUpdateSecondaries(listClaims);
+			Claim claimSaved=Claims.GetClaim(claimSecondary.ClaimNum);
+			Assert.AreEqual("W",claimSaved.ClaimStatus);
+			Assert.AreEqual(claimAttach.ActualFileName,claimSaved.Attachments.Single().ActualFileName);
+		}
+
 		[TestMethod]
 		public void Attach_NeedsTheAtoZFolder() {
 			BClaimDb.SetStorage(DataStorageType.InDatabase);
