@@ -70,6 +70,9 @@ namespace ImagingDeviceManager.TwainProtocol {
 		///<summary>The source's text for EndConditionCode from DAT_STATUSUTF8, cut at the first NUL. Null for TWCC_SUCCESS, and when the
 		///source or the DSM does not provide one (DAT_STATUSUTF8 is optional); the code alone is then the reason.</summary>
 		public string EndConditionText { get; private set; }
+		///<summary>CAP_UICONTROLLABLE as the open source reported it at the last by-name enable; null when it was not read or the source
+		///does not support it.</summary>
+		public bool? IsUiControllable { get; private set; }
 		///<summary>A line for the capture log, raised on the session's thread: tolerated failures, refusals, contract deviations and
 		///images handed to the drain sink. Handlers must not throw.</summary>
 		public event Action<string> Logged;
@@ -887,13 +890,18 @@ namespace ImagingDeviceManager.TwainProtocol {
 			}
 			int pixelFlavor;
 			_isVanilla=TryGetCapabilityCurrent(Tw.ICAP_PIXELFLAVOR,out pixelFlavor) && pixelFlavor==Tw.TWPF_VANILLA;
+			IsUiControllable=null;
+			bool isShowUI=!HideUI;
+			if(IsOpenedByName) {
+				isShowUI=GetShowUIForSource(isShowUI);
+			}
 			EndConditionCode=null;
 			EndConditionText=null;
 			_proxyWindow.AttachTo(hwnd);
 			IntPtr hwndDisabled=DisableRootWindow(hwnd);
 			ushort dsMessage;
 			try {
-				if(!EnableSource()) {
+				if(!EnableSource(isShowUI)) {
 					return false;
 				}
 				dsMessage=RunMessageLoop();
@@ -937,11 +945,29 @@ namespace ImagingDeviceManager.TwainProtocol {
 			return isSet;
 		}
 
-		private bool EnableSource() {
+		///<summary>Honest CAP_UICONTROLLABLE (design 7.1): a source that reports FALSE cannot run without its own window, so it always
+		///gets ShowUI=1, whatever HideUI says, and the log says so. A source that does not report it gets what the caller asked for.
+		///Only on the by-name path; scans keep their behaviour.</summary>
+		private bool GetShowUIForSource(bool isShowUIRequested) {
+			int value;
+			if(!TryGetCapabilityCurrent(Tw.CAP_UICONTROLLABLE,out value)) {
+				IsUiControllable=null;
+				return isShowUIRequested;
+			}
+			IsUiControllable=value!=0;
+			if(value!=0) {
+				return isShowUIRequested;
+			}
+			Log("\""+SourceName+"\" reports CAP_UICONTROLLABLE FALSE, so it is enabled with ShowUI=1"
+				+(isShowUIRequested ? "." : " although the device is set to hide its window."));
+			return true;
+		}
+
+		private bool EnableSource(bool isShowUI) {
 			IntPtr pUserInterface=Marshal.AllocHGlobal(Marshal.SizeOf(typeof(TW_USERINTERFACE)));
 			try {
 				TW_USERINTERFACE userInterface=new TW_USERINTERFACE();
-				userInterface.ShowUI=(ushort)(HideUI ? 0 : 1);
+				userInterface.ShowUI=(ushort)(isShowUI ? 1 : 0);
 				userInterface.ModalUI=0;
 				userInterface.hParent=_proxyWindow.Handle;
 				Marshal.StructureToPtr(userInterface,pUserInterface,false);
