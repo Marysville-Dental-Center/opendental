@@ -617,6 +617,7 @@ namespace OpenDentBusiness {
 				default:
 					break;
 			}
+			DisplayFields26_1.AddDefaultFields(displayFieldCategory,listDisplayFields);//Open Dental 25.4 and 26.1 items (M2-02).
 			return listDisplayFields;
 		}
 
@@ -1112,6 +1113,7 @@ namespace OpenDentBusiness {
 				default:
 					break;
 			}
+			DisplayFields26_1.AddAvailableFields(displayFieldCategory,listDisplayFields);//Open Dental 25.4 and 26.1 items (M2-02).
 			return listDisplayFields;
 		}
 

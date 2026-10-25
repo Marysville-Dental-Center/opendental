@@ -273,6 +273,12 @@ namespace OpenDental {
 						defCatOptions.CanHide=true;
 						defCatOptions.HelpText=Lans.g("FormDefinitions","These are PTO Adjustments Types used for tracking on employee time cards and ADP export.");
 						break;
+					case DefCats26_1.EmployeeTitles://Open Dental 26.1, employee.Title. The DefCat member comes from package M2-01.
+						defCatOptions.CanDelete=true;
+						defCatOptions.CanHide=true;
+						defCatOptions.CanEditName=true;
+						defCatOptions.HelpText=Lans.g("FormDefinitions","Job titles that can be assigned to employees in Edit Employee. A title that an employee uses can be hidden but not deleted.");
+						break;
 				}
 				listDefCatOptions.Add(defCatOptions);
 			}

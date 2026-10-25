@@ -747,6 +747,7 @@
     <Compile Include="WebBridges\Microsoft365\**\*.cs" />
     <Compile Include="WebBridges\Usps\**\*.cs" />
     <Compile Include="Misc\ReservedEnumValueAttribute.cs" />
+    <Compile Include="Misc\Registry26_1.cs" />
     <Compile Include="WebBridges\APIRequest.cs" />
     <Compile Include="WebBridges\AvaTax.cs" />
     <Compile Include="WebBridges\EdgeExpress.cs" />
