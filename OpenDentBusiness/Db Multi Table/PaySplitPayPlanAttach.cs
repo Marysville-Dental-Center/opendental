@@ -208,6 +208,61 @@ namespace OpenDentBusiness {
 			return listDebits[0].PayPlanChargeNum;
 		}
 
+		///<summary>The charge a split attached to a payment plan pays after its unearned type changed in the Paysplit window. A split that becomes a
+		///plan prepayment pays no charge (0). A split that stops being one pays a due charge again, chosen as attaching chooses it (GetPayPlanChargeNum);
+		///funcGetPayPlanChargesDue loads PayPlanCharges.GetDueForPayPlan and is called only then. Any other change keeps the charge. 0 when the split
+		///is not attached to a plan.</summary>
+		public static long GetPayPlanChargeNumAfterTypeChange(long payPlanNum,long payPlanChargeNum,long unearnedTypeOld,long unearnedTypeNew,
+			Func<List<PayPlanCharge>> funcGetPayPlanChargesDue,long procNum,long adjNum)
+		{
+			Meth.NoCheckMiddleTierRole();
+			if(payPlanNum==0) {
+				return 0;
+			}
+			if(IsPrepayType(unearnedTypeNew)) {
+				return 0;
+			}
+			if(IsPrepayType(unearnedTypeOld)) {
+				return GetPayPlanChargeNum(funcGetPayPlanChargesDue?.Invoke(),unearnedTypeNew,procNum,adjNum);
+			}
+			return payPlanChargeNum;
+		}
+
+		///<summary>Applies GetPayPlanChargeNumAfterTypeChange to the split, whose UnearnedType is already the new type. When the charge changes, the debit
+		///type that went with the old charge (principal or interest) is cleared too. Returns true when anything changed.</summary>
+		public static bool SetPayPlanChargeAfterTypeChange(PaySplit paySplit,long unearnedTypeOld,Func<List<PayPlanCharge>> funcGetPayPlanChargesDue,
+			long procNum,long adjNum)
+		{
+			Meth.NoCheckMiddleTierRole();
+			if(paySplit==null) {
+				return false;
+			}
+			long payPlanChargeNum=GetPayPlanChargeNumAfterTypeChange(paySplit.PayPlanNum,paySplit.PayPlanChargeNum,unearnedTypeOld,paySplit.UnearnedType,
+				funcGetPayPlanChargesDue,procNum,adjNum);
+			if(payPlanChargeNum==paySplit.PayPlanChargeNum) {
+				return ClearChargeForPrepayment(paySplit);
+			}
+			paySplit.PayPlanChargeNum=payPlanChargeNum;
+			paySplit.PayPlanDebitType=PayPlanDebitTypes.Unknown;
+			return true;
+		}
+
+		///<summary>A plan prepayment pays no charge: a Payment Plan Prepay split attached to a payment plan gets PayPlanChargeNum 0 and PayPlanDebitType
+		///Unknown. The Paysplit window calls this on OK, so such a split is never saved paying a charge (the charge would otherwise be paid twice: by the
+		///split itself and by the dynamic plan logic that applies plan prepayments to charges). Returns true when anything was cleared.</summary>
+		public static bool ClearChargeForPrepayment(PaySplit paySplit) {
+			Meth.NoCheckMiddleTierRole();
+			if(paySplit==null || paySplit.PayPlanNum==0 || !IsPrepayType(paySplit.UnearnedType)) {
+				return false;
+			}
+			if(paySplit.PayPlanChargeNum==0 && paySplit.PayPlanDebitType==PayPlanDebitTypes.Unknown) {
+				return false;
+			}
+			paySplit.PayPlanChargeNum=0;
+			paySplit.PayPlanDebitType=PayPlanDebitTypes.Unknown;
+			return true;
+		}
+
 		///<summary>" AND ..." that leaves out the plan prepayments (Payment Plan Prepay splits without a procedure or adjustment) from a paysplit query,
 		///or "" when no prepay type is set up.</summary>
 		public static string GetNotPrepayWhereClause() {

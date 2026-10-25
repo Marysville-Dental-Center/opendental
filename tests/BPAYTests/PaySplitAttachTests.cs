@@ -235,6 +235,107 @@ namespace BPAYTests {
 		}
 
 		[TestMethod]
+		public void TypeChange_ToPrepay_ClearsTheCharge_AndDoesNotLoadCharges() {
+			int countLoads=0;
+			Func<List<PayPlanCharge>> funcGetCharges=() => { countLoads++; return new List<PayPlanCharge>(); };
+			Assert.AreEqual(0,PaySplitPayPlanAttach.GetPayPlanChargeNumAfterTypeChange(10,2,0,_defNumPrepay,funcGetCharges,0,0),"A prepayment pays no charge.");
+			Assert.AreEqual(0,PaySplitPayPlanAttach.GetPayPlanChargeNumAfterTypeChange(10,2,PrefC.GetLong(PrefName.PrepaymentUnearnedType),_defNumPrepay,
+				funcGetCharges,0,0),"From another unearned type too.");
+			Assert.AreEqual(0,countLoads);
+		}
+
+		[TestMethod]
+		public void TypeChange_FromPrepay_PicksADueChargeAgain() {
+			List<PayPlanCharge> listPayPlanChargesDue=new List<PayPlanCharge> {
+				new PayPlanCharge { PayPlanChargeNum=1,ChargeType=PayPlanChargeType.Credit,ChargeDate=DateTime.Today.AddDays(-90) },
+				new PayPlanCharge { PayPlanChargeNum=2,ChargeType=PayPlanChargeType.Debit,ChargeDate=DateTime.Today.AddDays(-60) },
+				new PayPlanCharge { PayPlanChargeNum=3,ChargeType=PayPlanChargeType.Debit,ChargeDate=DateTime.Today.AddDays(-30),LinkType=PayPlanLinkType.Procedure,FKey=55 },
+			};
+			Assert.AreEqual(2,PaySplitPayPlanAttach.GetPayPlanChargeNumAfterTypeChange(10,0,_defNumPrepay,0,() => listPayPlanChargesDue,0,0),
+				"The oldest due debit, as attaching picks it.");
+			Assert.AreEqual(3,PaySplitPayPlanAttach.GetPayPlanChargeNumAfterTypeChange(10,0,_defNumPrepay,0,() => listPayPlanChargesDue,55,0),
+				"Preferring the debit for the split's procedure.");
+			Assert.AreEqual(0,PaySplitPayPlanAttach.GetPayPlanChargeNumAfterTypeChange(10,0,_defNumPrepay,0,() => new List<PayPlanCharge>(),0,0),"None due.");
+			Assert.AreEqual(0,PaySplitPayPlanAttach.GetPayPlanChargeNumAfterTypeChange(10,0,_defNumPrepay,0,null,0,0),"No loader.");
+		}
+
+		[TestMethod]
+		public void TypeChange_NotInvolvingPrepay_KeepsTheCharge_AndUnattachedSplitsHaveNone() {
+			int countLoads=0;
+			Func<List<PayPlanCharge>> funcGetCharges=() => { countLoads++; return new List<PayPlanCharge>(); };
+			long defNumPrepayment=PrefC.GetLong(PrefName.PrepaymentUnearnedType);
+			Assert.AreEqual(7,PaySplitPayPlanAttach.GetPayPlanChargeNumAfterTypeChange(10,7,0,defNumPrepayment,funcGetCharges,0,0));
+			Assert.AreEqual(7,PaySplitPayPlanAttach.GetPayPlanChargeNumAfterTypeChange(10,7,defNumPrepayment,0,funcGetCharges,0,0));
+			Assert.AreEqual(0,countLoads);
+			Assert.AreEqual(0,PaySplitPayPlanAttach.GetPayPlanChargeNumAfterTypeChange(0,7,_defNumPrepay,0,funcGetCharges,0,0),"Not attached to a plan.");
+		}
+
+		[TestMethod]
+		public void TypeChange_OnTheSplit_ClearsAndRestoresTheChargeAndItsDebitType() {
+			List<PayPlanCharge> listPayPlanChargesDue=new List<PayPlanCharge> {
+				new PayPlanCharge { PayPlanChargeNum=4,ChargeType=PayPlanChargeType.Debit,ChargeDate=DateTime.Today.AddDays(-10) },
+			};
+			//The window sequence: "Attached to Payment Plan" ticked while the type is None picks the due debit; then the Payment Plan Prepay type is chosen.
+			PaySplit paySplit=new PaySplit { PayPlanNum=10,PayPlanChargeNum=4,PayPlanDebitType=PayPlanDebitTypes.Principal,UnearnedType=_defNumPrepay };
+			Assert.IsTrue(PaySplitPayPlanAttach.SetPayPlanChargeAfterTypeChange(paySplit,0,() => listPayPlanChargesDue,0,0));
+			Assert.AreEqual(0,paySplit.PayPlanChargeNum);
+			Assert.AreEqual(PayPlanDebitTypes.Unknown,paySplit.PayPlanDebitType);
+			Assert.AreEqual(10,paySplit.PayPlanNum,"The split stays on the plan as its prepayment.");
+			Assert.IsFalse(PaySplitPayPlanAttach.SetPayPlanChargeAfterTypeChange(paySplit,_defNumPrepay,() => listPayPlanChargesDue,0,0),"Same type again.");
+			//Back to None while still attached: a due debit is picked again.
+			paySplit.UnearnedType=0;
+			Assert.IsTrue(PaySplitPayPlanAttach.SetPayPlanChargeAfterTypeChange(paySplit,_defNumPrepay,() => listPayPlanChargesDue,0,0));
+			Assert.AreEqual(4,paySplit.PayPlanChargeNum);
+			Assert.AreEqual(PayPlanDebitTypes.Unknown,paySplit.PayPlanDebitType);
+			//A change between other types keeps the charge and its debit type.
+			paySplit.PayPlanDebitType=PayPlanDebitTypes.Interest;
+			paySplit.UnearnedType=PrefC.GetLong(PrefName.PrepaymentUnearnedType);
+			Assert.IsFalse(PaySplitPayPlanAttach.SetPayPlanChargeAfterTypeChange(paySplit,0,() => listPayPlanChargesDue,0,0));
+			Assert.AreEqual(4,paySplit.PayPlanChargeNum);
+			Assert.AreEqual(PayPlanDebitTypes.Interest,paySplit.PayPlanDebitType);
+		}
+
+		[TestMethod]
+		public void PrepaymentOnAPlan_NeverKeepsACharge() {
+			PaySplit paySplit=new PaySplit { PayPlanNum=10,PayPlanChargeNum=4,PayPlanDebitType=PayPlanDebitTypes.Principal,UnearnedType=_defNumPrepay };
+			Assert.IsTrue(PaySplitPayPlanAttach.ClearChargeForPrepayment(paySplit));
+			Assert.AreEqual(0,paySplit.PayPlanChargeNum);
+			Assert.AreEqual(PayPlanDebitTypes.Unknown,paySplit.PayPlanDebitType);
+			Assert.AreEqual(10,paySplit.PayPlanNum);
+			Assert.IsFalse(PaySplitPayPlanAttach.ClearChargeForPrepayment(paySplit),"Nothing left to clear.");
+			PaySplit paySplitOrdinary=new PaySplit { PayPlanNum=10,PayPlanChargeNum=4,PayPlanDebitType=PayPlanDebitTypes.Principal };
+			Assert.IsFalse(PaySplitPayPlanAttach.ClearChargeForPrepayment(paySplitOrdinary));
+			Assert.AreEqual(4,paySplitOrdinary.PayPlanChargeNum,"Ordinary plan payments keep their charge.");
+			Assert.IsFalse(PaySplitPayPlanAttach.ClearChargeForPrepayment(null));
+		}
+
+		[TestMethod]
+		public void TypeChange_WithARealPlan_AttachThenPrepayThenBack() {
+			(Patient guarantor,Patient child)=CreateFamily("TypeChange");
+			Procedure procedure=BPayDb.CreateProcedure(child,ProcStat.C,300);
+			PayPlan payPlan=PayPlanT.CreateDynamicPaymentPlan(child.PatNum,guarantor.PatNum,DateTime.Today,0,0,50,new List<Procedure> { procedure },
+				new List<Adjustment>(),PayPlanFrequency.Monthly,runService:false,doInsertChargeForToday:true);
+			payPlan=PayPlans.GetOne(payPlan.PayPlanNum);
+			Func<List<PayPlanCharge>> funcGetCharges=() => PayPlanCharges.GetDueForPayPlan(payPlan,payPlan.Guarantor);
+			List<PayPlanCharge> listPayPlanChargesDue=funcGetCharges();
+			Assert.IsTrue(listPayPlanChargesDue.Any(x => x.ChargeType==PayPlanChargeType.Debit),"Set up: the plan has an issued charge due today.");
+			//"Attached to Payment Plan" ticked while the unearned type is None.
+			PaySplit paySplit=new PaySplit { PatNum=child.PatNum,PayPlanNum=payPlan.PayPlanNum,SplitAmt=50 };
+			paySplit.PayPlanChargeNum=PaySplitPayPlanAttach.GetPayPlanChargeNum(listPayPlanChargesDue,paySplit.UnearnedType,0,0);
+			long payPlanChargeNumDue=paySplit.PayPlanChargeNum;
+			Assert.AreNotEqual(0,payPlanChargeNumDue);
+			//Then the Payment Plan Prepay type is chosen.
+			paySplit.UnearnedType=_defNumPrepay;
+			PaySplitPayPlanAttach.SetPayPlanChargeAfterTypeChange(paySplit,0,funcGetCharges,0,0);
+			Assert.AreEqual(0,paySplit.PayPlanChargeNum,"The prepayment no longer pays the charge, so the money is not applied twice.");
+			Assert.AreEqual(payPlan.PayPlanNum,paySplit.PayPlanNum);
+			//And back to None.
+			paySplit.UnearnedType=0;
+			PaySplitPayPlanAttach.SetPayPlanChargeAfterTypeChange(paySplit,_defNumPrepay,funcGetCharges,0,0);
+			Assert.AreEqual(payPlanChargeNumDue,paySplit.PayPlanChargeNum);
+		}
+
+		[TestMethod]
 		public void AuditText_AddsThePayPlanNumber() {
 			Assert.AreEqual("",PaySplitPayPlanAttach.GetPayPlanLogText(0));
 			Assert.AreEqual(", payment plan #42",PaySplitPayPlanAttach.GetPayPlanLogText(42));

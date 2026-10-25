@@ -149,6 +149,7 @@ namespace OpenDental {
 		}
 
 		private void comboUnearnedTypes_SelectionChangeCommitted(object sender,EventArgs e) {
+			long unearnedTypeOld=PaySplitCur.UnearnedType;
 			if(comboUnearnedTypes.SelectedIndex>0) {
 				PaySplitCur.UnearnedType=comboUnearnedTypes.GetSelectedDefNum();
 			}
@@ -159,6 +160,8 @@ namespace OpenDental {
 			if(PaySplitCur.PayPlanNum!=0 && PaySplitPayPlanAttach.MustDetachForUnearnedType(PayPlans.GetOne(PaySplitCur.PayPlanNum),PaySplitCur.UnearnedType)) {
 				DetachPayPlan();
 			}
+			//B-PAY: a plan prepayment pays no charge, and a split that stops being one pays a due charge again.
+			PaySplitPayPlanAttach.SetPayPlanChargeAfterTypeChange(PaySplitCur,unearnedTypeOld,GetPayPlanChargesDue,_procedure?.ProcNum??0,_adjustment?.AdjNum??0);
 			if(_isEditAnyway || PrefC.GetBool(PrefName.AllowPrepayProvider)) {
 				return;
 			}
@@ -591,6 +594,15 @@ namespace OpenDental {
 				_procedure?.ProcNum??0,_adjustment?.AdjNum??0);
 		}
 
+		///<summary>B-PAY: the charges of the split's payment plan that are due (as AttachPayPlan gets them), or none when the plan is gone.</summary>
+		private List<PayPlanCharge> GetPayPlanChargesDue() {
+			PayPlan payPlan=PayPlans.GetOne(PaySplitCur.PayPlanNum);
+			if(payPlan==null) {
+				return new List<PayPlanCharge>();
+			}
+			return PayPlanCharges.GetDueForPayPlan(payPlan,payPlan.Guarantor);
+		}
+
 		private void checkPayPlan_Click(object sender, System.EventArgs e) {
 			if(!checkPayPlan.Checked) {
 				//The user manually unchecked 'Attached to Payment Plan'. Detach the split from the payment plan.
@@ -732,6 +744,8 @@ namespace OpenDental {
 					}
 				}
 			}
+			//B-PAY 25.2: the unearned type is final here. A plan prepayment never saves paying a charge (for example one kept from before the type change).
+			PaySplitPayPlanAttach.ClearChargeForPrepayment(PaySplitCur);
 			return true;
 		}
 
@@ -798,6 +812,7 @@ namespace OpenDental {
 			PaySplitCur.PayNum=_paySplitCopy.PayNum;
 			PaySplitCur.PayPlanNum=_paySplitCopy.PayPlanNum;
 			PaySplitCur.PayPlanChargeNum=_paySplitCopy.PayPlanChargeNum;//B-PAY: cancel also undoes the charge an attach picked
+			PaySplitCur.PayPlanDebitType=_paySplitCopy.PayPlanDebitType;//B-PAY: and the debit type a type change cleared
 			PaySplitCur.ProcDate=_paySplitCopy.ProcDate;
 			PaySplitCur.ProcNum=_paySplitCopy.ProcNum;
 			PaySplitCur.ProvNum=_paySplitCopy.ProvNum;
