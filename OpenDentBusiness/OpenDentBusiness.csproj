@@ -1533,6 +1533,7 @@
     <Compile Include="Data Interface\Mounts.cs" />
     <Compile Include="Data Interface\PatientNotes.cs" />
     <Compile Include="Data Interface\Patients.cs" />
+    <Compile Include="Data Interface\Patients.BirthdateAudit.cs" />
     <Compile Include="Data Interface\Providers.cs" />
     <Compile Include="Data Interface\Suppliers.cs" />
     <Compile Include="Data Interface\Supplies.cs" />
