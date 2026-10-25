@@ -540,6 +540,7 @@ namespace OpenDentBusiness{
 			//Delete Carriers===============================================================================================================
 			//Get all of the related carrier objects from the cache before they are deleted.
 			List<Carrier> listCarriersToCombine=GetCarriers(listCarrierNumsToCombine);
+			CarrierPreAuths.CombineCodes(pickedCarrierNum,listCarrierNumsToCombine,Security.CurUser.UserNum);//26.1: kept carrier gets the union of the preauth lists.
 			//Delete all of the carriers from the database that were just combined into the picked carrier.
 			command=$"DELETE FROM carrier WHERE CarrierNum IN({strCarrierNums})";
 			Db.NonQ(command);

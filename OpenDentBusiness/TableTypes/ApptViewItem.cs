@@ -152,7 +152,10 @@ namespace OpenDentBusiness {
 		[Description("VerifyIns[V]")]
 		VerifyIns_V,
 		WirelessPhone,
-		WkPhone
+		WkPhone,
+		///<summary>Open Dental 26.1: a short "PreAuth" tag when the appointment holds a treatment-planned procedure that one of the patient's carriers
+		///wants preauthorized and that has no preauthorization yet (carrier.PreAuthCodes). Added last so the earlier members keep their numbers.</summary>
+		PreAuthFlag
 	}
 	
 }

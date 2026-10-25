@@ -498,6 +498,7 @@
     <Compile Include="Data Interface\EntryLogs.cs" />
     <Compile Include="Data Interface\Etrans835Attaches.cs" />
     <Compile Include="Data Interface\InsEditPatLogs.cs" />
+    <Compile Include="Data Interface\InsEditLogBigValues.cs" />
     <Compile Include="Data Interface\FeeSchedGroups.cs" />
     <Compile Include="Data Interface\FeeSchedNotes.cs" />
     <Compile Include="Eclaims\EdsMedical.cs" />
@@ -1416,6 +1417,7 @@
     <Compile Include="Data Interface\Benefits.cs" />
     <Compile Include="Data Interface\CanadianNetworks.cs" />
     <Compile Include="Data Interface\Carriers.cs" />
+    <Compile Include="Data Interface\CarrierPreAuths.cs" />
     <Compile Include="Data Interface\ClaimAttaches.cs" />
     <Compile Include="Data Interface\ClaimCondCodeLogs.cs" />
     <Compile Include="Data Interface\ClaimFormItems.cs" />
@@ -1571,6 +1573,7 @@
     <Compile Include="Logic\aaLogic.cs" />
     <Compile Include="Db Multi Table\AccountModules.cs" />
     <Compile Include="Data Interface\Appointments.cs" />
+    <Compile Include="Data Interface\Appointments.PreAuth.cs" />
     <Compile Include="Logic\BenefitLogic.cs" />
     <Compile Include="Db Multi Table\ChartModules.cs" />
     <Compile Include="Db\DataCore.cs" />
