@@ -18,7 +18,8 @@ namespace OpenDentBusiness {
 	///after saving.</para>
 	///<para>Write delay for signals (ForkReplicationSignalLookbackMs). When a workstation checks for cache-refresh signals (signalod), it looks back
 	///this many milliseconds before its last check, so a signal that reaches its replica late (daisy-chain replication) is not missed. Signals it
-	///already processed are filtered out, so nothing is processed twice.</para>
+	///already processed are filtered out, so nothing is processed twice (unless the server clock goes back, as in 24.3), and its own signals are
+	///never returned by the look-back (see SignalLookbackFilter).</para>
 	///<para>Both range from 0 to 60000 ms. 0 (the default) keeps the 24.3 behavior. Both are ignored when no read-only server is configured and no
 	///replication servers are defined.</para></summary>
 	public static class ReplicationDelay {
@@ -166,21 +167,58 @@ namespace OpenDentBusiness {
 				return 0;
 			}
 		}
+
+		///<summary>Called by Signalods.Insert after this process inserted a single signal. Remembers it as this workstation's own, so the look-back
+		///never returns it (see SignalLookbackFilter). A Middle Tier server inserts for its clients, which remember their own, so it remembers
+		///nothing. Never throws.</summary>
+		public static void NoteOwnSignal(long signalNum) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ServerMT) {
+				return;
+			}
+			_signalLookbackFilter.NoteOwnSignal(signalNum);
+		}
 		#endregion Write delay for signals
 	}
 
 	///<summary>Look-back for signal checks. Each caller of Signalods.RefreshTimed polls its own stream of signals, told apart by its type filters (the
 	///high-priority types, every other type, the appointment types). Per stream this keeps the time of the first check made with a look-back (the
-	///floor, so a workstation never processes signals from before it started looking back) and the signals already returned, so looked-back
-	///signals are never processed twice. Thread-safe.</summary>
+	///floor, so a workstation never processes signals from before it started looking back), the signals already returned, and the time through
+	///which it has forgotten them (the forgotten mark: a later check never starts before it, so a forgotten signal cannot come back even when the
+	///caller's time moves back). So looked-back signals are never processed twice. It also remembers the signals this workstation inserted: they
+	///reach the server it reads at once, so they are never late, and the look-back never returns one the 24.3 check would not have returned (the
+	///workstation that sends "Shutdown all workstations" skips its own signal, as in 24.3). Thread-safe.</summary>
 	public class SignalLookbackFilter {
+		///<summary>How long this workstation's own signals are remembered, in milliseconds of the monotonic clock: ten times the longest look-back,
+		///so a slow or paused signal timer still recognizes them.</summary>
+		public const long OWN_SIGNAL_KEEP_MS=10L*ReplicationDelay.MAX_DELAY_MS;
+		///<summary>At most this many own signals are remembered; the oldest are forgotten first.</summary>
+		public const int OWN_SIGNAL_MAX_COUNT=10000;
+		///<summary>A caller's time more than this many milliseconds before its stream's forgotten mark means the server clock went back or the
+		///caller started over, and the stream starts over too (see GetQuerySince). Moves back caused by late signals stay well inside it.</summary>
+		public const int RESTART_GAP_MS=ReplicationDelay.MAX_DELAY_MS;
 		private readonly object _lock=new object();
 		private readonly Dictionary<string,StreamState> _dictStreams=new Dictionary<string,StreamState>();
+		private readonly Func<long> _funcGetNowMs;
+		///<summary>SignalNums this workstation inserted, and the same in the order noted (monotonic time, SignalNum) for forgetting them.</summary>
+		private readonly HashSet<long> _hashSetOwnSignalNums=new HashSet<long>();
+		private readonly Queue<KeyValuePair<long,long>> _queueOwnSignals=new Queue<KeyValuePair<long,long>>();
 
 		private class StreamState {
 			public DateTime DateTFloor;
+			///<summary>The latest time this stream forgot signals through (every signal at or before it was dropped from DictSeen). Only moves
+			///forward. MinValue until the first Filter.</summary>
+			public DateTime DateTForgotten=DateTime.MinValue;
 			///<summary>SignalNum to SigDateTime of the signals already returned by a look-back check.</summary>
 			public Dictionary<long,DateTime> DictSeen=new Dictionary<long,DateTime>();
+		}
+
+		///<summary>Uses ReplicationDelay.FuncGetNowMs as its clock.</summary>
+		public SignalLookbackFilter() : this(() => ReplicationDelay.FuncGetNowMs()) {
+		}
+
+		///<summary>funcGetNowMs is the monotonic clock, in milliseconds, used to forget this workstation's own signals. For tests.</summary>
+		public SignalLookbackFilter(Func<long> funcGetNowMs) {
+			_funcGetNowMs=funcGetNowMs;
 		}
 
 		///<summary>The key of the stream a RefreshTimed call belongs to, from its type filters.</summary>
@@ -191,14 +229,26 @@ namespace OpenDentBusiness {
 		}
 
 		///<summary>The time to check for signals after. With no look-back this is dateTSince, and the stream's state is dropped. Otherwise it is
-		///dateTSince less the look-back, cut to whole seconds (signalod.SigDateTime has no fractions), but never earlier than the stream's floor.</summary>
+		///dateTSince less the look-back, cut to whole seconds (signalod.SigDateTime has no fractions), but never earlier than the stream's floor or
+		///its forgotten mark.
+		///<para>The caller's time can move back: FormOpenDental sets the next regular check's time to the newest signal returned, and a late signal is
+		///older than the last check. The forgotten mark keeps such a check from returning a signal a second time, and it loses no late signal: every
+		///signal at or before the mark was already outside an earlier check's look-back window.</para>
+		///<para>When the caller's time is more than RESTART_GAP_MS before the mark, the server clock went back (daylight saving time ended) or the
+		///caller started over. The stream then starts over, as on its first check, so it does not stay blind until the clock catches up. As in 24.3,
+		///the checks after a clock change can return signals already processed.</para></summary>
 		public DateTime GetQuerySince(string streamKey,DateTime dateTSince,int lookbackMs) {
 			lock(_lock) {
 				if(lookbackMs<=0) {
 					_dictStreams.Remove(streamKey);
 					return dateTSince;
 				}
-				if(!_dictStreams.TryGetValue(streamKey,out StreamState streamState)) {
+				if(_dictStreams.TryGetValue(streamKey,out StreamState streamState) && streamState.DateTForgotten!=DateTime.MinValue
+					&& dateTSince<SubtractMs(streamState.DateTForgotten,RESTART_GAP_MS))
+				{
+					streamState=null;//Start over.
+				}
+				if(streamState==null) {
 					streamState=new StreamState();
 					streamState.DateTFloor=dateTSince;
 					_dictStreams[streamKey]=streamState;
@@ -206,18 +256,32 @@ namespace OpenDentBusiness {
 				if(dateTSince<streamState.DateTFloor) {
 					streamState.DateTFloor=dateTSince;//The caller moved back on purpose; follow it.
 				}
-				DateTime dateTQuery=dateTSince.AddMilliseconds(-lookbackMs);
+				DateTime dateTQuery=SubtractMs(dateTSince,lookbackMs);
 				dateTQuery=new DateTime(dateTQuery.Ticks-(dateTQuery.Ticks%TimeSpan.TicksPerSecond),dateTQuery.Kind);
 				if(dateTQuery<streamState.DateTFloor) {
 					dateTQuery=streamState.DateTFloor;
+				}
+				if(dateTQuery<streamState.DateTForgotten) {
+					dateTQuery=streamState.DateTForgotten;//Never reach back into what this stream already forgot.
 				}
 				return dateTQuery;
 			}
 		}
 
-		///<summary>Removes the signals this stream already returned and remembers the rest. Forgets signals at or before dateTQuery, which a check
-		///after dateTQuery can never return again. With no look-back the list is returned as is.</summary>
-		public List<Signalod> Filter(string streamKey,List<Signalod> listSignalods,DateTime dateTQuery,int lookbackMs) {
+		///<summary>dateT less ms milliseconds, or MinValue when that would be before it.</summary>
+		private static DateTime SubtractMs(DateTime dateT,long ms) {
+			long ticks=ms*TimeSpan.TicksPerMillisecond;
+			if(dateT.Ticks<ticks) {
+				return DateTime.MinValue;
+			}
+			return new DateTime(dateT.Ticks-ticks,dateT.Kind);
+		}
+
+		///<summary>Removes the signals this stream already returned, and this workstation's own signals that only the look-back returned (at or
+		///before dateTSince, the caller's time, so the 24.3 check would not have returned them), and remembers the rest. Then forgets the signals at
+		///or before dateTQuery (the time GetQuerySince returned) and moves the stream's forgotten mark there; GetQuerySince never starts a later check
+		///before the mark, so a forgotten signal is never returned again. With no look-back the list is returned as is.</summary>
+		public List<Signalod> Filter(string streamKey,List<Signalod> listSignalods,DateTime dateTSince,DateTime dateTQuery,int lookbackMs) {
 			if(lookbackMs<=0 || listSignalods==null) {
 				return listSignalods;
 			}
@@ -225,10 +289,14 @@ namespace OpenDentBusiness {
 				if(!_dictStreams.TryGetValue(streamKey,out StreamState streamState)) {
 					return listSignalods;
 				}
+				ForgetOldOwnSignals();
 				List<Signalod> listNew=new List<Signalod>();
 				for(int i=0;i<listSignalods.Count;i++) {
 					if(streamState.DictSeen.ContainsKey(listSignalods[i].SignalNum)) {
 						continue;
+					}
+					if(listSignalods[i].SigDateTime<=dateTSince && _hashSetOwnSignalNums.Contains(listSignalods[i].SignalNum)) {
+						continue;//Own signal, never late, returned only by the look-back.
 					}
 					streamState.DictSeen[listSignalods[i].SignalNum]=listSignalods[i].SigDateTime;
 					listNew.Add(listSignalods[i]);
@@ -237,7 +305,53 @@ namespace OpenDentBusiness {
 				for(int i=0;i<listSignalNumsOld.Count;i++) {
 					streamState.DictSeen.Remove(listSignalNumsOld[i]);
 				}
+				if(dateTQuery>streamState.DateTForgotten) {
+					streamState.DateTForgotten=dateTQuery;
+				}
 				return listNew;
+			}
+		}
+
+		///<summary>Remembers a signal this workstation inserted. Never throws.</summary>
+		public void NoteOwnSignal(long signalNum) {
+			if(signalNum<=0) {
+				return;
+			}
+			try {
+				long msNow=_funcGetNowMs();
+				lock(_lock) {
+					ForgetOldOwnSignals();
+					if(_hashSetOwnSignalNums.Add(signalNum)) {
+						_queueOwnSignals.Enqueue(new KeyValuePair<long,long>(msNow,signalNum));
+					}
+					while(_queueOwnSignals.Count>OWN_SIGNAL_MAX_COUNT) {
+						_hashSetOwnSignalNums.Remove(_queueOwnSignals.Dequeue().Value);
+					}
+				}
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+			}
+		}
+
+		///<summary>Forgets own signals noted more than OWN_SIGNAL_KEEP_MS ago. Call inside the lock. Never throws.</summary>
+		private void ForgetOldOwnSignals() {
+			if(_queueOwnSignals.Count==0) {
+				return;
+			}
+			long msNow;
+			try {
+				msNow=_funcGetNowMs();
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+				return;
+			}
+			while(_queueOwnSignals.Count>0) {
+				if(msNow-_queueOwnSignals.Peek().Key<=OWN_SIGNAL_KEEP_MS) {
+					break;
+				}
+				_hashSetOwnSignalNums.Remove(_queueOwnSignals.Dequeue().Value);
 			}
 		}
 
@@ -251,10 +365,20 @@ namespace OpenDentBusiness {
 			}
 		}
 
-		///<summary>Drops every stream. For tests.</summary>
+		///<summary>Number of own signals remembered. For tests.</summary>
+		public int GetCountOwn() {
+			lock(_lock) {
+				ForgetOldOwnSignals();
+				return _hashSetOwnSignalNums.Count;
+			}
+		}
+
+		///<summary>Drops every stream and every own signal. For tests.</summary>
 		public void Clear() {
 			lock(_lock) {
 				_dictStreams.Clear();
+				_hashSetOwnSignalNums.Clear();
+				_queueOwnSignals.Clear();
 			}
 		}
 	}

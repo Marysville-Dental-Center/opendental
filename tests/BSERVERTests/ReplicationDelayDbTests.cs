@@ -170,9 +170,9 @@ namespace BSERVERTests {
 		}
 
 		///<summary>Inserts a signal straight into the main database with the given server time.</summary>
-		private static void InsertSignal(long signalNum,DateTime dateTSig) {
+		private static void InsertSignal(long signalNum,DateTime dateTSig,InvalidType invalidType=InvalidType.Print) {
 			ServerTestDb.Seed(_dbPrimary,"INSERT INTO signalod (SignalNum,IType,SigDateTime,FKeyType,DateViewing) VALUES ("+signalNum+","
-				+(int)InvalidType.Print+",'"+dateTSig.ToString("yyyy-MM-dd HH:mm:ss")+"','Undefined','0001-01-01')");
+				+(int)invalidType+",'"+dateTSig.ToString("yyyy-MM-dd HH:mm:ss")+"','Undefined','0001-01-01')");
 		}
 
 		private static DateTime GetServerNow() {
@@ -216,6 +216,50 @@ namespace BSERVERTests {
 			Assert.AreEqual(0,ReplicationDelay.GetEffectiveSignalLookbackMs());
 			List<long> listSecond=RunLateSignalScenario(out List<long> listThird);
 			Assert.AreEqual(0,listSecond.Count);
+		}
+
+		[TestMethod]
+		public void SignalWriteDelay_ShutdownAllWorkstations_SenderDoesNotShutItselfDown() {
+			ServerTestDb.Seed(_dbPrimary,"INSERT INTO replicationserver (ReplicationServerNum,Descript,ServerId) VALUES (1,'Synthetic server',1)",
+				"INSERT INTO preference (PrefName,ValueString) VALUES ('RandomPrimaryKeys','0')");
+			Prefs.RefreshCache();
+			ReplicationServers.RefreshCache();
+			ReplicationDelay.SaveSettings(0,10000);
+			Assert.AreEqual(10000,ReplicationDelay.GetEffectiveSignalLookbackMs());
+			List<InvalidType> listTypesHigh=new List<InvalidType> { InvalidType.ShutDownNow,InvalidType.ActiveInstance,InvalidType.Print };
+			DateTime dateTNow=GetServerNow();
+			//The workstation has checked the high-priority signals since it started, a minute ago.
+			Assert.AreEqual(0,Signalods.RefreshTimed(dateTNow.AddSeconds(-60),listTypesHigh).Count);
+			//Shutdown all workstations, as FormOpenDental.menuItemShutdown_Click does it: skip the next 5 seconds, then insert the signal.
+			DateTime dateTSkip=dateTNow.AddSeconds(5);
+			long signalNumOwn=Signalods.Insert(new Signalod { IType=InvalidType.ShutDownNow });
+			Assert.IsTrue(signalNumOwn>0);
+			//RefreshTimed reads only signals older than the server's current second. Date the row a second back so this check can already see it.
+			ServerTestDb.Seed(_dbPrimary,"UPDATE signalod SET SigDateTime='"+dateTNow.AddSeconds(-1).ToString("yyyy-MM-dd HH:mm:ss")+"' "
+				+"WHERE SignalNum="+signalNumOwn);
+			//Another workstation's signal from the same moment, to show that the look-back reaches back over the shutdown signal.
+			long signalNumOther=signalNumOwn+1000;
+			InsertSignal(signalNumOther,dateTNow.AddSeconds(-2));
+			List<Signalod> listFirst=Signalods.RefreshTimed(dateTSkip,listTypesHigh);
+			CollectionAssert.AreEqual(new long[] { signalNumOther },listFirst.Select(x => x.SignalNum).ToList(),
+				"The look-back finds the other workstation's signal, but never this workstation's own shutdown signal.");
+			//The next poll checks since the time the previous poll started.
+			List<Signalod> listSecond=Signalods.RefreshTimed(dateTNow,listTypesHigh);
+			Assert.IsFalse(listSecond.Exists(x => x.IType==InvalidType.ShutDownNow),"The workstation that sent the shutdown must not shut down.");
+			Assert.AreEqual(0,listSecond.Count);
+		}
+
+		[TestMethod]
+		public void SignalWriteDelay_OtherWorkstationsShutdownSignal_IsFoundOnce() {
+			ServerTestDb.Seed(_dbPrimary,"INSERT INTO replicationserver (ReplicationServerNum,Descript,ServerId) VALUES (1,'Synthetic server',1)");
+			ReplicationServers.RefreshCache();
+			ReplicationDelay.SaveSettings(0,10000);
+			List<InvalidType> listTypesHigh=new List<InvalidType> { InvalidType.ShutDownNow,InvalidType.ActiveInstance,InvalidType.Print };
+			DateTime dateTNow=GetServerNow();
+			Assert.AreEqual(0,Signalods.RefreshTimed(dateTNow.AddSeconds(-60),listTypesHigh).Count);
+			InsertSignal(77,dateTNow.AddSeconds(-3),InvalidType.ShutDownNow);//Reached this database late.
+			CollectionAssert.AreEqual(new long[] { 77 },Signalods.RefreshTimed(dateTNow,listTypesHigh).Select(x => x.SignalNum).ToList());
+			Assert.AreEqual(0,Signalods.RefreshTimed(dateTNow.AddSeconds(1),listTypesHigh).Count);
 		}
 
 		[TestMethod]

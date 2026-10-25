@@ -65,7 +65,7 @@ namespace OpenDentBusiness {
 			DateTime dateTSinceQuery=ReplicationDelay.SignalLookback.GetQuerySince(streamKey,dateTSince,lookbackMs);
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				List<Signalod> listSignalodsMT=Meth.GetObject<List<Signalod>>(MethodBase.GetCurrentMethod(),dateTSinceQuery,listInvalidTypes,listInvalidTypesExclude);
-				return ReplicationDelay.SignalLookback.Filter(streamKey,listSignalodsMT,dateTSinceQuery,lookbackMs);
+				return ReplicationDelay.SignalLookback.Filter(streamKey,listSignalodsMT,dateTSince,dateTSinceQuery,lookbackMs);
 			}
 			//This command was written to take into account the fact that MySQL truncates seconds to the the whole second on DateTime columns. (newer versions support fractional seconds)
 			//By selecting signals less than Now() we avoid missing signals the next time this function is called. Without the addition of Now() it was possible
@@ -90,7 +90,7 @@ namespace OpenDentBusiness {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ServerMT) {
 				ProcessSignalsForServerMT(listSignalods);
 			}
-			return ReplicationDelay.SignalLookback.Filter(streamKey,listSignalods,dateTSinceQuery,lookbackMs);
+			return ReplicationDelay.SignalLookback.Filter(streamKey,listSignalods,dateTSince,dateTSinceQuery,lookbackMs);
 		}
 
 		///<summary>ServerMT instances keep track of every SignalNum they have processed and will only process new signals that are passed in.</summary>
@@ -196,6 +196,7 @@ namespace OpenDentBusiness {
 				ReplicationDelay.NoteWrite();
 				if(signalodArray.Length==1) {
 					signalodArray[0].SignalNum=signalNum;
+					ReplicationDelay.NoteOwnSignal(signalNum);//B-SERVER: the signal look-back never returns this workstation's own signals.
 				}
 				return signalNum;
 			}
@@ -203,7 +204,9 @@ namespace OpenDentBusiness {
 				signalodArray[i].RemoteRole=RemotingClient.MiddleTierRole;
 			}
 			if(signalodArray.Length==1) {
-				return Crud.SignalodCrud.Insert(signalodArray[0]);
+				long signalNumInserted=Crud.SignalodCrud.Insert(signalodArray[0]);
+				ReplicationDelay.NoteOwnSignal(signalNumInserted);//B-SERVER: the signal look-back never returns this workstation's own signals.
+				return signalNumInserted;
 			}
 			Crud.SignalodCrud.InsertMany(signalodArray.ToList());
 			return 0;
