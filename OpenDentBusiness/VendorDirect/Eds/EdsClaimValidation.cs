@@ -155,11 +155,10 @@ namespace OpenDentBusiness.VendorDirect.Eds {
 		///<summary>The first step of Validate: the local checks, and what the format validators put in queueItem's Missing Info as one error row.
 		///Never calls EDS and never throws. Sets RemoteNote when EDS will not be asked. The result is kept as the claim's last validation.</summary>
 		public static EdsValidationResult ValidateLocal(Claim claim,Clearinghouse clearinghouseClin,ClaimSendQueueItem queueItem) {
-			EdsValidationResult result=MakeResult(claim);
 			if(claim==null) {
-				result.SkippedReason=Lans.g("EDS","The claim has been deleted.");
-				return result;
+				return MakeNotSendableResult(null,queueItem?.ClaimNum??0,Lans.g("EDS","The claim has been deleted."));
 			}
+			EdsValidationResult result=MakeResult(claim);
 			if(!IsEds(clearinghouseClin)) {
 				result.SkippedReason=Lans.g("EDS","The claim does not go to EDS.");
 				return result;
@@ -254,8 +253,12 @@ namespace OpenDentBusiness.VendorDirect.Eds {
 		}
 
 		///<summary>Validates a claim again, by ClaimNum, reading its queue item and clearinghouse afresh: hqClearinghouseNumOverride when not 0 (the
-		///Send Claims window's clearinghouse list), otherwise the claim's own. Used by the validation window's Re-validate. Never throws.</summary>
-		public static EdsValidationResult ValidateClaimNum(long claimNum,long hqClearinghouseNumOverride,TimeSpan timeout) {
+		///Send Claims window's clearinghouse list), otherwise the claim's own. Used by the validation window's Re-validate. Never throws.
+		///A deleted claim gets a result that cannot be sent (IsNotSendable). isWaitingToSendRequired is true when re-validating for the Send Claims
+		///window, whose batch sends only claims waiting to send (W or P): a claim sent, received or held since it was selected (for example from
+		///Edit Claim opened in the validation window) also gets a result that cannot be sent. Edit Claim's own Send passes false, since it may
+		///resend a sent claim on purpose.</summary>
+		public static EdsValidationResult ValidateClaimNum(long claimNum,long hqClearinghouseNumOverride,TimeSpan timeout,bool isWaitingToSendRequired=false) {
 			Claim claim;
 			try {
 				claim=Claims.GetClaim(claimNum);
@@ -267,10 +270,11 @@ namespace OpenDentBusiness.VendorDirect.Eds {
 				return resultFailed;
 			}
 			if(claim==null) {
-				EdsValidationResult resultMissing=new EdsValidationResult();
-				resultMissing.ClaimNum=claimNum;
-				resultMissing.SkippedReason=Lans.g("EDS","The claim has been deleted.");
-				return resultMissing;
+				return MakeNotSendableResult(null,claimNum,Lans.g("EDS","The claim has been deleted."));
+			}
+			if(isWaitingToSendRequired && !IsWaitingToSend(claim)) {
+				return MakeNotSendableResult(claim,claimNum,Lans.g("EDS","The claim is no longer waiting to send. Its status is now:")+" "
+					+GetClaimStatusText(claim.ClaimStatus)+".");
 			}
 			Clearinghouse clearinghouseClin;
 			ClaimSendQueueItem queueItem;
@@ -290,6 +294,45 @@ namespace OpenDentBusiness.VendorDirect.Eds {
 				return resultFailed;
 			}
 			return Validate(claim,clearinghouseClin,queueItem,timeout,true);
+		}
+
+		///<summary>A result for a claim that must not be sent (see EdsValidationResult.NotSendableReason): one error row that says why, so the
+		///validation window lists it, and GetSendDecision is Block. claim is null for a deleted claim. Not kept as the claim's last validation.</summary>
+		public static EdsValidationResult MakeNotSendableResult(Claim claim,long claimNum,string reason) {
+			EdsValidationResult result=MakeResult(claim);
+			result.ClaimNum=claimNum;
+			result.NotSendableReason=reason;
+			result.ListIssues.Add(EdsClaimChecks.MakeLocal(EdsIssueSeverity.Error,EdsClaimChecks.CHECK_CLAIM_NOT_SENDABLE,Lans.g("EDS","Claim"),reason,
+				Lans.g("EDS","Nothing is sent for this claim from here. Refresh the Send Claims window.")));
+			result.DateTimeValidated=DateTime_.Now;
+			return result;
+		}
+
+		///<summary>True when the claim is in the Send Claims queue: it exists and is waiting to send (W) or probably sent (P), the statuses the
+		///Send Claims window lists.</summary>
+		public static bool IsWaitingToSend(Claim claim) {
+			return claim!=null && (claim.ClaimStatus=="W" || claim.ClaimStatus=="P");
+		}
+
+		///<summary>The claim status letter as its description, like "Sent - Verified".</summary>
+		private static string GetClaimStatusText(string claimStatus) {
+			foreach(ClaimStatus status in Enum.GetValues(typeof(ClaimStatus))) {
+				if(status.GetDescription(useShortVersionIfAvailable:true)==claimStatus) {
+					return Lans.g("enumClaimStatus",status.GetDescription());
+				}
+			}
+			return claimStatus??"";
+		}
+
+		///<summary>Of listClaimNums, the claims that were deleted or are no longer waiting to send (IsWaitingToSend), read from the database now.
+		///</summary>
+		public static List<long> GetClaimNumsNotWaitingToSend(List<long> listClaimNums) {
+			if(listClaimNums.IsNullOrEmpty()) {
+				return new List<long>();
+			}
+			List<long> listClaimNumsDistinct=listClaimNums.Distinct().ToList();
+			List<long> listClaimNumsWaiting=Claims.GetClaimsFromClaimNums(listClaimNumsDistinct).FindAll(x => IsWaitingToSend(x)).Select(x => x.ClaimNum).ToList();
+			return listClaimNumsDistinct.FindAll(x => !listClaimNumsWaiting.Contains(x));
 		}
 
 		///<summary>The header fields of a result, read from the database. Never throws.</summary>
@@ -320,6 +363,9 @@ namespace OpenDentBusiness.VendorDirect.Eds {
 
 		#region Decisions
 		public static EdsSendDecision GetSendDecision(EdsValidationResult result) {
+			if(result!=null && result.IsNotSendable) {
+				return EdsSendDecision.Block;//Deleted, or no longer waiting to send: never sent, not even with Send Anyway.
+			}
 			if(result==null || result.IsSkipped) {
 				return EdsSendDecision.Send;
 			}
@@ -348,6 +394,15 @@ namespace OpenDentBusiness.VendorDirect.Eds {
 				}
 			}
 			return listClaimNums;
+		}
+
+		///<summary>The claims of a batch send from the Send Claims window that go out once the validation window has closed: GetClaimNumsToSend, less
+		///every claim that was deleted or is no longer waiting to send (read from the database now). While the window was open, the user could
+		///send, delete or hold a claim in Edit Claim, and another workstation could too; such a claim is never sent again from the batch.</summary>
+		public static List<long> GetClaimNumsToSendForBatch(List<EdsValidationResult> listResults,bool isSendAnywayConfirmed) {
+			List<long> listClaimNums=GetClaimNumsToSend(listResults,isSendAnywayConfirmed);
+			List<long> listClaimNumsNotWaiting=GetClaimNumsNotWaitingToSend(listClaimNums);
+			return listClaimNums.FindAll(x => !listClaimNumsNotWaiting.Contains(x));
 		}
 
 		///<summary>The list the window shows after a re-validation: every problem in listIssuesLatest (unresolved), then every problem from
@@ -379,6 +434,16 @@ namespace OpenDentBusiness.VendorDirect.Eds {
 				return resultLatest??resultPrevious;
 			}
 			if(resultLatest.IsSkipped) {
+				return resultLatest;
+			}
+			if(resultLatest.IsNotSendable) {
+				//The earlier problems no longer matter, and must not show as resolved. Keep the claim's header so the batch window still names it.
+				if(string.IsNullOrEmpty(resultLatest.PatientName)) {
+					resultLatest.PatNum=resultPrevious.PatNum;
+					resultLatest.PatientName=resultPrevious.PatientName;
+					resultLatest.DateService=resultPrevious.DateService;
+					resultLatest.CarrierName=resultPrevious.CarrierName;
+				}
 				return resultLatest;
 			}
 			List<EdsValidationIssue> listIssuesPrevious=resultPrevious.ListIssues;
@@ -446,9 +511,9 @@ namespace OpenDentBusiness.VendorDirect.Eds {
 			return null;
 		}
 
-		///<summary>Keeps result as its claim's last validation. Skipped results are not kept.</summary>
+		///<summary>Keeps result as its claim's last validation. Skipped and not-sendable results are not kept.</summary>
 		public static void SetLastResult(EdsValidationResult result) {
-			if(result==null || result.ClaimNum==0 || result.IsSkipped) {
+			if(result==null || result.ClaimNum==0 || result.IsSkipped || result.IsNotSendable) {
 				return;
 			}
 			_dictLastResults[result.ClaimNum]=result.Copy();

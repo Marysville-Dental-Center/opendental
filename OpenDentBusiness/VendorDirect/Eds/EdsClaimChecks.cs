@@ -26,6 +26,9 @@ namespace OpenDentBusiness.VendorDirect.Eds {
 		public const string CHECK_ATTACHMENT_REQUIRED="AttachmentRequired";
 		public const string CHECK_NARRATIVE_REQUIRED="NarrativeRequired";
 		public const string CHECK_OTHER_MISSING_DATA="ClaimMissingData";
+		///<summary>The claim was deleted, or (re-validated from the Send Claims window) is no longer waiting to send. See
+		///EdsValidationResult.NotSendableReason.</summary>
+		public const string CHECK_CLAIM_NOT_SENDABLE="ClaimNotSendable";
 
 		#region NPI and taxonomy
 		///<summary>True when npi is 10 digits, optionally after the 80840 prefix, and its last digit is the check digit of CMS's published NPI rule

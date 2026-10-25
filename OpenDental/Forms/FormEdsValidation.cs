@@ -165,6 +165,7 @@ namespace OpenDental {
 			Claim claim=Claims.GetClaim(result.ClaimNum);
 			if(claim==null) {
 				MsgBox.Show(this,"The claim has been deleted.");
+				Revalidate(new List<EdsValidationResult> { result });//Lists it as a claim that cannot be sent.
 				return;
 			}
 			using FormClaimEdit formClaimEdit=new FormClaimEdit(claim,Patients.GetPat(claim.PatNum),Patients.GetFamily(claim.PatNum));
@@ -176,15 +177,17 @@ namespace OpenDental {
 			Revalidate(_listResults.ToList());
 		}
 
-		///<summary>Validates the given claims again and merges each result into the list, so problems that went away show as resolved.</summary>
+		///<summary>Validates the given claims again and merges each result into the list, so problems that went away show as resolved. From the Send
+		///Claims window, a claim that was sent, deleted or held in the meantime (Edit Claim) gets a result that cannot be sent.</summary>
 		private void Revalidate(List<EdsValidationResult> listResultsToRevalidate) {
 			Dictionary<long,EdsValidationResult> dictResultsLatest=new Dictionary<long,EdsValidationResult>();
+			bool isWaitingToSendRequired=_openedFrom==EnumOpenedFrom.ClaimsSend;
 			ProgressWin progressWin=new ProgressWin();
 			progressWin.StartingMessage=Lan.g(this,"Validating with EDS...");
 			progressWin.ActionMain=() => {
 				for(int i=0;i<listResultsToRevalidate.Count;i++) {
 					dictResultsLatest[listResultsToRevalidate[i].ClaimNum]=EdsClaimValidation.ValidateClaimNum(listResultsToRevalidate[i].ClaimNum,
-						_hqClearinghouseNumOverride,EDS.TimeoutValidateOnSend);
+						_hqClearinghouseNumOverride,EDS.TimeoutValidateOnSend,isWaitingToSendRequired);
 				}
 			};
 			try {
@@ -206,7 +209,7 @@ namespace OpenDental {
 		}
 
 		private void butSend_Click(object sender,EventArgs e) {
-			if(_listResults.Any(x => EdsClaimValidation.GetSendDecision(x)==EdsSendDecision.Block)) {
+			if(_listResults.Any(x => EdsClaimValidation.GetSendDecision(x)==EdsSendDecision.Block && !x.IsNotSendable)) {
 				if(!MsgBox.Show(this,MsgBoxButtons.OKCancel,"Claims with errors stay in the queue. Send the claims that have only warnings?")) {
 					return;
 				}

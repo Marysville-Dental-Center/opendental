@@ -26,7 +26,8 @@ namespace OpenDentBusiness.VendorDirect.Eds {
 		Send,
 		///<summary>Warnings only: the user may send after confirming.</summary>
 		ConfirmWarnings,
-		///<summary>At least one error: the claim stays in the queue unsent.</summary>
+		///<summary>At least one error: the claim stays in the queue unsent. Also a claim that can no longer be sent (EdsValidationResult.IsNotSendable).
+		///</summary>
 		Block,
 		///<summary>EDS could not be reached and nothing else is wrong: the user is warned and chooses to send or cancel. Never blocks silently.</summary>
 		ConfirmUnreachable,
@@ -72,6 +73,10 @@ namespace OpenDentBusiness.VendorDirect.Eds {
 		///<summary>Set when the claim was not validated at all (not an EDS claim, a claim type EDS does not validate). Such a claim is sent as before.
 		///</summary>
 		public string SkippedReason="";
+		///<summary>Set when the claim must not be sent: it was deleted, or, re-validated for the Send Claims window, it is no longer waiting to send
+		///(sent, received or put on hold, for example from Edit Claim opened in the validation window). Such a result is never sent, whatever else
+		///it says, and is not kept as the claim's last validation.</summary>
+		public string NotSendableReason="";
 		///<summary>Set when the local checks ran but EDS was not asked: the EDS attachment service is off, the credentials are blank, or local errors
 		///must be fixed first. Informational only.</summary>
 		public string RemoteNote="";
@@ -87,6 +92,12 @@ namespace OpenDentBusiness.VendorDirect.Eds {
 		public bool IsSkipped {
 			get {
 				return !string.IsNullOrEmpty(SkippedReason);
+			}
+		}
+
+		public bool IsNotSendable {
+			get {
+				return !string.IsNullOrEmpty(NotSendableReason);
 			}
 		}
 

@@ -74,6 +74,9 @@ namespace OpenDental {
 			public List<long> ListClaimNumsValidated=new List<long>();
 			///<summary>Of those, the claims that may be sent.</summary>
 			public List<long> ListClaimNumsAllowed=new List<long>();
+			///<summary>Claims that go to EDS and were deleted, or are no longer waiting to send, since the Send Claims window read them: sent, deleted or
+			///held from Edit Claim opened in the validation window, or by another workstation. They are never sent from this batch.</summary>
+			public List<long> ListClaimNumsNotWaiting=new List<long>();
 		}
 
 		///<summary>Before the Send Claims window sends the selected claims. Validates every electronic claim that goes to EDS (the hqClearinghouseNum the
@@ -96,8 +99,12 @@ namespace OpenDental {
 					continue;
 				}
 				Claim claim=Claims.GetClaim(claimSendQueueItem.ClaimNum);
-				if(claim==null || !EdsClaimValidation.ShouldValidate(claim)) {
-					continue;//A deleted claim is reported when sending.
+				if(!EdsClaimValidation.IsWaitingToSend(claim)) {
+					batchOutcome.ListClaimNumsNotWaiting.Add(claimSendQueueItem.ClaimNum);//Deleted, sent or held since the window read it: not sent.
+					continue;
+				}
+				if(!EdsClaimValidation.ShouldValidate(claim)) {
+					continue;
 				}
 				Clearinghouse clearinghouseClin=Clearinghouses.OverrideFields(clearinghouseHq,claim.ClinicNum);
 				listClaims.Add(claim);
@@ -114,7 +121,7 @@ namespace OpenDental {
 			}
 			List<EdsValidationResult> listResultsWithProblems=listResults.FindAll(x => x.NeedsAttention);
 			if(listResultsWithProblems.Count==0) {
-				batchOutcome.ListClaimNumsAllowed=EdsClaimValidation.GetClaimNumsToSend(listResults,false);
+				SetAllowed(batchOutcome,listResults,false);
 				return batchOutcome;
 			}
 			using FormEdsValidation formEdsValidation=new FormEdsValidation(listResultsWithProblems,FormEdsValidation.EnumOpenedFrom.ClaimsSend,hqClearinghouseNum);
@@ -122,8 +129,16 @@ namespace OpenDental {
 			List<EdsValidationResult> listResultsFinal=listResults
 				.Select(x => formEdsValidation.ListResults.FirstOrDefault(y => y.ClaimNum==x.ClaimNum)??x)
 				.ToList();
-			batchOutcome.ListClaimNumsAllowed=EdsClaimValidation.GetClaimNumsToSend(listResultsFinal,formEdsValidation.IsSendClicked);
+			SetAllowed(batchOutcome,listResultsFinal,formEdsValidation.IsSendClicked);
 			return batchOutcome;
+		}
+
+		///<summary>The claims of the batch that may be sent, read again from the database: Edit Claim in the validation window, or another workstation,
+		///may have sent, deleted or held a claim since it was validated, and such a claim is never sent again.</summary>
+		private static void SetAllowed(BatchOutcome batchOutcome,List<EdsValidationResult> listResultsFinal,bool isSendAnywayConfirmed) {
+			batchOutcome.ListClaimNumsAllowed=EdsClaimValidation.GetClaimNumsToSendForBatch(listResultsFinal,isSendAnywayConfirmed);
+			List<long> listClaimNumsNotWaiting=EdsClaimValidation.GetClaimNumsNotWaitingToSend(batchOutcome.ListClaimNumsValidated);
+			batchOutcome.ListClaimNumsNotWaiting.AddRange(listClaimNumsNotWaiting.FindAll(x => !batchOutcome.ListClaimNumsNotWaiting.Contains(x)));
 		}
 
 		///<summary>Asks EDS about each claim whose local checks passed, in one progress window. Returns false when the user cancelled.</summary>
