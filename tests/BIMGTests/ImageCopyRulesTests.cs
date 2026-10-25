@@ -4,6 +4,8 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenDentBusiness;
 
 namespace BIMGTests {
+	///<summary>The cases that are decided before the drawings are looked up, so no database is needed. Unedited images and drawings are in
+	///ImageCopyRulesDbTests.</summary>
 	[TestClass]
 	public class ImageCopyRulesTests {
 		///<summary>A document as the image window sees it right after import: no crop, rotation or flip, and no brightness/contrast change.</summary>
@@ -11,65 +13,46 @@ namespace BIMGTests {
 			return new Document { FileName=fileName,WindowingMin=0,WindowingMax=0 };
 		}
 
-		[TestMethod]
-		public void IsImageFile_BitmapsAndDicomOnly() {
-			foreach(string fileName in new[] { "a.jpg","a.JPEG","a.png","a.bmp","a.tif","a.tiff","a.gif","a.tig","a.dcm" }) {
-				Assert.IsTrue(ImageCopyRules.IsImageFile(fileName),fileName);
-			}
-			foreach(string fileName in new[] { "a.pdf","a.docx","a.txt","a.mp4","a",null,"" }) {
-				Assert.IsFalse(ImageCopyRules.IsImageFile(fileName),fileName??"null");
-			}
+		///<summary>Both commands must reach the same decision, so they put the same clipboard formats on the clipboard.</summary>
+		private static void AssertBothDraw(Document document,string message) {
+			Assert.IsTrue(ImageCopyRules.MustDrawForCopy(document,includeDrawings:true),message+" (Copy)");
+			Assert.IsTrue(ImageCopyRules.MustDrawForCopy(document,includeDrawings:false),message+" (Copy without drawings)");
 		}
 
 		[TestMethod]
-		public void HasViewEdits_UneditedImage_False() {
-			Assert.IsFalse(ImageCopyRules.HasViewEdits(MakeDocument("x.jpg")));
-			Document document=MakeDocument("x.jpg");
-			document.WindowingMax=255;//full range, the same as no change
-			Assert.IsFalse(ImageCopyRules.HasViewEdits(document));
-			Assert.IsFalse(ImageCopyRules.HasViewEdits(null));
-		}
-
-		[TestMethod]
-		public void HasViewEdits_EachViewEditCounts() {
+		public void MustDrawForCopy_EachViewEdit_BothCommandsDraw() {
 			Document document=MakeDocument("x.jpg");
 			document.CropW=100;
 			document.CropH=80;
-			Assert.IsTrue(ImageCopyRules.HasViewEdits(document),"Crop");
+			AssertBothDraw(document,"Crop");
 			document=MakeDocument("x.jpg");
 			document.CropX=5;
-			Assert.IsTrue(ImageCopyRules.HasViewEdits(document),"Crop offset");
+			AssertBothDraw(document,"Crop offset");
 			document=MakeDocument("x.jpg");
 			document.DegreesRotated=90;
-			Assert.IsTrue(ImageCopyRules.HasViewEdits(document),"Rotation");
+			AssertBothDraw(document,"Rotation");
 			document=MakeDocument("x.png");
 			document.IsFlipped=true;
-			Assert.IsTrue(ImageCopyRules.HasViewEdits(document),"Flip");
+			AssertBothDraw(document,"Flip");
 			document=MakeDocument("x.dcm");
 			document.WindowingMin=20;
 			document.WindowingMax=255;
-			Assert.IsTrue(ImageCopyRules.HasViewEdits(document),"Brightness/contrast low end");
+			AssertBothDraw(document,"Brightness/contrast low end");
 			document=MakeDocument("x.jpg");
 			document.WindowingMax=200;
-			Assert.IsTrue(ImageCopyRules.HasViewEdits(document),"Brightness/contrast high end");
+			AssertBothDraw(document,"Brightness/contrast high end");
 		}
 
 		[TestMethod]
-		public void HasViewEdits_FilesThatAreNotImages_AlwaysFalse() {
+		public void MustDrawForCopy_FilesThatAreNotImages_NeitherCommandDraws() {
 			Document document=MakeDocument("scan.pdf");
 			document.DegreesRotated=90;
 			document.IsFlipped=true;
 			document.WindowingMin=30;
-			Assert.IsFalse(ImageCopyRules.HasViewEdits(document),"PDFs are copied as the stored file, like plain Copy.");
-			Assert.IsFalse(ImageCopyRules.MustDrawForCopy(document,includeDrawings:false));
-		}
-
-		[TestMethod]
-		public void MustDrawForCopy_WithoutDrawings_OnlyViewEditsCount() {
-			Document document=MakeDocument("x.jpg");
-			Assert.IsFalse(ImageCopyRules.MustDrawForCopy(document,includeDrawings:false),"The stored file has no drawings, so it is the copy.");
-			document.DegreesRotated=180;
-			Assert.IsTrue(ImageCopyRules.MustDrawForCopy(document,includeDrawings:false),"Rotation is kept, so the image is drawn.");
+			Assert.IsFalse(ImageCopyRules.MustDrawForCopy(document,includeDrawings:true),"PDFs are copied as the stored file.");
+			Assert.IsFalse(ImageCopyRules.MustDrawForCopy(document,includeDrawings:false),"Copy without drawings behaves like plain Copy for PDFs.");
+			Assert.IsFalse(ImageCopyRules.MustDrawForCopy(null,includeDrawings:true));
+			Assert.IsFalse(ImageCopyRules.MustDrawForCopy(null,includeDrawings:false));
 		}
 
 		[TestMethod]

@@ -7,40 +7,14 @@ namespace OpenDentBusiness {
 	///drawings keeps the crop, rotation, flip and brightness/contrast but leaves out every drawing, text, measurement and AI annotation. PDFs and other
 	///files that are not images behave like plain Copy.</summary>
 	public static class ImageCopyRules {
-		///<summary>True for the file types that the image window draws itself: the bitmap types ImageHelper knows, and DICOM. False for PDFs and every
-		///other file, which both copy commands put on the clipboard as the stored file.</summary>
-		public static bool IsImageFile(string fileName) {
-			if(string.IsNullOrEmpty(fileName)) {
-				return false;
-			}
-			return ImageHelper.HasImageExtension(fileName) || fileName.EndsWith(".dcm");
-		}
-
-		///<summary>True if the document is an image whose crop, rotation, flip or brightness/contrast differ from its stored file. Drawings are not
-		///counted: they live in the imagedraw table, never in the stored file. These are the same tests ImageHelper.HasImageBeenEdited makes before it
-		///looks for drawings.</summary>
-		public static bool HasViewEdits(Document document) {
-			if(document==null || !IsImageFile(document.FileName)) {
-				return false;
-			}
-			if(document.CropH!=0 || document.CropW!=0 || document.CropX!=0 || document.CropY!=0 || document.DegreesRotated!=0 || document.IsFlipped) {
-				return true;
-			}
-			if(document.WindowingMin!=0 || (document.WindowingMax!=255 && document.WindowingMax!=0)) {
-				return true;
-			}
-			return false;
-		}
-
-		///<summary>True if copying a single document has to draw it, false if a copy of its stored file is the same picture. Copy (includeDrawings
-		///true) draws when the image has view edits or any drawing, exactly as before (ImageHelper.HasImageBeenEdited, which reads the database). Copy
-		///without drawings draws only for view edits: a document whose only change is its drawings is copied from the stored file, which holds no
-		///drawings, so the copy has none even though the window shows them. Always false for files that are not images.</summary>
+		///<summary>True if copying a single document has to draw it, false if a copy of its stored file is the same picture. Both commands decide
+		///exactly as plain Copy always has (ImageHelper.HasImageBeenEdited, which reads the database): the image is drawn when it has a crop, rotation,
+		///flip, brightness/contrast change or any drawing, AI annotations included. So a document whose only change is its drawings is drawn by Copy
+		///without drawings too, just without them, and both commands put the same clipboard formats (a bitmap and a JPG file) on the clipboard for the
+		///same image. includeDrawings does not change the decision; it only decides whether the drawing step draws the drawings. Always false for
+		///files that are not images.</summary>
 		public static bool MustDrawForCopy(Document document,bool includeDrawings) {
-			if(includeDrawings) {
-				return ImageHelper.HasImageBeenEdited(document);
-			}
-			return HasViewEdits(document);
+			return ImageHelper.HasImageBeenEdited(document);
 		}
 
 		///<summary>The security log text for a copy. Copy keeps the text it always had; Copy without drawings says so, so the audit trail tells the two

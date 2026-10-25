@@ -19,15 +19,18 @@ crop, rotation, flip and brightness/contrast and leaves out every drawing, text,
 
 - a mount item: drawn without `DrawDrawings`;
 - a whole mount: drawn with `DrawMount(g,includeDrawings:false)`;
-- a single image: if its only change is drawings, the stored file is copied (it never holds drawings); if it has a crop, rotation, flip or
-  brightness/contrast change, it is drawn with `DrawDocument(g,includeDrawings:false)`;
+- a single image: drawn whenever plain Copy would draw it (any crop, rotation, flip, brightness/contrast change or drawing, AI annotations
+  included), with `DrawDocument(g,includeDrawings:false)`, so the bitmap and the JPG file on the clipboard have no drawings. An image whose only
+  change is drawings is drawn too, as the spec says ("render without them, even when the file itself is unedited"), so Copy and Copy without
+  drawings always put the same clipboard formats (a bitmap and a JPG file) on the clipboard for the same image. Only an image plain Copy also
+  copies as its stored file (no edits and no drawings) is copied as the stored file;
 - PDFs and other files that are not images: the stored file, exactly like Copy.
 
 **Files.**
 
-- `OpenDentBusiness/Imaging/ImageCopyRules.cs` (new): `IsImageFile`, `HasViewEdits` (the crop, rotation, flip and windowing checks of
-  `ImageHelper.HasImageBeenEdited`, without the drawing lookup), `MustDrawForCopy(document,includeDrawings)` (Copy still goes through
-  `ImageHelper.HasImageBeenEdited`, so plain Copy decides exactly as before) and `GetLogText`.
+- `OpenDentBusiness/Imaging/ImageCopyRules.cs` (new): `MustDrawForCopy(document,includeDrawings)` (both commands go through
+  `ImageHelper.HasImageBeenEdited`, so plain Copy decides exactly as before and Copy without drawings takes the same path; `includeDrawings` only
+  decides whether the drawing step draws the drawings) and `GetLogText`.
 - `OpenDental/User Controls/ControlImageDisplay.cs`: `ToolBarCopy_Click` and the new `ToolBarCopyWithoutDrawings_Click` call one
   `CopyToClipboard(bool includeDrawings)` (the old copy body, with the three changes above). `DrawMount` and `DrawDocument` gained an optional
   `includeDrawings=true`, so the screen, printing and export are unchanged. `menuPanelMain_Click` now dispatches by menu item instead of by position,
@@ -39,18 +42,28 @@ crop, rotation, flip and brightness/contrast and leaves out every drawing, text,
 
 **INFERRED.**
 
-- An image whose only change is drawings is copied as its stored file (lossless) rather than redrawn and saved as a 40% quality JPEG. The picture is
-  the same; the spec's "render without them, even when the file itself is unedited" is met because the stored file has no drawings.
+- An image whose only change is drawings is drawn and saved exactly as plain Copy does (a bitmap plus a JPG file at the same quality 40 that plain
+  Copy uses), just without the drawings, rather than copied as its stored file. This follows the spec rule and keeps the two commands giving the
+  same clipboard formats; copying the stored file would have given programs that read only a bitmap (Paint, email bodies, web forms) nothing, and for
+  a DICOM the raw `.dcm`. The JPG quality is not public for Copy without drawings; it is the one plain Copy already uses.
+- A drawing counts whether or not it is shown (hidden layers, AI annotations of a turned-off vendor), as in plain Copy's existing
+  `ImageHelper.HasImageBeenEdited`; the drawn copy then simply has nothing to leave out.
 - The security log entry of Copy without drawings is the Copy text followed by " without drawings" (untranslated, like the rest of the copy log
   text), so the audit trail tells the two commands apart. Plain Copy's text is unchanged.
 - Pasting inside the program goes by the copied document or mount (`NodeTypeAndKey`) and builds new documents from the stored files; it has never
-  copied drawings, so both commands put the same key on the clipboard. Only what other programs receive (bitmap and file) differs.
+  copied drawings, so both commands put the same key on the clipboard. Only the picture other programs receive (in the same bitmap and file
+  formats) differs: with or without the drawings.
 - The right-click menu text is not translated, like the other items of that menu.
 
 **Deviation.** The spec's touchpoint `CodeBase/Utilities/ODCloudClient.cs` (`CopyToClipboard`, Open Dental Cloud only) no longer exists: the cloud
 edition was removed. Nothing to do there.
 
 **Not covered.** The old Images module (`ControlImagesOld.cs`, not owned by this package and not named by the spec) keeps its single Copy.
+
+**Review fix (`port/b-img-r1`).** The first version copied the stored file for an image whose only change was drawings, so Copy without drawings
+put only a file (for a DICOM, the raw `.dcm`) on the clipboard where Copy put a bitmap and a JPG. `MustDrawForCopy` now returns
+`ImageHelper.HasImageBeenEdited` for both commands, as the spec rule asks; the helpers `HasViewEdits` and `IsImageFile`, used only for the old
+decision, were removed.
 
 ## v25_3-imaging-font-autocalc: font sizes update as you type
 
@@ -89,22 +102,25 @@ allows.
 
 New project `tests/BIMGTests` (MSTest v1, x86, .NET 4.8), in `OpenDental.sln` and `OpenDental.Local.slnf`:
 
-- `ImageCopyRulesTests`: which files are images, every view edit, PDFs, the log text.
+- `ImageCopyRulesTests` (no database: the cases decided before the drawing lookup): every view edit makes both commands draw; PDFs and a missing
+  document never draw; the log text.
 - `ImageCopyRulesDbTests` (scratch database `forkmig_<run>_bimg`, built like the other test projects, dropped afterwards; skipped when the local
-  MariaDB does not answer): drawings and AI annotations make Copy draw but not Copy without drawings; view edits make both draw; PDFs never draw; plain
-  Copy decides exactly as `ImageHelper.HasImageBeenEdited`; `HasViewEdits` agrees with it when there are no drawings.
+  MariaDB does not answer): an unedited image with no drawings is copied as its file by both; a drawing, an AI annotation, or a drawing on a DICOM
+  makes both commands draw (Copy without drawings then leaves the drawings out); view edits make both draw; PDFs never draw; for a table of
+  variants, with and without drawings, both commands decide exactly as `ImageHelper.HasImageBeenEdited`.
 - `FontSizeSyncTests`: both directions, every keystroke, invalid and blank text, screen scale, two decimals, zero zoom, round trips, and a fake pair of
   boxes that raise their change event when set (no loop, the typed box never rewritten).
 - `WiringTests` (the GUI is not launched, so these read the sources): the split button and its menu; the copy body skips drawings in all three
-  paths and keeps the PDF path; `DrawMount`/`DrawDocument` keep drawings by default; the right-click menu order, designer indexes and dispatch by
-  item; pasting inside the program never touches drawings; the Edit Text window has no Calculate buttons or focus-loss handlers and wires both boxes
-  to the sync; the Details button's place and that its handler only shows text.
+  paths and keeps the PDF path; a single image is copied as its file only through `MustDrawForCopy`, and otherwise drawn into the clipboard
+  bitmap with `DrawDocument(g,includeDrawings)`; `DrawMount`/`DrawDocument` keep drawings by default; the right-click menu order, designer
+  indexes and dispatch by item; pasting inside the program never touches drawings; the Edit Text window has no Calculate buttons or focus-loss
+  handlers and wires both boxes to the sync; the Details button's place and that its handler only shows text.
 
 Untested: the windows themselves were not opened (no GUI run), so the pixels of a copied image and the look of the split button and the Details
 button are checked by the owner.
 
 Checks on this branch: the build of `OpenDental.Local.slnf` has 0 errors and 376 warnings (the baseline); the targeted test assemblies pass
-(BIMGTests 30 of 30, the database tests included; ImagingTests 43 of 43, which also reads `ControlImageDisplay.cs`; NoHqTests 49 of 49);
+(BIMGTests 28 of 28, the database tests included; ImagingTests 43 of 43, which also reads `ControlImageDisplay.cs`; NoHqTests 49 of 49);
 `tools/Test-NoHqHosts.ps1` passes. A verifier should run `BIMGTests` and `ImagingTests`.
 
 ## Interplay with packages built in parallel
@@ -112,9 +128,9 @@ Checks on this branch: the build of `OpenDental.Local.slnf` has 0 errors and 376
 - **V-PEARL1** (takes `ControlImages.cs` over from this package): this package changed only the Copy button line in `LayoutToolBars` and added
   `ToolBarCopyWithoutDrawings_Click` after `ToolBarCopy_Click`. Pearl annotations are drawings: Copy without drawings leaves them out whatever the
   Pearl layer settings.
-- **M2-IMG** (also owns `ControlImageDisplay.cs` and `ImageHelper.cs`): this package did not edit `ImageHelper.cs`. If M2-IMG changes what
-  `HasImageBeenEdited` counts as a view edit (for example 16-bit windowing values), `ImageCopyRules.HasViewEdits` must follow; the database test
-  `HasViewEdits_AgreesWithHasImageBeenEdited_WhenThereAreNoDrawings` will fail until it does.
+- **M2-IMG** (also owns `ControlImageDisplay.cs` and `ImageHelper.cs`): this package did not edit `ImageHelper.cs`. Both copy commands decide
+  through `ImageHelper.HasImageBeenEdited`, so if M2-IMG changes what it counts as an edit (for example 16-bit windowing values), Copy without
+  drawings follows automatically; nothing in this package needs to change.
 - **B-SHELL** (later owner of `ControlImages.cs`): nothing to connect.
 - `OpenDentBusiness.csproj`: two `Compile` lines after `Imaging\BitmapDicom.cs`.
 

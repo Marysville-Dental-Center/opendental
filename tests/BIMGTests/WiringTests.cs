@@ -83,9 +83,13 @@ namespace BIMGTests {
 			Assert.AreEqual(0,Count(copy,"DrawMount(g);"));
 			Assert.AreEqual(1,Count(copy,"DrawDocument(g,includeDrawings);"));
 			Assert.AreEqual(0,Count(copy,"DrawDocument(g);"));
-			//A single document whose only change is its drawings is copied from its stored file.
+			//A single document is copied from its stored file only when plain Copy would do so; otherwise both commands draw it into a bitmap (the
+			//drawn branch, which Copy without drawings also takes for a document whose only change is its drawings).
 			StringAssert.Contains(copy,"if(!ImageCopyRules.MustDrawForCopy(GetDocumentShowing(0),includeDrawings)) {");
 			Assert.AreEqual(0,Count(copy,"ImageHelper.HasImageBeenEdited("),"Plain Copy reaches HasImageBeenEdited through the rules.");
+			AssertBefore(copy,"if(!ImageCopyRules.MustDrawForCopy(GetDocumentShowing(0),includeDrawings)) {",
+				"bitmapCopy=ImageHelper.CopyWithCropRotate(GetDocumentShowing(0),GetBitmapShowing(0));");
+			AssertBefore(copy,"bitmapCopy=ImageHelper.CopyWithCropRotate(GetDocumentShowing(0),GetBitmapShowing(0));","DrawDocument(g,includeDrawings);");
 			//PDFs and other files: the stored file, as plain Copy.
 			Assert.AreEqual(2,Count(copy,"//other files such as pdf will lack a bitmapCopy"));
 			//The audit trail tells the two apart.
