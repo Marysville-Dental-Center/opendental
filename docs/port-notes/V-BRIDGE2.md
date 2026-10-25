@@ -99,7 +99,7 @@ New project `tests/VBRIDGE2Tests` (MSTest v1, x86, .NET 4.8; in `OpenDental.sln`
 - `WiringTests`: `ProgramName` order, the dispatch branches, project files, the setup registrations, the encrypted key save, the one-line hook, the exit scrub, no web addresses or promotion in the new files.
 - `ProgramLinksDbTests` (scratch MariaDB database `vbridge2_<time>_<pid>_<random>` with the 26.1.70 reference schema, dropped afterwards; skipped when `VBRIDGE2_TEST_DB=skip` or no local server): the inserted rows and buttons, a second run, office changes kept, buttons only when enabled, Show Toolbar Button, keys encrypted per clinic with the default fallback, unreadable and plain-text keys, and the Trophy tags with the real `Patients.ReplacePatient`.
 
-Run for this package: `VBRIDGE2Tests` 58/58, `VendorDirectTests` 873/873, `NoHqTests` 49/49. `tools/Test-NoHqHosts.ps1` passes.
+Run for this package: `VBRIDGE2Tests` 58/58, `VendorDirectTests` 873/873, `NoHqTests` 49/49. Also run because `ProgramName` (in `TableTypes/Program.cs`) changed: `RegistryTests` 33/33, `M202Tests` 39/39, `ForkMigrationTests` 38/38. `tools/Test-NoHqHosts.ps1` passes.
 
 Not tested: the setup window and the tool tip on screen, starting Clever One or Trophy, opening the browser, writing `linkage.xml` into a real program folder, and the middle tier.
 
