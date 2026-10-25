@@ -57,6 +57,34 @@ namespace BCLAIMTests {
 			AssertPromptBefore(Read("OpenDental","Logic","ClaimL.cs"),"MedicalEobL.PromptToAttachMedicalEob(claimLeadOrdinal,listClaimProcs);");
 		}
 
+		[TestMethod]
+		public void PrimaryClaimsPrompt_SavesTheClaimRowAndKeepsAttachments() {
+			//The claims come from Claims.GetPrimaryOrSecondaryClaimsNotReceived without their attachments; the one-argument Claims.Update would
+			//delete the medical EOB the Medical EOB prompt has just attached.
+			string prompt=GetMethodBody(Read("OpenDental","Logic","ClaimL.cs"),"public static void PromptForPrimaryOrSecondaryClaim(");
+			StringAssert.Contains(prompt,"ClaimAttaches.SetClaimsWaitingToSend(listClaimsPromptingFor,");
+			Assert.IsFalse(prompt.Contains("Claims.Update(listClaimsPromptingFor[i]);"),"No one-argument Claims.Update on the reloaded claims.");
+			int indexStatus=prompt.IndexOf("ClaimAttaches.SetClaimsWaitingToSend(",StringComparison.Ordinal);
+			int indexSend=prompt.IndexOf("Claims.GetQueueList(listClaimsPromptingFor.",StringComparison.Ordinal);
+			Assert.IsTrue(indexSend>indexStatus,"The status is set before the claims are queued and sent.");
+		}
+
+		[TestMethod]
+		public void EraPosting_WriteOffColumnFollowsInsWriteOffEdit() {
+			//Open Dental 25.3: 119 also covers creating claimprocs, and manual ERA posting creates (supplemental) or receives them.
+			string source=Read("OpenDental","Forms","FormEtrans835ClaimPay.cs");
+			string load=GetMethodBody(source,"private void FormEtrans835ClaimPay_Load(");
+			int indexProcedures=load.IndexOf("_listProcedures=Procedures.Refresh(_patient.PatNum);",StringComparison.Ordinal);
+			int indexPermission=load.IndexOf("_isWriteOffEditable=ClaimProcs.IsInsWriteOffEditAuthorizedForAll(ListClaimProcs,_listProcedures);",
+				StringComparison.Ordinal);
+			int indexFill=load.IndexOf("FillGridProcedures();",StringComparison.Ordinal);
+			Assert.IsTrue(indexProcedures>=0 && indexPermission>indexProcedures && indexFill>indexPermission,
+				"The permission is worked out from the procedures before the grid is filled.");
+			string fill=GetMethodBody(source,"private void FillGridProcedures(");
+			StringAssert.Contains(fill,"col=new GridColumn(Lan.g(\"TableClaimProc\",\"Writeoff\"),62,HorizontalAlignment.Right,"
+				+"isEditable:isWOIncluded && _isWriteOffEditable);");
+		}
+
 		private static void AssertPromptBefore(string source,string hook) {
 			int indexHook=source.IndexOf(hook,StringComparison.Ordinal);
 			Assert.IsTrue(indexHook>=0,"Missing: "+hook);
