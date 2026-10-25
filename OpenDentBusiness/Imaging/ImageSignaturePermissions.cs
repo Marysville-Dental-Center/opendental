@@ -27,9 +27,10 @@ namespace OpenDentBusiness {
 		}
 
 		#region Rules
-		///<summary>True when the document carries a signature.</summary>
+		///<summary>True when the document is an image (not a chart letter) and carries a signature. Chart letters (ChartLetterStatus not 0) have their own
+		///signing and logging in the chart letter package, so a signed chart letter is never a signed image here.</summary>
 		public static bool IsSigned(Document document) {
-			return document!=null && !string.IsNullOrEmpty(document.Signature);
+			return document!=null && document.ChartLetterStatus==0 && !string.IsNullOrEmpty(document.Signature);
 		}
 
 		///<summary>True when any of the documents carries a signature. Null entries (empty mount positions) are skipped.</summary>

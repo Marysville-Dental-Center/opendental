@@ -37,6 +37,14 @@ namespace ImagingTests {
 		}
 
 		[TestMethod]
+		public void ChartLetters_AreNeverSignedImages() {
+			//The spec: chart letters are not images, so the two signature permissions don't apply to them.
+			Document chartLetter=new Document { Signature="sig",Note="",ChartLetterStatus=1 };
+			Assert.IsFalse(IsSigned(chartLetter));
+			Assert.IsFalse(IsAnySigned(new Document[] { chartLetter }));
+		}
+
+		[TestMethod]
 		public void Mount_IsSignedWhenAnyItemIs_EmptyPositionsSkipped() {
 			Assert.IsFalse(IsAnySigned(null));
 			Assert.IsFalse(IsAnySigned(new Document[] { null,Doc(""),null }));
