@@ -104,31 +104,14 @@ namespace OpenDentBusiness {
 				Meth.GetVoid(MethodBase.GetCurrentMethod(),exportPath,autoExport);
 				return;
 			}
-			UpsertPref(PREF_EXPORT_PATH,exportPath??"");
-			UpsertPref(PREF_AUTO_EXPORT,autoExport??"1");
+			PrefC.UpsertRawNoCache(PREF_EXPORT_PATH,exportPath??"");
+			PrefC.UpsertRawNoCache(PREF_AUTO_EXPORT,autoExport??"1");
 		}
 
-		private static void UpsertPref(string prefName,string value) {
-			string count=Db.GetScalar("SELECT COUNT(*) FROM preference WHERE PrefName='"+POut.String(prefName)+"'");
-			if(PIn.Long(count)==0) {
-				Db.NonQ("INSERT INTO preference (PrefName,ValueString) VALUES ('"+POut.String(prefName)+"','"+POut.String(value)+"')");
-				return;
-			}
-			Db.NonQ("UPDATE preference SET ValueString='"+POut.String(value)+"' WHERE PrefName='"+POut.String(prefName)+"'");
-		}
-
-		///<summary>The raw value from the preference cache, or null when the row does not exist. Never throws.</summary>
+		///<summary>The raw value from the preference cache, or null when the row does not exist. Never throws. Uses B-SERVER's shared helper for
+		///fork-owned preference rows.</summary>
 		private static string GetPrefOrNull(string prefName) {
-			try {
-				if(Prefs.DictIsNull() || !Prefs.GetContainsKey(prefName)) {
-					return null;
-				}
-				return Prefs.GetOne(prefName).ValueString??"";
-			}
-			catch(Exception ex) {
-				ex.DoNothing();
-				return null;
-			}
+			return PrefC.GetRawOrDefault(prefName,null);
 		}
 
 		///<summary>The suggested folder, A-to-Z\WikiReadOnly, or blank when the office keeps images in the database or the A-to-Z folder is not

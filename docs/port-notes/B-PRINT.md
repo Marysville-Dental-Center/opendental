@@ -253,3 +253,7 @@ real printer, scanning a printed barcode with an inserter, and the middle-tier p
   early; pages after the range are laid out on the scratch bitmap and discarded. Tests:
   `PrintOptionsTests.PageRange_QueryLikeHandler_ARangePrintLeavesNoStateBehindForTheNextPrint` (new `FormQuery`-like document) and the
   updated `PageRange_OnlyThePagesInTheRangeReachThePrinter` (the handler now draws all 5 pages, 2 of them printed).
+
+## Integration (branch `port/int-2`)
+
+- B-SERVER added the shared helpers for fork-owned preference rows (`PrefC.GetRawOrDefault`, `PrefC.UpsertRawNoCache`). `StatementInserterBarcode.IsEnabled` and `UpsertPref` now use them for `BillingStatementInserterBarcode` instead of their own copy of the same code; the behaviour is unchanged (a missing row reads as off, the row is inserted the first time the barcode is turned on, `UpsertPref` keeps its Middle Tier call).

@@ -111,3 +111,7 @@ New `OpenDentBusiness/Misc/WikiStaticExport.cs`. Layout of the folder:
 
 - The WinForms and WPF windows (Compare button and captions, the search limit controls and label, Wiki Setup's read-only box, the Read-Only Copy toolbar button, the file-link note): built, not run, because the GUI is not launched in this run.
 - The index page's JavaScript search was checked once by hand in a browser (synthetic export served from localhost): title search, content search and the "Include page content" box behave as described. There is no automated browser test.
+
+## Integration (branch `port/int-2`)
+
+- B-SERVER added the shared helpers for fork-owned preference rows (`PrefC.GetRawOrDefault`, `PrefC.UpsertRawNoCache`). `WikiStaticExport` now reads and writes `ForkWikiReadOnlyExportPath` and `ForkWikiReadOnlyAutoExport` through them instead of its own copy of the same SQL; the behaviour is unchanged (a missing row still reads as the default, the rows are inserted the first time Wiki Setup is saved, and `UpsertSettings` still makes one Middle Tier call for both rows).

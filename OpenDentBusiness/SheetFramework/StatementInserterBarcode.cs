@@ -43,10 +43,7 @@ namespace OpenDentBusiness {
 		public static bool IsEnabled() {
 			Meth.NoCheckMiddleTierRole();
 			try {
-				if(Prefs.DictIsNull() || !Prefs.GetContainsKey(PREF_NAME)) {
-					return false;
-				}
-				return PIn.Bool(Prefs.GetOne(PREF_NAME).ValueString);
+				return PIn.Bool(PrefC.GetRawOrDefault(PREF_NAME,"0"));//B-SERVER's shared helper for fork-owned preference rows.
 			}
 			catch(Exception ex) {
 				ex.DoNothing();
@@ -76,12 +73,7 @@ namespace OpenDentBusiness {
 				Meth.GetVoid(MethodBase.GetCurrentMethod(),value);
 				return;
 			}
-			string count=Db.GetScalar("SELECT COUNT(*) FROM preference WHERE PrefName='"+POut.String(PREF_NAME)+"'");
-			if(PIn.Long(count)==0) {
-				Db.NonQ("INSERT INTO preference (PrefName,ValueString) VALUES ('"+POut.String(PREF_NAME)+"','"+POut.String(value)+"')");
-				return;
-			}
-			Db.NonQ("UPDATE preference SET ValueString='"+POut.String(value)+"' WHERE PrefName='"+POut.String(PREF_NAME)+"'");
+			PrefC.UpsertRawNoCache(PREF_NAME,value);//B-SERVER's shared helper for fork-owned preference rows.
 		}
 		#endregion Setting
 
