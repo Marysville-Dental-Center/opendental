@@ -49,6 +49,7 @@ namespace BERATests {
 			StringAssert.Contains(source,"DisplayFields.GetForEraClaimPaidGrid()");
 			StringAssert.Contains(source,"DisplayFields.EraClaimPaid.GetCellText(");
 			StringAssert.Contains(source,"Cells[indexColRecd]");
+			StringAssert.Contains(source,"gridClaimDetails.HScrollVisible=");//Columns wider than the grid scroll sideways.
 			StringAssert.Contains(source,"eraAutomationResult.ListAutoSplitNotes");
 			StringAssert.DoesNotMatch(source,new Regex(@"Cells\[0\]\.Text"));
 		}
