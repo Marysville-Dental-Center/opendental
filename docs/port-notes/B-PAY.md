@@ -30,6 +30,8 @@ No schema change and no fork migration step (the level range 2027000301-20270003
 - Automatic recalculations:
   - `PayPlans.UpdateTreatmentCompletedAmt` and `UpdateTreatmentCompletedAmtsDynamicPaymentPlan` take an optional `auditTrigger` and log each plan whose amount changed, one entry per plan.
   - `PayPlanCharges.UpdateAttachedPayPlanCharges` passes "after procedure <code> was set complete" or "changed status". `Procedures.Update` calls it, so completing a procedure on a plan is logged. `PayPlanCharges.DeleteForProc` passes "after the credit for procedure #N was removed".
+  - `UpdateTreatmentCompletedAmt` (the credit-based pass) skips dynamic plans. Both callers find plans through `PayPlanCharges.GetFromProc`, which also matches a dynamic plan's issued debits (`LinkType` Procedure, `FKey` the ProcNum). Dynamic plans store no credits, so 24.3 wrote 0 to them there, and `UpdateTreatmentCompletedAmtsDynamicPaymentPlan` then put the real amount back. With the audit that gave two entries per change (X to 0, then 0 to Y), and two entries even when nothing changed. Now the dynamic pass alone sets the amount, with one entry for the net change and the right old value.
+  - Deviation from 24.3: `DeleteForProc` no longer sets a dynamic plan's amount to 0. Dynamic debits have ProcNum 0, so that delete removes none of them, and the 0 came only from the credit formula. The amount is left as it was. This can only happen through a forced procedure delete, because `Procedures.ValidateDelete` refuses procedures that are on a plan.
 - Dynamic plans: `PayPlanEdit.SaveDynamicPaymentPlanAndTerms` compares the new amount with the database value, so form saves and close-outs are logged once. New plans are logged as "created" only.
 - The Close Payment Plan tool (`PayPlans`, insurance plans whose amount is set to the insurance paid) logs "by the Close Payment Plan tool".
 - `PayPlanL.AdvanceAuditBaseline`: after a logged save, the logged amounts become the new baseline, so Print or Sign and Print followed by OK does not log the same change twice (`FormPayPlan`, `FormPayPlanDynamic`).
@@ -61,7 +63,12 @@ No schema change and no fork migration step (the level range 2027000301-20270003
 - Choosing that type keeps "Attached to Payment Plan" enabled and does not detach the plan. The provider stays None unless AllowPrepayProvider is on, as before. Any other unearned type keeps 24.3 behavior and detaches.
 - A prepayment is offered only patient payment plans. INFERRED: these are dynamic plans, which Open Dental calls Patient Payment Plans and whose existing logic applies hidden prepayments to future charges. Old-style plans and insurance plans are never offered.
   - Switching an attached split to the prepay type detaches it from an old-style plan.
-  - A prepayment pays no charge (`PayPlanChargeNum` 0).
+  - A prepayment pays no charge (`PayPlanChargeNum` 0, `PayPlanDebitType` Unknown). This holds whatever order the user works in:
+    - Attaching picks no charge for a prepayment (`GetPayPlanChargeNum`).
+    - Changing the unearned type of an attached split (`SetPayPlanChargeAfterTypeChange`, before the AllowPrepayProvider/Edit Anyway return) clears the charge when the new type is the prepay type. This covers ticking "Attached to Payment Plan" first and then choosing the prepay type, and an existing split that pays a charge being switched to the prepay type. Switching away from the prepay type while still attached picks a due debit again, as attaching does.
+    - On OK, once the unearned type is final, `ClearChargeForPrepayment` clears any charge left on a prepay-type split attached to a plan (for example a row saved before this fix).
+    - Otherwise the money would be applied twice: the split itself pays the charge in `PaymentEdit`'s explicit linking, and `GetDynamicPayPlanPrepaymentAmount`/`ApplyPrepaymentToDynamicPaymentPlan` count it as plan prepayment and apply it to charges again.
+    - Cancel also restores `PayPlanDebitType`.
   - A prepayment cannot have a procedure or an adjustment (checked when attaching and on OK).
 - Attaching to a closed plan asks for confirmation; locked plans are allowed. INFERRED: the closed-plan confirmation applies to every attach from the Paysplit window, not only to prepayments.
 - `PayPlans.Delete`: plan prepayments alone no longer block deleting a patient plan. They are detached (PayPlanNum and PayPlanChargeNum set to 0; neither is in the row hash) and stay unearned of the same type. One PayPlanEdit entry gives their count and total. Any other attached split still blocks the delete, as before.
@@ -122,9 +129,19 @@ Other changes:
 3. Please check the inferred 25.3 attach cases (table above) on 25.3.48: another-family splits, production-linked plans, and the closed-plan confirmation for all attaches.
 4. Should a Payment Plan Prepay split also attach to old-style (non-dynamic) patient plans? We allow dynamic plans only, because only those apply prepayments.
 
+## Review fixes (branch `port/b-pay-r1`)
+1. and 3. Double Tx Completed Amt entries for dynamic plans (same cause). `PayPlans.UpdateTreatmentCompletedAmt` skips dynamic plans (see the Tx Completed Amount section). New `CompletedAmtAuditDbTests`:
+   - A Treat as Complete plan with an issued charge on a TP procedure: setting the procedure complete through `Procedures.Update` logs nothing, and the amount stays 300.
+   - An Await Complete plan with two completed procedures and an issued charge: setting the charged procedure back to TP logs one entry, 500 to the new amount.
+   - `DeleteForProc` on a dynamic plan's procedure does not zero the plan and logs nothing.
+   - The credit-based pass leaves dynamic plans alone and still recalculates old-style plans.
+
+   With the skip turned off, all four fail. The second fails with "500.00 to 0.00" followed by "0.00 to 200.00". The earlier test `DynamicPlanRecalculation_IsLogged` had no issued charge, so it never reached this path. It is kept.
+2. A Payment Plan Prepay split could keep a plan charge. Fixed in `PaySplitPayPlanAttach` (`GetPayPlanChargeNumAfterTypeChange`, `SetPayPlanChargeAfterTypeChange`, `ClearChargeForPrepayment`) and `FormPaySplitEdit` (see the prepay section). New `PaySplitAttachTests`: type change to prepay, from prepay, between other types, on the split with its debit type, the OK guard, and a database case with a real plan and an issued charge (attach, prepay, back to None).
+
 ## Checks (2026-10-25)
 - Build of `OpenDental.Local.slnf` (Debug x86): 0 errors, 376 warnings (baseline).
-- Targeted tests: `BPAYTests` 62/62, `PayPlanTests` 29/29, `RegistryTests` 33/33, `NoHqTests` 49/49. `tools/Test-NoHqHosts.ps1` passes.
+- Targeted tests: `BPAYTests` 72/72, `PayPlanTests` 29/29, `RegistryTests` 33/33, `NoHqTests` 49/49. `tools/Test-NoHqHosts.ps1` passes.
 - Note for the integration: `RegistryTests.Seed25_3DbTests` uses the fixed database name `registry_m1_02_tests`. When another worktree runs `RegistryTests` at the same time, its 6 database tests fail with "Table 'registry_m1_02_tests.preference' doesn't exist". A rerun on its own passes. This is not caused by B-PAY.
 
 ## Untested
