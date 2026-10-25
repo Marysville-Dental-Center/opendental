@@ -88,6 +88,15 @@ namespace ImagingDeviceManager.TwainProtocol {
 		public ushort Data;
 	}
 
+	///<summary>TW_STATUSUTF8. 12 bytes. Status is the input; Size (bytes including the terminating NUL) and the UTF8string handle,
+	///which the application frees (TWAIN 2.4 p.8-61), are the output.</summary>
+	[StructLayout(LayoutKind.Sequential,Pack=2)]
+	internal struct TW_STATUSUTF8 {
+		public TW_STATUS Status;
+		public uint Size;
+		public IntPtr UTF8string;
+	}
+
 	///<summary>TW_CAPABILITY. 8 bytes. hContainer is a handle to a TW_ONEVALUE, TW_ENUMERATION, TW_ARRAY or TW_RANGE.</summary>
 	[StructLayout(LayoutKind.Sequential,Pack=2)]
 	internal struct TW_CAPABILITY {

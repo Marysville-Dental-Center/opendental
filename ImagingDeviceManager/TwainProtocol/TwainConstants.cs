@@ -21,6 +21,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 		public const ushort DAT_SETUPMEMXFER=0x0006;
 		public const ushort DAT_STATUS=0x0008;
 		public const ushort DAT_USERINTERFACE=0x0009;
+		public const ushort DAT_STATUSUTF8=0x0011;
 		public const ushort DAT_IMAGEINFO=0x0101;
 		public const ushort DAT_IMAGEMEMXFER=0x0103;
 		public const ushort DAT_IMAGENATIVEXFER=0x0104;
@@ -35,6 +36,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 		public const ushort MSG_GETNEXT=0x0005;
 		public const ushort MSG_SET=0x0006;
 		public const ushort MSG_RESET=0x0007;
+		public const ushort MSG_QUERYSUPPORT=0x0008;
 		public const ushort MSG_XFERREADY=0x0101;
 		public const ushort MSG_CLOSEDSREQ=0x0102;
 		public const ushort MSG_CLOSEDSOK=0x0103;
@@ -77,6 +79,8 @@ namespace ImagingDeviceManager.TwainProtocol {
 		public const ushort TWCC_PAPERDOUBLEFEED=21;
 		public const ushort TWCC_CHECKDEVICEONLINE=23;
 		public const ushort TWCC_NOMEDIA=29;
+		///<summary>Condition codes from 0x8000 up are defined by each data source.</summary>
+		public const ushort TWCC_CUSTOMBASE=0x8000;
 		//Container types
 		public const ushort TWON_ARRAY=3;
 		public const ushort TWON_ENUMERATION=4;
@@ -102,10 +106,17 @@ namespace ImagingDeviceManager.TwainProtocol {
 		public const ushort ICAP_PIXELTYPE=0x0101;
 		public const ushort ICAP_UNITS=0x0102;
 		public const ushort ICAP_XFERMECH=0x0103;
+		public const ushort CAP_UICONTROLLABLE=0x100e;
 		public const ushort CAP_DUPLEXENABLED=0x1013;
 		public const ushort ICAP_XRESOLUTION=0x1118;
 		public const ushort ICAP_YRESOLUTION=0x1119;
 		public const ushort ICAP_PIXELFLAVOR=0x111f;
+		//MSG_QUERYSUPPORT bits
+		public const int TWQC_GET=0x0001;
+		public const int TWQC_SET=0x0002;
+		public const int TWQC_GETDEFAULT=0x0004;
+		public const int TWQC_GETCURRENT=0x0008;
+		public const int TWQC_RESET=0x0010;
 		//ICAP_PIXELTYPE values
 		public const ushort TWPT_BW=0;
 		public const ushort TWPT_GRAY=1;

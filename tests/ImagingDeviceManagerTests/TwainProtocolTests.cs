@@ -24,6 +24,7 @@ namespace ImagingDeviceManager.Tests {
 			Assert.AreEqual(6,Marshal.SizeOf(typeof(TW_EVENT)));
 			Assert.AreEqual(6,Marshal.SizeOf(typeof(TW_PENDINGXFERS)));
 			Assert.AreEqual(4,Marshal.SizeOf(typeof(TW_STATUS)));
+			Assert.AreEqual(12,Marshal.SizeOf(typeof(TW_STATUSUTF8)));
 			Assert.AreEqual(8,Marshal.SizeOf(typeof(TW_CAPABILITY)));
 			Assert.AreEqual(42,Marshal.SizeOf(typeof(TW_IMAGEINFO)));
 			Assert.AreEqual(12,Marshal.SizeOf(typeof(TW_SETUPMEMXFER)));
@@ -45,6 +46,8 @@ namespace ImagingDeviceManager.Tests {
 			Assert.AreEqual(4,(int)Marshal.OffsetOf(typeof(TW_EVENT),"TWMessage"));
 			Assert.AreEqual(2,(int)Marshal.OffsetOf(typeof(TW_PENDINGXFERS),"EOJ"));
 			Assert.AreEqual(4,(int)Marshal.OffsetOf(typeof(TW_CAPABILITY),"hContainer"));
+			Assert.AreEqual(4,(int)Marshal.OffsetOf(typeof(TW_STATUSUTF8),"Size"));
+			Assert.AreEqual(8,(int)Marshal.OffsetOf(typeof(TW_STATUSUTF8),"UTF8string"));
 			Assert.AreEqual(18,(int)Marshal.OffsetOf(typeof(TW_IMAGEINFO),"BitsPerSample"));
 			Assert.AreEqual(34,(int)Marshal.OffsetOf(typeof(TW_IMAGEINFO),"BitsPerPixel"));
 			Assert.AreEqual(38,(int)Marshal.OffsetOf(typeof(TW_IMAGEINFO),"PixelType"));
