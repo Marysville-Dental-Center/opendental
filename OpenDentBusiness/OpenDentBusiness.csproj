@@ -442,6 +442,7 @@
     <Compile Include="Data Interface\LanguagePats.cs" />
     <Compile Include="Data Interface\CommlogHists.cs" />
     <Compile Include="Data Interface\Etrans835s.cs" />
+    <Compile Include="X12\EraClaimProcLinks.cs" />
     <Compile Include="Data Interface\ImageDraws.cs" />
     <Compile Include="Data Interface\InsPlanPreferences.cs" />
     <Compile Include="Data Interface\LimitedBetaFeatures.cs" />
@@ -497,6 +498,7 @@
     <Compile Include="Data Interface\DiscountPlans.cs" />
     <Compile Include="Data Interface\EntryLogs.cs" />
     <Compile Include="Data Interface\Etrans835Attaches.cs" />
+    <Compile Include="Data Interface\ClaimProcs.Era.cs" />
     <Compile Include="Data Interface\InsEditPatLogs.cs" />
     <Compile Include="Data Interface\FeeSchedGroups.cs" />
     <Compile Include="Data Interface\FeeSchedNotes.cs" />

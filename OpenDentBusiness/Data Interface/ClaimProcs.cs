@@ -1003,6 +1003,7 @@ namespace OpenDentBusiness{
 			else if(!claimProc.Status.In(ClaimProcStatus.Received,ClaimProcStatus.Supplemental) && claimProc.DateSuppReceived.Date==DateTime.Today.Date) {
 				claimProc.DateSuppReceived=DateTime.MinValue;//db only field used by one customer and this is how they requested it.  PatNum #19191
 			}
+			ClearEtrans835AttachNumIfNotReceived(claimProc);//M2-ERA (26.1): an un-received claimproc forgets the ERA claim (ClaimProcs.Era.cs).
 			if(claimProcOld==null) {
 				ClaimProc claimProcDb=ClaimProcs.GetOneClaimProc(claimProc.ClaimProcNum);
 				if(IsClaimProcHashValid(claimProcDb)) { //Only rehash claimprocs that are already valid.
@@ -1225,6 +1226,7 @@ namespace OpenDentBusiness{
 					claimProc.PayPlanNum=0;//detatch the claimproc from closed ins pay plan
 				}
 				claimProc.ClaimPaymentNum=0;//no payment attached
+				claimProc.Etrans835AttachNum=0;//M2-ERA (26.1): entered by hand until an ERA import links it (ClaimProcs.LinkToEraClaim).
 				//claimprocnum will be overwritten
 				claimProc.DedApplied=0;
 				claimProc.InsPayAmt=0;
