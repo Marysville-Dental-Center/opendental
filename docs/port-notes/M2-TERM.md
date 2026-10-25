@@ -16,7 +16,7 @@ The public manual pages (fee schedule logic, Blue Book setup) still use the old 
 
 | ID | Status | Notes |
 |---|---|---|
-| `v25_4-misc-ucr-terminology` | built (for the files this package owns) | Every shown "UCR" in the owned windows, reports, enum description and estimate log now says standard provider fee. Logic, preference names, column names, enum members, control names and the display-field internal name are unchanged. The few strings in other packages' files are listed under "Left to other packages". |
+| `v25_4-misc-ucr-terminology` | built (for the files this package owns) | Every shown "UCR" in the owned windows, reports, enum description and estimate log now says standard provider fee. Logic, preference names, column names, enum members, control names and the display-field internal name are unchanged. Report exports keep their column names, as the spec's rules ask (see "Report exports"). The few strings in other packages' files are listed under "Left to other packages". |
 
 ## What changed
 
@@ -32,25 +32,31 @@ The public manual pages (fee schedule logic, Blue Book setup) still use the old 
 | Same window, percent label (designer) and save check | UCR Fee Percent / Please enter a UCR Fee Percent between 0 and 100. | Standard Provider Fee Percent / Please enter a Standard Provider Fee Percent between 0 and 100. |
 | Blue Book estimate log (`InsBlueBooks.cs`, `BlueBookEstimateData.GetAllowed`) | Rule Type: UCR Fee ... (80% of UCR fee) | Rule Type: Standard Provider Fee ... (80% of standard provider fee) |
 | Edit Insurance Plan, Exclusions combo (`InsPlan.cs`, `ExclusionRule.UseUcrFee` description) | Use UCR Fee | Use Standard Provider Fee |
-| Capitation Utilization report (`FormRpCapitation.cs`, both layouts) | UCR Fee | Standard Fee |
-| Net Production Detail report (`FormRpNetProdDetail.cs`) | UCR | Standard Fee |
-| Provider Payroll report (`FormRpProviderPayroll.cs`) | UCR Production | Standard Fee Production |
-| Provider Payroll data table (`RpProdInc.cs`, `GetProviderPayrollDataForClinics`) | UCR Poduction (typo) | Standard Fee Production |
+| Capitation Utilization report (`FormRpCapitation.cs`, both layouts), column header on screen and in print | UCR Fee | Standard Fee (the export column stays "UCR Fee") |
+| Net Production Detail report (`FormRpNetProdDetail.cs`), same | UCR | Standard Fee (the export column stays "UCR") |
+| Provider Payroll report (`FormRpProviderPayroll.cs`), same | UCR Production | Standard Fee Production (the export column stays "UCR Production") |
+| Provider Payroll data table (`RpProdInc.cs`, `GetProviderPayrollDataForClinics`), internal, never shown or exported | UCR Poduction (typo) | Standard Fee Production |
 | Hover help (`PrefInfos.xml`, outside the owned list) | the three ControlText copies above; "exclusions use UCR fee"; "billed using the UCR fee"; "Example: UCR =$200" (4 times) | the new control texts; "exclusions use standard provider fee"; "billed using the standard provider fee"; "Example: Standard provider fee = $200" |
 
 Doc comments only: `InsPlan.ClaimsUseUCR` and `ExclusionRule.UseUcrFee` summaries say "standard provider fee" and that the names stay for compatibility.
 
 Layout: the Blue Book percent label grew to the left (Location 306 to 246, width 123 to 183) so the longer text fits; it still ends one pixel before the percent box and stays clear of the Allowed Fee Method list. No other control moved. Report headers wrap inside their column (QueryObject measures the header with the column width), so "Standard Fee" in the 60 and 70 pixel Capitation columns takes two lines; column widths are unchanged.
 
-### Release note (report exports)
+### Report exports (built per the spec's rule)
 
-Report column headers are also the exported column names (QueryObject's export table uses the header text), so a spreadsheet or tool that reads these reports by column name sees new names:
+The spec's rule: "Keep report CSV header keys stable for users' downstream tools: add the new header text, and note the change in release notes." A report's Export (the tab-separated file from the report window) writes a header line with one name per column, and offices' spreadsheets and tools find the columns by these names. So the shown headers changed and the export keys did not:
 
-- Capitation Utilization: "UCR Fee" is now "Standard Fee".
-- Net Production Detail: "UCR" is now "Standard Fee".
-- Provider Payroll: "UCR Production" is now "Standard Fee Production".
+| Report | Header on screen and in print | Name in the export's header line |
+|---|---|---|
+| Capitation Utilization (both layouts) | Standard Fee (was UCR Fee) | UCR Fee (unchanged) |
+| Net Production Detail | Standard Fee (was UCR) | UCR (unchanged) |
+| Provider Payroll (summary and detailed) | Standard Fee Production (was UCR Production) | UCR Production (unchanged) |
 
-Column order and values are unchanged. The query column names that are not shown stay (`UCR` in the Net Production Detail query, so anything that reads `RpProdInc.GetNetProductionDetailDataSet` by name still works). The Provider Payroll data table's column was named "UCR Poduction" with a typo; it is now "Standard Fee Production" (nothing in the repository reads it by name).
+How: `QueryObject.AddColumn` names the export table's column after the header text, and `FormReportComplex.OnExport_Click` writes each export column's `Caption`, which follows `ColumnName`. Each renamed `AddColumn` in the three forms is followed by one statement that gives the export column its old name back: `query.ExportTable.Columns[query.ExportTable.Columns.Count-1].ColumnName="UCR Fee";` ("UCR" for Net Production Detail, "UCR Production" for Provider Payroll). Nothing else reads the export table by column name: export cells and totals are found by position through `ArrDataFields`, which keeps the shown header, and `DeepCopyQueryObject` (split reports) copies the column names. Column order and values are unchanged.
+
+Release note text: "Reports: the Capitation Utilization, Net Production Detail and Provider Payroll reports show "Standard Fee" ("Standard Fee Production") where they showed "UCR". Exported report files keep the old column names, so spreadsheets and tools that read them need no change."
+
+Data that is never shown: the Net Production Detail query's own column name `UCR` stays, so anything that reads `RpProdInc.GetNetProductionDetailDataSet` by name still works. The Provider Payroll data table's column was named "UCR Poduction" with a typo; it is now "Standard Fee Production". That table is neither shown nor exported (the export table takes its names from the form's `AddColumn` calls and its values by position), and nothing in the repository reads it by name.
 
 ## Not changed, on purpose
 
@@ -69,7 +75,6 @@ Column order and values are unchanged. The query column names that are not shown
 - All the wording above. "Standard provider fee" in sentences and preferences, "Standard Fee" in narrow report columns (the spec's short form), "Standard provider fee" in the Blue Book grid.
 - "(zero out write-offs)" became "(no write-offs)" in the three Write-Offs for Non-Covered Services check boxes: the frequency or age limit text did not fit its 422-pixel check box with "standard provider fee" and the old phrase, and the three boxes read alike this way. Same meaning.
 - The frequency or age limit box says "at frequency or age limits" instead of "when frequency or age limits are met", for the same width reason.
-- Exported report column names change with the headers (see the release note); the spec asks to keep "CSV header keys" stable, which this fork reads as keeping the data column names that are not shown.
 
 ## Deviations from the spec
 
@@ -82,6 +87,7 @@ Column order and values are unchanged. The query column names that are not shown
 - **M2-INSPLAN** (C3, depends on M2-TERM): changes `checkClaimsUseUCR`'s text in `FormInsPlan`; the combo text comes from here.
 - **M2-EST, M2-SHEETS**: the "Cat% UCR" header for saved rows (above).
 - **M2-02**: owns `PrefInfos.xml`; only text inside three existing ControlText and four Details elements changed (lines of `InsPpoAlwaysUseUcrFee`, `CoPay_FeeSchedule_BlankLikeZero`, `FixedBenefitBlankLikeZero`, `InsPlanExclusionsMarkDoNotBillIns`, `InsPlanUseUcrFeeForExclusions` and `checkInsDefaultShowUCRonClaims`).
+- Any package that edits `FormRpCapitation.cs`, `FormRpNetProdDetail.cs` or `FormRpProviderPayroll.cs`: keep the export key statement directly after the renamed `AddColumn` (and nothing between them). `ReportHeaderTests.ExportKeys_Unchanged_ShownHeadersRenamed` fails if an export key changed or the statement moved.
 - Every package that adds a test project edits the same places in `OpenDental.sln` and `OpenDental.Local.slnf`; those conflicts are a matter of keeping all lines.
 
 ## Found, not changed
@@ -92,15 +98,15 @@ Provider Payroll, detailed: `RpProdInc.GetProviderPayrollDataForClinics` adds a 
 
 New project `tests/M2TERMTests` (MSTest v1, x86, .NET 4.8; in `OpenDental.sln` and `OpenDental.Local.slnf`):
 
-- `TerminologyStringTests`: the wording table (old text gone, new text there, in each owned file); no shown literal (designer Text, message boxes, translations, report headers, grid cells, enum descriptions, the estimate log) in the owned files says "UCR"; the scan sees every changed literal; `ExclusionRule` descriptions with unchanged numbers and member name; internal names unchanged; PrefInfos.xml ControlText equals the control texts and no hover help says "UCR".
+- `TerminologyStringTests`: the wording table (old text gone, new text there, in each owned file; an old report header stays only as the export key in the statement right after its renamed column); no shown literal (designer Text, message boxes, translations, report headers, grid cells, enum descriptions, the estimate log) in the owned files says "UCR"; the scan sees every changed literal; `ExclusionRule` descriptions with unchanged numbers and member name; internal names unchanged; PrefInfos.xml ControlText equals the control texts and no hover help says "UCR".
 - `TerminologyLayoutTests`: each changed check box text fits its control (Microsoft Sans Serif 8.25 at 96 dpi, the width `OpenDental.UI.CheckBox` draws in); the Blue Book label text fits, ends next to the percent box and clears the list.
-- `ReportHeaderTests`: the header order of the three report forms, with "Standard Fee" over the fee column of the capitation query.
+- `ReportHeaderTests`: the header order of the three report forms, with "Standard Fee" over the fee column of the capitation query. `ExportKeys_Unchanged_ShownHeadersRenamed` reads each form's `AddColumn` calls and export key statements and checks that the export keys are the 24.3 headers, that each statement directly follows the column it renames, and that no shown header says "UCR". `QueryObject_ExportWritesTheOldKey_ScreenShowsTheNewHeader` builds the real `OpenDental.ReportingComplex.QueryObject` for each layout (both Capitation layouts, Provider Payroll summary and detailed, Net Production Detail) from those calls on a filled table and checks the export's header line (`Caption`s) keeps the old names, the column headers and data fields show the new text, cells and totals are found by position, and `DeepCopyQueryObject` keeps the names. The project references `OpenDental.csproj` for this (as `ApptTests` does); no window is shown.
 - `ReportHeaderDbTests` and `BlueBookLogDbTests`: one scratch database for the assembly (fresh 24.3.63 database upgraded by the fork migration runner, name `forkmig_<time>_<pid>_<random>_m2term`, dropped afterwards; skipped when the local MariaDB does not answer). Synthetic code, fee schedule, provider, patient and a completed procedure. Provider Payroll (summary and detailed) and Net Production Detail put the fee under the renamed header; the Blue Book provider fee rule logs the new text, with and without a fee.
 
 Related existing assemblies: `RegistryTests` (PrefInfos.xml entries, `InsBlueBookRuleType` pins), `M202Tests` (PrefInfos.xml entries for the 26.1 preferences), `ReportTests` (reports).
 
 ## Questions for the owner
 
-1. Report headers: "Standard Fee" (fits, or wraps to two lines in Capitation) or the full "Standard Provider Fee" (wraps everywhere)? The exported column names change either way; is a note in the release notes enough for offices that feed these exports into other tools?
+1. Report headers: "Standard Fee" (fits, or wraps to two lines in Capitation) or the full "Standard Provider Fee" (wraps everywhere)? Either way the export keeps the old column names ("UCR Fee", "UCR", "UCR Production"), as the spec's rule asks. If you would rather have the new names in exported files too, that is a deviation from the spec: it needs your explicit approval before merging, would be recorded under "Deviations from the spec", and is done by removing the four export key statements.
 2. Blue Book: the rule's enum description is "Provider Fee" (25.3) and the grid row now says "Standard provider fee" (25.4). Should the registry owner change the description to "Standard Provider Fee" too, so the double-click message matches?
 3. Is "(no write-offs)" acceptable in place of "(zero out write-offs)" in the three preference check boxes, or should the check boxes be widened and keep the old phrase?
