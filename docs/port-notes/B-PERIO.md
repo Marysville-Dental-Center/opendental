@@ -92,6 +92,8 @@ Database tests use one scratch database per run (`bperio_<UTC time>_<pid>_<rando
 
 Not tested automatically: the FormPerio, Perio Setup and Graphical Perio windows themselves (the desktop client is never launched by tests), real printing and print preview, the Sparks3D/DirectX graphical chart, and voice commands.
 
+Run for this package: `BPERIOTests` and `RegistryTests` (its `PrefNameTests` keeps `PerioUseRecessionTerm` out of `PrefName`), plus `NoHqTests`. Last run: Debug x86 build 0 errors, 376 warnings (baseline); BPERIOTests 53/53, RegistryTests 33/33, NoHqTests 49/49; `tools/Test-NoHqHosts.ps1` passed. One earlier RegistryTests run failed `Seed25_3DbTests.OpenDental25_3Database_IsLeftAlone` with "Table 'registry_m1_02_tests.preference' doesn't exist" and passed when run again: that test class uses a fixed database name, so runs from other worktrees at the same time can drop it under each other. It is not caused by this package; the fix (a unique per-run name) belongs to the RegistryTests owner.
+
 ## Questions for the owner
 
 1. Do you know Open Dental's preference name for the 24.4 "Recession" option (for example from Perio Setup in your 25.3 database)? Until then it is stored as `PerioUseRecessionTerm`.
