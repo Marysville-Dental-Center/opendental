@@ -202,11 +202,13 @@ namespace OpenDentBusiness {
 		///<summary>Used only in ClaimProcs.ComputeBaseEst.  Gets a deductible amount from the supplied list of benefits.  Ignores benefits that do not 
 		///match either the planNum or the patPlanNum.  It figures out how much was already used and reduces the returned value by that amount.  
 		///Both individual and family deductibles will reduce the returned value independently.  Works for individual procs, categories, and general.</summary>
+		///<param name="toothNum">The procedure's tooth, for exclusions limited to teeth. Blank for a procedure with no tooth.</param>
+		///<param name="toothRange">The procedure's tooth range (comma separated), for exclusions limited to teeth.</param>
 		public static double GetDeductibleByCode(List<Benefit> listBenefits,long planNum,long patPlanNum,DateTime dateProc,string procCode,
-			List<ClaimProcHist> listClaimProcHists,List<ClaimProcHist> listClaimProcHistsLoop,InsPlan insPlan,long patNum) 
+			List<ClaimProcHist> listClaimProcHists,List<ClaimProcHist> listClaimProcHistsLoop,InsPlan insPlan,long patNum,string toothNum="",string toothRange="") 
 		{
 			Meth.NoCheckMiddleTierRole();
-			if(IsExcluded(procCode,listBenefits,planNum,patPlanNum)) {
+			if(IsExcluded(procCode,listBenefits,planNum,patPlanNum,toothNum,toothRange)) {
 				return 0;
 			}
 			#region filter benList for deductibles
@@ -309,7 +311,7 @@ namespace OpenDentBusiness {
 				}
 				//See if the benefit's codegroup contains this proccode.
 				CodeGroup codeGroup=CodeGroups.GetOne(listBenefitsShort[i].CodeGroupNum);
-				if(!codeGroup.ProcCodes.Contains(procCode)) {
+				if(!CodeGroups.IsProcInCodeGroup(procCode,codeGroup)) {
 					continue;
 				}
 				//If benefits have codegroups w/ overlapping benefits
@@ -414,7 +416,7 @@ namespace OpenDentBusiness {
 				}
 				//See if the benefit's codegroup contains this proccode.
 				CodeGroup codeGroup=CodeGroups.GetOne(listBenefitsShort[i].CodeGroupNum);
-				if(!codeGroup.ProcCodes.Contains(procCode)) {
+				if(!CodeGroups.IsProcInCodeGroup(procCode,codeGroup)) {
 					continue;
 				}
 				//if benefits have codegroups with overlapping benefits
@@ -828,7 +830,7 @@ namespace OpenDentBusiness {
 					continue;//exclude frequencies
 				}
 				CodeGroup codeGroup=CodeGroups.GetOne(listBenefitsShort[i].CodeGroupNum);
-				if(!codeGroup.ProcCodes.Contains(procCodeStr)) {
+				if(!CodeGroups.IsProcInCodeGroup(procCodeStr,codeGroup)) {
 					continue;
 				}
 				//If it's an age based limitation, then make sure the patient age matches.
@@ -889,8 +891,7 @@ namespace OpenDentBusiness {
 			//Age limit for code group------------------------------------------------------------------------------------
 			List<CodeGroup> listCodeGroups=CodeGroups.GetDeepCopy(isShort:false);
 			for(int i=0;i<listCodeGroups.Count;i++) {
-				string procCodes = listCodeGroups[i].ProcCodes;
-				if(!procCodes.Contains(procCodeStr)) {
+				if(!CodeGroups.IsProcInCodeGroup(procCodeStr,listCodeGroups[i])) {//range aware, whole codes only
 					continue;
 				}
 				Benefit benefitAgeLimit=listBenefitsShort.Find(x=>x.CodeGroupNum==listCodeGroups[i].CodeGroupNum && IsAgeLimit(x));
@@ -977,7 +978,7 @@ namespace OpenDentBusiness {
 					continue;//exclude frequencies
 				}
 				CodeGroup codeGroup=CodeGroups.GetOne(listBenefitsShort[i].CodeGroupNum);
-				if(!codeGroup.ProcCodes.Contains(procCodeStr)) {
+				if(!CodeGroups.IsProcInCodeGroup(procCodeStr,codeGroup)) {
 					continue;
 				}
 				//If it's an age based limitation, then make sure the patient age matches.
@@ -1057,7 +1058,7 @@ namespace OpenDentBusiness {
 					}
 					else if(benefitInd.CodeGroupNum!=0) {
 						CodeGroup codeGroup=CodeGroups.GetOne(benefitInd.CodeGroupNum);
-						if(!codeGroup.ProcCodes.Contains(listClaimProcHists[i].StrProcCode)) {
+						if(!CodeGroups.IsProcInCodeGroup(listClaimProcHists[i].StrProcCode,codeGroup)) {
 							continue;
 						}
 					}
@@ -1114,7 +1115,7 @@ namespace OpenDentBusiness {
 					}
 					else if(benefitInd.CodeGroupNum!=0) {
 						CodeGroup codeGroup=CodeGroups.GetOne(benefitInd.CodeGroupNum);
-						if(!codeGroup.ProcCodes.Contains(listClaimProcHistsLoop[i].StrProcCode)) {
+						if(!CodeGroups.IsProcInCodeGroup(listClaimProcHistsLoop[i].StrProcCode,codeGroup)) {
 							continue;
 						}
 					}
@@ -1243,7 +1244,7 @@ namespace OpenDentBusiness {
 				}
 				else if(benefitFam.CodeGroupNum!=0) {
 					CodeGroup codeGroup=CodeGroups.GetOne(benefitFam.CodeGroupNum);
-					if(!codeGroup.ProcCodes.Contains(listClaimProcHists[i].StrProcCode)) {
+					if(!CodeGroups.IsProcInCodeGroup(listClaimProcHists[i].StrProcCode,codeGroup)) {
 						continue;
 					}
 				}
@@ -1290,7 +1291,7 @@ namespace OpenDentBusiness {
 				}
 				else if(benefitFam.CodeGroupNum!=0) {
 					CodeGroup codeGroup=CodeGroups.GetOne(benefitFam.CodeGroupNum);
-					if(!codeGroup.ProcCodes.Contains(listClaimProcHistsLoop[i].StrProcCode)) {
+					if(!CodeGroups.IsProcInCodeGroup(listClaimProcHistsLoop[i].StrProcCode,codeGroup)) {
 						continue;
 					}
 				}
@@ -1490,7 +1491,7 @@ namespace OpenDentBusiness {
 				}
 				if(listBenefitsShort[b].CodeGroupNum!=0) {
 					CodeGroup codeGroup=CodeGroups.GetOne(listBenefitsShort[b].CodeGroupNum);
-					if(!codeGroup.ProcCodes.Contains(claimProcHist.StrProcCode)) {
+					if(!CodeGroups.IsProcInCodeGroup(claimProcHist.StrProcCode,codeGroup)) {
 						//Irrelevant codegroup
 						continue;
 					}
@@ -1694,7 +1695,7 @@ namespace OpenDentBusiness {
 				}
 				//See if the procedure's code is in the benefit's codegroup
 				CodeGroup codeGroup=CodeGroups.GetOne(listBenefitsShort[i].CodeGroupNum);
-				if(!codeGroup.ProcCodes.ToLower().Contains(procCodeStr.ToLower())) {
+				if(!CodeGroups.IsProcInCodeGroup(procCodeStr,codeGroup)) {//range aware, whole codes only, any case
 					continue;
 				}
 				//Benefit is pat-specific
@@ -1758,8 +1759,17 @@ namespace OpenDentBusiness {
 			return Crud.BenefitCrud.SelectMany(command);
 		}
 
-		///<summary>Only used from ClaimProc.ComputeBaseEst. This is a low level function to determine if a given procedure is completely excluded from coverage.  It does not consider any dates of service or history.</summary>
+		///<summary>Whether the procedure code is excluded, for a procedure that has no tooth. Exclusions limited to teeth (benefit.ToothRange) do not
+		///apply to it. Callers that have the procedure should pass its teeth to the other overload.</summary>
 		public static bool IsExcluded(string strProcCode,List<Benefit> listBenefits,long planNum,long patPlanNum) {
+			Meth.NoCheckMiddleTierRole();
+			return IsExcluded(strProcCode,listBenefits,planNum,patPlanNum,"","");
+		}
+
+		///<summary>This is a low level function to determine if a given procedure is completely excluded from coverage.  It does not consider any dates of service or history.
+		///From Open Dental 25.3 an exclusion can be limited to teeth (benefit.ToothRange). Such a row only excludes a procedure whose tooth, or any tooth
+		///of whose tooth range, is in the row's list; a procedure with no tooth is not excluded by it. A blank list applies to every tooth.</summary>
+		public static bool IsExcluded(string strProcCode,List<Benefit> listBenefits,long planNum,long patPlanNum,string toothNum,string toothRange) {
 			Meth.NoCheckMiddleTierRole();
 			for(int i=0;i<listBenefits.Count;i++) {
 				if(listBenefits[i].PlanNum==0 && listBenefits[i].PatPlanNum!=patPlanNum) {
@@ -1770,6 +1780,9 @@ namespace OpenDentBusiness {
 				}
 				if(listBenefits[i].BenefitType!=InsBenefitType.Exclusions) {
 					continue;
+				}
+				if(!IsToothMatch(listBenefits[i],toothNum,toothRange)) {
+					continue;//Limited to other teeth.
 				}
 				if(listBenefits[i].CodeNum > 0) {
 					if(strProcCode==ProcedureCodes.GetStringProcCode(listBenefits[i].CodeNum)) {
@@ -1798,6 +1811,25 @@ namespace OpenDentBusiness {
 				}
 			}
 			return false;//no exclusions found for this code
+		}
+
+		///<summary>True when the benefit applies to a procedure with these teeth: always when the benefit has no tooth list (benefit.ToothRange blank or
+		///NULL), otherwise only when the procedure's tooth or any tooth of its tooth range is in the list.</summary>
+		public static bool IsToothMatch(Benefit benefit,string toothNum,string toothRange) {
+			Meth.NoCheckMiddleTierRole();
+			if(benefit==null || string.IsNullOrWhiteSpace(benefit.ToothRange)) {
+				return true;
+			}
+			return Tooth.IsAnyToothInList(benefit.ToothRange,toothNum,toothRange);
+		}
+
+		///<summary>The benefit's tooth list in the office's nomenclature, for example "2,15" or "23-26". Blank when the benefit applies to every tooth.</summary>
+		public static string GetToothRangeDisplay(Benefit benefit) {
+			Meth.NoCheckMiddleTierRole();
+			if(benefit==null || string.IsNullOrWhiteSpace(benefit.ToothRange)) {
+				return "";
+			}
+			return Tooth.DisplayToothList(benefit.ToothRange);
 		}
 
 		///<summary>Used in FormInsPlan to sych database with changes user made to the benefit list for a plan.  
@@ -1834,7 +1866,8 @@ namespace OpenDentBusiness {
 					|| benefitNew.CodeNum != listBenefitsOld[i].CodeNum
 					|| benefitNew.CoverageLevel != listBenefitsOld[i].CoverageLevel
 					|| benefitNew.CodeGroupNum != listBenefitsOld[i].CodeGroupNum
-					|| benefitNew.TreatArea != listBenefitsOld[i].TreatArea)
+					|| benefitNew.TreatArea != listBenefitsOld[i].TreatArea
+					|| (benefitNew.ToothRange??"") != (listBenefitsOld[i].ToothRange??""))
 				{
 					Benefits.Update(benefitNew,listBenefitsOld[i]); //logging taken care of in update
 				}
@@ -1998,12 +2031,13 @@ namespace OpenDentBusiness {
 		public static string GetCategoryString(Benefit benefit) {
 			Meth.NoCheckMiddleTierRole();
 			string retVal = "";
-			// Determine if "(hidden)" should be appended to category name.
-			bool isHidden=false;
+			// Determine if "(hidden)" should be appended to category name: the group is retired (25.1 meaning of IsHidden), or this kind of limitation
+			// is not shown for the group (ShowInAgeLimit, ShowInFrequency).
+			bool isHidden=CodeGroups.IsHidden(benefit.CodeGroupNum);
 			if(IsAgeLimit(benefit) && !CodeGroups.IsShownInAgeLimit(benefit.CodeGroupNum)) {
 				isHidden=true;
 			}
-			if(IsFrequencyLimitation(benefit) && CodeGroups.IsHidden(benefit.CodeGroupNum)) {
+			if(IsFrequencyLimitation(benefit) && !CodeGroups.IsShownInFrequency(benefit.CodeGroupNum)) {
 				isHidden=true;
 			}
 			if(benefit.CodeGroupNum!=0) {
@@ -2458,6 +2492,243 @@ namespace OpenDentBusiness {
 				+$"WHERE BenefitType IN ({POut.Enum(InsBenefitType.Exclusions)},{POut.Enum(InsBenefitType.CoInsurance)}) "
 				+$"AND (PlanNum IN ({string.Join(",",listPatPlanNums.Distinct().ToList())}) OR PatPlanNum IN ({string.Join(",",listPlanNums.Distinct().ToList())})) ";
 			return Crud.BenefitCrud.SelectMany(command);
+		}
+
+		///<summary>Checks a benefit with the rules of the Edit Benefit window, which the in-place editing of the Other Benefits grid shares. Returns
+		///an empty list when the benefit can be saved. patPlanNumAvailable is the patient plan the window was opened for (0 when editing a plan
+		///only). isPat is the state of the Pat box (patient override). It is passed on its own because a benefit built from a checked Pat box gets
+		///PatPlanNum=patPlanNumAvailable, which is 0 when no patient plan is available, so the benefit alone can not tell that the box was checked.
+		///The Pat box needs a patient plan; without one the benefit would be attached to neither the plan nor a patient plan.</summary>
+		public static List<BenefitValidationError> GetValidationErrors(Benefit benefit,long patPlanNumAvailable,bool isPat) {
+			Meth.NoCheckMiddleTierRole();
+			List<BenefitValidationError> listErrors=new List<BenefitValidationError>();
+			void Add(EnumBenefitField enumBenefitField,string text) {
+				listErrors.Add(new BenefitValidationError(enumBenefitField,Lans.g("Benefits",text)));
+			}
+			if(benefit.QuantityQualifier==BenefitQuantity.AgeLimit && benefit.Quantity==0) {
+				Add(EnumBenefitField.Quantity,"Enter an age greater than 0 to denote coverage through that year.");
+			}
+			int countCatProcCodeGroup=0;
+			if(benefit.CovCatNum!=0) {
+				countCatProcCodeGroup++;
+			}
+			if(benefit.CodeNum!=0) {
+				countCatProcCodeGroup++;
+			}
+			if(benefit.CodeGroupNum!=0) {
+				countCatProcCodeGroup++;
+			}
+			if(countCatProcCodeGroup>1) {
+				Add(EnumBenefitField.Category,"You may only enter one of Category, or Proc Code, or Code Group.");
+			}
+			if((isPat || benefit.PatPlanNum!=0) && patPlanNumAvailable==0) {
+				Add(EnumBenefitField.Pat,"Not allowed to check the Pat box because no patient is available.");
+			}
+			if(benefit.Percent>100 || benefit.Percent<-1) {
+				Add(EnumBenefitField.Percent,"Percentage must be between 0 and 100.");
+			}
+			if(benefit.BenefitType!=InsBenefitType.CoInsurance && benefit.Percent>0) {//-1 or 0 is allowed for other types
+				//We must allow Exclusion with 0 to remain backward compatible.
+				Add(EnumBenefitField.Percent,"Not allowed to enter a percentage unless type is CoInsurance.");
+			}
+			if(benefit.MonetaryAmt!=-1 && benefit.MonetaryAmt<0) {
+				Add(EnumBenefitField.Amount,"Amount can not be negative.");
+			}
+			if(benefit.MonetaryAmt!=-1 && !benefit.BenefitType.In(InsBenefitType.Limitations,InsBenefitType.Deductible,InsBenefitType.CoPayment)) {
+				Add(EnumBenefitField.Amount,"An amount is only allowed for limitations, deductibles and copayments.");
+			}
+			if(benefit.Quantity>0 && benefit.QuantityQualifier==BenefitQuantity.None) {
+				Add(EnumBenefitField.Qualifier,"A quantity needs a quantity qualifier.");
+			}
+			if(benefit.BenefitType==InsBenefitType.WaitingPeriod
+				&& benefit.QuantityQualifier!=BenefitQuantity.Months
+				&& benefit.QuantityQualifier!=BenefitQuantity.Years)
+			{
+				Add(EnumBenefitField.Qualifier,"Waiting period must be months or years.");
+			}
+			if(benefit.BenefitType==InsBenefitType.WaitingPeriod && benefit.CovCatNum==0 && benefit.CodeNum==0 && benefit.CodeGroupNum==0) {
+				Add(EnumBenefitField.Category,"Waiting period must have a codegroup, category, or procedure code.");
+			}
+			if(IsFrequencyLimitation(benefit) || IsAgeLimit(benefit)) {
+				if(benefit.CovCatNum>0) {
+					Add(EnumBenefitField.Category,"Category cannot be used for this limitation benefit. Use Proc Code or Code Group instead.");
+				}
+				if(benefit.Quantity<=0) {
+					Add(EnumBenefitField.Quantity,"Frequency Limitations cannot have a quantity of zero.");
+				}
+			}
+			if(!IsFrequencyLimitation(benefit) && benefit.TreatArea!=TreatmentArea.None) {
+				Add(EnumBenefitField.TreatArea,"Treatment Area can only be used for limitation benefits.");
+			}
+			if(!string.IsNullOrWhiteSpace(benefit.ToothRange) && benefit.BenefitType!=InsBenefitType.Exclusions) {
+				Add(EnumBenefitField.Teeth,"Teeth can only be entered for exclusions.");
+			}
+			return listErrors;
+		}
+
+		///<summary>Builds the benefit one row of the Other Benefits grid describes, as a copy of benefitBase (which keeps BenefitNum, CodeNum and
+		///CodeGroupNum) with the row's values, and checks it with GetValidationErrors. listErrors also gets the values that do not parse. Teeth are
+		///kept only for exclusions and are parsed in the given nomenclature. Returns null when the row has errors.</summary>
+		public static Benefit GetFromOtherBenefitsRow(Benefit benefitBase,OtherBenefitsRowInput input,long planNum,long patPlanNum,
+			ToothNumberingNomenclature toothNumberingNomenclature,out List<BenefitValidationError> listErrors)
+		{
+			Meth.NoCheckMiddleTierRole();
+			listErrors=new List<BenefitValidationError>();
+			Benefit benefit=benefitBase.Copy();
+			if(input.TypeIndex<0 || !Enum.IsDefined(typeof(InsBenefitType),input.TypeIndex)) {
+				listErrors.Add(new BenefitValidationError(EnumBenefitField.Type,Lans.g("Benefits","Pick a type.")));
+			}
+			else {
+				benefit.BenefitType=(InsBenefitType)input.TypeIndex;
+			}
+			if(input.IsPat && patPlanNum==0) {
+				//Not attached to anything otherwise.
+				listErrors.Add(new BenefitValidationError(EnumBenefitField.Pat,Lans.g("Benefits","Not allowed to check the Pat box because no patient is available.")));
+			}
+			else if(input.IsPat) {
+				benefit.PatPlanNum=patPlanNum;
+				benefit.PlanNum=0;
+			}
+			else {
+				benefit.PatPlanNum=0;
+				benefit.PlanNum=planNum;
+			}
+			benefit.CoverageLevel=input.CoverageLevel;
+			if(benefit.CodeGroupNum==0 && benefit.CodeNum==0) {
+				benefit.CovCatNum=input.CovCatNum;
+			}
+			benefit.Percent=-1;
+			string percent=(input.Percent??"").Trim();
+			if(percent!="") {
+				if(int.TryParse(percent,out int percentValue) && percentValue>=0 && percentValue<=100) {
+					benefit.Percent=percentValue;
+				}
+				else {
+					listErrors.Add(new BenefitValidationError(EnumBenefitField.Percent,Lans.g("Benefits","Percentage must be a whole number between 0 and 100.")));
+				}
+			}
+			benefit.MonetaryAmt=-1;
+			string amount=(input.Amount??"").Trim();
+			if(amount!="") {
+				if(double.TryParse(amount,System.Globalization.NumberStyles.Currency,System.Globalization.CultureInfo.CurrentCulture,out double amountValue)
+					&& amountValue>=0)
+				{
+					benefit.MonetaryAmt=amountValue;
+				}
+				else {
+					listErrors.Add(new BenefitValidationError(EnumBenefitField.Amount,Lans.g("Benefits","Amount must be a number that is not negative.")));
+				}
+			}
+			benefit.TimePeriod=input.TimePeriod;
+			benefit.Quantity=0;
+			string quantity=(input.Quantity??"").Trim();
+			if(quantity!="") {
+				if(byte.TryParse(quantity,out byte quantityValue)) {
+					benefit.Quantity=quantityValue;
+				}
+				else {
+					listErrors.Add(new BenefitValidationError(EnumBenefitField.Quantity,Lans.g("Benefits","Quantity must be a whole number from 0 to 255.")));
+				}
+			}
+			benefit.QuantityQualifier=input.QuantityQualifier;
+			benefit.TreatArea=input.TreatArea;
+			benefit.ToothRange="";
+			if(benefit.BenefitType==InsBenefitType.Exclusions && input.TypeIndex>=0) {
+				try {
+					benefit.ToothRange=Tooth.ParseToothList(input.Teeth,toothNumberingNomenclature);
+				}
+				catch(ApplicationException ex) {
+					listErrors.Add(new BenefitValidationError(EnumBenefitField.Teeth,ex.Message));
+				}
+			}
+			if(listErrors.Count==0) {
+				listErrors.AddRange(GetValidationErrors(benefit,patPlanNum,input.IsPat));
+			}
+			if(listErrors.Count>0) {
+				return null;
+			}
+			return benefit;
+		}
+
+		///<summary>The index to select in the Category combo of an Other Benefits row, whose choices are a blank ("no category") followed by
+		///listCovCats. Returns -1, meaning no choice and a read-only cell, for a row with a code group or procedure code, and for a category that is
+		///not in listCovCats (a hidden insurance category). Picking index 0 for a hidden category would read back as "no category" and silently
+		///turn the benefit into a general one when any other cell of the row is edited.</summary>
+		public static int GetOtherBenefitsCategoryIndex(Benefit benefit,List<CovCat> listCovCats) {
+			Meth.NoCheckMiddleTierRole();
+			if(benefit.CodeGroupNum!=0 || benefit.CodeNum!=0) {
+				return -1;
+			}
+			if(benefit.CovCatNum==0) {
+				return 0;
+			}
+			int index=listCovCats.FindIndex(x => x.CovCatNum==benefit.CovCatNum);
+			if(index<0) {
+				return -1;
+			}
+			return index+1;
+		}
+
+		///<summary>The insurance category of an Other Benefits row from the index of its Category combo (see GetOtherBenefitsCategoryIndex). Index 0
+		///is no category. An index outside the list, such as -1 on a read-only cell, keeps the category the benefit already has.</summary>
+		public static long GetOtherBenefitsCovCatNum(Benefit benefit,int categoryIndex,List<CovCat> listCovCats) {
+			Meth.NoCheckMiddleTierRole();
+			if(categoryIndex==0) {
+				return 0;
+			}
+			if(categoryIndex>0 && categoryIndex<=listCovCats.Count) {
+				return listCovCats[categoryIndex-1].CovCatNum;
+			}
+			return benefit.CovCatNum;
+		}
+	}
+
+	///<summary>The values typed or picked in one row of the Other Benefits grid (Open Dental 25.3 in-place editing), before they are checked.
+	///Indexes are enum values; TypeIndex is -1 when no type is picked yet (a pre-filled code group row).</summary>
+	public class OtherBenefitsRowInput {
+		public bool IsPat;
+		public BenefitCoverageLevel CoverageLevel;
+		public int TypeIndex=-1;
+		///<summary>Only used for rows without a code group or procedure code.</summary>
+		public long CovCatNum;
+		public string Percent="";
+		public string Amount="";
+		public BenefitTimePeriod TimePeriod;
+		public string Quantity="";
+		public BenefitQuantity QuantityQualifier;
+		public TreatmentArea TreatArea;
+		public string Teeth="";
+
+		///<summary>True when nothing is entered: no type, percent, amount, quantity or teeth. A blank code group row is not saved.</summary>
+		public bool IsBlank() {
+			return TypeIndex<0 && string.IsNullOrWhiteSpace(Percent) && string.IsNullOrWhiteSpace(Amount) && string.IsNullOrWhiteSpace(Quantity)
+				&& string.IsNullOrWhiteSpace(Teeth);
+		}
+	}
+
+	///<summary>The fields of a benefit, as the Edit Benefit window and the Other Benefits grid show them. Used to point a validation error at its cell.</summary>
+	public enum EnumBenefitField {
+		Pat,
+		Level,
+		Type,
+		Category,
+		Percent,
+		Amount,
+		TimePeriod,
+		Quantity,
+		Qualifier,
+		TreatArea,
+		Teeth,
+	}
+
+	///<summary>One reason a benefit can not be saved, and the field it is about.</summary>
+	public class BenefitValidationError {
+		public EnumBenefitField Field;
+		public string Message;
+
+		public BenefitValidationError(EnumBenefitField field,string message) {
+			Field=field;
+			Message=message;
 		}
 	}
 

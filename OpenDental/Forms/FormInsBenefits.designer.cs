@@ -60,6 +60,7 @@ namespace OpenDental {
 			this.checkSimplified = new OpenDental.UI.CheckBox();
 			this.butDelete = new OpenDental.UI.Button();
 			this.butAddBenefit = new OpenDental.UI.Button();
+			this.butEditBenefit = new OpenDental.UI.Button();
 			this.butSave = new OpenDental.UI.Button();
 			this.groupCategories = new OpenDental.UI.GroupBox();
 			this.labelWaitingPeriod = new System.Windows.Forms.Label();
@@ -370,6 +371,16 @@ namespace OpenDental {
 			this.butAddBenefit.TabIndex = 4;
 			this.butAddBenefit.Text = "Add";
 			this.butAddBenefit.Click += new System.EventHandler(this.butAddBenefit_Click);
+			//
+			// butEditBenefit
+			//
+			this.butEditBenefit.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.butEditBenefit.Location = new System.Drawing.Point(614, 669);
+			this.butEditBenefit.Name = "butEditBenefit";
+			this.butEditBenefit.Size = new System.Drawing.Size(78, 24);
+			this.butEditBenefit.TabIndex = 6;
+			this.butEditBenefit.Text = "Edit";
+			this.butEditBenefit.Click += new System.EventHandler(this.butEditBenefit_Click);
 			// 
 			// butSave
 			// 
@@ -922,12 +933,15 @@ namespace OpenDental {
             | System.Windows.Forms.AnchorStyles.Left)));
 			this.gridBenefits.Location = new System.Drawing.Point(6, 337);
 			this.gridBenefits.Name = "gridBenefits";
-			this.gridBenefits.SelectionMode = OpenDental.UI.GridSelectionMode.MultiExtended;
+			this.gridBenefits.SelectionMode = OpenDental.UI.GridSelectionMode.OneCell;
 			this.gridBenefits.Size = new System.Drawing.Size(686, 266);
 			this.gridBenefits.TabIndex = 3;
 			this.gridBenefits.Title = "Other Benefits";
 			this.gridBenefits.TranslationName = "TableInsBenefits";
 			this.gridBenefits.CellDoubleClick += new OpenDental.UI.ODGridClickEventHandler(this.gridBenefits_CellDoubleClick);
+			this.gridBenefits.CellClick += new OpenDental.UI.ODGridClickEventHandler(this.gridBenefits_CellClick);
+			this.gridBenefits.CellLeave += new OpenDental.UI.ODGridClickEventHandler(this.gridBenefits_CellLeave);
+			this.gridBenefits.CellSelectionCommitted += new OpenDental.UI.ODGridClickEventHandler(this.gridBenefits_CellSelectionCommitted);
 			// 
 			// FormInsBenefits
 			// 
@@ -943,6 +957,7 @@ namespace OpenDental {
 			this.Controls.Add(this.gridBenefits);
 			this.Controls.Add(this.butDelete);
 			this.Controls.Add(this.butAddBenefit);
+			this.Controls.Add(this.butEditBenefit);
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.groupCategories);
 			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
@@ -967,6 +982,7 @@ namespace OpenDental {
 		private OpenDental.UI.Button butSave;
 		private OpenDental.UI.Button butDelete;
 		private OpenDental.UI.Button butAddBenefit;
+		private OpenDental.UI.Button butEditBenefit;
 		private OpenDental.UI.GridOD gridBenefits;
 		private OpenDental.UI.CheckBox checkSimplified;
 		private Label label1;

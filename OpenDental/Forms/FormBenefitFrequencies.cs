@@ -50,10 +50,14 @@ namespace OpenDental {
 			gridMain.ListGridRows.Clear();
 			GridRow gridRow;
 			for(int i=0;i<listCodeGroups.Count;i++) {
+				if(listCodeGroups[i].IsHidden) {
+					//Retired code group (Open Dental 25.1): no row. Its benefits stay in ListBenefitsAll untouched, and the estimates still use them.
+					continue;
+				}
 				List<Benefit> listBenefitsGroup=listBenefits.FindAll(x=>x.CodeGroupNum==listCodeGroups[i].CodeGroupNum);
 				//there could be duplicates for a codegroup for various reasons
 				if(listBenefitsGroup.Count==0) {
-					if(listCodeGroups[i].IsHidden) {
+					if(!listCodeGroups[i].ShowInFrequency) {
 						continue;
 					}
 					gridRow=new GridRow();

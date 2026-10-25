@@ -27,6 +27,25 @@ namespace OpenDental {
 		private List<Benefit> _listBenefitsGrid;
 		private bool _dontAllowSimplified;
 		private bool _isResettingQuickText=false;
+		///<summary>Benefits of retired (hidden) code groups, Open Dental 25.1. They get no row in any grid of this window, are saved back unchanged,
+		///and the estimates keep using them.</summary>
+		private List<Benefit> _listBenefitsRetired=new List<Benefit>();
+		///<summary>Rows of the Other Benefits grid whose cells do not make a valid benefit yet, with the reasons. Their cells are red and Save is
+		///blocked until they are fixed.</summary>
+		private Dictionary<OtherBenefitRow,List<BenefitValidationError>> _dictOtherBenefitErrors=new Dictionary<OtherBenefitRow,List<BenefitValidationError>>();
+		///<summary>Insurance categories offered in the Category cell of rows that use a category (not a procedure code or a code group).</summary>
+		private List<CovCat> _listCovCats;
+		private const int COL_PAT=0;
+		private const int COL_LEVEL=1;
+		private const int COL_TYPE=2;
+		private const int COL_CATEGORY=3;
+		private const int COL_PERCENT=4;
+		private const int COL_AMOUNT=5;
+		private const int COL_TIME_PERIOD=6;
+		private const int COL_QUANTITY=7;
+		private const int COL_QUALIFIER=8;
+		private const int COL_TREAT_AREA=9;
+		private const int COL_TEETH=10;
 
 		///<summary></summary>
 		public FormInsBenefits(long planNum,long patPlanNum) {
@@ -44,7 +63,11 @@ namespace OpenDental {
 				butAddFrequency.Enabled=false;
 				butDelete.Enabled=false;
 			}
-			_listBenefitsAll=new List<Benefit>(ListBenefits);
+			//Benefits of retired code groups are kept aside: no rows for them, but they are saved back unchanged.
+			_listBenefitsRetired=ListBenefits.FindAll(x => !CodeGroups.IsShownInBenefitsWindow(x));
+			_listBenefitsAll=ListBenefits.FindAll(x => CodeGroups.IsShownInBenefitsWindow(x));
+			_listCovCats=CovCats.GetDeepCopy(true);
+			gridBenefits.FuncCellIsEditable=IsOtherBenefitCellEditable;
 			if(CovCats.GetForEbenCat(EbenefitCategory.Accident)==null
 				|| CovCats.GetForEbenCat(EbenefitCategory.Crowns)==null
 				|| CovCats.GetForEbenCat(EbenefitCategory.Diagnostic)==null
@@ -90,6 +113,10 @@ namespace OpenDental {
 		}
 
 		private void checkSimplified_Click(object sender,EventArgs e) {
+			if(!IsOtherBenefitsGridValid()) {
+				checkSimplified.Checked=!checkSimplified.Checked;
+				return;
+			}
 			if(checkSimplified.Checked) {
 				if(_dontAllowSimplified) {
 					checkSimplified.Checked=false;
@@ -474,7 +501,7 @@ namespace OpenDental {
 				textMonth.Enabled=true;
 			}
 			for(int i=0;i<listBenefits.Count;i++) {
-				_listBenefitsAll[i].TimePeriod=benefitTimePeriod;
+				listBenefits[i].TimePeriod=benefitTimePeriod;
 			}
 		}
 
@@ -493,6 +520,9 @@ namespace OpenDental {
 			GridRow gridRow;
 			List<CodeGroup> listCodeGroups = CodeGroups.GetDeepCopy();
 			for(int i=0;i<listCodeGroups.Count;i++) {
+				if(listCodeGroups[i].IsHidden) {
+					continue;//Retired code group (Open Dental 25.1): no row.
+				}
 				//There will not be duplicates like with frequencies.
 				Benefit benefit=_listBenefitsAll.Find(x=>x.CodeGroupNum==listCodeGroups[i].CodeGroupNum && Benefits.IsAgeLimit(x));
 				if(benefit==null) {
@@ -561,9 +591,12 @@ namespace OpenDental {
 			gridFrequencies.ListGridRows.Clear();
 			GridRow gridRow;
 			for(int i=0;i<listCodeGroups.Count;i++) {
+				if(listCodeGroups[i].IsHidden) {
+					continue;//Retired code group (Open Dental 25.1): no row. Its benefits were set aside when the window opened.
+				}
 				List<Benefit> listBenefitsGroup=listBenefits.FindAll(x=>x.CodeGroupNum==listCodeGroups[i].CodeGroupNum);
 				if(listBenefitsGroup.Count==0) {
-					if(listCodeGroups[i].IsHidden) {
+					if(!listCodeGroups[i].ShowInFrequency) {
 						continue;
 					}
 					gridRow=new GridRow();
@@ -572,7 +605,7 @@ namespace OpenDental {
 					gridRow.Cells.Add("");
 					string textForCell=listCodeGroups[i].GroupName;// Code Group or Proc Codes
 					if(checkShowProcCodes.Checked) {
-						List<ProcedureCode> listProcedureCodes=ProcedureCodes.GetFromCommaDelimitedList(listCodeGroups[i].ProcCodes);
+						List<ProcedureCode> listProcedureCodes=CodeGroups.GetProcedureCodes(listCodeGroups[i]);//ranges expanded
 						textForCell="";
 						for(int c=0;c<listProcedureCodes.Count;c++) {
 							if(c!=0) {
@@ -600,7 +633,7 @@ namespace OpenDental {
 					gridRow.Cells.Add(listBenefitsGroup[k].PatPlanNum==0?"":"X");
 					string textForCell=Benefits.GetCategoryString(listBenefitsGroup[k]);// Code Group or Proc Codes
 					if(checkShowProcCodes.Checked) {
-						List<ProcedureCode> listProcedureCodes=ProcedureCodes.GetFromCommaDelimitedList(listCodeGroups[i].ProcCodes);
+						List<ProcedureCode> listProcedureCodes=CodeGroups.GetProcedureCodes(listCodeGroups[i]);//ranges expanded
 						textForCell="";
 						for(int c=0;c<listProcedureCodes.Count;c++) {
 							if(c!=0) {
@@ -626,84 +659,299 @@ namespace OpenDental {
 			gridFrequencies.EndUpdate();
 		}
 
-		///<summary>This only fills the grid labeled 'Other Benefits'. It does not get any data from the database.</summary>
+		///<summary>This only fills the grid labeled 'Other Benefits'. It does not get any data from the database.
+		///From Open Dental 25.3 its rows are edited in place (double click or Edit still opens Edit Benefit), and every code group flagged Show in
+		///Other Benefits that has no row yet gets a blank, pre-filled row; picking a type and values there creates the benefit. Edits are checked
+		///when a cell is left, with the rules of Edit Benefit, and saved with the window.</summary>
 		private void FillGridBenefits() {
 			_listBenefitsGrid.Sort();
+			_dictOtherBenefitErrors.Clear();
 			gridBenefits.BeginUpdate();
 			gridBenefits.Columns.Clear();
-			GridColumn col=new GridColumn("Pat",35);
+			GridColumn col=new GridColumn(Lan.g(this,"Pat"),35,HorizontalAlignment.Center);
 			gridBenefits.Columns.Add(col);
-			col=new GridColumn("Level",60);
+			col=new GridColumn(Lan.g(this,"Level"),60);
+			col.ListDisplayStrings=GetEnumStrings<BenefitCoverageLevel>("enumBenefitCoverageLevel");
 			gridBenefits.Columns.Add(col);
-			col=new GridColumn("Type",90);
+			col=new GridColumn(Lan.g(this,"Type"),90);
+			List<string> listStringsType=new List<string>() { "" };//blank: no type picked yet
+			listStringsType.AddRange(GetEnumStrings<InsBenefitType>("enumInsBenefitType"));
+			col.ListDisplayStrings=listStringsType;
 			gridBenefits.Columns.Add(col);
-			col=new GridColumn("Category",90);
+			col=new GridColumn(Lan.g(this,"Category"),95);
+			List<string> listStringsCategory=new List<string>() { "" };
+			listStringsCategory.AddRange(_listCovCats.Select(x => x.Description));
+			col.ListDisplayStrings=listStringsCategory;
 			gridBenefits.Columns.Add(col);
-			col=new GridColumn("%",35);
+			col=new GridColumn("%",35,HorizontalAlignment.Center,isEditable:true);
 			gridBenefits.Columns.Add(col);
-			col=new GridColumn("Amt",50);
+			col=new GridColumn(Lan.g(this,"Amt"),50,HorizontalAlignment.Right,isEditable:true);
 			gridBenefits.Columns.Add(col);
-			col=new GridColumn("Time Period",90);
+			col=new GridColumn(Lan.g(this,"Time Period"),85);
+			col.ListDisplayStrings=GetEnumStrings<BenefitTimePeriod>("enumBenefitTimePeriod");
 			gridBenefits.Columns.Add(col);
-			col=new GridColumn("Quantity",125);
+			col=new GridColumn(Lan.g(this,"Qty"),35,HorizontalAlignment.Center,isEditable:true);
 			gridBenefits.Columns.Add(col);
-			col=new GridColumn("Treat Area",100);
+			col=new GridColumn(Lan.g(this,"Qualifier"),80);
+			col.ListDisplayStrings=GetEnumStrings<BenefitQuantity>("enumBenefitQuantity");
+			gridBenefits.Columns.Add(col);
+			col=new GridColumn(Lan.g(this,"Treat Area"),65);
+			col.ListDisplayStrings=GetEnumStrings<TreatmentArea>("enumTreatmentArea");
+			gridBenefits.Columns.Add(col);
+			col=new GridColumn(Lan.g(this,"Teeth"),55,isEditable:true);
 			gridBenefits.Columns.Add(col);
 			gridBenefits.ListGridRows.Clear();
-			GridRow row;
 			for(int i=0;i<_listBenefitsGrid.Count;i++) {
-				row=new GridRow();
-				if(_listBenefitsGrid[i].PatPlanNum==0) {//attached to plan
-					row.Cells.Add("");
+				gridBenefits.ListGridRows.Add(MakeOtherBenefitRow(new OtherBenefitRow(_listBenefitsGrid[i],isInList:true)));
+			}
+			//Pre-filled rows for code groups flagged Show in Other Benefits (codegroup.ShowInOther), the way the Age Limitations grid lists groups.
+			List<CodeGroup> listCodeGroups=CodeGroups.GetForOtherBenefitsGrid();
+			for(int i=0;i<listCodeGroups.Count;i++) {
+				if(_listBenefitsGrid.Any(x => x.CodeGroupNum==listCodeGroups[i].CodeGroupNum && !Benefits.IsFrequencyLimitation(x))) {
+					continue;
 				}
-				else {
-					row.Cells.Add("X");
-				}
-				if(_listBenefitsGrid[i].CoverageLevel==BenefitCoverageLevel.None) {
-					row.Cells.Add("");
-				}
-				else{
-					row.Cells.Add(Lan.g("enumBenefitCoverageLevel",_listBenefitsGrid[i].CoverageLevel.ToString()));
-				}
-				if(_listBenefitsGrid[i].BenefitType==InsBenefitType.CoInsurance && _listBenefitsGrid[i].Percent != -1) {
-					row.Cells.Add("%");
-				}
-				else if(Benefits.IsFrequencyLimitation(_listBenefitsGrid[i])) {
-					row.Cells.Add(Lan.g(this,"Frequency"));
-				}
-				else {
-					row.Cells.Add(Lan.g("enumInsBenefitType",_listBenefitsGrid[i].BenefitType.ToString()));
-				}
-				row.Cells.Add(Benefits.GetCategoryString(_listBenefitsGrid[i]));
-				if(_listBenefitsGrid[i].Percent == -1) {
-					row.Cells.Add("");
-				}
-				else{
-					row.Cells.Add(_listBenefitsGrid[i].Percent.ToString());
-				}
-				row.Cells.Add(_listBenefitsGrid[i].GetDisplayMonetaryAmt());
-				if(_listBenefitsGrid[i].TimePeriod==BenefitTimePeriod.None) {
-					row.Cells.Add("");
-				}
-				else {
-					row.Cells.Add(Lan.g("enumBenefitTimePeriod",_listBenefitsGrid[i].TimePeriod.ToString()));
-				}
-				if(_listBenefitsGrid[i].Quantity>0) {
-					row.Cells.Add(_listBenefitsGrid[i].Quantity.ToString()+" "
-						+Lan.g("enumBenefitQuantity",_listBenefitsGrid[i].QuantityQualifier.ToString()));
-				}
-				else {
-					row.Cells.Add("");
-				}
-				if(_listBenefitsGrid[i].TreatArea==TreatmentArea.None) {
-					row.Cells.Add("");
-				}
-				else {
-					row.Cells.Add(_listBenefitsGrid[i].TreatArea.ToString());
-				}
-				gridBenefits.ListGridRows.Add(row);
+				Benefit benefit=new Benefit();
+				benefit.CodeGroupNum=listCodeGroups[i].CodeGroupNum;
+				benefit.PlanNum=_planNum;
+				gridBenefits.ListGridRows.Add(MakeOtherBenefitRow(new OtherBenefitRow(benefit,isInList:false)));
 			}
 			gridBenefits.EndUpdate();
+		}
+
+		///<summary>The display strings of an enum, in enum order, translated. The None member of the "none" enums shows blank.</summary>
+		private List<string> GetEnumStrings<T>(string translationName) where T:Enum {
+			List<string> listStrings=new List<string>();
+			foreach(T value in Enum.GetValues(typeof(T))) {
+				if(Convert.ToInt32(value)==0 && value.ToString()=="None") {
+					listStrings.Add("");
+					continue;
+				}
+				listStrings.Add(Lan.g(translationName,value.ToString()));
+			}
+			return listStrings;
+		}
+
+		///<summary>One row of the Other Benefits grid. A pre-filled code group row has no type picked (combo index 0 in the Type column).</summary>
+		private GridRow MakeOtherBenefitRow(OtherBenefitRow otherBenefitRow) {
+			Benefit benefit=otherBenefitRow.Benefit;
+			GridRow row=new GridRow();
+			row.Cells.Add(benefit.PatPlanNum==0?"":"X");
+			row.Cells.Add(MakeComboCell(gridBenefits.Columns[COL_LEVEL],(int)benefit.CoverageLevel));
+			if(otherBenefitRow.IsInList) {
+				GridCell gridCellType=MakeComboCell(gridBenefits.Columns[COL_TYPE],(int)benefit.BenefitType+1);
+				if(benefit.BenefitType==InsBenefitType.CoInsurance && benefit.Percent != -1) {
+					gridCellType.Text="%";
+				}
+				else if(Benefits.IsFrequencyLimitation(benefit)) {
+					gridCellType.Text=Lan.g(this,"Frequency");
+				}
+				row.Cells.Add(gridCellType);
+			}
+			else {
+				row.Cells.Add(MakeComboCell(gridBenefits.Columns[COL_TYPE],0));
+			}
+			GridCell gridCellCategory=new GridCell(Benefits.GetCategoryString(benefit));
+			//-1 (read-only, category kept) for code group and procedure code rows and for a hidden category, which the combo does not list.
+			gridCellCategory.ComboSelectedIndex=Benefits.GetOtherBenefitsCategoryIndex(benefit,_listCovCats);
+			if(gridCellCategory.ComboSelectedIndex==0) {
+				gridCellCategory.Text="";//no category
+			}
+			row.Cells.Add(gridCellCategory);
+			row.Cells.Add(benefit.Percent==-1?"":benefit.Percent.ToString());
+			row.Cells.Add(benefit.GetDisplayMonetaryAmt());
+			row.Cells.Add(MakeComboCell(gridBenefits.Columns[COL_TIME_PERIOD],(int)benefit.TimePeriod));
+			row.Cells.Add(benefit.Quantity>0?benefit.Quantity.ToString():"");
+			row.Cells.Add(MakeComboCell(gridBenefits.Columns[COL_QUALIFIER],(int)benefit.QuantityQualifier));
+			row.Cells.Add(MakeComboCell(gridBenefits.Columns[COL_TREAT_AREA],(int)benefit.TreatArea));
+			row.Cells.Add(Benefits.GetToothRangeDisplay(benefit));
+			row.Tag=otherBenefitRow;
+			otherBenefitRow.SignatureApplied=GetRowSignature(row);
+			return row;
+		}
+
+		///<summary>The texts and combo choices of a row, to tell whether a cell was really changed since the row was last applied. Leaving a cell
+		///without changing anything must not check (and possibly block) an old benefit that the newer rules would refuse.</summary>
+		private string GetRowSignature(GridRow gridRow) {
+			return string.Join("\t",gridRow.Cells.Select(x => x.Text+"\v"+x.ComboSelectedIndex));
+		}
+
+		private GridCell MakeComboCell(GridColumn gridColumn,int index) {
+			GridCell gridCell=new GridCell("");
+			if(index>=0 && index<gridColumn.ListDisplayStrings.Count) {
+				gridCell.Text=gridColumn.ListDisplayStrings[index];
+				gridCell.ComboSelectedIndex=index;
+			}
+			return gridCell;
+		}
+
+		///<summary>Which cells of the Other Benefits grid can be edited in place. The category is read-only on rows with a code group or procedure
+		///code and on rows whose category is hidden (Edit Benefit still opens on double click), Treat Area only applies to limitations, and Teeth
+		///only to exclusions.</summary>
+		private bool IsOtherBenefitCellEditable(int col,int row) {
+			if(!butSave.Enabled) {
+				return false;//no InsPlanEdit permission
+			}
+			if(row<0 || row>=gridBenefits.ListGridRows.Count || !(gridBenefits.ListGridRows[row].Tag is OtherBenefitRow otherBenefitRow)) {
+				return false;
+			}
+			GridRow gridRow=gridBenefits.ListGridRows[row];
+			int typeIndex=gridRow.Cells[COL_TYPE].ComboSelectedIndex-1;
+			switch(col) {
+				case COL_CATEGORY:
+					return Benefits.GetOtherBenefitsCategoryIndex(otherBenefitRow.Benefit,_listCovCats)>=0;
+				case COL_TREAT_AREA:
+					return typeIndex==(int)InsBenefitType.Limitations || gridRow.Cells[COL_TREAT_AREA].ComboSelectedIndex>0;
+				case COL_TEETH:
+					return typeIndex==(int)InsBenefitType.Exclusions;
+				default:
+					return true;
+			}
+		}
+
+		private void gridBenefits_CellClick(object sender,ODGridClickEventArgs e) {
+			if(e.Col!=COL_PAT || e.Row<0 || e.Row>=gridBenefits.ListGridRows.Count || !butSave.Enabled) {
+				return;
+			}
+			if(_patPlanNum==0) {
+				return;//No patient: benefits can only be attached to the plan.
+			}
+			GridCell gridCell=gridBenefits.ListGridRows[e.Row].Cells[COL_PAT];
+			gridCell.Text=(gridCell.Text=="X")?"":"X";
+			ApplyOtherBenefitRow(e.Row);
+		}
+
+		private void gridBenefits_CellLeave(object sender,ODGridClickEventArgs e) {
+			ApplyOtherBenefitRow(e.Row);
+		}
+
+		private void gridBenefits_CellSelectionCommitted(object sender,ODGridClickEventArgs e) {
+			ApplyOtherBenefitRow(e.Row);
+		}
+
+		///<summary>Reads one row of the Other Benefits grid back into its benefit after an in-place edit. A valid row updates the benefit (and a
+		///pre-filled code group row becomes a new benefit); an invalid row turns the bad cells red; a code group row left completely blank is
+		///removed, so its benefit is deleted on save.</summary>
+		private void ApplyOtherBenefitRow(int rowIndex) {
+			if(rowIndex<0 || rowIndex>=gridBenefits.ListGridRows.Count) {
+				return;
+			}
+			GridRow gridRow=gridBenefits.ListGridRows[rowIndex];
+			if(!(gridRow.Tag is OtherBenefitRow otherBenefitRow) || gridRow.Cells.Count<=COL_TEETH) {
+				return;
+			}
+			if(GetRowSignature(gridRow)==otherBenefitRow.SignatureApplied) {
+				SetOtherBenefitRowErrors(gridRow,otherBenefitRow,new List<BenefitValidationError>());//unchanged, or changed back
+				return;
+			}
+			OtherBenefitsRowInput input=new OtherBenefitsRowInput();
+			input.IsPat=gridRow.Cells[COL_PAT].Text=="X";
+			input.CoverageLevel=(BenefitCoverageLevel)Math.Max(0,gridRow.Cells[COL_LEVEL].ComboSelectedIndex);
+			input.TypeIndex=gridRow.Cells[COL_TYPE].ComboSelectedIndex-1;
+			//Kept when the cell is read-only (-1), which includes a hidden category.
+			input.CovCatNum=Benefits.GetOtherBenefitsCovCatNum(otherBenefitRow.Benefit,gridRow.Cells[COL_CATEGORY].ComboSelectedIndex,_listCovCats);
+			input.Percent=gridRow.Cells[COL_PERCENT].Text;
+			input.Amount=gridRow.Cells[COL_AMOUNT].Text;
+			input.TimePeriod=(BenefitTimePeriod)Math.Max(0,gridRow.Cells[COL_TIME_PERIOD].ComboSelectedIndex);
+			input.Quantity=gridRow.Cells[COL_QUANTITY].Text;
+			input.QuantityQualifier=(BenefitQuantity)Math.Max(0,gridRow.Cells[COL_QUALIFIER].ComboSelectedIndex);
+			input.TreatArea=(TreatmentArea)Math.Max(0,gridRow.Cells[COL_TREAT_AREA].ComboSelectedIndex);
+			input.Teeth=gridRow.Cells[COL_TEETH].Text;
+			if(otherBenefitRow.Benefit.CodeGroupNum!=0 && input.IsBlank()) {
+				//A code group row cleared completely: not a benefit (any more).
+				if(otherBenefitRow.IsInList) {
+					_listBenefitsGrid.Remove(otherBenefitRow.Benefit);
+					_listBenefitsAll.Remove(otherBenefitRow.Benefit);
+					otherBenefitRow.IsInList=false;
+				}
+				SetOtherBenefitRowErrors(gridRow,otherBenefitRow,new List<BenefitValidationError>());
+				otherBenefitRow.SignatureApplied=GetRowSignature(gridRow);
+				return;
+			}
+			Benefit benefit=Benefits.GetFromOtherBenefitsRow(otherBenefitRow.Benefit,input,_planNum,_patPlanNum,
+				(ToothNumberingNomenclature)PrefC.GetInt(PrefName.UseInternationalToothNumbers),out List<BenefitValidationError> listErrors);
+			SetOtherBenefitRowErrors(gridRow,otherBenefitRow,listErrors);
+			if(benefit==null) {
+				return;
+			}
+			//Update in place: the same object is in _listBenefitsGrid and _listBenefitsAll.
+			Benefit benefitCur=otherBenefitRow.Benefit;
+			benefitCur.PlanNum=benefit.PlanNum;
+			benefitCur.PatPlanNum=benefit.PatPlanNum;
+			benefitCur.CovCatNum=benefit.CovCatNum;
+			benefitCur.BenefitType=benefit.BenefitType;
+			benefitCur.Percent=benefit.Percent;
+			benefitCur.MonetaryAmt=benefit.MonetaryAmt;
+			benefitCur.TimePeriod=benefit.TimePeriod;
+			benefitCur.QuantityQualifier=benefit.QuantityQualifier;
+			benefitCur.Quantity=benefit.Quantity;
+			benefitCur.CoverageLevel=benefit.CoverageLevel;
+			benefitCur.TreatArea=benefit.TreatArea;
+			benefitCur.ToothRange=benefit.ToothRange;
+			if(!otherBenefitRow.IsInList) {
+				_listBenefitsGrid.Add(benefitCur);
+				_listBenefitsAll.Add(benefitCur);
+				otherBenefitRow.IsInList=true;
+			}
+			gridRow.Cells[COL_TEETH].Text=Benefits.GetToothRangeDisplay(benefitCur);//tidied, or cleared when not an exclusion
+			otherBenefitRow.SignatureApplied=GetRowSignature(gridRow);
+			gridBenefits.Invalidate();
+		}
+
+		///<summary>Colors the cells named in the errors red (and the others back to normal) and remembers whether the row is invalid.</summary>
+		private void SetOtherBenefitRowErrors(GridRow gridRow,OtherBenefitRow otherBenefitRow,List<BenefitValidationError> listErrors) {
+			for(int i=0;i<gridRow.Cells.Count;i++) {
+				gridRow.Cells[i].ColorBackG=Color.Empty;
+			}
+			if(listErrors.Count==0) {
+				_dictOtherBenefitErrors.Remove(otherBenefitRow);
+			}
+			else {
+				_dictOtherBenefitErrors[otherBenefitRow]=listErrors;
+				for(int i=0;i<listErrors.Count;i++) {
+					int col=GetOtherBenefitColumn(listErrors[i].Field);
+					if(col<gridRow.Cells.Count) {
+						gridRow.Cells[col].ColorBackG=Color.LightPink;
+					}
+				}
+			}
+			gridBenefits.Invalidate();
+		}
+
+		private int GetOtherBenefitColumn(EnumBenefitField enumBenefitField) {
+			switch(enumBenefitField) {
+				case EnumBenefitField.Pat:
+					return COL_PAT;
+				case EnumBenefitField.Level:
+					return COL_LEVEL;
+				case EnumBenefitField.Type:
+					return COL_TYPE;
+				case EnumBenefitField.Category:
+					return COL_CATEGORY;
+				case EnumBenefitField.Percent:
+					return COL_PERCENT;
+				case EnumBenefitField.Amount:
+					return COL_AMOUNT;
+				case EnumBenefitField.TimePeriod:
+					return COL_TIME_PERIOD;
+				case EnumBenefitField.Quantity:
+					return COL_QUANTITY;
+				case EnumBenefitField.Qualifier:
+					return COL_QUALIFIER;
+				case EnumBenefitField.TreatArea:
+					return COL_TREAT_AREA;
+				default:
+					return COL_TEETH;
+			}
+		}
+
+		///<summary>False, after telling the user what to fix, while any row of the Other Benefits grid has cells marked red.</summary>
+		private bool IsOtherBenefitsGridValid() {
+			if(_dictOtherBenefitErrors.Count==0) {
+				return true;
+			}
+			List<string> listMessages=_dictOtherBenefitErrors.Values.SelectMany(x => x.Select(y => y.Message)).Distinct().ToList();
+			MessageBox.Show(this,Lan.g(this,"Fix the Other Benefits cells marked in red first:")+"\r\n"+string.Join("\r\n",listMessages));
+			return false;
 		}
 
 		private void gridFrequencies_CellClick(object sender,ODGridClickEventArgs e) {
@@ -721,14 +969,47 @@ namespace OpenDental {
 		}
 
 		private void gridBenefits_CellDoubleClick(object sender,OpenDental.UI.ODGridClickEventArgs e) {
-			int benefitListI=_listBenefitsGrid.IndexOf(_listBenefitsGrid[e.Row]);
-			int benefitListAllI=_listBenefitsAll.IndexOf(_listBenefitsGrid[e.Row]);
+			EditOtherBenefitRow(e.Row);
+		}
+
+		private void butEditBenefit_Click(object sender,EventArgs e) {
+			int row=gridBenefits.SelectedCell.Y;
+			if(row<0 || row>=gridBenefits.ListGridRows.Count) {
+				MsgBox.Show(this,"Select a row first.");
+				return;
+			}
+			EditOtherBenefitRow(row);
+		}
+
+		///<summary>Opens the full Edit Benefit window for a row of the Other Benefits grid. For a pre-filled code group row, OK creates the benefit.</summary>
+		private void EditOtherBenefitRow(int rowIndex) {
+			if(rowIndex<0 || rowIndex>=gridBenefits.ListGridRows.Count || !(gridBenefits.ListGridRows[rowIndex].Tag is OtherBenefitRow otherBenefitRow)) {
+				return;
+			}
+			if(!IsOtherBenefitsGridValid()) {
+				return;
+			}
+			Benefit benefit=otherBenefitRow.Benefit;
+			if(!otherBenefitRow.IsInList) {
+				benefit.IsNew=true;
+				benefit.BenefitType=InsBenefitType.Exclusions;
+				if(checkCalendarYear.CheckState==CheckState.Checked) {
+					benefit.TimePeriod=BenefitTimePeriod.CalendarYear;
+				}
+				if(checkCalendarYear.CheckState==CheckState.Unchecked) {
+					benefit.TimePeriod=BenefitTimePeriod.ServiceYear;
+				}
+			}
 			using FormBenefitEdit formBenefitEdit=new FormBenefitEdit(_patPlanNum,_planNum);
-			formBenefitEdit.BenefitCur=_listBenefitsGrid[e.Row];
+			formBenefitEdit.BenefitCur=benefit;
 			formBenefitEdit.ShowDialog();
 			if(formBenefitEdit.BenefitCur==null) {//user deleted
-				_listBenefitsGrid.RemoveAt(benefitListI);
-				_listBenefitsAll.RemoveAt(benefitListAllI);
+				_listBenefitsGrid.Remove(benefit);
+				_listBenefitsAll.Remove(benefit);
+			}
+			else if(!otherBenefitRow.IsInList && formBenefitEdit.DialogResult==DialogResult.OK) {
+				_listBenefitsGrid.Add(formBenefitEdit.BenefitCur);
+				_listBenefitsAll.Add(formBenefitEdit.BenefitCur);
 			}
 			if(Benefits.IsAgeLimit(formBenefitEdit.BenefitCur)) {
 				FillGridAgeLimits();
@@ -810,6 +1091,9 @@ namespace OpenDental {
 		}
 
 		private void butAddBenefit_Click(object sender,EventArgs e) {
+			if(!IsOtherBenefitsGridValid()) {
+				return;
+			}
 			Benefit benefit=new Benefit();
 			benefit.IsNew=true;
 			benefit.PlanNum=_planNum;
@@ -839,15 +1123,17 @@ namespace OpenDental {
 		}
 
 		private void butClear_Click(object sender,EventArgs e) {
-			if(gridBenefits.SelectedIndices.Length==0) {
-				gridBenefits.SetAll(true);
+			//The grid selects one cell at a time (in-place editing), so Delete removes the benefit of the selected cell's row.
+			List<Benefit> listBenefits=new List<Benefit>();
+			int row=gridBenefits.SelectedCell.Y;
+			if(row<0 || row>=gridBenefits.ListGridRows.Count) {
 				if(!MsgBox.Show(this,MsgBoxButtons.OKCancel,"Delete all benefits in list?")) {
 					return;
 				}
+				listBenefits.AddRange(_listBenefitsGrid);
 			}
-			List<Benefit> listBenefits=new List<Benefit>();
-			for(int i=0;i<gridBenefits.SelectedIndices.Length;i++) {
-				listBenefits.Add(_listBenefitsGrid[gridBenefits.SelectedIndices[i]]);
+			else if(gridBenefits.ListGridRows[row].Tag is OtherBenefitRow otherBenefitRow && otherBenefitRow.IsInList) {
+				listBenefits.Add(otherBenefitRow.Benefit);
 			}
 			for(int i=0;i<listBenefits.Count;i++) {
 				_listBenefitsGrid.Remove(listBenefits[i]);
@@ -1535,6 +1821,18 @@ namespace OpenDental {
 				MsgBox.Show(this,"Please enter a starting month for the benefit year.");
 				return;
 			}
+			if(!IsOtherBenefitsGridValid()) {
+				return;
+			}
+			//Benefits of retired code groups follow the plan's benefit year like every other benefit, then are saved back with the rest.
+			for(int i=0;i<_listBenefitsRetired.Count;i++) {
+				if(checkCalendarYear.Checked && _listBenefitsRetired[i].TimePeriod==BenefitTimePeriod.ServiceYear) {
+					_listBenefitsRetired[i].TimePeriod=BenefitTimePeriod.CalendarYear;
+				}
+				if(!checkCalendarYear.Checked && _listBenefitsRetired[i].TimePeriod==BenefitTimePeriod.CalendarYear) {
+					_listBenefitsRetired[i].TimePeriod=BenefitTimePeriod.ServiceYear;
+				}
+			}
 			if(panelSimple.Visible) {
 				List<string> listCodeGroupErrors=new List<string>();
 				if(listCodeGroupErrors.Count > 0) {
@@ -1552,6 +1850,7 @@ namespace OpenDental {
 					MsgBox.Show(this,"A mixture of calendar and service year time periods are not allowed.");
 					return;
 				}
+				_listBenefitsAll.AddRange(_listBenefitsRetired);
 				//OriginalBenList.Clear();
 				//for(int i=0;i<benefitListAll.Count;i++) {
 				//	OriginalBenList.Add(benefitListAll[i]);
@@ -1591,6 +1890,7 @@ namespace OpenDental {
 				for(int i=0;i<_listBenefitsGrid.Count;i++) {
 					ListBenefits.Add(_listBenefitsGrid[i]);
 				}
+				ListBenefits.AddRange(_listBenefitsRetired);
 			}
 			if(checkCalendarYear.Checked) {
 				MonthRenew=0;
@@ -1600,6 +1900,20 @@ namespace OpenDental {
 			}
 			Note=textSubscNote.Text;
 			DialogResult=DialogResult.OK;
+		}
+
+		///<summary>The tag of a row of the Other Benefits grid: the benefit it shows, and whether that benefit is in the window's lists yet. A
+		///pre-filled code group row holds a new benefit that joins the lists once the user enters valid values.</summary>
+		private class OtherBenefitRow {
+			public Benefit Benefit;
+			public bool IsInList;
+			///<summary>The row's cells as they were when the benefit last matched them (see GetRowSignature).</summary>
+			public string SignatureApplied="";
+
+			public OtherBenefitRow(Benefit benefit,bool isInList) {
+				Benefit=benefit;
+				IsInList=isInList;
+			}
 		}
 	}
 }

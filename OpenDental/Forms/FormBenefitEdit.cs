@@ -1,5 +1,7 @@
 using OpenDentBusiness;
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Windows.Forms;
 
 namespace OpenDental {
@@ -47,9 +49,10 @@ namespace OpenDental {
 			codeGroupNone.GroupName=Lans.g(this,"None");
 			List<CodeGroup> listCodeGroups=new List<CodeGroup>();
 			listCodeGroups.Add(codeGroupNone);
-			listCodeGroups.AddRange(CodeGroups.GetDeepCopy());
+			//Retired (hidden) code groups are not offered, except the one this benefit already uses.
+			listCodeGroups.AddRange(CodeGroups.GetForBenefitPicker(BenefitCur.CodeGroupNum));
 			comboCodeGroup.Items.Clear();
-			comboCodeGroup.Items.AddList(listCodeGroups,x => CodeGroups.GetGroupName(x));
+			comboCodeGroup.Items.AddList(listCodeGroups,x => CodeGroups.GetGroupName(x,isHidden:x.IsHidden));
 			comboCodeGroup.SetSelectedKey<CodeGroup>(BenefitCur.CodeGroupNum,x => x.CodeGroupNum,x => CodeGroups.GetGroupName(x));
 			listBenefitType.Items.Clear();
 			listBenefitType.Items.AddEnums<InsBenefitType>();
@@ -76,6 +79,18 @@ namespace OpenDental {
 			listTreatArea.Items.AddEnums<TreatmentArea>();
 			listTreatArea.Items.RemoveAt(1); // There are now two instances of TreatmentArea.None, remove the one that will display as "None"
 			listTreatArea.SetSelectedEnum(BenefitCur.TreatArea);
+			textTeeth.Text=Benefits.GetToothRangeDisplay(BenefitCur);
+			SetTeethEnabled();
+		}
+
+		private void listBenefitType_SelectedIndexChanged(object sender,EventArgs e) {
+			SetTeethEnabled();
+		}
+
+		///<summary>Teeth (benefit.ToothRange, Open Dental 25.3) only apply to exclusions. Text already typed is kept so the user can switch back.</summary>
+		private void SetTeethEnabled() {
+			bool isExclusion=listBenefitType.SelectedIndex>-1 && listBenefitType.GetSelected<InsBenefitType>()==InsBenefitType.Exclusions;
+			textTeeth.Enabled=isExclusion;
 		}
 
 		private void butSave_Click(object sender, System.EventArgs e) {
@@ -113,48 +128,19 @@ namespace OpenDental {
 			BenefitTimePeriod timePeriod=listTimePeriod.GetSelected<BenefitTimePeriod>();
 			BenefitCoverageLevel coverageLevel=listCoverageLevel.GetSelected<BenefitCoverageLevel>();
 			TreatmentArea treatArea=(TreatmentArea)listTreatArea.SelectedIndex;
-			int countCatProcCodeGroup=0;
-			if(covCatNum!=0) {
-				countCatProcCodeGroup++;
-			}
-			if(textProcCode.Text!="") {
-				countCatProcCodeGroup++;
-			}
-			if(codeGroupNum > 0) {
-				countCatProcCodeGroup++;
-			}
-			if(countCatProcCodeGroup > 1) {
-				MsgBox.Show(this,"You may only enter one of Category, or Proc Code, or Code Group.");
-				return;
-			}
-			//not allowed to set to pat if editing plan only, and no patplanNum is available
-			if(_patPlanNum==0 && checkPat.Checked) {
-				MsgBox.Show(this,"Not allowed to check the Pat box because no patient is available.");
-				return;
-			}
-			if(benefitType!=InsBenefitType.CoInsurance && percent > 0) {//-1 or 0 is allowed for other types
-				//We must allow Exclusion with 0 (this "if" must fail) to remain backward compatible for NADG
-				MsgBox.Show(this,"Not allowed to enter a percentage unless type is CoInsurance.");
-				return;
-			}
 			if(textProcCode.Text!="" && codeNum==0) {
 				MsgBox.Show(this,"Invalid procedure code.");
 				return;
 			}
-			if(benefitType==InsBenefitType.WaitingPeriod
-				&& quantityQualifier!=BenefitQuantity.Months
-				&& quantityQualifier!=BenefitQuantity.Years)
-			{
-				MsgBox.Show(this,"Waiting period must be months or years.");
-				return;
-			}
-			if(benefitType==InsBenefitType.WaitingPeriod 
-					&& covCatNum==0
-					&& codeNum==0
-					&& codeGroupNum==0)
-			{
-				MsgBox.Show(this,"Waiting period must have a codegroup, category, or procedure code.");
-				return;
+			string toothRange="";
+			if(benefitType==InsBenefitType.Exclusions) {
+				try {
+					toothRange=Tooth.ParseToothList(textTeeth.Text);
+				}
+				catch(ApplicationException ex) {
+					MessageBox.Show(this,Lan.g(this,"Teeth")+": "+ex.Message);
+					return;
+				}
 			}
 			long patPlanNum;
 			long planNum;
@@ -180,21 +166,15 @@ namespace OpenDental {
 			//Fluoride and sealant age limitations need to validate the code, code group, and patPlanNum.
 			benefit.CodeGroupNum=codeGroupNum;
 			benefit.CodeNum=codeNum;
+			benefit.CovCatNum=covCatNum;
 			benefit.PatPlanNum=patPlanNum;
-			if(Benefits.IsFrequencyLimitation(benefit) || Benefits.IsAgeLimit(benefit))
-			{
-				if(covCatNum > 0) {
-					MsgBox.Show(this,"Category cannot be used for this limitation benefit.\r\nUse Proc Code or Code Group instead.");
-					return;
-				}
-				//We check for an age limit above in if statement but there will never be a case where IsAgeLimit() is true and quantity is less than/equal to zero.
-				if(quantity<=0) {
-					MsgBox.Show(this,"Frequency Limitations cannot have a quantity of zero.");
-					return;
-				}
-			}
-			if(!Benefits.IsFrequencyLimitation(benefit) && treatArea!=TreatmentArea.None) {
-				MsgBox.Show(this,"Treatment Area can only be used for limitation benefits.");
+			benefit.PlanNum=planNum;
+			benefit.ToothRange=toothRange;
+			//The same rules the Other Benefits grid uses when a cell is edited in place. The Pat box is passed on its own: with no patient plan
+			//(_patPlanNum==0) a checked box leaves both PlanNum and PatPlanNum at 0 above, and only the box state shows that it was checked.
+			List<BenefitValidationError> listErrors=Benefits.GetValidationErrors(benefit,_patPlanNum,isPat:checkPat.Checked);
+			if(listErrors.Count>0) {
+				MessageBox.Show(this,listErrors[0].Message);
 				return;
 			}
 			//End of validation. Manipulate BenefitCur with the values from the UI.
@@ -211,6 +191,7 @@ namespace OpenDental {
 			BenefitCur.QuantityQualifier=quantityQualifier;
 			BenefitCur.CoverageLevel=coverageLevel;
 			BenefitCur.TreatArea=treatArea;
+			BenefitCur.ToothRange=toothRange;
 			DialogResult=DialogResult.OK;
 		}
 

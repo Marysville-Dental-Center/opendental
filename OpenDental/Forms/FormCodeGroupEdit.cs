@@ -14,6 +14,8 @@ namespace OpenDental {
 		public CodeGroup CodeGroup;
 		///<summary>The list of EnumCodeGroupFixed values that have already been used in another code group. Users will be blocked from using these values when editing the code group passed in.</summary>
 		public List<EnumCodeGroupFixed> ListEnumCodeGroupFixedsInUse;
+		///<summary>Set when the user deleted the code group (DialogResult is OK). The caller removes it from its list; the delete is saved with the list.</summary>
+		public bool IsDeleted;
 
 		public FormCodeGroupEdit() {
 			InitializeComponent();
@@ -22,8 +24,12 @@ namespace OpenDental {
 		}
 
 		private void FormCodeGroupEdit_Load(object sender,EventArgs e) {
-			checkShowInFreq.Checked=!CodeGroup.IsHidden;
+			//Open Dental 25.1 split the old IsHidden into ShowInFrequency and a "retired" IsHidden; 25.3 added ShowInOther.
+			checkShowInFreq.Checked=CodeGroup.ShowInFrequency;
 			checkShowInAgeLim.Checked=CodeGroup.ShowInAgeLimit;
+			checkShowInOther.Checked=CodeGroup.ShowInOther;
+			checkHidden.Checked=CodeGroup.IsHidden;
+			butDelete.Visible=!CodeGroup.IsNew;
 			textGroupName.Text=CodeGroup.GroupName;
 			textProcCodes.Text=CodeGroup.ProcCodes;
 			//Start by allowing the user to select any value from the EnumCodeGroupFixed enumeration.
@@ -57,13 +63,35 @@ namespace OpenDental {
 		private List<string> GetProcCodesFromUI() {
 			//Users are not allowed to enter duplicate proc codes so we will automatically group duplicates for them.
 			//Also, users are allowed to enter values that are not currently present within the database.
-			//The following code is case sensitive on purpose.
 			List<string> listProcCodes=textProcCodes.Text.Split(",",StringSplitOptions.RemoveEmptyEntries)
 				.Select(x => x.Trim())
-				.Distinct()
+				.Distinct(StringComparer.OrdinalIgnoreCase)
 				.ToList();
 			listProcCodes.RemoveAll(x => string.IsNullOrWhiteSpace(x));
 			return listProcCodes;
+		}
+
+		private void butDelete_Click(object sender,EventArgs e) {
+			if(CodeGroup.IsNew) {
+				DialogResult=DialogResult.Cancel;
+				return;
+			}
+			int countPlans=CodeGroups.GetCountPlansUsing(CodeGroup.CodeGroupNum);
+			if(countPlans>0) {
+				MessageBox.Show(this,Lan.g(this,"This code group is used by benefits on")+" "+countPlans+" "+Lan.g(this,"insurance plan(s) and can not be deleted.")
+					+"\r\n"+Lan.g(this,"Check Hidden instead to retire it."));
+				return;
+			}
+			if(CodeGroup.CodeGroupFixed!=EnumCodeGroupFixed.None
+				&& !MsgBox.Show(this,MsgBoxButtons.YesNo,"This is a fixed code group. Sheet fields and Insurance History that use it will find no codes after it is deleted. Continue?"))
+			{
+				return;
+			}
+			if(!MsgBox.Show(this,MsgBoxButtons.OKCancel,"Delete this code group?")) {
+				return;
+			}
+			IsDeleted=true;
+			DialogResult=DialogResult.OK;
 		}
 
 		private void butSave_Click(object sender,EventArgs e) {
@@ -71,11 +99,19 @@ namespace OpenDental {
 				MsgBox.Show(this,"Group Name is required.");
 				return;
 			}
+			//Removes spaces and duplicates, and refuses ranges that run backwards. Codes do not have to exist.
+			string procCodes=ProcCodeRanges.Normalize(textProcCodes.Text,out string error);
+			if(procCodes==null) {
+				MessageBox.Show(this,error);
+				return;
+			}
 			CodeGroup.CodeGroupFixed=comboCodeGroupFixed.GetSelected<EnumCodeGroupFixed>();
 			CodeGroup.GroupName=textGroupName.Text;
-			CodeGroup.IsHidden=!checkShowInFreq.Checked;
+			CodeGroup.ShowInFrequency=checkShowInFreq.Checked;
 			CodeGroup.ShowInAgeLimit=checkShowInAgeLim.Checked;
-			CodeGroup.ProcCodes=string.Join(",",GetProcCodesFromUI());
+			CodeGroup.ShowInOther=checkShowInOther.Checked;
+			CodeGroup.IsHidden=checkHidden.Checked;
+			CodeGroup.ProcCodes=procCodes;
 			DialogResult=DialogResult.OK;
 		}
 	}

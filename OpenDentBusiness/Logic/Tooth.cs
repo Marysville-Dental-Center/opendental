@@ -543,6 +543,196 @@ namespace OpenDentBusiness{
 		}
 		#endregion Methods - Ranges
 
+		#region Methods - Tooth Lists
+		//Tooth lists are what benefit.ToothRange holds (Open Dental 25.3): internal (American) tooth numbers separated by commas, ranges expanded, no
+		//dashes. Blank means every tooth. Unlike ParseRange, primary and supernumerary teeth are accepted, ranges may be typed in either direction,
+		//and the nomenclature can be passed in so that the parsing does not need the preference cache.
+
+		///<summary>Parses user input such as "2,15" or "23-26,7-10" in the office's tooth nomenclature into a stored tooth list. Throws an
+		///ApplicationException naming the bad entry when an entry is not a tooth or a range mixes kinds of teeth (permanent, primary, supernumerary).</summary>
+		public static string ParseToothList(string toothNumbers) {
+			return ParseToothList(toothNumbers,(ToothNumberingNomenclature)PrefC.GetInt(PrefName.UseInternationalToothNumbers));
+		}
+
+		///<summary>Parses user input in the given nomenclature into a stored tooth list. See ParseToothList(string).</summary>
+		public static string ParseToothList(string toothNumbers,ToothNumberingNomenclature toothNumberingNomenclature) {
+			if(string.IsNullOrWhiteSpace(toothNumbers)) {
+				return "";
+			}
+			string text=Regex.Replace(toothNumbers,@"\s+","");
+			List<string> listTeeth=new List<string>();
+			string[] arrayEntries=text.Split(',');
+			for(int i=0;i<arrayEntries.Length;i++) {
+				string entry=arrayEntries[i];
+				if(entry=="") {
+					continue;
+				}
+				string toothSingle=ParseToothEntry(entry,toothNumberingNomenclature);
+				if(toothSingle!=null) {
+					listTeeth.Add(toothSingle);
+					continue;
+				}
+				listTeeth.AddRange(ParseToothListRange(entry,toothNumberingNomenclature));
+			}
+			return string.Join(",",listTeeth.Distinct().OrderBy(x => GetToothListSortKey(x)));
+		}
+
+		///<summary>The internal tooth number for one typed tooth, or null when the entry is not a valid tooth in the nomenclature.</summary>
+		private static string ParseToothEntry(string entry,ToothNumberingNomenclature toothNumberingNomenclature) {
+			string toothLabel=entry;
+			if(toothNumberingNomenclature==ToothNumberingNomenclature.Universal) {
+				toothLabel=entry.ToUpper();
+			}
+			if(!IsValidEntry(toothLabel,toothNumberingNomenclature)) {
+				return null;
+			}
+			return Parse(toothLabel,toothNumberingNomenclature);
+		}
+
+		///<summary>Expands one range entry. Tries every dash in the entry, because some nomenclatures (Haderup) use dashes inside tooth labels.</summary>
+		private static List<string> ParseToothListRange(string entry,ToothNumberingNomenclature toothNumberingNomenclature) {
+			for(int i=entry.IndexOf('-');i>0 && i<entry.Length-1;i=entry.IndexOf('-',i+1)) {
+				string toothBegin=ParseToothEntry(entry.Substring(0,i),toothNumberingNomenclature);
+				string toothEnd=ParseToothEntry(entry.Substring(i+1),toothNumberingNomenclature);
+				if(toothBegin==null || toothEnd==null) {
+					continue;
+				}
+				int kindBegin=GetToothListKind(toothBegin);
+				if(kindBegin!=GetToothListKind(toothEnd)) {
+					throw new ApplicationException(entry+" "+Lans.g("Tooth","is not a valid range. Both ends must be the same kind of tooth."));
+				}
+				int indexBegin=GetToothListIndex(toothBegin);
+				int indexEnd=GetToothListIndex(toothEnd);
+				if(indexBegin>indexEnd) {//Ranges may be typed in either direction, for example FDI 18-11.
+					int indexSwap=indexBegin;
+					indexBegin=indexEnd;
+					indexEnd=indexSwap;
+				}
+				List<string> listTeeth=new List<string>();
+				for(int index=indexBegin;index<=indexEnd;index++) {
+					listTeeth.Add(GetToothFromListIndex(kindBegin,index));
+				}
+				return listTeeth;
+			}
+			throw new ApplicationException(entry+" "+Lans.g("Tooth","is not a valid tooth number."));
+		}
+
+		///<summary>0 permanent (1-32), 1 primary (A-T), 2 supernumerary number (51-82), 3 supernumerary primary (AS-TS).</summary>
+		private static int GetToothListKind(string toothNum) {
+			if(Regex.IsMatch(toothNum,"^[A-T]$")) {
+				return 1;
+			}
+			if(Regex.IsMatch(toothNum,"^[A-T]S$")) {
+				return 3;
+			}
+			if(IsSuperNum(toothNum)) {
+				return 2;
+			}
+			return 0;
+		}
+
+		///<summary>The position of the tooth within its kind: the number for numbered teeth, the letter's place for lettered teeth.</summary>
+		private static int GetToothListIndex(string toothNum) {
+			int kind=GetToothListKind(toothNum);
+			if(kind==1 || kind==3) {
+				return toothNum[0]-'A';
+			}
+			return PIn.Int(toothNum,false);
+		}
+
+		private static string GetToothFromListIndex(int kind,int index) {
+			switch(kind) {
+				case 1:
+					return ((char)('A'+index)).ToString();
+				case 3:
+					return ((char)('A'+index)).ToString()+"S";
+				default:
+					return index.ToString();
+			}
+		}
+
+		///<summary>Sorts permanent teeth first, then primary, then supernumerary, each in its own order.</summary>
+		private static int GetToothListSortKey(string toothNum) {
+			return GetToothListKind(toothNum)*100+GetToothListIndex(toothNum);
+		}
+
+		///<summary>Shows a stored tooth list in the office's nomenclature, with runs of three or more teeth in one arch shown as a range.</summary>
+		public static string DisplayToothList(string toothList) {
+			return DisplayToothList(toothList,(ToothNumberingNomenclature)PrefC.GetInt(PrefName.UseInternationalToothNumbers));
+		}
+
+		///<summary>Shows a stored tooth list in the given nomenclature. Haderup labels contain dashes, so Haderup lists are never shortened to ranges.</summary>
+		public static string DisplayToothList(string toothList,ToothNumberingNomenclature toothNumberingNomenclature) {
+			List<string> listTeeth=GetToothListTeeth(toothList).OrderBy(x => GetToothListSortKey(x)).ToList();
+			List<string> listParts=new List<string>();
+			int i=0;
+			while(i<listTeeth.Count) {
+				int j=i;
+				while(j+1<listTeeth.Count && toothNumberingNomenclature!=ToothNumberingNomenclature.Haderup && IsToothListNeighbor(listTeeth[j],listTeeth[j+1])) {
+					j++;
+				}
+				if(j-i>=2) {
+					listParts.Add(Display(listTeeth[i],toothNumberingNomenclature)+"-"+Display(listTeeth[j],toothNumberingNomenclature));
+				}
+				else {
+					for(int k=i;k<=j;k++) {
+						listParts.Add(Display(listTeeth[k],toothNumberingNomenclature));
+					}
+				}
+				i=j+1;
+			}
+			return string.Join(",",listParts);
+		}
+
+		///<summary>True when the second tooth follows the first in the same kind and the same arch (runs break between 16 and 17, J and K).</summary>
+		private static bool IsToothListNeighbor(string toothNum,string toothNumNext) {
+			int kind=GetToothListKind(toothNum);
+			if(kind!=GetToothListKind(toothNumNext)) {
+				return false;
+			}
+			int index=GetToothListIndex(toothNum);
+			if(GetToothListIndex(toothNumNext)!=index+1) {
+				return false;
+			}
+			switch(kind) {
+				case 0:
+					return index!=16;
+				case 2:
+					return index!=66;
+				default:
+					return index!=9;//J to K
+			}
+		}
+
+		///<summary>The teeth in a stored tooth list. Blank entries are dropped.</summary>
+		public static List<string> GetToothListTeeth(string toothList) {
+			if(string.IsNullOrWhiteSpace(toothList)) {
+				return new List<string>();
+			}
+			return toothList.Split(',').Select(x => x.Trim()).Where(x => x!="").ToList();
+		}
+
+		///<summary>Whether a procedure's teeth touch a stored tooth list: true when its tooth, or any tooth of its tooth range (bridges, partials), is in
+		///the list. A procedure with no tooth (mouth, quadrant, arch) is not in any list. Callers decide what a blank list means.</summary>
+		public static bool IsAnyToothInList(string toothList,string toothNum,string toothRange) {
+			List<string> listTeeth=GetToothListTeeth(toothList);
+			if(listTeeth.Count==0) {
+				return false;
+			}
+			HashSet<string> hashSetTeeth=new HashSet<string>(listTeeth,StringComparer.OrdinalIgnoreCase);
+			if(!string.IsNullOrWhiteSpace(toothNum) && hashSetTeeth.Contains(toothNum.Trim())) {
+				return true;
+			}
+			List<string> listTeethProc=GetToothListTeeth(toothRange);
+			for(int i=0;i<listTeethProc.Count;i++) {
+				if(hashSetTeeth.Contains(listTeethProc[i])) {
+					return true;
+				}
+			}
+			return false;
+		}
+		#endregion Methods - Tooth Lists
+
 		#region Methods - Supernumerary
 		///<summary></summary>
 		public static bool IsSuperNum(string toothNum){
