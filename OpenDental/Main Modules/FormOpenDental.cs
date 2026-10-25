@@ -5597,16 +5597,7 @@ namespace OpenDental{
 		}
 
 		//MiscTools
-		private void menuItemDuplicateBlockouts_Click(object sender,EventArgs e) {
-			if(!Security.IsAuthorized(EnumPermType.Setup)) {
-				return;
-			}
-			using FormBlockoutDuplicatesFix formBlockoutDuplicatesFix=new FormBlockoutDuplicatesFix();
-			Cursor=Cursors.WaitCursor;
-			formBlockoutDuplicatesFix.ShowDialog();
-			Cursor=Cursors.Default;
-			//Security log entries are made from within the form.
-		}
+		//Clear Duplicate Blockouts is the Database Maintenance check SchedulesDeleteDuplicateBlockouts since 26.1.
 
 		private void menuItemCareCreditTrans_Click(object sender,EventArgs e) {
 			if(_formCareCreditTransactions==null || _formCareCreditTransactions.IsDisposed) {

@@ -1926,119 +1926,83 @@ namespace OpenDentBusiness{
 			Signalods.SetInvalidSchedForOps(listSchedulesSetInvalid);
 		}
 
+		///<summary>The number of duplicate blockout links that ClearDuplicates would remove (see GetDuplicateBlockoutScheduleOpNums).</summary>
 		public static int GetDuplicateBlockoutCount() {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetInt(MethodBase.GetCurrentMethod());
 			}
-			string command;
-			if(!_hasSet_group_concat_max_len){
-				int maxAllowedPacket=MiscData.GetMaxAllowedPacket();
-				command="SET SESSION group_concat_max_len = " + POut.Int(maxAllowedPacket);
-				Db.NonQ(command);
-				_hasSet_group_concat_max_len=true;
-			}
-			//The following query returns rows of comma separated ScheduleOpNum strings for duplicate blockouts.
-			//Skips first SchedOpNum in each row so blockout is preserved.
-			//Example: Identical blockouts A, B, and C (Same date, time start, time stop, note, and type)
-			//Blockout A is on operatories 1, 3, 5
-			//Blockout B is on operatories 1, 2, 3
-			//Blockout C is on operatory 3
-			//Duplicates exist on operatories 1 and 3. (A1,B1) and (A3,B3,C3)
-			//The ScheduleOpNums corresponding to A1 and A3 are skipped so (B1) and (B3,C3) will be returned.
-			//So in the example, there are 3 duplicates which the query below grabs.
-			command="SELECT SUBSTRING(GROUP_CONCAT(scheduleop.ScheduleOpNum ORDER BY scheduleop.ScheduleOpNum), "
-				//skips the first ScheduleOpNum in the group
-				+"LOCATE(',',GROUP_CONCAT(scheduleop.ScheduleOpNum ORDER BY scheduleop.ScheduleOpNum))+1) AS 'ScheduleOpNumsToRemove' "
-				+"FROM schedule "
-				+"INNER JOIN scheduleop "
-				+"ON schedule.ScheduleNum=scheduleop.ScheduleNum "
-				+"WHERE schedule.SchedType="+POut.Int((int)ScheduleType.Blockout)+" "
-				+"GROUP BY schedule.SchedDate, schedule.StartTime, schedule.StopTime, schedule.BlockoutType, schedule.Note, scheduleop.OperatoryNum "
-				+"HAVING COUNT(DISTINCT schedule.ScheduleNum) > 1";
-			DataTable table=Db.GetTable(command);
-			List<long> listScheduleOpNumsDuplicates=new List<long>();
-			for(int i=0;i<table.Rows.Count;i++) {
-				DataRow dataRow=table.Rows[i];
-				List<long> listScheduleOpNumsForRow=dataRow["ScheduleOpNumsToRemove"].ToString().Split(',').Select(x=>PIn.Long(x)).ToList();
-				listScheduleOpNumsDuplicates.AddRange(listScheduleOpNumsForRow);
-			}
-			int retval=listScheduleOpNumsDuplicates.Count;
-			return retval;
-			#region Alternative Query JobNum:54776
-			//The following is an alternative query that was researched and tested. Commenting it here in case we decide to use it later.
-			//Returns ScheduleOpNums that are linked to duplicate blockouts in the same operatories.
-			//One entry per group of duplicates is designated the "ScheduleOpNumToKeep" and not included in the rows returned.
-			//string command="SELECT scheduleop.ScheduleOpNum "
-			//	+"FROM scheduleop "
-			//	+"LEFT JOIN schedule ON schedule.ScheduleNum=scheduleop.ScheduleNum "
-			//	+"LEFT JOIN "
-			//	//Subquery: Identifies duplicates and designates which ScheduleOpNum to keep.
-			//	+"(SELECT schedule.SchedDate, schedule.StartTime, schedule.StopTime, schedule.BlockoutType, schedule.Note, scheduleop.OperatoryNum, MIN(scheduleop.ScheduleOpNum) AS ScheduleOpNumToKeep "//denotes which ScheduleOpNum to keep
-			//	+"FROM schedule,scheduleop "
-			//	+"WHERE schedule.ScheduleNum=scheduleop.ScheduleNum "
-			//	+"AND schedule.SchedType="+POut.Int((int)ScheduleType.Blockout)+" "
-			//	+"GROUP BY schedule.SchedDate, schedule.StartTime, schedule.StopTime, schedule.BlockoutType, schedule.Note, scheduleop.OperatoryNum "
-			//	+"HAVING COUNT(DISTINCT schedule.ScheduleNum) > 1) AS duplicates "
-			//	//End Subquery
-			//	+"ON schedule.SchedDate=duplicates.SchedDate "
-			//	+"AND schedule.StartTime=duplicates.StartTime "
-			//	+"AND schedule.StopTime=duplicates.StopTime "
-			//	+"AND schedule.BlockoutType=duplicates.BlockoutType "
-			//	+"AND schedule.Note=duplicates.Note "
-			//	+"AND scheduleop.OperatoryNum=duplicates.OperatoryNum "
-			//	+"WHERE schedule.SchedType="+POut.Int((int)ScheduleType.Blockout)+" "
-			//	+"AND scheduleop.ScheduleOpNum<>duplicates.ScheduleOpNumToKeep";
-			//List<long> listScheduleOpNumsDuplicates=Db.GetListLong(command);
-			//int retval=listScheduleOpNumsDuplicates.Count;
-			#endregion Alternative Query
+			return GetDuplicateBlockoutScheduleOpNums().Count;
 		}
 
-		///<summary>Clear duplicate schedule entries.  Insert an invalid schedule signalod.</summary>
-		public static void ClearDuplicates() {
+		///<summary>The scheduleop rows that link duplicate blockouts to an operatory. Two blockouts are duplicates when they have the same date, start time,
+		///stop time, blockout type and note and are linked to the same operatory. In each such group the link with the lowest ScheduleOpNum is kept and
+		///is not returned; every other link in the group is. Example: identical blockouts A, B and C, where A is on operatories 1, 3 and 5, B on 1, 2
+		///and 3, and C on 3: the duplicates are (A1,B1) and (A3,B3,C3), so B1, B3 and C3 are returned.
+		///Since 26.1 this is one query with no GROUP_CONCAT, so a large group can never be cut off at group_concat_max_len.</summary>
+		public static List<long> GetDuplicateBlockoutScheduleOpNums() {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				Meth.GetVoid(MethodBase.GetCurrentMethod());
-				return;
+				return Meth.GetObject<List<long>>(MethodBase.GetCurrentMethod());
 			}
-			string command;
-			if(!_hasSet_group_concat_max_len){
-				int maxAllowedPacket=MiscData.GetMaxAllowedPacket();
-				command="SET SESSION group_concat_max_len = " + POut.Int(maxAllowedPacket);
-				Db.NonQ(command);
-				_hasSet_group_concat_max_len=true;
-			}
-			//Explanation of this query can be found above in GetDuplicateBlockoutCount()
-			command="SELECT SUBSTRING(GROUP_CONCAT(scheduleop.ScheduleOpNum ORDER BY scheduleop.ScheduleOpNum), "
-				//skips the first ScheduleOpNum in the group
-				+"LOCATE(',',GROUP_CONCAT(scheduleop.ScheduleOpNum ORDER BY scheduleop.ScheduleOpNum))+1) AS 'ScheduleOpNumsToRemove' "
+			string blockout=POut.Int((int)ScheduleType.Blockout);
+			string command="SELECT scheduleop.ScheduleOpNum "
 				+"FROM schedule "
-				+"INNER JOIN scheduleop "
-				+"ON schedule.ScheduleNum=scheduleop.ScheduleNum "
-				+"WHERE schedule.SchedType="+POut.Int((int)ScheduleType.Blockout)+" "
-				+"GROUP BY schedule.SchedDate, schedule.StartTime, schedule.StopTime, schedule.BlockoutType, schedule.Note, scheduleop.OperatoryNum "
-				+"HAVING COUNT(DISTINCT schedule.ScheduleNum) > 1";
-			DataTable table=Db.GetTable(command);
-			List<long> listScheduleOpNumsDuplicates=new List<long>();
-			for(int i=0; i<table.Rows.Count;i++) {
-				DataRow dataRow=table.Rows[i];
-				List<long> listScheduleOpNumsForRow=dataRow["ScheduleOpNumsToRemove"].ToString().Split(',').Select(x=>PIn.Long(x)).ToList();
-				listScheduleOpNumsDuplicates.AddRange(listScheduleOpNumsForRow);
+				+"INNER JOIN scheduleop ON schedule.ScheduleNum=scheduleop.ScheduleNum "
+				+"INNER JOIN ("
+					+"SELECT schedule.SchedDate,schedule.StartTime,schedule.StopTime,schedule.BlockoutType,schedule.Note,scheduleop.OperatoryNum,"
+					+"MIN(scheduleop.ScheduleOpNum) AS ScheduleOpNumKeep "
+					+"FROM schedule "
+					+"INNER JOIN scheduleop ON schedule.ScheduleNum=scheduleop.ScheduleNum "
+					+"WHERE schedule.SchedType="+blockout+" "
+					+"GROUP BY schedule.SchedDate,schedule.StartTime,schedule.StopTime,schedule.BlockoutType,schedule.Note,scheduleop.OperatoryNum "
+					+"HAVING COUNT(DISTINCT schedule.ScheduleNum)>1"
+				+") duplicates ON schedule.SchedDate<=>duplicates.SchedDate "
+				+"AND schedule.StartTime<=>duplicates.StartTime "
+				+"AND schedule.StopTime<=>duplicates.StopTime "
+				+"AND schedule.BlockoutType<=>duplicates.BlockoutType "
+				+"AND schedule.Note<=>duplicates.Note "
+				+"AND scheduleop.OperatoryNum<=>duplicates.OperatoryNum "
+				+"WHERE schedule.SchedType="+blockout+" "
+				+"AND scheduleop.ScheduleOpNum!=duplicates.ScheduleOpNumKeep "
+				+"ORDER BY scheduleop.ScheduleOpNum";
+			return Db.GetListLong(command);
+		}
+
+		///<summary>Removes the duplicate blockout links (see GetDuplicateBlockoutScheduleOpNums) and inserts an invalid schedule signal. A blockout that
+		///this leaves with no operatory is deleted; a blockout that already had no operatory is not a duplicate and is left alone. Returns the number of
+		///links removed. Used by the Database Maintenance check SchedulesDeleteDuplicateBlockouts (26.1), which replaced the Clear Duplicate Blockouts
+		///tool.</summary>
+		public static int ClearDuplicates() {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetInt(MethodBase.GetCurrentMethod());
 			}
+			List<long> listScheduleOpNumsDuplicates=GetDuplicateBlockoutScheduleOpNums();
+			if(listScheduleOpNumsDuplicates.Count==0) {
+				return 0;//Nothing to do, and an empty IN () list is not valid SQL.
+			}
+			string scheduleOpNums=string.Join(",",listScheduleOpNumsDuplicates.Select(x => POut.Long(x)));
 			//We use RefreshAndFill() because we need both the Schedule and ScheduleOp information to perform our signal logic.
-			command="SELECT * FROM schedule "
-				+"WHERE ScheduleNum IN (SELECT ScheduleNum FROM scheduleop WHERE ScheduleOpNum IN ("+string.Join(",",listScheduleOpNumsDuplicates)+"))";
+			string command="SELECT * FROM schedule "
+				+"WHERE ScheduleNum IN (SELECT ScheduleNum FROM scheduleop WHERE ScheduleOpNum IN ("+scheduleOpNums+"))";
 			List<Schedule> listSchedulesDelete=RefreshAndFill(command);
-			command="DELETE FROM scheduleop WHERE ScheduleOpNum IN ("+string.Join(",",listScheduleOpNumsDuplicates)+")";
+			command="DELETE FROM scheduleop WHERE ScheduleOpNum IN ("+scheduleOpNums+")";
 			Db.NonQ(command);
-			//Find and delete the orphan blockouts that no longer have any ScheduleOps attached.
-			command="SELECT schedule.ScheduleNum "
-				+"FROM SCHEDULE "
-				+"LEFT JOIN scheduleop ON schedule.ScheduleNum=scheduleop.ScheduleNum "
-				+"WHERE scheduleop.ScheduleOpNum IS NULL "
-				+"AND schedule.SchedType="+POut.Int((int)ScheduleType.Blockout);
-			List<long> listScheduleNumsNoOps=Db.GetListLong(command);
-			command="DELETE FROM schedule WHERE ScheduleNum IN ("+string.Join(",",listScheduleNumsNoOps)+")";
-			Db.NonQ(command);
+			//Delete the blockouts touched here that no longer have any ScheduleOps attached.
+			List<long> listScheduleNumsNoOps=new List<long>();
+			if(listSchedulesDelete.Count>0) {
+				command="SELECT schedule.ScheduleNum "
+					+"FROM schedule "
+					+"LEFT JOIN scheduleop ON schedule.ScheduleNum=scheduleop.ScheduleNum "
+					+"WHERE scheduleop.ScheduleOpNum IS NULL "
+					+"AND schedule.SchedType="+POut.Int((int)ScheduleType.Blockout)+" "
+					+"AND schedule.ScheduleNum IN ("+string.Join(",",listSchedulesDelete.Select(x => POut.Long(x.ScheduleNum)))+")";
+				listScheduleNumsNoOps=Db.GetListLong(command);
+			}
+			if(listScheduleNumsNoOps.Count>0) {
+				command="DELETE FROM schedule WHERE ScheduleNum IN ("+string.Join(",",listScheduleNumsNoOps.Select(x => POut.Long(x)))+")";
+				Db.NonQ(command);
+			}
 			Signalods.SetInvalidSched(listSchedulesDelete.ToArray());
+			return listScheduleOpNumsDuplicates.Count;
 		}
 
 		///<summary>Set clinicNum to 0 to return 'unassigned' clinics.  Otherwise, filters the data set on the clinic num passed in.

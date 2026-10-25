@@ -1501,6 +1501,7 @@
     <Compile Include="Data Interface\RxPats.cs" />
     <Compile Include="Data Interface\ScheduleOps.cs" />
     <Compile Include="Data Interface\Schedules.cs" />
+    <Compile Include="Data Interface\DatabaseMaintenances.Schedules.cs" />
     <Compile Include="Data Interface\SchoolClasses.cs" />
     <Compile Include="Data Interface\SchoolCourses.cs" />
     <Compile Include="Data Interface\ScreenGroups.cs" />
