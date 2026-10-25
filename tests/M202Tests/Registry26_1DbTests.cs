@@ -1,6 +1,6 @@
 // Integration tests for the M2-02 seed rows (Seed26_1, Seed26_1Step), the Employee Titles definition rules and the Chart Patient Information
-// Gender field, against a scratch MariaDB database on this computer. The database gets the Open Dental 25.3.48 schema from the reference snapshot
-// embedded in OpenDentBusiness, and synthetic rows only. Its name is unique to the run and it is dropped afterwards. The tests are skipped
+// Gender field, against a scratch MariaDB database on this computer. The database gets the Open Dental 26.1.70 schema from the reference snapshot
+// embedded in OpenDentBusiness (Seed26_1 runs after the 25.4 and 26.1 schema steps of package M2-01), and synthetic rows only. Its name is unique to the run and it is dropped afterwards. The tests are skipped
 // (inconclusive) when no server answers at 127.0.0.1:3306 as root with a blank password, or when M202_TEST_DB=skip.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
@@ -43,11 +43,10 @@ namespace M202Tests {
 			//The server answers, so from here on a failure is a real failure, not a reason to skip.
 			using(MySqlConnection connection=new MySqlConnection(CONNECTION+";Database="+_dbName)) {
 				connection.Open();
-				foreach(SchemaTable table in SchemaVerifier.GetReference25_3_48().Tables) {
+				//The default reference is 26.1.70 (package M2-01), so employee.Title, which the Employee Titles rules read, is part of it.
+				foreach(SchemaTable table in SchemaVerifier.GetReference().Tables) {
 					Exec(connection,table.ToDdl());
 				}
-				//employee.Title is added by package M2-01 (Open Dental 26.1); the Employee Titles rules read it.
-				Exec(connection,"ALTER TABLE employee ADD COLUMN Title bigint(20) NOT NULL, ADD KEY Title (Title)");
 			}
 			RemotingClient.MiddleTierRole=MiddleTierRole.ClientDirect;
 			new DataConnection().SetDb(SERVER,_dbName,"root","","","",DatabaseType.MySql,true);

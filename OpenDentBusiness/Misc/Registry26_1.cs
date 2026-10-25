@@ -7,11 +7,11 @@ using System.Linq;
 
 namespace OpenDentBusiness {
 	///<summary>Definition categories added by Open Dental 26.1 (definition.Category, OpenDentalDiffDocumentation26-1.xml). The DefCat members
-	///themselves belong to package M2-01, which owns Def.cs; the setup code (DefL, Defs) uses these constants so it works with or without them.
-	///Once DefCat.EmployeeTitles exists, (DefCat)56 and DefCat.EmployeeTitles are the same value.</summary>
+	///themselves belong to package M2-01, which owns Def.cs; the setup code (DefL, Defs) uses these constants. Since M2-01 is merged, each
+	///constant is the DefCat member itself.</summary>
 	public static class DefCats26_1 {
 		///<summary>56 - Employee Titles: job titles for employee.Title.</summary>
-		public const DefCat EmployeeTitles=(DefCat)56;
+		public const DefCat EmployeeTitles=DefCat.EmployeeTitles;
 
 		///<summary>True when the DefCat enum already has a member for 56, so the category shows in Setup, Definitions (FormDefinitions lists the
 		///enum members).</summary>
