@@ -22,10 +22,10 @@ namespace ImagingCapture.Uvc {
 
 	///<summary>One opened camera.
 	///
-	///Threading: members may be called from any thread. Events are raised on the backend's own threads: FrameReady and
-	///StillCaptured on streaming threads, Error on a worker thread. Handlers must return quickly and must not wait on the UI
-	///thread (use BeginInvoke, never Invoke), and must not call Start, Stop or Dispose; those throw InvalidOperationException
-	///from a FrameReady or StillCaptured handler.
+	///Threading: members may be called from any thread. FrameReady and StillCaptured are raised on the backend's streaming
+	///threads: their handlers must return quickly, must not wait on the UI thread (use BeginInvoke, never Invoke), and must not
+	///call Start, Stop, ReadControl, ReadControlRange or Dispose (those throw InvalidOperationException there). Error is raised
+	///on a thread-pool thread, and its handler may call any member.
 	///
 	///Frames: each new preview frame is published and FrameReady is raised. The consumer calls TakeLatestFrame, which returns
 	///the newest frame not yet taken, or null. Frames that arrive while the consumer is busy replace the untaken one, so a slow
