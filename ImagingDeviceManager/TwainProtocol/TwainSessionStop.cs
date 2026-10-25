@@ -39,8 +39,9 @@ namespace ImagingDeviceManager.TwainProtocol {
 		public int DrainedImageCount { get; private set; }
 		///<summary>True while the session waits for the source after a refused MSG_DISABLEDS.</summary>
 		public bool IsWaitingForSource { get; private set; }
-		///<summary>True when, since the last Acquire started, a wait after a refused disable ended without a notification and the second
-		///consecutive MSG_DISABLEDS was sent: the source may still hold images of this series.</summary>
+		///<summary>True when, since the last Acquire started, the source may still hold images of this series that the library did not
+		///receive: a wait after a refused disable ended without a notification and the second consecutive MSG_DISABLEDS was sent, or, on
+		///the by-name path with a sink, a pending image could not be transferred or was discarded with MSG_RESET.</summary>
 		public bool SourceMayHoldImages { get; private set; }
 		///<summary>Raised with true when the session starts waiting for the source after a refused MSG_DISABLEDS (a status window then
 		///says "Waiting for the sensor software to finish."), and with false when the wait ends. Handlers must not throw.</summary>
@@ -373,7 +374,10 @@ namespace ImagingDeviceManager.TwainProtocol {
 			}
 			catch(Exception ex) {
 				//The source is in an unknown state. CloseSource will still try to close it.
-				Log("Stopping \""+SourceName+"\" failed: "+ex.Message);
+				Log("Stopping \""+SourceName+"\" failed: "+ex.Message+(CanDrain ? " The source may still hold images of this series." : ""));
+				if(CanDrain) {
+					NoteMayStillHoldImages(reason);
+				}
 			}
 		}
 
@@ -383,16 +387,20 @@ namespace ImagingDeviceManager.TwainProtocol {
 		}
 
 		///<summary>From state 6: transfers every pending image to the drain sink, ending each with MSG_ENDXFER, until the source reports
-		///none left (state 5). Draining never changes the caller's error.</summary>
+		///none left (state 5). An image that could not be transferred, or that the MaxDrainImages bound discards, may still be held by the
+		///source, so the operator is told (NoteMayStillHoldImages). Draining never changes the caller's error.</summary>
 		private void DrainPending(TwainDrainReason drainReason,TwainStopReason stopReason) {
 			EZTwainErrorCode errorCodeOld=ErrorCode;
 			string errorTextOld=ErrorText;
+			bool isAnyNotReceived=false;
 			try {
 				int count=0;
 				while(State==6) {
 					if(count>=MaxDrainImages) {
-						Log("\""+SourceName+"\" still reports pending images after "+count+"; the rest are discarded with MSG_RESET.");
+						Log("\""+SourceName+"\" still reports pending images after "+count+"; the rest are discarded with MSG_RESET. The source"
+							+" may still hold them.");
 						ResetPendingTransfers();
+						isAnyNotReceived=true;
 						break;
 					}
 					count++;
@@ -402,12 +410,33 @@ namespace ImagingDeviceManager.TwainProtocol {
 						DeliverToSink(dib,drainReason,stopReason);
 					}
 					else {
-						Log("A pending image from \""+SourceName+"\" could not be transferred ("+drainReason+"): "+ErrorText);
+						Log("A pending image from \""+SourceName+"\" could not be transferred ("+drainReason+"): "+ErrorText+" The source may still"
+							+" hold it.");
+						isAnyNotReceived=true;
 					}
 				}
 			}
 			finally {
 				SetError(errorCodeOld,errorTextOld);
+				if(isAnyNotReceived) {
+					NoteMayStillHoldImages(stopReason);
+				}
+			}
+		}
+
+		///<summary>The source may still hold images of this series that the library did not receive: sets SourceMayHoldImages, and the drain
+		///sink, when there is one, tells the operator not to re-expose (design 10.6 "Needless re-exposure"). The caller logs why. Never
+		///throws.</summary>
+		private void NoteMayStillHoldImages(TwainStopReason stopReason) {
+			SourceMayHoldImages=true;
+			if(DrainSink==null) {
+				return;
+			}
+			try {
+				DrainSink.MayStillHoldImages(SourceName,stopReason);
+			}
+			catch(Exception ex) {
+				Log("The drain sink failed: "+ex.Message);
 			}
 		}
 
@@ -528,15 +557,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 				if(!isDisabled) {
 					SetDisabledState();
 				}
-				SourceMayHoldImages=true;
-				if(DrainSink!=null) {
-					try {
-						DrainSink.MayStillHoldImages(SourceName,reason);
-					}
-					catch(Exception ex) {
-						Log("The drain sink failed: "+ex.Message);
-					}
-				}
+				NoteMayStillHoldImages(reason);
 			}
 			finally {
 				SetWaitingForSource(false);

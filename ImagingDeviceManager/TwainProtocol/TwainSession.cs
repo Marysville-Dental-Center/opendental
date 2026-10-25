@@ -1388,7 +1388,8 @@ namespace ImagingDeviceManager.TwainProtocol {
 		}
 
 		///<summary>MSG_ENDXFER after a transfer (state 7, or state 6 after a failure). Moves to state 6 if more images are
-		///pending (count unknown counts as pending), otherwise to state 5.</summary>
+		///pending (count unknown counts as pending), otherwise to state 5. If the source refuses it, MSG_RESET discards the rest; on the
+		///by-name path with a sink the operator is then told that the source may still hold images.</summary>
 		private void EndTransfer() {
 			IntPtr pPending=Marshal.AllocHGlobal(Marshal.SizeOf(typeof(TW_PENDINGXFERS)));
 			try {
@@ -1396,9 +1397,15 @@ namespace ImagingDeviceManager.TwainProtocol {
 				ushort rc=SourceEntry(Tw.DG_CONTROL,Tw.DAT_PENDINGXFERS,Tw.MSG_ENDXFER,pPending);
 				if(rc!=Tw.TWRC_SUCCESS) {
 					//The source is confused. Discard everything so that it can be disabled.
+					ushort conditionCode=LastConditionCode;
 					Marshal.StructureToPtr(new TW_PENDINGXFERS(),pPending,false);
 					SourceEntry(Tw.DG_CONTROL,Tw.DAT_PENDINGXFERS,Tw.MSG_RESET,pPending);
 					State=5;
+					if(CanDrain) {
+						Log("\""+SourceName+"\" refused MSG_ENDXFER ("+(rc==Tw.TWRC_FAILURE ? "condition code "+ToHex(conditionCode) : "return code "+rc)
+							+"); MSG_RESET discarded any images still pending. The source may still hold images of this series.");
+						NoteMayStillHoldImages(LastStopReason);
+					}
 					return;
 				}
 				TW_PENDINGXFERS pending=(TW_PENDINGXFERS)Marshal.PtrToStructure(pPending,typeof(TW_PENDINGXFERS));

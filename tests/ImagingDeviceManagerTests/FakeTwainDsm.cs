@@ -214,6 +214,8 @@ namespace ImagingDeviceManager.Tests {
 		public bool IsStrict;
 		///<summary>Condition codes the next MSG_DISABLEDS calls of the built-in source fail with, one per call.</summary>
 		public Queue<ushort> QueueDisableFailures=new Queue<ushort>();
+		///<summary>The built-in source refuses MSG_ENDXFER with TWCC_SEQERROR after the page with this index (-1: never).</summary>
+		public int FailEndXferOnPage=-1;
 		///<summary>Acts as a version 2 DSM: sets DF_DSM2 in the application's identity at MSG_OPENDSM and hands out DsmMemory through
 		///DAT_ENTRYPOINT. The simulated sources then allocate every handle they give the application with DSM_MemAllocate, as
 		///TWAIN 2 sources do; otherwise with GlobalAlloc.</summary>
@@ -703,6 +705,10 @@ namespace ImagingDeviceManager.Tests {
 
 		private ushort PendingXfers(ushort msg,IntPtr data) {
 			if(msg==Tw.MSG_ENDXFER) {
+				if(_idxPage==FailEndXferOnPage) {
+					ListLog.Add("ENDXFER refused");
+					return Fail(Tw.TWCC_SEQERROR);
+				}
 				ListLog.Add("ENDXFER");
 				_idxPage++;
 				_rowCursor=0;

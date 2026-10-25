@@ -271,6 +271,25 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		[TestMethod]
+		public void DrainTransferFails_MayStillHoldNoticeWithTheQuarantineNotice() {
+			FakeTwainDsm fake=_harness.Fake;
+			for(int i=0;i<3;i++) {
+				fake.ListPages.Add(FakePage.CreateGray8(8+i,4,300,(x,y) => (byte)x));
+			}
+			fake.ListPages[1].FailCondition=Tw.TWCC_OPERATIONERROR;
+			Assert.IsTrue(EZTwain.OpenSource("Fake Sensor"));
+			EZTwain.SetMultiTransfer(true);
+			IntPtr hdib=EZTwain.Acquire(IntPtr.Zero);
+			Assert.AreNotEqual(IntPtr.Zero,hdib,EZTwain.LastErrorText());
+			EZTwain.DIB_Free(hdib);
+			EZTwain.CloseSource();
+			Assert.AreEqual(1,FacadeHarness.ListImages(_harness.FolderQuarantine).Count);
+			Assert.AreEqual(1,_harness.Ui.ListNotices.Count,"One window for the call.");
+			Assert.IsTrue(_harness.HasNotice("1 image(s) received after the series stopped"),_harness.Ui.ListNotices[0]);
+			Assert.IsTrue(_harness.HasNotice(CaptureNoticeText.MayStillHoldImages),_harness.Ui.ListNotices[0]);
+		}
+
+		[TestMethod]
 		public void PlainAcquire_NoNotice() {
 			Helper.ListExposures.Add(SessionHarness.Exposure(8));
 			EZTwain.DIB_Free(AcquireByName(IntPtr.Zero));

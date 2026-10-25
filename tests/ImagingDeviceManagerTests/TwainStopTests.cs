@@ -218,6 +218,68 @@ namespace ImagingDeviceManager.Tests {
 			Assert.IsFalse(fake.ListLog.Contains("DISABLEDS refused"));
 		}
 
+		private void AddGenericPages(int count) {
+			for(int i=0;i<count;i++) {
+				_harness.Fake.ListPages.Add(FakePage.CreateGray8(8+i,4,300,(x,y) => (byte)x));
+			}
+		}
+
+		[TestMethod]
+		public void DrainTransferFails_ByName_SourceMayHoldImages() {
+			AddGenericPages(3);
+			_harness.Fake.ListPages[1].FailCondition=Tw.TWCC_OPERATIONERROR;
+			Assert.IsTrue(Session.OpenSource("Fake Sensor"));
+			Session.MultiTransfer=true;
+			Assert.AreEqual(8,Session.Acquire(IntPtr.Zero).Width);
+			Session.CloseSource();
+			CollectionAssert.AreEqual(new[] { 10 },Sink.ListDrained.Select(x => x.Image.Width).ToArray(),"The image after the failed one is drained.");
+			CollectionAssert.AreEqual(new[] { TwainStopReason.Closed },Sink.ListMayStillHold.ToArray(),"The operator is told.");
+			Assert.IsTrue(Session.SourceMayHoldImages);
+			Assert.IsTrue(_harness.HasLog("could not be transferred"),_harness.LogText);
+		}
+
+		[TestMethod]
+		public void EndXferRefused_ByName_ResetAndSourceMayHoldImages() {
+			AddGenericPages(3);
+			_harness.Fake.FailEndXferOnPage=0;
+			Assert.IsTrue(Session.OpenSource("Fake Sensor"));
+			Session.MultiTransfer=true;
+			DibImage dib=Session.Acquire(IntPtr.Zero);
+			Assert.IsNotNull(dib,Session.ErrorText);
+			Assert.AreEqual(8,dib.Width,"The caller still gets the image it received.");
+			Assert.AreEqual(1,_harness.Fake.CallsNamed("RESET").Count);
+			Assert.IsTrue(Session.IsDone());
+			CollectionAssert.AreEqual(new[] { TwainStopReason.None },Sink.ListMayStillHold.ToArray());
+			Assert.IsTrue(_harness.HasLog("refused MSG_ENDXFER (condition code "+TwainSession.ToHex(Tw.TWCC_SEQERROR)),_harness.LogText);
+			Session.CloseSource();
+		}
+
+		[TestMethod]
+		public void EndXferRefused_DefaultSource_ResetAsBefore() {
+			AddGenericPages(3);
+			_harness.Fake.FailEndXferOnPage=0;
+			_harness.Fake.DefaultSource="Fake Sensor";
+			Assert.IsTrue(Session.OpenSource(null));
+			Assert.IsNotNull(Session.Acquire(IntPtr.Zero));
+			Assert.AreEqual(1,_harness.Fake.CallsNamed("RESET").Count);
+			Assert.AreEqual(0,Sink.ListMayStillHold.Count,"Scans keep their behaviour.");
+			Assert.IsFalse(_harness.HasLog("MSG_ENDXFER"),_harness.LogText);
+		}
+
+		[TestMethod]
+		public void DrainBound_ByName_RestResetAndSourceMayHoldImages() {
+			for(int i=0;i<503;i++) {
+				_harness.Fake.ListPages.Add(FakePage.CreateGray8(2,2,300,(x,y) => 0));
+			}
+			Assert.IsTrue(Session.OpenSource("Fake Sensor"));
+			Session.MultiTransfer=true;
+			Assert.IsNotNull(Session.Acquire(IntPtr.Zero));
+			Session.CloseSource();
+			Assert.AreEqual(500,Sink.ListDrained.Count);
+			Assert.AreEqual(1,_harness.Fake.CallsNamed("RESET").Count,"The rest are discarded.");
+			CollectionAssert.AreEqual(new[] { TwainStopReason.Closed },Sink.ListMayStillHold.ToArray());
+		}
+
 		[TestMethod]
 		public void TransferFailure_ByName_RemainingImagesDrained() {
 			for(int i=0;i<3;i++) {
