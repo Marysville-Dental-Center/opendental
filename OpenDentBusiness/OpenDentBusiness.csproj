@@ -733,6 +733,8 @@
     <!-- Fork version guard, adoption and fork migrations (backlog M1-01 to M1-03; each migration step is its own file, so new steps need no csproj edit), and the fork release channel (M1-03). -->
     <Compile Include="Misc\ForkMigrations\**\*.cs" />
     <Compile Include="Misc\ForkRelease\**\*.cs" />
+    <!-- Appointments module rules from Open Dental 24.4 to 25.3 (backlog package B-APPT); new files in the folder need no csproj edit. -->
+    <Compile Include="Misc\ApptModule\**\*.cs" />
     <Compile Include="WebBridges\Erx\DoseSpot\**\*.cs" />
     <Compile Include="WebBridges\Microsoft365\**\*.cs" />
     <Compile Include="WebBridges\Usps\**\*.cs" />
