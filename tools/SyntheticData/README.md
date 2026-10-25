@@ -227,6 +227,9 @@ non-zero; they describe the synthetic data.
 
 ## The adoption rehearsal (M1-Z)
 
+[tools/AdoptionValidation](../AdoptionValidation/README.md) runs all of this, with the real adoption tool, the fork migration, the schema
+verifier, the rehash and further checks, twice, and times every step. The steps by hand:
+
 1. `generate` into `synth_253` and keep the report (`--out before.json`). Optionally `--config-from` a fresh 24.3.63 dev database
    (from `tools\New-DevDatabase.ps1`) first, which copies its preference, definition, user, permission, program, report and claim
    form rows (shared columns only), so the fork can open the database.
@@ -241,7 +244,7 @@ non-zero; they describe the synthetic data.
 Note for the adoption tool: many tables have a `timestamp ... ON UPDATE current_timestamp()` column (`SecDateTEdit`,
 `DateTStamp`). An `UPDATE` that rehashes `SecurityHash` without also writing `SecDateTEdit=SecDateTEdit` moves those audit
 timestamps to the adoption time, and `compare` reports it (the database tests show both cases). The allowed list deliberately
-does not excuse it.
+does not excuse it. The M1-Z rehearsal found that `SecurityHash.RehashNow` did exactly that; it now keeps every ON UPDATE timestamp.
 
 `--fill-remaining N` adds N schema-valid filler rows to every table that is still empty (except tables whose rows would change
 start-up behaviour, such as `documentmisc`, `updatehistory` and `preference`), so the checksums cover all 422 tables. Filler rows

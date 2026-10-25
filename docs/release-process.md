@@ -84,7 +84,7 @@ The preflight refuses these databases:
 - an adopted database whose markers were removed (`ForkAdoptedFrom` says `adopted=`)
 - a middle-tier connection
 
-Re-entering bridge passwords and rehashing `SecurityHash` columns are separate steps of the M1-Z rehearsal. Adoption doesn't do them.
+Re-entering bridge passwords and rehashing `SecurityHash` columns are separate steps of the M1-Z rehearsal and of the office procedure in [adoption-runbook.md](adoption-runbook.md). Adoption doesn't do them.
 
 Before adopting the office copy, stop and uninstall the Open Dental services on the server (M1-Z). All workstations switch together. Rollback means restoring the pre-adoption backup.
 
