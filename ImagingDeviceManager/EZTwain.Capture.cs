@@ -1,6 +1,8 @@
 // This file is part of the open source dental practice management software derived from Open Dental.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
+using System.Collections.Generic;
+using System.IO;
 using ImagingDeviceManager.Acquire;
 using ImagingDeviceManager.Config;
 using ImagingDeviceManager.Imaging;
@@ -24,6 +26,9 @@ namespace ImagingDeviceManager {
 		private static ForegroundRestorer _foregroundRestorer;
 		private static CaptureLog _captureLog;
 		private static CaptureJournal _journal;
+		private static QuarantineWriter _quarantine;
+		///<summary>The facade call on a by-name source that is running, or null. The drain sink records into it.</summary>
+		private static CaptureCallState _callCurrent;
 
 		internal static CaptureHost Host {
 			get {
@@ -51,6 +56,7 @@ namespace ImagingDeviceManager {
 		private static void ConfigureSession(TwainSession session) {
 			session.SourceRefusedByGate+=OnSourceRefusedByGate;
 			session.Logged+=LogCapture;
+			session.DrainSink=new FacadeDrainSink();
 		}
 
 		private static CaptureJournal Journal {
@@ -59,6 +65,15 @@ namespace ImagingDeviceManager {
 					_journal=new CaptureJournal(Host.Folders);
 				}
 				return _journal;
+			}
+		}
+
+		private static QuarantineWriter Quarantine {
+			get {
+				if(_quarantine==null) {
+					_quarantine=new QuarantineWriter(Host.Folders);
+				}
+				return _quarantine;
 			}
 		}
 
@@ -80,34 +95,47 @@ namespace ImagingDeviceManager {
 		private static DibImage AcquireByName(IntPtr hwnd,long patNum) {
 			TwainSession session=Session;
 			string sourceName=session.SourceName;//Single mode closes the source before Acquire returns.
-			string acquireId=Guid.NewGuid().ToString("N");
-			DeviceAcquireScope scope=null;
-			if(session.State<6 && IsThreadModalInEffect()) {
-				scope=DeviceAcquireScope.Begin(Host,ForegroundRestorerShared,session,null,LogCapture);
-			}
+			CaptureCallState call=new CaptureCallState();
+			CaptureCallState callOuter=_callCurrent;
+			_callCurrent=call;
 			DibImage dib;
 			try {
-				dib=session.Acquire(hwnd);
+				DeviceAcquireScope scope=null;
+				if(session.State<6 && IsThreadModalInEffect()) {
+					DateTime? oldest;
+					int countUnassigned=QuarantineWriter.CountImages(Host.Folders,out oldest);
+					scope=DeviceAcquireScope.Begin(Host,ForegroundRestorerShared,session,
+						CaptureNoticeText.UnassignedCaptures(countUnassigned,oldest,Host.Now()),LogCapture);
+				}
+				try {
+					dib=session.Acquire(hwnd);
+				}
+				finally {
+					scope?.Dispose();
+				}
+				if(dib!=null) {
+					WriteJournalCopy(dib,sourceName,call.AcquireId,patNum,Host.Now(),CaptureJournal.DeliveredCaller,null);
+				}
 			}
 			finally {
-				scope?.Dispose();
+				_callCurrent=callOuter;
 			}
-			if(dib!=null) {
-				WriteJournalCopy(dib,sourceName,acquireId,patNum,CaptureJournal.DeliveredCaller,null);
-			}
+			ShowNotices(AcquireNotices.Select(call));
 			return dib;
 		}
 
 		///<summary>The journal copy of an image (design 7.1 "Journal"), before it goes back to the caller or after it went to the quarantine.
 		///Never throws; problems go to the capture log.</summary>
-		private static string WriteJournalCopy(DibImage dib,string sourceName,string acquireId,long patNum,string delivered,string detail) {
-			CaptureRecord record=CaptureRecord.Create(Host.Now(),sourceName,acquireId);
+		private static string WriteJournalCopy(DibImage dib,string sourceName,string acquireId,long patNum,DateTime receivedAt,string delivered,
+			string detail)
+		{
+			CaptureRecord record=CaptureRecord.Create(receivedAt,sourceName,acquireId);
 			record.PatNum=patNum;
 			record.ListSettings=CaptureSettingsSnapshot.Build(_configInEffect,IsThreadModalInEffect(),Session.IsSafeDisableInEffect);
 			int journalKeep=_configInEffect==null ? 200 : _configInEffect.JournalKeep;
 			string pathImage=Journal.Write(dib,record,delivered,detail,journalKeep,LogCapture);
 			if(pathImage!=null) {
-				LogCapture("Journal copy "+System.IO.Path.GetFileName(pathImage)+" of an image from \""+record.SourceName+"\" (acquire "+acquireId
+				LogCapture("Journal copy "+Path.GetFileName(pathImage)+" of an image from \""+record.SourceName+"\" (acquire "+acquireId
 					+", delivered: "+delivered+").");
 			}
 			return pathImage;
@@ -117,15 +145,77 @@ namespace ImagingDeviceManager {
 		///can wait for the source; that wait is thread-modal like an acquisition.</summary>
 		private static void CloseSourceGuarded() {
 			TwainSession session=Session;
-			DeviceAcquireScope scope=null;
-			if(session.State>=5 && session.IsOpenedByName && !session.IsAcquiring && IsThreadModalInEffect()) {
-				scope=DeviceAcquireScope.Begin(Host,ForegroundRestorerShared,session,null,LogCapture);
+			if(!session.IsOpenedByName || session.IsAcquiring) {
+				session.CloseSource();
+				return;
 			}
+			CaptureCallState call=new CaptureCallState();
+			CaptureCallState callOuter=_callCurrent;
+			_callCurrent=call;
+			DeviceAcquireScope scope=null;
 			try {
+				if(session.State>=5 && IsThreadModalInEffect()) {
+					scope=DeviceAcquireScope.Begin(Host,ForegroundRestorerShared,session,null,LogCapture);
+				}
 				session.CloseSource();
 			}
 			finally {
 				scope?.Dispose();
+				_callCurrent=callOuter;
+			}
+			ShowNotices(AcquireNotices.Select(call));
+		}
+
+		///<summary>All the notices of one facade call, in one non-modal window, and in the capture log.</summary>
+		private static void ShowNotices(List<string> listNotices) {
+			if(listNotices==null || listNotices.Count==0) {
+				return;
+			}
+			foreach(string notice in listNotices) {
+				LogCapture("Notice shown: "+notice);
+			}
+			Host.Ui.ShowNotice(string.Join("\r\n\r\n",listNotices));
+		}
+
+		///<summary>The drain sink of the by-name path (design 7.1): every image the session transferred after the caller could no longer take
+		///it goes to the quarantine and the journal; "may still hold images" is noted for the notice. Runs inside the message loop.</summary>
+		private sealed class FacadeDrainSink:ITwainDrainSink {
+			public void ImageDrained(TwainDrainedImage drained) {
+				QuarantineDrainedImage(drained);
+			}
+
+			public void MayStillHoldImages(string sourceName,TwainStopReason stopReason) {
+				CaptureCallState call=_callCurrent??new CaptureCallState();
+				call.IsMayStillHoldImages=true;
+				LogCapture("\""+sourceName+"\" may still hold images from this series (stop: "+stopReason+", acquire "+call.AcquireId+").");
+			}
+		}
+
+		///<summary>Writes a drained image to the quarantine, with a "patient unknown" sidecar, then to the journal, whose sidecar names the
+		///quarantine file, or says that the journal copy is the only one. Outside a facade call (the session disposed at exit) only the
+		///log hears of it.</summary>
+		private static void QuarantineDrainedImage(TwainDrainedImage drained) {
+			CaptureCallState call=_callCurrent??new CaptureCallState();
+			CaptureRecord record=CaptureRecord.Create(drained.ReceivedAt,drained.SourceName,call.AcquireId);
+			string error;
+			string pathQuarantine=Quarantine.Write(drained.Image,record,drained.Reason,drained.StopReason,LogCapture,out error);
+			string pathJournal=WriteJournalCopy(drained.Image,drained.SourceName,call.AcquireId,0,drained.ReceivedAt,
+				pathQuarantine==null ? CaptureJournal.DeliveredNone : CaptureJournal.DeliveredQuarantine,
+				pathQuarantine==null ? "The quarantine could not be written: "+error : Path.GetFileName(pathQuarantine));
+			call.ListQuarantined.Add(new QuarantinedImage {
+				ReceivedAt=drained.ReceivedAt,
+				PathImage=pathQuarantine,
+				Error=pathQuarantine==null ? error : null,
+				PathJournal=pathJournal,
+			});
+			string reason=QuarantineWriter.DescribeReason(drained.Reason,drained.StopReason);
+			if(pathQuarantine==null) {
+				LogCapture("An image from \""+record.SourceName+"\" could not be saved to the capture quarantine ("+error+"). "+reason
+					+(pathJournal==null ? " There is no journal copy either." : " Its journal copy is the only one."));
+			}
+			else {
+				LogCapture("Quarantine image "+Path.GetFileName(pathQuarantine)+" from \""+record.SourceName+"\" (acquire "+call.AcquireId
+					+"): "+reason);
 			}
 		}
 
@@ -143,6 +233,8 @@ namespace ImagingDeviceManager {
 			_foregroundRestorer=null;
 			_captureLog=null;
 			_journal=null;
+			_quarantine=null;
+			_callCurrent=null;
 			DisableThreadWindowsDuringAcquire=true;
 		}
 
