@@ -792,6 +792,7 @@
     <Compile Include="Data Interface\InsEditLogs.cs" />
     <Compile Include="Data Interface\PatientLinks.cs" />
     <Compile Include="Db Multi Table\PaymentEdit.cs" />
+    <Compile Include="Db Multi Table\PaymentInvoiceFilter.cs" />
     <Compile Include="Db Multi Table\ProcEdit.cs" />
     <Compile Include="InternalTools\Phones\TableTypes\PhoneComp.cs" />
     <Compile Include="Misc\ItransNCpl.cs" />

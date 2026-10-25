@@ -5055,6 +5055,9 @@
     <Compile Include="Forms\FormPayment.IncomeTransferLimit.cs">
       <DependentUpon>FormPayment.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\FormPayment.InvoiceFilter.cs">
+      <DependentUpon>FormPayment.cs</DependentUpon>
+    </Compile>
     <Compile Include="Forms\FormPayPeriodEdit.cs">
       <SubType>Form</SubType>
     </Compile>

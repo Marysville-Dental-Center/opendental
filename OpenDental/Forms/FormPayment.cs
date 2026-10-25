@@ -1558,6 +1558,7 @@ namespace OpenDental {
 			FillFilterProvidersChargesTreatPlan(doPreserveValues);
 			FillFilterClinicsChargestreatPlan(doPreserveValues);
 			FillFilterTypes(doPreserveValues);
+			FillFilterInvoices(doPreserveValues);//M2-PAYW
 		}
 
 		private void FillFiltersPaySplits(bool doPreserveValues) {
@@ -1767,6 +1768,7 @@ namespace OpenDental {
 			decimal chargeTotal=0;
 			List<AccountEntry> listAccountEntriesOutstandingCharges=_listAccountEntriesCharges.FindAll(x => DoShowAccountEntry(x)
 				&& (x.GetType()!=typeof(Procedure) || (x.GetType()==typeof(Procedure) && ((Procedure)x.Tag).ProcStatus==ProcStat.C)));
+			listAccountEntriesOutstandingCharges=FilterAccountEntriesByInvoice(listAccountEntriesOutstandingCharges);//M2-PAYW
 			#region Group By Provider
 			if(comboGroupBy.SelectedIndex==1) {//Group by 'Provider'
 				col=new GridColumn(Lan.g(this,"Prov"),checkPayTypeNone.Checked ? 70 : 110);
