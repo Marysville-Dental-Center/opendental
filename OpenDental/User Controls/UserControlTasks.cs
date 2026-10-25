@@ -428,10 +428,10 @@ namespace OpenDental {
 				}
 				string filterText="";
 				if(_listClinicNumsFilter.Count>0 && !isHQClinic) {
-					filterText+=""+string.Join(",",_listClinicNumsFilter.Select(x => Clinics.GetAbbr(x)))+"";
+					filterText+=""+string.Join(",",_listClinicNumsFilter.Select(x => TaskFilters.GetClinicFilterText(x)))+"";//Shows "Unassigned" too
 				}
 				else if(_listDefNumsRegionFilter.Count>0 && !isHQRegion) {
-					filterText+=""+string.Join(",",_listDefNumsRegionFilter.Select(x => Defs.GetName(DefCat.Regions,x)))+"";
+					filterText+=""+string.Join(",",_listDefNumsRegionFilter.Select(x => TaskFilters.GetRegionFilterText(x)))+"";//Shows "Unassigned" too
 				}
 				if(_dateFilterStart==DateTime.Today && _dateFilterEnd==DateTime.Today) {
 					if(filterText!="") {
