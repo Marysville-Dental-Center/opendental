@@ -457,15 +457,29 @@ namespace OpenDental {
 			}
 			if(_nodeIdTagDown.NodeType==EnumNodeType.Mount) {
 				Mount mount=Mounts.GetByNum(_nodeIdTagDown.PriKey);
+				//24.4: a mount that holds signed images needs SignedImageEdit to be moved, as in the Imaging module.
+				Document[] documentArrayMountItems=Documents.GetDocumentsForMountItems(MountItems.GetItemsForMount(mount.MountNum));
+				if(!ImageSignaturePermissions.IsAuthorizedForSigned(documentArrayMountItems)) {
+					_nodeIdTagDown=new NodeIdTag();
+					return;
+				}
 				string mountSourceCat=Defs.GetDef(DefCat.ImageCats,mount.DocCategory).ItemName;
 				string mountDestCat=Defs.GetDef(DefCat.ImageCats,nodeOverCategoryDefNum).ItemName;
 				mount.DocCategory=nodeOverCategoryDefNum;
 				SecurityLogs.MakeLogEntry(EnumPermType.ImageEdit,mount.PatNum,Lan.g(this,"Mount moved from")+" "+mountSourceCat+" "
 					+Lan.g(this,"to")+" "+mountDestCat);
 				Mounts.Update(mount);
+				for(int i=0;i<documentArrayMountItems.Length;i++) {
+					ImageSignaturePermissions.LogSignedImageEdited(documentArrayMountItems[i],"mount moved to category "+mountDestCat);//24.4, signed items only
+				}
 			}
 			else if(_nodeIdTagDown.NodeType==EnumNodeType.Doc) {
 				Document doc=Documents.GetByNum(_nodeIdTagDown.PriKey);
+				//24.4: the category is part of Item Info, so moving a signed image also needs SignedImageEdit, as in FrmDocInfo.
+				if(!ImageSignaturePermissions.IsAuthorizedForSigned(doc)) {
+					_nodeIdTagDown=new NodeIdTag();
+					return;
+				}
 				string docSourceCat=Defs.GetDef(DefCat.ImageCats,doc.DocCategory).ItemName;
 				string docDestCat=Defs.GetDef(DefCat.ImageCats,nodeOverCategoryDefNum).ItemName;
 				doc.DocCategory=nodeOverCategoryDefNum;
@@ -480,6 +494,7 @@ namespace OpenDental {
 				logText+=" "+Lan.g(this,"from category")+" "+docSourceCat+" "+Lan.g(this,"to category")+" "+docDestCat;
 				SecurityLogs.MakeLogEntry(EnumPermType.ImageEdit,doc.PatNum,logText,doc.DocNum,doc.DateTStamp);
 				Documents.Update(doc);
+				ImageSignaturePermissions.LogSignedImageEdited(doc,"moved to category "+docDestCat);//24.4
 			}
 			FillTree(true);
 			_nodeIdTagDown=new NodeIdTag();

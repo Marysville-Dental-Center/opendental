@@ -16,6 +16,25 @@ namespace ImagingTests {
 			return Regex.Matches(source,Regex.Escape(text)).Count;
 		}
 
+		///<summary>The text of one method of a window class: from its signature to its closing brace, which is the first brace at the method's own
+		///indent (two tabs).</summary>
+		private static string MethodBody(string source,string signature) {
+			int idxStart=source.IndexOf(signature);
+			Assert.IsTrue(idxStart>=0,signature+" not found.");
+			int idxEnd=source.IndexOf("\n\t\t}",idxStart);
+			Assert.IsTrue(idxEnd>idxStart,signature+" has no closing brace.");
+			return source.Substring(idxStart,idxEnd-idxStart);
+		}
+
+		///<summary>Asserts that before comes earlier in the method than after, and that both are there.</summary>
+		private static void AssertBefore(string body,string before,string after) {
+			int idxBefore=body.IndexOf(before);
+			int idxAfter=body.IndexOf(after);
+			Assert.IsTrue(idxBefore>=0,before+" not found.");
+			Assert.IsTrue(idxAfter>=0,after+" not found.");
+			Assert.IsTrue(idxBefore<idxAfter,before+" must come before "+after);
+		}
+
 		[TestMethod]
 		public void SignButtons_CheckTheSignPermission() {
 			StringAssert.Contains(Read("OpenDental","Main Modules","ControlImages.cs"),"ImageSignaturePermissions.IsAuthorizedToSign(GetDocumentShowing(0))");
@@ -44,6 +63,28 @@ namespace ImagingTests {
 			string source=Read("OpenDental","Main Modules","ControlImages.cs");
 			StringAssert.Contains(source,"ImageSignaturePermissions.IsAuthorizedForSigned(documentArrayMount)");
 			StringAssert.Contains(source,"ImageSignaturePermissions.IsAuthorizedToDelete(GetDocumentShowing(0))");
+		}
+
+		[TestMethod]
+		public void DragToCategory_SignedImageNeedsSignedImageEdit() {
+			//The category is an Item Info field, so dragging a signed image (or a mount holding one) to another category needs SignedImageEdit.
+			string body=MethodBody(Read("OpenDental","Main Modules","ControlImages.cs"),
+				"private void imageSelector_DraggedToCategory(object sender,DragEventArgsOD e)");
+			AssertBefore(body,"if(!ImageSignaturePermissions.IsAuthorizedForSigned(document)) {","SecurityLogs.MakeLogEntry(EnumPermType.ImageEdit,document.PatNum");
+			AssertBefore(body,"if(!ImageSignaturePermissions.IsAuthorizedForSigned(document)) {","document.DocCategory=e.DefNumNew;");
+			AssertBefore(body,"Documents.Update(document,docOld);","ImageSignaturePermissions.LogSignedImageEdited(document,\"moved to category \"+docNewCat);");
+			AssertBefore(body,"Documents.GetDocumentsForMountItems(MountItems.GetItemsForMount(mountShowing.MountNum))",
+				"if(!ImageSignaturePermissions.IsAuthorizedForSigned(documentArrayMountItems)) {");
+			AssertBefore(body,"if(!ImageSignaturePermissions.IsAuthorizedForSigned(documentArrayMountItems)) {","mountShowing.DocCategory=e.DefNumNew;");
+			AssertBefore(body,"Documents.UpdateDocCategoryForMountItems(","ImageSignaturePermissions.LogSignedImageEdited(documentArrayMountItems[i],");
+			Assert.AreEqual(2,Count(body,"FillImageSelector(true);//The drag snaps back."),"A refused drag refills the selector.");
+			//The old Images module (tree drag and drop) has the same rule for documents and for mounts.
+			string bodyOld=MethodBody(Read("OpenDental","Main Modules","ControlImagesOld.cs"),
+				"private void TreeDocuments_MouseUp(object sender,System.Windows.Forms.MouseEventArgs e)");
+			AssertBefore(bodyOld,"if(!ImageSignaturePermissions.IsAuthorizedForSigned(doc)) {","doc.DocCategory=nodeOverCategoryDefNum;");
+			AssertBefore(bodyOld,"Documents.Update(doc);","ImageSignaturePermissions.LogSignedImageEdited(doc,\"moved to category \"+docDestCat);");
+			AssertBefore(bodyOld,"if(!ImageSignaturePermissions.IsAuthorizedForSigned(documentArrayMountItems)) {","mount.DocCategory=nodeOverCategoryDefNum;");
+			AssertBefore(bodyOld,"Mounts.Update(mount);","ImageSignaturePermissions.LogSignedImageEdited(documentArrayMountItems[i],");
 		}
 
 		[TestMethod]
