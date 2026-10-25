@@ -33,6 +33,8 @@ namespace OpenDental {
 		///<summary>Empty list means no regions selected, so show all region</summary>
 		public List<long> ListDefNumsRegionsSelected=new List<long>();
 		public bool ClearAllClicked=false;
+		///<summary>The patient picked with Specific Patient (the ... button), kept while the user tries the other patient options.</summary>
+		private Patient _patientSpecific;
 
 		public FrmTaskFilter() {
 			InitializeComponent();
@@ -42,9 +44,8 @@ namespace OpenDental {
 			radioAllPatients.Click+=RadioAllPatients_Click;
 			radioPatientMain.Click+=RadioPatientSelected_Click;
 			radioPatientSelectedTask.Click+=RadioPatientSelectedTask_Click;
+			radioSpecificPatient.Click+=RadioSpecificPatient_Click;
 			PreviewKeyDown+=FrmTaskFilter_PreviewKeyDown;
-			butSelectPatient.Visible=false;//Hidden until formSelectPatient is built in WPF
-			radioSpecificPatient.Visible=false;//Hidden until formSelectPatient is built in WPF
 			comboClinic.IncludeAll=true;
 			comboRegion.IncludeAll=true;
 		}
@@ -61,20 +62,22 @@ namespace OpenDental {
 			if(EnumTaskPatientFilterType_==EnumTaskPatientFilterType.PatientMain && PatientMain!=null) {
 				radioPatientMain.Checked=true;
 				PatientSelected=PatientMain;
-				textPatientSelected.Text=PatientSelected.GetNameLF()+" - "+PatientSelected.PatNum.ToString();
+				textPatientSelected.Text=TaskFilters.GetPatientText(PatientSelected);
 			}
 			else if(EnumTaskPatientFilterType_==EnumTaskPatientFilterType.PatientSelectedTask && PatientTask!=null) {
 				radioPatientSelectedTask.Checked=true;
 				PatientSelected=PatientTask;
-				textPatientSelected.Text=PatientSelected.GetNameLF()+" - "+PatientSelected.PatNum.ToString();
+				textPatientSelected.Text=TaskFilters.GetPatientText(PatientSelected);
 			}
 			else if(EnumTaskPatientFilterType_==EnumTaskPatientFilterType.SpecificPatient && PatientSelected!=null) {
 				radioSpecificPatient.Checked=true;
-				textPatientSelected.Text=PatientSelected.GetNameLF()+" - "+PatientSelected.PatNum.ToString();
+				_patientSpecific=PatientSelected;
+				textPatientSelected.Text=TaskFilters.GetPatientText(PatientSelected);
 			}
 			else{
 				EnumTaskPatientFilterType_=EnumTaskPatientFilterType.AllPatients;
 				radioAllPatients.Checked=true;
+				PatientSelected=null;
 				textPatientSelected.Text="";
 			}
 			FillComboBoxClinics();
@@ -82,7 +85,12 @@ namespace OpenDental {
 		}
 
 		private void FillComboBoxClinics() {
-			List<Clinic> listClinics=Clinics.GetAllForUserod(Security.CurUser);
+			List<Clinic> listClinics=new List<Clinic>();
+			if(PrefC.HasClinicsEnabled) {
+				//Unassigned: tasks whose patient or appointment has no clinic. Its key is TaskFilters.UnassignedNum, because 0 means "no filter".
+				listClinics.Add(TaskFilters.GetUnassignedClinic());
+			}
+			listClinics.AddRange(Clinics.GetAllForUserod(Security.CurUser));
 			comboClinic.Items.AddList(listClinics,x=>x.Abbr);
 			for(int i = 0;i<listClinics.Count;i++) {
 				if(ListClinicNumsSelected.Contains(listClinics[i].ClinicNum)) {
@@ -97,7 +105,12 @@ namespace OpenDental {
 		private void FillComboBoxRegions() {
 			List<Clinic> listClinics=Clinics.GetAllForUserod(Security.CurUser);
 			List<long> listDefNumsRegion=listClinics.Select(x=>x.Region).Distinct().ToList();
-			List<Def> listDefsRegions=Defs.GetDefs(DefCat.Regions,listDefNumsRegion);
+			List<Def> listDefsRegions=new List<Def>();
+			if(PrefC.HasClinicsEnabled) {
+				//Unassigned: tasks whose patient's or appointment's clinic has no region. Its key is TaskFilters.UnassignedNum, because 0 means "no filter".
+				listDefsRegions.Add(TaskFilters.GetUnassignedRegion());
+			}
+			listDefsRegions.AddRange(Defs.GetDefs(DefCat.Regions,listDefNumsRegion));
 			comboRegion.Items.AddDefs(listDefsRegions);
 			for(int i=0;i<listDefsRegions.Count;i++){
 				if(ListDefNumsRegionsSelected.Contains(listDefsRegions[i].DefNum)) {
@@ -116,12 +129,20 @@ namespace OpenDental {
 
 		private void RadioPatientSelected_Click(object sender, EventArgs e) {
 			PatientSelected=PatientMain;
-			textPatientSelected.Text=PatientSelected.GetNameLF()+" - "+PatientSelected.PatNum.ToString();
+			textPatientSelected.Text=TaskFilters.GetPatientText(PatientSelected);
 		}
 
 		private void RadioPatientSelectedTask_Click(object sender, EventArgs e) {
 			PatientSelected=PatientTask;
-			textPatientSelected.Text=PatientTask.GetNameLF()+" - "+PatientTask.PatNum.ToString();
+			textPatientSelected.Text=TaskFilters.GetPatientText(PatientTask);
+		}
+
+		private void RadioSpecificPatient_Click(object sender, EventArgs e) {
+			PatientSelected=_patientSpecific;
+			textPatientSelected.Text=TaskFilters.GetPatientText(_patientSpecific);
+			if(_patientSpecific==null) {
+				SelectSpecificPatient();//No patient picked yet, so open Select Patient right away.
+			}
 		}
 
 		private void ComboClinic_SelectionChangeCommitted(object sender, EventArgs e) {
@@ -163,7 +184,28 @@ namespace OpenDental {
 		}
 
 		private void butSelectPatient_Click(object sender, EventArgs e) {
-			//We do not have access to open up the Select Patient Window yet from WPF will be added when FormPatientSelect is built in WPF
+			SelectSpecificPatient();
+		}
+
+		///<summary>Opens Select Patient. If a patient is picked, Specific Patient is checked and shows the patient as "Last, First - PatNum".
+		///Cancel leaves the current choice as it was.</summary>
+		private void SelectSpecificPatient() {
+			FrmPatientSelect frmPatientSelect=new FrmPatientSelect();
+			if(_patientSpecific!=null) {
+				frmPatientSelect.PatNumInitial=_patientSpecific.PatNum;
+			}
+			frmPatientSelect.ShowDialog();
+			if(frmPatientSelect.IsDialogCancel || frmPatientSelect.PatNumSelected==0) {
+				return;
+			}
+			Patient patient=Patients.GetPat(frmPatientSelect.PatNumSelected);
+			if(patient==null) {
+				return;
+			}
+			_patientSpecific=patient;
+			radioSpecificPatient.Checked=true;
+			PatientSelected=_patientSpecific;
+			textPatientSelected.Text=TaskFilters.GetPatientText(_patientSpecific);
 		}
 
 		private void butClearAll_Click(object sender, EventArgs e) {
@@ -190,6 +232,10 @@ namespace OpenDental {
 				MsgBox.Show(this,"End Date cannot be before Start Date.");
 				return;
 			}
+			if(radioSpecificPatient.Checked && _patientSpecific==null) {
+				MsgBox.Show(this,"Please select a patient, or choose a different patient option.");
+				return;
+			}
 			DateStart=textVDateStart.Value;
 			DateEnd=textVDateEnd.Value;
 			if(comboClinic.SelectedIndices.Count>0) {
@@ -204,17 +250,22 @@ namespace OpenDental {
 				ListDefNumsRegionsSelected.Clear();
 				ListClinicNumsSelected.Clear();
 			}
+			//PatientSelected is set from the checked option, so it always matches what the window shows.
 			if(radioAllPatients.Checked) {
 				EnumTaskPatientFilterType_=EnumTaskPatientFilterType.AllPatients;
+				PatientSelected=null;
 			}
 			else if(radioPatientMain.Checked) {
 				EnumTaskPatientFilterType_=EnumTaskPatientFilterType.PatientMain;
+				PatientSelected=PatientMain;
 			}
 			else if(radioPatientSelectedTask.Checked) {
 				EnumTaskPatientFilterType_=EnumTaskPatientFilterType.PatientSelectedTask;
+				PatientSelected=PatientTask;
 			}
 			else if(radioSpecificPatient.Checked) {
 				EnumTaskPatientFilterType_=EnumTaskPatientFilterType.SpecificPatient;
+				PatientSelected=_patientSpecific;
 			}
 			IsDialogOK=true;
 		}

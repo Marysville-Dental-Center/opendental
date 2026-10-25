@@ -1547,6 +1547,7 @@
     <Compile Include="Data Interface\SupplyOrderItems.cs" />
     <Compile Include="Data Interface\SupplyOrders.cs" />
     <Compile Include="Data Interface\TaskAncestors.cs" />
+    <Compile Include="Data Interface\TaskFilters.cs" />
     <Compile Include="Data Interface\TaskLists.cs" />
     <Compile Include="Data Interface\Tasks.cs" />
     <Compile Include="Data Interface\TaskSubscriptions.cs" />
