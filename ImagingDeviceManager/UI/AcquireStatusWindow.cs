@@ -18,6 +18,8 @@ namespace ImagingDeviceManager.UI {
 		private readonly Button _butCancel;
 		private readonly Button _butBack;
 		private bool _isClosingByLibrary;
+		///<summary>The work area chosen when the window was first laid out; it stays on that screen when its text changes.</summary>
+		private Rectangle? _rectWork;
 
 		public AcquireStatusWindow(AcquireStatusController controller) {
 			_controller=controller;
@@ -106,8 +108,10 @@ namespace ImagingDeviceManager.UI {
 			_butCancel.Bounds=new Rectangle(MarginPx+WidthTextPx-widthCancel,y,widthCancel,heightButton);
 			_butBack.Bounds=new Rectangle(_butCancel.Left-MarginPx-widthBack,y,widthBack,heightButton);
 			ClientSize=new Size(WidthTextPx+2*MarginPx,_butCancel.Bottom+MarginPx);
-			Rectangle rectWork=Screen.FromPoint(Cursor.Position).WorkingArea;
-			Location=new Point(rectWork.Right-Width-MarginPx,rectWork.Bottom-Height-MarginPx);
+			if(_rectWork==null) {
+				_rectWork=Screen.FromPoint(Cursor.Position).WorkingArea;
+			}
+			Location=new Point(_rectWork.Value.Right-Width-MarginPx,_rectWork.Value.Bottom-Height-MarginPx);
 		}
 	}
 }

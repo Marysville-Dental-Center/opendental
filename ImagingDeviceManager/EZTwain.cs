@@ -109,8 +109,8 @@ namespace ImagingDeviceManager {
 			return Session.OpenSource(sourceName);
 		}
 
-		///<summary>Closes the open source, discarding any images not yet transferred, and closes the Data Source Manager. The manager's
-		///library stays loaded for the next scan.</summary>
+		///<summary>Closes the open source, discarding any images not yet transferred (for a source opened by name they go to the capture
+		///quarantine instead), and closes the Data Source Manager. The manager's library stays loaded for the next scan.</summary>
 		public static bool CloseSource() {
 			CloseSourceGuarded();
 			return true;
