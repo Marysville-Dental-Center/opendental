@@ -14,8 +14,10 @@ namespace ImagingDeviceManager.Config {
 	///
 	///The file is %ProgramData%\OpenPMS-Dental\Imaging\capture.ini. Reads use that file when it exists, otherwise the per-user
 	///%LOCALAPPDATA%\OpenPMS-Dental\Imaging\capture.ini. Saves go to the ProgramData file, and to the per-user file only when the
-	///ProgramData folder or file cannot be created or written. When this class creates the ProgramData Imaging folder, it gives
-	///the local Users group Modify rights on it (inherited by its files), because Open Dental runs as an ordinary user.
+	///ProgramData folder or file cannot be created or written. Open Dental runs as an ordinary user and every Windows user on the
+	///computer must be able to save hardware bindings, so on every save the ProgramData Imaging folder (whoever created it) and the
+	///ProgramData capture.ini get a rule that gives the local Users group Modify, unless they already have one. See
+	///EnsureImagingFolder, which the journal and quarantine use for their folders.
 	///
 	///Format: [Section] headers and Key=Value lines. ';' starts a comment, on a line of its own or after a header or a value.
 	///Blank lines and lines that are neither are ignored. Section and key names are case-insensitive, whitespace around names and
@@ -37,9 +39,11 @@ namespace ImagingDeviceManager.Config {
 
 		#region Fields
 		private readonly object _lock=new object();
-		///<summary>Gives the local Users group Modify on a folder this class created. Returns "" on success, else the error.
-		///Null for explicit paths, so tests never change ACLs.</summary>
+		///<summary>Gives the local Users group Modify on the primary folder (inherited by its files and subfolders) or the primary file.
+		///Returns "" on success, else the error. Null for explicit paths, so those never change an ACL.</summary>
 		private readonly Func<string,string> _funcGrantUsersModify;
+		///<summary>True when the primary folder or file already gives the local Users group Modify. Null when _funcGrantUsersModify is.</summary>
+		private readonly Func<string,bool> _funcHasUsersModify;
 		private IniText _iniText=new IniText();
 		///<summary>Section name to (key name to value), both case-insensitive. Rebuilt from _iniText after every change.</summary>
 		private Dictionary<string,Dictionary<string,string>> _dictSections=new Dictionary<string,Dictionary<string,string>>(StringComparer.OrdinalIgnoreCase);
@@ -62,7 +66,8 @@ namespace ImagingDeviceManager.Config {
 		public string PathSaved { get; private set; }
 
 		///<summary>"" when the last load, Set or Save had no problem; otherwise a sentence for the user or the log. A Save that succeeds
-		///leaves a warning here when it had to use PathFallback or when it replaced a corrupt file.</summary>
+		///leaves a warning here when it had to use PathFallback, when it replaced a corrupt file, or when other Windows users may not be
+		///able to change the file it wrote.</summary>
 		public string LastError {
 			get {
 				lock(_lock) {
@@ -165,10 +170,11 @@ namespace ImagingDeviceManager.Config {
 		#endregion [Twain] settings
 
 		#region Load
-		private LocalCaptureConfig(string path,string pathFallback,Func<string,string> funcGrantUsersModify) {
+		private LocalCaptureConfig(string path,string pathFallback,Func<string,string> funcGrantUsersModify,Func<string,bool> funcHasUsersModify) {
 			PathPrimary=string.IsNullOrWhiteSpace(path) ? null : path;
 			PathFallback=string.IsNullOrWhiteSpace(pathFallback) ? null : pathFallback;
 			_funcGrantUsersModify=funcGrantUsersModify;
+			_funcHasUsersModify=funcGrantUsersModify==null ? null : funcHasUsersModify;
 			try {
 				foreach(string pathCandidate in new[] { PathPrimary,PathFallback }) {
 					if(pathCandidate==null) {
@@ -199,26 +205,150 @@ namespace ImagingDeviceManager.Config {
 
 		///<summary>Loads the default capture.ini (ProgramData, else the per-user fallback). Never throws.</summary>
 		public static LocalCaptureConfig Load() {
-			return new LocalCaptureConfig(DefaultPath,DefaultFallbackPath,GrantUsersModify);
+			return new LocalCaptureConfig(DefaultPath,DefaultFallbackPath,GrantUsersModify,HasUsersModify);
 		}
 
 		///<summary>Loads the file at an explicit path, with no fallback. Never throws. A missing file gives an empty configuration
 		///that Save creates.</summary>
 		public static LocalCaptureConfig Load(string path) {
-			return new LocalCaptureConfig(path,null,null);
+			return new LocalCaptureConfig(path,null,null,null);
 		}
 
 		///<summary>Loads with explicit primary and fallback paths, which behave like the ProgramData and per-user files, except that
 		///no ACL is changed. Never throws.</summary>
 		public static LocalCaptureConfig Load(string path,string pathFallback) {
-			return new LocalCaptureConfig(path,pathFallback,null);
+			return new LocalCaptureConfig(path,pathFallback,null,null);
 		}
 
-		///<summary>For tests: explicit paths and a stand-in for the step that grants Users Modify on a created primary folder.</summary>
-		internal static LocalCaptureConfig Load(string path,string pathFallback,Func<string,string> funcGrantUsersModify) {
-			return new LocalCaptureConfig(path,pathFallback,funcGrantUsersModify);
+		///<summary>For tests: explicit paths, and the steps that check for and give the Users Modify rule on the primary folder and file
+		///(stand-ins, or GrantUsersModify and HasUsersModify on a temporary folder). A null funcHasUsersModify means no rule is ever
+		///present.</summary>
+		internal static LocalCaptureConfig Load(string path,string pathFallback,Func<string,string> funcGrantUsersModify,Func<string,bool> funcHasUsersModify) {
+			return new LocalCaptureConfig(path,pathFallback,funcGrantUsersModify,funcHasUsersModify);
 		}
 		#endregion Load
+
+		#region Imaging folder
+		///<summary>Creates %ProgramData%\OpenPMS-Dental\Imaging, or a folder under it such as @"Capture\journal" (subfolderRelative ""
+		///or null means Imaging itself), if it is missing. Then, unless the folder already has one, adds a rule that gives the local
+		///Users group (S-1-5-32-545) Modify, inherited by its files and subfolders, because Open Dental runs as an ordinary user and
+		///every Windows user on the computer must be able to change what is saved there. The journal and quarantine create their
+		///folders through this method; Save does the same for capture.ini. Adding the rule works when this Windows user owns the
+		///folder or runs elevated.
+		///Returns true when the folder exists afterwards. error is then "" when the folder has the Users rule, otherwise a warning:
+		///the folder is usable, but other Windows users may not be able to change the files in it until an administrator gives the
+		///Users group Modify on it. Returns false, with error, when the folder could not be created, when this call created it and
+		///could not add the rule (it removes the folder again, so a later call tries again), or when subfolderRelative is not a
+		///relative path inside the Imaging folder. Never throws.</summary>
+		public static bool EnsureImagingFolder(string subfolderRelative,out string error) {
+			string pathDefault=DefaultPath;
+			if(pathDefault==null) {
+				error="The ProgramData folder could not be determined.";
+				return false;
+			}
+			return EnsureImagingFolder(Path.GetDirectoryName(pathDefault),subfolderRelative,GrantUsersModify,HasUsersModify,out error);
+		}
+
+		///<summary>EnsureImagingFolder with an explicit Imaging folder and the steps that check for and add the Users rule, for tests.
+		///The rule is checked on the Imaging folder and on the requested folder; folders in between are only created.</summary>
+		internal static bool EnsureImagingFolder(string folderImaging,string subfolderRelative,Func<string,string> funcGrantUsersModify,
+			Func<string,bool> funcHasUsersModify,out string error)
+		{
+			error="";
+			try {
+				if(string.IsNullOrWhiteSpace(folderImaging)) {
+					error="No Imaging folder is set.";
+					return false;
+				}
+				string subfolder=(subfolderRelative ?? "").Trim();
+				if(subfolder!="" && !IsSimpleRelativePath(subfolder)) {
+					error="Not a folder inside the Imaging folder: "+subfolderRelative;
+					return false;
+				}
+				subfolder=subfolder.Replace(Path.AltDirectorySeparatorChar,Path.DirectorySeparatorChar);
+				string errorImaging;
+				if(!EnsureFolder(folderImaging,funcGrantUsersModify,funcHasUsersModify,out errorImaging)) {
+					error=errorImaging;
+					return false;
+				}
+				if(subfolder=="") {
+					error=errorImaging;
+					return true;
+				}
+				//When the Imaging folder has the rule, the subfolder inherits it and needs no rule of its own. When it does not (an
+				//administrator created it and this user cannot change its ACL), the subfolder gets its own rule, which works for a
+				//subfolder this user creates. Either way the subfolder's own state is what matters to the caller.
+				return EnsureFolder(Path.Combine(folderImaging,subfolder),funcGrantUsersModify,funcHasUsersModify,out error);
+			}
+			catch(Exception ex) {
+				error=ex.Message;
+				return false;
+			}
+		}
+
+		///<summary>True for "Capture" or @"Capture\journal": not rooted, and every part a valid folder name other than "." and "..".</summary>
+		private static bool IsSimpleRelativePath(string path) {
+			if(Path.IsPathRooted(path) || path.IndexOfAny(Path.GetInvalidPathChars())>=0) {
+				return false;
+			}
+			foreach(string part in path.Split(Path.DirectorySeparatorChar,Path.AltDirectorySeparatorChar)) {
+				if(part.Trim()=="" || part=="." || part==".." || part.IndexOfAny(Path.GetInvalidFileNameChars())>=0) {
+					return false;
+				}
+			}
+			return true;
+		}
+
+		///<summary>Creates the folder if it is missing and, when funcGrantUsersModify is set, adds the Users Modify rule unless
+		///funcHasUsersModify finds one. Returns false, with error, when the folder does not exist afterwards: it could not be created,
+		///or this call created it and could not add the rule, so it removed the folder again. Returns true with error set when the
+		///folder already existed and the rule could not be added.</summary>
+		private static bool EnsureFolder(string folder,Func<string,string> funcGrantUsersModify,Func<string,bool> funcHasUsersModify,out string error) {
+			error="";
+			bool isCreated=false;
+			if(!Directory.Exists(folder)) {
+				try {
+					Directory.CreateDirectory(folder);
+					isCreated=true;
+				}
+				catch(Exception ex) {
+					error="Could not create "+folder+": "+ex.Message;
+					return false;
+				}
+			}
+			if(funcGrantUsersModify==null) {
+				return true;
+			}
+			string errorGrant=GrantUsersModifyIfMissing(folder,funcGrantUsersModify,funcHasUsersModify);
+			if(errorGrant=="") {
+				return true;
+			}
+			error="Could not give the Users group access to "+folder+": "+errorGrant;
+			if(!isCreated) {
+				return true;
+			}
+			//Remove the folder so that a later call tries again to create it with the rule.
+			try {
+				Directory.Delete(folder,false);
+			}
+			catch {
+			}
+			return false;
+		}
+
+		///<summary>Adds the Users Modify rule to the folder or file unless it already has one. Returns "" or the error.</summary>
+		private static string GrantUsersModifyIfMissing(string path,Func<string,string> funcGrantUsersModify,Func<string,bool> funcHasUsersModify) {
+			try {
+				if(funcHasUsersModify!=null && funcHasUsersModify(path)) {
+					return "";
+				}
+				return funcGrantUsersModify(path) ?? "";
+			}
+			catch(Exception ex) {
+				return ex.Message;
+			}
+		}
+		#endregion Imaging folder
 
 		#region Getters
 		///<summary>The value, or defaultValue when the section or key is missing. A key that is present with nothing after '='
@@ -412,10 +542,12 @@ namespace ImagingDeviceManager.Config {
 
 		///<summary>Writes the values Set since the last Save. It re-reads the target file first and changes only those values, so every
 		///other line and comment, and edits made by others since this file was loaded, are kept. Missing keys are added to the end of
-		///their section and missing sections to the end of the file. Tries PathPrimary, then PathFallback. Returns true when a file
-		///was written (or nothing needed writing); LastError then holds a warning if PathFallback had to be used or if a corrupt file
-		///was replaced. Returns false, with
-		///LastError, when no file could be written; the values stay pending.</summary>
+		///their section and missing sections to the end of the file. Tries PathPrimary, then PathFallback. For the default paths, the
+		///ProgramData Imaging folder and capture.ini get the Users Modify rule when they lack it (see EnsureImagingFolder); a new
+		///ProgramData capture.ini that cannot get the rule is removed and the save goes to PathFallback. Returns true when a file was
+		///written (or nothing needed writing); LastError then holds a warning if PathFallback had to be used, if a corrupt file was
+		///replaced, or if other Windows users may not be able to change the file. Returns false, with LastError, when no file could be
+		///written; the values stay pending.</summary>
 		public bool Save() {
 			lock(_lock) {
 				_lastError="";
@@ -430,7 +562,7 @@ namespace ImagingDeviceManager.Config {
 					string error;
 					string warning="";
 					try {
-						error=SaveTo(pathTarget,pathTarget==PathPrimary ? _funcGrantUsersModify : null,out warning);
+						error=SaveTo(pathTarget,pathTarget==PathPrimary,out warning);
 					}
 					catch(Exception ex) {
 						error=ex.Message;
@@ -464,35 +596,18 @@ namespace ImagingDeviceManager.Config {
 		}
 
 		///<summary>Returns "" on success, otherwise why this target could not be written. warning is "" or a problem that did not stop
-		///the save.</summary>
-		private string SaveTo(string pathTarget,Func<string,string> funcGrantUsersModify,out string warning) {
+		///the save. For the primary target, the folder and the file get the Users Modify rule when they lack it.</summary>
+		private string SaveTo(string pathTarget,bool isPrimary,out string warning) {
 			warning="";
+			Func<string,string> funcGrantUsersModify=isPrimary ? _funcGrantUsersModify : null;
+			Func<string,bool> funcHasUsersModify=isPrimary ? _funcHasUsersModify : null;
 			string folder=Path.GetDirectoryName(Path.GetFullPath(pathTarget));
-			if(!Directory.Exists(folder)) {
-				try {
-					Directory.CreateDirectory(folder);
-				}
-				catch(Exception ex) {
-					return "Could not create "+folder+": "+ex.Message;
-				}
-				if(funcGrantUsersModify!=null) {
-					string errorGrant;
-					try {
-						errorGrant=funcGrantUsersModify(folder) ?? "";
-					}
-					catch(Exception ex) {
-						errorGrant=ex.Message;
-					}
-					if(errorGrant!="") {
-						//Remove the folder so that a later save tries again to create it with the right ACL.
-						try {
-							Directory.Delete(folder,false);
-						}
-						catch {
-						}
-						return "Could not give the Users group access to "+folder+": "+errorGrant;
-					}
-				}
+			//Runs on every save, not only when this save creates the folder: the journal, the quarantine or an administrator may have
+			//created it first. A folder that already existed but could not get the rule does not stop the save; what matters for this
+			//file is whether capture.ini itself ends up with the rule, which is checked after the write.
+			string errorFolder;
+			if(!EnsureFolder(folder,funcGrantUsersModify,funcHasUsersModify,out errorFolder)) {
+				return errorFolder;
 			}
 			IniText iniTextBase;
 			string errorRead;
@@ -528,11 +643,32 @@ namespace ImagingDeviceManager.Config {
 					return "Could not write "+pathTarget+": "+errorWrite;
 				}
 			}
+			string warningAccess="";
+			if(funcGrantUsersModify!=null) {
+				//A file created in a folder with the rule inherits it and needs nothing more. Otherwise the file gets its own rule, which
+				//works for a file this Windows user just created, since the creator owns it.
+				string errorGrant=GrantUsersModifyIfMissing(pathTarget,funcGrantUsersModify,funcHasUsersModify);
+				if(errorGrant!="") {
+					if(readStatus==ReadStatus.Missing) {
+						//This save created the file and could not give other users access to it (design 9.3: save to the per-user file
+						//with a warning instead). Remove it so a later save tries again.
+						try {
+							File.Delete(pathTarget);
+						}
+						catch {
+						}
+						return "Could not give the Users group access to "+pathTarget+": "+errorGrant;
+					}
+					warningAccess="Other Windows users on this computer may not be able to save capture settings, because the Users group "
+						+"could not be given Modify on "+pathTarget+" ("+errorGrant+"). An administrator can give the Users group Modify on "
+						+folder+".";
+				}
+			}
 			_iniText=iniTextNew;
 			_listPending.Clear();
 			PathSaved=pathTarget;
 			Reparse();
-			warning=warningCorrupt;
+			warning=string.Join(" ",new[] { warningCorrupt,warningAccess }).Trim();
 			return "";
 		}
 
@@ -949,20 +1085,68 @@ namespace ImagingDeviceManager.Config {
 			}
 		}
 
-		///<summary>Gives the local Users group (well-known SID S-1-5-32-545) Modify on the folder, inherited by its files and subfolders.
-		///Returns "" on success, otherwise the error.</summary>
-		internal static string GrantUsersModify(string folder) {
+		///<summary>Gives the local Users group (well-known SID S-1-5-32-545) Modify on a folder, inherited by its files and subfolders, or
+		///on a file. Works when this Windows user owns the folder or file, or runs elevated. Returns "" on success, otherwise the error.</summary>
+		internal static string GrantUsersModify(string path) {
 			try {
-				DirectoryInfo directoryInfo=new DirectoryInfo(folder);
-				DirectorySecurity directorySecurity=directoryInfo.GetAccessControl(AccessControlSections.Access);
 				SecurityIdentifier sidUsers=new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid,null);
-				directorySecurity.AddAccessRule(new FileSystemAccessRule(sidUsers,FileSystemRights.Modify,
-					InheritanceFlags.ContainerInherit|InheritanceFlags.ObjectInherit,PropagationFlags.None,AccessControlType.Allow));
-				directoryInfo.SetAccessControl(directorySecurity);
+				if(Directory.Exists(path)) {
+					DirectoryInfo directoryInfo=new DirectoryInfo(path);
+					DirectorySecurity directorySecurity=directoryInfo.GetAccessControl(AccessControlSections.Access);
+					directorySecurity.AddAccessRule(new FileSystemAccessRule(sidUsers,FileSystemRights.Modify,
+						InheritanceFlags.ContainerInherit|InheritanceFlags.ObjectInherit,PropagationFlags.None,AccessControlType.Allow));
+					directoryInfo.SetAccessControl(directorySecurity);
+				}
+				else {
+					FileInfo fileInfo=new FileInfo(path);
+					FileSecurity fileSecurity=fileInfo.GetAccessControl(AccessControlSections.Access);
+					fileSecurity.AddAccessRule(new FileSystemAccessRule(sidUsers,FileSystemRights.Modify,AccessControlType.Allow));
+					fileInfo.SetAccessControl(fileSecurity);
+				}
 				return "";
 			}
 			catch(Exception ex) {
 				return ex.Message;
+			}
+		}
+
+		///<summary>True when the folder or file has Allow rules, explicit or inherited, that give the local Users group (S-1-5-32-545)
+		///Modify. For a folder, only rules that apply to the folder itself and are inherited by its files and subfolders count
+		///(ContainerInherit and ObjectInherit, without InheritOnly or NoPropagateInherit). False when there are none, or when the ACL
+		///cannot be read.</summary>
+		internal static bool HasUsersModify(string path) {
+			try {
+				SecurityIdentifier sidUsers=new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid,null);
+				bool isFolder=Directory.Exists(path);
+				AuthorizationRuleCollection authorizationRuleCollection;
+				if(isFolder) {
+					authorizationRuleCollection=new DirectoryInfo(path).GetAccessControl(AccessControlSections.Access)
+						.GetAccessRules(true,true,typeof(SecurityIdentifier));
+				}
+				else if(File.Exists(path)) {
+					authorizationRuleCollection=new FileInfo(path).GetAccessControl(AccessControlSections.Access)
+						.GetAccessRules(true,true,typeof(SecurityIdentifier));
+				}
+				else {
+					return false;
+				}
+				const InheritanceFlags inheritanceFlagsBoth=InheritanceFlags.ContainerInherit|InheritanceFlags.ObjectInherit;
+				FileSystemRights fileSystemRights=0;
+				foreach(FileSystemAccessRule fileSystemAccessRule in authorizationRuleCollection) {
+					if(fileSystemAccessRule.AccessControlType!=AccessControlType.Allow || !sidUsers.Equals(fileSystemAccessRule.IdentityReference)) {
+						continue;
+					}
+					if(isFolder && ((fileSystemAccessRule.InheritanceFlags & inheritanceFlagsBoth)!=inheritanceFlagsBoth
+						|| (fileSystemAccessRule.PropagationFlags & (PropagationFlags.InheritOnly|PropagationFlags.NoPropagateInherit))!=0))
+					{
+						continue;
+					}
+					fileSystemRights|=fileSystemAccessRule.FileSystemRights;
+				}
+				return (fileSystemRights & FileSystemRights.Modify)==FileSystemRights.Modify;
+			}
+			catch {
+				return false;
 			}
 		}
 		#endregion File access

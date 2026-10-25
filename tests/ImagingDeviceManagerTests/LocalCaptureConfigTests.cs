@@ -5,6 +5,8 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Security.AccessControl;
+using System.Security.Principal;
 using System.Text;
 using System.Threading;
 using ImagingDeviceManager.Config;
@@ -12,7 +14,8 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace ImagingDeviceManager.Tests {
 	///<summary>Tests for LocalCaptureConfig, the capture.ini reader and writer. Every test works in its own temporary folder through
-	///the explicit-path factories; none touches ProgramData, LOCALAPPDATA or any ACL.</summary>
+	///the explicit-path factories; none touches ProgramData or the default LOCALAPPDATA path. Most use a stand-in for the Users
+	///Modify rule; the "Real ACL" tests change the ACL only of folders and files they create in their temporary folder.</summary>
 	[TestClass]
 	public class LocalCaptureConfigTests {
 		private string _tempDir;
@@ -78,6 +81,55 @@ namespace ImagingDeviceManager.Tests {
 			string pathBlocker=PathIn(blockerName);
 			File.WriteAllText(pathBlocker,"not a folder");
 			return Path.Combine(pathBlocker,"capture.ini");
+		}
+
+		///<summary>A stand-in for the Users Modify rule. A path has the rule once Grant succeeded on it or on a folder above it, as
+		///inheritance would give it.</summary>
+		private sealed class FakeUsersAcl {
+			///<summary>Every path Grant was called with, in order.</summary>
+			public readonly List<string> ListGrantCalls=new List<string>();
+			private readonly HashSet<string> _hashSetGranted=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+			///<summary>The result of Grant for a path: "" grants, anything else is the error. Grants everything by default.</summary>
+			public Func<string,string> FuncGrantResult=path => "";
+
+			public string Grant(string path) {
+				ListGrantCalls.Add(path);
+				string error=FuncGrantResult(path);
+				if(error=="") {
+					_hashSetGranted.Add(path);
+				}
+				return error;
+			}
+
+			public bool Has(string path) {
+				for(string pathCur=path;!string.IsNullOrEmpty(pathCur);pathCur=Path.GetDirectoryName(pathCur)) {
+					if(_hashSetGranted.Contains(pathCur)) {
+						return true;
+					}
+				}
+				return false;
+			}
+
+			public LocalCaptureConfig Load(string path,string pathFallback) {
+				return LocalCaptureConfig.Load(path,pathFallback,Grant,Has);
+			}
+		}
+
+		private static readonly SecurityIdentifier _sidUsers=new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid,null);
+
+		///<summary>The Allow rules for the local Users group on a folder or file.</summary>
+		private static List<FileSystemAccessRule> GetUsersAllowRules(string path,bool includeExplicit,bool includeInherited) {
+			FileSystemSecurity fileSystemSecurity=Directory.Exists(path)
+				? (FileSystemSecurity)new DirectoryInfo(path).GetAccessControl(AccessControlSections.Access)
+				: new FileInfo(path).GetAccessControl(AccessControlSections.Access);
+			return fileSystemSecurity.GetAccessRules(includeExplicit,includeInherited,typeof(SecurityIdentifier))
+				.Cast<FileSystemAccessRule>()
+				.Where(x => x.AccessControlType==AccessControlType.Allow && _sidUsers.Equals(x.IdentityReference))
+				.ToList();
+		}
+
+		private static bool HasModify(FileSystemAccessRule fileSystemAccessRule) {
+			return (fileSystemAccessRule.FileSystemRights & FileSystemRights.Modify)==FileSystemRights.Modify;
 		}
 		#endregion Helpers
 
@@ -874,14 +926,12 @@ namespace ImagingDeviceManager.Tests {
 			string folder=PathIn("machine","Imaging");
 			string path=Path.Combine(folder,"capture.ini");
 			string pathFallback=PathIn("user","capture.ini");
-			List<string> listFoldersGranted=new List<string>();
-			LocalCaptureConfig config=LocalCaptureConfig.Load(path,pathFallback,folderGrant => {
-				listFoldersGranted.Add(folderGrant);
-				return "access denied for test";
-			});
+			FakeUsersAcl fakeUsersAcl=new FakeUsersAcl();
+			fakeUsersAcl.FuncGrantResult=pathGrant => "access denied for test";
+			LocalCaptureConfig config=fakeUsersAcl.Load(path,pathFallback);
 			Assert.IsTrue(config.Set("Twain","JournalKeep","55"));
 			Assert.IsTrue(config.Save());
-			CollectionAssert.AreEqual(new[] { folder },listFoldersGranted);
+			CollectionAssert.AreEqual(new[] { folder },fakeUsersAcl.ListGrantCalls);
 			Assert.IsFalse(Directory.Exists(folder),"the folder created without the Users rule should be removed");
 			Assert.AreEqual(pathFallback,config.PathSaved);
 			StringAssert.Contains(config.LastError,"access denied for test");
@@ -892,42 +942,305 @@ namespace ImagingDeviceManager.Tests {
 		public void Save_GrantThrows_IsTreatedAsAFailure() {
 			string path=PathIn("machine","capture.ini");
 			string pathFallback=PathIn("user","capture.ini");
-			LocalCaptureConfig config=LocalCaptureConfig.Load(path,pathFallback,folderGrant => {
+			LocalCaptureConfig config=LocalCaptureConfig.Load(path,pathFallback,pathGrant => {
 				throw new UnauthorizedAccessException("thrown for test");
-			});
+			},pathHas => false);
 			Assert.IsTrue(config.Set("Twain","JournalKeep","56"));
 			Assert.IsTrue(config.Save());
 			Assert.AreEqual(pathFallback,config.PathSaved);
 			StringAssert.Contains(config.LastError,"thrown for test");
+			//A check that throws is a failure too.
+			config=LocalCaptureConfig.Load(path,pathFallback,pathGrant => "denied for test",pathHas => {
+				throw new UnauthorizedAccessException("check thrown for test");
+			});
+			Assert.IsTrue(config.Set("Twain","JournalKeep","57"));
+			Assert.IsTrue(config.Save());
+			Assert.AreEqual(pathFallback,config.PathSaved);
+			StringAssert.Contains(config.LastError,"check thrown for test");
 		}
 
 		[TestMethod]
-		public void Save_Grant_RunsOnlyWhenThePrimaryFolderIsCreated() {
+		public void Save_Grant_RunsWheneverThePrimaryFolderLacksTheRule() {
 			string folder=PathIn("machine","Imaging");
 			string path=Path.Combine(folder,"capture.ini");
 			string pathFallback=PathIn("user","capture.ini");
-			List<string> listFoldersGranted=new List<string>();
-			Func<string,string> funcGrant=folderGrant => {
-				listFoldersGranted.Add(folderGrant);
-				return "";
-			};
-			LocalCaptureConfig config=LocalCaptureConfig.Load(path,pathFallback,funcGrant);
+			FakeUsersAcl fakeUsersAcl=new FakeUsersAcl();
+			LocalCaptureConfig config=fakeUsersAcl.Load(path,pathFallback);
 			Assert.IsTrue(config.Set("Twain","JournalKeep","1"));
 			Assert.IsTrue(config.Save(),config.LastError);
 			Assert.AreEqual("",config.LastError);
 			Assert.AreEqual(path,config.PathSaved);
-			CollectionAssert.AreEqual(new[] { folder },listFoldersGranted);
+			//The new file inherits the folder's rule, so only the folder is granted.
+			CollectionAssert.AreEqual(new[] { folder },fakeUsersAcl.ListGrantCalls);
 			Assert.IsTrue(config.Set("Twain","JournalKeep","2"));
 			Assert.IsTrue(config.Save(),config.LastError);
-			Assert.AreEqual(1,listFoldersGranted.Count,"the folder already existed");
-			//Never for the per-user fallback folder.
-			listFoldersGranted.Clear();
-			config=LocalCaptureConfig.Load(BlockedPath("blocker"),PathIn("user2","capture.ini"),funcGrant);
+			Assert.AreEqual(1,fakeUsersAcl.ListGrantCalls.Count,"the folder already has the rule");
+			//A folder something else created first (the journal, the quarantine, an administrator) still gets the rule.
+			string folder2=PathIn("machine2","Imaging");
+			Directory.CreateDirectory(folder2);
+			fakeUsersAcl=new FakeUsersAcl();
+			config=fakeUsersAcl.Load(Path.Combine(folder2,"capture.ini"),pathFallback);
 			Assert.IsTrue(config.Set("Twain","JournalKeep","3"));
+			Assert.IsTrue(config.Save(),config.LastError);
+			Assert.AreEqual("",config.LastError);
+			CollectionAssert.AreEqual(new[] { folder2 },fakeUsersAcl.ListGrantCalls);
+			//Never for the per-user fallback folder.
+			fakeUsersAcl=new FakeUsersAcl();
+			config=fakeUsersAcl.Load(BlockedPath("blocker"),PathIn("user2","capture.ini"));
+			Assert.IsTrue(config.Set("Twain","JournalKeep","4"));
 			Assert.IsTrue(config.Save());
 			Assert.AreEqual(PathIn("user2","capture.ini"),config.PathSaved);
-			Assert.AreEqual(0,listFoldersGranted.Count);
+			Assert.AreEqual(0,fakeUsersAcl.ListGrantCalls.Count);
+		}
+
+		[TestMethod]
+		public void Save_ExistingFolderGrantFails_NewFileGetsItsOwnRule() {
+			//An administrator created the Imaging folder, so this user cannot change its ACL, but owns the capture.ini it creates.
+			string folder=PathIn("machine","Imaging");
+			Directory.CreateDirectory(folder);
+			string path=Path.Combine(folder,"capture.ini");
+			FakeUsersAcl fakeUsersAcl=new FakeUsersAcl();
+			fakeUsersAcl.FuncGrantResult=pathGrant => pathGrant==folder ? "folder denied for test" : "";
+			LocalCaptureConfig config=fakeUsersAcl.Load(path,PathIn("user","capture.ini"));
+			Assert.IsTrue(config.Set("Twain","JournalKeep","5"));
+			Assert.IsTrue(config.Save(),config.LastError);
+			Assert.AreEqual("",config.LastError,"capture.ini has the rule, so other users can save");
+			Assert.AreEqual(path,config.PathSaved);
+			Assert.IsTrue(Directory.Exists(folder),"a folder that already existed is never removed");
+			CollectionAssert.AreEqual(new[] { folder,path },fakeUsersAcl.ListGrantCalls);
+			Assert.AreEqual(5,LocalCaptureConfig.Load(path).JournalKeep);
+		}
+
+		[TestMethod]
+		public void Save_ExistingFolderNewFileGrantFails_RemovesTheFileAndSavesToFallback() {
+			string folder=PathIn("machine","Imaging");
+			Directory.CreateDirectory(folder);
+			string path=Path.Combine(folder,"capture.ini");
+			string pathFallback=PathIn("user","capture.ini");
+			FakeUsersAcl fakeUsersAcl=new FakeUsersAcl();
+			fakeUsersAcl.FuncGrantResult=pathGrant => "denied for test";
+			LocalCaptureConfig config=fakeUsersAcl.Load(path,pathFallback);
+			Assert.IsTrue(config.Set("Twain","JournalKeep","6"));
+			Assert.IsTrue(config.Save());
+			CollectionAssert.AreEqual(new[] { folder,path },fakeUsersAcl.ListGrantCalls);
+			Assert.IsTrue(Directory.Exists(folder),"a folder that already existed is never removed");
+			Assert.IsFalse(File.Exists(path),"the new capture.ini without the Users rule should be removed");
+			Assert.AreEqual(0,Directory.GetFiles(folder).Length,"temporary file left behind");
+			Assert.AreEqual(pathFallback,config.PathSaved);
+			StringAssert.Contains(config.LastError,path);
+			StringAssert.Contains(config.LastError,"denied for test");
+			Assert.IsFalse(config.HasUnsavedChanges);
+			Assert.AreEqual(6,LocalCaptureConfig.Load(path,pathFallback).JournalKeep);
+		}
+
+		[TestMethod]
+		public void Save_ExistingFileWithoutTheRule_GetsItWhenPossibleElseWarns() {
+			string folder=PathIn("machine","Imaging");
+			string path=Path.Combine(folder,"capture.ini");
+			WriteText(path,Lines("[Twain]","JournalKeep=10"));
+			//This user owns the file (it created it), so the file can get the rule even though the folder cannot.
+			FakeUsersAcl fakeUsersAcl=new FakeUsersAcl();
+			fakeUsersAcl.FuncGrantResult=pathGrant => pathGrant==folder ? "folder denied for test" : "";
+			LocalCaptureConfig config=fakeUsersAcl.Load(path,PathIn("user","capture.ini"));
+			Assert.IsTrue(config.Set("Twain","JournalKeep","11"));
+			Assert.IsTrue(config.Save(),config.LastError);
+			Assert.AreEqual("",config.LastError);
+			CollectionAssert.AreEqual(new[] { folder,path },fakeUsersAcl.ListGrantCalls);
+			//Someone else's file that this user can write but whose ACL it cannot change: saved, with a warning.
+			fakeUsersAcl=new FakeUsersAcl();
+			fakeUsersAcl.FuncGrantResult=pathGrant => "denied for test";
+			config=fakeUsersAcl.Load(path,PathIn("user","capture.ini"));
+			Assert.IsTrue(config.Set("Twain","JournalKeep","12"));
+			Assert.IsTrue(config.Save(),config.LastError);
+			Assert.AreEqual(path,config.PathSaved);
+			StringAssert.Contains(config.LastError,"Other Windows users");
+			StringAssert.Contains(config.LastError,path);
+			Assert.IsTrue(File.Exists(path),"an existing file is never removed");
+			Assert.AreEqual(12,LocalCaptureConfig.Load(path).JournalKeep);
 		}
 		#endregion Fallback
+
+		#region EnsureImagingFolder
+		[TestMethod]
+		public void EnsureImagingFolder_CreatesTheFoldersAndGrantsOnlyTheImagingFolder() {
+			string folderImaging=PathIn("ProgramData","OpenPMS-Dental","Imaging");
+			FakeUsersAcl fakeUsersAcl=new FakeUsersAcl();
+			string error;
+			Assert.IsTrue(LocalCaptureConfig.EnsureImagingFolder(folderImaging,@"Capture\journal",fakeUsersAcl.Grant,fakeUsersAcl.Has,out error));
+			Assert.AreEqual("",error);
+			Assert.IsTrue(Directory.Exists(Path.Combine(folderImaging,"Capture","journal")));
+			//The subfolder inherits the rule from the Imaging folder.
+			CollectionAssert.AreEqual(new[] { folderImaging },fakeUsersAcl.ListGrantCalls);
+			//Calling again changes nothing.
+			Assert.IsTrue(LocalCaptureConfig.EnsureImagingFolder(folderImaging,"Capture/quarantine",fakeUsersAcl.Grant,fakeUsersAcl.Has,out error));
+			Assert.AreEqual("",error);
+			Assert.IsTrue(Directory.Exists(Path.Combine(folderImaging,"Capture","quarantine")));
+			Assert.IsTrue(LocalCaptureConfig.EnsureImagingFolder(folderImaging,null,fakeUsersAcl.Grant,fakeUsersAcl.Has,out error));
+			Assert.AreEqual(1,fakeUsersAcl.ListGrantCalls.Count);
+		}
+
+		[TestMethod]
+		public void EnsureImagingFolder_ImagingFolderExistsWithoutTheRule_GetsItOrTheSubfolderDoes() {
+			string folderImaging=PathIn("Imaging");
+			Directory.CreateDirectory(folderImaging);
+			FakeUsersAcl fakeUsersAcl=new FakeUsersAcl();
+			string error;
+			Assert.IsTrue(LocalCaptureConfig.EnsureImagingFolder(folderImaging,"",fakeUsersAcl.Grant,fakeUsersAcl.Has,out error));
+			Assert.AreEqual("",error);
+			CollectionAssert.AreEqual(new[] { folderImaging },fakeUsersAcl.ListGrantCalls);
+			//An administrator's Imaging folder: the subfolder this user creates gets its own rule.
+			string folderImaging2=PathIn("Imaging2");
+			Directory.CreateDirectory(folderImaging2);
+			string folderJournal=Path.Combine(folderImaging2,"Capture","journal");
+			fakeUsersAcl=new FakeUsersAcl();
+			fakeUsersAcl.FuncGrantResult=pathGrant => pathGrant==folderImaging2 ? "denied for test" : "";
+			Assert.IsTrue(LocalCaptureConfig.EnsureImagingFolder(folderImaging2,@"Capture\journal",fakeUsersAcl.Grant,fakeUsersAcl.Has,out error));
+			Assert.AreEqual("",error);
+			CollectionAssert.AreEqual(new[] { folderImaging2,folderJournal },fakeUsersAcl.ListGrantCalls);
+			//Asking for the administrator's Imaging folder itself: usable, with a warning.
+			Assert.IsTrue(LocalCaptureConfig.EnsureImagingFolder(folderImaging2,"",fakeUsersAcl.Grant,fakeUsersAcl.Has,out error));
+			StringAssert.Contains(error,"denied for test");
+			Assert.IsTrue(Directory.Exists(folderImaging2));
+		}
+
+		[TestMethod]
+		public void EnsureImagingFolder_CreatedButGrantFails_RemovesItAndReturnsFalse() {
+			string folderImaging=PathIn("Imaging");
+			FakeUsersAcl fakeUsersAcl=new FakeUsersAcl();
+			fakeUsersAcl.FuncGrantResult=pathGrant => "denied for test";
+			string error;
+			Assert.IsFalse(LocalCaptureConfig.EnsureImagingFolder(folderImaging,"Capture",fakeUsersAcl.Grant,fakeUsersAcl.Has,out error));
+			StringAssert.Contains(error,"denied for test");
+			Assert.IsFalse(Directory.Exists(folderImaging));
+			//An existing Imaging folder stays, but a subfolder this call created without the rule is removed.
+			Directory.CreateDirectory(folderImaging);
+			Assert.IsFalse(LocalCaptureConfig.EnsureImagingFolder(folderImaging,"Capture",fakeUsersAcl.Grant,fakeUsersAcl.Has,out error));
+			StringAssert.Contains(error,"denied for test");
+			Assert.IsTrue(Directory.Exists(folderImaging));
+			Assert.IsFalse(Directory.Exists(Path.Combine(folderImaging,"Capture")));
+			//A folder that cannot be created.
+			Assert.IsFalse(LocalCaptureConfig.EnsureImagingFolder(Path.GetDirectoryName(BlockedPath("blocker")),"",fakeUsersAcl.Grant,fakeUsersAcl.Has,out error));
+			Assert.AreNotEqual("",error);
+		}
+
+		[TestMethod]
+		public void EnsureImagingFolder_SubfolderOutsideTheImagingFolder_IsRefused() {
+			string folderImaging=PathIn("Imaging");
+			FakeUsersAcl fakeUsersAcl=new FakeUsersAcl();
+			foreach(string subfolder in new[] { @"..\outside",@"Capture\..\..\outside",@"C:\outside",@"\outside","C:outside",@"Capture\\journal",
+				@"Capture\.","a|b","a?b",@"Capture\" })
+			{
+				string error;
+				Assert.IsFalse(LocalCaptureConfig.EnsureImagingFolder(folderImaging,subfolder,fakeUsersAcl.Grant,fakeUsersAcl.Has,out error),subfolder);
+				Assert.AreNotEqual("",error,subfolder);
+			}
+			Assert.IsFalse(Directory.Exists(folderImaging));
+			Assert.IsFalse(Directory.Exists(PathIn("outside")));
+			Assert.AreEqual(0,fakeUsersAcl.ListGrantCalls.Count);
+		}
+		#endregion EnsureImagingFolder
+
+		#region Real ACL
+		//These run the real GrantUsersModify and HasUsersModify, on folders and files the test creates in its own temporary folder.
+
+		[TestMethod]
+		public void RealAcl_GrantUsersModifyOnAFolder_IsInheritedByFilesAndSubfolders() {
+			string folder=PathIn("grant");
+			Directory.CreateDirectory(folder);
+			Assert.AreEqual(0,GetUsersAllowRules(folder,true,false).Count,"a new folder has only inherited rules");
+			Assert.AreEqual("",LocalCaptureConfig.GrantUsersModify(folder));
+			List<FileSystemAccessRule> listRules=GetUsersAllowRules(folder,true,false);
+			Assert.IsTrue(listRules.Any(x => HasModify(x)
+				&& x.InheritanceFlags==(InheritanceFlags.ContainerInherit|InheritanceFlags.ObjectInherit)
+				&& x.PropagationFlags==PropagationFlags.None),
+				string.Join("; ",listRules.Select(x => x.FileSystemRights+" "+x.InheritanceFlags+" "+x.PropagationFlags)));
+			Assert.IsTrue(LocalCaptureConfig.HasUsersModify(folder));
+			//A file created in the folder inherits Modify.
+			string pathFile=Path.Combine(folder,"capture.ini");
+			File.WriteAllText(pathFile,"[Twain]\r\n");
+			Assert.IsTrue(GetUsersAllowRules(pathFile,false,true).Any(x => HasModify(x)));
+			Assert.IsTrue(LocalCaptureConfig.HasUsersModify(pathFile));
+			//So does a subfolder, and the files in it.
+			string folderSub=Path.Combine(folder,"Capture");
+			Directory.CreateDirectory(folderSub);
+			Assert.IsTrue(GetUsersAllowRules(folderSub,false,true).Any(x => HasModify(x)
+				&& x.InheritanceFlags==(InheritanceFlags.ContainerInherit|InheritanceFlags.ObjectInherit)));
+			Assert.IsTrue(LocalCaptureConfig.HasUsersModify(folderSub));
+			string pathFileSub=Path.Combine(folderSub,"journal.txt");
+			File.WriteAllText(pathFileSub,"x");
+			Assert.IsTrue(LocalCaptureConfig.HasUsersModify(pathFileSub));
+		}
+
+		[TestMethod]
+		public void RealAcl_GrantUsersModifyOnAFile_AddsAnExplicitRule() {
+			string pathFile=PathIn("capture.ini");
+			File.WriteAllText(pathFile,"[Twain]\r\n");
+			Assert.AreEqual(0,GetUsersAllowRules(pathFile,true,false).Count,"a new file has only inherited rules");
+			Assert.AreEqual("",LocalCaptureConfig.GrantUsersModify(pathFile));
+			Assert.IsTrue(GetUsersAllowRules(pathFile,true,false).Any(x => HasModify(x)));
+			Assert.IsTrue(LocalCaptureConfig.HasUsersModify(pathFile));
+			Assert.AreNotEqual("",LocalCaptureConfig.GrantUsersModify(PathIn("missing.ini")));
+			Assert.IsFalse(LocalCaptureConfig.HasUsersModify(PathIn("missing.ini")));
+		}
+
+		[TestMethod]
+		public void RealAcl_HasUsersModify_NeedsModifyInheritedByFilesAndSubfolders() {
+			if(LocalCaptureConfig.HasUsersModify(_tempDir)) {
+				Assert.Inconclusive("The temporary folder already gives the Users group Modify, so the folders below it inherit that rule.");
+			}
+			SecurityIdentifier sidUsers=new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid,null);
+			//Read and execute only, inherited by both: not enough rights.
+			string folderRead=PathIn("read");
+			AddFolderRule(folderRead,new FileSystemAccessRule(sidUsers,FileSystemRights.ReadAndExecute,
+				InheritanceFlags.ContainerInherit|InheritanceFlags.ObjectInherit,PropagationFlags.None,AccessControlType.Allow));
+			Assert.IsFalse(LocalCaptureConfig.HasUsersModify(folderRead));
+			//Modify for subfolders only: files would not inherit it.
+			string folderNoFiles=PathIn("nofiles");
+			AddFolderRule(folderNoFiles,new FileSystemAccessRule(sidUsers,FileSystemRights.Modify,
+				InheritanceFlags.ContainerInherit,PropagationFlags.None,AccessControlType.Allow));
+			Assert.IsFalse(LocalCaptureConfig.HasUsersModify(folderNoFiles));
+			//Modify for the folder's children only, not the folder itself.
+			string folderInheritOnly=PathIn("inheritonly");
+			AddFolderRule(folderInheritOnly,new FileSystemAccessRule(sidUsers,FileSystemRights.Modify,
+				InheritanceFlags.ContainerInherit|InheritanceFlags.ObjectInherit,PropagationFlags.InheritOnly,AccessControlType.Allow));
+			Assert.IsFalse(LocalCaptureConfig.HasUsersModify(folderInheritOnly));
+			//So Save adds the full rule to such a folder.
+			string path=Path.Combine(folderNoFiles,"capture.ini");
+			LocalCaptureConfig config=LocalCaptureConfig.Load(path,PathIn("user","capture.ini"),LocalCaptureConfig.GrantUsersModify,
+				LocalCaptureConfig.HasUsersModify);
+			Assert.IsTrue(config.Set("Twain","JournalKeep","7"));
+			Assert.IsTrue(config.Save(),config.LastError);
+			Assert.AreEqual("",config.LastError);
+			Assert.AreEqual(path,config.PathSaved);
+			Assert.IsTrue(LocalCaptureConfig.HasUsersModify(folderNoFiles));
+			Assert.IsTrue(LocalCaptureConfig.HasUsersModify(path));
+		}
+
+		[TestMethod]
+		public void RealAcl_Save_GivesUsersModifyOnAnExistingFolderAndItsCaptureIni() {
+			//The folder exists first, as when the journal created it, and has no rule for Users.
+			string folder=PathIn("machine","Imaging");
+			Directory.CreateDirectory(folder);
+			Assert.AreEqual(0,GetUsersAllowRules(folder,true,false).Count);
+			string path=Path.Combine(folder,"capture.ini");
+			LocalCaptureConfig config=LocalCaptureConfig.Load(path,PathIn("user","capture.ini"),LocalCaptureConfig.GrantUsersModify,
+				LocalCaptureConfig.HasUsersModify);
+			Assert.IsTrue(config.Set("Twain","JournalKeep","8"));
+			Assert.IsTrue(config.Save(),config.LastError);
+			Assert.AreEqual("",config.LastError);
+			Assert.AreEqual(path,config.PathSaved);
+			Assert.IsTrue(LocalCaptureConfig.HasUsersModify(folder));
+			Assert.IsTrue(GetUsersAllowRules(path,false,true).Any(x => HasModify(x)),"capture.ini inherits Modify from the folder");
+			Assert.AreEqual(0,Directory.GetFiles(folder,"*.tmp").Length,"temporary file left behind");
+		}
+
+		private static void AddFolderRule(string folder,FileSystemAccessRule fileSystemAccessRule) {
+			Directory.CreateDirectory(folder);
+			DirectoryInfo directoryInfo=new DirectoryInfo(folder);
+			DirectorySecurity directorySecurity=directoryInfo.GetAccessControl(AccessControlSections.Access);
+			directorySecurity.AddAccessRule(fileSystemAccessRule);
+			directoryInfo.SetAccessControl(directorySecurity);
+		}
+		#endregion Real ACL
 	}
 }
