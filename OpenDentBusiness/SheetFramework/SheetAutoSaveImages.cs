@@ -12,19 +12,21 @@ namespace OpenDentBusiness {
 	///- the sheet has a patient;
 	///- a non-hidden image category is flagged Autosave Forms ("U"), as 24.3 required, even when the layout names its own category;
 	///- the layout has the option on;
-	///- the sheet is not open in a kiosk or terminal (as in 24.3);
 	///- something on the sheet changed in this save (field values, signatures, added fields or drawings, date, description, note), or the sheet
-	///  is new. Opening and closing a sheet without changes writes nothing.</summary>
+	///  is new. Opening and closing a sheet without changes writes nothing.
+	///A save in a kiosk or terminal follows the same rules: a sheet the patient filled in there reaches Imaging when the patient saves it, and the
+	///office's later save copies it again only if the office changed it. 24.3 made no copy in a terminal; the office's OK made it instead, because
+	///the box defaulted to checked. Without the box, nothing stored with a sheet says that its last save still owes a copy (sheet.DateTSheetEdited
+	///moves on with every OK, changed or not, and a copy in Imaging is not linked to its sheet), so the copy cannot wait for the office's save.</summary>
 	public static class SheetAutoSaveImages {
 		///<summary>The image category usage letter for Autosave Forms.</summary>
 		public const string USAGE_AUTOSAVE_FORMS="U";
 
-		///<summary>True if a PDF copy should be saved to Imaging after this save.</summary>
-		public static bool IsCopyDue(long patNum,bool hasAutosaveCategory,bool isLayoutOptionOn,bool isInTerminal,bool hasChanged) {
+		///<summary>True if a PDF copy should be saved to Imaging after this save, in a kiosk or terminal too.</summary>
+		public static bool IsCopyDue(long patNum,bool hasAutosaveCategory,bool isLayoutOptionOn,bool hasChanged) {
 			return patNum!=0
 				&& hasAutosaveCategory
 				&& isLayoutOptionOn
-				&& !isInTerminal
 				&& hasChanged;
 		}
 
@@ -92,6 +94,33 @@ namespace OpenDentBusiness {
 				return true;
 			}
 			return GetFingerprint(sheetNow)!=(fingerprintAtOpen??"");
+		}
+	}
+
+	///<summary>The copy rules for one Fill Sheet window: the snapshot of the sheet taken when the window showed it, and whether a save is due a copy.
+	///A save that makes a copy moves the snapshot on, so a later save in the same window copies again only if it changes the sheet again.</summary>
+	public class SheetAutoSaveTracker {
+		private string _fingerprintAtOpen="";
+		private bool _wasNewAtOpen;
+
+		///<summary>Call once the window shows the sheet: its fields are filled, grown and laid out, and nothing was typed yet.</summary>
+		public void TakeSnapshot(Sheet sheet) {
+			_wasNewAtOpen=sheet?.IsNew??false;
+			_fingerprintAtOpen=SheetAutoSaveImages.GetFingerprint(sheet);
+		}
+
+		///<summary>True if this save should also put a PDF copy of the sheet in Imaging (SheetAutoSaveImages.IsCopyDue). Call after the sheet was
+		///saved. When it returns true the caller makes the copy, and the snapshot moves on.</summary>
+		public bool IsCopyDue(Sheet sheet,bool hasAutosaveCategory,bool isLayoutOptionOn) {
+			if(sheet==null) {
+				return false;
+			}
+			bool hasChanged=SheetAutoSaveImages.HasChanged(_fingerprintAtOpen,_wasNewAtOpen,sheet);
+			bool isCopyDue=SheetAutoSaveImages.IsCopyDue(sheet.PatNum,hasAutosaveCategory,isLayoutOptionOn,hasChanged);
+			if(isCopyDue) {
+				TakeSnapshot(sheet);
+			}
+			return isCopyDue;
 		}
 	}
 }

@@ -124,8 +124,15 @@ namespace BPRINTTests {
 			Assert.AreEqual(5,Count(source,"if(IsAutoSaveCopyDue()) {"));
 			Assert.AreEqual(5,Count(source,"SaveAsDocument('U',\"PatientForm\");"));
 			string partial=Read(@"OpenDental\Forms\FormSheetFillEdit.AutoSaveImages.cs");
-			StringAssert.Contains(partial,"SheetAutoSaveImages.IsCopyDue(SheetCur.PatNum,_isAutoSave,SheetAutoSaveImages.IsLayoutOptionOn(SheetCur),IsInTerminal,hasChanged)");
+			StringAssert.Contains(partial,"_sheetAutoSaveTracker.IsCopyDue(SheetCur,_isAutoSave,SheetAutoSaveImages.IsLayoutOptionOn(SheetCur))");
 			StringAssert.Contains(partial,"protected override void OnShown(EventArgs e)");
+			StringAssert.Contains(partial,"_sheetAutoSaveTracker.TakeSnapshot(SheetCur);");
+			//A kiosk or terminal save copies too, and a failed copy shows the patient no error.
+			int idxTerminal=partial.IndexOf("if(!isCopyDue || !IsInTerminal) {");
+			int idxTry=partial.IndexOf("try {",idxTerminal);
+			int idxCopy=partial.IndexOf("SaveAsDocument('U',\"PatientForm\");",idxTerminal);
+			int idxCatch=partial.IndexOf("catch(Exception ex) {",idxTerminal);
+			Assert.IsTrue(idxTerminal>0 && idxTry>idxTerminal && idxCopy>idxTry && idxCatch>idxCopy);
 			StringAssert.Contains(Read(@"OpenDental\OpenDental.csproj"),"<Compile Include=\"Forms\\FormSheetFillEdit.AutoSaveImages.cs\">");
 		}
 

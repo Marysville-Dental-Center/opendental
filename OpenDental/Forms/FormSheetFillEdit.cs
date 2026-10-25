@@ -573,9 +573,9 @@ namespace OpenDental {
 				Height=System.Windows.Forms.Screen.FromControl(this).WorkingArea.Height;
 			}
 			CenterFormOnMonitor();
-			//Only allow Autosave when there is a non-hidden image category that is flagged for Autosave Form (U) and the sheet being filled out is not in a terminal.
+			//Only allow Autosave when there is a non-hidden image category that is flagged for Autosave Form (U).
 			_isAutoSave=Defs.GetDefsForCategory(DefCat.ImageCats,isShort:true).Any(x => x.ItemValue.Contains("U"));
-			//25.1: no "Autosave to Images" box. A save that changed the sheet copies it to Imaging when its layout says so (IsAutoSaveCopyDue).
+			//25.1: no "Autosave to Images" box. A save that changed the sheet copies it to Imaging when its layout says so, in a kiosk or terminal too (IsAutoSaveCopyDue).
 			_listPoints=new List<Point>();
 			_uniqueFormIdentifier=MiscUtils.CreateRandomAlphaNumericString(15);//Thread safe random
 			Sheets.SetPageMargin(SheetCur,_marginsPrint);
