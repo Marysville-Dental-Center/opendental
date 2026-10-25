@@ -125,6 +125,7 @@ namespace OpenDentBusiness {
 				DataTable rawProcs=dcon.GetTable(command);
 				command="SELECT ProcNum,EntryDateTime,UserNum,Note,"
 				+"CASE WHEN Signature!='' THEN 1 ELSE 0 END AS SigPresent "
+				+",UserNum2,CASE WHEN Signature2!='' THEN 1 ELSE 0 END AS Sig2Present "//26.1 group note second signature (M2-NOTES)
 				+"FROM procnote WHERE PatNum="+POut.Long(patNum)
 				+" ORDER BY EntryDateTime";// but this helps when looping for notes
 				DataTable rawNotes=dcon.GetTable(command);
@@ -238,6 +239,7 @@ namespace OpenDentBusiness {
 									if(rowCur["SigPresent"].ToString()=="1") {
 										row["note"]+="  "+Lans.g("ChartModule","(signed)");
 									}
+									row["note"]+=GroupNoteSignatures.GetAuditSecondSignatureText(rowCur,dictUserNames);//26.1 (M2-NOTES)
 									row["note"]+="\r\n"+rowCur["Note"].ToString();
 								}
 							}
@@ -256,6 +258,7 @@ namespace OpenDentBusiness {
 						}
 						row["user"]=userName;
 						row["signature"]=(noteRowCur["SigPresent"].ToString()=="1")?Lans.g("ChartModule","Signed"):"";
+						GroupNoteSignatures.FillProgNotesSigned(row,noteRowCur,userName,dictUserNames);//26.1: either signature, both signers (M2-NOTES)
 					}
 					row["PatNum"]="";
 					row["Priority"]=rowProc["Priority"].ToString();

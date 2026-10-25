@@ -1669,6 +1669,7 @@ namespace OpenDentBusiness {
 			if(procedure.Note!=oldProcedure.Note
 				|| procedure.UserNum!=oldProcedure.UserNum
 				|| procedure.SigIsTopaz!=oldProcedure.SigIsTopaz
+				|| ProcNotes.IsSecondSignatureChanged(procedure,oldProcedure)//26.1 group note second signature (M2-NOTES)
 				|| procedure.Signature!=oldProcedure.Signature) 
 			{
 				ProcNote note=new ProcNote();
@@ -1678,6 +1679,7 @@ namespace OpenDentBusiness {
 				note.Note=procedure.Note;
 				note.SigIsTopaz=procedure.SigIsTopaz;
 				note.Signature=procedure.Signature;
+				ProcNotes.SetSecondSignature(note,procedure,oldProcedure);//26.1 group note second signature (M2-NOTES)
 				ProcNotes.Insert(note);
 			}
 			return hasChanged;

@@ -18,7 +18,69 @@ namespace OpenDentBusiness {
 			string command="SELECT * FROM procnote WHERE ProcNum="+POut.Long(procNum);
 			return Crud.ProcNoteCrud.SelectMany(command);
 		}
+
+		///<summary>The newest note of the procedure (latest EntryDateTime, then highest ProcNoteNum for notes saved in the same second), or null when it
+		///has none. Procedure Info and the Group Note window remember it when they open and read it again when they save (Procedure Note Merge).</summary>
+		public static ProcNote GetNewestForProc(long procNum) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetObject<ProcNote>(MethodBase.GetCurrentMethod(),procNum);
+			}
+			if(procNum==0) {
+				return null;
+			}
+			string command="SELECT * FROM procnote WHERE ProcNum="+POut.Long(procNum)+" ORDER BY EntryDateTime DESC,ProcNoteNum DESC";
+			command=DbHelper.LimitOrderBy(command,1);
+			return Crud.ProcNoteCrud.SelectOne(command);
+		}
 		#endregion
+
+		#region Second signature (26.1)
+		///<summary>True when the caller changed the second signature of a group note (procnote.UserNum2, Signature2, SigIsTopaz2): signed, cleared or
+		///signed by another user. Procedures.Update then writes a new note row.</summary>
+		public static bool IsSecondSignatureChanged(Procedure procedure,Procedure procedureOld) {
+			return procedure.UserNum2!=procedureOld.UserNum2
+				|| procedure.SigIsTopaz2!=procedureOld.SigIsTopaz2
+				|| (procedure.Signature2??"")!=(procedureOld.Signature2??"");
+		}
+
+		///<summary>Sets the second signature of a note row that Procedures.Update is about to insert:
+		///- The caller changed it (the Group Note window): as the caller set it.
+		///- The note text changed: none. The second signature was made over the old text, so editing clears it like the first one.
+		///- Otherwise (for example only the first signature changed): the second signature of the newest saved row, when that row has the same text.
+		///  It is read from the database because most procedure readers do not load the second signature.</summary>
+		public static void SetSecondSignature(ProcNote procNote,Procedure procedure,Procedure procedureOld) {
+			procNote.UserNum2=0;
+			procNote.Signature2="";
+			procNote.SigIsTopaz2=false;
+			if(IsSecondSignatureChanged(procedure,procedureOld)) {
+				procNote.UserNum2=procedure.UserNum2;
+				procNote.Signature2=procedure.Signature2??"";
+				procNote.SigIsTopaz2=procedure.SigIsTopaz2;
+				return;
+			}
+			if(ProcNoteMerges.IsNoteTextChanged(procedureOld.Note,procedure.Note)) {
+				return;
+			}
+			ProcNote procNoteNewest=GetNewestForProc(procedure.ProcNum);
+			if(procNoteNewest==null || string.IsNullOrEmpty(procNoteNewest.Signature2) || ProcNoteMerges.IsNoteTextChanged(procNoteNewest.Note,procedure.Note)) {
+				return;
+			}
+			procNote.UserNum2=procNoteNewest.UserNum2;
+			procNote.Signature2=procNoteNewest.Signature2;
+			procNote.SigIsTopaz2=procNoteNewest.SigIsTopaz2;
+		}
+
+		///<summary>Copies the second signature of procNote into the procedure's not-in-database fields, for windows that loaded the procedure with a
+		///reader that does not select it.</summary>
+		public static void CopySecondSignatureTo(ProcNote procNote,Procedure procedure) {
+			if(procNote==null) {
+				return;
+			}
+			procedure.UserNum2=procNote.UserNum2;
+			procedure.Signature2=procNote.Signature2??"";
+			procedure.SigIsTopaz2=procNote.SigIsTopaz2;
+		}
+		#endregion Second signature (26.1)
 		
 		public static long Insert(ProcNote procNote){
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
@@ -42,7 +104,8 @@ namespace OpenDentBusiness {
 			return Crud.ProcNoteCrud.SelectOne(command);
 		}
 
-		///<summary>Returns a list of ProcNums from listProcNums where the most recent ProcNote for the proc is signed.</summary>
+		///<summary>Returns a list of ProcNums from listProcNums where the most recent ProcNote for the proc is signed. Since 26.1 a group note's second
+		///signature counts too.</summary>
 		public static List<long> GetIsProcNoteSigned(List<long> listProcNums) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetObject<List<long>>(MethodBase.GetCurrentMethod(),listProcNums);
@@ -57,7 +120,7 @@ namespace OpenDentBusiness {
 			}
 			return listProcNotes
 				.GroupBy(x => x.ProcNum,(x,y) => y.Aggregate((y1,y2) => y1.EntryDateTime>y2.EntryDateTime?y1:y2))//group by ProcNum, get most recent ProcNote
-				.Where(x => !string.IsNullOrWhiteSpace(x.Signature))//where the most recent ProcNote is signed
+				.Where(x => !string.IsNullOrWhiteSpace(x.Signature) || !string.IsNullOrWhiteSpace(x.Signature2))//where the most recent ProcNote is signed
 				.Select(x => x.ProcNum).ToList();//return list of ProcNums
 		}
 

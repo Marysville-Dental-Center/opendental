@@ -571,6 +571,7 @@
     <Compile Include="Misc\Result.cs" />
     <Compile Include="Misc\SecurityHash.cs" />
     <Compile Include="Misc\DomainLogin.cs" />
+    <Compile Include="Misc\LocalWindowSizes.cs" />
     <Compile Include="Misc\SheetSignatureSigners.cs" />
     <Compile Include="Misc\ProcTPFeeEdit.cs" />
     <Compile Include="ODEvents\MiddleTierConnectionEvent.cs" />
@@ -1322,6 +1323,8 @@
     <Compile Include="Data Interface\ProcApptColors.cs" />
     <Compile Include="Data Interface\ProcGroupItems.cs" />
     <Compile Include="Data Interface\GroupNotes.cs" />
+    <Compile Include="Data Interface\GroupNoteSignatures.cs" />
+    <Compile Include="Data Interface\ProcNoteMerges.cs" />
     <Compile Include="Data Interface\ReminderRules.cs" />
     <Compile Include="Data Interface\ReplicationServers.cs" />
     <Compile Include="Data Interface\InsFilingCodes.cs" />
