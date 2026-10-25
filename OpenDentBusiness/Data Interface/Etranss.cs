@@ -958,6 +958,9 @@ namespace OpenDentBusiness{
 					.Select(x => x.Copy())
 					.ToList();
 				List<PayPlan> listPayPlans=FilterValidInsPayPlansForClaimHelper(listValidInsPayPlansForClaims,listClaimProcsAll,listClaimsToProcess[i]);
+				//B-ERA: when the auto split option is on, procedures denied with a listed CARC move to a new unsent claim and the rest is processed.
+				listClaimsPaidToProcess[i]=EraAutoSplit.SplitDeniedProcsIfNeeded(isFullyAutomatic,x835,listClaimsPaidToProcess[i],listClaimsToProcess[i],patient,
+					insPlan,listPayPlans,listClaimProcsAll,listShortClaimProcsAll,listClaimProcsForClaimCopy,listAttaches,automationResult);
 				bool canClaimBeAutoProcessed=automationResult.CanClaimBeAutoProcessed(isFullyAutomatic,patient,insPlan,listClaimsPaidToProcess[i],listPayPlans,listShortClaimProcsAll,
 					listClaimProcsForClaimCopy.Select(x => new Hx835_ShortClaimProc(x)).ToList(),
 					listAttaches);

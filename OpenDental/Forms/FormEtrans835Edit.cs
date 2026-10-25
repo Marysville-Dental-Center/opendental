@@ -541,7 +541,8 @@ namespace OpenDental {
 			List<EraAutomationResult> listEraAutomationResults=new List<EraAutomationResult>();
 			listEraAutomationResults.Add(eraAutomationResult);
 			string automationResultMessage=EraAutomationResult.CreateMessage(listEraAutomationResults,isForSingleEra:true);
-			textNote.Text=EraAutomationResult.CreateEtransNote(eraAutomationResult.Status,textNote.Text,eraAutomationResult.CountProcessedClaimsWithNameMismatch);
+			textNote.Text=EraAutomationResult.CreateEtransNote(eraAutomationResult.Status,textNote.Text,eraAutomationResult.CountProcessedClaimsWithNameMismatch,
+				eraAutomationResult.ListAutoSplitNotes);//B-ERA: names the claims split automatically
 			EtransCur.Note=textNote.Text;
 			Etrans835 etrans835=Etrans835s.GetByEtransNums(EtransCur.EtransNum).FirstOrDefault();
 			if(etrans835==null) {
