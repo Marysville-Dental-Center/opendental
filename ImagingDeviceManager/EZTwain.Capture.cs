@@ -4,6 +4,7 @@ using System;
 using ImagingDeviceManager.Acquire;
 using ImagingDeviceManager.Config;
 using ImagingDeviceManager.Imaging;
+using ImagingDeviceManager.Journal;
 using ImagingDeviceManager.TwainProtocol;
 
 namespace ImagingDeviceManager {
@@ -21,6 +22,8 @@ namespace ImagingDeviceManager {
 		///<summary>capture.ini as read before the last open.</summary>
 		private static LocalCaptureConfig _configInEffect;
 		private static ForegroundRestorer _foregroundRestorer;
+		private static CaptureLog _captureLog;
+		private static CaptureJournal _journal;
 
 		internal static CaptureHost Host {
 			get {
@@ -50,9 +53,21 @@ namespace ImagingDeviceManager {
 			session.Logged+=LogCapture;
 		}
 
-		///<summary>A line for the capture log.</summary>
+		private static CaptureJournal Journal {
+			get {
+				if(_journal==null) {
+					_journal=new CaptureJournal(Host.Folders);
+				}
+				return _journal;
+			}
+		}
+
+		///<summary>A line for the capture log (Capture\capture-log.txt).</summary>
 		private static void LogCapture(string text) {
-			System.Diagnostics.Trace.WriteLine("ImagingDeviceManager: "+text);
+			if(_captureLog==null) {
+				_captureLog=new CaptureLog(Host.Folders,Host.Now);
+			}
+			_captureLog.Write(text);
 		}
 
 		///<summary>DisableThreadWindowsDuringAcquire and [Twain] ThreadModal as read before the last open.</summary>
@@ -64,16 +79,38 @@ namespace ImagingDeviceManager {
 		///that is already offered (state 6) comes without an enable, so nothing is disabled for it.</summary>
 		private static DibImage AcquireByName(IntPtr hwnd,long patNum) {
 			TwainSession session=Session;
+			string sourceName=session.SourceName;//Single mode closes the source before Acquire returns.
+			string acquireId=Guid.NewGuid().ToString("N");
 			DeviceAcquireScope scope=null;
 			if(session.State<6 && IsThreadModalInEffect()) {
 				scope=DeviceAcquireScope.Begin(Host,ForegroundRestorerShared,session,null,LogCapture);
 			}
+			DibImage dib;
 			try {
-				return session.Acquire(hwnd);
+				dib=session.Acquire(hwnd);
 			}
 			finally {
 				scope?.Dispose();
 			}
+			if(dib!=null) {
+				WriteJournalCopy(dib,sourceName,acquireId,patNum,CaptureJournal.DeliveredCaller,null);
+			}
+			return dib;
+		}
+
+		///<summary>The journal copy of an image (design 7.1 "Journal"), before it goes back to the caller or after it went to the quarantine.
+		///Never throws; problems go to the capture log.</summary>
+		private static string WriteJournalCopy(DibImage dib,string sourceName,string acquireId,long patNum,string delivered,string detail) {
+			CaptureRecord record=CaptureRecord.Create(Host.Now(),sourceName,acquireId);
+			record.PatNum=patNum;
+			record.ListSettings=CaptureSettingsSnapshot.Build(_configInEffect,IsThreadModalInEffect(),Session.IsSafeDisableInEffect);
+			int journalKeep=_configInEffect==null ? 200 : _configInEffect.JournalKeep;
+			string pathImage=Journal.Write(dib,record,delivered,detail,journalKeep,LogCapture);
+			if(pathImage!=null) {
+				LogCapture("Journal copy "+System.IO.Path.GetFileName(pathImage)+" of an image from \""+record.SourceName+"\" (acquire "+acquireId
+					+", delivered: "+delivered+").");
+			}
+			return pathImage;
 		}
 
 		///<summary>CloseSource. A source opened by name that is still enabled (images of a batch left) is stopped in the safe order, which
@@ -104,6 +141,8 @@ namespace ImagingDeviceManager {
 			HostOverride=host;
 			_configInEffect=null;
 			_foregroundRestorer=null;
+			_captureLog=null;
+			_journal=null;
 			DisableThreadWindowsDuringAcquire=true;
 		}
 

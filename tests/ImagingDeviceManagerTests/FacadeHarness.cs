@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using ImagingDeviceManager.Acquire;
 using ImagingDeviceManager.Config;
+using ImagingDeviceManager.Journal;
 using ImagingDeviceManager.TwainProtocol;
 using ImagingDeviceManager.UI;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -117,6 +118,30 @@ namespace ImagingDeviceManager.Tests {
 		public readonly string PathConfig;
 		public readonly CaptureHost Host;
 		public readonly List<string> ListSessionLog=new List<string>();
+		///<summary>The time the host reports next; each call moves it on by a second, so receive times and file names differ.</summary>
+		public DateTime Now=new DateTime(2026,10,25,9,0,0);
+
+		private DateTime NowNext() {
+			DateTime now=Now;
+			Now=Now.AddSeconds(1);
+			return now;
+		}
+
+		public string FolderJournal => Path.Combine(FolderImaging,CaptureFolders.SubfolderJournal);
+		public string FolderQuarantine => Path.Combine(FolderImaging,CaptureFolders.SubfolderQuarantine);
+		public string PathCaptureLog => Path.Combine(FolderImaging,CaptureFolders.SubfolderCapture,CaptureLog.FileName);
+
+		///<summary>The image files in a capture folder, oldest first. Empty when the folder does not exist.</summary>
+		public static List<string> ListImages(string folder) {
+			if(!Directory.Exists(folder)) {
+				return new List<string>();
+			}
+			return Directory.GetFiles(folder,"*"+CaptureFiles.ImageExtension).OrderBy(x => x,StringComparer.Ordinal).ToList();
+		}
+
+		public static string SidecarOf(string pathImage) {
+			return Path.ChangeExtension(pathImage,CaptureFiles.SidecarExtension);
+		}
 
 		public FacadeHarness() {
 			Fake.AddHelperSource(Helper);
@@ -129,6 +154,8 @@ namespace ImagingDeviceManager.Tests {
 				ThreadWindows=new Win32ThreadWindowApi(),
 				Foreground=Foreground,
 				Scheduler=Scheduler,
+				Folders=CaptureFolders.CreateForFolder(FolderImaging),
+				Now=() => NowNext(),
 				AdjustSettings=settings => settings.RefusedDisableWait=TimeSpan.FromMilliseconds(2000),
 			};
 			EZTwain.Reset(Load,Host);

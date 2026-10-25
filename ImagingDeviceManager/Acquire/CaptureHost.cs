@@ -2,6 +2,7 @@
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using ImagingDeviceManager.Config;
+using ImagingDeviceManager.Journal;
 using ImagingDeviceManager.TwainProtocol;
 using ImagingDeviceManager.UI;
 
@@ -18,6 +19,10 @@ namespace ImagingDeviceManager.Acquire {
 		public IForegroundApi Foreground;
 		///<summary>Runs the foreground restore about 1 s after an acquisition.</summary>
 		public IDelayScheduler Scheduler;
+		///<summary>Capture\journal, Capture\quarantine and the capture log.</summary>
+		public CaptureFolders Folders;
+		///<summary>The local time, for receive times.</summary>
+		public Func<DateTime> Now=() => DateTime.Now;
 		///<summary>Tests only: changes the session settings read from capture.ini, for example to shorten the wait after a refused
 		///disable, which capture.ini does not set. Null in production.</summary>
 		public Action<TwainCaptureSettings> AdjustSettings;
@@ -30,11 +35,13 @@ namespace ImagingDeviceManager.Acquire {
 				ThreadWindows=new Win32ThreadWindowApi(),
 				Foreground=new Win32ForegroundApi(),
 				Scheduler=new WinFormsDelayScheduler(),
+				Folders=CaptureFolders.CreateDefault(),
 			};
 		}
 
-		///<summary>For tests that do not look at capture: an empty capture.ini (every feature at its default) and no windows of its own.
-		///The thread's real windows are still disabled during by-name acquisitions, as in production.</summary>
+		///<summary>For tests that do not look at capture: an empty capture.ini (every feature at its default), no windows of its own and no
+		///capture folders (nothing is written). The thread's real windows are still disabled during by-name acquisitions, as in
+		///production.</summary>
 		public static CaptureHost CreateInert() {
 			return new CaptureHost {
 				LoadConfig=() => LocalCaptureConfig.Load((string)null),
@@ -42,6 +49,7 @@ namespace ImagingDeviceManager.Acquire {
 				ThreadWindows=new Win32ThreadWindowApi(),
 				Foreground=new NullForegroundApi(),
 				Scheduler=new NullDelayScheduler(),
+				Folders=CaptureFolders.CreateForFolder(null),
 			};
 		}
 
