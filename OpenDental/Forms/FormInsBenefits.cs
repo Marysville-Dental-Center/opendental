@@ -751,13 +751,10 @@ namespace OpenDental {
 				row.Cells.Add(MakeComboCell(gridBenefits.Columns[COL_TYPE],0));
 			}
 			GridCell gridCellCategory=new GridCell(Benefits.GetCategoryString(benefit));
-			gridCellCategory.ComboSelectedIndex=_listCovCats.FindIndex(x => x.CovCatNum==benefit.CovCatNum)+1;
-			if(benefit.CodeGroupNum!=0 || benefit.CodeNum!=0) {
-				gridCellCategory.ComboSelectedIndex=-1;//read-only
-			}
-			else if(benefit.CovCatNum==0) {
-				gridCellCategory.Text="";
-				gridCellCategory.ComboSelectedIndex=0;
+			//-1 (read-only, category kept) for code group and procedure code rows and for a hidden category, which the combo does not list.
+			gridCellCategory.ComboSelectedIndex=Benefits.GetOtherBenefitsCategoryIndex(benefit,_listCovCats);
+			if(gridCellCategory.ComboSelectedIndex==0) {
+				gridCellCategory.Text="";//no category
 			}
 			row.Cells.Add(gridCellCategory);
 			row.Cells.Add(benefit.Percent==-1?"":benefit.Percent.ToString());
@@ -788,7 +785,8 @@ namespace OpenDental {
 		}
 
 		///<summary>Which cells of the Other Benefits grid can be edited in place. The category is read-only on rows with a code group or procedure
-		///code, Treat Area only applies to limitations, and Teeth only to exclusions.</summary>
+		///code and on rows whose category is hidden (Edit Benefit still opens on double click), Treat Area only applies to limitations, and Teeth
+		///only to exclusions.</summary>
 		private bool IsOtherBenefitCellEditable(int col,int row) {
 			if(!butSave.Enabled) {
 				return false;//no InsPlanEdit permission
@@ -800,7 +798,7 @@ namespace OpenDental {
 			int typeIndex=gridRow.Cells[COL_TYPE].ComboSelectedIndex-1;
 			switch(col) {
 				case COL_CATEGORY:
-					return otherBenefitRow.Benefit.CodeGroupNum==0 && otherBenefitRow.Benefit.CodeNum==0;
+					return Benefits.GetOtherBenefitsCategoryIndex(otherBenefitRow.Benefit,_listCovCats)>=0;
 				case COL_TREAT_AREA:
 					return typeIndex==(int)InsBenefitType.Limitations || gridRow.Cells[COL_TREAT_AREA].ComboSelectedIndex>0;
 				case COL_TEETH:
@@ -849,14 +847,8 @@ namespace OpenDental {
 			input.IsPat=gridRow.Cells[COL_PAT].Text=="X";
 			input.CoverageLevel=(BenefitCoverageLevel)Math.Max(0,gridRow.Cells[COL_LEVEL].ComboSelectedIndex);
 			input.TypeIndex=gridRow.Cells[COL_TYPE].ComboSelectedIndex-1;
-			int indexCategory=gridRow.Cells[COL_CATEGORY].ComboSelectedIndex;
-			input.CovCatNum=otherBenefitRow.Benefit.CovCatNum;//kept when the category is not in the list (hidden categories)
-			if(indexCategory==0) {
-				input.CovCatNum=0;
-			}
-			else if(indexCategory>0 && indexCategory<=_listCovCats.Count) {
-				input.CovCatNum=_listCovCats[indexCategory-1].CovCatNum;
-			}
+			//Kept when the cell is read-only (-1), which includes a hidden category.
+			input.CovCatNum=Benefits.GetOtherBenefitsCovCatNum(otherBenefitRow.Benefit,gridRow.Cells[COL_CATEGORY].ComboSelectedIndex,_listCovCats);
 			input.Percent=gridRow.Cells[COL_PERCENT].Text;
 			input.Amount=gridRow.Cells[COL_AMOUNT].Text;
 			input.TimePeriod=(BenefitTimePeriod)Math.Max(0,gridRow.Cells[COL_TIME_PERIOD].ComboSelectedIndex);

@@ -170,8 +170,9 @@ namespace OpenDental {
 			benefit.PatPlanNum=patPlanNum;
 			benefit.PlanNum=planNum;
 			benefit.ToothRange=toothRange;
-			//The same rules the Other Benefits grid uses when a cell is edited in place.
-			List<BenefitValidationError> listErrors=Benefits.GetValidationErrors(benefit,_patPlanNum);
+			//The same rules the Other Benefits grid uses when a cell is edited in place. The Pat box is passed on its own: with no patient plan
+			//(_patPlanNum==0) a checked box leaves both PlanNum and PatPlanNum at 0 above, and only the box state shows that it was checked.
+			List<BenefitValidationError> listErrors=Benefits.GetValidationErrors(benefit,_patPlanNum,isPat:checkPat.Checked);
 			if(listErrors.Count>0) {
 				MessageBox.Show(this,listErrors[0].Message);
 				return;

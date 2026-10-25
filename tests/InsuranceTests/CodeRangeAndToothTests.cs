@@ -212,7 +212,7 @@ namespace InsuranceTests {
 		[TestMethod]
 		public void GetValidationErrors_EditBenefitRules() {
 			Benefit benefit=new Benefit { BenefitType=InsBenefitType.CoInsurance,Percent=80,CovCatNum=5 };
-			Assert.AreEqual(0,Benefits.GetValidationErrors(benefit,0).Count);
+			Assert.AreEqual(0,Benefits.GetValidationErrors(benefit,0,isPat:false).Count);
 			benefit=new Benefit { BenefitType=InsBenefitType.Exclusions,Percent=50,CovCatNum=5 };
 			AssertField(benefit,0,EnumBenefitField.Percent);
 			benefit=new Benefit { BenefitType=InsBenefitType.CoInsurance,Percent=101,CovCatNum=5 };
@@ -220,8 +220,8 @@ namespace InsuranceTests {
 			benefit=new Benefit { BenefitType=InsBenefitType.CoInsurance,Percent=80,CovCatNum=5,CodeGroupNum=3 };
 			AssertField(benefit,0,EnumBenefitField.Category);
 			benefit=new Benefit { BenefitType=InsBenefitType.CoInsurance,Percent=80,CovCatNum=5,PatPlanNum=9 };
-			AssertField(benefit,0,EnumBenefitField.Pat);
-			Assert.AreEqual(0,Benefits.GetValidationErrors(benefit,9).Count);
+			AssertField(benefit,0,EnumBenefitField.Pat,isPat:true);
+			Assert.AreEqual(0,Benefits.GetValidationErrors(benefit,9,isPat:true).Count);
 			benefit=new Benefit { BenefitType=InsBenefitType.WaitingPeriod,CovCatNum=5,Quantity=6,QuantityQualifier=BenefitQuantity.Visits };
 			AssertField(benefit,0,EnumBenefitField.Qualifier);
 			benefit=new Benefit { BenefitType=InsBenefitType.Exclusions,CovCatNum=5,MonetaryAmt=100 };
@@ -235,7 +235,7 @@ namespace InsuranceTests {
 		[TestMethod]
 		public void GetValidationErrors_TeethOnlyForExclusions() {
 			Benefit benefit=new Benefit { BenefitType=InsBenefitType.Exclusions,CodeGroupNum=3,ToothRange="2,15" };
-			Assert.AreEqual(0,Benefits.GetValidationErrors(benefit,0).Count);
+			Assert.AreEqual(0,Benefits.GetValidationErrors(benefit,0,isPat:false).Count);
 			benefit.BenefitType=InsBenefitType.CoInsurance;
 			benefit.Percent=50;
 			AssertField(benefit,0,EnumBenefitField.Teeth);
@@ -245,7 +245,7 @@ namespace InsuranceTests {
 		public void GetValidationErrors_FrequencyLimitation() {
 			Benefit benefit=new Benefit { BenefitType=InsBenefitType.Limitations,CodeGroupNum=3,QuantityQualifier=BenefitQuantity.Months,Quantity=6,
 				TreatArea=TreatmentArea.Tooth };
-			Assert.AreEqual(0,Benefits.GetValidationErrors(benefit,0).Count,"Treat Area is allowed on frequency limitations.");
+			Assert.AreEqual(0,Benefits.GetValidationErrors(benefit,0,isPat:false).Count,"Treat Area is allowed on frequency limitations.");
 			benefit.CovCatNum=4;
 			benefit.CodeGroupNum=0;
 			AssertField(benefit,0,EnumBenefitField.Category);
@@ -305,6 +305,64 @@ namespace InsuranceTests {
 		}
 
 		[TestMethod]
+		public void GetValidationErrors_PatBoxWithoutPatientPlan_EditBenefit() {
+			//What Edit Benefit builds when it is opened with no patient plan (Lists > Insurance Plans, or the 270/271 window) and the Pat box is
+			//checked: PatPlanNum takes the missing patient plan (0) and PlanNum is cleared, so the benefit alone looks attached to nothing.
+			Benefit benefit=new Benefit { BenefitType=InsBenefitType.CoInsurance,Percent=80,CovCatNum=5,PlanNum=0,PatPlanNum=0 };
+			AssertField(benefit,0,EnumBenefitField.Pat,isPat:true);
+			//The same box with a patient plan available is fine.
+			benefit.PatPlanNum=9;
+			Assert.AreEqual(0,Benefits.GetValidationErrors(benefit,9,isPat:true).Count);
+			//The box not checked: attached to the plan, no patient plan needed.
+			benefit=new Benefit { BenefitType=InsBenefitType.CoInsurance,Percent=80,CovCatNum=5,PlanNum=11,PatPlanNum=0 };
+			Assert.AreEqual(0,Benefits.GetValidationErrors(benefit,0,isPat:false).Count);
+		}
+
+		[TestMethod]
+		public void GetFromOtherBenefitsRow_PatBoxWithoutPatientPlan_NamesPat() {
+			OtherBenefitsRowInput input=new OtherBenefitsRowInput { TypeIndex=(int)InsBenefitType.CoInsurance,Percent="70",IsPat=true,CovCatNum=4 };
+			Benefit benefitBase=new Benefit { BenefitNum=3,PlanNum=11,BenefitType=InsBenefitType.CoInsurance,Percent=50,CovCatNum=4 };
+			Assert.IsNull(Benefits.GetFromOtherBenefitsRow(benefitBase,input,11,0,ToothNumberingNomenclature.Universal,
+				out List<BenefitValidationError> listErrors));
+			Assert.IsTrue(listErrors.Any(x => x.Field==EnumBenefitField.Pat));
+			Assert.AreEqual(11,benefitBase.PlanNum,"The benefit stays on the plan.");
+		}
+
+		[TestMethod]
+		public void GetOtherBenefitsCategoryIndex_HiddenCategoryIsReadOnly() {
+			List<CovCat> listCovCatsShown=new List<CovCat> { new CovCat { CovCatNum=4,Description="Basic" },new CovCat { CovCatNum=6,Description="Major" } };
+			Assert.AreEqual(0,Benefits.GetOtherBenefitsCategoryIndex(new Benefit(),listCovCatsShown),"No category: the blank choice.");
+			Assert.AreEqual(2,Benefits.GetOtherBenefitsCategoryIndex(new Benefit { CovCatNum=6 },listCovCatsShown));
+			Assert.AreEqual(-1,Benefits.GetOtherBenefitsCategoryIndex(new Benefit { CovCatNum=9 },listCovCatsShown),
+				"A hidden category is not offered, so the cell is read-only instead of showing the blank choice.");
+			Assert.AreEqual(-1,Benefits.GetOtherBenefitsCategoryIndex(new Benefit { CodeGroupNum=7 },listCovCatsShown));
+			Assert.AreEqual(-1,Benefits.GetOtherBenefitsCategoryIndex(new Benefit { CodeNum=8 },listCovCatsShown));
+			//Reading the combo back.
+			Benefit benefit=new Benefit { CovCatNum=9 };
+			Assert.AreEqual(9,Benefits.GetOtherBenefitsCovCatNum(benefit,-1,listCovCatsShown),"Read-only cell: the category is kept.");
+			Assert.AreEqual(0,Benefits.GetOtherBenefitsCovCatNum(benefit,0,listCovCatsShown));
+			Assert.AreEqual(4,Benefits.GetOtherBenefitsCovCatNum(benefit,1,listCovCatsShown));
+			Assert.AreEqual(9,Benefits.GetOtherBenefitsCovCatNum(benefit,3,listCovCatsShown),"Past the list: the category is kept.");
+		}
+
+		[TestMethod]
+		public void GetFromOtherBenefitsRow_HiddenCategory_PercentEditKeepsCategory() {
+			//A 50% CoInsurance on a hidden category (9). The grid lists only the shown categories, then the user changes the percent cell.
+			List<CovCat> listCovCatsShown=new List<CovCat> { new CovCat { CovCatNum=4,Description="Basic" } };
+			Benefit benefitBase=new Benefit { BenefitNum=3,PlanNum=11,BenefitType=InsBenefitType.CoInsurance,Percent=50,CovCatNum=9,
+				TimePeriod=BenefitTimePeriod.CalendarYear };
+			int categoryIndex=Benefits.GetOtherBenefitsCategoryIndex(benefitBase,listCovCatsShown);
+			OtherBenefitsRowInput input=new OtherBenefitsRowInput { TypeIndex=(int)InsBenefitType.CoInsurance,Percent="60",
+				TimePeriod=BenefitTimePeriod.CalendarYear };
+			input.CovCatNum=Benefits.GetOtherBenefitsCovCatNum(benefitBase,categoryIndex,listCovCatsShown);
+			Benefit benefit=Benefits.GetFromOtherBenefitsRow(benefitBase,input,11,0,ToothNumberingNomenclature.Universal,
+				out List<BenefitValidationError> listErrors);
+			Assert.AreEqual(0,listErrors.Count,string.Join("; ",listErrors.Select(x => x.Message)));
+			Assert.AreEqual(60,benefit.Percent);
+			Assert.AreEqual(9,benefit.CovCatNum,"Editing another cell must not turn the benefit into a general (no category) one.");
+		}
+
+		[TestMethod]
 		public void OtherBenefitsRowInput_IsBlank() {
 			Assert.IsTrue(new OtherBenefitsRowInput().IsBlank());
 			Assert.IsTrue(new OtherBenefitsRowInput { CoverageLevel=BenefitCoverageLevel.Individual,TimePeriod=BenefitTimePeriod.CalendarYear }.IsBlank(),
@@ -314,8 +372,8 @@ namespace InsuranceTests {
 		}
 		#endregion Benefit checks
 
-		private static void AssertField(Benefit benefit,long patPlanNumAvailable,EnumBenefitField enumBenefitField) {
-			List<BenefitValidationError> listErrors=Benefits.GetValidationErrors(benefit,patPlanNumAvailable);
+		private static void AssertField(Benefit benefit,long patPlanNumAvailable,EnumBenefitField enumBenefitField,bool isPat=false) {
+			List<BenefitValidationError> listErrors=Benefits.GetValidationErrors(benefit,patPlanNumAvailable,isPat);
 			Assert.IsTrue(listErrors.Any(x => x.Field==enumBenefitField),"Expected an error on "+enumBenefitField+"; got: "
 				+string.Join("; ",listErrors.Select(x => x.Field+" "+x.Message)));
 		}

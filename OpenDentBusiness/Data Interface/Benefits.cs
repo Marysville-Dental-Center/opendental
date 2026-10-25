@@ -2496,8 +2496,10 @@ namespace OpenDentBusiness {
 
 		///<summary>Checks a benefit with the rules of the Edit Benefit window, which the in-place editing of the Other Benefits grid shares. Returns
 		///an empty list when the benefit can be saved. patPlanNumAvailable is the patient plan the window was opened for (0 when editing a plan
-		///only); a benefit attached to a patient plan needs one.</summary>
-		public static List<BenefitValidationError> GetValidationErrors(Benefit benefit,long patPlanNumAvailable) {
+		///only). isPat is the state of the Pat box (patient override). It is passed on its own because a benefit built from a checked Pat box gets
+		///PatPlanNum=patPlanNumAvailable, which is 0 when no patient plan is available, so the benefit alone can not tell that the box was checked.
+		///The Pat box needs a patient plan; without one the benefit would be attached to neither the plan nor a patient plan.</summary>
+		public static List<BenefitValidationError> GetValidationErrors(Benefit benefit,long patPlanNumAvailable,bool isPat) {
 			Meth.NoCheckMiddleTierRole();
 			List<BenefitValidationError> listErrors=new List<BenefitValidationError>();
 			void Add(EnumBenefitField enumBenefitField,string text) {
@@ -2519,7 +2521,7 @@ namespace OpenDentBusiness {
 			if(countCatProcCodeGroup>1) {
 				Add(EnumBenefitField.Category,"You may only enter one of Category, or Proc Code, or Code Group.");
 			}
-			if(benefit.PatPlanNum!=0 && patPlanNumAvailable==0) {
+			if((isPat || benefit.PatPlanNum!=0) && patPlanNumAvailable==0) {
 				Add(EnumBenefitField.Pat,"Not allowed to check the Pat box because no patient is available.");
 			}
 			if(benefit.Percent>100 || benefit.Percent<-1) {
@@ -2640,12 +2642,44 @@ namespace OpenDentBusiness {
 				}
 			}
 			if(listErrors.Count==0) {
-				listErrors.AddRange(GetValidationErrors(benefit,patPlanNum));
+				listErrors.AddRange(GetValidationErrors(benefit,patPlanNum,input.IsPat));
 			}
 			if(listErrors.Count>0) {
 				return null;
 			}
 			return benefit;
+		}
+
+		///<summary>The index to select in the Category combo of an Other Benefits row, whose choices are a blank ("no category") followed by
+		///listCovCats. Returns -1, meaning no choice and a read-only cell, for a row with a code group or procedure code, and for a category that is
+		///not in listCovCats (a hidden insurance category). Picking index 0 for a hidden category would read back as "no category" and silently
+		///turn the benefit into a general one when any other cell of the row is edited.</summary>
+		public static int GetOtherBenefitsCategoryIndex(Benefit benefit,List<CovCat> listCovCats) {
+			Meth.NoCheckMiddleTierRole();
+			if(benefit.CodeGroupNum!=0 || benefit.CodeNum!=0) {
+				return -1;
+			}
+			if(benefit.CovCatNum==0) {
+				return 0;
+			}
+			int index=listCovCats.FindIndex(x => x.CovCatNum==benefit.CovCatNum);
+			if(index<0) {
+				return -1;
+			}
+			return index+1;
+		}
+
+		///<summary>The insurance category of an Other Benefits row from the index of its Category combo (see GetOtherBenefitsCategoryIndex). Index 0
+		///is no category. An index outside the list, such as -1 on a read-only cell, keeps the category the benefit already has.</summary>
+		public static long GetOtherBenefitsCovCatNum(Benefit benefit,int categoryIndex,List<CovCat> listCovCats) {
+			Meth.NoCheckMiddleTierRole();
+			if(categoryIndex==0) {
+				return 0;
+			}
+			if(categoryIndex>0 && categoryIndex<=listCovCats.Count) {
+				return listCovCats[categoryIndex-1].CovCatNum;
+			}
+			return benefit.CovCatNum;
 		}
 	}
 
