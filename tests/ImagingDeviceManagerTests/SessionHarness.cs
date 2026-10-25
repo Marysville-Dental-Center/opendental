@@ -3,10 +3,37 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using ImagingDeviceManager.TwainProtocol;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace ImagingDeviceManager.Tests {
+	///<summary>Win32 calls the tests need beyond the library's NativeMethods.</summary>
+	internal static class TestWin32 {
+		private const uint PM_REMOVE=1;
+
+		///<summary>Removes every message of this thread's queue and returns the exit codes of the WM_QUIT messages among them.</summary>
+		public static List<int> TakeQuitMessages() {
+			List<int> listExitCodes=new List<int>();
+			IntPtr pMsg=Marshal.AllocHGlobal(NativeMethods.MsgBufferSize);
+			try {
+				while(PeekMessage(pMsg,IntPtr.Zero,0,0,PM_REMOVE)) {
+					if(Marshal.ReadInt32(pMsg,NativeMethods.MsgOffsetMessage)==NativeMethods.WM_QUIT) {
+						listExitCodes.Add(Marshal.ReadInt32(pMsg,NativeMethods.MsgOffsetWParam));
+					}
+				}
+			}
+			finally {
+				Marshal.FreeHGlobal(pMsg);
+			}
+			return listExitCodes;
+		}
+
+		[DllImport("user32.dll")]
+		[return: MarshalAs(UnmanagedType.Bool)]
+		private static extern bool PeekMessage(IntPtr lpMsg,IntPtr hWnd,uint wMsgFilterMin,uint wMsgFilterMax,uint wRemoveMsg);
+	}
+
 	///<summary>Records what the session hands to its drain sink.</summary>
 	internal sealed class RecordingDrainSink:ITwainDrainSink {
 		public readonly List<TwainDrainedImage> ListDrained=new List<TwainDrainedImage>();

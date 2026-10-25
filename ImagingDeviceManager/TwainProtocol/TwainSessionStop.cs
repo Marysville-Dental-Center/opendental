@@ -25,6 +25,9 @@ namespace ImagingDeviceManager.TwainProtocol {
 		///<summary>WM_QUIT arrived while the session had to keep its message loop running; it is posted again afterwards.</summary>
 		private bool _isQuitPending;
 		private int _quitExitCode;
+		///<summary>On the by-name path, the window passed to Acquire when the source was enabled. Once it is destroyed (an automatic logoff
+		///closes the hidden parent form, for example), the acquisition stops and nothing more goes back to the caller.</summary>
+		private IntPtr _hwndWatched;
 
 		///<summary>How often the message loop wakes up to check for stop requests, in milliseconds.</summary>
 		public int TickMilliseconds { get; set; }=200;
@@ -80,12 +83,32 @@ namespace ImagingDeviceManager.TwainProtocol {
 			}
 		}
 
-		///<summary>The stop the message loop must start now, or None.</summary>
+		///<summary>The stop the session must start now, or None. Checked on every pass of the message loop and before every image goes
+		///back to the caller.</summary>
 		private TwainStopReason GetStopRequest() {
+			if(_hwndWatched!=IntPtr.Zero && !NativeMethods.IsWindow(_hwndWatched)) {
+				return TwainStopReason.ParentDestroyed;
+			}
 			if(_isCancelRequested) {
 				return TwainStopReason.Cancel;
 			}
 			return TwainStopReason.None;
+		}
+
+		///<summary>Before an enable: on the by-name path, watch the window the caller passed (design 7.1 "Parent destroyed or logoff").
+		///Scans keep their behaviour.</summary>
+		private void WatchParent(IntPtr hwnd) {
+			_hwndWatched=IsOpenedByName && hwnd!=IntPtr.Zero && NativeMethods.IsWindow(hwnd) ? hwnd : IntPtr.Zero;
+		}
+
+		///<summary>Posts WM_QUIT again once the source is stopped, if the session's message loop took it; the program then closes as it
+		///would have. Called at the end of every public call that can run the loop.</summary>
+		private void RepostQuitIfPending() {
+			if(!_isQuitPending) {
+				return;
+			}
+			_isQuitPending=false;
+			NativeMethods.PostQuitMessage(_quitExitCode);
 		}
 
 		///<summary>The error an acquisition stopped by the library returns, unless the loop already set one. Every stop ends the series in
@@ -97,6 +120,12 @@ namespace ImagingDeviceManager.TwainProtocol {
 			switch(reason) {
 				case TwainStopReason.Cancel:
 					SetError(EZTwainErrorCode.EZTEC_USER_CANCEL,"The acquisition was cancelled.");
+					return;
+				case TwainStopReason.ParentDestroyed:
+					SetError(EZTwainErrorCode.EZTEC_USER_CANCEL,"The window that started the acquisition was closed.");
+					return;
+				case TwainStopReason.Quit:
+					SetError(EZTwainErrorCode.EZTEC_USER_CANCEL,"The program is closing.");
 					return;
 				default:
 					SetError(EZTwainErrorCode.EZTEC_INTERNAL,"The acquisition stopped.");
@@ -148,10 +177,10 @@ namespace ImagingDeviceManager.TwainProtocol {
 						continue;
 					}
 					if(result==0) {
-						//WM_QUIT: the program is shutting down. Stop scanning and pass the quit message on to the outer loop.
-						int exitCode=Marshal.ReadInt32(pMsg,NativeMethods.MsgOffsetWParam);
-						SetError(EZTwainErrorCode.EZTEC_USER_CANCEL,"The program is closing.");
-						NativeMethods.PostQuitMessage(exitCode);
+						//WM_QUIT: the program is shutting down (for example an automatic logoff). Stop in the safe order; the quit message
+						//is posted again for the outer loop once the source is stopped (RepostQuitIfPending).
+						_isQuitPending=true;
+						_quitExitCode=Marshal.ReadInt32(pMsg,NativeMethods.MsgOffsetWParam);
 						_stopReason=TwainStopReason.Quit;
 						return Tw.MSG_NULL;
 					}
@@ -470,10 +499,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 			}
 			finally {
 				SetWaitingForSource(false);
-				if(_isQuitPending) {
-					_isQuitPending=false;
-					NativeMethods.PostQuitMessage(_quitExitCode);
-				}
+				RepostQuitIfPending();
 			}
 		}
 

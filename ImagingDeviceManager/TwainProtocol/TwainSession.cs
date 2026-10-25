@@ -566,6 +566,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 				return;
 			}
 			CloseSourceCore();
+			RepostQuitIfPending();
 		}
 
 		private void CloseSourceCore() {
@@ -579,6 +580,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 			}
 			SourceName="";
 			IsOpenedByName=false;
+			_hwndWatched=IntPtr.Zero;
 			MultiTransfer=false;
 			_xferMech=Tw.TWSX_NATIVE;
 			if(State==3) {
@@ -797,6 +799,14 @@ namespace ImagingDeviceManager.TwainProtocol {
 					}
 				}
 				//State 6: an image is ready.
+				TwainStopReason stopRequest=GetStopRequest();
+				if(stopRequest!=TwainStopReason.None) {
+					//The window that started the acquisition is gone (also between the images of a batch), or Cancel came after the
+					//image was offered: nothing more goes back to the caller.
+					StopToState4(stopRequest);
+					SetStopError(stopRequest);
+					return null;
+				}
 				TransferOutcome outcome=TransferOne(out dib);
 				if(outcome!=TransferOutcome.Done) {
 					dib=null;
@@ -828,6 +838,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 					CloseSource();
 				}
 				EndAcquire();
+				RepostQuitIfPending();
 			}
 		}
 
@@ -892,6 +903,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 					CloseSource();
 				}
 				EndAcquire();
+				RepostQuitIfPending();
 			}
 		}
 
@@ -921,6 +933,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 				isShowUI=GetShowUIForSource(isShowUI);
 			}
 			SetSafeDisableCapability();
+			WatchParent(hwnd);
 			EndConditionCode=null;
 			EndConditionText=null;
 			_proxyWindow.AttachTo(hwnd);
@@ -1360,6 +1373,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 				//Best effort.
 			}
 			UnloadDsm();
+			RepostQuitIfPending();
 			if(_pAppIdentity!=IntPtr.Zero) {
 				Marshal.FreeHGlobal(_pAppIdentity);
 				_pAppIdentity=IntPtr.Zero;
