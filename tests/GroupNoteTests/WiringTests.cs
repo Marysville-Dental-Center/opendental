@@ -78,6 +78,27 @@ namespace GroupNoteTests {
 		}
 
 		[TestMethod]
+		public void Window_ChecksPermissionsForWhatIsSaved() {
+			string source=FormProcGroup();
+			//The checks come from the shared rule (RulesTests, GroupNoteDbTests) and run against the logged-in user.
+			StringAssert.Contains(source,"GroupNotes.GetSaveChecks(_listProcStatsAtLoad,listProcStatsNow,");
+			StringAssert.Contains(source,"GroupNotes.IsSaveAuthorized(listGroupNotePermChecks,(permType,dateLimit) => Security.IsAuthorized(permType,dateLimit))");
+			//Saving (and locking, which saves) checks them for the procedures attached when saving.
+			int idxValid=source.IndexOf("private bool EntriesAreValid()");
+			int idxValidEnd=source.IndexOf("private void SaveAndClose()",idxValid);
+			string entriesAreValid=source.Substring(idxValid,idxValidEnd-idxValid);
+			StringAssert.Contains(entriesAreValid,"IsAuthorizedForChanges(ListProcedures,GetProcDateEntered(),IsNoteOrSignatureChanged())");
+			StringAssert.DoesNotMatch(entriesAreValid,new System.Text.RegularExpressions.Regex(@"_permissionNote"),
+				"The date is checked with the permission for the group note as saved, not the note permission from when the window opened.");
+			//Add and Remove refuse a change the user could not save.
+			foreach(string method in new[] { "private void butAdd_Click(","private void butRemove_Click(" }) {
+				int idx=source.IndexOf(method);
+				int idxEnd=source.IndexOf("\n\t\t}",idx);
+				StringAssert.Contains(source.Substring(idx,idxEnd-idx),"IsAuthorizedForChanges(listProceduresAfter,GetProcDateEntered(),isNoteChanged:false)",method);
+			}
+		}
+
+		[TestMethod]
 		public void Window_LogsChangesAsProcEdit() {
 			StringAssert.Contains(FormProcGroup(),"SecurityLogs.MakeLogEntry(EnumPermType.ProcEdit,ProcedureGroup.PatNum,logText,ProcedureGroup.ProcNum,");
 		}

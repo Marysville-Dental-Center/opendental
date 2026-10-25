@@ -98,7 +98,11 @@ namespace OpenDentBusiness {
 		}
 
 		///<summary>The permission to edit, sign or delete the group note's note. As in 24.3: Edit Note on Completed Procedure when a completed procedure
-		///is attached, otherwise TP Procedure Delete. A group note with nothing attached is treated as complete.</summary>
+		///is attached, otherwise TP Procedure Delete. A group note with nothing attached is treated as complete.
+		///The 25.1 spec names Edit Completed Procedure for editing a group note on completed procedures. That is kept for what 25.1 added (the date, the
+		///provider and the attached procedures, see GetStructurePermission), but not for the note itself: the public 25.1 sources don't say the note's
+		///permission changed, and requiring Edit Completed Procedure would lock out users who may edit notes on completed procedures today but not the
+		///procedures themselves.</summary>
 		public static EnumPermType GetNotePermission(List<ProcStat> listProcStatsAttached) {
 			if(IsTreatedAsComplete(listProcStatsAttached)) {
 				return EnumPermType.ProcCompleteNote;
@@ -118,10 +122,54 @@ namespace OpenDentBusiness {
 		///<summary>The date the permission's date limit is checked against: the group note's own date when it is treated as complete, otherwise its
 		///entry date (as 24.3 does for group notes on non-complete procedures).</summary>
 		public static DateTime GetPermissionDate(Procedure procedureGroup,List<ProcStat> listProcStatsAttached) {
+			return GetPermissionDate(procedureGroup.ProcDate,procedureGroup.DateEntryC,listProcStatsAttached);
+		}
+
+		///<summary>Same as the other overload, for a group note dated dateProc that was entered on dateEntry.</summary>
+		public static DateTime GetPermissionDate(DateTime dateProc,DateTime dateEntry,List<ProcStat> listProcStatsAttached) {
 			if(IsTreatedAsComplete(listProcStatsAttached)) {
-				return procedureGroup.ProcDate;
+				return dateProc;
 			}
-			return procedureGroup.DateEntryC;
+			return dateEntry;
+		}
+
+		///<summary>The permissions, each with the date its limits are checked against, that the user needs before the Group Note window saves. The
+		///window decides what can be edited from the procedures attached when it opens (listProcStatsAtLoad), but the procedures, and with them the
+		///permission that applies, can change before it saves (listProcStatsNow: the procedures attached when saving, with their current status):
+		///- When the attached procedures, the date or the provider changed: the permission for changing the group note as it was, on its old date, and
+		///  the permission for the group note as it will be, on its new date. So a group note on TP procedures only that gets a completed procedure, or
+		///  loses every procedure, needs Edit Completed Procedure on its date, which also applies the global lock date. A group note that counts as
+		///  complete when saved and was moved to another date also needs Edit Completed Procedure on its old date.
+		///- When the note or the signature changed: the note's permission for the procedures attached when saving, on the new date.
+		///Empty when nothing changed. Each permission and date is listed once.</summary>
+		public static List<GroupNotePermCheck> GetSaveChecks(List<ProcStat> listProcStatsAtLoad,List<ProcStat> listProcStatsNow,bool isAttachedChanged,
+			bool isProvChanged,DateTime dateProcOld,DateTime dateProcNew,DateTime dateEntry,bool isNoteChanged)
+		{
+			List<GroupNotePermCheck> listGroupNotePermChecks=new List<GroupNotePermCheck>();
+			bool isDateChanged=dateProcOld.Date!=dateProcNew.Date;
+			if(isAttachedChanged || isDateChanged || isProvChanged) {
+				listGroupNotePermChecks.Add(new GroupNotePermCheck(GetStructurePermission(listProcStatsAtLoad),
+					GetPermissionDate(dateProcOld,dateEntry,listProcStatsAtLoad)));
+				listGroupNotePermChecks.Add(new GroupNotePermCheck(GetStructurePermission(listProcStatsNow),
+					GetPermissionDate(dateProcNew,dateEntry,listProcStatsNow)));
+				if(isDateChanged && IsTreatedAsComplete(listProcStatsNow)) {
+					listGroupNotePermChecks.Add(new GroupNotePermCheck(EnumPermType.ProcCompleteEdit,dateProcOld));
+				}
+			}
+			if(isNoteChanged) {
+				listGroupNotePermChecks.Add(new GroupNotePermCheck(GetNotePermission(listProcStatsNow),GetPermissionDate(dateProcNew,dateEntry,listProcStatsNow)));
+			}
+			return listGroupNotePermChecks.GroupBy(x => new { x.PermType,x.DateLimit.Date }).Select(x => x.First()).ToList();
+		}
+
+		///<summary>True when funcIsAuthorized allows every check, in order. Stops at the first one refused, so the user sees one message.</summary>
+		public static bool IsSaveAuthorized(List<GroupNotePermCheck> listGroupNotePermChecks,Func<EnumPermType,DateTime,bool> funcIsAuthorized) {
+			for(int i=0;i<listGroupNotePermChecks.Count;i++) {
+				if(!funcIsAuthorized(listGroupNotePermChecks[i].PermType,listGroupNotePermChecks[i].DateLimit)) {
+					return false;
+				}
+			}
+			return true;
 		}
 
 		///<summary>The permission logged when the group note is deleted.</summary>
@@ -240,5 +288,21 @@ namespace OpenDentBusiness {
 			return funcGetProcCode(procedure.CodeNum)+" ("+procedure.ProcStatus.ToString()+", "+procedure.ProcDate.ToShortDateString()+")";
 		}
 		#endregion Audit
+	}
+
+	///<summary>A permission the user needs before a group note is saved, and the date its date limit and the global lock date are checked
+	///against. See GroupNotes.GetSaveChecks.</summary>
+	public class GroupNotePermCheck {
+		public EnumPermType PermType;
+		public DateTime DateLimit;
+
+		public GroupNotePermCheck(EnumPermType permType,DateTime dateLimit) {
+			PermType=permType;
+			DateLimit=dateLimit;
+		}
+
+		public override string ToString() {
+			return PermType.ToString()+" "+DateLimit.ToShortDateString();
+		}
 	}
 }

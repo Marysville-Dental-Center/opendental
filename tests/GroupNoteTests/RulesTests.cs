@@ -141,6 +141,98 @@ namespace GroupNoteTests {
 		}
 		#endregion Permissions
 
+		#region Permissions when saving
+		private static readonly DateTime _dateNote=new DateTime(2026,9,10);
+		private static readonly DateTime _dateEntry=new DateTime(2026,9,1);
+
+		private static List<GroupNotePermCheck> SaveChecks(List<ProcStat> listAtLoad,List<ProcStat> listNow,bool isAttachedChanged,DateTime dateNew,
+			bool isNoteChanged=false,bool isProvChanged=false)
+		{
+			return GroupNotes.GetSaveChecks(listAtLoad,listNow,isAttachedChanged,isProvChanged,_dateNote,dateNew,_dateEntry,isNoteChanged);
+		}
+
+		private static bool Has(List<GroupNotePermCheck> listChecks,EnumPermType permType,DateTime date) {
+			return listChecks.Exists(x => x.PermType==permType && x.DateLimit.Date==date.Date);
+		}
+
+		///<summary>A user who may do everything except the one permission.</summary>
+		private static Func<EnumPermType,DateTime,bool> AllBut(EnumPermType permTypeMissing) {
+			return (permType,date) => permType!=permTypeMissing;
+		}
+
+		[TestMethod]
+		public void SaveChecks_TpGroupNoteGetsCompletedProcedure_NeedsEditCompletedProcedure() {
+			//Opened on TP procedures only (TP Procedure Delete was enough to open it and to change its procedures), then a completed one was added.
+			List<GroupNotePermCheck> listChecks=SaveChecks(new List<ProcStat> { ProcStat.TP },new List<ProcStat> { ProcStat.TP,ProcStat.C },true,_dateNote);
+			Assert.IsTrue(Has(listChecks,EnumPermType.ProcDelete,_dateEntry),string.Join("; ",listChecks));
+			Assert.IsTrue(Has(listChecks,EnumPermType.ProcCompleteEdit,_dateNote),string.Join("; ",listChecks));
+			Assert.IsFalse(GroupNotes.IsSaveAuthorized(listChecks,AllBut(EnumPermType.ProcCompleteEdit)),"Refused without Edit Completed Procedure.");
+			Assert.IsTrue(GroupNotes.IsSaveAuthorized(listChecks,AllBut(EnumPermType.ProcCompleteNote)));
+		}
+
+		[TestMethod]
+		public void SaveChecks_TpGroupNoteLosesEveryProcedure_NeedsEditCompletedProcedureOnItsDate() {
+			List<GroupNotePermCheck> listChecks=SaveChecks(new List<ProcStat> { ProcStat.TP,ProcStat.TPi },new List<ProcStat>(),true,_dateNote);
+			Assert.IsTrue(Has(listChecks,EnumPermType.ProcCompleteEdit,_dateNote),string.Join("; ",listChecks));
+			Assert.IsFalse(GroupNotes.IsSaveAuthorized(listChecks,AllBut(EnumPermType.ProcCompleteEdit)));
+		}
+
+		[TestMethod]
+		public void SaveChecks_TpGroupNoteMovedAndCompleted_ChecksNewAndOldDate() {
+			DateTime dateNew=new DateTime(2025,1,15);
+			List<GroupNotePermCheck> listChecks=SaveChecks(new List<ProcStat> { ProcStat.TP },new List<ProcStat> { ProcStat.C },true,dateNew);
+			Assert.IsTrue(Has(listChecks,EnumPermType.ProcCompleteEdit,dateNew),string.Join("; ",listChecks));
+			Assert.IsTrue(Has(listChecks,EnumPermType.ProcCompleteEdit,_dateNote),string.Join("; ",listChecks));
+			//A refused date (date limit or global lock date) refuses the save, whichever of the two it is.
+			Assert.IsFalse(GroupNotes.IsSaveAuthorized(listChecks,(permType,date) => !(permType==EnumPermType.ProcCompleteEdit && date==dateNew)));
+			Assert.IsFalse(GroupNotes.IsSaveAuthorized(listChecks,(permType,date) => !(permType==EnumPermType.ProcCompleteEdit && date==_dateNote)));
+		}
+
+		[TestMethod]
+		public void SaveChecks_CompleteGroupNoteMoved_EditCompletedProcedureNotEditNote() {
+			//24.3 never let the date change. The new date is checked with Edit Completed Procedure, which the global lock date applies to (Edit Note on
+			//Completed Procedure is not under the lock date).
+			DateTime dateNew=new DateTime(2026,9,3);
+			List<GroupNotePermCheck> listChecks=SaveChecks(new List<ProcStat> { ProcStat.C },new List<ProcStat> { ProcStat.C },false,dateNew);
+			Assert.IsTrue(Has(listChecks,EnumPermType.ProcCompleteEdit,dateNew),string.Join("; ",listChecks));
+			Assert.IsTrue(Has(listChecks,EnumPermType.ProcCompleteEdit,_dateNote),string.Join("; ",listChecks));
+			Assert.IsFalse(listChecks.Exists(x => x.PermType==EnumPermType.ProcCompleteNote),"The note didn't change.");
+		}
+
+		[TestMethod]
+		public void SaveChecks_TpGroupNoteStaysTp_TpProcedureDeleteOnItsEntryDate() {
+			DateTime dateNew=new DateTime(2026,8,1);
+			List<GroupNotePermCheck> listChecks=SaveChecks(new List<ProcStat> { ProcStat.TP },new List<ProcStat> { ProcStat.TP,ProcStat.TPi },true,dateNew,
+				isNoteChanged:true);
+			Assert.AreEqual(1,listChecks.Count,string.Join("; ",listChecks));
+			Assert.IsTrue(Has(listChecks,EnumPermType.ProcDelete,_dateEntry));
+		}
+
+		[TestMethod]
+		public void SaveChecks_NoteChangedOnceComplete_NeedsEditNoteOnCompletedProcedure() {
+			List<GroupNotePermCheck> listChecks=SaveChecks(new List<ProcStat> { ProcStat.TP },new List<ProcStat> { ProcStat.C },true,_dateNote,isNoteChanged:true);
+			Assert.IsTrue(Has(listChecks,EnumPermType.ProcCompleteNote,_dateNote),string.Join("; ",listChecks));
+			Assert.IsFalse(GroupNotes.IsSaveAuthorized(listChecks,AllBut(EnumPermType.ProcCompleteNote)));
+			//A procedure completed elsewhere while the window was open: nothing attached changed, the note did, so the completed rule applies.
+			listChecks=SaveChecks(new List<ProcStat> { ProcStat.TP },new List<ProcStat> { ProcStat.C },false,_dateNote,isNoteChanged:true);
+			Assert.IsTrue(Has(listChecks,EnumPermType.ProcCompleteNote,_dateNote),string.Join("; ",listChecks));
+		}
+
+		[TestMethod]
+		public void SaveChecks_ProviderChanged_StructurePermission() {
+			List<GroupNotePermCheck> listChecks=SaveChecks(new List<ProcStat> { ProcStat.C },new List<ProcStat> { ProcStat.C },false,_dateNote,isProvChanged:true);
+			Assert.AreEqual(1,listChecks.Count,string.Join("; ",listChecks));
+			Assert.IsTrue(Has(listChecks,EnumPermType.ProcCompleteEdit,_dateNote));
+		}
+
+		[TestMethod]
+		public void SaveChecks_NothingChanged_None() {
+			Assert.AreEqual(0,SaveChecks(new List<ProcStat> { ProcStat.C },new List<ProcStat> { ProcStat.C },false,_dateNote).Count);
+			Assert.AreEqual(0,SaveChecks(new List<ProcStat>(),new List<ProcStat>(),false,_dateNote.AddHours(5)).Count,"Same date, other time");
+			Assert.IsTrue(GroupNotes.IsSaveAuthorized(new List<GroupNotePermCheck>(),(permType,date) => false));
+		}
+		#endregion Permissions when saving
+
 		#region Audit
 		[TestMethod]
 		public void EditLogText_NamesDateProviderAndProcedures() {

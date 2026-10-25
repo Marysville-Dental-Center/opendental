@@ -260,7 +260,8 @@ namespace OpenDental{
 		}
 
 		///<summary>25.1: attaches procedures picked from the patient's chart. Any status, date or provider is allowed. Group notes, locked procedures and
-		///deleted or invalidated procedures are refused. Saved when the window is saved.</summary>
+		///deleted or invalidated procedures are refused. Nothing is attached when the user may not save the result, for example a completed procedure
+		///on a group note on TP procedures only without Edit Completed Procedure; saving checks again. Saved when the window is saved.</summary>
 		private void butAdd_Click(object sender,EventArgs e) {
 			using FormSheetProcSelect formSheetProcSelect=new FormSheetProcSelect();
 			formSheetProcSelect.PatNum=ProcedureGroup.PatNum;
@@ -269,14 +270,14 @@ namespace OpenDental{
 				return;
 			}
 			List<string> listRefused=new List<string>();
-			bool isChanged=false;
+			List<Procedure> listProceduresToAdd=new List<Procedure>();
 			for(int i=0;i<formSheetProcSelect.ListProcNumsSelected.Count;i++) {
 				long procNum=formSheetProcSelect.ListProcNumsSelected[i];
 				if(procNum==ProcedureGroup.ProcNum && procNum!=0) {
 					listRefused.Add(Lan.g(this,"You cannot attach a group note to another group note."));
 					continue;
 				}
-				if(ListProcedures.Any(x => x.ProcNum==procNum)) {
+				if(ListProcedures.Any(x => x.ProcNum==procNum) || listProceduresToAdd.Any(x => x.ProcNum==procNum)) {
 					continue;//already attached
 				}
 				Procedure procedure=Procedures.GetOneProc(procNum,false);
@@ -286,10 +287,14 @@ namespace OpenDental{
 					listRefused.Add(procText+Lan.g(this,blockReason));
 					continue;
 				}
-				ListProcedures.Add(procedure);
-				isChanged=true;
+				listProceduresToAdd.Add(procedure);
 			}
-			if(isChanged) {
+			if(listProceduresToAdd.Count>0) {
+				List<Procedure> listProceduresAfter=ListProcedures.Concat(listProceduresToAdd).ToList();
+				if(!IsAuthorizedForChanges(listProceduresAfter,GetProcDateEntered(),isNoteChanged:false)) {
+					return;//The user was told which permission is missing.
+				}
+				ListProcedures.AddRange(listProceduresToAdd);
 				OnAttachedProceduresChanged();
 			}
 			if(listRefused.Count>0) {
@@ -297,14 +302,20 @@ namespace OpenDental{
 			}
 		}
 
-		///<summary>25.1: detaches the selected procedures. Saved when the window is saved.</summary>
+		///<summary>25.1: detaches the selected procedures. Nothing is detached when the user may not save the result, for example removing every
+		///procedure (a group note with nothing attached counts as complete) without Edit Completed Procedure; saving checks again. Saved when the
+		///window is saved.</summary>
 		private void butRemove_Click(object sender,EventArgs e) {
 			List<Procedure> listProceduresSelected=gridProc.SelectedTags<Procedure>();
 			if(listProceduresSelected.Count==0) {
 				MsgBox.Show(this,"Please select procedures to remove first.");
 				return;
 			}
-			ListProcedures.RemoveAll(x => listProceduresSelected.Contains(x));
+			List<Procedure> listProceduresAfter=ListProcedures.FindAll(x => !listProceduresSelected.Contains(x));
+			if(!IsAuthorizedForChanges(listProceduresAfter,GetProcDateEntered(),isNoteChanged:false)) {
+				return;//The user was told which permission is missing.
+			}
+			ListProcedures=listProceduresAfter;
 			OnAttachedProceduresChanged();
 		}
 
@@ -332,6 +343,40 @@ namespace OpenDental{
 				return;
 			}
 			signatureBoxWrapper.ClearSignature();
+		}
+
+		///<summary>The date in the Procedure Date box when it can be edited and holds a date, otherwise the date the group note had when the window
+		///opened.</summary>
+		private DateTime GetProcDateEntered() {
+			if(_canEditStructure && textProcDate.IsValid()) {
+				DateTime dateProc=PIn.Date(textProcDate.Text);
+				if(dateProc.Year>=1880) {
+					return dateProc;
+				}
+			}
+			return _procedureGroupOld.ProcDate;
+		}
+
+		///<summary>True if the note's text differs from the saved one, or a signature was drawn since the window opened.</summary>
+		private bool IsNoteOrSignatureChanged() {
+			if((_procedureGroupOld.Note??"").Replace("\r","")!=textNotes.Text.Replace("\r","")) {
+				return true;
+			}
+			return _hasSigChanged && !signatureBoxWrapper.SigIsBlank;
+		}
+
+		///<summary>Checks, and tells the user when refused, the permissions needed to save the group note with listProceduresAttached attached and
+		///dated dateProc (GroupNotes.GetSaveChecks). The statuses are read again from the database, because they may have changed since the window
+		///opened.</summary>
+		private bool IsAuthorizedForChanges(List<Procedure> listProceduresAttached,DateTime dateProc,bool isNoteChanged) {
+			List<Procedure> listProceduresDb=Procedures.GetManyProc(listProceduresAttached.Select(x => x.ProcNum).ToList(),false);
+			List<ProcStat> listProcStatsNow=listProceduresAttached
+				.Select(x => (listProceduresDb.FirstOrDefault(y => y.ProcNum==x.ProcNum)??x).ProcStatus).ToList();
+			bool isAttachedChanged=!new HashSet<long>(listProceduresAttached.Select(x => x.ProcNum)).SetEquals(ListProceduresOld.Select(x => x.ProcNum));
+			bool isProvChanged=_canEditStructure && comboProv.GetSelectedProvNum()!=_procedureGroupOld.ProvNum;
+			List<GroupNotePermCheck> listGroupNotePermChecks=GroupNotes.GetSaveChecks(_listProcStatsAtLoad,listProcStatsNow,isAttachedChanged,isProvChanged,
+				_procedureGroupOld.ProcDate,dateProc,_procedureGroupOld.DateEntryC,isNoteChanged);
+			return GroupNotes.IsSaveAuthorized(listGroupNotePermChecks,(permType,dateLimit) => Security.IsAuthorized(permType,dateLimit));
 		}
 
 		///<summary>The procedures attached now that weren't attached when the window opened.</summary>
@@ -515,16 +560,15 @@ namespace OpenDental{
 					MsgBox.Show(this,"Please enter a procedure date.");
 					return false;
 				}
-				if(dateProc.Date!=_procedureGroupOld.ProcDate.Date) {
-					if(dateProc.Date>DateTime.Today && !PrefC.GetBool(PrefName.FutureTransDatesAllowed)) {
-						MsgBox.Show(this,"Group notes cannot be dated in the future.");
-						return false;
-					}
-					//The new date must not fall before the user's date limit or the global lock date either.
-					if(GroupNotes.IsTreatedAsComplete(_listProcStatsAtLoad) && !Security.IsAuthorized(_permissionNote,dateProc)) {
-						return false;
-					}
+				if(dateProc.Date!=_procedureGroupOld.ProcDate.Date && dateProc.Date>DateTime.Today && !PrefC.GetBool(PrefName.FutureTransDatesAllowed)) {
+					MsgBox.Show(this,"Group notes cannot be dated in the future.");
+					return false;
 				}
+			}
+			//The permissions for what is saved, not only for what was attached when the window opened: adding a completed procedure, removing every
+			//procedure or moving the date can need Edit Completed Procedure, on the new date (which also applies the global lock date) and the old one.
+			if(!IsAuthorizedForChanges(ListProcedures,GetProcDateEntered(),IsNoteOrSignatureChanged())) {
+				return false;
 			}
 			bool hasAutoNotePrompt=Regex.IsMatch(textNotes.Text,_autoNotePromptRegex);
 			//If ProcNoteSigsBlockedAutoNoteIncomplete is true, do not allow the user to save a changed signature if there are still autonote prompts.

@@ -179,6 +179,82 @@ namespace GroupNoteTests {
 			Assert.IsFalse(IsValid(GroupNotes.GetSignatureKey(procedureGroup,ProcGroupItems.GetForGroup(procedureGroup.ProcNum)),signature));
 		}
 
+		///<summary>Logs in a new user whose only group has exactly these permissions, with no date limits.</summary>
+		private static Userod LogInWith(params EnumPermType[] arrayPermTypes) {
+			string suffix=Guid.NewGuid().ToString("N").Substring(0,8);
+			long userGroupNum=UserGroups.Insert(new UserGroup { Description="GN test group "+suffix });
+			for(int i=0;i<arrayPermTypes.Length;i++) {
+				GroupPermissions.Insert(new GroupPermission { UserGroupNum=userGroupNum,PermType=arrayPermTypes[i],NewerDate=DateTime.MinValue,NewerDays=0 });
+			}
+			Userod userod=new Userod { UserName="gntest_"+suffix };
+			userod.UserNum=Userods.Insert(userod,new List<long> { userGroupNum });
+			Cache.Refresh(InvalidType.Security);
+			Security.CurUser=userod;
+			return userod;
+		}
+
+		///<summary>What the Group Note window does when it saves (FormProcGroup.IsAuthorizedForChanges): statuses from the database, then the checks
+		///from GroupNotes.GetSaveChecks against the logged-in user, without message boxes.</summary>
+		private static bool CanSave(Procedure procedureGroup,List<Procedure> listProceduresAtLoad,List<Procedure> listProceduresNow,DateTime dateProcNew,
+			bool isNoteChanged)
+		{
+			List<ProcStat> listProcStatsAtLoad=listProceduresAtLoad.Select(x => x.ProcStatus).ToList();
+			List<ProcStat> listProcStatsNow=Procedures.GetManyProc(listProceduresNow.Select(x => x.ProcNum).ToList(),false).Select(x => x.ProcStatus).ToList();
+			bool isAttachedChanged=!new HashSet<long>(listProceduresNow.Select(x => x.ProcNum)).SetEquals(listProceduresAtLoad.Select(x => x.ProcNum));
+			List<GroupNotePermCheck> listChecks=GroupNotes.GetSaveChecks(listProcStatsAtLoad,listProcStatsNow,isAttachedChanged,false,
+				procedureGroup.ProcDate,dateProcNew,procedureGroup.DateEntryC,isNoteChanged);
+			return GroupNotes.IsSaveAuthorized(listChecks,(permType,date) => Security.IsAuthorized(permType,date,true));
+		}
+
+		[TestMethod]
+		public void Save_TpGroupNoteGetsCompletedProcedure_RefusedWithoutEditCompletedProcedure() {
+			long patNum=NewPatient();
+			DateTime date=DateTime.Today.AddDays(-2);
+			Procedure procTp=NewProc(patNum,_codeNumA,ProcStat.TP,date,_provNumA);
+			Procedure procC=NewProc(patNum,_codeNumB,ProcStat.C,date,_provNumA);
+			Procedure procedureGroup=NewGroupNote(patNum,date,_provNumA,procTp);
+			List<Procedure> listAtLoad=new List<Procedure> { procTp };
+			//TP Procedure Delete and Edit Note on Completed Procedure, but not Edit Completed Procedure.
+			LogInWith(EnumPermType.ProcDelete,EnumPermType.ProcCompleteNote);
+			Assert.IsTrue(Security.IsAuthorized(GroupNotes.GetStructurePermission(new List<ProcStat> { ProcStat.TP }),procedureGroup.DateEntryC,true),
+				"The window lets this user change the procedures of a group note on TP procedures.");
+			Assert.IsFalse(CanSave(procedureGroup,listAtLoad,new List<Procedure> { procTp,procC },date,isNoteChanged:true),"Completed procedure added.");
+			Assert.IsFalse(CanSave(procedureGroup,listAtLoad,new List<Procedure>(),date,isNoteChanged:true),"Every procedure removed.");
+			Assert.IsTrue(CanSave(procedureGroup,listAtLoad,new List<Procedure> { procTp },date.AddDays(-1),isNoteChanged:true),"Still on TP procedures only.");
+			//With Edit Completed Procedure both are allowed.
+			LogInWith(EnumPermType.ProcDelete,EnumPermType.ProcCompleteNote,EnumPermType.ProcCompleteEdit);
+			Assert.IsTrue(CanSave(procedureGroup,listAtLoad,new List<Procedure> { procTp,procC },date,isNoteChanged:true));
+			Assert.IsTrue(CanSave(procedureGroup,listAtLoad,new List<Procedure>(),date,isNoteChanged:true));
+		}
+
+		[TestMethod]
+		public void Save_GroupNoteMovedBeforeTheGlobalLockDate_Refused() {
+			long patNum=NewPatient();
+			DateTime date=DateTime.Today.AddDays(-2);
+			Procedure procTp=NewProc(patNum,_codeNumA,ProcStat.TP,date,_provNumA);
+			Procedure procC=NewProc(patNum,_codeNumB,ProcStat.C,date,_provNumA);
+			Procedure procedureGroupTp=NewGroupNote(patNum,date,_provNumA,procTp);
+			Procedure procedureGroupC=NewGroupNote(patNum,date,_provNumA,procC);
+			LogInWith(EnumPermType.ProcDelete,EnumPermType.ProcCompleteNote,EnumPermType.ProcCompleteEdit);
+			DateTime dateLock=DateTime.Today.AddDays(-30);
+			string lockDateOld=PrefC.GetString(PrefName.SecurityLockDate);
+			Prefs.UpdateString(PrefName.SecurityLockDate,POut.Date(dateLock,false));
+			Cache.Refresh(InvalidType.Prefs);
+			try {
+				DateTime dateBeforeLock=dateLock.AddDays(-5);
+				Assert.IsFalse(CanSave(procedureGroupC,new List<Procedure> { procC },new List<Procedure> { procC },dateBeforeLock,isNoteChanged:false),
+					"A group note on a completed procedure can't be moved before the lock date.");
+				Assert.IsFalse(CanSave(procedureGroupTp,new List<Procedure> { procTp },new List<Procedure> { procTp,procC },dateBeforeLock,isNoteChanged:false),
+					"Nor one on TP procedures that becomes complete.");
+				Assert.IsTrue(CanSave(procedureGroupC,new List<Procedure> { procC },new List<Procedure> { procC },date.AddDays(-1),isNoteChanged:false),
+					"After the lock date it can.");
+			}
+			finally {
+				Prefs.UpdateString(PrefName.SecurityLockDate,lockDateOld);
+				Cache.Refresh(InvalidType.Prefs);
+			}
+		}
+
 		private static string Sign(string keyData) {
 			using(SignatureBox signatureBox=new SignatureBox()) {
 				signatureBox.SetKeyString("0000000000000000");
