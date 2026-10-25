@@ -542,10 +542,11 @@ namespace OpenDentBusiness{
 		///<summary>Updates the TreatmentCompletedAmt field of the passed in payplans in the database.  
 		///Used when a procedure attached to a payment plan charge is set complete or deleted.
 		///The treatment completed amount only takes into account payplancharge credits that have already occurred
-		///(no charges attached to TP'd procs).</summary>
-		public static void UpdateTreatmentCompletedAmt(List<PayPlan> listPayPlans) {
+		///(no charges attached to TP'd procs).
+		///25.1: each plan whose amount changed gets a PayPlanEdit audit entry with the amounts and, when given, auditTrigger (what caused it).</summary>
+		public static void UpdateTreatmentCompletedAmt(List<PayPlan> listPayPlans,string auditTrigger="") {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				Meth.GetVoid(MethodBase.GetCurrentMethod(),listPayPlans);
+				Meth.GetVoid(MethodBase.GetCurrentMethod(),listPayPlans,auditTrigger);
 				return;
 			}
 			foreach(PayPlan payPlanCur in listPayPlans) {
@@ -555,18 +556,21 @@ namespace OpenDentBusiness{
 					.Where(x => x.ChargeDate.Date <= DateTime.Today.Date)
 					.Select(x => x.Principal)
 					.Sum();
+				double completedAmtOld=payPlanCur.CompletedAmt;
 				payPlanCur.CompletedAmt=completedAmt;
 				Update(payPlanCur);
+				PayPlanAudits.LogCompletedAmtChange(payPlanCur,completedAmtOld,completedAmt,auditTrigger);
 			}
 		}
 
 		///<summary>Updates the TreatmentCompletedAmt field of the passed in payplans in the database.  
 		///Used when a procedure attached to a payment plan charge is set complete or deleted.
 		///The treatment completed amount only takes into account payplancharge credits that have already occurred
-		///(no charges attached to TP'd procs).</summary>
-		public static void UpdateTreatmentCompletedAmtsDynamicPaymentPlan(List<PayPlan> listPayPlans) {
+		///(no charges attached to TP'd procs).
+		///25.1: each plan whose amount changed gets a PayPlanEdit audit entry with the amounts and, when given, auditTrigger (what caused it).</summary>
+		public static void UpdateTreatmentCompletedAmtsDynamicPaymentPlan(List<PayPlan> listPayPlans,string auditTrigger="") {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				Meth.GetVoid(MethodBase.GetCurrentMethod(),listPayPlans);
+				Meth.GetVoid(MethodBase.GetCurrentMethod(),listPayPlans,auditTrigger);
 				return;
 			}
 			List<PayPlan> listPayPlansUnique=listPayPlans.FindAll(x=>x.IsDynamic).DistinctBy(x=>x.PayPlanNum).ToList();
@@ -576,8 +580,10 @@ namespace OpenDentBusiness{
 				List<PayPlanProductionEntry> payPlanProductionEntry=PayPlanProductionEntry.GetProductionForLinks(listPayPlanLinksForPlan);
 				double completedAmt=0;
 				completedAmt=PayPlanProductionEntry.GetDynamicPayPlanCompletedAmount(payPlanCur,payPlanProductionEntry);
+				double completedAmtOld=payPlanCur.CompletedAmt;
 				payPlanCur.CompletedAmt=completedAmt;
 				Update(payPlanCur);
+				PayPlanAudits.LogCompletedAmtChange(payPlanCur,completedAmtOld,completedAmt,auditTrigger);
 			}
 		}
 
@@ -604,11 +610,13 @@ namespace OpenDentBusiness{
 			}
 			string command;
 			if(plan.PlanNum==0 || plan.IsDynamic) {  //Patient payment plan
-				command="SELECT COUNT(*) FROM paysplit WHERE PayPlanNum="+POut.Long(plan.PayPlanNum);
+				command="SELECT COUNT(*) FROM paysplit WHERE PayPlanNum="+POut.Long(plan.PayPlanNum)
+					+PaySplitPayPlanAttach.GetNotPrepayWhereClause();//25.2: plan prepayments alone do not block the delete
 				if(Db.GetCount(command)!="0") {
 					throw new ApplicationException
 						(Lans.g("PayPlans","You cannot delete a payment plan with patient payments attached.  Unattach the payments first."));
 				}
+				PaySplitPayPlanAttach.DetachPrepaymentsFromPayPlan(plan);//they become unattached prepayments of the same unearned type
 			}
 			else {  //Insurance payment plan
 				command="SELECT COUNT(*) FROM claimproc WHERE PayPlanNum="+POut.Long(plan.PayPlanNum)+" AND claimproc.Status IN ("
@@ -806,12 +814,14 @@ namespace OpenDentBusiness{
 						continue;
 					}
 					payPlan.IsClosed=true;
+					double completedAmtOld=payPlan.CompletedAmt;
 					if(payPlan.InsSubNum>0) {
 						//Manually closing ins payment plan will set the CompletedAmt to the total InsPay.
 						payPlan.CompletedAmt=PIn.Double(table.Rows[i]["InsPay"].ToString());
 						PayPlanCharges.UpdateInsPlanPayPlanCharges(payPlan);
 					}
 					PayPlans.Update(payPlan);
+					PayPlanAudits.LogCompletedAmtChange(payPlan,completedAmtOld,payPlan.CompletedAmt,"by the Close Payment Plan tool");//25.1
 					string logMessage=Lans.g("PayPlans","Patient Payment Plan closed using Close Payment Plan tool.");
 					if(payPlan.InsSubNum>0) {
 						logMessage=Lans.g("PayPlans","Insurance Payment Plan closed using Close Payment Plan tool.");
