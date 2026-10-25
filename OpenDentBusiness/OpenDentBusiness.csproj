@@ -1389,6 +1389,8 @@
     <Compile Include="Misc\Mime.cs" />
     <Compile Include="Misc\NTPv4.cs" />
     <Compile Include="Misc\TsiMsgConstructor.cs" />
+    <Compile Include="Misc\WikiSearchLimit.cs" />
+    <Compile Include="Misc\WikiStaticExport.cs" />
     <Compile Include="Misc\WindowsTime.cs" />
     <Compile Include="Remoting\ClientSL.cs" />
     <Compile Include="Data Interface\AccountingAutoPays.cs" />
