@@ -100,7 +100,13 @@ No schema change, no migration step (the level range 2027001401-2027001499 is un
   auto import writes its `EFormImport` entry with `FKey` 0, so an auto-imported eForm doesn't show Imported. If it should, that entry
   needs `FKey`=EFormNum and "imported" in its text.
 - **M2-02** (26.1 registries) owns `UserOdFkeyType` and `EnumPinTests.cs`: keep value 114 and its exception when the enum and the pin test
-  move to the 26.1 list (26.1 adds no `UserOdFkeyType` value after 29 as far as the published docs show).
+  move to the 26.1 list (26.1 adds no `UserOdFkeyType` value after 29 as far as the published docs show). Checked against `port/m2-02`:
+  it adds `DefaultTestingTeamJM` (29) at the same place, so `UserOdPref.cs` and the `UserOdFkeyType` line of
+  `ChangedEnums_HaveNoMembersOutsideThePublishedList` will conflict at merge. Keep both: the enum ends with `DefaultTestingTeamJM` and then
+  `PatientFormsView=114`, and the exception list becomes `{ "DefaultTestingTeamJM","PatientFormsView" }`. M2-02's `M202Tests` pin only
+  published numbers, so 114 doesn't trip them.
+- **B-AUDIT** adds one line to `FormSheetImport` (the preferred-name and clinic audit after `Patients.Update`), in a different hunk from
+  this package's two audit entries at the end of the import. Its entries use `PatientEdit`, so they never count as an import here.
 - Any other package that adds a fork-only `UserOdFkeyType` value must avoid 114; `BEFTests` fails if two members share it.
 
 ## Tests
@@ -115,6 +121,10 @@ No schema change, no migration step (the level range 2027001401-2027001499 is un
 - `PatientFormsDbTests` (3, scratch MariaDB database at the 25.3.48 level, synthetic rows only): statuses from flags, stored statuses and
   audit entries for sheets, eForms and a scanned document (including the entries that must not count), a patient with no forms, and the
   per-user view in `userodpref`.
+
+Assemblies to run for this package: `BEFTests`, `EFormTests` (eForm designer and import code this package edits), `SheetTests` (sheet
+import), `RegistryTests` (the enum pin exception), plus `NoHqTests`. Last run on this branch: all passed (BEFTests 29, EFormTests 60,
+SheetTests 31, RegistryTests 33, NoHqTests 49); build 0 errors, 374 warnings (baseline); `tools/Test-NoHqHosts.ps1` passed.
 
 Not tested: the windows themselves. The program was not started (owner rule). Worth checking by hand: the toolbar's look and tooltips on
 disabled buttons, the layout at 100% and 150% scaling, the Children window and nested editing, the rename question, and that the Show and
