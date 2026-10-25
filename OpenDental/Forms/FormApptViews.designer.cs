@@ -47,6 +47,7 @@ namespace OpenDental {
 			this.checkTwoRows = new OpenDental.UI.CheckBox();
 			this.butProcColors = new OpenDental.UI.Button();
 			this.comboClinic = new OpenDental.UI.ComboBoxClinicPicker();
+			this.butCopy = new OpenDental.UI.Button();
 			this.groupBox1.SuspendLayout();
 			this.SuspendLayout();
 			// 
@@ -66,6 +67,7 @@ namespace OpenDental {
 			this.listViews.Size = new System.Drawing.Size(183, 329);
 			this.listViews.TabIndex = 2;
 			this.listViews.DoubleClick += new System.EventHandler(this.listViews_DoubleClick);
+			this.listViews.SelectedIndexChanged += new System.EventHandler(this.listViews_SelectedIndexChanged);
 			// 
 			// butDown
 			// 
@@ -162,10 +164,21 @@ namespace OpenDental {
 			this.comboClinic.Size = new System.Drawing.Size(185, 21);
 			this.comboClinic.TabIndex = 135;
 			this.comboClinic.SelectionChangeCommitted += new System.EventHandler(this.comboClinic_SelectionChangeCommitted);
-			// 
+			//
+			// butCopy
+			//
+			this.butCopy.Enabled = false;
+			this.butCopy.Location = new System.Drawing.Point(55, 437);
+			this.butCopy.Name = "butCopy";
+			this.butCopy.Size = new System.Drawing.Size(89, 24);
+			this.butCopy.TabIndex = 37;
+			this.butCopy.Text = "Copy View";
+			this.butCopy.Click += new System.EventHandler(this.butCopy_Click);
+			//
 			// FormApptViews
-			// 
+			//
 			this.ClientSize = new System.Drawing.Size(476,485);
+			this.Controls.Add(this.butCopy);
 			this.Controls.Add(this.comboClinic);
 			this.Controls.Add(this.butProcColors);
 			this.Controls.Add(this.groupBox1);
@@ -200,5 +213,6 @@ namespace OpenDental {
 		private RadioButton radioFive;
 		private OpenDental.UI.Button butProcColors;
 		private OpenDental.UI.ComboBoxClinicPicker comboClinic;
+		private OpenDental.UI.Button butCopy;
 	}
 }
