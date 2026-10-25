@@ -105,7 +105,7 @@ Mount / Acquire reads only the `[Twain]` section. Other sections are for later v
 
 | Key | Default | Set it to | What it does |
 |---|---|---|---|
-| `ThreadModal` | `1` | `1` | While the sensor software is open for a Mount / Acquire slot, Open Dental's windows are locked and the Capture window offers Cancel. Use `0` only to troubleshoot: then only the main window is disabled, and there is no Capture window and no Cancel. Scans are never affected. |
+| `ThreadModal` | `1` | `1` | While the sensor software is open for a Mount / Acquire slot, Open Dental's windows are locked and the Capture window offers Cancel. Use `0` only to troubleshoot, with the phantom and the test patient: then Open Dental's main window stays usable during a slot, there is no Capture window and no Cancel, and nothing stops a patient change in the middle of a series. Scans are never affected. |
 | `RestrictSources` | `0` | `1` on every computer | Only sources listed in `AllowedSources` can be opened, by Mount / Acquire and by the Scan buttons. Any other source is refused with "This TWAIN source is not enabled on this computer." |
 | `AllowedSources` | empty | first every scanner this computer already uses; then the sensor's source, but only on a computer that passed acceptance, or while its own acceptance runs (phantom and test patient only) | Product names separated by `\|`. Each must match a whole product name; case and surrounding spaces are ignored. The gate checks the source that would actually open, so a shortened Twain Name does not get round it. With `RestrictSources=1` and an empty list, nothing can be opened, not even a scanner. A name that contains `;` cannot be listed. |
 | `JournalKeep` | `200` | `200` or more | How many of the most recent journal copies are kept. `0` turns the journal off: never use `0`. Each copy is the uncompressed image, about 1 to 3 MB for an intraoral image, so 200 copies take roughly 0.2 to 0.6 GB. |
@@ -420,7 +420,7 @@ Run this on the test computer first, with a phantom and a test patient record on
 6. **Patient change and logoff time.** While the sensor software is open, try to select another patient in the main window: it is locked. Confirm that every capture user's automatic logoff time is longer than the longest series (section 4.3).
 7. **Storage.** Repeat one series in each storage mode the clinic uses.
 8. **Quarantine recovery.** Recover one quarantine image from step 5 with the procedure in section 10.2, on the test patient.
-9. **Rollback.** On the test computer, do rollback steps 1 and 3 (section 13). With the sensor removed from `AllowedSources`, Mount / Acquire with it is refused and Scan Document still works. With `ThreadModal=0`, a phantom slot runs without the Capture window. Then restore the settings.
+9. **Rollback.** On the test computer, do rollback steps 1 and 3 (section 13). With the sensor removed from `AllowedSources`, Mount / Acquire with it is refused and Scan Document still works. With `ThreadModal=0`, a phantom slot runs without the Capture window, and the main window is not locked during the slot: confirm that it responds, without changing the patient. Then restore the settings, including `ThreadModal=1`.
 
 ### 12.2 Acceptance record
 
@@ -451,7 +451,7 @@ Use the smallest step that solves the problem. Settings take effect from the nex
 
 1. **Stop sensor capture on one computer:** remove the sensor's product name from `AllowedSources` (keep `RestrictSources=1`). Mount / Acquire with the sensor is then refused with the gate notice.
 2. **Stop it everywhere:** set the device row's Computer Name back to the test computer, or delete the device row (Setup > Imaging > Devices).
-3. **Problems with the locked windows or the Capture window:** set `ThreadModal=0`. Only the main window is then disabled during a slot, with no Capture window and no Cancel. Report the problem.
+3. **Problems with the locked windows or the Capture window:** set `ThreadModal=0`, only to troubleshoot with the phantom and the test patient, or with the series supervised. Open Dental's main window then stays usable during a slot, there is no Capture window and no Cancel, and nothing stops a patient change in the middle of a series: staff must not click in Open Dental or change the patient until the slot ends. Report the problem, and set `ThreadModal=1` again as soon as it is solved.
 4. **Remove the source gate:** set `RestrictSources=0`. Every source can then be opened again, so do this only on a computer where the sensor's source is not installed (step 5). Elsewhere it could be opened like any scanner.
 5. **Remove the sensor's source:** uninstall it with the supplier's uninstaller.
 6. Keep the Capture folder until every quarantine image is recovered (section 10.2).
