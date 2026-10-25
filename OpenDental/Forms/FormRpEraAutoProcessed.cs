@@ -323,6 +323,8 @@ namespace OpenDental {
 			gridClaims.Columns.Add(new GridColumn(Lan.g("TableEtrans835Claims","Supp?"),65,HorizontalAlignment.Center));
 			gridClaims.Columns.Add(new GridColumn(Lan.g("TableEtrans835Claims","ClaimAdj?"),65,HorizontalAlignment.Center));
 			gridClaims.Columns.Add(new GridColumn(Lan.g("TableEtrans835Claims","MoreClaims?"),65,HorizontalAlignment.Center));
+			//B-ERA (25.2): for a claim that is not received, the entries of "Don't auto-process claims w/ these CARCs" it carries, e.g. "CO-97 on procedure Z0220".
+			gridClaims.Columns.Add(new GridColumn(Lan.g("TableEtrans835Claims","CARC Hold"),100));//Last column: the grid widens it to fill the rest.
 			#endregion Init columns
 			if(eraRowData==null) {
 				gridClaims.EndUpdate();
@@ -348,6 +350,7 @@ namespace OpenDental {
 			List<Hx835_ShortClaim> listHx835_ShortClaims=Hx835_ShortClaim.GetClaimsFromClaimNums(listClaimNums);
 			List<long> listProcNumsOnClaims=listShortClaimProcs.Select(x => x.ProcNum).Where(x => x!=0).ToList();
 			List<Hx835_ShortClaimProc> listHx835_ShortClaimProcsForUnsentClaimsAll=Hx835_ShortClaimProc.GetUnsentForProcNums(listProcNumsOnClaims);
+			List<EraCarcRule> listEraCarcRules=EraCarcRules.GetRulesFromPref();//B-ERA
 			#endregion Get ERA data
 			#region Fill rows
 			for(int i=0;i<x835.ListClaimsPaid.Count;i++) {
@@ -427,6 +430,11 @@ namespace OpenDental {
 				row.Cells.Add(stringSupplemental);
 				row.Cells.Add(stringClaimAdjustments);
 				row.Cells.Add(stringOtherUnsentClaims);
+				string stringCarcHold="";//B-ERA
+				if(!isClaimPaidProcessed) {
+					stringCarcHold=EraCarcRules.GetDescription(EraCarcRules.GetMatches(listEraCarcRules,hx835_Claim));
+				}
+				row.Cells.Add(stringCarcHold);
 				row.Tag=new ClaimRowData(hx835_Claim,isClaimPaidProcessed,shortClaim,listHx835_ShortClaimProcsForUnsentClaims);
 				gridClaims.ListGridRows.Add(row);
 			}
