@@ -409,6 +409,7 @@ namespace OpenDental {
 			if(_arrayDefsAcctProcQuickAdd.Length==0) {
 				contextMenuQuickProcs.MenuItems.Add(new MenuItem(Lan.g(this,"No quick charge procedures defined. Go to Setup | Definitions to add."),(x,y) => { }));//"null" event handler.
 			}
+			AddQuickProcsSalesTaxItem();//ControlAccount.SalesTax.cs
 		}
 		#endregion Methods - Event Handlers ContextMenus
 
@@ -1687,7 +1688,7 @@ namespace OpenDental {
 			if(sender.GetType()!=typeof(MenuItem)) {
 				return;
 			}
-			Def defQuickCharge=_arrayDefsAcctProcQuickAdd[contextMenuQuickProcs.MenuItems.IndexOf((MenuItem)sender)];
+			Def defQuickCharge=_arrayDefsAcctProcQuickAdd[contextMenuQuickProcs.MenuItems.IndexOf((MenuItem)sender)-_countQuickProcsLeadingItems];
 			string[] stringArrayProcCodes=defQuickCharge.ItemValue.Split(',');
 			if(stringArrayProcCodes.Length==0) {
 				//No items entered into the definition category.  Notify the user.
