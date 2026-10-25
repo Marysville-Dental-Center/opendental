@@ -517,12 +517,14 @@ namespace ImagingDeviceManager.TwainProtocol {
 		///- MSG_XFERREADY: every image offered goes to the drain sink, then MSG_DISABLEDS again. One that arrives with nothing pending
 		///  (MSG_GET reports 0) is ignored.
 		///- MSG_CLOSEDSREQ: the end condition is read (DAT_STATUS), then MSG_DISABLEDS again.
+		///- A disable that then succeeds is logged with the notification and the time into the wait.
 		///- A disable refused again keeps the wait going, within the same bound.
 		///- Neither in time: the second consecutive MSG_DISABLEDS, which the contract plans to succeed, leaving any images with the
 		///  source for redelivery; the log and the sink hear that the source may still hold images.
 		///Without a sink, offered images are discarded with MSG_RESET (they stay undelivered in the source).</summary>
 		private void WaitAfterRefusedDisable(TwainStopReason reason,TwainCaptureSettings settings) {
-			long deadlineMs=NowMs+(long)Math.Max(0,settings.RefusedDisableWait.TotalMilliseconds);
+			long startMs=NowMs;
+			long deadlineMs=startMs+(long)Math.Max(0,settings.RefusedDisableWait.TotalMilliseconds);
 			SetWaitingForSource(true);
 			try {
 				while(true) {
@@ -550,6 +552,8 @@ namespace ImagingDeviceManager.TwainProtocol {
 						break;//The bound passed, or the source stopped responding.
 					}
 					if(State==5 && SendDisable()) {
+						Log("\""+SourceName+"\" was disabled after "+(notification==Tw.MSG_XFERREADY ? "MSG_XFERREADY" : "MSG_CLOSEDSREQ")+", "
+							+((NowMs-startMs)/1000.0).ToString("0.0",System.Globalization.CultureInfo.InvariantCulture)+" s into the wait.");
 						return;
 					}
 					Log("\""+SourceName+"\" refused MSG_DISABLEDS again (condition code "+ToHex(LastConditionCode)+"); still waiting.");

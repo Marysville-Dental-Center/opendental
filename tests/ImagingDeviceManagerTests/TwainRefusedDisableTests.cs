@@ -75,6 +75,7 @@ namespace ImagingDeviceManager.Tests {
 			Assert.IsFalse(Session.SourceMayHoldImages);
 			CollectionAssert.AreEqual(new List<bool> { true,false },_listWaiting,"The status window can say it is waiting.");
 			Assert.IsTrue(_harness.HasLog("Stopping \""+Helper.ProductName+"\" (Cancel); safe disable in effect: yes."),_harness.LogText);
+			Assert.IsTrue(_harness.HasLog("\""+Helper.ProductName+"\" was disabled after MSG_XFERREADY, "),_harness.LogText);
 			Assert.IsFalse(listCalls.Any(x => x.Condition==FakeHelperSource.CodeDisableImagesPending),"Never disabled in state 6.");
 			_harness.AssertDisabledOnlyInState5();
 			_harness.AssertStatusReadAfterEveryFailure();
@@ -94,6 +95,8 @@ namespace ImagingDeviceManager.Tests {
 			Assert.AreEqual(Tw.TWCC_SUCCESS,Session.EndConditionCode);
 			Assert.AreEqual(0,Sink.ListDrained.Count);
 			Assert.AreEqual(0,Sink.ListMayStillHold.Count);
+			Assert.IsTrue(_harness.HasLog("was disabled after MSG_CLOSEDSREQ, "),_harness.LogText);
+			Assert.IsFalse(_harness.HasLog("No notification"),_harness.LogText);
 		}
 
 		[TestMethod]
