@@ -28,6 +28,7 @@
       "tests\\EFormTests\\EFormTests.csproj",
       "tests\\InsuranceTests\\InsuranceTests.csproj",
       "tests\\ImagingTests\\ImagingTests.csproj",
+      "tests\\GroupNoteTests\\GroupNoteTests.csproj",
       "tests\\ForkMigrationTests\\ForkMigrationTests.csproj",
       "tests\\PayPlanTests\\PayPlanTests.csproj",
       "tests\\MedicationTests\\MedicationTests.csproj",

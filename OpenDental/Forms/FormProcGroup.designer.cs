@@ -49,6 +49,10 @@ namespace OpenDental {
 			this.butChangeUser = new OpenDental.UI.Button();
 			this.labelPermAlert = new System.Windows.Forms.Label();
 			this.butEditAutoNote = new OpenDental.UI.Button();
+			this.labelProv = new System.Windows.Forms.Label();
+			this.comboProv = new OpenDental.UI.ComboBox();
+			this.butAdd = new OpenDental.UI.Button();
+			this.butRemove = new OpenDental.UI.Button();
 			this.SuspendLayout();
 			// 
 			// label7
@@ -117,9 +121,9 @@ namespace OpenDental {
 			// 
 			this.textProcDate.Location = new System.Drawing.Point(98, 12);
 			this.textProcDate.Name = "textProcDate";
-			this.textProcDate.ReadOnly = true;
 			this.textProcDate.Size = new System.Drawing.Size(76, 20);
 			this.textProcDate.TabIndex = 100;
+			this.textProcDate.TextChanged += new System.EventHandler(this.textProcDate_TextChanged);
 			// 
 			// signatureBoxWrapper
 			// 
@@ -139,8 +143,8 @@ namespace OpenDental {
 			this.gridProc.HScrollVisible = true;
 			this.gridProc.Location = new System.Drawing.Point(10, 375);
 			this.gridProc.Name = "gridProc";
-			this.gridProc.SelectionMode = OpenDental.UI.GridSelectionMode.None;
-			this.gridProc.Size = new System.Drawing.Size(573, 222);
+			this.gridProc.SelectionMode = OpenDental.UI.GridSelectionMode.MultiExtended;
+			this.gridProc.Size = new System.Drawing.Size(489, 222);
 			this.gridProc.TabIndex = 193;
 			this.gridProc.Title = "Procedures";
 			this.gridProc.TranslationName = "TableProg";
@@ -282,9 +286,50 @@ namespace OpenDental {
 			this.butEditAutoNote.Text = "Edit Auto Note";
 			this.butEditAutoNote.Click += new System.EventHandler(this.ButEditAutoNote_Click);
 			// 
+			// labelProv
+			// 
+			this.labelProv.Location = new System.Drawing.Point(174, 13);
+			this.labelProv.Name = "labelProv";
+			this.labelProv.Size = new System.Drawing.Size(50, 18);
+			this.labelProv.TabIndex = 211;
+			this.labelProv.Text = "Provider";
+			this.labelProv.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			// 
+			// comboProv
+			// 
+			this.comboProv.Location = new System.Drawing.Point(225, 11);
+			this.comboProv.Name = "comboProv";
+			this.comboProv.Size = new System.Drawing.Size(78, 21);
+			this.comboProv.TabIndex = 212;
+			// 
+			// butAdd
+			// 
+			this.butAdd.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			this.butAdd.Icon = OpenDental.UI.EnumIcons.Add;
+			this.butAdd.Location = new System.Drawing.Point(507, 375);
+			this.butAdd.Name = "butAdd";
+			this.butAdd.Size = new System.Drawing.Size(76, 24);
+			this.butAdd.TabIndex = 213;
+			this.butAdd.Text = "Add";
+			this.butAdd.Click += new System.EventHandler(this.butAdd_Click);
+			// 
+			// butRemove
+			// 
+			this.butRemove.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			this.butRemove.Location = new System.Drawing.Point(507, 405);
+			this.butRemove.Name = "butRemove";
+			this.butRemove.Size = new System.Drawing.Size(76, 24);
+			this.butRemove.TabIndex = 214;
+			this.butRemove.Text = "Remove";
+			this.butRemove.Click += new System.EventHandler(this.butRemove_Click);
+			// 
 			// FormProcGroup
 			// 
 			this.ClientSize = new System.Drawing.Size(615, 645);
+			this.Controls.Add(this.butRemove);
+			this.Controls.Add(this.butAdd);
+			this.Controls.Add(this.comboProv);
+			this.Controls.Add(this.labelProv);
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.butEditAutoNote);
 			this.Controls.Add(this.labelPermAlert);
@@ -346,5 +391,9 @@ namespace OpenDental {
 		private UI.Button butChangeUser;
 		private UI.Button butEditAutoNote;
 		private Label labelPermAlert;
+		private Label labelProv;
+		private UI.ComboBox comboProv;
+		private UI.Button butAdd;
+		private UI.Button butRemove;
 	}
 }

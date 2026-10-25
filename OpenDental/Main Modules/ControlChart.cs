@@ -1024,12 +1024,10 @@ namespace OpenDental {
 			if(!CanAddGroupNote(doGetProcNote:true,isSilent:false,listProcedures,isCheckDb:true)) {
 				return;
 			}
-			DateTime dateProc=listProcedures[0].ProcDate;
-			long clinicNum=0;
-			if(PrefC.HasClinicsEnabled) {
-				clinicNum=listProcedures[0].ClinicNum;
-			}
-			long provNum=listProcedures[0].ProvNum;
+			//25.1: the procedures can have any status, date, provider or clinic, and there may be none. The group note gets its own defaults.
+			DateTime dateProc=GroupNotes.GetDefaultProcDate(listProcedures,DateTime.Today);
+			long clinicNum=GroupNotes.GetDefaultClinicNum(listProcedures,Clinics.ClinicNum,PrefC.HasClinicsEnabled);
+			long provNum=GroupNotes.GetDefaultProvNum(listProcedures,Security.CurUser.ProvNum,PrefC.GetLong(PrefName.PracticeDefaultProv));
 			Procedure procedureGroup=new Procedure();
 			procedureGroup.PatNum=Pd.PatNum;
 			procedureGroup.ProcStatus=ProcStat.EC;
@@ -1076,8 +1074,12 @@ namespace OpenDental {
 				return;
 			}
 			if(PrefC.GetBool(PrefName.ProcGroupNoteDoesAggregate)) {
+				//Only the procedures whose notes were copied into the group note above, and that are still attached after the window closed
+				//(procedures can be removed in the window, and nothing stays attached when the group note was deleted there).
+				List<long> listProcNumsStillAttached=formProcGroup.ListProcedures.Select(x => x.ProcNum).ToList();
 				//remove the notes from all the attached procs where there          is a note           and           there is no signature
-				List<Procedure> listProceduresToUpdate=listProcedures.Where(x=>!string.IsNullOrWhiteSpace(x.Note) && string.IsNullOrWhiteSpace(x.Signature)).ToList();
+				List<Procedure> listProceduresToUpdate=listProcedures.Where(x=>!string.IsNullOrWhiteSpace(x.Note) && string.IsNullOrWhiteSpace(x.Signature)
+					&& listProcNumsStillAttached.Contains(x.ProcNum)).ToList();
 				for(int i=0;i<listProceduresToUpdate.Count;i++) {
 					Procedure procedureOld=listProceduresToUpdate[i].Copy();
 					Procedure procedureChanged=listProceduresToUpdate[i].Copy();
@@ -1537,7 +1539,13 @@ namespace OpenDental {
 			ShowMenuItemHelper(menuItemSetEC,x => CanChangeProcsStatus(ProcStat.EC,x.DataRow,isCheckDb:false,isSilent:true));
 			ShowMenuItemHelper(menuItemSetComplete,x => CanChangeProcsStatus(ProcStat.C,x.DataRow,isCheckDb:false,isSilent:true));
 			ShowMenuItemHelper(menuItemEditSelected,x => CanEditRow(x.DataRow,isCheckDb:false,isSilent:true,new List<Procedure> { }));
-			ShowMenuItemHelper(menuItemGroupSelected,x => CanGroupRow(x.DataRow,isGetProcNote:false,isSilent:true,new List<Procedure> { },isCheckDb:false));
+			if(gridProg.SelectedIndices.Length==0) {
+				//25.1: with nothing selected, Group Note makes an empty group note.
+				menuItemGroupSelected.Visible=!IsPatientNull();
+			}
+			else {
+				ShowMenuItemHelper(menuItemGroupSelected,x => CanGroupRow(x.DataRow,isGetProcNote:false,isSilent:true,new List<Procedure> { },isCheckDb:false));
+			}
 			ShowMenuItemHelper(menuItemPrintDay,x => CanPrintDay(x.DataRow,x.Index));
 			ShowMenuItemHelper(menuItemLabFeeDetach,x => CanDetachLabFee(x.DataRow,isSilent:true));
 			ShowMenuItemHelper(menuItemLabFee,x => CanAttachLabFee(isSilent:true,new List<long> { },new List<long> { }));
@@ -5141,44 +5149,16 @@ namespace OpenDental {
 			Procedures.ComputeEstimates(procedureParent,Pd.PatNum,ClaimProcs.RefreshForProc(procedureParent.ProcNum),false,Pd.ListInsPlans,Pd.ListPatPlans,Pd.ListBenefits,Pd.Patient.Age,Pd.ListInsSubs);
 		}
 
+		///<summary>Returns true if a group note can be made for the selected rows, and fills listProcedures with their procedures. 25.1: the procedures
+		///no longer have to share a date, clinic or provider, and with nothing selected an empty group note is made.</summary>
 		private bool CanAddGroupNote(bool doGetProcNote,bool isSilent,List<Procedure> listProcedures,bool isCheckDb) {
 			DataRow dataRow;
-			if(gridProg.SelectedIndices.Length==0) {
-				if(!isSilent) {
-					MsgBox.Show(this,"Please select procedures to attach a group note to."); 
-				}
+			if(IsPatientNull()) {
 				return false;
 			}
 			for(int i=0;i<gridProg.SelectedIndices.Length;i++) {
 				dataRow=(DataRow)gridProg.ListGridRows[gridProg.SelectedIndices[i]].Tag;
 				if(!CanGroupRow(dataRow,doGetProcNote,isSilent,listProcedures,isCheckDb)) {
-					return false;
-				}
-			}
-			//Validate the list of procedures------------------------------------------------------------------------------------
-			DateTime dateProc=listProcedures[0].ProcDate;
-			long clinicNum=0;
-			if(PrefC.HasClinicsEnabled) {
-				clinicNum=listProcedures[0].ClinicNum;
-			}
-			long provNum=listProcedures[0].ProvNum;
-			for(int i=0;i<listProcedures.Count;i++) {//starts at 0 to check procStatus
-				if(listProcedures[i].ProcDate!=dateProc) {
-					if(!isSilent) {
-						MsgBox.Show(this,"Procedures must have the same date to attach a group note."); 
-					}
-					return false;
-				}
-				if(PrefC.HasClinicsEnabled && listProcedures[i].ClinicNum!=clinicNum) {
-					if(!isSilent) {
-						MsgBox.Show(this,"Procedures must have the same clinic to attach a group note."); 
-					}
-					return false;
-				}
-				if(listProcedures[i].ProvNum!=provNum) {
-					if(!isSilent) {
-						MsgBox.Show(this,"Procedures must have the same provider to attach a group note."); 
-					}
 					return false;
 				}
 			}
@@ -5765,27 +5745,11 @@ namespace OpenDental {
 			if(procedure==null) {
 				return false;
 			}
-			if(ProcedureCodes.GetStringProcCode(procedure.CodeNum,doThrowIfMissing: false)==ProcedureCodes.GroupProcCode) {
+			//25.1: any status can be attached. Group notes, locked procedures and deleted or invalidated procedures still can't.
+			string blockReason=GroupNotes.GetAttachBlockReason(procedure);
+			if(blockReason!=null) {
 				if(!isSilent) {
-					MsgBox.Show(this,"You cannot attach a group note to another group note.");
-				}
-				return false;
-			}
-			if(procedure.IsLocked) {
-				if(!isSilent) {
-					MsgBox.Show(this,"Locked procedures cannot be attached to a group note.");
-				}
-				return false;
-			}
-			if(procedure.ProcStatus!=ProcStat.C) {
-				if(!isSilent) {
-					MsgBox.Show(this,"Procedures must be complete to attach a group note.");
-				}
-				return false;
-			}
-			if(procedure.ProcStatus==ProcStat.C && procedure.ProcDate.Date>DateTime.Today.Date && !PrefC.GetBool(PrefName.FutureTransDatesAllowed)) {
-				if(!isSilent) {
-					MsgBox.Show(this,"Completed procedures cannot be set complete for days in the future.");
+					MsgBox.Show(this,blockReason);
 				}
 				return false;
 			}
@@ -5925,20 +5889,8 @@ namespace OpenDental {
 			if(procNum!=0) {//if this is a procedure 
 				//if it's a group note and we are viewing by tooth number
 				if(dataRow["ProcCode"].ToString()==ProcedureCodes.GroupProcCode && checkShowTeeth.Checked) {
-					//consult the list of previously obtained procedures and ProcGroupItems to see if this procgroup should be visible.
-					bool showGroupNote=false;
-					for(int j=0;j<listProcGroupItems.Count;j++) {//loop through all procGroupItems for the patient. 
-						if(listProcGroupItems[j].GroupNum!=procNum) {
-							continue;
-						}
-						//if this item is associated with this group note
-						for(int k=0;k<listProcNums.Count;k++) {//check all of the visible procs
-							if(listProcNums[k]==listProcGroupItems[j].ProcNum) {//if this group note is associated with a visible proc
-								showGroupNote=true;
-							}
-						}
-					}
-					if(!showGroupNote) {
+					//A group note shows when one of its procedures is visible. 25.1: one with nothing attached shows whenever its date is in range.
+					if(!GroupNotes.IsVisibleWithToothFilter(procNum,listProcGroupItems,listProcNums)) {
 						return false;//don't show it in the grid
 					}
 				}

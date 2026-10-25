@@ -87,6 +87,27 @@ namespace OpenDentBusiness{
 			Db.NonQ(command);
 		}
 
+		///<summary>Makes the procedures attached to a group note match listProcNums (Open Dental 25.1: procedures can be added to or removed from an
+		///existing group note). Deletes the links to procedures that are not in the list and inserts links for the new ones. Links that stay are left
+		///alone, so their ProcGroupItemNums, which are part of the signature key, don't change. Returns the links as they are now, ordered by ProcNum
+		///like GetForGroup.</summary>
+		public static List<ProcGroupItem> SyncForGroup(long groupNum,List<long> listProcNums) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetObject<List<ProcGroupItem>>(MethodBase.GetCurrentMethod(),groupNum,listProcNums);
+			}
+			List<long> listProcNumsWanted=(listProcNums??new List<long>()).Where(x => x!=0 && x!=groupNum).Distinct().ToList();
+			List<ProcGroupItem> listProcGroupItemsDb=GetForGroup(groupNum);
+			List<long> listProcGroupItemNumsToDelete=listProcGroupItemsDb.FindAll(x => !listProcNumsWanted.Contains(x.ProcNum))
+				.Select(x => x.ProcGroupItemNum).ToList();
+			DeleteMany(listProcGroupItemNumsToDelete);
+			List<long> listProcNumsLinked=listProcGroupItemsDb.Select(x => x.ProcNum).ToList();
+			List<long> listProcNumsToAdd=listProcNumsWanted.FindAll(x => !listProcNumsLinked.Contains(x));
+			for(int i=0;i<listProcNumsToAdd.Count;i++) {
+				Crud.ProcGroupItemCrud.Insert(new ProcGroupItem { GroupNum=groupNum,ProcNum=listProcNumsToAdd[i] });
+			}
+			return GetForGroup(groupNum);
+		}
+
 		///<summary>Returns a count of the number of procedures attached to a group note.  Takes the ProcNum of a group note.
 		///Used when deleting group notes to determine which permission to check. If a list of complete statuses is not included, will default to
 		///C, EO, and EC.</summary>
