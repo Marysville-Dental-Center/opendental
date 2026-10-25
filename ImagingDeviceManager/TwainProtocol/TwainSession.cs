@@ -25,6 +25,9 @@ namespace ImagingDeviceManager.TwainProtocol {
 		private const int MaxConsecutiveEventFailures=50;
 		private readonly DsmLoader _dsmLoader;
 		private ITwainDsm _dsm;
+		///<summary>How handles exchanged with the DSM and the source are allocated, locked and freed: the DSM's own functions when it
+		///reported DF_DSM2 and handed them out (DAT_ENTRYPOINT), otherwise GlobalMemory. Set when the DSM opens, null below state 3.</summary>
+		private ITwainMemory _memory;
 		private ProxyWindow _proxyWindow;
 		///<summary>The application's TW_IDENTITY, in unmanaged memory for the life of the session.</summary>
 		private IntPtr _pAppIdentity;
@@ -46,6 +49,11 @@ namespace ImagingDeviceManager.TwainProtocol {
 		public int LoopTimeoutMilliseconds { get; set; }
 		///<summary>Product name of the open data source, or "".</summary>
 		public string SourceName { get; private set; }="";
+		///<summary>The Windows Global* functions, used when the DSM hands out no memory functions of its own. Tests replace it to see
+		///which handles are freed this way.</summary>
+		public ITwainMemory GlobalMemory { get; set; }=GlobalTwainMemory.Instance;
+		///<summary>The memory functions in use while the DSM is open (state 3 and above), or null. See ITwainMemory.</summary>
+		public ITwainMemory Memory => _memory;
 
 		public TwainSession(DsmLoader dsmLoader) {
 			_dsmLoader=dsmLoader;
@@ -197,13 +205,35 @@ namespace ImagingDeviceManager.TwainProtocol {
 				Marshal.FreeHGlobal(pHwnd);
 			}
 			State=3;
+			_memory=GetDsmMemory()??GlobalMemory;
+			return true;
+		}
+
+		///<summary>A version 2 DSM sets DF_DSM2 in the application's identity at MSG_OPENDSM; the application then asks it for its memory
+		///functions and uses them for every handle it exchanges with sources (TWAIN 2.4 pp.3-15, 3-32). Null for a legacy DSM, or
+		///when the DSM does not hand out all four functions.</summary>
+		private ITwainMemory GetDsmMemory() {
+			if((ReadIdentity(_pAppIdentity).SupportedGroups & Tw.DF_DSM2)==0) {
+				return null;
+			}
+			IntPtr pEntryPoint=Marshal.AllocHGlobal(Marshal.SizeOf(typeof(TW_ENTRYPOINT)));
 			try {
-				_dsm.OnDsmOpened(_pAppIdentity);
+				TW_ENTRYPOINT entryPoint=new TW_ENTRYPOINT();
+				entryPoint.Size=(uint)Marshal.SizeOf(typeof(TW_ENTRYPOINT));
+				Marshal.StructureToPtr(entryPoint,pEntryPoint,false);
+				ushort rc=_dsm.Entry(_pAppIdentity,IntPtr.Zero,Tw.DG_CONTROL,Tw.DAT_ENTRYPOINT,Tw.MSG_GET,pEntryPoint);
+				if(rc!=Tw.TWRC_SUCCESS) {
+					return null;
+				}
+				entryPoint=(TW_ENTRYPOINT)Marshal.PtrToStructure(pEntryPoint,typeof(TW_ENTRYPOINT));
+				return DsmTwainMemory.TryCreate(entryPoint);
 			}
 			catch {
-				//The Global* memory functions still work on Windows.
+				return null;
 			}
-			return true;
+			finally {
+				Marshal.FreeHGlobal(pEntryPoint);
+			}
 		}
 
 		///<summary>Moves down to state 1, closing the source first if one is open.</summary>
@@ -221,11 +251,13 @@ namespace ImagingDeviceManager.TwainProtocol {
 					Marshal.FreeHGlobal(pHwnd);
 				}
 				State=2;
+				_memory=null;
 			}
 			UnloadDsm();
 		}
 
 		private void UnloadDsm() {
+			_memory=null;
 			if(_dsm!=null) {
 				try {
 					_dsm.Dispose();
@@ -428,17 +460,21 @@ namespace ImagingDeviceManager.TwainProtocol {
 			if(!RequireState4("capability 0x"+capability.ToString("X4"))) {
 				return false;
 			}
-			IntPtr hContainer=_dsm.MemAllocate(TwContainer.OneValueSize);
+			IntPtr hContainer=_memory.Allocate(TwContainer.OneValueSize);
 			if(hContainer==IntPtr.Zero) {
 				SetError(EZTwainErrorCode.EZTEC_MEMORY,"Out of memory.");
 				return false;
 			}
 			IntPtr pCapability=Marshal.AllocHGlobal(Marshal.SizeOf(typeof(TW_CAPABILITY)));
 			try {
-				IntPtr pContainer=_dsm.MemLock(hContainer);
+				IntPtr pContainer=_memory.Lock(hContainer);
+				if(pContainer==IntPtr.Zero) {
+					SetError(EZTwainErrorCode.EZTEC_MEMORY,"Out of memory.");
+					return false;
+				}
 				Marshal.WriteInt16(pContainer,0,(short)itemType);
 				Marshal.WriteInt32(pContainer,TwContainer.OneValueItemOffset,value);
-				_dsm.MemUnlock(hContainer);
+				_memory.Unlock(hContainer);
 				TW_CAPABILITY twCapability=new TW_CAPABILITY { Cap=capability,ConType=Tw.TWON_ONEVALUE,hContainer=hContainer };
 				Marshal.StructureToPtr(twCapability,pCapability,false);
 				ushort rc=_dsm.Entry(_pAppIdentity,_pSourceIdentity,Tw.DG_CONTROL,Tw.DAT_CAPABILITY,Tw.MSG_SET,pCapability);
@@ -450,7 +486,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 			}
 			finally {
 				Marshal.FreeHGlobal(pCapability);
-				_dsm.MemFree(hContainer);
+				_memory.Free(hContainer);
 			}
 		}
 
@@ -475,7 +511,10 @@ namespace ImagingDeviceManager.TwainProtocol {
 				if(hContainer==IntPtr.Zero) {
 					return false;
 				}
-				IntPtr pContainer=_dsm.MemLock(hContainer);
+				IntPtr pContainer=_memory.Lock(hContainer);
+				if(pContainer==IntPtr.Zero) {
+					return false;
+				}
 				try {
 					ushort itemType=(ushort)Marshal.ReadInt16(pContainer,0);
 					int itemSize=TwContainer.ItemSize(itemType);
@@ -506,13 +545,13 @@ namespace ImagingDeviceManager.TwainProtocol {
 					return true;
 				}
 				finally {
-					_dsm.MemUnlock(hContainer);
+					_memory.Unlock(hContainer);
 				}
 			}
 			finally {
 				Marshal.FreeHGlobal(pCapability);
 				if(hContainer!=IntPtr.Zero) {
-					_dsm.MemFree(hContainer);
+					_memory.Free(hContainer);
 				}
 			}
 		}
@@ -993,12 +1032,12 @@ namespace ImagingDeviceManager.TwainProtocol {
 						return TransferOutcome.Failed;
 					}
 					finally {
-						_dsm.MemFree(hDib);
+						_memory.Free(hDib);
 					}
 					return TransferOutcome.Done;
 				}
 				if(hDib!=IntPtr.Zero) {
-					_dsm.MemFree(hDib);
+					_memory.Free(hDib);
 				}
 				if(rc==Tw.TWRC_CANCEL) {
 					State=7;
@@ -1013,16 +1052,16 @@ namespace ImagingDeviceManager.TwainProtocol {
 		}
 
 		private DibImage CopyDib(IntPtr hDib) {
-			IntPtr pDib=_dsm.MemLock(hDib);
+			IntPtr pDib=_memory.Lock(hDib);
 			if(pDib==IntPtr.Zero) {
 				throw new ImagingDeviceException("The scanner's image memory could not be read.",EZTwainErrorCode.EZTEC_BAD_DIB);
 			}
 			try {
-				long available=(long)NativeMethods.GlobalSize(hDib).ToUInt64();
+				long available=_memory.GetSize(hDib);//0 when unknown: the header alone gives the length.
 				return DibImage.FromUnmanaged(pDib,available);
 			}
 			finally {
-				_dsm.MemUnlock(hDib);
+				_memory.Unlock(hDib);
 			}
 		}
 

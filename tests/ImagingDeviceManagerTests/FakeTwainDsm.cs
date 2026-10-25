@@ -125,6 +125,14 @@ namespace ImagingDeviceManager.Tests {
 		public int MaxRowsPerStrip=7;
 		///<summary>Runs inside MSG_ENABLEDS, before the source posts its event.</summary>
 		public Action ActionOnEnable;
+		///<summary>Acts as a version 2 DSM: sets DF_DSM2 in the application's identity at MSG_OPENDSM and hands out DsmMemory through
+		///DAT_ENTRYPOINT. The simulated sources then allocate every handle they give the application with DSM_MemAllocate, as
+		///TWAIN 2 sources do; otherwise with GlobalAlloc.</summary>
+		public bool SupplyEntryPoints;
+		public FakeDsmMemory DsmMemory=new FakeDsmMemory();
+		///<summary>Every handle a simulated source handed to the application (native DIBs, capability containers, status text).</summary>
+		public List<IntPtr> ListSourceHandles=new List<IntPtr>();
+		public int CountEntryPointGet;
 
 		public Dictionary<ushort,int> DictCapsSet=new Dictionary<ushort,int>();
 		public List<string> ListLog=new List<string>();
@@ -149,6 +157,14 @@ namespace ImagingDeviceManager.Tests {
 		public FakePage CurrentPage => _idxPage<ListPages.Count ? ListPages[_idxPage] : null;
 
 		public ushort Entry(IntPtr origin,IntPtr dest,uint dg,ushort dat,ushort msg,IntPtr data) {
+			if(dg==Tw.DG_CONTROL && dat==Tw.DAT_ENTRYPOINT && dest==IntPtr.Zero) {
+				if(!SupplyEntryPoints || msg!=Tw.MSG_GET || !IsDsmOpen) {
+					return Fail(Tw.TWCC_BADPROTOCOL);
+				}
+				CountEntryPointGet++;
+				DsmMemory.WriteEntryPoint(data);
+				return Tw.TWRC_SUCCESS;
+			}
 			if(dg==Tw.DG_CONTROL && dat==Tw.DAT_STATUS) {
 				Marshal.StructureToPtr(new TW_STATUS { ConditionCode=_conditionCode },data,false);
 				_conditionCode=Tw.TWCC_SUCCESS;
@@ -184,6 +200,16 @@ namespace ImagingDeviceManager.Tests {
 			return Fail(Tw.TWCC_BADPROTOCOL);
 		}
 
+		///<summary>Allocates a handle that a simulated source hands to the application: with the DSM's memory functions when this DSM
+		///hands them out, otherwise with GlobalAlloc (twain-contract 1.1 section 6.4). The application frees it the same way.</summary>
+		public IntPtr SourceAllocate(int size) {
+			IntPtr handle=SupplyEntryPoints
+				? DsmMemory.Allocate((uint)size)
+				: NativeMethods.GlobalAlloc(NativeMethods.GHND,(UIntPtr)size);
+			ListSourceHandles.Add(handle);
+			return handle;
+		}
+
 		private ushort Fail(ushort conditionCode) {
 			_conditionCode=conditionCode;
 			return Tw.TWRC_FAILURE;
@@ -195,6 +221,9 @@ namespace ImagingDeviceManager.Tests {
 				TW_IDENTITY appIdentity=(TW_IDENTITY)Marshal.PtrToStructure(origin,typeof(TW_IDENTITY));
 				ListLog.Add("OPENDSM "+appIdentity.ProductName);
 				appIdentity.Id=1;
+				if(SupplyEntryPoints) {
+					appIdentity.SupportedGroups|=Tw.DF_DSM2;
+				}
 				Marshal.StructureToPtr(appIdentity,origin,false);
 				IsDsmOpen=true;
 				return Tw.TWRC_SUCCESS;
@@ -289,7 +318,7 @@ namespace ImagingDeviceManager.Tests {
 				return Tw.TWRC_SUCCESS;
 			}
 			if(msg==Tw.MSG_GETCURRENT && capability.Cap==Tw.ICAP_PIXELFLAVOR && PixelFlavor!=null) {
-				IntPtr hContainer=NativeMethods.GlobalAlloc(NativeMethods.GHND,(UIntPtr)TwContainer.OneValueSize);
+				IntPtr hContainer=SourceAllocate(TwContainer.OneValueSize);
 				IntPtr pContainer=NativeMethods.GlobalLock(hContainer);
 				Marshal.WriteInt16(pContainer,0,(short)Tw.TWTY_UINT16);
 				Marshal.WriteInt32(pContainer,TwContainer.OneValueItemOffset,PixelFlavor.Value);
@@ -393,7 +422,7 @@ namespace ImagingDeviceManager.Tests {
 			if(page.IsCancelled) {
 				return Tw.TWRC_CANCEL;
 			}
-			IntPtr hDib=NativeMethods.GlobalAlloc(NativeMethods.GHND,(UIntPtr)page.NativeDib.Length);
+			IntPtr hDib=SourceAllocate(page.NativeDib.Length);
 			IntPtr pDib=NativeMethods.GlobalLock(hDib);
 			Marshal.Copy(page.NativeDib,0,pDib,page.NativeDib.Length);
 			NativeMethods.GlobalUnlock(hDib);
@@ -458,26 +487,7 @@ namespace ImagingDeviceManager.Tests {
 			return Fail(Tw.TWCC_BADPROTOCOL);
 		}
 
-		public void OnDsmOpened(IntPtr appIdentity) {
-		}
-
-		public IntPtr MemAllocate(uint size) {
-			return NativeMethods.GlobalAlloc(NativeMethods.GHND,(UIntPtr)size);
-		}
-
-		public void MemFree(IntPtr handle) {
-			NativeMethods.GlobalFree(handle);
-		}
-
-		public IntPtr MemLock(IntPtr handle) {
-			return NativeMethods.GlobalLock(handle);
-		}
-
-		public void MemUnlock(IntPtr handle) {
-			NativeMethods.GlobalUnlock(handle);
-		}
-
-		public void Dispose() {
+			public void Dispose() {
 			CountDispose++;
 		}
 	}
