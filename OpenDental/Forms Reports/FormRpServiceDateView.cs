@@ -13,12 +13,15 @@ using OpenDentBusiness;
 using PdfSharp.Pdf;
 
 namespace OpenDental {
+	///<summary>Service Date View: each charge with the credits applied to it beneath, grouped by date of service. Modeless. Since Open Dental 25.4
+	///(package M2-SDV) the window follows the Account module's selected patient and Family/Patient choice and refreshes in place (SetPatient),
+	///remembers "Show detailed view" per user, and takes its columns from Display Fields, Account Module Service Date View.</summary>
 	public partial class FormRpServiceDateView:FormODBase {
 		#region Public Variables
 		///<summary>This will be the PatNum or the Guarantor's PatNum.</summary>
-		public readonly long PatNum;
+		public long PatNum { get; private set; }
 		///<summary>Whether or not the window is displaying results for the entire family.</summary>
-		public readonly bool IsFamily;
+		public bool IsFamily { get; private set; }
 		#endregion
 		#region Private Variables
 		private bool _headingPrinted;
@@ -26,7 +29,7 @@ namespace OpenDental {
 		private int _headingPrintH;
 		private Family _fam;
 		#endregion
-		
+
 		public FormRpServiceDateView(long patNum,bool isFamily) {
 			InitializeComponent();
 			InitializeLayoutManager();
@@ -37,71 +40,65 @@ namespace OpenDental {
 		}
 
 		private void FormRpServiceDate_Load(object sender,EventArgs e) {
+			checkDetailedView.Checked=ServiceDateViewUserPrefs.GetBool(Security.CurUser.UserNum,ServiceDateViewUserPrefs.FKEY_SHOW_DETAILS,true);
+			checkDetailedView.Click+=checkDetailedView_Click;
 			FillGrid();
-			Text=Lans.g(this,"Service Date View -")+" "+_fam.GetPatient(PatNum).GetNameFL()+(IsFamily ? " "+Lans.g(this,"(Family)") : "");
+			SetTitle();
+		}
+
+		///<summary>Shows another patient or family, or the same one again with fresh data, without closing the window.</summary>
+		public void SetPatient(long patNum,bool isFamily) {
+			if(IsDisposed) {
+				return;
+			}
+			PatNum=patNum;
+			IsFamily=isFamily;
+			_fam=Patients.GetFamily(patNum);
+			SetTitle();
+			FillGrid();
+		}
+
+		private void SetTitle() {
+			Patient patient=_fam.GetPatient(PatNum);
+			string name=patient==null ? "" : patient.GetNameFL();
+			Text=Lans.g(this,"Service Date View -")+" "+name+(IsFamily ? " "+Lans.g(this,"(Family)") : "");
 		}
 
 		private void FillGrid() {
-			DataTable table=RpServiceDateView.GetData(PatNum,IsFamily,checkDetailedView.Checked);
+			ServiceDateViewOptions options=new ServiceDateViewOptions();
+			options.IsDetailed=checkDetailedView.Checked;
+			List<ServiceDateViewRow> listRows=RpServiceDateView.GetRows(PatNum,IsFamily,options);
+			List<DisplayField> listDisplayFields=ServiceDateViewGrid.GetDisplayFields();
 			gridMain.BeginUpdate();
-			//Columns
-			gridMain.Columns.Clear();
-			gridMain.Columns.Add(new GridColumn(Lan.g(this,"Service Date"),90));
-			gridMain.Columns.Add(new GridColumn(Lan.g(this,"Trans Date"),80));
-			gridMain.Columns.Add(new GridColumn(Lan.g(this,"Patient"),150));
-			gridMain.Columns.Add(new GridColumn(Lan.g(this,"Reference"),220));
-			gridMain.Columns.Add(new GridColumn(Lan.g(this,"Charge"),80,HorizontalAlignment.Right));
-			gridMain.Columns.Add(new GridColumn(Lan.g(this,"Production"),80,HorizontalAlignment.Right));
-			gridMain.Columns.Add(new GridColumn(Lan.g(this,"Prov"),80));
-			gridMain.Columns.Add(new GridColumn(Lan.g(this,"InsBal"),80,HorizontalAlignment.Right));
-			gridMain.Columns.Add(new GridColumn(Lan.g(this,"AcctBal"),80,HorizontalAlignment.Right));
-			//Rows
+			ServiceDateViewGrid.FillColumns(gridMain,listDisplayFields);
 			gridMain.ListGridRows.Clear();
-			DataRow lastRow=table.Select().LastOrDefault();
-			foreach(DataRow row in table.Rows) {
-				GridRow newRow=new GridRow();
-				DateTime serviceDate=PIn.Date(row["Date"].ToString());
-				DateTime transDate=PIn.Date(row["Trans Date"].ToString());
-				newRow.Cells.Add((serviceDate.Year<1880) ? "" : serviceDate.ToShortDateString());
-				newRow.Cells.Add((transDate.Year<1880) ? "" : transDate.ToShortDateString());
-				newRow.Cells.Add(row["Patient"].ToString());
-				string strReference=row["Reference"].ToString();
-				int toothNumPref=PrefC.GetInt(PrefName.UseInternationalToothNumbers);
-				bool isProc=row["Type"].ToString().ToLower()=="proc";
-				//Replace toothNum with correct nomenclature when not using American system.
-				if(isProc && strReference.Contains('#') && toothNumPref!=0) {
-					string toothNum=strReference.Substring(strReference.IndexOf('#')+1,strReference.IndexOf('-')-strReference.IndexOf('#')-1);
-					string toothNumNom=Tooth.Display(toothNum,(ToothNumberingNomenclature)toothNumPref);
-					strReference=strReference.Replace("#"+toothNum+"-","#"+toothNumNom+"-");
-				}
-				//change here instead of in RpServiceDateView.GetData because that's used in the API
-				if(strReference=="PayPlan Credit") {
-					strReference="PayPlan Production";
-				}
-				newRow.Cells.Add(strReference);
-				bool isUnallocated=strReference.ToLower().Contains("unallocated");
-				newRow.Cells.Add(isUnallocated ? "" : PIn.Decimal(row["Charge"].ToString()).ToString("f"));
-				newRow.Cells.Add(isUnallocated ? "" : PIn.Decimal(row["Credit"].ToString()).ToString("f"));
-				newRow.Cells.Add(row["Pvdr"].ToString());
-				decimal insBal=PIn.Decimal(row["InsBal"].ToString());
-				decimal acctBal=PIn.Decimal(row["AcctBal"].ToString());
-				bool isTotalsRow=row==lastRow || strReference.ToLower().Contains("Total for Date".ToLower());
-				//Show insBal and acctBal when not on totals row and detailed is checked and either of the amounts are not zero.
-				bool showDetailedRow=isTotalsRow || (isProc && checkDetailedView.Checked)
-					|| (checkDetailedView.Checked && (CompareDecimal.IsGreaterThanZero(Math.Abs(insBal)) || CompareDecimal.IsGreaterThanZero(Math.Abs(acctBal))));
-				newRow.Cells.Add(showDetailedRow ? insBal.ToString("f") : "");
-				newRow.Cells.Add(showDetailedRow ? acctBal.ToString("f") : "");
-				newRow.Tag=row;
-				if(isTotalsRow) {
-					newRow.Bold=true;
-				}
-				gridMain.ListGridRows.Add(newRow);
+			for(int i=0;i<listRows.Count;i++) {
+				gridMain.ListGridRows.Add(ServiceDateViewGrid.MakeGridRow(listRows[i],listDisplayFields));
 			}
 			gridMain.EndUpdate();
 		}
 
+		private void checkDetailedView_Click(object sender,EventArgs e) {
+			ServiceDateViewUserPrefs.SetBool(Security.CurUser.UserNum,ServiceDateViewUserPrefs.FKEY_SHOW_DETAILS,checkDetailedView.Checked);
+			DataValid.SetInvalid(InvalidType.UserOdPrefs);
+			FillGrid();
+		}
 
 		private void butRefresh_Click(object sender,EventArgs e) {
+			FillGrid();
+		}
+
+		private void butSetupColumns_Click(object sender,EventArgs e) {
+			if(!Security.IsAuthorized(EnumPermType.Setup)) {
+				return;
+			}
+			using FormDisplayFields formDisplayFields=new FormDisplayFields();
+			formDisplayFields.DisplayFieldCategoryCur=DisplayFieldCategory.AccountModuleServiceDateView;
+			formDisplayFields.ShowDialog();
+			if(formDisplayFields.DialogResult!=DialogResult.OK) {
+				return;
+			}
+			SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,"Display Fields");
 			FillGrid();
 		}
 
@@ -231,5 +228,109 @@ namespace OpenDental {
 			g.Dispose();
 		}
 
+	}
+
+	///<summary>Columns and cells of a service-date grid: the Service Date View window and the Account module's main grid in service-date view. The
+	///columns come from Display Fields, Account Module Service Date View (category 22); the internal names are the 24.3 window's column titles.</summary>
+	public static class ServiceDateViewGrid {
+		///<summary>Display fields of category 22, without Clinic when clinics are off.</summary>
+		public static List<DisplayField> GetDisplayFields() {
+			List<DisplayField> listDisplayFields=DisplayFields.GetForCategory(DisplayFieldCategory.AccountModuleServiceDateView);
+			if(!PrefC.HasClinicsEnabled) {
+				listDisplayFields.RemoveAll(x => x.InternalName=="Clinic");
+			}
+			return listDisplayFields;
+		}
+
+		///<summary>Replaces the grid's columns. Call between BeginUpdate and EndUpdate.</summary>
+		public static void FillColumns(GridOD grid,List<DisplayField> listDisplayFields) {
+			grid.Columns.Clear();
+			for(int i=0;i<listDisplayFields.Count;i++) {
+				string text=listDisplayFields[i].Description;
+				if(string.IsNullOrEmpty(text)) {
+					text=Lan.g("TableServiceView",listDisplayFields[i].InternalName);
+				}
+				HorizontalAlignment horizontalAlignment=HorizontalAlignment.Left;
+				if(listDisplayFields[i].InternalName.In("Charge","Production","InsBal","AcctBal")) {
+					horizontalAlignment=HorizontalAlignment.Right;
+				}
+				grid.Columns.Add(new GridColumn(text,listDisplayFields[i].ColumnWidth,horizontalAlignment));
+			}
+		}
+
+		///<summary>A grid row for the display fields; Tag is the ServiceDateViewRow. Totals are bold.</summary>
+		public static GridRow MakeGridRow(ServiceDateViewRow row,List<DisplayField> listDisplayFields) {
+			GridRow gridRow=new GridRow();
+			for(int i=0;i<listDisplayFields.Count;i++) {
+				gridRow.Cells.Add(GetCellText(row,listDisplayFields[i].InternalName));
+			}
+			gridRow.Tag=row;
+			if(row.IsTotal) {
+				gridRow.Bold=true;
+			}
+			return gridRow;
+		}
+
+		///<summary>The text of one cell. Tooth numbers are converted to the office's nomenclature here, not in the query.</summary>
+		public static string GetCellText(ServiceDateViewRow row,string internalName) {
+			bool isTransaction=row.RowKind==ServiceDateViewRowKind.Transaction;
+			bool hasAmounts=row.RowKind!=ServiceDateViewRowKind.UnallocatedHeading && row.RowKind!=ServiceDateViewRowKind.BalanceForward;
+			switch(internalName) {
+				case "Service Date":
+					if(row.IsProcedure || row.RowKind==ServiceDateViewRowKind.UnallocatedHeading || row.RowKind==ServiceDateViewRowKind.DayTotal) {
+						return row.DateService.Year<1880 ? "" : row.DateService.ToShortDateString();
+					}
+					return "";
+				case "Trans Date":
+					if(isTransaction && !row.IsProcedure && row.DateTrans.Year>=1880) {
+						return row.DateTrans.ToShortDateString();
+					}
+					return "";
+				case "Patient":
+					return isTransaction ? row.PatientName : "";
+				case "Reference":
+					return GetReferenceText(row);
+				case "Charge":
+					return hasAmounts ? row.Charge.ToString("f") : "";
+				case "Production":
+					return hasAmounts ? row.Credit.ToString("f") : "";
+				case "Prov":
+					return isTransaction ? row.ProvAbbr : "";
+				case "InsBal":
+					return row.ShowsInsAndAcctBal ? row.InsBal.ToString("f") : "";
+				case "AcctBal":
+					return row.ShowsInsAndAcctBal ? row.AcctBal.ToString("f") : "";
+				case "Clinic":
+					return isTransaction ? Clinics.GetAbbr(row.ClinicNum) : "";
+			}
+			return "";
+		}
+
+		private static string GetReferenceText(ServiceDateViewRow row) {
+			switch(row.RowKind) {
+				case ServiceDateViewRowKind.UnallocatedHeading:
+				case ServiceDateViewRowKind.DayTotal:
+				case ServiceDateViewRowKind.OverallTotal:
+					return Lan.g("TableServiceView",row.Reference);
+				case ServiceDateViewRowKind.BalanceForward:
+					return Lan.g("AccountModule","Balance Forward");
+			}
+			string reference=row.Reference;
+			int toothNumPref=PrefC.GetInt(PrefName.UseInternationalToothNumbers);
+			//Replace toothNum with correct nomenclature when not using American system.
+			if(row.IsProcedure && toothNumPref!=0 && reference.Contains('#')) {
+				int idxStart=reference.IndexOf('#')+1;
+				int idxEnd=reference.IndexOf('-',idxStart);
+				if(idxEnd>idxStart) {
+					string toothNum=reference.Substring(idxStart,idxEnd-idxStart);
+					string toothNumNom=Tooth.Display(toothNum,(ToothNumberingNomenclature)toothNumPref);
+					reference=reference.Replace("#"+toothNum+"-","#"+toothNumNom+"-");
+				}
+			}
+			if(reference=="PayPlan Credit") {//Changed here and not in the query, as in 24.3.
+				reference="PayPlan Production";
+			}
+			return reference;
+		}
 	}
 }

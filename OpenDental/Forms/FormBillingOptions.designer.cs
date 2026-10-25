@@ -68,6 +68,7 @@ namespace OpenDental {
 			this.butUndo = new OpenDental.UI.Button();
 			this.checkSuperFam = new OpenDental.UI.CheckBox();
 			this.checkSinglePatient = new OpenDental.UI.CheckBox();
+			this.checkServiceDateView = new OpenDental.UI.CheckBox();
 			this.labelMultiClinicGenMsg = new System.Windows.Forms.Label();
 			this.groupBox2.SuspendLayout();
 			this.groupDateRange.SuspendLayout();
@@ -537,6 +538,14 @@ namespace OpenDental {
 			this.checkSinglePatient.Visible = false;
 			this.checkSinglePatient.Click += new System.EventHandler(this.checkSinglePatient_Click);
 			// 
+			// checkServiceDateView
+			// 
+			this.checkServiceDateView.Location = new System.Drawing.Point(600, 489);
+			this.checkServiceDateView.Name = "checkServiceDateView";
+			this.checkServiceDateView.Size = new System.Drawing.Size(200, 20);
+			this.checkServiceDateView.TabIndex = 8;
+			this.checkServiceDateView.Text = "Service Date View";
+			// 
 			// labelMultiClinicGenMsg
 			// 
 			this.labelMultiClinicGenMsg.Location = new System.Drawing.Point(353, 605);
@@ -553,6 +562,7 @@ namespace OpenDental {
 			this.AcceptButton = this.butCreate;
 			this.ClientSize = new System.Drawing.Size(918, 696);
 			this.Controls.Add(this.labelMultiClinicGenMsg);
+			this.Controls.Add(this.checkServiceDateView);
 			this.Controls.Add(this.checkSinglePatient);
 			this.Controls.Add(this.checkSuperFam);
 			this.Controls.Add(this.butUndo);
@@ -621,6 +631,7 @@ namespace OpenDental {
 		private OpenDental.UI.CheckBox checkUseClinicDefaults;
 		private OpenDental.UI.CheckBox checkBoxBillShowTransSinceZero;
 		private OpenDental.UI.CheckBox checkSinglePatient;
+		private OpenDental.UI.CheckBox checkServiceDateView;
 		private Label labelMultiClinicGenMsg;
 		private OpenDental.UI.ComboBoxClinicPicker comboClinic;
 		private Label labelInsFilingCodes;
