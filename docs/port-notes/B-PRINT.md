@@ -13,7 +13,7 @@ below is the most reasonable minimal one and is marked **INFERRED**.
 | `v25_3-misc-export-csv-txt` | built | The Export button of every other window that exported a grid opens a small menu with **Export .csv** and **Export .txt**. |
 | `v25_3-manage-statement-email-lastname` | built | An e-mailed statement's PDF is named `Statement_<LastName>.pdf`. |
 | `v25_3-manage-statement-barcode` | built | Optional Code 39 inserter barcode on every printed statement page. |
-| `v25_1-sheets-autosave-images` | built | Fill Sheet has no "Autosave to Images" box; a save that changed the sheet copies it to Imaging when the layout says so. |
+| `v25_1-sheets-autosave-images` | built | Fill Sheet has no "Autosave to Images" box; a save that changed the sheet copies it to Imaging when the layout says so, including the patient's save at a kiosk or terminal (deviation, see below). |
 | `v25_3-sheets-checkbox-cleanup` | built | Edit CheckBox (sheets) loses its long instruction labels; the guidance is kept as tooltips. |
 | `v25_3-misc-printer-options` | built | The program's own **Print Options** window (printer, copies, collate, page range) replaces the Windows print dialog, and also opens from the Print button of every print preview. |
 
@@ -74,15 +74,21 @@ setting's name are not public, so all of the following is this fork's design (**
 
 ### Sheet copies to Imaging (25.1)
 
-- `SheetAutoSaveImages` (new, business layer) holds the rules; `FormSheetFillEdit.AutoSaveImages.cs` (new partial) applies them. The five
-  places that used `_isAutoSave && checkSaveToImages.Checked` (E-mail, Create PDF, Print, Print/E-mail, OK) call `IsAutoSaveCopyDue()`.
+- `SheetAutoSaveImages` and `SheetAutoSaveTracker` (new, business layer) hold the rules; `FormSheetFillEdit.AutoSaveImages.cs` (new partial)
+  applies them. The five places that used `_isAutoSave && checkSaveToImages.Checked` (E-mail, Create PDF, Print, Print/E-mail, OK) call
+  `IsAutoSaveCopyDue()`.
 - A copy is written when the sheet has a patient, a non-hidden image category is flagged Autosave Forms ("U") (kept from 24.3 even when the
-  layout names its own category), the sheet's layout has the option on, the window is not in a kiosk/terminal, and the save changed the sheet.
+  layout names its own category), the sheet's layout has the option on, and the save changed the sheet.
 - "Changed": a fingerprint of the sheet (date to the minute, description, internal note, kiosk order, patient, and every field's type, name,
-  radio value/group, position, size and value, signatures included) taken when the window is shown, compared after the save; field order and
-  line-ending differences do not count. A new sheet's first save always counts. After a copy the fingerprint moves on.
+  radio value/group, position, size and value, signatures included) taken when the window is shown (`SheetAutoSaveTracker.TakeSnapshot`),
+  compared after the save; field order and line-ending differences do not count. A new sheet's first save always counts. After a copy the
+  fingerprint moves on.
+- Kiosk and terminal: the patient's save follows the same rules, so a form filled in and signed at the kiosk reaches Imaging when the patient
+  clicks OK there. Staff who later open it and click OK without changes write nothing more; staff who correct it get another copy. The copy is
+  made inside `IsAutoSaveCopyDue` in a try/catch: a copy that fails at the kiosk (for example a kiosk computer that cannot reach the image
+  folder) shows the patient no error and writes a `SheetEdit` audit trail entry for the patient instead (**INFERRED**). "To Kiosk" makes no copy,
+  as in 24.3, so a blank form sent to the kiosk is never copied.
 - `FormSheetDef`: the option now reads **Copy to Imaging when saved**; the category override is kept.
-- **INFERRED:** sheets filled at a kiosk are not copied there (as in 24.3); they are copied the next time the office saves them with a change.
 
 ### Edit CheckBox cleanup (25.3)
 
@@ -103,6 +109,13 @@ setting's name are not public, so all of the following is this fork's design (**
 - Page ranges: System.Drawing calls the page handler for every page whatever the range says, so `PageRangePrintController` lets the handler
   draw every page (its page state must advance) but sends only the pages in the range to the printer, and stops after the last one. WPF uses
   `PageRangeDocumentPaginator`.
+- The controller is the only thing that applies the range. `PageRangePrintController.ApplyTo` (called by `PrinterL.TrySetPrinter` and the old
+  `PrinterL.SetPrinter(PrintDocument,...)`) wraps the document's controller and then puts `PrinterSettings.PrintRange` back to `AllPages`.
+  Three print paths apply `FromPage`/`ToPage` themselves: `FormReportComplex.pd2_PrintPage` (every standard report),
+  `FormQuery.pd2_PrintPage` (User Query) and `RdlViewer.Print` (RDL reports through `FormReportForRdl`/`FormReportCustom`). They skip the
+  earlier pages and send page `FromPage` first, so with both applying the range, pages 3-5 printed only page 5 and pages 2-2 printed nothing.
+  With `AllPages` they draw every page and the controller sends `FromPage` to `ToPage`, exactly as for the handlers that ignore the range
+  (and as the 24.3 Windows dialog printed these reports). No change in those three files.
 - Kept: the `Printing` audit entry, virtual (print-to-file) printers (choosing another printer turns print-to-file off), remote printing
   (never prompts), the printer-number override.
 
@@ -134,7 +147,19 @@ seed rows). The only new stored value is the runtime preference row `BillingStat
 - The feature spec proposed a fork migration step for the barcode preference; there is none. The row is written when the office first turns
   the barcode on. The interrupted run had a step at level 2027001501 (this package's assigned range); that level is not a valid `yyyyMMddNN`
   date (month 00), so `ForkMigrationRunner.ValidateStep` would have thrown and stopped every migration. Removed.
-- Barcode: Code 39 only (no DataMatrix, no ZXing).
+- Sheet copies to Imaging, kiosk and terminal: the spec proposed keeping 24.3's "no copy in a terminal" and making the copy when the office
+  later saves or imports the sheet. This package makes the copy at the patient's save in the terminal instead, because a saved sheet carries
+  nothing that says its last save still owes a copy:
+  - `sheet.DateTSheetEdited` moves on with every OK, changed or not (`FormSheetFillEdit.TryToSaveData`; the column's own documentation says so).
+    A rule such as "no Autosave Forms document of the patient is newer than the sheet's last save" is therefore also true after any unchanged
+    OK of any sheet, and the next unchanged OK would copy again: every second unchanged OK would write a copy, against the spec's "opening and
+    closing without changes writes nothing".
+  - A copy in Imaging is not linked to its sheet (description `PatientForm<DocNum>`), so a check per patient cannot tell one sheet's copy from
+    another's. A patient usually fills in several forms at the kiosk; the copy made when staff review the first would hide the others.
+  - A per-sheet marker would need a new column or a stored value outside this package's files (and the package's migration level range cannot
+    be used, see owner question 1).
+  24.3 copied a kiosk sheet only at the office's later OK (box checked by default), so offices still get one copy per kiosk form, made earlier.
+  Because nothing waits for a later save, `FormSheetImport` (B-EF) needs no import hook for this feature.
 - Export: one Export button with a menu in the 25.3 windows (two buttons in Transaction History, as the 24.4 spec asks).
 - `SheetFiller.cs` and `GridOD.cs` (named as touchpoints) needed no change.
 
@@ -143,8 +168,13 @@ seed rows). The only new stored value is the runtime preference row `BillingStat
 - **M2-MISC** (owns `PrinterL` in C1; `v25_4-misc-print-window`, "minor enhancements to the Print window"): should build on `FrmPrintOptions`
   and `PrinterL.PrintOptions.cs` from this package rather than on the Windows dialog. Its base does not have them.
 - **M2-SHEETS / M2-EF** (`FormSheetFillEdit`, `FormSheetDefEdit`, `SheetPrinting`): B-PRINT's edits there are small: five `if(IsAutoSaveCopyDue())`
-  lines, the removed checkbox block, one statement e-mail line, one `case` in `DrawSpecial`, and one check in `butSave_Click`. New logic is in
-  the partial files. A merge conflict, if any, is in those lines only.
+  lines, the removed checkbox block and its two comment lines, one statement e-mail line, one `case` in `DrawSpecial`, and one check in
+  `butSave_Click`. New logic is in the partial files. A merge conflict, if any, is in those lines only.
+- **B-EF** (`FormSheetImport`): nothing to do for the copy to Imaging. Kiosk and terminal sheets get their copy when the patient saves them, so
+  an import does not have to make one. If B-EF's import saves the sheet through `FormSheetFillEdit`, the usual rule applies (a copy only when
+  that save changed the sheet).
+- **Reports and User Query** (`FormReportComplex`, `FormQuery`, `RdlViewer`): untouched. A package that adds its own page-range handling to a
+  print job should leave the range to `PageRangePrintController` (the settings read `AllPages` once the controller is in place).
 - **M2-DUN** (`BillingL`, `Statements`, `EmailMessages`) and **B-DBM** (`EmailMessages`): one line each (`DisplayedFileName`). Statement code
   of B-PRINT is in the new partial `Statements.EmailName.cs`.
 - **M2-SDV** (`FormStatementOptions`): one line (`DisplayedFileName`).
@@ -158,8 +188,9 @@ seed rows). The only new stored value is the runtime preference row `BillingStat
 2. Inserter barcode: does the office's folding/inserting machine read Code 39 with this content (sequence, page, page count, end-of-set), or
    does it need another format (OMR marks, 2D code, a different field order)? Is the top-right margin a usable default spot for its scanner?
 3. Should the e-mail subject also carry the last name, or only the attachment name (current)?
-4. Kiosk-filled sheets are copied to Imaging only when the office later saves them with a change. Should a completed kiosk sheet be copied
-   when the patient finishes instead?
+4. Kiosk-filled sheets are copied to Imaging when the patient saves them at the kiosk (the spec proposed waiting for the office's save; see
+   Deviations). Is that acceptable, and do all kiosk computers reach the image folder? A copy that fails at the kiosk is only noted in the audit
+   trail. If the office wants the copy to wait for staff review, a per-sheet "copy owed" marker (a new column) would be needed.
 5. Print Options appears when a print situation has Prompt on and from every print preview's Print button. Should it also appear for prints
    that go straight to the printer (for example grid prints in Release builds)?
 6. Should the remembered print choices be cleared at log-off (currently kept until the program closes)?
@@ -167,13 +198,27 @@ seed rows). The only new stored value is the runtime preference row `BillingStat
 
 ## Tests
 
-`tests/BPRINTTests` (61 tests): export text rules and a grid export, e-mail names, Code 39 patterns against the published symbology, barcode
+`tests/BPRINTTests` (69 tests): export text rules and a grid export, e-mail names, Code 39 patterns against the published symbology, barcode
 content/placement/clear zone, stamping synthetic PDF print documents, the Billing window batch matching, Print Options rules, page-range
 printing (System.Drawing, inconclusive without an installed printer; WPF on an STA thread), the copy-to-Imaging rules, and source checks of the
 windows. Database tests (one scratch database `forkmig_<run>_bprint`, dropped at the end): the preference row, the barcode on printed pages,
 per-statement layouts, and the layout's copy option.
 
+Page ranges are printed to a print preview with three kinds of page handler: one that skips the earlier pages itself (as `FormQuery` and
+`FormReportComplex` do), one that reads the range when printing starts (as `RdlViewer` does) and one that ignores the range. For pages 3-5 of
+7 and 2-2 each sends exactly those pages, once each. With the `AllPages` reset removed, the first two fail (pages 3-5 gave only page 5).
+The copy-to-Imaging tests follow one kiosk form through the kiosk save, a second kiosk OK, two unchanged office OKs and an office correction:
+one copy until the correction, then a second.
+
 Related existing assemblies to run: `SheetTests`, `SignatureTests` (reads `FormSheetFillEdit`), `StatementTests`.
 
 Not tested automatically: the windows themselves (Print Options, Billing Defaults, Edit CheckBox tooltips, Fill Sheet saves), printing to a
 real printer, scanning a printed barcode with an inserter, and the middle-tier path of the preference write.
+
+## Review fixes (branch `port/b-print-r1`)
+
+- Page ranges were applied twice for reports, User Query and RDL reports (pages 3-5 printed only page 5, pages 2-2 nothing). Fixed in
+  `PageRangePrintController.ApplyTo` (settings back to `AllPages` once the controller is in place); `PrinterL.ApplyPageRange` calls it.
+- Kiosk and terminal sheets never reached Imaging unless staff changed them. Fixed by copying at the patient's save in the terminal (the
+  reviewers' second option); the reviewers' first option (a pending copy detected from document dates) was not used, for the reasons under
+  Deviations.
