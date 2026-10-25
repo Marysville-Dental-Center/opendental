@@ -36,14 +36,14 @@ namespace OpenDentBusiness {
 			StringBuilder stringBuilder=new StringBuilder();
 			bool isLastSpace=false;
 			foreach(char c in lastName) {
-				if(arrayCharsInvalid.Contains(c) || char.IsControl(c)) {
-					continue;
-				}
-				if(char.IsWhiteSpace(c)) {
+				if(char.IsWhiteSpace(c)) {//Before the invalid characters: a tab or line break between two names still separates them.
 					if(!isLastSpace && stringBuilder.Length>0) {
 						stringBuilder.Append(' ');
 					}
 					isLastSpace=true;
+					continue;
+				}
+				if(arrayCharsInvalid.Contains(c) || char.IsControl(c)) {
 					continue;
 				}
 				isLastSpace=false;
