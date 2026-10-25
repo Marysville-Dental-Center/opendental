@@ -180,8 +180,10 @@ namespace OpenDentBusiness{
 			}
 			if(enumEFormFieldType.In(
 				EnumEFormFieldType.SigBox, 
-				EnumEFormFieldType.PageBreak, 
-				EnumEFormFieldType.MedicationList))
+				EnumEFormFieldType.PageBreak,
+				EnumEFormFieldType.MedicationList,
+				EnumEFormFieldType.PatientList,//Open Dental 25.2. Our design: these full-width fields don't stack.
+				EnumEFormFieldType.InsPick))
 			{
 				return false;//those types are not allowed to stack
 			}

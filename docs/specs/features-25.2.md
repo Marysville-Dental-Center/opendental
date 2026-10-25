@@ -614,7 +614,7 @@ The operatory column itself paints scheduled ("open") time in one generic color,
 **Permissions and logging:**
 
 - Import writes a `securitylog` row with `EFormImport` (271, log only): "Pending insurance created from eForm #N".
-- Convert requires `InsPlanCreate` if a plan or carrier is created, `InsPlanEdit` to attach to an existing plan, and `PatPlanCreate` (already in our 24.3 `EnumPermType`) for the new `patplan`. Log each object created as today's plan-creation code does.
+- Convert requires `CarrierCreate` if a carrier is created (as `FormInsPlan` and `FormCarriers` already require; offices limit it to stop duplicate carriers, and the review window offers the "new carrier" row only to users who have it), `InsPlanCreate` if a plan or carrier is created, `InsPlanEdit` to attach to an existing plan, and `PatPlanCreate` (already in our 24.3 `EnumPermType`) for the new `patplan`. Log each object created as today's code does: the carrier under `CarrierCreate`, the plan and subscription under `InsPlanCreate`.
 - Deleting a pending row requires `InsPlanEdit` (our choice) and is logged.
 
 **Schema** (25.3 DDL):

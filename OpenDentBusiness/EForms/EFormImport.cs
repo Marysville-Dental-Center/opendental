@@ -28,8 +28,13 @@ namespace OpenDentBusiness {
 			if(!EFormFieldsAvailable.IsAutoImportAllowed(eFormField.DbLink)) {
 				return false;
 			}
-			if(!eFormField.FieldType.In(EnumEFormFieldType.TextField,EnumEFormFieldType.DateField,EnumEFormFieldType.RadioButtons,EnumEFormFieldType.CheckBox)) {
+			if(!eFormField.FieldType.In(EnumEFormFieldType.TextField,EnumEFormFieldType.DateField,EnumEFormFieldType.RadioButtons,EnumEFormFieldType.CheckBox,
+				EnumEFormFieldType.InsPick))
+			{
 				return false;
+			}
+			if(eFormField.FieldType==EnumEFormFieldType.InsPick && EFormInsPick.GetOrdinal(eFormField.DbLink)==0) {
+				return false;//only the ins1PlanFromList and ins2PlanFromList links may Auto Import
 			}
 			if(eFormField.FieldType!=EnumEFormFieldType.CheckBox && string.IsNullOrWhiteSpace(eFormField.ValueString)) {
 				return false;
@@ -212,6 +217,13 @@ namespace OpenDentBusiness {
 					SecurityLogs.MakeLogEntry(EnumPermType.RefAttachAdd,patient.PatNum,changeReferral+" (auto import from "+strSource+")");
 					listChangesAll.Add(changeReferral);
 				}
+			}
+			//Ins Pick fields (Open Dental 25.2) make pending insurance, never real plans. Each created row logs its own EFormImport entry. A field that
+			//can't be imported (no subscriber ID, conflicting relationship) is left for the manual import, which shows why.
+			List<EFormField> listEFormFieldsInsPick=listEFormFields.FindAll(x => x.FieldType==EnumEFormFieldType.InsPick);
+			if(listEFormFieldsInsPick.Count>0) {
+				List<InsPickImportResult> listInsPickImportResults=ImportInsPickFields(eForm,listEFormFieldsInsPick);
+				listChangesAll.AddRange(listInsPickImportResults.FindAll(x => x.IsCreated).Select(x => x.Description));
 			}
 			if(listChangesAll.Count>0) {
 				SecurityLogs.MakeLogEntry(EnumPermType.EFormImport,patient.PatNum,"Auto import from "+strSource+": "+listChangesAll.Count+" change(s).");
@@ -490,5 +502,175 @@ namespace OpenDentBusiness {
 			string medNameLower=medName.Trim().ToLower();
 			return Medications.GetFirstOrDefault(x => !x.IsHidden && x.MedName.ToLower()==medNameLower);
 		}
+
+		#region Ins Pick (Open Dental 25.2)
+		///<summary>Works out what importing one Ins Pick field would do, without writing anything. New makes a pending row from the field's child fields
+		///(subscriber from the Patient List field, relationship, carrier, phone, group, employer, subscriber ID). Existing "InsSubNum:####" makes a pending
+		///row from that subscription unless the patient already has it. Existing "InsPendingNum:####" copies that pending row for this patient. None, and
+		///fields hidden by conditional logic, do nothing. A pending row identical to one the patient already has is not made again, so importing a form
+		///twice is harmless. Never makes insplan, inssub or patplan rows; only conversion does. Call EFormFields.SetIsHiddenConditFlags first.</summary>
+		public static InsPickImportResult GetInsPickImport(EForm eForm,EFormField eFormFieldInsPick,Family family,List<PatPlan> listPatPlans,
+			List<InsPending> listInsPendingsPat)
+		{
+			InsPickImportResult result=new InsPickImportResult();
+			result.EFormField=eFormFieldInsPick;
+			byte ordinal=EFormInsPick.GetOrdinal(eFormFieldInsPick.DbLink);
+			string strSlot=ordinal==0 ? "Ins Pick" : "Ins Pick "+ordinal;
+			if(eFormFieldInsPick.IsHiddenCondit) {
+				result.Description=strSlot+": hidden, nothing to import";
+				return result;
+			}
+			Patient patient=family.GetPatient(eForm.PatNum);
+			if(patient==null) {
+				result.Error=strSlot+": the form has no patient";
+				return result;
+			}
+			string valueString=eFormFieldInsPick.ValueString??"";
+			InsPending insPending=null;
+			if(valueString==EFormInsPick.VALUE_NEW) {
+				List<EFormField> listChildren=EFormInsPick.GetChildFields(eFormFieldInsPick,eForm.ListEFormFields).FindAll(x => !x.IsHiddenCondit);
+				//Subscriber: the Patient List child, else the patient when the relationship is Self, else a family member named in the SubscriberNameF box.
+				Relat? relat=null;
+				EFormField eFormFieldRelat=listChildren.Find(x => EFormInsPick.GetInsFieldSuffix(x.DbLink)=="Relat");
+				if(eFormFieldRelat!=null && Enum.TryParse(eFormFieldRelat.ValueString,out Relat relatParsed) && Enum.IsDefined(typeof(Relat),relatParsed)) {
+					relat=relatParsed;
+				}
+				long patNumSubscriber=EFormInsPick.GetPatNumPicked(listChildren.Find(x => x.FieldType==EnumEFormFieldType.PatientList));
+				if(patNumSubscriber==0 && relat==Relat.Self) {
+					patNumSubscriber=patient.PatNum;
+				}
+				if(patNumSubscriber==0) {
+					string nameSub=EFormInsPick.GetChildValue(listChildren,"SubscriberNameF");
+					List<Patient> listPatientsNamed=family.ListPats.Where(x => nameSub!=""
+						&& (string.Equals((x.FName??"").Trim(),nameSub,StringComparison.OrdinalIgnoreCase)
+						|| string.Equals(x.GetNameFL().Trim(),nameSub,StringComparison.OrdinalIgnoreCase))).ToList();
+					if(listPatientsNamed.Count==1) {
+						patNumSubscriber=listPatientsNamed[0].PatNum;
+					}
+				}
+				if(patNumSubscriber==0) {
+					result.Error=strSlot+": no subscriber was picked";
+					return result;
+				}
+				if(family.GetPatient(patNumSubscriber)==null) {
+					result.Error=strSlot+": the subscriber is not in the patient's family";
+					return result;
+				}
+				if(relat==null) {
+					if(patNumSubscriber!=patient.PatNum) {
+						result.Error=strSlot+": no relationship to the subscriber was chosen";
+						return result;
+					}
+					relat=Relat.Self;
+				}
+				insPending=new InsPending();
+				insPending.PatNum=patient.PatNum;
+				insPending.PatNumSubscriber=patNumSubscriber;
+				insPending.Ordinal=ordinal;
+				insPending.Relationship=relat.Value;
+				insPending.CarrierName=EFormInsPick.GetChildValue(listChildren,"CarrierName");
+				insPending.Phone=EFormInsPick.GetChildValue(listChildren,"CarrierPhone");
+				insPending.GroupName=EFormInsPick.GetChildValue(listChildren,"GroupName");
+				insPending.GroupNum=EFormInsPick.GetChildValue(listChildren,"GroupNum");
+				insPending.Employer=EFormInsPick.GetChildValue(listChildren,"EmployerName");
+				insPending.SubscriberID=EFormInsPick.GetChildValue(listChildren,"SubscriberID");
+			}
+			else if(EFormInsPick.GetInsSubNum(valueString)>0) {
+				InsSub insSub=InsSubs.GetOne(EFormInsPick.GetInsSubNum(valueString));
+				if(insSub==null) {
+					result.Error=strSlot+": the picked insurance no longer exists";
+					return result;
+				}
+				if(listPatPlans.Exists(x => x.InsSubNum==insSub.InsSubNum)) {
+					result.Description=strSlot+": the patient already has this insurance";
+					return result;
+				}
+				Patient patientSubscriber=family.GetPatient(insSub.Subscriber)??Patients.GetPat(insSub.Subscriber);
+				insPending=InsPendings.CreateFromInsSub(patient.PatNum,insSub,InsPendings.GuessRelationship(patient,patientSubscriber),ordinal);
+			}
+			else if(EFormInsPick.GetInsPendingNum(valueString)>0) {
+				InsPending insPendingSource=InsPendings.GetOne(EFormInsPick.GetInsPendingNum(valueString));
+				if(insPendingSource==null) {
+					result.Error=strSlot+": the picked pending insurance no longer exists";
+					return result;
+				}
+				if(insPendingSource.PatNum==patient.PatNum) {
+					result.Description=strSlot+": the patient already has this pending insurance";
+					return result;
+				}
+				Relat relat=insPendingSource.Relationship;
+				if(insPendingSource.PatNumSubscriber==patient.PatNum) {
+					relat=Relat.Self;
+				}
+				else if(relat==Relat.Self) {//the source patient was the subscriber; this patient is not
+					Patient patientSubscriber=family.GetPatient(insPendingSource.PatNumSubscriber)??Patients.GetPat(insPendingSource.PatNumSubscriber);
+					relat=InsPendings.GuessRelationship(patient,patientSubscriber);
+				}
+				byte ordinalCopy=ordinal==0 ? insPendingSource.Ordinal : ordinal;
+				insPending=InsPendings.CopyForPatient(insPendingSource,patient.PatNum,relat,ordinalCopy);
+			}
+			else {
+				result.Description=strSlot+": None";
+				return result;
+			}
+			InsPendings.Normalize(insPending);
+			if(insPending.SubscriberID=="") {
+				result.Error=strSlot+": the subscriber ID is blank, so it can't be imported";
+				return result;
+			}
+			string error=InsPendings.Validate(insPending);
+			if(error!="") {
+				result.Error=strSlot+": "+error;
+				return result;
+			}
+			if(listInsPendingsPat.Exists(x => InsPendings.IsSameForPatient(x,insPending))) {
+				result.Description=strSlot+": the same pending insurance is already on file";
+				return result;
+			}
+			result.InsPending=insPending;
+			result.Description=strSlot+": pending insurance "+InsPendings.GetDescription(insPending,family);
+			return result;
+		}
+
+		///<summary>Imports Ins Pick fields of the form (all of them when listEFormFieldsInsPick is null): inserts the pending rows that GetInsPickImport
+		///works out and logs each one (EFormImport, "Pending insurance created from eForm #N"). Returns one result per field.</summary>
+		public static List<InsPickImportResult> ImportInsPickFields(EForm eForm,List<EFormField> listEFormFieldsInsPick=null) {
+			List<InsPickImportResult> listResults=new List<InsPickImportResult>();
+			if(listEFormFieldsInsPick==null) {
+				listEFormFieldsInsPick=eForm.ListEFormFields.FindAll(x => x.FieldType==EnumEFormFieldType.InsPick);
+			}
+			if(listEFormFieldsInsPick.Count==0 || eForm.PatNum==0) {
+				return listResults;
+			}
+			EFormFields.SetIsHiddenConditFlags(eForm.ListEFormFields);
+			Family family=Patients.GetFamily(eForm.PatNum);
+			List<PatPlan> listPatPlans=PatPlans.Refresh(eForm.PatNum);
+			for(int i=0;i<listEFormFieldsInsPick.Count;i++) {
+				List<InsPending> listInsPendingsPat=InsPendings.GetForPat(eForm.PatNum);
+				InsPickImportResult result=GetInsPickImport(eForm,listEFormFieldsInsPick[i],family,listPatPlans,listInsPendingsPat);
+				if(result.InsPending!=null) {
+					InsPendings.Insert(result.InsPending);
+					result.IsCreated=true;
+					SecurityLogs.MakeLogEntry(EnumPermType.EFormImport,eForm.PatNum,"Pending insurance created from eForm #"+eForm.EFormNum
+						+" ("+eForm.Description+"): "+InsPendings.GetDescription(result.InsPending,family));
+				}
+				listResults.Add(result);
+			}
+			return listResults;
+		}
+		#endregion Ins Pick (Open Dental 25.2)
+	}
+
+	///<summary>What importing one Ins Pick field did or would do.</summary>
+	public class InsPickImportResult {
+		public EFormField EFormField;
+		///<summary>The pending row that the import makes. Null when there is nothing to make or the field can't be imported.</summary>
+		public InsPending InsPending;
+		///<summary>True once the row was inserted.</summary>
+		public bool IsCreated;
+		///<summary>A short line for the user and the audit trail.</summary>
+		public string Description="";
+		///<summary>Why the field can't be imported. Empty when it can.</summary>
+		public string Error="";
 	}
 }

@@ -326,6 +326,24 @@
     <Compile Include="Frms\FrmEFormDateFieldEdit.xaml.cs">
       <DependentUpon>FrmEFormDateFieldEdit.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Frms\FrmEFormInsPickEdit.xaml.cs">
+      <DependentUpon>FrmEFormInsPickEdit.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Frms\FrmEFormInsPickExisting.xaml.cs">
+      <DependentUpon>FrmEFormInsPickExisting.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Frms\FrmEFormPatientAdd.xaml.cs">
+      <DependentUpon>FrmEFormPatientAdd.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Frms\FrmEFormPatientListEdit.xaml.cs">
+      <DependentUpon>FrmEFormPatientListEdit.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Frms\FrmEFormPatientPick.xaml.cs">
+      <DependentUpon>FrmEFormPatientPick.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Frms\FrmInsPendingReview.xaml.cs">
+      <DependentUpon>FrmInsPendingReview.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Frms\FrmEFormSigBoxEdit.xaml.cs">
       <DependentUpon>FrmEFormSigBoxEdit.xaml</DependentUpon>
     </Compile>
@@ -923,6 +941,30 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Frms\FrmEFormDateFieldEdit.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Frms\FrmEFormInsPickEdit.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Frms\FrmEFormInsPickExisting.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Frms\FrmEFormPatientAdd.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Frms\FrmEFormPatientListEdit.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Frms\FrmEFormPatientPick.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Frms\FrmInsPendingReview.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

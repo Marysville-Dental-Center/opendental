@@ -48,7 +48,8 @@ namespace OpenDental {
 				if(!ListEFormFields[i].FieldType.In(
 					EnumEFormFieldType.CheckBox,
 					EnumEFormFieldType.RadioButtons,
-					EnumEFormFieldType.DateField))
+					EnumEFormFieldType.DateField,
+					EnumEFormFieldType.InsPick))//Open Dental 25.2: Ins Pick shows its insurance fields for New
 				{
 					continue;
 				}

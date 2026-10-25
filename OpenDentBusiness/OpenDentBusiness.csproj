@@ -464,7 +464,9 @@
     <Compile Include="EForms\EFormFieldsAvailable.cs" />
     <Compile Include="EForms\EFormFiller.cs" />
     <Compile Include="EForms\EFormImport.cs" />
+    <Compile Include="EForms\EFormInsPick.cs" />
     <Compile Include="EForms\EFormInternal.cs" />
+    <Compile Include="EForms\EFormPatListLayout.cs" />
     <Compile Include="Email\BasicEmailAttachment.cs" />
     <Compile Include="Imaging\MountHelper.cs" />
     <Compile Include="Data Interface\DiscountPlanSubs.cs" />
@@ -484,6 +486,7 @@
     <Compile Include="Data Interface\ClinicErxs.cs" />
     <Compile Include="Data Interface\CommOptOuts.cs" />
     <Compile Include="Data Interface\DatabaseMaintenances.cs" />
+    <Compile Include="Data Interface\DatabaseMaintenances.InsPending.cs" />
     <Compile Include="Data Interface\DbmLogs.cs" />
     <Compile Include="Data Interface\DefLinks.cs" />
     <Compile Include="Data Interface\DiscountPlans.cs" />
@@ -1434,6 +1437,7 @@
     <Compile Include="Data Interface\HL7Msgs.cs" />
     <Compile Include="Data Interface\FeeScheds.cs" />
     <Compile Include="Data Interface\InsPlans.cs" />
+    <Compile Include="Data Interface\InsPendings.cs" />
     <Compile Include="Data Interface\JournalEntries.cs" />
     <Compile Include="Data Interface\LabCases.cs" />
     <Compile Include="Data Interface\Laboratories.cs" />

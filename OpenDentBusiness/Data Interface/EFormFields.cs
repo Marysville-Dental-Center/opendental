@@ -96,8 +96,8 @@ namespace OpenDentBusiness{
 				//this field can't be used as a parent to hide anything right now because it has no value set.
 				return;
 			}
-			if(!eFormFieldParent.FieldType.In(EnumEFormFieldType.CheckBox,EnumEFormFieldType.RadioButtons,EnumEFormFieldType.DateField)){
-				//only these three types can be parents
+			if(!eFormFieldParent.FieldType.In(EnumEFormFieldType.CheckBox,EnumEFormFieldType.RadioButtons,EnumEFormFieldType.DateField,EnumEFormFieldType.InsPick)){
+				//only these types can be parents. Ins Pick (Open Dental 25.2) shows its insurance fields when the answer is New.
 				return;
 			}
 			string labelParentTrunc=labelParent.Substring(0,Math.Min(labelParent.Length,255));
@@ -132,6 +132,10 @@ namespace OpenDentBusiness{
 				string valParent=GetValParent(eFormFieldParent);
 				List<string> listVals=eFormFieldChild.ConditionalValue.Split('|').ToList();
 				return listVals.Contains(valParent);
+			}
+			if(eFormFieldParent.FieldType==EnumEFormFieldType.InsPick){
+				List<string> listVals=eFormFieldChild.ConditionalValue.Split('|').ToList();
+				return listVals.Contains(EFormInsPick.GetValParentEnglish(eFormFieldParent));
 			}
 			if(eFormFieldParent.FieldType==EnumEFormFieldType.CheckBox){
 				return eFormFieldParent.ValueString==eFormFieldChild.ConditionalValue;

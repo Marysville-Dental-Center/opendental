@@ -6,11 +6,11 @@
              xmlns:local="clr-namespace:OpenDental"
              xmlns:ui="clr-namespace:WpfControls.UI"
              mc:Ignorable="d"
-             Width="645" Height="719" 
+             Width="645" Height="775" 
              Text="EForm Def Edit">
 	<Grid Background="#FFFCFDFE" >
 		<ui:Button x:Name="butDelete" Height="24" Margin="10,0,0,8" Text="Delete" Icon="DeleteX" Click="butDelete_Click" Width="84" VerticalAlignment="Bottom" />
-		<ui:GroupBox x:Name="groupSetTitle" Width="101" Height="276" Margin="11,73,0,0" TabIndexOD="2" Text="Add Field">
+		<ui:GroupBox x:Name="groupSetTitle" Width="101" Height="332" Margin="11,73,0,0" TabIndexOD="2" Text="Add Field">
 			<ui:Button x:Name="butTextField" Margin="7,24,0,0" Text="Text Box" Click="butTextField_Click" Height="24" Width="87" />
 			<ui:Button x:Name="butLabel" Margin="0,51,0,0" Text="Label" Click="butLabel_Click" Height="24" Width="87" HorizontalAlignment="Center" />
 			<ui:Button x:Name="butDateField" Margin="0,77,0,0" Text="Date Field" Click="butDateField_Click" Height="24" Width="87" HorizontalAlignment="Center" />
@@ -19,8 +19,10 @@
 			<ui:Button x:Name="butSigBox" Margin="7,180,0,0" Text="Signature Box" Click="butSigBox_Click" Height="24" Width="87"  />
 			<ui:Button x:Name="butPageBreak" Margin="0,245,0,0" Text="Page Break" Click="butPageBreak_Click" Height="24" Width="87" HorizontalAlignment="Center"  />
 			<ui:Button x:Name="butMedicationList" Margin="0,207,0,0" Text="Medication List" Height="24" Width="87"  HorizontalAlignment="Center" Click="butMedicationList_Click"  />
+			<ui:Button x:Name="butPatientList" Margin="0,272,0,0" Text="Patient List" Height="24" Width="87" HorizontalAlignment="Center" Click="butPatientList_Click" />
+			<ui:Button x:Name="butInsPick" Margin="0,299,0,0" Text="Ins Pick" Height="24" Width="87" HorizontalAlignment="Center" Click="butInsPick_Click" />
 		</ui:GroupBox>
-		<ui:GroupBox x:Name="groupConditional" Height="100" Width="101" Margin="11,461,0,0">
+		<ui:GroupBox x:Name="groupConditional" Height="100" Width="101" Margin="11,517,0,0">
 			<ui:Label Width="98" Height="34" Margin="0,1,0,0" Text="Set conditional parent for" VAlign="Center" HorizontalAlignment="Center" />
 			<ui:Button x:Name="butSetCondition" Text="Multiple Fields" Click="butSetCondition_Click" Height="24" Width="87" HorizontalAlignment="Center" Margin="0,40,0,0"/>
 			<ui:Button x:Name="butSetPageCondition" Margin="0,67,0,0" Text="Entire Page" Click="butSetPageCondition_Click" Height="24" Width="87" HorizontalAlignment="Center"/>
@@ -29,12 +31,12 @@
 		<ui:Button x:Name="butSave" HorizontalAlignment="Right" Width="75" VerticalAlignment="Bottom" Height="24" Margin="0,0,10,8" Text="_Save" Click="butSave_Click" />
 		<local:CtrlEFormFill x:Name="ctrlEFormFill" Margin="155,5,0,38" HorizontalAlignment="Left" Width="458"/>
 		<ui:TextBox x:Name="textDescription" Height="20" Width="147" Margin="1,5,0,0" ReadOnly="True" ColorBack="#FFF0F0F0"/>
-		<ui:Button x:Name="butCopy" Margin="18,392,0,0" Text="Copy Ctrl-C" Height="24" Width="87" Click="butCopy_Click"  />
-		<ui:Button x:Name="butPaste" Margin="18,419,0,0" Text="Paste Ctrl-V" Height="24" Width="87" Click="butPaste_Click" />
-		<ui:Button x:Name="butCut" Margin="18,365,0,0" Text="Cut Ctrl-X" Height="24" Width="87" Click="butCut_Click"   />
-		<ui:ComboBox x:Name="comboLanguage" Width="131" Height="21" Margin="5,590,0,0"/>
-		<ui:Label x:Name="labelLanguage" Height="18" Margin="3,571,0,0" Text="Language" Width="88" VAlign="Center" HorizontalContentAlignment="Left" />
-		<ui:Label Height="50" Margin="5,619,0,0" Text="Change the width of this window to see how the fields flow" Width="130" VAlign="Center" HorizontalContentAlignment="Left" />
+		<ui:Button x:Name="butCopy" Margin="18,448,0,0" Text="Copy Ctrl-C" Height="24" Width="87" Click="butCopy_Click"  />
+		<ui:Button x:Name="butPaste" Margin="18,475,0,0" Text="Paste Ctrl-V" Height="24" Width="87" Click="butPaste_Click" />
+		<ui:Button x:Name="butCut" Margin="18,421,0,0" Text="Cut Ctrl-X" Height="24" Width="87" Click="butCut_Click"   />
+		<ui:ComboBox x:Name="comboLanguage" Width="131" Height="21" Margin="5,646,0,0"/>
+		<ui:Label x:Name="labelLanguage" Height="18" Margin="3,627,0,0" Text="Language" Width="88" VAlign="Center" HorizontalContentAlignment="Left" />
+		<ui:Label Height="50" Margin="5,675,0,0" Text="Change the width of this window to see how the fields flow" Width="130" VAlign="Center" HorizontalContentAlignment="Left" />
 		<ui:Button x:Name="butEditProperties" Margin="11,30,0,0" Text="Edit Properties" Height="24" Width="101" Click="butEditProperties_Click" />
 	</Grid>
 </local:FrmODBase>

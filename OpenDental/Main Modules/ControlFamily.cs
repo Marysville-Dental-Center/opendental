@@ -30,6 +30,8 @@ namespace OpenDental{
 		private List <InsPlan> _listInsPlans;
 		private List<InsSub> _listInsSubs;
 		private List <PatPlan> _listPatPlans;
+		///<summary>The patient's pending insurance (inspending, Open Dental 25.2), shown as columns to the left of the real plans. Set by FillInsData.</summary>
+		private List<InsPending> _listInsPendings=new List<InsPending>();
 		private List<Patient> _listPatientsSuperFamilyGuarantors;
 		private List<Patient> _listPatientsSuperFamilyMembers;
 		private List<PatField> _listPatFieldsForSuperFam;
@@ -301,6 +303,10 @@ namespace OpenDental{
 
 		#region Methods - Event Handlers - GridIns
 		private void gridIns_CellDoubleClick(object sender,ODGridClickEventArgs e) {
+			if(e.Col>=1 && e.Col<=_listInsPendings.Count) {//pending insurance columns come first
+				OpenInsPending(_listInsPendings[e.Col-1]);
+				return;
+			}
 			//Handle if the patient has a discount plan
 			if(_discountPlanSub!=null) {
 				DiscountPlanSub discountPlanSub=DiscountPlanSubs.GetSubForPat(_patient.PatNum);
@@ -337,7 +343,12 @@ namespace OpenDental{
 			}
 			Cursor=Cursors.WaitCursor;
 			//Retrieving information from database due to concurrency issues causing the Family Module to display an insurance plan that has potentially changed.
-			PatPlan patPlan=PatPlans.GetByPatPlanNum(_listPatPlans[e.Col-1].PatPlanNum);
+			int idxPatPlan=e.Col-1-_listInsPendings.Count;
+			if(idxPatPlan<0 || idxPatPlan>=_listPatPlans.Count) {
+				Cursor=Cursors.Default;
+				return;
+			}
+			PatPlan patPlan=PatPlans.GetByPatPlanNum(_listPatPlans[idxPatPlan].PatPlanNum);
 			if(patPlan==null) {
 				Cursor=Cursors.Default;
 				MsgBox.Show(this,"Insurance plan for this patient no longer exists.  Refresh the module.");
@@ -365,6 +376,31 @@ namespace OpenDental{
 			Cursor=Cursors.Default;
 			//Module is refreshed to reflect what the most recent information in the database is, but the module doesn't refresh if the insurance plan is edited by someone else.
 			ModuleSelected(_patient.PatNum);//Should refresh insplans to display new information
+		}
+
+		///<summary>Opens the review window of a pending insurance row. After a conversion that created a plan, offers to open the new plan so staff can
+		///finish its benefits.</summary>
+		private void OpenInsPending(InsPending insPending) {
+			if(InsPendings.GetOne(insPending.InsPendingNum)==null) {
+				MsgBox.Show(this,"This pending insurance was already converted or deleted by another user.");
+				ModuleSelected(_patient.PatNum);
+				return;
+			}
+			FrmInsPendingReview frmInsPendingReview=new FrmInsPendingReview(insPending.InsPendingNum);
+			frmInsPendingReview.ShowDialog();
+			InsPendingConvertResult insPendingConvertResult=frmInsPendingReview.ConvertResult;
+			if(insPendingConvertResult!=null && insPendingConvertResult.IsPlanCreated
+				&& MsgBox.Show(this,MsgBoxButtons.YesNo,"Open the new insurance plan to review it?"))
+			{
+				PatPlan patPlan=PatPlans.Refresh(_patient.PatNum).Find(x => insPendingConvertResult.ListPatPlanNums.Contains(x.PatPlanNum));
+				InsSub insSub=InsSubs.GetOne(insPendingConvertResult.InsSubNum);
+				InsPlan insPlan=InsPlans.GetPlan(insPendingConvertResult.PlanNum,null);
+				if(patPlan!=null && insSub!=null && insPlan!=null) {
+					using FormInsPlan formInsPlan=new FormInsPlan(insPlan,patPlan,insSub);
+					formInsPlan.ShowDialog();
+				}
+			}
+			ModuleSelected(_patient.PatNum);
 		}
 
 		private void menuItemRemoveDiscount_Click(object sender,EventArgs e) {
@@ -2050,6 +2086,10 @@ namespace OpenDental{
 
 		#region Methods - Private - GridIns
 		private void FillInsData() {
+			_listInsPendings=new List<InsPending>();
+			if(_patient!=null && !PrefC.GetBool(PrefName.EasyHideInsurance)) {
+				_listInsPendings=InsPendings.GetForPat(_patient.PatNum);
+			}
 			if(_patient!=null && _discountPlanSub!=null) {
 				gridIns.BeginUpdate();
 				gridIns.Title=Lan.g(this,"Discount Plan");
@@ -2145,6 +2185,7 @@ namespace OpenDental{
 				cellNote.ColorText=Color.Red;
 				rowDiscount.Cells.Add(cellNote);
 				gridIns.ListGridRows.Add(rowDiscount);
+				AddInsPendingColumns();
 				gridIns.EndUpdate();
 				return;
 			}
@@ -2155,6 +2196,10 @@ namespace OpenDental{
 				gridIns.BeginUpdate();
 				gridIns.Columns.Clear();
 				gridIns.ListGridRows.Clear();
+				if(_listInsPendings.Count>0) {
+					gridIns.Columns.Add(new GridColumn("",150));
+					AddInsPendingColumns();
+				}
 				gridIns.EndUpdate();
 				return;
 			}
@@ -2530,7 +2575,85 @@ namespace OpenDental{
 				row.Tag=listPrefNames[i].ToString();//Tag with prefname
 				gridIns.ListGridRows.Add(row);
 			}
+			AddInsPendingColumns();
 			gridIns.EndUpdate();
+		}
+
+		///<summary>Pending insurance (Open Dental 25.2) shows as extra columns to the left of the real plans, in gray, headed "Pending Ins" with the ordinal
+		///the patient asked for. Call after all other columns and rows are added, between BeginUpdate and EndUpdate. Each pending column fills the rows
+		///for subscriber, subscriber ID, relationship, employer, carrier (with phone), group name and group number; rows that are missing (no plans, or a
+		///discount plan) are added. Double-click opens the review window.</summary>
+		private void AddInsPendingColumns() {
+			if(_listInsPendings.Count==0) {
+				return;
+			}
+			string labelGroupNum=Lan.g("TableCoverage","Group Number");
+			if(CultureInfo.CurrentCulture.Name.EndsWith("CA")) {//Canadian. en-CA or fr-CA
+				labelGroupNum=Lan.g("TableCoverage","Plan Number");
+			}
+			List<string> listLabels=new List<string>() { Lan.g("TableCoverage","Subscriber"),Lan.g("TableCoverage","Subscriber ID"),
+				Lan.g("TableCoverage","Rel'ship to Sub"),Lan.g("TableCoverage","Employer"),Lan.g("TableCoverage","Carrier"),
+				Lan.g("TableCoverage","Group Name"),labelGroupNum };
+			List<GridColumn> listGridColumns=gridIns.Columns.ToList();
+			gridIns.Columns.Clear();
+			gridIns.Columns.Add(listGridColumns[0]);
+			for(int i=0;i<_listInsPendings.Count;i++) {
+				string heading=Lan.g(this,"Pending Ins");
+				if(_listInsPendings[i].Ordinal>0) {
+					heading+=" ("+_listInsPendings[i].Ordinal+")";
+				}
+				gridIns.Columns.Add(new GridColumn(heading,170));
+			}
+			for(int i=1;i<listGridColumns.Count;i++) {
+				gridIns.Columns.Add(listGridColumns[i]);
+			}
+			//Rows the pending columns need but the grid doesn't have yet.
+			for(int i=0;i<listLabels.Count;i++) {
+				if(gridIns.ListGridRows.Exists(x => x.Cells.Count>0 && x.Cells[0].Text==listLabels[i])) {
+					continue;
+				}
+				GridRow gridRowNew=new GridRow();
+				gridRowNew.Cells.Add(listLabels[i]);
+				for(int c=1;c<listGridColumns.Count;c++) {
+					gridRowNew.Cells.Add("");
+				}
+				gridIns.ListGridRows.Add(gridRowNew);
+			}
+			for(int r=0;r<gridIns.ListGridRows.Count;r++) {
+				GridRow gridRow=gridIns.ListGridRows[r];
+				string label=gridRow.Cells.Count>0 ? gridRow.Cells[0].Text : "";
+				for(int i=0;i<_listInsPendings.Count;i++) {
+					InsPending insPending=_listInsPendings[i];
+					string text="";
+					if(label==listLabels[0]) {
+						text=_family.GetNameInFamFL(insPending.PatNumSubscriber);
+					}
+					else if(label==listLabels[1]) {
+						text=insPending.SubscriberID;
+					}
+					else if(label==listLabels[2]) {
+						text=Lan.g("enumRelat",insPending.Relationship.ToString());
+					}
+					else if(label==listLabels[3]) {
+						text=insPending.Employer;
+					}
+					else if(label==listLabels[4]) {
+						text=insPending.CarrierName;
+						if(insPending.Phone!="") {
+							text+="  "+insPending.Phone;
+						}
+					}
+					else if(label==listLabels[5]) {
+						text=insPending.GroupName;
+					}
+					else if(label==listLabels[6]) {
+						text=insPending.GroupNum;
+					}
+					GridCell gridCell=new GridCell(text);
+					gridCell.ColorText=Color.Gray;
+					gridRow.Cells.Insert(Math.Min(1+i,gridRow.Cells.Count),gridCell);
+				}
+			}
 		}
 
 		private void ToolButDiscount_Click() {

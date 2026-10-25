@@ -27,9 +27,13 @@ namespace WpfControls {
 				return existingValues;
 			}
 			EFormField eFormFieldParent=listEFormFieldsParent[0];
-			if(eFormFieldParent.FieldType==EnumEFormFieldType.RadioButtons){
+			if(eFormFieldParent.FieldType==EnumEFormFieldType.RadioButtons || eFormFieldParent.FieldType==EnumEFormFieldType.InsPick){
+				//Ins Pick (Open Dental 25.2) offers its three choices; children normally use New.
 				List<string> listPick=eFormFieldParent.PickListVis.Split('|').ToList();
-				if(eFormFieldParent.DbLink!=""){
+				if(eFormFieldParent.FieldType==EnumEFormFieldType.InsPick){
+					listPick=EFormInsPick.GetOptions(eFormFieldParent.PickListVis);
+				}
+				if(eFormFieldParent.FieldType==EnumEFormFieldType.RadioButtons && eFormFieldParent.DbLink!=""){//Ins Pick has no PickListDb
 					//parent has a db link, so we might need to use some of those values if the Vis items are empty
 					List<string> listPickDb=eFormFieldParent.PickListDb.Split('|').ToList();
 					for(int i=0;i<listPick.Count;i++){
@@ -124,7 +128,7 @@ namespace WpfControls {
 			EFormField eFormFieldParent=listEFormFields.Find(x=>
 				x.ValueLabel!=""
 				&& x.ValueLabel.Substring(0,Math.Min(x.ValueLabel.Length,255))==parent
-				&& x.FieldType.In(EnumEFormFieldType.CheckBox,EnumEFormFieldType.RadioButtons,EnumEFormFieldType.DateField));
+				&& x.FieldType.In(EnumEFormFieldType.CheckBox,EnumEFormFieldType.RadioButtons,EnumEFormFieldType.DateField,EnumEFormFieldType.InsPick));
 			//note that in the linq above, we did not validate dbVal in any way. We're just trying to find the parent.
 			if(eFormFieldParent is null){
 				return dbVal;
@@ -146,7 +150,7 @@ namespace WpfControls {
 			EFormField eFormFieldParent=listEFormFields.Find(x=>
 				x.ValueLabel!=""
 				&& x.ValueLabel.Substring(0,Math.Min(x.ValueLabel.Length,255))==parent
-				&& x.FieldType.In(EnumEFormFieldType.CheckBox,EnumEFormFieldType.RadioButtons,EnumEFormFieldType.DateField));
+				&& x.FieldType.In(EnumEFormFieldType.CheckBox,EnumEFormFieldType.RadioButtons,EnumEFormFieldType.DateField,EnumEFormFieldType.InsPick));
 			if(eFormFieldParent is null){
 				return visVal;
 			}
