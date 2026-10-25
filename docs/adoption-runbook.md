@@ -1,6 +1,6 @@
 # Adoption runbook: moving the office from Open Dental 25.3.48 to Open PMS - Dental
 
-Status: 2026-10-24, second revision after review (M1-Z r2); milestone M1 switch gate (M1-Z in [specs/port-backlog.md](specs/port-backlog.md)).
+Status: 2026-10-25, second revision after review (M1-Z r2); milestone M1 switch gate (M1-Z in [specs/port-backlog.md](specs/port-backlog.md)).
 Rehearsed on synthetic data with [tools/AdoptionValidation](../tools/AdoptionValidation/README.md); results in
 [m1-validation-report.md](m1-validation-report.md). The tool commands of steps 0.2, 1.1, 3.2 to 6.1 (everything before the program's first
 start), 10.1 and 10.2 are the commands the dry run ran, in its order, through a forwarded port as on the admin PC (step 0.0). The commands
@@ -41,10 +41,11 @@ after the switch must then be re-entered by hand. Decide the rollback deadline b
 ### Why steps 3 to 6.1 run without the program
 
 Starting this program and logging in writes to the database: this computer's row and its heartbeat, the Database Maintenance list, signals,
-login records, security log entries. Step 6.1 compares the adopted copy with its report from before adoption and accepts only the changes
-adoption and the rehash make. So the copy, the adoption, the rehash and that comparison are done with the command-line tools, exactly as
-rehearsed, and **nobody starts this program on `opendental_pms` until step 6.1 has passed**. From step 6.2 on, the program's own writes are
-normal use.
+login records, security log entries. Step 6.1 compares the adopted copy with its report from before adoption and accepts only the kinds of
+change adoption and the rehash make; four tables, `preference`, `documentmisc`, `securitylog` and `securityloghash`, it can only accept as a
+whole, and step 4 has checked those row by row. So the copy, the adoption, the rehash and that comparison are done with the
+command-line tools, exactly as rehearsed, and **nobody starts this program on `opendental_pms` until step 6.1 has passed**. From step 6.2 on,
+the program's own writes are normal use.
 
 ## Where each command runs
 
@@ -86,24 +87,24 @@ owner's decision (validation report, "For the owner", item 5).
 ## Timing
 
 Measured by the dry run of these steps with these commands (`Invoke-RunbookDryRun.ps1`) on a development PC (MariaDB 10.11, SSD), synthetic
-data, through a forwarded port as on the admin PC (validation report, "Runbook dry run"). That server was busy with other test runs at the
-time, which slowed above all the 422 `CREATE TABLE` statements of the copy; on an idle server the copy takes a fraction of this. Step 3.1
-runs on the server and was not measured: it copies the database folder once and reads it twice (`cp` and `diff`), so allow two to three times
-what copying a file of the database's size takes on `fox-db`, plus a minute to stop and start MariaDB.
+data, through a forwarded port as on the admin PC (validation report, "Runbook dry run"). That server was shared with other test runs at the
+time, so these are upper bounds: the same medium copy took 15 s in one rehearsal run and 65 s in another. Step 3.1 runs on the server and was
+not measured: it copies the database folder once and reads it twice (`cp` and `diff`), so allow two to three times what copying a file of the
+database's size takes on `fox-db`, plus a minute to stop and start MariaDB.
 
 | Step | Medium: 101,881 rows, 1,355 patients, 36 MB of tables | Large: 777,822 rows, 9,158 patients, 286 MB of tables |
 |---|---:|---:|
-| 0.2 and 1.1 FLOAT check, no connection to the original | 0.9 s | 6.1 s |
-| 3.2 Copy on the server (`AdoptionValidation copy`) | 92.6 s | 107.9 s |
-| 3.3 Two reports and their comparison | 6.0 s | 32.5 s |
-| 4 and 5 Adoption, fork migration again, verifier, rehash, row check (`AdoptionValidation adopt`) | 5.1 s | 13.7 s |
-| 6.1 Post-adoption report, comparison, startup check | 3.7 s | 19.0 s |
-| 10.1 and 10.2 Go-live checks of the original | 3.5 s | 16.2 s |
-| **Total** | **111.8 s** | **195.4 s** |
+| 0.2 and 1.1 FLOAT check, no connection to the original | 0.8 s | 2.0 s |
+| 3.2 Copy on the server (`AdoptionValidation copy`) | 51.1 s | 86.5 s |
+| 3.3 Two reports and their comparison | 6.0 s | 36.1 s |
+| 4 and 5 Adoption, fork migration again, verifier, rehash, row check (`AdoptionValidation adopt`) | 4.9 s | 14.2 s |
+| 6.1 Post-adoption report, comparison, startup check | 4.1 s | 23.3 s |
+| 10.1 and 10.2 Go-live checks of the original | 3.4 s | 27.1 s |
+| **Total** | **70.3 s** | **189.2 s** |
 
 The copy and the reports grow with the data; adoption is dominated by one `ALTER TABLE patient` and the rehash by the number of patients.
 The office database also holds documents, logs and history the synthetic data does not, and the server is not this PC, and the forward adds
-the network between the admin PC and `fox-db` (only reports cross it, not rows). Plan the outage window from the office's own dry run (step
+the network between the admin PC and `fox-db` (the reports and the rows the rehash reads cross it; the copy does not). Plan the outage window from the office's own dry run (step
 0.6) when the owner allows it, or else from these figures (step 0.7): the steps above + step 3.1 + password re-entry + workstations + smoke
 test, plus a margin of 50% (dry run) or 200% (no dry run).
 
@@ -284,7 +285,7 @@ lists the services' connections again (exit code 6).
   is only typing.
 - **Window:** from the rehearsal's figures. Read the database size (table metadata only, no rows): [server]
   `sudo mariadb -e "SELECT ROUND(SUM(DATA_LENGTH+INDEX_LENGTH)/1048576) AS MB FROM information_schema.TABLES WHERE TABLE_SCHEMA='opendental'"`.
-  Scale the large dry run's total (Timing: 195 s for 286 MB of tables) by size, for example for 3 GB: 195 s × 3000 / 286, about 34 minutes.
+  Scale the large dry run's total (Timing: 189 s for 286 MB of tables) by size, for example for 3 GB: 189 s × 3000 / 286, about 33 minutes.
   Add step 3.1 (Timing) and 200% for the unknown server, then password re-entry, the workstations and the smoke test.
 - **Tools and server check (optional, recommended):** outside office hours, with synthetic data only, through the forward:
   `& $av rehearse --size large --runs 1 --keep --skip-roundtrip --tag office --schema-from opendental --out C:\Adoption\rehearsal @db`

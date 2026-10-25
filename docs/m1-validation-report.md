@@ -1,8 +1,8 @@
 # M1 validation report: the adoption rehearsal (switch gate M1-Z)
 
-Status: **ready for the owner's sign-off**, 2026-10-24, second revision after review (M1-Z r2). Branch `m1/m1-z-r2` (from `m1/m1-z-r1`);
-rehearsal and dry runs at commit `a98a1ee86`, build and tests at `c5fa66f28` (which only changes the wording of some of `adopt`'s and `restore`'s messages, from "restored copy" to "copy"). Synthetic data only (owner decision of 2026-10-18: no office census, no office
-data). Procedure for the office: [adoption-runbook.md](adoption-runbook.md). Tooling: [tools/AdoptionValidation](../tools/AdoptionValidation/README.md).
+Status: **ready for the owner's sign-off**, 2026-10-25, second revision after review (M1-Z r2). Branch `m1/m1-z-r2` (from `m1/m1-z-r1`);
+build, tests, rehearsal and dry runs at commit `26f967c0b` (the commits after it change only this report and the runbook). Synthetic data
+only (owner decision of 2026-10-18: no office census, no office data). Procedure for the office: [adoption-runbook.md](adoption-runbook.md). Tooling: [tools/AdoptionValidation](../tools/AdoptionValidation/README.md).
 
 The first version of this report rested on a cutover check that had never been rehearsed: the runbook started the program on the adopted copy
 before taking the post-adoption report (F8). The first revision ran the rehearsed sequence without the program, but its runbook assumed a
@@ -74,8 +74,9 @@ all synthetic, before the baseline:
 
 **Environment.** Windows 11 Pro, MariaDB 10.11.19 on `127.0.0.1:3306` (the local development server; `fox-db` was never contacted), Debug x86
 build of this branch. The dry run reached that server through a relay on `127.0.0.1:13306`, standing in for the SSH forward of runbook step
-0.0. The server was shared with other test runs throughout (some 20 statements running at any moment, see
-"Timings"), so the times below are well above what an idle server needs. All tools refuse any server other than this machine and block outbound HTTP; no run reported a blocked request.
+0.0. The server was shared with other test runs throughout (some 25 other connections, 3 to 14 statements running whenever it was
+sampled; see "Timings"), so the times below are above what an idle server needs. All tools refuse any server other than this machine and
+block outbound HTTP; no run reported a blocked request.
 
 **Owner decisions applied.** Synthetic data only; `patient._portal_active_email` dropped by adoption; chat and dental-school features
 excluded (their tables were filled with a few rows each and survive untouched: checksums and round trip); public sources only (the Open
@@ -86,36 +87,36 @@ Dental startup model follows the published GPL 24.3.63 source, not the licensed 
 Seconds per step. Medium is the gate (two runs, with the round trip); large is one extra run without the round trip, kept as the source of
 the large dry run below. The data-layer round trip and the second pass are rehearsal-only checks and are not part of the office procedure.
 
-**The development server was busy throughout.** Other test runs shared it the whole time (some 20 statements running at any moment, most of
-them `CREATE TABLE` and `ALTER TABLE`). Generating the medium database took about 95 s against 7.6 s on the idle server of the first
-revision, and the server-side copy, which runs 422 `CREATE TABLE` statements, was slowed most. These figures are therefore upper bounds, not
-estimates, and they say little about how the time grows with the size of the data: the large copy took 102.6 s against 74 to 92 s for
-the medium one, with 7.6 times the rows.
+**The development server was busy throughout.** Other test runs shared it the whole time (some 25 other connections, most of them creating,
+altering and filling their own scratch databases). The same work took very different times: generating the medium database 15.5 s in run 1
+and 71.2 s in run 2 (7.6 s on the idle server of the first revision), and the server-side copy, which runs 422 `CREATE TABLE` statements,
+15.0 s and 64.7 s. These figures are therefore upper bounds, not estimates, and they say little about how the time grows with the size of the
+data: the large copy took 80.7 s against 15.0 to 64.7 s for the medium one, with 7.6 times the rows.
 
 | Step | Medium, run 1 | Medium, run 2 | Large, run 1 |
 |---|---:|---:|---:|
-| Generate synthetic 25.3.48 database | 91.3 | 102.6 | 158.6 |
+| Generate synthetic 25.3.48 database | 15.5 | 71.2 | 106.9 |
 | Add office fixture | 0.1 | 0.1 | 0.1 |
-| Record baseline report | 2.3 | 2.2 | 16.0 |
-| FLOAT values a logical backup would round (`float-check`, runbook step 0.2) | 0.2 | 0.2 | 1.2 |
-| Copy on the server (`AdoptionValidation copy`, runbook step 3.2) | 74.5 | 91.5 | 102.6 |
-| Validate the copy | 2.1 | 2.1 | 16.9 |
-| Credential inventory | 0.0 | 0.0 | 0.1 |
+| Record baseline report | 3.1 | 2.4 | 30.1 |
+| FLOAT values a logical backup would round (`float-check`, runbook step 0.2) | 0.3 | 0.2 | 3.5 |
+| Copy on the server (`AdoptionValidation copy`, runbook step 3.2) | 15.0 | 64.7 | 80.7 |
+| Validate the copy | 4.4 | 2.7 | 15.3 |
+| Credential inventory | 0.2 | 0.1 | 0.1 |
 | Preflight | 0.0 | 0.0 | 0.0 |
-| Adopt (`Adoption.Run`, including its fork migration steps) | 1.2 | 1.2 | 1.7 |
-| Fork migration (all steps again) | 0.1 | 0.1 | 0.1 |
-| Schema verifier | 0.4 | 0.3 | 0.3 |
-| Rehash (`SecurityHash.RehashNow`) | 1.0 | 0.9 | 6.3 |
-| Row check against the original | 0.1 | 0.1 | 0.3 |
-| Record post-adoption report and compare | 2.6 | 2.3 | 17.5 |
+| Adopt (`Adoption.Run`, including its fork migration steps) | 2.2 | 2.2 | 1.6 |
+| Fork migration (all steps again) | 0.3 | 0.2 | 0.1 |
+| Schema verifier | 1.4 | 1.2 | 0.3 |
+| Rehash (`SecurityHash.RehashNow`) | 2.1 | 1.1 | 5.7 |
+| Row check against the original | 0.2 | 0.1 | 0.3 |
+| Record post-adoption report and compare | 5.2 | 2.6 | 17.5 |
 | Open Dental-style startup check | 0.0 | 0.0 | 0.0 |
-| Data-layer round trip (rehearsal only) | 22.7 | 16.8 | not run |
-| Record post-round-trip report (rehearsal only) | 3.4 | 2.5 | not run |
-| Second pass (rehearsal only) | 3.2 | 3.4 | 34.5 |
-| **Total** | **205.1** | **226.2** | **356.3** |
+| Data-layer round trip (rehearsal only) | 40.7 | 22.5 | not run |
+| Record post-round-trip report (rehearsal only) | 3.9 | 2.4 | not run |
+| Second pass (rehearsal only) | 6.2 | 3.1 | 17.9 |
+| **Total** | **100.8** | **176.9** | **280.1** |
 
 For the office's tool commands (FLOAT check, copy, two reports, adoption, verifier, rehash, row check, post-adoption report) the large run
-needed about 163 seconds on this busy server, 103 of them for the copy.
+needed about 155 seconds on this busy server, 81 of them for the copy.
 
 The office database's size is unknown (there is no census), so the runbook times the office's own dry run in the week before (step 0.6), or
 plans from these figures with a larger margin (step 0.7).
@@ -130,19 +131,20 @@ the original compared with its first one (10.2): everything before the program's
 rehearsal (`rehearse --runs 1 --keep --skip-roundtrip`, office fixture included) standing in for `opendental`, as of 2026-09-30, through a
 relay on `127.0.0.1:13306` to the server's port 3306, standing in for the SSH forward of runbook step 0.0. The relay accepted 13 connections in each
 run; the test suite checks that `adopt`'s business layer, the one part that used to ignore `--port`, connects through it (F11). Step 3.1, the folder copy on the database server, is bash on the server and is not part of it ("Not covered").
-Seconds per step, on the busy server described under "Timings" (the copy's 422 `CREATE TABLE` statements were slowed most):
+Seconds per step, on the busy server described under "Timings" (the copy took 51.1 s for the medium database here, against 15.0 s in
+rehearsal run 1):
 
 | Runbook step | Medium (101,881 rows) | Large (777,822 rows) |
 |---|---:|---:|
-| 0.2 FLOAT values a dump would round (`float-check`) | 0.5 | 5.6 |
-| 1.1 No connection uses the original (`connections`) | 0.4 | 0.5 |
-| 3.2 Copy on the server (`AdoptionValidation copy`) | 92.6 | 107.9 |
-| 3.3 Reports of both and their comparison | 6.0 | 32.5 |
-| 4 and 5 `AdoptionValidation adopt` (checks, adoption, migration again, verifier, rehash, row check) | 5.1 | 13.7 |
-| 6.1 Post-adoption report, comparison, startup check | 3.7 | 19.0 |
-| 10.1 No connection uses the original (`connections`) | 0.4 | 0.3 |
-| 10.2 The original unchanged | 3.1 | 15.9 |
-| **Total** | **111.8** | **195.4** |
+| 0.2 FLOAT values a dump would round (`float-check`) | 0.5 | 1.6 |
+| 1.1 No connection uses the original (`connections`) | 0.3 | 0.4 |
+| 3.2 Copy on the server (`AdoptionValidation copy`) | 51.1 | 86.5 |
+| 3.3 Reports of both and their comparison | 6.0 | 36.1 |
+| 4 and 5 `AdoptionValidation adopt` (checks, adoption, migration again, verifier, rehash, row check) | 4.9 | 14.2 |
+| 6.1 Post-adoption report, comparison, startup check | 4.1 | 23.3 |
+| 10.1 No connection uses the original (`connections`) | 0.4 | 0.5 |
+| 10.2 The original unchanged | 3.0 | 26.6 |
+| **Total** | **70.3** | **189.2** |
 | Result | `Dry run: PASS` | `Dry run: PASS` |
 
 In both: `float-check` found no FLOAT or DOUBLE value a dump would round (164 columns in 74 tables); no connection used the original before
@@ -372,8 +374,8 @@ itself also connects with a database name. Left for a later clean-up.
   dry run, with the owner's agreement) or in step 0.7's tools and server check (synthetic data), and otherwise on the day.
 - **The SSH forward and the tools' account.** The dry run reached MariaDB through a relay on port 13306 of the same PC, not through `ssh`, and as
   `root`, not `adoption_admin`; the `PROCESS` check is unit-tested and `root` passes it. Step 0.0.4 checks the forward and the account on the
-  office's admin PC before anything depends on them. The network between the admin PC and `fox-db` carries only reports; it adds time to
-  every tool command (not measured).
+  office's admin PC before anything depends on them. The network between the admin PC and `fox-db` carries the reports and the rows the
+  tools read (the rehash's above all), not the copy; it adds time to every tool command (not measured).
 - **Golden totals from Open Dental 25.3.48** (backlog M1-Z work item 2, R2 item 7). Comparing the fork's reports with Open Dental's own
   needs the licensed client and office data. The rehearsal proves instead that adoption changes no total. The runbook adds a comparison with
   the office's last Open Dental aging report.
@@ -414,17 +416,18 @@ itself also connects with a database name. Left for a later clean-up.
 
 ## Build and test results
 
-Build (at `c5fa66f28`): `MSBuild OpenDental.Local.slnf -restore` (Debug, x86): 0 errors. The first build of this worktree, before any change
-of this revision, gave 376 warnings, the baseline; the four changed projects (SyntheticData, AdoptionValidation and their tests), rebuilt
-on their own, give 0 warnings, so this revision adds none. `tools/Test-NoHqHosts.ps1` passed (5,997 files in 47 projects).
+Build (at `26f967c0b`): `MSBuild OpenDental.Local.slnf -restore` (Debug, x86): 0 errors and 376 warnings, the baseline of the first build of
+the review, so this revision adds none. `tools/Test-NoHqHosts.ps1` passed (5,997 files in 47 projects).
 
-Tests: every test assembly under the solution's `bin\Debug` folders, run with `vstest.console.exe /Platform:x86`. All passed, none skipped or
-inconclusive, 1,836 tests in total. The 24 assemblies outside `tools` contain no code changed by this revision. AdoptionValidation.Tests
-(44) ran on the build of `c5fa66f28`; it has 10 new tests: the business layer's port, the `PROCESS` check, the FLOAT check's expression and
-the new commands' arguments (4, no server), and with the server: the business layer through a relay, `copy` refusing and creating nothing,
-`connections` while someone is connected, `copy` exact where a dump rounds FLOAT values, the row check's negative control, and an adoption
-cut off before and after its markers; the dry run test now runs through a relay on another port. SyntheticData.Tests (52) has 3 new tests
-(FLOAT values read exactly, against a database and as SQL, and no rule for `updatehistory`).
+Tests: every test assembly under the solution's `bin\Debug` folders, run with `vstest.console.exe /Platform:x86` on the build of
+`26f967c0b`. All passed, none skipped or inconclusive, 1,836 tests in total. The 24 assemblies outside `tools` contain no code changed by
+this revision. AdoptionValidation.Tests (44) has 10 new tests: the business layer's port, the `PROCESS` check, the FLOAT check's expression
+and the new commands' arguments (4, no server), and with the server: the business layer through a relay, `copy` refusing and creating
+nothing, `connections` while someone is connected, `copy` exact where a dump rounds FLOAT values, the row check's negative control, and an
+adoption cut off before and after its markers; the dry run test now runs through a relay on another port. On the shared server it needed
+838 s; in the run of all 26 assemblies, three at a time, the test script stopped it at its 20-minute limit per assembly, after 43 results (none
+failed) and before its cleanup had dropped all of its scratch databases, so it was run again on its own: 44 of 44 passed. SyntheticData.Tests (52)
+has 3 new tests (FLOAT values read exactly, against a database and as SQL, and no rule for `updatehistory`).
 
 | Assembly | Passed |
 |---|---:|
@@ -454,6 +457,7 @@ cut off before and after its markers; the dry run test now runs through a relay 
 | VendorDirectTests | 872 |
 | AdoptionValidation.Tests | 44 |
 | SyntheticData.Tests | 52 |
+
 ## How to reproduce
 
 ```powershell
@@ -474,41 +478,43 @@ vstest.console.exe tools\AdoptionValidation\AdoptionValidation.Tests\bin\Debug\A
 ```
 
 The same seed gives the same database, so the row counts, checksums and totals below repeat exactly; only timings, scratch names and the
-adoption times differ. (The runs for this report used `--prefix synth_rvf52817_` for their scratch names.)
+adoption times differ, and so do the rehash's counts, because its window starts one month before the day it runs (`SecurityHash.GetHashingDate`):
+the rows it hashes, and with them the `SecurityHash` checksums, depend on that day. (The runs for this report used
+`--prefix synth_rvf60913_` for their scratch names.)
 
 ## Appendix: the rehearsal's own results (medium, two runs)
 
 Generated by `AdoptionValidation rehearse` (`rehearsal-result.md`), unedited apart from the heading levels.
 
-Overall: **PASS**. 2 runs, size medium, seed 20261018, as of 2026-09-30, filler rows 2, server 10.11.19-MariaDB, started 2026-10-25 06:12:37Z, commit a98a1ee86.
+Overall: **PASS**. 2 runs, size medium, seed 20261018, as of 2026-09-30, filler rows 2, server 10.11.19-MariaDB, started 2026-10-25 08:27:47Z, commit 26f967c0b.
 
 ### Step timings (seconds)
 
 | Step | Run 1 | Run 2 |
 |---|---:|---:|
-| Generate synthetic 25.3.48 database | 91.3 | 102.6 |
+| Generate synthetic 25.3.48 database | 15.5 | 71.2 |
 | Add office fixture (update files, server addresses, stored passwords) | 0.1 | 0.1 |
-| Record baseline report | 2.3 | 2.2 |
-| FLOAT values a logical backup would round (float-check) | 0.2 | 0.2 |
-| Copy on the server (AdoptionValidation copy) | 74.5 | 91.5 |
-| Validate the copy | 2.1 | 2.1 |
-| Credential inventory | 0.0 | 0.0 |
+| Record baseline report | 3.1 | 2.4 |
+| FLOAT values a logical backup would round (float-check) | 0.3 | 0.2 |
+| Copy on the server (AdoptionValidation copy) | 15.0 | 64.7 |
+| Validate the copy | 4.4 | 2.7 |
+| Credential inventory | 0.2 | 0.1 |
 | Preflight | 0.0 | 0.0 |
-| Adopt (Adoption.Run, including its fork migration steps) | 1.2 | 1.2 |
-| Fork migration (all steps again) | 0.1 | 0.1 |
-| Schema verifier | 0.4 | 0.3 |
-| Rehash (SecurityHash.RehashNow) | 1.0 | 0.9 |
-| Row check against the original | 0.1 | 0.1 |
-| Record post-adoption report and compare | 2.6 | 2.3 |
+| Adopt (Adoption.Run, including its fork migration steps) | 2.2 | 2.2 |
+| Fork migration (all steps again) | 0.3 | 0.2 |
+| Schema verifier | 1.4 | 1.2 |
+| Rehash (SecurityHash.RehashNow) | 2.1 | 1.1 |
+| Row check against the original | 0.2 | 0.1 |
+| Record post-adoption report and compare | 5.2 | 2.6 |
 | Open Dental-style startup check | 0.0 | 0.0 |
-| Data-layer round trip (load and save through OpenDentBusiness) | 22.7 | 16.8 |
-| Record post-round-trip report | 3.4 | 2.5 |
-| Second pass (adoption, migration, verifier, rehash, row check, report) | 3.2 | 3.4 |
-| **Total** | **205.1** | **226.2** |
+| Data-layer round trip (load and save through OpenDentBusiness) | 40.7 | 22.5 |
+| Record post-round-trip report | 3.9 | 2.4 |
+| Second pass (adoption, migration, verifier, rehash, row check, report) | 6.2 | 3.1 |
+| **Total** | **100.8** | **176.9** |
 
 ### Run 1: PASS
 
-Source synth_rvf52817_med_r1_src (422 tables, 101,881 rows; seed=20261018;size=medium;families=600;years=2;asOf=2026-09-30;tool=SyntheticData 1), adopted copy synth_rvf52817_med_r1_adopted (copy by the runbook's server-side copy, AdoptionValidation copy).
+Source synth_rvf60913_med_r1_src (422 tables, 101,881 rows; seed=20261018;size=medium;families=600;years=2;asOf=2026-09-30;tool=SyntheticData 1), adopted copy synth_rvf60913_med_r1_adopted (copy by the runbook's server-side copy, AdoptionValidation copy).
 
 | Check | Result | Detail |
 |---|---|---|
@@ -520,7 +526,7 @@ Source synth_rvf52817_med_r1_src (422 tables, 101,881 rows; seed=20261018;size=m
 | A4 Adoption finished | PASS | dropped column True, indexes portal_active_email_uniq, 4 update-file rows deleted, 4 preferences blanked (UpdateServerAddress, WebServiceHQServerURL, UpdateWebsitePath, SyntheticFuturePortalUrl) |
 | M1 Fork migration changes nothing on the adopted copy | PASS | 9 steps run (2026101901, 2026101902, 2026101903, 2026101904, 2026101905, 2026101906, 2026101907, 2026101951, 2026101971), 0 changes |
 | M2 Schema matches Open Dental 25.3.48 exactly | PASS | 422 of 422 tables; 0 differences, 0 mismatches (no documented exception needed) |
-| H1 Rehash gives every patient, and every row in the verified window, a fork hash | PASS | rehash window from 2026-09-24; appointment: 5846 rows, 551 in the rehash window (0 without a fork hash); 551 fork hashes, 4343 other, 952 blank; claim: 3523 rows, 34 in the rehash window (0 without a fork hash); 34 fork hashes, 3064 other, 425 blank; claimproc: 11055 rows, 334 in the rehash window (0 without a fork hash); 334 fork hashes, 8017 other, 2704 blank; inssub: 421 rows, 0 in the rehash window (0 without a fork hash); 0 fork hashes, 69 other, 352 blank; insverify: 624 rows, 17 in the rehash window (0 without a fork hash); 17 fork hashes, 607 other, 0 blank; insverifyhist: 304 rows, 9 in the rehash window (0 without a fork hash); 9 fork hashes, 295 other, 0 blank; patient: 1355 rows, 1355 in the rehash window (0 without a fork hash); 1355 fork hashes, 0 other, 0 blank; payplan: 15 rows, 0 in the rehash window (0 without a fork hash); 0 fork hashes, 0 other, 15 blank; paysplit: 6878 rows, 60 in the rehash window (0 without a fork hash); 60 fork hashes, 6121 other, 697 blank; rehash recorded in the security log |
+| H1 Rehash gives every patient, and every row in the verified window, a fork hash | PASS | rehash window from 2026-09-25; appointment: 5846 rows, 542 in the rehash window (0 without a fork hash); 542 fork hashes, 4352 other, 952 blank; claim: 3523 rows, 26 in the rehash window (0 without a fork hash); 26 fork hashes, 3072 other, 425 blank; claimproc: 11055 rows, 285 in the rehash window (0 without a fork hash); 285 fork hashes, 8037 other, 2733 blank; inssub: 421 rows, 0 in the rehash window (0 without a fork hash); 0 fork hashes, 69 other, 352 blank; insverify: 624 rows, 15 in the rehash window (0 without a fork hash); 15 fork hashes, 609 other, 0 blank; insverifyhist: 304 rows, 8 in the rehash window (0 without a fork hash); 8 fork hashes, 296 other, 0 blank; patient: 1355 rows, 1355 in the rehash window (0 without a fork hash); 1355 fork hashes, 0 other, 0 blank; payplan: 15 rows, 0 in the rehash window (0 without a fork hash); 0 fork hashes, 0 other, 15 blank; paysplit: 6878 rows, 53 in the rehash window (0 without a fork hash); 53 fork hashes, 6128 other, 697 blank; rehash recorded in the security log |
 | V1 Row counts unchanged except where adoption deletes or adds rows | PASS | 422 tables before, 422 after; 101,881 rows before, 101,886 after; changed: documentmisc 5 -> 1, preference 25 -> 30, securitylog 2701 -> 2703, securityloghash 2 -> 4 |
 | V2 Checksums of untouched tables identical | PASS | 410 of 422 tables (398 that hold rows and 12 empty in both) have identical row counts, CHECKSUM TABLE and column checksums; touched (each by an allowed adoption change): appointment, claim, claimproc, documentmisc, insverify, insverifyhist, patient, payplan, paysplit, preference, securitylog, securityloghash |
 | V3 Every difference is an allowed adoption difference | PASS | 38 allowed, 0 unexpected |
@@ -528,20 +534,20 @@ Source synth_rvf52817_med_r1_src (422 tables, 101,881 rows; seed=20261018;size=m
 | V5 patient._portal_active_email and its unique index dropped | PASS | column gone, index portal_active_email_uniq gone; two active patients may now share an e-mail address |
 | V6 Open Dental UpdateFiles rows removed | PASS | 4 UpdateFiles/UpdateFilesSegment rows before, 0 after; other documentmisc rows kept: 1 of 1 |
 | V7 Open Dental server addresses blanked, other preferences kept | PASS | 4 address preferences, 0 still set; vendor address kept True; help text kept True |
-| V8 Sentinel versions and fork markers set | PASS | DataBaseVersion 99.0.0.0, ProgramVersion 99.0.0.0, ForkSchemaLevel 2026101971 (latest step 2026101971), OdSchemaCompat 25.3.48, ForkAdoptedFrom source=25.3.48.0;started=2026-10-25T06:15:29Z;adopted=2026-10-25T06:15:30Z |
+| V8 Sentinel versions and fork markers set | PASS | DataBaseVersion 99.0.0.0, ProgramVersion 99.0.0.0, ForkSchemaLevel 2026101971 (latest step 2026101971), OdSchemaCompat 25.3.48, ForkAdoptedFrom source=25.3.48.0;started=2026-10-25T08:28:27Z;adopted=2026-10-25T08:28:29Z |
 | V9 Fork startup guard opens the adopted copy | PASS | ProceedFork, pending migrations False |
 | V10 Startup model: every Open Dental release client refuses the adopted copy | PASS | 9 of 9 release-client scenarios exit without converting, writing, installing services or copying binaries;  (a Debug build of Open Dental skips its version check: Proceeds; Open Dental ships Release builds only) |
 | V11 Row by row, adoption changed only its own rows of preference, documentmisc, securitylog, securityloghash and updatehistory | PASS | preference: 5 added (ForkAdoptedFrom, OdSchemaCompat, ForkSchemaLevel, ForkMigrationInProgress, ForkMigrationsApplied); 2 set to 99.0.0.0 (DataBaseVersion, ProgramVersion); 4 blanked (UpdateServerAddress, WebServiceHQServerURL, UpdateWebsitePath, SyntheticFuturePortalUrl); no other row changed or removed. documentmisc: 4 Open Dental update-file row(s) deleted, none left; 0 other row(s) deleted; 0 added; 0 changed. securitylog: 2 entries added (1 adoption, 1 rehash); no existing row changed or removed. securityloghash: 2 added, each for an added security log entry; no existing row changed or removed. updatehistory: identical row by row. |
 | R1 Every 24.4-25.3 column loads and saves through OpenDentBusiness; every writable one writes | PASS | 50 tables, 139 columns new or changed since 24.3: 134 loaded and saved unchanged (32,465 rows saved), and 129 of them given a new value, written and read back; 5 loaded and saved but not given a new value, because Insert or the server sets them (CRUD types TimeStamp, DateEntry, DateTEntry, ExcludeFromUpdate: feeschednote.SecUserNumEntry, feeschednote.SecDateEntry, feeschednote.SecDateTEdit, schoolapproval.SecDateEntry, schoolapproval.SecDateTEdit); 5 not loaded, documented exceptions preserved untouched (chatattach.Thumbnail, chatattach.FileData, deletedobject (3 columns)); first-save normalizations (same meaning in the program): benefit.SecDateTEdit: ON UPDATE timestamp of a row the save normalized (363 cells); benefit.ToothRange: NULL saved as '' (363 cells); computerpref.ComputerOS: blank or unknown enum text saved as 'Win32S' (4 cells); document.DateTStamp: ON UPDATE timestamp of a row the save normalized (2344 cells); document.ExternalSource: blank or unknown enum text saved as 'None' (2344 cells); insplan.GroupNum: NULL saved as '' (2 cells); insplan.SecDateTEdit: ON UPDATE timestamp of a row the save normalized (2 cells) |
 | R2 Round trip leaves the database unchanged apart from the first-save normalizations | PASS | only the normalized columns changed: benefit.SecDateTEdit; benefit.ToothRange; computerpref.ComputerOS; document.DateTStamp; document.ExternalSource; insplan.GroupNum; insplan.SecDateTEdit |
-| I1 A second adoption is refused | PASS | This database is already adopted (source=25.3.48.0;started=2026-10-25T06:15:29Z;adopted=2026-10-25T06:15:30Z). Nothing to do. |
+| I1 A second adoption is refused | PASS | This database is already adopted (source=25.3.48.0;started=2026-10-25T08:28:27Z;adopted=2026-10-25T08:28:29Z). Nothing to do. |
 | I2 A second fork migration changes nothing and the schema still matches | PASS | adoption skipped (already adopted); 9 steps run, 0 changes; verifier 0 differences; row check against the source passed |
-| I3 A second rehash changes nothing | PASS | every hash already current: appointment 551, claim 34, claimproc 334, inssub 0, insverify 17, insverifyhist 9, patient 1355, payplan 0, paysplit 60 |
+| I3 A second rehash changes nothing | PASS | every hash already current: appointment 542, claim 26, claimproc 285, inssub 0, insverify 15, insverifyhist 8, patient 1355, payplan 0, paysplit 53 |
 | I4 The whole second pass leaves the database unchanged | PASS | every table except securitylog and securityloghash has the row counts and checksums of the first pass; row by row against the snapshot taken after adoption, preference is identical, and securitylog and securityloghash only gained the rerun's own entry (1 and 1 row), with no existing row changed or removed |
 
 ### Run 2: PASS
 
-Source synth_rvf52817_med_r2_src (422 tables, 101,881 rows; seed=20261018;size=medium;families=600;years=2;asOf=2026-09-30;tool=SyntheticData 1), adopted copy synth_rvf52817_med_r2_adopted (copy by the runbook's server-side copy, AdoptionValidation copy).
+Source synth_rvf60913_med_r2_src (422 tables, 101,881 rows; seed=20261018;size=medium;families=600;years=2;asOf=2026-09-30;tool=SyntheticData 1), adopted copy synth_rvf60913_med_r2_adopted (copy by the runbook's server-side copy, AdoptionValidation copy).
 
 | Check | Result | Detail |
 |---|---|---|
@@ -553,7 +559,7 @@ Source synth_rvf52817_med_r2_src (422 tables, 101,881 rows; seed=20261018;size=m
 | A4 Adoption finished | PASS | dropped column True, indexes portal_active_email_uniq, 4 update-file rows deleted, 4 preferences blanked (UpdateServerAddress, WebServiceHQServerURL, UpdateWebsitePath, SyntheticFuturePortalUrl) |
 | M1 Fork migration changes nothing on the adopted copy | PASS | 9 steps run (2026101901, 2026101902, 2026101903, 2026101904, 2026101905, 2026101906, 2026101907, 2026101951, 2026101971), 0 changes |
 | M2 Schema matches Open Dental 25.3.48 exactly | PASS | 422 of 422 tables; 0 differences, 0 mismatches (no documented exception needed) |
-| H1 Rehash gives every patient, and every row in the verified window, a fork hash | PASS | rehash window from 2026-09-24; appointment: 5846 rows, 551 in the rehash window (0 without a fork hash); 551 fork hashes, 4343 other, 952 blank; claim: 3523 rows, 34 in the rehash window (0 without a fork hash); 34 fork hashes, 3064 other, 425 blank; claimproc: 11055 rows, 334 in the rehash window (0 without a fork hash); 334 fork hashes, 8017 other, 2704 blank; inssub: 421 rows, 0 in the rehash window (0 without a fork hash); 0 fork hashes, 69 other, 352 blank; insverify: 624 rows, 17 in the rehash window (0 without a fork hash); 17 fork hashes, 607 other, 0 blank; insverifyhist: 304 rows, 9 in the rehash window (0 without a fork hash); 9 fork hashes, 295 other, 0 blank; patient: 1355 rows, 1355 in the rehash window (0 without a fork hash); 1355 fork hashes, 0 other, 0 blank; payplan: 15 rows, 0 in the rehash window (0 without a fork hash); 0 fork hashes, 0 other, 15 blank; paysplit: 6878 rows, 60 in the rehash window (0 without a fork hash); 60 fork hashes, 6121 other, 697 blank; rehash recorded in the security log |
+| H1 Rehash gives every patient, and every row in the verified window, a fork hash | PASS | rehash window from 2026-09-25; appointment: 5846 rows, 542 in the rehash window (0 without a fork hash); 542 fork hashes, 4352 other, 952 blank; claim: 3523 rows, 26 in the rehash window (0 without a fork hash); 26 fork hashes, 3072 other, 425 blank; claimproc: 11055 rows, 285 in the rehash window (0 without a fork hash); 285 fork hashes, 8037 other, 2733 blank; inssub: 421 rows, 0 in the rehash window (0 without a fork hash); 0 fork hashes, 69 other, 352 blank; insverify: 624 rows, 15 in the rehash window (0 without a fork hash); 15 fork hashes, 609 other, 0 blank; insverifyhist: 304 rows, 8 in the rehash window (0 without a fork hash); 8 fork hashes, 296 other, 0 blank; patient: 1355 rows, 1355 in the rehash window (0 without a fork hash); 1355 fork hashes, 0 other, 0 blank; payplan: 15 rows, 0 in the rehash window (0 without a fork hash); 0 fork hashes, 0 other, 15 blank; paysplit: 6878 rows, 53 in the rehash window (0 without a fork hash); 53 fork hashes, 6128 other, 697 blank; rehash recorded in the security log |
 | V1 Row counts unchanged except where adoption deletes or adds rows | PASS | 422 tables before, 422 after; 101,881 rows before, 101,886 after; changed: documentmisc 5 -> 1, preference 25 -> 30, securitylog 2701 -> 2703, securityloghash 2 -> 4 |
 | V2 Checksums of untouched tables identical | PASS | 410 of 422 tables (398 that hold rows and 12 empty in both) have identical row counts, CHECKSUM TABLE and column checksums; touched (each by an allowed adoption change): appointment, claim, claimproc, documentmisc, insverify, insverifyhist, patient, payplan, paysplit, preference, securitylog, securityloghash |
 | V3 Every difference is an allowed adoption difference | PASS | 38 allowed, 0 unexpected |
@@ -561,15 +567,15 @@ Source synth_rvf52817_med_r2_src (422 tables, 101,881 rows; seed=20261018;size=m
 | V5 patient._portal_active_email and its unique index dropped | PASS | column gone, index portal_active_email_uniq gone; two active patients may now share an e-mail address |
 | V6 Open Dental UpdateFiles rows removed | PASS | 4 UpdateFiles/UpdateFilesSegment rows before, 0 after; other documentmisc rows kept: 1 of 1 |
 | V7 Open Dental server addresses blanked, other preferences kept | PASS | 4 address preferences, 0 still set; vendor address kept True; help text kept True |
-| V8 Sentinel versions and fork markers set | PASS | DataBaseVersion 99.0.0.0, ProgramVersion 99.0.0.0, ForkSchemaLevel 2026101971 (latest step 2026101971), OdSchemaCompat 25.3.48, ForkAdoptedFrom source=25.3.48.0;started=2026-10-25T06:20:54Z;adopted=2026-10-25T06:20:55Z |
+| V8 Sentinel versions and fork markers set | PASS | DataBaseVersion 99.0.0.0, ProgramVersion 99.0.0.0, ForkSchemaLevel 2026101971 (latest step 2026101971), OdSchemaCompat 25.3.48, ForkAdoptedFrom source=25.3.48.0;started=2026-10-25T08:32:46Z;adopted=2026-10-25T08:32:48Z |
 | V9 Fork startup guard opens the adopted copy | PASS | ProceedFork, pending migrations False |
 | V10 Startup model: every Open Dental release client refuses the adopted copy | PASS | 9 of 9 release-client scenarios exit without converting, writing, installing services or copying binaries;  (a Debug build of Open Dental skips its version check: Proceeds; Open Dental ships Release builds only) |
 | V11 Row by row, adoption changed only its own rows of preference, documentmisc, securitylog, securityloghash and updatehistory | PASS | preference: 5 added (ForkAdoptedFrom, OdSchemaCompat, ForkSchemaLevel, ForkMigrationInProgress, ForkMigrationsApplied); 2 set to 99.0.0.0 (DataBaseVersion, ProgramVersion); 4 blanked (UpdateServerAddress, WebServiceHQServerURL, UpdateWebsitePath, SyntheticFuturePortalUrl); no other row changed or removed. documentmisc: 4 Open Dental update-file row(s) deleted, none left; 0 other row(s) deleted; 0 added; 0 changed. securitylog: 2 entries added (1 adoption, 1 rehash); no existing row changed or removed. securityloghash: 2 added, each for an added security log entry; no existing row changed or removed. updatehistory: identical row by row. |
 | R1 Every 24.4-25.3 column loads and saves through OpenDentBusiness; every writable one writes | PASS | 50 tables, 139 columns new or changed since 24.3: 134 loaded and saved unchanged (32,465 rows saved), and 129 of them given a new value, written and read back; 5 loaded and saved but not given a new value, because Insert or the server sets them (CRUD types TimeStamp, DateEntry, DateTEntry, ExcludeFromUpdate: feeschednote.SecUserNumEntry, feeschednote.SecDateEntry, feeschednote.SecDateTEdit, schoolapproval.SecDateEntry, schoolapproval.SecDateTEdit); 5 not loaded, documented exceptions preserved untouched (chatattach.Thumbnail, chatattach.FileData, deletedobject (3 columns)); first-save normalizations (same meaning in the program): benefit.SecDateTEdit: ON UPDATE timestamp of a row the save normalized (363 cells); benefit.ToothRange: NULL saved as '' (363 cells); computerpref.ComputerOS: blank or unknown enum text saved as 'Win32S' (4 cells); document.DateTStamp: ON UPDATE timestamp of a row the save normalized (2344 cells); document.ExternalSource: blank or unknown enum text saved as 'None' (2344 cells); insplan.GroupNum: NULL saved as '' (2 cells); insplan.SecDateTEdit: ON UPDATE timestamp of a row the save normalized (2 cells) |
 | R2 Round trip leaves the database unchanged apart from the first-save normalizations | PASS | only the normalized columns changed: benefit.SecDateTEdit; benefit.ToothRange; computerpref.ComputerOS; document.DateTStamp; document.ExternalSource; insplan.GroupNum; insplan.SecDateTEdit |
-| I1 A second adoption is refused | PASS | This database is already adopted (source=25.3.48.0;started=2026-10-25T06:20:54Z;adopted=2026-10-25T06:20:55Z). Nothing to do. |
+| I1 A second adoption is refused | PASS | This database is already adopted (source=25.3.48.0;started=2026-10-25T08:32:46Z;adopted=2026-10-25T08:32:48Z). Nothing to do. |
 | I2 A second fork migration changes nothing and the schema still matches | PASS | adoption skipped (already adopted); 9 steps run, 0 changes; verifier 0 differences; row check against the source passed |
-| I3 A second rehash changes nothing | PASS | every hash already current: appointment 551, claim 34, claimproc 334, inssub 0, insverify 17, insverifyhist 9, patient 1355, payplan 0, paysplit 60 |
+| I3 A second rehash changes nothing | PASS | every hash already current: appointment 542, claim 26, claimproc 285, inssub 0, insverify 15, insverifyhist 8, patient 1355, payplan 0, paysplit 53 |
 | I4 The whole second pass leaves the database unchanged | PASS | every table except securitylog and securityloghash has the row counts and checksums of the first pass; row by row against the snapshot taken after adoption, preference is identical, and securitylog and securityloghash only gained the rerun's own entry (1 and 1 row), with no existing row changed or removed |
 
 ### Across runs
@@ -616,41 +622,41 @@ FLOAT check of the source (runbook step 0.2): 164 FLOAT and DOUBLE column(s) in 
 
 #### Differences adoption made (all allowed)
 
-- ColumnChanged appointment.SecurityHash (12572210759711 -> 12544800561387)  [allowed: Adoption rehashes every row with the fork's HMAC (risk R2, item 6).]
-- ColumnChanged claim.SecurityHash (7523732762616 -> 7542675149352)  [allowed: Adoption rehashes every row with the fork's HMAC (risk R2, item 6).]
-- ColumnChanged claimproc.SecurityHash (23581417588163 -> 23575717718012)  [allowed: Adoption rehashes every row with the fork's HMAC (risk R2, item 6).]
+- ColumnChanged appointment.SecurityHash (12572210759711 -> 12538375485082)  [allowed: Adoption rehashes every row with the fork's HMAC (risk R2, item 6).]
+- ColumnChanged claim.SecurityHash (7523732762616 -> 7535392404282)  [allowed: Adoption rehashes every row with the fork's HMAC (risk R2, item 6).]
+- ColumnChanged claimproc.SecurityHash (23581417588163 -> 23562050295670)  [allowed: Adoption rehashes every row with the fork's HMAC (risk R2, item 6).]
 - RowsChanged documentmisc (5 -> 1)  [allowed: Adoption deletes Open Dental's UpdateFiles rows (checked row by row by adopt).]
 - ColumnChanged documentmisc.DateCreated (10069374261 -> 1538566696)  [allowed: Adoption deletes Open Dental's UpdateFiles rows (checked row by row by adopt).]
 - ColumnChanged documentmisc.DocMiscNum (9769361567 -> 1174942932)  [allowed: Adoption deletes Open Dental's UpdateFiles rows (checked row by row by adopt).]
 - ColumnChanged documentmisc.DocMiscType (7861376959 -> 3630997879)  [allowed: Adoption deletes Open Dental's UpdateFiles rows (checked row by row by adopt).]
 - ColumnChanged documentmisc.FileName (6379039644 -> 942913718)  [allowed: Adoption deletes Open Dental's UpdateFiles rows (checked row by row by adopt).]
 - ColumnChanged documentmisc.RawBase64 (9667482446 -> 1779909166)  [allowed: Adoption deletes Open Dental's UpdateFiles rows (checked row by row by adopt).]
-- ColumnChanged insverify.SecurityHash (1390900252556 -> 1394331695558)  [allowed: Adoption rehashes every row with the fork's HMAC (risk R2, item 6).]
-- ColumnChanged insverifyhist.SecurityHash (628167813450 -> 626646706119)  [allowed: Adoption rehashes every row with the fork's HMAC (risk R2, item 6).]
+- ColumnChanged insverify.SecurityHash (1390900252556 -> 1392817533999)  [allowed: Adoption rehashes every row with the fork's HMAC (risk R2, item 6).]
+- ColumnChanged insverifyhist.SecurityHash (628167813450 -> 624122455924)  [allowed: Adoption rehashes every row with the fork's HMAC (risk R2, item 6).]
 - ColumnRemoved patient._portal_active_email  [allowed: Owner decision: adoption drops the office-specific generated column and its unique key.]
 - ColumnChanged patient.SecurityHash (2927956709010 -> 2860196771227)  [allowed: Adoption rehashes every row with the fork's HMAC (risk R2, item 6).]
 - ColumnChanged payplan.SecurityHash (25963509457 -> 33942964343)  [allowed: Adoption rehashes every row with the fork's HMAC (risk R2, item 6).]
-- ColumnChanged paysplit.SecurityHash (14601550875872 -> 14612268801073)  [allowed: Adoption rehashes every row with the fork's HMAC (risk R2, item 6).]
+- ColumnChanged paysplit.SecurityHash (14601550875872 -> 14607388579999)  [allowed: Adoption rehashes every row with the fork's HMAC (risk R2, item 6).]
 - RowsChanged preference (25 -> 30)  [allowed: Adoption writes fork markers and version sentinels and blanks the update and HQ preferences (checked row by row by adopt).]
 - ColumnChanged preference.Comments (62404309912 -> 73897142823)  [allowed: Adoption writes fork markers and version sentinels and blanks the update and HQ preferences (checked row by row by adopt).]
 - ColumnChanged preference.PrefName (57697714827 -> 65925037523)  [allowed: Adoption writes fork markers and version sentinels and blanks the update and HQ preferences (checked row by row by adopt).]
 - ColumnChanged preference.PrefNum (53764528705 -> 64321672810)  [allowed: Adoption writes fork markers and version sentinels and blanks the update and HQ preferences (checked row by row by adopt).]
-- ColumnChanged preference.ValueString (55961409849 -> 72879941927)  [allowed: Adoption writes fork markers and version sentinels and blanks the update and HQ preferences (checked row by row by adopt).]
+- ColumnChanged preference.ValueString (55961409849 -> 71797404324)  [allowed: Adoption writes fork markers and version sentinels and blanks the update and HQ preferences (checked row by row by adopt).]
 - RowsChanged securitylog (2701 -> 2703)  [allowed: Adoption and the rehash log their own actions (checked row by row by adopt: rows only added).]
 - ColumnChanged securitylog.CompName (5768061947850 -> 5774613957664)  [allowed: Adoption and the rehash log their own actions (checked row by row by adopt: rows only added).]
 - ColumnChanged securitylog.DateTPrevious (5796485454011 -> 5799171712283)  [allowed: Adoption and the rehash log their own actions (checked row by row by adopt: rows only added).]
 - ColumnChanged securitylog.DefNum (5841742043169 -> 5848959101928)  [allowed: Adoption and the rehash log their own actions (checked row by row by adopt: rows only added).]
 - ColumnChanged securitylog.DefNumError (5841742043169 -> 5848959101928)  [allowed: Adoption and the rehash log their own actions (checked row by row by adopt: rows only added).]
 - ColumnChanged securitylog.FKey (5674734116250 -> 5681951175009)  [allowed: Adoption and the rehash log their own actions (checked row by row by adopt: rows only added).]
-- ColumnChanged securitylog.LogDateTime (5858673777980 -> 5863285561642)  [allowed: Adoption and the rehash log their own actions (checked row by row by adopt: rows only added).]
+- ColumnChanged securitylog.LogDateTime (5858673777980 -> 5865231284573)  [allowed: Adoption and the rehash log their own actions (checked row by row by adopt: rows only added).]
 - ColumnChanged securitylog.LogSource (5841742043169 -> 5848959101928)  [allowed: Adoption and the rehash log their own actions (checked row by row by adopt: rows only added).]
-- ColumnChanged securitylog.LogText (5784631387789 -> 5788633885903)  [allowed: Adoption and the rehash log their own actions (checked row by row by adopt: rows only added).]
+- ColumnChanged securitylog.LogText (5784631387789 -> 5788411782893)  [allowed: Adoption and the rehash log their own actions (checked row by row by adopt: rows only added).]
 - ColumnChanged securitylog.PatNum (5827962492072 -> 5835179550831)  [allowed: Adoption and the rehash log their own actions (checked row by row by adopt: rows only added).]
 - ColumnChanged securitylog.PermType (5759588115431 -> 5762400254393)  [allowed: Adoption and the rehash log their own actions (checked row by row by adopt: rows only added).]
 - ColumnChanged securitylog.SecurityLogNum (5811630809453 -> 5814862251304)  [allowed: Adoption and the rehash log their own actions (checked row by row by adopt: rows only added).]
 - ColumnChanged securitylog.UserNum (5695692550860 -> 5702909609619)  [allowed: Adoption and the rehash log their own actions (checked row by row by adopt: rows only added).]
 - RowsChanged securityloghash (2 -> 4)  [allowed: Follows securitylog (checked row by row by adopt: rows only added).]
-- ColumnChanged securityloghash.LogHash (7673420916 -> 11832903088)  [allowed: Follows securitylog (checked row by row by adopt: rows only added).]
+- ColumnChanged securityloghash.LogHash (7673420916 -> 13031664599)  [allowed: Follows securitylog (checked row by row by adopt: rows only added).]
 - ColumnChanged securityloghash.SecurityLogHashNum (4891611139 -> 8594418635)  [allowed: Follows securitylog (checked row by row by adopt: rows only added).]
 - ColumnChanged securityloghash.SecurityLogNum (4891611139 -> 11670974803)  [allowed: Follows securitylog (checked row by row by adopt: rows only added).]
 - TotalChanged patients.portal_active_email_nonnull (651 -> error: Unknown column '_portal_active_email' in 'WHERE')  [allowed: The column it counts is dropped by adoption.]
@@ -681,18 +687,18 @@ The schema matches Open Dental 25.3.48 (OdSchemaCompat).
 Adoption finished.
 Fork migration, every step again: 9 steps run, 0 changes.
 The schema matches Open Dental 25.3.48 exactly (422 of 422 tables).
-Rehash: every patient, and the other tables' rows dated on or after 2026-09-24.
-  appointment: 5846 rows, 551 in the rehash window (0 without a fork hash); 551 fork hashes, 4343 other, 952 blank
-  claim: 3523 rows, 34 in the rehash window (0 without a fork hash); 34 fork hashes, 3064 other, 425 blank
-  claimproc: 11055 rows, 334 in the rehash window (0 without a fork hash); 334 fork hashes, 8017 other, 2704 blank
+Rehash: every patient, and the other tables' rows dated on or after 2026-09-25.
+  appointment: 5846 rows, 542 in the rehash window (0 without a fork hash); 542 fork hashes, 4352 other, 952 blank
+  claim: 3523 rows, 26 in the rehash window (0 without a fork hash); 26 fork hashes, 3072 other, 425 blank
+  claimproc: 11055 rows, 285 in the rehash window (0 without a fork hash); 285 fork hashes, 8037 other, 2733 blank
   inssub: 421 rows, 0 in the rehash window (0 without a fork hash); 0 fork hashes, 69 other, 352 blank
-  insverify: 624 rows, 17 in the rehash window (0 without a fork hash); 17 fork hashes, 607 other, 0 blank
-  insverifyhist: 304 rows, 9 in the rehash window (0 without a fork hash); 9 fork hashes, 295 other, 0 blank
+  insverify: 624 rows, 15 in the rehash window (0 without a fork hash); 15 fork hashes, 609 other, 0 blank
+  insverifyhist: 304 rows, 8 in the rehash window (0 without a fork hash); 8 fork hashes, 296 other, 0 blank
   patient: 1355 rows, 1355 in the rehash window (0 without a fork hash); 1355 fork hashes, 0 other, 0 blank
   payplan: 15 rows, 0 in the rehash window (0 without a fork hash); 0 fork hashes, 0 other, 15 blank
-  paysplit: 6878 rows, 60 in the rehash window (0 without a fork hash); 60 fork hashes, 6121 other, 697 blank
+  paysplit: 6878 rows, 53 in the rehash window (0 without a fork hash); 53 fork hashes, 6128 other, 697 blank
 Rehash finished.
-Row check against synth_rvf52817_med_r1_src (what adoption may change in preference, documentmisc, securitylog, securityloghash and updatehistory):
+Row check against synth_rvf60913_med_r1_src (what adoption may change in preference, documentmisc, securitylog, securityloghash and updatehistory):
   preference: 5 added (ForkAdoptedFrom, OdSchemaCompat, ForkSchemaLevel, ForkMigrationInProgress, ForkMigrationsApplied); 2 set to 99.0.0.0 (DataBaseVersion, ProgramVersion); 4 blanked (UpdateServerAddress, WebServiceHQServerURL, UpdateWebsitePath, SyntheticFuturePortalUrl); no other row changed or removed.
   documentmisc: 4 Open Dental update-file row(s) deleted, none left; 0 other row(s) deleted; 0 added; 0 changed.
   securitylog: 2 entries added (1 adoption, 1 rehash); no existing row changed or removed.
@@ -704,15 +710,15 @@ Row check against synth_rvf52817_med_r1_src (what adoption may change in prefere
 
 | Table | Rows | In rehash window | Before: fork / other / blank | After: fork / other / blank | Window rows without a fork hash after |
 |---|---:|---:|---|---|---:|
-| appointment | 5846 | 551 | 0 / 4894 / 952 | 551 / 4343 / 952 | 0 |
-| claim | 3523 | 34 | 0 / 3098 / 425 | 34 / 3064 / 425 | 0 |
-| claimproc | 11055 | 334 | 0 / 8098 / 2957 | 334 / 8017 / 2704 | 0 |
+| appointment | 5846 | 542 | 0 / 4894 / 952 | 542 / 4352 / 952 | 0 |
+| claim | 3523 | 26 | 0 / 3098 / 425 | 26 / 3072 / 425 | 0 |
+| claimproc | 11055 | 285 | 0 / 8098 / 2957 | 285 / 8037 / 2733 | 0 |
 | inssub | 421 | 0 | 0 / 69 / 352 | 0 / 69 / 352 | 0 |
-| insverify | 624 | 17 | 0 / 624 / 0 | 17 / 607 / 0 | 0 |
-| insverifyhist | 304 | 9 | 0 / 304 / 0 | 9 / 295 / 0 | 0 |
+| insverify | 624 | 15 | 0 / 624 / 0 | 15 / 609 / 0 | 0 |
+| insverifyhist | 304 | 8 | 0 / 304 / 0 | 8 / 296 / 0 | 0 |
 | patient | 1355 | 1355 | 0 / 573 / 782 | 1355 / 0 / 0 | 0 |
 | payplan | 15 | 0 | 0 / 15 / 0 | 0 / 0 / 15 | 0 |
-| paysplit | 6878 | 60 | 0 / 6181 / 697 | 60 / 6121 / 697 | 0 |
+| paysplit | 6878 | 53 | 0 / 6181 / 697 | 53 / 6128 / 697 | 0 |
 
 #### Open Dental-style startup check
 
