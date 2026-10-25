@@ -1316,6 +1316,7 @@
     <Compile Include="Data Interface\InsFilingCodes.cs" />
     <Compile Include="Data Interface\EtransMessageTexts.cs" />
     <Compile Include="Data Interface\InsFilingCodeSubtypes.cs" />
+    <Compile Include="Data Interface\InsHistDates.cs" />
     <Compile Include="Data Interface\RxNorms.cs" />
     <Compile Include="Data Interface\ScreenPats.cs" />
     <Compile Include="Data Interface\Signalods.cs" />
