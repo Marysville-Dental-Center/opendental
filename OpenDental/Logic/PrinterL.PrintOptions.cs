@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing.Printing;
+using CodeBase;
 using OpenDentBusiness;
 
 namespace OpenDental {
