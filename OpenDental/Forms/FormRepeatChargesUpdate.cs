@@ -37,14 +37,23 @@ namespace OpenDental{
 		private void checkRunAging_CheckedChanged(object sender,EventArgs e) {
 			labelDescription.Text=Lan.g(this,"This will add completed procedures to each account that has a repeating charge set up.   The date of the "
 				+"procedure will be based on the settings in the repeating charge.")+"\r\n\r\n"
-				+Lan.g(this,"This tool must be run at least every month for the repeating charges to be added.  The procedure will be backdated up "
-				+"to one month and 20 days.")+"\r\n\r\n"
+				+GetBackdatingText()+"\r\n\r\n"
 				+Lan.g(this,"If the repeating charge 'Creates Claim' check box is selected, and the patient has insurance, and the procedure added "
 				+"is not marked as 'Do not usually bill to Ins', then a claim will be created for the procedure. If the patient has a secondary "
 				+"insurance plan, a secondary claim will be created with a hold status.");
 			if(!checkRunAging.Checked) {
 				labelDescription.Text=labelDescription.Text+"\r\n\r\n"+Lan.g(this,"You should run aging when you are done.");
 			}
+		}
+
+		///<summary>How far back the tool posts charges. 26.1: depends on the preference that allows backdating (RepeatChargeBackdating).</summary>
+		private string GetBackdatingText() {
+			if(RepeatChargeBackdating.IsAllowed()) {
+				return Lan.g(this,"This tool must be run at least every month for the repeating charges to be added.  The procedure will be backdated up "
+					+"to one month and 20 days.");
+			}
+			return Lan.g(this,"Backdating is turned off in Preferences, so no procedure is dated before today.  This tool must be run on each billing "
+				+"date: a billing date that has passed is skipped, and the charge is added again on the next billing date.");
 		}
 
 		///<summary>Checks if Repeating Charges are already running on another workstation or by the OpenDental Service.  If less than 24 hours have 

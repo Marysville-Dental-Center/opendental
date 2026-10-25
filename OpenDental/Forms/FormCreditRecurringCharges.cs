@@ -461,7 +461,9 @@ namespace OpenDental {
 					this.Invoke(() => {
 						FillGrid(true);
 						Cursor=Cursors.Default;
-						MsgBox.Show(this,"Done charging cards.\r\nIf there are any patients remaining in list, print the list and handle each one manually.");
+						string doneText=Lan.g(this,"Done charging cards.\r\nIf there are any patients remaining in list, print the list and handle each one manually.");
+						string failEmailSummary=_recurringChargerator.GetFailEmailSummary();//25.4: failure e-mail counts, blank when turned off.
+						MsgBox.Show(failEmailSummary=="" ? doneText : doneText+"\r\n\r\n"+failEmailSummary);
 					});
 				}
 				catch(ObjectDisposedException) {

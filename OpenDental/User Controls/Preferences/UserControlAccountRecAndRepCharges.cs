@@ -14,6 +14,9 @@ namespace OpenDental {
 	public partial class UserControlAccountRecAndRepCharges:UserControl {
 
 		#region Fields - Private
+		///<summary>The failure e-mail template being edited. Saved with the other preferences.</summary>
+		private string _failEmailSubject;
+		private string _failEmailBody;
 		#endregion Fields - Private
 
 		#region Fields - Public
@@ -37,6 +40,16 @@ namespace OpenDental {
 			//labelRecurringChargesAutomatedTime.Enabled=false;//Can't do this because we want hover info to still work
 			labelRecurringChargesAutomatedTime.ForeColor=ColorOD.DisabledText;
 			textRecurringChargesTime.Enabled=false;
+		}
+
+		private void butRecurringChargesFailEmailTemplate_Click(object sender,EventArgs e) {
+			using FormRecurringChargeFailEmailTemplate formRecurringChargeFailEmailTemplate=new FormRecurringChargeFailEmailTemplate(_failEmailSubject,_failEmailBody);
+			formRecurringChargeFailEmailTemplate.ShowDialog();
+			if(formRecurringChargeFailEmailTemplate.DialogResult!=DialogResult.OK) {
+				return;
+			}
+			_failEmailSubject=formRecurringChargeFailEmailTemplate.SubjectTemplate;
+			_failEmailBody=formRecurringChargeFailEmailTemplate.BodyTemplate;
 		}
 
 		private void checkRepeatingChargesAutomated_Click(object sender,EventArgs e) {
@@ -80,6 +93,9 @@ namespace OpenDental {
 			textRecurringChargesTime.Text=PrefC.GetDateT(PrefName.RecurringChargesAutomatedTime).TimeOfDay.ToShortTimeString();
 			checkRecurPatBal0.Checked=PrefC.GetBool(PrefName.RecurringChargesAllowedWhenNoPatBal);
 			checkRecurringChargesInactivateDeclinedCards.Checked=PrefC.GetBool(PrefName.RecurringChargesInactivateDeclinedCards);
+			checkRecurringChargesFailEmailEnabled.Checked=PrefC.GetBool(PrefName.RecurringChargesFailEmailEnabled);
+			_failEmailSubject=RecurringChargeFailEmails.GetSubjectTemplate();
+			_failEmailBody=RecurringChargeFailEmails.GetBodyTemplate();
 			if(PrefC.GetBool(PrefName.EasyHideRepeatCharges)) {
 				//groupRepeatingCharges.Enabled=false;//Can't do this because we want hover info to still work
 				checkRepeatingChargesRunAging.Enabled=false;
@@ -90,6 +106,7 @@ namespace OpenDental {
 			checkRepeatingChargesRunAging.Checked=PrefC.GetBool(PrefName.RepeatingChargesRunAging);
 			checkRepeatingChargesAutomated.Checked=PrefC.GetBool(PrefName.RepeatingChargesAutomated);
 			textRepeatingChargesAutomatedTime.Text=PrefC.GetDateT(PrefName.RepeatingChargesAutomatedTime).TimeOfDay.ToShortTimeString();
+			checkRepeatingChargesAllowBackdating.Checked=PrefC.GetBool(PrefName.RepeatingChargesAllowBackdating);
 			#endregion Misc Account
 		}
 
@@ -117,6 +134,10 @@ namespace OpenDental {
 			Changed|=Prefs.UpdateLong(PrefName.RecurringChargesPayTypeCC,comboRecurringChargePayType.GetSelectedDefNum());
 			Changed|=Prefs.UpdateBool(PrefName.RecurringChargesAllowedWhenNoPatBal,checkRecurPatBal0.Checked);
 			Changed|=Prefs.UpdateBool(PrefName.RecurringChargesInactivateDeclinedCards,checkRecurringChargesInactivateDeclinedCards.Checked);
+			Changed|=Prefs.UpdateBool(PrefName.RecurringChargesFailEmailEnabled,checkRecurringChargesFailEmailEnabled.Checked);
+			Changed|=Prefs.UpdateString(PrefName.RecurringChargesFailEmailSubject,_failEmailSubject);
+			Changed|=Prefs.UpdateString(PrefName.RecurringChargesFailEmailBody,_failEmailBody);
+			Changed|=Prefs.UpdateBool(PrefName.RepeatingChargesAllowBackdating,checkRepeatingChargesAllowBackdating.Checked);
 			return true;
 		}
 		#endregion Methods - Public

@@ -1350,6 +1350,9 @@
     <Compile Include="Forms\FormRepeatChargesUpdate.designer.cs">
       <DependentUpon>FormRepeatChargesUpdate.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\FormRecurringChargeFailEmailTemplate.Designer.cs">
+      <DependentUpon>FormRecurringChargeFailEmailTemplate.cs</DependentUpon>
+    </Compile>
     <Compile Include="Forms\FormReportsMore.designer.cs">
       <DependentUpon>FormReportsMore.cs</DependentUpon>
     </Compile>
@@ -5158,6 +5161,9 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Forms\FormRepeatChargesUpdate.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormRecurringChargeFailEmailTemplate.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Forms\FormRxDefEdit.cs">
