@@ -293,12 +293,13 @@ namespace OpenDentBusiness{
 			#region PayPlan.CompletedAmt
 			//The list of payment plans is guaranteed to have every patient payment plan that is associated to the procedure at this point.
 			//However, it is not guaranteed to have every dynamic payment plan associated to the procedure (only debits are stored in the payplancharge table).
-			PayPlans.UpdateTreatmentCompletedAmt(listPayPlans);
+			string auditTrigger=PayPlanAudits.GetProcedureTrigger(proc);//25.1: the completed amount entries say what changed it
+			PayPlans.UpdateTreatmentCompletedAmt(listPayPlans,auditTrigger);
 			//Refresh the list of payment plans so that every dynamic payment plan associated to the procedure is present.
 			List<PayPlanLink> listPayPlanLinks=PayPlanLinks.GetForFKeyAndLinkType(proc.ProcNum,PayPlanLinkType.Procedure);
 			long[] listPayPlanNums=listPayPlanLinks.Select(x => x.PayPlanNum).ToArray();
 			listPayPlans=PayPlans.GetMany(listPayPlanNums);
-			PayPlans.UpdateTreatmentCompletedAmtsDynamicPaymentPlan(listPayPlans);
+			PayPlans.UpdateTreatmentCompletedAmtsDynamicPaymentPlan(listPayPlans,auditTrigger);
 			#endregion
 		}
 
@@ -358,7 +359,7 @@ namespace OpenDentBusiness{
 			List<PayPlan> listPayPlans=PayPlans.GetAllForCharges(GetFromProc(procNum));
 			string command="DELETE FROM payplancharge WHERE ProcNum="+POut.Long(procNum);
 			Db.NonQ(command);
-			PayPlans.UpdateTreatmentCompletedAmt(listPayPlans);
+			PayPlans.UpdateTreatmentCompletedAmt(listPayPlans,"after the credit for procedure #"+procNum+" was removed");//25.1
 		}
 
 		///<summary>Returns a list of payment plan charges that are not safe to delete (either they are credits, or are charges with payments attached). If doDelete is true, all debits passed in will be deleted if they are safe to be deleted. Calling methods should use the list of charges returned to know which ones were not deleted.</summary>

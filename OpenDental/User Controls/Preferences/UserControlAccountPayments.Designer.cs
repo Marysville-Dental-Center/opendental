@@ -206,6 +206,7 @@ namespace OpenDental {
 			this.comboPayPlansVersion.Name = "comboPayPlansVersion";
 			this.comboPayPlansVersion.Size = new System.Drawing.Size(194, 21);
 			this.comboPayPlansVersion.TabIndex = 313;
+			this.comboPayPlansVersion.Visible = false;
 			this.comboPayPlansVersion.SelectionChangeCommitted += new System.EventHandler(this.comboPayPlansVersion_SelectionChangeCommitted);
 			// 
 			// comboDppUnearnedType
@@ -240,9 +241,9 @@ namespace OpenDental {
 			// label27
 			// 
 			this.label27.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.label27.Location = new System.Drawing.Point(95, 82);
+			this.label27.Location = new System.Drawing.Point(13, 82);
 			this.label27.Name = "label27";
-			this.label27.Size = new System.Drawing.Size(150, 17);
+			this.label27.Size = new System.Drawing.Size(427, 17);
 			this.label27.TabIndex = 318;
 			this.label27.Text = "Pay Plan charge logic";
 			this.label27.TextAlign = System.Drawing.ContentAlignment.MiddleRight;

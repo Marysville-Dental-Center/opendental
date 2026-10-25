@@ -535,6 +535,10 @@
     <Compile Include="Db Multi Table\AgingData.cs" />
     <Compile Include="Db Multi Table\MarkupEdit.cs" />
     <Compile Include="Db Multi Table\PayPlanEdit.cs" />
+    <Compile Include="Db Multi Table\PayPlanAudits.cs" />
+    <Compile Include="Db Multi Table\PayPlanChargeLogic.cs" />
+    <Compile Include="Db Multi Table\PayPlanGlobalLock.cs" />
+    <Compile Include="Db Multi Table\PaySplitPayPlanAttach.cs" />
     <Compile Include="InternalTools\Job Manager\TableTypes\JobTeamUser.cs" />
     <Compile Include="InternalTools\Job Manager\TableTypes\MobileBug.cs" />
     <Compile Include="InternalTools\Job Manager\TableTypes\MobileBugVersion.cs" />
