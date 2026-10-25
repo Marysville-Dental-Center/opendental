@@ -2284,15 +2284,15 @@ namespace OpenDental {
 				MsgBox.Show(this,"Please select a valid task.");
 				return;
 			}
-			FormTaskAttachmentEdit formTaskAttachmentEdit=new FormTaskAttachmentEdit(task);
-			formTaskAttachmentEdit.TaskAttachmentCur=taskAttachment;
-			formTaskAttachmentEdit.ShowDialog();
-			if(formTaskAttachmentEdit.DialogResult!=DialogResult.OK) {
-				return;
-			}
-			FillGrid();
-			long signalNum=Signalods.SetInvalid(InvalidType.Task,KeyType.Task,task.TaskNum);
-			UserControlTasks.RefillLocalTaskGrids(task,_listTaskNotes,new List<long>() { signalNum });			
+			//26.1: non-modal; an attachment that already has an edit window open is brought to the front.
+			TaskAttachmentWindows.ShowAttachmentEdit(FindForm(),task,taskAttachment,isReadOnly:false,actionSaved:() => {
+				if(IsDisposed) {
+					return;
+				}
+				FillGrid();
+				long signalNum=Signalods.SetInvalid(InvalidType.Task,KeyType.Task,task.TaskNum);
+				UserControlTasks.RefillLocalTaskGrids(task,_listTaskNotes,new List<long>() { signalNum });
+			});
 		}
 
 		private void MoveListIntoAncestor(TaskList taskListNew,long taskListNumParentOld) {
