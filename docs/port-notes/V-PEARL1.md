@@ -97,6 +97,26 @@ Run: `VPEARL1Tests` (plus the always-included `NoHqTests`). `ImagingTests` also 
 
 Not tested: the Imaging module itself (no GUI launch in this run). The panel layout, label wrapping and refusal message boxes need a look in the program. A real Pearl account wasn't used.
 
+### Fix round r1 (`port/v-pearl1-r1`): ReleaseFlowTests scratch names
+
+The review run of `port/v-pearl1` failed two tests in `ReleaseFlowTests.AdoptionDbTests`, an assembly this package doesn't touch: `OfficeCopy_25_3_48_IsAdopted` (Can't create database 'releaseflow_adoption'; database exists) and `Markers_AreWrittenAsPlainPreferenceRows` (Unknown database 'releaseflow_adoption').
+
+- **Cause.** `AdoptionDbTests` and `ReleaseChannelDbTests` used the fixed names `releaseflow_adoption` and `releaseflow_release`. Every package of the single wave runs tests against the one local MariaDB at the same time. Another run dropped and recreated the same database between this run's `DROP DATABASE IF EXISTS` and `CREATE DATABASE`, then dropped it in the middle of the next test. The V-PEARL1 diff has no file under `tests/ReleaseFlowTests` and no code the adoption tests run. On this branch the assembly passed 63 of 63.
+- **Fix** (test code only, in `tests/ReleaseFlowTests`):
+  - `TestSupport.cs`: `ScratchDb.RunName(purpose)` gives a per-run name, `releaseflow_<UTC start yyMMddHHmmss>_<process id>_<random>_<purpose>`, which is the `TestDb.ScratchName` scheme of ForkMigrationTests.
+  - `ScratchDb.Create` refuses a name that isn't this run's (`RequireRunName`).
+  - `ScratchDb.Drop` ignores a name outside the per-run scheme, so the old fixed names are never dropped. An older checkout may still be testing in one.
+  - The first `Create` of a run drops other runs' leftovers once they are more than 12 hours old (`DropStaleRunDatabases`).
+  - `AdoptionDbTests.DB_NAME` and `ReleaseChannelDbTests.DB_NAME` are now `ScratchDb.RunName("adoption")` and `ScratchDb.RunName("release")`.
+- **Tests:** new `ScratchDbNameTests`:
+  - the name scheme and the 64-character limit
+  - both database test classes use per-run names
+  - fixed names and other runs' names are refused
+  - `Create` leaves another run's database alone
+  - the stale drop removes a 13-hour-old run's database and keeps a 30-minute-old one and a name outside the scheme
+- **Interplay.** Other packages' fix rounds may have received the same failure and changed the same `ReleaseFlowTests` files. At the merge, keep one version of the per-run naming; any of them works if no fixed name is left.
+- Targeted assemblies for this round: `VPEARL1Tests`, `ImagingTests`, `ReleaseFlowTests` (plus `NoHqTests`).
+
 ## Owner questions
 
 1. **Pearl Client Secret.** Should it be stored encrypted (osd1$ via `VendorDirect.SecretValue`, masked and high security), like the other vendor-direct secrets? That needs `FormProgramLinkEdit` (owned by V-PEARL2 / V-BRIDGE1) to encrypt the property, and `PearlApiClient` to read it with `LegacyPolicy.AcceptPlaintext`. Proposed as a small follow-up after the merge.
