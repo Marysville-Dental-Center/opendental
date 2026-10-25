@@ -1473,6 +1473,7 @@
     <Compile Include="Data Interface\PlannedAppts.cs" />
     <Compile Include="Data Interface\Popups.cs" />
     <Compile Include="Data Interface\Printers.cs" />
+    <Compile Include="Misc\PrintSituationRules.cs" />
     <Compile Include="Data Interface\ProcButtonItems.cs" />
     <Compile Include="Data Interface\ProcButtons.cs" />
     <Compile Include="Data Interface\ProcCodeNotes.cs" />

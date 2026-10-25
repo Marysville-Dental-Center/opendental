@@ -40,7 +40,7 @@ namespace OpenDental {
 			// butSave
 			// 
 			this.butSave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.butSave.Location = new System.Drawing.Point(554, 368);
+			this.butSave.Location = new System.Drawing.Point(854, 368);
 			this.butSave.Name = "butSave";
 			this.butSave.Size = new System.Drawing.Size(75, 24);
 			this.butSave.TabIndex = 2;
@@ -61,7 +61,7 @@ namespace OpenDental {
 			// 
 			this.gridPrinters.Location = new System.Drawing.Point(12, 27);
 			this.gridPrinters.Name = "gridPrinters";
-			this.gridPrinters.Size = new System.Drawing.Size(617, 334);
+			this.gridPrinters.Size = new System.Drawing.Size(917, 334);
 			this.gridPrinters.TabIndex = 42;
 			this.gridPrinters.Title = "Print Situations";
 			this.gridPrinters.CellDoubleClick += new OpenDental.UI.ODGridClickEventHandler(this.gridPrinters_CellDoubleClick);
@@ -69,7 +69,7 @@ namespace OpenDental {
 			// FormPrinterSetup
 			// 
 			this.AcceptButton = this.butSave;
-			this.ClientSize = new System.Drawing.Size(641, 404);
+			this.ClientSize = new System.Drawing.Size(941, 404);
 			this.Controls.Add(this.gridPrinters);
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.label1);
