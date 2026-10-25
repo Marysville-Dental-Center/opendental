@@ -8,7 +8,7 @@ using OpenDentBusiness;
 namespace ReleaseFlowTests {
 	[TestClass]
 	public class AdoptionDbTests {
-		private const string DB_NAME="releaseflow_adoption";
+		private static readonly string DB_NAME=ScratchDb.ScratchName("adoption");
 		private static readonly DateTime _dateTimeUtc=new DateTime(2026,10,19,8,0,0,DateTimeKind.Utc);
 
 		[ClassCleanup]

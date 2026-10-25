@@ -10,7 +10,7 @@ using OpenDentBusiness;
 namespace ReleaseFlowTests {
 	[TestClass]
 	public class ReleaseChannelDbTests {
-		private const string DB_NAME="releaseflow_release";
+		private static readonly string DB_NAME=ScratchDb.ScratchName("release");
 
 		[ClassCleanup]
 		public static void ClassCleanup() {

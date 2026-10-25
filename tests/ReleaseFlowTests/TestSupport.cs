@@ -1,7 +1,10 @@
 // Shared helpers: repository paths and synthetic scratch databases on the local MariaDB.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
+using System.Text.RegularExpressions;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
@@ -38,8 +41,62 @@ namespace ReleaseFlowTests {
 	///Skipped (inconclusive) when no server answers at 127.0.0.1:3306 as root with a blank password, or when RELEASEFLOW_TEST_DB=skip.</summary>
 	internal static class ScratchDb {
 		public const string CONNECTION_SERVER="Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=3;Allow User Variables=true";
+		public const string PREFIX="releaseflow_";
+		///<summary>Scratch databases left behind by a run that started this long ago are dropped by later runs. No run takes nearly this long.
+		///</summary>
+		private static readonly TimeSpan _timeSpanStale=TimeSpan.FromHours(12);
+		///<summary>Unique to this test run: the start time (UTC, yyMMddHHmmss), the process id and a random number. Several runs share the one local
+		///MariaDB server, from other worktrees or other test runners at the same time, so a fixed name would let one run drop or rebuild a database
+		///another run is still testing ("Unknown database", "Table ... doesn't exist" in the middle of a test).</summary>
+		private static readonly string _runId=DateTime.UtcNow.ToString("yyMMddHHmmss",CultureInfo.InvariantCulture)+"_"
+			+System.Diagnostics.Process.GetCurrentProcess().Id+"_"+new Random().Next(1000,10000);
+		///<summary>Matches only names made by ScratchName, never the fixed names older versions of these tests used.</summary>
+		private static readonly Regex _regexScratchName=new Regex("^"+PREFIX+@"(\d{12})_\d+_\d+_[a-z0-9_]+$");
 		private static bool? _isAvailable;
 		private static string _skipReason;
+
+		///<summary>The name of this run's scratch database for the given purpose, like releaseflow_261025080000_1234_5678_adoption. At most 64
+		///characters, the MariaDB limit.</summary>
+		public static string ScratchName(string purpose) {
+			string name=PREFIX+_runId+"_"+purpose;
+			if(name.Length>64) {
+				throw new ArgumentException("Scratch database name too long: "+name);
+			}
+			return name;
+		}
+
+		///<summary>True if the name was made by ScratchName (in this run or an earlier one).</summary>
+		public static bool IsScratchName(string name) {
+			return name!=null && _regexScratchName.IsMatch(name);
+		}
+
+		///<summary>Drops the scratch databases that earlier runs left behind (a crash, or a run cut off before its ClassCleanup), once they are older
+		///than _timeSpanStale. Never drops the databases of a run that may still be going, and never a name without this naming scheme.</summary>
+		public static void DropStaleScratchDatabases() {
+			List<string> listNames=new List<string>();
+			using(MySqlConnection connection=Open(null))
+			using(MySqlCommand mySqlCommand=new MySqlCommand("SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME LIKE 'releaseflow\\_%'",
+				connection))
+			using(MySqlDataReader mySqlDataReader=mySqlCommand.ExecuteReader())
+			{
+				while(mySqlDataReader.Read()) {
+					listNames.Add(mySqlDataReader.GetString(0));
+				}
+			}
+			foreach(string name in listNames) {
+				Match match=_regexScratchName.Match(name);
+				DateTime dateStarted;
+				if(!match.Success || !DateTime.TryParseExact(match.Groups[1].Value,"yyMMddHHmmss",CultureInfo.InvariantCulture,
+					DateTimeStyles.AssumeUniversal|DateTimeStyles.AdjustToUniversal,out dateStarted))
+				{
+					continue;
+				}
+				if(DateTime.UtcNow-dateStarted<_timeSpanStale) {
+					continue;
+				}
+				Drop(name);
+			}
+		}
 
 		public static void RequireServer() {
 			if(_isAvailable==null) {
@@ -53,6 +110,12 @@ namespace ReleaseFlowTests {
 							connection.Open();
 						}
 						_isAvailable=true;
+						try {
+							DropStaleScratchDatabases();
+						}
+						catch(Exception) {
+							//Cleaning up after earlier runs is best effort; this run's own names are unique.
+						}
 					}
 					catch(Exception ex) {
 						_isAvailable=false;
@@ -74,6 +137,9 @@ namespace ReleaseFlowTests {
 		///it. With is253 the patient table is the 25.3.48 reference definition (with the office-only _portal_active_email column and its unique index);
 		///otherwise a 24.3-style patient table without it.</summary>
 		public static void Create(string dbName,bool is253) {
+			if(!IsScratchName(dbName)) {
+				throw new ArgumentException("Tests only rebuild scratch databases made by ScratchName: "+dbName);
+			}
 			RequireServer();
 			Exec(null,"DROP DATABASE IF EXISTS "+dbName);
 			Exec(null,"CREATE DATABASE "+dbName+" CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci");
@@ -105,11 +171,14 @@ namespace ReleaseFlowTests {
 		}
 
 		public static void Drop(string dbName) {
+			if(!IsScratchName(dbName)) {
+				throw new ArgumentException("Tests only drop scratch databases made by ScratchName: "+dbName);
+			}
 			try {
 				Exec(null,"DROP DATABASE IF EXISTS "+dbName);
 			}
 			catch(Exception) {
-				//Leaving a scratch database behind is harmless; the next run drops it.
+				//Leaving a scratch database behind is harmless; a later run drops it once it is stale (DropStaleScratchDatabases).
 			}
 		}
 
