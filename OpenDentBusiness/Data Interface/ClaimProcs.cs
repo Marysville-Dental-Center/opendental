@@ -754,6 +754,7 @@ namespace OpenDentBusiness{
 				SecurityLogs.MakeLogEntry(permissionInsPay,patNum,$"Insurance payment {strProcLog}"
 					+$"changed from {strClaimProcOldInsPayAmt} to {strClaimProcNewInsPayAmt}"+strERA);
 			}
+			CreateAuditTrailEntryForOverrides(claimProcNew,claimProcOld);//Open Dental 25.1: Ins Est Total and Allowed override changes.
 		}
 		#endregion
 
@@ -1855,8 +1856,10 @@ namespace OpenDentBusiness{
 				if(listClaimProcs[i].Status!=ClaimProcStatus.Estimate) {
 					continue;
 				}
+				ClaimProc claimProcOld=listClaimProcs[i].Copy();//Open Dental 25.1: the override change is audited.
 				listClaimProcs[i].InsEstTotalOverride=insPayEst;
 				Update(listClaimProcs[i]);
+				CreateAuditTrailEntryForOverrides(listClaimProcs[i],claimProcOld);
 			}
 		}
 

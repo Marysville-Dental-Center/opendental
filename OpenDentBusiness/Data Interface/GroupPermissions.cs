@@ -659,7 +659,7 @@ namespace OpenDentBusiness{
 				case EnumPermType.ArchivedPatientSelect:
 				//case EnumPermType.CloudCustomerEdit:
 				//case Permissions.ChanSpy
-				case EnumPermType.ClaimProcFieldsBilledToInsEdit:
+				//case EnumPermType.ClaimProcFieldsBilledToInsEdit://Open Dental 25.3: Fee Billed and Code Sent changes are logged under it (B-CLAIM).
 				//case Permissions.AllergyMerge
 				//case Permissions.AiChatSession:
 				//case Permissions.BadgeIdEdit

@@ -1980,6 +1980,7 @@ namespace OpenDental{
 			if(listClaimProcs.Count > 0) {
 				if(_claim.ClaimType=="PreAuth") {
 					using FormClaimPayPreAuth formClaimPayPreAuth=new FormClaimPayPreAuth(_patient,_family,_listInsPlans,_listPatPlans,_listInsSubs);
+					List<ClaimProc> listClaimProcsPreAuthOld=listClaimProcs.Select(x => x.Copy()).ToList();//Open Dental 25.1: overrides are audited.
 					formClaimPayPreAuth.ListClaimProcs=listClaimProcs;
 					formClaimPayPreAuth.ShowDialog();
 					//An EOB scanned in that window stays attached to the preauth even if its estimates are cancelled.
@@ -1993,6 +1994,7 @@ namespace OpenDental{
 						ClaimProcs.SetInsEstTotalOverride(formClaimPayPreAuth.ListClaimProcs[i].ProcNum,formClaimPayPreAuth.ListClaimProcs[i].PlanNum,
 							formClaimPayPreAuth.ListClaimProcs[i].InsSubNum,formClaimPayPreAuth.ListClaimProcs[i].InsPayEst,_listClaimProcs);
 					}
+					ClaimProcs.CreateAuditTrailEntriesForOverrides(formClaimPayPreAuth.ListClaimProcs,listClaimProcsPreAuthOld);
 				}
 				else {
 					using FormClaimPayTotal formClaimPayTotal=new FormClaimPayTotal(_patient,_family,_listInsPlans,_listPatPlans,_listInsSubs,GetBlueBookEstimateData());
