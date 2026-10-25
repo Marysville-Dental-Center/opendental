@@ -67,6 +67,30 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		[TestMethod]
+		public void ByName_UiControllableFalse_OnlyMsgGet_StillForcesShowUI() {
+			_harness.Fake.UiControllable=false;
+			_harness.Fake.UiControllableOnlyMsg=Tw.MSG_GET;//TWAIN requires only MSG_GET for it (p.5-13).
+			_harness.Session.HideUI=true;
+			Assert.IsTrue(_harness.Session.OpenSource("Fake Sensor"));
+			Assert.IsNotNull(_harness.Session.Acquire(IntPtr.Zero));
+			Assert.AreEqual(1,_harness.Fake.LastShowUI);
+			Assert.AreEqual(false,_harness.Session.IsUiControllable);
+			Assert.IsTrue(_harness.Fake.ListCalls.Any(x => x.Name=="CAP/GET" && x.Cap==Tw.CAP_UICONTROLLABLE && x.Rc==Tw.TWRC_SUCCESS),
+				_harness.CallText);
+		}
+
+		[TestMethod]
+		public void ByName_UiControllableFalse_OnlyMsgGetCurrent_FallbackForcesShowUI() {
+			_harness.Fake.UiControllable=false;
+			_harness.Fake.UiControllableOnlyMsg=Tw.MSG_GETCURRENT;
+			_harness.Session.HideUI=true;
+			Assert.IsTrue(_harness.Session.OpenSource("Fake Sensor"));
+			Assert.IsNotNull(_harness.Session.Acquire(IntPtr.Zero));
+			Assert.AreEqual(1,_harness.Fake.LastShowUI);
+			Assert.AreEqual(false,_harness.Session.IsUiControllable);
+		}
+
+		[TestMethod]
 		public void ByName_UiControllableNotSupported_HonoursHideUI() {
 			_harness.Session.HideUI=true;
 			Assert.IsTrue(_harness.Session.OpenSource("Fake Sensor"));

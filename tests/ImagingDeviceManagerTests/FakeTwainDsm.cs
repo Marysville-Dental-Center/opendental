@@ -193,6 +193,10 @@ namespace ImagingDeviceManager.Tests {
 		public ushort? PixelFlavor;
 		///<summary>CAP_UICONTROLLABLE of the built-in source. Null: not supported.</summary>
 		public bool? UiControllable;
+		///<summary>0: the built-in source answers CAP_UICONTROLLABLE to MSG_GET and MSG_GETCURRENT. MSG_GET: only to MSG_GET, the one
+		///operation TWAIN requires for it (as a 1.6 to 1.9 source may). MSG_GETCURRENT: only to MSG_GETCURRENT. Any other message fails
+		///with TWCC_CAPBADOPERATION.</summary>
+		public ushort UiControllableOnlyMsg;
 		public HashSet<ushort> HashSetRejectedCaps=new HashSet<ushort>();
 		public ushort UserSelectResult=Tw.TWRC_SUCCESS;
 		public string UserSelectChoice="Fake Sensor";
@@ -515,14 +519,19 @@ namespace ImagingDeviceManager.Tests {
 			}
 			int? valueCurrent=null;
 			ushort itemType=Tw.TWTY_UINT16;
+			bool isAnswered=msg==Tw.MSG_GETCURRENT;
 			if(capability.Cap==Tw.ICAP_PIXELFLAVOR && PixelFlavor!=null) {
 				valueCurrent=PixelFlavor.Value;
 			}
 			if(capability.Cap==Tw.CAP_UICONTROLLABLE && UiControllable!=null) {
 				valueCurrent=UiControllable.Value ? 1 : 0;
 				itemType=Tw.TWTY_BOOL;
+				isAnswered=(msg==Tw.MSG_GET || msg==Tw.MSG_GETCURRENT) && (UiControllableOnlyMsg==0 || UiControllableOnlyMsg==msg);
+				if(!isAnswered) {
+					return Fail(Tw.TWCC_CAPBADOPERATION);
+				}
 			}
-			if(msg==Tw.MSG_GETCURRENT && valueCurrent!=null) {
+			if(isAnswered && valueCurrent!=null) {
 				IntPtr hContainer=SourceAllocate(TwContainer.OneValueSize);
 				IntPtr pContainer=NativeMethods.GlobalLock(hContainer);
 				Marshal.WriteInt16(pContainer,0,(short)itemType);

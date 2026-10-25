@@ -683,7 +683,8 @@ namespace ImagingDeviceManager.TwainProtocol {
 			return TryGetCapability(capability,Tw.MSG_QUERYSUPPORT,out support);
 		}
 
-		///<summary>A DAT_CAPABILITY message that returns a container (MSG_GETCURRENT, MSG_QUERYSUPPORT), read as one value.</summary>
+		///<summary>A DAT_CAPABILITY message that returns a container (MSG_GET, MSG_GETCURRENT, MSG_QUERYSUPPORT), read as one value: the
+		///current item of a TW_ENUMERATION, the current value of a TW_RANGE.</summary>
 		private bool TryGetCapability(ushort capability,ushort msg,out int value) {
 			value=0;
 			if(State<4) {
@@ -1054,10 +1055,11 @@ namespace ImagingDeviceManager.TwainProtocol {
 
 		///<summary>Honest CAP_UICONTROLLABLE (design 7.1): a source that reports FALSE cannot run without its own window, so it always
 		///gets ShowUI=1, whatever HideUI says, and the log says so. A source that does not report it gets what the caller asked for.
-		///Only on the by-name path; scans keep their behaviour.</summary>
+		///TWAIN requires only MSG_GET for this capability (TWAIN 2.4 p.5-13), so that is asked first; MSG_GETCURRENT is the fallback for
+		///a source that answers only that. Only on the by-name path; scans keep their behaviour.</summary>
 		private bool GetShowUIForSource(bool isShowUIRequested) {
 			int value;
-			if(!TryGetCapabilityCurrent(Tw.CAP_UICONTROLLABLE,out value)) {
+			if(!TryGetCapability(Tw.CAP_UICONTROLLABLE,Tw.MSG_GET,out value) && !TryGetCapabilityCurrent(Tw.CAP_UICONTROLLABLE,out value)) {
 				IsUiControllable=null;
 				return isShowUIRequested;
 			}
