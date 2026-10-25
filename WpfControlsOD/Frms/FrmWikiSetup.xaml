@@ -6,13 +6,25 @@
              xmlns:local="clr-namespace:OpenDental"
              xmlns:ui="clr-namespace:WpfControls.UI"
              mc:Ignorable="d"
-             Width="944" Height="753" 
+             Width="944" Height="753"
              Text="Wiki Setup" >
 	<Grid Background="#FFFCFDFE" >
 		<ui:Button x:Name="butSave" HorizontalAlignment="Right" Width="75" VerticalAlignment="Bottom" Height="24" Margin="0,0,12,12" Text="_Save" Click="butSave_Click" />
 		<ui:CheckBox x:Name="checkCreatePageFromLinks" Width="230" VerticalAlignment="Bottom" Height="19" Margin="14,0,0,12" Text="Allow new wiki pages from links" CheckAlign="MiddleRight" />
 		<ui:CheckBox x:Name="checkDetectLinks" Width="230" VerticalAlignment="Bottom" Height="19" Margin="14,0,0,33" Text="Detect wiki links in textboxes and grids" CheckAlign="MiddleRight" />
 		<ui:Label x:Name="label1" Width="154" Height="16" Margin="12,9,0,0" Text="Master Page:" VAlign="Bottom" />
-		<ui:TextRich x:Name="textMaster" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="12,28,12,58" SpellCheckIsEnabled="False" />
+		<ui:TextRich x:Name="textMaster" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="12,28,12,176" SpellCheckIsEnabled="False" />
+		<ui:GroupBox x:Name="groupReadOnly" HorizontalAlignment="Stretch" VerticalAlignment="Bottom" Height="112" Margin="12,0,12,58" Text="Read-only copy of the wiki">
+			<ui:CheckBox x:Name="checkReadOnly" Width="620" Height="19" Margin="8,20,0,0" Text="Keep a read-only copy that any web browser can open, even while this program is closed or the server is down" Click="checkReadOnly_Click" />
+			<ui:Label x:Name="labelReadOnlyPath" Width="50" Height="18" Margin="8,45,0,0" Text="Folder" HAlign="Right" />
+			<ui:TextBox x:Name="textReadOnlyPath" Width="420" Height="20" Margin="62,44,0,0" />
+			<ui:Button x:Name="butReadOnlyBrowse" Width="26" Height="20" Margin="486,44,0,0" Text="..." Click="butReadOnlyBrowse_Click" />
+			<ui:Button x:Name="butExportNow" Width="90" Height="24" Margin="524,42,0,0" Text="Export Now" Click="butExportNow_Click" />
+			<ui:Button x:Name="butOpenCopy" Width="60" Height="24" Margin="620,42,0,0" Text="Open" Click="butOpenCopy_Click" />
+			<ui:Button x:Name="butShortcut" Width="120" Height="24" Margin="686,42,0,0" Text="Desktop Shortcut" Click="butShortcut_Click" />
+			<ui:CheckBox x:Name="checkReadOnlyAuto" Width="250" Height="19" Margin="62,68,0,0" Text="Update the copy after each save" />
+			<ui:Label x:Name="labelReadOnlyStatus" Width="580" Height="18" Margin="318,69,0,0" Text="" />
+			<ui:Label x:Name="labelReadOnlyWarning" Width="890" Height="18" Margin="8,89,0,0" Text="Wiki pages may contain patient information: only people allowed to see it should be able to open this folder. Pick a folder that stays reachable when the server is down." />
+		</ui:GroupBox>
 	</Grid>
 </local:FrmODBase>
