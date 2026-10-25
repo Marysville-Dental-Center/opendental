@@ -835,6 +835,11 @@ namespace OpenDental{
 				intArrayColW[13]=50;//Clinic
 				intArrayColW[14]=80;//Note: Reduce width when Clinic column is added so that we do not exceed the margin.
 			}
+			//M2-EMP: a second time on a later date prints with its date; the Out/In column takes the room from the Note column (the last one).
+			int widthSecondTimeMoved=ClockEvents.GetSecondTimePrintWidthMoved(_listClockEvents,PrefC.GetBool(PrefName.TimeCardShowSeconds),
+				x => g.MeasureString(x,font).Width,intArrayColW[3],intArrayColW[intArrayColW.Length-1]);
+			intArrayColW[3]+=widthSecondTimeMoved;
+			intArrayColW[intArrayColW.Length-1]-=widthSecondTimeMoved;
 			int[] intArrayColPos=new int[intArrayColW.Length+1];
 			intArrayColPos[0]=45;
 			for(int i=1;i<intArrayColPos.Length;i++) {
@@ -882,11 +887,11 @@ namespace OpenDental{
 			while(yPos < e.PageBounds.Height-75-50-32-16 && _linesPrinted < gridMain.ListGridRows.Count) {
 				for(int i=0;i<intArrayColPos.Length-1;i++) {
 					if(gridMain.ListGridRows[_linesPrinted].Cells[i].ColorText==Color.Empty || gridMain.ListGridRows[_linesPrinted].Cells[i].ColorText==Color.Black) {
-						e.Graphics.DrawString(gridMain.ListGridRows[_linesPrinted].Cells[i].Text,font,solidBrush
+						e.Graphics.DrawString(GetPrintCellText(gridMain.ListGridRows[_linesPrinted],i),font,solidBrush
 							,new RectangleF(intArrayColPos[i]+2,yPos,intArrayColPos[i+1]-intArrayColPos[i]-5,font.GetHeight(e.Graphics)));
 					}
 					else { //The only other color currently supported is red.
-						e.Graphics.DrawString(gridMain.ListGridRows[_linesPrinted].Cells[i].Text,font,Brushes.Red
+						e.Graphics.DrawString(GetPrintCellText(gridMain.ListGridRows[_linesPrinted],i),font,Brushes.Red
 							,new RectangleF(intArrayColPos[i]+2,yPos,intArrayColPos[i+1]-intArrayColPos[i]-5,font.GetHeight(e.Graphics)));
 					}
 				}
@@ -919,6 +924,15 @@ namespace OpenDental{
 			else {
 				e.HasMorePages=true;
 			}
+		}
+
+		///<summary>M2-EMP: the text pd_PrintPage prints in a cell: the grid's text, except in a clock event's second-time column (index 3), which prints
+		///its time before its date (ClockEvents.GetSecondTimePrintText).</summary>
+		private string GetPrintCellText(GridRow gridRow,int indexColumn) {
+			if(indexColumn==3 && gridRow.Tag is ClockEvent clockEvent) {
+				return ClockEvents.GetSecondTimePrintText(clockEvent,PrefC.GetBool(PrefName.TimeCardShowSeconds));
+			}
+			return gridRow.Cells[indexColumn].Text;
 		}
 
 		private void butBrowseEmp_Click(object sender,EventArgs e) {

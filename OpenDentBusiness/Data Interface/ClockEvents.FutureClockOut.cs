@@ -102,13 +102,57 @@ namespace OpenDentBusiness {
 		///date there (see GetSecondTimeCellText).</summary>
 		public static int GetSecondTimeColumnWidth(List<ClockEvent> listClockEvents,int widthDefault) {
 			Meth.NoCheckMiddleTierRole();
-			if(listClockEvents==null || !listClockEvents.Any(x => x.TimeDisplayed2.Year>=1880 && x.TimeDisplayed2.Date>x.TimeDisplayed1.Date)) {
+			if(!AnySecondTimeOnLaterDate(listClockEvents)) {
 				return widthDefault;
 			}
 			return Math.Max(widthDefault,WIDTH_SECOND_TIME_WITH_DATE);
 		}
 
+		///<summary>True when some event's second time falls on a later date than its first, so the time card shows that date.</summary>
+		private static bool AnySecondTimeOnLaterDate(List<ClockEvent> listClockEvents) {
+			return listClockEvents!=null && listClockEvents.Any(x => x.TimeDisplayed2.Year>=1880 && x.TimeDisplayed2.Date>x.TimeDisplayed1.Date);
+		}
+
 		///<summary>Room for a short date and a long time, like "12/31/2026 11:59:59 PM".</summary>
 		public const int WIDTH_SECOND_TIME_WITH_DATE=130;
+
+		///<summary>Text the printed time card puts in its second-time column (Out, or In for a break): the time, and after it the date when the second
+		///time falls on a later date than the first. The screen puts the date first (GetSecondTimeCellText), so that its right-aligned times line up.
+		///The printout left-aligns its cells and draws each one a single line high: with the time first, a date the column has no room for is what
+		///wraps out of sight, never the time. Blank when there is no second time.</summary>
+		public static string GetSecondTimePrintText(ClockEvent clockEvent,bool showSeconds) {
+			Meth.NoCheckMiddleTierRole();
+			if(clockEvent.TimeDisplayed2.Year<1880) {
+				return "";
+			}
+			string time=showSeconds ? clockEvent.TimeDisplayed2.ToLongTimeString() : clockEvent.TimeDisplayed2.ToShortTimeString();
+			if(clockEvent.TimeDisplayed2.Date<=clockEvent.TimeDisplayed1.Date) {
+				return time;
+			}
+			return time+" "+clockEvent.TimeDisplayed2.ToShortDateString();
+		}
+
+		///<summary>How many printer units (hundredths of an inch) the printed time card moves from its Note column to its second-time column, so that a
+		///second time printed with its date (GetSecondTimePrintText) fits on its line. 0 when no event shows a date there: the printout is then the
+		///same as in 24.3. Otherwise the column grows until the widest of those texts fits, as funcMeasureText measures it with the print font (each
+		///cell is drawn in a box PRINT_CELL_PADDING narrower than its column, plus one unit for rounding). The Note column gives up the same width,
+		///so the printout keeps its total width inside the margins, but it keeps at least PRINT_WIDTH_NOTE_MIN. Never negative.</summary>
+		public static int GetSecondTimePrintWidthMoved(List<ClockEvent> listClockEvents,bool showSeconds,Func<string,float> funcMeasureText,
+			int widthSecondTime,int widthNote)
+		{
+			Meth.NoCheckMiddleTierRole();
+			if(!AnySecondTimeOnLaterDate(listClockEvents)) {
+				return 0;
+			}
+			float widthTextMax=listClockEvents.Max(x => funcMeasureText(GetSecondTimePrintText(x,showSeconds)));
+			int widthNeeded=(int)Math.Ceiling(widthTextMax)+PRINT_CELL_PADDING+1;
+			int widthMoved=Math.Min(widthNeeded-widthSecondTime,widthNote-PRINT_WIDTH_NOTE_MIN);
+			return Math.Max(0,widthMoved);
+		}
+
+		///<summary>The printed time card draws each cell's text in a box this many units narrower than its column.</summary>
+		public const int PRINT_CELL_PADDING=5;
+		///<summary>The narrowest the printed time card's Note column gets when it gives room to the second-time column: still room for its header.</summary>
+		public const int PRINT_WIDTH_NOTE_MIN=30;
 	}
 }

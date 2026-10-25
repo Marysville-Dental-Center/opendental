@@ -46,6 +46,28 @@ namespace M2EMPTests {
 		}
 
 		[TestMethod]
+		public void TimeCard_PrintKeepsTheClockOutTime() {
+			string code=RepoFiles.ReadAllText("OpenDental","Forms","FormTimeCard.cs");
+			int indexPrint=code.IndexOf("private void pd_PrintPage(");
+			Assert.IsTrue(indexPrint>0);
+			string print=code.Substring(indexPrint);
+			//The Out/In column takes the room its widest text needs from the Note column, before the column positions are worked out.
+			StringAssert.Contains(print,"int widthSecondTimeMoved=ClockEvents.GetSecondTimePrintWidthMoved(_listClockEvents,PrefC.GetBool(PrefName.TimeCardShowSeconds),");
+			StringAssert.Contains(print,"x => g.MeasureString(x,font).Width,intArrayColW[3],intArrayColW[intArrayColW.Length-1]);");
+			int indexWiden=print.IndexOf("intArrayColW[3]+=widthSecondTimeMoved;");
+			int indexNarrow=print.IndexOf("intArrayColW[intArrayColW.Length-1]-=widthSecondTimeMoved;");
+			Assert.IsTrue(indexWiden>print.IndexOf("intArrayColW[14]=80;"),"After the clinic layout sets the Note width.");
+			Assert.IsTrue(indexNarrow>indexWiden);
+			Assert.IsTrue(indexNarrow<print.IndexOf("int[] intArrayColPos=new int[intArrayColW.Length+1];"));
+			//Every cell prints through GetPrintCellText, which prints a clock event's second time with its time first.
+			StringAssert.Contains(print,"e.Graphics.DrawString(GetPrintCellText(gridMain.ListGridRows[_linesPrinted],i),font,solidBrush");
+			StringAssert.Contains(print,"e.Graphics.DrawString(GetPrintCellText(gridMain.ListGridRows[_linesPrinted],i),font,Brushes.Red");
+			Assert.IsFalse(print.Contains("DrawString(gridMain.ListGridRows[_linesPrinted].Cells[i].Text"));
+			StringAssert.Contains(print,"if(indexColumn==3 && gridRow.Tag is ClockEvent clockEvent) {");
+			StringAssert.Contains(print,"return ClockEvents.GetSecondTimePrintText(clockEvent,PrefC.GetBool(PrefName.TimeCardShowSeconds));");
+		}
+
+		[TestMethod]
 		public void ManageModule_FutureClockOutKeepsClockOutEnabled() {
 			string code=RepoFiles.ReadAllText("OpenDental","Main Modules","ControlManage.cs");
 			StringAssert.Contains(code,"if(clockEvent.TimeDisplayed2.Year<1880 || ClockEvents.HasFutureClockOut(clockEvent)) {");
