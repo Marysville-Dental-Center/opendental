@@ -55,7 +55,8 @@ namespace OpenDental{
 
 		///<summary>D Codes (CDT) or, in Canada, CDA Codes: imports the code file the office picks. Returns true if any code was added or changed.</summary>
 		private bool RunCodeImport() {
-			if(!Security.IsAuthorized(EnumPermType.ProcCodeEdit)) {
+			//Security Admin is checked here too, not only by the caller: the Setup Wizard also opens this window.
+			if(!Security.IsAuthorized(EnumPermType.SecurityAdmin) || !Security.IsAuthorized(EnumPermType.ProcCodeEdit)) {
 				checkCodeImport.Checked=false;
 				return false;
 			}
@@ -123,7 +124,8 @@ namespace OpenDental{
 		///<summary>Code Groups: asks for the code system, shows what will change and, when groups in use have no default match, asks to keep them as
 		///hidden groups. Returns true if the code groups were reset.</summary>
 		private bool RunCodeGroupReset() {
-			if(!Security.IsAuthorized(EnumPermType.ProcCodeEdit)) {
+			//Security Admin is checked here too, not only by the caller: the Setup Wizard also opens this window.
+			if(!Security.IsAuthorized(EnumPermType.SecurityAdmin) || !Security.IsAuthorized(EnumPermType.ProcCodeEdit)) {
 				return false;
 			}
 			List<EnumDentalCodeSystem> listCodeSystems=new List<EnumDentalCodeSystem> { EnumDentalCodeSystem.CDT,EnumDentalCodeSystem.CDA };

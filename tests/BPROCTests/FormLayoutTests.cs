@@ -56,6 +56,20 @@ namespace BPROCTests {
 			return hashSetNames;
 		}
 
+		///<summary>The source of one method: from its declaration to the next "private " or "public " declaration.</summary>
+		private static string GetMethodSource(string code,string methodName) {
+			int start=code.IndexOf(" "+methodName+"(",StringComparison.Ordinal);
+			Assert.IsTrue(start>=0,"No method "+methodName);
+			int end=code.Length;
+			foreach(string nextDecl in new[] { "\tprivate ","\tpublic " }) {
+				int index=code.IndexOf(nextDecl,start,StringComparison.Ordinal);
+				if(index>=0 && index<end) {
+					end=index;
+				}
+			}
+			return code.Substring(start,end-start);
+		}
+
 		private static string ReadSource(string fileName) {
 			return File.ReadAllText(TestDb.FindRepoFile(Path.Combine("OpenDental","Forms",fileName)));
 		}
@@ -141,6 +155,15 @@ namespace BPROCTests {
 			});
 			string code=ReadSource("FormProcTools.cs");
 			StringAssert.Contains(code,"Security.IsAuthorized(EnumPermType.ProcCodeEdit)");
+			//Both options need Security Admin and Procedure Code Edit, checked in the window itself: the Setup Wizard opens it without checking
+			//Security Admin, unlike the Tools button of Procedure Codes.
+			foreach(string methodName in new[] { "RunCodeImport","RunCodeGroupReset" }) {
+				string body=GetMethodSource(code,methodName);
+				string checkFirst=body.Split(new[] { "\n" },StringSplitOptions.None).Select(x => x.Trim()).First(x => x.StartsWith("if("));
+				StringAssert.Contains(checkFirst,"!Security.IsAuthorized(EnumPermType.SecurityAdmin)",methodName+" checks Security Admin first.");
+				StringAssert.Contains(checkFirst,"!Security.IsAuthorized(EnumPermType.ProcCodeEdit)",methodName+" checks Procedure Code Edit first.");
+				StringAssert.Contains(checkFirst,"||",methodName+" stops when either permission is missing.");
+			}
 			StringAssert.Contains(code,"ProcCodeImports.IsYearEndWindow(DateTime.Today)");
 			StringAssert.Contains(code,"CodeGroupResets.Reset(codeSystem,doKeepUnmatched:hasUnmatched)");
 			StringAssert.Contains(code,"DataValid.SetInvalid(InvalidType.CodeGroups)");
