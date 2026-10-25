@@ -1515,6 +1515,7 @@
     <Compile Include="Data Interface\Documents.cs" />
     <Compile Include="Db Multi Table\Family.cs" />
     <Compile Include="Db\Db.cs" />
+    <Compile Include="Db\ReplicationDelay.cs" />
     <Compile Include="Db Multi Table\Ledgers.cs" />
     <Compile Include="Data Interface\MountDefs.cs" />
     <Compile Include="Data Interface\MountItemDefs.cs" />

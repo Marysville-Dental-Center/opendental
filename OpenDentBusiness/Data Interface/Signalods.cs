@@ -55,14 +55,23 @@ namespace OpenDentBusiness {
 		///ListITypes is an optional parameter for querying specific signal types.
 		///ServerMT instances will always be given a chance to process signals being returned from this method.</summary>
 		public static List<Signalod> RefreshTimed(DateTime dateTSince,List<InvalidType> listInvalidTypes=null,List<InvalidType> listInvalidTypesExclude=null) {
+			//B-SERVER: replication write delay for signals. The workstation looks back further and drops signals it already processed. A Middle Tier
+			//server never applies it to a client's call: the client already did.
+			int lookbackMs=0;
+			if(RemotingClient.MiddleTierRole!=MiddleTierRole.ServerMT) {
+				lookbackMs=ReplicationDelay.GetEffectiveSignalLookbackMs();
+			}
+			string streamKey=SignalLookbackFilter.GetStreamKey(listInvalidTypes,listInvalidTypesExclude);
+			DateTime dateTSinceQuery=ReplicationDelay.SignalLookback.GetQuerySince(streamKey,dateTSince,lookbackMs);
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				return Meth.GetObject<List<Signalod>>(MethodBase.GetCurrentMethod(),dateTSince,listInvalidTypes,listInvalidTypesExclude);
+				List<Signalod> listSignalodsMT=Meth.GetObject<List<Signalod>>(MethodBase.GetCurrentMethod(),dateTSinceQuery,listInvalidTypes,listInvalidTypesExclude);
+				return ReplicationDelay.SignalLookback.Filter(streamKey,listSignalodsMT,dateTSinceQuery,lookbackMs);
 			}
 			//This command was written to take into account the fact that MySQL truncates seconds to the the whole second on DateTime columns. (newer versions support fractional seconds)
 			//By selecting signals less than Now() we avoid missing signals the next time this function is called. Without the addition of Now() it was possible
 			//to miss up to ((N-1)/N)% of the signals generated in the worst case scenario.
 			string command="SELECT * FROM signalod "
-				+"WHERE (SigDateTime>"+POut.DateT(dateTSince)+" AND SigDateTime< "+DbHelper.Now()+") ";
+				+"WHERE (SigDateTime>"+POut.DateT(dateTSinceQuery)+" AND SigDateTime< "+DbHelper.Now()+") ";
 			if(!listInvalidTypes.IsNullOrEmpty()) {
 				command+="AND IType IN("+String.Join(",",listInvalidTypes.Select(x => (int)x))+") ";
 			}
@@ -81,7 +90,7 @@ namespace OpenDentBusiness {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ServerMT) {
 				ProcessSignalsForServerMT(listSignalods);
 			}
-			return listSignalods;
+			return ReplicationDelay.SignalLookback.Filter(streamKey,listSignalods,dateTSinceQuery,lookbackMs);
 		}
 
 		///<summary>ServerMT instances keep track of every SignalNum they have processed and will only process new signals that are passed in.</summary>
@@ -183,6 +192,8 @@ namespace OpenDentBusiness {
 			}
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				long signalNum=Meth.GetLong(MethodBase.GetCurrentMethod(),signalodArray);
+				//B-SERVER: a Middle Tier client sends no SQL, so Db never sees its writes. The signal that follows a save starts its read delay.
+				ReplicationDelay.NoteWrite();
 				if(signalodArray.Length==1) {
 					signalodArray[0].SignalNum=signalNum;
 				}
