@@ -103,10 +103,10 @@ namespace ImagingDeviceManager.TwainProtocol {
 		}
 
 		///<summary>Before an enable: arms the optional acquire timeout (design 7.1, [Twain] AcquireTimeoutMinutes). It is honoured only on
-		///the by-name path, for single acquisitions (CAP_XFERCOUNT=1), of a source listed in [Twain] DisableIsSafeSources whose
-		///safe-disable MSG_SET succeeded, because only then can the library stop the source without losing an image. Otherwise the log
-		///says why it is not.</summary>
-		private void ArmAcquireTimeout(int xferCount) {
+		///the by-name path, for single acquisitions (CAP_XFERCOUNT=1, and the source accepted that count: isXferCountSet), of a source
+		///listed in [Twain] DisableIsSafeSources whose safe-disable MSG_SET succeeded, because only then can the library stop the source
+		///without losing an image. Otherwise the log says why it is not.</summary>
+		private void ArmAcquireTimeout(int xferCount,bool isXferCountSet) {
 			_acquireDeadlineMs=0;
 			TwainCaptureSettings settings=Settings??new TwainCaptureSettings();
 			if(settings.AcquireTimeout<=TimeSpan.Zero || !IsOpenedByName) {
@@ -115,6 +115,9 @@ namespace ImagingDeviceManager.TwainProtocol {
 			string reasonNotHonoured=null;
 			if(xferCount!=1) {
 				reasonNotHonoured="it applies to single acquisitions (CAP_XFERCOUNT=1) only";
+			}
+			else if(!isXferCountSet) {
+				reasonNotHonoured="the source did not accept CAP_XFERCOUNT=1, so the acquisition may not be a single one";
 			}
 			else if(!settings.IsDisableSafeSource(SourceName)) {
 				reasonNotHonoured="the source is not listed in [Twain] DisableIsSafeSources";

@@ -82,6 +82,17 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		[TestMethod]
+		public void Timeout_NotHonoured_WhenTheSourceRefusesXferCountOne() {
+			Helper.RefusesXferCount=true;//The count stays -1: the operator ends the session, with any number of images.
+			Helper.ListExposures.Add(SessionHarness.Exposure(8));
+			Helper.ListExposures.Add(SessionHarness.Exposure(9));
+			Helper.EndAfterMs=700;
+			Assert.IsNotNull(_harness.AcquireByName(),"No stop at 300 ms: the session ends at 700 ms. "+Session.ErrorText);
+			Assert.AreEqual(TwainStopReason.None,Session.LastStopReason);
+			Assert.IsTrue(_harness.HasLog("did not accept CAP_XFERCOUNT=1"),_harness.LogText);
+		}
+
+		[TestMethod]
 		public void Timeout_NotHonoured_ForASourceNotListed() {
 			Session.Settings.ListDisableIsSafeSources=new List<string> { "Other Source" };
 			Helper.ListExposures.Add(SessionHarness.Exposure(8));

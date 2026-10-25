@@ -963,7 +963,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 		///says an image is ready (returns true, state 6) or the session ends without one (returns false, error set, state 4).
 		///xferCount is the number of images wanted, -1 for all.</summary>
 		private bool EnableAndWaitForTransfer(IntPtr hwnd,int xferCount) {
-			SetCapabilityQuietly(Tw.CAP_XFERCOUNT,Tw.TWTY_INT16,xferCount);
+			bool isXferCountSet=SetCapabilityQuietly(Tw.CAP_XFERCOUNT,Tw.TWTY_INT16,xferCount);
 			if(_xferMech==Tw.TWSX_MEMORY) {
 				if(!SetCapabilityQuietly(Tw.ICAP_XFERMECH,Tw.TWTY_UINT16,Tw.TWSX_MEMORY)) {
 					_xferMech=Tw.TWSX_NATIVE;
@@ -980,7 +980,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 				isShowUI=GetShowUIForSource(isShowUI);
 			}
 			SetSafeDisableCapability();
-			ArmAcquireTimeout(xferCount);
+			ArmAcquireTimeout(xferCount,isXferCountSet);
 			WatchParent(hwnd);
 			EndConditionCode=null;
 			EndConditionText=null;

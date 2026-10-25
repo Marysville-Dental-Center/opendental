@@ -98,6 +98,9 @@ namespace ImagingDeviceManager.Tests {
 		///<summary>Not contract behaviour (the contract leaves TW_STATUS.Data at 0): the Data that DAT_STATUS returns with an end reason, so
 		///that a test can check that DAT_STATUSUTF8 gets that whole TW_STATUS back.</summary>
 		public ushort EndStatusData;
+		///<summary>Not contract behaviour: MSG_SET on CAP_XFERCOUNT fails with TWCC_BADVALUE, so the count stays -1 and the operator ends
+		///each session, as with a source that cannot do single acquisitions.</summary>
+		public bool RefusesXferCount;
 		#endregion Script and installation settings
 
 		#region Observations
@@ -435,7 +438,7 @@ namespace ImagingDeviceManager.Tests {
 		private ushort SetSettable(ushort cap,int value) {
 			switch(cap) {
 				case Tw.CAP_XFERCOUNT:
-					if(value<-1) {
+					if(value<-1 || RefusesXferCount) {
 						return Fail(Tw.TWCC_BADVALUE);
 					}
 					DictCaps[cap]=value==0 ? -1 : value;//Setting 0 stores -1 (section 4).
