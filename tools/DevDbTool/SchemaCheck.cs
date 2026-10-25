@@ -154,7 +154,8 @@ namespace DevDbTool {
 			}
 		}
 
-		///<summary>Every fork migration finished, and the schema matches Open Dental 25.3.48 apart from the documented exceptions.</summary>
+		///<summary>Every fork migration finished, and the schema matches the schema verifier's reference (Open Dental 26.1.70 since M2-01) apart
+		///from the documented exceptions.</summary>
 		private void CheckForkMigrations(string databaseName) {
 			List<ForkMigrationStep> listPending=ForkMigrationRunner.GetPendingSteps();
 			foreach(ForkMigrationStep step in listPending) {

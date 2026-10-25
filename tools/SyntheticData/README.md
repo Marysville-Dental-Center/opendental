@@ -234,7 +234,9 @@ non-zero; they describe the synthetic data.
 3. `validate --database synth_253_adopted --out after.json`.
 4. `compare before.json after.json --allowed allowed-differences.adoption.json`. The allowed differences are the ones adoption is
    meant to make: `patient._portal_active_email` and its unique key dropped (owner decision), `SecurityHash` rehashed, preference
-   rows (fork markers, version sentinel), Open Dental update files, adoption's own security-log rows. Everything else, for
+   rows (fork markers, version sentinel), Open Dental update files, adoption's own security-log rows, and the Open Dental 25.4 and
+   26.1 schema changes the fork migration steps make (M2-01: the new tables and columns, `claimpayment.Note` NULLs becoming empty,
+   `DateLastAssigned` read back as datetime). Everything else, for
    example a second guardian renumbering, a `ShowTransSinceBalZero` back-fill or a repeated permission grant, is reported as
    unexpected and the exit code is 5.
 
