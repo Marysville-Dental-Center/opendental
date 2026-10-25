@@ -154,6 +154,10 @@ namespace OpenDental {
 			checkPaymentsPromptForPayType.Checked=PIn.Bool(prefValSync.PrefVal);
 			prefValSync=ListPrefValSyncs.Find(x=>x.PrefName_==PrefName.PayPlansVersion);
 			comboPayPlansVersion.SelectedIndex=PIn.Int(prefValSync.PrefVal)-1;//PrefVal is the enum which starts at 1 so subtract 1 for SelectedIndex
+			//25.1: the charge logic is no longer a choice. The combo stays hidden; a legacy mode shows as a read-only line, the default shows nothing.
+			comboPayPlansVersion.Visible=false;
+			label27.Text=PayPlanChargeLogic.GetReadOnlyText(PIn.Int(prefValSync.PrefVal));
+			label27.Visible=PayPlanChargeLogic.IsLegacyMode(PIn.Int(prefValSync.PrefVal));
 			if(comboPayPlansVersion.SelectedIndex==(int)PayPlanVersions.AgeCreditsAndDebits-1) {//Minus 1 because the enum starts at 1.
 				checkHideDueNow.Visible=true;
 				checkHideDueNow.Checked=PrefC.GetBool(PrefName.PayPlanHideDueNow);
