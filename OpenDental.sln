@@ -136,6 +136,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BMEDTests", "tests\BMEDTest
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BIMGTests", "tests\BIMGTests\BIMGTests.csproj", "{D6022269-375B-46E4-BFE8-BEA16CC1C7AC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BPROCTests", "tests\BPROCTests\BPROCTests.csproj", "{7358DB94-24C6-4C73-AC82-881ADA70A0C8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -891,6 +893,18 @@ Global
 		{D6022269-375B-46E4-BFE8-BEA16CC1C7AC}.Release|Any CPU.Build.0 = Release|x86
 		{D6022269-375B-46E4-BFE8-BEA16CC1C7AC}.Release|x86.ActiveCfg = Release|x86
 		{D6022269-375B-46E4-BFE8-BEA16CC1C7AC}.Release|x86.Build.0 = Release|x86
+		{7358DB94-24C6-4C73-AC82-881ADA70A0C8}.Debug|Any CPU.ActiveCfg = Debug|x86
+		{7358DB94-24C6-4C73-AC82-881ADA70A0C8}.Debug|Any CPU.Build.0 = Debug|x86
+		{7358DB94-24C6-4C73-AC82-881ADA70A0C8}.Debug|x86.ActiveCfg = Debug|x86
+		{7358DB94-24C6-4C73-AC82-881ADA70A0C8}.Debug|x86.Build.0 = Debug|x86
+		{7358DB94-24C6-4C73-AC82-881ADA70A0C8}.ODXam|Any CPU.ActiveCfg = Release|x86
+		{7358DB94-24C6-4C73-AC82-881ADA70A0C8}.ODXam|Any CPU.Build.0 = Release|x86
+		{7358DB94-24C6-4C73-AC82-881ADA70A0C8}.ODXam|x86.ActiveCfg = Release|x86
+		{7358DB94-24C6-4C73-AC82-881ADA70A0C8}.ODXam|x86.Build.0 = Release|x86
+		{7358DB94-24C6-4C73-AC82-881ADA70A0C8}.Release|Any CPU.ActiveCfg = Release|x86
+		{7358DB94-24C6-4C73-AC82-881ADA70A0C8}.Release|Any CPU.Build.0 = Release|x86
+		{7358DB94-24C6-4C73-AC82-881ADA70A0C8}.Release|x86.ActiveCfg = Release|x86
+		{7358DB94-24C6-4C73-AC82-881ADA70A0C8}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

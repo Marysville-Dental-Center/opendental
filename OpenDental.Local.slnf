@@ -28,6 +28,7 @@
       "tests\\BMEDTests\\BMEDTests.csproj",
       "tests\\BPAYTests\\BPAYTests.csproj",
       "tests\\BPERIOTests\\BPERIOTests.csproj",
+      "tests\\BPROCTests\\BPROCTests.csproj",
       "tests\\BTASKTests\\BTASKTests.csproj",
       "tests\\ChartLetterTests\\ChartLetterTests.csproj",
       "tests\\CryptoTests\\CryptoTests.csproj",

@@ -434,6 +434,10 @@
     <Compile Include="Data Interface\ChildRooms.cs" />
     <Compile Include="Data Interface\Children.cs" />
     <Compile Include="Data Interface\CodeGroups.cs" />
+    <Compile Include="Data Interface\CodeGroupDefaults.cs" />
+    <Compile Include="Data Interface\CodeGroupResets.cs" />
+    <Compile Include="Data Interface\MoreFeesFilters.cs" />
+    <Compile Include="Data Interface\ProcCodeImports.cs" />
     <Compile Include="Data Interface\EFormDefs.cs" />
     <Compile Include="Data Interface\EFormFieldDefs.cs" />
     <Compile Include="Data Interface\EFormFields.cs" />
