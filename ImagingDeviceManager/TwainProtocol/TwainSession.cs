@@ -83,9 +83,20 @@ namespace ImagingDeviceManager.TwainProtocol {
 		///<summary>CAP_UICONTROLLABLE as the open source reported it at the last by-name enable; null when it was not read or the source
 		///does not support it.</summary>
 		public bool? IsUiControllable { get; private set; }
+		///<summary>The source gate ([Twain] RestrictSources and AllowedSources), checked by OpenSource on the ProductName of the source it is
+		///about to open, by name or as the default. Null lets every source through. The facade sets it from capture.ini before each open.</summary>
+		public TwainSourceGate SourceGate { get; set; }
+		///<summary>True while Acquire or AcquireAll runs, including inside their message loop.</summary>
+		public bool IsAcquiring => _isAcquiring;
+		///<summary>True when the last Acquire returned no image because the transfer of the image meant for the caller failed (not a
+		///cancel, and not an image drained during a stop). Reset by each Acquire.</summary>
+		public bool IsLastTransferFailed { get; private set; }
 		///<summary>A line for the capture log, raised on the session's thread: tolerated failures, refusals, contract deviations and
 		///images handed to the drain sink. Handlers must not throw.</summary>
 		public event Action<string> Logged;
+		///<summary>Raised with the source's ProductName when OpenSource refuses it because of SourceGate, so that the facade can tell the
+		///operator (the callers show only their own text when an open fails). Handlers must not throw.</summary>
+		public event Action<string> SourceRefusedByGate;
 
 		public TwainSession(DsmLoader dsmLoader) {
 			_dsmLoader=dsmLoader;
@@ -525,6 +536,19 @@ namespace ImagingDeviceManager.TwainProtocol {
 				}
 				WriteIdentity(_pSourceIdentity,identityFound.Value);
 			}
+			string productName=ReadIdentity(_pSourceIdentity).ProductName??"";
+			if(SourceGate!=null && !SourceGate.IsAllowed(productName)) {
+				Log("The source gate ([Twain] RestrictSources=1) refused \""+productName+"\": it is not listed in [Twain] AllowedSources.");
+				SetError(isDefault ? EZTwainErrorCode.EZTEC_OPEN_DEFAULT_DS : EZTwainErrorCode.EZTEC_OPEN_DS,TwainSourceGate.RefusedText);
+				CloseDsm();
+				try {
+					SourceRefusedByGate?.Invoke(productName);
+				}
+				catch(Exception ex) {
+					Log("A SourceRefusedByGate handler failed: "+ex.Message);
+				}
+				return false;
+			}
 			ushort rc=DsmEntry(Tw.DAT_IDENTITY,Tw.MSG_OPENDS,_pSourceIdentity);
 			if(rc!=Tw.TWRC_SUCCESS) {
 				string name=ReadIdentity(_pSourceIdentity).ProductName;
@@ -782,12 +806,14 @@ namespace ImagingDeviceManager.TwainProtocol {
 				SetError(EZTwainErrorCode.EZTEC_INTERNAL,"A scan is already in progress.");
 				return null;
 			}
+			IsLastTransferFailed=false;
 			if(State<4 && !OpenSource(null)) {
 				return null;
 			}
 			_isAcquiring=true;
 			BeginAcquire();
 			DibImage dib=null;
+			bool isTransferring=false;//The caller's image is being transferred: an exception now is a transfer failure.
 			try {
 				bool isMulti=MultiTransfer;
 				if(State==5) {
@@ -807,9 +833,12 @@ namespace ImagingDeviceManager.TwainProtocol {
 					SetStopError(stopRequest);
 					return null;
 				}
+				isTransferring=true;
 				TransferOutcome outcome=TransferOne(out dib);
+				isTransferring=false;
 				if(outcome!=TransferOutcome.Done) {
 					dib=null;
+					IsLastTransferFailed=outcome==TransferOutcome.Failed;
 					if(State>=6) {
 						StopToState4(TwainStopReason.Error);//The series ends; on the by-name path the pending images are kept.
 					}
@@ -824,11 +853,13 @@ namespace ImagingDeviceManager.TwainProtocol {
 			}
 			catch(ImagingDeviceException ex) {
 				SetError(ex.ErrorCode==EZTwainErrorCode.EZTEC_NONE ? EZTwainErrorCode.EZTEC_XFER_FAILURE : ex.ErrorCode,ex.Message);
+				IsLastTransferFailed=isTransferring;
 				AbortToState4();
 				return null;
 			}
 			catch(Exception ex) {
 				SetError(EZTwainErrorCode.EZTEC_INTERNAL,ex.Message);
+				IsLastTransferFailed=isTransferring;
 				AbortToState4();
 				return null;
 			}
