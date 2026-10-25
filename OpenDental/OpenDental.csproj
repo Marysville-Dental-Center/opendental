@@ -9305,7 +9305,7 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\ImagingDeviceManager\xImagingDeviceManager.csproj">
+    <ProjectReference Include="..\ImagingDeviceManager\xImagingDeviceManager.csproj">
       <Project>{783079e6-a13f-4f43-a28d-9d7731f945d1}</Project>
       <Name>xImagingDeviceManager</Name>
     </ProjectReference>
