@@ -100,8 +100,7 @@ namespace OpenDental {
 			_patPlanOld=patPlan?.Copy();
 			_insSub=insSub;
 			_listBoxEmps=new UI.ListBox();//Instead of UI.ListBox for consistency with listBoxCarriers.
-			_listBoxEmps.Location=new Point(LayoutManager.Scale(tabControlInsPlan.Left+tabPageInsPlanInfo.Left+panelPlan.Left+groupPlan.Left+textEmployer.Left),
-				LayoutManager.Scale(tabPageInsPlanInfo.Top+tabControlInsPlan.Top+panelPlan.Top+groupPlan.Top+textEmployer.Bottom));
+			_listBoxEmps.Location=GetDropDownLocation26_1(textEmployer);
 			_listBoxEmps.Size=LayoutManager.ScaleSize(new Size(231,100));
 			_listBoxEmps.Font=new Font(Font.FontFamily,LayoutManager.ScaleF(Font.Size));
 			_listBoxEmps.Visible=false;
@@ -112,8 +111,7 @@ namespace OpenDental {
 			LayoutManager.Add(_listBoxEmps,this);
 			_listBoxEmps.BringToFront();
 			_listBoxCarriers=new UI.ListBox();//Instead of UI.ListBox, for horiz scroll on a dropdown.
-			_listBoxCarriers.Location=new Point(LayoutManager.Scale(tabControlInsPlan.Left+tabPageInsPlanInfo.Left+panelPlan.Left+groupPlan.Left+groupCarrier.Left+textCarrier.Left),
-				LayoutManager.Scale(tabControlInsPlan.Top+tabPageInsPlanInfo.Top+panelPlan.Top+groupPlan.Top+groupCarrier.Top+textCarrier.Bottom));
+			_listBoxCarriers.Location=GetDropDownLocation26_1(textCarrier);
 			_listBoxCarriers.Size=LayoutManager.ScaleSize(new Size(700,100));
 			_listBoxCarriers.Font=new Font(Font.FontFamily,LayoutManager.ScaleF(Font.Size));
 			_listBoxCarriers.Visible=false;
@@ -139,7 +137,7 @@ namespace OpenDental {
 				labelDivisionDash.Visible=false;
 				textDivisionNo.Visible=false;
 				//groupCanadian.Visible=false;
-				tabControlInsPlan.TabPages.Remove(tabPageCanadian);
+				HideCanadian26_1();
 			}
 			if(CultureInfo.CurrentCulture.Name.Length>=4 && CultureInfo.CurrentCulture.Name.Substring(3)=="GB") {//en-GB
 				labelCitySTZip.Text=Lan.g(this,"City,Postcode");
@@ -424,6 +422,7 @@ namespace OpenDental {
 			if(!Security.IsAuthorized(EnumPermType.InsPlanEdit,true) || !Security.IsAuthorized(EnumPermType.CarrierEdit,true)) {
 				groupCarrier.Enabled=false;
 			}
+			ApplyLayout26_1();
 			Cursor=Cursors.Default;
 		}
 
@@ -431,7 +430,7 @@ namespace OpenDental {
 		private void FillOrtho() {
 			if(!PrefC.GetBool(PrefName.OrthoEnabled)) {
 				butPatOrtho.Visible=false;
-				tabControlInsPlan.TabPages.Remove(tabPageOrtho);
+				groupOrtho.Visible=false;
 				return;
 			}
 			comboOrthoClaimType.Items.Clear();
@@ -608,7 +607,7 @@ namespace OpenDental {
 			comboBillType.Items.AddDefs(Defs.GetDefsForCategory(DefCat.BillingTypes,true));
 			comboBillType.SetSelectedDefNum(_insPlan.BillingType); 
 			comboExclusionFeeRule.Items.Clear();
-			comboExclusionFeeRule.Items.AddEnums<ExclusionRule>();
+			AddExclusionRuleItems26_1();
 			comboExclusionFeeRule.SetSelectedEnum(_insPlan.ExclusionFeeRule);
 			comboBoxZeroWriteOffsOnAnnualMaxLimitation.Items.Clear();
 			comboBoxZeroWriteOffsOnAnnualMaxLimitation.Items.AddList(Enum.GetValues(typeof(YN)).Cast<YN>(),(input)=>{ return input==YN.Unknown?"Default":input.GetDescription();});
@@ -2082,7 +2081,7 @@ namespace OpenDental {
 			PatPlans.Delete(_patPlan.PatPlanNum);//Estimates recomputed within Delete()
 			//PlanCur.ComputeEstimatesForCur();
 			_hasDropped=true;
-			string logText=Lan.g(this,"The insurance plan for the carrier")+" "+Carriers.GetCarrier(_insPlan.CarrierNum).CarrierName+" "+Lan.g(this,"was dropped.");
+			string logText=PatPlans.GetDropLogText(Carriers.GetCarrier(_insPlan.CarrierNum).CarrierName,_insPlan.PlanNum);
 			SecurityLogs.MakeLogEntry(EnumPermType.InsPlanEdit,_patPlan?.PatNum??0,logText,_insPlan?.PlanNum??0,
 				_insPlan.SecDateTEdit);
 			InsEditPatLogs.MakeLogEntry(null,_patPlan,InsEditPatLogType.PatPlan);

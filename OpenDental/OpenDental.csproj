@@ -2199,6 +2199,7 @@
     <Compile Include="Logic\EtransL.cs" />
     <Compile Include="Logic\FeeL.cs" />
     <Compile Include="Logic\InsPlanL.cs" />
+    <Compile Include="Logic\InsPlanWriteOffL.cs" />
     <Compile Include="Logic\Lan.cs" />
     <Compile Include="Logic\MarkupL.cs" />
     <Compile Include="Logic\MedicationL.cs" />
@@ -4972,6 +4973,10 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Forms\FormInsPlan.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormInsPlan.Layout26_1.cs">
+      <DependentUpon>FormInsPlan.cs</DependentUpon>
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Forms\FormInsPlans.cs">
