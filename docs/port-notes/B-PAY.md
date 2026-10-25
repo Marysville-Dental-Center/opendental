@@ -122,6 +122,11 @@ Other changes:
 3. Please check the inferred 25.3 attach cases (table above) on 25.3.48: another-family splits, production-linked plans, and the closed-plan confirmation for all attaches.
 4. Should a Payment Plan Prepay split also attach to old-style (non-dynamic) patient plans? We allow dynamic plans only, because only those apply prepayments.
 
+## Checks (2026-10-25)
+- Build of `OpenDental.Local.slnf` (Debug x86): 0 errors, 376 warnings (baseline).
+- Targeted tests: `BPAYTests` 62/62, `PayPlanTests` 29/29, `RegistryTests` 33/33, `NoHqTests` 49/49. `tools/Test-NoHqHosts.ps1` passes.
+- Note for the integration: `RegistryTests.Seed25_3DbTests` uses the fixed database name `registry_m1_02_tests`. When another worktree runs `RegistryTests` at the same time, its 6 database tests fail with "Table 'registry_m1_02_tests.preference' doesn't exist". A rerun on its own passes. This is not caused by B-PAY.
+
 ## Untested
 - The windows themselves were not opened (no GUI launch): the Global Lock Date checkbox, the Paysplit window flows (combo, checkbox, attach procedure or adjustment, closed-plan prompt) and the Preferences pages. The rules they call are tested in `tests/BPAYTests`. The designer and caller wiring is covered only by source checks: the hidden combo, and the global-lock call-site inventory.
 - Middle tier (`ClientMT`) dispatch of the new optional `auditTrigger` parameters and of `PayPlanGlobalLock.Upsert` / `PaySplitPayPlanAttach.DetachPrepaymentsFromPayPlan` was not exercised.
