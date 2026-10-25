@@ -815,7 +815,8 @@ namespace ImagingDeviceManager.TwainProtocol {
 		#region Acquire
 		///<summary>Acquires one image. Opens the default source if none is open. In single mode the source and DSM are closed
 		///afterwards; with MultiTransfer the source stays open and further calls return the remaining images of the batch
-		///(see IsDone). Returns null with ErrorCode set when no image was acquired. ErrorCode is EZTEC_NONE on success.</summary>
+		///(see IsDone). Returns null with ErrorCode set when no image was acquired. ErrorCode is EZTEC_NONE on success; on the by-name
+		///path it can be EZTEC_INTERNAL with an image, when stopping the source after the image was received failed.</summary>
 		public DibImage Acquire(IntPtr hwnd) {
 			ClearError();
 			if(_isAcquiring) {
@@ -858,13 +859,12 @@ namespace ImagingDeviceManager.TwainProtocol {
 					if(State>=6) {
 						StopToState4(TwainStopReason.Error);//The series ends; on the by-name path the pending images are kept.
 					}
+					if(State==5) {
+						DisableSourceSafely(TwainStopReason.None);
+					}
+					return null;
 				}
-				else if(!isMulti && State>=6) {
-					HandleExtraImages();//Single mode takes one image; scans discard the rest of the batch.
-				}
-				if(State==5) {
-					DisableSourceSafely(TwainStopReason.None);//Batch finished: close the scanner's dialog. IsDone() is now true.
-				}
+				FinishAfterDelivery(isMulti);
 				return dib;
 			}
 			catch(ImagingDeviceException ex) {
@@ -951,6 +951,31 @@ namespace ImagingDeviceManager.TwainProtocol {
 				}
 				EndAcquire();
 				RepostQuitIfPending();
+			}
+		}
+
+		///<summary>After the caller's image was transferred and ended with MSG_ENDXFER, which a source counts as delivered: single mode
+		///takes care of the rest of the batch, and a finished batch is disabled (IsDone() is then true). On the by-name path the image must
+		///reach the caller even if this fails (the source will not offer it again), so an exception is logged, the source is stopped in the
+		///safe order, the operator is told that the source may still hold images, and the error is set without taking the image away.
+		///Scans keep returning no image, as before.</summary>
+		private void FinishAfterDelivery(bool isMulti) {
+			try {
+				if(!isMulti && State>=6) {
+					HandleExtraImages();//Single mode takes one image; scans discard the rest of the batch.
+				}
+				if(State==5) {
+					DisableSourceSafely(TwainStopReason.None);//Batch finished: close the scanner's dialog. IsDone() is now true.
+				}
+			}
+			catch(Exception ex) when(IsOpenedByName) {
+				Log("Finishing the acquisition from \""+SourceName+"\" failed after its image was received: "+ex.Message
+					+" The image still goes back to the caller.");
+				AbortToState4();
+				if(CanDrain) {
+					NoteMayStillHoldImages(TwainStopReason.Error);
+				}
+				SetError(EZTwainErrorCode.EZTEC_INTERNAL,"The image was received, but stopping the device afterwards failed: "+ex.Message);
 			}
 		}
 

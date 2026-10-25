@@ -189,6 +189,30 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		[TestMethod]
+		public void ExceptionAfterTheCallersImage_ByName_ImageStillReturned() {
+			FakeTwainDsm fake=_harness.Fake;
+			fake.ListPages.Add(FakePage.CreateRgb(10,20,300,(x,y) => Color.Gray));
+			fake.ListPages.Add(FakePage.CreateRgb(11,20,300,(x,y) => Color.Gray));
+			int countImagesStarted=0;
+			fake.ActionOnMemoryStrip=row => {
+				if(row==0 && ++countImagesStarted==2) {
+					throw new InvalidOperationException("Simulated failure while the extra image is drained.");
+				}
+			};
+			Assert.IsTrue(Session.OpenSource("Fake Sensor"));
+			Assert.IsTrue(Session.SetTransferMechanism(Tw.TWSX_MEMORY));
+			DibImage dib=Session.Acquire(IntPtr.Zero);
+			Assert.IsNotNull(dib,"The source counts the caller's image as delivered; it must not be dropped.");
+			Assert.AreEqual(10,dib.Width);
+			Assert.IsFalse(Session.IsLastTransferFailed);
+			Assert.AreEqual(EZTwainErrorCode.EZTEC_INTERNAL,Session.ErrorCode);
+			Assert.IsTrue(_harness.HasLog("failed after its image was received"),_harness.LogText);
+			CollectionAssert.AreEqual(new[] { 11 },Sink.ListDrained.Select(x => x.Image.Width).ToArray(),"The stop drains the extra image.");
+			CollectionAssert.AreEqual(new[] { TwainStopReason.Error },Sink.ListMayStillHold.ToArray());
+			_harness.AssertDisabledOnlyInState5();
+		}
+
+		[TestMethod]
 		public void StrictGenericSource_NeverDisabledOutsideState5() {
 			FakeTwainDsm fake=_harness.Fake;
 			fake.IsStrict=true;
