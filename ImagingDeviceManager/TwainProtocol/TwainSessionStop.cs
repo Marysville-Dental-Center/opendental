@@ -351,10 +351,14 @@ namespace ImagingDeviceManager.TwainProtocol {
 		///- State 6: on the by-name path with a sink, each pending image is transferred to the sink (an image the source offered is
 		///  kept); otherwise, and for scans, MSG_RESET discards them as before.
 		///- State 5: MSG_DISABLEDS.
-		///Never throws.</summary>
+		///On the by-name path every such stop is a capture event and goes to the log (design 7.6, 7.13). Never throws.</summary>
 		private void StopToState4(TwainStopReason reason) {
 			if(reason!=TwainStopReason.None) {
 				LastStopReason=reason;
+				if(IsOpenedByName && State>=5) {
+					Log("Stopping \""+SourceName+"\" ("+reason+"); safe disable in effect: "+(IsSafeDisableInEffect ? "yes."
+						: "no; an exposure the source still held may not be delivered (see the runbook, \"may still hold images\")."));
+				}
 			}
 			try {
 				if(State==7) {

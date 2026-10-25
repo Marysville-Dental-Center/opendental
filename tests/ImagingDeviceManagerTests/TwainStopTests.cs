@@ -44,6 +44,19 @@ namespace ImagingDeviceManager.Tests {
 			Assert.AreEqual(TwainStopReason.Cancel,Session.LastStopReason);
 			_harness.AssertDisabledOnlyInState5();
 			Assert.AreEqual(3,Helper.State,"Disabled and closed.");
+			Assert.IsTrue(_harness.HasLog("Stopping \""+Helper.ProductName+"\" (Cancel); safe disable in effect: no; an exposure the source"
+				+" still held may not be delivered"),_harness.LogText);
+		}
+
+		[TestMethod]
+		public void Cancel_DefaultSource_NotLogged() {
+			_harness.Fake.EnableBehavior=FakeEnableBehavior.Nothing;
+			_harness.Fake.ListPages.Add(FakePage.CreateRgb(4,4,300,(x,y) => Color.Gray));
+			_harness.Fake.ActionOnEnable=() => Session.Cancel();
+			Assert.IsTrue(Session.OpenSource(null));
+			Assert.IsNull(Session.Acquire(IntPtr.Zero));
+			Assert.AreEqual(TwainStopReason.Cancel,Session.LastStopReason);
+			Assert.IsFalse(_harness.HasLog("Stopping"),"Scans write nothing to the capture log: "+_harness.LogText);
 		}
 
 		[TestMethod]

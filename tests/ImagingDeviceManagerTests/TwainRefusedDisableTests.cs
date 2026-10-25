@@ -74,6 +74,7 @@ namespace ImagingDeviceManager.Tests {
 			Assert.AreEqual(0,Sink.ListMayStillHold.Count);
 			Assert.IsFalse(Session.SourceMayHoldImages);
 			CollectionAssert.AreEqual(new List<bool> { true,false },_listWaiting,"The status window can say it is waiting.");
+			Assert.IsTrue(_harness.HasLog("Stopping \""+Helper.ProductName+"\" (Cancel); safe disable in effect: yes."),_harness.LogText);
 			Assert.IsFalse(listCalls.Any(x => x.Condition==FakeHelperSource.CodeDisableImagesPending),"Never disabled in state 6.");
 			_harness.AssertDisabledOnlyInState5();
 			_harness.AssertStatusReadAfterEveryFailure();
