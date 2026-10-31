@@ -42,6 +42,9 @@ namespace ImagingCapture.Tests {
 		public void Cleanup() {
 			_videoCaptureSession?.Dispose();
 			try {
+				foreach(string path in Directory.GetFiles(_folder,"*",SearchOption.AllDirectories)) {
+					File.SetAttributes(path,FileAttributes.Normal);
+				}
 				Directory.Delete(_folder,true);
 			}
 			catch {
@@ -127,14 +130,18 @@ namespace ImagingCapture.Tests {
 			VideoCaptureSession videoCaptureSession=CreateSession();
 			videoCaptureSession.Refresh();
 			FakeFrameSource fakeFrameSourceFirst=OpenedLast;
-			Assert.IsTrue(videoCaptureSession.SelectDevice(device2).IsStreaming);
+			string error;
+			string warning;
+			Assert.IsTrue(videoCaptureSession.SelectDevice(device2,out error,out warning).IsStreaming);
+			Assert.AreEqual("",error);
+			Assert.AreEqual("",warning);
 			Assert.IsTrue(fakeFrameSourceFirst.IsDisposed,"Only one camera is held at a time.");
 			Assert.AreSame(device2,OpenedLast.Device);
 			CameraConfig cameraConfigSaved=CameraConfig.Read(LocalCaptureConfig.Load(_path));
 			Assert.AreEqual(device2.MonikerDisplayName,cameraConfigSaved.Moniker);
 			Assert.AreEqual(device2.FriendlyName,cameraConfigSaved.Name);
 			int countOpened=_fakeUvcBackend.ListOpened.Count;
-			videoCaptureSession.SelectDevice(device2);
+			videoCaptureSession.SelectDevice(device2,out error,out warning);
 			Assert.AreEqual(countOpened,_fakeUvcBackend.ListOpened.Count,"Picking the device already streaming does nothing.");
 			//The current device is kept on Refresh even though the saved one comes first.
 			Assert.IsTrue(videoCaptureSession.Refresh().IsStreaming);
@@ -322,7 +329,9 @@ namespace ImagingCapture.Tests {
 			Assert.IsFalse(videoCaptureSession.NeedsReopen());
 			UvcMode mode640=fakeFrameSourceFirst.Modes[0];
 			string error;
-			Assert.IsTrue(videoCaptureSession.SaveSettings(x => ResolutionChoice.Apply(x,mode640),out error),error);
+			string warning;
+			Assert.IsTrue(videoCaptureSession.SaveSettings(x => ResolutionChoice.Apply(x,mode640),out error,out warning),error);
+			Assert.AreEqual("",warning);
 			Assert.IsTrue(videoCaptureSession.NeedsReopen());
 			Assert.IsTrue(videoCaptureSession.ApplySettings().IsStreaming);
 			Assert.IsTrue(fakeFrameSourceFirst.IsDisposed);
@@ -333,11 +342,35 @@ namespace ImagingCapture.Tests {
 			Assert.AreEqual("MJPG",cameraConfigSaved.Subtype);
 			Assert.AreEqual(_fakeUvcBackend.ListDevices[0].MonikerDisplayName,cameraConfigSaved.Moniker,"The settings name the camera they belong to.");
 			int countOpened=_fakeUvcBackend.ListOpened.Count;
-			Assert.IsTrue(videoCaptureSession.SaveSettings(x => x.MainWindowSpace=false,out error));
+			Assert.IsTrue(videoCaptureSession.SaveSettings(x => x.MainWindowSpace=false,out error,out warning));
 			Assert.IsFalse(videoCaptureSession.NeedsReopen());
 			videoCaptureSession.ApplySettings();
 			Assert.AreEqual(countOpened,_fakeUvcBackend.ListOpened.Count,"A setting that does not change the stream restarts only the triggers.");
 			Assert.IsFalse(videoCaptureSession.CameraConfig.MainWindowSpace);
+		}
+
+		[TestMethod]
+		public void SaveSettings_SavedToTheFallback_ReturnsTheWarning() {
+			_fakeUvcBackend.AddDevice();
+			UvcDeviceInfo device2=_fakeUvcBackend.AddDevice();
+			WriteIni("[Camera]\r\n");
+			//The ProgramData file exists but cannot be written: the save goes to the per-user file, which is not read while it exists.
+			File.SetAttributes(_path,FileAttributes.ReadOnly);
+			string pathFallback=Path.Combine(_folder,"user","capture.ini");
+			_videoCaptureSession=new VideoCaptureSession(_fakeUvcBackend,LocalCaptureConfig.Load(_path,pathFallback),PAT_NUM);
+			_videoCaptureSession.ActionLog=x => _listLog.Add(x);
+			VideoCaptureSession videoCaptureSession=_videoCaptureSession;
+			videoCaptureSession.Refresh();
+			string error;
+			string warning;
+			Assert.IsTrue(videoCaptureSession.SaveSettings(x => x.MainWindowSpace=false,out error,out warning),error);
+			Assert.AreEqual("",error);
+			StringAssert.Contains(warning,"take effect only after");
+			Assert.IsTrue(_listLog.Any(x => x.Contains(warning)),"The warning is logged.");
+			Assert.IsFalse(videoCaptureSession.CameraConfig.MainWindowSpace,"The value applies in this window now.");
+			Assert.IsTrue(videoCaptureSession.SelectDevice(device2,out error,out warning).IsStreaming);
+			Assert.AreEqual("",error);
+			StringAssert.Contains(warning,"take effect only after","The camera choice gets the same warning.");
 		}
 
 		[TestMethod]

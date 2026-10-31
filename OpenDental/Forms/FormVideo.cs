@@ -80,15 +80,18 @@ namespace OpenDental {
 			}
 			ShowStatus(VideoStatusText.Starting());
 			VideoStatus videoStatus;
+			string error;
+			string warning;
 			Cursor=Cursors.WaitCursor;
 			try {
-				videoStatus=_videoCaptureSession.SelectDevice(uvcDeviceInfo);
+				videoStatus=_videoCaptureSession.SelectDevice(uvcDeviceInfo,out error,out warning);
 			}
 			finally {
 				Cursor=Cursors.Default;
 			}
 			_isPreviewPaused=false;
 			ShowStatus(videoStatus);
+			ShowSaveResult(error,warning);
 		}
 
 		private void FormVideo_FormClosing(object sender,FormClosingEventArgs e) {
@@ -510,8 +513,25 @@ namespace OpenDental {
 				return;
 			}
 			string error;
-			if(!_videoCaptureSession.SaveSettings(change,out error)) {
+			string warning;
+			_videoCaptureSession.SaveSettings(change,out error,out warning);
+			ShowSaveResult(error,warning);
+		}
+
+		///<summary>Under the preview: why the camera settings could not be saved, or the warning of a save that worked, for example
+		///that they went to the per-user file and do not take effect the next time this window opens. Clears the note otherwise.</summary>
+		private void ShowSaveResult(string error,string warning) {
+			if(IsDisposed) {
+				return;
+			}
+			if(!string.IsNullOrEmpty(error)) {
 				labelInfo.Text=Lan.g(this,"The camera settings could not be saved.")+" "+error;
+			}
+			else if(!string.IsNullOrEmpty(warning)) {
+				labelInfo.Text=Lan.g(this,"The camera settings were saved.")+" "+warning;
+			}
+			else {
+				ShowInfo("");
 			}
 		}
 

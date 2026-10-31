@@ -226,10 +226,12 @@ namespace ImagingCapture.Video {
 			return OpenCore(device,false,true);
 		}
 
-		///<summary>Opens the device the user picked and, when that works, saves it as [Camera] Moniker and Name. Does nothing when it
-		///is the device already streaming.</summary>
-		public VideoStatus SelectDevice(UvcDeviceInfo device) {
+		///<summary>Opens the device the user picked and, when that works, saves it as [Camera] Moniker and Name. error and warning
+		///are SaveSettings's, both "" when nothing was saved. Does nothing when it is the device already streaming.</summary>
+		public VideoStatus SelectDevice(UvcDeviceInfo device,out string error,out string warning) {
 			ThrowIfDisposed();
+			error="";
+			warning="";
 			if(device==null) {
 				return _videoStatus;
 			}
@@ -238,8 +240,7 @@ namespace ImagingCapture.Video {
 			}
 			VideoStatus videoStatus=OpenCore(device,false,true);
 			if(videoStatus.IsStreaming) {
-				string error;
-				SaveSettings(null,out error);
+				SaveSettings(null,out error,out warning);
 			}
 			return _videoStatus;
 		}
@@ -548,8 +549,12 @@ namespace ImagingCapture.Video {
 		#region Settings
 		///<summary>Changes the camera keys of capture.ini and saves the file: reads the current values, records the open device as
 		///[Camera] Moniker and Name, applies change (null: only the device) and writes what changed. On success, and also on failure,
-		///CameraConfig is read again from the loaded settings. Does not reopen the camera: call ApplySettings after.</summary>
-		public bool SaveSettings(Action<CameraConfig> change,out string error) {
+		///CameraConfig is read again from the loaded settings. Does not reopen the camera: call ApplySettings after.
+		///Returns false, with error, when nothing was saved. On success error is "" and warning is "" or the warning
+		///LocalCaptureConfig.Save left, which the window shows: for example that the values went to the per-user file and do not
+		///take effect the next time the window opens while the ProgramData file exists.</summary>
+		public bool SaveSettings(Action<CameraConfig> change,out string error,out string warning) {
+			warning="";
 			CameraConfig cameraConfig=CameraConfig.Read(_localCaptureConfig);
 			if(_device!=null) {
 				cameraConfig.SetDevice(_device);
@@ -561,13 +566,18 @@ namespace ImagingCapture.Video {
 				return false;
 			}
 			bool isSaved=_localCaptureConfig.Save();
+			string lastError=_localCaptureConfig.LastError;
 			_cameraConfig=CameraConfig.Read(_localCaptureConfig);
 			if(!isSaved) {
-				error=_localCaptureConfig.LastError;
+				error=lastError;
 				Log("Saving capture.ini failed: "+error);
 				return false;
 			}
 			error="";
+			warning=lastError;
+			if(warning!="") {
+				Log("capture.ini was saved with a warning: "+warning);
+			}
 			return true;
 		}
 
@@ -622,8 +632,10 @@ namespace ImagingCapture.Video {
 			ThrowIfDisposed();
 			if(isSaved) {
 				_cameraConfig=CameraConfig.Read(_localCaptureConfig);
+				//Learn has shown how its own save went; this one only records the device, usually with nothing to write.
 				string error;
-				SaveSettings(null,out error);
+				string warning;
+				SaveSettings(null,out error,out warning);
 			}
 			if(_frameSource==null) {
 				return _videoStatus;
