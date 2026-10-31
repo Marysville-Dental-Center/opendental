@@ -147,6 +147,33 @@ namespace ReportTests {
 			CollectionAssert.AreEqual(new List<long> { 2 },GetGroupsAllowed(50));
 		}
 
+		///<summary>PlanRenames (what AdoptionValidation migration-preview prints, and what adopt's row check expects) predicts exactly what the step
+		///renames on a database Open Dental converted: the same rows, to the same names, and nothing else.</summary>
+		[TestMethod]
+		public void PlanRenames_PredictsWhatTheStepRenames() {
+			ReportTestDb.Seed(_dbName,
+				"INSERT INTO displayreport (DisplayReportNum,InternalName,ItemOrder,Description,Category,IsHidden,IsVisibleInSubMenu) VALUES "
+					+"(12,'ODProcedures',2,'Procedures',1,0,0),(40,'ODOtherProduction',3,'Production By Procedures',1,0,0),"
+					+"(41,'ODOtherIndividual',4,'Procedures (Individual)',1,0,0),(42,'ODOtherLater',5,'A Later Report',1,0,0),"
+					+"(50,'ODOtherPendingA',0,'Pending Supplementals',3,0,0),(51,'ODOtherPendingB',1,'Insurance Pending Supplementals',3,0,0)");
+			List<ReportRows25_3.DisplayReportRow> listRows=DataCore.GetTable("SELECT DisplayReportNum,InternalName,ItemOrder,Description,Category,IsHidden "
+				+"FROM displayreport ORDER BY Category,ItemOrder,DisplayReportNum").Select().Select(x => new ReportRows25_3.DisplayReportRow {
+					DisplayReportNum=Convert.ToInt64(x["DisplayReportNum"]),InternalName=x["InternalName"].ToString(),ItemOrder=Convert.ToInt32(x["ItemOrder"]),
+					Description=x["Description"].ToString(),Category=(DisplayReportCategory)Convert.ToInt32(x["Category"]),IsHidden=Convert.ToInt32(x["IsHidden"])!=0,
+				}).ToList();
+			List<string> listPlanned=ReportRows25_3.PlanRenames(listRows).Where(x => x.RowRenamed!=null)
+				.Select(x => ReportRows25_3.DescribeRename(x.RowRenamed.InternalName,x.Target.InternalName)).ToList();
+			string before=Snapshot();
+			List<string> listChanges=ReportRows25_3.Run(false);
+			CollectionAssert.AreEqual(listPlanned,listChanges);
+			Assert.AreEqual(2,listChanges.Count,"Production by Procedure and Procedures (individual); Pending Supplementals is ambiguous.");
+			//Only InternalName of those two rows changed.
+			string after=Snapshot();
+			string expected=before.Replace("40/ODOtherProduction/","40/"+DisplayReports.ReportNames.ProductionByProcedure+"/")
+				.Replace("41/ODOtherIndividual/","41/"+DisplayReports.ReportNames.ProceduresIndividual+"/");
+			Assert.AreEqual(expected,after);
+		}
+
 		[TestMethod]
 		public void AmbiguousRows_AreNotAdopted() {
 			ReportTestDb.Seed(_dbName,

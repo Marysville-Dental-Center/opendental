@@ -58,6 +58,8 @@
       "tests\\StatementTests\\StatementTests.csproj",
       "tests\\TaskCategoryTests\\TaskCategoryTests.csproj",
       "tests\\VendorDirectTests\\VendorDirectTests.csproj",
+      "tools\\AdoptionValidation\\AdoptionValidation.csproj",
+      "tools\\AdoptionValidation\\AdoptionValidation.Tests\\AdoptionValidation.Tests.csproj",
       "tools\\SyntheticData\\SyntheticData.csproj",
       "tools\\SyntheticData\\SyntheticData.Tests\\SyntheticData.Tests.csproj",
       "UnitTests\\UnitTests.csproj",
