@@ -5444,11 +5444,6 @@
     <Compile Include="UI\ODPictureBox.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="UI\VideoCamera\Camera.cs" />
-    <Compile Include="UI\VideoCamera\CameraFrameSource.cs" />
-    <Compile Include="UI\VideoCamera\CameraMethods.cs" />
-    <Compile Include="UI\VideoCamera\IFrameSource.cs" />
-    <Compile Include="UI\VideoCamera\VideoCamLib.cs" />
     <Compile Include="UI\Voice\FormMsgBox.cs">
       <SubType>Form</SubType>
     </Compile>
