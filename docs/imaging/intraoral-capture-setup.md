@@ -26,7 +26,7 @@ The runbook names no sensor, camera or software vendor. It uses these terms:
    1. the mount and the unmounted items;
    2. any **Capture** notice on the screen;
    3. the capture quarantine and the capture journal (section 10);
-   4. the sensor software and the source's own recovery (section 10.3).
+   4. the sensor software, and whether the source can deliver the images again (section 10.3).
 
    Re-expose only when the dentist decides that the image is lost or not usable.
 2. **No patients before acceptance.** On each computer, use only a phantom and a test patient record (not a real person) until all of these hold:
@@ -320,8 +320,10 @@ A journal copy whose name ends in `-only` (sidecar `Delivered=None`) is an image
 Open Dental stopped the source, but the source did not finish within 30 s, or an image it offered after the stop could not be transferred. Images it took may still be held by the sensor software. Open Dental did not receive them, so they are in neither the journal nor the quarantine.
 
 1. Do not re-expose.
-2. Recover them with the source's own recovery, as the source's documentation and contract describe. This happens outside Open Dental. Some sources offer undelivered images again only for their most recent session and only for a limited time, so do it promptly, and before anyone starts another series with that source on that computer.
-3. If the recovery produces image files, file them like a journal copy: match the time to the stopped slot, have a second person check, then Import (section 10.1, steps 5 to 8).
+2. Check the source's contract for redelivery. A source that offers it delivers the undelivered images of its most recent session again on a later enable, often only for a limited time. Open Dental can ask for this only from the capture session of a later phase ("Request undelivered images again"). The Mount/Acquire loop of this phase has no redelivery action. So:
+   - do not start another series with that source on that computer until the images are recovered or the dentist decides they are lost, because a new series replaces the "most recent session";
+   - record the time and the stopped slot in the acceptance or incident record.
+3. Do not rely on any other recovery. A source may keep undelivered image files on the computer, but unless its contract describes a way to get them back, there is no supported tool for it. Never take image files from a source's own folders into a patient's record. If images do come back by a supported route, file them like a journal copy: match the time to the stopped slot, have a second person check, then Import (section 10.1, steps 5 to 8).
 4. Without safe disable there is no such notice. Treat any stop that Open Dental started during a slot in which an exposure may have been taken (Cancel anyway, an automatic logoff, closing Open Dental) the same way. The capture log shows each such stop as "Stopping ... safe disable in effect: no".
 
 ### 10.4 "Ended without an image" and "Image not received"
