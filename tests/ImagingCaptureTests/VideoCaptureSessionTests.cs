@@ -176,6 +176,65 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void StillPinStopsTheStart_StartedAgainWithThePreviewOnly() {
+			_fakeUvcBackend.HasStillPin=true;
+			_fakeUvcBackend.StartErrorKindWithStillPin=UvcErrorKind.Failed;
+			_fakeUvcBackend.AddDevice();
+			WriteIni("[Trigger.Still]\r\nEnabled=1\r\n");
+			VideoCaptureSession videoCaptureSession=CreateSession();
+			Assert.IsTrue(videoCaptureSession.Refresh().IsStreaming,"Design 8.3: the preview never depends on the still pin.");
+			Assert.AreEqual(2,_fakeUvcBackend.ListOpened.Count);
+			Assert.IsTrue(_fakeUvcBackend.ListOpened[0].IsDisposed,"The start with the still pin leaves nothing open.");
+			FakeFrameSource fakeFrameSource=OpenedLast;
+			Assert.AreSame(fakeFrameSource,videoCaptureSession.FrameSource);
+			Assert.IsTrue(fakeFrameSource.IsRunning);
+			Assert.IsFalse(fakeFrameSource.IsStillPinConnected);
+			Assert.IsTrue(_listLog.Any(x => x.Contains("without the still pin")),"One log line says why.");
+			Assert.AreEqual(TriggerInputState.Incomplete,videoCaptureSession.TriggerEngine.StillState,"The still trigger is off, with its reason.");
+			Assert.IsFalse(videoCaptureSession.NeedsReopen(),"The missing still pin is no reason to reopen.");
+			int countOpened=_fakeUvcBackend.ListOpened.Count;
+			Assert.IsTrue(videoCaptureSession.PrepareForLearn().IsStreaming);
+			Assert.AreEqual(countOpened,_fakeUvcBackend.ListOpened.Count,"Learn uses the running preview.");
+			Assert.IsTrue(videoCaptureSession.FinishLearn(false).IsStreaming);
+			Assert.AreEqual(countOpened,_fakeUvcBackend.ListOpened.Count);
+			Assert.IsNotNull(videoCaptureSession.TriggerEngine);
+		}
+
+		[TestMethod]
+		public void Learn_StillPinStopsTheStart_LearnOpensOnThePreview() {
+			_fakeUvcBackend.HasStillPin=true;
+			_fakeUvcBackend.AddDevice();
+			VideoCaptureSession videoCaptureSession=CreateSession();
+			Assert.IsTrue(videoCaptureSession.Refresh().IsStreaming);
+			Assert.IsFalse(OpenedLast.IsStillPinConnected,"Nothing in capture.ini wants the still pin.");
+			_fakeUvcBackend.StartErrorKindWithStillPin=UvcErrorKind.Failed;
+			Assert.IsTrue(videoCaptureSession.PrepareForLearn().IsStreaming,"Not reported as a failed camera.");
+			Assert.AreEqual(3,_fakeUvcBackend.ListOpened.Count,"Reopened with the still pin for Learn, which did not start, then without it.");
+			Assert.IsFalse(OpenedLast.IsStillPinConnected);
+			Assert.IsTrue(OpenedLast.IsRunning);
+			Assert.IsNull(videoCaptureSession.TriggerEngine);
+			Assert.IsTrue(videoCaptureSession.FinishLearn(false).IsStreaming);
+			Assert.IsNotNull(videoCaptureSession.TriggerEngine);
+			Assert.IsTrue(videoCaptureSession.PrepareForLearn().IsStreaming);
+			Assert.AreEqual(3,_fakeUvcBackend.ListOpened.Count,"The next Learn does not try the still pin again.");
+		}
+
+		[TestMethod]
+		public void StartFailure_WithAndWithoutStillPin_NothingLeftOpen() {
+			FakeUvcBackend fakeUvcBackend=new FakeUvcBackend();
+			fakeUvcBackend.HasStillPin=true;
+			fakeUvcBackend.AddDevice();
+			WriteIni("[Camera]\r\nPhotoSource=Still\r\n");
+			StartFailingBackend startFailingBackend=new StartFailingBackend(fakeUvcBackend,UvcErrorKind.AccessDenied);
+			using(VideoCaptureSession videoCaptureSessionFailing=new VideoCaptureSession(startFailingBackend,LocalCaptureConfig.Load(_path),PAT_NUM)) {
+				Assert.AreEqual(VideoStatusKind.AccessDenied,videoCaptureSessionFailing.Refresh().Kind);
+				Assert.AreEqual(2,fakeUvcBackend.ListOpened.Count,"Tried once more without the still pin.");
+				Assert.IsTrue(fakeUvcBackend.ListOpened.All(x => x.IsDisposed));
+				Assert.IsNull(videoCaptureSessionFailing.FrameSource);
+			}
+		}
+
+		[TestMethod]
 		public void CameraError_DisconnectedAndReconnect_StaleErrorIgnored() {
 			_fakeUvcBackend.AddDevice();
 			VideoCaptureSession videoCaptureSession=CreateSession();

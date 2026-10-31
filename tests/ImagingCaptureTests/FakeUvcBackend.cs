@@ -15,6 +15,8 @@ namespace ImagingCapture.Tests {
 		public bool HasStillPin=false;
 		///<summary>When not None, Open throws a UvcException of this kind.</summary>
 		public UvcErrorKind OpenErrorKind=UvcErrorKind.None;
+		///<summary>Given to each source opened from now on: see FakeFrameSource.StartErrorKindWithStillPin.</summary>
+		public UvcErrorKind StartErrorKindWithStillPin=UvcErrorKind.None;
 		public List<FakeFrameSource> ListOpened=new List<FakeFrameSource>();
 
 		public string Name {
@@ -43,6 +45,7 @@ namespace ImagingCapture.Tests {
 				throw new UvcException(UvcErrorKind.NoDevice,"No such device.");
 			}
 			FakeFrameSource frameSource=new FakeFrameSource(device,ListModes,HasStillPin);
+			frameSource.StartErrorKindWithStillPin=StartErrorKindWithStillPin;
 			ListOpened.Add(frameSource);
 			return frameSource;
 		}
@@ -69,6 +72,9 @@ namespace ImagingCapture.Tests {
 		public int CountStop { get; private set; }
 		///<summary>When not None, Start throws a UvcException of this kind.</summary>
 		public UvcErrorKind StartErrorKind=UvcErrorKind.None;
+		///<summary>When not None, Start with connectStillPin throws a UvcException of this kind, as a camera does whose graph does
+		///not run with the still pin connected. Start without it works.</summary>
+		public UvcErrorKind StartErrorKindWithStillPin=UvcErrorKind.None;
 
 		public event EventHandler FrameReady;
 		public event EventHandler<UvcStillEventArgs> StillCaptured;
@@ -90,6 +96,9 @@ namespace ImagingCapture.Tests {
 			ThrowIfDisposed();
 			if(StartErrorKind!=UvcErrorKind.None) {
 				throw new UvcException(StartErrorKind,"Scripted start failure.");
+			}
+			if(StartErrorKindWithStillPin!=UvcErrorKind.None && connectStillPin) {
+				throw new UvcException(StartErrorKindWithStillPin,"Scripted start failure with the still pin.");
 			}
 			if(CountStart>0 && (mode!=ModeStarted || connectStillPin!=_isStillRequested)) {
 				throw new InvalidOperationException("The mode and still choice are fixed by the first Start.");

@@ -64,7 +64,7 @@ namespace ImagingCapture.Video {
 	///
 	///Still pin: the camera is started with its still pin connected when [Trigger.Still] is enabled or [Camera] PhotoSource is
 	///Still, and, for Learn, whenever the camera has one (PrepareForLearn), so a still-pin key can be learned. The preview never
-	///depends on it.
+	///depends on it: a camera that does not start with its still pin connected is started again without it (OpenCore).
 	///
 	///Photo source (design 8.4): a still-pin press uses the still sample when PhotoSource=Still and the still pin is connected.
 	///Every other press, and every press with PhotoSource=Preview, uses the newest preview frame.
@@ -87,6 +87,10 @@ namespace ImagingCapture.Video {
 		///<summary>The preview frame taken last. Valid until the next TakeLatestFrame, which only this class calls, on the UI thread.</summary>
 		private UvcFrame _frameLast;
 		private VideoStatus _videoStatus=VideoStatusText.NoCamera();
+		///<summary>True when the open camera did not start with its still pin connected and was started again without it (OpenCore).
+		///Then a missing still pin is no reason to reopen it (NeedsReopen, PrepareForLearn); a reopen for another reason, or
+		///Refresh, tries the still pin again.</summary>
+		private bool _isStillPinStartFailed;
 		private bool _isDisposed;
 		private long _countPhotos;
 		#endregion Fields
@@ -287,27 +291,66 @@ namespace ImagingCapture.Video {
 			return cameraConfig.StillEnabled || cameraConfig.PhotoSource==CameraPhotoSource.Still;
 		}
 
-		///<summary>Opens and starts device. On failure nothing stays open and the status says why.</summary>
+		///<summary>Opens and starts device. On failure nothing stays open and the status says why. The preview never depends on the
+		///still pin (design 8.3): the backend leaves the still pin out when it cannot be connected, and when a camera started with
+		///its still pin connected fails to start anyway (the graph does not run, for example), it is opened again and started with
+		///the preview only.</summary>
 		private VideoStatus OpenCore(UvcDeviceInfo device,bool isForLearn,bool startTriggers) {
 			CloseCamera();
 			_device=device;
+			_isStillPinStartFailed=false;
+			bool isStillPinRequested;
+			Exception exception=TryOpenAndStart(device,isForLearn,true,out isStillPinRequested);
+			if(exception!=null && isStillPinRequested) {
+				Log("The camera did not start with its still pin connected ("+UvcErrors.FormatHResult(exception.HResult)+"): "+exception.Message
+					+" Starting it again without the still pin.");
+				exception=TryOpenAndStart(device,isForLearn,false,out isStillPinRequested);
+				if(exception==null) {
+					_isStillPinStartFailed=true;
+					Log("The camera runs without its still pin. The preview works without it.");
+				}
+			}
+			if(exception!=null) {
+				UvcException uvcException=exception as UvcException;
+				UvcErrorKind uvcErrorKind=uvcException?.Kind??UvcErrors.Classify(exception.HResult);
+				if(uvcErrorKind==UvcErrorKind.None) {
+					uvcErrorKind=UvcErrorKind.Failed;
+				}
+				_videoStatus=VideoStatusText.ForOpenFailure(uvcErrorKind,exception.HResult);
+				Log("Opening the camera failed ("+uvcErrorKind+", "+UvcErrors.FormatHResult(exception.HResult)+"): "+exception.Message);
+				return _videoStatus;
+			}
+			_frameLast=null;
+			_videoStatus=VideoStatusText.Streaming();
+			if(startTriggers) {
+				StartTriggers();
+			}
+			return _videoStatus;
+		}
+
+		///<summary>Opens device and starts it with the chosen stream format, and with its still pin when the camera has one, isFirstTry
+		///is true, and Learn or the settings want it (isStillPinRequested says whether Start was asked to connect it). Returns null
+		///when the camera streams; otherwise nothing stays open and the exception is returned.</summary>
+		private Exception TryOpenAndStart(UvcDeviceInfo device,bool isForLearn,bool isFirstTry,out bool isStillPinRequested) {
+			isStillPinRequested=false;
 			IFrameSource frameSource=null;
 			try {
 				frameSource=_uvcBackend.Open(device);
 				ModeChoice modeChoice=ModeSelector.Select(frameSource.Modes,_cameraConfig.Width,_cameraConfig.Height,_cameraConfig.Subtype);
-				if(modeChoice.HasOverride && !modeChoice.IsOverrideMatched) {
+				if(isFirstTry && modeChoice.HasOverride && !modeChoice.IsOverrideMatched) {
 					Log("The saved resolution (Width "+_cameraConfig.Width+", Height "+_cameraConfig.Height+", Subtype "+_cameraConfig.Subtype
 						+") is not offered by this camera. Using "+(modeChoice.Mode?.ToString()??"its current format")+".");
 				}
-				bool connectStillPin=frameSource.HasStillPin && (isForLearn || GetConnectStillPin(_cameraConfig));
+				isStillPinRequested=isFirstTry && frameSource.HasStillPin && (isForLearn || GetConnectStillPin(_cameraConfig));
 				frameSource.FrameReady+=frameSource_FrameReady;
 				frameSource.Error+=frameSource_Error;
 				_frameSource=frameSource;
 				_modeChoice=modeChoice;
-				frameSource.Start(modeChoice.Mode,connectStillPin);
-				if(connectStillPin && !frameSource.IsStillPinConnected) {
+				frameSource.Start(modeChoice.Mode,isStillPinRequested);
+				if(isStillPinRequested && !frameSource.IsStillPinConnected) {
 					Log("The camera's still pin could not be connected. The preview works without it.");
 				}
+				return null;
 			}
 			catch(Exception ex) {
 				_frameSource=null;
@@ -317,21 +360,8 @@ namespace ImagingCapture.Video {
 					frameSource.Error-=frameSource_Error;
 					DisposeQuietly(frameSource);
 				}
-				UvcException uvcException=ex as UvcException;
-				UvcErrorKind uvcErrorKind=uvcException?.Kind??UvcErrors.Classify(ex.HResult);
-				if(uvcErrorKind==UvcErrorKind.None) {
-					uvcErrorKind=UvcErrorKind.Failed;
-				}
-				_videoStatus=VideoStatusText.ForOpenFailure(uvcErrorKind,ex.HResult);
-				Log("Opening the camera failed ("+uvcErrorKind+", "+UvcErrors.FormatHResult(ex.HResult)+"): "+ex.Message);
-				return _videoStatus;
+				return ex;
 			}
-			_frameLast=null;
-			_videoStatus=VideoStatusText.Streaming();
-			if(startTriggers) {
-				StartTriggers();
-			}
-			return _videoStatus;
 		}
 
 		///<summary>Stops the triggers and the graph and releases the camera (its COM objects are released on Dispose of the frame
@@ -582,7 +612,8 @@ namespace ImagingCapture.Video {
 		}
 
 		///<summary>True when the open camera does not match the settings: another stream format is chosen now, or the still pin is
-		///wanted but not connected. Also true when a device is chosen but not open.</summary>
+		///wanted but not connected (unless the camera did not start with it, see OpenCore). Also true when a device is chosen but
+		///not open.</summary>
 		public bool NeedsReopen() {
 			IFrameSource frameSource=_frameSource;
 			if(frameSource==null) {
@@ -598,7 +629,7 @@ namespace ImagingCapture.Video {
 			else if(modeStarted==null || !modeChoice.Mode.IsSameFormat(modeStarted)) {
 				return true;
 			}
-			return frameSource.HasStillPin && GetConnectStillPin(_cameraConfig) && !frameSource.IsStillPinConnected;
+			return frameSource.HasStillPin && GetConnectStillPin(_cameraConfig) && !frameSource.IsStillPinConnected && !_isStillPinStartFailed;
 		}
 
 		///<summary>After the settings changed: reopens the camera when NeedsReopen (the format and still choice are fixed once a
@@ -614,13 +645,13 @@ namespace ImagingCapture.Video {
 		}
 
 		///<summary>Before the Learn window (design 8.5): stops the triggers, so Learn's key presses take no photo, and reopens the
-		///camera with its still pin connected when it has one that is not, so a still-pin key can be learned. Returns the status:
-		///Learn can open only while it is Streaming.</summary>
+		///camera with its still pin connected when it has one that is not, so a still-pin key can be learned (not when the camera
+		///did not start with it: see OpenCore). Returns the status: Learn can open only while it is Streaming.</summary>
 		public VideoStatus PrepareForLearn() {
 			ThrowIfDisposed();
 			StopTriggers();
 			IFrameSource frameSource=_frameSource;
-			if(frameSource!=null && frameSource.HasStillPin && !frameSource.IsStillPinConnected && _device!=null) {
+			if(frameSource!=null && frameSource.HasStillPin && !frameSource.IsStillPinConnected && !_isStillPinStartFailed && _device!=null) {
 				return OpenCore(_device,true,false);
 			}
 			return _videoStatus;
