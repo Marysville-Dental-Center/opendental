@@ -5444,11 +5444,6 @@
     <Compile Include="UI\ODPictureBox.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="UI\VideoCamera\Camera.cs" />
-    <Compile Include="UI\VideoCamera\CameraFrameSource.cs" />
-    <Compile Include="UI\VideoCamera\CameraMethods.cs" />
-    <Compile Include="UI\VideoCamera\IFrameSource.cs" />
-    <Compile Include="UI\VideoCamera\VideoCamLib.cs" />
     <Compile Include="UI\Voice\FormMsgBox.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -9305,6 +9300,10 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\ImagingCapture\xImagingCapture.csproj">
+      <Project>{9FCFB60D-959B-4448-A317-D56C95457C3F}</Project>
+      <Name>xImagingCapture</Name>
+    </ProjectReference>
     <ProjectReference Include="..\ImagingDeviceManager\xImagingDeviceManager.csproj">
       <Project>{783079e6-a13f-4f43-a28d-9d7731f945d1}</Project>
       <Name>xImagingDeviceManager</Name>

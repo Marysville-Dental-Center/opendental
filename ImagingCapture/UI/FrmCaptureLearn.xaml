@@ -1,0 +1,34 @@
+<local:FrmODBase x:Class="ImagingCapture.UI.FrmCaptureLearn"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:local="clr-namespace:OpenDental;assembly=WpfControlsOD"
+             xmlns:ui="clr-namespace:WpfControls.UI;assembly=WpfControlsOD"
+             mc:Ignorable="d"
+             Width="820" Height="600"
+             Text="Camera Learn" >
+	<Grid Background="#FFFCFDFE" >
+		<ui:Label x:Name="labelStep" Width="790" Height="20" Margin="12,10,0,0" Text="Step" IsBold="True" />
+		<ui:Label x:Name="labelInstructions" Width="790" Height="52" Margin="12,34,0,0" Text="Instructions" IsWrap="True" />
+		<ui:Button x:Name="butRecord" Width="75" Height="24" Margin="12,92,0,0" Text="Record" Click="butRecord_Click" />
+		<ui:Button x:Name="butStop" Width="75" Height="24" Margin="93,92,0,0" Text="Stop" Click="butStop_Click" />
+		<ui:Button x:Name="butSkip" Width="75" Height="24" Margin="174,92,0,0" Text="Skip" Click="butSkip_Click" />
+		<ui:Button x:Name="butResetCounts" Width="95" Height="24" Margin="12,92,0,0" Text="Reset counts" Click="butResetCounts_Click" />
+		<ui:Label x:Name="labelProgress" Width="540" Height="18" Margin="262,95,0,0" Text="" IsBold="True" />
+		<ui:Label x:Name="labelResult" Width="790" Height="136" Margin="12,124,0,0" Text="" IsWrap="True" />
+		<ui:Label x:Name="labelKey" Width="90" Height="18" Margin="12,268,0,0" Text="Key to use" VAlign="Bottom" />
+		<ui:ComboBox x:Name="comboKey" Width="500" Height="21" Margin="106,266,0,0" />
+		<ui:Label x:Name="labelLevel" Width="90" Height="18" Margin="12,268,0,0" Text="Level input" VAlign="Bottom" />
+		<ui:ComboBox x:Name="comboLevel" Width="500" Height="21" Margin="106,266,0,0" />
+		<ui:Grid x:Name="gridValues" Width="520" Height="226" Margin="12,266,0,0" Title="Raw control values" TranslationName="TableCameraControlValues" />
+		<ui:Panel x:Name="panelTiles" Width="262" Height="200" Margin="540,266,0,0" ColorBack="#FFFCFDFE" />
+		<ui:Label x:Name="labelCategory" Width="130" Height="18" Margin="12,504,0,0" Text="Video image category" VAlign="Bottom" />
+		<ui:ComboBox x:Name="comboCategory" Width="250" Height="21" Margin="146,502,0,0" />
+		<ui:Label x:Name="labelCategoryWarning" Width="400" Height="44" Margin="402,500,0,0" Text="" IsWrap="True" ColorText="#FFC00000" />
+		<ui:Button x:Name="butBack" HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="75" Height="24" Margin="0,0,255,12" Text="&lt; Back" Click="butBack_Click" />
+		<ui:Button x:Name="butNext" HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="75" Height="24" Margin="0,0,174,12" Text="Next &gt;" Click="butNext_Click" />
+		<ui:Button x:Name="butSave" HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="75" Height="24" Margin="0,0,93,12" Text="Save" Click="butSave_Click" />
+		<ui:Button x:Name="butClose" HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="75" Height="24" Margin="0,0,12,12" Text="Close" Click="butClose_Click" />
+	</Grid>
+</local:FrmODBase>
