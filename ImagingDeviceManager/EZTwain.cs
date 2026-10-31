@@ -6,6 +6,7 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text;
+using ImagingDeviceManager.Acquire;
 using ImagingDeviceManager.Imaging;
 using ImagingDeviceManager.TwainProtocol;
 
@@ -23,7 +24,7 @@ namespace ImagingDeviceManager {
 	///Multipage document to PDF: OpenDefaultSource, Set* calls, AcquireMultipageFile.
 	///
 	///Error codes keep their EZTwain numbers: 19 user cancelled, 38 no pages, 76 paper jam, 5 data source failure.</summary>
-	public static class EZTwain {
+	public static partial class EZTwain {
 		///<summary>Native transfers: the scanner hands over a whole bitmap at once. The default.</summary>
 		public const int XFERMECH_NATIVE=0;
 		///<summary>File transfers. Not supported.</summary>
@@ -51,6 +52,7 @@ namespace ImagingDeviceManager {
 						dsmLoader=LoadNativeDsm;
 					}
 					_session=new TwainSession(dsmLoader);
+					ConfigureSession(_session);
 				}
 				return _session;
 			}
@@ -60,8 +62,14 @@ namespace ImagingDeviceManager {
 			return NativeTwainDsm.Load(out errorText);
 		}
 
-		///<summary>Discards all state. For unit tests.</summary>
+		///<summary>Discards all state. For unit tests: capture.ini reads as empty and no windows are shown.</summary>
 		internal static void Reset(DsmLoader dsmLoader) {
+			Reset(dsmLoader,null);
+		}
+
+		///<summary>Discards all state. For unit tests. host replaces capture.ini, the capture folders and the windows; null gives
+		///CaptureHost.CreateInert.</summary>
+		internal static void Reset(DsmLoader dsmLoader,CaptureHost host) {
 			if(_session!=null) {
 				_session.Dispose();
 				_session=null;
@@ -71,6 +79,7 @@ namespace ImagingDeviceManager {
 			_idxNextSourceName=0;
 			_jpegQuality=JpegQualityDefault;
 			_pdfQuality=-1;
+			ResetCapture(host??CaptureHost.CreateInert());
 		}
 
 		#region Sources
@@ -81,22 +90,29 @@ namespace ImagingDeviceManager {
 			return Session.UserSelect(hwnd);
 		}
 
-		///<summary>Opens the default source (the one last chosen in SelectImageSource), closing any source already open.</summary>
+		///<summary>Opens the default source (the one last chosen in SelectImageSource), closing any source already open. With [Twain]
+		///RestrictSources=1 in capture.ini, a source not listed in [Twain] AllowedSources is refused with a notice.</summary>
 		public static bool OpenDefaultSource() {
 			Session.ClearError();
+			CloseEnabledSourceFirst();
+			ApplyCaptureConfig();
 			return Session.OpenSource(null);
 		}
 
 		///<summary>Opens the source with this product name (as returned by GetNextSourceName), closing any source already open.
-		///An empty name opens the default source.</summary>
+		///An empty name opens the default source. With [Twain] RestrictSources=1 in capture.ini, a source not listed in [Twain]
+		///AllowedSources is refused with a notice.</summary>
 		public static bool OpenSource(string sourceName) {
 			Session.ClearError();
+			CloseEnabledSourceFirst();
+			ApplyCaptureConfig();
 			return Session.OpenSource(sourceName);
 		}
 
-		///<summary>Closes the open source, discarding any images not yet transferred, and unloads the Data Source Manager.</summary>
+		///<summary>Closes the open source, discarding any images not yet transferred (for a source opened by name they go to the capture
+		///quarantine instead), and closes the Data Source Manager. The manager's library stays loaded for the next scan.</summary>
 		public static bool CloseSource() {
-			Session.CloseSource();
+			CloseSourceGuarded();
 			return true;
 		}
 
@@ -179,9 +195,26 @@ namespace ImagingDeviceManager {
 		#region Acquire
 		///<summary>Acquires one image and returns its handle, or IntPtr.Zero (check LastErrorCode: 19 means the user cancelled).
 		///Opens the default source if none is open. Runs modally: the top-level window containing hwnd is disabled until the
-		///scan ends. Unless SetMultiTransfer(true) was called, the source is closed afterwards. Free the handle with DIB_Free.</summary>
+		///scan ends; for a source opened by name (OpenSource), every visible window of the calling thread is (see
+		///DisableThreadWindowsDuringAcquire). Unless SetMultiTransfer(true) was called, the source is closed afterwards. Free the handle
+		///with DIB_Free.</summary>
 		public static IntPtr Acquire(IntPtr hwnd) {
-			DibImage dib=Session.Acquire(hwnd);
+			return Acquire(hwnd,0);
+		}
+
+		///<summary>Acquire, for a caller that knows the patient the image will be filed under. patNum goes only into the sidecar of the
+		///journal copy of the image, for recovery; 0 means unknown.</summary>
+		public static IntPtr Acquire(IntPtr hwnd,long patNum) {
+			if(Session.State<4) {
+				ApplyCaptureConfig();//Acquire opens the default source.
+			}
+			DibImage dib;
+			if(Session.State>=4 && Session.IsOpenedByName && !Session.IsAcquiring) {
+				dib=AcquireByName(hwnd,patNum);
+			}
+			else {
+				dib=Session.Acquire(hwnd);
+			}
 			return DibHandleTable.Add(dib);
 		}
 
@@ -200,6 +233,9 @@ namespace ImagingDeviceManager {
 				Session.CloseSource();
 				Session.SetError(EZTwainErrorCode.EZTEC_UNK_WRITE_FF,"Scanned pages can only be saved as PDF.");
 				return 0;
+			}
+			if(Session.State<4) {
+				ApplyCaptureConfig();//AcquireAll opens the default source.
 			}
 			int quality=_pdfQuality>=0 ? _pdfQuality : _jpegQuality;
 			using(PdfPageWriter pdfPageWriter=new PdfPageWriter(quality)) {

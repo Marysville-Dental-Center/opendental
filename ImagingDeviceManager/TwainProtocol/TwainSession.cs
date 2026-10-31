@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using System.Text;
 using ImagingDeviceManager.Imaging;
 
 namespace ImagingDeviceManager.TwainProtocol {
@@ -19,12 +20,16 @@ namespace ImagingDeviceManager.TwainProtocol {
 	///<summary>A TWAIN application session: the state machine from the TWAIN specification (state 1, nothing loaded, through
 	///state 7, transferring), driven synchronously on the calling thread. While a data source is enabled, a local Windows
 	///message loop runs and hands every message to the data source (DAT_EVENT / MSG_PROCESSEVENT), the classic Windows way
-	///that every data source supports. Not thread safe: use it from one UI thread, like the callers do.</summary>
-	internal sealed class TwainSession:IDisposable {
+	///that every data source supports. Not thread safe: use it from one UI thread, like the callers do (Cancel is the exception).
+	///The message loop and the stops the library starts itself are in TwainSessionStop.cs.</summary>
+	internal sealed partial class TwainSession:IDisposable {
 		private const int TimerIdTimeout=0x7A11;
 		private const int MaxConsecutiveEventFailures=50;
 		private readonly DsmLoader _dsmLoader;
 		private ITwainDsm _dsm;
+		///<summary>How handles exchanged with the DSM and the source are allocated, locked and freed: the DSM's own functions when it
+		///reported DF_DSM2 and handed them out (DAT_ENTRYPOINT), otherwise GlobalMemory. Set when the DSM opens, null below state 3.</summary>
+		private ITwainMemory _memory;
 		private ProxyWindow _proxyWindow;
 		///<summary>The application's TW_IDENTITY, in unmanaged memory for the life of the session.</summary>
 		private IntPtr _pAppIdentity;
@@ -46,6 +51,57 @@ namespace ImagingDeviceManager.TwainProtocol {
 		public int LoopTimeoutMilliseconds { get; set; }
 		///<summary>Product name of the open data source, or "".</summary>
 		public string SourceName { get; private set; }="";
+		///<summary>The Windows Global* functions, used when the DSM hands out no memory functions of its own. Tests replace it to see
+		///which handles are freed this way.</summary>
+		public ITwainMemory GlobalMemory { get; set; }=GlobalTwainMemory.Instance;
+		///<summary>The memory functions in use while the DSM is open (state 3 and above), or null. See ITwainMemory.</summary>
+		public ITwainMemory Memory => _memory;
+		///<summary>True when the open source was opened by product name (OpenSource(name): the Mount/Acquire device path), false for the
+		///default source (scans), which keeps its earlier behaviour.</summary>
+		public bool IsOpenedByName { get; private set; }
+		///<summary>The condition code DAT_STATUS returned right after the most recent TWRC_FAILURE. Every failure is followed at once by
+		///that read, because the read clears the code in the source (TWAIN 2.4 p.7-99), so a later read would describe something else.
+		///TWCC_BUMMER when the status could not be read.</summary>
+		public ushort LastConditionCode { get; private set; }
+		///<summary>Why the source ended the last session with MSG_CLOSEDSREQ: the condition code DAT_STATUS on the source returned after
+		///the notification and before MSG_DISABLEDS. TWCC_SUCCESS is a plain cancel; a source may report its own codes (0x8000 and up)
+		///for failures, and keeps the code until a disable succeeds (twain-contract 1.1 section 8). Null when the last enable ended
+		///another way, or the status could not be read. Reset by each Acquire and each enable.</summary>
+		public ushort? EndConditionCode { get; private set; }
+		///<summary>The source's text for EndConditionCode from DAT_STATUSUTF8, cut at the first NUL. Null for TWCC_SUCCESS, and when the
+		///source or the DSM does not provide one (DAT_STATUSUTF8 is optional); the code alone is then the reason.</summary>
+		public string EndConditionText { get; private set; }
+		///<summary>The [Twain] keys of capture.ini that change how by-name acquisitions run and stop. The facade sets it before each
+		///acquisition; the default turns every feature off.</summary>
+		public TwainCaptureSettings Settings { get; set; }=new TwainCaptureSettings();
+		///<summary>Where images go that the caller can no longer take (see ITwainDrainSink). Null: pending images are discarded with
+		///MSG_RESET as before.</summary>
+		public ITwainDrainSink DrainSink { get; set; }
+		///<summary>True when, before the last enable, the source accepted MSG_SET TRUE on [Twain] SafeDisableCap. Only then does the
+		///library count a disable as safe (design 7.1).</summary>
+		public bool IsSafeDisableInEffect { get; private set; }
+		///<summary>CAP_UICONTROLLABLE as the open source reported it at the last by-name enable; null when it was not read or the source
+		///does not support it.</summary>
+		public bool? IsUiControllable { get; private set; }
+		///<summary>The source gate ([Twain] RestrictSources and AllowedSources), checked by OpenSource on the ProductName of the source it is
+		///about to open, by name or as the default. Null lets every source through. The facade sets it from capture.ini before each open.</summary>
+		public TwainSourceGate SourceGate { get; set; }
+		///<summary>True while Acquire or AcquireAll runs, including inside their message loop.</summary>
+		public bool IsAcquiring => _isAcquiring;
+		///<summary>True when the last Acquire returned no image because the transfer of the image meant for the caller failed (not a
+		///cancel, and not an image drained during a stop). Reset by each Acquire.</summary>
+		public bool IsLastTransferFailed { get; private set; }
+		///<summary>The clock for receive times, local time. The facade sets the host's.</summary>
+		public Func<DateTime> FuncNow { get; set; }=() => DateTime.Now;
+		///<summary>When the image the last Acquire returned was received: the time its transfer ended, before any extra images were drained
+		///or the source was disabled. Null when it returned none. Reset by each Acquire.</summary>
+		public DateTime? LastImageReceivedAt { get; private set; }
+		///<summary>A line for the capture log, raised on the session's thread: tolerated failures, refusals, contract deviations and
+		///images handed to the drain sink. Handlers must not throw.</summary>
+		public event Action<string> Logged;
+		///<summary>Raised with the source's ProductName when OpenSource refuses it because of SourceGate, so that the facade can tell the
+		///operator (the callers show only their own text when an open fails). Handlers must not throw.</summary>
+		public event Action<string> SourceRefusedByGate;
 
 		public TwainSession(DsmLoader dsmLoader) {
 			_dsmLoader=dsmLoader;
@@ -65,10 +121,52 @@ namespace ImagingDeviceManager.TwainProtocol {
 			ErrorText=errorText??"";
 		}
 
-		///<summary>Reads the condition code after a failed triplet. Pass toSource=false for triplets sent to the DSM.</summary>
-		private ushort GetConditionCode(bool toSource) {
+		private void Log(string text) {
+			try {
+				Logged?.Invoke(text);
+			}
+			catch {
+				//Logging never changes what the session does.
+			}
+		}
+
+		///<summary>"0x" and four hex digits (for example "0x0101"), the form condition codes and capability numbers take in log lines and
+		///notices.</summary>
+		public static string ToHex(int value) {
+			return "0x"+value.ToString("X4");
+		}
+
+		///<summary>Sends a triplet to the open source. After TWRC_FAILURE it reads the condition code at once (LastConditionCode).</summary>
+		private ushort SourceEntry(uint dg,ushort dat,ushort msg,IntPtr data) {
+			ushort rc=_dsm.Entry(_pAppIdentity,_pSourceIdentity,dg,dat,msg,data);
+			if(rc==Tw.TWRC_FAILURE) {
+				LastConditionCode=ReadStatus(true)??Tw.TWCC_BUMMER;
+			}
+			return rc;
+		}
+
+		///<summary>Sends a DG_CONTROL triplet to the DSM itself. After TWRC_FAILURE it reads the DSM's condition code at once.</summary>
+		private ushort DsmEntry(ushort dat,ushort msg,IntPtr data) {
+			ushort rc=_dsm.Entry(_pAppIdentity,IntPtr.Zero,Tw.DG_CONTROL,dat,msg,data);
+			if(rc==Tw.TWRC_FAILURE) {
+				LastConditionCode=ReadStatus(false)??Tw.TWCC_BUMMER;
+			}
+			return rc;
+		}
+
+		///<summary>DG_CONTROL / DAT_STATUS / MSG_GET on the open source (toSource, from state 4) or on the DSM. The read clears the code.
+		///Null when there is nothing to ask or the call fails.</summary>
+		private ushort? ReadStatus(bool toSource) {
+			TW_STATUS status;
+			return ReadStatus(toSource,out status) ? status.ConditionCode : (ushort?)null;
+		}
+
+		///<summary>ReadStatus with the whole TW_STATUS, including Data, the source's additional data for the code (TWAIN 2.1 and later).
+		///False when there is nothing to ask or the call fails.</summary>
+		private bool ReadStatus(bool toSource,out TW_STATUS status) {
+			status=new TW_STATUS();
 			if(_dsm==null || State<3) {
-				return Tw.TWCC_BUMMER;
+				return false;
 			}
 			IntPtr pStatus=Marshal.AllocHGlobal(Marshal.SizeOf(typeof(TW_STATUS)));
 			try {
@@ -76,14 +174,97 @@ namespace ImagingDeviceManager.TwainProtocol {
 				IntPtr dest=(toSource && State>=4) ? _pSourceIdentity : IntPtr.Zero;
 				ushort rc=_dsm.Entry(_pAppIdentity,dest,Tw.DG_CONTROL,Tw.DAT_STATUS,Tw.MSG_GET,pStatus);
 				if(rc!=Tw.TWRC_SUCCESS) {
-					return Tw.TWCC_BUMMER;
+					return false;
 				}
-				TW_STATUS status=(TW_STATUS)Marshal.PtrToStructure(pStatus,typeof(TW_STATUS));
-				return status.ConditionCode;
+				status=(TW_STATUS)Marshal.PtrToStructure(pStatus,typeof(TW_STATUS));
+				return true;
 			}
 			finally {
 				Marshal.FreeHGlobal(pStatus);
 			}
+		}
+
+		///<summary>After MSG_CLOSEDSREQ and before MSG_DISABLEDS: reads why the session ended (EndConditionCode) and, on the by-name path,
+		///for any code other than TWCC_SUCCESS, the source's text for it (EndConditionText). A notification carries no condition code, so
+		///this is the only way to tell a failure from a cancel (design 7.1, twain-contract 1.1 section 8). Scans only read the code (DAT_STATUS
+		///is mandatory for every source): the optional DAT_STATUSUTF8 is not sent to them, and nothing is logged.</summary>
+		private void ReadEndCondition() {
+			TW_STATUS status;
+			EndConditionCode=ReadStatus(true,out status) ? status.ConditionCode : (ushort?)null;
+			EndConditionText=null;
+			if(!IsOpenedByName) {
+				return;
+			}
+			if(EndConditionCode==null) {
+				Log("The source ended the session; its status could not be read.");
+				return;
+			}
+			if(EndConditionCode.Value==Tw.TWCC_SUCCESS) {
+				return;
+			}
+			EndConditionText=TryGetStatusText(status);
+			Log("\""+SourceName+"\" ended the session with condition code "+ToHex(EndConditionCode.Value)
+				+(EndConditionText==null ? " (no text from DAT_STATUSUTF8)." : ": "+EndConditionText));
+		}
+
+		///<summary>DG_CONTROL / DAT_STATUSUTF8 / MSG_GET on the source for status, the TW_STATUS a DAT_STATUS just returned, passed
+		///unchanged: the source translates all of it, Data included (TWAIN 2.4 pp.7-99, 8-61). The handle it returns is freed like every
+		///other handle from the source (ITwainMemory). Null when the source or the DSM does not support the triplet (TWCC_BADPROTOCOL from
+		///twain-contract 1.0 sources, or a legacy twain_32.dll that does not pass it through), or the text is empty.</summary>
+		private string TryGetStatusText(TW_STATUS status) {
+			IntPtr pStatusUtf8=Marshal.AllocHGlobal(Marshal.SizeOf(typeof(TW_STATUSUTF8)));
+			try {
+				TW_STATUSUTF8 statusUtf8=new TW_STATUSUTF8();
+				statusUtf8.Status=status;
+				Marshal.StructureToPtr(statusUtf8,pStatusUtf8,false);
+				if(SourceEntry(Tw.DG_CONTROL,Tw.DAT_STATUSUTF8,Tw.MSG_GET,pStatusUtf8)!=Tw.TWRC_SUCCESS) {
+					return null;
+				}
+				statusUtf8=(TW_STATUSUTF8)Marshal.PtrToStructure(pStatusUtf8,typeof(TW_STATUSUTF8));
+				if(statusUtf8.UTF8string==IntPtr.Zero) {
+					return null;
+				}
+				try {
+					return ReadUtf8Handle(statusUtf8.UTF8string,statusUtf8.Size);
+				}
+				finally {
+					_memory.Free(statusUtf8.UTF8string);
+				}
+			}
+			catch {
+				return null;
+			}
+			finally {
+				Marshal.FreeHGlobal(pStatusUtf8);
+			}
+		}
+
+		///<summary>Text of at most size bytes (and at most 64 KB, or the block size when the allocator knows it) in a handle, cut at the
+		///first NUL and trimmed. Null when empty.</summary>
+		private string ReadUtf8Handle(IntPtr handle,uint size) {
+			const int sizeMax=64*1024;
+			long length=Math.Min(size,(uint)sizeMax);
+			long sizeBlock=_memory.GetSize(handle);
+			if(sizeBlock>0) {
+				length=Math.Min(length,sizeBlock);
+			}
+			if(length<=0) {
+				return null;
+			}
+			IntPtr pText=_memory.Lock(handle);
+			if(pText==IntPtr.Zero) {
+				return null;
+			}
+			byte[] bytes=new byte[length];
+			try {
+				Marshal.Copy(pText,bytes,0,bytes.Length);
+			}
+			finally {
+				_memory.Unlock(handle);
+			}
+			int lengthText=Array.IndexOf(bytes,(byte)0);
+			string text=Encoding.UTF8.GetString(bytes,0,lengthText<0 ? bytes.Length : lengthText).Trim();
+			return text=="" ? null : text;
 		}
 
 		public static string GetConditionText(ushort conditionCode) {
@@ -120,9 +301,9 @@ namespace ImagingDeviceManager.TwainProtocol {
 			return errorCodeDefault;
 		}
 
-		private void SetErrorFromCondition(EZTwainErrorCode errorCodeDefault,string prefix,bool toSource) {
-			ushort conditionCode=GetConditionCode(toSource);
-			SetError(MapConditionCode(conditionCode,errorCodeDefault),prefix+" "+GetConditionText(conditionCode));
+		///<summary>Sets the error from LastConditionCode, which the failed triplet just read.</summary>
+		private void SetErrorFromCondition(EZTwainErrorCode errorCodeDefault,string prefix) {
+			SetError(MapConditionCode(LastConditionCode,errorCodeDefault),prefix+" "+GetConditionText(LastConditionCode));
 		}
 		#endregion Errors
 
@@ -186,7 +367,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 			IntPtr pHwnd=Marshal.AllocHGlobal(IntPtr.Size);
 			try {
 				Marshal.WriteIntPtr(pHwnd,_proxyWindow.Handle);
-				ushort rc=_dsm.Entry(_pAppIdentity,IntPtr.Zero,Tw.DG_CONTROL,Tw.DAT_PARENT,Tw.MSG_OPENDSM,pHwnd);
+				ushort rc=DsmEntry(Tw.DAT_PARENT,Tw.MSG_OPENDSM,pHwnd);
 				if(rc!=Tw.TWRC_SUCCESS) {
 					SetError(EZTwainErrorCode.EZTEC_OPEN_DSM,"The TWAIN Data Source Manager ("+_dsm.LibraryName+") could not be opened.");
 					UnloadDsm();
@@ -197,16 +378,41 @@ namespace ImagingDeviceManager.TwainProtocol {
 				Marshal.FreeHGlobal(pHwnd);
 			}
 			State=3;
-			try {
-				_dsm.OnDsmOpened(_pAppIdentity);
-			}
-			catch {
-				//The Global* memory functions still work on Windows.
-			}
+			_memory=GetDsmMemory()??GlobalMemory;
 			return true;
 		}
 
-		///<summary>Moves down to state 1, closing the source first if one is open.</summary>
+		///<summary>A version 2 DSM sets DF_DSM2 in the application's identity at MSG_OPENDSM; the application then asks it for its memory
+		///functions and uses them for every handle it exchanges with sources (TWAIN 2.4 pp.3-15, 3-32). Null for a legacy DSM, or
+		///when the DSM does not hand out all four functions.</summary>
+		private ITwainMemory GetDsmMemory() {
+			if((ReadIdentity(_pAppIdentity).SupportedGroups & Tw.DF_DSM2)==0) {
+				return null;
+			}
+			IntPtr pEntryPoint=Marshal.AllocHGlobal(Marshal.SizeOf(typeof(TW_ENTRYPOINT)));
+			try {
+				TW_ENTRYPOINT entryPoint=new TW_ENTRYPOINT();
+				entryPoint.Size=(uint)Marshal.SizeOf(typeof(TW_ENTRYPOINT));
+				Marshal.StructureToPtr(entryPoint,pEntryPoint,false);
+				ushort rc=DsmEntry(Tw.DAT_ENTRYPOINT,Tw.MSG_GET,pEntryPoint);
+				if(rc!=Tw.TWRC_SUCCESS) {
+					return null;
+				}
+				entryPoint=(TW_ENTRYPOINT)Marshal.PtrToStructure(pEntryPoint,typeof(TW_ENTRYPOINT));
+				return DsmTwainMemory.TryCreate(entryPoint);
+			}
+			catch {
+				return null;
+			}
+			finally {
+				Marshal.FreeHGlobal(pEntryPoint);
+			}
+		}
+
+		///<summary>Moves down to state 2, closing the source first if one is open. The DSM library stays loaded, with the proxy window,
+		///so the next acquisition does not load it again: the legacy Mount/Acquire loop opens and closes the source for every image,
+		///and unloading the DSM (and with it every handle and function pointer it handed out) each time is needless churn for it and
+		///for the source. Dispose unloads it.</summary>
 		public void CloseDsm() {
 			if(State>=4) {
 				CloseSourceCore();
@@ -215,17 +421,19 @@ namespace ImagingDeviceManager.TwainProtocol {
 				IntPtr pHwnd=Marshal.AllocHGlobal(IntPtr.Size);
 				try {
 					Marshal.WriteIntPtr(pHwnd,_proxyWindow==null ? IntPtr.Zero : _proxyWindow.Handle);
-					_dsm.Entry(_pAppIdentity,IntPtr.Zero,Tw.DG_CONTROL,Tw.DAT_PARENT,Tw.MSG_CLOSEDSM,pHwnd);
+					DsmEntry(Tw.DAT_PARENT,Tw.MSG_CLOSEDSM,pHwnd);
 				}
 				finally {
 					Marshal.FreeHGlobal(pHwnd);
 				}
 				State=2;
+				_memory=null;
 			}
-			UnloadDsm();
 		}
 
+		///<summary>Unloads the DSM library and destroys the proxy window: state 1. Only when the DSM could not be opened, and in Dispose.</summary>
 		private void UnloadDsm() {
+			_memory=null;
 			if(_dsm!=null) {
 				try {
 					_dsm.Dispose();
@@ -263,13 +471,13 @@ namespace ImagingDeviceManager.TwainProtocol {
 			IntPtr pIdentity=Marshal.AllocHGlobal(Marshal.SizeOf(typeof(TW_IDENTITY)));
 			try {
 				WriteIdentity(pIdentity,new TW_IDENTITY());
-				ushort rc=_dsm.Entry(_pAppIdentity,IntPtr.Zero,Tw.DG_CONTROL,Tw.DAT_IDENTITY,Tw.MSG_GETFIRST,pIdentity);
+				ushort rc=DsmEntry(Tw.DAT_IDENTITY,Tw.MSG_GETFIRST,pIdentity);
 				while(rc==Tw.TWRC_SUCCESS) {
 					listIdentities.Add(ReadIdentity(pIdentity));
 					if(listIdentities.Count>1000) {
 						break;//Protect against a DSM that never ends the list.
 					}
-					rc=_dsm.Entry(_pAppIdentity,IntPtr.Zero,Tw.DG_CONTROL,Tw.DAT_IDENTITY,Tw.MSG_GETNEXT,pIdentity);
+					rc=DsmEntry(Tw.DAT_IDENTITY,Tw.MSG_GETNEXT,pIdentity);
 				}
 			}
 			finally {
@@ -291,7 +499,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 				_proxyWindow.AttachTo(hwnd);
 				hwndDisabled=DisableRootWindow(hwnd);
 				WriteIdentity(pIdentity,new TW_IDENTITY());
-				ushort rc=_dsm.Entry(_pAppIdentity,IntPtr.Zero,Tw.DG_CONTROL,Tw.DAT_IDENTITY,Tw.MSG_USERSELECT,pIdentity);
+				ushort rc=DsmEntry(Tw.DAT_IDENTITY,Tw.MSG_USERSELECT,pIdentity);
 				if(rc==Tw.TWRC_SUCCESS) {
 					return true;
 				}
@@ -299,7 +507,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 					SetError(EZTwainErrorCode.EZTEC_USER_CANCEL,"No scanner was selected.");
 					return false;
 				}
-				SetErrorFromCondition(EZTwainErrorCode.EZTEC_DSM_FAILURE,"The scanner selection dialog could not be shown.",false);
+				SetErrorFromCondition(EZTwainErrorCode.EZTEC_DSM_FAILURE,"The scanner selection dialog could not be shown.");
 				return false;
 			}
 			finally {
@@ -332,7 +540,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 			bool isDefault=string.IsNullOrEmpty(sourceName);
 			if(isDefault) {
 				WriteIdentity(_pSourceIdentity,new TW_IDENTITY());
-				ushort rcDefault=_dsm.Entry(_pAppIdentity,IntPtr.Zero,Tw.DG_CONTROL,Tw.DAT_IDENTITY,Tw.MSG_GETDEFAULT,_pSourceIdentity);
+				ushort rcDefault=DsmEntry(Tw.DAT_IDENTITY,Tw.MSG_GETDEFAULT,_pSourceIdentity);
 				if(rcDefault!=Tw.TWRC_SUCCESS) {
 					SetError(EZTwainErrorCode.EZTEC_OPEN_DEFAULT_DS,"No default scanner is set, or no TWAIN scanner driver is installed.");
 					CloseDsm();
@@ -348,16 +556,30 @@ namespace ImagingDeviceManager.TwainProtocol {
 				}
 				WriteIdentity(_pSourceIdentity,identityFound.Value);
 			}
-			ushort rc=_dsm.Entry(_pAppIdentity,IntPtr.Zero,Tw.DG_CONTROL,Tw.DAT_IDENTITY,Tw.MSG_OPENDS,_pSourceIdentity);
+			string productName=ReadIdentity(_pSourceIdentity).ProductName??"";
+			if(SourceGate!=null && !SourceGate.IsAllowed(productName)) {
+				Log("The source gate ([Twain] RestrictSources=1) refused \""+productName+"\": it is not listed in [Twain] AllowedSources.");
+				SetError(isDefault ? EZTwainErrorCode.EZTEC_OPEN_DEFAULT_DS : EZTwainErrorCode.EZTEC_OPEN_DS,TwainSourceGate.RefusedText);
+				CloseDsm();
+				try {
+					SourceRefusedByGate?.Invoke(productName);
+				}
+				catch(Exception ex) {
+					Log("A SourceRefusedByGate handler failed: "+ex.Message);
+				}
+				return false;
+			}
+			ushort rc=DsmEntry(Tw.DAT_IDENTITY,Tw.MSG_OPENDS,_pSourceIdentity);
 			if(rc!=Tw.TWRC_SUCCESS) {
 				string name=ReadIdentity(_pSourceIdentity).ProductName;
 				SetErrorFromCondition(isDefault ? EZTwainErrorCode.EZTEC_OPEN_DEFAULT_DS : EZTwainErrorCode.EZTEC_OPEN_DS,
-					"The scanner \""+name+"\" could not be opened.",false);
+					"The scanner \""+name+"\" could not be opened.");
 				CloseDsm();
 				return false;
 			}
 			State=4;
 			SourceName=ReadIdentity(_pSourceIdentity).ProductName??"";
+			IsOpenedByName=!isDefault;
 			_xferMech=Tw.TWSX_NATIVE;
 			_isVanilla=false;
 			return true;
@@ -380,27 +602,29 @@ namespace ImagingDeviceManager.TwainProtocol {
 			return null;
 		}
 
-		///<summary>Ends any transfers, disables and closes the source, and closes the DSM, ending in state 1. Ignored while an
-		///acquire is running (for example if a click is handled during the scan's message loop): the acquire cleans up itself.</summary>
+		///<summary>Ends any transfers, disables and closes the source, and closes the DSM, ending in state 2 (the DSM library stays
+		///loaded). Ignored while an acquire is running (for example if a click is handled during the scan's message loop): the
+		///acquire cleans up itself.</summary>
 		public void CloseSource() {
 			if(_isAcquiring) {
 				return;
 			}
 			CloseSourceCore();
+			RepostQuitIfPending();
 		}
 
 		private void CloseSourceCore() {
-			if(State>=6) {
-				ResetPendingTransfers();
-			}
-			if(State==5) {
-				DisableSource();
+			if(State>=5) {
+				//Images still pending go to the drain sink on the by-name path (StopToState4), as for any stop the library starts.
+				StopToState4(State>=6 ? TwainStopReason.Closed : TwainStopReason.None);
 			}
 			if(State==4) {
-				_dsm.Entry(_pAppIdentity,IntPtr.Zero,Tw.DG_CONTROL,Tw.DAT_IDENTITY,Tw.MSG_CLOSEDS,_pSourceIdentity);
+				DsmEntry(Tw.DAT_IDENTITY,Tw.MSG_CLOSEDS,_pSourceIdentity);
 				State=3;
 			}
 			SourceName="";
+			IsOpenedByName=false;
+			_hwndWatched=IntPtr.Zero;
 			MultiTransfer=false;
 			_xferMech=Tw.TWSX_NATIVE;
 			if(State==3) {
@@ -428,35 +652,59 @@ namespace ImagingDeviceManager.TwainProtocol {
 			if(!RequireState4("capability 0x"+capability.ToString("X4"))) {
 				return false;
 			}
-			IntPtr hContainer=_dsm.MemAllocate(TwContainer.OneValueSize);
-			if(hContainer==IntPtr.Zero) {
+			ushort? rc=SendCapabilitySet(capability,itemType,value);
+			if(rc==null) {
 				SetError(EZTwainErrorCode.EZTEC_MEMORY,"Out of memory.");
 				return false;
 			}
+			if(rc==Tw.TWRC_SUCCESS || rc==Tw.TWRC_CHECKSTATUS) {
+				return true;
+			}
+			SetErrorFromCondition(EZTwainErrorCode.EZTEC_CAP_SET,"The scanner did not accept a setting (capability 0x"+capability.ToString("X4")+").");
+			return false;
+		}
+
+		///<summary>DAT_CAPABILITY / MSG_SET with a TW_ONEVALUE. Returns the source's return code, or null (nothing sent) when the
+		///container could not be allocated. Sets no error.</summary>
+		private ushort? SendCapabilitySet(ushort capability,ushort itemType,int value) {
+			IntPtr hContainer=_memory.Allocate(TwContainer.OneValueSize);
+			if(hContainer==IntPtr.Zero) {
+				return null;
+			}
 			IntPtr pCapability=Marshal.AllocHGlobal(Marshal.SizeOf(typeof(TW_CAPABILITY)));
 			try {
-				IntPtr pContainer=_dsm.MemLock(hContainer);
+				IntPtr pContainer=_memory.Lock(hContainer);
+				if(pContainer==IntPtr.Zero) {
+					return null;
+				}
 				Marshal.WriteInt16(pContainer,0,(short)itemType);
 				Marshal.WriteInt32(pContainer,TwContainer.OneValueItemOffset,value);
-				_dsm.MemUnlock(hContainer);
+				_memory.Unlock(hContainer);
 				TW_CAPABILITY twCapability=new TW_CAPABILITY { Cap=capability,ConType=Tw.TWON_ONEVALUE,hContainer=hContainer };
 				Marshal.StructureToPtr(twCapability,pCapability,false);
-				ushort rc=_dsm.Entry(_pAppIdentity,_pSourceIdentity,Tw.DG_CONTROL,Tw.DAT_CAPABILITY,Tw.MSG_SET,pCapability);
-				if(rc==Tw.TWRC_SUCCESS || rc==Tw.TWRC_CHECKSTATUS) {
-					return true;
-				}
-				SetErrorFromCondition(EZTwainErrorCode.EZTEC_CAP_SET,"The scanner did not accept a setting (capability 0x"+capability.ToString("X4")+").",true);
-				return false;
+				return SourceEntry(Tw.DG_CONTROL,Tw.DAT_CAPABILITY,Tw.MSG_SET,pCapability);
 			}
 			finally {
 				Marshal.FreeHGlobal(pCapability);
-				_dsm.MemFree(hContainer);
+				_memory.Free(hContainer);
 			}
 		}
 
 		///<summary>Reads the current value of a capability. Supports TW_ONEVALUE, TW_ENUMERATION and TW_RANGE containers holding
 		///integer, boolean or FIX32 items (FIX32 is returned as its raw 32 bit pattern).</summary>
 		public bool TryGetCapabilityCurrent(ushort capability,out int value) {
+			return TryGetCapability(capability,Tw.MSG_GETCURRENT,out value);
+		}
+
+		///<summary>MSG_QUERYSUPPORT: the TWQC_ bits of the operations the source supports on the capability. False when the source does
+		///not answer it (LastConditionCode says why: TWCC_CAPUNSUPPORTED for a capability it does not have).</summary>
+		public bool TryQuerySupport(ushort capability,out int support) {
+			return TryGetCapability(capability,Tw.MSG_QUERYSUPPORT,out support);
+		}
+
+		///<summary>A DAT_CAPABILITY message that returns a container (MSG_GET, MSG_GETCURRENT, MSG_QUERYSUPPORT), read as one value: the
+		///current item of a TW_ENUMERATION, the current value of a TW_RANGE.</summary>
+		private bool TryGetCapability(ushort capability,ushort msg,out int value) {
 			value=0;
 			if(State<4) {
 				return false;
@@ -466,7 +714,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 			try {
 				TW_CAPABILITY twCapability=new TW_CAPABILITY { Cap=capability,ConType=Tw.TWON_DONTCARE16,hContainer=IntPtr.Zero };
 				Marshal.StructureToPtr(twCapability,pCapability,false);
-				ushort rc=_dsm.Entry(_pAppIdentity,_pSourceIdentity,Tw.DG_CONTROL,Tw.DAT_CAPABILITY,Tw.MSG_GETCURRENT,pCapability);
+				ushort rc=SourceEntry(Tw.DG_CONTROL,Tw.DAT_CAPABILITY,msg,pCapability);
 				if(rc!=Tw.TWRC_SUCCESS) {
 					return false;
 				}
@@ -475,7 +723,10 @@ namespace ImagingDeviceManager.TwainProtocol {
 				if(hContainer==IntPtr.Zero) {
 					return false;
 				}
-				IntPtr pContainer=_dsm.MemLock(hContainer);
+				IntPtr pContainer=_memory.Lock(hContainer);
+				if(pContainer==IntPtr.Zero) {
+					return false;
+				}
 				try {
 					ushort itemType=(ushort)Marshal.ReadInt16(pContainer,0);
 					int itemSize=TwContainer.ItemSize(itemType);
@@ -506,13 +757,13 @@ namespace ImagingDeviceManager.TwainProtocol {
 					return true;
 				}
 				finally {
-					_dsm.MemUnlock(hContainer);
+					_memory.Unlock(hContainer);
 				}
 			}
 			finally {
 				Marshal.FreeHGlobal(pCapability);
 				if(hContainer!=IntPtr.Zero) {
-					_dsm.MemFree(hContainer);
+					_memory.Free(hContainer);
 				}
 			}
 		}
@@ -569,22 +820,27 @@ namespace ImagingDeviceManager.TwainProtocol {
 		#region Acquire
 		///<summary>Acquires one image. Opens the default source if none is open. In single mode the source and DSM are closed
 		///afterwards; with MultiTransfer the source stays open and further calls return the remaining images of the batch
-		///(see IsDone). Returns null with ErrorCode set when no image was acquired. ErrorCode is EZTEC_NONE on success.</summary>
+		///(see IsDone). Returns null with ErrorCode set when no image was acquired. ErrorCode is EZTEC_NONE on success; on the by-name
+		///path it can be EZTEC_INTERNAL with an image, when stopping the source after the image was received failed.</summary>
 		public DibImage Acquire(IntPtr hwnd) {
 			ClearError();
 			if(_isAcquiring) {
 				SetError(EZTwainErrorCode.EZTEC_INTERNAL,"A scan is already in progress.");
 				return null;
 			}
+			IsLastTransferFailed=false;
+			LastImageReceivedAt=null;
 			if(State<4 && !OpenSource(null)) {
 				return null;
 			}
 			_isAcquiring=true;
+			BeginAcquire();
 			DibImage dib=null;
+			bool isTransferring=false;//The caller's image is being transferred: an exception now is a transfer failure.
 			try {
 				bool isMulti=MultiTransfer;
 				if(State==5) {
-					DisableSource();//Should not happen; start from a clean state 4.
+					DisableSourceSafely(TwainStopReason.None);//Should not happen; start from a clean state 4.
 				}
 				if(State==4) {
 					if(!EnableAndWaitForTransfer(hwnd,isMulti ? -1 : 1)) {
@@ -592,28 +848,41 @@ namespace ImagingDeviceManager.TwainProtocol {
 					}
 				}
 				//State 6: an image is ready.
+				TwainStopReason stopRequest=GetStopRequest();
+				if(stopRequest!=TwainStopReason.None) {
+					//The window that started the acquisition is gone (also between the images of a batch), or Cancel came after the
+					//image was offered: nothing more goes back to the caller.
+					StopToState4(stopRequest);
+					SetStopError(stopRequest);
+					return null;
+				}
+				isTransferring=true;
 				TransferOutcome outcome=TransferOne(out dib);
+				isTransferring=false;
 				if(outcome!=TransferOutcome.Done) {
 					dib=null;
+					IsLastTransferFailed=outcome==TransferOutcome.Failed;
 					if(State>=6) {
-						ResetPendingTransfers();
+						StopToState4(TwainStopReason.Error);//The series ends; on the by-name path the pending images are kept.
 					}
+					if(State==5) {
+						DisableSourceSafely(TwainStopReason.None);
+					}
+					return null;
 				}
-				else if(!isMulti && State>=6) {
-					ResetPendingTransfers();//Single mode takes one image and discards the rest of the batch.
-				}
-				if(State==5) {
-					DisableSource();//Batch finished: close the scanner's dialog. IsDone() is now true.
-				}
+				LastImageReceivedAt=GetReceivedTime();
+				FinishAfterDelivery(isMulti);
 				return dib;
 			}
 			catch(ImagingDeviceException ex) {
 				SetError(ex.ErrorCode==EZTwainErrorCode.EZTEC_NONE ? EZTwainErrorCode.EZTEC_XFER_FAILURE : ex.ErrorCode,ex.Message);
+				IsLastTransferFailed=isTransferring;
 				AbortToState4();
 				return null;
 			}
 			catch(Exception ex) {
 				SetError(EZTwainErrorCode.EZTEC_INTERNAL,ex.Message);
+				IsLastTransferFailed=isTransferring;
 				AbortToState4();
 				return null;
 			}
@@ -622,6 +891,8 @@ namespace ImagingDeviceManager.TwainProtocol {
 				if(!MultiTransfer && State>=4) {
 					CloseSource();
 				}
+				EndAcquire();
+				RepostQuitIfPending();
 			}
 		}
 
@@ -639,10 +910,11 @@ namespace ImagingDeviceManager.TwainProtocol {
 				return 0;
 			}
 			_isAcquiring=true;
+			BeginAcquire();
 			int pageCount=0;
 			try {
 				if(State==5) {
-					DisableSource();
+					DisableSourceSafely(TwainStopReason.None);
 				}
 				if(State==4) {
 					if(!EnableAndWaitForTransfer(hwnd,-1)) {
@@ -652,15 +924,9 @@ namespace ImagingDeviceManager.TwainProtocol {
 				while(State==6) {
 					DibImage dib;
 					TransferOutcome outcome=TransferOne(out dib);
-					if(outcome==TransferOutcome.Cancelled) {
+					if(outcome!=TransferOutcome.Done) {//Cancelled or failed: the rest of the batch is discarded (kept on the by-name path).
 						if(State>=6) {
-							ResetPendingTransfers();
-						}
-						break;
-					}
-					if(outcome==TransferOutcome.Failed) {
-						if(State>=6) {
-							ResetPendingTransfers();
+							StopToState4(TwainStopReason.Error);
 						}
 						break;
 					}
@@ -668,7 +934,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 					onPage(dib);
 				}
 				if(State==5) {
-					DisableSource();
+					DisableSourceSafely(TwainStopReason.None);
 				}
 				if(ErrorCode==EZTwainErrorCode.EZTEC_NONE && pageCount==0) {
 					SetError(EZTwainErrorCode.EZTEC_0_PAGES,"No pages were scanned.");
@@ -690,6 +956,43 @@ namespace ImagingDeviceManager.TwainProtocol {
 				if(State>=4) {
 					CloseSource();
 				}
+				EndAcquire();
+				RepostQuitIfPending();
+			}
+		}
+
+		///<summary>After the caller's image was transferred and ended with MSG_ENDXFER, which a source counts as delivered: single mode
+		///takes care of the rest of the batch, and a finished batch is disabled (IsDone() is then true). On the by-name path the image must
+		///reach the caller even if this fails (the source will not offer it again), so an exception is logged, the source is stopped in the
+		///safe order, the operator is told that the source may still hold images, and the error is set without taking the image away.
+		///Scans keep returning no image, as before.</summary>
+		private void FinishAfterDelivery(bool isMulti) {
+			try {
+				if(!isMulti && State>=6) {
+					HandleExtraImages();//Single mode takes one image; scans discard the rest of the batch.
+				}
+				if(State==5) {
+					DisableSourceSafely(TwainStopReason.None);//Batch finished: close the scanner's dialog. IsDone() is now true.
+				}
+			}
+			catch(Exception ex) when(IsOpenedByName) {
+				Log("Finishing the acquisition from \""+SourceName+"\" failed after its image was received: "+ex.Message
+					+" The image still goes back to the caller.");
+				AbortToState4();
+				if(CanDrain) {
+					NoteMayStillHoldImages(TwainStopReason.Error);
+				}
+				SetError(EZTwainErrorCode.EZTEC_INTERNAL,"The image was received, but stopping the device afterwards failed: "+ex.Message);
+			}
+		}
+
+		///<summary>The receive time of an image that was just transferred: FuncNow, or the local time if FuncNow fails.</summary>
+		private DateTime GetReceivedTime() {
+			try {
+				return FuncNow==null ? DateTime.Now : FuncNow();
+			}
+			catch {
+				return DateTime.Now;
 			}
 		}
 
@@ -702,7 +1005,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 		///says an image is ready (returns true, state 6) or the session ends without one (returns false, error set, state 4).
 		///xferCount is the number of images wanted, -1 for all.</summary>
 		private bool EnableAndWaitForTransfer(IntPtr hwnd,int xferCount) {
-			SetCapabilityQuietly(Tw.CAP_XFERCOUNT,Tw.TWTY_INT16,xferCount);
+			bool isXferCountSet=SetCapabilityQuietly(Tw.CAP_XFERCOUNT,Tw.TWTY_INT16,xferCount);
 			if(_xferMech==Tw.TWSX_MEMORY) {
 				if(!SetCapabilityQuietly(Tw.ICAP_XFERMECH,Tw.TWTY_UINT16,Tw.TWSX_MEMORY)) {
 					_xferMech=Tw.TWSX_NATIVE;
@@ -713,16 +1016,27 @@ namespace ImagingDeviceManager.TwainProtocol {
 			}
 			int pixelFlavor;
 			_isVanilla=TryGetCapabilityCurrent(Tw.ICAP_PIXELFLAVOR,out pixelFlavor) && pixelFlavor==Tw.TWPF_VANILLA;
+			IsUiControllable=null;
+			bool isShowUI=!HideUI;
+			if(IsOpenedByName) {
+				isShowUI=GetShowUIForSource(isShowUI);
+			}
+			SetSafeDisableCapability();
+			ArmAcquireTimeout(xferCount,isXferCountSet);
+			WatchParent(hwnd);
+			EndConditionCode=null;
+			EndConditionText=null;
 			_proxyWindow.AttachTo(hwnd);
 			IntPtr hwndDisabled=DisableRootWindow(hwnd);
 			ushort dsMessage;
 			try {
-				if(!EnableSource()) {
+				if(!EnableSource(isShowUI)) {
 					return false;
 				}
 				dsMessage=RunMessageLoop();
 			}
 			finally {
+				_acquireDeadlineMs=0;//The timeout covers only the wait for the notification.
 				//Re-enable before the source's dialog closes so that Windows hands activation back to the program.
 				ReenableWindow(hwndDisabled);
 			}
@@ -730,14 +1044,25 @@ namespace ImagingDeviceManager.TwainProtocol {
 				State=6;
 				return true;
 			}
-			if(State==5) {
-				DisableSource();
-			}
 			if(dsMessage==Tw.MSG_CLOSEDSREQ) {
-				SetError(EZTwainErrorCode.EZTEC_USER_CANCEL,"The scan was cancelled.");
+				ReadEndCondition();//Before the disable: a successful disable clears the end reason in the source.
+				if(State==5) {
+					DisableSourceSafely(TwainStopReason.None);
+				}
+				SetError(EZTwainErrorCode.EZTEC_USER_CANCEL,GetCloseRequestText());
+				return false;
 			}
-			//Otherwise RunMessageLoop already set the error (timeout or program closing).
+			StopAfterLoop();//A stop request, or the loop failed (its error is set).
 			return false;
+		}
+
+		///<summary>ErrorText after MSG_CLOSEDSREQ. The error code stays EZTEC_USER_CANCEL, so callers end the series as they do on a
+		///cancel; on the by-name path the text names the reason when the source reported one.</summary>
+		private string GetCloseRequestText() {
+			if(!IsOpenedByName || EndConditionCode==null || EndConditionCode.Value==Tw.TWCC_SUCCESS) {
+				return "The scan was cancelled.";
+			}
+			return "The device's software closed without an image: "+(EndConditionText??"condition code "+ToHex(EndConditionCode.Value))+".";
 		}
 
 		///<summary>Sets a capability, keeping the error code clear if the source refuses. Returns whether it was accepted.</summary>
@@ -749,15 +1074,69 @@ namespace ImagingDeviceManager.TwainProtocol {
 			return isSet;
 		}
 
-		private bool EnableSource() {
+		///<summary>Safe disable (design 7.1, W13): on the by-name path, for a source listed in [Twain] DisableIsSafeSources, sets the
+		///[Twain] SafeDisableCap capability (TWTY_BOOL) TRUE in state 4 before each MSG_ENABLEDS, after MSG_QUERYSUPPORT. A source keeps
+		///it until MSG_CLOSEDS, so setting it again is harmless. TWCC_CAPUNSUPPORTED (a build without the feature) is logged and the
+		///feature counts as absent. IsSafeDisableInEffect is true only when the MSG_SET returned TWRC_SUCCESS.</summary>
+		private void SetSafeDisableCapability() {
+			IsSafeDisableInEffect=false;
+			TwainCaptureSettings settings=Settings??new TwainCaptureSettings();
+			if(!IsOpenedByName || settings.SafeDisableCap==null || !settings.IsDisableSafeSource(SourceName)) {
+				return;
+			}
+			ushort capability=settings.SafeDisableCap.Value;
+			int support;
+			if(TryQuerySupport(capability,out support)) {
+				if((support & Tw.TWQC_SET)==0) {
+					Log("\""+SourceName+"\" does not allow setting the safe-disable capability "+ToHex(capability)
+						+" (MSG_QUERYSUPPORT "+ToHex(support)+"). A disable is not treated as safe.");
+					return;
+				}
+			}
+			else if(LastConditionCode==Tw.TWCC_CAPUNSUPPORTED) {
+				Log("\""+SourceName+"\" does not support the safe-disable capability "+ToHex(capability)+". A disable is not treated as safe.");
+				return;
+			}
+			//Any other answer to MSG_QUERYSUPPORT (a source older than TWAIN 1.6 may not have it): MSG_SET decides.
+			ushort? rc=SendCapabilitySet(capability,Tw.TWTY_BOOL,1);
+			if(rc==Tw.TWRC_SUCCESS) {
+				IsSafeDisableInEffect=true;
+				Log("Safe disable is in effect for \""+SourceName+"\" (capability "+ToHex(capability)+").");
+				return;
+			}
+			Log("\""+SourceName+"\" did not accept TRUE for the safe-disable capability "+ToHex(capability)+" ("
+				+(rc==null ? "out of memory" : (rc==Tw.TWRC_FAILURE ? "condition code "+ToHex(LastConditionCode) : "return code "+rc))
+				+"). A disable is not treated as safe.");
+		}
+
+		///<summary>Honest CAP_UICONTROLLABLE (design 7.1): a source that reports FALSE cannot run without its own window, so it always
+		///gets ShowUI=1, whatever HideUI says, and the log says so. A source that does not report it gets what the caller asked for.
+		///TWAIN requires only MSG_GET for this capability (TWAIN 2.4 p.5-13), so that is asked first; MSG_GETCURRENT is the fallback for
+		///a source that answers only that. Only on the by-name path; scans keep their behaviour.</summary>
+		private bool GetShowUIForSource(bool isShowUIRequested) {
+			int value;
+			if(!TryGetCapability(Tw.CAP_UICONTROLLABLE,Tw.MSG_GET,out value) && !TryGetCapabilityCurrent(Tw.CAP_UICONTROLLABLE,out value)) {
+				IsUiControllable=null;
+				return isShowUIRequested;
+			}
+			IsUiControllable=value!=0;
+			if(value!=0) {
+				return isShowUIRequested;
+			}
+			Log("\""+SourceName+"\" reports CAP_UICONTROLLABLE FALSE, so it is enabled with ShowUI=1"
+				+(isShowUIRequested ? "." : " although the device is set to hide its window."));
+			return true;
+		}
+
+		private bool EnableSource(bool isShowUI) {
 			IntPtr pUserInterface=Marshal.AllocHGlobal(Marshal.SizeOf(typeof(TW_USERINTERFACE)));
 			try {
 				TW_USERINTERFACE userInterface=new TW_USERINTERFACE();
-				userInterface.ShowUI=(ushort)(HideUI ? 0 : 1);
+				userInterface.ShowUI=(ushort)(isShowUI ? 1 : 0);
 				userInterface.ModalUI=0;
 				userInterface.hParent=_proxyWindow.Handle;
 				Marshal.StructureToPtr(userInterface,pUserInterface,false);
-				ushort rc=_dsm.Entry(_pAppIdentity,_pSourceIdentity,Tw.DG_CONTROL,Tw.DAT_USERINTERFACE,Tw.MSG_ENABLEDS,pUserInterface);
+				ushort rc=SourceEntry(Tw.DG_CONTROL,Tw.DAT_USERINTERFACE,Tw.MSG_ENABLEDS,pUserInterface);
 				if(rc==Tw.TWRC_SUCCESS || rc==Tw.TWRC_CHECKSTATUS) {//CHECKSTATUS: the source shows its dialog even though it was asked not to.
 					State=5;
 					return true;
@@ -766,29 +1145,11 @@ namespace ImagingDeviceManager.TwainProtocol {
 					SetError(EZTwainErrorCode.EZTEC_USER_CANCEL,"The scan was cancelled.");
 					return false;
 				}
-				SetErrorFromCondition(EZTwainErrorCode.EZTEC_ENABLE_FAILED,"The scanner could not be started.",true);
+				SetErrorFromCondition(EZTwainErrorCode.EZTEC_ENABLE_FAILED,"The scanner could not be started.");
 				return false;
 			}
 			finally {
 				Marshal.FreeHGlobal(pUserInterface);
-			}
-		}
-
-		private void DisableSource() {
-			IntPtr pUserInterface=Marshal.AllocHGlobal(Marshal.SizeOf(typeof(TW_USERINTERFACE)));
-			try {
-				TW_USERINTERFACE userInterface=new TW_USERINTERFACE();
-				userInterface.ShowUI=(ushort)(HideUI ? 0 : 1);
-				userInterface.hParent=_proxyWindow==null ? IntPtr.Zero : _proxyWindow.Handle;
-				Marshal.StructureToPtr(userInterface,pUserInterface,false);
-				_dsm.Entry(_pAppIdentity,_pSourceIdentity,Tw.DG_CONTROL,Tw.DAT_USERINTERFACE,Tw.MSG_DISABLEDS,pUserInterface);
-			}
-			finally {
-				Marshal.FreeHGlobal(pUserInterface);
-			}
-			State=4;
-			if(_proxyWindow!=null) {
-				_proxyWindow.AttachTo(IntPtr.Zero);
 			}
 		}
 
@@ -798,109 +1159,18 @@ namespace ImagingDeviceManager.TwainProtocol {
 			try {
 				Marshal.StructureToPtr(new TW_PENDINGXFERS(),pPending,false);
 				if(State==7) {
-					_dsm.Entry(_pAppIdentity,_pSourceIdentity,Tw.DG_CONTROL,Tw.DAT_PENDINGXFERS,Tw.MSG_ENDXFER,pPending);
+					SourceEntry(Tw.DG_CONTROL,Tw.DAT_PENDINGXFERS,Tw.MSG_ENDXFER,pPending);
 					TW_PENDINGXFERS pending=(TW_PENDINGXFERS)Marshal.PtrToStructure(pPending,typeof(TW_PENDINGXFERS));
 					State=pending.Count==0 ? 5 : 6;
 				}
 				if(State==6) {
 					Marshal.StructureToPtr(new TW_PENDINGXFERS(),pPending,false);
-					_dsm.Entry(_pAppIdentity,_pSourceIdentity,Tw.DG_CONTROL,Tw.DAT_PENDINGXFERS,Tw.MSG_RESET,pPending);
+					SourceEntry(Tw.DG_CONTROL,Tw.DAT_PENDINGXFERS,Tw.MSG_RESET,pPending);
 					State=5;
 				}
 			}
 			finally {
 				Marshal.FreeHGlobal(pPending);
-			}
-		}
-
-		///<summary>Brings the session back to state 4 after an unexpected exception.</summary>
-		private void AbortToState4() {
-			try {
-				if(State>=6) {
-					ResetPendingTransfers();
-				}
-				if(State==5) {
-					DisableSource();
-				}
-			}
-			catch {
-				//The source is in an unknown state. CloseSource will still try to close it.
-			}
-		}
-
-		///<summary>Pumps messages while the source is enabled. Returns MSG_XFERREADY or MSG_CLOSEDSREQ from the source, or
-		///MSG_NULL (with the error set) if the loop had to stop for another reason.</summary>
-		private ushort RunMessageLoop() {
-			IntPtr pMsg=Marshal.AllocHGlobal(NativeMethods.MsgBufferSize);
-			IntPtr pEvent=Marshal.AllocHGlobal(Marshal.SizeOf(typeof(TW_EVENT)));
-			IntPtr hwndProxy=_proxyWindow.Handle;
-			bool hasTimer=false;
-			int countFailures=0;
-			try {
-				if(LoopTimeoutMilliseconds>0) {
-					NativeMethods.SetTimer(hwndProxy,(UIntPtr)TimerIdTimeout,(uint)LoopTimeoutMilliseconds,IntPtr.Zero);
-					hasTimer=true;
-				}
-				while(true) {
-					int result=NativeMethods.GetMessage(pMsg,IntPtr.Zero,0,0);
-					if(result==-1) {
-						SetError(EZTwainErrorCode.EZTEC_INTERNAL,"Windows message loop error "+Marshal.GetLastWin32Error()+".");
-						return Tw.MSG_NULL;
-					}
-					if(result==0) {
-						//WM_QUIT: the program is shutting down. Stop scanning and pass the quit message on to the outer loop.
-						int exitCode=Marshal.ReadInt32(pMsg,NativeMethods.MsgOffsetWParam);
-						SetError(EZTwainErrorCode.EZTEC_USER_CANCEL,"The program is closing.");
-						NativeMethods.PostQuitMessage(exitCode);
-						return Tw.MSG_NULL;
-					}
-					IntPtr hwndMsg=Marshal.ReadIntPtr(pMsg,NativeMethods.MsgOffsetHwnd);
-					int message=Marshal.ReadInt32(pMsg,NativeMethods.MsgOffsetMessage);
-					if(hasTimer && message==NativeMethods.WM_TIMER && hwndMsg==hwndProxy
-						&& Marshal.ReadIntPtr(pMsg,NativeMethods.MsgOffsetWParam)==(IntPtr)TimerIdTimeout)
-					{
-						SetError(EZTwainErrorCode.EZTEC_INTERNAL,"Timed out waiting for the scanner.");
-						return Tw.MSG_NULL;
-					}
-					TW_EVENT twEvent=new TW_EVENT { pEvent=pMsg,TWMessage=Tw.MSG_NULL };
-					Marshal.StructureToPtr(twEvent,pEvent,false);
-					ushort rc=_dsm.Entry(_pAppIdentity,_pSourceIdentity,Tw.DG_CONTROL,Tw.DAT_EVENT,Tw.MSG_PROCESSEVENT,pEvent);
-					twEvent=(TW_EVENT)Marshal.PtrToStructure(pEvent,typeof(TW_EVENT));
-					if(twEvent.TWMessage==Tw.MSG_XFERREADY || twEvent.TWMessage==Tw.MSG_CLOSEDSREQ) {
-						return twEvent.TWMessage;
-					}
-					if(rc==Tw.TWRC_FAILURE) {
-						//Normal answers are DSEVENT or NOTDSEVENT. A source that keeps saying it is not open (or not enabled)
-						//is gone; without this check the program would wait forever with its window disabled. Other failures
-						//are ignored because some sources answer FAILURE for messages that are not theirs.
-						ushort conditionCode=GetConditionCode(true);
-						if(conditionCode==Tw.TWCC_BADDEST || conditionCode==Tw.TWCC_NODS || conditionCode==Tw.TWCC_SEQERROR) {
-							countFailures++;
-						}
-						else {
-							countFailures=0;
-						}
-						if(countFailures>=MaxConsecutiveEventFailures) {
-							SetError(EZTwainErrorCode.EZTEC_DS_FAILURE,"The scanner stopped responding. "+GetConditionText(conditionCode));
-							return Tw.MSG_NULL;
-						}
-					}
-					else {
-						countFailures=0;
-					}
-					if(rc==Tw.TWRC_DSEVENT) {
-						continue;//The source handled the message (its own dialog).
-					}
-					NativeMethods.TranslateMessage(pMsg);
-					NativeMethods.DispatchMessage(pMsg);
-				}
-			}
-			finally {
-				if(hasTimer) {
-					NativeMethods.KillTimer(hwndProxy,(UIntPtr)TimerIdTimeout);
-				}
-				Marshal.FreeHGlobal(pEvent);
-				Marshal.FreeHGlobal(pMsg);
 			}
 		}
 
@@ -960,7 +1230,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 			try {
 				imageInfo.BitsPerSample=new short[8];
 				Marshal.StructureToPtr(imageInfo,pImageInfo,false);
-				ushort rc=_dsm.Entry(_pAppIdentity,_pSourceIdentity,Tw.DG_IMAGE,Tw.DAT_IMAGEINFO,Tw.MSG_GET,pImageInfo);
+				ushort rc=SourceEntry(Tw.DG_IMAGE,Tw.DAT_IMAGEINFO,Tw.MSG_GET,pImageInfo);
 				if(rc!=Tw.TWRC_SUCCESS) {
 					return false;
 				}
@@ -977,7 +1247,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 			IntPtr pHandle=Marshal.AllocHGlobal(IntPtr.Size);
 			try {
 				Marshal.WriteIntPtr(pHandle,IntPtr.Zero);
-				ushort rc=_dsm.Entry(_pAppIdentity,_pSourceIdentity,Tw.DG_IMAGE,Tw.DAT_IMAGENATIVEXFER,Tw.MSG_GET,pHandle);
+				ushort rc=SourceEntry(Tw.DG_IMAGE,Tw.DAT_IMAGENATIVEXFER,Tw.MSG_GET,pHandle);
 				IntPtr hDib=Marshal.ReadIntPtr(pHandle);
 				if(rc==Tw.TWRC_XFERDONE) {
 					State=7;
@@ -993,18 +1263,18 @@ namespace ImagingDeviceManager.TwainProtocol {
 						return TransferOutcome.Failed;
 					}
 					finally {
-						_dsm.MemFree(hDib);
+						_memory.Free(hDib);
 					}
 					return TransferOutcome.Done;
 				}
 				if(hDib!=IntPtr.Zero) {
-					_dsm.MemFree(hDib);
+					_memory.Free(hDib);
 				}
 				if(rc==Tw.TWRC_CANCEL) {
 					State=7;
 					return TransferOutcome.Cancelled;
 				}
-				SetErrorFromCondition(EZTwainErrorCode.EZTEC_XFER_FAILURE,"The image transfer from the scanner failed.",true);
+				SetErrorFromCondition(EZTwainErrorCode.EZTEC_XFER_FAILURE,"The image transfer from the scanner failed.");
 				return TransferOutcome.Failed;
 			}
 			finally {
@@ -1013,16 +1283,16 @@ namespace ImagingDeviceManager.TwainProtocol {
 		}
 
 		private DibImage CopyDib(IntPtr hDib) {
-			IntPtr pDib=_dsm.MemLock(hDib);
+			IntPtr pDib=_memory.Lock(hDib);
 			if(pDib==IntPtr.Zero) {
 				throw new ImagingDeviceException("The scanner's image memory could not be read.",EZTwainErrorCode.EZTEC_BAD_DIB);
 			}
 			try {
-				long available=(long)NativeMethods.GlobalSize(hDib).ToUInt64();
+				long available=_memory.GetSize(hDib);//0 when unknown: the header alone gives the length.
 				return DibImage.FromUnmanaged(pDib,available);
 			}
 			finally {
-				_dsm.MemUnlock(hDib);
+				_memory.Unlock(hDib);
 			}
 		}
 
@@ -1062,7 +1332,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 					xfer.Memory.Length=(uint)bufferSize;
 					xfer.Memory.TheMem=pBuffer;
 					Marshal.StructureToPtr(xfer,pXfer,false);
-					ushort rc=_dsm.Entry(_pAppIdentity,_pSourceIdentity,Tw.DG_IMAGE,Tw.DAT_IMAGEMEMXFER,Tw.MSG_GET,pXfer);
+					ushort rc=SourceEntry(Tw.DG_IMAGE,Tw.DAT_IMAGEMEMXFER,Tw.MSG_GET,pXfer);
 					if(rc==Tw.TWRC_SUCCESS || rc==Tw.TWRC_XFERDONE) {
 						State=7;
 						xfer=(TW_IMAGEMEMXFER)Marshal.PtrToStructure(pXfer,typeof(TW_IMAGEMEMXFER));
@@ -1076,7 +1346,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 						State=7;
 						return TransferOutcome.Cancelled;
 					}
-					SetErrorFromCondition(EZTwainErrorCode.EZTEC_XFER_FAILURE,"The image transfer from the scanner failed.",true);
+					SetErrorFromCondition(EZTwainErrorCode.EZTEC_XFER_FAILURE,"The image transfer from the scanner failed.");
 					return TransferOutcome.Failed;
 				}
 				try {
@@ -1100,7 +1370,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 			IntPtr pSetup=Marshal.AllocHGlobal(Marshal.SizeOf(typeof(TW_SETUPMEMXFER)));
 			try {
 				Marshal.StructureToPtr(new TW_SETUPMEMXFER(),pSetup,false);
-				ushort rc=_dsm.Entry(_pAppIdentity,_pSourceIdentity,Tw.DG_CONTROL,Tw.DAT_SETUPMEMXFER,Tw.MSG_GET,pSetup);
+				ushort rc=SourceEntry(Tw.DG_CONTROL,Tw.DAT_SETUPMEMXFER,Tw.MSG_GET,pSetup);
 				if(rc!=Tw.TWRC_SUCCESS) {
 					return sizeDefault;
 				}
@@ -1136,7 +1406,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 			try {
 				TW_PALETTE8 palette8=new TW_PALETTE8 { Colors=new byte[1024] };
 				Marshal.StructureToPtr(palette8,pPalette,false);
-				ushort rc=_dsm.Entry(_pAppIdentity,_pSourceIdentity,Tw.DG_IMAGE,Tw.DAT_PALETTE8,Tw.MSG_GET,pPalette);
+				ushort rc=SourceEntry(Tw.DG_IMAGE,Tw.DAT_PALETTE8,Tw.MSG_GET,pPalette);
 				if(rc!=Tw.TWRC_SUCCESS) {
 					return null;
 				}
@@ -1160,17 +1430,24 @@ namespace ImagingDeviceManager.TwainProtocol {
 		}
 
 		///<summary>MSG_ENDXFER after a transfer (state 7, or state 6 after a failure). Moves to state 6 if more images are
-		///pending (count unknown counts as pending), otherwise to state 5.</summary>
+		///pending (count unknown counts as pending), otherwise to state 5. If the source refuses it, MSG_RESET discards the rest; on the
+		///by-name path with a sink the operator is then told that the source may still hold images.</summary>
 		private void EndTransfer() {
 			IntPtr pPending=Marshal.AllocHGlobal(Marshal.SizeOf(typeof(TW_PENDINGXFERS)));
 			try {
 				Marshal.StructureToPtr(new TW_PENDINGXFERS(),pPending,false);
-				ushort rc=_dsm.Entry(_pAppIdentity,_pSourceIdentity,Tw.DG_CONTROL,Tw.DAT_PENDINGXFERS,Tw.MSG_ENDXFER,pPending);
+				ushort rc=SourceEntry(Tw.DG_CONTROL,Tw.DAT_PENDINGXFERS,Tw.MSG_ENDXFER,pPending);
 				if(rc!=Tw.TWRC_SUCCESS) {
 					//The source is confused. Discard everything so that it can be disabled.
+					ushort conditionCode=LastConditionCode;
 					Marshal.StructureToPtr(new TW_PENDINGXFERS(),pPending,false);
-					_dsm.Entry(_pAppIdentity,_pSourceIdentity,Tw.DG_CONTROL,Tw.DAT_PENDINGXFERS,Tw.MSG_RESET,pPending);
+					SourceEntry(Tw.DG_CONTROL,Tw.DAT_PENDINGXFERS,Tw.MSG_RESET,pPending);
 					State=5;
+					if(CanDrain) {
+						Log("\""+SourceName+"\" refused MSG_ENDXFER ("+(rc==Tw.TWRC_FAILURE ? "condition code "+ToHex(conditionCode) : "return code "+rc)
+							+"); MSG_RESET discarded any images still pending. The source may still hold images of this series.");
+						NoteMayStillHoldImages(LastStopReason);
+					}
 					return;
 				}
 				TW_PENDINGXFERS pending=(TW_PENDINGXFERS)Marshal.PtrToStructure(pPending,typeof(TW_PENDINGXFERS));
@@ -1187,13 +1464,15 @@ namespace ImagingDeviceManager.TwainProtocol {
 				if(State>=4) {
 					CloseSourceCore();
 				}
-				if(State>=2) {
+				if(State>=3) {
 					CloseDsm();
 				}
 			}
 			catch {
 				//Best effort.
 			}
+			UnloadDsm();
+			RepostQuitIfPending();
 			if(_pAppIdentity!=IntPtr.Zero) {
 				Marshal.FreeHGlobal(_pAppIdentity);
 				_pAppIdentity=IntPtr.Zero;

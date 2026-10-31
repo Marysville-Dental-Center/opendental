@@ -2,6 +2,7 @@
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Runtime.InteropServices;
 using ImagingDeviceManager.Imaging;
@@ -20,7 +21,9 @@ namespace ImagingDeviceManager.Tests {
 		public byte[][] TwainRows;
 		///<summary>Packed DIB for native transfers.</summary>
 		public byte[] NativeDib;
-		///<summary>Non-zero: the transfer of this page fails with this TWAIN condition code.</summary>
+		///<summary>Non-zero: the transfer of this page fails with this TWAIN condition code, and MSG_ENDXFER then moves on to the next page.
+		///Generic-source behaviour: the contract 1.1 profile (FakeHelperSource) honours it too, but its contract says only that such an
+		///image stays undelivered (section 10.3); the contract's own read failure, which ends the batch, is FakeHelperSource.FailReadAtImage.</summary>
 		public ushort FailCondition;
 		///<summary>The transfer of this page returns TWRC_CANCEL.</summary>
 		public bool IsCancelled;
@@ -71,6 +74,26 @@ namespace ImagingDeviceManager.Tests {
 			return page;
 		}
 
+		///<summary>8 bit grayscale page, as an intraoral sensor delivers it: a 256 entry gray palette in the native DIB (entry i is
+		///RGB(i,i,i)) and unpadded rows in memory transfers. sampleAt(x,y) gives each pixel.</summary>
+		public static FakePage CreateGray8(int width,int height,double dpi,Func<int,int,byte> sampleAt) {
+			FakePage page=new FakePage { Width=width,Height=height,PixelType=Tw.TWPT_GRAY,BitsPerPixel=8,Dpi=dpi };
+			page.TwainRows=new byte[height][];
+			int stride=DibImage.GetStride(width,8);
+			byte[] pixels=new byte[stride*height];
+			for(int y=0;y<height;y++) {
+				page.TwainRows[y]=new byte[width];
+				for(int x=0;x<width;x++) {
+					byte sample=sampleAt(x,y);
+					page.TwainRows[y][x]=sample;
+					pixels[(height-1-y)*stride+x]=sample;
+				}
+			}
+			int ppm=DibImage.DpiToPelsPerMeter(dpi);
+			page.NativeDib=DibImage.Create(width,height,8,DibImage.CreateGrayPalette(256,false),pixels,ppm,ppm).Data;
+			return page;
+		}
+
 		///<summary>1 bit page. isSetAt(x,y) true means the bit is 1.</summary>
 		public static FakePage CreateBw(int width,int height,double dpi,Func<int,int,bool> isSetAt) {
 			FakePage page=new FakePage { Width=width,Height=height,PixelType=Tw.TWPT_BW,BitsPerPixel=1,Dpi=dpi };
@@ -103,10 +126,64 @@ namespace ImagingDeviceManager.Tests {
 		Nothing,
 	}
 
+	///<summary>One triplet a simulated source received, for tests that check the order of calls.</summary>
+	internal sealed class FakeCall {
+		public uint Dg;
+		public ushort Dat;
+		public ushort Msg;
+		///<summary>The capability, for DAT_CAPABILITY.</summary>
+		public ushort Cap;
+		///<summary>The value sent with a capability MSG_SET, or the notification a MSG_PROCESSEVENT returned.</summary>
+		public int Value;
+		///<summary>The source's TWAIN state before the call.</summary>
+		public int StateBefore;
+		public ushort Rc;
+		///<summary>The condition code a DAT_STATUS returned, or the one a TWRC_FAILURE set.</summary>
+		public ushort Condition;
+
+		public string Name {
+			get {
+				switch(Dat) {
+					case Tw.DAT_STATUS: return "STATUS";
+					case Tw.DAT_STATUSUTF8: return "STATUSUTF8";
+					case Tw.DAT_EVENT: return "PROCESSEVENT";
+					case Tw.DAT_IMAGEINFO: return "IMAGEINFO";
+					case Tw.DAT_IMAGENATIVEXFER: return "NATIVEXFER";
+					case Tw.DAT_IMAGEMEMXFER: return "MEMXFER";
+					case Tw.DAT_SETUPMEMXFER: return "SETUPMEMXFER";
+					case Tw.DAT_USERINTERFACE: return Msg==Tw.MSG_ENABLEDS ? "ENABLEDS" : (Msg==Tw.MSG_DISABLEDS ? "DISABLEDS" : "USERINTERFACE");
+					case Tw.DAT_PENDINGXFERS: return Msg==Tw.MSG_ENDXFER ? "ENDXFER" : (Msg==Tw.MSG_RESET ? "RESET" : "PENDINGXFERS/GET");
+					case Tw.DAT_CAPABILITY:
+						switch(Msg) {
+							case Tw.MSG_SET: return "CAP/SET";
+							case Tw.MSG_GET: return "CAP/GET";
+							case Tw.MSG_GETCURRENT: return "CAP/GETCURRENT";
+							case Tw.MSG_GETDEFAULT: return "CAP/GETDEFAULT";
+							case Tw.MSG_RESET: return "CAP/RESET";
+							case Tw.MSG_QUERYSUPPORT: return "CAP/QUERYSUPPORT";
+						}
+						return "CAP/"+Msg;
+				}
+				return "DAT "+Dat+"/MSG "+Msg;
+			}
+		}
+
+		public override string ToString() {
+			return Name+(Cap!=0 ? " 0x"+Cap.ToString("X4") : "")+(Msg==Tw.MSG_SET || Dat==Tw.DAT_EVENT ? " "+Value : "")
+				+" @"+StateBefore+" rc "+Rc+(Condition!=0 ? " cc 0x"+Condition.ToString("X4") : "");
+		}
+	}
+
 	///<summary>A simulated TWAIN Data Source Manager with simulated data sources. It follows the TWAIN state machine closely
 	///enough to exercise the session code: identities, capability containers, enabling, posting events through the Windows
-	///message queue, native and memory transfers, pending transfer counts, and status codes.</summary>
+	///message queue, native and memory transfers, pending transfer counts, and status codes.
+	///
+	///Every name in ListSourceNames that is not in DictHelperSources is the built-in source. It is lenient by default, as the
+	///original tests expect; IsStrict makes it refuse MSG_DISABLEDS outside state 5, as TWAIN 2.4 allows (the "strict generic"
+	///profile). Names in DictHelperSources are FakeHelperSource objects, which follow twain-contract 1.1 (the "single-shot helper
+	///DS" profile).</summary>
 	internal sealed class FakeTwainDsm:ITwainDsm {
+		private const int WakeTimerId=0x5EED;
 		public List<string> ListSourceNames=new List<string> { "Fake Scanner","Fake Sensor" };
 		public string DefaultSource="Fake Scanner";
 		public List<FakePage> ListPages=new List<FakePage>();
@@ -116,6 +193,12 @@ namespace ImagingDeviceManager.Tests {
 		public bool IsPendingCountUnknown;
 		public bool IsImageLengthUnknown;
 		public ushort? PixelFlavor;
+		///<summary>CAP_UICONTROLLABLE of the built-in source. Null: not supported.</summary>
+		public bool? UiControllable;
+		///<summary>0: the built-in source answers CAP_UICONTROLLABLE to MSG_GET and MSG_GETCURRENT. MSG_GET: only to MSG_GET, the one
+		///operation TWAIN requires for it (as a 1.6 to 1.9 source may). MSG_GETCURRENT: only to MSG_GETCURRENT. Any other message fails
+		///with TWCC_CAPBADOPERATION.</summary>
+		public ushort UiControllableOnlyMsg;
 		public HashSet<ushort> HashSetRejectedCaps=new HashSet<ushort>();
 		public ushort UserSelectResult=Tw.TWRC_SUCCESS;
 		public string UserSelectChoice="Fake Sensor";
@@ -125,9 +208,33 @@ namespace ImagingDeviceManager.Tests {
 		public int MaxRowsPerStrip=7;
 		///<summary>Runs inside MSG_ENABLEDS, before the source posts its event.</summary>
 		public Action ActionOnEnable;
+		///<summary>Runs at the start of each memory transfer strip of the built-in source, with the first row of the strip. A test can
+		///throw from it to simulate a failure in the middle of a transfer (state 7).</summary>
+		public Action<int> ActionOnMemoryStrip;
+		///<summary>Strict generic profile for the built-in source: MSG_DISABLEDS fails with TWCC_SEQERROR outside state 5 (TWAIN 2.4
+		///p.7-103: valid in state 5 only). The lenient default accepts it whenever the source is enabled.</summary>
+		public bool IsStrict;
+		///<summary>Condition codes the next MSG_DISABLEDS calls of the built-in source fail with, one per call.</summary>
+		public Queue<ushort> QueueDisableFailures=new Queue<ushort>();
+		///<summary>The built-in source refuses MSG_ENDXFER with TWCC_SEQERROR after the page with this index (-1: never).</summary>
+		public int FailEndXferOnPage=-1;
+		///<summary>Acts as a version 2 DSM: sets DF_DSM2 in the application's identity at MSG_OPENDSM and hands out DsmMemory through
+		///DAT_ENTRYPOINT. The simulated sources then allocate every handle they give the application with DSM_MemAllocate, as
+		///TWAIN 2 sources do; otherwise with GlobalAlloc.</summary>
+		public bool SupplyEntryPoints;
+		public FakeDsmMemory DsmMemory=new FakeDsmMemory();
+		///<summary>Sources that follow twain-contract 1.1, by product name. Add them with AddHelperSource.</summary>
+		public Dictionary<string,FakeHelperSource> DictHelperSources=new Dictionary<string,FakeHelperSource>();
 
 		public Dictionary<ushort,int> DictCapsSet=new Dictionary<ushort,int>();
 		public List<string> ListLog=new List<string>();
+		///<summary>Every triplet sent to an open source, in order.</summary>
+		public List<FakeCall> ListCalls=new List<FakeCall>();
+		///<summary>The source's TWAIN state at each MSG_DISABLEDS, whether accepted or not.</summary>
+		public List<int> ListDisableStates=new List<int>();
+		///<summary>Every handle a simulated source handed to the application (native DIBs, capability containers, status text).</summary>
+		public List<IntPtr> ListSourceHandles=new List<IntPtr>();
+		public int CountEntryPointGet;
 		public bool IsDsmOpen;
 		public bool IsSourceOpen;
 		public bool IsEnabled;
@@ -137,7 +244,13 @@ namespace ImagingDeviceManager.Tests {
 		public ushort LastShowUI;
 		public IntPtr LastParent;
 		public IntPtr HwndDsm;
+		///<summary>TWAIN state of the built-in source: 3 closed, 4 open, 5 enabled, 6 transfer ready, 7 transferring.</summary>
+		public int SourceState=3;
+		///<summary>The window the application gave MSG_ENABLEDS. Sources post to it to wake the application's message loop.</summary>
+		public IntPtr HwndParent;
 
+		private readonly Stopwatch _stopwatch=Stopwatch.StartNew();
+		private FakeHelperSource _helperOpen;
 		private int _idxEnum;
 		private int _idxPage;
 		private int _rowCursor;
@@ -148,11 +261,69 @@ namespace ImagingDeviceManager.Tests {
 
 		public FakePage CurrentPage => _idxPage<ListPages.Count ? ListPages[_idxPage] : null;
 
+		///<summary>Milliseconds since this DSM was created. Simulated sources use it for their timed behaviour.</summary>
+		public long NowMs => _stopwatch.ElapsedMilliseconds;
+
+		///<summary>The TWAIN state of the open source as it sees it, 3 when none is open.</summary>
+		public int OpenSourceState => _helperOpen!=null ? _helperOpen.State : SourceState;
+
+		public void AddHelperSource(FakeHelperSource helper) {
+			DictHelperSources[helper.ProductName]=helper;
+			if(!ListSourceNames.Contains(helper.ProductName)) {
+				ListSourceNames.Add(helper.ProductName);
+			}
+		}
+
+		///<summary>The calls whose Name is name, in order.</summary>
+		public List<FakeCall> CallsNamed(string name) {
+			return ListCalls.FindAll(x => x.Name==name);
+		}
+
+		///<summary>Wakes the application's message loop at once, as a source does when it has a notification.</summary>
+		public void WakeHostNow() {
+			if(HwndParent!=IntPtr.Zero) {
+				NativeMethods.PostMessage(HwndParent,NativeMethods.WM_NULL,IntPtr.Zero,IntPtr.Zero);
+			}
+		}
+
+		///<summary>Wakes the application's message loop every delayMs until StopWakeTimer, so that timed behaviour happens even when
+		///no other message arrives. The loop hands the WM_TIMER to MSG_PROCESSEVENT like any other message.</summary>
+		public void WakeHostAfter(long delayMs) {
+			if(HwndParent!=IntPtr.Zero) {
+				NativeMethods.SetTimer(HwndParent,(UIntPtr)WakeTimerId,(uint)Math.Max(1,Math.Min(delayMs,int.MaxValue)),IntPtr.Zero);
+			}
+		}
+
+		public void StopWakeTimer() {
+			if(HwndParent!=IntPtr.Zero) {
+				NativeMethods.KillTimer(HwndParent,(UIntPtr)WakeTimerId);
+			}
+		}
+
+		///<summary>Allocates a handle that a simulated source hands to the application: with the DSM's memory functions when this DSM
+		///hands them out, otherwise with GlobalAlloc (twain-contract 1.1 section 6.4). The application frees it the same way.</summary>
+		public IntPtr SourceAllocate(int size) {
+			IntPtr handle=SupplyEntryPoints
+				? DsmMemory.Allocate((uint)size)
+				: NativeMethods.GlobalAlloc(NativeMethods.GHND,(UIntPtr)size);
+			ListSourceHandles.Add(handle);
+			return handle;
+		}
+
 		public ushort Entry(IntPtr origin,IntPtr dest,uint dg,ushort dat,ushort msg,IntPtr data) {
-			if(dg==Tw.DG_CONTROL && dat==Tw.DAT_STATUS) {
-				Marshal.StructureToPtr(new TW_STATUS { ConditionCode=_conditionCode },data,false);
-				_conditionCode=Tw.TWCC_SUCCESS;
+			if(dg==Tw.DG_CONTROL && dat==Tw.DAT_ENTRYPOINT && dest==IntPtr.Zero) {
+				if(!SupplyEntryPoints || msg!=Tw.MSG_GET || !IsDsmOpen) {
+					return Fail(Tw.TWCC_BADPROTOCOL);
+				}
+				CountEntryPointGet++;
+				DsmMemory.WriteEntryPoint(data);
 				return Tw.TWRC_SUCCESS;
+			}
+			if(dest!=IntPtr.Zero && IsSourceOpen && !(dg==Tw.DG_CONTROL && dat==Tw.DAT_IDENTITY)) {
+				return SourceEntry(dg,dat,msg,data);
+			}
+			if(dg==Tw.DG_CONTROL && dat==Tw.DAT_STATUS) {
+				return Status(data);
 			}
 			if(dg==Tw.DG_CONTROL && dat==Tw.DAT_PARENT) {
 				return Parent(origin,msg,data);
@@ -160,11 +331,58 @@ namespace ImagingDeviceManager.Tests {
 			if(dg==Tw.DG_CONTROL && dat==Tw.DAT_IDENTITY) {
 				return Identity(msg,data);
 			}
-			if(!IsSourceOpen || dest==IntPtr.Zero) {
-				return Fail(Tw.TWCC_BADDEST);
+			return Fail(Tw.TWCC_BADDEST);
+		}
+
+		///<summary>A triplet for the open source: recorded in ListCalls, then handled by the helper source or the built-in one.</summary>
+		private ushort SourceEntry(uint dg,ushort dat,ushort msg,IntPtr data) {
+			FakeCall call=new FakeCall { Dg=dg,Dat=dat,Msg=msg,StateBefore=OpenSourceState };
+			if(dat==Tw.DAT_CAPABILITY) {
+				TW_CAPABILITY capability=(TW_CAPABILITY)Marshal.PtrToStructure(data,typeof(TW_CAPABILITY));
+				call.Cap=capability.Cap;
+				if(msg==Tw.MSG_SET && capability.hContainer!=IntPtr.Zero) {
+					IntPtr pContainer=NativeMethods.GlobalLock(capability.hContainer);
+					call.Value=Marshal.ReadInt32(pContainer,TwContainer.OneValueItemOffset);
+					NativeMethods.GlobalUnlock(capability.hContainer);
+				}
 			}
+			if(dat==Tw.DAT_USERINTERFACE && msg==Tw.MSG_DISABLEDS) {
+				ListDisableStates.Add(call.StateBefore);
+			}
+			ushort rc;
+			if(_helperOpen!=null) {
+				rc=_helperOpen.Entry(dg,dat,msg,data);
+				if(rc==Tw.TWRC_FAILURE) {
+					call.Condition=_helperOpen.LastFailureCode;
+				}
+			}
+			else {
+				rc=BuiltInSourceEntry(dg,dat,msg,data);
+				if(rc==Tw.TWRC_FAILURE) {
+					call.Condition=_conditionCode;
+				}
+			}
+			call.Rc=rc;
+			if(dat==Tw.DAT_STATUS && rc==Tw.TWRC_SUCCESS) {
+				call.Condition=((TW_STATUS)Marshal.PtrToStructure(data,typeof(TW_STATUS))).ConditionCode;
+			}
+			if(dat==Tw.DAT_EVENT) {
+				call.Value=((TW_EVENT)Marshal.PtrToStructure(data,typeof(TW_EVENT))).TWMessage;
+			}
+			ListCalls.Add(call);
+			return rc;
+		}
+
+		private ushort Status(IntPtr data) {
+			Marshal.StructureToPtr(new TW_STATUS { ConditionCode=_conditionCode },data,false);
+			_conditionCode=Tw.TWCC_SUCCESS;
+			return Tw.TWRC_SUCCESS;
+		}
+
+		private ushort BuiltInSourceEntry(uint dg,ushort dat,ushort msg,IntPtr data) {
 			if(dg==Tw.DG_CONTROL) {
 				switch(dat) {
+					case Tw.DAT_STATUS: return Status(data);
 					case Tw.DAT_CAPABILITY: return Capability(msg,data);
 					case Tw.DAT_USERINTERFACE: return UserInterface(msg,data);
 					case Tw.DAT_EVENT: return ProcessEvent(data);
@@ -195,6 +413,9 @@ namespace ImagingDeviceManager.Tests {
 				TW_IDENTITY appIdentity=(TW_IDENTITY)Marshal.PtrToStructure(origin,typeof(TW_IDENTITY));
 				ListLog.Add("OPENDSM "+appIdentity.ProductName);
 				appIdentity.Id=1;
+				if(SupplyEntryPoints) {
+					appIdentity.SupportedGroups|=Tw.DF_DSM2;
+				}
 				Marshal.StructureToPtr(appIdentity,origin,false);
 				IsDsmOpen=true;
 				return Tw.TWRC_SUCCESS;
@@ -257,6 +478,12 @@ namespace ImagingDeviceManager.Tests {
 					OpenSourceName=identity.ProductName;
 					DictCapsSet.Clear();
 					ListLog.Add("OPENDS "+identity.ProductName);
+					if(DictHelperSources.TryGetValue(identity.ProductName,out _helperOpen)) {
+						_helperOpen.OnOpen(this);
+					}
+					else {
+						SourceState=4;
+					}
 					return Tw.TWRC_SUCCESS;
 				case Tw.MSG_CLOSEDS:
 					if(!IsSourceOpen) {
@@ -265,6 +492,12 @@ namespace ImagingDeviceManager.Tests {
 					ListLog.Add("CLOSEDS");
 					IsSourceOpen=false;
 					IsEnabled=false;
+					if(_helperOpen!=null) {
+						_helperOpen.OnClose();
+						_helperOpen=null;
+					}
+					SourceState=3;
+					StopWakeTimer();
 					return Tw.TWRC_SUCCESS;
 			}
 			return Fail(Tw.TWCC_BADPROTOCOL);
@@ -288,11 +521,25 @@ namespace ImagingDeviceManager.Tests {
 				DictCapsSet[capability.Cap]=value;
 				return Tw.TWRC_SUCCESS;
 			}
-			if(msg==Tw.MSG_GETCURRENT && capability.Cap==Tw.ICAP_PIXELFLAVOR && PixelFlavor!=null) {
-				IntPtr hContainer=NativeMethods.GlobalAlloc(NativeMethods.GHND,(UIntPtr)TwContainer.OneValueSize);
+			int? valueCurrent=null;
+			ushort itemType=Tw.TWTY_UINT16;
+			bool isAnswered=msg==Tw.MSG_GETCURRENT;
+			if(capability.Cap==Tw.ICAP_PIXELFLAVOR && PixelFlavor!=null) {
+				valueCurrent=PixelFlavor.Value;
+			}
+			if(capability.Cap==Tw.CAP_UICONTROLLABLE && UiControllable!=null) {
+				valueCurrent=UiControllable.Value ? 1 : 0;
+				itemType=Tw.TWTY_BOOL;
+				isAnswered=(msg==Tw.MSG_GET || msg==Tw.MSG_GETCURRENT) && (UiControllableOnlyMsg==0 || UiControllableOnlyMsg==msg);
+				if(!isAnswered) {
+					return Fail(Tw.TWCC_CAPBADOPERATION);
+				}
+			}
+			if(isAnswered && valueCurrent!=null) {
+				IntPtr hContainer=SourceAllocate(TwContainer.OneValueSize);
 				IntPtr pContainer=NativeMethods.GlobalLock(hContainer);
-				Marshal.WriteInt16(pContainer,0,(short)Tw.TWTY_UINT16);
-				Marshal.WriteInt32(pContainer,TwContainer.OneValueItemOffset,PixelFlavor.Value);
+				Marshal.WriteInt16(pContainer,0,(short)itemType);
+				Marshal.WriteInt32(pContainer,TwContainer.OneValueItemOffset,valueCurrent.Value);
 				NativeMethods.GlobalUnlock(hContainer);
 				capability.ConType=Tw.TWON_ONEVALUE;
 				capability.hContainer=hContainer;
@@ -311,6 +558,7 @@ namespace ImagingDeviceManager.Tests {
 				CountEnable++;
 				LastShowUI=userInterface.ShowUI;
 				LastParent=userInterface.hParent;
+				HwndParent=userInterface.hParent;
 				ListLog.Add("ENABLEDS");
 				ActionOnEnable?.Invoke();
 				if(EnableResult==Tw.TWRC_FAILURE) {
@@ -320,6 +568,7 @@ namespace ImagingDeviceManager.Tests {
 					return EnableResult;
 				}
 				IsEnabled=true;
+				SourceState=5;
 				_idxPage=0;
 				_rowCursor=0;
 				if(EnableBehavior==FakeEnableBehavior.XferReady) {
@@ -338,8 +587,17 @@ namespace ImagingDeviceManager.Tests {
 				if(!IsEnabled) {
 					return Fail(Tw.TWCC_SEQERROR);
 				}
+				if(QueueDisableFailures.Count>0) {
+					ListLog.Add("DISABLEDS refused");
+					return Fail(QueueDisableFailures.Dequeue());
+				}
+				if(IsStrict && SourceState!=5) {
+					ListLog.Add("DISABLEDS refused");
+					return Fail(Tw.TWCC_SEQERROR);
+				}
 				ListLog.Add("DISABLEDS");
 				IsEnabled=false;
+				SourceState=4;
 				_pendingMessage=Tw.MSG_NULL;
 				return Tw.TWRC_SUCCESS;
 			}
@@ -353,6 +611,9 @@ namespace ImagingDeviceManager.Tests {
 			TW_EVENT twEvent=(TW_EVENT)Marshal.PtrToStructure(data,typeof(TW_EVENT));
 			if(_pendingMessage!=Tw.MSG_NULL) {
 				twEvent.TWMessage=_pendingMessage;
+				if(_pendingMessage==Tw.MSG_XFERREADY) {
+					SourceState=6;
+				}
 				_pendingMessage=Tw.MSG_NULL;
 				Marshal.StructureToPtr(twEvent,data,false);
 				return Tw.TWRC_DSEVENT;
@@ -391,14 +652,16 @@ namespace ImagingDeviceManager.Tests {
 				return Fail(page.FailCondition);
 			}
 			if(page.IsCancelled) {
+				SourceState=7;
 				return Tw.TWRC_CANCEL;
 			}
-			IntPtr hDib=NativeMethods.GlobalAlloc(NativeMethods.GHND,(UIntPtr)page.NativeDib.Length);
+			IntPtr hDib=SourceAllocate(page.NativeDib.Length);
 			IntPtr pDib=NativeMethods.GlobalLock(hDib);
 			Marshal.Copy(page.NativeDib,0,pDib,page.NativeDib.Length);
 			NativeMethods.GlobalUnlock(hDib);
 			Marshal.WriteIntPtr(data,hDib);
 			ListLog.Add("NATIVEXFER");
+			SourceState=7;
 			return Tw.TWRC_XFERDONE;
 		}
 
@@ -411,8 +674,10 @@ namespace ImagingDeviceManager.Tests {
 				return Fail(page.FailCondition);
 			}
 			if(page.IsCancelled) {
+				SourceState=7;
 				return Tw.TWRC_CANCEL;
 			}
+			ActionOnMemoryStrip?.Invoke(_rowCursor);
 			TW_IMAGEMEMXFER xfer=(TW_IMAGEMEMXFER)Marshal.PtrToStructure(data,typeof(TW_IMAGEMEMXFER));
 			int rowBytes=page.TwainRows[0].Length;
 			int bytesPerRow=(rowBytes+3)&~3;//Padded rows, to check that BytesPerRow is honored.
@@ -436,45 +701,38 @@ namespace ImagingDeviceManager.Tests {
 			Marshal.StructureToPtr(xfer,data,false);
 			_rowCursor+=rows;
 			ListLog.Add("MEMXFER");
+			SourceState=7;
 			return _rowCursor>=page.Height ? Tw.TWRC_XFERDONE : Tw.TWRC_SUCCESS;
 		}
 
 		private ushort PendingXfers(ushort msg,IntPtr data) {
 			if(msg==Tw.MSG_ENDXFER) {
+				if(_idxPage==FailEndXferOnPage) {
+					ListLog.Add("ENDXFER refused");
+					return Fail(Tw.TWCC_SEQERROR);
+				}
 				ListLog.Add("ENDXFER");
 				_idxPage++;
 				_rowCursor=0;
 				int remaining=Math.Max(0,ListPages.Count-_idxPage);
 				short count=(short)(remaining>0 && IsPendingCountUnknown ? -1 : remaining);
+				SourceState=remaining>0 ? 6 : 5;
 				Marshal.StructureToPtr(new TW_PENDINGXFERS { Count=count },data,false);
 				return Tw.TWRC_SUCCESS;
 			}
 			if(msg==Tw.MSG_RESET) {
 				ListLog.Add("RESET");
 				_idxPage=ListPages.Count;
+				SourceState=5;
 				Marshal.StructureToPtr(new TW_PENDINGXFERS { Count=0 },data,false);
 				return Tw.TWRC_SUCCESS;
 			}
+			if(msg==Tw.MSG_GET) {
+				int remaining=SourceState>=6 ? Math.Max(0,ListPages.Count-_idxPage) : 0;
+				Marshal.StructureToPtr(new TW_PENDINGXFERS { Count=(short)remaining },data,false);
+				return Tw.TWRC_SUCCESS;
+			}
 			return Fail(Tw.TWCC_BADPROTOCOL);
-		}
-
-		public void OnDsmOpened(IntPtr appIdentity) {
-		}
-
-		public IntPtr MemAllocate(uint size) {
-			return NativeMethods.GlobalAlloc(NativeMethods.GHND,(UIntPtr)size);
-		}
-
-		public void MemFree(IntPtr handle) {
-			NativeMethods.GlobalFree(handle);
-		}
-
-		public IntPtr MemLock(IntPtr handle) {
-			return NativeMethods.GlobalLock(handle);
-		}
-
-		public void MemUnlock(IntPtr handle) {
-			NativeMethods.GlobalUnlock(handle);
 		}
 
 		public void Dispose() {

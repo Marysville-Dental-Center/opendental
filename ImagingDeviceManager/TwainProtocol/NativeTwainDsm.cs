@@ -12,21 +12,8 @@ namespace ImagingDeviceManager.TwainProtocol {
 	internal sealed class NativeTwainDsm:ITwainDsm {
 		[UnmanagedFunctionPointer(CallingConvention.StdCall)]
 		private delegate ushort DsmEntryProc(IntPtr origin,IntPtr dest,uint dg,ushort dat,ushort msg,IntPtr data);
-		[UnmanagedFunctionPointer(CallingConvention.StdCall)]
-		private delegate IntPtr DsmMemAllocateProc(uint size);
-		[UnmanagedFunctionPointer(CallingConvention.StdCall)]
-		private delegate void DsmMemFreeProc(IntPtr handle);
-		[UnmanagedFunctionPointer(CallingConvention.StdCall)]
-		private delegate IntPtr DsmMemLockProc(IntPtr handle);
-		[UnmanagedFunctionPointer(CallingConvention.StdCall)]
-		private delegate void DsmMemUnlockProc(IntPtr handle);
-
 		private IntPtr _hModule;
 		private DsmEntryProc _dsmEntry;
-		private DsmMemAllocateProc _memAllocate;
-		private DsmMemFreeProc _memFree;
-		private DsmMemLockProc _memLock;
-		private DsmMemUnlockProc _memUnlock;
 
 		public string LibraryName { get; private set; }
 
@@ -87,74 +74,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 			return _dsmEntry(origin,dest,dg,dat,msg,data);
 		}
 
-		public void OnDsmOpened(IntPtr appIdentity) {
-			TW_IDENTITY identity=(TW_IDENTITY)Marshal.PtrToStructure(appIdentity,typeof(TW_IDENTITY));
-			if((identity.SupportedGroups & Tw.DF_DSM2)==0) {
-				return;//Legacy DSM. Applications use the Windows Global* memory functions.
-			}
-			IntPtr pEntryPoint=Marshal.AllocHGlobal(Marshal.SizeOf(typeof(TW_ENTRYPOINT)));
-			try {
-				TW_ENTRYPOINT entryPoint=new TW_ENTRYPOINT();
-				entryPoint.Size=(uint)Marshal.SizeOf(typeof(TW_ENTRYPOINT));
-				Marshal.StructureToPtr(entryPoint,pEntryPoint,false);
-				ushort rc=Entry(appIdentity,IntPtr.Zero,Tw.DG_CONTROL,Tw.DAT_ENTRYPOINT,Tw.MSG_GET,pEntryPoint);
-				if(rc!=Tw.TWRC_SUCCESS) {
-					return;
-				}
-				entryPoint=(TW_ENTRYPOINT)Marshal.PtrToStructure(pEntryPoint,typeof(TW_ENTRYPOINT));
-				if(entryPoint.DSM_MemAllocate==IntPtr.Zero || entryPoint.DSM_MemFree==IntPtr.Zero
-					|| entryPoint.DSM_MemLock==IntPtr.Zero || entryPoint.DSM_MemUnlock==IntPtr.Zero)
-				{
-					return;
-				}
-				_memAllocate=(DsmMemAllocateProc)Marshal.GetDelegateForFunctionPointer(entryPoint.DSM_MemAllocate,typeof(DsmMemAllocateProc));
-				_memFree=(DsmMemFreeProc)Marshal.GetDelegateForFunctionPointer(entryPoint.DSM_MemFree,typeof(DsmMemFreeProc));
-				_memLock=(DsmMemLockProc)Marshal.GetDelegateForFunctionPointer(entryPoint.DSM_MemLock,typeof(DsmMemLockProc));
-				_memUnlock=(DsmMemUnlockProc)Marshal.GetDelegateForFunctionPointer(entryPoint.DSM_MemUnlock,typeof(DsmMemUnlockProc));
-			}
-			finally {
-				Marshal.FreeHGlobal(pEntryPoint);
-			}
-		}
-
-		public IntPtr MemAllocate(uint size) {
-			if(_memAllocate!=null) {
-				return _memAllocate(size);
-			}
-			return NativeMethods.GlobalAlloc(NativeMethods.GHND,(UIntPtr)size);
-		}
-
-		public void MemFree(IntPtr handle) {
-			if(handle==IntPtr.Zero) {
-				return;
-			}
-			if(_memFree!=null) {
-				_memFree(handle);
-				return;
-			}
-			NativeMethods.GlobalFree(handle);
-		}
-
-		public IntPtr MemLock(IntPtr handle) {
-			if(_memLock!=null) {
-				return _memLock(handle);
-			}
-			return NativeMethods.GlobalLock(handle);
-		}
-
-		public void MemUnlock(IntPtr handle) {
-			if(_memUnlock!=null) {
-				_memUnlock(handle);
-				return;
-			}
-			NativeMethods.GlobalUnlock(handle);
-		}
-
 		public void Dispose() {
-			_memAllocate=null;
-			_memFree=null;
-			_memLock=null;
-			_memUnlock=null;
 			_dsmEntry=null;
 			if(_hModule!=IntPtr.Zero) {
 				NativeMethods.FreeLibrary(_hModule);

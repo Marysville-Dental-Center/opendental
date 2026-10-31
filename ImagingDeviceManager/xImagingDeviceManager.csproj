@@ -46,6 +46,8 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
+    <!-- The status and Cancel window and the notices of device acquisitions (UI folder). -->
+    <Reference Include="System.Windows.Forms" />
   </ItemGroup>
   <ItemGroup>
     <!-- Every .cs file under this folder is compiled, so packages that add files never conflict over this project file. -->
