@@ -350,6 +350,32 @@ namespace ImagingCapture.Camera {
 			return true;
 		}
 
+		///<summary>Write, then config.Save, for a window that shares config with another one (the Learn window and the Video
+		///window). When the write or the save fails, the camera values config held before are written back into it, so that the
+		///other window's next save does not save and apply values the user was told were not saved. A [Level.N] section the
+		///write added stays in config then, disabled and empty. Returns false, with error, on failure. On success error is "" and
+		///warning is "" or the warning Save left in config.LastError (for example that the values went to the per-user file).</summary>
+		public bool WriteAndSave(LocalCaptureConfig config,out string error,out string warning) {
+			warning="";
+			if(config==null) {
+				error="No capture settings to write to.";
+				return false;
+			}
+			CameraConfig cameraConfigBefore=Read(config);
+			if(Write(config,out error)) {
+				if(config.Save()) {
+					warning=config.LastError;
+					return true;
+				}
+				error=config.LastError;
+			}
+			//Values Read from config can be written back, except text an editor put in the file that Set refuses (a control
+			//character), which Write reports without setting anything.
+			string errorRestore;
+			cameraConfigBefore.Write(config,out errorRestore);
+			return false;
+		}
+
 		private static void AddControlInput(List<string[]> listSets,string section,ControlInputConfig controlInputOld,ControlInputConfig controlInputNew) {
 			AddIfChanged(listSets,section,"Enabled",controlInputOld.Enabled,controlInputNew.Enabled);
 			AddIfChanged(listSets,section,"Interface",FormatNullable(controlInputOld.Interface),FormatNullable(controlInputNew.Interface));

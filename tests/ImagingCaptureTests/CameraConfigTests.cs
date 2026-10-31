@@ -26,6 +26,9 @@ namespace ImagingCapture.Tests {
 		[TestCleanup]
 		public void Cleanup() {
 			try {
+				foreach(string path in Directory.GetFiles(_folder,"*",SearchOption.AllDirectories)) {
+					File.SetAttributes(path,FileAttributes.Normal);
+				}
 				Directory.Delete(_folder,true);
 			}
 			catch {
@@ -282,6 +285,56 @@ namespace ImagingCapture.Tests {
 			Assert.IsFalse(cameraConfig.Write(config,out error));
 			StringAssert.Contains(error,"[Camera] Moniker");
 			Assert.IsFalse(config.HasUnsavedChanges,"Width was not set either.");
+		}
+
+		[TestMethod]
+		public void WriteAndSave_FailedSave_LeavesNothingForTheOtherWindowToSave() {
+			File.WriteAllText(_path,"[Camera]\r\nMoniker=@device:test:1\r\n");
+			File.SetAttributes(_path,FileAttributes.ReadOnly);
+			//One loaded capture.ini, shared by the Video window and the Learn window.
+			LocalCaptureConfig config=LocalCaptureConfig.Load(_path);
+			CameraConfig cameraConfigLearned=CameraConfig.Read(config);
+			cameraConfigLearned.StillEnabled=true;
+			cameraConfigLearned.DebounceMs=400;
+			cameraConfigLearned.ControlPoll.Enabled=true;
+			cameraConfigLearned.ControlPoll.SetBinding(new ControlBinding(new ControlId(UvcControlInterface.CameraControl,3),0x1,ControlLevel.High));
+			LevelInputConfig level=new LevelInputConfig(1) { Enabled=true,Action=LevelAction.PausePreview };
+			level.SetBinding(new ControlBinding(new ControlId(UvcControlInterface.VideoProcAmp,0),0x100,ControlLevel.Low));
+			cameraConfigLearned.Levels.Add(level);
+			string error;
+			string warning;
+			Assert.IsFalse(cameraConfigLearned.WriteAndSave(config,out error,out warning));
+			StringAssert.Contains(error,"read-only");
+			Assert.AreEqual("",warning);
+			CameraConfig cameraConfigAfter=CameraConfig.Read(config);
+			AssertNoTriggerValues(cameraConfigAfter);
+			Assert.AreEqual("@device:test:1",cameraConfigAfter.Moniker);
+			//The Video window's next settings save (VideoCaptureSession.SaveSettings), once the file can be written.
+			File.SetAttributes(_path,FileAttributes.Normal);
+			CameraConfig cameraConfigVideo=CameraConfig.Read(config);
+			cameraConfigVideo.MainWindowSpace=false;
+			Assert.IsTrue(cameraConfigVideo.Write(config,out error),error);
+			Assert.IsTrue(config.Save(),config.LastError);
+			CameraConfig cameraConfigSaved=CameraConfig.Read(LocalCaptureConfig.Load(_path));
+			Assert.IsFalse(cameraConfigSaved.MainWindowSpace);
+			AssertNoTriggerValues(cameraConfigSaved);
+			Assert.AreEqual("@device:test:1",cameraConfigSaved.Moniker);
+		}
+
+		[TestMethod]
+		public void WriteAndSave_SavedToTheFallback_ReturnsTheWarning() {
+			File.WriteAllText(_path,"[Camera]\r\n");
+			File.SetAttributes(_path,FileAttributes.ReadOnly);
+			string pathFallback=Path.Combine(_folder,"user","capture.ini");
+			LocalCaptureConfig config=LocalCaptureConfig.Load(_path,pathFallback);
+			CameraConfig cameraConfig=CameraConfig.Read(config);
+			cameraConfig.StillEnabled=true;
+			string error;
+			string warning;
+			Assert.IsTrue(cameraConfig.WriteAndSave(config,out error,out warning),error);
+			Assert.AreEqual("",error);
+			StringAssert.Contains(warning,"take effect only after");
+			Assert.IsTrue(CameraConfig.Read(LocalCaptureConfig.Load(pathFallback)).StillEnabled);
 		}
 
 		[TestMethod]

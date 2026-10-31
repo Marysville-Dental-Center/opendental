@@ -56,7 +56,7 @@ namespace ImagingCapture.UI {
 
 		#region Constructor
 		///<summary>frameSource: the camera the caller has open and streaming. localCaptureConfig: the loaded capture.ini, which Save
-		///writes and saves.</summary>
+		///writes and saves. When saving fails, it gets its old camera values back (CameraConfig.WriteAndSave).</summary>
 		public FrmCaptureLearn(IFrameSource frameSource,LocalCaptureConfig localCaptureConfig,CaptureLearnMode captureLearnMode) {
 			InitializeComponent();
 			_frameSource=frameSource??throw new ArgumentNullException(nameof(frameSource));
@@ -224,16 +224,16 @@ namespace ImagingCapture.UI {
 				return;
 			}
 			string error;
-			if(!cameraConfig.Write(_localCaptureConfig,out error) || !_localCaptureConfig.Save()) {
-				if(error=="") {
-					error=_localCaptureConfig.LastError;
-				}
+			string warning;
+			//The caller's window shares _localCaptureConfig. On failure WriteAndSave puts the old values back, so its next save does
+			//not pick up the values this window says were not saved.
+			if(!cameraConfig.WriteAndSave(_localCaptureConfig,out error,out warning)) {
 				MsgBox.Show(Lang.g(this,"The camera settings could not be saved.")+" "+error);
 				return;
 			}
 			List<string> listWarnings=new List<string>();
-			if(_localCaptureConfig.LastError!="") {
-				listWarnings.Add(_localCaptureConfig.LastError);
+			if(warning!="") {
+				listWarnings.Add(warning);
 			}
 			string errorCategory;
 			if(!VideoCategoryPref.Save(_captureLearnModel.CategoryDefNumOriginal,_captureLearnModel.CategoryDefNum,_imageCategoryRule,out errorCategory)) {
