@@ -9,14 +9,18 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace ImagingCapture.Tests {
 	///<summary>Design 8.7: the only write this project makes to a camera is IAMStreamConfig::SetFormat. These tests read the
-	///ImagingCapture source (comments removed) and fail if code calls a vtable placeholder (which includes the Set slots of
-	///IAMCameraControl and IAMVideoProcAmp), calls SetFormat from more than one place, or uses an interface or function that
-	///writes camera controls or opens driver property pages.</summary>
+	///ImagingCapture source and the Video window that runs the camera (comments removed) and fail if code calls a vtable
+	///placeholder (which includes the Set slots of IAMCameraControl and IAMVideoProcAmp), calls SetFormat from more than one
+	///place, or uses an interface or function that writes camera controls or opens driver property pages.</summary>
 	[TestClass]
 	public class CameraWriteGuardTests {
 		private static List<Tuple<string,string>> _listSources;
+		///<summary>Files outside ImagingCapture that run the camera, from the repository root, scanned when present: the Video window
+		///(design 8.7: it has no button for the camera's property pages).</summary>
+		private static readonly string[] _arrayFilesOutside={ @"OpenDental\Forms\FormVideo.cs",@"OpenDental\Forms\FormVideo.designer.cs" };
 
-		///<summary>(path relative to ImagingCapture, code without comments) for every .cs file outside bin and obj.</summary>
+		///<summary>(path, code without comments) for every .cs file of ImagingCapture outside bin and obj, with the path relative to
+		///ImagingCapture, and for each of _arrayFilesOutside that exists, with the path relative to the repository root.</summary>
 		private static List<Tuple<string,string>> GetSources() {
 			if(_listSources!=null) {
 				return _listSources;
@@ -43,10 +47,17 @@ namespace ImagingCapture.Tests {
 				_listSources.Add(Tuple.Create(pathRelative,StripComments(File.ReadAllText(path))));
 			}
 			Assert.IsTrue(_listSources.Count>10,"Too few source files found in "+folderProject);
+			string root=Path.GetDirectoryName(folderProject);
+			foreach(string fileOutside in _arrayFilesOutside) {
+				string path=Path.Combine(root,fileOutside);
+				if(File.Exists(path)) {
+					_listSources.Add(Tuple.Create(fileOutside,StripComments(File.ReadAllText(path))));
+				}
+			}
 			return _listSources;
 		}
 
-		///<summary>Removes /* */ and // comments. The project has no string literal that contains either marker.</summary>
+		///<summary>Removes /* */ and // comments. The scanned files have no string literal that contains either marker.</summary>
 		private static string StripComments(string code) {
 			code=Regex.Replace(code,@"/\*.*?\*/","",RegexOptions.Singleline);
 			return Regex.Replace(code,@"//[^\r\n]*","");
