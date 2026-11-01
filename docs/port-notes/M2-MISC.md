@@ -125,6 +125,13 @@ New project `tests/M2MISCTests` (MSTest v1, x86, .NET 4.8; in `OpenDental.sln` a
 - Targeted tests: `M2MISCTests` 71/71, `AttributionTests` 15/15 (FormAbout), `TaskCategoryTests` 21/21 (source checks of `FormTaskEdit` and `UserControlTasks`), `M202Tests` 39/39 (the `AutoCondField` registry), `NoHqTests` 49/49.
 - `tools/Test-NoHqHosts.ps1`: passed.
 
+## Finishing run (branch `port/m2-misc-t1`, 2026-10-31)
+
+- Merged `port/int-7` (1763cc7ae) with no conflicts. B-PRINT, B-PERIO, B-TASK, B-APPT, M2-01 and M2-02 are on that base; their notes' hand-over points to this package are settled: the Print Options window part of `v25_4-misc-print-window` is built on B-PRINT's `FrmPrintOptions`, and `PrinterL.SetPrinter` and `PrintOptionsWpf` no longer keep their own copies of the printer rules. The perio, task and automation hunks merged as the Interplay section expected.
+- Review finding fixed: referral slips and letters printed `referral.phone` only for values of exactly 10 characters (`SheetFiller.cs`), so phones saved with an extension, a leading 1 or an international number disappeared from them. They now print every stored value (10 digits in the office format), as do the Family module's referral list, and the patient-to-referral copies in `Patients.cs` use the same rule as Edit Referral.
+- No fork migration step, no adoption change (the adoption tools need nothing new).
+- Checks: full build of `OpenDental.Local.slnf` through the build lane, 0 errors. `run-tests -Mode Core` with `ForkMigrationTests`, `M201Tests`, `SyntheticData.Tests` and `AdoptionValidation.Tests`: every assembly passed (`M2MISCTests` 78/78, `BPRINTTests` 71/71, `SheetTests` 31/31, `TaskCategoryTests` 21/21, `BPERIOTests` 55/55, `NoHqTests` 49/49). `tools/Test-NoHqHosts.ps1`: passed.
+
 ## Not tested
 
 - No window was opened (OpenDental.exe is not launched in this run): the new grid columns and labels, the Print Options rule and state lines (layout, the state line filling in after the background query), the non-modal windows on screen (focus, owner, bring to front), the referral box's as-you-type formatting, and the radio button focus were checked by source tests only.
