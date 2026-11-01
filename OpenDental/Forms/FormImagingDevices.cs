@@ -118,6 +118,13 @@ namespace OpenDentalImaging {
 			_changed=true;
 		}
 
+		///<summary>The unassigned captures of this computer (design 7.12): the capture quarantine, and the capture journal's recent copies. Each
+		///Assign, Reassign and Discard in it checks its own permission.</summary>
+		private void butUnassigned_Click(object sender,EventArgs e) {
+			ImagingCapture.UI.FrmCaptureQuarantine.ShowModal(new ImagingCapture.Recovery.CaptureRecoveryContext {
+				View=ImagingCapture.Recovery.CaptureRecoveryView.Unassigned });
+		}
+
 		private void FormImagingDevices_FormClosing(object sender,FormClosingEventArgs e) {
 			if(_changed){
 				DataValid.SetInvalid(InvalidType.ToolButsAndMounts);

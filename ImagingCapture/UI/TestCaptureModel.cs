@@ -93,7 +93,7 @@ namespace ImagingCapture.UI {
 		public string GatedCanonicalText { get; }
 		public string HashError { get; }="";
 		public string ComputerName { get; }
-		public string UnassignedText { get; }
+		public string UnassignedText { get; private set; }
 		public TestCaptureState State { get; private set; }=TestCaptureState.Closed;
 		///<summary>The indicator: the session's own status text, or Test capture's.</summary>
 		public string StatusText { get; private set; }
@@ -110,6 +110,15 @@ namespace ImagingCapture.UI {
 		public CaptureVerificationRecord RecordWritten { get; private set; }
 		///<summary>Changes whenever something the window shows changed.</summary>
 		public int Version { get; private set; }
+
+		///<summary>The quarantine line read again (CaptureQuarantine.GetUnassignedText) after the unassigned captures window closed, or null.</summary>
+		public void SetUnassignedText(string unassignedText) {
+			if(unassignedText==UnassignedText) {
+				return;
+			}
+			UnassignedText=unassignedText;
+			Version++;
+		}
 
 		///<summary>8 or 16: what the next enable asks for. Test capture asks for 16 by default, to measure (design 7.1 CAP-3), whatever
 		///[Device.N] Bits says.</summary>
@@ -157,6 +166,8 @@ namespace ImagingCapture.UI {
 		}
 
 		public bool CanStart => State==TestCaptureState.Closed || State==TestCaptureState.Open;
+		///<summary>The unassigned captures window (design 7.12) opens from the notice only while no test image is being taken.</summary>
+		public bool CanOpenUnassignedCaptures => UnassignedText!=null && (State==TestCaptureState.Closed || State==TestCaptureState.Open);
 		public bool CanStop => State==TestCaptureState.Enabled;
 		///<summary>A measured image and the settings hash exist. The record needs the Setup permission too, which the window checks.</summary>
 		public bool CanWriteRecord => Analysis!=null && Analysis.IsValid && GatedSettingsHashValue!="" && State!=TestCaptureState.Closing;

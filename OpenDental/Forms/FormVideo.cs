@@ -42,6 +42,10 @@ namespace OpenDental {
 		private bool _isFillingCombo;
 		///<summary>The settings menu last shown, disposed when the next one is built or the window closes.</summary>
 		private ContextMenu _contextMenuSettings;
+		///<summary>"N unassigned captures on this computer" when the window opened with a non-empty capture quarantine, or null.</summary>
+		private string _unassignedText;
+		///<summary>labelInfo shows _unassignedText, which then opens the unassigned captures window.</summary>
+		private bool _isUnassignedShown;
 		#endregion Fields
 
 		///<summary>Fires for each photo: the Capture button, Space, or a camera button. The bitmap is a copy made for the handler,
@@ -153,6 +157,40 @@ namespace OpenDental {
 			_videoCaptureSession.LevelChanged+=videoCaptureSession_LevelChanged;
 			ODEvent.Fired+=ODEvent_Fired;
 			ShowStatus(VideoStatusText.Starting());
+			labelInfo.Click+=labelInfo_Click;
+			labelInfo.TextChanged+=labelInfo_TextChanged;
+			ShowUnassignedNotice();
+		}
+
+		///<summary>Design 7.12 "Visibility": "N unassigned captures on this computer" under the preview when the window opens while the capture
+		///quarantine is not empty. Clicking it opens the unassigned captures window; the next note under the preview replaces it.</summary>
+		private void ShowUnassignedNotice() {
+			_unassignedText=ImagingDeviceManager.Capture.CaptureQuarantine.GetUnassignedText();
+			if(_unassignedText!=null && labelInfo.Text=="") {
+				labelInfo.Text=_unassignedText;
+			}
+			else if(_unassignedText==null && _isUnassignedShown) {
+				labelInfo.Text="";
+			}
+		}
+
+		private void labelInfo_TextChanged(object sender,EventArgs e) {
+			_isUnassignedShown=_unassignedText!=null && labelInfo.Text==_unassignedText;
+			labelInfo.Cursor=_isUnassignedShown ? Cursors.Hand : Cursors.Default;
+			labelInfo.ForeColor=_isUnassignedShown ? Color.Blue : SystemColors.ControlText;
+		}
+
+		///<summary>The unassigned captures window (ImagingCapture), modal to this one. Each action in it checks its own permission; a capture is
+		///filed only for its originating patient or for a patient found with the patient search, never for this window's patient by default.</summary>
+		private void labelInfo_Click(object sender,EventArgs e) {
+			if(!_isUnassignedShown || IsDisposed) {
+				return;
+			}
+			ImagingCapture.UI.FrmCaptureQuarantine.ShowModal(new ImagingCapture.Recovery.CaptureRecoveryContext {
+				View=ImagingCapture.Recovery.CaptureRecoveryView.Unassigned });
+			if(!IsDisposed) {
+				ShowUnassignedNotice();
+			}
 		}
 
 		private void FormVideo_Shown(object sender,EventArgs e) {

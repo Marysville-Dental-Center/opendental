@@ -300,6 +300,18 @@ Name=Not gated
 			Assert.IsFalse(model.GetDeviceText().Contains("set up for computer"));
 		}
 
+		[TestMethod]
+		public void UnassignedNotice_OpensTheWindowOnlyWhileNotTaking_ReadAgainAfterwards() {
+			TestCaptureDevice device=new TestCaptureDevice { ImagingDeviceNum=12,Description="Sensor",TwainName="Example Sensor DS",ComputerName="OPPC1" };
+			TestCaptureModel model=new TestCaptureModel(device,Load(Ini),"OPPC1",new ImageCategoryRule(Categories),null,"2 unassigned capture(s) on this computer.");
+			Assert.IsTrue(model.CanOpenUnassignedCaptures);
+			int version=model.Version;
+			model.SetUnassignedText(null);
+			Assert.IsNull(model.UnassignedText);
+			Assert.IsTrue(model.Version>version);
+			Assert.IsFalse(model.CanOpenUnassignedCaptures,"No notice, no link.");
+		}
+
 		#region CaptureVerificationRecord
 		private static CaptureVerificationRecord FullRecord() {
 			return new CaptureVerificationRecord {

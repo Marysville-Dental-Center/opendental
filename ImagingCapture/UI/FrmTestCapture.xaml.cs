@@ -49,6 +49,7 @@ namespace ImagingCapture.UI {
 			FormClosing+=FrmTestCapture_FormClosing;
 			comboBits.SelectionChangeCommitted+=comboBits_SelectionChangeCommitted;
 			comboCategory.SelectionChangeCommitted+=comboCategory_SelectionChangeCommitted;
+			linkUnassigned.LinkClicked+=linkUnassigned_LinkClicked;
 		}
 
 		#region Methods - Event Handlers
@@ -138,6 +139,17 @@ namespace ImagingCapture.UI {
 
 		private void butClose_Click(object sender,EventArgs e) {
 			Close();
+		}
+
+		///<summary>The notice opens the unassigned captures window (design 7.12) while no test image is being taken. A test capture's own late
+		///images are there marked "patient unknown", so they are offered only through Reassign or Discard.</summary>
+		private void linkUnassigned_LinkClicked(object sender,EventArgs e) {
+			if(_isClosed || _testCaptureModel==null || !_testCaptureModel.CanOpenUnassignedCaptures) {
+				return;
+			}
+			FrmCaptureQuarantine.ShowModal(new Recovery.CaptureRecoveryContext { View=Recovery.CaptureRecoveryView.Unassigned });
+			_testCaptureModel.SetUnassignedText(CaptureQuarantine.GetUnassignedText());
+			RefreshView();
 		}
 
 		private void checkByteOrder_Click(object sender,EventArgs e) {
@@ -274,7 +286,14 @@ namespace ImagingCapture.UI {
 			}
 			_versionShown=model.Version;
 			SetText(labelDevice,model.GetDeviceText());
-			SetText(labelUnassigned,model.UnassignedText??"");
+			string unassigned=model.UnassignedText??"";
+			if(linkUnassigned.Text!=unassigned) {
+				linkUnassigned.Text=unassigned;
+			}
+			int linkLength=model.CanOpenUnassignedCaptures ? unassigned.Length : 0;
+			if(linkUnassigned.LinkLength!=linkLength) {
+				linkUnassigned.LinkLength=linkLength;
+			}
 			SetText(labelStatus,model.StatusText);
 			SetText(labelMessage,model.MessageText);
 			string results=model.GetResultText();
