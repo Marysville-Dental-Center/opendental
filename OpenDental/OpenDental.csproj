@@ -825,6 +825,7 @@
     <Compile Include="Forms\FormTaskAttachments.designer.cs">
       <DependentUpon>FormTaskAttachments.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\TaskAttachmentWindows.cs" />
     <Compile Include="Forms\FormHieSetup.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -8862,6 +8863,10 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="User Controls\ContrPerio.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="User Controls\ContrPerio.Direction.cs">
+      <DependentUpon>ContrPerio.cs</DependentUpon>
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="User Controls\ODtextBox.cs">

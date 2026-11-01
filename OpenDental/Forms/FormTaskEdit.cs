@@ -88,6 +88,7 @@ namespace OpenDental {
 			}
 			_taskList=TaskLists.GetOne(task.TaskListNum);
 			Lan.F(this);
+			FormClosed+=(sender,e) => TaskAttachmentWindows.CloseForTask(TaskCur.TaskNum);//26.1: the attachment windows are non-modal
 		}
 
 		private void FormTaskListEdit_Load(object sender,System.EventArgs e) {
@@ -848,13 +849,14 @@ namespace OpenDental {
 
 		private void butAttachmnents_Click(object sender,EventArgs e) {
 			TaskCur.IsNew=IsNew;
-			using FormTaskAttachments formTaskAttachments=new FormTaskAttachments(TaskCur);
-			//If the user does not heave edit read only permission, and the task it read only, set attachment form to read only.
-			if(checkIsReadOnly.Checked) {
-				formTaskAttachments.IsReadOnly=true;
-			}
-			formTaskAttachments.ShowDialog();
-			if(formTaskAttachments.DialogResult!=DialogResult.OK) {
+			//26.1: non-modal and owned by this window; one per task (a second click brings it to the front). If the user does not heave edit read
+			//only permission, and the task it read only, set attachment form to read only.
+			TaskAttachmentWindows.ShowAttachments(this,TaskCur,checkIsReadOnly.Checked,OnTaskAttachmentsChanged);
+		}
+
+		///<summary>An attachment was added, changed or deleted in the open Task Attachments window.</summary>
+		private void OnTaskAttachmentsChanged() {
+			if(IsDisposed) {
 				return;
 			}
 			FillTextAttachments();
@@ -1344,6 +1346,7 @@ namespace OpenDental {
 		
 		///<summary>Sets the form into "Deleted" mode to disallow changes to be made.</summary>
 		private void SetFormToDeletedMode() {
+				TaskAttachmentWindows.SetTaskDeleted(TaskCur.TaskNum);//26.1: its open attachment windows become read-only
 				_isTaskDeleted=true;
 				labelTaskChanged.Visible=true;
 				labelTaskChanged.Text=Lan.g(this,"The task has been deleted");

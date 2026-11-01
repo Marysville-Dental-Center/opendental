@@ -6,16 +6,18 @@
              xmlns:local="clr-namespace:OpenDental"
              xmlns:ui="clr-namespace:WpfControls.UI"
              mc:Ignorable="d"
-             Width="392" Height="226"
+             Width="452" Height="262"
              Text="Print Options" MinMaxBoxes="False">
 	<Grid Background="#FFFCFDFE" >
 		<ui:Label Margin="10,17,0,0" Width="72" Height="18" Text="Printer" HAlign="Right" VAlign="Center"/>
-		<ui:ComboBox x:Name="comboPrinter" Margin="86,16,0,0" Width="292" Height="21"/>
-		<ui:Label x:Name="labelSituation" Margin="86,39,0,0" Width="292" Height="18" Text="Print situation" VAlign="Center"/>
-		<ui:Label Margin="10,64,0,0" Width="72" Height="18" Text="Copies" HAlign="Right" VAlign="Center"/>
-		<ui:TextVInt x:Name="textCopies" Margin="86,63,0,0" Width="50" Height="20" MinVal="1" MaxVal="999"/>
-		<ui:CheckBox x:Name="checkCollate" Margin="152,63,0,0" Width="90" Height="20" Text="Collate"/>
-		<ui:GroupBox x:Name="groupPages" Margin="14,94,0,0" Width="364" Height="58" Text="Pages">
+		<ui:ComboBox x:Name="comboPrinter" Margin="86,16,0,0" Width="352" Height="21"/>
+		<ui:Label x:Name="labelSituation" Margin="86,39,0,0" Width="352" Height="18" Text="Print situation" VAlign="Center"/>
+		<ui:Label x:Name="labelRule" Margin="86,57,0,0" Width="352" Height="18" Text="" VAlign="Center"/>
+		<ui:Label x:Name="labelStatus" Margin="86,75,0,0" Width="352" Height="18" Text="" VAlign="Center"/>
+		<ui:Label Margin="10,100,0,0" Width="72" Height="18" Text="Copies" HAlign="Right" VAlign="Center"/>
+		<ui:TextVInt x:Name="textCopies" Margin="86,99,0,0" Width="50" Height="20" MinVal="1" MaxVal="999"/>
+		<ui:CheckBox x:Name="checkCollate" Margin="152,99,0,0" Width="90" Height="20" Text="Collate"/>
+		<ui:GroupBox x:Name="groupPages" Margin="14,130,0,0" Width="424" Height="58" Text="Pages">
 			<ui:RadioButton x:Name="radioAll" Margin="12,24,0,0" Width="56" Height="20" Text="All"/>
 			<ui:RadioButton x:Name="radioRange" Margin="76,24,0,0" Width="64" Height="20" Text="Pages"/>
 			<ui:TextVInt x:Name="textFromPage" Margin="142,24,0,0" Width="50" Height="20" MinVal="1" MaxVal="99999"/>

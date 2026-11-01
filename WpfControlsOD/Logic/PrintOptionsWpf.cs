@@ -69,29 +69,17 @@ namespace WpfControls {
 			return true;
 		}
 
-		///<summary>The printer the rules pick for the situation, as WinForms printing does (OpenDental.PrinterL): the Default situation's printer,
-		///replaced by the situation's own printer when it has a row. "" means the Windows default printer. isPrompt is the Prompt setting of the
-		///row that picked the printer.</summary>
+		///<summary>The printer the rules pick for the situation, the same rules as WinForms printing (OpenDental.PrinterL.SetPrinter), both through
+		///PrintSituationRules: the situation's own printer when its row names an installed printer, otherwise the Default situation's printer.
+		///Never "" unless Windows has no default printer: the Windows default printer's name is returned when no row names an installed printer.
+		///isPrompt is the Prompt setting of the situation's row, otherwise of the Default row.</summary>
 		public static string GetPrinterNameForSituation(PrintSituation printSituation,out bool isPrompt) {
 			isPrompt=false;
 			string printerName="";
 			try {
-				Printer printer=Printers.GetForSit(PrintSituation.Default);
-				if(printer!=null) {
-					isPrompt=printer.DisplayPrompt;
-					if(Printers.PrinterIsInstalled(printer.PrinterName)) {
-						printerName=printer.PrinterName;
-					}
-				}
-				if(printSituation!=PrintSituation.Default) {
-					Printer printerSituation=Printers.GetForSit(printSituation);
-					if(printerSituation!=null) {
-						isPrompt=printerSituation.DisplayPrompt;
-						if(Printers.PrinterIsInstalled(printerSituation.PrinterName)) {
-							printerName=printerSituation.PrinterName;
-						}
-					}
-				}
+				PrinterChoice printerChoice=PrintSituationRules.ResolveForThisComputer(printSituation);
+				isPrompt=printerChoice.DisplayPrompt;
+				printerName=printerChoice.PrinterName;
 			}
 			catch(Exception ex) {
 				ex.DoNothing();//No computer or printer rows (for example a database without the tables): use the Windows default.
@@ -104,13 +92,7 @@ namespace WpfControls {
 
 		///<summary>The Windows default printer's name, or "" if there is none.</summary>
 		public static string GetWindowsDefaultPrinter() {
-			try {
-				return new System.Drawing.Printing.PrinterSettings().PrinterName??"";
-			}
-			catch(Exception ex) {
-				ex.DoNothing();
-				return "";
-			}
+			return PrintSituationRules.GetWindowsDefaultPrinterName();
 		}
 
 		///<summary>The print queue whose full name is the printer name (local printers and printer connections). Null if not found.</summary>

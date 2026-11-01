@@ -15,6 +15,9 @@ namespace OpenDental {
 		private bool _isRefreshRequired;
 		/// <summary>If this  is set true, editing attachments will be disabled. </summary>
 		public bool IsReadOnly=false;
+		///<summary>26.1: this window is non-modal (TaskAttachmentWindows). Runs each time an attachment is added, changed or deleted from it, so the
+		///task window can refresh while this one stays open.</summary>
+		public Action ActionAttachmentsChanged;
 
 		public FormTaskAttachments(Task task) {
 			InitializeComponent();
@@ -60,13 +63,27 @@ namespace OpenDental {
 			}
 			TaskAttachment taskAttachment=new TaskAttachment();
 			taskAttachment.IsNew=true;
-			FormTaskAttachmentEdit formTaskAttachmentEdit=new FormTaskAttachmentEdit(_task);
-			formTaskAttachmentEdit.TaskAttachmentCur=taskAttachment;
-			formTaskAttachmentEdit.ShowDialog();
-			if(formTaskAttachmentEdit.DialogResult!=DialogResult.OK) {
+			//26.1: non-modal, so the user can look for the document in other windows meanwhile.
+			TaskAttachmentWindows.ShowAttachmentEdit(this,_task,taskAttachment,isReadOnly:false,actionSaved:OnAttachmentSaved);
+		}
+
+		///<summary>An attachment edit window opened from here saved or deleted its attachment.</summary>
+		private void OnAttachmentSaved() {
+			_isRefreshRequired=true;
+			if(!IsDisposed) {
+				FillGrid();
+			}
+			ActionAttachmentsChanged?.Invoke();
+		}
+
+		///<summary>The task was deleted while this window is open: attachments can only be viewed from now on.</summary>
+		public void SetTaskDeleted() {
+			if(IsDisposed) {
 				return;
 			}
-			_isRefreshRequired=true;
+			IsReadOnly=true;
+			butAdd.Enabled=false;
+			Text=Lan.g(this,"Task Attachments")+" - "+Lan.g(this,"the task was deleted");
 			FillGrid();
 		}
 
@@ -97,20 +114,13 @@ namespace OpenDental {
 		}
 
 		private void gridMain_CellDoubleClick(object sender,ODGridClickEventArgs e) {
-			FormTaskAttachmentEdit formTaskAttachmentEdit=new FormTaskAttachmentEdit(_task);
-			formTaskAttachmentEdit.IsReadOnly=this.IsReadOnly;
 			TaskAttachment taskAttachment=gridMain.SelectedTag<TaskAttachment>();
 			if(taskAttachment==null) {
 				MsgBox.Show(this,"Could not edit attachment.");
 				return;
 			}
-			formTaskAttachmentEdit.TaskAttachmentCur=taskAttachment;
-			formTaskAttachmentEdit.ShowDialog();
-			if(formTaskAttachmentEdit.DialogResult!=DialogResult.OK) {
-				return;
-			}
-			_isRefreshRequired=true;
-			FillGrid();
+			//26.1: non-modal. Opening an attachment that already has an edit window open brings that window to the front.
+			TaskAttachmentWindows.ShowAttachmentEdit(this,_task,taskAttachment,IsReadOnly,OnAttachmentSaved);
 		}
 
 		private void FormTaskAttachments_FormClosing(object sender,FormClosingEventArgs e) {
