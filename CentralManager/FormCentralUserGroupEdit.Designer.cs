@@ -24,11 +24,11 @@
 		/// </summary>
 		private void InitializeComponent() {
 			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormCentralUserGroupEdit));
-			this.butDelete = new OpenDental.UI.Button();
+			this.butDelete = new OpenPmsDental.UI.Button();
 			this.textDescription = new System.Windows.Forms.TextBox();
 			this.label1 = new System.Windows.Forms.Label();
-			this.butOK = new OpenDental.UI.Button();
-			this.butCancel = new OpenDental.UI.Button();
+			this.butOK = new OpenPmsDental.UI.Button();
+			this.butCancel = new OpenPmsDental.UI.Button();
 			this.SuspendLayout();
 			// 
 			// butDelete
@@ -101,10 +101,10 @@
 
 		#endregion
 
-		private OpenDental.UI.Button butDelete;
+		private OpenPmsDental.UI.Button butDelete;
 		private System.Windows.Forms.TextBox textDescription;
 		private System.Windows.Forms.Label label1;
-		private OpenDental.UI.Button butOK;
-		private OpenDental.UI.Button butCancel;
+		private OpenPmsDental.UI.Button butOK;
+		private OpenPmsDental.UI.Button butCancel;
 	}
 }

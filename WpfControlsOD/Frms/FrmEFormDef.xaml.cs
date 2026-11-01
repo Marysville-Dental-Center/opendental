@@ -7,10 +7,10 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	/// <summary></summary>
 	public partial class FrmEFormDef : FrmODBase {
 		public EFormDef EFormDefCur;

@@ -7,10 +7,10 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	/// <summary></summary>
 	public partial class FrmFont : FrmODBase {
 		///<summary>0 represents third mixed state. Valid values are between 50 and 300. If we leave it 0, then we are indicating that we don't want to change it.</summary>

@@ -7,8 +7,8 @@ using System.Linq;
 using System.Reflection;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations.Seeds26_1;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations.Seeds26_1;
 using UnitTestsCore;
 
 namespace M2RECURTests {
@@ -89,7 +89,7 @@ namespace M2RECURTests {
 		}
 
 		private List<EmailMessage> GetEmailMessages(long patNum) {
-			return OpenDentBusiness.Crud.EmailMessageCrud.SelectMany("SELECT * FROM emailmessage WHERE PatNum="+POut.Long(patNum));
+			return OpenPmsDentalBusiness.Crud.EmailMessageCrud.SelectMany("SELECT * FROM emailmessage WHERE PatNum="+POut.Long(patNum));
 		}
 		#endregion Helpers
 

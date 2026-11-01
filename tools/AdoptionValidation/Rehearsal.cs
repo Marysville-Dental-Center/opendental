@@ -6,10 +6,10 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
-using OpenDentBusiness.ForkMigrations.Features;
-using OpenDentBusiness.ForkMigrations.Seeds26_1;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
+using OpenPmsDentalBusiness.ForkMigrations.Features;
+using OpenPmsDentalBusiness.ForkMigrations.Seeds26_1;
 using SyntheticData.Generation;
 using SyntheticData.Infrastructure;
 using SyntheticData.Validation;
@@ -428,7 +428,7 @@ namespace AdoptionValidation {
 		///names the added row and the copied grant.</summary>
 		private void CheckUdsPlusRow(MigrationPreview.Result preview,HeadlessAdoption.Result adoption,AdoptionResult adoptionResult) {
 			UdsPlusRowPlan.Plan plan=preview.PlanUdsPlus;
-			OpenDentBusiness.ForkMigrations.Features.ReportRowUdsPlus.RowPlan rows=plan.Rows;
+			OpenPmsDentalBusiness.ForkMigrations.Features.ReportRowUdsPlus.RowPlan rows=plan.Rows;
 			AdoptionRowCheck.Result rowCheck=adoption.RowCheck;
 			List<string> listProblems=new List<string>();
 			string nameLater=OfficeFixture.ArrayReportRowsPublicHealth[1].internalName;
@@ -450,16 +450,16 @@ namespace AdoptionValidation {
 				}
 				listProblems.AddRange(rowCheck.ListFailures.Where(x => x.Contains("displayreport") || x.Contains("PermType "+OfficeFixture.PermReports+",")));
 			}
-			List<string> listLogExpected=new List<string> { OpenDentBusiness.ForkMigrations.Features.ReportRowUdsPlus.DescribeAdd(rows.IsHidden) };
+			List<string> listLogExpected=new List<string> { OpenPmsDentalBusiness.ForkMigrations.Features.ReportRowUdsPlus.DescribeAdd(rows.IsHidden) };
 			if(plan.ListUserGroupsGranted.Count>0) {
-				listLogExpected.Add(OpenDentBusiness.ForkMigrations.Features.ReportRowUdsPlus.DescribeCopy(plan.ListUserGroupsGranted.Count));
+				listLogExpected.Add(OpenPmsDentalBusiness.ForkMigrations.Features.ReportRowUdsPlus.DescribeCopy(plan.ListUserGroupsGranted.Count));
 			}
 			List<string> listLogMissing=listLogExpected.Where(x => !adoptionResult.ListLog.Any(y => y.Trim()==x)).ToList();
 			if(listLogMissing.Count>0) {
 				listProblems.Add("the adoption log lacks: "+string.Join("; ",listLogMissing));
 			}
-			if(BusinessLayer.Count("SELECT COUNT(*) FROM displayreport WHERE InternalName='"+OpenDentBusiness.DisplayReports.ReportNames.UdsPlus+"'")!=1) {
-				listProblems.Add("the adopted copy does not hold exactly one "+OpenDentBusiness.DisplayReports.ReportNames.UdsPlus+" row");
+			if(BusinessLayer.Count("SELECT COUNT(*) FROM displayreport WHERE InternalName='"+OpenPmsDentalBusiness.DisplayReports.ReportNames.UdsPlus+"'")!=1) {
+				listProblems.Add("the adopted copy does not hold exactly one "+OpenPmsDentalBusiness.DisplayReports.ReportNames.UdsPlus+" row");
 			}
 			string lineDisplayReport=rowCheck?.ListLines.FirstOrDefault(x => x.StartsWith("displayreport:"))??"";
 			string lineGroupPerm=rowCheck?.ListLines.FirstOrDefault(x => x.StartsWith("grouppermission:"))??"";
@@ -476,11 +476,11 @@ namespace AdoptionValidation {
 		///that, and the adoption log names each group.</summary>
 		private void CheckInsHistCodeGroups(MigrationPreview.Result preview,HeadlessAdoption.Result adoption,AdoptionResult adoptionResult) {
 			InsHistCodeGroupPlan.Plan plan=preview.PlanInsHist;
-			OpenDentBusiness.ForkMigrations.FeatureSteps.InsHistCodeGroupsMigration.MigrationPlan migration=plan.Migration;
+			OpenPmsDentalBusiness.ForkMigrations.FeatureSteps.InsHistCodeGroupsMigration.MigrationPlan migration=plan.Migration;
 			AdoptionRowCheck.Result rowCheck=adoption.RowCheck;
 			List<string> listProblems=new List<string>();
-			List<OpenDentBusiness.CodeGroup> listUpdated=migration.ListUpdated;
-			List<OpenDentBusiness.CodeGroup> listAdded=migration.ListAdded;
+			List<OpenPmsDentalBusiness.CodeGroup> listUpdated=migration.ListUpdated;
+			List<OpenPmsDentalBusiness.CodeGroup> listAdded=migration.ListAdded;
 			if(!plan.IsChanging || listUpdated.Count!=OfficeFixture.CountInsHistGroupsMarked || listAdded.Count!=OfficeFixture.CountInsHistGroupsAdded
 				|| listAdded.Any(x => x.GroupName!=OfficeFixture.INSHIST_GROUP_ADDED) || listUpdated.Count(x => x.IsPerioFourQuads)!=1
 				|| !listUpdated.Any(x => x.ProcCodes.EndsWith(","+OfficeFixture.INSHIST_CODE_ADDED)))
@@ -519,7 +519,7 @@ namespace AdoptionValidation {
 		///</summary>
 		private void CheckDxcCreditScore(MigrationPreview.Result preview,HeadlessAdoption.Result adoption,AdoptionResult adoptionResult,OfficeFixture.Summary fixture) {
 			DxcCreditScorePlan.Plan plan=preview.PlanDxc;
-			OpenDentBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.RowPlan rows=plan.Rows;
+			OpenPmsDentalBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.RowPlan rows=plan.Rows;
 			AdoptionRowCheck.Result rowCheck=adoption.RowCheck;
 			List<string> listProblems=new List<string>();
 			if(!plan.IsChanging || rows.ListPrograms.Count!=1 || rows.ListPrograms[0].ProgramNum!=fixture.DxcProgramNum || rows.ListProgramsDisabled.Count!=1
@@ -545,7 +545,7 @@ namespace AdoptionValidation {
 			if(listLogMissing.Count>0) {
 				listProblems.Add("the adoption log lacks: "+string.Join("; ",listLogMissing));
 			}
-			string prog=OpenDentBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.PROG_NAME;
+			string prog=OpenPmsDentalBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.PROG_NAME;
 			if(BusinessLayer.Count("SELECT COUNT(*) FROM program WHERE ProgName='"+prog+"' AND Enabled=0 AND ProgDesc='"+OfficeFixture.DXC_PROG_DESC+"'")!=1
 				|| BusinessLayer.Count("SELECT COUNT(*) FROM toolbutitem t INNER JOIN program p ON p.ProgramNum=t.ProgramNum WHERE p.ProgName='"+prog+"'")!=0
 				|| BusinessLayer.Count("SELECT COUNT(*) FROM toolbutitem t INNER JOIN program p ON p.ProgramNum=t.ProgramNum WHERE p.ProgName='"+OfficeFixture.PROGRAM_NAME+"'")

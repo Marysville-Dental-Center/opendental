@@ -23,15 +23,15 @@
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			this.gridPatients = new OpenDental.UI.GridOD();
-			this.gridDatabasesTo = new OpenDental.UI.GridOD();
+			this.gridPatients = new OpenPmsDental.UI.GridOD();
+			this.gridDatabasesTo = new OpenPmsDental.UI.GridOD();
 			this.labelSourceDb = new System.Windows.Forms.Label();
-			this.butTransfer = new OpenDental.UI.Button();
-			this.butClose = new OpenDental.UI.Button();
-			this.butAddPatients = new OpenDental.UI.Button();
-			this.butAddDatabases = new OpenDental.UI.Button();
-			this.butRemovePats = new OpenDental.UI.Button();
-			this.butRemoveDb = new OpenDental.UI.Button();
+			this.butTransfer = new OpenPmsDental.UI.Button();
+			this.butClose = new OpenPmsDental.UI.Button();
+			this.butAddPatients = new OpenPmsDental.UI.Button();
+			this.butAddDatabases = new OpenPmsDental.UI.Button();
+			this.butRemovePats = new OpenPmsDental.UI.Button();
+			this.butRemoveDb = new OpenPmsDental.UI.Button();
 			this.SuspendLayout();
 			// 
 			// gridPatients
@@ -41,7 +41,7 @@
             | System.Windows.Forms.AnchorStyles.Left)));
 			this.gridPatients.Location = new System.Drawing.Point(12, 59);
 			this.gridPatients.Name = "gridPatients";
-			this.gridPatients.SelectionMode = OpenDental.UI.GridSelectionMode.MultiExtended;
+			this.gridPatients.SelectionMode = OpenPmsDental.UI.GridSelectionMode.MultiExtended;
 			this.gridPatients.Size = new System.Drawing.Size(450, 369);
 			this.gridPatients.TabIndex = 6;
 			this.gridPatients.Title = "Patients to Export";
@@ -54,7 +54,7 @@
             | System.Windows.Forms.AnchorStyles.Left)));
 			this.gridDatabasesTo.Location = new System.Drawing.Point(485, 59);
 			this.gridDatabasesTo.Name = "gridDatabasesTo";
-			this.gridDatabasesTo.SelectionMode = OpenDental.UI.GridSelectionMode.MultiExtended;
+			this.gridDatabasesTo.SelectionMode = OpenPmsDental.UI.GridSelectionMode.MultiExtended;
 			this.gridDatabasesTo.Size = new System.Drawing.Size(450, 369);
 			this.gridDatabasesTo.TabIndex = 7;
 			this.gridDatabasesTo.Title = "Database to Export patients to";
@@ -159,14 +159,14 @@
 
 		#endregion
 
-		private OpenDental.UI.GridOD gridPatients;
-		private OpenDental.UI.GridOD gridDatabasesTo;
+		private OpenPmsDental.UI.GridOD gridPatients;
+		private OpenPmsDental.UI.GridOD gridDatabasesTo;
 		private System.Windows.Forms.Label labelSourceDb;
-		private OpenDental.UI.Button butTransfer;
-		private OpenDental.UI.Button butClose;
-		private OpenDental.UI.Button butAddPatients;
-		private OpenDental.UI.Button butAddDatabases;
-		private OpenDental.UI.Button butRemovePats;
-		private OpenDental.UI.Button butRemoveDb;
+		private OpenPmsDental.UI.Button butTransfer;
+		private OpenPmsDental.UI.Button butClose;
+		private OpenPmsDental.UI.Button butAddPatients;
+		private OpenPmsDental.UI.Button butAddDatabases;
+		private OpenPmsDental.UI.Button butRemovePats;
+		private OpenPmsDental.UI.Button butRemoveDb;
 	}
 }

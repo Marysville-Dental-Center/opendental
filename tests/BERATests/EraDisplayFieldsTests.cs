@@ -7,7 +7,7 @@ using System.Linq;
 using System.Threading;
 using System.Windows.Forms;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using static BERATests.EraObjects;
 
 namespace BERATests {

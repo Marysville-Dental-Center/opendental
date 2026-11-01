@@ -1,6 +1,6 @@
-﻿using OpenDental;
-using OpenDental.UI;
-using OpenDentBusiness;
+﻿using OpenPmsDental;
+using OpenPmsDental.UI;
+using OpenPmsDentalBusiness;
 using System;
 using System.Collections.Generic;
 using System.Data;

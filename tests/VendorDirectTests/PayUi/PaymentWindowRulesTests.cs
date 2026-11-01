@@ -7,9 +7,9 @@ using System.Collections.Generic;
 using System.Net;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.Bridges;
-using OpenDentBusiness.VendorDirect;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.Bridges;
+using OpenPmsDentalBusiness.VendorDirect;
 
 namespace VendorDirectTests.PayUi {
 	[TestClass]

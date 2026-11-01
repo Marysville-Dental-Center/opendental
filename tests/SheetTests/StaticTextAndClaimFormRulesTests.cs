@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using ForkMigrationTests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace SheetTests {
 	[TestClass]

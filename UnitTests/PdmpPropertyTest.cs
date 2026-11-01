@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using UnitTestsCore;
 
 namespace UnitTests {
@@ -41,7 +41,7 @@ namespace UnitTests {
 		[TestMethod]
 		public void PDMP_TryValidateValues_Fail() {
 			bool didThrow=false;
-			OpenDentBusiness.Program progCur = Programs.GetCur(ProgramName.PDMP);
+			OpenPmsDentalBusiness.Program progCur = Programs.GetCur(ProgramName.PDMP);
 			long provNum = ProviderT.CreateProvider("invalid-doc");
 			Provider prov = Providers.GetProv(provNum);
 			Patient pat = null;
@@ -124,7 +124,7 @@ namespace UnitTests {
 
 		[TestMethod]
 		public void PDMP_TryValidateValues_HappyPath() {
-			OpenDentBusiness.Program progCur = Programs.GetCur(ProgramName.PDMP);
+			OpenPmsDentalBusiness.Program progCur = Programs.GetCur(ProgramName.PDMP);
 			string state = "MD";
 			long provNum = ProviderT.CreateProvider("Valid-Prov",fName: "Jerry",lName: "Atric",nationalProvID: "B012");
 			Provider prov = Providers.GetProv(provNum);
@@ -156,7 +156,7 @@ namespace UnitTests {
 		[TestMethod]
 		public void Bamboo_TryValidateValues_Fail() {
 			bool didThrow=false;
-			OpenDentBusiness.Program progCur = Programs.GetCur(ProgramName.Bamboo);
+			OpenPmsDentalBusiness.Program progCur = Programs.GetCur(ProgramName.Bamboo);
 			long provNum = ProviderT.CreateProvider("invalid-doc");
 			Provider prov = Providers.GetProv(provNum);
 			Patient pat = null;
@@ -241,7 +241,7 @@ namespace UnitTests {
 
 		[TestMethod]
 		public void Bamboo_TryValidateValues_HappyPath() {
-			OpenDentBusiness.Program progCur = Programs.GetCur(ProgramName.Bamboo);
+			OpenPmsDentalBusiness.Program progCur = Programs.GetCur(ProgramName.Bamboo);
 			string state = "MD";
 			long provNum = ProviderT.CreateProvider("Valid-Prov",fName: "Jerry",lName: "Atric",nationalProvID: "B012");
 			Provider prov = Providers.GetProv(provNum);
@@ -294,7 +294,7 @@ namespace UnitTests {
 		}
 
 		///<summary>Sets the URL, asserts that Validate throws and names the URL, then puts the previous URL back.</summary>
-		private static void AssertUrlRefused(PdmpProperty properties,OpenDentBusiness.Program progCur,string url) {
+		private static void AssertUrlRefused(PdmpProperty properties,OpenPmsDentalBusiness.Program progCur,string url) {
 			string urlOld=properties.Url;
 			properties.Url=url;
 			try {

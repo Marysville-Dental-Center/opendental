@@ -1,7 +1,7 @@
 using System;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	///<summary></summary>
 	public partial class FrmChildParentEdit:FrmODBase {
 		///<summary></summary>

@@ -10,8 +10,8 @@ using System.Text.RegularExpressions;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.WebTypes.Shared.XWeb;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.WebTypes.Shared.XWeb;
 
 namespace VendorDirectTests.EdgeExpressTests {
 	[TestClass]

@@ -9,10 +9,10 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 ///<summary></summary>
 	public partial class FrmInsPlanSelect:FrmODBase {
 		///<summary>After closing this form, this will contain the selected Plan.</summary>

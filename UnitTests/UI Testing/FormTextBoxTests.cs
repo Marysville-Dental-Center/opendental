@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using OpenDental;
+using OpenPmsDental;
 
 namespace UnitTests {
 	public partial class FormTextBoxTests:FormODBase {

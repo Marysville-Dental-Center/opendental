@@ -10,8 +10,8 @@ using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace M201Tests {
 	[TestClass]
@@ -72,30 +72,30 @@ namespace M201Tests {
 		[TestMethod]
 		public void Crud_LongTextValues() {
 			ClaimPayment claimPayment=new ClaimPayment { CheckDate=new DateTime(2026,1,2),Note=new string('c',1000),CheckNum="",BankBranch="",CarrierName="" };
-			long claimPaymentNum=OpenDentBusiness.Crud.ClaimPaymentCrud.Insert(claimPayment);
-			Assert.AreEqual(1000,OpenDentBusiness.Crud.ClaimPaymentCrud.SelectOne(claimPaymentNum).Note.Length);
+			long claimPaymentNum=OpenPmsDentalBusiness.Crud.ClaimPaymentCrud.Insert(claimPayment);
+			Assert.AreEqual(1000,OpenPmsDentalBusiness.Crud.ClaimPaymentCrud.SelectOne(claimPaymentNum).Note.Length);
 			InsEditLog insEditLog=new InsEditLog { FieldName="PlanNote",OldValue="",NewValue="",Description="",OldValueBig=new string('o',5000),
 				NewValueBig=new string('w',6000) };
-			long insEditLogNum=OpenDentBusiness.Crud.InsEditLogCrud.Insert(insEditLog);
-			InsEditLog insEditLogLoaded=OpenDentBusiness.Crud.InsEditLogCrud.SelectOne(insEditLogNum);
+			long insEditLogNum=OpenPmsDentalBusiness.Crud.InsEditLogCrud.Insert(insEditLog);
+			InsEditLog insEditLogLoaded=OpenPmsDentalBusiness.Crud.InsEditLogCrud.SelectOne(insEditLogNum);
 			Assert.AreEqual(5000,insEditLogLoaded.OldValueBig.Length);
 			Assert.AreEqual(6000,insEditLogLoaded.NewValueBig.Length);
 			Carrier carrier=new Carrier { CarrierName="Synthetic",PreAuthCodes=string.Join(",",Enumerable.Range(1000,200).Select(x => "D"+x)) };
-			long carrierNum=OpenDentBusiness.Crud.CarrierCrud.Insert(carrier);
-			Assert.AreEqual(carrier.PreAuthCodes,OpenDentBusiness.Crud.CarrierCrud.SelectOne(carrierNum).PreAuthCodes);
+			long carrierNum=OpenPmsDentalBusiness.Crud.CarrierCrud.Insert(carrier);
+			Assert.AreEqual(carrier.PreAuthCodes,OpenPmsDentalBusiness.Crud.CarrierCrud.SelectOne(carrierNum).PreAuthCodes);
 			string logo=new string('A',200000);//A base64 logo, longer than text (64 KB) allows.
 			Branding branding=new Branding { BrandingType=EnumBrandingType.LogoImage,ValueString=logo };
-			long brandingNum=OpenDentBusiness.Crud.BrandingCrud.Insert(branding);
-			Assert.AreEqual(logo.Length,OpenDentBusiness.Crud.BrandingCrud.SelectOne(brandingNum).ValueString.Length);
+			long brandingNum=OpenPmsDentalBusiness.Crud.BrandingCrud.Insert(branding);
+			Assert.AreEqual(logo.Length,OpenPmsDentalBusiness.Crud.BrandingCrud.SelectOne(brandingNum).ValueString.Length);
 		}
 
 		///<summary>Statements store StmtType by name: Walkout (25.4) is read back as Walkout, not as NotSet.</summary>
 		[TestMethod]
 		public void Crud_StatementTypeWalkoutByName() {
 			Statement statement=new Statement { PatNum=1,DateSent=new DateTime(2026,3,1),StatementType=StmtType.Walkout,IsServiceDateView=true };
-			long statementNum=OpenDentBusiness.Crud.StatementCrud.Insert(statement);
+			long statementNum=OpenPmsDentalBusiness.Crud.StatementCrud.Insert(statement);
 			Assert.AreEqual("Walkout",DataCore.GetScalar("SELECT StatementType FROM statement WHERE StatementNum="+statementNum));
-			Statement statementLoaded=OpenDentBusiness.Crud.StatementCrud.SelectOne(statementNum);
+			Statement statementLoaded=OpenPmsDentalBusiness.Crud.StatementCrud.SelectOne(statementNum);
 			Assert.AreEqual(StmtType.Walkout,statementLoaded.StatementType);
 			Assert.IsTrue(statementLoaded.IsServiceDateView);
 		}
@@ -104,13 +104,13 @@ namespace M201Tests {
 		[TestMethod]
 		public void Procedures_LoadTheSecondSignatureOfTheLatestNote() {
 			Procedure procedure=new Procedure { PatNum=901,ProcDate=new DateTime(2026,2,10),ProcStatus=ProcStat.C,CodeNum=1,ProcFee=50 };
-			long procNum=OpenDentBusiness.Crud.ProcedureCrud.Insert(procedure);
+			long procNum=OpenPmsDentalBusiness.Crud.ProcedureCrud.Insert(procedure);
 			Procedure procedureNoSecond=new Procedure { PatNum=901,ProcDate=new DateTime(2026,2,10),ProcStatus=ProcStat.C,CodeNum=1,ProcFee=60 };
-			long procNumNoSecond=OpenDentBusiness.Crud.ProcedureCrud.Insert(procedureNoSecond);
-			long procNoteNumOld=OpenDentBusiness.Crud.ProcNoteCrud.Insert(new ProcNote { PatNum=901,ProcNum=procNum,UserNum=1,Note="First note",Signature="old" });
-			long procNoteNumNew=OpenDentBusiness.Crud.ProcNoteCrud.Insert(new ProcNote { PatNum=901,ProcNum=procNum,UserNum=1,Note="Group note",Signature="sig1",
+			long procNumNoSecond=OpenPmsDentalBusiness.Crud.ProcedureCrud.Insert(procedureNoSecond);
+			long procNoteNumOld=OpenPmsDentalBusiness.Crud.ProcNoteCrud.Insert(new ProcNote { PatNum=901,ProcNum=procNum,UserNum=1,Note="First note",Signature="old" });
+			long procNoteNumNew=OpenPmsDentalBusiness.Crud.ProcNoteCrud.Insert(new ProcNote { PatNum=901,ProcNum=procNum,UserNum=1,Note="Group note",Signature="sig1",
 				UserNum2=7,Signature2="sig2",SigIsTopaz2=true });
-			OpenDentBusiness.Crud.ProcNoteCrud.Insert(new ProcNote { PatNum=901,ProcNum=procNumNoSecond,UserNum=3,Note="Single signature",Signature="sigA" });
+			OpenPmsDentalBusiness.Crud.ProcNoteCrud.Insert(new ProcNote { PatNum=901,ProcNum=procNumNoSecond,UserNum=3,Note="Single signature",Signature="sigA" });
 			//Distinct entry times, so the most recent note is well defined.
 			DataCore.NonQ("UPDATE procnote SET EntryDateTime='2026-02-10 09:00:00' WHERE ProcNoteNum="+procNoteNumOld);
 			DataCore.NonQ("UPDATE procnote SET EntryDateTime='2026-02-10 10:00:00' WHERE ProcNoteNum="+procNoteNumNew);

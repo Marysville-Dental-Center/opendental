@@ -9,7 +9,7 @@ using ImagingCapture.Save;
 using ImagingCapture.Session;
 using ImagingDeviceManager.Capture;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Tests.Db {
 	///<summary>A whole capture session on the scratch database (CaptureDb) and its A to Z folder, through the hook's path: the launcher on the real

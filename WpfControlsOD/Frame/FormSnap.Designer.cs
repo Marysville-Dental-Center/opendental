@@ -1,4 +1,4 @@
-namespace OpenDental{
+namespace OpenPmsDental{
 	partial class FormSnap {
 		/// <summary>
 		/// Required designer variable.

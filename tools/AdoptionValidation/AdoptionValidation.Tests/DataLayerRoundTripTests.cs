@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using SyntheticData.Infrastructure;
 using SyntheticData.Validation;
 
@@ -39,13 +39,13 @@ namespace AdoptionValidation.Tests {
 		[TestMethod]
 		public void TableAndCrudLookups_FindKnownTypes() {
 			Assert.AreEqual(typeof(Patient).Namespace,DataLayerRoundTrip.TableNamespace);
-			Assert.AreEqual(typeof(OpenDentBusiness.Crud.PatientCrud).Namespace,DataLayerRoundTrip.CrudNamespace);
+			Assert.AreEqual(typeof(OpenPmsDentalBusiness.Crud.PatientCrud).Namespace,DataLayerRoundTrip.CrudNamespace);
 			Dictionary<string,Type> dictTypes=DataLayerRoundTrip.GetTableTypes();
 			Assert.AreEqual(typeof(Patient),dictTypes["patient"]);
 			Assert.AreEqual(typeof(Procedure),dictTypes["procedurelog"]);
 			Assert.IsTrue(dictTypes.Count>300,"Only "+dictTypes.Count+" table classes found.");
-			Assert.AreEqual(typeof(OpenDentBusiness.Crud.PatientCrud),DataLayerRoundTrip.GetCrudType(typeof(Patient)));
-			Assert.AreEqual(typeof(OpenDentBusiness.Crud.ProcedureCrud),DataLayerRoundTrip.GetCrudType(typeof(Procedure)));
+			Assert.AreEqual(typeof(OpenPmsDentalBusiness.Crud.PatientCrud),DataLayerRoundTrip.GetCrudType(typeof(Patient)));
+			Assert.AreEqual(typeof(OpenPmsDentalBusiness.Crud.ProcedureCrud),DataLayerRoundTrip.GetCrudType(typeof(Procedure)));
 			Assert.IsNull(DataLayerRoundTrip.GetCrudType(typeof(DataLayerRoundTripTests)));
 		}
 

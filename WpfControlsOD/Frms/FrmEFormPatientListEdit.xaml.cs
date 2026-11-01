@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Windows.Input;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls;
 using WpfControls.UI;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	///<summary>Edits a Patient List field (Open Dental 25.2) in the eForm designer. The label is stored in an EFormPatListLayout serialized as json into
 	///ValueLabel. Not patient facing.</summary>
 	public partial class FrmEFormPatientListEdit:FrmODBase {

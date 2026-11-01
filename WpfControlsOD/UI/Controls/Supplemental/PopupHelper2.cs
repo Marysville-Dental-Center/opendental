@@ -7,7 +7,7 @@ using System.Linq;
 using System.Net.Mail;
 using System.Text.RegularExpressions;
 using CodeBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace WpfControls.UI {
 	//=====WARNING! THERE IS A DUPLICATE OF THIS FILE OVER IN OpenDentBusiness.UI.PopupHelper.
@@ -142,7 +142,7 @@ namespace WpfControls.UI {
 		private static void OpenPatNum(long patNum) {
 			Patient pat=Patients.GetPat(patNum);
 			if(pat==null) {
-				OpenDental.MsgBox.Show(Lans.g("OpenDental","Patient does not exist."));
+				OpenPmsDental.MsgBox.Show(Lans.g("OpenDental","Patient does not exist."));
 				return;
 			}
 			GlobalFormOpenDental.PatientSelected(pat,true);
@@ -162,7 +162,7 @@ namespace WpfControls.UI {
 				Process.Start(url);
 			}
 			catch {
-				OpenDental.MsgBox.Show(Lans.g("PopupHelper","Failed to open web browser.  Please make sure you have a default browser set and are connected to the internet then try again."),Lans.g("PopupHelper","Attention"));
+				OpenPmsDental.MsgBox.Show(Lans.g("PopupHelper","Failed to open web browser.  Please make sure you have a default browser set and are connected to the internet then try again."),Lans.g("PopupHelper","Attention"));
 			}
 		}
 
@@ -175,11 +175,11 @@ namespace WpfControls.UI {
 					Process.Start(folderPath);
 				}
 				catch(Exception e) {
-					OpenDental.MsgBox.Show(e.Message);
+					OpenPmsDental.MsgBox.Show(e.Message);
 				}
 			}
 			else {
-				OpenDental.MsgBox.Show(Lans.g("PopupHelper","Failed to open file location. Please make sure file path is valid."));
+				OpenPmsDental.MsgBox.Show(Lans.g("PopupHelper","Failed to open file location. Please make sure file path is valid."));
 			}
 		}
 		#endregion Methods - Private

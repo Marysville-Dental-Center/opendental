@@ -8,7 +8,7 @@ using ImagingCapture.Save;
 using ImagingCapture.Templates;
 using ImagingDeviceManager.Capture;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Tests.Db {
 	///<summary>OdRadiographStore and RadiographImport on the scratch database (CaptureDb) and its A to Z folder: the document row and file of

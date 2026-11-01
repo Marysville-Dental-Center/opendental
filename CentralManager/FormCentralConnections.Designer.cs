@@ -30,13 +30,13 @@
 			this.label3 = new System.Windows.Forms.Label();
 			this.groupOrdering = new System.Windows.Forms.GroupBox();
 			this.label2 = new System.Windows.Forms.Label();
-			this.butAlphabetize = new OpenDental.UI.Button();
-			this.butUp = new OpenDental.UI.Button();
-			this.butDown = new OpenDental.UI.Button();
-			this.butAdd = new OpenDental.UI.Button();
-			this.gridMain = new OpenDental.UI.GridOD();
-			this.butOK = new OpenDental.UI.Button();
-			this.butCancel = new OpenDental.UI.Button();
+			this.butAlphabetize = new OpenPmsDental.UI.Button();
+			this.butUp = new OpenPmsDental.UI.Button();
+			this.butDown = new OpenPmsDental.UI.Button();
+			this.butAdd = new OpenPmsDental.UI.Button();
+			this.gridMain = new OpenPmsDental.UI.GridOD();
+			this.butOK = new OpenPmsDental.UI.Button();
+			this.butCancel = new OpenPmsDental.UI.Button();
 			this.checkUseDynamicMode = new System.Windows.Forms.CheckBox();
 			this.checkIsAutoLogon = new System.Windows.Forms.CheckBox();
 			this.groupPrefs = new System.Windows.Forms.GroupBox();
@@ -156,12 +156,12 @@
             | System.Windows.Forms.AnchorStyles.Left)));
 			this.gridMain.Location = new System.Drawing.Point(12, 33);
 			this.gridMain.Name = "gridMain";
-			this.gridMain.SelectionMode = OpenDental.UI.GridSelectionMode.MultiExtended;
+			this.gridMain.SelectionMode = OpenPmsDental.UI.GridSelectionMode.MultiExtended;
 			this.gridMain.Size = new System.Drawing.Size(616, 387);
 			this.gridMain.TabIndex = 4;
 			this.gridMain.Title = "Connections";
 			this.gridMain.TranslationName = "TableConnections";
-			this.gridMain.CellDoubleClick += new OpenDental.UI.ODGridClickEventHandler(this.gridMain_CellDoubleClick);
+			this.gridMain.CellDoubleClick += new OpenPmsDental.UI.ODGridClickEventHandler(this.gridMain_CellDoubleClick);
 			// 
 			// butOK
 			// 
@@ -271,18 +271,18 @@
 
 		#endregion
 
-		private OpenDental.UI.Button butCancel;
-		private OpenDental.UI.Button butOK;
-		private OpenDental.UI.GridOD gridMain;
+		private OpenPmsDental.UI.Button butCancel;
+		private OpenPmsDental.UI.Button butOK;
+		private OpenPmsDental.UI.GridOD gridMain;
 		private System.Windows.Forms.Label label1;
 		private System.Windows.Forms.TextBox textSearch;
 		private System.Windows.Forms.ComboBox comboConnectionGroups;
 		private System.Windows.Forms.Label label3;
-		private OpenDental.UI.Button butAdd;
+		private OpenPmsDental.UI.Button butAdd;
 		private System.Windows.Forms.GroupBox groupOrdering;
-		private OpenDental.UI.Button butUp;
-		private OpenDental.UI.Button butDown;
-		private OpenDental.UI.Button butAlphabetize;
+		private OpenPmsDental.UI.Button butUp;
+		private OpenPmsDental.UI.Button butDown;
+		private OpenPmsDental.UI.Button butAlphabetize;
 		private System.Windows.Forms.Label label2;
 		private System.Windows.Forms.CheckBox checkUseDynamicMode;
 		private System.Windows.Forms.CheckBox checkIsAutoLogon;

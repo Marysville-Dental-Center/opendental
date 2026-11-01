@@ -7,7 +7,7 @@ using Dicom;
 using Dicom.Imaging;
 using Dicom.IO.Buffer;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace M2IMGTests {
 	[TestClass]

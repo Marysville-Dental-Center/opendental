@@ -7,11 +7,11 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using OpenDentBusiness;
-using OpenDentBusiness.Pearl;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.Pearl;
 using WpfControls.UI;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	/// <summary></summary>
 	public partial class FrmPearlLayers : FrmODBase {
 		///<summary>List of EnumCategoryODs that are currently toggled on to be visible. Used in ControlImages.</summary>
@@ -108,7 +108,7 @@ namespace OpenDental {
 			checkPearlImplant.Tag=          new List<EnumCategoryOD>() { EnumCategoryOD.Implant };
 			checkPearlRootCanal.Tag=        new List<EnumCategoryOD>() { EnumCategoryOD.RootCanal };
 			checkPearlMeasurements.Tag=     new List<EnumCategoryOD>() { EnumCategoryOD.Measurements };
-			checkPearlToothParts.Tag=       OpenDentBusiness.Bridges.Pearl.GetToothPartsCategoryODs();
+			checkPearlToothParts.Tag=       OpenPmsDentalBusiness.Bridges.Pearl.GetToothPartsCategoryODs();
 		}
 
 		///<summary>Set checked status of each checkbox depending on whether all of its tag categories are included in the list of shown categories.</summary>

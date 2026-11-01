@@ -12,9 +12,9 @@ using System.Windows.Documents;
 using System.Windows.Markup;
 using System.Windows.Forms;
 using System.Xml;
-using OpenDental;
-using OpenDental.UI;
-using OpenDentBusiness;
+using OpenPmsDental;
+using OpenPmsDental.UI;
+using OpenPmsDentalBusiness;
 
 namespace UnitTests{
 	public partial class FormGraphicsTests : FormODBase{
@@ -34,7 +34,7 @@ namespace UnitTests{
 		private void FormGridTest_Load(object sender, EventArgs e){
 			float zoom=LayoutManager.ScaleMyFont();
 			panel.LayoutTransform=new System.Windows.Media.ScaleTransform(zoom,zoom);
-			OpenDental.Drawing.Graphics g=OpenDental.Drawing.Graphics.ScreenInit(panel);
+			OpenPmsDental.Drawing.Graphics g=OpenPmsDental.Drawing.Graphics.ScreenInit(panel);
 			PaintCanvas(g);
 		}
 
@@ -107,8 +107,8 @@ namespace UnitTests{
 			SizeF sizeF=g.MeasureString("Measure this text",Font,100);
 		}
 
-		private void PaintCanvas(OpenDental.Drawing.Graphics g){
-			OpenDental.Drawing.Font font=new OpenDental.Drawing.Font();
+		private void PaintCanvas(OpenPmsDental.Drawing.Graphics g){
+			OpenPmsDental.Drawing.Font font=new OpenPmsDental.Drawing.Font();
 			g.DrawString("Hello World",font,System.Windows.Media.Colors.Black,0,0);
 			g.DrawLine(System.Windows.Media.Colors.Black,5,20,50,50);
 			//top row
@@ -117,13 +117,13 @@ namespace UnitTests{
 			g.DrawString("This is some longer text that should wrap",font,System.Windows.Media.Colors.Blue,rect);
 			rect=new System.Windows.Rect(105,60,90,60);
 			g.DrawRectangle(System.Windows.Media.Colors.Black,rect);
-			OpenDental.Drawing.Font fontBold=new OpenDental.Drawing.Font();
+			OpenPmsDental.Drawing.Font fontBold=new OpenPmsDental.Drawing.Font();
 			fontBold.IsBold=true;
 			g.DrawString("This is some longer text that should wrap",fontBold,System.Windows.Media.Colors.Blue,rect,
 				horizontalAlignment:System.Windows.HorizontalAlignment.Center);
 			rect=new System.Windows.Rect(205,60,90,60);
 			g.DrawRectangle(System.Windows.Media.Colors.Black,rect);
-			OpenDental.Drawing.Font fontUnderlineBold=new OpenDental.Drawing.Font();
+			OpenPmsDental.Drawing.Font fontUnderlineBold=new OpenPmsDental.Drawing.Font();
 			fontUnderlineBold.IsBold=true;
 			fontUnderlineBold.IsUnderline=true;
 			g.DrawString("This is some longer text that should wrap",fontUnderlineBold,System.Windows.Media.Colors.Blue,rect,
@@ -163,7 +163,7 @@ namespace UnitTests{
 		}
 
 		private void butPrintWPF_Click(object sender,EventArgs e) {
-			OpenDental.Drawing.Printout printout=new OpenDental.Drawing.Printout();
+			OpenPmsDental.Drawing.Printout printout=new OpenPmsDental.Drawing.Printout();
 			printout.FuncPrintPage=pd_PrintPage2;
 			WpfControls.PrinterL.TryPrint(printout);
 		}
@@ -183,7 +183,7 @@ namespace UnitTests{
 			PrinterL.TryPrintOrDebugClassicPreview(printDocument_PrintPage,Lan.g(this,"Image printed."));
 		}
 
-		private bool pd_PrintPage2(OpenDental.Drawing.Graphics g) {
+		private bool pd_PrintPage2(OpenPmsDental.Drawing.Graphics g) {
 			//e.Graphics.DrawString("Hello world",Font,Brushes.Black,0,0);
 			PaintCanvas(g);
 			return false;//only one page, so no more pages.
@@ -200,7 +200,7 @@ namespace UnitTests{
 		}
 
 		private void butPreviewWPF_Click(object sender,EventArgs e) {
-			OpenDental.Drawing.Printout printout=new OpenDental.Drawing.Printout();
+			OpenPmsDental.Drawing.Printout printout=new OpenPmsDental.Drawing.Printout();
 			printout.FuncPrintPage=pd_PrintPage2;
 			WpfControls.PrinterL.TryPreview(printout);
 		}

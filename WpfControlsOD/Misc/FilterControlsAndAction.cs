@@ -9,7 +9,7 @@ using System.Windows;
 using System.Windows.Threading;
 using WpfControls.UI;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 /*
 Background:
 In FormODBase, there's a section for FilterControlsAndAction.  Because it's in FormODBase, it's available to all derived forms.  The scenario where it's useful is when you have a group of controls at the top that you're using to filter results that are usually in a grid.  For example, dateStart, isHidden, name, etc.  You don't want the grid to refresh with each keystroke in the name field, and you also don't want to make the user click a Refresh button.  Instead, you can pass in all the controls that you want to "watch".  Then, each time they change, that triggers the refresh, but with less annoyance.  There's a time interval that it waits. For example, if it's set to 1 second, then it waits until typing has paused for 1 second before refreshing.  Since it runs the db query in a background thread, the UI will not lock up during the refresh so that they can keep typing.  The query should be able to safely abort if we need to terminate a previous refresh and quickly start again.

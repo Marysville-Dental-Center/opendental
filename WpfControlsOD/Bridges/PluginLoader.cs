@@ -5,10 +5,10 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using CodeBase;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	public class PluginLoader {
 		///<summary>There is a similar method for Middle Tier at OpenDentBusiness.Plugins.LoadAllPlugins.</summary>
 		public static void LoadAllPlugins(Form host) {
@@ -43,9 +43,9 @@ namespace OpenDental {
 					else{
 						//try the Plugins folder
 						if(PrefC.AtoZfolderUsed!=DataStorageType.InDatabase) {//must have an AtoZ folder to check
-							string dllPathVersionCentral=OpenDentBusiness.FileIO.FileAtoZ.CombinePaths(ImageStore.GetPreferredAtoZpath(),"Plugins",
+							string dllPathVersionCentral=OpenPmsDentalBusiness.FileIO.FileAtoZ.CombinePaths(ImageStore.GetPreferredAtoZpath(),"Plugins",
 								listPrograms[i].PluginDllName.Replace("[VersionMajMin]",vers.Major.ToString()+"."+vers.Minor.ToString()));
-							if(OpenDentBusiness.FileIO.FileAtoZ.Exists(dllPathVersionCentral)) {
+							if(OpenPmsDentalBusiness.FileIO.FileAtoZ.Exists(dllPathVersionCentral)) {
 								try {
 //todo: fix for cloud:
 									//FileAtoZ.Copy(dllPathVersionCentral,dllPath,FileAtoZSourceDestination.AtoZToLocal,doOverwrite:true);

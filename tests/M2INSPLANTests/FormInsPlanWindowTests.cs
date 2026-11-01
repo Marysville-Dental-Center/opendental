@@ -13,8 +13,8 @@ using System.Reflection;
 using System.Threading;
 using System.Windows.Forms;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDental;
-using OpenDentBusiness;
+using OpenPmsDental;
+using OpenPmsDentalBusiness;
 
 namespace M2INSPLANTests {
 	[TestClass]
@@ -155,7 +155,7 @@ namespace M2INSPLANTests {
 						continue;
 					}
 					List<Control> listAncestors=GetAncestors(formInsPlan,control);
-					if(listAncestors.Any(x => x is OpenDental.UI.TabPage || x is OpenDental.UI.TabControl || x is System.Windows.Forms.TabPage)) {
+					if(listAncestors.Any(x => x is OpenPmsDental.UI.TabPage || x is OpenPmsDental.UI.TabControl || x is System.Windows.Forms.TabPage)) {
 						listProblems.Add(arrayOld[0]+" is on a tab page");
 					}
 					if(listAncestors.OfType<ScrollableControl>().Any(x => x.AutoScroll)) {
@@ -290,7 +290,7 @@ namespace M2INSPLANTests {
 					Assert.IsTrue(IsSetVisible(GetControl(formInsPlan,"butPatOrtho")));
 					Assert.AreEqual("panelOrtho",GetControl(formInsPlan,"comboOrthoClaimType").Parent.Name);
 					//SetEnabledOrtho still runs over panelOrtho: with Initial Claim Only, the periodic fields are off.
-					Assert.AreEqual(0,GetField<OpenDental.UI.ComboBox>(formInsPlan,"comboOrthoClaimType").SelectedIndex);
+					Assert.AreEqual(0,GetField<OpenPmsDental.UI.ComboBox>(formInsPlan,"comboOrthoClaimType").SelectedIndex);
 					Assert.IsFalse(GetControl(formInsPlan,"comboOrthoAutoProcPeriod").Enabled);
 					Assert.IsFalse(GetControl(formInsPlan,"butPickOrthoProc").Enabled);
 				});
@@ -351,7 +351,7 @@ namespace M2INSPLANTests {
 			Fixture fixture=InsertFixture("Window Dental E");
 			RunSta("en-US",() => {
 				using FormInsPlan formInsPlan=OpenWindow(fixture);
-				OpenDental.UI.ComboBox comboExclusionFeeRule=GetField<OpenDental.UI.ComboBox>(formInsPlan,"comboExclusionFeeRule");
+				OpenPmsDental.UI.ComboBox comboExclusionFeeRule=GetField<OpenPmsDental.UI.ComboBox>(formInsPlan,"comboExclusionFeeRule");
 				List<string> listItems=new List<string>();
 				for(int i=0;i<comboExclusionFeeRule.Items.Count;i++) {
 					listItems.Add(comboExclusionFeeRule.Items.GetTextShowingAt(i));

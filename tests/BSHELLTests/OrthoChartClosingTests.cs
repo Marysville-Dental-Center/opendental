@@ -4,8 +4,8 @@
 using System;
 using System.Windows.Forms;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDental;
-using OpenDentBusiness;
+using OpenPmsDental;
+using OpenPmsDentalBusiness;
 
 namespace BSHELLTests {
 	[TestClass]

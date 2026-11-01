@@ -6,8 +6,8 @@ using System.Threading;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace BSHELLTests {
 	///<summary>One scratch database for the test assembly, with a name unique to this run (time, process id, random number), so runs from other

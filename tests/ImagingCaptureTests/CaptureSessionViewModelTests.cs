@@ -8,7 +8,7 @@ using ImagingCapture.Session;
 using ImagingCapture.UI;
 using ImagingDeviceManager.Capture;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Tests {
 	///<summary>CaptureSessionViewModel, the thin view model of the session window (design 7.3, 7.5, 7.12, 10.2, 10.3), over the controller on

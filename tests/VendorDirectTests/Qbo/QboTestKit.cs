@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Net.Http;
 using CodeBase.VendorDirect;
 using Newtonsoft.Json.Linq;
-using OpenDentBusiness.Qbo;
+using OpenPmsDentalBusiness.Qbo;
 
 namespace VendorDirectTests.Qbo {
 	///<summary>The shared refresh token row, in memory. TryReplace is a real compare-and-swap.</summary>

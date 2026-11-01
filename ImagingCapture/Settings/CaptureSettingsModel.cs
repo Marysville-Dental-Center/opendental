@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using ImagingDeviceManager.Config;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Settings {
 	///<summary>The imaging device the Capture settings screen is for: the fields of its saved ImagingDevice row that it needs.</summary>

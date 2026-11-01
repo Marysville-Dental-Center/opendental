@@ -9,8 +9,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDental;
-using OpenDentBusiness;
+using OpenPmsDental;
+using OpenPmsDentalBusiness;
 using UnitTestsCore;
 
 namespace UnitTests.Procedures_Test {
@@ -1896,7 +1896,7 @@ namespace UnitTests.Procedures_Test {
 				removeCompletedProcs=(doChangeProvOnProcsOverride==YN.Yes?false:true);
 			}
 			else { 
-				removeCompletedProcs=OpenDental.ProcedureL.DoRemoveCompletedProcs(apt,listProcs,true);
+				removeCompletedProcs=OpenPmsDental.ProcedureL.DoRemoveCompletedProcs(apt,listProcs,true);
 			}
 			Procedures.UpdateProcsInApptHelper(listProcs,pat,apt,apt.Copy(),ins.ListInsPlans,ins.ListInsSubs,
 				listProcSelectedIndices,removeCompletedProcs,false);//doUpdateProcFee set to false because test do not consider ProcFee.

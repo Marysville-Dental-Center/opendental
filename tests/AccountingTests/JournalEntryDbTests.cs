@@ -10,8 +10,8 @@ using CodeBase;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace AccountingTests {
 	[TestClass]
@@ -240,7 +240,7 @@ namespace AccountingTests {
 
 		private static Account InsertAccount(string description,AccountType accountType) {
 			Account account=new Account { Description=description,AcctType=accountType,BankNumber="" };
-			OpenDentBusiness.Crud.AccountCrud.Insert(account);
+			OpenPmsDentalBusiness.Crud.AccountCrud.Insert(account);
 			return account;
 		}
 

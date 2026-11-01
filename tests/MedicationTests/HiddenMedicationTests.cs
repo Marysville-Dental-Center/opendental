@@ -10,8 +10,8 @@ using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
 using Newtonsoft.Json;
-using OpenDental;
-using OpenDentBusiness;
+using OpenPmsDental;
+using OpenPmsDentalBusiness;
 
 namespace MedicationTests {
 	///<summary>Rules that need no database.</summary>
@@ -74,11 +74,11 @@ namespace MedicationTests {
 		[TestMethod]
 		public void Crud_HasIsHiddenColumnAfterRxCui() {
 			//25.3.48: medication.IsHidden tinyint(4) NOT NULL, right after RxCui.
-			System.Data.DataTable table=OpenDentBusiness.Crud.MedicationCrud.ListToTable(new List<Medication> { Med(5,"Ibuprofen",true) });
+			System.Data.DataTable table=OpenPmsDentalBusiness.Crud.MedicationCrud.ListToTable(new List<Medication> { Med(5,"Ibuprofen",true) });
 			int indexRxCui=table.Columns.IndexOf("RxCui");
 			Assert.IsTrue(indexRxCui>=0);
 			Assert.AreEqual(indexRxCui+1,table.Columns.IndexOf("IsHidden"));
-			List<Medication> listMedications=OpenDentBusiness.Crud.MedicationCrud.TableToList(table);
+			List<Medication> listMedications=OpenPmsDentalBusiness.Crud.MedicationCrud.TableToList(table);
 			Assert.IsTrue(listMedications[0].IsHidden);
 		}
 

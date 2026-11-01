@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
-using OpenDental;
-using OpenDentBusiness;
+using OpenPmsDental;
+using OpenPmsDentalBusiness;
 using System.IO;
 using System.Reflection;
 using CodeBase;
@@ -54,7 +54,7 @@ namespace UnitTests {
 					serverPort="3306";
 				}
 				if(!UnitTestsCore.DatabaseTools.SetDbConnection("",serverAddr,serverPort,textUserName.Text,textPassword.Text,_isOracle)) {
-					OpenDental.MessageBox.Show("Could not connect");
+					OpenPmsDental.MessageBox.Show("Could not connect");
 					return;
 				}
 			}

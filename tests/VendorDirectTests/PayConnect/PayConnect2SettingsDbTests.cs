@@ -5,7 +5,7 @@ using System;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace VendorDirectTests.PayConnectV2 {
 	[TestClass]
@@ -105,9 +105,9 @@ namespace VendorDirectTests.PayConnectV2 {
 
 		private static void SetUpConfiguredClinic(long clinicNum) {
 			DataCore.NonQ("UPDATE program SET Enabled=1");
-			SetRow(OpenDentBusiness.PayConnect.ProgramProperties.ApiKey,0,SecretsTestHelper.Protect(API_KEY));
-			SetRow(OpenDentBusiness.PayConnect.ProgramProperties.ApiSecret,clinicNum,SecretsTestHelper.Protect("secret-"+clinicNum));
-			SetRow(OpenDentBusiness.PayConnect.ProgramProperties.ProgramVersion,clinicNum,"2");
+			SetRow(OpenPmsDentalBusiness.PayConnect.ProgramProperties.ApiKey,0,SecretsTestHelper.Protect(API_KEY));
+			SetRow(OpenPmsDentalBusiness.PayConnect.ProgramProperties.ApiSecret,clinicNum,SecretsTestHelper.Protect("secret-"+clinicNum));
+			SetRow(OpenPmsDentalBusiness.PayConnect.ProgramProperties.ProgramVersion,clinicNum,"2");
 			Refresh();
 		}
 
@@ -119,16 +119,16 @@ namespace VendorDirectTests.PayConnectV2 {
 
 		[TestMethod]
 		public void GetApiKey_DecryptsThePracticeRow() {
-			SetRow(OpenDentBusiness.PayConnect.ProgramProperties.ApiKey,0,SecretsTestHelper.Protect(API_KEY));
+			SetRow(OpenPmsDentalBusiness.PayConnect.ProgramProperties.ApiKey,0,SecretsTestHelper.Protect(API_KEY));
 			Refresh();
 			Assert.AreEqual(API_KEY,PayConnect2.GetApiKey());
 		}
 
 		[TestMethod]
 		public void GetApiSecretForClinic_AcceptsLegacyPlainTextAndFallsBackToThePractice() {
-			SetRow(OpenDentBusiness.PayConnect.ProgramProperties.ApiSecret,0,"legacy-plain-secret");//As Open Dental stored it.
-			SetRow(OpenDentBusiness.PayConnect.ProgramProperties.ApiSecret,3,SecretsTestHelper.Protect("clinic-3-secret"));
-			SetRow(OpenDentBusiness.PayConnect.ProgramProperties.ApiSecret,4,"osd1$corrupted");
+			SetRow(OpenPmsDentalBusiness.PayConnect.ProgramProperties.ApiSecret,0,"legacy-plain-secret");//As Open Dental stored it.
+			SetRow(OpenPmsDentalBusiness.PayConnect.ProgramProperties.ApiSecret,3,SecretsTestHelper.Protect("clinic-3-secret"));
+			SetRow(OpenPmsDentalBusiness.PayConnect.ProgramProperties.ApiSecret,4,"osd1$corrupted");
 			Refresh();
 			Assert.AreEqual("legacy-plain-secret",PayConnect2.GetApiSecretForClinic(0));
 			Assert.AreEqual("clinic-3-secret",PayConnect2.GetApiSecretForClinic(3));
@@ -139,7 +139,7 @@ namespace VendorDirectTests.PayConnectV2 {
 		[TestMethod]
 		public void GetApiBaseUrl_FollowsTheSandboxSetting() {
 			Assert.AreEqual(PayConnect2.UrlBaseProduction,PayConnect2.GetApiBaseUrl());
-			SetRow(OpenDentBusiness.PayConnect.ProgramProperties.UseSandbox,0,"1");
+			SetRow(OpenPmsDentalBusiness.PayConnect.ProgramProperties.UseSandbox,0,"1");
 			Refresh();
 			Assert.IsTrue(PayConnect2.GetUseSandbox());
 			Assert.AreEqual(PayConnect2.UrlBaseSandbox,PayConnect2.GetApiBaseUrl());
@@ -150,15 +150,15 @@ namespace VendorDirectTests.PayConnectV2 {
 			Assert.IsFalse(PayConnect2.IsConfigured(2),"Nothing set.");
 			SetUpConfiguredClinic(2);
 			Assert.IsTrue(PayConnect2.IsConfigured(2));
-			SetRow(OpenDentBusiness.PayConnect.ProgramProperties.ProgramVersion,2,"1");
+			SetRow(OpenPmsDentalBusiness.PayConnect.ProgramProperties.ProgramVersion,2,"1");
 			Refresh();
 			Assert.IsFalse(PayConnect2.IsConfigured(2),"Version 1 is not PayConnect 2.");
-			SetRow(OpenDentBusiness.PayConnect.ProgramProperties.ProgramVersion,2,"2");
+			SetRow(OpenPmsDentalBusiness.PayConnect.ProgramProperties.ProgramVersion,2,"2");
 			DataCore.NonQ("UPDATE program SET Enabled=0");
 			Refresh();
 			Assert.IsFalse(PayConnect2.IsConfigured(2),"Disabled program.");
 			DataCore.NonQ("UPDATE program SET Enabled=1");
-			SetRow(OpenDentBusiness.PayConnect.ProgramProperties.ApiSecret,2,"");
+			SetRow(OpenPmsDentalBusiness.PayConnect.ProgramProperties.ApiSecret,2,"");
 			Refresh();
 			Assert.IsFalse(PayConnect2.IsConfigured(2),"No Secret.");
 		}

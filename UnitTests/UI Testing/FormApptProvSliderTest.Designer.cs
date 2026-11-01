@@ -31,8 +31,8 @@
 			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormApptProvSliderTest));
 			this.textBox1 = new System.Windows.Forms.TextBox();
 			this.textBox2 = new System.Windows.Forms.TextBox();
-			this.butDeleteProc = new OpenDental.UI.Button();
-			this.contrApptProvSlider1 = new OpenDental.UI.ControlApptProvSlider();
+			this.butDeleteProc = new OpenPmsDental.UI.Button();
+			this.contrApptProvSlider1 = new OpenPmsDental.UI.ControlApptProvSlider();
 			this.SuspendLayout();
 			// 
 			// textBox1
@@ -86,9 +86,9 @@
 
 		#endregion
 
-		private OpenDental.UI.ControlApptProvSlider contrApptProvSlider1;
+		private OpenPmsDental.UI.ControlApptProvSlider contrApptProvSlider1;
 		private System.Windows.Forms.TextBox textBox1;
 		private System.Windows.Forms.TextBox textBox2;
-		private OpenDental.UI.Button butDeleteProc;
+		private OpenPmsDental.UI.Button butDeleteProc;
 	}
 }

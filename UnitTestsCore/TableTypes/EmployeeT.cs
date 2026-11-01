@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace UnitTestsCore {
 	public class EmployeeT {
@@ -69,7 +69,7 @@ namespace UnitTestsCore {
 		public static List<Employee> CreateEmployeeListAllFields() {
 			List<Employee> listEmployees=new List<Employee>();
 			#region Employee 1
-			OpenDentBusiness.Employee odbEmployee1=new OpenDentBusiness.Employee();
+			OpenPmsDentalBusiness.Employee odbEmployee1=new OpenPmsDentalBusiness.Employee();
 			odbEmployee1.LName="Picard";
 			odbEmployee1.FName="Jean-Luc";
 			odbEmployee1.MiddleI="";
@@ -81,12 +81,12 @@ namespace UnitTestsCore {
 			odbEmployee1.EmailWork="PicardJL@StarFleet.fed";
 			odbEmployee1.EmailPersonal="EarlGreyHot@gmail.com";
 			odbEmployee1.IsFurloughed=false;
-			odbEmployee1.EmployeeNum=OpenDentBusiness.Employees.Insert(odbEmployee1);
-			odbEmployee1=OpenDentBusiness.Employees.GetEmpFromDB(odbEmployee1.EmployeeNum);
+			odbEmployee1.EmployeeNum=OpenPmsDentalBusiness.Employees.Insert(odbEmployee1);
+			odbEmployee1=OpenPmsDentalBusiness.Employees.GetEmpFromDB(odbEmployee1.EmployeeNum);
 			listEmployees.Add(odbEmployee1);
 			#endregion Employee 1
 			#region Employee 2
-			OpenDentBusiness.Employee odbEmployee2=new OpenDentBusiness.Employee();
+			OpenPmsDentalBusiness.Employee odbEmployee2=new OpenPmsDentalBusiness.Employee();
 			odbEmployee2.LName="Riker";
 			odbEmployee2.FName="William";
 			odbEmployee2.MiddleI="T";
@@ -99,12 +99,12 @@ namespace UnitTestsCore {
 			odbEmployee2.EmailPersonal="RedAlert@gmail.com";
 			odbEmployee2.IsFurloughed=false;
 			odbEmployee2.ReportsTo=odbEmployee1.EmployeeNum;
-			odbEmployee2.EmployeeNum=OpenDentBusiness.Employees.Insert(odbEmployee2);
-			odbEmployee2=OpenDentBusiness.Employees.GetEmpFromDB(odbEmployee2.EmployeeNum);
+			odbEmployee2.EmployeeNum=OpenPmsDentalBusiness.Employees.Insert(odbEmployee2);
+			odbEmployee2=OpenPmsDentalBusiness.Employees.GetEmpFromDB(odbEmployee2.EmployeeNum);
 			listEmployees.Add(odbEmployee2);
 			#endregion Employee 2
 			#region Employee 3
-			OpenDentBusiness.Employee odbEmployee3=new OpenDentBusiness.Employee();
+			OpenPmsDentalBusiness.Employee odbEmployee3=new OpenPmsDentalBusiness.Employee();
 			odbEmployee3.LName="";
 			odbEmployee3.FName="Data";
 			odbEmployee3.MiddleI="";
@@ -117,12 +117,12 @@ namespace UnitTestsCore {
 			odbEmployee3.EmailPersonal="SpotCat@gmail.com";
 			odbEmployee3.IsFurloughed=false;
 			odbEmployee3.ReportsTo=odbEmployee1.EmployeeNum;
-			odbEmployee3.EmployeeNum=OpenDentBusiness.Employees.Insert(odbEmployee3);
-			odbEmployee3=OpenDentBusiness.Employees.GetEmpFromDB(odbEmployee3.EmployeeNum);
+			odbEmployee3.EmployeeNum=OpenPmsDentalBusiness.Employees.Insert(odbEmployee3);
+			odbEmployee3=OpenPmsDentalBusiness.Employees.GetEmpFromDB(odbEmployee3.EmployeeNum);
 			listEmployees.Add(odbEmployee3);
 			#endregion Employee 3
 			#region Employee 4
-			OpenDentBusiness.Employee odbEmployee4=new OpenDentBusiness.Employee();
+			OpenPmsDentalBusiness.Employee odbEmployee4=new OpenPmsDentalBusiness.Employee();
 			odbEmployee4.LName="Yar";
 			odbEmployee4.FName="Natasha";
 			odbEmployee4.MiddleI="T";
@@ -134,12 +134,12 @@ namespace UnitTestsCore {
 			odbEmployee4.EmailWork="YarNT@StarFleet.fed";
 			odbEmployee4.EmailPersonal="AllGoodThings@gmail.com";
 			odbEmployee4.IsFurloughed=true;
-			odbEmployee4.EmployeeNum=OpenDentBusiness.Employees.Insert(odbEmployee4);
-			odbEmployee4=OpenDentBusiness.Employees.GetEmpFromDB(odbEmployee4.EmployeeNum);
+			odbEmployee4.EmployeeNum=OpenPmsDentalBusiness.Employees.Insert(odbEmployee4);
+			odbEmployee4=OpenPmsDentalBusiness.Employees.GetEmpFromDB(odbEmployee4.EmployeeNum);
 			listEmployees.Add(odbEmployee4);
 			#endregion Employee 4
 			#region Employee 5
-			OpenDentBusiness.Employee odbEmployee5=new OpenDentBusiness.Employee();
+			OpenPmsDentalBusiness.Employee odbEmployee5=new OpenPmsDentalBusiness.Employee();
 			odbEmployee5.LName="Crusher";
 			odbEmployee5.FName="Beverly";
 			odbEmployee5.MiddleI="C";
@@ -152,8 +152,8 @@ namespace UnitTestsCore {
 			odbEmployee5.EmailPersonal="DancingDoctor@gmail.com";
 			odbEmployee5.IsFurloughed=true;
 			odbEmployee5.ReportsTo=odbEmployee1.EmployeeNum;
-			odbEmployee5.EmployeeNum=OpenDentBusiness.Employees.Insert(odbEmployee5);
-			odbEmployee5=OpenDentBusiness.Employees.GetEmpFromDB(odbEmployee5.EmployeeNum);
+			odbEmployee5.EmployeeNum=OpenPmsDentalBusiness.Employees.Insert(odbEmployee5);
+			odbEmployee5=OpenPmsDentalBusiness.Employees.GetEmpFromDB(odbEmployee5.EmployeeNum);
 			listEmployees.Add(odbEmployee5);
 			#endregion Employee 5
 			Employees.RefreshCache();

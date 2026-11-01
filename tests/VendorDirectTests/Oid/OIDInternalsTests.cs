@@ -8,7 +8,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using VendorDirectTests.Foundation;
 
 namespace VendorDirectTests.Oid {

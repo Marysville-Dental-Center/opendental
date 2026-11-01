@@ -7,8 +7,8 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.VendorDirect;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.VendorDirect;
 
 namespace VendorDirectTests.PaySimple {
 	[TestClass]
@@ -20,16 +20,16 @@ namespace VendorDirectTests.PaySimple {
 		[TestInitialize]
 		public void TestInitialize() {
 			_fakeHttpHandler=new FakeHttpHandler();
-			OpenDentBusiness.PaySimple.SetTestHttpHandler(_fakeHttpHandler,TimeSpan.FromMilliseconds(1));
+			OpenPmsDentalBusiness.PaySimple.SetTestHttpHandler(_fakeHttpHandler,TimeSpan.FromMilliseconds(1));
 		}
 
 		[TestCleanup]
 		public void TestCleanup() {
-			OpenDentBusiness.PaySimple.SetTestHttpHandler(null);
+			OpenPmsDentalBusiness.PaySimple.SetTestHttpHandler(null);
 		}
 
-		private static OpenDentBusiness.PaySimple.PaySimpleCredentials Credentials(string environment=OpenDentBusiness.PaySimple.Environments.Production) {
-			return new OpenDentBusiness.PaySimple.PaySimpleCredentials(USER,KEY,environment);
+		private static OpenPmsDentalBusiness.PaySimple.PaySimpleCredentials Credentials(string environment=OpenPmsDentalBusiness.PaySimple.Environments.Production) {
+			return new OpenPmsDentalBusiness.PaySimple.PaySimpleCredentials(USER,KEY,environment);
 		}
 
 		internal static string PaymentJson(long id,string status,string orderId="",string failureCode=null,string failureDescription=null,
@@ -53,9 +53,9 @@ namespace VendorDirectTests.PaySimple {
 
 		[TestMethod]
 		public void AuthHeader_IsBasicUserColonKey_WithoutBase64() {
-			Assert.AreEqual("basic "+USER+":"+KEY,OpenDentBusiness.PaySimple.GetAuthHeaderValue(USER,KEY));
+			Assert.AreEqual("basic "+USER+":"+KEY,OpenPmsDentalBusiness.PaySimple.GetAuthHeaderValue(USER,KEY));
 			_fakeHttpHandler.Enqueue(HttpStatusCode.OK,Envelope("[]"));
-			Assert.IsTrue(OpenDentBusiness.PaySimple.TestCredentials(Credentials()));
+			Assert.IsTrue(OpenPmsDentalBusiness.PaySimple.TestCredentials(Credentials()));
 			RecordedRequest recordedRequest=_fakeHttpHandler.Requests.Single();
 			Assert.AreEqual("basic "+USER+":"+KEY,recordedRequest.GetHeader("Authorization"));
 			Assert.IsFalse(recordedRequest.GetHeader("Authorization").Contains("PSSERVER"));
@@ -65,8 +65,8 @@ namespace VendorDirectTests.PaySimple {
 		public void TestCredentials_GetsOneCustomer_TrueOn200_FalseOn401() {
 			_fakeHttpHandler.Enqueue(HttpStatusCode.OK,Envelope("[]"));
 			_fakeHttpHandler.Enqueue(HttpStatusCode.Unauthorized,"");
-			Assert.IsTrue(OpenDentBusiness.PaySimple.TestCredentials(Credentials()));
-			Assert.IsFalse(OpenDentBusiness.PaySimple.TestCredentials(Credentials()));
+			Assert.IsTrue(OpenPmsDentalBusiness.PaySimple.TestCredentials(Credentials()));
+			Assert.IsFalse(OpenPmsDentalBusiness.PaySimple.TestCredentials(Credentials()));
 			List<RecordedRequest> listRequests=_fakeHttpHandler.Requests;
 			Assert.AreEqual(2,listRequests.Count);
 			Assert.AreEqual(HttpMethod.Get,listRequests[0].Method);
@@ -75,20 +75,20 @@ namespace VendorDirectTests.PaySimple {
 
 		[TestMethod]
 		public void Environment_SandboxUsesSandboxHost_BlankIsProduction() {
-			Assert.AreEqual(OpenDentBusiness.PaySimple.Environments.Production,OpenDentBusiness.PaySimple.NormalizeEnvironment(""));
-			Assert.AreEqual(OpenDentBusiness.PaySimple.Environments.Production,OpenDentBusiness.PaySimple.NormalizeEnvironment(null));
-			Assert.AreEqual(OpenDentBusiness.PaySimple.Environments.Sandbox,OpenDentBusiness.PaySimple.NormalizeEnvironment(" sandbox "));
-			Assert.AreEqual(OpenDentBusiness.PaySimple.Environments.Production,OpenDentBusiness.PaySimple.NormalizeEnvironment("Live"));
+			Assert.AreEqual(OpenPmsDentalBusiness.PaySimple.Environments.Production,OpenPmsDentalBusiness.PaySimple.NormalizeEnvironment(""));
+			Assert.AreEqual(OpenPmsDentalBusiness.PaySimple.Environments.Production,OpenPmsDentalBusiness.PaySimple.NormalizeEnvironment(null));
+			Assert.AreEqual(OpenPmsDentalBusiness.PaySimple.Environments.Sandbox,OpenPmsDentalBusiness.PaySimple.NormalizeEnvironment(" sandbox "));
+			Assert.AreEqual(OpenPmsDentalBusiness.PaySimple.Environments.Production,OpenPmsDentalBusiness.PaySimple.NormalizeEnvironment("Live"));
 			_fakeHttpHandler.Enqueue(HttpStatusCode.OK,Envelope("[]"));
-			OpenDentBusiness.PaySimple.TestCredentials(Credentials(OpenDentBusiness.PaySimple.Environments.Sandbox));
+			OpenPmsDentalBusiness.PaySimple.TestCredentials(Credentials(OpenPmsDentalBusiness.PaySimple.Environments.Sandbox));
 			Assert.AreEqual("sandbox-api.paysimple.com",_fakeHttpHandler.Requests.Single().RequestUri.Host);
 		}
 
 		[TestMethod]
 		public void Credentials_IncompleteAreRefusedWithoutACall() {
-			Assert.IsFalse(new OpenDentBusiness.PaySimple.PaySimpleCredentials(USER,"  ","Production").IsComplete);
-			Assert.IsFalse(new OpenDentBusiness.PaySimple.PaySimpleCredentials("",KEY,"Production").IsComplete);
-			AssertEx.Throws<CodeBase.ODException>(() => OpenDentBusiness.PaySimple.TestCredentials(new OpenDentBusiness.PaySimple.PaySimpleCredentials(USER,"","")));
+			Assert.IsFalse(new OpenPmsDentalBusiness.PaySimple.PaySimpleCredentials(USER,"  ","Production").IsComplete);
+			Assert.IsFalse(new OpenPmsDentalBusiness.PaySimple.PaySimpleCredentials("",KEY,"Production").IsComplete);
+			AssertEx.Throws<CodeBase.ODException>(() => OpenPmsDentalBusiness.PaySimple.TestCredentials(new OpenPmsDentalBusiness.PaySimple.PaySimpleCredentials(USER,"","")));
 			Assert.AreEqual(0,_fakeHttpHandler.Requests.Count);
 		}
 
@@ -96,7 +96,7 @@ namespace VendorDirectTests.PaySimple {
 		public void GetPaymentStatus_ParsesStatusDatesAndFailureData() {
 			_fakeHttpHandler.Enqueue(HttpStatusCode.OK,Envelope(PaymentJson(29124043,"Returned","OPMS-abc","R01","Insufficient Funds",
 				actualSettledDate:"2026-10-03T06:00:00Z",returnDate:"2026-10-06T06:00:00Z")));
-			OpenDentBusiness.PaySimple.PaySimplePaymentStatus paySimplePaymentStatus=OpenDentBusiness.PaySimple.GetPaymentStatus(Credentials(),"29124043");
+			OpenPmsDentalBusiness.PaySimple.PaySimplePaymentStatus paySimplePaymentStatus=OpenPmsDentalBusiness.PaySimple.GetPaymentStatus(Credentials(),"29124043");
 			Assert.AreEqual("https://api.paysimple.com/v4/payment/29124043",_fakeHttpHandler.Requests.Single().RequestUri.AbsoluteUri);
 			Assert.AreEqual(29124043,paySimplePaymentStatus.Id);
 			Assert.AreEqual("Returned",paySimplePaymentStatus.Status);
@@ -113,7 +113,7 @@ namespace VendorDirectTests.PaySimple {
 			string json=Envelope("["+PaymentJson(1,"Returned")+","+PaymentJson(2,"ChargeBack")+"]",
 				"{\"TotalItems\":201,\"Page\":1,\"ItemsPerPage\":200}");
 			_fakeHttpHandler.Enqueue(HttpStatusCode.OK,json);
-			OpenDentBusiness.PaySimple.PaySimplePaymentPage paySimplePaymentPage=OpenDentBusiness.PaySimple.ListPayments(Credentials(),
+			OpenPmsDentalBusiness.PaySimple.PaySimplePaymentPage paySimplePaymentPage=OpenPmsDentalBusiness.PaySimple.ListPayments(Credentials(),
 				PaySimpleAchStatusSync.ArrayLateReturnStatuses,new DateTime(2026,8,5),1);
 			Uri uri=_fakeHttpHandler.Requests.Single().RequestUri;
 			Assert.AreEqual("/v4/payment",uri.AbsolutePath);
@@ -132,7 +132,7 @@ namespace VendorDirectTests.PaySimple {
 		public void FindPaymentByOrderId_PagesThroughTheCustomersPayments() {
 			_fakeHttpHandler.Enqueue(HttpStatusCode.OK,Envelope("["+PaymentJson(1,"Posted","OPMS-other")+"]","{\"TotalItems\":2,\"Page\":1,\"ItemsPerPage\":1}"));
 			_fakeHttpHandler.Enqueue(HttpStatusCode.OK,Envelope("["+PaymentJson(2,"Posted","OPMS-wanted")+"]","{\"TotalItems\":2,\"Page\":2,\"ItemsPerPage\":1}"));
-			OpenDentBusiness.PaySimple.PaySimplePaymentStatus paySimplePaymentStatus=OpenDentBusiness.PaySimple.FindPaymentByOrderId(Credentials(),8051100,
+			OpenPmsDentalBusiness.PaySimple.PaySimplePaymentStatus paySimplePaymentStatus=OpenPmsDentalBusiness.PaySimple.FindPaymentByOrderId(Credentials(),8051100,
 				"OPMS-wanted");
 			Assert.IsNotNull(paySimplePaymentStatus);
 			Assert.AreEqual(2,paySimplePaymentStatus.Id);
@@ -145,7 +145,7 @@ namespace VendorDirectTests.PaySimple {
 		[TestMethod]
 		public void FindPaymentByOrderId_ReturnsNullWhenAbsent() {
 			_fakeHttpHandler.Enqueue(HttpStatusCode.OK,Envelope("["+PaymentJson(1,"Posted","OPMS-other")+"]","{\"TotalItems\":1,\"Page\":1,\"ItemsPerPage\":200}"));
-			Assert.IsNull(OpenDentBusiness.PaySimple.FindPaymentByOrderId(Credentials(),8051100,"OPMS-wanted"));
+			Assert.IsNull(OpenPmsDentalBusiness.PaySimple.FindPaymentByOrderId(Credentials(),8051100,"OPMS-wanted"));
 			Assert.AreEqual(1,_fakeHttpHandler.Requests.Count);
 		}
 
@@ -155,13 +155,13 @@ namespace VendorDirectTests.PaySimple {
 				+"\"payment_failed\"],\"is_active\":true},{\"id\":\"wh_2\",\"url\":\"https://office.example/ps\",\"event_types\":null,\"is_active\":false}]}";
 			_fakeHttpHandler.Enqueue(HttpStatusCode.OK,json);
 			_fakeHttpHandler.Enqueue(HttpStatusCode.NoContent,"");
-			List<OpenDentBusiness.PaySimple.ApiWebhookResponse> listWebhooks=OpenDentBusiness.PaySimple.GetWebhooks(Credentials());
+			List<OpenPmsDentalBusiness.PaySimple.ApiWebhookResponse> listWebhooks=OpenPmsDentalBusiness.PaySimple.GetWebhooks(Credentials());
 			Assert.AreEqual(2,listWebhooks.Count);
 			Assert.AreEqual("wh_1",listWebhooks[0].WebhookId);
 			Assert.AreEqual("https://example.invalid/hook",listWebhooks[0].WebhookUrl);
 			CollectionAssert.AreEqual(new[] { "payment_settled","payment_failed" },listWebhooks[0].WebhookTypes.ToArray());
 			Assert.AreEqual(0,listWebhooks[1].WebhookTypes.Count);
-			OpenDentBusiness.PaySimple.DeleteWebhook(Credentials(),"wh_1");
+			OpenPmsDentalBusiness.PaySimple.DeleteWebhook(Credentials(),"wh_1");
 			List<RecordedRequest> listRequests=_fakeHttpHandler.Requests;
 			Assert.AreEqual("https://api.paysimple.com/ps/webhook/subscriptions",listRequests[0].RequestUri.AbsoluteUri);
 			Assert.AreEqual(HttpMethod.Delete,listRequests[1].Method);
@@ -176,7 +176,7 @@ namespace VendorDirectTests.PaySimple {
 				+"\"HttpStatus\":\"BadRequest\",\"HttpStatusCode\":400,\"PagingDetails\":null},\"Response\":null}";
 			_fakeHttpHandler.Enqueue(HttpStatusCode.BadRequest,json);
 			PaySimpleException paySimpleException=AssertEx.Throws<PaySimpleException>(
-				() => OpenDentBusiness.PaySimple.GetPaymentStatus(Credentials(),"5"));
+				() => OpenPmsDentalBusiness.PaySimple.GetPaymentStatus(Credentials(),"5"));
 			Assert.AreEqual("InvalidInput",paySimpleException.ErrorCode);
 			CollectionAssert.AreEqual(new[] { "Payment 5 not found" },paySimpleException.ErrorMessages);
 		}
@@ -184,7 +184,7 @@ namespace VendorDirectTests.PaySimple {
 		[TestMethod]
 		public void Errors_401_GivesCredentialsException() {
 			_fakeHttpHandler.Enqueue(HttpStatusCode.Unauthorized,"{\"Message\":\"Authorization has been denied for this request.\"}");
-			AssertEx.Throws<PaySimpleCredentialsException>(() => OpenDentBusiness.PaySimple.GetPaymentStatus(Credentials(),"5"));
+			AssertEx.Throws<PaySimpleCredentialsException>(() => OpenPmsDentalBusiness.PaySimple.GetPaymentStatus(Credentials(),"5"));
 		}
 
 		[TestMethod]
@@ -192,7 +192,7 @@ namespace VendorDirectTests.PaySimple {
 			_fakeHttpHandler.SetDefault((request,ct) => System.Threading.Tasks.Task.FromResult(
 				FakeHttpHandler.MakeResponse(HttpStatusCode.ServiceUnavailable,"<html>busy</html>","text/html")));
 			PaySimpleHttpException paySimpleHttpException=AssertEx.Throws<PaySimpleHttpException>(
-				() => OpenDentBusiness.PaySimple.GetPaymentStatus(Credentials(),"5"));
+				() => OpenPmsDentalBusiness.PaySimple.GetPaymentStatus(Credentials(),"5"));
 			Assert.AreEqual(503,paySimpleHttpException.StatusCode);
 			Assert.IsTrue(paySimpleHttpException.IsTransient);
 			Assert.AreEqual(4,_fakeHttpHandler.Requests.Count,"One request plus three retries.");
@@ -200,10 +200,10 @@ namespace VendorDirectTests.PaySimple {
 
 		[TestMethod]
 		public void OrderId_HasOurPrefixAndFitsPaySimplesLimit() {
-			string orderId=OpenDentBusiness.PaySimple.NewOrderId();
+			string orderId=OpenPmsDentalBusiness.PaySimple.NewOrderId();
 			StringAssert.StartsWith(orderId,"OPMS-");
 			Assert.IsTrue(orderId.Length<=50);
-			Assert.AreNotEqual(orderId,OpenDentBusiness.PaySimple.NewOrderId());
+			Assert.AreNotEqual(orderId,OpenPmsDentalBusiness.PaySimple.NewOrderId());
 		}
 
 		[TestMethod]

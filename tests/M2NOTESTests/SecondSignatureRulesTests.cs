@@ -8,8 +8,8 @@ using System.Drawing;
 using System.Globalization;
 using System.Threading;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDental.UI;
-using OpenDentBusiness;
+using OpenPmsDental.UI;
+using OpenPmsDentalBusiness;
 
 namespace M2NOTESTests {
 	[TestClass]

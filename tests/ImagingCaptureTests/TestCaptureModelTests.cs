@@ -10,7 +10,7 @@ using ImagingCapture.UI;
 using ImagingDeviceManager.Capture;
 using ImagingDeviceManager.Config;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Tests {
 	///<summary>TestCaptureModel, CaptureVerificationRecord and CaptureEndText (design 7.8, 7.12, 9.3, 13 step 8): Test capture's state, texts

@@ -8,9 +8,9 @@ using System.Linq;
 using System.Threading;
 using ForkMigrationTests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.FileIO;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.FileIO;
+using OpenPmsDentalBusiness.ForkMigrations;
 using UnitTestsCore;
 
 namespace ImagingTests {
@@ -141,7 +141,7 @@ namespace ImagingTests {
 				command+=" AND PatNum="+POut.Long(patNum);
 			}
 			command+=" ORDER BY SecurityLogNum";
-			return OpenDentBusiness.Crud.SecurityLogCrud.SelectMany(command);
+			return OpenPmsDentalBusiness.Crud.SecurityLogCrud.SelectMany(command);
 		}
 	}
 }

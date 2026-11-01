@@ -56,7 +56,7 @@ namespace AdoptionValidation {
 		///the row of the Open Dental 25.4 UDS+ report right after the sealant measure (ReportRowUdsPlusStep, M2-UDS), moves the later row down one place
 		///(ItemOrder only) and gives that group the Reports permission for the new row. (internal name, description.)</summary>
 		public static readonly (string internalName,string description)[] ArrayReportRowsPublicHealth={
-			(OpenDentBusiness.ForkMigrations.Features.ReportRowUdsPlus.InternalNameSealant,"FQHC Dental Sealant Measure"),
+			(OpenPmsDentalBusiness.ForkMigrations.Features.ReportRowUdsPlus.InternalNameSealant,"FQHC Dental Sealant Measure"),
 			("ODRawPopulationData","Raw Population Data"),
 		};
 		///<summary>DisplayReportCategory.PublicHealth.</summary>
@@ -218,7 +218,7 @@ namespace AdoptionValidation {
 			summary.OtherButtons=1;
 			//The discontinued DXC Patient Credit Score link, still enabled and on two toolbars (B-SHELL's step disables it and deletes the buttons).
 			summary.DxcProgramNum=sink.NextId("program");
-			sink.Insert("program",new Row { ["ProgramNum"]=summary.DxcProgramNum,["ProgName"]=OpenDentBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.PROG_NAME,
+			sink.Insert("program",new Row { ["ProgramNum"]=summary.DxcProgramNum,["ProgName"]=OpenPmsDentalBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.PROG_NAME,
 				["ProgDesc"]=DXC_PROG_DESC,["Enabled"]=1 });
 			foreach(int toolBar in ArrayDxcToolBars) {
 				sink.Insert("toolbutitem",new Row { ["ToolButItemNum"]=sink.NextId("toolbutitem"),["ProgramNum"]=summary.DxcProgramNum,["ToolBar"]=toolBar,
@@ -278,8 +278,8 @@ namespace AdoptionValidation {
 				}
 				summary.InsHistPrefs++;
 			}
-			summary.CodeGroupsUnfixed=db.Execute("UPDATE codegroup SET CodeGroupFixed="+((int)OpenDentBusiness.EnumCodeGroupFixed.None).ToString(System.Globalization.CultureInfo.InvariantCulture)
-				+" WHERE CodeGroupFixed="+((int)OpenDentBusiness.EnumCodeGroupFixed.FMDebride).ToString(System.Globalization.CultureInfo.InvariantCulture));
+			summary.CodeGroupsUnfixed=db.Execute("UPDATE codegroup SET CodeGroupFixed="+((int)OpenPmsDentalBusiness.EnumCodeGroupFixed.None).ToString(System.Globalization.CultureInfo.InvariantCulture)
+				+" WHERE CodeGroupFixed="+((int)OpenPmsDentalBusiness.EnumCodeGroupFixed.FMDebride).ToString(System.Globalization.CultureInfo.InvariantCulture));
 			int countClearinghouses=db.Execute("UPDATE clearinghouse SET Password="+SqlLiteral.Quote(FakeCiphertext(rng))
 				+" WHERE Description='Fictional Claims Exchange'");
 			if(countClearinghouses>0) {

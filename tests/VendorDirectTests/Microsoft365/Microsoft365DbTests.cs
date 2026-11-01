@@ -8,8 +8,8 @@ using System.Linq;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.Microsoft365;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.Microsoft365;
 
 namespace VendorDirectTests.Microsoft365 {
 	[TestClass]
@@ -158,7 +158,7 @@ namespace VendorDirectTests.Microsoft365 {
 			Assert.AreEqual(Microsoft365Errors.MessageTurnedOff,microsoftTokenHelper.ErrorMessage);
 			Assert.AreEqual(Microsoft365ErrorKind.NotConfigured,microsoftTokenHelper.ErrorKind);
 			Microsoft365Exception exOff=AssertEx.Throws<Microsoft365Exception>(() => MicrosoftApiConnector.SendEmail("frontdesk@example-dental.test","token",
-				new OpenDentBusiness.Email.BasicEmailMessage()));
+				new OpenPmsDentalBusiness.Email.BasicEmailMessage()));
 			Assert.AreEqual(Microsoft365ErrorKind.NotConfigured,exOff.Kind,"A disabled integration makes no call, even with a token in hand.");
 			AssertEx.Throws<Microsoft365Exception>(() => MicrosoftApiConnector.GetProfile("frontdesk@example-dental.test","token"));
 			SetEnabled(true);

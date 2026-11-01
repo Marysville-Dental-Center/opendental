@@ -7,9 +7,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using OpenDental.UI;
-using OpenDental;
-using OpenDentBusiness;
+using OpenPmsDental.UI;
+using OpenPmsDental;
+using OpenPmsDentalBusiness;
 using CodeBase;
 
 namespace UnitTests{

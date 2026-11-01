@@ -9,7 +9,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using DataConnectionBase;
 using MySqlConnector;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace InitSqlTests {
 	///<summary>Creates, loads, connects to and drops scratch databases. Every name starts with "initsqltest_" plus this run's id, so a test can never

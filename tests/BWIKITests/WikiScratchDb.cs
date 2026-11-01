@@ -6,7 +6,7 @@ using System.Globalization;
 using System.Text.RegularExpressions;
 using DataConnectionBase;
 using MySqlConnector;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace BWIKITests {
 	///<summary>Creates, connects to and drops this run's scratch database. Every name starts with "bwiki_" so the tests can never drop anything
@@ -182,7 +182,7 @@ namespace BWIKITests {
 			wikiPage.DateTimeSaved=(dateTimeSaved==default(DateTime) ? new DateTime(2026,10,1,8,0,0) : dateTimeSaved);
 			wikiPage.IsDraft=isDraft;
 			wikiPage.IsDeleted=isDeleted;
-			return OpenDentBusiness.Crud.WikiPageCrud.Insert(wikiPage);
+			return OpenPmsDentalBusiness.Crud.WikiPageCrud.Insert(wikiPage);
 		}
 
 		///<summary>Sets a page's content directly (for content that holds links to pages inserted after it).</summary>

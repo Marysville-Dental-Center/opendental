@@ -4,8 +4,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.PostcardMania;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.PostcardMania;
 
 namespace VendorDirectTests.PostcardMania {
 	[TestClass]

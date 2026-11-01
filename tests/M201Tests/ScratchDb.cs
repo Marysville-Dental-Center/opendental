@@ -9,8 +9,8 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using DataConnectionBase;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace M201Tests {
 	///<summary>Creates, connects to and drops scratch databases. Every name starts with "m201_" plus this run's id, so a test can never drop anything

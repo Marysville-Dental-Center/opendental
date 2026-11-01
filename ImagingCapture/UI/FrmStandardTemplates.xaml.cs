@@ -3,8 +3,8 @@
 using System;
 using System.Collections.Generic;
 using ImagingCapture.Templates;
-using OpenDental;
-using OpenDentBusiness;
+using OpenPmsDental;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.UI {
 	///<summary>"Add standard templates" (design 9.4 option a), opened from FormImagingDevices: the standard FMX and 4BW mount definitions

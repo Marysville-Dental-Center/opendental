@@ -8,7 +8,7 @@ using ImagingCapture.Save;
 using ImagingCapture.Session;
 using ImagingCapture.Settings;
 using ImagingDeviceManager.Capture;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Tests {
 	///<summary>Runs what the controller posts, in order, when the test says so (RunPending), on the test's thread: the "UI thread" of these

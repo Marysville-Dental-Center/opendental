@@ -5,7 +5,7 @@ using System;
 using System.Linq;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness.Pearl;
+using OpenPmsDentalBusiness.Pearl;
 
 namespace VPEARL2Tests {
 	[TestClass]
@@ -16,7 +16,7 @@ namespace VPEARL2Tests {
 		[TestMethod]
 		public void ClientSecret_IsRedactedWherever_ItAppears() {
 			using(LogCapture logCapture=new LogCapture("2")) {
-				logCapture.DictProps[OpenDentBusiness.Bridges.Pearl.PEARL_CLIENT_SECRET_PROPERTY]=CLIENT_SECRET;
+				logCapture.DictProps[OpenPmsDentalBusiness.Bridges.Pearl.PEARL_CLIENT_SECRET_PROPERTY]=CLIENT_SECRET;
 				PearlLog.Error("Auth failed for "+CLIENT_SECRET+" (echoed by the server)");
 				PearlLog.Verbose("{\"client_id\":\"office-17\",\"client_secret\":\""+CLIENT_SECRET+"\"}");
 				string text=logCapture.AllText;
@@ -29,10 +29,10 @@ namespace VPEARL2Tests {
 		[TestMethod]
 		public void ClientSecret_StoredEncrypted_IsRedactedToo() {
 			string stored;
-			Assert.IsTrue(OpenDentBusiness.VendorDirect.SecretValue.Protect(CLIENT_SECRET,out stored));
+			Assert.IsTrue(OpenPmsDentalBusiness.VendorDirect.SecretValue.Protect(CLIENT_SECRET,out stored));
 			Assert.AreNotEqual(CLIENT_SECRET,stored);
 			using(LogCapture logCapture=new LogCapture("0")) {
-				logCapture.DictProps[OpenDentBusiness.Bridges.Pearl.PEARL_CLIENT_SECRET_PROPERTY]=stored;
+				logCapture.DictProps[OpenPmsDentalBusiness.Bridges.Pearl.PEARL_CLIENT_SECRET_PROPERTY]=stored;
 				PearlLog.Error("value "+CLIENT_SECRET+" and stored "+stored);
 				Assert.IsFalse(logCapture.AllText.Contains(CLIENT_SECRET),logCapture.AllText);
 				Assert.IsFalse(logCapture.AllText.Contains(stored),logCapture.AllText);
@@ -42,7 +42,7 @@ namespace VPEARL2Tests {
 		[TestMethod]
 		public void ShortSecret_DoesNotBlankOrdinaryText() {
 			using(LogCapture logCapture=new LogCapture("0")) {
-				logCapture.DictProps[OpenDentBusiness.Bridges.Pearl.PEARL_CLIENT_SECRET_PROPERTY]="a";
+				logCapture.DictProps[OpenPmsDentalBusiness.Bridges.Pearl.PEARL_CLIENT_SECRET_PROPERTY]="a";
 				PearlLog.Error("a plain message");
 				Assert.AreEqual("ERROR\ta plain message",logCapture.Lines.Single());
 			}
@@ -123,7 +123,7 @@ namespace VPEARL2Tests {
 		[TestMethod]
 		public void EveryWrittenLine_IsScrubbed_IncludingTheScope() {
 			using(LogCapture logCapture=new LogCapture("2")) {
-				logCapture.DictProps[OpenDentBusiness.Bridges.Pearl.PEARL_CLIENT_SECRET_PROPERTY]=CLIENT_SECRET;
+				logCapture.DictProps[OpenPmsDentalBusiness.Bridges.Pearl.PEARL_CLIENT_SECRET_PROPERTY]=CLIENT_SECRET;
 				using(PearlLog.BeginScope(3,CLIENT_SECRET)) {
 					PearlLog.Write(LogLevel.Verbose,"Bearer "+ACCESS_TOKEN);
 				}

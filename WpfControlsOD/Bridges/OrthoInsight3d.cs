@@ -1,8 +1,8 @@
 using System;
 using CodeBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
-namespace OpenDental.Bridges {
+namespace OpenPmsDental.Bridges {
 	///<summary></summary>
 	public class OrthoInsight3d {
 

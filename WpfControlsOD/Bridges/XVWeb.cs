@@ -4,7 +4,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using System.Net;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
@@ -13,7 +13,7 @@ using System.Linq;
 using System.Drawing;
 using CodeBase;
 
-namespace OpenDental.Bridges {
+namespace OpenPmsDental.Bridges {
 	///<summary>Bridge to Apteryx's XVWeb</summary>
 	public class XVWeb {
 		private static Token _xvwebToken;

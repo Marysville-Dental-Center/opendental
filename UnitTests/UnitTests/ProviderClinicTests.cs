@@ -1,6 +1,6 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.Crud;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.Crud;
 using UnitTestsCore;
 
 namespace UnitTests {

@@ -9,7 +9,7 @@ using System.Linq;
 using System.Reflection;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace BEFTests {
 	[TestClass]

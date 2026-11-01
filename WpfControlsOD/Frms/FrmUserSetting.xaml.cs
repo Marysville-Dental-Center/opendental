@@ -7,10 +7,10 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	///<summary>This form (per Nathan) should be used for any future features that could be categorized as a user setting. The intent of this class was to
 	/// create a place for specific user settings.</summary>
 	public partial class FrmUserSetting:FrmODBase {

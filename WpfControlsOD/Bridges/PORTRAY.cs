@@ -1,5 +1,5 @@
 ﻿using CodeBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -8,7 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OpenDental.Bridges {
+namespace OpenPmsDental.Bridges {
 	public class PORTRAY {///<summary></summary>
 		public PORTRAY() {
 

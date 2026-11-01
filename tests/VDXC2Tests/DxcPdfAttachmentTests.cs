@@ -9,9 +9,9 @@ using System.Text;
 using System.Threading;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.Eclaims;
-using OpenDentBusiness.VendorDirect.DentalXChange;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.Eclaims;
+using OpenPmsDentalBusiness.VendorDirect.DentalXChange;
 
 namespace VDXC2Tests {
 	[TestClass]
@@ -213,10 +213,10 @@ namespace VDXC2Tests {
 			byte[] arrayBytesPdf=SyntheticPdf.Build();
 			ClaimConnect.ImageAttachment imageAttachment=DxcPdfAttachment.CreateImageAttachment(arrayBytesPdf,"Referral",new DateTime(2026,10,3),
 				ClaimConnect.ImageTypeCode.ReferralForm);
-			OpenDentBusiness.DentalxchangePartnerService.AttachmentImage attachmentImage=imageAttachment.ConvertToAttachmentImage();
+			OpenPmsDentalBusiness.DentalxchangePartnerService.AttachmentImage attachmentImage=imageAttachment.ConvertToAttachmentImage();
 			CollectionAssert.AreEqual(arrayBytesPdf,attachmentImage.ImageFileAsBase64);
 			Assert.AreEqual("Referral.pdf",attachmentImage.ImageFileName);
-			Assert.AreEqual(OpenDentBusiness.DentalxchangePartnerService.imageTypeCode.B4,attachmentImage.ImageTypeCode);
+			Assert.AreEqual(OpenPmsDentalBusiness.DentalxchangePartnerService.imageTypeCode.B4,attachmentImage.ImageTypeCode);
 			Assert.IsFalse(attachmentImage.ImageOrientationTypeSpecified,"Not an X-ray.");
 			//On the wire the bytes are base64Binary.
 			System.Xml.Serialization.XmlSerializer xmlSerializer=new System.Xml.Serialization.XmlSerializer(attachmentImage.GetType());

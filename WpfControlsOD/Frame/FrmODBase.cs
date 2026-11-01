@@ -14,10 +14,10 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 /*
 Jordan is the only one allowed to edit this file.
 

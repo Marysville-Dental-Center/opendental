@@ -1,8 +1,8 @@
 ﻿using System;
 using CodeBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
-namespace OpenDental.Bridges {
+namespace OpenPmsDental.Bridges {
 	///<summary>Receipts for PayConnect 2 transactions (terminal sales and voids through the cloud API). The PayConnect 1.0 VeriFone terminal path
 	///(DpsPos.dll) was removed.</summary>
 	public class PayConnectTerminal {

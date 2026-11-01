@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace UnitTestsCore {
 	public class AutoNoteT {
@@ -21,7 +21,7 @@ namespace UnitTestsCore {
 		///<summary>Deletes everything from the autonote table. Does not truncate the table so that PKs are not reused on accident.</summary>
 		public static void ClearAutoNoteTable() {
 			string command="DELETE FROM autonote WHERE AutoNoteNum > 0";
-			OpenDentBusiness.DataCore.NonQ(command);
+			OpenPmsDentalBusiness.DataCore.NonQ(command);
 		}
 	}
 }

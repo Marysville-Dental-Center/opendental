@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace OpenDental.DivvyConnect {
+namespace OpenPmsDental.DivvyConnect {
 	using System.Runtime.Serialization;
 
 
@@ -27,7 +27,7 @@ namespace OpenDental.DivvyConnect {
 
 		private string MessageField;
 
-		private OpenDental.DivvyConnect.Recipient RecipientField;
+		private OpenPmsDental.DivvyConnect.Recipient RecipientField;
 
 		public System.Runtime.Serialization.ExtensionDataObject ExtensionData {
 			get {
@@ -79,7 +79,7 @@ namespace OpenDental.DivvyConnect {
 		}
 
 		[System.Runtime.Serialization.DataMemberAttribute()]
-		public OpenDental.DivvyConnect.Recipient Recipient {
+		public OpenPmsDental.DivvyConnect.Recipient Recipient {
 			get {
 				return this.RecipientField;
 			}
@@ -360,9 +360,9 @@ namespace OpenDental.DivvyConnect {
 
 		private string MessageField;
 
-		private OpenDental.DivvyConnect.MessageCode MessageCodeField;
+		private OpenPmsDental.DivvyConnect.MessageCode MessageCodeField;
 
-		private OpenDental.DivvyConnect.SinglePostcardMessage[] PostcardMessagesField;
+		private OpenPmsDental.DivvyConnect.SinglePostcardMessage[] PostcardMessagesField;
 
 		public System.Runtime.Serialization.ExtensionDataObject ExtensionData {
 			get {
@@ -384,7 +384,7 @@ namespace OpenDental.DivvyConnect {
 		}
 
 		[System.Runtime.Serialization.DataMemberAttribute()]
-		public OpenDental.DivvyConnect.MessageCode MessageCode {
+		public OpenPmsDental.DivvyConnect.MessageCode MessageCode {
 			get {
 				return this.MessageCodeField;
 			}
@@ -394,7 +394,7 @@ namespace OpenDental.DivvyConnect {
 		}
 
 		[System.Runtime.Serialization.DataMemberAttribute()]
-		public OpenDental.DivvyConnect.SinglePostcardMessage[] PostcardMessages {
+		public OpenPmsDental.DivvyConnect.SinglePostcardMessage[] PostcardMessages {
 			get {
 				return this.PostcardMessagesField;
 			}
@@ -427,9 +427,9 @@ namespace OpenDental.DivvyConnect {
 
 		private string MessageField;
 
-		private OpenDental.DivvyConnect.PostcardCode postcardCodeField;
+		private OpenPmsDental.DivvyConnect.PostcardCode postcardCodeField;
 
-		private OpenDental.DivvyConnect.Postcard postcardRecordField;
+		private OpenPmsDental.DivvyConnect.Postcard postcardRecordField;
 
 		public System.Runtime.Serialization.ExtensionDataObject ExtensionData {
 			get {
@@ -451,7 +451,7 @@ namespace OpenDental.DivvyConnect {
 		}
 
 		[System.Runtime.Serialization.DataMemberAttribute()]
-		public OpenDental.DivvyConnect.PostcardCode postcardCode {
+		public OpenPmsDental.DivvyConnect.PostcardCode postcardCode {
 			get {
 				return this.postcardCodeField;
 			}
@@ -461,7 +461,7 @@ namespace OpenDental.DivvyConnect {
 		}
 
 		[System.Runtime.Serialization.DataMemberAttribute()]
-		public OpenDental.DivvyConnect.Postcard postcardRecord {
+		public OpenPmsDental.DivvyConnect.Postcard postcardRecord {
 			get {
 				return this.postcardRecordField;
 			}
@@ -488,7 +488,7 @@ namespace OpenDental.DivvyConnect {
 	public interface IPostcardService {
 
 		[System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/IPostcardService/SendPostcards",ReplyAction="http://tempuri.org/IPostcardService/SendPostcardsResponse")]
-		OpenDental.DivvyConnect.PostcardReturnMessage SendPostcards(System.Guid apiKey,string username,string password,OpenDental.DivvyConnect.Postcard[] postcards,OpenDental.DivvyConnect.Practice practice);
+		OpenPmsDental.DivvyConnect.PostcardReturnMessage SendPostcards(System.Guid apiKey,string username,string password,OpenPmsDental.DivvyConnect.Postcard[] postcards,OpenPmsDental.DivvyConnect.Practice practice);
 	}
 
 	[System.CodeDom.Compiler.GeneratedCodeAttribute("System.ServiceModel","3.0.0.0")]
@@ -518,7 +518,7 @@ namespace OpenDental.DivvyConnect {
 			base(binding,remoteAddress) {
 		}
 
-		public OpenDental.DivvyConnect.PostcardReturnMessage SendPostcards(System.Guid apiKey,string username,string password,OpenDental.DivvyConnect.Postcard[] postcards,OpenDental.DivvyConnect.Practice practice) {
+		public OpenPmsDental.DivvyConnect.PostcardReturnMessage SendPostcards(System.Guid apiKey,string username,string password,OpenPmsDental.DivvyConnect.Postcard[] postcards,OpenPmsDental.DivvyConnect.Practice practice) {
 			return base.Channel.SendPostcards(apiKey,username,password,postcards,practice);
 		}
 	}

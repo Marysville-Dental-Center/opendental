@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Threading;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace BTIMETests {
 	[TestClass]
@@ -206,7 +206,7 @@ namespace BTIMETests {
 
 		///<summary>Fills the preference cache in memory. The database tests refresh it from their own database before each test.</summary>
 		private static void FillPrefs(bool useDecimal) {
-			Prefs.FillCacheFromTable(OpenDentBusiness.Crud.PrefCrud.ListToTable(new List<Pref> {
+			Prefs.FillCacheFromTable(OpenPmsDentalBusiness.Crud.PrefCrud.ListToTable(new List<Pref> {
 				new Pref { PrefNum=1,PrefName=PrefName.TimeCardsUseDecimalInsteadOfColon.ToString(),ValueString=useDecimal ? "1" : "0" },
 				new Pref { PrefNum=2,PrefName=PrefName.TimeCardShowSeconds.ToString(),ValueString="0" },
 			}));

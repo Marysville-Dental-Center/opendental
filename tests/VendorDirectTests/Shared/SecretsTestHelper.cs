@@ -8,7 +8,7 @@ namespace VendorDirectTests {
 		///<summary>The osd1$ form of plainText, as a setup window would store it. Fails the test if encryption fails.</summary>
 		public static string Protect(string plainText) {
 			string stored;
-			Assert.IsTrue(OpenDentBusiness.VendorDirect.SecretValue.Protect(plainText,out stored),"Encryption failed.");
+			Assert.IsTrue(OpenPmsDentalBusiness.VendorDirect.SecretValue.Protect(plainText,out stored),"Encryption failed.");
 			return stored;
 		}
 

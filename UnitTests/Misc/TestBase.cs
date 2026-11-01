@@ -1,7 +1,7 @@
 ﻿using System;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using System.Collections.Generic;
 using UnitTestsCore;
 using System.Reflection;
@@ -81,17 +81,17 @@ namespace UnitTests {
 		}
 
 		protected static void RunTestsAgainstMiddleTier() {
-			RunTestsAgainstMiddleTier(new OpenDentBusiness.WebServices.OpenDentalServerMockIIS());
+			RunTestsAgainstMiddleTier(new OpenPmsDentalBusiness.WebServices.OpenDentalServerMockIIS());
 		}
 
-		protected static void RunTestsAgainstMiddleTier(OpenDentBusiness.WebServices.OpenDentalServerMockIIS mockServer) {
+		protected static void RunTestsAgainstMiddleTier(OpenPmsDentalBusiness.WebServices.OpenDentalServerMockIIS mockServer) {
 			RemotingClient.MiddleTierRole=MiddleTierRole.ClientMT;
-			OpenDentBusiness.WebServices.OpenDentalServerProxy.MockOpenDentalServerCur=mockServer;
+			OpenPmsDentalBusiness.WebServices.OpenDentalServerProxy.MockOpenDentalServerCur=mockServer;
 		}
 
 		protected static void RunTestsAgainstDirectConnection() {
 			RemotingClient.MiddleTierRole=MiddleTierRole.ClientDirect;
-			OpenDentBusiness.WebServices.OpenDentalServerProxy.MockOpenDentalServerCur=null;
+			OpenPmsDentalBusiness.WebServices.OpenDentalServerProxy.MockOpenDentalServerCur=null;
 		}
 
 		protected static void RevertMiddleTierSettingsIfNeeded() {

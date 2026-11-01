@@ -11,10 +11,10 @@ using CodeBase;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
-using OpenDentBusiness.VendorDirect;
-using OpenDentBusiness.VendorDirect.ProgramLinks;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
+using OpenPmsDentalBusiness.VendorDirect;
+using OpenPmsDentalBusiness.VendorDirect.ProgramLinks;
 
 namespace VBRIDGE2Tests {
 	[TestClass]

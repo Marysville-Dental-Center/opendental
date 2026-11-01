@@ -7,7 +7,7 @@ using ImagingCapture.Save;
 using ImagingCapture.Session;
 using ImagingDeviceManager.Capture;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Tests {
 	///<summary>Retake, Rotate and "Always rotate this slot" of CaptureSessionController (design 7.3 step 5, 7.10, 7.11, 9.4, 10.7), on the fakes

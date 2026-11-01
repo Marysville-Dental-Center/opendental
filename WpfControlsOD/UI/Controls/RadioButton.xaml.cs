@@ -1,4 +1,4 @@
-﻿using OpenDental;
+﻿using OpenPmsDental;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -235,8 +235,8 @@ How to use the CheckBox control:
 				textBlock.Foreground=Brushes.Black;//not hit very often. Usually black because of default.
 			}
 			else{
-				ellipseOutline.Stroke=new SolidColorBrush(OpenDental.ColorOD.Gray_Wpf(170));
-				textBlock.Foreground=new SolidColorBrush(OpenDental.ColorOD.Gray_Wpf(170));
+				ellipseOutline.Stroke=new SolidColorBrush(OpenPmsDental.ColorOD.Gray_Wpf(170));
+				textBlock.Foreground=new SolidColorBrush(OpenPmsDental.ColorOD.Gray_Wpf(170));
 			}
 		}
 	}

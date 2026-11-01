@@ -1,0 +1,212 @@
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Reflection;
+using System.Text;
+
+namespace OpenPmsDentalBusiness{
+	///<summary></summary>
+	public class PayTerminals{
+		//If this table type will exist as cached data, uncomment the Cache Pattern region below and edit.
+		/*
+		#region Cache Pattern
+		//This region can be eliminated if this is not a table type with cached data.
+		//If leaving this region in place, be sure to add GetTableFromCache and FillCacheFromTable to the Cache.cs file with all the other Cache types.
+		//Also, consider making an invalid type for this class in Cache.GetAllCachedInvalidTypes() if needed.
+
+		private class PayTerminalCache : CacheListAbs<PayTerminal> {
+			protected override List<PayTerminal> GetCacheFromDb() {
+				string command="SELECT * FROM payterminal";
+				return Crud.PayTerminalCrud.SelectMany(command);
+			}
+			protected override List<PayTerminal> TableToList(DataTable table) {
+				return Crud.PayTerminalCrud.TableToList(table);
+			}
+			protected override PayTerminal Copy(PayTerminal payTerminal) {
+				return payTerminal.Copy();
+			}
+			protected override DataTable ListToTable(List<PayTerminal> listPayTerminals) {
+				return Crud.PayTerminalCrud.ListToTable(listPayTerminals,"PayTerminal");
+			}
+			protected override void FillCacheIfNeeded() {
+				PayTerminals.GetTableFromCache(false);
+			}
+		}
+
+		///<summary>The object that accesses the cache in a thread-safe manner.</summary>
+		private static PayTerminalCache _payTerminalCache=new PayTerminalCache();
+
+		public static void ClearCache() {
+			_payTerminalCache.ClearCache();
+		}
+
+		public static List<PayTerminal> GetDeepCopy(bool isShort=false) {
+			return _payTerminalCache.GetDeepCopy(isShort);
+		}
+
+		public static int GetCount(bool isShort=false) {
+			return _payTerminalCache.GetCount(isShort);
+		}
+
+		public static bool GetExists(Predicate<PayTerminal> match,bool isShort=false) {
+			return _payTerminalCache.GetExists(match,isShort);
+		}
+
+		public static int GetFindIndex(Predicate<PayTerminal> match,bool isShort=false) {
+			return _payTerminalCache.GetFindIndex(match,isShort);
+		}
+
+		public static PayTerminal GetFirst(bool isShort=false) {
+			return _payTerminalCache.GetFirst(isShort);
+		}
+
+		public static PayTerminal GetFirst(Func<PayTerminal,bool> match,bool isShort=false) {
+			return _payTerminalCache.GetFirst(match,isShort);
+		}
+
+		public static PayTerminal GetFirstOrDefault(Func<PayTerminal,bool> match,bool isShort=false) {
+			return _payTerminalCache.GetFirstOrDefault(match,isShort);
+		}
+
+		public static PayTerminal GetLast(bool isShort=false) {
+			return _payTerminalCache.GetLast(isShort);
+		}
+
+		public static PayTerminal GetLastOrDefault(Func<PayTerminal,bool> match,bool isShort=false) {
+			return _payTerminalCache.GetLastOrDefault(match,isShort);
+		}
+
+		public static List<PayTerminal> GetWhere(Predicate<PayTerminal> match,bool isShort=false) {
+			return _payTerminalCache.GetWhere(match,isShort);
+		}
+
+		public static DataTable RefreshCache() {
+			return GetTableFromCache(true);
+		}
+
+		///<summary>Fills the local cache with the passed in DataTable.</summary>
+		public static void FillCacheFromTable(DataTable table) {
+			_payTerminalCache.FillCacheFromTable(table);
+		}
+
+		///<summary>Returns the cache in the form of a DataTable. Always refreshes the ClientMT's cache.</summary>
+		///<param name="doRefreshCache">If true, will refresh the cache if MiddleTierRole is ClientDirect or ServerWeb.</param> 
+		public static DataTable GetTableFromCache(bool doRefreshCache) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				DataTable table=Meth.GetTable(MethodBase.GetCurrentMethod(),doRefreshCache);
+				_payTerminalCache.FillCacheFromTable(table);
+				return table;
+			}
+			return _payTerminalCache.GetTableFromCache(doRefreshCache);
+		}
+		#endregion Cache Pattern
+		*/
+		///<summary>payterminal.CCIntegration of a PayConnect terminal (Open Dental 25.4). Rows made before 25.4 hold "" and are PayConnect terminals too:
+		///nothing else used the table.</summary>
+		public const string CCIntegrationPayConnect="PayConnect";
+		///<summary>payterminal.CCIntegration of a Global Payments V2 terminal: the integration's internal name in the published 25.4 database documents
+		///(INFERRED; the exact stored string is not published).</summary>
+		public const string CCIntegrationMeetInTheCloud="MeetInTheCloud";
+
+		#region Methods - Get
+
+		///<summary>The clinic's PayConnect terminals: CCIntegration "PayConnect", or "" on rows made before 25.4. Since 25.4 each integration lists only
+		///its own terminals, so the PayConnect windows never offer a Global Payments V2 terminal.</summary>
+		public static List<PayTerminal> Refresh(long clinicNum){
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetObject<List<PayTerminal>>(MethodBase.GetCurrentMethod(),clinicNum);
+			}
+			string command="SELECT * FROM payterminal WHERE ClinicNum = "+POut.Long(clinicNum)
+				+" AND CCIntegration IN ('','"+POut.String(CCIntegrationPayConnect)+"')";
+			return Crud.PayTerminalCrud.SelectMany(command);
+		}
+
+		///<summary>The clinic's terminals of one integration (payterminal.CCIntegration, e.g. CCIntegrationMeetInTheCloud), ordered by name. For
+		///PayConnect (or a blank integration) this is the same list as Refresh.</summary>
+		public static List<PayTerminal> GetForIntegration(long clinicNum,string ccIntegration){
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetObject<List<PayTerminal>>(MethodBase.GetCurrentMethod(),clinicNum,ccIntegration);
+			}
+			if(string.IsNullOrWhiteSpace(ccIntegration) || ccIntegration==CCIntegrationPayConnect) {
+				return Refresh(clinicNum);
+			}
+			string command="SELECT * FROM payterminal WHERE ClinicNum="+POut.Long(clinicNum)+" "
+				+"AND CCIntegration='"+POut.String(ccIntegration)+"' ORDER BY Name,PayTerminalNum";
+			return Crud.PayTerminalCrud.SelectMany(command);
+		}
+		
+		///<summary>The index in listPayTerminals (a clinic's terminals, as the PayConnect window lists them) of the terminal whose TerminalID is
+		///terminalIdLast, the one this workstation used last. Falls back to 0, the first terminal, when that terminal isn't in the list (another
+		///clinic's, or deleted) or nothing was remembered. -1 for an empty list.</summary>
+		public static int GetIndexToSelect(List<PayTerminal> listPayTerminals,string terminalIdLast) {
+			if(listPayTerminals==null || listPayTerminals.Count==0) {
+				return -1;
+			}
+			string terminalIdTrimmed=(terminalIdLast??"").Trim();
+			if(terminalIdTrimmed=="") {
+				return 0;
+			}
+			int index=listPayTerminals.FindIndex(x => x!=null && (x.TerminalID??"").Trim()==terminalIdTrimmed);
+			if(index<0) {
+				return 0;
+			}
+			return index;
+		}
+
+		///<summary>Gets one PayTerminal from the db.</summary>
+		public static PayTerminal GetOne(long payTerminalNum){
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT){
+				return Meth.GetObject<PayTerminal>(MethodBase.GetCurrentMethod(),payTerminalNum);
+			}
+			return Crud.PayTerminalCrud.SelectOne(payTerminalNum);
+		}
+		#endregion Methods - Get
+		#region Methods - Modify
+
+		///<summary>A terminal without an integration is a PayConnect terminal, as every terminal was before 25.4.</summary>
+		public static long Insert(PayTerminal payTerminal){
+			if(string.IsNullOrWhiteSpace(payTerminal.CCIntegration)) {
+				payTerminal.CCIntegration=CCIntegrationPayConnect;
+			}
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT){
+				payTerminal.PayTerminalNum=Meth.GetLong(MethodBase.GetCurrentMethod(),payTerminal);
+				return payTerminal.PayTerminalNum;
+			}
+			return Crud.PayTerminalCrud.Insert(payTerminal);
+		}
+
+		///<summary></summary>
+		public static void Update(PayTerminal payTerminal){
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT){
+				Meth.GetVoid(MethodBase.GetCurrentMethod(),payTerminal);
+				return;
+			}
+			Crud.PayTerminalCrud.Update(payTerminal);
+		}
+
+		///<summary></summary>
+		public static void Delete(long payTerminalNum) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				Meth.GetVoid(MethodBase.GetCurrentMethod(),payTerminalNum);
+				return;
+			}
+			Crud.PayTerminalCrud.Delete(payTerminalNum);
+		}
+		#endregion Methods - Modify
+		#region Methods - Misc
+		///<summary>Sets CCIntegration to "PayConnect" on terminal rows made before Open Dental 25.4 (CCIntegration ""), as the 25.4 upgrade does.
+		///Idempotent; returns how many rows changed. Readers already treat "" as PayConnect, so this only brings the data in line.</summary>
+		public static long BackfillPayConnectIntegration() {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetLong(MethodBase.GetCurrentMethod());
+			}
+			string command="SELECT COUNT(*) FROM payterminal WHERE CCIntegration=''";
+			if(PIn.Long(Db.GetCount(command))==0) {
+				return 0;
+			}
+			command="UPDATE payterminal SET CCIntegration='"+POut.String(CCIntegrationPayConnect)+"' WHERE CCIntegration=''";
+			return Db.NonQ(command);
+		}
+		#endregion Methods - Misc
+	}
+}

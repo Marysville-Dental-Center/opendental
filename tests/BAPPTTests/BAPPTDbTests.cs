@@ -11,7 +11,7 @@ using System.Linq;
 using System.Threading;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace BAPPTTests {
 	[TestClass]
@@ -88,7 +88,7 @@ namespace BAPPTTests {
 		}
 
 		private static List<ApptViewItem> GetItems(long apptViewNum) {
-			return OpenDentBusiness.Crud.ApptViewItemCrud.SelectMany("SELECT * FROM apptviewitem WHERE ApptViewNum="+apptViewNum+" ORDER BY ApptViewItemNum");
+			return OpenPmsDentalBusiness.Crud.ApptViewItemCrud.SelectMany("SELECT * FROM apptviewitem WHERE ApptViewNum="+apptViewNum+" ORDER BY ApptViewItemNum");
 		}
 
 		private static string DescribeItem(ApptViewItem item) {
@@ -107,7 +107,7 @@ namespace BAPPTTests {
 			ApptView apptViewCopy=ApptViews.CopyView(apptViewSource.ApptViewNum);
 			Assert.IsNotNull(apptViewCopy);
 			Assert.AreNotEqual(apptViewSource.ApptViewNum,apptViewCopy.ApptViewNum);
-			ApptView apptViewCopyDb=OpenDentBusiness.Crud.ApptViewCrud.SelectOne(apptViewCopy.ApptViewNum);
+			ApptView apptViewCopyDb=OpenPmsDentalBusiness.Crud.ApptViewCrud.SelectOne(apptViewCopy.ApptViewNum);
 			Assert.AreEqual(apptViewSource.Description+" (copy)",apptViewCopyDb.Description);
 			Assert.AreEqual(apptViewSource.ItemOrder+1,apptViewCopyDb.ItemOrder);
 			//Every other column is the source's.

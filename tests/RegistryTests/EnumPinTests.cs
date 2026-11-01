@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace RegistryTests {
 	///<summary>Pins every enum value that Open Dental 24.4 to 25.3 added, renamed or removed (and that package M1-02 owns) to its published number.

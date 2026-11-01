@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace NoHqTests {
 	///<summary>Checks that the CDT library is retired: its secrets and SecurityHash functions live in CodeBase (Secrets, TamperHash), the CDT project

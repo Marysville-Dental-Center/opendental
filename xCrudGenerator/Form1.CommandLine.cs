@@ -5,7 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Windows.Forms;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace xCrudGenerator {
 	///<summary>Headless CRUD generation, so table classes can be regenerated from a script without the window. It writes the same CRUD files as the

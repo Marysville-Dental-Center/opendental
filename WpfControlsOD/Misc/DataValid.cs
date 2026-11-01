@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
-namespace OpenDental{
+namespace OpenPmsDental{
 	///<summary>Handles a global event to keep local data synchronized. Tied to Signalod table in the database. In other words, it's used to tell other computers in the office about a change. Mostly for cache, but also for some non-cached types. Also see CodeBase.ODEvent, which is being deprecated. Also, see GlobalFormOpenDental, which is used for user actions for things like switching modules or refreshing screen data. If you have a window that needs to process incoming signals from the db, see FormODBase.ProcessSignalODs and FormFrame.ProcessSignalODs.</summary>
 	public class DataValid{
 		///<summary>FormOpenDental subscribes to this event. Frms fire this event to cause event handler to run.</summary>

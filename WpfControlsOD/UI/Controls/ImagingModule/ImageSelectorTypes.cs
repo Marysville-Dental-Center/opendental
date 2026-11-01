@@ -5,7 +5,7 @@ using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OpenDental.UI {
+namespace OpenPmsDental.UI {
 	#region EnumImageNodeType
 	///<summary>Category,Document,Mount</summary>
 	public enum EnumImageNodeType {

@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	public class MsgBox {
 
 		#region Translated

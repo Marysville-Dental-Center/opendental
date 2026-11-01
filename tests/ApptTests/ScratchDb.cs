@@ -6,8 +6,8 @@ using System.IO;
 using System.Text;
 using DataConnectionBase;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace ApptTests {
 	///<summary>Every database name starts with "appttest_" so the tests can never drop anything else.</summary>

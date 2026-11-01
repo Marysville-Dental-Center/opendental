@@ -10,7 +10,7 @@ using System.Linq;
 using System.Net;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace VendorDirectTests.PayConnectV2 {
 	[TestClass]

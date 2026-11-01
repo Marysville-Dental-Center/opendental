@@ -12,7 +12,7 @@ using ImagingCapture.UI;
 using ImagingDeviceManager.Capture;
 using ImagingDeviceManager.Config;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Tests {
 	///<summary>CaptureSessionLauncher (design 6.4, 7.3 "The hook", 7.12): the checks before anything opens, the rollback (NotStarted), the

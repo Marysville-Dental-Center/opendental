@@ -1,5 +1,5 @@
 ﻿using CodeBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -7,7 +7,7 @@ using System.IO;
 using System.Text;
 using System.Xml;
 
-namespace OpenDental.Bridges{
+namespace OpenPmsDental.Bridges{
 	///<summary></summary>
 	public class One2 {
 

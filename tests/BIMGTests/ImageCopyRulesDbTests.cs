@@ -2,7 +2,7 @@
 // any, and Copy without drawings draws it too (just without them), so both commands put the same clipboard formats on the clipboard. Synthetic data
 // only. Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace BIMGTests {
 	[TestClass]

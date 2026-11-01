@@ -8,8 +8,8 @@ using System.Collections.Generic;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.VendorDirect;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.VendorDirect;
 
 namespace VendorDirectTests.PayUi {
 	[TestClass]
@@ -127,11 +127,11 @@ namespace VendorDirectTests.PayUi {
 		[TestMethod]
 		public void AllDisabled_NoProcessorShows() {
 			//Even fully set up, a processor whose program link is off shows nothing.
-			SetRow(_programNumPayConnect,OpenDentBusiness.PayConnect.ProgramProperties.ProgramVersion,"2");
-			SetRow(_programNumPayConnect,OpenDentBusiness.PayConnect.ProgramProperties.ApiKey,SecretsTestHelper.Protect("integrator-key"));
-			SetRow(_programNumPayConnect,OpenDentBusiness.PayConnect.ProgramProperties.ApiSecret,SecretsTestHelper.Protect("merchant-secret"));
-			SetRow(_programNumPaySimple,OpenDentBusiness.PaySimple.PropertyDescs.PaySimpleApiUserName,"office-user");
-			SetRow(_programNumPaySimple,OpenDentBusiness.PaySimple.PropertyDescs.PaySimpleApiKey,SecretsTestHelper.Protect("office-key"));
+			SetRow(_programNumPayConnect,OpenPmsDentalBusiness.PayConnect.ProgramProperties.ProgramVersion,"2");
+			SetRow(_programNumPayConnect,OpenPmsDentalBusiness.PayConnect.ProgramProperties.ApiKey,SecretsTestHelper.Protect("integrator-key"));
+			SetRow(_programNumPayConnect,OpenPmsDentalBusiness.PayConnect.ProgramProperties.ApiSecret,SecretsTestHelper.Protect("merchant-secret"));
+			SetRow(_programNumPaySimple,OpenPmsDentalBusiness.PaySimple.PropertyDescs.PaySimpleApiUserName,"office-user");
+			SetRow(_programNumPaySimple,OpenPmsDentalBusiness.PaySimple.PropertyDescs.PaySimpleApiKey,SecretsTestHelper.Protect("office-key"));
 			SetEdgeExpressCreds("PlainTextKeyFromOpenDental000001");
 			Assert.IsFalse(PaymentWindowRules.ShowPayConnect(0,_listDefsEmpty));
 			Assert.IsFalse(PaymentWindowRules.ShowPaySimple(0,_listDefsEmpty));
@@ -141,11 +141,11 @@ namespace VendorDirectTests.PayUi {
 		[TestMethod]
 		public void PayConnect2_ShowsOnlyWithTheApiKeyAndSecret() {
 			Enable(_programNumPayConnect);
-			SetRow(_programNumPayConnect,OpenDentBusiness.PayConnect.ProgramProperties.ProgramVersion,"2");
+			SetRow(_programNumPayConnect,OpenPmsDentalBusiness.PayConnect.ProgramProperties.ProgramVersion,"2");
 			Assert.IsFalse(PaymentWindowRules.ShowPayConnect(0,_listDefsEmpty),"Enabled alone is not enough (the old clinics-off rule showed it).");
-			SetRow(_programNumPayConnect,OpenDentBusiness.PayConnect.ProgramProperties.ApiSecret,SecretsTestHelper.Protect("merchant-secret"));
+			SetRow(_programNumPayConnect,OpenPmsDentalBusiness.PayConnect.ProgramProperties.ApiSecret,SecretsTestHelper.Protect("merchant-secret"));
 			Assert.IsFalse(PaymentWindowRules.ShowPayConnect(0,_listDefsEmpty),"No API key yet.");
-			SetRow(_programNumPayConnect,OpenDentBusiness.PayConnect.ProgramProperties.ApiKey,SecretsTestHelper.Protect("integrator-key"));
+			SetRow(_programNumPayConnect,OpenPmsDentalBusiness.PayConnect.ProgramProperties.ApiKey,SecretsTestHelper.Protect("integrator-key"));
 			Assert.IsTrue(PaymentWindowRules.ShowPayConnect(0,_listDefsEmpty));
 			Assert.IsTrue(PaymentWindowRules.ShowPayConnect(0,null),"Adding a card skips the payment-type check.");
 			Assert.IsTrue(PaymentWindowRules.ShowPayConnect(7,_listDefsEmpty),"Clinics off: a clinic left on the payment uses the practice rows.");
@@ -155,7 +155,7 @@ namespace VendorDirectTests.PayUi {
 		public void PayConnect_UnknownVersion_Hidden() {
 			Enable(_programNumPayConnect);
 			Assert.IsFalse(PaymentWindowRules.ShowPayConnect(0,_listDefsEmpty));
-			SetRow(_programNumPayConnect,OpenDentBusiness.PayConnect.ProgramProperties.ProgramVersion,"1");
+			SetRow(_programNumPayConnect,OpenPmsDentalBusiness.PayConnect.ProgramProperties.ProgramVersion,"1");
 			Assert.IsFalse(PaymentWindowRules.ShowPayConnect(0,_listDefsEmpty),"PayConnect 1.0 was removed, so a version 1 clinic never shows the button.");
 		}
 
@@ -163,13 +163,13 @@ namespace VendorDirectTests.PayUi {
 		public void PaySimple_ShowsOnlyWithAUserNameAndReadableKey() {
 			Enable(_programNumPaySimple);
 			Assert.IsFalse(PaymentWindowRules.ShowPaySimple(0,_listDefsEmpty),"Enabled alone is not enough.");
-			SetRow(_programNumPaySimple,OpenDentBusiness.PaySimple.PropertyDescs.PaySimpleApiUserName,"office-user");
+			SetRow(_programNumPaySimple,OpenPmsDentalBusiness.PaySimple.PropertyDescs.PaySimpleApiUserName,"office-user");
 			Assert.IsFalse(PaymentWindowRules.ShowPaySimple(0,_listDefsEmpty),"No key yet.");
-			SetRow(_programNumPaySimple,OpenDentBusiness.PaySimple.PropertyDescs.PaySimpleApiKey,"osd1$not-a-real-ciphertext");
+			SetRow(_programNumPaySimple,OpenPmsDentalBusiness.PaySimple.PropertyDescs.PaySimpleApiKey,"osd1$not-a-real-ciphertext");
 			Assert.IsFalse(PaymentWindowRules.ShowPaySimple(0,_listDefsEmpty),"An unreadable key counts as missing.");
-			SetRow(_programNumPaySimple,OpenDentBusiness.PaySimple.PropertyDescs.PaySimpleApiKey,SecretsTestHelper.Protect("office-key"));
+			SetRow(_programNumPaySimple,OpenPmsDentalBusiness.PaySimple.PropertyDescs.PaySimpleApiKey,SecretsTestHelper.Protect("office-key"));
 			Assert.IsTrue(PaymentWindowRules.ShowPaySimple(0,_listDefsEmpty));
-			SetRow(_programNumPaySimple,OpenDentBusiness.PaySimple.PropertyDescs.PaySimpleApiKey,"PlainKeyOpenDentalSaved");
+			SetRow(_programNumPaySimple,OpenPmsDentalBusiness.PaySimple.PropertyDescs.PaySimpleApiKey,"PlainKeyOpenDentalSaved");
 			Assert.IsTrue(PaymentWindowRules.ShowPaySimple(0,_listDefsEmpty),"A key Open Dental stored in plain text still works until the next save.");
 		}
 

@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace M2CLAIMFORMTests {
 	[TestClass]
@@ -131,24 +131,24 @@ namespace M2CLAIMFORMTests {
 				}
 				Assert.IsTrue(claimFormNum>0);
 				Provider provider=new Provider { Abbr="DC"+suffix,FName="Alex",LName="Synthetic",NationalProvID=NPI,SigOnFile=true };
-				OpenDentBusiness.Crud.ProviderCrud.Insert(provider);
+				OpenPmsDentalBusiness.Crud.ProviderCrud.Insert(provider);
 				Patient patient=new Patient { LName="Dcpatient"+suffix,FName="Medi",Gender=PatientGender.Female,Birthdate=new DateTime(2016,5,4),
 					MedicaidID=MEDI_CAL_ID,Address="1 Synthetic Street",City="Synthetic Valley",State="CA",Zip="95901",PatStatus=PatientStatus.Patient,
 					PriProv=provider.ProvNum,ChartNumber="",AdmitDate=admitDate };
-				OpenDentBusiness.Crud.PatientCrud.Insert(patient);
+				OpenPmsDentalBusiness.Crud.PatientCrud.Insert(patient);
 				patient.Guarantor=patient.PatNum;
-				OpenDentBusiness.Crud.PatientCrud.Update(patient);
+				OpenPmsDentalBusiness.Crud.PatientCrud.Update(patient);
 				Carrier carrier=new Carrier { CarrierName="Synthetic Medi-Cal Dental "+suffix,State="CA" };
-				OpenDentBusiness.Crud.CarrierCrud.Insert(carrier);
+				OpenPmsDentalBusiness.Crud.CarrierCrud.Insert(carrier);
 				InsPlan insPlan=new InsPlan { CarrierNum=carrier.CarrierNum,ClaimFormNum=claimFormNum,PlanType="f" };
-				OpenDentBusiness.Crud.InsPlanCrud.Insert(insPlan);
+				OpenPmsDentalBusiness.Crud.InsPlanCrud.Insert(insPlan);
 				InsSub insSub=new InsSub { PlanNum=insPlan.PlanNum,Subscriber=patient.PatNum,SubscriberID=MEDI_CAL_ID,ReleaseInfo=true,AssignBen=true };
-				OpenDentBusiness.Crud.InsSubCrud.Insert(insSub);
-				OpenDentBusiness.Crud.PatPlanCrud.Insert(new PatPlan { PatNum=patient.PatNum,InsSubNum=insSub.InsSubNum,Ordinal=1,Relationship=Relat.Self });
+				OpenPmsDentalBusiness.Crud.InsSubCrud.Insert(insSub);
+				OpenPmsDentalBusiness.Crud.PatPlanCrud.Insert(new PatPlan { PatNum=patient.PatNum,InsSubNum=insSub.InsSubNum,Ordinal=1,Relationship=Relat.Self });
 				Claim claim=new Claim { PatNum=patient.PatNum,PlanNum=insPlan.PlanNum,InsSubNum=insSub.InsSubNum,ClaimType=claimType,ClaimStatus="W",
 					DateService=_dateFirstService.AddDays(1),ProvTreat=provider.ProvNum,ProvBill=provider.ProvNum,PatRelat=Relat.Self,
 					PlaceService=PlaceOfService.Office,MedType=medType };
-				OpenDentBusiness.Crud.ClaimCrud.Insert(claim);
+				OpenPmsDentalBusiness.Crud.ClaimCrud.Insert(claim);
 				SyntheticClaim syntheticClaim=new SyntheticClaim { ClaimNum=claim.ClaimNum,PatNum=patient.PatNum,PatientLName=patient.LName,
 					PatientFName=patient.FName };
 				for(int n=1;n<=procCount;n++) {
@@ -156,7 +156,7 @@ namespace M2CLAIMFORMTests {
 					TreatmentArea treatmentArea=n==1 ? TreatmentArea.Surf : n==2 ? TreatmentArea.Quad : n==3 ? TreatmentArea.Arch : TreatmentArea.Tooth;
 					ProcedureCode procedureCode=new ProcedureCode { ProcCode="Z"+suffix.Substring(0,3).ToUpperInvariant()+n.ToString("00"),
 						Descript="Synthetic service "+n,AbbrDesc="Syn"+n,TreatArea=treatmentArea };
-					OpenDentBusiness.Crud.ProcedureCodeCrud.Insert(procedureCode);
+					OpenPmsDentalBusiness.Crud.ProcedureCodeCrud.Insert(procedureCode);
 					SyntheticLine syntheticLine=new SyntheticLine { Code=procedureCode.ProcCode,Fee=100m+n+0.25m,DateService=_dateFirstService.AddDays(n),
 						Surface="",Description=procedureCode.Descript };
 					Procedure procedure=new Procedure { PatNum=patient.PatNum,CodeNum=procedureCode.CodeNum,ProcDate=syntheticLine.DateService,
@@ -182,15 +182,15 @@ namespace M2CLAIMFORMTests {
 							syntheticLine.ToothOrArea=procedure.ToothNum;
 							break;
 					}
-					OpenDentBusiness.Crud.ProcedureCrud.Insert(procedure);
+					OpenPmsDentalBusiness.Crud.ProcedureCrud.Insert(procedure);
 					ClaimProc claimProc=new ClaimProc { ProcNum=procedure.ProcNum,ClaimNum=claim.ClaimNum,PatNum=patient.PatNum,PlanNum=insPlan.PlanNum,
 						InsSubNum=insSub.InsSubNum,ProvNum=provider.ProvNum,FeeBilled=(double)syntheticLine.Fee,CodeSent=procedureCode.ProcCode,
 						ProcDate=syntheticLine.DateService,Status=claimType=="PreAuth" ? ClaimProcStatus.Preauth : ClaimProcStatus.NotReceived,LineNumber=(byte)n };
-					OpenDentBusiness.Crud.ClaimProcCrud.Insert(claimProc);
+					OpenPmsDentalBusiness.Crud.ClaimProcCrud.Insert(claimProc);
 					syntheticClaim.ListLines.Add(syntheticLine);
 				}
 				claim.ClaimFee=(double)syntheticClaim.ListLines.Sum(x => x.Fee);
-				OpenDentBusiness.Crud.ClaimCrud.Update(claim);
+				OpenPmsDentalBusiness.Crud.ClaimCrud.Update(claim);
 				ClaimFormDb.RefreshCaches();
 				return syntheticClaim;
 			}

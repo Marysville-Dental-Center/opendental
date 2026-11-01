@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	public class ColorOD {
 /*
 The plan here is to move to our own version of colors similar to SystemColors.

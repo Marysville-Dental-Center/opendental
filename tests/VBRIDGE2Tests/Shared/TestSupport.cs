@@ -2,7 +2,7 @@
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.IO;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace VBRIDGE2Tests {
 	///<summary>Locates the repository.</summary>

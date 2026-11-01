@@ -5,14 +5,14 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using System.Net;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Linq;
 using System.IO.Pipes;
 
-namespace OpenDental.Bridges {
+namespace OpenPmsDental.Bridges {
 	///<summary></summary>
 	public class DentalTek {
 

@@ -7,8 +7,8 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations.Seeds26_1;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations.Seeds26_1;
 
 namespace M202Tests {
 	[TestClass]

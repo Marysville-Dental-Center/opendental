@@ -2,7 +2,7 @@
 // CheckUserAndPassword so the domain change-user prompt counts failures the same way).
 using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace SignatureTests {
 	[TestClass]

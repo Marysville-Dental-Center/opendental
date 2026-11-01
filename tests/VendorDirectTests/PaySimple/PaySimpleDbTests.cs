@@ -12,8 +12,8 @@ using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
 using Newtonsoft.Json.Linq;
-using OpenDentBusiness;
-using OpenDentBusiness.VendorDirect;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.VendorDirect;
 
 namespace VendorDirectTests.PaySimple {
 	[TestClass]
@@ -102,12 +102,12 @@ namespace VendorDirectTests.PaySimple {
 			Programs.RefreshCache();
 			ProgramProperties.RefreshCache();
 			_fakeHttpHandler=new FakeHttpHandler();
-			OpenDentBusiness.PaySimple.SetTestHttpHandler(_fakeHttpHandler,TimeSpan.FromMilliseconds(1),TimeSpan.FromMilliseconds(300));
+			OpenPmsDentalBusiness.PaySimple.SetTestHttpHandler(_fakeHttpHandler,TimeSpan.FromMilliseconds(1),TimeSpan.FromMilliseconds(300));
 		}
 
 		[TestCleanup]
 		public void TestCleanup() {
-			OpenDentBusiness.PaySimple.SetTestHttpHandler(null);
+			OpenPmsDentalBusiness.PaySimple.SetTestHttpHandler(null);
 		}
 
 		///<summary>Runs a command against the scratch database.</summary>
@@ -148,7 +148,7 @@ namespace VendorDirectTests.PaySimple {
 			payment.ExternalId=externalId;
 			payment.PaymentStatus=paymentStatus;
 			payment.DateEntry=payDate;
-			return OpenDentBusiness.Crud.PaymentCrud.Insert(payment);
+			return OpenPmsDentalBusiness.Crud.PaymentCrud.Insert(payment);
 		}
 
 		[TestMethod]
@@ -182,18 +182,18 @@ namespace VendorDirectTests.PaySimple {
 		[TestMethod]
 		public void EnsureProperties_InsertsPracticeRows_AndMasksKeys() {
 			long programNum=InsertPaySimpleProgram(false);
-			InsertProperty(programNum,OpenDentBusiness.PaySimple.PropertyDescs.PaySimpleApiKey,KEY);
+			InsertProperty(programNum,OpenPmsDentalBusiness.PaySimple.PropertyDescs.PaySimpleApiKey,KEY);
 			ProgramProperties.RefreshCache();
-			Assert.IsTrue(OpenDentBusiness.PaySimple.EnsureProperties());
+			Assert.IsTrue(OpenPmsDentalBusiness.PaySimple.EnsureProperties());
 			ProgramProperties.RefreshCache();
-			Assert.AreEqual("Production",ProgramProperties.GetValOrDefault(programNum,OpenDentBusiness.PaySimple.PropertyDescs.PaySimpleEnvironment,0));
-			Assert.AreEqual("1",ProgramProperties.GetValOrDefault(programNum,OpenDentBusiness.PaySimple.PropertyDescs.PaySimpleAchStatusCheck,0));
-			ProgramProperty programPropertyKey=ProgramProperties.GetOneFromDb(programNum,OpenDentBusiness.PaySimple.PropertyDescs.PaySimpleApiKey,0);
+			Assert.AreEqual("Production",ProgramProperties.GetValOrDefault(programNum,OpenPmsDentalBusiness.PaySimple.PropertyDescs.PaySimpleEnvironment,0));
+			Assert.AreEqual("1",ProgramProperties.GetValOrDefault(programNum,OpenPmsDentalBusiness.PaySimple.PropertyDescs.PaySimpleAchStatusCheck,0));
+			ProgramProperty programPropertyKey=ProgramProperties.GetOneFromDb(programNum,OpenPmsDentalBusiness.PaySimple.PropertyDescs.PaySimpleApiKey,0);
 			Assert.IsTrue(programPropertyKey.IsMasked);
 			Assert.IsTrue(programPropertyKey.IsHighSecurity);
 			Assert.AreEqual(KEY,programPropertyKey.PropertyValue,"Rows are only flagged here; the key is encrypted when Setup saves.");
-			Assert.IsFalse(OpenDentBusiness.PaySimple.EnsureProperties(),"Nothing left to do.");
-			Assert.IsTrue(OpenDentBusiness.PaySimple.IsAchStatusCheckOn());
+			Assert.IsFalse(OpenPmsDentalBusiness.PaySimple.EnsureProperties(),"Nothing left to do.");
+			Assert.IsTrue(OpenPmsDentalBusiness.PaySimple.IsAchStatusCheckOn());
 			Assert.AreEqual(0,_fakeHttpHandler.Requests.Count);
 		}
 
@@ -202,33 +202,33 @@ namespace VendorDirectTests.PaySimple {
 			long programNum=InsertPaySimpleProgram(true);
 			string stored=SecretsTestHelper.Protect(KEY);
 			string corrupted=stored.Substring(0,stored.Length-4)+(stored.EndsWith("AAAA") ? "BBBB" : "AAAA");
-			InsertProperty(programNum,OpenDentBusiness.PaySimple.PropertyDescs.PaySimpleApiUserName,USER);
-			InsertProperty(programNum,OpenDentBusiness.PaySimple.PropertyDescs.PaySimpleApiKey,stored);
-			InsertProperty(programNum,OpenDentBusiness.PaySimple.PropertyDescs.PaySimpleEnvironment,"Sandbox");
-			InsertProperty(programNum,OpenDentBusiness.PaySimple.PropertyDescs.PaySimpleApiUserName,"APIUserClinic7",7);
-			InsertProperty(programNum,OpenDentBusiness.PaySimple.PropertyDescs.PaySimpleApiKey,"plain-key-from-open-dental",7);
-			InsertProperty(programNum,OpenDentBusiness.PaySimple.PropertyDescs.PaySimpleApiUserName,"APIUserClinic8",8);
-			InsertProperty(programNum,OpenDentBusiness.PaySimple.PropertyDescs.PaySimpleApiKey,corrupted,8);
+			InsertProperty(programNum,OpenPmsDentalBusiness.PaySimple.PropertyDescs.PaySimpleApiUserName,USER);
+			InsertProperty(programNum,OpenPmsDentalBusiness.PaySimple.PropertyDescs.PaySimpleApiKey,stored);
+			InsertProperty(programNum,OpenPmsDentalBusiness.PaySimple.PropertyDescs.PaySimpleEnvironment,"Sandbox");
+			InsertProperty(programNum,OpenPmsDentalBusiness.PaySimple.PropertyDescs.PaySimpleApiUserName,"APIUserClinic7",7);
+			InsertProperty(programNum,OpenPmsDentalBusiness.PaySimple.PropertyDescs.PaySimpleApiKey,"plain-key-from-open-dental",7);
+			InsertProperty(programNum,OpenPmsDentalBusiness.PaySimple.PropertyDescs.PaySimpleApiUserName,"APIUserClinic8",8);
+			InsertProperty(programNum,OpenPmsDentalBusiness.PaySimple.PropertyDescs.PaySimpleApiKey,corrupted,8);
 			ProgramProperties.RefreshCache();
-			OpenDentBusiness.PaySimple.PaySimpleCredentials credentials0=OpenDentBusiness.PaySimple.GetCredentials(0);
+			OpenPmsDentalBusiness.PaySimple.PaySimpleCredentials credentials0=OpenPmsDentalBusiness.PaySimple.GetCredentials(0);
 			Assert.AreEqual(USER,credentials0.ApiUserName);
 			Assert.AreEqual(KEY,credentials0.ApiKey);
 			Assert.AreEqual("Sandbox",credentials0.Environment);
-			OpenDentBusiness.PaySimple.PaySimpleCredentials credentials7=OpenDentBusiness.PaySimple.GetCredentials(7);
+			OpenPmsDentalBusiness.PaySimple.PaySimpleCredentials credentials7=OpenPmsDentalBusiness.PaySimple.GetCredentials(7);
 			Assert.AreEqual("plain-key-from-open-dental",credentials7.ApiKey);
 			Assert.AreEqual("Sandbox",credentials7.Environment,"No clinic row: the practice's environment.");
-			Assert.IsFalse(OpenDentBusiness.PaySimple.GetCredentials(8).IsComplete,"A damaged key is never sent.");
-			Assert.IsFalse(OpenDentBusiness.PaySimple.HasCredentials(8));
-			Assert.IsTrue(OpenDentBusiness.PaySimple.HasCredentials(0));
+			Assert.IsFalse(OpenPmsDentalBusiness.PaySimple.GetCredentials(8).IsComplete,"A damaged key is never sent.");
+			Assert.IsFalse(OpenPmsDentalBusiness.PaySimple.HasCredentials(8));
+			Assert.IsTrue(OpenPmsDentalBusiness.PaySimple.HasCredentials(0));
 		}
 
 		///<summary>A PaySimple program set up for a prepaid-card charge at the practice level, in the sandbox.</summary>
 		private void SetUpForCharge() {
 			long programNum=InsertPaySimpleProgram(true);
-			InsertProperty(programNum,OpenDentBusiness.PaySimple.PropertyDescs.PaySimpleApiUserName,USER);
-			InsertProperty(programNum,OpenDentBusiness.PaySimple.PropertyDescs.PaySimpleApiKey,SecretsTestHelper.Protect(KEY));
-			InsertProperty(programNum,OpenDentBusiness.PaySimple.PropertyDescs.PaySimplePayTypeCC,"1");
-			InsertProperty(programNum,OpenDentBusiness.PaySimple.PropertyDescs.PaySimpleEnvironment,"Sandbox");
+			InsertProperty(programNum,OpenPmsDentalBusiness.PaySimple.PropertyDescs.PaySimpleApiUserName,USER);
+			InsertProperty(programNum,OpenPmsDentalBusiness.PaySimple.PropertyDescs.PaySimpleApiKey,SecretsTestHelper.Protect(KEY));
+			InsertProperty(programNum,OpenPmsDentalBusiness.PaySimple.PropertyDescs.PaySimplePayTypeCC,"1");
+			InsertProperty(programNum,OpenPmsDentalBusiness.PaySimple.PropertyDescs.PaySimpleEnvironment,"Sandbox");
 			ProgramProperties.RefreshCache();
 			_fakeHttpHandler.Enqueue(HttpStatusCode.Created,PaySimpleClientTests.Envelope("{\"Id\":8051100,\"FirstName\":\"UNKNOWN\",\"LastName\":\"Carrier\"}",
 				httpStatusCode:201));
@@ -237,11 +237,11 @@ namespace VendorDirectTests.PaySimple {
 		}
 
 		private ApiCall MakePrepaidCharge() {
-			return () => OpenDentBusiness.PaySimple.MakePayment(0,null,25.00m,"4111111111111111",new DateTime(DateTime.Today.Year+2,12,1),true,"80202","",
+			return () => OpenPmsDentalBusiness.PaySimple.MakePayment(0,null,25.00m,"4111111111111111",new DateTime(DateTime.Today.Year+2,12,1),true,"80202","",
 				0,"Carrier");
 		}
 
-		private delegate OpenDentBusiness.PaySimple.ApiResponse ApiCall();
+		private delegate OpenPmsDentalBusiness.PaySimple.ApiResponse ApiCall();
 
 		///<summary>The OrderId sent in the charge (the last POST to /v4/payment).</summary>
 		private string GetSentOrderId() {
@@ -254,7 +254,7 @@ namespace VendorDirectTests.PaySimple {
 			SetUpForCharge();
 			_fakeHttpHandler.Enqueue((request,ct) => Task.FromResult(FakeHttpHandler.MakeResponse(HttpStatusCode.Created,PaySimpleClientTests.Envelope(
 				PaySimpleClientTests.PaymentJson(29124043,"Authorized",(string)JObject.Parse(request.Body)["OrderId"]),httpStatusCode:201))));
-			OpenDentBusiness.PaySimple.ApiResponse apiResponse=MakePrepaidCharge()();
+			OpenPmsDentalBusiness.PaySimple.ApiResponse apiResponse=MakePrepaidCharge()();
 			Assert.AreEqual("29124043",apiResponse.RefNumber);
 			List<RecordedRequest> listRequests=_fakeHttpHandler.Requests;
 			Assert.AreEqual(3,listRequests.Count);
@@ -269,7 +269,7 @@ namespace VendorDirectTests.PaySimple {
 			_fakeHttpHandler.EnqueueNetworkFailure();
 			_fakeHttpHandler.Enqueue((request,ct) => Task.FromResult(FakeHttpHandler.MakeResponse(HttpStatusCode.OK,PaySimpleClientTests.Envelope(
 				"["+PaySimpleClientTests.PaymentJson(29124043,"Authorized",GetSentOrderId())+"]","{\"TotalItems\":1,\"Page\":1,\"ItemsPerPage\":200}"))));
-			OpenDentBusiness.PaySimple.ApiResponse apiResponse=MakePrepaidCharge()();
+			OpenPmsDentalBusiness.PaySimple.ApiResponse apiResponse=MakePrepaidCharge()();
 			Assert.AreEqual("29124043",apiResponse.RefNumber);
 			List<RecordedRequest> listRequests=_fakeHttpHandler.Requests;
 			Assert.AreEqual(1,listRequests.Count(x => x.Method==HttpMethod.Post && x.RequestUri.AbsolutePath=="/v4/payment"),"Never posted twice.");
@@ -305,9 +305,9 @@ namespace VendorDirectTests.PaySimple {
 		[TestMethod]
 		public void Disabled_NoCallIsMade() {
 			long programNum=InsertPaySimpleProgram(false);
-			InsertProperty(programNum,OpenDentBusiness.PaySimple.PropertyDescs.PaySimpleApiUserName,USER);
-			InsertProperty(programNum,OpenDentBusiness.PaySimple.PropertyDescs.PaySimpleApiKey,SecretsTestHelper.Protect(KEY));
-			InsertProperty(programNum,OpenDentBusiness.PaySimple.PropertyDescs.PaySimplePayTypeCC,"1");
+			InsertProperty(programNum,OpenPmsDentalBusiness.PaySimple.PropertyDescs.PaySimpleApiUserName,USER);
+			InsertProperty(programNum,OpenPmsDentalBusiness.PaySimple.PropertyDescs.PaySimpleApiKey,SecretsTestHelper.Protect(KEY));
+			InsertProperty(programNum,OpenPmsDentalBusiness.PaySimple.PropertyDescs.PaySimplePayTypeCC,"1");
 			ProgramProperties.RefreshCache();
 			AssertEx.Throws<CodeBase.ODException>(() => MakePrepaidCharge()());
 			Assert.IsTrue(PaySimpleAchStatusSync.Run(isManual:true).WasSkipped);

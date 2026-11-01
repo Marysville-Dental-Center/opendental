@@ -8,8 +8,8 @@ using System.Text;
 using System.Text.RegularExpressions;
 using DataConnectionBase;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace StatementTests {
 	///<summary>Creates, connects to and drops the scratch database. Every database name starts with "stmttest_" so these tests can never drop

@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using UnitTestsCore;
 
 namespace UnitTests.ProgramProperties_Tests {
@@ -87,7 +87,7 @@ namespace UnitTests.ProgramProperties_Tests {
 
 		[TestMethod]
 		public void PDMP_GetPropertyFromSource_UseBusinessValueNoDownload() {
-			OpenDentBusiness.Program prog=Programs.GetCur(ProgramName.PDMP);
+			OpenPmsDentalBusiness.Program prog=Programs.GetCur(ProgramName.PDMP);
 			string propDesc="California "+PdmpProperty.PdmpProvLicenseField;
 			ProgramPropertyT.UpdateProgramProperty(ProgramName.PDMP,propDesc,"ExpectedVal");
 			ProgramProperties.RefreshCache();
@@ -98,7 +98,7 @@ namespace UnitTests.ProgramProperties_Tests {
 
 		[TestMethod]
 		public void PDMP_GetPropertyFromSource_UseBusinessValueForAnyProperty() {
-			OpenDentBusiness.Program prog=Programs.GetCur(ProgramName.PDMP);
+			OpenPmsDentalBusiness.Program prog=Programs.GetCur(ProgramName.PDMP);
 			string propDesc="Not Hq property";
 			string propVal="dbVal";
 			ProgramProperty notHqProp=ProgramProperties.GetPropForProgByDesc(prog.ProgramNum,propDesc);
@@ -117,7 +117,7 @@ namespace UnitTests.ProgramProperties_Tests {
 		[TestMethod]
 		public void PDMP_GetPropertyFromSource_HqNeverOverrides() {
 			string propDesc="California "+PdmpProperty.PdmpUrl;
-			OpenDentBusiness.Program prog=Programs.GetCur(ProgramName.PDMP);
+			OpenPmsDentalBusiness.Program prog=Programs.GetCur(ProgramName.PDMP);
 			ProgramPropertyT.CreateProgramProperty(prog.ProgramNum,propDesc,0);
 			ProgramProperty propertyFromCache=ProgramProperties.GetPropForProgByDesc(prog.ProgramNum,propDesc);
 			Assert.AreEqual("",propertyFromCache.PropertyValue);

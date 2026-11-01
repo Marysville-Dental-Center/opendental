@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace BWIKITests {
 	///<summary>v25_2-wiki-search-limit: the per-user setting and the per-tier limit helpers.</summary>

@@ -14,7 +14,7 @@ using CodeBase;
 using ForkMigrationTests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using UnitTestsCore;
 
 namespace M2RECURTests {

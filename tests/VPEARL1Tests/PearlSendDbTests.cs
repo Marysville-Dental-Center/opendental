@@ -11,10 +11,10 @@ using System.Linq;
 using System.Net.Http;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.Pearl;
-using Result=OpenDentBusiness.Pearl.Result;
-using PearlBridge=OpenDentBusiness.Bridges.Pearl;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.Pearl;
+using Result=OpenPmsDentalBusiness.Pearl.Result;
+using PearlBridge=OpenPmsDentalBusiness.Bridges.Pearl;
 
 namespace VPEARL1Tests {
 	[TestClass]
@@ -82,7 +82,7 @@ namespace VPEARL1Tests {
 		}
 
 		private static List<PearlRequest> GetRequests(long docNum) {
-			return OpenDentBusiness.Crud.PearlRequestCrud.SelectMany("SELECT * FROM pearlrequest WHERE DocNum="+POut.Long(docNum)+" ORDER BY PearlRequestNum");
+			return OpenPmsDentalBusiness.Crud.PearlRequestCrud.SelectMany("SELECT * FROM pearlrequest WHERE DocNum="+POut.Long(docNum)+" ORDER BY PearlRequestNum");
 		}
 
 		private static string PollCall(string requestId) {

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace UnitTestsCore {
 	public class CommlogT {
@@ -49,12 +49,12 @@ namespace UnitTestsCore {
 
 		public static List<Commlog> GetCommlogsForPat(long patNum) {
 			string command=$"SELECT * FROM commlog where PatNum={patNum}";
-			return OpenDentBusiness.Crud.CommlogCrud.SelectMany(command);
+			return OpenPmsDentalBusiness.Crud.CommlogCrud.SelectMany(command);
 		}
 
 		public static List<Commlog> GetAll() {
 			string command=$"SELECT * FROM commlog";
-			return OpenDentBusiness.Crud.CommlogCrud.SelectMany(command);
+			return OpenPmsDentalBusiness.Crud.CommlogCrud.SelectMany(command);
 		}
 	}
 }

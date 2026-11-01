@@ -23,12 +23,12 @@
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			this.textDate = new OpenDental.ValidDate();
+			this.textDate = new OpenPmsDental.ValidDate();
 			this.label2 = new System.Windows.Forms.Label();
 			this.textBox1 = new System.Windows.Forms.TextBox();
 			this.label1 = new System.Windows.Forms.Label();
-			this.butSetDate = new OpenDental.UI.Button();
-			this.butSetEmpty = new OpenDental.UI.Button();
+			this.butSetDate = new OpenPmsDental.UI.Button();
+			this.butSetEmpty = new OpenPmsDental.UI.Button();
 			this.label3 = new System.Windows.Forms.Label();
 			this.textBox2 = new System.Windows.Forms.TextBox();
 			this.label4 = new System.Windows.Forms.Label();
@@ -353,12 +353,12 @@
 
 		#endregion
 
-		private OpenDental.ValidDate textDate;
+		private OpenPmsDental.ValidDate textDate;
 		private System.Windows.Forms.Label label2;
 		private System.Windows.Forms.TextBox textBox1;
 		private System.Windows.Forms.Label label1;
-		private OpenDental.UI.Button butSetDate;
-		private OpenDental.UI.Button butSetEmpty;
+		private OpenPmsDental.UI.Button butSetDate;
+		private OpenPmsDental.UI.Button butSetEmpty;
 		private System.Windows.Forms.Label label3;
 		private System.Windows.Forms.TextBox textBox2;
 		private System.Windows.Forms.Label label4;

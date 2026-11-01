@@ -8,8 +8,8 @@ using System.Linq;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.VendorDirect;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.VendorDirect;
 
 namespace VendorDirectTests.Usps {
 	[TestClass]
@@ -42,7 +42,7 @@ namespace VendorDirectTests.Usps {
 				program.CustErr="";
 				listPrograms.Add(program);
 			}
-			Programs.FillCacheFromTable(OpenDentBusiness.Crud.ProgramCrud.ListToTable(listPrograms,"Program"));
+			Programs.FillCacheFromTable(OpenPmsDentalBusiness.Crud.ProgramCrud.ListToTable(listPrograms,"Program"));
 			List<ProgramProperty> listProgramProperties=new List<ProgramProperty>();
 			long programPropertyNum=1;
 			void Add(string desc,string value,bool isSecret) {
@@ -63,7 +63,7 @@ namespace VendorDirectTests.Usps {
 			Add(UspsAddresses.PropConsumerKey,key,false);
 			Add(UspsAddresses.PropConsumerSecret,secretStored,true);
 			Add(UspsAddresses.PropEnvironment,environment,false);
-			ProgramProperties.FillCacheFromTable(OpenDentBusiness.Crud.ProgramPropertyCrud.ListToTable(listProgramProperties,"ProgramProperty"));
+			ProgramProperties.FillCacheFromTable(OpenPmsDentalBusiness.Crud.ProgramPropertyCrud.ListToTable(listProgramProperties,"ProgramProperty"));
 		}
 
 		[TestMethod]

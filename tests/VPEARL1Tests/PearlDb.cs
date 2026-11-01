@@ -10,8 +10,8 @@ using System.Threading;
 using CodeBase;
 using ForkMigrationTests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 using UnitTestsCore;
 
 namespace VPEARL1Tests {
@@ -43,10 +43,10 @@ namespace VPEARL1Tests {
 			TestDb.DropStaleScratchDatabases();
 			TestDb.CreateFresh24_3(DbName);
 			ForkMigrationRunner.Run();
-			SetPearlProperty(OpenDentBusiness.Bridges.Pearl.PEARL_CLIENT_ID_PROPERTY,CLIENT_ID);
-			SetPearlProperty(OpenDentBusiness.Bridges.Pearl.PEARL_CLIENT_SECRET_PROPERTY,CLIENT_SECRET);
-			SetPearlProperty(OpenDentBusiness.Bridges.Pearl.PEARL_ORGANIZATION_ID_PROPERTY,ORGANIZATION_ID);
-			SetPearlProperty(OpenDentBusiness.Bridges.Pearl.PEARL_OFFICE_ID_PROPERTY,OFFICE_ID);
+			SetPearlProperty(OpenPmsDentalBusiness.Bridges.Pearl.PEARL_CLIENT_ID_PROPERTY,CLIENT_ID);
+			SetPearlProperty(OpenPmsDentalBusiness.Bridges.Pearl.PEARL_CLIENT_SECRET_PROPERTY,CLIENT_SECRET);
+			SetPearlProperty(OpenPmsDentalBusiness.Bridges.Pearl.PEARL_ORGANIZATION_ID_PROPERTY,ORGANIZATION_ID);
+			SetPearlProperty(OpenPmsDentalBusiness.Bridges.Pearl.PEARL_OFFICE_ID_PROPERTY,OFFICE_ID);
 			RefreshCaches();
 			//PrefC.GetTempFolderPath empties the whole user temp folder the first time it creates temp\opendental. The real client saves the image
 			//there before the (fake) upload, so make sure the folder is there and nothing else in the temp folder is touched.

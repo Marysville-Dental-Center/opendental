@@ -9,8 +9,8 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using ImagingCapture.Recovery;
-using OpenDental;
-using OpenDentBusiness;
+using OpenPmsDental;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.UI {
 	///<summary>Unassigned captures and Recover recent captures (design 7.1, 7.12, 10.6, 10.7): the quarantine files or the journal copies of this

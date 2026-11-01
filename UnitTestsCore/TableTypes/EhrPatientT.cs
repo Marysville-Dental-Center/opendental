@@ -1,4 +1,4 @@
-﻿using OpenDentBusiness;
+﻿using OpenPmsDentalBusiness;
 using System;
 using CodeBase;
 
@@ -26,7 +26,7 @@ namespace UnitTestsCore {
 				GenderIdentityNote=genderIdentityNote,
 				DischargeDate=dischargeDate
 			};
-			OpenDentBusiness.Crud.EhrPatientCrud.Insert(ehrPatient,useExistingPK:true); //PatNum PKs must match the EhrPatient.
+			OpenPmsDentalBusiness.Crud.EhrPatientCrud.Insert(ehrPatient,useExistingPK:true); //PatNum PKs must match the EhrPatient.
 			return ehrPatient;
 		}
 

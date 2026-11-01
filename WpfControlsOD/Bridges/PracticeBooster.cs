@@ -5,9 +5,9 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
-namespace OpenDental.Bridges{
+namespace OpenPmsDental.Bridges{
 	public class PracticeBooster {
 
 		///<summary></summary>

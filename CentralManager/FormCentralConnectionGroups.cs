@@ -1,6 +1,6 @@
-﻿using OpenDental;
-using OpenDental.UI;
-using OpenDentBusiness;
+﻿using OpenPmsDental;
+using OpenPmsDental.UI;
+using OpenPmsDentalBusiness;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -65,7 +65,7 @@ namespace CentralManager {
 			FillGrid();
 		}
 
-		private void gridMain_CellDoubleClick(object sender,OpenDental.UI.ODGridClickEventArgs e) {
+		private void gridMain_CellDoubleClick(object sender,OpenPmsDental.UI.ODGridClickEventArgs e) {
 			using FormCentralConnectionGroupEdit FormCCGE=new FormCentralConnectionGroupEdit();
 			FormCCGE.ConnectionGroupCur=_listCentralConnGroups[e.Row];
 			FormCCGE.ShowDialog();

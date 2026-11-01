@@ -11,7 +11,7 @@ using System.Windows.Forms;
 using CodeBase;
 using DataConnectionBase;
 using Microsoft.Build.Evaluation;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace xCrudGenerator {
 	public class CrudGenHelper {
@@ -691,7 +691,7 @@ namespace xCrudGenerator {
 			if(listFileNames.Count==0) {
 				return;
 			}
-			Project proj=new Project(Path.Combine(Form1.crudDir,"..","OpenDentBusiness.csproj"));
+			Project proj=new Project(Path.Combine(Form1.crudDir,"..","OpenPmsDentalBusiness.csproj"));
 			foreach(string file in listFileNames) {
 				if(proj.Items.FirstOrDefault(x => x.EvaluatedInclude==file)==null) {//Check to make sure the file doesn't already exist.
 					proj.AddItem("Compile",file);

@@ -4,7 +4,7 @@ using System.Drawing;
 using System.Threading;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDental;
+using OpenPmsDental;
 
 namespace UnitTests.ContrApptSingle_Tests {
 	///<summary>This test was created to test that we don't get an "Object currently in use elsewhere" exception.

@@ -8,9 +8,9 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
-using OpenDental;
-using OpenDental.UI;
-using OpenDentBusiness;
+using OpenPmsDental;
+using OpenPmsDental.UI;
+using OpenPmsDentalBusiness;
 using CodeBase;
 
 namespace UnitTests

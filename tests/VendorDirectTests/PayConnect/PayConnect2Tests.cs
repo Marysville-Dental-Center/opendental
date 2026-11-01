@@ -11,7 +11,7 @@ using CodeBase;
 using CodeBase.VendorDirect;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace VendorDirectTests.PayConnectV2 {
 	[TestClass]
@@ -675,17 +675,17 @@ namespace VendorDirectTests.PayConnectV2 {
 			ProgramProperty programPropertyCopied=new ProgramProperty();
 			programPropertyCopied.ProgramPropertyNum=55;
 			programPropertyCopied.ProgramNum=9;
-			programPropertyCopied.PropertyDesc=OpenDentBusiness.PayConnect.ProgramProperties.ApiSecret;
+			programPropertyCopied.PropertyDesc=OpenPmsDentalBusiness.PayConnect.ProgramProperties.ApiSecret;
 			programPropertyCopied.PropertyValue="legacy-plain";
 			programPropertyCopied.ClinicNum=5;
 			listProgramProperties.Add(programPropertyCopied);//As InsertForClinic used to copy it: no flags.
 			int countAdded=PayConnect2.AddMissingProperties(listProgramProperties,9,new List<long> { 0,5,7 });
 			Assert.AreEqual(4,countAdded,"API Key, Use Sandbox, and the Secret for ClinicNum 0 and clinic 7.");
 			Assert.AreEqual(0,PayConnect2.AddMissingProperties(listProgramProperties,9,new List<long> { 0,5,7 }),"Idempotent.");
-			Assert.AreEqual(1,listProgramProperties.Count(x => x.PropertyDesc==OpenDentBusiness.PayConnect.ProgramProperties.ApiKey));
-			Assert.AreEqual(0,listProgramProperties.Single(x => x.PropertyDesc==OpenDentBusiness.PayConnect.ProgramProperties.ApiKey).ClinicNum);
-			Assert.AreEqual("0",listProgramProperties.Single(x => x.PropertyDesc==OpenDentBusiness.PayConnect.ProgramProperties.UseSandbox).PropertyValue);
-			List<ProgramProperty> listSecrets=listProgramProperties.FindAll(x => x.PropertyDesc==OpenDentBusiness.PayConnect.ProgramProperties.ApiSecret);
+			Assert.AreEqual(1,listProgramProperties.Count(x => x.PropertyDesc==OpenPmsDentalBusiness.PayConnect.ProgramProperties.ApiKey));
+			Assert.AreEqual(0,listProgramProperties.Single(x => x.PropertyDesc==OpenPmsDentalBusiness.PayConnect.ProgramProperties.ApiKey).ClinicNum);
+			Assert.AreEqual("0",listProgramProperties.Single(x => x.PropertyDesc==OpenPmsDentalBusiness.PayConnect.ProgramProperties.UseSandbox).PropertyValue);
+			List<ProgramProperty> listSecrets=listProgramProperties.FindAll(x => x.PropertyDesc==OpenPmsDentalBusiness.PayConnect.ProgramProperties.ApiSecret);
 			CollectionAssert.AreEquivalent(new List<long> { 0,5,7 },listSecrets.Select(x => x.ClinicNum).ToList());
 			Assert.IsTrue(listSecrets.All(x => x.IsMasked && x.IsHighSecurity),"Copied rows get their flags back.");
 			Assert.AreEqual("legacy-plain",programPropertyCopied.PropertyValue,"Existing values are never changed here.");

@@ -24,11 +24,11 @@
 		/// </summary>
 		private void InitializeComponent() {
 			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormCentralReportSetup));
-			this.butOK = new OpenDental.UI.Button();
-			this.butCancel = new OpenDental.UI.Button();
-			this.tabControl1 = new OpenDental.UI.TabControl();
-			this.tabReportPermissions = new OpenDental.UI.TabPage();
-			this.userControlReportSetup = new OpenDental.User_Controls.UserControlReportSetup();
+			this.butOK = new OpenPmsDental.UI.Button();
+			this.butCancel = new OpenPmsDental.UI.Button();
+			this.tabControl1 = new OpenPmsDental.UI.TabControl();
+			this.tabReportPermissions = new OpenPmsDental.UI.TabPage();
+			this.userControlReportSetup = new OpenPmsDental.User_Controls.UserControlReportSetup();
 			this.tabControl1.SuspendLayout();
 			this.tabReportPermissions.SuspendLayout();
 			this.SuspendLayout();
@@ -96,10 +96,10 @@
 
 		#endregion
 
-		private OpenDental.UI.Button butOK;
-		private OpenDental.UI.Button butCancel;
-		private OpenDental.UI.TabControl tabControl1;
-		private OpenDental.UI.TabPage tabReportPermissions;
-		private OpenDental.User_Controls.UserControlReportSetup userControlReportSetup;
+		private OpenPmsDental.UI.Button butOK;
+		private OpenPmsDental.UI.Button butCancel;
+		private OpenPmsDental.UI.TabControl tabControl1;
+		private OpenPmsDental.UI.TabPage tabReportPermissions;
+		private OpenPmsDental.User_Controls.UserControlReportSetup userControlReportSetup;
 	}
 }

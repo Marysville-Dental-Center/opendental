@@ -13,8 +13,8 @@ using System.Threading;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace BPERIOTests {
 	///<summary>Creates, connects to and drops this run's scratch database. Every name starts with "bperio_" so the tests can never drop anything

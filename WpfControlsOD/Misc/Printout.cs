@@ -9,11 +9,11 @@ using System.ServiceProcess;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
-using OpenDental;
-using OpenDentBusiness;
+using OpenPmsDental;
+using OpenPmsDentalBusiness;
 using CodeBase;//for PrintoutErrorCode
 
-namespace OpenDental.Drawing {
+namespace OpenPmsDental.Drawing {
 //Jordan is the only one allowed to edit this file
 /*
 How to use: 

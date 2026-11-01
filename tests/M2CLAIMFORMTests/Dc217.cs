@@ -8,8 +8,8 @@ using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Runtime.Serialization;
 using ForkMigrationTests;
-using OpenDental;
-using OpenDentBusiness;
+using OpenPmsDental;
+using OpenPmsDentalBusiness;
 
 namespace M2CLAIMFORMTests {
 	public static class Dc217 {

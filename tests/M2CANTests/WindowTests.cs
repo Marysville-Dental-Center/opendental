@@ -8,8 +8,8 @@ using System.Linq;
 using System.Reflection;
 using System.Windows.Forms;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDental;
-using OpenDentBusiness;
+using OpenPmsDental;
+using OpenPmsDentalBusiness;
 
 namespace M2CANTests {
 	[TestClass]
@@ -34,14 +34,14 @@ namespace M2CANTests {
 			Sta.Run("en-US",() => {
 				Assert.IsFalse(FormProcTools.IsOtherCodesAvailable());
 				using FormProcTools formProcTools=new FormProcTools();
-				Assert.IsNull(GetField<OpenDental.UI.Button>(formProcTools,"_butOtherCodes"));
+				Assert.IsNull(GetField<OpenPmsDental.UI.Button>(formProcTools,"_butOtherCodes"));
 				Assert.IsFalse(GetAllControls(formProcTools).Any(x => x.Name=="butOtherCodes"));
 			});
 			foreach(string cultureName in new[] { "en-CA","fr-CA" }) {
 				Sta.Run(cultureName,() => {
 					Assert.IsTrue(FormProcTools.IsOtherCodesAvailable(),cultureName);
 					using FormProcTools formProcTools=new FormProcTools();
-					OpenDental.UI.Button butOtherCodes=GetField<OpenDental.UI.Button>(formProcTools,"_butOtherCodes");
+					OpenPmsDental.UI.Button butOtherCodes=GetField<OpenPmsDental.UI.Button>(formProcTools,"_butOtherCodes");
 					Assert.IsNotNull(butOtherCodes,cultureName);
 					Assert.IsTrue(GetAllControls(formProcTools).Contains(butOtherCodes),"The button is on the window.");
 					Control butRun=GetField<Control>(formProcTools,"butRun");
@@ -72,7 +72,7 @@ namespace M2CANTests {
 			Sta.Run("en-US",() => {
 				using FormProcCodesOther formProcCodesOther=new FormProcCodesOther();
 				Assert.AreEqual("Other Procedure Codes",formProcCodesOther.Text);
-				OpenDental.UI.GroupBox groupAdvanced=GetField<OpenDental.UI.GroupBox>(formProcCodesOther,"groupAdvanced");
+				OpenPmsDental.UI.GroupBox groupAdvanced=GetField<OpenPmsDental.UI.GroupBox>(formProcCodesOther,"groupAdvanced");
 				Assert.AreEqual("Advanced Options",groupAdvanced.Text);
 				Dictionary<string,EnumOtherCodeUpdates> dictChecks=new Dictionary<string,EnumOtherCodeUpdates> {
 					{ "checkUpdateDescriptions",EnumOtherCodeUpdates.Descriptions },
@@ -84,7 +84,7 @@ namespace M2CANTests {
 				Assert.AreEqual(EnumOtherCodeUpdates.None,(EnumOtherCodeUpdates)methodGetUpdates.Invoke(formProcCodesOther,null));
 				EnumOtherCodeUpdates updatesAll=EnumOtherCodeUpdates.None;
 				foreach(KeyValuePair<string,EnumOtherCodeUpdates> pair in dictChecks) {
-					OpenDental.UI.CheckBox checkBox=GetField<OpenDental.UI.CheckBox>(formProcCodesOther,pair.Key);
+					OpenPmsDental.UI.CheckBox checkBox=GetField<OpenPmsDental.UI.CheckBox>(formProcCodesOther,pair.Key);
 					Assert.AreSame(groupAdvanced,checkBox.Parent,pair.Key+" is an Advanced Option.");
 					checkBox.Checked=true;
 					updatesAll|=pair.Value;
@@ -107,7 +107,7 @@ namespace M2CANTests {
 			Sta.Run("en-US",() => {
 				using FormClaimPayTotal formClaimPayTotal=new FormClaimPayTotal(new Patient(),new Family(),new List<InsPlan>(),new List<PatPlan>(),
 					new List<InsSub>(),null);
-				OpenDental.UI.Button butPayLabs=GetField<OpenDental.UI.Button>(formClaimPayTotal,"butPayLabs");
+				OpenPmsDental.UI.Button butPayLabs=GetField<OpenPmsDental.UI.Button>(formClaimPayTotal,"butPayLabs");
 				Assert.IsNotNull(butPayLabs);
 				Assert.AreEqual("Pay &Labs",butPayLabs.Text);
 				Assert.IsTrue(GetAllControls(formClaimPayTotal).Contains(butPayLabs));

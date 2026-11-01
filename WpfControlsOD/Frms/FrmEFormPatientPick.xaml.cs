@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Input;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	///<summary>The popup of an eForm Patient List field (Open Dental 25.2). Lists the form patient's family, read live, showing first and last name only
 	///because the patient may be filling at a kiosk. Add creates a family member; it is hidden when the logged-in user lacks PatientCreate.</summary>
 	public partial class FrmEFormPatientPick:FrmODBase {

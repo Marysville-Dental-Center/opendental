@@ -2,10 +2,10 @@
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using CodeBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using System.Collections.Generic;
 
-namespace OpenDental.Bridges{
+namespace OpenPmsDental.Bridges{
 	///<summary>Provides bridging functionality to Schick CDR.
 	///The algorithm provided below was inspired by the Schick example project named CSAutoApp_2008.</summary>
 	public class Schick{

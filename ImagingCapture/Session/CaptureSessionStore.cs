@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using ImagingCapture.Save;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Session {
 	///<summary>The database reads and writes of the capture session apart from saving an image (RadiographImport has its own seam,

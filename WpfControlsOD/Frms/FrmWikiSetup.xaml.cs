@@ -14,10 +14,10 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using CodeBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	///<summary></summary>
 	public partial class FrmWikiSetup:FrmODBase {
 		///<summary>The master page as loaded, to tell whether Save changed it.</summary>
@@ -98,7 +98,7 @@ namespace OpenDental {
 			}
 			string folder=textReadOnlyPath.Text.Trim();
 			WikiExportResult wikiExportResult=null;
-			OpenDental.UI.ProgressWin progressWin=new OpenDental.UI.ProgressWin();
+			OpenPmsDental.UI.ProgressWin progressWin=new OpenPmsDental.UI.ProgressWin();
 			progressWin.ShowCancelButton=false;
 			progressWin.StartingMessage=Lans.g(this,"Writing the read-only copy of the wiki...");
 			progressWin.ActionMain=() => {

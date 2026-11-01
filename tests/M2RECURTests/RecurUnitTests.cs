@@ -10,7 +10,7 @@ using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using ForkMigrationTests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace M2RECURTests {
 	[TestClass]

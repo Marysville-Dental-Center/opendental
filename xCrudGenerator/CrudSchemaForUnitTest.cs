@@ -4,7 +4,7 @@ using System.Data;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace xCrudGenerator {
 	///<summary>See UnitTests.SchemaT.cs.  This class generates the SchemaCrudTest file.</summary>
@@ -16,7 +16,7 @@ namespace xCrudGenerator {
 using System.Collections.Generic;
 using System.Text;
 
-namespace OpenDentBusiness {
+namespace OpenPmsDentalBusiness {
 	///<summary>Please ignore this class.  It's used only for testing.</summary>
 	public class SchemaCrudTest {
 		///<summary>Example only</summary>

@@ -8,8 +8,8 @@ using System.Text;
 using System.Text.RegularExpressions;
 using CodeBase.VendorDirect;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace InitSqlTests {
 	[TestClass]

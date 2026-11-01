@@ -1,5 +1,5 @@
-﻿using OpenDental;
-using OpenDentBusiness;
+﻿using OpenPmsDental;
+using OpenPmsDentalBusiness;
 using System;
 using System.Collections.Generic;
 using System.Globalization;

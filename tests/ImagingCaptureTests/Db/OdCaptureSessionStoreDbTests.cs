@@ -6,7 +6,7 @@ using System.Linq;
 using ImagingCapture.Session;
 using ImagingCapture.Templates;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using UnitTestsCore;
 
 namespace ImagingCapture.Tests.Db {

@@ -8,7 +8,7 @@ using ImagingCapture.Dicom;
 using ImagingCapture.Save;
 using ImagingCapture.Templates;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Tests {
 	///<summary>Mount definitions and the security log for "Add standard templates"; ThrowOn names calls that fail.</summary>

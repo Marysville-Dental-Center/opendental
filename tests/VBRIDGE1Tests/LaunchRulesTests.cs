@@ -5,8 +5,8 @@ using System;
 using System.Linq;
 using CodeBase.VendorDirect;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.VendorDirect.ProgramLinks;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.VendorDirect.ProgramLinks;
 
 namespace VBRIDGE1Tests {
 	[TestClass]

@@ -183,8 +183,8 @@ namespace BIMGTests {
 			//The limits of the sync are the limits of the boxes.
 			string xaml=Read("WpfControlsOD","Frms","FrmImageDrawEdit.xaml");
 			Assert.AreEqual(2,Count(xaml,"MinVal=\"1\" MaxVal=\"100000000\""));
-			Assert.AreEqual(1d,OpenDentBusiness.ImageDrawFontSizeSync.MIN_SIZE);
-			Assert.AreEqual(100000000d,OpenDentBusiness.ImageDrawFontSizeSync.MAX_SIZE);
+			Assert.AreEqual(1d,OpenPmsDentalBusiness.ImageDrawFontSizeSync.MIN_SIZE);
+			Assert.AreEqual(100000000d,OpenPmsDentalBusiness.ImageDrawFontSizeSync.MAX_SIZE);
 			//Saving still validates and stores the actual size.
 			StringAssert.Contains(code,"ImageDrawCur.FontSize=(float)textFontSize.Value;");
 		}

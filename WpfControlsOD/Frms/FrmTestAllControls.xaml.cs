@@ -15,11 +15,11 @@ using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 using Microsoft.Win32;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	/// <summary></summary>
 	public partial class FrmTestAllControls:FrmODBase {
 

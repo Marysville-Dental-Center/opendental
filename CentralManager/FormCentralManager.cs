@@ -11,9 +11,9 @@ using System.Text;
 using System.Xml;
 using System.Xml.XPath;
 using System.Windows.Forms;
-using OpenDentBusiness;
-using OpenDental.UI;
-using OpenDental;
+using OpenPmsDentalBusiness;
+using OpenPmsDental.UI;
+using OpenPmsDental;
 using CodeBase;
 using DataConnectionBase;
 using System.Globalization;
@@ -110,7 +110,7 @@ namespace CentralManager {
 			}
 			FillGridConns(listConnNums);
 			if(!listErrors.IsNullOrEmpty()) {
-				using OpenDental.MsgBoxCopyPaste msgBoxCopyPaste=new OpenDental.MsgBoxCopyPaste(
+				using OpenPmsDental.MsgBoxCopyPaste msgBoxCopyPaste=new OpenPmsDental.MsgBoxCopyPaste(
 					Lan.g(this,"The following connections had an error and were not filtered correctly:\r\n\r\n")+string.Join("\r\n\r\n",listErrors));
 				msgBoxCopyPaste.ShowDialog();
 			}
@@ -233,7 +233,7 @@ namespace CentralManager {
 			labelFetch.Visible=false;
 			Cursor=Cursors.Default;
 			if(_invalidConnsLog!="") {
-				using OpenDental.MsgBoxCopyPaste msgBoxCopyPaste=new OpenDental.MsgBoxCopyPaste(Lan.g(this,"The following connections had errors occur")
+				using OpenPmsDental.MsgBoxCopyPaste msgBoxCopyPaste=new OpenPmsDental.MsgBoxCopyPaste(Lan.g(this,"The following connections had errors occur")
 					+":"+_invalidConnsLog);
 				msgBoxCopyPaste.ShowDialog();
 			}
@@ -397,7 +397,7 @@ namespace CentralManager {
 				Security.CurUser=Userods.GetUserNoCache(Security.CurUser.UserNum);//UpdatePassword() changes multiple fields.  Refresh from db.
 			}
 			catch(Exception ex) {
-				OpenDental.MessageBox.Show(ex.Message);
+				OpenPmsDental.MessageBox.Show(ex.Message);
 			}
 			Cache.Refresh(InvalidType.Security);
 		}
@@ -834,7 +834,7 @@ namespace CentralManager {
 		private bool GetConfigAndConnect() {
 			string xmlPath=Path.Combine(Application.StartupPath,"CentralManagerConfig.xml");
 			if(!File.Exists(xmlPath)) {
-				OpenDental.MessageBox.Show("Please create CentralManagerConfig.xml according to the manual before using this tool.");
+				OpenPmsDental.MessageBox.Show("Please create CentralManagerConfig.xml according to the manual before using this tool.");
 				_hasFatalError=true;
 				Application.Exit();
 				return false;
@@ -853,7 +853,7 @@ namespace CentralManager {
 				//See if there's a DatabaseConnection
 				nav=Navigator.SelectSingleNode("//DatabaseConnection");
 				if(nav==null) {
-					OpenDental.MessageBox.Show("DatabaseConnection element missing from CentralManagerConfig.xml.");
+					OpenPmsDental.MessageBox.Show("DatabaseConnection element missing from CentralManagerConfig.xml.");
 					Application.Exit();
 					return false;
 				}
@@ -880,7 +880,7 @@ namespace CentralManager {
 			}
 			catch(Exception ex) {
 				//Common error: root element is missing
-				OpenDental.MessageBox.Show(ex.Message);
+				OpenPmsDental.MessageBox.Show(ex.Message);
 				Application.Exit();
 				return false;
 			}
@@ -916,7 +916,7 @@ namespace CentralManager {
 					Version currentVersion=Assembly.GetAssembly(typeof(Db)).GetName().Version;
 					//if(!ODBuild.IsDebug() && storedVersion.CompareTo(currentVersion)!=0) {
 					if(storedVersion.CompareTo(currentVersion)!=0) {
-						OpenDental.MessageBox.Show(Lan.g(this,"Program version")+": "+currentVersion.ToString()+"\r\n"
+						OpenPmsDental.MessageBox.Show(Lan.g(this,"Program version")+": "+currentVersion.ToString()+"\r\n"
 							+Lan.g(this,"Database version")+": "+storedVersion.ToString()+"\r\n"
 							+Lan.g(this,"Versions must match.  Please manually connect to the database through the main program in order to update the version."));
 						_hasFatalError=true;
@@ -949,7 +949,7 @@ namespace CentralManager {
 					return true;
 				}
 				catch(Exception ex) {
-					OpenDental.MessageBox.Show(ex.Message);
+					OpenPmsDental.MessageBox.Show(ex.Message);
 					_hasFatalError=true;
 					Application.Exit();
 					return false;
@@ -1033,7 +1033,7 @@ namespace CentralManager {
 				return;
 			}
 			if(string.IsNullOrEmpty(conn.DatabaseName) && string.IsNullOrEmpty(conn.ServiceURI)) {
-				OpenDental.MessageBox.Show("Either a database or a Middle Tier URI must be specified in the connection.");
+				OpenPmsDental.MessageBox.Show("Either a database or a Middle Tier URI must be specified in the connection.");
 				return;
 			}
 			ShowState showState=ShowState.SW_SHOW;

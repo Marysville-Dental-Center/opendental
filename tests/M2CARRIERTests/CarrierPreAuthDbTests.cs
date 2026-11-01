@@ -10,7 +10,7 @@ using System.Globalization;
 using System.Linq;
 using System.Threading;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace M2CARRIERTests {
 	[TestClass]
@@ -102,7 +102,7 @@ namespace M2CARRIERTests {
 		private static Procedure AddProc(long patNum,long codeNum,ProcStat procStat,long aptNum=0) {
 			Procedure procedure=new Procedure { PatNum=patNum,CodeNum=codeNum,ProcStatus=procStat,ProcDate=_date,DateTP=_date,ProcFee=100,ToothNum="",
 				Surf="",ToothRange="",AptNum=aptNum,ProvNum=1,ClinicNum=0 };
-			procedure.ProcNum=OpenDentBusiness.Crud.ProcedureCrud.Insert(procedure);
+			procedure.ProcNum=OpenPmsDentalBusiness.Crud.ProcedureCrud.Insert(procedure);
 			return procedure;
 		}
 
@@ -114,7 +114,7 @@ namespace M2CARRIERTests {
 		}
 
 		private static void AddPreauthClaimProc(Procedure procedure,InsPlan insPlan,InsSub insSub) {
-			OpenDentBusiness.Crud.ClaimProcCrud.Insert(new ClaimProc { ProcNum=procedure.ProcNum,PatNum=procedure.PatNum,PlanNum=insPlan.PlanNum,
+			OpenPmsDentalBusiness.Crud.ClaimProcCrud.Insert(new ClaimProc { ProcNum=procedure.ProcNum,PatNum=procedure.PatNum,PlanNum=insPlan.PlanNum,
 				InsSubNum=insSub.InsSubNum,Status=ClaimProcStatus.Preauth,ProcDate=_date,CodeSent="",Remarks="",DateCP=_date });
 		}
 		#endregion Helpers

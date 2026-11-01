@@ -8,7 +8,7 @@ using System.Text;
 using ImagingCapture.Settings;
 using ImagingDeviceManager.Config;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Tests {
 	///<summary>A security log and the imaging device rows for the Capture settings tests.</summary>

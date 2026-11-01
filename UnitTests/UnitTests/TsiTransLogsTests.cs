@@ -1,5 +1,5 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using System.Collections.Generic;
 using UnitTestsCore;
 
@@ -20,9 +20,9 @@ namespace UnitTests.TsiTransLogs_Tests {
 		[TestInitialize]
 		public void SetupTest() {
 			ProgramPropertyT.ClearProgamPropertyTable();
-			OpenDentBusiness.Program prog=Programs.GetCur(ProgramName.Transworld);
+			OpenPmsDentalBusiness.Program prog=Programs.GetCur(ProgramName.Transworld);
 			if(prog==null) {
-				prog=new OpenDentBusiness.Program() {
+				prog=new OpenPmsDentalBusiness.Program() {
 					ProgName=ProgramName.Transworld.ToString(),
 					ProgDesc=ProgramName.Transworld.ToString(),
 					Enabled=true,
@@ -55,7 +55,7 @@ namespace UnitTests.TsiTransLogs_Tests {
 
 		///<summary>Enables/Disables the Transworld program. Refreshes cache.</summary>
 		private void EnableTransworldProgram(bool isEnabled=true) {
-			OpenDentBusiness.Program prog=Programs.GetCur(ProgramName.Transworld);
+			OpenPmsDentalBusiness.Program prog=Programs.GetCur(ProgramName.Transworld);
 			prog.Enabled=isEnabled;
 			Programs.Update(prog);
 			Cache.Refresh(InvalidType.AllLocal);

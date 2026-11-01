@@ -3,7 +3,7 @@
 using System;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace BSERVERTests {
 	[TestClass]

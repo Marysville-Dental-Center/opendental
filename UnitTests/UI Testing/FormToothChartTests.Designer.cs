@@ -24,7 +24,7 @@ namespace UnitTests {
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			this.butToothChartBig = new OpenDental.UI.Button();
+			this.butToothChartBig = new OpenPmsDental.UI.Button();
 			this.groupBox1 = new System.Windows.Forms.GroupBox();
 			this.radioOpenGL = new System.Windows.Forms.RadioButton();
 			this.radioSimple2D = new System.Windows.Forms.RadioButton();
@@ -105,7 +105,7 @@ namespace UnitTests {
 
 		#endregion
 
-		private OpenDental.UI.Button butToothChartBig;
+		private OpenPmsDental.UI.Button butToothChartBig;
 		private System.Windows.Forms.GroupBox groupBox1;
 		private System.Windows.Forms.RadioButton radioOpenGL;
 		private System.Windows.Forms.RadioButton radioSimple2D;

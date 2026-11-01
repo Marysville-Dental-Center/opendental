@@ -2,7 +2,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -20,7 +20,7 @@ namespace UnitTests.MiddleTier.ParamCheck_Tests {
 		///<summary>This method will execute just before each test in this class.</summary>
 		[TestInitialize]
 		public void SetupTest() {
-			RunTestsAgainstMiddleTier(new OpenDentBusiness.WebServices.OpenDentalServerMockIIS());
+			RunTestsAgainstMiddleTier(new OpenPmsDentalBusiness.WebServices.OpenDentalServerMockIIS());
 		}
 
 		///<summary>This method will execute after each test in this class.</summary>

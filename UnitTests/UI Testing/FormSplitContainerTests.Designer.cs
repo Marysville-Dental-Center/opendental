@@ -29,9 +29,9 @@ namespace UnitTests{
 			this.panel4 = new System.Windows.Forms.Panel();
 			this.button4 = new System.Windows.Forms.Button();
 			this.button1 = new System.Windows.Forms.Button();
-			this.splitContainerOD = new OpenDental.UI.SplitContainer();
-			this.splitterPanel1 = new OpenDental.UI.SplitterPanel();
-			this.splitterPanel2 = new OpenDental.UI.SplitterPanel();
+			this.splitContainerOD = new OpenPmsDental.UI.SplitContainer();
+			this.splitterPanel1 = new OpenPmsDental.UI.SplitterPanel();
+			this.splitterPanel2 = new OpenPmsDental.UI.SplitterPanel();
 			this.button2 = new System.Windows.Forms.Button();
 			this.button3 = new System.Windows.Forms.Button();
 			((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
@@ -181,10 +181,10 @@ namespace UnitTests{
 		private System.Windows.Forms.Button button4;
 		private System.Windows.Forms.Button button1;
 		private System.Windows.Forms.Panel panel4;
-		private OpenDental.UI.SplitContainer splitContainerOD;
+		private OpenPmsDental.UI.SplitContainer splitContainerOD;
 		private System.Windows.Forms.Button button2;
 		private System.Windows.Forms.Button button3;
-		private OpenDental.UI.SplitterPanel splitterPanel2;
-		private OpenDental.UI.SplitterPanel splitterPanel1;
+		private OpenPmsDental.UI.SplitterPanel splitterPanel2;
+		private OpenPmsDental.UI.SplitterPanel splitterPanel1;
 	}
 }

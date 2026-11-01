@@ -9,11 +9,11 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using CodeBase;
-using OpenDental.Drawing;
-using OpenDentBusiness;
+using OpenPmsDental.Drawing;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	public partial class FrmFriendlyException:FrmODBase {
 		private string _friendlyMessage;
 		private Exception _exception;

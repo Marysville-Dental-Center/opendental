@@ -78,7 +78,7 @@ namespace AdoptionValidation {
 			}
 			if(schema.GetTable("userodpref")!=null && schema.GetTable("program")!=null) {
 				//UserOdFkeyType.ProgramPassword (per-user bridge passwords, for example Oryx).
-				long fkeyTypeProgramPassword=(long)OpenDentBusiness.UserOdFkeyType.ProgramPassword;
+				long fkeyTypeProgramPassword=(long)OpenPmsDentalBusiness.UserOdFkeyType.ProgramPassword;
 				foreach(object[] row in db.Rows("SELECT u.UserOdPrefNum,IFNULL(p.ProgName,''),u.UserNum FROM userodpref u LEFT JOIN program p ON p.ProgramNum=u.Fkey "
 					+"WHERE u.FkeyType="+fkeyTypeProgramPassword+" AND u.ValueString"+string.Format(notFork,"u.ValueString")+" ORDER BY p.ProgName,u.UserNum"))
 				{

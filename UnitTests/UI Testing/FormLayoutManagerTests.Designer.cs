@@ -28,32 +28,32 @@
 		/// </summary>
 		private void InitializeComponent()
 		{
-			this.button2 = new OpenDental.UI.Button();
+			this.button2 = new OpenPmsDental.UI.Button();
 			this.label1 = new System.Windows.Forms.Label();
 			this.textBox1 = new System.Windows.Forms.TextBox();
-			this.groupBox3 = new OpenDental.UI.GroupBox();
+			this.groupBox3 = new OpenPmsDental.UI.GroupBox();
 			this.radioButton3 = new System.Windows.Forms.RadioButton();
 			this.label2 = new System.Windows.Forms.Label();
 			this.radioButton4 = new System.Windows.Forms.RadioButton();
-			this.checkBox6 = new OpenDental.UI.CheckBox();
-			this.button3 = new OpenDental.UI.Button();
+			this.checkBox6 = new OpenPmsDental.UI.CheckBox();
+			this.button3 = new OpenPmsDental.UI.Button();
 			this.radioButton1 = new System.Windows.Forms.RadioButton();
 			this.radioButton2 = new System.Windows.Forms.RadioButton();
-			this.listBox1 = new OpenDental.UI.ListBox();
-			this.comboBox1 = new OpenDental.UI.ComboBox();
+			this.listBox1 = new OpenPmsDental.UI.ListBox();
+			this.comboBox1 = new OpenPmsDental.UI.ComboBox();
 			this.label3 = new System.Windows.Forms.Label();
-			this.tabControl = new OpenDental.UI.TabControl();
-			this.tabPage1 = new OpenDental.UI.TabPage();
+			this.tabControl = new OpenPmsDental.UI.TabControl();
+			this.tabPage1 = new OpenPmsDental.UI.TabPage();
 			this.panel3 = new System.Windows.Forms.Panel();
-			this.checkBox1 = new OpenDental.UI.CheckBox();
+			this.checkBox1 = new OpenPmsDental.UI.CheckBox();
 			this.textBox2 = new System.Windows.Forms.TextBox();
-			this.tabPage2 = new OpenDental.UI.TabPage();
+			this.tabPage2 = new OpenPmsDental.UI.TabPage();
 			this.panel4 = new System.Windows.Forms.Panel();
-			this.checkBox2 = new OpenDental.UI.CheckBox();
+			this.checkBox2 = new OpenPmsDental.UI.CheckBox();
 			this.textBox3 = new System.Windows.Forms.TextBox();
-			this.gridMain = new OpenDental.UI.GridOD();
-			this.button1 = new OpenDental.UI.Button();
-			this.button4 = new OpenDental.UI.Button();
+			this.gridMain = new OpenPmsDental.UI.GridOD();
+			this.button1 = new OpenPmsDental.UI.Button();
+			this.button4 = new OpenPmsDental.UI.Button();
 			this.groupBox3.SuspendLayout();
 			this.tabControl.SuspendLayout();
 			this.tabPage1.SuspendLayout();
@@ -193,7 +193,7 @@
         "Seventh"};
 			this.listBox1.Location = new System.Drawing.Point(506, 157);
 			this.listBox1.Name = "listBox1";
-			this.listBox1.SelectionMode = OpenDental.UI.SelectionMode.MultiExtended;
+			this.listBox1.SelectionMode = OpenPmsDental.UI.SelectionMode.MultiExtended;
 			this.listBox1.Size = new System.Drawing.Size(120, 82);
 			this.listBox1.TabIndex = 64;
 			// 
@@ -384,31 +384,31 @@
 		}
 
 		#endregion
-		private OpenDental.UI.Button button2;
+		private OpenPmsDental.UI.Button button2;
 		private System.Windows.Forms.Label label1;
 		private System.Windows.Forms.TextBox textBox1;
-		private OpenDental.UI.GroupBox groupBox3;
+		private OpenPmsDental.UI.GroupBox groupBox3;
 		private System.Windows.Forms.Label label2;
-		private OpenDental.UI.CheckBox checkBox6;
-		private OpenDental.UI.Button button3;
+		private OpenPmsDental.UI.CheckBox checkBox6;
+		private OpenPmsDental.UI.Button button3;
 		private System.Windows.Forms.RadioButton radioButton1;
 		private System.Windows.Forms.RadioButton radioButton2;
 		private System.Windows.Forms.RadioButton radioButton3;
 		private System.Windows.Forms.RadioButton radioButton4;
-		private OpenDental.UI.ListBox listBox1;
-		private OpenDental.UI.ComboBox comboBox1;
+		private OpenPmsDental.UI.ListBox listBox1;
+		private OpenPmsDental.UI.ComboBox comboBox1;
 		private System.Windows.Forms.Label label3;
-		private OpenDental.UI.TabControl tabControl;
-		private OpenDental.UI.TabPage tabPage1;
-		private OpenDental.UI.TabPage tabPage2;
-		private OpenDental.UI.CheckBox checkBox1;
+		private OpenPmsDental.UI.TabControl tabControl;
+		private OpenPmsDental.UI.TabPage tabPage1;
+		private OpenPmsDental.UI.TabPage tabPage2;
+		private OpenPmsDental.UI.CheckBox checkBox1;
 		private System.Windows.Forms.TextBox textBox2;
 		private System.Windows.Forms.Panel panel3;
 		private System.Windows.Forms.Panel panel4;
-		private OpenDental.UI.CheckBox checkBox2;
+		private OpenPmsDental.UI.CheckBox checkBox2;
 		private System.Windows.Forms.TextBox textBox3;
-		private OpenDental.UI.GridOD gridMain;
-		private OpenDental.UI.Button button1;
-		private OpenDental.UI.Button button4;
+		private OpenPmsDental.UI.GridOD gridMain;
+		private OpenPmsDental.UI.Button button1;
+		private OpenPmsDental.UI.Button button4;
 	}
 }

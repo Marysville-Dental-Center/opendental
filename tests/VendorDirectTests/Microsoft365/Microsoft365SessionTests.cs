@@ -14,7 +14,7 @@ using CodeBase;
 using CodeBase.VendorDirect;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json.Linq;
-using OpenDentBusiness.Microsoft365;
+using OpenPmsDentalBusiness.Microsoft365;
 
 namespace VendorDirectTests.Microsoft365 {
 	[TestClass]

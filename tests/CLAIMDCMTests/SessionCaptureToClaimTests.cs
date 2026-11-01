@@ -15,8 +15,8 @@ using System.Text;
 using ImagingCapture.Save;
 using ImagingDeviceManager.Capture;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.Eclaims;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.Eclaims;
 
 namespace CLAIMDCMTests {
 	[TestClass]

@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using OpenDentBusiness;
-using OpenDental;
+using OpenPmsDentalBusiness;
+using OpenPmsDental;
 using System.Linq;
 
 namespace UnitTestsCore {
@@ -168,10 +168,10 @@ namespace UnitTestsCore {
 		}
 
 		///<summary>Updates the SecDateTEdit of a Claim to the number of daysPrevious. Unable to set the SecDateTEdit to anything but DateTime.Now in the CRUD Layer.</summary>
-		public static void SetSecDateTEditToDaysPast(OpenDentBusiness.Claim odbClaim,int daysPrevious) {
-			string command="UPDATE claim SET SecDateTEdit = "+ OpenDentBusiness.POut.Date(DateTime.Now.AddDays(-daysPrevious))
-				+" WHERE ClaimNum = "+OpenDentBusiness.POut.Long(odbClaim.ClaimNum);
-			OpenDentBusiness.DataCore.NonQ(command);
+		public static void SetSecDateTEditToDaysPast(OpenPmsDentalBusiness.Claim odbClaim,int daysPrevious) {
+			string command="UPDATE claim SET SecDateTEdit = "+ OpenPmsDentalBusiness.POut.Date(DateTime.Now.AddDays(-daysPrevious))
+				+" WHERE ClaimNum = "+OpenPmsDentalBusiness.POut.Long(odbClaim.ClaimNum);
+			OpenPmsDentalBusiness.DataCore.NonQ(command);
     }
 
 		///<summary>Deletes everything from the claim table.  Does not truncate the table so that PKs are not reused on accident.</summary>

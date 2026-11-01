@@ -6,7 +6,7 @@ using System.IO;
 using System.Linq;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace M202Tests {
 	[TestClass]
@@ -103,7 +103,7 @@ namespace M202Tests {
 			Assert.AreEqual(274,(int)EnumPermType.PhoneExtension);
 			Assert.AreEqual(275,(int)EnumPermType.PatientSelected);
 			Assert.AreEqual(276,(int)EnumPermType.LogScraperHQ);
-			Assert.AreEqual(272,OpenDentBusiness.ForkMigrations.Seeds26_1.Seed26_1.PERM_PHONE_EXTENSION_25_3);
+			Assert.AreEqual(272,OpenPmsDentalBusiness.ForkMigrations.Seeds26_1.Seed26_1.PERM_PHONE_EXTENSION_25_3);
 		}
 
 		[TestMethod]

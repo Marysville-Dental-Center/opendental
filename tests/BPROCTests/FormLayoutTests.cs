@@ -12,8 +12,8 @@ using System.Threading;
 using System.Windows.Forms;
 using ForkMigrationTests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDental;
-using OpenDentBusiness;
+using OpenPmsDental;
+using OpenPmsDentalBusiness;
 
 namespace BPROCTests {
 	[TestClass]
@@ -78,7 +78,7 @@ namespace BPROCTests {
 		public void FeeTools_EachToolOnItsOwnTab() {
 			RunSta(() => {
 				using FormFeeSchedTools formFeeSchedTools=new FormFeeSchedTools(0,new List<FeeSched>(),new List<Provider>(),new List<Clinic>());
-				OpenDental.UI.TabControl tabControl=GetField<OpenDental.UI.TabControl>(formFeeSchedTools,"tabControlTools");
+				OpenPmsDental.UI.TabControl tabControl=GetField<OpenPmsDental.UI.TabControl>(formFeeSchedTools,"tabControlTools");
 				CollectionAssert.AreEqual(new[] { "Copy","Increase","Clear","Export / Import","Global Updates" },
 					tabControl.TabPages.Select(x => x.Text).ToArray());
 				Dictionary<string,string[]> dictControlsByTab=new Dictionary<string,string[]> {
@@ -92,7 +92,7 @@ namespace BPROCTests {
 				};
 				List<HashSet<string>> listNamesPerTab=new List<HashSet<string>>();
 				foreach(KeyValuePair<string,string[]> pair in dictControlsByTab) {
-					OpenDental.UI.TabPage tabPage=GetField<OpenDental.UI.TabPage>(formFeeSchedTools,pair.Key);
+					OpenPmsDental.UI.TabPage tabPage=GetField<OpenPmsDental.UI.TabPage>(formFeeSchedTools,pair.Key);
 					Assert.IsTrue(tabControl.TabPages.Contains(tabPage),pair.Key);
 					HashSet<string> hashSetNames=GetNamesBelow(tabPage);
 					foreach(string name in pair.Value) {
@@ -177,10 +177,10 @@ namespace BPROCTests {
 				Control comboProvider=GetField<Control>(formProcCodeEditMore,"comboProvider");
 				Control comboClinic=GetField<Control>(formProcCodeEditMore,"comboClinic");
 				Control gridMain=GetField<Control>(formProcCodeEditMore,"gridMain");
-				Assert.IsInstanceOfType(comboClinic,typeof(OpenDental.UI.ComboBoxClinicPicker));
+				Assert.IsInstanceOfType(comboClinic,typeof(OpenPmsDental.UI.ComboBoxClinicPicker));
 				Assert.IsTrue(comboProvider.Bottom<=gridMain.Top && comboClinic.Bottom<=gridMain.Top,"Filters sit above the grid.");
-				Assert.IsTrue(((OpenDental.UI.ComboBoxClinicPicker)comboClinic).IncludeAll);
-				Assert.IsTrue(((OpenDental.UI.ComboBoxClinicPicker)comboClinic).IncludeUnassigned);
+				Assert.IsTrue(((OpenPmsDental.UI.ComboBoxClinicPicker)comboClinic).IncludeAll);
+				Assert.IsTrue(((OpenPmsDental.UI.ComboBoxClinicPicker)comboClinic).IncludeUnassigned);
 			});
 			string code=ReadSource("FormProcCodeEditMore.cs");
 			StringAssert.Contains(code,"MoreFeesFilters.Filter(_listFees,provNumFilter,clinicNumFilter)");

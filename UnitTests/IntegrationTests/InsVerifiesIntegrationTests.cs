@@ -4,11 +4,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using OpenDentBusiness.Eclaims;
+using OpenPmsDentalBusiness.Eclaims;
 using UnitTestsCore;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using System.Reflection;
-using OpenDental;
+using OpenPmsDental;
 
 namespace UnitTests.IntegrationTests {
 	[TestClass]

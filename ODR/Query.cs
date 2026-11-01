@@ -1,7 +1,7 @@
 using System;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ODR{
 	///<summary></summary>

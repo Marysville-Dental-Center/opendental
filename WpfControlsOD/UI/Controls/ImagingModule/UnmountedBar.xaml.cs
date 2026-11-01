@@ -20,10 +20,10 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using CodeBase;
-using OpenDentBusiness;
-using OpenDental.Drawing;
-using OpenDental.UI;
-using OpenDental;//even though they are in this project
+using OpenPmsDentalBusiness;
+using OpenPmsDental.Drawing;
+using OpenPmsDental.UI;
+using OpenPmsDental;//even though they are in this project
 
 namespace WpfControls.UI{
 /*
@@ -138,7 +138,7 @@ Jordan is the only one allowed to edit this file.
 
 		private void butClose_Click(object sender, EventArgs e){
 			if(_listUnmountedObjects.Count>0){
-				OpenDental.MsgBox.Show(this,"Cannot close the unmounted bar as long as it still contains images.");
+				OpenPmsDental.MsgBox.Show(this,"Cannot close the unmounted bar as long as it still contains images.");
 				return;
 			}
 			EventClose?.Invoke(this,new EventArgs());
@@ -146,17 +146,17 @@ Jordan is the only one allowed to edit this file.
 
 		private void butDelete_Click(object sender, EventArgs e){
 			if(_listUnmountedObjects.Count==0){
-				OpenDental.MsgBox.Show(this,"No unmounted images to delete.");
+				OpenPmsDental.MsgBox.Show(this,"No unmounted images to delete.");
 				return;
 			}
 			if(_selectedIndex==-1){
 				if(_listUnmountedObjects.Count>1){
-					OpenDental.MsgBox.Show(this,"Please select an an image below first.");
+					OpenPmsDental.MsgBox.Show(this,"Please select an an image below first.");
 					return;
 				}
 				SetSelectedIndex(0);
 			}
-			if(!OpenDental.MsgBox.Show(this,OpenDental.MsgBoxButtons.OKCancel,"Permanently delete the image selected below?")){
+			if(!OpenPmsDental.MsgBox.Show(this,OpenPmsDental.MsgBoxButtons.OKCancel,"Permanently delete the image selected below?")){
 				return;
 			}
 			if(_listUnmountedObjects[_selectedIndex].Document_!=null){
@@ -170,12 +170,12 @@ Jordan is the only one allowed to edit this file.
 
 		private void butRemount_Click(object sender, EventArgs e){
 			if(_listUnmountedObjects.Count==0){
-				OpenDental.MsgBox.Show(this,"No unmounted images to remount.");
+				OpenPmsDental.MsgBox.Show(this,"No unmounted images to remount.");
 				return;
 			}
 			if(_selectedIndex==-1){
 				if(_listUnmountedObjects.Count>1){
-					OpenDental.MsgBox.Show(this,"Please select an an image below to remount.");
+					OpenPmsDental.MsgBox.Show(this,"Please select an an image below to remount.");
 					return;
 				}
 				SetSelectedIndex(0);

@@ -1,9 +1,9 @@
-﻿using OpenDentBusiness;
+﻿using OpenPmsDentalBusiness;
 using System;
 using System.Windows;
 using System.Windows.Input;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	/// <summary>
 	/// Interaction logic for FrmFamilyBalancerAutoSettingsEdit.xaml
 	/// </summary>

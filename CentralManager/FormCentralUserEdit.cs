@@ -5,8 +5,8 @@ using System.DirectoryServices;
 using System.Linq;
 using System.Windows.Forms;
 using CodeBase;
-using OpenDental;
-using OpenDentBusiness;
+using OpenPmsDental;
+using OpenPmsDentalBusiness;
 
 namespace CentralManager {
 	public partial class FormCentralUserEdit:Form {
@@ -86,7 +86,7 @@ namespace CentralManager {
 				DirectoryEntry.Exists(PrefC.GetString(PrefName.DomainLoginPath));
 			}
 			catch(Exception ex) {
-				OpenDental.MessageBox.Show(Lan.g(this,"An error occurred while attempting to access the provided DomainLoginPath:")+" "+ex.Message);
+				OpenPmsDental.MessageBox.Show(Lan.g(this,"An error occurred while attempting to access the provided DomainLoginPath:")+" "+ex.Message);
 				return;
 			}
 			using FormDomainUserPick FormDU=new FormDomainUserPick();
@@ -137,7 +137,7 @@ namespace CentralManager {
 
 		private void butOK_Click(object sender,EventArgs e) {
 			if(textUserName.Text=="") {
-				OpenDental.MessageBox.Show(this,"Please enter a username.");
+				OpenPmsDental.MessageBox.Show(this,"Please enter a username.");
 				return;
 			}
 			if(UserCur.IsNew && textUserName.Text!=textUserName.Text.TrimEnd()) {
@@ -145,7 +145,7 @@ namespace CentralManager {
 				return;
 			}
 			if(listUserGroup.SelectedIndices.Count==0) {
-				OpenDental.MessageBox.Show(this,"Every user must be associated to at least one User Group.");
+				OpenPmsDental.MessageBox.Show(this,"Every user must be associated to at least one User Group.");
 				return;
 			}
 			List<AlertSub> listAlertSubsCur=new List<AlertSub>();
@@ -183,7 +183,7 @@ namespace CentralManager {
 				}
 			}
 			catch(Exception ex){
-				OpenDental.MessageBox.Show(ex.Message);
+				OpenPmsDental.MessageBox.Show(ex.Message);
 				return;
 			}
 			Cache.Refresh(InvalidType.Security);

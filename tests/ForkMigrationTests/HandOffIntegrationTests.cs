@@ -5,8 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace ForkMigrationTests {
 	[TestClass]
@@ -22,7 +22,7 @@ namespace ForkMigrationTests {
 			Assert.IsTrue(runner.CompareLevels(ForkVersions.SCHEMA_LEVEL_BASELINE,runner.LatestLevel)<0,"The adoption baseline sorts below every step.");
 			//The guard reads the levels of the steps the runner runs, in order; the abstract back-fill step is not among them.
 			CollectionAssert.AreEqual(ForkMigrationRunner.GetSteps().Select(x => x.Level.ToString()).ToList(),runner.GetLevels());
-			Assert.IsFalse(runner.GetLevels().Contains(OpenDentBusiness.ForkMigrations.FeatureSteps.NoBillInsBackfillStep.LEVEL.ToString()));
+			Assert.IsFalse(runner.GetLevels().Contains(OpenPmsDentalBusiness.ForkMigrations.FeatureSteps.NoBillInsBackfillStep.LEVEL.ToString()));
 		}
 
 		[TestMethod]
@@ -115,7 +115,7 @@ namespace ForkMigrationTests {
 			Assert.AreEqual(runner.LatestLevel,schemaLevel);
 			CollectionAssert.AreEquivalent(listLevels,ForkVersions.ReadState().GetAppliedLevels(),"Every step of the build finished.");
 			//1. A lower step missing below the highest applied level: the DXC step (B-SHELL), below the Insurance History step (M2-HIST).
-			string levelLower=ForkMigrationRunner.GetSteps().Single(x => x is OpenDentBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemovedStep).Level.ToString();
+			string levelLower=ForkMigrationRunner.GetSteps().Single(x => x is OpenPmsDentalBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemovedStep).Level.ToString();
 			Assert.IsTrue(runner.CompareLevels(levelLower,schemaLevel)<0);
 			ForkVersions.SetMarker(ForkVersions.PREF_FORK_MIGRATIONS_APPLIED,string.Join(",",listLevels.Where(x => x!=levelLower)));
 			ForkGuardResult forkGuardResult=ForkVersionGuard.Evaluate(ForkVersions.ReadState());

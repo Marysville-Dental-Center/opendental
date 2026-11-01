@@ -1,6 +1,6 @@
 using System;
 using System.Windows.Forms;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ODR{
 	///<summary></summary>

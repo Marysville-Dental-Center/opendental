@@ -8,10 +8,10 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	public partial class FrmCommItemUserPrefs:FrmODBase {
 		///<summary>Helper variable that gets set to Security.CurUser.UserNum on load.</summary>
 		private long _userNum;

@@ -12,7 +12,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace StatementTests {
 	[TestClass]
@@ -65,10 +65,10 @@ namespace StatementTests {
 			patient.Zip="97000";
 			patient.BillingType=PrefC.GetLong(PrefName.PracticeDefaultBillType);
 			patient.Birthdate=new DateTime(1980,1,1);
-			patient.PatNum=OpenDentBusiness.Crud.PatientCrud.Insert(patient);
+			patient.PatNum=OpenPmsDentalBusiness.Crud.PatientCrud.Insert(patient);
 			Patient patientOld=patient.Copy();
 			patient.Guarantor=patient.PatNum;
-			OpenDentBusiness.Crud.PatientCrud.Update(patient,patientOld);
+			OpenPmsDentalBusiness.Crud.PatientCrud.Update(patient,patientOld);
 			return patient;
 		}
 
@@ -81,7 +81,7 @@ namespace StatementTests {
 			adjustment.DateEntry=date;
 			adjustment.AdjType=Defs.GetDefsForCategory(DefCat.AdjTypes,true).First().DefNum;
 			adjustment.StatementNum=statementNum;
-			return OpenDentBusiness.Crud.AdjustmentCrud.Insert(adjustment);
+			return OpenPmsDentalBusiness.Crud.AdjustmentCrud.Insert(adjustment);
 		}
 
 		private static Statement NewStatement(long patNum,bool isInvoice) {

@@ -5,9 +5,9 @@ using System.Text;
 //using MigraDoc.DocumentObjectModel;
 //using MigraDoc.DocumentObjectModel.Shapes;
 //using MigraDoc.DocumentObjectModel.Tables;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
-namespace OpenDental.Bridges {
+namespace OpenPmsDental.Bridges {
 	public class ECW {
 		///<summary>AptNum is always passed in by eCW.  It is used in the logic for setting procedures complete within apt edit window.</summary>
 		public static long AptNum;
@@ -29,7 +29,7 @@ namespace OpenDental.Bridges {
 		//}
 
 		public static void SendHL7(long aptNum,long provNum,Patient pat,string pdfDataBase64,string pdfDescription,bool justPDF,List<Procedure> listProcs) {
-			OpenDentBusiness.HL7.EcwDFT dft=new OpenDentBusiness.HL7.EcwDFT();
+			OpenPmsDentalBusiness.HL7.EcwDFT dft=new OpenPmsDentalBusiness.HL7.EcwDFT();
 			dft.InitializeEcw(aptNum,provNum,pat,pdfDataBase64,pdfDescription,justPDF,listProcs);
 			HL7Msg msg=new HL7Msg();
 			if(justPDF){

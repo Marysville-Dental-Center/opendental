@@ -1,4 +1,4 @@
-﻿using OpenDentBusiness;
+﻿using OpenPmsDentalBusiness;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -58,13 +58,13 @@ namespace UnitTestsCore {
 		///<summary>Gets all messages for the patient.</summary>
 		public static List<EmailMessage> GetForPatient(long patNum) {
 			string command=$"SELECT * FROM emailmessage WHERE PatNum={POut.Long(patNum)}";
-			return OpenDentBusiness.Crud.EmailMessageCrud.SelectMany(command);
+			return OpenPmsDentalBusiness.Crud.EmailMessageCrud.SelectMany(command);
 		}
 
 		///<summary>Gets all messages for the given recipient email address.</summary>
 		public static List<EmailMessage> GetForToAddress(string toAddress) {
 			string command=$"SELECT * FROM emailmessage WHERE ToAddress='{POut.String(toAddress)}'";
-			return OpenDentBusiness.Crud.EmailMessageCrud.SelectMany(command);
+			return OpenPmsDentalBusiness.Crud.EmailMessageCrud.SelectMany(command);
 		}
 	}
 }

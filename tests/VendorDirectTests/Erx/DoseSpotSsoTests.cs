@@ -6,7 +6,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace VendorDirectTests.Erx {
 	[TestClass]
@@ -86,7 +86,7 @@ namespace VendorDirectTests.Erx {
 			StringAssert.Contains(redacted,"SingleSignOnUserIdVerify=***");
 			StringAssert.Contains(redacted,"SingleSignOnUserId=1234");
 			StringAssert.Contains(redacted,"PatientId=555");
-			string url=OpenDentBusiness.Erx.BuildDoseSpotUrl(DoseSpotConfig.UrlSsoStaging,query);
+			string url=OpenPmsDentalBusiness.Erx.BuildDoseSpotUrl(DoseSpotConfig.UrlSsoStaging,query);
 			StringAssert.StartsWith(url,DoseSpotConfig.UrlSsoStaging+"&SingleSignOnCode=");
 			StringAssert.Contains(DoseSpotSso.Redact(url),"?b=2&SingleSignOnCode=***");
 			Assert.AreEqual("",DoseSpotSso.Redact(null));
@@ -94,8 +94,8 @@ namespace VendorDirectTests.Erx {
 
 		[TestMethod]
 		public void BuildDoseSpotUrl_StartsTheQueryWithQuestionMark() {
-			Assert.AreEqual(DoseSpotConfig.UrlSsoProduction+"?a=1&b=2",OpenDentBusiness.Erx.BuildDoseSpotUrl(DoseSpotConfig.UrlSsoProduction,"&a=1&b=2"));
-			Assert.AreEqual(DoseSpotConfig.UrlSsoProduction,OpenDentBusiness.Erx.BuildDoseSpotUrl(DoseSpotConfig.UrlSsoProduction,null));
+			Assert.AreEqual(DoseSpotConfig.UrlSsoProduction+"?a=1&b=2",OpenPmsDentalBusiness.Erx.BuildDoseSpotUrl(DoseSpotConfig.UrlSsoProduction,"&a=1&b=2"));
+			Assert.AreEqual(DoseSpotConfig.UrlSsoProduction,OpenPmsDentalBusiness.Erx.BuildDoseSpotUrl(DoseSpotConfig.UrlSsoProduction,null));
 		}
 
 		[TestMethod]

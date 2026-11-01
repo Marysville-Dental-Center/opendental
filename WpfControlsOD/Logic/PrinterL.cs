@@ -7,9 +7,9 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
-using OpenDental;
-using OpenDentBusiness;
-using OpenDental.Drawing;
+using OpenPmsDental;
+using OpenPmsDentalBusiness;
+using OpenPmsDental.Drawing;
 using CodeBase;//for PrintoutErrorCode
 using System.IO;
 using System.ServiceProcess;

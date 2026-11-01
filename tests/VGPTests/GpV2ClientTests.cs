@@ -11,7 +11,7 @@ using System.Threading;
 using CodeBase.VendorDirect;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json.Linq;
-using OpenDentBusiness.VendorDirect.GlobalPayments;
+using OpenPmsDentalBusiness.VendorDirect.GlobalPayments;
 
 namespace VGPTests {
 	[TestClass]

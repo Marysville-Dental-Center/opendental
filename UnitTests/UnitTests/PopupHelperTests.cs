@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness.UI;
+using OpenPmsDentalBusiness.UI;
 using UnitTestsCore;
 using WpfControls.UI;
 

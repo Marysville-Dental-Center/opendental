@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using CodeBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace DevDbTool {
 	public static class Program {

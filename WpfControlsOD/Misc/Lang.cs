@@ -6,10 +6,10 @@ using System.Linq;
 using System.Reflection;
 using System.Windows;
 //using System.Windows.Controls;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	///<summary>Lang is short for language.  Used to translate text to another language.  There are to other similar classes: Lan is used in OD proper by WinForms, but it's not available to WPFControlsOD.  Lans is in the business layer, so it could be used, but it can't handle UI controls.</summary>
 	public class Lang{
 

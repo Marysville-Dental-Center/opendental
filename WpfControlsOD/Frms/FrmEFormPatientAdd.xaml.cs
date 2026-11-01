@@ -1,9 +1,9 @@
 using System;
 using System.Windows.Input;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	///<summary>Second popup of an eForm Patient List field (Open Dental 25.2): first name, last name and birthdate of a new family member, all required.
 	///OK creates the person in the form patient's family (EFormInsPick.AddFamilyMember), which logs PatientCreate.</summary>
 	public partial class FrmEFormPatientAdd:FrmODBase {

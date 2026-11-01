@@ -64,9 +64,9 @@
       <Name>SyntheticData</Name>
     </ProjectReference>
     <!-- Only to cross-check the enum numbers that already existed in 24.3; the tool itself does not use the business layer. -->
-    <ProjectReference Include="..\..\..\OpenDentBusiness\OpenDentBusiness.csproj">
+    <ProjectReference Include="..\..\..\OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj">
       <Project>{3D0FC76E-803C-4DE2-BDB1-47D63A4E2357}</Project>
-      <Name>OpenDentBusiness</Name>
+      <Name>OpenPmsDentalBusiness</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

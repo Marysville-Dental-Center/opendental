@@ -7,7 +7,7 @@ using ImagingCapture.Recovery;
 using ImagingCapture.Save;
 using ImagingDeviceManager.Capture;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Tests {
 	///<summary>CaptureJournalMatch (design 7.1): a journal copy has its document when an ImageCreate entry of the patient names its captureId for an

@@ -8,13 +8,13 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using Microsoft.Win32;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using System.Drawing;
 using CodeBase;
 using System.Globalization;
 using System.Linq;
 
-namespace OpenDental.Bridges {
+namespace OpenPmsDental.Bridges {
 	public class Trojan {
 		private static Collection<string[]> collectionStringArraysPatient;
 		private static Collection<string[]> collectionStringArraysTrojan;

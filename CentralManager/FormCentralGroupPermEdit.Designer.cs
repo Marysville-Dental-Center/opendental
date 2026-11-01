@@ -24,15 +24,15 @@
 		/// </summary>
 		private void InitializeComponent() {
 			this.groupBox1 = new System.Windows.Forms.GroupBox();
-			this.textDate = new OpenDental.ValidDate();
+			this.textDate = new OpenPmsDental.ValidDate();
 			this.textDays = new System.Windows.Forms.TextBox();
 			this.label1 = new System.Windows.Forms.Label();
 			this.label2 = new System.Windows.Forms.Label();
 			this.label3 = new System.Windows.Forms.Label();
 			this.textName = new System.Windows.Forms.TextBox();
 			this.label10 = new System.Windows.Forms.Label();
-			this.butCancel = new OpenDental.UI.Button();
-			this.butOK = new OpenDental.UI.Button();
+			this.butCancel = new OpenPmsDental.UI.Button();
+			this.butOK = new OpenPmsDental.UI.Button();
 			this.groupBox1.SuspendLayout();
 			this.SuspendLayout();
 			// 
@@ -159,15 +159,15 @@
 		#endregion
 
 		private System.Windows.Forms.GroupBox groupBox1;
-		private OpenDental.ValidDate textDate;
+		private OpenPmsDental.ValidDate textDate;
 		private System.Windows.Forms.TextBox textDays;
 		private System.Windows.Forms.Label label1;
 		private System.Windows.Forms.Label label2;
 		private System.Windows.Forms.Label label3;
 		private System.Windows.Forms.TextBox textName;
 		private System.Windows.Forms.Label label10;
-		private OpenDental.UI.Button butCancel;
-		private OpenDental.UI.Button butOK;
+		private OpenPmsDental.UI.Button butCancel;
+		private OpenPmsDental.UI.Button butOK;
 
 	}
 }

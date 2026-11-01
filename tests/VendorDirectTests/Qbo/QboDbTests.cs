@@ -6,8 +6,8 @@ using System;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.Qbo;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.Qbo;
 
 namespace VendorDirectTests.Qbo {
 	[TestClass]

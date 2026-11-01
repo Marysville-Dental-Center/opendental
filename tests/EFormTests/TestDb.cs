@@ -5,8 +5,8 @@ using System.IO;
 using System.Text;
 using DataConnectionBase;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace EFormTests {
 	///<summary>Creates, connects to and drops scratch databases. Every name starts with "eformtest_" so a test can never drop anything else.</summary>

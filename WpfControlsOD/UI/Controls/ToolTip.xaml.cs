@@ -17,7 +17,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using System.Windows.Forms.Integration;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace WpfControls.UI {
 /*

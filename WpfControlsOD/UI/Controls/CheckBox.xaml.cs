@@ -281,8 +281,8 @@ How to use the CheckBox control:
 				border.BorderBrush=new SolidColorBrush(Color.FromRgb(111,111,111));//#FF6F6F6F
 			}
 			else{
-				textBlock.Foreground=new SolidColorBrush(OpenDental.ColorOD.Gray_Wpf(170));
-				border.BorderBrush=new SolidColorBrush(OpenDental.ColorOD.Gray_Wpf(170));
+				textBlock.Foreground=new SolidColorBrush(OpenPmsDental.ColorOD.Gray_Wpf(170));
+				border.BorderBrush=new SolidColorBrush(OpenPmsDental.ColorOD.Gray_Wpf(170));
 			}
 		}
 	}

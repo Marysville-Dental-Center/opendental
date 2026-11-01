@@ -2,9 +2,9 @@
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.Eclaims;
-using OpenDentBusiness.VendorDirect.DentalXChange;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.Eclaims;
+using OpenPmsDentalBusiness.VendorDirect.DentalXChange;
 
 namespace VendorDirectTests.DentalXChange {
 	[TestClass]
@@ -42,10 +42,10 @@ namespace VendorDirectTests.DentalXChange {
 			Assert.AreEqual("office-login",cred.Username);
 			Assert.AreEqual("office-password",cred.Password);
 			//Both SOAP services get the same values.
-			OpenDentBusiness.Dentalxchange2016.Credentials credDws=cred;
+			OpenPmsDentalBusiness.Dentalxchange2016.Credentials credDws=cred;
 			Assert.AreEqual("Test Partner",credDws.Client);
 			Assert.AreEqual("TEST-SERVICE-0001",credDws.ServiceID);
-			OpenDentBusiness.DentalxchangePartnerService.Credentials credDea=cred;
+			OpenPmsDentalBusiness.DentalxchangePartnerService.Credentials credDea=cred;
 			Assert.AreEqual("Test Partner",credDea.Client);
 			Assert.AreEqual("TEST-SERVICE-0001",credDea.ServiceID);
 		}

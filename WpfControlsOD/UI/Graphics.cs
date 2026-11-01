@@ -14,7 +14,7 @@ using System.Windows.Shapes;
 using System.Windows.Media.Converters;
 using System.Xml;
 
-namespace OpenDental.Drawing {
+namespace OpenPmsDental.Drawing {
 /*
 How to use:
 There are four supported drawing scenarios:

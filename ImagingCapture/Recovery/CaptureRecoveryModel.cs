@@ -8,7 +8,7 @@ using System.Text;
 using ImagingCapture.Metadata;
 using ImagingCapture.UI;
 using ImagingDeviceManager.Capture;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Recovery {
 	///<summary>Which files the quarantine window lists.</summary>

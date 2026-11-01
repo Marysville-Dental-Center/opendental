@@ -10,11 +10,11 @@ using System.Net;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.Eclaims;
-using OpenDentBusiness.ForkMigrations;
-using OpenDentBusiness.ForkMigrations.FeatureSteps;
-using OpenDentBusiness.VendorDirect.DentalXChange;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.Eclaims;
+using OpenPmsDentalBusiness.ForkMigrations;
+using OpenPmsDentalBusiness.ForkMigrations.FeatureSteps;
+using OpenPmsDentalBusiness.VendorDirect.DentalXChange;
 
 namespace VendorDirectTests.DentalXChange {
 	[TestClass]

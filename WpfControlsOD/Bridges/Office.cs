@@ -2,10 +2,10 @@
 using System.Diagnostics;
 using System.IO;
 using System.Windows.Forms;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using CodeBase;
 
-namespace OpenDental.Bridges {
+namespace OpenPmsDental.Bridges {
 	///<summary>This is a generic document editor, not a bridge to a specific software.</summary>
 	public class Office {
 

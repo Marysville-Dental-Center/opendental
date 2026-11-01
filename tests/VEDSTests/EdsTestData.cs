@@ -3,8 +3,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using OpenDentBusiness;
-using OpenDentBusiness.VendorDirect.Eds;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.VendorDirect.Eds;
 
 namespace VEDSTests {
 	public static class EdsTestData {

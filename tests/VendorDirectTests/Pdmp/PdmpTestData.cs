@@ -5,7 +5,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace VendorDirectTests.Pdmp {
 	///<summary>Made-up people and places. Nothing here is real data.</summary>

@@ -1,6 +1,6 @@
 ﻿using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -22,7 +22,7 @@ namespace UnitTests.RecurringCharges_Tests {
 			RecurringChargeT.ClearRecurringChargeTable();
 			PrefT.UpdateInt(PrefName.PayPlansVersion,(int)PayPlanVersions.DoNotAge);
 			PrefT.UpdateInt(PrefName.RigorousAccounting,(int)RigorousAccounting.DontEnforce);
-			OpenDentBusiness.Program prog=Programs.GetProgram(Programs.GetProgramNum(ProgramName.Xcharge));
+			OpenPmsDentalBusiness.Program prog=Programs.GetProgram(Programs.GetProgramNum(ProgramName.Xcharge));
 			prog.Enabled=false;
 			prog.IsDisabledByHq=false;
 			Programs.Update(prog);
@@ -1417,7 +1417,7 @@ Enums: DayOfWeekFrequency	/				DayOfWeek
 
 		private class RecurringChargeratorTest:RecurringChargerator {
 			public RecurringChargeratorTest(Logger.IWriteLine log,bool useXChargeClientProgram) : base(log,useXChargeClientProgram) {
-				_progCur=new OpenDentBusiness.Program();//To avoid null reference exceptions
+				_progCur=new OpenPmsDentalBusiness.Program();//To avoid null reference exceptions
 			}
 
 			///<summary>Changes the 'now' time.</summary>

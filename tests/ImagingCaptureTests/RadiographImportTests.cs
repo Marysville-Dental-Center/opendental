@@ -10,7 +10,7 @@ using ImagingCapture.Metadata;
 using ImagingCapture.Save;
 using ImagingDeviceManager.Capture;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Tests {
 	///<summary>RadiographImport and RadiographSavePlanner (design 7.8, 7.9, 7.10, 7.12, 9.1, 10.8) against a stand-in for OpenDentBusiness:

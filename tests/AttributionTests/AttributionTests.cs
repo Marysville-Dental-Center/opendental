@@ -6,7 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDental;
+using OpenPmsDental;
 
 namespace AttributionTests {
 	[TestClass]

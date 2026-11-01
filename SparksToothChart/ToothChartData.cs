@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Text;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using SharpDX.Direct3D9;
 
 namespace SparksToothChart {

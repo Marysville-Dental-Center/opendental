@@ -8,9 +8,9 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 //using System.Windows.Forms;
-using OpenDental;
+using OpenPmsDental;
 //using OpenDental.UI;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using CodeBase;
 using WpfControls.UI;
 

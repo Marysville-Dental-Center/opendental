@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace BSERVERTests {
 	///<summary>The names the Middle Tier sends are built from the types (Meth, Security.LogInWebMethodName), and the server takes the first part
@@ -70,7 +70,7 @@ namespace BSERVERTests {
 		///<summary>A class in a sub-namespace: the server takes the first part as the assembly and keeps "Eclaims.Eclaims" as the class.</summary>
 		[TestMethod]
 		public void SubNamespaceName_KeepsTheRestOfTheNamespaceWithTheClass() {
-			MethodInfo method=typeof(OpenDentBusiness.Eclaims.Eclaims).GetMethod(nameof(OpenDentBusiness.Eclaims.Eclaims.GetNoProceduresOnClaimMessage));
+			MethodInfo method=typeof(OpenPmsDentalBusiness.Eclaims.Eclaims).GetMethod(nameof(OpenPmsDentalBusiness.Eclaims.Eclaims.GetNoProceduresOnClaimMessage));
 			DtoGetString dto=new DtoGetString();
 			dto.Credentials=new Credentials { Username="synthuser",Password="synthpass" };
 			dto.MethodName=method.DeclaringType.Namespace+"."+method.DeclaringType.Name+"."+method.Name;

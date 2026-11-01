@@ -4,7 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:WpfControls.UI"
-             xmlns:OpenDental="clr-namespace:OpenDental" x:Class="WpfControls.UI.TestContr"
+             xmlns:OpenPmsDental="clr-namespace:OpenPmsDental" x:Class="WpfControls.UI.TestContr"
              mc:Ignorable="d" 
              d:DesignHeight="500" d:DesignWidth="600">
 	<Grid x:Name="grid">

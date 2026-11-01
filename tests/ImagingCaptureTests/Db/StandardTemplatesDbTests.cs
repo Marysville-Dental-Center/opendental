@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using ImagingCapture.Templates;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Tests.Db {
 	///<summary>"Add standard templates" on the scratch database (CaptureDb): StandardTemplateInstaller with OdStandardTemplateStore reads the mount
@@ -19,17 +19,17 @@ namespace ImagingCapture.Tests.Db {
 		[TestInitialize]
 		public void Init() {
 			CaptureDb.Begin();
-			global::OpenDental.DataValid.EventInvalid+=DataValid_EventInvalid;
+			global::OpenPmsDental.DataValid.EventInvalid+=DataValid_EventInvalid;
 		}
 
 		[TestCleanup]
 		public void Cleanup() {
-			global::OpenDental.DataValid.EventInvalid-=DataValid_EventInvalid;
+			global::OpenPmsDental.DataValid.EventInvalid-=DataValid_EventInvalid;
 		}
 
 		///<summary>Stands in for FormOpenDental.DataValid_BecameInvalid, which refreshes this computer's caches of those types (RefreshLocalData)
 		///and inserts the signals for the other computers.</summary>
-		private void DataValid_EventInvalid(object sender,global::OpenDental.ValidEventArgs e) {
+		private void DataValid_EventInvalid(object sender,global::OpenPmsDental.ValidEventArgs e) {
 			_listInvalidTypesSignalled.Add(e.ITypes);
 			Cache.Refresh(e.ITypes);
 		}

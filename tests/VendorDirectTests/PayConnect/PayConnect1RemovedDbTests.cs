@@ -10,8 +10,8 @@ using CodeBase;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.VendorDirect;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.VendorDirect;
 
 namespace VendorDirectTests.PayConnectV1Removal {
 	[TestClass]

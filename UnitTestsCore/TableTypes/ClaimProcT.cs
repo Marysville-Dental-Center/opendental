@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace UnitTestsCore {
 	public class ClaimProcT {

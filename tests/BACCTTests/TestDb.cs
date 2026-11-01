@@ -10,8 +10,8 @@ using System.Threading;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace BACCTTests {
 	///<summary>Creates, connects to and drops the scratch database. Every database name starts with "bacct_" so these tests can never drop anything

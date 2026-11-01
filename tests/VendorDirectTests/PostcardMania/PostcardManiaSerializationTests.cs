@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json.Linq;
-using OpenDentBusiness.PostcardMania;
+using OpenPmsDentalBusiness.PostcardMania;
 
 namespace VendorDirectTests.PostcardMania {
 	[TestClass]

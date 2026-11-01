@@ -8,7 +8,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace BACCTTests {
 	[TestClass]
@@ -137,14 +137,14 @@ namespace BACCTTests {
 			payment.PayType=Defs.GetDefsForCategory(DefCat.PaymentTypes,true).First().DefNum;
 			payment.PaymentSource=source;
 			payment.MerchantFee=merchantFee;
-			payment.PayNum=OpenDentBusiness.Crud.PaymentCrud.Insert(payment);
+			payment.PayNum=OpenPmsDentalBusiness.Crud.PaymentCrud.Insert(payment);
 			PaySplit paySplit=new PaySplit();
 			paySplit.PayNum=payment.PayNum;
 			paySplit.PatNum=patient.PatNum;
 			paySplit.ProvNum=SalesTaxData.ProvNumDefault();
 			paySplit.SplitAmt=amount;
 			paySplit.DatePay=date;
-			OpenDentBusiness.Crud.PaySplitCrud.Insert(paySplit);
+			OpenPmsDentalBusiness.Crud.PaySplitCrud.Insert(paySplit);
 		}
 
 		[TestMethod]

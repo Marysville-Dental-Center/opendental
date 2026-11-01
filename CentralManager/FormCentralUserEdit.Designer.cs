@@ -24,23 +24,23 @@
 		/// </summary>
 		private void InitializeComponent() {
 			this.checkIsHidden = new System.Windows.Forms.CheckBox();
-			this.butPassword = new OpenDental.UI.Button();
+			this.butPassword = new OpenPmsDental.UI.Button();
 			this.textUserName = new System.Windows.Forms.TextBox();
-			this.butOK = new OpenDental.UI.Button();
-			this.butCancel = new OpenDental.UI.Button();
-			this.listUserGroup = new OpenDental.UI.ListBox();
+			this.butOK = new OpenPmsDental.UI.Button();
+			this.butCancel = new OpenPmsDental.UI.Button();
+			this.listUserGroup = new OpenPmsDental.UI.ListBox();
 			this.label3 = new System.Windows.Forms.Label();
 			this.label1 = new System.Windows.Forms.Label();
-			this.tabControl = new OpenDental.UI.TabControl();
-			this.tabUser = new OpenDental.UI.TabPage();
-			this.butPickDomainUser = new OpenDental.UI.Button();
+			this.tabControl = new OpenPmsDental.UI.TabControl();
+			this.tabUser = new OpenPmsDental.UI.TabPage();
+			this.butPickDomainUser = new OpenPmsDental.UI.Button();
 			this.textDomainUser = new System.Windows.Forms.TextBox();
-			this.securityTreeUser = new OpenDental.UserControlSecurityTree();
+			this.securityTreeUser = new OpenPmsDental.UserControlSecurityTree();
 			this.labelDomainUser = new System.Windows.Forms.Label();
-			this.tabAlertSubs = new OpenDental.UI.TabPage();
+			this.tabAlertSubs = new OpenPmsDental.UI.TabPage();
 			this.listAlertSubMulti = new System.Windows.Forms.ListBox();
 			this.label7 = new System.Windows.Forms.Label();
-			this.butUnlock = new OpenDental.UI.Button();
+			this.butUnlock = new OpenPmsDental.UI.Button();
 			this.tabControl.SuspendLayout();
 			this.tabUser.SuspendLayout();
 			this.tabAlertSubs.SuspendLayout();
@@ -100,7 +100,7 @@
             | System.Windows.Forms.AnchorStyles.Left)));
 			this.listUserGroup.Location = new System.Drawing.Point(23, 36);
 			this.listUserGroup.Name = "listUserGroup";
-			this.listUserGroup.SelectionMode = OpenDental.UI.SelectionMode.MultiExtended;
+			this.listUserGroup.SelectionMode = OpenPmsDental.UI.SelectionMode.MultiExtended;
 			this.listUserGroup.Size = new System.Drawing.Size(197, 407);
 			this.listUserGroup.TabIndex = 24;
 			this.listUserGroup.SelectedIndexChanged += new System.EventHandler(this.listUserGroup_SelectedIndexChanged);
@@ -263,21 +263,21 @@
 		#endregion
 
 		private System.Windows.Forms.CheckBox checkIsHidden;
-		private OpenDental.UI.Button butPassword;
+		private OpenPmsDental.UI.Button butPassword;
 		private System.Windows.Forms.TextBox textUserName;
-		private OpenDental.UI.Button butOK;
-		private OpenDental.UI.Button butCancel;
-		private OpenDental.UI.ListBox listUserGroup;
+		private OpenPmsDental.UI.Button butOK;
+		private OpenPmsDental.UI.Button butCancel;
+		private OpenPmsDental.UI.ListBox listUserGroup;
 		private System.Windows.Forms.Label label3;
 		private System.Windows.Forms.Label label1;
-		private OpenDental.UI.TabControl tabControl;
-		private OpenDental.UI.TabPage tabUser;
-		private OpenDental.UI.TabPage tabAlertSubs;
+		private OpenPmsDental.UI.TabControl tabControl;
+		private OpenPmsDental.UI.TabPage tabUser;
+		private OpenPmsDental.UI.TabPage tabAlertSubs;
 		private System.Windows.Forms.ListBox listAlertSubMulti;
 		private System.Windows.Forms.Label label7;
-		private OpenDental.UI.Button butUnlock;
-		private OpenDental.UserControlSecurityTree securityTreeUser;
-		private OpenDental.UI.Button butPickDomainUser;
+		private OpenPmsDental.UI.Button butUnlock;
+		private OpenPmsDental.UserControlSecurityTree securityTreeUser;
+		private OpenPmsDental.UI.Button butPickDomainUser;
 		private System.Windows.Forms.TextBox textDomainUser;
 		private System.Windows.Forms.Label labelDomainUser;
 	}

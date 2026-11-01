@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace UnitTestsCore {
 	public class LabCaseT {

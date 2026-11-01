@@ -7,9 +7,9 @@ using System.Linq;
 using System.Threading;
 using System.Windows.Forms;
 using CodeBase;
-using OpenDental;
-using OpenDental.ReportingComplex;
-using OpenDentBusiness;
+using OpenPmsDental;
+using OpenPmsDental.ReportingComplex;
+using OpenPmsDentalBusiness;
 
 namespace CentralManager {
 	public partial class FormCentralProdInc:Form {
@@ -114,7 +114,7 @@ namespace CentralManager {
 
 		private void butLeft_Click(object sender,System.EventArgs e) {
 			if(!textDateFrom.IsValid() || !textDateTo.IsValid()) {
-				OpenDental.MessageBox.Show(Lan.g(this,"Please fix data entry errors first."));
+				OpenPmsDental.MessageBox.Show(Lan.g(this,"Please fix data entry errors first."));
 				return;
 			}
 			_dateFrom=PIn.Date(textDateFrom.Text);
@@ -145,7 +145,7 @@ namespace CentralManager {
 
 		private void butRight_Click(object sender,System.EventArgs e) {
 			if(!textDateFrom.IsValid() || !textDateTo.IsValid()) {
-				OpenDental.MessageBox.Show(Lan.g(this,"Please fix data entry errors first."));
+				OpenPmsDental.MessageBox.Show(Lan.g(this,"Please fix data entry errors first."));
 				return;
 			}
 			_dateFrom=PIn.Date(textDateFrom.Text);

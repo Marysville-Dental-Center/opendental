@@ -1,6 +1,6 @@
 ﻿using System;
 using CodeBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
@@ -53,7 +53,7 @@ namespace CentralManager {
 				windowInfo.ProcessId=process.Id;
 			}
 			catch {
-				OpenDental.MessageBox.Show("Unable to start the process "+ProgramNames.ExeFileName+".");
+				OpenPmsDental.MessageBox.Show("Unable to start the process "+ProgramNames.ExeFileName+".");
 				//return IntPtr.Zero;
 			}
 		}

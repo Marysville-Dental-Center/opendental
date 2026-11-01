@@ -9,8 +9,8 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using DataConnectionBase;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace M2UDSTests {
 	///<summary>Creates a scratch database with the reference definitions (OdSchema-26.1.70.sql, embedded in OpenDentBusiness) of the tables a test

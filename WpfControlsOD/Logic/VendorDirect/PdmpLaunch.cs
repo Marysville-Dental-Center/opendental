@@ -3,8 +3,8 @@
 using System;
 using System.Text;
 using CodeBase;
-using OpenDental;
-using OpenDentBusiness;
+using OpenPmsDental;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 
 namespace WpfControls {
@@ -17,7 +17,7 @@ namespace WpfControls {
 			PDMP pDMP=null;
 			Provider provider=Providers.GetProv(Security.CurUser.ProvNum);
 			try {
-				OpenDental.UI.ProgressWin progressWin=new OpenDental.UI.ProgressWin();
+				OpenPmsDental.UI.ProgressWin progressWin=new OpenPmsDental.UI.ProgressWin();
 				progressWin.ActionMain=() => pDMP=PDMP.SendData(program,patient,provider);
 				progressWin.StartingMessage=Lans.g("PDMP","Fetching data...");
 				progressWin.ShowDialog();
@@ -51,7 +51,7 @@ namespace WpfControls {
 					return;//No ReportRequest is sent and no rxpat row is written.
 				}
 				string reportLink=null;
-				OpenDental.UI.ProgressWin progressWinReport=new OpenDental.UI.ProgressWin();
+				OpenPmsDental.UI.ProgressWin progressWinReport=new OpenPmsDental.UI.ProgressWin();
 				progressWinReport.ActionMain=() => reportLink=pDMP.GetBambooReportLink();
 				progressWinReport.StartingMessage=Lans.g("PDMP","Opening report...");
 				progressWinReport.ShowDialog();

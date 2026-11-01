@@ -5,7 +5,7 @@ using System.Globalization;
 using System.Text;
 using ImagingCapture.Save;
 using ImagingDeviceManager.Capture;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Recovery {
 	///<summary>The texts of the quarantine window and Recover recent captures (design 7.1, 7.12, 10.7): the document labels, the security-log

@@ -3,14 +3,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnitTestsCore;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using CodeBase;
 using System.Data;
 using PdfSharp.Pdf;
 using System.IO;
 using PdfSharp.Pdf.IO;
 using PdfSharp.Drawing;
-using OpenDental;
+using OpenPmsDental;
 using DataConnectionBase;
 
 namespace UnitTests.Billing_Tests {
@@ -50,7 +50,7 @@ namespace UnitTests.Billing_Tests {
 			EmailAddressT.ClearEmailAddressTable();
 			Ebill ebill=Ebills.GetForClinic(0);
 			ebill.RemitAddress=EbillAddress.PracticeBilling;
-			OpenDentBusiness.Crud.EbillCrud.Update(ebill);
+			OpenPmsDentalBusiness.Crud.EbillCrud.Update(ebill);
 			PrefT.UpdateString(PrefName.PracticeBillingAddress,"addr1");
 			PrefT.UpdateString(PrefName.PracticeBillingAddress2,"addr2");
 			PrefT.UpdateString(PrefName.PracticeBillingCity,"city");

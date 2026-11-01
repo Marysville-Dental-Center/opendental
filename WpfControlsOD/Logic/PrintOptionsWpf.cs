@@ -7,8 +7,8 @@ using System.Printing;
 using System.Windows;
 using System.Windows.Documents;
 using CodeBase;
-using OpenDental;
-using OpenDentBusiness;
+using OpenPmsDental;
+using OpenPmsDentalBusiness;
 
 namespace WpfControls {
 	///<summary>Prints a WPF FixedDocument to the printer the print situation's rules pick (Setup, Printers), showing the Print Options window when

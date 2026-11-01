@@ -1,4 +1,4 @@
-﻿using OpenDentBusiness;
+﻿using OpenPmsDentalBusiness;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,7 +12,7 @@ namespace UnitTestsCore {
 				return new List<TaskUnread>();
 			}
 			string command="SELECT * FROM taskunread WHERE TaskNum = "+POut.Long(taskNum);
-			return OpenDentBusiness.Crud.TaskUnreadCrud.SelectMany(command);
+			return OpenPmsDentalBusiness.Crud.TaskUnreadCrud.SelectMany(command);
 		}
 	}
 }

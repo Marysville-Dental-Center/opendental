@@ -15,9 +15,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.Email;
-using OpenDentBusiness.Microsoft365;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.Email;
+using OpenPmsDentalBusiness.Microsoft365;
 
 namespace VendorDirectTests.Email {
 	//OpenDentBusiness.Task (the task list table type) would hide System.Threading.Tasks.Task otherwise.
@@ -173,7 +173,7 @@ namespace VendorDirectTests.Email {
 			program.FileTemplate="";
 			program.FilePath="";
 			program.CustErr="";
-			Programs.FillCacheFromTable(OpenDentBusiness.Crud.ProgramCrud.ListToTable(new List<Program> { program },"Program"));
+			Programs.FillCacheFromTable(OpenPmsDentalBusiness.Crud.ProgramCrud.ListToTable(new List<Program> { program },"Program"));
 			List<TimeSpan> listDelays=new List<TimeSpan>();
 			Microsoft365GraphOptions options=new Microsoft365GraphOptions();
 			options.HttpMessageHandler=_handler;

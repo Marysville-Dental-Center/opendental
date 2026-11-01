@@ -28,14 +28,14 @@
 		/// </summary>
 		private void InitializeComponent()
 		{
-			this.butOld = new OpenDental.UI.Button();
-			this.butNew = new OpenDental.UI.Button();
-			this.butHistory = new OpenDental.UI.Button();
-			this.butChain = new OpenDental.UI.Button();
-			this.butException = new OpenDental.UI.Button();
-			this.butHideCancel = new OpenDental.UI.Button();
-			this.butInnerException = new OpenDental.UI.Button();
-			this.butBlocks = new OpenDental.UI.Button();
+			this.butOld = new OpenPmsDental.UI.Button();
+			this.butNew = new OpenPmsDental.UI.Button();
+			this.butHistory = new OpenPmsDental.UI.Button();
+			this.butChain = new OpenPmsDental.UI.Button();
+			this.butException = new OpenPmsDental.UI.Button();
+			this.butHideCancel = new OpenPmsDental.UI.Button();
+			this.butInnerException = new OpenPmsDental.UI.Button();
+			this.butBlocks = new OpenPmsDental.UI.Button();
 			this.SuspendLayout();
 			// 
 			// butOld
@@ -139,13 +139,13 @@
 
 		#endregion
 
-		private OpenDental.UI.Button butOld;
-		private OpenDental.UI.Button butNew;
-		private OpenDental.UI.Button butHistory;
-		private OpenDental.UI.Button butChain;
-		private OpenDental.UI.Button butException;
-		private OpenDental.UI.Button butHideCancel;
-		private OpenDental.UI.Button butInnerException;
-		private OpenDental.UI.Button butBlocks;
+		private OpenPmsDental.UI.Button butOld;
+		private OpenPmsDental.UI.Button butNew;
+		private OpenPmsDental.UI.Button butHistory;
+		private OpenPmsDental.UI.Button butChain;
+		private OpenPmsDental.UI.Button butException;
+		private OpenPmsDental.UI.Button butHideCancel;
+		private OpenPmsDental.UI.Button butInnerException;
+		private OpenPmsDental.UI.Button butBlocks;
 	}
 }

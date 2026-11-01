@@ -10,10 +10,10 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Newtonsoft.Json;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 /*
 This Frm gets a lot of inspiration from FormSheetDefEdit.
 Like in that form, edits to the fields do not get saved to the db as they are edited, but instead get saved when closing this Frm.

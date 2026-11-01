@@ -10,8 +10,8 @@ using System.Text;
 using System.Text.RegularExpressions;
 using DataConnectionBase;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace BAUDITTests {
 	///<summary>Every database name starts with "baudittest_" so the tests can never drop anything else.</summary>

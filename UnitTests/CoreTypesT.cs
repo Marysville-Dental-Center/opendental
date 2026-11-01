@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Drawing;
 using System.Text;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using System.IO;
 using System.Drawing.Imaging;
 using DataConnectionBase;

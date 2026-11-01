@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using CodeBase;
 using System.Globalization;
 
@@ -25,7 +25,7 @@ namespace UnitTestsCore {
 			payPlan.PlanNum=planNum;
 			payPlan.InsSubNum=insSubNum;
 			payPlan.NumberOfPayments=numberOfPayments;
-			payPlan.DynamicPayPlanTPOption=OpenDentBusiness.DynamicPayPlanTPOptions.None;
+			payPlan.DynamicPayPlanTPOption=OpenPmsDentalBusiness.DynamicPayPlanTPOptions.None;
 			if(doInsert) {
 				PayPlans.Insert(payPlan);
 			}

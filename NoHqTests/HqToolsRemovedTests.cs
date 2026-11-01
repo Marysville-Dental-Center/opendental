@@ -6,7 +6,7 @@ using System.Reflection;
 using CodeBase;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace NoHqTests {
 	///<summary>Checks that Open Dental HQ's staff tools and the HQ-only plumbing stay removed: Job Manager, phones and call center maps, web chat,

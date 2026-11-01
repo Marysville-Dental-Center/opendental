@@ -7,7 +7,7 @@ using System.Text;
 using CodeBase.VendorDirect;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json.Linq;
-using OpenDentBusiness.Qbo;
+using OpenPmsDentalBusiness.Qbo;
 
 namespace VendorDirectTests.Qbo {
 	[TestClass]

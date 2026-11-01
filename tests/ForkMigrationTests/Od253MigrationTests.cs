@@ -8,8 +8,8 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace ForkMigrationTests {
 	[TestClass]
@@ -122,7 +122,7 @@ namespace ForkMigrationTests {
 			//_result holds the 25.3 steps only. The 25.4 and 26.1 seed rows (Seed26_1, package M2-02, level 2026102501) come after the first
 			//25.4 step, so they are in _resultAll (Steps26_1_ChangeOnlyThe26_1Tables), in the preference table the checksums leave out.
 			Assert.IsTrue(_result.ListStepsRun.Count>0);
-			Assert.IsFalse(_result.ListStepsRun.Any(x => x is OpenDentBusiness.ForkMigrations.Seeds26_1.Seed26_1Step));
+			Assert.IsFalse(_result.ListStepsRun.Any(x => x is OpenPmsDentalBusiness.ForkMigrations.Seeds26_1.Seed26_1Step));
 			Assert.AreEqual(0,_result.ListChanges.Count,string.Join("\r\n",_result.ListChanges));
 			Assert.AreEqual(0,_resultSchemaAfterRun.ListDifferences.Count,_resultSchemaAfterRun.GetReport());
 			//Byte-identical tables: no renumbering, no back-fill, nothing. Only the runner's own preference rows were added.

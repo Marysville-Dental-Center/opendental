@@ -5,12 +5,12 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using System.Collections.Generic;
 using CodeBase;
 using System.Linq;
 
-namespace OpenDental.Bridges{
+namespace OpenPmsDental.Bridges{
 	///<summary>Dexis bridge was no longer satisfactory for this bridge.</summary>
 	public class XDR {
 

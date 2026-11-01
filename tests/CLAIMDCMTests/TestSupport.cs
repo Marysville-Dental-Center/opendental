@@ -11,7 +11,7 @@ using ImagingCapture.Dicom;
 using ImagingCapture.Metadata;
 using ImagingDeviceManager.Capture;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace CLAIMDCMTests {
 	internal static class TestSupport {

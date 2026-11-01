@@ -8,8 +8,8 @@ using System.Net;
 using CodeBase;
 using CodeBase.VendorDirect;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.Bridges;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.Bridges;
 
 namespace VendorDirectTests.CareCreditTests {
 	[TestClass]

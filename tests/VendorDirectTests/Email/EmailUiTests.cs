@@ -5,9 +5,9 @@ using System.Collections.Generic;
 using System.Linq;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.Email;
-using OpenDentBusiness.Microsoft365;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.Email;
+using OpenPmsDentalBusiness.Microsoft365;
 
 namespace VendorDirectTests.Email {
 	[TestClass]

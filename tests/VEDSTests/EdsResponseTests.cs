@@ -4,9 +4,9 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
-using OpenDentBusiness;
-using OpenDentBusiness.Eclaims;
-using OpenDentBusiness.VendorDirect.Eds;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.Eclaims;
+using OpenPmsDentalBusiness.VendorDirect.Eds;
 
 namespace VEDSTests {
 	[TestClass]

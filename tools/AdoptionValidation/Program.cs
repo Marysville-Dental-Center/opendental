@@ -370,7 +370,7 @@ database server (runbook step 0.0). Exit codes: 0 pass, 1 error, 2 usage or refu
 			}
 			if(result.Passed) {
 				List<string> listRenames=result.RowCheck?.ListReportRenames??new List<string>();
-				Log("Adopt: PASS. "+database+" is adopted, matches Open Dental "+OpenDentBusiness.ForkMigrations.SchemaVerifier.ReferenceVersion
+				Log("Adopt: PASS. "+database+" is adopted, matches Open Dental "+OpenPmsDentalBusiness.ForkMigrations.SchemaVerifier.ReferenceVersion
 					+", is rehashed, and changed only the rows adoption changes (row check above"
 					+(listRenames.Count==0 ? "; the fork migration renamed no report row" : "; the fork migration renamed "+listRenames.Count+" report row(s), as "
 						+"migration-preview lists: "+string.Join("; ",listRenames))

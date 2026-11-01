@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using UnitTestsCore;
 
 
@@ -199,7 +199,7 @@ namespace UnitTests.Authentication_Tests {
 			//Once we enable eCW, all requests will fail.
 			RunTestsAgainstDirectConnection();
 			//Turn eCW on for this test.
-			OpenDentBusiness.Program p=Programs.GetCur(ProgramName.eClinicalWorks);
+			OpenPmsDentalBusiness.Program p=Programs.GetCur(ProgramName.eClinicalWorks);
 			p.Enabled=true;
 			Programs.Update(p);
 			Programs.RefreshCache();

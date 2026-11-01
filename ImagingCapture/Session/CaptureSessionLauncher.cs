@@ -9,7 +9,7 @@ using ImagingCapture.Settings;
 using ImagingCapture.UI;
 using ImagingDeviceManager.Capture;
 using ImagingDeviceManager.Config;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Session {
 	///<summary>What the ControlImages partial passes to the capture session (design 6.4), from ToolBarMountAcquire_Click.</summary>
@@ -120,7 +120,7 @@ namespace ImagingCapture.Session {
 				ActionWriteLog=text => CaptureLogFile.Write(text),
 				WindowRunner=new CaptureSessionWindowRunner(),
 				PatientEvents=new ODEventCapturePatientEvents(),
-				ActionShowNotice=(text,owner) => OpenDental.MsgBox.Show(text),
+				ActionShowNotice=(text,owner) => OpenPmsDental.MsgBox.Show(text),
 				ActionNoteActivity=() => Security.DateTimeLastActivity=DateTime.Now,
 			};
 		}

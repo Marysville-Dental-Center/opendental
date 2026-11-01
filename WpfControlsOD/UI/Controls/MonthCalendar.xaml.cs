@@ -248,7 +248,7 @@ But to look good, don't go below 142 x 115.
 						textBlock.Foreground=Brushes.Black;
 					}
 					else {
-						textBlock.Foreground=new SolidColorBrush(OpenDental.ColorOD.Gray_Wpf(170));
+						textBlock.Foreground=new SolidColorBrush(OpenPmsDental.ColorOD.Gray_Wpf(170));
 					}
 					System.Windows.Controls.Grid.SetZIndex(textBlock,2);
 					System.Windows.Controls.Grid.SetRow(textBlock,r+1);
@@ -258,7 +258,7 @@ But to look good, don't go below 142 x 115.
 				}
 			}
 			//Footer======================================================================================================
-			textToday.Text=OpenDental.Lang.g("Calendar","Today:")+" "+DateTime.Today.ToShortDateString();
+			textToday.Text=OpenPmsDental.Lang.g("Calendar","Today:")+" "+DateTime.Today.ToShortDateString();
 		}
 
 		///<summary>Recursive. Each pass finds the immediate parent, and it keeps going until it reaches a grid.</summary>
@@ -399,7 +399,7 @@ But to look good, don't go below 142 x 115.
 					_dateMonthShowing=_dateMonthShowing.AddMonths(-1);
 				}
 				if(column==2 && AllowClickingTopText) {//top text
-					OpenDental.FrmDatePicker frmDatePicker = new OpenDental.FrmDatePicker();
+					OpenPmsDental.FrmDatePicker frmDatePicker = new OpenPmsDental.FrmDatePicker();
 					frmDatePicker.DateEntered=_dateSelected;
 					frmDatePicker.WidthFormWPF=(int)ActualWidth;
 					Point pointLocalStart=new Point(2,gridHeader.ActualHeight);

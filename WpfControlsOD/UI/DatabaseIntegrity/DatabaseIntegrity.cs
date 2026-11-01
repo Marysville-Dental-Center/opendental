@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	///<summary>This is a database table in the HQ bugs database. There is no generated crud code. In the db, all the columns except PK are strings.</summary>
 	public class DatabaseIntegrity {
 		public long DatabaseIntegrityNum;

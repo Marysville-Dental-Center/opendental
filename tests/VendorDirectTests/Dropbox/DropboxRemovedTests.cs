@@ -8,7 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using VendorDirectTests.Foundation;
 
 namespace VendorDirectTests.Dropbox {
@@ -42,7 +42,7 @@ namespace VendorDirectTests.Dropbox {
 
 		[TestMethod]
 		public void BusinessDropboxClass_HasNoTokenOrAuthorizationMembers() {
-			List<string> listMembers=typeof(OpenDentBusiness.Dropbox).GetMembers(BindingFlags.Public|BindingFlags.Static).Select(x => x.Name).ToList();
+			List<string> listMembers=typeof(OpenPmsDentalBusiness.Dropbox).GetMembers(BindingFlags.Public|BindingFlags.Static).Select(x => x.Name).ToList();
 			foreach(string name in new[] { "AccessToken","GetDropboxAuthorizationUrl","GetDropboxAccessToken" }) {
 				Assert.IsFalse(listMembers.Contains(name),"Dropbox."+name+" should have been removed.");
 			}
@@ -53,8 +53,8 @@ namespace VendorDirectTests.Dropbox {
 			Assert.AreEqual(2,(int)DataStorageType.DropboxAtoZ,"Stored AtoZfolderUsed values keep their meaning.");
 			Assert.IsTrue(Enum.IsDefined(typeof(ProgramName),"Dropbox"),"The Dropbox program row stays.");
 			Assert.AreEqual(0,(int)OAuthApplicationNames.Dropbox);
-			Assert.AreEqual("Dropbox AtoZ Path",OpenDentBusiness.Dropbox.PropertyDescs.AtoZPath);
-			Assert.AreEqual("Dropbox API Token",OpenDentBusiness.Dropbox.PropertyDescs.AccessToken);
+			Assert.AreEqual("Dropbox AtoZ Path",OpenPmsDentalBusiness.Dropbox.PropertyDescs.AtoZPath);
+			Assert.AreEqual("Dropbox API Token",OpenPmsDentalBusiness.Dropbox.PropertyDescs.AccessToken);
 		}
 
 		[TestMethod]
@@ -107,10 +107,10 @@ namespace VendorDirectTests.Dropbox {
 			bool wasCacheNull=Prefs.DictIsNull();
 			DataTable tableSaved=wasCacheNull ? null : Prefs.GetTableFromCache(false);
 			try {
-				Prefs.FillCacheFromTable(OpenDentBusiness.Crud.PrefCrud.ListToTable(new List<Pref> {
+				Prefs.FillCacheFromTable(OpenPmsDentalBusiness.Crud.PrefCrud.ListToTable(new List<Pref> {
 					new Pref { PrefNum=1,PrefName=PrefName.AtoZfolderUsed.ToString(),ValueString=((int)DataStorageType.DropboxAtoZ).ToString() }
 				}));
-				Assert.IsTrue(OpenDentBusiness.Dropbox.IsStorageSelected);
+				Assert.IsTrue(OpenPmsDentalBusiness.Dropbox.IsStorageSelected);
 				//Callers still take the cloud branch, so they never mistake the old Dropbox paths for local folders.
 				Assert.IsTrue(CloudStorage.IsCloudStorage);
 				Assert.AreEqual('/',CloudStorage.DirectorySeparatorChar);
@@ -131,7 +131,7 @@ namespace VendorDirectTests.Dropbox {
 				}
 				Assert.IsNotNull(exception,"hasExceptions:true reports the failure.");
 				Assert.AreEqual("OpenDentalCloud.StorageRemovedException",exception.GetType().FullName);
-				Assert.AreEqual(OpenDentBusiness.Dropbox.StorageRemovedMessage,exception.Message);
+				Assert.AreEqual(OpenPmsDentalBusiness.Dropbox.StorageRemovedMessage,exception.Message);
 				exception=null;
 				try {
 					CloudStorage.Move("/AtoZ/A/from.jpg","/AtoZ/A/to.jpg",hasExceptions:true);

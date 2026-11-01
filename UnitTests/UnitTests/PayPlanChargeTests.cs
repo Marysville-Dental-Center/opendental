@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using UnitTestsCore;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using System.Reflection;
 using CodeBase;
 

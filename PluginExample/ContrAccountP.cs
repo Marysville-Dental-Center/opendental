@@ -6,8 +6,8 @@ using System.Data;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
-using OpenDental;
-using OpenDentBusiness;
+using OpenPmsDental;
+using OpenPmsDentalBusiness;
 
 namespace PluginExample {
 	public partial class ContrAccountP:UserControl {
@@ -19,7 +19,7 @@ namespace PluginExample {
 			InitializeComponent();
 		}
 
-		public static void InitializeOnStartup_end(OpenDental.ControlAccount sender) {
+		public static void InitializeOnStartup_end(OpenPmsDental.ControlAccount sender) {
 			contrAccountP=new ContrAccountP();
 			sender.Controls.Add(contrAccountP.panelInsInfoDetail);
 			//any control could be used here:

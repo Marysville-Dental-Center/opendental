@@ -7,7 +7,7 @@ using CodeBase;
 using ImagingCapture.Save;
 using ImagingDeviceManager.Capture;
 using ImagingDeviceManager.Config;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Recovery {
 	///<summary>The database reads and writes of the quarantine window and Recover recent captures apart from saving an image (RadiographImport

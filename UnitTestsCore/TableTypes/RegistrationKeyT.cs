@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using CodeBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace UnitTestsCore {
 	public class RegistrationKeyT {
@@ -15,7 +15,7 @@ namespace UnitTestsCore {
 				IsOnlyForTesting=isOnlyForTesting,
 				RegKey=MiscUtils.CreateRandomAlphaNumericString(16).ToUpper(),
 			};
-			regKey.RegistrationKeyNum=OpenDentBusiness.Crud.RegistrationKeyCrud.Insert(regKey);
+			regKey.RegistrationKeyNum=OpenPmsDentalBusiness.Crud.RegistrationKeyCrud.Insert(regKey);
 			return regKey;
 		}
 

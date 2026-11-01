@@ -8,7 +8,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using OpenDental;
+using OpenPmsDental;
 
 namespace UnitTests {
 	public partial class FormWpfConverter:FormODBase {

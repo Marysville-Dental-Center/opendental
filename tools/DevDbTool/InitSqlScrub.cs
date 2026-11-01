@@ -6,7 +6,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 using DataConnectionBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace DevDbTool {
 	///<summary>Turns the scratch database of --export-init-sql into the new database an office starts from: removes the rows that belong to the

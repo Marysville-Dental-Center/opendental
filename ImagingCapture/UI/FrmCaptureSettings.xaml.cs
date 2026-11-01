@@ -6,8 +6,8 @@ using System.ComponentModel;
 using System.Linq;
 using System.Windows.Media;
 using ImagingCapture.Settings;
-using OpenDental;
-using OpenDentBusiness;
+using OpenPmsDental;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 
 namespace ImagingCapture.UI {

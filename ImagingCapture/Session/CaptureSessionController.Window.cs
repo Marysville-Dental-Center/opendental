@@ -2,7 +2,7 @@
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using ImagingDeviceManager.Capture;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Session {
 	///<summary>What the session window (FrmCaptureSession, through CaptureSessionViewModel) needs from the controller besides its commands: the

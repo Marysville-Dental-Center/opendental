@@ -4,7 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:WpfControls.UI"
-             xmlns:oduiodb="clr-namespace:OpenDental.UI;assembly=OpenDentBusiness"
+             xmlns:oduiodb="clr-namespace:OpenPmsDental.UI;assembly=OpenPmsDentalBusiness"
              mc:Ignorable="d" 
             x:Name="userControl" Background="White"
             d:DesignWidth="362" d:DesignHeight="79">

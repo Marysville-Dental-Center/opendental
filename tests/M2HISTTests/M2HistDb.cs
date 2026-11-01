@@ -11,8 +11,8 @@ using System.Linq;
 using System.Threading;
 using ForkMigrationTests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace M2HISTTests {
 	[TestClass]
@@ -48,10 +48,10 @@ namespace M2HISTTests {
 				DictProcCodesBefore=DataCore.GetTable("SELECT CodeGroupNum,ProcCodes FROM codegroup").Select()
 					.ToDictionary(x => PIn.Long(x["CodeGroupNum"].ToString()),x => x["ProcCodes"].ToString());
 				ForkMigrationResult result=ForkMigrationRunner.Run();
-				string prefix=new OpenDentBusiness.ForkMigrations.FeatureSteps.InsHistCodeGroupsStep().Level+": ";
+				string prefix=new OpenPmsDentalBusiness.ForkMigrations.FeatureSteps.InsHistCodeGroupsStep().Level+": ";
 				ListChangesStep=result.ListChanges.Where(x => x.StartsWith(prefix)).ToList();
 				DictPrefsAfter=ReadInsHistPrefs();
-				ListCodeGroupsAfter=OpenDentBusiness.Crud.CodeGroupCrud.SelectMany("SELECT * FROM codegroup ORDER BY ItemOrder,CodeGroupNum");
+				ListCodeGroupsAfter=OpenPmsDentalBusiness.Crud.CodeGroupCrud.SelectMany("SELECT * FROM codegroup ORDER BY ItemOrder,CodeGroupNum");
 				Cache.Refresh(InvalidType.AllLocal);
 				ListCategoriesAfter=InsHistCategories.GetAll();
 				Security.CurUser=Userods.GetUser(1)??new Userod { UserNum=1 };

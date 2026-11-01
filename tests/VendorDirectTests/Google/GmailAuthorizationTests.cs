@@ -12,7 +12,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CodeBase.VendorDirect;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using Task=System.Threading.Tasks.Task;
 
 namespace VendorDirectTests.Gmail {

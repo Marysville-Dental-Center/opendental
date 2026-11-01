@@ -6,10 +6,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
-using OpenDentBusiness.ForkMigrations.Features;
-using OpenDentBusiness.ForkMigrations.Seeds26_1;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
+using OpenPmsDentalBusiness.ForkMigrations.Features;
+using OpenPmsDentalBusiness.ForkMigrations.Seeds26_1;
 
 namespace M2UDSTests {
 	[TestClass]

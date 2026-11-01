@@ -5,7 +5,7 @@ using System.Linq;
 using System.Reflection;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace NoHqTests {
 	///<summary>Checks that Open Dental's cloud edition (Thinfinity "ODCloud" and AWS AppStream) stays removed: the VirtualWeb shim and the AWS SDK are gone,

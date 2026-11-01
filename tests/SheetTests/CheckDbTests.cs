@@ -9,7 +9,7 @@ using System.Text;
 using ForkMigrationTests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using PdfSharp.Pdf;
 
 namespace SheetTests {
@@ -198,7 +198,7 @@ namespace SheetTests {
 
 		private static Account InsertAccount(string description,AccountType accountType,string bankNumber) {
 			Account account=new Account { Description=description,AcctType=accountType,BankNumber=bankNumber };
-			OpenDentBusiness.Crud.AccountCrud.Insert(account);
+			OpenPmsDentalBusiness.Crud.AccountCrud.Insert(account);
 			return account;
 		}
 	}

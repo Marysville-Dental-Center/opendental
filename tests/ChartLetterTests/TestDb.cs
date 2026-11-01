@@ -8,8 +8,8 @@ using System.Text;
 using System.Text.RegularExpressions;
 using DataConnectionBase;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace ChartLetterTests {
 	///<summary>Creates, connects to and drops scratch databases. Every name starts with "chartltr_" so a test can never drop anything else.</summary>

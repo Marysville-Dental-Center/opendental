@@ -8,9 +8,9 @@ using System.Linq;
 using System.Net;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.VendorDirect;
-using OpenDentBusiness.VendorDirect.GlobalPayments;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.VendorDirect;
+using OpenPmsDentalBusiness.VendorDirect.GlobalPayments;
 using UnitTestsCore;
 
 namespace VGPTests {

@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Drawing;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
-namespace OpenDental.Bridges {
+namespace OpenPmsDental.Bridges {
 
 	public class ApteryxImage {
 		//leave items that we don't need commented out

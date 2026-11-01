@@ -1,4 +1,4 @@
-﻿using OpenDental;
+﻿using OpenPmsDental;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -80,7 +80,7 @@ using WpfControls.UI;
 		/// <summary>This canvas contains all the vertical gridlines.  That way, we can clear the vertical gridlines as needed.</summary>
 		private Canvas _canvasVertLines;
 		///<summary>The ordinary horizontal and vertical gridlines. Gray 220</summary>
-		private Color _colorGridline=OpenDental.ColorOD.Gray_Wpf(220);//Color.FromRgb(220,220,220);
+		private Color _colorGridline=OpenPmsDental.ColorOD.Gray_Wpf(220);//Color.FromRgb(220,220,220);
 		private ComboBox comboBox;
 		///<summary>Used when resizing this grid in order to </summary>
 		private DispatcherTimer _dispatcherTimerSizing;
@@ -633,7 +633,7 @@ using WpfControls.UI;
 					lineGray.Y1=2;
 					lineGray.X2=Columns[i].State.XPos;
 					lineGray.Y2=_heightHeader-2;
-					lineGray.Stroke=new SolidColorBrush(OpenDental.ColorOD.Gray_Wpf(120));
+					lineGray.Stroke=new SolidColorBrush(OpenPmsDental.ColorOD.Gray_Wpf(120));
 					canvasHeaders.Children.Add(lineGray);
 					//g.DrawLine(_penColumnSeparator,-hScroll.Value+Columns[i].State.XPos,ScaleI(_heightTitle)+3,
 					//	-hScroll.Value+Columns[i].State.XPos,OriginY()-2);
@@ -826,7 +826,7 @@ using WpfControls.UI;
 			lineLower.Y2=gridRow.State.HeightTotal;
 			lineLower.Stroke=new SolidColorBrush(_colorGridline);
 			if(rowI==ListGridRows.Count-1) {//last row
-				lineLower.Stroke=new SolidColorBrush(OpenDental.ColorOD.Gray_Wpf(120));
+				lineLower.Stroke=new SolidColorBrush(OpenPmsDental.ColorOD.Gray_Wpf(120));
 			}
 			else if(gridRow.ColorLborder.ToString()!=Colors.Transparent.ToString()) {
 				lineLower.Stroke=new SolidColorBrush(gridRow.ColorLborder);

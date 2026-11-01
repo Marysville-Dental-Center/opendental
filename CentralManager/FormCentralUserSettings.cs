@@ -1,6 +1,6 @@
 ﻿using CodeBase;
-using OpenDental;
-using OpenDentBusiness;
+using OpenPmsDental;
+using OpenPmsDentalBusiness;
 using System;
 using System.IO;
 using System.Windows.Forms;

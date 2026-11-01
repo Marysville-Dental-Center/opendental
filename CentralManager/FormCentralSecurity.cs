@@ -4,8 +4,8 @@ using System.DirectoryServices;
 using System.Linq;
 using System.Windows.Forms;
 using CodeBase;
-using OpenDental;
-using OpenDentBusiness;
+using OpenPmsDental;
+using OpenPmsDentalBusiness;
 
 namespace CentralManager {
 	public partial class FormCentralSecurity:FormODBase {

@@ -74,7 +74,7 @@ private void MenuItem_Click(object sender,EventArgs e) {
 */
 		#region Fields
 		///<summary>This is for Shortcuts on MenuItems.</summary>
-		private OpenDental.FrmODBase _frmODBaseParent;
+		private OpenPmsDental.FrmODBase _frmODBaseParent;
 		#endregion Fields
 
 		#region Constructor
@@ -181,7 +181,7 @@ private void MenuItem_Click(object sender,EventArgs e) {
 				if(dependencyObject is null){
 					return;
 				}
-				if(dependencyObject is OpenDental.FrmODBase frmODBase){
+				if(dependencyObject is OpenPmsDental.FrmODBase frmODBase){
 					_frmODBaseParent=frmODBase;
 					_frmODBaseParent.PreviewKeyDown+=_frmODBaseParent_PreviewKeyDown;
 					return;

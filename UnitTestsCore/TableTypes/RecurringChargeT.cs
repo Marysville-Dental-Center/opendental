@@ -1,5 +1,5 @@
 ﻿using CodeBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace UnitTestsCore {
 	public class RecurringChargeT {

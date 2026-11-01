@@ -7,7 +7,7 @@ using System.Data;
 using System.Linq;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace M2CANTests {
 	[TestClass]
@@ -74,7 +74,7 @@ namespace M2CANTests {
 			Assert.AreEqual(1,result.CountSkipped);
 			Assert.AreEqual(1,result.CountRefused);
 			Assert.IsTrue(result.IsCategoryCreated);
-			List<Def> listDefs=OpenDentBusiness.Crud.DefCrud.SelectMany("SELECT * FROM definition WHERE Category="+(int)DefCat.ProcCodeCats+" ORDER BY ItemOrder");
+			List<Def> listDefs=OpenPmsDentalBusiness.Crud.DefCrud.SelectMany("SELECT * FROM definition WHERE Category="+(int)DefCat.ProcCodeCats+" ORDER BY ItemOrder");
 			Def defCdha=listDefs.Single(x => x.ItemName=="CDHA");
 			Assert.AreEqual(4,defCdha.ItemOrder,"After the last category.");
 			Assert.AreEqual(result.DefNumCategory,defCdha.DefNum);
@@ -104,7 +104,7 @@ namespace M2CANTests {
 			Assert.AreEqual(0,result.CountAdded);
 			Assert.AreEqual(3,result.CountSkipped);
 			Assert.IsFalse(result.IsCategoryCreated);
-			Assert.AreEqual(1,OpenDentBusiness.Crud.DefCrud.SelectMany("SELECT * FROM definition WHERE ItemName='CDHA'").Count);
+			Assert.AreEqual(1,OpenPmsDentalBusiness.Crud.DefCrud.SelectMany("SELECT * FROM definition WHERE ItemName='CDHA'").Count);
 			Assert.AreEqual(3,GetCodes().Count);
 		}
 
@@ -125,7 +125,7 @@ namespace M2CANTests {
 			List<string> listLogs=GetLogTexts(EnumPermType.ProcCodeEdit);
 			Assert.IsTrue(listLogs.Any(x => x=="Code 91001 description changed from 'Synthetic denture' to 'Prothèse synthétique' (Other Procedure Codes "
 				+"import, DAC (French))."),string.Join(" | ",listLogs));
-			Assert.AreEqual(1,OpenDentBusiness.Crud.DefCrud.SelectMany("SELECT * FROM definition WHERE ItemName='DAC'").Count);
+			Assert.AreEqual(1,OpenPmsDentalBusiness.Crud.DefCrud.SelectMany("SELECT * FROM definition WHERE ItemName='DAC'").Count);
 			Assert.AreEqual(3,GetCodes().Count(x => x.ProcCat==GetCodes().First().ProcCat));
 		}
 
@@ -166,7 +166,7 @@ namespace M2CANTests {
 			Assert.AreEqual(TreatmentArea.Tooth,procedureCode.TreatArea);
 			Assert.AreEqual(defNumCda,procedureCode.ProcCat);
 			Assert.AreEqual(2,GetCodes().Count);
-			Assert.AreEqual(1,OpenDentBusiness.Crud.DefCrud.SelectMany("SELECT * FROM definition").Count);
+			Assert.AreEqual(1,OpenPmsDentalBusiness.Crud.DefCrud.SelectMany("SELECT * FROM definition").Count);
 			string log=GetLogTexts(EnumPermType.ProcCodeEdit).Last();
 			StringAssert.StartsWith(log,"Other Procedure Codes import, CDA: 0 added, 1 updated, 1 skipped, 1 not found.");
 			StringAssert.Contains(log,"Advanced Options: Update treatment area, Update paint type.");

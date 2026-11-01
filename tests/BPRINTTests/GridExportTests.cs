@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDental.UI;
+using OpenPmsDental.UI;
 
 namespace BPRINTTests {
 	[TestClass]

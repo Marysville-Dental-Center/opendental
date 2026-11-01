@@ -4,8 +4,8 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Reflection;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace DevDbTool {
 	///<summary>Checks that a database matches what this build of the business layer expects: version preferences, conversion flags, and

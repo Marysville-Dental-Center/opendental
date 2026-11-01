@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Text;
 using System.Windows.Forms;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using CodeBase;
 
 namespace CentralManager{
@@ -13,8 +13,8 @@ namespace CentralManager{
 	/// Summary description for FormBasicTemplate.
 	/// </summary>
 	public class FormCentralLogOn : System.Windows.Forms.Form{
-		private OpenDental.UI.Button butCancel;
-		private OpenDental.UI.Button butOK;
+		private OpenPmsDental.UI.Button butCancel;
+		private OpenPmsDental.UI.Button butOK;
 		private System.Windows.Forms.ListBox listUser;
 		private System.Windows.Forms.Label label1;
 		private System.Windows.Forms.Label label2;
@@ -59,8 +59,8 @@ namespace CentralManager{
 		private void InitializeComponent()
 		{
 			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormCentralLogOn));
-			this.butCancel = new OpenDental.UI.Button();
-			this.butOK = new OpenDental.UI.Button();
+			this.butCancel = new OpenPmsDental.UI.Button();
+			this.butOK = new OpenPmsDental.UI.Button();
 			this.listUser = new System.Windows.Forms.ListBox();
 			this.label1 = new System.Windows.Forms.Label();
 			this.label2 = new System.Windows.Forms.Label();

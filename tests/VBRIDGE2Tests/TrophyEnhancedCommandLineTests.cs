@@ -2,8 +2,8 @@
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.VendorDirect.ProgramLinks;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.VendorDirect.ProgramLinks;
 
 namespace VBRIDGE2Tests {
 	[TestClass]

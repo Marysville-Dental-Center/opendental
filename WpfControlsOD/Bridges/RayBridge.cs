@@ -6,10 +6,10 @@ using System.Text;
 using System.Windows.Forms;
 using System.Xml;
 using CodeBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 
-namespace OpenDental.Bridges {
+namespace OpenPmsDental.Bridges {
 	public class RayBridge {
 		///<summary>RayBridge is the new way to bridge to SMARTDent.</summary>
 		public RayBridge() {

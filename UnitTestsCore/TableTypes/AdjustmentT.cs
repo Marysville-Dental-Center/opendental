@@ -1,4 +1,4 @@
-﻿using OpenDentBusiness;
+﻿using OpenPmsDentalBusiness;
 using System;
 using System.Collections.Generic;
 
@@ -37,7 +37,7 @@ namespace UnitTestsCore {
 		}
 
 		public static void InsertMany(List<Adjustment> listAdjustments) {
-			OpenDentBusiness.Crud.AdjustmentCrud.InsertMany(listAdjustments);
+			OpenPmsDentalBusiness.Crud.AdjustmentCrud.InsertMany(listAdjustments);
 		}
 	}
 }

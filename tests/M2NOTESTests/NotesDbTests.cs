@@ -12,8 +12,8 @@ using System.Linq;
 using System.Threading;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDental.UI;
-using OpenDentBusiness;
+using OpenPmsDental.UI;
+using OpenPmsDentalBusiness;
 
 namespace M2NOTESTests {
 	[TestClass]
@@ -45,12 +45,12 @@ namespace M2NOTESTests {
 			}
 			Thread.CurrentThread.CurrentCulture=new CultureInfo("en-US");
 			//Synthetic code, provider and users, so nothing depends on the seed rows.
-			_codeNumA=OpenDentBusiness.Crud.ProcedureCodeCrud.Insert(new ProcedureCode { ProcCode="M2N01",Descript="Notes test A",AbbrDesc="M2NA",
+			_codeNumA=OpenPmsDentalBusiness.Crud.ProcedureCodeCrud.Insert(new ProcedureCode { ProcCode="M2N01",Descript="Notes test A",AbbrDesc="M2NA",
 				ProcTime="/X/",TreatArea=TreatmentArea.Mouth });
-			_provNum=OpenDentBusiness.Crud.ProviderCrud.Insert(new Provider { Abbr="M2N",LName="Notes",FName="Test",ItemOrder=90 });
-			_userNumHyg=OpenDentBusiness.Crud.UserodCrud.Insert(new Userod { UserName="m2hyg" });
-			_userNumDoc=OpenDentBusiness.Crud.UserodCrud.Insert(new Userod { UserName="m2doc" });
-			_userNumOther=OpenDentBusiness.Crud.UserodCrud.Insert(new Userod { UserName="m2other" });
+			_provNum=OpenPmsDentalBusiness.Crud.ProviderCrud.Insert(new Provider { Abbr="M2N",LName="Notes",FName="Test",ItemOrder=90 });
+			_userNumHyg=OpenPmsDentalBusiness.Crud.UserodCrud.Insert(new Userod { UserName="m2hyg" });
+			_userNumDoc=OpenPmsDentalBusiness.Crud.UserodCrud.Insert(new Userod { UserName="m2doc" });
+			_userNumOther=OpenPmsDentalBusiness.Crud.UserodCrud.Insert(new Userod { UserName="m2other" });
 			Cache.Refresh(InvalidType.Prefs,InvalidType.ProcCodes,InvalidType.Providers,InvalidType.Defs);
 			Userods.RefreshCache();
 			_codeNumGroup=ProcedureCodes.GetCodeNum(ProcedureCodes.GroupProcCode);
@@ -80,14 +80,14 @@ namespace M2NOTESTests {
 		}
 
 		private static long NewPatient() {
-			return OpenDentBusiness.Crud.PatientCrud.Insert(new Patient { LName="Notes",FName="Test"+Guid.NewGuid().ToString("N").Substring(0,6),
+			return OpenPmsDentalBusiness.Crud.PatientCrud.Insert(new Patient { LName="Notes",FName="Test"+Guid.NewGuid().ToString("N").Substring(0,6),
 				PatStatus=PatientStatus.Patient,PriProv=_provNum,Birthdate=new DateTime(1980,1,1) });
 		}
 
 		private static Procedure NewProc(long patNum,long codeNum,ProcStat procStat,DateTime date) {
 			Procedure procedure=new Procedure { PatNum=patNum,CodeNum=codeNum,ProcStatus=procStat,ProcDate=date,DateTP=date,DateEntryC=date,ProvNum=_provNum,
 				ToothNum="",Surf="",ToothRange="" };
-			procedure.ProcNum=OpenDentBusiness.Crud.ProcedureCrud.Insert(procedure);
+			procedure.ProcNum=OpenPmsDentalBusiness.Crud.ProcedureCrud.Insert(procedure);
 			return procedure;
 		}
 

@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using CodeBase;
 using ImagingDeviceManager.Config;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Settings {
 	///<summary>The Capture settings screen's database seam: the Setup permission, the Setup security-log entries of a device (where the screen and

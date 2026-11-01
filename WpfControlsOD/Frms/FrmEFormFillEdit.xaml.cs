@@ -12,15 +12,15 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 using CodeBase;
-using OpenDental.Drawing;
+using OpenPmsDental.Drawing;
 using PdfSharp;
 using PdfSharp.Drawing;
 using PdfSharp.Pdf;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	/// <summary></summary>
 	public partial class FrmEFormFillEdit : FrmODBase {
 		#region Fields

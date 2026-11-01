@@ -12,12 +12,12 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using CodeBase;
-using OpenDental.Bridges;
-using OpenDentBusiness;
+using OpenPmsDental.Bridges;
+using OpenPmsDentalBusiness;
 using WpfControls;
 using WpfControls.UI;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 ///<summary>All this dialog does is set the patnum and it is up to the calling form to do an immediate refresh, or possibly just change the patnum back to what it was.</summary>
 	public partial class FrmPatientSelect : FrmODBase{
 		///<summary>False by default. Rarely true. The only place so far is in the main Patient Search.</summary>

@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using WpfControls.UI;
-using OpenDentBusiness;
-using OpenDental;
-using OpenDental.Bridges;
+using OpenPmsDentalBusiness;
+using OpenPmsDental;
+using OpenPmsDental.Bridges;
 using CodeBase;
 
 namespace WpfControls {
@@ -557,7 +557,7 @@ namespace WpfControls {
 					ContextMenu contextMenu=new ContextMenu();
 					MenuItem menuItem=new MenuItem();
 					menuItem.Text=Lans.g("Oryx","User Settings");
-					menuItem.Click+=OpenDental.Bridges.Oryx.menuItemUserSettingsClick;
+					menuItem.Click+=OpenPmsDental.Bridges.Oryx.menuItemUserSettingsClick;
 					contextMenu.Add(menuItem);
 					toolBarButton.ToolBarButtonStyle=ToolBarButtonStyle.DropDownButton;
 					toolBarButton.ContextMenuDropDown=contextMenu;

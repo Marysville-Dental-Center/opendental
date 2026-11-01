@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
 using System.Linq;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Templates {
 	///<summary>The database seam of "Add standard templates".</summary>
@@ -36,7 +36,7 @@ namespace ImagingCapture.Templates {
 
 		public List<MountDef> GetMountDefs() {
 			//MountDefs.RefreshCache returns a DataTable, which this project does not reference; this refreshes the same cache.
-			OpenDentBusiness.Cache.Refresh(InvalidType.ToolButsAndMounts);
+			OpenPmsDentalBusiness.Cache.Refresh(InvalidType.ToolButsAndMounts);
 			return MountDefs.GetDeepCopy();
 		}
 
@@ -61,7 +61,7 @@ namespace ImagingCapture.Templates {
 		}
 
 		public void SignalMountDefsChanged() {
-			OpenDental.DataValid.SetInvalid(InvalidType.ToolButsAndMounts);
+			OpenPmsDental.DataValid.SetInvalid(InvalidType.ToolButsAndMounts);
 		}
 	}
 

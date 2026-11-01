@@ -9,7 +9,7 @@ using ImagingCapture.Save;
 using ImagingCapture.Session;
 using ImagingDeviceManager.Capture;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Tests {
 	///<summary>The capture session's part in the quarantine (design 7.12): every enable names its mount, slot, teeth, category, provider and device

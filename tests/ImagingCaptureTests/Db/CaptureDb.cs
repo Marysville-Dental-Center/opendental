@@ -12,9 +12,9 @@ using ImagingCapture.Settings;
 using ImagingCapture.Templates;
 using ImagingDeviceManager.Config;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.FileIO;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.FileIO;
+using OpenPmsDentalBusiness.ForkMigrations;
 using UnitTestsCore;
 
 namespace ImagingCapture.Tests.Db {
@@ -229,13 +229,13 @@ namespace ImagingCapture.Tests.Db {
 		public static List<SecurityLog> GetLogsForPatient(EnumPermType permType,long patNum) {
 			string command="SELECT * FROM securitylog WHERE PermType="+POut.Int((int)permType)+" AND PatNum="+POut.Long(patNum)
 				+" ORDER BY SecurityLogNum";
-			return OpenDentBusiness.Crud.SecurityLogCrud.SelectMany(command);
+			return OpenPmsDentalBusiness.Crud.SecurityLogCrud.SelectMany(command);
 		}
 
 		///<summary>Security log rows of one permission with this FKey, oldest first.</summary>
 		public static List<SecurityLog> GetLogsByFKey(EnumPermType permType,long fKey) {
 			string command="SELECT * FROM securitylog WHERE PermType="+POut.Int((int)permType)+" AND FKey="+POut.Long(fKey)+" ORDER BY SecurityLogNum";
-			return OpenDentBusiness.Crud.SecurityLogCrud.SelectMany(command);
+			return OpenPmsDentalBusiness.Crud.SecurityLogCrud.SelectMany(command);
 		}
 
 		///<summary>Security log rows of one permission with this FKey whose text starts with prefix, oldest first. FKey alone is not enough for
@@ -252,7 +252,7 @@ namespace ImagingCapture.Tests.Db {
 
 		///<summary>Every security log row of the patient, oldest first.</summary>
 		public static List<SecurityLog> GetAllLogsForPatient(long patNum) {
-			return OpenDentBusiness.Crud.SecurityLogCrud.SelectMany("SELECT * FROM securitylog WHERE PatNum="+POut.Long(patNum)+" ORDER BY SecurityLogNum");
+			return OpenPmsDentalBusiness.Crud.SecurityLogCrud.SelectMany("SELECT * FROM securitylog WHERE PatNum="+POut.Long(patNum)+" ORDER BY SecurityLogNum");
 		}
 
 		///<summary>The securityloghash row of a security log row exists (SecurityLogs.MakeLogEntry writes one with every entry).</summary>
@@ -261,11 +261,11 @@ namespace ImagingCapture.Tests.Db {
 		}
 
 		public static List<Document> GetDocuments(long patNum) {
-			return OpenDentBusiness.Crud.DocumentCrud.SelectMany("SELECT * FROM document WHERE PatNum="+POut.Long(patNum)+" ORDER BY DocNum");
+			return OpenPmsDentalBusiness.Crud.DocumentCrud.SelectMany("SELECT * FROM document WHERE PatNum="+POut.Long(patNum)+" ORDER BY DocNum");
 		}
 
 		public static List<MountItem> GetMountItemRows(long mountNum) {
-			return OpenDentBusiness.Crud.MountItemCrud.SelectMany("SELECT * FROM mountitem WHERE MountNum="+POut.Long(mountNum)+" ORDER BY MountItemNum");
+			return OpenPmsDentalBusiness.Crud.MountItemCrud.SelectMany("SELECT * FROM mountitem WHERE MountNum="+POut.Long(mountNum)+" ORDER BY MountItemNum");
 		}
 
 		public static bool MountExists(long mountNum) {

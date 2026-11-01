@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using CodeBase.VendorDirect;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace VendorDirectTests.EdgeExpressTests {
 	[TestClass]

@@ -23,7 +23,7 @@
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			this.gridPats = new OpenDental.UI.GridOD();
+			this.gridPats = new OpenPmsDental.UI.GridOD();
 			this.groupBox2 = new System.Windows.Forms.GroupBox();
 			this.checkGuarantors = new System.Windows.Forms.CheckBox();
 			this.textConn = new System.Windows.Forms.TextBox();
@@ -51,17 +51,17 @@
 			this.label6 = new System.Windows.Forms.Label();
 			this.textAddress = new System.Windows.Forms.TextBox();
 			this.label5 = new System.Windows.Forms.Label();
-			this.textPhone = new OpenDental.ValidPhone();
+			this.textPhone = new OpenPmsDental.ValidPhone();
 			this.label4 = new System.Windows.Forms.Label();
 			this.textFName = new System.Windows.Forms.TextBox();
 			this.label3 = new System.Windows.Forms.Label();
 			this.textLName = new System.Windows.Forms.TextBox();
 			this.label1 = new System.Windows.Forms.Label();
-			this.butSearch = new OpenDental.UI.Button();
+			this.butSearch = new OpenPmsDental.UI.Button();
 			this.checkLimit = new System.Windows.Forms.CheckBox();
 			this.labelFetch = new System.Windows.Forms.Label();
-			this.butClose = new OpenDental.UI.Button();
-			this.buttonOK = new OpenDental.UI.Button();
+			this.butClose = new OpenPmsDental.UI.Button();
+			this.buttonOK = new OpenPmsDental.UI.Button();
 			this.groupBox2.SuspendLayout();
 			this.SuspendLayout();
 			// 
@@ -78,7 +78,7 @@
 			this.gridPats.Title = "Patients - Double Click to Launch Connection";
 			this.gridPats.TranslationName = "FormPatientSelect";
 			this.gridPats.WrapText = false;
-			this.gridPats.CellDoubleClick += new OpenDental.UI.ODGridClickEventHandler(this.gridPats_CellDoubleClick);
+			this.gridPats.CellDoubleClick += new OpenPmsDental.UI.ODGridClickEventHandler(this.gridPats_CellDoubleClick);
 			// 
 			// groupBox2
 			// 
@@ -465,7 +465,7 @@
 
 		#endregion
 
-		private OpenDental.UI.GridOD gridPats;
+		private OpenPmsDental.UI.GridOD gridPats;
 		private System.Windows.Forms.GroupBox groupBox2;
 		private System.Windows.Forms.TextBox textCountry;
 		private System.Windows.Forms.Label labelCountry;
@@ -490,19 +490,19 @@
 		private System.Windows.Forms.Label label6;
 		private System.Windows.Forms.TextBox textAddress;
 		private System.Windows.Forms.Label label5;
-		private OpenDental.ValidPhone textPhone;
+		private OpenPmsDental.ValidPhone textPhone;
 		private System.Windows.Forms.Label label4;
 		private System.Windows.Forms.TextBox textFName;
 		private System.Windows.Forms.Label label3;
 		private System.Windows.Forms.TextBox textLName;
 		private System.Windows.Forms.Label label1;
-		private OpenDental.UI.Button butSearch;
+		private OpenPmsDental.UI.Button butSearch;
 		private System.Windows.Forms.TextBox textConn;
 		private System.Windows.Forms.Label label14;
 		private System.Windows.Forms.CheckBox checkGuarantors;
 		private System.Windows.Forms.CheckBox checkLimit;
 		private System.Windows.Forms.Label labelFetch;
-		private OpenDental.UI.Button butClose;
-		private OpenDental.UI.Button buttonOK;
+		private OpenPmsDental.UI.Button butClose;
+		private OpenPmsDental.UI.Button buttonOK;
 	}
 }

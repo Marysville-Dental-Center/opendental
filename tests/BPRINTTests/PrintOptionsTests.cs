@@ -9,7 +9,7 @@ using System.Threading;
 using System.Windows.Documents;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls;
 
 namespace BPRINTTests {

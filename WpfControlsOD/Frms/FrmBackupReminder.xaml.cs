@@ -9,10 +9,10 @@ using System.Windows.Forms;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	public partial class FrmBackupReminder:FrmODBase {
 		public FrmBackupReminder() {
 			InitializeComponent();

@@ -3,10 +3,10 @@
 using System;
 using System.Diagnostics;
 using CodeBase;
-using OpenDentBusiness;
-using OpenDentBusiness.VendorDirect.ProgramLinks;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.VendorDirect.ProgramLinks;
 
-namespace OpenDental.Bridges{
+namespace OpenPmsDental.Bridges{
 	///<summary>Clerri. Launch only: no patient data is sent except the PatNum, and only when the dashboard address the office entered asks for it
 	///([PatNum]). No data sync (Open Dental's runs through its eConnector, which this fork removed).</summary>
 	public class Clerri{

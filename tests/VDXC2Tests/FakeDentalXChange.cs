@@ -15,8 +15,8 @@ using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Serialization;
 using Newtonsoft.Json;
-using OpenDentBusiness;
-using OpenDentBusiness.WebBridges;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.WebBridges;
 
 namespace VDXC2Tests {
 	///<summary>Records every XConnect request and answers from DictResponses (endpoint to JSON). Unknown endpoints throw.</summary>

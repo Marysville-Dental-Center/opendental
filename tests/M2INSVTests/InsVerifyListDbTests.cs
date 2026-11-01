@@ -7,8 +7,8 @@ using System.Collections.Generic;
 using System.Linq;
 using ForkMigrationTests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace M2INSVTests {
 	[TestClass]
@@ -235,7 +235,7 @@ namespace M2INSVTests {
 			appointment.AptDateTime=aptDateTime;
 			appointment.AptStatus=ApptStatus.Scheduled;
 			appointment.Pattern="//";
-			OpenDentBusiness.Crud.AppointmentCrud.Insert(appointment);
+			OpenPmsDentalBusiness.Crud.AppointmentCrud.Insert(appointment);
 			return patNum;
 		}
 

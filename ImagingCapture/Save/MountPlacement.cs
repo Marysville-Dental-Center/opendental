@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Save {
 	///<summary>The mount placement rules of the Imaging module, copied onto OpenDentBusiness types so that the capture session can use them

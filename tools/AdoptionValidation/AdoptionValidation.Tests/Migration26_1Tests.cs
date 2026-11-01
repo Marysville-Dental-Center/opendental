@@ -4,11 +4,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
-using OpenDentBusiness.ForkMigrations.Features;
-using OpenDentBusiness.ForkMigrations.FeatureSteps;
-using OpenDentBusiness.ForkMigrations.Seeds26_1;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
+using OpenPmsDentalBusiness.ForkMigrations.Features;
+using OpenPmsDentalBusiness.ForkMigrations.FeatureSteps;
+using OpenPmsDentalBusiness.ForkMigrations.Seeds26_1;
 using SyntheticData.Validation;
 
 namespace AdoptionValidation.Tests {
@@ -68,7 +68,7 @@ namespace AdoptionValidation.Tests {
 			Assert.AreEqual(1,listProgram.Count);
 			Assert.AreEqual("ColumnChanged",listProgram[0].Kind);
 			Assert.AreEqual(DxcCreditScorePlan.COLUMN_ENABLED,listProgram[0].Column);
-			StringAssert.Contains(listProgram[0].Reason,new OpenDentBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemovedStep().Level.ToString());
+			StringAssert.Contains(listProgram[0].Reason,new OpenPmsDentalBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemovedStep().Level.ToString());
 			List<AllowedRule> listButtons=allowed.Rules.Where(x => x.Table==DxcCreditScorePlan.TABLE_TOOLBUTITEM).ToList();
 			Assert.AreEqual(1,listButtons.Count);
 			Assert.AreEqual("*",listButtons[0].Kind);
@@ -83,17 +83,17 @@ namespace AdoptionValidation.Tests {
 		///in the adoption log's words, on a 25.3.48 database; nothing where the link is already disabled without buttons, or missing.</summary>
 		[TestMethod]
 		public void DxcPlanLines_SayWhatTheStepChanges() {
-			List<OpenDentBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.ProgramRow> listPrograms=new List<OpenDentBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.ProgramRow> {
-				new OpenDentBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.ProgramRow { ProgramNum=4,ProgName="DXCPatientCreditScore",IsEnabled=true },
-				new OpenDentBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.ProgramRow { ProgramNum=3,ProgName="XVWeb",IsEnabled=true },
+			List<OpenPmsDentalBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.ProgramRow> listPrograms=new List<OpenPmsDentalBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.ProgramRow> {
+				new OpenPmsDentalBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.ProgramRow { ProgramNum=4,ProgName="DXCPatientCreditScore",IsEnabled=true },
+				new OpenPmsDentalBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.ProgramRow { ProgramNum=3,ProgName="XVWeb",IsEnabled=true },
 			};
-			List<OpenDentBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.ToolButItemRow> listButtons=new List<OpenDentBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.ToolButItemRow> {
-				new OpenDentBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.ToolButItemRow { ToolButItemNum=5,ProgramNum=4,ToolBar=0 },
-				new OpenDentBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.ToolButItemRow { ToolButItemNum=6,ProgramNum=4,ToolBar=7 },
-				new OpenDentBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.ToolButItemRow { ToolButItemNum=7,ProgramNum=3,ToolBar=3 },
+			List<OpenPmsDentalBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.ToolButItemRow> listButtons=new List<OpenPmsDentalBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.ToolButItemRow> {
+				new OpenPmsDentalBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.ToolButItemRow { ToolButItemNum=5,ProgramNum=4,ToolBar=0 },
+				new OpenPmsDentalBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.ToolButItemRow { ToolButItemNum=6,ProgramNum=4,ToolBar=7 },
+				new OpenPmsDentalBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.ToolButItemRow { ToolButItemNum=7,ProgramNum=3,ToolBar=3 },
 			};
 			DxcCreditScorePlan.Plan plan=new DxcCreditScorePlan.Plan { HasProgramTable=true,HasToolButItemTable=true,
-				Rows=OpenDentBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.Plan(listPrograms,listButtons) };
+				Rows=OpenPmsDentalBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.Plan(listPrograms,listButtons) };
 			Assert.IsTrue(plan.IsChanging);
 			string text=string.Join("\r\n",plan.Lines());
 			StringAssert.Contains(text,"Step 2026110101 (DXC Patient Credit Score program link): the discontinued DXC Patient Credit Score program link (ProgramNum 4) "
@@ -106,7 +106,7 @@ namespace AdoptionValidation.Tests {
 			//Already cleaned up (as Open Dental most likely left it), no row, no table.
 			listPrograms[0].IsEnabled=false;
 			DxcCreditScorePlan.Plan planClean=new DxcCreditScorePlan.Plan { HasProgramTable=true,HasToolButItemTable=true,
-				Rows=OpenDentBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.Plan(listPrograms,listButtons.Where(x => x.ProgramNum!=4).ToList()) };
+				Rows=OpenPmsDentalBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.Plan(listPrograms,listButtons.Where(x => x.ProgramNum!=4).ToList()) };
 			Assert.IsFalse(planClean.IsChanging);
 			StringAssert.Contains(string.Join("\r\n",planClean.Lines()),"changes nothing: the discontinued DXC Patient Credit Score program link (ProgramNum 4) is already "
 				+"disabled and has no toolbar button.");

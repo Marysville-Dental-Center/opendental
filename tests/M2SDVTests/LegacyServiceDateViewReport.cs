@@ -5,7 +5,7 @@
 using System;
 using System.Data;
 using System.Reflection;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace M2SDVTests {
 	public static class LegacyServiceDateViewReport {

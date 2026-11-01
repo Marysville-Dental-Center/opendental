@@ -10,8 +10,8 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace M201Tests {
 	[TestClass]
@@ -247,7 +247,7 @@ namespace M201Tests {
 			Assert.AreEqual("2025-06-01 00:00:00",DataCore.GetScalar("SELECT DATE_FORMAT(DateLastAssigned,'%Y-%m-%d %H:%i:%s') FROM insverify"));
 			Assert.AreEqual("2025-06-02 00:00:00",DataCore.GetScalar("SELECT DATE_FORMAT(DateLastAssigned,'%Y-%m-%d %H:%i:%s') FROM insverifyhist"));
 			Assert.IsNotNull(SchemaTable.FromDatabase(DB_OD253,"insverify").GetIndex("DateLastAssigned"));
-			Assert.AreEqual(new DateTime(2025,6,1),OpenDentBusiness.Crud.InsVerifyCrud.SelectOne(1).DateLastAssigned);
+			Assert.AreEqual(new DateTime(2025,6,1),OpenPmsDentalBusiness.Crud.InsVerifyCrud.SelectOne(1).DateLastAssigned);
 			//Kept as they were.
 			Assert.AreEqual("5035550100",DataCore.GetScalar("SELECT Telephone FROM referral"));
 			Assert.AreEqual("{\"primary\":\"#123456\"}",DataCore.GetScalar("SELECT ValueString FROM branding"));
@@ -324,7 +324,7 @@ namespace M201Tests {
 			Assert.AreEqual(ForkMigrationRunner.GetSteps().Count,_resultOd261.ListStepsRun.Count);
 			//Seed26_1 (package M2-02) inserts the fork's own 25.4 and 26.1 preference rows on every database that lacks them: Open Dental publishes
 			//no preference names, so an Open Dental 26.1 database has none of them. They live in the preference table, which is left out below.
-			string prefixSeed26_1=new OpenDentBusiness.ForkMigrations.Seeds26_1.Seed26_1Step().Level+": Inserted preference ";
+			string prefixSeed26_1=new OpenPmsDentalBusiness.ForkMigrations.Seeds26_1.Seed26_1Step().Level+": Inserted preference ";
 			List<string> listChanges=_resultOd261.ListChanges.Where(x => !x.StartsWith(prefixSeed26_1)).ToList();
 			Assert.AreEqual(0,listChanges.Count,string.Join("\r\n",listChanges));
 			Assert.AreEqual(0,_resultSchemaOd261.ListDifferences.Count,_resultSchemaOd261.GetReport());
@@ -342,26 +342,26 @@ namespace M201Tests {
 		[TestMethod]
 		public void Od261_CrudReadsThe26_1Values() {
 			ScratchDb.Connect(DB_OD261);
-			Carrier carrier=OpenDentBusiness.Crud.CarrierCrud.SelectOne(1);
+			Carrier carrier=OpenPmsDentalBusiness.Crud.CarrierCrud.SelectOne(1);
 			Assert.AreEqual(EnumPaySuiteTransTypes.Both,carrier.PaySuiteTransSup);
 			Assert.AreEqual("D2740,D2950-D2954",carrier.PreAuthCodes);
-			Def def=OpenDentBusiness.Crud.DefCrud.SelectOne(1);
+			Def def=OpenPmsDentalBusiness.Crud.DefCrud.SelectOne(1);
 			Assert.AreEqual(DefCat.EmployeeTitles,def.Category);
 			Assert.AreEqual("x",def.Supp);
-			Assert.AreEqual(1,OpenDentBusiness.Crud.EmployeeCrud.SelectOne(1).Title);
-			Assert.AreEqual(4.5f,OpenDentBusiness.Crud.EvaluationCrud.SelectOne(1).GradeOverride);
-			Assert.AreEqual(new DateTime(2026,6,1,13,45,0),OpenDentBusiness.Crud.InsVerifyCrud.SelectOne(1).DateLastAssigned,"The time of day is kept.");
-			ProcNote procNote=OpenDentBusiness.Crud.ProcNoteCrud.SelectOne(1);
+			Assert.AreEqual(1,OpenPmsDentalBusiness.Crud.EmployeeCrud.SelectOne(1).Title);
+			Assert.AreEqual(4.5f,OpenPmsDentalBusiness.Crud.EvaluationCrud.SelectOne(1).GradeOverride);
+			Assert.AreEqual(new DateTime(2026,6,1,13,45,0),OpenPmsDentalBusiness.Crud.InsVerifyCrud.SelectOne(1).DateLastAssigned,"The time of day is kept.");
+			ProcNote procNote=OpenPmsDentalBusiness.Crud.ProcNoteCrud.SelectOne(1);
 			Assert.AreEqual(2,procNote.UserNum2);
 			Assert.AreEqual("sig-two",procNote.Signature2);
 			Assert.IsTrue(procNote.SigIsTopaz2);
-			DeletedObj deletedObj=OpenDentBusiness.Crud.DeletedObjCrud.SelectOne(1);
+			DeletedObj deletedObj=OpenPmsDentalBusiness.Crud.DeletedObjCrud.SelectOne(1);
 			Assert.AreEqual(EnumDeletedObjType.Schedules,deletedObj.ObjType);
 			Assert.AreEqual(new DateTime(2026,1,6,7,0,0),deletedObj.DateTEntry);
-			PaySuitePayment paySuitePayment=OpenDentBusiness.Crud.PaySuitePaymentCrud.SelectOne(1);
+			PaySuitePayment paySuitePayment=OpenPmsDentalBusiness.Crud.PaySuitePaymentCrud.SelectOne(1);
 			Assert.AreEqual(EnumReconciliationStatus.NoDiscrepanciesFound,paySuitePayment.ReconciliationStatus);
 			Assert.AreEqual(new DateTime(2026,2,1),paySuitePayment.PaymentDate);
-			Assert.AreEqual(600,OpenDentBusiness.Crud.ClaimPaymentCrud.SelectOne(1).Note.Length);
+			Assert.AreEqual(600,OpenPmsDentalBusiness.Crud.ClaimPaymentCrud.SelectOne(1).Note.Length);
 		}
 	}
 }

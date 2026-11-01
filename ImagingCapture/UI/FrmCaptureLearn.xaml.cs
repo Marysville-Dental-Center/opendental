@@ -11,7 +11,7 @@ using System.Windows.Threading;
 using ImagingCapture.Camera;
 using ImagingCapture.Uvc;
 using ImagingDeviceManager.Config;
-using OpenDental;
+using OpenPmsDental;
 using WpfControls.UI;
 
 namespace ImagingCapture.UI {

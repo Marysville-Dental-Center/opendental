@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using ImagingCapture.Save;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Tests {
 	///<summary>MountPlacement and MountSlots (design 6.4, 7.3): the placement rules of ControlImageDisplay.GetAvailSlots,

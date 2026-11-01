@@ -10,7 +10,7 @@ using CodeBase.VendorDirect;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using VendorDirectTests.Foundation;
 
 namespace VendorDirectTests.Gmail {
@@ -238,7 +238,7 @@ namespace VendorDirectTests.Gmail {
 			string resx=Read(Path.Combine("OpenDentBusiness","Properties","Resources.resx"));
 			Assert.IsFalse(resx.Contains("GoogleAuthCodeResponseHtml"));
 			Assert.IsFalse(HqHosts.BlockedDomains.Any(x => resx.Contains(x+"/")),"The resources no longer load anything from Open Dental.");
-			Assert.IsNull(typeof(OpenDentBusiness.Properties.Resources).GetProperty("GoogleAuthCodeResponseHtml"));
+			Assert.IsNull(typeof(OpenPmsDentalBusiness.Properties.Resources).GetProperty("GoogleAuthCodeResponseHtml"));
 		}
 
 		[TestMethod]

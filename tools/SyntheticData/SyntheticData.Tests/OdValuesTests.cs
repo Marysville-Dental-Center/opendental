@@ -1,6 +1,6 @@
 // Licensed under the GNU General Public License, version 2. See LICENSE in the repository root.
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using SyntheticData.Generation;
 
 namespace SyntheticData.Tests {

@@ -2,7 +2,7 @@
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System.Collections.Generic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness.Microsoft365;
+using OpenPmsDentalBusiness.Microsoft365;
 
 namespace VendorDirectTests.Microsoft365 {
 	[TestClass]

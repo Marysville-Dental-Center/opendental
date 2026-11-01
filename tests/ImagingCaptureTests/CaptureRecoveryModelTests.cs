@@ -7,7 +7,7 @@ using ImagingCapture.Recovery;
 using ImagingCapture.UI;
 using ImagingDeviceManager.Capture;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Tests {
 	///<summary>CaptureRecoveryModel, the quarantine window's state (design 7.1, 7.12, 10.6): what each view lists, which actions each capture

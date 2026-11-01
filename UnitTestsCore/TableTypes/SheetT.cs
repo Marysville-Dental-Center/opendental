@@ -1,4 +1,4 @@
-﻿using OpenDentBusiness;
+﻿using OpenPmsDentalBusiness;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -12,8 +12,8 @@ namespace UnitTestsCore {
 
 		///<summary>Allows for the creation of a new Sheet with control over key fields, instead of them being set per 
 		///ExamSheet explicitly. It ensures the SheetNum is set and this does insert to the DB.</summary>
-		public static OpenDentBusiness.Sheet CreateSheet(long sheetDefNum,List<SheetField> listSheetFields, long patNum,long docNum=0,long clinicNum=0, SheetTypeEnum sheetType=SheetTypeEnum.ExamSheet,string internalNote="",string description="") {
-			OpenDentBusiness.Sheet sheet=new OpenDentBusiness.Sheet {
+		public static OpenPmsDentalBusiness.Sheet CreateSheet(long sheetDefNum,List<SheetField> listSheetFields, long patNum,long docNum=0,long clinicNum=0, SheetTypeEnum sheetType=SheetTypeEnum.ExamSheet,string internalNote="",string description="") {
+			OpenPmsDentalBusiness.Sheet sheet=new OpenPmsDentalBusiness.Sheet {
 				SheetDefNum=sheetDefNum,
 				SheetFields=listSheetFields,
 				DateTimeSheet=DateTime.Today.AddDays(-1),
@@ -25,14 +25,14 @@ namespace UnitTestsCore {
 				InternalNote=internalNote,
 				Description=description
 			};
-			sheet.SheetNum=OpenDentBusiness.Sheets.Insert(sheet);
-			OpenDentBusiness.Sheets.Update(sheet);
+			sheet.SheetNum=OpenPmsDentalBusiness.Sheets.Insert(sheet);
+			OpenPmsDentalBusiness.Sheets.Update(sheet);
 			return sheet;
 		}
 
 		///<summary>Creates a list of SheetFields for a given SheetFieldDef List and sets their SheetNum to match the 
 		///one passed in.</summary>
-		public static List<OpenDentBusiness.SheetField> CreateFieldListForSheet(List<SheetFieldDef> sheetFieldDefList,long sheetNum) {
+		public static List<OpenPmsDentalBusiness.SheetField> CreateFieldListForSheet(List<SheetFieldDef> sheetFieldDefList,long sheetNum) {
 				List<SheetField> retVal=new List<SheetField>();
 				SheetField field;
 				foreach(SheetFieldDef sheetFieldDef in sheetFieldDefList) {

@@ -3,8 +3,8 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using static OpenDentBusiness.ImageSignaturePermissions;
+using OpenPmsDentalBusiness;
+using static OpenPmsDentalBusiness.ImageSignaturePermissions;
 
 namespace ImagingTests {
 	[TestClass]

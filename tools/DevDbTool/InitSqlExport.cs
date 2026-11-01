@@ -9,7 +9,7 @@ using System.Text;
 using System.Threading;
 using CodeBase;
 using DataConnectionBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace DevDbTool {
 	///<summary>--export-init-sql: writes the SQL file that initializes a new database (db/init/new-database.sql). It builds a scratch database the

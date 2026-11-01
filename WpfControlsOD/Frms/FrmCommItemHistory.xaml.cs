@@ -8,10 +8,10 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	///<summary>This form is for a HQ only feature for tracking historical Commlog data.</summary>
 	public partial class FrmCommItemHistory:FrmODBase {
 		private List<CommlogHist> _listCommlogHists;

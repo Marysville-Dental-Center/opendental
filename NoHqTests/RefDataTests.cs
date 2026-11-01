@@ -5,7 +5,7 @@ using System.Linq;
 using System.Reflection;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace NoHqTests {
 	///<summary>Checks that the functions which downloaded or imported reference data from Open Dental are gone: the default medication list,

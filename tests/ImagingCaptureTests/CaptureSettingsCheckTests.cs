@@ -9,7 +9,7 @@ using ImagingCapture.Settings;
 using ImagingDeviceManager.Capture;
 using ImagingDeviceManager.Config;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Tests {
 	///<summary>The hash check of design 9.3 (CaptureSettingsCheck), the Capture settings screen's security-log entry (CaptureSettingsLogEntry),

@@ -25,8 +25,8 @@
 		private void InitializeComponent() {
 			this.label1 = new System.Windows.Forms.Label();
 			this.textPreferred = new System.Windows.Forms.TextBox();
-			this.butOK = new OpenDental.UI.Button();
-			this.butCancel = new OpenDental.UI.Button();
+			this.butOK = new OpenPmsDental.UI.Button();
+			this.butCancel = new OpenPmsDental.UI.Button();
 			this.SuspendLayout();
 			// 
 			// label1
@@ -88,7 +88,7 @@
 
 		private System.Windows.Forms.Label label1;
 		private System.Windows.Forms.TextBox textPreferred;
-		private OpenDental.UI.Button butOK;
-		private OpenDental.UI.Button butCancel;
+		private OpenPmsDental.UI.Button butOK;
+		private OpenPmsDental.UI.Button butCancel;
 	}
 }

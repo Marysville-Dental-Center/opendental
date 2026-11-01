@@ -12,10 +12,10 @@ using System.Xml;
 using System.Xml.Serialization;
 using CodeBase;
 using Microsoft.Win32;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	///<summary></summary>
 	public partial class FrmEFormDefs : FrmODBase {
 		///<summary>This is the list that shows in the grid.</summary>

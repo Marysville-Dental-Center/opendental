@@ -3,10 +3,10 @@
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using CodeBase;
-using OpenDentBusiness;
-using OpenDentBusiness.VendorDirect.ProgramLinks;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.VendorDirect.ProgramLinks;
 
-namespace OpenDental.Bridges {
+namespace OpenPmsDental.Bridges {
 	///<summary>Overjet program link. With a patient selected, and the Patient URL parameters property set up, the address carries the patient's
 	///values; otherwise the vendor's sign-in page opens.</summary>
 	public class Overjet {

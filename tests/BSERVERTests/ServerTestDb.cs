@@ -9,7 +9,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using DataConnectionBase;
 using MySqlConnector;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace BSERVERTests {
 	///<summary>Creates scratch databases with the Open Dental 25.3.48 definitions of the tables a test needs (from the reference schema embedded in

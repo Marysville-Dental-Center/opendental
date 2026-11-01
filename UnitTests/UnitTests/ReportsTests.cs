@@ -4,8 +4,8 @@ using System.Reflection;
 using System.Threading;
 using CodeBase;
 using DataConnectionBase;
-using OpenDentBusiness;
-using OpenDentBusiness.WebServices;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.WebServices;
 using System.Collections.Generic;
 
 namespace UnitTests.Reports_Tests {

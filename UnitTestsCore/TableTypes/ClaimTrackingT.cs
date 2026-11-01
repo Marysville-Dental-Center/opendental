@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using OpenDentBusiness;
-using OpenDental;
+using OpenPmsDentalBusiness;
+using OpenPmsDental;
 using System.Linq;
 
 namespace UnitTestsCore {
@@ -16,17 +16,17 @@ namespace UnitTestsCore {
 		}
 
 		///<summary>Creates and inserts a new ClaimTracking for a passed in claim.</summary>
-		public static ClaimTracking CreateClaimTracking(Claim claim,OpenDentBusiness.ClaimTrackingType claimTrackingType=OpenDentBusiness.ClaimTrackingType.StatusHistory,
+		public static ClaimTracking CreateClaimTracking(Claim claim,OpenPmsDentalBusiness.ClaimTrackingType claimTrackingType=OpenPmsDentalBusiness.ClaimTrackingType.StatusHistory,
 			long userNum=0,string note="",long trackingDefNum=0,long trackingErrorDefNum=0)
 		{
-			OpenDentBusiness.ClaimTracking claimTracking=new OpenDentBusiness.ClaimTracking();
+			OpenPmsDentalBusiness.ClaimTracking claimTracking=new OpenPmsDentalBusiness.ClaimTracking();
 			claimTracking.ClaimNum=claim.ClaimNum;
 			claimTracking.TrackingType=claimTrackingType;
 			claimTracking.UserNum=userNum;
 			claimTracking.Note=note;
 			claimTracking.TrackingDefNum=trackingDefNum;
 			claimTracking.TrackingErrorDefNum=trackingErrorDefNum;
-			claimTracking.ClaimTrackingNum=OpenDentBusiness.ClaimTrackings.Insert(claimTracking);
+			claimTracking.ClaimTrackingNum=OpenPmsDentalBusiness.ClaimTrackings.Insert(claimTracking);
 			return claimTracking;
 		}
 

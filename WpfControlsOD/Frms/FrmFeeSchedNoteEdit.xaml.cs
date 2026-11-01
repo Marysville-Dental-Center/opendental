@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Input;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	///<summary>Adds, edits or deletes one fee schedule note. Needs FeeSchedEdit to save or delete. The entering user and entry date are set when the
 	///note is inserted and never change; the Date box is the note's own date.</summary>
 	public partial class FrmFeeSchedNoteEdit:FrmODBase {

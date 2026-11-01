@@ -5,9 +5,9 @@ using System.Drawing.Drawing2D;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
-namespace OpenDental.UI{
+namespace OpenPmsDental.UI{
 	public class ImageTools{
 		///<summary>Calculates the crop rectangle, in image coords, for expand to fill a mount item.</summary>
 		public static Rectangle CalcExpandToFill(Size sizeMountItem,Size sizeImage,int degreesRotated){

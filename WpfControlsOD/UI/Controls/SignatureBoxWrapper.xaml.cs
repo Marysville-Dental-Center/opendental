@@ -14,8 +14,8 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using OpenDental.UI;
-using OpenDentBusiness;
+using OpenPmsDental.UI;
+using OpenPmsDentalBusiness;
 
 namespace WpfControls.UI {
 /*
@@ -31,14 +31,14 @@ How to use the SignatureBoxWrapper control:
 	///<summary>Read instructions at the top of OpenDentBusiness\UI\SignatureBoxWrapper.cs</summary>
 	public partial class SignatureBoxWrapper:UserControl {
 		///<summary>The namespace on this field is misleading. This is the winforms wrapper that's over in OpenDentBusiness.</summary>
-		public OpenDental.UI.SignatureBoxWrapper signatureBoxWrapper;
+		public OpenPmsDental.UI.SignatureBoxWrapper signatureBoxWrapper;
 		//private Window window;
 
 		///<summary>A WPF/Xaml wrapper for the Winforms signature box wrapper</summary>
 		public SignatureBoxWrapper() {
 			//System.Windows.Forms.Integration.WindowsFormsHost.EnableWindowsFormsInterop();
 			InitializeComponent();
-			signatureBoxWrapper=new OpenDental.UI.SignatureBoxWrapper();
+			signatureBoxWrapper=new OpenPmsDental.UI.SignatureBoxWrapper();
 			windowsFormsHost.Child = signatureBoxWrapper;
 			Loaded+=this_Loaded;
 			Unloaded+=this_Unloaded;
@@ -84,7 +84,7 @@ How to use the SignatureBoxWrapper control:
 			System.Drawing.Bitmap bitmap=signatureBoxWrapper.GetSigImage();
 			using System.Drawing.Graphics g=System.Drawing.Graphics.FromImage(bitmap);
 			g.DrawRectangle(System.Drawing.Pens.SlateGray,0,0,bitmap.Width-1,bitmap.Height-1);
-			BitmapImage bitmapImage=OpenDental.Drawing.Graphics.ConvertBitmapToWpf(bitmap);
+			BitmapImage bitmapImage=OpenPmsDental.Drawing.Graphics.ConvertBitmapToWpf(bitmap);
 			g?.Dispose();
 			bitmap?.Dispose();
 			return bitmapImage;
@@ -121,7 +121,7 @@ How to use the SignatureBoxWrapper control:
 
 		///<summary>The user who signs in this box when it is not Security.CurUser, after a Change User. The E button stamps this user's name.
 		///Passes through to the wrapped WinForms control.</summary>
-		public OpenDentBusiness.Userod UserSig {
+		public OpenPmsDentalBusiness.Userod UserSig {
 			get {
 				return signatureBoxWrapper.UserSig;
 			}

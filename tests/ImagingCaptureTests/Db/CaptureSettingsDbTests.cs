@@ -8,7 +8,7 @@ using ImagingCapture.Session;
 using ImagingCapture.Settings;
 using ImagingDeviceManager.Config;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Tests.Db {
 	///<summary>The Capture settings screen's save log on the scratch database (CaptureDb): CaptureSettingsModel with OdCaptureSettingsStore on a

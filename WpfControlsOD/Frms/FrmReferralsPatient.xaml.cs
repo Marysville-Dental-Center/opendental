@@ -9,11 +9,11 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using CodeBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls;
 using WpfControls.UI;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	/// <summary></summary>
 	public partial class FrmReferralsPatient : FrmODBase {
 		public long PatNum;

@@ -8,9 +8,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using OpenDental;
-using OpenDental.UI;
-using OpenDentBusiness;
+using OpenPmsDental;
+using OpenPmsDental.UI;
+using OpenPmsDentalBusiness;
 
 namespace UnitTests{
 	public partial class Form4kTests : FormODBase{
@@ -357,7 +357,7 @@ namespace UnitTests{
 
 		private void button5_Click(object sender, EventArgs e){
 			//MsgBox.Show(listBox1.Top.ToString());
-			OpenDental.UI.Button button=new OpenDental.UI.Button();
+			OpenPmsDental.UI.Button button=new OpenPmsDental.UI.Button();
 			button.Text="New";
 			button.Anchor=AnchorStyles.Right | AnchorStyles.Bottom;
 			button.Location=new Point(button5.Right,button5.Bottom);

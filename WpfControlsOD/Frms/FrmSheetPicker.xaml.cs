@@ -8,10 +8,10 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using CodeBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	public partial class FrmSheetPicker:FrmODBase {
 		///<summary>Set prior to opening. This gets all sheets of one type. But if the type is PatientForm, it also gets med hist and consent. If there are no custom sheets for each type, it shows the internal sheets.</summary>
 		public SheetTypeEnum SheetType;

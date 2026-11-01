@@ -1,7 +1,7 @@
 ﻿
 using System.Collections.Generic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using UnitTestsCore;
 
 namespace UnitTests.ApptViewItem_Tests {

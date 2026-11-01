@@ -10,12 +10,12 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using CodeBase;
-using OpenDentBusiness;
-using OpenDentBusiness.HL7;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.HL7;
 using WpfControls.UI;
-using OpenDental.Drawing;
+using OpenPmsDental.Drawing;
 using WpfControls;
-namespace OpenDental {
+namespace OpenPmsDental {
 	public partial class FrmPatientAddAll:FrmODBase {
 		public string LName;
 		public string FName;

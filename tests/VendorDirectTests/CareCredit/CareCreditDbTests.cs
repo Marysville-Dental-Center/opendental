@@ -8,9 +8,9 @@ using System.Linq;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.Bridges;
-using OpenDentBusiness.VendorDirect;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.Bridges;
+using OpenPmsDentalBusiness.VendorDirect;
 
 namespace VendorDirectTests.CareCreditTests {
 	[TestClass]
@@ -112,8 +112,8 @@ namespace VendorDirectTests.CareCreditTests {
 		}
 
 		private static void FillCaches(List<Clinic> listClinics,List<Provider> listProviders) {
-			Clinics.FillCacheFromTable(OpenDentBusiness.Crud.ClinicCrud.ListToTable(listClinics));
-			Providers.FillCacheFromTable(OpenDentBusiness.Crud.ProviderCrud.ListToTable(listProviders));
+			Clinics.FillCacheFromTable(OpenPmsDentalBusiness.Crud.ClinicCrud.ListToTable(listClinics));
+			Providers.FillCacheFromTable(OpenPmsDentalBusiness.Crud.ProviderCrud.ListToTable(listProviders));
 		}
 
 		private static void Exec(MySqlConnection connection,string command) {
@@ -311,7 +311,7 @@ namespace VendorDirectTests.CareCreditTests {
 			providerClinic.StateRxID="";
 			providerClinic.StateWhereLicensed="";
 			providerClinic.CareCreditMerchantId=merchantNum;
-			OpenDentBusiness.Crud.ProviderClinicCrud.Insert(providerClinic);
+			OpenPmsDentalBusiness.Crud.ProviderClinicCrud.Insert(providerClinic);
 		}
 
 		private static string GetODExceptionMessage(Action action) {

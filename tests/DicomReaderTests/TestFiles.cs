@@ -9,7 +9,7 @@ using ImagingCapture.Dicom;
 using ImagingCapture.Metadata;
 using ImagingDeviceManager.Capture;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace DicomReaderTests {
 	internal static class TestFiles {

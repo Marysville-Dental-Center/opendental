@@ -8,7 +8,7 @@ using System.Net.Http;
 using CodeBase;
 using CodeBase.VendorDirect;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness.Qbo;
+using OpenPmsDentalBusiness.Qbo;
 using VendorDirectTests.Foundation;
 
 namespace VendorDirectTests.Qbo {

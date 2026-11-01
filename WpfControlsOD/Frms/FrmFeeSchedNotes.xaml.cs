@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Input;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	///<summary>The dated notes of one fee schedule (Open Dental 24.4 feature, re-implemented from the public release notes). Opened from Edit Fee
 	///Schedule (Notes button) and, read-only, from the Procedure Codes window. Adding, editing and deleting need FeeSchedEdit; viewing needs no
 	///permission.</summary>

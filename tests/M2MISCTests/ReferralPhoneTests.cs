@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace M2MISCTests {
 	[TestClass]
@@ -124,12 +124,12 @@ namespace M2MISCTests {
 			Assert.AreEqual(29,telephone.Length);
 			Referral referral=new Referral { LName="Synthetic",FName="Referrer",Telephone=telephone,Phone2="",Note="",DisplayNote="" };
 			long referralNum=Referrals.Insert(referral);
-			Referral referralDb=OpenDentBusiness.Crud.ReferralCrud.SelectOne(referralNum);
+			Referral referralDb=OpenPmsDentalBusiness.Crud.ReferralCrud.SelectOne(referralNum);
 			Assert.AreEqual(telephone,referralDb.Telephone,"referral.Telephone is varchar(30) since 25.4 (M2-01).");
 			string telephoneMax=new string('9',30);
 			referralDb.Telephone=telephoneMax;
 			Referrals.Update(referralDb);
-			Assert.AreEqual(telephoneMax,OpenDentBusiness.Crud.ReferralCrud.SelectOne(referralNum).Telephone);
+			Assert.AreEqual(telephoneMax,OpenPmsDentalBusiness.Crud.ReferralCrud.SelectOne(referralNum).Telephone);
 		}
 	}
 }

@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using OpenDentBusiness.HL7;
-using OpenDentBusiness;
-using OpenDental;
-using OpenDental.Bridges;
+using OpenPmsDentalBusiness.HL7;
+using OpenPmsDentalBusiness;
+using OpenPmsDental;
+using OpenPmsDental.Bridges;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using CodeBase;
 using UnitTestsCore;
@@ -864,13 +864,13 @@ namespace UnitTests.HL7_Tests {
 					//EcwOldStandalone and HL7DefEcwStandalone were handled higher up
 					case HL7TestInterfaceEnum.EcwOldFull:
 					case HL7TestInterfaceEnum.EcwOldTight:
-						OpenDentBusiness.HL7.EcwDFT dft=new OpenDentBusiness.HL7.EcwDFT();
+						OpenPmsDentalBusiness.HL7.EcwDFT dft=new OpenPmsDentalBusiness.HL7.EcwDFT();
 						dft.InitializeEcw(aptNum,provNum,pat,"Test Message","treatment",false,procList);
 						msg=new MessageHL7(dft.GenerateMessage());
 						break;
 					case HL7TestInterfaceEnum.HL7DefEcwFull:
 					case HL7TestInterfaceEnum.HL7DefEcwTight:
-						msg=new MessageHL7(OpenDentBusiness.HL7.MessageConstructor.GenerateDFT(procList,EventTypeHL7.P03,pat,guar,aptNum,"treatment","Test Message").ToString());
+						msg=new MessageHL7(OpenPmsDentalBusiness.HL7.MessageConstructor.GenerateDFT(procList,EventTypeHL7.P03,pat,guar,aptNum,"treatment","Test Message").ToString());
 						//msg will be null if there's not DFT defined for the def.  Should handle results for those defs higher up
 						break;
 					default:
@@ -954,13 +954,13 @@ namespace UnitTests.HL7_Tests {
 					//EcwOldStandalone and HL7DefEcwStandalone were handled higher up
 					case HL7TestInterfaceEnum.EcwOldFull:
 					case HL7TestInterfaceEnum.EcwOldTight:
-						OpenDentBusiness.HL7.EcwDFT dft=new OpenDentBusiness.HL7.EcwDFT();
+						OpenPmsDentalBusiness.HL7.EcwDFT dft=new OpenPmsDentalBusiness.HL7.EcwDFT();
 						dft.InitializeEcw(aptNum,provNum,pat,"Test Message","treatment",false,procList);
 						msg=new MessageHL7(dft.GenerateMessage());
 						break;
 					case HL7TestInterfaceEnum.HL7DefEcwFull:
 					case HL7TestInterfaceEnum.HL7DefEcwTight:
-						msg=new MessageHL7(OpenDentBusiness.HL7.MessageConstructor.GenerateDFT(procList,EventTypeHL7.P03,pat,guar,aptNum,"treatment","Test Message").ToString());
+						msg=new MessageHL7(OpenPmsDentalBusiness.HL7.MessageConstructor.GenerateDFT(procList,EventTypeHL7.P03,pat,guar,aptNum,"treatment","Test Message").ToString());
 						//msg will be null if there's not DFT defined for the def.  Should handle results for those defs higher up
 						break;
 					default:
@@ -1069,13 +1069,13 @@ namespace UnitTests.HL7_Tests {
 					//EcwOldStandalone and HL7DefEcwStandalone were handled higher up
 					case HL7TestInterfaceEnum.EcwOldFull:
 					case HL7TestInterfaceEnum.EcwOldTight:
-						OpenDentBusiness.HL7.EcwDFT dft=new OpenDentBusiness.HL7.EcwDFT();
+						OpenPmsDentalBusiness.HL7.EcwDFT dft=new OpenPmsDentalBusiness.HL7.EcwDFT();
 						dft.InitializeEcw(apt.AptNum,prov.ProvNum,pat,"Test Message","treatment",false,procList);
 						msg=new MessageHL7(dft.GenerateMessage());
 						break;
 					case HL7TestInterfaceEnum.HL7DefEcwFull:
 					case HL7TestInterfaceEnum.HL7DefEcwTight:
-						msg=new MessageHL7(OpenDentBusiness.HL7.MessageConstructor.GenerateDFT(procList,EventTypeHL7.P03,pat,guar,apt.AptNum,"treatment","Test Message").ToString());
+						msg=new MessageHL7(OpenPmsDentalBusiness.HL7.MessageConstructor.GenerateDFT(procList,EventTypeHL7.P03,pat,guar,apt.AptNum,"treatment","Test Message").ToString());
 						//msg will be null if there's not DFT defined for the def.  Should handle results for those defs higher up
 						break;
 					default:

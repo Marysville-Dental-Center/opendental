@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Text;
 using System.Windows.Forms;
 using CodeBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
-namespace OpenDental.Bridges {
+namespace OpenPmsDental.Bridges {
 	/// <summary></summary>
 	public class Sirona {
 
@@ -16,7 +16,7 @@ namespace OpenDental.Bridges {
 
 		///<summary>Sends data for Patient to a mailbox file and launches the program.</summary>
 		public static void SendData(Program ProgramCur, Patient pat) {
-			OpenDentBusiness.Shared.Sirona.Lans_g=Lans.g;
+			OpenPmsDentalBusiness.Shared.Sirona.Lans_g=Lans.g;
 			string path=Programs.GetProgramPath(ProgramCur);
 			List<ProgramProperty> listProgramProperties=ProgramProperties.GetForProgram(ProgramCur.ProgramNum);
 			List<string> listIniLines=new List<string>();
@@ -132,7 +132,7 @@ namespace OpenDental.Bridges {
 					line.Append("\r\n");
 					listIniLines.Add(line.ToString());
 					#endregion
-					OpenDentBusiness.Shared.Sirona.WriteToSendBoxFile(path,listIniLines);
+					OpenPmsDentalBusiness.Shared.Sirona.WriteToSendBoxFile(path,listIniLines);
 				}
 				catch(Exception ex) {
 					FriendlyException.Show(Lang.g("Sirona","Error preparing Sidexis for patient message."),ex);

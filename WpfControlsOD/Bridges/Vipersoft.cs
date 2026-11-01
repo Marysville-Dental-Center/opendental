@@ -8,11 +8,11 @@ using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 using NDde;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using System.Collections.Generic;
 using CodeBase;
 
-namespace OpenDental.Bridges{
+namespace OpenPmsDental.Bridges{
 	/// <summary></summary>
 	public class Vipersoft{
 

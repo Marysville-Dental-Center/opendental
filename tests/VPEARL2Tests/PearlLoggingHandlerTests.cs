@@ -9,8 +9,8 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.Pearl;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.Pearl;
 
 namespace VPEARL2Tests {
 	[TestClass]

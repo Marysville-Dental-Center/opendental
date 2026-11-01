@@ -296,13 +296,13 @@
       <Project>{29c41020-4411-41f2-9061-9b71b5b32b5d}</Project>
       <Name>xDataConnectionBase</Name>
     </ProjectReference>
-    <ProjectReference Include="..\OpenDental\OpenDental.csproj">
+    <ProjectReference Include="..\OpenPmsDental\OpenPmsDental.csproj">
       <Project>{8136317d-c936-49b6-9e31-d90f02d2f207}</Project>
-      <Name>OpenDental</Name>
+      <Name>OpenPmsDental</Name>
     </ProjectReference>
-    <ProjectReference Include="..\OpenDentBusiness\OpenDentBusiness.csproj">
+    <ProjectReference Include="..\OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj">
       <Project>{3D0FC76E-803C-4DE2-BDB1-47D63A4E2357}</Project>
-      <Name>OpenDentBusiness</Name>
+      <Name>OpenPmsDentalBusiness</Name>
     </ProjectReference>
     <ProjectReference Include="..\PasswordVaultWrapper\PasswordVaultWrapper.csproj">
       <Project>{59052a4b-ec6f-44e3-8c3f-26749d28bcf3}</Project>

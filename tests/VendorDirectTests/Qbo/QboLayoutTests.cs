@@ -6,7 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness.Qbo;
+using OpenPmsDentalBusiness.Qbo;
 using VendorDirectTests.Foundation;
 
 namespace VendorDirectTests.Qbo {

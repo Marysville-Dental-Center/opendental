@@ -8,8 +8,8 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.Eclaims;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.Eclaims;
 using VendorDirectTests.Foundation;
 
 namespace VendorDirectTests.Canada {

@@ -1,12 +1,12 @@
 ﻿using CodeBase;
-using OpenDental.UI;
-using OpenDentBusiness;
+using OpenPmsDental.UI;
+using OpenPmsDentalBusiness;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Windows.Forms;
 using System.Threading;
-using OpenDental;
+using OpenPmsDental;
 using System.Linq;
 
 namespace CentralManager {

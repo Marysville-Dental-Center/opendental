@@ -3,7 +3,7 @@
 using System;
 using ImagingCapture.Save;
 using ImagingDeviceManager.Capture;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Session {
 	///<summary>The capture session's security-log entries (design 7.13, 10.7), written through ICaptureSessionStore on the UI thread, every one

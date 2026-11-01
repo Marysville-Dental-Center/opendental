@@ -8,11 +8,11 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.RegularExpressions;
-using Result=OpenDentBusiness.Pearl.Result;
+using Result=OpenPmsDentalBusiness.Pearl.Result;
 using Newtonsoft.Json;
-using OpenDentBusiness;
-using OpenDentBusiness.Pearl;
-using OpenDentBusiness.WebBridges;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.Pearl;
+using OpenPmsDentalBusiness.WebBridges;
 
 namespace VPEARL1Tests {
 	public class FakePearlHttp:IApiRequest {

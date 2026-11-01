@@ -15,11 +15,11 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using CodeBase;
-using OpenDental.Drawing;
-using OpenDentBusiness;
+using OpenPmsDental.Drawing;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	///<summary></summary>
 	public partial class FrmChildCareMap:FrmODBase {
 		///<summary>Right click options for the classroom grids.</summary>
@@ -487,7 +487,7 @@ namespace OpenDental {
 				return;
 			}
 			//Begin clock out
-			OpenDental.UI.ProgressWin progressWin=new OpenDental.UI.ProgressWin();
+			OpenPmsDental.UI.ProgressWin progressWin=new OpenPmsDental.UI.ProgressWin();
 			progressWin.ShowCancelButton=false;
 			progressWin.ActionMain=() => {
 				ClockEvents.ClockOut(employee.EmployeeNum,timeClockStatus);
@@ -540,7 +540,7 @@ namespace OpenDental {
 				return;
 			}
 			//Begin clock in
-			OpenDental.UI.ProgressWin progressWin=new OpenDental.UI.ProgressWin();
+			OpenPmsDental.UI.ProgressWin progressWin=new OpenPmsDental.UI.ProgressWin();
 			progressWin.ShowCancelButton=false;
 			progressWin.ActionMain=() => {
 				ClockEvents.ClockIn(employee.EmployeeNum,isAtHome:false);
@@ -709,7 +709,7 @@ namespace OpenDental {
 			if(employee.ClockStatus=="Working") {
 				return;//Already clocked in
 			}
-			OpenDental.UI.ProgressWin progressWin=new OpenDental.UI.ProgressWin();
+			OpenPmsDental.UI.ProgressWin progressWin=new OpenPmsDental.UI.ProgressWin();
 			progressWin.ShowCancelButton=false;
 			progressWin.ActionMain=() => {
 				ClockEvents.ClockIn(employee.EmployeeNum,isAtHome:false);

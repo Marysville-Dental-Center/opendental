@@ -10,8 +10,8 @@ using System.Linq;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace M2ADJTests {
 	[TestClass]
@@ -139,7 +139,7 @@ namespace M2ADJTests {
 			Def defDiscount=InsertAdjType("Synthetic senior discount","-","15.00",0);
 			Defs.RefreshCache();
 			Procedure procedure=new Procedure { PatNum=1001,ProcDate=new DateTime(2026,10,1),ProcFee=240,UnitQty=1,ProcStatus=ProcStat.C,CodeNum=1,ProvNum=1 };
-			OpenDentBusiness.Crud.ProcedureCrud.Insert(procedure);
+			OpenPmsDentalBusiness.Crud.ProcedureCrud.Insert(procedure);
 			Def defAdjType=Defs.GetDef(DefCat.AdjTypes,defDiscount.DefNum);
 			decimal percent=Adjustments.GetDefaultPercent(defAdjType).Value;
 			Adjustment adjustment=new Adjustment {

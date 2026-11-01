@@ -28,7 +28,7 @@ using System.Windows.Forms;
 using CodeBase;
 using Tao.OpenGl;
 using Tao.Platform.Windows;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace SparksToothChart {
 	public partial class ToothChartOpenGL:CodeBase.OpenGLWinFormsControl{//.SimpleOpenGlControl {
@@ -725,7 +725,7 @@ namespace SparksToothChart {
 					return;
 				}
 			}
-			string displayNum=OpenDentBusiness.Tooth.DisplayGraphic(tooth_id,TcData.ToothNumberingNomenclature);
+			string displayNum=OpenPmsDentalBusiness.Tooth.DisplayGraphic(tooth_id,TcData.ToothNumberingNomenclature);
 			//string displayNum=tooth_id;
 			float toMm=1f/TcData.ScaleMmToPix;
 			//float toMm=(float)WidthProjection/(float)Width;//mm/pix, a ratio that is used for conversions below. Fix this.

@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace UnitTestsCore {
 	public class StatementT {
@@ -47,12 +47,12 @@ namespace UnitTestsCore {
 
 		public static List<Statement> GetStatementsForPat(long patNum) {
 			string command=$"SELECT * FROM statement WHERE PatNum={patNum}";
-			return OpenDentBusiness.Crud.StatementCrud.SelectMany(command);
+			return OpenPmsDentalBusiness.Crud.StatementCrud.SelectMany(command);
 		}
 
 		public static List<Statement> GetAllStatements() {
 			string command=$"SELECT * FROM statement";
-			return OpenDentBusiness.Crud.StatementCrud.SelectMany(command);
+			return OpenPmsDentalBusiness.Crud.StatementCrud.SelectMany(command);
 		}
 	}
 }

@@ -2,11 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Input;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls;
 using WpfControls.UI;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	///<summary>Edits an Ins Pick field (Open Dental 25.2) in the eForm designer: label, insurance slot (the ins1PlanFromList or ins2PlanFromList link),
 	///the three option labels (PickListVis), Auto Import, layout and conditional logic. There is no Required box: an empty answer means None, which
 	///is always a valid answer. Not patient facing.</summary>

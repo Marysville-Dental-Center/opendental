@@ -8,7 +8,7 @@ using System.Text;
 using ImagingCapture.Dicom;
 using ImagingCapture.Metadata;
 using ImagingDeviceManager.Capture;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Save {
 	///<summary>How a captured radiograph is stored.</summary>

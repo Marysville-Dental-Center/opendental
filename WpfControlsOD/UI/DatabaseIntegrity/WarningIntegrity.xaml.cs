@@ -1,4 +1,4 @@
-﻿using OpenDental;
+﻿using OpenPmsDental;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -16,7 +16,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace WpfControls.UI{
 	/*

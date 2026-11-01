@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using ImagingCapture.Settings;
 using ImagingDeviceManager.Config;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Tests {
 	///<summary>Security-log entries of the Capture settings screen (CaptureSettingsLogEntry) for the tests: a save of exactly the given file's

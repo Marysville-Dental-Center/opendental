@@ -9,7 +9,7 @@ using ImagingCapture.Save;
 using ImagingDeviceManager.Capture;
 using ImagingDeviceManager.Config;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Tests {
 	///<summary>The quarantine's filing rules (design 7.1, 7.12, 10.6, 10.7) behind the store seam: Assign into the original slot or as a

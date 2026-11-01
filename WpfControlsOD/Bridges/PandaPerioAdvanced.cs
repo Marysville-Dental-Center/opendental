@@ -2,11 +2,11 @@
 using System.Linq;
 using System.Windows.Forms;
 using Microsoft.Win32;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using CodeBase;
 using System.IO;
 
-namespace OpenDental.Bridges {
+namespace OpenPmsDental.Bridges {
 	public class PandaPerioAdvanced {
 
 		///<summary>Launches the program using a combination of command line characters and the patient.Cur data.</summary>

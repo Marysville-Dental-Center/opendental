@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace DevDbTool {
 	///<summary>Adds a small, entirely fictional practice on top of the seed data: two providers, two operatories, six patients in four

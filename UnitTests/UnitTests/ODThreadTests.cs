@@ -1,7 +1,7 @@
 ﻿using CodeBase;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using System;
 using System.Collections.Generic;
 using System.Data;

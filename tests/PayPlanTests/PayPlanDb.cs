@@ -5,8 +5,8 @@ using System;
 using System.Collections.Generic;
 using ForkMigrationTests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 using UnitTestsCore;
 
 namespace PayPlanTests {

@@ -9,7 +9,7 @@ using System.Linq;
 using System.Windows.Forms;
 using Microsoft.CSharp;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDental.UI;
+using OpenPmsDental.UI;
 
 namespace BINBTests {
 	[TestClass]
@@ -143,7 +143,7 @@ namespace Topaz {
 		///<summary>A signature made in the program's own box for a treatment plan (digitally signed, synthetic signer), as FormTPsign saves one.</summary>
 		private static string GetOwnTreatPlanSignature(string keyData) {
 			using(SignatureBox signatureBox=new SignatureBox()) {
-				signatureBox.SetKeyString(OpenDentBusiness.TreatPlans.GetHashStringForSignature(keyData));
+				signatureBox.SetKeyString(OpenPmsDentalBusiness.TreatPlans.GetHashStringForSignature(keyData));
 				signatureBox.SetDigitalSig("Digitally Signed by Synthetic Test User");
 				return signatureBox.GetSigString();
 			}

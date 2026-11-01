@@ -11,7 +11,7 @@ using ImagingCapture.Session;
 using ImagingCapture.Settings;
 using ImagingDeviceManager.Capture;
 using ImagingDeviceManager.Config;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Recovery {
 	///<summary>Where an Assign files a capture (design 7.12 "Assign"): the originating patient, and the original slot if it is still empty,

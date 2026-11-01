@@ -1,4 +1,4 @@
-﻿using OpenDentBusiness;
+﻿using OpenPmsDentalBusiness;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,7 +17,7 @@ namespace UnitTestsCore {
 		///<summary>Gets all database entries.</summary>
 		public static List<EmailSecure> GetAll() {
 			string command="SELECT * FROM emailsecure";
-			return DataAction.GetPractice(() => OpenDentBusiness.Crud.EmailSecureCrud.SelectMany(command));
+			return DataAction.GetPractice(() => OpenPmsDentalBusiness.Crud.EmailSecureCrud.SelectMany(command));
 		}
 	}
 }

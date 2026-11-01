@@ -10,7 +10,7 @@ using ImagingCapture.Session;
 using ImagingCapture.Templates;
 using ImagingDeviceManager.Capture;
 using ImagingDeviceManager.Config;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Tests.Db {
 	///<summary>A capture session on the real database: the launcher with OdCaptureSessionStore and OdRadiographStore, and stand-ins only for what

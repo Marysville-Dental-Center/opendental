@@ -4,8 +4,8 @@ using System.Data;
 using System.IO;
 using System.Text;
 using DataConnectionBase;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace DevDbTool {
 	///<summary>Thrown when the tool declines to do something that could destroy data or that the arguments do not allow.</summary>

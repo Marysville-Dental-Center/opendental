@@ -6,7 +6,7 @@ using System.IO;
 using System.Linq;
 using Dicom;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using static DicomReaderTests.SyntheticDicom;
 
 namespace DicomReaderTests {

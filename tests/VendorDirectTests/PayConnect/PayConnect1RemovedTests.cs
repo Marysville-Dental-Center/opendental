@@ -9,7 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using VendorDirectTests.Foundation;
 
 namespace VendorDirectTests.PayConnectV1Removal {
@@ -61,8 +61,8 @@ namespace VendorDirectTests.PayConnectV1Removal {
 		public void MerchantServiceWebReference_IsGone() {
 			Assembly assemblyBusiness=typeof(Patient).Assembly;
 			//The namespaces come from types that stay, which must resolve the same way, so the checks cannot pass only because a namespace was renamed.
-			string nsService=typeof(OpenDentBusiness.PayConnectService.transType).Namespace;
-			Assert.AreEqual(typeof(OpenDentBusiness.PayConnectService.transType),assemblyBusiness.GetType(nsService+".transType"));
+			string nsService=typeof(OpenPmsDentalBusiness.PayConnectService.transType).Namespace;
+			Assert.AreEqual(typeof(OpenPmsDentalBusiness.PayConnectService.transType),assemblyBusiness.GetType(nsService+".transType"));
 			Assert.AreEqual(typeof(PayConnect),assemblyBusiness.GetType(typeof(Patient).Namespace+".PayConnect"));
 			foreach(string typeName in new[] { "MerchantService","Credentials","creditCardRequest","transResponse","signatureRequest","expiration","Token" }) {
 				Assert.IsNull(assemblyBusiness.GetType(nsService+"."+typeName),"PayConnectService."+typeName+" should be gone.");
@@ -79,12 +79,12 @@ namespace VendorDirectTests.PayConnectV1Removal {
 		[TestMethod]
 		public void TransType_KeepsTheStoredNamesAndOrder() {
 			//payconnectresponseweb.TransType holds the member name, and PayConnectResponseWebCrud parses it back.
-			CollectionAssert.AreEqual(new[] { "SALE","AUTH","RETURN","VOID","FORCE" },Enum.GetNames(typeof(OpenDentBusiness.PayConnectService.transType)));
-			Assert.AreEqual(3,(int)OpenDentBusiness.PayConnectService.transType.VOID);
-			Assert.AreEqual(OpenDentBusiness.PayConnectService.transType.RETURN,
-				(OpenDentBusiness.PayConnectService.transType)Enum.Parse(typeof(OpenDentBusiness.PayConnectService.transType),"RETURN"));
+			CollectionAssert.AreEqual(new[] { "SALE","AUTH","RETURN","VOID","FORCE" },Enum.GetNames(typeof(OpenPmsDentalBusiness.PayConnectService.transType)));
+			Assert.AreEqual(3,(int)OpenPmsDentalBusiness.PayConnectService.transType.VOID);
+			Assert.AreEqual(OpenPmsDentalBusiness.PayConnectService.transType.RETURN,
+				(OpenPmsDentalBusiness.PayConnectService.transType)Enum.Parse(typeof(OpenPmsDentalBusiness.PayConnectService.transType),"RETURN"));
 			FieldInfo fieldInfo=typeof(PayConnectResponseWeb).GetField(nameof(PayConnectResponseWeb.TransType));
-			Assert.AreEqual(typeof(OpenDentBusiness.PayConnectService.transType),fieldInfo.FieldType,"The table type keeps its column type.");
+			Assert.AreEqual(typeof(OpenPmsDentalBusiness.PayConnectService.transType),fieldInfo.FieldType,"The table type keeps its column type.");
 		}
 
 		[TestMethod]

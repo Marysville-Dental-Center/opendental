@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using CentralManager;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using UnitTestsCore;
 
 namespace UnitTests.CentralManager_Tests {

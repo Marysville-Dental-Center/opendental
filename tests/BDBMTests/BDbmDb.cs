@@ -9,9 +9,9 @@ using System.Linq;
 using System.Threading;
 using ForkMigrationTests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.FileIO;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.FileIO;
+using OpenPmsDentalBusiness.ForkMigrations;
 using UnitTestsCore;
 
 namespace BDBMTests {
@@ -99,7 +99,7 @@ namespace BDBMTests {
 				command+=" AND PatNum="+patNum;
 			}
 			command+=" ORDER BY SecurityLogNum";
-			return OpenDentBusiness.Crud.SecurityLogCrud.SelectMany(command);
+			return OpenPmsDentalBusiness.Crud.SecurityLogCrud.SelectMany(command);
 		}
 	}
 }

@@ -4,8 +4,8 @@ using System;
 using System.IO;
 using DataConnectionBase;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace M2SHELLTests {
 	///<summary>Locates the repository and its source files (the WinForms code is checked as source, because the tests do not load OpenDental.exe).</summary>

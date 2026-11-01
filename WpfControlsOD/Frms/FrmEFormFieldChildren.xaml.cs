@@ -7,11 +7,11 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 using CodeBase;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	/// <summary>Lists the conditional children of a checkbox or radio button field in eForm setup (Open Dental 25.1): every field whose conditional
 	/// parent is this field, with the value that makes it show. Double clicking a child opens its editor. Opened from the parent field's editor.</summary>
 	public partial class FrmEFormFieldChildren : FrmODBase {

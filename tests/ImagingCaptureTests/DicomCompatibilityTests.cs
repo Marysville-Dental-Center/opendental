@@ -8,7 +8,7 @@ using System.Reflection;
 using ImagingCapture.Dicom;
 using ImagingDeviceManager.Capture;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Tests {
 	///<summary>The one compatibility test of design 7.8: while fo-dicom still ships, a file from DicomIntraOralWriter opens through Open

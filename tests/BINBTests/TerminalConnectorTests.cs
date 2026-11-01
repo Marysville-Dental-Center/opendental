@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.IO.Ports;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness.Eclaims;
+using OpenPmsDentalBusiness.Eclaims;
 
 namespace BINBTests {
 	[TestClass]

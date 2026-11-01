@@ -1,8 +1,8 @@
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using System;
 using System.Diagnostics;
 
-namespace OpenDental.Bridges {
+namespace OpenPmsDental.Bridges {
 	///<summary>Shining 3D Bridge</summary>
 	public class Shining3D {
 

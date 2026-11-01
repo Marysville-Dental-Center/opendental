@@ -6,9 +6,9 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDental;
-using OpenDental.UI;
-using OpenDentBusiness;
+using OpenPmsDental;
+using OpenPmsDental.UI;
+using OpenPmsDentalBusiness;
 using UnitTestsCore;
 
 namespace UnitTests.IntegrationTests.UserControlTasks_Tests {
@@ -17,7 +17,7 @@ namespace UnitTests.IntegrationTests.UserControlTasks_Tests {
 		private TaskList _taskListParent;
 		private TaskList _taskListChild;
 		private TaskList _taskListGrandchild;
-		private OpenDentBusiness.Task _task;
+		private OpenPmsDentalBusiness.Task _task;
 		private UserControlTasks _userControlTasksInstance;
 		private PrivateObject _userControlTasksAccessor;
 
@@ -93,7 +93,7 @@ namespace UnitTests.IntegrationTests.UserControlTasks_Tests {
 				&& x.FKey==_taskListParent.TaskListNum));//Signal for destination taskList.
 			Assert.IsTrue(listSignals.Exists(x => x.IType==InvalidType.TaskPopup && x.FKeyType==KeyType.Task 
 				&& x.FKey==_task.TaskNum));//Signal for Task Popup.
-			OpenDentBusiness.Task taskDb=Tasks.GetOne(_task.TaskNum);
+			OpenPmsDentalBusiness.Task taskDb=Tasks.GetOne(_task.TaskNum);
 			Assert.AreEqual(_taskListParent.TaskListNum,taskDb.TaskListNum);//Db was properly updated with new taskListNum on _task.
 		}
 
@@ -113,8 +113,8 @@ namespace UnitTests.IntegrationTests.UserControlTasks_Tests {
 			//Signal for Task Popup. Don't know the primary key for this.
 			Assert.IsTrue(listSignals.Exists(x => x.IType==InvalidType.TaskPopup && x.FKeyType==KeyType.Task));
 			long pastedTaskPK=listSignals.FirstOrDefault(x => x.IType==InvalidType.TaskPopup)?.FKey??0;//Only way to get new key is by reading the associated signal.
-			OpenDentBusiness.Task taskCopiedDb=Tasks.GetOne(_task.TaskNum);//Copied task.
-			OpenDentBusiness.Task taskPastedDb=Tasks.GetOne(pastedTaskPK);//Pasted task.
+			OpenPmsDentalBusiness.Task taskCopiedDb=Tasks.GetOne(_task.TaskNum);//Copied task.
+			OpenPmsDentalBusiness.Task taskPastedDb=Tasks.GetOne(pastedTaskPK);//Pasted task.
 			Assert.AreEqual(_taskListGrandchild.TaskListNum,taskCopiedDb.TaskListNum);//Db did not change on copied task.
 			Assert.AreEqual(_taskListParent.TaskListNum,taskPastedDb.TaskListNum);//Db has pasted task in the correct tasklist.
 		}
@@ -128,7 +128,7 @@ namespace UnitTests.IntegrationTests.UserControlTasks_Tests {
 			Assert.AreEqual(1,listSignals.Count);
 			Assert.IsTrue(listSignals.Exists(x => x.IType==InvalidType.Task && x.FKeyType==KeyType.Task 
 				&& x.FKey==_task.TaskNum));//Signal for _task.
-			OpenDentBusiness.Task taskDb=Tasks.GetOne(_task.TaskNum);
+			OpenPmsDentalBusiness.Task taskDb=Tasks.GetOne(_task.TaskNum);
 			Assert.AreEqual(TaskStatusEnum.Viewed,taskDb.TaskStatus);
 		}
 
@@ -154,7 +154,7 @@ namespace UnitTests.IntegrationTests.UserControlTasks_Tests {
 			Assert.AreEqual(1,listSignals.Count);
 			Assert.IsTrue(listSignals.Exists(x => x.IType==InvalidType.Task && x.FKeyType==KeyType.Task 
 				&& x.FKey==_task.TaskNum));//Signal for _task.
-			OpenDentBusiness.Task taskDb=Tasks.GetOne(_task.TaskNum);
+			OpenPmsDentalBusiness.Task taskDb=Tasks.GetOne(_task.TaskNum);
 			Assert.AreEqual(newDef.DefNum,taskDb.PriorityDefNum);
 		}
 

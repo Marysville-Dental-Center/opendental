@@ -7,7 +7,7 @@ using System.Text;
 using ImagingCapture.Metadata;
 using ImagingCapture.Save;
 using ImagingDeviceManager.Capture;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Recovery {
 	///<summary>Whether a journal copy already has its document (design 7.1: Recover recent captures lists only journal copies "that have no

@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using DataConnectionBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace DevDbTool {
 	///<summary>Writes a database as one SQL file, in C# and without MariaDB client tools: a header, the session settings of the seed dump, then for

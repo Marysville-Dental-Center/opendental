@@ -3,8 +3,8 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 using SyntheticData.Infrastructure;
 using Db=SyntheticData.Infrastructure.Db;
 
@@ -118,10 +118,10 @@ namespace AdoptionValidation {
 			if(!isSchemaMatch) {
 				result.ListFailures.Add("The schema differs from Open Dental "+SchemaVerifier.ReferenceVersion+".");
 			}
-			result.DateRehashWindow=OpenDentBusiness.Misc.SecurityHash.GetHashingDate();
+			result.DateRehashWindow=OpenPmsDentalBusiness.Misc.SecurityHash.GetHashingDate();
 			log("Rehash: every patient, and the other tables' rows dated on or after "
 				+result.DateRehashWindow.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture)+".");
-			step("Rehash (SecurityHash.RehashNow)",() => OpenDentBusiness.Misc.SecurityHash.RehashNow());
+			step("Rehash (SecurityHash.RehashNow)",() => OpenPmsDentalBusiness.Misc.SecurityHash.RehashNow());
 			result.ListHashesAfter=BusinessLayer.CountHashes();
 			foreach(HashCount hashCount in result.ListHashesAfter) {
 				log("  "+hashCount);

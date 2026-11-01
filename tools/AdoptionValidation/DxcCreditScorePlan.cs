@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using OpenDentBusiness.ForkMigrations.FeatureSteps;
+using OpenPmsDentalBusiness.ForkMigrations.FeatureSteps;
 using SyntheticData.Infrastructure;
 using Db=SyntheticData.Infrastructure.Db;
 
@@ -66,7 +66,7 @@ namespace AdoptionValidation {
 				}
 				if(Rows.ListButtonsDeleted.Count>0) {
 					listParts.Add("deletes its "+Rows.ListButtonsDeleted.Count+" toolbar button(s) (ToolButItemNum "+string.Join(", ",Rows.ListButtonsDeleted
-						.Select(x => x.ToolButItemNum+" on "+(OpenDentBusiness.EnumToolBar)x.ToolBar))+")");
+						.Select(x => x.ToolButItemNum+" on "+(OpenPmsDentalBusiness.EnumToolBar)x.ToolBar))+")");
 				}
 				listLines.Add(step+": the discontinued DXC Patient Credit Score program link ("+rows+") stays, with its text; the step "+string.Join(" and ",listParts)
 					+" (on every database, an Open Dental 25.3.48 one included). The adoption log says "+string.Join(" and ",Rows.GetLogLines().Select(x => "\""+x+"\""))

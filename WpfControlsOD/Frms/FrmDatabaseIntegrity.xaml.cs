@@ -9,10 +9,10 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	///<summary>Message box shown when a record's tamper-detection hash does not match, meaning the record was changed outside of this program.
 	///Set MessageToShow to describe which entries are affected. </summary>
 	public partial class FrmDatabaseIntegrity:FrmODBase {

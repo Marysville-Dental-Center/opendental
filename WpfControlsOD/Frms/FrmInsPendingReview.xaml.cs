@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Input;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	///<summary>Review of one pending insurance row (inspending, Open Dental 25.2), opened from the Family module. Staff can fix the details, delete the row
 	///(needs InsPlanEdit, our choice), or convert it to real insurance in one window: pick or create the carrier, pick or create the plan, reuse or
 	///create the subscription, choose the ordinal, and optionally convert the same insurance for other family members. Conversion needs CarrierCreate

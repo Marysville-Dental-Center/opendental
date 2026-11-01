@@ -21,10 +21,10 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using CodeBase;
 using NHunspell;
-using OpenDental;
+using OpenPmsDental;
 
 namespace WpfControls.UI{
 /*

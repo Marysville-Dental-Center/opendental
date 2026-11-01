@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using System.Linq;
 
 namespace UnitTestsCore {

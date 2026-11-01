@@ -3,7 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace BERATests {
 	public static class EraObjects {

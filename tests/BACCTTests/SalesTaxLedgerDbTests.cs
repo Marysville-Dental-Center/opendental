@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace BACCTTests {
 	[TestClass]
@@ -121,7 +121,7 @@ namespace BACCTTests {
 			Patient patientOld=ledger.Patient.Copy();
 			ledger.Patient.SuperFamily=ledger.Patient.PatNum;
 			ledger.Patient.HasSuperBilling=true;
-			OpenDentBusiness.Crud.PatientCrud.Update(ledger.Patient,patientOld);
+			OpenPmsDentalBusiness.Crud.PatientCrud.Update(ledger.Patient,patientOld);
 			Statement statement=new Statement();
 			statement.PatNum=ledger.Patient.PatNum;
 			statement.SuperFamily=ledger.Patient.PatNum;

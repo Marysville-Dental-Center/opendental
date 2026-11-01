@@ -24,20 +24,20 @@ namespace CentralManager {
 		/// </summary>
 		private void InitializeComponent() {
 			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormCentralProdInc));
-			this.butOK = new OpenDental.UI.Button();
-			this.butCancel = new OpenDental.UI.Button();
+			this.butOK = new OpenPmsDental.UI.Button();
+			this.butCancel = new OpenPmsDental.UI.Button();
 			this.groupBox3 = new System.Windows.Forms.GroupBox();
 			this.label5 = new System.Windows.Forms.Label();
 			this.radioWriteoffProc = new System.Windows.Forms.RadioButton();
 			this.radioWriteoffPay = new System.Windows.Forms.RadioButton();
 			this.groupBox2 = new System.Windows.Forms.GroupBox();
-			this.butRight = new OpenDental.UI.Button();
-			this.butThis = new OpenDental.UI.Button();
+			this.butRight = new OpenPmsDental.UI.Button();
+			this.butThis = new OpenPmsDental.UI.Button();
 			this.label2 = new System.Windows.Forms.Label();
-			this.textDateFrom = new OpenDental.ValidDate();
-			this.textDateTo = new OpenDental.ValidDate();
+			this.textDateFrom = new OpenPmsDental.ValidDate();
+			this.textDateTo = new OpenPmsDental.ValidDate();
 			this.label3 = new System.Windows.Forms.Label();
-			this.butLeft = new OpenDental.UI.Button();
+			this.butLeft = new OpenPmsDental.UI.Button();
 			this.textToday = new System.Windows.Forms.TextBox();
 			this.label4 = new System.Windows.Forms.Label();
 			this.groupBox1 = new System.Windows.Forms.GroupBox();
@@ -305,20 +305,20 @@ namespace CentralManager {
 
 		#endregion
 
-		private OpenDental.UI.Button butOK;
-		private OpenDental.UI.Button butCancel;
+		private OpenPmsDental.UI.Button butOK;
+		private OpenPmsDental.UI.Button butCancel;
 		private System.Windows.Forms.GroupBox groupBox3;
 		private System.Windows.Forms.Label label5;
 		private System.Windows.Forms.RadioButton radioWriteoffProc;
 		private System.Windows.Forms.RadioButton radioWriteoffPay;
 		private System.Windows.Forms.GroupBox groupBox2;
-		private OpenDental.UI.Button butRight;
-		private OpenDental.UI.Button butThis;
+		private OpenPmsDental.UI.Button butRight;
+		private OpenPmsDental.UI.Button butThis;
 		private System.Windows.Forms.Label label2;
-		private OpenDental.ValidDate textDateFrom;
-		private OpenDental.ValidDate textDateTo;
+		private OpenPmsDental.ValidDate textDateFrom;
+		private OpenPmsDental.ValidDate textDateTo;
 		private System.Windows.Forms.Label label3;
-		private OpenDental.UI.Button butLeft;
+		private OpenPmsDental.UI.Button butLeft;
 		private System.Windows.Forms.TextBox textToday;
 		private System.Windows.Forms.Label label4;
 		private System.Windows.Forms.GroupBox groupBox1;

@@ -13,13 +13,13 @@ using CodeBase;
 using ForkMigrationTests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json.Linq;
-using OpenDentBusiness;
-using Dea=OpenDentBusiness.DentalxchangePartnerService;
-using OpenDentBusiness.Eclaims;
-using OpenDentBusiness.FileIO;
-using OpenDentBusiness.ForkMigrations;
-using OpenDentBusiness.VendorDirect.DentalXChange;
-using OpenDentBusiness.WebBridges;
+using OpenPmsDentalBusiness;
+using Dea=OpenPmsDentalBusiness.DentalxchangePartnerService;
+using OpenPmsDentalBusiness.Eclaims;
+using OpenPmsDentalBusiness.FileIO;
+using OpenPmsDentalBusiness.ForkMigrations;
+using OpenPmsDentalBusiness.VendorDirect.DentalXChange;
+using OpenPmsDentalBusiness.WebBridges;
 using UnitTestsCore;
 
 namespace VDXC2Tests {

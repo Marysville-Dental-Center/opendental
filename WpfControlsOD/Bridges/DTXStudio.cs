@@ -3,10 +3,10 @@
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using CodeBase;
-using OpenDentBusiness;
-using OpenDentBusiness.VendorDirect.ProgramLinks;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.VendorDirect.ProgramLinks;
 
-namespace OpenDental.Bridges {
+namespace OpenPmsDental.Bridges {
 	///<summary>DTX Studio and DTX Studio Acquire program links. Both need a patient. The arguments come from the Patient arguments property, which
 	///the office fills in from the vendor's integration guide.</summary>
 	public class DTXStudio {

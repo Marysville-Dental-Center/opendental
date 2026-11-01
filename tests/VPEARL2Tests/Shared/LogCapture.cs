@@ -3,7 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using OpenDentBusiness.Pearl;
+using OpenPmsDentalBusiness.Pearl;
 
 namespace VPEARL2Tests {
 	///<summary>While alive, PearlLog reads its properties from DictProps and writes its lines to Lines instead of the program link and the Logger

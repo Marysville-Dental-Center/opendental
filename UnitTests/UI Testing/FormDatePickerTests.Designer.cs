@@ -25,22 +25,22 @@
 		private void InitializeComponent() {
 			this.panel1 = new System.Windows.Forms.Panel();
 			this.label3 = new System.Windows.Forms.Label();
-			this.odDatePicker2 = new OpenDental.UI.ODDatePicker();
+			this.odDatePicker2 = new OpenPmsDental.UI.ODDatePicker();
 			this.label2 = new System.Windows.Forms.Label();
-			this.odDatePicker1 = new OpenDental.UI.ODDatePicker();
+			this.odDatePicker1 = new OpenPmsDental.UI.ODDatePicker();
 			this.label1 = new System.Windows.Forms.Label();
-			this.odDatePickerFrom = new OpenDental.UI.ODDatePicker();
+			this.odDatePickerFrom = new OpenPmsDental.UI.ODDatePicker();
 			this.label4 = new System.Windows.Forms.Label();
 			this.label5 = new System.Windows.Forms.Label();
 			this.label6 = new System.Windows.Forms.Label();
-			this.odDatePicker3 = new OpenDental.UI.ODDatePicker();
-			this.odDatePicker4 = new OpenDental.UI.ODDatePicker();
-			this.odDatePicker5 = new OpenDental.UI.ODDatePicker();
-			this.dateRangePicker = new OpenDental.UI.ODDateRangePicker();
-			this.odDateRangePicker1 = new OpenDental.UI.ODDateRangePicker();
+			this.odDatePicker3 = new OpenPmsDental.UI.ODDatePicker();
+			this.odDatePicker4 = new OpenPmsDental.UI.ODDatePicker();
+			this.odDatePicker5 = new OpenPmsDental.UI.ODDatePicker();
+			this.dateRangePicker = new OpenPmsDental.UI.ODDateRangePicker();
+			this.odDateRangePicker1 = new OpenPmsDental.UI.ODDateRangePicker();
 			this.textBox1 = new System.Windows.Forms.TextBox();
 			this.label7 = new System.Windows.Forms.Label();
-			this.textDateFrom = new OpenDental.ValidDate();
+			this.textDateFrom = new OpenPmsDental.ValidDate();
 			this.panel1.SuspendLayout();
 			this.SuspendLayout();
 			// 
@@ -70,7 +70,7 @@
 			// odDatePicker2
 			// 
 			this.odDatePicker2.BackColor = System.Drawing.Color.Transparent;
-			this.odDatePicker2.CalendarLocation = OpenDental.UI.ODDatePicker.EnumCalendarLocation.ToTheRight;
+			this.odDatePicker2.CalendarLocation = OpenPmsDental.UI.ODDatePicker.EnumCalendarLocation.ToTheRight;
 			this.odDatePicker2.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F);
 			this.odDatePicker2.Location = new System.Drawing.Point(3, 61);
 			this.odDatePicker2.Name = "odDatePicker2";
@@ -89,7 +89,7 @@
 			// odDatePicker1
 			// 
 			this.odDatePicker1.BackColor = System.Drawing.Color.Transparent;
-			this.odDatePicker1.CalendarLocation = OpenDental.UI.ODDatePicker.EnumCalendarLocation.Above;
+			this.odDatePicker1.CalendarLocation = OpenPmsDental.UI.ODDatePicker.EnumCalendarLocation.Above;
 			this.odDatePicker1.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F);
 			this.odDatePicker1.Location = new System.Drawing.Point(3, 32);
 			this.odDatePicker1.Name = "odDatePicker1";
@@ -144,7 +144,7 @@
 			// odDatePicker3
 			// 
 			this.odDatePicker3.BackColor = System.Drawing.Color.Transparent;
-			this.odDatePicker3.CalendarLocation = OpenDental.UI.ODDatePicker.EnumCalendarLocation.ToTheRight;
+			this.odDatePicker3.CalendarLocation = OpenPmsDental.UI.ODDatePicker.EnumCalendarLocation.ToTheRight;
 			this.odDatePicker3.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F);
 			this.odDatePicker3.Location = new System.Drawing.Point(277, 114);
 			this.odDatePicker3.Name = "odDatePicker3";
@@ -154,7 +154,7 @@
 			// odDatePicker4
 			// 
 			this.odDatePicker4.BackColor = System.Drawing.Color.Transparent;
-			this.odDatePicker4.CalendarLocation = OpenDental.UI.ODDatePicker.EnumCalendarLocation.Above;
+			this.odDatePicker4.CalendarLocation = OpenPmsDental.UI.ODDatePicker.EnumCalendarLocation.Above;
 			this.odDatePicker4.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F);
 			this.odDatePicker4.Location = new System.Drawing.Point(277, 85);
 			this.odDatePicker4.Name = "odDatePicker4";
@@ -239,22 +239,22 @@
 
 		#endregion
 		private System.Windows.Forms.Panel panel1;
-		private OpenDental.UI.ODDatePicker odDatePickerFrom;
+		private OpenPmsDental.UI.ODDatePicker odDatePickerFrom;
 		private System.Windows.Forms.Label label3;
-		private OpenDental.UI.ODDatePicker odDatePicker2;
+		private OpenPmsDental.UI.ODDatePicker odDatePicker2;
 		private System.Windows.Forms.Label label2;
-		private OpenDental.UI.ODDatePicker odDatePicker1;
+		private OpenPmsDental.UI.ODDatePicker odDatePicker1;
 		private System.Windows.Forms.Label label1;
 		private System.Windows.Forms.Label label4;
-		private OpenDental.UI.ODDatePicker odDatePicker3;
+		private OpenPmsDental.UI.ODDatePicker odDatePicker3;
 		private System.Windows.Forms.Label label5;
-		private OpenDental.UI.ODDatePicker odDatePicker4;
+		private OpenPmsDental.UI.ODDatePicker odDatePicker4;
 		private System.Windows.Forms.Label label6;
-		private OpenDental.UI.ODDatePicker odDatePicker5;
-		private OpenDental.UI.ODDateRangePicker dateRangePicker;
-		private OpenDental.UI.ODDateRangePicker odDateRangePicker1;
+		private OpenPmsDental.UI.ODDatePicker odDatePicker5;
+		private OpenPmsDental.UI.ODDateRangePicker dateRangePicker;
+		private OpenPmsDental.UI.ODDateRangePicker odDateRangePicker1;
 		private System.Windows.Forms.TextBox textBox1;
 		private System.Windows.Forms.Label label7;
-		private OpenDental.ValidDate textDateFrom;
+		private OpenPmsDental.ValidDate textDateFrom;
 	}
 }

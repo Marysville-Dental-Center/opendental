@@ -9,7 +9,7 @@ using ImagingCapture.Save;
 using ImagingCapture.UI;
 using ImagingCapture.Video;
 using ImagingDeviceManager.Capture;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Session {
 	///<summary>The logic of the capture session window (design 7.3-7.7, 7.12, 10.2, 10.3, 10.8), with no window types, so that it can be tested

@@ -33,14 +33,14 @@
 			this.label1 = new System.Windows.Forms.Label();
 			this.label2 = new System.Windows.Forms.Label();
 			this.label3 = new System.Windows.Forms.Label();
-			this.button2 = new OpenDental.UI.Button();
-			this.butDeleteProc = new OpenDental.UI.Button();
+			this.button2 = new OpenPmsDental.UI.Button();
+			this.butDeleteProc = new OpenPmsDental.UI.Button();
 			this.panelTop = new System.Windows.Forms.Panel();
 			this.panelLeft = new System.Windows.Forms.Panel();
 			this.panelRight = new System.Windows.Forms.Panel();
 			this.button3 = new System.Windows.Forms.Button();
 			this.elementHost = new System.Windows.Forms.Integration.ElementHost();
-			this.windowingSlider = new OpenDental.UI.WindowingSlider();
+			this.windowingSlider = new OpenPmsDental.UI.WindowingSlider();
 			this.elementHostWindowingSlider = new System.Windows.Forms.Integration.ElementHost();
 			this.SuspendLayout();
 			// 
@@ -196,18 +196,18 @@
 		}
 
 		#endregion
-		private OpenDental.UI.Button butDeleteProc;
+		private OpenPmsDental.UI.Button butDeleteProc;
 		private System.Windows.Forms.Button button1;
 		private System.Windows.Forms.Label label1;
 		private System.Windows.Forms.Label label2;
 		private System.Windows.Forms.Label label3;
-		private OpenDental.UI.Button button2;
+		private OpenPmsDental.UI.Button button2;
 		private System.Windows.Forms.Panel panelTop;
 		private System.Windows.Forms.Panel panelLeft;
 		private System.Windows.Forms.Panel panelRight;
 		private System.Windows.Forms.Button button3;
 		private System.Windows.Forms.Integration.ElementHost elementHost;
-		private OpenDental.UI.WindowingSlider windowingSlider;
+		private OpenPmsDental.UI.WindowingSlider windowingSlider;
 		private System.Windows.Forms.Integration.ElementHost elementHostWindowingSlider;
 	}
 }

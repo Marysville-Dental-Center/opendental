@@ -7,8 +7,8 @@ using System.Linq;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.PostcardMania;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.PostcardMania;
 
 namespace VendorDirectTests.PostcardMania {
 	[TestClass]

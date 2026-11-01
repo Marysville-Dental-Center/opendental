@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using UnitTestsCore;
 
 namespace UnitTests.Operatories_Tests {
@@ -33,7 +33,7 @@ namespace UnitTests.Operatories_Tests {
 
 		///<summary>Helper method that mimics the Update All button click from the Operatory Edit window.</summary>
 		private void UpdateAll(Operatory op) {
-			OpenDental.ControlAppt controlAppt=new OpenDental.ControlAppt() { Visible=false };
+			OpenPmsDental.ControlAppt controlAppt=new OpenPmsDental.ControlAppt() { Visible=false };
 			List<Appointment> listAppts=Appointments.GetAppointmentsForOpsByPeriod(new List<long>() {op.OperatoryNum},DateTime.Now);//no end date, so all future
 			List<Appointment> listApptsOld=listAppts.Select(x => x.Copy()).ToList();
 			//Update the appointment 

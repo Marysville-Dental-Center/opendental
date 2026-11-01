@@ -7,8 +7,8 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using CodeBase.VendorDirect;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.VendorDirect.GlobalPayments;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.VendorDirect.GlobalPayments;
 
 namespace VGPTests {
 	[TestClass]

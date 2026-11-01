@@ -8,8 +8,8 @@ using CodeBase;
 using ForkMigrationTests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.Pearl;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.Pearl;
 
 namespace VPEARL2Tests {
 	[TestClass]
@@ -168,7 +168,7 @@ namespace VPEARL2Tests {
 			PearlRequests.Insert(new PearlRequest { RequestId=requestId,DocNum=314,RequestStatus=EnumPearlStatus.TimedOut,
 				DateTSent=new DateTime(2026,10,25,8,0,0),DateTChecked=new DateTime(2026,10,25,8,10,0) });
 			PearlApiClientMock pearlApiClientMock=new PearlApiClientMock();
-			pearlApiClientMock.FuncGetImageByRequestIdOutput=(org,id) => new ImageRequestIdResponse { result=new OpenDentBusiness.Pearl.Result() };
+			pearlApiClientMock.FuncGetImageByRequestIdOutput=(org,id) => new ImageRequestIdResponse { result=new OpenPmsDentalBusiness.Pearl.Result() };
 			PearlApiClientLogging pearlApiClientLogging=new PearlApiClientLogging(pearlApiClientMock);//The default lookup, against the database.
 			List<string> listLines=new List<string>();
 			PearlLog.ActionWriteLine=line => listLines.Add(line);

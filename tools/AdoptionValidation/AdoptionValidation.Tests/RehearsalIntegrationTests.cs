@@ -10,9 +10,9 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SyntheticData.Generation;
 using SyntheticData.Infrastructure;
 using SyntheticData.Validation;
-using DisplayReportNames=OpenDentBusiness.DisplayReports.ReportNames;
-using SchemaVerifier=OpenDentBusiness.ForkMigrations.SchemaVerifier;
-using Seed26_1=OpenDentBusiness.ForkMigrations.Seeds26_1.Seed26_1;
+using DisplayReportNames=OpenPmsDentalBusiness.DisplayReports.ReportNames;
+using SchemaVerifier=OpenPmsDentalBusiness.ForkMigrations.SchemaVerifier;
+using Seed26_1=OpenPmsDentalBusiness.ForkMigrations.Seeds26_1.Seed26_1;
 
 namespace AdoptionValidation.Tests {
 	///<summary>Runs the whole M1-Z rehearsal (small preset, two runs) on scratch databases synth_m1z_t&lt;time&gt;_&lt;pid&gt;_* on the local server, keeps
@@ -216,7 +216,7 @@ namespace AdoptionValidation.Tests {
 		[TestMethod]
 		public void Adoption_DisablesTheDxcLinkAndDeletesItsButtons() {
 			SkipIfNeeded();
-			string prog=OpenDentBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.PROG_NAME;
+			string prog=OpenPmsDentalBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.PROG_NAME;
 			using(Db db=Db.Open(_server)) {
 				long programNum=db.ScalarLong("SELECT ProgramNum FROM `"+Source(1)+"`.program WHERE ProgName='"+prog+"'");
 				Assert.IsTrue(programNum>0,"The fixture's DXC row.");
@@ -257,7 +257,7 @@ namespace AdoptionValidation.Tests {
 			string tampered=Rehearsal.DbPrefix+Tag+"_tampereddxc";
 			List<string> listLog=new List<string>();
 			Assert.AreEqual(Program.ExitPass,Program.Run(new[] { "copy","--original",Adopted(1),"--database",tampered },listLog.Add),string.Join("\r\n",listLog));
-			string prog=OpenDentBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.PROG_NAME;
+			string prog=OpenPmsDentalBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.PROG_NAME;
 			using(Db db=Db.Open(_server)) {
 				AdoptionRowCheck.Result resultClean=AdoptionRowCheck.Run(db,Source(1),tampered);
 				Assert.IsTrue(resultClean.Passed,"An untouched adopted copy passes. "+string.Join("\r\n",resultClean.ListFailures));
@@ -325,7 +325,7 @@ namespace AdoptionValidation.Tests {
 				Assert.AreEqual(OfficeFixture.INSHIST_GROUP_ADDED,Convert.ToString(rowAdded[0]));
 				Assert.AreEqual("Z4355",Convert.ToString(rowAdded[1]));
 				Assert.AreEqual(db.ScalarLong("SELECT MAX(ItemOrder) FROM `"+Source(1)+"`.codegroup")+1,Convert.ToInt64(rowAdded[2]),"After every other group.");
-				Assert.AreEqual((int)OpenDentBusiness.EnumCodeGroupFixed.FMDebride,Convert.ToInt32(rowAdded[3]));
+				Assert.AreEqual((int)OpenPmsDentalBusiness.EnumCodeGroupFixed.FMDebride,Convert.ToInt32(rowAdded[3]));
 				Assert.IsTrue(rowAdded.Skip(4).All(x => Convert.ToInt32(x)==0),"In no benefit grid, not hidden.");
 				Assert.AreEqual(0,db.ScalarLong("SELECT COUNT(*) FROM `"+Adopted(1)+"`.codegroup WHERE ShowInHistory=0 AND (HistProcCode<>'' OR IsPerioFourQuads<>0)"));
 				foreach((string prefName,string value) pref in OfficeFixture.ArrayInsHistPrefs) {
@@ -458,7 +458,7 @@ namespace AdoptionValidation.Tests {
 				Assert.AreEqual(1,db.ScalarLong("SELECT COUNT(*) FROM `"+Source(1)+"`.claimpayment a INNER JOIN `"+Adopted(1)+"`.claimpayment b USING(ClaimPaymentNum) "
 					+"WHERE a.ClaimPaymentNum="+claimPaymentNum+" AND b.Note='' AND b.Note IS NOT NULL AND a.SecDateTEdit=b.SecDateTEdit"),
 					"The note is empty and the payment's audit timestamp did not move.");
-				foreach((OpenDentBusiness.PrefName prefName,string valueString) pref in Seed26_1.ListPrefDefaults) {
+				foreach((OpenPmsDentalBusiness.PrefName prefName,string valueString) pref in Seed26_1.ListPrefDefaults) {
 					Assert.AreEqual(pref.valueString,Convert.ToString(db.Scalar("SELECT ValueString FROM `"+Adopted(1)+"`.preference WHERE PrefName='"+pref.prefName+"'")),
 						pref.prefName.ToString());
 				}
@@ -1030,7 +1030,7 @@ namespace AdoptionValidation.Tests {
 			Assert.AreEqual(Program.ExitPass,Program.Run(new[] { "copy","--original",Source(1),"--database",late },listLog.Add),string.Join("\r\n",listLog));
 			//Interrupted after step 3.
 			BusinessLayer.Connect(_server,early);
-			AssertThrows<ApplicationException>(() => OpenDentBusiness.Adoption.Run(x => {
+			AssertThrows<ApplicationException>(() => OpenPmsDentalBusiness.Adoption.Run(x => {
 				if(x.StartsWith("Deleted ")) {
 					throw new ApplicationException("interrupted for the test");
 				}
@@ -1047,8 +1047,8 @@ namespace AdoptionValidation.Tests {
 			}
 			//Interrupted in the fork migration, after ForkSchemaLevel was written.
 			BusinessLayer.Connect(_server,late);
-			OpenDentBusiness.IForkMigrationRunner runnerReal=OpenDentBusiness.ForkMigrationHandOff.Runner;
-			AssertThrows<ApplicationException>(() => OpenDentBusiness.Adoption.Run(null,new CutOffRunner(runnerReal)));
+			OpenPmsDentalBusiness.IForkMigrationRunner runnerReal=OpenPmsDentalBusiness.ForkMigrationHandOff.Runner;
+			AssertThrows<ApplicationException>(() => OpenPmsDentalBusiness.Adoption.Run(null,new CutOffRunner(runnerReal)));
 			listLog.Clear();
 			int exitLate=Program.Run(new[] { "adopt","--database",late,"--original",Source(1),"--confirm",late },listLog.Add);
 			Assert.AreNotEqual(Program.ExitPass,exitLate,string.Join("\r\n",listLog));
@@ -1065,10 +1065,10 @@ namespace AdoptionValidation.Tests {
 		}
 
 		///<summary>A fork migration runner that is cut off in its first step, as a killed process would be.</summary>
-		private class CutOffRunner : OpenDentBusiness.IForkMigrationRunner {
-			private readonly OpenDentBusiness.IForkMigrationRunner _runner;
+		private class CutOffRunner : OpenPmsDentalBusiness.IForkMigrationRunner {
+			private readonly OpenPmsDentalBusiness.IForkMigrationRunner _runner;
 
-			public CutOffRunner(OpenDentBusiness.IForkMigrationRunner runner) {
+			public CutOffRunner(OpenPmsDentalBusiness.IForkMigrationRunner runner) {
 				_runner=runner;
 			}
 

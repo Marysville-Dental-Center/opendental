@@ -11,7 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MimeKit;
-using OpenDentBusiness.Microsoft365;
+using OpenPmsDentalBusiness.Microsoft365;
 
 namespace VendorDirectTests.Microsoft365 {
 	[TestClass]

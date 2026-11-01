@@ -5,7 +5,7 @@ using ImagingCapture.Save;
 using ImagingCapture.Settings;
 using ImagingDeviceManager.Capture;
 using ImagingDeviceManager.Config;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Session {
 	///<summary>Everything one capture session is bound to, resolved by CaptureSessionLauncher before the window opens (design 6.4): the patient

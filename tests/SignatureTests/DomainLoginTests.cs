@@ -6,7 +6,7 @@ using System.Data;
 using System.Linq;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace SignatureTests {
 	///<summary>A directory that knows one account and password, and records every call.</summary>

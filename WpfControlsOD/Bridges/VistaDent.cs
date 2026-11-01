@@ -1,9 +1,9 @@
 using System;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using System.Collections.Generic;
 using CodeBase;
 
-namespace OpenDental.Bridges{
+namespace OpenPmsDental.Bridges{
 	/// <summary></summary>
 	public class VistaDent {
 

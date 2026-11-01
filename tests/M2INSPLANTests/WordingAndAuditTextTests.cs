@@ -7,8 +7,8 @@ using System.Linq;
 using System.Threading;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDental;
-using OpenDentBusiness;
+using OpenPmsDental;
+using OpenPmsDentalBusiness;
 
 namespace M2INSPLANTests {
 	[TestClass]

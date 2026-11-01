@@ -8,8 +8,8 @@ using System.Drawing;
 using System.IO;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.Eclaims;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.Eclaims;
 
 namespace CLAIMDCMTests {
 	[TestClass]

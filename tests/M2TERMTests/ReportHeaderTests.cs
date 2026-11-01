@@ -9,8 +9,8 @@ using System.Drawing;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDental.ReportingComplex;
-using OpenDentBusiness;
+using OpenPmsDental.ReportingComplex;
+using OpenPmsDentalBusiness;
 
 namespace M2TERMTests {
 	[TestClass]
@@ -152,7 +152,7 @@ namespace M2TERMTests {
 		public void TestInitialize() {
 			TermDb.Begin();
 			if(_procNum==0) {
-				_procNum=OpenDentBusiness.Crud.ProcedureCrud.Insert(new Procedure { PatNum=TermDb.PatNum,CodeNum=TermDb.CodeNumWithFee,ProvNum=TermDb.ProvNum,
+				_procNum=OpenPmsDentalBusiness.Crud.ProcedureCrud.Insert(new Procedure { PatNum=TermDb.PatNum,CodeNum=TermDb.CodeNumWithFee,ProvNum=TermDb.ProvNum,
 					ProcStatus=ProcStat.C,ProcDate=_dateReport,DateComplete=_dateReport,ProcFee=125,UnitQty=1,BaseUnits=0 });
 			}
 		}

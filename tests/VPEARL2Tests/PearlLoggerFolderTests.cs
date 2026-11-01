@@ -7,7 +7,7 @@ using System.Linq;
 using System.Reflection;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness.Pearl;
+using OpenPmsDentalBusiness.Pearl;
 
 namespace VPEARL2Tests {
 	[TestClass]

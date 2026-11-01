@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace AdoptionValidation {
 	public enum OdStartupOutcome {

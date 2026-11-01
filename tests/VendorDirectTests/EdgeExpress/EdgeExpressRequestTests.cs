@@ -8,8 +8,8 @@ using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.WebTypes.Shared.XWeb;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.WebTypes.Shared.XWeb;
 
 namespace VendorDirectTests.EdgeExpressTests {
 	[TestClass]

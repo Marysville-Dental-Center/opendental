@@ -2,9 +2,9 @@
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	///<summary>Shared by the Allergy edit window, the Problem edit window (FrmDiseaseEdit) and the right-click menus of the Medical window.  The rules
 	///and the database work are in OpenDentBusiness.OtherEntryConverts.  Lives in WpfControlsOD so that FrmDiseaseEdit can use it; the lists are
 	///opened through FormLauncher.</summary>

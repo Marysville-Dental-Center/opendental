@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using UnitTestsCore;
 
 namespace UnitTests.Permissions_Tests {
@@ -98,7 +98,7 @@ namespace UnitTests.Permissions_Tests {
 		public void Permissions_Adjustments_SecurityTreeSetAllAdjustmentTypeDeny() {
 			GroupPermissionT.ClearGroupPermissionTable();
 			GroupPermissions.RefreshCache();
-			OpenDental.UserControlSecurityTree userControlSecurityTree=new OpenDental.UserControlSecurityTree();
+			OpenPmsDental.UserControlSecurityTree userControlSecurityTree=new OpenPmsDental.UserControlSecurityTree();
 			userControlSecurityTree.FillForUserGroup(_userGroup.UserGroupNum);
 			DefT.DeleteAllForCategory(DefCat.AdjTypes);
 			DefT.CreateDefinition(DefCat.AdjTypes,"Family Discount","-");
@@ -118,7 +118,7 @@ namespace UnitTests.Permissions_Tests {
 		public void Permissions_Adjustments_SecurityTreeSetNoneAdjustmentTypeDeny() {
 			GroupPermissionT.ClearGroupPermissionTable();
 			GroupPermissions.RefreshCache();
-			OpenDental.UserControlSecurityTree userControlSecurityTree=new OpenDental.UserControlSecurityTree();
+			OpenPmsDental.UserControlSecurityTree userControlSecurityTree=new OpenPmsDental.UserControlSecurityTree();
 			userControlSecurityTree.FillForUserGroup(_userGroup.UserGroupNum);
 			DefT.DeleteAllForCategory(DefCat.AdjTypes);
 			DefT.CreateDefinition(DefCat.AdjTypes,"Family Discount","-");

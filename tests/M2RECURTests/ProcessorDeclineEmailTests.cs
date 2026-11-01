@@ -9,8 +9,8 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.WebTypes.Shared.XWeb;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.WebTypes.Shared.XWeb;
 using UnitTestsCore;
 
 namespace M2RECURTests {

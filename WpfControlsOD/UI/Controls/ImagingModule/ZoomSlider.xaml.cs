@@ -20,9 +20,9 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using CodeBase;
-using OpenDentBusiness;
-using OpenDental.Drawing;
-using OpenDental.UI;//even though they are in this project
+using OpenPmsDentalBusiness;
+using OpenPmsDental.Drawing;
+using OpenPmsDental.UI;//even though they are in this project
 
 namespace WpfControls.UI{
 /*
@@ -309,7 +309,7 @@ Jordan is the only one allowed to edit this file.
 			}
 			Color colorText=Colors.Black;
 			if(!IsEnabled){
-				colorText=OpenDental.ColorOD.Gray_Wpf(160);
+				colorText=OpenPmsDental.ColorOD.Gray_Wpf(160);
 			}
 			lineMinus.Stroke=new SolidColorBrush(colorText);
 			linePlus1.Stroke=new SolidColorBrush(colorText);
@@ -481,7 +481,7 @@ Jordan is the only one allowed to edit this file.
 			textBoxEdit.Visible=true;
 			_didTextHitEsc=false;
 			textBoxEdit.Text=Round(_value).ToString();
-			OpenDental.FrmODBase.DoEvents();
+			OpenPmsDental.FrmODBase.DoEvents();
 			//because the visible setting has not yet propagated to the nested textbox, so Focus would not work.
 			textBoxEdit.SelectAll();
 			Draw();

@@ -6,10 +6,10 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using CodeBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls;
 
-namespace OpenDental.UI{
+namespace OpenPmsDental.UI{
 /*
 How to use ProgressWin:
 Jordan is the only one allowed to edit this file.

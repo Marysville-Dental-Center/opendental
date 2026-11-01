@@ -10,11 +10,11 @@ using System.Windows.Forms;
 using System.Windows.Forms.Integration;
 using Microsoft.VisualBasic.Devices;
 using Microsoft.Win32;
-using OpenDental.UI;
+using OpenPmsDental.UI;
 using CodeBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	//Jordan is the only one allowed to alter this file.
 	//This code was copied from FormODBase, and then stripped down.
 

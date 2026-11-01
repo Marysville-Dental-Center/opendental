@@ -7,10 +7,10 @@ using System.Text;
 using System.Windows.Forms;
 using CodeBase;
 using NDde;
-using OpenDental.UI;
-using OpenDentBusiness;
+using OpenPmsDental.UI;
+using OpenPmsDentalBusiness;
 
-namespace OpenDental.Bridges {
+namespace OpenPmsDental.Bridges {
 
 	///<summary>The Dexis Integrator is used when an office uses Terminal Services or Citrix and want to take X-rays on a client workstation with OD
 	///running on a server viewed through an RDP session.  The Integrator will be installed on the Terminal Server and on the client workstations.

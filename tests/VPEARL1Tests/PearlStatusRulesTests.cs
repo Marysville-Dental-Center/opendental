@@ -6,9 +6,9 @@ using System.Collections.Generic;
 using System.Linq;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.Pearl;
-using Result=OpenDentBusiness.Pearl.Result;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.Pearl;
+using Result=OpenPmsDentalBusiness.Pearl.Result;
 
 namespace VPEARL1Tests {
 	[TestClass]

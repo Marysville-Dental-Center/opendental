@@ -56,7 +56,7 @@ namespace WpfControls.UI {
 			//string userDataFolder= "C:\\Program Files (x86)\\OpenDental\\OpenDental.exe.WebView2";
 			//New location is like this:
 			//C:\\Users\\User\\AppData\\Local\\Temp\\opendental
-			string userDataFolder=OpenDentBusiness.PrefC.GetTempFolderPath();
+			string userDataFolder=OpenPmsDentalBusiness.PrefC.GetTempFolderPath();
 			CoreWebView2Environment webView2Environment=await CoreWebView2Environment.CreateAsync(null,userDataFolder,null);
 			await webView2.EnsureCoreWebView2Async(webView2Environment);
 		}

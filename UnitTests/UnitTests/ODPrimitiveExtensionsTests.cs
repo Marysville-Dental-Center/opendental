@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace UnitTests {
 	[TestClass]

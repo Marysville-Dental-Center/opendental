@@ -24,9 +24,9 @@
 		/// </summary>
 		private void InitializeComponent() {
 			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormCentralConnectionGroups));
-			this.gridMain = new OpenDental.UI.GridOD();
-			this.butClose = new OpenDental.UI.Button();
-			this.butAdd = new OpenDental.UI.Button();
+			this.gridMain = new OpenPmsDental.UI.GridOD();
+			this.butClose = new OpenPmsDental.UI.Button();
+			this.butAdd = new OpenPmsDental.UI.Button();
 			this.comboConnectionGroup = new System.Windows.Forms.ComboBox();
 			this.label1 = new System.Windows.Forms.Label();
 			this.SuspendLayout();
@@ -42,7 +42,7 @@
 			this.gridMain.TabIndex = 0;
 			this.gridMain.Title = "Groups";
 			this.gridMain.TranslationName = "TableGroups";
-			this.gridMain.CellDoubleClick += new OpenDental.UI.ODGridClickEventHandler(this.gridMain_CellDoubleClick);
+			this.gridMain.CellDoubleClick += new OpenPmsDental.UI.ODGridClickEventHandler(this.gridMain_CellDoubleClick);
 			// 
 			// butClose
 			// 
@@ -110,9 +110,9 @@
 
 		#endregion
 
-		private OpenDental.UI.GridOD gridMain;
-		private OpenDental.UI.Button butClose;
-		private OpenDental.UI.Button butAdd;
+		private OpenPmsDental.UI.GridOD gridMain;
+		private OpenPmsDental.UI.Button butClose;
+		private OpenPmsDental.UI.Button butAdd;
 		private System.Windows.Forms.ComboBox comboConnectionGroup;
 		private System.Windows.Forms.Label label1;
 	}

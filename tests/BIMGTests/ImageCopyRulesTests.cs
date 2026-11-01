@@ -1,7 +1,7 @@
 // 25.2 v25_2-imaging-copy-without-drawings: which single documents Copy and Copy without drawings take from the stored file and which they draw, and
 // the security log text. Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace BIMGTests {
 	///<summary>The cases that are decided before the drawings are looked up, so no database is needed. Unedited images and drawings are in

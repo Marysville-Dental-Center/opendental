@@ -11,11 +11,11 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using CodeBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
-using OpenDental.Drawing;
+using OpenPmsDental.Drawing;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 /*
 Jordan is the only one allowed to edit this file.
 

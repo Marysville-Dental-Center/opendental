@@ -1,9 +1,9 @@
 using System;
 using System.Windows.Forms;
 using CodeBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
-namespace OpenDental.Bridges{
+namespace OpenPmsDental.Bridges{
 	public class RapidCall {
 
 		///<summary></summary>

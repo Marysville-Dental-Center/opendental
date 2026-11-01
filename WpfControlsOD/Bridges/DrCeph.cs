@@ -3,12 +3,12 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using CodeBase;
 using Newtonsoft.Json;
 using System.Windows.Forms;
 
-namespace OpenDental.Bridges{
+namespace OpenPmsDental.Bridges{
 	/// <summary></summary>
 	public class DrCeph{
 		

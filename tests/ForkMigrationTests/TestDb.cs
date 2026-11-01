@@ -10,7 +10,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using DataConnectionBase;
 using MySqlConnector;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ForkMigrationTests {
 	///<summary>Creates, connects to and drops scratch databases. Every database name starts with "forkmig_" so a test can never drop anything

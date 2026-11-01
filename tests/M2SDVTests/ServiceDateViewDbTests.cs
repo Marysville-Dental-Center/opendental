@@ -11,8 +11,8 @@ using System.IO;
 using System.Linq;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.SheetFramework;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.SheetFramework;
 
 namespace M2SDVTests {
 	[TestClass]
@@ -76,10 +76,10 @@ namespace M2SDVTests {
 		#region Synthetic data
 		private static void CreateSyntheticFamily() {
 			Provider provider=new Provider { Abbr="SYNDOC",FName="Syn",LName="Doctor" };
-			_provNum=OpenDentBusiness.Crud.ProviderCrud.Insert(provider);
-			_codeNumExam=OpenDentBusiness.Crud.ProcedureCodeCrud.Insert(new ProcedureCode { ProcCode="Z9101",Descript="Synthetic exam",AbbrDesc="SynEx",
+			_provNum=OpenPmsDentalBusiness.Crud.ProviderCrud.Insert(provider);
+			_codeNumExam=OpenPmsDentalBusiness.Crud.ProcedureCodeCrud.Insert(new ProcedureCode { ProcCode="Z9101",Descript="Synthetic exam",AbbrDesc="SynEx",
 				TreatArea=TreatmentArea.Mouth,ProcCat=Defs.GetDefsForCategory(DefCat.ProcCodeCats,true).First().DefNum });
-			_codeNumFilling=OpenDentBusiness.Crud.ProcedureCodeCrud.Insert(new ProcedureCode { ProcCode="Z9102",Descript="Synthetic filling",
+			_codeNumFilling=OpenPmsDentalBusiness.Crud.ProcedureCodeCrud.Insert(new ProcedureCode { ProcCode="Z9102",Descript="Synthetic filling",
 				AbbrDesc="SynFil",TreatArea=TreatmentArea.Tooth,ProcCat=Defs.GetDefsForCategory(DefCat.ProcCodeCats,true).First().DefNum });
 			Cache.Refresh(InvalidType.ProcCodes,InvalidType.Providers);
 			_patientAnn=CreatePatient("Ann",0);
@@ -97,7 +97,7 @@ namespace M2SDVTests {
 			_payNum2=InsertPayment(_patientAnn.PatNum,_date3,40);
 			InsertSplit(_payNum2,_patientAnn.PatNum,40,_date3,0);
 			//Received insurance on procedure 4, plus a payment made as a total on the same claim.
-			long claimPaymentNum=OpenDentBusiness.Crud.ClaimPaymentCrud.Insert(new ClaimPayment { CheckDate=_date3,CheckAmt=135,CarrierName="Synthetic Ins",
+			long claimPaymentNum=OpenPmsDentalBusiness.Crud.ClaimPaymentCrud.Insert(new ClaimPayment { CheckDate=_date3,CheckAmt=135,CarrierName="Synthetic Ins",
 				Note="",PayType=Defs.GetDefsForCategory(DefCat.InsurancePaymentType,true).FirstOrDefault()?.DefNum??0 });
 			_claimNumReceived=InsertClaim(_patientAnn.PatNum,_date2,"R");
 			InsertClaimProc(_claimNumReceived,_patientAnn.PatNum,_procNum4,_date2,ClaimProcStatus.Received,insPayAmt:120,writeOff:30,insPayEst:120,
@@ -110,10 +110,10 @@ namespace M2SDVTests {
 				dateCP:DateTime.MinValue,claimPaymentNum:0);
 			//A patient payment plan for procedure 2: its credit, and one charge due. Which rows the report shows depends on PayPlansVersion.
 			PayPlan payPlan=new PayPlan { PatNum=_patientAnn.PatNum,Guarantor=_patientAnn.PatNum,PayPlanDate=_date2,CompletedAmt=30,Note="" };
-			_payPlanNum=OpenDentBusiness.Crud.PayPlanCrud.Insert(payPlan);
-			OpenDentBusiness.Crud.PayPlanChargeCrud.Insert(new PayPlanCharge { PayPlanNum=_payPlanNum,PatNum=_patientAnn.PatNum,Guarantor=_patientAnn.PatNum,
+			_payPlanNum=OpenPmsDentalBusiness.Crud.PayPlanCrud.Insert(payPlan);
+			OpenPmsDentalBusiness.Crud.PayPlanChargeCrud.Insert(new PayPlanCharge { PayPlanNum=_payPlanNum,PatNum=_patientAnn.PatNum,Guarantor=_patientAnn.PatNum,
 				ChargeDate=_date2,Principal=30,ChargeType=PayPlanChargeType.Credit,ProcNum=_procNum2,ProvNum=_provNum,Note="" });
-			OpenDentBusiness.Crud.PayPlanChargeCrud.Insert(new PayPlanCharge { PayPlanNum=_payPlanNum,PatNum=_patientAnn.PatNum,Guarantor=_patientAnn.PatNum,
+			OpenPmsDentalBusiness.Crud.PayPlanChargeCrud.Insert(new PayPlanCharge { PayPlanNum=_payPlanNum,PatNum=_patientAnn.PatNum,Guarantor=_patientAnn.PatNum,
 				ChargeDate=_date3,Principal=10,ChargeType=PayPlanChargeType.Debit,ProvNum=_provNum,Note="" });
 		}
 
@@ -129,10 +129,10 @@ namespace M2SDVTests {
 			patient.BillingType=PrefC.GetLong(PrefName.PracticeDefaultBillType);
 			patient.Birthdate=new DateTime(1980,1,1);
 			patient.PriProv=_provNum;
-			patient.PatNum=OpenDentBusiness.Crud.PatientCrud.Insert(patient);
+			patient.PatNum=OpenPmsDentalBusiness.Crud.PatientCrud.Insert(patient);
 			Patient patientOld=patient.Copy();
 			patient.Guarantor=guarantor==0 ? patient.PatNum : guarantor;
-			OpenDentBusiness.Crud.PatientCrud.Update(patient,patientOld);
+			OpenPmsDentalBusiness.Crud.PatientCrud.Update(patient,patientOld);
 			return patient;
 		}
 
@@ -149,7 +149,7 @@ namespace M2SDVTests {
 			procedure.ToothNum=toothNum;
 			procedure.Surf="";
 			procedure.ToothRange="";
-			return OpenDentBusiness.Crud.ProcedureCrud.Insert(procedure);
+			return OpenPmsDentalBusiness.Crud.ProcedureCrud.Insert(procedure);
 		}
 
 		private static long InsertAdjustment(long patNum,double amount,DateTime date,long procNum) {
@@ -162,7 +162,7 @@ namespace M2SDVTests {
 			adjustment.ProcNum=procNum;
 			adjustment.ProvNum=_provNum;
 			adjustment.AdjType=Defs.GetDefsForCategory(DefCat.AdjTypes,true).First().DefNum;
-			return OpenDentBusiness.Crud.AdjustmentCrud.Insert(adjustment);
+			return OpenPmsDentalBusiness.Crud.AdjustmentCrud.Insert(adjustment);
 		}
 
 		private static long InsertPayment(long patNum,DateTime date,double amount) {
@@ -177,7 +177,7 @@ namespace M2SDVTests {
 			payment.PayNote="";
 			payment.Receipt="";
 			payment.ExternalId="";
-			return OpenDentBusiness.Crud.PaymentCrud.Insert(payment);
+			return OpenPmsDentalBusiness.Crud.PaymentCrud.Insert(payment);
 		}
 
 		private static long InsertSplit(long payNum,long patNum,double amount,DateTime date,long procNum,long payPlanNum=0) {
@@ -190,7 +190,7 @@ namespace M2SDVTests {
 			paySplit.ProcNum=procNum;
 			paySplit.ProvNum=_provNum;
 			paySplit.PayPlanNum=payPlanNum;
-			return OpenDentBusiness.Crud.PaySplitCrud.Insert(paySplit);
+			return OpenPmsDentalBusiness.Crud.PaySplitCrud.Insert(paySplit);
 		}
 
 		private static long InsertClaim(long patNum,DateTime dateService,string claimStatus) {
@@ -202,7 +202,7 @@ namespace M2SDVTests {
 			claim.ProvTreat=_provNum;
 			claim.ProvBill=_provNum;
 			claim.ClaimType="P";
-			return OpenDentBusiness.Crud.ClaimCrud.Insert(claim);
+			return OpenPmsDentalBusiness.Crud.ClaimCrud.Insert(claim);
 		}
 
 		private static void InsertClaimProc(long claimNum,long patNum,long procNum,DateTime procDate,ClaimProcStatus status,double insPayAmt,double writeOff,
@@ -228,7 +228,7 @@ namespace M2SDVTests {
 			claimProc.DedEstOverride=-1;
 			claimProc.PercentOverride=-1;
 			claimProc.AllowedOverride=-1;
-			OpenDentBusiness.Crud.ClaimProcCrud.Insert(claimProc);
+			OpenPmsDentalBusiness.Crud.ClaimProcCrud.Insert(claimProc);
 		}
 
 		private static Statement NewStatement(long patNum) {
@@ -661,25 +661,25 @@ namespace M2SDVTests {
 		#region Window and Account grid cells
 		[TestMethod]
 		public void GridCells_FollowTheDisplayFields() {
-			List<DisplayField> listDisplayFields=OpenDental.ServiceDateViewGrid.GetDisplayFields();
+			List<DisplayField> listDisplayFields=OpenPmsDental.ServiceDateViewGrid.GetDisplayFields();
 			CollectionAssert.AreEqual(DisplayFields26_1.GetServiceDateViewDefaultNames(),listDisplayFields.Select(x => x.InternalName).ToList());
 			ServiceDateViewOptions options=new ServiceDateViewOptions { IsDetailed=true };
 			List<ServiceDateViewRow> listRows=RpServiceDateView.GetRows(_patientAnn.PatNum,true,options);
 			ServiceDateViewRow rowProc=listRows.First(x => x.IsProcedure && x.ProcNum==_procNum4);
-			Assert.AreEqual(_date2.ToShortDateString(),OpenDental.ServiceDateViewGrid.GetCellText(rowProc,"Service Date"));
-			Assert.AreEqual("",OpenDental.ServiceDateViewGrid.GetCellText(rowProc,"Trans Date"));
-			Assert.AreEqual("Ann",OpenDental.ServiceDateViewGrid.GetCellText(rowProc,"Patient"));
-			Assert.AreEqual("200.00",OpenDental.ServiceDateViewGrid.GetCellText(rowProc,"Charge").Replace(",","."));
-			Assert.AreEqual("SYNDOC",OpenDental.ServiceDateViewGrid.GetCellText(rowProc,"Prov"));
-			Assert.AreEqual("50.00",OpenDental.ServiceDateViewGrid.GetCellText(rowProc,"AcctBal").Replace(",","."),"200 less insurance 120 and write-off 30.");
+			Assert.AreEqual(_date2.ToShortDateString(),OpenPmsDental.ServiceDateViewGrid.GetCellText(rowProc,"Service Date"));
+			Assert.AreEqual("",OpenPmsDental.ServiceDateViewGrid.GetCellText(rowProc,"Trans Date"));
+			Assert.AreEqual("Ann",OpenPmsDental.ServiceDateViewGrid.GetCellText(rowProc,"Patient"));
+			Assert.AreEqual("200.00",OpenPmsDental.ServiceDateViewGrid.GetCellText(rowProc,"Charge").Replace(",","."));
+			Assert.AreEqual("SYNDOC",OpenPmsDental.ServiceDateViewGrid.GetCellText(rowProc,"Prov"));
+			Assert.AreEqual("50.00",OpenPmsDental.ServiceDateViewGrid.GetCellText(rowProc,"AcctBal").Replace(",","."),"200 less insurance 120 and write-off 30.");
 			ServiceDateViewRow rowInsPay=listRows.First(x => x.TranType=="InsPay-Att.");
-			Assert.AreEqual(_date3.ToShortDateString(),OpenDental.ServiceDateViewGrid.GetCellText(rowInsPay,"Trans Date"));
-			Assert.AreEqual("120.00",OpenDental.ServiceDateViewGrid.GetCellText(rowInsPay,"Production").Replace(",","."));
-			Assert.AreEqual("",OpenDental.ServiceDateViewGrid.GetCellText(rowInsPay,"Service Date"));
+			Assert.AreEqual(_date3.ToShortDateString(),OpenPmsDental.ServiceDateViewGrid.GetCellText(rowInsPay,"Trans Date"));
+			Assert.AreEqual("120.00",OpenPmsDental.ServiceDateViewGrid.GetCellText(rowInsPay,"Production").Replace(",","."));
+			Assert.AreEqual("",OpenPmsDental.ServiceDateViewGrid.GetCellText(rowInsPay,"Service Date"));
 			ServiceDateViewRow rowHeading=listRows.First(x => x.RowKind==ServiceDateViewRowKind.UnallocatedHeading);
-			Assert.AreEqual("",OpenDental.ServiceDateViewGrid.GetCellText(rowHeading,"Charge"));
-			Assert.AreEqual("",OpenDental.ServiceDateViewGrid.GetCellText(rowInsPay,"Clinic"));
-			Assert.IsTrue(OpenDental.ServiceDateViewGrid.MakeGridRow(listRows.Last(),listDisplayFields).Bold,"Totals stay bold.");
+			Assert.AreEqual("",OpenPmsDental.ServiceDateViewGrid.GetCellText(rowHeading,"Charge"));
+			Assert.AreEqual("",OpenPmsDental.ServiceDateViewGrid.GetCellText(rowInsPay,"Clinic"));
+			Assert.IsTrue(OpenPmsDental.ServiceDateViewGrid.MakeGridRow(listRows.Last(),listDisplayFields).Bold,"Totals stay bold.");
 		}
 
 		[TestMethod]
@@ -691,7 +691,7 @@ namespace M2SDVTests {
 			try {
 				Prefs.UpdateInt(PrefName.UseInternationalToothNumbers,(int)ToothNumberingNomenclature.FDI);
 				Cache.Refresh(InvalidType.Prefs);
-				StringAssert.Contains(OpenDental.ServiceDateViewGrid.GetCellText(rowProc,"Reference"),"#"+Tooth.Display("8",ToothNumberingNomenclature.FDI)+"-");
+				StringAssert.Contains(OpenPmsDental.ServiceDateViewGrid.GetCellText(rowProc,"Reference"),"#"+Tooth.Display("8",ToothNumberingNomenclature.FDI)+"-");
 			}
 			finally {
 				Prefs.UpdateInt(PrefName.UseInternationalToothNumbers,prefOld);

@@ -3,11 +3,11 @@ using System.Collections;
 using System.IO;
 using System.Text;
 using System.Windows.Forms;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using System.Collections.Generic;
 using CodeBase;
 
-namespace OpenDental.Bridges{
+namespace OpenPmsDental.Bridges{
 	///<summary>Also used by the XDR bridge until 19.2 when XDR was broken out into its own bridge.</summary>
 	public class Dexis{
 

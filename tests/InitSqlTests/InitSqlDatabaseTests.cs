@@ -9,8 +9,8 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace InitSqlTests {
 	[TestClass]

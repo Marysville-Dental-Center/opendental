@@ -6,9 +6,9 @@ using System.Collections.Generic;
 using System.Linq;
 using ForkMigrationTests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
-using OpenDentBusiness.ForkMigrations.FeatureSteps;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
+using OpenPmsDentalBusiness.ForkMigrations.FeatureSteps;
 
 namespace M2HISTTests {
 	[TestClass]

@@ -5,7 +5,7 @@ using System.Drawing;
 using System.Linq;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace TaskCategoryTests {
 	[TestClass]

@@ -1,7 +1,7 @@
 // Preferences for the tests that run without a database. The Procedure constructor reads one.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System.Collections.Generic;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace GroupNoteTests {
 	public static class TestPrefs {
@@ -11,7 +11,7 @@ namespace GroupNoteTests {
 			if(!Prefs.DictIsNull()) {
 				return;
 			}
-			Prefs.FillCacheFromTable(OpenDentBusiness.Crud.PrefCrud.ListToTable(new List<Pref> {
+			Prefs.FillCacheFromTable(OpenPmsDentalBusiness.Crud.PrefCrud.ListToTable(new List<Pref> {
 				new Pref { PrefNum=1,PrefName=PrefName.DxIcdVersion.ToString(),ValueString="9" },
 			}));
 		}

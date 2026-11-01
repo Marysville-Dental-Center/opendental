@@ -2,7 +2,7 @@
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness.VendorDirect;
+using OpenPmsDentalBusiness.VendorDirect;
 
 namespace VendorDirectTests.Foundation {
 	[TestClass]

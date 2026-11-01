@@ -6,13 +6,13 @@ using System.Xml.Linq;
 using System.Xml.XPath;
 using CentralManager;
 using CodeBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	///<summary></summary>
 	public class FormCentralChooseDatabase:System.Windows.Forms.Form {
-		private OpenDental.UI.Button butOK;
-		private OpenDental.UI.Button butCancel;
+		private OpenPmsDental.UI.Button butOK;
+		private OpenPmsDental.UI.Button butCancel;
 		private System.ComponentModel.Container components = null;
 		private GroupBox groupServer;
 		private Label label9;
@@ -72,8 +72,8 @@ namespace OpenDental {
 			this.label11 = new System.Windows.Forms.Label();
 			this.label9 = new System.Windows.Forms.Label();
 			this.label6 = new System.Windows.Forms.Label();
-			this.butCancel = new OpenDental.UI.Button();
-			this.butOK = new OpenDental.UI.Button();
+			this.butCancel = new OpenPmsDental.UI.Button();
+			this.butOK = new OpenPmsDental.UI.Button();
 			this.checkAutoLogin = new System.Windows.Forms.CheckBox();
 			this.groupServer.SuspendLayout();
 			this.SuspendLayout();
@@ -238,7 +238,7 @@ namespace OpenDental {
 					UsingAutoLogin=true;
 				}
 				catch(Exception) {
-					OpenDental.MessageBox.Show("Unable to enable automatic log in.");
+					OpenPmsDental.MessageBox.Show("Unable to enable automatic log in.");
 				}
 			}
 			DialogResult=DialogResult.OK;

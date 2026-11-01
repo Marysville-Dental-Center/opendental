@@ -7,7 +7,7 @@ using System.Globalization;
 using System.Runtime.Serialization;
 using System.Threading;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace BPERIOTests {
 	[TestClass]

@@ -7,8 +7,8 @@ using System.Globalization;
 using System.Threading;
 using ForkMigrationTests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace M2TERMTests {
 	[TestClass]
@@ -68,15 +68,15 @@ namespace M2TERMTests {
 
 		///<summary>Made-up codes (not real code-set codes), a provider whose fee schedule has a fee for one of them, and a patient.</summary>
 		private static void SeedSyntheticRows() {
-			CodeNumWithFee=OpenDentBusiness.Crud.ProcedureCodeCrud.Insert(new ProcedureCode { ProcCode="ZTRM1",Descript="Terminology test with fee",
+			CodeNumWithFee=OpenPmsDentalBusiness.Crud.ProcedureCodeCrud.Insert(new ProcedureCode { ProcCode="ZTRM1",Descript="Terminology test with fee",
 				AbbrDesc="ZT1",ProcTime="/X/",TreatArea=TreatmentArea.Mouth });
-			CodeNumWithoutFee=OpenDentBusiness.Crud.ProcedureCodeCrud.Insert(new ProcedureCode { ProcCode="ZTRM2",Descript="Terminology test no fee",
+			CodeNumWithoutFee=OpenPmsDentalBusiness.Crud.ProcedureCodeCrud.Insert(new ProcedureCode { ProcCode="ZTRM2",Descript="Terminology test no fee",
 				AbbrDesc="ZT2",ProcTime="/X/",TreatArea=TreatmentArea.Mouth });
-			FeeSchedNum=OpenDentBusiness.Crud.FeeSchedCrud.Insert(new FeeSched { Description="Terminology test standard",
+			FeeSchedNum=OpenPmsDentalBusiness.Crud.FeeSchedCrud.Insert(new FeeSched { Description="Terminology test standard",
 				FeeSchedType=FeeScheduleType.Normal,ItemOrder=90 });
-			ProvNum=OpenDentBusiness.Crud.ProviderCrud.Insert(new Provider { Abbr="ZTRM",LName="Term",FName="Test",ItemOrder=90,FeeSched=FeeSchedNum });
-			OpenDentBusiness.Crud.FeeCrud.Insert(new Fee { CodeNum=CodeNumWithFee,FeeSched=FeeSchedNum,Amount=200,ClinicNum=0,ProvNum=0 });
-			PatNum=OpenDentBusiness.Crud.PatientCrud.Insert(new Patient { LName="Termtest",FName="Pat",PatStatus=PatientStatus.Patient,
+			ProvNum=OpenPmsDentalBusiness.Crud.ProviderCrud.Insert(new Provider { Abbr="ZTRM",LName="Term",FName="Test",ItemOrder=90,FeeSched=FeeSchedNum });
+			OpenPmsDentalBusiness.Crud.FeeCrud.Insert(new Fee { CodeNum=CodeNumWithFee,FeeSched=FeeSchedNum,Amount=200,ClinicNum=0,ProvNum=0 });
+			PatNum=OpenPmsDentalBusiness.Crud.PatientCrud.Insert(new Patient { LName="Termtest",FName="Pat",PatStatus=PatientStatus.Patient,
 				PriProv=ProvNum,Birthdate=new DateTime(1980,1,1) });
 			Prefs.UpdateInt(PrefName.InsBlueBookUcrFeePercent,80);
 			Cache.Refresh(InvalidType.Prefs,InvalidType.ProcCodes,InvalidType.Providers,InvalidType.FeeScheds);

@@ -6,7 +6,7 @@ using System.Drawing;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using SyntheticData.Infrastructure;
 using SyntheticData.Validation;
 using Db=SyntheticData.Infrastructure.Db;
@@ -26,7 +26,7 @@ namespace AdoptionValidation {
 		///<summary>The namespace of the table classes, taken from TableBase so a rename of the business layer cannot leave every table unmapped.</summary>
 		public static readonly string TableNamespace=typeof(TableBase).Namespace;
 		///<summary>The namespace of the generated CRUD classes, taken from one of them.</summary>
-		public static readonly string CrudNamespace=typeof(OpenDentBusiness.Crud.PatientCrud).Namespace;
+		public static readonly string CrudNamespace=typeof(OpenPmsDentalBusiness.Crud.PatientCrud).Namespace;
 
 		///<summary>The generated CRUD class of the table class (CrudNamespace + name + "Crud"), or null when there is none.</summary>
 		public static Type GetCrudType(Type typeTable) {

@@ -399,8 +399,8 @@ How to use the Button control:
 				textBlock.Foreground=Brushes.Black;
 			}
 			else{
-				accessText.Foreground=new SolidColorBrush(OpenDental.ColorOD.Gray_Wpf(170));
-				textBlock.Foreground=new SolidColorBrush(OpenDental.ColorOD.Gray_Wpf(170));
+				accessText.Foreground=new SolidColorBrush(OpenPmsDental.ColorOD.Gray_Wpf(170));
+				textBlock.Foreground=new SolidColorBrush(OpenPmsDental.ColorOD.Gray_Wpf(170));
 			}
 		}
 

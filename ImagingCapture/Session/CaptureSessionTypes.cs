@@ -6,7 +6,7 @@ using System.Globalization;
 using System.Linq;
 using ImagingCapture.Dicom;
 using ImagingCapture.Save;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Session {
 	///<summary>Where the capture session is, for the window's layout (which panel shows, which commands are offered).</summary>

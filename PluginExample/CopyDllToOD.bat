@@ -1,1 +1,1 @@
-xcopy "%ENV_ProjectDir%\bin\Debug\PluginExample.dll" "%ENV_ProjectDir%\..\OpenDental\bin\Debug" /Y 
+xcopy "%ENV_ProjectDir%\bin\Debug\PluginExample.dll" "%ENV_ProjectDir%\..\OpenPmsDental\bin\Debug" /Y 

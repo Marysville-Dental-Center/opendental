@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using CodeBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using System.Windows.Forms;
 
 
 
-namespace OpenDental.Bridges {
+namespace OpenPmsDental.Bridges {
 	///<summary>Provides bridging functionality to Patterson Imaging.</summary>
 	class Patterson {
 

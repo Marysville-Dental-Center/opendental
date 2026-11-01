@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using System.Web.Configuration;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using UnitTestsCore;
 
 namespace UnitTests.Patients_Tests {

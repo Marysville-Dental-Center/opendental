@@ -7,8 +7,8 @@ using System.Threading.Tasks;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using NHunspell;
-using OpenDental;
-using OpenDentBusiness;
+using OpenPmsDental;
+using OpenPmsDentalBusiness;
 using UnitTestsCore;
 
 namespace UnitTests.Etrans_Tests {

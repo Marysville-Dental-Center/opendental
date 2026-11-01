@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Input;
 using CodeBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	///<summary>Chart Letter Properties (24.4): date, time, description and provider of the letter; who last changed its content; the file's hash
 	///against the stored hash (Match or No Match); the provider's signature; and a PDF copy for the Imaging module. Changes here never write a
 	///new version and never change the user who last changed the content. Old versions and deleted letters open read-only.</summary>
@@ -72,7 +72,7 @@ namespace OpenDental {
 					labelMatch.ColorText=System.Windows.Media.Colors.Firebrick;
 					break;
 			}
-			signatureBoxWrapper.SignatureMode=OpenDental.UI.SignatureBoxWrapper.SigMode.Document;
+			signatureBoxWrapper.SignatureMode=OpenPmsDental.UI.SignatureBoxWrapper.SigMode.Document;
 			FillSignature();
 			comboImageCat.Items.AddDefNone();
 			comboImageCat.Items.AddDefs(Defs.GetDefsForCategory(DefCat.ImageCats,true));

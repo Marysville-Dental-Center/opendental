@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using UnitTestsCore;
 
 namespace UnitTests.TaskSubscriptions_Tests {
@@ -73,11 +73,11 @@ namespace UnitTests.TaskSubscriptions_Tests {
 		public void TaskSubscriptions_TrySubscList_MarkOldRemindersRead() {
 			TaskSubscriptionT.CreateTaskSubscription(_userNum,_taskListChild.TaskListNum);//Subscribed to TaskListChild (and by extension, TaskListGrandchild).
 			#region Create Unread Past Due Reminders
-			OpenDentBusiness.Task taskParent=TaskT.CreateTask(_taskListParent.TaskListNum,descript:"ParentReminder",isUnread:true,reminderGroupId:"1"
+			OpenPmsDentalBusiness.Task taskParent=TaskT.CreateTask(_taskListParent.TaskListNum,descript:"ParentReminder",isUnread:true,reminderGroupId:"1"
 				,dateTimeEntry:DateTime.Now.AddSeconds(-1),reminderType:TaskReminderType.Once);
-			OpenDentBusiness.Task taskChild=TaskT.CreateTask(_taskListChild.TaskListNum,descript:"ChildReminder",isUnread:true,reminderGroupId:"1"
+			OpenPmsDentalBusiness.Task taskChild=TaskT.CreateTask(_taskListChild.TaskListNum,descript:"ChildReminder",isUnread:true,reminderGroupId:"1"
 				,dateTimeEntry:DateTime.Now.AddSeconds(-1),reminderType:TaskReminderType.Once);
-			OpenDentBusiness.Task taskGrandchild=TaskT.CreateTask(_taskListGrandchild.TaskListNum,descript:"GrandchildReminder",isUnread:true
+			OpenPmsDentalBusiness.Task taskGrandchild=TaskT.CreateTask(_taskListGrandchild.TaskListNum,descript:"GrandchildReminder",isUnread:true
 				,dateTimeEntry:DateTime.Now.AddSeconds(-1),reminderGroupId:"1",reminderType:TaskReminderType.Once);
 			TaskAncestors.SynchAll();
 			TaskUnreads.SetUnread(_userNum,taskParent);
@@ -85,9 +85,9 @@ namespace UnitTests.TaskSubscriptions_Tests {
 			TaskUnreads.SetUnread(_userNum,taskGrandchild);
 			#endregion 
 			bool isSuccess=TaskSubscriptions.TrySubscList(_taskListParent.TaskListNum,_userNum);
-			OpenDentBusiness.Task taskParentDb=Tasks.GetOne(taskParent.TaskNum);
-			OpenDentBusiness.Task taskChildDb=Tasks.GetOne(taskChild.TaskNum);
-			OpenDentBusiness.Task taskGrandchildDb=Tasks.GetOne(taskGrandchild.TaskNum);
+			OpenPmsDentalBusiness.Task taskParentDb=Tasks.GetOne(taskParent.TaskNum);
+			OpenPmsDentalBusiness.Task taskChildDb=Tasks.GetOne(taskChild.TaskNum);
+			OpenPmsDentalBusiness.Task taskGrandchildDb=Tasks.GetOne(taskGrandchild.TaskNum);
 			Assert.IsTrue(isSuccess);
 			Assert.IsFalse(TaskUnreads.IsUnread(_userNum,taskParentDb));//Only the task in taskListParent should be Read.
 			Assert.IsTrue(TaskUnreads.IsUnread(_userNum,taskChildDb));//The task in taskListChild should still be Unread.
@@ -99,18 +99,18 @@ namespace UnitTests.TaskSubscriptions_Tests {
 		[TestMethod]
 		public void TaskSubscriptions_TrySubscList_SubToParentMarksDescendentsFutureRemindersAsUnread() {
 			#region Create Read Future Due Reminders
-			OpenDentBusiness.Task taskParent=TaskT.CreateTask(_taskListParent.TaskListNum,descript:"ParentReminder",isUnread:true,reminderGroupId:"1"
+			OpenPmsDentalBusiness.Task taskParent=TaskT.CreateTask(_taskListParent.TaskListNum,descript:"ParentReminder",isUnread:true,reminderGroupId:"1"
 				,dateTimeEntry:DateTime.Now.AddDays(1),reminderType:TaskReminderType.Once);
-			OpenDentBusiness.Task taskChild=TaskT.CreateTask(_taskListChild.TaskListNum,descript:"ChildReminder",isUnread:true,reminderGroupId:"1"
+			OpenPmsDentalBusiness.Task taskChild=TaskT.CreateTask(_taskListChild.TaskListNum,descript:"ChildReminder",isUnread:true,reminderGroupId:"1"
 				,dateTimeEntry:DateTime.Now.AddDays(1),reminderType:TaskReminderType.Once);
-			OpenDentBusiness.Task taskGrandchild=TaskT.CreateTask(_taskListGrandchild.TaskListNum,descript:"GrandchildReminder",isUnread:true
+			OpenPmsDentalBusiness.Task taskGrandchild=TaskT.CreateTask(_taskListGrandchild.TaskListNum,descript:"GrandchildReminder",isUnread:true
 				,dateTimeEntry:DateTime.Now.AddDays(1),reminderGroupId:"1",reminderType:TaskReminderType.Once);
 			TaskAncestors.SynchAll();
 			TaskUnreads.SetRead(_userNum,taskParent,taskChild,taskGrandchild);
 			#endregion 
 			bool isSuccess=TaskSubscriptions.TrySubscList(_taskListParent.TaskListNum,_userNum);
 			Assert.IsTrue(isSuccess);
-			foreach(OpenDentBusiness.Task task in new List<OpenDentBusiness.Task> { taskParent,taskChild,taskGrandchild }) {
+			foreach(OpenPmsDentalBusiness.Task task in new List<OpenPmsDentalBusiness.Task> { taskParent,taskChild,taskGrandchild }) {
 				Assert.IsTrue(TaskUnreads.IsUnread(_userNum,task));
 			}
 		}
@@ -122,11 +122,11 @@ namespace UnitTests.TaskSubscriptions_Tests {
 		public void TaskSubscriptions_TrySubscList_SubToParentMarksParentTaskUnread() {
 			TaskSubscriptionT.CreateTaskSubscription(_userNum,_taskListChild.TaskListNum);//Subscribed to TaskListChild 
 			#region Create Read Future Due Reminders
-			OpenDentBusiness.Task taskParent=TaskT.CreateTask(_taskListParent.TaskListNum,descript:"ParentReminder",isUnread:true,reminderGroupId:"1"
+			OpenPmsDentalBusiness.Task taskParent=TaskT.CreateTask(_taskListParent.TaskListNum,descript:"ParentReminder",isUnread:true,reminderGroupId:"1"
 				,dateTimeEntry:DateTime.Now.AddDays(1),reminderType:TaskReminderType.Once);
-			OpenDentBusiness.Task taskChild=TaskT.CreateTask(_taskListChild.TaskListNum,descript:"ChildReminder",isUnread:true,reminderGroupId:"1"
+			OpenPmsDentalBusiness.Task taskChild=TaskT.CreateTask(_taskListChild.TaskListNum,descript:"ChildReminder",isUnread:true,reminderGroupId:"1"
 				,dateTimeEntry:DateTime.Now.AddDays(1),reminderType:TaskReminderType.Once);
-			OpenDentBusiness.Task taskGrandchild=TaskT.CreateTask(_taskListGrandchild.TaskListNum,descript:"GrandchildReminder",isUnread:true
+			OpenPmsDentalBusiness.Task taskGrandchild=TaskT.CreateTask(_taskListGrandchild.TaskListNum,descript:"GrandchildReminder",isUnread:true
 				,dateTimeEntry:DateTime.Now.AddDays(1),reminderGroupId:"1",reminderType:TaskReminderType.Once);
 			TaskAncestors.SynchAll();
 			TaskUnreads.SetRead(_userNum,taskParent,taskChild,taskGrandchild);
@@ -134,7 +134,7 @@ namespace UnitTests.TaskSubscriptions_Tests {
 			bool isSuccess=TaskSubscriptions.TrySubscList(_taskListParent.TaskListNum,_userNum);
 			Assert.IsTrue(isSuccess);
 			Assert.IsTrue(TaskUnreads.IsUnread(_userNum,taskParent));
-			foreach(OpenDentBusiness.Task task in new List<OpenDentBusiness.Task> { taskChild,taskGrandchild }) {
+			foreach(OpenPmsDentalBusiness.Task task in new List<OpenPmsDentalBusiness.Task> { taskChild,taskGrandchild }) {
 				//User was already subscribed these these TaskLists, so the tasks should still be read.
 				Assert.IsFalse(TaskUnreads.IsUnread(_userNum,task));
 			}
@@ -145,11 +145,11 @@ namespace UnitTests.TaskSubscriptions_Tests {
 		public void TaskSubscriptions_UnsubscList_UnSubToParentMarksDescendentsFutureRemindersAsRead() {
 			TaskSubscriptionT.CreateTaskSubscription(_userNum,_taskListParent.TaskListNum);//Subscribed to TaskListParent 
 			#region Create Unread Past Due Reminders
-			OpenDentBusiness.Task taskParent=TaskT.CreateTask(_taskListParent.TaskListNum,descript:"ParentReminder",isUnread:true,reminderGroupId:"1"
+			OpenPmsDentalBusiness.Task taskParent=TaskT.CreateTask(_taskListParent.TaskListNum,descript:"ParentReminder",isUnread:true,reminderGroupId:"1"
 				,dateTimeEntry:DateTime.Now.AddDays(1),reminderType:TaskReminderType.Once);
-			OpenDentBusiness.Task taskChild=TaskT.CreateTask(_taskListChild.TaskListNum,descript:"ChildReminder",isUnread:true,reminderGroupId:"1"
+			OpenPmsDentalBusiness.Task taskChild=TaskT.CreateTask(_taskListChild.TaskListNum,descript:"ChildReminder",isUnread:true,reminderGroupId:"1"
 				,dateTimeEntry:DateTime.Now.AddDays(1),reminderType:TaskReminderType.Once);
-			OpenDentBusiness.Task taskGrandchild=TaskT.CreateTask(_taskListGrandchild.TaskListNum,descript:"GrandchildReminder",isUnread:true
+			OpenPmsDentalBusiness.Task taskGrandchild=TaskT.CreateTask(_taskListGrandchild.TaskListNum,descript:"GrandchildReminder",isUnread:true
 				,dateTimeEntry:DateTime.Now.AddDays(1),reminderGroupId:"1",reminderType:TaskReminderType.Once);
 			TaskAncestors.SynchAll();
 			TaskUnreads.SetUnread(_userNum,taskParent);
@@ -157,7 +157,7 @@ namespace UnitTests.TaskSubscriptions_Tests {
 			TaskUnreads.SetUnread(_userNum,taskGrandchild);
 			#endregion 
 			TaskSubscriptions.UnsubscList(_taskListParent.TaskListNum,_userNum);
-			foreach(OpenDentBusiness.Task task in new List<OpenDentBusiness.Task> { taskParent,taskChild,taskGrandchild }) {
+			foreach(OpenPmsDentalBusiness.Task task in new List<OpenPmsDentalBusiness.Task> { taskParent,taskChild,taskGrandchild }) {
 				Assert.IsFalse(TaskUnreads.IsUnread(_userNum,task));
 			}
 		}
@@ -169,11 +169,11 @@ namespace UnitTests.TaskSubscriptions_Tests {
 			TaskSubscriptionT.CreateTaskSubscription(_userNum,_taskListParent.TaskListNum);//Subscribed to TaskListParent 
 			TaskSubscriptionT.CreateTaskSubscription(_userNum,_taskListChild.TaskListNum);//Subscribed to TaskListChild
 			#region Create Unread Past Due Reminders
-			OpenDentBusiness.Task taskParent=TaskT.CreateTask(_taskListParent.TaskListNum,descript:"ParentReminder",isUnread:true,reminderGroupId:"1"
+			OpenPmsDentalBusiness.Task taskParent=TaskT.CreateTask(_taskListParent.TaskListNum,descript:"ParentReminder",isUnread:true,reminderGroupId:"1"
 				,dateTimeEntry:DateTime.Now.AddDays(1),reminderType:TaskReminderType.Once);
-			OpenDentBusiness.Task taskChild=TaskT.CreateTask(_taskListChild.TaskListNum,descript:"ChildReminder",isUnread:true,reminderGroupId:"1"
+			OpenPmsDentalBusiness.Task taskChild=TaskT.CreateTask(_taskListChild.TaskListNum,descript:"ChildReminder",isUnread:true,reminderGroupId:"1"
 				,dateTimeEntry:DateTime.Now.AddDays(1),reminderType:TaskReminderType.Once);
-			OpenDentBusiness.Task taskGrandchild=TaskT.CreateTask(_taskListGrandchild.TaskListNum,descript:"GrandchildReminder",isUnread:true
+			OpenPmsDentalBusiness.Task taskGrandchild=TaskT.CreateTask(_taskListGrandchild.TaskListNum,descript:"GrandchildReminder",isUnread:true
 				,dateTimeEntry:DateTime.Now.AddDays(1),reminderGroupId:"1",reminderType:TaskReminderType.Once);
 			TaskAncestors.SynchAll();
 			TaskUnreads.SetUnread(_userNum,taskParent);
@@ -182,7 +182,7 @@ namespace UnitTests.TaskSubscriptions_Tests {
 			#endregion 
 			TaskSubscriptions.UnsubscList(_taskListParent.TaskListNum,_userNum);
 			Assert.IsFalse(TaskUnreads.IsUnread(_userNum,taskParent));
-			foreach(OpenDentBusiness.Task task in new List<OpenDentBusiness.Task> { taskChild,taskGrandchild }) {
+			foreach(OpenPmsDentalBusiness.Task task in new List<OpenPmsDentalBusiness.Task> { taskChild,taskGrandchild }) {
 				Assert.IsTrue(TaskUnreads.IsUnread(_userNum,task));
 			}
 		}

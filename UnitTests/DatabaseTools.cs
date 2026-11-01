@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
-using OpenDental;
-using OpenDentBusiness;
+using OpenPmsDental;
+using OpenPmsDentalBusiness;
 using System.Windows.Forms;
 using CodeBase;
 
@@ -28,7 +28,7 @@ namespace UnitTests {
 				ConvertDatabases.FromVersion=new Version(Prefs.GetOne(PrefName.DataBaseVersion).ValueString);
 				ConvertDatabases.InvokeConvertMethods();
 				//The fork migrations take over from the frozen 24.3.63 convert chain and bring the schema to Open Dental 25.3.48.
-				OpenDentBusiness.ForkMigrations.ForkMigrationRunner.Run();
+				OpenPmsDentalBusiness.ForkMigrations.ForkMigrationRunner.Run();
 				//Specific caches should be invalid after convert script update.
 				Cache.Refresh(InvalidType.Prefs,InvalidType.Programs);
 				AutoCodes.SetToDefault();

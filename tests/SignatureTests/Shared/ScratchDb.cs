@@ -6,7 +6,7 @@ using System.Threading;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace SignatureTests {
 	///<summary>One scratch MariaDB database for the whole test assembly, on 127.0.0.1:3306 as root with a blank password. The tables are created from
@@ -99,7 +99,7 @@ namespace SignatureTests {
 			userod.EClipboardClinicalPin="";
 			userod.BadgeId="";
 			userod.Password="";
-			return OpenDentBusiness.Crud.UserodCrud.Insert(userod);
+			return OpenPmsDentalBusiness.Crud.UserodCrud.Insert(userod);
 		}
 
 		private static void Exec(MySqlConnection connection,string command) {

@@ -3,7 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace BACCTTests {
 	public static class SalesTaxData {
@@ -40,7 +40,7 @@ namespace BACCTTests {
 			procedureCode.TreatArea=TreatmentArea.Mouth;
 			procedureCode.IsTaxed=isTaxed;
 			procedureCode.NoBillIns=noBillIns;
-			OpenDentBusiness.Crud.ProcedureCodeCrud.Insert(procedureCode);
+			OpenPmsDentalBusiness.Crud.ProcedureCodeCrud.Insert(procedureCode);
 			return true;
 		}
 
@@ -59,7 +59,7 @@ namespace BACCTTests {
 			def.ItemName="Synthetic Sales Tax";
 			def.ItemValue="+";
 			def.ItemOrder=Defs.GetDefsForCategory(DefCat.AdjTypes).Count;
-			OpenDentBusiness.Crud.DefCrud.Insert(def);
+			OpenPmsDentalBusiness.Crud.DefCrud.Insert(def);
 			Cache.Refresh(InvalidType.Defs);
 			return def.DefNum;
 		}
@@ -92,10 +92,10 @@ namespace BACCTTests {
 			patient.Birthdate=new DateTime(1980,1,1);
 			patient.PriProv=ProvNumDefault();
 			patient.ClinicNum=clinicNum;
-			patient.PatNum=OpenDentBusiness.Crud.PatientCrud.Insert(patient);
+			patient.PatNum=OpenPmsDentalBusiness.Crud.PatientCrud.Insert(patient);
 			Patient patientOld=patient.Copy();
 			patient.Guarantor=patient.PatNum;
-			OpenDentBusiness.Crud.PatientCrud.Update(patient,patientOld);
+			OpenPmsDentalBusiness.Crud.PatientCrud.Update(patient,patientOld);
 			return patient;
 		}
 
@@ -126,7 +126,7 @@ namespace BACCTTests {
 			adjustment.AdjType=adjType;
 			adjustment.ProcNum=procNum;
 			adjustment.ProvNum=ProvNumDefault();
-			adjustment.AdjNum=OpenDentBusiness.Crud.AdjustmentCrud.Insert(adjustment);
+			adjustment.AdjNum=OpenPmsDentalBusiness.Crud.AdjustmentCrud.Insert(adjustment);
 			return adjustment;
 		}
 

@@ -6,7 +6,7 @@ using System.Globalization;
 using System.Linq;
 using ImagingDeviceManager.Capture;
 using ImagingDeviceManager.Config;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Settings {
 	///<summary>Whether the gated capture settings of a device on this computer are the ones last saved in the Capture settings screen.</summary>

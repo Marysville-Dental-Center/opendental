@@ -1,0 +1,141 @@
+namespace OpenPmsDental{
+	partial class FormAllergySetup {
+		/// <summary>
+		/// Required designer variable.
+		/// </summary>
+		private System.ComponentModel.IContainer components = null;
+
+		/// <summary>
+		/// Clean up any resources being used.
+		/// </summary>
+		/// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
+		protected override void Dispose(bool disposing) {
+			if(disposing && (components != null)) {
+				components.Dispose();
+			}
+			base.Dispose(disposing);
+		}
+
+		#region Windows Form Designer generated code
+
+		/// <summary>
+		/// Required method for Designer support - do not modify
+		/// the contents of this method with the code editor.
+		/// </summary>
+		private void InitializeComponent() {
+			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormAllergySetup));
+			this.checkShowHidden = new OpenPmsDental.UI.CheckBox();
+			this.gridMain = new OpenPmsDental.UI.GridOD();
+			this.butAdd = new OpenPmsDental.UI.Button();
+			this.butOK = new OpenPmsDental.UI.Button();
+			this.buttonMerge = new OpenPmsDental.UI.Button();
+			this.labelSearch = new System.Windows.Forms.Label();
+			this.textSearch = new System.Windows.Forms.TextBox();
+			this.SuspendLayout();
+			// 
+			// checkShowHidden
+			// 
+			this.checkShowHidden.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			this.checkShowHidden.Location = new System.Drawing.Point(296, 68);
+			this.checkShowHidden.Name = "checkShowHidden";
+			this.checkShowHidden.Size = new System.Drawing.Size(98, 24);
+			this.checkShowHidden.TabIndex = 5;
+			this.checkShowHidden.TabStop = false;
+			this.checkShowHidden.Text = "Show Hidden";
+			this.checkShowHidden.CheckedChanged += new System.EventHandler(this.checkShowHidden_CheckedChanged);
+			// 
+			// gridMain
+			// 
+			this.gridMain.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+			this.gridMain.Location = new System.Drawing.Point(26, 50);
+			this.gridMain.Name = "gridMain";
+			this.gridMain.SelectionMode = OpenPmsDental.UI.GridSelectionMode.MultiExtended;
+			this.gridMain.Size = new System.Drawing.Size(242, 284);
+			this.gridMain.TabIndex = 4;
+			this.gridMain.Title = "Allergies";
+			this.gridMain.TranslationName = "TableAllergies";
+			this.gridMain.CellDoubleClick += new OpenPmsDental.UI.ODGridClickEventHandler(this.gridMain_CellDoubleClick);
+			// 
+			// butAdd
+			// 
+			this.butAdd.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			this.butAdd.Icon = OpenPmsDental.UI.EnumIcons.Add;
+			this.butAdd.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			this.butAdd.Location = new System.Drawing.Point(296, 24);
+			this.butAdd.Name = "butAdd";
+			this.butAdd.Size = new System.Drawing.Size(75, 24);
+			this.butAdd.TabIndex = 3;
+			this.butAdd.Text = "&Add";
+			this.butAdd.Click += new System.EventHandler(this.butAdd_Click);
+			// 
+			// butOK
+			// 
+			this.butOK.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+			this.butOK.Location = new System.Drawing.Point(296, 310);
+			this.butOK.Name = "butOK";
+			this.butOK.Size = new System.Drawing.Size(75, 24);
+			this.butOK.TabIndex = 6;
+			this.butOK.Text = "&OK";
+			this.butOK.Click += new System.EventHandler(this.butOK_Click);
+			// 
+			// buttonMerge
+			// 
+			this.buttonMerge.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			this.buttonMerge.Location = new System.Drawing.Point(296, 107);
+			this.buttonMerge.Name = "buttonMerge";
+			this.buttonMerge.Size = new System.Drawing.Size(75, 24);
+			this.buttonMerge.TabIndex = 7;
+			this.buttonMerge.Text = "Merge";
+			this.buttonMerge.Click += new System.EventHandler(this.buttonMerge_Click);
+			// 
+			// labelSearch
+			// 
+			this.labelSearch.Location = new System.Drawing.Point(23, 22);
+			this.labelSearch.Name = "labelSearch";
+			this.labelSearch.Size = new System.Drawing.Size(50, 20);
+			this.labelSearch.TabIndex = 0;
+			this.labelSearch.Text = "Search";
+			this.labelSearch.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			// 
+			// textSearch
+			// 
+			this.textSearch.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+			this.textSearch.Location = new System.Drawing.Point(74, 23);
+			this.textSearch.Name = "textSearch";
+			this.textSearch.Size = new System.Drawing.Size(194, 20);
+			this.textSearch.TabIndex = 1;
+			this.textSearch.TextChanged += new System.EventHandler(this.textSearch_TextChanged);
+			// 
+			// FormAllergySetup
+			//
+			this.ClientSize = new System.Drawing.Size(396, 361);
+			this.Controls.Add(this.textSearch);
+			this.Controls.Add(this.labelSearch);
+			this.Controls.Add(this.buttonMerge);
+			this.Controls.Add(this.butOK);
+			this.Controls.Add(this.checkShowHidden);
+			this.Controls.Add(this.gridMain);
+			this.Controls.Add(this.butAdd);
+			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
+			this.Name = "FormAllergySetup";
+			this.Text = "Allergy Setup";
+			this.Load += new System.EventHandler(this.FormAllergySetup_Load);
+			this.ResumeLayout(false);
+			this.PerformLayout();
+
+		}
+
+		#endregion
+
+		private OpenPmsDental.UI.Button butAdd;
+		private UI.GridOD gridMain;
+		private OpenPmsDental.UI.CheckBox checkShowHidden;
+		private UI.Button butOK;
+		private UI.Button buttonMerge;
+		private System.Windows.Forms.Label labelSearch;
+		private System.Windows.Forms.TextBox textSearch;
+	}
+}

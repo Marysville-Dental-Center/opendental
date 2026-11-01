@@ -10,9 +10,9 @@ using System.Linq;
 using System.Threading;
 using ForkMigrationTests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.FileIO;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.FileIO;
+using OpenPmsDentalBusiness.ForkMigrations;
 using UnitTestsCore;
 
 namespace BCLAIMTests {
@@ -155,13 +155,13 @@ namespace BCLAIMTests {
 		///<summary>Security log rows of one permission with this FKey, oldest first.</summary>
 		public static List<SecurityLog> GetLogs(EnumPermType perm,long fKey) {
 			string command="SELECT * FROM securitylog WHERE PermType="+POut.Int((int)perm)+" AND FKey="+POut.Long(fKey)+" ORDER BY SecurityLogNum";
-			return OpenDentBusiness.Crud.SecurityLogCrud.SelectMany(command);
+			return OpenPmsDentalBusiness.Crud.SecurityLogCrud.SelectMany(command);
 		}
 
 		///<summary>Security log rows of one permission for the patient, oldest first.</summary>
 		public static List<SecurityLog> GetLogsForPatient(EnumPermType perm,long patNum) {
 			string command="SELECT * FROM securitylog WHERE PermType="+POut.Int((int)perm)+" AND PatNum="+POut.Long(patNum)+" ORDER BY SecurityLogNum";
-			return OpenDentBusiness.Crud.SecurityLogCrud.SelectMany(command);
+			return OpenPmsDentalBusiness.Crud.SecurityLogCrud.SelectMany(command);
 		}
 
 		///<summary>Switches image storage: LocalAtoZ uses this run's temp folder as the A to Z folder; InDatabase keeps no files.</summary>

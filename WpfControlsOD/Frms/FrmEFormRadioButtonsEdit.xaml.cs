@@ -7,12 +7,12 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 using CodeBase;
 using WpfControls;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	/// <summary>This editor is for the EFormFieldDef, not the EFormField attached to a patient. There's no editor for that because it's only used as part of a patient facing layout.</summary>
 	public partial class FrmEFormRadioButtonsEdit : FrmODBase {
 		///<summary>This is the object being edited.</summary>

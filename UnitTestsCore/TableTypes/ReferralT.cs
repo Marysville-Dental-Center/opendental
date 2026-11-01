@@ -1,5 +1,5 @@
 ﻿using System;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace UnitTestsCore {
 	public class ReferralT {

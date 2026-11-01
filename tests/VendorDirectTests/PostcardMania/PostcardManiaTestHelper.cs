@@ -6,7 +6,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
-using OpenDentBusiness.PostcardMania;
+using OpenPmsDentalBusiness.PostcardMania;
 
 namespace VendorDirectTests.PostcardMania {
 	///<summary>A client over a FakeHttpHandler with a settable clock and recorded (not real) waits.</summary>

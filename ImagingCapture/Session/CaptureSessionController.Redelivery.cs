@@ -7,7 +7,7 @@ using ImagingCapture.Metadata;
 using ImagingCapture.Save;
 using ImagingCapture.UI;
 using ImagingDeviceManager.Capture;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Session {
 	///<summary>Redelivery (W15, design 7.6, 7.12): when the device profile names a RedeliverCap and an enable ended with a failed transfer, or

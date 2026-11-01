@@ -7,8 +7,8 @@ using System.IO;
 using System.Text;
 using DataConnectionBase;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace M2NOTESTests {
 	///<summary>Every database name starts with "m2notes_" so the tests can never drop anything else.</summary>

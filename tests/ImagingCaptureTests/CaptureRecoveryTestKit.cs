@@ -10,7 +10,7 @@ using ImagingCapture.Recovery;
 using ImagingCapture.Settings;
 using ImagingDeviceManager.Capture;
 using ImagingDeviceManager.Config;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Tests {
 	///<summary>ICaptureRecoveryStore for the quarantine tests: patients, mounts, slots and documents in memory, denied permissions, and every

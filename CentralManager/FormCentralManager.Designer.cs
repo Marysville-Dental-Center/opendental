@@ -53,13 +53,13 @@
 			this.gridMainRightClickMenu = new System.Windows.Forms.ContextMenuStrip(this.components);
 			this.toolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
 			this.labelVersion = new System.Windows.Forms.Label();
-			this.gridConns = new OpenDental.UI.GridOD();
-			this.butFilter = new OpenDental.UI.Button();
-			this.butRefreshStatuses = new OpenDental.UI.Button();
+			this.gridConns = new OpenPmsDental.UI.GridOD();
+			this.butFilter = new OpenPmsDental.UI.Button();
+			this.butRefreshStatuses = new OpenPmsDental.UI.Button();
 			this.timer1 = new System.Windows.Forms.Timer(this.components);
 			this.labelFetch = new System.Windows.Forms.Label();
 			this.checkLimit = new System.Windows.Forms.CheckBox();
-			this.butSearchPats = new OpenDental.UI.Button();
+			this.butSearchPats = new OpenPmsDental.UI.Button();
 			this.groupBox2 = new System.Windows.Forms.GroupBox();
 			this.textClinicPatSearch = new System.Windows.Forms.TextBox();
 			this.label18 = new System.Windows.Forms.Label();
@@ -89,13 +89,13 @@
 			this.label3 = new System.Windows.Forms.Label();
 			this.textAddress = new System.Windows.Forms.TextBox();
 			this.label11 = new System.Windows.Forms.Label();
-			this.textPhone = new OpenDental.ValidPhone();
+			this.textPhone = new OpenPmsDental.ValidPhone();
 			this.label15 = new System.Windows.Forms.Label();
 			this.textFName = new System.Windows.Forms.TextBox();
 			this.label16 = new System.Windows.Forms.Label();
 			this.textLName = new System.Windows.Forms.TextBox();
 			this.label17 = new System.Windows.Forms.Label();
-			this.gridPats = new OpenDental.UI.GridOD();
+			this.gridPats = new OpenPmsDental.UI.GridOD();
 			this.groupBox1 = new System.Windows.Forms.GroupBox();
 			this.gridMainRightClickMenu.SuspendLayout();
 			this.groupBox2.SuspendLayout();
@@ -331,11 +331,11 @@
 			this.gridConns.ContextMenuStrip = this.gridMainRightClickMenu;
 			this.gridConns.Location = new System.Drawing.Point(6, 88);
 			this.gridConns.Name = "gridConns";
-			this.gridConns.SelectionMode = OpenDental.UI.GridSelectionMode.MultiExtended;
+			this.gridConns.SelectionMode = OpenPmsDental.UI.GridSelectionMode.MultiExtended;
 			this.gridConns.Size = new System.Drawing.Size(703, 837);
 			this.gridConns.TabIndex = 5;
 			this.gridConns.Title = "Connections - Double-click to Launch";
-			this.gridConns.CellDoubleClick += new OpenDental.UI.ODGridClickEventHandler(this.gridConns_CellDoubleClick);
+			this.gridConns.CellDoubleClick += new OpenPmsDental.UI.ODGridClickEventHandler(this.gridConns_CellDoubleClick);
 			// 
 			// butFilter
 			// 
@@ -733,7 +733,7 @@
 			this.gridPats.Title = "Patients - Double-click to Launch Connection";
 			this.gridPats.TranslationName = "FormPatientSelect";
 			this.gridPats.WrapText = false;
-			this.gridPats.CellDoubleClick += new OpenDental.UI.ODGridClickEventHandler(this.gridPats_CellDoubleClick);
+			this.gridPats.CellDoubleClick += new OpenPmsDental.UI.ODGridClickEventHandler(this.gridPats_CellDoubleClick);
 			// 
 			// groupBox1
 			// 
@@ -785,7 +785,7 @@
 
 		#endregion
 
-		private OpenDental.UI.GridOD gridConns;
+		private OpenPmsDental.UI.GridOD gridConns;
 		private System.Windows.Forms.TextBox textConnSearch;
 		private System.Windows.Forms.MainMenu mainMenu;
 		private System.Windows.Forms.MenuItem menuItemSetup;
@@ -800,13 +800,13 @@
 		private System.Windows.Forms.MenuItem menuItemFile;
 		private System.Windows.Forms.MenuItem menuItemPassword;
 		private System.Windows.Forms.MenuItem menuItemUserSettings;
-		private OpenDental.UI.Button butFilter;
+		private OpenPmsDental.UI.Button butFilter;
 		private System.Windows.Forms.Label label6;
 		private System.Windows.Forms.Label label4;
 		private System.Windows.Forms.Label label5;
 		private System.Windows.Forms.TextBox textProviderSearch;
 		private System.Windows.Forms.TextBox textClinicSearch;
-		private OpenDental.UI.Button butRefreshStatuses;
+		private OpenPmsDental.UI.Button butRefreshStatuses;
 		private System.Windows.Forms.Label labelVersion;
 		private System.Windows.Forms.MenuItem menuItem1;
 		private System.Windows.Forms.MenuItem menuItemDisplayFields;
@@ -818,7 +818,7 @@
 		private System.Windows.Forms.Timer timer1;
 		private System.Windows.Forms.Label labelFetch;
 		private System.Windows.Forms.CheckBox checkLimit;
-		private OpenDental.UI.Button butSearchPats;
+		private OpenPmsDental.UI.Button butSearchPats;
 		private System.Windows.Forms.GroupBox groupBox2;
 		private System.Windows.Forms.CheckBox checkGuarantors;
 		private System.Windows.Forms.TextBox textConnPatSearch;
@@ -846,13 +846,13 @@
 		private System.Windows.Forms.Label label3;
 		private System.Windows.Forms.TextBox textAddress;
 		private System.Windows.Forms.Label label11;
-		private OpenDental.ValidPhone textPhone;
+		private OpenPmsDental.ValidPhone textPhone;
 		private System.Windows.Forms.Label label15;
 		private System.Windows.Forms.TextBox textFName;
 		private System.Windows.Forms.Label label16;
 		private System.Windows.Forms.TextBox textLName;
 		private System.Windows.Forms.Label label17;
-		private OpenDental.UI.GridOD gridPats;
+		private OpenPmsDental.UI.GridOD gridPats;
 		private System.Windows.Forms.TextBox textClinicPatSearch;
 		private System.Windows.Forms.Label label18;
 		private System.Windows.Forms.GroupBox groupBox1;

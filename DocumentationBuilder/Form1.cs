@@ -19,7 +19,7 @@ using System.Windows.Forms;
 using System.Xml;
 using System.Xml.Linq;
 using UnitTests.Documentation;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using DataConnectionBase;
 using System.Data.SqlClient;
 using System.Xml.Xsl;
@@ -340,7 +340,7 @@ namespace DocumentationBuilder {
 		}
 
 		private void WriteHtmlToFile(string html) {
-			string odVersion=Assembly.GetAssembly(typeof(OpenDental.FormOpenDental)).GetName().Version.ToString();
+			string odVersion=Assembly.GetAssembly(typeof(OpenPmsDental.FormOpenDental)).GetName().Version.ToString();
 			string formattedODVersion=odVersion.Replace("0","").Replace(".","").Substring(0,3);
 			string pathPreferenceTableHtml=@"..\..\PreferenceTable\Pref" + formattedODVersion + ".html";
 			if(!File.Exists(pathPreferenceTableHtml)) {

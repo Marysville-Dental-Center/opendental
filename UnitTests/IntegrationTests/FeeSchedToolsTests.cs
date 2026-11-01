@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using UnitTestsCore;
 
 namespace UnitTests.FeeSchedTools_Tests {
@@ -122,7 +122,7 @@ namespace UnitTests.FeeSchedTools_Tests {
 			long clinicNum=feeArgs.ListClinics[0].ClinicNum;
 			string filename=MethodBase.GetCurrentMethod().Name;
 			FeeScheds.ExportFeeSchedule(exportedSched,clinicNum,feeArgs.ListProvNums[0],filename);
-			OpenDental.FeeL.ImportFees(filename,importedSched,clinicNum,feeArgs.ListProvNums[0]);
+			OpenPmsDental.FeeL.ImportFees(filename,importedSched,clinicNum,feeArgs.ListProvNums[0]);
 			foreach(ProcedureCode procCode in _listProcCodes.Where(x => !string.IsNullOrWhiteSpace(x.ProcCode))) { //unable to import without a proccodes
 				Fee expected=Fees.GetFee(procCode.CodeNum,exportedSched,clinicNum,feeArgs.ListProvNums[0]);
 				Fee actual=Fees.GetFee(procCode.CodeNum,importedSched,clinicNum,feeArgs.ListProvNums[0]);

@@ -7,8 +7,8 @@ using System.Data;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace ForkMigrationTests {
 	[TestClass]
@@ -214,7 +214,7 @@ namespace ForkMigrationTests {
 		[TestMethod]
 		public void Task_CategoryKeptThroughRename() {
 			Assert.AreEqual("777",DataCore.GetScalar("SELECT Category FROM task WHERE Descript='Synthetic task'"));
-			OpenDentBusiness.Task task=OpenDentBusiness.Crud.TaskCrud.SelectOne("SELECT * FROM task WHERE Descript='Synthetic task'");
+			OpenPmsDentalBusiness.Task task=OpenPmsDentalBusiness.Crud.TaskCrud.SelectOne("SELECT * FROM task WHERE Descript='Synthetic task'");
 			Assert.AreEqual(777,task.Category);
 		}
 

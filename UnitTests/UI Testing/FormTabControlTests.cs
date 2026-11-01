@@ -7,12 +7,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using OpenDental;
-using OpenDental.UI;
+using OpenPmsDental;
+using OpenPmsDental.UI;
 
 namespace UnitTests{
 	public partial class FormTabControlTests : FormODBase{
-		private OpenDental.UI.TabPage _tabPage;
+		private OpenPmsDental.UI.TabPage _tabPage;
 
 		public FormTabControlTests(){
 			InitializeComponent();
@@ -65,7 +65,7 @@ namespace UnitTests{
 		}
 
 		private void button2_Click(object sender,EventArgs e) {
-			_tabPage=new OpenDental.UI.TabPage();
+			_tabPage=new OpenPmsDental.UI.TabPage();
 			_tabPage.Name="tabPageMine";
 			_tabPage.Text="MyTab";
 			_tabPage.Size=new Size(100,100);

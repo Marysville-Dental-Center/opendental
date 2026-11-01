@@ -5,7 +5,7 @@ using System.Data;
 using System.Linq;
 using CodeBase;
 using DataConnectionBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using SyntheticData.Infrastructure;
 
 namespace AdoptionValidation {
@@ -72,7 +72,7 @@ namespace AdoptionValidation {
 		///<summary>The rows of each hashed table that the rehash covers (SecurityHash.UpdateHashing): every patient, and the other tables' rows on or
 		///after SecurityHash.GetHashingDate(), by the date column the rehash uses.</summary>
 		public static string GetHashWindow(string table) {
-			string date=POut.Date(OpenDentBusiness.Misc.SecurityHash.GetHashingDate());
+			string date=POut.Date(OpenPmsDentalBusiness.Misc.SecurityHash.GetHashingDate());
 			switch(table) {
 				case "patient": return "1";
 				case "appointment": return "AptDateTime>="+date;

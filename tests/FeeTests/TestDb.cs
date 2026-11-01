@@ -8,8 +8,8 @@ using System.Text;
 using System.Text.RegularExpressions;
 using DataConnectionBase;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace FeeTests {
 	///<summary>Creates, connects to and drops the scratch database of a test run. Every name starts with "feetest_" so a test can never drop anything

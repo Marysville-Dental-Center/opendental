@@ -9,7 +9,7 @@ using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using ForkMigrationTests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace M2IMGTests {
 	[TestClass]
@@ -70,7 +70,7 @@ namespace M2IMGTests {
 
 		[TestMethod]
 		public void Seed_DefaultIsOff() {
-			Assert.AreEqual("0",OpenDentBusiness.ForkMigrations.Seeds26_1.Seed26_1.ListPrefDefaults.Single(x => x.PrefName==PrefName.ImagingAllowPdfJavascript).ValueString);
+			Assert.AreEqual("0",OpenPmsDentalBusiness.ForkMigrations.Seeds26_1.Seed26_1.ListPrefDefaults.Single(x => x.PrefName==PrefName.ImagingAllowPdfJavascript).ValueString);
 		}
 
 		[TestMethod]

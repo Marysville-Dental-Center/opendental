@@ -7,12 +7,12 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls;
 using WpfControls.UI;
 using CodeBase;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	/// <summary></summary>
 	public partial class FrmEFormFieldPicker : FrmODBase {
 		///<summary>This is set from the parent form.</summary>

@@ -1,10 +1,10 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using CodeBase;
 
-namespace OpenDental.Bridges {
+namespace OpenPmsDental.Bridges {
 	/// <summary>CADI uses their own OLE format for passing data to CADI. 
 	/// See the bridging documents in \\opendental.od\serverfiles\Storage\OPEN DENTAL\Programmers Documents\Bridge Info\CADI for details.</summary>
 	public static class CADI {

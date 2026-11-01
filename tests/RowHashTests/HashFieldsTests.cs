@@ -3,8 +3,8 @@
 using System;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using SecurityHash=OpenDentBusiness.Misc.SecurityHash;
+using OpenPmsDentalBusiness;
+using SecurityHash=OpenPmsDentalBusiness.Misc.SecurityHash;
 
 namespace RowHashTests {
 	[TestClass]

@@ -6,7 +6,7 @@ using System.Linq;
 using ImagingCapture.Session;
 using ImagingDeviceManager.Capture;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Tests {
 	///<summary>The capture session's security-log entries (design 7.13, 10.7) through ICaptureSessionStore: the ImageCreate session summary, the

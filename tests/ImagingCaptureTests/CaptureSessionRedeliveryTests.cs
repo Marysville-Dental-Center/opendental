@@ -7,7 +7,7 @@ using ImagingCapture.Session;
 using ImagingCapture.UI;
 using ImagingDeviceManager.Capture;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Tests {
 	///<summary>Disable refused, transfer failures and redelivery (W13, W15; design 7.6, 7.12) in CaptureSessionController: the offer of "Request

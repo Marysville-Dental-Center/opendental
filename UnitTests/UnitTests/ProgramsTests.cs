@@ -3,17 +3,17 @@ using System.Linq;
 using System.Reflection;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace UnitTests.Programs_Tests {
 	///<summary>Open Dental HQ used to be able to disable and delete program links remotely (HqProgram.Download and Programs.IsEnabledByHq).
 	///That kill switch was removed. These tests make sure HQ state can never disable or delete a program link.</summary>
 	[TestClass]
 	public class ProgramsTests:TestBase {
-		private static List<OpenDentBusiness.Program> _listTestProgs=new List<OpenDentBusiness.Program>();
+		private static List<OpenPmsDentalBusiness.Program> _listTestProgs=new List<OpenPmsDentalBusiness.Program>();
 
 		private static void ResetTestProgValues() {
-			foreach(OpenDentBusiness.Program prog in _listTestProgs) {
+			foreach(OpenPmsDentalBusiness.Program prog in _listTestProgs) {
 				prog.IsDisabledByHq=false;
 			}
 		}
@@ -36,7 +36,7 @@ namespace UnitTests.Programs_Tests {
 
 		[TestMethod]
 		public void Programs_IsDisabledByHq_IsIgnored() {
-			foreach(OpenDentBusiness.Program program in _listTestProgs) {
+			foreach(OpenPmsDentalBusiness.Program program in _listTestProgs) {
 				bool isEnabled=Programs.IsEnabled(program.ProgramNum);
 				program.IsDisabledByHq=true;//Pretend an old database still has the HQ flag set.
 				Assert.AreEqual(isEnabled,Programs.IsEnabled(program.ProgramNum));
@@ -46,7 +46,7 @@ namespace UnitTests.Programs_Tests {
 		[TestMethod]
 		public void Programs_IsDisabledByHq_NeverDeletesProgram() {
 			List<long> listProgramNums=_listTestProgs.Select(x => x.ProgramNum).ToList();
-			foreach(OpenDentBusiness.Program program in _listTestProgs) {
+			foreach(OpenPmsDentalBusiness.Program program in _listTestProgs) {
 				program.IsDisabledByHq=true;
 			}
 			Programs.RefreshCache();

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace UnitTestsCore {
 	public class TaskT {
@@ -49,24 +49,24 @@ namespace UnitTestsCore {
 		}
 
 		///<summary>Creates and returns a list of 7 tasks with all fields utilized and varied. Useful for testing a task search for different fields.</summary>
-		public static List<OpenDentBusiness.Task> CreateVariedTaskSet() {
+		public static List<OpenPmsDentalBusiness.Task> CreateVariedTaskSet() {
 			#region Create TaskLists
 			TaskListT.ClearTaskListTable();
-			TaskList tasklist1=TaskListT.CreateTaskList(descript:"TaskList 1",objectType:OpenDentBusiness.TaskObjectType.None);
-			TaskList tasklist2=TaskListT.CreateTaskList(descript:"TaskList 2",objectType:OpenDentBusiness.TaskObjectType.Patient);
-			TaskList tasklist3=TaskListT.CreateTaskList(descript:"TaskList 3",objectType:OpenDentBusiness.TaskObjectType.Appointment);
+			TaskList tasklist1=TaskListT.CreateTaskList(descript:"TaskList 1",objectType:OpenPmsDentalBusiness.TaskObjectType.None);
+			TaskList tasklist2=TaskListT.CreateTaskList(descript:"TaskList 2",objectType:OpenPmsDentalBusiness.TaskObjectType.Patient);
+			TaskList tasklist3=TaskListT.CreateTaskList(descript:"TaskList 3",objectType:OpenPmsDentalBusiness.TaskObjectType.Appointment);
 			#endregion
-			List<OpenDentBusiness.Task> listTasks=new List<OpenDentBusiness.Task>();
+			List<OpenPmsDentalBusiness.Task> listTasks=new List<OpenPmsDentalBusiness.Task>();
 			#region Creating Tasks and Adding to listTasks
-			listTasks.Add(new OpenDentBusiness.Task {
+			listTasks.Add(new OpenPmsDentalBusiness.Task {
 				TaskListNum=tasklist1.TaskListNum, 
 				KeyNum=0, 
 				Descript="Task 1",
-				TaskStatus=OpenDentBusiness.TaskStatusEnum.New, 
+				TaskStatus=OpenPmsDentalBusiness.TaskStatusEnum.New, 
 				IsRepeating=false,
-				DateType=OpenDentBusiness.TaskDateType.None,
+				DateType=OpenPmsDentalBusiness.TaskDateType.None,
 				FromNum=0,
-				ObjectType=OpenDentBusiness.TaskObjectType.None, 
+				ObjectType=OpenPmsDentalBusiness.TaskObjectType.None, 
 				DateTimeEntry=default,
 				UserNum=0,
 				IsUnread=false,
@@ -74,18 +74,18 @@ namespace UnitTestsCore {
 				PatientName="",
 				PriorityDefNum=0,
 				ReminderGroupId="",
-				ReminderType=OpenDentBusiness.TaskReminderType.NoReminder,
+				ReminderType=OpenPmsDentalBusiness.TaskReminderType.NoReminder,
 				ReminderFrequency=0,
 			});
-			listTasks.Add(new OpenDentBusiness.Task {
+			listTasks.Add(new OpenPmsDentalBusiness.Task {
 				TaskListNum=tasklist1.TaskListNum, 
 				KeyNum=0, 
 				Descript="Task 2",
-				TaskStatus=OpenDentBusiness.TaskStatusEnum.Viewed, 
+				TaskStatus=OpenPmsDentalBusiness.TaskStatusEnum.Viewed, 
 				IsRepeating=false,
-				DateType=OpenDentBusiness.TaskDateType.Week,
+				DateType=OpenPmsDentalBusiness.TaskDateType.Week,
 				FromNum=0,
-				ObjectType=OpenDentBusiness.TaskObjectType.None, 
+				ObjectType=OpenPmsDentalBusiness.TaskObjectType.None, 
 				DateTimeEntry=default,
 				UserNum=0,
 				IsUnread=false,
@@ -93,18 +93,18 @@ namespace UnitTestsCore {
 				PatientName="",
 				PriorityDefNum=0,
 				ReminderGroupId="",
-				ReminderType=OpenDentBusiness.TaskReminderType.NoReminder,
+				ReminderType=OpenPmsDentalBusiness.TaskReminderType.NoReminder,
 				ReminderFrequency=0,
 			});
-			listTasks.Add(new OpenDentBusiness.Task {
+			listTasks.Add(new OpenPmsDentalBusiness.Task {
 				TaskListNum=tasklist1.TaskListNum,
 				KeyNum=0, 
 				Descript="Task 3",
-				TaskStatus=OpenDentBusiness.TaskStatusEnum.Done, 
+				TaskStatus=OpenPmsDentalBusiness.TaskStatusEnum.Done, 
 				IsRepeating=true,
-				DateType=OpenDentBusiness.TaskDateType.Month,
+				DateType=OpenPmsDentalBusiness.TaskDateType.Month,
 				FromNum=0,
-				ObjectType=OpenDentBusiness.TaskObjectType.None, 
+				ObjectType=OpenPmsDentalBusiness.TaskObjectType.None, 
 				DateTimeEntry=default,
 				UserNum=0,
 				IsUnread=false,
@@ -112,19 +112,19 @@ namespace UnitTestsCore {
 				PatientName="",
 				PriorityDefNum=0,
 				ReminderGroupId="",
-				ReminderType=OpenDentBusiness.TaskReminderType.NoReminder,
+				ReminderType=OpenPmsDentalBusiness.TaskReminderType.NoReminder,
 				ReminderFrequency=0,
 			});
-			OpenDentBusiness.Patient patient=PatientT.CreatePatient("Patient1");
-			listTasks.Add(new OpenDentBusiness.Task {
+			OpenPmsDentalBusiness.Patient patient=PatientT.CreatePatient("Patient1");
+			listTasks.Add(new OpenPmsDentalBusiness.Task {
 				TaskListNum=tasklist2.TaskListNum, 
 				KeyNum=patient.PatNum, 
 				Descript="Task 4",
-				TaskStatus=OpenDentBusiness.TaskStatusEnum.New, 
+				TaskStatus=OpenPmsDentalBusiness.TaskStatusEnum.New, 
 				IsRepeating=true,
-				DateType=OpenDentBusiness.TaskDateType.None,
+				DateType=OpenPmsDentalBusiness.TaskDateType.None,
 				FromNum=0,
-				ObjectType=OpenDentBusiness.TaskObjectType.Patient, 
+				ObjectType=OpenPmsDentalBusiness.TaskObjectType.Patient, 
 				DateTimeEntry=default,
 				UserNum=0,
 				IsUnread=true,
@@ -132,19 +132,19 @@ namespace UnitTestsCore {
 				PatientName="",
 				PriorityDefNum=0,
 				ReminderGroupId="",
-				ReminderType=OpenDentBusiness.TaskReminderType.NoReminder,
+				ReminderType=OpenPmsDentalBusiness.TaskReminderType.NoReminder,
 				ReminderFrequency=0,
 			});
 			patient=PatientT.CreatePatient("Patient2");
-			listTasks.Add(new OpenDentBusiness.Task {
+			listTasks.Add(new OpenPmsDentalBusiness.Task {
 				TaskListNum=tasklist2.TaskListNum, 
 				KeyNum=patient.PatNum, 
 				Descript="Task 5",
-				TaskStatus=OpenDentBusiness.TaskStatusEnum.Done, 
+				TaskStatus=OpenPmsDentalBusiness.TaskStatusEnum.Done, 
 				IsRepeating=true,
-				DateType=OpenDentBusiness.TaskDateType.None,
+				DateType=OpenPmsDentalBusiness.TaskDateType.None,
 				FromNum=0,
-				ObjectType=OpenDentBusiness.TaskObjectType.Patient, 
+				ObjectType=OpenPmsDentalBusiness.TaskObjectType.Patient, 
 				DateTimeEntry=default,
 				UserNum=0,
 				IsUnread=true,
@@ -152,22 +152,22 @@ namespace UnitTestsCore {
 				PatientName="",
 				PriorityDefNum=0,
 				ReminderGroupId="",
-				ReminderType=OpenDentBusiness.TaskReminderType.NoReminder,
+				ReminderType=OpenPmsDentalBusiness.TaskReminderType.NoReminder,
 				ReminderFrequency=0,
 			});
 			patient=PatientT.CreatePatient("Patient3");
-			OpenDentBusiness.Operatory operatory=OperatoryT.CreateOperatory();
+			OpenPmsDentalBusiness.Operatory operatory=OperatoryT.CreateOperatory();
 			long provNum=ProviderT.CreateProvider("provider");
-			OpenDentBusiness.Appointment appointment=AppointmentT.CreateAppointment(patient.PatNum,DateTime.Now.AddDays(-10),operatory.OperatoryNum,provNum);
-			listTasks.Add(new OpenDentBusiness.Task {
+			OpenPmsDentalBusiness.Appointment appointment=AppointmentT.CreateAppointment(patient.PatNum,DateTime.Now.AddDays(-10),operatory.OperatoryNum,provNum);
+			listTasks.Add(new OpenPmsDentalBusiness.Task {
 				TaskListNum=tasklist3.TaskListNum, 
 				KeyNum=appointment.AptNum, 
 				Descript="Task 6",
-				TaskStatus=OpenDentBusiness.TaskStatusEnum.New, 
+				TaskStatus=OpenPmsDentalBusiness.TaskStatusEnum.New, 
 				IsRepeating=true,
-				DateType=OpenDentBusiness.TaskDateType.None,
+				DateType=OpenPmsDentalBusiness.TaskDateType.None,
 				FromNum=0,
-				ObjectType=OpenDentBusiness.TaskObjectType.Appointment, 
+				ObjectType=OpenPmsDentalBusiness.TaskObjectType.Appointment, 
 				DateTimeEntry=default,
 				UserNum=0,
 				IsUnread=true,
@@ -175,20 +175,20 @@ namespace UnitTestsCore {
 				PatientName="",
 				PriorityDefNum=0,
 				ReminderGroupId="",
-				ReminderType=OpenDentBusiness.TaskReminderType.NoReminder,
+				ReminderType=OpenPmsDentalBusiness.TaskReminderType.NoReminder,
 				ReminderFrequency=0,
 			});
 			patient=PatientT.CreatePatient("Patient4");
 			appointment=AppointmentT.CreateAppointment(patient.PatNum,DateTime.Now.AddDays(-15),operatory.OperatoryNum,provNum);
-			listTasks.Add(new OpenDentBusiness.Task {
+			listTasks.Add(new OpenPmsDentalBusiness.Task {
 				TaskListNum=tasklist3.TaskListNum, 
 				KeyNum=appointment.AptNum, 
 				Descript="Task 7",
-				TaskStatus=OpenDentBusiness.TaskStatusEnum.Viewed, 
+				TaskStatus=OpenPmsDentalBusiness.TaskStatusEnum.Viewed, 
 				IsRepeating=true,
-				DateType=OpenDentBusiness.TaskDateType.None,
+				DateType=OpenPmsDentalBusiness.TaskDateType.None,
 				FromNum=0,
-				ObjectType=OpenDentBusiness.TaskObjectType.Appointment, 
+				ObjectType=OpenPmsDentalBusiness.TaskObjectType.Appointment, 
 				DateTimeEntry=default,
 				UserNum=0,
 				IsUnread=true,
@@ -196,15 +196,15 @@ namespace UnitTestsCore {
 				PatientName="",
 				PriorityDefNum=0,
 				ReminderGroupId="",
-				ReminderType=OpenDentBusiness.TaskReminderType.NoReminder,
+				ReminderType=OpenPmsDentalBusiness.TaskReminderType.NoReminder,
 				ReminderFrequency=0,
 			});
 			#endregion
-			List<OpenDentBusiness.Task> listTasksReturned=new List<OpenDentBusiness.Task>();
+			List<OpenPmsDentalBusiness.Task> listTasksReturned=new List<OpenPmsDentalBusiness.Task>();
 			for(int i=0;i<listTasks.Count;i++) {
-				OpenDentBusiness.Crud.TaskCrud.Insert(listTasks[i]);
+				OpenPmsDentalBusiness.Crud.TaskCrud.Insert(listTasks[i]);
 				SetDateTimeOriginal(listTasks[i],DateTime.Now.AddDays(-i)); //Offset each tasks DateTimeOriginal by -1 day for one per day in the week.
-				listTasksReturned.Add(OpenDentBusiness.Tasks.GetOne(listTasks[i].TaskNum));
+				listTasksReturned.Add(OpenPmsDentalBusiness.Tasks.GetOne(listTasks[i].TaskNum));
 			}
 			return listTasksReturned;
 		}

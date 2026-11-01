@@ -8,8 +8,8 @@ using System.Drawing;
 using System.Globalization;
 using System.Threading;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDental.UI;
+using OpenPmsDentalBusiness;
+using OpenPmsDental.UI;
 
 namespace GroupNoteTests {
 	[TestClass]

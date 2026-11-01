@@ -1,6 +1,6 @@
 using System;
 using System.Windows.Media;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace WpfControls.UI{
 	//---------------This is one of the rare Gen files that's not generated automatically.

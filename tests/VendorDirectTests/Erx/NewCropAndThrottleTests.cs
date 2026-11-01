@@ -5,8 +5,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.VendorDirect;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.VendorDirect;
 
 namespace VendorDirectTests.Erx {
 	[TestClass]
@@ -78,11 +78,11 @@ namespace VendorDirectTests.Erx {
 		[TestMethod]
 		public void SoapCredentials_ComeFromTheConfig() {
 			NewCropConfig newCropConfig=MakeConfig();
-			OpenDentBusiness.NewCropWebService.Credentials credentials=newCropConfig.GetSoapCredentials();
+			OpenPmsDentalBusiness.NewCropWebService.Credentials credentials=newCropConfig.GetSoapCredentials();
 			Assert.AreEqual("PartnerX",credentials.PartnerName);
 			Assert.AreEqual("AccountY",credentials.Name);
 			Assert.AreEqual("S3cr3t&<pw>",credentials.Password);
-			OpenDentBusiness.NewCropWebService.AccountRequest accountRequest=newCropConfig.GetSoapAccountRequest();
+			OpenPmsDentalBusiness.NewCropWebService.AccountRequest accountRequest=newCropConfig.GetSoapAccountRequest();
 			Assert.AreEqual("OPMS-ABCDEFGHJK",accountRequest.AccountId);
 			Assert.AreEqual("1",accountRequest.SiteId);
 		}
@@ -108,7 +108,7 @@ namespace VendorDirectTests.Erx {
 			Assert.IsFalse(redacted.Contains("PartnerX"));
 			Assert.IsFalse(redacted.Contains("AccountY"));
 			StringAssert.Contains(redacted,"Product Z");
-			Assert.AreEqual(redacted,OpenDentBusiness.Erx.RedactForLog(xml,ErxOption.NewCrop));
+			Assert.AreEqual(redacted,OpenPmsDentalBusiness.Erx.RedactForLog(xml,ErxOption.NewCrop));
 			//Text that isn't well-formed XML still loses its password.
 			string broken="<NCScript><Credentials><password>S3cr3t</password><name>x</name>";
 			Assert.IsFalse(ErxXml.RedactNewCropCredentials(broken).Contains("S3cr3t"));
@@ -117,7 +117,7 @@ namespace VendorDirectTests.Erx {
 		[TestMethod]
 		public void RedactForLog_DoseSpotHidesTheSsoValues() {
 			string query=DoseSpotSso.Create("1","key","2").ToQueryString("","3",false);
-			string redacted=OpenDentBusiness.Erx.RedactForLog(query,ErxOption.DoseSpot);
+			string redacted=OpenPmsDentalBusiness.Erx.RedactForLog(query,ErxOption.DoseSpot);
 			Assert.IsFalse(Regex.IsMatch(redacted,"SingleSignOnCode=[^*]"));
 			Assert.IsFalse(Regex.IsMatch(redacted,"SingleSignOnUserIdVerify=[^*]"));
 		}

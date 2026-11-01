@@ -11,7 +11,7 @@ using ImagingCapture.Settings;
 using ImagingDeviceManager.Capture;
 using ImagingDeviceManager.Config;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Tests {
 	///<summary>CaptureBitDepthDecision (design 7.8 "When 16-bit is enabled", 7.10, 9.3) and CaptureVerificationRecords.FindLatest; also the

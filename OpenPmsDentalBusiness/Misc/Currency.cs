@@ -1,0 +1,18 @@
+﻿using System;
+using System.Globalization;
+
+namespace OpenPmsDentalBusiness {
+	public class Currency {
+		
+		///<summary>Gets StringFormat for currency. "F2" for customers, "F4" for HQ.</summary>
+		public static string GetCurrencyFormat() {
+			return "F2";
+		}
+
+		/// <summary> Rounds amt to 2 places for customers, and 4 places for hq. </summary>
+		public static double Round(double amt) {
+			return PIn.Double(amt.ToString(GetCurrencyFormat()));
+		}
+
+	}
+}

@@ -4,10 +4,10 @@ using System;
 using System.IO;
 using System.Windows.Forms;
 using CodeBase;
-using OpenDentBusiness;
-using OpenDentBusiness.VendorDirect.ProgramLinks;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.VendorDirect.ProgramLinks;
 
-namespace OpenDental.Bridges{
+namespace OpenPmsDental.Bridges{
 	///<summary>Clever One by VATECH. The hand-off is the EzDent-i one (linkage.xml next to the program, then start it), without the Social Security
 	///number. VATECH has not published how Clever One takes a patient, so this is the fork's choice (CleverOneProgram).</summary>
 	public class CleverOne{

@@ -1,0 +1,141 @@
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Drawing;
+using System.Text;
+using System.Windows.Forms;
+using OpenPmsDental;
+using OpenPmsDental.UI;
+using OpenPmsDentalBusiness;
+using CodeBase;
+
+namespace OpenDentalImaging {
+	public partial class FormImagingDevices:FormODBase {
+		///<summary>Local copy of cached device list.</summary>
+		private List<ImagingDevice> _listImagingDevices;
+		private bool _changed;
+
+		public FormImagingDevices() {
+			InitializeComponent();
+			InitializeLayoutManager();
+			Lan.F(this);
+		}
+
+		private void FormImagingDevices_Load(object sender, EventArgs e){
+			textComputer.Text=ODEnvironment.MachineName;
+			FillGrid();
+		}
+
+		private void FillGrid(){
+			_listImagingDevices=ImagingDevices.GetDeepCopy();
+			gridMain.BeginUpdate();
+			gridMain.Columns.Clear();
+			GridColumn col=new GridColumn(Lan.g("TableImagingDevices","Description"),100);
+			gridMain.Columns.Add(col);
+			col=new GridColumn(Lan.g("TableImagingDevices","Computer"),100);
+			gridMain.Columns.Add(col);
+			col=new GridColumn(Lan.g("TableImagingDevices","Type"),100);
+			gridMain.Columns.Add(col);
+			col=new GridColumn(Lan.g("TableImagingDevices","Twain Name"),200);
+			gridMain.Columns.Add(col);
+			gridMain.ListGridRows.Clear();
+			GridRow row;
+			for(int i=0;i<_listImagingDevices.Count;i++){
+				row=new GridRow();
+				row.Cells.Add(_listImagingDevices[i].Description);
+				row.Cells.Add(_listImagingDevices[i].ComputerName);
+				row.Cells.Add(_listImagingDevices[i].DeviceType.ToString());
+				row.Cells.Add(_listImagingDevices[i].TwainName);
+				gridMain.ListGridRows.Add(row);
+			}
+			gridMain.EndUpdate();
+		}
+
+		private void gridMain_CellDoubleClick(object sender,ODGridClickEventArgs e) {
+			using FormImagingDeviceEdit formImagingDeviceEdit=new FormImagingDeviceEdit();
+			formImagingDeviceEdit.ImagingDeviceCur=_listImagingDevices[e.Row];
+			formImagingDeviceEdit.ShowDialog();
+			if(formImagingDeviceEdit.DialogResult!=DialogResult.OK){
+				return;
+			}
+			_changed=true;
+			ImagingDevices.RefreshCache();
+			FillGrid();
+		}
+
+		private void butAdd_Click(object sender, EventArgs e){
+			using FormImagingDeviceEdit formImagingDeviceEdit=new FormImagingDeviceEdit();
+			formImagingDeviceEdit.ImagingDeviceCur=new ImagingDevice();
+			formImagingDeviceEdit.ImagingDeviceCur.IsNew=true;
+			formImagingDeviceEdit.ShowDialog();
+			if(formImagingDeviceEdit.DialogResult!=DialogResult.OK){
+				return;
+			}
+			_changed=true;
+			ImagingDevices.RefreshCache();
+			FillGrid();
+		}
+
+		private void butUp_Click(object sender, EventArgs e){
+			int idxSelected=gridMain.GetSelectedIndex();
+			if(idxSelected==-1) {
+				MsgBox.Show(this,"Please select an item first.");
+				return;
+			}
+			if(idxSelected==0) {//at top
+				return;
+			}
+			ImagingDevice imagingDevice=_listImagingDevices[idxSelected];
+			imagingDevice.ItemOrder--;
+			ImagingDevices.Update(imagingDevice);
+			ImagingDevice imagingDeviceAbove=_listImagingDevices[idxSelected-1];
+			imagingDeviceAbove.ItemOrder++;
+			ImagingDevices.Update(imagingDeviceAbove);
+			ImagingDevices.RefreshCache();
+			FillGrid();
+			gridMain.SetSelected(idxSelected-1);
+			_changed=true;
+		}
+
+		private void butDown_Click(object sender, EventArgs e){
+			int idxSelected=gridMain.GetSelectedIndex();
+			if(idxSelected==-1) {
+				MsgBox.Show(this,"Please select an item first.");
+				return;
+			}
+			if(idxSelected==_listImagingDevices.Count-1) {//at bottom
+				return;
+			}
+			ImagingDevice imagingDevice=_listImagingDevices[idxSelected];
+			imagingDevice.ItemOrder++;
+			ImagingDevices.Update(imagingDevice);
+			ImagingDevice imagingDeviceBelow=_listImagingDevices[idxSelected+1];
+			imagingDeviceBelow.ItemOrder--;
+			ImagingDevices.Update(imagingDeviceBelow);
+			ImagingDevices.RefreshCache();
+			FillGrid();
+			gridMain.SetSelected(idxSelected+1);
+			_changed=true;
+		}
+
+		///<summary>The unassigned captures of this computer (design 7.12): the capture quarantine, and the capture journal's recent copies. Each
+		///Assign, Reassign and Discard in it checks its own permission.</summary>
+		private void butUnassigned_Click(object sender,EventArgs e) {
+			ImagingCapture.UI.FrmCaptureQuarantine.ShowModal(new ImagingCapture.Recovery.CaptureRecoveryContext {
+				View=ImagingCapture.Recovery.CaptureRecoveryView.Unassigned });
+		}
+
+		///<summary>"Add standard templates" (ImagingCapture): the standard FMX and 4BW mount definitions with the X-ray category the user picks,
+		///idempotent by Description. It needs Setup and logs each template it adds.</summary>
+		private void butStandardTemplates_Click(object sender,EventArgs e) {
+			ImagingCapture.UI.FrmStandardTemplates.ShowModal();
+		}
+
+		private void FormImagingDevices_FormClosing(object sender,FormClosingEventArgs e) {
+			if(_changed){
+				DataValid.SetInvalid(InvalidType.ToolButsAndMounts);
+			}
+		}
+
+	}
+}

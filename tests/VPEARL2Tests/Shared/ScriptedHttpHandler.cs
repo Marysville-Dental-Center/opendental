@@ -7,7 +7,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using OpenDentBusiness.Pearl;
+using OpenPmsDentalBusiness.Pearl;
 
 namespace VPEARL2Tests {
 	public sealed class ScriptedHttpHandler:HttpMessageHandler {

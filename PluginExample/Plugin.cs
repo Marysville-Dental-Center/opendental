@@ -5,7 +5,7 @@ using System.Drawing.Printing;
 using System.Reflection;
 using System.Text;
 using System.Windows.Forms;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 ///<summary>The namespace for this class must match the dll filename, including capitalization.
 ///All other classes will typically belong to the same namespace too, but that's not a requirement.</summary>
@@ -31,10 +31,10 @@ namespace PluginExample {
 		public override bool HookMethod(object sender,string hookName,params object[] parameters) {//required method
 			switch(hookName){
 				case "ContrFamily.gridPat_CellDoubleClick":
-					ContrFamilyP.gridPat_CellDoubleClick((OpenDental.ControlFamily)sender,(Patient)parameters[0]);
+					ContrFamilyP.gridPat_CellDoubleClick((OpenPmsDental.ControlFamily)sender,(Patient)parameters[0]);
 					return true;
 				case "ContrChart.FillPtInfo":
-					ContrChartP.FillPtInfo((OpenDental.ControlChart)sender,(Patient)parameters[0]);
+					ContrChartP.FillPtInfo((OpenPmsDental.ControlChart)sender,(Patient)parameters[0]);
 					return true;
 				default:
 					return false;//this plugin does not implement the particular hook passed in.
@@ -44,13 +44,13 @@ namespace PluginExample {
 		public override bool HookAddCode(object sender,string hookName,params object[] parameters) {//required method
 			switch(hookName){
 				case "ContrAccount.InitializeOnStartup_end":
-					ContrAccountP.InitializeOnStartup_end((OpenDental.ControlAccount)sender);
+					ContrAccountP.InitializeOnStartup_end((OpenPmsDental.ControlAccount)sender);
 					return true;
 				case "ContrAccount.RefreshModuleData_end":
-					ContrAccountP.RefreshModuleData_end((OpenDental.ControlAccount)sender,(Family)parameters[0],(Patient)parameters[1]);
+					ContrAccountP.RefreshModuleData_end((OpenPmsDental.ControlAccount)sender,(Family)parameters[0],(Patient)parameters[1]);
 					return true;
 				case "ContrAccount.RefreshModuleData_null":
-					ContrAccountP.RefreshModuleData_end((OpenDental.ControlAccount)sender,null,null);
+					ContrAccountP.RefreshModuleData_end((OpenPmsDental.ControlAccount)sender,null,null);
 					return true;
 			
 

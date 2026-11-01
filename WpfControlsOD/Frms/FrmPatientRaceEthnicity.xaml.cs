@@ -8,10 +8,10 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	public partial class FrmPatientRaceEthnicity:FrmODBase {
 		///<summary>The races for this patient when this form was opened. Must be set before opening this frm.</summary>
 		public List<PatientRace> ListPatientRacesAll;

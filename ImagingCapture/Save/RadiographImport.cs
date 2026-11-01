@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Save {
 	///<summary>The database and file calls RadiographImport makes, as a thin seam so that its decisions can be tested without a database.
@@ -278,13 +278,13 @@ namespace ImagingCapture.Save {
 		}
 
 		public void SendToPearlIfConfigured(Patient patient,Document document,byte[] pngBytes,MountItem mountItem) {
-			if(!OpenDentBusiness.Bridges.Pearl.DoAutoUploadForImageCategory(document.DocCategory)) {
+			if(!OpenPmsDentalBusiness.Bridges.Pearl.DoAutoUploadForImageCategory(document.DocCategory)) {
 				return;
 			}
 			using(MemoryStream memoryStream=new MemoryStream(pngBytes))
 			using(Bitmap bitmap=new Bitmap(memoryStream)) {
 				//SetupPearlForSendingSingle copies the bitmap, as it does for ControlImages.
-				OpenDentBusiness.Bridges.Pearl pearl=OpenDentBusiness.Bridges.Pearl.SetupPearlForSendingSingle(patient,document,bitmap,mountItem:mountItem);
+				OpenPmsDentalBusiness.Bridges.Pearl pearl=OpenPmsDentalBusiness.Bridges.Pearl.SetupPearlForSendingSingle(patient,document,bitmap,mountItem:mountItem);
 				pearl?.SendOnThread();
 			}
 		}

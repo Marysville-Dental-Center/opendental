@@ -13,8 +13,8 @@ using System.Threading;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace M2MISCTests {
 	///<summary>Creates, connects to and drops this run's scratch database. Every name starts with "m2misc_" so the tests can never drop anything

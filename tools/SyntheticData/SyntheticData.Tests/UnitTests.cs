@@ -603,10 +603,10 @@ namespace SyntheticData.Tests {
 		[TestMethod]
 		public void MedicationList_AndPatientList_UseTheDocumentedJson() {
 			string medLabel=EFormJson.ValueLabel(OdValues.EfMedicationList,"Current medications");
-			OpenDentBusiness.EFormMedListLayout layout=Newtonsoft.Json.JsonConvert.DeserializeObject<OpenDentBusiness.EFormMedListLayout>(medLabel);
+			OpenPmsDentalBusiness.EFormMedListLayout layout=Newtonsoft.Json.JsonConvert.DeserializeObject<OpenPmsDentalBusiness.EFormMedListLayout>(medLabel);
 			Assert.AreEqual("Current medications",layout.Title);
 			Assert.IsTrue(layout.ImportCol1);
-			List<OpenDentBusiness.EFormMed> listMeds=Newtonsoft.Json.JsonConvert.DeserializeObject<List<OpenDentBusiness.EFormMed>>(
+			List<OpenPmsDentalBusiness.EFormMed> listMeds=Newtonsoft.Json.JsonConvert.DeserializeObject<List<OpenPmsDentalBusiness.EFormMed>>(
 				EFormJson.MedicationList(new[] { "Ibuprofen","Lisinopril" }));
 			CollectionAssert.AreEqual(new[] { "Ibuprofen","Lisinopril" },listMeds.Select(x => x.MedName).ToList());
 			Assert.AreEqual("[]",EFormJson.MedicationList(new string[0]));

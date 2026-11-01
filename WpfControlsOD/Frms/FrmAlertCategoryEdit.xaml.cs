@@ -8,10 +8,10 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using CodeBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	public partial class FrmAlertCategoryEdit:FrmODBase {
 		private List<AlertType> _listAlertTypesShown;
 		private List<AlertCategoryLink> _listAlertCategoryLinksOld;//New list generated on OK click.

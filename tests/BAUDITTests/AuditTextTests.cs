@@ -3,7 +3,7 @@
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System.Collections.Generic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace BAUDITTests {
 	[TestClass]
@@ -22,7 +22,7 @@ namespace BAUDITTests {
 				new Clinic { ClinicNum=CLINIC_TWIN,Abbr="NORTH",Description="North Annex" },
 				new Clinic { ClinicNum=CLINIC_BLANK,Abbr="",Description="No Abbreviation" },
 			};
-			Clinics.FillCacheFromTable(OpenDentBusiness.Crud.ClinicCrud.ListToTable(listClinics));
+			Clinics.FillCacheFromTable(OpenPmsDentalBusiness.Crud.ClinicCrud.ListToTable(listClinics));
 		}
 
 		private static Patient Pat(string preferred,long clinicNum) {

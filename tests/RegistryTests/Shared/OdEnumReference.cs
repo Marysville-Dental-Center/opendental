@@ -58,7 +58,7 @@ namespace RegistryTests {
 				return null;
 			}
 			List<Type> listTypes=new List<Type>();
-			foreach(Assembly assembly in new[] { typeof(OpenDentBusiness.Patient).Assembly,typeof(CodeBase.ODException).Assembly }) {
+			foreach(Assembly assembly in new[] { typeof(OpenPmsDentalBusiness.Patient).Assembly,typeof(CodeBase.ODException).Assembly }) {
 				Type[] arrayTypes;
 				try {
 					arrayTypes=assembly.GetTypes();
@@ -71,8 +71,8 @@ namespace RegistryTests {
 			if(listTypes.Count==0) {
 				return null;
 			}
-			return listTypes.FirstOrDefault(x => x.Namespace==typeof(OpenDentBusiness.Patient).Namespace && !x.IsNested)
-				??listTypes.FirstOrDefault(x => x.Namespace==typeof(OpenDentBusiness.Patient).Namespace)
+			return listTypes.FirstOrDefault(x => x.Namespace==typeof(OpenPmsDentalBusiness.Patient).Namespace && !x.IsNested)
+				??listTypes.FirstOrDefault(x => x.Namespace==typeof(OpenPmsDentalBusiness.Patient).Namespace)
 				??listTypes[0];
 		}
 	}

@@ -8,9 +8,9 @@ using System.Linq;
 using CodeBase;
 using ForkMigrationTests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
-using SecurityHash=OpenDentBusiness.Misc.SecurityHash;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
+using SecurityHash=OpenPmsDentalBusiness.Misc.SecurityHash;
 
 namespace RowHashTests {
 	[TestClass]

@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace M2MEDTests {
 	[TestClass]
@@ -66,7 +66,7 @@ namespace M2MEDTests {
 			disease.PatNote=patNote;
 			disease.ProbStatus=ProblemStatus.Active;
 			disease.SnomedProblemType="";
-			OpenDentBusiness.Crud.DiseaseCrud.Insert(disease);
+			OpenPmsDentalBusiness.Crud.DiseaseCrud.Insert(disease);
 			return disease;
 		}
 
@@ -101,23 +101,23 @@ namespace M2MEDTests {
 			InsertProblem(103,diseaseDefKeep.DiseaseDefNum,"new entry");
 			InsertProblem(104,diseaseDefKeep.DiseaseDefNum);
 			InsertProblem(105,diseaseDefOther.DiseaseDefNum);
-			OpenDentBusiness.Crud.RxAlertCrud.Insert(new RxAlert { RxDefNum=1,DiseaseDefNum=diseaseDefDiscard.DiseaseDefNum,NotificationMsg="" });
-			OpenDentBusiness.Crud.RxAlertCrud.Insert(new RxAlert { RxDefNum=2,DiseaseDefNum=diseaseDefOther.DiseaseDefNum,NotificationMsg="" });
-			OpenDentBusiness.Crud.EduResourceCrud.Insert(new EduResource { DiseaseDefNum=diseaseDefDiscard.DiseaseDefNum,ResourceUrl="http://localhost/edu",SmokingSnoMed="" });
-			OpenDentBusiness.Crud.FamilyHealthCrud.Insert(new FamilyHealth { PatNum=101,DiseaseDefNum=diseaseDefDiscard.DiseaseDefNum,PersonName="Synthetic parent" });
-			OpenDentBusiness.Crud.ReminderRuleCrud.Insert(new ReminderRule { ReminderCriterion=EhrCriterion.Problem,CriterionFK=diseaseDefDiscard.DiseaseDefNum,CriterionValue="",
+			OpenPmsDentalBusiness.Crud.RxAlertCrud.Insert(new RxAlert { RxDefNum=1,DiseaseDefNum=diseaseDefDiscard.DiseaseDefNum,NotificationMsg="" });
+			OpenPmsDentalBusiness.Crud.RxAlertCrud.Insert(new RxAlert { RxDefNum=2,DiseaseDefNum=diseaseDefOther.DiseaseDefNum,NotificationMsg="" });
+			OpenPmsDentalBusiness.Crud.EduResourceCrud.Insert(new EduResource { DiseaseDefNum=diseaseDefDiscard.DiseaseDefNum,ResourceUrl="http://localhost/edu",SmokingSnoMed="" });
+			OpenPmsDentalBusiness.Crud.FamilyHealthCrud.Insert(new FamilyHealth { PatNum=101,DiseaseDefNum=diseaseDefDiscard.DiseaseDefNum,PersonName="Synthetic parent" });
+			OpenPmsDentalBusiness.Crud.ReminderRuleCrud.Insert(new ReminderRule { ReminderCriterion=EhrCriterion.Problem,CriterionFK=diseaseDefDiscard.DiseaseDefNum,CriterionValue="",
 				Message="Synthetic problem reminder" });
 			//An allergy rule whose allergy number happens to equal the discarded problem's number must not move.
-			OpenDentBusiness.Crud.ReminderRuleCrud.Insert(new ReminderRule { ReminderCriterion=EhrCriterion.Allergy,CriterionFK=diseaseDefDiscard.DiseaseDefNum,CriterionValue="",
+			OpenPmsDentalBusiness.Crud.ReminderRuleCrud.Insert(new ReminderRule { ReminderCriterion=EhrCriterion.Allergy,CriterionFK=diseaseDefDiscard.DiseaseDefNum,CriterionValue="",
 				Message="Synthetic allergy reminder" });
 			EhrTrigger ehrTrigger=new EhrTrigger();
 			ehrTrigger.Description="Synthetic trigger";
 			ehrTrigger.ProblemDefNumList=" "+diseaseDefOther.DiseaseDefNum+"  "+diseaseDefDiscard.DiseaseDefNum+" ";
-			OpenDentBusiness.Crud.EhrTriggerCrud.Insert(ehrTrigger);
+			OpenPmsDentalBusiness.Crud.EhrTriggerCrud.Insert(ehrTrigger);
 			EhrTrigger ehrTriggerBoth=new EhrTrigger();
 			ehrTriggerBoth.Description="Synthetic trigger with both";
 			ehrTriggerBoth.ProblemDefNumList=" "+diseaseDefKeep.DiseaseDefNum+"  "+diseaseDefDiscard.DiseaseDefNum+" ";
-			OpenDentBusiness.Crud.EhrTriggerCrud.Insert(ehrTriggerBoth);
+			OpenPmsDentalBusiness.Crud.EhrTriggerCrud.Insert(ehrTriggerBoth);
 			return (diseaseDefKeep,diseaseDefDiscard,diseaseDefOther);
 		}
 
@@ -134,7 +134,7 @@ namespace M2MEDTests {
 			sheetFieldDef.UiLabelMobile="";
 			sheetFieldDef.UiLabelMobileRadioButton="";
 			sheetFieldDef.Language="";
-			OpenDentBusiness.Crud.SheetFieldDefCrud.Insert(sheetFieldDef);
+			OpenPmsDentalBusiness.Crud.SheetFieldDefCrud.Insert(sheetFieldDef);
 		}
 
 		private static void InsertEFormFieldDef(string dbLink) {
@@ -148,7 +148,7 @@ namespace M2MEDTests {
 			eFormFieldDef.ConditionalParent="";
 			eFormFieldDef.ConditionalValue="";
 			eFormFieldDef.ReportableName="";
-			OpenDentBusiness.Crud.EFormFieldDefCrud.Insert(eFormFieldDef);
+			OpenPmsDentalBusiness.Crud.EFormFieldDefCrud.Insert(eFormFieldDef);
 		}
 		#endregion Synthetic data
 

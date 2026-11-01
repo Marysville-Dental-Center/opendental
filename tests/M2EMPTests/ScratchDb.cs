@@ -8,8 +8,8 @@ using System.IO;
 using System.Text.RegularExpressions;
 using DataConnectionBase;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace M2EMPTests {
 	///<summary>Creates, connects to and drops scratch databases. Every name starts with "m2emp_" plus this run's id (start time, process id, random

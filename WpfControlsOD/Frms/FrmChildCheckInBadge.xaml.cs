@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	///<summary></summary>
 	public partial class FrmChildCheckInBadge:FrmODBase {
 		///<summary>Stores the list of children that the parent is able to check in/out. This will be will by the parent frm</summary>

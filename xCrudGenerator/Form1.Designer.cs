@@ -208,7 +208,7 @@ namespace xCrudGenerator {
 			this.label10.Size = new System.Drawing.Size(421, 33);
 			this.label10.TabIndex = 24;
 			this.label10.Text = "This CrudGenerator project MUST be set to compile each time it\'s run even if chan" +
-    "ges were only to OpenDentBusiness.";
+    "ges were only to OpenPmsDentalBusiness.";
 			// 
 			// checkRunQueries
 			// 

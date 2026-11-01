@@ -9,9 +9,9 @@ using System.Linq;
 using ForkMigrationTests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
-using OpenDentBusiness.ForkMigrations.FeatureSteps;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
+using OpenPmsDentalBusiness.ForkMigrations.FeatureSteps;
 
 namespace M2HISTTests {
 	[TestClass]
@@ -107,7 +107,7 @@ namespace M2HISTTests {
 			string prefsBefore=SnapshotInsHistPrefs();
 			ForkMigrationResult result=RunStep();
 			Assert.AreEqual(1,result.ListStepsRun.Count);
-			List<CodeGroup> listCodeGroups=OpenDentBusiness.Crud.CodeGroupCrud.SelectMany("SELECT * FROM codegroup ORDER BY ItemOrder");
+			List<CodeGroup> listCodeGroups=OpenPmsDentalBusiness.Crud.CodeGroupCrud.SelectMany("SELECT * FROM codegroup ORDER BY ItemOrder");
 			CodeGroup codeGroupBW=listCodeGroups.Single(x => x.CodeGroupFixed==EnumCodeGroupFixed.BW);
 			Assert.IsTrue(codeGroupBW.ShowInHistory);
 			Assert.AreEqual("Z0272",codeGroupBW.HistProcCode);
@@ -143,7 +143,7 @@ namespace M2HISTTests {
 			AddPref(nameof(PrefName.InsHistDebridementCodes),"Z4355");
 			AddGroup("Debridement (office)","Z4355",3,EnumCodeGroupFixed.None);//Not the fixed group: the category gets its own.
 			DataCore.NonQ("UPDATE preference SET ValueString='Z0272,Z0279' WHERE PrefName='"+nameof(PrefName.InsHistBWCodes)+"'");//Z0279 is added to BW.
-			List<CodeGroup> listBefore=OpenDentBusiness.Crud.CodeGroupCrud.SelectMany("SELECT * FROM codegroup ORDER BY CodeGroupNum");
+			List<CodeGroup> listBefore=OpenPmsDentalBusiness.Crud.CodeGroupCrud.SelectMany("SELECT * FROM codegroup ORDER BY CodeGroupNum");
 			InsHistCodeGroupsMigration.MigrationPlan plan=InsHistCodeGroupsMigration.CreatePlan(true,false,InsHistCodeGroupsMigration.ReadPrefs(),
 				InsHistCodeGroupsMigration.ReadCodeGroups(),InsHistCodeGroupsMigration.ReadProcCodes());
 			Assert.IsTrue(plan.IsRun);
@@ -155,7 +155,7 @@ namespace M2HISTTests {
 				string.Join("\r\n",result.ListChanges));
 			StringAssert.Contains(plan.GetLogLines()[0],"Code group 'BW' (CodeGroupNum ");
 			StringAssert.Contains(plan.GetLogLines()[0],") shown in Insurance History, History Proc Code Z0272, codes added: Z0279");
-			List<CodeGroup> listAfter=OpenDentBusiness.Crud.CodeGroupCrud.SelectMany("SELECT * FROM codegroup ORDER BY CodeGroupNum");
+			List<CodeGroup> listAfter=OpenPmsDentalBusiness.Crud.CodeGroupCrud.SelectMany("SELECT * FROM codegroup ORDER BY CodeGroupNum");
 			foreach(CodeGroup codeGroupBefore in listBefore) {
 				CodeGroup codeGroupAfter=listAfter.Single(x => x.CodeGroupNum==codeGroupBefore.CodeGroupNum);
 				CodeGroup codeGroupPlanned=plan.ListUpdated.FirstOrDefault(x => x.CodeGroupNum==codeGroupBefore.CodeGroupNum)??codeGroupBefore;

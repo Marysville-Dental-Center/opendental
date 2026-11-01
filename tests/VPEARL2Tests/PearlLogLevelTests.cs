@@ -4,7 +4,7 @@ using System;
 using System.Linq;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness.Pearl;
+using OpenPmsDentalBusiness.Pearl;
 
 namespace VPEARL2Tests {
 	[TestClass]
@@ -144,7 +144,7 @@ namespace VPEARL2Tests {
 		[TestMethod]
 		public void EnsureLogLevelProperty_IgnoresOtherPrograms() {
 			Assert.IsFalse(PearlLog.EnsureLogLevelProperty(null));
-			OpenDentBusiness.Program program=new OpenDentBusiness.Program();
+			OpenPmsDentalBusiness.Program program=new OpenPmsDentalBusiness.Program();
 			program.ProgramNum=5;
 			program.ProgName="Overjet";
 			Assert.IsFalse(PearlLog.EnsureLogLevelProperty(program),"No database call for a program other than Pearl.");

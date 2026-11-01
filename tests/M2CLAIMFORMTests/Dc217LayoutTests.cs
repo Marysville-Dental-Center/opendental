@@ -8,7 +8,7 @@ using System.IO;
 using System.Linq;
 using ForkMigrationTests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace M2CLAIMFORMTests {
 	[TestClass]

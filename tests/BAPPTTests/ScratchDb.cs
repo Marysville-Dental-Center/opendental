@@ -6,8 +6,8 @@ using System.IO;
 using System.Text;
 using DataConnectionBase;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace BAPPTTests {
 	///<summary>Every database name starts with "bappttest_" so the tests can never drop anything else. Only 127.0.0.1 is ever used.</summary>

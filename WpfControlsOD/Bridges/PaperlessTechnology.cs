@@ -7,9 +7,9 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows.Forms;
 using CodeBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
-namespace OpenDental.Bridges{
+namespace OpenPmsDental.Bridges{
 	/// <summary>PT Dental.  www.gopaperlessnow.com.  This bridge only works on Windows and in English, so some shortcuts were taken.</summary>
 	public class PaperlessTechnology{
 		private static string exportAddCsv="addpatient_OD.csv";

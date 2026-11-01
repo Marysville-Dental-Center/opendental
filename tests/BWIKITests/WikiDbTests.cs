@@ -10,8 +10,8 @@ using System.Threading;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
 using Newtonsoft.Json;
-using OpenDentBusiness;
-using OpenDentBusiness.FileIO;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.FileIO;
 
 namespace BWIKITests {
 	[TestClass]

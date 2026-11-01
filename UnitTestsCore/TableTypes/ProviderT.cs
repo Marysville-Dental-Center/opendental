@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Reflection;
 using CodeBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace UnitTestsCore {
 	public class ProviderT {

@@ -26,14 +26,14 @@
 			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormCentralConnectionGroupEdit));
 			this.label1 = new System.Windows.Forms.Label();
 			this.textDescription = new System.Windows.Forms.TextBox();
-			this.butOK = new OpenDental.UI.Button();
-			this.gridMain = new OpenDental.UI.GridOD();
-			this.butDelete = new OpenDental.UI.Button();
-			this.butAdd = new OpenDental.UI.Button();
-			this.butRemove = new OpenDental.UI.Button();
+			this.butOK = new OpenPmsDental.UI.Button();
+			this.gridMain = new OpenPmsDental.UI.GridOD();
+			this.butDelete = new OpenPmsDental.UI.Button();
+			this.butAdd = new OpenPmsDental.UI.Button();
+			this.butRemove = new OpenPmsDental.UI.Button();
 			this.label2 = new System.Windows.Forms.Label();
-			this.gridAvail = new OpenDental.UI.GridOD();
-			this.butCancel = new OpenDental.UI.Button();
+			this.gridAvail = new OpenPmsDental.UI.GridOD();
+			this.butCancel = new OpenPmsDental.UI.Button();
 			this.SuspendLayout();
 			// 
 			// label1
@@ -69,7 +69,7 @@
             | System.Windows.Forms.AnchorStyles.Left)));
 			this.gridMain.Location = new System.Drawing.Point(12, 47);
 			this.gridMain.Name = "gridMain";
-			this.gridMain.SelectionMode = OpenDental.UI.GridSelectionMode.MultiExtended;
+			this.gridMain.SelectionMode = OpenPmsDental.UI.GridSelectionMode.MultiExtended;
 			this.gridMain.Size = new System.Drawing.Size(465, 457);
 			this.gridMain.TabIndex = 2;
 			this.gridMain.Title = "Connections for this Group";
@@ -124,7 +124,7 @@
             | System.Windows.Forms.AnchorStyles.Left)));
 			this.gridAvail.Location = new System.Drawing.Point(584, 47);
 			this.gridAvail.Name = "gridAvail";
-			this.gridAvail.SelectionMode = OpenDental.UI.GridSelectionMode.MultiExtended;
+			this.gridAvail.SelectionMode = OpenPmsDental.UI.GridSelectionMode.MultiExtended;
 			this.gridAvail.Size = new System.Drawing.Size(465, 457);
 			this.gridAvail.TabIndex = 222;
 			this.gridAvail.Title = "Available Connections";
@@ -174,13 +174,13 @@
 
 		private System.Windows.Forms.Label label1;
 		private System.Windows.Forms.TextBox textDescription;
-		private OpenDental.UI.GridOD gridMain;
-		private OpenDental.UI.Button butOK;
-		private OpenDental.UI.Button butDelete;
-		private OpenDental.UI.Button butAdd;
-		private OpenDental.UI.Button butRemove;
+		private OpenPmsDental.UI.GridOD gridMain;
+		private OpenPmsDental.UI.Button butOK;
+		private OpenPmsDental.UI.Button butDelete;
+		private OpenPmsDental.UI.Button butAdd;
+		private OpenPmsDental.UI.Button butRemove;
 		private System.Windows.Forms.Label label2;
-		private OpenDental.UI.GridOD gridAvail;
-		private OpenDental.UI.Button butCancel;
+		private OpenPmsDental.UI.GridOD gridAvail;
+		private OpenPmsDental.UI.Button butCancel;
 	}
 }

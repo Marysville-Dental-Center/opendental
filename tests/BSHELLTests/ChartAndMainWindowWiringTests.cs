@@ -38,10 +38,10 @@ namespace BSHELLTests {
 		[TestMethod]
 		public void DomainHelper_MatchesTheOldStartupRules() {
 			//The startup condition was "DomainLoginEnabled and a non-blank DomainLoginPath"; the helper's is the same.
-			Assert.IsTrue(new OpenDentBusiness.DomainLoginSettings { IsEnabled=true,LdapPath="LDAP://DC=example,DC=local" }.IsUsable);
-			Assert.IsFalse(new OpenDentBusiness.DomainLoginSettings { IsEnabled=true,LdapPath="  " }.IsUsable);
-			Assert.IsFalse(new OpenDentBusiness.DomainLoginSettings { IsEnabled=false,LdapPath="LDAP://DC=example,DC=local" }.IsUsable);
-			Assert.AreEqual("{guid}\\jsmith",OpenDentBusiness.DomainLogin.BuildDomainUser("{guid}","jsmith"),"Same \"{guid}\\{user}\" key userod.DomainUser holds.");
+			Assert.IsTrue(new OpenPmsDentalBusiness.DomainLoginSettings { IsEnabled=true,LdapPath="LDAP://DC=example,DC=local" }.IsUsable);
+			Assert.IsFalse(new OpenPmsDentalBusiness.DomainLoginSettings { IsEnabled=true,LdapPath="  " }.IsUsable);
+			Assert.IsFalse(new OpenPmsDentalBusiness.DomainLoginSettings { IsEnabled=false,LdapPath="LDAP://DC=example,DC=local" }.IsUsable);
+			Assert.AreEqual("{guid}\\jsmith",OpenPmsDentalBusiness.DomainLogin.BuildDomainUser("{guid}","jsmith"),"Same \"{guid}\\{user}\" key userod.DomainUser holds.");
 		}
 	}
 }

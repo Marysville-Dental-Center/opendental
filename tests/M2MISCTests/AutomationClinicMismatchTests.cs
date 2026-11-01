@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace M2MISCTests {
 	[TestClass]
@@ -86,9 +86,9 @@ namespace M2MISCTests {
 		private void SetUpDb(bool hasClinics=true) {
 			TestDb.ResetOrSkip();
 			TestDb.SetPref("EasyNoClinics",hasClinics ? "0" : "1");
-			OpenDentBusiness.Crud.ProcedureCodeCrud.Insert(new ProcedureCode { ProcCode=CODE_A,Descript="Synthetic A",AbbrDesc="SynA",ProcTime="/X/",
+			OpenPmsDentalBusiness.Crud.ProcedureCodeCrud.Insert(new ProcedureCode { ProcCode=CODE_A,Descript="Synthetic A",AbbrDesc="SynA",ProcTime="/X/",
 				TreatArea=TreatmentArea.Mouth });
-			OpenDentBusiness.Crud.ProcedureCodeCrud.Insert(new ProcedureCode { ProcCode=CODE_B,Descript="Synthetic B",AbbrDesc="SynB",ProcTime="/X/",
+			OpenPmsDentalBusiness.Crud.ProcedureCodeCrud.Insert(new ProcedureCode { ProcCode=CODE_B,Descript="Synthetic B",AbbrDesc="SynB",ProcTime="/X/",
 				TreatArea=TreatmentArea.Mouth });
 			_clinicNum1=Clinics.Insert(new Clinic { Abbr="SYN1",Description="Synthetic clinic 1" });
 			_clinicNum2=Clinics.Insert(new Clinic { Abbr="SYN2",Description="Synthetic clinic 2" });
@@ -96,14 +96,14 @@ namespace M2MISCTests {
 		}
 
 		private long InsertPatient(long clinicNum) {
-			return OpenDentBusiness.Crud.PatientCrud.Insert(new Patient { LName="Synthetic",FName="Patient"+Guid.NewGuid().ToString("N").Substring(0,6),
+			return OpenPmsDentalBusiness.Crud.PatientCrud.Insert(new Patient { LName="Synthetic",FName="Patient"+Guid.NewGuid().ToString("N").Substring(0,6),
 				PatStatus=PatientStatus.Patient,ClinicNum=clinicNum,Birthdate=new DateTime(1980,1,1) });
 		}
 
 		private Procedure InsertCompleted(long patNum,string procCode,long clinicNum,DateTime dateComplete) {
 			Procedure procedure=new Procedure { PatNum=patNum,CodeNum=ProcedureCodes.GetCodeNum(procCode),ProcStatus=ProcStat.C,ProcDate=dateComplete,
 				DateComplete=dateComplete,DateTP=dateComplete,ClinicNum=clinicNum,ToothNum="",Surf="",ToothRange="" };
-			procedure.ProcNum=OpenDentBusiness.Crud.ProcedureCrud.Insert(procedure);
+			procedure.ProcNum=OpenPmsDentalBusiness.Crud.ProcedureCrud.Insert(procedure);
 			return procedure;
 		}
 

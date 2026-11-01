@@ -1,0 +1,27 @@
+﻿using System;
+using System.Diagnostics;
+using System.IO;
+using CodeBase;
+using OpenPmsDentalBusiness;
+
+namespace OpenPmsDentalBusiness.Eclaims {
+	///<summary></summary>
+	public class VyneDental {
+
+		public static string ErrorMessage="";
+
+		public VyneDental(){}
+
+		///<summary>Returns true if the exe was launched, false otherwise.</summary>
+		public static bool Launch(Clearinghouse clearinghouse,int batchNum){//Called from Eclaims.cs. Clinic-level clearinghouse passed in.
+			try{
+				ODFileUtils.ProcessStart(clearinghouse.ClientProgram);
+			}
+			catch(Exception ex) {
+				ErrorMessage=ex.Message;
+				return false;
+			}
+			return true;
+		}
+	}
+}

@@ -11,7 +11,7 @@ using System.Threading;
 using System.Xml.Serialization;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace M2EFTests {
 	[TestClass]

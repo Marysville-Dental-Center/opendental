@@ -27,8 +27,8 @@
 			this.label3 = new System.Windows.Forms.Label();
 			this.textUserName = new System.Windows.Forms.TextBox();
 			this.labelAutoLogin = new System.Windows.Forms.Label();
-			this.butOK = new OpenDental.UI.Button();
-			this.butCancel = new OpenDental.UI.Button();
+			this.butOK = new OpenPmsDental.UI.Button();
+			this.butCancel = new OpenPmsDental.UI.Button();
 			this.SuspendLayout();
 			// 
 			// checkAutoLogin
@@ -113,8 +113,8 @@
 		#endregion
 
 		private System.Windows.Forms.CheckBox checkAutoLogin;
-		private OpenDental.UI.Button butOK;
-		private OpenDental.UI.Button butCancel;
+		private OpenPmsDental.UI.Button butOK;
+		private OpenPmsDental.UI.Button butCancel;
 		private System.Windows.Forms.Label label3;
 		private System.Windows.Forms.TextBox textUserName;
 		private System.Windows.Forms.Label labelAutoLogin;

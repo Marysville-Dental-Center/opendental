@@ -32,8 +32,8 @@
 			this.label1 = new System.Windows.Forms.Label();
 			this.panel2 = new System.Windows.Forms.Panel();
 			this.label2 = new System.Windows.Forms.Label();
-			this.button4 = new OpenDental.UI.Button();
-			this.lightSignalGrid1 = new OpenDental.UI.LightSignalGrid();
+			this.button4 = new OpenPmsDental.UI.Button();
+			this.lightSignalGrid1 = new OpenPmsDental.UI.LightSignalGrid();
 			this.textBox1 = new System.Windows.Forms.TextBox();
 			this.panel1.SuspendLayout();
 			this.panel2.SuspendLayout();
@@ -125,8 +125,8 @@
 		private System.Windows.Forms.Label label1;
 		private System.Windows.Forms.Panel panel2;
 		private System.Windows.Forms.Label label2;
-		private OpenDental.UI.Button button4;
-		private OpenDental.UI.LightSignalGrid lightSignalGrid1;
+		private OpenPmsDental.UI.Button button4;
+		private OpenPmsDental.UI.LightSignalGrid lightSignalGrid1;
 		private System.Windows.Forms.TextBox textBox1;
 	}
 }

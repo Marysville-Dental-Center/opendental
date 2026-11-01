@@ -4,8 +4,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.Crud;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.Crud;
 using UnitTestsCore;
 
 namespace BDBMTests {

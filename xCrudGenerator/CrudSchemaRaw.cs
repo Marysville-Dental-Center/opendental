@@ -4,7 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using CodeBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace xCrudGenerator {
 	///<summary>This is the class that actually generates snippets of raw schema code.</summary>

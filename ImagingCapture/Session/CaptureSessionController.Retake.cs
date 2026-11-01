@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using ImagingCapture.Save;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Session {
 	///<summary>Retake, Rotate and "Always rotate this slot" (design 7.3 step 5, 7.10, 7.11, 9.4, 10.7). UI thread only, like the rest of the

@@ -9,8 +9,8 @@ using CodeBase;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.VendorDirect;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.VendorDirect;
 
 namespace VendorDirectTests.Erx {
 	[TestClass]
@@ -107,7 +107,7 @@ namespace VendorDirectTests.Erx {
 			Programs.RefreshCache();
 			ProgramProperties.RefreshCache();
 			ProviderErxs.RefreshCache();
-			SetRaw(OpenDentBusiness.Erx.PropertyDescs.ErxOption,0,((int)ErxOption.DoseSpot).ToString());
+			SetRaw(OpenPmsDentalBusiness.Erx.PropertyDescs.ErxOption,0,((int)ErxOption.DoseSpot).ToString());
 		}
 
 		private static void Exec(MySqlConnection connection,string command) {
@@ -161,9 +161,9 @@ namespace VendorDirectTests.Erx {
 
 		[TestMethod]
 		public void EnsureProperties_AddsSecretRowsAndMasksOldClinicKeys() {
-			SetRaw(OpenDentBusiness.Erx.PropertyDescs.ClinicKey,0,"plainkey");
+			SetRaw(OpenPmsDentalBusiness.Erx.PropertyDescs.ClinicKey,0,"plainkey");
 			Assert.IsTrue(DoseSpotConfig.EnsureProperties());
-			ProgramProperty programPropertyKey=GetRow(OpenDentBusiness.Erx.PropertyDescs.ClinicKey);
+			ProgramProperty programPropertyKey=GetRow(OpenPmsDentalBusiness.Erx.PropertyDescs.ClinicKey);
 			Assert.IsTrue(programPropertyKey.IsMasked && programPropertyKey.IsHighSecurity);
 			Assert.AreEqual("plainkey",programPropertyKey.PropertyValue,"The value is kept; it is encrypted on the next save.");
 			ProgramProperty programPropertySubscription=GetRow(DoseSpotConfig.PropSubscriptionKey);
@@ -176,18 +176,18 @@ namespace VendorDirectTests.Erx {
 
 		[TestMethod]
 		public void GetClinicIdAndKey_DecryptsAcceptsPlainTextAndRefusesUnreadable() {
-			SetRaw(OpenDentBusiness.Erx.PropertyDescs.ClinicID,0,"321");
-			SetRaw(OpenDentBusiness.Erx.PropertyDescs.ClinicKey,0,"plain+key");
+			SetRaw(OpenPmsDentalBusiness.Erx.PropertyDescs.ClinicID,0,"321");
+			SetRaw(OpenPmsDentalBusiness.Erx.PropertyDescs.ClinicKey,0,"plain+key");
 			DoseSpot.GetClinicIdAndKey(0,"",null,null,out string clinicId,out string clinicKey);
 			Assert.AreEqual("321",clinicId);
 			Assert.AreEqual("plain+key",clinicKey,"Open Dental's plain-text key passes through.");
-			Assert.IsTrue(VendorCredentials.WriteSecret(ErxProgramNum,OpenDentBusiness.Erx.PropertyDescs.ClinicKey,0,"secret/key="));
+			Assert.IsTrue(VendorCredentials.WriteSecret(ErxProgramNum,OpenPmsDentalBusiness.Erx.PropertyDescs.ClinicKey,0,"secret/key="));
 			ProgramProperties.RefreshCache();
-			SecretsTestHelper.AssertRoundTrip("secret/key=",GetRow(OpenDentBusiness.Erx.PropertyDescs.ClinicKey).PropertyValue);
+			SecretsTestHelper.AssertRoundTrip("secret/key=",GetRow(OpenPmsDentalBusiness.Erx.PropertyDescs.ClinicKey).PropertyValue);
 			DoseSpot.GetClinicIdAndKey(0,"",null,null,out clinicId,out clinicKey);
 			Assert.AreEqual("secret/key=",clinicKey);
-			string stored=GetRow(OpenDentBusiness.Erx.PropertyDescs.ClinicKey).PropertyValue;
-			SetRaw(OpenDentBusiness.Erx.PropertyDescs.ClinicKey,0,stored.Substring(0,stored.Length-4)+(stored.EndsWith("AAAA") ? "BBBB" : "AAAA"));
+			string stored=GetRow(OpenPmsDentalBusiness.Erx.PropertyDescs.ClinicKey).PropertyValue;
+			SetRaw(OpenPmsDentalBusiness.Erx.PropertyDescs.ClinicKey,0,stored.Substring(0,stored.Length-4)+(stored.EndsWith("AAAA") ? "BBBB" : "AAAA"));
 			ODException ex=AssertEx.Throws<ODException>(() => DoseSpot.GetClinicIdAndKey(0,"",null,null,out _,out _));
 			StringAssert.Contains(ex.Message,"can't be read");
 		}
@@ -201,14 +201,14 @@ namespace VendorDirectTests.Erx {
 			Assert.AreEqual(3,DoseSpotConfig.GetMissingClinicItems(0).Count,"Subscription key, clinic ID and clinic key.");
 			Assert.IsTrue(VendorCredentials.WriteSecret(ErxProgramNum,DoseSpotConfig.PropSubscriptionKey,0,"sub"));
 			VendorCredentials.WriteSetting(ErxProgramNum,DoseSpotConfig.PropEnvironment,0,"Staging");
-			SetRaw(OpenDentBusiness.Erx.PropertyDescs.ClinicID,0,"321");
-			Assert.IsTrue(VendorCredentials.WriteSecret(ErxProgramNum,OpenDentBusiness.Erx.PropertyDescs.ClinicKey,0,"ck"));
+			SetRaw(OpenPmsDentalBusiness.Erx.PropertyDescs.ClinicID,0,"321");
+			Assert.IsTrue(VendorCredentials.WriteSecret(ErxProgramNum,OpenPmsDentalBusiness.Erx.PropertyDescs.ClinicKey,0,"ck"));
 			ProgramProperties.RefreshCache();
 			Assert.AreEqual(0,DoseSpotConfig.GetMissingClinicItems(0).Count);
 			DoseSpotCredentials doseSpotCredentials=DoseSpotCredentials.FromConfig("321","ck","2");
 			Assert.AreEqual("sub",doseSpotCredentials.SubscriptionKey);
 			Assert.AreEqual(DoseSpotConfig.UrlApiStaging,doseSpotCredentials.ApiBaseUrl);
-			StringAssert.StartsWith(OpenDentBusiness.Erx.GetRxDoseSpotUrl("&a=1"),DoseSpotConfig.UrlSsoStaging+"&a=1");
+			StringAssert.StartsWith(OpenPmsDentalBusiness.Erx.GetRxDoseSpotUrl("&a=1"),DoseSpotConfig.UrlSsoStaging+"&a=1");
 		}
 
 		[TestMethod]
@@ -247,8 +247,8 @@ namespace VendorDirectTests.Erx {
 			Assert.AreEqual("1",newCropConfigLoaded.SiteId);
 			Assert.AreEqual(NewCropConfig.UrlUpdate1Preproduction,newCropConfigLoaded.GetUpdate1Url());
 			Assert.AreEqual(NewCropConfig.UrlRxEntryPreproduction,newCropConfigLoaded.GetRxEntryUrl());
-			Assert.AreEqual("pw+/=",OpenDentBusiness.NewCrop.NewCropAccountPasssword);
-			Assert.AreEqual("Prod",OpenDentBusiness.NewCrop.NewCropProductName);
+			Assert.AreEqual("pw+/=",OpenPmsDentalBusiness.NewCrop.NewCropAccountPasssword);
+			Assert.AreEqual("Prod",OpenPmsDentalBusiness.NewCrop.NewCropProductName);
 			//A blank password on screen leaves the stored one alone unless the user cleared it.
 			newCropConfigLoaded.Password="";
 			Assert.IsTrue(newCropConfigLoaded.Save(false,out error));
@@ -259,7 +259,7 @@ namespace VendorDirectTests.Erx {
 		[TestMethod]
 		public void RefreshPrescriptions_SendsNothingWhileNotConfigured() {
 			NewCropConfig.InsertMissingProperties();
-			SetRaw(OpenDentBusiness.Erx.PropertyDescs.ErxOption,0,((int)ErxOption.NewCrop).ToString());
+			SetRaw(OpenPmsDentalBusiness.Erx.PropertyDescs.ErxOption,0,((int)ErxOption.NewCrop).ToString());
 			using(MySqlConnection connection=new MySqlConnection(CONNECTION)) {
 				connection.Open();
 				Exec(connection,"UPDATE "+DB_NAME+".program SET Enabled=1 WHERE ProgName='eRx'");
@@ -272,7 +272,7 @@ namespace VendorDirectTests.Erx {
 			Assert.IsFalse(NewCropConfig.Load().IsConfigured(),"An undecryptable password means not configured.");
 			List<RxPat> listRxPats=null;
 			//With the password unreadable nothing is built or sent: this returns at once instead of calling the SOAP service.
-			Assert.IsFalse(OpenDentBusiness.NewCrop.RefreshPrescriptions(77,ref listRxPats));
+			Assert.IsFalse(OpenPmsDentalBusiness.NewCrop.RefreshPrescriptions(77,ref listRxPats));
 		}
 
 		[TestMethod]

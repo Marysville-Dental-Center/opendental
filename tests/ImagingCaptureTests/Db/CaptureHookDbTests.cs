@@ -10,7 +10,7 @@ using ImagingCapture.Session;
 using ImagingCapture.Settings;
 using ImagingDeviceManager.Capture;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Tests.Db {
 	///<summary>The hook's database path (ControlImages.Acquire.cs, design 7.3 "The hook") on the scratch database (CaptureDb), through the same

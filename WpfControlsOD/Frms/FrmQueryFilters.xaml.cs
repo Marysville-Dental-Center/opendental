@@ -7,10 +7,10 @@ using System.Text;
 using System.Windows.Input;
 using CodeBase;
 using Microsoft.Win32;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	///<summary>Edits the Query Monitor filter groups (queryfilter rows) and picks the current user's active group. Changes are kept in memory until
 	///Save. Opened from the Filter button of the Query Monitor, which already required the QueryMonitor permission.</summary>
 	public partial class FrmQueryFilters:FrmODBase {

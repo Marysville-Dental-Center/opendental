@@ -8,9 +8,9 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.Eclaims;
-using OpenDentBusiness.VendorDirect.Eds;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.Eclaims;
+using OpenPmsDentalBusiness.VendorDirect.Eds;
 using UnitTestsCore;
 
 namespace VEDSTests {

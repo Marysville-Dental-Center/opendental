@@ -11,8 +11,8 @@ using System.Reflection;
 using System.Threading;
 using System.Windows.Forms;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDental;
-using OpenDentBusiness;
+using OpenPmsDental;
+using OpenPmsDentalBusiness;
 using UnitTestsCore;
 
 namespace M2HISTTests {

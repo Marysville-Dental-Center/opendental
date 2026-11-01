@@ -1,14 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using UnitTestsCore;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Reflection;
 using CodeBase;
 using System.Data;
 using System.Collections;
-using OpenDentBusiness.WebTypes.WebSched.TimeSlot;
+using OpenPmsDentalBusiness.WebTypes.WebSched.TimeSlot;
 
 namespace UnitTests.Appointments_Tests {
 	//All tests are assumed to be non dynamic unless specified. 
@@ -1892,24 +1892,24 @@ namespace UnitTests.Appointments_Tests {
 		public void UserContrApptsPanelJ_RoundTimeToNearestIncrement(){
 			float minPerIncr=10;
 			TimeSpan timeSpanInput=new TimeSpan(11,50,0);
-			TimeSpan timeSpanResult=OpenDental.UI.ControlApptPanel.RoundTimeToNearestIncrement(timeSpanInput,minPerIncr);
+			TimeSpan timeSpanResult=OpenPmsDental.UI.ControlApptPanel.RoundTimeToNearestIncrement(timeSpanInput,minPerIncr);
 			Assert.IsTrue(timeSpanResult==new TimeSpan(11,50,0));
 			timeSpanInput=new TimeSpan(11,52,0);
-			timeSpanResult=OpenDental.UI.ControlApptPanel.RoundTimeToNearestIncrement(timeSpanInput,minPerIncr);
+			timeSpanResult=OpenPmsDental.UI.ControlApptPanel.RoundTimeToNearestIncrement(timeSpanInput,minPerIncr);
 			Assert.IsTrue(timeSpanResult==new TimeSpan(11,50,0));
 			timeSpanInput=new TimeSpan(11,48,0);
-			timeSpanResult=OpenDental.UI.ControlApptPanel.RoundTimeToNearestIncrement(timeSpanInput,minPerIncr);
+			timeSpanResult=OpenPmsDental.UI.ControlApptPanel.RoundTimeToNearestIncrement(timeSpanInput,minPerIncr);
 			Assert.IsTrue(timeSpanResult==new TimeSpan(11,50,0));
 			timeSpanInput=new TimeSpan(10,08,0);
-			timeSpanResult=OpenDental.UI.ControlApptPanel.RoundTimeToNearestIncrement(timeSpanInput,minPerIncr);
+			timeSpanResult=OpenPmsDental.UI.ControlApptPanel.RoundTimeToNearestIncrement(timeSpanInput,minPerIncr);
 			Assert.IsTrue(timeSpanResult==new TimeSpan(10,10,0));
 			minPerIncr=15;
 			timeSpanInput=new TimeSpan(10,08,0);
-			timeSpanResult=OpenDental.UI.ControlApptPanel.RoundTimeToNearestIncrement(timeSpanInput,minPerIncr);
+			timeSpanResult=OpenPmsDental.UI.ControlApptPanel.RoundTimeToNearestIncrement(timeSpanInput,minPerIncr);
 			Assert.IsTrue(timeSpanResult==new TimeSpan(10,15,0));
 			minPerIncr=5;
 			timeSpanInput=new TimeSpan(10,07,0);
-			timeSpanResult=OpenDental.UI.ControlApptPanel.RoundTimeToNearestIncrement(timeSpanInput,minPerIncr);
+			timeSpanResult=OpenPmsDental.UI.ControlApptPanel.RoundTimeToNearestIncrement(timeSpanInput,minPerIncr);
 			Assert.IsTrue(timeSpanResult==new TimeSpan(10,5,0));
 			//If any new tests are needed, it will quickly become obvious
 		}
@@ -1918,24 +1918,24 @@ namespace UnitTests.Appointments_Tests {
 		public void UserContrApptsPanelJ_RoundTimeDown(){
 			float minPerIncr=10;
 			TimeSpan timeSpanInput=new TimeSpan(11,50,0);
-			TimeSpan timeSpanResult=OpenDental.UI.ControlApptPanel.RoundTimeDown(timeSpanInput,minPerIncr);
+			TimeSpan timeSpanResult=OpenPmsDental.UI.ControlApptPanel.RoundTimeDown(timeSpanInput,minPerIncr);
 			Assert.IsTrue(timeSpanResult==new TimeSpan(11,50,0));
 			timeSpanInput=new TimeSpan(11,52,0);
-			timeSpanResult=OpenDental.UI.ControlApptPanel.RoundTimeDown(timeSpanInput,minPerIncr);
+			timeSpanResult=OpenPmsDental.UI.ControlApptPanel.RoundTimeDown(timeSpanInput,minPerIncr);
 			Assert.IsTrue(timeSpanResult==new TimeSpan(11,50,0));
 			timeSpanInput=new TimeSpan(11,48,0);
-			timeSpanResult=OpenDental.UI.ControlApptPanel.RoundTimeDown(timeSpanInput,minPerIncr);
+			timeSpanResult=OpenPmsDental.UI.ControlApptPanel.RoundTimeDown(timeSpanInput,minPerIncr);
 			Assert.IsTrue(timeSpanResult==new TimeSpan(11,40,0));
 			timeSpanInput=new TimeSpan(10,08,0);
-			timeSpanResult=OpenDental.UI.ControlApptPanel.RoundTimeDown(timeSpanInput,minPerIncr);
+			timeSpanResult=OpenPmsDental.UI.ControlApptPanel.RoundTimeDown(timeSpanInput,minPerIncr);
 			Assert.IsTrue(timeSpanResult==new TimeSpan(10,0,0));
 			minPerIncr=15;
 			timeSpanInput=new TimeSpan(10,17,0);
-			timeSpanResult=OpenDental.UI.ControlApptPanel.RoundTimeDown(timeSpanInput,minPerIncr);
+			timeSpanResult=OpenPmsDental.UI.ControlApptPanel.RoundTimeDown(timeSpanInput,minPerIncr);
 			Assert.IsTrue(timeSpanResult==new TimeSpan(10,15,0));
 			minPerIncr=5;
 			timeSpanInput=new TimeSpan(10,07,0);
-			timeSpanResult=OpenDental.UI.ControlApptPanel.RoundTimeDown(timeSpanInput,minPerIncr);
+			timeSpanResult=OpenPmsDental.UI.ControlApptPanel.RoundTimeDown(timeSpanInput,minPerIncr);
 			Assert.IsTrue(timeSpanResult==new TimeSpan(10,5,0));
 		}
 

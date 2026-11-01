@@ -28,22 +28,22 @@
 		/// </summary>
 		private void InitializeComponent()
 		{
-			this.gridOld = new OpenDental.UI.GridOld();
-			this.butFillOld = new OpenDental.UI.Button();
+			this.gridOld = new OpenPmsDental.UI.GridOld();
+			this.butFillOld = new OpenPmsDental.UI.Button();
 			this.labelRowsOld = new System.Windows.Forms.Label();
 			this.labelTimeOld = new System.Windows.Forms.Label();
 			this.label1 = new System.Windows.Forms.Label();
 			this.label2 = new System.Windows.Forms.Label();
 			this.labelTimeNew = new System.Windows.Forms.Label();
 			this.labelRowsNew = new System.Windows.Forms.Label();
-			this.butFillNew = new OpenDental.UI.Button();
-			this.gridNew = new OpenDental.UI.GridOD();
+			this.butFillNew = new OpenPmsDental.UI.Button();
+			this.gridNew = new OpenPmsDental.UI.GridOD();
 			this.textBox1 = new System.Windows.Forms.TextBox();
-			this.listBoxOD = new OpenDental.UI.ListBox();
-			this.gridProgPageNav = new OpenDental.UI.ODGridPageNav();
-			this.butEnd = new OpenDental.UI.Button();
-			this.butPrint = new OpenDental.UI.Button();
-			this.butScroll = new OpenDental.UI.Button();
+			this.listBoxOD = new OpenPmsDental.UI.ListBox();
+			this.gridProgPageNav = new OpenPmsDental.UI.ODGridPageNav();
+			this.butEnd = new OpenPmsDental.UI.Button();
+			this.butPrint = new OpenPmsDental.UI.Button();
+			this.butScroll = new OpenPmsDental.UI.Button();
 			this.SuspendLayout();
 			// 
 			// gridOld
@@ -52,7 +52,7 @@
 			this.gridOld.HScrollVisible = true;
 			this.gridOld.Location = new System.Drawing.Point(12, 39);
 			this.gridOld.Name = "gridOld";
-			this.gridOld.SelectionMode = OpenDental.UI.GridSelectionMode.OneRow;
+			this.gridOld.SelectionMode = OpenPmsDental.UI.GridSelectionMode.OneRow;
 			this.gridOld.ShowContextMenu = false;
 			this.gridOld.Size = new System.Drawing.Size(436, 518);
 			this.gridOld.TabIndex = 2;
@@ -138,12 +138,12 @@
 			this.gridNew.EditableEnterMovesDown = true;
 			this.gridNew.Location = new System.Drawing.Point(579, 39);
 			this.gridNew.Name = "gridNew";
-			this.gridNew.SelectionMode = OpenDental.UI.GridSelectionMode.OneCell;
+			this.gridNew.SelectionMode = OpenPmsDental.UI.GridSelectionMode.OneCell;
 			this.gridNew.Size = new System.Drawing.Size(436, 518);
 			this.gridNew.TabIndex = 75;
 			this.gridNew.Title = "New Grid";
 			this.gridNew.TranslationName = "test";
-			this.gridNew.CellLeave += new OpenDental.UI.ODGridClickEventHandler(this.gridNew_CellLeave);
+			this.gridNew.CellLeave += new OpenPmsDental.UI.ODGridClickEventHandler(this.gridNew_CellLeave);
 			// 
 			// textBox1
 			// 
@@ -237,21 +237,21 @@
 
 		#endregion
 
-		private OpenDental.UI.GridOld gridOld;
-		private OpenDental.UI.Button butFillOld;
+		private OpenPmsDental.UI.GridOld gridOld;
+		private OpenPmsDental.UI.Button butFillOld;
 		private System.Windows.Forms.Label labelRowsOld;
 		private System.Windows.Forms.Label labelTimeOld;
 		private System.Windows.Forms.Label label1;
 		private System.Windows.Forms.Label label2;
 		private System.Windows.Forms.Label labelTimeNew;
 		private System.Windows.Forms.Label labelRowsNew;
-		private OpenDental.UI.Button butFillNew;
-		private OpenDental.UI.GridOD gridNew;
+		private OpenPmsDental.UI.Button butFillNew;
+		private OpenPmsDental.UI.GridOD gridNew;
 		private System.Windows.Forms.TextBox textBox1;
-		private OpenDental.UI.ListBox listBoxOD;
-		private OpenDental.UI.ODGridPageNav gridProgPageNav;
-		private OpenDental.UI.Button butEnd;
-		private OpenDental.UI.Button butPrint;
-		private OpenDental.UI.Button butScroll;
+		private OpenPmsDental.UI.ListBox listBoxOD;
+		private OpenPmsDental.UI.ODGridPageNav gridProgPageNav;
+		private OpenPmsDental.UI.Button butEnd;
+		private OpenPmsDental.UI.Button butPrint;
+		private OpenPmsDental.UI.Button butScroll;
 	}
 }

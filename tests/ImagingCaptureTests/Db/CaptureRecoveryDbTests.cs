@@ -12,7 +12,7 @@ using ImagingCapture.Templates;
 using ImagingDeviceManager.Capture;
 using ImagingDeviceManager.Config;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Tests.Db {
 	///<summary>The unassigned captures window's records on the scratch database (CaptureDb): OdCaptureRecoveryStore itself, and Assign, Reassign

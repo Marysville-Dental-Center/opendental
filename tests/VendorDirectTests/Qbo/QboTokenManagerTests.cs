@@ -6,7 +6,7 @@ using System.Net;
 using System.Threading.Tasks;
 using CodeBase.VendorDirect;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness.Qbo;
+using OpenPmsDentalBusiness.Qbo;
 
 namespace VendorDirectTests.Qbo {
 	[TestClass]

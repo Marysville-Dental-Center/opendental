@@ -6,7 +6,7 @@ using CodeBase;
 using ImagingCapture.UI;
 using ImagingCapture.Video;
 using ImagingDeviceManager.Capture;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Session {
 	///<summary>The patient-change monitor, idle disable and the stops the controller starts on its own (design 7.3 step 7, 7.6, 7.12, 10.6).

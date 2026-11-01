@@ -7,8 +7,8 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.VendorDirect;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.VendorDirect;
 
 namespace VendorDirectTests.PaySimple {
 	[TestClass]
@@ -17,27 +17,27 @@ namespace VendorDirectTests.PaySimple {
 		private FakeHttpHandler _fakeHttpHandler;
 		private FakeAchStore _fakeAchStore;
 		private List<TimeSpan> _listPauses;
-		private Dictionary<long,OpenDentBusiness.PaySimple.PaySimpleCredentials> _dictCredentials;
+		private Dictionary<long,OpenPmsDentalBusiness.PaySimple.PaySimpleCredentials> _dictCredentials;
 
 		[TestInitialize]
 		public void TestInitialize() {
 			_fakeHttpHandler=new FakeHttpHandler();
-			OpenDentBusiness.PaySimple.SetTestHttpHandler(_fakeHttpHandler,TimeSpan.FromMilliseconds(1));
+			OpenPmsDentalBusiness.PaySimple.SetTestHttpHandler(_fakeHttpHandler,TimeSpan.FromMilliseconds(1));
 			_fakeAchStore=new FakeAchStore();
 			_listPauses=new List<TimeSpan>();
-			_dictCredentials=new Dictionary<long,OpenDentBusiness.PaySimple.PaySimpleCredentials>();
-			_dictCredentials[0]=new OpenDentBusiness.PaySimple.PaySimpleCredentials("APIUserTest01","fake-key-a","Production");
+			_dictCredentials=new Dictionary<long,OpenPmsDentalBusiness.PaySimple.PaySimpleCredentials>();
+			_dictCredentials[0]=new OpenPmsDentalBusiness.PaySimple.PaySimpleCredentials("APIUserTest01","fake-key-a","Production");
 		}
 
 		[TestCleanup]
 		public void TestCleanup() {
-			OpenDentBusiness.PaySimple.SetTestHttpHandler(null);
+			OpenPmsDentalBusiness.PaySimple.SetTestHttpHandler(null);
 		}
 
 		private PaySimpleAchStatusSync CreateSync(bool isEnabled=true,bool isCheckOn=true) {
 			return new PaySimpleAchStatusSync(_fakeAchStore,
-				x => _dictCredentials.TryGetValue(x,out OpenDentBusiness.PaySimple.PaySimpleCredentials credentials) ? credentials
-					: new OpenDentBusiness.PaySimple.PaySimpleCredentials(),
+				x => _dictCredentials.TryGetValue(x,out OpenPmsDentalBusiness.PaySimple.PaySimpleCredentials credentials) ? credentials
+					: new OpenPmsDentalBusiness.PaySimple.PaySimpleCredentials(),
 				() => isEnabled,() => isCheckOn,() => _today,x => _listPauses.Add(x),x => { });
 		}
 
@@ -197,7 +197,7 @@ namespace VendorDirectTests.PaySimple {
 		[TestMethod]
 		public void Run_GroupsClinicsByCredentials_AndSkipsClinicsWithoutThem() {
 			_dictCredentials[1]=_dictCredentials[0];
-			_dictCredentials[2]=new OpenDentBusiness.PaySimple.PaySimpleCredentials("APIUserTest02","fake-key-b","Sandbox");
+			_dictCredentials[2]=new OpenPmsDentalBusiness.PaySimple.PaySimpleCredentials("APIUserTest02","fake-key-b","Sandbox");
 			AddPayment(1,PaymentStatus.PaySimpleAchSettled,"701",clinicNum:0);
 			AddPayment(2,PaymentStatus.PaySimpleAchSettled,"702",clinicNum:1);
 			AddPayment(3,PaymentStatus.PaySimpleAchSettled,"703",clinicNum:2);
@@ -214,7 +214,7 @@ namespace VendorDirectTests.PaySimple {
 
 		[TestMethod]
 		public void Run_CredentialsRejected_OneAlertPerClinicPerDay() {
-			_dictCredentials[5]=new OpenDentBusiness.PaySimple.PaySimpleCredentials("APIUserTest05","fake-key-rejected","Production");
+			_dictCredentials[5]=new OpenPmsDentalBusiness.PaySimple.PaySimpleCredentials("APIUserTest05","fake-key-rejected","Production");
 			AddPayment(1,PaymentStatus.PaySimpleAchPosted,"801",clinicNum:5);
 			AddPayment(2,PaymentStatus.PaySimpleAchPosted,"802",clinicNum:5);
 			_fakeHttpHandler.SetDefault((request,ct) => System.Threading.Tasks.Task.FromResult(FakeHttpHandler.MakeResponse(HttpStatusCode.Unauthorized,"")));

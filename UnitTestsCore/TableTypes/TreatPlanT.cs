@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace UnitTestsCore {
 	public class TreatPlanT {
@@ -47,7 +47,7 @@ namespace UnitTestsCore {
 		}
 
 		///<summary>Creates and returns a list of 3 TreatPlans for each patient in listPatients with all fields utilized and varied. Useful for testing a TreatPlan search for different fields.</summary>
-		public static List<TreatPlan> CreateVariedTreatPlanSet(List<OpenDentBusiness.Patient> listPatients) {
+		public static List<TreatPlan> CreateVariedTreatPlanSet(List<OpenPmsDentalBusiness.Patient> listPatients) {
 			ProcTpT.ClearProcTpTable();
 			ClearTreatPlanTable();
 			ClearTreatPlanAttachTable();
@@ -56,11 +56,11 @@ namespace UnitTestsCore {
 			int daysPrevious=14;
 			for(int i=0;i<listPatients.Count;i++) {
 				#region Create Procedures for Active TreatPlan
-				List<OpenDentBusiness.Procedure>listOdbProcedures=new List<OpenDentBusiness.Procedure>();
+				List<OpenPmsDentalBusiness.Procedure>listOdbProcedures=new List<OpenPmsDentalBusiness.Procedure>();
 				listOdbProcedures.Add(ProcedureT.CreateProcedure(
 					pat:listPatients[i],
 					procCodeStr:"Pano",
-					procStatus:OpenDentBusiness.ProcStat.TP,
+					procStatus:OpenPmsDentalBusiness.ProcStat.TP,
 					toothNum:"",
 					procFee:35.99,
 					procDate:DateTime.Today,
@@ -78,7 +78,7 @@ namespace UnitTestsCore {
 				listOdbProcedures.Add(ProcedureT.CreateProcedure(
 					pat:listPatients[i],
 					procCodeStr:"SpMRemUni",
-					procStatus:OpenDentBusiness.ProcStat.TP,
+					procStatus:OpenPmsDentalBusiness.ProcStat.TP,
 					toothNum:"",
 					procFee:79.56,
 					procDate:DateTime.Today,
@@ -96,7 +96,7 @@ namespace UnitTestsCore {
 				listOdbProcedures.Add(ProcedureT.CreateProcedure(
 					pat:listPatients[i],
 					procCodeStr:"MaxImmDent",
-					procStatus:OpenDentBusiness.ProcStat.TP,
+					procStatus:OpenPmsDentalBusiness.ProcStat.TP,
 					toothNum:"",
 					procFee:567.99,
 					procDate:DateTime.Today,
@@ -115,11 +115,11 @@ namespace UnitTestsCore {
 				//Create Active TreatPlan
 				listTreatPlan.Add(TreatPlanT.CreateTreatPlan(patNum:listPatients[i].PatNum,heading:"Active Treatment Plan",listOdbProcedures,TreatPlanStatus.Active,daysPrevious++));
 				#region Create Procedures for Inactive TreatPlan
-				listOdbProcedures=new List<OpenDentBusiness.Procedure>();
+				listOdbProcedures=new List<OpenPmsDentalBusiness.Procedure>();
 				listOdbProcedures.Add(ProcedureT.CreateProcedure(
 					pat:listPatients[i],
 					procCodeStr:"Sentient Tooth",
-					procStatus:OpenDentBusiness.ProcStat.TP,
+					procStatus:OpenPmsDentalBusiness.ProcStat.TP,
 					toothNum:"",
 					procFee:350,
 					procDate:DateTime.Today,
@@ -137,7 +137,7 @@ namespace UnitTestsCore {
 				listOdbProcedures.Add(ProcedureT.CreateProcedure(
 					pat:listPatients[i],
 					procCodeStr:"Q-damage",
-					procStatus:OpenDentBusiness.ProcStat.TP,
+					procStatus:OpenPmsDentalBusiness.ProcStat.TP,
 					toothNum:"",
 					procFee:5350,
 					procDate:DateTime.Today,
@@ -156,11 +156,11 @@ namespace UnitTestsCore {
 				//Create InActive TreatPlan
 				listTreatPlan.Add(TreatPlanT.CreateTreatPlan(patNum:listPatients[i].PatNum,heading:"Inactive Treatment Plan",listOdbProcedures,TreatPlanStatus.Inactive,daysPrevious++));
 				#region Create Procedures for Saved TreatPlan
-				listOdbProcedures=new List<OpenDentBusiness.Procedure>();
+				listOdbProcedures=new List<OpenPmsDentalBusiness.Procedure>();
 				listOdbProcedures.Add(ProcedureT.CreateProcedure(
 					pat:listPatients[i],
 					procCodeStr:"AddTooth",
-					procStatus:OpenDentBusiness.ProcStat.TP,
+					procStatus:OpenPmsDentalBusiness.ProcStat.TP,
 					toothNum:"",
 					procFee:996.12,
 					procDate:DateTime.Today,
@@ -178,7 +178,7 @@ namespace UnitTestsCore {
 				listOdbProcedures.Add(ProcedureT.CreateProcedure(
 					pat:listPatients[i],
 					procCodeStr:"DentAttach",
-					procStatus:OpenDentBusiness.ProcStat.TP,
+					procStatus:OpenPmsDentalBusiness.ProcStat.TP,
 					toothNum:"",
 					procFee:857.54,
 					procDate:DateTime.Today,

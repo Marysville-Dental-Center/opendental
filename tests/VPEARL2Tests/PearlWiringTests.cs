@@ -12,9 +12,9 @@ using System.Threading.Tasks;
 using ForkMigrationTests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
-using OpenDentBusiness;
-using OpenDentBusiness.Pearl;
-using OpenDentBusiness.WebBridges;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.Pearl;
+using OpenPmsDentalBusiness.WebBridges;
 
 namespace VPEARL2Tests {
 	[TestClass]

@@ -8,8 +8,8 @@ using System.Net;
 using System.Threading.Tasks;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.PostcardMania;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.PostcardMania;
 
 namespace VendorDirectTests.PostcardMania {
 	[TestClass]

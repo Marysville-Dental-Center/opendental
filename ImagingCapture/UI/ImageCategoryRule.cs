@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.UI {
 	///<summary>One image category (a Def of DefCat.ImageCats), with what the capture windows need from it.</summary>

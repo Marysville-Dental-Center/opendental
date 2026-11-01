@@ -8,8 +8,8 @@ using System.Drawing;
 using System.Reflection;
 using System.Windows.Forms;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDental;
-using OpenDentBusiness;
+using OpenPmsDental;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 
 namespace BPERIOTests {
@@ -33,7 +33,7 @@ namespace BPERIOTests {
 		private static void InsertMeasure(long perioExamNum,PerioSequenceType perioSequenceType,int intTooth,int mb=-1,int b=-1,int db=-1,int ml=-1,
 			int l=-1,int dl=-1)
 		{
-			OpenDentBusiness.Crud.PerioMeasureCrud.Insert(new PerioMeasure { PerioExamNum=perioExamNum,SequenceType=perioSequenceType,IntTooth=intTooth,
+			OpenPmsDentalBusiness.Crud.PerioMeasureCrud.Insert(new PerioMeasure { PerioExamNum=perioExamNum,SequenceType=perioSequenceType,IntTooth=intTooth,
 				ToothValue=-1,MBvalue=mb,Bvalue=b,DBvalue=db,MLvalue=ml,Lvalue=l,DLvalue=dl });
 		}
 
@@ -419,11 +419,11 @@ namespace BPERIOTests {
 		private static long InsertImplantProc(int intTooth,ProcStat procStat,bool hideGraphics) {
 			long codeNum=TestDb.GetLong("SELECT COALESCE(MAX(CodeNum),0) FROM procedurecode WHERE ProcCode='Z9001'");
 			if(codeNum==0) {
-				codeNum=OpenDentBusiness.Crud.ProcedureCodeCrud.Insert(new ProcedureCode { ProcCode="Z9001",Descript="Synthetic implant body",
+				codeNum=OpenPmsDentalBusiness.Crud.ProcedureCodeCrud.Insert(new ProcedureCode { ProcCode="Z9001",Descript="Synthetic implant body",
 					AbbrDesc="SynImpl",PaintType=ToothPaintingType.Implant });
 				ProcedureCodes.RefreshCache();
 			}
-			return OpenDentBusiness.Crud.ProcedureCrud.Insert(new Procedure { PatNum=PAT_NUM,CodeNum=codeNum,ToothNum=intTooth.ToString(),
+			return OpenPmsDentalBusiness.Crud.ProcedureCrud.Insert(new Procedure { PatNum=PAT_NUM,CodeNum=codeNum,ToothNum=intTooth.ToString(),
 				ProcStatus=procStat,HideGraphics=hideGraphics,ProcDate=DateTime.Today });
 		}
 

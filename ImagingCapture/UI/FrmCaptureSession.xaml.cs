@@ -13,8 +13,8 @@ using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using ImagingCapture.Session;
 using ImagingDeviceManager.Capture;
-using OpenDental;
-using OpenDentBusiness;
+using OpenPmsDental;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.UI {
 	///<summary>The capture session window (design 7.3, 7.5, 7.12, 10.2, 10.3): modal, bound to one patient. The banner shows the patient, the
@@ -525,7 +525,7 @@ namespace ImagingCapture.UI {
 				Patient patient=_viewModel.Controller.Patient;
 				string patFolder=ImageStore.GetPatientFolder(patient,ImageStore.GetPreferredAtoZpath());
 				using(System.Drawing.Bitmap bitmap=Documents.GetPatPict(patient.PatNum,patFolder)) {
-					imagePatient.Source=bitmap==null ? null : OpenDental.Drawing.Graphics.ConvertBitmapToWpf(bitmap);
+					imagePatient.Source=bitmap==null ? null : OpenPmsDental.Drawing.Graphics.ConvertBitmapToWpf(bitmap);
 				}
 			}
 			catch(Exception ex) {

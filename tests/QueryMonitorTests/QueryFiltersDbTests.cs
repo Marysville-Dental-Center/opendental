@@ -6,7 +6,7 @@ using System.Linq;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace QueryMonitorTests {
 	///<summary>Builds one scratch database holding only the tables these tests touch: queryfilter with the exact Open Dental 25.3.48 definition (the

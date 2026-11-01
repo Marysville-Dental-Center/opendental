@@ -5,7 +5,7 @@ using System.IO;
 using CodeBase;
 using ForkMigrationTests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace BPAYTests {
 	[TestClass]

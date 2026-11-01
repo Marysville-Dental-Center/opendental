@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Windows.Input;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	///<summary>The Existing popup of an eForm Ins Pick field (Open Dental 25.2): the family's current insurance and pending insurance, read live. After OK,
 	///ValueSelected holds "InsSubNum:####" or "InsPendingNum:####".</summary>
 	public partial class FrmEFormInsPickExisting:FrmODBase {

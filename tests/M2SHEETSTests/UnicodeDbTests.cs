@@ -7,8 +7,8 @@ using System.Drawing;
 using ForkMigrationTests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace M2SHEETSTests {
 	[TestClass]
@@ -75,8 +75,8 @@ namespace M2SHEETSTests {
 				sheetField.SheetNum=1;
 				sheetField.ReportableName=text;
 				sheetField.UiLabelMobile=text;
-				long sheetFieldNum=OpenDentBusiness.Crud.SheetFieldCrud.Insert(sheetField);
-				SheetField sheetFieldLoaded=OpenDentBusiness.Crud.SheetFieldCrud.SelectOne(sheetFieldNum);
+				long sheetFieldNum=OpenPmsDentalBusiness.Crud.SheetFieldCrud.Insert(sheetField);
+				SheetField sheetFieldLoaded=OpenPmsDentalBusiness.Crud.SheetFieldCrud.SelectOne(sheetFieldNum);
 				Assert.AreEqual(text+"\r\n"+text,sheetFieldLoaded.FieldValue,text);
 				Assert.AreEqual(text,sheetFieldLoaded.ReportableName,text);
 				Assert.AreEqual(text,sheetFieldLoaded.UiLabelMobile,text);
@@ -86,15 +86,15 @@ namespace M2SHEETSTests {
 		[TestMethod]
 		public void TranslatedSheetFieldDefs_KeepNonLatinTextAndLanguage() {
 			SheetDef sheetDef=new SheetDef { Description="Intake "+Samples.Chinese,SheetType=SheetTypeEnum.PatientForm,FontName="Arial",FontSize=11f,Width=850,Height=1100 };
-			long sheetDefNum=OpenDentBusiness.Crud.SheetDefCrud.Insert(sheetDef);
-			Assert.AreEqual("Intake "+Samples.Chinese,OpenDentBusiness.Crud.SheetDefCrud.SelectOne(sheetDefNum).Description);
+			long sheetDefNum=OpenPmsDentalBusiness.Crud.SheetDefCrud.Insert(sheetDef);
+			Assert.AreEqual("Intake "+Samples.Chinese,OpenPmsDentalBusiness.Crud.SheetDefCrud.SelectOne(sheetDefNum).Description);
 			foreach(string language in new[] { "rus","zho","heb","ara","hin","kor" }) {
 				SheetFieldDef sheetFieldDef=SheetFieldDef.NewStaticText(Samples.Russian+" "+Samples.Arabic+" "+Samples.Korean,11f,"Arial",false,10,10,300,20);
 				sheetFieldDef.SheetDefNum=sheetDefNum;
 				sheetFieldDef.Language=language;
 				sheetFieldDef.ItemColor=Color.Black;
-				long sheetFieldDefNum=OpenDentBusiness.Crud.SheetFieldDefCrud.Insert(sheetFieldDef);
-				SheetFieldDef sheetFieldDefLoaded=OpenDentBusiness.Crud.SheetFieldDefCrud.SelectOne(sheetFieldDefNum);
+				long sheetFieldDefNum=OpenPmsDentalBusiness.Crud.SheetFieldDefCrud.Insert(sheetFieldDef);
+				SheetFieldDef sheetFieldDefLoaded=OpenPmsDentalBusiness.Crud.SheetFieldDefCrud.SelectOne(sheetFieldDefNum);
 				Assert.AreEqual(sheetFieldDef.FieldValue,sheetFieldDefLoaded.FieldValue,language);
 				Assert.AreEqual(language,sheetFieldDefLoaded.Language);
 			}

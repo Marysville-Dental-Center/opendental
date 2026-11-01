@@ -4,7 +4,7 @@ using System;
 using CodeBase;
 using ImagingCapture.Video;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Tests {
 	///<summary>PatientBinding: when the Video window must close because the patient changed (design 6.4, 8.10).</summary>

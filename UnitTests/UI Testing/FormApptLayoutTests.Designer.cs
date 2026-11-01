@@ -35,7 +35,7 @@
 			this.label2 = new System.Windows.Forms.Label();
 			this.textResult = new System.Windows.Forms.TextBox();
 			this.butCopyToClipboard = new System.Windows.Forms.Button();
-			this.gridMain = new OpenDental.UI.GridOD();
+			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.label3 = new System.Windows.Forms.Label();
 			this.butTestRectSpeed = new System.Windows.Forms.Button();
 			((System.ComponentModel.ISupportInitialize)(this.pictureBox)).BeginInit();
@@ -112,7 +112,7 @@
 			this.gridMain.Size = new System.Drawing.Size(622, 546);
 			this.gridMain.TabIndex = 31;
 			this.gridMain.TranslationName = "test";
-			this.gridMain.CellClick += new OpenDental.UI.ODGridClickEventHandler(this.GridMain_CellClick);
+			this.gridMain.CellClick += new OpenPmsDental.UI.ODGridClickEventHandler(this.GridMain_CellClick);
 			// 
 			// label3
 			// 
@@ -167,7 +167,7 @@
 		private System.Windows.Forms.Label label2;
 		private System.Windows.Forms.TextBox textResult;
 		private System.Windows.Forms.Button butCopyToClipboard;
-		private OpenDental.UI.GridOD gridMain;
+		private OpenPmsDental.UI.GridOD gridMain;
 		private System.Windows.Forms.Label label3;
 		private System.Windows.Forms.Button butTestRectSpeed;
 	}

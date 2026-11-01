@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using ImagingCapture.Dicom;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Tests {
 	///<summary>Universal to ISO 3950 tooth numbers (design 7.8: tooth codes in the Primary Anatomic Structure Sequence).</summary>

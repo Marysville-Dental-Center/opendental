@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	/*
 Jordan is the only one allowed to edit this file.
 

@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Interop.QBFC10;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
-namespace OpenDental.Bridges {
+namespace OpenPmsDental.Bridges {
 	///<summary>Contains all logic for QuickBook connections and requests to the QB company file.</summary>
 	public class QuickBooks {
 		private static QBSessionManager SessionManager;

@@ -8,10 +8,10 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	public partial class FrmDocumentSizeMount:FrmODBase {
 		public Document DocumentCur;
 		public System.Drawing.Size SizeRaw;
@@ -33,7 +33,7 @@ namespace OpenDental {
 			checkIsFlipped.Checked=DocumentCur.IsFlipped;
 			textDegreesRotated.Text=DocumentCur.DegreesRotated.ToString();
 			System.Drawing.Size sizeCrop=new System.Drawing.Size(DocumentCur.CropW,DocumentCur.CropH);
-			_zoomInitial=OpenDental.UI.ImageTools.CalcZoomMount(SizeMount,SizeRaw,sizeCrop,DocumentCur.DegreesRotated);
+			_zoomInitial=OpenPmsDental.UI.ImageTools.CalcZoomMount(SizeMount,SizeRaw,sizeCrop,DocumentCur.DegreesRotated);
 			_zoomInitial=Math.Round(_zoomInitial,1);
 			textZoomFit.Text=_zoomInitial.ToString();
 			//double zoomOrig=(double)SizeMount.Width/SizeRaw.Width*100;
@@ -106,7 +106,7 @@ namespace OpenDental {
 			if(!ValidateDegreesRotated()){
 				return;
 			}
-			System.Drawing.Rectangle rectangle=OpenDental.UI.ImageTools.CalcExpandToFill(SizeMount,SizeRaw,_degreesRotated);
+			System.Drawing.Rectangle rectangle=OpenPmsDental.UI.ImageTools.CalcExpandToFill(SizeMount,SizeRaw,_degreesRotated);
 			Document documentOld=DocumentCur.Copy();
 			DocumentCur.CropW=rectangle.Width;
 			DocumentCur.CropH=rectangle.Height;
@@ -174,7 +174,7 @@ namespace OpenDental {
 			Document documentOld=DocumentCur.Copy();
 			DocumentCur.IsFlipped=(checkIsFlipped.Checked==true);
 			if(_zoomInitial!=zoom || DocumentCur.DegreesRotated!=_degreesRotated){
-				System.Drawing.Size sizeNew=OpenDental.UI.ImageTools.CalcZoomToSize(SizeMount,SizeRaw,zoom,_degreesRotated);
+				System.Drawing.Size sizeNew=OpenPmsDental.UI.ImageTools.CalcZoomToSize(SizeMount,SizeRaw,zoom,_degreesRotated);
 				DocumentCur.CropW=sizeNew.Width;
 				DocumentCur.CropH=sizeNew.Height;
 			}

@@ -7,8 +7,8 @@ using System.Globalization;
 using System.Threading;
 using ForkMigrationTests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace VBRIDGE1Tests {
 	[TestClass]
@@ -76,17 +76,17 @@ namespace VBRIDGE1Tests {
 
 		///<summary>The program rows with this exact name, straight from the database.</summary>
 		public static List<Program> GetProgramsFromDb(ProgramName programName) {
-			return OpenDentBusiness.Crud.ProgramCrud.SelectMany("SELECT * FROM program WHERE ProgName='"+POut.String(programName.ToString())+"' "
+			return OpenPmsDentalBusiness.Crud.ProgramCrud.SelectMany("SELECT * FROM program WHERE ProgName='"+POut.String(programName.ToString())+"' "
 				+"ORDER BY ProgramNum");
 		}
 
 		public static List<ToolButItem> GetToolButItemsFromDb(long programNum) {
-			return OpenDentBusiness.Crud.ToolButItemCrud.SelectMany("SELECT * FROM toolbutitem WHERE ProgramNum="+POut.Long(programNum)+" "
+			return OpenPmsDentalBusiness.Crud.ToolButItemCrud.SelectMany("SELECT * FROM toolbutitem WHERE ProgramNum="+POut.Long(programNum)+" "
 				+"ORDER BY ToolBar");
 		}
 
 		public static List<ProgramProperty> GetPropertiesFromDb(long programNum) {
-			return OpenDentBusiness.Crud.ProgramPropertyCrud.SelectMany("SELECT * FROM programproperty WHERE ProgramNum="+POut.Long(programNum)+" "
+			return OpenPmsDentalBusiness.Crud.ProgramPropertyCrud.SelectMany("SELECT * FROM programproperty WHERE ProgramNum="+POut.Long(programNum)+" "
 				+"ORDER BY ProgramPropertyNum");
 		}
 

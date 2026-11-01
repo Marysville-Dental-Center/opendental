@@ -17,7 +17,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace WpfControls.UI{
 	/*
@@ -537,7 +537,7 @@ RunReport(listClinicNums,stringDisplayClinics);
 				//If user then selects a non-hidden clinic, _selectedClinicNoPermission will get set to null.
 				return;
 			}
-			OpenDental.MsgBox.Show(this,"Not allowed");
+			OpenPmsDental.MsgBox.Show(this,"Not allowed");
 			e.Handled=true;
 		}
 		#endregion Methods - event handlers
@@ -601,7 +601,7 @@ RunReport(listClinicNums,stringDisplayClinics);
 			listClinicsForUser.RemoveAll(x => x.ClinicNum==CLINIC_NUM_UNASSIGNED);
 			Func<Clinic,string> funcItemToString=x=>{
 				if(x.IsHidden){
-					return x.Abbr+OpenDental.Lang.g(this," (hidden)");
+					return x.Abbr+OpenPmsDental.Lang.g(this," (hidden)");
 				}
 				return x.Abbr;
 			};

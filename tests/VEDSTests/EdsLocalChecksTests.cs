@@ -3,8 +3,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.VendorDirect.Eds;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.VendorDirect.Eds;
 
 namespace VEDSTests {
 	[TestClass]

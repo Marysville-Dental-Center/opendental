@@ -7,8 +7,8 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.FileIO;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.FileIO;
 
 namespace BSHELLTests {
 	[TestClass]

@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using UnitTestsCore;
 
 namespace UnitTests.Userods_Tests {
@@ -29,7 +29,7 @@ namespace UnitTests.Userods_Tests {
 			//This test is intended to be tested on middle tier. 
 			long group1=UserGroupT.CreateUserGroup("usergroup1");
 			Userod myUser=UserodT.CreateUser(MethodBase.GetCurrentMethod().Name+DateTime.Now.Ticks,"reallystrongpassword",userGroupNumbers:new List<long>() {group1 });
-			RunTestsAgainstMiddleTier(new OpenDentBusiness.WebServices.OpenDentalServerMockIIS(user:myUser.UserName,password:myUser.Password));
+			RunTestsAgainstMiddleTier(new OpenPmsDentalBusiness.WebServices.OpenDentalServerMockIIS(user:myUser.UserName,password:myUser.Password));
 			Security.CurUser=myUser;
 			Security.PasswordTyped="passwordguess#1";
 			ODEvent.Fired+=CredentialsFailedAfterLoginEvent_Fired1;
@@ -91,7 +91,7 @@ namespace UnitTests.Userods_Tests {
 			Security.PasswordTyped="passwordguess#1";
 			ODEvent.Fired+=CredentialsFailedAfterLoginEvent_Fired1;
 			ODEvent.IsCredentialsFailedAfterLogin_EventSubscribed=true;
-			RunTestsAgainstMiddleTier(new OpenDentBusiness.WebServices.OpenDentalServerMockIIS(user:myUser.UserName,password:myUser.Password));
+			RunTestsAgainstMiddleTier(new OpenPmsDentalBusiness.WebServices.OpenDentalServerMockIIS(user:myUser.UserName,password:myUser.Password));
 			//try once with the wrong password. Failed attempt should get incremented to 1. 
 			ODException.SwallowAnyException(() => {
 				Userods.CheckUserAndPassword(myUser.UserName,"passwordguess#1",false);
@@ -102,7 +102,7 @@ namespace UnitTests.Userods_Tests {
 			//Assert that we only have 1 failed attempt. 
 			Assert.AreEqual(1,myUser.FailedAttempts);
 			//now wait for another method to get called
-			RunTestsAgainstMiddleTier(new OpenDentBusiness.WebServices.OpenDentalServerMockIIS(user:myUser.UserName,password:myUser.Password));
+			RunTestsAgainstMiddleTier(new OpenPmsDentalBusiness.WebServices.OpenDentalServerMockIIS(user:myUser.UserName,password:myUser.Password));
 			ODException.SwallowAnyException(() => {
 				Computers.UpdateHeartBeat(ODEnvironment.MachineName,false);
 			});

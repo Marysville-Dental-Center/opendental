@@ -9,7 +9,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDental;
+using OpenPmsDental;
 
 namespace AttributionTests {
 	[TestClass]
@@ -117,7 +117,7 @@ namespace AttributionTests {
 			List<string> listNames=listLicenseEntries.Select(x => x.Name).ToList();
 			Assert.AreEqual(listNames.Count,listNames.Distinct().Count(),"No name twice: "+string.Join(", ",listNames));
 			CollectionAssert.AreEqual(_arrayShippedComponents,listNames.Skip(2).ToArray(),"One entry per component, in the notices file's order.");
-			List<NoticeSection> listNoticeSections=LicenseList.ParseNotices(OpenDental.Properties.Resources.ThirdPartyNotices);
+			List<NoticeSection> listNoticeSections=LicenseList.ParseNotices(OpenPmsDental.Properties.Resources.ThirdPartyNotices);
 			List<NoticeSection> listLicenseSections=listNoticeSections.FindAll(x => !x.IsComponent);
 			Dictionary<string,string> dictVendorTexts=LicenseList.GetVendorTexts();
 			foreach(NoticeSection noticeSection in listNoticeSections.FindAll(x => x.IsComponent)) {
@@ -158,7 +158,7 @@ namespace AttributionTests {
 				Assert.IsFalse(licenseEntry.Text.Contains("Drifty"),licenseEntry.Name);
 			}
 			//The resources are gone too, so nothing can show them again.
-			List<string> listResourceNames=typeof(OpenDental.Properties.Resources).GetProperties(BindingFlags.Public|BindingFlags.Static)
+			List<string> listResourceNames=typeof(OpenPmsDental.Properties.Resources).GetProperties(BindingFlags.Public|BindingFlags.Static)
 				.Select(x => x.Name).ToList();
 			foreach(string resourceName in new[] { "OpenDentalLicense","OpenDentalApiEndUserLicense","CDT_Content_End_User_License",
 				"CDT_Content_End_User_License1","Sparks3D","stdole","Ionic","Zxing","AForge","Angular","BouncyCastle","Bsd","Microsoft","Oracle",
@@ -191,7 +191,7 @@ namespace AttributionTests {
 		#region THIRD-PARTY-NOTICES.txt
 		[TestMethod]
 		public void ThirdPartyNotices_IsTheEmbeddedResource() {
-			Assert.AreEqual(NormalizeNewLines(ReadRepoFile("THIRD-PARTY-NOTICES.txt")),NormalizeNewLines(OpenDental.Properties.Resources.ThirdPartyNotices));
+			Assert.AreEqual(NormalizeNewLines(ReadRepoFile("THIRD-PARTY-NOTICES.txt")),NormalizeNewLines(OpenPmsDental.Properties.Resources.ThirdPartyNotices));
 		}
 
 		[TestMethod]

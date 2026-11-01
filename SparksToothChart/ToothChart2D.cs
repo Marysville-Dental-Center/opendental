@@ -8,7 +8,7 @@ using System.Drawing.Text;
 using System.Data;
 using System.Text;
 using System.Windows.Forms;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace SparksToothChart {
 	public partial class ToothChart2D:UserControl {

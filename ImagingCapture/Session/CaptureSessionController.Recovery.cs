@@ -7,7 +7,7 @@ using System.Linq;
 using ImagingCapture.Recovery;
 using ImagingCapture.Save;
 using ImagingDeviceManager.Capture;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Session {
 	///<summary>What the quarantine window and Recover recent captures (design 7.1, 7.12) need from the session: the sidecar fields of every enable,

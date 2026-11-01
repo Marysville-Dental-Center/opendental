@@ -1,8 +1,8 @@
 // This file is part of the open source dental practice management software derived from Open Dental.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
-using OpenDental;
-using OpenDentBusiness;
+using OpenPmsDental;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.UI {
 	///<summary>The video image category: the VideoImageCategoryDefault preference that ControlImages saves camera photos into

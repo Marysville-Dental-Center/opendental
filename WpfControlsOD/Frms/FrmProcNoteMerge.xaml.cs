@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Windows.Input;
 using CodeBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	///<summary>Procedure Note Merge (Open Dental 25.4, package M2-NOTES). Shown by Procedure Info and the Group Note window when another user saved a
 	///newer note on the procedure while the window was open. Shows their note (read-only, with who saved it and when), my note (read-only) and a
 	///merged note to edit, pre-filled with their note, a separator line, then the text I added (ProcNoteMerges.GetMergedDefault). The caller acts on

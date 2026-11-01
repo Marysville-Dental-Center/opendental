@@ -15,15 +15,15 @@ namespace CodeBase {
 		#region Program files
 		///<summary>The main program's process name: its exe file name without ".exe". Compare process names with IsProgramProcessName, which
 		///matches the whole name, never a prefix (a prefix would also match other programs whose names start the same way).</summary>
-		public const string ProcessName="OpenDental";
+		public const string ProcessName="OpenPmsDental";
 		///<summary>The main program's exe file name.</summary>
 		public const string ExeFileName=ProcessName+".exe";
 		///<summary>The business layer's file name.</summary>
-		public const string BusinessDllFileName="OpenDentBusiness.dll";
+		public const string BusinessDllFileName="OpenPmsDentalBusiness.dll";
 		///<summary>The dashboard graphs' file name.</summary>
-		public const string GraphDllFileName="OpenDentalGraph.dll";
+		public const string GraphDllFileName="OpenPmsDentalGraph.dll";
 		///<summary>The SFTP storage library's file name.</summary>
-		public const string CloudDllFileName="OpenDentalCloud.dll";
+		public const string CloudDllFileName="OpenPmsDentalCloud.dll";
 		///<summary>The program that copies a pulled release into the installation folder and restarts the program.</summary>
 		public const string UpdateFileCopierExeFileName="UpdateFileCopier.exe";
 		#endregion Program files
@@ -40,23 +40,23 @@ namespace CodeBase {
 		#region Folders
 		///<summary>The program's folder under %LOCALAPPDATA%: window sizes, Query Monitor filters, the Waiting Room position and the working
 		///copies of chart letters with unsaved edits.</summary>
-		public const string LocalAppDataFolderName="OpenDental";
+		public const string LocalAppDataFolderName="OpenPMS-Dental";
 		///<summary>The folder under %LOCALAPPDATA% that builds before the rename used. It stays this value after the rename, so files that hold
 		///unsaved work there (chart letter working copies) are still found. See GetLocalAppDataFolders.</summary>
 		public const string LegacyLocalAppDataFolderName="OpenDental";
 		///<summary>The program's folder under %ProgramData%: the SFTP download stash, and the logs of web applications.</summary>
-		public const string ProgramDataFolderName="OpenDental";
+		public const string ProgramDataFolderName="OpenPMS-Dental";
 		///<summary>The program's folder under %TEMP% (PrefC.GetTempFolderPath). The program empties it when it closes.</summary>
-		public const string TempFolderName="opendental";
+		public const string TempFolderName="openpms-dental";
 		///<summary>UpdateFileCopier's sub folder of TempFolderName, which the close-time clean-up keeps.</summary>
 		public const string UpdateFileCopierTempFolderName="updatefilecopier";
 		#endregion Folders
 
 		#region Event Log and Windows services
 		///<summary>The Event Log source of the main program (time synchronization messages).</summary>
-		public const string EventLogSource="OpenDental";
+		public const string EventLogSource="OpenPMS-Dental";
 		///<summary>The default name of the HL7 Windows service, which is also the Event Log source its messages are written under.</summary>
-		public const string HL7ServiceName="OpenDentHL7";
+		public const string HL7ServiceName="OpenPmsDentalHL7";
 		///<summary>The name the HL7 service runs under when no installed service whose name starts with ServicePrefix was installed from its
 		///folder (a service installed with /ServiceName=&lt;another name&gt;). This is Open Dental's run-time default, and it differs from the
 		///installer's HL7ServiceName. The service saves its name into a blank HL7Def.HL7ServiceName or eCW HL7ServiceName program property on
@@ -69,13 +69,13 @@ namespace CodeBase {
 		public const string EventLogSourceHL7Main=HL7ServiceName+".Main";
 		///<summary>Every Windows service of this program has a name that starts with this. ServiceManager refuses other names, and the program
 		///starts the installed services that start with it.</summary>
-		public const string ServicePrefix="OpenDent";
+		public const string ServicePrefix="OpenPmsDental";
 		#endregion Event Log and Windows services
 
 		#region UpdateFileCopier defaults
 		///<summary>The installation folder UpdateFileCopier copies into when it is started without one (debugging only; the program always passes
 		///its own folder).</summary>
-		public const string DefaultInstallFolder=@"C:\Program Files\Open Dental";
+		public const string DefaultInstallFolder=@"C:\Program Files (x86)\Open PMS - Dental";
 		#endregion UpdateFileCopier defaults
 
 		///<summary>True when processName is the main program's process name. Matches the whole name, ignoring case; never a prefix.</summary>

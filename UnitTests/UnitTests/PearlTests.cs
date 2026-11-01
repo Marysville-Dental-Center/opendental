@@ -6,8 +6,8 @@ using System.Text;
 using System.Threading.Tasks;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.Pearl;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.Pearl;
 using UnitTestsCore;
 
 namespace UnitTests {
@@ -43,7 +43,7 @@ namespace UnitTests {
 				Patient pat=PatientT.CreatePatient(fName: "Jerry");
 				Document document=new Document();
 				long docNum=Documents.Insert(document,pat);
-				OpenDentBusiness.Bridges.Pearl pearl=new OpenDentBusiness.Bridges.Pearl();
+				OpenPmsDentalBusiness.Bridges.Pearl pearl=new OpenPmsDentalBusiness.Bridges.Pearl();
 				pearl.Bitmap_=new Bitmap(40,40);
 				pearl.Document_=document;
 				pearl.Patient_=pat;
@@ -77,7 +77,7 @@ namespace UnitTests {
 				Patient pat=PatientT.CreatePatient(fName: "Jerry");
 				Document document=new Document();
 				long docNum=Documents.Insert(document,pat);
-				OpenDentBusiness.Bridges.Pearl pearl=new OpenDentBusiness.Bridges.Pearl();
+				OpenPmsDentalBusiness.Bridges.Pearl pearl=new OpenPmsDentalBusiness.Bridges.Pearl();
 				pearl.Bitmap_=new Bitmap(40,40);
 				pearl.Document_=document;
 				pearl.Patient_=pat;
@@ -99,17 +99,17 @@ namespace UnitTests {
 				Assert.AreEqual(isExceptionExpected,threwException);
 			}
 			//Mock each status.
-			OpenDentBusiness.Pearl.ToothPart toothPart=new OpenDentBusiness.Pearl.ToothPart() {
-				condition_id=OpenDentBusiness.Pearl.EnumCondition.Enamel,
+			OpenPmsDentalBusiness.Pearl.ToothPart toothPart=new OpenPmsDentalBusiness.Pearl.ToothPart() {
+				condition_id=OpenPmsDentalBusiness.Pearl.EnumCondition.Enamel,
 				polygon=new Polygon[] { new Polygon() { x=0.1f,y=0.1f },new Polygon() { x=0.5f,y=0.1f },new Polygon() { x=0.5f,y=0.5f } },
 			};
-			assert((a,b) => new ImageRequestIdResponse() { result=new OpenDentBusiness.Pearl.Result() { is_completed=true,annotations=new Annotation[0],toothParts=new[] { toothPart } } },EnumPearlStatus.Received );
+			assert((a,b) => new ImageRequestIdResponse() { result=new OpenPmsDentalBusiness.Pearl.Result() { is_completed=true,annotations=new Annotation[0],toothParts=new[] { toothPart } } },EnumPearlStatus.Received );
 			//V-PEARL1 (24.4): complete, but nothing found.
-			assert((a,b) => new ImageRequestIdResponse() { result=new OpenDentBusiness.Pearl.Result() { is_completed=true } },EnumPearlStatus.NoResults);
-			assert((a,b) => new ImageRequestIdResponse() { result=new OpenDentBusiness.Pearl.Result() { is_rejected=true } },EnumPearlStatus.Error);
-			assert((a,b) => new ImageRequestIdResponse() { result=new OpenDentBusiness.Pearl.Result() { is_deleted=true } },EnumPearlStatus.Error);
+			assert((a,b) => new ImageRequestIdResponse() { result=new OpenPmsDentalBusiness.Pearl.Result() { is_completed=true } },EnumPearlStatus.NoResults);
+			assert((a,b) => new ImageRequestIdResponse() { result=new OpenPmsDentalBusiness.Pearl.Result() { is_rejected=true } },EnumPearlStatus.Error);
+			assert((a,b) => new ImageRequestIdResponse() { result=new OpenPmsDentalBusiness.Pearl.Result() { is_deleted=true } },EnumPearlStatus.Error);
 			//API returned a result but is not completed and includes no other state. We should still be polling.
-			assert((a,b) => new ImageRequestIdResponse() { result=new OpenDentBusiness.Pearl.Result() {  } },EnumPearlStatus.Polling);
+			assert((a,b) => new ImageRequestIdResponse() { result=new OpenPmsDentalBusiness.Pearl.Result() {  } },EnumPearlStatus.Polling);
 			//API threw an exception. V-PEARL1 (24.4): polling stops as ErrorProcessing, which can be polled again.
 			assert((a,b) => null,EnumPearlStatus.ErrorProcessing,isExceptionExpected:true);
 

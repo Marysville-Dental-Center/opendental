@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Media;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	
 	public class ColorODTemp {
 		/*

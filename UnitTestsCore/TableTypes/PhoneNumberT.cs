@@ -5,7 +5,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using CodeBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace UnitTestsCore {
 	public class PhoneNumberT {
@@ -14,7 +14,7 @@ namespace UnitTestsCore {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetObject<List<PhoneNumber>>(MethodBase.GetCurrentMethod());
 			}
-			return OpenDentBusiness.Crud.PhoneNumberCrud.SelectMany("SELECT * FROM phonenumber");
+			return OpenPmsDentalBusiness.Crud.PhoneNumberCrud.SelectMany("SELECT * FROM phonenumber");
 		}
 
 		public static string GetRandomPhoneNumber() {

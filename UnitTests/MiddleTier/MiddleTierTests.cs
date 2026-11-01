@@ -9,9 +9,9 @@ using System.Text;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using DataConnectionBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using UnitTestsCore;
-using static OpenDentBusiness.WebServiceTests;
+using static OpenPmsDentalBusiness.WebServiceTests;
 using UnitTests.MiddleTier.ParamCheck_Tests;
 
 namespace UnitTests.MiddleTier {
@@ -23,7 +23,7 @@ namespace UnitTests.MiddleTier {
 		public void Initialize() {
 			//Instantiate a brand new mock service because other unit tests could have changed the database connection settings via DataConnection.SetDb().
 			//Also, we need to make sure that MySQL UserLow and PassLow are used because some of these unit tests require them to be set.
-			RunTestsAgainstMiddleTier(new OpenDentBusiness.WebServices.OpenDentalServerMockIIS(
+			RunTestsAgainstMiddleTier(new OpenPmsDentalBusiness.WebServices.OpenDentalServerMockIIS(
 					server:"localhost",
 					db:UnitTestDbName,
 					user:"root",
@@ -741,26 +741,26 @@ namespace UnitTests.MiddleTier {
 
 		[TestMethod]
 		public void MiddleTier_GetListTasksContainingCR() {
-			OpenDentBusiness.Task t=WebServiceTests.GetListTasksContainingCR()[0];
+			OpenPmsDentalBusiness.Task t=WebServiceTests.GetListTasksContainingCR()[0];
 			Assert.IsTrue(t!=null && t.Descript==WebServiceTests.NewLineString);
 		}
 
 		[TestMethod]
 		public void MiddleTier_GetListTasksSpecialChars() {
 			//Tests special chars, new lines, Date, DateTime, and enum values in a list of objects as the parameter and the return value
-			List<OpenDentBusiness.Task> listTasks=new List<OpenDentBusiness.Task> { new OpenDentBusiness.Task {
+			List<OpenPmsDentalBusiness.Task> listTasks=new List<OpenPmsDentalBusiness.Task> { new OpenPmsDentalBusiness.Task {
 				Descript=WebServiceTests.DirtyString,
 				ParentDesc=WebServiceTests.NewLineString,
 				DateTask=WebServiceTests.DateTodayTest,
 				DateTimeEntry=WebServiceTests.DateTEntryTest,
 				TaskStatus=TaskStatusEnum.Done } };
-			List<OpenDentBusiness.Task> listTasksReturned=WebServiceTests.GetListTasksSpecialChars(listTasks);
+			List<OpenPmsDentalBusiness.Task> listTasksReturned=WebServiceTests.GetListTasksSpecialChars(listTasks);
 			List<string> strErrors=new List<string>();
 			if(listTasksReturned==null || listTasksReturned.Count<1) {
 				strErrors.Add(listTasksReturned==null?"The list of tasks is null.":"The list of tasks contains an insufficient number of tasks.");
 			}
 			int idx=0;
-			foreach(OpenDentBusiness.Task task in listTasksReturned) {
+			foreach(OpenPmsDentalBusiness.Task task in listTasksReturned) {
 				if(task==null) {
 					strErrors.Add("The tasklist contains a null task.");
 					idx++;

@@ -11,9 +11,9 @@ using System.Threading.Tasks;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
-using OpenDentBusiness;
-using OpenDentBusiness.Eclaims;
-using OpenDentBusiness.VendorDirect.DentalXChange;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.Eclaims;
+using OpenPmsDentalBusiness.VendorDirect.DentalXChange;
 
 namespace VendorDirectTests.DentalXChange {
 	[TestClass]

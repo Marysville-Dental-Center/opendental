@@ -7,7 +7,7 @@ using System.Linq;
 using System.Threading;
 using System.Windows.Forms;
 using System.Drawing;
-using OpenDentBusiness;//Only ReleaseManifest, linked from OpenDentBusiness/Misc/ForkRelease/ReleaseManifest.cs.
+using OpenPmsDentalBusiness;//Only ReleaseManifest, linked from OpenDentBusiness/Misc/ForkRelease/ReleaseManifest.cs.
 
 namespace UpdateFileCopier {
 	public partial class FormMain:Form {

@@ -1,4 +1,4 @@
-﻿using OpenDentBusiness;
+﻿using OpenPmsDentalBusiness;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,7 +27,7 @@ namespace UnitTestsWeb {
 		public static PatFieldDef UpsertPatFieldDef(string fieldName,PatFieldType fieldType,string pickList="deprecated",int itemOrder=0,bool isHidden=false) {
 			//If exists, update in db. Else insert to db.
 			string command=$"SELECT * FROM patfielddef WHERE FieldName='{fieldName}'";
-			PatFieldDef existingDef=OpenDentBusiness.Crud.PatFieldDefCrud.SelectOne(command);
+			PatFieldDef existingDef=OpenPmsDentalBusiness.Crud.PatFieldDefCrud.SelectOne(command);
 			if(existingDef==null) {
 				existingDef=new PatFieldDef() {
 					FieldName=fieldName,

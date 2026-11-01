@@ -4,7 +4,7 @@ using System.Linq;
 using System.Reflection;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using UnitTestsCore;
 
 namespace UnitTests.Tasks_Tests {
@@ -966,7 +966,7 @@ namespace UnitTests.Tasks_Tests {
 			Task taskNone=TaskT.CreateTask(taskListNum,0,suffix,isRepeating:isRepeating,dateType:TaskDateType.None,objectType:TaskObjectType.None,userNum:user.UserNum);
 			_listTasks.Add(taskNone);
 			//Manage test lists of "subscribed" tasks so we don't have to do database logic to determine if a user is subscribed to a task.
-			if(OpenDental.UserControlTasks.GetSubscribedTaskLists(_userA.UserNum).Exists(x => x.TaskListNum==taskListNum)) {
+			if(OpenPmsDental.UserControlTasks.GetSubscribedTaskLists(_userA.UserNum).Exists(x => x.TaskListNum==taskListNum)) {
 				TaskUnreads.SetUnread(_userA.UserNum,taskAppt);
 				TaskUnreads.SetUnread(_userA.UserNum,taskPat);
 				TaskUnreads.SetUnread(_userA.UserNum,taskNone);
@@ -974,7 +974,7 @@ namespace UnitTests.Tasks_Tests {
 				_listTasksForUserA.Add(taskPat);
 				_listTasksForUserA.Add(taskNone);
 			}
-			if(OpenDental.UserControlTasks.GetSubscribedTaskLists(_userNW.UserNum).Exists(x => x.TaskListNum==taskListNum)) {
+			if(OpenPmsDental.UserControlTasks.GetSubscribedTaskLists(_userNW.UserNum).Exists(x => x.TaskListNum==taskListNum)) {
 				TaskUnreads.SetUnread(_userNW.UserNum,taskAppt);
 				TaskUnreads.SetUnread(_userNW.UserNum,taskPat);
 				TaskUnreads.SetUnread(_userNW.UserNum,taskNone);

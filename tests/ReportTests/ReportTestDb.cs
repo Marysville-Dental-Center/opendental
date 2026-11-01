@@ -10,8 +10,8 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using DataConnectionBase;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace ReportTests {
 	///<summary>Creates a scratch database with the Open Dental 25.3.48 definitions of the tables a test needs (from the reference schema embedded in

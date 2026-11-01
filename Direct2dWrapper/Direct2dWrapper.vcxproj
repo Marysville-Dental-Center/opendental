@@ -109,7 +109,7 @@
       <AdditionalDependencies>d2d1.lib;dwrite.lib;D3D11.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy "$(TargetDir)Direct2dWrapper.dll" "..\OpenDental\bin\Debug\" /Y</Command>
+      <Command>xcopy "$(TargetDir)Direct2dWrapper.dll" "..\OpenPmsDental\bin\Debug\" /Y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -128,7 +128,7 @@
       <AdditionalDependencies>d2d1.lib;dwrite.lib;D3D11.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy "$(TargetDir)Direct2dWrapper.dll" "..\OpenDental\bin\Debug\" /Y</Command>
+      <Command>xcopy "$(TargetDir)Direct2dWrapper.dll" "..\OpenPmsDental\bin\Debug\" /Y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -151,7 +151,7 @@
       <AdditionalDependencies>d2d1.lib;dwrite.lib;D3D11.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy "$(TargetDir)Direct2dWrapper.dll" "..\OpenDental\bin\Release\" /Y</Command>
+      <Command>xcopy "$(TargetDir)Direct2dWrapper.dll" "..\OpenPmsDental\bin\Release\" /Y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -174,7 +174,7 @@
       <AdditionalDependencies>d2d1.lib;dwrite.lib;D3D11.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy "$(TargetDir)Direct2dWrapper.dll" "..\OpenDental\bin\Release\" /Y</Command>
+      <Command>xcopy "$(TargetDir)Direct2dWrapper.dll" "..\OpenPmsDental\bin\Release\" /Y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

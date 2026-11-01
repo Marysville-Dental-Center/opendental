@@ -27,7 +27,7 @@
 			this.label1 = new System.Windows.Forms.Label();
 			this.butConvert = new System.Windows.Forms.Button();
 			this.label2 = new System.Windows.Forms.Label();
-			this.checkOverwrite = new OpenDental.UI.CheckBox();
+			this.checkOverwrite = new OpenPmsDental.UI.CheckBox();
 			this.butConvert2 = new System.Windows.Forms.Button();
 			this.label4 = new System.Windows.Forms.Label();
 			this.textName2 = new System.Windows.Forms.TextBox();
@@ -319,7 +319,7 @@
 		private System.Windows.Forms.Label label1;
 		private System.Windows.Forms.Button butConvert;
 		private System.Windows.Forms.Label label2;
-		private OpenDental.UI.CheckBox checkOverwrite;
+		private OpenPmsDental.UI.CheckBox checkOverwrite;
 		private System.Windows.Forms.Button butConvert2;
 		private System.Windows.Forms.Label label4;
 		private System.Windows.Forms.TextBox textName2;

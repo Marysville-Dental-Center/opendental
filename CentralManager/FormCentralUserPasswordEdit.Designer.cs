@@ -29,8 +29,8 @@
 			this.textUserName = new System.Windows.Forms.TextBox();
 			this.label3 = new System.Windows.Forms.Label();
 			this.textPassword = new System.Windows.Forms.TextBox();
-			this.butOK = new OpenDental.UI.Button();
-			this.butCancel = new OpenDental.UI.Button();
+			this.butOK = new OpenPmsDental.UI.Button();
+			this.butCancel = new OpenPmsDental.UI.Button();
 			this.label1 = new System.Windows.Forms.Label();
 			this.SuspendLayout();
 			// 
@@ -157,8 +157,8 @@
 		private System.Windows.Forms.TextBox textUserName;
 		private System.Windows.Forms.Label label3;
 		private System.Windows.Forms.TextBox textPassword;
-		private OpenDental.UI.Button butOK;
-		private OpenDental.UI.Button butCancel;
+		private OpenPmsDental.UI.Button butOK;
+		private OpenPmsDental.UI.Button butCancel;
 		private System.Windows.Forms.Label label1;
 	}
 }

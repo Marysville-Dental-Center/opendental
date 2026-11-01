@@ -149,7 +149,7 @@
     <Compile Include="..\CodeBase\Utilities\ProgramNames.cs">
       <Link>ProgramNames.cs</Link>
     </Compile>
-    <Compile Include="..\OpenDentBusiness\Misc\ForkRelease\ReleaseManifest.cs">
+    <Compile Include="..\OpenPmsDentalBusiness\Misc\ForkRelease\ReleaseManifest.cs">
       <Link>ReleaseManifest.cs</Link>
     </Compile>
     <Compile Include="FormMain.cs">

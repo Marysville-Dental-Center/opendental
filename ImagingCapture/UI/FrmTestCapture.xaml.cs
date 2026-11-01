@@ -13,8 +13,8 @@ using ImagingCapture.Metadata;
 using ImagingCapture.Settings;
 using ImagingDeviceManager.Capture;
 using ImagingDeviceManager.Config;
-using OpenDental;
-using OpenDentBusiness;
+using OpenPmsDental;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 
 namespace ImagingCapture.UI {

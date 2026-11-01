@@ -10,7 +10,7 @@ using ImagingCapture.Session;
 using ImagingDeviceManager.Capture;
 using ImagingDeviceManager.Config;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Tests {
 	///<summary>The patient-change monitor, idle disable, the cancel warning and the forced close of CaptureSessionController (design 7.3 step 7,

@@ -10,7 +10,7 @@ using System.Resources;
 using System.Text.RegularExpressions;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace NoHqTests {
 	///<summary>Rules that the rename to Open PMS Dental must keep and that the compiler does not check: the Middle Tier's namespace rule, the WPF
@@ -37,7 +37,7 @@ namespace NoHqTests {
 			Assert.IsTrue(listCrudTypes.Count>300,"Only "+listCrudTypes.Count+" CRUD types found.");
 			Assert.IsTrue(listDataInterfaceTypes.Count>300,"Only "+listDataInterfaceTypes.Count+" data-interface types found.");
 			CollectionAssert.Contains(listTableTypes,typeof(Patient));
-			CollectionAssert.Contains(listCrudTypes,typeof(OpenDentBusiness.Crud.PatientCrud));
+			CollectionAssert.Contains(listCrudTypes,typeof(OpenPmsDentalBusiness.Crud.PatientCrud));
 			CollectionAssert.Contains(listDataInterfaceTypes,typeof(Patients));
 			CollectionAssert.Contains(listDataInterfaceTypes,typeof(Security));
 			List<string> listWrong=listTableTypes.Concat(listCrudTypes).Concat(listDataInterfaceTypes).Distinct()

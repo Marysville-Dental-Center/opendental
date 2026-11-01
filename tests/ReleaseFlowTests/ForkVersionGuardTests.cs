@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ReleaseFlowTests {
 	///<summary>A runner with fork migration steps, as M1-01 provides: the levels of its steps, ascending. Its RunPending only counts and logs.
@@ -285,7 +285,7 @@ namespace ReleaseFlowTests {
 			}
 			//The runner's list of applied levels, which the guard reads too.
 			Assert.AreEqual("ForkMigrationsApplied",ForkVersions.PREF_FORK_MIGRATIONS_APPLIED);
-			Assert.AreEqual(OpenDentBusiness.ForkMigrations.ForkMigrationRunner.PrefNameApplied,ForkVersions.PREF_FORK_MIGRATIONS_APPLIED);
+			Assert.AreEqual(OpenPmsDentalBusiness.ForkMigrations.ForkMigrationRunner.PrefNameApplied,ForkVersions.PREF_FORK_MIGRATIONS_APPLIED);
 			Assert.IsFalse(Enum.IsDefined(typeof(PrefName),ForkVersions.PREF_FORK_MIGRATIONS_APPLIED));
 		}
 

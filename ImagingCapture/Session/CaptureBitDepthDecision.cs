@@ -7,7 +7,7 @@ using System.Linq;
 using ImagingCapture.Dicom;
 using ImagingCapture.Settings;
 using ImagingDeviceManager.Capture;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Session {
 	///<summary>What the bit-depth decision for one enable looks at.</summary>

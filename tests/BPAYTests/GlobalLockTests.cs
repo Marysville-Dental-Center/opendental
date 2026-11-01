@@ -7,7 +7,7 @@ using System.IO;
 using System.Text.RegularExpressions;
 using ForkMigrationTests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace BPAYTests {
 	[TestClass]

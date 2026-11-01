@@ -1,4 +1,4 @@
-﻿using OpenDentBusiness;
+﻿using OpenPmsDentalBusiness;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -17,10 +17,10 @@ using System.Windows.Shapes;
 using System.Windows.Threading;
 using System.Xml;
 using Newtonsoft.Json;
-using OpenDental.Drawing;
+using OpenPmsDental.Drawing;
 using CodeBase;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	/*
 	Control Groups:
 	Each field is represented by a group of controls.

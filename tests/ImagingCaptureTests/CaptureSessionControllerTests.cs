@@ -9,7 +9,7 @@ using ImagingCapture.Settings;
 using ImagingCapture.UI;
 using ImagingDeviceManager.Capture;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Tests {
 	///<summary>CaptureSessionController (design 7.3-7.7, 7.11, 7.12, 10.2, 10.3, 10.8) on a stand-in TWAIN session, store, clock and dispatcher:

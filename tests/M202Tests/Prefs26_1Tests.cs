@@ -7,8 +7,8 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations.Seeds26_1;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations.Seeds26_1;
 
 namespace M202Tests {
 	///<summary>Open Dental does not publish preference names, so these are the names the 25.4 and 26.1 feature specs propose. They are this fork's

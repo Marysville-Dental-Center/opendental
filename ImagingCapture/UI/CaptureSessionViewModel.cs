@@ -8,7 +8,7 @@ using ImagingCapture.Dicom;
 using ImagingCapture.Save;
 using ImagingCapture.Session;
 using ImagingDeviceManager.Capture;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.UI {
 	///<summary>How the indicator is coloured (the window picks the colours).</summary>

@@ -10,8 +10,8 @@ using System.Text;
 using System.Threading;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.HL7;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.HL7;
 
 namespace BAUDITTests {
 	[TestClass]
@@ -102,7 +102,7 @@ namespace BAUDITTests {
 		///<summary>The patient's PatientEdit entries written after AddPatient set the patient up.</summary>
 		private static List<SecurityLog> GetPatientEditLogs(long patNum) {
 			_dictSetupLogNums.TryGetValue(patNum,out long setupLogNum);
-			return OpenDentBusiness.Crud.SecurityLogCrud.SelectMany("SELECT * FROM securitylog WHERE PermType="+POut.Int((int)EnumPermType.PatientEdit)
+			return OpenPmsDentalBusiness.Crud.SecurityLogCrud.SelectMany("SELECT * FROM securitylog WHERE PermType="+POut.Int((int)EnumPermType.PatientEdit)
 				+" AND PatNum="+POut.Long(patNum)+" AND SecurityLogNum>"+POut.Long(setupLogNum)+" ORDER BY SecurityLogNum");
 		}
 

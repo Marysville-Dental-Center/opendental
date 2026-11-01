@@ -3,8 +3,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using OpenDentBusiness;
-using OpenDentBusiness.Bridges;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.Bridges;
 
 namespace VendorDirectTests.CareCreditTests {
 	public static class CareCreditTestData {

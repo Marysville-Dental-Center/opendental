@@ -3,7 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Save {
 	///<summary>The default provider of a capture (design 10.8): the provider of the patient's appointment today (ProvHyg for a hygiene

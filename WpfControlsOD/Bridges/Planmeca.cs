@@ -1,10 +1,10 @@
 using System.Collections;
 using System.Windows.Forms;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using System.Collections.Generic;
 using CodeBase;
 
-namespace OpenDental.Bridges{
+namespace OpenPmsDental.Bridges{
 	///<summary>This bridge is now known as "Dimaxis" in the program links list.</summary>
 	public class Planmeca{
 

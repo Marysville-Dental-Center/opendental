@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Windows.Forms;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace xCrudGenerator {
 	public class CrudGenDataInterface {
@@ -122,10 +122,10 @@ namespace xCrudGenerator {
 			string Sname=GetSname(typeClass.Name);
 			string fileName=null;
 			if(isMobile) {
-				fileName=@"..\..\..\OpenDentBusiness\Mobile\Data Interface\"+Sname+".cs";
+				fileName=@"..\..\..\OpenPmsDentalBusiness\Mobile\Data Interface\"+Sname+".cs";
 			}
 			else {
-				fileName=@"..\..\..\OpenDentBusiness\Data Interface\"+Sname+".cs";
+				fileName=@"..\..\..\OpenPmsDentalBusiness\Data Interface\"+Sname+".cs";
 			}
 			if(File.Exists(fileName)) {
 				return;
@@ -331,7 +331,7 @@ using System.Data;
 using System.Reflection;
 using System.Text;
 
-namespace OpenDentBusiness{
+namespace OpenPmsDentalBusiness{
 	///<summary></summary>
 	public class "+Sname+@"{
 "+GetCacheRegion(typeClassName,tablename,obj,Sname)+@"
@@ -389,7 +389,7 @@ using System.Data;
 using System.Reflection;
 using System.Text;
 
-namespace OpenDentBusiness.Mobile{
+namespace OpenPmsDentalBusiness.Mobile{
 	///<summary></summary>
 	public class "+Sname+@"{
 		

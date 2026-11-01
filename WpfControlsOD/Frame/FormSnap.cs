@@ -5,9 +5,9 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Text;
 using System.Windows.Forms;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	///<summary>This is a small window that will come up when hovering over the maximize button to duplicate the funcationality found in Win11 for snapping a window to some screen position.</summary>
 	public partial class FormSnap:Form {
 		public float ScaleMy=1;

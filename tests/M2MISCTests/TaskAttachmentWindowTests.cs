@@ -6,8 +6,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDental;
-using OpenDentBusiness;
+using OpenPmsDental;
+using OpenPmsDentalBusiness;
 
 namespace M2MISCTests {
 	[TestClass]
@@ -129,7 +129,7 @@ namespace M2MISCTests {
 			//FormTaskAttachments.CanAddAttachment and FormTaskAttachmentEdit.IsTaskDeletedDiscard rely on Tasks.IsTaskDeleted.
 			TestDb.ResetOrSkip();
 			Task task=new Task { Descript="Synthetic task",DateTimeEntry=DateTime.Now,ObjectType=TaskObjectType.None };
-			long taskNum=OpenDentBusiness.Crud.TaskCrud.Insert(task);
+			long taskNum=OpenPmsDentalBusiness.Crud.TaskCrud.Insert(task);
 			Assert.IsFalse(Tasks.IsTaskDeleted(taskNum));
 			DataCore.NonQ("DELETE FROM task WHERE TaskNum="+taskNum);
 			Assert.IsTrue(Tasks.IsTaskDeleted(taskNum));

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using CodeBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace UnitTestsCore {
 	public class ProcedureCodeT {

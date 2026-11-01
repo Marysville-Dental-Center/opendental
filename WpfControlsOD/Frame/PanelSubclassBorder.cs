@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	///<summary>This is a fancy panel just used for FormODBase.PanelBorder. It does some low-level win sdk stuff to get Snap Layouts to work when hovering over the Max button.</summary>
 	public class PanelSubclassBorder:Panel{
 		public Rectangle RectangleButMax;

@@ -8,8 +8,8 @@ using CodeBase;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.Microsoft365;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.Microsoft365;
 
 namespace VendorDirectTests.Email {
 	[TestClass]

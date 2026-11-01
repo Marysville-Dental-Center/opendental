@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using DataConnectionBase;
 
 namespace UnitTestsCore {
@@ -35,7 +35,7 @@ namespace UnitTestsCore {
 				string command="";
 				if(DataConnection.DBtype==DatabaseType.MySql) {
 					command="SELECT * FROM signalod";
-					listSignals=OpenDentBusiness.Crud.SignalodCrud.TableToList(DataCore.GetTable(command));
+					listSignals=OpenPmsDentalBusiness.Crud.SignalodCrud.TableToList(DataCore.GetTable(command));
 				}
 			}
 			catch {

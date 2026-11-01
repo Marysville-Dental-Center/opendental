@@ -6,10 +6,10 @@ using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using System.Collections.Generic;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	class EvaSoft {
 
 		public EvaSoft() {

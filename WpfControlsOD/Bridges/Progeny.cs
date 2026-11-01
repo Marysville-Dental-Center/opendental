@@ -6,11 +6,11 @@ using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 using CodeBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using System.Collections.Generic;
 using System.Diagnostics;
 
-namespace OpenDental.Bridges {
+namespace OpenPmsDental.Bridges {
 	public class Progeny {
 
 		///<summary>Launches the program using command line.</summary>

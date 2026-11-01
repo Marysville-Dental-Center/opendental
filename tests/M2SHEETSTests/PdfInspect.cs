@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;
 

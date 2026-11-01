@@ -7,8 +7,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using OpenDental;
-using OpenDental.UI;
+using OpenPmsDental;
+using OpenPmsDental.UI;
 
 namespace UnitTests{
 	public partial class FormButtonTest : FormODBase{

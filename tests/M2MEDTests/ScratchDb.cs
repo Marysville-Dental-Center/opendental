@@ -4,8 +4,8 @@
 using System;
 using DataConnectionBase;
 using MySqlConnector;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace M2MEDTests {
 	///<summary>Creates, connects to and drops scratch databases. Every name starts with "m2med_" plus this run's id, so a test never drops anything

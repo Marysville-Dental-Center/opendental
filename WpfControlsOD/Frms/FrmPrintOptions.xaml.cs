@@ -5,10 +5,10 @@ using System;
 using System.Collections.Generic;
 using System.Windows.Input;
 using CodeBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	///<summary>Lets the user pick the printer, number of copies, collation and page range before printing. Set PrintSituation_ and
 	///PrintOptionsChoice_ (the starting values, see PrintOptions.GetInitialChoice) before ShowDialog. When IsDialogOK, PrintOptionsChoice_ holds the
 	///user's choice. Set IsPageRangeAllowed to false where the caller cannot print part of a document.</summary>

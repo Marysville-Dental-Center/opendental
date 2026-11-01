@@ -83,7 +83,7 @@ namespace M202Tests {
 		///<summary>Finds the enum type with this simple name in the business layer or CodeBase. Prefers the OpenDentBusiness namespace.</summary>
 		public static Type FindCodeEnum(string enumName) {
 			List<Type> listTypes=new List<Type>();
-			foreach(Assembly assembly in new[] { typeof(OpenDentBusiness.Patient).Assembly,typeof(CodeBase.ODException).Assembly }) {
+			foreach(Assembly assembly in new[] { typeof(OpenPmsDentalBusiness.Patient).Assembly,typeof(CodeBase.ODException).Assembly }) {
 				Type[] arrayTypes;
 				try {
 					arrayTypes=assembly.GetTypes();
@@ -96,8 +96,8 @@ namespace M202Tests {
 			if(listTypes.Count==0) {
 				return null;
 			}
-			return listTypes.FirstOrDefault(x => x.Namespace==typeof(OpenDentBusiness.Patient).Namespace && !x.IsNested)
-				??listTypes.FirstOrDefault(x => x.Namespace==typeof(OpenDentBusiness.Patient).Namespace)
+			return listTypes.FirstOrDefault(x => x.Namespace==typeof(OpenPmsDentalBusiness.Patient).Namespace && !x.IsNested)
+				??listTypes.FirstOrDefault(x => x.Namespace==typeof(OpenPmsDentalBusiness.Patient).Namespace)
 				??listTypes[0];
 		}
 	}

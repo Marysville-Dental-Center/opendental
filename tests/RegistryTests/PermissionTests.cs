@@ -5,8 +5,8 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.ForkMigrations;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace RegistryTests {
 	///<summary>Permission wording, reserved (HQ-only) permissions, the audit trail list, and where the new permissions sit in the security tree.</summary>

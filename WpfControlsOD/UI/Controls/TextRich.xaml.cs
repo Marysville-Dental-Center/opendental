@@ -21,10 +21,10 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using CodeBase;
 using NHunspell;
-using OpenDental;
+using OpenPmsDental;
 using Newtonsoft.Json;
 
 namespace WpfControls.UI{
@@ -936,7 +936,7 @@ How to use the TextRich control:
 				DictCustom dictCustom=new DictCustom();
 				dictCustom.WordText=textRange.Text;
 				DictCustoms.Insert(dictCustom);
-				OpenDental.DataValid.SetInvalid(InvalidType.DictCustoms);
+				OpenPmsDental.DataValid.SetInvalid(InvalidType.DictCustoms);
 				SpellCheck();//to remove the red
 				//_listTextRanges.Remove(textRange);
 				_dispatcherTimer.Start();
@@ -947,7 +947,7 @@ How to use the TextRich control:
 					return;
 				}
 				Prefs.UpdateBool(PrefName.SpellCheckIsEnabled,false);
-				OpenDental.DataValid.SetInvalid(InvalidType.Prefs);
+				OpenPmsDental.DataValid.SetInvalid(InvalidType.Prefs);
 				SpellCheck();//to remove the red
 				return;
 			}

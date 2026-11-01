@@ -11,8 +11,8 @@ using System.Reflection;
 using System.Threading;
 using System.Windows.Forms;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDental;
-using OpenDentBusiness;
+using OpenPmsDental;
+using OpenPmsDentalBusiness;
 
 namespace M2SHEETSTests {
 	[TestClass]
@@ -96,7 +96,7 @@ namespace M2SHEETSTests {
 				Assert.AreEqual(0,CountAsked);
 			}
 
-			public OpenDental.UI.ListBox ListBox => Get<OpenDental.UI.ListBox>("listBoxFields");
+			public OpenPmsDental.UI.ListBox ListBox => Get<OpenPmsDental.UI.ListBox>("listBoxFields");
 
 			public bool IsCtrlDown => Get<bool>("_isCtrlDown");
 

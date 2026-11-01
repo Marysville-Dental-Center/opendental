@@ -20,10 +20,10 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using CodeBase;
-using OpenDentBusiness;
-using OpenDental.Drawing;
-using OpenDental.UI;
-using OpenDental;
+using OpenPmsDentalBusiness;
+using OpenPmsDental.Drawing;
+using OpenPmsDental.UI;
+using OpenPmsDental;
 
 namespace WpfControls.UI{
 /*

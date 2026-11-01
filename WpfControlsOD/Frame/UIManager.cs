@@ -17,10 +17,10 @@ using System.Windows.Shapes;
 //using System.Windows.Forms;//no, we will always fully qualify controls here.
 using System.Windows.Forms.Integration;//In WindowsFormsIntegration.dll
 //Also needed WindowsBase and System.Xaml
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using CodeBase;
 
-namespace OpenDental{
+namespace OpenPmsDental{
 	///<summary>Soon to be deprecated.</summary>
 	public class UIManager{
 

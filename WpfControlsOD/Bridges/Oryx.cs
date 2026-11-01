@@ -3,9 +3,9 @@ using System.Linq;
 using System.Net;
 using CodeBase;
 using Newtonsoft.Json;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
-namespace OpenDental.Bridges {
+namespace OpenPmsDental.Bridges {
 	///<summary></summary>
 	public class Oryx {
 
@@ -17,7 +17,7 @@ namespace OpenDental.Bridges {
 					MsgBox.Show("Oryx","Oryx must be enabled in Program Links.");
 					return;
 				}
-				clientUrl=OpenDentBusiness.ProgramProperties.GetPropVal(progOryx.ProgramNum,ProgramProperties.ClientUrl);
+				clientUrl=OpenPmsDentalBusiness.ProgramProperties.GetPropVal(progOryx.ProgramNum,ProgramProperties.ClientUrl);
 				if(clientUrl=="") {
 					MsgBox.Show("Oryx","Enter the Client URL in the Oryx program link.");
 					return;

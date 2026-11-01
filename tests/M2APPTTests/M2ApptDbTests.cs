@@ -11,7 +11,7 @@ using System.Linq;
 using System.Threading;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace M2APPTTests {
 	[TestClass]
@@ -64,9 +64,9 @@ namespace M2APPTTests {
 		}
 
 		private static long AddGroup(string description,params EnumPermType[] arrayPermTypes) {
-			long userGroupNum=OpenDentBusiness.Crud.UserGroupCrud.Insert(new UserGroup { Description=description });
+			long userGroupNum=OpenPmsDentalBusiness.Crud.UserGroupCrud.Insert(new UserGroup { Description=description });
 			for(int i=0;i<arrayPermTypes.Length;i++) {
-				OpenDentBusiness.Crud.GroupPermissionCrud.Insert(new GroupPermission { UserGroupNum=userGroupNum,PermType=arrayPermTypes[i],
+				OpenPmsDentalBusiness.Crud.GroupPermissionCrud.Insert(new GroupPermission { UserGroupNum=userGroupNum,PermType=arrayPermTypes[i],
 					NewerDate=DateTime.MinValue,NewerDays=0,FKey=0 });
 			}
 			return userGroupNum;
@@ -74,7 +74,7 @@ namespace M2APPTTests {
 
 		private static void AddUser(string key,long userNum,params long[] arrayUserGroupNums) {
 			for(int i=0;i<arrayUserGroupNums.Length;i++) {
-				OpenDentBusiness.Crud.UserGroupAttachCrud.Insert(new UserGroupAttach { UserNum=userNum,UserGroupNum=arrayUserGroupNums[i] });
+				OpenPmsDentalBusiness.Crud.UserGroupAttachCrud.Insert(new UserGroupAttach { UserNum=userNum,UserGroupNum=arrayUserGroupNums[i] });
 			}
 			_dictUsers[key]=new Userod { UserNum=userNum,UserName="m2appt_"+key };
 		}

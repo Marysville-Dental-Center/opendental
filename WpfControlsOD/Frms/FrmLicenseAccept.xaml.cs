@@ -7,10 +7,10 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	///<summary>A window for viewing and accepting a license. Includes creation of security log for audit trail purposes after license is accepted.</summary>
 	public partial class FrmLicenseAccept : FrmODBase {
 		private string _licenseContent;

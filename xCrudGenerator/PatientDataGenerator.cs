@@ -5,7 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace xCrudGenerator {
 	public class PatientDataGenerator {
@@ -23,7 +23,7 @@ using System.Linq;
 using System.Reflection;
 using System.Xml.Serialization;
 
-namespace OpenDentBusiness {
+namespace OpenPmsDentalBusiness {
 	public partial class PatientData {
 		#region Fields - Public"+"\r\n";
 			_listPdTablesAll=((EnumPdTable[])Enum.GetValues(typeof(EnumPdTable))).ToList();
@@ -149,7 +149,7 @@ namespace OpenDentBusiness {
 			str+=@"		#endregion Methods - Private
 	}
 }";
-			File.WriteAllText(@"..\..\..\OpenDentBusiness\Db Multi Table\PatientDataGenerated.cs",str);
+			File.WriteAllText(@"..\..\..\OpenPmsDentalBusiness\Db Multi Table\PatientDataGenerated.cs",str);
 		}
 
 		private static string GenerateFillIfNeeded(EnumPdComplexGetter complexGetter){

@@ -1,4 +1,4 @@
-﻿using OpenDentBusiness;
+﻿using OpenPmsDentalBusiness;
 
 namespace UnitTestsCore {
 	public class SnomedT {

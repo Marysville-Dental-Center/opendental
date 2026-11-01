@@ -8,8 +8,8 @@ using System.Net;
 using System.Threading;
 using CodeBase.VendorDirect;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.VendorDirect.GlobalPayments;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.VendorDirect.GlobalPayments;
 
 namespace VGPTests {
 	[TestClass]

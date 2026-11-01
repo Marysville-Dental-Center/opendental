@@ -9,8 +9,8 @@ using System.Drawing;
 using System.IO;
 using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenDentBusiness;
-using OpenDentBusiness.SheetFramework;
+using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.SheetFramework;
 using SparksToothChart;
 
 namespace BINATests {
@@ -147,7 +147,7 @@ namespace BINATests {
 			Assert.AreEqual(new Size(500,370),image.Size);
 			Assert.AreEqual(Color.White.ToArgb(),((Bitmap)image).GetPixel(0,0).ToArgb());
 			using Image imagePerio=ToothChartHelper.GetToothChartImageProcess(null,new List<Procedure>(),new List<ToothInitial>(),
-				OpenDentBusiness.ToothNumberingNomenclature.Universal,new List<PerioMeasure>(),new Dictionary<PrefName,Color>(),new List<Def>(),
+				OpenPmsDentalBusiness.ToothNumberingNomenclature.Universal,new List<PerioMeasure>(),new Dictionary<PrefName,Color>(),new List<Def>(),
 				new List<Procedure>(),new List<ProcedureCode>(),new List<ProcedureCode>(),false,false,true,500,370,false,false);
 			Assert.AreEqual(new Size(649,696),imagePerio.Size,"The perio image keeps the graphical perio chart's size.");
 		}

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
 namespace UnitTestsCore {
 	public class PatientT {
@@ -218,7 +218,7 @@ namespace UnitTestsCore {
 		}
 
 		public static void InsertMany(List<Patient> listPats) {
-			OpenDentBusiness.Crud.PatientCrud.InsertMany(listPats);
+			OpenPmsDentalBusiness.Crud.PatientCrud.InsertMany(listPats);
 		}
 
 		public static void SetGuarantorToSelf(List<long> listPatNums) {
@@ -228,13 +228,13 @@ namespace UnitTestsCore {
 
 
 		///<summary>Creates  and returns a list of 5 patients with all fields utilized and varied. Useful for testing a patient search for different fields.  </summary>
-		public static List<OpenDentBusiness.Patient> CreateVariedPatientSet() {
-			List<OpenDentBusiness.Patient> listPatients=new List<OpenDentBusiness.Patient>();
-			listPatients.Add(new OpenDentBusiness.Patient {
+		public static List<OpenPmsDentalBusiness.Patient> CreateVariedPatientSet() {
+			List<OpenPmsDentalBusiness.Patient> listPatients=new List<OpenPmsDentalBusiness.Patient>();
+			listPatients.Add(new OpenPmsDentalBusiness.Patient {
 				LName="Smith",
 				FName="Clara",
 				HmPhone="555-554-5543",
-				PatStatus=OpenDentBusiness.PatientStatus.Patient,
+				PatStatus=OpenPmsDentalBusiness.PatientStatus.Patient,
 				Address="132 Elm St",
 				Address2="SomePlace Apt",
 				City="Providence",
@@ -246,15 +246,15 @@ namespace UnitTestsCore {
 				Email="name@email.com",
 				Country="USA",
 				ClinicNum=1,
-				Gender=OpenDentBusiness.PatientGender.Female,
-				Position=OpenDentBusiness.PatientPosition.Divorced,
-				TxtMsgOk=OpenDentBusiness.YN.No
+				Gender=OpenPmsDentalBusiness.PatientGender.Female,
+				Position=OpenPmsDentalBusiness.PatientPosition.Divorced,
+				TxtMsgOk=OpenPmsDentalBusiness.YN.No
 			});
-			listPatients.Add(new OpenDentBusiness.Patient {
+			listPatients.Add(new OpenPmsDentalBusiness.Patient {
 				LName="Smith",
 				FName="Grant",
 				HmPhone="555-554-5543",
-				PatStatus=OpenDentBusiness.PatientStatus.Patient,
+				PatStatus=OpenPmsDentalBusiness.PatientStatus.Patient,
 				Address="132 Elm St",
 				City="Providence",
 				State="RI",
@@ -264,15 +264,15 @@ namespace UnitTestsCore {
 				Email="name2@email.com",
 				Country="USA",
 				ClinicNum=1,
-				Gender=OpenDentBusiness.PatientGender.Male,
-				Position=OpenDentBusiness.PatientPosition.Single,
-				TxtMsgOk=OpenDentBusiness.YN.No
+				Gender=OpenPmsDentalBusiness.PatientGender.Male,
+				Position=OpenPmsDentalBusiness.PatientPosition.Single,
+				TxtMsgOk=OpenPmsDentalBusiness.YN.No
 			});
-			listPatients.Add(new OpenDentBusiness.Patient {
+			listPatients.Add(new OpenPmsDentalBusiness.Patient {
 				LName="Franklin",
 				FName="Nicole",
 				WkPhone="222-222-2222",
-				PatStatus=OpenDentBusiness.PatientStatus.Patient,
+				PatStatus=OpenPmsDentalBusiness.PatientStatus.Patient,
 				Address="111 Spruce Ln",
 				City="Ontario",
 				Zip="34567",
@@ -282,15 +282,15 @@ namespace UnitTestsCore {
 				SiteNum=5,
 				Country="CA",
 				ClinicNum=2,
-				Gender=OpenDentBusiness.PatientGender.Female,
-				Position=OpenDentBusiness.PatientPosition.Single,
-				TxtMsgOk=OpenDentBusiness.YN.Yes
+				Gender=OpenPmsDentalBusiness.PatientGender.Female,
+				Position=OpenPmsDentalBusiness.PatientPosition.Single,
+				TxtMsgOk=OpenPmsDentalBusiness.YN.Yes
 			});
-			listPatients.Add(new OpenDentBusiness.Patient {
+			listPatients.Add(new OpenPmsDentalBusiness.Patient {
 				LName="Ruthers",
 				FName="Lorenzo",
 				HmPhone="511-511-5111",
-				PatStatus=OpenDentBusiness.PatientStatus.Inactive,
+				PatStatus=OpenPmsDentalBusiness.PatientStatus.Inactive,
 				Address="6532 Maple Ct",
 				City="Santa Clara",
 				State="CA",
@@ -299,15 +299,15 @@ namespace UnitTestsCore {
 				Birthdate=DateTime.Today.AddMonths(2).AddDays(-10),
 				Country="USA",
 				ClinicNum=0,
-				Gender=OpenDentBusiness.PatientGender.Male,
-				Position=OpenDentBusiness.PatientPosition.Divorced,
-				TxtMsgOk=OpenDentBusiness.YN.No
+				Gender=OpenPmsDentalBusiness.PatientGender.Male,
+				Position=OpenPmsDentalBusiness.PatientPosition.Divorced,
+				TxtMsgOk=OpenPmsDentalBusiness.YN.No
 			});
-			listPatients.Add(new OpenDentBusiness.Patient {
+			listPatients.Add(new OpenPmsDentalBusiness.Patient {
 				LName="Sage",
 				FName="Summer",
 				WirelessPhone="645-454-5011",
-				PatStatus=OpenDentBusiness.PatientStatus.Archived,
+				PatStatus=OpenPmsDentalBusiness.PatientStatus.Archived,
 				Address="68882 Walnut Dr",
 				City="Glacene",
 				State="WI",
@@ -315,15 +315,15 @@ namespace UnitTestsCore {
 				SSN="840332523",
 				Birthdate=DateTime.Today.AddMonths(1).AddDays(5),
 				Country="USA",
-				Gender=OpenDentBusiness.PatientGender.Female,
-				Position=OpenDentBusiness.PatientPosition.Single,
-				TxtMsgOk=OpenDentBusiness.YN.No
+				Gender=OpenPmsDentalBusiness.PatientGender.Female,
+				Position=OpenPmsDentalBusiness.PatientPosition.Single,
+				TxtMsgOk=OpenPmsDentalBusiness.YN.No
 			});
 			//PatientT.InsertMany(listPatients);
-			List<OpenDentBusiness.Patient> listOdbPatientsReturned=new List<OpenDentBusiness.Patient>();
+			List<OpenPmsDentalBusiness.Patient> listOdbPatientsReturned=new List<OpenPmsDentalBusiness.Patient>();
 			for(int i=0;i<listPatients.Count;i++) {
-				long patnum=OpenDentBusiness.Patients.Insert(listPatients[i],false);
-				listOdbPatientsReturned.Add(OpenDentBusiness.Patients.GetPat(patnum));
+				long patnum=OpenPmsDentalBusiness.Patients.Insert(listPatients[i],false);
+				listOdbPatientsReturned.Add(OpenPmsDentalBusiness.Patients.GetPat(patnum));
 			}
 			return listOdbPatientsReturned;
 		}

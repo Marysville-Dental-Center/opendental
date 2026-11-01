@@ -7,7 +7,7 @@ using System.IO;
 using System.Resources;
 using System.Text;
 using System.Text.RegularExpressions;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using SharpDX.Direct3D9;
 
 namespace SparksToothChart {

@@ -12,10 +12,10 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using CodeBase;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 using WpfControls.UI;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	public partial class FrmCommItem : FrmODBase {
 		///<summary>Set to true to not load default selections for Type, Mode_, and SentOrReceived controls.</summary>
 		public bool DoOmitDefaults=false;

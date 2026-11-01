@@ -1,0 +1,1229 @@
+﻿using CodeBase;
+using OpenPmsDentalBusiness;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Globalization;
+using System.Linq;
+using System.Windows.Forms;
+using OpenPmsDentalBusiness.Eclaims;
+using System.Drawing;
+using System.Text.RegularExpressions;
+using System.Text;
+using OpenPmsDental.UI;
+using OpenPmsDentalBusiness.VendorDirect.DentalXChange;
+
+namespace OpenPmsDental {
+	public class ClaimL {
+
+		///<summary>Validates that default clearinghouses are set up correctly.
+		///Shows an error message to the user and returns false if they are not set up; Otherwise, returns true.</summary>
+		public static bool CheckClearinghouseDefaults() {
+			string errorMessage=Clearinghouses.CheckClearinghouseDefaults();
+			if(!string.IsNullOrEmpty(errorMessage)) {
+				MessageBox.Show(errorMessage);
+				return false;
+			}
+			return true;
+		}
+
+		///<summary>Adds the message passed in to the ErrorMessage of the createClaimDataWrapper passed in.
+		///Shows the message passed in to the user if isVerbose is true. Be sure to translate message before calling this function.</summary>
+		private static void LogClaimError(CreateClaimDataWrapper createClaimDataWrapper,string message,bool isVerbose,string msgBoxHeader="") {
+			if(createClaimDataWrapper.ErrorMessage!="") {
+				createClaimDataWrapper.ErrorMessage+="\r\n";
+			}
+			createClaimDataWrapper.ErrorMessage+=$"{msgBoxHeader}: {message}";
+			createClaimDataWrapper.HasError=true;
+			if(isVerbose) {
+				MessageBox.Show(message,msgBoxHeader);
+			}
+		}
+
+		///<summary>Gets a list of CreateClaimItems from the current table and selected items.
+		///If no selections are made, the entire table is converted into CreateClaimItems and is returned.</summary>
+		///<param name="dataTable">This table must have three columns at minimum: ProcNum, ProcNumLab, and chargesDouble</param>
+		///<param name="arraySelectedIndices">Any selected rows in the corresponding table. An empty array is acceptable.</param>
+		///<returns>List of objects that can be used for creating claims instead of directly utilizing DataTable\ODGrid objects directly.</returns>
+		public static List<CreateClaimItem> GetCreateClaimItems(DataTable dataTable,int[] arraySelectedIndices) {
+			List<DataRow> listDataRows=dataTable.Select().ToList();
+			//If the user manually selected items in the grid then we want to only include the selected rows.
+			bool hasSelections=(arraySelectedIndices.Length > 0);
+			if(hasSelections) {
+				listDataRows=listDataRows.Where((x,index) => index.In(arraySelectedIndices)).ToList();
+			}
+			//Create CreateClaimItem objects from the data rows so that we have deep copied and strongly typed objects to work with in other methods.
+			return listDataRows.Select(x => new CreateClaimItem() {
+				ProcNum=PIn.Long(x["ProcNum"].ToString()),
+				ProcNumLab=PIn.Long(x["ProcNumLab"].ToString()),
+				ChargesDouble=PIn.Double(x["chargesDouble"].ToString()),
+				IsSelected=hasSelections,
+			}).ToList();
+		}
+
+		/// <summary> Block users from creating claims when a selected procedure is associated with duplicate claimprocs. A 
+		/// 'duplicate claimproc' does not mean that all of the information has been duplicated but instead means that there are two claimprocs for the same insurance plan.
+		/// Specifically, a duplicate claimproc for primary insurance, or secondary insurance, or tertiary insurance, etc.
+		/// Create a list of ProcNums that have duplicate claimprocs associated with them so that we can let the user know which procedures need manual intervention.
+		/// </summary>
+		public static bool WarnUsersForDuplicateClaimProcs(CreateClaimDataWrapper createClaimDataWrapper,bool isVerbose=true) {
+			List<long> listProcNums=new List<long>();
+			//Do not count 'Preauth' claimprocs as duplicates since these are expected to be present for the same insurance plan.
+			List<ClaimProc> listClaimProcsAvailable=createClaimDataWrapper.CreateClaimData_.ListClaimProcs
+				.FindAll(x => x.Status!=ClaimProcStatus.Preauth && x.Status!=ClaimProcStatus.Supplemental && x.IsOverpay==false);
+			//Only consider the claimprocs associated with the selected procedures (even if there are other procedures on the account with this problem).
+			List<CreateClaimItem> listCreateClaimItemsSelected=createClaimDataWrapper.ListCreateClaimItems.FindAll(x => x.IsSelected);
+			for(int i=0;i<listCreateClaimItemsSelected.Count;i++) {
+				List<ClaimProc> listClaimProcs=ClaimProcs.GetForProc(listClaimProcsAvailable,listCreateClaimItemsSelected[i].ProcNum);
+				//Group all of the claimprocs for this procedure by InsSubNum (e.g. by primary insurance).
+				//Keep track of any procedures that have multiple claimprocs for the same InsSubNum.
+				if(listClaimProcs.GroupBy(x => x.InsSubNum).Any(x => x.Count() > 1)) {
+					listProcNums.Add(listCreateClaimItemsSelected[i].ProcNum);
+				}
+			}
+			if(listProcNums.Count>0) {
+				string message=Lan.g("ContrAccount","Procedures with multiple claimprocs for the same insurance found:")+" "+listProcNums.Count;
+				for(int i=0;i<listProcNums.Count;i++) {
+					Procedure procedure=Procedures.GetProcFromList(createClaimDataWrapper.CreateClaimData_.ListProcs,listProcNums[i]);
+					message+="\r\n  "+Procedures.ConvertProcToString(procedure.CodeNum,procedure.Surf,procedure.ToothNum,true);
+				}
+				message+="\r\n\r\n"+Lan.g("ContrAccount","The above procedures need to have the duplicate claimprocs deleted before creating a claim.");
+				LogClaimError(createClaimDataWrapper,message,isVerbose);
+				createClaimDataWrapper.ShouldRefresh=false;
+				return true;
+			}
+			return false;
+		}
+
+		///<summary>Returns a CreateClaimDataWrapper object that is specifically designed for the claim creation process from within the UI.
+		///It contains strongly typed variables which help indicate to the claim creation method how to correctly create the claim.
+		///It also contains variables that indicate to consuming methods what happened during the claim creation process.
+		///It is a requirement to have listCreateClaimItems filled with at least one item.
+		///Optionally set isSelectionRequired to true if the user must have already selected indices within the grid passed in.
+		///This method throws exceptions (specifically for developers), shows messages, and other UI related actions during claim creation.</summary>
+		public static CreateClaimDataWrapper GetCreateClaimDataWrapper(Patient patient,Family family,List<CreateClaimItem> listCreateClaimItems,bool isVerbose
+			,bool isSelectionRequired=false)
+		{
+			CreateClaimDataWrapper createClaimDataWrapper=new CreateClaimDataWrapper();
+			if(listCreateClaimItems==null) {//An engineer incorrectly called this method.
+				throw new ArgumentException("Invalid argument passed in.",nameof(listCreateClaimItems));
+			}
+			createClaimDataWrapper.ListCreateClaimItems=listCreateClaimItems;
+			if(!Security.IsAuthorized(EnumPermType.ClaimView,true)) {
+				LogClaimError(createClaimDataWrapper,Lans.g("Security","Not authorized for")+"\r\n"+GroupPermissions.GetDesc(EnumPermType.ClaimView),isVerbose);
+				createClaimDataWrapper.ShouldRefresh=false;
+				return createClaimDataWrapper;
+			}
+			if(listCreateClaimItems.Count < 1) {
+				//There is nothing to do because at least one item is required in order to create a claim...
+				LogClaimError(createClaimDataWrapper,Lan.g("ContrAccount","Please select procedures first."),isVerbose);
+				createClaimDataWrapper.ShouldRefresh=false;
+				return createClaimDataWrapper;
+			}
+			if(!CheckClearinghouseDefaults()) {
+				createClaimDataWrapper.ShouldRefresh=false;
+				createClaimDataWrapper.HasError=true;
+				return createClaimDataWrapper;
+			}
+			createClaimDataWrapper.Patient_=patient;
+			createClaimDataWrapper.Family_=family;
+			createClaimDataWrapper.CreateClaimData_=AccountModules.GetCreateClaimData(patient,family);
+			if(createClaimDataWrapper.CreateClaimData_.ListPatPlans.Count==0) {
+				LogClaimError(createClaimDataWrapper,Lan.g("ContrAccount","Patient does not have insurance."),isVerbose);
+				createClaimDataWrapper.ShouldRefresh=false;
+				return createClaimDataWrapper;
+			}
+			int countSelected=0;
+			InsSub insSub;
+			if(listCreateClaimItems.All(x => !x.IsSelected)) {
+				if(isSelectionRequired) {
+					LogClaimError(createClaimDataWrapper,Lan.g("ContrAccount","Please select procedures first."),isVerbose);
+					createClaimDataWrapper.ShouldRefresh=false;
+					return createClaimDataWrapper;
+				}
+				//autoselect procedures
+				for(int i=0;i<listCreateClaimItems.Count;i++){
+					if(listCreateClaimItems[i].ProcNum==0) {
+						continue;//ignore non-procedures
+					}
+					if(listCreateClaimItems[i].ChargesDouble==0) {
+						continue;//ignore zero fee procedures, but user can explicitly select them
+					}
+					//payment rows skipped
+					Procedure procedure=Procedures.GetProcFromList(createClaimDataWrapper.CreateClaimData_.ListProcs,listCreateClaimItems[i].ProcNum);
+					ProcedureCode procedureCode=ProcedureCodes.GetFirstOrDefault(x => x.CodeNum==procedure.CodeNum)??new ProcedureCode();
+					if(procedureCode.IsCanadianLab) {
+						continue;
+					}
+					int ordinal=PatPlans.GetOrdinal(PriSecMed.Primary,createClaimDataWrapper.CreateClaimData_.ListPatPlans
+						,createClaimDataWrapper.CreateClaimData_.ListInsPlans,createClaimDataWrapper.CreateClaimData_.ListInsSubs);
+					int ordinalSec=PatPlans.GetOrdinal(PriSecMed.Secondary,createClaimDataWrapper.CreateClaimData_.ListPatPlans
+						,createClaimDataWrapper.CreateClaimData_.ListInsPlans,createClaimDataWrapper.CreateClaimData_.ListInsSubs);
+					if(ordinal==0) { //No primary dental plan. Must be a medical plan. Use the first medical plan instead.
+						ordinal=1;
+					}
+					insSub=InsSubs.GetSub(PatPlans.GetInsSubNum(createClaimDataWrapper.CreateClaimData_.ListPatPlans,ordinal),createClaimDataWrapper.CreateClaimData_.ListInsSubs);
+					InsSub insSubSec=null;
+					if(ordinalSec>0) {
+						insSubSec=InsSubs.GetSub(PatPlans.GetInsSubNum(createClaimDataWrapper.CreateClaimData_.ListPatPlans,ordinalSec),createClaimDataWrapper.CreateClaimData_.ListInsSubs);
+					}
+					//Select the item if any procedure needs primary or secondary insurance sent.
+					if(Procedures.NeedsSent(procedure.ProcNum,insSub.InsSubNum,createClaimDataWrapper.CreateClaimData_.ListClaimProcs) 
+						|| (insSubSec!=null && Procedures.NeedsSent(procedure.ProcNum,insSubSec.InsSubNum,createClaimDataWrapper.CreateClaimData_.ListClaimProcs)))
+					{
+						if(CultureInfo.CurrentCulture.Name.EndsWith("CA") && countSelected==7) {//Canadian. en-CA or fr-CA
+							if(isVerbose) {//This is an informational message, not an error.
+								MsgBox.Show("ContrAccount","Only the first 7 procedures will be automatically selected.\r\n"
+								+"You will need to create another claim for the remaining procedures.");
+							}
+							break;//Continue creating the claim, but stop selecting procedures so that only 7 will be added to the claim.
+						}
+						countSelected++;
+						listCreateClaimItems[i].IsSelected=true;
+					}
+				}
+				if(listCreateClaimItems.All(x => !x.IsSelected)) {//if still none selected
+					LogClaimError(createClaimDataWrapper,Lan.g("ContrAccount","Please select procedures first."),isVerbose);
+					createClaimDataWrapper.ShouldRefresh=false;
+					return createClaimDataWrapper;
+				}
+			}
+			if(listCreateClaimItems.Any(x => x.IsSelected && x.ProcNum==0)) {
+				LogClaimError(createClaimDataWrapper,Lan.g("ContrAccount","You can only select procedures."),isVerbose);
+				createClaimDataWrapper.ShouldRefresh=false;
+				return createClaimDataWrapper;
+			}
+			//At this point, all selected items are procedures. In Canada, the selections may also include labs.
+			InsCanadaValidateProcs(createClaimDataWrapper,isVerbose);
+			if(createClaimDataWrapper.ListCreateClaimItems.All(x => !x.IsSelected)) {
+				LogClaimError(createClaimDataWrapper,Lan.g("ContrAccount","Please select procedures first."),isVerbose);
+				createClaimDataWrapper.ShouldRefresh=false;
+				return createClaimDataWrapper;
+			}
+			List<CreateClaimItem> listCreateClaimItemsSelected=createClaimDataWrapper.ListCreateClaimItems.FindAll(x => x.IsSelected);
+			WarnUsersForDuplicateClaimProcs(createClaimDataWrapper);
+			return createClaimDataWrapper;
+		}
+
+		///<summary>Returns the createClaimDataWrapper object that was passed in after manipulating it.
+		///This object will contain information about what happened during the claim creation process (e.g. error messages, refresh indicator, etc).
+		///E.g. CreateClaimDataWrapper.HasError will be true if any errors occurred. ErrorMessage might contain additional information about the error.
+		///This method assumes that createClaimDataWrapper was set up correctly (refer to GetCreateClaimDataWrapper() for how to set up this object).
+		///Set flag hasPrimaryClaim to true if the primary claim has already been created and should not be recreated.
+		///Set flag hasSecondaryClaim to true if the secondary claim has already been created and should not be recreated.
+		///Set flag hasTertiaryClaim to true if the tertiary claim has already been created and should not be recreated.</summary>
+		public static CreateClaimDataWrapper CreateClaimFromWrapper(bool isVerbose,CreateClaimDataWrapper createClaimDataWrapper
+			,bool hasPrimaryClaim=false,bool hasSecondaryClaim=false,bool hasTertiaryClaim=false)
+		{
+			createClaimDataWrapper.ErrorMessage="";
+			if(!Security.IsAuthorized(EnumPermType.ClaimView,true)) {
+				LogClaimError(createClaimDataWrapper,Lans.g("Security","Not authorized for")+"\r\n"+GroupPermissions.GetDesc(EnumPermType.ClaimView),isVerbose);
+				createClaimDataWrapper.ShouldRefresh=false;
+				return createClaimDataWrapper;
+			}
+			createClaimDataWrapper.CountClaimsCreated=0;
+			if(!CheckClearinghouseDefaults()) {
+				createClaimDataWrapper.ShouldRefresh=false;
+				createClaimDataWrapper.HasError=true;
+				return createClaimDataWrapper;
+			}
+			if(createClaimDataWrapper.CreateClaimData_.ListPatPlans.Count==0) {
+				LogClaimError(createClaimDataWrapper,Lan.g("ContrAccount","Patient does not have insurance."),isVerbose);
+				createClaimDataWrapper.ShouldRefresh=false;
+				return createClaimDataWrapper;
+			}
+			Claim claimLeadOrdinal=null;
+			if(!hasPrimaryClaim) {
+				string claimType="P";
+				//If they have medical insurance and no dental, make the claim type Medical. This is to avoid the scenario of multiple med ins and no dental.
+				if(PatPlans.GetOrdinal(PriSecMed.Medical,createClaimDataWrapper.CreateClaimData_.ListPatPlans,createClaimDataWrapper.CreateClaimData_.ListInsPlans,createClaimDataWrapper.CreateClaimData_.ListInsSubs)>0
+					&& PatPlans.GetOrdinal(PriSecMed.Primary,createClaimDataWrapper.CreateClaimData_.ListPatPlans,createClaimDataWrapper.CreateClaimData_.ListInsPlans,createClaimDataWrapper.CreateClaimData_.ListInsSubs)==0
+					&& PatPlans.GetOrdinal(PriSecMed.Secondary,createClaimDataWrapper.CreateClaimData_.ListPatPlans,createClaimDataWrapper.CreateClaimData_.ListInsPlans,createClaimDataWrapper.CreateClaimData_.ListInsSubs)==0) 
+				{
+					claimType="Med";
+				}
+				claimLeadOrdinal=new Claim();
+				claimLeadOrdinal.DateSent=DateTime.Today;
+				claimLeadOrdinal.DateSentOrig=DateTime.MinValue;
+				claimLeadOrdinal.ClaimStatus="W";
+				//Set claimPrimary to what CreateClaim returns because the reference to claimPrimary gets broken when inserting.
+				claimLeadOrdinal=CreateClaim(claimLeadOrdinal,claimType,isVerbose,createClaimDataWrapper,"Primary Claim Error");
+				if(claimLeadOrdinal.ClaimNum==0) {
+					createClaimDataWrapper.ShouldRefresh=true;
+					return createClaimDataWrapper; 
+				}
+				if(isVerbose && claimLeadOrdinal.ClaimNum!=0) {//Only provide the user with the option to cancel the claim if attempting to create a single claim manually.
+					using FormClaimEdit formClaimEdit=new FormClaimEdit(claimLeadOrdinal,createClaimDataWrapper.Patient_,createClaimDataWrapper.Family_);
+					formClaimEdit.IsNew=true;//this causes it to delete the claim if cancelling.
+					formClaimEdit.ShowDialog();
+					if(formClaimEdit.DialogResult!=DialogResult.OK) {
+						createClaimDataWrapper.ShouldRefresh=true;//will have already been deleted
+						return createClaimDataWrapper;
+					}
+					double unearnedAmount=(double)PaySplits.GetTotalAmountOfUnearnedForPats(createClaimDataWrapper.Family_.GetPatNums());
+					AllocateUnearnedPayment(createClaimDataWrapper.Patient_,createClaimDataWrapper.Family_,unearnedAmount,claimLeadOrdinal);
+				}
+				else if(claimLeadOrdinal.ClaimNum!=0) {//isVerbose is false, still need to log.
+					Patient patient=createClaimDataWrapper.Patient_;
+					SecurityLogs.MakeLogEntry(EnumPermType.ClaimEdit,patient.PatNum,"New claim created for "+patient.LName+","+patient.FName,
+						claimLeadOrdinal.ClaimNum,claimLeadOrdinal.SecDateTEdit);
+				}
+			}
+			Claim claimNextOrdinal=null;
+			bool doCreateSecondaryClaim=!hasSecondaryClaim && PatPlans.GetOrdinal(PriSecMed.Secondary,createClaimDataWrapper.CreateClaimData_.ListPatPlans,
+				createClaimDataWrapper.CreateClaimData_.ListInsPlans,createClaimDataWrapper.CreateClaimData_.ListInsSubs)>0 //if there exists a secondary plan
+				&& !CultureInfo.CurrentCulture.Name.EndsWith("CA");//And not Canada (don't create secondary claim for Canada)
+			if(doCreateSecondaryClaim) {
+				//ClaimL.CalculateAndUpdate() could have added new claimprocs for additional insurance plans if they were added after the proc was completed
+				createClaimDataWrapper.CreateClaimData_.ListClaimProcs=ClaimProcs.Refresh(createClaimDataWrapper.Patient_.PatNum);
+				claimNextOrdinal=new Claim();
+				claimNextOrdinal.ClaimStatus="H";
+				//Set claimSecondary to CreateClaim because the reference to claimSecondary gets broken when inserting.
+				claimNextOrdinal=CreateClaim(claimNextOrdinal,"S",isVerbose,createClaimDataWrapper,"Secondary Claim Error");
+				if(claimNextOrdinal.ClaimNum==0) {
+					createClaimDataWrapper.ShouldRefresh=true;
+					return createClaimDataWrapper;
+				}
+				Patient patient=createClaimDataWrapper.Patient_;
+				SecurityLogs.MakeLogEntry(EnumPermType.ClaimEdit,patient.PatNum,"New claim created for "+patient.LName+","+patient.FName,
+					claimNextOrdinal.ClaimNum,claimNextOrdinal.SecDateTEdit);
+			}
+			bool doCreateTertiaryClaim=!hasTertiaryClaim && PatPlans.GetOrdinal(PriSecMed.Tertiary,createClaimDataWrapper.CreateClaimData_.ListPatPlans,
+				createClaimDataWrapper.CreateClaimData_.ListInsPlans,createClaimDataWrapper.CreateClaimData_.ListInsSubs)>0 //if there exists a tertiary plan
+				&& !CultureInfo.CurrentCulture.Name.EndsWith("CA");//And not Canada (don't create tertiary claim for Canada)
+			if(doCreateTertiaryClaim) {
+				//ClaimL.CalculateAndUpdate() could have added new claimprocs for additional insurance plans if they were added after the proc was completed
+				createClaimDataWrapper.CreateClaimData_.ListClaimProcs=ClaimProcs.Refresh(createClaimDataWrapper.Patient_.PatNum);
+				Claim claimTertiary=new Claim();
+				claimTertiary.ClaimStatus="U";//Must be "U" (Unsent) to exactly mimic the value used when manually creating tertiary claims.
+				//Set claimTertiary to CreateClaim because the reference to claimTertiary gets broken when inserting.
+				claimTertiary=CreateClaim(claimTertiary,"Tertiary",isVerbose,createClaimDataWrapper,"Tertiary Claim Error");
+				if(claimTertiary.ClaimNum==0) {
+					createClaimDataWrapper.ShouldRefresh=true;
+					return createClaimDataWrapper;
+				}
+				Patient patient=createClaimDataWrapper.Patient_;
+				SecurityLogs.MakeLogEntry(EnumPermType.ClaimEdit,patient.PatNum,"New tertiary claim created for "+patient.LName+","+patient.FName,
+					claimTertiary.ClaimNum,claimTertiary.SecDateTEdit);
+			}
+			if(claimLeadOrdinal!=null) {
+				claimLeadOrdinal=Claims.GetClaim(claimLeadOrdinal.ClaimNum);
+				if(claimNextOrdinal!=null
+					&& claimNextOrdinal.ClaimStatus.In("H","U") 
+					&& claimLeadOrdinal.ClaimStatus=="R" 
+					&& Security.IsAuthorized(EnumPermType.ClaimSend,suppressMessage:true)) 
+				{
+					List<ClaimProc> listClaimProcs=createClaimDataWrapper.CreateClaimData_.ListClaimProcs.FindAll(x=>x.ClaimNum==claimLeadOrdinal.ClaimNum);
+					MedicalEobL.PromptToAttachMedicalEob(claimLeadOrdinal,listClaimProcs);//Open Dental 25.2: before the primary claims are sent.
+					//Consider the preferences for automatically changing the claim status or prompting the user to take action on other insurance.
+					if(PrefC.GetBool(PrefName.ClaimMedReceivedPromptForPrimaryClaim) && claimLeadOrdinal.MedType.In(EnumClaimMedType.Medical,EnumClaimMedType.Institutional)) {
+						PromptForPrimaryOrSecondaryClaim(listClaimProcs,false);//Check for unsent primary claimprocs.
+					}
+					else if(PrefC.GetBool(PrefName.PromptForSecondaryClaim)) {//Check for unsent secondary claimprocs.
+						PromptForPrimaryOrSecondaryClaim(listClaimProcs);
+					}
+				}
+			}
+			createClaimDataWrapper.ShouldRefresh=true;
+			return createClaimDataWrapper;
+		}
+
+		///<summary>Prompts the user to allocate unearned if necessary.</summary>
+		public static void AllocateUnearnedPayment(Patient patient,Family family,double unearnedAmt,Claim claim) {
+			if(CompareDouble.IsLessThanOrEqualToZero(unearnedAmt)) {
+				return;//There is no unearned money to allocate. Nothing to do.
+			}
+			//do not try to allocate payment if preference is disabled or if there isn't a payment to allocate
+			if(!PrefC.GetBool(PrefName.ShowAllocateUnearnedPaymentPrompt) || ClaimProcs.GetPatPortionForClaim(claim)<=0) { 
+				return;
+			}
+			using FormProcSelect formProcSelect=new FormProcSelect(patient.PatNum,false,true,doShowAdjustments:true,doShowTreatmentPlanProcs:false);
+			if(formProcSelect.ShowDialog()!=DialogResult.OK) {
+				return;
+			}
+			Payment payment=new Payment();
+			payment.PayDate=DateTime.Today;
+			payment.PatNum=patient.PatNum;
+			//Explicitly set ClinicNum=0, since a pat's ClinicNum will remain set if the user enabled clinics, assigned patients to clinics, and then
+			//disabled clinics because we use the ClinicNum to determine which PayConnect or XCharge/XWeb credentials to use for payments.
+			payment.ClinicNum=0;
+			if(PrefC.HasClinicsEnabled) {//if clinics aren't enabled default to 0
+				if((PayClinicSetting)PrefC.GetInt(PrefName.PaymentClinicSetting)==PayClinicSetting.PatientDefaultClinic) {
+					payment.ClinicNum=patient.ClinicNum;
+				}
+				else if((PayClinicSetting)PrefC.GetInt(PrefName.PaymentClinicSetting)==PayClinicSetting.SelectedExceptHQ) {
+					payment.ClinicNum=(Clinics.ClinicNum==0)?patient.ClinicNum:Clinics.ClinicNum;
+				}
+				else {
+					payment.ClinicNum=Clinics.ClinicNum;
+				}
+			}
+			payment.DateEntry=DateTime.Today;//So that it will show properly in the new window.
+			List<Def> listDefs=Defs.GetDefsForCategory(DefCat.PaymentTypes,true);
+			if(listDefs.Count>0) {
+				payment.PayType=listDefs[0].DefNum;
+			}
+			payment.PaymentSource=CreditCardSource.None;
+			payment.ProcessStatus=ProcessStat.OfficeProcessed;
+			payment.PayAmt=0;
+			Payments.Insert(payment);
+			using FormPayment formPayment=new FormPayment(patient,family,payment,false);
+			formPayment.IsNew=true;
+			formPayment.UnearnedAmt=unearnedAmt;
+			formPayment.ListAccountEntriesPayFirst=formProcSelect.ListAccountEntries;
+			formPayment.IsIncomeTransfer=true;
+			formPayment.ShowDialog();
+		}
+
+		///<summary>Only allows up to 7 CreateClaimItems to be selected within createClaimDataWrapper when Canadian.
+		///Shows a message to the user stating this fact if enforced; Otherwise does nothing.</summary>
+		private static void InsCanadaValidateProcs(CreateClaimDataWrapper createClaimDataWrapper,bool isVerbose) {
+			List<CreateClaimItem> listCreateClaimItemsToolBarInsSelectedItems=createClaimDataWrapper.ListCreateClaimItems.FindAll(x => x.IsSelected);
+			int procCount=listCreateClaimItemsToolBarInsSelectedItems.Count(x => x.ProcNumLab==0);//Not a lab
+			if(CultureInfo.CurrentCulture.Name.EndsWith("CA") && procCount > 7) {//Canadian. en-CA or fr-CA
+				//Unselect all but the first 7 procedures with the smallest index numbers.
+				int procSelectedCount=0;
+				for(int i=0;i<listCreateClaimItemsToolBarInsSelectedItems.Count;i++){
+					listCreateClaimItemsToolBarInsSelectedItems[i].IsSelected=(procSelectedCount < 7);
+					if(listCreateClaimItemsToolBarInsSelectedItems[i].ProcNumLab==0) {//Not a lab
+						procSelectedCount++;
+					}
+				}
+				string message=Lan.g("ContrAccount","Only the first 7 procedures will be selected.  "
+					+"You will need to create another claim for the remaining procedures.");
+				LogClaimError(createClaimDataWrapper,message,isVerbose);
+			}
+		}
+
+		///<summary>All validation on the procedures is done here. Creates and saves the claim initially, attaching all selected procedures.
+		///But it does not refresh any data, does not do a final update of the new claim, and does not enter fee amounts.
+		///claimType=P,S,Tertiary,Med,or Other
+		///This method assumes that createClaimDataWrapper was set up correctly (refer to GetCreateClaimDataWrapper() for how to set up this object).
+		///Returns a 'new' claim object (ClaimNum=0) to indicate that the user does not want to create the claim or there are validation issues..</summary>
+		public static Claim CreateClaim(Claim claim,string claimType,bool isVerbose,CreateClaimDataWrapper createClaimDataWrapper,string msgBoxHeader="") {
+			Patient patient=createClaimDataWrapper.Patient_;
+			InsPlan insPlan=new InsPlan();
+			InsSub insSub=new InsSub();
+			Relat relatOther=Relat.Self;
+			string claimTypeDesc="";
+			switch(claimType){
+				case "P":
+					insSub=InsSubs.GetSub(PatPlans.GetInsSubNum(createClaimDataWrapper.CreateClaimData_.ListPatPlans
+						,PatPlans.GetOrdinal(PriSecMed.Primary,createClaimDataWrapper.CreateClaimData_.ListPatPlans,createClaimDataWrapper.CreateClaimData_.ListInsPlans
+						,createClaimDataWrapper.CreateClaimData_.ListInsSubs)),createClaimDataWrapper.CreateClaimData_.ListInsSubs);
+					insPlan=InsPlans.GetPlan(insSub.PlanNum,createClaimDataWrapper.CreateClaimData_.ListInsPlans);
+					claimTypeDesc="primary";
+					break;
+				case "S":
+					insSub=InsSubs.GetSub(PatPlans.GetInsSubNum(createClaimDataWrapper.CreateClaimData_.ListPatPlans
+						,PatPlans.GetOrdinal(PriSecMed.Secondary,createClaimDataWrapper.CreateClaimData_.ListPatPlans,createClaimDataWrapper.CreateClaimData_.ListInsPlans
+						,createClaimDataWrapper.CreateClaimData_.ListInsSubs)),createClaimDataWrapper.CreateClaimData_.ListInsSubs);
+					insPlan=InsPlans.GetPlan(insSub.PlanNum,createClaimDataWrapper.CreateClaimData_.ListInsPlans);
+					claimTypeDesc="secondary";
+					break;
+				case "Tertiary":
+					insSub=InsSubs.GetSub(PatPlans.GetInsSubNum(createClaimDataWrapper.CreateClaimData_.ListPatPlans
+						,PatPlans.GetOrdinal(PriSecMed.Tertiary,createClaimDataWrapper.CreateClaimData_.ListPatPlans,createClaimDataWrapper.CreateClaimData_.ListInsPlans
+						,createClaimDataWrapper.CreateClaimData_.ListInsSubs)),createClaimDataWrapper.CreateClaimData_.ListInsSubs);
+					insPlan=InsPlans.GetPlan(insSub.PlanNum,createClaimDataWrapper.CreateClaimData_.ListInsPlans);
+					claimTypeDesc="tertiary";
+					break;
+				case "Med":
+					//It's already been verified that a med plan exists
+					insSub=InsSubs.GetSub(PatPlans.GetInsSubNum(createClaimDataWrapper.CreateClaimData_.ListPatPlans
+						,PatPlans.GetOrdinal(PriSecMed.Medical,createClaimDataWrapper.CreateClaimData_.ListPatPlans,createClaimDataWrapper.CreateClaimData_.ListInsPlans
+						,createClaimDataWrapper.CreateClaimData_.ListInsSubs)),createClaimDataWrapper.CreateClaimData_.ListInsSubs);
+					insPlan=InsPlans.GetPlan(insSub.PlanNum,createClaimDataWrapper.CreateClaimData_.ListInsPlans);
+					claimTypeDesc="medical";
+					break;
+				case "Other":
+					using(FormClaimCreate formClaimCreate=new FormClaimCreate(patient.PatNum)) {
+						formClaimCreate.ShowDialog();
+						if(formClaimCreate.DialogResult!=DialogResult.OK){
+							return new Claim();
+						}
+						insPlan=formClaimCreate.InsPlanSelected;
+						insSub=formClaimCreate.InsSubSelected;
+						relatOther=formClaimCreate.RelatPat;
+					}
+					break;
+			}
+			List<long> listSelectedProcNums=createClaimDataWrapper.ListCreateClaimItems
+				.Where(x => x.IsSelected)
+				.Select(x => x.ProcNum).ToList();
+			List<Procedure> listProceduresSelected=createClaimDataWrapper.CreateClaimData_.ListProcs.FindAll(x => listSelectedProcNums.Contains(x.ProcNum));
+			List<Procedure> listProceduresBillIns=listProceduresSelected.FindAll(x => !Procedures.NoBillIns(x,createClaimDataWrapper.CreateClaimData_.ListClaimProcs,insPlan.PlanNum));
+			List<Procedure> listProceduresNoBillIns=listProceduresSelected.FindAll(x => !listProceduresBillIns.Select(y => y.ProcNum).Contains(x.ProcNum));
+			//If all the procedures are marked as NoBillIns, then warn the user that the primary/secondary claim will not get created and then return a new Claim.
+			if(listProceduresSelected.Count>0 && listProceduresBillIns.Count==0) {
+				//No claim to create since we will be creating a secondary. Continue on to the secondary. Nothing to log.
+				MsgBox.Show($"No {claimTypeDesc} claim will be created due to all procedures being marked as NoBillIns.");
+				return new Claim();
+			}
+			if(listProceduresNoBillIns.Count > 0) {
+				StringBuilder sbMsg=new StringBuilder($"The following procedures were marked as NoBillIns. They will be excluded from the {claimTypeDesc} claim.\r\n");
+				for(int i=0;i<listProceduresNoBillIns.Count;i++){
+					ProcedureCode procedureCode=ProcedureCodes.GetProcCode(listProceduresNoBillIns[i].CodeNum);
+					sbMsg.AppendLine($"{procedureCode.ProcCode} {(string.IsNullOrEmpty(listProceduresNoBillIns[i].ToothNum) ? "" : ($"Tth {listProceduresNoBillIns[i].ToothNum} "))} - {procedureCode.Descript}");
+				}
+				MsgBox.Show(sbMsg.ToString());
+			}
+			//If we are going to block based on a preference, do that before figuring out other claim validation.
+			//Ignore "No Bill Ins" here, because we want "No Bill Ins" to be the more important block for backwards compatability.
+			switch(PIn.Enum<ClaimZeroDollarProcBehavior>(PrefC.GetInt(PrefName.ClaimZeroDollarProcBehavior))) {
+				case ClaimZeroDollarProcBehavior.Warn:
+					if(listProceduresBillIns.Any(x => CompareDouble.IsZero(x.ProcFee))
+						&& MessageBox.Show(Lan.g("ContrAccount","You are about to make a")+" "+(claimTypeDesc=="" ? "" : (claimTypeDesc+" "))
+							+Lan.g("ContrAccount","claim that will include a $0 procedure.  Continue?"),"",MessageBoxButtons.OKCancel)!=DialogResult.OK)
+					{
+						//Nothing to log. The user hit Cancel.
+						return new Claim();
+					}
+					break;
+				case ClaimZeroDollarProcBehavior.Block:
+					if(listProceduresBillIns.Any(x => CompareDouble.IsZero(x.ProcFee))) {
+						MsgBox.Show("ContrAccount","You can't make a claim for a $0 procedure.");
+						//Nothing to log. The user was just notified.
+						return new Claim();
+					}
+					break;
+				case ClaimZeroDollarProcBehavior.Allow:
+				default:
+					break;
+			}
+			try{
+				claim=AccountModules.CreateClaim(claim,claimType,createClaimDataWrapper.CreateClaimData_.ListPatPlans
+					,createClaimDataWrapper.CreateClaimData_.ListInsPlans,createClaimDataWrapper.CreateClaimData_.ListClaimProcs,createClaimDataWrapper.CreateClaimData_.ListProcs
+					,createClaimDataWrapper.CreateClaimData_.ListInsSubs,patient,createClaimDataWrapper.CreateClaimData_.PatNote,listProceduresBillIns
+					,createClaimDataWrapper.ErrorMessage,insPlan,insSub,relatOther);
+			}
+			catch(Exception e){
+				LogClaimError(createClaimDataWrapper,e.Message,isVerbose,msgBoxHeader);
+				return claim;
+			}
+			if(PrefC.GetBool(PrefName.ClaimEditRequireNoMissingData)) {
+				ClaimSendQueueItem[] claimSendQueueItemArray=Claims.GetQueueList(claim.ClaimNum,claim.ClinicNum,claim.CustomTracking);
+				//GetMissingData() guards around null, so if somehow we don't have a claim here we pass in null. ElementAtOrDefault will pass in null if there is no 0 index somehow.
+				Clearinghouse clearingHouse=Clearinghouses.GetClearinghouse(claimSendQueueItemArray.ElementAtOrDefault(0).ClearinghouseNum);
+				ClaimSendQueueItem claimSendQueueItem=Eclaims.GetMissingData(clearingHouse,claimSendQueueItemArray.ElementAtOrDefault(0),true,true);
+				if(!claimSendQueueItem.MissingData.IsNullOrEmpty() && (claim.ClaimType!="PreAuth")){//Skip validation for pre-auths if they get a claim identifier warning since they won't have a claim identifier yet, which counts as missing data, but is fixed inside of this window.
+					MsgBox.Show("Cannot create claim due to missing data. The claim has the following errors: "+claimSendQueueItem.MissingData);
+					DeleteClaimHelper(claim);//Deletes the claim and handles the cleanup.
+					return new Claim();
+				}
+			}
+			createClaimDataWrapper.CountClaimsCreated++;
+			return claim;
+		}
+
+		///<summary>This helper method does all of the work necessary to clean up after all of said entities and deletes the claim as well. If ClaimType is 'PreAuth' or 'Cap', claimprocs will be deleted. Otherwise, all pay-as-total and supplemental claimprocs are deleted, and all other claimprocs are returned to estimate status, their ClaimNum is set to zero, we run ClaimProcs.ComputeBaseEstimates() for them, and they are updated to the DB. Any claimprocs associated to dropped patplans are deleted. Canadian lab claimprocs have their status synced with parent claimprocs and are ommitted when running ClaimProcs.ComputeBaseEstimates() as their estimates are calculated when ClaimProcs.ComputeBaseEstimates() is called for thier parent claimprocs. It is okay to default list835Attaches to null if this is called when cancelling a new claim as none should exist.</summary>
+		public static void DeleteClaimHelper(Claim claim,List<long> list835Attaches=null) {
+			Patient patient=Patients.GetPat(claim.PatNum);
+			Family family=Patients.GetFamily(claim.PatNum);
+			ClaimEdit.LoadData loadData= ClaimEdit.GetLoadData(patient,family,claim);
+			List<ClaimProc> listClaimProcs=loadData.ListClaimProcs.Where(x=>x.ClaimNum==claim.ClaimNum).ToList();
+			List<Procedure> listProcedures=loadData.ListProcs;
+			List<InsSub> listInsSubs=loadData.ListInsSubs;
+			List<InsPlan> listInsPlans=loadData.ListInsPlans;
+			List<PatPlan> listPatPlans=loadData.ListPatPlans;
+			BlueBookEstimateData blueBookEstimateData=null;
+			if(claim.ClaimType=="PreAuth"//all preauth claimprocs are just duplicates
+				|| claim.ClaimType=="Cap") //all cap claimprocs are just duplicates
+			{
+				ClaimProcs.DeleteMany(listClaimProcs);
+			}
+			else {//all other claim types use original estimate claimproc.
+				List<SubstitutionLink> listSubstituionLinks=SubstitutionLinks.GetAllForPlans(listInsPlans);
+				List<Benefit> listBenefits=Benefits.Refresh(listPatPlans,listInsSubs);
+				InsPlan insPlan=InsPlans.GetPlan(claim.PlanNum,listInsPlans);
+				for(int i=0;i<listClaimProcs.Count;i++) {
+					if(listClaimProcs[i].Status==ClaimProcStatus.Supplemental//supplementals are duplicate
+						|| listClaimProcs[i].ProcNum==0//total payments get deleted
+						|| listClaimProcs[i].IsOverpay)//Overpayment proc claims also get deleted
+					{
+						ClaimProcs.Delete(listClaimProcs[i]);
+						continue;
+					}
+					//so only changed back to estimate if attached to a proc
+					listClaimProcs[i].Status=ClaimProcStatus.Estimate;
+					//already handled the case where claimproc.ProcNum=0 for payments etc. above
+					Procedure procedure=Procedures.GetProcFromList(listProcedures,listClaimProcs[i].ProcNum);
+					List<ClaimProc> listClaimProcsForLab=GetListClaimProcsForProcNumLabsParent(procedure.ProcNum, listProcedures, listClaimProcs,claim);//Get any potential Claimprocs for the Proc "i"
+					if(listClaimProcsForLab.Count!=0) {//And proc "i" has labs. 
+						for(int j=0;j<listClaimProcsForLab.Count;j++) {//Foreach lab
+							listClaimProcsForLab[j].Status=listClaimProcs[i].Status;//Match to parent status so estimates for ClaimProcs.CanadianLabBaseEstHelper().
+							ClaimProcs.Update(listClaimProcsForLab[j]);//Both parent procs and labs need to have their statuses in synch when ComputeBaseEst
+						}
+					}
+					listClaimProcs[i].ClaimNum=0;
+					if(procedure.ProcNumLab!=0) {
+						//Skip lab procedures because their parent will handle their estimate updates below (including the status and claimNum set above).
+						continue;
+					}
+					PatPlan patPlan=listPatPlans.FirstOrDefault(x => x.InsSubNum==listClaimProcs[i].InsSubNum);
+					if(patPlan==null) {
+						continue;
+					}
+					if(patPlan.Ordinal==1) {
+						ClaimProcs.ComputeBaseEst(listClaimProcs[i],procedure,insPlan,patPlan.PatPlanNum,listBenefits,null,null,listPatPlans,0,0,patient.Age,0
+							,listInsPlans,listInsSubs,listSubstituionLinks,false,null,blueBookEstimateData:GetBlueBookEstimateData(blueBookEstimateData, listProcedures, listInsPlans, listInsSubs, listPatPlans, listClaimProcs, listSubstituionLinks));
+					}
+					else {
+						//We're not going to bother to also get paidOtherInsBaseEst:
+						double paidOtherInsTotal=ClaimProcs.GetPaidOtherInsTotal(listClaimProcs[i],listPatPlans);
+						double writeOffOtherIns=ClaimProcs.GetWriteOffOtherIns(listClaimProcs[i],listPatPlans);
+						ClaimProcs.ComputeBaseEst(listClaimProcs[i],procedure,insPlan,patPlan.PatPlanNum,listBenefits,null,null,listPatPlans,paidOtherInsTotal
+							,paidOtherInsTotal,patient.Age,writeOffOtherIns,listInsPlans,listInsSubs,listSubstituionLinks,false,null,blueBookEstimateData:GetBlueBookEstimateData(blueBookEstimateData, listProcedures, listInsPlans, listInsSubs, listPatPlans, listClaimProcs, listSubstituionLinks));
+					}
+					InsBlueBookLog insBlueBookLog=GetBlueBookEstimateData(blueBookEstimateData, listProcedures, listInsPlans, listInsSubs, listPatPlans, listClaimProcs, listSubstituionLinks).CreateInsBlueBookLog(listClaimProcs[i]);
+					if(insBlueBookLog!=null) {
+						InsBlueBookLogs.Insert(insBlueBookLog);
+					}
+					ClaimProcs.Update(listClaimProcs[i]);
+				}
+			}
+			ClaimProcs.DeleteEstimatesForDroppedPatPlan(listClaimProcs);
+			Claims.Delete(claim,list835Attaches);
+		}
+
+		///<summary>Open Dental 25.2: a preauthorization takes the EOBs attached to it (eobattach.ClaimNumPreAuth) with it when it is deleted, files and
+		///rows, so none is left behind. Call it right after a window's own delete confirmation and before any claimproc or the claim itself is deleted.
+		///Returns true at once for any other claim and for a preauthorization with no EOBs. Otherwise it needs ImageDelete for the date of the oldest
+		///EOB, asks a second confirmation that names how many EOBs there are, and deletes them. Returns false when the claim must not be deleted:
+		///ImageDelete is missing or the EOBs could not be deleted (each with a message), or the user cancelled. Same checks and messages as the Delete button of FormClaimEdit (which asks for ImageDelete before its own confirmation), translated under
+		///FormClaimEdit so they read the same everywhere.</summary>
+		public static bool TryDeletePreAuthEobs(Claim claim) {
+			List<EobAttach> listEobAttaches=EobAttaches.GetForClaimDelete(claim);
+			if(listEobAttaches.Count==0) {
+				return true;
+			}
+			if(!EobAttaches.IsAuthorizedToDeleteWithPreAuth(listEobAttaches)) {
+				MessageBox.Show(Lan.g("FormClaimEdit","This preauthorization has EOBs attached. Deleting it also deletes them, which needs the permission")+":\r\n"
+					+GroupPermissions.GetDesc(EnumPermType.ImageDelete));
+				return false;
+			}
+			if(MessageBox.Show(Lan.g("FormClaimEdit","EOBs attached to this preauthorization")+": "+listEobAttaches.Count+"\r\n"
+				+Lan.g("FormClaimEdit","They will be deleted too. Continue?"),"",MessageBoxButtons.OKCancel)!=DialogResult.OK)
+			{
+				return false;
+			}
+			try {
+				ImageStore.DeleteEobAttachesForPreAuth(claim.ClaimNum);//Logs ImageDelete with "Preauth EOB" for each.
+			}
+			catch(Exception ex) {
+				MessageBox.Show(Lan.g("FormClaimEdit","Could not delete the EOBs of this preauthorization, so it was not deleted.")+"\r\n"+ex.Message);
+				return false;
+			}
+			return true;
+		}
+
+		///<summary>Copied from FormClaimEdit. For a given procNumParent, return a list of ClaimProcs for that lab(s) that is on the claim.</summary>
+		private static List<ClaimProc> GetListClaimProcsForProcNumLabsParent(long procNumParent,List<Procedure> listProcedures, List<ClaimProc> listClaimProcs,Claim claim) {
+			List<ClaimProc> listClaimProcsForLabOnClaim=new List<ClaimProc>();
+			if(procNumParent==0) {
+				return listClaimProcsForLabOnClaim;
+			}
+			//List of child procedures associated to the passed in procNumParent belonging to this claim.
+			List<Procedure> listProceduresLab=listProcedures.FindAll(x => x.ProcNumLab==procNumParent);
+			for(int i=0;i<listProceduresLab.Count;i++){//For each lab proc associated to the passed in procNumParent, add it to the list
+				listClaimProcsForLabOnClaim.AddRange(listClaimProcs.FindAll(x => x.ProcNum==listProceduresLab[i].ProcNum && x.ClaimNum==claim.ClaimNum));
+			}
+			return listClaimProcsForLabOnClaim;
+		}
+
+		///<summary>Copied from FormClaimEdit. Sets _blueBookEstimateData if it is null, then returns it.</summary>
+		private static BlueBookEstimateData GetBlueBookEstimateData(BlueBookEstimateData blueBookEstimateData, List<Procedure> listProcedures, List<InsPlan> listInsPlans, List<InsSub> listInsSubs, List<PatPlan> listPatPlans, List<ClaimProc> listClaimProcs, List<SubstitutionLink> listSubstituionLinks) {
+			if(blueBookEstimateData==null) {
+				listProcedures=listProcedures.FindAll(x => listClaimProcs.Any(y => y.ProcNum==x.ProcNum));
+				blueBookEstimateData=new BlueBookEstimateData(listInsPlans,listInsSubs,listPatPlans,listProcedures,listSubstituionLinks);
+			}
+			return blueBookEstimateData;
+		}
+
+		/// <summary>
+		/// After a medical or primary dental claim is received it will prompt the user on what to do about the corresponding primary or secondary claim.  If isPromptForSecondaryClaim is true,
+		/// this is being used for the primary->secondary scenario.  If it is false, it is being used for the medical->primary scenario.
+		/// Open Dental 26.1: isPromptForSecondaryClaim true now means the next insurance after a received claim of any ordinal (a received secondary
+		/// claim prompts for the tertiary claims, and so on), with the generalized wording in ClaimReceiveRelated.
+		/// </summary>
+		public static void PromptForPrimaryOrSecondaryClaim(List<ClaimProc> listClaimProcsForClaim,bool isPromptForSecondaryClaim=true) {
+			List<Claim> listClaimsPromptingFor=Claims.GetPrimaryOrSecondaryClaimsNotReceived(listClaimProcsForClaim,isPromptForSecondaryClaim);
+			if(listClaimsPromptingFor.Count==0) {
+				return;//No primary/secondary claims for the procedures attached to the medical/primary.
+			}
+			PrefName prefName=ClaimReceiveRelated.GetForceStatusPrefName(isPromptForSecondaryClaim);
+			string msg=Lan.g("ContrAccount",ClaimReceiveRelated.GetMessage(isPromptForSecondaryClaim));
+			msg+="\r\n";
+			msg+=Lan.g("ContrAccount","Would you like to:");
+			string strChangeStatus=Lan.g("ContrAccount","Change the claim status to 'Waiting to send'");
+			string strSendClaims=Lan.g("ContrAccount",ClaimReceiveRelated.GetSendText(isPromptForSecondaryClaim));
+			string strPrintClaims=Lan.g("ContrAccount",ClaimReceiveRelated.GetPrintText(isPromptForSecondaryClaim));
+			string strDoNothing=Lan.g("ContrAccount","Do nothing");
+			List<InputBoxParam> listInputBoxParams=new List<InputBoxParam>();
+			InputBoxParam inputBoxParam=new InputBoxParam();
+			inputBoxParam.InputBoxType_=InputBoxType.RadioButton;
+			inputBoxParam.LabelText=msg;
+			inputBoxParam.Text=strChangeStatus;
+			listInputBoxParams.Add(inputBoxParam);
+			inputBoxParam=new InputBoxParam();
+			inputBoxParam.InputBoxType_=InputBoxType.RadioButton;
+			inputBoxParam.Text=strSendClaims;
+			listInputBoxParams.Add(inputBoxParam);
+			inputBoxParam=new InputBoxParam();
+			inputBoxParam.InputBoxType_=InputBoxType.RadioButton;
+			inputBoxParam.Text=strPrintClaims;
+			listInputBoxParams.Add(inputBoxParam);
+			if(!PrefC.GetBool(prefName)) {
+				inputBoxParam=new InputBoxParam();
+				inputBoxParam.InputBoxType_=InputBoxType.RadioButton;
+				inputBoxParam.Text=strDoNothing;
+				listInputBoxParams.Add(inputBoxParam);
+			}
+			InputBox inputBox=new InputBox(listInputBoxParams);
+			inputBox.SetTitle(Lan.g("ContrAccount",ClaimReceiveRelated.GetTitle(isPromptForSecondaryClaim)));
+			//inputBox.SizeInitial=new System.Windows.Size(450,220);
+			inputBox.ShowDialog();
+			if(inputBox.IsDialogCancel) {
+				return;
+			}
+			if(inputBox.RadioButtonResult==strDoNothing) {
+				return;
+			}
+			//Update status of claims to 'Waiting to Send'.
+			//This must happen for the "Change the claim status" and "Send secondary claim(s)" options.
+			//See Claims.GetQueueList(...) below.
+			//B-CLAIM: keeps the claims' attachments (a medical EOB attached just before among them); see ClaimAttaches.SetClaimsWaitingToSend.
+			ClaimAttaches.SetClaimsWaitingToSend(listClaimsPromptingFor,
+				doSaveToDb:!isPromptForSecondaryClaim || !PrefC.GetBool(PrefName.ClaimPrimaryReceivedRecalcSecondary));
+			if(isPromptForSecondaryClaim && PrefC.GetBool(PrefName.ClaimPrimaryReceivedRecalcSecondary)) {
+				Claims.CalculateAndUpdateSecondaries(listClaimsPromptingFor);
+			}
+			if(inputBox.RadioButtonResult==strSendClaims) {
+				//Most likely all of the procedures on the medical/primary claim will have all of the procedures on no more than 1 primary/secondary claim. Especially since most of time the 
+				//claim will be created automatically (at least in the primary=>secondary scenario). The only time the secondary claims don't get created automatically is when the patient
+				//doesn't have a primary/secondary claim at the time the primary claim gets created. Even if the user created the claim manually, the chances that the procedures on the
+				//medical/primary have more than one claim are low.
+				ClaimSendQueueItem[] listQueues=Claims.GetQueueList(listClaimsPromptingFor.Select(x=>x.ClaimNum).ToList(),0,0);
+				//Open Dental 25.2: claims are validated with XConnect when they are sent; claims with errors stay in the queue. Done here and not in
+				//SendClaimSendQueueItems(), because the Send Claims window has already validated the claims it sends.
+				List<ClaimSendQueueItem> listClaimSendQueueItemsToSend=FilterQueueItemsByXConnect(listQueues.ToList(),listClaimsPromptingFor);
+				//Open Dental 26.1: claims that go to EDS are validated with EDS the same way (one window, errors stay waiting to send).
+				listClaimSendQueueItemsToSend=EdsValidationL.FilterQueueItemsForSend(listClaimSendQueueItemsToSend);
+				if(listClaimSendQueueItemsToSend.Count==0) {
+					return;
+				}
+				List<ClaimSendQueueItem> listClaimSendQueueItemsSent=SendClaimSendQueueItems(listClaimSendQueueItemsToSend,0);//Use clearinghouseNum of 0 to indicate automatic calculation of clearinghouse
+				for(int i=0;i<listClaimSendQueueItemsSent.Count;i++) {
+					if(listClaimSendQueueItemsSent[i].ClaimStatus!="S") {
+						continue;
+					}
+					Claims.ReceiveAsNoPaymentIfNeeded(listClaimSendQueueItemsSent[i].ClaimNum);
+				}
+				return;
+			}
+			if(inputBox.RadioButtonResult!=strPrintClaims){
+				return;
+			}
+			bool doUsePrinterSettingsForAll=false;
+			if(listClaimsPromptingFor.Count>1) {
+				string stringSameSettings=Lan.g("FormClaimPrint","Use the same printer settings for all ");
+				string stringClaims=Lan.g("FormClaimPrint"," claims?");
+				string stringMessage=stringSameSettings+listClaimsPromptingFor.Count.ToString()+stringClaims;
+				doUsePrinterSettingsForAll=MsgBox.Show(MsgBoxButtons.YesNo,stringMessage);
+			}
+			for(int i=0;i<listClaimsPromptingFor.Count;i++) {
+				Claim claim=listClaimsPromptingFor[i];
+				using FormClaimPrint formClaimPrint=new FormClaimPrint();
+				formClaimPrint.PatNum=claim.PatNum;
+				formClaimPrint.ClaimNum=claim.ClaimNum;
+				formClaimPrint.ClaimFormCur=null;//so it will pull from the individual claim or plan.
+				string stringAuditDescription=Lan.g("FormClaimPrint","Claim from ")+claim.DateService.ToShortDateString();
+				bool doUseLastPrinterSettingsIfAvailable=(doUsePrinterSettingsForAll && i>0);
+				if(!formClaimPrint.PrintImmediate(stringAuditDescription,PrintSituation.Claim,0,doUseLastPrinterSettingsIfAvailable)) {
+					if(MsgBox.Show(MsgBoxButtons.OKCancel,Lan.g("FormClaimPrint","Check the printer. Click OK to try printing again or Cancel to stop."))) {
+						i--;
+						continue;
+					}
+					break;
+				}
+				Etranss.SetClaimSentOrPrinted(claim.ClaimNum,claim.ClaimStatus,claim.PatNum,0,EtransType.ClaimPrinted,0,Security.CurUser.UserNum);
+				//This call may receive the claim, but we don't want to prompt for primary/secondary claims because we are already in the process of doing that.
+				Claims.ReceiveAsNoPaymentIfNeeded(claim.ClaimNum);
+			}
+		}
+		
+		///<summary>Validates and sends each of the ClaimSendQueueItems passed in. Returns a list of the ClaimSendQueueItem that were sent.</summary>
+		internal static List<ClaimSendQueueItem> SendClaimSendQueueItems(List<ClaimSendQueueItem> listClaimSendQueueItems,long hqClearinghouseNum) {
+			List<ClaimSendQueueItem> listClaimSendQueueItemsRetVal=new List<ClaimSendQueueItem>();//a list of queue items to send
+			if(listClaimSendQueueItems.Count==0) {
+				return listClaimSendQueueItemsRetVal;
+			}
+			if(PrefC.HasClinicsEnabled) {//Clinics is in use
+				long clinicNum0=Claims.GetClaim(listClaimSendQueueItems[0].ClaimNum).ClinicNum;
+				for(int i=1;i<listClaimSendQueueItems.Count;i++) {
+					long clinicNum=Claims.GetClaim(listClaimSendQueueItems[i].ClaimNum).ClinicNum;
+					if(clinicNum0!=clinicNum) {
+						MsgBox.Show("ContrAccount","All claims must be for the same clinic.  You can use the combobox at the top to filter.");//TODO: Wording.
+						return listClaimSendQueueItemsRetVal;
+					}
+				}
+			}
+			long clearinghouseNum0=listClaimSendQueueItems[0].ClearinghouseNum;
+			EnumClaimMedType claimMedType0=Claims.GetClaim(listClaimSendQueueItems[0].ClaimNum).MedType;
+			for(int i=0;i<listClaimSendQueueItems.Count;i++){//we start with 0 so that we can check medtype match on the first claim
+				long clearinghouseNumI=listClaimSendQueueItems[i].ClearinghouseNum;
+				if(clearinghouseNum0!=clearinghouseNumI) {
+					MsgBox.Show("ContrAccount","All claims must be for the same clearinghouse.");
+					return listClaimSendQueueItemsRetVal;
+				}
+				EnumClaimMedType claimMedTypeI=Claims.GetClaim(listClaimSendQueueItems[i].ClaimNum).MedType;
+				if(claimMedType0!=claimMedTypeI) {
+					MsgBox.Show("ContrAccount","All claims must have the same MedType.");
+					return listClaimSendQueueItemsRetVal;
+				}
+				Clearinghouse clearinghouse=Clearinghouses.GetClearinghouse(clearinghouseNumI);
+				if(clearinghouse.Eformat==ElectronicClaimFormat.x837D_4010 || clearinghouse.Eformat==ElectronicClaimFormat.x837D_5010_dental) {
+					if(claimMedTypeI!=EnumClaimMedType.Dental) {
+						MsgBox.Show("ContrAccount","On claim "+POut.Int(i)+", the MedType does not match the clearinghouse e-format.");
+						return listClaimSendQueueItemsRetVal;
+					}
+				}
+				if(clearinghouse.Eformat==ElectronicClaimFormat.x837_5010_med_inst) {
+					if(claimMedTypeI!=EnumClaimMedType.Medical && claimMedTypeI!=EnumClaimMedType.Institutional) {
+						MsgBox.Show("ContrAccount","On claim "+POut.Int(i)+", the MedType does not match the clearinghouse e-format.");
+						return listClaimSendQueueItemsRetVal;
+					}
+				}
+				if(listClaimSendQueueItems[i].HasIcd9) {
+					string msgText=Lan.g("ContrAccount","There are ICD-9 codes attached to a procedure.  Would you like to send the claim without the ICD-9 codes? ");
+					if(MessageBox.Show(msgText,"",MessageBoxButtons.YesNo)!=DialogResult.Yes) {
+						return listClaimSendQueueItemsRetVal;
+					}
+				}
+				//This is done for PromptForSecondaryClaim(...).
+				//SendEclaimsToClearinghouse(...) already validates items in listClaimSendQueueItems, SetClaimItemIsValid(...) will just return in this case.
+				listClaimSendQueueItems[i]=SetClaimItemIsValid(listClaimSendQueueItems[i],clearinghouse);
+				if(!listClaimSendQueueItems[i].IsValid && listClaimSendQueueItems[i].CanSendElect) {
+					MsgBox.Show("ContrAccount","Not allowed to send e-claims with missing information.");
+					return listClaimSendQueueItemsRetVal;
+				}
+				if(listClaimSendQueueItems[i].NoSendElect==NoSendElectType.NoSendElect) {
+					MsgBox.Show("ContrAccount","Not allowed to send e-claims.");
+					return listClaimSendQueueItemsRetVal;
+				}
+				if(listClaimSendQueueItems[i].NoSendElect==NoSendElectType.NoSendSecondaryElect && listClaimSendQueueItems[i].Ordinal!=1) {
+					MsgBox.Show("ContrAccount","Only allowed to send primary insurance e-claims.");
+					return listClaimSendQueueItemsRetVal;
+				}
+			}
+			for(int i=0;i<listClaimSendQueueItems.Count;i++){
+				ClaimSendQueueItem claimSendQueueitem=listClaimSendQueueItems[i].Copy();
+				if(hqClearinghouseNum!=0) {
+					claimSendQueueitem.ClearinghouseNum=hqClearinghouseNum;
+				}
+				listClaimSendQueueItemsRetVal.Add(claimSendQueueitem);
+			}
+			Claim claim=Claims.GetClaim(listClaimSendQueueItems[0].ClaimNum);
+			long claimClinicNum=0;
+			if(PrefC.HasClinicsEnabled) {
+				claimClinicNum=claim.ClinicNum;//All claims for the queueItems have same clinic, due to validation above.
+			}
+			Clearinghouse clearinghouseHq=ClearinghouseL.GetClearinghouseHq(listClaimSendQueueItemsRetVal[0].ClearinghouseNum);
+			Clearinghouse clearinghouseClinic=Clearinghouses.OverrideFields(clearinghouseHq,claimClinicNum);
+			EnumClaimMedType medType=claim.MedType;
+			//Already validated that all claims are for the same clearinghouse, clinic, and medType.
+			//Validated that medtype matches clearinghouse e-format
+			using FormClaimFormItemEdit formClaimFormItemEdit=new FormClaimFormItemEdit();
+			Eclaims.SendBatch(clearinghouseClinic,listClaimSendQueueItemsRetVal,medType,formClaimFormItemEdit,
+				FormClaimPrint.FillRenaissance,new FormTerminalConnection());//this also calls SetClaimSentOrPrinted which creates the etrans entry.
+			return listClaimSendQueueItemsRetVal;
+		}
+
+		#region XConnect claim validation (Open Dental 25.2)
+		///<summary>Validates one claim with XConnect, using the claim's clinic-level clearinghouse. Never throws: problems loading the claim or
+		///calling DentalXChange are reported in CallFailedMessage. A claim whose clearinghouse does not use XConnect comes back skipped.</summary>
+		public static XConnectValidationResult ValidateXConnect(long claimNum,TimeSpan timeout) {
+			Claim claim=Claims.GetClaim(claimNum);
+			if(claim==null) {
+				XConnectValidationResult resultMissing=new XConnectValidationResult();
+				resultMissing.ClaimNum=claimNum;
+				resultMissing.SkippedReason=Lans.g("XConnect","The claim has been deleted.");
+				return resultMissing;
+			}
+			Clearinghouse clearinghouseClin;
+			try {
+				clearinghouseClin=ClaimConnect.GetClearingHouseForClaim(claim);
+			}
+			catch(Exception ex) {
+				XConnectValidationResult resultNoClearinghouse=XConnectValidation.MakeResult(claim);
+				resultNoClearinghouse.SkippedReason=ex.Message;
+				return resultNoClearinghouse;
+			}
+			return XConnectValidation.Validate(claim,clearinghouseClin,timeout);
+		}
+
+		///<summary>Validation when Edit Claim saves a claim that is waiting to be sent (Open Dental 25.2). Never blocks saving: the claim is already
+		///saved. Waits at most XConnect.TimeoutValidateOnSave. A failed call gives a non-modal note; problems open the Claim Validation window
+		///non-modally. Does nothing when XConnect is off for the clearinghouse.</summary>
+		public static void ValidateXConnectAfterSave(Claim claim,Clearinghouse clearinghouseClin) {
+			if(!XConnect.IsEnabled(clearinghouseClin) || !XConnectValidation.ShouldValidate(claim)) {
+				return;
+			}
+			XConnectValidationResult result=null;
+			ProgressWin progressWin=new ProgressWin();
+			progressWin.StartingMessage=Lans.g("XConnect","Validating the claim with DentalXChange...");
+			progressWin.ActionMain=() => result=XConnectValidation.Validate(claim,clearinghouseClin,XConnect.TimeoutValidateOnSave);
+			try {
+				progressWin.ShowDialog();
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+			}
+			if(result==null) {//Cancelled or failed to start
+				return;
+			}
+			if(result.IsCallFailed) {
+				MsgBoxCopyPaste msgBoxCopyPaste=new MsgBoxCopyPaste(Lans.g("XConnect","The claim was saved, but DentalXChange could not validate it:")
+					+Environment.NewLine+result.CallFailedMessage+Environment.NewLine+Lans.g("XConnect","It will be validated again when it is sent."));
+				msgBoxCopyPaste.Show();//Non-modal: saving never waits on DentalXChange.
+				return;
+			}
+			if(!result.NeedsAttention) {
+				return;
+			}
+			FormXConnectValidation formXConnectValidation=new FormXConnectValidation(new List<XConnectValidationResult> { result },
+				FormXConnectValidation.EnumOpenedFrom.Save);
+			formXConnectValidation.Show();
+		}
+
+		///<summary>Validation before Edit Claim sends one claim (Open Dental 25.2). Returns true if the claim may be sent: no problems, warnings the
+		///user chose to send anyway, or XConnect off. Errors and failed calls keep the claim unsent. isEditClaimClicked is true when the user chose
+		///Edit Claim in the window.</summary>
+		public static bool ValidateXConnectBeforeSend(Claim claim,Clearinghouse clearinghouseClin,out bool isEditClaimClicked) {
+			isEditClaimClicked=false;
+			if(!XConnect.IsEnabled(clearinghouseClin) || !XConnectValidation.ShouldValidate(claim)) {
+				return true;
+			}
+			XConnectValidationResult result=null;
+			ProgressWin progressWin=new ProgressWin();
+			progressWin.StartingMessage=Lans.g("XConnect","Validating the claim with DentalXChange...");
+			progressWin.ActionMain=() => result=XConnectValidation.Validate(claim,clearinghouseClin,XConnect.TimeoutValidateOnSend);
+			try {
+				progressWin.ShowDialog();
+			}
+			catch(Exception ex) {
+				FriendlyException.Show(Lans.g("XConnect","XConnect validation failed."),ex);
+				return false;
+			}
+			if(progressWin.IsCancelled || result==null) {
+				return false;
+			}
+			XConnectSendDecision decision=XConnectValidation.GetSendDecision(result);
+			if(decision==XConnectSendDecision.Send) {
+				return true;
+			}
+			if(decision==XConnectSendDecision.CallFailed) {
+				//As in 24.3: sending without validation would defeat the point of validating.
+				MessageBox.Show(Lans.g("XConnect","XConnect validation call failed:")+" "+result.CallFailedMessage+Environment.NewLine
+					+Lans.g("XConnect","The claim was not sent."));
+				return false;
+			}
+			using FormXConnectValidation formXConnectValidation=new FormXConnectValidation(new List<XConnectValidationResult> { result },
+				FormXConnectValidation.EnumOpenedFrom.ClaimEditSend);
+			formXConnectValidation.ShowDialog();
+			isEditClaimClicked=formXConnectValidation.IsEditClaimClicked;
+			XConnectValidationResult resultLatest=formXConnectValidation.ListResults.FirstOrDefault()??result;
+			XConnectSendDecision decisionLatest=XConnectValidation.GetSendDecision(resultLatest);
+			if(decisionLatest==XConnectSendDecision.Send && !isEditClaimClicked) {
+				return true;//Re-validation in the window resolved everything.
+			}
+			return decisionLatest==XConnectSendDecision.ConfirmWarnings && formXConnectValidation.IsSendAnywayClicked;
+		}
+
+		///<summary>Validation before the 'Outstanding ... claims' prompt sends claims (Open Dental 25.2). Validates, with XConnect, each electronic queue
+		///item whose clinic-level clearinghouse has XConnect on, then shows one Claim Validation window for the claims with problems
+		///(ShowXConnectResultsForBatch). Returns the queue items that may be sent: those not validated with XConnect, plus the validated ones that
+		///passed or whose warnings the user chose to send anyway. Claims with errors or a failed call are left out and stay waiting to send. Returns
+		///an empty list if the user cancels validation.</summary>
+		private static List<ClaimSendQueueItem> FilterQueueItemsByXConnect(List<ClaimSendQueueItem> listClaimSendQueueItems,List<Claim> listClaims) {
+			List<long> listClaimNumsToValidate=new List<long>();
+			for(int i=0;i<listClaimSendQueueItems.Count;i++) {
+				ClaimSendQueueItem claimSendQueueItem=listClaimSendQueueItems[i];
+				if(!claimSendQueueItem.CanSendElect) {
+					continue;//Not sent electronically, so DentalXChange does not see it.
+				}
+				Claim claim=listClaims.FirstOrDefault(x => x.ClaimNum==claimSendQueueItem.ClaimNum)??Claims.GetClaim(claimSendQueueItem.ClaimNum);
+				if(claim==null) {
+					continue;//Deleted by another workstation; SendClaimSendQueueItems() deals with it.
+				}
+				//suppressError: SendClaimSendQueueItems() reports a missing clearinghouse.
+				Clearinghouse clearinghouseClin=Clearinghouses.OverrideFields(ClearinghouseL.GetClearinghouseHq(claimSendQueueItem.ClearinghouseNum,true),
+					claim.ClinicNum);
+				if(XConnect.IsEnabled(clearinghouseClin)) {
+					listClaimNumsToValidate.Add(claim.ClaimNum);
+				}
+			}
+			if(listClaimNumsToValidate.Count==0) {
+				return listClaimSendQueueItems;
+			}
+			List<XConnectValidationResult> listResults=new List<XConnectValidationResult>();
+			ProgressWin progressWin=new ProgressWin();
+			progressWin.StartingMessage=Lans.g("XConnect","Validating the claims with DentalXChange...");
+			progressWin.ActionMain=() => {
+				for(int i=0;i<listClaimNumsToValidate.Count;i++) {
+					listResults.Add(ValidateXConnect(listClaimNumsToValidate[i],XConnect.TimeoutValidateOnSend));
+				}
+			};
+			try {
+				progressWin.ShowDialog();
+			}
+			catch(Exception ex) {
+				FriendlyException.Show(Lans.g("XConnect","XConnect validation failed. No claims were sent."),ex);
+				return new List<ClaimSendQueueItem>();
+			}
+			if(progressWin.IsCancelled || listResults.Count!=listClaimNumsToValidate.Count) {
+				return new List<ClaimSendQueueItem>();
+			}
+			List<long> listClaimNumsToSend=ShowXConnectResultsForBatch(listResults);
+			return listClaimSendQueueItems.FindAll(x => !listClaimNumsToValidate.Contains(x.ClaimNum) || listClaimNumsToSend.Contains(x.ClaimNum));
+		}
+
+		///<summary>Batch sends (Send Claims window): one combined window for every claim with problems, grouped by claim. Returns the ClaimNums that may
+		///be sent: those without problems and, when the user chose Send Anyway, those with warnings only. Shows nothing when no claim needs
+		///attention.</summary>
+		public static List<long> ShowXConnectResultsForBatch(List<XConnectValidationResult> listResults) {
+			List<XConnectValidationResult> listResultsWithProblems=listResults.FindAll(x => x.NeedsAttention);
+			if(listResultsWithProblems.Count==0) {
+				return XConnectValidation.GetClaimNumsToSend(listResults,false);
+			}
+			using FormXConnectValidation formXConnectValidation=new FormXConnectValidation(listResultsWithProblems,
+				FormXConnectValidation.EnumOpenedFrom.ClaimsSend);
+			formXConnectValidation.ShowDialog();
+			//Results after any re-validation in the window replace the originals.
+			List<XConnectValidationResult> listResultsFinal=listResults
+				.Select(x => formXConnectValidation.ListResults.FirstOrDefault(y => y.ClaimNum==x.ClaimNum)??x)
+				.ToList();
+			return XConnectValidation.GetClaimNumsToSend(listResultsFinal,formXConnectValidation.IsSendAnywayClicked);
+		}
+		#endregion XConnect claim validation (Open Dental 25.2)
+
+		///<summary>Open Dental 24.4, DentalXChange attachment Submitted flag: before an attachment window sends images for a claim whose attachment
+		///was already submitted, asks once whether to add them, so the same attachments are not sent twice by accident. isConfirmed is the window's
+		///own flag: once true (the user agreed, or the window found nothing submitted and sends the first images itself) the question is not asked
+		///again. Returns false if the user cancels.</summary>
+		public static bool ConfirmAddToSubmittedDxcAttachment(Claim claim,ref bool isConfirmed) {
+			if(isConfirmed) {
+				return true;
+			}
+			if(claim==null || !ClaimAttaches.IsDxcAttachmentSubmitted(claim.AttachedFlags)) {
+				isConfirmed=true;
+				return true;
+			}
+			if(!MsgBox.Show("ClaimL",MsgBoxButtons.OKCancel,"This claim's attachments were already submitted to DentalXChange. "
+				+"Images sent now are added to the same attachment. Send them?"))
+			{
+				return false;
+			}
+			isConfirmed=true;
+			return true;
+		}
+
+		///<summary>Sets the ClaimSendQueueItem.IsValid flag. Checks if the ClaimSendQueueItem passed in has any missing data.</summary>
+		public static ClaimSendQueueItem SetClaimItemIsValid(ClaimSendQueueItem claimSendQueueItem,Clearinghouse clearinghouseClin) {
+			if(claimSendQueueItem.IsValid) {
+				return claimSendQueueItem;//no need to check. ClaimItem is valid already.
+			}
+			claimSendQueueItem=Eclaims.GetMissingData(clearinghouseClin,claimSendQueueItem);
+			if(claimSendQueueItem.MissingData=="") {
+				claimSendQueueItem.IsValid=true;
+			}
+			return claimSendQueueItem;
+		}
+
+		///<summary>Returns ClaimIsValidState.True if given claim is valid.
+		///Does NOT check for Canadian warnings.</summary>
+		public static ClaimIsValidState ClaimIsValid(Claim claim,List<ClaimProc> listClaimProcsForClaim) {
+			return ClaimIsValid(claim.DateService.ToShortDateString(),claim.ClaimType, claim.ClaimStatus.In("S","R"),claim.DateSent.ToShortDateString(),listClaimProcsForClaim,
+				claim.PlanNum,null,claim.ClaimNote,claim.UniformBillType,claim.CorrectionType
+			);
+		}
+
+		///<summary>Returns ClaimIsValidState.True if given claim is valid.
+		///Does NOT check for Canadian warnings.
+		///This should be called when there is a UI that the user can make changes to that might not be saved in the claim object.</summary>
+		public static ClaimIsValidState ClaimIsValid(string dateService,string claimType,bool isSentOrReceived,string claimDateSent,List<ClaimProc> listClaimProcsForClaim
+			,long claimPlanNum,List<InsPlan> listInsPlans,string claimNote,string claimUniformBillType,ClaimCorrectionType claimCorrectionType)
+		{
+			if(dateService=="" && claimType!="PreAuth"){
+				MsgBox.Show("Claims","Please enter a date of service");
+				return ClaimIsValidState.False;
+			}
+			if(isSentOrReceived && claimDateSent=="") {
+				MsgBox.Show("Claims","Please enter date sent.");
+				return ClaimIsValidState.False;
+			}
+			if(claimType=="PreAuth") {
+				bool hasStatusChanged=false;
+				for(int i=0;i<listClaimProcsForClaim.Count;i++){
+					if(listClaimProcsForClaim[i].Status!=ClaimProcStatus.Preauth){
+						listClaimProcsForClaim[i].Status=ClaimProcStatus.Preauth;
+						ClaimProcs.Update(listClaimProcsForClaim[i]);
+						hasStatusChanged=true;
+					}
+				}
+				if(hasStatusChanged) {
+					InsBlueBooks.DeleteByClaimNums(listClaimProcsForClaim.Select(x => x.ClaimNum).ToArray());//We don't keep insbluebook entries for PreAuths.
+					MsgBox.Show("Claims","Status of procedures was changed back to preauth to match status of claim.");
+					return ClaimIsValidState.FalseClaimProcsChanged;
+				}
+			}
+			if(PrefC.GetBool(PrefName.ClaimsValidateACN)) {
+				InsPlan insPlan=InsPlans.GetPlan(claimPlanNum,listInsPlans);//Does a query if listInsPlans is null or if claimPlanNum is not in list.
+				if(insPlan!=null && insPlan.GroupName.Contains("ADDP")) {
+					if(!Regex.IsMatch(claimNote,"ACN[0-9]{5,}")) {//ACN with at least 5 digits following
+						MsgBox.Show("Claims","For an ADDP claim, there must be an ACN number in the note.  Example format: ACN12345");
+						return ClaimIsValidState.False;
+					}
+				}
+			}
+			if(claimUniformBillType!="" && claimCorrectionType!=ClaimCorrectionType.Original) {
+				MsgBox.Show("Claims","Correction type must be original when type of bill is not blank.");
+				return ClaimIsValidState.False;
+			}
+			return ClaimIsValidState.True;
+		}
+
+		///<summary>Returns true if a procedure is over-credited in a way that violates one of the preferences that blocks insurance overpayment.
+		///This is in ClaimL because the methods called will show message boxes.</summary>
+		public static bool AreCreditsGreaterThanProcFee(List<ClaimProc> listClaimProcsHypothetical) {
+			if(IsInitialPrimaryInsGreaterThanProcFees(listClaimProcsHypothetical)){
+				return true;
+			}
+			if(AreWriteOffsGreaterThanProcFees(listClaimProcsHypothetical)){
+				return true;
+			}
+			return AreAllCreditsGreaterThanProcFees(listClaimProcsHypothetical);
+		}
+
+		///<summary>Returns true if the sum of all credits are not allowed to exceed adjusted procedure fees and one or more procedures are over-credited.
+		///Displays a message detailing how the procedures are over-credited, and what the remaining balances would be.</summary>
+		public static bool AreAllCreditsGreaterThanProcFees(List<ClaimProc> listClaimProcsHypothetical) {
+			ClaimProcCreditsGreaterThanProcFee claimProcCreditsGreaterThanProcFee=PrefC.GetEnum<ClaimProcCreditsGreaterThanProcFee>(PrefName.ClaimProcAllowCreditsGreaterThanProcFee);
+			if(claimProcCreditsGreaterThanProcFee==ClaimProcCreditsGreaterThanProcFee.Allow) {
+				return false;
+			}
+			List<string> listProcDescripts=Claims.GetAllCreditsGreaterThanProcFees(listClaimProcsHypothetical);
+			//list will be empty if there are no claimprocs greater than procedure fee, or if the procedure
+			if(listProcDescripts.IsNullOrEmpty()) {
+				return false;
+			}
+			if(claimProcCreditsGreaterThanProcFee==ClaimProcCreditsGreaterThanProcFee.Block) {
+				using MsgBoxCopyPaste msgBoxCopyPaste=new MsgBoxCopyPaste(Lan.g("FormClaimPayTotal","Remaining amount is negative for the following procedures")+":\r\n"
+					+string.Join("\r\n",listProcDescripts)+"\r\n"+Lan.g("FormClaimPayTotal","Not allowed to continue."));
+				msgBoxCopyPaste.Text=Lan.g("FormClaimPayTotal","Overpaid Procedure Warning");
+				msgBoxCopyPaste.ShowDialog();
+				return true;
+			}
+			if(claimProcCreditsGreaterThanProcFee==ClaimProcCreditsGreaterThanProcFee.Warn) {
+				return MessageBox.Show(Lan.g("FormClaimPayTotal","Remaining amount is negative for the following procedures")+":\r\n"
+					+string.Join("\r\n",listProcDescripts.Take(10))+"\r\n"+(listProcDescripts.Count>10?"...\r\n":"")+Lan.g("ClaimL","Continue?")
+					,Lan.g("FormClaimPayTotal","Overpaid Procedure Warning"),MessageBoxButtons.OKCancel)==DialogResult.Cancel;
+			} 
+			return true;//should never get to this line, only possible if another enum value is added to allow, warn, and block
+		}
+
+		///<summary>Returns true if write-offs are not allowed to exceed adjusted procedure fees, and one or more procedures are over-credited by write-offs.
+		///Displays a message detailing how the procedures are over-credited, and what the remaining balances would be.</summary>
+		public static bool AreWriteOffsGreaterThanProcFees(List<ClaimProc> listClaimProcsHypothetical) {
+			if(!PrefC.GetBool(PrefName.InsPayNoWriteoffMoreThanProc)) {
+				return false;//InsPayNoWriteoffMoreThanProc preference is off. No need to check.
+			}
+			List<string> listProcDescripts=Claims.GetWriteOffsGreaterThanProcFees(listClaimProcsHypothetical);
+			if(!listProcDescripts.IsNullOrEmpty()) {
+				using MsgBoxCopyPaste msgBoxCopyPaste=new MsgBoxCopyPaste(Lan.g("FormClaimPayTotal","Write-off amount is greater than the adjusted procedure fee for the following "
+					+"procedure(s)")+":\r\n"+string.Join("\r\n",listProcDescripts)+"\r\n"+Lan.g("FormClaimPayTotal","Not allowed to continue."));
+				msgBoxCopyPaste.Text=Lan.g("FormClaimPayTotal","Excessive Write-off");
+				msgBoxCopyPaste.ShowDialog();
+			}
+			return !listProcDescripts.IsNullOrEmpty();
+		}
+
+		///<summary>Returns true if the sum of the pay amount and write-off from the initial primary insurance payment are not allowed to exceed adjusted procedure fees,
+		///and one or more procedures are over-credited in this way. Displays a message detailing how the procedures are over-credited, and what the remaining balances would be.</summary>
+		public static bool IsInitialPrimaryInsGreaterThanProcFees(List<ClaimProc> listClaimProcsHypothetical) {
+			if(!PrefC.GetBool(PrefName.InsPayNoInitialPrimaryMoreThanProc)) {
+				return false;//NoInitialPrimaryInsMoreThanProc preference is off. No need to check.
+			}
+			List<string> listProcDescripts=Claims.GetInitialPrimaryInsGreaterThanProcFees(listClaimProcsHypothetical);
+			if(!listProcDescripts.IsNullOrEmpty()) {
+				using MsgBoxCopyPaste msgBoxCopyPaste=new MsgBoxCopyPaste(Lan.g("FormClaimPayTotal","The sum of the initial primary insurance payment and write-off is greater "
+				+"than the adjusted procedure fee for the following procedure(s)")
+				+":\r\n"+string.Join("\r\n",listProcDescripts)+"\r\n"+Lan.g("FormClaimPayTotal","Not allowed to continue."));
+				msgBoxCopyPaste.Text=Lan.g("FormClaimPayTotal","Overpaid Procedure");
+				msgBoxCopyPaste.ShowDialog();
+			}
+			return !listProcDescripts.IsNullOrEmpty();
+		}
+	}
+
+	///<summary>Helper class for passing around data required to create a claim. Also contains informational variables for consuming methods.
+	///This class helps so that we no longer have to pass around DataTables and ODGrids but instead can have a strongly typed object.</summary>
+	public class CreateClaimDataWrapper {
+		///<summary>The currently selected patient that is having a claim created.</summary>
+		public Patient Patient_;
+		///<summary>The family of Pat.</summary>
+		public Family Family_;
+		///<summary>Pertinent insurance information for the corresponding patient and family.</summary>
+		public AccountModules.CreateClaimData CreateClaimData_;
+		///<summary>Technically this is just a list of account items in the sense that it is almost always comprised from account grids.
+		///These account items can represent anything selected in a grid that was showing to the user (typically an account grid from the Account module).
+		///Methods that utilize this class will know how to filter through these items in order to find the ones they care about.
+		///The main purpose of this list is to represent which grid items were selected (or not selected) and to what procedures they are associated to.
+		///This list allows us to stop passing around an ODGrid / DataTable combination which was causing concurrency bugs to get submitted.</summary>
+		public List<CreateClaimItem> ListCreateClaimItems;
+		///<summary>A count of how many claims were created. This variable is handled by helper methods and should not be set manually.</summary>
+		public int CountClaimsCreated;
+		///<summary>An indicator to the consuming method so that they know if they need to refresh their UI or not.
+		///Old comment: True if the Account module needs to be refreshed (old comment from ContrAccount.toolBarButIns_Click()).
+		///This variable is handled by helper methods and should not be set manually.</summary>
+		public bool ShouldRefresh;
+		///<summary>Set to true if any errors occurred when creating a claim; Otherwise, false.
+		///ErrorMessage should be the only other value trusted when this is set to true, no other information should be trusted.
+		///This variable is handled by helper methods and should not be set manually.</summary>
+		public bool HasError;
+		///<summary>Additional information to help determine what errors happened while trying to create claims.
+		///Will typically be set to a detailed error to display to the user when HasError is true.
+		///However, it can still be empty even when an error occurred so HasError should be the indicator that an error occurred.
+		///This variable is handled by helper methods and should not be set manually.</summary>
+		public string ErrorMessage;
+	}
+
+	///<summary>Represents a selected item (or all items) from a grid. Typically an item from the account grid in the Account module.
+	///Methods that utilize this class will know how to filter through these items in order to find the ones they care about.
+	///Therefore any value is acceptable for any of the variables within this class. E.g. an item with a ProcNum of 0 represents a non-procedure item.
+	///This object allows us to stop passing around an ODGrid / DataTable combination which was causing concurrency bugs to get submitted.</summary>
+	public class CreateClaimItem {
+		///<summary>A value greater than 0 will indicate that this item represents a procedure.</summary>
+		public long ProcNum;
+		///<summary>A value greater than 0 will indicate that this item represents a lab. Currently only used by Canadians.</summary>
+		public long ProcNumLab;
+		///<summary>The charge associated to this item. Typically represents a procedure fee.</summary>
+		public double ChargesDouble;
+		///<summary>Set to true if claim creation logic should consider this item for the claim that is being created; Otherwise, false.
+		///This variable is typically set by helper methods unless this item needs to be treated as if it were manually selected.
+		///Canadians have a hard limit of 7 items selected per claim so this value may change regardless of how it was instantiated.</summary>
+		public bool IsSelected;
+	}
+
+	public enum ClaimIsValidState {
+		False,
+		FalseClaimProcsChanged,
+		True,
+	}
+
+	public enum BoolOverride {
+		Undefined,
+		False,
+		True
+	}
+}
