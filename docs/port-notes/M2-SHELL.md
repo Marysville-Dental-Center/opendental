@@ -2,6 +2,8 @@
 
 Branch `port/m2-shell`, cut from `port/foundation` (M2-01 and M2-02 merged). Built in the single-wave run, beside the other M1 Tier B and M2 packages. Backlog section: [port-backlog.md, M2-SHELL](../specs/port-backlog.md#m2-shell-main-window-and-cross-module-audit-261). No fork migration step (see "Migration level range" below).
 
+Finish round `port/m2-shell-t1` (from `port/m2-shell`, whose last run was cut off by a usage limit): `port/int-13` (bb150f537) merged in, the Family module's Gender row switched to the Chart row's text (the spec's "one rendering in both modules"), and the checks run on the merged head. See [Finish round t1](#finish-round-t1).
+
 Sources: the feature specs in `docs/specs/features-25.4.md` and `features-26.1.md`, and the public pages they cite (the 25.4 and 26.1 release notes, the public manual pages for the Audit Trail and Audit Trail Permissions, read 2026-10-25). No Open Dental program, install or office data was used. Every text below and in the code is written for this fork.
 
 ## Feature IDs
@@ -12,7 +14,7 @@ Sources: the feature specs in `docs/specs/features-25.4.md` and `features-26.1.m
 | `v26_1-misc-audit-billing-finance` | built | "window opened" entry and one entry per run (settings and result, also for a cancelled run); the 24.3 entry written on close is gone; undo and aging entries unchanged. |
 | `v26_1-tools-dbm-duplicate-blockouts` | built | DBM check `SchedulesDeleteDuplicateBlockouts`; Tools, Misc Tools, Clear Duplicate Blockouts and `FormBlockoutDuplicatesFix` deleted; both defects of `Schedules.ClearDuplicates` fixed. |
 | `v26_1-manage-chat-autolaunch` | not built | Owner decision 2026-10-18: intra-office chat is excluded (A-CHAT and M2-CHAT dropped), so there is no chat window to open. |
-| `v26_1-chart-ptinfo-gender` | built | "Gender" row in the Chart module's Patient Information grid (field registered by M2-02). The Family module's existing Gender row is not changed (see Deviations). |
+| `v26_1-chart-ptinfo-gender` | built | "Gender" row in the Chart module's Patient Information grid (field registered by M2-02). Since t1 the Family module's existing Gender row shows the same text. |
 | `v26_1-misc-audit-chartviews` | built | Entries for add, edit (every changed setting, including columns), delete and the up/down moves, under ChartViewsEdit (262). |
 
 ## What was built
@@ -47,6 +49,7 @@ Sources: the feature specs in `docs/specs/features-25.4.md` and `features-26.1.m
 ### Chart Gender row (26.1)
 
 - `ControlChart.FillPtInfo`: `case DisplayFields26_1.ChartPatientInfoGender` (M2-02's constant, "Gender") shows `PatientGenderDisplay.GetText(gender)`: the translated Edit Patient Information text (the `enumPatientGender` group that `ListBox.AddEnums<PatientGender>` uses), blank for Unknown and for numbers this program does not know. The row keeps a null tag, so a double click opens Edit Patient Information like the other demographic rows. Not on by default (M2-02's lists).
+- `ControlFamily.FillPatientData`, `case "Gender"` (the 24.3 Family display field): the same `PatientGenderDisplay.GetText` since t1, so both modules show one text. Before, the Family row showed the raw enum name, "Unknown" for an unknown gender, untranslated.
 
 ### Chart View audit (26.1)
 
@@ -61,24 +64,26 @@ Sources: the feature specs in `docs/specs/features-25.4.md` and `features-26.1.m
 - Outside the owned list (also in the report):
   - `OpenDentBusiness/TableTypes/Pref.cs` (foundation registry): one `PrefName` member, `AuditTrailPatientSelected`, next to the other AuditTrail preferences. M2-02 deliberately added no on/off preference for this item ("M2-SHELL can use the existing audit trail settings"), but no existing setting can turn one audit type off, and the spec requires "off by default".
   - `OpenDental/Forms/FormGlobalSecurity.cs` and `.designer.cs`: the checkbox (no package owns this window).
+  - `OpenDental/Main Modules/ControlFamily.cs` (t1): one line, the Family Gender row (M2-HIST, V-BRIDGE2 and B-SHELL, which also edit this file, are already merged on `port/int-13`).
   - `OpenDentBusiness/OpenDentBusiness.csproj` (2 Compile lines), `OpenDental/OpenDental.csproj` (form entries removed), `OpenDental.sln`, `OpenDental.Local.slnf` (test project).
-- Not changed: `PrefInfos.xml` (the setting is not in the Preferences window), `GroupPermission(s).cs`, `UserControlSecurityTree.cs` (275 already registered by M2-02, audit only, hidden from the tree), `DisplayFields.cs`, `SecurityLogs.cs`, `ControlFamily.cs`.
+- Not changed: `PrefInfos.xml` (the setting is not in the Preferences window), `GroupPermission(s).cs`, `UserControlSecurityTree.cs` (275 already registered by M2-02, audit only, hidden from the tree), `DisplayFields.cs`, `SecurityLogs.cs`.
 
 ## Migration level range
 
-The assigned range 2027005401 to 2027005499 cannot be used: `ForkMigrationRunner.ValidateStep` requires `yyyyMMddNN` with a real date, and "20270054" has month 00. No step was needed: the one new preference has no seed row (missing reads as off, the row is inserted when an administrator turns the audit on). `tools/DevDbTool` lists it among the "optional prefs" with no row.
+No step was needed, so the package's range 2027005401 to 2027005499 is unused. The one new preference has no seed row (missing reads as off, the row is inserted when an administrator turns the audit on). `tools/DevDbTool` lists it among the "optional prefs" with no row. Because no step changes schema or rows on an adopted 25.3.48 database, the adoption tools (`tools/AdoptionValidation`: migration-preview, AdoptionRowCheck, allowed differences) need nothing from this package.
+
+When this package was first built, `ForkMigrationRunner.ValidateStep` accepted only dated `yyyyMMddNN` levels, so the range looked unusable (old question 4). The integration head now accepts package ranges `yyyy00PPNN` (`ForkMigrationRunner.IsReservedPackageLevel`), so the range would be valid if a later change needs a step.
 
 ## INFERRED behaviours
 
 - Patient Selected: what counts as a selection (a change of the loaded patient; selecting the patient who is already loaded is not logged), the log text, the per-workstation memory of the repeat rule, the setting's name, place and wording, and the SecurityAdmin entry when it changes. Open Dental's public pages do not say how the 25.4 entry is switched on; the public Audit Trail Permissions page does not list it.
 - Billing/Finance Charges: the entry texts and which settings they list, the open entry being written before the missing-setting checks, the cancelled-run entry, and per-run counters.
 - DBM: the check's output wording; deleting only the blockouts the run emptied (the spec's proposal).
-- Chart Gender: blank for numbers this program does not know.
+- Chart Gender: blank for numbers this program does not know; the Family row following the same rule (the spec's proposal).
 - Chart View: the wording of each change, positions shown 1-based, columns compared in order with name, custom name and width, and the renumbering after a delete not being logged.
 
 ## Deviations from the spec
 
-- Chart Gender, "use one rendering in both modules": the Family module's Gender row (`ControlFamily.cs`, raw enum name, "Unknown" for unknown) is unchanged, because `ControlFamily.cs` is not in this package's file list and other packages edit it in this wave. The helper is public; switching the Family row is a one-line change (`PatientGenderDisplay.GetText(_patient.Gender)` in its `case "Gender"`), left to the owner's decision (question 3).
 - `Schedules.ClearDuplicates` and `GetDuplicateBlockoutCount` are reused as the spec says, but their query was rewritten without `GROUP_CONCAT` (see above). Results are the same except that large groups are no longer at risk of being cut off.
 - Patient Selected setting: the spec says "controlled by Audit Trail Permissions"; this fork has no per-permission audit switch, so the setting is one checkbox in Global Security Settings.
 
@@ -87,19 +92,19 @@ The assigned range 2027005401 to 2027005499 cannot be used: `ForkMigrationRunner
 - **M2-02** (merged in the base): 275 PatientSelected is registered, audit only, and in the Audit Trail filter; the Chart "Gender" display field is in its lists. This package adds `PrefName.AuditTrailPatientSelected` in `Pref.cs` (one member between `AuditTrailEntriesDisplayed` and `AuditTrailUseReportingServer`); a merge with other `PrefName` additions only needs both members kept.
 - **M2-APPT** (also edits `Schedules.cs`): this package's hunk is limited to `GetDuplicateBlockoutCount`, the new `GetDuplicateBlockoutScheduleOpNums` and `ClearDuplicates`. Blockout permissions (272, 273, 13) do not apply to Database Maintenance, which stays under the DBM rules (Setup).
 - **M2-NOTES, M2-CARRIER, B-SHELL** (also edit `ControlChart.cs`, and B-SHELL `FormOpenDental.cs`/`FormOpenDentalMenus.cs`): the hunks here are one line in `SwapChartViews`, one new `case` between "Discharge Date" and "Med Urgent" in `FillPtInfo`, one line in the `PatNumCur` setter, the removed `menuItemDuplicateBlockouts_Click` and its menu line, and one line in `menuItemFinanceCharge_Click`. If another package rebuilds the Misc Tools menu, the "Clear Duplicate Blockouts" line must stay out.
-- **ControlFamily owners (M2-HIST, V-BRIDGE2, B-SHELL)**: can use `PatientGenderDisplay.GetText` for the Family Gender row once the owner decides (question 3).
+- **ControlFamily owners (M2-HIST, V-BRIDGE2, B-SHELL)**: since t1 the Family Gender row calls `PatientGenderDisplay.GetText` (one line in `FillPatientData`, `case "Gender"`). A later package that rewrites that switch keeps the call.
 - **B-DBM and other DBM packages**: the new check is its own partial file; `DatabaseMaintenances.cs` is not edited.
 - **M2-SCH2, M2-SCH3**: take `ControlChart.cs`, `FormOpenDental.cs` and `FormOpenDentalMenus.cs` over after this package; excluded by the owner's dental-school decision.
 - **M2-CHAT / A-CHAT**: excluded, so `v26_1-manage-chat-autolaunch` has nothing to hook into.
 
 ## Tests
 
-New project `tests/M2SHELLTests` (MSTest v1, x86, .NET 4.8; in `OpenDental.sln` and `OpenDental.Local.slnf`), 35 tests:
+New project `tests/M2SHELLTests` (MSTest v1, x86, .NET 4.8; in `OpenDental.sln` and `OpenDental.Local.slnf`), 36 tests:
 
 - `PatientSelectedAuditTests`: repeat rule (per user, per patient, 60 seconds, suppressed selections do not extend it, clock moved back); database: off by default with no row and no entries, `SetEnabled` inserts the row only when turning on, one entry per selection with PatNum and user, hashed, nothing for PatNum 0 or no user, nothing after turning off; 275 is in the Audit Trail filter.
 - `ChartViewAuditTests`: texts, every changed setting, no change gives no entry, column order changes, flag splitting; database: entries under 262 with the ChartViewNum.
 - `FinanceChargeAuditTests`: finance, billing, cancelled and zero-charge texts (en-US).
-- `ChartGenderTests`: text per gender, blank for Unknown and unknown numbers, the `FillPtInfo` case (source check).
+- `ChartGenderTests`: text per gender, blank for Unknown and unknown numbers, the `FillPtInfo` case and the Family module's `case "Gender"` (source checks).
 - `DuplicateBlockoutDbTests`: the A/B/C example (links kept, blockout C deleted, signals), no duplicates (quiet check, valid fix, verbose output), only exact matches, NULL notes, a blockout with no operatory before the run kept, a 301-blockout group, the DBM attribute.
 - `WiringTests` (source checks): the setter hook, the Global Security checkbox, the removed tool (files, csproj, menu, handler), the finance entries (open, run, cancelled run, undo and aging kept, totals), the Chart View window and the up/down moves.
 
@@ -113,5 +118,15 @@ Not tested: the WinForms windows themselves (the program was not launched): the 
 
 1. Patient Selected audit: is one on/off switch in Global Security Settings (off by default) the control you want, or should it be per user group?
 2. Should selecting the patient who is already loaded (for example picking the same patient again in Select Patient) also write an entry after the 60 seconds? Today only a change of patient is logged.
-3. Family module Gender row: switch it to the same text as the new Chart row (translated, blank for Unknown instead of "Unknown")?
-4. The level range assigned to this package (2027005401 to 2027005499) is not a valid `yyyyMMddNN` level; future packages with a step need a range the runner accepts.
+3. Family module Gender row: since t1 it shows the same text as the new Chart row (translated, blank for Unknown instead of "Unknown"), as the spec proposes. Keep it, or put the 24.3 text back (one line in `ControlFamily.FillPatientData`)?
+
+(Old question 4, about the package's level range, is settled: the runner now accepts `yyyy00PPNN` package levels.)
+
+## Finish round t1
+
+- Base: `port/int-13` (bb150f537) merged into `port/m2-shell-t1`. One conflict, `OpenDentBusiness.csproj`: this package's `DatabaseMaintenances.Schedules.cs` and M2-APPT's `BlockoutPerms.cs` Compile lines, both kept. Everything else merged cleanly; the hooks in `FormOpenDental.cs` (the `PatNumCur` setter, the removed Clear Duplicate Blockouts handler and menu line, the finance-charge close entry), `ControlChart.cs` and `Schedules.cs` (beside M2-APPT's blockout permission code) were checked on the merged head.
+- No helper on the base duplicates this package's code (checked: the audit text builders of B-AUDIT, M2-AUDIT, B-CLAIM and M2-CARRIER, and the gender texts in sheets and imports, which call `Lans.g("enumPatientGender",...)` directly and keep "Unknown").
+- Brief: no blocking findings were on record (the last run had been cut off). The five in-scope features were already built; `v26_1-manage-chat-autolaunch` stays excluded by the owner's chat decision.
+- Change in this round: the Family module's Gender row uses `PatientGenderDisplay.GetText` (see Chart Gender row), with a source test in `ChartGenderTests`.
+- Still no fork migration step, schema, CRUD or adoption change.
+- Checks on the merged head: one full build of `OpenDental.Local.slnf` through the build lane (0 errors); `run-tests -Mode Core` with `AdoptionValidation.Tests`, `ForkMigrationTests`, `M201Tests` and `SyntheticData.Tests` added (80 assemblies, 4210 tests, none failed; the 2 not passed are M201Tests' published-document checks, skipped as on earlier heads; `.git/od-tools/test-results/port_m2-shell-t1.txt`); `tools/Test-NoHqHosts.ps1` passed. `M2SHELLTests` 36 of 36, `M202Tests` 39, `BDBMTests` 30, `BSHELLTests` 66, `M2APPTTests` 37, `ApptTests` 76, `RegistryTests` 33.
