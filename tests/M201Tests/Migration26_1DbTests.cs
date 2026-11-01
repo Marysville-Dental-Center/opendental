@@ -284,6 +284,10 @@ namespace M201Tests {
 			//customization column.
 			HashSet<string> setAdoption=new HashSet<string>(new[] { "preference","securitylog","securityloghash","patient" },
 				StringComparer.OrdinalIgnoreCase);
+			//The UDS+ report row (package M2-UDS, ReportRowUdsPlusStep) is added on every database from before 25.4: one displayreport row.
+			setAdoption.Add("displayreport");
+			Assert.AreEqual((PIn.Long(_dictRowCountsBefore["displayreport"])+1).ToString(),_dictRowCountsAfter["displayreport"]);
+			Assert.AreEqual("1",ScratchDb.Scalar(DB_OD253,"SELECT COUNT(*) FROM displayreport WHERE InternalName='"+DisplayReports.ReportNames.UdsPlus+"'"));
 			foreach(KeyValuePair<string,string> pair in _dictRowCountsBefore.Where(x => !setAdoption.Contains(x.Key))) {
 				Assert.AreEqual(pair.Value,_dictRowCountsAfter[pair.Key],"Row count of "+pair.Key);
 			}
