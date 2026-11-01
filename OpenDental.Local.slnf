@@ -66,6 +66,7 @@
       "tests\\M2ESTTests\\M2ESTTests.csproj",
       "tests\\M2HISTTests\\M2HISTTests.csproj",
       "tests\\M2IMGTests\\M2IMGTests.csproj",
+      "tests\\M2INSPLANTests\\M2INSPLANTests.csproj",
       "tests\\M2INSVTests\\M2INSVTests.csproj",
       "tests\\M2MEDTests\\M2MEDTests.csproj",
       "tests\\M2MISCTests\\M2MISCTests.csproj",
