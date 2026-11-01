@@ -437,9 +437,9 @@ namespace ImagingDeviceManager.Capture {
 		private void SetState(TwainCaptureState state,int enableId) {
 			_state=(int)state;
 			EnableContext context=_enable;
-			bool isSafeDisableInEffect=enableId!=0 && context!=null && context.Id==enableId && context.IsSafeDisableInEffect;
+			bool isOfEnable=enableId!=0 && context!=null && context.Id==enableId;
 			TwainCaptureStatus status=new TwainCaptureStatus { State=state,EnableId=enableId,Text=GetStateText(state),
-				IsSafeDisableInEffect=isSafeDisableInEffect };
+				IsSafeDisableInEffect=isOfEnable && context.IsSafeDisableInEffect,LayoutUnusableText=isOfEnable ? context.LayoutUnusableTextRunning : null };
 			Raise(StatusChanged,status,"StatusChanged");
 		}
 
@@ -648,6 +648,9 @@ namespace ImagingDeviceManager.Capture {
 			public string ReasonFallback;
 			public int BitDepthInEffect=8;
 			public string LayoutUnusableText;
+			///<summary>A continuous enable without safe disable that stays enabled after a transfer whose layout could not be read: the text every
+			///later status of the enable carries (TwainCaptureStatus.LayoutUnusableText), else null.</summary>
+			public string LayoutUnusableTextRunning;
 			public bool IsContinuous;
 			public bool IsSafeDisableInEffect;
 			public bool WasDisableStartedUnsafe;
@@ -898,10 +901,37 @@ namespace ImagingDeviceManager.Capture {
 				context.CountTransferFailures++;
 				context.IsSourceMayHoldImages=true;
 				context.ConditionCode=_session.TransferConditionCode??context.ConditionCode;//Never the code of an earlier, unrelated failure.
-				if(_session.LayoutUnusableText!=null && context.LayoutUnusableText==null) {
+				bool isLayoutUnusable=_session.LayoutUnusableText!=null;
+				if(isLayoutUnusable && context.LayoutUnusableText==null) {
 					context.LayoutUnusableText=_session.LayoutUnusableText;
 				}
 				Log("Capture event: image not received from \""+_session.SourceName+"\" (enable "+context.Id+"): "+_session.ErrorText);
+				if(isLayoutUnusable && context.IsContinuous && !StopContinuousAfterLayoutUnusable(context)) {
+					return false;
+				}
+			}
+			return true;
+		}
+
+		///<summary>A continuous enable stays enabled after an image (design 7.4), so every later exposure of it would come in the layout that could
+		///not be read and be lost too. With safe disable in effect it is stopped at once, and ends TransferFailed with LayoutUnusableText: the
+		///session's next enable asks for 8 bits. Without it the fork starts no disable of its own (design 7.6, 10.6): the status raised now, and
+		///every later one of the enable, carries the text, so that the window tells the operator at once not to expose again. False when the
+		///enable was stopped.</summary>
+		private bool StopContinuousAfterLayoutUnusable(EnableContext context) {
+			if(context.IsSafeDisableInEffect) {
+				Log("Enable "+context.Id+" is continuous: it is stopped after the image that could not be read, because every later image of it would"
+					+" come in the same layout.");
+				StopEnable(context,TwainCaptureStopReason.Error);
+				context.Reason=TwainCaptureEndReason.TransferFailed;
+				context.ErrorText=context.LayoutUnusableText;
+				return false;
+			}
+			if(context.LayoutUnusableTextRunning==null) {
+				context.LayoutUnusableTextRunning=context.LayoutUnusableText;
+				Log("Enable "+context.Id+" is continuous and safe disable is not in effect: it stays enabled, and every later image of it would come in"
+					+" the same layout. The window is told at once.");
+				SetState(TwainCaptureState.Transferring,context.Id);
 			}
 			return true;
 		}

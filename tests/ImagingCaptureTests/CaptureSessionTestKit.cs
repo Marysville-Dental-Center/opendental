@@ -452,8 +452,8 @@ namespace ImagingCapture.Tests {
 			return ended;
 		}
 
-		public void Status(TwainCaptureState state,bool isSafeDisableInEffect=false) {
-			Twain.RaiseStatus(state,isSafeDisableInEffect);
+		public void Status(TwainCaptureState state,bool isSafeDisableInEffect=false,string layoutUnusableText=null) {
+			Twain.RaiseStatus(state,isSafeDisableInEffect,layoutUnusableText:layoutUnusableText);
 			Dispatcher.RunPending();
 		}
 

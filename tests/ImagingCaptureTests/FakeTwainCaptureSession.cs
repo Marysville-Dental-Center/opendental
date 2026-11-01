@@ -198,13 +198,14 @@ namespace ImagingCapture.Tests {
 			return ended;
 		}
 
-		public void RaiseStatus(TwainCaptureState state,bool isSafeDisableInEffect=false,int enableId=-1) {
+		public void RaiseStatus(TwainCaptureState state,bool isSafeDisableInEffect=false,int enableId=-1,string layoutUnusableText=null) {
 			State=state;
 			StatusChanged?.Invoke(new TwainCaptureStatus {
 				State=state,
 				EnableId=enableId==-1 ? LastEnableId : enableId,
 				Text=TwainCaptureSession.GetStateText(state),
 				IsSafeDisableInEffect=isSafeDisableInEffect,
+				LayoutUnusableText=layoutUnusableText,
 			});
 		}
 

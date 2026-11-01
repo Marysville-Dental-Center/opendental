@@ -1261,6 +1261,40 @@ namespace ImagingCapture.Tests {
 				"The layout line once; the fallback reason once.");
 			Assert.AreEqual(1,_harness.ListLogFile.Count(x => x.Contains("8 bits (fallback): 16-bit layout not usable")));
 		}
+		[TestMethod]
+		public void BitDepth_LayoutNotUsable_ContinuousWithoutSafeDisable_TheIndicatorSaysAtOnceNotToExposeAgain() {
+			SetGatesFor(16);
+			_harness.Setup.Options.SessionMode=TwainSessionMode.Continuous;
+			_harness.Started();
+			_harness.Status(TwainCaptureState.WaitingForImage);
+			Assert.AreEqual(CaptureIndicatorState.WaitingForExposure,Controller.IndicatorState);
+			string layoutText="16-bit layout not usable: DAT_IMAGEINFO BitsPerPixel is 12 for a 12-bit sample, not 16: packed samples";
+			_harness.Status(TwainCaptureState.Transferring,layoutUnusableText:layoutText);
+			Assert.AreEqual(CaptureIndicatorState.Error,Controller.IndicatorState,"Told at once, while the enable still runs.");
+			Assert.AreEqual(CaptureSessionText.GetLayoutUnusableContinuousText(layoutText),Controller.IndicatorText);
+			StringAssert.EndsWith(Controller.IndicatorText,"Do not expose again; end the series.");
+			Assert.AreEqual(0,_harness.Twain.ListDisables.Count,"Design 7.6, 10.6: no disable of the fork's own without safe disable.");
+			_harness.Status(TwainCaptureState.WaitingForImage,layoutUnusableText:layoutText);
+			Assert.AreEqual(CaptureIndicatorState.Error,Controller.IndicatorState,"Never invites another exposure of that enable.");
+			Assert.AreEqual(1,_harness.ListLogFile.Count(x => x.Contains("16-bit layout not usable") && x.Contains("rest of this session")),
+				"Logged once.");
+			Assert.IsTrue(_harness.Execute(CaptureSessionAction.Disable));
+			_harness.Clock.Advance(3000);
+			Assert.IsTrue(_harness.Execute(CaptureSessionAction.Disable),"The second press goes ahead without safe disable.");
+			CollectionAssert.AreEqual(new[] { TwainCaptureStopReason.Cancel },_harness.Twain.ListDisables);
+			_harness.Ended(TwainCaptureEndReason.Stopped,ended => {
+				ended.StopReason=TwainCaptureStopReason.Cancel;
+				ended.BitsRequested=16;
+				ended.BitDepthInEffect=16;
+				ended.TransferFailureCount=1;
+				ended.LayoutUnusableText=layoutText;
+			});
+			_harness.Arm();
+			Assert.IsTrue(_harness.Start(),Controller.IndicatorText);
+			Assert.AreEqual(8,_harness.Twain.LastRequest.Bits,"8 bits for the rest of the session on this device.");
+			_harness.Status(TwainCaptureState.WaitingForImage);
+			Assert.AreEqual(CaptureIndicatorState.WaitingForExposure,Controller.IndicatorState,"The new enable at 8 bits invites the exposure.");
+		}
 		#endregion Bit depth
 
 		#region Texts

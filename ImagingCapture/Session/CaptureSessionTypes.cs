@@ -117,6 +117,9 @@ namespace ImagingCapture.Session {
 		///<summary>A capture event for a stop without safe disable was already written for it (the forced close), so its Ended does not write
 		///another one (design 7.13).</summary>
 		public bool IsUnsafeStopLogged { get; set; }
+		///<summary>A continuous enable without safe disable that stays enabled after an image of more than 8 bits came in a layout that cannot be
+		///read (TwainCaptureStatus.LayoutUnusableText): the text, else null. The indicator never invites another exposure of it.</summary>
+		public string LayoutUnusableText { get; set; }
 	}
 
 	///<summary>One slot of the mount, for the slot mini-map (design 7.3 step 3): every capture slot in ItemOrder, the target highlighted.</summary>

@@ -421,6 +421,58 @@ namespace ImagingDeviceManager.Tests {
 			_harness.AssertDisabledOnlyInState5();
 		}
 
+		///<summary>A continuous enable at 14 bits whose source packs its samples (BitsPerPixel 14): two exposures, ContinuousIntervalMs apart.</summary>
+		private void ConfigureContinuousPacked14() {
+			Helper.SupportsContinuous=true;
+			Helper.End=FakeHelperEnd.Never;
+			Helper.ContinuousIntervalMs=1000;
+			Helper.ListBitDepths=new List<int> { 8,14 };
+			Helper.BitsPerPixelAt14=14;
+			Helper.ListExposures.Clear();
+			Helper.ListExposures.Add(TwainCapturePathTests.ExposureWith14(6,4));
+			Helper.ListExposures.Add(TwainCapturePathTests.ExposureWith14(6,4));
+			Options.SessionMode=TwainSessionMode.Continuous;
+			Options.ContinuousCap=FakeHelperSource.CapContinuous;
+		}
+
+		[TestMethod]
+		public void Continuous_Bits14_PackedLayout_WithSafeDisable_StoppedAfterTheFirstImage_NoSecondExposureLost() {
+			ConfigureContinuousPacked14();
+			ConfigureSafeDisable();
+			_harness.OpenOrFail();
+			TwainCaptureEnded ended=_harness.WaitForEnded(EnableOne(14));
+			Assert.AreEqual(TwainCaptureEndReason.TransferFailed,ended.Reason,ended.ErrorText);
+			Assert.AreEqual(TwainCaptureStopReason.Error,ended.StopReason);
+			Assert.IsTrue(ended.IsSafeDisableInEffect);
+			StringAssert.StartsWith(ended.LayoutUnusableText,"14-bit layout not usable: ");
+			Assert.AreEqual(1,ended.TransferFailureCount,"The enable stopped at the first image it could not read: "+_harness.LogText);
+			Assert.AreEqual(0,_harness.Images.Count);
+			Assert.IsTrue(_harness.HasLog("it is stopped after the image that could not be read"),_harness.LogText);
+			Thread.Sleep(1200);
+			Assert.AreEqual(1,_harness.CountEnded);
+			Assert.AreEqual(4,Helper.State,"The source is disabled: the second exposure is never taken for an enable that would lose it.");
+			Assert.AreEqual(1,Helper.CountKeptForRedelivery,"Only the first exposure was offered.");
+		}
+
+		[TestMethod]
+		public void Continuous_Bits14_PackedLayout_WithoutSafeDisable_StaysEnabled_StatusSaysSoAtOnce() {
+			ConfigureContinuousPacked14();
+			_harness.OpenOrFail();
+			int enableId=EnableOne(14);
+			_harness.WaitUntil(() => _harness.ListStatus.Any(x => x.EnableId==enableId && x.LayoutUnusableText!=null),"the status after the failure");
+			Assert.AreEqual(0,_harness.CountEnded,"Without safe disable the fork starts no disable of its own (design 7.6, 10.6).");
+			Assert.AreEqual(1,_harness.CountLogLines("image not received from"),"Raised right after the first failure: "+_harness.LogText);
+			TwainCaptureStatus status=_harness.Statuses.First(x => x.EnableId==enableId && x.LayoutUnusableText!=null);
+			StringAssert.StartsWith(status.LayoutUnusableText,"14-bit layout not usable: ");
+			_harness.WaitUntil(() => _harness.ListStatus.Last().State==TwainCaptureState.WaitingForImage,"waiting again");
+			Assert.IsNotNull(_harness.Statuses.Last().LayoutUnusableText,"Every later status of the enable carries it.");
+			Capture.Disable(TwainCaptureStopReason.End);
+			TwainCaptureEnded ended=_harness.WaitForEnded(enableId);
+			Assert.AreEqual(TwainCaptureStopReason.End,ended.StopReason);
+			StringAssert.StartsWith(ended.LayoutUnusableText,"14-bit layout not usable: ");
+			Assert.IsFalse(_harness.Statuses.Any(x => x.EnableId!=enableId && x.LayoutUnusableText!=null),"Only that enable's statuses.");
+		}
+
 		[TestMethod]
 		public void JournalSidecar_RecordsSessionEnableMetadataAndDeviceProfile() {
 			Capture.QuarantineContext=new TwainCaptureQuarantineContext(77,"Doe, Jane");

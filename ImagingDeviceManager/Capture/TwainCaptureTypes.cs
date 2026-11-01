@@ -205,6 +205,12 @@ namespace ImagingDeviceManager.Capture {
 		///from WaitingForImage on. The session window uses it to decide, while the enable runs, whether it may disable on its own (design 7.6,
 		///7.11): without it every disable it starts may lose an exposure.</summary>
 		public bool IsSafeDisableInEffect { get; set; }
+		///<summary>A continuous enable that stays enabled after a transfer failed because an image of more than 8 bits came in a layout the library
+		///cannot read (TwainCaptureEnded.LayoutUnusableText), safe disable not being in effect: that text, on the status raised right after the
+		///failure and on every later status of the enable, else null. Every later exposure of the enable would fail the same way, so the session
+		///window tells the operator at once not to expose again and to end the series. With safe disable in effect the library stops the enable
+		///instead, and it ends TransferFailed.</summary>
+		public string LayoutUnusableText { get; set; }
 	}
 
 	public enum TwainCaptureOpenError {
