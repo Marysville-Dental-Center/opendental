@@ -477,7 +477,8 @@ namespace ImagingCapture.Session {
 					Label=MountPlacement.GetSlotLabel(mountItem),
 					Document=_mountSlots.ListDocuments[i],
 					IsTarget=i==_mountSlots.IdxTarget,
-					IsEnableTarget=_enableRunning!=null && GetNextImageIdx(_enableRunning)==i,
+					//"Its image goes here" never marks a slot the running enable's next image does not go to (GetNoSlotLeftText).
+					IsEnableTarget=_enableRunning!=null && GetNextImageIdx(_enableRunning)==i && GetNoSlotLeftText(_enableRunning)==null,
 					IsSkipped=_hashSetSkipped.Contains(i),
 				});
 			}
@@ -811,9 +812,15 @@ namespace ImagingCapture.Session {
 			if(_setup.Options.SessionMode==TwainSessionMode.Continuous && _enableRunning.CountReceived>0) {
 				_idxTargetChosen=null;//design 7.11: in continuous mode only the target changes; nothing is disabled
 				NextTargetText="";
-				if(IndicatorState==CaptureIndicatorState.WaitingForExposure) {
-					//The next image goes to the new target (ReceiveImage): the indicator says so at once (design 7.3 step 3).
-					SetIndicator(CaptureIndicatorState.WaitingForExposure,CaptureSessionText.WaitingForExposure+": "+GetEnableTargetText(_enableRunning));
+				bool isNoSlotLeftShowing=IndicatorState==CaptureIndicatorState.Error
+					&& (_indicatorText==CaptureSessionText.OnlySkippedLeftContinuous || _indicatorText==CaptureSessionText.MountFullContinuous);
+				if(IndicatorState==CaptureIndicatorState.WaitingForExposure || isNoSlotLeftShowing) {
+					//The next image goes to the new target (ReceiveImage): the indicator says so at once (design 7.3 step 3). A skipped slot tapped
+					//while only skipped slots were left is no longer skipped, so the next image has a slot again.
+					ShowWaitingForExposure(_enableRunning);
+				}
+				if(NoticeText==CaptureSessionText.OnlySkippedLeftContinuous && GetNoSlotLeftText(_enableRunning)==null) {
+					NoticeText="";
 				}
 				return true;
 			}
@@ -1058,8 +1065,15 @@ namespace ImagingCapture.Session {
 						SetIndicator(CaptureIndicatorState.Error,CaptureSessionText.PausedAfterSaveFailureIndicator);
 						break;
 					}
-					if(status.State==TwainCaptureState.WaitingForImage) {
-						SetIndicator(CaptureIndicatorState.WaitingForExposure,CaptureSessionText.WaitingForExposure+": "+GetEnableTargetText(record));
+					if(Phase==CaptureSessionPhase.Stopping) {
+						//The session is disabling this enable (End, a full mount, only skipped slots left, a target change). The library reports the
+						//state 5 it is back in after each continuous transfer, queued behind the image, before it takes the stop: the indicator keeps
+						//Saved or Stopping and never invites an exposure while the source is stopping.
+						break;
+					}
+					if(status.State==TwainCaptureState.WaitingForImage || GetNoSlotLeftText(record)!=null) {
+						//With no slot left for a continuous enable's next image, also a transfer keeps saying that it goes to unassigned captures.
+						ShowWaitingForExposure(record);
 					}
 					else {
 						SetIndicator(CaptureIndicatorState.Receiving,CaptureSessionText.Receiving);
@@ -1100,6 +1114,31 @@ namespace ImagingCapture.Session {
 				return -1;
 			}
 			return record.IsContinuous && record.CountReceived>0 ? _mountSlots.IdxTarget : record.IdxTarget;
+		}
+
+		///<summary>A continuous enable that delivered an image and has no slot left for its next one, which ReceiveImage quarantines: every slot
+		///has an image (MountFullContinuous), or only skipped slots are left and the target stays on one (OnlySkippedLeftContinuous). It still
+		///runs when safe disable is not in effect (SaveImage). Null when its next image has a slot.</summary>
+		private string GetNoSlotLeftText(CaptureEnableRecord record) {
+			if(record==null || IsSingleTarget || !record.IsContinuous || record.CountReceived==0) {
+				return null;
+			}
+			int idx=GetNextImageIdx(record);
+			if(idx==-1) {
+				return CaptureSessionText.MountFullContinuous;
+			}
+			return _hashSetSkipped.Contains(idx) ? CaptureSessionText.OnlySkippedLeftContinuous : null;
+		}
+
+		///<summary>The indicator while record's enable waits for an exposure (design 7.3 step 3): where its next image goes, or, when it has no
+		///slot left for it (GetNoSlotLeftText), that its images go to unassigned captures, in a state that never invites an exposure.</summary>
+		private void ShowWaitingForExposure(CaptureEnableRecord record) {
+			string textNoSlotLeft=GetNoSlotLeftText(record);
+			if(textNoSlotLeft!=null) {
+				SetIndicator(CaptureIndicatorState.Error,textNoSlotLeft);
+				return;
+			}
+			SetIndicator(CaptureIndicatorState.WaitingForExposure,CaptureSessionText.WaitingForExposure+": "+GetEnableTargetText(record));
 		}
 
 		private void OnImageAcquired(ITwainCaptureSession session,AcquiredImage image) {

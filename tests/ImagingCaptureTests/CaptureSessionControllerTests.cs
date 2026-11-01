@@ -647,6 +647,105 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void Continuous_OnlySkippedSlotsLeft_WithoutSafeDisable_TheIndicatorAndTheMiniMapNeverInviteAnExposureForTheSkippedSlot() {
+			_harness.Setup.Options.SessionMode=TwainSessionMode.Continuous;
+			_harness.Started();
+			_harness.Status(TwainCaptureState.WaitingForImage,isSafeDisableInEffect:false);
+			_harness.Image();
+			Assert.IsTrue(_harness.Execute(CaptureSessionAction.Skip),"Slot 2 is skipped; slot 3 is the target.");
+			_harness.Image();
+			Assert.AreEqual(103,_harness.RadiographStore.ListDocumentsUpdated.Last().MountItemNum);
+			Assert.AreEqual(102,Controller.MountSlots.Target.MountItemNum,"The target stays on the skipped slot.");
+			//The library's status after the transfer: the continuous enable still runs.
+			_harness.Status(TwainCaptureState.WaitingForImage,isSafeDisableInEffect:false);
+			Assert.AreNotEqual(CaptureIndicatorState.WaitingForExposure,Controller.IndicatorState);
+			Assert.AreEqual(CaptureSessionText.OnlySkippedLeftContinuous,Controller.IndicatorText);
+			StringAssert.DoesNotMatch(Controller.IndicatorText,new System.Text.RegularExpressions.Regex("2 of 3"),"Never names the skipped slot.");
+			Assert.IsFalse(Controller.GetSlotViews().Any(x => x.IsEnableTarget),"No slot shows \"its image goes here\".");
+			_harness.Status(TwainCaptureState.Transferring,isSafeDisableInEffect:false);
+			Assert.AreEqual(CaptureSessionText.OnlySkippedLeftContinuous,Controller.IndicatorText,"Not \"Receiving\" an image that will not be placed.");
+			_harness.Image();
+			Assert.AreEqual(CaptureSessionText.OnlySkippedLeftReason,_harness.Twain.ListQuarantined.Single().Reason,"Where the indicator said it goes.");
+			_harness.Status(TwainCaptureState.WaitingForImage,isSafeDisableInEffect:false);
+			Assert.AreEqual(CaptureIndicatorState.Error,Controller.IndicatorState);
+			Assert.AreEqual(CaptureSessionPhase.Enabled,Controller.Phase);
+		}
+
+		[TestMethod]
+		public void Continuous_FullMountWithoutSafeDisable_TheIndicatorSaysFurtherImagesGoToUnassignedCaptures() {
+			_harness.Setup.Options.SessionMode=TwainSessionMode.Continuous;
+			_harness.Started();
+			_harness.Status(TwainCaptureState.WaitingForImage,isSafeDisableInEffect:false);
+			_harness.Image();
+			_harness.Image();
+			_harness.Image();
+			_harness.Status(TwainCaptureState.WaitingForImage,isSafeDisableInEffect:false);
+			Assert.AreEqual(CaptureIndicatorState.Error,Controller.IndicatorState,"Not \"waiting for exposure: every slot has an image\".");
+			Assert.AreEqual(CaptureSessionText.MountFullContinuous,Controller.IndicatorText);
+			Assert.IsFalse(Controller.GetSlotViews().Any(x => x.IsEnableTarget));
+		}
+
+		[TestMethod]
+		public void Continuous_OnlySkippedSlotsLeft_WithSafeDisable_TheStatusQueuedBehindTheImage_NoInvitationWhileStopping() {
+			_harness.Setup.Options.SessionMode=TwainSessionMode.Continuous;
+			_harness.Started();
+			_harness.Status(TwainCaptureState.WaitingForImage,isSafeDisableInEffect:true);
+			_harness.Image();
+			Assert.IsTrue(_harness.Execute(CaptureSessionAction.Skip));
+			_harness.Image();
+			Assert.AreEqual(CaptureSessionPhase.Stopping,Controller.Phase,"Only the skipped slot is left: the enable is being disabled.");
+			Assert.AreEqual(CaptureIndicatorState.Saved,Controller.IndicatorState);
+			string textSaved=Controller.IndicatorText;
+			//The library raises WaitingForImage after every continuous transfer, queued behind the image, before it takes the stop.
+			_harness.Status(TwainCaptureState.WaitingForImage,isSafeDisableInEffect:true);
+			Assert.AreEqual(CaptureIndicatorState.Saved,Controller.IndicatorState,"The indicator does not invite an exposure while stopping.");
+			Assert.AreEqual(textSaved,Controller.IndicatorText);
+			Assert.IsFalse(Controller.GetSlotViews().Any(x => x.IsEnableTarget));
+			_harness.Status(TwainCaptureState.Stopping,isSafeDisableInEffect:true);
+			Assert.AreEqual(textSaved,Controller.IndicatorText,"Saved stays while the source stops.");
+			_harness.Ended(TwainCaptureEndReason.Stopped,ended => ended.StopReason=TwainCaptureStopReason.TargetChanged);
+			Assert.AreEqual(CaptureStartKind.TakeSkipped,Controller.StartKind);
+		}
+
+		[TestMethod]
+		public void Continuous_FullMountWithSafeDisable_TheStatusQueuedBehindTheLastImage_NoInvitationWhileStopping() {
+			_harness.Setup.Options.SessionMode=TwainSessionMode.Continuous;
+			_harness.Started();
+			_harness.Status(TwainCaptureState.WaitingForImage,isSafeDisableInEffect:true);
+			_harness.Image();
+			_harness.Image();
+			_harness.Image();
+			Assert.AreEqual(CaptureSessionPhase.Stopping,Controller.Phase);
+			_harness.Status(TwainCaptureState.WaitingForImage,isSafeDisableInEffect:true);
+			Assert.AreEqual(CaptureIndicatorState.Saved,Controller.IndicatorState);
+			StringAssert.StartsWith(Controller.IndicatorText,"Saved to slot 3");
+		}
+
+		[TestMethod]
+		public void Continuous_OnlySkippedSlotsLeft_ASkippedSlotTapped_TheNextImageHasASlotAgain_TheIndicatorSaysSo() {
+			_harness=new CaptureControllerHarness(4);
+			_harness.Setup.Options.SessionMode=TwainSessionMode.Continuous;
+			_harness.Started();
+			_harness.Status(TwainCaptureState.WaitingForImage,isSafeDisableInEffect:false);
+			_harness.Image();
+			Assert.IsTrue(_harness.Execute(CaptureSessionAction.Skip),"Slot 2 skipped; slot 3 is the target.");
+			Assert.IsTrue(_harness.Execute(CaptureSessionAction.Skip),"Slot 3 skipped; slot 4 is the target.");
+			_harness.Image();
+			Assert.AreEqual(104,_harness.RadiographStore.ListDocumentsUpdated.Last().MountItemNum);
+			_harness.Status(TwainCaptureState.WaitingForImage,isSafeDisableInEffect:false);
+			Assert.AreEqual(CaptureSessionText.OnlySkippedLeftContinuous,Controller.IndicatorText);
+			Assert.AreEqual(102,Controller.MountSlots.Target.MountItemNum);
+			int idxSlot3=Controller.GetSlotViews().Single(x => x.MountItem.MountItemNum==103).Idx;
+			Assert.IsTrue(Controller.SelectSlot(idxSlot3),"The operator taps the skipped slot 3: it is no longer skipped.");
+			Assert.AreEqual(CaptureIndicatorState.WaitingForExposure,Controller.IndicatorState);
+			StringAssert.StartsWith(Controller.IndicatorText,CaptureSessionText.WaitingForExposure+": 3 of 4:");
+			Assert.AreEqual("",Controller.NoticeText);
+			Assert.AreEqual(103,Controller.GetSlotViews().Single(x => x.IsEnableTarget).MountItem.MountItemNum);
+			_harness.Image();
+			Assert.AreEqual(103,_harness.RadiographStore.ListDocumentsUpdated.Last().MountItemNum,"Placed where the indicator said.");
+		}
+
+		[TestMethod]
 		public void PerSlot_ASecondImageDrainedByAStop_IsExtra_QuarantinedWithoutItsEnablesSlot() {
 			_harness.Started();
 			_harness.Status(TwainCaptureState.WaitingForImage);
