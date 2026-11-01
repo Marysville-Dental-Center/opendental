@@ -31,25 +31,30 @@ namespace OpenDentBusiness.VendorDirect.ProgramLinks {
 		///<summary>Replaced with the selected patient's PatNum, or blank when no patient is selected.</summary>
 		public const string TagPatNum="[PatNum]";
 
-		///<summary>Inserts the program row (Enabled=0) with its Family module button if it is missing, and the default Dashboard Address and Client
-		///Key rows if they are missing. An existing row's buttons are never changed. Never calls Clerri. Returns true if anything was inserted. The
-		///caller refreshes the caches and signals InvalidType.Programs and InvalidType.ToolButsAndMounts.</summary>
+		///<summary>The row this program inserts: no path (the dashboard address is a property) and the Family module button "Clerri". The two property
+		///rows are not in the definition: they need the credential flags, so EnsureProgram adds them through VendorCredentials.</summary>
+		public static BridgeLinkDefinition GetDefinition() {
+			Meth.NoCheckMiddleTierRole();
+			BridgeLinkDefinition definition=new BridgeLinkDefinition();
+			definition.ProgName=ProgramName.Clerri;
+			definition.ProgDesc=ProgDesc;
+			definition.ButtonText=ButtonText;
+			definition.ListToolBars=new List<EnumToolBar> { ToolBar };
+			return definition;
+		}
+
+		///<summary>Inserts the program row (Enabled=0) with its Family module button if it is missing (BridgeLinkRows, shared with the other program
+		///links), and the default Dashboard Address and Client Key rows if they are missing. An existing row's buttons are never changed. Never calls
+		///Clerri. Returns true if anything was inserted. The caller refreshes the caches and signals InvalidType.Programs and
+		///InvalidType.ToolButsAndMounts.</summary>
 		public static bool EnsureProgram() {
 			Meth.NoCheckMiddleTierRole();
-			bool isInsertedProgram=Programs.InsertIfMissing(ProgramName.Clerri,ProgDesc);
-			bool isInserted=isInsertedProgram;
+			bool isInserted=BridgeLinkRows.EnsureProgram(GetDefinition());
 			Program program=Programs.GetCur(ProgramName.Clerri);
-			if(program==null || isInsertedProgram) {
-				Programs.RefreshCache();
-				program=Programs.GetCur(ProgramName.Clerri);
-			}
 			if(program==null) {
 				return isInserted;
 			}
 			long programNum=program.ProgramNum;
-			if(isInsertedProgram) {
-				InsertToolbarButton(programNum);
-			}
 			List<ProgramProperty> listProgramProperties=ProgramProperties.GetWhere(x => x.ProgramNum==programNum && x.ClinicNum==0);
 			if(!listProgramProperties.Any(x => x.PropertyDesc==PropDashboardAddress)) {
 				VendorCredentials.EnsureSetting(programNum,PropDashboardAddress);
@@ -100,8 +105,8 @@ namespace OpenDentBusiness.VendorDirect.ProgramLinks {
 			return !isEnabledSaved && !isEnabledChecked;
 		}
 
-		///<summary>Null if the dashboard address can be opened: an absolute https address with a host, once the tags are filled in. Otherwise why not.
-		///</summary>
+		///<summary>Null if the dashboard address can be opened: an absolute https address with a host, no user name and not on a host this program
+		///never contacts (BridgeLaunch.CheckWebAddress), once the tags are filled in. Otherwise why not.</summary>
 		public static string ValidateDashboardAddress(string dashboardAddress) {
 			Meth.NoCheckMiddleTierRole();
 			if(string.IsNullOrWhiteSpace(dashboardAddress)) {
@@ -109,20 +114,31 @@ namespace OpenDentBusiness.VendorDirect.ProgramLinks {
 			}
 			//Check the address as it will be opened, with sample values in the tags.
 			string sample=ReplaceTag(ReplaceTag(dashboardAddress.Trim(),TagClientKey,"key"),TagPatNum,"1");
-			if(!IsHttpsAddress(sample)) {
-				return "The dashboard address must be a complete address that starts with https://.";
-			}
-			return null;
+			return GetAddressProblem(sample);
 		}
 
-		///<summary>True if address is an absolute https URL with a host and no user name or password in it.</summary>
+		///<summary>True if address is an absolute https URL with a host, no user name or password in it, and not on a blocked host.</summary>
 		public static bool IsHttpsAddress(string address) {
 			Meth.NoCheckMiddleTierRole();
-			Uri uri;
-			if(!Uri.TryCreate((address??"").Trim(),UriKind.Absolute,out uri)) {
-				return false;
+			return GetAddressProblem(address)==null;
+		}
+
+		///<summary>Null if the finished address can be opened, else why not. The https and blocked-host rules are the ones every web program link uses
+		///(BridgeLaunch.CheckWebAddress); a user name or password in the address is refused on top of them.</summary>
+		private static string GetAddressProblem(string address) {
+			const string NOT_HTTPS="The dashboard address must be a complete address that starts with https://.";
+			BridgeLaunchProblem problem=BridgeLaunch.CheckWebAddress(address);
+			if(problem==BridgeLaunchProblem.PathBlocked) {
+				return BridgeLaunch.Describe(BridgeLaunchProblem.PathBlocked);
 			}
-			return uri.Scheme==Uri.UriSchemeHttps && uri.Host!="" && uri.UserInfo=="";
+			if(problem!=BridgeLaunchProblem.None) {
+				return NOT_HTTPS;
+			}
+			Uri uri;
+			if(!Uri.TryCreate(address.Trim(),UriKind.Absolute,out uri) || uri.UserInfo!="") {
+				return NOT_HTTPS;
+			}
+			return null;
 		}
 
 		///<summary>The address to open: dashboardAddress with [ClientKey] replaced by the URL-encoded clientKey and [PatNum] by patNum (blank when 0).
@@ -141,8 +157,8 @@ namespace OpenDentBusiness.VendorDirect.ProgramLinks {
 			}
 			address=ReplaceTag(address,TagClientKey,Uri.EscapeDataString((clientKey??"").Trim()));
 			address=ReplaceTag(address,TagPatNum,patNum>0 ? POut.Long(patNum) : "");
-			if(!IsHttpsAddress(address)) {
-				error="The dashboard address must be a complete address that starts with https://.";
+			error=GetAddressProblem(address);
+			if(error!=null) {
 				return null;
 			}
 			return address;

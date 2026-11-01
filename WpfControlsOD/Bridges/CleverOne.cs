@@ -30,8 +30,7 @@ namespace OpenDental.Bridges{
 				}
 			}
 			if(pat!=null) {
-				bool useChartNumber=CleverOneProgram.UsesChartNumber(
-					ProgramProperties.GetPropVal(ProgramCur.ProgramNum,CleverOneProgram.PropPatOrChartNum,0));
+				bool useChartNumber=CleverOneProgram.UsesChartNumber(ProgramCur);
 				string xml=CleverOneProgram.BuildLinkageXml(pat,useChartNumber);
 				try {
 					ODFileUtils.WriteAllText(linkage,xml);

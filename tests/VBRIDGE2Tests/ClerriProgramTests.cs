@@ -2,6 +2,7 @@
 // never called; the sample addresses use the reserved example.com domain.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
+using CodeBase.VendorDirect;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenDentBusiness;
 using OpenDentBusiness.VendorDirect.ProgramLinks;
@@ -74,6 +75,22 @@ namespace VBRIDGE2Tests {
 				Assert.IsNotNull(error,"Address: "+address);
 				Assert.IsNotNull(ClerriProgram.ValidateDashboardAddress(address),"Address: "+address);
 			}
+		}
+
+		[TestMethod]
+		public void Url_NeverOpensAHostThisProgramDoesNotContact() {
+			//The blocked-host rule every web program link uses (BridgeLaunch.CheckWebAddress, CodeBase.VendorDirect.HqHosts).
+			string blocked="https://dashboard."+HqHosts.BlockedDomains[0]+"/office?key=[ClientKey]";
+			string blockedMessage=BridgeLaunch.Describe(BridgeLaunchProblem.PathBlocked);
+			Assert.AreEqual(blockedMessage,ClerriProgram.ValidateDashboardAddress(blocked));
+			string error;
+			Assert.IsNull(ClerriProgram.BuildDashboardUrl(blocked,"k",1,out error));
+			Assert.AreEqual(blockedMessage,error);
+			//A tag in the host passes the check with its sample value, so the finished address is checked again.
+			Assert.IsNull(ClerriProgram.ValidateDashboardAddress("https://[ClientKey]/office"));
+			Assert.IsNull(ClerriProgram.BuildDashboardUrl("https://[ClientKey]/office",HqHosts.BlockedDomains[0],1,out error));
+			Assert.AreEqual(blockedMessage,error);
+			Assert.IsFalse(ClerriProgram.IsHttpsAddress("https://"+HqHosts.BlockedDomains[0]+"/"));
 		}
 
 		[TestMethod]

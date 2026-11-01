@@ -11,14 +11,16 @@ namespace VBRIDGE2Tests {
 	[TestClass]
 	public class WiringTests {
 		[TestMethod]
-		public void ProgramName_NewValuesAreAlphabeticalAndTheVendorDirectOnesStayLast() {
+		public void ProgramName_NewValuesAreAppendedAfterVBridge1_ExistingNumbersKept() {
 			string[] arrayNames=Enum.GetNames(typeof(ProgramName));
-			int indexCleaRay=Array.IndexOf(arrayNames,"CleaRay");
-			CollectionAssert.AreEqual(new[] { "CleaRay","Clerri","CleverOne","CliniView" },arrayNames.Skip(indexCleaRay).Take(4).ToArray());
-			//The vendor-direct foundation pins these as the last four (VendorDirectTests.FoundationLayoutTests).
-			CollectionAssert.AreEqual(new[] { "Microsoft365Email","GmailApi","USPSAddresses","PostcardMania" },
-				arrayNames.Skip(arrayNames.Length-4).ToArray());
+			//Appended after the V-BRIDGE1 links, the way every program link added since 24.3 is, so no existing value changes its number.
+			int indexDtxStudioAcquire=Array.IndexOf(arrayNames,"DTXStudioAcquire");
+			CollectionAssert.AreEqual(new[] { "DTXStudioAcquire","Clerri","CleverOne" },arrayNames.Skip(indexDtxStudioAcquire).Take(3).ToArray());
+			Assert.AreEqual((int)ProgramName.DTXStudioAcquire+1,(int)ProgramName.Clerri);
+			Assert.AreEqual((int)ProgramName.Clerri+1,(int)ProgramName.CleverOne);
+			//The 24.3 values and the vendor-direct foundation's keep their numbers (VendorDirectTests.FoundationLayoutTests, VBRIDGE1Tests).
 			Assert.AreEqual((int)ProgramName.ZImage+1,(int)ProgramName.Microsoft365Email);
+			Assert.AreEqual((int)ProgramName.CleaRay+1,(int)ProgramName.CliniView,"Nothing is inserted between the 24.3 values.");
 		}
 
 		[TestMethod]
@@ -63,10 +65,12 @@ namespace VBRIDGE2Tests {
 			StringAssert.Contains(clerri,"return ProgramName.Clerri;");
 			StringAssert.Contains(clerri,"return ClerriProgram.EnsureProgram();");
 			string cleverOne=TestPaths.ReadRepoFile("OpenDental","Logic","VendorDirect","CleverOneProgramLinkSetup.cs");
-			StringAssert.Contains(cleverOne,"public class CleverOneProgramLinkSetup:IProgramLinkSetup");
+			//Clever One opens in the standard Program Link window through V-BRIDGE1's StandardProgramLinkSetup.
+			StringAssert.Contains(cleverOne,"public class CleverOneProgramLinkSetup:StandardProgramLinkSetup");
 			StringAssert.Contains(cleverOne,"return ProgramName.CleverOne;");
 			StringAssert.Contains(cleverOne,"return CleverOneProgram.EnsureProgram();");
-			StringAssert.Contains(cleverOne,"new FormProgramLinkEdit()");
+			StringAssert.Contains(TestPaths.ReadRepoFile("OpenDental","Logic","VendorDirect","BridgeProgramLinkSetups.cs"),
+				"public abstract class StandardProgramLinkSetup:IProgramLinkSetup");
 		}
 
 		[TestMethod]

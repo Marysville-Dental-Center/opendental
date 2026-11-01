@@ -92,15 +92,30 @@ namespace VBRIDGE2Tests {
 		}
 
 		[TestMethod]
-		public void UsesChartNumber_OnlyForOne() {
-			Assert.IsTrue(CleverOneProgram.UsesChartNumber("1"));
-			Assert.IsTrue(CleverOneProgram.UsesChartNumber(" 1 "));
-			Assert.IsFalse(CleverOneProgram.UsesChartNumber("0"));
-			Assert.IsFalse(CleverOneProgram.UsesChartNumber(""));
+		public void UsesChartNumber_NoProgramSendsThePatNum() {
+			//The rule itself is BridgePatientTokens.IsChartNumberSelected (only "1"), shared with the V-BRIDGE1 links; ProgramLinksDbTests reads it
+			//from a saved property.
 			Assert.IsFalse(CleverOneProgram.UsesChartNumber(null));
-			Assert.IsFalse(CleverOneProgram.UsesChartNumber("2"));
+			Assert.IsTrue(BridgePatientTokens.IsChartNumberSelected(" 1 "));
+			Assert.IsFalse(BridgePatientTokens.IsChartNumberSelected(""));
+			Assert.IsFalse(BridgePatientTokens.IsChartNumberSelected("2"));
 		}
 
+		[TestMethod]
+		public void Definition_HasTheSetupPageDefaults() {
+			BridgeLinkDefinition definition=CleverOneProgram.GetDefinition();
+			Assert.AreEqual(ProgramName.CleverOne,definition.ProgName);
+			Assert.AreEqual("Clever One by VATECH",definition.ProgDesc);
+			Assert.AreEqual(CleverOneProgram.DefaultPath,definition.Path);
+			Assert.AreEqual("",definition.CommandLine);
+			Assert.AreEqual("Clever One",definition.ButtonText);
+			CollectionAssert.AreEqual(new[] { EnumToolBar.ChartModule },definition.ListToolBars.ToArray());
+			Assert.AreEqual(1,definition.ListProperties.Count);
+			Assert.AreEqual("Enter 0 to use PatientNum, or 1 to use ChartNum",definition.ListProperties[0].Key);
+			Assert.AreEqual("0",definition.ListProperties[0].Value);
+			StringAssert.Contains(definition.Note,"linkage.xml");
+			Assert.IsFalse(definition.Note.Contains("http"),"The note names no web address.");
+		}
 		[TestMethod]
 		public void Defaults_MatchThePublicSetupPage() {
 			Assert.AreEqual(@"C:\Program Files\VATECH\CleverOne\Bin\CleverOne.exe",CleverOneProgram.DefaultPath);

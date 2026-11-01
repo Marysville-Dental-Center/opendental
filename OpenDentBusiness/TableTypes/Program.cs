@@ -72,12 +72,6 @@ namespace OpenDentBusiness{
 		CentralDataStorage,
 		Cerec,
 		CleaRay,
-		///<summary>Clerri membership plans (25.4): a Family module button that opens the office's Clerri dashboard. Launch only, no data sync. The name
-		///Open Dental stores in program.ProgName is not public; this one is the fork's.</summary>
-		Clerri,
-		///<summary>Clever One by VATECH (25.4), the newer VATECH imaging program. The EzDenti link stays. The name Open Dental stores in program.ProgName
-		///is not public; this one is the fork's.</summary>
-		CleverOne,
 		CliniView,
 		ClioSoft,
 		DBSWin,
@@ -216,7 +210,13 @@ namespace OpenDentBusiness{
 		///<summary>DTX Studio: opens the patient in DTX Studio Clinic through DTXsync.exe (Open Dental 25.2).</summary>
 		DTXStudio,
 		///<summary>DTX Studio Acquire: opens the patient in DTX Studio Clinic with acquisition ready (Open Dental 25.2).</summary>
-		DTXStudioAcquire
+		DTXStudioAcquire,
+		//Open Dental 25.4 program links (V-BRIDGE2), appended so existing values keep their numbers. Rows are inserted at runtime with Enabled=0.
+		//The names are the fork's: Open Dental's program.ProgName values for them are not public.
+		///<summary>Clerri membership plans (25.4): a Family module button that opens the office's Clerri dashboard. Launch only, no data sync.</summary>
+		Clerri,
+		///<summary>Clever One by VATECH (25.4), the newer VATECH imaging program. The EzDenti link stays.</summary>
+		CleverOne
 	}
 
 	

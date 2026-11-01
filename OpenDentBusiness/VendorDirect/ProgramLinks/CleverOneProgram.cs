@@ -28,43 +28,44 @@ namespace OpenDentBusiness.VendorDirect.ProgramLinks {
 		///<summary>The hand-off file, written into the folder of the program.</summary>
 		public const string LinkageFileName="linkage.xml";
 
-		///<summary>Inserts the program row (Enabled=0) if it is missing, with the default path and the Chart module button, and the patient id property
-		///if it is missing. An existing row's path and buttons are never changed. Returns true if anything was inserted. The caller refreshes the
-		///caches and signals InvalidType.Programs and InvalidType.ToolButsAndMounts.</summary>
-		public static bool EnsureProgram() {
+		///<summary>The Notes text in Program Links: what the button does, and that the hand-off is the fork's choice.</summary>
+		public const string Note="Starts Clever One for the selected patient. The patient is written to linkage.xml in the program's folder, the way the "
+			+"EzDent-i link does it, without the Social Security number. VATECH has not published how Clever One takes a patient; if Clever One does "
+			+"not open the patient, ask VATECH which hand-off it reads.";
+
+		///<summary>The row this program inserts: the setup page's defaults (path, Chart module button "Clever One", PatientNum/ChartNum property 0).
+		///</summary>
+		public static BridgeLinkDefinition GetDefinition() {
 			Meth.NoCheckMiddleTierRole();
-			bool isInsertedProgram=Programs.InsertIfMissing(ProgramName.CleverOne,ProgDesc);
-			bool isInserted=isInsertedProgram;
-			Program program=Programs.GetCur(ProgramName.CleverOne);
-			if(program==null || isInsertedProgram) {
-				Programs.RefreshCache();
-				program=Programs.GetCur(ProgramName.CleverOne);
-			}
-			if(program==null) {
-				return isInserted;
-			}
-			if(isInsertedProgram) {
-				Program programOld=program.Copy();
-				program.Path=DefaultPath;
-				Programs.Update(program,programOld);
-				ToolButItem toolButItem=new ToolButItem();
-				toolButItem.ProgramNum=program.ProgramNum;
-				toolButItem.ToolBar=DefaultToolBar;
-				toolButItem.ButtonText=DefaultButtonText;
-				ToolButItems.Insert(toolButItem);
-			}
-			long programNum=program.ProgramNum;
-			if(!ProgramProperties.GetWhere(x => x.ProgramNum==programNum && x.PropertyDesc==PropPatOrChartNum && x.ClinicNum==0).Any()) {
-				ProgramProperties.InsertIfMissing(programNum,PropPatOrChartNum,0,"0",false,false);
-				isInserted=true;
-			}
-			return isInserted;
+			BridgeLinkDefinition definition=new BridgeLinkDefinition();
+			definition.ProgName=ProgramName.CleverOne;
+			definition.ProgDesc=ProgDesc;
+			definition.Path=DefaultPath;
+			definition.Note=Note;
+			definition.ButtonText=DefaultButtonText;
+			definition.ListToolBars=new List<EnumToolBar> { DefaultToolBar };
+			definition.ListProperties=new List<KeyValuePair<string,string>> {
+				new KeyValuePair<string,string>(PropPatOrChartNum,"0"),
+			};
+			return definition;
 		}
 
-		///<summary>True if the property asks for the ChartNumber ("1"). Anything else, blank included, sends the PatNum.</summary>
-		public static bool UsesChartNumber(string propertyValue) {
+		///<summary>Inserts the program row (Enabled=0) if it is missing, with the default path and the Chart module button, and the patient id property
+		///if it is missing (BridgeLinkRows, shared with the V-BRIDGE1 links). An existing row's path and buttons are never changed. Returns true if
+		///anything was inserted. The caller refreshes the caches and signals InvalidType.Programs and InvalidType.ToolButsAndMounts.</summary>
+		public static bool EnsureProgram() {
 			Meth.NoCheckMiddleTierRole();
-			return (propertyValue??"").Trim()=="1";
+			return BridgeLinkRows.EnsureProgram(GetDefinition());
+		}
+
+		///<summary>True if the program's "Enter 0 to use PatientNum, or 1 to use ChartNum" property asks for the ChartNumber
+		///(BridgePatientTokens.IsChartNumberSelected: only "1"; anything else, blank included, sends the PatNum).</summary>
+		public static bool UsesChartNumber(Program program) {
+			Meth.NoCheckMiddleTierRole();
+			if(program==null) {
+				return false;
+			}
+			return BridgePatientTokens.IsChartNumberSelected(ProgramProperties.GetValOrDefault(program.ProgramNum,PropPatOrChartNum,0));
 		}
 
 		///<summary>The full path of linkage.xml for the program path: the program's folder. Blank for a blank path.</summary>

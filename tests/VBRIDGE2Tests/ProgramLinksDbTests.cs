@@ -127,6 +127,8 @@ namespace VBRIDGE2Tests {
 			Assert.AreEqual("0",tableProps.Rows[0]["PropertyValue"].ToString());
 			Assert.AreEqual("0",tableProps.Rows[0]["ClinicNum"].ToString());
 			Assert.AreEqual("0",tableProps.Rows[0]["IsMasked"].ToString());
+			Assert.AreEqual(CleverOneProgram.Note,table.Rows[0]["Note"].ToString());
+			Assert.IsFalse(CleverOneProgram.UsesChartNumber(Programs.GetCur(ProgramName.CleverOne)),"The default 0 sends the PatNum.");
 		}
 
 		[TestMethod]
@@ -147,6 +149,7 @@ namespace VBRIDGE2Tests {
 			Assert.AreEqual(1,listToolButItems.Count);
 			Assert.AreEqual(EnumToolBar.ImagingModule,listToolButItems[0].ToolBar);
 			Assert.AreEqual("1",ProgramProperties.GetPropVal(programNum,CleverOneProgram.PropPatOrChartNum,0));
+			Assert.IsTrue(CleverOneProgram.UsesChartNumber(Programs.GetCur(ProgramName.CleverOne)),"The saved 1 sends the ChartNumber.");
 		}
 
 		[TestMethod]
