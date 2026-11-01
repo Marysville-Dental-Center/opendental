@@ -24,10 +24,12 @@ namespace ReportTests {
 		};
 
 		#region Helpers
+		///<summary>The repository root: the first folder above the test assembly with LICENSE and NOTICE (REN-PROOF's rule: never found by the
+		///solution's name).</summary>
 		private static string Root() {
 			DirectoryInfo directoryInfo=new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory);
 			while(directoryInfo!=null) {
-				if(File.Exists(Path.Combine(directoryInfo.FullName,"OpenDental.sln"))) {
+				if(File.Exists(Path.Combine(directoryInfo.FullName,"LICENSE")) && File.Exists(Path.Combine(directoryInfo.FullName,"NOTICE"))) {
 					return directoryInfo.FullName;
 				}
 				directoryInfo=directoryInfo.Parent;
