@@ -15,7 +15,8 @@ namespace OpenDentBusiness {
 	///<summary>The program's default code groups, shared by Procedure Code Tools (Reset Code Groups, Open Dental 25.3.54 and 25.4) and anything else
 	///that needs the default list. The list is the frequency limitation set that Open Dental 22.x created from the old InsBen*Codes preferences
 	///(ConvertDatabases8, ConvertFrequencyLimitationPreferences), in the same order and with the same fixed types, plus the age-limit flags that
-	///the later Fluoride and Sealant conversion set. Only procedure code numbers are listed here; no code descriptions are shipped.</summary>
+	///the later Fluoride and Sealant conversion set, and from Open Dental 26.1 the Insurance History options (ApplyHistoryDefaults, M2-HIST). Only
+	///procedure code numbers are listed here; no code descriptions are shipped.</summary>
 	public static class CodeGroupDefaults {
 		///<summary>One default code group: its name, codes for each code system, fixed type and grid flags.</summary>
 		private class CodeGroupDefault {
@@ -55,9 +56,17 @@ namespace OpenDentBusiness {
 			new CodeGroupDefault("Implants","D6010","",EnumCodeGroupFixed.None),
 		};
 
+		///<summary>The fixed types whose groups are the 24.3 Insurance History rows (Bitewing, Pano/FMX, Exam, Prophy, the four perio scaling
+		///quadrants, Perio Maintenance and Full Mouth Debridement), the categories the M2-HIST migration moves the InsHist*Codes preferences to.
+		///</summary>
+		private static readonly List<EnumCodeGroupFixed> _listCodeGroupFixedHistory=new List<EnumCodeGroupFixed> { EnumCodeGroupFixed.BW,
+			EnumCodeGroupFixed.PanoFMX,EnumCodeGroupFixed.Exam,EnumCodeGroupFixed.Prophy,EnumCodeGroupFixed.SRP,EnumCodeGroupFixed.Perio,
+			EnumCodeGroupFixed.FMDebride };
+
 		///<summary>New (not inserted) code groups for the code system, ItemOrder 0 and up. Every default group is a row of the frequency limitations
 		///grid, as the conversion made them; Fluoride and Sealant also show in the Age Limitations grid. None is retired or shows in Other Benefits
-		///(the 25.3 conversion default).</summary>
+		///(the 25.3 conversion default). The groups of the 24.3 Insurance History rows that have codes show in Insurance History
+		///(ApplyHistoryDefaults).</summary>
 		public static List<CodeGroup> GetDefaults(EnumDentalCodeSystem codeSystem) {
 			List<CodeGroup> listCodeGroups=new List<CodeGroup>();
 			for(int i=0;i<_listDefaults.Count;i++) {
@@ -70,9 +79,26 @@ namespace OpenDentBusiness {
 				codeGroup.ShowInAgeLimit=_listDefaults[i].ShowInAgeLimit;
 				codeGroup.ShowInFrequency=true;
 				codeGroup.ShowInOther=false;
+				ApplyHistoryDefaults(codeGroup);
 				listCodeGroups.Add(codeGroup);
 			}
 			return listCodeGroups;
+		}
+
+		///<summary>The Insurance History options of a default group (Open Dental 26.1; INFERRED, the defaults of 26.1 are not public): a group of one
+		///of the seven 24.3 history categories that has codes shows in Insurance History, with its first code (the start of a range) as History Proc
+		///Code, which is the code the 24.3 preference of the category held by default; the SRP group has four quadrant rows, as the four 24.3 perio
+		///scaling rows. Any other group, or one without codes (most CDA groups), shows no history row. Reset Code Groups calls it again for a default
+		///that takes the codes of the group it replaces (CodeGroupResets).</summary>
+		public static void ApplyHistoryDefaults(CodeGroup codeGroup) {
+			string histProcCode="";
+			if(_listCodeGroupFixedHistory.Contains(codeGroup.CodeGroupFixed)) {
+				string entry=ProcCodeRanges.Parse(codeGroup.ProcCodes??"").ListEntries.FirstOrDefault()??"";
+				histProcCode=entry.Contains("-") && ProcCodeRanges.TryParseRange(entry,out ProcCodeRange _) ? entry.Substring(0,entry.IndexOf('-')) : entry;
+			}
+			codeGroup.ShowInHistory=histProcCode!="";
+			codeGroup.HistProcCode=histProcCode;
+			codeGroup.IsPerioFourQuads=codeGroup.ShowInHistory && codeGroup.CodeGroupFixed==EnumCodeGroupFixed.SRP;
 		}
 
 		///<summary>The code system this computer uses by default: CDA in Canada (en-CA, fr-CA), otherwise CDT.</summary>

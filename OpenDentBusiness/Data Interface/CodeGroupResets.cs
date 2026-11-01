@@ -140,6 +140,7 @@ namespace OpenDentBusiness {
 				}
 				codeGroupNew.ProcCodes=codeGroupResetItemSource.CodeGroupOld.ProcCodes;
 				codeGroupResetItemSource.IsProcCodesKept=true;
+				CodeGroupDefaults.ApplyHistoryDefaults(codeGroupNew);//With codes now, a history category's group gets its Insurance History row (26.1).
 			}
 		}
 

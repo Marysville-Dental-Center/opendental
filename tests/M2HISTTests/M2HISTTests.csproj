@@ -52,6 +52,7 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
@@ -77,6 +78,11 @@
     <ProjectReference Include="..\..\UnitTestsCore\UnitTestsCore.csproj">
       <Project>{7BBDDEDF-C015-43C0-A532-FED224993281}</Project>
       <Name>UnitTestsCore</Name>
+    </ProjectReference>
+    <!-- For the layout test of the Insurance History window: the form is built in memory and never shown. -->
+    <ProjectReference Include="..\..\OpenDental\OpenDental.csproj">
+      <Project>{8136317D-C936-49B6-9E31-D90F02D2F207}</Project>
+      <Name>OpenDental</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
