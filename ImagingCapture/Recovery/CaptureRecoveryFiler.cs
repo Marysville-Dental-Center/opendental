@@ -139,6 +139,9 @@ namespace ImagingCapture.Recovery {
 				error="The originating patient (PatNum "+entry.PatNum+") no longer exists. Use Reassign.";
 				return null;
 			}
+			if(!CheckNoDocumentYet(entry,patient,out error)) {
+				return null;
+			}
 			CaptureAssignPlan plan=new CaptureAssignPlan { Patient=patient };
 			string slotLabel=entry.Slot;
 			Mount mount=entry.MountNum>0 ? Store.GetMount(entry.MountNum) : null;
@@ -230,6 +233,31 @@ namespace ImagingCapture.Recovery {
 				return "This capture has no originating patient, so it can only be reassigned to a patient you find.";
 			}
 			return "This journal copy belongs to another patient's session (PatNum "+entry.PatNum+"), so it can only be reassigned.";
+		}
+
+		///<summary>Design 10.6 "Duplicate capture": one document per TWAIN transfer. False with error when the patient already has a document of this
+		///exposure (CaptureJournalMatch: its captureId in an ImageCreate entry, or its time): its journal copy was filed before, another computer
+		///or window assigned the file, or its earlier move out of the quarantine failed. Also false when the documents cannot be read, because then
+		///nothing can be said to be missing.</summary>
+		private bool CheckNoDocumentYet(CaptureFileEntry entry,Patient patient,out string error) {
+			error="";
+			try {
+				List<Document> listDocuments=Store.GetPatientDocuments(patient.PatNum)??new List<Document>();
+				List<SecurityLog> listSecurityLogs=Store.GetImageCreateLogEntries(patient.PatNum,
+					CaptureJournalMatch.GetDocNumsToCheck(new[] { entry },listDocuments))??new List<SecurityLog>();
+				string how;
+				Document document=CaptureJournalMatch.FindDocument(entry,listDocuments,listSecurityLogs,out how);
+				if(document==null) {
+					return true;
+				}
+				error="The patient already has a document of this exposure (DocNum "+ToText(document.DocNum)+", matched by its "
+					+(how=="captureId" ? "capture ID" : "time")+"), so it is not filed again.";
+				return false;
+			}
+			catch(Exception ex) {
+				error="The patient's documents could not be read, so it cannot be checked that this capture was not filed already: "+ex.Message;
+				return false;
+			}
 		}
 
 		///<summary>The original slot: by MountItemNum, else by its ItemOrder.</summary>

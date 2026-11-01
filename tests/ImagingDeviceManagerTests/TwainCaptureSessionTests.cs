@@ -1061,6 +1061,43 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		[TestMethod]
+		public void QuarantineImage_FromTheWindow_ItsJournalCopySaysQuarantine_SoItIsNotFiledFromTheJournalToo() {
+			Capture.QuarantineContext=new TwainCaptureQuarantineContext(9,"Roe, Ann");
+			_harness.OpenOrFail();
+			_harness.WaitForEnded(EnableOne());
+			AcquiredImage image=_harness.Images.Single();
+			string pathJournal=image.JournalPath;
+			Assert.AreEqual(CaptureJournal.DeliveredCaller,CaptureFiles.ReadSidecar(Path.ChangeExtension(pathJournal,".txt"))["Delivered"]);
+			string error;
+			string path=Capture.QuarantineImage(image,"Could not save: disk full.",false,out error);
+			Assert.IsNotNull(path,error);
+			Assert.AreEqual(pathJournal,image.JournalPath,"Not renamed: the quarantine holds the image.");
+			Dictionary<string,string> dictJournal=CaptureFiles.ReadSidecar(Path.ChangeExtension(image.JournalPath,".txt"));
+			Assert.AreEqual(CaptureJournal.DeliveredQuarantine,dictJournal["Delivered"]);
+			Assert.AreEqual(Path.GetFileName(path),dictJournal["DeliveredDetail"]);
+			Assert.AreEqual("9",dictJournal["PatNum"]);
+			CaptureFileEntry entry=CaptureFileStore.CreateForFolder(_harness.Folder).ListJournal().Single();
+			Assert.IsTrue(entry.IsCopyOfQuarantined,"Recover recent captures leaves it out; it is filed from the quarantine.");
+		}
+
+		[TestMethod]
+		public void QuarantineImage_FromTheWindow_WriteFails_TheJournalCopyIsKeptAsTheOnlyOne() {
+			_harness.OpenOrFail();
+			_harness.WaitForEnded(EnableOne());
+			AcquiredImage image=_harness.Images.Single();
+			//A file where the quarantine folder should be: the quarantine cannot be written.
+			Directory.CreateDirectory(Path.Combine(_harness.Folder,"Capture"));
+			File.WriteAllText(Path.Combine(_harness.Folder,@"Capture\quarantine"),"not a folder");
+			string error;
+			Assert.IsNull(Capture.QuarantineImage(image,"Could not save: disk full.",true,out error));
+			StringAssert.EndsWith(Path.GetFileNameWithoutExtension(image.JournalPath),CaptureJournal.OnlyCopySuffix,"Rotation never removes it.");
+			Dictionary<string,string> dictJournal=CaptureFiles.ReadSidecar(Path.ChangeExtension(image.JournalPath,".txt"));
+			Assert.AreEqual(CaptureJournal.DeliveredNone,dictJournal["Delivered"]);
+			Assert.AreEqual("",dictJournal["PatNum"],"isPatientUnknown: the copy records no patient either.");
+			Assert.AreEqual(1,Directory.GetFiles(Path.GetDirectoryName(image.JournalPath),"*.txt").Length,"The old sidecar is gone.");
+		}
+
+		[TestMethod]
 		public void SidecarFields_OfTheRequest_InTheJournalAndQuarantineSidecars_ReadBackByTheFileStore() {
 			Capture.QuarantineContext=new TwainCaptureQuarantineContext(9,"Roe, Ann");
 			_harness.OpenOrFail();

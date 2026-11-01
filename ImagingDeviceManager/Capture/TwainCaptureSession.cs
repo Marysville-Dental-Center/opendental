@@ -1213,6 +1213,10 @@ namespace ImagingDeviceManager.Capture {
 			}
 		}
 
+		///<summary>Writes image to the quarantine for the window (a failed save, an image that cannot be placed, a declined redelivered image),
+		///then rewrites its journal copy's sidecar as Deliver does after BeginClose: Delivered=Quarantine, so that the copy is filed from the
+		///quarantine and never from the journal too (one exposure, one document), with the same record (PatNum 0 when isPatientUnknown); or, when
+		///the quarantine could not be written, Delivered=None and the -only name, so that rotation keeps the one copy left.</summary>
 		public string QuarantineImage(AcquiredImage image,string reason,bool isPatientUnknown,out string error) {
 			error="";
 			if(image==null) {
@@ -1223,11 +1227,17 @@ namespace ImagingDeviceManager.Capture {
 				CaptureImageFile file=CaptureImageFile.FromAcquiredImage(image);
 				TwainCaptureQuarantineContext context=QuarantineContext;
 				long patNum=isPatientUnknown ? 0 : context.PatNum;
-				string path=_quarantine.WriteSessionCapture(file,BuildRecord(image,patNum),SessionGuid,patNum,
+				CaptureRecord record=BuildRecord(image,patNum);
+				string path=_quarantine.WriteSessionCapture(file,record,SessionGuid,patNum,
 					context.PatientName,image.TargetLabel,reason,Log,out error);
 				image.QuarantinePath=path;
 				Log(path==null ? "An image of enable "+image.EnableId+" could not be quarantined: "+error
 					: "Quarantine image "+Path.GetFileName(path)+" of enable "+image.EnableId+": "+reason);
+				if(!string.IsNullOrEmpty(image.JournalPath) && File.Exists(image.JournalPath)) {
+					image.JournalPath=_journal.SetDelivered(image.JournalPath,file,record,
+						path==null ? CaptureJournal.DeliveredNone : CaptureJournal.DeliveredQuarantine,
+						path==null ? "The quarantine could not be written: "+error : Path.GetFileName(path),Log);
+				}
 				return path;
 			}
 			catch(Exception ex) {

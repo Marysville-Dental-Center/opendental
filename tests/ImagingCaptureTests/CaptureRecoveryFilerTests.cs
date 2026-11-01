@@ -72,6 +72,29 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void Assign_TheExposureAlreadyHasADocument_ByCaptureIdOrTime_NotFiledAgain() {
+			//Design 10.6: one document per TWAIN transfer. Its journal copy was recovered before (or another window assigned the file).
+			CaptureFileEntry entry=_harness.Files.Quarantine(RecoveryFiles.SessionFields(captureId:"cap-7"),_receivedAt);
+			Store.ListPatientDocuments.Add(new Document { DocNum=900,PatNum=42,DateCreated=new DateTime(2026,10,31,8,0,0) });
+			Store.ListSecurityLogsExisting.Add(new SecurityLog { PatNum=42,FKey=900,PermType=EnumPermType.ImageCreate,
+				LogText="Capture: captureId "+CaptureJournalMatch.QuoteLikeTheSaver("cap-7")+", sequence 3." });
+			Assert.IsTrue(CaptureRecoveryFiler.IsAssignOffered(entry,0),"Offered; the plan checks the documents.");
+			string error;
+			Assert.IsNull(_harness.Filer.PlanAssign(entry,0,out error));
+			StringAssert.Contains(error,"already has a document of this exposure (DocNum 900, matched by its capture ID)");
+			CaptureFilingResult result=_harness.Filer.Assign(entry,0,0);
+			Assert.IsFalse(result.IsDone);
+			Assert.AreEqual(0,RadiographStore.ListPatientsImported.Count);
+			Assert.AreEqual(1,_harness.Files.CountQuarantineFiles(),"Stays where it is.");
+			Store.ListSecurityLogsExisting.Clear();
+			DateTime dateExpected=CaptureJournalMatch.GetExpectedDateCreated(entry);
+			Store.ListPatientDocuments[0].DateCreated=new DateTime(dateExpected.Year,dateExpected.Month,dateExpected.Day,dateExpected.Hour,
+				dateExpected.Minute,dateExpected.Second);
+			Assert.IsNull(_harness.Filer.PlanAssign(entry,0,out error));
+			StringAssert.Contains(error,"matched by its time");
+		}
+
+		[TestMethod]
 		public void Assign_OriginalSlotTaken_RecoveredUnmountedItemOfTheOriginalMount_KeepingTheSlotsTeethAndRotation() {
 			Store.DictSlotDocuments[103]=new Document { DocNum=900,PatNum=42,MountItemNum=103 };
 			_harness.Slot(3).RotateOnAcquire=90;
