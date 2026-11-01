@@ -53,6 +53,11 @@ namespace ImagingCapture.Settings {
 			{ "Bits","16" },
 			{ "Allow16Bit","1" },
 		};
+		///<summary>What a missing or empty Bits and Allow16Bit meant before 2026-11-01 (8 and 0), when they were hashed as "".</summary>
+		private static readonly Dictionary<string,string> _dictDefaultsBefore20261101=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase) {
+			{ "Bits","8" },
+			{ "Allow16Bit","0" },
+		};
 
 		///<summary>True for a key this hash covers: a gated key of [Session], [Twain] or any [Device.N] section. Names are case-insensitive.</summary>
 		public static bool IsGatedKey(string section,string key) {
@@ -103,6 +108,22 @@ namespace ImagingCapture.Settings {
 		///The device number is a line of its own, so the hash of one device never matches another's. Throws ArgumentOutOfRangeException
 		///when imagingDeviceNum is not positive.</summary>
 		public static string GetCanonicalText(LocalCaptureConfig config,long imagingDeviceNum) {
+			return GetCanonicalText(config,imagingDeviceNum,true);
+		}
+
+		///<summary>The hash config had under the rule before 2026-11-01, when a missing or empty Bits or Allow16Bit was hashed as "" (and meant 8
+		///and 0): for telling a Capture settings save logged then from a change made outside Open Dental (CaptureSettingsCheck.GetChangedLabels).</summary>
+		internal static string ComputeBefore20261101(LocalCaptureConfig config,long imagingDeviceNum) {
+			return ComputeFromCanonicalText(GetCanonicalText(config,imagingDeviceNum,false));
+		}
+
+		///<summary>For key Bits or Allow16Bit, what its missing or empty value meant before 2026-11-01 ("8", "0"); false for any other key.</summary>
+		internal static bool TryGetDefaultBefore20261101(string key,out string valueDefault) {
+			return _dictDefaultsBefore20261101.TryGetValue((key??"").Trim(),out valueDefault);
+		}
+
+		///<summary>isEmptyAsDefault false: the rule before 2026-11-01 for Bits and Allow16Bit (see ComputeBefore20261101).</summary>
+		private static string GetCanonicalText(LocalCaptureConfig config,long imagingDeviceNum,bool isEmptyAsDefault) {
 			if(imagingDeviceNum<=0) {
 				throw new ArgumentOutOfRangeException(nameof(imagingDeviceNum),"An ImagingDeviceNum is positive.");
 			}
@@ -110,23 +131,29 @@ namespace ImagingCapture.Settings {
 			StringBuilder stringBuilder=new StringBuilder();
 			stringBuilder.Append(FormatName).Append('\n');
 			stringBuilder.Append("Device=").Append(imagingDeviceNum.ToString(CultureInfo.InvariantCulture)).Append('\n');
-			AppendSection(stringBuilder,config,SectionSession,SectionSession,ListSessionKeys);
-			AppendSection(stringBuilder,config,LocalCaptureConfig.SectionTwain,LocalCaptureConfig.SectionTwain,ListTwainKeys);
-			AppendSection(stringBuilder,config,sectionDevice,"Device",ListDeviceKeys);
+			AppendSection(stringBuilder,config,SectionSession,SectionSession,ListSessionKeys,isEmptyAsDefault);
+			AppendSection(stringBuilder,config,LocalCaptureConfig.SectionTwain,LocalCaptureConfig.SectionTwain,ListTwainKeys,isEmptyAsDefault);
+			AppendSection(stringBuilder,config,sectionDevice,"Device",ListDeviceKeys,isEmptyAsDefault);
 			return stringBuilder.ToString();
 		}
 
-		private static void AppendSection(StringBuilder stringBuilder,LocalCaptureConfig config,string section,string label,IEnumerable<string> listKeys) {
+		private static void AppendSection(StringBuilder stringBuilder,LocalCaptureConfig config,string section,string label,IEnumerable<string> listKeys,
+			bool isEmptyAsDefault)
+		{
 			foreach(string key in listKeys) {
 				string value=config==null ? "" : config.GetString(section,key,"");
-				stringBuilder.Append(label).Append('.').Append(key).Append('=').Append(NormalizeValue(key,value)).Append('\n');
+				stringBuilder.Append(label).Append('.').Append(key).Append('=').Append(NormalizeValue(key,value,isEmptyAsDefault)).Append('\n');
 			}
 		}
 
 		///<summary>The canonical form of one value (see the class summary).</summary>
 		internal static string NormalizeValue(string key,string value) {
+			return NormalizeValue(key,value,true);
+		}
+
+		private static string NormalizeValue(string key,string value,bool isEmptyAsDefault) {
 			string valueDefault;
-			if(_dictEmptyAsDefault.TryGetValue((key??"").Trim(),out valueDefault) && NormalizeText(value)=="") {
+			if(isEmptyAsDefault && _dictEmptyAsDefault.TryGetValue((key??"").Trim(),out valueDefault) && NormalizeText(value)=="") {
 				return valueDefault;
 			}
 			if(!_arrayListKeys.Contains(key,StringComparer.OrdinalIgnoreCase)) {

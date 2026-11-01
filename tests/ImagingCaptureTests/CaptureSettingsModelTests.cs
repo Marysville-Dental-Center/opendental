@@ -307,6 +307,23 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void Load_SavedBeforeTheDefaultsChanged_WithoutBitsAndAllow16Bit_BothRowsMarkedChangedOutside() {
+			//A save logged before 2026-11-01 of a file with neither key (then 8 bits, not allowed); the file still has neither (now 16, allowed).
+			const string iniWithout="[Session]\r\nEnabled=1\r\n[Device.12]\r\nPolarity=AsDelivered\r\n";
+			Write(iniWithout);
+			LocalCaptureConfig config=LoadFile();
+			string canonicalOld=GatedSettingsHash.GetCanonicalText(config,12).Replace("\nTwain.Allow16Bit=1\n","\nTwain.Allow16Bit=\n")
+				.Replace("\nDevice.Bits=16\n","\nDevice.Bits=\n");
+			_store.ListLogs.Add(CaptureSettingsTestKit.SavedLog(GatedSettingsHash.ComputeFromCanonicalText(canonicalOld),12,"OPERATORY1",config:config));
+			CaptureSettingsModel model=Model();
+			Assert.AreEqual(CaptureSettingsStatus.ChangedOutside,model.SettingsCheck.Status);
+			Assert.IsTrue(Row(model,"Device","Bits").IsChangedOutside,"Bits 8 to 16 is never accepted unseen.");
+			Assert.IsTrue(Row(model,"Twain","Allow16Bit").IsChangedOutside);
+			Assert.IsFalse(Row(model,"Device","Polarity").IsChangedOutside);
+			StringAssert.Contains(model.SettingsCheck.Text,CaptureSettingsCheck.TextDefaultChanged);
+		}
+
+		[TestMethod]
 		public void Save_EditingAnotherKey_AfterAHandEdit_ListsTheGatedValuesChangedOutside_AsOldAndNew() {
 			Model().Save();
 			Write(Ini.Replace("Allow16Bit=0","Allow16Bit=1").Replace("Bits=8 ; gated","Bits=16 ; gated"));

@@ -54,6 +54,12 @@ namespace ImagingCapture.Settings {
 		///<summary>ChangedOutside: the gated keys whose value differs from the one last saved, by their GatedSettingsHash names
 		///("Twain.Allow16Bit"), when the file was given to the check. Empty otherwise.</summary>
 		public List<string> ListChangedLabels { get; private set; }=new List<string>();
+		///<summary>ChangedOutside: those of ListChangedLabels that differ only because their default changed on 2026-11-01 (Bits 8 to 16,
+		///Allow16Bit 0 to 1): the last save, logged before that, left them empty, which then meant 8 and 0, and the file still leaves them empty,
+		///which now means 16 and 1.</summary>
+		public List<string> ListDefaultChangedLabels { get; private set; }=new List<string>();
+		///<summary>The note for ListDefaultChangedLabels.</summary>
+		public const string TextDefaultChanged="their defaults changed on 2026-11-01: Bits 8 to 16, Allow16Bit 0 to 1";
 
 		public bool IsVerified => Status==CaptureSettingsStatus.Verified;
 
@@ -66,7 +72,11 @@ namespace ImagingCapture.Settings {
 					case CaptureSettingsStatus.ChangedOutside:
 						string details="The gated settings of this device differ from the ones saved in Capture settings on "
 							+LastSaved.DateTimeSaved.ToString("yyyy-MM-dd HH:mm",CultureInfo.InvariantCulture)
-							+(ListChangedLabels.Count==0 ? "" : " ("+string.Join(", ",ListChangedLabels)+")")+".";
+							+(ListChangedLabels.Count==0 ? "" : " ("+string.Join(", ",ListChangedLabels)+")")+"."
+							+(ListDefaultChangedLabels.Count==0 ? "" : " "+string.Join(" and ",ListDefaultChangedLabels)+" were not set, and "
+								+TextDefaultChanged+"; review them and save the settings again.")
+							+(ListChangedLabels.Count==0 ? " No gated value differs as it reads now (the hash may have been logged under an earlier rule: "
+								+TextDefaultChanged+"); review the settings and save them again." : "");
 						return TextChangedOutside+" "+details+" "+TextConsequences;
 					case CaptureSettingsStatus.NeverSaved:
 						return TextNeverSaved+" "+TextConsequences;
@@ -106,7 +116,9 @@ namespace ImagingCapture.Settings {
 			}
 			CaptureSettingsCheck check=CheckHash(hash,imagingDeviceNum,computerName,listSetupLogs);
 			if(check.Status==CaptureSettingsStatus.ChangedOutside) {
-				check.ListChangedLabels=GetChangedLabels(check.LastSaved,config,imagingDeviceNum);
+				List<string> listDefaultChanged;
+				check.ListChangedLabels=GetChangedLabels(check.LastSaved,config,imagingDeviceNum,out listDefaultChanged);
+				check.ListDefaultChangedLabels=listDefaultChanged;
 			}
 			return check;
 		}
@@ -165,18 +177,61 @@ namespace ImagingCapture.Settings {
 
 		///<summary>The gated keys whose value in config differs from the one saved in entry, compared the way GatedSettingsHash compares them.</summary>
 		public static List<string> GetChangedLabels(CaptureSettingsLogEntry entry,LocalCaptureConfig config,long imagingDeviceNum) {
+			List<string> listDefaultChanged;
+			return GetChangedLabels(entry,config,imagingDeviceNum,out listDefaultChanged);
+		}
+
+		///<summary>GetChangedLabels; listDefaultChanged: those that differ only because their default changed on 2026-11-01. A save logged before
+		///that (its hash is the one of its own values under the rule then: CaptureSettingsLogEntry.GatedSettingsHash equals
+		///GatedSettingsHash.ComputeBefore20261101 of them) that left Bits or Allow16Bit empty meant 8 or 0, so a file that still leaves them empty
+		///(now 16 and 1) changed them, and they are listed, never accepted unseen (design 9.3, 10.7).</summary>
+		public static List<string> GetChangedLabels(CaptureSettingsLogEntry entry,LocalCaptureConfig config,long imagingDeviceNum,
+			out List<string> listDefaultChanged)
+		{
 			List<string> listLabels=new List<string>();
+			listDefaultChanged=new List<string>();
 			if(entry==null) {
 				return listLabels;
 			}
+			bool isSavedBeforeDefaultChange=IsSavedBefore20261101(entry,imagingDeviceNum);
 			foreach(CaptureSettingDef settingDef in CaptureSettingsCatalog.ListSettings.Where(x => x.IsGated)) {
 				string valueSaved=entry.GetGatedValue(settingDef.Label)??"";
 				string valueNow=config==null ? "" : config.GetString(settingDef.GetSectionName(imagingDeviceNum),settingDef.Key,"");
-				if(GatedSettingsHash.NormalizeValue(settingDef.Key,valueSaved)!=GatedSettingsHash.NormalizeValue(settingDef.Key,valueNow)) {
+				string valueDefaultBefore=null;
+				bool isDefaultBefore=isSavedBeforeDefaultChange && valueSaved.Trim()==""
+					&& GatedSettingsHash.TryGetDefaultBefore20261101(settingDef.Key,out valueDefaultBefore);
+				string valueSavedNormalized=isDefaultBefore ? valueDefaultBefore : GatedSettingsHash.NormalizeValue(settingDef.Key,valueSaved);
+				if(valueSavedNormalized!=GatedSettingsHash.NormalizeValue(settingDef.Key,valueNow)) {
 					listLabels.Add(settingDef.Label);
+					if(isDefaultBefore && valueNow.Trim()=="") {
+						listDefaultChanged.Add(settingDef.Label);
+					}
 				}
 			}
 			return listLabels;
+		}
+
+		///<summary>entry was logged under the hash rule before 2026-11-01, and it left Bits or Allow16Bit empty: its hash is the one of its own gated
+		///values under that rule, not under the rule now.</summary>
+		private static bool IsSavedBefore20261101(CaptureSettingsLogEntry entry,long imagingDeviceNum) {
+			if(entry==null || imagingDeviceNum<=0 || string.IsNullOrWhiteSpace(entry.GatedSettingsHash)) {
+				return false;
+			}
+			try {
+				LocalCaptureConfig configSaved=LocalCaptureConfig.Load((string)null);//read the saved values with the same parser as the file's
+				foreach(CaptureSettingDef settingDef in CaptureSettingsCatalog.ListSettings.Where(x => x.IsGated)) {
+					string valueSaved=entry.GetGatedValue(settingDef.Label);
+					if(!string.IsNullOrEmpty(valueSaved)) {
+						configSaved.Set(settingDef.GetSectionName(imagingDeviceNum),settingDef.Key,valueSaved);
+					}
+				}
+				string hashSaved=entry.GatedSettingsHash.Trim();
+				return string.Equals(hashSaved,GatedSettingsHash.ComputeBefore20261101(configSaved,imagingDeviceNum),StringComparison.OrdinalIgnoreCase)
+					&& !string.Equals(hashSaved,GatedSettingsHash.Compute(configSaved,imagingDeviceNum),StringComparison.OrdinalIgnoreCase);
+			}
+			catch {
+				return false;
+			}
 		}
 
 		///<summary>The settings the session path uses: optionsFile itself when Verified; otherwise design 9.3's safe values: PerSlot, 8 bits,
