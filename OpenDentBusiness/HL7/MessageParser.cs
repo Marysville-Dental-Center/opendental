@@ -1828,7 +1828,7 @@ namespace OpenDentBusiness.HL7 {
 					break;
 			}
 			if(procCur.ProcStatus==ProcStat.C && dateProc.Date > DateTime.Today.Date && !PrefC.GetBool(PrefName.FutureTransDatesAllowed)) {
-				EventLog.WriteEntry("OpenDentalHL7", "A procedure was not added for patient "+pat.GetNameFLnoPref()+". Procedures are not allowed for future dates.",EventLogEntryType.Information);
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"A procedure was not added for patient "+pat.GetNameFLnoPref()+". Procedures are not allowed for future dates.",EventLogEntryType.Information);
 				return;
 			}
 			#endregion Validate/Convert/Set Treatment Area

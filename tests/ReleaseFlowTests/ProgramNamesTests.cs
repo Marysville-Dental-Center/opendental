@@ -91,8 +91,10 @@ namespace ReleaseFlowTests {
 			//Every HL7 Event Log write names its source through ProgramNames.
 			foreach(string folder in new[] { @"OpenDentBusiness\HL7",@"OpenDentBusiness\HL7old",@"OpenDentHL7" }) {
 				foreach(string path in Directory.GetFiles(Path.Combine(TestPaths.RepoRoot,folder),"*.cs",SearchOption.AllDirectories)) {
-					if(File.ReadAllText(path).Contains("EventLog.WriteEntry(\"OpenDentHL7\",")) {
-						listProblems.Add(path.Substring(TestPaths.RepoRoot.Length+1)+": EventLog.WriteEntry(\"OpenDentHL7\",");
+					//A literal source ("OpenDentHL7", or Open Dental's stray "OpenDentalHL7"); "OpenDentHL7 error ..." messages are not sources.
+					Match match=Regex.Match(File.ReadAllText(path),@"EventLog\.WriteEntry\(\s*""OpenDent\w*""\s*,");
+					if(match.Success) {
+						listProblems.Add(path.Substring(TestPaths.RepoRoot.Length+1)+": "+match.Value);
 					}
 				}
 			}
