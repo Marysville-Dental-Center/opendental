@@ -96,6 +96,13 @@ namespace M2SHELLTests {
 			StringAssert.StartsWith(listChanges[0],"columns ");
 		}
 
+		[TestMethod]
+		public void Permission_IsInTheAuditTrailFilter() {
+			Assert.AreEqual(262,(int)EnumPermType.ChartViewsEdit);
+			Assert.IsTrue(GroupPermissions.HasAuditTrail(EnumPermType.ChartViewsEdit),
+				"ChartViewsEdit writes audit entries (add, edit, delete, move), so it belongs in the audit trail filter.");
+		}
+
 		#region Database
 		private static void Prepare() {
 			string skipReason=ScratchDb.EnsureCreated();

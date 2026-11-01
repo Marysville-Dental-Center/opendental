@@ -390,11 +390,6 @@ namespace OpenDentBusiness {
 		AtoZfolderUsed,
 		///<summary>The number of audit trail entries that are displayed in the grid.</summary>
 		AuditTrailEntriesDisplayed,
-		///<summary>Boolean, off by default. When on, selecting a patient writes a Patient Selected (275, Open Dental 25.4) Audit Trail entry.
-		///Name and setting are this fork's own (Setup, Security, Global Security Settings). No seed row: PatientSelectedAudit.SetEnabled inserts the
-		///row the first time an administrator turns it on, and a missing row reads as off.</summary>
-		[PrefName(ValueType=PrefValueType.BOOL)]
-		AuditTrailPatientSelected,
 		///<summary>Boolean - Allows the audit trail to run on the report server. Defaults to true if reporting server is in use, otherwise false</summary>
 		AuditTrailUseReportingServer,
 		///<summary>No UI for this pref. The number of clinics to run in parallel for AutoComm (eConfirms, eReminders, WebSchedRecall, etc.). If

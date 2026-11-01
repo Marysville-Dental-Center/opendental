@@ -9,11 +9,16 @@ using System.Reflection;
 
 namespace OpenDentBusiness {
 	///<summary>Audit Trail entry when a patient is selected (EnumPermType.PatientSelected, 275, Open Dental 25.4). Audit only: it never blocks a
-	///selection. Off unless an administrator turns it on in Global Security Settings (PrefName.AuditTrailPatientSelected), because it adds one entry
-	///for every patient change. The main window calls LogIfEnabled whenever the loaded patient changes (FormOpenDental.PatNumCur), which covers the
-	///patient select window, the family menu, search results and every module that changes the patient. Selecting the patient who is already loaded
-	///is not a new selection and is not logged.</summary>
+	///selection. Off unless an administrator turns it on in Global Security Settings (the fork's own preference row PREF_NAME), because it adds one
+	///entry for every patient change. The main window calls LogIfEnabled whenever the loaded patient changes (FormOpenDental.PatNumCur), which covers
+	///the patient select window, the family menu, search results and every module that changes the patient. Selecting the patient who is already
+	///loaded is not a new selection and is not logged.</summary>
 	public static class PatientSelectedAudit {
+		///<summary>The fork's own preference row: boolean, off by default, global. Open Dental's public pages do not say how the 25.4 entry is switched
+		///on, so this setting is not in PrefName (which holds only names Open Dental publishes) and is read and written by name. The "Fork" prefix keeps
+		///it from ever clashing with an Open Dental preference. No migration step adds the row, so an adopted Open Dental database is left as it was:
+		///a missing row reads as off, and SetEnabled inserts it the first time an administrator turns the audit on.</summary>
+		public const string PREF_NAME="ForkAuditTrailPatientSelected";
 		///<summary>A user who selects the same patient again within this time gets no second entry (fork rule).</summary>
 		public static readonly TimeSpan TimeSpanRepeat=TimeSpan.FromSeconds(60);
 		public const string LOG_TEXT="Patient selected.";
@@ -21,10 +26,11 @@ namespace OpenDentBusiness {
 		///<summary>When each user last got an entry for each patient on this workstation.</summary>
 		private static Dictionary<(long UserNum,long PatNum),DateTime> _dictLastLogged=new Dictionary<(long,long),DateTime>();
 
-		///<summary>True when the office turned the audit on. A missing preference row (the default) reads as off.</summary>
+		///<summary>True when the office turned the audit on. A missing preference row (the default) reads as off, from the cache and without an
+		///exception, because the main window asks on every patient change.</summary>
 		public static bool IsEnabled() {
 			Meth.NoCheckMiddleTierRole();
-			return PrefC.GetBoolSilent(PrefName.AuditTrailPatientSelected,false);
+			return PIn.Bool(PrefC.GetRawOrDefault(PREF_NAME,"0"));//B-SERVER's shared helper for fork-owned preference rows.
 		}
 
 		///<summary>Writes the Patient Selected entry for the current user when the audit is on, unless the same user got one for the same patient within
@@ -68,29 +74,18 @@ namespace OpenDentBusiness {
 			}
 		}
 
-		///<summary>Turns the audit on or off. Inserts the preference row the first time the audit is turned on (no migration step seeds it). Returns true
-		///if the stored value changed. The caller refreshes the preference cache (DataValid.SetInvalid(InvalidType.Prefs)).</summary>
+		///<summary>Turns the audit on or off. Inserts the preference row the first time the audit is turned on (no migration step seeds it); turning it
+		///off while there is no row writes nothing, because a missing row already reads as off. Updates the preference cache of the process that writes
+		///(this workstation, or the Middle Tier server). Returns true if the stored value changed; the caller then signals InvalidType.Prefs so every
+		///workstation reloads (DataValid.SetInvalid).</summary>
 		public static bool SetEnabled(bool isEnabled) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetBool(MethodBase.GetCurrentMethod(),isEnabled);
 			}
-			string prefName=POut.String(PrefName.AuditTrailPatientSelected.ToString());
-			string command="SELECT ValueString FROM preference WHERE PrefName='"+prefName+"'";
-			System.Data.DataTable table=Db.GetTable(command);
-			if(table.Rows.Count==0) {
-				if(!isEnabled) {
-					return false;//A missing row reads as off; saving Global Security Settings without turning the audit on adds no row.
-				}
-				command="INSERT INTO preference (PrefName,ValueString) VALUES('"+prefName+"','"+POut.Bool(isEnabled)+"')";
-				Db.NonQ(command);
-				return true;
+			if(!isEnabled && PrefC.GetRawOrDefault(PREF_NAME,null)==null) {
+				return false;//Saving Global Security Settings without turning the audit on adds no row.
 			}
-			if(PIn.Bool(table.Rows[0]["ValueString"].ToString())==isEnabled) {
-				return false;
-			}
-			command="UPDATE preference SET ValueString='"+POut.Bool(isEnabled)+"' WHERE PrefName='"+prefName+"'";
-			Db.NonQ(command);
-			return true;
+			return PrefC.UpsertRaw(PREF_NAME,POut.Bool(isEnabled));//B-SERVER's shared helper for fork-owned preference rows.
 		}
 	}
 

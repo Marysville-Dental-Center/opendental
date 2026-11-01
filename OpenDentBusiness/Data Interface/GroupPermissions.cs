@@ -669,7 +669,7 @@ namespace OpenDentBusiness{
 				//case EnumPermType.EFormEdit:
 				case EnumPermType.EFormDelete:
 				//case EnumPermType.MobileNotification:
-				case EnumPermType.ChartViewsEdit:
+				//case EnumPermType.ChartViewsEdit://Open Dental 26.1: Chart View add, edit, delete and move entries are logged under it (M2-SHELL).
 				//case EnumPermType.SuperFamilyDisband:
 				//case EnumPermType.ImageSignatureCreate:
 				//case EnumPermType.SignedImageEdit:

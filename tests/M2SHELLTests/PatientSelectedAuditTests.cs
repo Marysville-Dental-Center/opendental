@@ -68,7 +68,7 @@ namespace M2SHELLTests {
 			Assert.IsFalse(PatientSelectedAudit.IsEnabled(),"No preference row means off.");
 			Assert.IsFalse(PatientSelectedAudit.LogIfEnabled(100));
 			Assert.AreEqual(0,GetEntries().Count);
-			Assert.AreEqual(0,ScratchDb.GetLong("SELECT COUNT(*) FROM preference WHERE PrefName='"+PrefName.AuditTrailPatientSelected+"'"),
+			Assert.AreEqual(0,ScratchDb.GetLong("SELECT COUNT(*) FROM preference WHERE PrefName='"+PatientSelectedAudit.PREF_NAME+"'"),
 				"Reading the setting never inserts a row.");
 		}
 
@@ -76,13 +76,14 @@ namespace M2SHELLTests {
 		public void SetEnabled_InsertsTheRowOnce_AndReportsChanges() {
 			Prepare();
 			Assert.IsFalse(PatientSelectedAudit.SetEnabled(false),"Off is already the value a missing row reads as.");
-			Assert.AreEqual(0,ScratchDb.GetLong("SELECT COUNT(*) FROM preference WHERE PrefName='"+PrefName.AuditTrailPatientSelected+"'"));
+			Assert.AreEqual(0,ScratchDb.GetLong("SELECT COUNT(*) FROM preference WHERE PrefName='"+PatientSelectedAudit.PREF_NAME+"'"));
 			Assert.IsTrue(PatientSelectedAudit.SetEnabled(true));
-			Assert.AreEqual("1",DataCore.GetScalar("SELECT ValueString FROM preference WHERE PrefName='"+PrefName.AuditTrailPatientSelected+"'"));
+			Assert.IsTrue(PatientSelectedAudit.IsEnabled(),"The writing workstation's cache is updated at once.");
+			Assert.AreEqual("1",DataCore.GetScalar("SELECT ValueString FROM preference WHERE PrefName='"+PatientSelectedAudit.PREF_NAME+"'"));
 			Assert.IsFalse(PatientSelectedAudit.SetEnabled(true));
 			Assert.IsTrue(PatientSelectedAudit.SetEnabled(false));
-			Assert.AreEqual("0",DataCore.GetScalar("SELECT ValueString FROM preference WHERE PrefName='"+PrefName.AuditTrailPatientSelected+"'"));
-			Assert.AreEqual(1,ScratchDb.GetLong("SELECT COUNT(*) FROM preference WHERE PrefName='"+PrefName.AuditTrailPatientSelected+"'"));
+			Assert.AreEqual("0",DataCore.GetScalar("SELECT ValueString FROM preference WHERE PrefName='"+PatientSelectedAudit.PREF_NAME+"'"));
+			Assert.AreEqual(1,ScratchDb.GetLong("SELECT COUNT(*) FROM preference WHERE PrefName='"+PatientSelectedAudit.PREF_NAME+"'"));
 		}
 
 		[TestMethod]
@@ -130,6 +131,14 @@ namespace M2SHELLTests {
 			Assert.AreEqual(1,GetEntries().Count);
 		}
 		#endregion
+
+		[TestMethod]
+		public void Setting_IsTheForksOwnRow_NotInPrefName() {
+			Assert.AreEqual("ForkAuditTrailPatientSelected",PatientSelectedAudit.PREF_NAME);
+			Assert.IsFalse(Enum.IsDefined(typeof(PrefName),PatientSelectedAudit.PREF_NAME),
+				"A fork-invented setting stays out of PrefName, which holds only names Open Dental publishes (RegistryTests).");
+			Assert.IsFalse(Enum.GetNames(typeof(PrefName)).Any(x => x=="AuditTrailPatientSelected"),"The unprefixed name of the first build is gone.");
+		}
 
 		[TestMethod]
 		public void Permission_IsAuditOnly() {
