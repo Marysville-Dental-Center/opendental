@@ -831,6 +831,7 @@
     <Compile Include="Data Interface\TsiTransLogs.cs" />
     <Compile Include="Data Interface\UserGroupAttaches.cs" />
     <Compile Include="Db Multi Table\TreatmentPlanModules.cs" />
+    <Compile Include="Db Multi Table\TreatmentPlanModules.EstimateDates.cs" />
     <Compile Include="Db\ConnectionStore.cs" />
     <Compile Include="Db\DataAction.cs" />
     <Compile Include="Db\DataConnectionCancelable.cs" />
@@ -1446,6 +1447,7 @@
     <Compile Include="Data Interface\AutoNoteControls.cs" />
     <Compile Include="Data Interface\AutoNotes.cs" />
     <Compile Include="Data Interface\Benefits.cs" />
+    <Compile Include="Data Interface\Benefits.EstimateTeeth.cs" />
     <Compile Include="Data Interface\CanadianNetworks.cs" />
     <Compile Include="Data Interface\Carriers.cs" />
     <Compile Include="Data Interface\ClaimAttaches.cs" />
@@ -1511,6 +1513,8 @@
     <Compile Include="Data Interface\ProcCodeNotes.cs" />
     <Compile Include="Data Interface\ProcedureCodes.cs" />
     <Compile Include="Data Interface\Procedures.cs" />
+    <Compile Include="Data Interface\Procedures.EstimateAsOf.cs" />
+    <Compile Include="Data Interface\Procedures.NoBillIns.cs" />
     <Compile Include="Data Interface\ProcTPs.cs" />
     <Compile Include="Data Interface\ProgramProperties.cs" />
     <Compile Include="Data Interface\Programs.cs" />

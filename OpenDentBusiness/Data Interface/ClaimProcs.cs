@@ -1175,7 +1175,7 @@ namespace OpenDentBusiness{
 			claimProc.Percentage=-1;
 			claimProc.PercentOverride=-1;
 			claimProc.CopayAmt=-1;
-			claimProc.NoBillIns=InsPlanPreferences.NoBillIns(ProcedureCodes.GetProcCode(procedure.CodeNum),insPlan);
+			claimProc.NoBillIns=Procedures.GetNoBillInsForNewEstimate(procedure,insPlan);
 			claimProc.PaidOtherIns=-1;
 			claimProc.BaseEst=baseEstAmt;
 			claimProc.DedEst=-1;
@@ -2254,7 +2254,7 @@ namespace OpenDentBusiness{
 				string note="";
 				claimProc.InsEstTotal=Benefits.GetLimitationByCode(listBenefits,insPlan.PlanNum,patPlanNum,dateProc
 					,ProcedureCodes.GetStringProcCode(codeNum),listClaimProcHists,listClaimProcHistsLoop,insPlan,claimProc.PatNum,out note,claimProc.InsEstTotal,patientAge
-					,claimProc.InsSubNum,claimProc.InsEstTotalOverride,out LimitationTypeMet limitationMet);
+					,claimProc.InsSubNum,claimProc.InsEstTotalOverride,out LimitationTypeMet limitationMet,toothNum,procedure.ToothRange);
 				if((limitationMet==LimitationTypeMet.PeriodMax || limitationMet==LimitationTypeMet.FamilyPeriodMax) 
 					&& CompareDouble.IsLessThanOrEqualToZero(claimProc.InsEstTotal)  && InsPlans.DoZeroOutWriteOffOnAnnualMaxLimitation(insPlan)) {
 					doZeroWriteoff=true;
@@ -3437,6 +3437,10 @@ namespace OpenDentBusiness{
 		public string ToothNum;
 		///<summary>Copied from claimproc.NoBillIns</summary>
 		public bool NoBillIns;
+		///<summary>Open Dental 25.4 (treatment plan estimates as of the appointment date). True only for a loop entry of the Treatment Plan module whose
+		///ProcDate is the date its procedure was estimated as of: the annual max and deductible then count it only toward the benefit period of that
+		///date (Benefits.IsLoopHistInPeriod). False for every other entry, which keeps the rule that a loop entry counts whatever its date.</summary>
+		public bool IsDateAsOf;
 
 		public override string ToString() {
 			return StrProcCode+" "+Status.ToString()+" "+Amount.ToString()+" ded:"+Deduct.ToString();

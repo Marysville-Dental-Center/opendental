@@ -136,6 +136,7 @@ namespace OpenDental {
 			this.listQuantityQualifier.Name = "listQuantityQualifier";
 			this.listQuantityQualifier.Size = new System.Drawing.Size(160, 21);
 			this.listQuantityQualifier.TabIndex = 1;
+			this.listQuantityQualifier.SelectedIndexChanged += new System.EventHandler(this.listQuantityQualifier_SelectedIndexChanged);
 			//
 			// label8
 			//
@@ -309,7 +310,7 @@ namespace OpenDental {
 			this.labelTeethHint.Name = "labelTeethHint";
 			this.labelTeethHint.Size = new System.Drawing.Size(258, 30);
 			this.labelTeethHint.TabIndex = 40;
-			this.labelTeethHint.Text = "Exclusions only. Blank for every tooth. Example: 2,15 or 23-26";
+			this.labelTeethHint.Text = "Exclusions and age limits only. Blank for every tooth. Example: 2,15 or 23-26";
 			//
 			// labelPreview
 			//

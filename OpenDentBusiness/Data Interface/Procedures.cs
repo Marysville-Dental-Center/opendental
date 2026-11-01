@@ -3627,7 +3627,7 @@ namespace OpenDentBusiness {
 				cp.DateCP=proc.ProcDate;
 				cp.AllowedOverride=-1;
 				cp.PercentOverride=-1;
-				cp.NoBillIns=InsPlanPreferences.NoBillIns(ProcedureCodes.GetProcCode(proc.CodeNum),planCur);
+				cp.NoBillIns=GetNoBillInsForNewEstimate(proc,planCur);
 				cp.PaidOtherIns=-1;
 				cp.CopayOverride=-1;
 				cp.ProcDate=proc.ProcDate;
@@ -3991,6 +3991,7 @@ namespace OpenDentBusiness {
 					}
 				}
 				#endregion
+				ZeroEstimateIfCoverageEnded(claimProcs[i],proc,listInsSubs,hasEstimateCalculation);//Only inside ScopeCoverageEndCheck (TP module, 25.4).
 				if(hasMetFrequencyLimit && InsPlans.DoZeroOutWriteOffOnOtherLimitation(PlanCur) && ClaimProcs.GetEstimatedStatuses().Contains(claimProcs[i].Status)) {
 					claimProcs[i].WriteOffEst=0;
 				}
