@@ -91,6 +91,8 @@ New project `tests/M2CARRIERTests` (MSTest v1, x86, .NET 4.8; in `OpenDental.sln
 
 Checks (2026-10-25): build of `OpenDental.Local.slnf` (Debug, x86) 0 errors, 376 warnings (baseline). Targeted tests all passed: `M2CARRIERTests` 55/55, `ApptTests` 76/76, `InsuranceTests` 49/49, `M202Tests` 39/39, `RegistryTests` 33/33, `M201Tests` 24 passed and 2 inconclusive (the published-document checks; `M201_OD_DOCS_DIR` not set), `NoHqTests` 49/49. `tools/Test-NoHqHosts.ps1`: passed.
 
+Checks after the port/int-8 merge (2026-10-31, branch `port/m2-carrier-t1`): one full build of `OpenDental.Local.slnf` through the build lane, 0 errors. `run-tests -Mode Core` plus `ForkMigrationTests`, `M201Tests`, `SyntheticData.Tests` and `AdoptionValidation.Tests` (this package adds an `EnumApptViewElement` member in `TableTypes`): 66 assemblies, no failures (`M2CARRIERTests` 55/55; `M201Tests` 24 passed, 2 inconclusive as above; `AdoptionValidation.Tests` 56/56, `ForkMigrationTests` 38/38, `SyntheticData.Tests` 53/53). Results: `.git/od-tools/test-results/port_m2-carrier-t1.txt`. `tools/Test-NoHqHosts.ps1`: passed.
+
 ## Not tested
 
 - No UI was run (OpenDental.exe is not launched in this run): the Edit Carrier layout, the reminder timing in the Chart, the Treatment Plan marker, the appointment drawing and the bubble are covered only by the business-layer tests and the source checks.
