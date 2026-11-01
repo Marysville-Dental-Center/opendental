@@ -237,6 +237,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BINBTests", "tests\BINBTest
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DicomReaderTests", "tests\DicomReaderTests\DicomReaderTests.csproj", "{F8A5352A-B7EE-4CE2-AB29-83BF257F6043}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CLAIMDCMTests", "tests\CLAIMDCMTests\CLAIMDCMTests.csproj", "{8FFB891B-521F-4113-9BF8-CC325E0191DA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -1150,6 +1152,14 @@ Global
 		{F8A5352A-B7EE-4CE2-AB29-83BF257F6043}.Release|Any CPU.Build.0 = Release|x86
 		{F8A5352A-B7EE-4CE2-AB29-83BF257F6043}.Release|x86.ActiveCfg = Release|x86
 		{F8A5352A-B7EE-4CE2-AB29-83BF257F6043}.Release|x86.Build.0 = Release|x86
+		{8FFB891B-521F-4113-9BF8-CC325E0191DA}.Debug|Any CPU.ActiveCfg = Debug|x86
+		{8FFB891B-521F-4113-9BF8-CC325E0191DA}.Debug|Any CPU.Build.0 = Debug|x86
+		{8FFB891B-521F-4113-9BF8-CC325E0191DA}.Debug|x86.ActiveCfg = Debug|x86
+		{8FFB891B-521F-4113-9BF8-CC325E0191DA}.Debug|x86.Build.0 = Debug|x86
+		{8FFB891B-521F-4113-9BF8-CC325E0191DA}.Release|Any CPU.ActiveCfg = Release|x86
+		{8FFB891B-521F-4113-9BF8-CC325E0191DA}.Release|Any CPU.Build.0 = Release|x86
+		{8FFB891B-521F-4113-9BF8-CC325E0191DA}.Release|x86.ActiveCfg = Release|x86
+		{8FFB891B-521F-4113-9BF8-CC325E0191DA}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
