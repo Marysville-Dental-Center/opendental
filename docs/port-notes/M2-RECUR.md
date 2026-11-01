@@ -68,11 +68,11 @@ Public sources only. The 25.4 release note (https://www.opendental.com/site/vers
 - **Failed but not declined: no e-mail.** The spec says "each declined or failed recurring charge". In this code a failure that is not a decline means an office setup problem (no credentials, PayConnect version 1, a missing or duplicate token, X-Charge already running) or an outcome the processor never confirmed (no answer, may have been charged). For PaySimple, whose catch-all marks every exception declined, this rests on `IsPaySimpleDecline` (above), not on `MarkDeclined` alone. E-mailing the patient that the charge "did not go through" would be wrong in the second case and useless in the first, and a setup problem would e-mail every patient in the batch. Declines are e-mailed whatever "Automatically inactivate declined cards" is set to (with it off, a decline keeps the Failed status but still counts). One line in `SendIfNeeded` changes this if the owner wants failures included (owner question 1).
 - **Quiet period tracked on `recurringcharge` rows, not commlogs.** The spec's fork decision says "through the existing commlog/emailmessage history". Neither table records the card, and "same charge and card" needs it, so the check looks for the "Failure e-mail sent to" line on the card's recurring charge rows of the last 7 days. The emailmessage and commlog are still written.
 - **Per-clinic settings** (the spec's optional `clinicpref`) are not built: one setting and one template for the office.
-- **Security lock dates** (26.1 spec rule 4): the 24.3 Repeating Charges tool does not check lock dates, and it still does not; with backdating off nothing is dated before today anyway. The hover help that M2-02 wrote for the backdating checkbox in `PrefInfos.xml` says "Lock dates apply either way"; that sentence is not true of this code (see the questions).
+- **Security lock dates** (26.1 spec rule 4): the 24.3 Repeating Charges tool does not check lock dates (`RepeatCharges.cs` has no lock-date check), and it still does not; with backdating off nothing is dated before today anyway. The hover help M2-02 wrote for the backdating checkbox said "Lock dates apply either way"; round t1 replaced that sentence with what the code does (see the questions).
 
 ## Interplay with packages built at the same time
 
-- **M2-02** (on the base): registered and seeded `RecurringChargesFailEmailEnabled` (0), `RecurringChargesFailEmailSubject`, `RecurringChargesFailEmailBody` and `RepeatingChargesAllowBackdating` (1), and their `PrefInfos.xml` entries. Used as they are; nothing was added to any registry. Two hover texts in `PrefInfos.xml` need M2-02's wording fix (questions 1 and 4).
+- **M2-02** (on the base): registered and seeded `RecurringChargesFailEmailEnabled` (0), `RecurringChargesFailEmailSubject`, `RecurringChargesFailEmailBody` and `RepeatingChargesAllowBackdating` (1), and their `PrefInfos.xml` entries. Used as they are; nothing was added to any registry. Round t1 corrected the two hover texts (`Details` only; names, categories and control texts unchanged) and the `RecurringChargesFailEmailEnabled` summary in `Pref.cs`.
 - **V-GP** (takes `RecurringCharges.cs` and `FormCreditRecurringCharges.cs` over in the next wave): a Global Payments V2 branch in `SendCharges` should report declines through `MarkDeclined` and setup or network problems through `MarkFailed`; the e-mail then follows with no other change. A catch-all that calls `MarkDeclined` for any exception (as PaySimple's does) needs a check like `IsPaySimpleDecline` after it. Keep the `SendFailEmailIfNeeded(chargeData);` line just before `RecurringCharges.Update(chargeData.RecurringCharge);`, the guard in `MarkDeclined`, and the `IsPaySimpleDecline` line in `SendPaySimple`'s catch when merging.
 - **V-PS / PaySimple** (`OpenDentBusiness/WebBridges/PaySimple.cs`, not edited here): `IsPaySimpleDecline` depends on `PaySimpleApi.ToSaleResponse` throwing a plain `Exception` whose message starts "Payment was declined by PaySimple." or "Payment was not approved by PaySimple.", and on every setup or unknown-outcome error being an `ODException`. If that code moves to its own exception type, `IsPaySimpleDecline` should test for the type instead; `PaySimpleDeclineTests` fails if the text changes.
 - **M2-DUN** (takes `EmailMessages.cs` over): this package did not edit `EmailMessages.cs` or `EmailAddresses.cs`; it only calls them. The failure e-mail is plain text; if the owner wants it to follow `BillingEmailType` (HTML), that is a small follow-up in `RecurringChargeFailEmails`.
@@ -100,10 +100,32 @@ Two review findings, both real, both fixed:
 
 Tests: `PaySimpleDeclineTests` (new), two new `FailEmailTests` cases, `IsPaySimpleDecline` and the hook checks in `RecurUnitTests`. Targeted run: M2RECURTests 36/36, VendorDirectTests 873/873, M202Tests 39/39, NoHqTests 49/49; `tools/Test-NoHqHosts.ps1` passed. No fork migration step, no registry change.
 
+## Finish round t1 (branch `port/m2-recur-t1`)
+
+### Integration (merged `port/int-7` at `1763cc7ae`)
+
+- The merge had no conflicts. Since `port/m2-recur-s1` was cut, no merged package touched `RecurringCharges.cs`, `RepeatCharges.cs`, `EmailAddresses.cs`, `PaySimple.cs`, the three charge windows or the Preferences control; B-PRINT changed one line of `EmailMessages.cs` (the statement PDF's name), which the failure e-mail does not use, and M2-DUN did not edit it. The `.sln` and `.slnf` keep the test project with no duplicate project GUIDs.
+- Helpers on the base: nothing merged duplicates this package's code. `PayConnectErrorLog.GetLast4` (PayConnect 2, already on main) also takes the last four characters, but it belongs to the PayConnect log and drops anything that is not a letter or a digit; the e-mail keeps its own `GetCardLast4` for the masked number every processor stores. M2-DUN's `BillingEmailHtml.ApplyEmailType` is for HTML billing e-mail; the failure e-mail stays plain text (M2-DUN's note says the same), so it is not used.
+- V-GP and V-PS are not merged yet; what they must keep is under "Interplay" above.
+- No fork migration step, no schema or row change on an adopted database (the four preference rows are M2-02's `Seed26_1`, which the adoption tools already cover), so nothing in `tools/AdoptionValidation` changes.
+
+### Fixes
+
+1. Hover help (`PrefInfos.xml`, owned by M2-02, which is merged and done): the failure e-mail text said "Each declined or failed recurring charge"; it now says that a declined charge sends one, the same card is not e-mailed again for 7 days, and a failure for another reason sends none. The backdating text said "Lock dates apply either way", which no code does; it now says that a missed billing date is skipped and the next one posts normally. `Pref.cs`'s summary of `RecurringChargesFailEmailEnabled` follows.
+2. Preferences, Rec and Rep Charges: the control loaded the template with the default text filled in, so saving the window wrote the default into a blank preference (and froze an older default). It now loads the stored text; the Edit Template window shows the default for a blank one.
+3. Preferences: with "Hide repeating charges" (`EasyHideRepeatCharges`) on, the backdating box is disabled like the other repeating charge settings.
+
+### Verification
+
+- One full build through the build lane: 0 errors.
+- Targeted: M2RECURTests 36/36 (two new source checks in an existing test), M202Tests 39/39, VendorDirectTests 873/873, NoHqTests 49/49.
+- `run-tests -Mode Core` with ForkMigrationTests, M201Tests, SyntheticData.Tests and AdoptionValidation.Tests (`Pref.cs` is a TableTypes file, comment only): results in `.git/od-tools/test-results/port_m2-recur-t1.txt`.
+- `tools/Test-NoHqHosts.ps1` passed.
+
 ## Questions for the owner
 
-1. Should a failed charge that was not declined (office setup problem, or no answer from the processor) also e-mail the patient, as the spec's wording suggests? This fork says no (see Deviations). If no, M2-02's hover text "Each declined or failed recurring charge sends one e-mail" should say "declined".
+1. Should a failed charge that was not declined (office setup problem, or no answer from the processor) also e-mail the patient, as the spec's wording suggests? This fork says no (see Deviations), and the hover text now says so. If yes, one line in `SendIfNeeded` and the hover text change.
 2. Is the 7-day quiet period per card right, or should it follow the retry schedule the office uses?
 3. Should the e-mail be per clinic (separate on/off and template per clinic)?
-4. The backdating hover text says "Lock dates apply either way", but the Repeating Charges tool has never checked lock dates. Remove the sentence, or should the tool start refusing dates before a lock date (a behavior change for offices that keep backdating on)?
+4. The Repeating Charges tool has never checked lock dates, and the hover text no longer claims it does. Should the tool start refusing dates before a lock date (a behavior change for offices that keep backdating on)?
 5. This fork has no automatic runner for recurring or repeating charges (OpenDentalService is gone), although the preferences `RecurringChargesAutomatedEnabled` and `RepeatingChargesAutomated` are still shown. With backdating off, the Repeating Charges tool must be run on each billing date. Is a local scheduled runner wanted?
