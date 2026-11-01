@@ -99,3 +99,7 @@ Not tested: the windows themselves (OpenDental.exe is not launched in this run; 
 2. Should the Family Recall toolbar button also follow "Make Recall automatically searches for openings"? Today the Other Appointments window's "Recall for Family" follows it, and the toolbar button doesn't.
 3. Replacing overlapping blockouts from a right-click paste or the Edit Blockout window now needs Blockout Delete (or BlockoutsFlagged) for the replaced blockouts. Keep this?
 4. Keep the extra audit entry under Blockout Delete when the Cut-Copy-Paste window pastes with Replace Existing?
+
+## Combined review (2026-11-01, branch `port/review-3`)
+
+- **Finding interplay-operations-2 (with M2-SHELL), fixed in M2-SHELL's code.** The Database Maintenance fix for duplicate blockouts, which replaces Clear Duplicate Blockouts, deleted blockout links and emptied blockouts with no Audit Trail entry, unlike every blockout deletion this package audits. It now writes one Setup entry with `LogSources.DBM` when it removed any (`DatabaseMaintenances.Schedules.cs`; see M2-SHELL's port note). No change in this package's files.
