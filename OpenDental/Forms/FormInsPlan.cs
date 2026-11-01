@@ -608,7 +608,7 @@ namespace OpenDental {
 			comboBillType.Items.AddDefs(Defs.GetDefsForCategory(DefCat.BillingTypes,true));
 			comboBillType.SetSelectedDefNum(_insPlan.BillingType); 
 			comboExclusionFeeRule.Items.Clear();
-			comboExclusionFeeRule.Items.AddEnums<ExclusionRule>();//25.4 text "Use Standard Provider Fee" comes from ExclusionRule's description (M2-TERM)
+			comboExclusionFeeRule.Items.AddEnums<ExclusionRule>();
 			comboExclusionFeeRule.SetSelectedEnum(_insPlan.ExclusionFeeRule);
 			comboBoxZeroWriteOffsOnAnnualMaxLimitation.Items.Clear();
 			comboBoxZeroWriteOffsOnAnnualMaxLimitation.Items.AddList(Enum.GetValues(typeof(YN)).Cast<YN>(),(input)=>{ return input==YN.Unknown?"Default":input.GetDescription();});
