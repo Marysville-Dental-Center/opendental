@@ -166,7 +166,7 @@ namespace ImagingCapture.Session {
 				return new CaptureSessionLaunchResult {
 					Kind=CaptureSessionLaunchKind.Completed,
 					Summary=controller.Summary,
-					IsEmptyMountToDelete=isMountCreatedHere && controller.IsMountEmpty,
+					IsEmptyMountToDelete=IsMountStillEmpty(isMountCreatedHere,controller,request?.Mount),
 				};
 			}
 			catch(Exception ex) {
@@ -188,8 +188,37 @@ namespace ImagingCapture.Session {
 					Kind=CaptureSessionLaunchKind.Completed,
 					Reason="The capture session window failed: "+ex.Message,
 					Summary=controller.Summary,
-					IsEmptyMountToDelete=isMountCreatedHere && controller.IsMountEmpty,
+					IsEmptyMountToDelete=IsMountStillEmpty(isMountCreatedHere,controller,request?.Mount),
 				};
+			}
+		}
+
+		///<summary>Design 7.3 "The hook": a mount created in this call is deleted after the session only while it is still empty. The session put no
+		///document into it and quarantined nothing (Assign files a quarantined image into its original slot, design 7.12, so the slot must stay),
+		///and the database agrees: a document filed into it that the session did not hear of (the quarantine window failing after a filing, another
+		///window of this computer) keeps it. Mounts.Delete leaves the documents, which would then point at a deleted mount item. A database that
+		///cannot be read keeps it too.</summary>
+		private bool IsMountStillEmpty(bool isMountCreatedHere,CaptureSessionController controller,Mount mount) {
+			if(!isMountCreatedHere || controller==null || mount==null || !controller.IsMountEmpty) {
+				return false;
+			}
+			if(controller.CountQuarantined>0) {
+				Log("The mount "+mount.MountNum+" created for the session is kept: "+controller.CountQuarantined+" image(s) of the session went to unassigned "
+					+"captures and may be assigned into its slots.");
+				return false;
+			}
+			try {
+				List<MountItem> listMountItems=_services.Store.GetMountItems(mount.MountNum)??new List<MountItem>();
+				List<Document> listDocuments=_services.Store.GetDocumentsForMountItems(listMountItems)??new List<Document>();
+				if(listDocuments.Any(x => x!=null)) {
+					Log("The mount "+mount.MountNum+" created for the session is kept: it holds a document the session did not save.");
+					return false;
+				}
+				return true;
+			}
+			catch(Exception ex) {
+				Log("The mount "+mount.MountNum+" created for the session is kept: its documents could not be read ("+ex.Message+").");
+				return false;
 			}
 		}
 

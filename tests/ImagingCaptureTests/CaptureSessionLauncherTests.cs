@@ -305,6 +305,46 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void Completed_NothingSaved_ButAnImageQuarantined_CreatedMountKeptForItsSlot() {
+			_radiographStore.ThrowOn="Import";
+			_windowRunner.ActionWhileShown=controller => {
+				controller.Begin();
+				_clock.Advance(CaptureSessionController.KeyIgnoreMs);
+				controller.RequestStart();
+				_dispatcher.RunPending();
+				FakeTwainCaptureSession twain=_listSessions.Single();
+				twain.RaiseStatus(TwainCaptureState.WaitingForImage);
+				twain.RaiseImage(TestImages.Image8(4,4,(x,y) => 7));//its save fails: to the quarantine, for slot 1
+				twain.RaiseEnded(TwainCaptureEndReason.Completed);
+				_dispatcher.RunPending();
+				controller.Execute(CaptureSessionAction.End);
+			};
+			CaptureSessionLaunchResult result=Launcher().Run(Request());
+			Assert.AreEqual(0,result.Summary.CountImages);
+			Assert.AreEqual(1,result.Summary.CountQuarantined);
+			Assert.IsFalse(result.IsEmptyMountToDelete,"Design 7.12: Assign files the quarantined image into its original slot.");
+		}
+
+		[TestMethod]
+		public void Completed_TheDatabaseHasADocumentInTheMount_TheSessionDidNotSaveIt_MountKept() {
+			_windowRunner.ActionWhileShown=controller => {
+				controller.Begin();
+				_store.DictDocumentsByMountItem[102]=new Document { DocNum=950,PatNum=55,MountItemNum=102 };//filed from another window
+				controller.Execute(CaptureSessionAction.End);
+			};
+			CaptureSessionLaunchResult result=Launcher().Run(Request());
+			Assert.AreEqual(CaptureSessionLaunchKind.Completed,result.Kind);
+			Assert.IsFalse(result.IsEmptyMountToDelete,"Mounts.Delete would leave the document pointing at a deleted mount item.");
+			_store.DictDocumentsByMountItem.Clear();
+			_windowRunner.ActionWhileShown=controller => {
+				controller.Begin();
+				_store.IsThrowOnMountItems=true;//after the checks before the start
+				controller.Execute(CaptureSessionAction.End);
+			};
+			Assert.IsFalse(Launcher().Run(Request()).IsEmptyMountToDelete,"Kept when the mount cannot be read.");
+		}
+
+		[TestMethod]
 		public void Completed_ImagesSaved_MountKept_SetupFromTheChecks() {
 			_store.DefaultProvNum=8;
 			_windowRunner.ActionWhileShown=controller => {
