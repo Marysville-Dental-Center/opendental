@@ -192,6 +192,15 @@ namespace OpenDentBusiness {
 			return listUserNums.Distinct().Where(x => !listActing.Contains(x)).ToList();
 		}
 
+		///<summary>Who gets the "signature cleared" alert once the save went through: the signers collected from each merge resolved in the window
+		///(GetTheirSignersToAlert, kept until the save, since a merge can still stop it), each once, without the users acting at the save (the user at
+		///the keyboard, the user switched to, and a signer the save code already alerted in that click). Nothing is alerted for a save that did not
+		///happen, because the caller only asks once it has saved.</summary>
+		public static List<long> GetSignersToAlertOnSave(List<long> listUserNumsPending,List<long> listUserNumsActing) {
+			List<long> listActing=listUserNumsActing??new List<long>();
+			return (listUserNumsPending??new List<long>()).Where(x => x!=0).Distinct().Where(x => !listActing.Contains(x)).ToList();
+		}
+
 		///<summary>The permission the merge is logged under: the one the note is saved with, Edit Note on Completed Procedure for a completed note,
 		///otherwise Edit Procedure.</summary>
 		public static EnumPermType GetLogPermission(bool isTreatedAsComplete) {

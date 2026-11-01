@@ -127,15 +127,51 @@ namespace M2NOTESTests {
 		}
 
 		[TestMethod]
-		public void ProcedureInfo_TwoHooksOnly() {
+		public void ProcedureInfo_Hooks() {
 			string source=ScratchDb.ReadRepoFile("OpenDental","Forms","FormProcEdit.cs");
 			Assert.AreEqual(1,Regex.Matches(source,@"NoteMerge_Load\(\);").Count);
-			Assert.AreEqual(1,Regex.Matches(source,@"if\(!NoteMerge_TryResolve\(\)\) \{ return; \}").Count);
-			int idxSaveAndClose=source.IndexOf("private void SaveAndClose() {");
-			int idxHook=source.IndexOf("NoteMerge_TryResolve()");
-			int idxFirstWrite=source.IndexOf("Procedures.UpdateProcedureFields(",idxSaveAndClose);
-			Assert.IsTrue(idxSaveAndClose>0 && idxHook>idxSaveAndClose && idxHook<idxFirstWrite,"The merge is resolved before anything is saved.");
+			//In SaveAndClose (Save, Set Complete, Lock) and in butLock_Click.
+			Assert.AreEqual(2,Regex.Matches(source,@"if\(!NoteMerge_TryResolve\(\)\) \{ return; \}").Count);
+			Assert.AreEqual(1,Regex.Matches(source,@"NoteMerge_Saved\(\);").Count);
+			string saveAndClose=Between(source,"private void SaveAndClose() {","\n\t\t}");
+			int idxHook=saveAndClose.IndexOf("if(!NoteMerge_TryResolve()) { return; }");
+			int idxFirstWrite=saveAndClose.IndexOf("Procedures.UpdateProcedureFields(");
+			Assert.IsTrue(idxHook>0 && idxHook<idxFirstWrite,"The merge is resolved before anything is saved.");
+			//Alerts and audit entries only for a save that went through: after the procedure is saved, right before the window closes as saved.
+			int idxSaved=saveAndClose.IndexOf("NoteMerge_Saved();");
+			Assert.IsTrue(idxSaved>saveAndClose.IndexOf("Procedures.FormProcEditUpdate("),"After the save.");
+			Assert.IsTrue(idxSaved>saveAndClose.LastIndexOf("return;"),"After the last early return of SaveAndClose.");
+			Assert.IsTrue(saveAndClose.IndexOf("DialogResult=DialogResult.OK;",idxSaved)>idxSaved,"Before the window closes as saved.");
+			//Lock: the merge is resolved before the lock flag is set, as in the Group Note window; the window closes as saved only when SaveAndClose
+			//saved (it sets DialogResult OK itself), otherwise the lock flag is undone and the window stays open.
+			string lockBody=Between(source,"private void butLock_Click(","\n\t\t}");
+			int idxValid=lockBody.IndexOf("if(!EntriesAreValid()) {");
+			int idxMerge=lockBody.IndexOf("if(!NoteMerge_TryResolve()) { return; }");
+			int idxLocked=lockBody.IndexOf("_procedure.IsLocked=true;");
+			int idxSave=lockBody.IndexOf("SaveAndClose();");
+			Assert.IsTrue(idxValid>0 && idxMerge>idxValid && idxLocked>idxMerge && idxSave>idxLocked,"Valid, merge, lock flag, save.");
+			string afterSave=lockBody.Substring(idxSave);
+			StringAssert.DoesNotMatch(afterSave,new Regex(@"DialogResult\s*=\s*DialogResult\.OK"),"Lock does not close as saved when the save stopped.");
+			StringAssert.Contains(afterSave,"if(DialogResult!=DialogResult.OK) {");
+			StringAssert.Contains(afterSave,"_procedure.IsLocked=false;");
+			//The signer butSave_Click alerted in this click (the user was changed over a signed note) is not alerted again by the merge.
+			string saveBody=Between(source,"private void butSave_Click(","\n\t\t}");
+			string changeUserBlock=Between(saveBody,"if(_hasUserChanged && !_procedureOld.Signature.IsNullOrEmpty()) {","AlertItems.Insert(");
+			StringAssert.Contains(changeUserBlock,"_noteMergeUserNumAlertedOnSave=_procedureOld.UserNum;");
 			string partial=ScratchDb.ReadRepoFile("OpenDental","Forms","FormProcEdit.NoteMerge.cs");
+			//Nothing is alerted or logged while resolving; NoteMerge_Saved does both, and the window has no close handler that could log an unsaved merge.
+			string resolve=Between(partial,"private bool NoteMerge_TryResolve() {","private bool NoteMerge_KeepTheirs(");
+			StringAssert.DoesNotMatch(resolve,new Regex(@"AlertItems\.Insert|SecurityLogs\.MakeLogEntry"));
+			StringAssert.Contains(resolve,"_listNoteMergeUserNumsToAlert.AddRange(ProcNoteMerges.GetTheirSignersToAlert(choice,procNoteNow,");
+			StringAssert.Contains(resolve,"_noteMergeUserNumAlertedThisClick=_noteMergeUserNumAlertedOnSave;");
+			StringAssert.Contains(resolve,"_noteMergeUserNumAlertedOnSave=0;");
+			string saved=Between(partial,"private void NoteMerge_Saved() {","\n\t\t}");
+			StringAssert.Contains(saved,"ProcNoteMerges.GetSignersToAlertOnSave(_listNoteMergeUserNumsToAlert,listUserNumsActing)");
+			StringAssert.Contains(saved,"AlertItems.Insert(");
+			StringAssert.Contains(saved,"SecurityLogs.MakeLogEntry(");
+			StringAssert.DoesNotMatch(partial,new Regex(@"FormClosed\s*\+="));
+			Assert.AreEqual(1,Regex.Matches(partial,@"AlertItems\.Insert\(").Count);
+			Assert.AreEqual(1,Regex.Matches(partial,@"SecurityLogs\.MakeLogEntry\(").Count);
 			StringAssert.Contains(partial,"ProcNotes.GetNewestForProc(_procedure.ProcNum)");
 			StringAssert.Contains(partial,"ProcNoteMerges.IsMergeNeeded(_procNoteNewestAtLoad,procNoteNow,isNoteRowWritten)");
 			StringAssert.Contains(partial,"bool isNoteRowWritten=ProcNoteMerges.IsNoteRowWritten(_procedure,_procedureOld,textNotes.Text,_signatureChanged);");

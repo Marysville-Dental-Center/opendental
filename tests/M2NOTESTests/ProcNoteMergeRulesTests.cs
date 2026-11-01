@@ -221,6 +221,17 @@ namespace M2NOTESTests {
 		}
 
 		[TestMethod]
+		public void TheirSigners_AlertedOnceTheSaveWentThrough() {
+			//Collected from two resolved merges (Save Merged, sign again, then a third user's newer note and Keep Mine): each signer once.
+			List<long> listPending=new List<long> { 21,22,21,0 };
+			CollectionAssert.AreEqual(new List<long> { 21,22 },ProcNoteMerges.GetSignersToAlertOnSave(listPending,new List<long> { 30 }));
+			//The user who switched in and saved, or the signer the save code already alerted in that click, is not alerted again.
+			CollectionAssert.AreEqual(new List<long> { 22 },ProcNoteMerges.GetSignersToAlertOnSave(listPending,new List<long> { 30,21 }));
+			Assert.AreEqual(0,ProcNoteMerges.GetSignersToAlertOnSave(new List<long>(),new List<long> { 30 }).Count,"Keep Theirs, or no merge: nobody.");
+			Assert.AreEqual(0,ProcNoteMerges.GetSignersToAlertOnSave(null,null).Count);
+		}
+
+		[TestMethod]
 		public void Log_PermissionAndText() {
 			Assert.AreEqual(EnumPermType.ProcCompleteNote,ProcNoteMerges.GetLogPermission(true));
 			Assert.AreEqual(EnumPermType.ProcEdit,ProcNoteMerges.GetLogPermission(false));

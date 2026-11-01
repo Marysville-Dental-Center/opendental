@@ -6,27 +6,38 @@ using CodeBase;
 using OpenDentBusiness;
 
 namespace OpenDental {
-	///<summary>Procedure Note Merge in Procedure Info (Open Dental 25.4, package M2-NOTES). Kept in its own file so FormProcEdit.cs only has two
-	///one-line hooks: NoteMerge_Load at the start of the load, and NoteMerge_TryResolve at the start of SaveAndClose.</summary>
+	///<summary>Procedure Note Merge in Procedure Info (Open Dental 25.4, package M2-NOTES). Kept in its own file so FormProcEdit.cs only has short
+	///hooks: NoteMerge_Load at the start of the load, NoteMerge_TryResolve at the start of SaveAndClose and in butLock_Click before the lock flag is
+	///set, NoteMerge_Saved at the end of SaveAndClose, and one line in butSave_Click that records the signer it alerted.</summary>
 	public partial class FormProcEdit {
 		///<summary>The newest procnote row of the procedure when the window opened (null when it had none).</summary>
 		private ProcNote _procNoteNewestAtLoad;
-		///<summary>Merges resolved in this window, logged once the procedure is saved.</summary>
+		///<summary>Merges resolved in this window, logged once the procedure is saved (NoteMerge_Saved).</summary>
 		private List<string> _listNoteMergeLogTexts=new List<string>();
+		///<summary>Signers of the newer notes that Keep Mine or Save Merged replaced, alerted once the procedure is saved (NoteMerge_Saved), never
+		///before: the save can still stop (sign again, Cancel, or a later check in SaveAndClose).</summary>
+		private List<long> _listNoteMergeUserNumsToAlert=new List<long>();
+		///<summary>Set by butSave_Click when, in this click, it raised the "signature cleared" alert for the signer of the note as loaded. Read and reset
+		///by NoteMerge_TryResolve, so it never carries over to another click (Lock and Set Complete raise no such alert).</summary>
+		private long _noteMergeUserNumAlertedOnSave;
+		///<summary>The signer the save code alerted in the click now being saved (0 when it alerted nobody).</summary>
+		private long _noteMergeUserNumAlertedThisClick;
 
 		///<summary>Remembers the newest note. Called at the start of the load.</summary>
 		private void NoteMerge_Load() {
 			if(_procedure.ProcNum!=0) {
 				_procNoteNewestAtLoad=ProcNotes.GetNewestForProc(_procedure.ProcNum);
 			}
-			FormClosed+=NoteMerge_FormClosed;
 		}
 
-		///<summary>Called first in SaveAndClose, before anything is written. When somebody else saved a newer note on this procedure since the window
-		///opened, and this save writes a new note row, shows the Procedure Note Merge window. False when nothing may be saved yet: Cancel (back to
-		///Procedure Info), or the saved text differs from the text signed here, so the user signs again. Not shown for a new procedure, or when the office
-		///uses the older automatic merge (preference ProcNoteConcurrencyMerge, Procedures.SetNote).</summary>
+		///<summary>Called before anything is written: first in SaveAndClose (Save, Set Complete, Lock), and in butLock_Click before the lock flag is
+		///set. When somebody else saved a newer note on this procedure since the window opened, and this save writes a new note row, shows the Procedure
+		///Note Merge window. False when nothing may be saved yet: Cancel (back to Procedure Info), or the saved text differs from the text signed here,
+		///so the user signs again. Not shown for a new procedure, or when the office uses the older automatic merge (preference
+		///ProcNoteConcurrencyMerge, Procedures.SetNote). Alerts and audit entries wait for NoteMerge_Saved.</summary>
 		private bool NoteMerge_TryResolve() {
+			_noteMergeUserNumAlertedThisClick=_noteMergeUserNumAlertedOnSave;
+			_noteMergeUserNumAlertedOnSave=0;
 			if(IsNew || _procedure.ProcNum==0 || ProcNoteMerges.IsAutoMergeOn()) {
 				return true;
 			}
@@ -50,8 +61,6 @@ namespace OpenDental {
 			if(choice==ProcNoteMergeChoice.Cancel || !ProcNoteMerges.IsChoiceAllowed(choice,canChangeText)) {
 				return false;
 			}
-			//butSave_Click already alerted the signer of the note as loaded when another user cleared that signature.
-			long userNumAlertedOnSave=(_hasUserChanged && !_procedureOld.Signature.IsNullOrEmpty()) ? _procedureOld.UserNum : 0;
 			//From now on the newer note is the one this window saves over.
 			_procNoteNewestAtLoad=procNoteNow;
 			ProcNoteMerges.TakeAsBaseline(_procedureOld,procNoteNow);
@@ -59,10 +68,13 @@ namespace OpenDental {
 			_listNoteMergeLogTexts.Add(ProcNoteMerges.GetLogText(choice,
 				ProcedureCodes.GetStringProcCode(_procedure.CodeNum,doThrowIfMissing:false)+" "+_procedure.ProcDate.ToShortDateString(),
 				Userods.GetName(procNoteNow.UserNum)));
+			//Keep Mine and Save Merged replace their signatures (none for Keep Theirs). butSave_Click already alerted the signer of the note as loaded
+			//when another user cleared that signature in this click.
+			_listNoteMergeUserNumsToAlert.AddRange(ProcNoteMerges.GetTheirSignersToAlert(choice,procNoteNow,
+				new List<long> { Security.CurUser.UserNum,_Userod.UserNum,_noteMergeUserNumAlertedThisClick }));
 			if(choice==ProcNoteMergeChoice.KeepTheirs) {
 				return NoteMerge_KeepTheirs(procNoteNow,canEditTheirs,isSigDrawn);
 			}
-			NoteMerge_AlertTheirSigner(choice,procNoteNow,userNumAlertedOnSave);
 			string noteResult=ProcNoteMerges.GetResultText(choice,procNoteNow.Note,noteMine,frmProcNoteMerge.NoteMerged);
 			if(ProcNoteMerges.IsNoteTextChanged(textNotes.Text,noteResult)) {
 				textNotes.Text=noteResult;//Clears a signature loaded with the note; a signature drawn here is checked below.
@@ -119,11 +131,12 @@ namespace OpenDental {
 			labelPermAlert.Visible=true;
 		}
 
-		///<summary>Keep Mine and Save Merged replace the newer note, so its signer gets the "signature cleared" alert (when subscribed), unless that is
-		///the user at the keyboard or the user switched to here, or the loaded note's signer, who was already alerted by the save.</summary>
-		private void NoteMerge_AlertTheirSigner(ProcNoteMergeChoice choice,ProcNote procNoteTheirs,long userNumAlertedOnSave) {
-			List<long> listUserNumsActing=new List<long> { Security.CurUser.UserNum,_Userod.UserNum,userNumAlertedOnSave };
-			List<long> listUserNums=ProcNoteMerges.GetTheirSignersToAlert(choice,procNoteTheirs,listUserNumsActing);
+		///<summary>Called at the end of SaveAndClose, once the procedure was saved, and only then: the "signature cleared" alert for the signers whose
+		///newer note Keep Mine or Save Merged replaced (when subscribed), and one audit entry per resolved merge, under the permission the note is saved
+		///with. A merge whose save never went through (Cancel, sign again and then close, a check later in SaveAndClose, Delete) leaves neither.</summary>
+		private void NoteMerge_Saved() {
+			List<long> listUserNumsActing=new List<long> { Security.CurUser.UserNum,_Userod.UserNum,_noteMergeUserNumAlertedThisClick };
+			List<long> listUserNums=ProcNoteMerges.GetSignersToAlertOnSave(_listNoteMergeUserNumsToAlert,listUserNumsActing);
 			for(int i=0;i<listUserNums.Count;i++) {
 				if(!AlertSubs.GetAllAlertTypesForUser(listUserNums[i]).Contains(AlertType.SignatureCleared)) {
 					continue;
@@ -140,17 +153,11 @@ namespace OpenDental {
 					ClinicNum=_procedure.ClinicNum,
 				});
 			}
-		}
-
-		///<summary>Logs the merges once the procedure was saved, under the permission the note is saved with.</summary>
-		private void NoteMerge_FormClosed(object sender,FormClosedEventArgs e) {
-			if(DialogResult!=DialogResult.OK || _listNoteMergeLogTexts.Count==0) {
-				return;
-			}
 			EnumPermType permType=ProcNoteMerges.GetLogPermission(ProcNoteMerges.IsCompleteStatus(_procedure.ProcStatus));
 			for(int i=0;i<_listNoteMergeLogTexts.Count;i++) {
 				SecurityLogs.MakeLogEntry(permType,_procedure.PatNum,_listNoteMergeLogTexts[i],_procedure.ProcNum,DateTime.MinValue);
 			}
+			_listNoteMergeUserNumsToAlert.Clear();
 			_listNoteMergeLogTexts.Clear();
 		}
 	}
