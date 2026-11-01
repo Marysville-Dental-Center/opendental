@@ -200,6 +200,9 @@ namespace ImagingDeviceManager.Tests {
 		public ushort EnableResult=Tw.TWRC_SUCCESS;
 		public ushort EnableFailCondition=Tw.TWCC_OPERATIONERROR;
 		public FakeEnableBehavior EnableBehavior=FakeEnableBehavior.XferReady;
+		///<summary>The built-in source reports its notification with TWRC_NOTDSEVENT instead of TWRC_DSEVENT, as some sources do: the message
+		///it was handed is not its own.</summary>
+		public bool IsNotificationNotDsEvent;
 		public bool IsPendingCountUnknown;
 		public bool IsImageLengthUnknown;
 		public ushort? PixelFlavor;
@@ -630,7 +633,7 @@ namespace ImagingDeviceManager.Tests {
 				}
 				_pendingMessage=Tw.MSG_NULL;
 				Marshal.StructureToPtr(twEvent,data,false);
-				return Tw.TWRC_DSEVENT;
+				return IsNotificationNotDsEvent ? Tw.TWRC_NOTDSEVENT : Tw.TWRC_DSEVENT;
 			}
 			twEvent.TWMessage=Tw.MSG_NULL;
 			Marshal.StructureToPtr(twEvent,data,false);

@@ -247,6 +247,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 					}
 					if(isRefusalWait) {
 						if(NowMs>=deadlineMs) {
+							DispatchUnlessOwn(pMsg,hwndMsg,hwndProxy);
 							return Tw.MSG_NULL;
 						}
 					}
@@ -254,6 +255,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 						TwainStopReason stopReason=GetStopRequest();
 						if(stopReason!=TwainStopReason.None) {
 							_stopReason=stopReason;
+							DispatchUnlessOwn(pMsg,hwndMsg,hwndProxy);
 							return Tw.MSG_NULL;
 						}
 					}
@@ -267,12 +269,24 @@ namespace ImagingDeviceManager.TwainProtocol {
 						}
 						continue;
 					}
+					//A message for another window of this thread (the program's, COM's for a call into this apartment, a WinForms Invoke) or
+					//for the thread: the source is asked first with the library's own WM_NULL, so that a source that reports its notification
+					//on whatever message comes next (twain-contract 1.1 section 5) reports it there and does not claim the program's message
+					//with it. A message claimed that way would never be dispatched: a COM call into this apartment would then block its
+					//caller for good (the finalizer thread, for one).
+					ushort notificationPolled=hwndMsg!=hwndProxy ? PollNotification() : Tw.MSG_NULL;
 					TW_EVENT twEvent=new TW_EVENT { pEvent=pMsg,TWMessage=Tw.MSG_NULL };
 					Marshal.StructureToPtr(twEvent,pEvent,false);
 					ushort rc=SourceEntry(Tw.DG_CONTROL,Tw.DAT_EVENT,Tw.MSG_PROCESSEVENT,pEvent);
 					twEvent=(TW_EVENT)Marshal.PtrToStructure(pEvent,typeof(TW_EVENT));
-					if(twEvent.TWMessage==Tw.MSG_XFERREADY || twEvent.TWMessage==Tw.MSG_CLOSEDSREQ) {
-						return twEvent.TWMessage;
+					ushort notification=notificationPolled!=Tw.MSG_NULL ? notificationPolled : twEvent.TWMessage;
+					if(notification==Tw.MSG_XFERREADY || notification==Tw.MSG_CLOSEDSREQ) {
+						if(rc!=Tw.TWRC_DSEVENT) {
+							//Not the source's message: dispatched before the notification is acted on, as in the TWAIN reference loop.
+							NativeMethods.TranslateMessage(pMsg);
+							NativeMethods.DispatchMessage(pMsg);
+						}
+						return notification;
 					}
 					if(rc==Tw.TWRC_FAILURE) {
 						//Normal answers are DSEVENT or NOTDSEVENT. A source that keeps saying it is not open (or not enabled)
@@ -316,10 +330,21 @@ namespace ImagingDeviceManager.TwainProtocol {
 			}
 		}
 
-		///<summary>One MSG_PROCESSEVENT with a WM_NULL message for the proxy window, outside the loop. When the loop stops in state 5 this
-		///gives the source a last chance to report a notification it already has, so that images it offered are transferred instead of
-		///dropped by the disable. A source may report its notification on any message (twain-contract 1.1 section 5). Returns
-		///MSG_XFERREADY, MSG_CLOSEDSREQ or MSG_NULL.</summary>
+		///<summary>Dispatches a message the loop took from the queue and stops on without handing it to the source, unless it is the
+		///library's own (for the proxy window). A message of the program's, or COM's for a call into this apartment, is never lost.</summary>
+		private static void DispatchUnlessOwn(IntPtr pMsg,IntPtr hwndMsg,IntPtr hwndProxy) {
+			if(hwndMsg==hwndProxy) {
+				return;
+			}
+			NativeMethods.TranslateMessage(pMsg);
+			NativeMethods.DispatchMessage(pMsg);
+		}
+
+		///<summary>One MSG_PROCESSEVENT with a WM_NULL message for the proxy window. When the loop stops in state 5 this gives the source a
+		///last chance to report a notification it already has, so that images it offered are transferred instead of dropped by the
+		///disable; in the loop it is asked before each message of the program's, so that the notification is not reported on that
+		///message. A source may report its notification on any message (twain-contract 1.1 section 5). Returns MSG_XFERREADY,
+		///MSG_CLOSEDSREQ or MSG_NULL.</summary>
 		private ushort PollNotification() {
 			IntPtr pMsg=Marshal.AllocHGlobal(NativeMethods.MsgBufferSize);
 			IntPtr pEvent=Marshal.AllocHGlobal(Marshal.SizeOf(typeof(TW_EVENT)));
@@ -332,7 +357,8 @@ namespace ImagingDeviceManager.TwainProtocol {
 				Marshal.StructureToPtr(new TW_EVENT { pEvent=pMsg,TWMessage=Tw.MSG_NULL },pEvent,false);
 				ushort rc=SourceEntry(Tw.DG_CONTROL,Tw.DAT_EVENT,Tw.MSG_PROCESSEVENT,pEvent);
 				TW_EVENT twEvent=(TW_EVENT)Marshal.PtrToStructure(pEvent,typeof(TW_EVENT));
-				if(rc==Tw.TWRC_DSEVENT && (twEvent.TWMessage==Tw.MSG_XFERREADY || twEvent.TWMessage==Tw.MSG_CLOSEDSREQ)) {
+				//Whatever rc says, as in the message loop: a source that sets the notification has moved on (to state 6 for MSG_XFERREADY).
+				if(twEvent.TWMessage==Tw.MSG_XFERREADY || twEvent.TWMessage==Tw.MSG_CLOSEDSREQ) {
 					return twEvent.TWMessage;
 				}
 				return Tw.MSG_NULL;

@@ -12,7 +12,9 @@ namespace ImagingDeviceManager.Tests {
 	internal static class TestWin32 {
 		private const uint PM_REMOVE=1;
 
-		///<summary>Removes every message of this thread's queue and returns the exit codes of the WM_QUIT messages among them.</summary>
+		///<summary>Empties this thread's queue and returns the exit codes of the WM_QUIT messages in it. Every other message is dispatched,
+		///never dropped: one may be COM's, for a call into this apartment (the finalizer thread releasing an object), whose caller would
+		///otherwise wait for good.</summary>
 		public static List<int> TakeQuitMessages() {
 			List<int> listExitCodes=new List<int>();
 			IntPtr pMsg=Marshal.AllocHGlobal(NativeMethods.MsgBufferSize);
@@ -20,13 +22,24 @@ namespace ImagingDeviceManager.Tests {
 				while(PeekMessage(pMsg,IntPtr.Zero,0,0,PM_REMOVE)) {
 					if(Marshal.ReadInt32(pMsg,NativeMethods.MsgOffsetMessage)==NativeMethods.WM_QUIT) {
 						listExitCodes.Add(Marshal.ReadInt32(pMsg,NativeMethods.MsgOffsetWParam));
+						continue;
 					}
+					NativeMethods.TranslateMessage(pMsg);
+					NativeMethods.DispatchMessage(pMsg);
 				}
 			}
 			finally {
 				Marshal.FreeHGlobal(pMsg);
 			}
 			return listExitCodes;
+		}
+
+		///<summary>Runs the finalizers that are due, in a wait that pumps this STA thread's messages: a COM call into the apartment that a
+		///finalizer queued (an object of the test host's released from the finalizer thread) is dispatched now, before the test runs a
+		///message loop of its own. Called before and after every test that runs the session's message loop on the test thread.</summary>
+		public static void FinalizePending() {
+			GC.Collect();
+			GC.WaitForPendingFinalizers();
 		}
 
 		[DllImport("user32.dll")]
@@ -69,6 +82,7 @@ namespace ImagingDeviceManager.Tests {
 			Session.TickMilliseconds=20;
 			Session.Logged+=ListLog.Add;
 			Session.DrainSink=Sink;
+			TestWin32.FinalizePending();
 		}
 
 		private ITwainDsm Load(out string errorText) {
@@ -129,8 +143,7 @@ namespace ImagingDeviceManager.Tests {
 		public void Dispose() {
 			Session.Dispose();
 			//These tests run Win32 message loops on the test adapter's STA thread; see EZTwainTests.Cleanup.
-			GC.Collect();
-			GC.WaitForPendingFinalizers();
+			TestWin32.FinalizePending();
 		}
 	}
 }

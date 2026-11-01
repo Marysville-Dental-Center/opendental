@@ -36,6 +36,7 @@ namespace ImagingDeviceManager.Tests {
 			EZTwain.Session.LoopTimeoutMilliseconds=10000;//A broken test fails instead of hanging.
 			_tempDir=Path.Combine(Path.GetTempPath(),"ImagingDeviceManagerTests_"+Guid.NewGuid().ToString("N"));
 			Directory.CreateDirectory(_tempDir);
+			TestWin32.FinalizePending();//See SessionHarness: before the first message loop of the test.
 		}
 
 		[TestCleanup]

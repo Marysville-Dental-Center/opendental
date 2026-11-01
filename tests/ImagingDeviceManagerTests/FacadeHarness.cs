@@ -162,6 +162,7 @@ namespace ImagingDeviceManager.Tests {
 			EZTwain.Session.LoopTimeoutMilliseconds=10000;//A broken test fails instead of hanging.
 			EZTwain.Session.TickMilliseconds=20;
 			EZTwain.Session.Logged+=ListSessionLog.Add;
+			TestWin32.FinalizePending();
 		}
 
 		private ITwainDsm Load(out string errorText) {
@@ -195,8 +196,7 @@ namespace ImagingDeviceManager.Tests {
 		public void Dispose() {
 			EZTwain.Reset(null);
 			//These tests run Win32 message loops on the test adapter's STA thread; see EZTwainTests.Cleanup.
-			GC.Collect();
-			GC.WaitForPendingFinalizers();
+			TestWin32.FinalizePending();
 			try {
 				Directory.Delete(Path.GetDirectoryName(FolderImaging),true);
 			}
