@@ -426,6 +426,64 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void Completed_EndWhileEnabled_FinishedOnTheEnablesEnded_NothingExposed_CreatedMountToDelete() {
+			_windowRunner.ActionWhileShown=controller => {
+				controller.Begin();
+				_clock.Advance(CaptureSessionController.KeyIgnoreMs);
+				controller.RequestStart();
+				_dispatcher.RunPending();
+				FakeTwainCaptureSession twain=_listSessions.Single();
+				twain.RaiseStatus(TwainCaptureState.WaitingForImage,isSafeDisableInEffect:true);
+				_dispatcher.RunPending();
+				Assert.IsTrue(controller.Execute(CaptureSessionAction.End),"Safe disable: no warning first.");
+				Assert.AreEqual(CaptureSessionPhase.Stopping,controller.Phase);
+				//The library raises Ended after the enable's last image: nothing more can arrive.
+				twain.RaiseEnded(TwainCaptureEndReason.Stopped,ended => ended.StopReason=TwainCaptureStopReason.End);
+				_dispatcher.RunPending();
+				Assert.AreEqual(CaptureSessionPhase.Finished,controller.Phase);
+				Assert.IsFalse(controller.IsSourceStillDelivering,"The enable had ended when the session finished.");
+			};
+			CaptureSessionLaunchResult result=Launcher().Run(Request());
+			Assert.AreEqual(CaptureSessionLaunchKind.Completed,result.Kind);
+			Assert.AreEqual(CaptureSessionEndReason.Ended,result.Summary.EndReason);
+			CollectionAssert.AreEqual(new[] { TwainCaptureStopReason.End },_listSessions.Single().ListDisables);
+			Assert.IsTrue(result.IsEmptyMountToDelete,"The session saved no image and quarantined none: the mount created for it is still empty.");
+			Assert.IsFalse(_listLog.Any(x => x.Contains("still enabled or stopping")),string.Join("\r\n",_listLog));
+		}
+
+		[TestMethod]
+		public void Completed_EndWhileOpening_NothingEnabled_CreatedMountToDelete_AlsoWhenTheOpenFails() {
+			_windowRunner.ActionWhileShown=controller => {
+				controller.Begin();
+				_clock.Advance(CaptureSessionController.KeyIgnoreMs);
+				controller.RequestStart();//the open runs in the background
+				Assert.AreEqual(CaptureSessionPhase.Opening,controller.Phase);
+				Assert.IsTrue(controller.Execute(CaptureSessionAction.End));
+				_dispatcher.RunPending();//the open finishes: the session finishes without enabling
+				Assert.AreEqual(CaptureSessionPhase.Finished,controller.Phase);
+				Assert.IsFalse(controller.IsSourceStillDelivering,"A source that was never enabled delivers nothing.");
+			};
+			CaptureSessionLaunchResult result=Launcher().Run(Request());
+			Assert.AreEqual(CaptureSessionLaunchKind.Completed,result.Kind);
+			Assert.AreEqual(CaptureSessionEndReason.Ended,result.Summary.EndReason);
+			Assert.AreEqual(0,_listSessions.Single().ListEnables.Count);
+			Assert.AreEqual(1,_listSessions.Single().CountBeginClose);
+			Assert.IsTrue(result.IsEmptyMountToDelete);
+			_windowRunner.ActionWhileShown=controller => {
+				controller.Begin();
+				_clock.Advance(CaptureSessionController.KeyIgnoreMs);
+				controller.RequestStart();
+				controller.Execute(CaptureSessionAction.End);
+				_listSessions.Last().OpenResult=new TwainCaptureOpenResult { Error=TwainCaptureOpenError.Other,ErrorText="The source did not open." };
+				_dispatcher.RunPending();
+				Assert.AreEqual(CaptureSessionPhase.Finished,controller.Phase);
+			};
+			CaptureSessionLaunchResult resultOpenFailed=Launcher().Run(Request());
+			Assert.AreEqual(CaptureSessionEndReason.Ended,resultOpenFailed.Summary.EndReason);
+			Assert.IsTrue(resultOpenFailed.IsEmptyMountToDelete,"The open failed: nothing was ever enabled.");
+		}
+
+		[TestMethod]
 		public void WindowFailsAfterAnImageWasSaved_Completed_MountKept_SourceClosed() {
 			_isWindowFailureExpected=true;
 			_windowRunner.ActionWhileShown=controller => {

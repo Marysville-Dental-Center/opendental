@@ -956,9 +956,11 @@ namespace ImagingCapture.Session {
 			if(Phase==CaptureSessionPhase.Finished) {
 				return;
 			}
-			//The source was enabled, stopping or opening: images it still delivers reach the controller only later (posted to this thread) or go
-			//to the quarantine on the closing worker, naming this session's mount and slots.
-			IsSourceStillDelivering=_enableRunning!=null || Phase==CaptureSessionPhase.Stopping || Phase==CaptureSessionPhase.Opening;
+			//An enable still runs (the source is enabled or stopping): images it still delivers reach the controller only later (posted to this
+			//thread) or go to the quarantine on the closing worker, naming this session's mount and slots. Once its Ended has arrived (OnEnded
+			//cleared _enableRunning) every image of it was handled, because the library raises Ended after the enable's last image; a source that
+			//is opening or open but not enabled delivers nothing.
+			IsSourceStillDelivering=_enableRunning!=null;
 			Phase=CaptureSessionPhase.Finished;
 			StartKind=CaptureStartKind.None;
 			ClearStopWarning();
@@ -1012,9 +1014,10 @@ namespace ImagingCapture.Session {
 			};
 		}
 
-		///<summary>The session finished while the source was enabled, stopping or opening (a forced close, the X while stopping): images it still
-		///delivers are quarantined after the finish, naming this session's mount and slots, so a mount created for the session is kept
-		///(CaptureSessionLauncher), and Assign can still file them into their slots.</summary>
+		///<summary>The session finished while an enable still ran, the source enabled or stopping (a forced close, the X while the source is enabled
+		///or stopping): images it still delivers are quarantined after the finish, naming this session's mount and slots, so a mount created for the
+		///session is kept (CaptureSessionLauncher), and Assign can still file them into their slots. False after an End that waited for the enable's
+		///Ended, and after an End while the source was opening.</summary>
 		public bool IsSourceStillDelivering { get; private set; }
 
 		///<summary>No document of this session, and none before it, is in the mount: a mount created for this session is still empty.</summary>
