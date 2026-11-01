@@ -28,6 +28,8 @@ namespace ImagingDeviceManager.Journal {
 	///name and ".txt": one "Key=Value" per line, ';' lines are comments.</summary>
 	internal static class CaptureFiles {
 		public const string ImageExtension=".bmp";
+		///<summary>The image extensions journal rotation counts: a DIB copy, and a 16-bit copy (Gray16Tiff).</summary>
+		public static readonly string[] ArrayImageExtensions={ ImageExtension,Imaging.Gray16Tiff.Extension };
 		public const string SidecarExtension=".txt";
 		private const int BitmapFileHeaderSize=14;
 		private static int _sequence;
@@ -130,7 +132,7 @@ namespace ImagingDeviceManager.Journal {
 		///path, or null with error when the image could not be written. When only the sidecar fails, the image is kept (it may be the only
 		///copy), the path is returned and error says so.</summary>
 		public static string WritePair(string folder,DateTime receivedAt,byte[] bytesImage,Func<string,string> funcSidecar,out string error,
-			string baseNameSuffix="")
+			string baseNameSuffix="",string imageExtension=ImageExtension)
 		{
 			error="";
 			string pathImage=null;
@@ -138,7 +140,7 @@ namespace ImagingDeviceManager.Journal {
 			Exception exceptionLast=null;
 			for(int attempt=0;attempt<3 && pathImage==null;attempt++) {
 				baseName=NewBaseName(receivedAt)+(baseNameSuffix??"");
-				string pathCandidate=Path.Combine(folder,baseName+ImageExtension);
+				string pathCandidate=Path.Combine(folder,baseName+(imageExtension??ImageExtension));
 				string pathTemp=Path.Combine(folder,baseName+".tmp");
 				try {
 					File.WriteAllBytes(pathTemp,bytesImage);

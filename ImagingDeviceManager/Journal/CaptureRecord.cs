@@ -28,6 +28,8 @@ namespace ImagingDeviceManager.Journal {
 		public int? Sequence;
 		///<summary>The gated [Twain] values in effect (CaptureSettingsSnapshot).</summary>
 		public List<SidecarField> ListSettings=new List<SidecarField>();
+		///<summary>What a capture session adds about the image (session, enable, kind, stop reason, its metadata); empty otherwise.</summary>
+		public List<SidecarField> ListCaptureFields=new List<SidecarField>();
 
 		///<summary>A record for an image received now on this computer by this Windows user.</summary>
 		public static CaptureRecord Create(DateTime receivedAt,string sourceName,string acquireId) {

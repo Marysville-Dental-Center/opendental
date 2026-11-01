@@ -36,6 +36,19 @@ namespace ImagingDeviceManager.Journal {
 		///more about it (the quarantine file, or why there is none), or null. Returns the image path, or null when no copy was written;
 		///problems go to log. Never throws.</summary>
 		public string Write(DibImage dib,CaptureRecord record,string delivered,string detail,int keep,Action<string> log) {
+			CaptureImageFile file;
+			try {
+				file=CaptureImageFile.FromDib(dib);
+			}
+			catch(Exception ex) {
+				(log??(text => { }))("No journal copy: "+ex.Message);
+				return null;
+			}
+			return Write(file,record,delivered,detail,keep,log);
+		}
+
+		///<summary>Write for any image file: a DIB (.bmp) or the 16-bit samples of a capture-session image (.tif).</summary>
+		public string Write(CaptureImageFile file,CaptureRecord record,string delivered,string detail,int keep,Action<string> log) {
 			log=log??(text => { });
 			if(keep<=0) {
 				if(!_isKeepWarningLogged) {
@@ -55,13 +68,13 @@ namespace ImagingDeviceManager.Journal {
 				if(errorFolder!="") {
 					log(errorFolder);
 				}
-				byte[] bytes=CaptureFiles.ToBmpBytes(dib);
+				byte[] bytes=file.Bytes;
 				string sha256=CaptureFiles.Sha256Hex(bytes);
 				//The image file's name is known only once it is written, so the sidecar names the image by its base name.
 				string errorWrite;
 				string pathImage=CaptureFiles.WritePair(folder,record.ReceivedAt,bytes,
-					baseName => BuildSidecar(record,delivered,detail,baseName+CaptureFiles.ImageExtension,dib,sha256),out errorWrite,
-					delivered==DeliveredNone ? OnlyCopySuffix : "");
+					baseName => BuildSidecar(record,delivered,detail,baseName+file.Extension,file,sha256),out errorWrite,
+					delivered==DeliveredNone ? OnlyCopySuffix : "",file.Extension);
 				if(pathImage==null) {
 					log("No journal copy: "+errorWrite);
 					return null;
@@ -82,7 +95,7 @@ namespace ImagingDeviceManager.Journal {
 			}
 		}
 
-		private static string BuildSidecar(CaptureRecord record,string delivered,string detail,string fileImage,DibImage dib,string sha256) {
+		private static string BuildSidecar(CaptureRecord record,string delivered,string detail,string fileImage,CaptureImageFile file,string sha256) {
 			List<SidecarField> listFields=new List<SidecarField> { new SidecarField("Kind","journal copy") };
 			listFields.AddRange(record.GetOriginFields());
 			listFields.Add(new SidecarField("PatNum",record.PatNum>0 ? record.PatNum.ToString(CultureInfo.InvariantCulture) : ""));
@@ -91,10 +104,12 @@ namespace ImagingDeviceManager.Journal {
 				listFields.Add(new SidecarField("DeliveredDetail",detail));
 			}
 			listFields.AddRange(record.GetMetadataFields());
-			listFields.AddRange(CaptureRecord.GetImageFields(fileImage,dib,sha256));
+			listFields.AddRange(record.ListCaptureFields);
+			listFields.AddRange(file.GetFields(fileImage,sha256));
 			listFields.AddRange(record.ListSettings);
 			return CaptureFiles.BuildSidecar(new[] {
-				"Capture journal copy: a recovery copy, not the record. The image file is the DIB the program received, unchanged, as a .bmp file.",
+				"Capture journal copy: a recovery copy, not the record. The image file is the DIB the program received, unchanged, as a .bmp file,",
+				"or for a 16-bit capture the samples it received, unchanged, as a 16-bit grayscale .tif file.",
 				"PatNum is empty when the caller did not pass one (the Mount/Acquire loop passes none). Delivered=Caller: the program received",
 				"the image and may have stored it; Quarantine: it went to the capture quarantine instead; None: this copy is the only one,",
 				"its name ends in "+OnlyCopySuffix+", and rotation never removes it.",
@@ -108,15 +123,23 @@ namespace ImagingDeviceManager.Journal {
 			error="";
 			int countRemoved=0;
 			try {
-				List<string> listBaseNames=Directory.GetFiles(folder,"*"+CaptureFiles.ImageExtension)
-					.Select(x => Path.GetFileNameWithoutExtension(x))
-					.Where(x => CaptureFiles.IsCaptureBaseName(x))
-					.OrderByDescending(x => x,StringComparer.Ordinal)
-					.ToList();
+				Dictionary<string,string> dictExtensions=new Dictionary<string,string>(StringComparer.Ordinal);
+				foreach(string extension in CaptureFiles.ArrayImageExtensions) {
+					foreach(string path in Directory.GetFiles(folder,"*"+extension)) {
+						if(!string.Equals(Path.GetExtension(path),extension,StringComparison.OrdinalIgnoreCase)) {
+							continue;//"*.tif" also matches ".tiff".
+						}
+						string baseNameFound=Path.GetFileNameWithoutExtension(path);
+						if(CaptureFiles.IsCaptureBaseName(baseNameFound)) {
+							dictExtensions[baseNameFound]=extension;
+						}
+					}
+				}
+				List<string> listBaseNames=dictExtensions.Keys.OrderByDescending(x => x,StringComparer.Ordinal).ToList();
 				List<string> listErrors=new List<string>();
 				foreach(string baseName in listBaseNames.Skip(Math.Max(0,keep))) {
 					try {
-						File.Delete(Path.Combine(folder,baseName+CaptureFiles.ImageExtension));
+						File.Delete(Path.Combine(folder,baseName+dictExtensions[baseName]));
 						countRemoved++;
 					}
 					catch(Exception ex) {

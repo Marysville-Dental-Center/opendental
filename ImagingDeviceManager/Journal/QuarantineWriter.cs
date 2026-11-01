@@ -15,7 +15,7 @@ namespace ImagingDeviceManager.Journal {
 	internal sealed class QuarantineWriter {
 		public const string PatientUnknown="patient unknown";
 		///<summary>Image files counted as unassigned captures: this writer's .bmp, and the formats the capture session (CAP-4) will add.</summary>
-		private static readonly string[] _arrayImageExtensions={ ".bmp",".png",".dcm" };
+		private static readonly string[] _arrayImageExtensions={ ".bmp",".png",".dcm",".tif" };
 		private readonly CaptureFolders _folders;
 
 		public QuarantineWriter(CaptureFolders folders) {
@@ -57,6 +57,66 @@ namespace ImagingDeviceManager.Journal {
 				error=ex.Message;
 				return null;
 			}
+		}
+
+		///<summary>Writes an image of a capture session with its sidecar to Capture\quarantine\&lt;sessionGuid&gt; (design 7.12). The sidecar
+		///records, beyond the usual fields, the originating PatNum, the patient's name, the session GUID and the slot; patNum 0 records "patient
+		///unknown" (a declined redelivered image, whose source knows no patient). Returns the image path, or null with error. Never throws.</summary>
+		public string WriteSessionCapture(CaptureImageFile file,CaptureRecord record,Guid sessionGuid,long patNum,string patientName,string slot,
+			string reason,Action<string> log,out string error)
+		{
+			log=log??(text => { });
+			error="";
+			try {
+				string subfolder=CaptureFolders.SubfolderQuarantine+"\\"+sessionGuid.ToString("D");
+				string folder;
+				string errorFolder;
+				if(!_folders.Ensure(subfolder,out folder,out errorFolder)) {
+					error="the capture quarantine folder is not usable. "+errorFolder;
+					return null;
+				}
+				if(errorFolder!="") {
+					log(errorFolder);
+				}
+				string sha256=CaptureFiles.Sha256Hex(file.Bytes);
+				string errorWrite;
+				string pathImage=CaptureFiles.WritePair(folder,record.ReceivedAt,file.Bytes,
+					baseName => BuildSessionSidecar(record,sessionGuid,patNum,patientName,slot,reason,baseName+file.Extension,file,sha256),out errorWrite,
+					"",file.Extension);
+				if(pathImage==null) {
+					error=errorWrite;
+					return null;
+				}
+				if(errorWrite!="") {
+					log(errorWrite);
+				}
+				return pathImage;
+			}
+			catch(Exception ex) {
+				error=ex.Message;
+				return null;
+			}
+		}
+
+		private static string BuildSessionSidecar(CaptureRecord record,Guid sessionGuid,long patNum,string patientName,string slot,string reason,
+			string fileImage,CaptureImageFile file,string sha256)
+		{
+			List<SidecarField> listFields=new List<SidecarField> { new SidecarField("Kind","quarantine") };
+			listFields.AddRange(record.GetOriginFields());
+			listFields.Add(new SidecarField("Patient",patNum>0 ? (patientName??"") : PatientUnknown));
+			listFields.Add(new SidecarField("PatNum",patNum>0 ? patNum.ToString(System.Globalization.CultureInfo.InvariantCulture) : ""));
+			listFields.Add(new SidecarField("SessionGuid",sessionGuid.ToString("D")));
+			listFields.Add(new SidecarField("Slot",slot??""));
+			listFields.Add(new SidecarField("Reason",reason??""));
+			listFields.AddRange(record.GetMetadataFields());
+			listFields.AddRange(record.ListCaptureFields);
+			listFields.AddRange(file.GetFields(fileImage,sha256));
+			listFields.AddRange(record.ListSettings);
+			return CaptureFiles.BuildSidecar(new[] {
+				"Capture quarantine: an image of a capture session that was not filed. The image file is what the program received, unchanged",
+				"(a .bmp of the DIB, or a 16-bit grayscale .tif of the samples). Patient and PatNum are the patient the session was bound to;",
+				"\"patient unknown\" files are offered only through Reassign.",
+			},listFields);
 		}
 
 		///<summary>The sidecar of a quarantine image: receive time, source ProductName, computer, Windows user, the reason and "patient
