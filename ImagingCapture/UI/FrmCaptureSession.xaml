@@ -25,8 +25,9 @@
 		<ui:Label x:Name="labelStartHint" Width="320" Height="18" Margin="580,54,0,0" Text="" HAlign="Center" />
 		<ui:Button x:Name="butRequestRedelivery" Width="320" Height="26" Margin="580,76,0,0" Text="Request undelivered images again" Click="butRequestRedelivery_Click" />
 		<!--Unassigned captures and Recover recent captures: implementer C's windows (FrmCaptureSession hooks)-->
-		<ui:LinkLabel x:Name="linkUnassigned" Width="176" Height="54" Margin="912,8,0,0" Text="" ColorBack="#FFFCFDFE" />
-		<ui:LinkLabel x:Name="linkRecover" Width="176" Height="18" Margin="912,66,0,0" Text="Recover recent captures" ColorBack="#FFFCFDFE" />
+		<!--After 30 days the line is the warning (about 130 characters, five lines at this width): room for it, and a warning colour-->
+		<ui:LinkLabel x:Name="linkUnassigned" Width="176" Height="80" Margin="912,8,0,0" Text="" ColorBack="#FFFCFDFE" />
+		<ui:LinkLabel x:Name="linkRecover" Width="176" Height="18" Margin="912,90,0,0" Text="Recover recent captures" ColorBack="#FFFCFDFE" />
 		<!--The indicator area (design 7.5, 7.6, 7.11, 7.12): collapsed parts take no space. The lines that wrap grow with their text (MinHeight,
 		not Height, which would cut a third line in half), and the area scrolls rather than cover the slots below it at y=376.-->
 		<ScrollViewer x:Name="scrollIndicator" Width="1088" MaxHeight="256" Margin="12,118,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False" IsTabStop="False" >

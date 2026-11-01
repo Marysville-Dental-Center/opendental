@@ -1,6 +1,7 @@
 // This file is part of the open source dental practice management software derived from Open Dental.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
+using ImagingDeviceManager.Capture;
 using OpenDentBusiness;
 
 namespace ImagingCapture.Session {
@@ -41,18 +42,12 @@ namespace ImagingCapture.Session {
 
 		///<summary>Reads the unassigned-captures count again (after the quarantine window closed). Raises Changed when the text changed.</summary>
 		public void RefreshUnassignedText() {
-			string text;
-			try {
-				text=_services.FuncGetUnassignedText?.Invoke();
-			}
-			catch(Exception ex) {
-				Log("The unassigned captures could not be counted: "+ex.Message);
+			CaptureUnassignedInfo info=CaptureSessionLauncher.GetUnassignedInfo(_services);
+			if(info.Text==UnassignedText && info.IsOverdue==IsUnassignedOverdue) {
 				return;
 			}
-			if(text==UnassignedText) {
-				return;
-			}
-			UnassignedText=text;
+			UnassignedText=info.Text;
+			IsUnassignedOverdue=info.IsOverdue;
 			NotifyChanged();
 		}
 	}

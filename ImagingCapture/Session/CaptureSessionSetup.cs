@@ -43,6 +43,8 @@ namespace ImagingCapture.Session {
 		public CaptureSettingsCheck SettingsCheck { get; set; }
 		///<summary>The quarantine line when the session started (CaptureQuarantine.GetUnassignedText), or null.</summary>
 		public string UnassignedText { get; set; }
+		///<summary>UnassignedText is the warning after 30 days (CaptureUnassignedInfo.IsOverdue).</summary>
+		public bool IsUnassignedOverdue { get; set; }
 		///<summary>The session's GUID: the quarantine folder, the sidecars, the DICOM Series and the security log.</summary>
 		public Guid SessionGuid { get; set; }=Guid.NewGuid();
 

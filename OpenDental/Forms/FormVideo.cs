@@ -46,6 +46,10 @@ namespace OpenDental {
 		private string _unassignedText;
 		///<summary>labelInfo shows _unassignedText, which then opens the unassigned captures window.</summary>
 		private bool _isUnassignedShown;
+		///<summary>_unassignedText is the warning after 30 days (design 7.12 "Visibility"): shown in a warning colour, with the whole text as a
+		///tooltip, because labelInfo cuts it with an ellipsis.</summary>
+		private bool _isUnassignedOverdue;
+		private System.Windows.Forms.ToolTip _toolTipUnassigned;
 		#endregion Fields
 
 		///<summary>Fires for each photo: the Capture button, Space, or a camera button. The bitmap is a copy made for the handler,
@@ -165,7 +169,9 @@ namespace OpenDental {
 		///<summary>Design 7.12 "Visibility": "N unassigned captures on this computer" under the preview when the window opens while the capture
 		///quarantine is not empty. Clicking it opens the unassigned captures window; the next note under the preview replaces it.</summary>
 		private void ShowUnassignedNotice() {
-			_unassignedText=ImagingDeviceManager.Capture.CaptureQuarantine.GetUnassignedText();
+			ImagingDeviceManager.Capture.CaptureUnassignedInfo unassignedInfo=ImagingDeviceManager.Capture.CaptureQuarantine.GetUnassignedInfo();
+			_unassignedText=unassignedInfo.Text;
+			_isUnassignedOverdue=unassignedInfo.IsOverdue;
 			if(_unassignedText!=null && labelInfo.Text=="") {
 				labelInfo.Text=_unassignedText;
 			}
@@ -177,7 +183,13 @@ namespace OpenDental {
 		private void labelInfo_TextChanged(object sender,EventArgs e) {
 			_isUnassignedShown=_unassignedText!=null && labelInfo.Text==_unassignedText;
 			labelInfo.Cursor=_isUnassignedShown ? Cursors.Hand : Cursors.Default;
-			labelInfo.ForeColor=_isUnassignedShown ? Color.Blue : SystemColors.ControlText;
+			bool isOverdueShown=_isUnassignedShown && _isUnassignedOverdue;
+			labelInfo.ForeColor=isOverdueShown ? Color.Firebrick : (_isUnassignedShown ? Color.Blue : SystemColors.ControlText);
+			if(isOverdueShown && _toolTipUnassigned==null) {
+				_toolTipUnassigned=new System.Windows.Forms.ToolTip();
+				Disposed+=(senderDisposed,eDisposed) => _toolTipUnassigned.Dispose();
+			}
+			_toolTipUnassigned?.SetToolTip(labelInfo,isOverdueShown ? _unassignedText : "");
 		}
 
 		///<summary>The unassigned captures window (ImagingCapture), modal to this one. Each action in it checks its own permission; a capture is

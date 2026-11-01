@@ -666,6 +666,29 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void UnassignedCaptures_AfterThirtyDays_TheLineIsTheWarning_FlaggedForTheWarningColour() {
+			_harness.Setup.UnassignedText="2 unassigned capture(s) on this computer.";
+			bool isOverdue=false;
+			_harness.FuncGetUnassignedInfo=() => new CaptureUnassignedInfo { Count=2,IsOverdue=isOverdue,
+				Text="2 unassigned capture(s) on this computer."+(isOverdue ? " The oldest is from 2026-09-20. Ask an administrator to recover them now (see "
+					+"the runbook)." : "") };
+			ViewModel();
+			_viewModel.Begin();
+			Assert.IsFalse(_viewModel.IsUnassignedOverdue);
+			isOverdue=true;
+			_viewModel.RefreshUnassignedText();
+			Assert.IsTrue(_viewModel.IsUnassignedOverdue,"Design 7.12: after 30 days the count turns into an escalating warning.");
+			StringAssert.EndsWith(_viewModel.UnassignedText,"Ask an administrator to recover them now (see the runbook).");
+			isOverdue=false;
+			_viewModel.RefreshUnassignedText();
+			Assert.IsFalse(_viewModel.IsUnassignedOverdue);
+			_harness.Setup.IsUnassignedOverdue=true;
+			_harness.Create();
+			ViewModel();
+			Assert.IsTrue(_viewModel.IsUnassignedOverdue,"As the launcher read it when the session started.");
+		}
+
+		[TestMethod]
 		public void OnClosing_TwiceAndAfterTheFinish_Harmless_NoSoundAfterClose() {
 			ViewModel();
 			Started();

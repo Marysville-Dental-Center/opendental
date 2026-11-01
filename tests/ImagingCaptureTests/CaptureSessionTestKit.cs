@@ -312,6 +312,8 @@ namespace ImagingCapture.Tests {
 		public int CountActivity;
 		///<summary>Configures each new fake session before the controller uses it.</summary>
 		public Action<FakeTwainCaptureSession> ActionOnNewSession;
+		///<summary>The unassigned captures as the controller reads them again; null: "2 unassigned captures on this computer.", not overdue.</summary>
+		public Func<CaptureUnassignedInfo> FuncGetUnassignedInfo;
 		private CaptureSessionController _controller;
 
 		///<summary>countSlots 0: single-target mode (no mount).</summary>
@@ -379,6 +381,7 @@ namespace ImagingCapture.Tests {
 					return session;
 				},
 				FuncGetUnassignedText=() => "2 unassigned captures on this computer.",
+				FuncGetUnassignedInfo=FuncGetUnassignedInfo,
 				ActionWriteLog=line => ListLogFile.Add(line),
 				PatientEvents=PatientEvents,
 				ActionNoteActivity=() => CountActivity++,

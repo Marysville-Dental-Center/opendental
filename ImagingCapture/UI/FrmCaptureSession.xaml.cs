@@ -38,6 +38,8 @@ namespace ImagingCapture.UI {
 		private const int TickMs=100;
 		private const double ToothTileSize=30;
 		private static readonly Color _colorWindow=Color.FromRgb(252,253,254);
+		///<summary>The unassigned-captures line after 30 days (design 7.12 "Visibility": an escalating warning).</summary>
+		private static readonly Color _colorUnassignedOverdue=Color.FromRgb(255,216,160);
 		private static readonly Color _colorBlack=Color.FromRgb(0,0,0);
 		private static readonly Color _colorWhite=Color.FromRgb(255,255,255);
 		private readonly CaptureSessionViewModel _viewModel;
@@ -661,7 +663,9 @@ namespace ImagingCapture.UI {
 			if(linkUnassigned.LinkLength!=linkLength) {
 				linkUnassigned.LinkLength=linkLength;
 			}
-			linkUnassigned.ColorBack=_colorWindow;
+			bool isOverdue=_viewModel.IsUnassignedOverdue;
+			linkUnassigned.ColorBack=isOverdue ? _colorUnassignedOverdue : _colorWindow;
+			linkUnassigned.FontWeight=isOverdue ? FontWeights.Bold : FontWeights.Normal;
 			bool canRecover=CanShowRecover();
 			linkRecover.Visible=canRecover;
 			int linkLengthRecover=canRecover && _viewModel.CanOpenCaptureLinks ? linkRecover.Text.Length : 0;

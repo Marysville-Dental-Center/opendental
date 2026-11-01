@@ -84,8 +84,11 @@ namespace ImagingCapture.Session {
 		public Func<LocalCaptureConfig> FuncLoadConfig { get; set; }
 		///<summary>This computer (ODEnvironment.MachineName).</summary>
 		public Func<string> FuncGetComputerName { get; set; }
-		///<summary>CaptureQuarantine.GetUnassignedText.</summary>
+		///<summary>CaptureQuarantine.GetUnassignedText. Used when FuncGetUnassignedInfo is null.</summary>
 		public Func<string> FuncGetUnassignedText { get; set; }
+		///<summary>CaptureQuarantine.GetUnassignedInfo: the line and whether it has turned into the warning after 30 days (design 7.12
+		///"Visibility"), which the window then shows in a warning colour. Null: FuncGetUnassignedText, never overdue.</summary>
+		public Func<CaptureUnassignedInfo> FuncGetUnassignedInfo { get; set; }
 		///<summary>A line for Capture\capture-log.txt (CaptureLogFile.Write).</summary>
 		public Action<string> ActionWriteLog { get; set; }
 		///<summary>The session window; null shows none, and the session is not started.</summary>
@@ -113,6 +116,7 @@ namespace ImagingCapture.Session {
 				FuncLoadConfig=() => LocalCaptureConfig.Load(),
 				FuncGetComputerName=() => ODEnvironment.MachineName,
 				FuncGetUnassignedText=() => CaptureQuarantine.GetUnassignedText(),
+				FuncGetUnassignedInfo=() => CaptureQuarantine.GetUnassignedInfo(),
 				ActionWriteLog=text => CaptureLogFile.Write(text),
 				WindowRunner=new CaptureSessionWindowRunner(),
 				PatientEvents=new ODEventCapturePatientEvents(),
@@ -320,9 +324,11 @@ namespace ImagingCapture.Session {
 				VerificationRecord=CaptureVerificationRecords.FindLatest(listSetupLogs,imagingDeviceNum,computerName),
 				GatedSettingsHash=settingsCheck.CurrentHash,
 				SettingsCheck=settingsCheck,
-				UnassignedText=GetUnassignedText(),
 				SessionGuid=Guid.NewGuid(),
 			};
+			CaptureUnassignedInfo unassignedInfo=GetUnassignedInfo();
+			setup.UnassignedText=unassignedInfo.Text;
+			setup.IsUnassignedOverdue=unassignedInfo.IsOverdue;
 			return null;
 		}
 
@@ -347,12 +353,21 @@ namespace ImagingCapture.Session {
 			}
 		}
 
-		private string GetUnassignedText() {
+		private CaptureUnassignedInfo GetUnassignedInfo() {
+			return GetUnassignedInfo(_services);
+		}
+
+		///<summary>The unassigned-captures line and whether it is the 30-day warning, from FuncGetUnassignedInfo, else FuncGetUnassignedText. Never
+		///throws: the count is a convenience.</summary>
+		internal static CaptureUnassignedInfo GetUnassignedInfo(CaptureSessionServices services) {
 			try {
-				return _services.FuncGetUnassignedText?.Invoke();
+				if(services?.FuncGetUnassignedInfo!=null) {
+					return services.FuncGetUnassignedInfo()??new CaptureUnassignedInfo();
+				}
+				return new CaptureUnassignedInfo { Text=services?.FuncGetUnassignedText?.Invoke() };
 			}
 			catch {
-				return null;
+				return new CaptureUnassignedInfo();
 			}
 		}
 

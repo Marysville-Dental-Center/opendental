@@ -108,6 +108,7 @@ namespace ImagingCapture.Session {
 			ProvNum=setup.ProvNumDefault;
 			ProviderAbbr=GetProviderAbbr(ProvNum);
 			UnassignedText=setup.UnassignedText;
+			IsUnassignedOverdue=setup.IsUnassignedOverdue;
 			_indicatorText=CaptureSessionText.ReadyStart;
 		}
 		#endregion Constructor
@@ -150,6 +151,9 @@ namespace ImagingCapture.Session {
 		public string WarningText { get; private set; }="";
 		///<summary>"N unassigned captures on this computer" (CaptureQuarantine.GetUnassignedText), or null when the quarantine is empty.</summary>
 		public string UnassignedText { get; private set; }
+		///<summary>UnassignedText has turned into the warning (the oldest is more than 30 days old, design 7.12 "Visibility"): the window shows it
+		///in a warning colour.</summary>
+		public bool IsUnassignedOverdue { get; private set; }
 		///<summary>The gated capture settings are the ones last saved in the Capture settings screen (design 9.3 hash check). The launcher starts a
 		///session only then; a session begun without it never enables (the safe value of [Session] Enabled is off).</summary>
 		public bool IsSettingsVerified => _setup.SettingsCheck!=null && _setup.SettingsCheck.IsVerified;
@@ -1308,12 +1312,9 @@ namespace ImagingCapture.Session {
 				Summary.CountQuarantined=_listQuarantinePaths.Count;
 				Summary.ListQuarantinePaths=new List<string>(_listQuarantinePaths);
 			}
-			try {
-				UnassignedText=_services.FuncGetUnassignedText?.Invoke();
-			}
-			catch {
-				//the count is a convenience
-			}
+			CaptureUnassignedInfo info=CaptureSessionLauncher.GetUnassignedInfo(_services);//never throws: the count is a convenience
+			UnassignedText=info.Text;
+			IsUnassignedOverdue=info.IsOverdue;
 		}
 
 		///<summary>The end of one enable (design 7.12): what the indicator shows, and whether the session enables again (PerSlot, for the next
