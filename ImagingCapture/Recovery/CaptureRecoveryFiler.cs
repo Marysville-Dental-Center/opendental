@@ -143,6 +143,18 @@ namespace ImagingCapture.Recovery {
 				error="The originating patient (PatNum "+entry.PatNum+") no longer exists. Use Reassign.";
 				return null;
 			}
+			//A chart that is gone in all but its row: the image would be filed where nobody looks for it. An archived patient is not refused (offices
+			//archive inactive patients, and a session can be bound to one), unless the patient was archived by a merge.
+			if(patient.PatStatus==PatientStatus.Deleted) {
+				error="The originating patient (PatNum "+entry.PatNum+") was deleted. Use Reassign.";
+				return null;
+			}
+			long patNumMergedInto=Store.GetMergedIntoPatNum(patient.PatNum);
+			if(patNumMergedInto>0) {
+				error="The originating patient (PatNum "+entry.PatNum+") was merged into PatNum "+patNumMergedInto
+					+". Use Reassign to file the image for that patient.";
+				return null;
+			}
 			if(!CheckNoDocumentYet(entry,patient,out error)) {
 				return null;
 			}

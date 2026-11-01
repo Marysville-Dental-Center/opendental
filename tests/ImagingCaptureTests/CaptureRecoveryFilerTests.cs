@@ -282,6 +282,47 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void Assign_OriginatingPatientMergedIntoAnother_Refused_NamesTheSurvivingPatient_NothingFiled() {
+			//The merge archived patient 42 and moved its mount to patient 43: filing for 42 would put the image into the archived chart.
+			Store.DictPatients[42].PatStatus=PatientStatus.Archived;
+			Store.DictMergedInto[42]=43;
+			CaptureFileEntry entry=_harness.Files.Quarantine(RecoveryFiles.SessionFields(),_receivedAt);
+			string error;
+			Assert.IsNull(_harness.Filer.PlanAssign(entry,0,out error));
+			Assert.AreEqual("The originating patient (PatNum 42) was merged into PatNum 43. Use Reassign to file the image for that patient.",error);
+			CaptureFilingResult result=_harness.Filer.Assign(entry,0,0);
+			Assert.IsFalse(result.IsDone);
+			Assert.AreEqual(error,result.Error);
+			Assert.AreEqual(0,RadiographStore.ListPatientsImported.Count);
+			Assert.AreEqual(0,Store.ListLogEntries.Count);
+			Assert.AreEqual(1,_harness.Files.CountQuarantineFiles(),"The file stays for Reassign.");
+		}
+
+		[TestMethod]
+		public void Assign_OriginatingPatientDeleted_Refused_UseReassign() {
+			Store.DictPatients[42].PatStatus=PatientStatus.Deleted;
+			CaptureFileEntry entry=_harness.Files.Quarantine(RecoveryFiles.SessionFields(),_receivedAt);
+			CaptureFilingResult result=_harness.Filer.Assign(entry,0,0);
+			Assert.IsFalse(result.IsDone);
+			Assert.AreEqual("The originating patient (PatNum 42) was deleted. Use Reassign.",result.Error);
+			Assert.AreEqual(0,RadiographStore.ListPatientsImported.Count);
+			Assert.AreEqual(1,_harness.Files.CountQuarantineFiles());
+		}
+
+		[TestMethod]
+		public void Assign_OriginatingPatientArchivedNotMerged_Filed_TheConfirmationSaysArchived() {
+			//Offices archive inactive patients, and a session can be bound to one: only a merge or a deletion refuses Assign.
+			Store.DictPatients[42].PatStatus=PatientStatus.Archived;
+			CaptureFileEntry entry=_harness.Files.Quarantine(RecoveryFiles.SessionFields(),_receivedAt);
+			string error;
+			CaptureAssignPlan plan=_harness.Filer.PlanAssign(entry,0,out error);
+			Assert.IsNotNull(plan,error);
+			StringAssert.EndsWith(CaptureRecoveryText.GetPatientLine(plan.Patient),"(PatNum 42, Archived)");
+			CaptureFilingResult result=_harness.Filer.Assign(entry,0,0);
+			Assert.IsTrue(result.IsDone,result.Error);
+		}
+
+		[TestMethod]
 		public void Assign_SaveFails_FileStays() {
 			RadiographStore.ThrowOn="Import";
 			CaptureFileEntry entry=_harness.Files.Quarantine(RecoveryFiles.SessionFields(),_receivedAt);
@@ -547,6 +588,11 @@ namespace ImagingCapture.Tests {
 			Assert.AreEqual("Jane Doe, born "+new DateTime(1980,1,2).ToShortDateString()+" (PatNum 42)",
 				CaptureRecoveryText.GetPatientLine(_harness.PatientJane));
 			Assert.AreEqual("Patient unknown",CaptureRecoveryText.GetPatientLine(null));
+			Patient patientInactive=_harness.PatientJane.Copy();
+			patientInactive.PatStatus=PatientStatus.Inactive;
+			Assert.AreEqual("Jane Doe, born "+new DateTime(1980,1,2).ToShortDateString()+" (PatNum 42, Inactive)",CaptureRecoveryText.GetPatientLine(patientInactive));
+			patientInactive.PatStatus=PatientStatus.NonPatient;
+			StringAssert.EndsWith(CaptureRecoveryText.GetPatientLine(patientInactive),"(PatNum 42, Non-patient)");
 			Assert.AreEqual("Date of birth not entered",CaptureRecoveryText.GetBirthdateText(new Patient { PatNum=1 }));
 			Assert.AreEqual("Doe, Jane (PatNum 42)",CaptureRecoveryText.GetPatientLogText(_harness.PatientJane));
 		}

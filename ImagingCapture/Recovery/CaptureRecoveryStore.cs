@@ -19,6 +19,9 @@ namespace ImagingCapture.Recovery {
 		bool IsAuthorized(EnumPermType permType,DateTime date,out string message);
 		///<summary>Patients.GetPat, or null when there is no such patient.</summary>
 		Patient GetPatient(long patNum);
+		///<summary>The patient patNum was merged into (Patients.MergeTwoPatients archives the patient merged from and moves its mounts and
+		///documents), following later merges of that patient, or 0 when patNum is not a merged patient (PatientLinks.WasPatientMerged).</summary>
+		long GetMergedIntoPatNum(long patNum);
 		///<summary>Mounts.GetByNum, or null when there is no such mount.</summary>
 		Mount GetMount(long mountNum);
 		///<summary>MountItems.GetItemsForMount: ordered by ItemOrder.</summary>
@@ -60,6 +63,22 @@ namespace ImagingCapture.Recovery {
 
 		public Patient GetPatient(long patNum) {
 			return patNum<=0 ? null : Patients.GetPat(patNum);
+		}
+
+		public long GetMergedIntoPatNum(long patNum) {
+			long patNumInto=0;
+			HashSet<long> hashSetSeen=new HashSet<long>();
+			long patNumFrom=patNum;
+			while(patNumFrom>0 && hashSetSeen.Add(patNumFrom)) {
+				List<PatientLink> listMergeLinks=PatientLinks.GetLinks(patNumFrom,PatientLinkType.Merge);
+				if(!PatientLinks.WasPatientMerged(patNumFrom,listMergeLinks)) {
+					break;
+				}
+				long patNumLinkFrom=patNumFrom;
+				patNumFrom=listMergeLinks.Where(x => x.PatNumFrom==patNumLinkFrom).OrderBy(x => x.DateTimeLink).Last().PatNumTo;//the latest merge
+				patNumInto=patNumFrom;
+			}
+			return patNumInto;
 		}
 
 		public Mount GetMount(long mountNum) {

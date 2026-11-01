@@ -316,6 +316,10 @@ namespace ImagingCapture.Tests {
 				return _store.GetPatient(patNum);
 			}
 
+			public long GetMergedIntoPatNum(long patNum) {
+				return _store.GetMergedIntoPatNum(patNum);
+			}
+
 			public Mount GetMount(long mountNum) {
 				return _store.GetMount(mountNum);
 			}

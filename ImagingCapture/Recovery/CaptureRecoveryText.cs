@@ -42,13 +42,18 @@ namespace ImagingCapture.Recovery {
 			return "Born "+patient.Birthdate.ToShortDateString();
 		}
 
-		///<summary>"Jane Doe, born 1/2/1980 (PatNum 42)" for a confirmation, or "patient unknown".</summary>
+		///<summary>"Jane Doe, born 1/2/1980 (PatNum 42)" for a confirmation, or "patient unknown". A status other than Patient follows the PatNum
+		///("(PatNum 42, Archived)"), so that an archived or inactive chart does not look like the active one of the same person.</summary>
 		public static string GetPatientLine(Patient patient) {
 			if(patient==null) {
 				return "Patient unknown";
 			}
 			string birthdate=GetBirthdateText(patient);
-			return patient.GetNameFL()+", "+char.ToLowerInvariant(birthdate[0])+birthdate.Substring(1)+" (PatNum "+ToText(patient.PatNum)+")";
+			string status="";
+			if(patient.PatStatus!=PatientStatus.Patient) {
+				status=", "+(patient.PatStatus==PatientStatus.NonPatient ? "Non-patient" : patient.PatStatus.ToString());
+			}
+			return patient.GetNameFL()+", "+char.ToLowerInvariant(birthdate[0])+birthdate.Substring(1)+" (PatNum "+ToText(patient.PatNum)+status+")";
 		}
 
 		public const string SlotUnknown="Slot unknown";

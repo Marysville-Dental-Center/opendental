@@ -194,6 +194,78 @@ namespace ImagingCapture.Tests.Db {
 		}
 
 		[TestMethod]
+		public void Assign_TheOriginatingPatientWasMergedIntoAnother_Refused_ReassignFilesItForTheSurvivingPatient() {
+			//The file waits in the quarantine (the 30-day warning); meanwhile the office merges the duplicate chart _patientFrom into _patientOther.
+			//The merge archives _patientFrom and moves its mount to _patientOther. Assign must not file into the archived chart.
+			CaptureFileEntry entry=_files.Quarantine(Fields(3,"capdb-merged-"+CaptureDb.NewSuffix()),_receivedAt);
+			Assert.IsTrue(Patients.MergeTwoPatients(_patientOther.PatNum,_patientFrom.PatNum));
+			Assert.AreEqual(PatientStatus.Archived,CaptureDb.GetPatient(_patientFrom.PatNum).PatStatus,"Patients.MergeTwoPatients archives the chart.");
+			Assert.AreEqual(_patientOther.PatNum,Mounts.GetByNum(_mount.MountNum).PatNum,"It moves the mount.");
+			Assert.AreEqual(_patientOther.PatNum,_store.GetMergedIntoPatNum(_patientFrom.PatNum));
+			Assert.AreEqual(0,_store.GetMergedIntoPatNum(_patientOther.PatNum),"The surviving patient was not merged.");
+			string error;
+			Assert.IsNull(Filer().PlanAssign(entry,0,out error),"Without the check: an unmounted document in the archived chart.");
+			string errorExpected="The originating patient (PatNum "+_patientFrom.PatNum+") was merged into PatNum "+_patientOther.PatNum
+				+". Use Reassign to file the image for that patient.";
+			Assert.AreEqual(errorExpected,error);
+			CaptureFilingResult result=Filer().Assign(entry,0,0);
+			Assert.IsFalse(result.IsDone);
+			Assert.AreEqual(errorExpected,result.Error);
+			Assert.AreEqual(0,CaptureDb.GetDocuments(_patientFrom.PatNum).Count,"Nothing in the archived chart.");
+			Assert.AreEqual(0,CaptureDb.GetDocuments(_patientOther.PatNum).Count);
+			Assert.AreEqual(1,_files.CountQuarantineFiles(),"The file stays for Reassign.");
+			CaptureFilingResult resultReassign=Filer().Reassign(entry,CaptureDb.GetPatient(_patientOther.PatNum),"The chart was merged.",_category.DefNum);
+			Assert.IsTrue(resultReassign.IsDone,resultReassign.Error);
+			Assert.AreEqual(_patientOther.PatNum,CaptureDb.GetDocuments(_patientOther.PatNum).Single().PatNum);
+			Assert.AreEqual(0,CaptureDb.GetDocuments(_patientFrom.PatNum).Count);
+		}
+
+		[TestMethod]
+		public void Store_GetMergedIntoPatNum_FollowsALaterMergeOfTheSurvivingPatient() {
+			Patient patientThird=CaptureDb.CreatePatient("Third",_provNum);
+			Assert.AreEqual(0,_store.GetMergedIntoPatNum(_patientFrom.PatNum));
+			Assert.AreEqual(0,_store.GetMergedIntoPatNum(0));
+			Assert.IsTrue(Patients.MergeTwoPatients(_patientOther.PatNum,_patientFrom.PatNum));
+			Assert.IsTrue(Patients.MergeTwoPatients(patientThird.PatNum,_patientOther.PatNum));
+			Assert.AreEqual(patientThird.PatNum,_store.GetMergedIntoPatNum(_patientFrom.PatNum),"The chart that holds the records now.");
+			Assert.AreEqual(patientThird.PatNum,_store.GetMergedIntoPatNum(_patientOther.PatNum));
+			Assert.AreEqual(0,_store.GetMergedIntoPatNum(patientThird.PatNum));
+		}
+
+		[TestMethod]
+		public void Assign_TheOriginatingPatientWasDeleted_Refused() {
+			CaptureFileEntry entry=_files.Quarantine(Fields(1,"capdb-deleted-"+CaptureDb.NewSuffix()),_receivedAt);
+			Patient patientOld=CaptureDb.GetPatient(_patientFrom.PatNum);
+			Patient patientDeleted=patientOld.Copy();
+			patientDeleted.PatStatus=PatientStatus.Deleted;
+			Patients.Update(patientDeleted,patientOld);
+			CaptureFilingResult result=Filer().Assign(entry,0,0);
+			Assert.IsFalse(result.IsDone);
+			Assert.AreEqual("The originating patient (PatNum "+_patientFrom.PatNum+") was deleted. Use Reassign.",result.Error);
+			Assert.AreEqual(0,CaptureDb.GetDocuments(_patientFrom.PatNum).Count);
+			Assert.AreEqual(1,_files.CountQuarantineFiles());
+		}
+
+		[TestMethod]
+		public void Assign_TheOriginatingPatientIsArchivedButNotMerged_Filed_TheConfirmationSaysArchived() {
+			//Offices archive inactive patients, and a session can be bound to one (ArchivedPatientSelect): only a merge or a deletion refuses Assign.
+			CaptureFileEntry entry=_files.Quarantine(Fields(2,"capdb-archived-"+CaptureDb.NewSuffix()),_receivedAt);
+			Patient patientOld=CaptureDb.GetPatient(_patientFrom.PatNum);
+			Patient patientArchived=patientOld.Copy();
+			patientArchived.PatStatus=PatientStatus.Archived;
+			Patients.Update(patientArchived,patientOld);
+			string error;
+			CaptureAssignPlan plan=Filer().PlanAssign(entry,0,out error);
+			Assert.IsNotNull(plan,error);
+			StringAssert.EndsWith(CaptureRecoveryText.GetPatientLine(plan.Patient),"(PatNum "+_patientFrom.PatNum+", Archived)",
+				"The confirmation does not look like the active chart's.");
+			CaptureFilingResult result=Filer().Assign(entry,0,0);
+			Assert.IsTrue(result.IsDone,result.Error);
+			Assert.AreEqual(_listSlots.Single(x => x.ItemOrder==2).MountItemNum,CaptureDb.GetDocuments(_patientFrom.PatNum).Single().MountItemNum,
+				"Into its original slot.");
+		}
+
+		[TestMethod]
 		public void Assign_TheExposureIsAlreadyADocument_ByItsCaptureId_NotFiledAgain() {
 			//Design 10.6: one document per TWAIN transfer. The first file is assigned; a second file of the same exposure (its copy) is refused,
 			//found through the patient's documents and their ImageCreate entries in the database.

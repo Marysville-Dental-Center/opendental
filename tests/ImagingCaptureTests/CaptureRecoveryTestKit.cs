@@ -44,6 +44,14 @@ namespace ImagingCapture.Tests {
 			return DictPatients.TryGetValue(patNum,out patient) ? patient : null;
 		}
 
+		///<summary>PatNum merged from, PatNum merged into (the surviving patient).</summary>
+		public readonly Dictionary<long,long> DictMergedInto=new Dictionary<long,long>();
+
+		public long GetMergedIntoPatNum(long patNum) {
+			long patNumInto;
+			return DictMergedInto.TryGetValue(patNum,out patNumInto) ? patNumInto : 0;
+		}
+
 		public Mount GetMount(long mountNum) {
 			Mount mount;
 			return DictMounts.TryGetValue(mountNum,out mount) ? mount : null;
