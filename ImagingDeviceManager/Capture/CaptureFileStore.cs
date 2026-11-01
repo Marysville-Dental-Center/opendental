@@ -53,6 +53,11 @@ namespace ImagingDeviceManager.Capture {
 		public const string BitDepthInEffect="BitDepthInEffect";
 		///<summary>Why the enable ran at fewer bits than the device is set to (AcquiredImage.BitDepthReason); absent when there was no fallback.</summary>
 		public const string BitDepthReason="BitDepthReason";
+		///<summary>Written by the library from CAP-16: the TW_IDENTITY of the source that delivered the image (TwainDriverIdentity): its
+		///ProductName, Version "MajorNum.MinorNum" and Version.Info.</summary>
+		public const string DriverProductName="DriverProductName";
+		public const string DriverVersion="DriverVersion";
+		public const string DriverVersionInfo="DriverVersionInfo";
 		///<summary>Written when a quarantine file or journal copy is filed or discarded (CaptureFileStore.Resolve): what happened to it.</summary>
 		public const string Disposition="Disposition";
 		public const string DispositionAt="DispositionAt";
@@ -212,6 +217,10 @@ namespace ImagingDeviceManager.Capture {
 		public int BitDepthInEffect => GetBitDepthInEffect(_dictFields,IsGray16);
 		///<summary>Why the image's enable ran at fewer bits than its device was set to (CaptureSidecarKeys.BitDepthReason), or "".</summary>
 		public string BitDepthReason => Get(CaptureSidecarKeys.BitDepthReason);
+		///<summary>The source build that delivered the image (CaptureSidecarKeys.DriverProductName, DriverVersion, DriverVersionInfo), or null for a
+		///sidecar before CAP-16 or a file of the legacy path.</summary>
+		public TwainDriverIdentity DriverIdentity => Get(CaptureSidecarKeys.DriverVersion)=="" ? null
+			: TwainDriverIdentity.TryParse(Get(CaptureSidecarKeys.DriverProductName),Get(CaptureSidecarKeys.DriverVersion),Get(CaptureSidecarKeys.DriverVersionInfo));
 
 		///<summary>The depth in effect a sidecar records (see BitDepthInEffect). isGray16: the image is a 16-bit copy.</summary>
 		internal static int GetBitDepthInEffect(IDictionary<string,string> dictFields,bool isGray16) {

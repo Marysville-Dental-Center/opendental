@@ -2,6 +2,7 @@
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 
 namespace ImagingDeviceManager.Capture {
 	///<summary>[Device.N] SessionMode (design 7.4).</summary>
@@ -245,13 +246,68 @@ namespace ImagingDeviceManager.Capture {
 		public bool IsSettable => QuerySupport!=null && (QuerySupport.Value & 0x0002)!=0;
 	}
 
+	///<summary>Which build of the TWAIN source delivered the images: TW_IDENTITY ProductName and Version (MajorNum, MinorNum and Info) as the
+	///source reports them at open. A Test capture verification record names it, and the capture session compares it with the source it opened
+	///(owner decision 2026-11-01: the record covers every computer that runs the same driver version with the same image settings).
+	///Immutable; Info is the version text, trimmed.</summary>
+	public sealed class TwainDriverIdentity {
+		public string ProductName { get; }
+		public int MajorNum { get; }
+		public int MinorNum { get; }
+		public string Info { get; }
+
+		public TwainDriverIdentity(string productName,int majorNum,int minorNum,string info) {
+			ProductName=(productName??"").Trim();
+			MajorNum=majorNum;
+			MinorNum=minorNum;
+			Info=(info??"").Trim();
+		}
+
+		///<summary>"1.2".</summary>
+		public string VersionText => MajorNum.ToString(CultureInfo.InvariantCulture)+"."+MinorNum.ToString(CultureInfo.InvariantCulture);
+
+		///<summary>The same source build: ProductName ignoring case (as the source gate compares names), MajorNum, MinorNum, and Info exactly.
+		///False for null.</summary>
+		public bool IsSameAs(TwainDriverIdentity other) {
+			return other!=null
+				&& string.Equals(ProductName,other.ProductName,StringComparison.OrdinalIgnoreCase)
+				&& MajorNum==other.MajorNum
+				&& MinorNum==other.MinorNum
+				&& string.Equals(Info,other.Info,StringComparison.Ordinal);
+		}
+
+		///<summary>"Example Sensor DS, version 1.2 (1.2.0 build 7)", for the texts and the log.</summary>
+		public string Describe() {
+			return (ProductName=="" ? "(no product name)" : ProductName)+", version "+VersionText+(Info=="" ? "" : " ("+Info+")");
+		}
+
+		///<summary>The identity from "major.minor" text and the other parts, or null when versionText is not two whole numbers.</summary>
+		public static TwainDriverIdentity TryParse(string productName,string versionText,string info) {
+			string[] arrayParts=(versionText??"").Trim().Split('.');
+			int major;
+			int minor;
+			if(arrayParts.Length!=2 || !int.TryParse(arrayParts[0],NumberStyles.None,CultureInfo.InvariantCulture,out major)
+				|| !int.TryParse(arrayParts[1],NumberStyles.None,CultureInfo.InvariantCulture,out minor))
+			{
+				return null;
+			}
+			return new TwainDriverIdentity(productName,major,minor,info);
+		}
+	}
+
 	///<summary>What the open source reported in state 4: its identity and the capabilities the capture session reads, never sets (design 7.1
 	///CAP-3). For Test capture and the log. A value is null when the source did not answer.</summary>
 	public sealed class TwainCaptureSourceInfo {
 		public string ProductName { get; set; }
 		public string Manufacturer { get; set; }
 		public string ProductFamily { get; set; }
+		///<summary>TW_IDENTITY Version.MajorNum and MinorNum.</summary>
+		public int VersionMajor { get; set; }
+		public int VersionMinor { get; set; }
+		///<summary>TW_IDENTITY Version.Info.</summary>
 		public string VersionInfo { get; set; }
+		///<summary>ProductName and Version as one identity, or null when the source's identity could not be read.</summary>
+		public TwainDriverIdentity DriverIdentity { get; set; }
 		public int ProtocolMajor { get; set; }
 		public int ProtocolMinor { get; set; }
 		public uint SupportedGroups { get; set; }

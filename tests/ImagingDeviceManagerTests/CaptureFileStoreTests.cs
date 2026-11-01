@@ -240,6 +240,60 @@ namespace ImagingDeviceManager.Tests {
 			Assert.AreEqual("Slot 3 (teeth 2,3)",imageRead.TargetLabel);
 		}
 
+		///<summary>A quarantine file of image with the session record, changed by actionRecord first.</summary>
+		private CaptureFileEntry WriteWithRecord(AcquiredImage image,Action<CaptureRecord> actionRecord) {
+			Guid sessionGuid=Guid.NewGuid();
+			CaptureRecord record=SessionRecord(new DateTime(2026,10,31,10,0,5),sessionGuid,image.Gray16!=null);
+			actionRecord(record);
+			string error;
+			string path=new QuarantineWriter(_folders).WriteSessionCapture(CaptureImageFile.FromAcquiredImage(image),record,sessionGuid,42,"Doe, Jane",
+				"Slot 3 (teeth 2,3)","It arrived after a patient change.",null,out error);
+			Assert.IsNotNull(path,error);
+			return _store.ListQuarantine().Single(x => x.SessionGuid==sessionGuid);
+		}
+
+		[TestMethod]
+		public void BitDepthInEffect_NewKey14_ReadBack_WithTheReasonAndDriver() {
+			CaptureFileEntry entry=WriteWithRecord(Gray16Image(4,3),record => {
+				record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.BitDepthInEffect,"14"));
+				record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.BitDepthReason,"ICAP_BITDEPTH MSG_GET does not list 16 (8, 14)"));
+				record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.DriverProductName,"Example Sensor DS"));
+				record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.DriverVersion,"1.2"));
+				record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.DriverVersionInfo,"1.2.0"));
+			});
+			Assert.AreEqual(14,entry.BitDepthInEffect,"The new key wins over BitDepth16InEffect=1.");
+			Assert.AreEqual("ICAP_BITDEPTH MSG_GET does not list 16 (8, 14)",entry.BitDepthReason);
+			Assert.IsTrue(entry.DriverIdentity.IsSameAs(new TwainDriverIdentity("Example Sensor DS",1,2,"1.2.0")));
+			string error;
+			AcquiredImage imageRead=_store.ReadImage(entry,out error);
+			Assert.IsNotNull(imageRead,error);
+			Assert.AreEqual(14,imageRead.BitDepthInEffect);
+			Assert.IsTrue(imageRead.IsAbove8BitInEffect);
+			Assert.AreEqual("ICAP_BITDEPTH MSG_GET does not list 16 (8, 14)",imageRead.BitDepthReason);
+		}
+
+		[TestMethod]
+		public void BitDepthInEffect_OldSidecars_OldKeyOrNeither() {
+			CaptureFileEntry entryOld16=WriteWithRecord(Gray16Image(4,3),record => { });//BitDepth16InEffect=1 only (CAP-4)
+			Assert.AreEqual(16,entryOld16.BitDepthInEffect);
+			Assert.AreEqual("",entryOld16.BitDepthReason);
+			Assert.IsNull(entryOld16.DriverIdentity,"Sidecars before CAP-16 name no driver version.");
+			CaptureFileEntry entryOld8=WriteWithRecord(Gray8Image(4,3),record => { });//BitDepth16InEffect=0
+			Assert.AreEqual(8,entryOld8.BitDepthInEffect);
+			CaptureFileEntry entryNeither=WriteWithRecord(Gray16Image(4,3),record =>
+				record.ListCaptureFields.RemoveAll(x => x.Key==CaptureSidecarKeys.BitDepth16InEffect));//before CAP-4
+			Assert.AreEqual(16,entryNeither.BitDepthInEffect,"A 16-bit copy of a 16-bit memory enable.");
+			CaptureFileEntry entryNeither8=WriteWithRecord(Gray16Image(4,3),record => {
+				record.ListCaptureFields.RemoveAll(x => x.Key==CaptureSidecarKeys.BitDepth16InEffect);
+				record.ListCaptureFields.RemoveAll(x => x.Key=="RequestedBits");
+				record.ListCaptureFields.Add(new SidecarField("RequestedBits","8"));
+			});
+			Assert.AreEqual(8,entryNeither8.BitDepthInEffect,"16-bit samples in an 8-bit enable.");
+			CaptureFileEntry entryBad=WriteWithRecord(Gray16Image(4,3),record =>
+				record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.BitDepthInEffect,"12")));
+			Assert.AreEqual(16,entryBad.BitDepthInEffect,"A depth that is not 8, 14 or 16 is ignored; the old key decides.");
+		}
+
 		[TestMethod]
 		public void ReadImage_Tif_TheSamplesUnchanged_16BitInEffect() {
 			AcquiredImage image=Gray16Image(6,4);

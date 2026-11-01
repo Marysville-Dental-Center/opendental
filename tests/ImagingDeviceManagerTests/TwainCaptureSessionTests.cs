@@ -340,6 +340,48 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		[TestMethod]
+		public void Open_DriverIdentityReported_AndWrittenInEverySidecar() {
+			Helper.VersionMajor=2;
+			Helper.VersionMinor=3;
+			Helper.VersionInfo="2.3.1 build 9";
+			TwainCaptureOpenResult result=_harness.Open();
+			Assert.IsTrue(result.IsOpen,result.ErrorText);
+			TwainCaptureSourceInfo info=result.SourceInfo;
+			Assert.AreEqual(2,info.VersionMajor);
+			Assert.AreEqual(3,info.VersionMinor);
+			Assert.AreEqual("2.3.1 build 9",info.VersionInfo);
+			Assert.IsTrue(info.DriverIdentity.IsSameAs(new TwainDriverIdentity(Helper.ProductName.ToUpperInvariant(),2,3,"2.3.1 build 9")),
+				"The product name ignores case.");
+			Assert.IsTrue(_harness.HasLog("version 2.3 \"2.3.1 build 9\""),_harness.LogText);
+			_harness.WaitForEnded(EnableOne());
+			AcquiredImage image=_harness.Images.Single();
+			Dictionary<string,string> dictSidecar=CaptureFiles.ReadSidecar(Path.ChangeExtension(image.JournalPath,".txt"));
+			Assert.AreEqual(Helper.ProductName,dictSidecar[CaptureSidecarKeys.DriverProductName]);
+			Assert.AreEqual("2.3",dictSidecar[CaptureSidecarKeys.DriverVersion]);
+			Assert.AreEqual("2.3.1 build 9",dictSidecar[CaptureSidecarKeys.DriverVersionInfo]);
+			CaptureFileEntry entry=CaptureFileStore.CreateForFolder(_harness.Folder,() => DateTime.Now).ListJournal().Single();
+			Assert.IsTrue(entry.DriverIdentity.IsSameAs(info.DriverIdentity));
+		}
+
+		[TestMethod]
+		public void DriverIdentity_VersionOrInfoDiffers_NotTheSame() {
+			TwainDriverIdentity identity=new TwainDriverIdentity(" Example Sensor DS ",1,2,"1.2.0 ");
+			Assert.AreEqual("Example Sensor DS",identity.ProductName);
+			Assert.AreEqual("1.2",identity.VersionText);
+			Assert.AreEqual("Example Sensor DS, version 1.2 (1.2.0)",identity.Describe());
+			Assert.IsTrue(identity.IsSameAs(new TwainDriverIdentity("example sensor ds",1,2,"1.2.0")));
+			Assert.IsFalse(identity.IsSameAs(new TwainDriverIdentity("Example Sensor DS",1,3,"1.2.0")),"MinorNum.");
+			Assert.IsFalse(identity.IsSameAs(new TwainDriverIdentity("Example Sensor DS",2,2,"1.2.0")),"MajorNum.");
+			Assert.IsFalse(identity.IsSameAs(new TwainDriverIdentity("Example Sensor DS",1,2,"1.2.1")),"Info.");
+			Assert.IsFalse(identity.IsSameAs(new TwainDriverIdentity("Other DS",1,2,"1.2.0")),"ProductName.");
+			Assert.IsFalse(identity.IsSameAs(null));
+			Assert.IsTrue(identity.IsSameAs(TwainDriverIdentity.TryParse("Example Sensor DS","1.2","1.2.0")));
+			Assert.IsNull(TwainDriverIdentity.TryParse("Example Sensor DS","1","1.2.0"));
+			Assert.IsNull(TwainDriverIdentity.TryParse("Example Sensor DS","1.x","1.2.0"));
+			Assert.IsNull(TwainDriverIdentity.TryParse("Example Sensor DS","-1.2","1.2.0"));
+		}
+
+		[TestMethod]
 		public void Bits8_RequestReasonRecordedInSidecar_LibraryReasonWins() {
 			Helper.ListExposures.Clear();
 			Helper.ListExposures.Add(TwainCapturePathTests.ExposureWith16(4,3));

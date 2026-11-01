@@ -565,10 +565,13 @@ namespace ImagingDeviceManager.Capture {
 				info.ProductName=identity.Value.ProductName??"";
 				info.Manufacturer=identity.Value.Manufacturer??"";
 				info.ProductFamily=identity.Value.ProductFamily??"";
+				info.VersionMajor=identity.Value.Version.MajorNum;
+				info.VersionMinor=identity.Value.Version.MinorNum;
 				info.VersionInfo=identity.Value.Version.Info??"";
 				info.ProtocolMajor=identity.Value.ProtocolMajor;
 				info.ProtocolMinor=identity.Value.ProtocolMinor;
 				info.SupportedGroups=identity.Value.SupportedGroups;
+				info.DriverIdentity=new TwainDriverIdentity(info.ProductName,info.VersionMajor,info.VersionMinor,info.VersionInfo);
 			}
 			info.UiControllable=ReadBool(Tw.CAP_UICONTROLLABLE);
 			info.DeviceOnline=ReadBool(Tw.CAP_DEVICEONLINE);
@@ -594,7 +597,8 @@ namespace ImagingDeviceManager.Capture {
 			AddCustomCapabilityInfo(info,"RedeliverCap",_options.RedeliverCap);
 			AddCustomCapabilityInfo(info,"NoActivateCap",_options.NoActivateCap);
 			AddCustomCapabilityInfo(info,"ContinuousCap",_options.ContinuousCap);
-			Log("Opened \""+info.ProductName+"\" ("+info.Manufacturer+", "+info.VersionInfo+", protocol "+info.ProtocolMajor+"."+info.ProtocolMinor
+			Log("Opened \""+info.ProductName+"\" ("+info.Manufacturer+", version "+info.VersionMajor+"."+info.VersionMinor+" \""+info.VersionInfo+"\", protocol "
+				+info.ProtocolMajor+"."+info.ProtocolMinor
 				+") through "+info.DsmName+"; CAP_UICONTROLLABLE "+Describe(info.UiControllable)+", CAP_DEVICEONLINE "+Describe(info.DeviceOnline)
 				+", ICAP_BITDEPTH "+(info.ListBitDepths==null ? "not readable" : string.Join("|",info.ListBitDepths))
 				+", capture metadata "+(info.IsMetadataListed ? "listed" : "not listed")+".");
@@ -1205,6 +1209,12 @@ namespace ImagingDeviceManager.Capture {
 			record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.BitDepthInEffect,image.BitDepthInEffect.ToString(CultureInfo.InvariantCulture)));
 			if(!string.IsNullOrWhiteSpace(image.BitDepthReason)) {
 				record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.BitDepthReason,image.BitDepthReason));
+			}
+			TwainDriverIdentity driverIdentity=_sourceInfo?.DriverIdentity;
+			if(driverIdentity!=null) {
+				record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.DriverProductName,driverIdentity.ProductName));
+				record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.DriverVersion,driverIdentity.VersionText));
+				record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.DriverVersionInfo,driverIdentity.Info));
 			}
 			if(image.SidecarFields!=null) {
 				foreach(KeyValuePair<string,string> pair in image.SidecarFields) {
