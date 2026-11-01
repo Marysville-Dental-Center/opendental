@@ -160,3 +160,9 @@ The finding was right: the note's "changes nothing in the rehearsal" held only w
 
 ### Verification
 
+On `port/m2-hist-t1` after the `port/int-8` merge and the fixes (2026-10-31):
+
+- One full build of `OpenDental.Local.slnf` through the build lane (Debug, x86): 0 errors.
+- `run-tests.ps1 -Mode Core -Include AdoptionValidation.Tests,ForkMigrationTests,M201Tests,SyntheticData.Tests` (`test-results/port_m2-hist-t1.txt`): 66 assemblies, 3,482 tests, 3,480 passed, 0 failed; the 2 not passed are M201Tests' published-document checks, inconclusive without `M201_OD_DOCS_DIR`. Among them M2HISTTests 43/43, BINSHTests 36/36, BPROCTests 43/43, AdoptionValidation.Tests 59/59 (the whole rehearsal, two runs, with M6), ForkMigrationTests 38/38, SyntheticData.Tests 54/54, NoHqTests 49/49.
+- `InsHistWindowLayoutTests` fails with the old bottom anchor put back in the designer (Save at y=-102 with no row), and passes with the fix.
+- `tools/Test-NoHqHosts.ps1`: passed.
