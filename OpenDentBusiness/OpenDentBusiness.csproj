@@ -448,6 +448,7 @@
     <Compile Include="Data Interface\StatementProds.cs" />
     <Compile Include="Db Multi Table\InsPlanSubstitution.cs" />
     <Compile Include="Imaging\BitmapDicom.cs" />
+    <Compile Include="Imaging\ClaimAttachDicom.cs" />
     <Compile Include="Imaging\DicomSubsetReader.cs" />
     <Compile Include="Imaging\IDicomPixelReader.cs" />
     <Compile Include="Imaging\ImageCopyRules.cs" />

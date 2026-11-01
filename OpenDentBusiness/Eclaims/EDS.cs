@@ -642,6 +642,8 @@ namespace OpenDentBusiness.Eclaims {
 
 		///<summary>Throws exceptions. Saves the provided list of attachments to EDS and returns the response from EDS. This is the third and final step for sending attachments to EDS and can only be done when steps 1 & 2 are complete (ValidateClaim and GetAttachmentID).</summary>
 		public static EDS.SaveAttachmentsResponse SaveAttachments(string attachmentId,List<ImageAttachment> listImageAttachments,long clinicNum) {
+			//CLAIM-DCM: a DICOM file itself is never sent; the attachment window sends an 8-bit JPEG copy of a DICOM image.
+			ClaimAttachDicom.ThrowIfAnyIsDicom(listImageAttachments);
 			string strJson=CreateSaveAttachmentsJSON(listImageAttachments);
 			string jsonResponse=MakeWebRequest(ATTACHMENTS_URL+@$"/{attachmentId}/images",strJson,clinicNum);
 			return JsonConvert.DeserializeObject<EDS.SaveAttachmentsResponse>(jsonResponse);

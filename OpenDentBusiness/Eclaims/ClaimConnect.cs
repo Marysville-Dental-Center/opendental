@@ -532,6 +532,7 @@ namespace OpenDentBusiness.Eclaims {
 
 		///<summary>This method is used to add attachments to claims that already have an existing attachmentID. Can throw an exception. If this method is not used then validation will fail. Returns ImageReferenceIds assigned by DXC.</summary>
 		public static List<int> AddAttachmentImage(Claim claim,List<ImageAttachment> listImages) {
+			ClaimAttachDicom.ThrowIfAnyIsDicom(listImages);//CLAIM-DCM: never a DICOM file itself
 			Clearinghouse clearinghouse=GetClearingHouseForClaim(claim);
 			if(XConnect.IsEnabled(clearinghouse)) {
 				return XConnect.AttachmentAddImage(claim,listImages);
@@ -608,6 +609,8 @@ namespace OpenDentBusiness.Eclaims {
 		public static List<int> SendAttachmentImages(Claim claim,List<ImageAttachment> listImages,string narrative) {
 			//Open Dental 26.1.64: PDFs go as they are; an empty, oversized, non-PDF or encrypted one is refused before any call.
 			DxcPdfAttachment.ThrowIfAnyCannotBeSent(listImages);
+			//CLAIM-DCM: a DICOM file itself is never sent; the windows send an 8-bit JPEG copy of a DICOM image.
+			ClaimAttachDicom.ThrowIfAnyIsDicom(listImages);
 			string attachedFlagsOld=claim.AttachedFlags;
 			//New images are not sent yet. Cleared in memory only, so a failure below leaves the saved claim as it was.
 			claim.AttachedFlags=ClaimAttaches.ClearDxcAttachmentSubmitted(attachedFlagsOld);
