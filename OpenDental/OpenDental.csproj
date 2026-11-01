@@ -294,9 +294,6 @@
     <Compile Include="Bridges\FormHouseCalls.designer.cs">
       <DependentUpon>FormHouseCalls.cs</DependentUpon>
     </Compile>
-    <Compile Include="Bridges\FormIap.designer.cs">
-      <DependentUpon>FormIap.cs</DependentUpon>
-    </Compile>
     <Compile Include="Bridges\FormOryxUserSettings.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -310,9 +307,6 @@
       <DependentUpon>FormTrophyNamePick.cs</DependentUpon>
     </Compile>
     <Compile Include="Bridges\FormHouseCalls.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Bridges\FormIap.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Bridges\FormPatienteBill.cs">
@@ -2792,6 +2786,7 @@
     </Compile>
     <Compile Include="Logic\EdgeExpressL.cs" />
     <Compile Include="Logic\VendorDirect\DropboxStartupCheck.cs" />
+    <Compile Include="Logic\VendorDirect\BridgeProgramLinkSetups.cs" />
     <Compile Include="Logic\VendorDirect\IProgramLinkSetup.cs" />
     <Compile Include="Logic\VendorDirect\PostcardsMenu.cs" />
     <Compile Include="Logic\VendorDirect\ProgramLinkSetupRegistry.cs" />
@@ -5943,10 +5938,6 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Bridges\FormHouseCalls.resx">
       <DependentUpon>FormHouseCalls.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Bridges\FormIap.resx">
-      <DependentUpon>FormIap.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="Bridges\FormPrintTrojan.resx">

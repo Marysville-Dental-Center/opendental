@@ -172,6 +172,10 @@ namespace WpfControls {
 				OpenDental.Bridges.DentalXChange.SendData(program,patient);
 				return;
 			}
+			else if(program.ProgName==ProgramName.DTXStudio.ToString() || program.ProgName==ProgramName.DTXStudioAcquire.ToString()) {
+				DTXStudio.SendData(program,patient);
+				return;
+			}
 			else if(program.ProgName==ProgramName.Dxis.ToString()) {
 				Dxis.SendData(program,patient);
 				return;
@@ -268,6 +272,10 @@ namespace WpfControls {
 			}
 			else if(program.ProgName==ProgramName.OrthoInsight3d.ToString()) {
 				OrthoInsight3d.SendData(program,patient);
+				return;
+			}
+			else if(program.ProgName==ProgramName.Overjet.ToString()) {
+				Overjet.SendData(program,patient);
 				return;
 			}
 			else if(program.ProgName==ProgramName.Owandy.ToString()) {

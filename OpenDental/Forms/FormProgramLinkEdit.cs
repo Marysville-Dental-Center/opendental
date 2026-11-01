@@ -444,6 +444,12 @@ namespace OpenDental{
 					return;
 				}
 			}
+			//Web program links (Overjet, Insurance Answers Plus) take only a full https:// address.
+			string pathProblem=OpenDentBusiness.VendorDirect.ProgramLinks.BridgeLinkRows.GetPathSaveProblem(textProgName.Text,textPath.Text);
+			if(pathProblem!="") {
+				MessageBox.Show(Lan.g(this,pathProblem));
+				return;
+			}
 			ProgramCur.ProgName=textProgName.Text;
 			ProgramCur.ProgDesc=textProgDesc.Text;
 			ProgramCur.Enabled=checkEnabled.Checked;
