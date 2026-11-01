@@ -137,6 +137,9 @@ namespace ImagingDeviceManager.Tests {
 		///which a host cannot read as 16-bit containers.</summary>
 		public int BitsPerSampleAt14=14;
 		public int BitsPerPixelAt14=16;
+		///<summary>Not contract behaviour (1.1 sends uncompressed samples, section 6.2): DAT_IMAGEINFO Compression of an image delivered at more
+		///than 8 bits (its Original16). TWCP_NONE by default.</summary>
+		public ushort CompressionAbove8Bits=Tw.TWCP_NONE;
 		///<summary>The source's TW_IDENTITY Version (MajorNum, MinorNum, Info) as the DSM reports it.</summary>
 		public ushort VersionMajor=1;
 		public ushort VersionMinor=1;
@@ -1180,7 +1183,7 @@ namespace ImagingDeviceManager.Tests {
 				imageInfo.BitsPerPixel=(short)BitsPerPixelAt14;
 			}
 			imageInfo.PixelType=(short)Tw.TWPT_GRAY;
-			imageInfo.Compression=Tw.TWCP_NONE;
+			imageInfo.Compression=page.BitsPerPixel==16 ? CompressionAbove8Bits : Tw.TWCP_NONE;
 			Marshal.StructureToPtr(imageInfo,data,false);
 			return Tw.TWRC_SUCCESS;
 		}

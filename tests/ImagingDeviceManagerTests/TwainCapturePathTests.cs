@@ -396,6 +396,24 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		[TestMethod]
+		public void Bits16_CompressedSamples_TransferFailsUnread_LayoutNotUsable() {
+			Helper.CompressionAbove8Bits=5;//TWCP_PACKBITS
+			Helper.ListExposures.Add(ExposureWith16(5,3));
+			OpenHelper();
+			Assert.AreEqual(16,Negotiate(16).Bits);
+			Assert.AreEqual(Tw.TWRC_SUCCESS,Session.EnableForCapture(true));
+			Assert.AreEqual(Tw.MSG_XFERREADY,Session.WaitForCaptureNotification(false));
+			AcquiredImage image;
+			Assert.AreEqual(TransferOutcome.Failed,Session.TransferCaptureImage(out image));
+			Assert.IsNull(image);
+			Assert.AreEqual("16-bit layout not usable: DAT_IMAGEINFO Compression is 5: compressed samples",Session.LayoutUnusableText,
+				"The session then asks for 8 bits for the rest of the session, as for packed samples.");
+			Assert.AreEqual(0,_harness.Fake.CallsNamed("MEMXFER").Count,"Nothing is read of an image that cannot be decoded.");
+			Assert.AreEqual(6,_harness.Fake.CallsNamed("ENDXFER").Single().StateBefore,"Ended in state 6 without a transfer.");
+			Assert.IsTrue(_harness.HasLog("in a layout that cannot be read"),_harness.LogText);
+		}
+
+		[TestMethod]
 		public void Bits14_BitsPerSample16InContainers_Accepted() {
 			Helper.ListBitDepths=new List<int> { 8,14 };
 			Helper.BitsPerSampleAt14=16;

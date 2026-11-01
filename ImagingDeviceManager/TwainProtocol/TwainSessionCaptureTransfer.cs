@@ -481,8 +481,8 @@ namespace ImagingDeviceManager.TwainProtocol {
 
 		///<summary>A memory transfer for the capture path: 16-bit gray goes to Gray16Builder (raw samples in 16-bit containers, no shift; 14-bit
 		///samples right-justified in them), anything else to DibBuilder as on the scan path. In a 14- or 16-bit enable, a gray image of more than
-		///8 bits per sample in any other layout (BitsPerPixel not 16, or more than one sample per pixel) is not read at all: the transfer fails
-		///in state 6 with LayoutUnusableText, and TransferCaptureImage ends it with MSG_ENDXFER.</summary>
+		///8 bits per sample in any other layout (BitsPerPixel not 16, more than one sample per pixel, or compressed) is not read at all: the
+		///transfer fails in state 6 with LayoutUnusableText, and TransferCaptureImage ends it with MSG_ENDXFER.</summary>
 		private TransferOutcome TransferMemoryForCapture(bool hasImageInfo,TW_IMAGEINFO imageInfo,out DibImage dib,out ushort[] gray16,
 			out int heightGray16)
 		{
@@ -532,8 +532,8 @@ namespace ImagingDeviceManager.TwainProtocol {
 		}
 
 		///<summary>In a 14- or 16-bit enable, why a gray image with more than 8 bits per sample cannot be read by Gray16Builder (DAT_IMAGEINFO
-		///BitsPerPixel not 16, packed samples, more than one sample per pixel), or null when it can, or when the image is 8-bit (it goes down the
-		///8-bit path) or not gray.</summary>
+		///BitsPerPixel not 16, packed samples, more than one sample per pixel, a Compression other than TWCP_NONE), or null when it can, or when
+		///the image is 8-bit (it goes down the 8-bit path) or not gray.</summary>
 		private string GetAbove8BitLayoutProblem(TW_IMAGEINFO imageInfo) {
 			if(_captureBits<=8 || imageInfo.PixelType!=Tw.TWPT_GRAY) {
 				return null;
@@ -551,6 +551,9 @@ namespace ImagingDeviceManager.TwainProtocol {
 			}
 			if(bitsPerSample>16) {
 				return "DAT_IMAGEINFO BitsPerSample is "+bitsPerSample+", more than a 16-bit container holds";
+			}
+			if(imageInfo.Compression!=Tw.TWCP_NONE) {
+				return "DAT_IMAGEINFO Compression is "+imageInfo.Compression+": compressed samples";
 			}
 			return null;
 		}
