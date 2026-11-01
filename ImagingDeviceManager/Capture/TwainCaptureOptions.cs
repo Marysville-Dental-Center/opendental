@@ -12,8 +12,9 @@ namespace ImagingDeviceManager.Capture {
 	///<summary>The device profile a TwainCaptureSession runs with: the [Device.N] section of capture.ini for one imaging device, and the
 	///[Twain] keys that apply to it (design 9.3). Device-specific numbers (custom capabilities, refusal codes) come only from here, as data
 	///copied from the source's published contract; the library has none of its own. Every value has the design 9.3 default when the file
-	///or the key is missing or invalid, except Bits and Allow16Bit, whose defaults are 16 and 1 (owner decision 2026-11-01); an invalid value
-	///is listed in ListWarnings. The hash check of the gated block (CAP-4) is the caller's: this class reads the file as it is.</summary>
+	///or the key is missing or invalid, except Bits and Allow16Bit: missing or empty, they are 16 and 1 (owner decision 2026-11-01); an invalid
+	///Bits is 8 and an invalid Allow16Bit is 0, so a value that cannot be read never turns more than 8 bits on. An invalid value is listed in
+	///ListWarnings. The hash check of the gated block (CAP-4) is the caller's: this class reads the file as it is.</summary>
 	public sealed class TwainCaptureOptions {
 		///<summary>imagingdevice.ImagingDeviceNum, N of [Device.N]. 0 when the options were not read from a file.</summary>
 		public long ImagingDeviceNum { get; set; }
@@ -46,7 +47,8 @@ namespace ImagingDeviceManager.Capture {
 		///<summary>[Device.N] NoActivateCap (hex): set TRUE before each enable, so the sensor software's window does not take activation (W16).</summary>
 		public ushort? NoActivateCap { get; set; }
 		///<summary>[Twain] Allow16Bit, default 1 (owner decision 2026-11-01): more than 8 bits (14 or 16) are allowed on this computer. The key keeps
-		///its name for compatibility; 0 is the computer's kill switch and forces 8 bits everywhere.</summary>
+		///its name for compatibility; 0 is the computer's kill switch and forces 8 bits everywhere, and so does a value that is not 0 or 1 (a
+		///warning).</summary>
 		public bool Allow16Bit { get; set; }=true;
 		///<summary>[Twain] RestrictSources and AllowedSources: the source gate, checked when the session opens the source.</summary>
 		public bool RestrictSources { get; set; }
@@ -102,6 +104,10 @@ namespace ImagingDeviceManager.Capture {
 					}
 				}
 				options.Allow16Bit=config.Allow16Bit;
+				if(config.IsAllow16BitInvalid) {
+					options.ListWarnings.Add("[Twain] Allow16Bit="+config.GetString(LocalCaptureConfig.SectionTwain,"Allow16Bit").Trim()+" is not 0 or 1; 8 "
+						+"bits are used.");
+				}
 				options.RestrictSources=config.RestrictSources;
 				options.AllowedSources=config.AllowedSources;
 				options.JournalKeep=config.JournalKeep;
