@@ -2020,6 +2020,10 @@
     <Compile Include="UI\Appt\ControlApptPanel.Designer.cs">
       <DependentUpon>ControlApptPanel.cs</DependentUpon>
     </Compile>
+    <Compile Include="UI\Appt\ControlApptPanel.PreAuth.cs">
+      <DependentUpon>ControlApptPanel.cs</DependentUpon>
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Include="UI\Appt\ControlApptProvSlider.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -2222,6 +2226,7 @@
     </Compile>
     <Compile Include="UI\SheetLayoutController.cs" />
     <Compile Include="Logic\ApptViewItemL.cs" />
+    <Compile Include="Logic\PreAuthL.cs" />
     <Compile Include="Logic\AutomationL.cs" />
     <Compile Include="Logic\ClaimL.cs" />
     <Compile Include="Logic\MedicalEobL.cs" />
@@ -3121,6 +3126,12 @@
     </Compile>
     <Compile Include="Forms\FormAdoptDatabase.Designer.cs">
       <DependentUpon>FormAdoptDatabase.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormPreAuthReminder.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormPreAuthReminder.Designer.cs">
+      <DependentUpon>FormPreAuthReminder.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\FormUpdateInProgress.cs">
       <SubType>Form</SubType>
@@ -4924,6 +4935,10 @@
     <Compile Include="Forms\FormCarrierEdit.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="Forms\FormCarrierEdit.PreAuth.cs">
+      <DependentUpon>FormCarrierEdit.cs</DependentUpon>
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Forms\FormCarriers.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -5398,6 +5413,10 @@
       <DependentUpon>ControlChart.cs</DependentUpon>
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Include="Main Modules\ControlChart.PreAuth.cs">
+      <DependentUpon>ControlChart.cs</DependentUpon>
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Include="Main Modules\ControlImagesOld.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -5411,6 +5430,10 @@
       <DependentUpon>ControlManage.cs</DependentUpon>
     </Compile>
     <Compile Include="Main Modules\ControlTreat.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Main Modules\ControlTreat.PreAuth.cs">
+      <DependentUpon>ControlTreat.cs</DependentUpon>
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="Main Modules\FormCommandLinePassOff.cs">

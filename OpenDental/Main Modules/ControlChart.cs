@@ -8661,6 +8661,7 @@ namespace OpenDental {
 			//The status may have been edited in formProcEdit, should rely on ProcCur.ProcStatus
 			ChartModules.AddProcSetCompleteHelper(procedure);
 			logComplCreate(procedure);
+			PreAuthReminder_Queue(procedure);//26.1 carrier preauth reminder, in ControlChart.PreAuth.cs.
 		}
 
 		///<summary>Called by AddProcedure and AddQuick.  Both methods contained versions of this code and a bug was introduced in version 15.3 because the order of the regions changed in the two methods and no longer matched.  This helper method prevents bugs caused by trying to keep duplicate code blocks synced.</summary>
@@ -8875,6 +8876,7 @@ namespace OpenDental {
 			}
 			ChartModules.AddProcSetCompleteHelper(procedure);
 			logComplCreate(procedure);
+			PreAuthReminder_Queue(procedure);//26.1 carrier preauth reminder, in ControlChart.PreAuth.cs.
 		}
 
 		private void ClearButtons() {

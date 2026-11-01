@@ -80,8 +80,8 @@ namespace OpenDental {
 				row.Cells.Add(_listInsEditPatLogs[i].FKey.ToString());
 				row.Cells.Add(_listInsEditPatLogs[i].Description);
 				row.Cells.Add(_listInsEditPatLogs[i].FieldName);
-				row.Cells.Add(_listInsEditPatLogs[i].OldValue);
-				row.Cells.Add(_listInsEditPatLogs[i].NewValue);
+				row.Cells.Add(InsEditLogBigValues.GetOldValue(_listInsEditPatLogs[i]));//25.4: OldValueBig when the value was over 255 characters.
+				row.Cells.Add(InsEditLogBigValues.GetNewValue(_listInsEditPatLogs[i]));
 				row.Tag=_listInsEditPatLogs[i];
 				listGridRows.Add(row);
 			}

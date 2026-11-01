@@ -1510,6 +1510,7 @@ namespace OpenDentBusiness{
 				#endregion Make Row
 				table.Rows.Add(dataRow);
 			}
+			FillPreAuthFlags(table,isPlanned);//26.1 PreAuthFlag element and bubble field, in Appointments.PreAuth.cs.
 			return table;
 		}
 

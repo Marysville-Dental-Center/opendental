@@ -40,6 +40,7 @@ namespace OpenDental{
 			textState.Text=CarrierCur.State;
 			textZip.Text=CarrierCur.Zip;
 			textElectID.Text=CarrierCur.ElectID;
+			textPreAuthCodes.Text=CarrierPreAuths.ToDisplay(CarrierCur.PreAuthCodes);//26.1, ranges shown with non-breaking hyphens.
 			List<Def> listDefsCarrierGroupNames=Defs.GetDefsForCategory(DefCat.CarrierGroupNames,true);//Only Add non hidden definitions
 				//new List<Def> { new Def() { DefNum=0,ItemName=Lan.g(this,"Unspecified") } };
 			//listDefsCarrierGroupNames.AddRange(Defs.GetDefsForCategory(DefCat.CarrierGroupNames,true));
@@ -150,6 +151,8 @@ namespace OpenDental{
 			checkIsHidden.Enabled=false;
 			checkIsCDAnet.Enabled=false;
 			odColorPickerBack.Enabled=false;
+			textPreAuthCodes.ReadOnly=true;
+			butPreAuthCodes.Enabled=false;
 		}
 
 		private string GetSecurityLogMessage(Carrier carrierOld) {
@@ -177,6 +180,7 @@ namespace OpenDental{
 			stringBuilder.Append(SecurityLogMessageHelper(CarrierCur.IsCDA.ToString(),carrierOld.IsCDA.ToString(),"is CDA",IsNew));
 			stringBuilder.Append(SecurityLogMessageHelper(CarrierCur.ApptTextBackColor.ToString(),carrierOld.ApptTextBackColor.ToString(),"text back color",IsNew));
 			stringBuilder.Append(SecurityLogMessageHelper(CarrierCur.IsCoinsuranceInverted.ToString(),carrierOld.IsCoinsuranceInverted.ToString(),"import benefit coinsurance inverted",IsNew));
+			stringBuilder.Append(SecurityLogMessageHelper(CarrierCur.PreAuthCodes,carrierOld.PreAuthCodes,"preauth codes",IsNew));
 			return stringBuilder.ToString();
 		}
 
@@ -259,6 +263,9 @@ namespace OpenDental{
 				MessageBox.Show(Lan.g(this,"Carrier Name cannot be blank."));
 				return;
 			}
+			if(!TryGetPreAuthCodes(out string preAuthCodes)) {//26.1, in FormCarrierEdit.PreAuth.cs.
+				return;
+			}
 			Carrier carrierOld=CarrierCur.Copy();
 			CarrierCur.CarrierName=textCarrierName.Text;
 			CarrierCur.Phone=textPhone.Text;
@@ -284,6 +291,7 @@ namespace OpenDental{
 			CarrierCur.ApptTextBackColor=odColorPickerBack.BackgroundColor;
 			CarrierCur.IsCoinsuranceInverted=radioBenefitSendsIns.Checked;
 			CarrierCur.OrthoInsPayConsolidate=comboOrthoConsolidate.GetSelected<EnumOrthoInsPayConsolidate>();
+			CarrierCur.PreAuthCodes=preAuthCodes;
 			if(IsNew){
 				try{
 					Carriers.Insert(CarrierCur);

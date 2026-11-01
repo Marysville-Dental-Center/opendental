@@ -802,6 +802,7 @@ namespace OpenDental{
 				row.Bold=_listTpRowsMain[i].Bold;
 				gridMain.ListGridRows.Add(row);
 			}
+			FillMainDisplayPreAuthFlags();//26.1 carrier preauth flags, in ControlTreat.PreAuth.cs.
 			gridMain.EndUpdate();
 		}
 
