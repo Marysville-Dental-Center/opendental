@@ -17,7 +17,16 @@ The legacy `ConvertDatabases` chain (`OpenDentBusiness/Misc/ConvertDatabases*.cs
 |---|---|---|
 | 2026101901 to 2026101906 | `OdParity25_3.cs`: the Open Dental 24.4, 25.1, 25.2 and 25.3 schema, then the 25.3.48 keys and definitions of existing columns | M1-01 |
 | 2026101907 | `Seed25_3Step.cs`: the `Seed25_3` preference, permission-grant and eForm status rows, only for a database that comes from 24.3 (judged by the `ForkAdoptedFrom` source on an adopted database, otherwise by `DataBaseVersion`) | M1-02 |
+| 2026101951 | `XConnectEnableStep.cs`: sets `clearinghouse.EnableXConnect` where 24.3 had XConnect on, only for a database that comes from 24.3 | V-DXC1 |
+| 2026101971 | `ReportRows25_3.cs`: the Procedures, Production by Procedure and Insurance Pending Supplementals report rows (added on a database from 24.3; on an Open Dental 25.3 database only a row under another internal name is renamed) | A-RPT |
 | 2026102401 to 2026102403 | `OdParity26_1.cs`: the Open Dental 25.4 schema, the 26.1 schema, and `claimpayment.Note` widened to text (the 25.3.48 drift). Columns of one table are added in one `ALTER TABLE` (`OdParity26_1.AlterTable`), so a large MyISAM table such as `claimproc`, `procedurelog` or `procnote` is copied once. The only data migration: existing `evaluation` rows get `GradeOverride` -1 in the statement that adds the column; `NULL` claim payment notes become empty strings before the column turns `NOT NULL`. | M2-01 |
+| 2026102501 | `Seed26_1Step.cs`: the 25.4 and 26.1 preference rows, and the 25.4 blockout permission split on a database from before 25.4 | M2-02 |
+| 2027002301 | `BShellSteps.cs`: disables the discontinued DXC Patient Credit Score program link and deletes its toolbar buttons, on every database | B-SHELL |
+| 2027002701 | `NoBillInsBackfillStep.cs`: Do Not Bill to Ins decisions moved to `procedurelog.NoBillIns`. Not active: the class is abstract, so the runner skips it (see `docs/port-notes/M2-EST.md`) | M2-EST |
+| 2027003501 | `ReportRowUdsPlus.cs`: the UDS+ report row after the FQHC Dental Sealant Measure, on a database from before 25.4 | M2-UDS |
+| 2027004701 | `InsHistCodeGroupsStep.cs`: Insurance History rows from the `InsHist*Codes` preferences to code groups, on a database from before 25.4 | M2-HIST |
+
+The `yyyy00PPNN` levels (2027 on, `00` in the month place, then the package's slot and the step number) are the ranges the single-wave feature port gave each package (`ForkMigrationRunner.IsReservedPackageLevel`); they sort after every dated 2026 level.
 
 ## Hand-off to the version guard and adoption
 
