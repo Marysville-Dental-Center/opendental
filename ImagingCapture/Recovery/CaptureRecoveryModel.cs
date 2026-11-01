@@ -316,7 +316,10 @@ namespace ImagingCapture.Recovery {
 				listNotes.Add("More than 30 days old.");
 			}
 			if(entry.IsGray16) {
-				listNotes.Add("16-bit.");
+				//Design 7.8: stored only as DICOM in an empty mount slot with tooth numbers, never unmounted; there is no other route yet (an
+				//owner decision is pending), so a 16-bit capture without a known slot can only be discarded, and it is said here.
+				bool hasNoSlot=entry.MountNum<=0 || !entry.IsSlotKnown || entry.IsPatientUnknown || CaptureRecoveryFiler.IsRedeliveredUnconfirmed(entry);
+				listNotes.Add(hasNoSlot ? CaptureRecoveryText.Gray16NoSlotNote : CaptureRecoveryText.Gray16Note);
 			}
 			if(!item.IsReassignOffered && !item.IsAssignOffered) {
 				listNotes.Add("This file cannot be filed here.");

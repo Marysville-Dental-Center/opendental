@@ -374,10 +374,11 @@ namespace ImagingCapture.Recovery {
 		#endregion Assign
 
 		#region Reassign
-		///<summary>Whether Reassign is offered: any capture that was not filed yet and can be read back (a .dcm cannot). A 16-bit capture is
-		///offered, and refused with the reason when it is chosen.</summary>
+		///<summary>Whether Reassign is offered: any capture that was not filed yet and can be read back (a .dcm cannot), except a 16-bit one: it is
+		///stored only as DICOM in a mount slot with tooth numbers (design 7.8), and Reassign files an unmounted document with none, so it is never
+		///offered (the list's note says so) instead of being refused after the patient search and the reason.</summary>
 		public static bool IsReassignOffered(CaptureFileEntry entry) {
-			return entry!=null && !entry.IsResolved && entry.Extension!=".dcm" && !IsJournalCopyOfQuarantined(entry);
+			return entry!=null && !entry.IsResolved && entry.Extension!=".dcm" && !IsJournalCopyOfQuarantined(entry) && !entry.IsGray16;
 		}
 
 		///<summary>Files entry for patientTarget, whom the user found with the patient search (design 7.12 "Reassign"): ImageEdit, a typed reason,

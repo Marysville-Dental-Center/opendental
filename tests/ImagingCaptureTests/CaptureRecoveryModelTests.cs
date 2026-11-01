@@ -89,6 +89,22 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void Gray16_NeverOfferedForReassign_TheNoteSaysWhenItCanOnlyBeDiscarded() {
+			_harness.Files.Quarantine16(RecoveryFiles.SessionFields(),_receivedAt);//its mount and slot are known
+			_harness.Files.Quarantine16(RecoveryFiles.SessionFields(patNum:0,captureId:"cap-8"),_receivedAt.AddMinutes(1));//no patient
+			CaptureRecoveryModel model=Model(CaptureRecoveryView.Unassigned);
+			Assert.AreEqual(2,model.Items.Count);
+			CaptureRecoveryItem itemSlot=model.Items.Single(x => !x.Entry.IsPatientUnknown);
+			Assert.IsFalse(itemSlot.IsReassignOffered,"Design 7.8: a 16-bit capture is never an unmounted document.");
+			StringAssert.Contains(itemSlot.NoteText,CaptureRecoveryText.Gray16Note);
+			CaptureRecoveryItem itemNoSlot=model.Items.Single(x => x.Entry.IsPatientUnknown);
+			Assert.IsFalse(itemNoSlot.IsAssignOffered);
+			Assert.IsFalse(itemNoSlot.IsReassignOffered);
+			Assert.IsTrue(itemNoSlot.IsDiscardOffered);
+			StringAssert.Contains(itemNoSlot.NoteText,CaptureRecoveryText.Gray16NoSlotNote,"Said before anyone searches for a patient.");
+		}
+
+		[TestMethod]
 		public void Assign_PermissionWhenBegun_ThenTheExplicitConfirmation() {
 			_harness.Files.Quarantine(RecoveryFiles.SessionFields(),_receivedAt);
 			CaptureRecoveryModel model=Model(CaptureRecoveryView.Unassigned);

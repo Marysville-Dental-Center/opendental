@@ -454,6 +454,7 @@ namespace ImagingCapture.Tests {
 		[TestMethod]
 		public void Reassign_16Bit_Refused_StaysPut() {
 			CaptureFileEntry entry=_harness.Files.Quarantine16(RecoveryFiles.SessionFields(patNum:0),_receivedAt);
+			Assert.IsFalse(CaptureRecoveryFiler.IsReassignOffered(entry),"Not offered, rather than refused after the patient search and the reason.");
 			CaptureFilingResult result=_harness.Filer.Reassign(entry,_harness.PatientJane,"reason",20);
 			Assert.IsFalse(result.IsDone);
 			StringAssert.Contains(result.Error,"cannot be reassigned");

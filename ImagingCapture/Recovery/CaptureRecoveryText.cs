@@ -52,6 +52,10 @@ namespace ImagingCapture.Recovery {
 		}
 
 		public const string SlotUnknown="Slot unknown";
+		///<summary>A 16-bit capture is stored only as DICOM in an empty mount slot with tooth numbers (design 7.8).</summary>
+		public const string Gray16Note="16-bit: it can be filed only into its empty slot of the mount, not reassigned.";
+		public const string Gray16NoSlotNote="16-bit with no slot to go into (no mount, the slot not recorded, or no patient): it cannot be filed or "
+			+"reassigned, only discarded.";
 		public const string ToothNumbersUnknown="Tooth numbers unknown";
 
 		///<summary>The target an entry is shown with: its sidecar's slot (or single-image target) when it is the image's own (IsSlotKnown). For a
