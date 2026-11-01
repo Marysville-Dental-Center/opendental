@@ -174,14 +174,6 @@
     </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
-    <Reference Include="RdlEngine, Version=2.9.3.0, Culture=neutral, processorArchitecture=x86">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\RdlEngine.dll</HintPath>
-    </Reference>
-    <Reference Include="RdlViewer, Version=2.9.3.0, Culture=neutral, processorArchitecture=x86">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\RdlViewer.dll</HintPath>
-    </Reference>
     <Reference Include="SharpDX, Version=4.0.1.0, Culture=neutral, PublicKeyToken=b4dcf0f35e5521f1, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\SharpDX.dll</HintPath>
@@ -9439,6 +9431,21 @@
     <ProjectReference Include="..\OpenDentBusiness\OpenDentBusiness.csproj">
       <Project>{3D0FC76E-803C-4DE2-BDB1-47D63A4E2357}</Project>
       <Name>OpenDentBusiness</Name>
+    </ProjectReference>
+    <!-- RDL reports (ReportingForRdl): the fyiReporting engine and viewer, and ODR.dll, the code module that report definitions load by file name
+         (<CodeModule>ODR.dll</CodeModule>). All three are built from the source in this repository (package RDL-SRC); no code here uses ODR's
+         types, the reference only puts ODR.dll next to OpenDental.exe. -->
+    <ProjectReference Include="..\ODR\xODR.csproj">
+      <Project>{84688345-BB6A-4F2F-8672-A82B52FD433B}</Project>
+      <Name>xODR</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\RdlEngine\RdlEngine.csproj">
+      <Project>{C97E91F4-B310-44E2-9B6C-96775395722D}</Project>
+      <Name>RdlEngine</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\RdlViewer\RdlViewer.csproj">
+      <Project>{D99145B1-CB6C-41F5-BA86-723325145FB5}</Project>
+      <Name>RdlViewer</Name>
     </ProjectReference>
     <ProjectReference Include="..\ServiceManager\ServiceManager.csproj">
       <Project>{791a5d15-7b14-4a12-ba78-34604cc10d7c}</Project>

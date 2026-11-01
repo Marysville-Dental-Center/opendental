@@ -20,6 +20,9 @@
     For additional information, email info@fyireporting.com or visit
     the website www.fyiReporting.com.
 */
+// Changed by Open PMS - Dental contributors, 2026-11-01 (package RDL-SRC, docs/port-notes/RDL-SRC.md): the built-in MySQL.NET data
+// provider is MySqlConnector (MySqlConnector.dll, class MySqlConnector.MySqlConnection), the MySQL client the program ships, in place of
+// MySql.Data.dll, which it no longer ships. Report definitions keep naming the provider MySQL.NET.
 using System;
 using System.Xml;
 using System.Collections;
@@ -85,8 +88,8 @@ namespace fyiReporting.RDL
 	<DataSources>
 		<DataSource>
 			<DataProvider>MySQL.NET</DataProvider>
-			<CodeModule>MySql.Data.dll</CodeModule>
-			<ClassName>MySql.Data.MySqlClient.MySqlConnection</ClassName>
+			<CodeModule>MySqlConnector.dll</CodeModule>
+			<ClassName>MySqlConnector.MySqlConnection</ClassName>
 			<TableSelect>show tables</TableSelect>
 			<Interface>SQL</Interface>
 			<ReplaceParameters>true</ReplaceParameters>
