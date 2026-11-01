@@ -78,6 +78,8 @@ namespace ImagingCapture.Session {
 		private readonly List<Document> _listDocumentsSingle=new List<Document>();
 		private readonly List<long> _listDocNums=new List<long>();
 		private readonly List<string> _listQuarantinePaths=new List<string>();
+		///<summary>Every image QuarantineImage was asked to move, whether the move succeeded or not (see CountQuarantineAttempts).</summary>
+		private int _countQuarantineAttempts;
 		private readonly List<string> _listLog=new List<string>();
 		private DateTime _dateTimeStarted;
 		private string _indicatorText="";
@@ -206,6 +208,9 @@ namespace ImagingCapture.Session {
 		public int CountRetakes { get; private set; }
 		///<summary>Images moved to the quarantine in this session.</summary>
 		public int CountQuarantined => _listQuarantinePaths.Count;
+		///<summary>Images the session tried to move to the quarantine, including those whose move failed: such an image's only copy is then its
+		///journal copy, whose sidecar names this session's mount and slot, so the launcher keeps a mount created for the session for it too.</summary>
+		public int CountQuarantineAttempts => _countQuarantineAttempts;
 		///<summary>The image saved last, its document and its slot (null in single-target mode), for the window's brief preview.</summary>
 		public AcquiredImage LastSavedImage { get; private set; }
 		public Document LastSavedDocument { get; private set; }
@@ -1333,6 +1338,7 @@ namespace ImagingCapture.Session {
 
 		///<summary>Moves image to the quarantine for the bound patient (or "patient unknown"), with reason in its sidecar.</summary>
 		private void QuarantineImage(ITwainCaptureSession session,AcquiredImage image,CaptureEnableRecord record,string reason,bool isPatientUnknown) {
+			_countQuarantineAttempts++;//before the move: a failed move still leaves an image (its journal copy) that names this session's mount
 			ITwainCaptureSession sessionQuarantine=session??_session;
 			string error="";
 			string path=null;

@@ -334,6 +334,40 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void Completed_NothingSaved_TheQuarantineMoveFailed_CreatedMountKeptForTheJournalCopy() {
+			//The save fails, then the move to unassigned captures fails too (a file conflict, folder rights, a full disk): the image's only copy is
+			//its journal copy, whose sidecar names this mount and slot 1. Deleting the mount would leave Assign only an unmounted document, and a
+			//16-bit capture nothing it may file into (design 7.8).
+			_radiographStore.ThrowOn="Import";
+			CaptureSessionController controllerShown=null;
+			_windowRunner.ActionWhileShown=controller => {
+				controllerShown=controller;
+				controller.Begin();
+				_clock.Advance(CaptureSessionController.KeyIgnoreMs);
+				controller.RequestStart();
+				_dispatcher.RunPending();
+				FakeTwainCaptureSession twain=_listSessions.Single();
+				twain.QuarantineError="There is not enough space on the disk.";//QuarantineImage returns null
+				twain.RaiseStatus(TwainCaptureState.WaitingForImage);
+				twain.RaiseImage(TestImages.Image8(4,4,(x,y) => 7));
+				twain.RaiseEnded(TwainCaptureEndReason.Completed);
+				_dispatcher.RunPending();
+				controller.Execute(CaptureSessionAction.End);
+			};
+			CaptureSessionLaunchResult result=Launcher().Run(Request());
+			Assert.AreEqual(CaptureSessionLaunchKind.Completed,result.Kind);
+			Assert.AreEqual("",result.Reason);
+			Assert.AreEqual(1,_listSessions.Single().ListQuarantined.Count,"The move was tried.");
+			Assert.AreEqual(0,result.Summary.CountImages);
+			Assert.AreEqual(0,result.Summary.CountQuarantined,"Nothing reached unassigned captures.");
+			Assert.AreEqual(1,controllerShown.CountQuarantineAttempts);
+			Assert.IsTrue(controllerShown.IsMountEmpty);
+			Assert.IsFalse(result.IsEmptyMountToDelete,"The journal copy names this mount's slot: the mount stays for its Assign.");
+			Assert.IsTrue(_listLog.Any(x => x.Contains("created for the session is kept: 1 image(s) of the session could not be moved to unassigned captures")),
+				string.Join("\r\n",_listLog));
+		}
+
+		[TestMethod]
 		public void Completed_TheDatabaseHasADocumentInTheMount_TheSessionDidNotSaveIt_MountKept() {
 			_windowRunner.ActionWhileShown=controller => {
 				controller.Begin();

@@ -198,7 +198,8 @@ namespace ImagingCapture.Session {
 		}
 
 		///<summary>Design 7.3 "The hook": a mount created in this call is deleted after the session only while it is still empty. The session put no
-		///document into it and quarantined nothing (Assign files a quarantined image into its original slot, design 7.12, so the slot must stay),
+		///document into it and quarantined nothing, nor tried to (Assign files a quarantined image, or the journal copy of one whose move failed,
+		///into its original slot, design 7.12, so the slot must stay),
 		///and the database agrees: a document filed into it that the session did not hear of (the quarantine window failing after a filing, another
 		///window of this computer) keeps it. Mounts.Delete leaves the documents, which would then point at a deleted mount item. A database that
 		///cannot be read keeps it too.</summary>
@@ -209,6 +210,13 @@ namespace ImagingCapture.Session {
 			if(controller.CountQuarantined>0) {
 				Log("The mount "+mount.MountNum+" created for the session is kept: "+controller.CountQuarantined+" image(s) of the session went to unassigned "
 					+"captures and may be assigned into its slots.");
+				return false;
+			}
+			if(controller.CountQuarantineAttempts>0) {
+				//The move failed (a file conflict, folder rights, a full disk): the image's only copy is its journal copy, whose sidecar names this mount
+				//and its slot. Without the mount, Assign would file it unmounted, and a 16-bit capture could not be filed at all (design 7.8).
+				Log("The mount "+mount.MountNum+" created for the session is kept: "+controller.CountQuarantineAttempts+" image(s) of the session could not "
+					+"be moved to unassigned captures; their journal copies name its slots and may be assigned into them.");
 				return false;
 			}
 			if(controller.IsSourceStillDelivering) {
