@@ -44,8 +44,9 @@ namespace AdoptionValidation.Tests {
 			Assert.AreEqual(21,changes.ListColumnsAdded.Select(x => x.Split('.')[0]).Distinct().Count());
 			CollectionAssert.AreEqual(Sorted(changes.ListTablesAdded),Sorted(allowed.Rules.Where(x => x.Kind=="TableAdded").Select(x => x.Table)));
 			CollectionAssert.AreEqual(Sorted(changes.ListColumnsAdded),Sorted(allowed.Rules.Where(x => x.Kind=="ColumnAdded").Select(x => x.Table+"."+x.Column)));
-			List<string> listColumnsChanged=allowed.Rules.Where(x => x.Kind=="ColumnChanged" && x.Column!="SecurityHash" && x.Table!="displayreport")
-				.Select(x => x.Table+"."+x.Column).ToList();
+			//The 25.4 and 26.1 value changes; program.Enabled is the DXC Patient Credit Score step's (AllowedDifferences_TheDxcStepAllowsOnlyItsColumnAndTable).
+			List<string> listColumnsChanged=allowed.Rules.Where(x => x.Kind=="ColumnChanged" && x.Column!="SecurityHash" && x.Table!="displayreport"
+				&& x.Table!=DxcCreditScorePlan.TABLE_PROGRAM).Select(x => x.Table+"."+x.Column).ToList();
 			CollectionAssert.AreEqual(Sorted(Migration26_1Plan.ArrayValueChangingColumns),Sorted(listColumnsChanged));
 			foreach(string item in Migration26_1Plan.ArrayValueChangingColumns) {
 				CollectionAssert.Contains(changes.ListColumnsChanged,item,"The reference changes "+item+".");
@@ -55,6 +56,63 @@ namespace AdoptionValidation.Tests {
 			Assert.IsFalse(allowed.Rules.Any(x => x.Table=="updatehistory" || x.Table=="*" && x.Column!="SecurityHash"),"No other wildcard rule.");
 			Assert.IsTrue(allowed.Rules.All(x => x.Kind=="ColumnRemoved" || x.Kind=="TotalChanged" || x.Column=="SecurityHash" || x.Reason.Contains("adopt")),
 				"Every 25.4, 26.1 and whole-table rule says how adopt checks it.");
+		}
+
+		///<summary>The DXC Patient Credit Score step (B-SHELL) changes program.Enabled and deletes toolbutitem rows on an adopted Open Dental 25.3.48
+		///database: the allowed list has exactly one rule for each, program.Enabled as a whole column and toolbutitem as a whole table, both held row by
+		///row by adopt's check, and no other rule names either table. The reference changes neither table's schema.</summary>
+		[TestMethod]
+		public void AllowedDifferences_TheDxcStepAllowsOnlyItsColumnAndTable() {
+			AllowedDifferences allowed=LoadAllowed();
+			List<AllowedRule> listProgram=allowed.Rules.Where(x => x.Table==DxcCreditScorePlan.TABLE_PROGRAM).ToList();
+			Assert.AreEqual(1,listProgram.Count);
+			Assert.AreEqual("ColumnChanged",listProgram[0].Kind);
+			Assert.AreEqual(DxcCreditScorePlan.COLUMN_ENABLED,listProgram[0].Column);
+			StringAssert.Contains(listProgram[0].Reason,new OpenDentBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemovedStep().Level.ToString());
+			List<AllowedRule> listButtons=allowed.Rules.Where(x => x.Table==DxcCreditScorePlan.TABLE_TOOLBUTITEM).ToList();
+			Assert.AreEqual(1,listButtons.Count);
+			Assert.AreEqual("*",listButtons[0].Kind);
+			CollectionAssert.Contains(AdoptionRowCheck.ArrayWholeTables,DxcCreditScorePlan.TABLE_TOOLBUTITEM,"adopt's row check compares it row by row.");
+			CollectionAssert.DoesNotContain(AdoptionRowCheck.ArrayWholeTables,DxcCreditScorePlan.TABLE_PROGRAM,"program is allowed by one column only.");
+			Migration26_1Plan.SchemaChanges changes=Migration26_1Plan.GetSchemaChanges();
+			Assert.IsFalse(changes.ListTablesAdded.Concat(changes.ListColumnsAdded).Concat(changes.ListColumnsChanged)
+				.Any(x => x.StartsWith("program.") || x.StartsWith("toolbutitem.") || x=="program" || x=="toolbutitem"),"The 25.4 and 26.1 references change neither table.");
+		}
+
+		///<summary>What migration-preview prints for the DXC Patient Credit Score step (B-SHELL): the program row it disables and the buttons it deletes,
+		///in the adoption log's words, on a 25.3.48 database; nothing where the link is already disabled without buttons, or missing.</summary>
+		[TestMethod]
+		public void DxcPlanLines_SayWhatTheStepChanges() {
+			List<OpenDentBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.ProgramRow> listPrograms=new List<OpenDentBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.ProgramRow> {
+				new OpenDentBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.ProgramRow { ProgramNum=4,ProgName="DXCPatientCreditScore",IsEnabled=true },
+				new OpenDentBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.ProgramRow { ProgramNum=3,ProgName="XVWeb",IsEnabled=true },
+			};
+			List<OpenDentBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.ToolButItemRow> listButtons=new List<OpenDentBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.ToolButItemRow> {
+				new OpenDentBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.ToolButItemRow { ToolButItemNum=5,ProgramNum=4,ToolBar=0 },
+				new OpenDentBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.ToolButItemRow { ToolButItemNum=6,ProgramNum=4,ToolBar=7 },
+				new OpenDentBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.ToolButItemRow { ToolButItemNum=7,ProgramNum=3,ToolBar=3 },
+			};
+			DxcCreditScorePlan.Plan plan=new DxcCreditScorePlan.Plan { HasProgramTable=true,HasToolButItemTable=true,
+				Rows=OpenDentBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.Plan(listPrograms,listButtons) };
+			Assert.IsTrue(plan.IsChanging);
+			string text=string.Join("\r\n",plan.Lines());
+			StringAssert.Contains(text,"Step 2026110101 (DXC Patient Credit Score program link): the discontinued DXC Patient Credit Score program link (ProgramNum 4) "
+				+"stays, with its text; the step disables 1 program row(s) of it (ProgramNum 4), Enabled only and deletes its 2 toolbar button(s) (ToolButItemNum 5 on "
+				+"AccountModule, 6 on MainToolbar)");
+			StringAssert.Contains(text,"\"Deleted 2 toolbar button(s) of the discontinued DXC Patient Credit Score program link (ToolButItemNum 5, 6)\" and \"Disabled the "
+				+"discontinued DXC Patient Credit Score program link (ProgramNum 4)\"");
+			StringAssert.Contains(text,"adopt's row check (step 4) requires exactly this");
+			Assert.IsFalse(System.Text.RegularExpressions.Regex.IsMatch(text,@"Renamed displayreport \S+ to \S+ \(same description\)"));
+			//Already cleaned up (as Open Dental most likely left it), no row, no table.
+			listPrograms[0].IsEnabled=false;
+			DxcCreditScorePlan.Plan planClean=new DxcCreditScorePlan.Plan { HasProgramTable=true,HasToolButItemTable=true,
+				Rows=OpenDentBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.Plan(listPrograms,listButtons.Where(x => x.ProgramNum!=4).ToList()) };
+			Assert.IsFalse(planClean.IsChanging);
+			StringAssert.Contains(string.Join("\r\n",planClean.Lines()),"changes nothing: the discontinued DXC Patient Credit Score program link (ProgramNum 4) is already "
+				+"disabled and has no toolbar button.");
+			StringAssert.Contains(string.Join("\r\n",new DxcCreditScorePlan.Plan { HasProgramTable=true }.Lines()),"changes nothing: no program row is the DXC Patient Credit "
+				+"Score link (ProgName DXCPatientCreditScore).");
+			StringAssert.Contains(string.Join("\r\n",new DxcCreditScorePlan.Plan().Lines()),"changes nothing: there is no program table.");
 		}
 
 		[TestMethod]

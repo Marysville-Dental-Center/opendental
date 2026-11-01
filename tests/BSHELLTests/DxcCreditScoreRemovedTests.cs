@@ -1,5 +1,6 @@
 // v25_2-bridges-dxc-credit-score-removed: the DentalXChange Patient Credit Score bridge is gone and its program row is disabled.
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -72,7 +73,8 @@ namespace BSHELLTests {
 			DataCore.NonQ("INSERT INTO toolbutitem (ToolButItemNum,ProgramNum,ToolBar,ButtonText) VALUES (1,1,0,'Credit'),(2,1,3,'Credit'),(3,2,0,'Dolphin')");
 			ForkMigrationContext context=new ForkMigrationContext(ScratchDb.DbName);
 			new DxcCreditScoreRemovedStep().Apply(context);
-			Assert.AreEqual(2,context.ListChanges.Count,string.Join("\r\n",context.ListChanges));
+			CollectionAssert.AreEqual(new[] { "Deleted 2 toolbar button(s) of the discontinued DXC Patient Credit Score program link (ToolButItemNum 1, 2)",
+				"Disabled the discontinued DXC Patient Credit Score program link (ProgramNum 1)" },context.ListChanges,string.Join("\r\n",context.ListChanges));
 			Assert.AreEqual("0",DataCore.GetScalar("SELECT Enabled FROM program WHERE ProgramNum=1"));
 			Assert.AreEqual("DXC Patient Credit Score",DataCore.GetScalar("SELECT ProgDesc FROM program WHERE ProgramNum=1"),"The row's own text is kept.");
 			Assert.AreEqual("0",DataCore.GetScalar("SELECT COUNT(*) FROM toolbutitem WHERE ProgramNum=1"));
@@ -112,7 +114,57 @@ namespace BSHELLTests {
 			ForkMigrationContext context=new ForkMigrationContext(ScratchDb.DbName);
 			new DxcCreditScoreRemovedStep().Apply(context);
 			Assert.AreEqual(1,context.ListChanges.Count,string.Join("\r\n",context.ListChanges));
-			StringAssert.StartsWith(context.ListChanges[0],"DELETE FROM toolbutitem");
+			StringAssert.StartsWith(context.ListChanges[0],"Deleted 1 toolbar button(s) of the discontinued DXC Patient Credit Score program link");
+			Assert.AreEqual("0",DataCore.GetScalar("SELECT COUNT(*) FROM toolbutitem"));
+		}
+
+		///<summary>The plan (shared with AdoptionValidation's migration-preview and adopt's row check) is what the step does: on the rows read from the
+		///database it disables exactly the enabled DXC rows and deletes exactly their buttons, and the step changes exactly those rows.</summary>
+		[TestMethod]
+		public void Plan_IsWhatRunDoes() {
+			ScratchDb.RequireDb();
+			DataCore.NonQ("INSERT INTO program (ProgramNum,ProgName,ProgDesc,Enabled,Path,CommandLine,Note,PluginDllName,ButtonImage,FileTemplate,FilePath) "
+				+"VALUES (3,'Dolphin','Dolphin Imaging',1,'','','','','','',''),(7,'DXCPatientCreditScore','DXC Patient Credit Score',1,'','','','','','',''),"
+				+"(9,'XVWeb','XVWeb',0,'','','','','','','')");
+			DataCore.NonQ("INSERT INTO toolbutitem (ToolButItemNum,ProgramNum,ToolBar,ButtonText) VALUES (4,7,0,'Credit'),(5,3,0,'Dolphin'),(6,7,2,'Credit'),"
+				+"(8,9,0,'XVWeb')");
+			DxcCreditScoreRemoved.RowPlan plan=DxcCreditScoreRemoved.Plan(DxcCreditScoreRemoved.ReadPrograms(),DxcCreditScoreRemoved.ReadToolButItems());
+			Assert.IsTrue(plan.IsChanging);
+			CollectionAssert.AreEqual(new long[] { 7 },plan.ListPrograms.Select(x => x.ProgramNum).ToArray());
+			CollectionAssert.AreEqual(new long[] { 7 },plan.ListProgramsDisabled.Select(x => x.ProgramNum).ToArray());
+			CollectionAssert.AreEqual(new long[] { 4,6 },plan.ListButtonsDeleted.Select(x => x.ToolButItemNum).ToArray());
+			ForkMigrationContext context=new ForkMigrationContext(ScratchDb.DbName);
+			new DxcCreditScoreRemovedStep().Apply(context);
+			CollectionAssert.AreEqual(plan.GetLogLines(),context.ListChanges);
+			Assert.AreEqual("3,7,9",DataCore.GetScalar("SELECT GROUP_CONCAT(ProgramNum ORDER BY ProgramNum) FROM program"),"No row removed.");
+			Assert.AreEqual("3=1,7=0,9=0",DataCore.GetScalar("SELECT GROUP_CONCAT(CONCAT(ProgramNum,'=',Enabled) ORDER BY ProgramNum) FROM program"));
+			Assert.AreEqual("5,8",DataCore.GetScalar("SELECT GROUP_CONCAT(ToolButItemNum ORDER BY ToolButItemNum) FROM toolbutitem"));
+			DxcCreditScoreRemoved.RowPlan planAfter=DxcCreditScoreRemoved.Plan(DxcCreditScoreRemoved.ReadPrograms(),DxcCreditScoreRemoved.ReadToolButItems());
+			Assert.IsFalse(planAfter.IsChanging,"A second run changes nothing.");
+			Assert.AreEqual(0,planAfter.GetLogLines().Count);
+		}
+
+		///<summary>The plan compares ProgName as the database does (the step used to select the row with SQL): case and trailing spaces do not
+		///matter; a disabled row's buttons are deleted too; other links are never touched. No database.</summary>
+		[TestMethod]
+		public void Plan_MatchesTheProgNameAsTheDatabaseDoes() {
+			List<DxcCreditScoreRemoved.ProgramRow> listPrograms=new List<DxcCreditScoreRemoved.ProgramRow> {
+				new DxcCreditScoreRemoved.ProgramRow { ProgramNum=2,ProgName="dxcpatientcreditscore ",IsEnabled=false },
+				new DxcCreditScoreRemoved.ProgramRow { ProgramNum=5,ProgName="DXCPatientCreditScoreX",IsEnabled=true },
+				new DxcCreditScoreRemoved.ProgramRow { ProgramNum=6,ProgName="Dolphin",IsEnabled=true },
+			};
+			List<DxcCreditScoreRemoved.ToolButItemRow> listButtons=new List<DxcCreditScoreRemoved.ToolButItemRow> {
+				new DxcCreditScoreRemoved.ToolButItemRow { ToolButItemNum=11,ProgramNum=6 },
+				new DxcCreditScoreRemoved.ToolButItemRow { ToolButItemNum=10,ProgramNum=2 },
+				new DxcCreditScoreRemoved.ToolButItemRow { ToolButItemNum=12,ProgramNum=5 },
+			};
+			DxcCreditScoreRemoved.RowPlan plan=DxcCreditScoreRemoved.Plan(listPrograms,listButtons);
+			CollectionAssert.AreEqual(new long[] { 2 },plan.ListPrograms.Select(x => x.ProgramNum).ToArray());
+			Assert.AreEqual(0,plan.ListProgramsDisabled.Count,"Already disabled.");
+			CollectionAssert.AreEqual(new long[] { 10 },plan.ListButtonsDeleted.Select(x => x.ToolButItemNum).ToArray());
+			CollectionAssert.AreEqual(new[] { "Deleted 1 toolbar button(s) of the discontinued DXC Patient Credit Score program link (ToolButItemNum 10)" },
+				plan.GetLogLines());
+			Assert.IsFalse(DxcCreditScoreRemoved.Plan(new List<DxcCreditScoreRemoved.ProgramRow>(),listButtons).IsChanging);
 		}
 	}
 }

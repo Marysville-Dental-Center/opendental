@@ -35,7 +35,10 @@ same code):
    `DateLastAssigned` as a date and time (midnight of the same date). They add the 25.4 and 26.1 preferences with their defaults, and split
    the blockout permission as Open Dental 25.4 did: grants of PhoneExtension under its 25.3 number (272) move to 274, because 25.4 gave 272 to
    BlockoutAdd, and every user group that may edit blockouts (Blockouts) also gets BlockoutAdd and BlockoutDelete with the same date limits,
-   so nobody loses an ability. Last, the UDS+ report step adds the Standard Reports row of the Open Dental 25.4 UDS+ report ("FQHC UDS+
+   so nobody loses an ability. Then the DXC Patient Credit Score step disables that program link, which Open Dental 25.2 removed because
+   DentalXChange discontinued the service (its `program` row's `Enabled` only; the row and its text stay), and deletes its toolbar buttons, if
+   the office database still has it enabled or on a toolbar (what Open Dental's own 25.2 update did to the row is not published; most likely
+   nothing is left to change). Then the UDS+ report step adds the Standard Reports row of the Open Dental 25.4 UDS+ report ("FQHC UDS+
    Dental Services", Public Health) right after the FQHC Dental Sealant Measure, moves the later Public Health rows down one place, and lets the
    user groups that may run the sealant measure run it too (hidden when the sealant measure is hidden). Then the Insurance History step moves
    the ten Insurance History code preferences of Open Dental 25.3 (Preferences, Treatment Plan) into code groups, as Open Dental 26.1 shows
@@ -60,8 +63,9 @@ after the switch must then be re-entered by hand. Decide the rollback deadline b
 
 Starting this program and logging in writes to the database: this computer's row and its heartbeat, the Database Maintenance list, signals,
 login records, security log entries. Step 6.1 compares the adopted copy with its report from before adoption and accepts only the kinds of
-change adoption and the rehash make; seven tables, `preference`, `documentmisc`, `securitylog`, `securityloghash`, `displayreport`,
-`grouppermission` and `codegroup`, it can only accept as a whole, and step 4 has checked those row by row. So the copy, the adoption,
+change adoption and the rehash make; eight tables, `preference`, `documentmisc`, `securitylog`, `securityloghash`, `displayreport`,
+`grouppermission`, `codegroup` and `toolbutitem`, and the column `program.Enabled`, it can only accept as a whole, and step 4 has checked
+those row by row. So the copy, the adoption,
 the rehash and that comparison are done with the
 command-line tools, exactly as rehearsed, and **nobody starts this program on `opendental_pms` until step 6.1 has passed**. From step 6.2 on,
 the program's own writes are normal use.
@@ -220,7 +224,8 @@ rounds those: every program shows them with the same 6 digits before and after, 
 logical backup to copy the database (steps 3.1 and 3.2 copy the stored values exactly), so nothing is to be done on the day; keep the file
 for the owner, because it says what the office's own nightly backups would round if they are `mariadb-dump` files (validation report, F12).
 
-Then, at any time (it reads only the `displayreport` and `grouppermission` tables, the preferences, and which claim payment notes are NULL),
+Then, at any time (it reads only the `displayreport`, `grouppermission`, `program`, `toolbutitem`, `codegroup` and `procedurecode` tables, the
+preferences, and which claim payment notes are NULL),
 the **fork migration preview**: [admin PC]
 `& $av migration-preview --database opendental @db | Tee-Object C:\Adoption\migration-preview.txt` (exit code 0). It lists what adoption's
 fork migration (step 4) will change in the rows of `opendental`: the report rows of item 6 of "What adoption does". It prints one line for
@@ -237,7 +242,7 @@ The line `Adoption's fork migration will rename N displayreport row(s), changing
 displayreport row.`) sums them up. **Write each rename (old name, new name, DisplayReportNum) on the checklist**, or "none": step 4 must show
 exactly these. No rename at all is just as normal.
 
-The last lines are the Open Dental 25.4 and 26.1 steps of item 6:
+The last lines are the Open Dental 25.4 and 26.1 steps of item 6 and the feature steps after them:
 
 - `Steps 2026102401 to 2026102403 (Open Dental 25.4 and 26.1 schema) bring the schema to Open Dental 26.1.70: 5 new table(s), empty (...);
   28 new column(s) in 21 table(s) ...; ... claimpayment.Note (text NOT NULL: N NULL note(s) become empty) ...`;
@@ -246,6 +251,13 @@ The last lines are the Open Dental 25.4 and 26.1 steps of item 6:
 - `Step 2026102501 splits the blockout permission (...): it moves N Open Dental 25.3 PhoneExtension grant(s) from 272 to 274, then grants
   BlockoutAdd (272) to N user group(s) and grants BlockoutDelete (273) to N user group(s), with the FKey and date limits of their Blockouts
   grant.` (or `... BlockoutDelete is already configured, so it is not granted`);
+- `Step 2026110101 (DXC Patient Credit Score program link) changes nothing: the discontinued DXC Patient Credit Score program link (ProgramNum
+  N) is already disabled and has no toolbar button.` (what Open Dental's own 25.2 update most likely left; `... no program row is the DXC
+  Patient Credit Score link ...` is just as normal), or `Step 2026110101 (DXC Patient Credit Score program link): the discontinued DXC Patient
+  Credit Score program link (ProgramNum N) stays, with its text; the step disables 1 program row(s) of it (ProgramNum N), Enabled only and
+  deletes its N toolbar button(s) (ToolButItemNum N on <toolbar>, ...) ...`. It quotes the lines the adoption log will show ("Deleted N toolbar
+  button(s) of the discontinued DXC Patient Credit Score program link (...)", "Disabled the discontinued DXC Patient Credit Score program link
+  (ProgramNum N)"). Its buttons pointed at a service that no longer exists, so the office loses nothing;
 - `Step 2026110103 (UDS+ report row) adds the displayreport row ODUdsPlus ("FQHC UDS+ Dental Services", Public Health, ItemOrder N) right
   after the FQHC Dental Sealant Measure (DisplayReportNum N), moving N later Public Health row(s) down one place, ItemOrder only (...); it
   gives the N user group(s) that may run the sealant measure (user group ...) the Reports permission for it ...` (on an Open Dental 25.3.48
@@ -258,7 +270,8 @@ The last lines are the Open Dental 25.4 and 26.1 steps of item 6:
   ten Insurance History preferences are all empty it says `changes nothing: none of the ten InsHist*Codes preferences has a value`.
 
 **Write the numbers on the checklist**: NULL notes, preferences, PhoneExtension grants moved, user groups for BlockoutAdd and for
-BlockoutDelete, the UDS+ row's DisplayReportNum of the sealant measure, the Public Health rows moved, the user groups granted the UDS+
+BlockoutDelete, the DXC Patient Credit Score row disabled (ProgramNum, or "none") and its buttons deleted (ToolButItemNum, or "none"), the
+UDS+ row's DisplayReportNum of the sealant measure, the Public Health rows moved, the user groups granted the UDS+
 report, and the code groups marked for Insurance History (CodeGroupNum and History Proc Code) and added (name). Step 4 must show exactly these. Zero PhoneExtension grants is normal (Open Dental's Set All grants it, so it is there only where
 someone used Set All).
 
@@ -521,6 +534,10 @@ prints each step with its time; `adoption-log.txt` keeps everything. Expect, in 
 - step 2026102501 ("Open Dental 25.4 and 26.1 seed rows") "changed the database:", followed by one line "Inserted preference <name>" for each
   preference of the step 0.2 list, "Moved N Open Dental 25.3 PhoneExtension grant(s) from 272 to 274" if step 0.2 counted any, and "Granted
   BlockoutAdd to N user group(s)" and "Granted BlockoutDelete to N user group(s)" with the step 0.2 numbers
+- step 2026110101 ("Disable the discontinued DXC Patient Credit Score program link") "found nothing to change" if step 0.2 said it changes
+  nothing; otherwise "changed the database:", followed by the lines step 0.2 quoted: "Deleted N toolbar button(s) of the discontinued DXC
+  Patient Credit Score program link (ToolButItemNum ...)" if it listed buttons, and "Disabled the discontinued DXC Patient Credit Score program
+  link (ProgramNum N)" if it listed an enabled row
 - step 2026110103 ("Report row for the UDS+ report") "changed the database:", followed by "Added displayreport ODUdsPlus" (with "(hidden, as
   the sealant measure is)" if it is hidden) and, if step 0.2 listed user groups, "Copied N report permission(s) from ODDentalSealantMeasure to
   ODUdsPlus" with the step 0.2 number
@@ -531,7 +548,7 @@ prints each step with its time; `adoption-log.txt` keeps everything. Expect, in 
   and "Adoption finished."
 - "Fork migration, every step again: 16 steps run, 0 changes." and "The schema matches Open Dental 26.1.70 exactly (427 of 427 tables)."
 - the rehash of step 5
-- "Row check against opendental ..." with ten lines and no line starting `FAIL`: `preference` (the markers added, "N of the N 25.4 and 26.1
+- "Row check against opendental ..." with twelve lines and no line starting `FAIL`: `preference` (the markers added, "N of the N 25.4 and 26.1
   preference(s) migration-preview lists added with their defaults", `DataBaseVersion` and `ProgramVersion` set to 99.0.0.0, the preferences of
   the "Blanked" line blanked, "no other row changed or removed"), `documentmisc` (the update-file rows deleted, "0 other row(s) deleted; 0
   added; 0 changed"), `securitylog` ("2 entries added (1 adoption, 1 rehash); no existing row changed or removed"), `securityloghash`,
@@ -542,16 +559,20 @@ prints each step with its time; `adoption-log.txt` keeps everything. Expect, in 
   Reports for the UDS+ report row granted to N of the N user group(s) that may run the FQHC Dental Sealant Measure, as migration-preview
   lists; no other row changed, added or removed"), `codegroup` ("N of the N code group(s) migration-preview lists marked Show In History as
   planned, ProcCodes and the history columns only (...); N of the N planned code group(s) added with the planned values (CodeGroupNum ...); no
-  other row or column changed, none removed"), "Changed columns:" ("claimpayment.Note: N of the N NULL note(s)
+  other row or column changed, none removed"), `program` ("N of the N DXC Patient Credit Score row(s) migration-preview lists disabled,
+  Enabled only (ProgramNum N); no other row or column changed, none added or removed", or "identical row by row (migration-preview lists no
+  change)"), `toolbutitem` ("N of the N DXC Patient Credit Score toolbar button(s) migration-preview lists deleted (ToolButItemNum ...); no
+  other row changed, added or removed", or "identical row by row ..."), "Changed columns:" ("claimpayment.Note: N of the N NULL note(s)
   migration-preview counts now empty, every other note unchanged", and `insverify` and `insverifyhist.DateLastAssigned` "the original date at
   midnight in all N row(s)"), "New tables and columns:" ("5 new table(s), all empty (...); 28 new column(s) in 21 table(s) hold their default
   in every row.") and `updatehistory` ("identical row by row")
-- "Adopt: PASS." with the report rows renamed (or "the fork migration renamed no report row") and the UDS+ report row added, and exit code 0
+- "Adopt: PASS." with the report rows renamed (or "the fork migration renamed no report row"), the UDS+ report row added and, if step 0.2
+  listed them, the DXC Patient Credit Score row disabled and its buttons deleted, and exit code 0
 
-The second person compares the renames, the inserted preferences, the moved and granted permissions, the NULL notes and the Insurance
-History code groups in the log with the step 0.2 list on the checklist. `adopt`'s row check has already held them to `opendental` as it is now; if they differ from the step 0.2
-list, someone changed Report Setup, the security settings, a claim payment, the code groups or the Insurance History preferences in Open
-Dental since then: run `migration-preview` on
+The second person compares the renames, the inserted preferences, the moved and granted permissions, the NULL notes, the DXC Patient Credit
+Score row and buttons and the Insurance History code groups in the log with the step 0.2 list on the checklist. `adopt`'s row check has already held them to `opendental` as it is now; if they differ from the step 0.2
+list, someone changed Report Setup, the security settings, a claim payment, the program links, the code groups or the Insurance History
+preferences in Open Dental since then: run `migration-preview` on
 `opendental` again (it only reads), and if its list now equals the log, note that on the checklist and go on; otherwise stop and go to
 Rollback.
 
@@ -587,12 +608,15 @@ person reads them all):
 - `ColumnRemoved patient._portal_active_email` and `TotalChanged patients.portal_active_email_nonnull`;
 - `ColumnChanged <table>.SecurityHash` for the rehashed tables (appointment, claim, claimproc, inssub, insverify, insverifyhist, patient,
   payplan, paysplit);
-- lines for the tables `preference`, `documentmisc`, `securitylog`, `securityloghash`, `displayreport`, `grouppermission` and `codegroup`. A
-  report can only allow these seven tables as a whole; step 4's row check compared them with `opendental` row by row and printed exactly what changed in
-  them. For `displayreport` that is the renames of step 0.2 and the UDS+ report row with the moved Public Health rows (`RowsChanged
+- lines for the tables `preference`, `documentmisc`, `securitylog`, `securityloghash`, `displayreport`, `grouppermission`, `codegroup` and
+  `toolbutitem`. A report can only allow these eight tables as a whole; step 4's row check compared them with `opendental` row by row and
+  printed exactly what changed in them. For `displayreport` that is the renames of step 0.2 and the UDS+ report row with the moved Public Health rows (`RowsChanged
   displayreport` one row up, and `ColumnChanged displayreport.<column>` for its columns, because an added row changes every column's
   checksum). For `codegroup` it is the Insurance History groups of step 0.2: `ColumnChanged codegroup.ProcCodes` when codes were added, and
-  with an added group `RowsChanged codegroup` and `ColumnChanged codegroup.<column>` for its columns;
+  with an added group `RowsChanged codegroup` and `ColumnChanged codegroup.<column>` for its columns. For `toolbutitem` it is the DXC Patient
+  Credit Score buttons of step 0.2, if it listed any (`RowsChanged toolbutitem` and `ColumnChanged toolbutitem.<column>`);
+- `ColumnChanged program.Enabled`, only if step 0.2 listed the DXC Patient Credit Score row as disabled: a report can only allow it as a
+  whole column, and step 4's row check printed that only that row changed, `Enabled` only;
 - the Open Dental 25.4 and 26.1 schema: `TableAdded` for `deletedobj`, `paysuitepayment`, `paysuitepaymentdetail`, `schoolcourseenrollee`
   and `schoolcourseinstructor` (0 rows), `ColumnAdded <table>.<column>` for the 28 new columns (`allowed-differences.adoption.json` names
   each), and `ColumnChanged` for `claimpayment.Note` (if step 0.2 counted NULL notes) and `insverify` and `insverifyhist.DateLastAssigned`
@@ -773,7 +797,7 @@ Sign each line with time and initials.
 | 0.0.2 | `adoption_admin` created, history file removed | Password in the password manager | |
 | 0.0.3, 0.0.4 | Forward and tools checked from the admin PC | `connections` lists the workstations' connections, or none | |
 | 0.1 | Validation report signed, release build ready | Owner signature | |
-| 0.2 | Versions; FLOAT check filed; fork migration preview | 25.3.48.0 / 25.3.48.0, not corrupted, no update running; `float-check` exit 0 or 6, file kept; `migration-preview` exit 0, each report row rename written here (old name, new name, DisplayReportNum), or "none"; NULL notes ___, preferences ___, PhoneExtension grants moved ___, user groups BlockoutAdd ___ / BlockoutDelete ___; UDS+ row after DisplayReportNum ___, rows moved ___, user groups granted ___; Insurance History code groups marked ___ (CodeGroupNum and History Proc Code), added ___ | |
+| 0.2 | Versions; FLOAT check filed; fork migration preview | 25.3.48.0 / 25.3.48.0, not corrupted, no update running; `float-check` exit 0 or 6, file kept; `migration-preview` exit 0, each report row rename written here (old name, new name, DisplayReportNum), or "none"; NULL notes ___, preferences ___, PhoneExtension grants moved ___, user groups BlockoutAdd ___ / BlockoutDelete ___; DXC Patient Credit Score row disabled ___ (ProgramNum or none), buttons deleted ___; UDS+ row after DisplayReportNum ___, rows moved ___, user groups granted ___; Insurance History code groups marked ___ (CodeGroupNum and History Proc Code), added ___ | |
 | 0.3 | Services and tasks listed, per computer (both service queries) | List filed | |
 | 0.4 | Direct database users and jobs listed | List filed | |
 | 0.5 | Workstations listed, with folder, database and MariaDB user | List filed | |
@@ -790,8 +814,8 @@ Sign each line with time and initials.
 | 3.1 | Nobody connected; folder copy, start time noted | `connections` exit 0; `IDENTICAL`, `active`; off-server copy if the owner agreed | |
 | 3.2 | `copy` into `opendental_pms` | `Copy: PASS` | |
 | 3.3 | Reports compared | 0 unexpected differences | |
-| 4, 5 | `adopt` (adoption, migration check, verifier, rehash, row check) | `Adopt: PASS`, exit 0, log saved; "Blanked" list initialled; report row renames, the UDS+ row and its grants, and the Insurance History code groups equal the 0.2 list | |
-| 6.1 | Validation before the first start | 0 unexpected differences, Allowed section read (`displayreport`, `grouppermission` and `codegroup` as whole tables); startup check exit 0 | |
+| 4, 5 | `adopt` (adoption, migration check, verifier, rehash, row check) | `Adopt: PASS`, exit 0, log saved; "Blanked" list initialled; report row renames, the DXC Patient Credit Score row and buttons, the UDS+ row and its grants, and the Insurance History code groups equal the 0.2 list | |
+| 6.1 | Validation before the first start | 0 unexpected differences, Allowed section read (`displayreport`, `grouppermission`, `codegroup` and `toolbutitem` as whole tables, `program.Enabled` as a whole column); startup check exit 0 | |
 | 6.2 | First start, smoke test, aging report | OK | |
 | 7 | Passwords re-entered | `credentials` list empty or explained | |
 | 8 | Every workstation switched | Table of step 8 complete | |

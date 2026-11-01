@@ -53,9 +53,11 @@ Commands:
                  Supplementals that Open Dental wrote under an internal name this program does not know, which step 2026101971
                  renames (InternalName only); the Open Dental 25.4 and 26.1 schema (new tables and columns, NULL claim payment
                  notes made empty); the 25.4 and 26.1 preferences step 2026102501 inserts, and its blockout permission split
-                 (PhoneExtension grants moved from 272 to 274, BlockoutAdd and BlockoutDelete granted); the row of the 25.4 UDS+
-                 report that step 2026110103 adds after the FQHC Dental Sealant Measure (later Public Health rows moved down one
-                 place, the sealant measure's report grants copied). adopt's row check later requires exactly these changes.
+                 (PhoneExtension grants moved from 272 to 274, BlockoutAdd and BlockoutDelete granted); the discontinued DXC
+                 Patient Credit Score program link that step 2026110101 disables (Enabled only) and whose toolbar buttons it
+                 deletes; the row of the 25.4 UDS+ report that step 2026110103 adds after the FQHC Dental Sealant Measure (later
+                 Public Health rows moved down one place, the sealant measure's report grants copied); and the code groups step
+                 2026110104 marks for Insurance History. adopt's row check later requires exactly these changes.
                  Read-only. Exit code 0.
   copy           Copies ORIGINAL into the NEW database on the same server (runbook step 3.2): CREATE TABLE ... LIKE, the
                  AUTO_INCREMENT counters and INSERT ... SELECT, so the copy is exact (FLOAT values included) and no row leaves the
@@ -66,8 +68,9 @@ Commands:
                  exactly as the rehearsal does, then checks row by row against --original what adoption changed in preference,
                  documentmisc, securitylog, securityloghash, displayreport (only the renames, the UDS+ row and the moves
                  migration-preview lists), grouppermission (only the permission split and the UDS+ report grants it lists),
-                 claimpayment.Note and DateLastAssigned, the new tables and
-                 columns (empty, at their defaults) and updatehistory. Before it changes
+                 codegroup (only the Insurance History groups it lists), program and toolbutitem (only the DXC Patient Credit
+                 Score row disabled and its buttons deleted, as it lists), claimpayment.Note and DateLastAssigned, the new tables
+                 and columns (empty, at their defaults) and updatehistory. Before it changes
                  anything it checks that --confirm repeats --database, that --original is a different, unadopted Open Dental
                  database, that nobody else is connected to either, and that a copy not adopted yet has the original's tables and
                  row counts. On a finished adoption it changes nothing but its security log entry. If it stops or fails, do not
@@ -374,6 +377,9 @@ database server (runbook step 0.0). Exit codes: 0 pass, 1 error, 2 usage or refu
 					+(result.RowCheck==null || result.RowCheck.DisplayReportNumAdded==0 ? "" : "; it added the UDS+ report row (DisplayReportNum "
 						+result.RowCheck.DisplayReportNumAdded+"), moved "+result.RowCheck.CountReportRowsMoved+" Public Health row(s) down one place and copied "
 						+result.RowCheck.CountReportPermsCopied+" report grant(s) to it, as migration-preview lists")
+					+(result.RowCheck==null || result.RowCheck.ListProgramNumsDisabled.Count+result.RowCheck.ListToolButItemNumsDeleted.Count==0 ? ""
+						: "; it disabled "+result.RowCheck.ListProgramNumsDisabled.Count+" DXC Patient Credit Score program row(s) and deleted "
+						+result.RowCheck.ListToolButItemNumsDeleted.Count+" of its toolbar button(s), as migration-preview lists")
 					+"). Validate it now (runbook step 6.1), before anyone starts the program.");
 				return ExitPass;
 			}

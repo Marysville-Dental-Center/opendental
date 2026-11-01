@@ -146,7 +146,8 @@ namespace AdoptionValidation {
 					}
 				});
 				log("Row check against "+original+" (what adoption may change in preference, documentmisc, securitylog, securityloghash, displayreport, "
-					+"grouppermission and updatehistory, in the columns the 25.4 and 26.1 steps change, and in the tables and columns they add):");
+					+"grouppermission, codegroup, program, toolbutitem and updatehistory, in the columns the 25.4 and 26.1 steps change, and in the tables and "
+					+"columns they add):");
 				foreach(string line in result.RowCheck.ListLines) {
 					log("  "+line);
 				}

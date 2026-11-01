@@ -14,8 +14,9 @@ using Db=SyntheticData.Infrastructure.Db;
 namespace AdoptionValidation {
 	///<summary>Checks, row by row against the original it was copied from, the tables and columns where the report comparison
 	///(allowed-differences.adoption.json) can only allow whole-table or whole-column changes: preference, documentmisc, securitylog and
-	///securityloghash, displayreport, grouppermission, codegroup and updatehistory, the columns whose values the Open Dental 25.4 and 26.1 steps change, and the
-	///tables and columns those steps add. Adoption may only:
+	///securityloghash, displayreport, grouppermission, codegroup, toolbutitem and updatehistory, program (whose Enabled column the DXC Patient Credit
+	///Score step changes), the columns whose values the Open Dental 25.4 and 26.1 steps change, and the tables and columns those steps add. Adoption
+	///may only:
 	///- preference: add its markers and the fork migration's, add the 25.4 and 26.1 preferences the original lacks with their defaults (what
 	///  migration-preview lists), set DataBaseVersion and ProgramVersion to the sentinel, and blank preferences that held an address of Open Dental's
 	///  servers; no other row may change, and no row may go;
@@ -33,6 +34,9 @@ namespace AdoptionValidation {
 	///- codegroup: what the Insurance History step plans (InsHistCodeGroupPlan): the planned groups change only ProcCodes (to the planned codes) and
 	///  the three 26.1 history columns (to the planned values), and each planned new group is one added row with the planned values; no other row or
 	///  column may change, no other row may be added, and no row may go;
+	///- program and toolbutitem: what the DXC Patient Credit Score step plans (DxcCreditScorePlan): each planned row of that discontinued link changes
+	///  only Enabled, to 0, and each of its planned toolbar buttons is deleted; no other program row or column may change, no other toolbutitem row
+	///  may go, and no row may be added to either;
 	///- claimpayment.Note: only NULL notes become empty strings, as many as migration-preview counts; insverify and insverifyhist.DateLastAssigned: every
 	///  value is the original date at midnight;
 	///- the tables the 25.4 and 26.1 steps add stay empty, and the columns they add hold the column's default in every row (the codegroup rows the
@@ -46,7 +50,7 @@ namespace AdoptionValidation {
 			ForkVersions.PREF_FORK_SCHEMA_LEVEL,ForkVersions.PREF_FORK_PROGRAM_VERSION,ForkMigrationRunner.PrefNameApplied,ForkMigrationRunner.PrefNameInProgress };
 		///<summary>The tables allowed-differences.adoption.json may allow whole ("Kind": "*"): this check compares each row by row.</summary>
 		public static readonly string[] ArrayWholeTables={ "preference","documentmisc","securitylog","securityloghash","displayreport","grouppermission",
-			"codegroup" };
+			"codegroup",DxcCreditScorePlan.TABLE_TOOLBUTITEM };
 		///<summary>The start of the security log entries adoption and the rehash write.</summary>
 		public static readonly string[] ArrayLogTexts={ "Database adopted from Open Dental ",HeadlessAdoption.REHASH_LOG_TEXT };
 
@@ -81,6 +85,12 @@ namespace AdoptionValidation {
 			///<summary>The codegroup rows whose 26.1 columns CheckCodeGroup checks itself, against the plan instead of the defaults: the planned groups and
 			///every added row.</summary>
 			public HashSet<long> SetCodeGroupNumsPlanned=new HashSet<long>();
+			///<summary>The DXC Patient Credit Score step's plan made from the original (what migration-preview lists for it).</summary>
+			public DxcCreditScorePlan.Plan PlanDxc;
+			///<summary>The program rows of the DXC link the step disabled as planned (Enabled only, now 0).</summary>
+			public List<long> ListProgramNumsDisabled=new List<long>();
+			///<summary>The toolbutitem rows of the DXC link the step deleted as planned.</summary>
+			public List<long> ListToolButItemNumsDeleted=new List<long>();
 			///<summary>Open Dental 25.3 PhoneExtension grants moved from 272 to 274, all of them planned.</summary>
 			public int CountPermsRenumbered;
 			///<summary>Planned grants found, per permission ("BlockoutAdd" to the number of rows added).</summary>
@@ -105,6 +115,7 @@ namespace AdoptionValidation {
 			List<ReportRows25_3.DisplayReportRow> listRowsOriginal=MigrationPreview.ReadRows(db,original);
 			result.PlanUdsPlus=UdsPlusRowPlan.Make(db,original,listRowsOriginal,ReportRows25_3.PlanRenames(listRowsOriginal),result.Plan26_1.IsFromBefore25_4);
 			result.PlanInsHist=InsHistCodeGroupPlan.Make(db,original,result.Plan26_1.IsFromBefore25_4);
+			result.PlanDxc=DxcCreditScorePlan.Make(db,original);
 			CheckPreferences(db,original,adopted,result);
 			CheckDocumentMisc(db,original,adopted,result);
 			List<long> listLogAdded=CheckSecurityLog(db,original,adopted,result);
@@ -112,6 +123,8 @@ namespace AdoptionValidation {
 			CheckDisplayReport(db,original,adopted,result);
 			CheckGroupPermission(db,original,adopted,result);
 			CheckCodeGroup(db,original,adopted,result);
+			CheckProgram(db,original,adopted,result);
+			CheckToolButItem(db,original,adopted,result);
 			CheckValueChangingColumns(db,original,adopted,result);
 			CheckNewTablesAndColumns(db,original,adopted,result);
 			RowComparer.TableDiff diffHistory=RowComparer.Compare(db,original,adopted,"updatehistory");
@@ -674,6 +687,123 @@ namespace AdoptionValidation {
 				Compare("ShowInOther",row[10],"0");
 			}
 			return listWrong;
+		}
+
+		///<summary>The DXC Patient Credit Score step (DxcCreditScoreRemovedStep, B-SHELL), as migration-preview plans it from the original
+		///(DxcCreditScorePlan): each planned program row of the discontinued link changes only Enabled, to 0. No other program row or column may change,
+		///and no program row may be added or go (the step keeps the row). allowed-differences.adoption.json allows program.Enabled as a whole column.
+		///</summary>
+		private static void CheckProgram(Db db,string original,string adopted,Result result) {
+			string table=DxcCreditScorePlan.TABLE_PROGRAM;
+			bool hasOriginal=Migration26_1Plan.HasTable(db,original,table);
+			bool hasAdopted=Migration26_1Plan.HasTable(db,adopted,table);
+			if(!hasOriginal || !hasAdopted) {
+				if(hasOriginal || hasAdopted) {
+					result.ListFailures.Add("program is missing from "+(hasOriginal ? adopted : original)+".");
+				}
+				result.ListLines.Add("program: no such table"+(hasOriginal==hasAdopted ? " in either database." : " in one of them (see the failures)."));
+				return;
+			}
+			List<DxcCreditScoreRemoved.ProgramRow> listPlanned=result.PlanDxc.Rows.ListProgramsDisabled;
+			int countFailuresBefore=result.ListFailures.Count;
+			RowComparer.TableDiff diff=RowComparer.Compare(db,original,adopted,table);
+			if(diff.ListColumnsInOneOnly.Count>0) {
+				result.ListFailures.Add("program columns differ: "+string.Join(", ",diff.ListColumnsInOneOnly)+"; the fork migration changes no program column's definition.");
+			}
+			if(diff.CountOnlyFirst>0) {
+				result.ListFailures.Add("program row(s) of "+original+" are missing (ProgramNum "+string.Join(", ",diff.ListOnlyFirst.Take(20))+"); the DXC Patient Credit Score "
+					+"step keeps the program row, and no other step removes one.");
+			}
+			if(diff.CountOnlySecond>0) {
+				result.ListFailures.Add("program row(s) were added (ProgramNum "+string.Join(", ",diff.ListOnlySecond.Take(20))+"); the fork migration adds no program row to an "
+					+"Open Dental 25.3.48 database.");
+			}
+			if(diff.CountChanged>diff.ListChanged.Count) {
+				result.ListFailures.Add(diff.CountChanged+" program rows changed; the DXC Patient Credit Score step disables "+listPlanned.Count+".");
+			}
+			Dictionary<long,DxcCreditScoreRemoved.ProgramRow> dictPlanned=listPlanned.ToDictionary(x => x.ProgramNum);
+			foreach(RowComparer.ChangedRow changed in diff.ListChanged) {
+				if(!dictPlanned.ContainsKey(changed.Key)) {
+					result.ListFailures.Add("program row "+changed.Key+" changed ("+string.Join(", ",changed.ListColumns)+"); the fork migration changes only the DXC Patient "
+						+"Credit Score row(s) migration-preview lists for "+original+", Enabled only.");
+					continue;
+				}
+				long enabledNew=Convert.ToInt64(db.Scalar("SELECT Enabled FROM `"+adopted+"`.program WHERE ProgramNum="+changed.Key.ToString(CultureInfo.InvariantCulture)),
+					CultureInfo.InvariantCulture);
+				if(changed.ListColumns.Count!=1 || !string.Equals(changed.ListColumns[0],DxcCreditScorePlan.COLUMN_ENABLED,StringComparison.OrdinalIgnoreCase)
+					|| enabledNew!=0)
+				{
+					result.ListFailures.Add("program row "+changed.Key+" (the DXC Patient Credit Score link): "+string.Join(", ",changed.ListColumns)+" changed (Enabled now "
+						+enabledNew+"); the fork migration only sets Enabled to 0 there.");
+					continue;
+				}
+				result.ListProgramNumsDisabled.Add(changed.Key);
+			}
+			foreach(DxcCreditScoreRemoved.ProgramRow row in listPlanned.Where(x => !diff.ListChanged.Any(y => y.Key==x.ProgramNum))) {
+				result.ListFailures.Add("program row "+row.ProgramNum+" (the DXC Patient Credit Score link) was not disabled, though the fork migration disables it.");
+			}
+			bool isClean=result.ListFailures.Count==countFailuresBefore;
+			if(isClean && listPlanned.Count==0) {
+				result.ListLines.Add("program: identical row by row (migration-preview lists no change).");
+				return;
+			}
+			result.ListLines.Add("program: "+result.ListProgramNumsDisabled.Count+" of the "+listPlanned.Count+" DXC Patient Credit Score row(s) migration-preview lists "
+				+"disabled, Enabled only"+(result.ListProgramNumsDisabled.Count==0 ? "" : " (ProgramNum "+string.Join(", ",result.ListProgramNumsDisabled)+")")
+				+(isClean ? "; no other row or column changed, none added or removed." : " (see the failures)."));
+		}
+
+		///<summary>The DXC Patient Credit Score step's toolbar buttons, as migration-preview plans them from the original (DxcCreditScorePlan): each
+		///planned toolbutitem row is deleted. No other toolbutitem row may go, change or be added. allowed-differences.adoption.json allows toolbutitem
+		///as a whole table (a deleted row changes every column checksum).</summary>
+		private static void CheckToolButItem(Db db,string original,string adopted,Result result) {
+			string table=DxcCreditScorePlan.TABLE_TOOLBUTITEM;
+			bool hasOriginal=Migration26_1Plan.HasTable(db,original,table);
+			bool hasAdopted=Migration26_1Plan.HasTable(db,adopted,table);
+			if(!hasOriginal || !hasAdopted) {
+				if(hasOriginal || hasAdopted) {
+					result.ListFailures.Add("toolbutitem is missing from "+(hasOriginal ? adopted : original)+".");
+				}
+				result.ListLines.Add("toolbutitem: no such table"+(hasOriginal==hasAdopted ? " in either database." : " in one of them (see the failures)."));
+				return;
+			}
+			List<DxcCreditScoreRemoved.ToolButItemRow> listPlanned=result.PlanDxc.Rows.ListButtonsDeleted;
+			int countFailuresBefore=result.ListFailures.Count;
+			RowComparer.TableDiff diff=RowComparer.Compare(db,original,adopted,table);
+			if(diff.ListColumnsInOneOnly.Count>0) {
+				result.ListFailures.Add("toolbutitem columns differ: "+string.Join(", ",diff.ListColumnsInOneOnly)+"; the fork migration changes no toolbutitem column.");
+			}
+			if(diff.CountChanged>0) {
+				result.ListFailures.Add(diff.CountChanged+" toolbutitem row(s) changed (ToolButItemNum "+string.Join("; ",diff.ListChanged.Take(20))+"); the fork migration "
+					+"only deletes the DXC Patient Credit Score buttons migration-preview lists.");
+			}
+			if(diff.CountOnlySecond>0) {
+				result.ListFailures.Add("toolbutitem row(s) were added (ToolButItemNum "+string.Join(", ",diff.ListOnlySecond.Take(20))+"); the fork migration adds no toolbar "
+					+"button.");
+			}
+			if(diff.CountOnlyFirst>diff.ListOnlyFirst.Count) {
+				result.ListFailures.Add(diff.CountOnlyFirst+" toolbutitem rows were deleted; the DXC Patient Credit Score step deletes "+listPlanned.Count+".");
+			}
+			HashSet<long> setPlanned=new HashSet<long>(listPlanned.Select(x => x.ToolButItemNum));
+			foreach(long toolButItemNum in diff.ListOnlyFirst) {
+				if(!setPlanned.Contains(toolButItemNum)) {
+					result.ListFailures.Add("toolbutitem row "+toolButItemNum+" was deleted; the fork migration deletes only the DXC Patient Credit Score buttons "
+						+"migration-preview lists for "+original+".");
+					continue;
+				}
+				result.ListToolButItemNumsDeleted.Add(toolButItemNum);
+			}
+			foreach(DxcCreditScoreRemoved.ToolButItemRow row in listPlanned.Where(x => !diff.ListOnlyFirst.Contains(x.ToolButItemNum))) {
+				result.ListFailures.Add("toolbutitem row "+row.ToolButItemNum+" (a DXC Patient Credit Score button, ProgramNum "+row.ProgramNum+") was not deleted, though the "
+					+"fork migration deletes it.");
+			}
+			bool isClean=result.ListFailures.Count==countFailuresBefore;
+			if(isClean && listPlanned.Count==0) {
+				result.ListLines.Add("toolbutitem: identical row by row (migration-preview lists no change).");
+				return;
+			}
+			result.ListLines.Add("toolbutitem: "+result.ListToolButItemNumsDeleted.Count+" of the "+listPlanned.Count+" DXC Patient Credit Score toolbar button(s) "
+				+"migration-preview lists deleted"+(result.ListToolButItemNumsDeleted.Count==0 ? "" : " (ToolButItemNum "+string.Join(", ",result.ListToolButItemNumsDeleted)+")")
+				+(isClean ? "; no other row changed, added or removed." : " (see the failures)."));
 		}
 
 		private static void CheckValueChangingColumns(Db db,string original,string adopted,Result result) {

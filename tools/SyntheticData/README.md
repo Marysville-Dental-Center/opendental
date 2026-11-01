@@ -247,10 +247,13 @@ verifier, the rehash and further checks, twice, and times every step. The steps 
    rows (fork markers, version sentinel, the 25.4 and 26.1 preferences), Open Dental update files, the security-log rows of adoption and
    the rehash, and what the Open Dental 25.4 and 26.1 steps change on the way to the 26.1.70 schema (M2-01: the new tables and columns,
    `claimpayment.Note` NULLs becoming empty, `DateLastAssigned` read back as datetime; M2-02: the blockout permission split in
-   `grouppermission`; M2-HIST: the Insurance History code groups in `codegroup`). Everything else, for example a second guardian renumbering, a `ShowTransSinceBalZero` back-fill, a repeated
+   `grouppermission`; M2-HIST: the Insurance History code groups in `codegroup`; B-SHELL: the discontinued DXC Patient Credit Score program
+   link disabled, `program.Enabled`, and its buttons deleted from `toolbutitem`, if the copied program rows have it enabled or on a toolbar).
+   Everything else, for example a second guardian renumbering, a `ShowTransSinceBalZero` back-fill, a repeated
    permission grant or any change to `updatehistory`, is reported as unexpected and the exit code is 5. The rules for `preference`,
-   `documentmisc`, `securitylog`, `securityloghash`, `displayreport`, `grouppermission` and `codegroup` cover whole tables, and those for the new and the changed
-   columns whole columns (a report has no rows to compare); `AdoptionValidation adopt` checks all of them row by row against the original.
+   `documentmisc`, `securitylog`, `securityloghash`, `displayreport`, `grouppermission`, `codegroup` and `toolbutitem` cover whole tables, and
+   those for `program.Enabled` and the new and the changed columns whole columns (a report has no rows to compare); `AdoptionValidation
+   adopt` checks all of them row by row against the original.
 
 Note for the adoption tool: many tables have a `timestamp ... ON UPDATE current_timestamp()` column (`SecDateTEdit`,
 `DateTStamp`). An `UPDATE` that rehashes `SecurityHash` without also writing `SecDateTEdit=SecDateTEdit` moves those audit

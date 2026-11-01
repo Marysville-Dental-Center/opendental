@@ -234,6 +234,7 @@ namespace AdoptionValidation {
 				Check26_1Changes(preview,adoption,adoptionResult,fixture);
 				CheckUdsPlusRow(preview,adoption,adoptionResult);
 				CheckInsHistCodeGroups(preview,adoption,adoptionResult);
+				CheckDxcCreditScore(preview,adoption,adoptionResult,fixture);
 				//7. Rehash (Database Maintenance, Tools, Security Hashes), done by HeadlessAdoption above.
 				_run.ListHashesBefore=adoption.ListHashesStart;
 				_run.ListHashesAfter=adoption.ListHashesAfter;
@@ -263,7 +264,7 @@ namespace AdoptionValidation {
 				//The tables the allowed list can only allow whole, row by row against the source (what adopt prints in runbook steps 4 and 5).
 				AdoptionRowCheck.Result rowCheck=adoption.RowCheck;
 				Check("V11","Row by row, adoption changed only its own rows of preference, documentmisc, securitylog, securityloghash, displayreport, grouppermission, "
-					+"codegroup and updatehistory, only the values the 25.4 and 26.1 steps change, and nothing in the tables and columns they add",
+					+"codegroup, program, toolbutitem and updatehistory, only the values the 25.4 and 26.1 steps change, and nothing in the tables and columns they add",
 					rowCheck!=null && rowCheck.Passed,rowCheck==null ? "no row check" : string.Join(" ",rowCheck.ListLines)
 					+(rowCheck.Passed ? "" : " Failures: "+string.Join(" ",rowCheck.ListFailures)));
 				//10. Data-layer round trip. It writes (and normalizes some cells, moving their rows' audit timestamps), so the runs are compared on the
@@ -510,6 +511,54 @@ namespace AdoptionValidation {
 				+"In History, their missing codes added, a group added for a category without one",listProblems.Count==0,
 				"migration-preview of the source: "+string.Join(" ",plan.Lines())+" The adoption log names "+(listLogExpected.Count-listLogMissing.Count)+" of the "
 				+listLogExpected.Count+" change(s); row check: "+lineCodeGroup+(listProblems.Count==0 ? "" : " Problems: "+string.Join("; ",listProblems)));
+		}
+
+		///<summary>M7: the DXC Patient Credit Score step (B-SHELL) changes exactly what migration-preview lists for the source (DxcCreditScorePlan): on
+		///the office fixture it disables the discontinued link's program row (Enabled only) and deletes its two toolbar buttons, and keeps the row, its
+		///text and the XVWeb link's button; the row check found exactly that, and the adoption log names the deleted buttons and the disabled row.
+		///</summary>
+		private void CheckDxcCreditScore(MigrationPreview.Result preview,HeadlessAdoption.Result adoption,AdoptionResult adoptionResult,OfficeFixture.Summary fixture) {
+			DxcCreditScorePlan.Plan plan=preview.PlanDxc;
+			OpenDentBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.RowPlan rows=plan.Rows;
+			AdoptionRowCheck.Result rowCheck=adoption.RowCheck;
+			List<string> listProblems=new List<string>();
+			if(!plan.IsChanging || rows.ListPrograms.Count!=1 || rows.ListPrograms[0].ProgramNum!=fixture.DxcProgramNum || rows.ListProgramsDisabled.Count!=1
+				|| rows.ListButtonsDeleted.Count!=OfficeFixture.CountDxcButtons || rows.ListButtonsDeleted.Any(x => x.ProgramNum!=fixture.DxcProgramNum))
+			{
+				listProblems.Add("migration-preview's DXC plan differs from the fixture (ProgramNum "+fixture.DxcProgramNum+" disabled, its "+OfficeFixture.CountDxcButtons
+					+" toolbar buttons deleted)");
+			}
+			if(rowCheck==null) {
+				listProblems.Add("no row check");
+			}
+			else {
+				if(!rowCheck.ListProgramNumsDisabled.SequenceEqual(rows.ListProgramsDisabled.Select(x => x.ProgramNum))
+					|| !rowCheck.ListToolButItemNumsDeleted.OrderBy(x => x).SequenceEqual(rows.ListButtonsDeleted.Select(x => x.ToolButItemNum)))
+				{
+					listProblems.Add("the row check found "+rowCheck.ListProgramNumsDisabled.Count+" of the "+rows.ListProgramsDisabled.Count+" program row(s) disabled and "
+						+rowCheck.ListToolButItemNumsDeleted.Count+" of the "+rows.ListButtonsDeleted.Count+" button(s) deleted as planned");
+				}
+				listProblems.AddRange(rowCheck.ListFailures.Where(x => x.StartsWith("program") || x.Contains("toolbutitem")));
+			}
+			List<string> listLogExpected=rows.GetLogLines();
+			List<string> listLogMissing=listLogExpected.Where(x => !adoptionResult.ListLog.Any(y => y.Trim()==x)).ToList();
+			if(listLogMissing.Count>0) {
+				listProblems.Add("the adoption log lacks: "+string.Join("; ",listLogMissing));
+			}
+			string prog=OpenDentBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.PROG_NAME;
+			if(BusinessLayer.Count("SELECT COUNT(*) FROM program WHERE ProgName='"+prog+"' AND Enabled=0 AND ProgDesc='"+OfficeFixture.DXC_PROG_DESC+"'")!=1
+				|| BusinessLayer.Count("SELECT COUNT(*) FROM toolbutitem t INNER JOIN program p ON p.ProgramNum=t.ProgramNum WHERE p.ProgName='"+prog+"'")!=0
+				|| BusinessLayer.Count("SELECT COUNT(*) FROM toolbutitem t INNER JOIN program p ON p.ProgramNum=t.ProgramNum WHERE p.ProgName='"+OfficeFixture.PROGRAM_NAME+"'")
+					!=fixture.OtherButtons)
+			{
+				listProblems.Add("the adopted copy does not hold the DXC row disabled with its text and without buttons, and the "+OfficeFixture.PROGRAM_NAME+" button");
+			}
+			string lineProgram=rowCheck?.ListLines.FirstOrDefault(x => x.StartsWith("program:"))??"";
+			string lineButtons=rowCheck?.ListLines.FirstOrDefault(x => x.StartsWith("toolbutitem:"))??"";
+			Check("M7","Adoption's DXC Patient Credit Score step changes exactly what migration-preview lists: the discontinued program link disabled (Enabled only) "
+				+"and its toolbar buttons deleted, nothing else in program and toolbutitem",listProblems.Count==0,
+				"migration-preview of the source: "+string.Join(" ",plan.Lines())+" The adoption log names "+(listLogExpected.Count-listLogMissing.Count)+" of the "
+				+listLogExpected.Count+" change(s); row check: "+lineProgram+" "+lineButtons+(listProblems.Count==0 ? "" : " Problems: "+string.Join("; ",listProblems)));
 		}
 
 		private void ValidateAgainstBaseline(ValidationReport baseline,ValidationReport after,List<Difference> listDiffs) {

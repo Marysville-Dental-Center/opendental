@@ -13,7 +13,9 @@ namespace AdoptionValidation {
 	///(one of them twice, one with a date limit), from which they grant BlockoutAdd and BlockoutDelete, and a claim payment note that is NULL, which
 	///they make empty; and the FQHC Dental Sealant Measure with a report grant and a Public Health report after it, among which the UDS+ step adds the
 	///25.4 UDS+ report's row and to which it copies the grant; and the ten InsHist*Codes preferences of Insurance History's fixed rows, which the
-	///Insurance History step moves into code groups, with the debridement group made the office's own (no fixed type) so that the step also adds one.
+	///Insurance History step moves into code groups, with the debridement group made the office's own (no fixed type) so that the step also adds one;
+	///and the discontinued DXC Patient Credit Score program link, enabled and with two toolbar buttons, which the B-SHELL step disables and whose
+	///buttons it deletes (the XVWeb link's button is kept).
 	///The rehearsal adds them to the generated database before the baseline, so adoption has real work to do and the checks can see it done.
 	///Everything here is synthetic: the "update files" are a short placeholder text, never program files, the server addresses are built from
 	///the fork's blocked-host list (CodeBase.VendorDirect.HqHosts) so no host name is written in this file, the "ciphertexts" are random bytes
@@ -98,6 +100,17 @@ namespace AdoptionValidation {
 		///quadrant rows, perio maintenance) and add one.</summary>
 		public const int CountInsHistGroupsMarked=6;
 		public const int CountInsHistGroupsAdded=1;
+		///<summary>The DXC Patient Credit Score link as an office's Open Dental 25.3.48 database may still hold it (what Open Dental's own 25.2
+		///conversion did to the row is not public, INFERRED): enabled, with a button on these toolbars (EnumToolBar: Account module, main toolbar).
+		///Adoption's DXC step (DxcCreditScoreRemovedStep, B-SHELL) sets its Enabled to 0 and deletes both buttons; the XVWeb link and its button on the
+		///Imaging module toolbar are kept.</summary>
+		public static readonly int[] ArrayDxcToolBars={ 0,7 };
+		public const string DXC_PROG_DESC="DXC Patient Credit Score";
+		///<summary>EnumToolBar.ImagingModule: the toolbar of the XVWeb link's button, which adoption keeps.</summary>
+		public const int TOOLBAR_XVWEB=3;
+		public static int CountDxcButtons {
+			get { return ArrayDxcToolBars.Length; }
+		}
 
 		public class Summary {
 			public int UpdateFileRows;
@@ -113,6 +126,10 @@ namespace AdoptionValidation {
 			public int ClaimPaymentNotesNull;
 			public int InsHistPrefs;
 			public int CodeGroupsUnfixed;
+			///<summary>The DXC Patient Credit Score program row and its toolbar buttons, and the XVWeb link's button.</summary>
+			public long DxcProgramNum;
+			public int DxcButtons;
+			public int OtherButtons;
 
 			public override string ToString() {
 				return UpdateFileRows+" Open Dental update-file rows and "+OtherDocumentMiscRows+" other documentmisc row; "+ListHqPrefs.Count
@@ -125,7 +142,9 @@ namespace AdoptionValidation {
 					+" Reports grant for the sealant measure it copies; "+GroupPermRows+" grouppermission rows the 25.4 permission split converts ("
 					+CountPhoneExtensionGrants+" PhoneExtension under its 25.3 number "+PermPhoneExtension25_3+", Blockouts for "+CountBlockoutGroups+" user groups, one "
 					+"of them twice); "+ClaimPaymentNotesNull+" claim payment note set to NULL, which the 26.1 step makes empty; "+InsHistPrefs+" InsHist*Codes preferences, which the Insurance History step "
-					+"moves into code groups, and "+CodeGroupsUnfixed+" full mouth debridement code group made the office's own, so that the step adds a group for it.";
+					+"moves into code groups, and "+CodeGroupsUnfixed+" full mouth debridement code group made the office's own, so that the step adds a group for it; "
+					+"the discontinued DXC Patient Credit Score program link (ProgramNum "+DxcProgramNum+") enabled with "+DxcButtons+" toolbar buttons, which the "
+					+"B-SHELL step disables and deletes, and "+OtherButtons+" XVWeb toolbar button it keeps.";
 			}
 		}
 
@@ -194,6 +213,18 @@ namespace AdoptionValidation {
 			sink.Insert("programproperty",new Row { ["ProgramPropertyNum"]=sink.NextId("programproperty"),["ProgramNum"]=programNum,
 				["PropertyDesc"]="Password",["PropertyValue"]=FakeCiphertext(rng),["IsMasked"]=1,["IsHighSecurity"]=1 });
 			summary.ListCredentialRows.Add("programproperty "+PROGRAM_NAME+" Password");
+			sink.Insert("toolbutitem",new Row { ["ToolButItemNum"]=sink.NextId("toolbutitem"),["ProgramNum"]=programNum,["ToolBar"]=TOOLBAR_XVWEB,
+				["ButtonText"]="XVWeb" });
+			summary.OtherButtons=1;
+			//The discontinued DXC Patient Credit Score link, still enabled and on two toolbars (B-SHELL's step disables it and deletes the buttons).
+			summary.DxcProgramNum=sink.NextId("program");
+			sink.Insert("program",new Row { ["ProgramNum"]=summary.DxcProgramNum,["ProgName"]=OpenDentBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.PROG_NAME,
+				["ProgDesc"]=DXC_PROG_DESC,["Enabled"]=1 });
+			foreach(int toolBar in ArrayDxcToolBars) {
+				sink.Insert("toolbutitem",new Row { ["ToolButItemNum"]=sink.NextId("toolbutitem"),["ProgramNum"]=summary.DxcProgramNum,["ToolBar"]=toolBar,
+					["ButtonText"]="Credit Score" });
+				summary.DxcButtons++;
+			}
 			//Report rows Open Dental's conversion may have written under names this program does not know, and two that must stay as they are.
 			int itemOrder=90;
 			foreach((string internalName,string description,int category,string nameFork) report in ArrayReportRowsRenamed) {

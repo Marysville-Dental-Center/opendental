@@ -28,7 +28,7 @@ namespace AdoptionValidation.Tests {
 		private static RehearsalResult _result;
 
 		///<summary>Every check a run must report, in order.</summary>
-		public static readonly string[] ArrayCheckIds={ "G1","G2","A1","A2","A3","A4","M1","M2","M3","M4","M5","M6","H1","V1","V2","V3","V4","V5","V6","V7","V8","V9","V10",
+		public static readonly string[] ArrayCheckIds={ "G1","G2","A1","A2","A3","A4","M1","M2","M3","M4","M5","M6","M7","H1","V1","V2","V3","V4","V5","V6","V7","V8","V9","V10",
 			"V11","R1","R2","I1","I2","I3","I4" };
 
 		[ClassInitialize]
@@ -188,6 +188,11 @@ namespace AdoptionValidation.Tests {
 			StringAssert.Contains(output,") shown in Insurance History with four quadrant rows, History Proc Code Z4341");
 			StringAssert.Contains(output,"History Proc Code Z4910, codes added: "+OfficeFixture.INSHIST_CODE_ADDED);
 			StringAssert.Contains(output,"Added code group '"+OfficeFixture.INSHIST_GROUP_ADDED+"' (FMDebride, ItemOrder ");
+			//The DXC Patient Credit Score step (B-SHELL): the fixture's enabled link disabled, its two buttons deleted.
+			StringAssert.Contains(output,"Step 2026110101 (DXC Patient Credit Score program link): the discontinued DXC Patient Credit Score program link (ProgramNum ");
+			StringAssert.Contains(output,") stays, with its text; the step disables 1 program row(s) of it (ProgramNum ");
+			StringAssert.Contains(output,"deletes its "+OfficeFixture.CountDxcButtons+" toolbar button(s) (ToolButItemNum ");
+			StringAssert.Contains(output,"\"Deleted "+OfficeFixture.CountDxcButtons+" toolbar button(s) of the discontinued DXC Patient Credit Score program link (ToolButItemNum ");
 			using(Db db=Db.Open(_server)) {
 				List<Difference> listDiffs=ReportComparer.Compare(before,Validator.Run(db,Source(2),null,null),null);
 				Assert.AreEqual(0,listDiffs.Count,"migration-preview only reads.\r\n"+ReportComparer.Format(listDiffs));
@@ -201,6 +206,96 @@ namespace AdoptionValidation.Tests {
 				Assert.IsFalse(resultAdopted.PlanUdsPlus.Rows.IsAdded);
 				Assert.IsFalse(resultAdopted.PlanInsHist.IsChanging,"The Insurance History step never runs twice.");
 				Assert.AreEqual("it already ran on this database",resultAdopted.PlanInsHist.Migration.GetReasonUnchanged());
+				Assert.IsFalse(resultAdopted.PlanDxc.IsChanging,"After adoption the DXC link is disabled and has no button.");
+				StringAssert.Contains(string.Join("\r\n",resultAdopted.PlanDxc.Lines()),"is already disabled and has no toolbar button.");
+			}
+		}
+
+		///<summary>On the adopted copy the DXC Patient Credit Score step (B-SHELL) disabled the fixture's enabled link (Enabled only: the row and its
+		///text stay) and deleted its two toolbar buttons; every other program row and toolbar button, the XVWeb link's included, is unchanged.</summary>
+		[TestMethod]
+		public void Adoption_DisablesTheDxcLinkAndDeletesItsButtons() {
+			SkipIfNeeded();
+			string prog=OpenDentBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.PROG_NAME;
+			using(Db db=Db.Open(_server)) {
+				long programNum=db.ScalarLong("SELECT ProgramNum FROM `"+Source(1)+"`.program WHERE ProgName='"+prog+"'");
+				Assert.IsTrue(programNum>0,"The fixture's DXC row.");
+				Assert.AreEqual(1,db.ScalarLong("SELECT Enabled FROM `"+Source(1)+"`.program WHERE ProgramNum="+programNum),"Enabled in the source.");
+				List<long> listButtons=db.Rows("SELECT ToolButItemNum FROM `"+Source(1)+"`.toolbutitem WHERE ProgramNum="+programNum+" ORDER BY ToolButItemNum")
+					.Select(x => Convert.ToInt64(x[0])).ToList();
+				Assert.AreEqual(OfficeFixture.CountDxcButtons,listButtons.Count);
+				RowComparer.TableDiff diffProgram=RowComparer.Compare(db,Source(1),Adopted(1),"program");
+				Assert.AreEqual(0,diffProgram.CountOnlyFirst+diffProgram.CountOnlySecond,diffProgram.Describe());
+				Assert.AreEqual(1,diffProgram.CountChanged,diffProgram.Describe());
+				Assert.AreEqual(programNum,diffProgram.ListChanged[0].Key);
+				CollectionAssert.AreEqual(new[] { "Enabled" },diffProgram.ListChanged[0].ListColumns,diffProgram.Describe());
+				Assert.AreEqual(0,db.ScalarLong("SELECT Enabled FROM `"+Adopted(1)+"`.program WHERE ProgramNum="+programNum));
+				Assert.AreEqual(OfficeFixture.DXC_PROG_DESC,Convert.ToString(db.Scalar("SELECT ProgDesc FROM `"+Adopted(1)+"`.program WHERE ProgramNum="+programNum)));
+				RowComparer.TableDiff diffButtons=RowComparer.Compare(db,Source(1),Adopted(1),"toolbutitem");
+				CollectionAssert.AreEqual(listButtons,diffButtons.ListOnlyFirst,diffButtons.Describe());
+				Assert.AreEqual(0,diffButtons.CountOnlySecond+diffButtons.CountChanged,diffButtons.Describe());
+				Assert.AreEqual(1,db.ScalarLong("SELECT COUNT(*) FROM `"+Adopted(1)+"`.toolbutitem t INNER JOIN `"+Adopted(1)+"`.program p USING(ProgramNum) "
+					+"WHERE p.ProgName='"+OfficeFixture.PROGRAM_NAME+"' AND t.ToolBar="+OfficeFixture.TOOLBAR_XVWEB),"The XVWeb button is kept.");
+			}
+			RunResult run=_result.ListRuns[0];
+			Assert.IsTrue(run.ListAllowedDifferences.Any(x => x.StartsWith("ColumnChanged program.Enabled")),string.Join("\r\n",run.ListAllowedDifferences));
+			Assert.IsTrue(run.ListAllowedDifferences.Any(x => x.StartsWith("RowsChanged toolbutitem")),string.Join("\r\n",run.ListAllowedDifferences));
+			Assert.IsFalse(run.ListUnexpectedDifferences.Any(x => x.Contains("program") || x.Contains("toolbutitem")),string.Join("\r\n",run.ListUnexpectedDifferences));
+			string detail=run.ListChecks.Single(x => x.Id=="M7").Detail;
+			StringAssert.Contains(detail,"program: 1 of the 1 DXC Patient Credit Score row(s) migration-preview lists disabled, Enabled only (ProgramNum ");
+			StringAssert.Contains(detail,"toolbutitem: "+OfficeFixture.CountDxcButtons+" of the "+OfficeFixture.CountDxcButtons+" DXC Patient Credit Score toolbar button(s) "
+				+"migration-preview lists deleted (ToolButItemNum ");
+		}
+
+		///<summary>Negative control for program and toolbutitem: the report comparison allows program.Enabled as a whole column and toolbutitem as a
+		///whole table (a deleted button changes every column checksum); adopt's row check lets through only what the DXC step's plan for the original
+		///says: another link disabled, another column of the DXC row changed, another button deleted, a DXC button not deleted and a button added are
+		///each caught.</summary>
+		[TestMethod]
+		public void RowCheck_CatchesProgramAndToolButItemChangesTheRulesAllow() {
+			SkipIfNeeded();
+			string tampered=Rehearsal.DbPrefix+Tag+"_tampereddxc";
+			List<string> listLog=new List<string>();
+			Assert.AreEqual(Program.ExitPass,Program.Run(new[] { "copy","--original",Adopted(1),"--database",tampered },listLog.Add),string.Join("\r\n",listLog));
+			string prog=OpenDentBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.PROG_NAME;
+			using(Db db=Db.Open(_server)) {
+				AdoptionRowCheck.Result resultClean=AdoptionRowCheck.Run(db,Source(1),tampered);
+				Assert.IsTrue(resultClean.Passed,"An untouched adopted copy passes. "+string.Join("\r\n",resultClean.ListFailures));
+				Assert.AreEqual(1,resultClean.ListProgramNumsDisabled.Count);
+				Assert.AreEqual(OfficeFixture.CountDxcButtons,resultClean.ListToolButItemNumsDeleted.Count);
+				ValidationReport before=Validator.Run(db,tampered,null,null);
+				long numDxc=db.ScalarLong("SELECT ProgramNum FROM `"+Source(1)+"`.program WHERE ProgName='"+prog+"'");
+				long numXvWeb=db.ScalarLong("SELECT ProgramNum FROM `"+Source(1)+"`.program WHERE ProgName='"+OfficeFixture.PROGRAM_NAME+"'");
+				long numButtonXvWeb=db.ScalarLong("SELECT ToolButItemNum FROM `"+Source(1)+"`.toolbutitem WHERE ProgramNum="+numXvWeb);
+				long numButtonDxc=db.ScalarLong("SELECT MIN(ToolButItemNum) FROM `"+Source(1)+"`.toolbutitem WHERE ProgramNum="+numDxc);
+				db.Use(tampered);
+				//Another link disabled; the DXC row's text changed; the XVWeb button deleted; one DXC button put back; a button added.
+				Assert.AreEqual(1,db.Execute("UPDATE program SET Enabled=0 WHERE ProgramNum="+numXvWeb));
+				Assert.AreEqual(1,db.Execute("UPDATE program SET ProgDesc='DXC (renamed)' WHERE ProgramNum="+numDxc));
+				Assert.AreEqual(1,db.Execute("DELETE FROM toolbutitem WHERE ToolButItemNum="+numButtonXvWeb));
+				Assert.AreEqual(1,db.Execute("INSERT INTO toolbutitem (ToolButItemNum,ProgramNum,ToolBar,ButtonText) SELECT ToolButItemNum,ProgramNum,ToolBar,ButtonText FROM `"
+					+Source(1)+"`.toolbutitem WHERE ToolButItemNum="+numButtonDxc));
+				Assert.AreEqual(1,db.Execute("INSERT INTO toolbutitem (ProgramNum,ToolBar,ButtonText) VALUES ("+numXvWeb+",2,'Synthetic extra')"));
+				long numButtonAdded=db.ScalarLong("SELECT MAX(ToolButItemNum) FROM toolbutitem");
+				AdoptionRowCheck.Result result=AdoptionRowCheck.Run(db,Source(1),tampered);
+				string failures=string.Join("\r\n",result.ListFailures);
+				Assert.IsFalse(result.Passed);
+				StringAssert.Contains(failures,"program row "+numXvWeb+" changed (Enabled); the fork migration changes only the DXC Patient Credit Score row(s) migration-preview "
+					+"lists");
+				StringAssert.Contains(failures,"program row "+numDxc+" (the DXC Patient Credit Score link): ");
+				StringAssert.Contains(failures,"ProgDesc");
+				StringAssert.Contains(failures,"toolbutitem row "+numButtonXvWeb+" was deleted; the fork migration deletes only the DXC Patient Credit Score buttons");
+				StringAssert.Contains(failures,"toolbutitem row "+numButtonDxc+" (a DXC Patient Credit Score button, ProgramNum "+numDxc+") was not deleted");
+				StringAssert.Contains(failures,"toolbutitem row(s) were added (ToolButItemNum "+numButtonAdded+")");
+				Assert.AreEqual(OfficeFixture.CountDxcButtons-1,result.ListToolButItemNumsDeleted.Count,"The step's other deletion is still found.");
+				//The report comparison under allowed-differences.adoption.json lets the toolbutitem changes and the other link's Enabled through; the changed
+				//description of the DXC row is a column no rule allows.
+				AllowedDifferences allowed=AllowedDifferences.Load(Path.Combine(Path.GetDirectoryName(Validator.ReadTotalsSqlPath()),"..",
+					"allowed-differences.adoption.json"));
+				List<Difference> listDiffs=ReportComparer.Compare(before,Validator.Run(db,tampered,null,null),allowed);
+				Assert.IsTrue(listDiffs.Any(x => x.Table=="toolbutitem") && listDiffs.Where(x => x.Table=="toolbutitem").All(x => x.IsAllowed),ReportComparer.Format(listDiffs));
+				Assert.IsTrue(listDiffs.Any(x => x.Table=="program" && x.Column=="Enabled" && x.IsAllowed),ReportComparer.Format(listDiffs));
+				Assert.IsTrue(listDiffs.Any(x => x.Table=="program" && x.Column=="ProgDesc" && !x.IsAllowed),ReportComparer.Format(listDiffs));
 			}
 		}
 
@@ -532,6 +627,13 @@ namespace AdoptionValidation.Tests {
 				"displayreport: 3 of the 3 rename(s) migration-preview lists, InternalName only (",
 				"; the UDS+ report row added as migration-preview lists ("+DisplayReportNames.UdsPlus+", DisplayReportNum ",
 				" later Public Health row(s) moved down one place, ItemOrder only; no other row or column changed, no other row added, none removed.",
+				//The DXC Patient Credit Score step (B-SHELL) on the fixture's enabled link with two buttons.
+				"Fork migration step 2026110101 Disable the discontinued DXC Patient Credit Score program link changed the database:",
+				"  Deleted "+OfficeFixture.CountDxcButtons+" toolbar button(s) of the discontinued DXC Patient Credit Score program link (ToolButItemNum ",
+				"  Disabled the discontinued DXC Patient Credit Score program link (ProgramNum ",
+				"program: 1 of the 1 DXC Patient Credit Score row(s) migration-preview lists disabled, Enabled only (ProgramNum ",
+				"toolbutitem: "+OfficeFixture.CountDxcButtons+" of the "+OfficeFixture.CountDxcButtons+" DXC Patient Credit Score toolbar button(s) migration-preview lists "
+					+"deleted (ToolButItemNum ",
 				//The UDS+ report row step (M2-UDS) on the 25.3.48 source: the 25.4 report's row after the fixture's sealant measure, and its one grant.
 				"Fork migration step 2026110103 Report row for the UDS+ report changed the database:","  Added displayreport "+DisplayReportNames.UdsPlus,
 				"  Copied 1 report permission(s) from ODDentalSealantMeasure to "+DisplayReportNames.UdsPlus,
