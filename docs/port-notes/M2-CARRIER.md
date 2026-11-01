@@ -52,7 +52,7 @@ Sources: public only. The 26.1 release notes and summary (version26_1.html, vers
 
 - `FormCarrierCombine` is not changed: the union happens in `Carriers.Combine`, which the window calls.
 - `FormApptViewEdit` and `ApptViewItemL` are not changed: the element list comes from the enum.
-- `v26_1-lists-proccode-no-hyphens` (codes may not contain the separators) is another package's item; until it is merged, a code with a hyphen in it still works as one entry, but it can be confused with a range only when both ends look like codes of the same shape.
+- `v26_1-lists-proccode-no-hyphens` (codes may not contain the separators) is M2-CAN's item, merged on the integration branch (see "Integration on port/int-8" below): new codes can't contain a comma, a hyphen or U+2011, so a list entry can't be read two ways. A code with a hyphen from before 26.1 still works as one entry, and can be confused with a range only when both ends look like codes of the same shape; M2-CAN's Database Maintenance check lists such codes.
 
 ## Interplay with packages built at the same time
 
@@ -61,6 +61,17 @@ Sources: public only. The 26.1 release notes and summary (version26_1.html, vers
 - **M2-INSPLAN** owns `FormInsPlan`: carriers created there through `Carriers.GetIdentical` start with an empty list, like the other carrier-only settings; an existing carrier found there keeps its list.
 - **M2-SHELL** and **M2-NOTES** edit `ControlChart.cs`, **M2-EST**/**M2-TERM** edit `ControlTreat.cs`, **M2-APPT** edits `Appointments.cs`: this package adds only the one-line calls named above, at the ends of `AddProcedure`/`AddQuick`, before `gridMain.EndUpdate()` in `FillMainDisplay`, and before `return table;` in `GetPeriodApptsTable`. If another package rewrites one of those methods, keep the call at the same place.
 - **M2-SCH2** (excluded, dental school) takes files over from this package: nothing to do.
+
+## Integration on port/int-8 (finish run, branch `port/m2-carrier-t1`)
+
+`port/int-8` (45b919048, the integration head, with B-CLAIM merged last) was merged into `port/m2-carrier` with `git merge --no-ff`. Git merged every file without a conflict. What was checked against the packages already merged:
+
+- **Hooks still in place.** The one-line calls sit where this note says: the ends of `ControlChart.AddProcedure` and `AddQuick`, before `gridMain.EndUpdate()` in `ControlTreat.FillMainDisplay` (M2-EST did not change `ControlTreat.cs`; B-TP's four hunks are elsewhere in the file), before `return table;` in `Appointments.GetPeriodApptsTable` (B-APPT changed only `GetPeriodWaitingRoomTable`), the two `case`s in `ControlApptPanel`, the `Carriers.Combine` line and the three `InsEditLogBigValues.MoveLongValues` calls. `ApptViewAndHookTests` checks them on the merged tree. `PreAuthFlag` is still the last `EnumApptViewElement` member (46): no merged package added one.
+- **M2-CAN** (`v26_1-lists-proccode-no-hyphens`, `ProcedureCodes.CodeText.cs`): its rule covers new codes, which removes the ambiguity the deviation above described. The list parser stays the shared `ProcCodeRanges`; nothing was duplicated.
+- **B-TP** (Treatment Plan Add Procs, `ControlTreat.AddProcs.cs`): procedures added there are treatment planned in the Treatment Plan module, not charted, so no Chart reminder pops up; the module's grid refreshes and marks them "[PreAuth]" (INFERRED: the 26.1 note ties the reminder to charting).
+- **B-CLAIM**: Edit Claim, which "Create Preauth Now" opens, skips the Medical EOB prompt for preauthorizations; `PreAuthL` needed no change. B-CLAIM did not change `ControlTreat.ToolBarMainPreAuth_Click`, so `PreAuthL` still follows its steps (re-read on the merged tree).
+- **No shared helper to reuse.** No merged package added a preauthorization builder, a code list parser or an insurance edit log value helper, so `CarrierPreAuths`, `PreAuthL` and `InsEditLogBigValues` stay as they are.
+- **Adoption.** This package adds and activates no fork migration step (the columns and the bubble field are M2-01's and M2-02's), so the M1-Z adoption tools need nothing new.
 
 ## Files touched
 
