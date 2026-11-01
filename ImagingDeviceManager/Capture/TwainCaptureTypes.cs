@@ -155,6 +155,10 @@ namespace ImagingDeviceManager.Capture {
 		public int EnableId { get; set; }
 		///<summary>A short English description ("Sensor software open, waiting for exposure").</summary>
 		public string Text { get; set; }
+		///<summary>The enable the state belongs to has the safe-disable capability accepted (TwainCaptureEnded.IsSafeDisableInEffect), known
+		///from WaitingForImage on. The session window uses it to decide, while the enable runs, whether it may disable on its own (design 7.6,
+		///7.11): without it every disable it starts may lose an exposure.</summary>
+		public bool IsSafeDisableInEffect { get; set; }
 	}
 
 	public enum TwainCaptureOpenError {

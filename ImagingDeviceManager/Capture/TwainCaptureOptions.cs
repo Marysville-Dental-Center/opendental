@@ -155,6 +155,13 @@ namespace ImagingDeviceManager.Capture {
 			return settings;
 		}
 
+		///<summary>The source gate of these options ([Twain] RestrictSources and AllowedSources) lets productName be opened: always without
+		///RestrictSources, otherwise only when it is listed (ignoring case and surrounding spaces). The capture session checks it before its
+		///window opens anything (design 7.12 "Source not enabled here"); Open checks it again.</summary>
+		public bool IsSourceAllowed(string productName) {
+			return ToSourceGate().IsAllowed(productName);
+		}
+
 		internal TwainSourceGate ToSourceGate() {
 			return new TwainSourceGate { IsRestricted=RestrictSources,ListAllowedSources=new List<string>(AllowedSources) };
 		}

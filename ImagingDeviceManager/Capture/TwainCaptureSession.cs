@@ -436,7 +436,10 @@ namespace ImagingDeviceManager.Capture {
 
 		private void SetState(TwainCaptureState state,int enableId) {
 			_state=(int)state;
-			TwainCaptureStatus status=new TwainCaptureStatus { State=state,EnableId=enableId,Text=GetStateText(state) };
+			EnableContext context=_enable;
+			bool isSafeDisableInEffect=enableId!=0 && context!=null && context.Id==enableId && context.IsSafeDisableInEffect;
+			TwainCaptureStatus status=new TwainCaptureStatus { State=state,EnableId=enableId,Text=GetStateText(state),
+				IsSafeDisableInEffect=isSafeDisableInEffect };
 			Raise(StatusChanged,status,"StatusChanged");
 		}
 

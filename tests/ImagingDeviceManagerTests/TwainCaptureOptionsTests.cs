@@ -90,6 +90,19 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		[TestMethod]
+		public void IsSourceAllowed_TheSourceGateOfTheOptions() {
+			TwainCaptureOptions options=new TwainCaptureOptions();
+			Assert.IsTrue(options.IsSourceAllowed("Any Source"),"Without RestrictSources every source may be opened.");
+			options.RestrictSources=true;
+			options.AllowedSources=new List<string> { "Sensor DS","Scanner" };
+			Assert.IsTrue(options.IsSourceAllowed(" sensor ds "),"Ignoring case and surrounding spaces, as Open's gate.");
+			Assert.IsFalse(options.IsSourceAllowed("Sensor  DS"));
+			Assert.IsFalse(options.IsSourceAllowed("Other"));
+			Assert.IsFalse(options.IsSourceAllowed(""));
+			Assert.IsFalse(options.IsSourceAllowed(null));
+		}
+
+		[TestMethod]
 		public void OtherDevicesSections_AndTwainCaps_NotUsed() {
 			TwainCaptureOptions options=TwainCaptureOptions.FromConfig(Config(
 				"[Twain]","SafeDisableCap=0x8002","DisableIsSafeSources=X",

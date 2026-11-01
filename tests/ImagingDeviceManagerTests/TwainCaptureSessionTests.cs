@@ -523,6 +523,33 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		[TestMethod]
+		public void Status_WithoutSafeDisable_SaysItIsNotInEffect() {
+			List<TwainCaptureStatus> listStatus=RunOneEnableForStatus();
+			Assert.IsTrue(listStatus.Any(x => x.State==TwainCaptureState.WaitingForImage));
+			Assert.IsFalse(listStatus.Any(x => x.IsSafeDisableInEffect),"DisableIsSafe=0.");
+		}
+
+		[TestMethod]
+		public void Status_WithSafeDisable_SaysItIsInEffectFromWaitingForImageOn() {
+			ConfigureSafeDisable();
+			List<TwainCaptureStatus> listStatus=RunOneEnableForStatus();
+			Assert.IsTrue(listStatus.Where(x => x.State==TwainCaptureState.WaitingForImage).All(x => x.IsSafeDisableInEffect));
+			Assert.IsFalse(listStatus.Where(x => x.State==TwainCaptureState.Enabling).Any(x => x.IsSafeDisableInEffect),
+				"Not known before the capability was set.");
+			Assert.IsFalse(listStatus.Where(x => x.EnableId==0).Any(x => x.IsSafeDisableInEffect),"Only a status of an enable says so.");
+		}
+
+		///<summary>Opens, takes one image and returns the status events of that enable and the Open after it.</summary>
+		private List<TwainCaptureStatus> RunOneEnableForStatus() {
+			_harness.OpenOrFail();
+			int enableId=EnableOne();
+			_harness.WaitForEnded(enableId);
+			_harness.WaitUntil(() => _harness.States.Last()==TwainCaptureState.Open,"back to Open");
+			_harness.Close();
+			return _harness.ListStatus.Where(x => x.EnableId==enableId || x.State==TwainCaptureState.Open).ToList();
+		}
+
+		[TestMethod]
 		public void SafeDisable_RefusedWhileClosing_ThenXferReady_ImageDrainedIntoTheEnable() {
 			ConfigureSafeDisable();
 			Helper.EndAfterMs=60000;//The helper is reading out the exposure.
