@@ -52,12 +52,23 @@ Sources: the public 26.1 release notes (Tools section) and Open Dental's public 
 - Rule 3 says to put the helper next to `InsertAddressChangeSecurityLogEntry`. It is in a new partial-class file instead, because of the single-wave rule for shared files: `Patients.cs` gets only the two hook lines. The helper is still a `Patients` method beside the others.
 - The spec's touchpoints name `FormPatientEdit.cs` and the `FormOpenDental.cs` pattern. Neither needed a change, because the hooks are in the data layer that every save path goes through.
 
-## Expected interplay with packages built in parallel
+## Interplay with other packages
 
-- **B-AUDIT** (patient clinic and preferred-name audit) also edits `Patients.cs`. Its spec puts its lines in `InsertAddressChangeSecurityLogEntry`, which this package doesn't touch, so the two should merge without conflict. If B-AUDIT also hooks `Patients.Update` or `Patients.Insert`, its line will sit next to this package's line: keep both. The entries are independent.
-- **V-BRIDGE2** (C3) takes `Patients.cs` over from this package. Bridges that update patients through `Patients.Update` are audited automatically.
-- **M2-EF and M2-SHEETS** (eForm and sheet work): any eForm or sheet import that saves through `Patients.Update` is covered without changes. A new import that wrote patient rows any other way would fail `BirthdateSavePathTests`.
+- **B-AUDIT** (patient clinic and preferred-name audit, merged on the integration branch before this package). The code merges cleanly: B-AUDIT's lines are in `InsertAddressChangeSecurityLogEntry` and its own partial file `Patients.ClinicPreferredAudit.cs`, and its import hooks (`FormSheetImport`, HL7 PV1, clone synch) sit after `Patients.Update`. Only the `OpenDentBusiness.csproj` `Compile` lines conflicted (both kept). The entries stay separate and the birthdate is never logged twice:
+  - Edit Patient Information for an existing patient: the name/address entry (with B-AUDIT's preferred-name and clinic lines) plus this package's birthdate entry.
+  - Sheet and eForm import through `FormSheetImport`: the birthdate entry plus B-AUDIT's "... From sheet import." entry, which only has the preferred-name and clinic lines (tested in `SheetImport_Birthdate_Logged`).
+  - B-AUDIT's note suggested adding the birthdate line to `GetPreferredAndClinicChangeLogText` instead. That was not done: it would reach only the paths B-AUDIT hooks, not Add Family, `CreateNewPatient`, the 834 import, bridges or Database Maintenance, and together with the `Patients.Update` hook it would log the birthdate twice.
+  - The tests did not merge cleanly, although the code did. B-AUDIT's `AddPatient` helper inserts every synthetic patient with a 1980-01-01 birthdate, so since this package each patient starts with a "changed from '' to '1/1/1980'" entry, and 12 B-AUDIT tests that count all of a patient's `PatientEdit` rows got one row too many. The integration fix is in the test only: `AddPatient` remembers the last `securitylog` row of its setup, and `GetPatientEditLogs` returns only the rows written after it, so each test still sees exactly the entries of the action it tests. No assertion was loosened.
+  - The two packages differ on new patients: B-AUDIT logs nothing for a creation (it is a `PatientCreate`), this package logs a birthdate the patient is created with as added (INFERRED 6, owner question 2).
+- **M2-EF** (eForms): patient field rows are written by `PatFields`, not `Patients`, so they are not part of this audit. Any eForm or sheet import that saves through `Patients.Update` is covered without changes; a new import that wrote patient rows any other way would fail `BirthdateSavePathTests`.
+- **V-BRIDGE packages** (V-BRIDGE2 takes `Patients.cs` over from this package): bridges that update patients through `Patients.Update` are audited automatically.
 - **M2-SHELL** logs `PatientSelected` (M2-02's enum value 275). That is unrelated; both appear in the Audit Trail under their own types.
+
+## Integration (`port/m2-audit-t1`, 2026-10-31)
+
+- Merged `port/int-7` at `1763cc7ae` into the package branch. Conflict: `OpenDentBusiness/OpenDentBusiness.csproj`, where B-AUDIT's and this package's partial files had their `Compile` lines in the same place; both are kept.
+- Review finding (B-AUDIT's tests break after the merge, and this note said the packages were independent): real, fixed as described under B-AUDIT above, and this note corrected.
+- No fork migration step, no schema, no preference and no row change, so the adoption tools (`tools/AdoptionValidation`) need nothing new.
 
 ## Tests
 
