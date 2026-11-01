@@ -1,5 +1,5 @@
 // A scratch database on the local MariaDB for the B-APPT database tests: a fresh 24.3.63 database built like tools/New-DevDatabase.ps1, then
-// upgraded to the Open Dental 25.3.48 schema by the fork migration runner. Synthetic rows only; nothing here reads an office database.
+// upgraded by the fork migration runner to the current schema (26.1.70, the one the CRUD matches). Synthetic rows only; nothing here reads an office database.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.IO;

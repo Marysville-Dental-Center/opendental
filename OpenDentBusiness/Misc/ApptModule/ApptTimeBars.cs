@@ -65,10 +65,12 @@ namespace OpenDentBusiness {
 			Meth.NoCheckMiddleTierRole();
 			string prefName=GetPrefNameInUse(prefNameFork);
 			try {
-				if(!PrefC.ContainsKey(prefName)) {
+				//B-SERVER's shared helper for fork-owned preference rows: null when the cache is empty or has no such row.
+				string valueString=PrefC.GetRawOrDefault(prefName,null);
+				if(valueString==null) {
 					return false;
 				}
-				return PIn.Bool(PrefC.GetRaw(prefName));
+				return PIn.Bool(valueString);
 			}
 			catch(Exception ex) {
 				ex.DoNothing();
@@ -102,12 +104,7 @@ namespace OpenDentBusiness {
 			if(!prefName.In(PREF_PROV_TIME_ON_OP_BACKGROUND,PREF_SECONDARY_COLOR_NO_PROV_TIME,PREF_NAME_PROPOSED_OP_BACKGROUND,PREF_NAME_PROPOSED_SECONDARY_COLOR)) {
 				throw new ArgumentException("Not a time bar preference: "+prefName);
 			}
-			string count=Db.GetScalar("SELECT COUNT(*) FROM preference WHERE PrefName='"+POut.String(prefName)+"'");
-			if(PIn.Long(count)==0) {
-				Db.NonQ("INSERT INTO preference (PrefName,ValueString,Comments) VALUES ('"+POut.String(prefName)+"','"+POut.String(valueString)+"','')");
-				return;
-			}
-			Db.NonQ("UPDATE preference SET ValueString='"+POut.String(valueString)+"' WHERE PrefName='"+POut.String(prefName)+"'");
+			PrefC.UpsertRawNoCache(prefName,valueString);//B-SERVER's shared helper for fork-owned preference rows.
 		}
 		#endregion Preferences
 

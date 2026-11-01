@@ -122,3 +122,7 @@ Checks run on the branch (2026-10-25): `OpenDental.Local.slnf` Debug x86 full re
 3. Reopening a completed task while the appointment already has an open task: keep it silent (current), or add a warning in Task Edit (M2-MISC's file)?
 4. Should the far-left provider columns (`ProvBarShading`) also follow the secondary color preference?
 5. Is the toolbar the right place for "Wait Rm", and is a per-Windows-user file the right place to remember its position (a workstation-wide setting would need a `computerpref` column)?
+
+## Integration (branch `port/int-4`)
+
+- B-SERVER (merged earlier on `port/int-2`) already has the shared helpers for fork-owned preference rows, `PrefC.GetRawOrDefault` and `PrefC.UpsertRawNoCache`, which B-WIKI and B-PRINT use. `ApptTimeBars.GetBoolPref` now reads through `PrefC.GetRawOrDefault`, and `ApptTimeBars.UpsertPrefRaw` keeps its own Middle Tier call and its check that only the two time bar names are written, then calls `PrefC.UpsertRawNoCache` instead of its own SQL. No behaviour change: a missing row still reads as off, turning off a never-saved setting still writes nothing, and the row is inserted the first time the setting is turned on (`preference.Comments` is nullable, so the row no longer needs the blank comment). No test was changed or removed.
