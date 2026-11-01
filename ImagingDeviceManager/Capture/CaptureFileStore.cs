@@ -144,9 +144,10 @@ namespace ImagingDeviceManager.Capture {
 		public bool IsContinuousEnable => Get(CaptureSidecarKeys.ContinuousEnable)=="1";
 		///<summary>MountItemNum, SlotItemOrder and ToothNumbers are this image's target (CaptureSidecarKeys.SlotOfImage): the session said so, or
 		///they are its enable's and that is where the session would have placed it (the first image of an enable, also one drained during a stop).
-		///False for an extra image and any later image of a per-slot enable (it asked for one), in a mount or in single-target mode. False for a later image of a continuous enable in a
-		///mount, Normal or drained during its stop, and for a redelivered image, when the session did not record the target: the target moved on
-		///after each image of that enable, so the slot is not known (design 7.12 Assign files it with no slot and no tooth numbers).</summary>
+		///False for an extra image and any later image of a per-slot enable (it asked for one), in a mount or in single-target mode. False for a
+		///later image of a continuous enable in a mount, Normal or drained during its stop, and for a redelivered image, when the session did not
+		///record the target: the target moved on after each image of that enable, so the slot is not known (design 7.12 Assign files it with no
+		///slot and no tooth numbers).</summary>
 		public bool IsSlotKnown {
 			get {
 				//An extra image (design 7.12), or any image after the first of a per-slot enable (CAP_XFERCOUNT=1 asked for one): never the slot or

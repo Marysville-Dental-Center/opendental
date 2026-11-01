@@ -30,8 +30,10 @@ namespace ImagingCapture.Session {
 		///<summary>The notice for an image quarantined because the session is paused after a failed save.</summary>
 		public const string PausedAfterSaveFailureNotice="An image arrived while the session was paused after a failed save; it is in unassigned captures.";
 		public const string NotOpen="The sensor software is not open.";
-		///<summary>The library closed the source on its own while an enable ran (WM_QUIT on its worker).</summary>
+		///<summary>Retry opened the source again after the library had closed it while it may still hold images: nothing is enabled until the
+		///operator re-enables or asks for the undelivered images (followed by CaptureEndText.MayStillHoldImages).</summary>
 		public const string OpenAgain="Sensor software open again.";
+		///<summary>The library closed the source on its own while an enable ran (WM_QUIT on its worker).</summary>
 		public const string SourceClosed="The sensor software was closed. Press Retry to open it again.";
 		public const string ReadyStart="Check the patient, then press Start or hold the Confirm key.";
 		public const string ReadyReEnable="Press Re-enable or hold the Confirm key to start the sensor software again.";
@@ -96,13 +98,16 @@ namespace ImagingCapture.Session {
 			return "Redelivered image "+(why??"").Trim()+"; patient unknown (acquired "+acquiredAtText+", capture ID "+captureId+").";
 		}
 
-		///<summary>Continuous mode, the mount full and safe disable not in effect: the fork does not disable on its own (design 7.6, 10.6).</summary>
 		///<summary>The indicator's target once every slot has an image.</summary>
 		public const string EverySlotFilled="every slot has an image";
-		///<summary>A continuous enable whose next target would be a skipped slot (design 7.3: skipped slots need the deliberate start).</summary>
+		///<summary>A continuous enable whose next target would be a skipped slot (design 7.3: skipped slots need the deliberate start), safe disable
+		///not in effect: the notice, and the indicator while the enable still runs, instead of an invitation to expose.</summary>
 		public const string OnlySkippedLeftContinuous="Every slot that was not skipped has an image. Press End, or Disable and then Take the skipped "
 			+"slots; further images go to unassigned captures.";
+		///<summary>The quarantine reason of a later image of a continuous enable while only skipped slots are left.</summary>
 		public const string OnlySkippedLeftReason="Only skipped slots were left; a skipped slot is taken only after Take the skipped slots.";
+		///<summary>Continuous mode, the mount full and safe disable not in effect: the fork does not disable on its own (design 7.6, 10.6). The
+		///notice, and the indicator while the enable still runs, instead of an invitation to expose.</summary>
 		public const string MountFullContinuous="Every slot has an image. Press End to stop the sensor software; further images go to unassigned captures.";
 
 		///<summary>Design 7.6: before a disable that is not safe (Cancel, End, Disable while the source is enabled without DisableIsSafe in
