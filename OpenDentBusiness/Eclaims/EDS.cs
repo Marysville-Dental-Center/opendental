@@ -366,6 +366,59 @@ namespace OpenDentBusiness.Eclaims {
 			return JsonConvert.DeserializeObject<ListPayerResponses>(jsonReturn);
 		}
 
+		///<summary>Open Dental 26.1 claim validation (VendorDirect/Eds/EdsClaimValidation): the same attachment validation as ValidateClaim(claim),
+		///with a time limit, for the checks run when a claim is saved or sent. Throws exceptions: TimeoutException when EDS does not answer in time,
+		///ODException when EDS answers with an error status.</summary>
+		public static ListPayerResponses ValidateClaim(Claim claim,TimeSpan timeout) {
+			string strJson=CreateValidateAttachmentJSON(claim);
+			string jsonReturn=PostJsonWithTimeout(VALIDATE_ATTACHMENT_URL,strJson,claim.ClinicNum,timeout);
+			return JsonConvert.DeserializeObject<ListPayerResponses>(jsonReturn);
+		}
+
+		///<summary>Tests only: answers the calls made by PostJsonWithTimeout instead of the network. Null in the program.</summary>
+		public static HttpMessageHandler HttpHandlerForTests;
+		///<summary>How long validation may wait for EDS when Edit Claim saves a new claim (Open Dental 26.1). Saving never waits longer.</summary>
+		public static readonly TimeSpan TimeoutValidateOnSave=TimeSpan.FromSeconds(10);
+		///<summary>How long validation may wait for EDS before a claim is sent (Open Dental 26.1).</summary>
+		public static readonly TimeSpan TimeoutValidateOnSend=TimeSpan.FromSeconds(30);
+
+		///<summary>Throws exceptions. Posts JSON to EDS with the clinic's EDS login (HTTP Basic), as MakeWebRequest does, but with a time limit.
+		///Returns the response body.</summary>
+		private static string PostJsonWithTimeout(string url,string strJson,long clinicNum,TimeSpan timeout) {
+			Clearinghouse clearinghouse=GetClearinghouse(clinicNum);
+			string authenticationString=Convert.ToBase64String(Encoding.UTF8.GetBytes($"{clearinghouse.LoginID}:{clearinghouse.Password}"));
+			HttpMessageHandler httpMessageHandler=HttpHandlerForTests;
+			using HttpClient httpClient=httpMessageHandler==null ? new HttpClient() : new HttpClient(httpMessageHandler,false);
+			httpClient.Timeout=timeout;
+			using HttpRequestMessage httpRequestMessage=new HttpRequestMessage(HttpMethod.Post,url);
+			httpRequestMessage.Headers.Authorization=new System.Net.Http.Headers.AuthenticationHeaderValue("Basic",authenticationString);
+			httpRequestMessage.Content=new StringContent(strJson,Encoding.UTF8,"application/json");
+			HttpResponseMessage httpResponseMessage;
+			try {
+				httpResponseMessage=httpClient.SendAsync(httpRequestMessage).ConfigureAwait(false).GetAwaiter().GetResult();
+			}
+			catch(System.Threading.Tasks.TaskCanceledException ex) {
+				throw new TimeoutException(Lans.g("EDS","EDS did not answer within")+" "+(int)timeout.TotalSeconds+" "+Lans.g("EDS","seconds."),ex);
+			}
+			using(httpResponseMessage) {
+				string response=httpResponseMessage.Content==null ? ""
+					: httpResponseMessage.Content.ReadAsStringAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+				if(httpResponseMessage.StatusCode==HttpStatusCode.Unauthorized || httpResponseMessage.StatusCode==HttpStatusCode.Forbidden) {
+					throw new ODException(Lans.g("EDS","EDS did not accept the EDS clearinghouse's login ID and password.")
+						+" (HTTP "+(int)httpResponseMessage.StatusCode+")");
+				}
+				if(!httpResponseMessage.IsSuccessStatusCode) {
+					string detail=(response??"").Trim();
+					if(detail.Length>300) {
+						detail=detail.Substring(0,300)+"...";
+					}
+					throw new ODException(Lans.g("EDS","EDS answered with an error:")+" HTTP "+(int)httpResponseMessage.StatusCode
+						+(detail=="" ? "" : " - "+detail));
+				}
+				return response??"";
+			}
+		}
+
 		/// <summary>Throws exceptions. Helper method that will make a call to EDS' API using the passed in endpoint and the JSON content. Returns the JSON response from the API on success.</summary>
 		private static string MakeWebRequest(string url,string strJson, long clinicNum) {
 			Clearinghouse clearinghouse=GetClearinghouse(clinicNum);

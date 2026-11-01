@@ -27,7 +27,8 @@ namespace OpenDental {
 
 		///<summary></summary>
 		private void FormRpEraAutoProcessed_Load(object sender,EventArgs e) {
-			base.SetFilterControlsAndAction(() => RefreshGridEras(),dateRangePicker,textCarrier,textCheckTrace,comboClinics,listAutoProcessStatuses,checkShowAcknowledged);
+			base.SetFilterControlsAndAction(() => RefreshGridEras(),dateRangePicker,textCarrier,textCheckTrace,comboClinics,listAutoProcessStatuses,checkShowAcknowledged,
+				checkShowPreAuths,checkShowZeroPayments);
 			SetFiltersAndDefaults();
 			BuildContextMenuGridEras();
 			BuildContextMenuGridClaims();
@@ -55,6 +56,18 @@ namespace OpenDental {
 				listAutoProcessStatuses.Items.Add(Lan.g(this,listX835AutoProcessedValues[i].GetDescription()),listX835AutoProcessedValues[i]);
 			}
 			listAutoProcessStatuses.SetAll(true);
+			//M2-ERA (25.4): Show PreAuths and Show $0 Payments start as this user left them (both on by default, as in 24.3).
+			EraAutoProcessedReportFilters eraAutoProcessedReportFilters=EraAutoProcessedReportFilters.GetForUser(GetUserNumCur());
+			checkShowPreAuths.Checked=eraAutoProcessedReportFilters.DoShowPreAuths;
+			checkShowZeroPayments.Checked=eraAutoProcessedReportFilters.DoShowZeroPayments;
+		}
+
+		///<summary>M2-ERA: the user whose report filter choices are remembered.</summary>
+		private long GetUserNumCur() {
+			if(Security.CurUser==null) {
+				return 0;
+			}
+			return Security.CurUser.UserNum;
 		}
 
 		///<summary>Builds the context menu for the ERAs grid.</summary>
@@ -69,7 +82,7 @@ namespace OpenDental {
 		private void BuildContextMenuGridClaims() {
 			List<MenuItem> listMenuItems=new List<MenuItem>();
 			listMenuItems.Add(new MenuItem(Lan.g(this,"Go to Account"),new EventHandler(MenuItemGoToAccount_Click)));
-			listMenuItems.Add(new MenuItem(Lan.g(this,"Process Unsent Secondary Claims"),new EventHandler(MenuItemProcessSecondaryClaims_Click)));
+			listMenuItems.Add(new MenuItem(Lan.g(this,"Process Unsent Claims of the Next Insurance"),new EventHandler(MenuItemProcessSecondaryClaims_Click)));
 			ContextMenu contextMenu=new ContextMenu(listMenuItems.ToArray());
 			gridClaims.ContextMenu=contextMenu;
 		}
@@ -117,13 +130,17 @@ namespace OpenDental {
 			List<X835AutoProcessed> listX835AutoProcessedsSelected=listAutoProcessStatuses.GetListSelected<X835AutoProcessed>();
 			bool doIncludeAcknowledged=checkShowAcknowledged.Checked;
 			bool areAllClinicsSelected=comboClinics.IsAllSelected;
+			//M2-ERA (25.4): hide ERAs whose claims are all PreAuths, or whose payment is $0, when unchecked. Remembered for this user.
+			bool doShowPreAuths=checkShowPreAuths.Checked;
+			bool doShowZeroPayments=checkShowZeroPayments.Checked;
+			EraAutoProcessedReportFilters.SetForUser(GetUserNumCur(),doShowPreAuths,doShowZeroPayments);
 			EraData eraData=new EraData();
 			List<Hx835_ShortClaimProc> listHx835_ShortClaimProcs=new List<Hx835_ShortClaimProc>();
 			progressOD=new ProgressWin();
 			progressOD.ActionMain=() => {
 				eraData=EtransL.GetEraDataFiltered(showStatusAndClinics,_listX835Statuses,listClinicNumsSelected,
 					amountMin:"",amountMax:"",dateFrom,dateTo,carrierName,checkTraceNum,controlId:"",includeAutomatableCarriersOnly:false,
-					areAllClinicsSelected,listX835AutoProcessedsSelected,doIncludeAcknowledged);
+					areAllClinicsSelected,listX835AutoProcessedsSelected,doIncludeAcknowledged,doShowPreAuths,doShowZeroPayments);
 				List<long> listClaimNums=eraData.ListAttached.Select(x => x.ClaimNum).ToList();
 				listHx835_ShortClaimProcs=Hx835_ShortClaimProc.RefreshForClaims(listClaimNums);
 			};
@@ -323,6 +340,8 @@ namespace OpenDental {
 			gridClaims.Columns.Add(new GridColumn(Lan.g("TableEtrans835Claims","Supp?"),65,HorizontalAlignment.Center));
 			gridClaims.Columns.Add(new GridColumn(Lan.g("TableEtrans835Claims","ClaimAdj?"),65,HorizontalAlignment.Center));
 			gridClaims.Columns.Add(new GridColumn(Lan.g("TableEtrans835Claims","MoreClaims?"),65,HorizontalAlignment.Center));
+			//B-ERA (25.2): for a claim that is not received, the entries of "Don't auto-process claims w/ these CARCs" it carries, e.g. "CO-97 on procedure Z0220".
+			gridClaims.Columns.Add(new GridColumn(Lan.g("TableEtrans835Claims","CARC Hold"),100));//Last column: the grid widens it to fill the rest.
 			#endregion Init columns
 			if(eraRowData==null) {
 				gridClaims.EndUpdate();
@@ -348,6 +367,7 @@ namespace OpenDental {
 			List<Hx835_ShortClaim> listHx835_ShortClaims=Hx835_ShortClaim.GetClaimsFromClaimNums(listClaimNums);
 			List<long> listProcNumsOnClaims=listShortClaimProcs.Select(x => x.ProcNum).Where(x => x!=0).ToList();
 			List<Hx835_ShortClaimProc> listHx835_ShortClaimProcsForUnsentClaimsAll=Hx835_ShortClaimProc.GetUnsentForProcNums(listProcNumsOnClaims);
+			List<EraCarcRule> listEraCarcRules=EraCarcRules.GetRulesFromPref();//B-ERA
 			#endregion Get ERA data
 			#region Fill rows
 			for(int i=0;i<x835.ListClaimsPaid.Count;i++) {
@@ -427,6 +447,11 @@ namespace OpenDental {
 				row.Cells.Add(stringSupplemental);
 				row.Cells.Add(stringClaimAdjustments);
 				row.Cells.Add(stringOtherUnsentClaims);
+				string stringCarcHold="";//B-ERA
+				if(!isClaimPaidProcessed) {
+					stringCarcHold=EraCarcRules.GetDescription(EraCarcRules.GetMatches(listEraCarcRules,hx835_Claim));
+				}
+				row.Cells.Add(stringCarcHold);
 				row.Tag=new ClaimRowData(hx835_Claim,isClaimPaidProcessed,shortClaim,listHx835_ShortClaimProcsForUnsentClaims);
 				gridClaims.ListGridRows.Add(row);
 			}
@@ -481,7 +506,8 @@ namespace OpenDental {
 			EtransL.GoToAccountForHx835_Claim(hx835_Claim);
 		}
 
-		///<summary>Validates that the selected claim has procedures that are on one or more secondary claims with a status of Unsent or Hold Unti Pri Recieved.
+		///<summary>Validates that the selected claim has procedures that are on one or more claims of the next insurance (Open Dental 26.1: after a
+		///claim of any ordinal, see Claims.GetNextOrdinalClaimsNotReceived) with a status of Unsent, Hold Until Prior Received or Hold for In Process.
 		///If so, the user is prompted to send these claims, change there status to "Waiting to send", or do nothing.</summary>
 		private void MenuItemProcessSecondaryClaims_Click(object sender,EventArgs e) {
 			ClaimRowData claimRowDataSelected=gridClaims.SelectedTag<ClaimRowData>();
@@ -494,21 +520,20 @@ namespace OpenDental {
 				MsgBox.Show(this,"There are no unsent claims for the procedures on the selected claim.");
 				return;
 			}
-			List<long> listClaimNums=listHx835_ShortClaimProcsForUnsentClaims.Select(x => x.ClaimNum).ToList();
-			List<Hx835_ShortClaim> listHx835_ShortClaimsUnsent=Hx835_ShortClaim.GetClaimsFromClaimNums(listClaimNums);
-			if(!listHx835_ShortClaimsUnsent.Any(x => x.ClaimType=="S" && x.ClaimStatus.In("U","H","I"))) {
-				MsgBox.Show(this,"There are unsent claim(s) for one or more procedures on the selected claim, " 
-					+"but none of them are for secondary claims with a status of 'Unsent', 'Hold Until Pri Received', or 'Hold for In Process'. "
+			Hx835_ShortClaim hx835_ShortClaim=claimRowDataSelected.Hx835_ShortClaim_;
+			List<ClaimProc> listClaimProcsForClaim=ClaimProcs.RefreshForClaim(hx835_ShortClaim.ClaimNum);
+			//Open Dental 26.1 (M2-CLAIMRCV): the claims of the next insurance after the selected claim, of any ordinal, as the prompt finds them.
+			if(Claims.GetNextOrdinalClaimsNotReceived(listClaimProcsForClaim,includeHoldForInProcess:true).Count==0) {
+				MsgBox.Show(this,"There are unsent claim(s) for one or more procedures on the selected claim, "
+					+"but none of them are for the next insurance with a status of 'Unsent', 'Hold Until Prior Received', or 'Hold for In Process'. "
 					+"Please go to the account to send them.");
 				return;
 			}
-			Hx835_ShortClaim hx835_ShortClaim=claimRowDataSelected.Hx835_ShortClaim_;
-			//The selected claim must be recieved and processed properly before we can send secondary claims.
+			//The selected claim must be recieved and processed properly before we can send the next insurance's claims.
 			if(hx835_ShortClaim.ClaimStatus!="R" || !claimRowDataSelected.IsProcessed) {//R=Received
-				MsgBox.Show(this,"The selected claim must be received before secondary claims can be sent.");
+				MsgBox.Show(this,"The selected claim must be received before claims of the next insurance can be sent.");
 				return;
 			}
-			List<ClaimProc> listClaimProcsForClaim=ClaimProcs.RefreshForClaim(hx835_ShortClaim.ClaimNum);
 			ClaimL.PromptForPrimaryOrSecondaryClaim(listClaimProcsForClaim);
 		}
 

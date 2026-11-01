@@ -139,9 +139,6 @@ namespace OpenDental {
 				SecurityLogs.MakeLogEntry(EnumPermType.SheetEdit,SheetCur.PatNum,Lan.g(this,"Sheet with ID")+" "+SheetCur.SheetNum+" "+Lan.g(this,"moved to PatNum")+" "+frmPatientSelect.PatNumSelected);
 				SecurityLogs.MakeLogEntry(EnumPermType.SheetEdit,frmPatientSelect.PatNumSelected,Lan.g(this,"Sheet with ID")+" "+SheetCur.SheetNum+" "+Lan.g(this,"moved from PatNum")+" "+SheetCur.PatNum);
 				SheetCur.PatNum=frmPatientSelect.PatNumSelected;
-				if(SheetCur.PatNum>0) {
-					checkSaveToImages.Enabled=true;
-				}
 			}
 		}
 
@@ -212,7 +209,7 @@ namespace OpenDental {
 			if(HasEmailBeenSent && SheetCur.SheetType==SheetTypeEnum.Statement && SaveStatementToDocDelegate!=null) {
 				SaveStatementToDocDelegate(StatementCur,SheetCur,DataSet_,pdfFile);
 			}
-			if(_isAutoSave && checkSaveToImages.Checked) {
+			if(IsAutoSaveCopyDue()) {
 				SaveAsDocument('U',"PatientForm");//could actually be any sheet, not just PatientForm
 			}
 		}
@@ -271,7 +268,7 @@ namespace OpenDental {
 			if(SheetCur.SheetType==SheetTypeEnum.LabSlip) {
 				SaveAsDocument('B',"LabSlipArchive");
 			}
-			if(_isAutoSave && checkSaveToImages.Checked) {
+			if(IsAutoSaveCopyDue()) {
 				SaveAsDocument('U',"PatientForm");
 			}
 			DialogResult=DialogResult.OK;
@@ -317,7 +314,7 @@ namespace OpenDental {
 			if(SheetCur.SheetType==SheetTypeEnum.LabSlip) {
 				SaveAsDocument('B',"LabSlipArchive");
 			}
-			if(_isAutoSave && checkSaveToImages.Checked) {
+			if(IsAutoSaveCopyDue()) {
 				SaveAsDocument('U',"PatientForm");
 			}
 			if(DoExportCSV) {
@@ -442,7 +439,7 @@ namespace OpenDental {
 			if(SheetCur.SheetType==SheetTypeEnum.LabSlip) {
 				SaveAsDocument('B',"LabSlipArchive");
 			}
-			if(_isAutoSave && checkSaveToImages.Checked) {
+			if(IsAutoSaveCopyDue()) {
 				SaveAsDocument('U',"PatientForm");
 			}
 			DialogResult=DialogResult.OK;
@@ -576,20 +573,9 @@ namespace OpenDental {
 				Height=System.Windows.Forms.Screen.FromControl(this).WorkingArea.Height;
 			}
 			CenterFormOnMonitor();
-			//Only allow Autosave when there is a non-hidden image category that is flagged for Autosave Form (U) and the sheet being filled out is not in a terminal.
+			//Only allow Autosave when there is a non-hidden image category that is flagged for Autosave Form (U).
 			_isAutoSave=Defs.GetDefsForCategory(DefCat.ImageCats,isShort:true).Any(x => x.ItemValue.Contains("U"));
-			if(_isAutoSave && !IsInTerminal) {//only visible if the Autosave Form usage has been set and is not in kiosk mode
-				//This will get set depending on the SheetDef for the current Sheet
-				//Jordan the schema is wrong here. We should never refer back to the template SheetDef
-				//but we're going to leave it because too hard to fix right now.
-				SheetDef sheetDefForSheetCur=SheetDefs.GetFirstOrDefault(x=>x.SheetDefNum==SheetCur.SheetDefNum);
-				checkSaveToImages.Checked=sheetDefForSheetCur?.AutoCheckSaveImage??false;
-				checkSaveToImages.Visible=true;
-			}
-			if(SheetCur.PatNum==0) {
-				checkSaveToImages.Enabled=false;
-				checkSaveToImages.Checked=false;
-			}
+			//25.1: no "Autosave to Images" box. A save that changed the sheet copies it to Imaging when its layout says so, in a kiosk or terminal too (IsAutoSaveCopyDue).
 			_listPoints=new List<Point>();
 			_uniqueFormIdentifier=MiscUtils.CreateRandomAlphaNumericString(15);//Thread safe random
 			Sheets.SetPageMargin(SheetCur,_marginsPrint);
@@ -677,6 +663,7 @@ namespace OpenDental {
 			if(SheetCur.ShowInTerminal>0) {
 				textShowInTerminal.Text=SheetCur.ShowInTerminal.ToString();
 			}
+			LoadDateSubmitted();//Open Dental 25.4 sheet.DateTimeSubmitted, see FormSheetFillEdit.Submitted.cs
 			LoadImages();
 			//We need to double check any sheet Input, Output, and Static Text fields for growth behavior. If this sheet was sent over as a webform, the height for a specific field may have been adjusted to conform to a web or mobile web view. If the height was adjusted, we need to re-measure and adjust these fields once they are retreived in OD.
 			for(int i=0;i<SheetCur.SheetFields.Count;i++) {
@@ -1043,7 +1030,7 @@ namespace OpenDental {
 				if(SheetCur.SheetFields[i].FontIsBold) {
 					fontStyle=FontStyle.Bold;
 				}
-				using Font font=new Font(SheetCur.SheetFields[i].FontName,LayoutManager.UnscaleMS(SheetCur.SheetFields[i].FontSize),fontStyle);
+				using Font font=new Font(SheetFonts.GetFontNameForText(SheetCur.SheetFields[i].FontName,SheetCur.SheetFields[i].FieldValue),LayoutManager.UnscaleMS(SheetCur.SheetFields[i].FontSize),fontStyle);
 				Color colorText=SheetCur.SheetFields[i].ItemColor;
 				if(SheetCur.SheetFields[i].FieldType==SheetFieldType.InputField){
 					colorText=Color.Black;
@@ -1063,6 +1050,7 @@ namespace OpenDental {
 					}
 				}
 				using Brush brushText=new SolidBrush(colorText);
+				SheetTextDrawing.ApplyDirection(stringFormat,SheetCur.SheetFields[i].FieldValue);
 				g.DrawString(SheetCur.SheetFields[i].FieldValue,font,brushText,rectangle,stringFormat);
 				stringFormat?.Dispose();
 			}
@@ -1128,7 +1116,7 @@ namespace OpenDental {
 				//combobox has no font options like fontname, size, color, bold, or align
 				//We need the size of the text to scale with the height of the combobox. This is to match old behavior. Comboboxes have a default size when added, and we want it to look like 11 at that height.
 				//A static textbox field has a default font size of 11 and a height of 19. To create consistency with comboBoxes, we take the default height of the comboBox 19 and multiply it by 0.58 (rounded) = 11 font size.
-				using Font font=new Font(FontFamily.GenericSansSerif,SheetCur.SheetFields[i].Height*.58f);
+				using Font font=new Font(SheetFonts.GetFontNameForText(FontFamily.GenericSansSerif.Name,SheetFields.GetComboSelectedOption(SheetCur.SheetFields[i])),SheetCur.SheetFields[i].Height*.58f);
 				string str=SheetFields.GetComboSelectedOption(SheetCur.SheetFields[i]);
 				g.DrawString(str,font,Brushes.Black,rectangle);
 			}
@@ -1405,7 +1393,7 @@ namespace OpenDental {
 			//TextRenderer was added to C# so that we could draw to match the textbox perfectly if we wanted.
 			//But we need the other way around.  We don't want to be forced to use TextRenderer everywhere just so a temp textbox matches.
 			//The final solution will be to switch to WPF which is consistent for drawing and textboxes.
-			textBox.Font=new Font(sheetField.FontName,fontSize,style);
+			textBox.Font=new Font(SheetFonts.GetFontNameForText(sheetField.FontName,text),fontSize,style);
 			if(LayoutManager.Scale(sheetField.Height)<=textBox.Font.Height+5 && sheetField.GrowthBehavior==GrowthBehaviorEnum.None) {
 				textBox.Multiline=false;
 			}
@@ -1509,7 +1497,7 @@ namespace OpenDental {
 			if(SheetCur.SheetType==SheetTypeEnum.Statement && patient!=null && IsStatement) {
 				//Mimics FormStatementOptions.CreateEmailMessage(), we should centralize this in the future.
 				emailMessage=Statements.GetEmailMessageForStatement(StatementCur,patient);
-				shortFileName="Statement";
+				shortFileName=Path.GetFileNameWithoutExtension(Statements.GetEmailPdfDisplayName(patient));//25.3: "Statement_LastName"
 				emailMessageSource=EmailMessageSource.Statement;
 			}
 			emailMessage.PatNum=SheetCur.PatNum;
@@ -1595,7 +1583,7 @@ namespace OpenDental {
 			if(sheetField.FontIsBold){
 				fontStyle=FontStyle.Bold;
 			}
-			Font font=new Font(sheetField.FontName,sheetField.FontSize,fontStyle);
+			Font font=new Font(SheetFonts.GetFontNameForText(sheetField.FontName,text),sheetField.FontSize,fontStyle);
 			//We're only allowed to measure 32 chars at a time
 			int cStart=0;//the starting idx of the group of 32 or less chars that we're about to measure
 			StringFormat stringFormat = new StringFormat();
@@ -1605,6 +1593,7 @@ namespace OpenDental {
 			if(sheetField.TextAlign==HorizontalAlignment.Center){
 				stringFormat.Alignment=StringAlignment.Center;
 			}
+			SheetTextDrawing.ApplyDirection(stringFormat,text);
 			while(true){
 				if(cStart>text.Length-1){//example 5>4
 					break;
@@ -2114,6 +2103,9 @@ namespace OpenDental {
 			}
 			catch(Exception) {
 				MsgBox.Show(this,"Please fix data entry errors first.");
+				return false;
+			}
+			if(!TrySetDateSubmitted()) {//Open Dental 25.4 sheet.DateTimeSubmitted, see FormSheetFillEdit.Submitted.cs
 				return false;
 			}
 			SheetCur.DateTimeSheet=dateTimeSheet;
@@ -2634,7 +2626,7 @@ namespace OpenDental {
 			if(!VerifyRequiredFields() || !OkToSaveBecauseNoOtherEdits() || !TryToSaveData()){
 				return;
 			}
-			if(_isAutoSave && checkSaveToImages.Checked) {
+			if(IsAutoSaveCopyDue()) {
 				SaveAsDocument('U',"PatientForm");
 			}
 			SecurityLogs.MakeLogEntry(EnumPermType.SheetEdit,SheetCur.PatNum,SheetCur.Description+" from "+SheetCur.DateTimeSheet.ToShortDateString());

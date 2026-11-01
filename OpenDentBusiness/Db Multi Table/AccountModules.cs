@@ -746,7 +746,7 @@ namespace OpenDentBusiness {
 			//Sort the data rows first by PatNum then by date.
 			//This will potentially change the order of rows to where the balance column does not make sense.
 			//Recalculate balances after the sort runs.
-			listDataRows.Sort(SortRowsForStatmentPrinting);
+			listDataRows.Sort(SalesTaxLedgerOrder.CreateForRows(listDataRows).Wrap(SortRowsForStatmentPrinting,isByPatient:true));
 			decimal bal=0;
 			string patNumPrev="0";
 			foreach(DataRow dataRow in listDataRows) {
@@ -2241,11 +2241,13 @@ namespace OpenDentBusiness {
 			}
 			#endregion Installment Plans
 			//Sorting-----------------------------------------------------------------------------------------
+			//Sales tax rows go last within their date (Open Dental 25.1).
+			SalesTaxLedgerOrder salesTaxLedgerOrder=SalesTaxLedgerOrder.CreateFromRawAdjustments(rawAdj);
 			if(isForStatementPrinting && !intermingled) {
-				listDataRows.Sort(SortRowsForStatmentPrinting);
+				listDataRows.Sort(salesTaxLedgerOrder.Wrap(SortRowsForStatmentPrinting,isByPatient:true));
 			}
 			else {
-				listDataRows.Sort(new AccountLineComparer());
+				listDataRows.Sort(salesTaxLedgerOrder.Wrap(new AccountLineComparer().Compare,isByPatient:false));
 			}
 			//Canadian lab procedures need to come immediately after their corresponding proc---------------------------------
 			foreach(DataRow labRow in labRows) {

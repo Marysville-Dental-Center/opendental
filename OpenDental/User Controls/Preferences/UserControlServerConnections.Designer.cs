@@ -28,8 +28,8 @@ namespace OpenDental {
 			this.groupBoxReadOnlyServerSetup = new OpenDental.UI.GroupBox();
 			this.radioReadOnlyServerDirect = new System.Windows.Forms.RadioButton();
 			this.groupConnectionSettings = new OpenDental.UI.GroupBox();
-			this.labelSkySQL = new System.Windows.Forms.Label();
-			this.textSkySQL = new System.Windows.Forms.TextBox();
+			this.labelSslCaPem = new System.Windows.Forms.Label();
+			this.textSslCaPem = new System.Windows.Forms.TextBox();
 			this.comboServerName = new System.Windows.Forms.ComboBox();
 			this.textMysqlPass = new System.Windows.Forms.TextBox();
 			this.comboDatabase = new System.Windows.Forms.ComboBox();
@@ -42,9 +42,16 @@ namespace OpenDental {
 			this.groupMiddleTier = new OpenDental.UI.GroupBox();
 			this.textMiddleTierURI = new System.Windows.Forms.TextBox();
 			this.labelURI = new System.Windows.Forms.Label();
+			this.groupReplication = new OpenDental.UI.GroupBox();
+			this.labelReplicationReadDelay = new System.Windows.Forms.Label();
+			this.textReplicationReadDelayMs = new OpenDental.ValidNum();
+			this.labelReplicationSignalLookback = new System.Windows.Forms.Label();
+			this.textReplicationSignalLookbackMs = new OpenDental.ValidNum();
+			this.labelReplicationInfo = new System.Windows.Forms.Label();
 			this.groupBoxReadOnlyServerSetup.SuspendLayout();
 			this.groupConnectionSettings.SuspendLayout();
 			this.groupMiddleTier.SuspendLayout();
+			this.groupReplication.SuspendLayout();
 			this.SuspendLayout();
 			// 
 			// checkUseReadOnlyServer
@@ -82,12 +89,12 @@ namespace OpenDental {
 			// 
 			// groupConnectionSettings
 			// 
-			this.groupConnectionSettings.Controls.Add(this.textSkySQL);
+			this.groupConnectionSettings.Controls.Add(this.textSslCaPem);
 			this.groupConnectionSettings.Controls.Add(this.comboServerName);
 			this.groupConnectionSettings.Controls.Add(this.textMysqlPass);
 			this.groupConnectionSettings.Controls.Add(this.comboDatabase);
 			this.groupConnectionSettings.Controls.Add(this.textMysqlUser);
-			this.groupConnectionSettings.Controls.Add(this.labelSkySQL);
+			this.groupConnectionSettings.Controls.Add(this.labelSslCaPem);
 			this.groupConnectionSettings.Controls.Add(this.label1);
 			this.groupConnectionSettings.Controls.Add(this.label2);
 			this.groupConnectionSettings.Controls.Add(this.label3);
@@ -98,21 +105,21 @@ namespace OpenDental {
 			this.groupConnectionSettings.TabIndex = 100;
 			this.groupConnectionSettings.Text = "Connection Settings";
 			// 
-			// labelSkySQL
+			// labelSslCaPem
 			// 
-			this.labelSkySQL.Location = new System.Drawing.Point(23, 147);
-			this.labelSkySQL.Name = "labelSkySQL";
-			this.labelSkySQL.Size = new System.Drawing.Size(115, 17);
-			this.labelSkySQL.TabIndex = 105;
-			this.labelSkySQL.Text = "Sky SQL PEM (rare)";
-			this.labelSkySQL.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.labelSslCaPem.Location = new System.Drawing.Point(6, 140);
+			this.labelSslCaPem.Name = "labelSslCaPem";
+			this.labelSslCaPem.Size = new System.Drawing.Size(132, 28);
+			this.labelSslCaPem.TabIndex = 105;
+			this.labelSslCaPem.Text = "SSL CA certificate (.pem) path";
+			this.labelSslCaPem.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
 			// 
-			// textSkySQL
+			// textSslCaPem
 			// 
-			this.textSkySQL.Location = new System.Drawing.Point(139, 144);
-			this.textSkySQL.Name = "textSkySQL";
-			this.textSkySQL.Size = new System.Drawing.Size(292, 20);
-			this.textSkySQL.TabIndex = 105;
+			this.textSslCaPem.Location = new System.Drawing.Point(139, 144);
+			this.textSslCaPem.Name = "textSslCaPem";
+			this.textSslCaPem.Size = new System.Drawing.Size(292, 20);
+			this.textSslCaPem.TabIndex = 105;
 			// 
 			// comboServerName
 			// 
@@ -219,12 +226,72 @@ namespace OpenDental {
 			this.labelURI.Text = "URI";
 			this.labelURI.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
 			// 
+			// groupReplication
+			// 
+			this.groupReplication.Controls.Add(this.labelReplicationReadDelay);
+			this.groupReplication.Controls.Add(this.textReplicationReadDelayMs);
+			this.groupReplication.Controls.Add(this.labelReplicationSignalLookback);
+			this.groupReplication.Controls.Add(this.textReplicationSignalLookbackMs);
+			this.groupReplication.Controls.Add(this.labelReplicationInfo);
+			this.groupReplication.Location = new System.Drawing.Point(20, 365);
+			this.groupReplication.Name = "groupReplication";
+			this.groupReplication.Size = new System.Drawing.Size(450, 156);
+			this.groupReplication.TabIndex = 110;
+			this.groupReplication.Text = "Replication";
+			// 
+			// labelReplicationReadDelay
+			// 
+			this.labelReplicationReadDelay.Location = new System.Drawing.Point(16, 21);
+			this.labelReplicationReadDelay.Name = "labelReplicationReadDelay";
+			this.labelReplicationReadDelay.Size = new System.Drawing.Size(320, 17);
+			this.labelReplicationReadDelay.TabIndex = 111;
+			this.labelReplicationReadDelay.Text = "Read delay after write (ms)";
+			this.labelReplicationReadDelay.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			// 
+			// textReplicationReadDelayMs
+			// 
+			this.textReplicationReadDelayMs.Location = new System.Drawing.Point(339, 19);
+			this.textReplicationReadDelayMs.MaxVal = 60000;
+			this.textReplicationReadDelayMs.MinVal = 0;
+			this.textReplicationReadDelayMs.Name = "textReplicationReadDelayMs";
+			this.textReplicationReadDelayMs.Size = new System.Drawing.Size(60, 20);
+			this.textReplicationReadDelayMs.TabIndex = 112;
+			this.textReplicationReadDelayMs.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
+			// 
+			// labelReplicationSignalLookback
+			// 
+			this.labelReplicationSignalLookback.Location = new System.Drawing.Point(16, 47);
+			this.labelReplicationSignalLookback.Name = "labelReplicationSignalLookback";
+			this.labelReplicationSignalLookback.Size = new System.Drawing.Size(320, 17);
+			this.labelReplicationSignalLookback.TabIndex = 113;
+			this.labelReplicationSignalLookback.Text = "Write delay for signals (ms)";
+			this.labelReplicationSignalLookback.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			// 
+			// textReplicationSignalLookbackMs
+			// 
+			this.textReplicationSignalLookbackMs.Location = new System.Drawing.Point(339, 45);
+			this.textReplicationSignalLookbackMs.MaxVal = 60000;
+			this.textReplicationSignalLookbackMs.MinVal = 0;
+			this.textReplicationSignalLookbackMs.Name = "textReplicationSignalLookbackMs";
+			this.textReplicationSignalLookbackMs.Size = new System.Drawing.Size(60, 20);
+			this.textReplicationSignalLookbackMs.TabIndex = 114;
+			this.textReplicationSignalLookbackMs.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
+			// 
+			// labelReplicationInfo
+			// 
+			this.labelReplicationInfo.Location = new System.Drawing.Point(6, 72);
+			this.labelReplicationInfo.Name = "labelReplicationInfo";
+			this.labelReplicationInfo.Size = new System.Drawing.Size(438, 78);
+			this.labelReplicationInfo.TabIndex = 115;
+			this.labelReplicationInfo.Text = "Read delay: after this workstation saves, reads meant for the read-only server use the main server for this long. Write delay: signal checks look back this much further, so signals that reach a replica late are not missed. 0 (off) to 60000. Used only with a read-only server or replication servers.";
+			// 
 			// UserControlServerConnections
 			// 
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
 			this.BackColor = System.Drawing.Color.White;
 			this.Controls.Add(this.checkUseReadOnlyServer);
 			this.Controls.Add(this.groupBoxReadOnlyServerSetup);
+			this.Controls.Add(this.groupReplication);
 			this.Name = "UserControlServerConnections";
 			this.Size = new System.Drawing.Size(494, 660);
 			this.groupBoxReadOnlyServerSetup.ResumeLayout(false);
@@ -232,6 +299,8 @@ namespace OpenDental {
 			this.groupConnectionSettings.PerformLayout();
 			this.groupMiddleTier.ResumeLayout(false);
 			this.groupMiddleTier.PerformLayout();
+			this.groupReplication.ResumeLayout(false);
+			this.groupReplication.PerformLayout();
 			this.ResumeLayout(false);
 
 		}
@@ -253,7 +322,13 @@ namespace OpenDental {
 		private UI.GroupBox groupBoxReadOnlyServerSetup;
 		private System.Windows.Forms.ComboBox comboServerName;
 		private System.Windows.Forms.ComboBox comboDatabase;
-		private System.Windows.Forms.Label labelSkySQL;
-		private System.Windows.Forms.TextBox textSkySQL;
+		private System.Windows.Forms.Label labelSslCaPem;
+		private System.Windows.Forms.TextBox textSslCaPem;
+		private UI.GroupBox groupReplication;
+		private System.Windows.Forms.Label labelReplicationReadDelay;
+		private ValidNum textReplicationReadDelayMs;
+		private System.Windows.Forms.Label labelReplicationSignalLookback;
+		private ValidNum textReplicationSignalLookbackMs;
+		private System.Windows.Forms.Label labelReplicationInfo;
 	}
 }

@@ -28,13 +28,46 @@ namespace OpenDentBusiness {
 	}
 
 	public class DicomHelper{
+		///<summary>Windowing values (document.WindowingMin and WindowingMax) are always stored from 0 to 255, whatever the bit depth of the image.
+		///Returns how many raw pixel values one windowing step covers: 1 for 8 bit data, 16 for 12 bit data (4095/255, as before), and 256 for true
+		///16 bit data, which uses its 12 most significant bits the way Open Dental 25.4 documents for document.WindowingMax. Decided by BitsStored,
+		///not BitsAllocated, because 12 bit images are stored in 16 bit words. Other depths in 16 bit words keep the 12 bit factor they always had,
+		///so their stored windowing still shows the same.</summary>
+		public static float GetRawPerWindowingStep(BitmapDicom bitmapDicom){
+			if(bitmapDicom.BitsAllocated!=16) {
+				return 1f;
+			}
+			if(bitmapDicom.BitsStored==16) {
+				return 256f;
+			}
+			return 16f;
+		}
+
+		///<summary>Limits a stored windowing value to 0-255. Larger values mean the top of the range: the import wrote 4095 for true 16 bit images
+		///before the 25.4 change, and the windowing slider already shows them as 255.</summary>
+		public static int ClampWindowing(int windowingValue){
+			if(windowingValue<0) {
+				return 0;
+			}
+			if(windowingValue>255) {
+				return 255;
+			}
+			return windowingValue;
+		}
+
 		///<summary>Converts the 16 bit bitmap data to an 8 bit bitmap by using the supplied windowing range.  Windowing values can be between 0 and 255.  Can return null.</summary>
 		public static Bitmap ApplyWindowing(BitmapDicom bitmapDicom,int windowingMin,int windowingMax){
 			Bitmap bitmap=new Bitmap(bitmapDicom.Width,bitmapDicom.Height);
 			BitmapData bitmapData=bitmap.LockBits(new Rectangle(0,0,bitmapDicom.Width,bitmapDicom.Height),ImageLockMode.ReadWrite,bitmap.PixelFormat);
-			//convert the windowing values to 12 bit versions, which does mean slightly rough increments for now.  This is not an issue because no data degradation.
-			//4096 total values, from 0 to 4095.
-			//255 x 16 = 4080, which is the max value we will support for windowing for now.
+			//The windowing values stay on the 0-255 scale; the raw values are scaled down to it instead, which does mean slightly rough increments.
+			//This is not an issue because no data degradation. 12 bit: 4096 values, divided by 16. True 16 bit: 65536 values, divided by 256.
+			float rawPerWindowingStep=GetRawPerWindowingStep(bitmapDicom);
+			windowingMin=ClampWindowing(windowingMin);
+			windowingMax=ClampWindowing(windowingMax);
+			if(windowingMax==0) {//0 means no windowing was ever set (document.WindowingMax default), so show the full range, as the slider does.
+				windowingMin=0;
+				windowingMax=255;
+			}
 			unsafe {
 				//rawData count should be same as pixels.  4 bytes per pixel
 				byte* pBytes=(byte*)bitmapData.Scan0.ToPointer();
@@ -42,7 +75,7 @@ namespace OpenDentBusiness {
 					byte byteVal=0;
 					float floatDataRaw=bitmapDicom.ArrayDataRaw[i];
 					if(bitmapDicom.BitsAllocated==16) {//12 or 16 bits stored
-						floatDataRaw=floatDataRaw/16f;
+						floatDataRaw=floatDataRaw/rawPerWindowingStep;
 					}
 					if(floatDataRaw<windowingMin) {
 						byteVal=0;//black
@@ -171,7 +204,9 @@ namespace OpenDentBusiness {
 				return;
 			}
 			if(bitmapDicom.BitsStored==16) {
-				bitmapDicom.WindowingMax=4095;//2^12
+				//Full range on the 0-255 windowing scale. Before 25.4 this was 4095, which showed the same full range because raw values were divided by 16.
+				bitmapDicom.WindowingMin=0;
+				bitmapDicom.WindowingMax=255;
 				return;
 			}
 			int[] histogram=new int[4096];

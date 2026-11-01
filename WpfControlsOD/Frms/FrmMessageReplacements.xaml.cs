@@ -186,6 +186,14 @@ namespace OpenDental {
 			listReplacementFields.Add(new ReplacementField("[CurrentMonth]","The text description of the current month (ex December).",MessageReplaceType.Misc,isAllowPhi,listMessageReplaceTypesSupported));
 			listReplacementFields.Add(new ReplacementField("[ClinicNumCur]","The currently selected clinic number or 0 if clinics are disabled",MessageReplaceType.Misc,isAllowPhi,listMessageReplaceTypesSupported));
 			#endregion
+			#region Program Link Replacement Rows
+			//25.1: only program links replace these, so they are listed only where program links are edited.
+			if(listMessageReplaceTypesSupported.Contains(MessageReplaceType.ProgramLink)) {
+				listReplacementFields.Add(new ReplacementField(ProgramLinkSelectedProcs.FIELD,"The ProcNums of the procedures selected in the Chart, Treatment Plan or "
+					+"Account module, separated by commas. Empty in other modules or when nothing is selected.",MessageReplaceType.ProgramLink,isAllowPhi,
+					listMessageReplaceTypesSupported));
+			}
+			#endregion
 			#region Patient's "From" Referrals-IsDoctor only Replacement Rows
 			listReplacementFields.Add(new ReplacementField("[ReferredFromProvInitialReferralNum]","The 'ReferralNum' of the initial (oldest) 'Referred From' provider that is marked as "
 				+"'Is Doctor'.",MessageReplaceType.Referral,isAllowPhi,listMessageReplaceTypesSupported));
@@ -328,7 +336,9 @@ namespace OpenDental {
 		Misc,
 		Referral,
 		PaymentPlan,
-		Mount
+		Mount,
+		///<summary>Fields that only program links replace, such as [SelectedProcNums] (25.1).</summary>
+		ProgramLink
 	}
 
 	public enum MessageReplacementSystemType {

@@ -379,7 +379,7 @@ namespace OpenDentBusiness {
 				}
 				else {//InsBlueBookRuleType.ProviderFee
 					long feeSchedNum;
-					LogText="Rule Type: UCR Fee";
+					LogText="Rule Type: Standard Provider Fee";
 					//Logic here mimics InsPlans.GetAllowed()
 					if(procedure.ProvNum==0) {//slight corruption, so we get the FeeSched for default practice provider.
 						LogText+=" (Practice Default Provider).";
@@ -419,7 +419,7 @@ namespace OpenDentBusiness {
 			else {
 				LogText+=$" Allowed amount: {Math.Round(allowed*procedure.Quantity,2).ToString("f")}";
 				if(insBlueBookRule.RuleType==InsBlueBookRuleType.ProviderFee) {
-					LogText+=$" ({PrefC.GetInt(PrefName.InsBlueBookUcrFeePercent).ToString()}% of UCR fee)";
+					LogText+=$" ({PrefC.GetInt(PrefName.InsBlueBookUcrFeePercent).ToString()}% of standard provider fee)";
 				}
 				LogText+=".";
 			}

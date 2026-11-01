@@ -109,6 +109,7 @@ namespace OpenDental {
 			textScale.Value=MountDefs.GetScale(PrefC.GetString(PrefName.ImagingDefaultScaleValue));
 			textDecimals.Value=MountDefs.GetDecimals(PrefC.GetString(PrefName.ImagingDefaultScaleValue));
 			checkImagingOrderDescending.Checked=PrefC.GetBool(PrefName.ImagingOrderDescending);
+			checkImagingAllowPdfJavascript.Checked=PrefC.GetBool(PrefName.ImagingAllowPdfJavascript);
 		}
 
 		public bool SaveImagingGeneral() {
@@ -124,6 +125,7 @@ namespace OpenDental {
 			string scaleValue=MountDefs.SetScale((float)textScale.Value,textDecimals.Value,textUnits.Text);
 			Changed|=Prefs.UpdateString(PrefName.ImagingDefaultScaleValue,scaleValue);
 			Changed|=Prefs.UpdateBool(PrefName.ImagingOrderDescending,checkImagingOrderDescending.Checked);
+			Changed|=Prefs.UpdateBool(PrefName.ImagingAllowPdfJavascript,checkImagingAllowPdfJavascript.Checked);
 			if(Prefs.UpdateBool(PrefName.ImagesModuleUsesOld2020,checkImagesModuleUsesOld2020.Checked)) {
 				Changed=true;
 				DoSwapImagingModule=true;

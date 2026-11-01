@@ -38,6 +38,8 @@ namespace OpenDental {
 			this.checkAutocodes = new OpenDental.UI.CheckBox();
 			this.checkTcodes = new OpenDental.UI.CheckBox();
 			this.checkNcodes = new OpenDental.UI.CheckBox();
+			this.checkCodeImport = new OpenDental.UI.CheckBox();
+			this.checkCodeGroups = new OpenDental.UI.CheckBox();
 			this.label5 = new System.Windows.Forms.Label();
 			this.checkProcButtons = new OpenDental.UI.CheckBox();
 			this.checkApptProcsQuickAdd = new OpenDental.UI.CheckBox();
@@ -49,7 +51,7 @@ namespace OpenDental {
 			// 
 			// checkAutocodes
 			// 
-			this.checkAutocodes.Location = new System.Drawing.Point(16, 176);
+			this.checkAutocodes.Location = new System.Drawing.Point(16, 218);
 			this.checkAutocodes.Name = "checkAutocodes";
 			this.checkAutocodes.Size = new System.Drawing.Size(646, 36);
 			this.checkAutocodes.TabIndex = 43;
@@ -75,6 +77,24 @@ namespace OpenDental {
 			this.checkNcodes.TabIndex = 46;
 			this.checkNcodes.Text = "N Codes - Add any missing no-fee codes.";
 			// 
+			// checkCodeImport
+			// 
+			this.checkCodeImport.Location = new System.Drawing.Point(15, 150);
+			this.checkCodeImport.Name = "checkCodeImport";
+			this.checkCodeImport.Size = new System.Drawing.Size(646, 36);
+			this.checkCodeImport.TabIndex = 55;
+			this.checkCodeImport.Text = "D Codes - Import CDT codes from a licensed code file that you supply. Adds missing codes, updates descriptions, fil" +
+    "ls in missing abbreviations and moves codes the file marks as deleted to the Obsolete category.";
+			// 
+			// checkCodeGroups
+			// 
+			this.checkCodeGroups.Location = new System.Drawing.Point(16, 260);
+			this.checkCodeGroups.Name = "checkCodeGroups";
+			this.checkCodeGroups.Size = new System.Drawing.Size(646, 36);
+			this.checkCodeGroups.TabIndex = 56;
+			this.checkCodeGroups.Text = "Code Groups - Deletes all code groups and recreates the defaults for the code system you choose. Benefits that us" +
+    "e a code group are moved to the matching new group.";
+			// 
 			// label5
 			// 
 			this.label5.Location = new System.Drawing.Point(12, 9);
@@ -85,7 +105,7 @@ namespace OpenDental {
 			// 
 			// checkProcButtons
 			// 
-			this.checkProcButtons.Location = new System.Drawing.Point(16, 218);
+			this.checkProcButtons.Location = new System.Drawing.Point(16, 302);
 			this.checkProcButtons.Name = "checkProcButtons";
 			this.checkProcButtons.Size = new System.Drawing.Size(646, 36);
 			this.checkProcButtons.TabIndex = 49;
@@ -93,7 +113,7 @@ namespace OpenDental {
 			// 
 			// checkApptProcsQuickAdd
 			// 
-			this.checkApptProcsQuickAdd.Location = new System.Drawing.Point(16, 260);
+			this.checkApptProcsQuickAdd.Location = new System.Drawing.Point(16, 344);
 			this.checkApptProcsQuickAdd.Name = "checkApptProcsQuickAdd";
 			this.checkApptProcsQuickAdd.Size = new System.Drawing.Size(646, 36);
 			this.checkApptProcsQuickAdd.TabIndex = 51;
@@ -102,7 +122,7 @@ namespace OpenDental {
 			// 
 			// checkRecallTypes
 			// 
-			this.checkRecallTypes.Location = new System.Drawing.Point(16, 302);
+			this.checkRecallTypes.Location = new System.Drawing.Point(16, 386);
 			this.checkRecallTypes.Name = "checkRecallTypes";
 			this.checkRecallTypes.Size = new System.Drawing.Size(646, 36);
 			this.checkRecallTypes.TabIndex = 52;
@@ -112,7 +132,7 @@ namespace OpenDental {
 			// butRun
 			// 
 			this.butRun.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.butRun.Location = new System.Drawing.Point(603, 338);
+			this.butRun.Location = new System.Drawing.Point(603, 422);
 			this.butRun.Name = "butRun";
 			this.butRun.Size = new System.Drawing.Size(82, 26);
 			this.butRun.TabIndex = 50;
@@ -122,7 +142,7 @@ namespace OpenDental {
 			// labelLineOne
 			// 
 			this.labelLineOne.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
-			this.labelLineOne.Location = new System.Drawing.Point(15, 150);
+			this.labelLineOne.Location = new System.Drawing.Point(15, 192);
 			this.labelLineOne.Name = "labelLineOne";
 			this.labelLineOne.Size = new System.Drawing.Size(670, 2);
 			this.labelLineOne.TabIndex = 53;
@@ -130,14 +150,16 @@ namespace OpenDental {
 			// labelLineTwo
 			// 
 			this.labelLineTwo.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
-			this.labelLineTwo.Location = new System.Drawing.Point(15, 165);
+			this.labelLineTwo.Location = new System.Drawing.Point(15, 207);
 			this.labelLineTwo.Name = "labelLineTwo";
 			this.labelLineTwo.Size = new System.Drawing.Size(670, 2);
 			this.labelLineTwo.TabIndex = 54;
 			// 
 			// FormProcTools
 			// 
-			this.ClientSize = new System.Drawing.Size(698, 376);
+			this.ClientSize = new System.Drawing.Size(698, 460);
+			this.Controls.Add(this.checkCodeGroups);
+			this.Controls.Add(this.checkCodeImport);
 			this.Controls.Add(this.labelLineTwo);
 			this.Controls.Add(this.labelLineOne);
 			this.Controls.Add(this.checkRecallTypes);
@@ -169,5 +191,7 @@ namespace OpenDental {
 		private OpenDental.UI.CheckBox checkRecallTypes;
 		private Label labelLineOne;
 		private Label labelLineTwo;
+		private OpenDental.UI.CheckBox checkCodeImport;
+		private OpenDental.UI.CheckBox checkCodeGroups;
 	}
 }

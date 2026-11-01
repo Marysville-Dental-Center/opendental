@@ -1224,6 +1224,13 @@ namespace OpenDental {
 				}
 			}
 			int retVal=0;
+			//26.1: codes with commas or hyphens are refused (code lists use them as separators). The rest are imported.
+			listProcedureCodes=ProcedureCodes.GetCodesWithAllowedText(listProcedureCodes,out List<string> listErrorsCodeText);
+			if(listErrorsCodeText.Count>0) {
+				using MsgBoxCopyPaste msgBoxCopyPasteRefused=new MsgBoxCopyPaste(Lan.g("FormProcCodes","These codes were not imported:")+"\r\n"
+					+string.Join("\r\n",listErrorsCodeText));
+				msgBoxCopyPasteRefused.ShowDialog();
+			}
 			for(int i=0;i<listProcedureCodes.Count;i++) {
 				if(ProcedureCodes.GetContainsKey(listProcedureCodes[i].ProcCode)) {
 					continue;//don't import duplicates.

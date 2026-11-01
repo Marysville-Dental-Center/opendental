@@ -337,5 +337,82 @@ namespace OpenDentBusiness{
 			}
 			return sheetFieldDef1.TabOrderMobile-sheetFieldDef2.TabOrderMobile;
 		}
+
+		#region Duplicate field warning (Open Dental 25.4)
+		///<summary>What makes a field the same field as another for the duplicate field warning of the Sheet Def editor, or null for fields that are
+		///never checked. Input and output fields: the field name, or for "misc" fields the user-defined (reportable) name. Checkboxes and radio
+		///buttons: the field name and the radio button value, or for "misc" checkboxes the radio button group and the user-defined name. Static
+		///text, lines, rectangles, images, signature boxes, grids and every other type are never checked, nor are fields without a name and "misc"
+		///fields without a user-defined name.</summary>
+		public static string GetDuplicateKey(SheetFieldDef sheetFieldDef) {
+			Meth.NoCheckMiddleTierRole();
+			if(sheetFieldDef==null || string.IsNullOrWhiteSpace(sheetFieldDef.FieldName)) {
+				return null;
+			}
+			bool isMisc=sheetFieldDef.FieldName.StartsWith("misc");
+			string reportableName=(sheetFieldDef.ReportableName??"").Trim();
+			switch(sheetFieldDef.FieldType) {
+				case SheetFieldType.InputField:
+				case SheetFieldType.OutputText:
+					if(isMisc) {
+						return reportableName=="" ? null : "misc\u0001"+reportableName;
+					}
+					return sheetFieldDef.FieldName;
+				case SheetFieldType.CheckBox:
+					if(isMisc) {
+						return reportableName=="" ? null : "misc\u0001"+(sheetFieldDef.RadioButtonGroup??"").Trim()+"\u0001"+reportableName;
+					}
+					return sheetFieldDef.FieldName+"\u0001"+(sheetFieldDef.RadioButtonValue??"");
+				default:
+					return null;
+			}
+		}
+
+		///<summary>The fields of listSheetFieldDefs that sheetFieldDefNew duplicates when it is added in the given language and layout mode: same
+		///field type, same GetDuplicateKey (case does not matter, as in the database), same language and same layout mode. A field is never a
+		///duplicate of itself (the same object). Empty when sheetFieldDefNew is never checked.</summary>
+		public static List<SheetFieldDef> GetDuplicates(SheetFieldDef sheetFieldDefNew,List<SheetFieldDef> listSheetFieldDefs,string language,
+			SheetFieldLayoutMode sheetFieldLayoutMode)
+		{
+			Meth.NoCheckMiddleTierRole();
+			List<SheetFieldDef> listSheetFieldDefsDuplicate=new List<SheetFieldDef>();
+			string key=GetDuplicateKey(sheetFieldDefNew);
+			if(key==null || listSheetFieldDefs==null) {
+				return listSheetFieldDefsDuplicate;
+			}
+			for(int i=0;i<listSheetFieldDefs.Count;i++) {
+				SheetFieldDef sheetFieldDef=listSheetFieldDefs[i];
+				if(sheetFieldDef==sheetFieldDefNew
+					|| sheetFieldDef.FieldType!=sheetFieldDefNew.FieldType
+					|| (sheetFieldDef.Language??"")!=(language??"")
+					|| sheetFieldDef.LayoutMode!=sheetFieldLayoutMode
+					|| !string.Equals(GetDuplicateKey(sheetFieldDef),key,StringComparison.OrdinalIgnoreCase))
+				{
+					continue;
+				}
+				listSheetFieldDefsDuplicate.Add(sheetFieldDef);
+			}
+			return listSheetFieldDefsDuplicate;
+		}
+
+		///<summary>How the duplicate field warning names a field: "FName", "misc (Reason for visit)", "allergy:Penicillin (Y)" or "misc (Smoker,
+		///group Habits)".</summary>
+		public static string GetDuplicateDisplayName(SheetFieldDef sheetFieldDef) {
+			Meth.NoCheckMiddleTierRole();
+			string fieldName=sheetFieldDef.FieldName??"";
+			string reportableName=(sheetFieldDef.ReportableName??"").Trim();
+			if(fieldName.StartsWith("misc") && reportableName!="") {
+				string radioButtonGroup=(sheetFieldDef.RadioButtonGroup??"").Trim();
+				if(sheetFieldDef.FieldType==SheetFieldType.CheckBox && radioButtonGroup!="") {
+					return fieldName+" ("+reportableName+", "+Lans.g("SheetFieldDefs","group")+" "+radioButtonGroup+")";
+				}
+				return fieldName+" ("+reportableName+")";
+			}
+			if(sheetFieldDef.FieldType==SheetFieldType.CheckBox && !string.IsNullOrEmpty(sheetFieldDef.RadioButtonValue)) {
+				return fieldName+" ("+sheetFieldDef.RadioButtonValue+")";
+			}
+			return fieldName;
+		}
+		#endregion Duplicate field warning (Open Dental 25.4)
 	}
 }

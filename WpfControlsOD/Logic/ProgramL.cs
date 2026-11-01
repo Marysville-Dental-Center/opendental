@@ -13,9 +13,19 @@ namespace WpfControls {
 	public class ProgramL {
 		///<summary>Typically used when user clicks a button to a Program link.  This method attempts to identify and execute the program based on the given programNum.</summary>
 		public static void Execute(long programNum,Patient patient) {
+			Execute(programNum,patient,null);
+		}
+
+		///<summary>Same as Execute(programNum,patient), from a module where procedures can be selected. listSelectedProcNums replaces
+		///[SelectedProcNums] (25.1) in the command line, path and output file; null or empty replaces it with an empty string.</summary>
+		public static void Execute(long programNum,Patient patient,List<long> listSelectedProcNums) {
 			Program program=Programs.GetFirstOrDefault(x => x.ProgramNum==programNum);
 			if(program==null) {//no match was found
 				MsgBox.Show("Program","Error, program entry not found in database.");
+				return;
+			}
+			if(ProgramLinksDiscontinued.IsDiscontinued(program)) {//25.2: DXC Patient Credit Score. The bridge was removed.
+				MsgBox.Show("Program","This program link was discontinued and can no longer be used.");
 				return;
 			}
 			if(patient!=null && PrefC.GetBool(PrefName.ShowFeaturePatientClone)) {
@@ -176,8 +186,8 @@ namespace WpfControls {
 				Dolphin.SendData(program,patient);
 				return;
 			}
-			else if(program.ProgName==ProgramName.DXCPatientCreditScore.ToString()) {
-				OpenDental.Bridges.DentalXChange.SendData(program,patient);
+			else if(program.ProgName==ProgramName.DTXStudio.ToString() || program.ProgName==ProgramName.DTXStudioAcquire.ToString()) {
+				DTXStudio.SendData(program,patient);
 				return;
 			}
 			else if(program.ProgName==ProgramName.Dxis.ToString()) {
@@ -276,6 +286,10 @@ namespace WpfControls {
 			}
 			else if(program.ProgName==ProgramName.OrthoInsight3d.ToString()) {
 				OrthoInsight3d.SendData(program,patient);
+				return;
+			}
+			else if(program.ProgName==ProgramName.Overjet.ToString()) {
+				Overjet.SendData(program,patient);
 				return;
 			}
 			else if(program.ProgName==ProgramName.Owandy.ToString()) {
@@ -472,6 +486,10 @@ namespace WpfControls {
 			string path=Programs.GetProgramPath(program).Replace("[ClinicNumCur]",Clinics.ClinicNum.ToString());
 			string outputFilePath=program.FilePath.Replace("[ClinicNumCur]",Clinics.ClinicNum.ToString());
 			string fileTemplate=program.FileTemplate.Replace("[ClinicNumCur]",Clinics.ClinicNum.ToString());
+			//[SelectedProcNums] is replaced with or without a patient, so the literal tag never reaches the other program.
+			cmdline=ProgramLinkSelectedProcs.Replace(cmdline,listSelectedProcNums);
+			path=ProgramLinkSelectedProcs.Replace(path,listSelectedProcNums);
+			fileTemplate=ProgramLinkSelectedProcs.Replace(fileTemplate,listSelectedProcNums);
 			if(patient!=null) {
 				cmdline=ReplaceHelper(cmdline,patient);
 				path=ReplaceHelper(path,patient);

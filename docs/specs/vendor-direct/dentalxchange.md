@@ -33,6 +33,15 @@ DentalXChange's SOAP web services (DWS: eligibility, ERAs, payer list, claim val
 - **Log:** every call is an `etrans` pair: the request as `Claim_XConnect` (36) and the response as `ClaimAck_XConnect` (37), linked through `AckEtransNum`. A call without a response logs the request with a note.
 - "How to fix" is the fork's own hint, chosen from the claim part and message DentalXChange returns.
 
+## PDF attachments (Open Dental 26.1.64)
+
+Implemented by package V-DXC2 (M2, wave C1); details in [../../port-notes/V-DXC2.md](../../port-notes/V-DXC2.md).
+
+- A PDF goes to DentalXChange as it is, base64-encoded in the same image field as images (partner service `addImage`, XConnect `/attachments/images/add`), with a file name ending in `.pdf`. Neither call has a content-type field. Images are still sent as JPEGs.
+- Before anything is sent, a PDF is refused when it is empty, over 10 MB (our own limit: DentalXChange publishes none), not a PDF, or encrypted or password-protected (`DxcPdfAttachment`, `OpenDentBusiness/VendorDirect/DentalXChange/`).
+- Where: the Select Image window (Account and Treatment Plan right-click) sends PDF documents from the patient's images, and its Send File button sends a PDF or an image from disk. The claim attachment window's file picker takes `.pdf` for DentalXChange. Snip and Paste stay image-only. EDS keeps refusing PDFs.
+- `.pdf` is matched in any case.
+
 ## Not done / open
 
 - Nothing was run against DentalXChange: no test account was available. The response mapping follows the 24.3 XConnect response model in `ClaimConnect.cs`.

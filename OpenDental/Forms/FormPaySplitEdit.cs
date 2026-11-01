@@ -59,7 +59,7 @@ namespace OpenDental {
 			textDatePay.Text=PaySplitCur.DatePay.ToShortDateString();
 			textAmount.Text=PaySplitCur.SplitAmt.ToString("F");
 			comboUnearnedTypes.Items.AddDefNone();
-			comboUnearnedTypes.Items.AddDefs(Defs.GetDefsForCategory(DefCat.PaySplitUnearnedType,true));
+			comboUnearnedTypes.Items.AddDefs(PaySplitPayPlanAttach.GetUnearnedDefsForSplitEdit());//25.2: also lists the Payment Plan Prepay type
 			comboUnearnedTypes.SetSelectedDefNum(PaySplitCur.UnearnedType); 
 			if(comboUnearnedTypes.SelectedIndex!=-1){
 				_defUnearnedOld=comboUnearnedTypes.GetSelected<Def>();
@@ -149,18 +149,31 @@ namespace OpenDental {
 		}
 
 		private void comboUnearnedTypes_SelectionChangeCommitted(object sender,EventArgs e) {
+			long unearnedTypeOld=PaySplitCur.UnearnedType;
 			if(comboUnearnedTypes.SelectedIndex>0) {
 				PaySplitCur.UnearnedType=comboUnearnedTypes.GetSelectedDefNum();
 			}
 			else {
 				PaySplitCur.UnearnedType=0;
 			}
+			//25.2: a plan prepayment stays on its plan only when that is a patient (dynamic) payment plan.
+			if(PaySplitCur.PayPlanNum!=0 && PaySplitPayPlanAttach.MustDetachForUnearnedType(PayPlans.GetOne(PaySplitCur.PayPlanNum),PaySplitCur.UnearnedType)) {
+				DetachPayPlan();
+			}
+			//B-PAY: a plan prepayment pays no charge, and a split that stops being one pays a due charge again.
+			PaySplitPayPlanAttach.SetPayPlanChargeAfterTypeChange(PaySplitCur,unearnedTypeOld,GetPayPlanChargesDue,_procedure?.ProcNum??0,_adjustment?.AdjNum??0);
 			if(_isEditAnyway || PrefC.GetBool(PrefName.AllowPrepayProvider)) {
 				return;
 			}
 			if(PaySplitCur.UnearnedType>0) {//If they use an unearned type the provnum must be zero if Edit Anyway isn't pressed
 				PaySplitCur.ProvNum=0;
 				comboProvider.SelectedIndex=0;
+				if(PaySplitPayPlanAttach.IsPrepayType(PaySplitCur.UnearnedType)) {//25.2: a plan prepayment can stay on or be attached to a patient payment plan
+					comboProvider.Enabled=false;
+					butPickProv.Enabled=false;
+					checkPayPlan.Enabled=true;
+					return;
+				}
 				DetachPayPlan();
 				comboProvider.Enabled=false;
 				butPickProv.Enabled=false;
@@ -479,6 +492,22 @@ namespace OpenDental {
 			checkPayPlan.Checked=false;
 		}
 
+		///<summary>25.3: after a procedure or adjustment was attached, keeps the split's payment plan when that plan has the procedure or adjustment as
+		///production (and picks the plan's due charge for it); otherwise detaches the plan as 24.3 always did.</summary>
+		private void KeepOrDetachPayPlanForProduction() {
+			if(!PaySplitPayPlanAttach.CanKeepPayPlanForProduction(PaySplitCur.PayPlanNum,PaySplitCur.UnearnedType,_procedure,_adjustment?.AdjNum??0)) {
+				DetachPayPlan();
+				return;
+			}
+			PayPlan payPlan=PayPlans.GetOne(PaySplitCur.PayPlanNum);
+			if(payPlan==null) {
+				DetachPayPlan();
+				return;
+			}
+			AttachPayPlan(payPlan);
+			checkPayPlan.Checked=true;
+		}
+
 		///<summary>Attaches procedure, sets the selected provider, and fills Procedure information.</summary>
 		private void butAttachProc_Click(object sender, System.EventArgs e) {
 			using FormProcSelect formProcSelect=new FormProcSelect(PaySplitCur.PatNum,false);
@@ -498,7 +527,7 @@ namespace OpenDental {
 				comboUnearnedTypes.SelectedIndex=0;
 				PaySplitCur.UnearnedType=0;
 			}
-			DetachPayPlan();
+			KeepOrDetachPayPlanForProduction();
 			SetEnabledProc();
 			FillProcedure();
 			FillAdjustment();
@@ -530,7 +559,7 @@ namespace OpenDental {
 			PaySplitCur.ProvNum=_adjustment.ProvNum;
 			PaySplitCur.ClinicNum=_adjustment.ClinicNum;
 			PaySplitCur.UnearnedType=0;
-			DetachPayPlan();
+			KeepOrDetachPayPlanForProduction();
 			SetEnabledProc();
 			FillProcedure();
 			FillAdjustment();
@@ -557,16 +586,21 @@ namespace OpenDental {
 		private void AttachPayPlan(PayPlan payPlan) {
 			//Always associate the payment split to the payment plan passed in.
 			PaySplitCur.PayPlanNum=payPlan.PayPlanNum;
-			//Don't attach a payment plan charge if none are due.
-			long payPlanChargeNum=0;
 			//Get all charges that are due for that payment plan.
 			List<PayPlanCharge> listPayPlanChargesCurrent=PayPlanCharges.GetDueForPayPlan(payPlan,payPlan.Guarantor);
-			if(listPayPlanChargesCurrent.Count > 0) {
-				//Get the PayPlanChargeNum from the oldest charge.
-				payPlanChargeNum=listPayPlanChargesCurrent.OrderBy(x => x.ChargeDate).First().PayPlanChargeNum;
+			//25.2/25.3: a plan prepayment pays no charge; otherwise the oldest due debit, preferring one for the split's procedure or adjustment.
+			//0 when none are due.
+			PaySplitCur.PayPlanChargeNum=PaySplitPayPlanAttach.GetPayPlanChargeNum(listPayPlanChargesCurrent,PaySplitCur.UnearnedType,
+				_procedure?.ProcNum??0,_adjustment?.AdjNum??0);
+		}
+
+		///<summary>B-PAY: the charges of the split's payment plan that are due (as AttachPayPlan gets them), or none when the plan is gone.</summary>
+		private List<PayPlanCharge> GetPayPlanChargesDue() {
+			PayPlan payPlan=PayPlans.GetOne(PaySplitCur.PayPlanNum);
+			if(payPlan==null) {
+				return new List<PayPlanCharge>();
 			}
-			//This will either clear out PayPlanChargeNum or will be the oldest payment plan charge that is due.
-			PaySplitCur.PayPlanChargeNum=payPlanChargeNum;
+			return PayPlanCharges.GetDueForPayPlan(payPlan,payPlan.Guarantor);
 		}
 
 		private void checkPayPlan_Click(object sender, System.EventArgs e) {
@@ -575,36 +609,41 @@ namespace OpenDental {
 				DetachPayPlan();
 				return;
 			}
-			//Do not let users associated payment splits to payment plans when 'Is from another family' is checked.
-			if(checkPatOtherFam.Checked) {
+			//25.2/25.3 (PaySplitPayPlanAttach): which patient payment plans this split may attach to. Insurance payment plans are never offered, and
+			//treatment planned unearned still cannot be applied. A split from another family may attach to that patient's plans whose guarantor is in
+			//this family (24.3 refused every split from another family).
+			long patNum=PaySplitCur.PatNum;
+			if(!checkPatOtherFam.Checked && listPatient.SelectedIndex>-1) {
+				patNum=_family.ListPats[listPatient.SelectedIndex].PatNum;
+			}
+			PaySplitPayPlanAttach.AttachOptions attachOptions=PaySplitPayPlanAttach.GetOptions(patNum,checkPatOtherFam.Checked,
+				_family.ListPats.Select(x => x.PatNum).ToList(),PaySplitCur.UnearnedType,_procedure,_adjustment?.AdjNum??0);
+			if(!attachOptions.IsAllowed) {
+				MsgBox.Show(attachOptions.ErrorMsg);
 				checkPayPlan.Checked=false;
 				return;
 			}
-			if(comboUnearnedTypes.SelectedIndex!=0 && _procedure!=null && _procedure.ProcStatus==ProcStat.TP) {
-				MsgBox.Show("Treatment planned unearned cannot be applied to payment plans.");
-				checkPayPlan.Checked=false;
-				return;
-			}
-			//Get all payment plans that the selected patient is associated to. Do not include insurance payment plans.
-			List<PayPlan> listPayPlans=PayPlans.GetForPatNum(_family.ListPats[listPatient.SelectedIndex].PatNum).FindAll(x => x.PlanNum==0);
-			if(listPayPlans.Count==0) {
-				MsgBox.Show(this,"The selected patient is not the guarantor for any payment plans.");
-				checkPayPlan.Checked=false;
-				return;
-			}
+			List<PayPlan> listPayPlans=attachOptions.ListPayPlans;
 			//Automatically associate the split to the payment plan if there is only one valid payment plan.
+			PayPlan payPlanSelect;
 			if(listPayPlans.Count==1) {
-				AttachPayPlan(listPayPlans[0]);
-				return;
+				payPlanSelect=listPayPlans[0];
 			}
-			//Have the user select which payment plan to associate this split to when there is more than one valid payment plan.
-			using FormPayPlanSelect formPayPlanSelect=new FormPayPlanSelect(listPayPlans);
-			formPayPlanSelect.ShowDialog();
-			if(formPayPlanSelect.DialogResult==DialogResult.Cancel) {
+			else {
+				//Have the user select which payment plan to associate this split to when there is more than one valid payment plan.
+				using FormPayPlanSelect formPayPlanSelect=new FormPayPlanSelect(listPayPlans);
+				formPayPlanSelect.ShowDialog();
+				if(formPayPlanSelect.DialogResult==DialogResult.Cancel) {
+					checkPayPlan.Checked=false;
+					return;
+				}
+				payPlanSelect=listPayPlans.First(x => x.PayPlanNum==formPayPlanSelect.PayPlanNumSelected);
+			}
+			//25.2: attaching to a closed plan needs a confirmation. Locked plans take payments as usual.
+			if(payPlanSelect.IsClosed && !MsgBox.Show(this,MsgBoxButtons.YesNo,"The selected payment plan is closed. Attach this payment split to it anyway?")) {
 				checkPayPlan.Checked=false;
 				return;
 			}
-			PayPlan payPlanSelect=listPayPlans.First(x => x.PayPlanNum==formPayPlanSelect.PayPlanNumSelected);
 			AttachPayPlan(payPlanSelect);
 		}
 
@@ -641,6 +680,11 @@ namespace OpenDental {
 			}
 			if(PaySplitCur.PayPlanNum > 0 && comboUnearnedTypes.SelectedIndex!=0 && _procedure!=null && _procedure.ProcStatus==ProcStat.TP) {
 				MsgBox.Show("Treatment planned unearned cannot be applied to payment plans.");
+				return false;
+			}
+			//25.2: a plan prepayment is money not yet tied to production.
+			if(PaySplitCur.PayPlanNum > 0 && PaySplitPayPlanAttach.IsPrepayType(PaySplitCur.UnearnedType) && (_procedure!=null || _adjustment!=null)) {
+				MsgBox.Show(this,"A payment plan prepayment cannot also be attached to a procedure or an adjustment.");
 				return false;
 			}
 			//check for TP pre-pay changes. If money has been detached from procedure it needs to be transferred to regular unearned if had been hidden.
@@ -700,6 +744,8 @@ namespace OpenDental {
 					}
 				}
 			}
+			//B-PAY 25.2: the unearned type is final here. A plan prepayment never saves paying a charge (for example one kept from before the type change).
+			PaySplitPayPlanAttach.ClearChargeForPrepayment(PaySplitCur);
 			return true;
 		}
 
@@ -729,6 +775,7 @@ namespace OpenDental {
 					secLogText+=", clinic "+Clinics.GetAbbr(PaySplitCur.ClinicNum);
 				}
 				secLogText+=", amount "+PaySplitCur.SplitAmt.ToString("F");
+				secLogText+=PaySplitPayPlanAttach.GetPayPlanLogText(PaySplitCur.PayPlanNum);//25.3
 				SecurityLogs.MakeLogEntry(EnumPermType.PaymentEdit,PaySplitCur.PatNum,secLogText);
 				DialogResult=DialogResult.OK;
 				return;
@@ -741,6 +788,7 @@ namespace OpenDental {
 			secLogText+=SecurityLogEntryHelper(Clinics.GetAbbr(_paySplitCopy.ClinicNum),Clinics.GetAbbr(PaySplitCur.ClinicNum),"clinic");
 			secLogText+=SecurityLogEntryHelper(_paySplitCopy.SplitAmt.ToString("F"),PaySplitCur.SplitAmt.ToString("F"),"amount");
 			secLogText+=SecurityLogEntryHelper(_paySplitCopy.PatNum.ToString(),PaySplitCur.PatNum.ToString(),"patient number");
+			secLogText+=SecurityLogEntryHelper(_paySplitCopy.PayPlanNum.ToString(),PaySplitCur.PayPlanNum.ToString(),"payment plan number");//25.3
 			SecurityLogs.MakeLogEntry(EnumPermType.PaymentEdit,PaySplitCur.PatNum,secLogText,0,_paySplitCopy.SecDateTEdit);
 			DialogResult=DialogResult.OK;
 		}
@@ -763,6 +811,8 @@ namespace OpenDental {
 			PaySplitCur.PatNum=_paySplitCopy.PatNum;
 			PaySplitCur.PayNum=_paySplitCopy.PayNum;
 			PaySplitCur.PayPlanNum=_paySplitCopy.PayPlanNum;
+			PaySplitCur.PayPlanChargeNum=_paySplitCopy.PayPlanChargeNum;//B-PAY: cancel also undoes the charge an attach picked
+			PaySplitCur.PayPlanDebitType=_paySplitCopy.PayPlanDebitType;//B-PAY: and the debit type a type change cleared
 			PaySplitCur.ProcDate=_paySplitCopy.ProcDate;
 			PaySplitCur.ProcNum=_paySplitCopy.ProcNum;
 			PaySplitCur.ProvNum=_paySplitCopy.ProvNum;

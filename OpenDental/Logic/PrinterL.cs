@@ -12,8 +12,8 @@ using OpenDental.UI;
 using OpenDentBusiness;
 
 namespace OpenDental {
-	public class PrinterL {
-		
+	public partial class PrinterL {
+
 		///<summary>Replaces Graphics.DrawString. Shrinks the font, down to 2 points, so the text fits the width of the bounding rectangle. Used to print labels.</summary>
 		public static void FitText(string text,Font font,Brush brush,RectangleF rectF,StringFormat stringFormat,Graphics g) {
 			float emSize=font.Size;
@@ -158,13 +158,14 @@ namespace OpenDental {
 			return TryPrint(printout);
 		}
 
-		///<summary>Whenever we are printing we should eventually go through this method.</summary>
-		public static bool TryPrint(ODprintout printout,bool isRemotePrint=false,long printerNumOverride=0) {
+		///<summary>Whenever we are printing we should eventually go through this method. isPromptForced shows the Print Options window even when the
+		///print situation does not have Prompt set (the Print button of a print preview).</summary>
+		public static bool TryPrint(ODprintout printout,bool isRemotePrint=false,long printerNumOverride=0,bool isPromptForced=false) {
 			if(!printout.HasValidSettings()) {
 				MsgBox.Show(printout.SettingsErrorCode.GetDescription());
 				return false;
 			}
-			if(!TrySetPrinter(printout,isRemotePrint:isRemotePrint,printerNumOverride:printerNumOverride)) {
+			if(!TrySetPrinter(printout,isRemotePrint:isRemotePrint,printerNumOverride:printerNumOverride,isPromptForced:isPromptForced)) {
 				return false;
 			}
 			if(isRemotePrint){
@@ -208,22 +209,30 @@ namespace OpenDental {
 		///and tests to see if the selected printer is valid, and if not then it gives user the option to print to an available printer.  
 		///Also creates an audit trail entry with the AuditDescription text that is set within printDocument.
 		///Debug mode will not display the print dialog but will instead prefer the default printer.</summary>
-		public static bool TrySetPrinter(ODprintout printout,bool isRemotePrint=false,long printerNumOverride=0) {
+		public static bool TrySetPrinter(ODprintout printout,bool isRemotePrint=false,long printerNumOverride=0,bool isPromptForced=false) {
 			if(printout.SettingsErrorCode!=PrintoutErrorCode.Success && !isRemotePrint) {
 				ShowError(printout);
 				return false;
 			}
-			return SetPrinter(printout.PrintDoc.PrinterSettings,printout.Situation,printout.AuditPatNum,printout.AuditDescription,isRemotePrint,printerNumOverride:printerNumOverride);
+			bool isPrinterSet=SetPrinter(printout.PrintDoc.PrinterSettings,printout.Situation,printout.AuditPatNum,printout.AuditDescription,isRemotePrint,printerNumOverride:printerNumOverride,isPromptForced:isPromptForced);
+			if(isPrinterSet) {
+				ApplyPageRange(printout.PrintDoc);
+			}
+			return isPrinterSet;
 		}
-		
+
 		///<summary>DEPRECATED.</summary>
 		public static bool SetPrinter(PrintDocument printDocument,PrintSituation printSituation,long patNum,string auditDescription) {
-			return SetPrinter(printDocument.PrinterSettings,printSituation,patNum,auditDescription,false);
+			bool isPrinterSet=SetPrinter(printDocument.PrinterSettings,printSituation,patNum,auditDescription,false);
+			if(isPrinterSet) {
+				ApplyPageRange(printDocument);
+			}
+			return isPrinterSet;
 		}
-		
-		///<summary>Attempts to set the printer settings to circumvent showing UI. If no settings exist will result in windows default settings. 
+
+		///<summary>Attempts to set the printer settings to circumvent showing UI. If no settings exist will result in windows default settings.
 		///Can throw exceptions when isRemotePrint is true, this is done to display messages on the remote source.</summary>
-		private static bool SetPrinter(PrinterSettings printerSettings,PrintSituation printSituation,long patNum,string auditDescription,bool isRemotePrint,long printerNumOverride=0) {
+		private static bool SetPrinter(PrinterSettings printerSettings,PrintSituation printSituation,long patNum,string auditDescription,bool isRemotePrint,long printerNumOverride=0,bool isPromptForced=false) {
 			if(!HasComputerTable) {
 				return true;//Kickout so it doesn't break when looking for a Computer table
 			}
@@ -302,17 +311,9 @@ namespace OpenDental {
 			}
 			#region 3 - Present the dialog
 			//Remote print requests aren't expected to hit this code.
-			if(showPrompt && !isRemotePrint) {
-				PrintDialog printDialog=new PrintDialog();
-				printDialog.AllowSomePages=true;
-				printDialog.PrinterSettings=printerSettings;
-				DialogResult dialogResult=printDialog.ShowDialog();
-				printerSettings.Collate=true;
-				if(dialogResult!=DialogResult.OK){
-					return false;
-				}
-				if(printerSettings.PrintRange!=PrintRange.AllPages && printerSettings.ToPage<1) {
-					//User set the range to not print any pages.
+			//25.3: the program's Print Options window instead of the Windows print dialog (PrinterL.PrintOptions.cs).
+			if((showPrompt || isPromptForced) && !isRemotePrint) {
+				if(!ShowPrintOptions(printerSettings,printSituation,printerForSit)) {
 					return false;
 				}
 			}

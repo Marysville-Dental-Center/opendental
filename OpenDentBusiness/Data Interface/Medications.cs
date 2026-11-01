@@ -111,12 +111,12 @@ namespace OpenDentBusiness{
 		}
 
 		#region Hidden medications (Open Dental 25.1)
-		///<summary>Returns medications that contain the passed in string, for a window where the user picks a medication for a patient, an allergy, an
-		///EHR rule, an eForm medication list or a reconcile.  Hidden medications are left out unless includeHidden is true (the merge tool, or the
-		///master list with Show Hidden checked).</summary>
+		///<summary>Returns medications that match the search text, for a window where the user picks a medication for a patient, an allergy, an
+		///EHR rule, an eForm medication list or a reconcile, and for the Medications list itself.  Uses the 24.4 search (IsSearchMatchWords).
+		///Hidden medications are left out unless includeHidden is true (the merge tool, or the master list with Show Hidden checked).</summary>
 		public static List<Medication> GetListForPicker(string str="",bool includeHidden=false) {
 			Meth.NoCheckMiddleTierRole();
-			return GetWhere(x => IsSearchMatch(x,str) && (includeHidden || !x.IsHidden));
+			return GetListForSearch(str,includeHidden);
 		}
 
 		///<summary>True when the medication name contains the search text, ignoring case.  Blank or null search text matches everything.</summary>
@@ -170,6 +170,67 @@ namespace OpenDentBusiness{
 			return Lans.g("Medications","Medication")+" '"+medication.MedName+"' "+action+".";
 		}
 		#endregion Hidden medications (Open Dental 25.1)
+
+		#region Medication search (Open Dental 24.4)
+		///<summary>The words of the search text, in lower case.  The text is split on spaces, tabs and commas.  Empty for blank or null text.</summary>
+		public static List<string> GetSearchWords(string searchText) {
+			Meth.NoCheckMiddleTierRole();
+			if(string.IsNullOrWhiteSpace(searchText)) {
+				return new List<string>();
+			}
+			return searchText.ToLowerInvariant().Split(new char[] { ' ','\t',',' },StringSplitOptions.RemoveEmptyEntries).ToList();
+		}
+
+		///<summary>The 24.4 search of the Medications list.  True when every word of the search text appears, in any order and ignoring case, in
+		///what the list shows for the medication: its name and, for a brand, the name of its generic (genericName, blank for a generic).  So a brand
+		///is found by its generic's name, and searching a generic also lists its brands.  When the search text is all digits, an RxNorm code
+		///(RxCui) that starts with those digits also matches.  Blank or null search text matches everything.</summary>
+		public static bool IsSearchMatchWords(Medication medication,string genericName,string searchText) {
+			Meth.NoCheckMiddleTierRole();
+			if(string.IsNullOrWhiteSpace(searchText)) {
+				return true;
+			}
+			if(medication==null) {
+				return false;
+			}
+			string searchTrimmed=searchText.Trim();
+			if(searchTrimmed.All(x => char.IsDigit(x)) && medication.RxCui!=0
+				&& medication.RxCui.ToString().StartsWith(searchTrimmed,StringComparison.Ordinal))
+			{
+				return true;
+			}
+			string textShown=((medication.MedName??"")+" "+(genericName??"")).ToLowerInvariant();
+			List<string> listWords=GetSearchWords(searchText);
+			return listWords.All(x => textShown.Contains(x));
+		}
+
+		///<summary>Medications from the cache that match the search text (IsSearchMatchWords), for the Medications list and its selection mode.
+		///Hidden medications are left out unless includeHidden is true.  A brand is matched against its generic's name even when the generic is
+		///hidden.</summary>
+		public static List<Medication> GetListForSearch(string searchText,bool includeHidden) {
+			Meth.NoCheckMiddleTierRole();
+			List<Medication> listMedicationsAll=GetWhere(x => true);
+			Dictionary<long,string> dictNames=new Dictionary<long,string>();
+			for(int i=0;i<listMedicationsAll.Count;i++) {
+				dictNames[listMedicationsAll[i].MedicationNum]=listMedicationsAll[i].MedName??"";
+			}
+			List<Medication> listMedications=new List<Medication>();
+			for(int i=0;i<listMedicationsAll.Count;i++) {
+				Medication medication=listMedicationsAll[i];
+				if(!includeHidden && medication.IsHidden) {
+					continue;
+				}
+				string genericName="";
+				if(medication.GenericNum!=medication.MedicationNum && dictNames.ContainsKey(medication.GenericNum)) {
+					genericName=dictNames[medication.GenericNum];
+				}
+				if(IsSearchMatchWords(medication,genericName,searchText)) {
+					listMedications.Add(medication);
+				}
+			}
+			return listMedications;
+		}
+		#endregion Medication search (Open Dental 24.4)
 
 		///<summary></summary>
 		public static void Update(Medication medication){

@@ -11,6 +11,7 @@ using OpenDental.UI;
 using System.IO;
 using CodeBase;
 using OpenDentBusiness.Eclaims;
+using OpenDentBusiness.VendorDirect.DentalXChange;
 using System.Text;
 
 namespace OpenDental {
@@ -25,6 +26,9 @@ namespace OpenDental {
 		private List<int> _listImageReferenceIds;
 		private long _mountNumSelected;
 		private string _patFolder;
+		///<summary>Open Dental 26.1.64: the file chosen with Send File (a PDF or an image from disk), while it is being sent. Null when the attachment
+		///comes from the patient's images.</summary>
+		private string _pathFileFromDisk;
 
 		///<summary>Check that the imageFolder exists and is accessible before calling this form.</summary>
 		///<summary>Open Dental 24.4: true once the user agreed to add images to an attachment that was already submitted to DentalXChange, or once
@@ -85,7 +89,14 @@ namespace OpenDental {
 			long priKey=_imageSelector.GetSelectedKey();
 			if(nodeType==EnumImageNodeType.Document){
 				long docNum=priKey;
-				Bitmap bitmap=ImageHelper.GetBitmapOfDocumentFromDb(docNum);
+				Document documentSelected=Documents.GetByNum(docNum);
+				Bitmap bitmap;
+				if(DxcPdfAttachment.IsPdfFileName(documentSelected.FileName)) {//Open Dental 26.1.64: PDFs can be sent; they show as a PDF icon.
+					bitmap=DxcPdfAttachment.CreatePreviewBitmap(400,520,documentSelected.Description);
+				}
+				else {
+					bitmap=ImageHelper.GetBitmapOfDocumentFromDb(docNum);
+				}
 				pictureBox.Image?.Dispose();
 				pictureBox.Image=bitmap;
 				textFileName.Text=Documents.GetByNum(docNum).Description;
@@ -198,15 +209,45 @@ namespace OpenDental {
 			string fileName="";
 			//Disposed at end of method.
 			Bitmap bitmap=null;
+			//Open Dental 26.1.64: a PDF's own bytes, from the patient's images or from disk, sent as they are. Null for images and mounts.
+			byte[] arrayBytesPdf=null;
+			if(_pathFileFromDisk!=null) {//Send File: a PDF or an image from disk.
+				fileName=Path.GetFileName(_pathFileFromDisk);
+				if(DxcPdfAttachment.IsPdfFileName(fileName)) {
+					try {
+						arrayBytesPdf=DxcPdfAttachment.ReadPdfFile(_pathFileFromDisk);
+					}
+					catch(ODException ex) {
+						MessageBox.Show(this,ex.Message);
+						return false;
+					}
+				}
+				else {
+					try {
+						using Bitmap bitmapFile=new Bitmap(_pathFileFromDisk);
+						bitmap=new Bitmap(bitmapFile);//A copy, so the file is not left locked.
+					}
+					catch(Exception ex) {
+						ex.DoNothing();
+						MsgBox.Show(this,"The selected file type is invalid. Valid file types include PDF, BMP, GIF, JPEG, PNG, TIFF, TIF, and JPG.");
+						return false;
+					}
+				}
+			}
 			//A document or mount has been selected by this point.
-			if(_docNumSelected>0) {
+			else if(_docNumSelected>0) {
 				Document document=Documents.GetByNum(_docNumSelected);
 				fileName=document.FileName;
-				if(fileName.EndsWith(".pdf")) {
-					MessageBox.Show(this,"PDF attachments are not supported.");
-					return false;
+				if(DxcPdfAttachment.IsPdfFileName(fileName)) {//Open Dental 26.1.64: any case of .pdf; the PDF's file is checked and sent as it is.
+					try {
+						arrayBytesPdf=DxcPdfAttachment.ReadPdfDocument(document,_patFolder);
+					}
+					catch(ODException ex) {
+						MessageBox.Show(this,ex.Message);
+						return false;
+					}
 				}
-				if(!fileName.ToLower().EndsWith(".bmp")
+				else if(!fileName.ToLower().EndsWith(".bmp")
 					&& !fileName.ToLower().EndsWith(".gif")
 					&& !fileName.ToLower().EndsWith(".jpeg")
 					&& !fileName.ToLower().EndsWith(".png")
@@ -214,10 +255,12 @@ namespace OpenDental {
 					&& !fileName.ToLower().EndsWith(".jpg")
 					&& !fileName.ToLower().EndsWith(".tif"))
 				{
-					MsgBox.Show(this,"The selected file type is invalid. Valid file types include BMP, GIF, JPEG, PNG, TIFF, TIF, and JPG.");
+					MsgBox.Show(this,"The selected file type is invalid. Valid file types include PDF, BMP, GIF, JPEG, PNG, TIFF, TIF, and JPG.");
 					return false;
 				}
-				bitmap=ImageHelper.GetBitmapOfDocumentFromDb(_docNumSelected);
+				if(arrayBytesPdf==null) {
+					bitmap=ImageHelper.GetBitmapOfDocumentFromDb(_docNumSelected);
+				}
 			}
 			else {
 				bitmap=MountHelper.GetBitmapOfMountFromDb(_mountNumSelected);
@@ -239,16 +282,24 @@ namespace OpenDental {
 				return false;
 			}
 			try {
-				//Create an ImageAttachment object to send to ClaimConnect.
-				_claimConnectImageAttachment=ClaimConnect.ImageAttachment.Create(
-					fileName:textFileName.Text,
-					createdDate:PIn.Date(textDateCreated.Text),
-					typeCodeImage:listBoxImageType.GetSelected<ClaimConnect.ImageTypeCode>(),
-					imageClaim:bitmap,
-					rightOrientation:!checkIsXrayMirrored.Checked);
+				if(arrayBytesPdf!=null) {//Open Dental 26.1.64: the PDF goes as it is.
+					_claimConnectImageAttachment=DxcPdfAttachment.CreateImageAttachment(arrayBytesPdf,textFileName.Text,PIn.Date(textDateCreated.Text),
+						listBoxImageType.GetSelected<ClaimConnect.ImageTypeCode>());
+				}
+				else {
+					//Create an ImageAttachment object to send to ClaimConnect.
+					_claimConnectImageAttachment=ClaimConnect.ImageAttachment.Create(
+						fileName:textFileName.Text,
+						createdDate:PIn.Date(textDateCreated.Text),
+						typeCodeImage:listBoxImageType.GetSelected<ClaimConnect.ImageTypeCode>(),
+						imageClaim:bitmap,
+						rightOrientation:!checkIsXrayMirrored.Checked);
+				}
 			}
 			catch(Exception ex) {
 				FriendlyException.Show(Lan.g(this,"An error occurred. Please try again or call support.")+"\r\n"+ex.Message,ex);
+				bitmap?.Dispose();
+				return false;//Nothing to send.
 			}
 			try {
 				AddAttachments();
@@ -283,10 +334,17 @@ namespace OpenDental {
 			if(_docNumSelected>0) {
 				_claimConnectImageAttachment.ImageFileNameActual=Documents.GetByNum(_docNumSelected).FileName;
 			}
-			//Saves mount bitmap to A-Z folder.
+			//Saves mount bitmap (or a file sent from disk) to A-Z folder.
 			else if(PrefC.GetBool(PrefName.SaveDXCAttachments)) {
 				//Mounts get saved to the Claim Attachment image category. This is set by the user in Setup->Definitions->Image Categories.
-				Document documentCur=ImageStore.Import(_claimConnectImageAttachment.ImageFileAsBase64,defNumImageType,ImageType.Attachment,PatientCur);
+				Document documentCur;
+				if(_claimConnectImageAttachment.IsPdf) {//Open Dental 26.1.64: a PDF from disk is saved as the PDF it is.
+					documentCur=ImageStore.Import(_claimConnectImageAttachment.ImageFileAsBase64,defNumImageType,ImageType.Document,PatientCur,
+						fileExtension:DxcPdfAttachment.PdfExtension);
+				}
+				else {
+					documentCur=ImageStore.Import(_claimConnectImageAttachment.ImageFileAsBase64,defNumImageType,ImageType.Attachment,PatientCur);
+				}
 				_claimConnectImageAttachment.ImageFileNameActual=documentCur.FileName;
 				//Set description of newly created document
 				Document documentOld=documentCur.Copy();
@@ -305,11 +363,46 @@ namespace OpenDental {
 			ClaimCur.Attachments.AddRange(listClaimAttaches);
 			Claims.Update(ClaimCur);
 			MsgBox.Show(this,"Attachment sent successfully!");
-			bitmap.Dispose();
+			bitmap?.Dispose();//Null for a PDF.
 			return true;
 		}
 
+		///<summary>Open Dental 26.1.64: sends a PDF or an image chosen from disk, with the image type, date and narrative entered in this window. The
+		///file name box takes the file's name. Returns true once it was sent.</summary>
+		private bool SendFileFromDisk() {
+			if(listBoxImageType.SelectedIndex==-1) {//Asked before the file is chosen, so the user does not have to choose it twice.
+				MsgBox.Show(this,"Select an image type.");
+				return false;
+			}
+			using OpenFileDialog openFileDialog=new OpenFileDialog();
+			openFileDialog.Multiselect=false;
+			openFileDialog.Filter=Lan.g(this,"PDF and image files")+"|*.pdf;*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tif;*.tiff|"+Lan.g(this,"All files")+"|*.*";
+			if(PrefC.AtoZfolderUsed==DataStorageType.LocalAtoZ && !string.IsNullOrEmpty(_patFolder) && Directory.Exists(_patFolder)) {
+				openFileDialog.InitialDirectory=_patFolder;
+			}
+			if(openFileDialog.ShowDialog()!=DialogResult.OK) {
+				return false;
+			}
+			_pathFileFromDisk=openFileDialog.FileName;
+			_docNumSelected=0;
+			_mountNumSelected=0;
+			textFileName.Text=Path.GetFileNameWithoutExtension(_pathFileFromDisk);
+			try {
+				return SendSelectedToDXCAndSaveLocally();
+			}
+			finally {
+				_pathFileFromDisk=null;
+			}
+		}
+
+		private void butSendFile_Click(object sender,EventArgs e) {
+			if(SendFileFromDisk()) {
+				FillTree();//A file saved to the patient's images shows in the tree.
+			}
+		}
+
 		private bool SendAttachment() {
+			_pathFileFromDisk=null;
 			EnumImageNodeType nodeType=_imageSelector.GetSelectedType();
 			long priKey=_imageSelector.GetSelectedKey();
 			if(nodeType==EnumImageNodeType.Document){
