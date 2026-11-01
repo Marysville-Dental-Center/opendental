@@ -85,6 +85,18 @@ namespace ImagingCapture.Save {
 				result.Error="The image has no target.";
 				return result;
 			}
+			//Design 10.6: every save uses the session's PatNum, and an image is never filed to another patient, also not through a stale mount.
+			Mount mountTarget=request.Target.Mount;
+			if(mountTarget!=null && mountTarget.PatNum!=request.Patient.PatNum) {
+				result.Error="The target mount belongs to another patient (PatNum "+mountTarget.PatNum+", not "+request.Patient.PatNum
+					+"), so the image was not saved.";
+				return result;
+			}
+			if(mountTarget!=null && request.Target.MountItem!=null && request.Target.MountItem.MountNum!=mountTarget.MountNum) {
+				result.Error="The target slot belongs to another mount (MountNum "+request.Target.MountItem.MountNum+", not "+mountTarget.MountNum
+					+"), so the image was not saved.";
+				return result;
+			}
 			bool isCategoryValid;
 			try {
 				isCategoryValid=request.DocCategory!=0 && _radiographStore.IsCategoryValid(request.DocCategory);

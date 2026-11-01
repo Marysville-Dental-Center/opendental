@@ -207,6 +207,29 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void MountOfAnotherPatient_RefusedBeforeWriting() {
+			Mount mount=Mount();
+			mount.PatNum=56;//A stale mount: not the session's patient (55).
+			RadiographSaveResult result=_radiographImport.Save(Request(Image8(),new RadiographTarget { Mount=mount,MountItem=Slot() }));
+			Assert.IsFalse(result.IsSaved);
+			StringAssert.Contains(result.Error,"another patient");
+			Assert.AreEqual(0,_store.ListCalls.Count,"Nothing written: the caller quarantines the image.");
+			result=_radiographImport.Save(Request(Image8(),new RadiographTarget { Mount=mount,MountItem=null }));
+			Assert.IsFalse(result.IsSaved,"Not into a new unmounted item of that mount either.");
+			Assert.AreEqual(0,_store.ListCalls.Count);
+		}
+
+		[TestMethod]
+		public void SlotOfAnotherMount_RefusedBeforeWriting() {
+			MountItem slot=Slot();
+			slot.MountNum=8;//The target mount is 7.
+			RadiographSaveResult result=_radiographImport.Save(Request(Image8(),new RadiographTarget { Mount=Mount(),MountItem=slot }));
+			Assert.IsFalse(result.IsSaved);
+			StringAssert.Contains(result.Error,"another mount");
+			Assert.AreEqual(0,_store.ListCalls.Count);
+		}
+
+		[TestMethod]
 		public void ImportFails_NothingToUndo() {
 			_store.ThrowOn="Import";
 			RadiographSaveResult result=_radiographImport.Save(Request(Image8(),new RadiographTarget { Mount=Mount(),MountItem=Slot() }));
