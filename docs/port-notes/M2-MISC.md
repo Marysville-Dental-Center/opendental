@@ -1,0 +1,149 @@
+# Port note: M2-MISC, small Open Dental 25.4 and 26.1 items
+
+Branch `port/m2-misc`, cut from `port/foundation` (M1 through A2, M2-01 and M2-02). Built in the single-wave run, beside the other packages. Backlog section: [port-backlog.md, M2-MISC](../specs/port-backlog.md#m2-misc-small-254-and-261-items). No fork migration step was needed (level range 2027004401 to 2027004499 unused): the only schema item, `referral.Telephone` varchar(30), is M2-01's step 2026102401, and `AutoCondField.PatientProcedureClinicMismatch = 14` is M2-02's registry value.
+
+Sources: public only. The 25.4 and 26.1 release notes, the 26.1 highlights blog post and `OpenDentalDiffDocumentation26-1.xml` as cited in the feature specs (`docs/specs/features-25.4.md`, `features-26.1.md`), and the 24.3 manual pages they name as baselines. No Open Dental program was installed, observed or decompiled. Tests use synthetic rows only.
+
+## Features
+
+| Feature ID | Status | Summary |
+|---|---|---|
+| `v25_4-misc-diagnostics-info` | built | Help, About, Diagnostics is built by a new local helper, `LocalDiagnostics`, with date and time on the workstation and the database server and their difference, hardware (CPU, cores, memory, OS and build, 32/64-bit, screens, DPI, free disk on the program drive and the image folder drive), program path, .NET runtime and release, server version, time zones. No passwords, hashes or keys. Nothing is sent anywhere. `BugSubmissions.GetDiagnostics` forwards to it. |
+| `v25_4-misc-print-window` | built | The 25.4 printer rules are a tested business class (`PrintSituationRules`), and WinForms printing (`PrinterL.SetPrinter`), WPF printing (`PrintOptionsWpf`), the setup windows and the Print Options window all pick the printer with it. Setup, Printers shows for every situation the printer used, the rule that picked it ("From Statements setting", "From Default setting", "Windows default") and the printer's state as Windows reports it (`PrinterStatuses`); Edit Printer shows the state and what a blank printer means and keeps a saved printer that is not installed. The Print Options window (B-PRINT's `FrmPrintOptions`) shows the rule that picked the selected printer (or "Last used this session" / "Chosen in this window" with what the rules pick) and the printer's state, read in the background; changing the printer keeps copies, collation and the page range. "Remember copies per situation for the session" is B-PRINT's `PrintOptions.Remember`. |
+| `v25_4-family-referral-phone` | built | One phone box of up to 30 characters in Edit Referral, no 10-digit check. A plain 10-digit number is still stored as 10 digits and shown in the office phone format; anything else (extensions, 11 digits, international) is stored as typed. Referral slips and referral letters (`referral.phone`) and the Family module's referral list print and show every stored value by the same rule, and every copy of a patient's home phone into the patient's own referral (Edit Referral, saving the patient, merging patients) uses the same rule. |
+| `v26_1-setup-automation-clinic-mismatch` | built | The condition is evaluated in `Automations` (true when a completed procedure's clinic is not the patient's clinic, a patient without a clinic counts as a mismatch, always false with clinics off, false on any trigger but ProcedureComplete). Automation Condition Edit lists it only for the ProcedureComplete trigger and saves comparison None and no text; Edit Automation refuses to save another trigger while the automation has the condition. |
+| `v26_1-misc-task-attach-nonmodal` | built | Task Attachments and Task Attachment Edit open with `Show(owner)`. One Task Attachments window per task and one edit window per attachment (one new-attachment window per task): a second click brings the open one to the front. The task window refreshes as attachments change, closes the attachment windows when it closes (saved, deleted or cancelled), and makes the Task Attachments window read-only when the task is deleted. An edit window whose task was deleted tells the user on Save or Delete and discards. |
+| `v25_4-chart-perio-direction` | built | A direction chosen with the Current Direction buttons applies to the next keystroke from the current cell (input goes back to the chart's input box), holds while entry stays in the row section (also with Facials First, where the path used to override it on every keystroke), and ends when auto-advance crosses into another section, where the advance sequence sets the direction. The Forward/Reverse label follows every change at once. The arrow keys never change the direction. Voice perio keeps its own direction updates. |
+
+## What was built
+
+### Diagnostics (`v25_4-misc-diagnostics-info`)
+
+- `OpenDentBusiness/Misc/LocalDiagnostics.cs` (new): `GetDiagnostics(patNum)` builds sections Program, Date and time, Computer, Database, Session and Preferences. Each value is read inside its own try/catch (`DiagnosticsText.AddLine`): a failing line prints `ERROR: message` and the rest continue, as before. Hardware through WMI (`Win32_OperatingSystem`, `Win32_Processor`) and .NET (`ComputerInfo`, `Screen.AllScreens`, `GetDiskFreeSpaceEx`, which also works for a network share image folder). The server's clock, version, time zones and default engine come from one query (`GetServerInfo`, middle tier aware), so the clock difference is measured right after the workstation time is read.
+- The Preferences section shows the preferences Open Dental's diagnostics showed, without `RegistrationKey`, `RegistrationKeyIsDisabled` (this program has no registration keys) and the two MySQL password hashes. `IsSecretPrefName` also skips any name with pass, secret, token or key in it, in case one is added to the list later.
+- The fork's own markers are shown: release version, `OdSchemaCompat`, `ForkSchemaLevel`, `ForkAdoptedFrom`.
+- `OpenDentBusiness/Data Interface/BugSubmissions.cs`: `GetDiagnostics` now forwards to `LocalDiagnostics` (kept for callers built against the name). The old body built a `BugSubmission` record, the HQ submission object, to read its fields.
+- `OpenDental/Forms/FormAbout.cs`: the Diagnostics button calls `LocalDiagnostics.GetDiagnostics`. The fork identity and the attribution text are unchanged (`AttributionTests` pass).
+
+### Printers (`v25_4-misc-print-window`)
+
+- `OpenDentBusiness/Misc/PrintSituationRules.cs` (new):
+  - `PrintSituationRules.Resolve` applies the rules to one computer's rows: the situation's row when it names an installed printer, otherwise the Default situation's row (the program's own default, not Windows'), otherwise the Windows default printer. The prompt comes from the situation's row when it has one, otherwise from the Default row. An empty printer name or no row means "use the Default situation's printer, or the Windows default". Printers that are not installed are passed over and named. `OpenDental.PrinterL.SetPrinter` (WinForms printing, regions 1 and 2) and `PrintOptionsWpf.GetPrinterNameForSituation` (WPF printing) pick the printer with `ResolveForThisComputer` (integration, see below).
+  - `GetSourceText`, `GetPrinterUsedText`, `IsRowNeeded` (a row must exist when Prompt is on, even with no printer chosen), `GetWindowsDefaultPrinterName`.
+  - For the Print Options window: `GetRulesPrinterName` (the rules' printer by name, the Windows default printer's name when no row names an installed printer), `GetPrintWindowSource` (`Rules`, `LastUsed` or `ChosenHere`) and `GetPrintWindowSourceText` ("From Statements setting"; "Last used this session (From Default setting: Front Desk)"; "Chosen in this window (Windows default: Front Desk)"; printers passed over as not installed are named). Printer names are compared ignoring case, as Windows does.
+  - `PrinterStatuses`: the state of every installed printer from `Win32_Printer` (`WorkOffline`, `ExtendedPrinterStatus`, `PrinterStatus`), one query per window with a 5 second timeout; Online, Offline, Paused, Error, or nothing when Windows reports no state.
+- `OpenDentBusiness/Data Interface/Printers.cs`: `PutForSit` uses `IsRowNeeded` (same behavior as before; the rule now has one home).
+- `OpenDentBusiness/TableTypes/Printer.cs`: the field summaries say what the 25.4 documentation clarifies. Comments only; the CRUD is unchanged.
+- `OpenDental/Forms/FormPrinterSetup.cs` and designer: three columns, Printer Used, Rule and Status; the window is 300 pixels wider. Rows of situations without a printer row now have every cell.
+- `OpenDental/Forms/FormPrinterEdit.cs` and designer: a state label next to the printer list, a line saying what the first item (default / Windows default) means for this situation, and a saved printer that is not installed on this computer stays selectable as "name (not installed)", so saving without choosing another printer keeps it (24.3 silently switched to the default and saved that).
+- `WpfControlsOD/Frms/FrmPrintOptions.xaml(.cs)` (B-PRINT's Print Options window; integration): two lines under the print situation, the rule line (`GetPrintWindowSourceText` for the selected printer, the printer remembered for the situation by `PrintOptions.GetRemembered` and the Windows default printer) and the state line ("Status: Offline", nothing where Windows reports no state). The rules are resolved at load (in a try/catch: without printer rows the rule line stays empty and printing works as before). The states come from `PrinterStatuses.GetAll` on a background task, so the window never waits for a slow network printer; the state line fills in when Windows answers. Choosing another printer updates only these two lines: copies, collation and the page range stay as the user set them. The window is 60 pixels wider and 36 taller.
+
+### Referral phone (`v25_4-family-referral-phone`)
+
+- `OpenDentBusiness/Misc/ReferralPhones.cs` (new): `GetDisplay`, `GetStorage`, `GetError` (only the 30-character column width is checked), `FromPatientPhone`.
+- `WpfControlsOD/Frms/FrmReferralEdit.xaml`: the three boxes `(`, `)`, `-` became one box `textPhone`, 161 wide like Other Phone, `MaxLength="30"`, with the same as-you-type phone formatting as Other Phone.
+- `WpfControlsOD/Frms/FrmReferralEdit.xaml.cs`: load, save, read-only (patient referrals) and the patient's home phone copied into a new patient referral use `ReferralPhones`. 24.3 showed nothing for a stored value that was not exactly 10 digits and then saved it as empty; such values are now shown and kept.
+- `OpenDentBusiness/SheetFramework/SheetFiller.cs`: the `referral.phone` field of referral slips and referral letters is `ReferralPhones.GetDisplay(refer.Telephone)`. It used to be filled only when the value was exactly 10 characters, so a phone saved with an extension, a leading 1 or an international number printed blank (review finding).
+- `OpenDentBusiness/Data Interface/Referrals.cs`: `GetPhone` (the Family module's referral list) uses `GetDisplay` too.
+- `OpenDentBusiness/Data Interface/Patients.cs`: saving a patient who is also a referral, and merging patients, copy the home phone into the referral with `ReferralPhones.FromPatientPhone`, the same copy Edit Referral makes. 24.3 used `FormatNumbersExactTen` in all three places, which cut an extension and turned an international number into 10 wrong digits; with Edit Referral alone changed, the next save of the patient would have rewritten the referral's phone in the old form.
+- `OpenDentBusiness/TableTypes/Referral.cs`: the `Telephone` summary (comment only; the CRUD is unchanged).
+
+### Automation condition (`v26_1-setup-automation-clinic-mismatch`)
+
+- `OpenDentBusiness/Data Interface/AutomationClinicMismatches.cs` (new): `IsMismatch`, `IsTriggerAllowed`, `GetSaveError`, `IsConditionMet`, `GetProceduresForTrigger`, `GetCompletedToday`.
+- `OpenDentBusiness/Data Interface/Automations.cs`: `CheckAutomationConditions` gets the automation, the trigger and the procedure codes that fired (optional parameters) and has a case for the new field.
+- Which procedures are checked: the ones the caller passes as the trigger object (`List<Procedure>` or one `Procedure`), otherwise the patient's procedures set complete today (`DateComplete`, which `Procedures.Insert`/`Update` set to today when a procedure is set complete) with one of the trigger's codes. Only procedures whose code is one of the automation's codes count. INFERRED, see below.
+- `OpenDental/Forms/FormAutomationConditionEdit.cs`: new `AutomationTriggerCur` (set by the parent window). The field list keeps a list of the listed fields, because the list index is no longer the enum value (every `(AutoCondField)listCompareField.SelectedIndex` became `GetFieldSelected()`). The field is listed only for ProcedureComplete, or when the condition being edited already uses it; it hides the comparison and text, shows a note, and saves comparison None and an empty text. Loading an existing condition of this field no longer selects comparison index 4 (None is not in the list).
+- `OpenDental/Forms/FormAutomationEdit.cs`: passes the trigger chosen in the window to the condition window and refuses to save while the condition is on another trigger.
+
+### Task attachment windows (`v26_1-misc-task-attach-nonmodal`)
+
+- `OpenDental/Forms/TaskAttachmentWindows.cs` (new): `ShowAttachments`, `ShowAttachmentEdit`, `CloseForTask`, `SetTaskDeleted`, and `OpenWindowRegistry<TWindow>`, the open-window bookkeeping (no WinForms code, tested on its own).
+- `OpenDental/Forms/FormTaskEdit.cs`: Attachments opens the window non-modally (`OnTaskAttachmentsChanged` refreshes the attachment text and sends the task signal each time an attachment changes); `FormClosed` closes the task's attachment windows; `SetFormToDeletedMode` makes them read-only.
+- `OpenDental/Forms/FormTaskAttachments.cs`: Add and double-click open edit windows non-modally; `ActionAttachmentsChanged`; `SetTaskDeleted`.
+- `OpenDental/Forms/FormTaskAttachmentEdit.cs`: every `DialogResult` is followed by `Close()` (a modeless window does not close on its own); `IsTaskDeletedDiscard` on Save and Delete.
+- `OpenDental/User Controls/UserControlTasks.cs` (`NavAtt_Clicked`): an attachment opened from the task list opens non-modally, owned by the window that holds the list.
+
+### Perio Chart direction (`v25_4-chart-perio-direction`)
+
+- `OpenDental/User Controls/ContrPerio.Direction.cs` (new, partial class): `SetDirectionManual`, `IsDirectionManual`, `AfterAdvanceDirection`, and `PerioDirectionRules` (the rules without the control).
+- `OpenDental/User Controls/ContrPerio.cs` (made `partial`):
+  - `AdvanceCell(isReverse,setDirection)`; the Left and Right arrow keys pass `setDirection:false`.
+  - Facials First (`TryAutoAdvanceFacialsFirst`) honors a direction chosen with the buttons in its section and respects `setDirection`. The direction shown is the direction of entry; before, it followed every move, so Backspace and the arrow keys flipped it. The inner Maxillary First crossing rules no longer set the direction there.
+  - Maxillary First section 3 crossing: missing braces raised `DirectionChangedRight` even when the direction did not change, so the Right button lit up while entry still went Left. Fixed.
+- `OpenDental/Forms/FormPerio.cs`: the buttons call `SetDirectionManual` and put the input focus back in the chart's input box (24.3 focused the grid control, which often left the focus on the radio button, so the next number went nowhere and the arrow keys switched the radio buttons); the direction events also update the Forward/Reverse label.
+
+## INFERRED behaviors (not public; minimal reasonable choice)
+
+- Diagnostics: the exact 25.4 list of lines and their wording. The spec's list is followed; the fork markers were added.
+- Print window: what "minor enhancements" means beyond the clarified rules is not public. Built as described above; the Setup, Printers columns and the wording of the Print Options rule and state lines are this fork's choice. A printer the window pre-selected because the rules' printer was not in the list (B-PRINT's `GetInitialChoice` falls back to the first installed printer) is described as "Chosen in this window".
+- Printer state mapping from `Win32_Printer` values (Not Available counts as Offline, Stopped Printing as Error).
+- Referral phone: 10-digit numbers typed with punctuation are stored as the 10 digits, as 24.3 stored them, so existing letters, sheets and exports that format 10-digit values keep working. Patient referrals copy the home phone in its stored form (`FromPatientPhone`: 10 digits when it is a plain 10-digit number, otherwise as typed); 24.3 kept only the first 10 digits after a leading 1, or nothing. Values that are not plain 10 digits print and show as stored, without reformatting (only 10-digit values are in the office format, as the spec says). Mail-merge tags (`[ReferredFromProvInitialPhone]`) and the PaperlessTechnology and PandaPerio bridges send the stored value, as before.
+- Clinic mismatch: the existing ProcedureComplete callers (Chart, Appointment, Account, Procedure Edit, `ProcedureL`, `Procedures.CompleteProcedureAutomation`) pass only procedure codes, and they live in hot files of other packages, so they were not changed. Without a procedure list, the condition looks at the patient's procedures set complete today with the trigger's codes; a procedure of the same code completed earlier the same day at another clinic also counts. Only procedures with one of the automation's own codes count. A procedure with no clinic (0) against a patient's clinic counts as a mismatch (the spec's rule is `procedure.ClinicNum != patient.ClinicNum`).
+- Clinic mismatch list text: M2-02 gave the enum value the description "Procedure Clinic Differs From Patient Clinic"; the spec's UI name is "Patient Procedure Clinic Mismatch". The registry text was kept (M2-02 owns it).
+- Task attachments: a task window that closes discards unsaved changes in its open attachment edit windows; edit windows opened from the task list (not from a task window) are closed too when that task's window closes.
+- Perio: a "section" is one of the chart's four row sections (maxillary facial, maxillary lingual, mandibular lingual, mandibular facial). Up/Down arrows did not and do not change the direction.
+
+## Deviations from the spec
+
+- `WpfControlsOD/Logic/PrinterL.cs`, `OpenDental/Logic/AutomationL.cs` and `OpenDentBusiness/Data Interface/AutomationConditions.cs` are in the owned list but needed no change. The WPF `PrinterL` says only its original author edits it; WPF printing goes through B-PRINT's `PrintOptionsWpf`, which now uses `PrintSituationRules`.
+- Files outside the owned list, changed in the finishing run: B-PRINT's `FrmPrintOptions` and `PrintOptionsWpf` (the Print Options window is where the print window items belong), and `SheetFiller.cs` (the two `referral.phone` cases), `Referrals.GetPhone` and `Patients.cs` (two lines), for the referral phone review finding.
+- No fork migration step (none needed).
+
+## Interplay with packages built at the same time
+
+- **B-PRINT** (`v25_3-misc-printer-options`, the Print Options window): done in the finishing run (see Integration). `FrmPrintOptions` shows the rule and the state, and `PrinterL.SetPrinter` and `PrintOptionsWpf` resolve the printer through `PrintSituationRules`. B-PRINT's `PrintOptions.Remember` covers copies per situation. B-PRINT's source checks (`BPRINTTests.WiringTests`) still hold: the prompt test, the `ShowPrintOptions` call and the audit entry in `SetPrinter` are unchanged.
+- **B-PERIO** edits `ContrPerio.cs` and `FormPerio.cs` (auto Att Ging rows, row layout). The hunks here do not touch theirs: the class declaration (`partial`), `AdvanceCell`, the Left/Right arrow keys in `OnKeyDown`, `TryAutoAdvanceFacialsFirst`, the section 3 braces in `TryAutoAdvanceLeft`, and in `FormPerio` the radio and direction-event handlers. The new code uses only `GetSection(row)` and the public cell methods, not fixed row numbers, so it does not depend on B-PERIO's layout. Merge B-PERIO's `GetTableRowForSection` as is.
+- **B-TASK** and **B-APPT** edit `UserControlTasks.cs` (lines near 428, 1883 and 2124); the change here is only `NavAtt_Clicked` (near 2284).
+- **M2-01**: `referral.Telephone varchar(30)` (step 2026102401) is what makes the 30 characters fit. On a database that has not run M2-01's step, a value longer than 10 characters would be cut or refused by the server; the fork migration runner always runs it first.
+- **M2-02**: `AutoCondField.PatientProcedureClinicMismatch = 14` and its description are M2-02's. Its note says the switch ignored the value until this package; it is now evaluated.
+- **Callers of the ProcedureComplete trigger** (owned by other packages: `ControlChart`, `ControlAppt`, `ControlAccount`, `FormProcEdit`, `FormApptEdit`, `ProcedureL`, `Procedures`): any of them can pass the completed procedures as the trigger object (`AutomationL.Trigger(EnumAutomationTrigger.ProcedureComplete,listProcCodes,patNum,triggerObj:listProcedures)`), and the condition then checks exactly those procedures. Not required; it makes the check exact.
+
+## Files touched
+
+- New: `OpenDentBusiness/Misc/LocalDiagnostics.cs`, `OpenDentBusiness/Misc/PrintSituationRules.cs`, `OpenDentBusiness/Misc/ReferralPhones.cs`, `OpenDentBusiness/Data Interface/AutomationClinicMismatches.cs`, `OpenDental/Forms/TaskAttachmentWindows.cs`, `OpenDental/User Controls/ContrPerio.Direction.cs`, `tests/M2MISCTests/*`, this note.
+- Changed (owned): `OpenDentBusiness/Data Interface/{Automations,BugSubmissions,Printers}.cs`, `OpenDentBusiness/TableTypes/Printer.cs` (comments), `OpenDental/Logic/PrinterL.cs` (regions 1 and 2), `OpenDental/Forms/{FormAbout,FormAutomationConditionEdit,FormAutomationEdit,FormPerio,FormPrinterEdit(+Designer),FormPrinterSetup(+designer),FormTaskAttachmentEdit,FormTaskAttachments,FormTaskEdit}.cs`, `OpenDental/User Controls/{ContrPerio,UserControlTasks}.cs`, `WpfControlsOD/Frms/FrmReferralEdit.xaml(.cs)`.
+- Changed in the finishing run, not owned: `WpfControlsOD/Frms/FrmPrintOptions.xaml(.cs)` and `WpfControlsOD/Logic/PrintOptionsWpf.cs` (B-PRINT), `OpenDentBusiness/SheetFramework/SheetFiller.cs`, `OpenDentBusiness/Data Interface/{Referrals,Patients}.cs`, `OpenDentBusiness/TableTypes/Referral.cs` (comment).
+- Changed (shared, small and local): `OpenDentBusiness/OpenDentBusiness.csproj` (4 compile lines, each next to its sibling), `OpenDental/OpenDental.csproj` (2 compile entries), `OpenDental.sln` and `OpenDental.Local.slnf` (the test project).
+- Foundation-owned registries: none changed.
+
+## Tests
+
+New project `tests/M2MISCTests` (MSTest v1, x86, .NET 4.8; in `OpenDental.sln` and `OpenDental.Local.slnf`). Database tests use a scratch MariaDB database on 127.0.0.1 named `m2misc_<time>_<pid>_<random>`, built from the 26.1.70 reference (`SchemaVerifier.GetReference()`), dropped afterwards; stale ones from crashed runs are dropped after 12 hours. Synthetic rows only (procedure codes `Z9001`/`Z9002`, not CDT).
+
+- `DiagnosticsTests`: clock difference text, byte units, .NET release names, time zone text, no secret preferences, one failing line does not stop the rest; against the scratch database every section is there, the server clock, version and database name are read, no password hash or key value appears, `BugSubmissions.GetDiagnostics` returns the local text.
+- `PrintRulesTests`: every rule (no rows, Default row, situation row, empty printer with prompt, printers not installed, spooler error), `IsRowNeeded`, the printer state mapping, `PutForSit` keeps a row for Prompt and removes an empty one, `ResolveForThisComputer` and WPF printing's `GetPrinterNameForSituation` on the same rows; the Print Options rule line (rules' printer, last used, chosen here, Windows default with and without a default printer, printers not installed, names ignoring case); source checks that the Print Options window fills the rule and state lines, reads the states in the background and leaves copies and the page range alone when the printer changes, and that WinForms and WPF printing read the printer rows only through `PrintSituationRules`.
+- `ReferralPhoneTests`: display, storage, error, patient phone; a 30-character phone round-trips through the database; referral slips and referral letters (`SheetFiller.FillFields` against the scratch database) and `Referrals.GetPhone` show 10 digits in the office format and an extension, a leading 1, an international number and a 7-digit number as stored; every copy of the home phone into a patient's referral uses `FromPatientPhone`.
+- `AutomationClinicMismatchTests`: the rules, the save refusal, and `Automations.Trigger` end to end (warns on another clinic, not on the same clinic, warns for a patient without a clinic, never with clinics off, only today's procedures with the automation's codes, procedures passed by the caller win, never on another trigger).
+- `TaskAttachmentWindowTests`: the open-window registry and keys; source checks that the windows are opened with `Show`, closed with the task and discard when the task is gone; `Tasks.IsTaskDeleted` against the database.
+- `PerioDirectionTests`: the rules; the grid off screen (Maxillary First and Facials First chosen direction, Backspace, arrow keys across sections, auto-advance into the next section, the section 3 event fix); source checks of the window's handlers.
+- `UiSourceTests`: About (local diagnostics, attribution kept, no network code), Printer Setup and Edit Printer, Edit Referral, the automation windows.
+
+## Checks (2026-10-25)
+
+- Full rebuild of `OpenDental.Local.slnf` (Debug, x86): 0 errors, 376 warnings (the baseline); none in the new or changed files.
+- Targeted tests: `M2MISCTests` 71/71, `AttributionTests` 15/15 (FormAbout), `TaskCategoryTests` 21/21 (source checks of `FormTaskEdit` and `UserControlTasks`), `M202Tests` 39/39 (the `AutoCondField` registry), `NoHqTests` 49/49.
+- `tools/Test-NoHqHosts.ps1`: passed.
+
+## Finishing run (branch `port/m2-misc-t1`, 2026-10-31)
+
+- Merged `port/int-7` (1763cc7ae) with no conflicts. B-PRINT, B-PERIO, B-TASK, B-APPT, M2-01 and M2-02 are on that base; their notes' hand-over points to this package are settled: the Print Options window part of `v25_4-misc-print-window` is built on B-PRINT's `FrmPrintOptions`, and `PrinterL.SetPrinter` and `PrintOptionsWpf` no longer keep their own copies of the printer rules. The perio, task and automation hunks merged as the Interplay section expected.
+- Review finding fixed: referral slips and letters printed `referral.phone` only for values of exactly 10 characters (`SheetFiller.cs`), so phones saved with an extension, a leading 1 or an international number disappeared from them. They now print every stored value (10 digits in the office format), as do the Family module's referral list, and the patient-to-referral copies in `Patients.cs` use the same rule as Edit Referral.
+- No fork migration step, no adoption change (the adoption tools need nothing new).
+- Checks: full build of `OpenDental.Local.slnf` through the build lane, 0 errors. `run-tests -Mode Core` with `ForkMigrationTests`, `M201Tests`, `SyntheticData.Tests` and `AdoptionValidation.Tests`: every assembly passed (`M2MISCTests` 78/78, `BPRINTTests` 71/71, `SheetTests` 31/31, `TaskCategoryTests` 21/21, `BPERIOTests` 55/55, `NoHqTests` 49/49). `tools/Test-NoHqHosts.ps1`: passed.
+
+## Not tested
+
+- No window was opened (OpenDental.exe is not launched in this run): the new grid columns and labels, the Print Options rule and state lines (layout, the state line filling in after the background query), the non-modal windows on screen (focus, owner, bring to front), the referral box's as-you-type formatting, and the radio button focus were checked by source tests only.
+- Printing itself through the changed `PrinterL.SetPrinter` regions (the rules are the same; `ResolveForThisComputer` is tested on the scratch database, WinForms printing to a real printer is not).
+- Printer states on real printers (offline network printer, paused printer): only the mapping from the WMI values is tested; on this computer `PrinterStatuses.GetAll` is only checked not to throw.
+- The Diagnostics image-folder free space on a network share, and the middle tier path of the server query.
+- Voice perio with the new Facials First direction rules.
+
+## Questions for the owner
+
+1. Clinic mismatch: should the ProcedureComplete callers (Chart, Appointment, Account, Procedure Edit) be changed to pass the completed procedures, so the check never looks at other procedures completed earlier the same day? It is a one-line change per call site in files owned by other packages.
+2. Clinic mismatch: does a procedure with no clinic (0) on a patient with a clinic count as a mismatch (built: yes, following `procedure.ClinicNum != patient.ClinicNum`)?
+3. Referral phone: keep storing a plain 10-digit number as 10 digits (built), or store exactly what was typed?
+4. Print window: the Print Options window now shows the rule that picked the printer and the printer's state (built in the finishing run). Is the wording right ("From Statements setting", "Last used this session (...)", "Chosen in this window (...)", "Status: Offline")?
+5. Diagnostics: the patient number and the MySQL user name are shown (as before). Keep them?

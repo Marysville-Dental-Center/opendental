@@ -158,9 +158,20 @@ namespace OpenDental {
 			return true;
 		}
 
+		///<summary>26.1: this window is non-modal, so the task can be deleted (by anyone) while it is open. Tells the user and discards the window.
+		///Returns true if the task was deleted.</summary>
+		private bool IsTaskDeletedDiscard() {
+			if(!Tasks.IsTaskDeleted(_task.TaskNum)) {
+				return false;
+			}
+			MsgBox.Show(this,"The task for this attachment was deleted.");
+			DialogResult=DialogResult.Cancel;
+			Close();//Needed because the window is called as a non-modal window.
+			return true;
+		}
+
 		private void butDelete_Click(object sender,EventArgs e) {
-			if(Tasks.IsTaskDeleted(_task.TaskNum)) {
-				MsgBox.Show(this,"The task for this attachment was deleted.");
+			if(IsTaskDeletedDiscard()) {
 				return;
 			}
 			if(TaskAttachmentCur==null) {
@@ -169,6 +180,7 @@ namespace OpenDental {
 			}
 			if(TaskAttachmentCur.IsNew) {
 				DialogResult=DialogResult.Cancel;
+				Close();//Needed because the window is called as a non-modal window.
 				return;
 			}
 			StringBuilder stringBuilder=new StringBuilder();
@@ -181,11 +193,11 @@ namespace OpenDental {
 			}
 			TaskAttachments.Delete(TaskAttachmentCur.TaskAttachmentNum);
 			DialogResult=DialogResult.OK;
+			Close();//Needed because the window is called as a non-modal window.
 		}
 
 		private void butSave_Click(object sender,EventArgs e) {
-			if(Tasks.IsTaskDeleted(_task.TaskNum)) {
-				MsgBox.Show(this,"The task for this attachment was deleted.");
+			if(IsTaskDeletedDiscard()) {
 				return;
 			}
 			if(string.IsNullOrWhiteSpace(textDescription.Text)) {
@@ -202,14 +214,16 @@ namespace OpenDental {
 			}
 			TaskAttachmentCur.Description=textDescription.Text;
 			TaskAttachmentCur.TextValue=textValue.Text;
-			if(!TaskAttachmentCur.IsNew) { 
+			if(!TaskAttachmentCur.IsNew) {
 				TaskAttachments.Update(TaskAttachmentCur);
 				DialogResult=DialogResult.OK;
+				Close();//Needed because the window is called as a non-modal window.
 				return;
 			}
 			TaskAttachmentCur.TaskNum=_task.TaskNum;
 			TaskAttachments.Insert(TaskAttachmentCur);
 			DialogResult=DialogResult.OK;
+			Close();//Needed because the window is called as a non-modal window.
 		}
 
 	}

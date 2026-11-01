@@ -13,6 +13,11 @@ namespace OpenDental {
 	public partial class FormAutomationConditionEdit:FormODBase {
 		public bool IsNew;
 		public AutomationCondition AutomationConditionCur;
+		///<summary>The trigger currently chosen in the parent Edit Automation window, or null when unknown. The 26.1 field "procedure clinic differs
+		///from patient clinic" is listed only for the ProcedureComplete trigger (or when this condition already uses it).</summary>
+		public EnumAutomationTrigger? AutomationTriggerCur;
+		///<summary>The fields in listCompareField, in order. Not every field is listed for every trigger, so the list index is not the enum value.</summary>
+		private List<AutoCondField> _listAutoCondFields=new List<AutoCondField>();
 
 		public FormAutomationConditionEdit() {
 			InitializeComponent();
@@ -22,6 +27,10 @@ namespace OpenDental {
 
 		private void FormAutomationConditionEdit_Load(object sender,EventArgs e) {
 			for(int i=0;i<Enum.GetValues(typeof(AutoCondField)).Length;i++) {
+				if(!IsFieldListed((AutoCondField)i)) {
+					continue;
+				}
+				_listAutoCondFields.Add((AutoCondField)i);
 				listCompareField.Items.Add(Lan.g("enumAutoCondField",((AutoCondField)i).GetDescription()));
 				listCompareField.SelectedIndex=0;
 			}
@@ -36,13 +45,33 @@ namespace OpenDental {
 				return;
 			}
 			textCompareString.Text=AutomationConditionCur.CompareString;
-			listCompareField.SelectedIndex=(int)AutomationConditionCur.CompareField;
+			listCompareField.SelectedIndex=_listAutoCondFields.IndexOf(AutomationConditionCur.CompareField);
 			if(!AutomationConditionCur.CompareField.In(AutoCondField.InsuranceNotEffective,AutoCondField.IsControlled,AutoCondField.IsProcRequired,
-				AutoCondField.IsPatientInstructionPresent))
+				AutoCondField.IsPatientInstructionPresent,AutoCondField.PatientProcedureClinicMismatch))
 			{
 				listComparison.SelectedIndex=(int)AutomationConditionCur.Comparison;
 			}
-			ShowOrHideFields((AutoCondField)listCompareField.SelectedIndex);
+			ShowOrHideFields(GetFieldSelected());
+		}
+
+		///<summary>False only for the 26.1 clinic mismatch field when the parent automation's trigger is not ProcedureComplete, unless this
+		///condition already uses it (so it can be seen and changed).</summary>
+		private bool IsFieldListed(AutoCondField autoCondField) {
+			if(autoCondField!=AutoCondField.PatientProcedureClinicMismatch) {
+				return true;
+			}
+			if(!IsNew && AutomationConditionCur!=null && AutomationConditionCur.CompareField==autoCondField) {
+				return true;
+			}
+			return AutomationTriggerCur!=null && AutomationClinicMismatches.IsTriggerAllowed(AutomationTriggerCur.Value);
+		}
+
+		///<summary>The field selected in listCompareField. The first listed field when nothing is selected.</summary>
+		private AutoCondField GetFieldSelected() {
+			if(listCompareField.SelectedIndex<0 || listCompareField.SelectedIndex>=_listAutoCondFields.Count) {
+				return _listAutoCondFields[0];
+			}
+			return _listAutoCondFields[listCompareField.SelectedIndex];
 		}
 
 		///<summary>Show or hides the form fileds based of needs.</summary>
@@ -56,10 +85,14 @@ namespace OpenDental {
 				labelCompareString.Text=Lan.g(this,"Text");
 			}
 			if(autoCondField.In(AutoCondField.InsuranceNotEffective,AutoCondField.IsControlled,AutoCondField.IsProcRequired
-				,AutoCondField.IsPatientInstructionPresent)) 
+				,AutoCondField.IsPatientInstructionPresent,AutoCondField.PatientProcedureClinicMismatch))
 			{//Hide fields
 				labelWarning.Visible=true;
-				if(autoCondField==AutoCondField.InsuranceNotEffective) {
+				if(autoCondField==AutoCondField.PatientProcedureClinicMismatch) {
+					labelWarning.Text=Lan.g(this,"This automation field will only work when using the ProcedureComplete trigger.  It is true when a completed "
+						+"procedure's clinic is not the patient's clinic.  It is never true when clinics are turned off.");
+				}
+				else if(autoCondField==AutoCondField.InsuranceNotEffective) {
 					labelWarning.Text="At any point in time this rule is triggered, the current date and time will be compared to the "
 						+"effective date range of the current patient's primary insurance.  If it does not fall within the range then the "
 						+"action for this automation will be triggered.";
@@ -92,7 +125,7 @@ namespace OpenDental {
 		///<summary>Logic might get more complex as fields and comparisons are added so a seperate function was made.</summary>
 		private bool ReasonableLogic() {
 			AutoCondComparison autoCondComparison=(AutoCondComparison)listComparison.SelectedIndex;
-			AutoCondField autoCondField=(AutoCondField)listCompareField.SelectedIndex;
+			AutoCondField autoCondField=GetFieldSelected();
 			//So far Age is only thing that allows GreaterThan or LessThan.
 			if(autoCondField!=AutoCondField.Age) {
 				if(autoCondComparison==AutoCondComparison.GreaterThan || autoCondComparison==AutoCondComparison.LessThan) {
@@ -110,7 +143,7 @@ namespace OpenDental {
 		}
 
 		private void listCompareField_Click(object sender,EventArgs e) {
-			ShowOrHideFields((AutoCondField)listCompareField.SelectedIndex);
+			ShowOrHideFields(GetFieldSelected());
 		}
 
 		private void butDelete_Click(object sender,EventArgs e) {
@@ -132,7 +165,7 @@ namespace OpenDental {
 		}
 
 		private void butSelect_Click(object sender,EventArgs e) {
-			if((AutoCondField)listCompareField.SelectedIndex==AutoCondField.BillingType) {
+			if(GetFieldSelected()==AutoCondField.BillingType) {
 				using FormDefinitionPicker formDefinitionPicker=new FormDefinitionPicker(DefCat.BillingTypes);
 				formDefinitionPicker.HasShowHiddenOption=false;
 				formDefinitionPicker.IsMultiSelectionMode=false;
@@ -145,7 +178,7 @@ namespace OpenDental {
 					textCompareString.Text=formDefinitionPicker.ListDefsSelected?[0]?.ItemName??"";
 				}
 			}
-			else if((AutoCondField)listCompareField.SelectedIndex==AutoCondField.ClaimContainsProcCode) {
+			else if(GetFieldSelected()==AutoCondField.ClaimContainsProcCode) {
 				using FormProcCodes formProcCodes=new FormProcCodes();
 				formProcCodes.IsSelectionMode=true;
 				formProcCodes.ShowDialog();
@@ -156,15 +189,16 @@ namespace OpenDental {
 		}
 
 		private void butSave_Click(object sender,EventArgs e) {
-			if((AutoCondField)listCompareField.SelectedIndex==AutoCondField.InsuranceNotEffective
-				|| (AutoCondField)listCompareField.SelectedIndex==AutoCondField.IsProcRequired
-				|| (AutoCondField)listCompareField.SelectedIndex==AutoCondField.IsControlled
-				|| (AutoCondField)listCompareField.SelectedIndex==AutoCondField.IsPatientInstructionPresent) 
+			if(GetFieldSelected()==AutoCondField.InsuranceNotEffective
+				|| GetFieldSelected()==AutoCondField.IsProcRequired
+				|| GetFieldSelected()==AutoCondField.IsControlled
+				|| GetFieldSelected()==AutoCondField.IsPatientInstructionPresent
+				|| GetFieldSelected()==AutoCondField.PatientProcedureClinicMismatch) //26.1: no comparison, no text
 			{
-				AutomationConditionCur.CompareString=""; 
+				AutomationConditionCur.CompareString="";
 				AutomationConditionCur.Comparison=AutoCondComparison.None;
 			}
-			else if((AutoCondField)listCompareField.SelectedIndex==AutoCondField.ClaimContainsProcCode) {
+			else if(GetFieldSelected()==AutoCondField.ClaimContainsProcCode) {
 				if(textCompareString.Text.Contains(" ")){
 					MsgBox.Show(this,"Procedure codes cannot contain any spaces.");
 					return;
@@ -189,7 +223,7 @@ namespace OpenDental {
 					MsgBox.Show(this,"Comparison does not make sense with chosen field.");
 					return;
 				}
-				if((AutoCondField)listCompareField.SelectedIndex==AutoCondField.Gender
+				if(GetFieldSelected()==AutoCondField.Gender
 					&& !(textCompareString.Text.ToLower()=="m" || textCompareString.Text.ToLower()=="f")) 
 				{
 					MsgBox.Show(this,"Allowed gender values are M or F.");
@@ -198,7 +232,7 @@ namespace OpenDental {
 				AutomationConditionCur.CompareString=textCompareString.Text;
 				AutomationConditionCur.Comparison=(AutoCondComparison)listComparison.SelectedIndex;
 			}
-			AutomationConditionCur.CompareField=(AutoCondField)listCompareField.SelectedIndex;
+			AutomationConditionCur.CompareField=GetFieldSelected();
 			if(IsNew) {
 				AutomationConditions.Insert(AutomationConditionCur);
 			}

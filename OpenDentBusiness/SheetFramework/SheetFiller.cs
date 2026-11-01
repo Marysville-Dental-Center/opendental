@@ -1483,10 +1483,8 @@ namespace OpenDentBusiness {
 							field.FieldValue=refer.City+", "+refer.ST+" "+refer.Zip;
 							break;
 						case "referral.phone":
-							field.FieldValue="";
-							if(refer.Telephone.Length==10){
-								field.FieldValue=TelephoneNumbers.ReFormat(refer.Telephone);
-							}
+							//25.4: 10-digit values in the office phone format, anything else (extension, 11 digits, international) as stored.
+							field.FieldValue=ReferralPhones.GetDisplay(refer.Telephone);
 							break;
 						case "referral.phone2":
 							field.FieldValue=refer.Phone2;
@@ -2091,10 +2089,8 @@ namespace OpenDentBusiness {
 				foreach(SheetField field in listReferralFields) {
 					switch(field.FieldName) {
 						case "referral.phone":
-							field.FieldValue="";
-							if(refer.Telephone.Length==10) {
-								field.FieldValue=TelephoneNumbers.ReFormat(refer.Telephone);
-							}
+							//25.4: 10-digit values in the office phone format, anything else as stored (ReferralPhones).
+							field.FieldValue=ReferralPhones.GetDisplay(refer.Telephone);
 							break;
 						case "referral.phone2":
 							field.FieldValue=refer.Phone2;

@@ -49,7 +49,8 @@ namespace OpenDental{
 		}
 
 		private void butDiagnostics_Click(object sender,EventArgs e) {
-			string diagnostics = BugSubmissions.GetDiagnostics(FormOpenDental.PatNumCur);
+			//25.4: more details (date and time, hardware). Gathered on this computer and from this office's database server only (LocalDiagnostics).
+			string diagnostics=LocalDiagnostics.GetDiagnostics(FormOpenDental.PatNumCur);
 			using MsgBoxCopyPaste msgBoxCopyPaste=new MsgBoxCopyPaste(diagnostics);
 			msgBoxCopyPaste.Text=Lans.g(this,"Diagnostics");
 			msgBoxCopyPaste.ShowDialog();

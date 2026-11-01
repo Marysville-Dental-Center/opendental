@@ -500,6 +500,7 @@
     <Compile Include="InternalTools\Cloud\Crud\CloudBillingCrud.cs" />
     <Compile Include="InternalTools\Cloud\TableTypes\CloudBilling.cs" />
     <Compile Include="Data Interface\BugSubmissions.cs" />
+    <Compile Include="Misc\LocalDiagnostics.cs" />
     <Compile Include="Data Interface\ClaimTrackings.cs" />
     <Compile Include="Data Interface\ClinicErxs.cs" />
     <Compile Include="Data Interface\CommOptOuts.cs" />
@@ -1246,6 +1247,7 @@
     <Compile Include="Data Interface\ApptFields.cs" />
     <Compile Include="Data Interface\AutomationConditions.cs" />
     <Compile Include="Data Interface\Automations.cs" />
+    <Compile Include="Data Interface\AutomationClinicMismatches.cs" />
     <Compile Include="Data Interface\CDSPermissions.cs" />
     <Compile Include="Data Interface\ConnectionGroups.cs" />
     <Compile Include="Data Interface\ConnGroupAttaches.cs" />
@@ -1525,6 +1527,7 @@
     <Compile Include="Data Interface\PlannedAppts.cs" />
     <Compile Include="Data Interface\Popups.cs" />
     <Compile Include="Data Interface\Printers.cs" />
+    <Compile Include="Misc\PrintSituationRules.cs" />
     <Compile Include="Data Interface\ProcButtonItems.cs" />
     <Compile Include="Data Interface\ProcButtons.cs" />
     <Compile Include="Data Interface\ProcCodeNotes.cs" />
@@ -1551,6 +1554,7 @@
     <Compile Include="Data Interface\Reconciles.cs" />
     <Compile Include="Data Interface\RefAttaches.cs" />
     <Compile Include="Data Interface\Referrals.cs" />
+    <Compile Include="Misc\ReferralPhones.cs" />
     <Compile Include="Data Interface\RegistrationKeys.cs" />
     <Compile Include="Data Interface\RepeatCharges.cs" />
     <Compile Include="Data Interface\ReqNeededs.cs" />
