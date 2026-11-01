@@ -237,15 +237,23 @@ namespace M2AUDITTests {
 
 		[TestMethod]
 		public void SheetImport_Birthdate_Logged() {
-			//What FormSheetImport does for the Birthdate row: the imported value goes on the patient, then Patients.Update(_patient,_patientOld).
-			//BirthdateSavePathTests checks that the window still saves that way.
+			//What FormSheetImport does for the Birthdate row: the imported value goes on the patient, then Patients.Update(_patient,_patientOld),
+			//then B-AUDIT's preferred-name and clinic entry. BirthdateSavePathTests checks that the window still saves that way.
 			Patient patient=InsertPatient("Sheet",new DateTime(1985,3,4));
 			ClearLogs();
 			Patient patientOld=patient.Copy();
 			object impValObj=new DateTime(1984,3,4);
 			patient.Birthdate=(DateTime)impValObj;
+			patient.Preferred="Sam";
 			Patients.Update(patient,patientOld);
+			Patients.InsertPreferredAndClinicChangeSecurityLogEntry(patientOld,patient,"sheet import");
 			CollectionAssert.AreEqual(new List<string> { "Patient birthdate changed from '3/4/1985' to '3/4/1984'" },GetBirthdateLogTexts(patient.PatNum));
+			string countBirthdateMentions=DataCore.GetScalar("SELECT COUNT(*) FROM securitylog WHERE PatNum="+POut.Long(patient.PatNum)
+				+" AND LogText LIKE '%birthdate%'");
+			Assert.AreEqual("1",countBirthdateMentions,"B-AUDIT's import entry does not repeat the birthdate.");
+			string countPreferred=DataCore.GetScalar("SELECT COUNT(*) FROM securitylog WHERE PermType="+POut.Int((int)EnumPermType.PatientEdit)
+				+" AND PatNum="+POut.Long(patient.PatNum)+" AND LogText LIKE 'Patient preferred name changed from '''' to ''Sam''%From sheet import.'");
+			Assert.AreEqual("1",countPreferred,"B-AUDIT's import entry is kept beside the birthdate entry.");
 		}
 
 		[TestMethod]

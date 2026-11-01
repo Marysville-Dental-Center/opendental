@@ -71,6 +71,10 @@ namespace BAUDITTests {
 
 		#region Helpers
 		private static int _patCounter;
+		///<summary>Per synthetic patient, the last securitylog row written while AddPatient set the patient up. GetPatientEditLogs only returns rows
+		///after it, so a test sees exactly the entries of the action it tests. Setting up writes its own PatientEdit row since M2-AUDIT (the
+		///birthdate the patient is created with is audited as added).</summary>
+		private static readonly Dictionary<long,long> _dictSetupLogNums=new Dictionary<long,long>();
 
 		///<summary>A new synthetic patient who is his own guarantor unless one is given.</summary>
 		private static Patient AddPatient(string preferred,long clinicNum,long guarantor=0) {
@@ -91,12 +95,15 @@ namespace BAUDITTests {
 			Patient patientOld=patient.Copy();
 			patient.Guarantor=(guarantor==0 ? patient.PatNum : guarantor);
 			Patients.Update(patient,patientOld);
+			_dictSetupLogNums[patient.PatNum]=PIn.Long(DataCore.GetScalar("SELECT COALESCE(MAX(SecurityLogNum),0) FROM securitylog"));
 			return Patients.GetPat(patient.PatNum);
 		}
 
+		///<summary>The patient's PatientEdit entries written after AddPatient set the patient up.</summary>
 		private static List<SecurityLog> GetPatientEditLogs(long patNum) {
+			_dictSetupLogNums.TryGetValue(patNum,out long setupLogNum);
 			return OpenDentBusiness.Crud.SecurityLogCrud.SelectMany("SELECT * FROM securitylog WHERE PermType="+POut.Int((int)EnumPermType.PatientEdit)
-				+" AND PatNum="+POut.Long(patNum)+" ORDER BY SecurityLogNum");
+				+" AND PatNum="+POut.Long(patNum)+" AND SecurityLogNum>"+POut.Long(setupLogNum)+" ORDER BY SecurityLogNum");
 		}
 
 		private static string AllText(List<SecurityLog> listSecurityLogs) {
