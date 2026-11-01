@@ -17,9 +17,12 @@ namespace VBRIDGE1Tests {
 			return File.ReadAllText(TestDb.FindRepoFile(Path.Combine(arrayParts))).Replace("\r\n","\n");
 		}
 
+		///<summary>The repository root: the first folder above the test assembly with NOTICE, which must also hold LICENSE. Found by those files
+		///rather than by the solution's name, so it survives a rename.</summary>
 		private static string GetRepoRoot() {
-			string path=TestDb.FindRepoFile("OpenDental.sln");
-			return Path.GetDirectoryName(path);
+			string root=Path.GetDirectoryName(TestDb.FindRepoFile("NOTICE"));
+			Assert.IsTrue(File.Exists(Path.Combine(root,"LICENSE")),"LICENSE is not next to NOTICE in "+root);
+			return root;
 		}
 
 		///<summary>The text of one method: from its signature to the first closing brace at the method's own indent (two tabs).</summary>

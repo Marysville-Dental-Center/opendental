@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenDentBusiness;
 
@@ -33,30 +34,34 @@ namespace NoHqTests {
 
 		[TestMethod]
 		public void OpenDental_RefDataDownloadsAreGone() {
-			Assembly assembly=LoadBuiltAssembly("OpenDental.exe");
-			AssertNoMembers(FindType(assembly,"OpenDental.MedicationL"),"DownloadDefaultMedicationsFile");
-			AssertNoMembers(FindType(assembly,"OpenDental.FormMedications"),"DownloadDefaultMedications");
-			AssertNoMembers(FindType(assembly,"OpenDental.FormTranslationCat"),"butDownload","butDownload_Click");
-			AssertNoMembers(FindType(assembly,"OpenDental.FormProcTools"),"CanadaDownloadProcedureCodes");
-			AssertNoMembers(FindType(assembly,"OpenDental.FormFeeSchedTools"),"butImportCanada","butImportCanada_Click");
-			Assert.IsNull(assembly.GetType("OpenDental.FormFeeSchedPickRemote"),"FormFeeSchedPickRemote should be deleted.");
-			Assert.IsNull(assembly.GetType("OpenDental.FormFeeSchedPickAuthOntario"),"FormFeeSchedPickAuthOntario should be deleted.");
-			AssertNoMembers(FindType(assembly,"OpenDental.FormPayConnectSetup"),"butDownloadDriver","butDownloadDriver_Click");
-			Type typeFormCodeSystemsImport=FindType(assembly,"OpenDental.FormCodeSystemsImport");
+			Assembly assembly=LoadBuiltAssembly(ProgramNames.ExeFileName);
+			//The windows share the entry point's namespace. Taken from the assembly, so the checks below still find them after a rename, and
+			//the IsNull checks cannot pass only because the namespace changed.
+			string ns=TypeLookup.GetEntryNamespace(assembly);
+			AssertNoMembers(FindType(assembly,ns+".MedicationL"),"DownloadDefaultMedicationsFile");
+			AssertNoMembers(FindType(assembly,ns+".FormMedications"),"DownloadDefaultMedications");
+			AssertNoMembers(FindType(assembly,ns+".FormTranslationCat"),"butDownload","butDownload_Click");
+			AssertNoMembers(FindType(assembly,ns+".FormProcTools"),"CanadaDownloadProcedureCodes");
+			AssertNoMembers(FindType(assembly,ns+".FormFeeSchedTools"),"butImportCanada","butImportCanada_Click");
+			Assert.IsNull(assembly.GetType(ns+".FormFeeSchedPickRemote"),"FormFeeSchedPickRemote should be deleted.");
+			Assert.IsNull(assembly.GetType(ns+".FormFeeSchedPickAuthOntario"),"FormFeeSchedPickAuthOntario should be deleted.");
+			AssertNoMembers(FindType(assembly,ns+".FormPayConnectSetup"),"butDownloadDriver","butDownloadDriver_Click");
+			Type typeFormCodeSystemsImport=FindType(assembly,ns+".FormCodeSystemsImport");
 			AssertNoMembers(typeFormCodeSystemsImport,"butCheckUpdates","butDownload","checkKeepDescriptions","PreDownloadHelper","listEnumCodeSystemNames");
 			Type typeThread=typeFormCodeSystemsImport.GetNestedType("UpdateCodeSystemThread",BindingFlags.NonPublic);
 			Assert.IsNotNull(typeThread,"The CPT import thread class was not found.");
 			AssertNoMembers(typeThread,"DownloadFileHelper","DownloadFileWorker","DownloadProgress","SendAndReceiveDownloadXml");
-			Assert.IsNull(assembly.GetType("OpenDental.EnumCodeSystemName"),"EnumCodeSystemName should be deleted.");
-			AssertNoMembers(FindType(assembly,"OpenDental.FormIcd9s"),"butCodeImport","butCodeImport_Click");
-			AssertNoMembers(FindType(assembly,"OpenDental.FormIcd10s"),"butCodeImport","butCodeImport_Click");
-			AssertNoMembers(FindType(assembly,"OpenDental.FormRxNorms"),"FormRxNorms_Shown");
+			Assert.IsNull(assembly.GetType(ns+".EnumCodeSystemName"),"EnumCodeSystemName should be deleted.");
+			AssertNoMembers(FindType(assembly,ns+".FormIcd9s"),"butCodeImport","butCodeImport_Click");
+			AssertNoMembers(FindType(assembly,ns+".FormIcd10s"),"butCodeImport","butCodeImport_Click");
+			AssertNoMembers(FindType(assembly,ns+".FormRxNorms"),"FormRxNorms_Shown");
 		}
 
 		[TestMethod]
 		public void WpfControls_CdcrecDownloadButtonIsGone() {
 			Assembly assembly=LoadBuiltAssembly("WpfControlsOD.dll");
-			AssertNoMembers(FindType(assembly,"OpenDental.FrmPatientRaceEthnicity"),"butImport","butImport_Click");
+			string ns=TypeLookup.GetNamespaceOf(assembly,"FrmODBase");
+			AssertNoMembers(FindType(assembly,ns+".FrmPatientRaceEthnicity"),"butImport","butImport_Click");
 		}
 
 		#region Helpers

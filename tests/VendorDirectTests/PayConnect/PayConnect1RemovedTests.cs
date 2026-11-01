@@ -38,9 +38,8 @@ namespace VendorDirectTests.PayConnectV1Removal {
 			List<string> listFiles=new List<string>();
 			foreach(string project in _arraySourceProjects) {
 				string folder=Path.Combine(root,project);
-				if(!Directory.Exists(folder)) {
-					continue;
-				}
+				//A missing project folder (renamed, say) would leave its files unchecked, so it fails instead of being skipped.
+				Assert.IsTrue(Directory.Exists(folder),folder+" is missing; update the project list.");
 				foreach(string file in Directory.EnumerateFiles(folder,"*.*",SearchOption.AllDirectories)) {
 					string relative=file.Substring(root.Length);
 					if(IsBuildOutput(relative) || !arrayExtensions.Any(x => file.EndsWith(x,StringComparison.OrdinalIgnoreCase))) {
@@ -61,10 +60,14 @@ namespace VendorDirectTests.PayConnectV1Removal {
 		[TestMethod]
 		public void MerchantServiceWebReference_IsGone() {
 			Assembly assemblyBusiness=typeof(Patient).Assembly;
+			//The namespaces come from types that stay, which must resolve the same way, so the checks cannot pass only because a namespace was renamed.
+			string nsService=typeof(OpenDentBusiness.PayConnectService.transType).Namespace;
+			Assert.AreEqual(typeof(OpenDentBusiness.PayConnectService.transType),assemblyBusiness.GetType(nsService+".transType"));
+			Assert.AreEqual(typeof(PayConnect),assemblyBusiness.GetType(typeof(Patient).Namespace+".PayConnect"));
 			foreach(string typeName in new[] { "MerchantService","Credentials","creditCardRequest","transResponse","signatureRequest","expiration","Token" }) {
-				Assert.IsNull(assemblyBusiness.GetType("OpenDentBusiness.PayConnectService."+typeName),"PayConnectService."+typeName+" should be gone.");
+				Assert.IsNull(assemblyBusiness.GetType(nsService+"."+typeName),"PayConnectService."+typeName+" should be gone.");
 			}
-			Assert.IsNull(assemblyBusiness.GetType("OpenDentBusiness.PayConnectREST"),"The PayConnect 1.0 REST class should be gone.");
+			Assert.IsNull(assemblyBusiness.GetType(typeof(Patient).Namespace+".PayConnectREST"),"The PayConnect 1.0 REST class should be gone.");
 			Assert.IsFalse(Directory.Exists(Path.Combine(GetRoot(),@"OpenDentBusiness\Web References\PayConnectService")));
 			foreach(string file in new[] { @"OpenDentBusiness\OpenDentBusiness.csproj",@"OpenDentBusiness\app.config",
 				@"OpenDentBusiness\Properties\Settings.settings",@"OpenDentBusiness\Properties\Settings.Designer.cs" })

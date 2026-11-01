@@ -51,6 +51,8 @@
     <Compile Include="RemovedAssembliesTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RefDataTests.cs" />
+    <Compile Include="RenameGuardTests.cs" />
+    <Compile Include="TypeLookup.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CodeBase\xCodeBase.csproj">

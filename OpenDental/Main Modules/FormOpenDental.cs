@@ -7115,7 +7115,7 @@ namespace OpenDental{
 						continue;//Skip any files related to updates.
 					}
 					//The UpdateFileCopier will create temporary backups of source and destination setup files so that it can revert if copying fails.
-					if(listDirectories[i].Contains("updatefilecopier")) {
+					if(listDirectories[i].Contains(ProgramNames.UpdateFileCopierTempFolderName)) {
 						continue;//Skip any files related to updates.
 					}
 					Directory.Delete(listDirectories[i]);

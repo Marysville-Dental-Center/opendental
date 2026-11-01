@@ -15,65 +15,66 @@ namespace NoHqTests {
 	///Needs no database or network connection.</summary>
 	[TestClass]
 	public class HqToolsRemovedTests {
-		///<summary>Data interfaces and helpers that only served Open Dental HQ's staff tools.</summary>
+		///<summary>Data interfaces and helpers that only served Open Dental HQ's staff tools, relative to the business layer's namespace.</summary>
 		private static readonly string[] _arrayRemovedTypes=new string[] {
-			"OpenDentBusiness.Jobs",
-			"OpenDentBusiness.JobLinks",
-			"OpenDentBusiness.JobPermissions",
-			"OpenDentBusiness.JobTeams",
-			"OpenDentBusiness.JobTeamUsers",
-			"OpenDentBusiness.Bugs",
-			"OpenDentBusiness.BugSubmissionHashes",
-			"OpenDentBusiness.FeatureRequests",
-			"OpenDentBusiness.Phones",
-			"OpenDentBusiness.PhoneEmpDefaults",
-			"OpenDentBusiness.PhoneComps",
-			"OpenDentBusiness.PhoneConfs",
-			"OpenDentBusiness.MapAreas",
-			"OpenDentBusiness.VoiceMails",
-			"OpenDentBusiness.TriageMetrics",
-			"OpenDentBusiness.WebChatSessions",
-			"OpenDentBusiness.WebChatMessages",
-			"OpenDentBusiness.WebChatMisc",
-			"OpenDentBusiness.OpenAiClient",
-			"OpenDentBusiness.PeerInfos",
-			"OpenDentBusiness.CloudBillings",
-			"OpenDentBusiness.APIBillings",
-			"OpenDentBusiness.SmsBillings",
-			"OpenDentBusiness.EServiceMetrics",
-			"OpenDentBusiness.EServiceBillings",
-			"OpenDentBusiness.EServiceInvoiceLineItem",
-			"OpenDentBusiness.SiteLinks",
-			"OpenDentBusiness.TaskTakens",
-			"OpenDentBusiness.EhrQuarterlyKeys",
-			"OpenDentBusiness.WebServiceMainHQMockDemo",
-			"OpenDentBusiness.WebServiceMainHQ.WebServiceMainHQ",
-			"OpenDentBusiness.customerUpdates.Service1",
-			"OpenDentBusiness.localhost.Service1",
+			"Jobs",
+			"JobLinks",
+			"JobPermissions",
+			"JobTeams",
+			"JobTeamUsers",
+			"Bugs",
+			"BugSubmissionHashes",
+			"FeatureRequests",
+			"Phones",
+			"PhoneEmpDefaults",
+			"PhoneComps",
+			"PhoneConfs",
+			"MapAreas",
+			"VoiceMails",
+			"TriageMetrics",
+			"WebChatSessions",
+			"WebChatMessages",
+			"WebChatMisc",
+			"OpenAiClient",
+			"PeerInfos",
+			"CloudBillings",
+			"APIBillings",
+			"SmsBillings",
+			"EServiceMetrics",
+			"EServiceBillings",
+			"EServiceInvoiceLineItem",
+			"SiteLinks",
+			"TaskTakens",
+			"EhrQuarterlyKeys",
+			"WebServiceMainHQMockDemo",
+			"WebServiceMainHQ.WebServiceMainHQ",
+			"customerUpdates.Service1",
+			"localhost.Service1",
 		};
 
-		///<summary>Table types and Crud classes of HQ-only tables. The tables are not dropped, so these must stay.</summary>
+		///<summary>Table types and Crud classes of HQ-only tables, relative to the business layer's namespace. The tables are not dropped, so these
+		///must stay.</summary>
 		private static readonly string[] _arrayKeptTypes=new string[] {
-			"OpenDentBusiness.Job",
-			"OpenDentBusiness.JobLink",
-			"OpenDentBusiness.Bug",
-			"OpenDentBusiness.BugSubmission",
-			"OpenDentBusiness.Phone",
-			"OpenDentBusiness.PhoneEmpDefault",
-			"OpenDentBusiness.WebChatSession",
-			"OpenDentBusiness.SiteLink",
-			"OpenDentBusiness.TaskTaken",
-			"OpenDentBusiness.Reseller",
-			"OpenDentBusiness.RegistrationKey",
-			"OpenDentBusiness.EServiceBilling",
-			"OpenDentBusiness.EServiceCodeLink",
-			"OpenDentBusiness.Crud.EServiceBillingCrud",
-			"OpenDentBusiness.Crud.JobCrud",
-			"OpenDentBusiness.Crud.BugCrud",
-			"OpenDentBusiness.Crud.PhoneCrud",
-			"OpenDentBusiness.Crud.WebChatSessionCrud",
-			"OpenDentBusiness.Crud.SiteLinkCrud",
-			"OpenDentBusiness.Crud.TaskTakenCrud",
+			"Job",
+			"JobLink",
+			"Bug",
+			"BugSubmission",
+			"Phone",
+			"PhoneEmpDefault",
+			"WebChatSession",
+			"SiteLink",
+			"TaskTaken",
+			"Reseller",
+			"RegistrationKey",
+			"EServiceBilling",
+			"EServiceCodeLink",
+			"Crud.EServiceBillingCrud",
+			"Crud.JobCrud",
+			"Crud.BugCrud",
+			"Crud.PhoneCrud",
+			"Crud.WebChatSessionCrud",
+			"Crud.SiteLinkCrud",
+			"Crud.TaskTakenCrud",
 		};
 
 		///<summary>Windows used only by Open Dental HQ staff, as file name prefixes in OpenDental and WpfControlsOD.</summary>
@@ -93,18 +94,12 @@ namespace NoHqTests {
 
 		[TestMethod]
 		public void HqTools_DataInterfacesAreRemoved() {
-			Assembly assembly=typeof(Patient).Assembly;
-			for(int i=0;i<_arrayRemovedTypes.Length;i++) {
-				Assert.IsNull(assembly.GetType(_arrayRemovedTypes[i]),_arrayRemovedTypes[i]+" should have been removed.");
-			}
+			TypeLookup.AssertRemoved(typeof(Patient),_arrayRemovedTypes,"should have been removed.");
 		}
 
 		[TestMethod]
 		public void HqTools_TableTypesAndCrudAreKept() {
-			Assembly assembly=typeof(Patient).Assembly;
-			for(int i=0;i<_arrayKeptTypes.Length;i++) {
-				Assert.IsNotNull(assembly.GetType(_arrayKeptTypes[i]),_arrayKeptTypes[i]+" must stay, because its table stays in the database.");
-			}
+			TypeLookup.AssertKept(typeof(Patient),_arrayKeptTypes,"must stay, because its table stays in the database.");
 		}
 
 		[TestMethod]
@@ -123,8 +118,9 @@ namespace NoHqTests {
 					.ToList();
 				Assert.AreEqual(0,listFiles.Count,"Unexpected files in OpenDentBusiness\\InternalTools: "+string.Join(", ",listFiles));
 			}
-			string textSolution=File.ReadAllText(Path.Combine(pathRoot,"OpenDental.sln"));
-			Assert.IsFalse(textSolution.Contains("WebCamOD"),"OpenDental.sln still lists WebCamOD.");
+			string[] arrayPathSolutions=Directory.GetFiles(pathRoot,"*.sln");//By extension, so the check survives a rename of the solution.
+			Assert.AreEqual(1,arrayPathSolutions.Length,"Expected one solution in "+pathRoot);
+			Assert.IsFalse(File.ReadAllText(arrayPathSolutions[0]).Contains("WebCamOD"),Path.GetFileName(arrayPathSolutions[0])+" still lists WebCamOD.");
 		}
 
 		[TestMethod]
