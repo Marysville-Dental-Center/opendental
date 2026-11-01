@@ -20,7 +20,8 @@ namespace OpenDentBusiness {
 
 		///<summary>True when a benefit of this type uses the field. Percent: coinsurance. Amount: limitations (maximums), deductibles and copayments,
 		///the types Benefits.GetValidationErrors allows an amount for. Quantity and qualifier: limitations (frequency and age limits), waiting periods
-		///and copayments (per visit). Treatment area: limitations. Teeth: exclusions (Open Dental 25.3).</summary>
+		///and copayments (per visit). Treatment area: limitations. Teeth: exclusions (Open Dental 25.3); age limitations too (26.1), which depends on
+		///the qualifier, so the checks of one benefit (GetIgnoredFieldErrors, GetPreviewText) use Benefits.CanHaveTeeth instead.</summary>
 		public static bool IsFieldUsed(InsBenefitType insBenefitType,EnumBenefitField enumBenefitField) {
 			Meth.NoCheckMiddleTierRole();
 			switch(enumBenefitField) {
@@ -38,6 +39,15 @@ namespace OpenDentBusiness {
 				default:
 					return true;
 			}
+		}
+
+		///<summary>IsFieldUsed for one benefit. Teeth also depend on the quantity qualifier: age limitations may have teeth too (Open Dental 26.1,
+		///package M2-EST, Benefits.CanHaveTeeth). Every other field depends on the type only.</summary>
+		private static bool IsFieldUsed(Benefit benefit,EnumBenefitField enumBenefitField) {
+			if(enumBenefitField==EnumBenefitField.Teeth) {
+				return Benefits.CanHaveTeeth(benefit.BenefitType,benefit.QuantityQualifier);
+			}
+			return IsFieldUsed(benefit.BenefitType,enumBenefitField);
 		}
 
 		///<summary>True when the benefit holds a value in the field: a percent or amount other than -1 (blank), a quantity other than 0, a qualifier
@@ -131,7 +141,7 @@ namespace OpenDentBusiness {
 			List<BenefitValidationError> listErrors=new List<BenefitValidationError>();
 			for(int i=0;i<ArrayFieldsByType.Length;i++) {
 				EnumBenefitField enumBenefitField=ArrayFieldsByType[i];
-				if(IsFieldUsed(benefit.BenefitType,enumBenefitField) || !HasValue(benefit,enumBenefitField)) {
+				if(IsFieldUsed(benefit,enumBenefitField) || !HasValue(benefit,enumBenefitField)) {
 					continue;
 				}
 				if(benefitLoaded!=null && benefitLoaded.BenefitType==benefit.BenefitType && IsSameValue(benefit,benefitLoaded,enumBenefitField)) {
@@ -190,7 +200,7 @@ namespace OpenDentBusiness {
 			if(benefit.TreatArea!=TreatmentArea.None) {
 				listParts.Add(Lans.g("BenefitEditRules","Treatment Area")+": "+Lans.g("enumTreatmentArea",benefit.TreatArea.ToString()));
 			}
-			if(!string.IsNullOrWhiteSpace(teeth) && IsFieldUsed(benefit.BenefitType,EnumBenefitField.Teeth)) {
+			if(!string.IsNullOrWhiteSpace(teeth) && IsFieldUsed(benefit,EnumBenefitField.Teeth)) {
 				listParts.Add(Lans.g("BenefitEditRules","teeth")+" "+teeth.Trim());
 			}
 			if(!string.IsNullOrWhiteSpace(procCode)) {
