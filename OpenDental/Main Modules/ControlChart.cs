@@ -346,6 +346,7 @@ namespace OpenDental {
 			_listChartViews[oldIdx].ItemOrder=oldIdx;
 			ChartViews.Update(_listChartViews[newIdx]);
 			ChartViews.Update(_listChartViews[oldIdx]);
+			ChartViews.LogMoved(_listChartViews[newIdx],oldIdx,newIdx);
 			FillChartViewsGrid();
 			gridChartViews.SetSelected(newIdx,true);
 			SetChartView(_listChartViews[newIdx]);
@@ -4003,6 +4004,11 @@ namespace OpenDental {
 						row.Tag=null;
 						break;
 					#endregion Discharge Date
+					#region Gender
+					case DisplayFields26_1.ChartPatientInfoGender://26.1. Tag stays null, so a double click opens Edit Patient Information.
+						row.Cells.Add(PatientGenderDisplay.GetText(Pd.Patient.Gender));
+						break;
+					#endregion Gender
 					#region Med Urgent
 					case "Med Urgent":
 						row.Cells[0].Bold=YN.Yes;//25.2: bold label, like the Medications, Allergies and Problems rows.

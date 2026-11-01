@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Windows.Forms;
 using OpenDental.UI;
 using OpenDentBusiness;
@@ -10,6 +11,9 @@ namespace OpenDental{
 		private bool _changed;
 		private List<DisplayField> _listDisplayFieldsShowing;
 		public ChartView ChartViewCur;
+		///<summary>The view and its columns as they were when the window opened, for the Audit Trail entry (26.1).</summary>
+		private ChartView _chartViewOld;
+		private List<DisplayField> _listDisplayFieldsOld;
 
 		///<summary></summary>
 		public FormChartView()
@@ -63,6 +67,8 @@ namespace OpenDental{
 			checkTPChart.Checked=ChartViewCur.IsTpCharting;
 			DisplayFields.RefreshCache();
 			_listDisplayFieldsShowing=DisplayFields.GetForChartView(ChartViewCur.ChartViewNum);//This will be zero for a new ChartView
+			_chartViewOld=ChartViewCur.Copy();
+			_listDisplayFieldsOld=_listDisplayFieldsShowing.Select(x => x.Copy()).ToList();
 			if(Clinics.IsMedicalPracticeOrClinic(Clinics.ClinicNum)) {
 				checkShowTeeth.Visible=false;
 			}
@@ -367,6 +373,7 @@ namespace OpenDental{
 			try {
 				ChartViews.Delete(ChartViewCur.ChartViewNum);
 				DisplayFields.DeleteForChartView(ChartViewCur.ChartViewNum);
+				ChartViews.LogDeleted(ChartViewCur);
 				DialogResult=DialogResult.OK;
 			}
 			catch(Exception ex) {
@@ -444,6 +451,12 @@ namespace OpenDental{
 			}
 			DisplayFields.SaveListForChartView(_listDisplayFieldsShowing,ChartViewCur.ChartViewNum);
 			DisplayFields.RefreshCache();
+			if(ChartViewCur.IsNew) {
+				ChartViews.LogAdded(ChartViewCur);
+			}
+			else {
+				ChartViews.LogEdited(_chartViewOld,ChartViewCur,_listDisplayFieldsOld,_listDisplayFieldsShowing);
+			}
 			DialogResult=DialogResult.OK;
 		}
 

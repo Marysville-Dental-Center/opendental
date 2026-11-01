@@ -1277,6 +1277,7 @@
     <Compile Include="Data Interface\Cdcrecs.cs" />
     <Compile Include="Data Interface\CentralConnections.cs" />
     <Compile Include="Data Interface\ChartViews.cs" />
+    <Compile Include="Misc\Shell26_1.cs" />
     <Compile Include="Data Interface\CodeSystems.cs" />
     <Compile Include="Data Interface\Cpts.cs" />
     <Compile Include="Data Interface\Cvxs.cs" />
@@ -1578,6 +1579,7 @@
     <Compile Include="Data Interface\SalesTaxProcs.cs" />
     <Compile Include="Data Interface\ScheduleOps.cs" />
     <Compile Include="Data Interface\Schedules.cs" />
+    <Compile Include="Data Interface\DatabaseMaintenances.Schedules.cs" />
     <Compile Include="Data Interface\BlockoutPerms.cs" />
     <Compile Include="Data Interface\SchoolClasses.cs" />
     <Compile Include="Data Interface\SchoolCourses.cs" />

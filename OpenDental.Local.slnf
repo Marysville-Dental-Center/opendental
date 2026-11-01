@@ -75,6 +75,7 @@
       "tests\\M2RECURTests\\M2RECURTests.csproj",
       "tests\\M2SDVTests\\M2SDVTests.csproj",
       "tests\\M2SHEETSTests\\M2SHEETSTests.csproj",
+      "tests\\M2SHELLTests\\M2SHELLTests.csproj",
       "tests\\M2TERMTests\\M2TERMTests.csproj",
       "tests\\M2UDSTests\\M2UDSTests.csproj",
       "tests\\MedicationTests\\MedicationTests.csproj",

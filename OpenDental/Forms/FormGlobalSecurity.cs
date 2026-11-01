@@ -38,6 +38,7 @@ namespace OpenDental {
 			checkUserNameManualEntry.Checked=PrefC.GetBool(PrefName.UserNameManualEntry);
 			checkBadgeLogIn.Checked=PrefC.GetBool(PrefName.SecurityBadgesRequirePassword);
 			checkMaintainPatient.Checked=PrefC.GetBool(PrefName.PatientMaintainedOnUserChange);
+			checkAuditPatientSelected.Checked=PatientSelectedAudit.IsEnabled();
 			if(!PrefC.HasClinicsEnabled) {
 				//This pref only matters when clinics are turned on. When clinics are off it behaves the same as if the pref were on. 
 				checkMaintainPatient.Visible=false;
@@ -211,6 +212,10 @@ namespace OpenDental {
 			}
 			doInvalidatePrefs |=Prefs.UpdateBool(PrefName.SecurityLogOffAllowUserOverride,checkAllowLogoffOverride.Checked);
 			doInvalidatePrefs |=Prefs.UpdateBool(PrefName.PatientMaintainedOnUserChange,checkMaintainPatient.Checked);
+			if(PatientSelectedAudit.SetEnabled(checkAuditPatientSelected.Checked)) {
+				doInvalidatePrefs=true;
+				SecurityLogs.MakeLogEntry(EnumPermType.SecurityAdmin,0,"Patient selection audit turned "+(checkAuditPatientSelected.Checked ? "on" : "off")+".");
+			}
 			//if PasswordsMustBeStrong was unchecked, then reset the strong password flags.
 			if(Prefs.UpdateBool(PrefName.PasswordsMustBeStrong,checkPasswordsMustBeStrong.Checked) && !checkPasswordsMustBeStrong.Checked) {
 				doInvalidatePrefs=true;

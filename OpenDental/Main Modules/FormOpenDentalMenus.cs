@@ -408,7 +408,6 @@ namespace OpenDental{
 		///<summary>Tools: Misc Tools</summary>
 		private void LayoutSubMenuMiscTools(MenuItemOD menuItemMiscTools) {
 			menuItemMiscTools.Add("Close Payment Plans",menuItemAutoClosePayPlans_Click);
-			menuItemMiscTools.Add("Clear Duplicate Blockouts",menuItemDuplicateBlockouts_Click);
 			_menuItemCreateAtoZ=new MenuItemOD("Create A to Z Folders",menuItemCreateAtoZFolders_Click);
 			menuItemMiscTools.Add(_menuItemCreateAtoZ);
 			menuItemMiscTools.Add("Database Maintenance Pat",menuItemDatabaseMaintenancePat_Click);

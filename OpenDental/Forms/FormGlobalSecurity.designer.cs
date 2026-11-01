@@ -52,6 +52,7 @@ namespace OpenDental{
 			this.checkCannotEditPastPayPeriods = new OpenDental.UI.CheckBox();
 			this.checkMaintainPatient = new OpenDental.UI.CheckBox();
 			this.checkBadgeLogIn = new OpenDental.UI.CheckBox();
+			this.checkAuditPatientSelected = new OpenDental.UI.CheckBox();
 			this.groupBox1.SuspendLayout();
 			this.groupBox2.SuspendLayout();
 			this.SuspendLayout();
@@ -59,7 +60,7 @@ namespace OpenDental{
 			// butSave
 			// 
 			this.butSave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.butSave.Location = new System.Drawing.Point(279, 519);
+			this.butSave.Location = new System.Drawing.Point(279, 541);
 			this.butSave.Name = "butSave";
 			this.butSave.Size = new System.Drawing.Size(75, 24);
 			this.butSave.TabIndex = 3;
@@ -318,10 +319,20 @@ namespace OpenDental{
 			this.checkBadgeLogIn.Size = new System.Drawing.Size(348, 18);
 			this.checkBadgeLogIn.TabIndex = 280;
 			this.checkBadgeLogIn.Text = "When logging in with a badge, require a password";
-			// 
+			//
+			// checkAuditPatientSelected
+			//
+			this.checkAuditPatientSelected.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.checkAuditPatientSelected.Location = new System.Drawing.Point(1, 511);
+			this.checkAuditPatientSelected.Name = "checkAuditPatientSelected";
+			this.checkAuditPatientSelected.Size = new System.Drawing.Size(348, 18);
+			this.checkAuditPatientSelected.TabIndex = 281;
+			this.checkAuditPatientSelected.Text = "Log each patient selection in the Audit Trail";
+			//
 			// FormGlobalSecurity
-			// 
-			this.ClientSize = new System.Drawing.Size(370, 555);
+			//
+			this.ClientSize = new System.Drawing.Size(370, 577);
+			this.Controls.Add(this.checkAuditPatientSelected);
 			this.Controls.Add(this.checkBadgeLogIn);
 			this.Controls.Add(this.checkMaintainPatient);
 			this.Controls.Add(this.checkCannotEditPastPayPeriods);
@@ -384,5 +395,6 @@ namespace OpenDental{
 		private OpenDental.UI.CheckBox checkCannotEditPastPayPeriods;
 		private OpenDental.UI.CheckBox checkMaintainPatient;
 		private UI.CheckBox checkBadgeLogIn;
+		private UI.CheckBox checkAuditPatientSelected;
 	}
 }

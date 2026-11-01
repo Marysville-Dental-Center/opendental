@@ -257,6 +257,7 @@ namespace OpenDental{
 					return;
 				}
 				_patNumCur=value;
+				PatientSelectedAudit.LogIfEnabled(value);//Patient Selected audit entry (25.4), when the office turned it on.
 				ODEvent.Fire(ODEventType.Patient,value);
 			}
 		}
@@ -5598,16 +5599,7 @@ namespace OpenDental{
 		}
 
 		//MiscTools
-		private void menuItemDuplicateBlockouts_Click(object sender,EventArgs e) {
-			if(!Security.IsAuthorized(EnumPermType.Setup)) {
-				return;
-			}
-			using FormBlockoutDuplicatesFix formBlockoutDuplicatesFix=new FormBlockoutDuplicatesFix();
-			Cursor=Cursors.WaitCursor;
-			formBlockoutDuplicatesFix.ShowDialog();
-			Cursor=Cursors.Default;
-			//Security log entries are made from within the form.
-		}
+		//Clear Duplicate Blockouts is the Database Maintenance check SchedulesDeleteDuplicateBlockouts since 26.1.
 
 		private void menuItemCareCreditTrans_Click(object sender,EventArgs e) {
 			if(_formCareCreditTransactions==null || _formCareCreditTransactions.IsDisposed) {
@@ -5804,8 +5796,7 @@ namespace OpenDental{
 				return;
 			}
 			using FormFinanceCharges formFinanceCharges=new FormFinanceCharges();
-			formFinanceCharges.ShowDialog();
-			SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,"Run Finance Charges");
+			formFinanceCharges.ShowDialog();//The window writes its own Audit Trail entries when it opens and for each run (26.1).
 		}
 
 		private void menuItemCCRecurring_Click(object sender,EventArgs e) {
