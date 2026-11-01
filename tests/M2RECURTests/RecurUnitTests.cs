@@ -74,7 +74,7 @@ namespace M2RECURTests {
 			string source=ReadRepoFile(Path.Combine("OpenDentBusiness","Data Interface","RecurringCharges.cs")).Replace("\r\n","\n");
 			(string Method,string MarkDeclined,string Filter)[] arrayHooks=new[] {
 				("public void SendEdgeExpress(",
-					"MarkDeclined(chargeData,Lans.g(_lanThis,\"Response from EdgeExpress:\")+\" \"+response.XWebResponseCode.ToString(),LogLevel.Information);",
+					"MarkDeclined(chargeData,Lans.g(_lanThis,\"Response from Global Payments V1:\")+\" \"+response.XWebResponseCode.ToString(),LogLevel.Information);",
 					"chargeData.IsDeclinedByProcessor=chargeData.IsDeclinedByProcessor && IsEdgeExpressCardDecline(response.XWebResponseCode);"),
 				("private bool ProcessCardXChargeClientProgram(",
 					"MarkDeclined(chargeData,Lans.g(_lanThis,\"Result from XCharge:\")+\" \"+strBuilderResultText.ToString(),LogLevel.Information);",
@@ -103,6 +103,25 @@ namespace M2RECURTests {
 			Assert.AreEqual(7,countMarkDeclinedCalls,"A new MarkDeclined call needs its processor's filter.");
 			StringAssert.Contains(GetMethodBody(source,"private void SendPayConnectV2("),
 				"MarkDeclined(chargeData,Lans.g(_lanThis,\"Transaction Failed, error status\")+\" \"+payConnectResponse.Description,LogLevel.Information);");
+		}
+
+		[TestMethod]
+		public void Source_GlobalPaymentsV2_MarkDeclinedOnlyForACardDecline() {
+			//V-GP's Global Payments V2 branch (RecurringChargerator.GlobalPaymentsV2.cs, merged on port/int-13) calls MarkDeclined only for
+			//GpV2Outcome.Declined, the card's or the issuer's decline (GlobalPaymentsV2Result.DecideOutcome). A refused request, a setup problem, a duplicate
+			//or an unknown outcome goes through MarkFailed. So V2 needs no filter line after its MarkDeclined call: only its card declines e-mail the patient.
+			string source=ReadRepoFile(Path.Combine("OpenDentBusiness","VendorDirect","GlobalPayments","RecurringChargerator.GlobalPaymentsV2.cs"))
+				.Replace("\r\n","\n");
+			Assert.AreEqual(1,Regex.Matches(source,@"\bMarkDeclined\(").Count,"One MarkDeclined call in the Global Payments V2 file.");
+			string body=GetMethodBody(source,"private void SendGlobalPaymentsV2(");
+			const string caseDeclined="case GpV2Outcome.Declined:";
+			int indexCase=body.IndexOf(caseDeclined,StringComparison.Ordinal);
+			Assert.IsTrue(indexCase>0,"The Declined case is in SendGlobalPaymentsV2.");
+			Assert.IsTrue(body.Substring(indexCase+caseDeclined.Length).TrimStart().StartsWith("MarkDeclined(chargeData,",StringComparison.Ordinal),
+				"The Declined case marks the charge declined.");
+			int indexCaseFailed=body.IndexOf("case GpV2Outcome.Failed:",StringComparison.Ordinal);
+			Assert.IsTrue(indexCaseFailed>indexCase);
+			Assert.IsTrue(body.Substring(indexCaseFailed).TrimStart().Contains("MarkFailed(chargeData,"),"A refused request is a failure, not a decline.");
 		}
 
 		[TestMethod]

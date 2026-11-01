@@ -205,7 +205,7 @@ namespace M2RECURTests {
 			List<RecurringChargeFailEmailResult> listResults=listChargeData.Select(x => ChargeEdgeExpress(x)).ToList();
 			Assert.AreEqual(2,_listEdgeExpressRequests.Count,"Both cards were sent to EdgeExpress.");
 			foreach(RecurringChargeData chargeData in listChargeData) {
-				StringAssert.Contains(chargeData.RecurringCharge.ErrorMsg,"Response from EdgeExpress: "+XWebResponseCodes.AuthenticationError);
+				StringAssert.Contains(chargeData.RecurringCharge.ErrorMsg,"Response from Global Payments V1: "+XWebResponseCodes.AuthenticationError);
 			}
 			AssertNobodyEmailed(listChargeData,listResults);
 		}
@@ -216,7 +216,7 @@ namespace M2RECURTests {
 			SetUpEdgeExpress(EdgeExpressAnswer(813,"Duplicate Transaction (synthetic)"));
 			RecurringChargeData chargeData=MakeCharge(RecurDb.CreatePatient("EeDup",email:"ee.dup@example.com"),30,CreditCardSource.EdgeExpressCNP);
 			RecurringChargeFailEmailResult result=ChargeEdgeExpress(chargeData);
-			StringAssert.Contains(chargeData.RecurringCharge.ErrorMsg,"Response from EdgeExpress: "+XWebResponseCodes.DuplicateTransactionError);
+			StringAssert.Contains(chargeData.RecurringCharge.ErrorMsg,"Response from Global Payments V1: "+XWebResponseCodes.DuplicateTransactionError);
 			AssertNobodyEmailed(new List<RecurringChargeData> { chargeData },new List<RecurringChargeFailEmailResult> { result });
 		}
 
@@ -226,7 +226,7 @@ namespace M2RECURTests {
 			RecurringChargeData chargeData=MakeCharge(RecurDb.CreatePatient("EeDecline",email:"ee.decline@example.com"),45.5,
 				CreditCardSource.EdgeExpressCNP);
 			RecurringChargeFailEmailResult result=ChargeEdgeExpress(chargeData);
-			StringAssert.Contains(chargeData.RecurringCharge.ErrorMsg,"Response from EdgeExpress: "+XWebResponseCodes.Declined);
+			StringAssert.Contains(chargeData.RecurringCharge.ErrorMsg,"Response from Global Payments V1: "+XWebResponseCodes.Declined);
 			Assert.IsTrue(chargeData.IsDeclinedByProcessor);
 			AssertMarkedDeclined(chargeData);
 			Assert.AreEqual(RecurringChargeFailEmailStatus.Sent,result.Status,result.Reason);
