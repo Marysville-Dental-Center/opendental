@@ -165,6 +165,8 @@ namespace ImagingCapture.Tests {
 			AssertProblem("Session","IdleDisableMinutes","-1","is negative");
 			AssertProblem("Session","IdleDisableMinutes","ten","is not a whole number");
 			AssertProblem("Twain","JournalKeep","1.5","is not a whole number");
+			//The journal refuses 0 and keeps 200, so 0 would be saved and logged without being in effect.
+			AssertProblem("Twain","JournalKeep","0","[Twain] JournalKeep=0 is not allowed: the journal cannot be turned off.");
 			AssertProblem("Device","Bits","12","[Device.12] Bits=12 is not 8 or 16");
 			AssertProblem("Device","SessionMode","Batch","is not one of PerSlot, Continuous");
 			AssertProblem("Device","Polarity","1","is not one of");
@@ -178,7 +180,7 @@ namespace ImagingCapture.Tests {
 				new[] { "Session","Enabled","yes" },new[] { "Session","IdleDisableMinutes","0x0A" },new[] { "Device","Bits","16" },
 				new[] { "Device","SessionMode","continuous" },new[] { "Device","ContinuousCap","8102" },new[] { "Device","RefusedDisableCodes","0x8006 | 0x8007" },
 				new[] { "Keys","Confirm","Ctrl+F12" },new[] { "Sounds","Error","" },new[] { "Sounds","Disabled","System Exclamation" },
-				new[] { "Twain","AllowedSources","Scanner|Other DS" } })
+				new[] { "Twain","AllowedSources","Scanner|Other DS" },new[] { "Twain","JournalKeep","1" },new[] { "Twain","JournalKeep","" } })
 			{
 				CaptureSettingsModel model=Model();
 				model.SetText(Idx(model,arrayValid[0],arrayValid[1]),arrayValid[2]);

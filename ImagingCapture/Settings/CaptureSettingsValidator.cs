@@ -93,6 +93,9 @@ namespace ImagingCapture.Settings {
 					if(valueMin<0) {
 						return name+" is negative.";
 					}
+					if(valueMin<settingDef.MinValue) {
+						return name+" "+(settingDef.TextBelowMinimum!="" ? settingDef.TextBelowMinimum : "is below "+settingDef.MinValue+".");
+					}
 					return "";
 				case CaptureSettingKind.Choice:
 					if(!settingDef.ArrayChoices.Any(x => string.Equals(x,text,StringComparison.OrdinalIgnoreCase))) {

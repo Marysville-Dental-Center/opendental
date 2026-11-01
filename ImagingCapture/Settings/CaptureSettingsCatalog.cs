@@ -53,6 +53,11 @@ namespace ImagingCapture.Settings {
 		public string Help { get; }
 		///<summary>The values a Choice key takes, as written.</summary>
 		public IReadOnlyList<string> ArrayChoices { get; }
+		///<summary>A WholeNumber key: the smallest value the program takes as written (0 by default). A smaller one is refused, with
+		///TextBelowMinimum, because the program would use another value than the one saved and logged.</summary>
+		public int MinValue { get; internal set; }
+		///<summary>Why a value below MinValue is refused, one sentence after "[Twain] JournalKeep=0 ", or "" for "is below N.".</summary>
+		public string TextBelowMinimum { get; internal set; }="";
 
 		///<summary>"Session.Enabled", "Device.Bits": the name GatedSettingsHash's canonical text and the security-log entry use.</summary>
 		public string Label => Section+"."+Key;
@@ -111,7 +116,10 @@ namespace ImagingCapture.Settings {
 			Add(twain,"RestrictSources",CaptureSettingKind.Switch,"0",true,"1: only the sources in AllowedSources can be opened on this computer (the "
 				+"source gate).");
 			Add(twain,"AllowedSources",CaptureSettingKind.SourceList,"",true,"TWAIN ProductNames separated by |.");
-			Add(twain,"JournalKeep",CaptureSettingKind.WholeNumber,"200",true,"How many recent captures the capture journal keeps.");
+			Add(twain,"JournalKeep",CaptureSettingKind.WholeNumber,"200",true,"How many recent captures the capture journal keeps; at least 1.");
+			//The journal refuses 0 and keeps its default instead (CaptureJournal.Write): a 0 saved and logged here would not be in effect.
+			listSettings[listSettings.Count-1].MinValue=1;
+			listSettings[listSettings.Count-1].TextBelowMinimum="is not allowed: the journal cannot be turned off.";
 			Add(twain,"DisableIsSafeSources",CaptureSettingKind.SourceList,"",true,"Legacy path: TWAIN ProductNames separated by |, whose disable "
 				+"passed the safe-disable acceptance test.");
 			Add(twain,"SafeDisableCap",CaptureSettingKind.Capability,"",true,"Legacy path, sources in DisableIsSafeSources only. "+HelpCapability);
