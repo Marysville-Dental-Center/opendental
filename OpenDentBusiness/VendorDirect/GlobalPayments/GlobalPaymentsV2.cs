@@ -363,8 +363,8 @@ namespace OpenDentBusiness.VendorDirect.GlobalPayments {
 
 		///<summary>The card's latest recurring charge row whose outcome is unknown (RecurringInDoubtTag) and that no later charge on the card has settled,
 		///or null. A later row with a payment (approved, or declined with its $0 payment) means Global Payments has given a definite answer on this card
-		///since. While this returns a row, RecurringChargerator does not charge the card again, in any run, unless a user forces it from the Recurring
-		///Charges window.</summary>
+		///since. While this returns a row, RecurringChargerator does not charge the card again, in any run, unless a person has confirmed that row in the
+		///Recurring Charges window's own prompt (RecurringChargerator.SetRecurringChargeNumsRetryInDoubt; Force Duplicates is not enough).</summary>
 		public static RecurringCharge GetRecurringChargeInDoubt(long creditCardNum) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetObject<RecurringCharge>(MethodBase.GetCurrentMethod(),creditCardNum);
@@ -377,6 +377,25 @@ namespace OpenDentBusiness.VendorDirect.GlobalPayments {
 					+"WHERE rcSettled.CreditCardNum="+POut.Long(creditCardNum)+" AND rcSettled.PayNum>0) "
 				+"ORDER BY RecurringChargeNum DESC";
 			return Crud.RecurringChargeCrud.SelectOne(DbHelper.LimitOrderBy(command,1));
+		}
+
+		///<summary>GetRecurringChargeInDoubt for many cards in one query: at most one row per card, the card's latest tagged row that no later charge on the
+		///card has settled. Cards with no such row are left out. Used by the Recurring Charges window to ask before a run.</summary>
+		public static List<RecurringCharge> GetRecurringChargesInDoubt(List<long> listCreditCardNums) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetObject<List<RecurringCharge>>(MethodBase.GetCurrentMethod(),listCreditCardNums);
+			}
+			if(listCreditCardNums==null || listCreditCardNums.Count==0) {
+				return new List<RecurringCharge>();
+			}
+			string command="SELECT rc.* FROM recurringcharge rc "
+				+"WHERE rc.CreditCardNum IN ("+string.Join(",",listCreditCardNums.Distinct().Select(x => POut.Long(x)))+") "
+				+"AND rc.ChargeStatus!="+POut.Int((int)RecurringChargeStatus.NotYetCharged)+" "
+				+"AND rc.ErrorMsg LIKE '%"+POut.String("["+RecurringInDoubtTag+" ")+"%' "
+				+"AND rc.RecurringChargeNum>(SELECT COALESCE(MAX(rcSettled.RecurringChargeNum),0) FROM recurringcharge rcSettled "
+					+"WHERE rcSettled.CreditCardNum=rc.CreditCardNum AND rcSettled.PayNum>0) "
+				+"ORDER BY rc.RecurringChargeNum DESC";
+			return Crud.RecurringChargeCrud.SelectMany(command).GroupBy(x => x.CreditCardNum).Select(x => x.First()).ToList();
 		}
 		#endregion Duplicate checks
 

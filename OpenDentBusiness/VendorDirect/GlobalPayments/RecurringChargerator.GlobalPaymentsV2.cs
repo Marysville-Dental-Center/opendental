@@ -1,8 +1,12 @@
 // Global Payments V2 (Open Dental 25.4): recurring charges on cards saved through Global Payments V2. A partial of RecurringChargerator
 // (OpenDentBusiness/Data Interface/RecurringCharges.cs), which calls IsGlobalPaymentsV2Charge and SendGlobalPaymentsV2 from SendCharges and
-// GetGlobalPaymentsV2PayType from CreatePayment.
+// GetGlobalPaymentsV2PayType from CreatePayment. The Recurring Charges window calls GetGlobalPaymentsV2InDoubt and
+// BuildGlobalPaymentsV2InDoubtPrompt before a run, and fills SetRecurringChargeNumsRetryInDoubt only when the user answers Yes.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 using System.Threading;
 using CodeBase;
 using CodeBase.VendorDirect;
@@ -10,12 +14,87 @@ using OpenDentBusiness.VendorDirect.GlobalPayments;
 
 namespace OpenDentBusiness {
 	public partial class RecurringChargerator {
+		///<summary>The Global Payments V2 recurring charge rows in doubt (GlobalPaymentsV2.GetRecurringChargeInDoubt) that a person has said may be charged
+		///again, after checking Global Payments' records: the RecurringChargeNum of each confirmed attempt. Only the Recurring Charges window fills it,
+		///from its own Yes/No prompt (default No), for one run. A card whose attempt in doubt is not in this set is not charged, whatever Force Duplicates
+		///or the clinic's "Recurring charges force duplicates by default" say, and automated runs never retry one. Keyed on the attempt, not the card: if
+		///the retry itself ends in doubt, that new attempt needs a new confirmation.</summary>
+		public HashSet<long> SetRecurringChargeNumsRetryInDoubt=new HashSet<long>();
+
 		///<summary>True for a card saved through Global Payments V2 (CCSource MeetInTheCloudTerminal with a stored payment method) while the program link
 		///is enabled. Such cards are charged by SendGlobalPaymentsV2, never by another processor.</summary>
 		private bool IsGlobalPaymentsV2Charge(RecurringChargeData chargeData) {
-			return chargeData.CCSource==CreditCardSource.MeetInTheCloudTerminal
-				&& !string.IsNullOrWhiteSpace(chargeData.XChargeToken)
-				&& GlobalPaymentsV2.IsEnabled();
+			return IsGlobalPaymentsV2Card(chargeData) && GlobalPaymentsV2.IsEnabled();
+		}
+
+		///<summary>True for a card saved through Global Payments V2 (CCSource MeetInTheCloudTerminal with a stored payment method).</summary>
+		private static bool IsGlobalPaymentsV2Card(RecurringChargeData chargeData) {
+			return chargeData!=null
+				&& chargeData.RecurringCharge!=null
+				&& chargeData.CCSource==CreditCardSource.MeetInTheCloudTerminal
+				&& !string.IsNullOrWhiteSpace(chargeData.XChargeToken);
+		}
+
+		///<summary>A Global Payments V2 card about to be charged whose earlier recurring charge has an unknown outcome.</summary>
+		public class GlobalPaymentsV2InDoubt {
+			///<summary>The charge about to be sent.</summary>
+			public RecurringChargeData RecurringChargeData;
+			///<summary>The earlier attempt whose outcome is unknown (GlobalPaymentsV2.GetRecurringChargeInDoubt).</summary>
+			public RecurringCharge RecurringChargeInDoubt;
+
+			///<summary>The earlier attempt's Global Payments reference, to look it up in Global Payments' records, or "".</summary>
+			public string Reference {
+				get {
+					return GlobalPaymentsV2.GetReferenceFromInDoubtTag(RecurringChargeInDoubt?.ErrorMsg);
+				}
+			}
+		}
+
+		///<summary>The Global Payments V2 cards in listRecurringChargeData whose earlier recurring charge has an unknown outcome, each with that attempt, in
+		///the list's order. Empty when Global Payments V2 is not enabled. One query for all the cards (GlobalPaymentsV2.GetRecurringChargesInDoubt).
+		///</summary>
+		public static List<GlobalPaymentsV2InDoubt> GetGlobalPaymentsV2InDoubt(List<RecurringChargeData> listRecurringChargeData) {
+			List<GlobalPaymentsV2InDoubt> listInDoubt=new List<GlobalPaymentsV2InDoubt>();
+			if(listRecurringChargeData==null || !GlobalPaymentsV2.IsEnabled()) {
+				return listInDoubt;
+			}
+			List<RecurringChargeData> listV2=listRecurringChargeData.FindAll(x => IsGlobalPaymentsV2Card(x));
+			if(listV2.Count==0) {
+				return listInDoubt;
+			}
+			Dictionary<long,RecurringCharge> dictInDoubt=GlobalPaymentsV2.GetRecurringChargesInDoubt(
+				listV2.Select(x => x.RecurringCharge.CreditCardNum).Distinct().ToList()).ToDictionary(x => x.CreditCardNum);
+			for(int i=0;i<listV2.Count;i++) {
+				if(dictInDoubt.TryGetValue(listV2[i].RecurringCharge.CreditCardNum,out RecurringCharge recurringChargeInDoubt)) {
+					listInDoubt.Add(new GlobalPaymentsV2InDoubt { RecurringChargeData=listV2[i],RecurringChargeInDoubt=recurringChargeInDoubt });
+				}
+			}
+			return listInDoubt;
+		}
+
+		///<summary>The Recurring Charges window's question before a run that includes Global Payments V2 cards whose earlier charge has an unknown
+		///outcome: patient, date, amount and reference of each earlier attempt (at most 20 listed), then whether to charge them again. Never the card
+		///token.</summary>
+		public static string BuildGlobalPaymentsV2InDoubtPrompt(List<GlobalPaymentsV2InDoubt> listInDoubt) {
+			const int countListedMax=20;
+			StringBuilder stringBuilder=new StringBuilder();
+			stringBuilder.AppendLine(Lans.g(_lanThis,"Global Payments V2: an earlier recurring charge on these cards has an unknown outcome. Global Payments may "
+				+"already have taken the money."));
+			stringBuilder.AppendLine();
+			for(int i=0;i<listInDoubt.Count && i<countListedMax;i++) {
+				GlobalPaymentsV2InDoubt inDoubt=listInDoubt[i];
+				string reference=inDoubt.Reference;
+				stringBuilder.AppendLine(inDoubt.RecurringChargeData.PatName+": "+inDoubt.RecurringChargeInDoubt.DateTimeCharge.ToString()+", "
+					+inDoubt.RecurringChargeInDoubt.ChargeAmt.ToString("c")+(reference=="" ? "" : ", "+Lans.g(_lanThis,"reference")+" "+reference));
+			}
+			if(listInDoubt.Count>countListedMax) {
+				stringBuilder.AppendLine(Lans.g(_lanThis,"and")+" "+(listInDoubt.Count-countListedMax)+" "+Lans.g(_lanThis,"more"));
+			}
+			stringBuilder.AppendLine();
+			stringBuilder.AppendLine(Lans.g(_lanThis,"Have you checked Global Payments' records and found that these charges were not taken?"));
+			stringBuilder.AppendLine(Lans.g(_lanThis,"Yes charges these cards again. No leaves them out of this run (the other selected cards are still charged)."));
+			stringBuilder.Append(Lans.g(_lanThis,"Charge these cards again?"));
+			return stringBuilder.ToString();
 		}
 
 		///<summary>The payment type of a recurring Global Payments V2 payment when neither the RecurringChargesPayTypeCC preference nor the card sets one:
@@ -28,9 +107,10 @@ namespace OpenDentBusiness {
 		///<summary>Charges one recurring charge on a card saved through Global Payments V2 (Transactions API, card not present, the stored payment method).
 		///Never throws: every problem marks this card and the batch carries on.
 		///- An earlier attempt on this card whose outcome is unknown (GlobalPaymentsV2.GetRecurringChargeInDoubt) blocks the card in every later run,
-		///  automated or manual, until Global Payments gives a definite answer on the card again. Only a manual run with Force Duplicates checked
-		///  retries it, and within 24 hours of that attempt the retry reuses its reference and idempotency key, so Global Payments can return the first
-		///  answer instead of charging again.
+		///  automated or manual, until Global Payments gives a definite answer on the card again. Only a manual run in which a person confirmed that
+		///  attempt in the Recurring Charges window's own prompt (SetRecurringChargeNumsRetryInDoubt) retries it; Force Duplicates never does, since the
+		///  window pre-checks it from the clinic's setting and offices check it for unrelated reasons. Within 24 hours of that attempt the retry reuses
+		///  its reference and idempotency key, so Global Payments can return the first answer instead of charging again.
 		///- The same card is not charged the same amount twice on one day unless duplicates are forced (the window's box, or for automated runs the
 		///  clinic's "Recurring charges force duplicates by default").
 		///- The request is sent once and never retried. An approved or declined charge gets a payment (a declined one for $0, as the other processors
@@ -40,8 +120,6 @@ namespace OpenDentBusiness {
 			RecurringCharge recurringCharge=chargeData.RecurringCharge;
 			GlobalPaymentsV2Config config=GlobalPaymentsV2.GetConfig(recurringCharge.ClinicNum);
 			bool doForceDuplicates=forceDuplicates || (!_isManual && config.ForceDuplicates);
-			//Retrying an attempt in doubt needs a person who has checked Global Payments' records: never an automated run, never a clinic default.
-			bool canRetryInDoubt=_isManual && forceDuplicates;
 			Patient patient;
 			try {
 				patient=Patients.GetPat(recurringCharge.PatNum);
@@ -74,14 +152,22 @@ namespace OpenDentBusiness {
 				return;
 			}
 			string referenceInDoubt=GlobalPaymentsV2.GetReferenceFromInDoubtTag(recurringChargeInDoubt?.ErrorMsg);
+			//Retrying an attempt in doubt needs a person who has checked Global Payments' records and said so for this attempt: never an automated run,
+			//never Force Duplicates (pre-checked from the clinic's default), never a confirmation of an earlier attempt.
+			bool canRetryInDoubt=_isManual && recurringChargeInDoubt!=null && SetRecurringChargeNumsRetryInDoubt!=null
+				&& SetRecurringChargeNumsRetryInDoubt.Contains(recurringChargeInDoubt.RecurringChargeNum);
 			if(recurringChargeInDoubt!=null && !canRetryInDoubt) {
 				//No in-doubt tag here: nothing was sent, and the earlier attempt stays the one to check.
 				MarkFailed(chargeData,Lans.g(_lanThis,"Global Payments V2: an earlier charge on this card has an unknown outcome, so it was not charged again.")
 					+" "+Lans.g(_lanThis,"Earlier charge:")+" "+recurringChargeInDoubt.DateTimeCharge.ToString()+", "
 					+recurringChargeInDoubt.ChargeAmt.ToString("c")+(referenceInDoubt=="" ? "" : ", "+Lans.g(_lanThis,"reference")+" "+referenceInDoubt)+". "
-					+Lans.g(_lanThis,"Check Global Payments' records. If that charge was not taken, run this card from the Recurring Charges window with Force "
-					+"Duplicates checked."));
+					+Lans.g(_lanThis,"Check Global Payments' records. If that charge was not taken, send this card again from the Recurring Charges window and "
+					+"answer Yes when it asks whether to charge cards with an unknown outcome again."));
 				return;
+			}
+			if(canRetryInDoubt) {
+				//One confirmation, one retry: if this retry also ends in doubt, its own attempt needs a new confirmation.
+				SetRecurringChargeNumsRetryInDoubt.Remove(recurringChargeInDoubt.RecurringChargeNum);
 			}
 			if(isDuplicate) {
 				MarkFailed(chargeData,Lans.g(_lanThis,"Global Payments V2: this card was already charged the same amount today, so it was not charged again. "

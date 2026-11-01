@@ -399,75 +399,194 @@ namespace VGPTests {
 			Assert.AreEqual(1,_gpFakeHttp.ApiRequests.Count);
 		}
 
-		private static RecurringChargeData RunOne(RecurringChargeData recurringChargeData,bool isManual,bool forceDuplicates) {
-			new RecurringChargerator(new TestLog(),isManual).SendCharges(new List<RecurringChargeData> { recurringChargeData },forceDuplicates);
+		///<summary>One recurring charge run. setRecurringChargeNumsRetryInDoubt is what the Recurring Charges window's in-doubt prompt sets on Yes (null:
+		///no prompt, or No).</summary>
+		private static RecurringChargeData RunOne(RecurringChargeData recurringChargeData,bool isManual,bool forceDuplicates,
+			HashSet<long> setRecurringChargeNumsRetryInDoubt=null)
+		{
+			RecurringChargerator recurringChargerator=new RecurringChargerator(new TestLog(),isManual);
+			if(setRecurringChargeNumsRetryInDoubt!=null) {
+				recurringChargerator.SetRecurringChargeNumsRetryInDoubt=setRecurringChargeNumsRetryInDoubt;
+			}
+			recurringChargerator.SendCharges(new List<RecurringChargeData> { recurringChargeData },forceDuplicates);
 			return recurringChargeData;
 		}
 
-		[TestMethod]
-		public void Recurring_NoAnswer_BlocksEveryLaterRun_UntilAForcedRetryWithTheSameKey() {
-			SetUpV2ForRecurring();
-			//The clinic forces duplicates on automated runs: that must not retry a charge in doubt.
-			VendorCredentials.WriteSetting(ProgramNum,GlobalPaymentsV2.PropForceRecurringCharge,0,"1");
+		///<summary>What the Recurring Charges window does before a run when the user answers Yes: the attempts in doubt of the selected cards.</summary>
+		private static HashSet<long> ConfirmRetryInDoubt(params RecurringChargeData[] arrayRecurringChargeData) {
+			List<RecurringChargerator.GlobalPaymentsV2InDoubt> listInDoubt=RecurringChargerator.GetGlobalPaymentsV2InDoubt(arrayRecurringChargeData.ToList());
+			return new HashSet<long>(listInDoubt.Select(x => x.RecurringChargeInDoubt.RecurringChargeNum));
+		}
+
+		private static void SetForceDuplicatesDefault(bool isOn) {
+			VendorCredentials.WriteSetting(ProgramNum,GlobalPaymentsV2.PropForceRecurringCharge,0,isOn ? "1" : "0");
 			Refresh();
+		}
+
+		private static void AgeAttempt(long recurringChargeNum,TimeSpan timeSpanAgo) {
+			DataCore.NonQ("UPDATE recurringcharge SET DateTimeCharge="+POut.DateT(DateTime.Now.Subtract(timeSpanAgo))
+				+" WHERE RecurringChargeNum="+POut.Long(recurringChargeNum));
+		}
+
+		[TestMethod]
+		public void Recurring_NoAnswer_BlocksEveryLaterRun_UntilAConfirmedRetryWithTheSameKey() {
+			SetUpV2ForRecurring();
+			//The clinic's "Recurring charges force duplicates by default" is on, so the Recurring Charges window opens with Force Duplicates checked.
+			SetForceDuplicatesDefault(true);
+			Assert.IsTrue(GlobalPaymentsV2.GetConfig(0).ForceDuplicates,"What the window pre-checks its box from.");
 			(Patient patient,CreditCard creditCard)=MakePatientWithCard("vgprc7");
 			//Global Payments took the money but the answer was lost (5xx).
 			_gpFakeHttp.Enqueue(HttpStatusCode.InternalServerError,"");
-			RecurringChargeData recurringChargeDataFirst=RunOne(MakeChargeData(patient,creditCard,30),isManual:false,forceDuplicates:false);
+			RecurringChargeData recurringChargeDataFirst=RunOne(MakeChargeData(patient,creditCard,30),isManual:true,forceDuplicates:true);
 			Assert.AreEqual(RecurringChargeStatus.ChargeFailed,recurringChargeDataFirst.RecurringCharge.ChargeStatus);
 			string keyFirst=_gpFakeHttp.ApiRequests.Single().GetHeader("X-GP-Idempotency");
 			StringAssert.Contains(recurringChargeDataFirst.RecurringCharge.ErrorMsg,GlobalPaymentsV2.BuildRecurringInDoubtTag(keyFirst));
 			Assert.AreEqual(recurringChargeDataFirst.RecurringCharge.RecurringChargeNum,
 				GlobalPaymentsV2.GetRecurringChargeInDoubt(creditCard.CreditCardNum)?.RecurringChargeNum);
-			//The next automated run, the next manual run, and an automated run days later: nothing is sent.
+			//The next automated run: nothing is sent.
 			RecurringChargeData recurringChargeData=RunOne(MakeChargeData(patient,creditCard,30),isManual:false,forceDuplicates:false);
 			Assert.AreEqual(RecurringChargeStatus.ChargeFailed,recurringChargeData.RecurringCharge.ChargeStatus);
 			StringAssert.Contains(recurringChargeData.RecurringCharge.ErrorMsg,"unknown outcome");
 			StringAssert.Contains(recurringChargeData.RecurringCharge.ErrorMsg,keyFirst,"Names the reference to look up.");
+			StringAssert.Contains(recurringChargeData.RecurringCharge.ErrorMsg,"answer Yes","Points at the in-doubt question.");
+			Assert.IsFalse(recurringChargeData.RecurringCharge.ErrorMsg.Contains("Force Duplicates"),"Force Duplicates does not retry it.");
 			Assert.IsFalse(recurringChargeData.RecurringCharge.ErrorMsg.Contains("["+GlobalPaymentsV2.RecurringInDoubtTag),
 				"A blocked run sent nothing, so it is not itself in doubt.");
-			RunOne(MakeChargeData(patient,creditCard,30),isManual:true,forceDuplicates:false);
-			DataCore.NonQ("UPDATE recurringcharge SET DateTimeCharge="+POut.DateT(DateTime.Now.AddHours(-20))
-				+" WHERE RecurringChargeNum="+POut.Long(recurringChargeDataFirst.RecurringCharge.RecurringChargeNum));
-			RunOne(MakeChargeData(patient,creditCard,30),isManual:false,forceDuplicates:true);
-			Assert.AreEqual(1,_gpFakeHttp.ApiRequests.Count,"Never charged again without a person forcing it.");
-			Assert.AreEqual(0,GetPayments(patient.PatNum).Count);
-			//A person checked and forces it: the same request again (same reference and idempotency key), so Global Payments can answer with the first
-			//result. Here it reports the capture, which is recorded once.
-			_gpFakeHttp.Enqueue(HttpStatusCode.OK,GpSamples.Transaction("TRN_rc7","CAPTURED","3000"));
+			//The next manual run as the window sends it by default: Force Duplicates pre-checked, and nobody confirmed the attempt in doubt.
 			recurringChargeData=RunOne(MakeChargeData(patient,creditCard,30),isManual:true,forceDuplicates:true);
+			Assert.AreEqual(RecurringChargeStatus.ChargeFailed,recurringChargeData.RecurringCharge.ChargeStatus);
+			StringAssert.Contains(recurringChargeData.RecurringCharge.ErrorMsg,"unknown outcome","Force Duplicates alone never retries a charge in doubt.");
+			//A manual run without Force Duplicates, an automated run 20 hours later with duplicates forced, and an automated run with the attempt
+			//confirmed (only a manual run can use a confirmation): nothing is sent.
+			RunOne(MakeChargeData(patient,creditCard,30),isManual:true,forceDuplicates:false);
+			AgeAttempt(recurringChargeDataFirst.RecurringCharge.RecurringChargeNum,TimeSpan.FromHours(20));
+			RunOne(MakeChargeData(patient,creditCard,30),isManual:false,forceDuplicates:true);
+			RecurringChargeData recurringChargeDataAutomated=MakeChargeData(patient,creditCard,30);
+			RunOne(recurringChargeDataAutomated,isManual:false,forceDuplicates:true,ConfirmRetryInDoubt(recurringChargeDataAutomated));
+			Assert.AreEqual(1,_gpFakeHttp.ApiRequests.Count,"Never charged again without a person confirming it.");
+			Assert.AreEqual(0,GetPayments(patient.PatNum).Count);
+			Assert.AreEqual(recurringChargeDataFirst.RecurringCharge.RecurringChargeNum,
+				GlobalPaymentsV2.GetRecurringChargeInDoubt(creditCard.CreditCardNum)?.RecurringChargeNum,"Still blocked on the first attempt.");
+			//A person checked Global Payments' records and answered Yes: within 24 hours, the same request again (same reference and idempotency key), so
+			//Global Payments can answer with the first result. Here it reports the capture, which is recorded once.
+			_gpFakeHttp.Enqueue(HttpStatusCode.OK,GpSamples.Transaction("TRN_rc7","CAPTURED","3000"));
+			recurringChargeData=MakeChargeData(patient,creditCard,30);
+			HashSet<long> setConfirmed=ConfirmRetryInDoubt(recurringChargeData);
+			CollectionAssert.AreEquivalent(new[] { recurringChargeDataFirst.RecurringCharge.RecurringChargeNum },setConfirmed.ToList());
+			RunOne(recurringChargeData,isManual:true,forceDuplicates:true,setConfirmed);
 			Assert.AreEqual(RecurringChargeStatus.ChargeSuccessful,recurringChargeData.RecurringCharge.ChargeStatus,recurringChargeData.RecurringCharge.ErrorMsg);
 			Assert.AreEqual(2,_gpFakeHttp.ApiRequests.Count);
 			Assert.AreEqual(keyFirst,_gpFakeHttp.ApiRequests[1].GetHeader("X-GP-Idempotency"));
 			Assert.AreEqual(keyFirst,(string)_gpFakeHttp.ApiRequests[1].GetJson()["reference"]);
 			Assert.AreEqual("TRN_rc7",GetPayments(patient.PatNum).Single().ExternalId);
 			Assert.IsNull(GlobalPaymentsV2.GetRecurringChargeInDoubt(creditCard.CreditCardNum),"Settled by the definite answer.");
-			//Settled: the same-day duplicate rule applies again as usual (the clinic forces duplicates on automated runs).
-			_gpFakeHttp.Enqueue(HttpStatusCode.OK,GpSamples.Transaction("TRN_rc7b","CAPTURED","3000"));
+			Assert.AreEqual(0,ConfirmRetryInDoubt(MakeChargeData(patient,creditCard,30)).Count,"Nothing left to ask about.");
+			//Settled: the same-day duplicate rule applies again as usual.
 			recurringChargeData=RunOne(MakeChargeData(patient,creditCard,30),isManual:true,forceDuplicates:false);
 			StringAssert.Contains(recurringChargeData.RecurringCharge.ErrorMsg,"already charged the same amount today");
 			Assert.AreEqual(2,_gpFakeHttp.ApiRequests.Count);
 		}
 
 		[TestMethod]
-		public void Recurring_InDoubtFromMoreThanADayAgo_ForcedRetryIsANewRequest_AndADeclineSettlesIt() {
+		public void Recurring_ConfirmedRetry_DoesNotNeedForceDuplicates() {
 			SetUpV2ForRecurring();
+			(Patient patient,CreditCard creditCard)=MakePatientWithCard("vgprc15");
+			_gpFakeHttp.Enqueue(HttpStatusCode.InternalServerError,"");
+			RunOne(MakeChargeData(patient,creditCard,30),isManual:true,forceDuplicates:false);
+			string keyFirst=_gpFakeHttp.ApiRequests.Single().GetHeader("X-GP-Idempotency");
+			_gpFakeHttp.Enqueue(HttpStatusCode.OK,GpSamples.Transaction("TRN_rc15","CAPTURED","3000"));
+			RecurringChargeData recurringChargeData=MakeChargeData(patient,creditCard,30);
+			RunOne(recurringChargeData,isManual:true,forceDuplicates:false,ConfirmRetryInDoubt(recurringChargeData));
+			Assert.AreEqual(RecurringChargeStatus.ChargeSuccessful,recurringChargeData.RecurringCharge.ChargeStatus,recurringChargeData.RecurringCharge.ErrorMsg);
+			Assert.AreEqual(keyFirst,_gpFakeHttp.ApiRequests[1].GetHeader("X-GP-Idempotency"),"The two are separate: the confirmation alone retries it.");
+		}
+
+		[TestMethod]
+		public void Recurring_InDoubtFromMoreThanADayAgo_ConfirmedRetryIsANewRequest_AndADeclineSettlesIt() {
+			SetUpV2ForRecurring();
+			SetForceDuplicatesDefault(true);
 			(Patient patient,CreditCard creditCard)=MakePatientWithCard("vgprc8");
 			_gpFakeHttp.Enqueue(HttpStatusCode.InternalServerError,"");
 			RecurringChargeData recurringChargeDataFirst=RunOne(MakeChargeData(patient,creditCard,30),isManual:true,forceDuplicates:false);
 			string keyFirst=_gpFakeHttp.ApiRequests.Single().GetHeader("X-GP-Idempotency");
-			DataCore.NonQ("UPDATE recurringcharge SET DateTimeCharge="+POut.DateT(DateTime.Now.AddDays(-3))
-				+" WHERE RecurringChargeNum="+POut.Long(recurringChargeDataFirst.RecurringCharge.RecurringChargeNum));
+			AgeAttempt(recurringChargeDataFirst.RecurringCharge.RecurringChargeNum,TimeSpan.FromDays(3));
 			RunOne(MakeChargeData(patient,creditCard,30),isManual:false,forceDuplicates:false);
-			Assert.AreEqual(1,_gpFakeHttp.ApiRequests.Count,"Still blocked days later.");
+			//Days later staff open Recurring Charges and click Send with the pre-checked Force Duplicates box and no Yes to the in-doubt question.
+			RunOne(MakeChargeData(patient,creditCard,30),isManual:true,forceDuplicates:true);
+			Assert.AreEqual(1,_gpFakeHttp.ApiRequests.Count,"Still blocked days later, Force Duplicates or not.");
+			Assert.AreEqual(0,GetPayments(patient.PatNum).Count);
 			_gpFakeHttp.Enqueue(HttpStatusCode.OK,GpSamples.Transaction("TRN_rc8","DECLINED","3000","05"));
-			RecurringChargeData recurringChargeData=RunOne(MakeChargeData(patient,creditCard,30),isManual:true,forceDuplicates:true);
+			RecurringChargeData recurringChargeData=MakeChargeData(patient,creditCard,30);
+			RunOne(recurringChargeData,isManual:true,forceDuplicates:true,ConfirmRetryInDoubt(recurringChargeData));
 			Assert.AreEqual(2,_gpFakeHttp.ApiRequests.Count);
 			string keySecond=_gpFakeHttp.ApiRequests[1].GetHeader("X-GP-Idempotency");
 			Assert.AreNotEqual(keyFirst,keySecond,"Too old to be the same request: a new one.");
 			Assert.AreEqual(GlobalPaymentsV2.GetRecurringReference(recurringChargeData.RecurringCharge.RecurringChargeNum,DateTime.Now),keySecond);
 			Assert.AreEqual(0,GetPayments(patient.PatNum).Single().PayAmt,0.001,"The decline's $0 payment.");
 			Assert.IsNull(GlobalPaymentsV2.GetRecurringChargeInDoubt(creditCard.CreditCardNum),"A decline is a definite answer on the card.");
+		}
+
+		[TestMethod]
+		public void Recurring_ConfirmationCoversOneAttempt_ARetryThatEndsInDoubtAsksAgain() {
+			SetUpV2ForRecurring();
+			(Patient patient,CreditCard creditCard)=MakePatientWithCard("vgprc11");
+			_gpFakeHttp.Enqueue(HttpStatusCode.InternalServerError,"");
+			RecurringChargeData recurringChargeDataFirst=RunOne(MakeChargeData(patient,creditCard,30),isManual:true,forceDuplicates:false);
+			//Confirmed and retried, and the retry gets no answer either.
+			_gpFakeHttp.Enqueue(HttpStatusCode.InternalServerError,"");
+			RecurringChargeData recurringChargeDataSecond=MakeChargeData(patient,creditCard,30);
+			HashSet<long> setConfirmed=ConfirmRetryInDoubt(recurringChargeDataSecond);
+			RunOne(recurringChargeDataSecond,isManual:true,forceDuplicates:false,setConfirmed);
+			Assert.AreEqual(2,_gpFakeHttp.ApiRequests.Count);
+			Assert.AreEqual(0,setConfirmed.Count,"The confirmation is used up by the retry.");
+			Assert.AreEqual(recurringChargeDataSecond.RecurringCharge.RecurringChargeNum,
+				GlobalPaymentsV2.GetRecurringChargeInDoubt(creditCard.CreditCardNum)?.RecurringChargeNum,"The retry is now the attempt in doubt.");
+			//The first confirmation does not cover the retry's own attempt: nothing is sent.
+			RunOne(MakeChargeData(patient,creditCard,30),isManual:true,forceDuplicates:true,
+				new HashSet<long> { recurringChargeDataFirst.RecurringCharge.RecurringChargeNum });
+			Assert.AreEqual(2,_gpFakeHttp.ApiRequests.Count);
+			Assert.AreEqual(0,GetPayments(patient.PatNum).Count);
+		}
+
+		[TestMethod]
+		public void Recurring_InDoubtPrompt_ListsOnlyV2CardsInDoubt_WithTheirReference() {
+			SetUpV2ForRecurring();
+			(Patient patientInDoubt,CreditCard creditCardInDoubt)=MakePatientWithCard("vgprc12");
+			(Patient patientSettled,CreditCard creditCardSettled)=MakePatientWithCard("vgprc13");
+			(Patient patientNew,CreditCard creditCardNew)=MakePatientWithCard("vgprc14");
+			_gpFakeHttp.Enqueue(HttpStatusCode.InternalServerError,"");
+			RunOne(MakeChargeData(patientInDoubt,creditCardInDoubt,30),isManual:true,forceDuplicates:false);
+			string keyInDoubt=_gpFakeHttp.ApiRequests.Last().GetHeader("X-GP-Idempotency");
+			//In doubt, then settled by a confirmed retry that Global Payments approved.
+			_gpFakeHttp.Enqueue(HttpStatusCode.InternalServerError,"");
+			RunOne(MakeChargeData(patientSettled,creditCardSettled,30),isManual:true,forceDuplicates:false);
+			_gpFakeHttp.Enqueue(HttpStatusCode.OK,GpSamples.Transaction("TRN_rc13","CAPTURED","3000"));
+			RecurringChargeData recurringChargeDataSettled=MakeChargeData(patientSettled,creditCardSettled,30);
+			RunOne(recurringChargeDataSettled,isManual:true,forceDuplicates:false,ConfirmRetryInDoubt(recurringChargeDataSettled));
+			Assert.AreEqual(RecurringChargeStatus.ChargeSuccessful,recurringChargeDataSettled.RecurringCharge.ChargeStatus,
+				recurringChargeDataSettled.RecurringCharge.ErrorMsg);
+			List<RecurringChargeData> listSelected=new List<RecurringChargeData> { MakeChargeData(patientNew,creditCardNew,30),
+				MakeChargeData(patientInDoubt,creditCardInDoubt,30),MakeChargeData(patientSettled,creditCardSettled,30) };
+			List<RecurringChargerator.GlobalPaymentsV2InDoubt> listInDoubt=RecurringChargerator.GetGlobalPaymentsV2InDoubt(listSelected);
+			Assert.AreEqual(1,listInDoubt.Count);
+			Assert.AreEqual(creditCardInDoubt.CreditCardNum,listInDoubt[0].RecurringChargeData.RecurringCharge.CreditCardNum);
+			Assert.AreEqual(keyInDoubt,listInDoubt[0].Reference);
+			Assert.AreEqual(GlobalPaymentsV2.GetRecurringChargeInDoubt(creditCardInDoubt.CreditCardNum).RecurringChargeNum,
+				listInDoubt[0].RecurringChargeInDoubt.RecurringChargeNum,"The batched lookup agrees with the per-card one.");
+			string prompt=RecurringChargerator.BuildGlobalPaymentsV2InDoubtPrompt(listInDoubt);
+			StringAssert.Contains(prompt,patientInDoubt.GetNameLF());
+			StringAssert.Contains(prompt,30.0.ToString("c"));
+			StringAssert.Contains(prompt,keyInDoubt);
+			StringAssert.Contains(prompt,"Have you checked Global Payments' records");
+			Assert.IsFalse(prompt.Contains(creditCardInDoubt.XChargeToken),"Never the card token.");
+			Assert.IsFalse(prompt.Contains(patientSettled.GetNameLF()));
+			//Not a V2 card, or V2 not enabled: nothing to ask.
+			RecurringChargeData recurringChargeDataOther=MakeChargeData(patientInDoubt,creditCardInDoubt,30);
+			recurringChargeDataOther.CCSource=CreditCardSource.XServer;
+			Assert.AreEqual(0,RecurringChargerator.GetGlobalPaymentsV2InDoubt(new List<RecurringChargeData> { recurringChargeDataOther }).Count);
+			Assert.AreEqual(0,GlobalPaymentsV2.GetRecurringChargesInDoubt(new List<long>()).Count);
+			SetEnabled(ProgramName.MeetInTheCloud,false);
+			Assert.AreEqual(0,RecurringChargerator.GetGlobalPaymentsV2InDoubt(listSelected).Count);
 		}
 
 		[TestMethod]

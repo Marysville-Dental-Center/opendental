@@ -464,10 +464,11 @@ namespace OpenDental {
 			if(!Security.IsAuthorized(EnumPermType.PaymentCreate,DateTime.Today)) {
 				return;
 			}
+			List<RecurringChargeData> listRecurringChargeData=gridMain.SelectedTags<RecurringChargeData>();
+			AskRetryGlobalPaymentsV2InDoubt(listRecurringChargeData);
 			_recurringChargerator.IsCharging=true;//Doing this on the main thread in case another click event gets here before the thread can start
 			//Not checking DatePay for FutureTransactionDate pref violation because these should always have a date <= today
 			Cursor=Cursors.WaitCursor;
-			List<RecurringChargeData> listRecurringChargeData=gridMain.SelectedTags<RecurringChargeData>();
 			bool doForceDuplicates=checkForceDuplicates.Checked;
 			ODThread thread=new ODThread(o => {
 				_recurringChargerator.SendCharges(listRecurringChargeData,doForceDuplicates);
@@ -488,6 +489,34 @@ namespace OpenDental {
 			});
 			thread.Name="RecurringChargeProcessor";
 			thread.Start();
+		}
+
+		///<summary>25.4 Global Payments V2: before a run, asks about selected V2 cards whose earlier recurring charge has an unknown outcome (Global Payments
+		///may have taken the money). They are charged again only if the user answers Yes to this separate question, which defaults to No; Force
+		///Duplicates (pre-checked from the clinic's setting) never retries them. Sets the chargerator's confirmations for this run only.</summary>
+		private void AskRetryGlobalPaymentsV2InDoubt(List<RecurringChargeData> listRecurringChargeData) {
+			_recurringChargerator.SetRecurringChargeNumsRetryInDoubt=new HashSet<long>();//Nothing carries over from an earlier run.
+			List<RecurringChargerator.GlobalPaymentsV2InDoubt> listInDoubt;
+			try {
+				listInDoubt=RecurringChargerator.GetGlobalPaymentsV2InDoubt(listRecurringChargeData);
+			}
+			catch(Exception ex) {
+				//Nothing is retried: the run checks each V2 card again and leaves out any card it can't check.
+				ex.DoNothing();
+				return;
+			}
+			if(listInDoubt.Count==0) {
+				return;
+			}
+			string prompt=RecurringChargerator.BuildGlobalPaymentsV2InDoubtPrompt(listInDoubt);
+			//The WinForms box directly, for its default button: No unless the user picks Yes.
+			DialogResult dialogResult=System.Windows.Forms.MessageBox.Show(this,prompt,
+				OpenDentBusiness.VendorDirect.GlobalPayments.GlobalPaymentsV2.DisplayName,MessageBoxButtons.YesNo,MessageBoxIcon.Warning,
+				MessageBoxDefaultButton.Button2);
+			if(dialogResult==DialogResult.Yes) {
+				_recurringChargerator.SetRecurringChargeNumsRetryInDoubt=new HashSet<long>(
+					listInDoubt.Select(x => x.RecurringChargeInDoubt.RecurringChargeNum));
+			}
 		}
 
 		private void StopRecurringCharges(ODEventArgs args) {

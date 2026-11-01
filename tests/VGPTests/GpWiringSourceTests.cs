@@ -113,6 +113,56 @@ namespace VGPTests {
 		}
 
 		[TestMethod]
+		public void Recurring_InDoubtRetry_IsSeparateFromForceDuplicates() {
+			string partial=RepoFiles.Read(@"OpenDentBusiness\VendorDirect\GlobalPayments\RecurringChargerator.GlobalPaymentsV2.cs");
+			Match match=Regex.Match(partial,@"bool canRetryInDoubt=([^;]*);");
+			Assert.IsTrue(match.Success);
+			Assert.IsFalse(match.Groups[1].Value.Contains("forceDuplicates") || match.Groups[1].Value.Contains("ForceDuplicates"),
+				"Force Duplicates (pre-checked from the clinic's setting) never retries a charge in doubt.");
+			StringAssert.Contains(match.Groups[1].Value,"_isManual");
+			StringAssert.Contains(match.Groups[1].Value,"SetRecurringChargeNumsRetryInDoubt.Contains(recurringChargeInDoubt.RecurringChargeNum)");
+			Assert.AreEqual(1,Regex.Matches(partial,@"canRetryInDoubt=").Count);
+			//The window: one reset per run, and the set filled only when the user answers Yes to its own question, which defaults to No.
+			string form=RepoFiles.Read(@"OpenDental\Forms\FormCreditRecurringCharges.cs");
+			int indexSend=form.IndexOf("private void butSend_Click(");
+			int indexAsk=form.IndexOf("AskRetryGlobalPaymentsV2InDoubt(listRecurringChargeData);",indexSend);
+			int indexThread=form.IndexOf("_recurringChargerator.SendCharges(",indexSend);
+			Assert.IsTrue(indexSend>0 && indexAsk>indexSend && indexAsk<indexThread,"Asked before the run starts.");
+			int indexMethod=form.IndexOf("private void AskRetryGlobalPaymentsV2InDoubt(");
+			Assert.IsTrue(indexMethod>0);
+			string method=form.Substring(indexMethod,form.IndexOf("\n\t\t}",indexMethod)-indexMethod);
+			MatchCollection matchCollectionSets=Regex.Matches(form,@"SetRecurringChargeNumsRetryInDoubt=");
+			Assert.AreEqual(2,matchCollectionSets.Count,"Set in two places only, both in AskRetryGlobalPaymentsV2InDoubt.");
+			StringAssert.Contains(method,"_recurringChargerator.SetRecurringChargeNumsRetryInDoubt=new HashSet<long>();");
+			Assert.IsTrue(method.IndexOf("_recurringChargerator.SetRecurringChargeNumsRetryInDoubt=new HashSet<long>();")
+				<method.IndexOf("RecurringChargerator.GetGlobalPaymentsV2InDoubt("),"Reset first, so nothing carries over from an earlier run.");
+			StringAssert.Contains(method,"MessageBoxButtons.YesNo");
+			StringAssert.Contains(method,"MessageBoxDefaultButton.Button2","The question defaults to No.");
+			int indexYes=method.IndexOf("if(dialogResult==DialogResult.Yes) {");
+			int indexFill=method.IndexOf("_recurringChargerator.SetRecurringChargeNumsRetryInDoubt=new HashSet<long>(\r\n");
+			if(indexFill<0) {
+				indexFill=method.IndexOf("_recurringChargerator.SetRecurringChargeNumsRetryInDoubt=new HashSet<long>(\n");
+			}
+			Assert.IsTrue(indexYes>0 && indexFill>indexYes,"Filled only inside the Yes branch.");
+			Assert.IsTrue(indexYes>method.IndexOf("System.Windows.Forms.MessageBox.Show("));
+			Assert.IsFalse(method.Contains("checkForceDuplicates"),"Not tied to the Force Duplicates box.");
+		}
+
+		[TestMethod]
+		public void CreditCardEdit_RecurringSectionShowsForGlobalPaymentsV2() {
+			string form=RepoFiles.Read(@"OpenDental\Forms\FormCreditCardEdit.cs");
+			StringAssert.Contains(form,"_isGlobalPaymentsV2Enabled=Programs.IsEnabled(ProgramName.MeetInTheCloud);");
+			const string conditionOld="_isEdgeExpressEnabled || _isXChargeEnabled || _isPayConnectEnabled || _isPaySimpleEnabled";
+			//Load (show the section), FillData (fill it), validation, and save (write ChargeAmt, DateStart, DateStop, ChargeFrequency, PayPlanNum).
+			Assert.AreEqual(4,Regex.Matches(form,Regex.Escape(conditionOld)).Count);
+			Assert.AreEqual(4,Regex.Matches(form,Regex.Escape(conditionOld+" || _isGlobalPaymentsV2Enabled")).Count,
+				"Every recurring-section condition includes Global Payments V2.");
+			int indexSave=form.IndexOf(conditionOld+" || _isGlobalPaymentsV2Enabled) {//Only update recurring");
+			Assert.IsTrue(indexSave>0);
+			Assert.IsTrue(form.IndexOf("CreditCardCur.DateStart=PIn.Date(textDateStart.Text);",indexSave)>indexSave);
+		}
+
+		[TestMethod]
 		public void VendorNeutrality_NoLinksLogosOrPromotion() {
 			foreach(string relativePath in _arrayV2Files) {
 				//The one exception: the 24.3 description that the V1 rename looks for (GlobalPaymentsV1.ProgDescOld), never shown.
@@ -152,7 +202,8 @@ namespace VGPTests {
 			foreach(Tuple<string,Type[]> tuple in new[] {
 				Tuple.Create("HasSamePaymentOnDate",new[] { typeof(long),typeof(double),typeof(DateTime) }),
 				Tuple.Create("HasSameRecurringChargeOnDate",new[] { typeof(long),typeof(double),typeof(DateTime),typeof(long) }),
-				Tuple.Create("GetRecurringChargeInDoubt",new[] { typeof(long) }) })
+				Tuple.Create("GetRecurringChargeInDoubt",new[] { typeof(long) }),
+				Tuple.Create("GetRecurringChargesInDoubt",new[] { typeof(System.Collections.Generic.List<long>) }) })
 			{
 				Assert.IsNotNull(type.GetMethod(tuple.Item1,tuple.Item2),tuple.Item1);
 				int index=source.IndexOf(" "+tuple.Item1+"(");
