@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using OpenDentBusiness;
+using OpenDentBusiness.VendorDirect.ProgramLinks;
 using CodeBase;
 
 namespace OpenDental.Bridges{
@@ -19,7 +20,8 @@ namespace OpenDental.Bridges{
 			
 		}
 
-		///<summary>Launches the program using command line.  It is confirmed that there is no space after the -P or -N</summary>
+		///<summary>Launches the program using command line.  It is confirmed that there is no space after the -P or -N.
+		///Since 25.4 a Command line in the program link replaces -P/-N (TrophyEnhancedCommandLine).</summary>
 		public static void SendData(Program ProgramCur, Patient pat){
 			string path=Programs.GetProgramPath(ProgramCur);
 			//ArrayList ForProgram=ProgramProperties.GetForProgram(ProgramCur.ProgramNum);;
@@ -37,12 +39,14 @@ namespace OpenDental.Bridges{
 				return;
 			}
 			string storagePath=ProgramProperties.GetPropVal(ProgramCur.ProgramNum,"Storage Path");
-			if(!Directory.Exists(storagePath)){
+			//25.4: with a Command line and a blank Storage Path the folder steps are skipped, and [TrophyFolder] is blank.
+			bool isSkipFolders=TrophyEnhancedCommandLine.SkipsFolders(ProgramCur.CommandLine,storagePath);
+			if(!isSkipFolders && !Directory.Exists(storagePath)){
 				MessageBox.Show("Invalid storage path: "+storagePath);
 				return;
 			}
 			string patFolder="";
-			if(Plugins.HookMethod(null,"TrophyEnhanced.SendData_patFolderCreate")) {
+			if(isSkipFolders || Plugins.HookMethod(null,"TrophyEnhanced.SendData_patFolderCreate")) {
 				goto HookSkipPatFolderCreate;
 			}
 			if(pat.TrophyFolder=="") {//no trophy folder assigned yet
@@ -79,6 +83,10 @@ namespace OpenDental.Bridges{
 				//was being given the information as a last name instead of a first and last name.
 				//Quotes are not necessary around these command line parameters.
 				+" -N"+Tidy(pat.LName)+", "+Tidy(pat.FName);
+			//25.4: a Command line in the program link replaces these arguments, with the patient tags and [TrophyFolder] filled in.
+			if(TrophyEnhancedCommandLine.UsesCommandLine(ProgramCur.CommandLine)) {
+				comline=TrophyEnhancedCommandLine.Build(ProgramCur.CommandLine,pat,patFolder,(text,patient) => Patients.ReplacePatient(text,patient));
+			}
 			//MessageBox.Show(comline);
 			object[] objectArray={pat,storagePath,comline};
 			Plugins.HookAddCode(null,"TrophyEnhanced.SendData_end",objectArray);

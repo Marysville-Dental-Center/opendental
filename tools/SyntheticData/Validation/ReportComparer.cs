@@ -31,11 +31,13 @@ namespace SyntheticData.Validation {
 		public string After;
 		public bool IsAllowed;
 		public string Reason;
+		///<summary>What an unexpected difference means, when the comparer can tell (a CHECKSUM TABLE change with nothing else).</summary>
+		public string Note;
 
 		public override string ToString() {
 			string where=Name??(Column==null ? Table : Table+"."+Column);
 			string values=Before==null && After==null ? "" : " ("+(Before??"-")+" -> "+(After??"-")+")";
-			return Kind+" "+where+values+(IsAllowed ? "  [allowed: "+Reason+"]" : "");
+			return Kind+" "+where+values+(IsAllowed ? "  [allowed: "+Reason+"]" : Note==null ? "" : "  [note: "+Note+"]");
 		}
 	}
 
@@ -78,6 +80,9 @@ namespace SyntheticData.Validation {
 	///<summary>Compares two validation reports, for example before and after adoption, and sorts the differences into allowed and
 	///unexpected ones.</summary>
 	public static class ReportComparer {
+		public const string NoteChecksumTableOnly="row count and every column checksum are equal, so every value reads the same, but the stored rows "
+			+"differ (a row or date format the copy changed, or a value the column checksums cannot see); see the runbook, step 3.3";
+
 		public static List<Difference> Compare(ValidationReport before,ValidationReport after,AllowedDifferences allowed) {
 			List<Difference> listDiffs=new List<Difference>();
 			Dictionary<string,TableReport> dictBefore=before.Tables.ToDictionary(x => x.Name,StringComparer.OrdinalIgnoreCase);
@@ -109,6 +114,10 @@ namespace SyntheticData.Validation {
 						//CHECKSUM TABLE follows the row format; the column-level differences above already explain it.
 						difference.IsAllowed=true;
 						difference.Reason="explained by the differences listed for this table";
+					}
+					else {
+						//Unexpected, and never allowed by a rule: the stored bytes differ while every value reads the same.
+						difference.Note=NoteChecksumTableOnly;
 					}
 					listTable.Add(difference);
 				}

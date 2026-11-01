@@ -78,6 +78,7 @@
       <HintPath>..\Required dlls\PdfSharp.dll</HintPath>
     </Reference>
     <Reference Include="ReachFramework" />
+    <Reference Include="System.Printing" />
     <Reference Include="Sparks3D, Version=22.4.0.0, Culture=neutral, processorArchitecture=x86">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\Sparks3D\Sparks3D.dll</HintPath>
@@ -126,6 +127,8 @@
     <Compile Include="Bridges\Carestream.cs" />
     <Compile Include="Bridges\Cerec.cs" />
     <Compile Include="Bridges\CleaRay.cs" />
+    <Compile Include="Bridges\Clerri.cs" />
+    <Compile Include="Bridges\CleverOne.cs" />
     <Compile Include="Bridges\Cliniview.cs" />
     <Compile Include="Bridges\ClioSoft.cs" />
     <Compile Include="Bridges\DBSWin.cs" />
@@ -133,7 +136,6 @@
     <Compile Include="Bridges\DentalEye.cs" />
     <Compile Include="Bridges\DentalStudio.cs" />
     <Compile Include="Bridges\DentalTek.cs" />
-    <Compile Include="Bridges\DentalXChange.cs" />
     <Compile Include="Bridges\DentForms.cs" />
     <Compile Include="Bridges\DentX.cs" />
     <Compile Include="Bridges\Dexis.cs" />
@@ -142,6 +144,7 @@
     <Compile Include="Bridges\DivvyPostcardService.cs" />
     <Compile Include="Bridges\Dolphin.cs" />
     <Compile Include="Bridges\DrCeph.cs" />
+    <Compile Include="Bridges\DTXStudio.cs" />
     <Compile Include="Bridges\Dxis.cs" />
     <Compile Include="Bridges\ECW.cs" />
     <Compile Include="Bridges\EvaSoft.cs" />
@@ -169,6 +172,7 @@
     <Compile Include="Bridges\OrthoCad.cs" />
     <Compile Include="Bridges\OrthoInsight3d.cs" />
     <Compile Include="Bridges\Oryx.cs" />
+    <Compile Include="Bridges\Overjet.cs" />
     <Compile Include="Bridges\Owandy.cs" />
     <Compile Include="Bridges\PandaPerio.cs" />
     <Compile Include="Bridges\PandaPerioAdvanced.cs" />
@@ -422,6 +426,9 @@
     <Compile Include="Frms\FrmPrintPreview.xaml.cs">
       <DependentUpon>FrmPrintPreview.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Frms\FrmPrintOptions.xaml.cs">
+      <DependentUpon>FrmPrintOptions.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Frms\FrmCommItem.xaml.cs">
       <DependentUpon>FrmCommItem.xaml</DependentUpon>
     </Compile>
@@ -569,6 +576,9 @@
     <Compile Include="Frms\FrmPopupEdit.xaml.cs">
       <DependentUpon>FrmPopupEdit.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Frms\FrmProcNoteMerge.xaml.cs">
+      <DependentUpon>FrmProcNoteMerge.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Frms\FrmProviderIdentEdit.xaml.cs">
       <DependentUpon>FrmProviderIdentEdit.xaml</DependentUpon>
     </Compile>
@@ -684,6 +694,7 @@
       <DependentUpon>InputBox.xaml</DependentUpon>
     </Compile>
     <Compile Include="Logic\EFormL.cs" />
+    <Compile Include="Logic\OtherEntryConvertL.cs" />
     <Compile Include="Logic\PatientL.cs" />
     <Compile Include="Logic\ProgramL.cs" />
     <Compile Include="Logic\VendorDirect\PdmpLaunch.cs" />
@@ -695,6 +706,7 @@
     <Compile Include="Misc\Lang.cs" />
     <Compile Include="Misc\Printout.cs" />
     <Compile Include="Logic\PrinterL.cs" />
+    <Compile Include="Logic\PrintOptionsWpf.cs" />
     <Compile Include="UI\ColorOD.cs" />
     <Compile Include="UI\ColorODtemp.cs" />
     <Compile Include="UI\Controls\DatePicker.xaml.cs">
@@ -1072,6 +1084,10 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Page Include="Frms\FrmPrintOptions.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Frms\FrmCommItem.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -1265,6 +1281,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Frms\FrmPopupEdit.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Frms\FrmProcNoteMerge.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

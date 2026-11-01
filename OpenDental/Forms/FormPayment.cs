@@ -570,6 +570,7 @@ namespace OpenDental {
 					incomeTransferData.ListSplitsCur.ForEach(x => x.PayNum=_payment.PayNum);
 					_listPaySplits=incomeTransferData.ListSplitsCur;
 					Reinitialize(doRefreshConstructData: true);
+					IncomeTransferLimit_RememberAutomaticSplits();//M2-PAYW
 				}
 				else {
 					MsgBoxCopyPaste msgBoxCopyPaste=new MsgBoxCopyPaste(incomeTransferData.StringBuilderErrors.ToString().TrimEnd());
@@ -1229,6 +1230,7 @@ namespace OpenDental {
 			butPayConnect.Visible=false;
 			butPaySimple.Visible=false;
 			butCareCredit.Visible=false;
+			FillGlobalPaymentsV2Button();//25.4 Global Payments V2 (FormPayment.GlobalPaymentsV2.cs)
 			FillPaySimpleAchStatus();
 			if(_payment.MerchantFee>0) {
 				labelSurchargeFee.Visible=true;
@@ -1393,6 +1395,7 @@ namespace OpenDental {
 				panelXcharge.Enabled=false;
 				butPaySimple.Enabled=false;
 				butPayConnect.Enabled=false;
+				DisableGlobalPaymentsV2Button();//25.4 (FormPayment.GlobalPaymentsV2.cs)
 			}
 		}
 
@@ -1557,6 +1560,7 @@ namespace OpenDental {
 			FillFilterProvidersChargesTreatPlan(doPreserveValues);
 			FillFilterClinicsChargestreatPlan(doPreserveValues);
 			FillFilterTypes(doPreserveValues);
+			FillFilterInvoices(doPreserveValues);//M2-PAYW
 		}
 
 		private void FillFiltersPaySplits(bool doPreserveValues) {
@@ -1766,6 +1770,7 @@ namespace OpenDental {
 			decimal chargeTotal=0;
 			List<AccountEntry> listAccountEntriesOutstandingCharges=_listAccountEntriesCharges.FindAll(x => DoShowAccountEntry(x)
 				&& (x.GetType()!=typeof(Procedure) || (x.GetType()==typeof(Procedure) && ((Procedure)x.Tag).ProcStatus==ProcStat.C)));
+			listAccountEntriesOutstandingCharges=FilterAccountEntriesByInvoice(listAccountEntriesOutstandingCharges);//M2-PAYW
 			#region Group By Provider
 			if(comboGroupBy.SelectedIndex==1) {//Group by 'Provider'
 				col=new GridColumn(Lan.g(this,"Prov"),checkPayTypeNone.Checked ? 70 : 110);
@@ -2311,7 +2316,7 @@ namespace OpenDental {
 				_payment.Receipt=receipt;
 				if(_doPrintReceipt && receipt!="") {
 					PrintReceipt(receipt,Lan.g(this,creditCardSource.In(CreditCardSource.EdgeExpressRCM,CreditCardSource.EdgeExpressCNP)
-						? "EdgeExpress receipt printed" : "X-Charge receipt printed"));
+						? "Global Payments V1 receipt printed" : "X-Charge receipt printed"));
 					_doPrintReceipt=false;
 				}
 				if(SavePaymentToDb()) {
@@ -2328,7 +2333,7 @@ namespace OpenDental {
 				_payment.IsSplit=_listPaySplits.Count>1;
 				Payments.InsertVoidPayment(_payment,_listPaySplits,receipt,payNote,creditCardSource);
 				if(_doPrintReceipt && receipt!="") {
-					PrintReceipt(receipt,Lan.g(this,creditCardSource==CreditCardSource.EdgeExpressRCM ? "EdgeExpress receipt printed" : "X-Charge receipt printed"));
+					PrintReceipt(receipt,Lan.g(this,creditCardSource==CreditCardSource.EdgeExpressRCM ? "Global Payments V1 receipt printed" : "X-Charge receipt printed"));
 				}
 				string strErrorMsg=Ledgers.ComputeAgingForPaysplitsAllocatedToDiffPats(_patient.PatNum,_listPaySplits);
 				if(!string.IsNullOrEmpty(strErrorMsg)) {
@@ -2349,7 +2354,7 @@ namespace OpenDental {
 				paymentVoid.PayAmt=approvedAmt;
 			}
 			if(_doPrintReceipt && receipt!="") {
-				PrintReceipt(receipt,Lan.g(this,creditCardSource==CreditCardSource.EdgeExpressRCM ? "EdgeExpress receipt printed" : "X-Charge receipt printed"));
+				PrintReceipt(receipt,Lan.g(this,creditCardSource==CreditCardSource.EdgeExpressRCM ? "Global Payments V1 receipt printed" : "X-Charge receipt printed"));
 			}
 			SecurityLogs.MakeLogEntry(EnumPermType.PaymentCreate,paymentVoid.PatNum,Patients.GetLim(paymentVoid.PatNum).GetNameLF()+", "
 				+paymentVoid.PayAmt.ToString("c"));
@@ -2466,12 +2471,12 @@ namespace OpenDental {
 			_listDefsPaymentType=_listDefsPaymentType??Defs.GetDefsForCategory(DefCat.PaymentTypes,true);
 			Program program=Programs.GetCur(ProgramName.EdgeExpress);
 			if(!program.Enabled) {
-				MsgBox.Show(this,"EdgeExpress must be enabled in Program Links.");
+				MsgBox.Show(this,"Global Payments V1 must be enabled in Program Links.");
 				return false;
 			}
 			if(!PaymentWindowRules.ShowEdgeExpress(_payment.ClinicNum)) {
-				MsgBox.Show(this,"EdgeExpress is not set up for this clinic. Enter the X-Web ID, Terminal ID, Auth Key and payment type in Setup, "
-					+"Program Links, EdgeExpress.");
+				MsgBox.Show(this,"Global Payments V1 is not set up for this clinic. Enter the X-Web ID, Terminal ID, Auth Key and payment type in Setup, "
+					+"Program Links, Global Payments V1.");
 				return false;
 			}
 			return true;
@@ -2558,7 +2563,7 @@ namespace OpenDental {
 						rcmResponse.ACCOUNT,CreditCardSource.EdgeExpressRCM);
 				}
 				else if(_wasCreditCardSuccessful) {
-					MsgBox.Show(this,"EdgeExpress didn't return a token so credit card information couldn't be saved.");
+					MsgBox.Show(this,"Global Payments V1 didn't return a token so credit card information couldn't be saved.");
 				}
 			}
 			double approvedAmt=PIn.Double(rcmResponse.APPROVEDAMOUNT);
@@ -2589,7 +2594,7 @@ namespace OpenDental {
 					butEmailReceipt.Visible=true;
 				}
 				if(_doPrintReceipt) {
-					PrintReceipt(receipt,Lan.g(this,"EdgeExpress receipt printed"));
+					PrintReceipt(receipt,Lan.g(this,"Global Payments V1 receipt printed"));
 				}
 			}
 			if(creditCard!=null && !string.IsNullOrEmpty(creditCard.XChargeToken) && creditCard.CCExpiration!=null) {
@@ -2629,7 +2634,7 @@ namespace OpenDental {
 					if(xWebResponseProcessed.XWebResponseCode==XWebResponseCodes.Approval) {
 						_payment.IsCcCompleted=true;
 						if(_doPrintReceipt) {
-							PrintReceipt(_payment.Receipt,Lan.g(this,"EdgeExpress receipt printed"));
+							PrintReceipt(_payment.Receipt,Lan.g(this,"Global Payments V1 receipt printed"));
 						}
 					}
 					else{
@@ -2650,7 +2655,7 @@ namespace OpenDental {
 					if(xWebResponseProcessed.XWebResponseCode==XWebResponseCodes.Approval) {// only print receipt if its an approved transaction
 						_payment.IsCcCompleted=true;
 						if(_doPrintReceipt) {
-							PrintReceipt(_payment.Receipt,Lan.g(this,"EdgeExpress receipt printed"));
+							PrintReceipt(_payment.Receipt,Lan.g(this,"Global Payments V1 receipt printed"));
 						}
 					}
 					else{
@@ -2668,7 +2673,7 @@ namespace OpenDental {
 						_payment.IsCcCompleted=true;
 						textNote.Text+=payNote;
 						if(_doPrintReceipt) {
-							PrintReceipt(_payment.Receipt,Lan.g(this,"EdgeExpress receipt printed"));
+							PrintReceipt(_payment.Receipt,Lan.g(this,"Global Payments V1 receipt printed"));
 						}
 					}
 					else {
@@ -2707,7 +2712,7 @@ namespace OpenDental {
 					if(xWebResponseProcessed.XWebResponseCode==XWebResponseCodes.Approval) {// only print receipt if its an approved transaction
 						_payment.IsCcCompleted=true;
 						if(_doPrintReceipt) {
-							PrintReceipt(_payment.Receipt,Lan.g(this,"EdgeExpress receipt printed"));
+							PrintReceipt(_payment.Receipt,Lan.g(this,"Global Payments V1 receipt printed"));
 						}
 					}
 					else{
@@ -2879,6 +2884,9 @@ namespace OpenDental {
 				//Income transfers will not have a payment type selected (they aren't really payments) so an empty string should be passed to plug-ins. 
 				//Older versions would actually pass along the text of the last selected item from the Payment Type list box but that is misleading.
 				paymentTypeParam="";
+				if(!IncomeTransferLimit_IsValid()) {//M2-PAYW
+					return false;
+				}
 				Dictionary<long,List<PaySplit>> dictProcNegSplits=_listPaySplits.FindAll(x => x.ProcNum > 0)
 					.GroupBy(x => x.ProcNum)
 					.ToDictionary(x => x.Key,x => x.ToList());
@@ -4419,7 +4427,7 @@ namespace OpenDental {
 					note=MakeEdgeExpressTransactionCNP(edgeExpressTransType,amt,doCreateToken,aliasToken,transactionId,prepaidAmt,clinicNum);
 				}
 				catch(Exception ex) {
-					FrmFriendlyException frmFriendlyException=new FrmFriendlyException("Error processing EdgeExpress request",ex,false);
+					FrmFriendlyException frmFriendlyException=new FrmFriendlyException("Error processing Global Payments V1 request",ex,false);
 					frmFriendlyException.ShowDialog();
 					return null;
 				}
@@ -4623,6 +4631,10 @@ namespace OpenDental {
 				if(!string.IsNullOrEmpty(strErrorMsg)) {
 					MessageBox.Show(strErrorMsg);
 				}
+			}
+			if(VoidGlobalPaymentsV2OnClosing()) {//25.4 Global Payments V2 (FormPayment.GlobalPaymentsV2.cs)
+				DialogResult=DialogResult.Cancel;
+				return;
 			}
 			string refNum="";
 			string amount="";

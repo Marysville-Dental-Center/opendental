@@ -87,6 +87,7 @@ namespace OpenDental {
 			LayoutManager.Add(gridUnearnedBreakdown,this);
 			LayoutManager.Add(gridInsEstOpenClaims,this);
 			LayoutManager.Add(textQuickProcs,ToolBarMain);
+			ConstructServiceDateView();//M2-SDV, ControlAccount.ServiceDateView.cs
 			Logger.LogToPath("Ctor",LogPath.Startup,LogPhase.End);
 		}
 		#endregion Constructor
@@ -218,24 +219,12 @@ namespace OpenDental {
 		}
 
 		private void butServiceDateView_Click(object sender,EventArgs e) {
-			//If the window is already open and it's for the same patient, bring the window to front. Otherwise close and/or open it.
-			long patNum=_patient.PatNum;
-			if(IsFamilySelected()) {
-				patNum=_family.Guarantor.PatNum;
+			//Since Open Dental 26.1 this button switches the main grid between the regular view and the service-date view (M2-SDV). The Service Date
+			//View window opens from the grid's right-click menu and the Statement drop-down (ControlAccount.ServiceDateView.cs).
+			if(_patient==null) {
+				return;
 			}
-			if(_formRpServiceDateView!=null && (_formRpServiceDateView.PatNum!=patNum || _formRpServiceDateView.IsFamily!=IsFamilySelected())) {
-				_formRpServiceDateView.Close();
-				_formRpServiceDateView=null;
-			}
-			if(_formRpServiceDateView?.IsDisposed!=false) {
-				_formRpServiceDateView=new FormRpServiceDateView(patNum,IsFamilySelected());
-				_formRpServiceDateView.FormClosed+=new FormClosedEventHandler((o,e1) => _formRpServiceDateView=null);
-				_formRpServiceDateView.Show();
-			}
-			if(_formRpServiceDateView.WindowState==FormWindowState.Minimized) {
-				_formRpServiceDateView.WindowState=FormWindowState.Normal;
-			}
-			_formRpServiceDateView.BringToFront();
+			ToggleServiceDateView();
 		}
 
 		private void butToday_Click(object sender,EventArgs e) {
@@ -257,7 +246,8 @@ namespace OpenDental {
 		}
 
 		private void checkShowDetail_Click(object sender,EventArgs e) {
-			UserOdPref userOdPref=UserOdPrefs.GetFirstOrNewByUserAndFkeyType(Security.CurUser.UserNum,UserOdFkeyType.AcctProcBreakdown);
+			//Fkey 0 only: the Service Date View settings share this FkeyType with other Fkeys (ServiceDateViewUserPrefs).
+			UserOdPref userOdPref=UserOdPrefs.GetByCompositeKey(Security.CurUser.UserNum,ServiceDateViewUserPrefs.FKEY_PROC_BREAKDOWN,UserOdFkeyType.AcctProcBreakdown);
 			userOdPref.ValueString=POut.Bool(checkShowDetail.Checked);
 			UserOdPrefs.Upsert(userOdPref);
 			DataValid.SetInvalid(InvalidType.UserOdPrefs);
@@ -409,6 +399,7 @@ namespace OpenDental {
 			if(_arrayDefsAcctProcQuickAdd.Length==0) {
 				contextMenuQuickProcs.MenuItems.Add(new MenuItem(Lan.g(this,"No quick charge procedures defined. Go to Setup | Definitions to add."),(x,y) => { }));//"null" event handler.
 			}
+			AddQuickProcsSalesTaxItem();//ControlAccount.SalesTax.cs
 		}
 		#endregion Methods - Event Handlers ContextMenus
 
@@ -1372,6 +1363,7 @@ namespace OpenDental {
 			if(listDataRowsSuperFam.Count > 0) {
 				statement.SuperFamily=_patient.SuperFamily;
 			}
+			ApplyServiceDateViewToNewStatement(statement);//M2-SDV
 			Statements.Insert(statement);
 			statement.IsNew=true;
 			List<Procedure> listProceduresForPat=Procedures.Refresh(_patient.PatNum);
@@ -1687,7 +1679,7 @@ namespace OpenDental {
 			if(sender.GetType()!=typeof(MenuItem)) {
 				return;
 			}
-			Def defQuickCharge=_arrayDefsAcctProcQuickAdd[contextMenuQuickProcs.MenuItems.IndexOf((MenuItem)sender)];
+			Def defQuickCharge=_arrayDefsAcctProcQuickAdd[contextMenuQuickProcs.MenuItems.IndexOf((MenuItem)sender)-_countQuickProcsLeadingItems];
 			string[] stringArrayProcCodes=defQuickCharge.ItemValue.Split(',');
 			if(stringArrayProcCodes.Length==0) {
 				//No items entered into the definition category.  Notify the user.
@@ -1919,6 +1911,7 @@ namespace OpenDental {
 			//All printing and emailing will be done from within the form:
 			using FormStatementOptions formStatementOptions=new FormStatementOptions();
 			statement.IsNew=true;
+			ApplyServiceDateViewToNewStatement(statement);//M2-SDV
 			formStatementOptions.StatementCur=statement;
 			formStatementOptions.ShowDialog();
 			ModuleSelected(_patient.PatNum);
@@ -2209,7 +2202,8 @@ namespace OpenDental {
 				}
 			}
 			else if(e.Button.Tag.GetType()==typeof(Program)) {
-				WpfControls.ProgramL.Execute(((Program)e.Button.Tag).ProgramNum,_patient);
+				WpfControls.ProgramL.Execute(((Program)e.Button.Tag).ProgramNum,_patient,
+					ProgramLinkSelectedProcs.FromLedgerRows(_dataSetMain?.Tables["account"],gridAccount.SelectedIndices));
 			}
 			Plugins.HookAddCode(this,"ContrAccount.ToolBarMain_ButtonClick_end",_patient,e);
 		}
@@ -2289,6 +2283,7 @@ namespace OpenDental {
 			splitContainerAccountCommLog.SplitterDistance=splitContainerParent.Panel2.Height * 3/5;//Make Account grid slightly bigger than commlog
 			checkShowFamilyComm.Checked=PrefC.GetBoolSilent(PrefName.ShowAccountFamilyCommEntries,true);
 			checkShowCompletePayPlans.Checked=PrefC.GetBool(PrefName.AccountShowCompletedPaymentPlans);
+			InitializeServiceDateView();//M2-SDV
 			Plugins.HookAddCode(this,"ContrAccount.InitializeOnStartup_end");
 		}
 
@@ -2347,7 +2342,7 @@ namespace OpenDental {
 				_superFamPrefEnabled=PrefC.GetBool(PrefName.ShowFeatureSuperfamilies);
 				ToggleUseSuperFamCheckboxEnabled(_superFamPrefEnabled);
 			}
-			UserOdPref userOdPrefProcBreakdown=UserOdPrefs.GetByUserAndFkeyType(Security.CurUser.UserNum,UserOdFkeyType.AcctProcBreakdown).FirstOrDefault();
+			UserOdPref userOdPrefProcBreakdown=ServiceDateViewUserPrefs.GetProcBreakdownPref(Security.CurUser.UserNum);//Fkey 0 only (M2-SDV).
 			UserOdPref userOdPrefShowAutoCommlog=UserOdPrefs.GetByUserAndFkeyType(Security.CurUser.UserNum,UserOdFkeyType.ShowAutomatedCommlog).FirstOrDefault();
 			if(userOdPrefProcBreakdown==null) {
 				checkShowDetail.Checked=true;
@@ -3435,6 +3430,7 @@ namespace OpenDental {
 				gridAccount.ScrollValue=_scrollValueWhenDoubleClick;
 				_scrollValueWhenDoubleClick=-1;
 			}
+			FillServiceDateView();//M2-SDV
 		}
 
 		private void FillMisc() {
@@ -4267,6 +4263,7 @@ namespace OpenDental {
 		/// <summary>Saves the statement.  Attaches a pdf to it by creating a doc object.  Prints it or emails it.  </summary>
 		private void PrintStatement(Statement statement) {
 			Cursor=Cursors.WaitCursor;
+			ApplyServiceDateViewToNewStatement(statement);//M2-SDV
 			Statements.Insert(statement);
 			SheetDef sheetDef=SheetUtil.GetStatementSheetDef(statement);
 			Sheet sheet=SheetUtil.CreateSheet(sheetDef,statement.PatNum,statement.HidePayment);

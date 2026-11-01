@@ -1666,11 +1666,9 @@ namespace OpenDentBusiness {
 			if(procedure.ProcStatus!=oldProcedure.ProcStatus) {
 				ProcMultiVisits.UpdateGroupForProc(procedure.ProcNum,procedure.ProcStatus);
 			}
-			if(procedure.Note!=oldProcedure.Note
-				|| procedure.UserNum!=oldProcedure.UserNum
-				|| procedure.SigIsTopaz!=oldProcedure.SigIsTopaz
-				|| procedure.Signature!=oldProcedure.Signature) 
-			{
+			//The note text (compared exactly), its user, a signature or the 26.1 group note second signature changed. One rule, shared with the
+			//Procedure Note Merge check (M2-NOTES).
+			if(ProcNotes.IsNoteRowNeeded(procedure,oldProcedure)) {
 				ProcNote note=new ProcNote();
 				note.PatNum=procedure.PatNum;
 				note.ProcNum=procedure.ProcNum;
@@ -1678,6 +1676,7 @@ namespace OpenDentBusiness {
 				note.Note=procedure.Note;
 				note.SigIsTopaz=procedure.SigIsTopaz;
 				note.Signature=procedure.Signature;
+				ProcNotes.SetSecondSignature(note,procedure,oldProcedure);//26.1 group note second signature (M2-NOTES)
 				ProcNotes.Insert(note);
 			}
 			return hasChanged;
@@ -3627,7 +3626,7 @@ namespace OpenDentBusiness {
 				cp.DateCP=proc.ProcDate;
 				cp.AllowedOverride=-1;
 				cp.PercentOverride=-1;
-				cp.NoBillIns=InsPlanPreferences.NoBillIns(ProcedureCodes.GetProcCode(proc.CodeNum),planCur);
+				cp.NoBillIns=GetNoBillInsForNewEstimate(proc,planCur);
 				cp.PaidOtherIns=-1;
 				cp.CopayOverride=-1;
 				cp.ProcDate=proc.ProcDate;
@@ -3746,7 +3745,7 @@ namespace OpenDentBusiness {
 			#region Sales Tax
 			//At the end of recalculating writeoffs, we need to update sales tax estimate for treatment planned procs.
 			if(proc.ProcStatus==ProcStat.TP) {
-				proc.TaxAmt=ClaimProcs.ComputeSalesTax(proc,claimProcs,true);
+				proc.TaxAmt=SalesTaxProcs.IsSalesTaxProc(proc) ? 0 : ClaimProcs.ComputeSalesTax(proc,claimProcs,true);//A sales-tax procedure is never taxed.
 			}
 			#endregion
 		}
@@ -3991,6 +3990,7 @@ namespace OpenDentBusiness {
 					}
 				}
 				#endregion
+				ZeroEstimateIfCoverageEnded(claimProcs[i],proc,listInsSubs,hasEstimateCalculation);//Only inside ScopeCoverageEndCheck (TP module, 25.4).
 				if(hasMetFrequencyLimit && InsPlans.DoZeroOutWriteOffOnOtherLimitation(PlanCur) && ClaimProcs.GetEstimatedStatuses().Contains(claimProcs[i].Status)) {
 					claimProcs[i].WriteOffEst=0;
 				}

@@ -1091,7 +1091,9 @@ namespace OpenDentBusiness{
 			else {//No clinic/region filtering
 				clinicAnd="";
 			}
-			if(listClinicNumsForQuery.Count>1) {//check if it is more than HQ and if clinic/region filter is needed
+			//The Task Filter's "Unassigned" clinic or region (TaskFilters.cs) keeps the filter even when only clinic 0 is left.
+			bool isUnassignedFilter=TaskFilters.AddUnassignedClinicNums(listClinicNumsForQuery,listClinicNumsFilter,listDefNumsRegionFilter,listClinicsUnrestricted);
+			if(listClinicNumsForQuery.Count>1 || isUnassignedFilter) {//check if it is more than HQ and if clinic/region filter is needed
 				string strFkeys=string.Join(",",listClinicNumsForQuery.Select(x => POut.Long(x)));
 				clinicAnd=" AND (patient.ClinicNum IN ("+strFkeys+") OR appointment.ClinicNum IN ("+strFkeys+") "
 				+"OR ((patient.ClinicNum IS NULL) AND (appointment.ClinicNum IS NULL))) ";

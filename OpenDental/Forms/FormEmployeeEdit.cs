@@ -37,6 +37,10 @@ namespace OpenDental{
 			List<Employee> listEmployees=Employees.GetDeepCopy(isShort:true);//excludes hidden
 			comboReportsTo.Items.AddList(listEmployees,x=>x.FName+" "+x.LName);
 			comboReportsTo.SetSelectedKey<Employee>(EmployeeCur.ReportsTo,x=>x.EmployeeNum);
+			//Open Dental 26.1 (M2-EMP): job title from Setup, Definitions, Employee Titles. A hidden title is offered only when it is the current one.
+			comboTitle.Items.AddDefNone();
+			comboTitle.Items.AddDefs(Employees.GetTitlesForPicker(EmployeeCur.Title));
+			comboTitle.SetSelectedDefNum(EmployeeCur.Title);
 		}
 
 		private void butDelete_Click(object sender,EventArgs e) {
@@ -74,6 +78,7 @@ namespace OpenDental{
 			EmployeeCur.IsFurloughed=checkIsFurloughed.Checked;
 			EmployeeCur.IsWorkingHome=checkIsWorkingHome.Checked;
 			EmployeeCur.ReportsTo=comboReportsTo.GetSelectedKey<Employee>(x=>x.EmployeeNum);
+			EmployeeCur.Title=comboTitle.GetSelectedDefNum();
 			if(IsNew) {
 				try {
 					Employees.Insert(EmployeeCur);

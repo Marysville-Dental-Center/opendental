@@ -233,7 +233,7 @@ namespace OpenDental{
 			this.labelClinicEnable.Name = "labelClinicEnable";
 			this.labelClinicEnable.Size = new System.Drawing.Size(410, 16);
 			this.labelClinicEnable.TabIndex = 20;
-			this.labelClinicEnable.Text = "To enable EdgeExpress for a clinic, enter the X-Web credentials for that clinic.";
+			this.labelClinicEnable.Text = "To enable Global Payments V1 for a clinic, enter the X-Web credentials for that clinic.";
 			this.labelClinicEnable.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 			// 
 			// checkUseTestGateway
@@ -311,7 +311,7 @@ namespace OpenDental{
 			this.Controls.Add(this.checkEnabled);
 			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEdgeExpressSetup";
-			this.Text = "EdgeExpress Setup";
+			this.Text = "Global Payments V1 Setup";
 			this.Load += new System.EventHandler(this.FormEdgeExpressSetup_Load);
 			this.groupPaySettings.ResumeLayout(false);
 			this.groupCredentials.ResumeLayout(false);

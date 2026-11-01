@@ -3855,6 +3855,7 @@ namespace OpenDental{
 			UnselectActive();
 			AllNeutral();
 			SetModuleSelected(true);
+			ShowModuleSwitchBlur(isUserClick:e.OutlookButton!=null);//25.2, FormOpenDentalBShell.cs
 		}
 
 		///<summary>Returns the translated name of the currently selected module for logging bug submissions.</summary>
@@ -6482,7 +6483,7 @@ namespace OpenDental{
 				}
 				#endregion
 				#region Domain Login
-				else if(PrefC.GetBool(PrefName.DomainLoginEnabled) && !string.IsNullOrWhiteSpace(PrefC.GetString(PrefName.DomainLoginPath))) {
+				else if(DomainLogin.IsEnabled()) {//Domain login on, with a path. The shared helper (DomainLogin.cs) also serves the change-user prompts.
 					string loginPath=PrefC.GetString(PrefName.DomainLoginPath);
 					try {
 						Logger.LogToPath("Domain Login",LogPath.Startup,LogPhase.Start);
@@ -6495,7 +6496,7 @@ namespace OpenDental{
 							Prefs.UpdateString(PrefName.DomainObjectGuid,domainGuid);
 							domainGuidPref=domainGuid;
 						}
-						string domainUser=(domainGuidPref+'\\'+Environment.UserName);
+						string domainUser=DomainLogin.BuildDomainUser(domainGuidPref,Environment.UserName);
 						//All LDAP servers must expose a special entry, called the root DSE. This gets the current user's domain path.
 						DirectoryEntry directoryEntryRootDSE=new DirectoryEntry("LDAP://RootDSE");
 						string defaultNamingContext=directoryEntryRootDSE.Properties["defaultNamingContext"].Value.ToString();
@@ -6688,6 +6689,12 @@ namespace OpenDental{
 		public bool CloseOpenForms(bool isForceClose,int forceCloseTimeoutMS=15000,bool isSnip=false) {
 			if(!SaveWork(isForceClose)) {
 				return false;
+			}
+			if(!isForceClose && !FormOrthoChart.PromptCloseAllForLogOff()) {//25.3: ortho charts can be open in the background with unsaved edits.
+				return false;
+			}
+			if(isForceClose && !isSnip) {//25.3: forced, so open ortho charts close without asking. Any other close of one is a user close that asks.
+				FormOrthoChart.MarkAllForForcedClose();
 			}
 			List<Form> listFormsToClose=GetOpenForms();
 			#region Close forms and quit threads.  Some form closing events rely on the closing events of parent forms.

@@ -101,14 +101,37 @@ namespace OpenDentBusiness{
 		}
 		#endregion Cache Pattern
 		*/
+		///<summary>payterminal.CCIntegration of a PayConnect terminal (Open Dental 25.4). Rows made before 25.4 hold "" and are PayConnect terminals too:
+		///nothing else used the table.</summary>
+		public const string CCIntegrationPayConnect="PayConnect";
+		///<summary>payterminal.CCIntegration of a Global Payments V2 terminal: the integration's internal name in the published 25.4 database documents
+		///(INFERRED; the exact stored string is not published).</summary>
+		public const string CCIntegrationMeetInTheCloud="MeetInTheCloud";
+
 		#region Methods - Get
 
-		///<summary></summary>
+		///<summary>The clinic's PayConnect terminals: CCIntegration "PayConnect", or "" on rows made before 25.4. Since 25.4 each integration lists only
+		///its own terminals, so the PayConnect windows never offer a Global Payments V2 terminal.</summary>
 		public static List<PayTerminal> Refresh(long clinicNum){
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetObject<List<PayTerminal>>(MethodBase.GetCurrentMethod(),clinicNum);
 			}
-			string command="SELECT * FROM payterminal WHERE ClinicNum = "+POut.Long(clinicNum);
+			string command="SELECT * FROM payterminal WHERE ClinicNum = "+POut.Long(clinicNum)
+				+" AND CCIntegration IN ('','"+POut.String(CCIntegrationPayConnect)+"')";
+			return Crud.PayTerminalCrud.SelectMany(command);
+		}
+
+		///<summary>The clinic's terminals of one integration (payterminal.CCIntegration, e.g. CCIntegrationMeetInTheCloud), ordered by name. For
+		///PayConnect (or a blank integration) this is the same list as Refresh.</summary>
+		public static List<PayTerminal> GetForIntegration(long clinicNum,string ccIntegration){
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetObject<List<PayTerminal>>(MethodBase.GetCurrentMethod(),clinicNum,ccIntegration);
+			}
+			if(string.IsNullOrWhiteSpace(ccIntegration) || ccIntegration==CCIntegrationPayConnect) {
+				return Refresh(clinicNum);
+			}
+			string command="SELECT * FROM payterminal WHERE ClinicNum="+POut.Long(clinicNum)+" "
+				+"AND CCIntegration='"+POut.String(ccIntegration)+"' ORDER BY Name,PayTerminalNum";
 			return Crud.PayTerminalCrud.SelectMany(command);
 		}
 		
@@ -140,8 +163,11 @@ namespace OpenDentBusiness{
 		#endregion Methods - Get
 		#region Methods - Modify
 
-		///<summary></summary>
+		///<summary>A terminal without an integration is a PayConnect terminal, as every terminal was before 25.4.</summary>
 		public static long Insert(PayTerminal payTerminal){
+			if(string.IsNullOrWhiteSpace(payTerminal.CCIntegration)) {
+				payTerminal.CCIntegration=CCIntegrationPayConnect;
+			}
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT){
 				payTerminal.PayTerminalNum=Meth.GetLong(MethodBase.GetCurrentMethod(),payTerminal);
 				return payTerminal.PayTerminalNum;
@@ -168,6 +194,19 @@ namespace OpenDentBusiness{
 		}
 		#endregion Methods - Modify
 		#region Methods - Misc
+		///<summary>Sets CCIntegration to "PayConnect" on terminal rows made before Open Dental 25.4 (CCIntegration ""), as the 25.4 upgrade does.
+		///Idempotent; returns how many rows changed. Readers already treat "" as PayConnect, so this only brings the data in line.</summary>
+		public static long BackfillPayConnectIntegration() {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetLong(MethodBase.GetCurrentMethod());
+			}
+			string command="SELECT COUNT(*) FROM payterminal WHERE CCIntegration=''";
+			if(PIn.Long(Db.GetCount(command))==0) {
+				return 0;
+			}
+			command="UPDATE payterminal SET CCIntegration='"+POut.String(CCIntegrationPayConnect)+"' WHERE CCIntegration=''";
+			return Db.NonQ(command);
+		}
 		#endregion Methods - Misc
 	}
 }

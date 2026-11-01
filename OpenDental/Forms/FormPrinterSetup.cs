@@ -32,13 +32,20 @@ namespace OpenDental{
 			gridPrinters.Columns.Clear();
 			GridColumn col=new GridColumn("Situation",150);
 			gridPrinters.Columns.Add(col);
-			col=new GridColumn("Printer",260);
+			col=new GridColumn("Printer",190);
 			gridPrinters.Columns.Add(col);
 			col=new GridColumn("Prompt",50,HorizontalAlignment.Center);
 			gridPrinters.Columns.Add(col);
 			col=new GridColumn("Virtual",50,HorizontalAlignment.Center);
 			gridPrinters.Columns.Add(col);
 			col=new GridColumn("File Extension",50,HorizontalAlignment.Center);
+			gridPrinters.Columns.Add(col);
+			//25.4: the printer that prints for the situation on this workstation, the rule that picked it, and what Windows reports about it.
+			col=new GridColumn("Printer Used",220);
+			gridPrinters.Columns.Add(col);
+			col=new GridColumn("Rule",130);
+			gridPrinters.Columns.Add(col);
+			col=new GridColumn("Status",60,HorizontalAlignment.Center);
 			gridPrinters.Columns.Add(col);
 			//Clear out the rows.
 			gridPrinters.ListGridRows.Clear();
@@ -61,6 +68,8 @@ namespace OpenDental{
 			if(checkSimple.Checked){
 				listPrintSituations.RemoveAll(x=>x!=PrintSituation.Default);
 			}
+			string windowsDefaultPrinterName=PrintSituationRules.GetWindowsDefaultPrinterName();
+			Dictionary<string,PrinterOnlineStatus> dictPrinterStatuses=PrinterStatuses.GetAll();
 			for(int i=0;i<listPrintSituations.Count;i++){
 				Printer printerForSit=Printers.GetForSit(listPrintSituations[i]);
 				row=new GridRow();
@@ -72,12 +81,33 @@ namespace OpenDental{
 					row.Cells.Add(printerForSit.FileExtension);
 				}
 				else {
+					row.Cells.Add("");
+					row.Cells.Add("");
+					row.Cells.Add("");
+					row.Cells.Add("");
 					printerForSit=new Printer{PrintSit=listPrintSituations[i]};
 				}
+				FillPrinterUsedCells(row,listPrintSituations[i],windowsDefaultPrinterName,dictPrinterStatuses);
 				row.Tag=printerForSit;
 				gridPrinters.ListGridRows.Add(row);
 			}
 			gridPrinters.EndUpdate();
+		}
+
+		///<summary>Adds the Printer Used, Rule and Status cells of a situation (25.4). Uses the cached printer rows, which FillGrid's callers refresh
+		///after a change.</summary>
+		private void FillPrinterUsedCells(GridRow row,PrintSituation printSituation,string windowsDefaultPrinterName,
+			Dictionary<string,PrinterOnlineStatus> dictPrinterStatuses)
+		{
+			PrinterChoice printerChoice=PrintSituationRules.ResolveForThisComputer(printSituation);
+			row.Cells.Add(PrintSituationRules.GetPrinterUsedText(printerChoice,windowsDefaultPrinterName));
+			row.Cells.Add(PrintSituationRules.GetSourceText(printerChoice));
+			string printerNameUsed=printerChoice.PrinterName;
+			if(printerChoice.Source==PrinterChoiceSource.WindowsDefault) {
+				printerNameUsed=windowsDefaultPrinterName;
+			}
+			string statusText=PrinterStatuses.GetText(PrinterStatuses.GetStatus(dictPrinterStatuses,printerNameUsed));
+			row.Cells.Add(statusText=="" ? "" : Lan.g(this,statusText));//blank where Windows reports no state
 		}
 
 		#region Events

@@ -69,6 +69,7 @@ namespace OpenDentBusiness{
 				Meth.GetVoid(MethodBase.GetCurrentMethod(),listLogs);
 				return;
 			}
+			listLogs.ForEach(x => InsEditLogBigValues.MoveLongValues(x));//25.4: values over 255 characters go in OldValueBig/NewValueBig.
 			Crud.InsEditPatLogCrud.InsertMany(listLogs);
 			return;
 		}

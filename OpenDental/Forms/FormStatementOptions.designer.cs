@@ -72,6 +72,7 @@ namespace OpenDental {
 			this.checkShowLName = new OpenDental.UI.CheckBox();
 			this.checkExcludeTxfr = new OpenDental.UI.CheckBox();
 			this.checkExportCSV = new OpenDental.UI.CheckBox();
+			this.checkServiceDateView = new OpenDental.UI.CheckBox();
 			this.groupDateRange.SuspendLayout();
 			this.groupInvoice.SuspendLayout();
 			this.SuspendLayout();
@@ -463,10 +464,20 @@ namespace OpenDental {
 			this.checkExportCSV.Text = "Export as CSV";
 			this.checkExportCSV.Visible = false;
 			// 
+			// checkServiceDateView
+			// 
+			this.checkServiceDateView.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.checkServiceDateView.Location = new System.Drawing.Point(42, 188);
+			this.checkServiceDateView.Name = "checkServiceDateView";
+			this.checkServiceDateView.Size = new System.Drawing.Size(158, 17);
+			this.checkServiceDateView.TabIndex = 259;
+			this.checkServiceDateView.Text = "Service Date View";
+			// 
 			// FormStatementOptions
 			// 
 			this.AcceptButton = this.butSave;
 			this.ClientSize = new System.Drawing.Size(720, 561);
+			this.Controls.Add(this.checkServiceDateView);
 			this.Controls.Add(this.checkExportCSV);
 			this.Controls.Add(this.checkExcludeTxfr);
 			this.Controls.Add(this.checkShowLName);
@@ -548,5 +559,6 @@ namespace OpenDental {
 		private OpenDental.UI.CheckBox checkShowLName;
 		private OpenDental.UI.CheckBox checkExcludeTxfr;
 		private OpenDental.UI.CheckBox checkExportCSV;
+		private OpenDental.UI.CheckBox checkServiceDateView;
 	}
 }

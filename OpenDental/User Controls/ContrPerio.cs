@@ -18,7 +18,7 @@ using WpfControls.UI;
 namespace OpenDental
 {
 	///<summary>Summary description for ContrPerio.</summary>
-	public class ContrPerio : System.Windows.Forms.Control{
+	public partial class ContrPerio : System.Windows.Forms.Control{
 		#region Fields - public
 		///<summary>Perio security:  False will only allow user to see information but not edit.</summary>
 		public bool AllowPerioEdit;
@@ -81,6 +81,9 @@ namespace OpenDental
 		private int _heightShowing;
 		///<summary>Height of the 'tooth' sections. Right now, it just holds the tooth number.</summary> 
 		private int _heightTooth;
+		///<summary>The untranslated label last given to the gingival margin rows (PerioMeasures.TermGingMarg or TermRecession). Null until the first
+		///exam is loaded.</summary>
+		private string _gingMarginTerm;
 		///<summary>The index in PerioExams.List of the currently selected exam.</summary>
 		private int _idxExamSelected;
 		///<summary>Used to determine if a tooth had an implant proc.</summary>
@@ -134,15 +137,18 @@ namespace OpenDental
 			_colorOldText=Color.FromArgb(120,120,120);
 			_colorOldTextRed=Color.FromArgb(200,80,80);
 			_perioSequenceTypeArray=new PerioSequenceType[4][];
+			//The auto Att Ging row (24.4) sits between Ging Marg and MGJ in each section that has an MGJ row, so MGJ stays next to the probing rows
+			//and the heavy divider lines of DrawGridlines keep their places.
 			//Upper facial:
-			_perioSequenceTypeArray[0]=new PerioSequenceType[5+_rowsProbing6];
+			_perioSequenceTypeArray[0]=new PerioSequenceType[6+_rowsProbing6];
 			_perioSequenceTypeArray[0][0]=PerioSequenceType.Mobility;
 			_perioSequenceTypeArray[0][1]=PerioSequenceType.Furcation;
 			_perioSequenceTypeArray[0][2]=PerioSequenceType.CAL;
 			_perioSequenceTypeArray[0][3]=PerioSequenceType.GingMargin;
-			_perioSequenceTypeArray[0][4]=PerioSequenceType.MGJ;
+			_perioSequenceTypeArray[0][4]=PerioSequenceType.AttGing;
+			_perioSequenceTypeArray[0][5]=PerioSequenceType.MGJ;
 			for(int i=0;i<_rowsProbing6;i++){
-				_perioSequenceTypeArray[0][5+i]=PerioSequenceType.Probing;
+				_perioSequenceTypeArray[0][6+i]=PerioSequenceType.Probing;
 			}
 			//Upper lingual:
 			_perioSequenceTypeArray[1]=new PerioSequenceType[3+_rowsProbing6];
@@ -153,23 +159,25 @@ namespace OpenDental
 				_perioSequenceTypeArray[1][3+i]=PerioSequenceType.Probing;
 			}
 			//Lower lingual:
-			_perioSequenceTypeArray[2]=new PerioSequenceType[4+_rowsProbing6];
+			_perioSequenceTypeArray[2]=new PerioSequenceType[5+_rowsProbing6];
 			_perioSequenceTypeArray[2][0]=PerioSequenceType.Furcation;
 			_perioSequenceTypeArray[2][1]=PerioSequenceType.CAL;
 			_perioSequenceTypeArray[2][2]=PerioSequenceType.GingMargin;
-			_perioSequenceTypeArray[2][3]=PerioSequenceType.MGJ;
+			_perioSequenceTypeArray[2][3]=PerioSequenceType.AttGing;
+			_perioSequenceTypeArray[2][4]=PerioSequenceType.MGJ;
 			for(int i=0;i<_rowsProbing6;i++){
-				_perioSequenceTypeArray[2][4+i]=PerioSequenceType.Probing;
+				_perioSequenceTypeArray[2][5+i]=PerioSequenceType.Probing;
 			}
 			//Lower facial:
-			_perioSequenceTypeArray[3]=new PerioSequenceType[5+_rowsProbing6];
+			_perioSequenceTypeArray[3]=new PerioSequenceType[6+_rowsProbing6];
 			_perioSequenceTypeArray[3][0]=PerioSequenceType.Mobility;
 			_perioSequenceTypeArray[3][1]=PerioSequenceType.Furcation;
 			_perioSequenceTypeArray[3][2]=PerioSequenceType.CAL;
 			_perioSequenceTypeArray[3][3]=PerioSequenceType.GingMargin;
-			_perioSequenceTypeArray[3][4]=PerioSequenceType.MGJ;
+			_perioSequenceTypeArray[3][4]=PerioSequenceType.AttGing;
+			_perioSequenceTypeArray[3][5]=PerioSequenceType.MGJ;
 			for(int i=0;i<_rowsProbing6;i++){
-				_perioSequenceTypeArray[3][5+i]=PerioSequenceType.Probing;
+				_perioSequenceTypeArray[3][6+i]=PerioSequenceType.Probing;
 			}
 			ClearDataArray();
 			ListColRowsSelected=new List<ColRow>();
@@ -186,6 +194,11 @@ namespace OpenDental
 		[Category("Property Changed")]
 		[Description("Occurs when the control needs to change the auto advance direction to right.")]
 		public event EventHandler DirectionChangedRight;
+
+		///<summary>Occurs when the label of the gingival margin rows changes between Ging Marg and Recession (see GetGingMarginTerm).</summary>
+		[Category("Property Changed")]
+		[Description("Occurs when the label of the gingival margin rows changes between Ging Marg and Recession.")]
+		public event EventHandler GingMarginTermChanged;
 		#endregion Events
 
 		#region Properties
@@ -356,6 +369,12 @@ namespace OpenDental
 			}
 			return GetPerioCell(ListColRowsSelected[0],true);
 		}
+
+		///<summary>The untranslated label for the gingival margin rows of the displayed exam: Recession when the Perio Setup option is on and the exam
+		///has no hyperplasia, otherwise Ging Marg (Open Dental 24.4).</summary>
+		public string GetGingMarginTerm() {
+			return PerioMeasures.GetGingMarginTerm(PerioMeasures.GetUseRecessionTerm(),HasHyperplasia());
+		}
 		
 		public PerioCell GetPerioCellFromColRow(ColRow colRowSelected) {
 			return GetPerioCell(colRowSelected,true);
@@ -393,20 +412,38 @@ namespace OpenDental
 			return _perioSequenceTypeArray[GetSection(colRow.Row)][GetSectionRow(colRow.Row)];
 		}
 
-		///<summary>Returns true if the toothI passed in has ever had an implant before.</summary>
-		public static bool IsImplant(int intTooth) {
-			if(_listProcedures==null) {//Not initialized yet.
-				_listProcedures=Procedures.Refresh(FormOpenDental.PatNumCur);
+		///<summary>The table row of a sequence type in a section (0 maxillary facial, 1 maxillary lingual, 2 mandibular lingual, 3 mandibular facial;
+		///see GetSection). For probing, the row of the selected exam. Returns -1 when the section has no such row, for example MGJ or auto Att Ging on
+		///the maxillary lingual. Use this instead of fixed row numbers, which changed when the auto Att Ging rows were added.</summary>
+		public int GetTableRowForSection(int section,PerioSequenceType perioSequenceType) {
+			return GetTableRow(_idxExamSelected,section,perioSequenceType);
+		}
+
+		///<summary>True if any gingival margin of the displayed exam is hyperplasia (a coronal margin, entered with Ging Marg + or Ctrl+number).</summary>
+		public bool HasHyperplasia() {
+			if(_idxExamSelected==-1) {
+				return false;
 			}
-			List<Procedure> listProceduresForTooth=_listProcedures.FindAll(x => x.ToothNum==intTooth.ToString() && x.ProcStatus.In(
-				ProcStat.C,ProcStat.EC,ProcStat.EO));
-			for(int i = 0;i<listProceduresForTooth.Count;i++) {
-				ProcedureCode procedureCode=ProcedureCodes.GetProcCode(listProceduresForTooth[i].CodeNum);
-				if(procedureCode.PaintType==ToothPaintingType.Implant) {
-					return true;
+			List<string> listGingMarginTexts=new List<string>();
+			for(int section=0;section<4;section++) {
+				int row=GetTableRow(_idxExamSelected,section,PerioSequenceType.GingMargin);
+				if(row==-1) {
+					continue;
+				}
+				for(int col=1;col<_perioCellArray.GetLength(0);col++) {
+					listGingMarginTexts.Add(_perioCellArray[col,row].Text);
 				}
 			}
-			return false;
+			return PerioMeasures.HasHyperplasia(listGingMarginTexts);
+		}
+
+		///<summary>Returns true if the tooth has an implant that has not been removed. An implant procedure whose graphics are hidden counts as
+		///removed (Open Dental 24.4), so the tooth gets no "i" marker and is treated as missing again.</summary>
+		public static bool IsImplant(int intTooth) {
+			if(_listProcedures==null) {//Not initialized yet. Cleared each time a Perio Chart opens, so a removal made since then is seen.
+				_listProcedures=Procedures.Refresh(FormOpenDental.PatNumCur);
+			}
+			return PerioMeasures.IsImplantTooth(intTooth,_listProcedures,codeNum => ProcedureCodes.GetProcCode(codeNum));
 		}
 
 		///<summary>Loads data from the PerioMeasures lists into the visible grid.</summary>
@@ -427,6 +464,9 @@ namespace OpenDental
 			int cellBleed=0;
 			for(int examI=0;examI<=_idxExamSelected;examI++){//exams, earliest through current
 				for(int seqI=0;seqI<Enum.GetNames(typeof(PerioSequenceType)).Length;seqI++){//sequences
+					if(seqI==(int)PerioSequenceType.AttGing) {
+						continue;//auto Att Ging is calculated below from MGJ and probing, never loaded.
+					}
 					for(int toothI=1;toothI<33;toothI++){//measurements. Always 33 per sequence(0 is not used).
 						long examNumSelected=ListPerioExams[examI].PerioExamNum;
 						PerioSequenceType perioSequenceType=(PerioSequenceType)seqI;
@@ -544,11 +584,13 @@ namespace OpenDental
 							//calculate CAL. All ging will have been done before any probing.
 							if(seqI==(int)PerioSequenceType.Probing){
 								CalculateCAL(colRowSelected,alsoInvalidate:false);
+								CalculateAttGing(colRowSelected,alsoInvalidate:false);//MGJ is also loaded before probing.
 							}
 						}//for surfI
 					}//for toothI
 				}//for seqI
 			}//for examI
+			RefreshGingMarginLabels(doInvalidate:false);
 			//Start in the very first cell on the first tooth and loop through teeth until we come across one that is not missing.
 			if(!selectCell){
 				return;
@@ -566,6 +608,27 @@ namespace OpenDental
 				AdvanceCell();
 				intTooth=GetToothNumCur(GetSection(ListColRowsSelected[0].Row));
 			}
+		}
+
+		///<summary>Labels the gingival margin rows with GetGingMarginTerm: Ging Marg, or Recession when that Perio Setup option is on and the displayed
+		///exam has no hyperplasia. Raises GingMarginTermChanged when the label changes. Call it after the Perio Setup option changes.</summary>
+		public void RefreshGingMarginLabels(bool doInvalidate=true) {
+			string gingMarginTerm=GetGingMarginTerm();
+			for(int section=0;section<4;section++) {
+				int row=GetTableRow(_idxExamSelected,section,PerioSequenceType.GingMargin);
+				if(row==-1) {
+					continue;
+				}
+				_perioCellArray[0,row].Text=Lan.g(this,gingMarginTerm);
+				if(doInvalidate && _rowPosArray!=null && _colPosArray!=null) {
+					Invalidate(Rectangle.Ceiling(GetBounds(0,row)));
+				}
+			}
+			if(gingMarginTerm==_gingMarginTerm) {
+				return;
+			}
+			_gingMarginTerm=gingMarginTerm;
+			GingMarginTermChanged?.Invoke(this,EventArgs.Empty);
 		}
 
 		///<summary>Saves the cur exam measurements to the db by looping through each tooth and deciding whether the data for that tooth has changed.  If so, it either updates or inserts a measurement.  It won't delete a measurement if all values for that tooth are cleared, but just sets that measurement to all -1's.</summary>
@@ -598,6 +661,9 @@ namespace OpenDental
 			ListPerioMeasureItemsChanged.AddRange(listPerioMeasureItemsBleeding);
 			for(int i=0;i<ListPerioMeasureItemsChanged.Count();i++){
 				PerioSequenceType perioSequenceType=ListPerioMeasureItemsChanged[i].SeqType;
+				if(PerioMeasures.IsCalculatedSequence(perioSequenceType)) {
+					continue;//auto CAL and auto Att Ging are never saved.
+				}
 				int toothI=ListPerioMeasureItemsChanged[i].ToothNum;
 				//new measurement
 				long perioExamNumSelected=ListPerioExams[_idxExamSelected].PerioExamNum;
@@ -748,15 +814,18 @@ namespace OpenDental
 		#endregion Methods - public
 
 		#region Methods - private
-		private void AdvanceCell(bool isReverse=false){
+		///<summary>setDirection is false for the arrow keys, which never change the direction (25.4).</summary>
+		private void AdvanceCell(bool isReverse=false,bool setDirection=true){
 			if(ListColRowsSelected.Count>1) {
 				return;//Don't advance when multiple ColRows are selected
 			}
-			ColRow colRowToSet=TryFindNextCell(ListColRowsSelected[0],isReverse);
+			int sectionFrom=GetSection(ListColRowsSelected[0].Row);
+			ColRow colRowToSet=TryFindNextCell(ListColRowsSelected[0],isReverse,setDirection);
 			if(colRowToSet==null) {
 				return;
 			}
 			SetNewCell(colRowToSet.Col,colRowToSet.Row);
+			AfterAdvanceDirection(sectionFrom,setDirection);//ContrPerio.Direction.cs
 		}
 
 		private void CalculateCAL(ColRow colRowProbingCell,bool alsoInvalidate){
@@ -787,6 +856,27 @@ namespace OpenDental
 			}
 		}
 
+		///<summary>Fills the auto Att Ging cell (Open Dental 24.4) at the site of the probing cell: MGJ minus probing depth of the current exam, blank
+		///when either is blank. Sections without an MGJ row (maxillary lingual) have no auto Att Ging row. Like auto CAL it is only displayed, never
+		///saved, and older exams are not shown in it.</summary>
+		private void CalculateAttGing(ColRow colRowProbingCell,bool alsoInvalidate){
+			int section=GetSection(colRowProbingCell.Row);
+			if(section==-1 || colRowProbingCell.Col<1) {
+				return;
+			}
+			int rowAttGing=GetTableRow(_idxExamSelected,section,PerioSequenceType.AttGing);
+			int rowMGJ=GetTableRow(_idxExamSelected,section,PerioSequenceType.MGJ);
+			if(rowAttGing==-1 || rowMGJ==-1) {
+				return;
+			}
+			int col=colRowProbingCell.Col;
+			_perioCellArray[col,rowAttGing].Text=PerioMeasures.GetAttachedGingivaText(_perioCellArray[col,rowMGJ].Text,
+				_perioCellArray[col,colRowProbingCell.Row].Text);
+			if(alsoInvalidate){
+				Invalidate(Rectangle.Ceiling(GetBounds(col,rowAttGing)));
+			}
+		}
+
 		private void ClearDataArray(){
 			//MessageBox.Show("clearing");
 			_perioCellArray=new PerioCell[49,_perioSequenceTypeArray[0].Length+_perioSequenceTypeArray[1].Length
@@ -807,10 +897,14 @@ namespace OpenDental
 							_perioCellArray[0,y].Text=Lan.g(this,"auto CAL");
 							break;
 						case PerioSequenceType.GingMargin:
-							_perioCellArray[0,y].Text=Lan.g(this,"Ging Marg");
+							//Ging Marg, or Recession (24.4). LoadData relabels the row once it knows whether the exam has hyperplasia.
+							_perioCellArray[0,y].Text=Lan.g(this,PerioMeasures.GetGingMarginTerm(PerioMeasures.GetUseRecessionTerm(),hasHyperplasia:false));
 							break;
 						case PerioSequenceType.MGJ:
 							_perioCellArray[0,y].Text=Lan.g(this,"MGJ");
+							break;
+						case PerioSequenceType.AttGing:
+							_perioCellArray[0,y].Text=Lan.g(this,"auto Att Ging");
 							break;
 						case PerioSequenceType.Probing:
 							break;
@@ -853,9 +947,15 @@ namespace OpenDental
 				Invalidate(Rectangle.Ceiling(GetBounds(ListColRowsSelected[i].Col,ListColRowsSelected[i].Row)));
 				if(_perioSequenceTypeArray[GetSection(ListColRowsSelected[i].Row)][GetSectionRow(ListColRowsSelected[i].Row)]==PerioSequenceType.Probing){ 
 					CalculateCAL(ListColRowsSelected[i],alsoInvalidate:true);
+					CalculateAttGing(ListColRowsSelected[i],alsoInvalidate:true);
 				}
 				else if(_perioSequenceTypeArray[GetSection(ListColRowsSelected[i].Row)][GetSectionRow(ListColRowsSelected[i].Row)]==PerioSequenceType.GingMargin){
 					CalculateCAL(new ColRow(ListColRowsSelected[i].Col,GetTableRow
+						(_idxExamSelected,GetSection(ListColRowsSelected[i].Row),PerioSequenceType.Probing)),alsoInvalidate:true);
+					RefreshGingMarginLabels();//clearing the last hyperplasia can bring back the Recession label
+				}
+				else if(_perioSequenceTypeArray[GetSection(ListColRowsSelected[i].Row)][GetSectionRow(ListColRowsSelected[i].Row)]==PerioSequenceType.MGJ){
+					CalculateAttGing(new ColRow(ListColRowsSelected[i].Col,GetTableRow
 						(_idxExamSelected,GetSection(ListColRowsSelected[i].Row),PerioSequenceType.Probing)),alsoInvalidate:true);
 				}
 			}
@@ -1021,11 +1121,18 @@ namespace OpenDental
 				PerioSequenceType perioSequenceType=_perioSequenceTypeArray[GetSection(ListColRowsSelected[i].Row)][GetSectionRow(ListColRowsSelected[i].Row)];
 				if(perioSequenceType==PerioSequenceType.Probing){ 
 					CalculateCAL(ListColRowsSelected[i],alsoInvalidate:true);
+					CalculateAttGing(ListColRowsSelected[i],alsoInvalidate:true);
 				}
 				else if(_perioSequenceTypeArray[GetSection(ListColRowsSelected[i].Row)][GetSectionRow(ListColRowsSelected[i].Row)]==PerioSequenceType.GingMargin){
 					ColRow colRow=new ColRow(ListColRowsSelected[i].Col,GetTableRow
 						(_idxExamSelected,GetSection(ListColRowsSelected[i].Row),PerioSequenceType.Probing));
 					CalculateCAL(colRow,alsoInvalidate:true);
+					RefreshGingMarginLabels();//hyperplasia turns the Recession label back into Ging Marg
+				}
+				else if(perioSequenceType==PerioSequenceType.MGJ){
+					ColRow colRow=new ColRow(ListColRowsSelected[i].Col,GetTableRow
+						(_idxExamSelected,GetSection(ListColRowsSelected[i].Row),PerioSequenceType.Probing));
+					CalculateAttGing(colRow,alsoInvalidate:true);
 				}
 			}
 			AdvanceCell();
@@ -1239,11 +1346,14 @@ namespace OpenDental
 		///<summary>Returns PerioCell for the colrow passed in. Sets PerioCell in DataArray based on the colrow passed in. Option to not set PerioCell Text.</summary>
 		private PerioCell GetPerioCell(ColRow colRow,bool setText) {
 			PerioCell perioCell=_perioCellArray[colRow.Col,colRow.Row];
+			//Row boundaries come from the section layout. They were fixed numbers (12, 20 and 30) before the auto Att Ging rows were added.
+			int rowMaxTeeth=GetTableRow(getMaxillary:true);
+			int rowMandTeeth=GetTableRow(getMaxillary:false);
 			perioCell.IsFacial=true;
-			if(colRow.Row>=12 && colRow.Row<=30) {
+			if(colRow.Row>rowMaxTeeth && colRow.Row<rowMandTeeth) {//maxillary and mandibular lingual sections
 				perioCell.IsFacial=false;
 			}
-			if(colRow.Row<=20) {
+			if(colRow.Row<=rowMaxTeeth+_perioSequenceTypeArray[1].Length) {//maxillary sections and the maxillary tooth row
 				perioCell.ToothNum=(colRow.Col+2)/3;
 			}
 			else {
@@ -1393,7 +1503,7 @@ namespace OpenDental
 				if(sectRowIdx==-1 && section==-1) {//Skip "teeth number" rows.  They have no section or sectRowIdx, so they will return as -1
 					continue;
 				}
-				if(_perioSequenceTypeArray[section][sectRowIdx]==PerioSequenceType.CAL){//Skip auto cal rows.
+				if(PerioMeasures.IsCalculatedSequence(_perioSequenceTypeArray[section][sectRowIdx])){//Skip auto CAL and auto Att Ging rows.
 					continue;
 				}
 				if(_perioSequenceTypeArray[section][sectRowIdx]==PerioSequenceType.Probing){
@@ -1438,7 +1548,7 @@ namespace OpenDental
 				if(sectRowIdx==-1 && section==-1) {//Skip "teeth number" rows.  They have no section or sectRowIdx, so they will return as -1
 					continue;
 				}
-				if(_perioSequenceTypeArray[section][sectRowIdx]==PerioSequenceType.CAL){//Skip auto cal rows.
+				if(PerioMeasures.IsCalculatedSequence(_perioSequenceTypeArray[section][sectRowIdx])){//Skip auto CAL and auto Att Ging rows.
 					continue;
 				}
 				if(_perioSequenceTypeArray[section][sectRowIdx]==PerioSequenceType.Probing){
@@ -1616,29 +1726,29 @@ namespace OpenDental
 			else if(e.KeyCode==Keys.Delete){
 				ClearValue();
 			}
-			else if(e.KeyCode==Keys.Left){
+			else if(e.KeyCode==Keys.Left){//25.4: the arrow keys never change the direction (setDirection:false)
 				if(ThreeAtATime){
 					for(int i=0;i<3;i++){
 						if(EnumAdvanceSequence_==EnumAdvanceSequence.FacialsFirst) {
-							AdvanceCell(GetSection(ListColRowsSelected.Last().Row).In(0,2));
+							AdvanceCell(GetSection(ListColRowsSelected.Last().Row).In(0,2),setDirection:false);
 						}
 						else if(EnumCurrentDirection_==EnumCurrentDirection.Left) {
-							AdvanceCell(isReverse:true);
+							AdvanceCell(isReverse:true,setDirection:false);
 						}
 						else {
-							AdvanceCell();
+							AdvanceCell(setDirection:false);
 						}
 					}
 				}
 				else{
 					if(EnumAdvanceSequence_==EnumAdvanceSequence.FacialsFirst) {
-						AdvanceCell(GetSection(ListColRowsSelected.Last().Row).In(0,2));
+						AdvanceCell(GetSection(ListColRowsSelected.Last().Row).In(0,2),setDirection:false);
 					}
 					else if(EnumCurrentDirection_==EnumCurrentDirection.Right) {
-						AdvanceCell();
+						AdvanceCell(setDirection:false);
 					}
 					else {
-						AdvanceCell(isReverse:true);
+						AdvanceCell(isReverse:true,setDirection:false);
 					}
 				}
 			}
@@ -1646,25 +1756,25 @@ namespace OpenDental
 				if(ThreeAtATime){
 					for(int i=0;i<3;i++){
 						if(EnumAdvanceSequence_==EnumAdvanceSequence.FacialsFirst) {
-							AdvanceCell(GetSection(ListColRowsSelected.Last().Row).In(1,3));
+							AdvanceCell(GetSection(ListColRowsSelected.Last().Row).In(1,3),setDirection:false);
 						}
 						else if(EnumCurrentDirection_==EnumCurrentDirection.Right) {
-							AdvanceCell(isReverse:true);
+							AdvanceCell(isReverse:true,setDirection:false);
 						}
 						else {
-							AdvanceCell();
+							AdvanceCell(setDirection:false);
 						}
 					}
 				}
 				else{
 					if(EnumAdvanceSequence_==EnumAdvanceSequence.FacialsFirst) {
-						AdvanceCell(GetSection(ListColRowsSelected.Last().Row).In(1,3));
+						AdvanceCell(GetSection(ListColRowsSelected.Last().Row).In(1,3),setDirection:false);
 					}
 					else if(EnumCurrentDirection_==EnumCurrentDirection.Right) {
-						AdvanceCell(isReverse:true);
+						AdvanceCell(isReverse:true,setDirection:false);
 					}
 					else {
-						AdvanceCell();
+						AdvanceCell(setDirection:false);
 					}
 				}
 			}
@@ -1780,8 +1890,8 @@ namespace OpenDental
 					return;//for mobility, not allowed to click on anything but B
 				}
 			}
-			else if(_perioSequenceTypeArray[section][sectRowIdx]==PerioSequenceType.CAL){
-				return;//never allowed to edit CAL
+			else if(PerioMeasures.IsCalculatedSequence(_perioSequenceTypeArray[section][sectRowIdx])){
+				return;//never allowed to edit auto CAL or auto Att Ging
 			}
 			if(section==0 || section==3){
 				EnumCurrentDirection_=EnumCurrentDirection.Left;
@@ -2032,6 +2142,9 @@ namespace OpenDental
 						break;
 					case PerioSequenceType.Mobility:
 						redThresh=PrefC.GetInt(PrefName.PerioRedMob);
+						break;
+					case PerioSequenceType.AttGing:
+						redThresh=int.MaxValue;//auto Att Ging has no "red if" threshold (24.4), so its values are never red
 						break;
 				}
 				if((_perioSequenceTypeArray[GetSection(rowIndex)][GetSectionRow(rowIndex)]
@@ -2370,11 +2483,17 @@ namespace OpenDental
 			}
 			//listAutoAdvancePositions should be in the order the preference specified(sequential order) so the next and previous positions will be the actual next and previous paths.
 			PerioAdvancePos perioAdvancePosNext=GetPerioAdvancePosFromList(perioAdvancePos,getNext:true,perioSequenceType,listPerioAdvancePoss);
+			//25.4: a direction chosen with the Current Direction buttons holds in its section, for entry and Backspace (not for the arrow keys, which
+			//pass setDirection false). isAgainstPath replaces isReverse below: entry in the chosen reverse direction also moves against the path.
+			bool isDirectionManual=setDirection && IsDirectionManual(section);
+			EnumCurrentDirection enumCurrentDirectionForward=PerioDirectionRules.GetForwardDirection(perioAdvancePos.EnumCurrentDirection2,
+				EnumCurrentDirection_,isDirectionManual);
+			bool isAgainstPath=PerioDirectionRules.IsAgainstPath(perioAdvancePos.EnumCurrentDirection2,enumCurrentDirectionForward,isReverse);
 			bool shouldAdvanceLeft=false;
 			if(perioAdvancePos.EnumCurrentDirection2==EnumCurrentDirection.Left){
 				shouldAdvanceLeft=true;
 			}
-			if(isReverse){
+			if(isAgainstPath){
 				shouldAdvanceLeft=!shouldAdvanceLeft;
 			}
 			int countNotUsed=0;
@@ -2383,25 +2502,22 @@ namespace OpenDental
 				startedOnCellOne=true;
 			}
 			//Advance colrowNext to the next cell position.
+			//The path, not the Maxillary First crossing rules inside TryAutoAdvanceLeft/Right, sets the direction here (setDirection:false).
 			if(shouldAdvanceLeft) {
-				colRowNext=TryAutoAdvanceLeft(colRowNext,section,setDirection,perioSequenceType);
+				colRowNext=TryAutoAdvanceLeft(colRowNext,section,setDirection:false,perioSequenceType);
 				if(colRowNext==null) {
 					return null;
-				}
-				if(EnumCurrentDirection_!=EnumCurrentDirection.Left) {
-					EnumCurrentDirection_=EnumCurrentDirection.Left;
-					DirectionChangedLeft?.Invoke(this,new EventArgs());
 				}
 			}
 			else {
-				colRowNext=TryAutoAdvanceRight(colRowNext,section,setDirection,perioSequenceType,startedOnSkipped,countNotUsed);
+				colRowNext=TryAutoAdvanceRight(colRowNext,section,setDirection:false,perioSequenceType,startedOnSkipped,countNotUsed);
 				if(colRowNext==null) {
 					return null;
 				}
-				if(EnumCurrentDirection_!=EnumCurrentDirection.Right) {
-					EnumCurrentDirection_=EnumCurrentDirection.Right;
-					DirectionChangedRight?.Invoke(this,new EventArgs());
-				}
+			}
+			//25.4: the direction shown is the direction of entry (the path's, or the one chosen with the buttons), also during Backspace.
+			if(setDirection) {
+				SetDirectionIfChanged(enumCurrentDirectionForward);
 			}
 			PerioCell perioCellNext=GetPerioCellFromColRow(colRowNext);
 			//TryAutoAdvanceLeft and TryAutoAdvanceRight are helper methods that get the next colrow position using the default auto advance path
@@ -2416,8 +2532,8 @@ namespace OpenDental
 				return colRowNext;
 			}
 			//The colrow returned in TryAutoAdvanceLeft or TryAutoAdvanceRight is on a differnt tooth, get the next tooth from the listAutoAdvancePositions.
-			if(isReverse) {
-				perioAdvancePosNext=perioAdvancePosPrev;//The next tooth should be the previous one. 
+			if(isAgainstPath) {
+				perioAdvancePosNext=perioAdvancePosPrev;//The next tooth should be the previous one.
 			}
 			if(perioAdvancePosNext==null) {
 				//The end of the list. Set the return colrow equal to the initial colrow. No need to move.
@@ -2425,7 +2541,7 @@ namespace OpenDental
 				return colRowNext;
 			}
 			//return the colrow for the next tooth in path.
-			colRowNext=GetAutoAdvanceColRow(perioAdvancePosNext.ToothNum,perioAdvancePosNext.IsFacial,perioSequenceType,isReverse);
+			colRowNext=GetAutoAdvanceColRow(perioAdvancePosNext.ToothNum,perioAdvancePosNext.IsFacial,perioSequenceType,isAgainstPath);
 			return colRowNext;
 		}
 
@@ -2466,9 +2582,10 @@ namespace OpenDental
 			else if(section==3) {
 				newSection=2;
 				newRow=GetTableRow(_idxExamSelected,newSection,perioSequenceType);
-				if(newRow!=-1 && setDirection)
+				if(newRow!=-1 && setDirection) {//25.4: the event was raised even when the direction did not change, so the buttons showed Right wrongly
 					EnumCurrentDirection_=EnumCurrentDirection.Right;
 					DirectionChangedRight?.Invoke(this,new EventArgs());
+				}
 			}
 			if(newRow==-1) {//MGJ and mobility aren't present in all 4 sections, so can't loop normally
 				if(_perioSequenceTypeArray[section][GetSectionRow(colRowNext.Row)]==PerioSequenceType.Mobility) {

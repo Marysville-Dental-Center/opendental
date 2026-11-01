@@ -419,7 +419,7 @@ namespace OpenDental {
 					FileAtoZ.Copy(savedPdfPath,filePathAndName,FileAtoZSourceDestination.LocalToAtoZ,uploadMessage: "Uploading statement...");
 				}
 				EmailAttach emailAttach=new EmailAttach();
-				emailAttach.DisplayedFileName="Statement.pdf";
+				emailAttach.DisplayedFileName=Statements.GetEmailPdfDisplayName(patient);//25.3: "Statement_LastName.pdf"
 				emailAttach.ActualFileName=fileName;
 				return emailAttach;
 			};
@@ -449,7 +449,9 @@ namespace OpenDental {
 				}
 				return progressOD.IsSuccess;
 			};
+			StatementInserterBarcodeBatch statementInserterBarcodeBatch=StatementInserterBarcodeBatch.Attach(sendStatementsIO);//25.3 inserter barcode
 			BillingL.SendStatements(sendStatementsIO);
+			statementInserterBarcodeBatch.Stamp(sendStatementsIO);//Printed statements only; does nothing when the barcode is off.
 			_progExtended?.Fire(new ODEventArgs(ODEventType.Billing,new ProgressBarHelper(Lan.g(this,"Overall"),"100%",100,100,ProgBarStyle.Blocks,"1")));
 			_progExtended?.Close();
 			#region Printing Statements

@@ -10,7 +10,7 @@ using CodeBase;
 
 namespace OpenDentBusiness {
 	///<summary></summary>
-	public class ClockEvents {
+	public partial class ClockEvents {
 		#region Get Methods
 		///<summary>Gets clockevents between a date range for a given employee. Datatable return type to allow easy binding in WPF.</summary>
 		public static DataTable GetEmployeeClockEventsForDateRange(long employeeNum,DateTime dateTimeStart,DateTime dateTimeStop) {
@@ -280,6 +280,9 @@ namespace OpenDentBusiness {
 			if(clockEvent.TimeDisplayed2.Year<1880) {//already clocked in
 				return true;
 			}
+			if(HasFutureClockOut(clockEvent)) {//Open Dental 26.1.63 (M2-EMP): clocked in until a clock-out entered ahead of time.
+				return true;
+			}
 			//clocked out for home or lunch.
 			return false;
 		}
@@ -326,6 +329,9 @@ namespace OpenDentBusiness {
 				if(clockEvent.TimeDisplayed2.Year<1880) {//already clocked in
 					throw new Exception(Lans.g("ClockEvents","Error.  Already clocked in."));
 				}
+				if(HasFutureClockOut(clockEvent)) {//Open Dental 26.1.63 (M2-EMP): a clock-out entered ahead of time; a new row would overlap this one.
+					throw new Exception(Lans.g("ClockEvents","Error.  Already clocked in until")+" "+clockEvent.TimeDisplayed2.ToString()+".");
+				}
 				//clocked out for home or lunch. Need to clock back in by starting a new row.
 				TimeClockStatus timeClockStatus=clockEvent.ClockStatus;
 				clockEvent=new ClockEvent();
@@ -350,7 +356,8 @@ namespace OpenDentBusiness {
 				throw new Exception(Lans.g("ClockEvents","Error.  Already clocked out for break."));
 			}
 			//normal clock in/out
-			if(clockEvent.TimeDisplayed2.Year>1880) {//clocked out for home or lunch. 
+			//Open Dental 26.1.63 (M2-EMP): a clock-out entered ahead of time still counts as clocked in. Clocking out now replaces it, below.
+			if(clockEvent.TimeDisplayed2.Year>1880 && !HasFutureClockOut(clockEvent)) {//clocked out for home or lunch. 
 				throw new Exception(Lans.g("ClockEvents","Error.  Already clocked out."));
 			}
 			//clocked in.

@@ -161,7 +161,7 @@ namespace OpenDentBusiness.Misc {
 				}
 				//Only update hashes that changed
 				if(hashedTextOld!=hashedTextNew) {
-					command=$@"UPDATE paysplit SET SecurityHash='{POut.String(hashedTextNew)}' WHERE SplitNum={POut.Long(splitNum)}";
+					command=$@"UPDATE paysplit SET SecurityHash='{POut.String(hashedTextNew)}'{KeepTimestamps("paysplit")} WHERE SplitNum={POut.Long(splitNum)}";
 					Db.NonQ(command);
 				}
 			}
@@ -205,7 +205,7 @@ namespace OpenDentBusiness.Misc {
 				}
 				//Only update hashes that changed
 				if(hashedTextOld!=hashedTextNew) {
-					command=$@"UPDATE appointment SET SecurityHash='{POut.String(hashedTextNew)}' WHERE AptNum={POut.Long(aptNum)}";
+					command=$@"UPDATE appointment SET SecurityHash='{POut.String(hashedTextNew)}'{KeepTimestamps("appointment")} WHERE AptNum={POut.Long(aptNum)}";
 					Db.NonQ(command);
 				}
 			}
@@ -256,7 +256,7 @@ namespace OpenDentBusiness.Misc {
 					ex.DoNothing();
 					hashedText=ex.GetType().Name;
 				}
-				command=$@"UPDATE patient SET SecurityHash='{POut.String(hashedText)}' WHERE PatNum={POut.Long(patNum)}";
+				command=$@"UPDATE patient SET SecurityHash='{POut.String(hashedText)}'{KeepTimestamps("patient")} WHERE PatNum={POut.Long(patNum)}";
 				Db.NonQ(command);
 			}
 		}
@@ -277,7 +277,7 @@ namespace OpenDentBusiness.Misc {
 			string updating="Hashing payplans.";
 			ODEvent.Fire(ODEventType.ConvertDatabases,updating);
 			//Clear old hashes
-			string command="UPDATE payplan SET SecurityHash=''";
+			string command="UPDATE payplan SET SecurityHash=''"+KeepTimestamps("payplan")+" WHERE SecurityHash!=''";
 			Db.NonQ(command);
 			DateTime dateStartHashing=GetHashingDate();
 			//Hash entries made after new date
@@ -300,7 +300,7 @@ namespace OpenDentBusiness.Misc {
 					ex.DoNothing();
 					hashedText=ex.GetType().Name;
 				}
-				command=$@"UPDATE payplan SET SecurityHash='{POut.String(hashedText)}' WHERE PayPlanNum={POut.Long(payPlanNum)}";
+				command=$@"UPDATE payplan SET SecurityHash='{POut.String(hashedText)}'{KeepTimestamps("payplan")} WHERE PayPlanNum={POut.Long(payPlanNum)}";
 				Db.NonQ(command);
 			}
 			_arePayPlansUpdated=true;
@@ -345,7 +345,7 @@ namespace OpenDentBusiness.Misc {
 					hashedText=ex.GetType().Name;
 				}
 				if(hashedTextOld!=hashedText) { //Only update SecurityHash if it's different.
-					command=$@"UPDATE claim SET SecurityHash='{POut.String(hashedText)}' WHERE ClaimNum={POut.Long(claimNum)}";
+					command=$@"UPDATE claim SET SecurityHash='{POut.String(hashedText)}'{KeepTimestamps("claim")} WHERE ClaimNum={POut.Long(claimNum)}";
 					Db.NonQ(command);
 				}
 			}
@@ -408,7 +408,7 @@ namespace OpenDentBusiness.Misc {
 					hashedText=ex.GetType().Name;
 				}
 				if(hashedTextOld!=hashedText) { //Only update SecurityHash if it's different.
-					command=$@"UPDATE claimproc SET SecurityHash='{POut.String(hashedText)}' WHERE ClaimProcNum={POut.Long(claimProcNum)}";
+					command=$@"UPDATE claimproc SET SecurityHash='{POut.String(hashedText)}'{KeepTimestamps("claimproc")} WHERE ClaimProcNum={POut.Long(claimProcNum)}";
 					Db.NonQ(command);
 				}
 			}
@@ -476,9 +476,40 @@ namespace OpenDentBusiness.Misc {
 			}
 		}
 
-		///<summary>Writes one SecurityHash value. Only for the hard-coded table and key names above.</summary>
+		///<summary>The table's ON UPDATE CURRENT_TIMESTAMP columns (DateTStamp, SecDateTEdit), per database and table.</summary>
+		private static Dictionary<string,List<string>> _dictOnUpdateColumns=new Dictionary<string,List<string>>();
+		private static object _lockOnUpdateColumns=new object();
+
+		///<summary>",Col=Col" for each ON UPDATE CURRENT_TIMESTAMP column of the table, to append to an UPDATE that only writes SecurityHash. A hash is
+		///not data anyone edited, so writing it must not move the row's audit timestamp (DateTStamp, SecDateTEdit). Without this, the rehash after
+		///adopting an Open Dental database would stamp every patient and every recent appointment, claim, claim procedure, payment split and
+		///insurance row with the adoption time (found by the M1-Z rehearsal, tools/AdoptionValidation). Only for the hard-coded table names in this
+		///class. Called once per row, so the database name comes from the connection settings (no query) when they hold it.</summary>
+		private static string KeepTimestamps(string tableName) {
+			string database=DataConnectionBase.DataConnection.GetDatabaseName();
+			if(string.IsNullOrEmpty(database)) {
+				database=LargeTableHelper.GetCurrentDatabase();//Connected by connection string.
+			}
+			string key=database+"."+tableName;
+			List<string> listColumns;
+			lock(_lockOnUpdateColumns) {
+				_dictOnUpdateColumns.TryGetValue(key,out listColumns);
+			}
+			if(listColumns==null) {
+				string command="SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() "
+					+"AND TABLE_NAME='"+POut.String(tableName)+"' AND EXTRA LIKE '%on update%' ORDER BY ORDINAL_POSITION";
+				DataTable table=Db.GetTable(command);
+				listColumns=table.Rows.Cast<DataRow>().Select(x => PIn.String(x[0].ToString())).ToList();
+				lock(_lockOnUpdateColumns) {
+					_dictOnUpdateColumns[key]=listColumns;
+				}
+			}
+			return string.Concat(listColumns.Select(x => ",`"+x+"`=`"+x+"`"));
+		}
+
+		///<summary>Writes one SecurityHash value, keeping the row's audit timestamp. Only for the hard-coded table and key names above.</summary>
 		private static void WriteHash(string tableName,string priKeyName,long priKey,string hash) {
-			string command="UPDATE "+tableName+" SET SecurityHash='"+POut.String(hash)+"' WHERE "+priKeyName+"="+POut.Long(priKey);
+			string command="UPDATE "+tableName+" SET SecurityHash='"+POut.String(hash)+"'"+KeepTimestamps(tableName)+" WHERE "+priKeyName+"="+POut.Long(priKey);
 			Db.NonQ(command);
 		}
 

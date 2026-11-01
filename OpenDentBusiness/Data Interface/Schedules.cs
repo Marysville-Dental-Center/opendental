@@ -159,8 +159,8 @@ namespace OpenDentBusiness{
 		///<param name="dateSelectedStart">The start date of the selected range that will be copied to.</param>
 		///<param name="dateSelectedEnd">The end date of the selected range that will be copied to.</param>
 		///<param name="numRepeat">The number of times the given blockout range will be copied.</param>
-		///<param name="includeUnflagged">25.1: false when the user lacks the Blockouts permission. Blockouts without the NS or DC flag are then
-		///neither copied nor replaced.</param>
+		///<param name="includeUnflagged">25.1: false when the user lacks the Blockouts permission (25.4: Blockout Add). Blockouts without the NS
+		///or DC flag are then neither copied nor replaced. 25.4: replacing them also needs Blockout Delete, which the caller checks.</param>
 		///<param name="includeFlagged">25.1: false when the user lacks the BlockoutsFlagged permission. Blockouts with the NS flag are then
 		///neither copied nor replaced. DC-flagged blockouts are never copied.</param>
 		public static string CopyBlockouts(long apptViewNum,bool isWeek,bool includeWeekend,bool doReplace,DateTime dateCopyStart,
@@ -255,13 +255,17 @@ namespace OpenDentBusiness{
 				logText+=Lans.g("Schedule","and pasted to");
 			}
 			logText+=" "+dateEnd.ToShortDateString();
-			//25.1: one entry per kind of blockout pasted, under that kind's permission.
-			List<EnumPermType> listPermTypes=listSchedulesToCopy.Select(x => GetBlockoutPermType(x.BlockoutType)).Distinct().OrderBy(x => (int)x).ToList();
+			//25.1: one entry per kind of blockout pasted, under that kind's permission. 25.4: a paste of unflagged blockouts is a Blockout Add.
+			List<EnumPermType> listPermTypes=listSchedulesToCopy.Select(x => BlockoutPerms.GetPermType(BlockoutAction.Paste,x.BlockoutType)).Distinct().OrderBy(x => (int)x).ToList();
 			if(listPermTypes.Count==0) {
-				listPermTypes.Add(includeUnflagged ? EnumPermType.Blockouts : EnumPermType.BlockoutsFlagged);
+				listPermTypes.Add(includeUnflagged ? EnumPermType.BlockoutAdd : EnumPermType.BlockoutsFlagged);
 			}
 			for(int i=0;i<listPermTypes.Count;i++) {
 				SecurityLogs.MakeLogEntry(listPermTypes[i],0,logText);
+			}
+			//25.4: replacing deleted the unflagged blockouts that were there, which Blockout Delete covers.
+			if(doReplace && includeUnflagged) {
+				SecurityLogs.MakeLogEntry(EnumPermType.BlockoutDelete,0,logText+" "+Lans.g("Schedule","(existing blockouts replaced)"));
 			}
 			return "";
 		}
@@ -272,9 +276,11 @@ namespace OpenDentBusiness{
 		///If several blockouts are cleared for specific operatory and clinic, specify the dateTime, operatory, clinic, and BlockoutAction.Clear
 		///Otherwise, supply blockout and action taken.
 		///25.1: an entry for a blockout whose type has the NS or DC flag uses PermType BlockoutsFlagged, others use Blockouts. For a clear (no
-		///blockout), pass the permission of the kind that was cleared in permTypeClear.</summary>
+		///blockout), pass the permission of the kind that was cleared in permTypeClear.
+		///25.4: an unflagged blockout's entry uses the permission that covers the action (BlockoutPerms.GetPermType): Blockout Add for create,
+		///paste and copy, Blockout Edit (13) for edit, Blockout Delete for delete, cut and clear. permTypeClear defaults to Blockout Delete.</summary>
 		public static void BlockoutLogHelper(BlockoutAction blockoutAction,Schedule scheduleBlockout=null,DateTime dateTime=new DateTime(),long opNum=0,long clinicNum=-1,
-			EnumPermType permTypeClear=EnumPermType.Blockouts)
+			EnumPermType permTypeClear=EnumPermType.BlockoutDelete)
 		{
 			string logText="";
 			if(scheduleBlockout==null) {//Day cleared
@@ -342,7 +348,7 @@ namespace OpenDentBusiness{
 			}
 			EnumPermType permType=permTypeClear;
 			if(scheduleBlockout!=null) {
-				permType=GetBlockoutPermType(scheduleBlockout);
+				permType=BlockoutPerms.GetPermType(blockoutAction,scheduleBlockout);
 			}
 			SecurityLogs.MakeLogEntry(permType,0,logText);
 		}
@@ -1145,7 +1151,8 @@ namespace OpenDentBusiness{
 			return IsBlockoutTypeFlagged(def.ItemValue);
 		}
 
-		///<summary>BlockoutsFlagged (266) for a flagged type, Blockouts (13) otherwise.</summary>
+		///<summary>BlockoutsFlagged (266) for a flagged type, Blockouts (13) otherwise. 25.4: 13 is Blockout Edit, so these overloads give the
+		///edit permission; BlockoutPerms.GetPermType gives the permission for any action.</summary>
 		public static EnumPermType GetBlockoutPermType(bool isFlagged) {
 			Meth.NoCheckMiddleTierRole();
 			if(isFlagged) {

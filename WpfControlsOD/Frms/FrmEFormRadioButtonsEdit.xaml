@@ -35,6 +35,7 @@
 		</ui:GroupBox>
 		<ui:Label Width="359" Height="18" Margin="-2,641,0,0" Text="This field is the conditional parent for this many child fields" HAlign="Right" VAlign="Center" />
 		<ui:TextBox x:Name="textCountChildren" Width="30" Height="20" Margin="360,640,0,0" ReadOnly="True" ColorBack="#FFF0F0F0"/>
+		<ui:Button x:Name="butChildren" Width="66" Height="24" Margin="396,638,0,0" Text="View" Click="butChildren_Click"/>
 		<ui:Label x:Name="labelAllergProb" Width="98" Height="18" Margin="52,152,0,0" Text="LabelAllergProb" HAlign="Right" VAlign="Center" />
 		<ui:TextBox x:Name="textMedAllerProb" Width="213" Height="20" Margin="151,152,0,0" TabIndexOD="1"/>
 		<ui:Button x:Name="butChange" Width="75" Height="24" Margin="371,151,0,0" Text="Change" Click="butChange_Click" />

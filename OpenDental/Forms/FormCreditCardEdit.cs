@@ -24,6 +24,9 @@ namespace OpenDental {
 		private bool _isPayConnectEnabled;
 		///<summary>True if PaySimple is enabled.  Recurring charge section will show if using PaySimple.</summary>
 		private bool _isPaySimpleEnabled;
+		///<summary>25.4: true if Global Payments V2 (ProgramName.MeetInTheCloud) is enabled.  Recurring charge section will show if using it: recurring
+		///charges run on cards saved through it, and it can't be enabled together with X-Charge or Global Payments V1.</summary>
+		private bool _isGlobalPaymentsV2Enabled;
 		/// <summary></summary>
 		private bool _isDuplicate;
 		public FormCreditCardEdit(Patient patient, bool isDuplicate=false) {
@@ -35,6 +38,7 @@ namespace OpenDental {
 			_isXChargeEnabled=Programs.IsEnabled(ProgramName.Xcharge);
 			_isPayConnectEnabled=Programs.IsEnabled(ProgramName.PayConnect);
 			_isPaySimpleEnabled=Programs.IsEnabled(ProgramName.PaySimple);
+			_isGlobalPaymentsV2Enabled=Programs.IsEnabled(ProgramName.MeetInTheCloud);
 			_isDuplicate=isDuplicate;
 		}
 
@@ -53,9 +57,9 @@ namespace OpenDental {
 			FillData();
 			FillPayTypeCombo();
 			checkExcludeProcSync.Checked=CreditCardCur.ExcludeProcSync;
-			if((_isEdgeExpressEnabled || _isXChargeEnabled || _isPayConnectEnabled || _isPaySimpleEnabled) 
+			if((_isEdgeExpressEnabled || _isXChargeEnabled || _isPayConnectEnabled || _isPaySimpleEnabled || _isGlobalPaymentsV2Enabled) 
 				&& (!CreditCardCur.IsXWeb() && !CreditCardCur.IsPayConnectPortal())) 
-			{//Get recurring payment plan information if using X-Charge or PayConnect and the card is not from XWeb or PayConnectPortal.
+			{//Get recurring payment plan information if using a card processor with recurring charges and the card is not from XWeb or PayConnectPortal.
 				_listPayPlans=PayPlans.GetValidPlansNoIns(_patient.PatNum);
 				List<PayPlanCharge> listPayPlanCharges=PayPlanCharges.GetForPayPlans(_listPayPlans.Select(x => x.PayPlanNum).ToList());
 				comboPaymentPlans.Items.Add("None");
@@ -123,7 +127,7 @@ namespace OpenDental {
 				labelCardHolderName.Visible=true;
 				textCardHolderName.Visible=true;
 			}
-			if(_isEdgeExpressEnabled || _isXChargeEnabled || _isPayConnectEnabled || _isPaySimpleEnabled) {//Only fill information if using X-Charge, PayConnect, or PaySimple.
+			if(_isEdgeExpressEnabled || _isXChargeEnabled || _isPayConnectEnabled || _isPaySimpleEnabled || _isGlobalPaymentsV2Enabled) {//Only fill information if using X-Charge, PayConnect, PaySimple, or Global Payments V1 or V2.
 				if(CreditCardCur.ChargeAmt>0) {
 					textChargeAmt.Text=CreditCardCur.ChargeAmt.ToString("F");
 				}
@@ -196,7 +200,7 @@ namespace OpenDental {
 					return false;
 				}
 			}
-			if(_isEdgeExpressEnabled || _isXChargeEnabled || _isPayConnectEnabled || _isPaySimpleEnabled) {//Only validate recurring setup if using X-Charge, PayConnect, or PaySimple.
+			if(_isEdgeExpressEnabled || _isXChargeEnabled || _isPayConnectEnabled || _isPaySimpleEnabled || _isGlobalPaymentsV2Enabled) {//Only validate recurring setup if using X-Charge, PayConnect, PaySimple, or Global Payments V1 or V2.
 				if(textDateStart.Text.IsNullOrEmpty() && !textChargeAmt.Text.IsNullOrEmpty()){
 					MsgBox.Show(this,"Please enter a Date Start first.");
 					return false;
@@ -688,7 +692,7 @@ namespace OpenDental {
 			CreditCardCur.PaymentType=comboPaymentType.GetSelectedDefNum();
 			CreditCardCur.CanChargeWhenNoBal=checkChrgWithNoBal.Checked;
 			CreditCardCur.IsRecurringActive=checkIsRecurringActive.Checked;
-			if(_isEdgeExpressEnabled || _isXChargeEnabled || _isPayConnectEnabled || _isPaySimpleEnabled) {//Only update recurring if using X-Charge, PayConnect,or PaySimple.
+			if(_isEdgeExpressEnabled || _isXChargeEnabled || _isPayConnectEnabled || _isPaySimpleEnabled || _isGlobalPaymentsV2Enabled) {//Only update recurring if using X-Charge, PayConnect, PaySimple, or Global Payments V1 or V2.
 				CreditCardCur.ChargeAmt=PIn.Double(textChargeAmt.Text);
 				CreditCardCur.DateStart=PIn.Date(textDateStart.Text);
 				CreditCardCur.DateStop=PIn.Date(textDateStop.Text);

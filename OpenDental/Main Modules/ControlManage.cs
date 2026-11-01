@@ -737,9 +737,13 @@ namespace OpenDental{
 			else {
 				_listEmployees=Employees.GetDeepCopy(true);
 			}
+			long supervisorEmployeeNum=FillComboReportsTo();//Reports To filter (25.3), in ControlManage.ReportsTo.cs
 			for(int i=0;i<_listEmployees.Count();i++) {
 				bool isEmployeeFNameStartingWithFilterName=_listEmployees[i].FName.ToLower().StartsWith(textFilterName.Text.ToLower());
 				if(textFilterName.Text!="" && !isEmployeeFNameStartingWithFilterName) {
+					continue;
+				}
+				if(!EmployeeReportsTo.IsShown(_listEmployees[i],supervisorEmployeeNum)) {
 					continue;
 				}
 				row=new GridRow();
@@ -879,7 +883,8 @@ namespace OpenDental{
 				return;
 			}
 			//normal clock in/out
-			if(clockEvent.TimeDisplayed2.Year<1880) {//clocked in to work, but not clocked back out.
+			//M2-EMP: a clock-out entered ahead of time (Open Dental 26.1.63) leaves the employee clocked in until then.
+			if(clockEvent.TimeDisplayed2.Year<1880 || ClockEvents.HasFutureClockOut(clockEvent)) {//clocked in to work, but not clocked back out.
 				butClockIn.Enabled=false;
 				butClockOut.Enabled=true;
 				butTimeCard.Enabled=true;

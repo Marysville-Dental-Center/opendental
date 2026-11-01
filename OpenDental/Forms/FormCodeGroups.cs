@@ -37,6 +37,7 @@ namespace OpenDental {
 			gridMain.Columns.Add(new GridColumn(Lan.g(trans,"Proc Codes"),0) { IsWidthDynamic=true,DynamicWeight=2 });
 			gridMain.Columns.Add(new GridColumn(Lan.g(trans,"Freq"),35,HorizontalAlignment.Center));
 			gridMain.Columns.Add(new GridColumn(Lan.g(trans,"Age"),35,HorizontalAlignment.Center));
+			gridMain.Columns.Add(new GridColumn(Lan.g(trans,"Hist"),35,HorizontalAlignment.Center));//Open Dental 26.1: Show In History.
 			gridMain.Columns.Add(new GridColumn(Lan.g(trans,"Other"),40,HorizontalAlignment.Center));
 			gridMain.Columns.Add(new GridColumn(Lan.g(trans,"Hidden"),45,HorizontalAlignment.Center));
 			gridMain.ListGridRows.Clear();
@@ -56,6 +57,7 @@ namespace OpenDental {
 				gridRow.Cells.Add(_listCodeGroups[i].ProcCodes);
 				gridRow.Cells.Add(_listCodeGroups[i].ShowInFrequency?"X":"");
 				gridRow.Cells.Add(_listCodeGroups[i].ShowInAgeLimit?"X":"");
+				gridRow.Cells.Add(_listCodeGroups[i].ShowInHistory?"X":"");
 				gridRow.Cells.Add(_listCodeGroups[i].ShowInOther?"X":"");
 				gridRow.Cells.Add(_listCodeGroups[i].IsHidden?"X":"");
 				gridRow.Tag=_listCodeGroups[i];
@@ -206,6 +208,7 @@ namespace OpenDental {
 				{
 					listChanges.Add(Lan.g(this,"display options"));
 				}
+				listChanges.AddRange(CodeGroupHistoryOptions.GetLogChanges(codeGroupOld,codeGroup));//Open Dental 26.1 insurance history options.
 				if(listChanges.Count>0) {
 					SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,Lan.g(this,"Code group")+" '"+codeGroup.GroupName+"' "+Lan.g(this,"edited:")+" "
 						+string.Join("; ",listChanges));

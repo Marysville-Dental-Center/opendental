@@ -56,7 +56,7 @@ namespace OpenDentBusiness {
 			Program progEdge=Programs.GetCur(ProgramName.EdgeExpress);
 			Program progXWeb=Programs.GetCur(ProgramName.Xcharge);
 			if((progEdge==null || !progEdge.Enabled) && (progXWeb==null || !progXWeb.Enabled)) {
-				throw new ODException("Both XWeb and EdgeExpress are not enabled. Please enable one of these programs.",ODException.ErrorCodes.XWebProgramProperties);
+				throw new ODException("Both XWeb and Global Payments V1 are not enabled. Please enable one of these programs.",ODException.ErrorCodes.XWebProgramProperties);
 			}
 			if(isWebPayment && !xwebProperties.IsPaymentsAllowed) {
 				throw new ODException("Clinic or Practice has online payments disabled",ODException.ErrorCodes.XWebProgramProperties);
@@ -199,7 +199,7 @@ namespace OpenDentBusiness {
 				};
 				jsonResponse=JsonConvert.DeserializeAnonymousType(response,jsonResponse);
 				if(!jsonResponse.IsSuccessful) {
-					throw new ODException("Error from EdgeExpress: "+jsonResponse.Description);
+					throw new ODException("Error from Global Payments V1: "+jsonResponse.Description);
 				}
 				var innerResponse=new {
 					RESPONSE=new RcmResponse(),
@@ -511,12 +511,12 @@ namespace OpenDentBusiness {
 				switch(xWebResponse.XWebResponseCode) {
 					case XWebResponseCodes.AuthenticationError:
 						return Lans.g("EdgeExpress","The card processor rejected the X-Web ID, Terminal ID or Auth Key for this clinic. "
-							+"Check them in Setup > Program Links > EdgeExpress.");
+							+"Check them in Setup > Program Links > Global Payments V1.");
 					case XWebResponseCodes.ProductionMerchantSetUpError:
 					case XWebResponseCodes.TestMerchantSetUpError:
 					case XWebResponseCodes.DevelopmentMerchantSetUpError:
 						return Lans.g("EdgeExpress","The card processor says these credentials are for a different environment (test or production). "
-							+"Check the credentials and the test gateway setting in Setup > Program Links > EdgeExpress.");
+							+"Check the credentials and the test gateway setting in Setup > Program Links > Global Payments V1.");
 					case XWebResponseCodes.DuplicateTransactionError:
 						return Lans.g("EdgeExpress","The card processor refused this as a duplicate of a recent transaction. No second charge was made.");
 					case XWebResponseCodes.MerchantLockedForSettlement:

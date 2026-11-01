@@ -199,7 +199,9 @@ namespace OpenDental {
 			textMysqlPass.Text=decryptedPass;
 			textMysqlPass.PasswordChar='*';
 			textMiddleTierURI.Text=PrefC.GetString(PrefName.ReadOnlyServerURI);
-			textSkySQL.Text=PrefC.GetString(PrefName.ReadOnlyServerSslCa);
+			textSslCaPem.Text=PrefC.GetString(PrefName.ReadOnlyServerSslCa);
+			textReplicationReadDelayMs.Value=ReplicationDelay.GetReadDelayMs();
+			textReplicationSignalLookbackMs.Value=ReplicationDelay.GetSignalLookbackMs();
 			FillComboComputers();
 			FillComboDatabases();
 			SetReadOnlyServerUIEnabled();
@@ -207,6 +209,10 @@ namespace OpenDental {
 		}
 
 		public bool SaveServerConnections() {
+			if(!textReplicationReadDelayMs.IsValid() || !textReplicationSignalLookbackMs.IsValid()) {
+				MsgBox.Show(this,"Replication delays must be whole numbers from 0 to 60000 milliseconds.");
+				return false;
+			}
 			if(!checkUseReadOnlyServer.Checked) {
 				Changed |=Prefs.UpdateString(PrefName.ReadOnlyServerCompName,"");
 				Changed |=Prefs.UpdateString(PrefName.ReadOnlyServerDbName,"");
@@ -224,7 +230,7 @@ namespace OpenDental {
 					Changed |=Prefs.UpdateString(PrefName.ReadOnlyServerMySqlUser,textMysqlUser.Text);
 					Changed |=Prefs.UpdateString(PrefName.ReadOnlyServerMySqlPassHash,encryptedPass);
 					Changed |=Prefs.UpdateString(PrefName.ReadOnlyServerURI,"");
-					Changed |=Prefs.UpdateString(PrefName.ReadOnlyServerSslCa,textSkySQL.Text);
+					Changed |=Prefs.UpdateString(PrefName.ReadOnlyServerSslCa,textSslCaPem.Text);
 				}
 				else {
 					Changed |=Prefs.UpdateString(PrefName.ReadOnlyServerCompName,"");
@@ -238,7 +244,29 @@ namespace OpenDental {
 			if(Changed) {
 				DoClearConnectionDictionary=true;
 			}
+			SaveReplicationDelays();//After the check above: the delays do not change any connection.
 			return true;
+		}
+
+		///<summary>B-SERVER (v25_2-server-replication-delay): stores the read and write delays and writes an Audit Trail entry when they change.</summary>
+		private void SaveReplicationDelays() {
+			int readDelayMsOld=ReplicationDelay.GetReadDelayMs();
+			int signalLookbackMsOld=ReplicationDelay.GetSignalLookbackMs();
+			int readDelayMs=textReplicationReadDelayMs.Value;
+			int signalLookbackMs=textReplicationSignalLookbackMs.Value;
+			if(!ReplicationDelay.SaveSettings(readDelayMs,signalLookbackMs)) {
+				return;
+			}
+			List<string> listChanges=new List<string>();
+			if(readDelayMsOld!=readDelayMs) {
+				listChanges.Add("Replication read delay after write changed from "+readDelayMsOld+" to "+readDelayMs+" ms");
+			}
+			if(signalLookbackMsOld!=signalLookbackMs) {
+				listChanges.Add("Replication write delay for signals changed from "+signalLookbackMsOld+" to "+signalLookbackMs+" ms");
+			}
+			SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,string.Join("\n",listChanges));
+			//Changed makes Preferences signal InvalidType.Prefs on close, so other workstations reload the values.
+			Changed=true;
 		}
 		#endregion Methods - Public
 

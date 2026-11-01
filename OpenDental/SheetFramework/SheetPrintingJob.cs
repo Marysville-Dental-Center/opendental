@@ -503,6 +503,8 @@ namespace OpenDental {
 			}
 			OpenDentBusiness.SheetDrawingJob.DrawHeader(sheet,g,null,_pagesPrinted,_yPosPrint);
 			OpenDentBusiness.SheetDrawingJob.DrawFooter(sheet,g,null,_pagesPrinted,_yPosPrint,_medLab);
+			//25.3: the inserter barcode on printed statements (each copy is a set). Does nothing for other sheets or when the barcode is off.
+			StatementInserterBarcode.DrawOnPrintedPage(g,sheet,_sheetsPrinted+1,_pagesPrinted+1,Sheets.CalculatePageCount(sheet,_printMargin));
 			#if DEBUG
 				if(_printCalibration) {
 					OpenDentBusiness.SheetDrawingJob.DrawCalibration(sheet,g,e,null,null);

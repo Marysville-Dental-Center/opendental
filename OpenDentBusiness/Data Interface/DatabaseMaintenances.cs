@@ -570,7 +570,8 @@ namespace OpenDentBusiness {
 			public string Key;
 		}
 
-		[DbmMethodAttr(HasBreakDown=true,HasExplain=true)]
+		///<summary>Not a Check/Fix method since Open Dental 25.3 (also 25.2.41): run on purpose from the Tools tab ("Notes White Space"), in Fix mode.
+		///The office's databasemaintenance row for this name may remain and is ignored.</summary>
 		public static string NotesWithTooMuchWhiteSpace(bool verbose,DbmMode dbmMode) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetString(MethodBase.GetCurrentMethod(),verbose,dbmMode);
@@ -3931,11 +3932,15 @@ namespace OpenDentBusiness {
 			}
 			string log="";
 			string command;
+			//A clock-in may never be in the future. A clock-out may (Open Dental 26.1.63, package M2-EMP, see ClockEvents.CheckFutureDates): a Home or
+			//Lunch event can hold the end of a shift entered ahead of time, and the employee counts as clocked in until then. Only a break's second
+			//time (its return) still may not be in the future, so only breaks count and get fixed on that side (INFERRED, docs/port-notes/M2-EMP.md).
+			string whereBreak="ClockStatus="+POut.Int((int)TimeClockStatus.Break)+" AND ";
 			switch(dbmMode) {
 				case DbmMode.Check:
 					command=@"SELECT COUNT(*) FROM clockevent WHERE TimeDisplayed1 > "+DbHelper.Now()+"+INTERVAL 15 MINUTE";
 					int numFound=PIn.Int(Db.GetCount(command));
-					command=@"SELECT COUNT(*) FROM clockevent WHERE TimeDisplayed2 > "+DbHelper.Now()+"+INTERVAL 15 MINUTE";
+					command=@"SELECT COUNT(*) FROM clockevent WHERE "+whereBreak+"TimeDisplayed2 > "+DbHelper.Now()+"+INTERVAL 15 MINUTE";
 					numFound+=PIn.Int(Db.GetCount(command));
 					if(numFound>0 || verbose) {
 						log+=Lans.g("FormDatabaseMaintenance","Time card entries invalid")+": "+numFound+"\r\n";
@@ -3944,7 +3949,7 @@ namespace OpenDentBusiness {
 				case DbmMode.Fix:
 					command=@"UPDATE clockevent SET TimeDisplayed1="+DbHelper.Now()+" WHERE TimeDisplayed1 > "+DbHelper.Now()+"+INTERVAL 15 MINUTE";
 					int numberFixed=(int)Db.NonQ(command);
-					command=@"UPDATE clockevent SET TimeDisplayed2="+DbHelper.Now()+" WHERE TimeDisplayed2 > "+DbHelper.Now()+"+INTERVAL 15 MINUTE";
+					command=@"UPDATE clockevent SET TimeDisplayed2="+DbHelper.Now()+" WHERE "+whereBreak+"TimeDisplayed2 > "+DbHelper.Now()+"+INTERVAL 15 MINUTE";
 					numberFixed+=(int)Db.NonQ(command);
 					if(numberFixed>0 || verbose) {
 						log+=Lans.g("FormDatabaseMaintenance","Future timecard entry times fixed")+": "+numberFixed.ToString()+"\r\n";
@@ -11732,7 +11737,7 @@ HAVING cnt>1";
 				EmailMessage emailMessage=EmailMessages.GetOne(PIn.Long(tableEmailMessageNums.Rows[i]["EmailMessageNum"].ToString()));
 				EmailMessage emailMessageOld=emailMessage.Copy();
 				//Try and find the corresponding email address for this email.
-				EmailAddress emailAddress=listEmailAddresses.FirstOrDefault(x => x.EmailUsername.ToLower()==emailMessage.RecipientAddress.ToLower());
+				EmailAddress emailAddress=FindEmailAddressForRawEmail(listEmailAddresses,emailMessage.RecipientAddress);
 				if(emailAddress==null) {
 					countError++;
 					continue;
@@ -11756,6 +11761,7 @@ HAVING cnt>1";
 					emailMessageNewCopy.BodyText=inMsgNew.Message.Body.Text;
 					emailMessageOldCopy.Subject=inMsgOld.Message.SubjectValue;
 					emailMessageOldCopy.BodyText=inMsgOld.Message.Body.Text;
+					NormalizeRawEmailWhiteSpace(emailMessageNewCopy,emailMessageOldCopy);//Unicode white space (24.4).
 					if(Crud.EmailMessageCrud.UpdateComparison(emailMessageNewCopy,emailMessageOldCopy)) {
 						countCleaned++;
 					}

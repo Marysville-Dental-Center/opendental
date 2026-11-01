@@ -14,7 +14,7 @@ using OpenDentBusiness.Eclaims;
 
 namespace OpenDentBusiness{
 	///<summary></summary>
-	public class ProcedureCodes {
+	public partial class ProcedureCodes {
 		#region Cache Pattern
 
 		///<summary>Utilizes the NonPkAbs version of CacheDict because it uses ProcCode as the Key instead of the PK CodeNum.</summary>
@@ -516,7 +516,7 @@ namespace OpenDentBusiness{
 			if(benefit==null) {
 				return new List<long>();
 			}
-			List<long> listCodeNums=ProcedureCodes.GetCodeNumsForPref(prefNameInsHist);
+			List<long> listCodeNums=InsHistCategories.GetCodeNumsForInsHistPref(prefNameInsHist);//26.1: the history code groups, not the obsolete preference.
 			if(procedureCode==null || listCodeNums.Contains(procedureCode.CodeNum)) {
 				return listCodeNums;//The proc is not included or is part of the group
 			}

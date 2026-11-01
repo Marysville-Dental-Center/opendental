@@ -320,6 +320,9 @@ namespace OpenDentBusiness {
 			//Ez3Di:
 			program=Programs.GetCur(ProgramName.Ez3Di);
 			RemoveLinkageXMLFile(program);
+			//CleverOne (V-BRIDGE2): the same linkage.xml hand-off as EzDenti.
+			program=Programs.GetCur(ProgramName.CleverOne);
+			RemoveLinkageXMLFile(program);
 			//FloridaProbe: Has no file paths containing outgoing patient data from Open Dental.
 			//Guru: Has no file paths containing outgoing patient data from Open Dental.
 			//HandyDentist: Has no file paths containing outgoing patient data from Open Dental.
@@ -470,7 +473,8 @@ namespace OpenDentBusiness {
 		public static bool HasMultipleCreditCardProgramsEnabled() {
 			Meth.NoCheckMiddleTierRole();
 			return new List<bool> {
-				IsEnabled(ProgramName.EdgeExpress),IsEnabled(ProgramName.Xcharge),IsEnabled(ProgramName.PayConnect),IsEnabled(ProgramName.PaySimple)
+				IsEnabled(ProgramName.EdgeExpress),IsEnabled(ProgramName.Xcharge),IsEnabled(ProgramName.PayConnect),IsEnabled(ProgramName.PaySimple),
+				IsEnabled(ProgramName.MeetInTheCloud)//Global Payments V2 (25.4)
 			}.Count(x => x==true) >= 2;
 		}
 

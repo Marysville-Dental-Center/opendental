@@ -52,6 +52,12 @@ namespace OpenDental {
 		private int _gridSnapDistance=0;
 		///<summary>When you first mouse down, if you clicked on blank space instead of a control, this will be true.</summary>
 		private bool _isDraggingSelectionRect;
+		///<summary>True once the user chose to paste the fields of the current copy even though they duplicate fields on the sheet (25.4 duplicate
+		///field warning). Further pastes of the same copy do not ask again. Cleared by each copy.</summary>
+		private bool _isDuplicatePasteAccepted;
+		///<summary>Asks the duplicate field question in a modal OK/Cancel box and returns true for OK. A field only so that tests can answer the
+		///question without a box (M2SHEETSTests.SheetDefEditKeyTests); the window never changes it.</summary>
+		private Func<string,bool> _funcAskDuplicateFields=(msg) => MsgBox.Show(MsgBoxButtons.OKCancel,msg);
 		///<summary>This stores the previous calculations so that we don't have to recal unless certain things have changed.  The key is the index of the sheetfield.  The data is an array of objects of different types as seen in the code.</summary>
 		private Hashtable _hashTableRtfStringCache=new Hashtable();
 		///<summary>Keep track of when the bounds of this window are programmatically changed.
@@ -397,6 +403,9 @@ namespace OpenDental {
 
 		private void butSave_Click(object sender,EventArgs e) {
 			if(!ValidateInOK()) {
+				return;
+			}
+			if(!ConfirmInserterBarcodeClearZone()) {//25.3 statement inserter barcode (FormSheetDefEdit.InserterBarcode.cs)
 				return;
 			}
 			if(!_sheetEditMobileCtrl.MergeMobileSheetFieldDefs(SheetDef_,true,new Action<string>((err) => { MsgBox.Show(this,err); }))) {
@@ -1292,6 +1301,9 @@ namespace OpenDental {
 			if(formSheetFieldOutput.DialogResult!=DialogResult.OK  || formSheetFieldOutput.SheetFieldDefCur==null) {//SheetFieldDefCur==null if it was Deleted
 				return;
 			}
+			if(!ConfirmDuplicateFields(new List<SheetFieldDef> { formSheetFieldOutput.SheetFieldDefCur },out _)) {
+				return;
+			}
 			AddNewSheetFieldDef(formSheetFieldOutput.SheetFieldDefCur);
 			FillFieldList();
 			panelMain.Invalidate();
@@ -1308,6 +1320,9 @@ namespace OpenDental {
 			formSheetFieldInput.SheetFieldDefCur=SheetFieldDef.NewInput("",SheetDef_.FontSize,SheetDef_.FontName,false,0,0,100,font.Height);
 			formSheetFieldInput.ShowDialog();
 			if(formSheetFieldInput.DialogResult!=DialogResult.OK  || formSheetFieldInput.SheetFieldDefCur==null) {//SheetFieldDefCur==null if it was Deleted
+				return;
+			}
+			if(!ConfirmDuplicateFields(new List<SheetFieldDef> { formSheetFieldInput.SheetFieldDefCur },out _)) {
 				return;
 			}
 			AddNewSheetFieldDef(formSheetFieldInput.SheetFieldDefCur);
@@ -1340,6 +1355,9 @@ namespace OpenDental {
 			formSheetFieldCheckBox.SheetDefCur=SheetDef_;
 			formSheetFieldCheckBox.ShowDialog();
 			if(formSheetFieldCheckBox.DialogResult!=DialogResult.OK  || formSheetFieldCheckBox.SheetFieldDefCur==null) {//SheetFieldDefCur==null if it was Deleted
+				return;
+			}
+			if(!ConfirmDuplicateFields(new List<SheetFieldDef> { formSheetFieldCheckBox.SheetFieldDefCur },out _)) {
 				return;
 			}
 			AddNewSheetFieldDef(formSheetFieldCheckBox.SheetFieldDefCur);
@@ -1660,6 +1678,40 @@ namespace OpenDental {
 			_sheetEditMobileCtrl.ScrollToSheetFieldDefNum=sheetFieldDef.SheetFieldDefNum;
 		}
 
+		///<summary>Duplicate field warning (Open Dental 25.4): when a field about to be added (new or pasted) is the same field as one already on the
+		///sheet in the current language and layout mode (SheetFieldDefs.GetDuplicates), asks whether to add it anyway. Returns true to add the
+		///fields. wasWarned tells whether the question was asked.</summary>
+		private bool ConfirmDuplicateFields(List<SheetFieldDef> listSheetFieldDefsToAdd,out bool wasWarned) {
+			wasWarned=false;
+			List<string> listNames=new List<string>();
+			for(int i=0;i<listSheetFieldDefsToAdd.Count;i++) {
+				string language=listSheetFieldDefsToAdd[i].Language;
+				if(language.IsNullOrEmpty()) {
+					language=GetSelectedLanguageThreeLetters()??"";//AddNewSheetFieldDef gives new fields the language being viewed.
+				}
+				if(SheetFieldDefs.GetDuplicates(listSheetFieldDefsToAdd[i],SheetDef_.SheetFieldDefs,language,_sheetFieldLayoutMode).Count==0) {
+					continue;
+				}
+				string name=SheetFieldDefs.GetDuplicateDisplayName(listSheetFieldDefsToAdd[i]);
+				if(!listNames.Contains(name)) {
+					listNames.Add(name);
+				}
+			}
+			if(listNames.Count==0) {
+				return true;
+			}
+			wasWarned=true;
+			string msg=Lan.g(this,"This sheet already has the following field")+":\r\n"+string.Join("\r\n",listNames.Take(10))
+				+(listNames.Count>10 ? "\r\n..." : "")+"\r\n\r\n"+Lan.g(this,"Click OK to continue adding it, or Cancel to not add it.");
+			bool isAddAccepted=_funcAskDuplicateFields(msg);
+			//The modal box consumes the CTRL and ALT key_up events (CTRL+V paste, ALT+click stamp), so reset the keys after OK and after Cancel, as
+			//CopyControlsToMemory does after its own box. Otherwise clicks keep toggling the selection or stamping copies.
+			_isCtrlDown=false;
+			_isAltDown=false;
+			Cursor=Cursors.Default;
+			return isAddAccepted;
+		}
+
 		///<summary>Creates copies of given defDefault for every given value in listLanguages and inserts them into _sheetDefCur.SheetFieldDefs via AddNewSheeFieldDef(...) Either called when user selects a new language to translate to or when the user adds a SheetFieldDef to the 'Default' view.</summary>
 		private void AddNewSheetFieldDefsForTranslations(SheetFieldDef sheetFieldDefDefault,params string[]  arrThreeLetterLanguages){
 			for(int i=0;i<arrThreeLetterLanguages.Count();i++) {
@@ -1790,6 +1842,8 @@ namespace OpenDental {
 				_listSheetFieldDefsCopyPaste.Add(listSheetFieldDefsShowing[listBoxFields.SelectedIndices[i]].Copy()); //fill clipboard with copies of the controls. 
 				//It would probably be safe to fill the clipboard with the originals. but it is safer to fill it with copies.
 			}
+			//The user already agreed above to copy fields that conflict, so pasting them does not ask again (duplicate field warning, 25.4).
+			_isDuplicatePasteAccepted=isConflictingfield;
 			_pasteOffset=0;
 			_pasteOffsetY=0; //reset PasteOffset for pasting a new set of fields.
 		}
@@ -2542,6 +2596,14 @@ namespace OpenDental {
 			if(_listSheetFieldDefsCopyPaste==null || _listSheetFieldDefsCopyPaste.Count==0) {
 				return;
 			}
+			//Whether this paste is an ALT+click stamp, saved before the duplicate field box below because that box resets the modifier keys.
+			bool isAltStamp=_isAltDown;
+			if(!_isDuplicatePasteAccepted) {
+				if(!ConfirmDuplicateFields(_listSheetFieldDefsCopyPaste,out bool wasWarned)) {
+					return;
+				}
+				_isDuplicatePasteAccepted=wasWarned;
+			}
 			if(pointOrigin.X==0 && pointOrigin.Y==0) { //allows for cascading pastes in the upper right hand corner.
 				Rectangle rectangle=panelMain.Bounds; //Gives relative position of panel (scroll position)
 				//Current resized height/width of parent panel but must be unscaled since we are dealing with unscaled figures below
@@ -2579,7 +2641,7 @@ namespace OpenDental {
 				AddNewSheetFieldDef(sheetFieldDef);
 				listSheetFieldDefsNew.Add(sheetFieldDef);
 			}
-			if(!_isAltDown) {
+			if(!isAltStamp) {
 				_pasteOffsetY+=((_pasteOffset+10)/100)*10; //this will shift the pastes down 10 pixels every 10 pastes.
 				_pasteOffset=(_pasteOffset+10)%100; //cascades and allows for 90 consecutive pastes without overlap
 			}
@@ -2610,10 +2672,10 @@ namespace OpenDental {
 				.Select(x => x.Language)
 				.Distinct().ToList();
 			_listSheetDefLanguagesUsed=listUsedLanguageThreeLetters
-				.Select(x => new SheetDefLanguage(x,(MiscUtils.GetCultureFromThreeLetter(x)?.DisplayName??x)))
+				.Select(x => new SheetDefLanguage(x,SheetScripts.GetLanguageDisplayName(x)))
 				.OrderBy(x => x.Display).ToList();
 			_listSheetDefLanguagesUnused=listAllLanguages.FindAll(x => !listUsedLanguageThreeLetters.Contains(x))
-				.Select(x => new SheetDefLanguage(x,(MiscUtils.GetCultureFromThreeLetter(x)?.DisplayName??x)))
+				.Select(x => new SheetDefLanguage(x,SheetScripts.GetLanguageDisplayName(x)))
 				.OrderBy(x => x.Display).ToList();
 			if(selectedThreeLetterLanguage!=null && _listSheetDefLanguagesUnused.Select(x => x.ThreeLetters).Contains(selectedThreeLetterLanguage)) {
 				//When the default sheet language does not have any SheetFieldDefs defined, and Add New is selected from comboLanguages, no SheetFieldDefs
@@ -2621,7 +2683,7 @@ namespace OpenDental {
 				//negating the user's Add New selection.  Therefore, add the selection back here.  (This would mean a translation has SheetFieldDefs while
 				//the default language has none.  Use Case: user intends to create a sheet specifically for spanish speakers).
 				_listSheetDefLanguagesUsed.Add(new SheetDefLanguage(selectedThreeLetterLanguage
-					,(MiscUtils.GetCultureFromThreeLetter(selectedThreeLetterLanguage)?.DisplayName??selectedThreeLetterLanguage)));
+					,SheetScripts.GetLanguageDisplayName(selectedThreeLetterLanguage)));
 			}
 		}
 
@@ -3601,6 +3663,9 @@ namespace OpenDental {
 					DrawControlForSheetField(g,panel,sheetFieldDef);
 					break;
 				#endregion
+				case StatementInserterBarcode.FIELD_NAME://25.3 statement inserter barcode (FormSheetDefEdit.InserterBarcode.cs)
+					DrawInserterBarcode(sheetFieldDef,g);
+					break;
 				default:
 					g.DrawString("(Special:Tooth Grid)",Font,solidBrush,sheetFieldDef.XPos,sheetFieldDef.YPos);
 					break;
@@ -3625,7 +3690,7 @@ namespace OpenDental {
 				fontStyle=FontStyle.Bold;
 			}
 			//we have done a full scaling before coming in here, so we need to unscale font by MS amount
-			using Font font=new Font(sheetFieldDef.FontName,LayoutManager.UnscaleMS(sheetFieldDef.FontSize),fontStyle);
+			using Font font=new Font(SheetFonts.GetFontNameForText(sheetFieldDef.FontName,(sheetFieldDef.FieldType==SheetFieldType.StaticText ? sheetFieldDef.FieldValue : sheetFieldDef.FieldName)),LayoutManager.UnscaleMS(sheetFieldDef.FontSize),fontStyle);
 			Color colorText;
 			if(isSelected) {
 				Color colorOutline=GetOutlineColorForSheetFieldDef(sheetFieldDef,_colorRedOutline,isSelected:true);
@@ -3671,6 +3736,7 @@ namespace OpenDental {
 			if(sheetFieldDef.TextAlign==HorizontalAlignment.Right){
 				stringFormat.Alignment=StringAlignment.Far;
 			}
+			SheetTextDrawing.ApplyDirection(stringFormat,str);
 			if(sheetFieldDef.FieldType==SheetFieldType.InputField || sheetFieldDef.FieldType==SheetFieldType.OutputText) {
 				g.DrawString(str,font,solidBrush,sheetFieldDef.Bounds,stringFormat);
 			}

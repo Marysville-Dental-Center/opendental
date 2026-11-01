@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Resources;
 using System.Windows.Forms;
@@ -191,6 +192,43 @@ namespace OpenDentBusiness{
 				listClaimFormsInternal.Add(claimForm);
 			}
 			return listClaimFormsInternal;
+		}
+
+		///<summary>Description of the built-in claim form for the Medi-Cal Dental (Denti-Cal) TAR/Claim form DC-217, revision 10/19, printed on
+		///preprinted stock (Open Dental 25.4). Also the key that finds an installed copy.</summary>
+		public const string DescriptionDentiCalDC217_2019="Denti-Cal DC217_2019";
+
+		///<summary>Returns the internal claim form with this description from the OpenDentBusiness resources, or null if there is none.  Throws if a
+		///resource can't be read.</summary>
+		public static ClaimForm GetInternalClaim(string description) {
+			Meth.NoCheckMiddleTierRole();
+			return GetInternalClaims().FirstOrDefault(x => x.Description==description);
+		}
+
+		///<summary>Installs the internal claim form with this description as a claim form of the office, with all its items, so it can be chosen for
+		///insurance plans; does nothing when a claim form with that description already exists. Returns the ClaimFormNum of the new or existing claim
+		///form, or 0 when there is no internal claim form with that description. Uses no cache, so a fork migration step can call it; callers outside
+		///a migration refresh the ClaimForms and ClaimFormItems caches afterwards.</summary>
+		public static long InsertInternalIfMissing(string description) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetLong(MethodBase.GetCurrentMethod(),description);
+			}
+			string command=DbHelper.LimitOrderBy("SELECT ClaimFormNum FROM claimform WHERE Description='"+POut.String(description)+"' "
+				+"ORDER BY ClaimFormNum",1);
+			long claimFormNumExisting=Db.GetLong(command);
+			if(claimFormNumExisting>0) {
+				return claimFormNumExisting;
+			}
+			ClaimForm claimForm=GetInternalClaim(description);
+			if(claimForm==null) {
+				return 0;
+			}
+			long claimFormNum=Crud.ClaimFormCrud.InsertNoCache(claimForm);
+			for(int i=0;i<claimForm.Items.Count;i++) {
+				claimForm.Items[i].ClaimFormNum=claimFormNum;
+				Crud.ClaimFormItemCrud.InsertNoCache(claimForm.Items[i]);
+			}
+			return claimFormNum;
 		}
 
 		///<summary>Returns number of insplans affected.</summary>

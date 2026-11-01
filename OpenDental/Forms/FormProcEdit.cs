@@ -111,6 +111,7 @@ namespace OpenDental {
 		}
 
 		private void FormProcInfo_Load(object sender,System.EventArgs e) {
+			NoteMerge_Load();//25.4 Procedure Note Merge (M2-NOTES), FormProcEdit.NoteMerge.cs
 			_loadData=ProcEdit.GetLoadData(_procedure,_patient,_family);
 			_orthoProcLink=_loadData.OrthoProcedureLink;
 			if(_orthoProcLink!=null) {
@@ -1827,6 +1828,7 @@ namespace OpenDental {
 				checkNoBillIns.CheckState=CheckState.Unchecked;
 			}
 			Cursor=Cursors.WaitCursor;
+			bool? isNoBillInsOld=Procedures.GetNoBillInsState(_listClaimProcs);//The box before this click.
 			for(int i=0;i<_listClaimProcs.Count;i++) {
 				if(!_listClaimProcs[i].Status.In(ClaimProcStatus.Estimate,ClaimProcStatus.CapClaim,ClaimProcStatus.CapEstimate)) {
 					continue;
@@ -1834,6 +1836,9 @@ namespace OpenDental {
 				_listClaimProcs[i].NoBillIns=(checkNoBillIns.CheckState==CheckState.Checked);
 				ClaimProcs.Update(_listClaimProcs[i]);
 			}
+			//Open Dental 25.4: the decision is also kept on the procedure (saved now, like the claimprocs) and audited.
+			Procedures.SetNoBillInsFromUser(_procedure,checkNoBillIns.CheckState==CheckState.Checked,isNoBillInsOld);
+			_procedureOld.NoBillIns=_procedure.NoBillIns;
 			//next lines are needed to recalc BaseEst, etc, for claimprocs that are no longer NoBillIns
 			//also, if they are NoBillIns, then it clears out the other values.
 			Procedures.ComputeEstimates(_procedure,_patient.PatNum,ref _listClaimProcs,false,_listInsPlans,_listPatPlans,_listBenefits,
@@ -2096,9 +2101,12 @@ namespace OpenDental {
 			if(!EntriesAreValid()) {
 				return;
 			}
+			if(!NoteMerge_TryResolve()) { return; }//25.4 Procedure Note Merge (M2-NOTES): Cancel or sign again, back to the window, nothing locked.
 			_procedure.IsLocked=true;
-			SaveAndClose();//saves all the other various changes that the user made
-			DialogResult=DialogResult.OK;
+			SaveAndClose();//saves all the other various changes that the user made, and sets DialogResult OK once it has saved.
+			if(DialogResult!=DialogResult.OK) {
+				_procedure.IsLocked=false;//Not saved (a check in SaveAndClose stopped it): the window stays open and the procedure is not locked.
+			}
 		}
 
 		///<summary>This button is only visible when proc IsLocked.</summary>
@@ -2306,6 +2314,7 @@ namespace OpenDental {
 
 		///<summary>MUST call EntriesAreValid first.  Used from OK_Click and from butSetComplete_Click</summary>
 		private void SaveAndClose() {
+			if(!NoteMerge_TryResolve()) { return; }//25.4 Procedure Note Merge (M2-NOTES), FormProcEdit.NoteMerge.cs
 			//
 			// This method is mimicked in OD mobile apps, please inform a mobile app developer if you think changes will be needed on that end as well.
 			//
@@ -2479,6 +2488,7 @@ namespace OpenDental {
 				Procedures.AfterProcsSetComplete(new List<Procedure>() { _procedure });
 			}
 			Signalods.SetInvalid(InvalidType.BillingList);
+			NoteMerge_Saved();//25.4 Procedure Note Merge (M2-NOTES): alerts and audit entries for the merges this save resolved.
 			DialogResult=DialogResult.OK;
 			//it is assumed that we will do an immediate refresh after closing this window.
 		}
@@ -2589,6 +2599,7 @@ namespace OpenDental {
 						return;
 					}
 				}
+				_noteMergeUserNumAlertedOnSave=_procedureOld.UserNum;//25.4 Procedure Note Merge (M2-NOTES): this click alerts them, the merge does not again.
 				//Check if user is subcribed to the alertType and create an alert.
 				if(AlertSubs.GetAllAlertTypesForUser(_procedureOld.UserNum).Contains(AlertType.SignatureCleared)) {
 					string procCode=ProcedureCodes.GetStringProcCode(_procedureOld.CodeNum);

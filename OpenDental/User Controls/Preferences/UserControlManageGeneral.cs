@@ -25,10 +25,21 @@ namespace OpenDental {
 		public UserControlManageGeneral() {
 			InitializeComponent();
 			Font=LayoutManagerForms.FontInitial;
+			//B-ERA (25.2): explain the GROUP-CODE syntax of the CARC list. Disposed with the control's components.
+			components=components??new Container();
+			ToolTip toolTipEraCarcs=new ToolTip(components);
+			toolTipEraCarcs.AutoPopDelay=20000;
+			toolTipEraCarcs.SetToolTip(textEraNoAutoProcessCarcCodes,EraCarcRules.GetSyntaxHelp());
+			textEraNoAutoProcessCarcCodes.TextChanged+=textEraNoAutoProcessCarcCodes_TextChanged;
 		}
 		#endregion Constructors
 
 		#region Methods - Event Handlers
+		///<summary>B-ERA (25.1): auto split only applies to the codes listed above it.</summary>
+		private void textEraNoAutoProcessCarcCodes_TextChanged(object sender,EventArgs e) {
+			checkEraAutoSplitCarcDenials.Enabled=!string.IsNullOrWhiteSpace(textEraNoAutoProcessCarcCodes.Text);
+		}
+
 		private void comboDepositSoftware_SelectionChangeCommitted(object sender,EventArgs e) {
 			if(comboDepositSoftware.GetSelected<AccountingSoftware>()==AccountingSoftware.QuickBooksOnline
 				&& !Programs.IsEnabled(ProgramName.QuickBooksOnline)) {
@@ -103,11 +114,17 @@ namespace OpenDental {
 			checkTimeCardUseLocal.Checked=PrefC.GetBool(PrefName.LocalTimeOverridesServerTime);
 			FillEraPaymentTypeCombos();
 			textEraNoAutoProcessCarcCodes.Text=PrefC.GetString(PrefName.EraNoAutoProcessCarcCodes);
+			checkEraAutoSplitCarcDenials.Checked=EraAutoSplit.IsEnabled();//B-ERA
+			checkEraAutoSplitCarcDenials.Enabled=!string.IsNullOrWhiteSpace(textEraNoAutoProcessCarcCodes.Text);
 		}
 
 		public bool SaveManageGeneral() {
 			if(!textClaimsReceivedDays.IsValid()) {
 				MsgBox.Show(this,"Show claims received after days must be a positive integer (max 50,000) or blank.");
+				return false;
+			}
+			if(!EraCarcRules.IsValid(textEraNoAutoProcessCarcCodes.Text,out string errorEraCarcs)) {//B-ERA (25.2)
+				MessageBox.Show(errorEraCarcs);
 				return false;
 			}
 			Changed|=Prefs.UpdateInt(PrefName.TimeCardOvertimeFirstDayOfWeek,comboTimeCardOvertimeFirstDayOfWeek.SelectedIndex);
@@ -132,6 +149,8 @@ namespace OpenDental {
 			Changed|=Prefs.UpdateInt(PrefName.EraAutoPostWriteOff,(int)comboEraWriteoff.GetSelected<EnumEraAutoPostWriteOff>());
 			Changed|=Prefs.UpdateBool(PrefName.LocalTimeOverridesServerTime,checkTimeCardUseLocal.Checked);
 			Changed|=Prefs.UpdateString(PrefName.EraNoAutoProcessCarcCodes,textEraNoAutoProcessCarcCodes.Text);
+			//B-ERA (25.1): only meaningful with codes listed; an empty list turns it off.
+			Changed|=EraAutoSplit.SetEnabled(checkEraAutoSplitCarcDenials.Checked && !string.IsNullOrWhiteSpace(textEraNoAutoProcessCarcCodes.Text));
 			return true;
 		}
 		#endregion Methods - Public

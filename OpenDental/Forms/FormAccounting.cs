@@ -197,99 +197,14 @@ namespace OpenDental{
 			}
 		}
 
-		///<summary>Takes in either a comma or tab delimiter to determine if the export should be .csv or .txt. Passing in a comma is for .csv and passing in a tab is for .txt.</summary>
+		///<summary>Takes in either a comma or tab delimiter to determine if the export should be .csv or .txt. Passing in a comma is for .csv and passing in a tab is for .txt.
+		///Uses the export shared by every grid window since 25.3 (GridODExport).</summary>
 		private void Export_Click(string delimiter) {
-			if(gridMain.ListGridRows.Count==0) {
-				MessageBox.Show(Lan.g(this,"Nothing to export"));
-				return;
-			}
-			string filePath;
-			saveFileDialog=new SaveFileDialog();
-			saveFileDialog.AddExtension=true;
-			saveFileDialog.FilterIndex=0;
+			GridExportFormat gridExportFormat=GridExportFormat.Csv;
 			if(delimiter=="\t") {
-				saveFileDialog.Filter="Text files(*.txt)|*.txt|All files(*.*)|*.*";
+				gridExportFormat=GridExportFormat.Txt;
 			}
-			else {
-				saveFileDialog.Filter="CSV files(*.csv)|*.csv|All files(*.*)|*.*";
-			}
-			saveFileDialog.FileName=gridMain.Title;
-			Cursor=Cursors.WaitCursor;//Checking the directory can take time, so set cursor to loading wheel
-			if(!Directory.Exists(PrefC.GetString(PrefName.ExportPath))) {
-				try {
-					Directory.CreateDirectory(PrefC.GetString(PrefName.ExportPath));
-					saveFileDialog.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
-				}
-				catch {
-					//initialDirectory will be blank
-				}
-			}
-			else{
-				saveFileDialog.InitialDirectory=PrefC.GetString(PrefName.ExportPath);
-			}
-			Cursor=Cursors.Default;
-			if(saveFileDialog.ShowDialog()!=DialogResult.OK) {
-				saveFileDialog.Dispose();
-				return;
-			}
-			filePath=saveFileDialog.FileName;
-			saveFileDialog.Dispose();
-			StreamWriter streamWriter=null;
-			try {
-				streamWriter=new StreamWriter(filePath,false);
-			}
-			catch {
-				MessageBox.Show(Lan.g(this,"File in use by another program.  Close and try again."));
-				return;
-			}
-			String line="";
-			for(int i=0;i<gridMain.Columns.Count;i++) {
-				string columnCaption=gridMain.Columns[i].Heading;
-				//Check for columns that start with special characters that spreadsheet programs treat differently than simply displaying them.
-				if(columnCaption.StartsWith("-") || columnCaption.StartsWith("=")) {
-					//Adding a space to the beginning of the cell will trick the spreadsheet program into not treating it uniquely.
-					columnCaption=" "+columnCaption;
-				}
-				line+=columnCaption;
-				if(i<gridMain.Columns.Count-1) {
-					line+=delimiter;
-				}
-			}
-			try {
-				streamWriter.WriteLine(line);
-			}
-			catch {
-				MessageBox.Show(Lan.g(this,"File in use by another program.  Close and try again."));
-				return;
-			}
-			string cell;
-			for(int i=0;i<gridMain.ListGridRows.Count;i++) {
-				line="";
-				for(int j=0;j<gridMain.Columns.Count;j++) {
-					cell=gridMain.ListGridRows[i].Cells[j].Text;
-					cell=cell.Replace("\r","");
-					cell=cell.Replace("\n","");
-					cell=cell.Replace("\t","");
-					cell=cell.Replace("\"","");
-					if(delimiter=="," && cell.Contains(",")) {
-						cell='"'+cell+'"';//Surround with quotes so Excel does not split into two cells
-					}
-					line+=cell;
-					if(j<gridMain.Columns.Count-1) {
-						line+=delimiter;
-					}
-				}
-				try {
-					streamWriter.WriteLine(line);
-				}
-				catch {
-					MessageBox.Show(Lan.g(this,"File in use by another program.  Close and try again."));
-					return;
-				}
-			}
-			streamWriter.Close();
-			streamWriter.Dispose();
-			MessageBox.Show(Lan.g(this,"File created successfully"));
+			gridMain.ExportAs(gridMain.Title,gridExportFormat);
 		}
 
 		private void gridMain_CellDoubleClick(object sender,ODGridClickEventArgs e) {

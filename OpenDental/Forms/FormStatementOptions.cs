@@ -82,6 +82,7 @@ namespace OpenDental{
 				checkSinglePatient.Checked=StatementCur.SinglePatient;
 				checkIntermingled.Checked=StatementCur.Intermingled;
 				checkIsReceipt.Checked=StatementCur.IsReceipt;
+				checkServiceDateView.Checked=StatementCur.IsServiceDateView;//Open Dental 26.1 (M2-SDV)
 				if(StatementCur.IsInvoice) {//If they got here with drop down menu invoice item.
 					if(CultureInfo.CurrentCulture.Name=="en-US") {
 						checkIsInvoiceCopy.Visible=false;
@@ -134,6 +135,7 @@ namespace OpenDental{
 				if(IsLimitedCustomStatement()) {
 					LimitedCustomStatementLayoutHelper();
 				}
+				SetServiceDateViewAllowed();
 			}
 			#region Bulk Edit
 			else{
@@ -239,6 +241,14 @@ namespace OpenDental{
 					checkBoxBillShowTransSinceZero.Checked=ListStatements[0].ShowTransSinceBalZero;
 				}
 				_checkStateShowTransSinceZeroBulkStart=checkBoxBillShowTransSinceZero.CheckState;
+				//ServiceDateView (Open Dental 26.1, M2-SDV). Saved only on statements that can use it (Statements.SetServiceDateView).
+				checkServiceDateView.ThreeState=true;
+				checkServiceDateView.CheckState=CheckState.Indeterminate;
+				if(ListStatements.All(x => x.IsServiceDateView==ListStatements[0].IsServiceDateView)) {
+					checkServiceDateView.ThreeState=false;
+					checkServiceDateView.CheckState=CheckState.Unchecked;
+					checkServiceDateView.Checked=ListStatements[0].IsServiceDateView;
+				}
 				//DateStart-------------------------------------------------------------------------------------
 				textDateStart.Text="?";
 				allSame=true;
@@ -400,6 +410,23 @@ namespace OpenDental{
 				checkIntermingled.Enabled=true;
 				checkSinglePatient.Enabled=true;
 			}
+			SetServiceDateViewAllowed();
+		}
+
+		///<summary>Limited, limited custom and super-family statements always use the regular view (first release, as the 26.1 spec suggests):
+		///the Service Date View box is then cleared and disabled.</summary>
+		private void SetServiceDateViewAllowed() {
+			if(ListStatements!=null || StatementCur==null) {
+				return;
+			}
+			bool canUse=StatementCur.StatementType!=StmtType.LimitedStatement && !IsLimitedCustomStatement() && !checkSuperStatement.Checked
+				&& StatementCur.SuperFamily==0;
+			if(!canUse) {
+				checkServiceDateView.Checked=false;
+				checkServiceDateView.Enabled=false;
+				return;
+			}
+			checkServiceDateView.Enabled=!checkIsSent.Checked || !_wasInitiallySent;
 		}
 
 		///<summary>This does not currently affect the Sent checkbox because users need to be able to mark statements unsent.</summary>
@@ -415,6 +442,8 @@ namespace OpenDental{
 			textNoteBold.ReadOnly=!boolval;
 			groupInvoice.Enabled=boolval;
 			checkSuperStatement.Enabled=boolval;
+			checkServiceDateView.Enabled=boolval;
+			SetServiceDateViewAllowed();
 			//These checkboxes don't store their state in the DB. Therefore, they are only helpful for unsent statements and would be misleading if left visible and disabled.
 			//E.g. Editing a limited statement that was generated with last names showing would display checkShowLName as unchecked and disabled (which is misleading).
 			checkShowLName.Visible=boolval;
@@ -701,7 +730,7 @@ namespace OpenDental{
 			//Process.Start(filePathAndName);
 			EmailMessage emailMessage=Statements.GetEmailMessageForStatement(StatementCur,patient);
 			EmailAttach emailAttach=new EmailAttach();
-			emailAttach.DisplayedFileName="Statement.pdf";
+			emailAttach.DisplayedFileName=Statements.GetEmailPdfDisplayName(patient);//25.3: "Statement_LastName.pdf"
 			emailAttach.ActualFileName=fileName;
 			emailMessage.Attachments.Add(emailAttach);
 			if(checkExportCSV.Checked) {
@@ -1257,6 +1286,7 @@ namespace OpenDental{
 				StatementCur.IsReceipt=checkIsReceipt.Checked;
 				StatementCur.IsInvoice=checkIsInvoice.Checked;
 				StatementCur.StatementType=checkLimited.Checked?StmtType.LimitedStatement:StmtType.NotSet;//right now only either LimitedStatement or NotSet
+				Statements.SetServiceDateView(StatementCur,checkServiceDateView.Checked);//Open Dental 26.1 (M2-SDV). Off for types that cannot use it.
 				StatementCur.DateRangeFrom=PIn.Date(textDateStart.Text);//handles blank
 				StatementCur.ShowTransSinceBalZero=checkBoxBillShowTransSinceZero.Checked;//Remembered per statement since Open Dental 25.2.
 				Statements.ApplyShowTransSinceBalZero(StatementCur,checkSuperStatement.Checked);//Only when the statement's own setting is on.
@@ -1334,6 +1364,9 @@ namespace OpenDental{
 				}
 				if(isShowTransSinceZeroChanged) {
 					ListStatements[i].ShowTransSinceBalZero=checkBoxBillShowTransSinceZero.Checked;
+				}
+				if(checkServiceDateView.CheckState!=CheckState.Indeterminate) {//M2-SDV
+					Statements.SetServiceDateView(ListStatements[i],checkServiceDateView.Checked);
 				}
 				if(doApplyShowTransSinceZero) {
 					DateTime dateFrom=DateTime.MinValue;

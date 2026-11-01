@@ -1,0 +1,30 @@
+<local:FrmODBase x:Class="OpenDental.FrmPrintOptions"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:local="clr-namespace:OpenDental"
+             xmlns:ui="clr-namespace:WpfControls.UI"
+             mc:Ignorable="d"
+             Width="452" Height="262"
+             Text="Print Options" MinMaxBoxes="False">
+	<Grid Background="#FFFCFDFE" >
+		<ui:Label Margin="10,17,0,0" Width="72" Height="18" Text="Printer" HAlign="Right" VAlign="Center"/>
+		<ui:ComboBox x:Name="comboPrinter" Margin="86,16,0,0" Width="352" Height="21"/>
+		<ui:Label x:Name="labelSituation" Margin="86,39,0,0" Width="352" Height="18" Text="Print situation" VAlign="Center"/>
+		<ui:Label x:Name="labelRule" Margin="86,57,0,0" Width="352" Height="18" Text="" VAlign="Center"/>
+		<ui:Label x:Name="labelStatus" Margin="86,75,0,0" Width="352" Height="18" Text="" VAlign="Center"/>
+		<ui:Label Margin="10,100,0,0" Width="72" Height="18" Text="Copies" HAlign="Right" VAlign="Center"/>
+		<ui:TextVInt x:Name="textCopies" Margin="86,99,0,0" Width="50" Height="20" MinVal="1" MaxVal="999"/>
+		<ui:CheckBox x:Name="checkCollate" Margin="152,99,0,0" Width="90" Height="20" Text="Collate"/>
+		<ui:GroupBox x:Name="groupPages" Margin="14,130,0,0" Width="424" Height="58" Text="Pages">
+			<ui:RadioButton x:Name="radioAll" Margin="12,24,0,0" Width="56" Height="20" Text="All"/>
+			<ui:RadioButton x:Name="radioRange" Margin="76,24,0,0" Width="64" Height="20" Text="Pages"/>
+			<ui:TextVInt x:Name="textFromPage" Margin="142,24,0,0" Width="50" Height="20" MinVal="1" MaxVal="99999"/>
+			<ui:Label Margin="194,25,0,0" Width="26" Height="18" Text="to" HAlign="Center" VAlign="Center"/>
+			<ui:TextVInt x:Name="textToPage" Margin="222,24,0,0" Width="50" Height="20" MinVal="1" MaxVal="99999"/>
+		</ui:GroupBox>
+		<ui:Button x:Name="butPrint" Width="75" Height="24" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,96,12" Text="_Print" Click="butPrint_Click"/>
+		<ui:Button x:Name="butCancel" Width="75" Height="24" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,14,12" Text="_Cancel" Click="butCancel_Click"/>
+	</Grid>
+</local:FrmODBase>

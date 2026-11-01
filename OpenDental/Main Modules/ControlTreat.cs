@@ -183,6 +183,7 @@ namespace OpenDental{
 			ToolBarMain.Buttons.Add(new ODToolBarButton(Lan.g(this,"Print TP"),2,"","Print"));
 			ToolBarMain.Buttons.Add(new ODToolBarButton(Lan.g(this,"Email TP"),-1,"","Email"));
 			ToolBarMain.Buttons.Add(new ODToolBarButton(Lan.g(this,"Sign TP"),-1,"","Sign"));
+			ToolBarMain.Buttons.Add(new ODToolBarButton(Lan.g(this,"Add Procs"),-1,Lan.g(this,"Add procedures to the Active treatment plan"),"AddProcs"));
 			ProgramL.LoadToolBar(ToolBarMain,EnumToolBar.TreatmentPlanModule);
 			ToolBarMain.Invalidate();
 			Plugins.HookAddCode(this,"ContrTreat.LayoutToolBar_end",PatientCur);
@@ -417,10 +418,14 @@ namespace OpenDental{
 					case "Consent":
 						ToolBarConsent_Click(e.Button);
 						break;
+					case "AddProcs":
+						ToolBarMainAddProcs_Click();//ControlTreat.AddProcs.cs
+						break;
 				}
 			}
 			else if(e.Button.Tag.GetType()==typeof(Program)) {
-				WpfControls.ProgramL.Execute(((Program)e.Button.Tag).ProgramNum,PatientCur);
+				WpfControls.ProgramL.Execute(((Program)e.Button.Tag).ProgramNum,PatientCur,
+					ProgramLinkSelectedProcs.FromTreatPlanTags(gridMain.SelectedIndices.Select(x => gridMain.ListGridRows[x].Tag)));
 			}
 			Plugins.HookAddCode(this,"ContrTreat.ToolBarMain_ButtonClick_end",PatientCur,e);
 		}
@@ -581,12 +586,8 @@ namespace OpenDental{
 				}
 			}
 			for(int i=0;i<listDisplayFields.Count;i++){
-				if(listDisplayFields[i].Description==""){
-					col=new GridColumn(listDisplayFields[i].InternalName,listDisplayFields[i].ColumnWidth);
-				}
-				else{
-					col=new GridColumn(listDisplayFields[i].Description,listDisplayFields[i].ColumnWidth);
-				}
+				//Description, or else the internal name; a saved "Cat% UCR" row without a description shows the 25.4 wording (M2-TERM).
+				col=new GridColumn(DisplayFields26_1.GetColumnText(listDisplayFields[i]),listDisplayFields[i].ColumnWidth);
 				if(listDisplayFields[i].InternalName=="Fee" && !checkShowFees.Checked){
 					continue;
 				}
@@ -801,6 +802,7 @@ namespace OpenDental{
 				row.Bold=_listTpRowsMain[i].Bold;
 				gridMain.ListGridRows.Add(row);
 			}
+			FillMainDisplayPreAuthFlags();//26.1 carrier preauth flags, in ControlTreat.PreAuth.cs.
 			gridMain.EndUpdate();
 		}
 
@@ -819,12 +821,8 @@ namespace OpenDental{
 			}
 			bool hasSalesTax=HasSalesTax(listDisplayFields);
 			for(int i=0;i<listDisplayFields.Count;i++) {
-				if(listDisplayFields[i].Description=="") {
-					col=new GridColumn(listDisplayFields[i].InternalName,listDisplayFields[i].ColumnWidth);
-				}
-				else {
-					col=new GridColumn(listDisplayFields[i].Description,listDisplayFields[i].ColumnWidth);
-				}
+				//Description, or else the internal name; a saved "Cat% UCR" row without a description shows the 25.4 wording (M2-TERM).
+				col=new GridColumn(DisplayFields26_1.GetColumnText(listDisplayFields[i]),listDisplayFields[i].ColumnWidth);
 				if(listDisplayFields[i].InternalName=="Fee" && !checkShowFees.Checked) {
 					continue;
 				}
@@ -3118,6 +3116,7 @@ namespace OpenDental{
 				ToolBarMain.Buttons["Print"].Enabled=true;
 				ToolBarMain.Buttons["Email"].Enabled=true;
 				ToolBarMain.Buttons["Sign"].Enabled=true;
+				ToolBarMain.Buttons["AddProcs"].Enabled=true;
 				butSaveTP.Enabled=true;
 				ToolBarMain.Invalidate();
 				if(_listPatPlans.Count==0) {//patient doesn't have insurance
@@ -3156,6 +3155,7 @@ namespace OpenDental{
 			ToolBarMain.Buttons["Print"].Enabled=false;
 			ToolBarMain.Buttons["Email"].Enabled=false;
 			ToolBarMain.Buttons["Sign"].Enabled=false;
+			ToolBarMain.Buttons["AddProcs"].Enabled=(PatientCur!=null);//A patient with no plan yet can start one: the Active plan is created.
 			ToolBarMain.Invalidate();
 			//listPreAuth.Enabled=false;
 		}

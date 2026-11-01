@@ -46,6 +46,7 @@ namespace OpenDental{
 			}
 			_pathOverrideOld=ProgramProperties.GetLocalPathOverrideForProgram(ProgramCur.ProgramNum);
 			textOverride.Text=_pathOverrideOld;
+			OpenDentBusiness.Pearl.PearlLog.EnsureLogLevelProperty(ProgramCur);//V-PEARL2: Pearl's "Log Level" row, inserted if missing. Other programs: no-op.
 			_isPdmp=PDMP.IsPdmpProgram(ProgramCur);
 			if(_isPdmp) {
 				PdmpProperty.EnsureProperties(ProgramCur);//Rows the office fills in, inserted at runtime if missing.
@@ -62,6 +63,14 @@ namespace OpenDental{
 			DisableUIElementsBasedOnClinicRestriction();//Disable the UI Elements if needed.
 			HideClinicControls(PrefC.HasClinicsEnabled);//Hide the "Hide Button for Clinics" button based upon the user's clinics being on or off.
 			ShowPLButHiddenLabel();//Display warning label for "Hide Button for Clinics" if needed.
+			if(ProgramLinksDiscontinued.IsDiscontinued(ProgramCur)) {//25.2: the service is gone. The row stays, but it can't be enabled or get buttons.
+				checkEnabled.Checked=false;
+				checkEnabled.Enabled=false;
+				listToolBars.ClearSelected();
+				listToolBars.Enabled=false;
+				Text+=" "+Lan.g(this,ProgramLinksDiscontinued.LABEL);
+			}
+			SetCommandLineHint();//V-BRIDGE2: Trophy (Enhanced) Command line tags (FormProgramLinkEdit.Bridges2.cs).
 		}
 
 		private void FormProgramLinkEdit_Shown(object sender,EventArgs e) {
@@ -317,6 +326,16 @@ namespace OpenDental{
 							return;
 						}	
 					break;
+				case nameof(ProgramName.Pearl)://V-PEARL2: pick the log level from a list instead of typing it.
+					if(programProperty.PropertyDesc==OpenDentBusiness.Pearl.PearlLog.LOG_LEVEL_PROPERTY
+						&& ProgramProperties.CanEditProperties(new List<ProgramProperty>() { programProperty },false))
+					{
+						ShowComboBoxForProgramProperty(programProperty,OpenDentBusiness.Pearl.PearlLog.GetLogLevelValues(),
+							OpenDentBusiness.Pearl.PearlLog.GetLogLevelDisplays().Select(x => Lans.g(this,x)).ToList(),
+							Lans.g(this,"Choose the Pearl log level (use 2 only while troubleshooting)"));
+						return;
+					}
+					break;
 				}
 			ShowFormProgramProperty(programProperty);
 		}
@@ -444,9 +463,18 @@ namespace OpenDental{
 					return;
 				}
 			}
+			//Web program links (Overjet, Insurance Answers Plus) take only a full https:// address.
+			string pathProblem=OpenDentBusiness.VendorDirect.ProgramLinks.BridgeLinkRows.GetPathSaveProblem(textProgName.Text,textPath.Text);
+			if(pathProblem!="") {
+				MessageBox.Show(Lan.g(this,pathProblem));
+				return;
+			}
 			ProgramCur.ProgName=textProgName.Text;
 			ProgramCur.ProgDesc=textProgDesc.Text;
 			ProgramCur.Enabled=checkEnabled.Checked;
+			if(ProgramLinksDiscontinued.IsDiscontinued(ProgramCur)) {
+				ProgramCur.Enabled=false;
+			}
 			ProgramCur.Path=textPath.Text;
 			if(_pathOverrideOld!=textOverride.Text) {
 				ProgramProperties.InsertOrUpdateLocalOverridePath(ProgramCur.ProgramNum,textOverride.Text);

@@ -166,57 +166,6 @@ namespace OpenDental{
 			return dataTableOnlinePayments;
 		}
 
-		///<summary>Alters the passed in table to include an afterFee column. Fills the new column for each row with the amt.</summary>
-		private void AddAfterFeeColumn(DataTable table) {
-			if(table==null) {
-				return;
-			}
-			DataColumn col=table.Columns.Add("afterFee");
-			for(int i=0;i<table.Rows.Count;i++) {
-				table.Rows[i]["afterFee"]=PIn.Decimal(table.Rows[i]["amt"].ToString());
-			}
-		}
-
-		///<summary>Alters the passed in table to include a CareCredit Fee column before the Amount column. Fills the new column for each row with the MerchantFee, if necessary. 
-		///For CareCredit, the negative of the MerchantFee is used.</summary>
-		private void AddCareCreditFeeColumn(DataTable table) {
-			if(table==null) {
-				return;
-			}
-			DataColumn col=table.Columns.Add("CareCredit Fee");
-			col.SetOrdinal(table.Columns["amt"].Ordinal);
-			for(int i=0;i<table.Rows.Count;i++) {
-				table.Rows[i]["CareCredit Fee"]=0;
-				if(PIn.Long(table.Rows[i]["PaymentSource"].ToString())==(long)CreditCardSource.CareCredit) {
-					table.Rows[i]["CareCredit Fee"]=PIn.Decimal(table.Rows[i]["MerchantFee"].ToString())*-1;
-					table.Rows[i]["afterFee"]=PIn.Decimal(table.Rows[i]["amt"].ToString())-PIn.Decimal(table.Rows[i]["MerchantFee"].ToString());
-				}
-			}
-		}
-
-		///<summary>Alters the passed in table to include a PayConnect Fee column before the Amount column. Fills the new column for each row with the MerchantFee, if necessary.</summary>
-		private void AddPayConnectFeeColumn(DataTable table) {
-			if(table==null) {
-				return;
-			}
-			List<long> listPaymentSources=new List<long>();
-			listPaymentSources.Add((long)CreditCardSource.PayConnect);
-			listPaymentSources.Add((long)CreditCardSource.XServerPayConnect);
-			listPaymentSources.Add((long)CreditCardSource.PayConnectPortal);
-			listPaymentSources.Add((long)CreditCardSource.PayConnectPortalLogin);
-			listPaymentSources.Add((long)CreditCardSource.PayConnectPaymentPortal);
-			listPaymentSources.Add((long)CreditCardSource.PayConnectPaymentPortalGuest);
-			DataColumn col=table.Columns.Add("PayConnect Fee");
-			col.SetOrdinal(table.Columns["amt"].Ordinal);
-			for(int i=0;i<table.Rows.Count;i++) {
-				table.Rows[i]["PayConnect Fee"]=0;
-				if(listPaymentSources.Contains(PIn.Long(table.Rows[i]["PaymentSource"].ToString()))) {
-					table.Rows[i]["PayConnect Fee"]=PIn.Decimal(table.Rows[i]["MerchantFee"].ToString());
-					table.Rows[i]["afterFee"]=PIn.Decimal(table.Rows[i]["amt"].ToString())+PIn.Decimal(table.Rows[i]["MerchantFee"].ToString());
-				}
-			}
-		}
-
 		private void butOK_Click(object sender,System.EventArgs e) {
 			if(!checkAllProv.Checked && listProv.SelectedIndices.Count==0) {
 				MsgBox.Show(this,"At least one provider must be selected.");
@@ -291,65 +240,22 @@ namespace OpenDental{
 				tableIns=RpPaySheet.GetInsTable(date1.SelectionStart,date2.SelectionStart,listProvNums,listClinicNums,listInsTypes,
 					listSelectedClaimPayGroupNums,checkAllProv.Checked,checkAllClin.Checked,checkInsuranceTypes.Checked,radioPatient.Checked,
 					checkAllClaimPayGroups.Checked,checkShowProvSeparate.Checked);
-				AddAfterFeeColumn(tableIns);
+				RpPaySheet.AddAfterFeeColumn(tableIns);
 			}
 			int lengthAmount=120;
 			int lengthPatientName=270;
-			//Both of these can be checked, meaning we'd need to borrow space for two columns instead of just one.
-			if(checkShowCareCreditFees.Checked) { //Need to borrow 95 pixels for the CareCredit Fee column.
-				lengthAmount-=20;
-				lengthPatientName-=75;
-			}
-			if(checkShowPayConnectFees.Checked) { //Need to borrow 100 pixels for the PayConnect Fee column.
+			if(checkShowMerchantFees.Checked) { //Need to borrow 100 pixels for the Merchant Fee column.
 				lengthAmount-=25;
 				lengthPatientName-=75;
 			}
 			DataTable tablePat=RpPaySheet.GetPatTable(date1.SelectionStart,date2.SelectionStart,listProvNums,listClinicNums,listPatTypes,
 				checkAllProv.Checked,checkAllClin.Checked,checkPatientTypes.Checked,radioPatient.Checked,checkUnearned.Checked,checkShowProvSeparate.Checked,
 				checkReportDisplayUnearnedTP.Checked);
-			//Gather a list of PayConnect sources, as there's a handful.
-			List<long> listPayConnectPaySources=new List<long>();
-			listPayConnectPaySources.Add((long)CreditCardSource.PayConnect);
-			listPayConnectPaySources.Add((long)CreditCardSource.XServerPayConnect);
-			listPayConnectPaySources.Add((long)CreditCardSource.PayConnectPortal);
-			listPayConnectPaySources.Add((long)CreditCardSource.PayConnectPortalLogin);
-			listPayConnectPaySources.Add((long)CreditCardSource.PayConnectPaymentPortal);
-			listPayConnectPaySources.Add((long)CreditCardSource.PayConnectPaymentPortalGuest);
-			//If at least one of the "Show ___ Fees" boxes is checked, we need to take potential MerchantFees into consideration when making our payment rows.
-			//We need to add an extra, mostly blanked out fee row to each payment that has a MerchantFee, since we don't want to be sticking them on an arbitrary provider or clinic. That's for offices to figure out.
-			if(checkShowCareCreditFees.Checked || checkShowPayConnectFees.Checked) {
-				List<long> listPayNumsVisited=new List<long>();
-				//Start at the end and go backwards, so our MerchantFee rows are added directly after all of their relevant payment rows, and so we can easily scrub MerchantFees off the actual payment rows.
-				//Opted to go backwards since I believe there are circumstances where the same payment can have multiple rows scattered apart from each other.
-				for(int i=tablePat.Rows.Count-1;i>=0;i--) {
-					DataRow rowPat=tablePat.Rows[i];
-					//We only want to bother with this new row if this payment comes from a source that has a box checked for viewing their fees.
-					bool isMerchantFeeConsidered=(checkShowCareCreditFees.Checked && PIn.Long(rowPat["PaymentSource"].ToString())==(long)CreditCardSource.CareCredit)
-						|| (checkShowPayConnectFees.Checked && listPayConnectPaySources.Contains(PIn.Long(rowPat["PaymentSource"].ToString())));
-					//IF this payment comes from a source we want to see fees for, AND it actually has a fee in the first place, AND we haven't already taken care of this payment, THEN we'll make a new row for the fee.
-					if(isMerchantFeeConsidered 
-						&& PIn.Decimal(rowPat["MerchantFee"].ToString())!=0 
-						&& !listPayNumsVisited.Contains(PIn.Long(rowPat["PayNum"].ToString()))) 
-					{
-						//This new fee row should not have an amt or a provider abbreviation. It's purely for the fee portion of the payment. The other information is still relevant though,
-						//so we'll just copy the current row and clear out the amt and provider.
-						DataRow rowNew=tablePat.NewRow();
-						rowNew.ItemArray=rowPat.ItemArray;
-						rowNew["amt"]=0;
-						rowNew["GROUP_CONCAT(DISTINCT provider.Abbr)"]="";
-						if(PrefC.HasClinicsEnabled) {
-							rowNew["clinicAbbr"]="";
-						}
-						//Insert the new row right after our current one.
-						tablePat.Rows.InsertAt(rowNew,i+1);
-						//We don't want to make the same row for one payment multiple times, so add the PayNum to our visited list.
-						listPayNumsVisited.Add(PIn.Long(rowPat["PayNum"].ToString()));
-					}
-					//If we care about the MerchantFee, we'll have made a new row for it already. Safe to clear it out of the base row.
-					rowPat["MerchantFee"]=0;
-				}
+			//With merchant fees shown, each payment with a fee gets its own fee row, so the fee is not put on a provider or clinic.
+			if(checkShowMerchantFees.Checked) {
+				RpPaySheet.AddMerchantFeeRows(tablePat,PrefC.HasClinicsEnabled);
 			}
-			AddAfterFeeColumn(tablePat);
+			RpPaySheet.AddAfterFeeColumn(tablePat);
 			DataTable tableOnlinePat=new DataTable();
 			if(checkShowOnlinePatientPaymentsSeparately.Checked) {
 				tableOnlinePat=ModifyRowsForOnlinePayments(tablePat);
@@ -441,26 +347,17 @@ namespace OpenDental{
 					queryObject.AddColumn("Clinic",120,FieldValueType.String,font);
 				}
 				queryObject.AddColumn("Check#",75,FieldValueType.String,font);
-				//If either of the "Show Fees" checkboxes is checked, we need to add the respective columns to the query object and to the base table, before the Amount column.
-				if(checkShowCareCreditFees.Checked) {
-					queryObject.AddColumn("CareCredit Fee",95,FieldValueType.Number,font);
-					AddCareCreditFeeColumn(tablePat);
-				}
-				if(checkShowPayConnectFees.Checked) {
-					queryObject.AddColumn("PayConnect Fee",100,FieldValueType.Number,font);
-					AddPayConnectFeeColumn(tablePat);
+				//With merchant fees shown, the Merchant Fee column goes before the Amount column, in the query object and in the base table.
+				if(checkShowMerchantFees.Checked) {
+					queryObject.AddColumn(RpPaySheet.COLUMN_MERCHANT_FEE,100,FieldValueType.Number,font);
+					RpPaySheet.AddMerchantFeeColumn(tablePat);
 				}
 				queryObject.AddColumn("Amount",lengthAmount,FieldValueType.Number,font);
 				//Summarize the total amts to include at the end of this query object, placing the summarized value under the Amount column.
 				queryObject.AddGroupSummaryField("Total Patient Payments:","Amount","amt",SummaryOperation.Sum,new List<int>(summaryGroupsPatientPayments),Color.Black,fontBold,0,20);
-				if(checkShowCareCreditFees.Checked) {
-					queryObject.AddGroupSummaryField("Total CareCredit Fees:","Amount","CareCredit Fee",SummaryOperation.Sum,new List<int>(summaryGroupsPatientPayments),Color.Black,fontBold,0,4);
-				}
-				if(checkShowPayConnectFees.Checked) {
-					queryObject.AddGroupSummaryField("Total PayConnect Fees:","Amount","PayConnect Fee",SummaryOperation.Sum,new List<int>(summaryGroupsPatientPayments),Color.Black,fontBold,0,4);
-				}
-				if(checkShowCareCreditFees.Checked || checkShowPayConnectFees.Checked) {
-					queryObject.AddGroupSummaryField("Total Patient Payments After Fees:","Amount","afterFee",SummaryOperation.Sum,new List<int>(summaryGroupsPatientPayments),Color.Black,fontBold,0,4);
+				if(checkShowMerchantFees.Checked) {
+					queryObject.AddGroupSummaryField("Total Merchant Fees:","Amount",RpPaySheet.COLUMN_MERCHANT_FEE,SummaryOperation.Sum,new List<int>(summaryGroupsPatientPayments),Color.Black,fontBold,0,4);
+					queryObject.AddGroupSummaryField("Total Patient Payments After Fees:","Amount",RpPaySheet.COLUMN_AFTER_FEE,SummaryOperation.Sum,new List<int>(summaryGroupsPatientPayments),Color.Black,fontBold,0,4);
 				}
 			}
 			//Credit Card Online Patient Payments Query---------------------------------------
@@ -475,40 +372,25 @@ namespace OpenDental{
 					queryObject.AddColumn("Clinic",120,FieldValueType.String,font);
 				}
 				queryObject.AddColumn("Check#",75,FieldValueType.String,font);
-				//If either of the "Show Fees" checkboxes is checked, we need to add the respective columns to the query object and to the base table, before the Amount column.
-				if(checkShowCareCreditFees.Checked) {
-					queryObject.AddColumn("CareCredit Fee",95,FieldValueType.Number,font);
-					AddCareCreditFeeColumn(tableOnlinePat);
-				}
-				if(checkShowPayConnectFees.Checked) {
-					queryObject.AddColumn("PayConnect Fee",100,FieldValueType.Number,font);
-					AddPayConnectFeeColumn(tableOnlinePat);
+				//With merchant fees shown, the Merchant Fee column goes before the Amount column, in the query object and in the base table.
+				if(checkShowMerchantFees.Checked) {
+					queryObject.AddColumn(RpPaySheet.COLUMN_MERCHANT_FEE,100,FieldValueType.Number,font);
+					RpPaySheet.AddMerchantFeeColumn(tableOnlinePat);
 				}
 				queryObject.AddColumn("Amount",lengthAmount,FieldValueType.Number,font);
 				//Summarize the total amts to include at the end of this query object, placing the summarized value under the Amount column.
 				queryObject.AddGroupSummaryField("Total Online Patient Payments:","Amount","amt",SummaryOperation.Sum,new List<int>(summaryGroupsOnlinePatientPayments),Color.Black,fontBold,0,20);
-				//If either of the "Show Fees" checkboxes is checked, summarize the totals of the fees to include at the end of this query object, placing the summarized value under the Amount column.
-				if(checkShowCareCreditFees.Checked) {
-					queryObject.AddGroupSummaryField("Total CareCredit Fees:","Amount","CareCredit Fee",SummaryOperation.Sum,new List<int>(summaryGroupsOnlinePatientPayments),Color.Black,fontBold,0,4);
-				}
-				if(checkShowPayConnectFees.Checked) {
-					queryObject.AddGroupSummaryField("Total PayConnect Fees:","Amount","PayConnect Fee",SummaryOperation.Sum,new List<int>(summaryGroupsOnlinePatientPayments),Color.Black,fontBold,0,4);
-				}
-				if(checkShowCareCreditFees.Checked || checkShowPayConnectFees.Checked) {
-					queryObject.AddGroupSummaryField("Total Online Payments After Fees:","Amount","afterFee",SummaryOperation.Sum,new List<int>(summaryGroupsOnlinePatientPayments),Color.Black,fontBold,0,4);
+				if(checkShowMerchantFees.Checked) {
+					queryObject.AddGroupSummaryField("Total Merchant Fees:","Amount",RpPaySheet.COLUMN_MERCHANT_FEE,SummaryOperation.Sum,new List<int>(summaryGroupsOnlinePatientPayments),Color.Black,fontBold,0,4);
+					queryObject.AddGroupSummaryField("Total Online Payments After Fees:","Amount",RpPaySheet.COLUMN_AFTER_FEE,SummaryOperation.Sum,new List<int>(summaryGroupsOnlinePatientPayments),Color.Black,fontBold,0,4);
 				}
 			}
 			if(queryObject!=null) {	//If we have any query objects to report, summarize the totals of each of their amt columns combined to include at the end of the report.
 				queryObject.AddGroupSummaryField("Total All Payments:","Amount","amt",SummaryOperation.Sum,new List<int>(summaryGroupsAllPayments),Color.Black,fontBold,0,20);
-				//If either of the "Show Fees" checkboxes is checked, summarize the totals of the fees from both the Patient Payment and Online Patient Payment groups to include at the end of this query object.
-				if(checkShowCareCreditFees.Checked) {
-					queryObject.AddGroupSummaryField("Total All CareCredit Fees:","Amount","CareCredit Fee",SummaryOperation.Sum,new List<int>(summaryGroupsAllPatientPayments),Color.Black,fontBold,0,4);
-				}
-				if(checkShowPayConnectFees.Checked) {
-					queryObject.AddGroupSummaryField("Total All PayConnect Fees:","Amount","PayConnect Fee",SummaryOperation.Sum,new List<int>(summaryGroupsAllPatientPayments),Color.Black,fontBold,0,4);
-				}
-				if(checkShowCareCreditFees.Checked || checkShowPayConnectFees.Checked) {
-					queryObject.AddGroupSummaryField("Total All Payments After Fees:","Amount","afterFee",SummaryOperation.Sum,new List<int>(summaryGroupsAllPayments),Color.Black,fontBold,0,4);
+				//With merchant fees shown, the fee total of the Patient Payment and Online Patient Payment groups, and all payments after fees.
+				if(checkShowMerchantFees.Checked) {
+					queryObject.AddGroupSummaryField("Total All Merchant Fees:","Amount",RpPaySheet.COLUMN_MERCHANT_FEE,SummaryOperation.Sum,new List<int>(summaryGroupsAllPatientPayments),Color.Black,fontBold,0,4);
+					queryObject.AddGroupSummaryField("Total All Payments After Fees:","Amount",RpPaySheet.COLUMN_AFTER_FEE,SummaryOperation.Sum,new List<int>(summaryGroupsAllPayments),Color.Black,fontBold,0,4);
 				}
 			}
 			report.AddPageNum(font);

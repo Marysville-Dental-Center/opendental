@@ -39,12 +39,17 @@ namespace OpenDental {
 			this.checkShowInOther = new System.Windows.Forms.CheckBox();
 			this.checkHidden = new System.Windows.Forms.CheckBox();
 			this.butDelete = new OpenDental.UI.Button();
+			this.checkShowInHistory = new System.Windows.Forms.CheckBox();
+			this.checkPerioFourQuads = new System.Windows.Forms.CheckBox();
+			this.labelHistProcCode = new System.Windows.Forms.Label();
+			this.textHistProcCode = new System.Windows.Forms.TextBox();
+			this.butHistProcCode = new OpenDental.UI.Button();
 			this.SuspendLayout();
 			// 
 			// butSave
 			// 
 			this.butSave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.butSave.Location = new System.Drawing.Point(584, 264);
+			this.butSave.Location = new System.Drawing.Point(584, 294);
 			this.butSave.Name = "butSave";
 			this.butSave.Size = new System.Drawing.Size(75, 24);
 			this.butSave.TabIndex = 99;
@@ -177,16 +182,70 @@ namespace OpenDental {
 			// 
 			this.butDelete.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
 			this.butDelete.Icon = OpenDental.UI.EnumIcons.DeleteX;
-			this.butDelete.Location = new System.Drawing.Point(12, 264);
+			this.butDelete.Location = new System.Drawing.Point(12, 294);
 			this.butDelete.Name = "butDelete";
 			this.butDelete.Size = new System.Drawing.Size(75, 24);
 			this.butDelete.TabIndex = 98;
 			this.butDelete.Text = "&Delete";
 			this.butDelete.Click += new System.EventHandler(this.butDelete_Click);
 			// 
+			// checkShowInHistory
+			// 
+			this.checkShowInHistory.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.checkShowInHistory.Location = new System.Drawing.Point(335, 28);
+			this.checkShowInHistory.Name = "checkShowInHistory";
+			this.checkShowInHistory.Size = new System.Drawing.Size(160, 20);
+			this.checkShowInHistory.TabIndex = 9;
+			this.checkShowInHistory.Text = "Show In History";
+			this.checkShowInHistory.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.checkShowInHistory.UseVisualStyleBackColor = true;
+			this.checkShowInHistory.CheckedChanged += new System.EventHandler(this.checkShowInHistory_CheckedChanged);
+			// 
+			// checkPerioFourQuads
+			// 
+			this.checkPerioFourQuads.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.checkPerioFourQuads.Location = new System.Drawing.Point(335, 51);
+			this.checkPerioFourQuads.Name = "checkPerioFourQuads";
+			this.checkPerioFourQuads.Size = new System.Drawing.Size(160, 20);
+			this.checkPerioFourQuads.TabIndex = 10;
+			this.checkPerioFourQuads.Text = "Perio Four Quadrants";
+			this.checkPerioFourQuads.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.checkPerioFourQuads.UseVisualStyleBackColor = true;
+			// 
+			// labelHistProcCode
+			// 
+			this.labelHistProcCode.Location = new System.Drawing.Point(12, 240);
+			this.labelHistProcCode.Name = "labelHistProcCode";
+			this.labelHistProcCode.Size = new System.Drawing.Size(136, 14);
+			this.labelHistProcCode.TabIndex = 0;
+			this.labelHistProcCode.Text = "History Proc Code";
+			this.labelHistProcCode.TextAlign = System.Drawing.ContentAlignment.TopRight;
+			// 
+			// textHistProcCode
+			// 
+			this.textHistProcCode.Location = new System.Drawing.Point(149, 236);
+			this.textHistProcCode.MaxLength = 255;
+			this.textHistProcCode.Name = "textHistProcCode";
+			this.textHistProcCode.Size = new System.Drawing.Size(100, 20);
+			this.textHistProcCode.TabIndex = 11;
+			// 
+			// butHistProcCode
+			// 
+			this.butHistProcCode.Location = new System.Drawing.Point(252, 235);
+			this.butHistProcCode.Name = "butHistProcCode";
+			this.butHistProcCode.Size = new System.Drawing.Size(24, 22);
+			this.butHistProcCode.TabIndex = 12;
+			this.butHistProcCode.Text = "...";
+			this.butHistProcCode.Click += new System.EventHandler(this.butHistProcCode_Click);
+			// 
 			// FormCodeGroupEdit
 			// 
-			this.ClientSize = new System.Drawing.Size(671, 300);
+			this.ClientSize = new System.Drawing.Size(671, 330);
+			this.Controls.Add(this.butHistProcCode);
+			this.Controls.Add(this.textHistProcCode);
+			this.Controls.Add(this.labelHistProcCode);
+			this.Controls.Add(this.checkPerioFourQuads);
+			this.Controls.Add(this.checkShowInHistory);
 			this.Controls.Add(this.butDelete);
 			this.Controls.Add(this.checkHidden);
 			this.Controls.Add(this.checkShowInOther);
@@ -228,5 +287,10 @@ namespace OpenDental {
 		private System.Windows.Forms.CheckBox checkShowInOther;
 		private System.Windows.Forms.CheckBox checkHidden;
 		private UI.Button butDelete;
+		private System.Windows.Forms.CheckBox checkShowInHistory;
+		private System.Windows.Forms.CheckBox checkPerioFourQuads;
+		private System.Windows.Forms.Label labelHistProcCode;
+		private System.Windows.Forms.TextBox textHistProcCode;
+		private UI.Button butHistProcCode;
 	}
 }

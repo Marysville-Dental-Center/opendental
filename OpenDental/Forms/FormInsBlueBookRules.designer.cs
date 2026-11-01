@@ -156,11 +156,11 @@ namespace OpenDental{
 			// labelUcrFeePercent
 			// 
 			this.labelUcrFeePercent.Anchor = System.Windows.Forms.AnchorStyles.None;
-			this.labelUcrFeePercent.Location = new System.Drawing.Point(306, 201);
+			this.labelUcrFeePercent.Location = new System.Drawing.Point(246, 201);
 			this.labelUcrFeePercent.Name = "labelUcrFeePercent";
-			this.labelUcrFeePercent.Size = new System.Drawing.Size(123, 21);
+			this.labelUcrFeePercent.Size = new System.Drawing.Size(183, 21);
 			this.labelUcrFeePercent.TabIndex = 272;
-			this.labelUcrFeePercent.Text = "UCR Fee Percent";
+			this.labelUcrFeePercent.Text = "Standard Provider Fee Percent";
 			this.labelUcrFeePercent.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
 			// 
 			// groupBlueBookSettings

@@ -8,184 +8,47 @@ using System.Threading.Tasks;
 
 namespace OpenDentBusiness {
 	public class RpServiceDateView {
+		///<summary>The 24.3 report's table (see ServiceDateViews.ToReportTable), now built by ServiceDateViews.Build from the rows of GetCoreTable, so
+		///the Service Date View window, the Account module's service-date view and service-date statements show the same rows.</summary>
 		public static DataTable GetData(long patNum,bool isFamily,bool isDetailed) {
+			Meth.NoCheckMiddleTierRole();//GetCoreTable makes the middle tier call.
+			ServiceDateViewOptions options=new ServiceDateViewOptions();
+			options.IsFamily=isFamily;
+			options.IsDetailed=isDetailed;
+			return ServiceDateViews.ToReportTable(GetRows(patNum,isFamily,options));
+		}
+
+		///<summary>The rows of the service-date view of a patient (isFamily false) or of the patient's whole family (patNum is then the guarantor), in
+		///display order. options.IsFamily is set from isFamily. A receipt (options.IsReceipt) reads the payment plan payments too, whatever
+		///PayPlansVersion is, so it lists every patient payment of its range (26.1 spec rule 3).</summary>
+		public static List<ServiceDateViewRow> GetRows(long patNum,bool isFamily,ServiceDateViewOptions options) {
+			Meth.NoCheckMiddleTierRole();//GetCoreTable makes the middle tier call.
+			options=options??new ServiceDateViewOptions();
+			options.IsFamily=isFamily;
+			bool includePayPlanSplits=options.IsReceipt && options.InvoiceItems==null;//Build treats an invoice as an invoice even when IsReceipt is set.
+			return ServiceDateViews.Build(ServiceDateViews.ReadCoreRows(GetCoreTable(patNum,isFamily,includePayPlanSplits)),options);
+		}
+
+		///<summary>One row per procedure and per transaction, each dated by the service it belongs to: the query of the 24.3 report, plus the
+		///ClinicNum, ProvNum, ParentNum (PayNum, ClaimNum or PayPlanNum), CodeNum, ProcCode, ToothNum, ToothRange and Surf columns. When isFamily is
+		///true, patNum is the guarantor and the whole family is included. Patient payment splits attached to a payment plan are returned only under
+		///PayPlansVersion 2, as in the 24.3 report, unless includePayPlanSplits is true (receipts): they then come back in every version, as
+		///'PatPay PayPlan' or 'PatPay Att. PayPlan' rows.</summary>
+		public static DataTable GetCoreTable(long patNum,bool isFamily,bool includePayPlanSplits=false) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				return Meth.GetTable(MethodBase.GetCurrentMethod(),patNum,isFamily,isDetailed);
+				return Meth.GetTable(MethodBase.GetCurrentMethod(),patNum,isFamily,includePayPlanSplits);
 			}
 			int payPlanVersion=PIn.Int(PrefC.GetStringNoCache(PrefName.PayPlansVersion));
 			if(payPlanVersion==0) {
 				payPlanVersion=1;
 			}
-			string command=$@"
-				/*top layer gets final columns for display*/
-				SELECT
-					IF(display.TranDate != '', '',display.ProcDate) AS 'Date',
-					display.TranDate AS 'Trans Date',
-					display.Patient,
-					display.Reference,
-					display.Charge,
-					display.Credit,
-					display.Pvdr,
-					display.InsBal,
-					display.AcctBal,
-					display.Type,
-					display.TranNum AS 'PrimaryKey',
-					display.PatNum
-				FROM(
-				/*cases out data from rows that we need, performing aggregate functions for day and overall totals.*/
-				SELECT
-					dup.Num,
-					IF(dup.Num = 2, 0,core.ProcNum) AS ProcNum,
-					(CASE dup.Num
-						WHEN 1
-							THEN IF(core.Type IN ('Proc','Adj-Att.','PatPay Att.','WriteOff-Att.','InsPay-Att.','PayPlan Charge Att.','PatPay Att. PayPlan','Unallocated'),1,2) -- get allocated items ordered before unallocated ones
-						WHEN 2
-							THEN IF(core.Type = 'Unallocated',1,2)
-						WHEN 3
-							THEN 4
-						WHEN 4
-							THEN 5
-					END) AS OrderingNum,
-					(CASE dup.Num
-						WHEN 1
-							THEN core.Type
-						WHEN 2
-							THEN 'Unallocated'
-						WHEN 3
-							THEN 'Day Total'
-						WHEN 4
-							THEN 'Overall Total'
-					END) AS 'Type',
-					(CASE dup.Num
-						WHEN 1
-							THEN core.ProcDate
-						WHEN 2
-							THEN core.ProcDate
-						WHEN 3
-							THEN core.ProcDate
-						WHEN 4
-							THEN NULL
-					END) AS 'ProcDate',
-					(CASE dup.Num
-						WHEN 1
-							THEN IF(core.Type = 'Proc', '',core.TranDate)
-						WHEN 2
-							THEN ''
-						WHEN 3
-							THEN ''
-						WHEN 4
-							THEN NULL
-					END) AS 'TranDate',
-					(CASE dup.Num
-						WHEN 1
-							THEN core.Patient
-						WHEN 2
-							THEN '' -- intentionaly blank
-						WHEN 3
-							THEN ''
-						WHEN 4
-							THEN '' -- intentionally blank
-					END) AS 'Patient',
-					(CASE dup.Num
-						WHEN 1
-							THEN IF(core.Type IN ('Adj-Att.','PatPay Att.','WriteOff-Att.','InsPay-Att.','PayPlan Charge Att.','PatPay Att. PayPlan'),CONCAT('  ',core.Reference),core.Reference)
-						WHEN 2
-							THEN 'Unallocated Trans'
-						WHEN 3
-							THEN CONCAT(REPEAT(' ',2),'Total for Date')
-						WHEN 4
-							THEN {(isFamily ? "'Family Total:'" : "'Patient Total:'" )}
-					END) AS 'Reference',
-					(CASE dup.Num
-						WHEN 1
-							THEN FORMAT(SUM(core.Charge),2)
-						WHEN 2
-							THEN '' -- intentionaly blank
-						WHEN 3
-							THEN FORMAT(SUM(core.Charge),2) -- total for date
-						WHEN 4
-							THEN FORMAT(SUM(core.Charge),2) -- overall total
-					END) AS 'Charge',
-					(CASE dup.Num
-						WHEN 1
-							THEN FORMAT(SUM(core.Credit),2)
-						WHEN 2
-							THEN '' -- intentionaly blank
-						WHEN 3
-							THEN FORMAT(SUM(core.Credit),2) -- total for date
-						WHEN 4
-							THEN FORMAT(SUM(core.Credit),2) -- overall total
-					END) AS 'Credit',
-					(CASE dup.Num
-						WHEN 1
-							THEN core.Prov
-						WHEN 2
-							THEN '' -- intentionaly blank
-						WHEN 3
-							THEN '' -- intentionally blank
-						WHEN 4
-							THEN '' -- intentionally blank
-					END) AS 'Pvdr',
-					(CASE dup.Num
-						WHEN 1
-							THEN {(isDetailed ? "IF(core.Type = 'Proc', FORMAT(core.InsCredits,2),'')": "''")} 
-						WHEN 2
-							THEN '' -- intentionally blank
-						WHEN 3
-							THEN FORMAT(SUM(IF(core.Type = 'Proc', core.InsCredits,0)),2) -- total for date
-						WHEN 4
-							THEN FORMAT(SUM(IF(core.Type = 'Proc', core.InsCredits,0)),2) -- overall total
-					END) AS 'InsBal',
-					(CASE dup.Num
-						WHEN 1
-							THEN {(isDetailed ? "IF(core.Type = 'Proc', FORMAT(core.Charge - (core.ProcCredits + core.InsCredits),2),'')" : "''")}
-						WHEN 2
-							THEN '' -- intentionally blank
-						WHEN 3
-							THEN FORMAT(SUM(core.Charge - core.Credit - core.InsCredits),2) -- total for date
-						WHEN 4
-							THEN FORMAT(SUM(core.Charge - core.Credit - core.InsCredits),2) -- overall total
-					END) AS 'AcctBal',
-					TranNum,
-					PatNum
-				FROM(
-				  {GetCoreQuery(patNum,isFamily,payPlanVersion)}
-				) core
-				INNER JOIN(
-				/*add 2 extra rows to every transaction so we can use the data more than once for per day and overall totals without running the query again*/
-					SELECT 1 AS Num
-					UNION ALL
-					SELECT 2
-					UNION ALL
-					SELECT 3
-					UNION ALL
-					SELECT 4
-				) dup
-					ON IF(dup.Num = 2 AND (core.Type LIKE '%Att.' || core.Type LIKE 'Proc'),FALSE,TRUE) -- only join on the 2 row when there are unallocated transactions on a day. 
-				GROUP BY (CASE WHEN dup.Num = 1 -- per transaction
-								THEN CONCAT(core.TranNum,'|',core.ProcDate,'|',core.Type) -- unique identifier for transaction rows
-							WHEN dup.Num IN (2,3) -- per date of service, including an extra row per date for unallocated transactions identifier
-								THEN CONCAT(dup.Num,'-',core.ProcDate) -- unique identifier for date of service row
-							WHEN dup.Num = 4 -- ending total for family/patient
-								THEN dup.Num -- only need to have one row here
-						END)
-				) display
-				/*ensure final order is what we need it to be*/
-				ORDER BY
-					ISNULL(display.ProcDate),
-					display.ProcDate,
-					display.OrderingNum,
-					display.Patient,
-					display.ProcNum DESC,
-					display.TranDate,
-					FIELD(display.Type,'Proc','Adj-Att.','PatPay Att.','WriteOff-Att.','InsPay-Att.','PayPlan Charge Att.','PatPay Att. PayPlan','Unallocated','PatPay','WriteOff','Adj','InsPay','PayPlan Credit','Dynamic PayPlan Credit','PayPlan Charge','PatPay PayPlan','Day Total','Overall Total')
-			";
+			string command=GetCoreQuery(patNum,isFamily,payPlanVersion,includePayPlanSplits);
 			return ReportsComplex.RunFuncOnReportServer(() => Db.GetTable(command));
 		}
 
-		///<summary>Get core data ordered by procedure date and transactions attached to procs first, with specific ordering for transaction type. 
+		///<summary>Get core data ordered by procedure date and transactions attached to procs first, with specific ordering for transaction type.
 		///Using aging preference to get payment plan info. Defining transaction type separate from reference for specific ordering.</summary>
-		private static string GetCoreQuery(long patNum,bool isFamily,int payPlanVersion) {
+		private static string GetCoreQuery(long patNum,bool isFamily,int payPlanVersion,bool includePayPlanSplits) {
 			Meth.NoCheckMiddleTierRole();//Private method.
 			string wherePatOrFam=isFamily ? $"patient.Guarantor={POut.Long(patNum)}":$"patient.PatNum={POut.Long(patNum)}";
 			#region Procedures
@@ -211,7 +74,8 @@ namespace OpenDentBusiness {
 				) AS 'ProcCredits', 
 				COALESCE((SELECT SUM(WriteOff) + SUM(InsPayEst) FROM claimproc WHERE claimproc.Status={POut.Int((int)ClaimProcStatus.NotReceived)} 
 					AND claimproc.ProcNum=procedurelog.ProcNum 
-				),0) AS 'InsCredits' 
+				),0) AS 'InsCredits', 
+				procedurelog.ClinicNum,procedurelog.ProvNum,0 AS 'ParentNum',procedurelog.CodeNum,procedurecode.ProcCode,procedurelog.ToothNum,procedurelog.ToothRange,procedurelog.Surf 
 				FROM procedurelog 
 				INNER JOIN procedurecode ON procedurecode.CodeNum=procedurelog.CodeNum 
 				INNER JOIN patient ON patient.PatNum=procedurelog.PatNum 
@@ -235,13 +99,16 @@ namespace OpenDentBusiness {
 				0 AS 'InsPayEst',
 				(SELECT Abbr FROM provider WHERE provider.ProvNum=adjustment.ProvNum) AS Prov,
 				0 AS 'ProcCredits',
-				0 AS 'InsCredits' 
+				0 AS 'InsCredits', 
+				adjustment.ClinicNum,adjustment.ProvNum,0 AS 'ParentNum',0 AS 'CodeNum','' AS 'ProcCode','' AS 'ToothNum','' AS 'ToothRange','' AS 'Surf' 
 				FROM adjustment 
 				INNER JOIN patient ON patient.PatNum=adjustment.PatNum 
 				WHERE {wherePatOrFam} ";
 			#endregion
 			#region Pat Payments
-			//Get all payments, except where they should only show inside payplan
+			//Get all payments, except where they should only show inside payplan. Receipts (includePayPlanSplits) get the payment plan payments in
+			//every version.
+			bool hasPayPlanSplits=(payPlanVersion==2 || includePayPlanSplits);
 			command+=$@"
 				UNION ALL 
 				SELECT (CASE WHEN paysplit.ProcNum > 0 AND paysplit.PayPlanNum > 0 THEN 'PatPay Att. PayPlan' 
@@ -262,10 +129,11 @@ namespace OpenDentBusiness {
 				0 AS 'InsPayEst', 
 				(SELECT Abbr FROM provider WHERE provider.ProvNum = paysplit.ProvNum) AS Prov, 
 				0 AS 'ProcCredits', 
-				0 AS 'InsCredits' 
+				0 AS 'InsCredits', 
+				paysplit.ClinicNum,paysplit.ProvNum,paysplit.PayNum AS 'ParentNum',0 AS 'CodeNum','' AS 'ProcCode','' AS 'ToothNum','' AS 'ToothRange','' AS 'Surf' 
 				FROM paysplit 
 				INNER JOIN patient ON patient.PatNum=paysplit.PatNum 
-				WHERE {(payPlanVersion==2 ? "TRUE": "paysplit.PayPlanNum=0")} 
+				WHERE {(hasPayPlanSplits ? "TRUE": "paysplit.PayPlanNum=0")}
 				AND {wherePatOrFam} ";
 			#endregion
 			#region Ins Payments
@@ -286,7 +154,8 @@ namespace OpenDentBusiness {
 				0 AS 'InsPayEst', 
 				(SELECT Abbr FROM provider WHERE provider.ProvNum=claimproc.ProvNum) AS Prov, 
 				0 AS 'ProcCredits', 
-				0 AS 'InsCredits' 
+				0 AS 'InsCredits', 
+				claimproc.ClinicNum,claimproc.ProvNum,claimproc.ClaimNum AS 'ParentNum',0 AS 'CodeNum','' AS 'ProcCode','' AS 'ToothNum','' AS 'ToothRange','' AS 'Surf' 
 				FROM claimproc 
 				INNER JOIN patient ON patient.PatNum=claimproc.PatNum 
 				WHERE claimproc.Status IN({POut.Int((int)ClaimProcStatus.Received)},{POut.Int((int)ClaimProcStatus.Supplemental)},{POut.Int((int)ClaimProcStatus.CapClaim)}) 
@@ -316,7 +185,8 @@ namespace OpenDentBusiness {
 				IF(claimproc.Status = 0,claimproc.InsPayEst,0) AS 'InsPayEst', 
 				(SELECT Abbr FROM provider WHERE provider.ProvNum = claimproc.ProvNum) AS Prov, 
 				0 AS 'ProcCredits', 
-				0 AS 'InsCredits' 
+				0 AS 'InsCredits', 
+				claimproc.ClinicNum,claimproc.ProvNum,claimproc.ClaimNum AS 'ParentNum',0 AS 'CodeNum','' AS 'ProcCode','' AS 'ToothNum','' AS 'ToothRange','' AS 'Surf' 
 				FROM claimproc 
 				INNER JOIN patient ON patient.PatNum=claimproc.PatNum 
 				WHERE IF(claimproc.Status IN ({POut.Int((int)ClaimProcStatus.Received)},{POut.Int((int)ClaimProcStatus.Supplemental)}),ABS(claimproc.WriteOff) > 0.005,(ABS(claimproc.WriteOff) > 0.005 OR claimproc.InsPayEst > 0)) 
@@ -341,7 +211,8 @@ namespace OpenDentBusiness {
 					0 AS 'InsPayEst', 
 					(SELECT Abbr FROM provider WHERE provider.ProvNum = payplancharge.ProvNum) AS Prov, 
 					0 AS 'ProcCredits', 
-					0 AS 'InsCredits' 
+					0 AS 'InsCredits', 
+					COALESCE(payplancharge.ClinicNum,0) AS 'ClinicNum',COALESCE(payplancharge.ProvNum,0) AS 'ProvNum',payplan.PayPlanNum AS 'ParentNum',0 AS 'CodeNum','' AS 'ProcCode','' AS 'ToothNum','' AS 'ToothRange','' AS 'Surf' 
 					FROM payplan 
 					LEFT JOIN payplancharge ON payplancharge.PayPlanNum=payplan.PayPlanNum AND payplancharge.ChargeType=0 
 					INNER JOIN patient ON patient.PatNum=payplan.PatNum 
@@ -371,7 +242,8 @@ namespace OpenDentBusiness {
 					0 AS 'InsPayEst', 
 					(SELECT Abbr FROM provider WHERE provider.ProvNum=payplancharge.ProvNum) AS Prov, 
 					0 AS 'ProcCredits', 
-					0 AS 'InsCredits' 
+					0 AS 'InsCredits', 
+					payplancharge.ClinicNum,payplancharge.ProvNum,payplancharge.PayPlanNum AS 'ParentNum',0 AS 'CodeNum','' AS 'ProcCode','' AS 'ToothNum','' AS 'ToothRange','' AS 'Surf' 
 					FROM payplancharge 
 					LEFT JOIN payplan ON payplan.PayplanNum=payplancharge.PayPlanNum 
 					INNER JOIN patient ON patient.PatNum=payplancharge.PatNum 
@@ -398,7 +270,8 @@ namespace OpenDentBusiness {
 					0 AS 'InsPayEst', 
 					(SELECT Abbr FROM provider WHERE provider.ProvNum=payplancharge.ProvNum) AS Prov, 
 					0 AS 'ProcCredits', 
-					0 AS 'InsCredits' 
+					0 AS 'InsCredits', 
+					payplancharge.ClinicNum,payplancharge.ProvNum,payplancharge.PayPlanNum AS 'ParentNum',0 AS 'CodeNum','' AS 'ProcCode','' AS 'ToothNum','' AS 'ToothRange','' AS 'Surf' 
 					FROM payplancharge 
 					INNER JOIN patient ON patient.PatNum=payplancharge.PatNum 
 					WHERE payplancharge.ChargeType={POut.Int((int)PayPlanChargeType.Credit)} 
@@ -428,7 +301,8 @@ namespace OpenDentBusiness {
 					0 AS 'InsPayEst', 
 					(SELECT Abbr FROM provider WHERE provider.ProvNum = prodlink.ProvNum) AS Prov, 
 					0 AS 'ProcCredits', 
-					0 AS 'InsCredits' 
+					0 AS 'InsCredits', 
+					COALESCE(prodlink.ClinicNum,0) AS 'ClinicNum',COALESCE(prodlink.ProvNum,0) AS 'ProvNum',payplan.PayPlanNum AS 'ParentNum',0 AS 'CodeNum','' AS 'ProcCode','' AS 'ToothNum','' AS 'ToothRange','' AS 'Surf' 
 					FROM payplanlink
 					INNER JOIN payplan ON payplan.PayPlanNum = payplanlink.PayPlanNum 
 					INNER JOIN patient ON patient.PatNum=payplan.PatNum 

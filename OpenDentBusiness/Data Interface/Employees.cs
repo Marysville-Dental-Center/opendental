@@ -8,7 +8,7 @@ using System.Reflection;
 
 namespace OpenDentBusiness{
 	///<summary></summary>
-	public class Employees{
+	public partial class Employees{
 		#region Update
 		///<summary>Will throw exception if the employee has no name.</summary>
 		public static void Update(Employee employee) {
@@ -43,9 +43,11 @@ namespace OpenDentBusiness{
 				Meth.GetVoid(MethodBase.GetCurrentMethod(),employeeNum);
 				return;
 			}
-			//Get the last clockevent for the employee. Will include clockevent with "in" before NOW, and "out" anytime before 23:59:59 of TODAY.
+			//Get the last clockevent for the employee. Will include clockevent with "in" before NOW, and "out" at any time.
+			//Open Dental 26.1.63 (M2-EMP): a clock-out can be dated after today, so "out" is no longer limited to 23:59:59 of TODAY. Such an event sorts
+			//first and shows as a manual entry below, the way a clock-out later today already did: the employee stays clocked in until then.
 			string command = @"SELECT * FROM clockevent 
-				WHERE TimeDisplayed2<="+DbHelper.DateAddSecond(DbHelper.DateAddDay(DbHelper.Curdate(),"1"),"-1")+" AND TimeDisplayed1<="+DbHelper.Now()+@"
+				WHERE TimeDisplayed1<="+DbHelper.Now()+@"
 				AND EmployeeNum="+POut.Long(employeeNum)+@"
 				ORDER BY IF(YEAR(TimeDisplayed2) < 1880,TimeDisplayed1,TimeDisplayed2) DESC";
 			command=DbHelper.LimitOrderBy(command,1);

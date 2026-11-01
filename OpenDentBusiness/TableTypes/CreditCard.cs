@@ -104,7 +104,10 @@ namespace OpenDentBusiness {
 			List<string> listTokens=new List<string>();
 			if(!string.IsNullOrEmpty(XChargeToken)) {
 				if(CCSource.In(CreditCardSource.EdgeExpressRCM,CreditCardSource.EdgeExpressCNP,CreditCardSource.EdgeExpressPaymentPortal)) {
-					listTokens.Add("EdgeExpress");
+					listTokens.Add("Global Payments V1");//EdgeExpress, renamed in 25.4.
+				}
+				else if(CCSource==CreditCardSource.MeetInTheCloudTerminal) {
+					listTokens.Add("Global Payments V2");
 				}
 				else {
 					listTokens.Add("XCharge");

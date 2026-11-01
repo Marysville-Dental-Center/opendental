@@ -43,6 +43,31 @@ namespace OpenDental {
 			}
 			comboCodeGroupFixed.Items.AddListEnum<EnumCodeGroupFixed>(listEnumCodeGroupFixeds);
 			comboCodeGroupFixed.SetSelectedEnum(CodeGroup.CodeGroupFixed);
+			//Open Dental 26.1: insurance history options.
+			checkShowInHistory.Checked=CodeGroup.ShowInHistory;
+			textHistProcCode.Text=CodeGroup.HistProcCode;
+			checkPerioFourQuads.Checked=CodeGroup.IsPerioFourQuads;
+			SetHistoryEnabled();
+		}
+
+		///<summary>History Proc Code and Perio Four Quadrants only apply when Show In History is checked.</summary>
+		private void SetHistoryEnabled() {
+			textHistProcCode.Enabled=checkShowInHistory.Checked;
+			butHistProcCode.Enabled=checkShowInHistory.Checked;
+			checkPerioFourQuads.Enabled=checkShowInHistory.Checked;
+		}
+
+		private void checkShowInHistory_CheckedChanged(object sender,EventArgs e) {
+			SetHistoryEnabled();
+		}
+
+		private void butHistProcCode_Click(object sender,EventArgs e) {
+			using FormProcCodes formProcCodes=new FormProcCodes();
+			formProcCodes.IsSelectionMode=true;
+			if(formProcCodes.ShowDialog()!=DialogResult.OK) {
+				return;
+			}
+			textHistProcCode.Text=ProcedureCodes.GetStringProcCode(formProcCodes.CodeNumSelected,doThrowIfMissing:false);
 		}
 
 		private void butProcCodesAdd_Click(object sender,EventArgs e) {
@@ -83,7 +108,13 @@ namespace OpenDental {
 				return;
 			}
 			if(CodeGroup.CodeGroupFixed!=EnumCodeGroupFixed.None
-				&& !MsgBox.Show(this,MsgBoxButtons.YesNo,"This is a fixed code group. Sheet fields and Insurance History that use it will find no codes after it is deleted. Continue?"))
+				&& !MsgBox.Show(this,MsgBoxButtons.YesNo,"This is a fixed code group. Sheet fields that use it will find no codes after it is deleted. Continue?"))
+			{
+				return;
+			}
+			if(CodeGroup.ShowInHistory
+				&& !MsgBox.Show(this,MsgBoxButtons.YesNo,"This code group is shown in Insurance History. Its row disappears when the group is deleted. "
+				+"Existing history procedures are kept. Continue?"))
 			{
 				return;
 			}
@@ -105,6 +136,31 @@ namespace OpenDental {
 				MessageBox.Show(this,error);
 				return;
 			}
+			//Open Dental 26.1 insurance history options: History Proc Code is required with Show In History, must be a valid code, and should be one of
+			//the group's own codes; Perio Four Quadrants requires Show In History.
+			string histProcCode=textHistProcCode.Text.Trim();
+			if(ProcedureCodes.IsValidCode(histProcCode)) {
+				histProcCode=ProcedureCodes.GetProcCode(histProcCode).ProcCode;
+			}
+			bool isPerioFourQuads=checkShowInHistory.Checked && checkPerioFourQuads.Checked;
+			string errorHist=CodeGroupHistoryOptions.GetError(checkShowInHistory.Checked,histProcCode,isPerioFourQuads);
+			if(errorHist!="") {
+				MessageBox.Show(this,errorHist);
+				return;
+			}
+			string warningHist=CodeGroupHistoryOptions.GetWarning(checkShowInHistory.Checked,histProcCode,procCodes);
+			if(warningHist!="" && MessageBox.Show(this,warningHist+"\r\n"+Lan.g(this,"Save anyway?"),"",MessageBoxButtons.YesNo)!=DialogResult.Yes) {
+				return;
+			}
+			if(CodeGroup.ShowInHistory && !checkShowInHistory.Checked
+				&& !MsgBox.Show(this,MsgBoxButtons.YesNo,"This code group's row disappears from Insurance History. Existing history procedures are kept. Continue?"))
+			{
+				return;
+			}
+			if(!CodeGroup.IsHidden && checkHidden.Checked && checkShowInHistory.Checked) {
+				MsgBox.Show(this,"Hidden code groups keep their Insurance History row while Show In History is checked.");
+			}
+			CodeGroupHistoryOptions.Apply(CodeGroup,checkShowInHistory.Checked,histProcCode,isPerioFourQuads);
 			CodeGroup.CodeGroupFixed=comboCodeGroupFixed.GetSelected<EnumCodeGroupFixed>();
 			CodeGroup.GroupName=textGroupName.Text;
 			CodeGroup.ShowInFrequency=checkShowInFreq.Checked;

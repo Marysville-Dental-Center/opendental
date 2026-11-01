@@ -30,9 +30,11 @@ namespace VendorDirectTests.Foundation {
 		[TestMethod]
 		public void ProgramName_VendorDirectNamesAreAppendedLast() {
 			string[] arrayNames=Enum.GetNames(typeof(ProgramName));
+			//Later program links are appended after these four (V-BRIDGE1), so check the block that follows ZImage.
 			CollectionAssert.AreEqual(new[] { "Microsoft365Email","GmailApi","USPSAddresses","PostcardMania" },
-				arrayNames.Skip(arrayNames.Length-4).ToArray());
+				arrayNames.Skip(Array.IndexOf(arrayNames,"ZImage")+1).Take(4).ToArray());
 			Assert.AreEqual((int)ProgramName.ZImage+1,(int)ProgramName.Microsoft365Email,"Existing values keep their numbers.");
+			Assert.IsTrue((int)ProgramName.MeetInTheCloud>(int)ProgramName.PostcardMania,"Global Payments V2 is appended after the F0 names.");
 		}
 
 		[TestMethod]

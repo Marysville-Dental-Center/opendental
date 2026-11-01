@@ -36,6 +36,8 @@ namespace OpenDental {
 			this.label11 = new System.Windows.Forms.Label();
 			this.label2 = new System.Windows.Forms.Label();
 			this.labelExtensionNote = new System.Windows.Forms.Label();
+			this.labelStatus = new System.Windows.Forms.Label();
+			this.labelPrinterRule = new System.Windows.Forms.Label();
 			this.SuspendLayout();
 			// 
 			// butSave
@@ -152,10 +154,27 @@ namespace OpenDental {
 			this.labelExtensionNote.Size = new System.Drawing.Size(233, 33);
 			this.labelExtensionNote.TabIndex = 179;
 			this.labelExtensionNote.Text = "The file extension the selected virtual printer writes to (i.e. pdf, xps, etc.)";
+			//
+			// labelStatus
+			//
+			this.labelStatus.Location = new System.Drawing.Point(404, 74);
+			this.labelStatus.Name = "labelStatus";
+			this.labelStatus.Size = new System.Drawing.Size(100, 16);
+			this.labelStatus.TabIndex = 180;
+			this.labelStatus.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			//
+			// labelPrinterRule
+			//
+			this.labelPrinterRule.Location = new System.Drawing.Point(117, 94);
+			this.labelPrinterRule.Name = "labelPrinterRule";
+			this.labelPrinterRule.Size = new System.Drawing.Size(387, 14);
+			this.labelPrinterRule.TabIndex = 181;
 			// 
 			// FormPrinterEdit
 			// 
 			this.ClientSize = new System.Drawing.Size(516, 273);
+			this.Controls.Add(this.labelPrinterRule);
+			this.Controls.Add(this.labelStatus);
 			this.Controls.Add(this.labelExtensionNote);
 			this.Controls.Add(this.label2);
 			this.Controls.Add(this.label11);
@@ -189,5 +208,7 @@ namespace OpenDental {
 		private System.Windows.Forms.Label label11;
 		private System.Windows.Forms.Label label2;
 		private System.Windows.Forms.Label labelExtensionNote;
+		private System.Windows.Forms.Label labelStatus;
+		private System.Windows.Forms.Label labelPrinterRule;
 	}
 }

@@ -66,7 +66,8 @@ namespace OpenDental{
 			//button.Style=ODToolBarButtonStyle.Label;
 			//ToolBarMain.Buttons.Add(button);
 			//ToolBarMain.Buttons.Add(new ODToolBarButton("",2,"Go Forward One Page","Fwd"));
-			ToolBarMain.Buttons.Add(new ODToolBarButton(Lan.g(this,"Export"),2,Lan.g(this,"Export the Account Grid"),"Export"));
+			ToolBarMain.Buttons.Add(new ODToolBarButton(Lan.g(this,"Export .txt"),2,Lan.g(this,"Export the transaction history as a tab delimited .txt file"),"Export .txt"));
+			ToolBarMain.Buttons.Add(new ODToolBarButton(Lan.g(this,"Export .csv"),2,Lan.g(this,"Export the transaction history as a comma delimited .csv file"),"Export .csv"));
 			ToolBarMain.Buttons.Add(new ODToolBarButton(ODToolBarButtonStyle.Separator));
 		}
 
@@ -85,8 +86,11 @@ namespace OpenDental{
 					ToolBarClick toolBarClick=Print_Click;
 					this.BeginInvoke(toolBarClick);
 					break;
-				case "Export":
-					Export_Click();
+				case "Export .txt":
+					Export_Click(GridExportFormat.Txt);
+					break;
+				case "Export .csv":
+					Export_Click(GridExportFormat.Csv);
 					break;
 			}
 		}
@@ -280,16 +284,9 @@ namespace OpenDental{
 			}
 		}
 
-		private void Export_Click() {
-			//FillGrid();//this is in case the date range has been changed but the grid has not been refreshed to reflect the new date range, so the date range on the report will match the data in the grid.
-			//List<Tuple<string,string>> listOtherDetails=new List<Tuple<string,string>>() {
-			//	Tuple.Create(labelDateFrom.Text,PIn.Date(textDateFrom.Text).ToShortDateString()),
-			//	Tuple.Create(labelDateTo.Text,PIn.Date(textDateTo.Text).ToShortDateString())
-			//};
-			gridMain.Export(gridMain.Title);//listOtherDetails:listOtherDetails);
-			//if(!string.IsNullOrEmpty(msg)) {
-			//	MsgBox.Show(this,msg);
-			//}
+		///<summary>24.4: exports the rows the grid shows (after the date, amount and text filters) as .txt or .csv, named after the grid title.</summary>
+		private void Export_Click(GridExportFormat gridExportFormat) {
+			gridMain.ExportAs(gridMain.Title,gridExportFormat);
 		}
 
 		private void gridMain_CellDoubleClick(object sender,ODGridClickEventArgs e) {

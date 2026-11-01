@@ -2797,6 +2797,7 @@ namespace OpenDental.UI{
 								,_widthWeekAppt
 								,(schedCur.StopTime-schedCur.StartTime).Hours*_heightLine*_rowsPerHr+(schedCur.StopTime-schedCur.StartTime).Minutes*_heightLine/_minPerRow);
 						}
+						DrawOpBackgroundProvTime(g,provSchedsForOp,d*_widthWeekDay+i*_widthWeekAppt,_widthWeekAppt);//25.2, ControlApptPanel.TimeBars.cs
 					}
 				}
 			}
@@ -2840,6 +2841,7 @@ namespace OpenDental.UI{
 							,(schedCur.StopTime-schedCur.StartTime).Hours*_heightLine*_rowsPerHr//6
 								+(schedCur.StopTime-schedCur.StartTime).Minutes*_heightLine/_minPerRow);//10
 					}
+					DrawOpBackgroundProvTime(g,provSchedsForOp,i*_widthOpCol,_widthOpCol);//25.2, ControlApptPanel.TimeBars.cs
 					//now, fill up to 2 timebars along the left side of each rectangle.
 					foreach(Schedule schedCur in provSchedsForOp) {
 						if(schedCur.Ops.Count==0) {//if this schedule is not assigned to specific ops, skip
@@ -3511,6 +3513,7 @@ namespace OpenDental.UI{
 				g.FillPath(brushBack,graphicsPathRightSide);
 			}
 			g.FillPath(_brushWhite,graphicsPathLeftSide);
+			DrawTimeBarSecondaryNoProvTime(g,dataRoww,graphicsPathLeftSide);//25.3, ControlApptPanel.TimeBars.cs
 			//g.FillRectangle(_brushWhite,0,0,8f,totalHeight);
 			for(int i=0;i<patternShowing.Length;i++) {//Info.MyApt.Pattern.Length;i++){
 				float heightOverflow=0;//used to remove the overflowed line height in situations where an appt has 40 minutes scheduled on a 15 minute time increment
@@ -3999,6 +4002,8 @@ namespace OpenDental.UI{
 							text=dataRoww["wkPhone"].ToString();
 						}
 						break;
+					case EnumApptViewElement.PreAuthFlag://26.1, drawn in ControlApptPanel.PreAuth.cs
+						return DrawElementPreAuthFlag(g,pointDraw,stackBehavior,align,dataRoww,listApptViewItems[idxItem],widthAppt,heightAppt,isNote);
 				}
 			#endregion Fill Text
 			object[] parameters={ dataRoww["PatNum"].ToString(),listApptViewItems[idxItem].PatFieldDefNum,text };
@@ -5002,6 +5007,9 @@ namespace OpenDental.UI{
 						h=g.MeasureString(s,font,widthBubble-(int)x).Height;
 						g.DrawString(s,font,brush,new RectangleF(x,y,widthBubble-(int)x,h));
 						y+=h;
+						continue;
+					case DisplayFields26_1.ApptBubblePreAuthFlag://26.1, drawn in ControlApptPanel.PreAuth.cs
+						y=DrawBubblePreAuthFlag(g,font,dataRow,x,y,widthBubble);
 						continue;
 				}
 			}

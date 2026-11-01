@@ -80,6 +80,9 @@ namespace OpenDentBusiness.SheetFramework {
 		///<summary>Gets account tables by calling AccountModules.GetAccount and then appends dataRows together into a single table.
 		///DataSet should be prefilled with AccountModules.GetAccount() before calling this method.</summary>
 		public static DataTable GetTable_StatementMain(DataSet dataSet,Statement stmt) {
+			if(Statements.IsShownInServiceDateView(stmt)) {//Open Dental 26.1: statement.IsServiceDateView (M2-SDV).
+				return Statements.GetServiceDateViewMainTable(dataSet,stmt);
+			}
 			DataTable retVal=null;
 			foreach(DataTable t in dataSet.Tables) {
 				if(!t.TableName.StartsWith("account")) {

@@ -30,6 +30,8 @@ namespace OpenDental {
 			this.textContent = new OpenDental.TextBoxWiki();
 			this.webBrowserWiki = new System.Windows.Forms.WebBrowser();
 			this.butDelete = new OpenDental.UI.Button();
+			this.butCompare = new OpenDental.UI.Button();
+			this.labelNotAuthorized = new System.Windows.Forms.Label();
 			this.SuspendLayout();
 			// 
 			// textNumbers
@@ -113,9 +115,31 @@ namespace OpenDental {
 			this.butDelete.Text = "Delete";
 			this.butDelete.Click += new System.EventHandler(this.butDelete_Click);
 			// 
+			// butCompare
+			// 
+			this.butCompare.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			this.butCompare.Location = new System.Drawing.Point(1067, 94);
+			this.butCompare.Name = "butCompare";
+			this.butCompare.Size = new System.Drawing.Size(75, 24);
+			this.butCompare.TabIndex = 86;
+			this.butCompare.Text = "Compare";
+			this.butCompare.Click += new System.EventHandler(this.butCompare_Click);
+			// 
+			// labelNotAuthorized
+			// 
+			this.labelNotAuthorized.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			this.labelNotAuthorized.Location = new System.Drawing.Point(1064, 128);
+			this.labelNotAuthorized.Name = "labelNotAuthorized";
+			this.labelNotAuthorized.Size = new System.Drawing.Size(84, 96);
+			this.labelNotAuthorized.TabIndex = 87;
+			this.labelNotAuthorized.Text = "This page is locked. Editing drafts needs the Wiki Admin permission.";
+			this.labelNotAuthorized.Visible = false;
+			// 
 			// FormWikiDrafts
 			// 
 			this.ClientSize = new System.Drawing.Size(1154, 638);
+			this.Controls.Add(this.labelNotAuthorized);
+			this.Controls.Add(this.butCompare);
 			this.Controls.Add(this.butDelete);
 			this.Controls.Add(this.butEdit);
 			this.Controls.Add(this.textContent);
@@ -139,5 +163,7 @@ namespace OpenDental {
 		private System.Windows.Forms.TextBox textNumbers;
 		private UI.Button butEdit;
 		private UI.Button butDelete;
+		private UI.Button butCompare;
+		private System.Windows.Forms.Label labelNotAuthorized;
 	}
 }

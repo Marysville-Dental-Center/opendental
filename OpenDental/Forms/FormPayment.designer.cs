@@ -78,6 +78,8 @@
 		private System.Windows.Forms.DateTimePicker datePickTo;
 		private System.Windows.Forms.DateTimePicker datePickFrom;
 		private UI.ComboBox comboProviderOutstandingFilter;
+		private System.Windows.Forms.Label labelInvoiceOutstandingFilter;
+		private UI.ComboBox comboInvoiceOutstandingFilter;
 		private OpenDental.UI.CheckBox checkShowSuperfamily;
 		private System.Windows.Forms.Label label9;
 		private UI.Button butShowHide;
@@ -198,6 +200,8 @@
 			this.labelPatOutstandingFilter = new System.Windows.Forms.Label();
 			this.labelClinicOutstandingFilter = new System.Windows.Forms.Label();
 			this.labelProvOutstandingFilter = new System.Windows.Forms.Label();
+			this.labelInvoiceOutstandingFilter = new System.Windows.Forms.Label();
+			this.comboInvoiceOutstandingFilter = new OpenDental.UI.ComboBox();
 			this.butClear = new OpenDental.UI.Button();
 			this.label13 = new System.Windows.Forms.Label();
 			this.textSplitTotal = new System.Windows.Forms.TextBox();
@@ -441,7 +445,7 @@
 			this.panelEdgeExpress.Name = "panelEdgeExpress";
 			this.panelEdgeExpress.Size = new System.Drawing.Size(75, 26);
 			this.panelEdgeExpress.TabIndex = 119;
-			this.panelEdgeExpress.Text = "EdgeExpress";
+			this.panelEdgeExpress.Text = "Global Payments V1";
 			this.panelEdgeExpress.Visible = false;
 			this.panelEdgeExpress.MouseClick += new System.Windows.Forms.MouseEventHandler(this.panelEdgeExpress_MouseClick);
 			// 
@@ -668,9 +672,9 @@
 			this.tabControlCharges.Controls.Add(this.tabPageOutstanding);
 			this.tabControlCharges.Controls.Add(this.tabPageTreatPlan);
 			this.tabControlCharges.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F);
-			this.tabControlCharges.Location = new System.Drawing.Point(498, 84);
+			this.tabControlCharges.Location = new System.Drawing.Point(498, 107);
 			this.tabControlCharges.Name = "tabControlCharges";
-			this.tabControlCharges.Size = new System.Drawing.Size(608, 296);
+			this.tabControlCharges.Size = new System.Drawing.Size(608, 273);
 			this.tabControlCharges.TabIndex = 1;
 			this.tabControlCharges.SelectedIndexChanged += new System.EventHandler(this.TabControlCharges_SelectedIndexChanged);
 			// 
@@ -915,9 +919,11 @@
 			this.groupBoxFilteringOutstanding.Controls.Add(this.labelPatOutstandingFilter);
 			this.groupBoxFilteringOutstanding.Controls.Add(this.labelClinicOutstandingFilter);
 			this.groupBoxFilteringOutstanding.Controls.Add(this.labelProvOutstandingFilter);
+			this.groupBoxFilteringOutstanding.Controls.Add(this.labelInvoiceOutstandingFilter);
+			this.groupBoxFilteringOutstanding.Controls.Add(this.comboInvoiceOutstandingFilter);
 			this.groupBoxFilteringOutstanding.Location = new System.Drawing.Point(498, 2);
 			this.groupBoxFilteringOutstanding.Name = "groupBoxFilteringOutstanding";
-			this.groupBoxFilteringOutstanding.Size = new System.Drawing.Size(603, 80);
+			this.groupBoxFilteringOutstanding.Size = new System.Drawing.Size(603, 103);
 			this.groupBoxFilteringOutstanding.TabIndex = 203;
 			this.groupBoxFilteringOutstanding.Text = "Filtering";
 			// 
@@ -1107,6 +1113,24 @@
 			this.labelProvOutstandingFilter.TabIndex = 192;
 			this.labelProvOutstandingFilter.Text = "Providers";
 			this.labelProvOutstandingFilter.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			// 
+			// labelInvoiceOutstandingFilter
+			// 
+			this.labelInvoiceOutstandingFilter.Location = new System.Drawing.Point(15, 81);
+			this.labelInvoiceOutstandingFilter.Name = "labelInvoiceOutstandingFilter";
+			this.labelInvoiceOutstandingFilter.Size = new System.Drawing.Size(90, 16);
+			this.labelInvoiceOutstandingFilter.TabIndex = 208;
+			this.labelInvoiceOutstandingFilter.Text = "Invoice:";
+			this.labelInvoiceOutstandingFilter.TextAlign = System.Drawing.ContentAlignment.TopRight;
+			// 
+			// comboInvoiceOutstandingFilter
+			// 
+			this.comboInvoiceOutstandingFilter.BackColor = System.Drawing.SystemColors.Window;
+			this.comboInvoiceOutstandingFilter.Location = new System.Drawing.Point(106, 79);
+			this.comboInvoiceOutstandingFilter.Name = "comboInvoiceOutstandingFilter";
+			this.comboInvoiceOutstandingFilter.Size = new System.Drawing.Size(379, 21);
+			this.comboInvoiceOutstandingFilter.TabIndex = 209;
+			this.comboInvoiceOutstandingFilter.SelectionChangeCommitted += new System.EventHandler(this.FilterChangeCommittedChargesTreatPlan);
 			// 
 			// butClear
 			// 

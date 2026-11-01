@@ -136,7 +136,8 @@ namespace OpenDentBusiness{
 			long compNum=PIn.Long(table.Rows[0][0].ToString());
 			//only called from PrinterSetup window. Get info directly from db, then refresh when closing window. 
 			Printer existing=GetOnePrinter(sit,compNum);   //GetForSit(sit);
-			if(printerName=="" && !displayPrompt && !isVirtual){//then should not be an entry in db
+			//25.4 rule: a row must exist when Prompt is on, even with no printer chosen (PrintSituationRules.IsRowNeeded).
+			if(!PrintSituationRules.IsRowNeeded(printerName,displayPrompt,isVirtual)){//then should not be an entry in db
 				if(existing!=null){//need to delete Printer
 					Delete(existing);
 				}

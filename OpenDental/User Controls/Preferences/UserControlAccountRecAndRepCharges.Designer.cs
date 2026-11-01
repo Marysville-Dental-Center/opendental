@@ -45,6 +45,9 @@ namespace OpenDental {
 			this.labelRecurringChargesInactivateDeclinedCardsDetails = new System.Windows.Forms.Label();
 			this.labelRepeatingChargesAutomatedTimeDetails = new System.Windows.Forms.Label();
 			this.labelRecurringChargesUseTransDateDetails = new System.Windows.Forms.Label();
+			this.checkRecurringChargesFailEmailEnabled = new OpenDental.UI.CheckBox();
+			this.butRecurringChargesFailEmailTemplate = new OpenDental.UI.Button();
+			this.checkRepeatingChargesAllowBackdating = new OpenDental.UI.CheckBox();
 			this.groupRecurringCharges.SuspendLayout();
 			this.groupRepeatingCharges.SuspendLayout();
 			this.SuspendLayout();
@@ -62,9 +65,11 @@ namespace OpenDental {
 			this.groupRecurringCharges.Controls.Add(this.checkRecurringChargesAutomated);
 			this.groupRecurringCharges.Controls.Add(this.checkRecurringChargesUseTransDate);
 			this.groupRecurringCharges.Controls.Add(this.checkRecurChargPriProv);
+			this.groupRecurringCharges.Controls.Add(this.checkRecurringChargesFailEmailEnabled);
+			this.groupRecurringCharges.Controls.Add(this.butRecurringChargesFailEmailTemplate);
 			this.groupRecurringCharges.Location = new System.Drawing.Point(20, 40);
 			this.groupRecurringCharges.Name = "groupRecurringCharges";
-			this.groupRecurringCharges.Size = new System.Drawing.Size(450, 271);
+			this.groupRecurringCharges.Size = new System.Drawing.Size(450, 331);
 			this.groupRecurringCharges.TabIndex = 14;
 			this.groupRecurringCharges.Text = "Recurring Charges (payments)";
 			// 
@@ -167,6 +172,26 @@ namespace OpenDental {
 			this.checkRecurChargPriProv.TabIndex = 238;
 			this.checkRecurChargPriProv.Text = "Recurring charges use primary provider instead of FIFO";
 			// 
+			// checkRecurringChargesFailEmailEnabled
+			// 
+			this.checkRecurringChargesFailEmailEnabled.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			this.checkRecurringChargesFailEmailEnabled.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.checkRecurringChargesFailEmailEnabled.Location = new System.Drawing.Point(140, 275);
+			this.checkRecurringChargesFailEmailEnabled.Name = "checkRecurringChargesFailEmailEnabled";
+			this.checkRecurringChargesFailEmailEnabled.Size = new System.Drawing.Size(300, 17);
+			this.checkRecurringChargesFailEmailEnabled.TabIndex = 255;
+			this.checkRecurringChargesFailEmailEnabled.Text = "Email patients when a recurring charge fails";
+			// 
+			// butRecurringChargesFailEmailTemplate
+			// 
+			this.butRecurringChargesFailEmailTemplate.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			this.butRecurringChargesFailEmailTemplate.Location = new System.Drawing.Point(340, 298);
+			this.butRecurringChargesFailEmailTemplate.Name = "butRecurringChargesFailEmailTemplate";
+			this.butRecurringChargesFailEmailTemplate.Size = new System.Drawing.Size(100, 24);
+			this.butRecurringChargesFailEmailTemplate.TabIndex = 256;
+			this.butRecurringChargesFailEmailTemplate.Text = "Edit Template";
+			this.butRecurringChargesFailEmailTemplate.Click += new System.EventHandler(this.butRecurringChargesFailEmailTemplate_Click);
+			// 
 			// groupRepeatingCharges
 			// 
 			this.groupRepeatingCharges.BackColor = System.Drawing.Color.White;
@@ -174,9 +199,10 @@ namespace OpenDental {
 			this.groupRepeatingCharges.Controls.Add(this.labelRepeatingChargesAutomatedTime);
 			this.groupRepeatingCharges.Controls.Add(this.checkRepeatingChargesRunAging);
 			this.groupRepeatingCharges.Controls.Add(this.checkRepeatingChargesAutomated);
-			this.groupRepeatingCharges.Location = new System.Drawing.Point(20, 325);
+			this.groupRepeatingCharges.Controls.Add(this.checkRepeatingChargesAllowBackdating);
+			this.groupRepeatingCharges.Location = new System.Drawing.Point(20, 385);
 			this.groupRepeatingCharges.Name = "groupRepeatingCharges";
-			this.groupRepeatingCharges.Size = new System.Drawing.Size(450, 102);
+			this.groupRepeatingCharges.Size = new System.Drawing.Size(450, 129);
 			this.groupRepeatingCharges.TabIndex = 15;
 			this.groupRepeatingCharges.Text = "Repeating Charges (procedures)";
 			// 
@@ -221,6 +247,16 @@ namespace OpenDental {
 			this.checkRepeatingChargesAutomated.Text = "Repeating charges run automatically";
 			this.checkRepeatingChargesAutomated.Click += new System.EventHandler(this.checkRepeatingChargesAutomated_Click);
 			// 
+			// checkRepeatingChargesAllowBackdating
+			// 
+			this.checkRepeatingChargesAllowBackdating.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			this.checkRepeatingChargesAllowBackdating.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.checkRepeatingChargesAllowBackdating.Location = new System.Drawing.Point(140, 103);
+			this.checkRepeatingChargesAllowBackdating.Name = "checkRepeatingChargesAllowBackdating";
+			this.checkRepeatingChargesAllowBackdating.Size = new System.Drawing.Size(300, 17);
+			this.checkRepeatingChargesAllowBackdating.TabIndex = 244;
+			this.checkRepeatingChargesAllowBackdating.Text = "Allow repeating charges to be backdated";
+			// 
 			// labelRecurChargPriProvDetails
 			// 
 			this.labelRecurChargPriProvDetails.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
@@ -258,7 +294,7 @@ namespace OpenDental {
 			// 
 			this.labelRepeatingChargesAutomatedTimeDetails.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
 			this.labelRepeatingChargesAutomatedTimeDetails.ForeColor = System.Drawing.Color.MidnightBlue;
-			this.labelRepeatingChargesAutomatedTimeDetails.Location = new System.Drawing.Point(476, 400);
+			this.labelRepeatingChargesAutomatedTimeDetails.Location = new System.Drawing.Point(476, 460);
 			this.labelRepeatingChargesAutomatedTimeDetails.Name = "labelRepeatingChargesAutomatedTimeDetails";
 			this.labelRepeatingChargesAutomatedTimeDetails.Size = new System.Drawing.Size(0, 0);
 			this.labelRepeatingChargesAutomatedTimeDetails.TabIndex = 337;
@@ -320,5 +356,8 @@ namespace OpenDental {
 		private System.Windows.Forms.Label labelRecurringChargesInactivateDeclinedCardsDetails;
 		private System.Windows.Forms.Label labelRepeatingChargesAutomatedTimeDetails;
 		private System.Windows.Forms.Label labelRecurringChargesUseTransDateDetails;
+		private OpenDental.UI.CheckBox checkRecurringChargesFailEmailEnabled;
+		private OpenDental.UI.Button butRecurringChargesFailEmailTemplate;
+		private OpenDental.UI.CheckBox checkRepeatingChargesAllowBackdating;
 	}
 }

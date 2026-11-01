@@ -794,6 +794,9 @@ namespace OpenDental{
 			if(!ApplyXConnectResultsToSelection()) {
 				return;
 			}
+			if(!ApplyEdsResultsToSelection(hqClearinghouseNum)) {//Open Dental 26.1: EDS claim validation (FormClaimsSend.Eds.cs)
+				return;
+			}
 			List<ClaimSendQueueItem> listClaimSendQueueItemsSelected=gridMain.SelectedTags<ClaimSendQueueItem>();
 			Cursor=Cursors.WaitCursor;
 			List<ClaimSendQueueItem> listClaimSendQueueItems=ClaimL.SendClaimSendQueueItems(listClaimSendQueueItemsSelected,hqClearinghouseNum);

@@ -99,6 +99,21 @@ namespace OpenDentBusiness{
 			return listAttaches;
 		}
 
+		///<summary>M2-ERA (Open Dental 26.1): the Etrans835AttachNum of the ERA claim (this 835, this CLP loop) attached to this claim, the value that
+		///claimprocs entered from it store in claimproc.Etrans835AttachNum. The oldest row when there are several. 0 when there is none.</summary>
+		public static long GetNumForEraClaim(long etransNum,int clpSegmentIndex,long claimNum) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetLong(MethodBase.GetCurrentMethod(),etransNum,clpSegmentIndex,claimNum);
+			}
+			if(etransNum==0 || claimNum==0) {
+				return 0;
+			}
+			string command="SELECT Etrans835AttachNum FROM etrans835attach "
+				+"WHERE EtransNum="+POut.Long(etransNum)+" AND ClpSegmentIndex="+POut.Int(clpSegmentIndex)+" AND ClaimNum="+POut.Long(claimNum)+" "
+				+"ORDER BY DateTimeEntry,Etrans835AttachNum";
+			return Db.GetListLong(command).FirstOrDefault();
+		}
+
 		///<summary>Create a single attachment for a claim to an 835.</summary>
 		public static long Insert(Etrans835Attach etrans835Attach){
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT){
@@ -124,7 +139,19 @@ namespace OpenDentBusiness{
 			if(clpSegmentIndex >= 0) {
 				command+=" AND ClpSegmentIndex="+POut.Int(clpSegmentIndex);
 			}
+			ClearClaimProcLinks(clpSegmentIndex,arrayEtranNums);//M2-ERA (26.1)
 			Db.NonQ(command);
+		}
+
+		///<summary>M2-ERA (Open Dental 26.1): before DeleteMany removes the attach rows of these 835s (and CLP loop, when clpSegmentIndex is not
+		///negative), the claimprocs entered from those ERA claims forget them (claimproc.Etrans835AttachNum). Runs where DeleteMany runs.</summary>
+		private static void ClearClaimProcLinks(int clpSegmentIndex,long[] arrayEtransNums) {
+			string command="SELECT Etrans835AttachNum FROM etrans835attach "
+				+"WHERE EtransNum IN ("+string.Join(",",arrayEtransNums.Select(x => POut.Long(x)))+")";
+			if(clpSegmentIndex >= 0) {
+				command+=" AND ClpSegmentIndex="+POut.Int(clpSegmentIndex);
+			}
+			ClaimProcs.ClearEtrans835AttachNums(Db.GetListLong(command));
 		}
 
 		///<summary>Deletes all attachments associated to the given listEtrans835AttachNums.  Can handle null.</summary>
@@ -136,6 +163,7 @@ namespace OpenDentBusiness{
 				Meth.GetVoid(MethodBase.GetCurrentMethod(),listEtrans835AttachNums);
 				return;
 			}
+			ClaimProcs.ClearEtrans835AttachNums(listEtrans835AttachNums);//M2-ERA (26.1): claimprocs entered from these ERA claims forget them.
 			Db.NonQ("DELETE FROM etrans835attach WHERE Etrans835AttachNum IN ("+string.Join(",",listEtrans835AttachNums.Select(x => POut.Long(x)))+")");
 		}
 
@@ -165,6 +193,11 @@ namespace OpenDentBusiness{
 				//Not forcing a new attach and one already exists.
 				return;
 			}
+			//M2-ERA (26.1): the claimprocs already entered from this ERA claim on this same claim keep their link when the row is made again below.
+			List<long> listClaimProcNumsLinked=new List<long>();
+			if(listAttaches.Exists(x => x.EtransNum==x835.EtransSource.EtransNum && x.ClpSegmentIndex==claimPaid.ClpSegmentIndex && x.ClaimNum==claimNum)) {
+				listClaimProcNumsLinked=ClaimProcs.GetClaimProcNumsForEraClaim(x835.EtransSource.EtransNum,claimPaid.ClpSegmentIndex,claimNum);
+			}
 			//Create a hard link between the selected claim and the claim info on the 835.
 			Etrans835Attaches.DeleteMany(claimPaid.ClpSegmentIndex,x835.EtransSource.EtransNum);//Detach existing if any.
 			//Remove deleted attaches from list.
@@ -176,6 +209,7 @@ namespace OpenDentBusiness{
 			attach.ClaimNum=claimNum;
 			attach.ClpSegmentIndex=claimPaid.ClpSegmentIndex;
 			Etrans835Attaches.Insert(attach);
+			ClaimProcs.UpdateEtrans835AttachNum(listClaimProcNumsLinked,attach.Etrans835AttachNum);//M2-ERA (26.1)
 			claimPaid.ClaimNum=claimNum;
 			claimPaid.IsAttachedToClaim=true;
 			if(canModifyList) {
