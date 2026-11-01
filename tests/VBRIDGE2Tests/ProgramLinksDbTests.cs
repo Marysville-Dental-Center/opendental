@@ -241,6 +241,52 @@ namespace VBRIDGE2Tests {
 		}
 
 		[TestMethod]
+		public void Clerri_ButtonPickedWhileDisabledThenEnabledInTheSameSave_BothSaved() {
+			//The review's case: saved disabled with the button removed; the user checks Show Toolbar Button, then Enabled (which locks the box), and saves.
+			ClerriProgram.EnsureProgram();
+			RefreshCaches();
+			long programNum=Programs.GetProgramNum(ProgramName.Clerri);
+			ClerriProgram.SetToolbarButtonShown(programNum,false);
+			RefreshCaches();
+			Assert.IsFalse(ClerriProgram.IsToolbarButtonShown(programNum));
+			ClerriProgram.SaveToolbarButtonAndEnabled(Programs.GetCur(ProgramName.Clerri),isShownChecked:true,isEnabledChecked:true);
+			RefreshCaches();
+			Assert.IsTrue(Programs.GetCur(ProgramName.Clerri).Enabled);
+			Assert.IsTrue(ClerriProgram.IsToolbarButtonShown(programNum),"The button the user picked is saved.");
+			Assert.IsTrue(ToolButItems.GetForToolBar(EnumToolBar.FamilyModule).Any(x => x.ProgramNum==programNum),"So Clerri can be launched.");
+		}
+
+		[TestMethod]
+		public void Clerri_ButtonClearedWhileDisabledThenEnabledInTheSameSave_BothSaved() {
+			ClerriProgram.EnsureProgram();
+			RefreshCaches();
+			long programNum=Programs.GetProgramNum(ProgramName.Clerri);
+			Assert.IsTrue(ClerriProgram.IsToolbarButtonShown(programNum));
+			ClerriProgram.SaveToolbarButtonAndEnabled(Programs.GetCur(ProgramName.Clerri),isShownChecked:false,isEnabledChecked:true);
+			RefreshCaches();
+			Assert.IsTrue(Programs.GetCur(ProgramName.Clerri).Enabled);
+			Assert.IsFalse(ClerriProgram.IsToolbarButtonShown(programNum),"The button the user cleared stays off.");
+			Assert.IsFalse(ToolButItems.GetForToolBar(EnumToolBar.FamilyModule).Any(x => x.ProgramNum==programNum));
+		}
+
+		[TestMethod]
+		public void Clerri_ButtonNotChangedWhileSavedEnabled() {
+			ClerriProgram.EnsureProgram();
+			RefreshCaches();
+			long programNum=Programs.GetProgramNum(ProgramName.Clerri);
+			SetEnabled(ProgramName.Clerri,true);
+			//Saved as enabled: the box is locked from the start, so a different value is not saved, even together with disabling.
+			ClerriProgram.SaveToolbarButtonAndEnabled(Programs.GetCur(ProgramName.Clerri),isShownChecked:false,isEnabledChecked:false);
+			RefreshCaches();
+			Assert.IsFalse(Programs.GetCur(ProgramName.Clerri).Enabled);
+			Assert.IsTrue(ClerriProgram.IsToolbarButtonShown(programNum),"Disable and save first, then change the button.");
+			//Now saved as disabled: the change is saved.
+			ClerriProgram.SaveToolbarButtonAndEnabled(Programs.GetCur(ProgramName.Clerri),isShownChecked:false,isEnabledChecked:false);
+			RefreshCaches();
+			Assert.IsFalse(ClerriProgram.IsToolbarButtonShown(programNum));
+		}
+
+		[TestMethod]
 		public void Clerri_FamilyButtonOnlyAfterTheOfficeEnablesIt() {
 			ClerriProgram.EnsureProgram();
 			RefreshCaches();

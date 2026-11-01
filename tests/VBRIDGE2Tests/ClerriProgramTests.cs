@@ -118,6 +118,19 @@ namespace VBRIDGE2Tests {
 		}
 
 		[TestMethod]
+		public void ToolbarButton_SavedFromTheSavedStateNotFromTheLockedBox() {
+			//Changed while saved as disabled: saved, whether or not Enabled was checked afterwards (which locks the box).
+			Assert.IsTrue(ClerriProgram.ShouldSaveToolbarButton(isEnabledSaved:false,isShownSaved:false,isShownChecked:true));
+			Assert.IsTrue(ClerriProgram.ShouldSaveToolbarButton(isEnabledSaved:false,isShownSaved:true,isShownChecked:false));
+			//Unchanged: nothing to save.
+			Assert.IsFalse(ClerriProgram.ShouldSaveToolbarButton(isEnabledSaved:false,isShownSaved:true,isShownChecked:true));
+			Assert.IsFalse(ClerriProgram.ShouldSaveToolbarButton(isEnabledSaved:false,isShownSaved:false,isShownChecked:false));
+			//Saved as enabled: the box was locked from the start, so a different value is never saved.
+			Assert.IsFalse(ClerriProgram.ShouldSaveToolbarButton(isEnabledSaved:true,isShownSaved:false,isShownChecked:true));
+			Assert.IsFalse(ClerriProgram.ShouldSaveToolbarButton(isEnabledSaved:true,isShownSaved:true,isShownChecked:false));
+		}
+
+		[TestMethod]
 		public void Settings_MatchThePublicSetupPage() {
 			Assert.AreEqual("Clerri",ClerriProgram.ProgDesc);
 			Assert.AreEqual("Client Key",ClerriProgram.PropClientKey);

@@ -78,6 +78,9 @@ namespace VBRIDGE2Tests {
 			string source=TestPaths.ReadRepoFile("OpenDental","Forms","FormClerriSetup.cs");
 			StringAssert.Contains(source,"VendorCredentials.WriteSecret(_program.ProgramNum,ClerriProgram.PropClientKey,");
 			StringAssert.Contains(source,"ClerriProgram.CanChangeToolbarButton(_program.Enabled,checkEnabled.Checked)");
+			//Show Toolbar Button is saved from the saved state (ClerriProgram.SaveToolbarButtonAndEnabled), never from whether the box is editable.
+			StringAssert.Contains(source,"ClerriProgram.SaveToolbarButtonAndEnabled(_program,checkShowToolbarButton.Checked,checkEnabled.Checked);");
+			Assert.IsFalse(source.Contains("checkShowToolbarButton.Enabled &&"),"The locked box's value is saved, not skipped.");
 			StringAssert.Contains(source,"ProgramProperties.CanEditProperties(");
 			Assert.IsFalse(source.Contains("ProgramProperties.Update("),"The key is written through VendorCredentials only.");
 			string designer=TestPaths.ReadRepoFile("OpenDental","Forms","FormClerriSetup.Designer.cs");

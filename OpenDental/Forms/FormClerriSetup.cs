@@ -197,14 +197,9 @@ namespace OpenDental {
 					_program.ProgDesc+"'s "+ClerriProgram.PropClientKey+" was altered.",_program.ProgramNum,DateTime.Now);
 			}
 			VendorCredentials.WriteSetting(_program.ProgramNum,ClerriProgram.PropDashboardAddress,0,dashboardAddress);
-			if(checkShowToolbarButton.Enabled && checkShowToolbarButton.Checked!=ClerriProgram.IsToolbarButtonShown(_program.ProgramNum)) {
-				ClerriProgram.SetToolbarButtonShown(_program.ProgramNum,checkShowToolbarButton.Checked);
-			}
-			if(_program.Enabled!=checkEnabled.Checked) {
-				Program programOld=_program.Copy();
-				_program.Enabled=checkEnabled.Checked;
-				Programs.Update(_program,programOld);
-			}
+			//Show Toolbar Button is saved whenever the link was saved as disabled, even if Enabled was checked afterwards (which locks the box but
+			//keeps the value shown), and before Enabled is saved. So what the window shows is what is saved.
+			ClerriProgram.SaveToolbarButtonAndEnabled(_program,checkShowToolbarButton.Checked,checkEnabled.Checked);
 			DataValid.SetInvalid(InvalidType.Programs,InvalidType.ToolButsAndMounts);
 			DialogResult=DialogResult.OK;
 		}

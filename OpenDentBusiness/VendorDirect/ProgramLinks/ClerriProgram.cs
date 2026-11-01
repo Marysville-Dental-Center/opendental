@@ -105,6 +105,30 @@ namespace OpenDentBusiness.VendorDirect.ProgramLinks {
 			return !isEnabledSaved && !isEnabledChecked;
 		}
 
+		///<summary>True if saving the setup window must add or remove the Family module button: the link is saved as disabled and Show Toolbar Button
+		///differs from the saved button. Decided from the saved state, never from whether the box can be edited at the moment of saving: checking
+		///Enabled locks the box (CanChangeToolbarButton) but keeps the value the user picked while the link was disabled, and that value is saved.</summary>
+		public static bool ShouldSaveToolbarButton(bool isEnabledSaved,bool isShownSaved,bool isShownChecked) {
+			Meth.NoCheckMiddleTierRole();
+			return !isEnabledSaved && isShownSaved!=isShownChecked;
+		}
+
+		///<summary>The Show Toolbar Button and Enabled part of saving the setup window. The Family module button is added or removed first, while the
+		///link is still saved as disabled (ShouldSaveToolbarButton), then Enabled is saved. So a button picked and Enabled checked in the same session
+		///are both saved. Reads the ToolButItems cache. The caller refreshes the caches and signals InvalidType.Programs and
+		///InvalidType.ToolButsAndMounts.</summary>
+		public static void SaveToolbarButtonAndEnabled(Program program,bool isShownChecked,bool isEnabledChecked) {
+			Meth.NoCheckMiddleTierRole();
+			if(ShouldSaveToolbarButton(program.Enabled,IsToolbarButtonShown(program.ProgramNum),isShownChecked)) {
+				SetToolbarButtonShown(program.ProgramNum,isShownChecked);
+			}
+			if(program.Enabled!=isEnabledChecked) {
+				Program programOld=program.Copy();
+				program.Enabled=isEnabledChecked;
+				Programs.Update(program,programOld);
+			}
+		}
+
 		///<summary>Null if the dashboard address can be opened: an absolute https address with a host, no user name and not on a host this program
 		///never contacts (BridgeLaunch.CheckWebAddress), once the tags are filled in. Otherwise why not.</summary>
 		public static string ValidateDashboardAddress(string dashboardAddress) {
