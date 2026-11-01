@@ -1684,7 +1684,7 @@ namespace OpenDentBusiness {
 					dataRow["description"]+="\r\n"+Lans.g("ContrAccount","Unsent");
 				} 
 				else if(claimStatus=="H"){
-					dataRow["description"]+="\r\n"+Lans.g("ContrAccount","Hold until Pri received");
+					dataRow["description"]+="\r\n"+Lans.g("ContrAccount",ClaimReceiveRelated.HOLD_UNTIL_PRIOR_RECEIVED);//26.1 text (M2-CLAIMRCV)
 				} 
 				else if(claimStatus=="W"){
 					dataRow["description"]+="\r\n"+Lans.g("ContrAccount","Waiting to Send");

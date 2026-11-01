@@ -30,6 +30,7 @@ namespace OpenDental{
 			this.groupFilter = new OpenDental.UI.GroupBox();
 			this.checkDetailedView = new OpenDental.UI.CheckBox();
 			this.butRefresh = new OpenDental.UI.Button();
+			this.butSetupColumns = new OpenDental.UI.Button();
 			this.groupFilter.SuspendLayout();
 			this.SuspendLayout();
 			// 
@@ -102,10 +103,22 @@ namespace OpenDental{
 			this.butRefresh.Text = "&Refresh";
 			this.butRefresh.Click += new System.EventHandler(this.butRefresh_Click);
 			// 
+			// butSetupColumns
+			// 
+			this.butSetupColumns.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.butSetupColumns.Location = new System.Drawing.Point(215, 442);
+			this.butSetupColumns.Name = "butSetupColumns";
+			this.butSetupColumns.Size = new System.Drawing.Size(88, 26);
+			this.butSetupColumns.TabIndex = 87;
+			this.butSetupColumns.TabStop = false;
+			this.butSetupColumns.Text = "Setup Columns";
+			this.butSetupColumns.Click += new System.EventHandler(this.butSetupColumns_Click);
+			// 
 			// FormRpServiceDateView
 			// 
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
 			this.ClientSize = new System.Drawing.Size(987, 480);
+			this.Controls.Add(this.butSetupColumns);
 			this.Controls.Add(this.butRefresh);
 			this.Controls.Add(this.groupFilter);
 			this.Controls.Add(this.butSavePDFToImages);
@@ -127,5 +140,6 @@ namespace OpenDental{
 		private OpenDental.UI.GroupBox groupFilter;
 		private UI.Button butRefresh;
 		private OpenDental.UI.CheckBox checkDetailedView;
+		private UI.Button butSetupColumns;
 	}
 }

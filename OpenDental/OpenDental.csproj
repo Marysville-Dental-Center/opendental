@@ -5406,6 +5406,10 @@
       <DependentUpon>ControlAccount.cs</DependentUpon>
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Include="Main Modules\ControlAccount.ServiceDateView.cs">
+      <DependentUpon>ControlAccount.cs</DependentUpon>
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Include="Main Modules\ControlChart.cs">
       <SubType>UserControl</SubType>
     </Compile>

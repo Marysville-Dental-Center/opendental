@@ -216,6 +216,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "M2CARRIERTests", "tests\M2C
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "M2HISTTests", "tests\M2HISTTests\M2HISTTests.csproj", "{85B46D02-51D7-4C08-958A-F8862733478D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "M2SDVTests", "tests\M2SDVTests\M2SDVTests.csproj", "{F7332621-C90D-4118-95C8-3C37D382E4C1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -1451,6 +1453,18 @@ Global
 		{85B46D02-51D7-4C08-958A-F8862733478D}.Release|Any CPU.Build.0 = Release|x86
 		{85B46D02-51D7-4C08-958A-F8862733478D}.Release|x86.ActiveCfg = Release|x86
 		{85B46D02-51D7-4C08-958A-F8862733478D}.Release|x86.Build.0 = Release|x86
+		{F7332621-C90D-4118-95C8-3C37D382E4C1}.Debug|Any CPU.ActiveCfg = Debug|x86
+		{F7332621-C90D-4118-95C8-3C37D382E4C1}.Debug|Any CPU.Build.0 = Debug|x86
+		{F7332621-C90D-4118-95C8-3C37D382E4C1}.Debug|x86.ActiveCfg = Debug|x86
+		{F7332621-C90D-4118-95C8-3C37D382E4C1}.Debug|x86.Build.0 = Debug|x86
+		{F7332621-C90D-4118-95C8-3C37D382E4C1}.ODXam|Any CPU.ActiveCfg = Release|x86
+		{F7332621-C90D-4118-95C8-3C37D382E4C1}.ODXam|Any CPU.Build.0 = Release|x86
+		{F7332621-C90D-4118-95C8-3C37D382E4C1}.ODXam|x86.ActiveCfg = Release|x86
+		{F7332621-C90D-4118-95C8-3C37D382E4C1}.ODXam|x86.Build.0 = Release|x86
+		{F7332621-C90D-4118-95C8-3C37D382E4C1}.Release|Any CPU.ActiveCfg = Release|x86
+		{F7332621-C90D-4118-95C8-3C37D382E4C1}.Release|Any CPU.Build.0 = Release|x86
+		{F7332621-C90D-4118-95C8-3C37D382E4C1}.Release|x86.ActiveCfg = Release|x86
+		{F7332621-C90D-4118-95C8-3C37D382E4C1}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

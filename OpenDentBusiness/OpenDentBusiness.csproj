@@ -617,6 +617,7 @@
     <Compile Include="Reports\RpProdGoal.cs" />
     <Compile Include="InternalTools\Faq\TableTypes\Faq.cs" />
     <Compile Include="Reports\RpServiceDateView.cs" />
+    <Compile Include="Reports\ServiceDateViews.cs" />
     <Compile Include="Shared\ODCloudClient\Sirona.cs" />
     <Compile Include="Shared\ODCloudClient\x837Controller.cs" />
     <Compile Include="SheetFramework\CheckSheets.cs" />
@@ -1590,6 +1591,7 @@
     <Compile Include="Data Interface\SigButDefs.cs" />
     <Compile Include="Data Interface\SigElementDefs.cs" />
     <Compile Include="Data Interface\Statements.cs" />
+    <Compile Include="Data Interface\Statements.ServiceDateView.cs" />
     <Compile Include="Data Interface\Statements.EmailName.cs" />
     <Compile Include="Data Interface\ChartLetters.cs" />
     <Compile Include="Data Interface\Documents.cs" />

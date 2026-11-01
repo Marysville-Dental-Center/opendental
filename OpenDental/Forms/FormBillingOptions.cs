@@ -356,7 +356,8 @@ namespace OpenDental{
 					|Prefs.UpdateString(PrefName.BillingExcludeLessThan,textExcludeLessThan.Text)
 					|Prefs.UpdateBool(PrefName.BillingIgnoreInPerson,checkIgnoreInPerson.Checked)
 					|Prefs.UpdateString(PrefName.BillingDefaultsNote,textNote.Text)
-					|Prefs.UpdateString(PrefName.BillingSelectInsFilingCodes,selectedInsFilingCodes))
+					|Prefs.UpdateString(PrefName.BillingSelectInsFilingCodes,selectedInsFilingCodes)
+					|Prefs.UpdateBool(PrefName.BillingDefaultServiceDateView,checkServiceDateView.Checked))//Practice-wide only (M2-SDV).
 				{
 					DataValid.SetInvalid(InvalidType.Prefs);
 				}
@@ -530,6 +531,7 @@ namespace OpenDental{
 			checkSinglePatient.Checked=PrefC.GetBool(PrefName.BillingDefaultsSinglePatient);
 			checkBoxBillShowTransSinceZero.Checked=PrefC.GetBool(PrefName.BillingShowTransSinceBalZero);
 			textNote.Text=PrefC.GetString(PrefName.BillingDefaultsNote);
+			checkServiceDateView.Checked=Statements.GetBillingDefaultServiceDateView();//Open Dental 26.1 (M2-SDV)
 		}
 
 		private void checkExcludeInsPending_Click(object sender,EventArgs e) {
@@ -982,6 +984,7 @@ namespace OpenDental{
 				statement.IsBalValid=true;
 				statement.BalTotal=listPatAgings[i].BalTotal;
 				statement.InsEst=listPatAgings[i].InsEst;
+				Statements.SetServiceDateView(statement,checkServiceDateView.Checked);//M2-SDV. Super-family statements keep the regular view.
 				listStatementsForInsert.Add(statement);
 			}
 			if(listStatementsForInsert.Count>0) {
