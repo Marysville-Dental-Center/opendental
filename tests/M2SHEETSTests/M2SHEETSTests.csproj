@@ -2,7 +2,8 @@
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <!-- Tests for backlog package M2-SHEETS (Open Dental 25.4): sheets in non-Latin scripts on screen, in print and in PDFs, and the duplicate
-       field warning of the Sheet Def editor. Most tests need no database: they draw into PDFs and bitmaps in memory and read the window sources.
+       field warning of the Sheet Def editor. Most tests need no database: they draw into PDFs and bitmaps in memory, drive the Sheet Def editor's key and mouse
+       handlers in memory (the window is never shown) and read the window sources.
        The Unicode round-trip tests use a scratch database on the local MariaDB (127.0.0.1:3306, root, blank password) built from the 26.1.70
        reference schema, with synthetic data only, dropped afterwards; they are skipped (inconclusive) when the server does not answer or when
        FORKMIGRATION_TEST_DB=skip. Tests that need a Windows font this computer lacks are inconclusive. Every .cs file under this folder is
@@ -79,6 +80,11 @@
     <ProjectReference Include="..\..\OpenDentBusiness\OpenDentBusiness.csproj">
       <Project>{3D0FC76E-803C-4DE2-BDB1-47D63A4E2357}</Project>
       <Name>OpenDentBusiness</Name>
+    </ProjectReference>
+    <!-- For SheetDefEditKeyTests: the Sheet Def editor is built in memory and never shown. -->
+    <ProjectReference Include="..\..\OpenDental\OpenDental.csproj">
+      <Project>{8136317D-C936-49B6-9E31-D90F02D2F207}</Project>
+      <Name>OpenDental</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

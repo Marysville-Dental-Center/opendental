@@ -55,6 +55,9 @@ namespace OpenDental {
 		///<summary>True once the user chose to paste the fields of the current copy even though they duplicate fields on the sheet (25.4 duplicate
 		///field warning). Further pastes of the same copy do not ask again. Cleared by each copy.</summary>
 		private bool _isDuplicatePasteAccepted;
+		///<summary>Asks the duplicate field question in a modal OK/Cancel box and returns true for OK. A field only so that tests can answer the
+		///question without a box (M2SHEETSTests.SheetDefEditKeyTests); the window never changes it.</summary>
+		private Func<string,bool> _funcAskDuplicateFields=(msg) => MsgBox.Show(MsgBoxButtons.OKCancel,msg);
 		///<summary>This stores the previous calculations so that we don't have to recal unless certain things have changed.  The key is the index of the sheetfield.  The data is an array of objects of different types as seen in the code.</summary>
 		private Hashtable _hashTableRtfStringCache=new Hashtable();
 		///<summary>Keep track of when the bounds of this window are programmatically changed.
@@ -1700,7 +1703,7 @@ namespace OpenDental {
 			wasWarned=true;
 			string msg=Lan.g(this,"This sheet already has the following field")+":\r\n"+string.Join("\r\n",listNames.Take(10))
 				+(listNames.Count>10 ? "\r\n..." : "")+"\r\n\r\n"+Lan.g(this,"Click OK to continue adding it, or Cancel to not add it.");
-			bool isAddAccepted=MsgBox.Show(MsgBoxButtons.OKCancel,msg);
+			bool isAddAccepted=_funcAskDuplicateFields(msg);
 			//The modal box consumes the CTRL and ALT key_up events (CTRL+V paste, ALT+click stamp), so reset the keys after OK and after Cancel, as
 			//CopyControlsToMemory does after its own box. Otherwise clicks keep toggling the selection or stamping copies.
 			_isCtrlDown=false;

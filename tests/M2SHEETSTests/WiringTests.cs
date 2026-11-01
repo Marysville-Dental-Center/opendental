@@ -1,5 +1,5 @@
-// Checks that the windows (OpenDental.exe, which the tests cannot load) and the sheet drawing code use the M2-SHEETS helpers. They read the
-// source files.
+// Checks that the windows and the sheet drawing code use the M2-SHEETS helpers. They read the source files: the windows draw only when shown,
+// and OpenDental.exe is never launched (SheetDefEditKeyTests drives the Sheet Def editor's key handling in memory).
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System.IO;
 using System.Text.RegularExpressions;
@@ -90,9 +90,12 @@ namespace M2SHEETSTests {
 			Assert.AreEqual(2,Count(copy,"_isCtrlDown=false;"));
 			//The duplicate field box: once the box has been shown, nothing returns before CTRL, ALT and the cursor are reset, so OK and Cancel both reset.
 			string confirm=MethodBody(source,"private bool ConfirmDuplicateFields(List<SheetFieldDef> listSheetFieldDefsToAdd,out bool wasWarned)");
-			int box=confirm.IndexOf("MsgBox.Show(MsgBoxButtons.OKCancel,msg)");
+			int box=confirm.IndexOf("_funcAskDuplicateFields(msg)");
 			Assert.IsTrue(box>confirm.IndexOf("wasWarned=true;"),"The box is shown only after wasWarned is set.");
-			Assert.AreEqual(1,Count(confirm,"MsgBox.Show("),"One box.");
+			Assert.AreEqual(1,Count(confirm,"_funcAskDuplicateFields("),"One box.");
+			//The question is the real modal box; only SheetDefEditKeyTests replaces it.
+			StringAssert.Contains(source,"private Func<string,bool> _funcAskDuplicateFields=(msg) => MsgBox.Show(MsgBoxButtons.OKCancel,msg);");
+			Assert.AreEqual(2,Count(source,"_funcAskDuplicateFields"),"Declared and called, never reassigned by the window.");
 			string afterBox=confirm.Substring(box);
 			int firstReturn=afterBox.IndexOf("return ");
 			Assert.IsTrue(firstReturn>0);
