@@ -641,8 +641,9 @@ namespace ImagingDeviceManager.Capture {
 			public ushort? ConditionCode;
 			public string ConditionText;
 			public string ErrorText;
-			public string Reason8Bit;
-			public bool IsBitDepth16InEffect;
+			public string ReasonFallback;
+			public int BitDepthInEffect=8;
+			public string LayoutUnusableText;
 			public bool IsContinuous;
 			public bool IsSafeDisableInEffect;
 			public bool WasDisableStartedUnsafe;
@@ -747,13 +748,13 @@ namespace ImagingDeviceManager.Capture {
 			}
 			TwainByteOrder byteOrder=context.Request.ByteOrder16 ?? _options.ByteOrder16;
 			TwainCaptureNegotiationResult negotiation=_session.NegotiateCapture(new TwainCaptureNegotiation {
-				Want16Bit=context.Request.Bits==16,
+				BitsWanted=TwainBitDepth.Normalize(context.Request.Bits),
 				IsByteOrderBigEndian=byteOrder==TwainByteOrder.BE,
 				WantExtImageInfo=true,
 				XferCount=1,
 			});
-			context.IsBitDepth16InEffect=negotiation.Bits==16;
-			context.Reason8Bit=negotiation.Reason8Bit;
+			context.BitDepthInEffect=negotiation.Bits;
+			context.ReasonFallback=negotiation.ReasonFallback;
 			if(negotiation.RefusalText!=null) {
 				context.Reason=TwainCaptureEndReason.EnableFailed;
 				context.ErrorText=negotiation.RefusalText;
@@ -893,6 +894,9 @@ namespace ImagingDeviceManager.Capture {
 				context.CountTransferFailures++;
 				context.IsSourceMayHoldImages=true;
 				context.ConditionCode=_session.TransferConditionCode??context.ConditionCode;//Never the code of an earlier, unrelated failure.
+				if(_session.LayoutUnusableText!=null && context.LayoutUnusableText==null) {
+					context.LayoutUnusableText=_session.LayoutUnusableText;
+				}
 				Log("Capture event: image not received from \""+_session.SourceName+"\" (enable "+context.Id+"): "+_session.ErrorText);
 			}
 			return true;
@@ -1031,8 +1035,10 @@ namespace ImagingDeviceManager.Capture {
 				WasDisableStartedUnsafe=context.WasDisableStartedUnsafe,
 				WasDisableRefused=wasDisableRefused,
 				WasSecondDisableAfterWait=wasSecondDisableAfterWait,
-				IsBitDepth16InEffect=context.IsBitDepth16InEffect,
-				Reason8Bit=context.Reason8Bit,
+				BitsRequested=TwainBitDepth.Normalize(context.Request.Bits),
+				BitDepthInEffect=context.BitDepthInEffect,
+				ReasonFallback=context.ReasonFallback,
+				LayoutUnusableText=context.LayoutUnusableText,
 				ErrorText=errorText,
 				EndedAt=GetNow(),
 			};
@@ -1108,7 +1114,9 @@ namespace ImagingDeviceManager.Capture {
 			image.Kind=kind;
 			image.StopReason=stopReason;
 			image.IsRedelivery=context.IsRedelivery;
-			image.RequestedBits=context.Request.Bits;
+			image.RequestedBits=TwainBitDepth.Normalize(context.Request.Bits);
+			image.BitDepthReason=!string.IsNullOrWhiteSpace(context.ReasonFallback) ? context.ReasonFallback.Trim()
+				: (string.IsNullOrWhiteSpace(context.Request.ReasonFallback) ? null : context.Request.ReasonFallback.Trim());
 			image.SidecarFields=context.Request.SidecarFields==null ? null : new List<KeyValuePair<string,string>>(context.Request.SidecarFields);
 			image.SourceName=string.IsNullOrEmpty(image.SourceName) ? _productName : image.SourceName;
 			image.IndexInEnable=++context.CountImages;
@@ -1192,7 +1200,12 @@ namespace ImagingDeviceManager.Capture {
 			record.ListCaptureFields.Add(new SidecarField("PixelFlavor",image.PixelFlavor.ToString(CultureInfo.InvariantCulture)));
 			record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.PixelType,image.PixelType.ToString(CultureInfo.InvariantCulture)));
 			record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.BitsPerSample,image.BitsPerSample.ToString(CultureInfo.InvariantCulture)));
-			record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.BitDepth16InEffect,image.IsBitDepth16InEffect ? "1" : "0"));
+			//BitDepth16InEffect stays for the readers and sidecars before CAP-16: 1 for a depth above 8 (samples in 16-bit containers).
+			record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.BitDepth16InEffect,image.IsAbove8BitInEffect ? "1" : "0"));
+			record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.BitDepthInEffect,image.BitDepthInEffect.ToString(CultureInfo.InvariantCulture)));
+			if(!string.IsNullOrWhiteSpace(image.BitDepthReason)) {
+				record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.BitDepthReason,image.BitDepthReason));
+			}
 			if(image.SidecarFields!=null) {
 				foreach(KeyValuePair<string,string> pair in image.SidecarFields) {
 					if(!string.IsNullOrWhiteSpace(pair.Key)) {

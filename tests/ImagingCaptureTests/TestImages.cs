@@ -126,7 +126,7 @@ namespace ImagingCapture.Tests {
 			return new AcquiredImage {
 				Width=width,Height=height,BitsPerPixel=16,BitsPerSample=16,PixelType=AcquiredImage.PixelTypeGray,PixelFlavor=pixelFlavor,
 				XDpi=1270,YDpi=1270,Gray16=arrayPixels,MetadataJson=metadataJson,ReceivedAt=new DateTime(2026,10,31,10,0,6),EnableId=2,
-				Kind=AcquiredImageKind.Normal,RequestedBits=16,IsBitDepth16InEffect=true,ByteOrder16=TwainByteOrder.LE,
+				Kind=AcquiredImageKind.Normal,RequestedBits=16,BitDepthInEffect=16,ByteOrder16=TwainByteOrder.LE,
 				TransferMechanism=TwainTransferMechanism.Memory,SourceName="Example Sensor DS",IndexInEnable=1,
 			};
 		}

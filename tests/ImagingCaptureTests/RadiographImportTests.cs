@@ -402,7 +402,7 @@ namespace ImagingCapture.Tests {
 			CollectionAssert.AreEqual(new[] { "IsCategoryValid" },_store.ListCalls,"Nothing written: the caller quarantines it.");
 			AcquiredImage imageIn8BitEnable=Image16();
 			imageIn8BitEnable.RequestedBits=8;
-			imageIn8BitEnable.IsBitDepth16InEffect=false;//16-bit memory samples in an 8-bit enable.
+			imageIn8BitEnable.BitDepthInEffect=8;//16-bit memory samples in an 8-bit enable.
 			request=Request(imageIn8BitEnable,new RadiographTarget { Mount=Mount(),MountItem=Slot() });
 			request.Is16BitAllowed=true;
 			Assert.IsFalse(_radiographImport.Save(request).IsSaved);
@@ -421,7 +421,7 @@ namespace ImagingCapture.Tests {
 		public void EightBitInSixteenBitEnable_GoesThePngPath() {
 			AcquiredImage image=Image8();
 			image.RequestedBits=16;
-			image.IsBitDepth16InEffect=true;
+			image.BitDepthInEffect=16;
 			image.IsDeliveredAs8BitIn16BitEnable=true;
 			RadiographSaveRequest request=Request(image,new RadiographTarget { Mount=Mount(),MountItem=Slot() });
 			request.Is16BitAllowed=true;

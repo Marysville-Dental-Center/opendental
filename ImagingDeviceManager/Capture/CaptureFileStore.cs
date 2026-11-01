@@ -42,10 +42,17 @@ namespace ImagingDeviceManager.Capture {
 		///<summary>"1": a redelivered image (Redelivered=1) that the operator confirmed for the bound patient in the session window (design
 		///7.12), so its PatNum is that patient's. Without it a redelivered image is never offered for Assign, whatever its PatNum says.</summary>
 		public const string RedeliveryConfirmed="RedeliveryConfirmed";
-		///<summary>Written by the library: TW_IMAGEINFO PixelType, BitsPerSample, and whether 16 bits were negotiated (IsBitDepth16InEffect).</summary>
+		///<summary>Written by the library: TW_IMAGEINFO PixelType and BitsPerSample.</summary>
 		public const string PixelType="PixelType";
 		public const string BitsPerSample="BitsPerSample";
+		///<summary>Written by the library: "1" when the enable negotiated more than 8 bits (14 or 16) over memory transfer, so the samples are
+		///in 16-bit containers, else "0". Kept for the sidecars and readers before CAP-16, where it meant 16 bits; BitDepthInEffect says
+		///which depth. A sidecar with neither key (before CAP-4) counts a 16-bit copy from a 16-bit memory enable as 16.</summary>
 		public const string BitDepth16InEffect="BitDepth16InEffect";
+		///<summary>Written by the library from CAP-16: the depth the enable ran at, 16, 14 or 8 (AcquiredImage.BitDepthInEffect).</summary>
+		public const string BitDepthInEffect="BitDepthInEffect";
+		///<summary>Why the enable ran at fewer bits than the device is set to (AcquiredImage.BitDepthReason); absent when there was no fallback.</summary>
+		public const string BitDepthReason="BitDepthReason";
 		///<summary>Written when a quarantine file or journal copy is filed or discarded (CaptureFileStore.Resolve): what happened to it.</summary>
 		public const string Disposition="Disposition";
 		public const string DispositionAt="DispositionAt";
@@ -197,8 +204,35 @@ namespace ImagingDeviceManager.Capture {
 		public int Height => (int)GetLong("Height");
 		public int BitsPerPixel => (int)GetLong("BitsPerPixel");
 		public string Sha256 => Get("Sha256");
-		///<summary>A 16-bit copy (.tif): it is filed only as DICOM, under the session's 16-bit conditions (design 7.8).</summary>
+		///<summary>A 16-bit copy (.tif, 14- or 16-bit samples in 16-bit containers): into its own empty slot it is filed only as DICOM, under the
+		///session's conditions for more than 8 bits (design 7.8); anywhere else only as an explicit 8-bit copy.</summary>
 		public bool IsGray16 => Extension==Gray16Tiff.Extension;
+		///<summary>16, 14 or 8: the depth the image's enable ran at. The BitDepthInEffect key from CAP-16; before it BitDepth16InEffect ("1": 16,
+		///"0": 8); before CAP-4 neither, and a 16-bit copy from a 16-bit memory enable counts as 16 (GetBitDepthInEffect).</summary>
+		public int BitDepthInEffect => GetBitDepthInEffect(_dictFields,IsGray16);
+		///<summary>Why the image's enable ran at fewer bits than its device was set to (CaptureSidecarKeys.BitDepthReason), or "".</summary>
+		public string BitDepthReason => Get(CaptureSidecarKeys.BitDepthReason);
+
+		///<summary>The depth in effect a sidecar records (see BitDepthInEffect). isGray16: the image is a 16-bit copy.</summary>
+		internal static int GetBitDepthInEffect(IDictionary<string,string> dictFields,bool isGray16) {
+			string value;
+			int depth;
+			if(dictFields.TryGetValue(CaptureSidecarKeys.BitDepthInEffect,out value)
+				&& int.TryParse((value??"").Trim(),NumberStyles.Integer,CultureInfo.InvariantCulture,out depth) && TwainBitDepth.IsAllowed(depth))
+			{
+				return depth;
+			}
+			if(dictFields.TryGetValue(CaptureSidecarKeys.BitDepth16InEffect,out value) && (value??"").Trim()!="") {
+				return value.Trim()=="1" ? TwainBitDepth.Bits16 : TwainBitDepth.Bits8;
+			}
+			//Sidecars before CAP-4 record neither: a 16-bit copy from a 16-bit memory enable is what the session asked for.
+			string requestedBits;
+			string transferMechanism;
+			dictFields.TryGetValue("RequestedBits",out requestedBits);
+			dictFields.TryGetValue("TransferMechanism",out transferMechanism);
+			return isGray16 && (requestedBits??"").Trim()=="16" && string.Equals((transferMechanism??"").Trim(),TwainTransferMechanism.Memory.ToString(),
+				StringComparison.OrdinalIgnoreCase) ? TwainBitDepth.Bits16 : TwainBitDepth.Bits8;
+		}
 		///<summary>The file was filed or discarded before (CaptureFileStore.Resolve wrote its Disposition): a journal copy then stays in the
 		///journal until rotation removes it, and is not offered again.</summary>
 		public bool IsResolved => Get(CaptureSidecarKeys.Disposition)!="";
@@ -466,10 +500,8 @@ namespace ImagingDeviceManager.Capture {
 			if(Enum.TryParse(entry.Get("TransferMechanism"),out transferMechanism)) {
 				image.TransferMechanism=transferMechanism;
 			}
-			string bitDepth16=entry.Get(CaptureSidecarKeys.BitDepth16InEffect);
-			//Sidecars before CAP-4 do not record it: a 16-bit copy from a 16-bit memory enable is what the session asked for.
-			image.IsBitDepth16InEffect=bitDepth16!="" ? bitDepth16=="1"
-				: image.IsGray16 && image.RequestedBits==16 && image.TransferMechanism==TwainTransferMechanism.Memory;
+			image.BitDepthInEffect=entry.BitDepthInEffect;
+			image.BitDepthReason=entry.BitDepthReason=="" ? null : entry.BitDepthReason;
 			image.IsDeliveredAs8BitIn16BitEnable=entry.Get("DeliveredAs8BitIn16BitEnable")=="1";
 			AcquiredImageKind kind;
 			if(Enum.TryParse(entry.Get("ImageKind"),out kind)) {

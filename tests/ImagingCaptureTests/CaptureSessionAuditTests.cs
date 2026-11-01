@@ -67,7 +67,7 @@ namespace ImagingCapture.Tests {
 			_harness.Started();
 			_harness.Status(TwainCaptureState.WaitingForImage,isSafeDisableInEffect:true);
 			_harness.Image();
-			_harness.Ended(TwainCaptureEndReason.Completed,ended => ended.Reason8Bit="The source sent 8-bit images.");
+			_harness.Ended(TwainCaptureEndReason.Completed,ended => ended.ReasonFallback="The source sent 8-bit images.");
 			_harness.Execute(CaptureSessionAction.End);//the next slot's enable runs: the first press warns
 			_harness.Execute(CaptureSessionAction.End);
 			_harness.Ended(TwainCaptureEndReason.Stopped,ended => ended.StopReason=TwainCaptureStopReason.End);

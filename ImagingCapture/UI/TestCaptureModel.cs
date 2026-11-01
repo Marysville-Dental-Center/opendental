@@ -466,8 +466,8 @@ namespace ImagingCapture.UI {
 			else {
 				listLines.Add("Test image "+ImageCount.ToString(CultureInfo.InvariantCulture)+":");
 				listLines.AddRange(Analysis.GetResultLines());
-				if(LastEnded!=null && LastEnded.IsBitDepth16InEffect==false && Analysis.BitsRequested==16 && !string.IsNullOrWhiteSpace(LastEnded.Reason8Bit)) {
-					listLines.Add("Asked for 16 bits, delivered 8: "+LastEnded.Reason8Bit.Trim());
+				if(LastEnded!=null && LastEnded.BitDepthInEffect<LastEnded.BitsRequested && !string.IsNullOrWhiteSpace(LastEnded.ReasonFallback)) {
+					listLines.Add("Asked for "+LastEnded.BitsRequested+" bits, delivered "+LastEnded.BitDepthInEffect+": "+LastEnded.ReasonFallback.Trim());
 				}
 			}
 			if(RecordWritten!=null) {

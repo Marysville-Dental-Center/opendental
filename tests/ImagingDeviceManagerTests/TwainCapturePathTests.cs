@@ -47,7 +47,11 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		private TwainCaptureNegotiationResult Negotiate(bool want16) {
-			return Session.NegotiateCapture(new TwainCaptureNegotiation { Want16Bit=want16 });
+			return Negotiate(want16 ? 16 : 8);
+		}
+
+		private TwainCaptureNegotiationResult Negotiate(int bitsWanted) {
+			return Session.NegotiateCapture(new TwainCaptureNegotiation { BitsWanted=bitsWanted });
 		}
 
 		///<summary>Enables, waits for the notification and transfers one image; the source is left as the transfer leaves it.</summary>
@@ -95,8 +99,8 @@ namespace ImagingDeviceManager.Tests {
 			Helper.ListExposures.Add(page);
 			OpenHelper();
 			TwainCaptureNegotiationResult result=Negotiate(true);
-			Assert.AreEqual(16,result.Bits,result.Reason8Bit);
-			Assert.IsNull(result.Reason8Bit);
+			Assert.AreEqual(16,result.Bits,result.ReasonFallback);
+			Assert.IsNull(result.ReasonFallback);
 			Assert.AreEqual(Tw.TWSX_MEMORY,result.XferMech);
 			int idxMemory=IndexOfSet(Tw.ICAP_XFERMECH,Tw.TWSX_MEMORY);
 			int idxGet=_harness.IndexOfCall(x => x.Name=="CAP/GET" && x.Cap==Tw.ICAP_BITDEPTH);
@@ -112,7 +116,8 @@ namespace ImagingDeviceManager.Tests {
 			Assert.AreEqual(16,image.BitsPerPixel);
 			Assert.AreEqual(16,image.BitsPerSample);
 			Assert.AreEqual(AcquiredImage.PixelTypeGray,image.PixelType);
-			Assert.IsTrue(image.IsBitDepth16InEffect);
+			Assert.AreEqual(16,image.BitDepthInEffect);
+			Assert.IsTrue(image.IsAbove8BitInEffect);
 			Assert.IsFalse(image.IsDeliveredAs8BitIn16BitEnable);
 			Assert.AreEqual(TwainTransferMechanism.Memory,image.TransferMechanism);
 			Assert.AreEqual(TwainByteOrder.LE,image.ByteOrder16);
@@ -125,7 +130,7 @@ namespace ImagingDeviceManager.Tests {
 			FakePage page=ExposureWith16(4,3);
 			Helper.ListExposures.Add(page);
 			OpenHelper();
-			Session.NegotiateCapture(new TwainCaptureNegotiation { Want16Bit=true,IsByteOrderBigEndian=true });
+			Session.NegotiateCapture(new TwainCaptureNegotiation { BitsWanted=16,IsByteOrderBigEndian=true });
 			AcquiredImage image=EnableAndTransfer();
 			Assert.AreEqual(TwainByteOrder.BE,image.ByteOrder16);
 			int sample=Sample16(1,2);
@@ -156,7 +161,7 @@ namespace ImagingDeviceManager.Tests {
 			Assert.IsNull(image.Gray16);
 			Assert.AreEqual(8,image.BitsPerPixel);
 			Assert.IsTrue(image.IsDeliveredAs8BitIn16BitEnable);
-			Assert.IsTrue(image.IsBitDepth16InEffect);
+			Assert.AreEqual(16,image.BitDepthInEffect);
 			AssertGray8Dib(page,image);
 			Assert.IsTrue(_harness.HasLog("delivered an 8-bit image in a 16-bit enable"),_harness.LogText);
 		}
@@ -222,7 +227,7 @@ namespace ImagingDeviceManager.Tests {
 			OpenHelper();
 			TwainCaptureNegotiationResult result=Negotiate(true);
 			Assert.AreEqual(8,result.Bits);
-			StringAssert.Contains(result.Reason8Bit,"does not list 16");
+			StringAssert.Contains(result.ReasonFallback,"does not list 16");
 			Assert.AreEqual(-1,IndexOfSet(Tw.ICAP_BITDEPTH,16));
 			Assert.AreEqual(Tw.TWSX_NATIVE,result.XferMech,"Back to native for 8 bits.");
 			Assert.AreEqual(8,EnableAndTransfer().BitsPerPixel);
@@ -235,7 +240,7 @@ namespace ImagingDeviceManager.Tests {
 			OpenHelper();
 			TwainCaptureNegotiationResult result=Negotiate(true);
 			Assert.AreEqual(8,result.Bits);
-			StringAssert.Contains(result.Reason8Bit,"never asked over native transfers");
+			StringAssert.Contains(result.ReasonFallback,"never asked over native transfers");
 			Assert.IsFalse(Calls.Any(x => x.Name=="CAP/SET" && x.Cap==Tw.ICAP_BITDEPTH),_harness.CallText);
 			Assert.IsTrue(_harness.HasLog("the enable runs at 8 bits"),_harness.LogText);
 		}
@@ -252,6 +257,170 @@ namespace ImagingDeviceManager.Tests {
 			}
 		}
 
+		///<summary>An 8-bit rendering with a 14-bit original: values 0 to 16383, right-justified in 16-bit containers.</summary>
+		internal static FakePage ExposureWith14(int width,int height) {
+			FakePage page=FakePage.CreateGray8(width,height,FakeHelperSource.Dpi,(x,y) => (byte)(x*11+y));
+			page.Original16=FakePage.CreateGray16(width,height,FakeHelperSource.Dpi,(x,y) => Sample14(x,y));
+			return page;
+		}
+
+		public static int Sample14(int x,int y) {
+			return (x*4099+y*257+0x0101)&0x3FFF;
+		}
+
+		[TestMethod]
+		public void Lists8And14_Want16_FallsBackTo14_SamplesUnchanged() {
+			Helper.ListBitDepths=new List<int> { 8,14 };
+			FakePage page=ExposureWith14(9,6);
+			Helper.ListExposures.Add(page);
+			OpenHelper();
+			TwainCaptureNegotiationResult result=Negotiate(16);
+			Assert.AreEqual(14,result.Bits,result.ReasonFallback);
+			Assert.AreEqual(Tw.TWSX_MEMORY,result.XferMech);
+			StringAssert.Contains(result.ReasonFallback,"does not list 16");
+			Assert.AreEqual(-1,IndexOfSet(Tw.ICAP_BITDEPTH,16),"16 is not listed, so it is never set.");
+			int idxMemory=IndexOfSet(Tw.ICAP_XFERMECH,Tw.TWSX_MEMORY);
+			int idxGet=_harness.IndexOfCall(x => x.Name=="CAP/GET" && x.Cap==Tw.ICAP_BITDEPTH);
+			int idxDepth=IndexOfSet(Tw.ICAP_BITDEPTH,14);
+			Assert.IsTrue(idxMemory>=0 && idxGet>idxMemory && idxDepth>idxGet,"MEMORY, then MSG_GET, then 14.\r\n"+_harness.CallText);
+			Assert.AreEqual(14,Session.CaptureBits);
+			Assert.IsTrue(_harness.HasLog("the enable runs at 14 bits"),_harness.LogText);
+			AcquiredImage image=EnableAndTransfer();
+			AssertGray16(page.Original16,image);
+			Assert.AreEqual(14,image.BitDepthInEffect);
+			Assert.IsTrue(image.IsAbove8BitInEffect);
+			Assert.AreEqual(14,image.BitsPerSample,"As DAT_IMAGEINFO reports it.");
+			Assert.AreEqual(16,image.BitsPerPixel,"16-bit containers.");
+			Assert.IsFalse(_harness.HasLog("not right-justified"),"Every sample fits 14 bits.");
+		}
+
+		[TestMethod]
+		public void Lists8_12_14_16_Want16Gets16_Want14Gets14_12NeverSet() {
+			Helper.ListBitDepths=new List<int> { 8,12,14,16 };
+			Helper.ListExposures.Add(ExposureWith16(5,3));
+			OpenHelper();
+			TwainCaptureNegotiationResult result16=Negotiate(16);
+			Assert.AreEqual(16,result16.Bits);
+			Assert.IsNull(result16.ReasonFallback);
+			Assert.AreEqual(-1,IndexOfSet(Tw.ICAP_BITDEPTH,14),"16 was listed and accepted: 14 is not tried.");
+			TwainCaptureNegotiationResult result14=Negotiate(14);
+			Assert.AreEqual(14,result14.Bits);
+			Assert.IsNull(result14.ReasonFallback);
+			Assert.AreEqual(14,Helper.DictCaps[FakeHelperSource.IcapBitDepth]);
+			Assert.AreEqual(-1,IndexOfSet(Tw.ICAP_BITDEPTH,12),"12 is never asked.");
+		}
+
+		[TestMethod]
+		public void Lists8Only_Want14_StaysAt8_NativeAgain() {
+			Helper.Supports16Bit=false;
+			Helper.ListExposures.Add(ExposureWith14(5,3));
+			OpenHelper();
+			TwainCaptureNegotiationResult result=Negotiate(14);
+			Assert.AreEqual(8,result.Bits);
+			StringAssert.Contains(result.ReasonFallback,"does not list 14");
+			Assert.IsFalse(result.ReasonFallback.Contains("16"),"14 asked: 16 is never tried.");
+			Assert.IsFalse(Calls.Any(x => x.Name=="CAP/SET" && x.Cap==Tw.ICAP_BITDEPTH),_harness.CallText);
+			Assert.AreEqual(Tw.TWSX_NATIVE,result.XferMech,"Back to native for 8 bits.");
+			Assert.AreEqual(8,EnableAndTransfer().BitsPerPixel);
+		}
+
+		[TestMethod]
+		public void Lists8_14_16_Set16Refused_FallsBackTo14() {
+			Helper.ListBitDepths=new List<int> { 8,14,16 };
+			Helper.HashSetRefusedBitDepths.Add(16);
+			Helper.ListExposures.Add(ExposureWith14(5,3));
+			OpenHelper();
+			TwainCaptureNegotiationResult result=Negotiate(16);
+			Assert.AreEqual(14,result.Bits);
+			StringAssert.Contains(result.ReasonFallback,"did not accept ICAP_BITDEPTH 16");
+			int idx16=IndexOfSet(Tw.ICAP_BITDEPTH,16);
+			int idx14=IndexOfSet(Tw.ICAP_BITDEPTH,14);
+			Assert.AreEqual(Tw.TWRC_FAILURE,Calls[idx16].Rc);
+			Assert.IsTrue(idx14>idx16,_harness.CallText);
+			Assert.AreEqual(14,EnableAndTransfer().BitDepthInEffect);
+		}
+
+		[TestMethod]
+		public void Lists8And14_Set14Refused_BackTo8_ConfirmedBeforeNative() {
+			Helper.ListBitDepths=new List<int> { 8,14 };
+			Helper.HashSetRefusedBitDepths.Add(14);
+			Helper.ListExposures.Add(ExposureWith14(5,3));
+			OpenHelper();
+			TwainCaptureNegotiationResult result=Negotiate(16);
+			Assert.AreEqual(8,result.Bits);
+			StringAssert.Contains(result.ReasonFallback,"does not list 16");
+			StringAssert.Contains(result.ReasonFallback,"did not accept ICAP_BITDEPTH 14");
+			Assert.AreEqual(Tw.TWSX_NATIVE,result.XferMech);
+			Assert.AreEqual(8,Helper.DictCaps[FakeHelperSource.IcapBitDepth]);
+			Assert.IsTrue(_harness.HasLog("the enable runs at 8 bits"),_harness.LogText);
+			AcquiredImage image=EnableAndTransfer();
+			Assert.AreEqual(8,image.BitsPerPixel);
+			Assert.AreEqual(8,image.BitDepthInEffect);
+		}
+
+		[TestMethod]
+		public void Want8_After14OnTheSameOpenSource_BitDepth8SetBeforeNative() {
+			Helper.ListBitDepths=new List<int> { 8,14 };
+			Helper.ListExposures.Add(ExposureWith14(5,3));
+			OpenHelper();
+			Assert.AreEqual(14,Negotiate(16).Bits);
+			EnableAndTransfer();
+			Session.DisableCapture();
+			int start=Calls.Count;
+			TwainCaptureNegotiationResult result=Negotiate(8);
+			Assert.AreEqual(8,result.Bits);
+			int idxDepth8=IndexOfSet(Tw.ICAP_BITDEPTH,8,start);
+			int idxNative=IndexOfSet(Tw.ICAP_XFERMECH,Tw.TWSX_NATIVE,start);
+			Assert.IsTrue(idxDepth8>=start && idxNative>idxDepth8,"ICAP_BITDEPTH 8 first, then native.\r\n"+_harness.CallText);
+		}
+
+		[TestMethod]
+		public void Bits14_PackedSamples_TransferFailsUnread_LayoutNotUsable() {
+			Helper.ListBitDepths=new List<int> { 8,14 };
+			Helper.BitsPerPixelAt14=14;//packed 14-bit samples
+			Helper.ListExposures.Add(ExposureWith14(5,3));
+			OpenHelper();
+			Assert.AreEqual(14,Negotiate(14).Bits);
+			Assert.AreEqual(Tw.TWRC_SUCCESS,Session.EnableForCapture(true));
+			Assert.AreEqual(Tw.MSG_XFERREADY,Session.WaitForCaptureNotification(false));
+			AcquiredImage image;
+			Assert.AreEqual(TransferOutcome.Failed,Session.TransferCaptureImage(out image));
+			Assert.IsNull(image);
+			StringAssert.StartsWith(Session.LayoutUnusableText,"14-bit layout not usable: ");
+			StringAssert.Contains(Session.LayoutUnusableText,"BitsPerPixel is 14");
+			StringAssert.Contains(Session.LayoutUnusableText,"packed samples");
+			Assert.AreEqual(0,_harness.Fake.CallsNamed("MEMXFER").Count,"Nothing is read of an image that cannot be decoded.");
+			FakeCall callEnd=_harness.Fake.CallsNamed("ENDXFER").Single();
+			Assert.AreEqual(6,callEnd.StateBefore,"Ended in state 6 without a transfer.");
+			Assert.IsTrue(_harness.HasLog("in a layout that cannot be read"),_harness.LogText);
+		}
+
+		[TestMethod]
+		public void Bits14_BitsPerSample16InContainers_Accepted() {
+			Helper.ListBitDepths=new List<int> { 8,14 };
+			Helper.BitsPerSampleAt14=16;
+			FakePage page=ExposureWith14(4,3);
+			Helper.ListExposures.Add(page);
+			OpenHelper();
+			Negotiate(14);
+			AcquiredImage image=EnableAndTransfer();
+			AssertGray16(page.Original16,image);
+			Assert.AreEqual(14,image.BitDepthInEffect);
+			Assert.IsNull(Session.LayoutUnusableText);
+		}
+
+		[TestMethod]
+		public void Bits14_SamplesAbove14Bits_KeptAsDeliveredAndLogged() {
+			Helper.ListBitDepths=new List<int> { 8,14 };
+			FakePage page=ExposureWith16(5,3);//values above 16383 in a 14-bit enable
+			Helper.ListExposures.Add(page);
+			OpenHelper();
+			Negotiate(14);
+			AcquiredImage image=EnableAndTransfer();
+			AssertGray16(page.Original16,image);
+			Assert.IsTrue(_harness.HasLog("not right-justified 14-bit values"),_harness.LogText);
+		}
+
 		[TestMethod]
 		public void PixelTypeNotReadable_16NotNegotiated_NothingForced() {
 			//The built-in source answers no ICAP_PIXELTYPE.
@@ -259,7 +428,7 @@ namespace ImagingDeviceManager.Tests {
 			Assert.IsTrue(Session.OpenSource("Fake Sensor"),Session.ErrorText);
 			TwainCaptureNegotiationResult result=Negotiate(true);
 			Assert.AreEqual(8,result.Bits);
-			StringAssert.Contains(result.Reason8Bit,"ICAP_PIXELTYPE");
+			StringAssert.Contains(result.ReasonFallback,"ICAP_PIXELTYPE");
 			Assert.IsFalse(_harness.Fake.DictCapsSet.ContainsKey(Tw.ICAP_PIXELTYPE));
 			Assert.IsFalse(_harness.Fake.DictCapsSet.ContainsKey(Tw.ICAP_BITDEPTH));
 			Assert.AreNotEqual(Tw.TWSX_MEMORY,_harness.Fake.DictCapsSet.ContainsKey(Tw.ICAP_XFERMECH) ? _harness.Fake.DictCapsSet[Tw.ICAP_XFERMECH] : 0);

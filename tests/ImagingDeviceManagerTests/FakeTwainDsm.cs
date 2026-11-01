@@ -449,6 +449,12 @@ namespace ImagingDeviceManager.Tests {
 			TW_IDENTITY identity=new TW_IDENTITY();
 			identity.Id=(uint)(100+ListSourceNames.IndexOf(name));
 			identity.Version.Info="1";
+			FakeHelperSource helper;
+			if(DictHelperSources.TryGetValue(name??"",out helper)) {
+				identity.Version.MajorNum=helper.VersionMajor;
+				identity.Version.MinorNum=helper.VersionMinor;
+				identity.Version.Info=helper.VersionInfo;
+			}
 			identity.ProtocolMajor=2;
 			identity.ProtocolMinor=3;
 			identity.SupportedGroups=Tw.DG_CONTROL|Tw.DG_IMAGE|Tw.DF_DS2;

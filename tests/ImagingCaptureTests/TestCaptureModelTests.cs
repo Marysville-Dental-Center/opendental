@@ -177,7 +177,7 @@ Name=Not gated
 			Assert.IsNotNull(model.Analysis);
 			Assert.IsTrue(model.CanWriteRecord);
 			Assert.IsTrue(model.IsByteOrderCheckable);
-			model.OnEnded(new TwainCaptureEnded { EnableId=1,Reason=TwainCaptureEndReason.Completed,ImageCount=1,IsBitDepth16InEffect=true });
+			model.OnEnded(new TwainCaptureEnded { EnableId=1,Reason=TwainCaptureEndReason.Completed,ImageCount=1,BitsRequested=16,BitDepthInEffect=16 });
 			Assert.AreEqual(TestCaptureState.Open,model.State,"The source stays open in state 4.");
 			Assert.AreEqual("Test image received.",model.MessageText);
 			StringAssert.Contains(model.GetResultText(),"Delivered: 16-bit grey over memory transfer (asked for 16).");
@@ -229,7 +229,7 @@ Name=Not gated
 			StringAssert.Contains(CaptureEndText.GetEndedText(new TwainCaptureEnded { Reason=TwainCaptureEndReason.Completed,ExtraImageCount=1 }),
 				CaptureEndText.ExtraImages);
 			Assert.AreEqual("Delivered at 8 bits: ICAP_BITDEPTH does not list 16.",CaptureEndText.GetEndedText(new TwainCaptureEnded {
-				Reason=TwainCaptureEndReason.Completed,Reason8Bit="ICAP_BITDEPTH does not list 16" }));
+				Reason=TwainCaptureEndReason.Completed,BitsRequested=16,ReasonFallback="ICAP_BITDEPTH does not list 16" }));
 		}
 
 		[TestMethod]

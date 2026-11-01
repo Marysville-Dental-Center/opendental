@@ -127,6 +127,20 @@ namespace ImagingDeviceManager.Tests {
 		///<summary>False: the build of contract 1.0, where ICAP_BITDEPTH has 8 only (MSG_GET lists 8, MSG_SET 16 fails with TWCC_BADVALUE).
 		///True (contract 1.1 section 6.2): MSG_GET lists 8 and 16, and 16 is accepted only after ICAP_XFERMECH = TWSX_MEMORY.</summary>
 		public bool Supports16Bit=true;
+		///<summary>Not contract behaviour (1.1 lists 8 and 16): the depths ICAP_BITDEPTH MSG_GET lists, for example 8|14 or 8|12|14|16, each
+		///above 8 accepted only after ICAP_XFERMECH = TWSX_MEMORY. Null: 8 and 16 with Supports16Bit, else 8.</summary>
+		public List<int> ListBitDepths;
+		///<summary>Not contract behaviour: MSG_SET ICAP_BITDEPTH of these depths fails with TWCC_BADVALUE although MSG_GET lists them.</summary>
+		public HashSet<int> HashSetRefusedBitDepths=new HashSet<int>();
+		///<summary>Not contract behaviour: DAT_IMAGEINFO of an image delivered at ICAP_BITDEPTH 14 (its Original16, whose samples are then 14-bit
+		///values): BitsPerSample, 14 by default, and BitsPerPixel, 16 by default (right-justified in 16-bit containers); 14 makes packed samples,
+		///which a host cannot read as 16-bit containers.</summary>
+		public int BitsPerSampleAt14=14;
+		public int BitsPerPixelAt14=16;
+		///<summary>The source's TW_IDENTITY Version (MajorNum, MinorNum, Info) as the DSM reports it.</summary>
+		public ushort VersionMajor=1;
+		public ushort VersionMinor=1;
+		public string VersionInfo="1.1.0 fake";
 		///<summary>False: the build of contract 1.0, with no extended image info: ICAP_EXTIMAGEINFO and ICAP_SUPPORTEDEXTIMAGEINFO return
 		///TWCC_CAPUNSUPPORTED and DAT_EXTIMAGEINFO TWCC_BADPROTOCOL. True: section 6.3.</summary>
 		public bool SupportsExtImageInfo=true;
@@ -162,7 +176,7 @@ namespace ImagingDeviceManager.Tests {
 		///<summary>Not contract behaviour: MSG_SET ICAP_BITDEPTH 8 fails with TWCC_BADVALUE.</summary>
 		public bool RefusesBitDepth8;
 		///<summary>Not contract behaviour (section 4 resets the depth to 8 and returns TWRC_CHECKSTATUS): MSG_SET ICAP_XFERMECH TWSX_NATIVE while
-		///ICAP_BITDEPTH is 16 returns TWRC_SUCCESS and leaves the depth at 16.</summary>
+		///ICAP_BITDEPTH is 16 (or another depth above 8) returns TWRC_SUCCESS and leaves the depth as it is.</summary>
 		public bool NativeKeepsBitDepth16;
 		///<summary>Not contract behaviour: the TW_INFO.ReturnCode DAT_EXTIMAGEINFO gives TWEI_TWAINDIRECTMETADATA (TWRC_INFONOTSUPPORTED or
 		///TWRC_DATANOTAVAILABLE for a source without it for this image). TWRC_SUCCESS: the metadata.</summary>
@@ -549,7 +563,7 @@ namespace ImagingDeviceManager.Tests {
 				case Tw.MSG_GET:
 					if(cap==IcapBitDepth) {
 						//The values the source offers (section 4), with the current one.
-						List<int> listDepths=Supports16Bit ? new List<int> { 8,16 } : new List<int> { 8 };
+						List<int> listDepths=GetOfferedBitDepths();
 						WriteEnumeration(data,capability,itemType,listDepths,Math.Max(0,listDepths.IndexOf(DictCaps[cap])));
 						return Tw.TWRC_SUCCESS;
 					}
@@ -583,6 +597,14 @@ namespace ImagingDeviceManager.Tests {
 			return Fail(Tw.TWCC_CAPBADOPERATION);
 		}
 
+		///<summary>What ICAP_BITDEPTH MSG_GET lists (ListBitDepths, or 8 and 16 with Supports16Bit, else 8).</summary>
+		private List<int> GetOfferedBitDepths() {
+			if(ListBitDepths!=null) {
+				return new List<int>(ListBitDepths);
+			}
+			return Supports16Bit ? new List<int> { 8,16 } : new List<int> { 8 };
+		}
+
 		private static int GetDefault(ushort cap) {
 			switch(cap) {
 				case Tw.CAP_XFERCOUNT: return -1;
@@ -605,16 +627,16 @@ namespace ImagingDeviceManager.Tests {
 						return Fail(Tw.TWCC_BADVALUE);
 					}
 					DictCaps[cap]=value;
-					if(value==Tw.TWSX_NATIVE && DictCaps[IcapBitDepth]==16 && !NativeKeepsBitDepth16) {
+					if(value==Tw.TWSX_NATIVE && DictCaps[IcapBitDepth]>8 && !NativeKeepsBitDepth16) {
 						DictCaps[IcapBitDepth]=8;
 						return Tw.TWRC_CHECKSTATUS;
 					}
 					return Tw.TWRC_SUCCESS;
 				case IcapBitDepth:
-					if(value!=8 && !(value==16 && Supports16Bit && DictCaps[Tw.ICAP_XFERMECH]==Tw.TWSX_MEMORY)) {
+					if(value!=8 && !(GetOfferedBitDepths().Contains(value) && DictCaps[Tw.ICAP_XFERMECH]==Tw.TWSX_MEMORY)) {
 						return Fail(Tw.TWCC_BADVALUE);
 					}
-					if(value==8 && RefusesBitDepth8) {
+					if((value==8 && RefusesBitDepth8) || HashSetRefusedBitDepths.Contains(value)) {
 						return Fail(Tw.TWCC_BADVALUE);
 					}
 					DictCaps[cap]=value;
@@ -1041,9 +1063,10 @@ namespace ImagingDeviceManager.Tests {
 			return Tw.TWRC_SUCCESS;
 		}
 
-		///<summary>Section 6.2: with ICAP_BITDEPTH 16, the image's 16-bit original; an image without one is delivered as 8-bit.</summary>
+		///<summary>Section 6.2: with ICAP_BITDEPTH 16 (or another depth above 8, not contract behaviour), the image's 16-bit original; an image
+		///without one is delivered as 8-bit.</summary>
 		private FakePage Delivered(FakePage page) {
-			return DictCaps.ContainsKey(IcapBitDepth) && DictCaps[IcapBitDepth]==16 && page.Original16!=null ? page.Original16 : page;
+			return DictCaps.ContainsKey(IcapBitDepth) && DictCaps[IcapBitDepth]>8 && page.Original16!=null ? page.Original16 : page;
 		}
 
 		public string GetCaptureId(FakePage page) {
@@ -1152,6 +1175,10 @@ namespace ImagingDeviceManager.Tests {
 			imageInfo.BitsPerSample=new short[8];
 			imageInfo.BitsPerSample[0]=(short)page.BitsPerPixel;
 			imageInfo.BitsPerPixel=(short)page.BitsPerPixel;
+			if(page.BitsPerPixel==16 && DictCaps.ContainsKey(IcapBitDepth) && DictCaps[IcapBitDepth]==14) {
+				imageInfo.BitsPerSample[0]=(short)BitsPerSampleAt14;
+				imageInfo.BitsPerPixel=(short)BitsPerPixelAt14;
+			}
 			imageInfo.PixelType=(short)Tw.TWPT_GRAY;
 			imageInfo.Compression=Tw.TWCP_NONE;
 			Marshal.StructureToPtr(imageInfo,data,false);

@@ -254,7 +254,7 @@ namespace ImagingDeviceManager.Tests {
 			Assert.AreEqual(16,imageRead.BitsPerSample);
 			Assert.AreEqual(1270,imageRead.XDpi,0.01);
 			Assert.AreEqual(TwainTransferMechanism.Memory,imageRead.TransferMechanism);
-			Assert.IsTrue(imageRead.IsBitDepth16InEffect);
+			Assert.AreEqual(16,imageRead.BitDepthInEffect);
 			Assert.AreEqual(16,imageRead.RequestedBits);
 			Assert.AreEqual(AcquiredImage.PixelFlavorChocolate,imageRead.PixelFlavor);
 		}

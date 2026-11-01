@@ -1400,10 +1400,11 @@ namespace ImagingCapture.Session {
 				NextTargetText="";
 			}
 			string textEnded=CaptureEndText.GetEndedText(ended);
-			if(!string.IsNullOrWhiteSpace(ended.Reason8Bit)) {
-				LogOnce("16 bits were asked and the source gave 8: "+ended.Reason8Bit.Trim());//design 7.12 "16-bit refused": silent, logged
-				if(_reason8BitDelivered=="") {
-					_reason8BitDelivered=ended.Reason8Bit.Trim();
+			if(!string.IsNullOrWhiteSpace(ended.ReasonFallback)) {
+				//Design 7.12 "16-bit refused": silent, logged.
+				LogOnce(ended.BitsRequested+" bits were asked and the source gave "+ended.BitDepthInEffect+": "+ended.ReasonFallback.Trim());
+				if(_reason8BitDelivered=="" && ended.BitDepthInEffect==8) {
+					_reason8BitDelivered=ended.ReasonFallback.Trim();
 				}
 			}
 			bool isHandled=false;

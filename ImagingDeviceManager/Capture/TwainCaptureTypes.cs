@@ -87,12 +87,46 @@ namespace ImagingDeviceManager.Capture {
 		Closing,
 	}
 
-	///<summary>What one Enable or RequestRedelivery asks for. The library does what it is asked; whether 16 bits may be asked (Bits=16,
-	///Allow16Bit, a verification record, a target that can be written as DICOM) is the caller's decision (design 7.1 CAP-3, 7.8, 7.10).</summary>
+	///<summary>The bit depths a capture enable can ask for and run at ([Device.N] Bits, owner decision 2026-11-01: 16 by default, falling back to
+	///14 or 8): 16 and 14 are negotiated over memory transfer and delivered as raw samples in 16-bit containers (AcquiredImage.Gray16); 8 is
+	///everything else.</summary>
+	public static class TwainBitDepth {
+		public const int Bits8=8;
+		public const int Bits14=14;
+		public const int Bits16=16;
+
+		///<summary>8, 14 and 16.</summary>
+		public static bool IsAllowed(int bits) {
+			return bits==Bits8 || bits==Bits14 || bits==Bits16;
+		}
+
+		///<summary>bits when it is 8, 14 or 16, otherwise 8.</summary>
+		public static int Normalize(int bits) {
+			return IsAllowed(bits) ? bits : Bits8;
+		}
+
+		///<summary>The ICAP_BITDEPTH values tried, in order, when bitsWanted is asked for: 16 then 14 for 16, 14 for 14, none for 8 (or any other
+		///value). When none of them is listed and accepted, the enable runs at 8 bits.</summary>
+		public static List<int> GetCandidates(int bitsWanted) {
+			switch(Normalize(bitsWanted)) {
+				case Bits16: return new List<int> { Bits16,Bits14 };
+				case Bits14: return new List<int> { Bits14 };
+				default: return new List<int>();
+			}
+		}
+	}
+
+	///<summary>What one Enable or RequestRedelivery asks for. The library does what it is asked; whether more than 8 bits may be asked ([Device.N]
+	///Bits, Allow16Bit, a verification record, a target that can be written as DICOM) is the caller's decision (design 7.1 CAP-3, 7.8, 7.10).</summary>
 	public sealed class TwainEnableRequest {
-		///<summary>8 or 16. 16 is negotiated only when ICAP_PIXELTYPE is GRAY: ICAP_XFERMECH=TWSX_MEMORY first, then ICAP_BITDEPTH=16 if MSG_GET
-		///lists it; otherwise the enable runs at 8 bits (logged).</summary>
+		///<summary>16, 14 or 8 (TwainBitDepth; any other value counts as 8). More than 8 bits are negotiated only when ICAP_PIXELTYPE is GRAY:
+		///ICAP_XFERMECH=TWSX_MEMORY first, then for 16 ICAP_BITDEPTH=16 if MSG_GET lists 16, else 14 if it lists 14; for 14 only 14. When none is
+		///listed and accepted the enable runs at 8 bits. TwainCaptureEnded.BitDepthInEffect and ReasonFallback report what was used.</summary>
 		public int Bits=8;
+		///<summary>Why the caller asks for fewer bits than the device is set to ([Device.N] Bits), for example a gate of the capture session's
+		///decision that failed; null when it asks for what the device is set to. Recorded in the sidecars of the enable's images
+		///(CaptureSidecarKeys.BitDepthReason) unless the library's own fallback (TwainCaptureEnded.ReasonFallback) replaces it.</summary>
+		public string ReasonFallback;
 		///<summary>Null: TwainCaptureOptions.ByteOrder16.</summary>
 		public TwainByteOrder? ByteOrder16;
 		///<summary>Null: !TwainCaptureOptions.Headless. A source that reports CAP_UICONTROLLABLE FALSE always gets ShowUI=1.</summary>
@@ -143,10 +177,17 @@ namespace ImagingDeviceManager.Capture {
 		///since the refusal) was sent: a capture event (design 7.13). It may have been refused by a source still finishing, the session then
 		///waiting a second bound (the log says so); SourceMayHoldImages, not this, says whether images may still be held.</summary>
 		public bool WasSecondDisableAfterWait { get; set; }
-		///<summary>The enable negotiated 16 bits.</summary>
-		public bool IsBitDepth16InEffect { get; set; }
-		///<summary>Why 16 bits were asked and the enable ran at 8 (for Test capture and the log), else null.</summary>
-		public string Reason8Bit { get; set; }
+		///<summary>16, 14 or 8: what the enable asked for (TwainEnableRequest.Bits).</summary>
+		public int BitsRequested { get; set; }=8;
+		///<summary>16, 14 or 8: the ICAP_BITDEPTH the enable ran at (16 or 14 over memory transfer), as negotiated in state 4.</summary>
+		public int BitDepthInEffect { get; set; }=8;
+		///<summary>Why BitDepthInEffect is less than BitsRequested (16 asked and 14 or 8 used, 14 asked and 8 used), for Test capture, the
+		///session and the log, else null.</summary>
+		public string ReasonFallback { get; set; }
+		///<summary>A transfer of the enable failed because an image of more than 8 bits came in a layout the library cannot read (DAT_IMAGEINFO
+		///BitsPerPixel not 16 for a 14- or 16-bit sample, or packed samples): "14-bit layout not usable: ..." (or 16-bit), else null. Reason is
+		///TransferFailed; the image was not read and nothing of it was kept. The session asks for 8 bits for the rest of the session.</summary>
+		public string LayoutUnusableText { get; set; }
 		///<summary>Reason Error, Refused, EnableFailed, RedeliveryUnavailable: a sentence for the indicator area.</summary>
 		public string ErrorText { get; set; }
 		public DateTime EndedAt { get; set; }

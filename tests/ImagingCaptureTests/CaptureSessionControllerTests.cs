@@ -1151,13 +1151,13 @@ namespace ImagingCapture.Tests {
 			_harness.Started();
 			_harness.Status(TwainCaptureState.WaitingForImage);
 			_harness.Image();
-			_harness.Ended(TwainCaptureEndReason.Completed,ended => ended.Reason8Bit="ICAP_BITDEPTH 16 is not listed.");
+			_harness.Ended(TwainCaptureEndReason.Completed,ended => ended.ReasonFallback="ICAP_BITDEPTH 16 is not listed.");
 			Assert.AreEqual(2,_harness.Twain.ListEnables.Count,"The series goes on.");
 			Assert.IsFalse(Controller.IndicatorText.Contains("ICAP"),"Silent: the indicator does not show it (design 7.12).");
 			Assert.AreEqual("",Controller.NoticeText);
 			_harness.Status(TwainCaptureState.WaitingForImage);
 			_harness.Image();
-			_harness.Ended(TwainCaptureEndReason.Completed,ended => ended.Reason8Bit="ICAP_BITDEPTH 16 is not listed.");
+			_harness.Ended(TwainCaptureEndReason.Completed,ended => ended.ReasonFallback="ICAP_BITDEPTH 16 is not listed.");
 			Assert.AreEqual(1,_harness.ListLogFile.Count(x => x.Contains("ICAP_BITDEPTH 16 is not listed.")),"Logged once.");
 		}
 

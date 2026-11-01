@@ -245,7 +245,7 @@ namespace ImagingCapture.Save {
 				plan.Error="A 16-bit image arrived, but 16-bit saving is not enabled for this device, so it was not saved to the patient.";
 				return;
 			}
-			if(image.TransferMechanism!=TwainTransferMechanism.Memory || !image.IsBitDepth16InEffect) {
+			if(image.TransferMechanism!=TwainTransferMechanism.Memory || !image.IsAbove8BitInEffect) {
 				//A 16bpp native DIB is RGB555/565 by definition (TWAIN 2.4 p.12-7) and is never asked for; 16-bit samples in an 8-bit enable did not
 				//come through the negotiation that Test capture verified (byte order, polarity). Neither is written as DICOM (design 7.1 CAP-3).
 				plan.Error="A 16-bit image arrived that did not come through the verified 16-bit memory transfer (ICAP_BITDEPTH 16 over "

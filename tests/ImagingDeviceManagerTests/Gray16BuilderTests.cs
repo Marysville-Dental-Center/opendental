@@ -45,6 +45,28 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		[TestMethod]
+		public void FourteenBit_RightJustifiedIn16BitContainers_ValuesKeptExactly() {
+			Gray16Builder builder=new Gray16Builder(3,2,false,14);
+			Assert.AreEqual(14,builder.SignificantBits);
+			Assert.AreEqual(16383,builder.MaxSignificantValue);
+			AddStrip(builder,new ushort[] { 0,1,16383,4095,8192,12 },3,2,0,0,8);
+			CollectionAssert.AreEqual(new ushort[] { 0,1,16383,4095,8192,12 },builder.Build(),"No shift, no rescaling.");
+			Assert.AreEqual(0,builder.CountAboveSignificantBits);
+		}
+
+		[TestMethod]
+		public void FourteenBit_SampleAbove16383_CountedButNotChanged() {
+			Gray16Builder builder=new Gray16Builder(2,1,false,14);
+			AddStrip(builder,new ushort[] { 16384,0xFFFC },2,1,0,0,4);
+			CollectionAssert.AreEqual(new ushort[] { 16384,0xFFFC },builder.Build());
+			Assert.AreEqual(2,builder.CountAboveSignificantBits);
+			Gray16Builder builder16=new Gray16Builder(2,1,false);
+			AddStrip(builder16,new ushort[] { 16384,0xFFFF },2,1,0,0,4);
+			Assert.AreEqual(0,builder16.CountAboveSignificantBits,"Nothing is above 16 bits.");
+			Assert.AreEqual(16,new Gray16Builder(2,1,false,7).SignificantBits,"Out of range counts as 16.");
+		}
+
+		[TestMethod]
 		public void TilesWithXAndYOffsets_Assembled() {
 			Gray16Builder builder=new Gray16Builder(4,2,false);
 			AddStrip(builder,new ushort[] { 1,2,5,6 },2,2,0,0,4);
