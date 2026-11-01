@@ -1117,7 +1117,10 @@ namespace ImagingDeviceManager.Capture {
 			}
 			bool isClosingAtArrival=_isClosing;
 			TwainCaptureQuarantineContext quarantineContext=QuarantineContext;//Read once: the PatNum and the name of one patient.
-			CaptureRecord record=BuildRecord(image,quarantineContext);
+			//Design 7.12: the source of a redelivered image knows no patient, so it is "patient unknown" until the operator confirms it in the
+			//window; its journal copy and a quarantine file written here record no PatNum, so they are never offered for Assign.
+			long patNumImage=image.IsRedelivery ? 0 : quarantineContext.PatNum;
+			CaptureRecord record=BuildRecord(image,patNumImage);
 			CaptureImageFile file;
 			try {
 				file=CaptureImageFile.FromAcquiredImage(image);
@@ -1141,8 +1144,9 @@ namespace ImagingDeviceManager.Capture {
 			}
 			//After BeginClose, also when it came while the journal copy was written: the quarantine, never ImageAcquired.
 			string error="";
-			string pathQuarantine=file==null ? null : _quarantine.WriteSessionCapture(file,record,SessionGuid,quarantineContext.PatNum,
-				quarantineContext.PatientName,image.TargetLabel,"It arrived after the capture window began to close.",Log,out error);
+			string pathQuarantine=file==null ? null : _quarantine.WriteSessionCapture(file,record,SessionGuid,patNumImage,
+				quarantineContext.PatientName,image.TargetLabel,"It arrived after the capture window began to close."
+					+(image.IsRedelivery ? " It is a redelivered image that the operator did not confirm, so its patient is unknown." : ""),Log,out error);
 			image.QuarantinePath=pathQuarantine;
 			string delivered=pathQuarantine==null ? CaptureJournal.DeliveredNone : CaptureJournal.DeliveredQuarantine;
 			string deliveredDetail=pathQuarantine==null ? "The quarantine could not be written: "+error : Path.GetFileName(pathQuarantine);
@@ -1159,12 +1163,12 @@ namespace ImagingDeviceManager.Capture {
 			Raise(ImageQuarantined,image,"ImageQuarantined");
 		}
 
-		///<summary>The sidecar record of image, with the PatNum of quarantineContext (the caller reads the context once and uses the same one
-		///for the quarantine sidecar's patient name).</summary>
-		private CaptureRecord BuildRecord(AcquiredImage image,TwainCaptureQuarantineContext quarantineContext) {
+		///<summary>The sidecar record of image, with patNum: the bound patient of the context the caller read once (and uses for the quarantine
+		///sidecar's patient name), or 0 for "patient unknown" (a redelivered image the operator has not confirmed, a declined one).</summary>
+		private CaptureRecord BuildRecord(AcquiredImage image,long patNum) {
 			CaptureRecord record=CaptureRecord.Create(image.ReceivedAt==default(DateTime) ? GetNow() : image.ReceivedAt,
 				image.SourceName??_productName,SessionGuid.ToString("N").Substring(0,8)+"-"+image.EnableId.ToString(CultureInfo.InvariantCulture));
-			record.PatNum=quarantineContext.PatNum;
+			record.PatNum=patNum;
 			CaptureMetadataKeys keys=ReadMetadataKeys(image.MetadataJson);
 			if(keys!=null) {
 				record.CaptureId=keys.CaptureId;
@@ -1218,7 +1222,8 @@ namespace ImagingDeviceManager.Capture {
 			try {
 				CaptureImageFile file=CaptureImageFile.FromAcquiredImage(image);
 				TwainCaptureQuarantineContext context=QuarantineContext;
-				string path=_quarantine.WriteSessionCapture(file,BuildRecord(image,context),SessionGuid,isPatientUnknown ? 0 : context.PatNum,
+				long patNum=isPatientUnknown ? 0 : context.PatNum;
+				string path=_quarantine.WriteSessionCapture(file,BuildRecord(image,patNum),SessionGuid,patNum,
 					context.PatientName,image.TargetLabel,reason,Log,out error);
 				image.QuarantinePath=path;
 				Log(path==null ? "An image of enable "+image.EnableId+" could not be quarantined: "+error

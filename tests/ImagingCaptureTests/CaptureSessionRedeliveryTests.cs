@@ -140,6 +140,24 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void Redelivered_ConfirmedThenTheSaveFails_QuarantinedForTheBoundPatient_MarkedConfirmed() {
+			TransferFailed();
+			_harness.Arm();
+			Controller.RequestRedelivery();
+			AcquiredImage image=RaiseRedelivered();
+			Assert.IsFalse((image.SidecarFields??new List<KeyValuePair<string,string>>()).Any(x => x.Key==CaptureSidecarKeys.RedeliveryConfirmed),
+				"Not confirmed yet.");
+			_harness.Ended(TwainCaptureEndReason.Completed);
+			_harness.Clock.Advance(CaptureSessionController.KeyIgnoreMs);
+			_harness.RadiographStore.ThrowOn="Import";
+			Assert.IsTrue(Controller.ConfirmRedelivered());
+			FakeQuarantineCall call=_harness.Twain.ListQuarantined.Single();
+			Assert.IsFalse(call.IsPatientUnknown,"The operator confirmed it for the bound patient.");
+			Assert.AreEqual("1",call.Image.SidecarFields.Single(x => x.Key==CaptureSidecarKeys.RedeliveryConfirmed).Value,
+				"Its sidecar says so, so Assign may file it (CaptureRecoveryFiler.IsAssignOffered).");
+		}
+
+		[TestMethod]
 		public void Redelivered_WithoutMetadata_ShownAsUnknown() {
 			TransferFailed();
 			_harness.Arm();

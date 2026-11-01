@@ -32,6 +32,9 @@ namespace ImagingDeviceManager.Capture {
 		public const string ProvNum="ProvNum";
 		///<summary>The imagingdevice row the session runs for ([Device.N]).</summary>
 		public const string ImagingDeviceNum="ImagingDeviceNum";
+		///<summary>"1": a redelivered image (Redelivered=1) that the operator confirmed for the bound patient in the session window (design
+		///7.12), so its PatNum is that patient's. Without it a redelivered image is never offered for Assign, whatever its PatNum says.</summary>
+		public const string RedeliveryConfirmed="RedeliveryConfirmed";
 		///<summary>Written by the library: TW_IMAGEINFO PixelType, BitsPerSample, and whether 16 bits were negotiated (IsBitDepth16InEffect).</summary>
 		public const string PixelType="PixelType";
 		public const string BitsPerSample="BitsPerSample";
@@ -156,6 +159,8 @@ namespace ImagingDeviceManager.Capture {
 		///<summary>A journal copy whose image went to the quarantine instead of the caller (Delivered=Quarantine): it is filed from the quarantine.</summary>
 		public bool IsCopyOfQuarantined => Kind==CaptureFileKind.Journal && Delivered==CaptureJournal.DeliveredQuarantine;
 		public bool IsRedelivered => Get("Redelivered")=="1";
+		///<summary>A redelivered image the operator confirmed for the bound patient (CaptureSidecarKeys.RedeliveryConfirmed).</summary>
+		public bool IsRedeliveryConfirmed => IsRedelivered && Get(CaptureSidecarKeys.RedeliveryConfirmed)=="1";
 		public int Width => (int)GetLong("Width");
 		public int Height => (int)GetLong("Height");
 		public int BitsPerPixel => (int)GetLong("BitsPerPixel");

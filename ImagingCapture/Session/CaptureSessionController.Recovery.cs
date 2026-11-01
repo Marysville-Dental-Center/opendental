@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using ImagingCapture.Recovery;
 using ImagingCapture.Save;
 using ImagingDeviceManager.Capture;
@@ -29,6 +30,18 @@ namespace ImagingCapture.Session {
 			listFields.Add(Pair(CaptureSidecarKeys.ProvNum,ToText(ProvNum)));
 			listFields.Add(Pair(CaptureSidecarKeys.ImagingDeviceNum,ToText(_setup.ImagingDevice?.ImagingDeviceNum??0)));
 			return listFields;
+		}
+
+		///<summary>Sets key to value in the sidecar fields of image (the library writes them into the image's quarantine sidecar when the session
+		///quarantines it, and into its journal copy's sidecar then too), replacing a value it had.</summary>
+		private static void SetImageSidecarField(AcquiredImage image,string key,string value) {
+			if(image==null) {
+				return;
+			}
+			List<KeyValuePair<string,string>> listFields=image.SidecarFields==null ? new List<KeyValuePair<string,string>>()
+				: image.SidecarFields.Where(x => !string.Equals(x.Key,key,StringComparison.OrdinalIgnoreCase)).ToList();
+			listFields.Add(Pair(key,value));
+			image.SidecarFields=listFields;
 		}
 
 		///<summary>The quarantine window or Recover recent captures filed an image (design 7.12). When it went into this session's mount, the

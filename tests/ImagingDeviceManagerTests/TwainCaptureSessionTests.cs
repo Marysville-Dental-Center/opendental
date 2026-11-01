@@ -852,6 +852,43 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		[TestMethod]
+		public void Redelivery_TheImagesJournalCopyIsPatientUnknown_UntilTheWindowConfirmsIt() {
+			Capture.QuarantineContext=new TwainCaptureQuarantineContext(9,"Roe, Ann");
+			Options.RedeliverCap=FakeHelperSource.CapRedeliver;
+			_harness.OpenOrFail();
+			LoseOneImage();
+			_harness.WaitForEnded(Capture.RequestRedelivery(new TwainEnableRequest { Bits=8,TargetLabel="Slot 1" }));
+			AcquiredImage image=_harness.Images.Single();
+			Assert.IsTrue(image.IsRedelivery);
+			Dictionary<string,string> dictJournal=CaptureFiles.ReadSidecar(Path.ChangeExtension(image.JournalPath,".txt"));
+			Assert.AreEqual("",dictJournal["PatNum"],"Design 7.12: the source knows no patient; its copy is never offered for Assign.");
+			Assert.AreEqual("1",dictJournal["Redelivered"]);
+			CaptureFileEntry entry=CaptureFileStore.CreateForFolder(_harness.Folder).ListJournal().Single();
+			Assert.IsTrue(entry.IsPatientUnknown);
+		}
+
+		[TestMethod]
+		public void Redelivery_ImageArrivingAfterBeginClose_QuarantinedAsPatientUnknown() {
+			Capture.QuarantineContext=new TwainCaptureQuarantineContext(9,"Roe, Ann");
+			Options.RedeliverCap=FakeHelperSource.CapRedeliver;
+			_harness.OpenOrFail();
+			LoseOneImage();
+			CloseWhileTheJournalCopyIsWritten();
+			Capture.RequestRedelivery(new TwainEnableRequest { Bits=8,TargetLabel="Slot 1" });
+			Assert.IsTrue(Capture.WaitForClose(TimeSpan.FromSeconds(10)),_harness.LogText);
+			Assert.AreEqual(0,_harness.ListImages.Count);
+			AcquiredImage image=_harness.ListQuarantined.Single();
+			Assert.IsTrue(image.IsRedelivery);
+			Dictionary<string,string> dictSidecar=CaptureFiles.ReadSidecar(Path.ChangeExtension(image.QuarantinePath,".txt"));
+			Assert.AreEqual("",dictSidecar["PatNum"],"Never offered for Assign to the bound patient.");
+			Assert.AreEqual(QuarantineWriter.PatientUnknown,dictSidecar["Patient"]);
+			StringAssert.Contains(dictSidecar["Reason"],"redelivered image");
+			Dictionary<string,string> dictJournal=CaptureFiles.ReadSidecar(Path.ChangeExtension(image.JournalPath,".txt"));
+			Assert.AreEqual("",dictJournal["PatNum"]);
+			Assert.AreEqual(CaptureJournal.DeliveredQuarantine,dictJournal["Delivered"]);
+		}
+
+		[TestMethod]
 		public void Redelivery_SourceKeepsTheCapUntilClose_NextNormalEnableStillCaptures() {
 			Helper.RedeliverKeptUntilClose=true;
 			Options.RedeliverCap=FakeHelperSource.CapRedeliver;

@@ -183,6 +183,21 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void Recover_ARedeliveredImagesCopy_NotOfferedForAssign_EvenWithTheSessionsPatNum() {
+			//A copy that records the bound patient for a redelivered image (a sidecar written before the library recorded "patient unknown").
+			Dictionary<string,string> dictFields=RecoveryFiles.SessionFields(captureId:"cap-r");
+			dictFields["Redelivered"]="1";
+			_harness.Files.Journal(dictFields,_receivedAt);
+			CaptureRecoveryModel model=Model(CaptureRecoveryView.Journal,_harness.PatientJane);
+			CaptureRecoveryItem item=model.Items.Single();
+			Assert.IsFalse(item.IsAssignOffered,"Design 7.12: a declined (or still waiting) redelivered image goes only through Reassign.");
+			Assert.IsTrue(item.IsReassignOffered);
+			Assert.AreEqual("Reassign only: no originating patient.",item.NoteText);
+			model.Select(0);
+			Assert.IsFalse(model.BeginAssign());
+		}
+
+		[TestMethod]
 		public void Recover_DocumentsUnreadable_NothingOfThePatientOffered() {
 			_harness.Files.Journal(RecoveryFiles.SessionFields(),_receivedAt);
 			FakeCaptureRecoveryStoreThrowing store=new FakeCaptureRecoveryStoreThrowing(_harness.Store);

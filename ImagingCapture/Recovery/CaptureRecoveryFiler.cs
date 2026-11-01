@@ -103,15 +103,21 @@ namespace ImagingCapture.Recovery {
 
 		#region Assign
 		///<summary>Whether Assign is offered for entry at all (design 7.12, 10.6): a capture with an originating patient that was not filed yet; a
-		///journal copy only when patNumSession is that patient (Recover recent captures in the patient's session).</summary>
+		///journal copy only when patNumSession is that patient (Recover recent captures in the patient's session). A redelivered image the operator
+		///did not confirm is "patient unknown" whatever PatNum its sidecar has (a sidecar written before the library left it out): Reassign only.</summary>
 		public static bool IsAssignOffered(CaptureFileEntry entry,long patNumSession) {
-			if(entry==null || entry.IsPatientUnknown || entry.IsResolved) {
+			if(entry==null || entry.IsPatientUnknown || entry.IsResolved || IsRedeliveredUnconfirmed(entry)) {
 				return false;
 			}
 			if(entry.Kind==CaptureFileKind.Journal) {
 				return !IsJournalCopyOfQuarantined(entry) && patNumSession>0 && entry.PatNum==patNumSession;
 			}
 			return true;
+		}
+
+		///<summary>Design 7.12: a redelivered image is placed only after the operator confirmed it; until then its patient is unknown.</summary>
+		public static bool IsRedeliveredUnconfirmed(CaptureFileEntry entry) {
+			return entry!=null && entry.IsRedelivered && !entry.IsRedeliveryConfirmed;
 		}
 
 		///<summary>A journal copy whose image went to the quarantine is filed from there, never from the journal, so that one exposure is not filed
@@ -220,7 +226,7 @@ namespace ImagingCapture.Recovery {
 			if(IsJournalCopyOfQuarantined(entry)) {
 				return "This copy's image is in unassigned captures; file it from there.";
 			}
-			if(entry.IsPatientUnknown) {
+			if(entry.IsPatientUnknown || IsRedeliveredUnconfirmed(entry)) {
 				return "This capture has no originating patient, so it can only be reassigned to a patient you find.";
 			}
 			return "This journal copy belongs to another patient's session (PatNum "+entry.PatNum+"), so it can only be reassigned.";
@@ -311,7 +317,7 @@ namespace ImagingCapture.Recovery {
 			if(reasonTrimmed=="") {
 				return CaptureFilingResult.Refused(action,entry,"Type the reason for the reassignment.");
 			}
-			if(entry.Kind==CaptureFileKind.Quarantine && !entry.IsPatientUnknown && patientTarget.PatNum==entry.PatNum) {
+			if(entry.Kind==CaptureFileKind.Quarantine && !entry.IsPatientUnknown && !IsRedeliveredUnconfirmed(entry) && patientTarget.PatNum==entry.PatNum) {
 				return CaptureFilingResult.Refused(action,entry,"This is the capture's originating patient: use Assign, which keeps its slot.");
 			}
 			if(docCategory<=0 || !IsCategoryValid(docCategory)) {

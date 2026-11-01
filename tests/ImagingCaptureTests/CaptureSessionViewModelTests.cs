@@ -494,6 +494,9 @@ namespace ImagingCapture.Tests {
 			_harness.Twain.RaiseImage(image);
 			_harness.Dispatcher.RunPending();
 			Assert.IsTrue(_viewModel.IsRedeliveredVisible);
+			_harness.Ended(TwainCaptureEndReason.Completed);
+			Assert.AreEqual(CaptureSessionPhase.Ready,_viewModel.Phase);
+			Assert.IsFalse(_viewModel.CanOpenCaptureLinks,"Design 7.12: a waiting redelivered image is placed only through Confirm, never from Recover.");
 			Assert.AreSame(image,_viewModel.PreviewImage,"The preview shows the redelivered image...");
 			Assert.AreEqual(0,_viewModel.PreviewDegrees,"...as delivered.");
 			Assert.AreEqual("Redelivered image, not placed yet",_viewModel.PreviewCaption);

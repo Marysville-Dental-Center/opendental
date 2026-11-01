@@ -140,6 +140,29 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void Assign_RedeliveredNotConfirmed_NeverOffered_EvenWithAPatNum_ReassignToThatPatientAllowed() {
+			//A sidecar that records the bound patient for a redelivered image the operator never confirmed (the library before this fix wrote one).
+			Dictionary<string,string> dictFields=RecoveryFiles.SessionFields();
+			dictFields["Redelivered"]="1";
+			CaptureFileEntry entry=_harness.Files.Quarantine(dictFields,_receivedAt);
+			Assert.IsFalse(entry.IsPatientUnknown);
+			Assert.IsFalse(CaptureRecoveryFiler.IsAssignOffered(entry,42),"Design 7.12: placed only after the operator confirms it.");
+			CaptureFilingResult result=_harness.Filer.Assign(entry,20,42);
+			Assert.IsFalse(result.IsDone);
+			StringAssert.Contains(result.Error,"no originating patient");
+			Assert.AreEqual(0,RadiographStore.ListPatientsImported.Count);
+			Assert.IsTrue(CaptureRecoveryFiler.IsReassignOffered(entry));
+			CaptureFilingResult resultReassign=_harness.Filer.Reassign(entry,_harness.PatientJane,"Checked against the patient.",20);
+			Assert.IsTrue(resultReassign.IsDone,resultReassign.Error);
+			Assert.AreEqual(42,RadiographStore.ListPatientsImported.Single().PatNum);
+			Dictionary<string,string> dictConfirmed=RecoveryFiles.SessionFields(captureId:"cap-8");
+			dictConfirmed["Redelivered"]="1";
+			dictConfirmed[CaptureSidecarKeys.RedeliveryConfirmed]="1";
+			CaptureFileEntry entryConfirmed=_harness.Files.Quarantine(dictConfirmed,_receivedAt.AddSeconds(1));
+			Assert.IsTrue(CaptureRecoveryFiler.IsAssignOffered(entryConfirmed,42),"Confirmed in the session for the bound patient.");
+		}
+
+		[TestMethod]
 		public void Assign_NeedsImageCreate_NothingChanged() {
 			Store.HashSetDenied.Add(EnumPermType.ImageCreate);
 			CaptureFileEntry entry=_harness.Files.Quarantine(RecoveryFiles.SessionFields(),_receivedAt);

@@ -228,8 +228,9 @@ namespace ImagingCapture.UI {
 		public string WarningText => _controller.WarningText;
 		///<summary>"N unassigned captures on this computer", or "".</summary>
 		public string UnassignedText => _controller.UnassignedText??"";
-		///<summary>The quarantine and Recover links may be opened now: the source is not busy and the session has not finished.</summary>
-		public bool CanOpenCaptureLinks => !IsSourceBusy && Phase!=CaptureSessionPhase.Finished && !_isClosing;
+		///<summary>The quarantine and Recover links may be opened now: the source is not busy, the session has not finished, and no redelivered
+		///image waits for the operator's Confirm or Decline (design 7.12: it is placed only through that confirmation, never from the journal).</summary>
+		public bool CanOpenCaptureLinks => !IsSourceBusy && Phase!=CaptureSessionPhase.Finished && !_isClosing && !_controller.HasRedeliveredPending;
 		#endregion Properties - indicator
 
 		#region Properties - commands

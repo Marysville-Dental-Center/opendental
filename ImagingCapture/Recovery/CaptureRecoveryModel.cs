@@ -321,7 +321,7 @@ namespace ImagingCapture.Recovery {
 				listNotes.Add("This file cannot be filed here.");
 			}
 			else if(!item.IsAssignOffered) {
-				listNotes.Add(entry.IsPatientUnknown ? "Reassign only: no originating patient."
+				listNotes.Add(entry.IsPatientUnknown || CaptureRecoveryFiler.IsRedeliveredUnconfirmed(entry) ? "Reassign only: no originating patient."
 					: entry.Kind==CaptureFileKind.Journal ? "Reassign only: a copy from "+(SessionPatient==null ? "the journal" : "another patient's session")+"."
 					: "Reassign only.");
 			}

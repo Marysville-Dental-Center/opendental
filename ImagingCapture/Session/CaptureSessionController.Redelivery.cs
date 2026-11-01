@@ -129,6 +129,8 @@ namespace ImagingCapture.Session {
 			}
 			Log("The operator confirmed the redelivered image (acquired "+pending.AcquiredAtText+", capture ID "+pending.CaptureId+") for "
 				+(IsSingleTarget ? "a single image" : MountPlacement.GetSlotLabel(mountItemTarget))+".");
+			//Confirmed for the bound patient: should its save fail, the quarantine file is the bound patient's and may be assigned (design 7.12).
+			SetImageSidecarField(pending.Image,CaptureSidecarKeys.RedeliveryConfirmed,"1");
 			SaveImage(pending.Image,pending.Record,idxTarget,mountItemTarget);
 			if(Phase==CaptureSessionPhase.Ready && !HasRedeliveredPending && !IsSingleTarget && _mountSlots.IdxTarget==-1) {
 				Finish(CaptureSessionEndReason.MountFull);
