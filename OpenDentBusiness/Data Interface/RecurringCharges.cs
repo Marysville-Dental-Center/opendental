@@ -1257,7 +1257,10 @@ namespace OpenDentBusiness {
 			if(ccSource!=CreditCardSource.PaySimpleACH && ccSource!=CreditCardSource.PaySimplePaymentPortalACH) {
 				paymentCur.PayType=PrefC.GetLong(PrefName.RecurringChargesPayTypeCC);
 			}
-			if(paymentCur.PayType==0) {//Pref default not set or this is ACH
+			if(paymentCur.PayType==0 && ccSource==CreditCardSource.MeetInTheCloudTerminal) {//Global Payments V2 (25.4): the clinic's, else Headquarters'.
+				paymentCur.PayType=GetGlobalPaymentsV2PayType(paymentCur.ClinicNum);
+			}
+			else if(paymentCur.PayType==0) {//Pref default not set or this is ACH
 				paymentCur.PayType=PIn.Int(ProgramProperties.GetPropVal(_progCur.ProgramNum,ppPayTypeDesc,paymentCur.ClinicNum));
 			}
 			if(recCharge.PaymentType!=0) {

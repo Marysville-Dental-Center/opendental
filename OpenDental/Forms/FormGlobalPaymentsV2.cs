@@ -192,9 +192,7 @@ namespace OpenDental {
 				MsgBox.Show(this,"Choose a card.");
 				return;
 			}
-			if(transType==GpV2TransType.Sale && _patient!=null && GlobalPaymentsV2.HasSamePaymentOnDate(_patient.PatNum,(double)amount,DateTime.Today)
-				&& !MsgBox.Show(this,MsgBoxButtons.YesNo,"This patient already has a Global Payments V2 payment of this amount today. Charge again?"))
-			{
+			if(transType==GpV2TransType.Sale && _patient!=null && !ConfirmNotDuplicate(amount)) {
 				return;
 			}
 			if(transType==GpV2TransType.Void
@@ -246,6 +244,23 @@ namespace OpenDental {
 			FinishRun(result);
 		}
 
+		///<summary>False when the patient already has a Global Payments V2 payment of this amount today and the user doesn't want to charge again. Runs
+		///before anything is sent, inside an async handler, so it never throws: when the check itself fails the user decides.</summary>
+		private bool ConfirmNotDuplicate(decimal amount) {
+			bool hasSamePayment;
+			try {
+				hasSamePayment=GlobalPaymentsV2.HasSamePaymentOnDate(_patient.PatNum,(double)amount,DateTime.Today);
+			}
+			catch(Exception ex) {
+				return MessageBox.Show(this,Lan.g(this,"Could not check for an earlier Global Payments V2 payment of this amount today:")+" "+ex.Message+"\r\n"
+					+Lan.g(this,"Charge anyway?"),GlobalPaymentsV2.DisplayName,MessageBoxButtons.YesNo)==DialogResult.Yes;
+			}
+			if(!hasSamePayment) {
+				return true;
+			}
+			return MsgBox.Show(this,MsgBoxButtons.YesNo,"This patient already has a Global Payments V2 payment of this amount today. Charge again?");
+		}
+
 		private void ShowStatusFromPoolThread(string status) {
 			try {
 				if(IsDisposed || !IsHandleCreated) {
@@ -274,7 +289,12 @@ namespace OpenDental {
 
 		private void FinishRun(GlobalPaymentsV2Result result) {
 			long patNum=_patient?.PatNum??0;
-			SecurityLogs.MakeLogEntry(EnumPermType.CreditCardTerminal,patNum,GlobalPaymentsV2.BuildLogText(result));
+			try {
+				SecurityLogs.MakeLogEntry(EnumPermType.CreditCardTerminal,patNum,GlobalPaymentsV2.BuildLogText(result));
+			}
+			catch(Exception ex) {
+				ex.DoNothing();//Never loses the result: an approved transaction still reaches the payment.
+			}
 			FillControls();
 			if(result.IsApproved) {
 				ResultOut=result;

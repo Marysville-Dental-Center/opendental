@@ -141,6 +141,35 @@ namespace VGPTests {
 		}
 
 		[TestMethod]
+		public void DatabaseReads_GoThroughMiddleTier() {
+			foreach(string relativePath in _arrayV2Files.Where(x => x.StartsWith(@"OpenDentBusiness\"))) {
+				Assert.IsFalse(RepoFiles.Read(relativePath).Contains("DataCore."),relativePath+": DataCore skips the Middle Tier guard.");
+			}
+			string source=RepoFiles.Read(@"OpenDentBusiness\VendorDirect\GlobalPayments\GlobalPaymentsV2.cs");
+			//The type and signature the Middle Tier server resolves from the method name it is sent (DtoProcessor.DtoInformation).
+			Type type=Type.GetType("OpenDentBusiness."+"VendorDirect.GlobalPayments.GlobalPaymentsV2"+",OpenDentBusiness");
+			Assert.IsNotNull(type);
+			foreach(Tuple<string,Type[]> tuple in new[] {
+				Tuple.Create("HasSamePaymentOnDate",new[] { typeof(long),typeof(double),typeof(DateTime) }),
+				Tuple.Create("HasSameRecurringChargeOnDate",new[] { typeof(long),typeof(double),typeof(DateTime),typeof(long) }),
+				Tuple.Create("GetRecurringChargeInDoubt",new[] { typeof(long) }) })
+			{
+				Assert.IsNotNull(type.GetMethod(tuple.Item1,tuple.Item2),tuple.Item1);
+				int index=source.IndexOf(" "+tuple.Item1+"(");
+				Assert.IsTrue(index>0,tuple.Item1);
+				string start=source.Substring(index,source.IndexOf("string command=",index)-index);
+				StringAssert.Contains(start,"if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {",tuple.Item1+" runs on the server for a Middle Tier client.");
+				Assert.IsFalse(start.Contains("Meth.NoCheckMiddleTierRole()"),tuple.Item1);
+			}
+			string form=RepoFiles.Read(@"OpenDental\Forms\FormGlobalPaymentsV2.cs");
+			int indexCheck=form.IndexOf("GlobalPaymentsV2.HasSamePaymentOnDate(");
+			int indexMethod=form.LastIndexOf("private bool ConfirmNotDuplicate(",Math.Max(indexCheck,0));
+			Assert.IsTrue(indexCheck>0 && indexMethod>0 && form.LastIndexOf("try {",indexCheck)>indexMethod,
+				"The payment window's duplicate check can't throw out of the async Run handler.");
+			StringAssert.Contains(form,"!ConfirmNotDuplicate(amount)");
+		}
+
+		[TestMethod]
 		public void PaymentPortalBox_IsNotBuilt() {
 			string designer=RepoFiles.Read(@"OpenDental\Forms\FormGlobalPaymentsV2Setup.Designer.cs");
 			Assert.IsFalse(designer.Contains("Payment Portal") || designer.Contains("eClipboard"),"Excluded hosted services have no setting here.");

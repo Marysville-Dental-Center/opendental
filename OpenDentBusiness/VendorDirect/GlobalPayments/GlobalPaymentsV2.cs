@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Net.Http;
+using System.Reflection;
 using System.Text;
 using CodeBase;
 
@@ -283,8 +284,11 @@ namespace OpenDentBusiness.VendorDirect.GlobalPayments {
 			return (long)Math.Round(amount*100m,MidpointRounding.AwayFromZero);
 		}
 
-		///<summary>The Transactions API reference for a recurring charge: unique per charge row and day, 8 to 50 characters. Also the idempotency key,
-		///so the same charge is never taken twice within Global Payments' 24-hour window.</summary>
+		///<summary>The Transactions API reference of a new recurring charge attempt, 8 to 50 characters; it is also the request's X-GP-Idempotency key.
+		///Every run inserts new recurringcharge rows, so this is unique per attempt and a re-run never repeats it by itself. The one exception is a retry
+		///after an attempt whose outcome is unknown: it deliberately reuses that attempt's reference (RecurringChargerator.SendGlobalPaymentsV2,
+		///GetRecurringChargeInDoubt), so Global Payments can answer with the first request's result instead of charging again (INFERRED: how long Global
+		///Payments keeps an idempotency key is not stated in the public material).</summary>
 		public static string GetRecurringReference(long recurringChargeNum,DateTime dateCharge) {
 			Meth.NoCheckMiddleTierRole();
 			return "RC"+POut.Long(recurringChargeNum)+"-"+dateCharge.ToString("yyyyMMdd",CultureInfo.InvariantCulture);
@@ -301,27 +305,78 @@ namespace OpenDentBusiness.VendorDirect.GlobalPayments {
 		///<summary>True if patNum already has a completed Global Payments V2 payment of exactly amount on date. The payment window asks before charging
 		///again. The card isn't known before the terminal reads it, so "same card" is checked as "same patient" (INFERRED).</summary>
 		public static bool HasSamePaymentOnDate(long patNum,double amount,DateTime date) {
-			Meth.NoCheckMiddleTierRole();
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetBool(MethodBase.GetCurrentMethod(),patNum,amount,date);
+			}
 			string command="SELECT COUNT(*) FROM payment "
 				+"WHERE PatNum="+POut.Long(patNum)+" "
 				+"AND PaymentSource="+POut.Int((int)CreditCardSource.MeetInTheCloudTerminal)+" "
 				+"AND IsCcCompleted=1 "
 				+"AND PayDate="+POut.Date(date)+" "
 				+"AND ROUND(PayAmt,2)=ROUND("+POut.Double(amount)+",2)";
-			return PIn.Long(DataCore.GetScalar(command))>0;
+			return PIn.Long(Db.GetCount(command))>0;
 		}
 
 		///<summary>True if the card was already charged amount successfully on date by another recurring charge row. The recurring charge is then declined
 		///as a duplicate unless duplicates are forced.</summary>
 		public static bool HasSameRecurringChargeOnDate(long creditCardNum,double amount,DateTime date,long recurringChargeNumExclude) {
-			Meth.NoCheckMiddleTierRole();
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetBool(MethodBase.GetCurrentMethod(),creditCardNum,amount,date,recurringChargeNumExclude);
+			}
 			string command="SELECT COUNT(*) FROM recurringcharge "
 				+"WHERE CreditCardNum="+POut.Long(creditCardNum)+" "
 				+"AND RecurringChargeNum!="+POut.Long(recurringChargeNumExclude)+" "
 				+"AND ChargeStatus="+POut.Int((int)RecurringChargeStatus.ChargeSuccessful)+" "
 				+"AND "+DbHelper.DtimeToDate("DateTimeCharge")+"="+POut.Date(date)+" "
 				+"AND ROUND(ChargeAmt,2)=ROUND("+POut.Double(amount)+",2)";
-			return PIn.Long(DataCore.GetScalar(command))>0;
+			return PIn.Long(Db.GetCount(command))>0;
+		}
+
+		///<summary>Marks a recurring charge row whose request may have taken the money without this program knowing: no answer, an answer it could not
+		///read, or an approval whose payment could not be saved. Written into recurringcharge.ErrorMsg with the attempt's reference
+		///(BuildRecurringInDoubtTag) and never translated, so GetRecurringChargeInDoubt finds it whatever the language.</summary>
+		public const string RecurringInDoubtTag="GPV2-IN-DOUBT";
+
+		///<summary>The ErrorMsg tag of an in-doubt recurring charge attempt: "[GPV2-IN-DOUBT reference]". The reference also lets the office find the
+		///charge in Global Payments' records.</summary>
+		public static string BuildRecurringInDoubtTag(string reference) {
+			Meth.NoCheckMiddleTierRole();
+			return "["+RecurringInDoubtTag+" "+(reference??"").Trim()+"]";
+		}
+
+		///<summary>The reference in an ErrorMsg that BuildRecurringInDoubtTag wrote (the last one when there are several), or "".</summary>
+		public static string GetReferenceFromInDoubtTag(string errorMsg) {
+			Meth.NoCheckMiddleTierRole();
+			string text=errorMsg??"";
+			string prefix="["+RecurringInDoubtTag+" ";
+			int indexStart=text.LastIndexOf(prefix,StringComparison.Ordinal);
+			if(indexStart<0) {
+				return "";
+			}
+			indexStart+=prefix.Length;
+			int indexEnd=text.IndexOf(']',indexStart);
+			if(indexEnd<0) {
+				return "";
+			}
+			return text.Substring(indexStart,indexEnd-indexStart).Trim();
+		}
+
+		///<summary>The card's latest recurring charge row whose outcome is unknown (RecurringInDoubtTag) and that no later charge on the card has settled,
+		///or null. A later row with a payment (approved, or declined with its $0 payment) means Global Payments has given a definite answer on this card
+		///since. While this returns a row, RecurringChargerator does not charge the card again, in any run, unless a user forces it from the Recurring
+		///Charges window.</summary>
+		public static RecurringCharge GetRecurringChargeInDoubt(long creditCardNum) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetObject<RecurringCharge>(MethodBase.GetCurrentMethod(),creditCardNum);
+			}
+			string command="SELECT * FROM recurringcharge "
+				+"WHERE CreditCardNum="+POut.Long(creditCardNum)+" "
+				+"AND ChargeStatus!="+POut.Int((int)RecurringChargeStatus.NotYetCharged)+" "
+				+"AND ErrorMsg LIKE '%"+POut.String("["+RecurringInDoubtTag+" ")+"%' "
+				+"AND RecurringChargeNum>(SELECT COALESCE(MAX(rcSettled.RecurringChargeNum),0) FROM recurringcharge rcSettled "
+					+"WHERE rcSettled.CreditCardNum="+POut.Long(creditCardNum)+" AND rcSettled.PayNum>0) "
+				+"ORDER BY RecurringChargeNum DESC";
+			return Crud.RecurringChargeCrud.SelectOne(DbHelper.LimitOrderBy(command,1));
 		}
 		#endregion Duplicate checks
 
