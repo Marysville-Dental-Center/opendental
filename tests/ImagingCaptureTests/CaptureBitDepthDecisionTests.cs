@@ -58,10 +58,13 @@ namespace ImagingCapture.Tests {
 			CaptureBitDepthInput input=Input();
 			input.Options.Bits=14;
 			input.Record=CaptureControllerHarness.PassedRecord(_hash,14);
-			Assert.AreEqual(14,CaptureBitDepthDecision.Decide(input).Bits,"A record that passed at 14 covers 14.");
-			//Bits=16, and a record made with Bits=16 whose source then ran at 14: it passed at 14, not at the 16 asked for.
+			CaptureBitDepthChoice choice14=CaptureBitDepthDecision.Decide(input);
+			Assert.AreEqual(14,choice14.Bits,"A record that passed at 14 covers 14.");
+			Assert.IsNull(choice14.ReasonBelowBits,"14 is the device's Bits.");
+			//Bits=16, and a record made with Bits=16 whose operator chose to test 14: it passed at 14, not at the 16 asked for.
 			input=Input();
 			input.Record=CaptureControllerHarness.PassedRecord(_hash,16);
+			input.Record.BitsRequested=14;
 			input.Record.BitDepthInEffect=14;
 			CaptureBitDepthChoice choice=CaptureBitDepthDecision.Decide(input);
 			Assert.AreEqual(8,choice.Bits);
@@ -73,6 +76,52 @@ namespace ImagingCapture.Tests {
 			input.Record=CaptureControllerHarness.PassedRecord(_hash,14);
 			input.Record.BitDepthInEffect=16;
 			StringAssert.Contains(CaptureBitDepthDecision.Decide(input).ReasonFallback,"passed at 16 bits, not at the 14 bits asked for");
+		}
+
+		[TestMethod]
+		public void Bits16_RecordAsked16AndPassedAt14_Asks14_TheDepthItVerified() {
+			//Owner decision 2026-11-01, "default to 16, and can fall back to 14 or 8": the driver lists 14 but not 16, so Test capture asked it for
+			//16 and it ran at 14. With the same driver and image settings (Bits=16), the session asks for those 14 bits, never for 16.
+			CaptureBitDepthInput input=Input();
+			input.Record=CaptureControllerHarness.PassedRecord(_hash,16);
+			input.Record.BitDepthInEffect=14;
+			Assert.IsTrue(input.Record.IsPassedFor(14));
+			CaptureBitDepthChoice choice=CaptureBitDepthDecision.Decide(input);
+			Assert.AreEqual(14,choice.Bits);
+			Assert.IsFalse(choice.IsFallback);
+			Assert.IsNull(choice.Reason8Bit);
+			Assert.AreEqual("[Device.12] Bits is 16, and the latest Test capture record (2026-10-30 09:00) asked this driver for 16 bits and passed at 14, "
+				+"so the session asks for 14",choice.ReasonBelowBits);
+			Assert.AreEqual(14,CaptureBitDepthDecision.GetBitsCovered(input.Record,16));
+			Assert.AreEqual(8,CaptureBitDepthDecision.GetBitsCovered(input.Record,8));
+			//Every gate still holds for the 14: another driver version, other image settings, or a target that is not DICOM give 8.
+			input.DriverIdentity=new TwainDriverIdentity("Example Sensor DS",1,2,"1.2.0");
+			Assert.AreEqual(8,CaptureBitDepthDecision.Decide(input).Bits);
+			input=Input();
+			input.Record=CaptureControllerHarness.PassedRecord(_hash,16);
+			input.Record.BitDepthInEffect=14;
+			input.Options.ByteOrder16=TwainByteOrder.BE;
+			StringAssert.Contains(CaptureBitDepthDecision.Decide(input).ReasonFallback,"other image settings");
+			input=Input();
+			input.Record=CaptureControllerHarness.PassedRecord(_hash,16);
+			input.Record.BitDepthInEffect=14;
+			input.Target=new IntraOralTarget { HasMountSlot=false,ToothNumbers="2" };
+			Assert.AreEqual(8,CaptureBitDepthDecision.Decide(input).Bits);
+			//A record of that test that did not pass covers nothing.
+			input=Input();
+			input.Record=CaptureControllerHarness.PassedRecord(_hash,16);
+			input.Record.BitDepthInEffect=14;
+			input.Record.IsPolarityConfirmed=false;
+			Assert.AreEqual(8,CaptureBitDepthDecision.Decide(input).Bits);
+			StringAssert.Contains(CaptureBitDepthDecision.Decide(input).ReasonFallback,"did not pass");
+			//The recovery filer decides for the depth a capture's enable asked for (BitsWanted), never a lower one.
+			input=Input();
+			input.Record=CaptureControllerHarness.PassedRecord(_hash,16);
+			input.Record.BitDepthInEffect=14;
+			input.BitsWanted=16;
+			Assert.AreEqual(8,CaptureBitDepthDecision.Decide(input).Bits,"A 16-bit enable's capture is not covered by a record that passed at 14.");
+			input.BitsWanted=14;
+			Assert.AreEqual(14,CaptureBitDepthDecision.Decide(input).Bits,"The capture of a session that asked for 14.");
 		}
 
 		[TestMethod]
@@ -93,9 +142,10 @@ namespace ImagingCapture.Tests {
 			input.BitsWanted=14;
 			string reason=CaptureBitDepthDecision.Decide(input).ReasonFallback;
 			StringAssert.EndsWith(reason,"passed at 16 bits, not at the 14 bits asked for; run Test capture again at 14 bits");
-			//Bits=16 and a record that passed at 14 (its source listed only 14): setting Bits=14 is the other way.
+			//Bits=16 and a record whose test asked for 14 and passed at 14: setting Bits=14 is the other way.
 			input=Input();
 			input.Record=CaptureControllerHarness.PassedRecord(_hash,16);
+			input.Record.BitsRequested=14;
 			input.Record.BitDepthInEffect=14;
 			StringAssert.EndsWith(CaptureBitDepthDecision.Decide(input).ReasonFallback,"run Test capture again at 16 bits, or set Bits=14 and run it then");
 		}

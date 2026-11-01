@@ -1238,6 +1238,31 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void BitDepth_Bits16_TheRecordsTestAsked16AndRanAt14_Asks14_LoggedOnce_SavedAsDicom() {
+			//Owner decision 2026-11-01: 16 by default, falling back to 14. The driver lists 14 but not 16, which its Test capture found.
+			_harness=new CaptureControllerHarness(2);
+			SetGatesFor(16);
+			_harness.Setup.VerificationRecord.BitDepthInEffect=14;
+			_harness.Started();
+			Assert.AreEqual(14,_harness.Twain.LastRequest.Bits,"The depth the record passed at, never 16.");
+			StringAssert.StartsWith(_harness.Twain.LastRequest.ReasonFallback,"[Device.12] Bits is 16, and the latest Test capture record",
+				"The sidecars say why 14.");
+			AcquiredImage image=TestImages.Image16(6,4,(x,y) => (ushort)(100+x*1000+y),TestImages.Json16Bit12);
+			image.RequestedBits=14;
+			image.BitDepthInEffect=14;
+			image.BitsPerSample=14;
+			_harness.Twain.RaiseImage(image);
+			_harness.Dispatcher.RunPending();
+			Assert.AreEqual(1,Controller.CountImages,string.Join("\r\n",_harness.ListLogFile));
+			Assert.AreEqual(".dcm",_harness.RadiographStore.ListExtensions.Single(),"14-bit data in a 16-bit DICOM file.");
+			_harness.Ended(TwainCaptureEndReason.Completed);
+			Assert.AreEqual(2,_harness.Twain.ListEnables.Count,"The next slot's enable.");
+			Assert.AreEqual(14,_harness.Twain.LastRequest.Bits);
+			Assert.AreEqual(1,_harness.ListLogFile.Count(x => x.Contains("14 bits: [Device.12] Bits is 16, and the latest Test capture record "
+				+"(2026-10-30 09:00) asked this driver for 16 bits and passed at 14, so the session asks for 14.")),string.Join("\r\n",_harness.ListLogFile));
+		}
+
+		[TestMethod]
 		public void BitDepth_LayoutNotUsable_8ForTheRestOfTheSession_LoggedOnce() {
 			SetGatesFor(16);
 			_harness.Started();

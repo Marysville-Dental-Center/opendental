@@ -385,18 +385,20 @@ namespace ImagingCapture.UI {
 			return record;
 		}
 
-		///<summary>Why record does not verify capture of more than 8 bits, or not at the device's Bits, for a confirmation before it is written, or
-		///"" when it verifies the depth the session will ask for.</summary>
+		///<summary>Why record does not verify capture of more than 8 bits, or not for the device's Bits, for a confirmation before it is written,
+		///or "" when it verifies the depth the session will ask for (CaptureBitDepthDecision.GetBitsCovered: with Bits=16, a test that asked for 16
+		///and passed at 14 covers asking for 14). Bits is one of the image settings the record covers, so after changing it Test capture must run
+		///again.</summary>
 		public string GetRecordWarning(CaptureVerificationRecord record) {
 			string warning=GetRecordWarningPassed(record);
 			if(warning!="" || record==null) {
 				return warning;
 			}
 			int bitsSession=Options.Allow16Bit ? TwainBitDepth.Normalize(Options.Bits) : TwainBitDepth.Bits8;
-			if(bitsSession>8 && record.BitDepthVerified!=bitsSession) {
+			if(bitsSession>8 && CaptureBitDepthDecision.GetBitsCovered(record,bitsSession)<=8) {
 				return "This record verifies "+record.BitDepthVerified+"-bit capture, but this device's Bits is "+bitsSession+", so the capture session "
-					+"will not ask for more than 8 bits with it. Set Bits="+record.BitDepthVerified+" in Capture settings, or take the test image at "
-					+bitsSession+" bits.";
+					+"will not ask for more than 8 bits with it. Set Bits="+record.BitDepthVerified+" in Capture settings and run Test capture again (this "
+					+"record does not match once Bits changes), or take the test image at "+bitsSession+" bits.";
 			}
 			return "";
 		}
@@ -433,14 +435,24 @@ namespace ImagingCapture.UI {
 			return "This record does not verify capture of more than 8 bits: "+string.Join(", ",listReasons)+".";
 		}
 
-		///<summary>What record covers, for the result box: the depth, the driver version and the image settings, on every computer that runs them.</summary>
-		public static string GetRecordScopeText(CaptureVerificationRecord record) {
+		///<summary>What record covers, for the result box: the depth, the driver version and the image settings, on every computer that runs them.
+		///bitsDevice: the device's Bits the record was taken with (part of its image settings). "" when the record covers no session with that
+		///Bits (it passed at another depth: GetRecordWarning says what to do).</summary>
+		public static string GetRecordScopeText(CaptureVerificationRecord record,int bitsDevice) {
 			if(record==null) {
 				return "";
 			}
-			return "It covers "+record.BitDepthVerified+"-bit capture"+(record.BitDepthVerified==TwainBitDepth.Bits14 ? " (stored in a 16-bit file)" : "")
+			int bitsCovered=CaptureBitDepthDecision.GetBitsCovered(record,bitsDevice);
+			if(bitsCovered<=8) {
+				return "";
+			}
+			string text="It covers "+bitsCovered+"-bit capture"+(bitsCovered==TwainBitDepth.Bits14 ? " (stored in a 16-bit file)" : "")
 				+" for driver "+(record.DriverIdentity==null ? "(not reported)" : record.DriverIdentity.Describe())
 				+" with these image settings (Bits, ByteOrder16, Polarity), on every computer that runs them.";
+			if(bitsCovered<TwainBitDepth.Normalize(bitsDevice)) {
+				text+=" This driver gave 14 bits when asked for "+TwainBitDepth.Normalize(bitsDevice)+", so the capture session asks it for 14.";
+			}
+			return text;
 		}
 
 		public void OnRecordWritten(CaptureVerificationRecord record) {
@@ -535,10 +547,14 @@ namespace ImagingCapture.UI {
 			}
 			if(RecordWritten!=null) {
 				listLines.Add("");
-				string warning=GetRecordWarning(RecordWritten);
+				List<string> listParts=new List<string>();
+				if(RecordWritten.IsPassed) {
+					listParts.Add("verifies "+RecordWritten.BitDepthVerified+"-bit capture.");
+					listParts.Add(GetRecordScopeText(RecordWritten,Options.Bits));
+				}
+				listParts.Add(GetRecordWarning(RecordWritten));
 				listLines.Add("Verification record written "+RecordWritten.DateTimeVerified.ToString("yyyy-MM-dd HH:mm",CultureInfo.InvariantCulture)+": "
-					+(RecordWritten.IsPassed ? "verifies "+RecordWritten.BitDepthVerified+"-bit capture. "+GetRecordScopeText(RecordWritten) : "")
-					+(warning=="" ? "" : (RecordWritten.IsPassed ? " " : "")+warning));
+					+string.Join(" ",listParts.Where(x => x!="")));
 			}
 			return string.Join("\r\n",listLines);
 		}

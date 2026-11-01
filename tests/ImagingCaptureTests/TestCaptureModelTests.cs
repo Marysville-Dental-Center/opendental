@@ -445,7 +445,7 @@ Name=Not gated
 		}
 
 		[TestMethod]
-		public void Record_PassedAtAnotherDepthThanTheDevicesBits_Warns() {
+		public void Record_Asked16AndTheSourceRanAt14_CoversTheSessionAt14_NoWarning() {
 			TestCaptureModel model=Model();//Bits=16
 			model.OnOpenResult(Opened());
 			model.OnEnablePosted(1);
@@ -457,8 +457,34 @@ Name=Not gated
 			string error;
 			CaptureVerificationRecord record=model.BuildRecord(DateTime.Now,out error);
 			Assert.IsTrue(record.IsPassedFor(14));
-			StringAssert.Contains(model.GetRecordWarning(record),"verifies 14-bit capture, but this device's Bits is 16");
+			Assert.AreEqual(16,record.BitsRequested);
+			Assert.AreEqual("",model.GetRecordWarning(record),"Owner decision 2026-11-01: with Bits=16 the session falls back to the 14 it passed at.");
+			model.OnRecordWritten(record);
+			StringAssert.Contains(model.GetResultText(),"verifies 14-bit capture. It covers 14-bit capture (stored in a 16-bit file) for driver");
+			StringAssert.Contains(model.GetResultText(),"This driver gave 14 bits when asked for 16, so the capture session asks it for 14.");
+		}
+
+		[TestMethod]
+		public void Record_TheOperatorTested14WithBits16_WarnsThatTestCaptureMustRunAgainAfterSettingBits_AndCoversNothing() {
+			TestCaptureModel model=Model();//Bits=16
+			model.BitsToRequest=14;
+			model.OnOpenResult(Opened());
+			model.OnEnablePosted(1);
+			model.OnImage(Image14(requestedBits:14));
+			model.IsByteOrderConfirmed=true;
+			model.IsPolarityConfirmed=true;
+			string error;
+			CaptureVerificationRecord record=model.BuildRecord(DateTime.Now,out error);
+			Assert.IsTrue(record.IsPassedFor(14));
+			Assert.AreEqual("This record verifies 14-bit capture, but this device's Bits is 16, so the capture session will not ask for more than 8 bits "
+				+"with it. Set Bits=14 in Capture settings and run Test capture again (this record does not match once Bits changes), or take the test "
+				+"image at 16 bits.",model.GetRecordWarning(record));
 			Assert.AreEqual("",TestCaptureModel.GetRecordWarningPassed(record),"It did pass, at 14.");
+			Assert.AreEqual("",TestCaptureModel.GetRecordScopeText(record,16),"With Bits=16 in its image settings no session can use it.");
+			model.OnRecordWritten(record);
+			string text=model.GetResultText();
+			StringAssert.Contains(text,"verifies 14-bit capture. This record verifies 14-bit capture, but this device's Bits is 16");
+			Assert.IsFalse(text.Contains("It covers"),text);
 		}
 
 		[TestMethod]

@@ -55,6 +55,10 @@ namespace ImagingCapture.Session {
 		///<summary>Bits is above 8 and [Device.N] Polarity=Invert: the matching, passed verification record covers the inversion (design 9.3: the
 		///session refuses an inverted capture without one). Goes to RadiographSaveRequest.IsInversionVerified.</summary>
 		public bool IsInversionVerified { get; set; }
+		///<summary>Bits is 14 although [Device.N] Bits is 16: the matching record's Test capture asked this driver for 16 and it ran at 14, so the
+		///session asks for the 14 bits the record passed at (owner decision 2026-11-01: 16 by default, falling back to 14). The reason in words
+		///without a prefix, for the capture log ("14 bits: ...", logged once by the controller) and the sidecars; null otherwise.</summary>
+		public string ReasonBelowBits { get; set; }
 
 		public static CaptureBitDepthChoice Configured8(string reason) {
 			return new CaptureBitDepthChoice { Bits=TwainBitDepth.Bits8,Reason8Bit=CaptureBitDepthText.PrefixConfigured+reason.Trim().TrimEnd('.')+"." };
@@ -79,7 +83,9 @@ namespace ImagingCapture.Session {
 	///   build the open source reports and the image settings (CaptureImageSettingsHash), and passed at the depth asked for;
 	///5. the target can be written as DICOM (a mount slot with tooth numbers of one view).
 	///Otherwise 8 bits, with the first gate that failed as a fallback reason ("8 bits (fallback): ..."). The library then falls back from 16 to
-	///14 or 8 by what the source lists and reports the depth used (TwainCaptureEnded.BitDepthInEffect).</summary>
+	///14 or 8 by what the source lists and reports the depth used (TwainCaptureEnded.BitDepthInEffect). With Bits=16, a matching record whose
+	///Test capture asked for 16 and passed at 14 (the driver lists 14 but not 16) gives 14: the session asks for the depth the record passed at,
+	///which that driver falls back to anyway (GetBitsAsked).</summary>
 	public static class CaptureBitDepthDecision {
 		public static CaptureBitDepthChoice Decide(CaptureBitDepthInput input) {
 			if(input==null || input.Options==null) {
@@ -92,11 +98,46 @@ namespace ImagingCapture.Session {
 			if(!input.Options.Allow16Bit) {
 				return CaptureBitDepthChoice.Configured8("[Twain] Allow16Bit is 0 (more than 8 bits are switched off on this computer)");
 			}
-			string reason=GetLayoutReason(input)??GetSettingsReason(input)??GetRecordReason(input,bits)??GetTargetReason(input.Target);
+			int bitsAsked=GetBitsAsked(input,bits);
+			string reason=GetLayoutReason(input)??GetSettingsReason(input)??GetRecordReason(input,bitsAsked)??GetTargetReason(input.Target);
 			if(reason!=null) {
 				return CaptureBitDepthChoice.Fallback8(reason);
 			}
-			return new CaptureBitDepthChoice { Bits=bits,IsInversionVerified=input.Options.Polarity==TwainPolarity.Invert };
+			CaptureBitDepthChoice choice=new CaptureBitDepthChoice { Bits=bitsAsked,IsInversionVerified=input.Options.Polarity==TwainPolarity.Invert };
+			if(bitsAsked<bits) {
+				choice.ReasonBelowBits="[Device."+input.ImagingDeviceNum.ToString(CultureInfo.InvariantCulture)+"] Bits is "
+					+bits.ToString(CultureInfo.InvariantCulture)+", and the latest Test capture record ("+input.Record.DateText+") asked this driver for 16 "
+					+"bits and passed at 14, so the session asks for 14";
+			}
+			return choice;
+		}
+
+		///<summary>The depth the enable asks for: bits, except 14 for the device's Bits=16 (not a depth the recovery filer passes, BitsWanted) when
+		///the latest record's Test capture asked for 16 and passed at 14. That driver lists 14 but not 16, so asking it for 16 gives 14 anyway;
+		///asking for 14 keeps the depth to the one the record verified. GetRecordReason still checks that the record matches this source, driver
+		///version and image settings (whose Bits is the 16 it was taken with).</summary>
+		private static int GetBitsAsked(CaptureBitDepthInput input,int bits) {
+			if(input.BitsWanted!=null || bits!=TwainBitDepth.Bits16) {
+				return bits;
+			}
+			return GetBitsCovered(input.Record,bits)==TwainBitDepth.Bits14 ? TwainBitDepth.Bits14 : bits;
+		}
+
+		///<summary>The depth above 8 that a passed record lets a session with [Device.N] Bits=bitsDevice ask for, or 8 when it lets none: bitsDevice
+		///when the record passed at it; 14 for bitsDevice 16 when the record's Test capture asked for 16 and passed at 14 (that driver lists 14 but
+		///not 16). Whether the record matches the source, driver version and image settings is not checked here (GetRecordReason does).</summary>
+		public static int GetBitsCovered(CaptureVerificationRecord record,int bitsDevice) {
+			int bits=TwainBitDepth.Normalize(bitsDevice);
+			if(record==null || bits<=8) {
+				return TwainBitDepth.Bits8;
+			}
+			if(record.IsPassedFor(bits)) {
+				return bits;
+			}
+			if(bits==TwainBitDepth.Bits16 && record.BitsRequested==TwainBitDepth.Bits16 && record.IsPassedFor(TwainBitDepth.Bits14)) {
+				return TwainBitDepth.Bits14;
+			}
+			return TwainBitDepth.Bits8;
 		}
 
 		///<summary>A 14- or 16-bit image of this session came in a layout the library cannot read: 8 bits for the rest of the session.</summary>
@@ -196,6 +237,8 @@ namespace ImagingCapture.Session {
 		public const string PrefixConfigured="8 bits: ";
 		///<summary>The start of a fallback's 8-bit reason in the capture log.</summary>
 		public const string PrefixFallback="8 bits (fallback): ";
+		///<summary>The start of the log line when the session asks for 14 bits with Bits=16 (CaptureBitDepthChoice.ReasonBelowBits).</summary>
+		public const string Prefix14="14 bits: ";
 		///<summary>The fallback reason when no record exists for the device.</summary>
 		public const string NoRecord="no Test capture record for this sensor's driver version and image settings";
 

@@ -321,8 +321,8 @@ namespace ImagingCapture.Tests {
 			Assert.IsTrue(configDefaults.Allow16Bit,"Owner decision 2026-11-01.");
 			Assert.AreEqual(optionsEmpty.Allow16Bit,optionsDefaults.Allow16Bit);
 			CollectionAssert.AreEqual(new[] { "16","14","8" },CaptureSettingsCatalog.Find("Device","Bits").ArrayChoices.ToArray());
-			StringAssert.Contains(CaptureSettingsCatalog.Find("Device","Bits").Help,"A source that lists only 14 needs Bits=14 and a Test capture at 14",
-				"The help does not promise that 16 falls back to 14 on the session path with the defaults.");
+			StringAssert.Contains(CaptureSettingsCatalog.Find("Device","Bits").Help,"With Bits=16, a source that lists 14 but not 16 gives 14 to its "
+				+"Test capture, and the session then asks it for 14.","The fallback to 14 needs that Test capture.");
 			Assert.AreEqual(configEmpty.ThreadModal,configDefaults.ThreadModal);
 			Assert.AreEqual(configEmpty.AcquireTimeoutMinutes,configDefaults.AcquireTimeoutMinutes);
 			CaptureSessionConfig sessionEmpty=CaptureSessionConfig.Read(configEmpty);

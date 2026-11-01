@@ -711,9 +711,12 @@ namespace ImagingCapture.Session {
 			if(record.BitDepth.Reason8Bit!=null) {
 				LogOnce(record.BitDepth.Reason8Bit);
 			}
+			else if(record.BitDepth.ReasonBelowBits!=null) {
+				LogOnce(CaptureBitDepthText.Prefix14+record.BitDepth.ReasonBelowBits+".");
+			}
 			TwainEnableRequest request=new TwainEnableRequest {
 				Bits=record.BitDepth.Bits,
-				ReasonFallback=record.BitDepth.ReasonFallback,
+				ReasonFallback=record.BitDepth.ReasonFallback??record.BitDepth.ReasonBelowBits,
 				Tag=record,
 				TargetLabel=radiographTarget.GetLabel(),
 				SidecarFields=GetSidecarFields(record),
