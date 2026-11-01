@@ -48,6 +48,8 @@ namespace ImagingDeviceManager.Tests {
 		public void Setup() {
 			_harness=new SessionHarness();
 			_probe=new ProbeWindow();
+			//What earlier tests left in this thread's queue is dispatched first, so that the probe is the first message the loop takes.
+			DispatchQueued();
 		}
 
 		[TestCleanup]
@@ -82,6 +84,8 @@ namespace ImagingDeviceManager.Tests {
 			_harness.Helper.ActionOnEnable=() => _probe.Post();
 			Assert.IsNotNull(_harness.AcquireByName(),_harness.Session.ErrorText);
 			AssertProbeDispatchedOnce();
+			//The probe was the first message the loop took (the queue was emptied first), so it went to the enabled source before the
+			//notification was acted on.
 			Assert.IsTrue(_harness.Fake.ListCalls.Any(x => x.Name=="PROCESSEVENT" && x.EventMessage==ProbeWindow.WmProbe),
 				"Every message still goes to the enabled source (TWAIN 2.4 p.12-3).\r\n"+_harness.CallText);
 		}
