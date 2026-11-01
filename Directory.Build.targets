@@ -2,11 +2,14 @@
   <!--
     Local build support for the public Open Dental source.
 
-    Some projects reference sibling projects that are not published in this
-    repository (today only ImagingDeviceManager). Prebuilt copies of those
-    assemblies ship in "Required dlls". Before project references are resolved, any
-    ProjectReference whose .csproj does not exist on disk is swapped for a plain
-    Reference to the matching DLL (project file name with a leading "x" removed).
+    No project is substituted today: ImagingDeviceManager, the one sibling project
+    that used to be missing, is now built from ImagingDeviceManager\ in this
+    repository, and its prebuilt copy is gone from "Required dlls". The target below
+    stays as a safety net for a ProjectReference whose project is missing: before
+    project references are resolved, any ProjectReference whose .csproj does not
+    exist on disk is swapped for a plain Reference to the matching DLL in
+    "Required dlls" (project file name with a leading "x" removed), with a warning
+    when there is no such DLL.
 
     Kept in this file, rather than edits to each .csproj, so that upstream
     version updates merge without conflicts. When the real project exists on
