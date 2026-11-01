@@ -14,7 +14,7 @@ After that, port desktop features from Open Dental 26.1.70, **re-implemented fro
 
 ## Ground rules
 
-1. **We don't merge from upstream anymore.** Public source stops at 24.3.63, so `.csproj` and solution files can now be edited freely. The `Directory.Build.targets` DLL substitution and `OpenDental.Local.slnf` are temporary and go away in Phase 2.
+1. **We don't merge from upstream anymore.** Public source stops at 24.3.63, so `.csproj` and solution files can now be edited freely. The `Directory.Build.targets` DLL substitution was temporary and is gone (ORG-CLEANUP, 2026-11-01): every project the solution builds is in the repository. `OpenDental.sln` builds by itself and lists the same projects as `OpenDental.Local.slnf`. The filter stays because `tools/run-tests.ps1` and `tools/Test-NoHqHosts.ps1` read it; it can go once they read the solution.
 2. **Stay schema-compatible with Open Dental's database**, so the office's data (Open Dental 25.3.48 on `fox-db`) can migrate onto this fork. Rename or drop tables only with a migration.
 3. **No encrypted data to preserve.** Per the owner, existing data isn't encrypted, so Open Dental's crypto doesn't need to be reproduced.
    - Bridge passwords that Open Dental stored masked will be re-entered after migration.
@@ -91,6 +91,8 @@ The full diff is kept outside the repo: `D:\Dev\opendental-schema\schema-diff-24
 ### Phase 2: Replace the proprietary DLLs. Size: L, ~2–3 weeks.
 
 ODCrypt shim → VirtualWeb/Thinfinity removal → OpenDentalHelp replacement → ODApi removal → EHR removal → CDT replacement → Bridges split → TWAIN on NTwain → `Required dlls` license audit. Then delete `Directory.Build.targets`'s substitution and the solution filter, and give the solution only real projects.
+
+Status (2026-11-01, ORG-CLEANUP): the substitution is deleted and the solution holds only real projects; the five entries for missing out-of-repository projects and the Xamarin (`ODXam`) configuration are gone, and dead projects, root leftovers and 32 unused files in `Required dlls` (79 files remain) were deleted. The solution filter is kept for now, since the test runner and the host check read it (see ground rule 1). The proprietary files still in `Required dlls` are tracked in `docs/third-party-binaries-audit.md`.
 
 **Done when:** the solution builds from a clean clone with no proprietary binaries; scanning works with a TWAIN scanner; claims print on pre-printed ADA forms.
 
