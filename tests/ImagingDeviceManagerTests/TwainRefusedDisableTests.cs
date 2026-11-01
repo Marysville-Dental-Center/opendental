@@ -112,13 +112,14 @@ namespace ImagingDeviceManager.Tests {
 			int idxRefused=IndexOfDisable(0);
 			int idxSecond=IndexOfDisable(1);
 			Assert.AreEqual(Tw.TWRC_FAILURE,_harness.Fake.ListCalls[idxRefused].Rc);
-			Assert.AreEqual(Tw.TWRC_SUCCESS,_harness.Fake.ListCalls[idxSecond].Rc,"The second consecutive MSG_DISABLEDS succeeds.");
+			Assert.AreEqual(Tw.TWRC_FAILURE,_harness.Fake.ListCalls[idxSecond].Rc,"The helper still runs, so the second consecutive"
+				+" MSG_DISABLEDS is refused too (twain-contract 1.1 (main 2c96a4d) section 10.2).");
 			Assert.IsFalse(_harness.Fake.ListCalls.Skip(idxRefused).Take(idxSecond-idxRefused).Any(x => x.Name=="ENDXFER"),"Consecutive.");
 			CollectionAssert.AreEqual(new List<TwainStopReason> { TwainStopReason.Cancel },Sink.ListMayStillHold);
 			Assert.IsTrue(Session.SourceMayHoldImages);
 			Assert.IsTrue(_harness.HasLog("may still hold images"),_harness.LogText);
-			Assert.AreEqual(1,Helper.CountKeptForRedelivery,"The image stays with the source.");
-			Assert.AreEqual(0,Helper.CountLostForHost);
+			Assert.AreEqual(0,Helper.CountDelivered);
+			Assert.AreEqual(1,Helper.CountRedeliverable,"The image stays with the source.");
 		}
 
 		[TestMethod]

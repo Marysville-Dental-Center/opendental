@@ -556,7 +556,7 @@ namespace ImagingDeviceManager.Tests {
 			Assert.AreEqual(TwainCaptureEndReason.Stopped,ended.Reason);
 			Assert.IsTrue(ended.WasSecondDisableAfterWait);
 			Assert.IsTrue(ended.SourceMayHoldImages);
-			Assert.AreEqual(1,Helper.CountKeptForRedelivery);
+			Assert.AreEqual(1,Helper.CountUndelivered,"The helper still runs (the second disable was refused too); the image stays with the source.");
 			Assert.IsTrue(_harness.HasLog("second consecutive MSG_DISABLEDS"),_harness.LogText);
 		}
 

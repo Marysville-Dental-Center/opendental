@@ -318,6 +318,7 @@ namespace ImagingDeviceManager.Tests {
 		#endregion Disable without safe disable (section 7) and the strict generic profile
 
 		#region Safe disable (section 10.2)
+		//The table of twain-contract 1.1 (main 2c96a4d) section 10.2, row by row.
 		private void EnableWithSafeDisable(FakeRawClient client) {
 			Assert.AreEqual(Tw.TWRC_SUCCESS,client.SetCap(FakeHelperSource.CapSafeDisable,Tw.TWTY_BOOL,1));
 			Assert.AreEqual(Tw.TWRC_SUCCESS,client.Enable());
@@ -383,17 +384,148 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		[TestMethod]
-		public void SafeDisable_SecondConsecutiveDisable_Succeeds_ImagesKeptForRedelivery() {
+		public void SafeDisable_RetryWhileHelperRunning_RefusedClosingAtOnceEveryTime() {
 			_helper.ListExposures.Add(Exposure(10));
 			_helper.End=FakeHelperEnd.Never;
 			_helper.IgnoresCloseRequest=true;
 			using(FakeRawClient client=OpenHelper()) {
 				EnableWithSafeDisable(client);
+				long start=_fake.NowMs;
+				for(int i=0;i<3;i++) {
+					Assert.AreEqual(Tw.TWRC_FAILURE,client.Disable(),"disable "+i);
+					Assert.AreEqual(FakeHelperSource.CodeDisableClosing,client.Status(),"Refused the same way until the notification: disable "+i);
+				}
+				Assert.IsTrue(_fake.NowMs-start<100,"Every refusal comes at once.");
+				Assert.AreEqual(5,_helper.State);
+				Assert.IsTrue(_helper.IsHelperRunning);
+				Assert.AreEqual(1,_helper.CountUndelivered,"No way out while the helper runs.");
+				Assert.AreEqual(0,_helper.CountKeptForRedelivery);
+				Assert.AreEqual(Tw.MSG_XFERREADY,client.WaitForNotification(2000),"Ended at ForcedEndMs; its image is offered.");
+				TransferAll(client,1);
+				Assert.AreEqual(Tw.TWRC_SUCCESS,client.Disable());
+				Assert.AreEqual(1,_helper.CountDelivered);
+			}
+		}
+
+		[TestMethod]
+		public void SafeDisable_RetryAfterHelperEndedBeforeNotification_RefusedClosing() {
+			_helper.ListExposures.Add(Exposure(10));
+			using(FakeRawClient client=OpenHelper()) {
+				client.SetCap(Tw.CAP_XFERCOUNT,Tw.TWTY_INT16,1);
+				EnableWithSafeDisable(client);//The session ends at once after its one image; the notification is not read yet.
 				Assert.AreEqual(Tw.TWRC_FAILURE,client.Disable());
-				Assert.AreEqual(Tw.TWRC_SUCCESS,client.Disable(),"The second consecutive MSG_DISABLEDS succeeds.");
+				Assert.AreEqual(FakeHelperSource.CodeDisableClosing,client.Status());
+				Assert.IsFalse(_helper.IsHelperRunning);
+				Assert.AreEqual(Tw.TWRC_FAILURE,client.Disable(),"Not the way out: the notification is not sent yet.");
+				Assert.AreEqual(FakeHelperSource.CodeDisableClosing,client.Status());
+				Assert.AreEqual(5,_helper.State);
+				Assert.AreEqual(0,_helper.CountKeptForRedelivery);
+				Assert.AreEqual(Tw.MSG_XFERREADY,client.ProcessEvent());
+				TransferAll(client,1);
+				Assert.AreEqual(Tw.TWRC_SUCCESS,client.Disable());
+				Assert.AreEqual(1,_helper.CountDelivered);
+			}
+		}
+
+		[TestMethod]
+		public void SafeDisable_WayOut_SucceedsOnlyAfterTheNotification_ImagesKeptForRedelivery() {
+			_helper.ListExposures.Add(Exposure(10));
+			_helper.End=FakeHelperEnd.Never;
+			_helper.IgnoresCloseRequest=true;
+			_helper.ForcedEndMs=150;
+			using(FakeRawClient client=OpenHelper()) {
+				EnableWithSafeDisable(client);
+				Assert.AreEqual(Tw.TWRC_FAILURE,client.Disable());
+				Assert.AreEqual(Tw.TWRC_FAILURE,client.Disable(),"No way out while the helper runs.");
+				Assert.AreEqual(FakeHelperSource.CodeDisableClosing,client.Status());
+				Assert.AreEqual(Tw.MSG_XFERREADY,client.WaitForNotification(2000));
+				Assert.AreEqual(6,_helper.State);
+				Assert.AreEqual(Tw.TWRC_SUCCESS,client.Disable(),"Refused before, no MSG_ENDXFER since, the notification sent: the way out.");
 				Assert.AreEqual(4,_helper.State);
 				Assert.AreEqual(1,_helper.CountKeptForRedelivery);
+				Assert.AreEqual(1,_helper.CountRedeliverable,"A redelivery can still offer it.");
 				Assert.AreEqual(0,_helper.CountLostForHost);
+				Assert.AreEqual(0,_helper.CountDelivered);
+			}
+		}
+
+		[TestMethod]
+		public void SafeDisable_WayOut_AfterAnImagesPendingRefusal_TheRepeatedOfferIsNotTheNotification() {
+			_helper.ListExposures.Add(Exposure(10));
+			_helper.ListExposures.Add(Exposure(11));
+			using(FakeRawClient client=OpenHelper()) {
+				EnableWithSafeDisable(client);
+				Assert.AreEqual(Tw.MSG_XFERREADY,client.WaitForNotification(1000));
+				Assert.AreEqual(Tw.TWRC_FAILURE,client.Disable());
+				Assert.AreEqual(FakeHelperSource.CodeDisableImagesPending,client.Status());
+				Assert.AreEqual(Tw.TWRC_SUCCESS,client.Disable(),"The MSG_XFERREADY sent again is still pending, yet this is the way out.");
+				Assert.AreEqual(4,_helper.State);
+				Assert.AreEqual(2,_helper.CountKeptForRedelivery);
+				Assert.AreEqual(0,_helper.CountLostForHost);
+			}
+		}
+
+		[TestMethod]
+		public void SafeDisable_State7Unfinished_ResetToState6_RefusedImagesPending_OfferedAgainFromTheStart() {
+			_helper.ListExposures.Add(FakePage.CreateGray8(13,9,FakeHelperSource.Dpi,(x,y) => (byte)(x+y*13)));
+			using(FakeRawClient client=OpenHelper()) {
+				client.SetCap(Tw.ICAP_XFERMECH,Tw.TWTY_UINT16,Tw.TWSX_MEMORY);
+				EnableWithSafeDisable(client);
+				Assert.AreEqual(Tw.MSG_XFERREADY,client.WaitForNotification(1000));
+				TW_IMAGEMEMXFER xfer;
+				byte[] strip;
+				Assert.AreEqual(Tw.TWRC_SUCCESS,client.MemoryTransfer(13*4,out xfer,out strip),"The first strip of several.");
+				Assert.AreEqual(7,_helper.State);
+				Assert.AreEqual(Tw.TWRC_FAILURE,client.Disable());
+				Assert.AreEqual(FakeHelperSource.CodeDisableImagesPending,client.Status());
+				Assert.AreEqual(6,_helper.State,"The unfinished transfer is reset.");
+				Assert.AreEqual(Tw.MSG_XFERREADY,client.ProcessEvent(),"The image is offered again.");
+				List<byte> listBytes=new List<byte>();
+				ushort rc;
+				do {
+					rc=client.MemoryTransfer(13*4,out xfer,out strip);
+					Assert.AreEqual((uint)listBytes.Count/13,xfer.YOffset,"From the first row again.");
+					listBytes.AddRange(strip);
+				}
+				while(rc==Tw.TWRC_SUCCESS);
+				Assert.AreEqual(Tw.TWRC_XFERDONE,rc);
+				Assert.AreEqual(13*9,listBytes.Count);
+				for(int i=0;i<listBytes.Count;i++) {
+					Assert.AreEqual((byte)i,listBytes[i],"byte "+i);
+				}
+				Assert.AreEqual(0,client.EndTransfer());
+				Assert.AreEqual(Tw.TWRC_SUCCESS,client.Disable());
+				Assert.AreEqual(1,_helper.CountDelivered);
+				Assert.AreEqual(0,_helper.CountKeptForRedelivery);
+			}
+		}
+
+		[TestMethod]
+		public void SafeDisable_State7AfterXferDone_SeqError_NotTheWayOut_NeverOfferedTwice() {
+			_helper.ListExposures.Add(Exposure(10));
+			_helper.ListExposures.Add(Exposure(11));
+			using(FakeRawClient client=OpenHelper()) {
+				EnableWithSafeDisable(client);
+				Assert.AreEqual(Tw.MSG_XFERREADY,client.WaitForNotification(1000));
+				Assert.AreEqual(Tw.TWRC_FAILURE,client.Disable(),"A refused disable first.");
+				Assert.AreEqual(FakeHelperSource.CodeDisableImagesPending,client.Status());
+				Assert.AreEqual(Tw.MSG_XFERREADY,client.ProcessEvent());
+				byte[] dib;
+				IntPtr hDib;
+				Assert.AreEqual(Tw.TWRC_XFERDONE,client.NativeTransfer(out dib,out hDib));
+				Assert.AreEqual(Tw.TWRC_FAILURE,client.Disable(),"Not the way out although the previous disable was refused.");
+				Assert.AreEqual(Tw.TWCC_SEQERROR,client.Status());
+				Assert.AreEqual(7,_helper.State,"Nothing changes.");
+				Assert.AreEqual(Tw.MSG_NULL,client.ProcessEvent(),"Not offered again.");
+				Assert.AreEqual(1,client.EndTransfer());
+				Assert.AreEqual(Tw.TWRC_FAILURE,client.Disable(),"MSG_ENDXFER came since: refused, one image is pending.");
+				Assert.AreEqual(FakeHelperSource.CodeDisableImagesPending,client.Status());
+				Assert.AreEqual(Tw.MSG_XFERREADY,client.ProcessEvent());
+				TransferAll(client,1);
+				Assert.AreEqual(Tw.TWRC_SUCCESS,client.Disable());
+				Assert.AreEqual(2,_helper.CountDelivered);
+				Assert.AreEqual(2,_helper.ListDeliveredCaptureIds.Count);
+				Assert.AreEqual(0,_helper.CountKeptForRedelivery,"Each image delivered once, none kept.");
 			}
 		}
 

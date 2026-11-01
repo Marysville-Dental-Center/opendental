@@ -35,7 +35,8 @@ namespace ImagingDeviceManager.Tests {
 	///(FailReadAtImage), and there is one notification per enable. Each MSG_ENABLEDS starts a simulated helper (the sensor software in
 	///its own window); the operator's actions are scripted (ListExposures, End, EndAfterMs, EndCode). The numbers of its custom
 	///capabilities and condition codes are the published ones, used here only as data of this simulated source. Script options marked
-	///"not contract behaviour" are for tests of the library, not part of the profile.
+	///"not contract behaviour" are for tests of the library, not part of the profile. With the safe-disable capability TRUE, MSG_DISABLEDS
+	///follows the table of twain-contract 1.1 (main 2c96a4d) section 10.2 (Disable).
 	///
 	///Timed behaviour runs on the FakeTwainDsm clock and wakes the application's message loop with a timer, so the default times
 	///are scaled down from the contract's (15 s becomes ForcedEndMs) to keep tests fast.</summary>
@@ -96,7 +97,8 @@ namespace ImagingDeviceManager.Tests {
 		///<summary>With safe disable: how long the helper takes to exit after a refused disable asked it to close (finishing an exposure
 		///being read out takes at most 10 s in the contract).</summary>
 		public int CloseDelayMs=30;
-		///<summary>The helper does not exit when asked; the source ends it at ForcedEndMs.</summary>
+		///<summary>The helper does not exit when asked; the source ends it at ForcedEndMs. Until then every safe disable is refused with
+		///CodeDisableClosing (twain-contract 1.1 (main 2c96a4d) section 10.2).</summary>
 		public bool IgnoresCloseRequest;
 		///<summary>With safe disable: a helper still running this long after the close request is ended, and the images it saved are
 		///still offered (15 s in the contract).</summary>
@@ -180,7 +182,7 @@ namespace ImagingDeviceManager.Tests {
 		public int CountDelivered;
 		///<summary>Undelivered images dropped for the host by a disable or close without safe disable (section 7).</summary>
 		public int CountLostForHost;
-		///<summary>Undelivered images left with the source by a reset, a failed transfer or a second consecutive disable; a redelivery
+		///<summary>Undelivered images left with the source by a reset, a failed transfer or the host's way-out disable; a redelivery
 		///could still offer them (sections 5, 10.2, 10.3).</summary>
 		public int CountKeptForRedelivery;
 		public int CountStatusText;
@@ -211,6 +213,9 @@ namespace ImagingDeviceManager.Tests {
 		private int _countEnded;
 		private int _rowCursor;
 		private ushort _notificationPending;
+		///<summary>The helper has ended (or a redelivery started) and its one notification (section 5) is not delivered yet. _notificationPending
+		///also carries the MSG_XFERREADY sent again after an images-pending refusal, which is not that notification.</summary>
+		private bool _isEndNotificationPending;
 		private bool _isSpuriousPending;
 		private bool _hasRefusedOnce;
 		private bool _isLastDisableRefused;
@@ -361,6 +366,7 @@ namespace ImagingDeviceManager.Tests {
 			_closeDueMs=-1;
 			_forcedEndDueMs=-1;
 			_notificationPending=_listUndelivered.Count>0 ? Tw.MSG_XFERREADY : Tw.MSG_CLOSEDSREQ;
+			_isEndNotificationPending=true;
 			_endReason=_notificationPending==Tw.MSG_CLOSEDSREQ ? endReason : (ushort)0;
 			_dsm?.WakeHostNow();
 		}
@@ -397,6 +403,7 @@ namespace ImagingDeviceManager.Tests {
 			_closeDueMs=-1;
 			_forcedEndDueMs=-1;
 			_notificationPending=Tw.MSG_NULL;
+			_isEndNotificationPending=false;
 			_isSpuriousPending=false;
 			_isLastDisableRefused=false;
 			_endReason=0;
@@ -769,6 +776,7 @@ namespace ImagingDeviceManager.Tests {
 				_isRunning=true;
 				_listUndelivered.Clear();
 				_notificationPending=Tw.MSG_NULL;
+				_isEndNotificationPending=false;
 				_isSpuriousPending=false;
 				_hasRefusedOnce=false;
 				_isLastDisableRefused=false;
@@ -821,7 +829,20 @@ namespace ImagingDeviceManager.Tests {
 			return Fail(Tw.TWCC_BADPROTOCOL);
 		}
 
-		///<summary>Section 7 without safe disable; with it, the table of section 10.2.</summary>
+		///<summary>Section 7 without safe disable. With it, the table of twain-contract 1.1 (main 2c96a4d) section 10.2, checked in this order:
+		///- State 7 after TWRC_XFERDONE: TWCC_SEQERROR, and nothing changes: the host has the image and sends MSG_ENDXFER first, so it is
+		///  never offered twice. This answer is not counted as a refused disable (the way out stays as it was). That cannot matter: before
+		///  a disable can succeed the host ends the transfer with MSG_ENDXFER, which clears the refusal, or MSG_RESET, which leaves nothing
+		///  undelivered.
+		///- The host's way out: the previous MSG_DISABLEDS was refused with no MSG_ENDXFER since, and the helper has ended and its
+		///  notification was delivered (the MSG_XFERREADY sent again after an images-pending refusal is not that notification). Succeeds;
+		///  undelivered images stay with the source for redelivery (section 10.3).
+		///- Images offered but not transferred (state 6, or state 7 with the transfer unfinished, which is reset so that the image is ready
+		///  again from its start, state 6): CodeDisableImagesPending, and MSG_XFERREADY is sent again.
+		///- The helper running: asked to close (CloseDelayMs; ForcedEndMs later the source ends it), and CodeDisableClosing at once. Every
+		///  further disable until its notification is refused the same way.
+		///- The helper ended, its notification not delivered yet: CodeDisableClosing; the notification follows.
+		///- Nothing running, nothing undelivered: succeeds at once.</summary>
 		private ushort Disable() {
 			if(State<5) {
 				return Fail(Tw.TWCC_SEQERROR);
@@ -830,8 +851,11 @@ namespace ImagingDeviceManager.Tests {
 				EndWithoutSafeDisable();//Accepted in states 5, 6 and 7.
 				return Tw.TWRC_SUCCESS;
 			}
-			if(_isLastDisableRefused) {
-				//The second consecutive MSG_DISABLEDS with no MSG_ENDXFER in between succeeds; undelivered images stay with the source.
+			if(State==7 && _isCurrentTransferred) {
+				return Fail(Tw.TWCC_SEQERROR);//Not Refuse: the way out stays as it was.
+			}
+			if(_isLastDisableRefused && !_isRunning && !_isEndNotificationPending) {
+				//The host's way out; undelivered images stay with the source.
 				CountKeptForRedelivery+=_listUndelivered.Count;
 				AddRedeliverable(_listUndelivered);
 				_listUndelivered.Clear();
@@ -839,6 +863,12 @@ namespace ImagingDeviceManager.Tests {
 				return Tw.TWRC_SUCCESS;
 			}
 			if(State>=6) {
+				if(State==7) {
+					//The unfinished transfer is reset: the image is ready again, from its first row.
+					State=6;
+					_rowCursor=0;
+					_colCursor=0;
+				}
 				_notificationPending=Tw.MSG_XFERREADY;//Images offered but not transferred: refused, and offered again.
 				_dsm.WakeHostNow();
 				return Refuse(CodeDisableImagesPending);
@@ -854,7 +884,7 @@ namespace ImagingDeviceManager.Tests {
 				}
 				return Refuse(CodeDisableClosing);
 			}
-			if(_notificationPending!=Tw.MSG_NULL) {
+			if(_isEndNotificationPending) {
 				return Refuse(CodeDisableClosing);//The helper has ended and its notification follows.
 			}
 			FinishDisable();//Nothing running and nothing undelivered.
@@ -884,6 +914,7 @@ namespace ImagingDeviceManager.Tests {
 			_closeDueMs=-1;
 			_forcedEndDueMs=-1;
 			_notificationPending=_listUndelivered.Count>0 ? Tw.MSG_XFERREADY : Tw.MSG_CLOSEDSREQ;
+			_isEndNotificationPending=true;//No sensor software runs; this is the enable's one notification.
 			_endReason=_listUndelivered.Count>0 ? (ushort)0 : CodeNothingToRedeliver;
 			ActionOnEnable?.Invoke();
 			_dsm.WakeHostNow();
@@ -918,6 +949,7 @@ namespace ImagingDeviceManager.Tests {
 					_rowCursor=0;
 				}
 				_notificationPending=Tw.MSG_NULL;
+				_isEndNotificationPending=false;
 				rc=Tw.TWRC_DSEVENT;
 			}
 			Marshal.StructureToPtr(twEvent,data,false);
