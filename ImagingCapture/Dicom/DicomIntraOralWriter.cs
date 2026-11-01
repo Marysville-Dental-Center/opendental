@@ -32,6 +32,10 @@ namespace ImagingCapture.Dicom {
 		public IntraOralTarget Target { get; set; }
 		///<summary>The image's capture metadata, or null.</summary>
 		public CaptureMetadata Metadata { get; set; }
+		///<summary>How many low bits of each sample are significant, when known: the saver passes the metadata's effectiveBits, else 14 when the
+		///enable ran at 14 bits (Gray16Samples.GetEffectiveBits). Null: the metadata's effectiveBits (or unknown). It goes into the BitsStored
+		///rule and into Image Comments ("effectiveBits=14"); it is never BitsStored itself, and values are never rescaled (design 7.8).</summary>
+		public int? EffectiveBits { get; set; }
 		///<summary>One Study per mount (design 7.8), for example DicomUid.FromName of the mount's identity. Null makes a new one.</summary>
 		public string StudyInstanceUid { get; set; }
 		///<summary>The mount's date and time, local. DateTime.MinValue leaves Study Date and Time empty (Type 2).</summary>
@@ -134,7 +138,7 @@ namespace ImagingCapture.Dicom {
 				result.StudyInstanceUid=string.IsNullOrEmpty(image.StudyInstanceUid) ? DicomUid.NewUid() : image.StudyInstanceUid;
 				result.SeriesInstanceUid=string.IsNullOrEmpty(image.SeriesInstanceUid) ? DicomUid.NewUid() : image.SeriesInstanceUid;
 				result.SopInstanceUid=string.IsNullOrEmpty(image.SopInstanceUid) ? DicomUid.NewUid() : image.SopInstanceUid;
-				result.BitsStored=GetBitsStored(image.Pixels,image.Metadata?.EffectiveBits);
+				result.BitsStored=GetBitsStored(image.Pixels,GetEffectiveBits(image));
 				int windowLow;
 				int windowHigh;
 				GetWindow(image.Pixels,out windowLow,out windowHigh);
@@ -154,9 +158,15 @@ namespace ImagingCapture.Dicom {
 			}
 		}
 
+		///<summary>The effective bits of image: EffectiveBits, else the metadata's effectiveBits, else null (unknown).</summary>
+		public static int? GetEffectiveBits(DicomIntraOralImage image) {
+			int? effectiveBits=image?.EffectiveBits??image?.Metadata?.EffectiveBits;
+			return effectiveBits!=null && effectiveBits.Value>=1 && effectiveBits.Value<=16 ? effectiveBits : null;
+		}
+
 		///<summary>The BitsStored rule (design 7.8): 12 when every value is 4095 or less and the source reports 12 or fewer effective bits,
-		///otherwise 16. Data of 13 to 15 effective bits is stored as 16, because the loader accepts only 8, 12 and 16. Values are never
-		///rescaled, so an unknown effective depth (null) gives 16.</summary>
+		///otherwise 16. Data of 13 to 15 effective bits, 14-bit data among them, is stored as 16 (BitsAllocated 16, BitsStored 16), because the
+		///loader accepts only 8, 12 and 16. Values are never rescaled, so an unknown effective depth (null) gives 16.</summary>
 		public static int GetBitsStored(ushort[] pixels,int? effectiveBits) {
 			if(effectiveBits==null || effectiveBits.Value>12 || pixels==null) {
 				return 16;
@@ -295,11 +305,16 @@ namespace ImagingCapture.Dicom {
 			return true;
 		}
 
-		///<summary>rendering=original; polarity=inverted when the saver inverted the samples; then the configured exposure, labelled. ASCII.</summary>
+		///<summary>rendering=original; polarity=inverted when the saver inverted the samples; effectiveBits=N when the effective depth is known
+		///(design 7.8: the raw effective depth is recorded, never written as BitsStored); then the configured exposure, labelled. ASCII.</summary>
 		private static string GetImageComments(DicomIntraOralImage image) {
 			StringBuilder stringBuilder=new StringBuilder("rendering="+CaptureMetadata.RenderingOriginal);
 			if(image.IsInverted) {
 				stringBuilder.Append("; polarity=inverted");
+			}
+			int? effectiveBits=GetEffectiveBits(image);
+			if(effectiveBits!=null) {
+				stringBuilder.Append("; effectiveBits=").Append(effectiveBits.Value.ToString(System.Globalization.CultureInfo.InvariantCulture));
 			}
 			CaptureMetadataExposure exposure=image.Metadata?.ConfiguredExposure;
 			if(exposure!=null && exposure.HasAnyValue) {

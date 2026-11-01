@@ -6,6 +6,16 @@ namespace ImagingCapture.Save {
 	///<summary>Pure operations on 16-bit samples (AcquiredImage.Gray16: raw, right-justified, rows top to bottom) for the saver and Test
 	///capture: the lossless inversion of [Device.N] Polarity=Invert, the stored 0-255 window, and the fixed preview LUT.</summary>
 	public static class Gray16Samples {
+		///<summary>How many low bits of the samples are significant, when known: the metadata's effectiveBits (1 to 16), else 14 when the enable ran
+		///at 14 bits (the source said 14: ICAP_BITDEPTH 14, values right-justified in 16-bit containers), else null. For the BitsStored rule, the
+		///inversion's max and the DICOM file's Image Comments; never to rescale.</summary>
+		public static int? GetEffectiveBits(Metadata.CaptureMetadata metadata,int bitDepthInEffect) {
+			if(metadata?.EffectiveBits!=null && metadata.EffectiveBits.Value>=1 && metadata.EffectiveBits.Value<=16) {
+				return metadata.EffectiveBits.Value;
+			}
+			return bitDepthInEffect==14 ? 14 : (int?)null;
+		}
+
 		///<summary>The lossless inversion Polarity=Invert applies, only once it has been verified and logged (design 7.8: "Stored pixels change
 		///only through a documented lossless inversion"). Zero stays zero, because zero-valued pixels are the masked corners and dead areas the
 		///window excludes; every other value v becomes max+1-v, which maps 1..max onto max..1, so it can be undone exactly. max is

@@ -80,9 +80,10 @@ namespace ImagingCapture.Save {
 		///<summary>The provider from the banner (RadiographProvider.GetDefaultProvNum, editable), for Document.ProvNum and Mount.ProvNum.</summary>
 		public long ProvNum { get; set; }
 		public RadiographTarget Target { get; set; }
-		///<summary>The caller has checked every condition of design 7.8 "When 16-bit is enabled" for this device: [Device.N] Bits=16,
-		///[Twain] Allow16Bit=1, a verification record that matches the current settings, and the release conditions. Only then is a 16-bit
-		///image written as DICOM; without it a 16-bit image is not stored (it goes to unassigned captures).</summary>
+		///<summary>The caller has checked every condition of design 7.8 "When 16-bit is enabled" for this device and the image's depth (16 or 14):
+		///[Device.N] Bits, [Twain] Allow16Bit=1, the settings check, a verification record that matches and passed at that depth, and the
+		///release conditions (CaptureBitDepthDecision). Only then is an image of more than 8 bits written as 16-bit DICOM (14-bit data with
+		///BitsStored 16); without it such an image is not stored (it goes to unassigned captures).</summary>
 		public bool Is16BitAllowed { get; set; }
 		///<summary>[Device.N] Polarity. Invert applies only to 16-bit samples, and only with IsInversionVerified.</summary>
 		public TwainPolarity Polarity { get; set; }
@@ -248,7 +249,8 @@ namespace ImagingCapture.Save {
 			if(image.TransferMechanism!=TwainTransferMechanism.Memory || !image.IsAbove8BitInEffect) {
 				//A 16bpp native DIB is RGB555/565 by definition (TWAIN 2.4 p.12-7) and is never asked for; 16-bit samples in an 8-bit enable did not
 				//come through the negotiation that Test capture verified (byte order, polarity). Neither is written as DICOM (design 7.1 CAP-3).
-				plan.Error="A 16-bit image arrived that did not come through the verified 16-bit memory transfer (ICAP_BITDEPTH 16 over "
+				//14- and 16-bit images of a 14- or 16-bit memory enable are.
+				plan.Error="A 16-bit image arrived that did not come through the verified 16-bit memory transfer (ICAP_BITDEPTH 16 or 14 over "
 					+"TWSX_MEMORY), so it was not saved to the patient.";
 				return;
 			}
@@ -257,12 +259,14 @@ namespace ImagingCapture.Save {
 				return;
 			}
 			ushort[] arrayPixels=image.Gray16;
+			//14-bit data (the source said 14) is stored as it is, in a file of BitsAllocated 16 and BitsStored 16, with effectiveBits=14 recorded.
+			int? effectiveBits=Gray16Samples.GetEffectiveBits(metadata,image.BitDepthInEffect);
 			if(request.Polarity==TwainPolarity.Invert) {
 				if(!request.IsInversionVerified) {
 					plan.Error="Polarity=Invert is set for this device, but no verification record confirms it, so the image was not saved to the patient.";
 					return;
 				}
-				arrayPixels=Gray16Samples.Invert(arrayPixels,metadata?.EffectiveBits);
+				arrayPixels=Gray16Samples.Invert(arrayPixels,effectiveBits);
 				plan.IsInverted=true;
 			}
 			RadiographTarget target=request.Target;
@@ -276,6 +280,7 @@ namespace ImagingCapture.Save {
 			dicomImage.IsInverted=plan.IsInverted;
 			dicomImage.Target=target.ToIntraOralTarget();
 			dicomImage.Metadata=metadata;
+			dicomImage.EffectiveBits=effectiveBits;
 			dicomImage.StudyInstanceUid=request.StudyInstanceUid??GetStudyInstanceUid(target.Mount);
 			dicomImage.StudyDateTime=target.Mount?.DateCreated??DateTime.MinValue;
 			dicomImage.SeriesInstanceUid=request.SeriesInstanceUid??(request.SessionGuid==Guid.Empty ? null : DicomUid.FromGuid(request.SessionGuid));

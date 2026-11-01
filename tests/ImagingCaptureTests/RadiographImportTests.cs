@@ -372,6 +372,52 @@ namespace ImagingCapture.Tests {
 			StringAssert.Contains(testDicomFile.Get(0x0020,0x4000).Text,"polarity=inverted");
 		}
 
+		///<summary>A 14-bit image of a 14-bit memory enable, values 1 to 16383 in 16-bit containers, metadata without effectiveBits.</summary>
+		private static AcquiredImage Image14() {
+			AcquiredImage image=TestImages.Image16(40,30,(x,y) => (ushort)(1+x*400+y*13),TestImages.Json16Bit12.Replace(@"""effectiveBits"":12",@"""effectiveBits"":null"));
+			image.BitDepthInEffect=14;
+			image.RequestedBits=16;
+			image.BitsPerSample=14;
+			return image;
+		}
+
+		[TestMethod]
+		public void Dicom14_StoredAs16_EffectiveBits14_ValuesUnchanged() {
+			AcquiredImage image=Image14();
+			Assert.IsTrue(image.Gray16.Max()<=16383 && image.Gray16.Max()>4095);
+			RadiographSaveRequest request=Request(image,new RadiographTarget { Mount=Mount(),MountItem=Slot() });
+			request.Is16BitAllowed=true;
+			RadiographSaveResult result=_radiographImport.Save(request);
+			Assert.IsTrue(result.IsSaved,result.Error);
+			Assert.AreEqual(RadiographFormat.Dicom16,result.Plan.Format);
+			Assert.AreEqual(16,result.Plan.DicomResult.BitsStored);
+			TestDicomFile testDicomFile=TestDicomReader.Read(_store.BytesImported);
+			Assert.AreEqual(16,testDicomFile.Get(0x0028,0x0100).US);
+			Assert.AreEqual(16,testDicomFile.Get(0x0028,0x0101).US,"BitsStored 16: the loader rejects 14.");
+			StringAssert.Contains(testDicomFile.Get(0x0020,0x4000).Text,"effectiveBits=14");
+			byte[] arrayPixelData=testDicomFile.Get(0x7FE0,0x0010).Value;
+			for(int i=0;i<image.Gray16.Length;i++) {
+				Assert.AreEqual(image.Gray16[i],BitConverter.ToUInt16(arrayPixelData,i*2),"Never rescaled.");
+			}
+			Assert.AreEqual(14,Gray16Samples.GetEffectiveBits(result.Plan.Metadata,14));
+			Assert.IsNull(Gray16Samples.GetEffectiveBits(result.Plan.Metadata,16),"16 bits in effect and no metadata: unknown.");
+		}
+
+		[TestMethod]
+		public void Dicom14_VerifiedInvert_WithinFourteenBits() {
+			RadiographSaveRequest request=Request(Image14(),new RadiographTarget { Mount=Mount(),MountItem=Slot() });
+			request.Is16BitAllowed=true;
+			request.Polarity=TwainPolarity.Invert;
+			request.IsInversionVerified=true;
+			RadiographSaveResult result=_radiographImport.Save(request);
+			Assert.IsTrue(result.IsSaved,result.Error);
+			byte[] arrayPixelData=TestDicomReader.Read(_store.BytesImported).Get(0x7FE0,0x0010).Value;
+			ushort[] arrayDelivered=request.Image.Gray16;
+			for(int i=0;i<arrayDelivered.Length;i++) {
+				Assert.AreEqual(arrayDelivered[i]==0 ? 0 : 16384-arrayDelivered[i],BitConverter.ToUInt16(arrayPixelData,i*2),"Inverted within 14 bits.");
+			}
+		}
+
 		[TestMethod]
 		public void Dicom16_DeliveredChocolate_VerifiedInvert_Saved() {
 			//twain-contract 1.1 keeps TWPF_CHOCOLATE and publishes after the clinic run whether the values follow it: if they do not, the

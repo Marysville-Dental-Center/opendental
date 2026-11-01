@@ -163,10 +163,10 @@ namespace ImagingCapture.UI {
 			CheckByteOrder(pixels,width,height);
 			ushort[] arrayStored=pixels;
 			if(Polarity==TwainPolarity.Invert) {
-				arrayStored=Gray16Samples.Invert(pixels,Metadata?.EffectiveBits);
+				arrayStored=Gray16Samples.Invert(pixels,Gray16Samples.GetEffectiveBits(Metadata,BitDepthInEffect));
 				IsInverted=true;
 			}
-			BitsStoredRule=DicomIntraOralWriter.GetBitsStored(arrayStored,Metadata?.EffectiveBits);
+			BitsStoredRule=DicomIntraOralWriter.GetBitsStored(arrayStored,Gray16Samples.GetEffectiveBits(Metadata,BitDepthInEffect));
 			int windowLow;
 			int windowHigh;
 			DicomIntraOralWriter.GetWindow(arrayStored,out windowLow,out windowHigh);
@@ -298,7 +298,9 @@ namespace ImagingCapture.UI {
 					+FormatPercent(CountZero,CountPixels)+" of the pixels are 0 (masked).");
 				listLines.Add("Window (0.5 / 99.5 percentile): "+WindowLow+" to "+WindowHigh+".");
 				listLines.Add("BitsStored rule: "+BitsStoredRule+" (metadata effectiveBits "+(Metadata?.EffectiveBits?.ToString(CultureInfo.InvariantCulture)??"not reported")
-					+"). Data that fits 12 bits is stored as 12 only when the source reports 12 or fewer effective bits.");
+					+(Metadata?.EffectiveBits==null && BitDepthInEffect==TwainBitDepth.Bits14 ? "; 14 recorded, the depth the source ran at" : "")
+					+"). Data that fits 12 bits is stored as 12 only when the source reports 12 or fewer effective bits; 14-bit data is stored as 16, "
+					+"never rescaled.");
 				if(Metadata?.Window!=null) {
 					listLines.Add("The source's own window: "+Metadata.Window.Low+" to "+Metadata.Window.High+".");
 				}
