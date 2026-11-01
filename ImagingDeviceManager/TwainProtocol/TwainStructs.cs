@@ -159,6 +159,41 @@ namespace ImagingDeviceManager.TwainProtocol {
 		public byte[] Colors;
 	}
 
+	///<summary>TW_INFO. 12 bytes. One item of a TW_EXTIMAGEINFO (TWAIN 2.4 p.8-43). Item holds the data itself when it fits in 4 bytes,
+	///otherwise a handle to it, which the application frees (TwExtImageInfo.IsItemHandle).</summary>
+	[StructLayout(LayoutKind.Sequential,Pack=2)]
+	internal struct TW_INFO {
+		public ushort InfoID;
+		public ushort ItemType;
+		public ushort NumItems;
+		public ushort ReturnCode;
+		public IntPtr Item;
+	}
+
+	///<summary>TW_EXTIMAGEINFO is NumInfos (4 bytes) followed by NumInfos TW_INFO structures (TWAIN 2.4 p.8-23). The application allocates
+	///and frees it; it is passed by pointer, not as a handle.</summary>
+	internal static class TwExtImageInfo {
+		public const int NumInfosSize=4;
+		public static readonly int InfoSize=Marshal.SizeOf(typeof(TW_INFO));
+
+		public static int GetSize(int numInfos) {
+			return NumInfosSize+numInfos*InfoSize;
+		}
+
+		public static int GetInfoOffset(int index) {
+			return NumInfosSize+index*InfoSize;
+		}
+
+		///<summary>True when TW_INFO.Item of a successful item is a handle the application frees: a TWTY_HANDLE item, or data larger than
+		///the 4 bytes of the field (TWAIN 2.4 pp.8-25, 8-43).</summary>
+		public static bool IsItemHandle(ushort itemType,ushort numItems) {
+			if(itemType==Tw.TWTY_HANDLE) {
+				return true;
+			}
+			return (long)TwContainer.ItemSize(itemType)*numItems>4;
+		}
+	}
+
 	///<summary>TW_ENTRYPOINT. 24 bytes. Memory management functions provided by a version 2 Data Source Manager.</summary>
 	[StructLayout(LayoutKind.Sequential,Pack=2)]
 	internal struct TW_ENTRYPOINT {
@@ -181,7 +216,14 @@ namespace ImagingDeviceManager.TwainProtocol {
 		public const int EnumDefaultIndexOffset=10;
 		public const int EnumItemListOffset=14;
 		///<summary>TW_RANGE: ItemType(2) MinValue(4) MaxValue(4) StepSize(4) DefaultValue(4) CurrentValue(4).</summary>
+		public const int RangeMinValueOffset=2;
+		public const int RangeMaxValueOffset=6;
+		public const int RangeStepSizeOffset=10;
+		public const int RangeDefaultValueOffset=14;
 		public const int RangeCurrentValueOffset=18;
+		///<summary>TW_ARRAY: ItemType(2) NumItems(4) ItemList[].</summary>
+		public const int ArrayNumItemsOffset=2;
+		public const int ArrayItemListOffset=6;
 
 		///<summary>Size in bytes of one item of the given TWTY_ type inside an enumeration or array.</summary>
 		public static int ItemSize(ushort itemType) {

@@ -25,6 +25,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 		public const ushort DAT_IMAGEINFO=0x0101;
 		public const ushort DAT_IMAGEMEMXFER=0x0103;
 		public const ushort DAT_IMAGENATIVEXFER=0x0104;
+		public const ushort DAT_EXTIMAGEINFO=0x010b;
 		public const ushort DAT_PALETTE8=0x010a;
 		public const ushort DAT_ENTRYPOINT=0x0403;
 		//Messages
@@ -59,6 +60,10 @@ namespace ImagingDeviceManager.TwainProtocol {
 		public const ushort TWRC_NOTDSEVENT=5;
 		public const ushort TWRC_XFERDONE=6;
 		public const ushort TWRC_ENDOFLIST=7;
+		///<summary>TW_INFO.ReturnCode of DAT_EXTIMAGEINFO: the source does not support the item.</summary>
+		public const ushort TWRC_INFONOTSUPPORTED=8;
+		///<summary>TW_INFO.ReturnCode of DAT_EXTIMAGEINFO: the item is supported, but not available for this image.</summary>
+		public const ushort TWRC_DATANOTAVAILABLE=9;
 		//Condition codes
 		public const ushort TWCC_SUCCESS=0;
 		public const ushort TWCC_BUMMER=1;
@@ -100,17 +105,32 @@ namespace ImagingDeviceManager.TwainProtocol {
 		public const ushort TWTY_STR64=0x000a;
 		public const ushort TWTY_STR128=0x000b;
 		public const ushort TWTY_STR255=0x000c;
+		///<summary>The item is a handle to data (TW_INFO.Item of some DAT_EXTIMAGEINFO items).</summary>
+		public const ushort TWTY_HANDLE=0x000f;
 		//Capabilities
 		public const ushort CAP_XFERCOUNT=0x0001;
 		public const ushort ICAP_COMPRESSION=0x0100;
 		public const ushort ICAP_PIXELTYPE=0x0101;
 		public const ushort ICAP_UNITS=0x0102;
 		public const ushort ICAP_XFERMECH=0x0103;
+		public const ushort CAP_INDICATORS=0x100b;
 		public const ushort CAP_UICONTROLLABLE=0x100e;
+		public const ushort CAP_DEVICEONLINE=0x100f;
 		public const ushort CAP_DUPLEXENABLED=0x1013;
 		public const ushort ICAP_XRESOLUTION=0x1118;
 		public const ushort ICAP_YRESOLUTION=0x1119;
+		public const ushort ICAP_BITORDER=0x111c;
 		public const ushort ICAP_PIXELFLAVOR=0x111f;
+		public const ushort ICAP_PLANARCHUNKY=0x1120;
+		public const ushort ICAP_SUPPORTEDSIZES=0x1122;
+		public const ushort ICAP_BITDEPTH=0x112b;
+		public const ushort ICAP_UNDEFINEDIMAGESIZE=0x112d;
+		public const ushort ICAP_EXTIMAGEINFO=0x112f;
+		public const ushort ICAP_SUPPORTEDEXTIMAGEINFO=0x115e;
+		//Extended image information items (TWEI_), DAT_EXTIMAGEINFO
+		public const ushort TWEI_PIXELFLAVOR=0x123f;
+		///<summary>TWAIN 2.4: a handle to NUL-terminated UTF-8 JSON that describes the image (TWAIN 2.4 p.9-19).</summary>
+		public const ushort TWEI_TWAINDIRECTMETADATA=0x124b;
 		//MSG_QUERYSUPPORT bits
 		public const int TWQC_GET=0x0001;
 		public const int TWQC_SET=0x0002;

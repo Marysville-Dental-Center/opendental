@@ -63,6 +63,14 @@ namespace ImagingDeviceManager.Tests {
 		public const ushort IcapBitDepth=0x112b;
 		public const ushort IcapUndefinedImageSize=0x112d;
 		public const ushort IcapExtImageInfo=0x112f;
+		public const ushort IcapSupportedExtImageInfo=0x115e;
+		public const ushort TweiDocumentNumber=0x123a;
+		public const ushort TweiPageNumber=0x123b;
+		public const ushort TweiCamera=0x123c;
+		public const ushort TweiFrameNumber=0x123d;
+		public const ushort TweiFrame=0x123e;
+		public const ushort TweiPixelFlavor=0x123f;
+		public const ushort TweiTwainDirectMetadata=0x124b;
 		public const ushort TwunPixels=5;
 		public const ushort MsgEnableDsUiOnly=0x0503;
 		public const int Dpi=1270;
@@ -109,6 +117,20 @@ namespace ImagingDeviceManager.Tests {
 		///<summary>Not contract behaviour: MSG_SET on CAP_XFERCOUNT fails with TWCC_BADVALUE, so the count stays -1 and the operator ends
 		///each session, as with a source that cannot do single acquisitions.</summary>
 		public bool RefusesXferCount;
+		///<summary>False: the build of contract 1.0, where ICAP_BITDEPTH has 8 only (MSG_GET lists 8, MSG_SET 16 fails with TWCC_BADVALUE).
+		///True (contract 1.1 section 6.2): MSG_GET lists 8 and 16, and 16 is accepted only after ICAP_XFERMECH = TWSX_MEMORY.</summary>
+		public bool Supports16Bit=true;
+		///<summary>False: the build of contract 1.0, with no extended image info: ICAP_EXTIMAGEINFO and ICAP_SUPPORTEDEXTIMAGEINFO return
+		///TWCC_CAPUNSUPPORTED and DAT_EXTIMAGEINFO TWCC_BADPROTOCOL. True: section 6.3.</summary>
+		public bool SupportsExtImageInfo=true;
+		///<summary>Not contract behaviour (1.1 lists it): False leaves TWEI_TWAINDIRECTMETADATA out of ICAP_SUPPORTEDEXTIMAGEINFO, as a TWAIN
+		///2.1 to 2.3 source would; DAT_EXTIMAGEINFO still answers it.</summary>
+		public bool ListsTwainDirectMetadata=true;
+		///<summary>The build of contract 1.0: MSG_SET on a fixed capability succeeds with any value and changes nothing (section 12).</summary>
+		public bool FixedCapsAcceptAnyValue;
+		///<summary>Not contract 1.1 behaviour (CAP_DEVICEONLINE is always TRUE there, section 9; a presence check is planned, 11.3): the value
+		///CAP_DEVICEONLINE reports.</summary>
+		public bool DeviceOnline=true;
 		#endregion Script and installation settings
 
 		#region Observations
@@ -124,6 +146,8 @@ namespace ImagingDeviceManager.Tests {
 		///could still offer them (sections 5, 10.2, 10.3).</summary>
 		public int CountKeptForRedelivery;
 		public int CountStatusText;
+		///<summary>MSG_SET calls on fixed capabilities (section 4), whatever their result. The capture session never sends one.</summary>
+		public int CountFixedCapSet;
 		///<summary>The TW_STATUS the last DAT_STATUSUTF8 was asked to translate.</summary>
 		public TW_STATUS LastStatusTranslated;
 		public bool IsHelperRunning => _isRunning;
@@ -348,11 +372,23 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		private bool IsSettable(ushort cap) {
+			if(cap==IcapExtImageInfo && !SupportsExtImageInfo) {
+				return false;
+			}
 			return DictCaps.ContainsKey(cap) && (!IsCustomCap(cap) || SupportsSafeDisable);
 		}
 
+		///<summary>The 7 items of section 6.3, as ICAP_SUPPORTEDEXTIMAGEINFO lists them.</summary>
+		public List<int> GetSupportedExtImageInfo() {
+			List<int> listItems=new List<int> { TweiDocumentNumber,TweiPageNumber,TweiCamera,TweiFrameNumber,TweiFrame,TweiPixelFlavor };
+			if(ListsTwainDirectMetadata) {
+				listItems.Add(TweiTwainDirectMetadata);
+			}
+			return listItems;
+		}
+
 		///<summary>Item type and value of a fixed capability (section 4), or false when the capability is not one.</summary>
-		private static bool TryGetFixed(ushort cap,out ushort itemType,out int value) {
+		private bool TryGetFixed(ushort cap,out ushort itemType,out int value) {
 			itemType=Tw.TWTY_UINT16;
 			value=0;
 			switch(cap) {
@@ -369,7 +405,7 @@ namespace ImagingDeviceManager.Tests {
 					return true;
 				case Tw.CAP_UICONTROLLABLE: itemType=Tw.TWTY_BOOL; value=0; return true;
 				case CapIndicators: itemType=Tw.TWTY_BOOL; value=1; return true;
-				case CapDeviceOnline: itemType=Tw.TWTY_BOOL; value=1; return true;
+				case CapDeviceOnline: itemType=Tw.TWTY_BOOL; value=DeviceOnline ? 1 : 0; return true;
 				case CapEnableDsUiOnly: itemType=Tw.TWTY_BOOL; value=0; return true;
 				case IcapUndefinedImageSize: itemType=Tw.TWTY_BOOL; value=1; return true;
 			}
@@ -392,6 +428,9 @@ namespace ImagingDeviceManager.Tests {
 			}
 			TW_CAPABILITY capability=(TW_CAPABILITY)Marshal.PtrToStructure(data,typeof(TW_CAPABILITY));
 			ushort cap=capability.Cap;
+			if(cap==IcapSupportedExtImageInfo) {
+				return SupportedExtImageInfo(msg,data,capability);
+			}
 			ushort itemType;
 			int valueFixed;
 			bool isFixed=TryGetFixed(cap,out itemType,out valueFixed);
@@ -409,6 +448,14 @@ namespace ImagingDeviceManager.Tests {
 					WriteOneValue(data,capability,Tw.TWTY_INT32,support);
 					return Tw.TWRC_SUCCESS;
 				case Tw.MSG_GET:
+					if(cap==IcapBitDepth) {
+						//The values the source offers (section 4), with the current one.
+						List<int> listDepths=Supports16Bit ? new List<int> { 8,16 } : new List<int> { 8 };
+						WriteEnumeration(data,capability,itemType,listDepths,Math.Max(0,listDepths.IndexOf(DictCaps[cap])));
+						return Tw.TWRC_SUCCESS;
+					}
+					WriteOneValue(data,capability,itemType,isSettable ? DictCaps[cap] : valueFixed);
+					return Tw.TWRC_SUCCESS;
 				case Tw.MSG_GETCURRENT:
 					WriteOneValue(data,capability,itemType,isSettable ? DictCaps[cap] : valueFixed);
 					return Tw.TWRC_SUCCESS;
@@ -465,7 +512,7 @@ namespace ImagingDeviceManager.Tests {
 					}
 					return Tw.TWRC_SUCCESS;
 				case IcapBitDepth:
-					if(value!=8 && !(value==16 && DictCaps[Tw.ICAP_XFERMECH]==Tw.TWSX_MEMORY)) {
+					if(value!=8 && !(value==16 && Supports16Bit && DictCaps[Tw.ICAP_XFERMECH]==Tw.TWSX_MEMORY)) {
 						return Fail(Tw.TWCC_BADVALUE);
 					}
 					DictCaps[cap]=value;
@@ -489,7 +536,8 @@ namespace ImagingDeviceManager.Tests {
 		///CAP_INDICATORS FALSE and another resolution return TWRC_CHECKSTATUS and change nothing, and ICAP_UNDEFINEDIMAGESIZE accepts
 		///TRUE and FALSE.</summary>
 		private ushort SetFixed(ushort cap,int value,int valueFixed) {
-			if(value==valueFixed) {
+			CountFixedCapSet++;
+			if(value==valueFixed || FixedCapsAcceptAnyValue) {
 				return Tw.TWRC_SUCCESS;
 			}
 			if(cap==CapIndicators && value==0) {
@@ -517,6 +565,66 @@ namespace ImagingDeviceManager.Tests {
 			}
 			finally {
 				NativeMethods.GlobalUnlock(hContainer);
+			}
+		}
+
+		///<summary>ICAP_SUPPORTEDEXTIMAGEINFO (section 4: fixed): a TW_ARRAY of the items of section 6.3.</summary>
+		private ushort SupportedExtImageInfo(ushort msg,IntPtr data,TW_CAPABILITY capability) {
+			if(!SupportsExtImageInfo) {
+				return Fail(Tw.TWCC_CAPUNSUPPORTED);
+			}
+			switch(msg) {
+				case Tw.MSG_QUERYSUPPORT:
+					WriteOneValue(data,capability,Tw.TWTY_INT32,Tw.TWQC_GET|Tw.TWQC_GETDEFAULT|Tw.TWQC_GETCURRENT);
+					return Tw.TWRC_SUCCESS;
+				case Tw.MSG_GET:
+				case Tw.MSG_GETCURRENT:
+				case Tw.MSG_GETDEFAULT:
+					WriteArray(data,capability,Tw.TWTY_UINT16,GetSupportedExtImageInfo());
+					return Tw.TWRC_SUCCESS;
+				case Tw.MSG_SET:
+					CountFixedCapSet++;
+					return Fail(State!=4 ? Tw.TWCC_SEQERROR : Tw.TWCC_BADVALUE);
+			}
+			return Fail(Tw.TWCC_CAPBADOPERATION);
+		}
+
+		private void WriteEnumeration(IntPtr data,TW_CAPABILITY capability,ushort itemType,List<int> listItems,int currentIndex) {
+			int itemSize=TwContainer.ItemSize(itemType);
+			IntPtr hContainer=_dsm.SourceAllocate(TwContainer.EnumItemListOffset+itemSize*listItems.Count);
+			IntPtr pContainer=NativeMethods.GlobalLock(hContainer);
+			Marshal.WriteInt16(pContainer,0,(short)itemType);
+			Marshal.WriteInt32(pContainer,TwContainer.EnumNumItemsOffset,listItems.Count);
+			Marshal.WriteInt32(pContainer,TwContainer.EnumCurrentIndexOffset,currentIndex);
+			Marshal.WriteInt32(pContainer,TwContainer.EnumDefaultIndexOffset,0);
+			WriteItems(pContainer,TwContainer.EnumItemListOffset,itemSize,listItems);
+			NativeMethods.GlobalUnlock(hContainer);
+			capability.ConType=Tw.TWON_ENUMERATION;
+			capability.hContainer=hContainer;
+			Marshal.StructureToPtr(capability,data,false);
+		}
+
+		private void WriteArray(IntPtr data,TW_CAPABILITY capability,ushort itemType,List<int> listItems) {
+			int itemSize=TwContainer.ItemSize(itemType);
+			IntPtr hContainer=_dsm.SourceAllocate(TwContainer.ArrayItemListOffset+itemSize*listItems.Count);
+			IntPtr pContainer=NativeMethods.GlobalLock(hContainer);
+			Marshal.WriteInt16(pContainer,0,(short)itemType);
+			Marshal.WriteInt32(pContainer,TwContainer.ArrayNumItemsOffset,listItems.Count);
+			WriteItems(pContainer,TwContainer.ArrayItemListOffset,itemSize,listItems);
+			NativeMethods.GlobalUnlock(hContainer);
+			capability.ConType=Tw.TWON_ARRAY;
+			capability.hContainer=hContainer;
+			Marshal.StructureToPtr(capability,data,false);
+		}
+
+		private static void WriteItems(IntPtr pContainer,int offset,int itemSize,List<int> listItems) {
+			for(int i=0;i<listItems.Count;i++) {
+				if(itemSize==2) {
+					Marshal.WriteInt16(pContainer,offset+i*2,(short)listItems[i]);
+				}
+				else {
+					Marshal.WriteInt32(pContainer,offset+i*4,listItems[i]);
+				}
 			}
 		}
 

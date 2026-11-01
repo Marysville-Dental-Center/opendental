@@ -582,6 +582,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 			IsOpenedByName=!isDefault;
 			_xferMech=Tw.TWSX_NATIVE;
 			_isVanilla=false;
+			ResetCaptureState();
 			return true;
 		}
 
@@ -627,6 +628,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 			_hwndWatched=IntPtr.Zero;
 			MultiTransfer=false;
 			_xferMech=Tw.TWSX_NATIVE;
+			ResetCaptureState();
 			if(State==3) {
 				CloseDsm();
 			}
