@@ -360,13 +360,16 @@ namespace ImagingCapture.Tests {
 
 	///<summary>One way the session's decision refuses 16 bits for a capture of more than 8 bits whose own slot is still empty, so that Assign files
 	///it into that slot as the explicit 8-bit copy (owner decision 2026-11-01, "fall back to 8"): the setup of a fresh harness, the capture's
-	///sidecar fields, and the start of the reason the confirmation gives.</summary>
+	///sidecar fields, the start of the reason the confirmation gives, and the text that tells apart two kinds whose reasons start alike.</summary>
 	internal sealed class Gray16Refusal {
 		public string Name="";
 		public Func<Dictionary<string,string>> FuncFields;
 		public Action<RecoveryHarness> ActionSetup=harness => { };
 		///<summary>The reason as the plan's Reason16BitRefused starts.</summary>
 		public string ReasonStart="";
+		///<summary>Text the reason holds after ReasonStart, where two kinds share it: which gate refused (a record for another driver version, or
+		///one made with other image settings for the same driver). Empty where ReasonStart alone tells the kind.</summary>
+		public string ReasonContains="";
 
 		public override string ToString() {
 			return Name;
@@ -386,10 +389,12 @@ namespace ImagingCapture.Tests {
 					ReasonStart="[Twain] Allow16Bit is 0 (more than 8 bits are switched off on this computer)" },
 				new Gray16Refusal { Name="record for another driver version",FuncFields=() => RecoveryFiles.SessionFieldsWithDriver(driverVersion:"1.0"),
 					ActionSetup=harness => harness.SetGatesPassedAt(16),
-					ReasonStart="no Test capture record for this sensor's driver version and image settings: the latest Test capture record (" },
+					ReasonStart="no Test capture record for this sensor's driver version and image settings: the latest Test capture record (",
+					ReasonContains=") is for driver " },
 				new Gray16Refusal { Name="record with other image settings",FuncFields=() => RecoveryFiles.SessionFieldsWithDriver(),
 					ActionSetup=harness => harness.SetGatesPassedAt(14,new TwainCaptureOptions { ImagingDeviceNum=12,Bits=14 }),
-					ReasonStart="no Test capture record for this sensor's driver version and image settings: the latest Test capture record (" },
+					ReasonStart="no Test capture record for this sensor's driver version and image settings: the latest Test capture record (",
+					ReasonContains=") was made with other image settings (Bits, ByteOrder16 or Polarity)" },
 				new Gray16Refusal { Name="sidecar before driver versions",FuncFields=() => RecoveryFiles.SessionFields(),
 					ActionSetup=harness => harness.SetGatesPassedAt(16),
 					ReasonStart="this capture was taken before captures recorded the driver version, so no Test capture record can cover it" },

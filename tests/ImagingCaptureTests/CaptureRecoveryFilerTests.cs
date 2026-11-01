@@ -711,6 +711,7 @@ namespace ImagingCapture.Tests {
 					Assert.IsTrue(plan.Is8BitCopy,refusal.Name);
 					Assert.IsFalse(plan.Is16BitAllowed,refusal.Name);
 					StringAssert.StartsWith(plan.Reason16BitRefused,refusal.ReasonStart,refusal.Name);
+					StringAssert.Contains(plan.Reason16BitRefused,refusal.ReasonContains,refusal+": the gate that refused.");
 					Assert.AreEqual("",plan.Description,refusal+": that slot's document, with no label.");
 					StringAssert.StartsWith(plan.Note,"8-bit copy: 16 bits are not allowed for it now ("+plan.Reason16BitRefused+"); the 16-bit original is "
 						+"kept.",refusal.Name);

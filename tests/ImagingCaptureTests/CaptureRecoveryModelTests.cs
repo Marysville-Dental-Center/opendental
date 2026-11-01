@@ -179,7 +179,8 @@ namespace ImagingCapture.Tests {
 					string slotLabel="Slot 3 (teeth "+harness.Slot(3).ToothNumbers+")";
 					StringAssert.Contains(model.StepDetailsText,"It goes into "+slotLabel+" of the mount \"FMX\"",refusal.Name);
 					StringAssert.Contains(model.StepDetailsText,"8-bit copy: 16 bits are not allowed for it now ("+refusal.ReasonStart,refusal.Name);
-					StringAssert.Contains(model.StepDetailsText,"); the 16-bit original is kept.",refusal.Name);
+					StringAssert.Contains(model.AssignPlan.Reason16BitRefused,refusal.ReasonContains,refusal+": the gate that refused.");
+					StringAssert.Contains(model.StepDetailsText,"("+model.AssignPlan.Reason16BitRefused+"); the 16-bit original is kept.",refusal.Name);
 					Assert.IsFalse(model.StepDetailsText.Contains("discarded"),refusal+": "+model.StepDetailsText);
 					Assert.AreEqual(0,harness.RadiographStore.ListPatientsImported.Count,refusal+": nothing is filed before the confirmation.");
 					Assert.IsTrue(model.Confirm(""),refusal+": "+model.ErrorText);
