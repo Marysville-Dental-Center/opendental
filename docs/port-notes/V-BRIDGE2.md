@@ -1,8 +1,8 @@
 # Port note: V-BRIDGE2, Trophy Enhanced tags, Clever One, Clerri
 
-Branch `port/v-bridge2`, built from `port/foundation` (M2-01 and M2-02 merged) in the single-wave run. Backlog section: [port-backlog.md, V-BRIDGE2](../specs/port-backlog.md#v-bridge2-trophy-enhanced-tags-clever-one-clerri). Feature specs: [features-25.4.md](../specs/features-25.4.md) (`v25_4-bridges-trophy-enhanced-tags`, `v25_4-bridges-cleverone`, `v25_4-family-clerri`).
+Branch `port/v-bridge2`, built from `port/foundation` (M2-01 and M2-02 merged) in the single-wave run, then finished on `port/v-bridge2-t1` with the integration head `port/int-9` (8d077f202) merged in (see [Integration with port/int-9](#integration-with-portint-9)). Backlog section: [port-backlog.md, V-BRIDGE2](../specs/port-backlog.md#v-bridge2-trophy-enhanced-tags-clever-one-clerri). Feature specs: [features-25.4.md](../specs/features-25.4.md) (`v25_4-bridges-trophy-enhanced-tags`, `v25_4-bridges-cleverone`, `v25_4-family-clerri`).
 
-No fork migration step, no schema change, no preference and no permission. The program rows are inserted at runtime with `Enabled=0` the first time Setup > Program Links opens, the way the vendor-direct links do it (`IProgramLinkSetup.EnsureProgram`, [vendor-direct README](../specs/vendor-direct/README.md)). The level range 2027005301 to 2027005399 is unused.
+No fork migration step, no schema change, no preference and no permission. The program rows are inserted at runtime with `Enabled=0` the first time Setup > Program Links opens, the way the vendor-direct links do it (`IProgramLinkSetup.EnsureProgram`, [vendor-direct README](../specs/vendor-direct/README.md)), through V-BRIDGE1's `BridgeLinkRows.EnsureProgram`. No migration level is used, so the adoption tools (migration-preview, AdoptionRowCheck, the allowed differences) have nothing new to expect: an adopted 25.3.48 database gets these rows only when someone opens Program Links, never from the migration run.
 
 Sources, all public and read on 2026-10-25: the 25.4 release notes (version25_4.html), the setup pages bridgeclerri.html, clerri.html, bridgecleverone.html and bridgetrophyenhanced.html on opendental.com, and the 24.3 manual's bridgetrophyenhanced.html as the baseline. Only field names, defaults and technical values (the default program path, `-D[PatNum]`) were taken; every text in the code and in this note is written for this fork. No Open Dental binary, install or database was used, and no vendor was contacted or called.
 
@@ -24,21 +24,21 @@ Sources, all public and read on 2026-10-25: the 25.4 release notes (version25_4.
 
 ### Clever One by VATECH
 
-- `OpenDentBusiness/VendorDirect/ProgramLinks/CleverOneProgram.cs`: `EnsureProgram` (inserts the row, path, button and property only when missing; never changes what the office set), `BuildLinkageXml`, `GetLinkageFilePath`, `UsesChartNumber`.
+- `OpenDentBusiness/VendorDirect/ProgramLinks/CleverOneProgram.cs`: `GetDefinition` and `EnsureProgram` (`BridgeLinkRows.EnsureProgram`: inserts the row, path, note, button and property only when missing; never changes what the office set), `BuildLinkageXml`, `GetLinkageFilePath`, `UsesChartNumber(Program)` (the saved property through `BridgePatientTokens.IsChartNumberSelected`). The row's Notes text says that the hand-off is the EzDent-i one without the SSN, and to ask VATECH if Clever One does not open the patient.
 - `WpfControlsOD/Bridges/CleverOne.cs`: deletes an old `linkage.xml` next to the program, writes the patient's, then starts Clever One. Without a patient it starts Clever One without one. If the file can't be written (for example a read-only Program Files folder) the user is told and Clever One starts without the patient.
-- `OpenDental/Logic/VendorDirect/CleverOneProgramLinkSetup.cs`: registers the link with Program Links and opens it in `FormProgramLinkEdit`.
+- `OpenDental/Logic/VendorDirect/CleverOneProgramLinkSetup.cs`: registers the link with Program Links; a `StandardProgramLinkSetup` (V-BRIDGE1), so it opens in `FormProgramLinkEdit`.
 - `Programs.ScrubExportedPatientData` deletes Clever One's `linkage.xml` on exit, as for EzDenti and Ez3Di.
 
 ### Clerri
 
-- `OpenDentBusiness/VendorDirect/ProgramLinks/ClerriProgram.cs`: `EnsureProgram`, the Family module button (`IsToolbarButtonShown`, `SetToolbarButtonShown`, `CanChangeToolbarButton`), `ValidateDashboardAddress`, `BuildDashboardUrl`, `GetDashboardUrl`, `ReadClientKey` (the clinic's key, else the default), `HasAnyClientKey`.
+- `OpenDentBusiness/VendorDirect/ProgramLinks/ClerriProgram.cs`: `GetDefinition` and `EnsureProgram` (the row and button through `BridgeLinkRows.EnsureProgram`, the two property rows through `VendorCredentials` because they need the credential flags), the Family module button (`IsToolbarButtonShown`, `SetToolbarButtonShown`, `CanChangeToolbarButton`), `ValidateDashboardAddress`, `BuildDashboardUrl`, `GetDashboardUrl`, `ReadClientKey` (the clinic's key, else the default), `HasAnyClientKey`.
 - `OpenDentBusiness/VendorDirect/ProgramLinks/ProgramLinkLaunchLog.cs`: one line per launch in the workstation's log folder (`ProgramLinks`): program, user, clinic and PatNum, no names.
 - `WpfControlsOD/Bridges/Clerri.cs`: builds the address for the current clinic and patient, logs the launch, opens it in the default browser.
 - `OpenDental/Forms/FormClerriSetup.cs` (+ designer, resx) and `ClerriProgramLinkSetup` in the same file: the setup window.
 - Rules:
   - The Client Key is a credential: stored only through `VendorCredentials.WriteSecret` (osd1$, masked, high security), never shown again, editable only with Manage High Security Program Properties; a change is written to the security log. A plain-text key (typed into the generic property editor) is accepted and encrypted on the next save; an Open Dental ciphertext must be entered again.
   - One key per clinic, plus the default (ClinicNum 0) that clinics without a key, or with a cleared one, use.
-  - The Dashboard Address is practice-wide. Only `[ClientKey]` (URL-encoded) and `[PatNum]` (blank without a patient) are replaced, so no other patient data can reach the address. Only an absolute `https` address with a host and no user name is opened, so the button can never start a program.
+  - The Dashboard Address is practice-wide. Only `[ClientKey]` (URL-encoded) and `[PatNum]` (blank without a patient) are replaced, so no other patient data can reach the address. Only an absolute `https` address with a host and no user name is opened, so the button can never start a program; the address, and the finished one with the tags filled in, must also pass `BridgeLaunch.CheckWebAddress` (V-BRIDGE1), which refuses the hosts this program never contacts (`HqHosts`).
   - Enabling needs a valid address, and a key when the address uses `[ClientKey]`.
   - Show Toolbar Button adds or removes only the Family module button, and can't be changed while the link is enabled (saved or checked), as the public page says.
 - No eConnector status line (the eConnector is removed). No links, logos or sign-up text.
@@ -58,7 +58,7 @@ Changed (each change small and local):
 - `WpfControlsOD/Bridges/TrophyEnhanced.cs` (owned): see above.
 - `WpfControlsOD/Logic/ProgramL.cs` (owned): two dispatch branches after CleaRay.
 - `OpenDental/Forms/FormProgramLinkEdit.cs` (owned): one hook line at the end of Load.
-- `OpenDentBusiness/TableTypes/Program.cs` (foundation-owned): `ProgramName.Clerri` and `ProgramName.CleverOne`, in alphabetical order after CleaRay. M2-02's note leaves the `ProgramName` values to the vendor packages. The enum is stored as text, so the numbers of later members moving is harmless; the vendor-direct members stay last as `FoundationLayoutTests` requires.
+- `OpenDentBusiness/TableTypes/Program.cs` (foundation-owned): `ProgramName.Clerri` and `ProgramName.CleverOne`, appended after V-BRIDGE1's `DTXStudioAcquire`, so no existing value changes its number (the convention on the integration branch; `VendorDirectTests.FoundationLayoutTests` and `VBRIDGE1Tests` check the earlier blocks). M2-02's note leaves the `ProgramName` values to the vendor packages.
 - `OpenDentBusiness/Data Interface/Programs.cs`: three lines in `ScrubExportedPatientData`.
 - `WpfControlsOD/WpfControlsOD.csproj`, `OpenDental/OpenDental.csproj`: compile lines for the new files.
 - `OpenDental.sln`, `OpenDental.Local.slnf`: the test project.
@@ -83,23 +83,37 @@ Owned but not changed: `OpenDental/Main Modules/ControlFamily.cs` (the Family mo
 
 ## Interplay with packages built in parallel
 
-- **V-PAYSUITE, V-GP**: also add `ProgramName` values. If they append after `PostcardMania`, `VendorDirectTests.FoundationLayoutTests.ProgramName_VendorDirectNamesAreAppendedLast` and `WiringTests.ProgramName_NewValuesAreAlphabeticalAndTheVendorDirectOnesStayLast` here fail; inserting alphabetically (as here) keeps both green. A merge conflict in `Program.cs` is resolved by keeping every new member.
-- **V-PEARL2, B-SHELL** (earlier owners of `FormProgramLinkEdit.cs`): this package adds one line at the end of `FormProgramLinkEdit_Load` and a partial-class file; keep both sides on merge.
+- **Later packages that add `ProgramName` values** (for example V-GP; V-PAYSUITE is excluded by the owner): append after `CleverOne`. `WiringTests.ProgramName_NewValuesAreAppendedAfterVBridge1_ExistingNumbersKept` checks only that `Clerri` and `CleverOne` follow `DTXStudioAcquire`, so later members after them keep it green. A merge conflict in `Program.cs` is resolved by keeping every new member, in merge order.
+- **V-PEARL2, B-SHELL** (earlier owners of `FormProgramLinkEdit.cs`): this package adds one line at the end of `FormProgramLinkEdit_Load` (after B-SHELL's discontinued-link block) and a partial-class file; keep both sides on merge.
 - **M2-AUDIT, M2-HIST** (earlier owners of `Patients.cs` and `ControlFamily.cs`): no edits here, so no conflict.
 - **Other packages adding `IProgramLinkSetup` classes**: `ProgramLinkSetupRegistry` finds them all by reflection; no shared registration file.
 - `OpenDental.csproj`, `WpfControlsOD.csproj`, `OpenDental.sln`, `OpenDental.Local.slnf`: additive lines only.
 
+## Integration with port/int-9
+
+`port/int-9` (8d077f202) was merged into `port/v-bridge2-t1`. What changed here because of the packages already on it:
+
+- **Conflict, `FormProgramLinkEdit.cs`**: B-SHELL's discontinued-link block (a discontinued link can't be enabled or get buttons) and this package's `SetCommandLineHint();` line both sat at the end of `FormProgramLinkEdit_Load`. Both kept, the block first. `BSHELLTests.DxcCreditScoreRemovedTests` and `WiringTests.FormProgramLinkEdit_HasOneHookLine` check each side.
+- **`ProgramName` order**: V-BRIDGE1 appended `Overjet`, `DTXStudio` and `DTXStudioAcquire` after `PostcardMania` so existing values keep their numbers. `Clerri` and `CleverOne` were inserted alphabetically after `CleaRay` on the package branch, which renumbered every later member. They now follow `DTXStudioAcquire`, the integration branch's convention. The values are stored as text (`program.ProgName`) and no code casts them to numbers, so this changes no stored data.
+- **Helpers reused from V-BRIDGE1** instead of keeping this package's copies:
+  - `BridgeLinkRows.EnsureProgram` (with a `BridgeLinkDefinition`) inserts the Clever One and Clerri rows and buttons. The behaviour is the same as before (the row once, with its defaults; missing ClinicNum 0 properties; an existing row untouched). Clever One's row also gets a Notes text now, like the V-BRIDGE1 rows.
+  - `BridgePatientTokens.IsChartNumberSelected` is the PatientNum/ChartNum rule for Clever One (only "1" sends the ChartNumber, as before).
+  - `StandardProgramLinkSetup` opens Clever One in the standard Program Link window (it also locks the toolbars of a static program, which Clever One is not).
+  - `BridgeLaunch.CheckWebAddress` checks the Clerri dashboard address. Besides the https rule this package already had, it refuses hosts this program never contacts (`HqHosts`), for the saved address and for the finished one (a tag in the host). The user-name rule stays on top of it.
+- **No other overlap**: none of the merged packages touches Trophy (Enhanced), Clever One, Clerri, `ProgramL.cs` dispatch for them, or `Programs.ScrubExportedPatientData`'s Clever One lines. No package on `port/int-9` adds a program-link launch log or an audit permission for program links, so `ProgramLinkLaunchLog` stays (owner question 2).
+- **Adoption**: no fork migration step is added or activated, so migration-preview, AdoptionRowCheck and `allowed-differences.adoption.json` are unchanged.
+
 ## Tests
 
-New project `tests/VBRIDGE2Tests` (MSTest v1, x86, .NET 4.8; in `OpenDental.sln` and `OpenDental.Local.slnf`), 58 tests:
+New project `tests/VBRIDGE2Tests` (MSTest v1, x86, .NET 4.8; in `OpenDental.sln` and `OpenDental.Local.slnf`), 60 tests:
 
 - `TrophyEnhancedCommandLineTests`: sample command lines (blank, `-D[PatNum]`, quoted `[TrophyFolder]`, case, `$` in paths, skipped folders).
-- `CleverOneProgramTests`: the linkage.xml content and layout, no SSN, PatNum or ChartNumber, regional settings, defaults.
-- `ClerriProgramTests`: address building, encoding, tag case, no other tags, https-only (file, cmd, javascript, mailto, user info rejected), the toolbar rule, the launch log line.
-- `WiringTests`: `ProgramName` order, the dispatch branches, project files, the setup registrations, the encrypted key save, the one-line hook, the exit scrub, no web addresses or promotion in the new files.
-- `ProgramLinksDbTests` (scratch MariaDB database `vbridge2_<time>_<pid>_<random>` with the 26.1.70 reference schema, dropped afterwards; skipped when `VBRIDGE2_TEST_DB=skip` or no local server): the inserted rows and buttons, a second run, office changes kept, buttons only when enabled, Show Toolbar Button, keys encrypted per clinic with the default fallback, unreadable and plain-text keys, and the Trophy tags with the real `Patients.ReplacePatient`.
+- `CleverOneProgramTests`: the linkage.xml content and layout, no SSN, PatNum or ChartNumber, regional settings, defaults, the row definition (path, button, property, note).
+- `ClerriProgramTests`: address building, encoding, tag case, no other tags, https-only (file, cmd, javascript, mailto, user info rejected), blocked hosts (saved, and reached through a tag in the host), the toolbar rule, the launch log line.
+- `WiringTests`: `ProgramName` order (appended after V-BRIDGE1's values, nothing renumbered), the dispatch branches, project files, the setup registrations (Clever One through `StandardProgramLinkSetup`), the encrypted key save, the one-line hook, the exit scrub, no web addresses or promotion in the new files.
+- `ProgramLinksDbTests` (scratch MariaDB database `vbridge2_<time>_<pid>_<random>` with the 26.1.70 reference schema, dropped afterwards; skipped when `VBRIDGE2_TEST_DB=skip` or no local server): the inserted rows, note and buttons, a second run, office changes kept, the saved PatientNum/ChartNum choice, buttons only when enabled, Show Toolbar Button, keys encrypted per clinic with the default fallback, unreadable and plain-text keys, and the Trophy tags with the real `Patients.ReplacePatient`.
 
-Run for this package: `VBRIDGE2Tests` 58/58, `VendorDirectTests` 873/873, `NoHqTests` 49/49. Also run because `ProgramName` (in `TableTypes/Program.cs`) changed: `RegistryTests` 33/33, `M202Tests` 39/39, `ForkMigrationTests` 38/38. `tools/Test-NoHqHosts.ps1` passes.
+Final run on `port/v-bridge2-t1` (after the `port/int-9` merge), through the shared runner: one full build of `OpenDental.Local.slnf` (0 errors), then `run-tests -Mode Core -Include ForkMigrationTests,M201Tests,SyntheticData.Tests,AdoptionValidation.Tests` (the slow assemblies because `TableTypes/Program.cs` changed): 70 assemblies, 3700 passed, 0 failed, 2 skipped (M201Tests' two checks against the published 26.1 documents, which skip when the documents are not on this computer). Among them `VBRIDGE2Tests` 60/60, `VBRIDGE1Tests` 37/37, `VendorDirectTests` 873/873, `BSHELLTests` 66/66, `RegistryTests` 33/33, `M202Tests` 39/39, `ForkMigrationTests` 38/38, `AdoptionValidation.Tests` 56/56, `NoHqTests` 49/49. `tools/Test-NoHqHosts.ps1` passes.
 
 Not tested: the setup window and the tool tip on screen, starting Clever One or Trophy, opening the browser, writing `linkage.xml` into a real program folder, and the middle tier.
 
