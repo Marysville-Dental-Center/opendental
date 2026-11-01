@@ -3260,6 +3260,7 @@ namespace OpenDental {
 				}
 				//Patient information updating---------------------------------------------------------------------------------------------------------
 				Patients.Update(_patient,_patientOld);
+				Patients.InsertPreferredAndClinicChangeSecurityLogEntry(_patientOld,_patient,EFormCur!=null ? "eForm import" : "sheet import");
 				if(_isAddressSameForFam) {
 					bool isAuthArchivedEdit=Security.IsAuthorized(EnumPermType.ArchivedPatientEdit,true);
 					if(!isAuthArchivedEdit && _family.HasArchivedMember()) {

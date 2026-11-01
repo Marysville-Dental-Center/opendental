@@ -154,6 +154,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AdoptionValidation", "tools
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AdoptionValidation.Tests", "tools\AdoptionValidation\AdoptionValidation.Tests\AdoptionValidation.Tests.csproj", "{0A581363-DE6B-4074-8EA6-D6677A59D79A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BAUDITTests", "tests\BAUDITTests\BAUDITTests.csproj", "{849BDB3B-C4EF-464B-9381-66EAE13BBF13}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -1017,6 +1019,18 @@ Global
 		{0A581363-DE6B-4074-8EA6-D6677A59D79A}.Release|Any CPU.Build.0 = Release|x86
 		{0A581363-DE6B-4074-8EA6-D6677A59D79A}.Release|x86.ActiveCfg = Release|x86
 		{0A581363-DE6B-4074-8EA6-D6677A59D79A}.Release|x86.Build.0 = Release|x86
+		{849BDB3B-C4EF-464B-9381-66EAE13BBF13}.Debug|Any CPU.ActiveCfg = Debug|x86
+		{849BDB3B-C4EF-464B-9381-66EAE13BBF13}.Debug|Any CPU.Build.0 = Debug|x86
+		{849BDB3B-C4EF-464B-9381-66EAE13BBF13}.Debug|x86.ActiveCfg = Debug|x86
+		{849BDB3B-C4EF-464B-9381-66EAE13BBF13}.Debug|x86.Build.0 = Debug|x86
+		{849BDB3B-C4EF-464B-9381-66EAE13BBF13}.ODXam|Any CPU.ActiveCfg = Release|x86
+		{849BDB3B-C4EF-464B-9381-66EAE13BBF13}.ODXam|Any CPU.Build.0 = Release|x86
+		{849BDB3B-C4EF-464B-9381-66EAE13BBF13}.ODXam|x86.ActiveCfg = Release|x86
+		{849BDB3B-C4EF-464B-9381-66EAE13BBF13}.ODXam|x86.Build.0 = Release|x86
+		{849BDB3B-C4EF-464B-9381-66EAE13BBF13}.Release|Any CPU.ActiveCfg = Release|x86
+		{849BDB3B-C4EF-464B-9381-66EAE13BBF13}.Release|Any CPU.Build.0 = Release|x86
+		{849BDB3B-C4EF-464B-9381-66EAE13BBF13}.Release|x86.ActiveCfg = Release|x86
+		{849BDB3B-C4EF-464B-9381-66EAE13BBF13}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
