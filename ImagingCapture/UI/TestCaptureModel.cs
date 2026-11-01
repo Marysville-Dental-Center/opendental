@@ -60,9 +60,10 @@ namespace ImagingCapture.UI {
 
 		///<summary>device: the saved ImagingDevice (ImagingDeviceNum above 0). localCaptureConfig: capture.ini as loaded; the test runs with the
 		///settings read from it now, and the record carries their hash. computerName: this computer. unassignedText: the quarantine line
-		///(CaptureQuarantine.GetUnassignedText), or null.</summary>
+		///(CaptureQuarantine.GetUnassignedText), or null. settingsCheck: the hash check of design 9.3 for the device on this computer
+		///(CaptureSettingsCheck); unless it is Verified the test runs with the safe values and writes no record. Null counts as not checked.</summary>
 		public TestCaptureModel(TestCaptureDevice device,LocalCaptureConfig localCaptureConfig,string computerName,ImageCategoryRule imageCategoryRule,
-			IEnumerable<MountTemplateCategory> listMountTemplates,string unassignedText)
+			IEnumerable<MountTemplateCategory> listMountTemplates,string unassignedText,CaptureSettingsCheck settingsCheck)
 		{
 			Device=device??throw new ArgumentNullException(nameof(device));
 			_localCaptureConfig=localCaptureConfig??throw new ArgumentNullException(nameof(localCaptureConfig));
@@ -70,7 +71,9 @@ namespace ImagingCapture.UI {
 			_listMountTemplates=(listMountTemplates??Enumerable.Empty<MountTemplateCategory>()).Where(x => x!=null).ToList();
 			ComputerName=computerName??"";
 			UnassignedText=unassignedText;
-			Options=TwainCaptureOptions.FromConfig(localCaptureConfig,device.ImagingDeviceNum);
+			SettingsCheck=settingsCheck??CaptureSettingsCheck.Unknown(device.ImagingDeviceNum,ComputerName,"they were not checked");
+			//Design 9.3: the session path, Test capture included, ignores a gated block that is not verified and uses the safe values.
+			Options=SettingsCheck.GetOptionsInEffect(TwainCaptureOptions.FromConfig(localCaptureConfig,device.ImagingDeviceNum));
 			try {
 				GatedCanonicalText=GatedSettingsHash.GetCanonicalText(localCaptureConfig,device.ImagingDeviceNum);
 				GatedSettingsHashValue=GatedSettingsHash.ComputeFromCanonicalText(GatedCanonicalText);
@@ -86,8 +89,13 @@ namespace ImagingCapture.UI {
 
 		#region Properties
 		public TestCaptureDevice Device { get; }
-		///<summary>The [Device.N] and [Twain] settings in effect, as the capture session reads them.</summary>
+		///<summary>The [Device.N] and [Twain] settings in effect, as the capture session reads them: the file's when SettingsCheck is Verified,
+		///otherwise the safe values.</summary>
 		public TwainCaptureOptions Options { get; }
+		///<summary>Whether the gated settings are the ones last saved in the Capture settings screen (design 9.3).</summary>
+		public CaptureSettingsCheck SettingsCheck { get; }
+		///<summary>"Capture settings were changed outside Open Dental; review them in Setup. ...", or "" when the settings are verified.</summary>
+		public string SettingsCheckText => SettingsCheck.Text;
 		///<summary>GatedSettingsHash.Compute for the device, or "" when it could not be computed (HashError).</summary>
 		public string GatedSettingsHashValue { get; }
 		public string GatedCanonicalText { get; }
@@ -169,8 +177,10 @@ namespace ImagingCapture.UI {
 		///<summary>The unassigned captures window (design 7.12) opens from the notice only while no test image is being taken.</summary>
 		public bool CanOpenUnassignedCaptures => UnassignedText!=null && (State==TestCaptureState.Closed || State==TestCaptureState.Open);
 		public bool CanStop => State==TestCaptureState.Enabled;
-		///<summary>A measured image and the settings hash exist. The record needs the Setup permission too, which the window checks.</summary>
-		public bool CanWriteRecord => Analysis!=null && Analysis.IsValid && GatedSettingsHashValue!="" && State!=TestCaptureState.Closing;
+		///<summary>A measured image and the settings hash exist, and the gated settings are verified: a record states that the test ran with
+		///them, which is not true while the safe values are in effect. The record needs the Setup permission too, which the window checks.</summary>
+		public bool CanWriteRecord => Analysis!=null && Analysis.IsValid && GatedSettingsHashValue!="" && SettingsCheck.IsVerified
+			&& State!=TestCaptureState.Closing;
 		///<summary>The byte-order confirmation applies to a 16-bit image only.</summary>
 		public bool IsByteOrderCheckable => Analysis!=null && Analysis.IsValid && Analysis.IsGray16;
 		public bool IsPolarityCheckable => Analysis!=null && Analysis.IsValid;
@@ -306,6 +316,10 @@ namespace ImagingCapture.UI {
 				error="Take a test image first.";
 				return null;
 			}
+			if(!SettingsCheck.IsVerified) {
+				error="No verification record can be written while safe values are in effect. "+SettingsCheck.Text;
+				return null;
+			}
 			CaptureVerificationRecord record=new CaptureVerificationRecord();
 			record.ImagingDeviceNum=Device.ImagingDeviceNum;
 			record.DeviceDescription=Device.Description??"";
@@ -393,6 +407,9 @@ namespace ImagingCapture.UI {
 			TwainCaptureOptions options=Options;
 			StringBuilder stringBuilder=new StringBuilder();
 			stringBuilder.AppendLine("capture.ini: "+Show(options.ConfigPath));
+			if(!SettingsCheck.IsVerified) {
+				stringBuilder.AppendLine("Safe values in effect (design 9.3), not the file's gated values: "+SettingsCheck.Status+".");
+			}
 			stringBuilder.AppendLine("Settings in effect for this device:");
 			stringBuilder.AppendLine("  SessionMode="+options.SessionMode+", Bits="+options.Bits+", ByteOrder16="+options.ByteOrder16
 				+", Polarity="+options.Polarity+", Headless="+ToBit(options.Headless));

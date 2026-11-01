@@ -259,15 +259,19 @@ namespace ImagingCapture.Recovery {
 			TwainCaptureOptions options=TwainCaptureOptions.FromConfig(config,imagingDeviceNum);
 			string computerName=_services.FuncGetComputerName?.Invoke()??"";
 			ImagingDevice imagingDevice=imagingDeviceNum>0 ? Store.GetImagingDevice(imagingDeviceNum) : null;
-			CaptureVerificationRecord record=imagingDeviceNum>0
-				? CaptureVerificationRecords.FindLatest(Store.GetSetupLogEntries(imagingDeviceNum),imagingDeviceNum,computerName) : null;
+			List<SecurityLog> listSetupLogs=imagingDeviceNum>0 ? Store.GetSetupLogEntries(imagingDeviceNum) : new List<SecurityLog>();
+			CaptureVerificationRecord record=imagingDeviceNum>0 ? CaptureVerificationRecords.FindLatest(listSetupLogs,imagingDeviceNum,computerName) : null;
+			CaptureSettingsCheck settingsCheck=imagingDeviceNum>0
+				? CaptureSettingsCheck.Check(config,imagingDeviceNum,computerName,listSetupLogs)
+				: CaptureSettingsCheck.Unknown(imagingDeviceNum,computerName,"the capture names no imaging device");
 			CaptureBitDepthChoice choice=CaptureBitDepthDecision.Decide(new CaptureBitDepthInput {
 				Options=options,
 				Record=record,
 				ImagingDeviceNum=imagingDeviceNum,
 				ComputerName=computerName,
 				TwainName=imagingDevice?.TwainName??"",
-				GatedSettingsHash=GatedSettingsHash.Compute(config,imagingDeviceNum),
+				GatedSettingsHash=settingsCheck.CurrentHash,
+				SettingsCheck=settingsCheck,
 				Target=target.ToIntraOralTarget(),
 			});
 			if(choice.Bits!=16) {

@@ -92,6 +92,10 @@ namespace ImagingCapture.Session {
 		public ICaptureSessionWindowRunner WindowRunner { get; set; }
 		///<summary>ODEvent, for the patient-change monitor (design 7.6). Null means ODEvent itself (ODEventCapturePatientEvents).</summary>
 		public ICapturePatientEvents PatientEvents { get; set; }
+		///<summary>Shows the operator a notice and returns when it is closed (text, the request's owner). The launcher uses it only before the
+		///session would start, when no source is open, so a message box is allowed: the gated capture settings are not verified (design 9.3) and
+		///the legacy Mount/Acquire loop runs instead. Null shows nothing; CreateDefault shows a message box.</summary>
+		public Action<string,object> ActionShowNotice { get; set; }
 
 		///<summary>OpenDentBusiness, TwainCaptureSession, the UI thread's SynchronizationContext, capture.ini, the capture log and the session window
 		///(FrmCaptureSession through CaptureSessionWindowRunner).</summary>
@@ -108,16 +112,19 @@ namespace ImagingCapture.Session {
 				ActionWriteLog=text => CaptureLogFile.Write(text),
 				WindowRunner=new CaptureSessionWindowRunner(),
 				PatientEvents=new ODEventCapturePatientEvents(),
+				ActionShowNotice=(text,owner) => OpenDental.MsgBox.Show(text),
 			};
 		}
 	}
 
 	///<summary>The entry point of the capture session (design 6.4, 7.3), called by the ControlImages partial (ControlImages.Acquire.cs,
 	///TryAcquireWithCaptureSession) on the UI thread, right after FrmMountAndAcquire. Before anything opens it checks, in this order:
-	///[Session] Enabled (the rollback: NotStarted), the device type (TwainRadiograph only: NotStarted otherwise), the patient against the main
-	///window's current patient, the ImageCreate permission, the category (design 7.12 "Invalid category"), the device's TWAIN source and the
-	///source gate (design 7.12 "Source not enabled here"), and the mount's slots. Then it builds the controller and shows the window, which is
-	///modal, and returns Completed with the summary when the window has closed.
+	///[Session] Enabled (the rollback: NotStarted), the device type (TwainRadiograph only: NotStarted otherwise), the hash check of the gated
+	///settings (design 9.3: settings changed outside Open Dental, or never saved in the Capture settings screen, mean safe values, and the safe
+	///value of [Session] Enabled is off, so NotStarted after a notice to the operator), the patient against the main window's current patient,
+	///the ImageCreate permission, the category (design 7.12 "Invalid category"), the device's TWAIN source and the source gate (design 7.12
+	///"Source not enabled here"), and the mount's slots. Then it builds the controller and shows the window, which is modal, and returns
+	///Completed with the summary when the window has closed.
 	///
 	///A mount created in this call (MountDef not null) that is still empty when the launcher returns Refused or Completed is reported in
 	///IsEmptyMountToDelete; the partial deletes it and logs that (design 7.3 "The hook"). An unexpected exception before the window opens gives
@@ -200,6 +207,26 @@ namespace ImagingCapture.Session {
 			if(_services.WindowRunner==null) {
 				return CaptureSessionLaunchResult.NotStarted("The capture session window is not available in this build.");
 			}
+			long imagingDeviceNum=request.ImagingDevice.ImagingDeviceNum;
+			string computerName=_services.FuncGetComputerName?.Invoke()??"";
+			//Design 9.3: the gated block counts only as last saved in the Capture settings screen. Read once: the same Setup entries hold the
+			//Test capture verification records.
+			List<SecurityLog> listSetupLogs=null;
+			string errorSetupLogs="the security log could not be read";
+			try {
+				listSetupLogs=_services.Store.GetSetupLogEntries(imagingDeviceNum)??new List<SecurityLog>();
+			}
+			catch(Exception ex) {
+				errorSetupLogs+=": "+ex.Message;
+			}
+			CaptureSettingsCheck settingsCheck=listSetupLogs==null
+				? CaptureSettingsCheck.Unknown(imagingDeviceNum,computerName,errorSetupLogs)
+				: CaptureSettingsCheck.Check(config,imagingDeviceNum,computerName,listSetupLogs);
+			if(!settingsCheck.IsVerified) {
+				//The safe value of [Session] Enabled is off, so the legacy loop runs; the operator is told why, once per Mount/Acquire.
+				ShowNotice(settingsCheck.Text+" "+CaptureSessionText.LegacyLoopInstead,request.Owner);
+				return CaptureSessionLaunchResult.NotStarted("The gated capture settings are not verified ("+settingsCheck.Status+"): "+settingsCheck.Text);
+			}
 			//Design 6.4, 10.6: the session is bound to an explicit patient, the one the main window shows.
 			if(request.Patient==null || request.PatNum==0 || request.Patient.PatNum!=request.PatNum) {
 				return CaptureSessionLaunchResult.Refused("Select a patient first.",isMountCreatedHere);
@@ -223,7 +250,6 @@ namespace ImagingCapture.Session {
 				return CaptureSessionLaunchResult.Refused("The imaging device '"+(request.ImagingDevice.Description??"")+"' has no TWAIN source. Check "
 					+"Setup > Imaging > Devices.",isMountCreatedHere);
 			}
-			long imagingDeviceNum=request.ImagingDevice.ImagingDeviceNum;
 			TwainCaptureOptions options=TwainCaptureOptions.FromConfig(config,imagingDeviceNum);
 			if(!options.IsSourceAllowed(twainName)) {
 				return CaptureSessionLaunchResult.Refused(CaptureEndText.SourceNotEnabledHere,isMountCreatedHere);
@@ -244,7 +270,6 @@ namespace ImagingCapture.Session {
 						isMountCreatedHere && listDocuments.All(x => x==null));
 				}
 			}
-			string computerName=_services.FuncGetComputerName?.Invoke()??"";
 			setup=new CaptureSessionSetup {
 				Patient=request.Patient,
 				FuncGetPatNumCur=request.FuncGetPatNumCur,
@@ -258,8 +283,9 @@ namespace ImagingCapture.Session {
 				Options=options,
 				SessionConfig=sessionConfig,
 				ComputerName=computerName,
-				VerificationRecord=GetVerificationRecord(imagingDeviceNum,computerName),
-				GatedSettingsHash=GetGatedSettingsHash(config,imagingDeviceNum),
+				VerificationRecord=CaptureVerificationRecords.FindLatest(listSetupLogs,imagingDeviceNum,computerName),
+				GatedSettingsHash=settingsCheck.CurrentHash,
+				SettingsCheck=settingsCheck,
 				UnassignedText=GetUnassignedText(),
 				SessionGuid=Guid.NewGuid(),
 			};
@@ -276,24 +302,14 @@ namespace ImagingCapture.Session {
 			}
 		}
 
-		///<summary>The latest verification record for the device on this computer, or null (then no 16 bits).</summary>
-		private CaptureVerificationRecord GetVerificationRecord(long imagingDeviceNum,string computerName) {
+		///<summary>Shows text through ActionShowNotice; a failure is logged, never thrown.</summary>
+		private void ShowNotice(string text,object owner) {
+			Log("Notice: "+text);
 			try {
-				return CaptureVerificationRecords.FindLatest(_services.Store.GetSetupLogEntries(imagingDeviceNum),imagingDeviceNum,computerName);
+				_services.ActionShowNotice?.Invoke(text,owner);
 			}
 			catch(Exception ex) {
-				Log("The Test capture verification records could not be read: "+ex.Message);
-				return null;
-			}
-		}
-
-		private string GetGatedSettingsHash(LocalCaptureConfig config,long imagingDeviceNum) {
-			try {
-				return GatedSettingsHash.Compute(config,imagingDeviceNum);
-			}
-			catch(Exception ex) {
-				Log("The gated capture settings could not be hashed: "+ex.Message);
-				return "";
+				Log("The notice could not be shown: "+ex.Message);
 			}
 		}
 

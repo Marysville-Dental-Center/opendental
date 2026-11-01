@@ -38,6 +38,9 @@ namespace ImagingCapture.Session {
 		public CaptureVerificationRecord VerificationRecord { get; set; }
 		///<summary>GatedSettingsHash.Compute(Config, ImagingDeviceNum), or "" when it could not be computed (no 16 bits then).</summary>
 		public string GatedSettingsHash { get; set; }="";
+		///<summary>The hash check of design 9.3 for the device on this computer. The launcher starts the session only when it is Verified; the
+		///16-bit decision checks it again. Null means not checked (no 16 bits).</summary>
+		public CaptureSettingsCheck SettingsCheck { get; set; }
 		///<summary>The quarantine line when the session started (CaptureQuarantine.GetUnassignedText), or null.</summary>
 		public string UnassignedText { get; set; }
 		///<summary>The session's GUID: the quarantine folder, the sidecars, the DICOM Series and the security log.</summary>

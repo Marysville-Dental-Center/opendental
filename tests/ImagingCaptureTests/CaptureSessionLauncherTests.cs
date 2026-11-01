@@ -29,6 +29,9 @@ namespace ImagingCapture.Tests {
 		private QueueCaptureDispatcher _dispatcher;
 		private FakeCaptureClock _clock;
 		private long _patNumCur=55;
+		///<summary>The Capture settings screen saved the file in effect for device 12 on this computer (design 9.3): the hash check passes.</summary>
+		private bool _isSettingsSaved=true;
+		private List<string> _listNotices;
 
 		[TestInitialize]
 		public void Init() {
@@ -43,6 +46,10 @@ namespace ImagingCapture.Tests {
 			_dispatcher=new QueueCaptureDispatcher();
 			_clock=new FakeCaptureClock();
 			_config=Config("[Session]","Enabled=1");
+			_listNotices=new List<string>();
+			_store.FuncSetupLogsExtra=imagingDeviceNum => _isSettingsSaved
+				? new List<SecurityLog> { CaptureSettingsTestKit.SavedLog(_config,imagingDeviceNum,"OPERATORY1") }
+				: new List<SecurityLog>();
 		}
 
 		[TestCleanup]
@@ -76,6 +83,7 @@ namespace ImagingCapture.Tests {
 				FuncGetUnassignedText=() => null,
 				ActionWriteLog=line => _listLog.Add(line),
 				WindowRunner=_windowRunner,
+				ActionShowNotice=(text,owner) => _listNotices.Add(text),
 			});
 		}
 
@@ -118,6 +126,69 @@ namespace ImagingCapture.Tests {
 			CaptureSessionLaunchResult result=Launcher().Run(request);
 			Assert.AreEqual(CaptureSessionLaunchKind.NotStarted,result.Kind);
 			Assert.AreEqual(0,_windowRunner.CountShown);
+		}
+
+		[TestMethod]
+		public void SettingsNeverSaved_NotStarted_TheOperatorIsTold() {
+			_isSettingsSaved=false;
+			CaptureSessionLaunchResult result=Launcher().Run(Request());
+			Assert.AreEqual(CaptureSessionLaunchKind.NotStarted,result.Kind,"Design 9.3: a Setup save is needed before the session can be enabled.");
+			StringAssert.Contains(result.Reason,"NeverSaved");
+			Assert.IsFalse(result.IsEmptyMountToDelete,"The legacy loop uses the mount.");
+			Assert.AreEqual(1,_listNotices.Count);
+			StringAssert.StartsWith(_listNotices[0],CaptureSettingsCheck.TextNeverSaved);
+			StringAssert.Contains(_listNotices[0],CaptureSessionText.LegacyLoopInstead);
+			Assert.AreEqual(0,_windowRunner.CountShown);
+			Assert.AreEqual(0,_listSessions.Count);
+		}
+
+		[TestMethod]
+		public void SettingsChangedOutsideOpenDental_NotStarted_TheOperatorIsTold() {
+			LocalCaptureConfig configSaved=Config("[Session]","Enabled=0");
+			_store.FuncSetupLogsExtra=imagingDeviceNum => new List<SecurityLog> { CaptureSettingsTestKit.SavedLog(configSaved,imagingDeviceNum,"OPERATORY1") };
+			_config=Config("[Session]","Enabled=1");//enabled by hand
+			CaptureSessionLaunchResult result=Launcher().Run(Request());
+			Assert.AreEqual(CaptureSessionLaunchKind.NotStarted,result.Kind,"The safe value of [Session] Enabled is off.");
+			StringAssert.Contains(result.Reason,"ChangedOutside");
+			StringAssert.StartsWith(_listNotices.Single(),"Capture settings were changed outside Open Dental; review them in Setup.");
+			StringAssert.Contains(_listNotices.Single(),"Session.Enabled","It names what changed.");
+			Assert.AreEqual(0,_windowRunner.CountShown);
+		}
+
+		[TestMethod]
+		public void SettingsSavedForAnotherComputer_NeverSavedHere() {
+			_store.FuncSetupLogsExtra=imagingDeviceNum => new List<SecurityLog> { CaptureSettingsTestKit.SavedLog(_config,imagingDeviceNum,"OPERATORY2") };
+			Assert.AreEqual(CaptureSessionLaunchKind.NotStarted,Launcher().Run(Request()).Kind);
+			StringAssert.StartsWith(_listNotices.Single(),CaptureSettingsCheck.TextNeverSaved);
+		}
+
+		[TestMethod]
+		public void SecurityLogUnreadable_NotStarted_NotVerified() {
+			_store.IsThrowOnSetupLogs=true;
+			CaptureSessionLaunchResult result=Launcher().Run(Request());
+			Assert.AreEqual(CaptureSessionLaunchKind.NotStarted,result.Kind);
+			StringAssert.Contains(_listNotices.Single(),"could not be checked");
+			StringAssert.Contains(_listNotices.Single(),"The database is not reachable");
+		}
+
+		[TestMethod]
+		public void SessionDisabled_NoNoticeWhateverTheSettings() {
+			_isSettingsSaved=false;
+			_config=Config("[Session]","Enabled=0","[Twain]","Allow16Bit=1");
+			Assert.AreEqual(CaptureSessionLaunchKind.NotStarted,Launcher().Run(Request()).Kind);
+			Assert.AreEqual(0,_listNotices.Count,"The rollback by hand (Enabled=0) needs no Setup save and says nothing.");
+		}
+
+		[TestMethod]
+		public void SettingsVerified_NoNotice_WindowShown() {
+			_windowRunner.ActionWhileShown=controller => {
+				controller.Begin();
+				controller.OnClosing();
+			};
+			CaptureSessionLaunchResult result=Launcher().Run(Request());
+			Assert.AreEqual(CaptureSessionLaunchKind.Completed,result.Kind);
+			Assert.AreEqual(0,_listNotices.Count);
+			Assert.AreEqual(1,_windowRunner.CountShown);
 		}
 
 		[TestMethod]

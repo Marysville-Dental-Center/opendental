@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using ImagingCapture.Metadata;
 using ImagingCapture.Session;
+using ImagingCapture.Settings;
 using ImagingCapture.UI;
 using ImagingDeviceManager.Capture;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -752,6 +753,7 @@ namespace ImagingCapture.Tests {
 			_harness.Setup.Options.Bits=16;
 			_harness.Setup.Options.Allow16Bit=true;
 			_harness.Setup.GatedSettingsHash=new string('a',64);
+			_harness.Setup.SettingsCheck=CaptureSettingsTestKit.VerifiedHash(new string('a',64));
 			_harness.Setup.VerificationRecord=CaptureControllerHarness.PassedRecord(new string('a',64));
 			_harness.Setup.MountSlots.ListMountItems.First(x => x.ItemOrder==2).ToothNumbers="";
 			_harness.Started();
@@ -777,6 +779,19 @@ namespace ImagingCapture.Tests {
 			_harness.Image();
 			_harness.Ended(TwainCaptureEndReason.Completed,ended => ended.Reason8Bit="ICAP_BITDEPTH 16 is not listed.");
 			Assert.AreEqual(1,_harness.ListLogFile.Count(x => x.Contains("ICAP_BITDEPTH 16 is not listed.")),"Logged once.");
+		}
+
+		[TestMethod]
+		public void BitDepth_SettingsChangedOutsideOpenDental_8_ReasonLogged() {
+			_harness.Setup.Options.Bits=16;
+			_harness.Setup.Options.Allow16Bit=true;
+			_harness.Setup.GatedSettingsHash=new string('a',64);
+			_harness.Setup.VerificationRecord=CaptureControllerHarness.PassedRecord(new string('a',64));
+			_harness.Setup.SettingsCheck=CaptureSettingsCheck.CheckHash(new string('a',64),12,"OPERATORY1",
+				new List<SecurityLog> { CaptureSettingsTestKit.SavedLog(new string('e',64),12,"OPERATORY1") });
+			_harness.Started();
+			Assert.AreEqual(8,_harness.Twain.LastRequest.Bits);
+			Assert.IsTrue(_harness.ListLogFile.Any(x => x.Contains("changed outside Open Dental")),string.Join("\r\n",_harness.ListLogFile));
 		}
 
 		[TestMethod]

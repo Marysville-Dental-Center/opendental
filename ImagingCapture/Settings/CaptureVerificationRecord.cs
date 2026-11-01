@@ -235,7 +235,7 @@ namespace ImagingCapture.Settings {
 			return 0;
 		}
 
-		private static string Escape(string value) {
+		internal static string Escape(string value) {
 			StringBuilder stringBuilder=new StringBuilder();
 			foreach(char c in value??"") {
 				switch(c) {
@@ -250,7 +250,7 @@ namespace ImagingCapture.Settings {
 			return stringBuilder.ToString();
 		}
 
-		private static string Unescape(string value) {
+		internal static string Unescape(string value) {
 			return (value??"").Replace("%3B",";").Replace("%3D","=").Replace("%0D","\r").Replace("%0A","\n").Replace("%25","%");
 		}
 	}

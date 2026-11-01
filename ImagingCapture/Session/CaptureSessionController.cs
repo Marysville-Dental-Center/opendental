@@ -646,6 +646,7 @@ namespace ImagingCapture.Session {
 				ComputerName=_setup.ComputerName,
 				TwainName=_setup.ImagingDevice.TwainName,
 				GatedSettingsHash=_setup.GatedSettingsHash,
+				SettingsCheck=_setup.SettingsCheck,
 				Target=radiographTarget.ToIntraOralTarget(),
 			});
 			if(record.BitDepth.Reason8Bit!=null) {

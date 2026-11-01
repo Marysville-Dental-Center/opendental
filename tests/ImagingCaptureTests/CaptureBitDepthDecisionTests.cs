@@ -27,6 +27,7 @@ namespace ImagingCapture.Tests {
 				ComputerName="operatory1 ",
 				TwainName="Example Sensor DS",
 				GatedSettingsHash=_hash,
+				SettingsCheck=CaptureSettingsTestKit.VerifiedHash(_hash),
 				Target=new IntraOralTarget { HasMountSlot=true,ToothNumbers="2,3" },
 			};
 		}
@@ -56,7 +57,8 @@ namespace ImagingCapture.Tests {
 			AssertReason(x => x.Options.Bits=8,"Bits is not 16");
 			AssertReason(x => x.Options.Allow16Bit=false,"Allow16Bit is 0");
 			AssertReason(x => x.Record=null,"no Test capture verification record");
-			AssertReason(x => x.GatedSettingsHash=new string('c',64),"does not match the current settings");
+			AssertReason(x => { x.GatedSettingsHash=new string('c',64); x.SettingsCheck=CaptureSettingsTestKit.VerifiedHash(new string('c',64)); },
+				"does not match the current settings");
 			AssertReason(x => x.TwainName="Other DS","does not match the current settings");
 			AssertReason(x => x.ComputerName="OPERATORY2","does not match the current settings");
 			AssertReason(x => x.ImagingDeviceNum=13,"does not match the current settings");
@@ -66,6 +68,32 @@ namespace ImagingCapture.Tests {
 			AssertReason(x => x.Target=new IntraOralTarget { HasMountSlot=true,ToothNumbers="" },"cannot be stored as DICOM");
 			AssertReason(x => x.Target=new IntraOralTarget { HasMountSlot=true,ToothNumbers="5,6" },"cannot be stored as DICOM");
 			AssertReason(x => x.Options=null,"not known");
+		}
+
+		[TestMethod]
+		public void SettingsNotVerified_8Bits_EvenWithAMatchingRecord() {
+			//Design 9.3: a hand edit after the last save in Capture settings; Test capture's record may even match the edited file.
+			AssertReason(x => x.SettingsCheck=CaptureSettingsCheck.CheckHash(_hash,12,"OPERATORY1",
+				new List<SecurityLog> { CaptureSettingsTestKit.SavedLog(new string('c',64),12,"OPERATORY1") }),"changed outside Open Dental");
+			//Never saved: "not verified".
+			AssertReason(x => x.SettingsCheck=CaptureSettingsCheck.CheckHash(_hash,12,"OPERATORY1",new List<SecurityLog>()),"never been saved");
+			AssertReason(x => x.SettingsCheck=CaptureSettingsCheck.CheckHash(_hash,12,"OPERATORY1",
+				new List<SecurityLog> { CaptureSettingsTestKit.SavedLog(_hash,12,"OPERATORY2") }),"never been saved");
+			AssertReason(x => x.SettingsCheck=CaptureSettingsCheck.Unknown(12,"OPERATORY1","the security log could not be read"),"could not be checked");
+			AssertReason(x => x.SettingsCheck=null,"not checked");
+			//A check made for another file than the one in effect.
+			AssertReason(x => x.SettingsCheck=CaptureSettingsTestKit.VerifiedHash(new string('d',64)),"not the ones in effect");
+			CaptureBitDepthInput input=Input();
+			input.SettingsCheck=CaptureSettingsCheck.CheckHash(_hash,12,"OPERATORY1",new List<SecurityLog>());
+			StringAssert.Contains(CaptureBitDepthDecision.Decide(input).Reason8Bit,"(not verified)");
+		}
+
+		[TestMethod]
+		public void SettingsNotVerified_ComesAfterTheSwitches() {
+			CaptureBitDepthInput input=Input();
+			input.SettingsCheck=null;
+			input.Options.Bits=8;
+			StringAssert.Contains(CaptureBitDepthDecision.Decide(input).Reason8Bit,"Bits is not 16","Bits=8 says so first.");
 		}
 
 		private static void AssertReason(Action<CaptureBitDepthInput> actionChange,string fragment) {

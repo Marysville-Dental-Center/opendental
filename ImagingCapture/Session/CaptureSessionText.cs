@@ -8,6 +8,9 @@ namespace ImagingCapture.Session {
 	///an open or an enable ended. No device or vendor names: "sensor software" is the role of the source's own window.</summary>
 	public static class CaptureSessionText {
 		public const string Opening="Opening the sensor software";
+		///<summary>After the notice that the gated capture settings are not verified (design 9.3): the session is off, so Mount/Acquire goes on
+		///the legacy way.</summary>
+		public const string LegacyLoopInstead="Mount/Acquire runs the older way this time.";
 		public const string Starting="Starting the sensor software";
 		///<summary>Design 7.5, after a successful MSG_ENABLEDS. Never "armed": the fork does not know that.</summary>
 		public const string WaitingForExposure="Sensor software open, waiting for exposure";

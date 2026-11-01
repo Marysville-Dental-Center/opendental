@@ -22,7 +22,8 @@ namespace ImagingCapture.UI {
 	///phantom or a known ramp through TwainCaptureSession, with no patient, and shows the effective device settings and their gated values,
 	///the delivered bit depth, a histogram, the measured range and effective bits, the byte-order check of a 16-bit image, and the 'P'
 	///warning for the X-ray category. The operator confirms byte order and polarity, and Write verification record stores the record
-	///(Setup permission) that the capture session needs before it asks for 16 bits or inverts.
+	///(Setup permission) that the capture session needs before it asks for 16 bits or inverts. When the gated settings are not the ones last
+	///saved in Capture settings (design 9.3 hash check), it says so, runs with the safe values and writes no record.
 	///
 	///All decisions are in TestCaptureModel; this window drives the session and shows the model. The session's events come on its worker
 	///thread and are marshalled here. Closing the window does not wait: BeginClose stops the source in the safe order on the worker, and an
@@ -64,8 +65,12 @@ namespace ImagingCapture.UI {
 			List<MountTemplateCategory> listMountTemplates=MountDefs.GetDeepCopy()
 				.Select(x => new MountTemplateCategory { Description=x.Description,DefaultCat=x.DefaultCat })
 				.ToList();
-			_testCaptureModel=new TestCaptureModel(testCaptureDevice,LocalCaptureConfig.Load(),ODEnvironment.MachineName,new ImageCategoryRule(),
-				listMountTemplates,CaptureQuarantine.GetUnassignedText());
+			LocalCaptureConfig localCaptureConfig=LocalCaptureConfig.Load();
+			//Design 9.3: the Capture settings screen writes its entries where the verification records are (Setup, FKey=ImagingDeviceNum).
+			CaptureSettingsCheck settingsCheck=CaptureSettingsCheck.Run(localCaptureConfig,_imagingDevice.ImagingDeviceNum,ODEnvironment.MachineName,
+				x => SecurityLogs.Refresh(0,new List<EnumPermType> { EnumPermType.Setup },x));
+			_testCaptureModel=new TestCaptureModel(testCaptureDevice,localCaptureConfig,ODEnvironment.MachineName,new ImageCategoryRule(),
+				listMountTemplates,CaptureQuarantine.GetUnassignedText(),settingsCheck);
 			comboBits.Items.Clear();
 			comboBits.Items.Add(Lang.g(this,"16 bits"));
 			comboBits.Items.Add(Lang.g(this,"8 bits"));
@@ -108,7 +113,7 @@ namespace ImagingCapture.UI {
 
 		private void butRecord_Click(object sender,EventArgs e) {
 			if(!_testCaptureModel.CanWriteRecord) {
-				MsgBox.Show(Lang.g(this,"Take a test image first."));
+				MsgBox.Show(_testCaptureModel.SettingsCheck.IsVerified ? Lang.g(this,"Take a test image first.") : _testCaptureModel.SettingsCheckText);
 				return;
 			}
 			if(!Security.IsAuthorized(EnumPermType.Setup)) {
@@ -286,6 +291,7 @@ namespace ImagingCapture.UI {
 			}
 			_versionShown=model.Version;
 			SetText(labelDevice,model.GetDeviceText());
+			SetText(labelSettingsCheck,model.SettingsCheckText);
 			string unassigned=model.UnassignedText??"";
 			if(linkUnassigned.Text!=unassigned) {
 				linkUnassigned.Text=unassigned;

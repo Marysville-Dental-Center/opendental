@@ -10,6 +10,7 @@ using ImagingCapture.UI;
 using ImagingDeviceManager.Capture;
 using ImagingDeviceManager.Config;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using OpenDentBusiness;
 
 namespace ImagingCapture.Tests {
 	///<summary>TestCaptureModel, CaptureVerificationRecord and CaptureEndText (design 7.8, 7.12, 9.3, 13 step 8): Test capture's state, texts
@@ -56,10 +57,16 @@ Name=Not gated
 			};
 		}
 
-		private TestCaptureModel Model(long imagingDeviceNum=12,List<MountTemplateCategory> listMountTemplates=null) {
+		///<summary>isSettingsSaved: the Capture settings screen saved exactly this file for the device on OPPC1 (design 9.3), else never.</summary>
+		private TestCaptureModel Model(long imagingDeviceNum=12,List<MountTemplateCategory> listMountTemplates=null,bool isSettingsSaved=true,
+			string iniText=Ini)
+		{
 			TestCaptureDevice device=new TestCaptureDevice { ImagingDeviceNum=imagingDeviceNum,Description="Intraoral sensor",TwainName="Example Sensor DS" };
-			return new TestCaptureModel(device,Load(Ini),"OPPC1",new ImageCategoryRule(Categories),
-				listMountTemplates??new List<MountTemplateCategory> { new MountTemplateCategory { Description="FMX",DefaultCat=10 } },null);
+			LocalCaptureConfig config=Load(iniText);
+			CaptureSettingsCheck settingsCheck=isSettingsSaved ? CaptureSettingsTestKit.Verified(config,imagingDeviceNum,"OPPC1")
+				: CaptureSettingsCheck.Check(config,imagingDeviceNum,"OPPC1",new List<SecurityLog>());
+			return new TestCaptureModel(device,config,"OPPC1",new ImageCategoryRule(Categories),
+				listMountTemplates??new List<MountTemplateCategory> { new MountTemplateCategory { Description="FMX",DefaultCat=10 } },null,settingsCheck);
 		}
 
 		private static TwainCaptureOpenResult Opened() {
@@ -86,6 +93,62 @@ Name=Not gated
 			Assert.IsFalse(text.Contains("Not gated"),"Hardware bindings are not shown as gated values.");
 			model.OnOpenResult(Opened());
 			StringAssert.Contains(model.GetSettingsText(),"Bit depths at open: 8");
+		}
+
+		[TestMethod]
+		public void SettingsNeverSaved_SafeValuesInEffect_NoRecord_SaidPlainly() {
+			TestCaptureModel model=Model(isSettingsSaved:false);
+			Assert.AreEqual(CaptureSettingsStatus.NeverSaved,model.SettingsCheck.Status);
+			StringAssert.StartsWith(model.SettingsCheckText,CaptureSettingsCheck.TextNeverSaved);
+			StringAssert.Contains(model.SettingsCheckText,"16-bit capture is not verified");
+			Assert.AreEqual(8,model.Options.Bits,"Design 9.3 safe values.");
+			Assert.IsFalse(model.Options.Allow16Bit);
+			Assert.IsNull(model.Options.SafeDisableCap);
+			Assert.IsTrue(model.Options.RestrictSources,"Never saved: the source gate keeps the file's values.");
+			CollectionAssert.AreEqual(new[] { "Example Sensor DS" },model.Options.AllowedSources);
+			StringAssert.Contains(model.GetSettingsText(),"Safe values in effect");
+			StringAssert.Contains(model.GetSettingsText(),"Twain.Allow16Bit=1","The file's gated values and hash are still shown.");
+			model.OnOpenResult(Opened());
+			model.OnEnablePosted(1);
+			model.OnImage(Image16());
+			Assert.IsFalse(model.CanWriteRecord,"A record would claim the test ran with the file's settings.");
+			string error;
+			Assert.IsNull(model.BuildRecord(DateTime.Now,out error));
+			StringAssert.Contains(error,"safe values");
+		}
+
+		[TestMethod]
+		public void SettingsChangedOutside_RestrictSourcesAsLastSaved() {
+			LocalCaptureConfig configSaved=Load("[Twain]\r\nRestrictSources=1\r\nAllowedSources=Scanner\r\n[Device.12]\r\nBits=8\r\n");
+			LocalCaptureConfig config=Load(Ini);
+			CaptureSettingsCheck settingsCheck=CaptureSettingsCheck.Check(config,12,"OPPC1",
+				new List<SecurityLog> { CaptureSettingsTestKit.SavedLog(configSaved,12,"OPPC1") });
+			Assert.AreEqual(CaptureSettingsStatus.ChangedOutside,settingsCheck.Status);
+			TestCaptureDevice device=new TestCaptureDevice { ImagingDeviceNum=12,Description="Intraoral sensor",TwainName="Example Sensor DS" };
+			TestCaptureModel model=new TestCaptureModel(device,config,"OPPC1",new ImageCategoryRule(Categories),null,null,settingsCheck);
+			StringAssert.StartsWith(model.SettingsCheckText,"Capture settings were changed outside Open Dental; review them in Setup.");
+			CollectionAssert.AreEqual(new[] { "Scanner" },model.Options.AllowedSources,"RestrictSources and AllowedSources as last saved.");
+			Assert.IsTrue(model.Options.RestrictSources);
+			Assert.AreEqual(8,model.Options.Bits);
+			Assert.IsFalse(model.CanWriteRecord);
+		}
+
+		[TestMethod]
+		public void SettingsNotChecked_CountAsNotVerified() {
+			TestCaptureDevice device=new TestCaptureDevice { ImagingDeviceNum=12,Description="Intraoral sensor",TwainName="Example Sensor DS" };
+			TestCaptureModel model=new TestCaptureModel(device,Load(Ini),"OPPC1",new ImageCategoryRule(Categories),null,null,null);
+			Assert.AreEqual(CaptureSettingsStatus.Unknown,model.SettingsCheck.Status);
+			Assert.AreEqual(8,model.Options.Bits);
+			StringAssert.Contains(model.SettingsCheckText,"not verified");
+		}
+
+		[TestMethod]
+		public void SettingsVerified_NoText_FileValuesInEffect() {
+			TestCaptureModel model=Model();
+			Assert.IsTrue(model.SettingsCheck.IsVerified);
+			Assert.AreEqual("",model.SettingsCheckText);
+			Assert.AreEqual(16,model.Options.Bits);
+			Assert.IsFalse(model.GetSettingsText().Contains("Safe values"));
 		}
 
 		[TestMethod]
@@ -293,7 +356,9 @@ Name=Not gated
 		[TestMethod]
 		public void DeviceText_OtherComputerNoted() {
 			TestCaptureDevice device=new TestCaptureDevice { ImagingDeviceNum=12,Description="Sensor",TwainName="Example Sensor DS",ComputerName="OPPC2" };
-			TestCaptureModel model=new TestCaptureModel(device,Load(Ini),"OPPC1",new ImageCategoryRule(Categories),null,"2 unassigned capture(s) on this computer.");
+			LocalCaptureConfig config=Load(Ini);
+			TestCaptureModel model=new TestCaptureModel(device,config,"OPPC1",new ImageCategoryRule(Categories),null,"2 unassigned capture(s) on this computer.",
+				CaptureSettingsTestKit.Verified(config,12,"OPPC1"));
 			StringAssert.Contains(model.GetDeviceText(),"set up for computer OPPC2");
 			Assert.AreEqual("2 unassigned capture(s) on this computer.",model.UnassignedText);
 			device.ComputerName="oppc1";
@@ -303,7 +368,9 @@ Name=Not gated
 		[TestMethod]
 		public void UnassignedNotice_OpensTheWindowOnlyWhileNotTaking_ReadAgainAfterwards() {
 			TestCaptureDevice device=new TestCaptureDevice { ImagingDeviceNum=12,Description="Sensor",TwainName="Example Sensor DS",ComputerName="OPPC1" };
-			TestCaptureModel model=new TestCaptureModel(device,Load(Ini),"OPPC1",new ImageCategoryRule(Categories),null,"2 unassigned capture(s) on this computer.");
+			LocalCaptureConfig config=Load(Ini);
+			TestCaptureModel model=new TestCaptureModel(device,config,"OPPC1",new ImageCategoryRule(Categories),null,"2 unassigned capture(s) on this computer.",
+				CaptureSettingsTestKit.Verified(config,12,"OPPC1"));
 			Assert.IsTrue(model.CanOpenUnassignedCaptures);
 			int version=model.Version;
 			model.SetUnassignedText(null);

@@ -129,6 +129,10 @@ namespace ImagingCapture.Tests {
 		public Dictionary<long,Document> DictDocumentsByMountItem=new Dictionary<long,Document>();
 		public long DefaultProvNum=4;
 		public List<SecurityLog> ListSetupLogs=new List<SecurityLog>();
+		///<summary>More Setup entries, made when they are read (the Capture settings screen's save of the file in effect, for example).</summary>
+		public Func<long,IEnumerable<SecurityLog>> FuncSetupLogsExtra;
+		///<summary>GetSetupLogEntries throws (the database is not reachable).</summary>
+		public bool IsThrowOnSetupLogs;
 		public List<string> ListLogTexts=new List<string>();
 		public bool IsThrowOnMountItems;
 
@@ -165,7 +169,14 @@ namespace ImagingCapture.Tests {
 		}
 
 		public List<SecurityLog> GetSetupLogEntries(long imagingDeviceNum) {
-			return ListSetupLogs.Where(x => x.FKey==imagingDeviceNum).ToList();
+			if(IsThrowOnSetupLogs) {
+				throw new Exception("The database is not reachable.");
+			}
+			List<SecurityLog> listSecurityLogs=ListSetupLogs.Where(x => x.FKey==imagingDeviceNum).ToList();
+			if(FuncSetupLogsExtra!=null) {
+				listSecurityLogs.AddRange(FuncSetupLogsExtra(imagingDeviceNum).Where(x => x.FKey==imagingDeviceNum));
+			}
+			return listSecurityLogs;
 		}
 
 		public void MakeLogEntry(EnumPermType permType,long patNum,string logText,long fKey) {

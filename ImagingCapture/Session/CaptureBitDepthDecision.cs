@@ -22,6 +22,9 @@ namespace ImagingCapture.Session {
 		public string TwainName { get; set; }
 		///<summary>GatedSettingsHash.Compute of the capture.ini the session runs with.</summary>
 		public string GatedSettingsHash { get; set; }
+		///<summary>Whether those gated settings are the ones last saved in the Capture settings screen for this device on this computer (design
+		///9.3). Null means not checked, which counts as not verified.</summary>
+		public CaptureSettingsCheck SettingsCheck { get; set; }
 		///<summary>The enable's target, as the DICOM writer sees it (RadiographTarget.ToIntraOralTarget).</summary>
 		public IntraOralTarget Target { get; set; }
 	}
@@ -38,13 +41,14 @@ namespace ImagingCapture.Session {
 	}
 
 	///<summary>The capture session's decision, per enable, whether to ask the source for 16 bits (design 7.8 "When 16-bit is enabled", 7.10,
-	///9.3): only when [Device.N] Bits=16, [Twain] Allow16Bit=1, the latest Test capture verification record for this device and this computer
-	///matches the device, the computer, the device row's TWAIN source and the current gated settings hash and passed for 16 bits, and the
-	///enable's target can be written as DICOM (a mount slot with tooth numbers of one view). Otherwise 8 bits, with the first condition that
-	///failed as the reason. The library then does what the request asks; a source that refuses 16 still gives 8 (TwainCaptureEnded.Reason8Bit).
+	///9.3): only when [Device.N] Bits=16, [Twain] Allow16Bit=1, the gated settings are the ones last saved in the Capture settings screen for this
+	///device on this computer (CaptureSettingsCheck: not changed outside Open Dental, and saved there at least once), the latest Test capture
+	///verification record for this device and this computer matches the device, the computer, the device row's TWAIN source and the current
+	///gated settings hash and passed for 16 bits, and the enable's target can be written as DICOM (a mount slot with tooth numbers of one view).
+	///Otherwise 8 bits, with the first condition that failed as the reason. The library then does what the request asks; a source that refuses
+	///16 still gives 8 (TwainCaptureEnded.Reason8Bit).
 	///
-	///The checks run in a fixed order, each in its own method, so that another condition can be added in one place (CAP-4 implementer D adds
-	///the capture settings screen's logged hash).</summary>
+	///The checks run in a fixed order, each in its own method, so that another condition can be added in one place.</summary>
 	public static class CaptureBitDepthDecision {
 		public static CaptureBitDepthChoice Decide(CaptureBitDepthInput input) {
 			string reason=Get8BitReason(input);
@@ -65,11 +69,31 @@ namespace ImagingCapture.Session {
 			if(!input.Options.Allow16Bit) {
 				return "8 bits: [Twain] Allow16Bit is 0 (the 16-bit switch is off on this computer).";
 			}
-			string reason=GetRecordReason(input);
+			string reason=GetSettingsReason(input);
+			if(reason!=null) {
+				return reason;
+			}
+			reason=GetRecordReason(input);
 			if(reason!=null) {
 				return reason;
 			}
 			return GetTargetReason(input.Target);
+		}
+
+		///<summary>Design 9.3: no 16 bits from gated settings that were changed outside Open Dental, or never saved in the Capture settings screen
+		///(not verified), or whose check was made for another file than the one in effect.</summary>
+		private static string GetSettingsReason(CaptureBitDepthInput input) {
+			CaptureSettingsCheck check=input.SettingsCheck;
+			if(check==null) {
+				return "8 bits: the capture settings were not checked against the ones saved in Capture settings (not verified).";
+			}
+			if(!check.IsVerified) {
+				return check.Reason8Bit;
+			}
+			if(!string.Equals(check.CurrentHash,(input.GatedSettingsHash??"").Trim(),StringComparison.OrdinalIgnoreCase)) {
+				return "8 bits: the capture settings checked are not the ones in effect (not verified).";
+			}
+			return null;
 		}
 
 		///<summary>Design 7.8 condition 2 and 9.3: a verification record that matches the current settings and passed.</summary>
