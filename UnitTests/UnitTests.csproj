@@ -167,10 +167,6 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\SigPlusNET.dll</HintPath>
     </Reference>
-    <Reference Include="Sparks3D, Version=20.3.1.0, Culture=neutral, processorArchitecture=x86">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\Sparks3D\Sparks3D.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -195,7 +191,6 @@
     <Reference Include="UIAutomationClient" />
     <Reference Include="WindowsBase" />
     <Reference Include="WindowsFormsIntegration" />
-    <Reference Include="xImageDeviceManager, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="PdmpPropertyTest.cs" />

@@ -788,8 +788,9 @@ namespace OpenDental{
 				try {
 					ComputerPrefs.LocalComputer.DirectXFormat=FormGraphics.GetPreferredDirectXFormat(this);
 					if(ComputerPrefs.LocalComputer.DirectXFormat=="invalid") {
-						//No valid local DirectX format could be found.
-						ComputerPrefs.LocalComputer.GraphicsSimple=DrawingMode.Simple2D;
+						//No valid local DirectX format could be found, for example because d3dx9_43.dll from the legacy DirectX runtime is missing.
+						//Use the wrapper's next mode, OpenGL; the wrapper itself falls back to Simple 2D if OpenGL cannot start either.
+						ComputerPrefs.LocalComputer.GraphicsSimple=SparksToothChart.ToothChartWrapper.GetFallbackDrawMode(DrawingMode.DirectX);
 					}
 					ComputerPrefs.Update(ComputerPrefs.LocalComputer);
 					//Reinitialize the tooth chart because the graphics mode was probably changed which should change the tooth chart appearence.
@@ -4320,10 +4321,6 @@ namespace OpenDental{
 		}
 
 		private void menuItemGraphics_Click(object sender,EventArgs e) {
-			//if(ToothChartRelay.IsSparks3DPresent){
-			//	MsgBox.Show(this,"You are using the new 3D tooth chart (Sparks3D.dll), so the Graphics setup window is not needed.");
-			//	return;
-			//}
 			if(!Security.IsAuthorized(EnumPermType.GraphicsEdit)) {
 				return;
 			}

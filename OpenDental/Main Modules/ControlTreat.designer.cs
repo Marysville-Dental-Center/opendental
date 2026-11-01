@@ -545,7 +545,6 @@ namespace OpenDental {
 		private OpenDental.UI.ToolBarOD ToolBarMain;
 		private OpenDental.UI.GridOD gridPlans;
 		private System.Windows.Forms.DateTimePicker dateTimeTP;
-		private System.Windows.Forms.Control _controlToothChart;
 		private ODtextBox textNote;
 	}
 }

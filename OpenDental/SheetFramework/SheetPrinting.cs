@@ -325,23 +325,18 @@ namespace OpenDental {
 			SparksToothChart.ToothChartWrapper toothChartWrapper=new SparksToothChart.ToothChartWrapper();
 			ToothChartRelay toothChartRelay= new ToothChartRelay(false);
 			toothChartRelay.SetToothChartWrapper(toothChartWrapper);
-			if(ToothChartRelay.IsSparks3DPresent){
-				//no control to show
-			}
-			else{
-				toothChartWrapper.Size=new Size(width,height);
-				toothChartWrapper.UseHardware=ComputerPrefs.LocalComputer.GraphicsUseHardware;
-				toothChartWrapper.PreferredPixelFormatNumber=ComputerPrefs.LocalComputer.PreferredPixelFormatNum;
-				toothChartWrapper.DeviceFormat=new SparksToothChart.ToothChartDirectX.DirectXDeviceFormat(ComputerPrefs.LocalComputer.DirectXFormat);
-				toothChartWrapper.DrawMode=ComputerPrefs.LocalComputer.GraphicsSimple;
-				ComputerPrefs.LocalComputer.PreferredPixelFormatNum=toothChartWrapper.PreferredPixelFormatNumber;
-				ComputerPrefs.Update(ComputerPrefs.LocalComputer);
-				formOldBitmap=new Form();
-				formOldBitmap.FormBorderStyle=FormBorderStyle.None;
-				formOldBitmap.Size=new Size(width,height);
-				formOldBitmap.Controls.Add(toothChartWrapper);
-				//formOldBitmap.Show();
-			}
+			toothChartWrapper.Size=new Size(width,height);
+			toothChartWrapper.UseHardware=ComputerPrefs.LocalComputer.GraphicsUseHardware;
+			toothChartWrapper.PreferredPixelFormatNumber=ComputerPrefs.LocalComputer.PreferredPixelFormatNum;
+			toothChartWrapper.DeviceFormat=new SparksToothChart.ToothChartDirectX.DirectXDeviceFormat(ComputerPrefs.LocalComputer.DirectXFormat);
+			toothChartWrapper.DrawMode=ComputerPrefs.LocalComputer.GraphicsSimple;
+			ComputerPrefs.LocalComputer.PreferredPixelFormatNum=toothChartWrapper.PreferredPixelFormatNumber;
+			ComputerPrefs.Update(ComputerPrefs.LocalComputer);
+			formOldBitmap=new Form();
+			formOldBitmap.FormBorderStyle=FormBorderStyle.None;
+			formOldBitmap.Size=new Size(width,height);
+			formOldBitmap.Controls.Add(toothChartWrapper);
+			//formOldBitmap.Show();
 			toothChartRelay.SetToothNumberingNomenclature((ToothNumberingNomenclature)PrefC.GetInt(PrefName.UseInternationalToothNumbers));
 			List<Def> listDefs=Defs.GetDefsForCategory(DefCat.ChartGraphicColors);
 			toothChartRelay.ColorBackgroundMain=listDefs[colorBackgroundIndex].ItemColor;
@@ -403,20 +398,11 @@ namespace OpenDental {
 			DrawProcsGraphics(listProceduresFiltered,toothChartRelay,toothInitialList,isInPatientDashboard,patCur,listAppts);
 			List<OrthoHardware> listOrthoHardwares=OrthoHardwares.GetPatientData(patNum);
 			DrawOrthoHardware(listOrthoHardwares,toothChartRelay);
-			if(!ToothChartRelay.IsSparks3DPresent){
-				toothChartWrapper.AutoFinish=true;
-			}
+			toothChartWrapper.AutoFinish=true;
 			toothChartRelay.EndUpdate();
-			if(ToothChartRelay.IsSparks3DPresent){
-				Image retVal=toothChartRelay.GetBitmap();
-				toothChartRelay.DisposeControl();
-				return retVal;
-			}
-			else{
-				Image retVal=toothChartRelay.GetBitmap();
-				formOldBitmap.Close();//automatically disposes, too
-				return retVal;
-			}
+			Image retVal=toothChartRelay.GetBitmap();
+			formOldBitmap.Close();//automatically disposes, too
+			return retVal;
 		}
 
 		/*

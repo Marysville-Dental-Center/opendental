@@ -28,9 +28,6 @@ namespace OpenDental{
 				this.groupBox2,
 				this.groupBox3,
 				this.label1,
-				this.label2,
-				this.label3,
-				this.label4,
 				this.label5,
 				this.label6,
 				this.label7,
@@ -45,8 +42,6 @@ namespace OpenDental{
 		}
 
 		private void FormImagingSetup_Load(object sender, System.EventArgs e) {
-			comboType.Items.Add("B");
-			comboType.Items.Add("D");
 			_showScanDocSelectSourceOld=ComputerPrefs.LocalComputer.ScanDocSelectSource;
 			checkScanDocSelectSource.Checked=_showScanDocSelectSourceOld;
 			if(ComputerPrefs.LocalComputer.ScanDocShowOptions) {
@@ -66,20 +61,8 @@ namespace OpenDental{
 			//textScanDocQuality.Text=PrefC.GetLong(PrefName.ScannerCompression).ToString();
 			slider.MinVal=PrefC.GetInt(PrefName.ImageWindowingMin);
 			slider.MaxVal=PrefC.GetInt(PrefName.ImageWindowingMax);
-			Program programSuni=Programs.GetFirstOrDefault(x => x.ProgDesc=="Suni");
-			if(programSuni!=null && programSuni.Enabled){
-				int exposureLevelVal=ComputerPrefs.LocalComputer.SensorExposure;
-				if(exposureLevelVal<(int)upDownExposure.Minimum || exposureLevelVal>(int)upDownExposure.Maximum){
-					exposureLevelVal=(int)upDownExposure.Minimum;//Play it safe with the default exposure.
-				}
-				upDownExposure.Value=exposureLevelVal;
-				upDownPort.Value=ComputerPrefs.LocalComputer.SensorPort;
-				comboType.Text=ComputerPrefs.LocalComputer.SensorType;
-				checkBinned.Checked=ComputerPrefs.LocalComputer.SensorBinned;
-			}
-			else{
-				groupBoxSuni.Visible=false;
-			}
+			//The Suni sensor settings (exposure, port, type, binned) were for Open Dental's closed Suni capture driver, removed on 2026-11-01.
+			//Suni sensors now use Suni's own TWAIN driver, which keeps its own settings. The computerpref columns stay in the database.
 			//checkScanDocShowOptions.Checked=PrefC.GetBool(PrefName.ScannerSuppressDialog);
 			//textScanDocResolution.Text=PrefC.GetString(PrefName.ScannerResolution);
 			if(Clinics.IsMedicalPracticeOrClinic(Clinics.ClinicNum)) {
@@ -137,12 +120,6 @@ namespace OpenDental{
 			Prefs.UpdateLong(PrefName.ImageWindowingMax,slider.MaxVal);
 			//Prefs.UpdateBool(PrefName.ScannerSuppressDialog,checkScanDocShowOptions.Checked);
 			//Prefs.UpdateLong(PrefName.ScannerResolution,PIn.Long(textScanDocResolution.Text));
-			if(groupBoxSuni.Visible){
-				ComputerPrefs.LocalComputer.SensorExposure=(int)upDownExposure.Value;
-				ComputerPrefs.LocalComputer.SensorPort=(int)upDownPort.Value;
-				ComputerPrefs.LocalComputer.SensorType=comboType.Text;
-				ComputerPrefs.LocalComputer.SensorBinned=checkBinned.Checked;
-			}
 			ComputerPrefs.Update(ComputerPrefs.LocalComputer);
 			DataValid.SetInvalid(InvalidType.Prefs);
 			if(_showScanDocSelectSourceOld!=checkScanDocSelectSource.Checked) {

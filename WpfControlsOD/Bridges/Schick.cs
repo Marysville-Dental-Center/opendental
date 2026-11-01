@@ -1,6 +1,7 @@
 #if !DISABLE_WINDOWS_BRIDGES
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
+using CodeBase;
 using OpenDentBusiness;
 using System.Collections.Generic;
 
@@ -29,14 +30,15 @@ namespace OpenDental.Bridges{
 			else {
 				patID=pat.ChartNumber;
 			}
+			string version4or5=ProgramProperties.GetPropVal(ProgramCur.ProgramNum,"Schick Version 4 or 5");
+			if(version4or5!="5") {
+				//Version 4 went through Open Dental's closed VBbridges.dll, which this program does not ship (removed 2026-11-01). Schick publishes no
+				//interface for version 4 to rebuild it from. Version 5 below uses Schick's own CDRDicom automation interface.
+				MsgBox.Show("Schick",BridgeNotAvailable.SchickVersion4);
+				return;
+			}
 			try {
-				string version4or5=ProgramProperties.GetPropVal(ProgramCur.ProgramNum,"Schick Version 4 or 5");
-				if(version4or5=="5") {
-					ShowExam(pat,patID);
-				}
-				else {
-					VBbridges.Schick3.Launch(patID,pat.LName,pat.FName);
-				}
+				ShowExam(pat,patID);
 			}
 			catch {
 				MessageBox.Show("Error launching Schick CDR Dicom.");

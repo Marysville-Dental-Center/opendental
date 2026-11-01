@@ -4,6 +4,7 @@ using System.Data;
 using System.Drawing;
 using System.Text;
 using System.Windows.Forms;
+using CodeBase;
 using OpenDentBusiness;
 using OpenDental.UI;
 using System.Drawing.Printing;
@@ -151,17 +152,9 @@ namespace OpenDental {
 				return;
 			}
 			if(Programs.UsingEcwTightOrFullMode() && Bridges.ECW.UserId!=0) {
-				VBbridges.Ecw.LoadRxForm((int)Bridges.ECW.UserId,Bridges.ECW.EcwConfigPath,(int)Bridges.ECW.AptNum);
-				//refresh the right panel:
-				try {
-					string strAppServer=VBbridges.Ecw.GetAppServer((int)Bridges.ECW.UserId,Bridges.ECW.EcwConfigPath);
-					labelECWerror.Visible=false;
-				}
-				catch(Exception ex) {
-					labelECWerror.Text="Error: "+ex.Message;
-					labelECWerror.Visible=true;
-				}
-				FillGrid();
+				//The eClinicalWorks Rx window was opened through Open Dental's closed VBbridges.dll, removed on 2026-11-01. eClinicalWorks does not
+				//publish that interface, so the action says it is not available instead of guessing.
+				MsgBox.Show(this,BridgeNotAvailable.EcwRx);
 				return;
 			}
 			using FormRxSelect formRxSelect=new FormRxSelect(_patient);

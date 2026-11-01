@@ -3837,34 +3837,23 @@ namespace OpenDental {
 			SparksToothChart.ToothChartWrapper toothChartWrapper=new SparksToothChart.ToothChartWrapper();
 			ToothChartRelay toothChartRelay= new ToothChartRelay();
 			toothChartRelay.SetToothChartWrapper(toothChartWrapper);
-			Control controlToothChart=null;//the Sparks3D tooth chart
-			if(ToothChartRelay.IsSparks3DPresent){
-				controlToothChart=toothChartRelay.GetToothChart();
-				controlToothChart.Location=new Point(0,0);
-				controlToothChart.Size=new Size(500,370);
-				controlToothChart.Visible=true;
-				panelLeft.Controls.Add(controlToothChart);
-				controlToothChart.BringToFront();
+			toothChartWrapper.Size=new Size(500,370);
+			toothChartWrapper.UseHardware=ComputerPrefs.LocalComputer.GraphicsUseHardware;
+			toothChartWrapper.PreferredPixelFormatNumber=ComputerPrefs.LocalComputer.PreferredPixelFormatNum;
+			//Must be last preference set, last so that all settings are caried through in the reinitialization this line triggers.
+			if(ComputerPrefs.LocalComputer.GraphicsSimple==DrawingMode.Simple2D) {
+				toothChartWrapper.DrawMode=DrawingMode.Simple2D;
+			}
+			else if(ComputerPrefs.LocalComputer.GraphicsSimple==DrawingMode.DirectX) {
+				toothChartWrapper.DeviceFormat=new SparksToothChart.ToothChartDirectX.DirectXDeviceFormat(ComputerPrefs.LocalComputer.DirectXFormat);
+				toothChartWrapper.DrawMode=DrawingMode.DirectX;
 			}
 			else{
-				toothChartWrapper.Size=new Size(500,370);
-				toothChartWrapper.UseHardware=ComputerPrefs.LocalComputer.GraphicsUseHardware;
-				toothChartWrapper.PreferredPixelFormatNumber=ComputerPrefs.LocalComputer.PreferredPixelFormatNum;
-				//Must be last preference set, last so that all settings are caried through in the reinitialization this line triggers.
-				if(ComputerPrefs.LocalComputer.GraphicsSimple==DrawingMode.Simple2D) {
-					toothChartWrapper.DrawMode=DrawingMode.Simple2D;
-				}
-				else if(ComputerPrefs.LocalComputer.GraphicsSimple==DrawingMode.DirectX) {
-					toothChartWrapper.DeviceFormat=new SparksToothChart.ToothChartDirectX.DirectXDeviceFormat(ComputerPrefs.LocalComputer.DirectXFormat);
-					toothChartWrapper.DrawMode=DrawingMode.DirectX;
-				}
-				else{
-					toothChartWrapper.DrawMode=DrawingMode.OpenGL;
-				}
-				//The preferred pixel format number changes to the selected pixel format number after a context is chosen.
-				ComputerPrefs.LocalComputer.PreferredPixelFormatNum=toothChartWrapper.PreferredPixelFormatNumber;
-				ComputerPrefs.Update(ComputerPrefs.LocalComputer);
+				toothChartWrapper.DrawMode=DrawingMode.OpenGL;
 			}
+			//The preferred pixel format number changes to the selected pixel format number after a context is chosen.
+			ComputerPrefs.LocalComputer.PreferredPixelFormatNum=toothChartWrapper.PreferredPixelFormatNumber;
+			ComputerPrefs.Update(ComputerPrefs.LocalComputer);
 			toothChartRelay.SetToothNumberingNomenclature((ToothNumberingNomenclature)PrefC.GetInt(PrefName.UseInternationalToothNumbers));
 			List<Def> listDefs=Defs.GetDefsForCategory(DefCat.ChartGraphicColors);
 			toothChartRelay.ColorBackgroundMain=listDefs[14].ItemColor;
@@ -3875,11 +3864,6 @@ namespace OpenDental {
 			//no need to dispose beforehand, since this function currently only runs once
 			_imageToothChart=toothChartRelay.GetBitmap();
 			toothChartWrapper.Dispose();
-			if(ToothChartRelay.IsSparks3DPresent){
-				controlToothChart.Visible=false;
-				panelLeft.Controls.Remove(controlToothChart);
-				controlToothChart.Dispose();//only local scope, anyway
-			}
 			//return imageRetVal;
 		}
 

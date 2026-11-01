@@ -116,10 +116,6 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\Tao.Platform.Windows.dll</HintPath>
     </Reference>
-    <Reference Include="VBbridges, Version=7.9.1.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\VBbridges.dll</HintPath>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Controls\MessageBox.cs" />
@@ -173,6 +169,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="Utilities\BridgeNotAvailable.cs" />
     <Compile Include="Utilities\DateTime_.cs" />
     <Compile Include="Utilities\DrCephArgs.cs" />
     <Compile Include="Utilities\Environment_.cs" />

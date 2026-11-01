@@ -101,7 +101,7 @@ The **update server** is the workstation named in the `WebServiceServerName` pre
 3. At startup, `PrefL.CheckProgramVersion` sees that this build isn't the published one and asks whether to publish it. If you click Cancel, this workstation runs the build without publishing it. Update Setup's Recopy button publishes the running build at any time, under the same rules: with a blank `WebServiceServerName` it refuses to replace a different published build that this one isn't known to be newer than. A silent run publishes only when nothing is published yet. It never replaces a published release, because nobody is asked.
 4. Publishing (`ForkReleases.Publish`) works like this:
    - While it runs, `UpdateInProgressOnComputerName` is set, so other workstations wait.
-   - It zips the installation folder, except local files: `FreeDentalConfig.xml`, logs, files with `__` in the name, and Open Dental's `Manifest.txt`. The `Sparks3D` and `OpenDentalReplicationService` sub folders are included.
+   - It zips the installation folder, except local files: `FreeDentalConfig.xml`, logs, files with `__` in the name, and Open Dental's `Manifest.txt`. The `OpenDentalReplicationService` sub folder is included (a `Sparks3D` folder no longer is: Sparks3D was removed in BIN-A).
    - It writes the zip as `ForkReleaseSegment` rows (`DocMiscType` 101, about 1 MB of base64 each).
    - It then writes the manifest as one `ForkReleaseManifest` row (`DocMiscType` 100).
    - Finally it sets `ForkProgramVersion`.

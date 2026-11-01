@@ -17,39 +17,15 @@ namespace OpenDental.Bridges{
 			
 		}
 
-		///<summary>Uses a VB dll to launch.</summary>
+		///<summary>Open Dental started Dr. Ceph, asked for the extra fields in FormDrCeph and sent everything through its closed VBbridges.dll, which
+		///this program does not ship (removed 2026-11-01). Dr. Ceph publishes no interface to rebuild that from, so this says the action is not
+		///available before asking the user for anything. FormDrCeph and DrCephArgs are kept for when the interface is known.</summary>
 		public static void SendData(Program ProgramCur, Patient pat){
-			string path=Programs.GetProgramPath(ProgramCur);
 			if(pat==null){
 				MessageBox.Show("Please select a patient first.");
 				return;
 			}
-			//Make sure the program is running
-			if(Process.GetProcessesByName("DrCeph").Length==0) {
-				try{
-					ODFileUtils.ProcessStart(path);
-				}
-				catch{
-					MsgBox.Show("DrCeph","Program path not set properly.");
-					return;
-				}
-				Thread.Sleep(TimeSpan.FromSeconds(4));
-			}
-			List<ProgramProperty> listProgProps=ProgramProperties.GetForProgram(ProgramCur.ProgramNum);;
-			try{
-				FormLauncher formLauncher=new FormLauncher(EnumFormName.FormDrCeph);
-				formLauncher.SetField("PatientCur",pat);
-				formLauncher.SetField("ListProgramProperties",listProgProps);
-				formLauncher.ShowDialog();
-				if(formLauncher.IsDialogCancel) {
-					return;
-				}
-				DrCephArgs cephArgs=formLauncher.GetField<DrCephArgs>("Args");
-				DrCephUtils.Launch(cephArgs);
-			}
-			catch(Exception ex) {
-				MessageBox.Show("An error occurred. "+ex.Message);
-			}
+			MsgBox.Show("DrCeph",BridgeNotAvailable.DrCeph);
 		}
 
 		

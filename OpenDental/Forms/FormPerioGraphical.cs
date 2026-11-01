@@ -15,8 +15,6 @@ namespace OpenDental {
 		private Patient _patient;
 		//public List<PerioMeasure> ListPerioMeasures; 
 		private ToothChartRelay _toothChartRelay;
-		///<summary>This is the Sparks3D control.</summary>
-		private Control toothChart;
 
 		public FormPerioGraphical(PerioExam perioExam,Patient patient) {
 			_perioExam=perioExam;
@@ -38,20 +36,9 @@ namespace OpenDental {
 		private void LayoutTeeth(){
 			_toothChartRelay= new ToothChartRelay();
 			_toothChartRelay.SetToothChartWrapper(toothChartWrapper);
-			if(ToothChartRelay.IsSparks3DPresent){
-				toothChartWrapper.Visible=false;
-				toothChart=_toothChartRelay.GetToothChart();
-				toothChart.Location=toothChartWrapper.Location;
-				toothChart.Size=toothChartWrapper.Size;
-				toothChart.Anchor=AnchorStyles.Top|AnchorStyles.Left;	
-				toothChart.Visible=true;
-				LayoutManager.Add(toothChart,this);
-				toothChart.BringToFront();
-			}
-			else{
-				toothChartWrapper.DeviceFormat=new ToothChartDirectX.DirectXDeviceFormat(ComputerPrefs.LocalComputer.DirectXFormat);//Must be set before draw mode
-				toothChartWrapper.DrawMode=DrawingMode.DirectX;
-			}
+			toothChartWrapper.DeviceFormat=new ToothChartDirectX.DirectXDeviceFormat(ComputerPrefs.LocalComputer.DirectXFormat);//Must be set before draw mode
+			//The perio chart draws only in DirectX. If DirectX cannot start, the wrapper falls back and IsPerioMode below says so.
+			toothChartWrapper.DrawMode=DrawingMode.DirectX;
 			_toothChartRelay.BeginUpdate();
 			_toothChartRelay.SetToothNumberingNomenclature((ToothNumberingNomenclature)PrefC.GetInt(PrefName.UseInternationalToothNumbers));
 			_toothChartRelay.ColorBackgroundMain=Color.White;
@@ -83,7 +70,7 @@ namespace OpenDental {
 			}
 			List<PerioMeasure> listPerioMeasures=PerioMeasures.GetAllForExam(_perioExam.PerioExamNum);
 			#region CAL old
-			if (!ToothChartRelay.IsSparks3DPresent){
+			{//SparksToothChart needs the CALs passed in.
 				//compute CAL's for each site.  If a CAL is valid, pass it in.
 				PerioMeasure perioMeasureProbe;
 				PerioMeasure perioMeasureGM;
@@ -215,7 +202,6 @@ namespace OpenDental {
 						listPerioMeasures[i].MLvalue,listPerioMeasures[i].Lvalue,listPerioMeasures[i].DLvalue);
 				}
 			}
-			//if(ToothChartRelay.IsSparks3DPresent){
 			List<Procedure> listProcedures=Procedures.Refresh(FormOpenDental.PatNumCur);
 			for(int t=1;t<=32;t++){
 				List<Procedure> listProceduresForTooth=listProcedures.FindAll(x => x.ToothNum==t.ToString() && x.ProcStatus.In(ProcStat.C,ProcStat.EC,ProcStat.EO));

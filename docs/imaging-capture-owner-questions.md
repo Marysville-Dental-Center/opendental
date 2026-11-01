@@ -75,7 +75,7 @@ Two terms used below. **Unassigned captures** (the quarantine) is a folder on ea
 
 ## Sensor driver, licences and test data
 
-- (CAP design 2, CAP-TW) Does the office have a Suni sensor? If not, the two Suni program files and the old Images module's Suni capture code can be removed, and anyone with a Suni sensor would use Suni's own TWAIN driver. **Today:** kept, untested; nothing new uses them.
+- (CAP design 2, CAP-TW) Does the office have a Suni sensor? If not, the two Suni program files and the old Images module's Suni capture code can be removed, and anyone with a Suni sensor would use Suni's own TWAIN driver. **Today:** removed on 2026-11-01 as the design's default: the two Suni program files (`xImageDeviceManager.dll`, `SuniUSB.dll`), the old Images module's Capture button and the Suni settings in Scanning Setup are gone (package BIN-A). Suni sensors use Suni's own TWAIN driver through the capture track.
 - (CAP design 12) The program uses the TWAIN manager already on the computer (the newer TWAINDSM if a driver installed it, otherwise Windows' own) and ships none. If the sensor driver does not work with Windows' own, the clinic installs the free TWAINDSM 2.5.1. Confirm, until there is an installer? **Today:** built that way.
 - (CAP design 20) Only TWAIN sensors are supported; a second way to connect sensors (a helper-program protocol or a watched folder) is put off. Confirm? **Today:** only TWAIN is built.
 - (CAP design 21) New capture files carry the licence header "GPL version 2 or later", like most Open Dental files. Or "version 2 only"? **Today:** every capture source file says "version 2 or later".

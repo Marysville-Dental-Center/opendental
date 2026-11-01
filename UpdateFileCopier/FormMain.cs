@@ -35,7 +35,6 @@ namespace UpdateFileCopier {
 		///Any sub folders should be explicitly listed within this list because the copy method used is not recursive.
 		///E.g. "\\Parent", "\\Parent\\Child", and "\\Gramps\\Dad\\Bro" are all valid directory names.</summary>
 		private readonly List<string> _listSpecialDirs=new List<string>() {
-			"\\Sparks3D",
 			"\\OpenDentalReplicationService",
 		};
 
