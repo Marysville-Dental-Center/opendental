@@ -153,7 +153,9 @@ namespace ImagingCapture.Tests {
 		public void RecordFromAnotherComputer_SameDriverAndImageSettings_Matches() {
 			CaptureBitDepthInput input=Input();
 			input.Record.ComputerName="OPERATORY7";
+			input.Record.GatedSettingsHash=new string('c',64);//that computer's whole capture.ini: never compared
 			input.ComputerName="OPERATORY1";
+			Assert.AreNotEqual(input.GatedSettingsHash,input.Record.GatedSettingsHash);
 			Assert.AreEqual(16,CaptureBitDepthDecision.Decide(input).Bits,"The record covers every computer with the same driver and image settings.");
 			Assert.IsTrue(input.Record.Matches(12," example sensor ds",new TwainDriverIdentity("EXAMPLE SENSOR DS",1,1,"1.1.0"),
 				input.Record.ImageSettingsHash.ToUpperInvariant()));
@@ -161,8 +163,23 @@ namespace ImagingCapture.Tests {
 
 		[TestMethod]
 		public void SettingsOutsideTheImageSettings_StillMatch() {
-			//The allowed sources, the journal size and the other gated keys do not change the pixels: the record still matches (the per-computer
-			//settings check is a separate gate).
+			//The record was written on a computer whose capture.ini differs from this one's only in the allowed sources and the journal size: the
+			//whole-file hashes differ, the image settings do not, and the record matches (each computer's own settings check is a separate gate).
+			LocalCaptureConfig configA=CaptureSessionTestConfig.Load(new[] { "[Twain]","Allow16Bit=1","RestrictSources=1","AllowedSources=Example Sensor DS",
+				"JournalKeep=200","[Device.12]","Bits=16" });
+			LocalCaptureConfig configB=CaptureSessionTestConfig.Load(new[] { "[Twain]","Allow16Bit=1","RestrictSources=1",
+				"AllowedSources=Example Sensor DS|Scanner","JournalKeep=50","[Device.12]","Bits=16" });
+			string hashA=GatedSettingsHash.Compute(configA,12);
+			string hashB=GatedSettingsHash.Compute(configB,12);
+			Assert.AreNotEqual(hashA,hashB,"The whole-file hashes differ.");
+			CaptureBitDepthInput inputB=Input();
+			inputB.Record=CaptureControllerHarness.PassedRecord(hashA,16,TwainCaptureOptions.FromConfig(configA,12));
+			inputB.Options=TwainCaptureOptions.FromConfig(configB,12);
+			inputB.GatedSettingsHash=hashB;
+			inputB.SettingsCheck=CaptureSettingsTestKit.VerifiedHash(hashB);
+			CaptureBitDepthChoice choiceB=CaptureBitDepthDecision.Decide(inputB);
+			Assert.AreEqual(16,choiceB.Bits,choiceB.Reason8Bit);
+			//Every other gated key outside the image settings too.
 			CaptureBitDepthInput input=Input();
 			input.Options.RestrictSources=true;
 			input.Options.AllowedSources=new List<string> { "Example Sensor DS","Scanner" };

@@ -1135,7 +1135,8 @@ namespace ImagingCapture.Tests {
 			_harness.Setup.Options.Allow16Bit=true;
 			_harness.Setup.GatedSettingsHash=new string('a',64);
 			_harness.Setup.SettingsCheck=CaptureSettingsTestKit.VerifiedHash(new string('a',64));
-			_harness.Setup.VerificationRecord=CaptureControllerHarness.PassedRecord(new string('a',64));
+			//Written on another computer whose whole capture.ini hashes differently: only the image settings and the driver are compared.
+			_harness.Setup.VerificationRecord=CaptureControllerHarness.PassedRecord(new string('f',64));
 			_harness.Setup.MountSlots.ListMountItems.First(x => x.ItemOrder==2).ToothNumbers="";
 			_harness.Started();
 			Assert.AreEqual(16,_harness.Twain.LastRequest.Bits,"Slot 1 has teeth of one view.");
@@ -1207,13 +1208,14 @@ namespace ImagingCapture.Tests {
 				"The request carries the fallback, for the sidecars.");
 		}
 
-		///<summary>Every gate for more than 8 bits holds, for [Device.12] Bits=bits.</summary>
+		///<summary>Every gate for more than 8 bits holds, for [Device.12] Bits=bits; the record was written on another computer, whose whole
+		///capture.ini hashes differently.</summary>
 		private void SetGatesFor(int bits) {
 			_harness.Setup.Options.Bits=bits;
 			_harness.Setup.Options.Allow16Bit=true;
 			_harness.Setup.GatedSettingsHash=new string('a',64);
 			_harness.Setup.SettingsCheck=CaptureSettingsTestKit.VerifiedHash(new string('a',64));
-			_harness.Setup.VerificationRecord=CaptureControllerHarness.PassedRecord(new string('a',64),bits);
+			_harness.Setup.VerificationRecord=CaptureControllerHarness.PassedRecord(new string('f',64),bits);
 		}
 
 		[TestMethod]

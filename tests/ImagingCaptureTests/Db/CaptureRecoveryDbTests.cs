@@ -352,7 +352,7 @@ namespace ImagingCapture.Tests.Db {
 					SourceProductName=CaptureDb.TwainName,ComputerName="ANOTHER-CAPTURE-PC",
 					DriverIdentity=new TwainDriverIdentity(CaptureDb.TwainName,1,1,"1.1.0"),
 					ImageSettingsHash=CaptureImageSettingsHash.Compute(TwainCaptureOptions.FromConfig(CaptureDb.LoadCaptureIni(folder),_imagingDevice.ImagingDeviceNum)),
-					GatedSettingsHash=GatedSettingsHash.Compute(CaptureDb.LoadCaptureIni(folder),_imagingDevice.ImagingDeviceNum),
+					GatedSettingsHash=new string('c',64),//the other computer's whole capture.ini: the audit trail only, never compared
 					DateTimeVerified=DateTime.Now,BitsRequested=16,BitDepthInEffect=16,BitsDelivered=16,TransferMechanism="Memory",Width=6,Height=4,XDpi=1270,YDpi=1270,
 					ByteOrder16="LE",ByteOrderCheck="LooksRight",IsByteOrderConfirmed=true,Polarity="AsDelivered",PixelFlavor="Chocolate",IsPolarityConfirmed=true,
 				};
