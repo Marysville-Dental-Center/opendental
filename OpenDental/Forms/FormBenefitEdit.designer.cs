@@ -23,304 +23,307 @@ namespace OpenDental {
 
 		private void InitializeComponent(){
 			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormBenefitEdit));
-			this.labelCode = new System.Windows.Forms.Label();
 			this.labelAmount = new System.Windows.Forms.Label();
-			this.label2 = new System.Windows.Forms.Label();
-			this.listCategory = new OpenDental.UI.ListBox();
+			this.listCategory = new OpenDental.UI.ComboBox();
 			this.checkPat = new OpenDental.UI.CheckBox();
 			this.textProcCode = new System.Windows.Forms.TextBox();
-			this.listBenefitType = new OpenDental.UI.ListBox();
+			this.listBenefitType = new OpenDental.UI.ComboBox();
 			this.labelType = new System.Windows.Forms.Label();
 			this.labelPercent = new System.Windows.Forms.Label();
-			this.listTimePeriod = new OpenDental.UI.ListBox();
+			this.listTimePeriod = new OpenDental.UI.ComboBox();
 			this.label4 = new System.Windows.Forms.Label();
-			this.listQuantityQualifier = new OpenDental.UI.ListBox();
+			this.listQuantityQualifier = new OpenDental.UI.ComboBox();
 			this.label8 = new System.Windows.Forms.Label();
 			this.groupQuantity = new OpenDental.UI.GroupBox();
 			this.textQuantity = new OpenDental.ValidNum();
-			this.listCoverageLevel = new OpenDental.UI.ListBox();
+			this.listCoverageLevel = new OpenDental.UI.ComboBox();
 			this.label1 = new System.Windows.Forms.Label();
 			this.textAmount = new OpenDental.ValidDouble();
 			this.butDelete = new OpenDental.UI.Button();
 			this.butSave = new OpenDental.UI.Button();
 			this.textPercent = new OpenDental.ValidNum();
 			this.groupBox1 = new OpenDental.UI.GroupBox();
-			this.listTreatArea = new OpenDental.UI.ListBox();
+			this.radioCategory = new System.Windows.Forms.RadioButton();
+			this.radioProcCode = new System.Windows.Forms.RadioButton();
+			this.radioCodeGroup = new System.Windows.Forms.RadioButton();
+			this.listTreatArea = new OpenDental.UI.ComboBox();
 			this.labelTreatmentArea = new System.Windows.Forms.Label();
 			this.comboCodeGroup = new OpenDental.UI.ComboBox();
-			this.labelCodeGroup = new System.Windows.Forms.Label();
 			this.labelTeeth = new System.Windows.Forms.Label();
 			this.textTeeth = new System.Windows.Forms.TextBox();
 			this.labelTeethHint = new System.Windows.Forms.Label();
+			this.labelPreview = new System.Windows.Forms.Label();
 			this.groupQuantity.SuspendLayout();
 			this.groupBox1.SuspendLayout();
 			this.SuspendLayout();
-			// 
-			// labelCode
-			// 
-			this.labelCode.Location = new System.Drawing.Point(5, 251);
-			this.labelCode.Name = "labelCode";
-			this.labelCode.Size = new System.Drawing.Size(94, 16);
-			this.labelCode.TabIndex = 0;
-			this.labelCode.Text = "or Proc Code";
-			this.labelCode.TextAlign = System.Drawing.ContentAlignment.TopRight;
-			// 
+			//
 			// labelAmount
-			// 
-			this.labelAmount.Location = new System.Drawing.Point(322, 64);
+			//
+			this.labelAmount.Location = new System.Drawing.Point(12, 184);
 			this.labelAmount.Name = "labelAmount";
-			this.labelAmount.Size = new System.Drawing.Size(100, 16);
+			this.labelAmount.Size = new System.Drawing.Size(110, 16);
 			this.labelAmount.TabIndex = 4;
 			this.labelAmount.Text = "Amount";
-			this.labelAmount.TextAlign = System.Drawing.ContentAlignment.TopRight;
-			// 
-			// label2
-			// 
-			this.label2.Location = new System.Drawing.Point(18, 7);
-			this.label2.Name = "label2";
-			this.label2.Size = new System.Drawing.Size(79, 16);
-			this.label2.TabIndex = 10;
-			this.label2.Text = "Category";
-			this.label2.TextAlign = System.Drawing.ContentAlignment.TopRight;
-			// 
+			this.labelAmount.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			//
 			// listCategory
-			// 
-			this.listCategory.Location = new System.Drawing.Point(100, 7);
+			//
+			this.listCategory.Location = new System.Drawing.Point(125, 19);
 			this.listCategory.Name = "listCategory";
-			this.listCategory.Size = new System.Drawing.Size(114, 235);
-			this.listCategory.TabIndex = 5;
-			// 
+			this.listCategory.Size = new System.Drawing.Size(200, 21);
+			this.listCategory.TabIndex = 1;
+			//
 			// checkPat
-			// 
-			this.checkPat.Location = new System.Drawing.Point(126, 2);
+			//
+			this.checkPat.Location = new System.Drawing.Point(12, 8);
 			this.checkPat.Name = "checkPat";
-			this.checkPat.Size = new System.Drawing.Size(493, 20);
-			this.checkPat.TabIndex = 4;
+			this.checkPat.Size = new System.Drawing.Size(536, 20);
+			this.checkPat.TabIndex = 0;
 			this.checkPat.Text = "Patient Override (Rare. Usually if percentages are different for family members)";
-			// 
+			//
 			// textProcCode
-			// 
-			this.textProcCode.Location = new System.Drawing.Point(100, 247);
+			//
+			this.textProcCode.Location = new System.Drawing.Point(125, 42);
 			this.textProcCode.Name = "textProcCode";
-			this.textProcCode.Size = new System.Drawing.Size(114, 20);
-			this.textProcCode.TabIndex = 6;
-			// 
+			this.textProcCode.Size = new System.Drawing.Size(100, 20);
+			this.textProcCode.TabIndex = 3;
+			//
 			// listBenefitType
-			// 
-			this.listBenefitType.Location = new System.Drawing.Point(128, 332);
+			//
+			this.listBenefitType.Location = new System.Drawing.Point(125, 134);
 			this.listBenefitType.Name = "listBenefitType";
-			this.listBenefitType.Size = new System.Drawing.Size(114, 105);
-			this.listBenefitType.TabIndex = 7;
+			this.listBenefitType.Size = new System.Drawing.Size(160, 21);
+			this.listBenefitType.TabIndex = 6;
 			this.listBenefitType.SelectedIndexChanged += new System.EventHandler(this.listBenefitType_SelectedIndexChanged);
-			// 
+			//
 			// labelType
-			// 
-			this.labelType.Location = new System.Drawing.Point(26, 332);
+			//
+			this.labelType.Location = new System.Drawing.Point(12, 136);
 			this.labelType.Name = "labelType";
-			this.labelType.Size = new System.Drawing.Size(100, 16);
+			this.labelType.Size = new System.Drawing.Size(110, 16);
 			this.labelType.TabIndex = 26;
 			this.labelType.Text = "Type";
-			this.labelType.TextAlign = System.Drawing.ContentAlignment.TopRight;
-			// 
+			this.labelType.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			//
 			// labelPercent
-			// 
-			this.labelPercent.Location = new System.Drawing.Point(318, 42);
+			//
+			this.labelPercent.Location = new System.Drawing.Point(12, 160);
 			this.labelPercent.Name = "labelPercent";
-			this.labelPercent.Size = new System.Drawing.Size(104, 16);
+			this.labelPercent.Size = new System.Drawing.Size(110, 16);
 			this.labelPercent.TabIndex = 27;
 			this.labelPercent.Text = "Percent";
-			this.labelPercent.TextAlign = System.Drawing.ContentAlignment.TopRight;
-			// 
+			this.labelPercent.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			//
 			// listTimePeriod
-			// 
-			this.listTimePeriod.Location = new System.Drawing.Point(423, 84);
+			//
+			this.listTimePeriod.Location = new System.Drawing.Point(125, 206);
 			this.listTimePeriod.Name = "listTimePeriod";
-			this.listTimePeriod.Size = new System.Drawing.Size(100, 90);
-			this.listTimePeriod.TabIndex = 2;
-			// 
+			this.listTimePeriod.Size = new System.Drawing.Size(160, 21);
+			this.listTimePeriod.TabIndex = 9;
+			//
 			// label4
-			// 
-			this.label4.Location = new System.Drawing.Point(321, 84);
+			//
+			this.label4.Location = new System.Drawing.Point(12, 208);
 			this.label4.Name = "label4";
-			this.label4.Size = new System.Drawing.Size(100, 16);
+			this.label4.Size = new System.Drawing.Size(110, 16);
 			this.label4.TabIndex = 30;
 			this.label4.Text = "Time Period";
-			this.label4.TextAlign = System.Drawing.ContentAlignment.TopRight;
-			// 
+			this.label4.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			//
 			// listQuantityQualifier
-			// 
-			this.listQuantityQualifier.Location = new System.Drawing.Point(67, 41);
+			//
+			this.listQuantityQualifier.Location = new System.Drawing.Point(243, 16);
 			this.listQuantityQualifier.Name = "listQuantityQualifier";
-			this.listQuantityQualifier.Size = new System.Drawing.Size(100, 90);
+			this.listQuantityQualifier.Size = new System.Drawing.Size(160, 21);
 			this.listQuantityQualifier.TabIndex = 1;
-			// 
+			//
 			// label8
-			// 
-			this.label8.Location = new System.Drawing.Point(1, 43);
+			//
+			this.label8.Location = new System.Drawing.Point(178, 18);
 			this.label8.Name = "label8";
-			this.label8.Size = new System.Drawing.Size(65, 38);
+			this.label8.Size = new System.Drawing.Size(62, 16);
 			this.label8.TabIndex = 34;
 			this.label8.Text = "Qualifier";
-			this.label8.TextAlign = System.Drawing.ContentAlignment.TopRight;
-			// 
+			this.label8.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			//
 			// groupQuantity
-			// 
+			//
 			this.groupQuantity.Controls.Add(this.textQuantity);
 			this.groupQuantity.Controls.Add(this.listQuantityQualifier);
 			this.groupQuantity.Controls.Add(this.label8);
-			this.groupQuantity.Location = new System.Drawing.Point(356, 183);
+			this.groupQuantity.Location = new System.Drawing.Point(12, 230);
 			this.groupQuantity.Name = "groupQuantity";
-			this.groupQuantity.Size = new System.Drawing.Size(180, 143);
-			this.groupQuantity.TabIndex = 3;
+			this.groupQuantity.Size = new System.Drawing.Size(536, 46);
+			this.groupQuantity.TabIndex = 10;
 			this.groupQuantity.Text = "Quantity";
-			// 
+			//
 			// textQuantity
-			// 
-			this.textQuantity.Location = new System.Drawing.Point(67, 17);
+			//
+			this.textQuantity.Location = new System.Drawing.Point(113, 16);
 			this.textQuantity.MaxVal = 100;
 			this.textQuantity.Name = "textQuantity";
-			this.textQuantity.Size = new System.Drawing.Size(68, 20);
+			this.textQuantity.Size = new System.Drawing.Size(60, 20);
 			this.textQuantity.TabIndex = 0;
-			// 
+			//
 			// listCoverageLevel
-			// 
-			this.listCoverageLevel.Location = new System.Drawing.Point(423, 332);
+			//
+			this.listCoverageLevel.Location = new System.Drawing.Point(125, 286);
 			this.listCoverageLevel.Name = "listCoverageLevel";
-			this.listCoverageLevel.Size = new System.Drawing.Size(100, 49);
-			this.listCoverageLevel.TabIndex = 31;
-			// 
+			this.listCoverageLevel.Size = new System.Drawing.Size(160, 21);
+			this.listCoverageLevel.TabIndex = 11;
+			//
 			// label1
-			// 
-			this.label1.Location = new System.Drawing.Point(318, 332);
+			//
+			this.label1.Location = new System.Drawing.Point(12, 288);
 			this.label1.Name = "label1";
-			this.label1.Size = new System.Drawing.Size(103, 16);
+			this.label1.Size = new System.Drawing.Size(110, 16);
 			this.label1.TabIndex = 32;
 			this.label1.Text = "Coverage Level";
-			this.label1.TextAlign = System.Drawing.ContentAlignment.TopRight;
-			// 
+			this.label1.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			//
 			// textAmount
-			// 
-			this.textAmount.Location = new System.Drawing.Point(423, 61);
+			//
+			this.textAmount.Location = new System.Drawing.Point(125, 182);
 			this.textAmount.MaxVal = 100000000D;
 			this.textAmount.MinVal = -100000000D;
 			this.textAmount.Name = "textAmount";
-			this.textAmount.Size = new System.Drawing.Size(68, 20);
-			this.textAmount.TabIndex = 1;
-			// 
+			this.textAmount.Size = new System.Drawing.Size(80, 20);
+			this.textAmount.TabIndex = 8;
+			//
 			// butDelete
-			// 
+			//
 			this.butDelete.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
 			this.butDelete.Icon = OpenDental.UI.EnumIcons.DeleteX;
 			this.butDelete.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			this.butDelete.Location = new System.Drawing.Point(12, 523);
+			this.butDelete.Location = new System.Drawing.Point(12, 430);
 			this.butDelete.Name = "butDelete";
 			this.butDelete.Size = new System.Drawing.Size(75, 26);
 			this.butDelete.TabIndex = 17;
 			this.butDelete.Text = "&Delete";
 			this.butDelete.Click += new System.EventHandler(this.butDelete_Click);
-			// 
+			//
 			// butSave
-			// 
+			//
 			this.butSave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.butSave.Location = new System.Drawing.Point(491, 523);
+			this.butSave.Location = new System.Drawing.Point(473, 430);
 			this.butSave.Name = "butSave";
 			this.butSave.Size = new System.Drawing.Size(75, 26);
-			this.butSave.TabIndex = 8;
+			this.butSave.TabIndex = 16;
 			this.butSave.Text = "&Save";
 			this.butSave.Click += new System.EventHandler(this.butSave_Click);
-			// 
+			//
 			// textPercent
-			// 
-			this.textPercent.Location = new System.Drawing.Point(423, 38);
+			//
+			this.textPercent.Location = new System.Drawing.Point(125, 158);
 			this.textPercent.MaxVal = 100;
 			this.textPercent.Name = "textPercent";
 			this.textPercent.ShowZero = false;
-			this.textPercent.Size = new System.Drawing.Size(68, 20);
-			this.textPercent.TabIndex = 33;
-			// 
+			this.textPercent.Size = new System.Drawing.Size(60, 20);
+			this.textPercent.TabIndex = 7;
+			//
 			// groupBox1
-			// 
+			//
+			this.groupBox1.Controls.Add(this.radioCategory);
 			this.groupBox1.Controls.Add(this.listCategory);
-			this.groupBox1.Controls.Add(this.labelCodeGroup);
-			this.groupBox1.Controls.Add(this.labelCode);
-			this.groupBox1.Controls.Add(this.comboCodeGroup);
-			this.groupBox1.Controls.Add(this.label2);
+			this.groupBox1.Controls.Add(this.radioProcCode);
 			this.groupBox1.Controls.Add(this.textProcCode);
-			this.groupBox1.Location = new System.Drawing.Point(28, 30);
+			this.groupBox1.Controls.Add(this.radioCodeGroup);
+			this.groupBox1.Controls.Add(this.comboCodeGroup);
+			this.groupBox1.Location = new System.Drawing.Point(12, 32);
 			this.groupBox1.Name = "groupBox1";
-			this.groupBox1.Size = new System.Drawing.Size(284, 296);
-			this.groupBox1.TabIndex = 5;
-			this.groupBox1.Text = "";
-			// 
+			this.groupBox1.Size = new System.Drawing.Size(536, 94);
+			this.groupBox1.TabIndex = 1;
+			this.groupBox1.Text = "Applies to";
+			//
+			// radioCategory
+			//
+			this.radioCategory.Location = new System.Drawing.Point(12, 19);
+			this.radioCategory.Name = "radioCategory";
+			this.radioCategory.Size = new System.Drawing.Size(110, 20);
+			this.radioCategory.TabIndex = 0;
+			this.radioCategory.TabStop = true;
+			this.radioCategory.Text = "Category";
+			this.radioCategory.UseVisualStyleBackColor = true;
+			//
+			// radioProcCode
+			//
+			this.radioProcCode.Location = new System.Drawing.Point(12, 42);
+			this.radioProcCode.Name = "radioProcCode";
+			this.radioProcCode.Size = new System.Drawing.Size(110, 20);
+			this.radioProcCode.TabIndex = 2;
+			this.radioProcCode.Text = "Procedure code";
+			this.radioProcCode.UseVisualStyleBackColor = true;
+			//
+			// radioCodeGroup
+			//
+			this.radioCodeGroup.Location = new System.Drawing.Point(12, 65);
+			this.radioCodeGroup.Name = "radioCodeGroup";
+			this.radioCodeGroup.Size = new System.Drawing.Size(110, 20);
+			this.radioCodeGroup.TabIndex = 4;
+			this.radioCodeGroup.Text = "Code group";
+			this.radioCodeGroup.UseVisualStyleBackColor = true;
+			//
 			// listTreatArea
-			// 
-			this.listTreatArea.ItemStrings = new string[] {
-        "Default",
-        "Surface",
-        "Tooth",
-        "Mouth",
-        "Quadrant",
-        "Sextant",
-        "Arch",
-        "Tooth Range"};
-			this.listTreatArea.Location = new System.Drawing.Point(423, 387);
+			//
+			this.listTreatArea.Location = new System.Drawing.Point(125, 310);
 			this.listTreatArea.Name = "listTreatArea";
-			this.listTreatArea.Size = new System.Drawing.Size(100, 118);
-			this.listTreatArea.TabIndex = 37;
-			// 
+			this.listTreatArea.Size = new System.Drawing.Size(160, 21);
+			this.listTreatArea.TabIndex = 12;
+			//
 			// labelTreatmentArea
-			// 
-			this.labelTreatmentArea.Location = new System.Drawing.Point(318, 387);
+			//
+			this.labelTreatmentArea.Location = new System.Drawing.Point(12, 312);
 			this.labelTreatmentArea.Name = "labelTreatmentArea";
-			this.labelTreatmentArea.Size = new System.Drawing.Size(103, 32);
+			this.labelTreatmentArea.Size = new System.Drawing.Size(110, 16);
 			this.labelTreatmentArea.TabIndex = 38;
-			this.labelTreatmentArea.Text = "Treatment Area\r\n";
-			this.labelTreatmentArea.TextAlign = System.Drawing.ContentAlignment.TopRight;
-			// 
+			this.labelTreatmentArea.Text = "Treatment Area";
+			this.labelTreatmentArea.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			//
 			// comboCodeGroup
-			// 
-			this.comboCodeGroup.Location = new System.Drawing.Point(100, 269);
+			//
+			this.comboCodeGroup.Location = new System.Drawing.Point(125, 65);
 			this.comboCodeGroup.Name = "comboCodeGroup";
-			this.comboCodeGroup.Size = new System.Drawing.Size(114, 20);
-			this.comboCodeGroup.TabIndex = 34;
+			this.comboCodeGroup.Size = new System.Drawing.Size(200, 21);
+			this.comboCodeGroup.TabIndex = 5;
 			this.comboCodeGroup.Text = "comboBox1";
-			// 
-			// labelCodeGroup
-			// 
-			this.labelCodeGroup.Location = new System.Drawing.Point(5, 272);
-			this.labelCodeGroup.Name = "labelCodeGroup";
-			this.labelCodeGroup.Size = new System.Drawing.Size(94, 16);
-			this.labelCodeGroup.TabIndex = 35;
-			this.labelCodeGroup.Text = "or Code Group";
-			this.labelCodeGroup.TextAlign = System.Drawing.ContentAlignment.TopRight;
-			// 
+			//
 			// labelTeeth
-			// 
-			this.labelTeeth.Location = new System.Drawing.Point(26, 446);
+			//
+			this.labelTeeth.Location = new System.Drawing.Point(12, 336);
 			this.labelTeeth.Name = "labelTeeth";
-			this.labelTeeth.Size = new System.Drawing.Size(100, 16);
-			this.labelTeeth.TabIndex = 32;
+			this.labelTeeth.Size = new System.Drawing.Size(110, 16);
+			this.labelTeeth.TabIndex = 39;
 			this.labelTeeth.Text = "Teeth";
-			this.labelTeeth.TextAlign = System.Drawing.ContentAlignment.TopRight;
-			// 
+			this.labelTeeth.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			//
 			// textTeeth
-			// 
-			this.textTeeth.Location = new System.Drawing.Point(128, 443);
+			//
+			this.textTeeth.Location = new System.Drawing.Point(125, 334);
 			this.textTeeth.Name = "textTeeth";
-			this.textTeeth.Size = new System.Drawing.Size(114, 20);
-			this.textTeeth.TabIndex = 8;
-			// 
+			this.textTeeth.Size = new System.Drawing.Size(160, 20);
+			this.textTeeth.TabIndex = 13;
+			//
 			// labelTeethHint
-			// 
-			this.labelTeethHint.Location = new System.Drawing.Point(125, 466);
+			//
+			this.labelTeethHint.Location = new System.Drawing.Point(290, 336);
 			this.labelTeethHint.Name = "labelTeethHint";
-			this.labelTeethHint.Size = new System.Drawing.Size(190, 44);
-			this.labelTeethHint.TabIndex = 33;
+			this.labelTeethHint.Size = new System.Drawing.Size(258, 30);
+			this.labelTeethHint.TabIndex = 40;
 			this.labelTeethHint.Text = "Exclusions only. Blank for every tooth. Example: 2,15 or 23-26";
-			// 
+			//
+			// labelPreview
+			//
+			this.labelPreview.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+			this.labelPreview.Location = new System.Drawing.Point(12, 374);
+			this.labelPreview.Name = "labelPreview";
+			this.labelPreview.Size = new System.Drawing.Size(536, 40);
+			this.labelPreview.TabIndex = 41;
+			this.labelPreview.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			//
 			// FormBenefitEdit
-			// 
-			this.ClientSize = new System.Drawing.Size(578, 561);
+			//
+			this.ClientSize = new System.Drawing.Size(560, 468);
+			this.Controls.Add(this.labelPreview);
 			this.Controls.Add(this.labelTeethHint);
 			this.Controls.Add(this.textTeeth);
 			this.Controls.Add(this.labelTeeth);
@@ -358,34 +361,35 @@ namespace OpenDental {
 		}
 		#endregion
 
-		private System.Windows.Forms.Label labelCode;
 		private System.Windows.Forms.Label labelAmount;
-		private System.Windows.Forms.Label label2;
 		private OpenDental.UI.Button butSave;
 		private OpenDental.UI.Button butDelete;
 		private OpenDental.ValidDouble textAmount;
-		private OpenDental.UI.ListBox listCategory;
+		private OpenDental.UI.ComboBox listCategory;
 		private TextBox textProcCode;
-		private OpenDental.UI.ListBox listBenefitType;
+		private OpenDental.UI.ComboBox listBenefitType;
 		private Label labelTeeth;
 		private TextBox textTeeth;
 		private Label labelTeethHint;
 		private Label labelType;
 		private Label labelPercent;
-		private OpenDental.UI.ListBox listTimePeriod;
+		private OpenDental.UI.ComboBox listTimePeriod;
 		private Label label4;
 		private ValidNum textQuantity;
-		private OpenDental.UI.ListBox listQuantityQualifier;
+		private OpenDental.UI.ComboBox listQuantityQualifier;
 		private Label label8;
 		private OpenDental.UI.GroupBox groupQuantity;
 		private OpenDental.UI.CheckBox checkPat;
-		private OpenDental.UI.ListBox listCoverageLevel;
+		private OpenDental.UI.ComboBox listCoverageLevel;
 		private Label label1;
 		private ValidNum textPercent;
 		private UI.GroupBox groupBox1;
-		private UI.ListBox listTreatArea;
+		private RadioButton radioCategory;
+		private RadioButton radioProcCode;
+		private RadioButton radioCodeGroup;
+		private UI.ComboBox listTreatArea;
 		private Label labelTreatmentArea;
-		private Label labelCodeGroup;
 		private UI.ComboBox comboCodeGroup;
+		private Label labelPreview;
 	}
 }

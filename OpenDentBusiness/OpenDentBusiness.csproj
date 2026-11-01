@@ -1349,6 +1349,7 @@
     <Compile Include="Data Interface\InsFilingCodes.cs" />
     <Compile Include="Data Interface\EtransMessageTexts.cs" />
     <Compile Include="Data Interface\InsFilingCodeSubtypes.cs" />
+    <Compile Include="Data Interface\InsHistDates.cs" />
     <Compile Include="Data Interface\RxNorms.cs" />
     <Compile Include="Data Interface\ScreenPats.cs" />
     <Compile Include="Data Interface\Signalods.cs" />
@@ -1600,6 +1601,7 @@
     <Compile Include="Db\Enumerations.cs" />
     <Compile Include="Data Interface\Lans.cs" />
     <Compile Include="Logic\aaLogic.cs" />
+    <Compile Include="Logic\BenefitEditRules.cs" />
     <Compile Include="Db Multi Table\AccountModules.cs" />
     <Compile Include="Data Interface\Appointments.cs" />
     <Compile Include="Logic\BenefitLogic.cs" />
