@@ -28,6 +28,13 @@ namespace OpenDentBusiness {
 	}
 
 	public class DicomHelper{
+		///<summary>The in-house reader of uncompressed Explicit VR Little Endian files (design 7.8, CAP-DR): the subset the capture writer emits.</summary>
+		public static readonly IDicomPixelReader SubsetReader=new DicomSubsetReader();
+		///<summary>fo-dicom (MS-PL), the reader Open Dental has always used, unchanged. It reads every file the subset reader declines.</summary>
+		public static readonly IDicomPixelReader FoDicomReader=new FoDicomPixelReader();
+		///<summary>What GetFromFile, GetFromStream and GetFromBase64 read with: the subset reader first, then fo-dicom.</summary>
+		public static readonly IDicomPixelReader PixelReader=new DicomPixelReaderChain(SubsetReader,FoDicomReader);
+
 		///<summary>Windowing values (document.WindowingMin and WindowingMax) are always stored from 0 to 255, whatever the bit depth of the image.
 		///Returns how many raw pixel values one windowing step covers: 1 for 8 bit data, 16 for 12 bit data (4095/255, as before), and 256 for true
 		///16 bit data, which uses its 12 most significant bits the way Open Dental 25.4 documents for document.WindowingMax. Decided by BitsStored,
@@ -43,8 +50,8 @@ namespace OpenDentBusiness {
 			return 16f;
 		}
 
-		///<summary>Limits a stored windowing value to 0-255. Larger values mean the top of the range: the import wrote 4095 for true 16 bit images
-		///before the 25.4 change, and the windowing slider already shows them as 255.</summary>
+		///<summary>Limits a windowing value to 0-255. The 8 bit routines of ImageHelper use it for ordinary images, where a larger value means
+		///the top of the range, as the windowing slider shows it. DICOM windowing reads stored values with GetWindowingOnDisplayScale instead.</summary>
 		public static int ClampWindowing(int windowingValue){
 			if(windowingValue<0) {
 				return 0;
@@ -55,15 +62,28 @@ namespace OpenDentBusiness {
 			return windowingValue;
 		}
 
-		///<summary>Converts the 16 bit bitmap data to an 8 bit bitmap by using the supplied windowing range.  Windowing values can be between 0 and 255.  Can return null.</summary>
+		///<summary>A stored document.WindowingMin or WindowingMax of a DICOM image on the 0-255 scale the windowing uses (design 7.8, CAP-W2).
+		///Values from 0 to 255 are used as they are. A value above 255 is a legacy value on the 12 bit scale (0-4095): the import wrote 4095 for
+		///true 16 bit images before 25.4, the 12 bit import still writes 4095 when it finds no edge (GetWindowingMax), and older versions or
+		///other programs may have written other 12 bit values. It is divided by 16, so 4095 reads as 255, and a 12 bit window on a 16 bit image
+		///shows what the old divide-by-16 showed. This is for display only; nothing is written back to the database. Negative values count as 0,
+		///and the result is never above 255.</summary>
+		public static int GetWindowingOnDisplayScale(int windowingValue){
+			if(windowingValue>255) {
+				windowingValue=windowingValue/16;
+			}
+			return ClampWindowing(windowingValue);
+		}
+
+		///<summary>Converts the 16 bit bitmap data to an 8 bit bitmap by using the supplied windowing range.  Windowing values are on the 0-255 scale; stored values above 255 are read as the 12 bit scale (GetWindowingOnDisplayScale).  Can return null.</summary>
 		public static Bitmap ApplyWindowing(BitmapDicom bitmapDicom,int windowingMin,int windowingMax){
 			Bitmap bitmap=new Bitmap(bitmapDicom.Width,bitmapDicom.Height);
 			BitmapData bitmapData=bitmap.LockBits(new Rectangle(0,0,bitmapDicom.Width,bitmapDicom.Height),ImageLockMode.ReadWrite,bitmap.PixelFormat);
 			//The windowing values stay on the 0-255 scale; the raw values are scaled down to it instead, which does mean slightly rough increments.
 			//This is not an issue because no data degradation. 12 bit: 4096 values, divided by 16. True 16 bit: 65536 values, divided by 256.
 			float rawPerWindowingStep=GetRawPerWindowingStep(bitmapDicom);
-			windowingMin=ClampWindowing(windowingMin);
-			windowingMax=ClampWindowing(windowingMax);
+			windowingMin=GetWindowingOnDisplayScale(windowingMin);
+			windowingMax=GetWindowingOnDisplayScale(windowingMax);
 			if(windowingMax==0) {//0 means no windowing was ever set (document.WindowingMax default), so show the full range, as the slider does.
 				windowingMin=0;
 				windowingMax=255;
@@ -86,6 +106,9 @@ namespace OpenDentBusiness {
 					else {
 						if(bitmapDicom.BitsAllocated==8) {
 							byteVal=(byte)floatDataRaw;
+						}
+						else if(windowingMax==windowingMin) {//a window of one value: 0/0 below would be NaN, which the checked cast refuses
+							byteVal=255;
 						}
 						else {//16 bit
 							byteVal=(byte)Math.Round(255f * (floatDataRaw - windowingMin) / (windowingMax - windowingMin));
@@ -113,23 +136,39 @@ namespace OpenDentBusiness {
 			return GetFromStream(memoryStream);
 		}
 
-		///<summary>Returns null if something goes wrong.</summary>
+		///<summary>Returns null if something goes wrong. Reads with PixelReader: the in-house subset reader first, then fo-dicom, which may throw for a file it cannot parse, as it always could.</summary>
 		public static BitmapDicom GetFromStream(Stream stream){
-			DicomFile dicomFile=DicomFile.Open(stream);
-			return GetFromDicomFile(dicomFile);
+			return PixelReader.ReadStream(stream);
 		}
 
-		///<summary>Returns null if something goes wrong.</summary>
+		///<summary>Returns null if something goes wrong. Reads with PixelReader: the in-house subset reader first, then fo-dicom, which may throw for a file it cannot open, as it always could.</summary>
 		public static BitmapDicom GetFromFile(string filename){
 			if(!File.Exists(filename)){
 				return null;
 			}
-			DicomFile dicomFile=DicomFile.Open(filename);
-			try{
-				return GetFromDicomFile(dicomFile);
+			return PixelReader.ReadFile(filename);
+		}
+
+		///<summary>The fo-dicom path of DicomHelper as it was before the subset reader (design 7.8, CAP-DR): it opens the file with fo-dicom, decodes
+		///any transfer syntax fo-dicom has a codec for, and reads frame 0. ReadFile returns null when the file does not exist or the pixels
+		///cannot be read; opening a file fo-dicom cannot parse throws, as before. ReadStream does not catch.</summary>
+		private sealed class FoDicomPixelReader : IDicomPixelReader {
+			public BitmapDicom ReadFile(string path){
+				if(!File.Exists(path)){
+					return null;
+				}
+				DicomFile dicomFile=DicomFile.Open(path);
+				try{
+					return GetFromDicomFile(dicomFile);
+				}
+				catch{
+					return null;
+				}
 			}
-			catch{
-				return null;
+
+			public BitmapDicom ReadStream(Stream stream){
+				DicomFile dicomFile=DicomFile.Open(stream);
+				return GetFromDicomFile(dicomFile);
 			}
 		}
 

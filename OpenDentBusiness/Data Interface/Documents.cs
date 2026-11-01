@@ -385,8 +385,10 @@ namespace OpenDentBusiness {
 			if(PrefC.AtoZfolderUsed==DataStorageType.LocalAtoZ && !File.Exists(fullName)) {
 				return NoAvailablePhoto();
 			}
-			//If the specified document is not an image return 'not available'.
-			if(!ImageHelper.HasImageExtension(fullName)) {
+			//If the specified document is not an image return 'not available'. A DICOM file (.dcm) is an image too: it is let through here
+			//explicitly, and ImageHelper.GetImageCropped reads and windows it (design 7.8, CAP-W1). Its thumbnail is saved like the Imaging
+			//module saves one, as Thumbnails\<file name>.
+			if(!ImageHelper.HasImageExtension(fullName) && !ImageHelper.IsDicomFileName(fileName)) {
 				return NoAvailablePhoto();
 			}
 			//Create Thumbnails folder if it does not already exist for this patient folder.
@@ -574,11 +576,14 @@ namespace OpenDentBusiness {
 				}
 				if(fileName.ToLower().EndsWith(".dcm")) {//DICOM images come with additional metadata we need to collect
 					document.ImgType=ImageType.Radiograph;
-					BitmapDicom bitmapDicom=DicomHelper.GetFromFile(listFiles[j]);
-					DicomHelper.CalculateWindowingOnImport(bitmapDicom);
+					//Read the file where it is now: a category prefix above renamed it.
+					BitmapDicom bitmapDicom=DicomHelper.GetFromFile(Path.Combine(Path.GetDirectoryName(listFiles[j]),fileName));
 					document.PrintHeading=true;
-					document.WindowingMin=bitmapDicom.WindowingMin;
-					document.WindowingMax=bitmapDicom.WindowingMax;
+					if(bitmapDicom!=null) {//A file no reader can read is still attached, with no windowing, like any other file that cannot be shown.
+						DicomHelper.CalculateWindowingOnImport(bitmapDicom);
+						document.WindowingMin=bitmapDicom.WindowingMin;
+						document.WindowingMax=bitmapDicom.WindowingMax;
+					}
 				}
 				document.DateCreated=DateTime.Now;
 				DateTime dateTPrevious=document.DateTStamp;

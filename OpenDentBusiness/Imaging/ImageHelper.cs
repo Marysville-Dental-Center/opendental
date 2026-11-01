@@ -516,6 +516,9 @@ namespace OpenDentBusiness {
 			if(PrefC.AtoZfolderUsed==DataStorageType.LocalAtoZ && !File.Exists(fileNameFull)) {
 				throw new ODException("No image file found for document.");
 			}
+			if(IsDicomFileName(shortFileName)) {
+				return GetImageCroppedDicom(document,patientFolder);
+			}
 			//If the specified document is not an image return 'not available'.
 			if(!ImageHelper.HasImageExtension(fileNameFull)) {
 				throw new ODException("Document is not associated to an image file format.");
@@ -539,6 +542,37 @@ namespace OpenDentBusiness {
 			Bitmap bitmapReturn=ApplyDocumentSettingsToImage(document,bitmapRaw,ImageSettingFlags.ALL);
 			bitmapRaw?.Dispose();
 			return bitmapReturn;
+		}
+
+		///<summary>True for a DICOM document's file name. The same test as ImageStore.OpenBitmapDicom and the Imaging module's display path, so a
+		///file shown there as DICOM gets a DICOM thumbnail. DICOM stays out of HasImageExtension on purpose: that method tells callers a file can
+		///be opened by GDI+, which a .dcm file cannot (design 7.8, CAP-W1).</summary>
+		public static bool IsDicomFileName(string fileName) {
+			return fileName!=null && fileName.EndsWith(".dcm");
+		}
+
+		///<summary>The explicit .dcm branch of GetImageCropped (design 7.8, CAP-W1): the raw pixels are read through DicomHelper's
+		///IDicomPixelReader (ImageStore.OpenBitmapDicom: the in-house subset reader, then fo-dicom; any storage type), then windowed. Throws when
+		///the file cannot be read, like GetImageCropped.</summary>
+		private static Bitmap GetImageCroppedDicom(Document document,string patientFolder) {
+			BitmapDicom bitmapDicom=ImageStore.OpenBitmapDicom(document,patientFolder);
+			if(bitmapDicom==null) {
+				throw new ODException("The DICOM file of the document could not be read.");
+			}
+			return GetImageCroppedDicom(document,bitmapDicom);
+		}
+
+		///<summary>A DICOM image with the document's settings applied: windowed with the stored WindowingMin and WindowingMax first
+		///(DicomHelper.ApplyWindowing, which reads legacy 12 bit scale values too), then cropped, rotated and flipped like any other image. The
+		///8 bit color function of ApplyDocumentSettingsToImage is left out, because the window already is the image's brightness and contrast.
+		///The returned image is new; bitmapDicom is not changed.</summary>
+		public static Bitmap GetImageCroppedDicom(Document document,BitmapDicom bitmapDicom) {
+			if(document==null || bitmapDicom==null) {
+				return null;
+			}
+			using Bitmap bitmapWindowed=DicomHelper.ApplyWindowing(bitmapDicom,document.WindowingMin,document.WindowingMax);
+			ConvertCropIfNeeded(document,bitmapWindowed);
+			return ApplyDocumentSettingsToImage(document,bitmapWindowed,ImageSettingFlags.CROP | ImageSettingFlags.FLIP | ImageSettingFlags.ROTATE);
 		}
 
 		///<summary>Returns true if the given filename contains a supported file image extension.</summary>

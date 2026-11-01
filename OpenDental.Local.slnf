@@ -48,6 +48,7 @@
       "tests\\BWIKITests\\BWIKITests.csproj",
       "tests\\ChartLetterTests\\ChartLetterTests.csproj",
       "tests\\CryptoTests\\CryptoTests.csproj",
+      "tests\\DicomReaderTests\\DicomReaderTests.csproj",
       "tests\\EFormTests\\EFormTests.csproj",
       "tests\\FeeTests\\FeeTests.csproj",
       "tests\\ForkMigrationTests\\ForkMigrationTests.csproj",

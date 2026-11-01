@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <!-- Tests for the capture display and DICOM reader packages CAP-W1, CAP-W2 and CAP-DR (docs/imaging-capture-design.md 7.8; package
+       TWAIN-W): IDicomPixelReader and the in-house DicomSubsetReader, the .dcm branches of Documents.GetThumbnail and
+       ImageHelper.GetImageCropped, and the windowing of legacy stored values. Every DICOM file is made in the tests: by ImagingCapture's
+       DicomIntraOralWriter, by fo-dicom, or byte by byte from PS3.5 and PS3.10 (SyntheticDicom.cs), including malformed ones. No database
+       is used; the thumbnail tests fill the preference cache in memory and use a temporary folder. Every .cs file under this folder is
+       compiled. -->
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
+    <ProjectGuid>{F8A5352A-B7EE-4CE2-AB29-83BF257F6043}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>DicomReaderTests</RootNamespace>
+    <AssemblyName>DicomReaderTests</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <LangVersion>8.0</LangVersion>
+    <ProjectTypeGuids>{3AC096D0-A1C2-E12C-1390-A8335801FDAB};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
+    <IsCodedUITest>False</IsCodedUITest>
+    <TestProjectType>UnitTest</TestProjectType>
+    <!-- The business layer needs binding redirects, as OpenDental.exe gets them. Generate DicomReaderTests.dll.config. -->
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x86</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x86</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- MSTest v1, found through the search path added in Directory.Build.targets. -->
+    <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
+    <!-- fo-dicom, only to make test files with another writer and to check that the old path reads them too. -->
+    <Reference Include="Dicom.Core, Version=4.0.7.0, Culture=neutral, PublicKeyToken=3a13f649e28eb09a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\Required dlls\Dicom.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="**\*.cs" Exclude="bin\**;obj\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\CodeBase\xCodeBase.csproj">
+      <Project>{18F7BC78-4B99-48D3-A1F1-0D13A63E3CF9}</Project>
+      <Name>xCodeBase</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\DataConnectionBase\xDataConnectionBase.csproj">
+      <Project>{29C41020-4411-41F2-9061-9B71B5B32B5D}</Project>
+      <Name>xDataConnectionBase</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\OpenDentBusiness\OpenDentBusiness.csproj">
+      <Project>{3D0FC76E-803C-4DE2-BDB1-47D63A4E2357}</Project>
+      <Name>OpenDentBusiness</Name>
+    </ProjectReference>
+    <!-- DicomIntraOralWriter (ImagingCapture) and the pixel flavor constants (ImagingDeviceManager): the files the program itself writes. -->
+    <ProjectReference Include="..\..\ImagingCapture\xImagingCapture.csproj">
+      <Project>{9FCFB60D-959B-4448-A317-D56C95457C3F}</Project>
+      <Name>xImagingCapture</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\ImagingDeviceManager\xImagingDeviceManager.csproj">
+      <Project>{783079E6-A13F-4F43-A28D-9D7731F945D1}</Project>
+      <Name>xImagingDeviceManager</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

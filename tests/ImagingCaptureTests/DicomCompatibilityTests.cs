@@ -50,9 +50,14 @@ namespace ImagingCapture.Tests {
 					string path=Path.Combine(folder,"image"+bitsStoredExpected+".dcm");
 					File.WriteAllBytes(path,result.Bytes);
 					BitmapDicom bitmapDicomStream;
+					BitmapDicom bitmapDicomFoDicom;
 					try {
 						using(MemoryStream memoryStream=new MemoryStream(result.Bytes)) {
 							bitmapDicomStream=DicomHelper.GetFromStream(memoryStream);//does not swallow exceptions, unlike GetFromFile
+						}
+						//DicomHelper reads the writer's subset with the in-house reader (CAP-DR); this reads the same bytes through fo-dicom itself.
+						using(MemoryStream memoryStream=new MemoryStream(result.Bytes)) {
+							bitmapDicomFoDicom=DicomHelper.FoDicomReader.ReadStream(memoryStream);
 						}
 					}
 					catch(Exception ex) when(ex is FileNotFoundException || ex is FileLoadException || ex is TypeInitializationException
@@ -62,7 +67,7 @@ namespace ImagingCapture.Tests {
 						return;
 					}
 					BitmapDicom bitmapDicom=DicomHelper.GetFromFile(path);
-					foreach(BitmapDicom bitmapDicomRead in new[] { bitmapDicomStream,bitmapDicom }) {
+					foreach(BitmapDicom bitmapDicomRead in new[] { bitmapDicomStream,bitmapDicom,bitmapDicomFoDicom }) {
 						Assert.IsNotNull(bitmapDicomRead,"The loader refused the file (BitsStored "+bitsStoredExpected+").");
 						Assert.AreEqual(width,bitmapDicomRead.Width);
 						Assert.AreEqual(height,bitmapDicomRead.Height);
