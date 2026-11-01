@@ -128,6 +128,30 @@ Tests: `PaySimpleDeclineTests` (new), two new `FailEmailTests` cases, `IsPaySimp
 - `run-tests -Mode Core` with ForkMigrationTests, M201Tests, SyntheticData.Tests and AdoptionValidation.Tests (`Pref.cs` is a TableTypes file, comment only): 65 assemblies, no failures (M201Tests 24 of 26 passed; the 2 skipped ones compare with Open Dental's published database documents, which `M201_OD_DOCS_DIR` points to and this PC does not set); M2RECURTests 36/36, ForkMigrationTests 38/38, AdoptionValidation.Tests 56/56, SyntheticData.Tests 53/53. Summary in `.git/od-tools/test-results/port_m2-recur-t1.txt`.
 - `tools/Test-NoHqHosts.ps1` passed.
 
+## Finish round t3 (branch `port/m2-recur-t3`, from `port/m2-recur-t1`)
+
+### Integration (merged `port/int-9` at `8d077f202`)
+
+- The merge had no conflicts. Since round t1 no merged package touched `RecurringCharges.cs`, `RecurringChargerator.FailEmails.cs`, `RecurringChargeFailEmails.cs`, `RepeatCharges.cs`, `PayConnect2.cs`, `EdgeExpress.cs`, `XWebs.cs`, `PaySimple.cs`, the charge windows or the Preferences control. V-GP and V-PS are still not merged.
+- Helpers on the base: the new filters reuse what PayConnect 2 and X-Web already have (`PayConnect2.ParseHttpResponse` / `ParseErrorResponse` and their `PayConnectErrorKind`, `XWebResponse.ConvertResponseCode`); nothing on the base already tells a card decline from the other answers, so nothing is duplicated.
+- No fork migration step, no schema, TableTypes or row change, so nothing in `tools/AdoptionValidation` changes.
+
+### Fixes
+
+Two blocking review findings, both real (the same defect, seen from the spec and from the code), fixed together:
+
+1. **The failure e-mail went out for EdgeExpress, XWeb, X-Charge and PayConnect 2 answers that are not card declines.** Round s1 narrowed only PaySimple. `SendEdgeExpress` calls `MarkDeclined` for every EdgeExpress code but Approval, which `ProcessPaymentDirect` returns without throwing (805 AuthenticationError, 806-808, 813 duplicate, 818-821 outages, 007 partial approval, Pending, Undefined); `SendPayConnectV2` for every PayConnect error answer, a 401/403 rejected key or Secret, a 400 VALIDATION and any 5xx among them; the X-Charge client for every RESULT but SUCCESS. With the e-mail on, one bad credential or one outage e-mailed every patient of that processor in the batch, and a duplicate or partial approval e-mailed a patient whose card was charged. The port note's per-processor claim and the hover text were false for these paths. Fix, the PaySimple pattern: `MarkDeclined` and the card-inactivation behaviour are unchanged; one line after each call keeps the flag only for the processor's card decline (`IsEdgeExpressCardDecline`, `IsXWebDtgCardDecline`, `IsXChargeClientDecline`, `IsPayConnect2Decline`; what each accepts is under "What was built"). The XWeb gateway path had the same shape (its catch marks declined any exception whose text says "decline", whatever the gateway's code), so it gets the same code filter.
+2. Port note (per-processor list, Deviations rationale, the V-GP interplay with the filter for each processor) and hover text (`PrefInfos.xml`, `Details` only: a credential problem, an outage and a duplicate are named among the failures that send no e-mail) now say what the code does.
+
+Tests: `ProcessorDeclineEmailTests` (new: EdgeExpress through `XWebs.Mock`, PayConnect 2 through `PayConnect2.Mock`, setup and outage answers e-mail nobody in a two-patient batch, declines e-mail the patient), the four filters and the source check of every `MarkDeclined` call in `RecurUnitTests`. With two of the new filter lines removed, six of the new tests fail.
+
+### Verification
+
+- One full build through the build lane: 0 errors.
+- Targeted while iterating: M2RECURTests 48/48.
+- `run-tests -Mode Core` (no migration, schema or adoption change, so without the slow assemblies): 66 assemblies, no failures; M2RECURTests 48/48, VendorDirectTests 873/873, M202Tests 39/39, NoHqTests 49/49. Summary in `.git/od-tools/test-results/port_m2-recur-t3.txt`.
+- `tools/Test-NoHqHosts.ps1` passed.
+
 ## Questions for the owner
 
 1. Should a failed charge that was not declined (office setup problem, or no answer from the processor) also e-mail the patient, as the spec's wording suggests? This fork says no (see Deviations), and the hover text now says so. If yes, one line in `SendIfNeeded` and the hover text change.
@@ -135,3 +159,4 @@ Tests: `PaySimpleDeclineTests` (new), two new `FailEmailTests` cases, `IsPaySimp
 3. Should the e-mail be per clinic (separate on/off and template per clinic)?
 4. The Repeating Charges tool has never checked lock dates, and the hover text no longer claims it does. Should the tool start refusing dates before a lock date (a behavior change for offices that keep backdating on)?
 5. This fork has no automatic runner for recurring or repeating charges (OpenDentalService is gone), although the preferences `RecurringChargesAutomatedEnabled` and `RepeatingChargesAutomated` are still shown. With backdating off, the Repeating Charges tool must be run on each billing date. Is a local scheduled runner wanted?
+6. Seen while fixing round t3, outside this package: `SendPayConnectV2` (Open Dental's code) posts a 2xx create answer as an approved charge whatever its status, although `PayConnect2.GetCreateStatusNotApproved` (PayConnect 2 parity) treats a 2xx with status "Declined" as not approved and logs it. If PayConnect ever answers a recurring sale that way, the charge is recorded as paid and no failure e-mail goes out. Should the recurring run treat that status as a decline? Not changed here: it changes payment posting, which belongs to the PayConnect work.
