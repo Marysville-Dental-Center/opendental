@@ -314,8 +314,8 @@ namespace ImagingCapture.Tests.Db {
 
 		[TestMethod]
 		public void Assign_A16BitCapture_UnderVerifiedSixteenBitSettings_ADicomDocumentInItsSlot() {
-			//Design 7.8: a 16-bit capture is filed only where the session could store it at 16 bits. The conditions come from the database: the
-			//Capture settings save (Allow16Bit=1, Bits=16) and a passed Test capture verification record, both Setup entries of the device.
+			//Design 7.8: a 16-bit capture is stored as 16-bit DICOM only where the session could store it at 16 bits. The conditions come from the
+			//database: the Capture settings save (Allow16Bit=1, Bits=16) and a passed Test capture verification record, both Setup entries of the device.
 			string folder=Path.Combine(Path.GetTempPath(),"capdb_recovery16_"+Guid.NewGuid().ToString("N"));
 			try {
 				CaptureDb.WriteCaptureIni(folder,"[Twain]","Allow16Bit=1","[Device."+ToText(_imagingDevice.ImagingDeviceNum)+"]","Bits=16");
@@ -340,10 +340,14 @@ namespace ImagingCapture.Tests.Db {
 					FuncGetComputerName=() => CaptureDb.ComputerName,
 					ActionWriteLog=line => _listLog.Add(line),
 				});
-				//Without a verification record: refused, never converted to 8 bits.
-				CaptureFilingResult result=filer.Assign(entry,0,0);
-				Assert.IsFalse(result.IsDone);
-				StringAssert.Contains(result.Error,"no Test capture record for this sensor's driver version and image settings");
+				//Without a verification record its own slot would get the explicit 8-bit copy (owner decision 2026-11-01, "fall back to 8"), and the
+				//confirmation says why; it is not confirmed here.
+				string error;
+				CaptureAssignPlan plan=filer.PlanAssign(entry,0,out error);
+				Assert.IsNotNull(plan,error);
+				Assert.IsTrue(plan.IsIntoOriginalSlot);
+				Assert.IsTrue(plan.Is8BitCopy);
+				StringAssert.Contains(plan.Note,"16 bits are not allowed for it now (no Test capture record for this sensor's driver version and image settings");
 				Assert.AreEqual(0,CaptureDb.GetDocuments(_patientFrom.PatNum).Count);
 				//Test capture passed for 16 bits with this driver and these image settings, on another computer (its Setup entry, as Test capture
 				//writes it): a record covers every computer that runs them (owner decision 2026-11-01).
@@ -357,7 +361,7 @@ namespace ImagingCapture.Tests.Db {
 					ByteOrder16="LE",ByteOrderCheck="LooksRight",IsByteOrderConfirmed=true,Polarity="AsDelivered",PixelFlavor="Chocolate",IsPolarityConfirmed=true,
 				};
 				SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,record.ToLogText(),_imagingDevice.ImagingDeviceNum,DateTime.MinValue);
-				result=filer.Assign(entry,0,0);
+				CaptureFilingResult result=filer.Assign(entry,0,0);
 				Assert.IsTrue(result.IsDone,result.Error);
 				Document document=CaptureDb.GetDocuments(_patientFrom.PatNum).Single();
 				MountItem slot2=_listSlots.Single(x => x.ItemOrder==2);

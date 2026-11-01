@@ -57,24 +57,39 @@ namespace ImagingCapture.Recovery {
 		}
 
 		public const string SlotUnknown="Slot unknown";
-		///<summary>Owner decision 2026-11-01 (the 16-bit filing route): into its own empty slot a 16-bit capture goes as 16-bit DICOM (design 7.8);
-		///anywhere else, and when reassigned, as an explicit 8-bit copy, and the 16-bit original is kept.</summary>
-		public const string Gray16Note="More than 8 bits: into its empty slot as 16-bit DICOM; anywhere else, or reassigned, as an 8-bit copy (the "
-			+"16-bit original is kept).";
+		///<summary>Owner decisions 2026-11-01 (the 16-bit filing route, and "fall back to 8"): into its own empty slot a 16-bit capture goes as 16-bit
+		///DICOM (design 7.8) when the session's conditions for its depth hold, otherwise as an explicit 8-bit copy in that slot; anywhere else, and
+		///when reassigned, as an explicit 8-bit copy. The 16-bit original is kept.</summary>
+		public const string Gray16Note="More than 8 bits: into its empty slot as 16-bit DICOM when 16 bits are allowed for it there, otherwise as an "
+			+"8-bit copy in that slot; anywhere else, or reassigned, as an 8-bit copy (the 16-bit original is kept).";
 		public const string Gray16NoSlotNote="More than 8 bits, with no slot to go into (no mount, the slot not recorded, or no patient): it is filed as "
 			+"an 8-bit copy, and the 16-bit original is kept.";
 		public const string ToothNumbersUnknown="Tooth numbers unknown";
-		///<summary>The end of Assign's refusal of a 16-bit capture for its own empty slot when the session's conditions for its depth do not hold
-		///(the latest Test capture is for another driver version, or the image settings changed): no other route files it for its patient, so the
-		///operator is told it is not a mistake to leave it. Whether it may be filed as the explicit 8-bit copy then is an owner question.</summary>
-		public const string Gray16StaysNote="It stays where it is: until the conditions hold again, it can only stay in unassigned captures or be "
-			+"discarded.";
-		///<summary>The end of that refusal when no condition can come to hold for the capture (its sidecar names no driver version: GetNoDriverReason).
-		///Whether it may be filed as the explicit 8-bit copy instead is the same owner question as Gray16StaysNote's.</summary>
-		public const string Gray16NeverNote="It stays where it is: it can only stay in unassigned captures or be discarded.";
+
+		///<summary>Owner decision 2026-11-01, "fall back to 8": what the confirmation says when a capture of more than 8 bits goes into its own empty
+		///slot as the explicit 8-bit copy, because the session's decision for its depth refuses 16 bits for it now (CaptureAssignPlan
+		///Reason16BitRefused: the first gate that failed, or GetNoDriverReason). The copy is that slot's document, with the slot's teeth and
+		///rotation.</summary>
+		public static string GetCopy8BitNotAllowedNote(CaptureFileEntry entry,string reason) {
+			string clause=ToClause(reason);
+			return "8-bit copy: 16 bits are not allowed for it now ("+(clause=="" ? "the conditions for its depth do not hold" : clause)+"); the 16-bit "
+				+"original is kept. The copy is a gray PNG made with its 0.5-99.5 % window, and the 16-bit original and its sidecar stay in "
+				+GetOriginalKeptFolder(entry)+" on this computer.";
+		}
+
+		///<summary>reason as a clause inside a sentence: trimmed, without its final full stop, and with a capital at its start lowered when the word
+		///goes on in small letters ("This capture was ..." gives "this capture was ..."; "[Twain] ..." and "TWAIN ..." stay as they are).</summary>
+		public static string ToClause(string reason) {
+			string text=Clean(reason).TrimEnd('.').Trim();
+			if(text.Length>1 && char.IsUpper(text[0]) && char.IsLower(text[1])) {
+				text=char.ToLowerInvariant(text[0])+text.Substring(1);
+			}
+			return text;
+		}
 
 		///<summary>Why no Test capture record can cover a 16-bit capture whose sidecar names no driver version (CaptureFileEntry.DriverIdentity is
-		///null): taken before captures recorded the driver version (no BitDepthInEffect key, written from CAP-16), or the source reported none.</summary>
+		///null): taken before captures recorded the driver version (no BitDepthInEffect key, written from CAP-16), or the source reported none. Such a
+		///capture goes into its own empty slot as the explicit 8-bit copy (GetCopy8BitNotAllowedNote).</summary>
 		public static string GetNoDriverReason(CaptureFileEntry entry) {
 			if(entry==null || entry.Get(CaptureSidecarKeys.BitDepthInEffect)=="") {
 				return "This capture was taken before captures recorded the driver version, so no Test capture record can cover it.";
@@ -95,9 +110,10 @@ namespace ImagingCapture.Recovery {
 			return @"Capture\quarantine-resolved"+(isRoot ? "" : "\\"+folderName);
 		}
 
-		///<summary>Assign refused because the capture would no longer go where the confirmation said (CaptureFilingResult.IsPlanChanged).</summary>
-		public const string AssignPlanChanged="The slot was filled or changed meanwhile, so nothing was filed; review where the capture goes now, then "
-			+"confirm again.";
+		///<summary>Assign refused because the capture would no longer go where, or as what, the confirmation said (CaptureFilingResult.IsPlanChanged):
+		///its slot was filled or its mount changed, or 16 bits became allowed or not allowed for it.</summary>
+		public const string AssignPlanChanged="Where or how the capture is filed changed meanwhile (its slot was filled, its mount changed, or whether 16 "
+			+"bits are allowed for it), so nothing was filed; review where the capture goes now, then confirm again.";
 
 		///<summary>The window's words after a filing whose document is the 8-bit copy of a 16-bit capture: " as an 8-bit copy of a 16-bit capture;
 		///the 16-bit original is kept in ...", else "". The folder is where the original is now (CaptureFilingResult.PathResolved): normally

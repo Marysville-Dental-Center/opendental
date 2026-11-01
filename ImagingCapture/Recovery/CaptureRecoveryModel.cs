@@ -318,8 +318,9 @@ namespace ImagingCapture.Recovery {
 				listNotes.Add("More than 30 days old.");
 			}
 			if(entry.IsGray16) {
-				//Owner decision 2026-11-01: into its own empty slot as 16-bit DICOM (design 7.8); anywhere else, and reassigned, as an explicit 8-bit
-				//copy, the 16-bit original kept. The note says which applies.
+				//Owner decisions 2026-11-01: into its own empty slot as 16-bit DICOM (design 7.8) when 16 bits are allowed for it there, otherwise
+				//("fall back to 8") as an explicit 8-bit copy in that slot; anywhere else, and reassigned, as an explicit 8-bit copy; the 16-bit
+				//original kept. The note says which applies; the confirmation says which one Assign does now, and why.
 				bool hasNoSlot=entry.MountNum<=0 || !entry.IsSlotKnown || entry.IsPatientUnknown || CaptureRecoveryFiler.IsRedeliveredUnconfirmed(entry);
 				listNotes.Add(hasNoSlot ? CaptureRecoveryText.Gray16NoSlotNote : CaptureRecoveryText.Gray16Note);
 			}

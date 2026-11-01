@@ -86,9 +86,10 @@ namespace ImagingCapture.Save {
 		///BitsStored 16); without it such an image is not stored (it goes to unassigned captures).</summary>
 		public bool Is16BitAllowed { get; set; }
 		///<summary>File an image of more than 8 bits as an EXPLICIT 8-bit copy (owner decision 2026-11-01, the 16-bit filing route): a lossless
-		///gray PNG of its samples through the 0.5/99.5 percentile window the session shows, for a capture that cannot go back into its own slot.
-		///Set only by the quarantine window; the caller keeps the 16-bit original (Capture\quarantine-resolved) and says so. Never set by the
-		///session: a 16-bit image is never converted down on its own.</summary>
+		///gray PNG of its samples through the 0.5/99.5 percentile window the session shows, for a capture that does not go back into its own slot as
+		///16-bit DICOM (its slot taken, no slot, reassigned, or, "fall back to 8", 16 bits not allowed for it now). Set only by the quarantine
+		///window; the caller keeps the 16-bit original (Capture\quarantine-resolved) and says so. Never set by the session: a 16-bit image is never
+		///converted down on its own.</summary>
 		public bool Is8BitCopyOf16Bit { get; set; }
 		///<summary>[Device.N] Polarity. Invert applies only to 16-bit samples, and only with IsInversionVerified.</summary>
 		public TwainPolarity Polarity { get; set; }
