@@ -355,6 +355,24 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		[TestMethod]
+		public void Resolve_Quarantine_FiledByAnotherUserMeanwhile_Refused_NoSidecarLeftBehind() {
+			Guid sessionGuid=Guid.NewGuid();
+			string path=WriteSessionQuarantine(Gray8Image(2,2),sessionGuid,42,new DateTime(2026,10,31,10,0,5));
+			CaptureFileEntry entry=_store.ListQuarantine().Single();
+			string folderSession=Path.GetDirectoryName(path);
+			//Another Open Dental instance on this terminal server moves the file and its sidecar out between this one's look and its move.
+			_store.ActionBeforeQuarantineMove=() => {
+				File.Delete(path);
+				File.Delete(Path.ChangeExtension(path,".txt"));
+			};
+			string pathResolved;
+			string error;
+			Assert.IsFalse(_store.Resolve(entry,CaptureFileDisposition.Discarded,null,out pathResolved,out error));
+			Assert.AreEqual("The file "+entry.FileName+" is no longer there (another user may have filed it).",error);
+			Assert.AreEqual(0,Directory.GetFiles(folderSession,"*.txt").Length,"No sidecar without its image in the quarantine.");
+		}
+
+		[TestMethod]
 		public void Resolve_QuarantineRootFile_Discarded_IntoTheResolvedRoot() {
 			string error;
 			string path=new QuarantineWriter(_folders).Write(DibImage.FromPackedDib(Gray8Image(2,2).Dib),
@@ -418,6 +436,32 @@ namespace ImagingDeviceManager.Tests {
 			CaptureFileEntry entryAfter=_store.ListJournal().Single();
 			Assert.IsTrue(entryAfter.HasSidecar,"Never an image without its sidecar.");
 			Assert.IsTrue(entryAfter.IsResolved);
+		}
+
+		[TestMethod]
+		public void Resolve_JournalOnlyCopy_TheRenamedImagesOldSidecarCannotBeRemoved_TheImageStillListsWithItsSidecar() {
+			CaptureJournal journal=new CaptureJournal(_folders);
+			string path=journal.Write(CaptureImageFile.FromAcquiredImage(Gray8Image(2,2)),SessionRecord(new DateTime(2026,10,31,10,0,0),Guid.NewGuid(),false),
+				CaptureJournal.DeliveredNone,"The quarantine could not be written.",200,null);
+			StringAssert.EndsWith(Path.GetFileNameWithoutExtension(path),CaptureJournal.OnlyCopySuffix);
+			string pathSidecarOnly=Path.ChangeExtension(path,".txt");
+			CaptureFileEntry entry=_store.ListJournal().Single();
+			string pathResolved;
+			string error;
+			bool isResolved;
+			//Another program reads the -only sidecar: appending and copying it still work, moving or deleting it does not. The image is renamed;
+			//the sidecar cannot follow.
+			using(new FileStream(pathSidecarOnly,FileMode.Open,FileAccess.Read,FileShare.ReadWrite)) {
+				isResolved=_store.Resolve(entry,CaptureFileDisposition.Assigned,null,out pathResolved,out error);
+			}
+			Assert.IsTrue(isResolved,error);
+			Assert.AreEqual(Path.Combine(Path.GetDirectoryName(path),Path.GetFileName(path).Replace(CaptureJournal.OnlyCopySuffix,"")),pathResolved,
+				"The plain name: rotation counts it again.");
+			StringAssert.Contains(error,"The old sidecar "+Path.GetFileName(pathSidecarOnly));
+			CaptureFileEntry entryAfter=_store.ListJournal().Single(x => x.ImagePath==pathResolved);
+			Assert.IsTrue(entryAfter.HasSidecar,"The plain-named sidecar was written before the image was renamed.");
+			Assert.IsTrue(entryAfter.IsResolved,"Not offered for filing again.");
+			Assert.AreEqual(42,entryAfter.PatNum,"Not a patient-unknown copy.");
 		}
 		#endregion Resolve
 

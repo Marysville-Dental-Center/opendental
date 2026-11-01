@@ -243,6 +243,9 @@ namespace ImagingDeviceManager.Capture {
 		private static readonly string[] _arrayExtensions={ ".bmp",".tif",".png",".dcm" };
 		private readonly CaptureFolders _folders;
 		private readonly Func<DateTime> _funcNow;
+		///<summary>Tests only: runs right before a quarantine file is moved out, where another Open Dental instance on this computer may have
+		///filed it since Resolve looked.</summary>
+		internal Action ActionBeforeQuarantineMove;
 
 		internal CaptureFileStore(CaptureFolders folders,Func<DateTime> funcNow) {
 			_folders=folders??throw new ArgumentNullException(nameof(folders));
@@ -531,9 +534,16 @@ namespace ImagingDeviceManager.Capture {
 			}
 			string pathImageNew=Path.Combine(folderResolved,entry.FileName);
 			try {
+				ActionBeforeQuarantineMove?.Invoke();
 				File.Move(entry.ImagePath,pathImageNew);//fails when the name exists; nothing is replaced
 			}
 			catch(Exception ex) {
+				if(!File.Exists(entry.ImagePath)) {
+					//Gone since Resolve looked: another user of this computer filed it (the quarantine is under %ProgramData%). Nothing is
+					//recorded here, so no sidecar is left without its image and the caller does not report a path that no longer exists.
+					error="The file "+entry.FileName+" is no longer there (another user may have filed it).";
+					return false;
+				}
 				return ResolveQuarantineInPlace(entry,textDisposition,ex.Message,out error);
 			}
 			pathResolved=pathImageNew;
@@ -555,6 +565,10 @@ namespace ImagingDeviceManager.Capture {
 		///<summary>The quarantine file could not be moved out (why): its sidecar records the disposition where it is (created when it has none),
 		///so the file is not listed, counted or filed again; an administrator moves it later. False when that failed too: nothing was recorded.</summary>
 		private static bool ResolveQuarantineInPlace(CaptureFileEntry entry,string textDisposition,string why,out string error) {
+			if(!File.Exists(entry.ImagePath)) {
+				error="The file "+entry.FileName+" is no longer there (another user may have filed it).";
+				return false;//never a sidecar for an image that is not there
+			}
 			string pathSidecar=entry.SidecarPath??Path.Combine(Path.GetDirectoryName(entry.ImagePath),
 				Path.GetFileNameWithoutExtension(entry.ImagePath)+CaptureFiles.SidecarExtension);
 			try {
