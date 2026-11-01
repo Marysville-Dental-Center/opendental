@@ -588,13 +588,16 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
-		public void RedeliveredImage_NotPlacedWithoutConfirmation_QuarantinedAsPatientUnknown() {
+		public void RedeliveredImage_NotPlacedWithoutConfirmation_DeclinedQuarantinedAsPatientUnknown() {
 			_harness.Started();
 			AcquiredImage image=TestImages.Image8(4,4,(x,y) => 1);
 			image.IsRedelivery=true;
 			_harness.Twain.RaiseImage(image);
 			_harness.Dispatcher.RunPending();
 			Assert.AreEqual(0,_harness.RadiographStore.ListDocumentsUpdated.Count);
+			Assert.IsTrue(Controller.HasRedeliveredPending,"It waits for the operator.");
+			Assert.AreEqual(0,_harness.Twain.ListQuarantined.Count);
+			Assert.IsTrue(Controller.DeclineRedelivered());
 			Assert.IsTrue(_harness.Twain.ListQuarantined.Single().IsPatientUnknown);
 		}
 		#endregion Targets and receive

@@ -112,6 +112,7 @@ namespace ImagingCapture.Session {
 				+" (PatNum "+PatNum+").");
 			PatientChangedText=CaptureSessionText.GetPatientChangedText(PatientName);
 			PlaySound(CaptureSound.Error);
+			DeclineAllRedelivered("not placed: the patient changed in the main window");
 			CaptureEnableRecord record=_enableRunning;
 			if(record!=null && (Phase==CaptureSessionPhase.Enabled || Phase==CaptureSessionPhase.Stopping)) {
 				if(Phase==CaptureSessionPhase.Enabled && record.StopRequested==TwainCaptureStopReason.None && record.IsSafeDisableInEffect) {

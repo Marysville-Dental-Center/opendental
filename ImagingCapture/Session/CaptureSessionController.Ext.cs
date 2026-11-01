@@ -6,7 +6,7 @@ using ImagingDeviceManager.Capture;
 namespace ImagingCapture.Session {
 	///<summary>The extension points of CaptureSessionController, implemented for the session rules of CAP-4 implementer A2. Each one only
 	///dispatches to the rule's own file: Retake and Rotate (CaptureSessionController.Retake.cs), the patient-change monitor, idle disable and the
-	///forced close (CaptureSessionController.Monitor.cs).</summary>
+	///forced close (CaptureSessionController.Monitor.cs), and redelivery (CaptureSessionController.Redelivery.cs).</summary>
 	public sealed partial class CaptureSessionController {
 		partial void ExecuteExt(CaptureSessionAction action,ref bool isHandled) {
 			switch(action) {
@@ -43,10 +43,14 @@ namespace ImagingCapture.Session {
 				HandlePatientChange();//design 7.6: placing stops at once, also before the posted handling has run
 			}
 			_msIdleSince=_clock.NowMs;
+			isHandled=HoldRedelivered(image,record);
 		}
 
 		partial void OnEnablePostedExt(CaptureEnableRecord record) {
 			_msIdleSince=null;
+			if(!record.IsRedelivery) {
+				_isRedeliveryOffered=false;//the source offers only the undelivered images of its most recent session
+			}
 		}
 
 		partial void OnStatusExt(TwainCaptureStatus status,CaptureEnableRecord record) {
@@ -56,17 +60,23 @@ namespace ImagingCapture.Session {
 
 		partial void OnTickExt(long nowMs) {
 			CheckIdle(nowMs);
+			NotifyRedeliveryArming();
 		}
 
 		partial void OnEnableEndedExt(TwainCaptureEnded ended,CaptureEnableRecord record,bool isRunning,ref bool isHandled) {
-			if(!isRunning || Phase==CaptureSessionPhase.Finished || _isEndRequested) {
+			if(!isRunning || Phase==CaptureSessionPhase.Finished) {
 				return;
 			}
-			isHandled=HandleIdleEnded(ended,record);
+			UpdateRedeliveryOffer(ended,record);
+			if(_isEndRequested) {
+				return;
+			}
+			isHandled=HandleRedeliveryEnded(ended,record) || HandleIdleEnded(ended,record);
 		}
 
 		partial void OnFinishStartingExt(CaptureSessionEndReason endReason) {
 			UnsubscribePatientEvents();
+			DeclineAllRedelivered("not placed: the capture session ended first");
 		}
 	}
 }

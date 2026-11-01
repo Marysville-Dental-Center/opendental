@@ -129,6 +129,22 @@ namespace ImagingCapture.Session {
 		public bool IsSkipped { get; set; }
 	}
 
+	///<summary>The redelivered image (W15, design 7.12) that waits for the operator: placed only when the operator confirms it, with its
+	///acquiredAt and captureId shown, because the source has no patient context; declined, it goes to the quarantine as "patient unknown".</summary>
+	public sealed class CaptureRedeliveredView {
+		public ImagingDeviceManager.Capture.AcquiredImage Image { get; set; }
+		///<summary>The metadata's acquiredAt as the source wrote it, or "unknown".</summary>
+		public string AcquiredAtText { get; set; }="";
+		///<summary>The metadata's captureId, or "unknown".</summary>
+		public string CaptureId { get; set; }="";
+		///<summary>Where Confirm places it: "2 of 3: Max R, #4,5", "Single image, #8", or "" when no slot is free.</summary>
+		public string TargetText { get; set; }="";
+		///<summary>The question the window shows with the image.</summary>
+		public string Text { get; set; }="";
+		///<summary>Redelivered images waiting, this one included.</summary>
+		public int CountPending { get; set; }
+	}
+
 	///<summary>What the session did, for the window's summary and for the session's ImageCreate audit entry (design 7.3 step 6, 10.7).</summary>
 	public sealed class CaptureSessionSummary {
 		public long PatNum { get; set; }

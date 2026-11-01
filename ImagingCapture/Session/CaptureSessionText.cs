@@ -61,6 +61,28 @@ namespace ImagingCapture.Session {
 				+" without an exposure.";
 		}
 
+		///<summary>Design 7.12 (W15): the button offered after a failed transfer, or after a stop that may have left images with the source.</summary>
+		public const string RequestRedelivery="Request undelivered images again";
+		public const string RedeliveryStarting="Asking the sensor software for the undelivered images";
+		///<summary>A redelivery enable delivered images: each waits for the operator.</summary>
+		public const string RedeliveredConfirm="The sensor software delivered images again. Check each one: place it, or put it in unassigned captures.";
+		public const string RedeliveredConfirmFirst="Place or decline the redelivered images first.";
+		public const string RedeliveryNothing="The sensor software delivered no images again.";
+
+		///<summary>The question shown with a redelivered image (design 7.12): its acquiredAt and captureId, and where it would go.</summary>
+		public static string GetRedeliveredText(string acquiredAtText,string captureId,string targetText,string patientName) {
+			string text="Redelivered image, acquired "+acquiredAtText+", capture ID "+captureId+". The sensor software does not know the patient. ";
+			if(string.IsNullOrEmpty(targetText)) {
+				return text+"No slot is free for it: put it in unassigned captures.";
+			}
+			return text+"Place it in "+targetText+" only if it is "+patientName+"'s image.";
+		}
+
+		///<summary>The quarantine reason of a redelivered image that was not placed: "patient unknown", with its acquiredAt and captureId.</summary>
+		public static string GetRedeliveredQuarantineReason(string why,string acquiredAtText,string captureId) {
+			return "Redelivered image "+(why??"").Trim()+"; patient unknown (acquired "+acquiredAtText+", capture ID "+captureId+").";
+		}
+
 		///<summary>Continuous mode, the mount full and safe disable not in effect: the fork does not disable on its own (design 7.6, 10.6).</summary>
 		public const string MountFullContinuous="Every slot has an image. Press End to stop the sensor software; further images go to unassigned captures.";
 

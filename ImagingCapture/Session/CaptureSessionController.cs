@@ -156,7 +156,8 @@ namespace ImagingCapture.Session {
 		public string StartText => CaptureSessionText.GetStartText(StartKind,PatientName);
 		///<summary>The Start button may be pressed now: Phase Ready, something to start, and 2 s since the banner appeared. The window calls OnTick
 		///so that it notices when the 2 s are over.</summary>
-		public bool CanStart => Phase==CaptureSessionPhase.Ready && StartKind!=CaptureStartKind.None && IsBannerArmed(_clock.NowMs);
+		public bool CanStart => Phase==CaptureSessionPhase.Ready && StartKind!=CaptureStartKind.None && IsBannerArmed(_clock.NowMs)
+			&& !HasRedeliveredPending;
 		///<summary>The provider can be changed (design 10.8: editable before Start).</summary>
 		public bool CanEditProvider => !_isStarted && Phase!=CaptureSessionPhase.Finished;
 		///<summary>The single-target tooth numbers can be changed (between images).</summary>
@@ -595,6 +596,12 @@ namespace ImagingCapture.Session {
 
 		///<summary>Enables for the target: the patient check, the bit depth, then TwainCaptureSession.Enable. Finishes when the mount is full.</summary>
 		private bool EnableNext() {
+			return PostEnable(false);
+		}
+
+		///<summary>EnableNext, or with isRedelivery a redelivery enable (W15, design 7.12: TwainCaptureSession.RequestRedelivery) for the same
+		///target. Neither goes ahead while placement is stopped (a patient change) or redelivered images wait for the operator.</summary>
+		private bool PostEnable(bool isRedelivery) {
 			if(_isEndRequested) {
 				Finish(CaptureSessionEndReason.Ended);
 				return false;
@@ -603,7 +610,7 @@ namespace ImagingCapture.Session {
 				Finish(CaptureSessionEndReason.MountFull);
 				return false;
 			}
-			if(!CheckPatient("enable")) {
+			if(!CheckPatient(isRedelivery ? "request the undelivered images" : "enable")) {
 				return false;
 			}
 			if(_isPlacementStopped) {
@@ -612,8 +619,15 @@ namespace ImagingCapture.Session {
 				ShowReady(GetReEnableKind(),CaptureIndicatorState.Disabled,CaptureSessionText.NotEnabledAfterPatientChange);
 				return false;
 			}
+			if(HasRedeliveredPending) {
+				//Design 7.12: the redelivered images are placed (or not) before anything else; their target is the slot an enable would take.
+				Log("Not enabled: redelivered images wait for the operator.");
+				ShowReady(GetReEnableKind(),CaptureIndicatorState.Ready,CaptureSessionText.RedeliveredConfirmFirst);
+				return false;
+			}
 			CaptureEnableRecord record=new CaptureEnableRecord();
 			record.PostedAt=_clock.Now;
+			record.IsRedelivery=isRedelivery;
 			if(IsSingleTarget) {
 				record.IdxTarget=-1;
 				record.ToothNumbers=_toothNumbersSingle;
@@ -640,7 +654,7 @@ namespace ImagingCapture.Session {
 				Tag=record,
 				TargetLabel=radiographTarget.GetLabel(),
 			};
-			int enableId=_session.Enable(request);
+			int enableId=isRedelivery ? _session.RequestRedelivery(request) : _session.Enable(request);
 			if(enableId==0) {
 				_isSessionOpen=false;
 				Log("Enable refused: the session is not open.");
@@ -982,7 +996,7 @@ namespace ImagingCapture.Session {
 		///and when its slot is taken; otherwise it is saved into the target of its enable.</summary>
 		private void ReceiveImage(ITwainCaptureSession session,AcquiredImage image,CaptureEnableRecord record) {
 			if(Phase==CaptureSessionPhase.Finished) {
-				QuarantineImage(session,image,record,"The image arrived after the capture session ended.",false);
+				QuarantineImage(session,image,record,"The image arrived after the capture session ended.",image.IsRedelivery || record?.IsRedelivery==true);
 				return;
 			}
 			if(session!=_session || record==null) {
@@ -1000,7 +1014,8 @@ namespace ImagingCapture.Session {
 				return;
 			}
 			if(image.IsRedelivery || record.IsRedelivery) {
-				//The source knows no patient: a redelivered image is placed only after the operator confirms it (design 7.12, A2).
+				//The source knows no patient: a redelivered image is placed only after the operator confirms it (design 7.12). OnImageReceivedExt
+				//holds it for that; this is the fallback.
 				QuarantineImage(session,image,record,"Redelivered image that the operator did not confirm.",true);
 				return;
 			}
@@ -1193,6 +1208,7 @@ namespace ImagingCapture.Session {
 		}
 
 		private void HandleEnded(TwainCaptureEnded ended,CaptureEnableRecord record,string textEnded) {
+			//textHold decides that no automatic enable follows (ContinueAfterEnable). textEnded already says it for the other ends.
 			string textHold=ended.SourceMayHoldImages && ended.Reason!=TwainCaptureEndReason.TransferFailed ? " "+CaptureEndText.MayStillHoldImages : "";
 			switch(ended.Reason) {
 				case TwainCaptureEndReason.Completed:
@@ -1212,12 +1228,12 @@ namespace ImagingCapture.Session {
 						return;
 					}
 					PlaySound(CaptureSound.Disabled);
-					ShowReady(GetReEnableKind(),CaptureIndicatorState.Disabled,(CaptureSessionText.Disabled+" "+textEnded+textHold).Trim());
+					ShowReady(GetReEnableKind(),CaptureIndicatorState.Disabled,(CaptureSessionText.Disabled+" "+textEnded).Trim());
 					return;
 				case TwainCaptureEndReason.CloseRequested:
 					bool isPlainClose=ended.ConditionCode==null || ended.ConditionCode.Value==0;
 					PlaySound(isPlainClose ? CaptureSound.Disabled : CaptureSound.NotReceived);
-					ShowReady(GetReEnableKind(),CaptureIndicatorState.SensorSoftwareClosed,(textEnded+textHold).Trim());
+					ShowReady(GetReEnableKind(),CaptureIndicatorState.SensorSoftwareClosed,textEnded.Trim());
 					return;
 				case TwainCaptureEndReason.TransferFailed:
 					PlaySound(CaptureSound.NotReceived);
@@ -1231,11 +1247,11 @@ namespace ImagingCapture.Session {
 					return;
 				case TwainCaptureEndReason.EnableFailed:
 					PlaySound(CaptureSound.Error);
-					ShowReady(CaptureStartKind.Retry,CaptureIndicatorState.Error,(textEnded+textHold).Trim());
+					ShowReady(CaptureStartKind.Retry,CaptureIndicatorState.Error,textEnded.Trim());
 					return;
-				default://RedeliveryUnavailable (A2 handles redelivery), Refused, Error
+				default://RedeliveryUnavailable (OnEnableEndedExt handles it for a redelivery enable), Refused, Error
 					PlaySound(CaptureSound.Error);
-					ShowReady(CaptureStartKind.Retry,CaptureIndicatorState.Error,(textEnded+textHold).Trim());
+					ShowReady(CaptureStartKind.Retry,CaptureIndicatorState.Error,textEnded.Trim());
 					return;
 			}
 		}
@@ -1363,6 +1379,8 @@ namespace ImagingCapture.Session {
 		private void NotifyChanged() {
 			Version++;
 			_canStartShown=CanStart;
+			_canConfirmRedeliveredShown=CanConfirmRedelivered;
+			_canRequestRedeliveryShown=CanRequestRedelivery;
 			try {
 				Changed?.Invoke();
 			}

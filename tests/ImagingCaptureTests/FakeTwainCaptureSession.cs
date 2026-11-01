@@ -28,6 +28,8 @@ namespace ImagingCapture.Tests {
 		public Func<string,CaptureMetadataKeys> FuncReadMetadataKeysAtOpen;
 		public readonly List<TwainEnableRequest> ListEnables=new List<TwainEnableRequest>();
 		public readonly List<int> ListEnableIds=new List<int>();
+		///<summary>The enable ids of RequestRedelivery calls (they are in ListEnables and ListEnableIds too).</summary>
+		public readonly List<int> ListRedeliveryEnableIds=new List<int>();
 		public readonly List<TwainCaptureStopReason> ListDisables=new List<TwainCaptureStopReason>();
 		public readonly List<FakeQuarantineCall> ListQuarantined=new List<FakeQuarantineCall>();
 		public int CountBeginClose;
@@ -80,7 +82,11 @@ namespace ImagingCapture.Tests {
 		}
 
 		public int RequestRedelivery(TwainEnableRequest request) {
-			return Enable(request);
+			int enableId=Enable(request);
+			if(enableId!=0) {
+				ListRedeliveryEnableIds.Add(enableId);
+			}
+			return enableId;
 		}
 
 		public void Disable(TwainCaptureStopReason reason) {
