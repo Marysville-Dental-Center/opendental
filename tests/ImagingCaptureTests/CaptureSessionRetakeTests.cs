@@ -72,7 +72,7 @@ namespace ImagingCapture.Tests {
 			Assert.AreEqual(103,_harness.LastRecord.MountItemTarget.MountItemNum);
 			_harness.Expose();
 			Assert.AreEqual(CaptureSessionEndReason.MountFull,Controller.Summary.EndReason);
-			Assert.AreEqual("4 images, 1 retake, 0 quarantined. Patient: Pat Test. Provider: DOC4.",Controller.Summary.GetText());
+			StringAssert.StartsWith(Controller.Summary.GetText(),"4 images, 1 retake, 0 quarantined. Patient: Pat Test. Provider: DOC4. In effect: ");
 			CollectionAssert.Contains(Controller.Summary.ListDocNums,1000L,"The rejected exposure is kept, never deleted.");
 		}
 

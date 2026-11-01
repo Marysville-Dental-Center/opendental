@@ -170,19 +170,79 @@ namespace ImagingCapture.Session {
 		public CaptureSessionEndReason EndReason { get; set; }
 		public DateTime DateTimeStarted { get; set; }
 		public DateTime DateTimeEnded { get; set; }
+		///<summary>Design 9.3 "Effective values are shown ... in the session summary": the capture settings the session ran with.</summary>
+		public CaptureEffectiveSettings EffectiveSettings { get; set; }=new CaptureEffectiveSettings();
 
-		///<summary>"5 images, 1 retake, 0 quarantined. Patient: Pat Test. Provider: DOC1."</summary>
+		///<summary>"5 images, 1 retake, 0 quarantined. Patient: Pat Test. Provider: DOC1. In effect: PerSlot, 8 bits, ..."</summary>
 		public string GetText() {
 			string text=Count(CountImages,"image","images")+", "+Count(CountRetakes,"retake","retakes")+", "+CountQuarantined.ToString(CultureInfo.InvariantCulture)
 				+" quarantined. Patient: "+PatientName+". Provider: "+(ProviderAbbr=="" ? "none" : ProviderAbbr)+".";
 			if(CountQuarantined>0) {
 				text+=" The quarantined images are in unassigned captures on this computer.";
 			}
-			return text;
+			return text+" In effect: "+(EffectiveSettings??new CaptureEffectiveSettings()).GetText(isWithReasons:false)+".";
 		}
 
 		private static string Count(int count,string singular,string plural) {
 			return count.ToString(CultureInfo.InvariantCulture)+" "+(count==1 ? singular : plural);
+		}
+	}
+
+	///<summary>The capture settings a session ran with (design 9.3: effective values are shown in the session summary): the session mode, the bit
+	///depth each enable asked for and why 8, whether safe disable was in effect, the polarity, headless, and whether the gated settings were
+	///verified. Values differ from capture.ini when the gated settings are not verified (the safe values), or the source does not do what was
+	///asked.</summary>
+	public sealed class CaptureEffectiveSettings {
+		///<summary>[Device.N] SessionMode: "PerSlot" or "Continuous".</summary>
+		public string SessionMode { get; set; }="";
+		///<summary>[Device.N] Polarity: "AsDelivered" or "Invert".</summary>
+		public string Polarity { get; set; }="";
+		public bool IsHeadless { get; set; }
+		///<summary>The gated settings are the ones last saved in Capture settings (design 9.3); otherwise SettingsNotVerifiedText says why.</summary>
+		public bool IsSettingsVerified { get; set; }=true;
+		public string SettingsNotVerifiedText { get; set; }="";
+		///<summary>Enables the session posted, and of those the ones whose status said safe disable was in effect.</summary>
+		public int CountEnables { get; set; }
+		public int CountSafeDisable { get; set; }
+		///<summary>The bit depths the enables asked for, ascending (8, 16).</summary>
+		public List<int> ListBitsAsked { get; set; }=new List<int>();
+		///<summary>Why an enable asked for 8 bits (CaptureBitDepthDecision), the first reason, or "".</summary>
+		public string Reason8Bit { get; set; }="";
+		///<summary>16 bits were asked and the source gave 8 (TwainCaptureEnded.Reason8Bit), the first reason, or "".</summary>
+		public string Reason8BitDelivered { get; set; }="";
+
+		///<summary>"PerSlot, 8 bits, safe disable not in effect, polarity AsDelivered, headless off"; isWithReasons adds why 8 bits and why the
+		///settings are not verified (the security-log summary).</summary>
+		public string GetText(bool isWithReasons) {
+			List<string> listParts=new List<string>();
+			if(!IsSettingsVerified) {
+				listParts.Add("capture settings not verified, so the safe values"
+					+(isWithReasons && !string.IsNullOrWhiteSpace(SettingsNotVerifiedText) ? " ("+SettingsNotVerifiedText.Trim().TrimEnd('.')+")" : ""));
+			}
+			listParts.Add(SessionMode=="" ? "session mode unknown" : SessionMode);
+			if(CountEnables==0) {
+				listParts.Add("nothing enabled");
+			}
+			else {
+				string bits=ListBitsAsked.Count==0 ? "bits unknown" : string.Join(" and ",ListBitsAsked.Select(x => x.ToString(CultureInfo.InvariantCulture)))
+					+" bits";
+				if(isWithReasons && Reason8Bit.Trim()!="") {
+					string reason=Reason8Bit.Trim().TrimEnd('.');
+					const string prefix="8 bits: ";
+					bits+=" ("+(reason.StartsWith(prefix,StringComparison.Ordinal) ? reason.Substring(prefix.Length) : reason)+")";
+				}
+				if(Reason8BitDelivered.Trim()!="") {
+					bits+=isWithReasons ? " (the source gave 8 bits: "+Reason8BitDelivered.Trim().TrimEnd('.')+")" : " (the source gave 8 bits)";
+				}
+				listParts.Add(bits);
+				listParts.Add(CountSafeDisable==CountEnables ? "safe disable in effect"
+					: CountSafeDisable==0 ? "safe disable not in effect"
+					: "safe disable in effect for "+CountSafeDisable.ToString(CultureInfo.InvariantCulture)+" of "
+						+CountEnables.ToString(CultureInfo.InvariantCulture)+" enables");
+			}
+			listParts.Add("polarity "+(Polarity=="" ? "unknown" : Polarity));
+			listParts.Add("headless "+(IsHeadless ? "on" : "off"));
+			return string.Join(", ",listParts);
 		}
 	}
 

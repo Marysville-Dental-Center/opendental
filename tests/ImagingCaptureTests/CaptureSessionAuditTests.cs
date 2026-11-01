@@ -48,7 +48,8 @@ namespace ImagingCapture.Tests {
 			Assert.AreEqual(CaptureSessionEndReason.MountFull,Controller.Summary.EndReason);
 			List<string> listSummaries=_harness.Store.GetLogs(EnumPermType.ImageCreate).Where(x => x.Contains("Capture session summary")).ToList();
 			Assert.AreEqual("55|0|Capture session summary: device Intraoral sensor (ImagingDeviceNum 12); 4 images, 1 retake, 1 quarantined; provider "
-				+"DOC4 (ProvNum 4); mount 7; ended: MountFull. Session: "+SessionGuidText+".",listSummaries.Single());
+				+"DOC4 (ProvNum 4); mount 7; ended: MountFull; in effect: PerSlot, 8 bits ([Device.12] Bits is not 16), safe disable not in effect, "
+				+"polarity AsDelivered, headless off. Session: "+SessionGuidText+".",listSummaries.Single(),"Design 9.3: the effective values too.");
 			string tailSlot3=" Device: Intraoral sensor (ImagingDeviceNum 12). Target: Slot 3 (teeth 6). Session: "+SessionGuidText+".";
 			CollectionAssert.AreEqual(new[] {
 				"55|0|Capture event: an image was moved to unassigned captures on this computer. Reason: The sensor software sent more images than "
@@ -59,13 +60,39 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void SessionSummary_EffectiveValues_SafeDisablePerEnable_SourceGave8Bits_SettingsNotVerified() {
+			_harness.Setup.Options.SessionMode=TwainSessionMode.Continuous;
+			_harness.Setup.Options.Polarity=TwainPolarity.Invert;
+			_harness.Setup.Options.Headless=true;
+			_harness.Started();
+			_harness.Status(TwainCaptureState.WaitingForImage,isSafeDisableInEffect:true);
+			_harness.Image();
+			_harness.Ended(TwainCaptureEndReason.Completed,ended => ended.Reason8Bit="The source sent 8-bit images.");
+			_harness.Execute(CaptureSessionAction.End);//the next slot's enable runs: the first press warns
+			_harness.Execute(CaptureSessionAction.End);
+			_harness.Ended(TwainCaptureEndReason.Stopped,ended => ended.StopReason=TwainCaptureStopReason.End);
+			CaptureEffectiveSettings settings=Controller.Summary.EffectiveSettings;
+			Assert.AreEqual(2,settings.CountEnables);
+			Assert.AreEqual(1,settings.CountSafeDisable);
+			Assert.AreEqual("Continuous, 8 bits (the source gave 8 bits), safe disable in effect for 1 of 2 enables, polarity Invert, headless on",
+				settings.GetText(isWithReasons:false));
+			StringAssert.Contains(_harness.Store.GetLogs(EnumPermType.ImageCreate).Single(x => x.Contains("Capture session summary")),
+				"(the source gave 8 bits: The source sent 8-bit images)");
+			settings.IsSettingsVerified=false;
+			settings.SettingsNotVerifiedText="Capture settings were changed outside Open Dental.";
+			StringAssert.StartsWith(settings.GetText(isWithReasons:true),
+				"capture settings not verified, so the safe values (Capture settings were changed outside Open Dental), Continuous");
+		}
+
+		[TestMethod]
 		public void SessionSummary_SingleTargetMode_AndNoneWhenNeverStarted() {
 			CaptureControllerHarness harness=new CaptureControllerHarness(0);
 			harness.Started();
 			harness.Expose();
 			harness.Execute(CaptureSessionAction.End);
 			Assert.AreEqual("55|0|Capture session summary: device Intraoral sensor (ImagingDeviceNum 12); 1 image, 0 retakes, 0 quarantined; provider "
-				+"DOC4 (ProvNum 4); single images, no mount; ended: Ended. Session: "+SessionGuidText+".",
+				+"DOC4 (ProvNum 4); single images, no mount; ended: Ended; in effect: PerSlot, 8 bits ([Device.12] Bits is not 16), safe disable not "
+				+"in effect, polarity AsDelivered, headless off. Session: "+SessionGuidText+".",
 				harness.Store.GetLogs(EnumPermType.ImageCreate).Single());
 			_harness.BeginArmed();
 			_harness.Execute(CaptureSessionAction.End);
@@ -81,7 +108,7 @@ namespace ImagingCapture.Tests {
 			_harness.Execute(CaptureSessionAction.End);
 			_harness.Execute(CaptureSessionAction.End);
 			_harness.Ended(TwainCaptureEndReason.Stopped,ended => ended.StopReason=TwainCaptureStopReason.End);
-			StringAssert.Contains(_harness.Store.GetLogs(EnumPermType.ImageCreate).Last(),"0 images, 0 retakes, 0 quarantined; provider none; mount 7; ended: Ended.");
+			StringAssert.Contains(_harness.Store.GetLogs(EnumPermType.ImageCreate).Last(),"0 images, 0 retakes, 0 quarantined; provider none; mount 7; ended: Ended; in effect: ");
 		}
 		#endregion Session summary
 

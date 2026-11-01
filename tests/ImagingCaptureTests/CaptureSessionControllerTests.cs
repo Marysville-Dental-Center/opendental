@@ -369,7 +369,9 @@ namespace ImagingCapture.Tests {
 			Assert.AreEqual(55,summaryRaised.PatNum);
 			Assert.AreEqual(7,summaryRaised.MountNum);
 			Assert.AreEqual(4,summaryRaised.ProvNum);
-			Assert.AreEqual("3 images, 0 retakes, 0 quarantined. Patient: Pat Test. Provider: DOC4.",summaryRaised.GetText());
+			Assert.AreEqual("3 images, 0 retakes, 0 quarantined. Patient: Pat Test. Provider: DOC4. In effect: PerSlot, 8 bits, safe disable not in "
+				+"effect, polarity AsDelivered, headless off.",summaryRaised.GetText(),"Design 9.3: the effective values in the summary.");
+			Assert.AreEqual(3,summaryRaised.EffectiveSettings.CountEnables);
 			Assert.IsFalse(Controller.IsMountEmpty);
 		}
 

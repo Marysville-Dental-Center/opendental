@@ -24,7 +24,8 @@ namespace ImagingCapture.Session {
 			return "Capture session summary: device "+GetDeviceText(summary.DeviceDescription,summary.ImagingDeviceNum)+"; "
 				+Count(summary.CountImages,"image","images")+", "+Count(summary.CountRetakes,"retake","retakes")+", "+ToText(summary.CountQuarantined)
 				+" quarantined; provider "+provider+"; "+(summary.MountNum==0 ? "single images, no mount" : "mount "+ToText(summary.MountNum))
-				+"; ended: "+summary.EndReason+". Session: "+summary.SessionGuid+".";
+				+"; ended: "+summary.EndReason+"; in effect: "+(summary.EffectiveSettings??new CaptureEffectiveSettings()).GetText(isWithReasons:true)
+				+". Session: "+summary.SessionGuid+".";
 		}
 		#endregion Session summary
 

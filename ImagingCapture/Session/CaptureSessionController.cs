@@ -78,6 +78,10 @@ namespace ImagingCapture.Session {
 		private readonly List<string> _listLog=new List<string>();
 		private DateTime _dateTimeStarted;
 		private string _indicatorText="";
+		///<summary>Every enable posted, for the effective settings of the summary (design 9.3).</summary>
+		private readonly List<CaptureEnableRecord> _listEnablesPosted=new List<CaptureEnableRecord>();
+		///<summary>The first reason the source gave 8 bits where 16 were asked (TwainCaptureEnded.Reason8Bit), or "".</summary>
+		private string _reason8BitDelivered="";
 		#endregion Fields
 
 		#region Constructor
@@ -694,6 +698,7 @@ namespace ImagingCapture.Session {
 			}
 			record.EnableId=enableId;
 			_enableRunning=record;
+			_listEnablesPosted.Add(record);
 			_idxTargetChosen=null;
 			NextTargetText="";
 			Phase=CaptureSessionPhase.Enabled;
@@ -954,6 +959,7 @@ namespace ImagingCapture.Session {
 				ListDocNums=new List<long>(_listDocNums),
 				ListQuarantinePaths=new List<string>(_listQuarantinePaths),
 				EndReason=endReason,
+				EffectiveSettings=GetEffectiveSettings(),
 				DateTimeStarted=_dateTimeStarted.Year>1880 ? _dateTimeStarted : _clock.Now,
 				DateTimeEnded=_clock.Now,
 			};
@@ -962,6 +968,23 @@ namespace ImagingCapture.Session {
 			OnFinishingExt(Summary);
 			NotifyChanged();
 			SessionFinished?.Invoke(Summary);
+		}
+
+		///<summary>Design 9.3: the values the session ran with, for its summary.</summary>
+		private CaptureEffectiveSettings GetEffectiveSettings() {
+			TwainCaptureOptions options=_setup.Options??new TwainCaptureOptions();
+			return new CaptureEffectiveSettings {
+				SessionMode=options.SessionMode.ToString(),
+				Polarity=options.Polarity.ToString(),
+				IsHeadless=options.Headless,
+				IsSettingsVerified=IsSettingsVerified,
+				SettingsNotVerifiedText=SettingsNoticeText,
+				CountEnables=_listEnablesPosted.Count,
+				CountSafeDisable=_listEnablesPosted.Count(x => x.IsSafeDisableInEffect),
+				ListBitsAsked=_listEnablesPosted.Where(x => x.BitDepth!=null).Select(x => x.BitDepth.Bits).Distinct().OrderBy(x => x).ToList(),
+				Reason8Bit=_listEnablesPosted.Select(x => x.BitDepth?.Reason8Bit).FirstOrDefault(x => !string.IsNullOrWhiteSpace(x))??"",
+				Reason8BitDelivered=_reason8BitDelivered,
+			};
 		}
 
 		///<summary>No document of this session, and none before it, is in the mount: a mount created for this session is still empty.</summary>
@@ -1249,6 +1272,9 @@ namespace ImagingCapture.Session {
 			string textEnded=CaptureEndText.GetEndedText(ended);
 			if(!string.IsNullOrWhiteSpace(ended.Reason8Bit)) {
 				LogOnce("16 bits were asked and the source gave 8: "+ended.Reason8Bit.Trim());//design 7.12 "16-bit refused": silent, logged
+				if(_reason8BitDelivered=="") {
+					_reason8BitDelivered=ended.Reason8Bit.Trim();
+				}
 			}
 			bool isHandled=false;
 			OnEnableEndedExt(ended,record,isRunning,ref isHandled);
