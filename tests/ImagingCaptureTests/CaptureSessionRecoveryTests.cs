@@ -2,6 +2,7 @@
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using ImagingCapture.Recovery;
 using ImagingCapture.Save;
@@ -45,6 +46,56 @@ namespace ImagingCapture.Tests {
 			Assert.AreEqual("",dictFields[CaptureSidecarKeys.MountNum]);
 			Assert.AreEqual("",dictFields[CaptureSidecarKeys.MountItemNum]);
 			Assert.AreEqual("8,9",dictFields[CaptureSidecarKeys.ToothNumbers]);
+		}
+
+		[TestMethod]
+		public void Continuous_FullMountStop_ADrainedImage_QuarantinedWithNoSlotOfItsOwn_AssignFilesItWithoutTheEnablesSlotTeethOrRotation() {
+			CaptureControllerHarness harness=new CaptureControllerHarness(3);
+			harness.Setup.Options.SessionMode=TwainSessionMode.Continuous;
+			harness.Started();
+			harness.Status(TwainCaptureState.WaitingForImage,isSafeDisableInEffect:true);
+			harness.Image();
+			harness.Image();
+			harness.Image();
+			CollectionAssert.AreEqual(new[] { TwainCaptureStopReason.End },harness.Twain.ListDisables,"The full mount disables the continuous enable.");
+			//An exposure taken after the last slot, transferred during that safe stop.
+			AcquiredImage image=harness.Image(AcquiredImageKind.Drained,TwainCaptureStopReason.End);
+			Assert.AreEqual(3,harness.RadiographStore.ListDocumentsUpdated.Count);
+			FakeQuarantineCall call=harness.Twain.ListQuarantined.Single();
+			Assert.AreEqual("Every slot of the mount already holds an image.",call.Reason);
+			Dictionary<string,string> dictImage=ToDictionary(call.Image.SidecarFields);
+			Assert.IsFalse(dictImage.ContainsKey(CaptureSidecarKeys.SlotOfImage),"The session names no slot as this image's own.");
+			Assert.AreEqual("101",dictImage[CaptureSidecarKeys.MountItemNum],"Only its enable's slot, which is not the image's.");
+			using(RecoveryHarness recovery=new RecoveryHarness()) {
+				//Slot 1 is empty in the store (a Retake moved its image), with a rotation of its own.
+				recovery.Slot(1).RotateOnAcquire=90;
+				//The quarantine sidecar as the library writes it: the session's fields and the image's own.
+				Dictionary<string,string> dictFile=RecoveryFiles.SessionFields();
+				foreach(KeyValuePair<string,string> pair in call.Image.SidecarFields) {
+					dictFile[pair.Key]=pair.Value;
+				}
+				dictFile["Slot"]=call.Image.TargetLabel;
+				dictFile["Target"]=call.Image.TargetLabel;
+				dictFile["ImageKind"]=image.Kind.ToString();
+				dictFile[CaptureSidecarKeys.IndexInEnable]=image.IndexInEnable.ToString(CultureInfo.InvariantCulture);
+				dictFile[CaptureSidecarKeys.ContinuousEnable]=image.IsContinuousEnable ? "1" : "0";
+				CaptureFileEntry entry=recovery.Files.Quarantine(dictFile,new DateTime(2026,10,31,10,5,0));
+				Assert.AreEqual(4,entry.IndexInEnable);
+				Assert.IsTrue(entry.IsContinuousEnable);
+				Assert.IsFalse(entry.IsSlotKnown);
+				string error;
+				CaptureAssignPlan plan=recovery.Filer.PlanAssign(entry,0,out error);
+				Assert.IsNotNull(plan,error);
+				Assert.IsFalse(plan.IsIntoOriginalSlot,"Not into slot 1, although it is empty.");
+				Assert.AreEqual(CaptureRecoveryFiler.SlotUnknownNote,plan.Note);
+				CaptureFilingResult result=recovery.Filer.Assign(entry,0,0);
+				Assert.IsTrue(result.IsDone,result.Error);
+				Assert.IsTrue(result.IsMountItemCreated);
+				Document document=recovery.RadiographStore.ListDocumentsUpdated.Single();
+				Assert.AreNotEqual(101,document.MountItemNum);
+				Assert.AreEqual("",document.ToothNumbers,"Not slot 1's teeth...");
+				Assert.AreEqual(0,document.DegreesRotated,"...nor its rotation.");
+			}
 		}
 
 		private static CaptureFilingResult Filed(CaptureControllerHarness harness,int idxSlot,long docNum,long patNum=CaptureControllerHarness.PatNum) {

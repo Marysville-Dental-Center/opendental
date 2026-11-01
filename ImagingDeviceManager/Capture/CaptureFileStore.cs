@@ -143,9 +143,10 @@ namespace ImagingDeviceManager.Capture {
 		public int IndexInEnable => Math.Max(1,(int)GetLong(CaptureSidecarKeys.IndexInEnable));
 		public bool IsContinuousEnable => Get(CaptureSidecarKeys.ContinuousEnable)=="1";
 		///<summary>MountItemNum, SlotItemOrder and ToothNumbers are this image's target (CaptureSidecarKeys.SlotOfImage): the session said so, or
-		///they are its enable's and that is where the session would have placed it (the first image of an enable, an image drained during a stop,
-		///every image of single-target mode). False for a later Normal image of a continuous enable in a mount, and for a redelivered image, when
-		///the session did not record the target: then the slot is not known (design 7.12 Assign files it with no slot and no tooth numbers).</summary>
+		///they are its enable's and that is where the session would have placed it (the first image of an enable, every image of a per-slot
+		///enable, also one drained during a stop, and every image of single-target mode). False for a later image of a continuous enable in a
+		///mount, Normal or drained during its stop, and for a redelivered image, when the session did not record the target: the target moved on
+		///after each image of that enable, so the slot is not known (design 7.12 Assign files it with no slot and no tooth numbers).</summary>
 		public bool IsSlotKnown {
 			get {
 				if(Get(CaptureSidecarKeys.SlotOfImage)=="1") {
@@ -154,7 +155,7 @@ namespace ImagingDeviceManager.Capture {
 				if(IsRedelivered) {
 					return false;
 				}
-				return !(MountNum>0 && IsContinuousEnable && IndexInEnable>1 && Get("ImageKind")==AcquiredImageKind.Normal.ToString());
+				return !(MountNum>0 && IsContinuousEnable && IndexInEnable>1);
 			}
 		}
 		public long MountItemNum => GetLong(CaptureSidecarKeys.MountItemNum);

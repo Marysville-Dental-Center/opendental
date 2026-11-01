@@ -131,7 +131,8 @@ namespace ImagingCapture.Tests {
 		public TwainEnableRequest LastRequest => ListEnables.LastOrDefault();
 		public int LastEnableId => ListEnableIds.LastOrDefault();
 
-		///<summary>Raises image as an image of the last enable (its id, Tag, label and a running index), with kind and the stop reason.</summary>
+		///<summary>Raises image as an image of the last enable (its id, Tag, label, sidecar fields and a running index), with kind and the stop
+		///reason.</summary>
 		public AcquiredImage RaiseImage(AcquiredImage image,AcquiredImageKind kind=AcquiredImageKind.Normal,
 			TwainCaptureStopReason stopReason=TwainCaptureStopReason.None,int enableId=0)
 		{
@@ -148,6 +149,10 @@ namespace ImagingCapture.Tests {
 			image.Kind=kind;
 			image.StopReason=stopReason;
 			image.IndexInEnable=count;
+			//As the library: the enable's sidecar fields, which the session may change before it quarantines the image.
+			image.SidecarFields=request.SidecarFields==null ? null : new List<KeyValuePair<string,string>>(request.SidecarFields);
+			//As the library when the source accepts ContinuousCap: an enable of SessionMode=Continuous runs continuously, a redelivery never.
+			image.IsContinuousEnable=Options.SessionMode==TwainSessionMode.Continuous && !ListRedeliveryEnableIds.Contains(id);
 			ImageAcquired?.Invoke(image);
 			return image;
 		}

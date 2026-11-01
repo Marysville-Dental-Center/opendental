@@ -157,7 +157,13 @@ namespace ImagingCapture.Tests {
 			dictFields[CaptureSidecarKeys.ContinuousEnable]="1";
 			dictFields[CaptureSidecarKeys.IndexInEnable]="2";
 			dictFields["ImageKind"]="Drained";
-			Assert.IsTrue(_harness.Files.Quarantine(dictFields,_receivedAt.AddSeconds(1)).IsSlotKnown,"A drained image goes to its enable's slot.");
+			Assert.IsFalse(_harness.Files.Quarantine(dictFields,_receivedAt.AddSeconds(1)).IsSlotKnown,
+				"A later image of a continuous enable drained during its stop was exposed for the target as it was then, not its enable's slot.");
+			dictFields=RecoveryFiles.SessionFields(captureId:"cap-10");
+			dictFields[CaptureSidecarKeys.ContinuousEnable]="0";
+			dictFields[CaptureSidecarKeys.IndexInEnable]="1";
+			dictFields["ImageKind"]="Drained";
+			Assert.IsTrue(_harness.Files.Quarantine(dictFields,_receivedAt.AddSeconds(2)).IsSlotKnown,"A drained image of a per-slot enable goes to its enable's slot.");
 		}
 
 		[TestMethod]

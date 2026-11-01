@@ -1098,9 +1098,10 @@ namespace ImagingCapture.Session {
 			int idxTarget=-1;
 			MountItem mountItemTarget=null;
 			if(!IsSingleTarget) {
-				//A Normal image after the first one comes from a continuous enable (design 7.4): the target as it is now. Otherwise the target
-				//its enable was started for, also for a Drained image (design 7.11).
-				bool isContinuousNext=image.Kind==AcquiredImageKind.Normal && image.IndexInEnable>1;
+				//An image after the first one of a continuous enable (design 7.4), also one drained during its stop (End, a full mount), was
+				//exposed for the target as it is now: the target moved on after each save, so the slot its enable started for is never its own.
+				//Otherwise the target its enable was started for, also for a Drained image of a per-slot enable (design 7.11).
+				bool isContinuousNext=image.IsContinuousEnable && image.IndexInEnable>1;
 				idxTarget=isContinuousNext ? _mountSlots.IdxTarget : record.IdxTarget;
 				mountItemTarget=idxTarget==-1 ? null : _mountSlots.ListMountItems[idxTarget];
 				if(idxTarget==-1) {

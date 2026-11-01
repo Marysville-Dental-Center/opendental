@@ -561,6 +561,36 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void Continuous_EndWithSafeDisable_ALaterImageDrainedDuringTheStop_PlacedIntoTheCurrentTarget_NotTheEnablesFirstSlot() {
+			_harness.Setup.Options.SessionMode=TwainSessionMode.Continuous;
+			_harness.Setup.MountSlots.ListMountItems[1].RotateOnAcquire=90;
+			_harness.Started();
+			_harness.Status(TwainCaptureState.WaitingForImage,isSafeDisableInEffect:true);
+			_harness.Image();
+			_harness.Image();
+			Assert.AreEqual(103,Controller.MountSlots.Target.MountItemNum);
+			Assert.IsTrue(_harness.Execute(CaptureSessionAction.End));
+			CollectionAssert.AreEqual(new[] { TwainCaptureStopReason.End },_harness.Twain.ListDisables);
+			//The exposure for slot 3 that the source still held is transferred during the safe stop.
+			AcquiredImage image=_harness.Image(AcquiredImageKind.Drained,TwainCaptureStopReason.End);
+			Assert.AreEqual(3,image.IndexInEnable);
+			Assert.IsTrue(image.IsContinuousEnable);
+			Assert.AreEqual(0,_harness.Twain.ListQuarantined.Count,"Not to the quarantine as an image for slot 1, which holds one.");
+			CollectionAssert.AreEqual(new long[] { 101,102,103 },_harness.RadiographStore.ListDocumentsUpdated.Select(x => x.MountItemNum).ToList(),
+				"Into the target it was exposed for.");
+			Document document=_harness.RadiographStore.ListDocumentsUpdated[2];
+			Assert.AreEqual("6",document.ToothNumbers,"Slot 3's teeth, not slot 1's...");
+			Assert.AreEqual(0,document.DegreesRotated,"...nor slot 1's rotation.");
+			Assert.AreEqual(90,_harness.RadiographStore.ListDocumentsUpdated[0].DegreesRotated);
+			Dictionary<string,string> dictFields=image.SidecarFields.ToDictionary(x => x.Key,x => x.Value);
+			Assert.AreEqual("103",dictFields[CaptureSidecarKeys.MountItemNum]);
+			Assert.AreEqual("1",dictFields[CaptureSidecarKeys.SlotOfImage]);
+			_harness.Ended(TwainCaptureEndReason.Stopped,ended => ended.StopReason=TwainCaptureStopReason.End);
+			Assert.AreEqual(CaptureSessionPhase.Finished,Controller.Phase);
+			Assert.AreEqual(1,_harness.Twain.ListDisables.Count,"The full mount after the drained image starts no second disable.");
+		}
+
+		[TestMethod]
 		public void ContinuousConfigured_ButTheEnableRanPerSlot_EnablesAgain() {
 			_harness.Setup.Options.SessionMode=TwainSessionMode.Continuous;
 			_harness.Started();
