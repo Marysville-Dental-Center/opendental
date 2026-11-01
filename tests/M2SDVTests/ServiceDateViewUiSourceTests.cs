@@ -68,6 +68,19 @@ namespace M2SDVTests {
 		}
 
 		[TestMethod]
+		public void OwnedFiles_FollowThePackagesMergedBefore() {
+			//M2-CLAIMRCV: the Account grid (and statements) show claim status H with the 26.1 text.
+			string sourceAccount=ReadSource(Path.Combine("OpenDentBusiness","Db Multi Table","AccountModules.cs"));
+			StringAssert.Contains(sourceAccount,"Lans.g(\"ContrAccount\",ClaimReceiveRelated.HOLD_UNTIL_PRIOR_RECEIVED)");
+			Assert.IsFalse(sourceAccount.Contains("\"Hold until Pri received\""));
+			//M2-SHEETS: growing text fields are measured with the font they are drawn with (a fallback font for scripts the field's font lacks).
+			string sourceSheetUtil=ReadSource(Path.Combine("OpenDentBusiness","SheetFramework","SheetUtil.cs"));
+			Assert.AreEqual(2,CountOf(sourceSheetUtil,"new Font(SheetFonts.GetFontNameForText(field.FontName,field.FieldValue),field.FontSize,fontstyle)"),
+				"CalculateHeights and CalculateHeightsPageBreakForText.");
+			Assert.AreEqual(0,CountOf(sourceSheetUtil,"new Font(field.FontName,field.FontSize,fontstyle)"));
+		}
+
+		[TestMethod]
 		public void DisplayFieldCategories_ListTheServiceDateViewCategory() {
 			//FormDisplayFieldCategories lists every DisplayFieldCategory except None, so category 22 appears with its description.
 			string source=ReadSource(Path.Combine("OpenDental","Forms","FormDisplayFieldCategories.cs"));

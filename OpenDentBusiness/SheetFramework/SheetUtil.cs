@@ -152,7 +152,8 @@ namespace OpenDentBusiness{
 						calcH=field.Height;
 						break;
 					default:
-						using(Font font=new Font(field.FontName,field.FontSize,fontstyle)) {
+						//Measured with the font the text is drawn with: a fallback font for scripts the field's font lacks (M2-SHEETS), the field's font otherwise.
+						using(Font font=new Font(SheetFonts.GetFontNameForText(field.FontName,field.FieldValue),field.FontSize,fontstyle)) {
 							HeightAndChars heightAndChars=GraphicsHelper.MeasureStringH(field.FieldValue,font,field.Width,int.MaxValue,field.TextAlign);
 							calcH=heightAndChars.Height;
 						}
@@ -923,7 +924,8 @@ namespace OpenDentBusiness{
 			if(field.FontIsBold) {
 				fontstyle=FontStyle.Bold;
 			}
-			Font font=new Font(field.FontName,field.FontSize,fontstyle);
+			//The font the text is drawn with: a fallback font for scripts the field's font lacks (M2-SHEETS), the field's font otherwise.
+			Font font=new Font(SheetFonts.GetFontNameForText(field.FontName,field.FieldValue),field.FontSize,fontstyle);
 			int bottomCurPage=SheetPrinting.BottomCurPage(field.YPos,sheet,out int pageCount);
 			int heightMaxToFit=bottomCurPage-field.YPos;//the max height that the new text box can be in order to fit on the current page.
 			int heightCalculated=GraphicsHelper.MeasureStringH(field.FieldValue,font,field.Width,heightMaxToFit,field.TextAlign).Height;
