@@ -1635,7 +1635,6 @@ namespace ImagingCapture.Session {
 			}
 		}
 
-		///<summary>Log, once per text in this session (the 8-bit reason, design 7.8).</summary>
 		///<summary>An image of more than 8 bits was not read because of its layout (TwainCaptureEnded or TwainCaptureStatus.LayoutUnusableText):
 		///from now on this session asks for 8 bits on this device. Logged once.</summary>
 		private void NoteLayoutUnusable(string layoutUnusableText) {
@@ -1646,6 +1645,7 @@ namespace ImagingCapture.Session {
 			LogOnce(_reasonLayoutUnusable+". The session asks for 8 bits for the rest of this session.");
 		}
 
+		///<summary>Log, once per text in this session (the 8-bit reason, design 7.8).</summary>
 		private void LogOnce(string text) {
 			if(_hashSetReasonsLogged.Add(text??"")) {
 				Log(text);
