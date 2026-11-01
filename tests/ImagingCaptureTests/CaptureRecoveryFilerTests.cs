@@ -704,6 +704,36 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void TestCaptureImage_NeverFiledToAPatient_NeitherAssignedNorReassigned_EvenAs8BitCopy() {
+			//Test capture asks for 16 bits without any gate, and its polarity check may have failed: its images are never filed, so an Invert in the
+			//sidecar is never taken as verified for a patient's copy.
+			Dictionary<string,string> dictFields=RecoveryFiles.SessionFields(patNum:0);
+			dictFields[CaptureSidecarKeys.TestCapture]="1";
+			dictFields["Device.12.Polarity"]="Invert";
+			CaptureFileEntry entry=_harness.Files.Journal16(dictFields,_receivedAt);
+			Assert.IsTrue(CaptureRecoveryFiler.IsTestCapture(entry));
+			Assert.IsFalse(CaptureRecoveryFiler.IsAssignOffered(entry,42));
+			Assert.IsFalse(CaptureRecoveryFiler.IsReassignOffered(entry));
+			CaptureFilingResult result=_harness.Filer.Reassign(entry,_harness.PatientJane,"It looked like Jane's.",20);
+			Assert.IsFalse(result.IsDone);
+			Assert.AreEqual(CaptureRecoveryText.TestCaptureNote,result.Error);
+			Assert.AreEqual(0,RadiographStore.ListPatientsImported.Count);
+			Assert.IsFalse(_harness.Files.Store.ListJournal().Single().IsResolved);
+			//A Test capture image from before the key: no patient, and Test capture's own target (journal) or patient name (quarantine).
+			Dictionary<string,string> dictFieldsOld=RecoveryFiles.SessionFields(patNum:0,captureId:"cap-8");
+			dictFieldsOld["Target"]=ImagingCapture.UI.TestCaptureModel.TargetLabel;
+			Assert.IsTrue(CaptureRecoveryFiler.IsTestCapture(_harness.Files.Journal(dictFieldsOld,_receivedAt.AddMinutes(1))));
+			Dictionary<string,string> dictFieldsQuarantine=RecoveryFiles.SessionFields(patNum:0,captureId:"cap-9");
+			dictFieldsQuarantine["Patient"]=ImagingCapture.UI.TestCaptureModel.QuarantinePatientName;
+			CaptureFileEntry entryQuarantine=_harness.Files.Quarantine(dictFieldsQuarantine,_receivedAt.AddMinutes(2));
+			Assert.IsTrue(CaptureRecoveryFiler.IsTestCapture(entryQuarantine));
+			Assert.IsFalse(CaptureRecoveryFiler.IsReassignOffered(entryQuarantine));
+			Assert.IsTrue(CaptureRecoveryFiler.IsDiscardOffered(entryQuarantine),"A test image in the quarantine can still be discarded.");
+			Assert.IsFalse(CaptureRecoveryFiler.IsTestCapture(_harness.Files.Quarantine(RecoveryFiles.SessionFields(patNum:0,captureId:"cap-10"),
+				_receivedAt.AddMinutes(3))),"Any other image with no patient is reassigned as before.");
+		}
+
+		[TestMethod]
 		public void Assign_16Bit_PolarityInvert_TheCopyIsInverted() {
 			Dictionary<string,string> dictFields=RecoveryFiles.SessionFields();
 			dictFields["Device.12.Polarity"]="Invert";//as the library's sidecar records the settings in effect

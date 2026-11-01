@@ -58,6 +58,9 @@ namespace ImagingDeviceManager.Capture {
 		public const string DriverProductName="DriverProductName";
 		public const string DriverVersion="DriverVersion";
 		public const string DriverVersionInfo="DriverVersionInfo";
+		///<summary>"1": the image was taken by Test capture (TestCaptureModel adds it through TwainEnableRequest.SidecarFields), a phantom or a ramp
+		///taken without any of the session's conditions for more than 8 bits: never filed to a patient.</summary>
+		public const string TestCapture="TestCapture";
 		///<summary>Written when a quarantine file or journal copy is filed or discarded (CaptureFileStore.Resolve): what happened to it.</summary>
 		public const string Disposition="Disposition";
 		public const string DispositionAt="DispositionAt";
@@ -203,6 +206,8 @@ namespace ImagingDeviceManager.Capture {
 		///<summary>A journal copy whose image went to the quarantine instead of the caller (Delivered=Quarantine): it is filed from the quarantine.</summary>
 		public bool IsCopyOfQuarantined => Kind==CaptureFileKind.Journal && Delivered==CaptureJournal.DeliveredQuarantine;
 		public bool IsRedelivered => Get("Redelivered")=="1";
+		///<summary>A Test capture image (CaptureSidecarKeys.TestCapture).</summary>
+		public bool IsTestCapture => Get(CaptureSidecarKeys.TestCapture)=="1";
 		///<summary>A redelivered image the operator confirmed for the bound patient (CaptureSidecarKeys.RedeliveryConfirmed).</summary>
 		public bool IsRedeliveryConfirmed => IsRedelivered && Get(CaptureSidecarKeys.RedeliveryConfirmed)=="1";
 		public int Width => (int)GetLong("Width");

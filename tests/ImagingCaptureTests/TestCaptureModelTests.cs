@@ -173,6 +173,8 @@ Name=Not gated
 			Assert.AreEqual(16,request.Bits,"The device's Bits, 16 by default: what the session will ask for.");
 			Assert.AreEqual(TestCaptureModel.TargetLabel,request.TargetLabel);
 			Assert.IsNull(request.ShowUI,"The [Device.N] Headless setting decides, as in the session.");
+			Assert.AreEqual("1",request.SidecarFields.Single(x => x.Key==CaptureSidecarKeys.TestCapture).Value,
+				"Its images' sidecars say so: a test image is never filed to a patient.");
 			model.OnEnablePosted(1);
 			Assert.AreEqual(TestCaptureState.Enabled,model.State);
 			Assert.IsTrue(model.CanStop);

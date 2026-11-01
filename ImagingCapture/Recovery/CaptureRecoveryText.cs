@@ -64,6 +64,8 @@ namespace ImagingCapture.Recovery {
 		public const string Gray16NoSlotNote="16-bit with no slot to go into (no mount, the slot not recorded, or no patient): it is filed as an 8-bit "
 			+"copy, and the 16-bit original is kept.";
 		public const string ToothNumbersUnknown="Tooth numbers unknown";
+		///<summary>A Test capture image (CaptureRecoveryFiler.IsTestCapture) is neither assigned nor reassigned.</summary>
+		public const string TestCaptureNote="A Test capture image is never filed to a patient.";
 
 		///<summary>Where the 16-bit original of entry is kept once its 8-bit copy is filed: its session folder under Capture\quarantine-resolved, or
 		///Capture\quarantine-resolved\journal for a journal copy (copied there; the journal's rotation removes the journal's own).</summary>

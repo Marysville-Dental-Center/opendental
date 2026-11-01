@@ -121,13 +121,27 @@ namespace ImagingCapture.Recovery {
 		///journal copy only when patNumSession is that patient (Recover recent captures in the patient's session). A redelivered image the operator
 		///did not confirm is "patient unknown" whatever PatNum its sidecar has (a sidecar written before the library left it out): Reassign only.</summary>
 		public static bool IsAssignOffered(CaptureFileEntry entry,long patNumSession) {
-			if(entry==null || entry.IsPatientUnknown || entry.IsResolved || IsRedeliveredUnconfirmed(entry)) {
+			if(entry==null || entry.IsPatientUnknown || entry.IsResolved || IsRedeliveredUnconfirmed(entry) || IsTestCapture(entry)) {
 				return false;
 			}
 			if(entry.Kind==CaptureFileKind.Journal) {
 				return !IsJournalCopyOfQuarantined(entry) && patNumSession>0 && entry.PatNum==patNumSession;
 			}
 			return true;
+		}
+
+		///<summary>A Test capture image (CaptureSidecarKeys.TestCapture, or, from before that key, a file with no patient whose target or patient
+		///name is Test capture's own): taken of a phantom or a ramp without any of the session's conditions for more than 8 bits, so it is never
+		///filed to a patient, neither assigned nor reassigned (TestCaptureModel.Instructions: "never saved to a patient").</summary>
+		public static bool IsTestCapture(CaptureFileEntry entry) {
+			if(entry==null) {
+				return false;
+			}
+			if(entry.IsTestCapture) {
+				return true;
+			}
+			return entry.IsPatientUnknown && (entry.Get("Target")==ImagingCapture.UI.TestCaptureModel.TargetLabel
+				|| entry.Get("Patient")==ImagingCapture.UI.TestCaptureModel.QuarantinePatientName);
 		}
 
 		///<summary>Design 7.12: a redelivered image is placed only after the operator confirmed it; until then its patient is unknown.</summary>
@@ -313,9 +327,9 @@ namespace ImagingCapture.Recovery {
 		}
 
 		///<summary>The explicit 8-bit copy of a 16-bit capture (owner decision 2026-11-01): RadiographSavePlanner makes it through the window the
-		///session shows, with the polarity the capture was taken with (its sidecar's [Device.N] Polarity). A capture of more than 8 bits is taken
-		///only under a matching, passed verification record (CaptureBitDepthDecision), which covers that polarity, so an Invert in the sidecar
-		///counts as verified.</summary>
+		///session shows, with the polarity the capture was taken with (its sidecar's [Device.N] Polarity). The capture session takes more than 8
+		///bits only under a matching, passed verification record (CaptureBitDepthDecision), which covers that polarity, so an Invert in the sidecar
+		///counts as verified. Test capture asks for more than 8 bits without one, so its images are never filed (IsTestCapture).</summary>
 		private static bool ApplyCopyRules(CaptureFileEntry entry,RadiographSaveRequest request) {
 			request.Is8BitCopyOf16Bit=true;
 			request.Is16BitAllowed=false;
@@ -352,6 +366,9 @@ namespace ImagingCapture.Recovery {
 			}
 			if(IsJournalCopyOfQuarantined(entry)) {
 				return "This copy's image is in unassigned captures; file it from there.";
+			}
+			if(IsTestCapture(entry)) {
+				return CaptureRecoveryText.TestCaptureNote;
 			}
 			if(entry.IsPatientUnknown || IsRedeliveredUnconfirmed(entry)) {
 				return "This capture has no originating patient, so it can only be reassigned to a patient you find.";
@@ -503,7 +520,7 @@ namespace ImagingCapture.Recovery {
 		///as its explicit 8-bit copy (owner decision 2026-11-01): Reassign files an unmounted document with no tooth numbers, which 16-bit DICOM
 		///cannot be (design 7.8), and the 16-bit original is kept.</summary>
 		public static bool IsReassignOffered(CaptureFileEntry entry) {
-			return entry!=null && !entry.IsResolved && entry.Extension!=".dcm" && !IsJournalCopyOfQuarantined(entry);
+			return entry!=null && !entry.IsResolved && entry.Extension!=".dcm" && !IsJournalCopyOfQuarantined(entry) && !IsTestCapture(entry);
 		}
 
 		///<summary>Files entry for patientTarget, whom the user found with the patient search (design 7.12 "Reassign"): ImageEdit, a typed reason,
@@ -511,7 +528,8 @@ namespace ImagingCapture.Recovery {
 		public CaptureFilingResult Reassign(CaptureFileEntry entry,Patient patientTarget,string reason,long docCategory) {
 			const CaptureRecoveryAction action=CaptureRecoveryAction.Reassign;
 			if(!IsReassignOffered(entry)) {
-				return CaptureFilingResult.Refused(action,entry,entry?.IsResolved==true ? "This capture was already filed." : "This file cannot be reassigned.");
+				return CaptureFilingResult.Refused(action,entry,entry?.IsResolved==true ? "This capture was already filed."
+					: IsTestCapture(entry) ? CaptureRecoveryText.TestCaptureNote : "This file cannot be reassigned.");
 			}
 			string message;
 			if(!IsAuthorized(EnumPermType.ImageEdit,entry.ReceivedAt,out message)) {

@@ -226,12 +226,15 @@ namespace ImagingCapture.UI {
 			Version++;
 		}
 
-		///<summary>The request for the next enable: BitsToRequest, the configured byte order and window setting, and the test target.</summary>
+		///<summary>The request for the next enable: BitsToRequest, the configured byte order and window setting, and the test target. Its images'
+		///sidecars say TestCapture=1 (CaptureSidecarKeys.TestCapture), so that the unassigned captures window never files one to a patient: a test
+		///image is taken without the session's conditions for more than 8 bits.</summary>
 		public TwainEnableRequest CreateEnableRequest() {
 			TwainEnableRequest request=new TwainEnableRequest();
 			request.Bits=BitsToRequest;
 			request.Tag=this;
 			request.TargetLabel=TargetLabel;
+			request.SidecarFields=new List<KeyValuePair<string,string>> { new KeyValuePair<string,string>(CaptureSidecarKeys.TestCapture,"1") };
 			return request;
 		}
 

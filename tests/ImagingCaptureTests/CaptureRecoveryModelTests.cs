@@ -159,6 +159,20 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void TestCaptureImage_TheNoteSaysItIsNeverFiled() {
+			Dictionary<string,string> dictFields=RecoveryFiles.SessionFields(patNum:0);
+			dictFields[CaptureSidecarKeys.TestCapture]="1";
+			_harness.Files.Quarantine16(dictFields,_receivedAt);
+			CaptureRecoveryModel model=Model(CaptureRecoveryView.Unassigned);
+			CaptureRecoveryItem item=model.Items.Single();
+			Assert.IsFalse(item.IsAssignOffered);
+			Assert.IsFalse(item.IsReassignOffered);
+			Assert.IsTrue(item.IsDiscardOffered);
+			StringAssert.Contains(item.NoteText,CaptureRecoveryText.TestCaptureNote);
+			Assert.IsFalse(model.BeginReassign());
+		}
+
+		[TestMethod]
 		public void Assign_PermissionWhenBegun_ThenTheExplicitConfirmation() {
 			_harness.Files.Quarantine(RecoveryFiles.SessionFields(),_receivedAt);
 			CaptureRecoveryModel model=Model(CaptureRecoveryView.Unassigned);

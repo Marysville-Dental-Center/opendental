@@ -323,7 +323,10 @@ namespace ImagingCapture.Recovery {
 				bool hasNoSlot=entry.MountNum<=0 || !entry.IsSlotKnown || entry.IsPatientUnknown || CaptureRecoveryFiler.IsRedeliveredUnconfirmed(entry);
 				listNotes.Add(hasNoSlot ? CaptureRecoveryText.Gray16NoSlotNote : CaptureRecoveryText.Gray16Note);
 			}
-			if(!item.IsReassignOffered && !item.IsAssignOffered) {
+			if(CaptureRecoveryFiler.IsTestCapture(entry)) {
+				listNotes.Add(CaptureRecoveryText.TestCaptureNote);
+			}
+			else if(!item.IsReassignOffered && !item.IsAssignOffered) {
 				listNotes.Add("This file cannot be filed here.");
 			}
 			else if(!item.IsAssignOffered) {
