@@ -778,6 +778,44 @@ namespace ImagingCapture.Tests {
 			StringAssert.Contains(File.ReadAllText(Path.ChangeExtension(pathKept,".txt")),"DispositionDocNum="+result.Document.DocNum);
 			Assert.IsTrue(_harness.Files.Store.ListJournal().Single().IsResolved,"The journal copy itself is marked as filed, as before.");
 		}
+		[TestMethod]
+		public void Reassign_16BitOnlyJournalCopy_TheOriginalKeptBeforeTheCopyIsFiled_TheDispositionOnce() {
+			//The quarantine write failed (Delivered=None): the journal's -only copy is the 16-bit original's only copy. Resolve gives it its plain
+			//name and marks it as filed, so rotation may remove it: it must be kept first.
+			CaptureFileEntry entry=_harness.Files.Journal16(RecoveryFiles.SessionFields(),_receivedAt,"None");
+			StringAssert.Contains(entry.FileName,"-only");
+			CaptureFilingResult result=_harness.Filer.Reassign(entry,_harness.PatientJohn,"Taken under the wrong chart.",20);
+			Assert.IsTrue(result.IsDone,result.Error);
+			Assert.AreEqual(".png",RadiographStore.ListExtensions.Single());
+			string pathKept=Path.Combine(_harness.Files.Folder,CaptureFileStore.SubfolderJournalKept,entry.FileName);
+			Assert.IsTrue(File.Exists(pathKept),"The 16-bit original is kept: "+string.Join(" ",result.ListWarnings));
+			Assert.AreEqual(pathKept,result.PathResolved);
+			Assert.AreEqual(0,result.ListWarnings.Count,string.Join(" ",result.ListWarnings));
+			string textKept=File.ReadAllText(Path.ChangeExtension(pathKept,".txt"));
+			Assert.AreEqual(1,textKept.Split(new[] { "Disposition=" },StringSplitOptions.None).Length-1,"The disposition once: "+textKept);
+			StringAssert.Contains(textKept,"DispositionDocNum="+result.Document.DocNum);
+			StringAssert.Contains(textKept,"DispositionCopy="+RadiographSavePlanner.Copy8BitText);
+			CaptureFileEntry entryAfter=_harness.Files.Store.ListJournal().Single();
+			Assert.IsTrue(entryAfter.IsResolved,"The journal copy itself is marked as filed, as before.");
+			Assert.IsFalse(entryAfter.FileName.Contains("-only"),"Once filed it is no longer the only copy.");
+			CollectionAssert.AreEqual(File.ReadAllBytes(entryAfter.ImagePath),File.ReadAllBytes(pathKept),"Byte for byte.");
+		}
+
+		[TestMethod]
+		public void Assign_16BitJournalCopy_TheOriginalCannotBeKept_NothingFiled() {
+			CaptureFileEntry entry=_harness.Files.Journal16(RecoveryFiles.SessionFields(),_receivedAt);
+			Store.DictSlotDocuments[103]=new Document { DocNum=900,PatNum=42,MountItemNum=103 };
+			string folderKept=Path.Combine(_harness.Files.Folder,CaptureFileStore.SubfolderJournalKept);
+			Directory.CreateDirectory(folderKept);
+			File.WriteAllBytes(Path.Combine(folderKept,entry.FileName),new byte[] { 1,2,3 });//another file of the same name
+			CaptureFilingResult result=_harness.Filer.Assign(entry,0,42);
+			Assert.IsFalse(result.IsDone);
+			StringAssert.StartsWith(result.Error,"The 16-bit original could not be kept in "+CaptureFileStore.SubfolderJournalKept);
+			StringAssert.EndsWith(result.Error,"so its 8-bit copy was not filed.");
+			Assert.AreEqual(0,RadiographStore.ListPatientsImported.Count,"Nothing filed.");
+			Assert.IsFalse(_harness.Files.Store.ListJournal().Single().IsResolved,"The journal copy is still offered.");
+			CollectionAssert.AreEqual(new byte[] { 1,2,3 },File.ReadAllBytes(Path.Combine(folderKept,entry.FileName)),"Never overwritten.");
+		}
 		#endregion The 16-bit filing route
 
 		#region Discard

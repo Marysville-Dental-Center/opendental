@@ -183,11 +183,12 @@ namespace ImagingCapture.Tests {
 			return Store.ListQuarantine().Single(x => x.ImagePath==path);
 		}
 
-		///<summary>A 16-bit journal copy (.tif) with Delivered=Caller, its samples 1000+97*i as Quarantine16's.</summary>
-		public CaptureFileEntry Journal16(Dictionary<string,string> dictFields,DateTime receivedAt) {
+		///<summary>A 16-bit journal copy (.tif) with Delivered (Caller, or None for an only copy, named -only), its samples 1000+97*i as
+		///Quarantine16's.</summary>
+		public CaptureFileEntry Journal16(Dictionary<string,string> dictFields,DateTime receivedAt,string delivered="Caller") {
 			string folder=Path.Combine(Folder,@"Capture\journal");
 			dictFields["Kind"]="journal copy";
-			dictFields["Delivered"]="Caller";
+			dictFields["Delivered"]=delivered;
 			dictFields["RequestedBits"]="16";
 			dictFields["TransferMechanism"]="Memory";
 			dictFields[CaptureSidecarKeys.BitDepth16InEffect]="1";
@@ -198,7 +199,7 @@ namespace ImagingCapture.Tests {
 			for(int i=0;i<arraySamples.Length;i++) {
 				arraySamples[i]=(ushort)(1000+i*97);
 			}
-			string path=Write(folder,receivedAt,Tiff16(6,4,arraySamples),".tif",dictFields);
+			string path=Write(folder,receivedAt,Tiff16(6,4,arraySamples),".tif",dictFields,delivered=="None" ? "-only" : "");
 			return Store.ListJournal().Single(x => x.ImagePath==path);
 		}
 

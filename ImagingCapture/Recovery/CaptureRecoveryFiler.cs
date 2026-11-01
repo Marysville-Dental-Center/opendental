@@ -277,8 +277,13 @@ namespace ImagingCapture.Recovery {
 					return CaptureFilingResult.Refused(action,entry,error);
 				}
 			}
+			string pathKept;
+			if(!KeepOriginalBeforeCopy(entry,request,out pathKept,out error)) {
+				return CaptureFilingResult.Refused(action,entry,error);
+			}
 			RadiographSaveResult resultSave=_radiographImport.Save(request);
 			if(!resultSave.IsSaved) {
+				LogKeptUnfiled(pathKept);
 				return CaptureFilingResult.Refused(action,entry,"The image was not filed: "+(resultSave.Error??"").Trim());
 			}
 			CaptureFilingResult result=NewResult(action,entry,plan.Patient.PatNum,resultSave,plan.Mount,plan.TargetText);
@@ -292,8 +297,41 @@ namespace ImagingCapture.Recovery {
 				Pair("DispositionTarget",plan.TargetText),
 			};
 			AddCopyFields(listFields,resultSave);
-			Resolve(entry,CaptureFileDisposition.Assigned,listFields,result);
+			Resolve(entry,CaptureFileDisposition.Assigned,listFields,result,pathKept);
 			return result;
+		}
+
+		///<summary>A 16-bit journal copy filed as its 8-bit copy (request.Is8BitCopyOf16Bit): the journal's rotation would remove the 16-bit
+		///original once the copy is marked as filed, so it is kept with its sidecar in Capture\quarantine-resolved\journal first, before anything is
+		///saved, and the filing is refused when that fails (owner decision 2026-11-01: the 16-bit original stays in quarantine-resolved; nothing is
+		///ever deleted). pathKept: the kept image, or null when nothing needs keeping (a quarantine file moves there with Resolve).</summary>
+		private bool KeepOriginalBeforeCopy(CaptureFileEntry entry,RadiographSaveRequest request,out string pathKept,out string error) {
+			pathKept=null;
+			error="";
+			if(entry.Kind!=CaptureFileKind.Journal || !request.Is8BitCopyOf16Bit) {
+				return true;
+			}
+			string errorKept;
+			if(!_services.FileStore.KeepJournalCopy(entry,out pathKept,out errorKept)) {
+				pathKept=null;
+				error="The 16-bit original could not be kept in "+CaptureFileStore.SubfolderJournalKept+" ("+(errorKept??"").Trim().TrimEnd('.')+"), so "
+					+"its 8-bit copy was not filed.";
+				Log(error+" File: "+entry.ImagePath);
+				return false;
+			}
+			if(!string.IsNullOrEmpty(errorKept)) {
+				Log("Keeping "+entry.ImagePath+": "+errorKept);
+			}
+			Log("The 16-bit original "+entry.ImagePath+" is kept as "+pathKept+" before its 8-bit copy is filed.");
+			return true;
+		}
+
+		///<summary>The filing failed after KeepOriginalBeforeCopy kept the original: the kept copy stays, without a disposition (a later filing of
+		///the same copy uses it again).</summary>
+		private void LogKeptUnfiled(string pathKept) {
+			if(pathKept!=null) {
+				Log("The filing failed; "+pathKept+" stays kept, with no disposition.");
+			}
 		}
 
 		///<summary>plan files the capture for the same patient, into the same target, and as an 8-bit copy or not, as planConfirmed.</summary>
@@ -570,8 +608,13 @@ namespace ImagingCapture.Recovery {
 			if(image.IsGray16) {
 				ApplyCopyRules(entry,request);//an unmounted document with no teeth: the explicit 8-bit copy, the 16-bit original kept
 			}
+			string pathKept;
+			if(!KeepOriginalBeforeCopy(entry,request,out pathKept,out error)) {
+				return CaptureFilingResult.Refused(action,entry,error);
+			}
 			RadiographSaveResult resultSave=_radiographImport.Save(request);
 			if(!resultSave.IsSaved) {
+				LogKeptUnfiled(pathKept);
 				return CaptureFilingResult.Refused(action,entry,"The image was not filed: "+(resultSave.Error??"").Trim());
 			}
 			string targetText=CaptureRecoveryText.GetTargetText(null,null,CaptureRecoveryText.ReassignedDescription,"");
@@ -590,7 +633,7 @@ namespace ImagingCapture.Recovery {
 				Pair("DispositionReason",reasonTrimmed),
 			};
 			AddCopyFields(listFields,resultSave);
-			Resolve(entry,CaptureFileDisposition.Reassigned,listFields,result);
+			Resolve(entry,CaptureFileDisposition.Reassigned,listFields,result,pathKept);
 			return result;
 		}
 		#endregion Reassign
@@ -701,42 +744,39 @@ namespace ImagingCapture.Recovery {
 		}
 
 		///<summary>Moves a filed capture out of the quarantine (or marks its journal copy). A failure leaves the document filed: the window says so,
-		///and the item is not offered again in this window.</summary>
+		///and the item is not offered again in this window. pathKept: where KeepOriginalBeforeCopy kept a 16-bit journal copy filed as its 8-bit
+		///copy, or null; its kept sidecar gets the disposition too, and it is where the 16-bit original now is (PathResolved).</summary>
 		private void Resolve(CaptureFileEntry entry,CaptureFileDisposition disposition,List<KeyValuePair<string,string>> listFields,
-			CaptureFilingResult result)
+			CaptureFilingResult result,string pathKept=null)
 		{
 			string pathResolved;
 			string error;
-			if(!_services.FileStore.Resolve(entry,disposition,listFields,out pathResolved,out error)) {
+			bool isResolved=_services.FileStore.Resolve(entry,disposition,listFields,out pathResolved,out error);
+			if(pathKept!=null) {
+				//The journal copy is marked as filed (as before) and its rotation may remove it; the 16-bit original is the kept copy.
+				string errorKept;
+				if(_services.FileStore.RecordKeptDisposition(pathKept,entry,disposition,listFields,out errorKept)) {
+					Log("The 16-bit original is kept as "+pathKept+", its sidecar with the disposition.");
+				}
+				else {
+					result.ListWarnings.Add("The 16-bit original is kept as "+pathKept+", but its sidecar could not record the filing: "+errorKept);
+					Log("The kept 16-bit original "+pathKept+" could not record the filing: "+errorKept);
+				}
+			}
+			if(!isResolved) {
 				result.ListWarnings.Add("The image was filed as DocNum "+result.Document?.DocNum+", but its file could not be marked as filed, so it may be "
 					+"listed again: "+error);
 				Log(disposition+" "+entry.ImagePath+" as DocNum "+result.Document?.DocNum+"; the file could not be marked: "+error);
+				if(pathKept!=null) {
+					result.PathResolved=pathKept;
+				}
 				return;
 			}
-			result.PathResolved=pathResolved;
+			result.PathResolved=pathKept??pathResolved;
 			if(error!="") {
 				result.ListWarnings.Add(error);
 			}
 			Log(disposition+" "+entry.ImagePath+" as DocNum "+result.Document?.DocNum+" for PatNum "+result.PatNum+".");
-			if(entry.Kind==CaptureFileKind.Journal && listFields.Any(x => x.Key=="DispositionCopy")) {
-				//A 16-bit journal copy filed as its 8-bit copy: the journal's rotation would remove the 16-bit original, so it is kept with its
-				//sidecar in Capture\quarantine-resolved\journal too (the journal copy itself is marked as filed, as before).
-				string pathKept;
-				string errorKept;
-				if(_services.FileStore.KeepJournalCopyResolved(entry,disposition,listFields,out pathKept,out errorKept)) {
-					result.PathResolved=pathKept;
-					if(errorKept!="") {
-						result.ListWarnings.Add(errorKept);
-					}
-					Log("The 16-bit original "+entry.ImagePath+" is kept as "+pathKept+".");
-				}
-				else {
-					result.ListWarnings.Add("The 8-bit copy was filed as DocNum "+result.Document?.DocNum+", but the 16-bit original could not be kept in "
-						+CaptureFileStore.SubfolderJournalKept+" ("+errorKept+"); it is still in the capture journal. Copy it there by hand before the "
-						+"journal's rotation removes it.");
-					Log("The 16-bit original "+entry.ImagePath+" could not be kept: "+errorKept);
-				}
-			}
 		}
 
 		private bool IsAuthorized(EnumPermType permType,DateTime date,out string message) {

@@ -274,10 +274,12 @@ namespace ImagingDeviceManager.Capture {
 		///nothing was changed.</summary>
 		bool Resolve(CaptureFileEntry entry,CaptureFileDisposition disposition,IList<KeyValuePair<string,string>> listFields,out string pathResolved,
 			out string error);
-		///<summary>Copies a journal copy (its image, and its sidecar with the disposition) into Capture\quarantine-resolved\journal, so that it is
-		///kept past the journal's rotation (see CaptureFileStore.KeepJournalCopyResolved). Returns false with error when nothing was kept.</summary>
-		bool KeepJournalCopyResolved(CaptureFileEntry entry,CaptureFileDisposition disposition,IList<KeyValuePair<string,string>> listFields,
-			out string pathKept,out string error);
+		///<summary>Copies a journal copy (its image and its sidecar as they are) into Capture\quarantine-resolved\journal before it is filed, so
+		///that it is kept past the journal's rotation (see CaptureFileStore.KeepJournalCopy). Returns false with error when nothing was kept.</summary>
+		bool KeepJournalCopy(CaptureFileEntry entry,out string pathKept,out string error);
+		///<summary>Appends the disposition to the sidecar of a copy KeepJournalCopy kept at pathKept. Returns false with error when it could not.</summary>
+		bool RecordKeptDisposition(string pathKept,CaptureFileEntry entry,CaptureFileDisposition disposition,IList<KeyValuePair<string,string>> listFields,
+			out string error);
 	}
 
 	///<summary>Lists, reads and resolves the quarantine files and journal copies under %ProgramData%\OpenPMS-Dental\Imaging\Capture (design 7.1,
@@ -568,17 +570,16 @@ namespace ImagingDeviceManager.Capture {
 			}
 		}
 
-		///<summary>The subfolder of Capture\quarantine-resolved where KeepJournalCopyResolved keeps journal copies.</summary>
+		///<summary>The subfolder of Capture\quarantine-resolved where KeepJournalCopy keeps journal copies.</summary>
 		public const string SubfolderJournalKept=CaptureFolders.SubfolderQuarantineResolved+@"\journal";
 
-		///<summary>Copies the journal copy entry, its image byte for byte and its sidecar with the disposition appended, into
-		///Capture\quarantine-resolved\journal: the journal's rotation removes old copies, and a 16-bit copy that was filed as an explicit 8-bit
-		///copy must keep its 16-bit original (owner decision 2026-11-01). The journal copy itself is left as it is (Resolve marks it). Nothing is
-		///moved, replaced or removed: a file of the same name there is never overwritten. pathKept is the kept image. False with error when nothing
-		///was kept; true with error for a warning (the folder's rule).</summary>
-		public bool KeepJournalCopyResolved(CaptureFileEntry entry,CaptureFileDisposition disposition,IList<KeyValuePair<string,string>> listFields,
-			out string pathKept,out string error)
-		{
+		///<summary>Copies the journal copy entry, its image byte for byte and its sidecar as it is, into Capture\quarantine-resolved\journal, before
+		///it is filed: the journal's rotation removes old copies, and a 16-bit copy that is filed as an explicit 8-bit copy must keep its 16-bit
+		///original (owner decision 2026-11-01), so the filing is refused when this fails. RecordKeptDisposition then appends the disposition to the
+		///kept sidecar. The journal copy itself is left as it is (Resolve marks it). Nothing is moved, replaced or removed: a file of the same name
+		///there is never overwritten; when it is the same image (kept by an earlier filing of this copy that did not complete) it is used again.
+		///pathKept is the kept image. False with error when nothing was kept; true with error for a warning (the folder's rule).</summary>
+		public bool KeepJournalCopy(CaptureFileEntry entry,out string pathKept,out string error) {
 			pathKept=null;
 			error="";
 			if(entry==null || entry.Kind!=CaptureFileKind.Journal || string.IsNullOrEmpty(entry.ImagePath)) {
@@ -597,12 +598,43 @@ namespace ImagingDeviceManager.Capture {
 					return false;
 				}
 				string pathImageKept=Path.Combine(folderKept,entry.FileName);
-				File.Copy(entry.ImagePath,pathImageKept);//fails when the name exists; nothing is replaced
-				string textSidecar=entry.SidecarPath!=null && File.Exists(entry.SidecarPath) ? File.ReadAllText(entry.SidecarPath,Encoding.UTF8) : "";
 				string pathSidecarKept=Path.Combine(folderKept,Path.GetFileNameWithoutExtension(entry.FileName)+CaptureFiles.SidecarExtension);
-				File.WriteAllText(pathSidecarKept,textSidecar+BuildDisposition(entry,disposition,listFields),new UTF8Encoding(false));
+				if(File.Exists(pathImageKept)) {
+					if(!File.ReadAllBytes(pathImageKept).SequenceEqual(File.ReadAllBytes(entry.ImagePath))) {
+						error="A different file named "+entry.FileName+" is already in "+SubfolderJournalKept+"; it is never replaced.";
+						return false;
+					}
+				}
+				else {
+					File.Copy(entry.ImagePath,pathImageKept);//fails when the name exists; nothing is replaced
+				}
+				if(!File.Exists(pathSidecarKept)) {
+					string textSidecar=entry.SidecarPath!=null && File.Exists(entry.SidecarPath) ? File.ReadAllText(entry.SidecarPath,Encoding.UTF8) : "";
+					File.WriteAllText(pathSidecarKept,textSidecar,new UTF8Encoding(false));
+				}
 				pathKept=pathImageKept;
 				error=errorFolder;
+				return true;
+			}
+			catch(Exception ex) {
+				error=ex.Message;
+				return false;
+			}
+		}
+
+		///<summary>Appends the disposition of entry (as Resolve writes it) to the sidecar of the copy KeepJournalCopy kept at pathKept, once the
+		///copy was filed. False with error when it could not; the kept image stays either way.</summary>
+		public bool RecordKeptDisposition(string pathKept,CaptureFileEntry entry,CaptureFileDisposition disposition,IList<KeyValuePair<string,string>> listFields,
+			out string error)
+		{
+			error="";
+			if(string.IsNullOrEmpty(pathKept) || entry==null) {
+				error="No kept copy.";
+				return false;
+			}
+			try {
+				string pathSidecarKept=Path.Combine(Path.GetDirectoryName(pathKept),Path.GetFileNameWithoutExtension(pathKept)+CaptureFiles.SidecarExtension);
+				File.AppendAllText(pathSidecarKept,BuildDisposition(entry,disposition,listFields),new UTF8Encoding(false));
 				return true;
 			}
 			catch(Exception ex) {
