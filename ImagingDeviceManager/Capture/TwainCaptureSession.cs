@@ -679,6 +679,11 @@ namespace ImagingDeviceManager.Capture {
 			});
 			context.IsBitDepth16InEffect=negotiation.Bits==16;
 			context.Reason8Bit=negotiation.Reason8Bit;
+			if(negotiation.RefusalText!=null) {
+				context.Reason=TwainCaptureEndReason.EnableFailed;
+				context.ErrorText=negotiation.RefusalText;
+				return false;
+			}
 			if(_options.NoActivateCap!=null) {
 				_session.SetCustomCapability(_options.NoActivateCap.Value,true,"NoActivateCap");
 			}

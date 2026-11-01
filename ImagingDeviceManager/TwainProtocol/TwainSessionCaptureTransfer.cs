@@ -29,6 +29,9 @@ namespace ImagingDeviceManager.TwainProtocol {
 		///<summary>ICAP_SUPPORTEDEXTIMAGEINFO lists TWEI_TWAINDIRECTMETADATA, so it is read for each image.</summary>
 		public bool IsMetadataListed;
 		public int PixelFlavor=Tw.TWPF_CHOCOLATE;
+		///<summary>Why the enable must not run, or null: an 8-bit enable after a 16-bit one could not bring ICAP_BITDEPTH back to 8, so it
+		///would ask for a 16-bit native DIB (RGB555/565 by definition, TWAIN 2.4 p.12-7) or 16-bit samples in an 8-bit enable.</summary>
+		public string RefusalText;
 	}
 
 	//The transfers of the capture path (design 7.1 CAP-3): the raw 16-bit memory path, DAT_IMAGEINFO for every image, and
@@ -71,6 +74,9 @@ namespace ImagingDeviceManager.TwainProtocol {
 			}
 			result.IsXferCountSet=SetCapabilityQuietly(Tw.CAP_XFERCOUNT,Tw.TWTY_INT16,negotiation.XferCount);
 			NegotiateBitDepth(negotiation,result);
+			if(result.RefusalText!=null) {
+				return result;
+			}
 			NegotiateExtImageInfo(negotiation.WantExtImageInfo,result);
 			int pixelFlavor;
 			_isVanilla=TryGetCapabilityCurrent(Tw.ICAP_PIXELFLAVOR,out pixelFlavor) && pixelFlavor==Tw.TWPF_VANILLA;
@@ -82,7 +88,9 @@ namespace ImagingDeviceManager.TwainProtocol {
 		///<summary>16 bits: only when ICAP_PIXELTYPE is GRAY, ICAP_XFERMECH=TWSX_MEMORY first, then ICAP_BITDEPTH=16 only if MSG_GET lists 16.
 		///16 is never set while the mechanism is native (a 16bpp DIB is RGB555/565 by definition, TWAIN 2.4 p.12-7). A refusal is a silent
 		///fallback to 8 bits, logged (design 7.12). 8 bits: ICAP_BITDEPTH=8 first when an earlier enable on this open source set 16, then
-		///native transfers. Otherwise the bit depth is left as the source delivers it.</summary>
+		///native transfers. If the source refused 8, the depth is read back (MSG_GETCURRENT) after the transfer mechanism is set; a depth that
+		///is still not 8 sets RefusalText, because native transfers are never enabled while the depth is 16, and memory transfers would deliver
+		///16-bit samples to an 8-bit enable. Otherwise the bit depth is left as the source delivers it.</summary>
 		private void NegotiateBitDepth(TwainCaptureNegotiation negotiation,TwainCaptureNegotiationResult result) {
 			if(negotiation.Want16Bit) {
 				result.Reason8Bit=TryNegotiate16Bit();
@@ -102,13 +110,10 @@ namespace ImagingDeviceManager.TwainProtocol {
 				}
 				else {
 					Log("\""+SourceName+"\" did not accept ICAP_BITDEPTH 8 after an earlier 16-bit enable ("+DescribeRc(rcDepth)
-						+"); setting native transfers resets it.");
+						+"); it is read back after setting native transfers, which reset it under twain-contract 1.1.");
 				}
 			}
 			ushort? rc=SendCapabilitySet(Tw.ICAP_XFERMECH,Tw.TWTY_UINT16,Tw.TWSX_NATIVE);
-			if(rc==Tw.TWRC_CHECKSTATUS && _isBitDepth16Set) {
-				_isBitDepth16Set=false;//twain-contract 1.1 section 4: native while the depth is 16 resets it to 8.
-			}
 			int mechanism;
 			if(rc!=Tw.TWRC_SUCCESS && TryGetCapabilityCurrent(Tw.ICAP_XFERMECH,out mechanism) && mechanism==Tw.TWSX_MEMORY) {
 				_xferMech=Tw.TWSX_MEMORY;//The source keeps memory transfers; 8-bit memory transfers work too.
@@ -117,6 +122,20 @@ namespace ImagingDeviceManager.TwainProtocol {
 				_xferMech=Tw.TWSX_NATIVE;
 			}
 			result.XferMech=_xferMech;
+			if(_isBitDepth16Set) {
+				int depth;
+				bool isDepthRead=TryGetCapabilityCurrent(Tw.ICAP_BITDEPTH,out depth);
+				if(isDepthRead ? depth==8 : rc==Tw.TWRC_CHECKSTATUS) {
+					//Read back as 8; or, unreadable, TWRC_CHECKSTATUS: native while the depth is 16 resets it to 8 (twain-contract 1.1 section 4).
+					_isBitDepth16Set=false;
+				}
+				else {
+					result.RefusalText="ICAP_BITDEPTH could not be set back to 8 after an earlier 16-bit enable ("+(isDepthRead
+						? "it is "+depth : "it cannot be read")+"), so the 8-bit enable would get 16-bit images. Close the sensor software here and open"
+						+" it again.";
+					Log("\""+SourceName+"\": "+result.RefusalText);
+				}
+			}
 		}
 
 		///<summary>The 16-bit order. Returns null when ICAP_BITDEPTH 16 is in effect, otherwise why not.</summary>

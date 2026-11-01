@@ -237,6 +237,36 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		[TestMethod]
+		public void Bits8After16_BitDepth8Refused_NativeResetsIt_EnableRunsAt8() {
+			Helper.RefusesBitDepth8=true;//Native transfers still reset the depth with TWRC_CHECKSTATUS (twain-contract 1.1 section 4).
+			Helper.ListExposures[0].Original16=FakePage.CreateGray16(6,4,FakeHelperSource.Dpi,(x,y) => x+y);
+			_harness.OpenOrFail();
+			Assert.IsTrue(_harness.WaitForEnded(EnableOne(16)).IsBitDepth16InEffect);
+			int countCalls=Calls.Count;
+			TwainCaptureEnded ended8=_harness.WaitForEnded(EnableOne(8));
+			Assert.AreEqual(TwainCaptureEndReason.Completed,ended8.Reason,ended8.ErrorText);
+			Assert.AreEqual(8,_harness.Images[1].BitsPerPixel);
+			int idxNative=_harness.IndexOfCall(x => x.Name=="CAP/SET" && x.Cap==Tw.ICAP_XFERMECH && x.Value==Tw.TWSX_NATIVE,countCalls);
+			int idxRead=_harness.IndexOfCall(x => x.Name=="CAP/GETCURRENT" && x.Cap==Tw.ICAP_BITDEPTH,countCalls);
+			Assert.IsTrue(idxNative>=0 && idxRead>idxNative,"The depth is read back after native transfers are set.\r\n"+_harness.CallText);
+		}
+
+		[TestMethod]
+		public void Bits8After16_DepthStays16_EnableFailsWithoutEnableDs() {
+			Helper.RefusesBitDepth8=true;
+			Helper.NativeKeepsBitDepth16=true;//Not a contract source: TWRC_SUCCESS for native transfers, the depth still 16.
+			Helper.ListExposures[0].Original16=FakePage.CreateGray16(6,4,FakeHelperSource.Dpi,(x,y) => x+y);
+			_harness.OpenOrFail();
+			Assert.IsTrue(_harness.WaitForEnded(EnableOne(16)).IsBitDepth16InEffect);
+			TwainCaptureEnded ended8=_harness.WaitForEnded(EnableOne(8));
+			Assert.AreEqual(TwainCaptureEndReason.EnableFailed,ended8.Reason);
+			StringAssert.Contains(ended8.ErrorText,"ICAP_BITDEPTH could not be set back to 8");
+			Assert.AreEqual(1,Helper.CountEnable,"Native transfers are never enabled while the depth is 16 (a 16bpp DIB is RGB555/565).");
+			Assert.AreEqual(1,_harness.Images.Count);
+			Assert.AreEqual(4,Helper.State);
+		}
+
+		[TestMethod]
 		public void Bits16_ImageWithout16BitOriginal_FlaggedAndJournaledAsBmp() {
 			_harness.OpenOrFail();
 			TwainCaptureEnded ended=_harness.WaitForEnded(EnableOne(16));

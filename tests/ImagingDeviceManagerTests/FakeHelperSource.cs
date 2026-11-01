@@ -157,6 +157,11 @@ namespace ImagingDeviceManager.Tests {
 		public bool EnableReturnsCheckStatus;
 		///<summary>Not contract behaviour: MSG_SET ICAP_XFERMECH TWSX_MEMORY fails with TWCC_BADVALUE, as for a source with native transfers only.</summary>
 		public bool RefusesMemoryTransfer;
+		///<summary>Not contract behaviour: MSG_SET ICAP_BITDEPTH 8 fails with TWCC_BADVALUE.</summary>
+		public bool RefusesBitDepth8;
+		///<summary>Not contract behaviour (section 4 resets the depth to 8 and returns TWRC_CHECKSTATUS): MSG_SET ICAP_XFERMECH TWSX_NATIVE while
+		///ICAP_BITDEPTH is 16 returns TWRC_SUCCESS and leaves the depth at 16.</summary>
+		public bool NativeKeepsBitDepth16;
 		///<summary>Not contract behaviour: the TW_INFO.ReturnCode DAT_EXTIMAGEINFO gives TWEI_TWAINDIRECTMETADATA (TWRC_INFONOTSUPPORTED or
 		///TWRC_DATANOTAVAILABLE for a source without it for this image). TWRC_SUCCESS: the metadata.</summary>
 		public ushort MetadataReturnCode=Tw.TWRC_SUCCESS;
@@ -593,13 +598,16 @@ namespace ImagingDeviceManager.Tests {
 						return Fail(Tw.TWCC_BADVALUE);
 					}
 					DictCaps[cap]=value;
-					if(value==Tw.TWSX_NATIVE && DictCaps[IcapBitDepth]==16) {
+					if(value==Tw.TWSX_NATIVE && DictCaps[IcapBitDepth]==16 && !NativeKeepsBitDepth16) {
 						DictCaps[IcapBitDepth]=8;
 						return Tw.TWRC_CHECKSTATUS;
 					}
 					return Tw.TWRC_SUCCESS;
 				case IcapBitDepth:
 					if(value!=8 && !(value==16 && Supports16Bit && DictCaps[Tw.ICAP_XFERMECH]==Tw.TWSX_MEMORY)) {
+						return Fail(Tw.TWCC_BADVALUE);
+					}
+					if(value==8 && RefusesBitDepth8) {
 						return Fail(Tw.TWCC_BADVALUE);
 					}
 					DictCaps[cap]=value;
