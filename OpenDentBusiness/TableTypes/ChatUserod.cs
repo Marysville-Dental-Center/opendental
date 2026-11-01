@@ -32,6 +32,8 @@ namespace OpenDentBusiness {
 		public bool MuteImportantNotifications;
 		///<summary>Seconds before an important notification is dismissed.</summary>
 		public int DismissImportantNotifySecs;
+		///<summary>Added in Open Dental 26.1: play a sound when a chat message arrives. Schema compatibility only.</summary>
+		public bool PlayNotificationSound;
 
 		public ChatUserod() {
 			Photo="";

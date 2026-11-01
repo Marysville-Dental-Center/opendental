@@ -28,6 +28,14 @@ namespace OpenDentBusiness {
 		public bool ShowInFrequency;
 		///<summary>Added in Open Dental 25.3: whether this code group shows in the Other Benefits grid of the insurance benefits window.</summary>
 		public bool ShowInOther;
+		///<summary>Added in Open Dental 26.1: whether this code group shows as its own row in the Insurance History window.</summary>
+		public bool ShowInHistory;
+		///<summary>Added in Open Dental 26.1: the single procedure code used when insurance history is entered for this code group (ProcCodes may
+		///list several).</summary>
+		public string HistProcCode="";
+		///<summary>Added in Open Dental 26.1: whether this code group shows four times in the Insurance History window, once per quadrant (perio
+		///codes).</summary>
+		public bool IsPerioFourQuads;
 
 		public CodeGroup Copy() {
 			return (CodeGroup)this.MemberwiseClone();

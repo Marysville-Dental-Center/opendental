@@ -74,9 +74,11 @@ namespace OpenDentBusiness{
 		///<summary>12</summary>
 		[Description("Schedules - Practice and Provider")]
 		Schedules,
-		///<summary>13 - Blockouts whose type has no NS (no scheduling) or DC (no cut/copy/paste) flag: add, edit, cut, copy, paste, clear and delete.
-		///Flagged blockouts are covered by BlockoutsFlagged (266). Audit entries are written for each of those actions.</summary>
-		[Description("Blockouts (types without the NS or DC flag)")]
+		///<summary>13 - Editing blockouts whose type has no NS (no scheduling) or DC (no cut/copy/paste) flag. Open Dental 25.4 named it BlockoutEdit
+		///and moved adding, pasting and copying to BlockoutAdd (272) and deleting, cutting and clearing to BlockoutDelete (273). The number did not
+		///change, so stored rows stay valid; the C# name stays Blockouts so existing callers keep compiling. Flagged blockouts are covered by
+		///BlockoutsFlagged (266). Audit entries are written for each action.</summary>
+		[Description("Blockout Edit (types without the NS or DC flag)")]
 		Blockouts,
 		///<summary>14. Uses date restrictions.</summary>
 		[Description("Claim Sent Edit")]
@@ -266,10 +268,12 @@ namespace OpenDentBusiness{
 		///<summary>76</summary>
 		[Description("Rx Edit")]
 		RxEdit,
-		///<summary>77- Assign this permission to a staff person who will administer setting up and editing Dental School Students in the system.</summary>
+		///<summary>77- Assign this permission to a staff person who will administer setting up and editing Dental School Students in the system.
+		///Open Dental 25.4 names this value SchoolAdminStudentEdit. Same number; dental school features are out of scope in this fork.</summary>
 		[Description("Student Edit")]
 		AdminDentalStudents,
-		///<summary>78- Assign this permission to an instructor who will be allowed to assign Grades to Dental School Students as well as manage classes assigned to them.</summary>
+		///<summary>78- Assign this permission to an instructor who will be allowed to assign Grades to Dental School Students as well as manage classes assigned to them.
+		///Open Dental 25.4 names this value SchoolAdminInstructorEdit. Same number; dental school features are out of scope in this fork.</summary>
 		[Description("Instructor Edit")]
 		AdminDentalInstructors,
 		///<summary>79- Uses date restrictions.  Has a unique audit trail so that users can track specific ortho chart edits.</summary>
@@ -278,7 +282,9 @@ namespace OpenDentBusiness{
 		///<summary>80- There is no user interface in the security window for this permission.  It is only used for tracking.  Mainly used for ortho clinics.</summary>
 		[Description("Patient Field Edit")]
 		PatientFieldEdit,
-		///<summary>81- Assign this permission to a staff person who will edit evaluations in case of an emergency.  This is not meant to be a permanent permission given to a group.</summary>
+		///<summary>81- Assign this permission to a staff person who will edit evaluations in case of an emergency.  This is not meant to be a permanent permission given to a group.
+		///Open Dental 25.4 names this value SchoolAdminAccess (its document spells it SchoolAdminAcesss) and widens it to full access to every
+		///instructor's and student's records. Same number; dental school features are out of scope in this fork, so the 24.3 meaning stays.</summary>
 		[Description("Admin Evaluation Edit")]
 		AdminDentalEvaluations,
 		///<summary>82- There is no user interface in the security window for this permission.  It is only used for tracking.</summary>
@@ -831,8 +837,8 @@ namespace OpenDentBusiness{
 		///<summary>263 - Allows disbanding of Super Families.</summary>
 		[Description("Super Family Disband")]
 		SuperFamilyDisband,
-		//264 to 272 were added by Open Dental 24.4 to 25.3. The numbers are stored in grouppermission.PermType and securitylog.PermType and must
-		//match the published Open Dental 25.3 database documentation exactly. Values marked [IsODHQ] are reserved: they only exist so that rows
+		//264 to 271 were added by Open Dental 24.4 to 25.2. The numbers are stored in grouppermission.PermType and securitylog.PermType and must
+		//match the published Open Dental database documentation exactly. Values marked [IsODHQ] are reserved: they only exist so that rows
 		//written by Open Dental load and display. They are hidden from the security tree and never granted (see GroupPermissions.IsReserved).
 		///<summary>264 - Adding a note and signature to an image that has no signature yet. No date restriction.</summary>
 		[Description("Image Signature Create")]
@@ -860,9 +866,27 @@ namespace OpenDentBusiness{
 		///<summary>271 - Audit trail only: an eForm was imported. Never granted, so it does not show in the security tree.</summary>
 		[Description("eForm Import")]
 		EFormImport,
-		///<summary>272 - Reserved. Open Dental HQ only: audit entries for changes to the phone table.</summary>
+		//272 to 276 follow Open Dental's published 25.4 and 26.1 database documentation (OpenDentalDocumentation25-4.xml, 26-1.xml). Open Dental
+		//25.3 had PhoneExtension at 272; 25.4 moved it to 274 and gave 272 to BlockoutAdd. See docs/port-notes/M2-02.md for the evidence.
+		///<summary>272 - Adding, pasting and copying blockouts whose type has no NS or DC flag (Open Dental 25.4). Flagged blockouts are covered by
+		///BlockoutsFlagged (266). Upgrade grant: every user group that holds Blockouts (13) on a database from before 25.4 (Seed26_1).</summary>
+		[Description("Blockout Add")]
+		BlockoutAdd,
+		///<summary>273 - Deleting, cutting and clearing blockouts whose type has no NS or DC flag (Open Dental 25.4). Flagged blockouts are covered by
+		///BlockoutsFlagged (266). Upgrade grant: every user group that holds Blockouts (13) on a database from before 25.4 (Seed26_1).</summary>
+		[Description("Blockout Delete")]
+		BlockoutDelete,
+		///<summary>274 - Reserved. Open Dental HQ only: audit entries for changes to the phone table. Open Dental 25.3 stored it as 272; from 25.4 it
+		///is 274. Seed26_1 moves 272 grants written by Open Dental 25.3 to 274 before 272 becomes BlockoutAdd.</summary>
 		[Description("Phone Extension"),IsODHQ]
 		PhoneExtension,
+		///<summary>275 - Audit trail only: a patient was selected (Open Dental 25.4). No access check uses it, so it does not show in the security
+		///tree.</summary>
+		[Description("Patient Selected")]
+		PatientSelected,
+		///<summary>276 - Reserved. Open Dental HQ only (26.1): changes to which services have their log folders collected.</summary>
+		[Description("Log Scraper HQ"),IsODHQ]
+		LogScraperHQ,
 	}
 }
 

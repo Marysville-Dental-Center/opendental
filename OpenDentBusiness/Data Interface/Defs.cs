@@ -360,6 +360,9 @@ namespace OpenDentBusiness {
 					listCommands.Add("SELECT COUNT(*) FROM eclipboardimagecapturedef WHERE DefNum="+POut.Long(def.DefNum));
 					listCommands.Add("SELECT COUNT(*) FROM eclipboardimagecapture WHERE DefNum="+POut.Long(def.DefNum));
 					break;
+				case DefCats26_1.EmployeeTitles://Open Dental 26.1: employee.Title (column added by package M2-01).
+					listCommands.Add("SELECT COUNT(*) FROM employee WHERE Title="+POut.Long(def.DefNum));
+					break;
 				default:
 					throw new ApplicationException("NOT Allowed to delete this type of def.");
 			}
@@ -563,6 +566,9 @@ namespace OpenDentBusiness {
 					break;
 				case DefCat.CommLogTypes:
 					listStrCommands.Add("SELECT COUNT(*) FROM commlog WHERE CommType="+POut.Long(def.DefNum));
+					break;
+				case DefCats26_1.EmployeeTitles://Open Dental 26.1: employee.Title (column added by package M2-01).
+					listStrCommands.Add("SELECT COUNT(*) FROM employee WHERE Title="+POut.Long(def.DefNum));
 					break;
 				default:
 					break;

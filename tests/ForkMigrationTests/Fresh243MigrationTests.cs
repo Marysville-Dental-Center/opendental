@@ -96,17 +96,20 @@ namespace ForkMigrationTests {
 			}
 		}
 
+		///<summary>Since M2-01 every step brings a database to Open Dental 26.1.70, so the database to compare with is od_261_schema, loaded from the
+		///26.1.70 reference by tools/New-OdReferenceDatabase.ps1. That reference has no office customization, so the only allowed differences are the
+		///extra legacy tables of the 21.1 seed.</summary>
 		[TestMethod]
-		public void Migrated_MatchesOd253SchemaDatabase() {
-			if(!TestDb.DatabaseExists(TestDb.DbNameOd253Schema)) {
-				Assert.Inconclusive("The reference database "+TestDb.DbNameOd253Schema+" is not loaded on this server.");
+		public void Migrated_MatchesOd261SchemaDatabase() {
+			if(!TestDb.DatabaseExists(TestDb.DbNameOd261Schema)) {
+				Assert.Inconclusive("The reference database "+TestDb.DbNameOd261Schema+" is not loaded on this server (tools/New-OdReferenceDatabase.ps1).");
 			}
-			SchemaVerifyResult result=SchemaVerifier.Compare(SchemaSnapshot.FromDatabase(TestDb.DbNameOd253Schema),SchemaSnapshot.FromDatabase(DB_NAME),
-				SchemaVerifier.DocumentedExceptions25_3_48);
+			SchemaVerifyResult result=SchemaVerifier.Compare(SchemaSnapshot.FromDatabase(TestDb.DbNameOd261Schema),SchemaSnapshot.FromDatabase(DB_NAME),
+				SchemaVerifier.DocumentedExceptions26_1_70);
 			Assert.IsTrue(result.IsMatch,result.GetReport());
-			List<string> listAllowedOther=result.ListAllowed.Where(x => x.Kind!=SchemaDifferenceKind.ExtraTable).Select(x => x.Table+"."+x.Item).ToList();
-			CollectionAssert.AreEquivalent(new[] { "patient."+SchemaVerifier.PortalActiveEmailColumn,"patient."+SchemaVerifier.PortalActiveEmailIndex },
-				listAllowedOther,result.GetReport());
+			foreach(SchemaDifference difference in result.ListAllowed) {
+				Assert.AreEqual(SchemaDifferenceKind.ExtraTable,difference.Kind,difference.ToString());
+			}
 		}
 
 		[TestMethod]

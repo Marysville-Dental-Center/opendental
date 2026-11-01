@@ -113,7 +113,17 @@ namespace OpenDentBusiness{
 		///<summary>24 - Indicates that a claim was automatically received.</summary>
 		ClaimReceiveAutomatic,
 		///<summary>25 - Indicates that a payment was made from the Payment Portal.</summary>
-		PaymentPortal
+		PaymentPortal,
+		//26 to 28 were added by Open Dental 25.4 (OpenDentalDiffDocumentation25-4.xml).
+		///<summary>26 - An ERA (X12 835) was imported automatically.</summary>
+		[Description("ERA 835 Import")]
+		Era835Import,
+		///<summary>27 - Reserved. The ODTouch mobile app, an Open Dental hosted service this program does not have.</summary>
+		[Description("ODTouch"),ReservedEnumValue("ODTouch is an Open Dental hosted service.")]
+		ODTouch,
+		///<summary>28 - Reserved. eClipboard, an Open Dental hosted service this program does not have.</summary>
+		[Description("eClipboard"),ReservedEnumValue("eClipboard is an Open Dental hosted service.")]
+		eClipboard,
 	}
 
 	

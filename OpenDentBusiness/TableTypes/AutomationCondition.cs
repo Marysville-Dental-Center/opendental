@@ -65,6 +65,10 @@ namespace OpenDentBusiness{
 		///<summary></summary>
 		[Description("Claim Contains Procedure Code")]
 		ClaimContainsProcCode,
+		///<summary>14 - Open Dental 26.1 (automationcondition.CompareField, OpenDentalDiffDocumentation26-1.xml): true when the procedure's clinic
+		///differs from the patient's clinic. The comparison itself belongs to package M2-MISC (Automations.cs).</summary>
+		[Description("Procedure Clinic Differs From Patient Clinic")]
+		PatientProcedureClinicMismatch,
 	}
 
 	///<summary></summary>

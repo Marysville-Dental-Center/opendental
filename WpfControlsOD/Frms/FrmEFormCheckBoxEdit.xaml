@@ -56,6 +56,7 @@
 		</ui:GroupBox>
 		<ui:Label Width="344" Height="18" Margin="26,546,0,0" Text="This field is the conditional parent for this many child fields" HAlign="Right" VAlign="Center" />
 		<ui:TextBox x:Name="textCountChildren" Height="20" Margin="373,546,0,0" ReadOnly="True" ColorBack="#FFF0F0F0" Width="30"/>
+		<ui:Button x:Name="butChildren" Width="66" Height="24" Margin="409,544,0,0" Text="View" Click="butChildren_Click"/>
 		<ui:GroupBox x:Name="groupLanguage" Height="72" Margin="31,23,0,0" Width="454" Text="Language Translation">
 			<ui:Label Width="76" Height="18" Margin="43,47,0,0" Text="Label" HAlign="Right" VAlign="Center" />
 			<ui:TextBox x:Name="textLabelTranslated" Width="213" Height="20" Margin="120,45,0,0" />

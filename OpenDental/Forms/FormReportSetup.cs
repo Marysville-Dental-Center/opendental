@@ -48,6 +48,7 @@ namespace OpenDental {
 			checkReportsShowHistory.Checked=PrefC.GetBool(PrefName.ReportsShowHistory);
 			checkReportsIncompleteProcsNoNotes.Checked=PrefC.GetBool(PrefName.ReportsIncompleteProcsNoNotes);
 			checkReportsIncompleteProcsUnsigned.Checked=PrefC.GetBool(PrefName.ReportsIncompleteProcsUnsigned);
+			checkReportsIncompleteProcsAllNoNotes.Checked=RpProcNote.GetAllNoNotesDefault();
 			checkBenefitAssumeGeneral.Checked=PrefC.GetBool(PrefName.TreatFinderProcsAllGeneral);
 			checkOutstandingRpDateTab.Checked=PrefC.GetBool(PrefName.OutstandingInsReportDateFilterTab);
 			checkReportDisplayUnearnedTP.Checked=PrefC.GetBool(PrefName.ReportsDoShowHiddenTPPrepayments);
@@ -67,7 +68,7 @@ namespace OpenDental {
 			comboServerName.Text=PrefC.GetString(PrefName.ReportingServerCompName);
 			comboDatabase.Text=PrefC.GetString(PrefName.ReportingServerDbName);
 			textMysqlUser.Text=PrefC.GetString(PrefName.ReportingServerMySqlUser);
-			textSkySQL.Text=PrefC.GetString(PrefName.ReportingServerSslCa);
+			textSslCaPem.Text=PrefC.GetString(PrefName.ReportingServerSslCa);
 			string decryptedPass;
 			Secrets.Decrypt(PrefC.GetString(PrefName.ReportingServerMySqlPassHash),out decryptedPass);
 			textMysqlPass.Text=decryptedPass;
@@ -232,12 +233,7 @@ namespace OpenDental {
 		}
 
 		private bool UpdateReportingServer() {
-			string oldReportingServerCompName=PrefC.GetStringSilent(PrefName.ReportingServerCompName);
-			string oldReportingServerDbName=PrefC.GetStringSilent(PrefName.ReportingServerDbName);
-			string oldReportingServerMySqlUser=PrefC.GetStringSilent(PrefName.ReportingServerMySqlUser);
-			string oldReportingServerMySqlPassHash=PrefC.GetStringSilent(PrefName.ReportingServerMySqlPassHash);
-			string oldReportingServerSslCa=PrefC.GetStringSilent(PrefName.ReportingServerSslCa);
-			string oldReportingServerURI=PrefC.GetStringSilent(PrefName.ReportingServerURI);
+			ReportServerSettings reportServerSettingsOld=ReportServerSettings.FromPrefCache();
 			bool hasChanged=false;
 			if(!checkUseReportServer.Checked) {
 				hasChanged |=Prefs.UpdateString(PrefName.ReportingServerCompName,"");
@@ -255,7 +251,7 @@ namespace OpenDental {
 					hasChanged |=Prefs.UpdateString(PrefName.ReportingServerDbName,comboDatabase.Text);
 					hasChanged |=Prefs.UpdateString(PrefName.ReportingServerMySqlUser,textMysqlUser.Text);
 					hasChanged |=Prefs.UpdateString(PrefName.ReportingServerMySqlPassHash,encryptedPass);
-					hasChanged |=Prefs.UpdateString(PrefName.ReportingServerSslCa,textSkySQL.Text);
+					hasChanged |=Prefs.UpdateString(PrefName.ReportingServerSslCa,textSslCaPem.Text);
 					hasChanged |=Prefs.UpdateString(PrefName.ReportingServerURI,"");
 				}
 				else {
@@ -268,32 +264,12 @@ namespace OpenDental {
 				}
 			}
 			if(hasChanged) {
-				string logentry="";
-				if(radioReportServerDirect.Checked) {
-					if(oldReportingServerCompName!=PrefC.GetStringSilent(PrefName.ReportingServerCompName)) {
-						logentry+="Server Name changed from "+oldReportingServerCompName
-							+" to "+PrefC.GetStringSilent(PrefName.ReportingServerCompName)+"\n";
-					}
-					if(oldReportingServerDbName!=PrefC.GetStringSilent(PrefName.ReportingServerDbName)) {
-						logentry+="Database changed from "+oldReportingServerDbName
-						+" to "+PrefC.GetStringSilent(PrefName.ReportingServerDbName)+"\n";
-					}
-					if(oldReportingServerMySqlUser!=PrefC.GetStringSilent(PrefName.ReportingServerMySqlUser)) {
-						logentry+="MySQL User changed from "+oldReportingServerMySqlUser
-							+" to "+PrefC.GetStringSilent(PrefName.ReportingServerMySqlUser)+"\n";
-					}
-					if(oldReportingServerSslCa!=PrefC.GetStringSilent(PrefName.ReportingServerSslCa)) {
-						logentry="SslCa changed from "+oldReportingServerSslCa
-							+" to "+PrefC.GetStringSilent(PrefName.ReportingServerSslCa);
-					}
+				//24.4 Audit Trail entry (backported to 24.3.35). Every changed field gets its own line, including a switch between Direct Connection and
+				//Middle Tier. The password is never written, only that it changed.
+				string logentry=ReportServerAudit.BuildLogEntry(reportServerSettingsOld,ReportServerSettings.FromPrefCache());
+				if(logentry!="") {
+					SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,logentry);
 				}
-				else {
-					if(oldReportingServerURI!=PrefC.GetStringSilent(PrefName.ReportingServerURI)) {
-						logentry+="URI changed from "+oldReportingServerURI
-							+" to "+PrefC.GetStringSilent(PrefName.ReportingServerURI);
-					}
-				}
-				SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,logentry);
 			}
 			return hasChanged;
 		}
@@ -323,6 +299,7 @@ namespace OpenDental {
 			_hasChanged |=Prefs.UpdateBool(PrefName.ReportsWrapColumns,checkReportPrintWrapColumns.Checked);
 			_hasChanged |=Prefs.UpdateBool(PrefName.ReportsIncompleteProcsNoNotes,checkReportsIncompleteProcsNoNotes.Checked);
 			_hasChanged |=Prefs.UpdateBool(PrefName.ReportsIncompleteProcsUnsigned,checkReportsIncompleteProcsUnsigned.Checked);
+			_hasChanged |=RpProcNote.SetAllNoNotesDefault(checkReportsIncompleteProcsAllNoNotes.Checked);
 			_hasChanged |=Prefs.UpdateBool(PrefName.TreatFinderProcsAllGeneral,checkBenefitAssumeGeneral.Checked);
 			_hasChanged |=Prefs.UpdateBool(PrefName.ReportsShowHistory,checkReportsShowHistory.Checked);
 			_hasChanged |=Prefs.UpdateBool(PrefName.OutstandingInsReportDateFilterTab,checkOutstandingRpDateTab.Checked);

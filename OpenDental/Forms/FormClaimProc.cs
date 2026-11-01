@@ -1339,6 +1339,8 @@ namespace OpenDental {
 					//Instead it would insert an new lab claim proc with the parents new claim procs status.
 					ClaimProcs.UpdatePertinentLabStatuses(_claimProc,_insPlan);//Checks for Canada, simply returns if not.
 				}
+				//Open Dental 25.4: billing this claimproc to insurance again clears the procedure's own Do Not Bill to Ins decision (audited).
+				Procedures.ClearNoBillInsForBilledClaimProc(_procedure,_claimProcOld,_claimProc);
 			}//otherwise, the change to db will be made by calling class
 			//there is no functionality here for insert cur, because all claimprocs are
 			//created before editing.

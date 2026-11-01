@@ -130,6 +130,11 @@ namespace OpenDentBusiness {
 		AppointmentBubblesNoteLength,
 		///<summary>Reset calendar to today on clinic select.</summary>
 		AppointmentClinicTimeReset,
+		///<summary>Open Dental 26.1 (also 25.4.50). Boolean, true by default, which keeps the 24.3 behavior: Make Recall puts the recall
+		///appointment on the Pinboard and runs the search for openings. When false, it only pins the appointment. Name proposed by this fork (Open
+		///Dental's is not public). Seeded by Seed26_1.</summary>
+		[PrefName(ValueType=PrefValueType.BOOL)]
+		AppointmentMakeRecallSearchesOpenings,
 		///<summary>Enum:SearchBehaviorCriteria 0=ProviderTime means based only on provider availability from the schedule., 1=ProviderTimeOperatory means based on provider schedule availability as well as the availabilty of their operatory (dynamic or directly assigned). This will prevent overlap of appointments.</summary>
 		AppointmentSearchBehavior,
 		AppointmentTimeArrivedTrigger,
@@ -440,6 +445,10 @@ namespace OpenDentBusiness {
 		///<summary>Int, 0 by default. Claims where insurance has been pending for this many days or fewer will be ignored when processing Billing. Value of 0 means any claim where insurance is pending will be ignored, no matter how old. This will be 0 if BillingExcludeInsPending is set to false.</summary>
 		[PrefName(ValueType=PrefValueType.INT)]
 		BillingDaysExcludeInsPending,
+		///<summary>Open Dental 26.1. Boolean, false by default. Default of the Service Date View option for statements made from Billing
+		///(statement.IsServiceDateView). Name proposed by this fork. Seeded by Seed26_1.</summary>
+		[PrefName(ValueType=PrefValueType.BOOL)]
+		BillingDefaultServiceDateView,
 		BillingDefaultsInvoiceNote,
 		BillingDefaultsIntermingle,
 		BillingDefaultsLastDays,
@@ -485,6 +494,10 @@ namespace OpenDentBusiness {
 		[PrefName(ValueType=PrefValueType.BOOL)]
 		BillingEmailIncludeAutograph,
 		BillingEmailSubject,
+		///<summary>Open Dental 26.1. Enum:EmailType stored as an int, 0 (Regular) by default: the format of the billing e-mail template, like
+		///dunning.EmailType (0 Regular, 1 Html, 2 RawHtml). Name proposed by this fork. Seeded by Seed26_1.</summary>
+		[PrefName(ValueType=PrefValueType.INT)]
+		BillingEmailType,
 		[PrefName(ValueType=PrefValueType.BOOL)]
 		BillingExcludeBadAddresses,
 		[PrefName(ValueType=PrefValueType.BOOL)]
@@ -1213,6 +1226,10 @@ namespace OpenDentBusiness {
 		ImagesModuleUsesOld2020,
 		ImageWindowingMax,
 		ImageWindowingMin,
+		///<summary>Open Dental 26.1. Boolean, false by default. When true, PDFs shown in the Imaging module may run their embedded JavaScript.
+		///Name proposed by this fork. Seeded by Seed26_1.</summary>
+		[PrefName(ValueType=PrefValueType.BOOL)]
+		ImagingAllowPdfJavascript,
 		///<summary>Only for documents (images), not mounts.  MountDefs have their own place for defaults.  Scale, decimal places, and units, separated by spaces.  Example: "123.4 0 mm". The first two are required; units is optional. Converted into an ImageDraw of type ScaleValue in a lazy manner. Not created unless needed.</summary>
 		ImagingDefaultScaleValue,
 		///<summary>Sort images within each category in Imaging module by date created (descending). False by default.</summary>
@@ -1222,6 +1239,10 @@ namespace OpenDentBusiness {
 		///a different language input methodology that requires the composition of symbols in order to display their language correctly.
 		///E.g. the Korean symbol '역' (dur) will not display correctly inside ODTextBoxes without this set to true.</summary>
 		ImeCompositionCompatibility,
+		///<summary>Open Dental 25.4. Boolean, false by default. When true, a manual income transfer may move only money that came from patient
+		///payments, and no more than a payment still holds. Name proposed by this fork (Open Dental's is not public). Seeded by Seed26_1.</summary>
+		[PrefName(ValueType=PrefValueType.BOOL)]
+		IncomeTransfersLimitToPatPayments,
 		///<summary>YN_DEFAULT_FALSE. When enabled (1-Yes), income transfers are automatically made upon receiving a claim. 
 		///The income transfers are to reallocate patient payments associated to insurance production that has been overpaid to underpaid production on the same claim.
 		///Any income transfers made on behalf of this preference will ONLY move money between production associated to the same claim.
@@ -2025,6 +2046,16 @@ namespace OpenDentBusiness {
 		///<summary>Stored as DateTime, but cleared when recurring charges tool finishes.  The DateTime will be used as a flag to signal other connections
 		///that recurring charges have started and prevents OpenDentalService from running repeating charges.</summary>
 		RecurringChargesBeginDateTime,
+		///<summary>Open Dental 25.4. Text of the e-mail sent when a recurring charge fails. Replacement tags: [NameF], [NamePref], [Amount],
+		///[CardLast4], [DateCharge], [OfficeName], [OfficePhone], [ClinicName]. Name proposed by this fork. Seeded by Seed26_1.</summary>
+		RecurringChargesFailEmailBody,
+		///<summary>Open Dental 25.4. Boolean, false by default. When true, each declined or failed recurring charge sends the patient (or the
+		///guarantor) an e-mail from the office's own address. Name proposed by this fork. Seeded by Seed26_1.</summary>
+		[PrefName(ValueType=PrefValueType.BOOL)]
+		RecurringChargesFailEmailEnabled,
+		///<summary>Open Dental 25.4. Subject of the e-mail sent when a recurring charge fails. Same tags as RecurringChargesFailEmailBody. Name
+		///proposed by this fork. Seeded by Seed26_1.</summary>
+		RecurringChargesFailEmailSubject,
 		///<summary>Boolean, true by default. Automatically deactivates recurring charge when a credit card is declined so that office does not waste money running them again.</summary>
 		[PrefName(ValueType=PrefValueType.BOOL)]
 		RecurringChargesInactivateDeclinedCards,
@@ -2052,6 +2083,10 @@ namespace OpenDentBusiness {
 		RegistrationKeyIsDisabled,
 		RegistrationNumberClaim,
 		RenaissanceLastBatchNumber,
+		///<summary>Open Dental 26.1. Boolean, true by default, which keeps the 24.3 behavior: running repeating charges posts missed billing dates,
+		///dated on those past dates. When false, billing dates before the run date are skipped. Name proposed by this fork. Seeded by Seed26_1.</summary>
+		[PrefName(ValueType=PrefValueType.BOOL)]
+		RepeatingChargesAllowBackdating,
 		///<summary>Bool, false by default.  When true, the repeating charges tool will run automatically on a daily basis.</summary>
 		RepeatingChargesAutomated,
 		///<summary>Time, 08:00 am by default.  Defines the time of day that the repeating charges tool will run if set to run automatically.</summary>
@@ -2477,6 +2512,9 @@ namespace OpenDentBusiness {
 		///<summary>DEPRECATED.  Moved to the Trojan Express Collect program link properties.</summary>
 		[Obsolete("This preference has been deprecated. Do not use.",true)]
 		TrojanExpressCollectPreviousFileNumber,
+		///<summary>Open Dental 25.4 UDS+ report (fork setting). JSON list that maps procedure codes to the UDS dental service lines; HRSA changes the
+		///lines yearly, so the office edits it in the report's setup. Blank by default (no codes ship with this program). Seeded by Seed26_1.</summary>
+		UdsPlusDentalLineCodes,
 		///<summary>Can be any int.  Defaults to 0.</summary>
 		UnschedDaysFuture,
 		///<summary>Can be any int.  Defaults to 365.</summary>

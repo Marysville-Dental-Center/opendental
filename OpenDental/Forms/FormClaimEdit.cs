@@ -2481,17 +2481,17 @@ namespace OpenDental{
 			}
 			ContrPerio contrPerioGrid=new ContrPerio();
 			contrPerioGrid.BackColor = System.Drawing.SystemColors.Window;
-			contrPerioGrid.Size = new System.Drawing.Size(602,665);
+			contrPerioGrid.Size = new System.Drawing.Size(602,665+3*13);//+3*13: the three auto Att Ging rows (24.4)
 			contrPerioGrid.ListPerioExams=PerioExams.Refresh(_patient.PatNum);
 			contrPerioGrid.ListPerioMeasures=PerioMeasures.GetForPatient(_patient.PatNum);
 			contrPerioGrid.IdxExamSelected=contrPerioGrid.ListPerioExams.Count-1;
 			contrPerioGrid.LoadData();
-			using Bitmap bitmap=new Bitmap(LayoutManager.Scale(602),LayoutManager.Scale(665));
+			using Bitmap bitmap=new Bitmap(LayoutManager.Scale(602),LayoutManager.Scale(665+3*13));
 			bitmap.SetResolution(96,96);
 			Graphics g=Graphics.FromImage(bitmap);
 			contrPerioGrid.DrawChart(g);
 			g.Dispose();
-			using Bitmap bitmapBig=new Bitmap(LayoutManager.Scale(602),LayoutManager.Scale(715));
+			using Bitmap bitmapBig=new Bitmap(LayoutManager.Scale(602),LayoutManager.Scale(715+3*13));
 			bitmapBig.SetResolution(96,96);
 			g=Graphics.FromImage(bitmapBig);
 			g.Clear(Color.White);

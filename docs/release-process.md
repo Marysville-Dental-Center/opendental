@@ -31,7 +31,7 @@ These are four preference rows. The fork reads and writes them with plain SQL (`
 | Preference | Meaning |
 |---|---|
 | `ForkSchemaLevel` | The last fork migration step applied. `0` right after adoption. If this row exists, the database is adopted. |
-| `OdSchemaCompat` | The Open Dental schema the database matches exactly (`25.3.48` or `24.3.63`). The M1-01 runner and schema verifier advance it. |
+| `OdSchemaCompat` | The Open Dental schema the database matches exactly (`26.1.70` once every fork migration step has run; `25.3.48` or `24.3.63` right after adoption). The fork migration runner and schema verifier advance it. |
 | `ForkAdoptedFrom` | The adoption record: `source=25.3.48.0;started=…;adopted=…` (UTC). If it has no `adopted=` and there is no `ForkSchemaLevel`, the adoption didn't finish. If it has `adopted=` but `ForkSchemaLevel` or `OdSchemaCompat` is missing, the markers of an adopted database were removed: that database is refused, never adopted again. |
 | `ForkProgramVersion` | The release published from the update server: `release+buildId`, for example `0.0+3f2a…`. |
 
@@ -63,7 +63,9 @@ The legacy `ConvertDatabases` chain is frozen at 24.3.63 (`ConvertDatabases.Froz
 
 Adoption is explicit and runs once, on a restored copy. Normal startup never adopts. For a database on the allowlist (`24.3.63.0`, `25.3.48.0`), the startup message offers to open **Adopt Database** (`FormAdoptDatabase`). The administrator must confirm three things: that this is a restored copy with a backup, the exact database name, and one final OK.
 
-`Adoption.Run` performs these steps, in this order. Each step is idempotent. MyISAM has no transactions, so if a run is interrupted, running it again finishes it:
+For the office switch, the runbook does not use this window: `AdoptionValidation adopt` (runbook step 4) runs the same `Adoption.Run` on a copy that the database server made of the office database (runbook step 3.2), without starting the program, because starting it and logging in write to the database before the post-adoption validation (runbook step 6.1). The M1-Z rehearsal copies and adopts with the same code.
+
+`Adoption.Run` performs these steps, in this order. Each step is idempotent. MyISAM has no transactions. A run interrupted before step 6 is finished by running it again. A run interrupted after step 6 is not: `ForkSchemaLevel` then marks the database as adopted while `ForkAdoptedFrom` has no finish time, `Adoption.Run` refuses it as already adopted, and `AdoptionValidation adopt` fails on it, closed (validation report, F13). The office runbook therefore never resumes an adoption: after any stop or failure it drops the copy and adopts a new one.
 
 1. Write `ForkAdoptedFrom` with the start time.
 2. Drop `patient._portal_active_email` and its unique index `portal_active_email_uniq`. This is an office-specific column, not Open Dental schema. Afterwards, family members can share an e-mail address again.
@@ -84,9 +86,9 @@ The preflight refuses these databases:
 - an adopted database whose markers were removed (`ForkAdoptedFrom` says `adopted=`)
 - a middle-tier connection
 
-Re-entering bridge passwords and rehashing `SecurityHash` columns are separate steps of the M1-Z rehearsal. Adoption doesn't do them.
+Re-entering bridge passwords and rehashing `SecurityHash` columns are separate steps of the M1-Z rehearsal and of the office procedure in [adoption-runbook.md](adoption-runbook.md). `Adoption.Run` doesn't do them; `AdoptionValidation adopt` runs the rehash right after it (runbook step 5).
 
-Before adopting the office copy, stop and uninstall the Open Dental services on the server (M1-Z). All workstations switch together. Rollback means restoring the pre-adoption backup.
+Before adopting the office copy, stop and uninstall the Open Dental services and clients (M1-Z). All workstations switch together. Rollback means going back to the untouched original (or, if something wrote to it, to the folder copy taken before the copy was made) after this program has been removed from every workstation and the adopted database has been dumped and dropped ([adoption-runbook.md](adoption-runbook.md), Rollback).
 
 ## Publishing a release
 

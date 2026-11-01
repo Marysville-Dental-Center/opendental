@@ -58,6 +58,8 @@ namespace OpenDentBusiness.Crud{
 				insEditLog.DateTStamp   = PIn.DateT (row["DateTStamp"].ToString());
 				insEditLog.ParentKey    = PIn.Long  (row["ParentKey"].ToString());
 				insEditLog.Description  = PIn.String(row["Description"].ToString());
+				insEditLog.OldValueBig  = PIn.String(row["OldValueBig"].ToString());
+				insEditLog.NewValueBig  = PIn.String(row["NewValueBig"].ToString());
 				retVal.Add(insEditLog);
 			}
 			return retVal;
@@ -79,6 +81,8 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("DateTStamp");
 			table.Columns.Add("ParentKey");
 			table.Columns.Add("Description");
+			table.Columns.Add("OldValueBig");
+			table.Columns.Add("NewValueBig");
 			foreach(InsEditLog insEditLog in listInsEditLogs) {
 				table.Rows.Add(new object[] {
 					POut.Long  (insEditLog.InsEditLogNum),
@@ -91,6 +95,8 @@ namespace OpenDentBusiness.Crud{
 					POut.DateT (insEditLog.DateTStamp,false),
 					POut.Long  (insEditLog.ParentKey),
 					            insEditLog.Description,
+					            insEditLog.OldValueBig,
+					            insEditLog.NewValueBig,
 				});
 			}
 			return table;
@@ -110,7 +116,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="InsEditLogNum,";
 			}
-			command+="FKey,LogType,FieldName,OldValue,NewValue,UserNum,ParentKey,Description) VALUES(";
+			command+="FKey,LogType,FieldName,OldValue,NewValue,UserNum,ParentKey,Description,OldValueBig,NewValueBig) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(insEditLog.InsEditLogNum)+",";
 			}
@@ -123,12 +129,22 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Long  (insEditLog.UserNum)+","
 				//DateTStamp can only be set by MySQL
 				+    POut.Long  (insEditLog.ParentKey)+","
-				+"'"+POut.String(insEditLog.Description)+"')";
+				+"'"+POut.String(insEditLog.Description)+"',"
+				+    DbHelper.ParamChar+"paramOldValueBig,"
+				+    DbHelper.ParamChar+"paramNewValueBig)";
+			if(insEditLog.OldValueBig==null) {
+				insEditLog.OldValueBig="";
+			}
+			OdSqlParameter paramOldValueBig=new OdSqlParameter("paramOldValueBig",OdDbType.Text,POut.StringParam(insEditLog.OldValueBig));
+			if(insEditLog.NewValueBig==null) {
+				insEditLog.NewValueBig="";
+			}
+			OdSqlParameter paramNewValueBig=new OdSqlParameter("paramNewValueBig",OdDbType.Text,POut.StringParam(insEditLog.NewValueBig));
 			if(useExistingPK || PrefC.RandomKeys) {
-				Db.NonQ(command);
+				Db.NonQ(command,paramOldValueBig,paramNewValueBig);
 			}
 			else {
-				insEditLog.InsEditLogNum=Db.NonQ(command,true,"InsEditLogNum","insEditLog");
+				insEditLog.InsEditLogNum=Db.NonQ(command,true,"InsEditLogNum","insEditLog",paramOldValueBig,paramNewValueBig);
 			}
 			return insEditLog.InsEditLogNum;
 		}
@@ -159,7 +175,7 @@ namespace OpenDentBusiness.Crud{
 						if(useExistingPK) {
 							sbCommands.Append("InsEditLogNum,");
 						}
-						sbCommands.Append("FKey,LogType,FieldName,OldValue,NewValue,UserNum,ParentKey,Description) VALUES ");
+						sbCommands.Append("FKey,LogType,FieldName,OldValue,NewValue,UserNum,ParentKey,Description,OldValueBig,NewValueBig) VALUES ");
 						countRows=0;
 					}
 					else {
@@ -176,7 +192,9 @@ namespace OpenDentBusiness.Crud{
 					sbRow.Append(POut.Long(insEditLog.UserNum)); sbRow.Append(",");
 					//DateTStamp can only be set by MySQL
 					sbRow.Append(POut.Long(insEditLog.ParentKey)); sbRow.Append(",");
-					sbRow.Append("'"+POut.String(insEditLog.Description)+"'"); sbRow.Append(")");
+					sbRow.Append("'"+POut.String(insEditLog.Description)+"'"); sbRow.Append(",");
+					sbRow.Append("'"+POut.String(insEditLog.OldValueBig)+"'"); sbRow.Append(",");
+					sbRow.Append("'"+POut.String(insEditLog.NewValueBig)+"'"); sbRow.Append(")");
 					if(sbCommands.Length+sbRow.Length+1 > TableBase.MaxAllowedPacketCount && countRows > 0) {
 						Db.NonQ(sbCommands.ToString());
 						sbCommands=null;
@@ -211,7 +229,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="InsEditLogNum,";
 			}
-			command+="FKey,LogType,FieldName,OldValue,NewValue,UserNum,ParentKey,Description) VALUES(";
+			command+="FKey,LogType,FieldName,OldValue,NewValue,UserNum,ParentKey,Description,OldValueBig,NewValueBig) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(insEditLog.InsEditLogNum)+",";
 			}
@@ -224,12 +242,22 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Long  (insEditLog.UserNum)+","
 				//DateTStamp can only be set by MySQL
 				+    POut.Long  (insEditLog.ParentKey)+","
-				+"'"+POut.String(insEditLog.Description)+"')";
+				+"'"+POut.String(insEditLog.Description)+"',"
+				+    DbHelper.ParamChar+"paramOldValueBig,"
+				+    DbHelper.ParamChar+"paramNewValueBig)";
+			if(insEditLog.OldValueBig==null) {
+				insEditLog.OldValueBig="";
+			}
+			OdSqlParameter paramOldValueBig=new OdSqlParameter("paramOldValueBig",OdDbType.Text,POut.StringParam(insEditLog.OldValueBig));
+			if(insEditLog.NewValueBig==null) {
+				insEditLog.NewValueBig="";
+			}
+			OdSqlParameter paramNewValueBig=new OdSqlParameter("paramNewValueBig",OdDbType.Text,POut.StringParam(insEditLog.NewValueBig));
 			if(useExistingPK || isRandomKeys) {
-				Db.NonQ(command);
+				Db.NonQ(command,paramOldValueBig,paramNewValueBig);
 			}
 			else {
-				insEditLog.InsEditLogNum=Db.NonQ(command,true,"InsEditLogNum","insEditLog");
+				insEditLog.InsEditLogNum=Db.NonQ(command,true,"InsEditLogNum","insEditLog",paramOldValueBig,paramNewValueBig);
 			}
 			return insEditLog.InsEditLogNum;
 		}
@@ -245,9 +273,19 @@ namespace OpenDentBusiness.Crud{
 				+"UserNum      =  "+POut.Long  (insEditLog.UserNum)+", "
 				//DateTStamp can only be set by MySQL
 				+"ParentKey    =  "+POut.Long  (insEditLog.ParentKey)+", "
-				+"Description  = '"+POut.String(insEditLog.Description)+"' "
+				+"Description  = '"+POut.String(insEditLog.Description)+"', "
+				+"OldValueBig  =  "+DbHelper.ParamChar+"paramOldValueBig, "
+				+"NewValueBig  =  "+DbHelper.ParamChar+"paramNewValueBig "
 				+"WHERE InsEditLogNum = "+POut.Long(insEditLog.InsEditLogNum);
-			Db.NonQ(command);
+			if(insEditLog.OldValueBig==null) {
+				insEditLog.OldValueBig="";
+			}
+			OdSqlParameter paramOldValueBig=new OdSqlParameter("paramOldValueBig",OdDbType.Text,POut.StringParam(insEditLog.OldValueBig));
+			if(insEditLog.NewValueBig==null) {
+				insEditLog.NewValueBig="";
+			}
+			OdSqlParameter paramNewValueBig=new OdSqlParameter("paramNewValueBig",OdDbType.Text,POut.StringParam(insEditLog.NewValueBig));
+			Db.NonQ(command,paramOldValueBig,paramNewValueBig);
 		}
 
 		///<summary>Updates one InsEditLog in the database.  Uses an old object to compare to, and only alters changed fields.  This prevents collisions and concurrency problems in heavily used tables.  Returns true if an update occurred.</summary>
@@ -286,12 +324,28 @@ namespace OpenDentBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="Description = '"+POut.String(insEditLog.Description)+"'";
 			}
+			if(insEditLog.OldValueBig != oldInsEditLog.OldValueBig) {
+				if(command!="") { command+=",";}
+				command+="OldValueBig = "+DbHelper.ParamChar+"paramOldValueBig";
+			}
+			if(insEditLog.NewValueBig != oldInsEditLog.NewValueBig) {
+				if(command!="") { command+=",";}
+				command+="NewValueBig = "+DbHelper.ParamChar+"paramNewValueBig";
+			}
 			if(command=="") {
 				return false;
 			}
+			if(insEditLog.OldValueBig==null) {
+				insEditLog.OldValueBig="";
+			}
+			OdSqlParameter paramOldValueBig=new OdSqlParameter("paramOldValueBig",OdDbType.Text,POut.StringParam(insEditLog.OldValueBig));
+			if(insEditLog.NewValueBig==null) {
+				insEditLog.NewValueBig="";
+			}
+			OdSqlParameter paramNewValueBig=new OdSqlParameter("paramNewValueBig",OdDbType.Text,POut.StringParam(insEditLog.NewValueBig));
 			command="UPDATE inseditlog SET "+command
 				+" WHERE InsEditLogNum = "+POut.Long(insEditLog.InsEditLogNum);
-			Db.NonQ(command);
+			Db.NonQ(command,paramOldValueBig,paramNewValueBig);
 			return true;
 		}
 
@@ -321,6 +375,12 @@ namespace OpenDentBusiness.Crud{
 				return true;
 			}
 			if(insEditLog.Description != oldInsEditLog.Description) {
+				return true;
+			}
+			if(insEditLog.OldValueBig != oldInsEditLog.OldValueBig) {
+				return true;
+			}
+			if(insEditLog.NewValueBig != oldInsEditLog.NewValueBig) {
 				return true;
 			}
 			return false;

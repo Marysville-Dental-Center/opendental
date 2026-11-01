@@ -493,6 +493,9 @@ namespace OpenDentBusiness{
 			if(sheetType.In(SheetTypeEnum.TreatmentPlan,SheetTypeEnum.ReferralLetter)) {
 				listSheetFieldTypes.Add(SheetFieldType.Special);
 			}
+			if(sheetType==SheetTypeEnum.Statement) {//25.3: the inserter barcode (StatementInserterBarcode.FIELD_NAME) is a Special field.
+				listSheetFieldTypes.Add(SheetFieldType.Special);
+			}
 			if(sheetType.In(SheetTypeEnum.Statement,SheetTypeEnum.MedLabResults,SheetTypeEnum.TreatmentPlan,SheetTypeEnum.PaymentPlan,
 				SheetTypeEnum.ReferralLetter,SheetTypeEnum.ERA,SheetTypeEnum.Consent,SheetTypeEnum.PatientForm,SheetTypeEnum.PatientLetter))
 			{

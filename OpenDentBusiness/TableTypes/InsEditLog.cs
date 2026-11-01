@@ -33,6 +33,12 @@ namespace OpenDentBusiness{
 		///2 - Benefit: CovCat Description
 		///3 - Employer: Employer Name</summary>
 		public string Description;
+		///<summary>Added in Open Dental 25.4: the old value when it is too long for OldValue (more than 255 characters). Empty otherwise.</summary>
+		[CrudColumn(SpecialType=CrudSpecialColType.IsText)]
+		public string OldValueBig="";
+		///<summary>Added in Open Dental 25.4: the new value when it is too long for NewValue (more than 255 characters). Empty otherwise.</summary>
+		[CrudColumn(SpecialType=CrudSpecialColType.IsText)]
+		public string NewValueBig="";
 	}
 
 

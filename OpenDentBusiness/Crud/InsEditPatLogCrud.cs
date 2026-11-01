@@ -58,6 +58,8 @@ namespace OpenDentBusiness.Crud{
 				insEditPatLog.DateTStamp      = PIn.DateT (row["DateTStamp"].ToString());
 				insEditPatLog.ParentKey       = PIn.Long  (row["ParentKey"].ToString());
 				insEditPatLog.Description     = PIn.String(row["Description"].ToString());
+				insEditPatLog.OldValueBig     = PIn.String(row["OldValueBig"].ToString());
+				insEditPatLog.NewValueBig     = PIn.String(row["NewValueBig"].ToString());
 				retVal.Add(insEditPatLog);
 			}
 			return retVal;
@@ -79,6 +81,8 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("DateTStamp");
 			table.Columns.Add("ParentKey");
 			table.Columns.Add("Description");
+			table.Columns.Add("OldValueBig");
+			table.Columns.Add("NewValueBig");
 			foreach(InsEditPatLog insEditPatLog in listInsEditPatLogs) {
 				table.Rows.Add(new object[] {
 					POut.Long  (insEditPatLog.InsEditPatLogNum),
@@ -91,6 +95,8 @@ namespace OpenDentBusiness.Crud{
 					POut.DateT (insEditPatLog.DateTStamp,false),
 					POut.Long  (insEditPatLog.ParentKey),
 					            insEditPatLog.Description,
+					            insEditPatLog.OldValueBig,
+					            insEditPatLog.NewValueBig,
 				});
 			}
 			return table;
@@ -110,7 +116,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="InsEditPatLogNum,";
 			}
-			command+="FKey,LogType,FieldName,OldValue,NewValue,UserNum,ParentKey,Description) VALUES(";
+			command+="FKey,LogType,FieldName,OldValue,NewValue,UserNum,ParentKey,Description,OldValueBig,NewValueBig) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(insEditPatLog.InsEditPatLogNum)+",";
 			}
@@ -123,12 +129,22 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Long  (insEditPatLog.UserNum)+","
 				//DateTStamp can only be set by MySQL
 				+    POut.Long  (insEditPatLog.ParentKey)+","
-				+"'"+POut.String(insEditPatLog.Description)+"')";
+				+"'"+POut.String(insEditPatLog.Description)+"',"
+				+    DbHelper.ParamChar+"paramOldValueBig,"
+				+    DbHelper.ParamChar+"paramNewValueBig)";
+			if(insEditPatLog.OldValueBig==null) {
+				insEditPatLog.OldValueBig="";
+			}
+			OdSqlParameter paramOldValueBig=new OdSqlParameter("paramOldValueBig",OdDbType.Text,POut.StringParam(insEditPatLog.OldValueBig));
+			if(insEditPatLog.NewValueBig==null) {
+				insEditPatLog.NewValueBig="";
+			}
+			OdSqlParameter paramNewValueBig=new OdSqlParameter("paramNewValueBig",OdDbType.Text,POut.StringParam(insEditPatLog.NewValueBig));
 			if(useExistingPK || PrefC.RandomKeys) {
-				Db.NonQ(command);
+				Db.NonQ(command,paramOldValueBig,paramNewValueBig);
 			}
 			else {
-				insEditPatLog.InsEditPatLogNum=Db.NonQ(command,true,"InsEditPatLogNum","insEditPatLog");
+				insEditPatLog.InsEditPatLogNum=Db.NonQ(command,true,"InsEditPatLogNum","insEditPatLog",paramOldValueBig,paramNewValueBig);
 			}
 			return insEditPatLog.InsEditPatLogNum;
 		}
@@ -159,7 +175,7 @@ namespace OpenDentBusiness.Crud{
 						if(useExistingPK) {
 							sbCommands.Append("InsEditPatLogNum,");
 						}
-						sbCommands.Append("FKey,LogType,FieldName,OldValue,NewValue,UserNum,ParentKey,Description) VALUES ");
+						sbCommands.Append("FKey,LogType,FieldName,OldValue,NewValue,UserNum,ParentKey,Description,OldValueBig,NewValueBig) VALUES ");
 						countRows=0;
 					}
 					else {
@@ -176,7 +192,9 @@ namespace OpenDentBusiness.Crud{
 					sbRow.Append(POut.Long(insEditPatLog.UserNum)); sbRow.Append(",");
 					//DateTStamp can only be set by MySQL
 					sbRow.Append(POut.Long(insEditPatLog.ParentKey)); sbRow.Append(",");
-					sbRow.Append("'"+POut.String(insEditPatLog.Description)+"'"); sbRow.Append(")");
+					sbRow.Append("'"+POut.String(insEditPatLog.Description)+"'"); sbRow.Append(",");
+					sbRow.Append("'"+POut.String(insEditPatLog.OldValueBig)+"'"); sbRow.Append(",");
+					sbRow.Append("'"+POut.String(insEditPatLog.NewValueBig)+"'"); sbRow.Append(")");
 					if(sbCommands.Length+sbRow.Length+1 > TableBase.MaxAllowedPacketCount && countRows > 0) {
 						Db.NonQ(sbCommands.ToString());
 						sbCommands=null;
@@ -211,7 +229,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="InsEditPatLogNum,";
 			}
-			command+="FKey,LogType,FieldName,OldValue,NewValue,UserNum,ParentKey,Description) VALUES(";
+			command+="FKey,LogType,FieldName,OldValue,NewValue,UserNum,ParentKey,Description,OldValueBig,NewValueBig) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(insEditPatLog.InsEditPatLogNum)+",";
 			}
@@ -224,12 +242,22 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Long  (insEditPatLog.UserNum)+","
 				//DateTStamp can only be set by MySQL
 				+    POut.Long  (insEditPatLog.ParentKey)+","
-				+"'"+POut.String(insEditPatLog.Description)+"')";
+				+"'"+POut.String(insEditPatLog.Description)+"',"
+				+    DbHelper.ParamChar+"paramOldValueBig,"
+				+    DbHelper.ParamChar+"paramNewValueBig)";
+			if(insEditPatLog.OldValueBig==null) {
+				insEditPatLog.OldValueBig="";
+			}
+			OdSqlParameter paramOldValueBig=new OdSqlParameter("paramOldValueBig",OdDbType.Text,POut.StringParam(insEditPatLog.OldValueBig));
+			if(insEditPatLog.NewValueBig==null) {
+				insEditPatLog.NewValueBig="";
+			}
+			OdSqlParameter paramNewValueBig=new OdSqlParameter("paramNewValueBig",OdDbType.Text,POut.StringParam(insEditPatLog.NewValueBig));
 			if(useExistingPK || isRandomKeys) {
-				Db.NonQ(command);
+				Db.NonQ(command,paramOldValueBig,paramNewValueBig);
 			}
 			else {
-				insEditPatLog.InsEditPatLogNum=Db.NonQ(command,true,"InsEditPatLogNum","insEditPatLog");
+				insEditPatLog.InsEditPatLogNum=Db.NonQ(command,true,"InsEditPatLogNum","insEditPatLog",paramOldValueBig,paramNewValueBig);
 			}
 			return insEditPatLog.InsEditPatLogNum;
 		}
@@ -245,9 +273,19 @@ namespace OpenDentBusiness.Crud{
 				+"UserNum         =  "+POut.Long  (insEditPatLog.UserNum)+", "
 				//DateTStamp can only be set by MySQL
 				+"ParentKey       =  "+POut.Long  (insEditPatLog.ParentKey)+", "
-				+"Description     = '"+POut.String(insEditPatLog.Description)+"' "
+				+"Description     = '"+POut.String(insEditPatLog.Description)+"', "
+				+"OldValueBig     =  "+DbHelper.ParamChar+"paramOldValueBig, "
+				+"NewValueBig     =  "+DbHelper.ParamChar+"paramNewValueBig "
 				+"WHERE InsEditPatLogNum = "+POut.Long(insEditPatLog.InsEditPatLogNum);
-			Db.NonQ(command);
+			if(insEditPatLog.OldValueBig==null) {
+				insEditPatLog.OldValueBig="";
+			}
+			OdSqlParameter paramOldValueBig=new OdSqlParameter("paramOldValueBig",OdDbType.Text,POut.StringParam(insEditPatLog.OldValueBig));
+			if(insEditPatLog.NewValueBig==null) {
+				insEditPatLog.NewValueBig="";
+			}
+			OdSqlParameter paramNewValueBig=new OdSqlParameter("paramNewValueBig",OdDbType.Text,POut.StringParam(insEditPatLog.NewValueBig));
+			Db.NonQ(command,paramOldValueBig,paramNewValueBig);
 		}
 
 		///<summary>Updates one InsEditPatLog in the database.  Uses an old object to compare to, and only alters changed fields.  This prevents collisions and concurrency problems in heavily used tables.  Returns true if an update occurred.</summary>
@@ -286,12 +324,28 @@ namespace OpenDentBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="Description = '"+POut.String(insEditPatLog.Description)+"'";
 			}
+			if(insEditPatLog.OldValueBig != oldInsEditPatLog.OldValueBig) {
+				if(command!="") { command+=",";}
+				command+="OldValueBig = "+DbHelper.ParamChar+"paramOldValueBig";
+			}
+			if(insEditPatLog.NewValueBig != oldInsEditPatLog.NewValueBig) {
+				if(command!="") { command+=",";}
+				command+="NewValueBig = "+DbHelper.ParamChar+"paramNewValueBig";
+			}
 			if(command=="") {
 				return false;
 			}
+			if(insEditPatLog.OldValueBig==null) {
+				insEditPatLog.OldValueBig="";
+			}
+			OdSqlParameter paramOldValueBig=new OdSqlParameter("paramOldValueBig",OdDbType.Text,POut.StringParam(insEditPatLog.OldValueBig));
+			if(insEditPatLog.NewValueBig==null) {
+				insEditPatLog.NewValueBig="";
+			}
+			OdSqlParameter paramNewValueBig=new OdSqlParameter("paramNewValueBig",OdDbType.Text,POut.StringParam(insEditPatLog.NewValueBig));
 			command="UPDATE inseditpatlog SET "+command
 				+" WHERE InsEditPatLogNum = "+POut.Long(insEditPatLog.InsEditPatLogNum);
-			Db.NonQ(command);
+			Db.NonQ(command,paramOldValueBig,paramNewValueBig);
 			return true;
 		}
 
@@ -321,6 +375,12 @@ namespace OpenDentBusiness.Crud{
 				return true;
 			}
 			if(insEditPatLog.Description != oldInsEditPatLog.Description) {
+				return true;
+			}
+			if(insEditPatLog.OldValueBig != oldInsEditPatLog.OldValueBig) {
+				return true;
+			}
+			if(insEditPatLog.NewValueBig != oldInsEditPatLog.NewValueBig) {
 				return true;
 			}
 			return false;

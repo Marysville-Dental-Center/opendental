@@ -35,6 +35,8 @@ namespace OpenDentBusiness{
 		public bool IsWorkingHome;
 		///<summary>FK to employee.EmployeeNum</summary>
 		public long ReportsTo;
+		///<summary>Added in Open Dental 26.1. FK to definition.DefNum, a definition in DefCat.EmployeeTitles: the employee's job title. 0 if none.</summary>
+		public long Title;
 
 		///<summary></summary>
 		public Employee Copy() {

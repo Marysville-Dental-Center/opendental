@@ -53,7 +53,7 @@ namespace OpenDentBusiness.Crud{
 				insVerify.VerifyType                   = (OpenDentBusiness.VerifyTypes)PIn.Int(row["VerifyType"].ToString());
 				insVerify.FKey                         = PIn.Long  (row["FKey"].ToString());
 				insVerify.DefNum                       = PIn.Long  (row["DefNum"].ToString());
-				insVerify.DateLastAssigned             = PIn.Date  (row["DateLastAssigned"].ToString());
+				insVerify.DateLastAssigned             = PIn.DateT (row["DateLastAssigned"].ToString());
 				insVerify.Note                         = PIn.String(row["Note"].ToString());
 				insVerify.DateTimeEntry                = PIn.DateT (row["DateTimeEntry"].ToString());
 				insVerify.HoursAvailableForVerification= PIn.Double(row["HoursAvailableForVerification"].ToString());
@@ -125,7 +125,7 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Int   ((int)insVerify.VerifyType)+","
 				+    POut.Long  (insVerify.FKey)+","
 				+    POut.Long  (insVerify.DefNum)+","
-				+    POut.Date  (insVerify.DateLastAssigned)+","
+				+    POut.DateT (insVerify.DateLastAssigned)+","
 				+    DbHelper.ParamChar+"paramNote,"
 				+    DbHelper.Now()+","
 				+		 POut.Double(insVerify.HoursAvailableForVerification)+","
@@ -169,7 +169,7 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Int   ((int)insVerify.VerifyType)+","
 				+    POut.Long  (insVerify.FKey)+","
 				+    POut.Long  (insVerify.DefNum)+","
-				+    POut.Date  (insVerify.DateLastAssigned)+","
+				+    POut.DateT (insVerify.DateLastAssigned)+","
 				+    DbHelper.ParamChar+"paramNote,"
 				+    DbHelper.Now()+","
 				+	   POut.Double(insVerify.HoursAvailableForVerification)+","
@@ -196,7 +196,7 @@ namespace OpenDentBusiness.Crud{
 				+"VerifyType                   =  "+POut.Int   ((int)insVerify.VerifyType)+", "
 				+"FKey                         =  "+POut.Long  (insVerify.FKey)+", "
 				+"DefNum                       =  "+POut.Long  (insVerify.DefNum)+", "
-				+"DateLastAssigned             =  "+POut.Date  (insVerify.DateLastAssigned)+", "
+				+"DateLastAssigned             =  "+POut.DateT (insVerify.DateLastAssigned)+", "
 				+"Note                         =  "+DbHelper.ParamChar+"paramNote, "
 				//DateTimeEntry not allowed to change
 				+"HoursAvailableForVerification=  "+POut.Double(insVerify.HoursAvailableForVerification)+", "
@@ -233,9 +233,9 @@ namespace OpenDentBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="DefNum = "+POut.Long(insVerify.DefNum)+"";
 			}
-			if(insVerify.DateLastAssigned.Date != oldInsVerify.DateLastAssigned.Date) {
+			if(insVerify.DateLastAssigned != oldInsVerify.DateLastAssigned) {
 				if(command!="") { command+=",";}
-				command+="DateLastAssigned = "+POut.Date(insVerify.DateLastAssigned)+"";
+				command+="DateLastAssigned = "+POut.DateT(insVerify.DateLastAssigned)+"";
 			}
 			if(insVerify.Note != oldInsVerify.Note) {
 				if(command!="") { command+=",";}
@@ -282,7 +282,7 @@ namespace OpenDentBusiness.Crud{
 			if(insVerify.DefNum != oldInsVerify.DefNum) {
 				return true;
 			}
-			if(insVerify.DateLastAssigned.Date != oldInsVerify.DateLastAssigned.Date) {
+			if(insVerify.DateLastAssigned != oldInsVerify.DateLastAssigned) {
 				return true;
 			}
 			if(insVerify.Note != oldInsVerify.Note) {

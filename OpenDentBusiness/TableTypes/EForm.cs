@@ -40,6 +40,9 @@ namespace OpenDentBusiness {
 		public int SpaceToRightEachField;
 		///<summary>FK to definition.DefNum. This gets set when an EForm is created from an EFormDef. 0 for none or else it's set to an image category. User can change it. It only saves during the import process or if user saves manually.</summary>
 		public long SaveImageCategory;
+		///<summary>Added in Open Dental 25.4: when the patient submitted the form. MinValue when it was not submitted.</summary>
+		[CrudColumn(SpecialType=CrudSpecialColType.DateT)]
+		public DateTime DateTimeSubmitted;
 
 		///<Summary>Used sparingly prior to db insertion, when we have no other choice.</Summary>
 		[CrudColumn(IsNotDbColumn=true)]

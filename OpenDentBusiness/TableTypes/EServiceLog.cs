@@ -117,6 +117,9 @@ namespace OpenDentBusiness {
 		///<summary>16. Open Dental 25.1. The Pearl imaging bridge. Pearl is not an eService, but Open Dental logs it in this table.</summary>
 		[Description("Pearl")]
 		Pearl,
+		///<summary>17. Reserved (Open Dental 25.4). Address validation, an Open Dental HQ service this program does not have.</summary>
+		[Description("Address Validation")]
+		AddressValidation,
 
 	}
 
@@ -675,6 +678,28 @@ namespace OpenDentBusiness {
 		[Description("Web Sched - Schedule another appointment")]
 		[EServiceLogType(eServiceType.WSExistingPat)]
 		ScheduleAnotherAppt,
+		//134 to 138 were added by Open Dental 25.4 (OpenDentalDiffDocumentation25-4.xml) for hosted services this program does not have. Reserved
+		//so that stored values load. Nothing in this program logs them.
+		///<summary>134 - Reserved. An ODTouch device was enabled.</summary>
+		[Description("ODTouch - Device enabled")]
+		[EServiceLogType(eServiceType.ODTouch)]
+		ODTouchDeviceEnabled,
+		///<summary>135 - Reserved. An ODTouch device was disabled.</summary>
+		[Description("ODTouch - Device disabled")]
+		[EServiceLogType(eServiceType.ODTouch)]
+		ODTouchDeviceDisabled,
+		///<summary>136 - Reserved. A mobile device was added.</summary>
+		[Description("Mobile app - Device added")]
+		[EServiceLogType(eServiceType.EClipboard,eServiceType.ODTouch)]
+		MobileDeviceAdded,
+		///<summary>137 - Reserved. A mobile device was deleted.</summary>
+		[Description("Mobile app - Device deleted")]
+		[EServiceLogType(eServiceType.EClipboard,eServiceType.ODTouch)]
+		MobileDeviceDeleted,
+		///<summary>138 - Reserved. An address was checked by the address validation service.</summary>
+		[Description("Address Validation - Address checked")]
+		[EServiceLogType(eServiceType.AddressValidation)]
+		AddressValidation,
 	}
 
 	public class EServiceLogType:Attribute {

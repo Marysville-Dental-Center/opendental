@@ -38,6 +38,8 @@ namespace OpenDental {
 			if(VitalsignCur.Pulse!=0) {
 				textPulse.Text=VitalsignCur.Pulse.ToString();
 			}
+			//Open Dental 25.3: the Notes box is bound to the existing vitalsign.Documentation column, so text saved there earlier shows here.
+			textNotes.Text=VitalsignCur.Documentation??"";
 			#region SetHWBPAndVisibility
 			_diseaseDefNumPreg=0;
 			groupInterventions.Visible=false;
@@ -817,6 +819,7 @@ Do you want to remove the pregnancy diagnosis?"))
 			#region Save
 			VitalsignCur=Vitalsigns.SetFields(VitalsignCur,date,pulse,height,weight,bpDia,bpSys,PIn.Int(textBMIPercentile.Text),loincSelectedHeightCode,loincSelectedWeightCode);
 			VitalsignCur.WeightCode=Vitalsigns.SetWeightCodes(_interventionCodeSet);
+			VitalsignCur.Documentation=textNotes.Text;//Notes box (Open Dental 25.3)
 			#region PregnancyDx
 			if(checkPregnant.Checked) {//pregnant, add pregnant dx if necessary
 				try {

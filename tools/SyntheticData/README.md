@@ -197,7 +197,11 @@ label types, `ValueLabelEnglish` holds the same JSON with the English label.
 
 - `Tables`: per table the row count, `CHECKSUM TABLE ... EXTENDED`, and a checksum per column: `SUM(CRC32(primary key | value))`.
   The per-column checksum ignores the physical row format and the other columns, so dropping a column or rewriting `SecurityHash`
-  leaves every other column's checksum unchanged.
+  leaves every other column's checksum unchanged. A FLOAT value is read widened to DOUBLE: MariaDB writes a FLOAT as text with 6
+  significant digits, so 34.285713 and the 34.2857 a `mariadb-dump` restore makes of it would otherwise give the same checksum (only
+  `CHECKSUM TABLE` would differ). DOUBLE values are written exactly already.
+- `compare` reports a `CHECKSUM TABLE` difference with no other difference in the table as unexpected, with a note: every value reads the
+  same, but the stored rows differ (a row or date format, or a value the column checksums cannot see).
 - `Totals`: the named queries in [sql/business-totals.sql](sql/business-totals.sql), as of the report's date (`--as-of`, else the
   date in `SyntheticDataInfo`, else 2026-09-30): patients by status, gross and net production (by year and provider),
   adjustments, write-offs, patient and insurance income, deposits, stored aging buckets and the ledger total, outstanding and
@@ -227,6 +231,9 @@ non-zero; they describe the synthetic data.
 
 ## The adoption rehearsal (M1-Z)
 
+[tools/AdoptionValidation](../AdoptionValidation/README.md) runs all of this, with the real adoption tool, the fork migration, the schema
+verifier, the rehash and further checks, twice, and times every step. The steps by hand:
+
 1. `generate` into `synth_253` and keep the report (`--out before.json`). Optionally `--config-from` a fresh 24.3.63 dev database
    (from `tools\New-DevDatabase.ps1`) first, which copies its preference, definition, user, permission, program, report and claim
    form rows (shared columns only), so the fork can open the database.
@@ -234,14 +241,18 @@ non-zero; they describe the synthetic data.
 3. `validate --database synth_253_adopted --out after.json`.
 4. `compare before.json after.json --allowed allowed-differences.adoption.json`. The allowed differences are the ones adoption is
    meant to make: `patient._portal_active_email` and its unique key dropped (owner decision), `SecurityHash` rehashed, preference
-   rows (fork markers, version sentinel), Open Dental update files, adoption's own security-log rows. Everything else, for
-   example a second guardian renumbering, a `ShowTransSinceBalZero` back-fill or a repeated permission grant, is reported as
-   unexpected and the exit code is 5.
+   rows (fork markers, version sentinel, the 25.4 and 26.1 preferences), Open Dental update files, the security-log rows of adoption and
+   the rehash, and what the Open Dental 25.4 and 26.1 steps change on the way to the 26.1.70 schema (M2-01: the new tables and columns,
+   `claimpayment.Note` NULLs becoming empty, `DateLastAssigned` read back as datetime; M2-02: the blockout permission split in
+   `grouppermission`). Everything else, for example a second guardian renumbering, a `ShowTransSinceBalZero` back-fill, a repeated
+   permission grant or any change to `updatehistory`, is reported as unexpected and the exit code is 5. The rules for `preference`,
+   `documentmisc`, `securitylog`, `securityloghash` and `grouppermission` cover whole tables, and those for the new and the changed
+   columns whole columns (a report has no rows to compare); `AdoptionValidation adopt` checks all of them row by row against the original.
 
 Note for the adoption tool: many tables have a `timestamp ... ON UPDATE current_timestamp()` column (`SecDateTEdit`,
 `DateTStamp`). An `UPDATE` that rehashes `SecurityHash` without also writing `SecDateTEdit=SecDateTEdit` moves those audit
 timestamps to the adoption time, and `compare` reports it (the database tests show both cases). The allowed list deliberately
-does not excuse it.
+does not excuse it. The M1-Z rehearsal found that `SecurityHash.RehashNow` did exactly that; it now keeps every ON UPDATE timestamp.
 
 `--fill-remaining N` adds N schema-valid filler rows to every table that is still empty (except tables whose rows would change
 start-up behaviour, such as `documentmisc`, `updatehistory` and `preference`), so the checksums cover all 422 tables. Filler rows

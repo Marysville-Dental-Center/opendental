@@ -391,6 +391,7 @@ namespace OpenDentBusiness {
 			}
 			command="SELECT procedurelog.*"
 					+",procnoterow.UserNum NoteUserNum,procnoterow.Note NoteNote,procnoterow.SigIsTopaz NoteSigIsTopaz,procnoterow.Signature NoteSignature "
+					+",procnoterow.UserNum2 NoteUserNum2,procnoterow.SigIsTopaz2 NoteSigIsTopaz2,procnoterow.Signature2 NoteSignature2 "
 				+"FROM procedurelog "
 				+"LEFT JOIN (SELECT ProcNum,MAX(EntryDateTime) EntryDateTime FROM procnote WHERE procnote.ProcNum IN ("+string.Join(",",listProcNums)+") GROUP BY ProcNum) procnotemax ON procnotemax.ProcNum=procedurelog.ProcNum "
 				+"LEFT JOIN procnote procnoterow ON procnoterow.ProcNum=procedurelog.ProcNum AND procnoterow.EntryDateTime=procnotemax.EntryDateTime "
@@ -406,6 +407,9 @@ namespace OpenDentBusiness {
 				listProcs[i].Note=PIn.String(table.Rows[i]["NoteNote"].ToString());
 				listProcs[i].SigIsTopaz=PIn.Bool(table.Rows[i]["NoteSigIsTopaz"].ToString());
 				listProcs[i].Signature=PIn.String(table.Rows[i]["NoteSignature"].ToString());
+				listProcs[i].UserNum2=PIn.Long(table.Rows[i]["NoteUserNum2"].ToString());
+				listProcs[i].SigIsTopaz2=PIn.Bool(table.Rows[i]["NoteSigIsTopaz2"].ToString());
+				listProcs[i].Signature2=PIn.String(table.Rows[i]["NoteSignature2"].ToString());
 			}
 			return listProcs;
 		}
@@ -798,6 +802,7 @@ namespace OpenDentBusiness {
 			}
 			//ProcNote stuff
 			command="SELECT procnote.ProcNum,procnote.UserNum,procnote.Note,procnote.SigIsTopaz,procnote.Signature "
+				+",procnote.UserNum2,procnote.SigIsTopaz2,procnote.Signature2 "
 				+"FROM procnote "
 				+"INNER JOIN ("
 					+"SELECT procnote.ProcNum,MAX(procnote.EntryDateTime) EntryDateTime "
@@ -818,6 +823,9 @@ namespace OpenDentBusiness {
 				proc.Note=PIn.String(row["Note"].ToString());
 				proc.SigIsTopaz=PIn.Bool(row["SigIsTopaz"].ToString());
 				proc.Signature=PIn.String(row["Signature"].ToString());
+				proc.UserNum2=PIn.Long(row["UserNum2"].ToString());
+				proc.SigIsTopaz2=PIn.Bool(row["SigIsTopaz2"].ToString());
+				proc.Signature2=PIn.String(row["Signature2"].ToString());
 			}
 			return listProcs;
 		}
@@ -3619,7 +3627,7 @@ namespace OpenDentBusiness {
 				cp.DateCP=proc.ProcDate;
 				cp.AllowedOverride=-1;
 				cp.PercentOverride=-1;
-				cp.NoBillIns=InsPlanPreferences.NoBillIns(ProcedureCodes.GetProcCode(proc.CodeNum),planCur);
+				cp.NoBillIns=GetNoBillInsForNewEstimate(proc,planCur);
 				cp.PaidOtherIns=-1;
 				cp.CopayOverride=-1;
 				cp.ProcDate=proc.ProcDate;
@@ -3738,7 +3746,7 @@ namespace OpenDentBusiness {
 			#region Sales Tax
 			//At the end of recalculating writeoffs, we need to update sales tax estimate for treatment planned procs.
 			if(proc.ProcStatus==ProcStat.TP) {
-				proc.TaxAmt=ClaimProcs.ComputeSalesTax(proc,claimProcs,true);
+				proc.TaxAmt=SalesTaxProcs.IsSalesTaxProc(proc) ? 0 : ClaimProcs.ComputeSalesTax(proc,claimProcs,true);//A sales-tax procedure is never taxed.
 			}
 			#endregion
 		}
@@ -3983,6 +3991,7 @@ namespace OpenDentBusiness {
 					}
 				}
 				#endregion
+				ZeroEstimateIfCoverageEnded(claimProcs[i],proc,listInsSubs,hasEstimateCalculation);//Only inside ScopeCoverageEndCheck (TP module, 25.4).
 				if(hasMetFrequencyLimit && InsPlans.DoZeroOutWriteOffOnOtherLimitation(PlanCur) && ClaimProcs.GetEstimatedStatuses().Contains(claimProcs[i].Status)) {
 					claimProcs[i].WriteOffEst=0;
 				}

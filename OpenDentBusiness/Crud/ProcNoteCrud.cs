@@ -55,6 +55,9 @@ namespace OpenDentBusiness.Crud{
 				procNote.Note         = PIn.String(row["Note"].ToString());
 				procNote.SigIsTopaz   = PIn.Bool  (row["SigIsTopaz"].ToString());
 				procNote.Signature    = PIn.String(row["Signature"].ToString());
+				procNote.UserNum2     = PIn.Long  (row["UserNum2"].ToString());
+				procNote.Signature2   = PIn.String(row["Signature2"].ToString());
+				procNote.SigIsTopaz2  = PIn.Bool  (row["SigIsTopaz2"].ToString());
 				retVal.Add(procNote);
 			}
 			return retVal;
@@ -74,6 +77,9 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("Note");
 			table.Columns.Add("SigIsTopaz");
 			table.Columns.Add("Signature");
+			table.Columns.Add("UserNum2");
+			table.Columns.Add("Signature2");
+			table.Columns.Add("SigIsTopaz2");
 			foreach(ProcNote procNote in listProcNotes) {
 				table.Rows.Add(new object[] {
 					POut.Long  (procNote.ProcNoteNum),
@@ -84,6 +90,9 @@ namespace OpenDentBusiness.Crud{
 					            procNote.Note,
 					POut.Bool  (procNote.SigIsTopaz),
 					            procNote.Signature,
+					POut.Long  (procNote.UserNum2),
+					            procNote.Signature2,
+					POut.Bool  (procNote.SigIsTopaz2),
 				});
 			}
 			return table;
@@ -103,7 +112,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="ProcNoteNum,";
 			}
-			command+="PatNum,ProcNum,EntryDateTime,UserNum,Note,SigIsTopaz,Signature) VALUES(";
+			command+="PatNum,ProcNum,EntryDateTime,UserNum,Note,SigIsTopaz,Signature,UserNum2,Signature2,SigIsTopaz2) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(procNote.ProcNoteNum)+",";
 			}
@@ -114,7 +123,10 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Long  (procNote.UserNum)+","
 				+    DbHelper.ParamChar+"paramNote,"
 				+    POut.Bool  (procNote.SigIsTopaz)+","
-				+    DbHelper.ParamChar+"paramSignature)";
+				+    DbHelper.ParamChar+"paramSignature,"
+				+    POut.Long  (procNote.UserNum2)+","
+				+    DbHelper.ParamChar+"paramSignature2,"
+				+    POut.Bool  (procNote.SigIsTopaz2)+")";
 			if(procNote.Note==null) {
 				procNote.Note="";
 			}
@@ -123,11 +135,15 @@ namespace OpenDentBusiness.Crud{
 				procNote.Signature="";
 			}
 			OdSqlParameter paramSignature=new OdSqlParameter("paramSignature",OdDbType.Text,POut.StringParam(procNote.Signature));
+			if(procNote.Signature2==null) {
+				procNote.Signature2="";
+			}
+			OdSqlParameter paramSignature2=new OdSqlParameter("paramSignature2",OdDbType.Text,POut.StringParam(procNote.Signature2));
 			if(useExistingPK || PrefC.RandomKeys) {
-				Db.NonQ(command,paramNote,paramSignature);
+				Db.NonQ(command,paramNote,paramSignature,paramSignature2);
 			}
 			else {
-				procNote.ProcNoteNum=Db.NonQ(command,true,"ProcNoteNum","procNote",paramNote,paramSignature);
+				procNote.ProcNoteNum=Db.NonQ(command,true,"ProcNoteNum","procNote",paramNote,paramSignature,paramSignature2);
 			}
 			return procNote.ProcNoteNum;
 		}
@@ -147,7 +163,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="ProcNoteNum,";
 			}
-			command+="PatNum,ProcNum,EntryDateTime,UserNum,Note,SigIsTopaz,Signature) VALUES(";
+			command+="PatNum,ProcNum,EntryDateTime,UserNum,Note,SigIsTopaz,Signature,UserNum2,Signature2,SigIsTopaz2) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(procNote.ProcNoteNum)+",";
 			}
@@ -158,7 +174,10 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Long  (procNote.UserNum)+","
 				+    DbHelper.ParamChar+"paramNote,"
 				+    POut.Bool  (procNote.SigIsTopaz)+","
-				+    DbHelper.ParamChar+"paramSignature)";
+				+    DbHelper.ParamChar+"paramSignature,"
+				+    POut.Long  (procNote.UserNum2)+","
+				+    DbHelper.ParamChar+"paramSignature2,"
+				+    POut.Bool  (procNote.SigIsTopaz2)+")";
 			if(procNote.Note==null) {
 				procNote.Note="";
 			}
@@ -167,11 +186,15 @@ namespace OpenDentBusiness.Crud{
 				procNote.Signature="";
 			}
 			OdSqlParameter paramSignature=new OdSqlParameter("paramSignature",OdDbType.Text,POut.StringParam(procNote.Signature));
+			if(procNote.Signature2==null) {
+				procNote.Signature2="";
+			}
+			OdSqlParameter paramSignature2=new OdSqlParameter("paramSignature2",OdDbType.Text,POut.StringParam(procNote.Signature2));
 			if(useExistingPK || isRandomKeys) {
-				Db.NonQ(command,paramNote,paramSignature);
+				Db.NonQ(command,paramNote,paramSignature,paramSignature2);
 			}
 			else {
-				procNote.ProcNoteNum=Db.NonQ(command,true,"ProcNoteNum","procNote",paramNote,paramSignature);
+				procNote.ProcNoteNum=Db.NonQ(command,true,"ProcNoteNum","procNote",paramNote,paramSignature,paramSignature2);
 			}
 			return procNote.ProcNoteNum;
 		}
@@ -185,7 +208,10 @@ namespace OpenDentBusiness.Crud{
 				+"UserNum      =  "+POut.Long  (procNote.UserNum)+", "
 				+"Note         =  "+DbHelper.ParamChar+"paramNote, "
 				+"SigIsTopaz   =  "+POut.Bool  (procNote.SigIsTopaz)+", "
-				+"Signature    =  "+DbHelper.ParamChar+"paramSignature "
+				+"Signature    =  "+DbHelper.ParamChar+"paramSignature, "
+				+"UserNum2     =  "+POut.Long  (procNote.UserNum2)+", "
+				+"Signature2   =  "+DbHelper.ParamChar+"paramSignature2, "
+				+"SigIsTopaz2  =  "+POut.Bool  (procNote.SigIsTopaz2)+" "
 				+"WHERE ProcNoteNum = "+POut.Long(procNote.ProcNoteNum);
 			if(procNote.Note==null) {
 				procNote.Note="";
@@ -195,7 +221,11 @@ namespace OpenDentBusiness.Crud{
 				procNote.Signature="";
 			}
 			OdSqlParameter paramSignature=new OdSqlParameter("paramSignature",OdDbType.Text,POut.StringParam(procNote.Signature));
-			Db.NonQ(command,paramNote,paramSignature);
+			if(procNote.Signature2==null) {
+				procNote.Signature2="";
+			}
+			OdSqlParameter paramSignature2=new OdSqlParameter("paramSignature2",OdDbType.Text,POut.StringParam(procNote.Signature2));
+			Db.NonQ(command,paramNote,paramSignature,paramSignature2);
 		}
 
 		///<summary>Updates one ProcNote in the database.  Uses an old object to compare to, and only alters changed fields.  This prevents collisions and concurrency problems in heavily used tables.  Returns true if an update occurred.</summary>
@@ -226,6 +256,18 @@ namespace OpenDentBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="Signature = "+DbHelper.ParamChar+"paramSignature";
 			}
+			if(procNote.UserNum2 != oldProcNote.UserNum2) {
+				if(command!="") { command+=",";}
+				command+="UserNum2 = "+POut.Long(procNote.UserNum2)+"";
+			}
+			if(procNote.Signature2 != oldProcNote.Signature2) {
+				if(command!="") { command+=",";}
+				command+="Signature2 = "+DbHelper.ParamChar+"paramSignature2";
+			}
+			if(procNote.SigIsTopaz2 != oldProcNote.SigIsTopaz2) {
+				if(command!="") { command+=",";}
+				command+="SigIsTopaz2 = "+POut.Bool(procNote.SigIsTopaz2)+"";
+			}
 			if(command=="") {
 				return false;
 			}
@@ -237,9 +279,13 @@ namespace OpenDentBusiness.Crud{
 				procNote.Signature="";
 			}
 			OdSqlParameter paramSignature=new OdSqlParameter("paramSignature",OdDbType.Text,POut.StringParam(procNote.Signature));
+			if(procNote.Signature2==null) {
+				procNote.Signature2="";
+			}
+			OdSqlParameter paramSignature2=new OdSqlParameter("paramSignature2",OdDbType.Text,POut.StringParam(procNote.Signature2));
 			command="UPDATE procnote SET "+command
 				+" WHERE ProcNoteNum = "+POut.Long(procNote.ProcNoteNum);
-			Db.NonQ(command,paramNote,paramSignature);
+			Db.NonQ(command,paramNote,paramSignature,paramSignature2);
 			return true;
 		}
 
@@ -263,6 +309,15 @@ namespace OpenDentBusiness.Crud{
 				return true;
 			}
 			if(procNote.Signature != oldProcNote.Signature) {
+				return true;
+			}
+			if(procNote.UserNum2 != oldProcNote.UserNum2) {
+				return true;
+			}
+			if(procNote.Signature2 != oldProcNote.Signature2) {
+				return true;
+			}
+			if(procNote.SigIsTopaz2 != oldProcNote.SigIsTopaz2) {
 				return true;
 			}
 			return false;

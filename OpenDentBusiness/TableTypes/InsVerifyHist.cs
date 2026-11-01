@@ -31,7 +31,8 @@ namespace OpenDentBusiness {
 		///<summary>Copied from InsVerify.</summary>
 		[CrudColumn(SpecialType=CrudSpecialColType.IsText | CrudSpecialColType.CleanText)]
 		public string Note;
-		///<summary>Copied from InsVerify.</summary>
+		///<summary>Copied from InsVerify. datetime since Open Dental 25.4, like insverify.DateLastAssigned.</summary>
+		[CrudColumn(SpecialType=CrudSpecialColType.DateT)]
 		public DateTime DateLastAssigned;
 		///<summary>Copied from InsVerify.</summary>
 		[CrudColumn(SpecialType=CrudSpecialColType.DateT)]

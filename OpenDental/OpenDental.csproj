@@ -294,9 +294,6 @@
     <Compile Include="Bridges\FormHouseCalls.designer.cs">
       <DependentUpon>FormHouseCalls.cs</DependentUpon>
     </Compile>
-    <Compile Include="Bridges\FormIap.designer.cs">
-      <DependentUpon>FormIap.cs</DependentUpon>
-    </Compile>
     <Compile Include="Bridges\FormOryxUserSettings.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -310,9 +307,6 @@
       <DependentUpon>FormTrophyNamePick.cs</DependentUpon>
     </Compile>
     <Compile Include="Bridges\FormHouseCalls.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Bridges\FormIap.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Bridges\FormPatienteBill.cs">
@@ -452,6 +446,18 @@
     </Compile>
     <Compile Include="Forms Reports\FormRpInsPendingSupplementals.designer.cs">
       <DependentUpon>FormRpInsPendingSupplementals.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms Reports\FormRpUdsPlus.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms Reports\FormRpUdsPlus.designer.cs">
+      <DependentUpon>FormRpUdsPlus.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms Reports\FormRpUdsPlusSetup.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms Reports\FormRpUdsPlusSetup.designer.cs">
+      <DependentUpon>FormRpUdsPlusSetup.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms Reports\FormRpProcSheet.designer.cs">
       <DependentUpon>FormRpProcSheet.cs</DependentUpon>
@@ -988,6 +994,9 @@
       <DependentUpon>FormDiseaseDefEdit.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\FormDiseaseDefs.designer.cs">
+      <DependentUpon>FormDiseaseDefs.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormDiseaseDefs.OtherConvert.cs">
       <DependentUpon>FormDiseaseDefs.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\FormDisplayFieldCategories.designer.cs">
@@ -1752,6 +1761,12 @@
     <Compile Include="Forms\FormProgramLinkHideClinics.designer.cs">
       <DependentUpon>FormProgramLinkHideClinics.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\FormFileMonitor.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormFileMonitor.designer.cs">
+      <DependentUpon>FormFileMonitor.cs</DependentUpon>
+    </Compile>
     <Compile Include="Forms\FormQueryMonitor.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -1855,6 +1870,15 @@
     <Compile Include="Forms\FormProcCodes2.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="Forms\FormProcCodesOther.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormProcCodesOther.Designer.cs">
+      <DependentUpon>FormProcCodesOther.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormProcTools.OtherCodes.cs">
+      <DependentUpon>FormProcTools.cs</DependentUpon>
+    </Compile>
     <Compile Include="Forms\FormProcEdit.designer.cs">
       <DependentUpon>FormProcEdit.cs</DependentUpon>
     </Compile>
@@ -1945,8 +1969,14 @@
     <Compile Include="Main Modules\ControlTreat.designer.cs">
       <DependentUpon>ControlTreat.cs</DependentUpon>
     </Compile>
+    <Compile Include="Main Modules\ControlTreat.AddProcs.cs">
+      <DependentUpon>ControlTreat.cs</DependentUpon>
+    </Compile>
     <Compile Include="Main Modules\FormOpenDental.Designer.cs">
       <DependentUpon>FormOpenDental.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Main Modules\FormOpenDentalBShell.cs">
+      <SubType>Form</SubType>
     </Compile>
     <Compile Include="Main Modules\FormOpenDentalMenus.cs">
       <SubType>Form</SubType>
@@ -2208,6 +2238,7 @@
     <Compile Include="Logic\PatRestrictionL.cs" />
     <Compile Include="Logic\PrefL.cs" />
     <Compile Include="Logic\PrinterL.cs" />
+    <Compile Include="Logic\PrinterL.PrintOptions.cs" />
     <Compile Include="Logic\ProcedureL.cs" />
     <Compile Include="Logic\ProgramL.cs" />
     <Compile Include="Logic\RefAttachL.cs" />
@@ -2796,6 +2827,7 @@
     </Compile>
     <Compile Include="Logic\EdgeExpressL.cs" />
     <Compile Include="Logic\VendorDirect\DropboxStartupCheck.cs" />
+    <Compile Include="Logic\VendorDirect\BridgeProgramLinkSetups.cs" />
     <Compile Include="Logic\VendorDirect\IProgramLinkSetup.cs" />
     <Compile Include="Logic\VendorDirect\PostcardsMenu.cs" />
     <Compile Include="Logic\VendorDirect\ProgramLinkSetupRegistry.cs" />
@@ -2859,6 +2891,12 @@
     </Compile>
     <Compile Include="Forms\FormTreatPlanCurEdit.designer.cs">
       <DependentUpon>FormTreatPlanCurEdit.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormTreatPlanAddProcs.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormTreatPlanAddProcs.Designer.cs">
+      <DependentUpon>FormTreatPlanAddProcs.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\FormSheetExport.cs">
       <SubType>Form</SubType>
@@ -4099,6 +4137,9 @@
     <Compile Include="Forms\FormAllergySetup.designer.cs">
       <DependentUpon>FormAllergySetup.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\FormAllergySetup.OtherConvert.cs">
+      <DependentUpon>FormAllergySetup.cs</DependentUpon>
+    </Compile>
     <Compile Include="Forms\FormIcd9s.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -4294,6 +4335,9 @@
     <Compile Include="Forms\FormSheetImport.designer.cs">
       <DependentUpon>FormSheetImport.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\FormSheetImport.PatFields.cs">
+      <DependentUpon>FormSheetImport.cs</DependentUpon>
+    </Compile>
     <Compile Include="Forms\FormTerminal.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -4468,6 +4512,9 @@
     <Compile Include="Forms\FormSheetFieldCheckBox.designer.cs">
       <DependentUpon>FormSheetFieldCheckBox.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\FormSheetFieldCheckBox.Instructions.cs">
+      <DependentUpon>FormSheetFieldCheckBox.cs</DependentUpon>
+    </Compile>
     <Compile Include="Forms\FormSheetFieldLine.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -4519,10 +4566,19 @@
     <Compile Include="Forms\FormSheetFillEdit.designer.cs">
       <DependentUpon>FormSheetFillEdit.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\FormSheetFillEdit.AutoSaveImages.cs">
+      <DependentUpon>FormSheetFillEdit.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormSheetFillEdit.Submitted.cs">
+      <DependentUpon>FormSheetFillEdit.cs</DependentUpon>
+    </Compile>
     <Compile Include="Forms\FormSheetDefEdit.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Forms\FormSheetDefEdit.designer.cs">
+      <DependentUpon>FormSheetDefEdit.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormSheetDefEdit.InserterBarcode.cs">
       <DependentUpon>FormSheetDefEdit.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\FormDisplayFieldCategories.cs">
@@ -4820,6 +4876,19 @@
     <Compile Include="Forms\FormApptViews.cs">
       <SubType>Form</SubType>
     </Compile>
+    <!-- Package B-APPT: Waiting Room window and the Appointments module partial files. -->
+    <Compile Include="Forms\FormWaitingRoom.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormWaitingRoom.Designer.cs">
+      <DependentUpon>FormWaitingRoom.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Main Modules\ControlAppt.WaitingRoom.cs">
+      <DependentUpon>ControlAppt.cs</DependentUpon>
+    </Compile>
+    <Compile Include="UI\Appt\ControlApptPanel.TimeBars.cs">
+      <DependentUpon>ControlApptPanel.cs</DependentUpon>
+    </Compile>
     <Compile Include="Forms\FormAudit.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -4837,6 +4906,9 @@
     </Compile>
     <Compile Include="Forms\FormBenefitEdit.cs">
       <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormBenefitEdit.Redesign.cs">
+      <DependentUpon>FormBenefitEdit.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\FormBilling.cs">
       <SubType>Form</SubType>
@@ -4916,6 +4988,16 @@
     <Compile Include="Forms\FormDatabaseMaintenance.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="Forms\FormDatabaseMaintenance.Tools25.cs">
+      <DependentUpon>FormDatabaseMaintenance.cs</DependentUpon>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormDatabaseMaintInvalidChars.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormDatabaseMaintInvalidChars.Designer.cs">
+      <DependentUpon>FormDatabaseMaintInvalidChars.cs</DependentUpon>
+    </Compile>
     <Compile Include="Forms\FormDefEdit.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -4933,6 +5015,12 @@
     </Compile>
     <Compile Include="Forms\FormDiseaseDefs.cs">
       <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormDiseaseDefMerge.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormDiseaseDefMerge.Designer.cs">
+      <DependentUpon>FormDiseaseDefMerge.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\FormDunningEdit.cs">
       <SubType>Form</SubType>
@@ -5062,6 +5150,12 @@
     </Compile>
     <Compile Include="Forms\FormPayment.cs">
       <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormPayment.IncomeTransferLimit.cs">
+      <DependentUpon>FormPayment.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormPayment.InvoiceFilter.cs">
+      <DependentUpon>FormPayment.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\FormPayPeriodEdit.cs">
       <SubType>Form</SubType>
@@ -5291,6 +5385,10 @@
     <Compile Include="Main Modules\ControlAccount.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Include="Main Modules\ControlAccount.SalesTax.cs">
+      <DependentUpon>ControlAccount.cs</DependentUpon>
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Include="Main Modules\ControlChart.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -5306,6 +5404,9 @@
     </Compile>
     <Compile Include="Main Modules\ControlManage.cs">
       <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Main Modules\ControlManage.ReportsTo.cs">
+      <DependentUpon>ControlManage.cs</DependentUpon>
     </Compile>
     <Compile Include="Main Modules\ControlTreat.cs">
       <SubType>UserControl</SubType>
@@ -5898,10 +5999,6 @@
       <DependentUpon>FormHouseCalls.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="Bridges\FormIap.resx">
-      <DependentUpon>FormIap.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
     <EmbeddedResource Include="Bridges\FormPrintTrojan.resx">
       <DependentUpon>FormPrintTrojan.cs</DependentUpon>
       <SubType>Designer</SubType>
@@ -5916,6 +6013,14 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms Reports\FormRpInsPendingSupplementals.resx">
       <DependentUpon>FormRpInsPendingSupplementals.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms Reports\FormRpUdsPlus.resx">
+      <DependentUpon>FormRpUdsPlus.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms Reports\FormRpUdsPlusSetup.resx">
+      <DependentUpon>FormRpUdsPlusSetup.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="Bridges\FormOryxUserSettings.resx">

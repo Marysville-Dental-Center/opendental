@@ -529,6 +529,15 @@ Usually blank</ControlText>
     <HeightWindow>0</HeightWindow>
   </PrefInf>
   <PrefInf>
+    <PrefName>IncomeTransfersLimitToPatPayments</PrefName>
+    <Category>AccountPayments</Category>
+    <ControlName>checkIncomeTransfersLimitToPatPayments</ControlName>
+    <ControlText>Limit manual income transfers to the amount of patient payments</ControlText>
+    <Details>A manual income transfer can then only move money that came from patient payments, and never more than a payment still holds. Insurance income and adjustments cannot be moved into patient credit. The automatic transfer tools are not affected.</Details>
+    <WidthWindow>0</WidthWindow>
+    <HeightWindow>0</HeightWindow>
+  </PrefInf>
+  <PrefInf>
     <PrefName>OnlinePaymentsMarkAsProcessed</PrefName>
     <Category>AccountPayments</Category>
     <ControlName>checkOnlinePaymentsMarkAsProcessed</ControlName>
@@ -713,6 +722,24 @@ Usually blank</ControlText>
     <ControlName>labelRepeatingChargesAutomatedTime</ControlName>
     <ControlText>Repeating charges run time</ControlText>
     <Details>this should be set to run before Recurring charges</Details>
+    <WidthWindow>0</WidthWindow>
+    <HeightWindow>0</HeightWindow>
+  </PrefInf>
+  <PrefInf>
+    <PrefName>RepeatingChargesAllowBackdating</PrefName>
+    <Category>AccountRecAndRepCharges</Category>
+    <ControlName>checkRepeatingChargesAllowBackdating</ControlName>
+    <ControlText>Allow repeating charges to be backdated</ControlText>
+    <Details>When checked, running repeating charges also posts billing dates that were missed, dated on those past dates. When unchecked, no charge is posted with a date before the day the tool runs. Lock dates apply either way.</Details>
+    <WidthWindow>0</WidthWindow>
+    <HeightWindow>0</HeightWindow>
+  </PrefInf>
+  <PrefInf>
+    <PrefName>RecurringChargesFailEmailEnabled</PrefName>
+    <Category>AccountRecAndRepCharges</Category>
+    <ControlName>checkRecurringChargesFailEmailEnabled</ControlName>
+    <ControlText>Email patients when a recurring charge fails</ControlText>
+    <Details>Each declined or failed recurring charge sends one e-mail to the patient, or to the guarantor when the patient has no address, from the office's own e-mail address. Patients who opted out of e-mail are skipped. Edit Template sets the subject and text.</Details>
     <WidthWindow>0</WidthWindow>
     <HeightWindow>0</HeightWindow>
   </PrefInf>
@@ -1076,6 +1103,24 @@ Usually blank</ControlText>
 ProviderTimeOperatory: searches availability using both the provider time bar and space in the provider's operatories. This will prevent overlap of appointments.</Details>
     <WidthWindow>400</WidthWindow>
     <HeightWindow>275</HeightWindow>
+  </PrefInf>
+  <PrefInf>
+    <PrefName>AppointmentMakeRecallSearchesOpenings</PrefName>
+    <Category>ApptGeneral</Category>
+    <ControlName>checkAppointmentMakeRecallSearchesOpenings</ControlName>
+    <ControlText>Make Recall automatically searches for openings</ControlText>
+    <Details>When checked, Make Recall puts the recall appointment on the Pinboard and then searches for openings. When unchecked, it only puts the appointment on the Pinboard.</Details>
+    <WidthWindow>0</WidthWindow>
+    <HeightWindow>0</HeightWindow>
+  </PrefInf>
+  <PrefInf>
+    <PrefName>ScheduleProvUnassigned</PrefName>
+    <Category>ApptGeneral</Category>
+    <ControlName>labelScheduleProvUnassigned</ControlName>
+    <ControlText>Default provider for unassigned operatories</ControlText>
+    <Details>Used for appointments and schedules in operatories that have no provider assigned.</Details>
+    <WidthWindow>0</WidthWindow>
+    <HeightWindow>0</HeightWindow>
   </PrefInf>
   <PrefInf>
     <PrefName />
@@ -2089,6 +2134,15 @@ Exclusions are defined using an Other Benefits Exclusions type, or by setting an
     <ControlName>checkImagesModuleUsesOld2020</ControlName>
     <ControlText>Use old Imaging module interface, pre 2020</ControlText>
     <Details>not recommended</Details>
+    <WidthWindow>0</WidthWindow>
+    <HeightWindow>0</HeightWindow>
+  </PrefInf>
+  <PrefInf>
+    <PrefName>ImagingAllowPdfJavascript</PrefName>
+    <Category>ImagingGeneral</Category>
+    <ControlName>checkImagingAllowPdfJavascript</ControlName>
+    <ControlText>Allow JavaScript when viewing PDFs</ControlText>
+    <Details>Off by default, so scripts inside PDFs shown in the Imaging module do not run. Turn it on only if fillable or calculating PDFs need their scripts. Takes effect the next time a PDF is opened. PDFs opened in another viewer are not affected.</Details>
     <WidthWindow>0</WidthWindow>
     <HeightWindow>0</HeightWindow>
   </PrefInf>

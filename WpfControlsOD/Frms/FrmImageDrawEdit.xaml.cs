@@ -18,12 +18,14 @@ namespace OpenDental {
 		public Size SizeBitmap;
 		///<summary>Same as zoom slider from parent.  Typical value is 100.</summary>
 		public float ZoomVal;
+		///<summary>Keeps Actual Size and Apparent Size in step as the user types in either box. Made on load, once ZoomVal is set.</summary>
+		private ImageDrawFontSizeSync _imageDrawFontSizeSync;
 
 		public FrmImageDrawEdit() {
 			InitializeComponent();
 			Load+=FrmImageDrawEdit_Load;
-			textFontSize.LostFocus+=textFontSize_LostFocus;
-			textFontApparent.LostFocus+=textFontApparent_LostFocus;
+			textFontSize.TextChanged+=textFontSize_TextChanged;
+			textFontApparent.TextChanged+=textFontApparent_TextChanged;
 			PreviewKeyDown+=FrmImageDrawEdit_PreviewKeyDown;
 		}
 
@@ -38,8 +40,10 @@ namespace OpenDental {
 			if(Programs.IsEnabled(ProgramName.Pearl)){
 				groupBoxFont.IsEnabled=false;//show them the global pearl value, but don't let them change it.
 			}
-			textFontSize.Text=ImageDrawCur.GetFontSize().ToString("#.##");
-			CalculateApparentFont();
+			_imageDrawFontSizeSync=new ImageDrawFontSizeSync(ZoomVal,ScaleF(1),
+				actionSetActualText:text => textFontSize.Text=text,
+				actionSetApparentText:text => textFontApparent.Text=text);
+			textFontSize.Text=ImageDrawCur.GetFontSize().ToString("#.##");//fills Apparent Size through the text changed event
 			//ImageDrawCur.ColorBack can be transparent (0,255,255,255), which is transparent white.
 			panelColor.ColorBack=ColorOD.ToWpf(ImageDrawCur.ColorDraw);
 			if(ImageDrawCur.ColorBack.A==0){//transparent
@@ -51,49 +55,13 @@ namespace OpenDental {
 			}
 		}
 
-		private void butCalculateApparent_Click(object sender,EventArgs e) {
-			//button in wpf doesn't steal focus, so LostFocus is not enough.
-			CalculateApparentFont();
+		private void textFontSize_TextChanged(object sender,EventArgs e) {
+			//Also fires when the other box sets this one; the sync object ignores that, so the boxes never update each other in a loop.
+			_imageDrawFontSizeSync?.OnActualTextChanged(textFontSize.Text);
 		}
 
-		private void butCalculateActual_Click(object sender, EventArgs e){
-			//button in wpf doesn't steal focus, so LostFocus is not enough.
-			CalculateTrueFont();
-		}
-
-		private void textFontSize_LostFocus(object sender,RoutedEventArgs e) {
-			CalculateApparentFont();
-		}
-
-		private void textFontApparent_LostFocus(object sender,RoutedEventArgs e) {
-			CalculateTrueFont();
-		}
-
-		private void CalculateTrueFont(){
-			//This same math is used when creating a new text object outside this window.
-			if(!textFontApparent.IsValid()){
-				return;
-			}
-			if(textFontApparent.Text==""){
-				return;
-			}
-			float fontSizeApparent=(float)textFontApparent.Value;
-			//Example: ZoomVal=50%, so true fontSize will be bigger than apparent
-			float fontSize=fontSizeApparent/ZoomVal*100f*ScaleF(1);
-			textFontSize.Text=fontSize.ToString("#.##");
-		}
-
-		private void CalculateApparentFont(){
-			if(!textFontSize.IsValid()){
-				return;
-			}
-			if(textFontSize.Text==""){
-				return;
-			}
-			float fontSize=(float)textFontSize.Value;
-			float fontSizeApparent=fontSize*ZoomVal/100f/ScaleF(1);
-			//Example: ZoomVal=50%, so true apparent font will be smaller than true
-			textFontApparent.Text=fontSizeApparent.ToString("#.##");
+		private void textFontApparent_TextChanged(object sender,EventArgs e) {
+			_imageDrawFontSizeSync?.OnApparentTextChanged(textFontApparent.Text);
 		}
 
 		private void butColor_Click(object sender, EventArgs e){
