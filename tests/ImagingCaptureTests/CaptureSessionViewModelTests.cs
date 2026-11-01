@@ -580,7 +580,9 @@ namespace ImagingCapture.Tests {
 			Assert.AreEqual(CaptureSessionPhase.Finished,_viewModel.Phase);
 			Assert.IsTrue(_viewModel.IsSummaryVisible);
 			Assert.AreEqual("",_viewModel.TargetText);
-			StringAssert.StartsWith(_viewModel.IndicatorText,"Finished. 1 image, 0 retakes, 0 quarantined. Patient: Pat Test. Provider: DOC4.");
+			Assert.AreEqual("Finished. 1 image, 0 retakes, 0 quarantined. Patient: Pat Test. Provider: DOC4.",_viewModel.IndicatorText,
+				"The counts only, so the indicator stays at two lines.");
+			StringAssert.StartsWith(_viewModel.EffectiveSettingsText,"In effect: PerSlot, 8 bits","Design 9.3, on a line of its own.");
 			Assert.AreEqual(10,_viewModel.SecondsToClose);
 			Assert.AreEqual("Every slot of the mount has an image. This window closes in 10 s.",_viewModel.SummaryText);
 			Assert.IsFalse(_viewModel.IsCloseDue);

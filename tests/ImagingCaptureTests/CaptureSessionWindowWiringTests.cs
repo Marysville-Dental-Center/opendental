@@ -33,6 +33,32 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void TheIndicatorLinesThatWrapGrowWithTheirText_AndTheAreaScrolls() {
+			//A fixed Height with VAlign Center cuts a third line in half: the red strip's journal path, the finish's summary.
+			string xaml=ReadXaml();
+			foreach(string name in new[] { "labelIndicator","labelRedStrip","labelWarning","labelNotice","labelSummary","labelEffective" }) {
+				Match match=new Regex("<ui:Label x:Name=\""+name+"\"[^>]*>").Match(xaml);
+				Assert.IsTrue(match.Success,name);
+				StringAssert.Contains(match.Value,"MinHeight=",name);
+				Assert.IsFalse(new Regex(@"\sHeight=").IsMatch(match.Value),name+" has a fixed Height.");
+			}
+			StringAssert.Matches(xaml,new Regex("<ScrollViewer x:Name=\"scrollIndicator\"[^>]*MaxHeight=\"256\"[^>]*Focusable=\"False\""));
+		}
+
+		private static string ReadXaml() {
+			DirectoryInfo directoryInfo=new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory);
+			while(directoryInfo!=null) {
+				string path=Path.Combine(directoryInfo.FullName,"ImagingCapture","UI","FrmCaptureSession.xaml");
+				if(File.Exists(path)) {
+					return File.ReadAllText(path);
+				}
+				directoryInfo=directoryInfo.Parent;
+			}
+			Assert.Inconclusive("FrmCaptureSession.xaml was not found.");
+			return null;
+		}
+
+		[TestMethod]
 		public void TheSessionBeginsWhenTheWindowIsOnTheScreen_NotInLoad() {
 			//Design 7.3 step 2: the 2 s in which keys are ignored, and before Start is armed, count from when the banner appears.
 			string source=ReadWindowSource();

@@ -27,17 +27,21 @@
 		<!--Unassigned captures and Recover recent captures: implementer C's windows (FrmCaptureSession hooks)-->
 		<ui:LinkLabel x:Name="linkUnassigned" Width="176" Height="54" Margin="912,8,0,0" Text="" ColorBack="#FFFCFDFE" />
 		<ui:LinkLabel x:Name="linkRecover" Width="176" Height="18" Margin="912,66,0,0" Text="Recover recent captures" ColorBack="#FFFCFDFE" />
-		<!--The indicator area (design 7.5, 7.6, 7.11, 7.12): collapsed parts take no space-->
-		<StackPanel x:Name="stackIndicator" Width="1076" Margin="12,118,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" >
-			<ui:Label x:Name="labelPatientChanged" Width="1076" Height="26" Margin="0,0,0,4" Text="" IsBold="True" FontSize="14" ColorBack="#FFC00000" ColorText="#FFFFFFFF" VAlign="Center" />
-			<ui:Label x:Name="labelIndicator" Width="1076" Height="44" Margin="0,0,0,4" Text="" IsBold="True" IsWrap="True" FontSize="15" VAlign="Center" />
-			<ui:Label x:Name="labelTarget" Width="1076" Height="22" Text="" IsBold="True" FontSize="14" />
-			<ui:Label x:Name="labelNextTarget" Width="1076" Height="18" Text="" />
-			<ui:Label x:Name="labelRedStrip" Width="1076" Height="34" Margin="0,4,0,0" Text="" IsBold="True" IsWrap="True" ColorBack="#FFC00000" ColorText="#FFFFFFFF" VAlign="Center" />
-			<ui:Label x:Name="labelWarning" Width="1076" Height="34" Margin="0,4,0,0" Text="" IsBold="True" IsWrap="True" ColorBack="#FFFFD8A0" VAlign="Center" />
-			<ui:Label x:Name="labelNotice" Width="1076" Height="34" Margin="0,4,0,0" Text="" IsWrap="True" ColorBack="#FFFFF6D0" VAlign="Center" />
-			<ui:Label x:Name="labelSummary" Width="1076" Height="34" Margin="0,4,0,0" Text="" IsBold="True" IsWrap="True" FontSize="14" VAlign="Center" />
-		</StackPanel>
+		<!--The indicator area (design 7.5, 7.6, 7.11, 7.12): collapsed parts take no space. The lines that wrap grow with their text (MinHeight,
+		not Height, which would cut a third line in half), and the area scrolls rather than cover the slots below it at y=376.-->
+		<ScrollViewer x:Name="scrollIndicator" Width="1088" MaxHeight="256" Margin="12,118,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False" IsTabStop="False" >
+			<StackPanel x:Name="stackIndicator" Width="1076" HorizontalAlignment="Left" VerticalAlignment="Top" >
+				<ui:Label x:Name="labelPatientChanged" Width="1076" Height="26" Margin="0,0,0,4" Text="" IsBold="True" FontSize="14" ColorBack="#FFC00000" ColorText="#FFFFFFFF" VAlign="Center" />
+				<ui:Label x:Name="labelIndicator" Width="1076" MinHeight="44" Margin="0,0,0,4" Text="" IsBold="True" IsWrap="True" FontSize="15" VAlign="Center" />
+				<ui:Label x:Name="labelTarget" Width="1076" Height="22" Text="" IsBold="True" FontSize="14" />
+				<ui:Label x:Name="labelNextTarget" Width="1076" Height="18" Text="" />
+				<ui:Label x:Name="labelRedStrip" Width="1076" MinHeight="34" Margin="0,4,0,0" Text="" IsBold="True" IsWrap="True" ColorBack="#FFC00000" ColorText="#FFFFFFFF" VAlign="Center" />
+				<ui:Label x:Name="labelWarning" Width="1076" MinHeight="34" Margin="0,4,0,0" Text="" IsBold="True" IsWrap="True" ColorBack="#FFFFD8A0" VAlign="Center" />
+				<ui:Label x:Name="labelNotice" Width="1076" MinHeight="34" Margin="0,4,0,0" Text="" IsWrap="True" ColorBack="#FFFFF6D0" VAlign="Center" />
+				<ui:Label x:Name="labelSummary" Width="1076" MinHeight="34" Margin="0,4,0,0" Text="" IsBold="True" IsWrap="True" FontSize="14" VAlign="Center" />
+				<ui:Label x:Name="labelEffective" Width="1076" MinHeight="18" Margin="0,4,0,0" Text="" IsWrap="True" />
+			</StackPanel>
+		</ScrollViewer>
 		<!--The slot mini-map (design 7.3 step 3) or, without a mount, the tooth picker (design 10.3)-->
 		<ui:Label x:Name="labelSlots" Width="520" Height="18" Margin="12,376,0,0" Text="Slots: tap an empty slot to take it next" IsBold="True" />
 		<Border x:Name="borderSlots" Width="520" Height="230" Margin="12,396,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" BorderBrush="DarkGray" BorderThickness="1" Background="#FF303030" >

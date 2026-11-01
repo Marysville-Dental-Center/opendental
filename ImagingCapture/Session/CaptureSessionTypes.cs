@@ -177,14 +177,26 @@ namespace ImagingCapture.Session {
 		///<summary>Design 9.3 "Effective values are shown ... in the session summary": the capture settings the session ran with.</summary>
 		public CaptureEffectiveSettings EffectiveSettings { get; set; }=new CaptureEffectiveSettings();
 
-		///<summary>"5 images, 1 retake, 0 quarantined. Patient: Pat Test. Provider: DOC1. In effect: PerSlot, 8 bits, ..."</summary>
+		///<summary>"5 images, 1 retake, 0 quarantined. Patient: Pat Test. Provider: DOC1. In effect: PerSlot, 8 bits, ..." (GetCountsText, then
+		///GetEffectiveText): the session's ImageCreate entry and its log line.</summary>
 		public string GetText() {
+			return GetCountsText()+" "+GetEffectiveText();
+		}
+
+		///<summary>"5 images, 1 retake, 0 quarantined. Patient: Pat Test. Provider: DOC1.", with the sentence about the quarantine when it is not 0:
+		///the window's indicator at the finish.</summary>
+		public string GetCountsText() {
 			string text=Count(CountImages,"image","images")+", "+Count(CountRetakes,"retake","retakes")+", "+CountQuarantined.ToString(CultureInfo.InvariantCulture)
 				+" quarantined. Patient: "+PatientName+". Provider: "+(ProviderAbbr=="" ? "none" : ProviderAbbr)+".";
 			if(CountQuarantined>0) {
 				text+=" The quarantined images are in unassigned captures on this computer.";
 			}
-			return text+" In effect: "+(EffectiveSettings??new CaptureEffectiveSettings()).GetText(isWithReasons:false)+".";
+			return text;
+		}
+
+		///<summary>"In effect: PerSlot, 8 bits, ..." (design 9.3): the window shows it on a line of its own.</summary>
+		public string GetEffectiveText() {
+			return "In effect: "+(EffectiveSettings??new CaptureEffectiveSettings()).GetText(isWithReasons:false)+".";
 		}
 
 		private static string Count(int count,string singular,string plural) {

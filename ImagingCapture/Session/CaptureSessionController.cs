@@ -967,7 +967,8 @@ namespace ImagingCapture.Session {
 				DateTimeStarted=_dateTimeStarted.Year>1880 ? _dateTimeStarted : _clock.Now,
 				DateTimeEnded=_clock.Now,
 			};
-			SetIndicator(CaptureIndicatorState.Finished,"Finished. "+Summary.GetText());
+			//The counts only: "In effect" has a line of its own in the window, so the indicator stays at two lines.
+			SetIndicator(CaptureIndicatorState.Finished,"Finished. "+Summary.GetCountsText());
 			Log("Session finished ("+endReason+"): "+Summary.GetText());
 			OnFinishingExt(Summary);
 			NotifyChanged();
@@ -1201,7 +1202,8 @@ namespace ImagingCapture.Session {
 							+"until the deliberate re-enable.");
 					}
 				}
-				SetIndicator(CaptureIndicatorState.Error,RedStripText);
+				//The error only: the red strip also says where the image went, or where its only copy is when the quarantine write failed.
+				SetIndicator(CaptureIndicatorState.Error,CaptureSessionText.CouldNotSavePrefix+error);
 				PlaySound(CaptureSound.Error);
 				return;
 			}

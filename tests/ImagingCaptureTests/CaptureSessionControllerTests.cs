@@ -846,6 +846,7 @@ namespace ImagingCapture.Tests {
 			_harness.Dispatcher.RunPending();
 			StringAssert.Contains(Controller.RedStripText,"the disk is full");
 			StringAssert.Contains(Controller.RedStripText,@"C:\Journal\j1.bmp");
+			Assert.AreEqual("Could not save: Import failed",Controller.IndicatorText,"The indicator keeps the error; the red strip has the rest.");
 			Assert.AreEqual(0,Controller.CountQuarantined);
 		}
 

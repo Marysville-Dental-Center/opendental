@@ -610,6 +610,7 @@ namespace ImagingCapture.UI {
 			ShowLine(labelWarning,viewModel.WarningText);
 			ShowLine(labelNotice,viewModel.NoticeText);
 			ShowLine(labelSummary,viewModel.SummaryText);
+			ShowLine(labelEffective,viewModel.EffectiveSettingsText);
 			//Slots or teeth
 			labelSlots.Visible=viewModel.IsSlotMapVisible;
 			borderSlots.Visibility=viewModel.IsSlotMapVisible ? Visibility.Visible : Visibility.Collapsed;
