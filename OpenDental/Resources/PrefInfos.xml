@@ -330,7 +330,7 @@
     <PrefName>InsPpoAlwaysUseUcrFee</PrefName>
     <Category>AccountClaimSend</Category>
     <ControlName>checkPpoUseUcr</ControlName>
-    <ControlText>Use UCR fee for billed fee even if PPO fee is higher</ControlText>
+    <ControlText>Use standard provider fee for billed fee even if PPO fee is higher</ControlText>
     <Details />
     <WidthWindow>0</WidthWindow>
     <HeightWindow>0</HeightWindow>
@@ -1923,7 +1923,7 @@ Lock Days: Changes are only allowed within a set amount of days from the origina
     <Category>FamilyInsurance</Category>
     <ControlName>checkCoPayFeeScheduleBlankLikeZero</ControlName>
     <ControlText>Copay fee schedules treat blank entries as zero</ControlText>
-    <Details>Set how blank entries in copay fee schedules are handled.&lt;br/&gt;&lt;br/&gt;Checked: Blank entries are treated as 0.&lt;br/&gt;Example: UCR =$200, Contracted = $150, Write-off = 50, Copay = blank,&lt;br/&gt;Percentage = %100, Patient Portion = $0&lt;br/&gt;&lt;br/&gt;Unchecked: Blank entries are treated as 100% copay.&lt;br/&gt;Example: UCR =$200, Contracted = $150, Write-off = 50, Copay = blank,&lt;br/&gt; Percentage = %100, Patient Portion = $150.</Details>
+    <Details>Set how blank entries in copay fee schedules are handled.&lt;br/&gt;&lt;br/&gt;Checked: Blank entries are treated as 0.&lt;br/&gt;Example: Standard provider fee = $200, Contracted = $150, Write-off = 50, Copay = blank,&lt;br/&gt;Percentage = %100, Patient Portion = $0&lt;br/&gt;&lt;br/&gt;Unchecked: Blank entries are treated as 100% copay.&lt;br/&gt;Example: Standard provider fee = $200, Contracted = $150, Write-off = 50, Copay = blank,&lt;br/&gt; Percentage = %100, Patient Portion = $150.</Details>
     <WidthWindow>420</WidthWindow>
     <HeightWindow>300</HeightWindow>
   </PrefInf>
@@ -1942,7 +1942,7 @@ Lock Days: Changes are only allowed within a set amount of days from the origina
     <ControlName>checkFixedBenefitBlankLikeZero</ControlName>
     <ControlText>Fixed benefit fee schedules treat blank entries as zero</ControlText>
     <Details>Set how blank entries in fixed benefit fee schedules are handled.&lt;br/&gt;&lt;br/&gt;
-Checked: Blank entries are treated as 0.&lt;br/&gt;Example: UCR =$200, PPO Fee = $150, Write-off = 50, Fixed = blank,&lt;br/&gt; Percentage = %100, Patient Portion = $150&lt;br/&gt;&lt;br/&gt;Unchecked: Blank entries are treated as 100% the PPO fee.&lt;br/&gt;Example: UCR =$200, PPO Fee = $150, Write-off = 50, Fixed = blank,&lt;br/&gt; Percentage = %100, Patient Portion = $0</Details>
+Checked: Blank entries are treated as 0.&lt;br/&gt;Example: Standard provider fee = $200, PPO Fee = $150, Write-off = 50, Fixed = blank,&lt;br/&gt; Percentage = %100, Patient Portion = $150&lt;br/&gt;&lt;br/&gt;Unchecked: Blank entries are treated as 100% the PPO fee.&lt;br/&gt;Example: Standard provider fee = $200, PPO Fee = $150, Write-off = 50, Fixed = blank,&lt;br/&gt; Percentage = %100, Patient Portion = $0</Details>
     <WidthWindow>420</WidthWindow>
     <HeightWindow>300</HeightWindow>
   </PrefInf>
@@ -1951,7 +1951,7 @@ Checked: Blank entries are treated as 0.&lt;br/&gt;Example: UCR =$200, PPO Fee =
     <Category>FamilyInsurance</Category>
     <ControlName>checkInsPlanExclusionsMarkDoNotBill</ControlName>
     <ControlText>Ins plans with exclusions mark as Do Not Bill Ins</ControlText>
-    <Details>only used when "exclusions use UCR fee" above is checked</Details>
+    <Details>only used when "exclusions use standard provider fee" above is checked</Details>
     <WidthWindow>0</WidthWindow>
     <HeightWindow>0</HeightWindow>
   </PrefInf>
@@ -1959,8 +1959,8 @@ Checked: Blank entries are treated as 0.&lt;br/&gt;Example: UCR =$200, PPO Fee =
     <PrefName>InsPlanUseUcrFeeForExclusions</PrefName>
     <Category>FamilyInsurance</Category>
     <ControlName>checkInsPlanExclusionsUseUCR</ControlName>
-    <ControlText>Ins plans with exclusions use UCR fee (zero out write-offs)</ControlText>
-    <Details>Can be overriden by insurance plan. For in-network insurance plans where certain procedures are allowed to be billed using the UCR fee rather than the negotiated rate.
+    <ControlText>Ins plans with exclusions use standard provider fee (no write-offs)</ControlText>
+    <Details>Can be overriden by insurance plan. For in-network insurance plans where certain procedures are allowed to be billed using the standard provider fee rather than the negotiated rate.
 &lt;br/&gt;&lt;br/&gt;
 Exclusions are defined using an Other Benefits Exclusions type, or by setting any benefit set to a 0% coverage level.</Details>
     <WidthWindow>400</WidthWindow>
@@ -2006,7 +2006,7 @@ Exclusions are defined using an Other Benefits Exclusions type, or by setting an
     <PrefName />
     <Category>FamilyInsurance</Category>
     <ControlName>checkInsDefaultShowUCRonClaims</ControlName>
-    <ControlText>Insurance plans default to show UCR fee on claims</ControlText>
+    <ControlText>Insurance plans default to show standard provider fee on claims</ControlText>
     <Details />
     <WidthWindow>0</WidthWindow>
     <HeightWindow>0</HeightWindow>

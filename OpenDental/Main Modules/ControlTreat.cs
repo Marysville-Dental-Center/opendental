@@ -586,12 +586,8 @@ namespace OpenDental{
 				}
 			}
 			for(int i=0;i<listDisplayFields.Count;i++){
-				if(listDisplayFields[i].Description==""){
-					col=new GridColumn(listDisplayFields[i].InternalName,listDisplayFields[i].ColumnWidth);
-				}
-				else{
-					col=new GridColumn(listDisplayFields[i].Description,listDisplayFields[i].ColumnWidth);
-				}
+				//Description, or else the internal name; a saved "Cat% UCR" row without a description shows the 25.4 wording (M2-TERM).
+				col=new GridColumn(DisplayFields26_1.GetColumnText(listDisplayFields[i]),listDisplayFields[i].ColumnWidth);
 				if(listDisplayFields[i].InternalName=="Fee" && !checkShowFees.Checked){
 					continue;
 				}
@@ -824,12 +820,8 @@ namespace OpenDental{
 			}
 			bool hasSalesTax=HasSalesTax(listDisplayFields);
 			for(int i=0;i<listDisplayFields.Count;i++) {
-				if(listDisplayFields[i].Description=="") {
-					col=new GridColumn(listDisplayFields[i].InternalName,listDisplayFields[i].ColumnWidth);
-				}
-				else {
-					col=new GridColumn(listDisplayFields[i].Description,listDisplayFields[i].ColumnWidth);
-				}
+				//Description, or else the internal name; a saved "Cat% UCR" row without a description shows the 25.4 wording (M2-TERM).
+				col=new GridColumn(DisplayFields26_1.GetColumnText(listDisplayFields[i]),listDisplayFields[i].ColumnWidth);
 				if(listDisplayFields[i].InternalName=="Fee" && !checkShowFees.Checked) {
 					continue;
 				}

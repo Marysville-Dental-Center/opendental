@@ -76,7 +76,7 @@ namespace OpenDental {
 			if(!checkInsDefaultShowUCRonClaims.Checked) {
 				return;
 			}
-			if(!MsgBox.Show(this,MsgBoxButtons.YesNo,"Would you like to immediately change all plans to show office UCR fees on claims?")) {
+			if(!MsgBox.Show(this,MsgBoxButtons.YesNo,"Would you like to immediately change all plans to show the office's standard provider fees on claims?")) {
 				return;
 			}
 			long plansAffected=InsPlans.SetAllPlansToShowUCR();

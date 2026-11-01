@@ -311,7 +311,8 @@ namespace OpenDental{
 			else {
 				query.AddColumn("Day",70,FieldValueType.String,font);
 			}
-			query.AddColumn("UCR Production",90,FieldValueType.Number,font);
+			query.AddColumn("Standard Fee Production",90,FieldValueType.Number,font);
+			query.ExportTable.Columns[query.ExportTable.Columns.Count-1].ColumnName="UCR Production";//25.4 renamed the shown header only. The export keeps its column name.
 			query.AddColumn("Est Write-off",80,FieldValueType.Number,font);
 			query.AddColumn("Prod Adj",80,FieldValueType.Number,font);
 			query.AddColumn("Change in Write-off",110,FieldValueType.Number,font);
