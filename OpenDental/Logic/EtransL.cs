@@ -679,7 +679,7 @@ namespace OpenDental {
 			//associated to the plan, instead of just today's date.
 			PatPlans.Delete(patPlan.PatPlanNum);//Estimates recomputed within Delete()
 			SecurityLogs.MakeLogEntry(EnumPermType.InsPlanDropPat,patPlan.PatNum,
-				"Insurance plan dropped from patient for carrier '"+carrier+"' and groupnum "
+				"Insurance plan dropped from patient for carrier '"+carrier?.CarrierName+"' "+PatPlans.GetPlanNumLogText(insPlan.PlanNum)+" and groupnum "
 				+"'"+insPlan.GroupNum+"' and subscriber ID '"+insSub.SubscriberID+"' "
 				+"from Import Ins Plans 834.",insPlan.PlanNum,LogSources.InsPlanImport834,insPlan.SecDateTEdit);
 		}

@@ -9,7 +9,7 @@ using DataConnectionBase;
 
 namespace OpenDentBusiness{
 	///<summary></summary>
-	public class PatPlans {
+	public partial class PatPlans {
 		///<summary></summary>
 		public static List<PatPlan> GetPatientData(long patNum) {
 			Meth.NoCheckMiddleTierRole();
