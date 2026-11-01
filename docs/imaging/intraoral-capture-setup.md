@@ -180,7 +180,7 @@ When the supplier releases a new version of the source:
 2. Check the installation settings again (section 2, step 5). An installer can reset them.
 3. Check that the product name is unchanged. If it changed, update the device's Twain Name (section 6), `AllowedSources` and `DisableIsSafeSources` on every computer.
 4. Before patient use, repeat acceptance steps 1, 2 and 5 (section 12) and one phantom series on the test computer.
-5. With the capture session (section 14): run Test capture again on one computer with the new version. A verification record names the driver version the source reports, so until a record for the new version passes, every computer that runs it takes 8 bits ("8-bit (fallback: no Test capture record for this sensor's driver version and image settings)").
+5. With the capture session (section 14): update the source on every computer that uses the device row first, then run Test capture again on one computer with the new version. A verification record names the driver version the source reports, so until a record for the new version passes, every computer that runs it takes 8 bits ("8-bit (fallback: no Test capture record for this sensor's driver version and image settings)"). The latest record for the device row counts: once the record for the new version is written, a computer still on the old version takes 8 bits too ("... is for driver <new>, and this source reports <old>") until its source is updated.
 
 ## 6. Set up the imaging device in Open Dental
 
@@ -472,14 +472,14 @@ This section applies to the capture session of a later phase (Mount / Acquire wi
 **Owner decisions, 2026-11-01:**
 
 - "Make our fork default to 16, and can fall back to 14 or 8": the device asks for 16 bits by default; the source may give 14 or 8 instead.
-- "Isn't just the sensor enough?": one Test capture covers every computer that runs the same driver version with the same image settings. It is no longer tied to the computer it ran on.
+- "Isn't just the sensor enough?": one Test capture covers every computer that uses the same device row and runs the same driver version with the same image settings. It is no longer tied to the computer it ran on. A computer with its own device row (section 6, step 3) needs its own Test capture.
 - The 16-bit filing route: a 16-bit capture that cannot go back into its own slot is filed as an explicit 8-bit copy, and the 16-bit original is kept.
 
 **Keys and defaults** (set them in Capture settings, Setup permission):
 
 | Key | Default | Values | What it does |
 |---|---|---|---|
-| `[Device.N] Bits` | `16` (it was `8`) | `16`, `14`, `8`; anything else is a warning and `8` | The depth the session asks for. For 16 the source is asked for 16, else 14, else 8, by what it lists; for 14, 14 else 8. |
+| `[Device.N] Bits` | `16` (it was `8`) | `16`, `14`, `8`; anything else is a warning and `8` | The depth the session asks for. For 16 the source is asked for 16, else 14, else 8, by what it lists; for 14, 14 else 8. A Test capture record must have passed at this depth: a source that lists only 14 needs `Bits=14` and a Test capture at 14; with `Bits=16` the session then takes 8 bits (Test capture warns). |
 | `[Twain] Allow16Bit` | `1` (it was `0`) | `1`, `0` | `1`: more than 8 bits are allowed on this computer. `0`: 8 bits for every device on this computer. |
 | `[Device.N] ByteOrder16`, `Polarity` | `LE`, `AsDelivered` | as before | With `Bits`, the image settings a Test capture covers. |
 
@@ -489,10 +489,12 @@ When the capture settings are not verified (never saved in Capture settings on t
 
 1. `Bits` is 16 or 14 and `Allow16Bit=1` (both defaults);
 2. the capture settings were saved in Capture settings on this computer and not changed by hand since (checked on each computer);
-3. the latest Test capture verification record for the device row, made on any computer, names the driver version the sensor's source reports when it opens (its name and version numbers) and the same image settings (`Bits`, `ByteOrder16`, `Polarity`), and passed at the depth asked for: a record that passed at 16 covers 16, one that passed at 14 covers 14;
+3. the latest Test capture verification record for the device row, made on any computer, names the driver version the sensor's source reports when it opens (its name and version numbers) and the same image settings (`Bits`, `ByteOrder16`, `Polarity`), and passed at the depth asked for: a record that passed at 16 covers 16, one that passed at 14 covers 14. Only the latest record for the row counts, so a newer record for another driver version or other image settings replaces an older one that matched;
 4. the X-ray goes into a mount slot whose tooth numbers are of one view (a single image without a mount, or a slot without teeth, is always 8-bit).
 
-A record made before 2026-11-01 names no driver version: it never matches, and the session says to run Test capture again. Other capture.ini keys (the source list, the journal size, the session mode, the timeouts) do not change what a record covers.
+A record written by an earlier version of the program (format `capture-verification/1`, which names no driver version or image settings) never matches, whatever its date; the session says to run Test capture again. Other capture.ini keys (the source list, the journal size, the session mode, the timeouts) do not change what a record covers.
+
+**Before a Test capture record on a sensor used for patients.** Nothing in the program waits for the display and DICOM work that 16-bit X-rays need (the owner questions marked BEFORE 16-BIT: DICOM thumbnails and 16-bit brightness, the in-house DICOM reader, counsel's review, claim attachment). Once a record passes and `[Session] Enabled=1`, the session stores 16-bit DICOM X-rays, which today have no thumbnail, show the wrong brightness and cannot be attached to a claim. Until the owner has settled those questions, keep every computer that uses a sensor for patients at 8 bits: set `[Device.N] Bits=8`, or `[Twain] Allow16Bit=0`, in Capture settings on each of them. Test capture can still verify 16 bits on a computer that is kept off patient use (it asks for that computer's `Bits`).
 
 **Running Test capture.** On one computer with the sensor's source installed, open Setup > Imaging > Devices, the device, Test capture. It asks for the device's `Bits` (16 by default). Take an image of the phantom or the known ramp, check byte order and polarity, and write the record. Run it again after a new version of the sensor's source (section 5) and after changing `Bits`, `ByteOrder16` or `Polarity`. If the source gives 14 bits while `Bits=16`, the record passes at 14 and Test capture warns: set `Bits=14` in Capture settings and run Test capture again, or the session stays at 8 bits.
 
@@ -502,11 +504,15 @@ A record made before 2026-11-01 names no driver version: it never matches, and t
 - "14-bit in a 16-bit file": 14-bit data, stored unchanged in a 16-bit DICOM file (Bits Stored 16, with `effectiveBits=14` in its Image Comments);
 - "8-bit (fallback: <reason>)", for example "8-bit (fallback: no Test capture record for this sensor's driver version and image settings)". With `Bits=8` or `Allow16Bit=0` it is simply "8-bit".
 
-If the source delivers a 14- or 16-bit image in a layout Open Dental cannot read, that image is not received ("Image not received. Do not re-expose yet.", with the reason), nothing of it is kept, and the session takes 8 bits for the rest of that session. Follow section 10.4.
+If the source delivers a 14- or 16-bit image in a layout Open Dental cannot read, that image is not received ("Image not received. Do not re-expose yet.", with the reason), nothing of it is kept, and the session takes 8 bits for the rest of that session. Follow section 10.4. In a continuous series the sensor software stays armed after an image, so every later exposure of that series would be lost the same way: with safe disable in effect the series is stopped after that image; without it the indicator says "Image not received: <reason>. Do not expose again; end the series." Press End or Disable, then start again: the session takes 8 bits.
+
+A 14-bit image whose values are not right-justified 14-bit values (some above 16383) is stored unchanged, but is not labelled `effectiveBits=14`, and a Test capture of such an image does not pass ("the 14-bit samples are not right-justified").
 
 **Filing 16-bit captures from Unassigned captures:**
 
-- Assign into its own empty slot: stored as 16-bit DICOM, only while the conditions above hold for the depth it was taken at; otherwise it stays where it is.
+- Assign into its own empty slot: stored as 16-bit DICOM, only while the conditions above hold for the depth its enable asked for (a 14-bit capture of a 16-bit enable is covered by a record that passed at 16, as in the session). Otherwise it stays where it is: until the conditions hold again (for example after a Test capture for the driver version that took it), it can only stay in Unassigned captures or be discarded. Whether such a capture may then be filed as the explicit 8-bit copy is an open owner question.
+- If its slot is filled while the confirmation is shown (another computer filed a retake), Confirm files nothing and shows where the capture goes now, with the 8-bit copy note when that applies; check it and confirm again.
 - Its slot taken, its mount deleted, or no mount: filed as an explicit 8-bit copy, a gray PNG made with the 0.5-99.5 % window the session shows, as an unmounted "Recovered: <slot>" item (a single document when the mount is gone), with the slot's teeth when the slot is known and none when it is not. The confirmation says that the copy is 8-bit.
 - Reassign to another patient: also the 8-bit copy, as an unmounted document with no tooth numbers, with a typed reason.
-- The 16-bit original and its sidecar move to `Capture\quarantine-resolved` with the copy's DocNum and window in the sidecar. A 16-bit journal copy is copied to `Capture\quarantine-resolved\journal`, because the journal removes old copies. The audit entry says "8-bit copy of a 16-bit capture". Nothing is deleted, and neither folder is emptied automatically.
+- The 16-bit original and its sidecar move to `Capture\quarantine-resolved` with the copy's DocNum and window in the sidecar. A 16-bit journal copy is copied to `Capture\quarantine-resolved\journal` before its 8-bit copy is filed, because the journal removes old copies; when that copy cannot be made (for example another file of that name is there), nothing is filed. The audit entry says "8-bit copy of a 16-bit capture", and the window's result says the document is an 8-bit copy and where the original is kept. Nothing is deleted, and neither folder is emptied automatically.
+- A Test capture image (taken of the phantom, without the session's conditions) is never filed to a patient, neither by Assign nor by Reassign; discard it from Unassigned captures when it is not needed.
