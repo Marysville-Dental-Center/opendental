@@ -91,45 +91,6 @@ namespace OpenDental.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to GNU LESSER GENERAL PUBLIC LICENSE
-        ///
-        ///Version 3, 29 June 2007
-        ///
-        ///Copyright © 2007 Free Software Foundation, Inc.
-        ///
-        ///Everyone is permitted to copy and distribute verbatim copies of this license document, but changing it is not allowed.
-        ///
-        ///This version of the GNU Lesser General Public License incorporates the terms and conditions of version 3 of the GNU General Public License, supplemented by the additional permissions listed below.
-        ///
-        ///0. Additional Definitions.
-        ///
-        ///As used herein, “this License” refers to vers [rest of string was truncated]&quot;;.
-        /// </summary>
-        public static string AForge {
-            get {
-                return ResourceManager.GetString("AForge", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to The MIT License (Angular)
-        ///
-        ///Copyright (c) 2010-2020 Google LLC. http://angular.io/license
-        ///
-        ///Permission is hereby granted, free of charge, to any person obtaining a copy
-        ///of this software and associated documentation files (the &quot;Software&quot;), to deal
-        ///in the Software without restriction, including without limitation the rights
-        ///to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-        ///copies of the Software, and to permit persons to whom the Software is
-        ///furnished to do so, subject to the fo [rest of string was truncated]&quot;;.
-        /// </summary>
-        public static string Angular {
-            get {
-                return ResourceManager.GetString("Angular", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
         public static System.Drawing.Bitmap Appt32 {
@@ -196,39 +157,6 @@ namespace OpenDental.Properties {
             get {
                 object obj = ResourceManager.GetObject("bola_launch", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to The Bouncy Castle Cryptographic C#® API
-        ///
-        ///License:
-        ///
-        ///The Bouncy Castle License
-        ///Copyright (c) 2000-2015 The Legion of the Bouncy Castle Inc. (http://www.bouncycastle.org)
-        ///Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the &quot;Software&quot;), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sub license, and/or sell copies of the Software, and to  [rest of string was truncated]&quot;;.
-        /// </summary>
-        public static string BouncyCastle {
-            get {
-                return ResourceManager.GetString("BouncyCastle", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to New BSD License (BSD)
-        ///
-        ///Copyright (c) 2012-2016, CodePlex Foundation
-        ///All rights reserved.
-        ///
-        ///Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
-        ///
-        ///* Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
-        ///
-        ///* Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the docum [rest of string was truncated]&quot;;.
-        /// </summary>
-        public static string Bsd {
-            get {
-                return ResourceManager.GetString("Bsd", resourceCulture);
             }
         }
         
@@ -379,35 +307,6 @@ namespace OpenDental.Properties {
             get {
                 object obj = ResourceManager.GetObject("canadiancarriers", resourceCulture);
                 return ((byte[])(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to {\rtf1\ansi\ansicpg1252\deff0\deflang1033{\fonttbl{\f0\froman\fcharset0 Times New Roman;}{\f1\fswiss\fcharset0 Arial;}}
-        ///{\colortbl ;\red0\green0\blue0;}
-        ///{\*\generator Msftedit 5.41.15.1507;}\viewkind4\uc1\pard\cf1\b\f0\fs24 CDT Content End User License\par
-        ///\par
-        ///Definitions\par
-        ///\par
-        ///\pard\sa240\b0\ldblquote CDT\rdblquote  means the textual, graphic and other editorial content included in the ADA developed publications titled \ul\i CDT-2007/2008: Current Dental Terminology \ulnone\i0 (\ldblquote CDT-200 [rest of string was truncated]&quot;;.
-        /// </summary>
-        public static string CDT_Content_End_User_License {
-            get {
-                return ResourceManager.GetString("CDT_Content_End_User_License", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to CDT Content End User License
-        ///
-        ///Definitions
-        ///
-        ///“CDT” means the textual, graphic and other editorial content included in the ADA developed publications titled CDT-2007/2008: Current Dental Terminology (“CDT-2007”) and all Updates as defined herein. The CDT content includes, but is not limited to, the Code on Dental Procedures and Nomenclature, a glossary, the ADA dental claim form and other dental information. 
-        ///“Code” means the Code on Dental Procedures and Nomenclature, whether delivered in print or machin [rest of string was truncated]&quot;;.
-        /// </summary>
-        public static string CDT_Content_End_User_License1 {
-            get {
-                return ResourceManager.GetString("CDT_Content_End_User_License1", resourceCulture);
             }
         }
         
@@ -756,27 +655,6 @@ namespace OpenDental.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Copyright 2015-present Drifty Co.
-        ///
-        ///MIT License
-        ///
-        ///Permission is hereby granted, free of charge, to any person obtaining
-        ///a copy of this software and associated documentation files (the
-        ///&quot;Software&quot;), to deal in the Software without restriction, including
-        ///without limitation the rights to use, copy, modify, merge, publish,
-        ///distribute, sublicense, and/or sell copies of the Software, and to
-        ///permit persons to whom the Software is furnished to do so, subject to
-        ///the following conditions:
-        ///
-        ///The above copyrigh [rest of string was truncated]&quot;;.
-        /// </summary>
-        public static string Ionic {
-            get {
-                return ResourceManager.GetString("Ionic", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
         public static System.Drawing.Bitmap Left {
@@ -831,29 +709,6 @@ namespace OpenDental.Properties {
             get {
                 object obj = ResourceManager.GetObject("Microphone_30px", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to MICROSOFT SOFTWARE LICENSE TERMS
-        ///
-        ///MICROSOFT .NET LIBRARY
-        ///
-        ///These license terms are an agreement between Microsoft Corporation (or based on where you live, one of its affiliates) and you. Please read them. They apply to the software named above, which includes the media on which you received it, if any. The terms also apply to any Microsoft
-        ///
-        ///·         updates,
-        ///
-        ///·         supplements,
-        ///
-        ///·         Internet-based services, and
-        ///
-        ///·         support services
-        ///
-        ///for this software, unless other terms accomp [rest of string was truncated]&quot;;.
-        /// </summary>
-        public static string Microsoft {
-            get {
-                return ResourceManager.GetString("Microsoft", resourceCulture);
             }
         }
         
@@ -991,45 +846,6 @@ namespace OpenDental.Properties {
             get {
                 object obj = ResourceManager.GetObject("ODLogo", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Open Dental API End User License Agreement
-        ///
-        ///This End User License Agreement is a legal agreement (“Agreement”) between Open Dental Software, Inc., (“Open Dental”) and you, the end user (“the User”), governing the installation and use of the Open Dental API Service, “the Service”.   “Open Dental API Service” or “Service” in this agreement refers to any use of the Open Dental API or the Open Dental API keys.  Open Dental Software is required to be installed and functional on a secure server in order for the [rest of string was truncated]&quot;;.
-        /// </summary>
-        public static string OpenDentalApiEndUserLicense {
-            get {
-                return ResourceManager.GetString("OpenDentalApiEndUserLicense", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Open Dental, Copyright 2003-2024, Jordan S. Sparks, DMD.
-        ///
-        ///Open Dental Software, Inc distributes and supports this software through authorized purchase.  A Registration Key is provided to purchaser at time of sale and is valid for exactly one physical location where patients are treated.  Each separate physical location where patients are treated requires a separate purchase and Registration Key.  Mobile treatment units are each treated as one physical location.  Purchaser may install this software on any  [rest of string was truncated]&quot;;.
-        /// </summary>
-        public static string OpenDentalLicense {
-            get {
-                return ResourceManager.GetString("OpenDentalLicense", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Oracle Technology Network 
-        ///Oracle Developer Tools for Visual Studio .NET Development License Terms
-        /// 
-        ///
-        ///Export Controls on the Programs 
-        ///Selecting the &quot;Accept License Agreement&quot; button is a confirmation of your agreement that you comply, now and during the trial term, with each of the following statements:
-        /// 
-        ///
-        ///-You are not a citizen, national, or resident of, and are not under control of, the government of Cuba, Iran, Sudan, Libya, North Korea, Syria, nor any country to which the United States has proh [rest of string was truncated]&quot;;.
-        /// </summary>
-        public static string Oracle {
-            get {
-                return ResourceManager.GetString("Oracle", resourceCulture);
             }
         }
         
@@ -1337,17 +1153,6 @@ namespace OpenDental.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Sparks3D is a DirectX 11 plugin for Open Dental that is licensed separately.  Open Dental will still work fine without this plugin, but the older 3D &quot;SparksToothChart&quot; will require the user to install the DirectX 9 SDK.  To make the newer Sparks3D plugin work, the following two files must be present in the Sparks3D folder within the application folder:  Sparks3D.dll and Sparks3DXEngine.dll.  To disable the plugin for troubleshooting, rename the folder temporarily.
-        ///
-        ///License:---------------------------------- [rest of string was truncated]&quot;;.
-        /// </summary>
-        public static string Sparks3D {
-            get {
-                return ResourceManager.GetString("Sparks3D", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
         public static System.Drawing.Bitmap splashBenco {
@@ -1396,20 +1201,6 @@ namespace OpenDental.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to MICROSOFT PRE-RELEASE SOFTWARE LICENSE TERMS
-        ///MICROSOFT VISUAL STUDIO 2015 (AND NEXT VERSION CODE-NAME DEV15) PRODUCT FAMILY PRE-RELEASE SOFTWARE
-        ///
-        ///These license terms are an agreement between Microsoft Corporation (or based on where you live, one of its affiliates) and you. They apply to the pre-release software named above. The terms also apply to any Microsoft services or updates for the software, except to the extent those have additional terms.
-        ///
-        ///IF YOU COMPLY WITH THESE LICENSE TERMS, YOU HAVE THE R [rest of string was truncated]&quot;;.
-        /// </summary>
-        public static string stdole {
-            get {
-                return ResourceManager.GetString("stdole", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
         public static System.Drawing.Bitmap stop {
@@ -1436,24 +1227,6 @@ namespace OpenDental.Properties {
         public static string Tamir {
             get {
                 return ResourceManager.GetString("Tamir", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to The Tao Framework for .NET is a collection of bindings to facilitate
-        ///cross-platform game-related development utilizing the .NET platform.
-        ///
-        ///Currently included bindings are OpenGL 2.1, GLU 1.3, FreeGLUT 2.4.0, WGL,
-        ///various GL and WGL-related extensions, OpenAL 1.1, Cg 1.4.1, DevIL 1.6.8 RC2,
-        ///SDL 1.2.12, PhysFs 1.0.1, ODE 0.8.0, GLFW 2.6.1, Lua 5.1.1.
-        ///
-        ///These bindings all function in a cross-platform and cross-runtime manner
-        ///using Microsoft&apos;s .NET 2.0 runtime on Windows and the Mono runtime
-        ///on Windows  [rest of string was truncated]&quot;;.
-        /// </summary>
-        public static string Tao_Freeglut {
-            get {
-                return ResourceManager.GetString("Tao_Freeglut", resourceCulture);
             }
         }
         
@@ -1734,22 +1507,20 @@ namespace OpenDental.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Copyright 2012-present Zxing
-        ///
-        ///Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
-        ///you may not use this file except in compliance with the License.
-        ///You may obtain a copy of the License at
-        ///
-        ///    http://www.apache.org/licenses/LICENSE-2.0
-        ///
-        ///Unless required by applicable law or agreed to in writing, software
-        ///distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
-        ///WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-        ///See the License for the specific language gove [rest of string was truncated]&quot;;.
+        ///   The GNU General Public License, version 2 (Resources\GPL.txt): the license of this program, first in the license list.
         /// </summary>
-        public static string Zxing {
+        public static string GPL {
             get {
-                return ResourceManager.GetString("Zxing", resourceCulture);
+                return ResourceManager.GetString("GPL", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   THIRD-PARTY-NOTICES.txt in the repository root: every shipped third-party component, its license and source.
+        /// </summary>
+        public static string ThirdPartyNotices {
+            get {
+                return ResourceManager.GetString("ThirdPartyNotices", resourceCulture);
             }
         }
     }

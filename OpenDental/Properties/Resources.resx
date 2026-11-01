@@ -127,9 +127,6 @@
   <data name="butPaste" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\butPaste.gif;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="Oracle" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\Oracle.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
-  </data>
   <data name="CursorCrosshair" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\CursorCrosshair.cur;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
@@ -187,9 +184,6 @@
   <data name="Add" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Add.gif;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="BouncyCastle" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\resources\bouncycastle.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
-  </data>
   <data name="Cut_24x24" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Cut_24x24.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
@@ -201,9 +195,6 @@
   </data>
   <data name="Text" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Text.gif;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="stdole" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\stdole.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
   </data>
   <data name="Microphone_30px" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Microphone_30px.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
@@ -265,9 +256,6 @@
   <data name="Imaging32" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Imaging32.gif;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="Tao_Freeglut" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\Tao_Freeglut.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
-  </data>
   <data name="raisehand" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\raisehand.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
@@ -298,9 +286,6 @@
   <data name="Tao_OpenGL" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Tao_OpenGL.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
   </data>
-  <data name="CDT_Content_End_User_License1" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\CDT Content End User License.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
-  </data>
   <data name="NoFigure" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\NoFigure.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
@@ -316,17 +301,11 @@
   <data name="setupGears" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\setupGears.gif;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="OpenDentalLicense" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\opendentallicense.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
-  </data>
   <data name="CommLog" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\CommLog.gif;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="XamlStyle_TabItem" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\XamlStyle_TabItem.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
-  </data>
-  <data name="Zxing" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\Zxing.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
   </data>
   <data name="PaymentsRDL" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\PaymentsRDL.txt;System.String, mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
@@ -339,9 +318,6 @@
   </data>
   <data name="butPin22" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\butPin22.gif;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="Sparks3D" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\Sparks3D.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
   </data>
   <data name="padlock_closed" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\padlock_closed.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
@@ -357,9 +333,6 @@
   </data>
   <data name="arrowRightLine" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\resources\arrowrightline.gif;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="AForge" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\AForge.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
   </data>
   <data name="eSig" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\eSig.gif;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
@@ -430,9 +403,6 @@
   <data name="downArrowWinForm" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\downArrowWinForm.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="Angular" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\Angular.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
-  </data>
   <data name="CursorDrag" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\CursorDrag.cur;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
@@ -441,9 +411,6 @@
   </data>
   <data name="NDde" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\NDde.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
-  </data>
-  <data name="Bsd" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\Bsd.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
   </data>
   <data name="notify" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\notify.wav;System.IO.MemoryStream, mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
@@ -459,9 +426,6 @@
   </data>
   <data name="butExportExcel" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\butExportExcel.gif;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="CDT_Content_End_User_License" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\CDT Content End User License.rtf;System.String, mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
   </data>
   <data name="NoFeeProcCodes" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\NoFeeProcCodes.txt;System.String, mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
@@ -484,14 +448,8 @@
   <data name="splashBenco" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\splashBenco.jpg;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="Ionic" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\Ionic.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
-  </data>
   <data name="Check_mark_23x20_02" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Check_mark_23x20_02.gif;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="Microsoft" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\Microsoft.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
   </data>
   <data name="down" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\down.gif;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
@@ -517,10 +475,13 @@
   <data name="bola_launch" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\bola_launch.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="OpenDentalApiEndUserLicense" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\opendentalapienduserlicense.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
-  </data>
   <data name="Pearl" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Pearl.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GPL" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\GPL.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="ThirdPartyNotices" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\..\THIRD-PARTY-NOTICES.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
   </data>
 </root>
