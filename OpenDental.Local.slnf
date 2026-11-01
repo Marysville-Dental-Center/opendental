@@ -33,6 +33,7 @@
       "tests\\BERATests\\BERATests.csproj",
       "tests\\BIMGTests\\BIMGTests.csproj",
       "tests\\BINATests\\BINATests.csproj",
+      "tests\\BINBTests\\BINBTests.csproj",
       "tests\\BINSHTests\\BINSHTests.csproj",
       "tests\\BMEDTests\\BMEDTests.csproj",
       "tests\\BPAYTests\\BPAYTests.csproj",

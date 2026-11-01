@@ -142,7 +142,8 @@ namespace OpenDental {
 			string dataFile=Path.Combine(folder,"data.txt");
 			WriteDataFile(dataFile,letterMerge,tableReadable);
 			string outputFile=Path.Combine(folder,"letter.docx");
-			Word.Application wordApplication;
+			//Late bound (dynamic COM), so no Office interop assembly is needed. Omitted optional arguments are passed as missing, as before.
+			dynamic wordApplication;
 			try {
 				wordApplication=LetterMerges.GetWordApp();
 			}
@@ -151,27 +152,18 @@ namespace OpenDental {
 					+"Save the template in the .docx format and select that file in the letter's setup."),ex);
 				return null;
 			}
-			object objectMissing=Missing.Value;
-			object objectFalse=false;
-			object objectTemplate=templateFile;
-			Word._Document wordDocument=wordApplication.Documents.Open(ref objectTemplate,ref objectMissing,ref objectMissing,ref objectMissing,
-				ref objectMissing,ref objectMissing,ref objectMissing,ref objectMissing,ref objectMissing,ref objectMissing,ref objectMissing,
-				ref objectMissing,ref objectMissing,ref objectMissing,ref objectMissing);
+			dynamic wordDocument=wordApplication.Documents.Open(templateFile);
 			try {
-				wordDocument.MailMerge.OpenDataSource(dataFile,ref objectMissing,ref objectMissing,ref objectMissing,ref objectMissing,ref objectMissing,
-					ref objectMissing,ref objectMissing,ref objectMissing,ref objectMissing,ref objectMissing,ref objectMissing,ref objectMissing,
-					ref objectMissing,ref objectMissing,ref objectMissing);
-				wordDocument.MailMerge.Destination=Word.WdMailMergeDestination.wdSendToNewDocument;
-				wordDocument.MailMerge.Execute(ref objectFalse);
-				object objectOutput=outputFile;
-				object objectFormat=16;//The word processor's default document format, which is .docx.
-				wordApplication.ActiveDocument.SaveAs(ref objectOutput,ref objectFormat);
+				wordDocument.MailMerge.OpenDataSource(dataFile);
+				wordDocument.MailMerge.Destination=LetterMerges.WORD_MAIL_MERGE_TO_NEW_DOCUMENT;
+				wordDocument.MailMerge.Execute(false);
+				wordApplication.ActiveDocument.SaveAs(outputFile,16);//16: the word processor's default document format, which is .docx.
 				wordApplication.ActiveDocument.Close();
 			}
 			finally {
 				wordDocument.Saved=true;
-				wordDocument.Close(ref objectFalse,ref objectMissing,ref objectMissing);
-				wordApplication.WindowState=Word.WdWindowState.wdWindowStateMinimize;
+				wordDocument.Close(false);
+				wordApplication.WindowState=LetterMerges.WORD_WINDOW_STATE_MINIMIZE;
 			}
 			return File.ReadAllBytes(outputFile);
 #endif

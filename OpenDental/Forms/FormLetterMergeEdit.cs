@@ -211,10 +211,8 @@ namespace OpenDental{
 				MsgBox.Show(this,"A file with that name already exists.  Choose a different name, or close this window to edit the template.");
 				return;
 			}
-			Object objectMissing=System.Reflection.Missing.Value;
-			Object objectFalse=false;
-			//Create an instance of Word.
-			Word.Application word_Application;
+			//Create an instance of Word. Late bound (dynamic COM); omitted optional arguments are passed as missing, as before.
+			dynamic word_Application;
 			try {
 				word_Application=LetterMerges.GetWordApp();
 			}
@@ -223,16 +221,12 @@ namespace OpenDental{
 				return;
 			}
 			//Create a new document.
-			Object objectName=templateFile;
-			Word._Document word_Document;
-			word_Document=word_Application.Documents.Add(ref objectMissing,ref objectMissing,ref objectMissing,
-				ref objectMissing);
-			word_Document.SaveAs(ref objectName,ref objectMissing,ref objectMissing,ref objectMissing,ref objectMissing,
-				ref objectMissing,ref objectMissing,ref objectMissing,ref objectMissing,ref objectMissing,ref objectMissing,
-				ref objectMissing,ref objectMissing,ref objectMissing,ref objectMissing,ref objectMissing);
+			dynamic word_Document;
+			word_Document=word_Application.Documents.Add();
+			word_Document.SaveAs(templateFile);
 			word_Document.Saved=true;
-			word_Document.Close(ref objectFalse,ref objectMissing,ref objectMissing);
-			word_Application.WindowState=Word.WdWindowState.wdWindowStateMinimize;
+			word_Document.Close(false);
+			word_Application.WindowState=LetterMerges.WORD_WINDOW_STATE_MINIMIZE;
 			word_Document=null;
 			MsgBox.Show(this,"Done. You can edit the new template after closing this window.");
 		}

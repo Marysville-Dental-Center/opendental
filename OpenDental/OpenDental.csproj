@@ -100,10 +100,6 @@
     <DocumentationFile>bin\Release\OpenDental.xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="AxInterop.AcroPDFLib, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\AxInterop.AcroPDFLib.dll</HintPath>
-    </Reference>
     <Reference Include="Dicom.Core, Version=4.0.7.0, Culture=neutral, PublicKeyToken=3a13f649e28eb09a, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\Dicom.Core.dll</HintPath>
@@ -115,16 +111,6 @@
     <Reference Include="Health.Direct.Common">
       <HintPath>..\Required dlls\Health.Direct.Common.dll</HintPath>
     </Reference>
-    <Reference Include="Interop.Acrobat, Version=1.1.0.0, Culture=neutral, processorArchitecture=x86">
-      <SpecificVersion>False</SpecificVersion>
-      <EmbedInteropTypes>True</EmbedInteropTypes>
-      <HintPath>..\Required dlls\Interop.Acrobat.dll</HintPath>
-    </Reference>
-    <Reference Include="Interop.AFORMAUTLib, Version=1.0.0.0, Culture=neutral, processorArchitecture=x86">
-      <SpecificVersion>False</SpecificVersion>
-      <EmbedInteropTypes>True</EmbedInteropTypes>
-      <HintPath>..\Required dlls\Interop.AFORMAUTLib.dll</HintPath>
-    </Reference>
     <Reference Include="Interop.CDRDATALib">
       <HintPath>..\Required dlls\Interop.CDRDATALib.dll</HintPath>
       <EmbedInteropTypes>True</EmbedInteropTypes>
@@ -133,22 +119,10 @@
       <HintPath>..\Required dlls\Interop.CDRDicom.dll</HintPath>
       <EmbedInteropTypes>True</EmbedInteropTypes>
     </Reference>
-    <Reference Include="Interop.Microsoft.Office.Core, Version=2.2.0.0, Culture=neutral">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\Interop.Microsoft.Office.Core.dll</HintPath>
-    </Reference>
     <Reference Include="Interop.QBFC10, Version=11.0.0.29, Culture=neutral, PublicKeyToken=31d8aec643e18259">
       <SpecificVersion>False</SpecificVersion>
       <EmbedInteropTypes>True</EmbedInteropTypes>
       <HintPath>..\Required dlls\Interop.QBFC10.dll</HintPath>
-    </Reference>
-    <Reference Include="Interop.Word, Version=8.2.0.0, Culture=neutral">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\Interop.Word.dll</HintPath>
-    </Reference>
-    <Reference Include="Ionic.Zip, Version=1.9.1.4, Culture=neutral, PublicKeyToken=edbe51ad942a3f5c, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\Ionic.Zip.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="Microsoft.VisualBasic" />
@@ -167,10 +141,6 @@
     <Reference Include="MigraDoc.Rendering, Version=1.2.2546.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\MigraDoc.Rendering.dll</HintPath>
-    </Reference>
-    <Reference Include="MigraDoc.RtfRendering, Version=1.2.2546.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\MigraDoc.RtfRendering.dll</HintPath>
     </Reference>
     <Reference Include="MySqlConnector">
       <HintPath>..\Required dlls\MySqlConnector.dll</HintPath>
@@ -216,10 +186,6 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\SharpDX.dll</HintPath>
     </Reference>
-    <Reference Include="SigPlusNET, Version=1.1.4050.24928, Culture=neutral, PublicKeyToken=6aef07010bb0624f, processorArchitecture=x86">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\SigPlusNET.dll</HintPath>
-    </Reference>
     <Reference Include="System">
     </Reference>
     <Reference Include="System.Core">
@@ -233,6 +199,7 @@
     <Reference Include="System.DirectoryServices.AccountManagement" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.EnterpriseServices" />
+    <Reference Include="System.IO.Compression" />
     <Reference Include="System.Management" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Runtime.Serialization" />
@@ -262,14 +229,6 @@
     <Reference Include="UIAutomationProvider" />
     <Reference Include="WindowsBase" />
     <Reference Include="WindowsFormsIntegration" />
-    <Reference Include="zxing, Version=0.16.5.0, Culture=neutral, PublicKeyToken=4e88037ac681fe60, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\zxing.dll</HintPath>
-    </Reference>
-    <Reference Include="zxing.presentation, Version=0.16.5.0, Culture=neutral, PublicKeyToken=4e88037ac681fe60, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\zxing.presentation.dll</HintPath>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Bridges\FormDrCeph.cs">
@@ -2283,12 +2242,6 @@
     </Compile>
     <Compile Include="Forms Reports\FormRpDiscountPlan.designer.cs">
       <DependentUpon>FormRpDiscountPlan.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\FormAvaTax.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FormAvaTax.designer.cs">
-      <DependentUpon>FormAvaTax.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\FormAutoNoteResponsePicker.cs">
       <SubType>Form</SubType>
@@ -6443,9 +6396,6 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms Reports\FormRpDiscountPlan.resx">
       <DependentUpon>FormRpDiscountPlan.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormAvaTax.resx">
-      <DependentUpon>FormAvaTax.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormAutoNoteResponsePicker.resx">
       <DependentUpon>FormAutoNoteResponsePicker.cs</DependentUpon>

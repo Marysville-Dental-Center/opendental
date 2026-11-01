@@ -8,7 +8,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using CodeBase;
-using Ionic.Zip;
 
 namespace OpenDentBusiness.Eclaims {
 	public class WebMD {
@@ -124,13 +123,10 @@ namespace OpenDentBusiness.Eclaims {
 		private static void SubmitBatch(Clearinghouse clearinghouseClin,int batchNum) {//not called from anywhere currently.
 			string[] files=Directory.GetFiles(clearinghouseClin.ExportPath);
 			for(int i=0;i<files.Length;i++) {
-				ZipFile zip=null;
-				try {
-					zip=new ZipFile();
-					zip.AddFile(files[i]);
-					MemoryStream ms=new MemoryStream();
-					zip.Save(ms);
-					string fileTextZippedBase64=Convert.ToBase64String(ms.GetBuffer());
+				{
+					//The file keeps its folders inside the archive, as DotNetZip's AddFile(path) stored it.
+					byte[] arrayZip=ODZip.CreateArchive(new[] { new KeyValuePair<string,byte[]>(ODZip.GetEntryNameWithFolders(files[i]),File.ReadAllBytes(files[i])) });
+					string fileTextZippedBase64=Convert.ToBase64String(arrayZip);
 					FileInfo fi=new FileInfo(files[i]);
 					string claimXML="<?xml version=\"1.0\" ?>"
 						+"<claim_submission_api xmlns=\"Emdeon_claim_submission_api\" revision=\"001\">"
@@ -163,11 +159,6 @@ namespace OpenDentBusiness.Eclaims {
 
 
 
-				}
-				finally {
-					if(zip!=null) {
-						zip.Dispose();
-					}
 				}
 			}
 		}

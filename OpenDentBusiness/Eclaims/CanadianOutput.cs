@@ -12,7 +12,6 @@ using CodeBase;
 using Health.Direct.Common.Metadata;
 using OpenDentBusiness.FileIO;
 using static OpenDentBusiness.Eclaims.Canadian;
-using Word;
 using OpenDentalCloud.Core;
 using System.Transactions;
 using System.Windows.Media.Imaging;

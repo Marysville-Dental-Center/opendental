@@ -3122,6 +3122,9 @@ namespace OpenDental {
 			return nodeIdTag;
 		}
 
+		///<summary>The invalid signature label's own text while it says that Topaz's software is not installed, else null.</summary>
+		private string _textInvalidSigBeforeTopaz;
+
 		///<summary>DO NOT CALL UNLESS THE CURRENTLY SELECTED NODE IS A DOCUMENT NODE. Fills the panelnote control with the current document signature when the panelnote is visible and when a valid document is currently selected.</summary>
 		private void FillSignature() {
 			textNote.Text="";
@@ -3130,13 +3133,24 @@ namespace OpenDental {
 				return;
 			}
 			textNote.Text=_documentShowing.Note;
+			if(_textInvalidSigBeforeTopaz!=null) {
+				labelInvalidSig.Text=_textInvalidSigBeforeTopaz;
+				_textInvalidSigBeforeTopaz=null;
+			}
 			labelInvalidSig.Visible=false;
 			sigBox.Visible=true;
 			sigBox.SetTabletState(0);//never accepts input here
 			//Topaz box is not supported in Unix, since the required dll is Windows native.
 			if(_documentShowing.SigIsTopaz) {
 				if(_documentShowing.Signature!=null && _documentShowing.Signature!="") {
-					//if(allowTopaz) {	
+					if(_sigBoxTopaz==null) {//Topaz's software is not installed, so the signature can be neither shown nor checked here.
+						sigBox.Visible=false;
+						_textInvalidSigBeforeTopaz=labelInvalidSig.Text;
+						labelInvalidSig.Text=Lan.g(this,TopazWrapper.NOT_INSTALLED_MESSAGE);
+						labelInvalidSig.Visible=true;
+						return;
+					}
+					//if(allowTopaz) {
 					sigBox.Visible=false;
 					_sigBoxTopaz.Visible=true;
 					TopazWrapper.ClearTopaz(_sigBoxTopaz);
@@ -3177,8 +3191,10 @@ namespace OpenDental {
 			else {//not topaz
 				if(_documentShowing.Signature!=null && _documentShowing.Signature!="") {
 					sigBox.Visible=true;
-					//if(allowTopaz) {	
-					_sigBoxTopaz.Visible=false;
+					//if(allowTopaz) {
+					if(_sigBoxTopaz!=null) {
+						_sigBoxTopaz.Visible=false;
+					}
 					//}
 					sigBox.ClearTablet();
 					//sigBox.SetSigCompressionMode(0);

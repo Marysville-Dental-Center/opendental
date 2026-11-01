@@ -10,7 +10,6 @@ using System.Xml;
 using System.Threading;
 using System.Net;
 using System.IO;
-using Ionic.Zip;
 using CodeBase;
 using OpenDental.UI;
 

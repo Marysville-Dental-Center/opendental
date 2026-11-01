@@ -5,8 +5,8 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows.Forms;
+using System.IO.Compression;
 using CodeBase;
-using Ionic.Zip;
 using OpenDental.UI;
 using OpenDentBusiness;
 
@@ -108,14 +108,15 @@ namespace OpenDental {
 				//Unzip the compressed file-----------------------------------------------------------------------------------------------------
 				bool foundFile=false;
 				string meduFileName="MEDU.txt";//MEDU stands for MEDium desciption Upper case.
-				using ZipFile zipFileUnzipped=ZipFile.Read(openFileDialog.FileName);
-				for(int unzipIndex=0;unzipIndex<zipFileUnzipped.Count;unzipIndex++) {//unzip/write all files to the temp directory
-					ZipEntry zipEntry=zipFileUnzipped[unzipIndex];
-					if(!zipEntry.FileName.ToLower().Contains("medu.txt")) {  //This file used to be called "medu.txt.txt" and is now called "medu.txt".  Uses .Contains() to catch both cases.
+				using FileStream fileStreamZip=new FileStream(openFileDialog.FileName,FileMode.Open,FileAccess.Read,FileShare.Read);
+				using ZipArchive zipArchive=new ZipArchive(fileStreamZip,ZipArchiveMode.Read);
+				foreach(ZipArchiveEntry zipArchiveEntry in zipArchive.Entries) {//unzip/write the MEDU file(s) to the temp directory
+					if(ODZip.IsDirectory(zipArchiveEntry) || !zipArchiveEntry.FullName.ToLower().Contains("medu.txt")) {  //This file used to be called "medu.txt.txt" and is now called "medu.txt".  Uses .Contains() to catch both cases.
 						continue;
 					}
-					meduFileName=zipEntry.FileName;
-					zipEntry.Extract(PrefC.GetTempFolderPath(),ExtractExistingFileAction.OverwriteSilently);
+					meduFileName=zipArchiveEntry.FullName;
+					//Overwrites a file left by an earlier import. Throws, extracting nothing, if the entry's path would leave the temp folder.
+					ODZip.ExtractEntry(zipArchiveEntry,PrefC.GetTempFolderPath(),overwrite:true);
 					foundFile=true;
 				}
 				if(!foundFile) {
