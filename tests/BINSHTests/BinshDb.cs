@@ -1,5 +1,5 @@
-// One scratch database for the B-INSH database tests: a fresh 24.3.63 database (built like tools/New-DevDatabase.ps1) upgraded to the Open
-// Dental 25.3.48 schema by the fork migration runner. Synthetic data only (made-up Z codes). Skipped (inconclusive) when the local MariaDB does
+// One scratch database for the B-INSH database tests: a fresh 24.3.63 database (built like tools/New-DevDatabase.ps1) upgraded to the current
+// schema (Open Dental 26.1.70) by the fork migration runner. Synthetic data only (made-up Z codes). Skipped (inconclusive) when the local MariaDB does
 // not answer, or when FORKMIGRATION_TEST_DB=skip.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;

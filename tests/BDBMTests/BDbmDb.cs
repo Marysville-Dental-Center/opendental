@@ -1,5 +1,5 @@
-// One scratch database for the B-DBM tests: a fresh 24.3.63 database (built like tools/New-DevDatabase.ps1) upgraded to the Open Dental 25.3.48
-// schema by the fork migration runner. Synthetic data only. Skipped (inconclusive) when the local MariaDB does not answer.
+// One scratch database for the B-DBM tests: a fresh 24.3.63 database (built like tools/New-DevDatabase.ps1) upgraded to the current schema
+// (Open Dental 26.1.70) by the fork migration runner. Synthetic data only. Skipped (inconclusive) when the local MariaDB does not answer.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;

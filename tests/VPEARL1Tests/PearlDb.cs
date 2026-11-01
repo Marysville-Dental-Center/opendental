@@ -1,5 +1,5 @@
-// One scratch database for the V-PEARL1 tests: a fresh 24.3.63 database (built like tools/New-DevDatabase.ps1) upgraded to the Open Dental
-// 25.3.48 schema by the fork migration runner, with made-up Pearl settings. Synthetic data only. Skipped (inconclusive) when the local MariaDB
+// One scratch database for the V-PEARL1 tests: a fresh 24.3.63 database (built like tools/New-DevDatabase.ps1) upgraded to the current
+// schema (Open Dental 26.1.70) by the fork migration runner, with made-up Pearl settings. Synthetic data only. Skipped (inconclusive) when the local MariaDB
 // does not answer. The rule tests need no database and always run.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
