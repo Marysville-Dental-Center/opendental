@@ -1,6 +1,6 @@
 # REN-PROOF: make the code safe to rename, still with today's names
 
-Package REN-PROOF of the pre-rename run, on branch `pre/ren-proof-1` from `main`. It does step 1 of the rename plan (the rename inventory's
+Package REN-PROOF of the pre-rename run, on branch `pre/ren-proof-1` from `main` (review fixes on `pre/ren-proof-2`). It does step 1 of the rename plan (the rename inventory's
 sections 3 and 5, actions R04 to R08, R16 and the guard tests). Nothing is renamed here: every name keeps today's value, so the program behaves
 as before except where noted under "Behaviour changes". The rename itself is the next run.
 
@@ -23,6 +23,7 @@ it (it replaces CodeBase.dll while it runs; `UpdateFileCopier.csproj` links it l
 | `TempFolderName`, `UpdateFileCopierTempFolderName` | `opendental`, `updatefilecopier` | `PrefC.GetTempFolderPath`, ImageStore and EmailAttaches temp files, UpdateFileCopier's backups, FormOpenDental's close-time clean-up |
 | `EventLogSource` | `OpenDental` | NTPv4, WindowsTime |
 | `HL7ServiceName`, `EventLogSourceHL7`, `EventLogSourceHL7Main` | `OpenDentHL7`, `OpenDentHL7`, `OpenDentHL7.Main` | the HL7 installer and service, every HL7 Event Log write (OpenDentBusiness/HL7, HL7old, OpenDentHL7) |
+| `HL7ServiceFallbackName` | `OpenDentalHL7`, and it stays that after the rename | the name the HL7 service runs under when no installed service whose name starts with `ServicePrefix` was installed from its folder: Open Dental's run-time default, which differs from its installer's name |
 | `ServicePrefix` | `OpenDent` | `ServicesHelper.GetAllOpenDentServices`, ServiceManager (add and name check), the HL7 service finding its own name |
 | `DefaultInstallFolder` | `C:\Program Files\Open Dental` | UpdateFileCopier when started without a destination (debugging only) |
 
@@ -113,8 +114,14 @@ names on 26,935 lines in 5,856 files, with 3,227 allowed. It runs in about 10 se
   been published to an office database, so nothing pulls because of it.
 - One HL7 Event Log write used the source "OpenDentalHL7" (MessageParser, future-dated procedure), which nothing registers; it now uses the HL7
   service's source like every other HL7 message. INFERRED.
-- The HL7 service's fallback name, used when no installed service matches its folder, is now the installer's default `OpenDentHL7` (Open Dental
-  had `OpenDentalHL7` there, unlike its installer). INFERRED.
+
+Not a change: the HL7 service's fallback name, used when no installed service whose name starts with `ServicePrefix` was installed from its folder
+(a service installed with `/ServiceName=<another name>`), stays Open Dental's `OpenDentalHL7`, now as `ProgramNames.HL7ServiceFallbackName`. The
+first branch of this package had made it the installer's `OpenDentHL7`; the review showed that this breaks such an install's HL7 feed. On its
+first start the service saves its name into a blank `HL7Def.HL7ServiceName` (MedLab or the enabled definition) or the eCW `HL7ServiceName`
+program property, and on every later start it refuses to run when its name differs from the saved one (`ServiceHL7.OnStart`); the setup windows
+also tell users to type "OpenDentalHL7". The constant keeps its value after the rename (`ProgramNamesTests.HL7Service_FallbackNameIsOpenDentalsRunTimeDefault`
+pins it). The scanner does not list it, because `OpenDentalHL7` is not one of its old names.
 
 ## Decisions (INFERRED)
 
@@ -142,6 +149,11 @@ names on 26,935 lines in 5,856 files, with 3,227 allowed. It runs in about 10 se
    (`openpms-dental`)? It is only ever created by the program.
 2. Should window sizes, Query Monitor filters and the Waiting Room position also be read from the pre-rename `%LOCALAPPDATA%\OpenDental` folder
    after the rename, or start fresh (chosen here)?
+3. The HL7 service has two default names: the installer's `OpenDentHL7` (`HL7ServiceName`) and the run-time fallback `OpenDentalHL7`
+   (`HL7ServiceFallbackName`), as in Open Dental. Should they be unified later? That needs a migration of the saved `HL7Def.HL7ServiceName` and
+   eCW `HL7ServiceName` values, or both names accepted at start. Kept as two here. Related, for the rename run: if `ServicePrefix` changes, the
+   service no longer finds an installed `OpenDentHL7` service by its folder and falls back to `OpenDentalHL7`, so the prefix check needs to accept
+   the old prefix too.
 
 ## Files outside this package's list (kept minimal)
 

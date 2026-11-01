@@ -57,6 +57,12 @@ namespace CodeBase {
 		public const string EventLogSource="OpenDental";
 		///<summary>The default name of the HL7 Windows service, which is also the Event Log source its messages are written under.</summary>
 		public const string HL7ServiceName="OpenDentHL7";
+		///<summary>The name the HL7 service runs under when no installed service whose name starts with ServicePrefix was installed from its
+		///folder (a service installed with /ServiceName=&lt;another name&gt;). This is Open Dental's run-time default, and it differs from the
+		///installer's HL7ServiceName. The service saves its name into a blank HL7Def.HL7ServiceName or eCW HL7ServiceName program property on
+		///its first start and refuses to start when they differ later, and the setup windows tell users to type this name, so it must keep this
+		///value: changing it would stop the HL7 feed of such an install.</summary>
+		public const string HL7ServiceFallbackName="OpenDentalHL7";
 		///<summary>The Event Log source of the HL7 service's messages.</summary>
 		public const string EventLogSourceHL7=HL7ServiceName;
 		///<summary>The Event Log source of the HL7 service's start and stop messages, written before the service has its name.</summary>

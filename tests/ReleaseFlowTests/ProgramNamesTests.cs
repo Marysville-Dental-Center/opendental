@@ -52,6 +52,22 @@ namespace ReleaseFlowTests {
 			Assert.IsTrue(ProgramNames.HL7ServiceName.StartsWith(ProgramNames.ServicePrefix),"The HL7 service must carry the service prefix.");
 		}
 
+		///<summary>The HL7 service's fallback name is Open Dental's run-time default, not the installer's name. Existing HL7 setups saved it into
+		///HL7Def.HL7ServiceName or the eCW HL7ServiceName property, and the service refuses to start when its name differs from the saved one, so
+		///a different value would stop their HL7 feed.</summary>
+		[TestMethod]
+		public void HL7Service_FallbackNameIsOpenDentalsRunTimeDefault() {
+			Assert.AreEqual("OpenDentalHL7",ProgramNames.HL7ServiceFallbackName,"Saved HL7 setups hold this name; it never changes.");
+			string code=Regex.Replace(File.ReadAllText(Path.Combine(TestPaths.RepoRoot,"OpenDentHL7","Program.cs")),@"//.*$","",RegexOptions.Multiline);
+			StringAssert.Contains(code,"serviceHL7.ServiceName=ProgramNames.HL7ServiceFallbackName;","The service's default name must be the fallback name.");
+			Assert.IsFalse(code.Contains("serviceHL7.ServiceName=ProgramNames.HL7ServiceName"),"The installer's name is not the run-time fallback.");
+			//The setup windows tell users to type the fallback name.
+			foreach(string designer in new[] { "FormHL7DefEdit.designer.cs","FormEClinicalWorks.designer.cs" }) {
+				StringAssert.Contains(File.ReadAllText(Path.Combine(TestPaths.RepoRoot,"OpenDental","Forms",designer)),
+					"Typically "+ProgramNames.HL7ServiceFallbackName+".",designer);
+			}
+		}
+
 		///<summary>The sites that spelled the program's names out now read them from ProgramNames. A literal left behind would keep the old name
 		///after the rename without a compiler error.</summary>
 		[TestMethod]
