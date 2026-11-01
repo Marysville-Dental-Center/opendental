@@ -53,6 +53,9 @@
   <ItemGroup>
     <!-- Every .cs and .xaml file under this folder is part of the project, so packages that add files never conflict over this project file. -->
     <Compile Include="**\*.cs" Exclude="bin\**;obj\**" />
+    <Compile Include="..\SharedAssemblyInfo.cs">
+      <Link>Properties\SharedAssemblyInfo.cs</Link>
+    </Compile>
     <Page Include="**\*.xaml" Exclude="bin\**;obj\**">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>

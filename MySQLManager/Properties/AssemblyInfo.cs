@@ -8,9 +8,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("MySQLManager")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("MySQLManager")]
-[assembly: AssemblyCopyright("Copyright ©  2019")]
+//AssemblyProduct, AssemblyCompany, AssemblyCopyright and AssemblyInformationalVersion come from SharedAssemblyInfo.cs in the repository root.
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

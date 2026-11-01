@@ -54,7 +54,8 @@ namespace OpenDental.Bridges {
 			CheckCreatedFile(extract);
 			double linesProcessedCount=0;
 			string licenseKey=ProgramProperties.GetPropVal(Programs.GetProgramNum(ProgramName.DemandForce),"Enter your DemandForce license key (required)");
-			string versionCur=new Version(Application.ProductVersion).ToString();
+			//The management system version DemandForce reads: the Open Dental compatibility version, not the release version ("0.0").
+			string versionCur=ForkVersions.CompatVersion.ToString();
 			string extractDateTime=DateTime.Now.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffK");
 			Dictionary<long,DateTime> dateLastVisit=Appointments.GetDateLastVisit();
 			Dictionary<long,List<Appointment>> allPatApts=Appointments.GetAptsForPats(DateTime.Now.ToUniversalTime(),DateTime.Now.AddDays(210).ToUniversalTime());//appointments from todays date forward 210 days

@@ -8,9 +8,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("UpdateFileCopier")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("UpdateFileCopier")]
-[assembly: AssemblyCopyright("Copyright ©  2009")]
+//AssemblyProduct, AssemblyCompany, AssemblyCopyright and AssemblyInformationalVersion come from SharedAssemblyInfo.cs in the repository root.
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

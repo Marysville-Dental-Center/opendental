@@ -240,7 +240,9 @@ namespace OpenDentBusiness{
 					}
 					string username=centralConnection.OdUser;
 					//ecw requires hash, but non-ecw requires actual password
-					Security.CurUser=Security.LogInWeb(username,password,"",Application.ProductVersion,useEcwAlgorithm);
+					//The middle tier compares the client version with its own OpenDentBusiness assembly version (24.3.63.0), so send the compatibility
+					//version, not the release version ("0.0", which would always pass).
+					Security.CurUser=Security.LogInWeb(username,password,"",ForkVersions.CompatVersion.ToString(4),useEcwAlgorithm);
 					Security.PasswordTyped=password;//for ecw, this is already encrypted.
 				}
 				catch(Exception) {

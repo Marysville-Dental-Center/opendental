@@ -8,9 +8,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("PasswordVaultWrapper")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("PasswordVaultWrapper")]
-[assembly: AssemblyCopyright("Copyright ©  2023")]
+//AssemblyProduct, AssemblyCompany, AssemblyCopyright and AssemblyInformationalVersion come from SharedAssemblyInfo.cs in the repository root.
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

@@ -7,9 +7,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("ODCrypt")]
 [assembly: AssemblyDescription("Standard hash, random and compression helpers (MD5, SHA3-512, salts, gzip).")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("ODCrypt")]
-[assembly: AssemblyCopyright("GNU GPL v2 or later")]
+//AssemblyProduct, AssemblyCompany, AssemblyCopyright and AssemblyInformationalVersion come from SharedAssemblyInfo.cs in the repository root.
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 [assembly: ComVisible(false)]
