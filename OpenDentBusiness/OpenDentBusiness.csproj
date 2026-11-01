@@ -2177,9 +2177,6 @@
     <WebReferences Include="Web References\" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\.editorconfig">
-      <Link>.editorconfig</Link>
-    </None>
     <None Include="app.config">
       <SubType>Designer</SubType>
     </None>

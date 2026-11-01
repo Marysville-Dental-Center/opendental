@@ -87,8 +87,8 @@ With Visual Studio installed instead of Build Tools, replace `BuildTools` in the
 
 ### The solution and the solution filter
 
-- **`OpenDental.Local.slnf`** loads the program and its libraries, services and tools, the adoption and synthetic-data tools under `tools/`, and every test project under `tests/`. The older or standalone projects listed under [Repository layout](#repository-layout) are not in it. `OpenDental.sln` can still list projects that Open Dental never published (EHR and its web apps); they are not in this repository, and the filter leaves them out. The build scripts read the filter, so add a new project to it.
-- **`Directory.Build.targets`** keeps a safety net: a `ProjectReference` whose project file is missing would be swapped for a DLL of the same name in `Required dlls/`. No project needs it today; every project the desktop program references is built from source. It also adds the folder that holds MSTest v1 (`Microsoft.VisualStudio.QualityTools.UnitTestFramework`) to the assembly search path.
+- **`OpenDental.Local.slnf`** loads the program and its libraries, services and tools, the adoption and synthetic-data tools under `tools/`, and every test project under `tests/`. The older or standalone projects listed under [Repository layout](#repository-layout) are not in it. `OpenDental.sln` lists the same projects, so either one builds the same set. The build scripts read the filter, so add a new project to both.
+- **`Directory.Build.targets`** only adds the folder that holds MSTest v1 (`Microsoft.VisualStudio.QualityTools.UnitTestFramework`) to the assembly search path. Every project is built from source: a missing project fails the build, and nothing is swapped for a DLL in `Required dlls/`.
 - **Version numbers:** `SharedAssemblyInfo.cs` in the repository root gives every shipped assembly its product name, copyright and release version (`0.0`). Each project's `AssemblyVersion` stays on its own line; for `OpenDental.exe` and `OpenDentBusiness.dll` that is the compatibility version `24.3.63.0`, which the database checks use ([docs/release-process.md](docs/release-process.md)).
 - **We don't merge from upstream.** Open Dental's public source stops at 24.3.63; later features are re-implemented from public documentation ([docs/decoupling-plan.md](docs/decoupling-plan.md)).
 - **`.gitignore`** ignores build output (`bin/`, `obj/`, `packages/`, `.vs/`). The `ConversionFiles` already tracked under `OpenDental/bin/Debug` remain tracked.
@@ -166,10 +166,10 @@ Then build the solution (see [Build](#build)), start `OpenDental\bin\Debug\OpenD
 | `OpenDentalCloud/`, `OpenDentalGraph/`, `SparksToothChart/`, `Direct2dWrapper/`, `PasswordVaultWrapper/` | Cloud storage, dashboards, tooth chart rendering, native Direct2D, and Windows credential vault libraries |
 | `tests/` | MSTest v1 test projects, one per package, in the solution filter. Tests that need a database create a scratch database with a unique name on `127.0.0.1:3306` and drop it afterwards |
 | `UnitTests/`, `UnitTestsCore/`, `NoHqTests/` | Open Dental's MSTest v1 tests (most need a live test database) and the checks that no Open Dental servers are contacted |
-| `tools/` | `New-DevDatabase.ps1` and `DevDbTool/` (development database), `AdoptionValidation/` (adopting an Open Dental database), `SyntheticData/` (synthetic test data), `Test-NoHqHosts.ps1` (fails if code still references Open Dental's hosts) |
+| `tools/` | `New-DevDatabase.ps1` and `DevDbTool/` (development database), `New-InitSql.ps1` (regenerates `db/init/new-database.sql`), `AdoptionValidation/` (adopting an Open Dental database), `SyntheticData/` (synthetic test data), `run-tests.ps1` (the test runner), `Test-NoHqHosts.ps1` (fails if code still references Open Dental's hosts), `Test-NoOldNames.ps1` (lists the program's old internal names, for the rename) |
 | `docs/` | Design notes, the release process, the adoption runbook, the binaries audit and one port note per package (`docs/port-notes/`) |
 | `Required dlls/` | Third-party assemblies the build references. What ships is listed in [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt); the rest is reviewed in [docs/third-party-binaries-audit.md](docs/third-party-binaries-audit.md) |
-| `RdlDesign/`, `RdlEngine/`, `RdlViewer/`, `ODR/`, `MobileWeb/`, `TestCanada/`, ... | Older or standalone projects, not in the solution filter and not built |
+| `RdlDesign/`, `RdlEngine/`, `RdlViewer/`, `ODR/`, `DocumentationBuilder/`, `PluginExample/` | Older or standalone projects, not in the solution filter and not built |
 
 ## Branches
 

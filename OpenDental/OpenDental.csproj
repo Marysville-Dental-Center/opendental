@@ -8888,7 +8888,6 @@
   <ItemGroup>
     <None Include="Resources\Pearl.txt" />
     <Resource Include="Resources\bola_launch.png" />
-    <None Include="Resources\Icon1.ico" />
     <None Include="Resources\XamlStyle_ToolBarButton.txt" />
     <None Include="Resources\XamlStyle_ToolBar.txt" />
     <None Include="Resources\XamlStyle_MenuItem.txt" />
