@@ -28,9 +28,10 @@ namespace OpenPmsDentalHL7 {
 				//Get all installed services
 				List<ServiceController> serviceControllersOD=new List<ServiceController>();
 				ServiceController[] serviceControllersAll=ServiceController.GetServices();
-				//Get all installed services whose names start with ProgramNames.ServicePrefix
+				//Get all installed services whose names start with ProgramNames.ServicePrefix, or with the prefix of builds before the rename, so
+				//a service installed then (OpenDentHL7) still finds its own name
 				for(int i=0;i<serviceControllersAll.Length;i++) {
-					if(serviceControllersAll[i].ServiceName.StartsWith(ProgramNames.ServicePrefix)) {
+					if(ProgramNames.HasServicePrefix(serviceControllersAll[i].ServiceName)) {
 						serviceControllersOD.Add(serviceControllersAll[i]);
 					}
 				}

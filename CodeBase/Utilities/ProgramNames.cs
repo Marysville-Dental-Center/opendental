@@ -8,7 +8,8 @@ namespace CodeBase {
 	///<summary>The names the program uses for itself at run time that the compiler cannot check: the exe and process name, the files of the
 	///release build id, the folders under %LOCALAPPDATA%, %ProgramData% and %TEMP%, the Event Log sources, the Windows service prefix and
 	///UpdateFileCopier's defaults. Every such site reads them from here, so a rename changes these values and nothing else. The values are
-	///today's names. Database table, column and preference names are not here and never change.
+	///the Open PMS Dental names; the Legacy* values and HL7ServiceFallbackName are the names of builds before the rename, kept so that what they
+	///left on a computer is still found. Database table, column and preference names are not here and never change.
 	///This file has no dependencies beyond the framework: UpdateFileCopier compiles a linked copy of it, because it replaces CodeBase.dll while
 	///it runs.</summary>
 	public static class ProgramNames {
@@ -57,19 +58,23 @@ namespace CodeBase {
 		public const string EventLogSource="OpenPMS-Dental";
 		///<summary>The default name of the HL7 Windows service, which is also the Event Log source its messages are written under.</summary>
 		public const string HL7ServiceName="OpenPmsDentalHL7";
-		///<summary>The name the HL7 service runs under when no installed service whose name starts with ServicePrefix was installed from its
-		///folder (a service installed with /ServiceName=&lt;another name&gt;). This is Open Dental's run-time default, and it differs from the
-		///installer's HL7ServiceName. The service saves its name into a blank HL7Def.HL7ServiceName or eCW HL7ServiceName program property on
-		///its first start and refuses to start when they differ later, and the setup windows tell users to type this name, so it must keep this
-		///value: changing it would stop the HL7 feed of such an install.</summary>
+		///<summary>The name the HL7 service runs under when no installed service whose name starts with ServicePrefix or LegacyServicePrefix
+		///was installed from its folder (a service installed with /ServiceName=&lt;another name&gt;). This is Open Dental's run-time default, and
+		///it differs from the installer's HL7ServiceName. The service saves its name into a blank HL7Def.HL7ServiceName or eCW HL7ServiceName
+		///program property on its first start and refuses to start when they differ later, and the setup windows tell users to type this name,
+		///so it keeps this value through the rename: the HL7 setups of an adopted database hold it, and changing it would stop the HL7 feed of
+		///such an install.</summary>
 		public const string HL7ServiceFallbackName="OpenDentalHL7";
 		///<summary>The Event Log source of the HL7 service's messages.</summary>
 		public const string EventLogSourceHL7=HL7ServiceName;
 		///<summary>The Event Log source of the HL7 service's start and stop messages, written before the service has its name.</summary>
 		public const string EventLogSourceHL7Main=HL7ServiceName+".Main";
-		///<summary>Every Windows service of this program has a name that starts with this. ServiceManager refuses other names, and the program
-		///starts the installed services that start with it.</summary>
+		///<summary>Every Windows service of this program has a name that starts with this. ServiceManager refuses other names for a new
+		///service. Installed services are looked up by this prefix or LegacyServicePrefix (HasServicePrefix).</summary>
 		public const string ServicePrefix="OpenPmsDental";
+		///<summary>The service prefix of builds before the rename (and of Open Dental). It stays this value: installed services are still looked
+		///up by it (HasServicePrefix), so a service installed before the rename, such as an HL7 service named OpenDentHL7, is still found.</summary>
+		public const string LegacyServicePrefix="OpenDent";
 		#endregion Event Log and Windows services
 
 		#region UpdateFileCopier defaults
@@ -77,6 +82,15 @@ namespace CodeBase {
 		///its own folder).</summary>
 		public const string DefaultInstallFolder=@"C:\Program Files (x86)\Open PMS - Dental";
 		#endregion UpdateFileCopier defaults
+
+		///<summary>True when serviceName is the name of an installed service of this program: it starts with ServicePrefix, or with
+		///LegacyServicePrefix (a service installed before the rename). Case-sensitive, like the service names the installers write.</summary>
+		public static bool HasServicePrefix(string serviceName) {
+			if(string.IsNullOrEmpty(serviceName)) {
+				return false;
+			}
+			return serviceName.StartsWith(ServicePrefix,StringComparison.Ordinal) || serviceName.StartsWith(LegacyServicePrefix,StringComparison.Ordinal);
+		}
 
 		///<summary>True when processName is the main program's process name. Matches the whole name, ignoring case; never a prefix.</summary>
 		public static bool IsProgramProcessName(string processName) {
