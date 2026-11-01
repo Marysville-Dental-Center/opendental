@@ -12,8 +12,9 @@ namespace AdoptionValidation {
 	///rows the Open Dental 25.4 and 26.1 steps convert: a PhoneExtension grant under its 25.3 number (272), which they move to 274, Blockouts grants
 	///(one of them twice, one with a date limit), from which they grant BlockoutAdd and BlockoutDelete, and a claim payment note that is NULL, which
 	///they make empty; and the FQHC Dental Sealant Measure with a report grant and a Public Health report after it, among which the UDS+ step adds the
-	///25.4 UDS+ report's row and to which it copies the grant. The rehearsal adds them to the generated database before the baseline, so adoption has real work to do and the checks can see
-	///it done.
+	///25.4 UDS+ report's row and to which it copies the grant; and the ten InsHist*Codes preferences of Insurance History's fixed rows, which the
+	///Insurance History step moves into code groups, with the debridement group made the office's own (no fixed type) so that the step also adds one.
+	///The rehearsal adds them to the generated database before the baseline, so adoption has real work to do and the checks can see it done.
 	///Everything here is synthetic: the "update files" are a short placeholder text, never program files, the server addresses are built from
 	///the fork's blocked-host list (CodeBase.VendorDirect.HqHosts) so no host name is written in this file, the "ciphertexts" are random bytes
 	///from the seed, and the report rows' internal names are made up (Open Dental's are not published).</summary>
@@ -71,6 +72,32 @@ namespace AdoptionValidation {
 		///granted to two user groups each.</summary>
 		public const int CountPhoneExtensionGrants=1;
 		public const int CountBlockoutGroups=2;
+		///<summary>The ten InsHist*Codes preferences as an office's Open Dental 25.3.48 database holds them (the codes of Insurance History's fixed
+		///rows), with SyntheticData's codes. Adoption's Insurance History step (InsHistCodeGroupsStep, M2-HIST) marks the generated code group of each
+		///category Show In History; the groups already hold every code but INSHIST_CODE_ADDED, and the four perio quadrants (two codes) share the SRP
+		///group. (preference name, value.)</summary>
+		public static readonly (string prefName,string value)[] ArrayInsHistPrefs={
+			("InsHistBWCodes","Z0272,Z0274"),
+			("InsHistPanoCodes","Z0330,Z0210"),
+			("InsHistExamCodes","Z0120,Z0140,Z0150"),
+			("InsHistProphyCodes","Z1110"),
+			("InsHistPerioURCodes","Z4341"),
+			("InsHistPerioULCodes","Z4341"),
+			("InsHistPerioLRCodes","Z4342"),
+			("InsHistPerioLLCodes","Z4342"),
+			("InsHistPerioMaintCodes","Z4910,"+INSHIST_CODE_ADDED),
+			("InsHistDebridementCodes","Z4355"),
+		};
+		///<summary>A perio maintenance code the preference names and neither the code group nor the procedure code list has: the step appends it to the
+		///group's codes.</summary>
+		public const string INSHIST_CODE_ADDED="Z4920";
+		///<summary>The fixture makes SyntheticData's full mouth debridement group the office's own (CodeGroupFixed None), so the step adds a group for
+		///that category, after every other group.</summary>
+		public const string INSHIST_GROUP_ADDED="Full Mouth Debridement";
+		///<summary>What the Insurance History step must do with the fixture: mark six code groups (bitewings, pano, exams, prophy, SRP with four
+		///quadrant rows, perio maintenance) and add one.</summary>
+		public const int CountInsHistGroupsMarked=6;
+		public const int CountInsHistGroupsAdded=1;
 
 		public class Summary {
 			public int UpdateFileRows;
@@ -84,6 +111,8 @@ namespace AdoptionValidation {
 			public int ReportGrantsSealant;
 			public int GroupPermRows;
 			public int ClaimPaymentNotesNull;
+			public int InsHistPrefs;
+			public int CodeGroupsUnfixed;
 
 			public override string ToString() {
 				return UpdateFileRows+" Open Dental update-file rows and "+OtherDocumentMiscRows+" other documentmisc row; "+ListHqPrefs.Count
@@ -95,7 +124,8 @@ namespace AdoptionValidation {
 					+string.Join(", ",ArrayReportRowsPublicHealth.Select(x => x.internalName))+") among which the 25.4 UDS+ step adds its row, with "+ReportGrantsSealant
 					+" Reports grant for the sealant measure it copies; "+GroupPermRows+" grouppermission rows the 25.4 permission split converts ("
 					+CountPhoneExtensionGrants+" PhoneExtension under its 25.3 number "+PermPhoneExtension25_3+", Blockouts for "+CountBlockoutGroups+" user groups, one "
-					+"of them twice); "+ClaimPaymentNotesNull+" claim payment note set to NULL, which the 26.1 step makes empty.";
+					+"of them twice); "+ClaimPaymentNotesNull+" claim payment note set to NULL, which the 26.1 step makes empty; "+InsHistPrefs+" InsHist*Codes preferences, which the Insurance History step "
+					+"moves into code groups, and "+CodeGroupsUnfixed+" full mouth debridement code group made the office's own, so that the step adds a group for it.";
 			}
 		}
 
@@ -205,6 +235,20 @@ namespace AdoptionValidation {
 			//A claim payment note left NULL (the 25.3.48 column allows it); the 26.1 step makes it empty. SecDateTEdit is kept, so every run starts from
 			//the same database (X1).
 			summary.ClaimPaymentNotesNull=db.Execute("UPDATE claimpayment SET Note=NULL,SecDateTEdit=SecDateTEdit WHERE Note='' ORDER BY ClaimPaymentNum LIMIT 1");
+			//Insurance History's fixed rows (24.3 to 25.3): the ten preferences an office has set, which the Insurance History step moves into code
+			//groups (M2-HIST). The debridement group becomes the office's own, so the step creates the category's group.
+			foreach((string prefName,string value) pref in ArrayInsHistPrefs) {
+				if(db.ScalarLong("SELECT COUNT(*) FROM preference WHERE PrefName="+SqlLiteral.Quote(pref.prefName))>0) {
+					db.Execute("UPDATE preference SET ValueString="+SqlLiteral.Quote(pref.value)+" WHERE PrefName="+SqlLiteral.Quote(pref.prefName));
+				}
+				else {
+					db.Execute("INSERT INTO preference (PrefNum,PrefName,ValueString,Comments) VALUES ("+(db.ScalarLong("SELECT COALESCE(MAX(PrefNum),0)+1 FROM preference"))
+						.ToString(System.Globalization.CultureInfo.InvariantCulture)+","+SqlLiteral.Quote(pref.prefName)+","+SqlLiteral.Quote(pref.value)+",'')");
+				}
+				summary.InsHistPrefs++;
+			}
+			summary.CodeGroupsUnfixed=db.Execute("UPDATE codegroup SET CodeGroupFixed="+((int)OpenDentBusiness.EnumCodeGroupFixed.None).ToString(System.Globalization.CultureInfo.InvariantCulture)
+				+" WHERE CodeGroupFixed="+((int)OpenDentBusiness.EnumCodeGroupFixed.FMDebride).ToString(System.Globalization.CultureInfo.InvariantCulture));
 			int countClearinghouses=db.Execute("UPDATE clearinghouse SET Password="+SqlLiteral.Quote(FakeCiphertext(rng))
 				+" WHERE Description='Fictional Claims Exchange'");
 			if(countClearinghouses>0) {

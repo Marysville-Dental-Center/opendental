@@ -233,6 +233,7 @@ namespace AdoptionValidation {
 				CheckReportRenames(preview,adoption,adoptionResult);
 				Check26_1Changes(preview,adoption,adoptionResult,fixture);
 				CheckUdsPlusRow(preview,adoption,adoptionResult);
+				CheckInsHistCodeGroups(preview,adoption,adoptionResult);
 				//7. Rehash (Database Maintenance, Tools, Security Hashes), done by HeadlessAdoption above.
 				_run.ListHashesBefore=adoption.ListHashesStart;
 				_run.ListHashesAfter=adoption.ListHashesAfter;
@@ -261,8 +262,8 @@ namespace AdoptionValidation {
 					+" (a Debug build of Open Dental skips its version check: "+listAfter.First(x => !x.IsReleaseClient).Outcome+"; Open Dental ships Release builds only)");
 				//The tables the allowed list can only allow whole, row by row against the source (what adopt prints in runbook steps 4 and 5).
 				AdoptionRowCheck.Result rowCheck=adoption.RowCheck;
-				Check("V11","Row by row, adoption changed only its own rows of preference, documentmisc, securitylog, securityloghash, displayreport, grouppermission "
-					+"and updatehistory, only the values the 25.4 and 26.1 steps change, and nothing in the tables and columns they add",
+				Check("V11","Row by row, adoption changed only its own rows of preference, documentmisc, securitylog, securityloghash, displayreport, grouppermission, "
+					+"codegroup and updatehistory, only the values the 25.4 and 26.1 steps change, and nothing in the tables and columns they add",
 					rowCheck!=null && rowCheck.Passed,rowCheck==null ? "no row check" : string.Join(" ",rowCheck.ListLines)
 					+(rowCheck.Passed ? "" : " Failures: "+string.Join(" ",rowCheck.ListFailures)));
 				//10. Data-layer round trip. It writes (and normalizes some cells, moving their rows' audit timestamps), so the runs are compared on the
@@ -466,6 +467,49 @@ namespace AdoptionValidation {
 				"migration-preview of the source: "+string.Join(" ",plan.Lines())+" The adoption log names "+(listLogExpected.Count-listLogMissing.Count)+" of the "
 				+listLogExpected.Count+" change(s); row check: "+lineDisplayReport+" "+lineGroupPerm
 				+(listProblems.Count==0 ? "" : " Problems: "+string.Join("; ",listProblems)));
+		}
+
+		///<summary>M6: the Insurance History step (M2-HIST) changes exactly what migration-preview lists for the source (InsHistCodeGroupPlan): on the
+		///office fixture it marks six code groups Show In History (the SRP group with four quadrant rows), adds the perio maintenance code the group
+		///lacked, and adds a full mouth debridement group, because the fixture made the generated one the office's own; the row check found exactly
+		///that, and the adoption log names each group.</summary>
+		private void CheckInsHistCodeGroups(MigrationPreview.Result preview,HeadlessAdoption.Result adoption,AdoptionResult adoptionResult) {
+			InsHistCodeGroupPlan.Plan plan=preview.PlanInsHist;
+			OpenDentBusiness.ForkMigrations.FeatureSteps.InsHistCodeGroupsMigration.MigrationPlan migration=plan.Migration;
+			AdoptionRowCheck.Result rowCheck=adoption.RowCheck;
+			List<string> listProblems=new List<string>();
+			List<OpenDentBusiness.CodeGroup> listUpdated=migration.ListUpdated;
+			List<OpenDentBusiness.CodeGroup> listAdded=migration.ListAdded;
+			if(!plan.IsChanging || listUpdated.Count!=OfficeFixture.CountInsHistGroupsMarked || listAdded.Count!=OfficeFixture.CountInsHistGroupsAdded
+				|| listAdded.Any(x => x.GroupName!=OfficeFixture.INSHIST_GROUP_ADDED) || listUpdated.Count(x => x.IsPerioFourQuads)!=1
+				|| !listUpdated.Any(x => x.ProcCodes.EndsWith(","+OfficeFixture.INSHIST_CODE_ADDED)))
+			{
+				listProblems.Add("migration-preview's Insurance History plan differs from the fixture ("+OfficeFixture.CountInsHistGroupsMarked+" groups marked, one with four "
+					+"quadrant rows, "+OfficeFixture.INSHIST_CODE_ADDED+" added to one, '"+OfficeFixture.INSHIST_GROUP_ADDED+"' added)");
+			}
+			if(rowCheck==null) {
+				listProblems.Add("no row check");
+			}
+			else {
+				if(rowCheck.ListCodeGroupsMarked.Count!=listUpdated.Count || rowCheck.ListCodeGroupNumsAdded.Count!=listAdded.Count) {
+					listProblems.Add("the row check found "+rowCheck.ListCodeGroupsMarked.Count+" of the "+listUpdated.Count+" group(s) marked and "
+						+rowCheck.ListCodeGroupNumsAdded.Count+" of the "+listAdded.Count+" added as planned");
+				}
+				listProblems.AddRange(rowCheck.ListFailures.Where(x => x.Contains("codegroup")));
+			}
+			List<string> listLogExpected=migration.GetLogLines();
+			List<string> listLogMissing=listLogExpected.Where(x => !adoptionResult.ListLog.Any(y => y.Trim()==x)).ToList();
+			if(listLogMissing.Count>0) {
+				listProblems.Add("the adoption log lacks: "+string.Join("; ",listLogMissing));
+			}
+			if(BusinessLayer.Count("SELECT COUNT(*) FROM preference WHERE PrefName LIKE 'InsHist%Codes'")!=OfficeFixture.ArrayInsHistPrefs.Length) {
+				listProblems.Add("the adopted copy does not keep the "+OfficeFixture.ArrayInsHistPrefs.Length+" InsHist*Codes preferences");
+			}
+			string lineCodeGroup=rowCheck?.ListLines.FirstOrDefault(x => x.StartsWith("codegroup:"))??"";
+			Check("M6","Adoption's Insurance History step changes exactly what migration-preview lists: the code groups of the InsHist*Codes preferences marked Show "
+				+"In History, their missing codes added, a group added for a category without one",listProblems.Count==0,
+				"migration-preview of the source: "+string.Join(" ",plan.Lines())+" The adoption log names "+(listLogExpected.Count-listLogMissing.Count)+" of the "
+				+listLogExpected.Count+" change(s); row check: "+lineCodeGroup+(listProblems.Count==0 ? "" : " Problems: "+string.Join("; ",listProblems)));
 		}
 
 		private void ValidateAgainstBaseline(ValidationReport baseline,ValidationReport after,List<Difference> listDiffs) {

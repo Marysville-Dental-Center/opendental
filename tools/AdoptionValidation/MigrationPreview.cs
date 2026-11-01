@@ -19,9 +19,11 @@ namespace AdoptionValidation {
 	///- the Open Dental 25.4 and 26.1 steps bring the schema to 26.1.70 (the schema verifier then confirms the exact match), insert their
 	///  preferences and split the blockout permission (Migration26_1Plan);
 	///- the UDS+ report row step (ReportRowUdsPlusStep, M2-UDS) adds the row of the 25.4 UDS+ report after the FQHC Dental Sealant Measure, moves the
-	///  later Public Health rows down one place and copies the sealant measure's report permissions to it (UdsPlusRowPlan).
+	///  later Public Health rows down one place and copies the sealant measure's report permissions to it (UdsPlusRowPlan);
+	///- the Insurance History step (InsHistCodeGroupsStep, M2-HIST) marks the code groups of the InsHist*Codes preferences Show In History, adds
+	///  their codes and creates a group for a category without one (InsHistCodeGroupPlan).
 	///adopt's row check (AdoptionRowCheck) holds the adopted copy to the same plans, made from the original. Reads the displayreport table, the
-	///preferences, grouppermission and whether claimpayment notes are NULL.</summary>
+	///preferences, grouppermission, whether claimpayment notes are NULL, codegroup and the procedure codes.</summary>
 	public static class MigrationPreview {
 		public class Result {
 			public string Database;
@@ -35,6 +37,8 @@ namespace AdoptionValidation {
 			public Migration26_1Plan.Plan Plan26_1=new Migration26_1Plan.Plan();
 			///<summary>What the UDS+ report row step changes.</summary>
 			public UdsPlusRowPlan.Plan PlanUdsPlus=new UdsPlusRowPlan.Plan();
+			///<summary>What the Insurance History step changes.</summary>
+			public InsHistCodeGroupPlan.Plan PlanInsHist=new InsHistCodeGroupPlan.Plan();
 
 			///<summary>The plans that rename a row.</summary>
 			public List<ReportRows25_3.ReportTargetPlan> ListRenames {
@@ -68,6 +72,7 @@ namespace AdoptionValidation {
 				}
 				listLines.AddRange(Plan26_1.Lines());
 				listLines.AddRange(PlanUdsPlus.Lines());
+				listLines.AddRange(PlanInsHist.Lines());
 				return listLines;
 			}
 		}
@@ -91,6 +96,7 @@ namespace AdoptionValidation {
 			result.ListPlans=ReportRows25_3.PlanRenames(listRows);
 			result.Plan26_1=Migration26_1Plan.Make(db,database);
 			result.PlanUdsPlus=UdsPlusRowPlan.Make(db,database,listRows,result.ListPlans,result.Plan26_1.IsFromBefore25_4);
+			result.PlanInsHist=InsHistCodeGroupPlan.Make(db,database,result.Plan26_1.IsFromBefore25_4);
 			return result;
 		}
 
