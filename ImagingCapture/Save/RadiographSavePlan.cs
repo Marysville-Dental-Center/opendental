@@ -31,6 +31,10 @@ namespace ImagingCapture.Save {
 		///<summary>A single document only: the tooth numbers from the banner's tooth picker (Universal, separated by commas). Ignored with a
 		///Mount, where they come from the slot.</summary>
 		public string ToothNumbers { get; set; }
+		///<summary>With a Mount and no MountItem only: the slot the image was taken for, when it goes to a new unmounted item instead because
+		///that slot already holds an image (a recovered capture, design 7.12 "Recovered: &lt;slot&gt;"). The document keeps this slot's tooth
+		///numbers and rotation, as a retake keeps them (design 7.11). Null: the unmounted item's (none).</summary>
+		public MountItem SlotRecovered { get; set; }
 
 		///<summary>The image goes into a mount slot (not a text or unmounted item).</summary>
 		public bool HasMountSlot => Mount!=null && MountPlacement.IsSlot(MountItem);
@@ -90,6 +94,9 @@ namespace ImagingCapture.Save {
 		///<summary>Null: one Series per session, from SessionGuid (or a new one).</summary>
 		public string SeriesInstanceUid { get; set; }
 		public int? SeriesNumber { get; set; }
+		///<summary>Document.Description, or null to leave it empty (a slot, design 9.1). The quarantine window sets "Recovered: &lt;slot&gt;" for an
+		///unmounted item that stands in for a taken slot, and the reassigned label (design 7.12).</summary>
+		public string Description { get; set; }
 		///<summary>The capture session's GUID, for the Series UID and the security log.</summary>
 		public Guid SessionGuid { get; set; }
 		///<summary>ImagingDevice.Description, for the security log.</summary>

@@ -153,6 +153,8 @@ namespace ImagingDeviceManager.Capture {
 		public string Reason => Get("Reason");
 		///<summary>Journal only: Caller, Quarantine or None (CaptureJournal).</summary>
 		public string Delivered => Get("Delivered");
+		///<summary>A journal copy whose image went to the quarantine instead of the caller (Delivered=Quarantine): it is filed from the quarantine.</summary>
+		public bool IsCopyOfQuarantined => Kind==CaptureFileKind.Journal && Delivered==CaptureJournal.DeliveredQuarantine;
 		public bool IsRedelivered => Get("Redelivered")=="1";
 		public int Width => (int)GetLong("Width");
 		public int Height => (int)GetLong("Height");

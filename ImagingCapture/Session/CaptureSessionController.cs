@@ -655,6 +655,7 @@ namespace ImagingCapture.Session {
 				Bits=record.BitDepth.Bits,
 				Tag=record,
 				TargetLabel=radiographTarget.GetLabel(),
+				SidecarFields=GetSidecarFields(record),
 			};
 			int enableId=isRedelivery ? _session.RequestRedelivery(request) : _session.Enable(request);
 			if(enableId==0) {

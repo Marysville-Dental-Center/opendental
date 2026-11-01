@@ -141,6 +141,11 @@ namespace ImagingCapture.Save {
 						result.IsMountItemCreated=true;
 					}
 					MountPlacement.ApplyToDocument(document,mountItem,target.Mount.FlipOnAcquire);
+					if(result.IsMountItemCreated && target.SlotRecovered!=null) {
+						//A recovered capture whose slot is taken keeps that slot's teeth and rotation (design 7.12), as a retake does (7.11).
+						document.ToothNumbers=target.SlotRecovered.ToothNumbers??"";
+						document.DegreesRotated=target.SlotRecovered.RotateOnAcquire;
+					}
 				}
 				else {
 					document.ToothNumbers=(target.ToothNumbers??"").Trim();
@@ -161,7 +166,7 @@ namespace ImagingCapture.Save {
 		}
 
 		///<summary>The fields Import does not set (design 9.1, 10.8). Description stays empty for a slot; the session sets "Retake: ..." when it
-		///moves a retake (design 7.11). Note stays for users.</summary>
+		///moves a retake (design 7.11), and the quarantine window passes "Recovered: ..." (request.Description). Note stays for users.</summary>
 		public static void ApplyFields(Document document,RadiographSaveRequest request,RadiographSavePlan plan) {
 			document.DateCreated=plan.DateCreated;
 			document.ProvNum=request.ProvNum;
@@ -169,6 +174,9 @@ namespace ImagingCapture.Save {
 			document.WindowingMin=plan.WindowingMin;
 			document.WindowingMax=plan.WindowingMax;
 			document.ImgType=plan.ImgType;
+			if(request.Description!=null) {
+				document.Description=request.Description;
+			}
 			if(document.Description==null) {
 				document.Description="";
 			}
