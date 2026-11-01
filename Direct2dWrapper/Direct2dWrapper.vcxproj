@@ -109,12 +109,7 @@
       <AdditionalDependencies>d2d1.lib;dwrite.lib;D3D11.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy "$(TargetDir)Direct2dWrapper.dll" "..\OpenDental\bin\Debug\" /Y
-
-xcopy "$(TargetDir)Direct2dWrapper.dll" "..\UnitTests\bin\Debug\" /Y
-
-xcopy "$(TargetDir)Direct2dWrapper.dll" "..\..\..\Unversioned\Icons\IconOrganizer\bin\Debug\" /Y
-xcopy "$(TargetDir)Direct2dWrapper.dll" "..\..\..\Unversioned\Icons\Direct2DTest\bin\Debug\" /Y</Command>
+      <Command>xcopy "$(TargetDir)Direct2dWrapper.dll" "..\OpenDental\bin\Debug\" /Y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -133,12 +128,7 @@ xcopy "$(TargetDir)Direct2dWrapper.dll" "..\..\..\Unversioned\Icons\Direct2DTest
       <AdditionalDependencies>d2d1.lib;dwrite.lib;D3D11.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy "$(TargetDir)Direct2dWrapper.dll" "..\OpenDental\bin\Debug\" /Y
-
-xcopy "$(TargetDir)Direct2dWrapper.dll" "..\UnitTests\bin\Debug\" /Y
-
-xcopy "$(TargetDir)Direct2dWrapper.dll" "..\..\..\Unversioned\Icons\IconOrganizer\bin\Debug\" /Y
-xcopy "$(TargetDir)Direct2dWrapper.dll" "..\..\..\Unversioned\Icons\Direct2DTest\bin\Debug\" /Y</Command>
+      <Command>xcopy "$(TargetDir)Direct2dWrapper.dll" "..\OpenDental\bin\Debug\" /Y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
