@@ -329,6 +329,7 @@ namespace OpenDental {
 			if(!butIapFind.Visible && !butImportTrojan.Visible) {
 				butBenefitNotes.Visible=false;
 			}
+			HideEmptyImportBenefits26_1();
 			//FillPatData------------------------------
 			if(_patPlan==null) {
 				panelPat.Visible=false;
@@ -607,7 +608,7 @@ namespace OpenDental {
 			comboBillType.Items.AddDefs(Defs.GetDefsForCategory(DefCat.BillingTypes,true));
 			comboBillType.SetSelectedDefNum(_insPlan.BillingType); 
 			comboExclusionFeeRule.Items.Clear();
-			AddExclusionRuleItems26_1();
+			comboExclusionFeeRule.Items.AddEnums<ExclusionRule>();//25.4 text "Use Standard Provider Fee" comes from ExclusionRule's description (M2-TERM)
 			comboExclusionFeeRule.SetSelectedEnum(_insPlan.ExclusionFeeRule);
 			comboBoxZeroWriteOffsOnAnnualMaxLimitation.Items.Clear();
 			comboBoxZeroWriteOffsOnAnnualMaxLimitation.Items.AddList(Enum.GetValues(typeof(YN)).Cast<YN>(),(input)=>{ return input==YN.Unknown?"Default":input.GetDescription();});
@@ -1591,8 +1592,7 @@ namespace OpenDental {
 						MessageBox.Show(ex.Message);
 						return;
 					}
-					logText=Lan.g(this,"The subscriber")+" "+Patients.GetPat(_insSub.Subscriber).GetNameFLnoPref()+" "
-						+Lan.g(this,"with the Subscriber ID")+" "+_insSub.SubscriberID+" "+Lan.g(this,"was deleted.");
+					logText=PatPlans.GetDeleteSubscriberLogText(Patients.GetPat(_insSub.Subscriber).GetNameFLnoPref(),_insSub.SubscriberID,_insPlan.PlanNum);
 					_hasDeleted=true;
 					//PatPlanCur will be null if editing insurance plans from Lists > Insurance Plans.
 					SecurityLogs.MakeLogEntry(EnumPermType.InsPlanEdit,_patPlan?.PatNum??0,logText,_insPlan?.PlanNum??0,
@@ -1616,7 +1616,7 @@ namespace OpenDental {
 				MessageBox.Show(ex.Message);
 				return;
 			}
-			logText=Lan.g(this,"The insurance plan for the carrier")+" "+Carriers.GetCarrier(_insPlan.CarrierNum).CarrierName+" "+Lan.g(this,"was deleted.");
+			logText=PatPlans.GetDeletePlanLogText(Carriers.GetCarrier(_insPlan.CarrierNum).CarrierName,_insPlan.PlanNum);
 			_hasDeleted=true;
 			//PatPlanCur will be null if editing insurance plans from Lists > Insurance Plans.
 			SecurityLogs.MakeLogEntry(EnumPermType.InsPlanEdit,_patPlan?.PatNum??0,logText,_insPlan?.PlanNum??0,

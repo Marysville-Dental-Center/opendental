@@ -161,9 +161,10 @@ namespace M2INSPLANTests {
 					if(listAncestors.OfType<ScrollableControl>().Any(x => x.AutoScroll)) {
 						listProblems.Add(arrayOld[0]+" is in a scrolling panel");
 					}
-					//Only the panels the 24.3 rules hide in this office may hide a control: Canadian fields outside Canada, ortho when it is off.
+					//Only the panels the 24.3 rules hide in this office may hide a control: Canadian fields outside Canada, ortho when it is off, and
+					//Import Benefits when Trojan and IAP are off (all its controls are hidden then; ground rule 7).
 					foreach(Control controlHidden in listAncestors.Where(x => !IsSetVisible(x))) {
-						if(controlHidden.Name!="groupCanadian" && controlHidden.Name!="groupOrtho") {
+						if(controlHidden.Name!="groupCanadian" && controlHidden.Name!="groupOrtho" && controlHidden.Name!="groupBox1") {
 							listProblems.Add(arrayOld[0]+" is hidden by "+controlHidden.Name);
 						}
 					}
@@ -172,8 +173,9 @@ namespace M2INSPLANTests {
 				Assert.IsFalse(IsSetVisible(GetControl(formInsPlan,"groupCanadian")));
 				Assert.IsFalse(IsSetVisible(GetControl(formInsPlan,"groupOrtho")));
 				Assert.IsFalse(IsSetVisible(GetControl(formInsPlan,"butPatOrtho")));
+				Assert.IsFalse(IsSetVisible(GetControl(formInsPlan,"groupBox1")),"The empty Import Benefits group shows.");
 				foreach(string name in new[] { "panelPat","groupSubscriber","panelPlan","panelOrthInfo","gridBenefits","butBenefits","textPlanNote",
-					"groupRequestBen","groupBox1","butSave","butDrop","butPick","butAudit","butHistory" })
+					"groupRequestBen","butSave","butDrop","butPick","butAudit","butHistory" })
 				{
 					Assert.IsTrue(IsSetVisible(GetControl(formInsPlan,name)),name+" is hidden.");
 				}
@@ -200,6 +202,39 @@ namespace M2INSPLANTests {
 				Assert.IsTrue(IsSetVisible(GetControl(formInsPlan,"gridBenefits")));
 				Assert.AreEqual("Window Dental G",GetControl(formInsPlan,"textCarrier").Text);
 			});
+		}
+
+		[TestMethod]
+		public void ImportBenefits_ShowsWhenTrojanOrIapIsEnabled() {
+			Fixture fixture=InsertFixture("Window Dental H");
+			foreach(ProgramName programName in new[] { ProgramName.Trojan,ProgramName.IAP }) {
+				Program program=Programs.GetCur(programName);
+				Assert.IsNotNull(program,programName+" has no program row.");
+				SetProgramEnabled(program,true);
+				try {
+					RunSta("en-US",() => {
+						using FormInsPlan formInsPlan=OpenWindow(fixture);
+						Assert.IsTrue(IsSetVisible(GetControl(formInsPlan,"groupBox1")),programName+": Import Benefits is hidden.");
+						Assert.AreEqual(programName==ProgramName.Trojan,IsSetVisible(GetControl(formInsPlan,"textTrojanID")),programName.ToString());
+					});
+					//From Lists > Insurance Plans (no subscriber) the IAP button is hidden, so only Trojan's read-only ID keeps the group.
+					RunSta("en-US",() => {
+						using FormInsPlan formInsPlan=new FormInsPlan(fixture.InsPlan,null,null);
+						typeof(Form).GetMethod("OnLoad",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(formInsPlan,new object[] { EventArgs.Empty });
+						Assert.AreEqual(programName==ProgramName.Trojan,IsSetVisible(GetControl(formInsPlan,"groupBox1")),programName+" without subscriber");
+					});
+				}
+				finally {
+					SetProgramEnabled(program,false);
+				}
+			}
+		}
+
+		private static void SetProgramEnabled(Program program,bool isEnabled) {
+			Program programOld=program.Copy();
+			program.Enabled=isEnabled;
+			Programs.Update(program,programOld);
+			Cache.Refresh(InvalidType.Programs);
 		}
 
 		[TestMethod]

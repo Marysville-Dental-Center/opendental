@@ -5,6 +5,7 @@ using System;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
+using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenDental;
 using OpenDentBusiness;
@@ -31,9 +32,10 @@ namespace M2INSPLANTests {
 
 		[TestMethod]
 		public void ExclusionOptions_Use25_4Wording() {
-			Assert.AreEqual("Practice Default",InsPlanWriteOffL.GetExclusionRuleText(ExclusionRule.PracticeDefault));
-			Assert.AreEqual("Do Nothing",InsPlanWriteOffL.GetExclusionRuleText(ExclusionRule.DoNothing));
-			Assert.AreEqual("Use Standard Provider Fee",InsPlanWriteOffL.GetExclusionRuleText(ExclusionRule.UseUcrFee));
+			//The combo box lists ExclusionRule's descriptions (ComboBox.Items.AddEnums); M2-TERM gave UseUcrFee the 25.4 text.
+			Assert.AreEqual("Practice Default",ExclusionRule.PracticeDefault.GetDescription());
+			Assert.AreEqual("Do Nothing",ExclusionRule.DoNothing.GetDescription());
+			Assert.AreEqual("Use Standard Provider Fee",ExclusionRule.UseUcrFee.GetDescription());
 		}
 
 		[TestMethod]
@@ -53,7 +55,7 @@ namespace M2INSPLANTests {
 			//No "UCR" in any text the window shows.
 			foreach(string text in new[] { help,InsPlanWriteOffL.GetAnnualMaxHelp(),InsPlanWriteOffL.GetFreqOrAgingHelp(),
 				InsPlanWriteOffL.GetClaimsUseStandardFeeHelp() }.Concat(Enum.GetValues(typeof(ExclusionRule)).Cast<ExclusionRule>()
-				.Select(x => InsPlanWriteOffL.GetExclusionRuleText(x))))
+				.Select(x => x.GetDescription())))
 			{
 				Assert.IsFalse(text.Contains("UCR"),text);
 			}
@@ -69,6 +71,15 @@ namespace M2INSPLANTests {
 		[TestMethod]
 		public void DropLogText_TellsTwoPlansWithTheSameCarrierApart() {
 			Assert.AreNotEqual(PatPlans.GetDropLogText("Same Carrier",10),PatPlans.GetDropLogText("Same Carrier",11));
+		}
+
+		[TestMethod]
+		public void DeleteLogTexts_NameThePlanNum() {
+			//Edit Insurance Plan's Delete drops the patient too (InsPlans.Delete and InsSubs.Delete end in PatPlans.Delete): same PlanNum text, the
+			//rest of the 24.3 sentence unchanged.
+			Assert.AreEqual("The insurance plan for the carrier Example Dental (PlanNum 123) was deleted.",PatPlans.GetDeletePlanLogText("Example Dental",123));
+			Assert.AreEqual("The subscriber Jane Synthetic with the Subscriber ID S-1 (PlanNum 45) was deleted.",
+				PatPlans.GetDeleteSubscriberLogText("Jane Synthetic","S-1",45));
 		}
 	}
 }

@@ -20,6 +20,18 @@ namespace M2INSPLANTests {
 		private static bool _hasTried;
 		private static readonly object _lock=new object();
 
+		[AssemblyInitialize]
+		public static void AssemblyInitialize(TestContext testContext) {
+			//As ProgramEntry does before any window exists: labels draw with GDI, as in the designer, so the window tests and snapshots see the
+			//program's text widths (the default, GDI+, is wider and wraps labels the program shows on one line).
+			try {
+				System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
+			}
+			catch(InvalidOperationException) {
+				//A window was already created in this process; the snapshots then draw labels with GDI+.
+			}
+		}
+
 		[AssemblyCleanup]
 		public static void AssemblyCleanup() {
 			if(!_isBuilt || Environment.GetEnvironmentVariable("FORKMIGRATION_KEEP_DB")=="1") {

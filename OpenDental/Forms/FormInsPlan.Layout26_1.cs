@@ -4,7 +4,6 @@
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Drawing;
-using System.Linq;
 using System.Windows.Forms;
 using OpenDentBusiness;
 
@@ -34,10 +33,16 @@ namespace OpenDental {
 			_heightCanadianFree96=groupCanadian.Bottom-textPlanNote.Bottom;
 		}
 
-		///<summary>The Exclusions options in enum order, because comboExclusionFeeRule_SelectionChangeCommitted casts the selected index. 25.4
-		///wording: "Use Standard Provider Fee" for UseUcrFee.</summary>
-		private void AddExclusionRuleItems26_1() {
-			comboExclusionFeeRule.Items.AddList(Enum.GetValues(typeof(ExclusionRule)).Cast<ExclusionRule>(),x => InsPlanWriteOffL.GetExclusionRuleText(x));
+		///<summary>Ground rule 7 (vendor integrations hidden until enabled): the Import Benefits group holds only the Trojan and IAP controls, which
+		///the Load rules hide when those programs are off (and the IAP button when there is no subscriber). With nothing left in it, the empty frame
+		///is hidden too, instead of standing empty in the fixed layout. Decided from the program rows, the same conditions the Load rules use,
+		///because a control's Visible reads false until the window is shown.</summary>
+		private void HideEmptyImportBenefits26_1() {
+			bool isTrojanShown=Programs.IsEnabled(ProgramName.Trojan);//the Trojan ID shows, read-only without a subscriber
+			bool isIapShown=Programs.IsEnabled(ProgramName.IAP) && _insSub!=null;
+			if(!isTrojanShown && !isIapShown) {
+				groupBox1.Visible=false;
+			}
 		}
 
 		///<summary>Called at the end of the Load event, after FormODBase has laid out the form, so LayoutManager moves take effect.</summary>

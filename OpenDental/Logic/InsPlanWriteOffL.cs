@@ -5,22 +5,9 @@
 using OpenDentBusiness;
 
 namespace OpenDental {
-	///<summary>Labels and help text for the write-off overrides of an insurance plan. "UCR" is called the standard provider fee.</summary>
+	///<summary>Help text for the write-off overrides of an insurance plan. "UCR" is called the standard provider fee. The Exclusions options
+	///themselves come from ExclusionRule's descriptions (M2-TERM renamed UseUcrFee's to "Use Standard Provider Fee").</summary>
 	public static class InsPlanWriteOffL {
-		///<summary>The text of one Exclusions option. The enum member UseUcrFee keeps its name and number (2) for compatibility.</summary>
-		public static string GetExclusionRuleText(ExclusionRule exclusionRule) {
-			switch(exclusionRule) {
-				case ExclusionRule.PracticeDefault:
-					return Lan.g("enumExclusionRule","Practice Default");
-				case ExclusionRule.DoNothing:
-					return Lan.g("enumExclusionRule","Do Nothing");
-				case ExclusionRule.UseUcrFee:
-					return Lan.g("enumExclusionRule","Use Standard Provider Fee");
-				default:
-					return exclusionRule.ToString();
-			}
-		}
-
 		///<summary>Help text for the Exclusions override.</summary>
 		public static string GetExclusionsHelp() {
 			return Lan.g("FormInsPlan","Practice Default follows the exclusions setting in Preferences, Family Insurance.")+"\r\n"
