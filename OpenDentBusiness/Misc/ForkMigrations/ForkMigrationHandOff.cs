@@ -1,20 +1,25 @@
 // The seam between the version guard (M1-03) and the fork migration runner (M1-01).
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 
 namespace OpenDentBusiness {
 	///<summary>Implemented by the fork migration runner (package M1-01). The legacy ConvertDatabases chain is frozen at 24.3.63; every later schema
-	///step runs in the runner, keyed by the ForkSchemaLevel marker. The guard needs only these members, so it never depends on how the runner finds
-	///its steps.</summary>
+	///step runs in the runner, which records each level that finished in ForkMigrationsApplied (ForkDbState.ForkMigrationsApplied) and the highest
+	///one in ForkSchemaLevel. The guard needs only these members, so it never depends on how the runner finds its steps.</summary>
 	public interface IForkMigrationRunner {
 		///<summary>The last fork migration step this build knows. ForkVersions.SCHEMA_LEVEL_BASELINE when it has none.</summary>
 		string LatestLevel { get; }
+		///<summary>The level of every fork migration step this build has, in the order they run (ascending). Empty when it has none. A level of the
+		///database that is neither one of these nor SCHEMA_LEVEL_BASELINE was written by a newer build.</summary>
+		List<string> GetLevels();
 		///<summary>Orders two schema levels: &lt;0, 0 or &gt;0. Must accept SCHEMA_LEVEL_BASELINE.</summary>
 		int CompareLevels(string levelA,string levelB);
-		///<summary>Runs every step above the database's ForkSchemaLevel, in order, and advances ForkSchemaLevel (and OdSchemaCompat when the schema
-		///verifier passes) after each one. Every step is idempotent. Throws on failure.</summary>
+		///<summary>Runs, in level order, every step of this build whose level is not in the database's ForkMigrationsApplied (also one below the
+		///database's ForkSchemaLevel), adds each level there as its step finishes and keeps ForkSchemaLevel at the highest applied level, then sets
+		///OdSchemaCompat when the schema verifier passes. Every step is idempotent. Throws on failure.</summary>
 		void RunPending(Action<string> actionLog);
 	}
 
@@ -68,11 +73,15 @@ namespace OpenDentBusiness {
 		}
 	}
 
-	///<summary>The runner used until M1-01's runner is merged: no steps. Levels compare as numbers when both are numbers, otherwise as
-	///case-insensitive text.</summary>
+	///<summary>The runner used until M1-01's runner is merged: no steps, so nothing is ever pending, and an applied level or a ForkSchemaLevel other
+	///than the baseline is one of a newer build. Levels compare as numbers when both are numbers, otherwise as case-insensitive text.</summary>
 	public class BaselineForkMigrationRunner:IForkMigrationRunner {
 		public string LatestLevel {
 			get { return ForkVersions.SCHEMA_LEVEL_BASELINE; }
+		}
+
+		public List<string> GetLevels() {
+			return new List<string>();
 		}
 
 		public int CompareLevels(string levelA,string levelB) {

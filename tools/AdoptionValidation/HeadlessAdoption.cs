@@ -102,9 +102,11 @@ namespace AdoptionValidation {
 				result.ListFailures.Add("The fork migration, run again with every step, changed "+result.Migration.ListChanges.Count+" thing(s) on the adopted "
 					+"copy; after adoption's own run it must find nothing left to change.");
 			}
-			result.HasPendingMigrations=ForkVersionGuard.Evaluate(ForkVersions.ReadState()).HasPendingMigrations;
+			//The startup guard decides from ForkMigrationsApplied: every step of this build must have finished, also one below the highest level.
+			ForkGuardResult guard=ForkVersionGuard.Evaluate(ForkVersions.ReadState());
+			result.HasPendingMigrations=guard.HasPendingMigrations;
 			if(result.HasPendingMigrations) {
-				result.ListFailures.Add("Fork migration steps are still pending.");
+				result.ListFailures.Add("Fork migration steps are still pending: "+string.Join(", ",guard.ListPendingLevels)+".");
 			}
 			step("Schema verifier",() => result.Verify=SchemaVerifier.VerifyDatabase(database));
 			bool isSchemaMatch=result.Verify.IsMatch && result.Verify.ListDifferences.Count==0;
@@ -278,7 +280,8 @@ namespace AdoptionValidation {
 			}
 			Dictionary<string,string> dictValues=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
 			foreach(object[] row in db.Rows("SELECT PrefName,ValueString FROM `"+database+"`.preference WHERE PrefName IN ('DataBaseVersion','ProgramVersion','"
-				+ForkVersions.PREF_FORK_SCHEMA_LEVEL+"','"+ForkVersions.PREF_OD_SCHEMA_COMPAT+"','"+ForkVersions.PREF_FORK_ADOPTED_FROM+"') ORDER BY PrefNum"))
+				+ForkVersions.PREF_FORK_SCHEMA_LEVEL+"','"+ForkVersions.PREF_OD_SCHEMA_COMPAT+"','"+ForkVersions.PREF_FORK_ADOPTED_FROM+"','"
+				+ForkVersions.PREF_FORK_MIGRATIONS_APPLIED+"') ORDER BY PrefNum"))
 			{
 				string name=Convert.ToString(row[0]);
 				if(!dictValues.ContainsKey(name)) {
@@ -290,6 +293,7 @@ namespace AdoptionValidation {
 			state.ForkSchemaLevel=dictValues.TryGetValue(ForkVersions.PREF_FORK_SCHEMA_LEVEL,out value) ? value : null;
 			state.OdSchemaCompat=dictValues.TryGetValue(ForkVersions.PREF_OD_SCHEMA_COMPAT,out value) ? value : null;
 			state.ForkAdoptedFrom=dictValues.TryGetValue(ForkVersions.PREF_FORK_ADOPTED_FROM,out value) ? value : null;
+			state.ForkMigrationsApplied=dictValues.TryGetValue(ForkVersions.PREF_FORK_MIGRATIONS_APPLIED,out value) ? value : null;
 			return state;
 		}
 

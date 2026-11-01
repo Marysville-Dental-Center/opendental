@@ -20,6 +20,9 @@ namespace ForkMigrationTests {
 			Assert.IsTrue(ForkMigrationHandOff.HasSteps(runner));
 			Assert.AreEqual(ForkMigrationRunner.GetSteps().Max(x => x.Level).ToString(),runner.LatestLevel);
 			Assert.IsTrue(runner.CompareLevels(ForkVersions.SCHEMA_LEVEL_BASELINE,runner.LatestLevel)<0,"The adoption baseline sorts below every step.");
+			//The guard reads the levels of the steps the runner runs, in order; the abstract back-fill step is not among them.
+			CollectionAssert.AreEqual(ForkMigrationRunner.GetSteps().Select(x => x.Level.ToString()).ToList(),runner.GetLevels());
+			Assert.IsFalse(runner.GetLevels().Contains(OpenDentBusiness.ForkMigrations.FeatureSteps.NoBillInsBackfillStep.LEVEL.ToString()));
 		}
 
 		[TestMethod]
@@ -86,6 +89,7 @@ namespace ForkMigrationTests {
 				Assert.IsFalse(Adoption.Preflight().CanAdopt);
 				ForkMigrationResult resultAgain=ForkMigrationRunner.Run(new ForkMigrationOptions { RunAll=true });
 				Assert.AreEqual(0,resultAgain.ListChanges.Count,string.Join("\r\n",resultAgain.ListChanges));
+				CheckStartupDecidesFromTheAppliedLevels();
 			}
 			finally {
 				if(Environment.GetEnvironmentVariable("FORKMIGRATION_KEEP_DB")!="1") {
@@ -97,6 +101,52 @@ namespace ForkMigrationTests {
 					}
 				}
 			}
+		}
+
+		///<summary>On the adopted database of Adoption_Fresh24_3WithTheRealRunner, with the real runner: the startup guard decides from
+		///ForkMigrationsApplied (combined review 1). A step below the highest applied level that has not run is pending, and the runner startup calls
+		///(PrefL.RunForkMigrations runs RunPending when the guard says so) runs exactly it; a level the build does not have asks for the newer build;
+		///and right after adoption (ForkSchemaLevel 0, no applied list) every step is pending. The markers are put back after each case.</summary>
+		private static void CheckStartupDecidesFromTheAppliedLevels() {
+			IForkMigrationRunner runner=ForkMigrationHandOff.Runner;
+			List<string> listLevels=runner.GetLevels();
+			string appliedAll=ForkVersions.GetMarker(ForkVersions.PREF_FORK_MIGRATIONS_APPLIED);
+			string schemaLevel=ForkVersions.GetMarker(ForkVersions.PREF_FORK_SCHEMA_LEVEL);
+			Assert.AreEqual(runner.LatestLevel,schemaLevel);
+			CollectionAssert.AreEquivalent(listLevels,ForkVersions.ReadState().GetAppliedLevels(),"Every step of the build finished.");
+			//1. A lower step missing below the highest applied level: the DXC step (B-SHELL), below the Insurance History step (M2-HIST).
+			string levelLower=ForkMigrationRunner.GetSteps().Single(x => x is OpenDentBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemovedStep).Level.ToString();
+			Assert.IsTrue(runner.CompareLevels(levelLower,schemaLevel)<0);
+			ForkVersions.SetMarker(ForkVersions.PREF_FORK_MIGRATIONS_APPLIED,string.Join(",",listLevels.Where(x => x!=levelLower)));
+			ForkGuardResult forkGuardResult=ForkVersionGuard.Evaluate(ForkVersions.ReadState());
+			Assert.AreEqual(ForkGuardAction.ProceedFork,forkGuardResult.Action,forkGuardResult.Message);
+			Assert.IsTrue(forkGuardResult.HasPendingMigrations,"ForkSchemaLevel is still the latest level, but a step has not run.");
+			CollectionAssert.AreEqual(new[] { levelLower },forkGuardResult.ListPendingLevels);
+			List<string> listLog=new List<string>();
+			runner.RunPending(listLog.Add);
+			Assert.IsTrue(listLog.Any(x => x.StartsWith("Fork migrations: 1 step(s) run, "+(listLevels.Count-1)+" already done.")),string.Join("\r\n",listLog));
+			Assert.IsTrue(listLog.Any(x => x.StartsWith("Fork migration step "+levelLower+" ")),string.Join("\r\n",listLog));
+			Assert.IsFalse(ForkVersionGuard.Evaluate(ForkVersions.ReadState()).HasPendingMigrations);
+			CollectionAssert.AreEquivalent(listLevels,ForkVersions.ReadState().GetAppliedLevels());
+			Assert.AreEqual(schemaLevel,ForkVersions.GetMarker(ForkVersions.PREF_FORK_SCHEMA_LEVEL));
+			//2. An applied level the build does not have (a newer build's step below this build's latest level).
+			string levelUnknown="2026110100";
+			Assert.IsFalse(listLevels.Contains(levelUnknown));
+			ForkVersions.SetMarker(ForkVersions.PREF_FORK_MIGRATIONS_APPLIED,appliedAll+","+levelUnknown);
+			forkGuardResult=ForkVersionGuard.Evaluate(ForkVersions.ReadState());
+			Assert.AreEqual(ForkGuardAction.NeedsNewerBuild,forkGuardResult.Action);
+			Assert.AreEqual(ForkVersionGuard.EXIT_CODE_NEWER_SCHEMA,forkGuardResult.ExitCode);
+			CollectionAssert.AreEqual(new[] { levelUnknown },forkGuardResult.ListUnknownLevels);
+			ForkVersions.SetMarker(ForkVersions.PREF_FORK_MIGRATIONS_APPLIED,appliedAll);
+			//3. Right after adoption: ForkSchemaLevel 0 and no applied list, so every step is pending.
+			ForkVersions.SetMarker(ForkVersions.PREF_FORK_SCHEMA_LEVEL,ForkVersions.SCHEMA_LEVEL_BASELINE);
+			DataCore.NonQ("DELETE FROM preference WHERE PrefName='"+POut.String(ForkVersions.PREF_FORK_MIGRATIONS_APPLIED)+"'");
+			forkGuardResult=ForkVersionGuard.Evaluate(ForkVersions.ReadState());
+			Assert.AreEqual(ForkGuardAction.ProceedFork,forkGuardResult.Action,forkGuardResult.Message);
+			CollectionAssert.AreEqual(listLevels,forkGuardResult.ListPendingLevels);
+			ForkVersions.SetMarker(ForkVersions.PREF_FORK_SCHEMA_LEVEL,schemaLevel);
+			ForkVersions.SetMarker(ForkVersions.PREF_FORK_MIGRATIONS_APPLIED,appliedAll);
+			Assert.IsFalse(ForkVersionGuard.Evaluate(ForkVersions.ReadState()).HasPendingMigrations);
 		}
 
 		///<summary>An adopted Open Dental 25.3.48 database is never seeded, whatever DataBaseVersion says.</summary>

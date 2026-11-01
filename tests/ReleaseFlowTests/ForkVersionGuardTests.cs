@@ -1,21 +1,28 @@
 // The startup matrix of the version guard (backlog M1-03 test approach), as pure decisions over the stored version preferences and markers.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenDentBusiness;
 
 namespace ReleaseFlowTests {
-	///<summary>A runner with fork migration steps, as M1-01 will provide.</summary>
+	///<summary>A runner with fork migration steps, as M1-01 provides: the levels of its steps, ascending. Its RunPending only counts and logs.
+	///</summary>
 	internal class FakeRunner:IForkMigrationRunner {
-		public string Latest;
+		public List<string> ListLevels;
 		public int CountRuns;
 
-		public FakeRunner(string latest) {
-			Latest=latest;
+		public FakeRunner(params string[] arrayLevels) {
+			ListLevels=arrayLevels.ToList();
 		}
 
 		public string LatestLevel {
-			get { return Latest; }
+			get { return ListLevels.Count==0 ? ForkVersions.SCHEMA_LEVEL_BASELINE : ListLevels[ListLevels.Count-1]; }
+		}
+
+		public List<string> GetLevels() {
+			return ListLevels.ToList();
 		}
 
 		public int CompareLevels(string levelA,string levelB) {
@@ -24,7 +31,7 @@ namespace ReleaseFlowTests {
 
 		public void RunPending(Action<string> actionLog) {
 			CountRuns++;
-			actionLog("fake step to "+Latest);
+			actionLog("fake step to "+LatestLevel);
 		}
 	}
 
@@ -39,11 +46,14 @@ namespace ReleaseFlowTests {
 			return forkDbState;
 		}
 
-		private static ForkDbState Adopted(string schemaLevel="0") {
+		///<summary>An adopted database at ForkSchemaLevel schemaLevel whose ForkMigrationsApplied is applied (null: no such row, as right after
+		///adoption).</summary>
+		private static ForkDbState Adopted(string schemaLevel="0",string applied=null) {
 			ForkDbState forkDbState=Unadopted("99.0.0.0");
 			forkDbState.ForkSchemaLevel=schemaLevel;
 			forkDbState.OdSchemaCompat="25.3.48";
 			forkDbState.ForkAdoptedFrom="source=25.3.48.0;started=2026-10-19T00:00:00Z;adopted=2026-10-19T00:01:00Z";
+			forkDbState.ForkMigrationsApplied=applied;
 			return forkDbState;
 		}
 
@@ -96,18 +106,77 @@ namespace ReleaseFlowTests {
 			ForkGuardResult forkGuardResult=ForkVersionGuard.Evaluate(Adopted("0"),_runnerBaseline);
 			Assert.AreEqual(ForkGuardAction.ProceedFork,forkGuardResult.Action);
 			Assert.IsFalse(forkGuardResult.HasPendingMigrations);
-			forkGuardResult=ForkVersionGuard.Evaluate(Adopted("2"),new FakeRunner("10"));
+			forkGuardResult=ForkVersionGuard.Evaluate(Adopted("2","2"),new FakeRunner("2","10"));
 			Assert.AreEqual(ForkGuardAction.ProceedFork,forkGuardResult.Action);
-			Assert.IsTrue(forkGuardResult.HasPendingMigrations,"Level 2 is below 10, numerically.");
-			Assert.IsFalse(ForkVersionGuard.Evaluate(Adopted("10"),new FakeRunner("10")).HasPendingMigrations);
+			Assert.IsTrue(forkGuardResult.HasPendingMigrations,"Step 10 has not run.");
+			CollectionAssert.AreEqual(new[] { "10" },forkGuardResult.ListPendingLevels,"Levels compare numerically: 2 is applied, 10 is not.");
+			Assert.AreEqual("",forkGuardResult.Message);
+			Assert.AreEqual(0,forkGuardResult.ExitCode);
+			forkGuardResult=ForkVersionGuard.Evaluate(Adopted("10","2,10"),new FakeRunner("2","10"));
+			Assert.AreEqual(ForkGuardAction.ProceedFork,forkGuardResult.Action);
+			Assert.IsFalse(forkGuardResult.HasPendingMigrations);
+			Assert.IsFalse(ForkVersionGuard.Evaluate(Adopted("10"," 2 , 10 ,"),new FakeRunner("2","10")).HasPendingMigrations,"Spaces and a trailing comma are ignored.");
+		}
+
+		///<summary>An adopted database right after adoption: ForkSchemaLevel is the baseline and there is no ForkMigrationsApplied yet, so every step
+		///of the build is pending, as before.</summary>
+		[TestMethod]
+		public void FreshAdoption_EveryStepIsPending() {
+			ForkGuardResult forkGuardResult=ForkVersionGuard.Evaluate(Adopted("0"),new FakeRunner("3","7","10"));
+			Assert.AreEqual(ForkGuardAction.ProceedFork,forkGuardResult.Action);
+			Assert.IsTrue(forkGuardResult.HasPendingMigrations);
+			CollectionAssert.AreEqual(new[] { "3","7","10" },forkGuardResult.ListPendingLevels);
+			CollectionAssert.AreEqual(new[] { "3","7","10" },ForkVersionGuard.Evaluate(Adopted("0",""),new FakeRunner("3","7","10")).ListPendingLevels,
+				"An empty list is no list.");
+		}
+
+		///<summary>A step whose level is below the database's highest applied level (merged later with a lower level, or an abstract step turned on
+		///later) has not run: it is pending, although ForkSchemaLevel already equals the build's latest level. Before review 1 the guard compared only
+		///ForkSchemaLevel with the latest level and reported nothing pending, so startup never ran the step.</summary>
+		[TestMethod]
+		public void LowerStepMissingBelowAHigherAppliedLevel_IsPending() {
+			ForkGuardResult forkGuardResult=ForkVersionGuard.Evaluate(Adopted("10","3,10"),new FakeRunner("3","7","10"));
+			Assert.AreEqual(ForkGuardAction.ProceedFork,forkGuardResult.Action,forkGuardResult.Message);
+			Assert.IsTrue(forkGuardResult.HasPendingMigrations);
+			CollectionAssert.AreEqual(new[] { "7" },forkGuardResult.ListPendingLevels);
+			Assert.AreEqual(0,forkGuardResult.ListUnknownLevels.Count);
+			//An adopted database whose applied list was lost: the runner runs every step again (each is idempotent), so every step is pending.
+			CollectionAssert.AreEqual(new[] { "3","7","10" },ForkVersionGuard.Evaluate(Adopted("10"),new FakeRunner("3","7","10")).ListPendingLevels);
 		}
 
 		[TestMethod]
 		public void Adopted_ByANewerBuild_NeedsTheNewerBuild() {
-			ForkGuardResult forkGuardResult=ForkVersionGuard.Evaluate(Adopted("12"),new FakeRunner("10"));
+			ForkGuardResult forkGuardResult=ForkVersionGuard.Evaluate(Adopted("12","10,12"),new FakeRunner("10"));
 			Assert.AreEqual(ForkGuardAction.NeedsNewerBuild,forkGuardResult.Action);
 			Assert.AreEqual(ForkVersionGuard.EXIT_CODE_NEWER_SCHEMA,forkGuardResult.ExitCode);
+			Assert.AreEqual("The database was updated by a newer release of this program (schema level 12; this program knows up to 10).\r\n"
+				+"This workstation needs the newer release.",forkGuardResult.Message,"The message of a higher ForkSchemaLevel is unchanged.");
+			CollectionAssert.AreEqual(new[] { "12" },forkGuardResult.ListUnknownLevels);
+			Assert.IsFalse(forkGuardResult.CanProceed);
 			AssertNoDowngradeOffer(forkGuardResult);
+			Assert.AreEqual(ForkGuardAction.NeedsNewerBuild,ForkVersionGuard.Evaluate(Adopted("12"),new FakeRunner("10")).Action,"Without an applied list too.");
+		}
+
+		///<summary>A level in ForkMigrationsApplied that this build does not have was written by a newer build (a step merged after this build, with a
+		///level below the database's highest one), so this workstation needs that build, with the same exit code; the build's own steps are not run.
+		///Also a ForkSchemaLevel this build does not have, below its latest level.</summary>
+		[TestMethod]
+		public void AppliedLevelTheBuildDoesNotHave_NeedsTheNewerBuild() {
+			ForkGuardResult forkGuardResult=ForkVersionGuard.Evaluate(Adopted("10","3,5,10"),new FakeRunner("3","7","10"));
+			Assert.AreEqual(ForkGuardAction.NeedsNewerBuild,forkGuardResult.Action);
+			Assert.AreEqual(ForkVersionGuard.EXIT_CODE_NEWER_SCHEMA,forkGuardResult.ExitCode);
+			Assert.IsFalse(forkGuardResult.CanProceed);
+			Assert.IsFalse(forkGuardResult.HasPendingMigrations,"Nothing is run: step 7 waits for the newer build.");
+			CollectionAssert.AreEqual(new[] { "5" },forkGuardResult.ListUnknownLevels);
+			StringAssert.StartsWith(forkGuardResult.Message,"The database was updated by a newer release of this program (fork migration level 5, which this program "
+				+"does not have; it knows up to 10).");
+			StringAssert.Contains(forkGuardResult.Message,"This workstation needs the newer release.");
+			AssertNoDowngradeOffer(forkGuardResult);
+			forkGuardResult=ForkVersionGuard.Evaluate(Adopted("5","3,5"),new FakeRunner("3","7","10"));
+			Assert.AreEqual(ForkGuardAction.NeedsNewerBuild,forkGuardResult.Action,"ForkSchemaLevel 5 is no level of this build.");
+			CollectionAssert.AreEqual(new[] { "5" },forkGuardResult.ListUnknownLevels,"Named once.");
+			Assert.AreEqual(ForkGuardAction.NeedsNewerBuild,ForkVersionGuard.Evaluate(Adopted("0","3"),_runnerBaseline).Action,
+				"The baseline runner has no steps, so any applied level is a newer build's.");
 		}
 
 		[TestMethod]
@@ -214,11 +283,16 @@ namespace ReleaseFlowTests {
 			foreach(string marker in arrayMarkers) {
 				Assert.IsFalse(Enum.IsDefined(typeof(PrefName),marker),marker+" must not be an Open Dental preference name.");
 			}
+			//The runner's list of applied levels, which the guard reads too.
+			Assert.AreEqual("ForkMigrationsApplied",ForkVersions.PREF_FORK_MIGRATIONS_APPLIED);
+			Assert.AreEqual(OpenDentBusiness.ForkMigrations.ForkMigrationRunner.PrefNameApplied,ForkVersions.PREF_FORK_MIGRATIONS_APPLIED);
+			Assert.IsFalse(Enum.IsDefined(typeof(PrefName),ForkVersions.PREF_FORK_MIGRATIONS_APPLIED));
 		}
 
 		[TestMethod]
 		public void BaselineRunner_HasNoSteps() {
 			Assert.IsFalse(ForkMigrationHandOff.HasSteps(_runnerBaseline));
+			Assert.AreEqual(0,_runnerBaseline.GetLevels().Count);
 			Assert.IsTrue(ForkMigrationHandOff.HasSteps(new FakeRunner("1")));
 			Assert.IsNotNull(ForkMigrationHandOff.Runner,"Discovery always yields a runner.");
 		}

@@ -7,8 +7,8 @@ using System.Linq;
 namespace OpenDentBusiness.ForkMigrations {
 	///<summary>The IForkMigrationRunner that ForkMigrationHandOff discovers: it hands the version guard, startup (PrefL.ConvertDB) and adoption
 	///(Adoption.Run) to ForkMigrationRunner. Levels are the yyyyMMddNN step levels; the baseline "0" written at adoption sorts below every step.
-	///ForkMigrationRunner itself advances ForkSchemaLevel after each step. After the steps, OdSchemaCompat is set to the Open Dental version of the
-	///schema verifier's reference when the database matches it.</summary>
+	///ForkMigrationRunner itself records each finished level in ForkMigrationsApplied and the highest in ForkSchemaLevel. After the steps,
+	///OdSchemaCompat is set to the Open Dental version of the schema verifier's reference when the database matches it.</summary>
 	public class ForkMigrationRunnerAdapter:IForkMigrationRunner {
 		///<summary>The highest step level in this build, or the baseline when there are no steps.</summary>
 		public string LatestLevel {
@@ -19,6 +19,12 @@ namespace OpenDentBusiness.ForkMigrations {
 				}
 				return listSteps.Max(x => x.Level).ToString();
 			}
+		}
+
+		///<summary>The levels of the steps ForkMigrationRunner.Run runs (GetSteps: abstract steps such as NoBillInsBackfillStep are not among them).
+		///</summary>
+		public List<string> GetLevels() {
+			return ForkMigrationRunner.GetSteps().Select(x => x.Level.ToString()).ToList();
 		}
 
 		public int CompareLevels(string levelA,string levelB) {

@@ -112,9 +112,10 @@ namespace OpenDental {
 			return ConvertDB(isSilent: false,form,useDynamicMode);
 		}
 
-		///<summary>The hand-off from the frozen legacy chain: runs the pending fork migration steps of an adopted database. Only the update server
-		///runs them, after a backup (Release builds), with the same in-progress flags as a conversion. Steps are idempotent, so a failed run can be
-		///repeated. Returns false if the program must exit.</summary>
+		///<summary>The hand-off from the frozen legacy chain: runs the pending fork migration steps of an adopted database, every step of this build
+		///whose level is not in the database's ForkMigrationsApplied (ForkGuardResult.ListPendingLevels), also one below its ForkSchemaLevel. Only the
+		///update server runs them, after a backup (Release builds), with the same in-progress flags as a conversion. Steps are idempotent, so a failed
+		///run can be repeated. Returns false if the program must exit.</summary>
 		private static bool RunForkMigrations(bool isSilent) {
 			IForkMigrationRunner runner=ForkMigrationHandOff.Runner;
 			ForkDbState forkDbState=ForkVersions.ReadState();
@@ -144,8 +145,10 @@ namespace OpenDental {
 				}
 				return false;
 			}
+			string pendingLevels=string.Join(", ",forkGuardResult.ListPendingLevels);
 			if(!isSilent && MessageBox.Show(Lan.g("Prefs","The database will now be updated")+"\r\n"
-				+Lan.g("Prefs","from schema level")+" "+forkDbState.ForkSchemaLevel+" "+Lan.g("Prefs","to")+" "+runner.LatestLevel+".","",
+				+Lan.g("Prefs","from schema level")+" "+forkDbState.ForkSchemaLevel+" "+Lan.g("Prefs","to")+" "+runner.LatestLevel+".\r\n"
+				+Lan.g("Prefs","Fork migration steps to run:")+" "+pendingLevels,"",
 				MessageBoxButtons.OKCancel)!=DialogResult.OK)
 			{
 				return false;
@@ -184,7 +187,8 @@ namespace OpenDental {
 				PermType=EnumPermType.UpdateInstall,
 				UserNum=0,//Created before a user logs in.
 				LogDateTime=DateTime.Now,
-				LogText="Database updated from fork schema level "+forkDbState.ForkSchemaLevel+" to "+runner.LatestLevel+".",
+				LogText="Database updated from fork schema level "+forkDbState.ForkSchemaLevel+" to "+runner.LatestLevel+" (fork migration steps "+pendingLevels
+					+").",
 				CompName=Security.GetComplexComputerName()
 			};
 			SecurityLogs.MakeLogEntry(securityLog);

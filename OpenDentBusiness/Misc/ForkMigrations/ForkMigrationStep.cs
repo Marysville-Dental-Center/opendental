@@ -4,8 +4,10 @@ namespace OpenDentBusiness.ForkMigrations {
 	///<summary>Marks a class as a fork migration step and gives its level and name. The runner (ForkMigrationRunner) finds every non-abstract
 	///subclass of ForkMigrationStep in this assembly and runs them in level order. A step without this attribute is an error, so a step can never be
 	///skipped by accident.
-	///Levels are yyyyMMddNN numbers: the date the step was written plus a two-digit sequence number, for example 2026101901. They must be unique.
-	///Write a new step with today's date so it sorts after every step already merged.</summary>
+	///Levels are yyyyMMddNN numbers: the date the step was written (a real date from 2026 on) plus a two-digit sequence number, for example
+	///2026101901. They must be unique. Write a new step with today's date, above every existing level, so it sorts after every step already merged
+	///(owner decision of 2026-11-01: dated levels only). A released level is never removed or changed: the startup guard takes a database level
+	///this build does not have for a newer build's.</summary>
 	[AttributeUsage(AttributeTargets.Class,AllowMultiple=false,Inherited=false)]
 	public class ForkMigrationAttribute:Attribute {
 		///<summary>yyyyMMddNN. Steps run in ascending order.</summary>

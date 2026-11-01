@@ -570,9 +570,14 @@ namespace AdoptionValidation {
 			Check("V8","Sentinel versions and fork markers set",isSentinel && isMarked,
 				"DataBaseVersion "+state.DataBaseVersion+", ProgramVersion "+state.ProgramVersion+", ForkSchemaLevel "+state.ForkSchemaLevel+" (latest step "+latest
 				+"), OdSchemaCompat "+state.OdSchemaCompat+", ForkAdoptedFrom "+state.ForkAdoptedFrom);
+			//The guard decides from ForkMigrationsApplied: no step of this build may be missing from it, and it may hold no level this build lacks.
 			ForkGuardResult guard=ForkVersionGuard.Evaluate(state);
+			int countApplied=state.GetAppliedLevels().Count;
 			Check("V9","Fork startup guard opens the adopted copy",guard.Action==ForkGuardAction.ProceedFork && !guard.HasPendingMigrations,
-				guard.Action+", pending migrations "+guard.HasPendingMigrations);
+				guard.Action+", pending migrations "+guard.HasPendingMigrations+(guard.ListPendingLevels.Count==0 ? "" : " ("+string.Join(", ",guard.ListPendingLevels)+")")
+				+"; ForkMigrationsApplied holds "+countApplied+" level(s)"+(guard.Action==ForkGuardAction.ProceedFork && !guard.HasPendingMigrations
+					? ", among them every step of this build" : "")
+				+(guard.ListUnknownLevels.Count==0 ? "" : "; levels this build does not have: "+string.Join(", ",guard.ListUnknownLevels)));
 		}
 
 		private void IdempotencePass(Db db,string source,string adopted,string snapshot,ValidationReport afterFirstPass) {

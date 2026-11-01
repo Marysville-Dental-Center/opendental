@@ -974,6 +974,10 @@ namespace AdoptionValidation.Tests {
 				get { return _runner.LatestLevel; }
 			}
 
+			public List<string> GetLevels() {
+				return _runner.GetLevels();
+			}
+
 			public int CompareLevels(string levelA,string levelB) {
 				return _runner.CompareLevels(levelA,levelB);
 			}

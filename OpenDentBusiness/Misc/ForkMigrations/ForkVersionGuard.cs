@@ -1,6 +1,7 @@
 // The startup version guard (backlog Risk R1, package M1-03). Pure decision logic, so every case is unit tested.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace OpenDentBusiness {
@@ -12,7 +13,8 @@ namespace OpenDentBusiness {
 		///<summary>An unadopted database on the adoption allowlist, or an adoption that did not finish. Refused at startup; an administrator may run
 		///the adoption tool against a restored copy.</summary>
 		NeedsAdoption,
-		///<summary>An adopted database whose ForkSchemaLevel is newer than this build knows. This workstation needs the newer release.</summary>
+		///<summary>An adopted database that a newer build updated: its ForkSchemaLevel, or a level in its ForkMigrationsApplied, is not a level of
+		///this build. This workstation needs the newer release.</summary>
 		NeedsNewerBuild,
 		///<summary>Anything else. Nothing is converted, nothing is installed, no downgrade is offered.</summary>
 		Refuse,
@@ -24,9 +26,18 @@ namespace OpenDentBusiness {
 		public string Message="";
 		///<summary>Process exit code for silent runs; 0 for the Proceed actions.</summary>
 		public int ExitCode;
-		public bool HasPendingMigrations;
+		///<summary>For ProceedFork: the levels of this build's fork migration steps that are not in the database's ForkMigrationsApplied, in the
+		///order they run. A level below the database's ForkSchemaLevel counts too: the runner runs every step that has not finished.</summary>
+		public List<string> ListPendingLevels=new List<string>();
+		///<summary>For NeedsNewerBuild: the database's levels (ForkSchemaLevel and those of ForkMigrationsApplied) that this build does not have.</summary>
+		public List<string> ListUnknownLevels=new List<string>();
 		///<summary>For NeedsAdoption: true when a started adoption must be finished.</summary>
 		public bool IsAdoptionResume;
+
+		///<summary>True when fork migration steps of this build have not run on the adopted database (ListPendingLevels).</summary>
+		public bool HasPendingMigrations {
+			get { return ListPendingLevels.Count>0; }
+		}
 
 		public bool CanProceed {
 			get { return Action==ForkGuardAction.ProceedCompat || Action==ForkGuardAction.ProceedFork; }
@@ -41,7 +52,7 @@ namespace OpenDentBusiness {
 		public const int EXIT_CODE_UNSUPPORTED_VERSION=170;
 		///<summary>Unadopted database on the allowlist: adoption needed.</summary>
 		public const int EXIT_CODE_NEEDS_ADOPTION=171;
-		///<summary>Adopted database with a newer fork schema level than this build.</summary>
+		///<summary>Adopted database with a fork schema level, or an applied fork migration level, that this build does not have.</summary>
 		public const int EXIT_CODE_NEWER_SCHEMA=172;
 		///<summary>Fork markers and version preferences disagree.</summary>
 		public const int EXIT_CODE_INCONSISTENT=173;
@@ -126,14 +137,36 @@ namespace OpenDentBusiness {
 					"This database was adopted by this program, but its version markers are incomplete (ForkSchemaLevel '"+forkDbState.ForkSchemaLevel
 					+"', OdSchemaCompat '"+forkDbState.OdSchemaCompat+"'). Nothing was changed.");
 			}
-			int compare=runner.CompareLevels(forkDbState.ForkSchemaLevel,runner.LatestLevel);
-			if(compare>0) {
-				return Result(ForkGuardAction.NeedsNewerBuild,EXIT_CODE_NEWER_SCHEMA,
-					"The database was updated by a newer release of this program (schema level "+forkDbState.ForkSchemaLevel+"; this program knows up to "
-					+runner.LatestLevel+").\r\nThis workstation needs the newer release.");
+			//Decided from the set of applied levels, as the runner decides what to run: a step whose level is below the database's highest applied
+			//level (merged later, or turned on later) is still pending, and a level this build does not have was written by a newer build.
+			List<string> listLevelsBuild=runner.GetLevels()??new List<string>();
+			bool IsKnown(string level) {
+				return runner.CompareLevels(level,ForkVersions.SCHEMA_LEVEL_BASELINE)==0 || listLevelsBuild.Any(x => runner.CompareLevels(x,level)==0);
+			}
+			List<string> listApplied=forkDbState.GetAppliedLevels();
+			List<string> listUnknown=new List<string>();
+			string schemaLevel=forkDbState.ForkSchemaLevel.Trim();
+			if(!IsKnown(schemaLevel)) {
+				listUnknown.Add(schemaLevel);
+			}
+			listUnknown.AddRange(listApplied.Where(x => !IsKnown(x) && !listUnknown.Any(y => runner.CompareLevels(x,y)==0)));
+			if(listUnknown.Count>0) {
+				string message;
+				if(runner.CompareLevels(forkDbState.ForkSchemaLevel,runner.LatestLevel)>0) {
+					message="The database was updated by a newer release of this program (schema level "+forkDbState.ForkSchemaLevel+"; this program knows up to "
+						+runner.LatestLevel+").\r\nThis workstation needs the newer release.";
+				}
+				else {
+					message="The database was updated by a newer release of this program (fork migration level"+(listUnknown.Count==1 ? " " : "s ")
+						+string.Join(", ",listUnknown)+", which this program does not have; it knows up to "+runner.LatestLevel+").\r\n"
+						+"This workstation needs the newer release.";
+				}
+				ForkGuardResult forkGuardResultNewer=Result(ForkGuardAction.NeedsNewerBuild,EXIT_CODE_NEWER_SCHEMA,message);
+				forkGuardResultNewer.ListUnknownLevels=listUnknown;
+				return forkGuardResultNewer;
 			}
 			ForkGuardResult forkGuardResult=Result(ForkGuardAction.ProceedFork,0,"");
-			forkGuardResult.HasPendingMigrations=compare<0;
+			forkGuardResult.ListPendingLevels=listLevelsBuild.Where(x => !listApplied.Any(y => runner.CompareLevels(x,y)==0)).ToList();
 			return forkGuardResult;
 		}
 

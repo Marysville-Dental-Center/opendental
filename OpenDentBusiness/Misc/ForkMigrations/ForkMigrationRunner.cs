@@ -11,14 +11,15 @@ namespace OpenDentBusiness.ForkMigrations {
 	///from ForkMigrationStep and marked with ForkMigrationAttribute, each in its own file; the runner finds them by reflection and runs them in level
 	///order. Its state is kept in preference rows (data only, no schema change):
 	///- ForkMigrationsApplied: comma-separated levels of the steps that finished on this database. A step merged later with a lower level than an
-	///  applied one still runs, because the runner checks each level, not just the highest.
+	///  applied one still runs, because the runner checks each level, not just the highest; the startup version guard decides from the same list
+	///  (ForkVersionGuard, through ForkDbState.ForkMigrationsApplied), so startup runs it too.
 	///- ForkSchemaLevel: the highest applied level (the "ForkSchemaLevel" marker of the version strategy, docs/specs/port-backlog.md, risk R1).
 	///- ForkMigrationInProgress: the level of a step that started and has not finished. MyISAM has no transactions, so a step that was interrupted
 	///  can leave the database half changed. While this is set the runner refuses to run; restore the backup taken before the migration.
 	///None of these names is an Open Dental preference name.
 	///Version checks, backups, the CorruptedDatabase flag and the progress window are the caller's job (startup and the adoption tool).</summary>
 	public static class ForkMigrationRunner {
-		public const string PrefNameApplied="ForkMigrationsApplied";
+		public const string PrefNameApplied=ForkVersions.PREF_FORK_MIGRATIONS_APPLIED;
 		public const string PrefNameSchemaLevel="ForkSchemaLevel";
 		public const string PrefNameInProgress="ForkMigrationInProgress";
 

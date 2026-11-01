@@ -101,8 +101,10 @@ namespace DevDbTool {
 				ListProblems.Add("The startup version guard would not open this database ("+forkGuardResult.Action+"): "+forkGuardResult.Message);
 			}
 			else if(forkGuardResult.HasPendingMigrations) {
-				ListProblems.Add("ForkSchemaLevel is "+forkDbState.ForkSchemaLevel+" but this build's fork migrations reach "
-					+ForkMigrationHandOff.Runner.LatestLevel+".");
+				//The guard decides from ForkMigrationsApplied, so a step below ForkSchemaLevel that has not run counts too.
+				ListProblems.Add("Fork migration steps of this build have not run on this database (not in ForkMigrationsApplied): "
+					+string.Join(", ",forkGuardResult.ListPendingLevels)+" (ForkSchemaLevel "+forkDbState.ForkSchemaLevel+", this build's steps reach "
+					+ForkMigrationHandOff.Runner.LatestLevel+").");
 			}
 			if(forkDbState.OdSchemaCompat!=SchemaVerifier.ReferenceVersion) {
 				ListProblems.Add("OdSchemaCompat is "+(forkDbState.OdSchemaCompat??"missing")+" but the schema should match Open Dental "

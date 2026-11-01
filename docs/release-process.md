@@ -35,6 +35,8 @@ These are four preference rows. The fork reads and writes them with plain SQL (`
 | `ForkAdoptedFrom` | The adoption record: `source=25.3.48.0;started=…;adopted=…` (UTC). If it has no `adopted=` and there is no `ForkSchemaLevel`, the adoption didn't finish. If it has `adopted=` but `ForkSchemaLevel` or `OdSchemaCompat` is missing, the markers of an adopted database were removed: that database is refused, never adopted again. |
 | `ForkProgramVersion` | The release published from the update server: `release+buildId`, for example `0.0+3f2a…`. |
 
+The fork migration runner also keeps `ForkMigrationsApplied`, the comma-separated levels of every step that finished on the database (`ForkSchemaLevel` is the highest of them), and `ForkMigrationInProgress`. The startup checks read `ForkMigrationsApplied` too.
+
 Adoption also sets `DataBaseVersion` and `ProgramVersion` to the **sentinel** `99.0.0.0`. No Open Dental release will reach that number. An Open Dental client therefore sees a "newer" database: it skips its own conversion, finds no update files and can't use the copy. The fork reads those two preferences only to recognize an unadopted database.
 
 ## Startup checks
@@ -46,8 +48,8 @@ Adoption also sets `DataBaseVersion` and `ProgramVersion` to the **sentinel** `9
 | Unadopted, `DataBaseVersion` ≤ 24.3.63 | Runs. The frozen legacy chain converts older databases up to 24.3.63, never further. If the fork migration runner has steps and the database is at 24.3.63, startup asks for adoption instead. |
 | Unadopted 25.3.48.0 (on the allowlist) | Refused (exit 171). Startup only offers to open the adoption tool. |
 | Unadopted, any other Open Dental version (25.3.50, 25.4.x, 24.4.x, …) | Refused (exit 170). Nothing is changed. |
-| Adopted, markers and sentinel consistent | Runs. Pending fork migration steps run on the update server, after a backup. |
-| Adopted by a newer release (`ForkSchemaLevel` above what this build knows) | Pulls the published release if there is one, otherwise refused (exit 172). |
+| Adopted, markers and sentinel consistent | Runs. Pending fork migration steps run on the update server, after a backup. A step is pending when its level is not in `ForkMigrationsApplied`, also when it is below `ForkSchemaLevel` (a step merged later with a lower level); right after adoption (`ForkSchemaLevel` `0`, no list) every step is. |
+| Adopted by a newer release (`ForkSchemaLevel`, or a level in `ForkMigrationsApplied`, is not a level of this build) | Pulls the published release if there is one, otherwise refused (exit 172). |
 | Adopted, but `DataBaseVersion`/`ProgramVersion` changed, or markers incomplete | Refused (exit 173). |
 | Sentinel versions with no markers (markers removed) | Refused (exit 173). Restore a backup. |
 | `ForkAdoptedFrom` says `adopted=`, but `ForkSchemaLevel` (or `ForkSchemaLevel` and `OdSchemaCompat`) was removed | Refused (exit 173). This is not an unfinished adoption: the adoption tool refuses it too, so the schema level is never reset and the fork migration steps never run a second time. Restore a backup. |
@@ -57,7 +59,7 @@ No case offers a "downgrade". Open Dental's `UpdateFiles` and `UpdateFilesSegmen
 
 When an inactive workstation becomes active again, `FormOpenDental.IsDbConnectionSafe` runs the same guard, in Debug builds too. In Release builds, a workstation also restarts when a different build has been published, unless it may publish its own build under the rules below (`ForkReleases.MayRunUnpublishedBuild`): the named update server, or, with a blank `WebServiceServerName`, a build known to be newer. A blank preference never exempts a stale build.
 
-The legacy `ConvertDatabases` chain is frozen at 24.3.63 (`ConvertDatabases.FrozenVersion`). Adding a `ToX_Y_Z` method above it throws, and so does running the chain on a newer database. Later schema changes are fork migration steps. `PrefL.ConvertDB` hands an adopted database to the runner through `IForkMigrationRunner` (`ForkMigrationHandOff`), which finds `ForkMigrationRunnerAdapter`: it runs M1-01's `ForkMigrationRunner` and, when the schema verifier then finds an exact match, sets `OdSchemaCompat` to `25.3.48`. The baseline runner with no steps is used only when no runner is found. `tools/New-DevDatabase.ps1` adopts the 24.3.63 database it builds, so a development database carries the same markers as an adopted office copy.
+The legacy `ConvertDatabases` chain is frozen at 24.3.63 (`ConvertDatabases.FrozenVersion`). Adding a `ToX_Y_Z` method above it throws, and so does running the chain on a newer database. Later schema changes are fork migration steps. `PrefL.ConvertDB` hands an adopted database to the runner through `IForkMigrationRunner` (`ForkMigrationHandOff`), which finds `ForkMigrationRunnerAdapter`: it runs M1-01's `ForkMigrationRunner`, which runs every step whose level is not in `ForkMigrationsApplied`, and, when the schema verifier then finds an exact match, sets `OdSchemaCompat` to the verifier's reference version (`26.1.70` since M2-01). The guard asks the runner only for its step levels (`GetLevels`), never how it finds its steps, and runs it only when one of them is not in `ForkMigrationsApplied`. Levels are dated `yyyyMMddNN` from 2026 on (owner decision of 2026-11-01), every new step above every existing one; a released level is never removed or renumbered, since a database level this build lacks means a newer build. The baseline runner with no steps is used only when no runner is found. `tools/New-DevDatabase.ps1` adopts the 24.3.63 database it builds, so a development database carries the same markers as an adopted office copy.
 
 ## Adopting a database
 

@@ -14,12 +14,16 @@ namespace OpenDentBusiness {
 	///line our legacy conversion chain ends at (24.3.63.0). Database state lives in four fork-owned preference rows, read and written here with plain
 	///SQL so they need no PrefName entry and work before the preference cache is filled:
 	///ForkSchemaLevel (last applied fork migration step), ForkProgramVersion (release and build last published from the update server),
-	///OdSchemaCompat (the Open Dental schema the database matches) and ForkAdoptedFrom (the adoption record).</summary>
+	///OdSchemaCompat (the Open Dental schema the database matches) and ForkAdoptedFrom (the adoption record). The version guard also reads the
+	///fork migration runner's list of applied levels (ForkMigrationsApplied), which the runner writes.</summary>
 	public class ForkVersions {
 		public const string PREF_FORK_SCHEMA_LEVEL="ForkSchemaLevel";
 		public const string PREF_FORK_PROGRAM_VERSION="ForkProgramVersion";
 		public const string PREF_OD_SCHEMA_COMPAT="OdSchemaCompat";
 		public const string PREF_FORK_ADOPTED_FROM="ForkAdoptedFrom";
+		///<summary>The fork migration runner's list of the levels that finished on the database, comma-separated (ForkMigrationRunner.PrefNameApplied).
+		///Not one of the four version markers: the runner owns it, and the version guard only reads it.</summary>
+		public const string PREF_FORK_MIGRATIONS_APPLIED="ForkMigrationsApplied";
 		///<summary>The fork schema level written at adoption, before any fork migration step has run.</summary>
 		public const string SCHEMA_LEVEL_BASELINE="0";
 
@@ -132,7 +136,8 @@ namespace OpenDentBusiness {
 			}
 			Dictionary<string,string> dictValues=new Dictionary<string,string>();
 			string command="SELECT PrefName,ValueString FROM preference WHERE PrefName IN ('DataBaseVersion','ProgramVersion','"
-				+PREF_FORK_SCHEMA_LEVEL+"','"+PREF_FORK_PROGRAM_VERSION+"','"+PREF_OD_SCHEMA_COMPAT+"','"+PREF_FORK_ADOPTED_FROM+"') ORDER BY PrefNum";
+				+PREF_FORK_SCHEMA_LEVEL+"','"+PREF_FORK_PROGRAM_VERSION+"','"+PREF_OD_SCHEMA_COMPAT+"','"+PREF_FORK_ADOPTED_FROM+"','"
+				+PREF_FORK_MIGRATIONS_APPLIED+"') ORDER BY PrefNum";
 			DataTable table=Db.GetTable(command);
 			foreach(DataRow row in table.Rows) {
 				string prefName=PIn.String(row["PrefName"].ToString());
@@ -147,6 +152,7 @@ namespace OpenDentBusiness {
 			forkDbState.ForkProgramVersion=dictValues.TryGetValue(PREF_FORK_PROGRAM_VERSION,out value)?value:null;
 			forkDbState.OdSchemaCompat=dictValues.TryGetValue(PREF_OD_SCHEMA_COMPAT,out value)?value:null;
 			forkDbState.ForkAdoptedFrom=dictValues.TryGetValue(PREF_FORK_ADOPTED_FROM,out value)?value:null;
+			forkDbState.ForkMigrationsApplied=dictValues.TryGetValue(PREF_FORK_MIGRATIONS_APPLIED,out value)?value:null;
 			return forkDbState;
 		}
 		#endregion Marker rows
@@ -161,6 +167,18 @@ namespace OpenDentBusiness {
 		public string ForkProgramVersion;
 		public string OdSchemaCompat;
 		public string ForkAdoptedFrom;
+		///<summary>The fork migration runner's list of the levels that finished on the database (ForkVersions.PREF_FORK_MIGRATIONS_APPLIED), as
+		///stored: comma-separated. Null when the row does not exist, as on a database adopted before any step ran.</summary>
+		public string ForkMigrationsApplied;
+
+		///<summary>The levels of ForkMigrationsApplied, trimmed, in the stored order, without blanks. Empty when there is none. Not interpreted
+		///further: the version guard compares them with the levels of the build through the runner (IForkMigrationRunner.CompareLevels).</summary>
+		public List<string> GetAppliedLevels() {
+			if(string.IsNullOrWhiteSpace(ForkMigrationsApplied)) {
+				return new List<string>();
+			}
+			return ForkMigrationsApplied.Split(',').Select(x => x.Trim()).Where(x => x!="").ToList();
+		}
 
 		///<summary>True when the fork markers govern this database (it was adopted).</summary>
 		public bool IsForkMarked {
