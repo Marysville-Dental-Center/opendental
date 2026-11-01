@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using ForkMigrationTests;
@@ -64,6 +65,158 @@ namespace M2RECURTests {
 			int indexPaySimpleDecline=bodyPaySimple.IndexOf("chargeData.IsDeclinedByProcessor=chargeData.IsDeclinedByProcessor && IsPaySimpleDecline(ex);",
 				StringComparison.Ordinal);
 			Assert.IsTrue(indexMarkDeclined>0 && indexPaySimpleDecline>indexMarkDeclined,"SendPaySimple keeps the flag only for PaySimple's own decline.");
+		}
+
+		[TestMethod]
+		public void Source_EveryMarkDeclinedIsNarrowedByItsProcessorsFilter() {
+			//MarkDeclined flags every call (it also drives "inactivate declined cards"). Each processor's call is followed by the line that keeps the
+			//flag only for a card decline, so a setup problem, an outage or a duplicate e-mails nobody.
+			string source=ReadRepoFile(Path.Combine("OpenDentBusiness","Data Interface","RecurringCharges.cs")).Replace("\r\n","\n");
+			(string Method,string MarkDeclined,string Filter)[] arrayHooks=new[] {
+				("public void SendEdgeExpress(",
+					"MarkDeclined(chargeData,Lans.g(_lanThis,\"Response from EdgeExpress:\")+\" \"+response.XWebResponseCode.ToString(),LogLevel.Information);",
+					"chargeData.IsDeclinedByProcessor=chargeData.IsDeclinedByProcessor && IsEdgeExpressCardDecline(response.XWebResponseCode);"),
+				("private bool ProcessCardXChargeClientProgram(",
+					"MarkDeclined(chargeData,Lans.g(_lanThis,\"Result from XCharge:\")+\" \"+strBuilderResultText.ToString(),LogLevel.Information);",
+					"chargeData.IsDeclinedByProcessor=chargeData.IsDeclinedByProcessor && IsXChargeClientDecline(strBuilderResultText.ToString());"),
+				("private bool ProcessCardXWebDTG(",
+					"MarkDeclined(chargeData,Lans.g(_lanThis,\"Response from XWeb:\")+\" \"+response.XWebResponseCode.ToString(),LogLevel.Information);",
+					"chargeData.IsDeclinedByProcessor=chargeData.IsDeclinedByProcessor && IsEdgeExpressCardDecline(response.XWebResponseCode);"),
+				("private bool ProcessCardXWebDTG(",
+					"MarkDeclined(chargeData,Lans.g(_lanThis,\"Response from XWeb:\")+\" \"+ex.Message,LogLevel.Information);",
+					"chargeData.IsDeclinedByProcessor=chargeData.IsDeclinedByProcessor && IsXWebDtgCardDecline(ex);"),
+				("private void SendPayConnectV2(",
+					"MarkDeclined(chargeData,errorMessage);",
+					"chargeData.IsDeclinedByProcessor=chargeData.IsDeclinedByProcessor && IsPayConnect2Decline(response);"),
+			};
+			foreach((string Method,string MarkDeclined,string Filter) hook in arrayHooks) {
+				string body=GetMethodBody(source,hook.Method);
+				int indexMarkDeclined=body.IndexOf(hook.MarkDeclined,StringComparison.Ordinal);
+				Assert.IsTrue(indexMarkDeclined>0,"Not found in "+hook.Method+" "+hook.MarkDeclined);
+				//The filter is the very next statement.
+				string after=body.Substring(indexMarkDeclined+hook.MarkDeclined.Length).TrimStart();
+				Assert.IsTrue(after.StartsWith(hook.Filter,StringComparison.Ordinal),hook.Method+" narrows the flag right after "+hook.MarkDeclined);
+			}
+			//Every MarkDeclined call in the file is one of the six this package narrows (five above, PaySimple's catch in the test before) or the
+			//StatusCode!="0" decline in SendPayConnectV2, which stays a decline (an Error response never reaches it: its StatusCode is blank).
+			int countMarkDeclinedCalls=Regex.Matches(source,@"\tMarkDeclined\(chargeData,").Count;
+			Assert.AreEqual(7,countMarkDeclinedCalls,"A new MarkDeclined call needs its processor's filter.");
+			StringAssert.Contains(GetMethodBody(source,"private void SendPayConnectV2("),
+				"MarkDeclined(chargeData,Lans.g(_lanThis,\"Transaction Failed, error status\")+\" \"+payConnectResponse.Description,LogLevel.Information);");
+		}
+
+		[TestMethod]
+		public void IsEdgeExpressCardDecline_OnlyTheCardsOwnAnswers() {
+			List<XWebResponseCodes> listCardDeclines=Enum.GetValues(typeof(XWebResponseCodes)).Cast<XWebResponseCodes>()
+				.Where(x => RecurringChargerator.IsEdgeExpressCardDecline(x)).OrderBy(x => (int)x).ToList();
+			CollectionAssert.AreEqual(new List<XWebResponseCodes> { XWebResponseCodes.Declined,XWebResponseCodes.AutoDecline,
+				XWebResponseCodes.InvalidExpirationDate },listCardDeclines,"001, 009 and 010 only.");
+			//The answers named in the review: setup, credentials, duplicate, outage, partial approval, pending, unknown.
+			foreach(XWebResponseCodes code in new[] { XWebResponseCodes.AuthenticationError,XWebResponseCodes.ProductionMerchantSetUpError,
+				XWebResponseCodes.TestMerchantSetUpError,XWebResponseCodes.DevelopmentMerchantSetUpError,XWebResponseCodes.DuplicateTransactionError,
+				XWebResponseCodes.MerchantLockedForSettlement,XWebResponseCodes.MerchantLockedForMaintenance,XWebResponseCodes.TemporaryServiceOutage,
+				XWebResponseCodes.ProcessingHostUnavailable,XWebResponseCodes.PartialApproval,XWebResponseCodes.Pending,XWebResponseCodes.Undefined,
+				XWebResponseCodes.Approval,XWebResponseCodes.AliasSuccess })
+			{
+				Assert.IsFalse(RecurringChargerator.IsEdgeExpressCardDecline(code),code.ToString());
+			}
+			Assert.AreEqual(XWebResponseCodes.Undefined,XWebResponse.ConvertResponseCode(999),"A code this program does not know.");
+		}
+
+		[TestMethod]
+		public void IsXWebDtgCardDecline_ReadsTheGatewaysCode() {
+			//XWebs throws "DTG failed (code): description" with ErrorCodes.XWebDTGFailed for every answer that is not an approval.
+			Assert.IsTrue(RecurringChargerator.IsXWebDtgCardDecline(new CodeBase.ODException("DTG failed (1): DECLINED",
+				CodeBase.ODException.ErrorCodes.XWebDTGFailed)));
+			Assert.IsTrue(RecurringChargerator.IsXWebDtgCardDecline(new CodeBase.ODException("DTG failed (9): AUTO DECLINE",
+				CodeBase.ODException.ErrorCodes.XWebDTGFailed)));
+			Assert.IsTrue(RecurringChargerator.IsXWebDtgCardDecline(new CodeBase.ODException("DTG failed (10): Invalid expiration date, declined",
+				CodeBase.ODException.ErrorCodes.XWebDTGFailed)));
+			//Text that says "declined" but a code that is not the card's, the wrong error code, or not the gateway's exception at all.
+			Assert.IsFalse(RecurringChargerator.IsXWebDtgCardDecline(new CodeBase.ODException("DTG failed (813): Duplicate transaction declined",
+				CodeBase.ODException.ErrorCodes.XWebDTGFailed)));
+			Assert.IsFalse(RecurringChargerator.IsXWebDtgCardDecline(new CodeBase.ODException("DTG failed (805): Authentication declined",
+				CodeBase.ODException.ErrorCodes.XWebDTGFailed)));
+			Assert.IsFalse(RecurringChargerator.IsXWebDtgCardDecline(new CodeBase.ODException("DTG failed (1): DECLINED",
+				CodeBase.ODException.ErrorCodes.XWebProgramProperties)));
+			Assert.IsFalse(RecurringChargerator.IsXWebDtgCardDecline(new CodeBase.ODException("The card was declined",
+				CodeBase.ODException.ErrorCodes.XWebDTGFailed)));
+			Assert.IsFalse(RecurringChargerator.IsXWebDtgCardDecline(new Exception("DTG failed (1): DECLINED")));
+			Assert.IsFalse(RecurringChargerator.IsXWebDtgCardDecline(null));
+		}
+
+		[TestMethod]
+		public void IsXChargeClientDecline_OnlyADeclinedResultLine() {
+			Assert.IsTrue(RecurringChargerator.IsXChargeClientDecline("RESULT=DECLINED\r\nDESCRIPTION=Insufficient funds\r\n"));
+			Assert.IsTrue(RecurringChargerator.IsXChargeClientDecline("ACCOUNT=XXXXXXXXXXXX1111\nRESULT=Declined\n"));
+			//"Transaction not completed", any other result, and a result file without a RESULT line: what MarkDeclined also gets.
+			Assert.IsFalse(RecurringChargerator.IsXChargeClientDecline("RESULT=Transaction not completed\r\nDESCRIPTION=Cancelled\r\n"));
+			Assert.IsFalse(RecurringChargerator.IsXChargeClientDecline("RESULT=ERROR\r\nDESCRIPTION=The card was declined earlier\r\n"));
+			Assert.IsFalse(RecurringChargerator.IsXChargeClientDecline("AVSRESULT=DECLINE\r\nCVRESULT=M\r\n"),"Only the RESULT line counts.");
+			Assert.IsFalse(RecurringChargerator.IsXChargeClientDecline(""));
+			Assert.IsFalse(RecurringChargerator.IsXChargeClientDecline(null));
+		}
+
+		[TestMethod]
+		public void IsPayConnect2Decline_OnlyPayConnectTurningTheCardDown() {
+			Func<HttpStatusCode,string,PayConnect2.PayConnect2Response> parse=(httpStatusCode,body)
+				=> PayConnect2.ParseHttpResponse(PayConnect2.ApiRoute.CreateTransaction,httpStatusCode,body);
+			//PayConnect's own error with a 4xx status.
+			Assert.IsTrue(RecurringChargerator.IsPayConnect2Decline(parse(HttpStatusCode.PaymentRequired,
+				"{\"errorType\":\"RESPONSE\",\"error\":\"Card declined by issuer\"}")));
+			Assert.IsTrue(RecurringChargerator.IsPayConnect2Decline(parse(HttpStatusCode.BadRequest,
+				"{\"errorType\":\"RESPONSE\",\"error\":{\"message\":\"Transaction declined\",\"code\":5}}")));
+			//The office's credentials, a validation error, PayConnect's own failures and a busy or timed-out request.
+			Assert.IsFalse(RecurringChargerator.IsPayConnect2Decline(parse(HttpStatusCode.Unauthorized,"{\"error\":\"Authorization field missing\"}")));
+			Assert.IsFalse(RecurringChargerator.IsPayConnect2Decline(parse(HttpStatusCode.Unauthorized,
+				"{\"errorType\":\"RESPONSE\",\"error\":{\"message\":\"Invalid API key\"}}")));
+			Assert.IsFalse(RecurringChargerator.IsPayConnect2Decline(parse(HttpStatusCode.Forbidden,"{\"error\":\"Access to this API has been disallowed\"}")));
+			Assert.IsFalse(RecurringChargerator.IsPayConnect2Decline(parse(HttpStatusCode.BadRequest,
+				"{\"errorType\":\"VALIDATION\",\"error\":[{\"message\":\"is required\",\"param\":\"expiry\",\"location\":\"body\"}]}")));
+			Assert.IsFalse(RecurringChargerator.IsPayConnect2Decline(parse(HttpStatusCode.InternalServerError,"")));
+			Assert.IsFalse(RecurringChargerator.IsPayConnect2Decline(parse(HttpStatusCode.BadGateway,"<html>Bad gateway</html>")));
+			Assert.IsFalse(RecurringChargerator.IsPayConnect2Decline(parse(HttpStatusCode.ServiceUnavailable,"{\"error\":\"Card declined\"}")),
+				"A 5xx is never the card's answer, whatever the text says.");
+			Assert.IsFalse(RecurringChargerator.IsPayConnect2Decline(parse((HttpStatusCode)429,"{\"error\":\"Too many requests\"}")));
+			Assert.IsFalse(RecurringChargerator.IsPayConnect2Decline(parse(HttpStatusCode.RequestTimeout,"")));
+			Assert.IsFalse(RecurringChargerator.IsPayConnect2Decline(parse(HttpStatusCode.Conflict,"{\"error\":\"Duplicate transaction\"}")));
+			//A 2xx answer is not an error response at all.
+			Assert.IsFalse(RecurringChargerator.IsPayConnect2Decline(parse(HttpStatusCode.OK,"not json")));
+			//A lost answer that PayConnect's transaction list shows as declined (as PayConnect2.Reconcile builds it), and one it shows as an error.
+			Assert.IsTrue(RecurringChargerator.IsPayConnect2Decline(MakeReconciled("Declined")));
+			Assert.IsFalse(RecurringChargerator.IsPayConnect2Decline(MakeReconciled("Error")));
+			//No answer, nothing sent, missing settings.
+			foreach((PayConnect2.PayConnectRequestOutcome Outcome,PayConnect2.PayConnectErrorKind Kind) pair in new[] {
+				(PayConnect2.PayConnectRequestOutcome.SentNoResponse,PayConnect2.PayConnectErrorKind.NoAnswer),
+				(PayConnect2.PayConnectRequestOutcome.ResponseUnreadable,PayConnect2.PayConnectErrorKind.NoAnswer),
+				(PayConnect2.PayConnectRequestOutcome.NotSent,PayConnect2.PayConnectErrorKind.Network),
+				(PayConnect2.PayConnectRequestOutcome.NotSent,PayConnect2.PayConnectErrorKind.NotConfigured),
+				(PayConnect2.PayConnectRequestOutcome.SentNoResponse,PayConnect2.PayConnectErrorKind.Vendor) })
+			{
+				PayConnect2.PayConnect2Response response=new PayConnect2.PayConnect2Response {
+					ResponseType=PayConnect2.ResponseType.Error,
+					Outcome=pair.Outcome,
+					ErrorResponse=new PayConnect2.ErrorResponse { Kind=pair.Kind,HttpStatus=402 },
+				};
+				Assert.IsFalse(RecurringChargerator.IsPayConnect2Decline(response),pair.Outcome+" "+pair.Kind);
+			}
+			Assert.IsFalse(RecurringChargerator.IsPayConnect2Decline(new PayConnect2.PayConnect2Response { ResponseType=PayConnect2.ResponseType.Error }));
+			Assert.IsFalse(RecurringChargerator.IsPayConnect2Decline(null));
+		}
+
+		///<summary>The Error response PayConnect2.Reconcile returns for a lost create that the transaction list shows with a status that is not an
+		///approval.</summary>
+		private static PayConnect2.PayConnect2Response MakeReconciled(string status) {
+			return new PayConnect2.PayConnect2Response {
+				ResponseType=PayConnect2.ResponseType.Error,
+				Outcome=PayConnect2.PayConnectRequestOutcome.Reconciled,
+				httpStatusCode=HttpStatusCode.OK,
+				ErrorResponse=new PayConnect2.ErrorResponse {
+					Kind=PayConnect2.PayConnectErrorKind.Vendor,
+					Message="PayConnect declined the transaction (status: "+status+").",
+					VendorCode=status,
+				},
+			};
 		}
 
 		[TestMethod]

@@ -254,9 +254,10 @@ namespace OpenDentBusiness {
 		public bool CanChargeWhenNoBal;
 		public long PaymentType;
 		public bool CCIsRecurringActive;
-		///<summary>Set while charging: the card processor answered with a decline (RecurringChargerator.MarkDeclined; for PaySimple only its own
-		///decline, IsPaySimpleDecline), whatever "inactivate declined cards" makes of ChargeStatus. Never set for a charge that succeeded.
-		///Decides the failure e-mail (RecurringChargeFailEmails).</summary>
+		///<summary>Set while charging: the card processor declined the card (RecurringChargerator.MarkDeclined, narrowed after each call by the
+		///processor's filter: IsEdgeExpressCardDecline, IsXWebDtgCardDecline, IsXChargeClientDecline, IsPayConnect2Decline, IsPaySimpleDecline),
+		///whatever "inactivate declined cards" makes of ChargeStatus. Never set for a charge that succeeded. Decides the failure e-mail
+		///(RecurringChargeFailEmails).</summary>
 		public bool IsDeclinedByProcessor;
 	}
 
@@ -639,6 +640,7 @@ namespace OpenDentBusiness {
 			}
 			else {
 				MarkDeclined(chargeData,Lans.g(_lanThis,"Response from EdgeExpress:")+" "+response.XWebResponseCode.ToString(),LogLevel.Information);
+				chargeData.IsDeclinedByProcessor=chargeData.IsDeclinedByProcessor && IsEdgeExpressCardDecline(response.XWebResponseCode);//Only a card decline e-mails the patient.
 				response.PayNote+="\r\n"+Lans.g(this,"Response from EdgeExpress:")+" "+response.XWebResponseCode.ToString();
 				amount=0;//If the charge was declined, insert a payment with $0 amount instead of what was supposed to be charged.
 			}
@@ -805,6 +807,7 @@ namespace OpenDentBusiness {
 					}
 					else {//Other
 						MarkDeclined(chargeData,Lans.g(_lanThis,"Result from XCharge:")+" "+strBuilderResultText.ToString(),LogLevel.Information);
+						chargeData.IsDeclinedByProcessor=chargeData.IsDeclinedByProcessor && IsXChargeClientDecline(strBuilderResultText.ToString());//Only a declined RESULT e-mails the patient.
 					}
 				}
 			}
@@ -847,6 +850,7 @@ namespace OpenDentBusiness {
 				}
 				else {
 					MarkDeclined(chargeData,Lans.g(_lanThis,"Response from XWeb:")+" "+response.XWebResponseCode.ToString(),LogLevel.Information);
+					chargeData.IsDeclinedByProcessor=chargeData.IsDeclinedByProcessor && IsEdgeExpressCardDecline(response.XWebResponseCode);//Only a card decline e-mails the patient.
 					response.PayNote+="\r\n"+Lans.g(this,"Response from XWeb:")+" "+response.XWebResponseCode.ToString();
 				}
 				strBuilderResultText.Append(response.GetFormattedNote(true));
@@ -856,6 +860,7 @@ namespace OpenDentBusiness {
 			catch(Exception ex) {
 				if(ex.Message.ToLower().Contains("decline")) {
 					MarkDeclined(chargeData,Lans.g(_lanThis,"Response from XWeb:")+" "+ex.Message,LogLevel.Information);
+					chargeData.IsDeclinedByProcessor=chargeData.IsDeclinedByProcessor && IsXWebDtgCardDecline(ex);//Only a card decline e-mails the patient.
 				}
 				else {
 					MarkFailed(chargeData,"Unable to charge card.\r\nError Message: "+ex.Message,LogLevel.Error);
@@ -955,6 +960,7 @@ namespace OpenDentBusiness {
 				}
 				else {
 					MarkDeclined(chargeData,errorMessage);
+					chargeData.IsDeclinedByProcessor=chargeData.IsDeclinedByProcessor && IsPayConnect2Decline(response);//A rejected key or Secret, a validation error or a 5xx e-mails nobody.
 				}
 			}
 			PayConnectResponse payConnectResponse=PayConnect2.ApiResponseToPayConnectResponse(response);

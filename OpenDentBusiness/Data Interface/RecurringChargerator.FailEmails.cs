@@ -3,7 +3,9 @@
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
+using System.Text.RegularExpressions;
 using CodeBase;
 
 namespace OpenDentBusiness {
@@ -56,6 +58,71 @@ namespace OpenDentBusiness {
 			}
 			string message=ex.Message??"";
 			return _arrayPaySimpleDeclineStarts.Any(x => message.StartsWith(x,StringComparison.Ordinal));
+		}
+
+		///<summary>For SendEdgeExpress and the XWeb gateway path (ProcessCardXWebDTG), which mark every answer other than an approval declined (Open
+		///Dental's behaviour, kept for "inactivate declined cards"). EdgeExpress and X-Web share these response codes. True only for an answer about
+		///the card itself: Declined (001), AutoDecline (009) and InvalidExpirationDate (010). False for everything else, so none of it e-mails the
+		///patient: the office's setup and credential errors (800-812, among them 805 AuthenticationError and the 806-808 merchant mode errors), a
+		///duplicate (813: the card was already charged), the settlement, maintenance and outage answers (818-821), a partial approval (007: the card
+		///was charged), Pending, and a code this program does not know (Undefined).</summary>
+		public static bool IsEdgeExpressCardDecline(XWebResponseCodes xWebResponseCode) {
+			return xWebResponseCode==XWebResponseCodes.Declined
+				|| xWebResponseCode==XWebResponseCodes.AutoDecline
+				|| xWebResponseCode==XWebResponseCodes.InvalidExpirationDate;
+		}
+
+		///<summary>For ProcessCardXWebDTG's catch, which marks an exception declined when its message contains "decline". The gateway's answer other
+		///than an approval arrives as the ODException XWebs throws for it (ErrorCodes.XWebDTGFailed, "DTG failed (code): description"). True only
+		///when that code is a card decline (IsEdgeExpressCardDecline). False for any other exception, whatever its text says.</summary>
+		public static bool IsXWebDtgCardDecline(Exception ex) {
+			ODException odException=ex as ODException;
+			if(odException==null || odException.ErrorCodeAsEnum!=ODException.ErrorCodes.XWebDTGFailed) {
+				return false;
+			}
+			Match match=Regex.Match(odException.Message??"",@"^DTG failed \(([0-9]{1,4})\)");
+			if(!match.Success) {
+				return false;
+			}
+			int responseCode=int.Parse(match.Groups[1].Value,CultureInfo.InvariantCulture);
+			return IsEdgeExpressCardDecline(XWebResponse.ConvertResponseCode(responseCode));
+		}
+
+		///<summary>For ProcessCardXChargeClientProgram, which marks every result other than SUCCESS declined: also "Transaction not completed", any
+		///other result, and a result file with no RESULT line. resultText is the result file's lines as the charge's note keeps them. True only when
+		///the RESULT line itself says declined (it contains "DECLINE", ignoring case). INFERRED: X-Charge's result values are not published.</summary>
+		public static bool IsXChargeClientDecline(string resultText) {
+			if(string.IsNullOrEmpty(resultText)) {
+				return false;
+			}
+			string[] arrayLines=resultText.Split(new[] { "\r\n","\n" },StringSplitOptions.None);
+			string lineResult=arrayLines.FirstOrDefault(x => x.StartsWith("RESULT=",StringComparison.Ordinal));
+			if(lineResult==null) {
+				return false;
+			}
+			return lineResult.Substring("RESULT=".Length).IndexOf("DECLINE",StringComparison.OrdinalIgnoreCase)>=0;
+		}
+
+		///<summary>For SendPayConnectV2, which marks every error answer PayConnect sent declined. True only when PayConnect turned the card down: its
+		///own error (PayConnectErrorKind.Vendor) with an HTTP 4xx status other than 408 (timeout), 409 (conflict, which may be a duplicate of a charge
+		///that went through) and 429 (too many requests); or a lost answer that PayConnect's transaction list shows as declined (Outcome Reconciled,
+		///a status that says declined). False for a rejected API key or Secret (401, 403), a validation error (400 VALIDATION), any 5xx, missing
+		///settings and no answer, so none of them e-mails the patient. INFERRED: which statuses PayConnect uses for a decline is not published.</summary>
+		public static bool IsPayConnect2Decline(PayConnect2.PayConnect2Response response) {
+			PayConnect2.ErrorResponse errorResponse=response?.ErrorResponse;
+			if(response==null || response.ResponseType!=PayConnect2.ResponseType.Error || errorResponse==null
+				|| errorResponse.Kind!=PayConnect2.PayConnectErrorKind.Vendor)
+			{
+				return false;
+			}
+			if(response.Outcome==PayConnect2.PayConnectRequestOutcome.Reconciled) {
+				return (errorResponse.VendorCode??"").IndexOf("declin",StringComparison.OrdinalIgnoreCase)>=0;
+			}
+			if(response.Outcome!=PayConnect2.PayConnectRequestOutcome.Response) {
+				return false;
+			}
+			int httpStatus=(errorResponse.HttpStatus>0) ? errorResponse.HttpStatus : (int)response.httpStatusCode;
+			return httpStatus>=400 && httpStatus<500 && httpStatus!=408 && httpStatus!=409 && httpStatus!=429;
 		}
 
 		///<summary>Called by ClearStats at the start of a run.</summary>
