@@ -1858,6 +1858,15 @@
     <Compile Include="Forms\FormProcCodes2.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="Forms\FormProcCodesOther.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormProcCodesOther.Designer.cs">
+      <DependentUpon>FormProcCodesOther.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormProcTools.OtherCodes.cs">
+      <DependentUpon>FormProcTools.cs</DependentUpon>
+    </Compile>
     <Compile Include="Forms\FormProcEdit.designer.cs">
       <DependentUpon>FormProcEdit.cs</DependentUpon>
     </Compile>

@@ -1514,6 +1514,10 @@
     <Compile Include="Data Interface\ProcButtons.cs" />
     <Compile Include="Data Interface\ProcCodeNotes.cs" />
     <Compile Include="Data Interface\ProcedureCodes.cs" />
+    <Compile Include="Data Interface\ProcedureCodes.CodeText.cs" />
+    <Compile Include="Data Interface\ProcCodesOther.cs" />
+    <Compile Include="Data Interface\ClaimProcs.PayLabs.cs" />
+    <Compile Include="Data Interface\DatabaseMaintenances.ProcCodes.cs" />
     <Compile Include="Data Interface\Procedures.cs" />
     <Compile Include="Data Interface\Procedures.EstimateAsOf.cs" />
     <Compile Include="Data Interface\Procedures.NoBillIns.cs" />

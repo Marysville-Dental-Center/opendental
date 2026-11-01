@@ -51,6 +51,7 @@
       "tests\\InsuranceTests\\InsuranceTests.csproj",
       "tests\\M201Tests\\M201Tests.csproj",
       "tests\\M202Tests\\M202Tests.csproj",
+      "tests\\M2CANTests\\M2CANTests.csproj",
       "tests\\M2ESTTests\\M2ESTTests.csproj",
       "tests\\M2PAYWTests\\M2PAYWTests.csproj",
       "tests\\MedicationTests\\MedicationTests.csproj",

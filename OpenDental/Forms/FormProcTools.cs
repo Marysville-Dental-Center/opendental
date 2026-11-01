@@ -23,6 +23,7 @@ namespace OpenDental{
 			InitializeComponent();
 			InitializeLayoutManager();
 			Lan.F(this);
+			AddOtherCodesButton();//Canada only (25.4), FormProcTools.OtherCodes.cs.
 		}
 
 		private void FormProcTools_Load(object sender,EventArgs e) {

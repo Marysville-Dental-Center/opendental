@@ -313,6 +313,10 @@ namespace OpenDental{
 				MsgBox.Show(this,"Code not allowed to be blank.");
 				return false;
 			}
+			if(!ProcedureCodes.IsProcCodeTextAllowed(textNewCode.Text)) {//26.1: no commas or hyphens, which separate codes in code lists.
+				MessageBox.Show(this,ProcedureCodes.GetProcCodeTextError(textNewCode.Text));
+				return false;
+			}
 			if(ProcedureCodes.IsValidCode(textNewCode.Text)){
 				MsgBox.Show(this,"That code already exists.");
 				return false;
