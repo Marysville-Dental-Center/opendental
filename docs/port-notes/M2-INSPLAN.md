@@ -139,3 +139,10 @@ On `port/m2-insplan-t1` (2026-11-01):
 - One full build of `OpenDental.Local.slnf` through the build lane (Debug, x86): 0 errors.
 - `run-tests.ps1 -Mode Core` (`test-results/port_m2-insplan-t1.txt`): 70 assemblies, 3,704 tests, 3,704 passed, 0 failed. Among them M2INSPLANTests 31/31, M2TERMTests 21/21, M2HISTTests 43/43, M2INSVTests 17/17, M2CLAIMRCVTests 50/50, VBRIDGE1Tests 37/37, VendorDirectTests 873/873, NoHqTests 49/49. No migration, schema, CRUD or adoption code changed, so the slow assemblies were not added.
 - `tools/Test-NoHqHosts.ps1`: passed.
+
+## Integration (branch `port/int-14`)
+
+- Merged onto `port/int-13` (bb150f537) with `git merge --no-ff`. Since `port/int-11` the integration branch gained M2-SDV, M2-RECUR, M2-EMP, M2-NOTES, V-GP and V-BRIDGE2. None of them touches `FormInsPlan`, `PatPlans`, `EtransL.DropPlan`, `ExclusionRule` or another `PatPlans.Delete` caller, so the merge had no conflicts and there is no interplay to connect and no duplicate helper.
+- `OpenDental.sln` and `OpenDental.Local.slnf`: the merge driver kept `port/int-13`'s order (VGPTests, VBRIDGE2Tests last) and added only the M2INSPLANTests project and its twelve configuration lines; every project GUID is unique.
+- Still no fork migration step, schema, preference, CRUD or adoption change, so the M1-Z adoption tools need nothing.
+- On the merged head: one full build through the build lane (0 errors), `run-tests -Mode Full` (80 assemblies, 4,205 tests, none failed; the 2 not passed are M201Tests' published-document checks, inconclusive without `M201_OD_DOCS_DIR` as on earlier heads) and `tools/Test-NoHqHosts.ps1` (passed). M2INSPLANTests 31 of 31, M2TERMTests 21, M2HISTTests 43, M2CLAIMRCVTests 50, VBRIDGE1Tests 37, VBRIDGE2Tests 64, VendorDirectTests 873, AdoptionValidation.Tests 59, ForkMigrationTests 38, SyntheticData.Tests 54.
