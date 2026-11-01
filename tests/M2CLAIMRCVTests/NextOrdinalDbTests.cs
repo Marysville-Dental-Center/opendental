@@ -126,6 +126,36 @@ namespace M2CLAIMRCVTests {
 		}
 
 		[TestMethod]
+		public void SecondaryPlanDropped_SecondaryClaimFirstThenTheTertiary() {
+			Family family=Family.Dental(3);
+			Claim claimPrimary=family.AddClaim(1,"P","R",ClaimProcStatus.Received,0);
+			Claim claimSecondary=family.AddClaim(2,"S","H",ClaimProcStatus.NotReceived,0);
+			Claim claimTertiary=family.AddClaim(3,"Other","H",ClaimProcStatus.NotReceived,0);
+			//The secondary plan is dropped while its claim is outstanding: the tertiary plan moves to ordinal 2, the dropped secondary claim's fallback.
+			PatPlan patPlanSecondary=PatPlans.Refresh(family.Patient.PatNum).Find(x => x.InsSubNum==family.ListInsSubs[1].InsSubNum);
+			PatPlans.Delete(patPlanSecondary.PatPlanNum);
+			Assert.AreEqual(2,PatPlans.Refresh(family.Patient.PatNum).Find(x => x.InsSubNum==family.ListInsSubs[2].InsSubNum).Ordinal,
+				"The tertiary plan is ordinal 2 now.");
+			CollectionAssert.AreEqual(new List<long> { claimSecondary.ClaimNum },
+				Nums(Claims.GetPrimaryOrSecondaryClaimsNotReceived(ClaimProcs.RefreshForClaim(claimPrimary.ClaimNum))),
+				"Only the secondary claim is offered; the tertiary claim waits for it.");
+			//The secondary claim is received.
+			Claim claimSecondaryOld=Claims.GetClaim(claimSecondary.ClaimNum);
+			Claim claimSecondaryReceived=claimSecondaryOld.Copy();
+			claimSecondaryReceived.ClaimStatus="R";
+			Claims.Update(claimSecondaryReceived,claimSecondaryOld);
+			List<ClaimProc> listClaimProcsSecondary=ClaimProcs.RefreshForClaim(claimSecondary.ClaimNum);
+			for(int i=0;i<listClaimProcsSecondary.Count;i++) {
+				ClaimProc claimProcOld=listClaimProcsSecondary[i].Copy();
+				listClaimProcsSecondary[i].Status=ClaimProcStatus.Received;
+				ClaimProcs.Update(listClaimProcsSecondary[i],claimProcOld);
+			}
+			CollectionAssert.AreEqual(new List<long> { claimTertiary.ClaimNum },
+				Nums(Claims.GetPrimaryOrSecondaryClaimsNotReceived(ClaimProcs.RefreshForClaim(claimSecondary.ClaimNum))),
+				"Receiving the dropped plan's secondary claim offers the tertiary claim.");
+		}
+
+		[TestMethod]
 		public void FifthInsurance_AfterTheFourth() {
 			Family family=Family.Dental(5);
 			for(int ordinal=1;ordinal<=3;ordinal++) {

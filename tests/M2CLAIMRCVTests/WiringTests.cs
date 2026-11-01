@@ -97,6 +97,27 @@ namespace M2CLAIMRCVTests {
 		}
 
 		[TestMethod]
+		public void EraAutoProcessedReport_ProcessesTheNextInsurance() {
+			//The ERA report's claim menu item checks for claims of the next insurance (any ordinal) the way the prompt finds them, not only for
+			//secondary claims (type S), so a received secondary claim reaches the prompt for its tertiary claim.
+			string source=Read(Path.Combine("OpenDental","Forms","FormRpEraAutoProcessed.cs"));
+			string item=Between(source,"private void MenuItemProcessSecondaryClaims_Click(","private void gridClaims_CellDoubleClick(");
+			AssertBefore(item,"Claims.GetNextOrdinalClaimsNotReceived(listClaimProcsForClaim,includeHoldForInProcess:true).Count==0",
+				"ClaimL.PromptForPrimaryOrSecondaryClaim(listClaimProcsForClaim);");
+			AssertBefore(item,"hx835_ShortClaim.ClaimStatus!=\"R\"","ClaimL.PromptForPrimaryOrSecondaryClaim(listClaimProcsForClaim);");
+			Assert.IsFalse(item.Contains("x.ClaimType==\"S\""),"No longer only secondary claims.");
+			StringAssert.Contains(source,"Lan.g(this,\"Process Unsent Claims of the Next Insurance\")");
+		}
+
+		[TestMethod]
+		public void PrefInfos_MatchTheClaimReceiveLabels() {
+			//The Preferences window's registry carries each control's text; the two relabelled check boxes keep it in step with the designer.
+			string prefInfos=Read(Path.Combine("OpenDental","Resources","PrefInfos.xml")).Replace("\r\n","\n");
+			StringAssert.Contains(prefInfos,"<ControlName>checkPromptForSecondaryClaim</ControlName>\n    <ControlText>Prompt for claims of the next insurance</ControlText>");
+			StringAssert.Contains(prefInfos,"<ControlName>checkClaimPrimaryRecievedForceSecondaryStatus</ControlName>\n    <ControlText>Remove 'Do Nothing' from the next insurance claims prompt</ControlText>");
+		}
+
+		[TestMethod]
 		public void ClaimReceivePreferences_26_1Labels() {
 			string designer=Read(Path.Combine("OpenDental","User Controls","Preferences","UserControlAccountClaimReceive.Designer.cs"));
 			StringAssert.Contains(designer,"this.checkPromptForSecondaryClaim.Text = \"Prompt for claims of the next insurance\";");

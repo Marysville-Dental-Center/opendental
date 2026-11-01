@@ -240,6 +240,48 @@ namespace M2CLAIMRCVTests {
 		}
 
 		[TestMethod]
+		public void DroppedSecondary_SecondaryFirst_ThenTheTertiary() {
+			//PatPlans.Delete on the secondary plan: the primary plan stays ordinal 1 and the tertiary plan moves to ordinal 2, the ordinal the dropped
+			//secondary claim falls back to. The secondary claim still comes first, alone, and the tertiary claim follows it.
+			Rows rows=new Rows(2);
+			Claim claimPrimary=rows.AddClaim(1,"P","R",ClaimProcStatus.Received,PROC_A);
+			Claim claimSecondaryDropped=rows.AddClaimForSub(78,"S","H",ClaimProcStatus.NotReceived,PAT_NUM,PROC_A);
+			Claim claimTertiary=rows.AddClaim(2,"Other","H",ClaimProcStatus.NotReceived,PROC_A);
+			AssertClaims(rows.Select(claimPrimary),"Only the secondary claim; the tertiary claim does not come with it.",claimSecondaryDropped);
+			claimSecondaryDropped.ClaimStatus="R";
+			rows.ForClaim(claimSecondaryDropped).ForEach(x => x.Status=ClaimProcStatus.Received);
+			AssertClaims(rows.Select(claimSecondaryDropped),"The dropped secondary claim's next insurance is the tertiary plan (ordinal 2 now).",claimTertiary);
+			AssertClaims(rows.Select(claimPrimary),"Secondary received: the tertiary claim is next after the primary claim too.",claimTertiary);
+		}
+
+		[TestMethod]
+		public void BothPlansDropped_SecondaryStillComesFirst() {
+			//Primary and secondary plans dropped: the tertiary plan is ordinal 1 now. The claim types still say the secondary claim is next.
+			Rows rows=new Rows(1);
+			Claim claimPrimaryDropped=rows.AddClaimForSub(77,"P","R",ClaimProcStatus.Received,PAT_NUM,PROC_A);
+			Claim claimSecondaryDropped=rows.AddClaimForSub(78,"S","H",ClaimProcStatus.NotReceived,PAT_NUM,PROC_A);
+			Claim claimTertiary=rows.AddClaim(1,"Other","H",ClaimProcStatus.NotReceived,PROC_A);
+			AssertClaims(rows.Select(claimPrimaryDropped),"The secondary claim, not the tertiary claim.",claimSecondaryDropped);
+			claimSecondaryDropped.ClaimStatus="R";
+			rows.ForClaim(claimSecondaryDropped).ForEach(x => x.Status=ClaimProcStatus.Received);
+			AssertClaims(rows.Select(claimPrimaryDropped),"Then the tertiary claim.",claimTertiary);
+		}
+
+		[TestMethod]
+		public void LivePlans_TheOrdinalsDecide() {
+			//Every plan is on the patient and the secondary claim's plan is later than another plan with a claim for the procedure (for example a
+			//medical plan first, then the dental primary and secondary): the next ordinal comes first.
+			Rows rows=new Rows(3);
+			Claim claimFirst=rows.AddClaim(1,"P","R",ClaimProcStatus.Received,PROC_A);
+			Claim claimDentalPrimary=rows.AddClaim(2,"P","H",ClaimProcStatus.NotReceived,PROC_A);
+			Claim claimDentalSecondary=rows.AddClaim(3,"S","H",ClaimProcStatus.NotReceived,PROC_A);
+			AssertClaims(rows.Select(claimFirst),"Ordinal 2 is next.",claimDentalPrimary);
+			claimDentalPrimary.ClaimStatus="R";
+			rows.ForClaim(claimDentalPrimary).ForEach(x => x.Status=ClaimProcStatus.Received);
+			AssertClaims(rows.Select(claimDentalPrimary),"Then ordinal 3.",claimDentalSecondary);
+		}
+
+		[TestMethod]
 		public void ReorderedPlans_SecondaryStillFollowsThePrimary() {
 			//The plans were swapped after the claims were made: the primary claim's plan is ordinal 2 now, the secondary claim's plan ordinal 1.
 			Rows rows=new Rows(3);
@@ -288,6 +330,34 @@ namespace M2CLAIMRCVTests {
 			Assert.AreEqual(0,Claims.GetClaimOrdinal(null,listPatPlans));
 			Assert.AreEqual(1,Claims.GetClaimOrdinal(new Claim { PatNum=PAT_NUM+1,InsSubNum=23,ClaimType="P" },listPatPlans),
 				"Another patient's patplan on the same subscriber is not this claim's insurance.");
+		}
+
+		[TestMethod]
+		public void GetClaimPlace_DroppedPlansGoJustBeforeTheirOrdinal() {
+			List<PatPlan> listPatPlans=new List<PatPlan> {
+				new PatPlan { PatNum=PAT_NUM,InsSubNum=21,Ordinal=1 },
+				new PatPlan { PatNum=PAT_NUM,InsSubNum=22,Ordinal=2 },
+				new PatPlan { PatNum=PAT_NUM,InsSubNum=23,Ordinal=3 },
+			};
+			Assert.AreEqual(4,Claims.GetClaimPlace(new Claim { PatNum=PAT_NUM,InsSubNum=21,ClaimType="S" },listPatPlans),"The patplan decides.");
+			Assert.AreEqual(12,Claims.GetClaimPlace(new Claim { PatNum=PAT_NUM,InsSubNum=23,ClaimType="Other" },listPatPlans));
+			Assert.AreEqual(2,Claims.GetClaimPlace(new Claim { PatNum=PAT_NUM,InsSubNum=99,ClaimType="P" },listPatPlans),
+				"A dropped primary plan: before today's ordinal 1.");
+			Assert.AreEqual(6,Claims.GetClaimPlace(new Claim { PatNum=PAT_NUM,InsSubNum=99,ClaimType="S" },listPatPlans),
+				"A dropped secondary plan: after today's ordinal 1, before today's ordinal 2.");
+			Assert.AreEqual(0,Claims.GetClaimPlace(new Claim { PatNum=PAT_NUM,InsSubNum=99,ClaimType="Other" },listPatPlans),"Unknown.");
+			Assert.AreEqual(0,Claims.GetClaimPlace(null,listPatPlans));
+			Assert.AreEqual(2,Claims.GetClaimPlace(new Claim { PatNum=PAT_NUM,InsSubNum=21,ClaimType="P" },null),"No patplans loaded: the plan counts as dropped.");
+		}
+
+		[TestMethod]
+		public void IsSecondaryAfterPrimary_OnlyThatPair() {
+			Assert.IsTrue(Claims.IsSecondaryAfterPrimary(new Claim { ClaimType="P" },new Claim { ClaimType="S" }));
+			Assert.IsFalse(Claims.IsSecondaryAfterPrimary(new Claim { ClaimType="S" },new Claim { ClaimType="P" }));
+			Assert.IsFalse(Claims.IsSecondaryAfterPrimary(new Claim { ClaimType="S" },new Claim { ClaimType="Other" }));
+			Assert.IsFalse(Claims.IsSecondaryAfterPrimary(new Claim { ClaimType="P" },new Claim { ClaimType="Other" }));
+			Assert.IsFalse(Claims.IsSecondaryAfterPrimary(null,new Claim { ClaimType="S" }));
+			Assert.IsFalse(Claims.IsSecondaryAfterPrimary(new Claim { ClaimType="P" },null));
 		}
 
 		[TestMethod]
