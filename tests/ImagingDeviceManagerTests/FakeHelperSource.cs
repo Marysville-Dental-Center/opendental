@@ -160,6 +160,10 @@ namespace ImagingDeviceManager.Tests {
 		///<summary>Not contract behaviour: the TW_INFO.ReturnCode DAT_EXTIMAGEINFO gives TWEI_TWAINDIRECTMETADATA (TWRC_INFONOTSUPPORTED or
 		///TWRC_DATANOTAVAILABLE for a source without it for this image). TWRC_SUCCESS: the metadata.</summary>
 		public ushort MetadataReturnCode=Tw.TWRC_SUCCESS;
+		///<summary>Not contract behaviour (each enable delivers its images with one notification): an exposure the helper is still reading out
+		///when MSG_ENDXFER reports none left. The helper keeps running, so a safe disable is then refused with CodeDisableClosing, and the image
+		///is offered with MSG_XFERREADY when the helper ends. Used once.</summary>
+		public FakePage LateExposure;
 		#endregion Script and installation settings
 
 		#region Observations
@@ -221,6 +225,8 @@ namespace ImagingDeviceManager.Tests {
 		private readonly List<FakePage> _listRedeliverable=new List<FakePage>();
 		private readonly Dictionary<FakePage,string> _dictCaptureIds=new Dictionary<FakePage,string>();
 		private readonly Dictionary<FakePage,int> _dictSequences=new Dictionary<FakePage,int>();
+		///<summary>LateExposure while the helper reads it out; offered when the helper ends.</summary>
+		private FakePage _pageLate;
 
 		public FakeHelperSource() {
 		}
@@ -340,6 +346,10 @@ namespace ImagingDeviceManager.Tests {
 		///otherwise MSG_CLOSEDSREQ, which alone carries endReason (section 8: a custom code after a MSG_CLOSEDSREQ that had a reason,
 		///otherwise TWCC_SUCCESS).</summary>
 		private void EndSession(ushort endReason) {
+			if(_pageLate!=null) {
+				_listUndelivered.Add(_pageLate);
+				_pageLate=null;
+			}
 			_isRunning=false;
 			_exposureDueMs=-1;
 			_endDueMs=-1;
@@ -372,6 +382,7 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		private void FinishDisable() {
+			_pageLate=null;
 			_isRunning=false;
 			_isContinuous=false;
 			_isRedeliverySession=false;
@@ -949,6 +960,12 @@ namespace ImagingDeviceManager.Tests {
 					_colCursor=0;
 					count=(short)_listUndelivered.Count;
 					State=count>0 ? 6 : 5;//With 0 left it waits in state 5 for MSG_DISABLEDS; it never starts another session.
+					if(count==0 && LateExposure!=null && !_isContinuous && !_isRedeliverySession) {
+						_pageLate=LateExposure;
+						LateExposure=null;
+						_dictCaptureIds[_pageLate]=_pageLate.CaptureId??("fake-"+CountEnable+"-late");
+						_isRunning=true;//Still reading out the late exposure.
+					}
 					if(count==0 && _isContinuous && SpuriousXferReadyAfterEachImage) {
 						_isSpuriousPending=true;
 						_dsm.WakeHostNow();

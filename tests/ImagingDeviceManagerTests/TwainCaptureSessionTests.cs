@@ -193,6 +193,25 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		[TestMethod]
+		public void PerSlot_ImageOfferedAfterTheRefusedDisableAfterCountZero_FlaggedExtra() {
+			ConfigureSafeDisable();
+			Helper.LateExposure=SessionHarness.Exposure(9);//Read out while the disable after Count=0 is refused, then offered.
+			_harness.OpenOrFail();
+			TwainCaptureEnded ended=_harness.WaitForEnded(EnableOne());
+			Assert.AreEqual(TwainCaptureEndReason.Completed,ended.Reason,ended.ErrorText);
+			Assert.IsTrue(ended.WasDisableRefused,_harness.LogText);
+			Assert.AreEqual(2,ended.ImageCount);
+			Assert.AreEqual(1,ended.ExtraImageCount);
+			Assert.AreEqual(0,ended.DrainedImageCount,"Drained is for the images of a stop the session started.");
+			CollectionAssert.AreEqual(new[] { AcquiredImageKind.Normal,AcquiredImageKind.Extra },_harness.Images.Select(x => x.Kind).ToList(),
+				"The slot already has its image: the second goes to the quarantine with a notice, not into the slot (design 7.12).");
+			Assert.IsTrue(_harness.Images.All(x => x.StopReason==TwainCaptureStopReason.None));
+			Assert.IsTrue(_harness.HasLog("after the disable was refused"),_harness.LogText);
+			Assert.AreEqual(2,Helper.CountDelivered,"Nothing lost.");
+			_harness.AssertDisabledOnlyInState5();
+		}
+
+		[TestMethod]
 		public void Bits16_Gray16Raised_Then8BitEnable_SetsBitDepth8BeforeEnable() {
 			Helper.ListExposures.Clear();
 			FakePage page=TwainCapturePathTests.ExposureWith16(6,4);

@@ -1001,6 +1001,14 @@ namespace ImagingDeviceManager.Capture {
 			}
 			EnableContext context=_enable??new EnableContext(new Command { Kind=CommandKind.Enable,EnableId=0 });
 			TwainCaptureStopReason reason=_stopReasonCurrent!=TwainCaptureStopReason.None ? _stopReasonCurrent : context.StopReason;
+			if(reason==TwainCaptureStopReason.None && !context.IsContinuous && !context.IsRedelivery && context.CountNormal>=1) {
+				//No stop of the session's: the disable after Count=0 (or after MSG_CLOSEDSREQ) was refused and the source then offered more. The
+				//one image CAP_XFERCOUNT=1 asked for has arrived, so this is an extra image (design 7.12), not one for the enable's target.
+				Log("Warning: \""+_session.SourceName+"\" sent more images than the one asked for (CAP_XFERCOUNT=1) after the disable was refused;"
+					+" this one is an extra image.");
+				Deliver(context,drained.Acquired,AcquiredImageKind.Extra,reason);
+				return;
+			}
 			Deliver(context,drained.Acquired,AcquiredImageKind.Drained,reason);
 		}
 
