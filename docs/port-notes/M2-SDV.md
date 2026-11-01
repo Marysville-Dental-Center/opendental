@@ -133,3 +133,11 @@ Checks on `port/m2-sdv-t3` (after the merge with `port/int-9`, head 8d077f202): 
 5. The per-user settings use `UserOdFkeyType.AcctProcBreakdown` with Fkey 1 and 2. Acceptable, or should the registry owner add fork-only `UserOdFkeyType` values (and their tests)?
 6. Should the Billing default also be kept per clinic, like the other Billing Options defaults?
 7. Electronic statements stay in the regular layout. Acceptable?
+
+## Integration (branch `port/int-12`)
+
+- Merged onto `port/int-11` first of the three (then M2-RECUR and M2-EMP), with no conflicts and no integration commit. Since `port/int-9` the integration branch gained M2-AUDIT, M2-MISC, M2-CARRIER and M2-HIST; none of them changed this package's files. The shared files merged on their own: `OpenDentBusiness.csproj`, `OpenDental.csproj`, `OpenDental.sln` and `OpenDental.Local.slnf` keep every package's entries, with no duplicate project GUIDs or `Compile` items.
+- **M2-MISC** (printer rules): the Service Date View window prints through `PrinterL.TryPrintOrDebugRpPreview` and statements through the sheet printing they already used, so both pick their printer with M2-MISC's `PrintSituationRules` as every other printout does; nothing to connect. Its automation hook for the ProcedureComplete trigger does not touch the service-date grid.
+- **M2-RECUR** (merged right after): a declined recurring charge still posts its $0 payment as before, and the view shows it like any other payment. The two packages share no file. **M2-EMP, M2-AUDIT, M2-CARRIER, M2-HIST**: nothing in common.
+- No duplicate helpers: the scratch-database helper `TestDb` stays per test project, as the others do.
+- Still no fork migration step, so the adoption tools need nothing from this package. On the merged head (`port/int-12`, after all three merges): one full build of `OpenDental.Local.slnf` through the build lane (0 errors), `run-tests -Mode Full` (76 assemblies, 3980 tests, none failed; the 2 not passed are M201Tests' published-document checks, inconclusive without `M201_OD_DOCS_DIR`; `test-results/port_int-12.txt`) and `tools/Test-NoHqHosts.ps1` (passed). `M2SDVTests` 47 of 47, `StatementTests` 8, `ReportTests` 31, `SheetTests` 31, `M2SHEETSTests` 53, `M2CLAIMRCVTests` 50, `BPRINTTests` 71, `M2DUNTests` 35, `M2MISCTests` 78.

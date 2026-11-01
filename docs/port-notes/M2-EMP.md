@@ -116,3 +116,10 @@ Checks (2026-11-01): `M2EMPTests` (35) targeted; the full build through the lane
 3. Should every clock-event edit be logged with old and new times (the spec assumed it already was), or only future clock-outs as now?
 4. Should the Employees list search box also match titles?
 5. Printed time card with clinics: should the Clinic column also give room, so a long later-day date always prints in full, or is the time alone acceptable there?
+
+## Integration (branch `port/int-12`)
+
+- Merged onto `port/int-11` last of the three (after M2-SDV and M2-RECUR), with no conflicts and no integration commit. Since `port/int-9` the integration branch gained M2-AUDIT, M2-MISC, M2-CARRIER, M2-HIST, M2-SDV and M2-RECUR; none of them changed `ClockEvents`, `Employees`, `FormClockEventEdit`, `FormEmployeeEdit`, `FormEmployeeSelect`, `FormTimeCard`, `ControlManage` or `DatabaseMaintenances`, so the `whereBreak` condition in `ClockEventInFuture` and the `HasFutureClockOut` hook in `SelectEmpI` stay as they are. Project and solution files keep every package's entries.
+- **M2-MISC** (printer rules): the printed time card goes through `PrinterL.TryPrintOrDebugClassicPreview` as before, so it picks its printer with M2-MISC's rules like every other printout; the column widths and print texts of fix round s1 are unchanged. **M2-AUDIT**: this package's security log entry for a future clock-out is a `TimecardsEditAll` entry, apart from the birthdate's `PatientEdit` entries. **M2-SDV, M2-RECUR, M2-CARRIER, M2-HIST**: nothing in common.
+- No duplicate helpers: the scratch-database helper `ScratchDb` stays per test project.
+- Still no fork migration step and no schema or row change, so the adoption tools need nothing from this package. On the merged head (`port/int-12`): one full build through the build lane (0 errors), `run-tests -Mode Full` (76 assemblies, 3980 tests, none failed; the 2 not passed are M201Tests' published-document checks; `test-results/port_int-12.txt`) and `tools/Test-NoHqHosts.ps1` (passed). `M2EMPTests` 35 of 35, `BTIMETests` 28, `BDBMTests` 30, `M202Tests` 39.
