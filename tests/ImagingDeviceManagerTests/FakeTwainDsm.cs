@@ -27,6 +27,13 @@ namespace ImagingDeviceManager.Tests {
 		public ushort FailCondition;
 		///<summary>The transfer of this page returns TWRC_CANCEL.</summary>
 		public bool IsCancelled;
+		///<summary>The contract 1.1 profile: the image's 16-bit original (CreateGray16), delivered instead of this 8-bit page when ICAP_BITDEPTH
+		///is 16 (section 6.2). Null: the image has no 16-bit original and is delivered as 8-bit even then.</summary>
+		public FakePage Original16;
+		///<summary>The contract 1.1 profile: the TWEI_TWAINDIRECTMETADATA text of the image. Null: the profile writes capture-metadata/1 JSON.</summary>
+		public string MetadataJson;
+		///<summary>The contract 1.1 profile: the captureId of the image. Null: one is made up when the image is taken.</summary>
+		public string CaptureId;
 
 		///<summary>24 bit color page. colorAt(x,y) gives each pixel; y counts from the top.</summary>
 		public static FakePage CreateRgb(int width,int height,double dpi,Func<int,int,Color> colorAt) {
@@ -150,6 +157,7 @@ namespace ImagingDeviceManager.Tests {
 					case Tw.DAT_IMAGEINFO: return "IMAGEINFO";
 					case Tw.DAT_IMAGENATIVEXFER: return "NATIVEXFER";
 					case Tw.DAT_IMAGEMEMXFER: return "MEMXFER";
+					case Tw.DAT_EXTIMAGEINFO: return "EXTIMAGEINFO";
 					case Tw.DAT_SETUPMEMXFER: return "SETUPMEMXFER";
 					case Tw.DAT_USERINTERFACE: return Msg==Tw.MSG_ENABLEDS ? "ENABLEDS" : (Msg==Tw.MSG_DISABLEDS ? "DISABLEDS" : "USERINTERFACE");
 					case Tw.DAT_PENDINGXFERS: return Msg==Tw.MSG_ENDXFER ? "ENDXFER" : (Msg==Tw.MSG_RESET ? "RESET" : "PENDINGXFERS/GET");

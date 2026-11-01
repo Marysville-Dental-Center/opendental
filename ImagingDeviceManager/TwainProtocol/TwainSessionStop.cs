@@ -39,6 +39,11 @@ namespace ImagingDeviceManager.TwainProtocol {
 		public int DrainedImageCount { get; private set; }
 		///<summary>True while the session waits for the source after a refused MSG_DISABLEDS.</summary>
 		public bool IsWaitingForSource { get; private set; }
+		///<summary>Refused MSG_DISABLEDS that started a wait, since ResetCaptureStopFlags (the capture path).</summary>
+		internal int CountRefusedDisables { get; private set; }
+		///<summary>Since ResetCaptureStopFlags: a wait after a refused disable ended without a notification and the second consecutive
+		///MSG_DISABLEDS was sent (design 7.13).</summary>
+		internal bool WasRefusedDisableUnanswered { get; private set; }
 		///<summary>True when, since the last Acquire started, the source may still hold images of this series that the library did not
 		///receive: a wait after a refused disable ended without a notification and the second consecutive MSG_DISABLEDS was sent, or, on
 		///the by-name path with a sink, a pending image could not be transferred or was discarded with MSG_RESET.</summary>
@@ -245,6 +250,10 @@ namespace ImagingDeviceManager.TwainProtocol {
 							_stopReason=stopReason;
 							return Tw.MSG_NULL;
 						}
+						if(IsInterruptRequested()) {
+							IsLoopInterrupted=true;//The capture worker has a command; nothing is stopped here.
+							return Tw.MSG_NULL;
+						}
 					}
 					if(hwndMsg==hwndProxy && (message==WM_APP_CANCEL || (message==NativeMethods.WM_TIMER && wParam==(IntPtr)TimerIdTick))) {
 						continue;//The library's own wake-up: not for the source.
@@ -408,10 +417,11 @@ namespace ImagingDeviceManager.TwainProtocol {
 						break;
 					}
 					count++;
-					DibImage dib;
-					TransferOutcome outcome=TransferOne(out dib);
+					DibImage dib=null;
+					Capture.AcquiredImage acquired=null;
+					TransferOutcome outcome=IsCaptureMode ? TransferCaptureImage(out acquired) : TransferOne(out dib);
 					if(outcome==TransferOutcome.Done) {
-						DeliverToSink(dib,drainReason,stopReason);
+						DeliverToSink(dib,acquired,drainReason,stopReason);
 					}
 					else {
 						Log("A pending image from \""+SourceName+"\" could not be transferred ("+drainReason+"): "+ErrorText+" The source may still"
@@ -444,13 +454,14 @@ namespace ImagingDeviceManager.TwainProtocol {
 			}
 		}
 
-		private void DeliverToSink(DibImage dib,TwainDrainReason drainReason,TwainStopReason stopReason) {
+		private void DeliverToSink(DibImage dib,Capture.AcquiredImage acquired,TwainDrainReason drainReason,TwainStopReason stopReason) {
 			DrainedImageCount++;
 			Log("An image from \""+SourceName+"\" went to the drain sink ("+drainReason
 				+(stopReason==TwainStopReason.None ? "" : ", stop: "+stopReason)+").");
 			try {
 				DrainSink.ImageDrained(new TwainDrainedImage {
 					Image=dib,
+					Acquired=acquired,
 					Reason=drainReason,
 					StopReason=stopReason,
 					SourceName=SourceName,
@@ -523,6 +534,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 		///  source for redelivery; the log and the sink hear that the source may still hold images.
 		///Without a sink, offered images are discarded with MSG_RESET (they stay undelivered in the source).</summary>
 		private void WaitAfterRefusedDisable(TwainStopReason reason,TwainCaptureSettings settings) {
+			CountRefusedDisables++;
 			long startMs=NowMs;
 			long deadlineMs=startMs+(long)Math.Max(0,settings.RefusedDisableWait.TotalMilliseconds);
 			SetWaitingForSource(true);
@@ -559,6 +571,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 					Log("\""+SourceName+"\" refused MSG_DISABLEDS again (condition code "+ToHex(LastConditionCode)+"); still waiting.");
 				}
 				bool isDisabled=State==5 && SendDisable();
+				WasRefusedDisableUnanswered=true;
 				Log("No notification from \""+SourceName+"\" within "+GetWaitSeconds(settings)+" s after the refused disable. The second"
 					+" consecutive MSG_DISABLEDS "+(isDisabled ? "succeeded" : "failed (condition code "+ToHex(LastConditionCode)
 					+"); the source is treated as disabled")+". The source may still hold images of this series.");

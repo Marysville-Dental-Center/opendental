@@ -95,7 +95,10 @@ namespace ImagingDeviceManager.TwainProtocol {
 
 	///<summary>An image the session transferred after the caller could no longer take it.</summary>
 	internal sealed class TwainDrainedImage {
+		///<summary>The image, on the scan and Mount/Acquire paths. Null on the capture path.</summary>
 		public DibImage Image;
+		///<summary>The image, on the capture path (TwainSession.IsCaptureMode). Null otherwise.</summary>
+		public Capture.AcquiredImage Acquired;
 		public TwainDrainReason Reason;
 		public TwainStopReason StopReason;
 		public string SourceName;

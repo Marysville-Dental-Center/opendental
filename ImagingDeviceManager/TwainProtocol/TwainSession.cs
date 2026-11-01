@@ -1317,6 +1317,23 @@ namespace ImagingDeviceManager.TwainProtocol {
 			}
 			DibBuilder dibBuilder=new DibBuilder(imageInfo.ImageWidth,imageInfo.ImageLength,imageInfo.BitsPerPixel,imageInfo.PixelType,
 				palette,_isVanilla,imageInfo.XResolution.ToDouble(),imageInfo.YResolution.ToDouble());
+			TransferOutcome outcome=TransferMemoryStrips(dibBuilder.AddStrip);
+			if(outcome!=TransferOutcome.Done) {
+				return outcome;
+			}
+			try {
+				dib=dibBuilder.Build();
+			}
+			catch(ImagingDeviceException ex) {
+				SetError(ex.ErrorCode,ex.Message);
+				return TransferOutcome.Failed;
+			}
+			return TransferOutcome.Done;
+		}
+
+		///<summary>The DAT_IMAGEMEMXFER calls of one image, from state 6: one buffer of the size the source prefers (GetMemoryBufferSize), each
+		///strip handed to addStrip with the buffer and its size, until TWRC_XFERDONE (state 7). On failure the error is set.</summary>
+		private TransferOutcome TransferMemoryStrips(Action<IntPtr,int,TW_IMAGEMEMXFER> addStrip) {
 			int bufferSize=GetMemoryBufferSize();
 			IntPtr pBuffer=Marshal.AllocHGlobal(bufferSize);
 			IntPtr pXfer=Marshal.AllocHGlobal(Marshal.SizeOf(typeof(TW_IMAGEMEMXFER)));
@@ -1338,7 +1355,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 					if(rc==Tw.TWRC_SUCCESS || rc==Tw.TWRC_XFERDONE) {
 						State=7;
 						xfer=(TW_IMAGEMEMXFER)Marshal.PtrToStructure(pXfer,typeof(TW_IMAGEMEMXFER));
-						dibBuilder.AddStrip(pBuffer,bufferSize,xfer);
+						addStrip(pBuffer,bufferSize,xfer);
 						if(rc==Tw.TWRC_XFERDONE) {
 							break;
 						}
@@ -1349,13 +1366,6 @@ namespace ImagingDeviceManager.TwainProtocol {
 						return TransferOutcome.Cancelled;
 					}
 					SetErrorFromCondition(EZTwainErrorCode.EZTEC_XFER_FAILURE,"The image transfer from the scanner failed.");
-					return TransferOutcome.Failed;
-				}
-				try {
-					dib=dibBuilder.Build();
-				}
-				catch(ImagingDeviceException ex) {
-					SetError(ex.ErrorCode,ex.Message);
 					return TransferOutcome.Failed;
 				}
 				return TransferOutcome.Done;

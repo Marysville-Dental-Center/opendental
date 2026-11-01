@@ -19,6 +19,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 		private void ResetCaptureState() {
 			_dictQuerySupport.Clear();
 			_dictQuerySupportCondition.Clear();
+			ResetCaptureTransferState();
 		}
 
 		///<summary>A DAT_CAPABILITY message that returns a container (MSG_GET, MSG_GETCURRENT, MSG_GETDEFAULT), with every item read. False

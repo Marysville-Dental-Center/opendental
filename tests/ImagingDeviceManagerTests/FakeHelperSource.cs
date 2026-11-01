@@ -51,6 +51,9 @@ namespace ImagingDeviceManager.Tests {
 		public const ushort CodeSoftwareFailed=0x8005;
 		public const ushort CodeDisableImagesPending=0x8006;
 		public const ushort CodeDisableClosing=0x8007;
+		public const ushort CodeNothingToRedeliver=0x8008;
+		///<summary>Reserved in the contract (section 10.1) for continuous mode; implemented here only with SupportsContinuous.</summary>
+		public const ushort CapContinuous=0x8001;
 		#endregion Numbers from the published contract (data)
 
 		#region Standard capability numbers not used by the library
@@ -131,6 +134,27 @@ namespace ImagingDeviceManager.Tests {
 		///<summary>Not contract 1.1 behaviour (CAP_DEVICEONLINE is always TRUE there, section 9; a presence check is planned, 11.3): the value
 		///CAP_DEVICEONLINE reports.</summary>
 		public bool DeviceOnline=true;
+		///<summary>Not contract behaviour (rows are unpadded there, section 6.1): extra bytes at the end of every memory transfer row, filled with
+		///0xEE so that a host that ignores BytesPerRow gets wrong pixels.</summary>
+		public int MemoryRowPadding;
+		///<summary>Not contract behaviour (whole rows there): memory transfer strips are tiles this many columns wide, with XOffset.</summary>
+		public int MemoryColumnsPerStrip;
+		///<summary>Not contract 1.1 behaviour: the planned continuous mode of section 11.3 under CapContinuous. The sensor stays armed; each
+		///exposure of ListExposures arrives ContinuousIntervalMs after the previous one with its own MSG_XFERREADY, MSG_ENDXFER returns 0 after
+		///each image, and the source stays enabled until MSG_DISABLEDS (or End).</summary>
+		public bool SupportsContinuous;
+		public int ContinuousIntervalMs=20;
+		///<summary>Not contract behaviour: in continuous mode, after each MSG_ENDXFER that returns 0, one MSG_XFERREADY arrives with nothing
+		///pending.</summary>
+		public bool SpuriousXferReadyAfterEachImage;
+		///<summary>The redelivery capability as W15 first planned it: it stays TRUE until MSG_CLOSEDS, so every enable after it is a
+		///redelivery. Contract 1.1 clears it with the enable that uses it (section 10.3).</summary>
+		public bool RedeliverKeptUntilClose;
+		///<summary>Not contract behaviour: a successful MSG_ENABLEDS returns TWRC_CHECKSTATUS (TWAIN: the source shows its UI although asked
+		///not to).</summary>
+		public bool EnableReturnsCheckStatus;
+		///<summary>Not contract behaviour: MSG_SET ICAP_XFERMECH TWSX_MEMORY fails with TWCC_BADVALUE, as for a source with native transfers only.</summary>
+		public bool RefusesMemoryTransfer;
 		#endregion Script and installation settings
 
 		#region Observations
@@ -148,6 +172,14 @@ namespace ImagingDeviceManager.Tests {
 		public int CountStatusText;
 		///<summary>MSG_SET calls on fixed capabilities (section 4), whatever their result. The capture session never sends one.</summary>
 		public int CountFixedCapSet;
+		///<summary>DAT_EXTIMAGEINFO calls the source answered.</summary>
+		public int CountExtImageInfo;
+		///<summary>Enables that were redeliveries (section 10.3).</summary>
+		public int CountRedeliveryEnables;
+		///<summary>The captureId of every delivered image, in order.</summary>
+		public readonly List<string> ListDeliveredCaptureIds=new List<string>();
+		///<summary>Undelivered images of the most recent session that a redelivery would offer (section 10.3).</summary>
+		public int CountRedeliverable => _listRedeliverable.Count;
 		///<summary>The TW_STATUS the last DAT_STATUSUTF8 was asked to translate.</summary>
 		public TW_STATUS LastStatusTranslated;
 		public bool IsHelperRunning => _isRunning;
@@ -174,6 +206,16 @@ namespace ImagingDeviceManager.Tests {
 		private long _endDueMs=-1;
 		private long _closeDueMs=-1;
 		private long _forcedEndDueMs=-1;
+		private int _colCursor;
+		private int _bandRows;
+		private bool _isContinuous;
+		private bool _isRedeliverySession;
+		private long _exposureDueMs=-1;
+		private readonly List<FakePage> _listContinuousQueue=new List<FakePage>();
+		///<summary>Undelivered images of the most recent capture session (section 10.3).</summary>
+		private readonly List<FakePage> _listRedeliverable=new List<FakePage>();
+		private readonly Dictionary<FakePage,string> _dictCaptureIds=new Dictionary<FakePage,string>();
+		private readonly Dictionary<FakePage,int> _dictSequences=new Dictionary<FakePage,int>();
 
 		public FakeHelperSource() {
 		}
@@ -199,6 +241,9 @@ namespace ImagingDeviceManager.Tests {
 			DictCaps[CapSafeDisable]=0;
 			DictCaps[CapRedeliver]=0;
 			DictCaps[CapNoActivate]=0;
+			if(SupportsContinuous) {
+				DictCaps[CapContinuous]=0;
+			}
 			_lastFailureCode=0;
 		}
 
@@ -229,6 +274,7 @@ namespace ImagingDeviceManager.Tests {
 					case Tw.DAT_IMAGEINFO: return ImageInfo(data);
 					case Tw.DAT_IMAGENATIVEXFER: return NativeXfer(data);
 					case Tw.DAT_IMAGEMEMXFER: return MemXfer(data);
+					case Tw.DAT_EXTIMAGEINFO: return ExtImageInfo(data);
 				}
 			}
 			return Fail(Tw.TWCC_BADPROTOCOL);
@@ -253,6 +299,16 @@ namespace ImagingDeviceManager.Tests {
 			if(_isRunning && _forcedEndDueMs>=0 && now>=_forcedEndDueMs) {
 				EndSession(0);
 			}
+			if(_isRunning && _isContinuous && _exposureDueMs>=0 && now>=_exposureDueMs && _listContinuousQueue.Count>0) {
+				//The next exposure of continuous mode: offered with its own MSG_XFERREADY when the source waits in state 5.
+				_listUndelivered.Add(_listContinuousQueue[0]);
+				_listContinuousQueue.RemoveAt(0);
+				_exposureDueMs=_listContinuousQueue.Count>0 ? now+ContinuousIntervalMs : -1;
+				if(State==5) {
+					_notificationPending=Tw.MSG_XFERREADY;
+					_dsm?.WakeHostNow();
+				}
+			}
 			Reschedule();
 		}
 
@@ -262,7 +318,7 @@ namespace ImagingDeviceManager.Tests {
 			}
 			long due=-1;
 			if(_isRunning) {
-				foreach(long dueMs in new[] { _endDueMs,_closeDueMs,_forcedEndDueMs }) {
+				foreach(long dueMs in new[] { _endDueMs,_closeDueMs,_forcedEndDueMs,_isContinuous ? _exposureDueMs : -1 }) {
 					if(dueMs>=0 && (due<0 || dueMs<due)) {
 						due=dueMs;
 					}
@@ -280,6 +336,7 @@ namespace ImagingDeviceManager.Tests {
 		///otherwise TWCC_SUCCESS).</summary>
 		private void EndSession(ushort endReason) {
 			_isRunning=false;
+			_exposureDueMs=-1;
 			_endDueMs=-1;
 			_closeDueMs=-1;
 			_forcedEndDueMs=-1;
@@ -295,12 +352,26 @@ namespace ImagingDeviceManager.Tests {
 				Thread.Sleep(BlockingCloseMs);
 			}
 			CountLostForHost+=_listUndelivered.Count;
+			AddRedeliverable(_listUndelivered);
 			_listUndelivered.Clear();
 			FinishDisable();
 		}
 
+		///<summary>Images that stay undelivered: a redelivery of this, the most recent session, can still offer them (sections 7, 10.3).</summary>
+		private void AddRedeliverable(IEnumerable<FakePage> listPages) {
+			foreach(FakePage page in listPages) {
+				if(!_listRedeliverable.Contains(page)) {
+					_listRedeliverable.Add(page);
+				}
+			}
+		}
+
 		private void FinishDisable() {
 			_isRunning=false;
+			_isContinuous=false;
+			_isRedeliverySession=false;
+			_exposureDueMs=-1;
+			_listContinuousQueue.Clear();
 			_endDueMs=-1;
 			_closeDueMs=-1;
 			_forcedEndDueMs=-1;
@@ -368,7 +439,7 @@ namespace ImagingDeviceManager.Tests {
 
 		#region Capabilities
 		private bool IsCustomCap(ushort cap) {
-			return cap==CapSafeDisable || cap==CapRedeliver || cap==CapNoActivate;
+			return cap==CapSafeDisable || cap==CapRedeliver || cap==CapNoActivate || cap==CapContinuous;
 		}
 
 		private bool IsSettable(ushort cap) {
@@ -502,7 +573,7 @@ namespace ImagingDeviceManager.Tests {
 					DictCaps[cap]=value==0 ? -1 : value;//Setting 0 stores -1 (section 4).
 					return Tw.TWRC_SUCCESS;
 				case Tw.ICAP_XFERMECH:
-					if(value!=Tw.TWSX_NATIVE && value!=Tw.TWSX_MEMORY) {
+					if((value!=Tw.TWSX_NATIVE && value!=Tw.TWSX_MEMORY) || (value==Tw.TWSX_MEMORY && RefusesMemoryTransfer)) {
 						return Fail(Tw.TWCC_BADVALUE);
 					}
 					DictCaps[cap]=value;
@@ -663,6 +734,9 @@ namespace ImagingDeviceManager.Tests {
 				CountEnable++;
 				LastShowUI=userInterface.ShowUI;//Ignored: the helper window is always shown (CAP_UICONTROLLABLE FALSE).
 				_dsm.HwndParent=userInterface.hParent;
+				if(DictCaps[CapRedeliver]==1) {
+					return StartRedelivery();
+				}
 				if(EnableFails) {
 					return Fail(Tw.TWCC_OPERATIONERROR);
 				}
@@ -679,8 +753,25 @@ namespace ImagingDeviceManager.Tests {
 				_closeDueMs=-1;
 				_forcedEndDueMs=-1;
 				_endDueMs=-1;
+				_colCursor=0;
+				_isRedeliverySession=false;
+				_listRedeliverable.Clear();//This session is now the most recent one (section 10.3).
+				for(int i=0;i<ListExposures.Count;i++) {
+					FakePage page=ListExposures[i];
+					_dictCaptureIds[page]=page.CaptureId??("fake-"+CountEnable+"-"+(i+1));
+					_dictSequences[page]=i+1;
+				}
 				int limit=GetSessionLimit();
-				_listUndelivered.AddRange(ListExposures);
+				_isContinuous=DictCaps.ContainsKey(CapContinuous) && DictCaps[CapContinuous]==1;
+				_listContinuousQueue.Clear();
+				if(_isContinuous) {
+					_listContinuousQueue.AddRange(ListExposures);
+					_exposureDueMs=_dsm.NowMs+ContinuousIntervalMs;
+					limit=-1;
+				}
+				else {
+					_listUndelivered.AddRange(ListExposures);
+				}
 				if(limit>0 && _listUndelivered.Count>=limit) {
 					_listUndelivered.RemoveRange(limit,_listUndelivered.Count-limit);
 					_endReasonScheduled=0;//Ends by itself after its count.
@@ -695,7 +786,7 @@ namespace ImagingDeviceManager.Tests {
 				if(_endDueMs>=0 && EndAfterMs==0) {
 					_dsm.WakeHostNow();
 				}
-				return Tw.TWRC_SUCCESS;
+				return EnableReturnsCheckStatus ? Tw.TWRC_CHECKSTATUS : Tw.TWRC_SUCCESS;
 			}
 			if(msg==Tw.MSG_DISABLEDS) {
 				return Disable();
@@ -718,6 +809,7 @@ namespace ImagingDeviceManager.Tests {
 			if(_isLastDisableRefused) {
 				//The second consecutive MSG_DISABLEDS with no MSG_ENDXFER in between succeeds; undelivered images stay with the source.
 				CountKeptForRedelivery+=_listUndelivered.Count;
+				AddRedeliverable(_listUndelivered);
 				_listUndelivered.Clear();
 				FinishDisable();
 				return Tw.TWRC_SUCCESS;
@@ -742,6 +834,35 @@ namespace ImagingDeviceManager.Tests {
 				return Refuse(CodeDisableClosing);//The helper has ended and its notification follows.
 			}
 			FinishDisable();//Nothing running and nothing undelivered.
+			return Tw.TWRC_SUCCESS;
+		}
+
+		///<summary>Section 10.3: an enable with the redelivery capability TRUE starts no capture and no sensor software; it offers the
+		///undelivered images of the most recent session (XFERREADY, then all of them whatever CAP_XFERCOUNT says), or ends with MSG_CLOSEDSREQ
+		///and CodeNothingToRedeliver. The capability is FALSE again afterwards, unless RedeliverKeptUntilClose.</summary>
+		private ushort StartRedelivery() {
+			CountRedeliveryEnables++;
+			if(!RedeliverKeptUntilClose) {
+				DictCaps[CapRedeliver]=0;
+			}
+			State=5;
+			_isRunning=false;
+			_isRedeliverySession=true;
+			_isContinuous=false;
+			_listUndelivered.Clear();
+			_listUndelivered.AddRange(_listRedeliverable);
+			_isSpuriousPending=false;
+			_hasRefusedOnce=false;
+			_isLastDisableRefused=false;
+			_countEnded=0;
+			_colCursor=0;
+			_endDueMs=-1;
+			_closeDueMs=-1;
+			_forcedEndDueMs=-1;
+			_notificationPending=_listUndelivered.Count>0 ? Tw.MSG_XFERREADY : Tw.MSG_CLOSEDSREQ;
+			_endReason=_listUndelivered.Count>0 ? (ushort)0 : CodeNothingToRedeliver;
+			ActionOnEnable?.Invoke();
+			_dsm.WakeHostNow();
 			return Tw.TWRC_SUCCESS;
 		}
 
@@ -798,11 +919,15 @@ namespace ImagingDeviceManager.Tests {
 						return Fail(Tw.TWCC_SEQERROR);
 					}
 					if(_listUndelivered.Count>0) {
+						FakePage pageEnded=_listUndelivered[0];
 						if(State==7 && _isCurrentTransferred) {
 							CountDelivered++;
+							ListDeliveredCaptureIds.Add(GetCaptureId(pageEnded));
+							_listRedeliverable.Remove(pageEnded);
 						}
 						else {
 							CountKeptForRedelivery++;//Its transfer failed or was abandoned: it stays undelivered.
+							AddRedeliverable(new[] { pageEnded });
 						}
 						_listUndelivered.RemoveAt(0);
 						_countEnded++;
@@ -810,19 +935,26 @@ namespace ImagingDeviceManager.Tests {
 					if(FailReadAtImage>=2 && _countEnded==FailReadAtImage-1 && _listUndelivered.Count>0) {
 						//The next image cannot be read: MSG_ENDXFER returns 0 and the rest of the batch is not delivered (sections 5, 9).
 						CountKeptForRedelivery+=_listUndelivered.Count;
+						AddRedeliverable(_listUndelivered);
 						_listUndelivered.Clear();
 					}
 					_isLastDisableRefused=false;
 					_isCurrentTransferred=false;
 					_rowCursor=0;
+					_colCursor=0;
 					count=(short)_listUndelivered.Count;
 					State=count>0 ? 6 : 5;//With 0 left it waits in state 5 for MSG_DISABLEDS; it never starts another session.
+					if(count==0 && _isContinuous && SpuriousXferReadyAfterEachImage) {
+						_isSpuriousPending=true;
+						_dsm.WakeHostNow();
+					}
 					break;
 				case Tw.MSG_RESET:
 					if(State<6) {
 						return Fail(Tw.TWCC_SEQERROR);
 					}
 					CountKeptForRedelivery+=_listUndelivered.Count;
+					AddRedeliverable(_listUndelivered);
 					_listUndelivered.Clear();
 					count=0;
 					State=5;
@@ -840,9 +972,99 @@ namespace ImagingDeviceManager.Tests {
 				return Fail(Tw.TWCC_SEQERROR);
 			}
 			FakePage page=CurrentPage??(ListExposures.Count>0 ? ListExposures[0] : null);
-			uint row=(uint)(page==null ? 1300 : page.Width);
+			page=page==null ? null : Delivered(page);
+			uint row=(uint)(page==null ? 1300 : page.Width*(page.BitsPerPixel/8)+MemoryRowPadding);
 			uint whole=row*(uint)(page==null ? 1800 : page.Height);
 			Marshal.StructureToPtr(new TW_SETUPMEMXFER { MinBufSize=row,MaxBufSize=whole,Preferred=Math.Min(whole,row*64) },data,false);
+			return Tw.TWRC_SUCCESS;
+		}
+
+		///<summary>Section 6.2: with ICAP_BITDEPTH 16, the image's 16-bit original; an image without one is delivered as 8-bit.</summary>
+		private FakePage Delivered(FakePage page) {
+			return DictCaps.ContainsKey(IcapBitDepth) && DictCaps[IcapBitDepth]==16 && page.Original16!=null ? page.Original16 : page;
+		}
+
+		public string GetCaptureId(FakePage page) {
+			string captureId;
+			return _dictCaptureIds.TryGetValue(page,out captureId) ? captureId : (page.CaptureId??"fake-unknown");
+		}
+
+		///<summary>Section 6.3: the capture metadata of the image, or FakePage.MetadataJson.</summary>
+		public string GetMetadataJson(FakePage page) {
+			if(page.MetadataJson!=null) {
+				return page.MetadataJson;
+			}
+			bool is16=Delivered(page).BitsPerPixel==16;
+			int sequence;
+			_dictSequences.TryGetValue(page,out sequence);
+			return "{\"schema\":\"capture-metadata/1\",\"manufacturer\":\"Fake\",\"model\":null,\"serial\":\"FAKE-0001\","
+				+"\"captureId\":\""+GetCaptureId(page)+"\",\"sequence\":"+sequence+",\"acquiredAt\":\"2026-10-31T10:00:00.000+01:00\","
+				+"\"pixelSpacingMm\":[0.02,0.02],\"bitsStored\":"+(is16 ? 16 : 8)+",\"effectiveBits\":null,"
+				+"\"byteOrder\":"+(is16 ? "\"LE\"" : "null")+",\"photometric\":\"MONOCHROME2\","
+				+"\"window\":"+(is16 ? "{\"low\":100,\"high\":4000}" : "null")+",\"rendering\":\""+(is16 ? "original" : "vendor8")+"\","
+				+"\"detectorType\":null,\"configuredExposure\":null,\"redelivered\":"+(_isRedeliverySession ? "true" : "false")+","
+				+"\"dsVersion\":\"Fake 1.1 \u00e9\",\"vendor\":{}}";
+		}
+
+		///<summary>Section 6.3: answers in state 7 only, after TWRC_XFERDONE and before MSG_ENDXFER, with ICAP_EXTIMAGEINFO TRUE; otherwise
+		///TWCC_SEQERROR. Items it does not have get TWRC_INFONOTSUPPORTED. Handles come from SourceAllocate (section 6.4).</summary>
+		private ushort ExtImageInfo(IntPtr data) {
+			if(!SupportsExtImageInfo) {
+				return Fail(Tw.TWCC_BADPROTOCOL);
+			}
+			FakePage page=CurrentPage;
+			if(State!=7 || !_isCurrentTransferred || page==null || DictCaps[IcapExtImageInfo]!=1) {
+				return Fail(Tw.TWCC_SEQERROR);
+			}
+			CountExtImageInfo++;
+			int numInfos=Marshal.ReadInt32(data,0);
+			for(int i=0;i<numInfos;i++) {
+				IntPtr pInfo=new IntPtr(data.ToInt64()+TwExtImageInfo.GetInfoOffset(i));
+				TW_INFO info=(TW_INFO)Marshal.PtrToStructure(pInfo,typeof(TW_INFO));
+				info.ReturnCode=Tw.TWRC_SUCCESS;
+				info.NumItems=1;
+				int sequence;
+				_dictSequences.TryGetValue(page,out sequence);
+				switch(info.InfoID) {
+					case TweiDocumentNumber:
+					case TweiPageNumber:
+						info.ItemType=Tw.TWTY_UINT32;
+						info.Item=new IntPtr(1);
+						break;
+					case TweiFrameNumber:
+						info.ItemType=Tw.TWTY_UINT32;
+						info.Item=new IntPtr(sequence);
+						break;
+					case TweiPixelFlavor:
+						info.ItemType=Tw.TWTY_UINT16;
+						info.Item=new IntPtr(Tw.TWPF_CHOCOLATE);
+						break;
+					case TweiCamera:
+						info.ItemType=Tw.TWTY_STR255;
+						info.Item=_dsm.SourceAllocate(256);
+						break;
+					case TweiFrame:
+						info.ItemType=Tw.TWTY_FRAME;
+						info.Item=_dsm.SourceAllocate(16);
+						break;
+					case TweiTwainDirectMetadata:
+						byte[] bytes=Encoding.UTF8.GetBytes(GetMetadataJson(page)+"\0");
+						IntPtr handle=_dsm.SourceAllocate(bytes.Length);
+						IntPtr p=NativeMethods.GlobalLock(handle);
+						Marshal.Copy(bytes,0,p,bytes.Length);
+						NativeMethods.GlobalUnlock(handle);
+						info.ItemType=Tw.TWTY_HANDLE;
+						info.Item=handle;
+						break;
+					default:
+						info.ReturnCode=Tw.TWRC_INFONOTSUPPORTED;
+						info.ItemType=0;
+						info.NumItems=0;
+						info.Item=IntPtr.Zero;
+						break;
+				}
+				Marshal.StructureToPtr(info,pInfo,false);
+			}
 			return Tw.TWRC_SUCCESS;
 		}
 
@@ -851,6 +1073,7 @@ namespace ImagingDeviceManager.Tests {
 			if(page==null) {
 				return Fail(Tw.TWCC_SEQERROR);
 			}
+			page=Delivered(page);
 			TW_IMAGEINFO imageInfo=new TW_IMAGEINFO();
 			imageInfo.XResolution=TW_FIX32.FromDouble(page.Dpi);
 			imageInfo.YResolution=TW_FIX32.FromDouble(page.Dpi);
@@ -858,8 +1081,8 @@ namespace ImagingDeviceManager.Tests {
 			imageInfo.ImageLength=page.Height;
 			imageInfo.SamplesPerPixel=1;
 			imageInfo.BitsPerSample=new short[8];
-			imageInfo.BitsPerSample[0]=8;
-			imageInfo.BitsPerPixel=8;
+			imageInfo.BitsPerSample[0]=(short)page.BitsPerPixel;
+			imageInfo.BitsPerPixel=(short)page.BitsPerPixel;
 			imageInfo.PixelType=(short)Tw.TWPT_GRAY;
 			imageInfo.Compression=Tw.TWCP_NONE;
 			Marshal.StructureToPtr(imageInfo,data,false);
@@ -884,7 +1107,8 @@ namespace ImagingDeviceManager.Tests {
 			return Tw.TWRC_XFERDONE;
 		}
 
-		///<summary>Memory transfer: chunky, top-down, unpadded rows, as many whole rows per call as fit (section 6.1).</summary>
+		///<summary>Memory transfer: chunky, top-down, unpadded rows, as many whole rows per call as fit (sections 6.1, 6.2: 2 bytes per sample
+		///at 16 bits, little-endian). MemoryRowPadding and MemoryColumnsPerStrip (not contract behaviour) pad the rows and cut them into tiles.</summary>
 		private ushort MemXfer(IntPtr data) {
 			FakePage page=CurrentPage;
 			if(page==null) {
@@ -893,27 +1117,45 @@ namespace ImagingDeviceManager.Tests {
 			if(page.FailCondition!=0) {
 				return Fail(page.FailCondition);//Generic-source behaviour (FakePage.FailCondition); the contract's read failure is FailReadAtImage.
 			}
+			page=Delivered(page);
 			TW_IMAGEMEMXFER xfer=(TW_IMAGEMEMXFER)Marshal.PtrToStructure(data,typeof(TW_IMAGEMEMXFER));
-			int bytesPerRow=page.Width;
-			int rowsFit=(int)(xfer.Memory.Length/(uint)bytesPerRow);
-			if(rowsFit<1) {
+			int bytesPerPixel=page.BitsPerPixel/8;
+			int columnsTile=MemoryColumnsPerStrip>0 ? Math.Min(MemoryColumnsPerStrip,page.Width) : page.Width;
+			int columns=Math.Min(columnsTile,page.Width-_colCursor);
+			int bytesTile=columns*bytesPerPixel;
+			int bytesPerRow=bytesTile+MemoryRowPadding;
+			if(_colCursor==0) {
+				int rowsFitBand=(int)(xfer.Memory.Length/(uint)(columnsTile*bytesPerPixel+MemoryRowPadding));
+				if(rowsFitBand<1) {
+					return Fail(Tw.TWCC_BADVALUE);
+				}
+				_bandRows=Math.Min(rowsFitBand,page.Height-_rowCursor);
+			}
+			int rows=_bandRows;
+			if(xfer.Memory.Length<(uint)(rows*bytesPerRow)) {
 				return Fail(Tw.TWCC_BADVALUE);
 			}
-			int rows=Math.Min(rowsFit,page.Height-_rowCursor);
 			byte[] strip=new byte[rows*bytesPerRow];
 			for(int r=0;r<rows;r++) {
-				Buffer.BlockCopy(page.TwainRows[_rowCursor+r],0,strip,r*bytesPerRow,bytesPerRow);
+				Buffer.BlockCopy(page.TwainRows[_rowCursor+r],_colCursor*bytesPerPixel,strip,r*bytesPerRow,bytesTile);
+				for(int b=bytesTile;b<bytesPerRow;b++) {
+					strip[r*bytesPerRow+b]=0xEE;
+				}
 			}
 			Marshal.Copy(strip,0,xfer.Memory.TheMem,strip.Length);
 			xfer.Compression=Tw.TWCP_NONE;
 			xfer.BytesPerRow=(uint)bytesPerRow;
-			xfer.Columns=(uint)page.Width;
+			xfer.Columns=(uint)columns;
 			xfer.Rows=(uint)rows;
-			xfer.XOffset=0;
+			xfer.XOffset=(uint)_colCursor;
 			xfer.YOffset=(uint)_rowCursor;
 			xfer.BytesWritten=(uint)strip.Length;
 			Marshal.StructureToPtr(xfer,data,false);
-			_rowCursor+=rows;
+			_colCursor+=columns;
+			if(_colCursor>=page.Width) {
+				_colCursor=0;
+				_rowCursor+=rows;
+			}
 			State=7;
 			if(_rowCursor>=page.Height) {
 				_isCurrentTransferred=true;

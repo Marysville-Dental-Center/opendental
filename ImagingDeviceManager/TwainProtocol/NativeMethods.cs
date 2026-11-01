@@ -119,6 +119,46 @@ namespace ImagingDeviceManager.TwainProtocol {
 		[return: MarshalAs(UnmanagedType.Bool)]
 		public static extern bool KillTimer(IntPtr hWnd,UIntPtr uIDEvent);
 
+		private const uint MEM_COMMIT=0x1000;
+		private const uint PAGE_NOACCESS=0x01;
+		private const uint PAGE_GUARD=0x100;
+		private const uint PAGE_READABLE=0x02|0x04|0x08|0x20|0x40|0x80;//READONLY, READWRITE, WRITECOPY and their EXECUTE forms
+
+		[StructLayout(LayoutKind.Sequential)]
+		private struct MEMORY_BASIC_INFORMATION {
+			public IntPtr BaseAddress;
+			public IntPtr AllocationBase;
+			public uint AllocationProtect;
+			public IntPtr RegionSize;
+			public uint State;
+			public uint Protect;
+			public uint Type;
+		}
+
+		[DllImport("kernel32.dll")]
+		private static extern UIntPtr VirtualQuery(IntPtr lpAddress,out MEMORY_BASIC_INFORMATION lpBuffer,UIntPtr dwLength);
+
+		///<summary>How many bytes from p, up to max, lie in committed, readable memory (VirtualQuery over the regions that follow p). A read of
+		///that many bytes cannot fault. 0 when p is not readable.</summary>
+		public static long GetReadableBytes(IntPtr p,long max) {
+			long readable=0;
+			long address=p.ToInt64();
+			while(readable<max) {
+				MEMORY_BASIC_INFORMATION info;
+				UIntPtr size=VirtualQuery(new IntPtr(address),out info,(UIntPtr)Marshal.SizeOf(typeof(MEMORY_BASIC_INFORMATION)));
+				if(size==UIntPtr.Zero || info.State!=MEM_COMMIT || (info.Protect & PAGE_READABLE)==0 || (info.Protect & (PAGE_GUARD|PAGE_NOACCESS))!=0) {
+					break;
+				}
+				long regionEnd=info.BaseAddress.ToInt64()+info.RegionSize.ToInt64();
+				if(regionEnd<=address) {
+					break;
+				}
+				readable+=regionEnd-address;
+				address=regionEnd;
+			}
+			return Math.Min(readable,max);
+		}
+
 		[DllImport("gdi32.dll",SetLastError=true)]
 		public static extern IntPtr CreateDIBSection(IntPtr hdc,IntPtr pbmi,uint usage,out IntPtr ppvBits,IntPtr hSection,uint offset);
 
