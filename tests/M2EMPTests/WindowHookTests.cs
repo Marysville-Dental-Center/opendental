@@ -46,6 +46,23 @@ namespace M2EMPTests {
 		}
 
 		[TestMethod]
+		public void TimeCard_TotalsStayUnderTheirColumns() {
+			//Integration with B-TIME: the Totals for Period grid's first column spans Date, Day, In and Out of gridMain, so it takes their widths from
+			//gridMain, which includes a second-time column widened for a later-day clock-out.
+			string code=RepoFiles.ReadAllText("OpenDental","Forms","FormTimeCard.cs");
+			int indexFill=code.IndexOf("private void FillGridTotals(");
+			Assert.IsTrue(indexFill>0);
+			string fill=code.Substring(indexFill);
+			StringAssert.Contains(fill,
+				"widthSpacer=gridMain.Columns[0].ColWidth+gridMain.Columns[1].ColWidth+gridMain.Columns[2].ColWidth+gridMain.Columns[3].ColWidth;");
+			StringAssert.Contains(fill,"gridTotals.Columns.Add(new GridColumn(\"\",widthSpacer));");
+			Assert.IsFalse(fill.Contains("gridTotals.Columns.Add(new GridColumn(\"\",70+45+64+64));"));
+			//FillMain sets gridMain's columns before it fills the totals.
+			string fillMain=code.Substring(code.IndexOf("private void FillMain("));
+			Assert.IsTrue(fillMain.IndexOf("FillGridTotals();")>fillMain.IndexOf("ClockEvents.GetSecondTimeColumnWidth(_listClockEvents,64)"));
+		}
+
+		[TestMethod]
 		public void TimeCard_PrintKeepsTheClockOutTime() {
 			string code=RepoFiles.ReadAllText("OpenDental","Forms","FormTimeCard.cs");
 			int indexPrint=code.IndexOf("private void pd_PrintPage(");

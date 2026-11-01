@@ -72,7 +72,7 @@ Nothing public describes Open Dental's 26.1 rules for future clock-outs or the t
 - **M2-01 / M2-02** (already on the base): this package only reads `employee.Title`, `DefCat.EmployeeTitles` and the definition rules.
 - **ControlManage.cs**: no C1 package owns it. If another package edits the same `if` in `SelectEmpI` (the employee selection handler that enables the clock buttons), keep the `|| ClockEvents.HasFutureClockOut(clockEvent)` part.
 - **OpenDentBusiness.csproj, OpenDental.sln, OpenDental.Local.slnf**: every package adds lines; merge the lists.
-- No other C1 package lists `ClockEvents`, `Employees`, `FormClockEventEdit`, `FormEmployeeEdit`, `FormEmployeeSelect` or `FormTimeCard`.
+- No other C1 package lists `ClockEvents`, `Employees`, `FormClockEventEdit`, `FormEmployeeEdit`, `FormEmployeeSelect` or `FormTimeCard`. B-TIME (wave B1) also changed `FormTimeCard`; see Integration below.
 
 ## Tests
 
@@ -84,6 +84,19 @@ New project `tests/M2EMPTests` (MSTest v1, x86, .NET 4.8; in `OpenDental.sln` an
 - `WindowHookTests`: source checks that the windows call these rules (the program is never started), including that `pd_PrintPage` widens the Out/In column before laying out the columns and prints every cell through `GetPrintCellText`.
 
 Targeted run: `M2EMPTests` and `M202Tests` (Employee Titles definition rules), plus `NoHqTests` from the shared runner. Not tested: the windows themselves (no GUI run), an actual printout (the print test measures with a screen graphics object set to printer units, not a printer), and the Manage module buttons beyond the source check.
+
+## Integration (branch `port/m2-emp-t1`, on `port/int-7`)
+
+`port/int-7` merged into the package branch. Two text conflicts and one semantic one, all with B-TIME (`docs/port-notes/B-TIME.md`), which changed `FormTimeCard` in the same wave:
+
+- `OpenDentBusiness.csproj`: both packages' `Compile` lines kept (`ClockEvents.FutureClockOut.cs` and B-TIME's `TimeCardTotals.cs`, `Employees.Titles.cs` and B-TIME's `EmployeeReportsTo.cs`).
+- `FormTimeCard.cs`: this package's `GetPrintCellText` and B-TIME's `PrintTotalsRow` both kept. The printed totals row takes its positions from `intArrayColPos`, which already includes the Out/In column widened above, so the totals print under their columns as they are.
+- `FormTimeCard.FillGridTotals` (B-TIME's on-screen Totals for Period grid): its first column was a fixed `70+45+64+64`, the 24.3 widths of Date, Day, In and Out. With a later-day clock-out this package widens the second-time column to 130, which would have left every total 66 pixels left of its column. The spacer now adds up `gridMain`'s own first four column widths (the fixed sum stays as the fallback when the grid has fewer columns). `FillMain` sets the columns before it calls `FillGridTotals`, so the widths are current. New source check `WindowHookTests.TimeCard_TotalsStayUnderTheirColumns`.
+- B-TIME's totals count a future clock-out as a completed event (Total and Day), the same as the time card grid's own Day and Week cells, as B-TIME's note says. Nothing to change.
+- `ControlManage.cs`: B-TIME's hook is in `FillEmps`, this package's in `SelectEmpI`; both merged on their own.
+- Still no fork migration step and no schema or row change, so the adoption tools (migration-preview, AdoptionRowCheck, allowed differences) need nothing from this package.
+
+Checks: `M2EMPTests` (34) and `BTIMETests` (28) targeted, then a full build through the lane, `run-tests -Mode Core`, and `tools/Test-NoHqHosts.ps1`.
 
 ## Questions for the owner
 
