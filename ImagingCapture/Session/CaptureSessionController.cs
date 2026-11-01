@@ -62,6 +62,9 @@ namespace ImagingCapture.Session {
 		private bool _isStarted;
 		private bool _isEndRequested;
 		private bool _isPausedBySaveFailure;
+		///<summary>The library closed the source on its own while it may still hold images (or redelivery was offered): the open that Retry starts
+		///enables nothing by itself, so that those images can still be asked for again and the operator checks the sensor software first.</summary>
+		private bool _isReopenWithImagesHeld;
 		///<summary>The target the operator chose while an enable ran for another one; the target after that enable's image is placed.</summary>
 		private int? _idxTargetChosen;
 		private readonly HashSet<int> _hashSetSkipped=new HashSet<int>();
@@ -611,6 +614,16 @@ namespace ImagingCapture.Session {
 				Log("Open: \""+(sourceInfo?.ProductName??"")+"\""+(sourceInfo?.DeviceOnline==false ? ", CAP_DEVICEONLINE FALSE" : "")+".");
 				if(_isEndRequested) {
 					Finish(CaptureSessionEndReason.Ended);
+					return;
+				}
+				if(_isReopenWithImagesHeld) {
+					//Opened again after the library closed it while it may still hold images: an enable now would start a fresh source session and
+					//lose the redelivery of those images (design 7.4, 7.6), and no automatic enable follows a source that may hold an exposure
+					//(ContinueAfterEnable). The operator checks the sensor software, then asks for the images again or re-enables.
+					_isReopenWithImagesHeld=false;
+					Log("Opened again after the sensor software was closed while it may still hold images: nothing is enabled until the operator chooses.");
+					ShowReady(GetReEnableKind(),CaptureIndicatorState.Ready,CaptureSessionText.OpenAgain+" "+CaptureEndText.MayStillHoldImages);
+					NotifyChanged();
 					return;
 				}
 				EnableNext();
@@ -1394,6 +1407,7 @@ namespace ImagingCapture.Session {
 						//The library closed the source on its own (WM_QUIT reached its worker): the controller's own close never gets here, because
 						//Finish comes first. The worker is closing, so the session is no longer open; Retry opens a new one (design 7.3 step 7, 7.6).
 						_isSessionOpen=false;
+						_isReopenWithImagesHeld=ended.SourceMayHoldImages || _isRedeliveryOffered;
 						Log("The sensor software was closed while the session ran. "+textEnded);
 						PlaySound(CaptureSound.Error);
 						ShowReady(CaptureStartKind.Retry,CaptureIndicatorState.Error,(CaptureSessionText.SourceClosed+" "+textEnded).Trim());

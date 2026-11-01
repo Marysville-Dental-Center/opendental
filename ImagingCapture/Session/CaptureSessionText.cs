@@ -31,6 +31,7 @@ namespace ImagingCapture.Session {
 		public const string PausedAfterSaveFailureNotice="An image arrived while the session was paused after a failed save; it is in unassigned captures.";
 		public const string NotOpen="The sensor software is not open.";
 		///<summary>The library closed the source on its own while an enable ran (WM_QUIT on its worker).</summary>
+		public const string OpenAgain="Sensor software open again.";
 		public const string SourceClosed="The sensor software was closed. Press Retry to open it again.";
 		public const string ReadyStart="Check the patient, then press Start or hold the Confirm key.";
 		public const string ReadyReEnable="Press Re-enable or hold the Confirm key to start the sensor software again.";

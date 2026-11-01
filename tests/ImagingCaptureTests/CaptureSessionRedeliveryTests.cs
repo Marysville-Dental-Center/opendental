@@ -243,6 +243,30 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void SourceClosedByTheLibrary_MayHoldImages_Retry_OpensWithoutAnEnable_TheRedeliveryStaysOffered() {
+			_harness.Started();
+			_harness.Status(TwainCaptureState.WaitingForImage);
+			//WM_QUIT reached the worker: the library closed the source on its own, and the source may still hold images.
+			_harness.Ended(TwainCaptureEndReason.Stopped,ended => {
+				ended.StopReason=TwainCaptureStopReason.Close;
+				ended.SourceMayHoldImages=true;
+			});
+			Assert.AreEqual(CaptureStartKind.Retry,Controller.StartKind);
+			Assert.IsFalse(Controller.IsRedeliveryOffered,"Not while the source is closed.");
+			_harness.Arm();
+			Assert.IsTrue(_harness.Start(),"Retry opens the source again.");
+			Assert.AreEqual(2,_harness.ListSessions.Count);
+			Assert.AreEqual(0,_harness.Twain.ListEnables.Count,"No enable: a fresh source session would lose the images it may still hold.");
+			Assert.AreEqual(CaptureSessionPhase.Ready,Controller.Phase);
+			Assert.AreEqual(CaptureStartKind.ReEnable,Controller.StartKind);
+			StringAssert.Contains(Controller.IndicatorText,CaptureEndText.MayStillHoldImages);
+			Assert.IsTrue(Controller.IsRedeliveryOffered,"\"Request undelivered images again\" is offered now that the source is open.");
+			_harness.Arm();
+			Assert.IsTrue(Controller.RequestRedelivery());
+			Assert.IsTrue(_harness.LastRecord.IsRedelivery);
+		}
+
+		[TestMethod]
 		public void NoRedeliverCap_NoOffer() {
 			_harness.Setup.Options.RedeliverCap=null;
 			TransferFailed();
