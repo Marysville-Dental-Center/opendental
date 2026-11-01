@@ -6,7 +6,8 @@ using ImagingDeviceManager.Capture;
 namespace ImagingCapture.Session {
 	///<summary>The extension points of CaptureSessionController, implemented for the session rules of CAP-4 implementer A2. Each one only
 	///dispatches to the rule's own file: Retake and Rotate (CaptureSessionController.Retake.cs), the patient-change monitor, idle disable and the
-	///forced close (CaptureSessionController.Monitor.cs), and redelivery (CaptureSessionController.Redelivery.cs).</summary>
+	///forced close (CaptureSessionController.Monitor.cs), redelivery (CaptureSessionController.Redelivery.cs) and the security log
+	///(CaptureSessionController.Audit.cs).</summary>
 	public sealed partial class CaptureSessionController {
 		partial void ExecuteExt(CaptureSessionAction action,ref bool isHandled) {
 			switch(action) {
@@ -63,7 +64,12 @@ namespace ImagingCapture.Session {
 			NotifyRedeliveryArming();
 		}
 
+		partial void OnImageQuarantinedExt(AcquiredImage image,string reason,string path) {
+			WriteQuarantineEvent(image,reason,path);
+		}
+
 		partial void OnEnableEndedExt(TwainCaptureEnded ended,CaptureEnableRecord record,bool isRunning,ref bool isHandled) {
+			WriteCaptureEvents(ended,record);
 			if(!isRunning || Phase==CaptureSessionPhase.Finished) {
 				return;
 			}
@@ -76,7 +82,12 @@ namespace ImagingCapture.Session {
 
 		partial void OnFinishStartingExt(CaptureSessionEndReason endReason) {
 			UnsubscribePatientEvents();
+			WriteForcedCloseEvent(endReason);
 			DeclineAllRedelivered("not placed: the capture session ended first");
+		}
+
+		partial void OnFinishingExt(CaptureSessionSummary summary) {
+			WriteSessionSummary(summary);
 		}
 	}
 }
