@@ -552,10 +552,11 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
-		public void VerificationRecord_LatestForThisDeviceAndComputer_Gives16Bits() {
+		public void VerificationRecord_LatestForThisDevice_MadeOnAnotherComputer_Gives16Bits() {
 			_config=Config("[Session]","Enabled=1","[Twain]","Allow16Bit=1","[Device.12]","Bits=16");
 			string hash=GatedSettingsHash.Compute(_config,12);
 			CaptureVerificationRecord record=CaptureControllerHarness.PassedRecord(hash);
+			record.ComputerName="OPERATORY9";//owner decision 2026-11-01: the record is not tied to the computer
 			_store.ListSetupLogs.Add(new SecurityLog { SecurityLogNum=1,FKey=12,PermType=EnumPermType.Setup,LogText=record.ToLogText(),
 				LogDateTime=new DateTime(2026,10,30,9,0,0) });
 			int bits=0;

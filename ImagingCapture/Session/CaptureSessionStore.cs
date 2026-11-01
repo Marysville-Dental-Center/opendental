@@ -23,7 +23,9 @@ namespace ImagingCapture.Session {
 		long GetDefaultProvNum(Patient patient);
 		///<summary>Providers.GetAbbr, for the banner and the summary.</summary>
 		string GetProviderAbbr(long provNum);
-		///<summary>The Setup security-log entries with FKey=imagingDeviceNum (where Test capture writes its verification records, design 9.3).</summary>
+		///<summary>The Setup security-log entries with FKey=imagingDeviceNum, from every computer (where Test capture writes its verification records
+		///and Capture settings its saves, design 9.3). The callers pick the computer: the settings check takes this computer's saves only, the
+		///verification record the latest from any computer.</summary>
 		List<SecurityLog> GetSetupLogEntries(long imagingDeviceNum);
 		///<summary>SecurityLogs.MakeLogEntry(permType,patNum,logText,fKey,DateTime.MinValue). Throws on failure.</summary>
 		void MakeLogEntry(EnumPermType permType,long patNum,string logText,long fKey);

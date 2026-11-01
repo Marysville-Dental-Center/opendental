@@ -87,6 +87,9 @@ namespace ImagingCapture.Session {
 		private readonly List<CaptureEnableRecord> _listEnablesPosted=new List<CaptureEnableRecord>();
 		///<summary>The first reason the source gave 8 bits where 16 were asked (TwainCaptureEnded.Reason8Bit), or "".</summary>
 		private string _reason8BitDelivered="";
+		///<summary>The first "14-bit layout not usable: ..." (or 16-bit) an enable ended with (TwainCaptureEnded.LayoutUnusableText), or "": from
+		///then on the session asks for 8 bits on this device.</summary>
+		private string _reasonLayoutUnusable="";
 		#endregion Fields
 
 		#region Constructor
@@ -698,15 +701,18 @@ namespace ImagingCapture.Session {
 				ImagingDeviceNum=_setup.ImagingDevice.ImagingDeviceNum,
 				ComputerName=_setup.ComputerName,
 				TwainName=_setup.ImagingDevice.TwainName,
+				DriverIdentity=_session.SourceInfo?.DriverIdentity,//read at this open
 				GatedSettingsHash=_setup.GatedSettingsHash,
 				SettingsCheck=_setup.SettingsCheck,
 				Target=radiographTarget.ToIntraOralTarget(),
+				ReasonLayoutUnusable=_reasonLayoutUnusable=="" ? null : _reasonLayoutUnusable,
 			});
 			if(record.BitDepth.Reason8Bit!=null) {
 				LogOnce(record.BitDepth.Reason8Bit);
 			}
 			TwainEnableRequest request=new TwainEnableRequest {
 				Bits=record.BitDepth.Bits,
+				ReasonFallback=record.BitDepth.ReasonFallback,
 				Tag=record,
 				TargetLabel=radiographTarget.GetLabel(),
 				SidecarFields=GetSidecarFields(record),
@@ -1247,7 +1253,7 @@ namespace ImagingCapture.Session {
 				DocCategory=_setup.CategoryDefNum,
 				ProvNum=ProvNum,
 				Target=target,
-				Is16BitAllowed=record.BitDepth!=null && record.BitDepth.Bits==16,
+				Is16BitAllowed=record.BitDepth!=null && record.BitDepth.Bits>8,//16 or 14 asked: a 14- or 16-bit image is written as 16-bit DICOM
 				Polarity=_setup.Options.Polarity,
 				IsInversionVerified=record.BitDepth!=null && record.BitDepth.IsInversionVerified,
 				SessionGuid=SessionGuid,
@@ -1406,6 +1412,11 @@ namespace ImagingCapture.Session {
 				if(_reason8BitDelivered=="" && ended.BitDepthInEffect==8) {
 					_reason8BitDelivered=ended.ReasonFallback.Trim();
 				}
+			}
+			if(!string.IsNullOrWhiteSpace(ended.LayoutUnusableText) && _reasonLayoutUnusable=="") {
+				//The image was not read; from now on this session asks for 8 bits on this device. Logged once.
+				_reasonLayoutUnusable=ended.LayoutUnusableText.Trim().TrimEnd('.');
+				LogOnce(_reasonLayoutUnusable+". The session asks for 8 bits for the rest of this session.");
 			}
 			bool isHandled=false;
 			OnEnableEndedExt(ended,record,isRunning,ref isHandled);

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using ImagingCapture.Session;
 using ImagingCapture.Settings;
 using ImagingDeviceManager.Capture;
 using ImagingDeviceManager.Config;
@@ -56,7 +57,7 @@ namespace ImagingCapture.UI {
 		private bool _isByteOrderConfirmed;
 		private bool _isPolarityConfirmed;
 		private long _categoryDefNum;
-		private int _bitsToRequest=16;
+		private int _bitsToRequest;
 
 		///<summary>device: the saved ImagingDevice (ImagingDeviceNum above 0). localCaptureConfig: capture.ini as loaded; the test runs with the
 		///settings read from it now, and the record carries their hash. computerName: this computer. unassignedText: the quarantine line
@@ -77,12 +78,16 @@ namespace ImagingCapture.UI {
 			try {
 				GatedCanonicalText=GatedSettingsHash.GetCanonicalText(localCaptureConfig,device.ImagingDeviceNum);
 				GatedSettingsHashValue=GatedSettingsHash.ComputeFromCanonicalText(GatedCanonicalText);
+				ImageSettingsHashValue=CaptureBitDepthDecision.GetImageSettingsHash(Options,device.ImagingDeviceNum);
 			}
 			catch(Exception ex) {
 				GatedCanonicalText="";
 				GatedSettingsHashValue="";
+				ImageSettingsHashValue="";
 				HashError="The device's capture settings could not be hashed: "+ex.Message;
 			}
+			//The device's Bits (16 by default), unless this computer forces 8 (Allow16Bit=0, or the safe values while the settings are not verified).
+			_bitsToRequest=Options.Allow16Bit ? TwainBitDepth.Normalize(Options.Bits) : TwainBitDepth.Bits8;
 			_categoryDefNum=GetDefaultCategory(_listMountTemplates);
 			StatusText="Sensor software not open.";
 		}
@@ -96,8 +101,11 @@ namespace ImagingCapture.UI {
 		public CaptureSettingsCheck SettingsCheck { get; }
 		///<summary>"Capture settings were changed outside Open Dental; review them in Setup. ...", or "" when the settings are verified.</summary>
 		public string SettingsCheckText => SettingsCheck.Text;
-		///<summary>GatedSettingsHash.Compute for the device, or "" when it could not be computed (HashError).</summary>
+		///<summary>GatedSettingsHash.Compute for the device, or "" when it could not be computed (HashError). The record keeps it for the audit
+		///trail; it does not compare it.</summary>
 		public string GatedSettingsHashValue { get; }
+		///<summary>CaptureImageSettingsHash of Options ([Device.N] Bits, ByteOrder16, Polarity in effect), which the record covers, or "" (HashError).</summary>
+		public string ImageSettingsHashValue { get; }
 		public string GatedCanonicalText { get; }
 		public string HashError { get; }="";
 		public string ComputerName { get; }
@@ -128,17 +136,23 @@ namespace ImagingCapture.UI {
 			Version++;
 		}
 
-		///<summary>8 or 16: what the next enable asks for. Test capture asks for 16 by default, to measure (design 7.1 CAP-3), whatever
-		///[Device.N] Bits says.</summary>
+		///<summary>16, 14 or 8: what the next enable asks for. By default the device's Bits (16 by default), the depth the capture session will ask
+		///for and a record must have passed at; the operator may pick another one to measure. Always 8 when this computer forces 8 bits
+		///(Allow16Bit=0, or the safe values): the library then falls back from 16 to 14 or 8 by what the source lists, and the image says which
+		///depth was used.</summary>
 		public int BitsToRequest {
 			get {
 				return _bitsToRequest;
 			}
 			set {
-				_bitsToRequest=value==8 ? 8 : 16;
+				_bitsToRequest=Options.Allow16Bit ? TwainBitDepth.Normalize(value) : TwainBitDepth.Bits8;
 				Version++;
 			}
 		}
+
+		///<summary>The depths the window offers: 16, 14 and 8, or 8 only when this computer forces 8 bits.</summary>
+		public List<int> ListBitsChoices => Options.Allow16Bit ? new List<int> { TwainBitDepth.Bits16,TwainBitDepth.Bits14,TwainBitDepth.Bits8 }
+			: new List<int> { TwainBitDepth.Bits8 };
 
 		///<summary>The operator checked the byte order on the known ramp or the phantom. Reset by every new image.</summary>
 		public bool IsByteOrderConfirmed {
@@ -179,8 +193,8 @@ namespace ImagingCapture.UI {
 		public bool CanStop => State==TestCaptureState.Enabled;
 		///<summary>A measured image and the settings hash exist, and the gated settings are verified: a record states that the test ran with
 		///them, which is not true while the safe values are in effect. The record needs the Setup permission too, which the window checks.</summary>
-		public bool CanWriteRecord => Analysis!=null && Analysis.IsValid && GatedSettingsHashValue!="" && SettingsCheck.IsVerified
-			&& State!=TestCaptureState.Closing;
+		public bool CanWriteRecord => Analysis!=null && Analysis.IsValid && GatedSettingsHashValue!="" && ImageSettingsHashValue!=""
+			&& SettingsCheck.IsVerified && State!=TestCaptureState.Closing;
 		///<summary>The byte-order confirmation applies to a 16-bit image only.</summary>
 		public bool IsByteOrderCheckable => Analysis!=null && Analysis.IsValid && Analysis.IsGray16;
 		public bool IsPolarityCheckable => Analysis!=null && Analysis.IsValid;
@@ -320,15 +334,26 @@ namespace ImagingCapture.UI {
 				error="No verification record can be written while safe values are in effect. "+SettingsCheck.Text;
 				return null;
 			}
+			if(ImageSettingsHashValue=="") {
+				error=HashError;
+				return null;
+			}
+			if(SourceInfo?.DriverIdentity==null) {
+				error="The TWAIN source did not report its driver version, so no record can say which driver it covers.";
+				return null;
+			}
 			CaptureVerificationRecord record=new CaptureVerificationRecord();
 			record.ImagingDeviceNum=Device.ImagingDeviceNum;
 			record.DeviceDescription=Device.Description??"";
 			record.SourceName=(Device.TwainName??"").Trim();//The row value the session compares (Matches).
-			record.SourceProductName=SourceInfo?.ProductName??"";
-			record.ComputerName=ComputerName;
-			record.GatedSettingsHash=GatedSettingsHashValue;
+			record.SourceProductName=SourceInfo.ProductName??"";
+			record.DriverIdentity=SourceInfo.DriverIdentity;//compared: the build the source reports at open
+			record.ImageSettingsHash=ImageSettingsHashValue;//compared: Bits, ByteOrder16, Polarity
+			record.ComputerName=ComputerName;//the audit trail only: the record covers every computer that matches
+			record.GatedSettingsHash=GatedSettingsHashValue;//the audit trail only
 			record.DateTimeVerified=now;
 			record.BitsRequested=Analysis.BitsRequested;
+			record.BitDepthInEffect=Analysis.BitDepthInEffect;
 			record.BitsDelivered=Analysis.BitsDelivered;
 			record.TransferMechanism=Analysis.TransferMechanism.ToString();
 			record.Width=Analysis.Width;
@@ -357,22 +382,40 @@ namespace ImagingCapture.UI {
 			return record;
 		}
 
-		///<summary>Why record does not verify 16-bit capture, for a confirmation before it is written, or "" when it does.</summary>
-		public static string GetRecordWarning(CaptureVerificationRecord record) {
-			if(record==null || record.IsPassedFor16Bit) {
+		///<summary>Why record does not verify capture of more than 8 bits, or not at the device's Bits, for a confirmation before it is written, or
+		///"" when it verifies the depth the session will ask for.</summary>
+		public string GetRecordWarning(CaptureVerificationRecord record) {
+			string warning=GetRecordWarningPassed(record);
+			if(warning!="" || record==null) {
+				return warning;
+			}
+			int bitsSession=Options.Allow16Bit ? TwainBitDepth.Normalize(Options.Bits) : TwainBitDepth.Bits8;
+			if(bitsSession>8 && record.BitDepthVerified!=bitsSession) {
+				return "This record verifies "+record.BitDepthVerified+"-bit capture, but this device's Bits is "+bitsSession+", so the capture session "
+					+"will not ask for more than 8 bits with it. Set Bits="+record.BitDepthVerified+" in Capture settings, or take the test image at "
+					+bitsSession+" bits.";
+			}
+			return "";
+		}
+
+		///<summary>Why record does not verify capture of more than 8 bits at its own depth, or "" when it does.</summary>
+		public static string GetRecordWarningPassed(CaptureVerificationRecord record) {
+			if(record==null || record.IsPassed) {
 				return "";
 			}
 			List<string> listReasons=new List<string>();
-			if(record.BitsDelivered!=16) {
-				listReasons.Add("the image is not 16-bit");
-			}
-			else if(!record.IsNegotiated16Bit) {
-				listReasons.Add("the 16-bit image did not come from a 16-bit enable over memory transfer");
+			if(record.BitDepthVerified<=8) {
+				if(record.BitsDelivered<=8) {
+					listReasons.Add("the image is 8-bit");
+				}
+				else {
+					listReasons.Add("the image of more than 8 bits did not come from an enable of more than 8 bits over memory transfer");
+				}
 			}
 			if(record.ByteOrderCheck==ByteOrderVerdict.LooksSwapped.ToString()) {
 				listReasons.Add("the byte order looks swapped");
 			}
-			if(record.BitsDelivered==16 && !record.IsByteOrderConfirmed) {
+			if(record.BitsDelivered>8 && !record.IsByteOrderConfirmed) {
 				listReasons.Add("the byte order is not confirmed");
 			}
 			if(!record.IsPolarityConfirmed) {
@@ -381,7 +424,17 @@ namespace ImagingCapture.UI {
 			if(record.IsVanillaNotInverted) {
 				listReasons.Add("the source delivers TWPF_VANILLA samples, which are stored as DICOM only with Polarity=Invert");
 			}
-			return "This record does not verify 16-bit capture: "+string.Join(", ",listReasons)+".";
+			return "This record does not verify capture of more than 8 bits: "+string.Join(", ",listReasons)+".";
+		}
+
+		///<summary>What record covers, for the result box: the depth, the driver version and the image settings, on every computer that runs them.</summary>
+		public static string GetRecordScopeText(CaptureVerificationRecord record) {
+			if(record==null) {
+				return "";
+			}
+			return "It covers "+record.BitDepthVerified+"-bit capture"+(record.BitDepthVerified==TwainBitDepth.Bits14 ? " (stored in a 16-bit file)" : "")
+				+" for driver "+(record.DriverIdentity==null ? "(not reported)" : record.DriverIdentity.Describe())
+				+" with these image settings (Bits, ByteOrder16, Polarity), on every computer that runs them.";
 		}
 
 		public void OnRecordWritten(CaptureVerificationRecord record) {
@@ -397,9 +450,10 @@ namespace ImagingCapture.UI {
 			if(!string.IsNullOrWhiteSpace(Device.ComputerName)
 				&& !string.Equals(Device.ComputerName.Trim(),ComputerName,StringComparison.OrdinalIgnoreCase))
 			{
-				text+=" The device is set up for computer "+Device.ComputerName.Trim()+"; capture.ini and the record are for this one.";
+				text+=" The device is set up for computer "+Device.ComputerName.Trim()+"; capture.ini is this computer's.";
 			}
-			return text;
+			return text+" A verification record covers every computer that runs the same driver version with the same image settings (Bits, "
+				+"ByteOrder16, Polarity).";
 		}
 
 		///<summary>The effective device settings, the gated values with their hash, and what the source reported at open.</summary>
@@ -429,6 +483,10 @@ namespace ImagingCapture.UI {
 				stringBuilder.AppendLine("  Warning: "+warning);
 			}
 			stringBuilder.AppendLine();
+			if(ImageSettingsHashValue!="") {
+				stringBuilder.AppendLine("Image settings a record covers: Bits="+options.Bits+", ByteOrder16="+options.ByteOrder16+", Polarity="+options.Polarity
+					+", SHA-256 "+ImageSettingsHashValue+".");
+			}
 			if(GatedSettingsHashValue=="") {
 				stringBuilder.AppendLine(HashError);
 			}
@@ -440,8 +498,9 @@ namespace ImagingCapture.UI {
 			}
 			if(SourceInfo!=null) {
 				stringBuilder.AppendLine();
-				stringBuilder.AppendLine("Source: "+Show(SourceInfo.ProductName)+", "+Show(SourceInfo.Manufacturer)+", version "+Show(SourceInfo.VersionInfo)
-					+", protocol "+SourceInfo.ProtocolMajor+"."+SourceInfo.ProtocolMinor+", DSM "+Show(SourceInfo.DsmName)+".");
+				stringBuilder.AppendLine("Source: "+Show(SourceInfo.ProductName)+", "+Show(SourceInfo.Manufacturer)+", version "+SourceInfo.VersionMajor+"."
+					+SourceInfo.VersionMinor+" ("+Show(SourceInfo.VersionInfo)+"), protocol "+SourceInfo.ProtocolMajor+"."+SourceInfo.ProtocolMinor+", DSM "
+					+Show(SourceInfo.DsmName)+". A record names this driver version.");
 				stringBuilder.AppendLine("  Device online: "+ShowBool(SourceInfo.DeviceOnline)+", UI controllable: "+ShowBool(SourceInfo.UiControllable)
 					+", pixel type "+ShowInt(SourceInfo.PixelType)+", pixel flavor "+ShowInt(SourceInfo.PixelFlavor)+".");
 				stringBuilder.AppendLine("  Bit depths at open: "+(SourceInfo.ListBitDepths==null || SourceInfo.ListBitDepths.Count==0 ? "-"
@@ -467,14 +526,13 @@ namespace ImagingCapture.UI {
 			else {
 				listLines.Add("Test image "+ImageCount.ToString(CultureInfo.InvariantCulture)+":");
 				listLines.AddRange(Analysis.GetResultLines());
-				if(LastEnded!=null && LastEnded.BitDepthInEffect<LastEnded.BitsRequested && !string.IsNullOrWhiteSpace(LastEnded.ReasonFallback)) {
-					listLines.Add("Asked for "+LastEnded.BitsRequested+" bits, delivered "+LastEnded.BitDepthInEffect+": "+LastEnded.ReasonFallback.Trim());
-				}
 			}
 			if(RecordWritten!=null) {
 				listLines.Add("");
+				string warning=GetRecordWarning(RecordWritten);
 				listLines.Add("Verification record written "+RecordWritten.DateTimeVerified.ToString("yyyy-MM-dd HH:mm",CultureInfo.InvariantCulture)+": "
-					+(RecordWritten.IsPassedFor16Bit ? "verifies 16-bit capture with these settings." : GetRecordWarning(RecordWritten)));
+					+(RecordWritten.IsPassed ? "verifies "+RecordWritten.BitDepthVerified+"-bit capture. "+GetRecordScopeText(RecordWritten) : "")
+					+(warning=="" ? "" : (RecordWritten.IsPassed ? " " : "")+warning));
 			}
 			return string.Join("\r\n",listLines);
 		}

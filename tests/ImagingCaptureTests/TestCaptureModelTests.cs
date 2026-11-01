@@ -69,8 +69,12 @@ Name=Not gated
 				listMountTemplates??new List<MountTemplateCategory> { new MountTemplateCategory { Description="FMX",DefaultCat=10 } },null,settingsCheck);
 		}
 
-		private static TwainCaptureOpenResult Opened() {
-			return new TwainCaptureOpenResult { IsOpen=true,SourceInfo=new TwainCaptureSourceInfo { ProductName="Example Sensor DS",ListBitDepths=new List<int> { 8 } } };
+		private static readonly TwainDriverIdentity _driver=new TwainDriverIdentity("Example Sensor DS",1,1,"1.1.0");
+
+		private static TwainCaptureOpenResult Opened(TwainDriverIdentity driverIdentity=null) {
+			TwainDriverIdentity driver=driverIdentity??_driver;
+			return new TwainCaptureOpenResult { IsOpen=true,SourceInfo=new TwainCaptureSourceInfo { ProductName="Example Sensor DS",ListBitDepths=new List<int> { 8 },
+				VersionMajor=driver.MajorNum,VersionMinor=driver.MinorNum,VersionInfo=driver.Info,DriverIdentity=driver } };
 		}
 
 		private static AcquiredImage Image16() {
@@ -100,7 +104,9 @@ Name=Not gated
 			TestCaptureModel model=Model(isSettingsSaved:false);
 			Assert.AreEqual(CaptureSettingsStatus.NeverSaved,model.SettingsCheck.Status);
 			StringAssert.StartsWith(model.SettingsCheckText,CaptureSettingsCheck.TextNeverSaved);
-			StringAssert.Contains(model.SettingsCheckText,"16-bit capture is not verified");
+			StringAssert.Contains(model.SettingsCheckText,"capture of more than 8 bits is not verified");
+			Assert.AreEqual(8,model.BitsToRequest,"The safe values force 8 bits.");
+			CollectionAssert.AreEqual(new[] { 8 },model.ListBitsChoices);
 			Assert.AreEqual(8,model.Options.Bits,"Design 9.3 safe values.");
 			Assert.IsFalse(model.Options.Allow16Bit);
 			Assert.IsNull(model.Options.SafeDisableCap);
@@ -164,7 +170,7 @@ Name=Not gated
 			model.OnOpenResult(Opened());
 			Assert.AreEqual(TestCaptureState.Open,model.State);
 			TwainEnableRequest request=model.CreateEnableRequest();
-			Assert.AreEqual(16,request.Bits,"Test capture asks for 16 bits to measure.");
+			Assert.AreEqual(16,request.Bits,"The device's Bits, 16 by default: what the session will ask for.");
 			Assert.AreEqual(TestCaptureModel.TargetLabel,request.TargetLabel);
 			Assert.IsNull(request.ShowUI,"The [Device.N] Headless setting decides, as in the session.");
 			model.OnEnablePosted(1);
@@ -183,6 +189,11 @@ Name=Not gated
 			StringAssert.Contains(model.GetResultText(),"Delivered: 16-bit grey over memory transfer (asked for 16).");
 			model.BitsToRequest=8;
 			Assert.AreEqual(8,model.CreateEnableRequest().Bits);
+			model.BitsToRequest=14;
+			Assert.AreEqual(14,model.CreateEnableRequest().Bits);
+			model.BitsToRequest=12;
+			Assert.AreEqual(8,model.BitsToRequest,"A depth that is not 8, 14 or 16 is 8.");
+			CollectionAssert.AreEqual(new[] { 16,14,8 },model.ListBitsChoices);
 			model.OnStatus(new TwainCaptureStatus { State=TwainCaptureState.Closed });
 			Assert.AreEqual(TestCaptureState.Closed,model.State);
 		}
@@ -247,8 +258,12 @@ Name=Not gated
 			CaptureVerificationRecord record=model.BuildRecord(now,out error);
 			Assert.IsNotNull(record,error);
 			Assert.AreEqual(12,record.ImagingDeviceNum);
-			Assert.AreEqual("OPPC1",record.ComputerName);
-			Assert.AreEqual(model.GatedSettingsHashValue,record.GatedSettingsHash);
+			Assert.AreEqual("OPPC1",record.ComputerName,"For the audit trail.");
+			Assert.AreEqual(model.GatedSettingsHashValue,record.GatedSettingsHash,"For the audit trail.");
+			Assert.IsTrue(record.DriverIdentity.IsSameAs(_driver),"The driver the source reported at open.");
+			Assert.AreEqual(CaptureImageSettingsHash.Compute(model.Options),record.ImageSettingsHash);
+			Assert.AreEqual(model.ImageSettingsHashValue,record.ImageSettingsHash);
+			Assert.AreEqual(16,record.BitDepthInEffect);
 			Assert.AreEqual(now,record.DateTimeVerified);
 			Assert.AreEqual("Example Sensor DS",record.SourceName);
 			Assert.AreEqual("Example Sensor DS",record.SourceProductName);
@@ -264,19 +279,20 @@ Name=Not gated
 			Assert.AreEqual(12,record.BitsStoredRule);
 			Assert.AreEqual("SN-000123",record.Serial);
 			Assert.IsTrue(record.IsMetadataPresent);
-			Assert.IsTrue(record.IsPassedFor16Bit);
-			Assert.AreEqual("",TestCaptureModel.GetRecordWarning(record));
-			Assert.IsTrue(record.Matches(12,"oppc1","Example Sensor DS",model.GatedSettingsHashValue.ToUpperInvariant()));
+			Assert.IsTrue(record.IsPassedFor(16));
+			Assert.AreEqual("",model.GetRecordWarning(record));
+			Assert.IsTrue(record.Matches(12,"Example Sensor DS",_driver,model.ImageSettingsHashValue.ToUpperInvariant()));
 			model.OnRecordWritten(record);
-			StringAssert.Contains(model.GetResultText(),"verifies 16-bit capture with these settings");
+			StringAssert.Contains(model.GetResultText(),"verifies 16-bit capture. It covers 16-bit capture for driver Example Sensor DS, version 1.1 (1.1.0)");
+			StringAssert.Contains(model.GetResultText(),"on every computer that runs them");
 			//A new image needs new confirmations.
 			model.OnImage(Image16());
 			Assert.IsFalse(model.IsByteOrderConfirmed);
 			Assert.IsFalse(model.IsPolarityConfirmed);
 			record=model.BuildRecord(now,out error);
-			Assert.IsFalse(record.IsPassedFor16Bit);
-			StringAssert.Contains(TestCaptureModel.GetRecordWarning(record),"the byte order is not confirmed");
-			StringAssert.Contains(TestCaptureModel.GetRecordWarning(record),"the polarity is not confirmed");
+			Assert.IsFalse(record.IsPassedFor(16));
+			StringAssert.Contains(model.GetRecordWarning(record),"the byte order is not confirmed");
+			StringAssert.Contains(model.GetRecordWarning(record),"the polarity is not confirmed");
 		}
 
 		[TestMethod]
@@ -296,8 +312,9 @@ Name=Not gated
 			Assert.AreEqual(8,record.BitsDelivered);
 			Assert.AreEqual(CaptureVerificationRecord.ByteOrderCheckNotApplicable,record.ByteOrderCheck);
 			Assert.IsNull(record.BitsStoredRule);
-			Assert.IsFalse(record.IsPassedFor16Bit);
-			Assert.AreEqual("This record does not verify 16-bit capture: the image is not 16-bit.",TestCaptureModel.GetRecordWarning(record));
+			Assert.IsFalse(record.IsPassed);
+			Assert.AreEqual(8,record.BitDepthVerified);
+			Assert.AreEqual("This record does not verify capture of more than 8 bits: the image is 8-bit.",model.GetRecordWarning(record));
 		}
 
 		[TestMethod]
@@ -379,12 +396,100 @@ Name=Not gated
 			Assert.IsFalse(model.CanOpenUnassignedCaptures,"No notice, no link.");
 		}
 
+		///<summary>A 14-bit image in 16-bit containers from a 14-bit enable (the source listed 14, not 16).</summary>
+		private static AcquiredImage Image14(int requestedBits=14) {
+			AcquiredImage image=TestImages.Image16(64,16,(x,y) => (ushort)(200+x*200+y%3),TestImages.Json16Bit12);
+			image.BitsPerSample=14;
+			image.RequestedBits=requestedBits;
+			image.BitDepthInEffect=14;
+			image.BitDepthReason=requestedBits==16 ? "ICAP_BITDEPTH MSG_GET does not list 16 (8, 14)" : null;
+			return image;
+		}
+
+		[TestMethod]
+		public void BitsToRequest_TheDevicesBits_And8OnlyWhenThisComputerForcesIt() {
+			TestCaptureModel model14=Model(iniText:Ini.Replace("Bits=16","Bits=14"));
+			Assert.AreEqual(14,model14.BitsToRequest,"The device's Bits: what a record must have passed at.");
+			Assert.AreEqual(14,model14.CreateEnableRequest().Bits);
+			TestCaptureModel modelDefault=Model(iniText:Ini.Replace("Bits=16\r\n","").Replace("Bits=16\n",""));
+			Assert.AreEqual(16,modelDefault.Options.Bits,"No Bits in the file: 16 by default.");
+			Assert.AreEqual(16,modelDefault.BitsToRequest);
+			TestCaptureModel modelOff=Model(iniText:Ini.Replace("Allow16Bit=1","Allow16Bit=0"));
+			Assert.AreEqual(8,modelOff.BitsToRequest,"Allow16Bit=0 forces 8 everywhere, Test capture too.");
+			modelOff.BitsToRequest=16;
+			Assert.AreEqual(8,modelOff.BitsToRequest);
+			CollectionAssert.AreEqual(new[] { 8 },modelOff.ListBitsChoices);
+			StringAssert.Contains(modelOff.GetSettingsText(),"More than 8 bits configured: no");
+		}
+
+		[TestMethod]
+		public void Record_14Bit_ConfirmedPassesAt14_AndSaysWhatItCovers() {
+			TestCaptureModel model=Model(iniText:Ini.Replace("Bits=16","Bits=14"));
+			model.OnOpenResult(Opened());
+			model.OnEnablePosted(1);
+			model.OnImage(Image14());
+			StringAssert.Contains(model.GetResultText(),"Delivered: 14-bit in a 16-bit file, grey over memory transfer (asked for 14).");
+			model.IsByteOrderConfirmed=true;
+			model.IsPolarityConfirmed=true;
+			string error;
+			CaptureVerificationRecord record=model.BuildRecord(new DateTime(2026,11,1,9,0,0),out error);
+			Assert.IsNotNull(record,error);
+			Assert.AreEqual(14,record.BitDepthInEffect);
+			Assert.AreEqual(14,record.BitDepthVerified);
+			Assert.IsTrue(record.IsPassedFor(14));
+			Assert.AreEqual("",model.GetRecordWarning(record));
+			model.OnRecordWritten(record);
+			StringAssert.Contains(model.GetResultText(),"verifies 14-bit capture. It covers 14-bit capture (stored in a 16-bit file) for driver");
+		}
+
+		[TestMethod]
+		public void Record_PassedAtAnotherDepthThanTheDevicesBits_Warns() {
+			TestCaptureModel model=Model();//Bits=16
+			model.OnOpenResult(Opened());
+			model.OnEnablePosted(1);
+			model.OnImage(Image14(requestedBits:16));
+			StringAssert.Contains(model.GetResultText(),"Delivered: 14-bit in a 16-bit file, grey over memory transfer (asked for 16). ICAP_BITDEPTH MSG_GET "
+				+"does not list 16 (8, 14).");
+			model.IsByteOrderConfirmed=true;
+			model.IsPolarityConfirmed=true;
+			string error;
+			CaptureVerificationRecord record=model.BuildRecord(DateTime.Now,out error);
+			Assert.IsTrue(record.IsPassedFor(14));
+			StringAssert.Contains(model.GetRecordWarning(record),"verifies 14-bit capture, but this device's Bits is 16");
+			Assert.AreEqual("",TestCaptureModel.GetRecordWarningPassed(record),"It did pass, at 14.");
+		}
+
+		[TestMethod]
+		public void Record_SourceReportedNoDriverVersion_NotWritten() {
+			TestCaptureModel model=Model();
+			TwainCaptureOpenResult opened=Opened();
+			opened.SourceInfo.DriverIdentity=null;
+			model.OnOpenResult(opened);
+			model.OnEnablePosted(1);
+			model.OnImage(Image16());
+			string error;
+			Assert.IsNull(model.BuildRecord(DateTime.Now,out error));
+			StringAssert.Contains(error,"did not report its driver version");
+		}
+
+		[TestMethod]
+		public void Record_8BitImageWithFallback_DeliveredLineSaysWhy() {
+			TestCaptureModel model=Model();
+			model.OnOpenResult(Opened());
+			model.OnEnablePosted(1);
+			AcquiredImage image=TestImages.Image8(8,8,(x,y) => (byte)(x*y),TestImages.Json8Bit);
+			image.RequestedBits=16;
+			image.BitDepthReason="ICAP_BITDEPTH MSG_GET does not list 16 (8)";
+			model.OnImage(image);
+			StringAssert.Contains(model.GetResultText(),"Delivered: 8-bit (fallback: ICAP_BITDEPTH MSG_GET does not list 16 (8)) grey over");
+		}
+
 		#region CaptureVerificationRecord
 		private static CaptureVerificationRecord FullRecord() {
 			return new CaptureVerificationRecord {
 				ImagingDeviceNum=12,DeviceDescription="Sensor; room 2 = left %",SourceName="Example Sensor DS",
-				SourceProductName="Example Sensor DS 1.1",ComputerName="OPPC1",
-				GatedSettingsHash=new string('a',64),DateTimeVerified=new DateTime(2026,10,31,15,4,5),BitsRequested=16,BitsDelivered=16,
+				SourceProductName="Example Sensor DS 1.1",ComputerName="OPPC1",DriverIdentity=_driver,ImageSettingsHash=new string('c',64),
+				GatedSettingsHash=new string('a',64),DateTimeVerified=new DateTime(2026,10,31,15,4,5),BitsRequested=16,BitDepthInEffect=16,BitsDelivered=16,
 				TransferMechanism="Memory",Width=1000,Height=1500,XDpi=1270,YDpi=1270,ByteOrder16="LE",ByteOrderCheck="LooksRight",
 				IsByteOrderConfirmed=true,Polarity="AsDelivered",PixelFlavor="Chocolate",IsPolarityConfirmed=true,MinValue=12,MaxValue=4000,
 				EffectiveBitsMeasured=12,EffectiveBitsReported=null,BitsStoredRule=16,WindowLow=100,WindowHigh=3900,Serial="SN\r\n1",Model="",
@@ -409,7 +514,9 @@ Name=Not gated
 			Assert.IsNull(recordRead.EffectiveBitsReported);
 			Assert.AreEqual(3900,recordRead.WindowHigh);
 			Assert.AreEqual(1270,recordRead.XDpi);
-			Assert.IsTrue(recordRead.IsPassedFor16Bit);
+			Assert.IsTrue(recordRead.IsPassedFor(16));
+			Assert.IsTrue(recordRead.DriverIdentity.IsSameAs(_driver));
+			Assert.AreEqual(new string('c',64),recordRead.ImageSettingsHash);
 		}
 
 		[TestMethod]
@@ -417,54 +524,68 @@ Name=Not gated
 			CaptureVerificationRecord record;
 			Assert.IsFalse(CaptureVerificationRecord.TryParse(null,out record));
 			Assert.IsFalse(CaptureVerificationRecord.TryParse("Capture settings changed: ...",out record));
-			Assert.IsFalse(CaptureVerificationRecord.TryParse(CaptureVerificationRecord.LogPrefix+"Device=12; Computer=PC",out record),"No hash.");
-			Assert.IsFalse(CaptureVerificationRecord.TryParse(CaptureVerificationRecord.LogPrefix+"Device=0; Computer=PC; GatedSettingsHash="+new string('a',64),
+			string driverPairs="DriverProductName=X DS; DriverVersion=1.0; DriverVersionInfo=1.0.0; ";
+			Assert.IsFalse(CaptureVerificationRecord.TryParse(CaptureVerificationRecord.LogPrefix+"Device=12; "+driverPairs+"Computer=PC",out record),"No hash.");
+			Assert.IsFalse(CaptureVerificationRecord.TryParse(CaptureVerificationRecord.LogPrefix+"Device=12; Computer=PC; ImageSettingsHash="+new string('a',64),
+				out record),"No driver version.");
+			Assert.IsFalse(CaptureVerificationRecord.TryParse(CaptureVerificationRecord.LogPrefix+"Device=0; "+driverPairs+"ImageSettingsHash="+new string('a',64),
 				out record),"No device.");
-			Assert.IsTrue(CaptureVerificationRecord.TryParse(CaptureVerificationRecord.LogPrefix+"Device=3; Computer=PC; GatedSettingsHash="+new string('B',64),
-				out record),"Unknown and missing keys are ignored.");
-			Assert.AreEqual(new string('b',64),record.GatedSettingsHash);
-			Assert.IsFalse(record.IsPassedFor16Bit);
+			Assert.IsTrue(CaptureVerificationRecord.TryParse(CaptureVerificationRecord.LogPrefix+"Device=3; "+driverPairs+"ImageSettingsHash="+new string('B',64),
+				out record),"Unknown and missing keys are ignored; the computer is not needed.");
+			Assert.AreEqual(new string('b',64),record.ImageSettingsHash);
+			Assert.AreEqual("",record.ComputerName);
+			Assert.IsFalse(record.IsPassed);
 		}
 
 		[TestMethod]
 		public void Record_MatchesAndPasses() {
 			CaptureVerificationRecord record=FullRecord();
-			Assert.IsTrue(record.Matches(12,"oppc1 "," example sensor ds",new string('A',64)));
-			Assert.IsFalse(record.Matches(13,"OPPC1","Example Sensor DS",new string('a',64)),"Another device.");
-			Assert.IsFalse(record.Matches(12,"OPPC2","Example Sensor DS",new string('a',64)),"Another computer.");
-			Assert.IsFalse(record.Matches(12,"OPPC1","Example Sensor DS",new string('b',64)),"Other settings.");
-			//The hash covers capture.ini only; with RestrictSources=0 pointing the device row at another source leaves it unchanged.
-			Assert.IsFalse(record.Matches(12,"OPPC1","Other Sensor DS",new string('a',64)),"Another TWAIN source.");
-			Assert.IsFalse(record.Matches(12,"OPPC1","",new string('a',64)));
+			string hash=new string('c',64);
+			Assert.IsTrue(record.Matches(12," example sensor ds",new TwainDriverIdentity("EXAMPLE SENSOR DS",1,1,"1.1.0"),hash.ToUpperInvariant()));
+			Assert.IsFalse(record.Matches(13,"Example Sensor DS",_driver,hash),"Another device.");
+			Assert.IsFalse(record.Matches(12,"Example Sensor DS",_driver,new string('b',64)),"Other image settings.");
+			Assert.IsFalse(record.Matches(12,"Example Sensor DS",new TwainDriverIdentity("Example Sensor DS",1,2,"1.1.0"),hash),"Another driver version.");
+			Assert.IsFalse(record.Matches(12,"Example Sensor DS",new TwainDriverIdentity("Example Sensor DS",1,1,"1.1.1"),hash),"Another driver build.");
+			Assert.IsFalse(record.Matches(12,"Example Sensor DS",null,hash),"The open source's driver not known.");
+			Assert.IsFalse(record.Matches(12,"Other Sensor DS",_driver,hash),"Another TWAIN source of the row.");
+			Assert.IsFalse(record.Matches(12,"",_driver,hash));
+			record.ComputerName="OPPC2";
+			Assert.IsTrue(record.Matches(12,"Example Sensor DS",_driver,hash),"Another computer: the computer is not compared.");
 			record.SourceName="";
-			Assert.IsFalse(record.Matches(12,"OPPC1","",new string('a',64)),"A record without its source matches none.");
+			Assert.IsFalse(record.Matches(12,"",_driver,hash),"A record without its source matches none.");
 			record=FullRecord();
-			record.GatedSettingsHash="";
-			Assert.IsFalse(record.Matches(12,"OPPC1","Example Sensor DS",""));
+			record.ImageSettingsHash="";
+			Assert.IsFalse(record.Matches(12,"Example Sensor DS",_driver,""));
 			record=FullRecord();
 			record.ByteOrderCheck="LooksSwapped";
-			Assert.IsFalse(record.IsPassedFor16Bit);
-			StringAssert.Contains(TestCaptureModel.GetRecordWarning(record),"the byte order looks swapped");
+			Assert.IsFalse(record.IsPassedFor(16));
+			StringAssert.Contains(TestCaptureModel.GetRecordWarningPassed(record),"the byte order looks swapped");
 			record=FullRecord();
 			record.ByteOrderCheck="Inconclusive";
-			Assert.IsTrue(record.IsPassedFor16Bit,"Inconclusive passes when the operator confirmed it on the ramp.");
-			//The record never claims what the saver refuses: 16-bit samples only from a 16-bit enable over memory transfer...
+			Assert.IsTrue(record.IsPassedFor(16),"Inconclusive passes when the operator confirmed it on the ramp.");
+			Assert.IsFalse(record.IsPassedFor(14),"A record that passed at 16 covers 16 only.");
+			//The record never claims what the saver refuses: samples of more than 8 bits only from such an enable over memory transfer...
 			record=FullRecord();
 			record.TransferMechanism="Native";
-			Assert.IsFalse(record.IsPassedFor16Bit,"A 16bpp native DIB is never written as DICOM.");
-			StringAssert.Contains(TestCaptureModel.GetRecordWarning(record),"over memory transfer");
+			Assert.IsFalse(record.IsPassedFor(16),"A 16bpp native DIB is never written as DICOM.");
+			StringAssert.Contains(TestCaptureModel.GetRecordWarningPassed(record),"over memory transfer");
 			record=FullRecord();
 			record.BitsRequested=8;
-			Assert.IsFalse(record.IsPassedFor16Bit,"Nor 16-bit samples in an 8-bit enable.");
+			record.BitDepthInEffect=8;
+			Assert.IsFalse(record.IsPassedFor(16),"Nor 16-bit samples in an 8-bit enable.");
 			//...and TWPF_VANILLA samples only inverted; inverted CHOCOLATE ones are written.
 			record=FullRecord();
 			record.PixelFlavor="Vanilla";
-			Assert.IsFalse(record.IsPassedFor16Bit);
-			StringAssert.Contains(TestCaptureModel.GetRecordWarning(record),"only with Polarity=Invert");
+			Assert.IsFalse(record.IsPassedFor(16));
+			StringAssert.Contains(TestCaptureModel.GetRecordWarningPassed(record),"only with Polarity=Invert");
 			record.Polarity="Invert";
-			Assert.IsTrue(record.IsPassedFor16Bit);
+			Assert.IsTrue(record.IsPassedFor(16));
 			record.PixelFlavor="Chocolate";
-			Assert.IsTrue(record.IsPassedFor16Bit,"A verified inversion of a chocolate source is the clinic's fix (twain-contract 1.1 section 6.2).");
+			Assert.IsTrue(record.IsPassedFor(16),"A verified inversion of a chocolate source is the clinic's fix (twain-contract 1.1 section 6.2).");
+			record=FullRecord();
+			record.BitDepthInEffect=14;
+			Assert.IsTrue(record.IsPassedFor(14));
+			Assert.IsFalse(record.IsPassedFor(16),"A record that passed at 14 covers 14 only.");
 		}
 		#endregion CaptureVerificationRecord
 	}

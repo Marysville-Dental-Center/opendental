@@ -325,6 +325,10 @@ namespace ImagingCapture.Tests.Db {
 				//that reported none in the file.
 				dictFields["XDpi"]="1270";
 				dictFields["YDpi"]="1270";
+				//The driver build that delivered it, as the library writes it in every sidecar from CAP-16.
+				dictFields[CaptureSidecarKeys.DriverProductName]=CaptureDb.TwainName;
+				dictFields[CaptureSidecarKeys.DriverVersion]="1.1";
+				dictFields[CaptureSidecarKeys.DriverVersionInfo]="1.1.0";
 				CaptureFileEntry entry=_files.Quarantine16(dictFields,_receivedAt);
 				Assert.IsTrue(entry.IsGray16);
 				CaptureRecoveryFiler filer=new CaptureRecoveryFiler(new CaptureRecoveryServices {
@@ -339,14 +343,17 @@ namespace ImagingCapture.Tests.Db {
 				//Without a verification record: refused, never converted to 8 bits.
 				CaptureFilingResult result=filer.Assign(entry,0,0);
 				Assert.IsFalse(result.IsDone);
-				StringAssert.Contains(result.Error,"no Test capture verification record exists for this device on this computer");
+				StringAssert.Contains(result.Error,"no Test capture record for this sensor's driver version and image settings");
 				Assert.AreEqual(0,CaptureDb.GetDocuments(_patientFrom.PatNum).Count);
-				//Test capture passed for 16 bits with these settings (its Setup entry, as Test capture writes it).
+				//Test capture passed for 16 bits with this driver and these image settings, on another computer (its Setup entry, as Test capture
+				//writes it): a record covers every computer that runs them (owner decision 2026-11-01).
 				CaptureVerificationRecord record=new CaptureVerificationRecord {
 					ImagingDeviceNum=_imagingDevice.ImagingDeviceNum,DeviceDescription=_imagingDevice.Description,SourceName=CaptureDb.TwainName,
-					SourceProductName=CaptureDb.TwainName,ComputerName=CaptureDb.ComputerName,
+					SourceProductName=CaptureDb.TwainName,ComputerName="ANOTHER-CAPTURE-PC",
+					DriverIdentity=new TwainDriverIdentity(CaptureDb.TwainName,1,1,"1.1.0"),
+					ImageSettingsHash=CaptureImageSettingsHash.Compute(TwainCaptureOptions.FromConfig(CaptureDb.LoadCaptureIni(folder),_imagingDevice.ImagingDeviceNum)),
 					GatedSettingsHash=GatedSettingsHash.Compute(CaptureDb.LoadCaptureIni(folder),_imagingDevice.ImagingDeviceNum),
-					DateTimeVerified=DateTime.Now,BitsRequested=16,BitsDelivered=16,TransferMechanism="Memory",Width=6,Height=4,XDpi=1270,YDpi=1270,
+					DateTimeVerified=DateTime.Now,BitsRequested=16,BitDepthInEffect=16,BitsDelivered=16,TransferMechanism="Memory",Width=6,Height=4,XDpi=1270,YDpi=1270,
 					ByteOrder16="LE",ByteOrderCheck="LooksRight",IsByteOrderConfirmed=true,Polarity="AsDelivered",PixelFlavor="Chocolate",IsPolarityConfirmed=true,
 				};
 				SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,record.ToLogText(),_imagingDevice.ImagingDeviceNum,DateTime.MinValue);

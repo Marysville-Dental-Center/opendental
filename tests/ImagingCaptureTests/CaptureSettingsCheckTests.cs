@@ -117,7 +117,7 @@ namespace ImagingCapture.Tests {
 			Assert.AreEqual(CaptureSettingsStatus.Verified,check.Status);
 			Assert.IsTrue(check.IsVerified);
 			Assert.AreEqual("",check.Text);
-			Assert.IsNull(check.Reason8Bit);
+			Assert.IsNull(check.ReasonFallback);
 			Assert.AreEqual(GatedSettingsHash.Compute(config,12),check.CurrentHash);
 			Assert.IsNotNull(check.LastSaved);
 		}
@@ -133,7 +133,7 @@ namespace ImagingCapture.Tests {
 			StringAssert.StartsWith(check.Text,"Capture settings were changed outside Open Dental; review them in Setup.");
 			StringAssert.Contains(check.Text,"2026-10-29 08:00");
 			StringAssert.Contains(check.Text,"(Twain.Allow16Bit, Device.Bits)");
-			StringAssert.Contains(check.Reason8Bit,"changed outside Open Dental");
+			StringAssert.Contains(check.ReasonFallback,"changed outside Open Dental");
 		}
 
 		[TestMethod]
@@ -171,9 +171,9 @@ namespace ImagingCapture.Tests {
 			Assert.AreEqual(CaptureSettingsStatus.NeverSaved,check.Status);
 			Assert.IsNull(check.LastSaved);
 			Assert.AreEqual(CaptureSettingsCheck.TextNeverSaved+" "+CaptureSettingsCheck.TextConsequences,check.Text);
-			StringAssert.Contains(check.Text,"16-bit capture is not verified");
-			StringAssert.Contains(check.Reason8Bit,"never been saved");
-			StringAssert.Contains(check.Reason8Bit,"(not verified)");
+			StringAssert.Contains(check.Text,"capture of more than 8 bits is not verified");
+			StringAssert.Contains(check.ReasonFallback,"never been saved");
+			StringAssert.Contains(check.ReasonFallback,"(not verified)");
 		}
 
 		[TestMethod]

@@ -6,6 +6,7 @@ using System.Globalization;
 using ImagingCapture.Dicom;
 using ImagingCapture.Metadata;
 using ImagingCapture.Save;
+using ImagingCapture.Session;
 using ImagingDeviceManager.Capture;
 
 namespace ImagingCapture.UI {
@@ -40,6 +41,10 @@ namespace ImagingCapture.UI {
 		public double XDpi { get; private set; }
 		public double YDpi { get; private set; }
 		public int BitsRequested { get; private set; }
+		///<summary>16, 14 or 8: the depth the enable ran at (AcquiredImage.BitDepthInEffect).</summary>
+		public int BitDepthInEffect { get; private set; }
+		///<summary>Why the enable ran at fewer bits than asked (AcquiredImage.BitDepthReason), or null.</summary>
+		public string BitDepthReason { get; private set; }
 		///<summary>DAT_IMAGEINFO BitsPerSample.</summary>
 		public int BitsDelivered { get; private set; }
 		public bool IsGray16 { get; private set; }
@@ -103,6 +108,8 @@ namespace ImagingCapture.UI {
 			XDpi=image.XDpi;
 			YDpi=image.YDpi;
 			BitsRequested=image.RequestedBits;
+			BitDepthInEffect=TwainBitDepth.Normalize(image.BitDepthInEffect);
+			BitDepthReason=string.IsNullOrWhiteSpace(image.BitDepthReason) ? null : image.BitDepthReason.Trim();
 			BitsDelivered=image.BitsPerSample;
 			IsGray16=image.IsGray16;
 			IsDeliveredAs8BitIn16BitEnable=image.IsDeliveredAs8BitIn16BitEnable;
@@ -269,11 +276,18 @@ namespace ImagingCapture.UI {
 			}
 			listLines.Add("Size: "+Width+" x "+Height+" pixels, "+FormatDpi(XDpi)+" x "+FormatDpi(YDpi)+" dpi.");
 			string mechanism=TransferMechanism==TwainTransferMechanism.Memory ? "memory" : "native";
-			if(IsGray16) {
-				listLines.Add("Delivered: 16-bit grey over "+mechanism+" transfer (asked for "+BitsRequested+").");
+			if(IsGray16 && BitDepthInEffect==TwainBitDepth.Bits14) {
+				listLines.Add("Delivered: "+CaptureBitDepthText.Bits14+", grey over "+mechanism+" transfer (asked for "+BitsRequested+")."
+					+(BitDepthReason==null ? "" : " "+BitDepthReason.TrimEnd('.')+"."));
+			}
+			else if(IsGray16) {
+				listLines.Add("Delivered: "+CaptureBitDepthText.Bits16+" grey over "+mechanism+" transfer (asked for "+BitsRequested+")."
+					+(BitDepthInEffect>8 ? "" : " These 16-bit samples did not come from an enable of more than 8 bits."));
 			}
 			else {
-				listLines.Add("Delivered: "+BitsDelivered+"-bit "+(IsColor ? "color" : "grey")+" over "+mechanism+" transfer (asked for "+BitsRequested+")."
+				string depth=BitsDelivered==8 ? CaptureBitDepthText.Describe(TwainBitDepth.Bits8,BitsRequested>8 ? BitDepthReason : null)
+					: BitsDelivered+"-bit";
+				listLines.Add("Delivered: "+depth+" "+(IsColor ? "color" : "grey")+" over "+mechanism+" transfer (asked for "+BitsRequested+")."
 					+(IsDeliveredAs8BitIn16BitEnable ? " The source had no 16-bit original for this image." : ""));
 			}
 			listLines.Add("Pixel flavor: "+(PixelFlavor==AcquiredImage.PixelFlavorVanilla ? "vanilla (0 is white)" : "chocolate (0 is black)")

@@ -470,10 +470,17 @@ namespace ImagingCapture.Tests {
 		}
 
 		///<summary>A passed 16-bit verification record for device 12 on OPERATORY1 with the given hash.</summary>
-		public static CaptureVerificationRecord PassedRecord(string hash) {
+		///<summary>The driver build FakeTwainCaptureSession reports at open by default, and PassedRecord names.</summary>
+		public static readonly TwainDriverIdentity Driver=new TwainDriverIdentity("Example Sensor DS",1,1,"1.1.0");
+
+		///<summary>A record that passed at bits for device 12 and Example Sensor DS with Driver, made on OPERATORY1 with the image settings of
+		///the defaults (Bits=bits, LE, AsDelivered) unless options says otherwise. gatedHash goes into the audit field only.</summary>
+		public static CaptureVerificationRecord PassedRecord(string gatedHash,int bits=16,TwainCaptureOptions options=null) {
+			TwainCaptureOptions optionsHashed=options??new TwainCaptureOptions { ImagingDeviceNum=12,Bits=bits };
 			return new CaptureVerificationRecord {
-				ImagingDeviceNum=12,ComputerName="OPERATORY1",SourceName="Example Sensor DS",GatedSettingsHash=hash,
-				DateTimeVerified=new DateTime(2026,10,30,9,0,0),BitsRequested=16,BitsDelivered=16,TransferMechanism="Memory",
+				ImagingDeviceNum=12,ComputerName="OPERATORY1",SourceName="Example Sensor DS",SourceProductName="Example Sensor DS",DriverIdentity=Driver,
+				ImageSettingsHash=CaptureBitDepthDecision.GetImageSettingsHash(optionsHashed,12),GatedSettingsHash=gatedHash??"",
+				DateTimeVerified=new DateTime(2026,10,30,9,0,0),BitsRequested=bits,BitDepthInEffect=bits,BitsDelivered=16,TransferMechanism="Memory",
 				ByteOrderCheck="LooksRight",IsByteOrderConfirmed=true,IsPolarityConfirmed=true,PixelFlavor="Chocolate",Polarity="AsDelivered",
 			};
 		}

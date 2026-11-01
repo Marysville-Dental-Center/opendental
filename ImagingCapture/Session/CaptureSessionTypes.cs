@@ -244,8 +244,13 @@ namespace ImagingCapture.Session {
 					+" bits";
 				if(isWithReasons && Reason8Bit.Trim()!="") {
 					string reason=Reason8Bit.Trim().TrimEnd('.');
-					const string prefix="8 bits: ";
-					bits+=" ("+(reason.StartsWith(prefix,StringComparison.Ordinal) ? reason.Substring(prefix.Length) : reason)+")";
+					foreach(string prefix in new[] { CaptureBitDepthText.PrefixFallback,CaptureBitDepthText.PrefixConfigured }) {
+						if(reason.StartsWith(prefix,StringComparison.Ordinal)) {
+							reason=reason.Substring(prefix.Length);
+							break;
+						}
+					}
+					bits+=" ("+reason+")";
 				}
 				if(Reason8BitDelivered.Trim()!="") {
 					bits+=isWithReasons ? " (the source gave 8 bits: "+Reason8BitDelivered.Trim().TrimEnd('.')+")" : " (the source gave 8 bits)";

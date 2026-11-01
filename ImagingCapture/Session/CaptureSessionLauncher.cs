@@ -336,7 +336,7 @@ namespace ImagingCapture.Session {
 				Options=options,
 				SessionConfig=sessionConfig,
 				ComputerName=computerName,
-				VerificationRecord=CaptureVerificationRecords.FindLatest(listSetupLogs,imagingDeviceNum,computerName),
+				VerificationRecord=CaptureVerificationRecords.FindLatest(listSetupLogs,imagingDeviceNum),//on any computer (owner decision 2026-11-01)
 				GatedSettingsHash=settingsCheck.CurrentHash,
 				SettingsCheck=settingsCheck,
 				SessionGuid=Guid.NewGuid(),

@@ -27,15 +27,17 @@ namespace ImagingCapture.Settings {
 	///
 	///Unless the settings are Verified, the session path ignores the gated block and uses safe values (GetOptionsInEffect): the capture session
 	///stays off (CaptureSessionLauncher returns NotStarted and the legacy Mount/Acquire loop runs), Test capture runs with the safe values and
-	///writes no verification record, and the 16-bit decision gives 8 bits (CaptureBitDepthDecision). The legacy path is not checked: the
-	///library reads [Twain] as it is (design 9.3 "Before CAP-4, and on the legacy path").</summary>
+	///writes no verification record, and the bit-depth decision gives 8 bits (CaptureBitDepthDecision). This check stays per computer: a Test
+	///capture verification record covers every computer with the same driver version and image settings (CaptureVerificationRecord), but each
+	///computer's own file must still be the one saved there. The legacy path is not checked: the library reads [Twain] as it is (design 9.3
+	///"Before CAP-4, and on the legacy path").</summary>
 	public sealed class CaptureSettingsCheck {
 		///<summary>Design 9.3's sentence for a hash that differs from the one last saved.</summary>
 		public const string TextChangedOutside="Capture settings were changed outside Open Dental; review them in Setup.";
 		public const string TextNeverSaved="The capture settings of this device have never been saved in Open Dental on this computer; review and "
 			+"save them in Setup (Imaging Devices, the device, Capture settings).";
-		public const string TextConsequences="Until then the capture session stays off on this computer, Test capture uses safe values, and 16-bit "
-			+"capture is not verified.";
+		public const string TextConsequences="Until then the capture session stays off on this computer, Test capture uses safe values, and capture "
+			+"of more than 8 bits is not verified.";
 
 		private CaptureSettingsCheck() {
 		}
@@ -75,18 +77,19 @@ namespace ImagingCapture.Settings {
 			}
 		}
 
-		///<summary>The reason the 16-bit decision gives when the settings are not Verified, or null when they are.</summary>
-		public string Reason8Bit {
+		///<summary>The fallback reason the bit-depth decision gives when the settings are not Verified ("8 bits (fallback): " and this), or null
+		///when they are.</summary>
+		public string ReasonFallback {
 			get {
 				switch(Status) {
 					case CaptureSettingsStatus.Verified:
 						return null;
 					case CaptureSettingsStatus.ChangedOutside:
-						return "8 bits: capture settings were changed outside Open Dental since they were last saved in Capture settings (not verified).";
+						return "capture settings were changed outside Open Dental since they were last saved in Capture settings (not verified)";
 					case CaptureSettingsStatus.NeverSaved:
-						return "8 bits: the capture settings of this device have never been saved in Open Dental on this computer (not verified).";
+						return "the capture settings of this device have never been saved in Open Dental on this computer (not verified)";
 					default:
-						return "8 bits: the capture settings saved in Open Dental could not be checked (not verified).";
+						return "the capture settings saved in Open Dental could not be checked (not verified)";
 				}
 			}
 		}

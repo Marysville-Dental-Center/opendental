@@ -18,7 +18,8 @@ namespace ImagingCapture.Tests {
 	///<summary>A stand-in for TwainCaptureSession with no DSM and no worker thread: it records every command, and the test raises the events
 	///itself (RaiseImage, RaiseEnded, RaiseStatus), as the worker would, after the commands. Open answers OpenResult at once.</summary>
 	internal sealed class FakeTwainCaptureSession:ITwainCaptureSession {
-		public TwainCaptureOpenResult OpenResult=new TwainCaptureOpenResult { IsOpen=true,SourceInfo=new TwainCaptureSourceInfo { ProductName="Example Sensor DS" } };
+		public TwainCaptureOpenResult OpenResult=new TwainCaptureOpenResult { IsOpen=true,SourceInfo=new TwainCaptureSourceInfo { ProductName="Example Sensor DS",
+			VersionMajor=1,VersionMinor=1,VersionInfo="1.1.0",DriverIdentity=CaptureControllerHarness.Driver } };
 		public int CountOpen;
 		public string OpenProductName;
 		public TwainCaptureOptions OpenOptions;

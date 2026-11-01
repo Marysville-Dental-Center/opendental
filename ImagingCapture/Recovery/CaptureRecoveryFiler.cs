@@ -359,7 +359,7 @@ namespace ImagingCapture.Recovery {
 			string computerName=_services.FuncGetComputerName?.Invoke()??"";
 			ImagingDevice imagingDevice=imagingDeviceNum>0 ? Store.GetImagingDevice(imagingDeviceNum) : null;
 			List<SecurityLog> listSetupLogs=imagingDeviceNum>0 ? Store.GetSetupLogEntries(imagingDeviceNum) : new List<SecurityLog>();
-			CaptureVerificationRecord record=imagingDeviceNum>0 ? CaptureVerificationRecords.FindLatest(listSetupLogs,imagingDeviceNum,computerName) : null;
+			CaptureVerificationRecord record=imagingDeviceNum>0 ? CaptureVerificationRecords.FindLatest(listSetupLogs,imagingDeviceNum) : null;
 			CaptureSettingsCheck settingsCheck=imagingDeviceNum>0
 				? CaptureSettingsCheck.Check(config,imagingDeviceNum,computerName,listSetupLogs)
 				: CaptureSettingsCheck.Unknown(imagingDeviceNum,computerName,"the capture names no imaging device");
@@ -369,13 +369,15 @@ namespace ImagingCapture.Recovery {
 				ImagingDeviceNum=imagingDeviceNum,
 				ComputerName=computerName,
 				TwainName=imagingDevice?.TwainName??"",
+				DriverIdentity=entry.DriverIdentity,//the build that delivered the capture, from its sidecar
 				GatedSettingsHash=settingsCheck.CurrentHash,
 				SettingsCheck=settingsCheck,
 				Target=target.ToIntraOralTarget(),
+				BitsWanted=request.Image.BitDepthInEffect>8 ? request.Image.BitDepthInEffect : (int?)null,//the depth it was taken at
 			});
-			if(choice.Bits!=16) {
-				error="This 16-bit capture can be filed only where the capture session could store it at 16 bits, and it is never converted to 8 bits. "
-					+(choice.Reason8Bit??"").Trim()+" It stays where it is.";
+			if(choice.Bits<=8) {
+				error="This 16-bit capture can be filed into its slot only where the capture session could store it at its depth, and it is never "
+					+"converted to 8 bits there. "+(choice.Reason8Bit??"").Trim()+" It stays where it is.";
 				return false;
 			}
 			request.Is16BitAllowed=true;
