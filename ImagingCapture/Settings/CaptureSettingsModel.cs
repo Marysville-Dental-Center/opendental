@@ -171,8 +171,21 @@ namespace ImagingCapture.Settings {
 
 		///<summary>The edits, as the security-log entry will list them, for the confirmation before Save.</summary>
 		public List<CaptureSettingChange> GetPendingChanges() {
-			return _listRows.Where(x => x.IsChanged).Select(x => new CaptureSettingChange {
-				Section=x.SectionName,Key=x.Def.Key,OldValue=x.BaselineText,NewValue=x.Text,IsGated=x.Def.IsGated }).ToList();
+			return _listRows.Where(x => x.IsChanged).Select(x => ToChange(x,x.BaselineText,x.Text)).ToList();
+		}
+
+		///<summary>Unless the settings are Verified: the gated values in the file that differ from the ones last saved (changed outside Open Dental),
+		///which a save accepts, each from its last saved value to the one in the file (design 9.3, 10.7). The confirmation before Save lists them,
+		///and so does the security-log entry, so that a value changed outside is never accepted unseen, also by a save that edits another key.</summary>
+		public List<CaptureSettingChange> GetChangesOutside() {
+			if(SettingsCheck==null || SettingsCheck.IsVerified) {
+				return new List<CaptureSettingChange>();
+			}
+			return _listRows.Where(x => x.Def.IsGated && x.IsChangedOutside).Select(x => {
+				CaptureSettingChange change=ToChange(x,x.SavedText??"",x.BaselineText);
+				change.IsChangedOutside=true;
+				return change;
+			}).ToList();
 		}
 
 		private void Validate() {
@@ -217,6 +230,8 @@ namespace ImagingCapture.Settings {
 				return;
 			}
 			List<CaptureSettingRow> listRowsChanged=_listRows.Where(x => x.IsChanged).ToList();
+			//Taken before the save loads the check again: the values changed outside Open Dental that this save accepts.
+			List<CaptureSettingChange> listChangesOutside=GetChangesOutside();
 			bool isSharedChanged=listRowsChanged.Any(x => x.Def.IsGated && x.Def.Section!=CaptureSettingsCatalog.SectionDevice);
 			//The other devices whose verified hash a change of the shared keys would change, with their hash before the save.
 			Dictionary<long,string> dictHashesVerified=isSharedChanged ? GetOtherDevicesVerified(configBefore,result) : new Dictionary<long,string>();
@@ -246,10 +261,14 @@ namespace ImagingCapture.Settings {
 			}
 			result.IsSaved=true;
 			DateTime now=_services.FuncNow?.Invoke()??DateTime.Now;
-			CaptureSettingsLogEntry entry=BuildEntry(Device.ImagingDeviceNum,Device.Description,configAfter,hashBefore,now,
-				listRowsChanged.Select(x => ToChange(x,x.BaselineText,x.Text)).ToList(),
-				listRowsChanged.Count==0 ? "Saved in Capture settings without changes: the values in the file were reviewed and accepted."
-					: "Saved in Capture settings.");
+			List<CaptureSettingChange> listChanges=listChangesOutside.Concat(listRowsChanged.Select(x => ToChange(x,x.BaselineText,x.Text))).ToList();
+			string note=listRowsChanged.Count==0 ? "Saved in Capture settings without changes: the values in the file were reviewed and accepted."
+				: "Saved in Capture settings.";
+			if(listChangesOutside.Count>0) {
+				note+=" "+listChangesOutside.Count.ToString(CultureInfo.InvariantCulture)+" gated value(s) changed outside Open Dental since the last "
+					+"save were accepted; each is listed from its last saved value to the one in the file.";
+			}
+			CaptureSettingsLogEntry entry=BuildEntry(Device.ImagingDeviceNum,Device.Description,configAfter,hashBefore,now,listChanges,note);
 			try {
 				_services.Store.MakeLogEntry(EnumPermType.Setup,0,entry.ToLogText(),Device.ImagingDeviceNum);
 				result.IsLogged=true;

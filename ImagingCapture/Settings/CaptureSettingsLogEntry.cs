@@ -18,13 +18,18 @@ namespace ImagingCapture.Settings {
 		public string NewValue { get; set; }="";
 		///<summary>A gated key (part of GatedSettingsHash).</summary>
 		public bool IsGated { get; set; }
+		///<summary>Not an edit of the screen's: a gated value that was changed outside Open Dental since the last save, which this save accepts.
+		///OldValue is the value last saved, NewValue the one in the file (design 9.3, 10.7).</summary>
+		public bool IsChangedOutside { get; set; }
+
+		public const string TextChangedOutside="(changed outside Open Dental)";
 
 		///<summary>"Device.12.Bits".</summary>
 		public string Label => Section+"."+Key;
 
-		///<summary>"[Device.12] Bits: 8 -> 16".</summary>
+		///<summary>"[Device.12] Bits: 8 -> 16", with " (changed outside Open Dental)" for a change accepted from the file.</summary>
 		public string GetText() {
-			return "["+Section+"] "+Key+": "+Show(OldValue)+" -> "+Show(NewValue);
+			return "["+Section+"] "+Key+": "+Show(OldValue)+" -> "+Show(NewValue)+(IsChangedOutside ? " "+TextChangedOutside : "");
 		}
 
 		private static string Show(string value) {
@@ -43,6 +48,8 @@ namespace ImagingCapture.Settings {
 	///  Capture settings saved (capture-settings/1): Device=12; DeviceDescription=..; Computer=..; File=..; GatedSettingsHash=..;
 	///  PreviousGatedSettingsHash=..; Date=2026-10-31T09:15:00; Note=..; Changes=2; Change1=Twain.Allow16Bit; Change1.Old=0; Change1.New=1;
 	///  Change1.Gated=1; ...; Gated.Session.Enabled=1; ...; Gated.Device.NoActivateCap=
+	///A gated value changed outside Open Dental since the last save, which the save accepts, is listed as a change too, with ChangeN.Outside=1,
+	///its old value as last saved and its new value as in the file.
 	///The gated values are under their GatedSettingsHash names ("Device." for the device's section), so the entry also says what the settings
 	///were when last saved: the screen shows which ones changed since, and the safe values keep RestrictSources and AllowedSources as last
 	///saved.</summary>
@@ -99,6 +106,9 @@ namespace ImagingCapture.Settings {
 				Add(name+".Old",ListChanges[i].OldValue);
 				Add(name+".New",ListChanges[i].NewValue);
 				Add(name+".Gated",ListChanges[i].IsGated ? "1" : "0");
+				if(ListChanges[i].IsChangedOutside) {
+					Add(name+".Outside","1");
+				}
 			}
 			foreach(KeyValuePair<string,string> pair in DictGatedValues) {
 				Add(PrefixGated+pair.Key,pair.Value);
@@ -160,6 +170,7 @@ namespace ImagingCapture.Settings {
 					OldValue=Get(dictValues,name+".Old"),
 					NewValue=Get(dictValues,name+".New"),
 					IsGated=Get(dictValues,name+".Gated")=="1",
+					IsChangedOutside=Get(dictValues,name+".Outside")=="1",
 				});
 			}
 			foreach(KeyValuePair<string,string> pair in listPairs) {

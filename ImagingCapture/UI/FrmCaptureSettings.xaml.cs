@@ -111,6 +111,7 @@ namespace ImagingCapture.UI {
 				return;
 			}
 			List<CaptureSettingChange> listChanges=_model.GetPendingChanges();
+			List<CaptureSettingChange> listChangesOutside=_model.GetChangesOutside();
 			string question;
 			if(listChanges.Count==0) {
 				question=Lang.g(this,"Save without changes? This accepts the values in the file as reviewed and records them, with the settings hash, "
@@ -120,6 +121,11 @@ namespace ImagingCapture.UI {
 				question=Lang.g(this,"Save these changes to capture.ini on this computer?")+"\r\n\r\n"
 					+string.Join("\r\n",listChanges.Select(x => x.GetText()+(x.IsGated ? " "+Lang.g(this,"(gated)") : "")))+"\r\n\r\n"
 					+Lang.g(this,"The save is recorded in the security log.");
+			}
+			if(listChangesOutside.Count>0) {
+				//Design 9.3, 10.7: a value changed outside Open Dental is accepted only once it was shown, also by a save that edits another key.
+				question+="\r\n\r\n"+Lang.g(this,"These gated values were changed outside Open Dental since the last save. Saving accepts them as they "
+					+"are in the file (last saved value -> value in the file):")+"\r\n"+string.Join("\r\n",listChangesOutside.Select(x => x.GetText()));
 			}
 			if(!MsgBox.Show(MsgBoxButtons.OKCancel,question)) {
 				return;

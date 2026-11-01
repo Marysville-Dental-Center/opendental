@@ -305,6 +305,46 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void Save_EditingAnotherKey_AfterAHandEdit_ListsTheGatedValuesChangedOutside_AsOldAndNew() {
+			Model().Save();
+			Write(Ini.Replace("Allow16Bit=0","Allow16Bit=1").Replace("Bits=8 ; gated","Bits=16 ; gated"));
+			CaptureSettingsModel model=Model();
+			Assert.AreEqual(CaptureSettingsStatus.ChangedOutside,model.SettingsCheck.Status);
+			List<CaptureSettingChange> listOutside=model.GetChangesOutside();
+			CollectionAssert.AreEquivalent(new[] { "Twain.Allow16Bit","Device.12.Bits" },listOutside.Select(x => x.Label).ToArray());
+			CaptureSettingChange changeAllow=listOutside.Single(x => x.Key=="Allow16Bit");
+			Assert.AreEqual("0",changeAllow.OldValue,"The value last saved.");
+			Assert.AreEqual("1",changeAllow.NewValue,"The value in the file.");
+			Assert.IsTrue(changeAllow.IsChangedOutside);
+			StringAssert.Contains(changeAllow.GetText(),"changed outside Open Dental");
+			Assert.IsTrue(model.SetText(Idx(model,"Sounds","Error"),"Beep"),"A key that is not gated.");
+			Assert.AreEqual(1,model.GetPendingChanges().Count,"Only the non-gated key was edited.");
+			Assert.AreEqual(2,model.GetChangesOutside().Count,"The confirmation lists the values changed outside as well.");
+			CaptureSettingsSaveResult result=model.Save();
+			Assert.IsTrue(result.IsLogged,result.Error);
+			Assert.AreEqual(3,result.Entry.ListChanges.Count);
+			Assert.AreEqual(2,result.Entry.ListChanges.Count(x => x.IsChangedOutside));
+			StringAssert.Contains(result.Entry.Note,"changed outside Open Dental");
+			CaptureSettingsLogEntry entryRead=_store.GetEntries(12).Last();
+			CaptureSettingChange changeRead=entryRead.ListChanges.Single(x => x.Label=="Twain.Allow16Bit");
+			Assert.IsTrue(changeRead.IsChangedOutside,"Read back from the security log.");
+			Assert.AreEqual("0",changeRead.OldValue);
+			Assert.AreEqual("1",changeRead.NewValue);
+			Assert.IsFalse(entryRead.ListChanges.Single(x => !x.IsGated).IsChangedOutside);
+			Assert.AreEqual(CaptureSettingsStatus.Verified,model.SettingsCheck.Status);
+			Assert.AreEqual(0,model.GetChangesOutside().Count);
+		}
+
+		[TestMethod]
+		public void Save_Verified_NothingListedAsChangedOutside() {
+			Model().Save();
+			CaptureSettingsModel model=Model();
+			Assert.AreEqual(CaptureSettingsStatus.Verified,model.SettingsCheck.Status);
+			Assert.AreEqual(0,model.GetChangesOutside().Count);
+			Assert.AreEqual(0,model.Save().Entry.ListChanges.Count);
+		}
+
+		[TestMethod]
 		public void Save_WithAProblem_NothingWritten() {
 			CaptureSettingsModel model=Model();
 			model.SetText(Idx(model,"Device","Bits"),"12");
