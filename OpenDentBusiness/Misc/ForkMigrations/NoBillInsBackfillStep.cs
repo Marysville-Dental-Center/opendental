@@ -92,7 +92,8 @@ namespace OpenDentBusiness.ForkMigrations.FeatureSteps {
 				if(listProcNumsToFlag.Count==0) {
 					continue;
 				}
-				string command="UPDATE procedurelog SET NoBillIns=1 WHERE ProcNum IN("+string.Join(",",listProcNumsToFlag)+")";
+				//A back-fill is not an edit of the row (README rule 4): keep procedurelog's ON UPDATE timestamp.
+				string command="UPDATE procedurelog SET NoBillIns=1,DateTStamp=DateTStamp WHERE ProcNum IN("+string.Join(",",listProcNumsToFlag)+")";
 				if(context==null) {
 					countFlagged+=Db.NonQ(command);
 				}

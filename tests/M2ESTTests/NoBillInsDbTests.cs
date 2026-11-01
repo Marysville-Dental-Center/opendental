@@ -208,6 +208,36 @@ namespace M2ESTTests {
 			}
 		}
 
+		private static string GetDateTStamp(long procNum) {
+			return DataCore.GetScalar("SELECT DATE_FORMAT(DateTStamp,'%Y-%m-%d %H:%i:%s') FROM procedurelog WHERE ProcNum="+POut.Long(procNum));
+		}
+
+		///<summary>Combined review (2026-11-01): a back-fill is not an edit of the row (ForkMigrations README, rule 4), so the UPDATE keeps
+		///procedurelog's ON UPDATE timestamp DateTStamp; the adoption rehearsal fails on any audit timestamp that moves. Both ways the step runs:
+		///Run() on its own and Apply through the migration context.</summary>
+		[TestMethod]
+		public void Backfill_KeepsTheProcedureTimestamp() {
+			DataCore.NonQ("UPDATE procedurelog SET NoBillIns=0");
+			InsuranceInfo insuranceInfo=NewPatientWithInsurance("Z7631",out Patient patient);
+			Procedure procMarked=ProcedureT.CreateProcedure(patient,"Z7631",ProcStat.TP,"",100);
+			ProcedureT.ComputeEstimates(patient,insuranceInfo);
+			SetClaimProcNoBillIns(procMarked.ProcNum,true);
+			const string dateTStamp="2026-01-02 03:04:05";
+			DataCore.NonQ("UPDATE procedurelog SET DateTStamp='"+dateTStamp+"' WHERE ProcNum="+POut.Long(procMarked.ProcNum));
+			Assert.AreEqual(dateTStamp,GetDateTStamp(procMarked.ProcNum));
+			Assert.IsTrue(NoBillInsBackfillStep.Run()>=1);
+			Assert.IsTrue(Procedures.GetOneProc(procMarked.ProcNum,false).NoBillIns);
+			Assert.AreEqual(dateTStamp,GetDateTStamp(procMarked.ProcNum),"The back-fill keeps DateTStamp.");
+			//Through the migration context (the step's Apply).
+			DataCore.NonQ("UPDATE procedurelog SET NoBillIns=0");
+			DataCore.NonQ("UPDATE procedurelog SET DateTStamp='"+dateTStamp+"' WHERE ProcNum="+POut.Long(procMarked.ProcNum));
+			ForkMigrationContext context=new ForkMigrationContext(EstDb.DbName);
+			new StepUnderTest().Apply(context);
+			Assert.IsTrue(Procedures.GetOneProc(procMarked.ProcNum,false).NoBillIns);
+			Assert.AreEqual(dateTStamp,GetDateTStamp(procMarked.ProcNum),"Apply keeps DateTStamp too.");
+			Assert.IsTrue(context.ListChanges.Any(x => x.Contains("UPDATE procedurelog SET NoBillIns=1,DateTStamp=DateTStamp WHERE ProcNum IN(")));
+		}
+
 		///<summary>The back-fill step is abstract until its level is settled (see the port note), so the test runs it through a subclass. The
 		///subclass has no [ForkMigration] attribute and is not in OpenDentBusiness, so the runner never sees it.</summary>
 		private class StepUnderTest:NoBillInsBackfillStep {
