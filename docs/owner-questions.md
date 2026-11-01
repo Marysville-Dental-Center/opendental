@@ -1,0 +1,373 @@
+# Owner questions from the 24.4-26.1 port
+
+This list holds every question the 55 package notes on `port/integration` still leave open for you, plus the extra questions in the phase B results. Questions that a later note or integration section already settled are left out; they are listed at the end. Each question names its package and the question number in that package's note (for example "B-ERA 2"), and says what the program does today if you change nothing.
+
+**[SWITCH-OVER]** marks a question that changes the office's data during the switch-over, or that you should settle before it: one-time conversions, steps that change the office's existing data, and defaults that change billing or claims.
+
+---
+
+## Switch-over and data conversions
+
+**1. [SWITCH-OVER] Settings that will not carry over from Open Dental** (B-ACCT 1, B-APPT 1, B-CLAIM 1, B-ERA 1, B-INSH 2, B-PAY 1, B-PERIO 1, B-SERVER 1, B-SHELL 1, B-WIKI 5, V-BRIDGE1 1)
+
+Open Dental does not publish the internal names of these settings, so the program stores each one under a name of its own. **Today:** after the switch-over each of them is at its default (off or blank), even if the office had it on in Open Dental 25.3, and staff have to set it again. If you allow a read-only look at the setting names in the office's current database (names and values only, no patient data), the developer can match the real names so the settings carry over. Otherwise, please say which of these the office uses today:
+
+| Setting in Open Dental | Package | After the switch-over today |
+|---|---|---|
+| Sales-tax procedure code (24.4) | B-ACCT 1 | Not set, so no sales tax until someone sets it |
+| Provider time bars on the operatory background (25.2), and the secondary time-bar color when no provider time is set (25.3) | B-APPT 1 | Off |
+| "Prompt for Medical EOB on primary claims" (25.2) | B-CLAIM 1 | Off. You can also approve the proposed name `ClaimMedReceivedPromptForMedicalEob` |
+| "Auto split ERAs with CARC denial codes listed above" | B-ERA 1 | Off |
+| Blue Book percentage of the provider fee | B-INSH 2 | Read under its 24.3 name. If Open Dental 25.3 renamed it, the office's percentage may not be read |
+| "Payment plans are not affected by the global lock date" | B-PAY 1 | Off |
+| Perio "Recession" wording (24.4) | B-PERIO 1 | Off |
+| Incomplete Procedure Notes report "include all procedures with no notes" default, and the two replication delay settings | B-SERVER 1 | Off / 0 |
+| Blur the screen when switching modules | B-SHELL 1 | Off |
+| Read-only wiki copy (if Open Dental 25.2 had a setting for it) | B-WIKI 5 | The program's own setting, off |
+| Program links for Overjet, DTX Studio, DTX Studio Acquire and IAP | V-BRIDGE1 1 | If Open Dental's names differ, the office's own link opens as a plain link and a second, turned-off link is added beside it |
+
+The notes give these read-only checks for the developer:
+```sql
+SELECT PrefName,ValueString FROM preference WHERE PrefName LIKE '%Lock%' OR PrefName LIKE '%PayPlan%';
+SELECT PrefName FROM preference WHERE PrefName LIKE '%Replication%' OR PrefName LIKE '%IncompleteProcs%';
+SELECT ProgramNum,ProgName,ProgDesc,Enabled,Path FROM program WHERE ProgName LIKE '%overjet%' OR ProgName LIKE '%dtx%' OR ProgName='IAP';
+```
+A list of all setting names (names only) covers the rest. The same look also answers item 9 below and B-EF 4 (under Forms).
+
+**2. [SWITCH-OVER] Which Open Dental version the office switches from** (M2-02 1, M2-EF 1, V-BRIDGE2 5)
+The switch-over is built and rehearsed for an Open Dental **25.3.48** database. Will the office stay on 25.3.48 until the switch? If Open Dental gets updated to 25.4 or later first, three things would not map without extra conversion work: settings added in 25.4/26.1, eForm links to patient fields, and the Clerri and Clever One program links. **Today:** only 25.3.48 is supported.
+
+**3. [SWITCH-OVER] Blockout permissions** (M2-02 2)
+26.1 splits "edit blockouts" into Add, Delete and Edit. **Today:** at the switch-over, every user group that can edit blockouts also gets Blockout Add and Blockout Delete, so nobody loses access. An administrator can narrow this afterwards. Please confirm.
+
+**4. [SWITCH-OVER] The Insurance History setup moves into code groups** (M2-HIST 3, 5)
+**Today:** at the switch-over, the ten Insurance History code boxes in Preferences are moved into code groups. Each matching code group is marked "Show In History" and gets the codes from those boxes. Where no matching group exists, a new one is created. The old settings are kept, not deleted.
+- (M2-HIST 3) Each new group is given the standard category it stands for (for example Exam), so sheet fields such as "date of last exam" start finding it. Confirm, or create the groups without a category?
+- (Combined review) The codes from the old boxes are added to the matching **frequency** code group, which also widens that group's frequency limitation in insurance estimates (for example, more codes count toward "2 exams per year"). Keep that, or put them in a separate group that only feeds Insurance History? **Today:** added to the frequency group; the step's log lists the added codes but does not mention the estimate effect.
+- (M2-HIST 5) A box that was blank used to show a "Not Set" row. After the switch-over that category has no row until a group is marked "Show In History". Acceptable?
+
+**5. [SWITCH-OVER] One-time "Do Not Bill to Insurance" fill** (M2-EST, rule 4 and question 5)
+**Today:** this step is written and tested but switched off, so it does nothing. If turned on, it would find procedures where staff unchecked "bill insurance" on every estimate (treatment-planned or completed, not yet on a claim) and mark the procedure itself "Do Not Bill to Ins". Without it, if one of those estimates is rebuilt later (for example after a plan change), it goes back to billing insurance.
+- Should it run at the switch-over? Turning it on also needs work in the switch-over checking tools.
+- (M2-EST 5) If yes: with the setting "exclusions mark Do Not Bill" on, the step skips estimates of plans that have exclusions, because the program already marks those automatically and they cannot be told apart from a staff choice. Acceptable?
+
+**6. [SWITCH-OVER] The DentalXChange Patient Credit Score link** (B-SHELL 5)
+This vendor service was discontinued. **Today:** the switch-over turns the link off and removes its toolbar buttons, even on the office's Open Dental database (in case Open Dental's own update left them). Acceptable?
+
+**7. [SWITCH-OVER] The new UDS+ report** (M2-UDS 4)
+**Today:** the switch-over adds the UDS+ report to the report list right after "FQHC Dental Sealant Measure". It is visible unless that report is hidden, and the groups that can run the sealant report also get permission for it. Should an office that is not an FQHC see it at all?
+
+**8. [SWITCH-OVER] The Denti-Cal DC217_2019 claim form** (M2-CLAIMFORM 1)
+**Today:** the form is not added automatically. Staff can add it from Setup, Claim Forms (internal list, Copy). Should the switch-over add it to the office's claim forms? This only matters if the office bills Medi-Cal.
+
+**9. [SWITCH-OVER] Payment plan version** (B-PAY 2)
+Which payment plan version does the office database hold? If Open Dental's 25.1 update forced the newer "Age Credits and Debits" mode, should the program do the same for databases that never had that update? **Today:** nothing converts it.
+
+**10. [SWITCH-OVER] Automatic recurring and repeating charges** (M2-RECUR 5)
+The program has no automatic runner for recurring card charges or repeating charges, because the Open Dental background service was removed. The "automated" settings are still shown, but nothing runs them. **Today:** staff must run the charges by hand. With backdating off, the Repeating Charges tool must be run on each billing date (with backdating on, the default, a late run posts the missed dates). Does the office rely on automatic charges today, and do you want a scheduled runner on an office computer?
+
+**11. [SWITCH-OVER] Checks of the new database structure** (M2-01 1, 2, 6)
+- (M2-01 1) Parts of the 26.1 structure (required fields, defaults, indexes) are worked out from Open Dental's published documents. Is a structure-only copy (no data) of any real Open Dental 26.1 database available to confirm them? **Today:** they stay worked out from the documents.
+- (M2-01 2) The claim payment note becomes a long text field. Empty (blank database) notes become blank text, and the field can never be empty in the database sense. Fine, or should empty be allowed? **Today:** never empty.
+- (M2-01 6) Fixes Open Dental made after 26.1.0 (26.1.x) have no published document. Should someone check the 26.2 change document for them before the switch? **Today:** not checked.
+
+---
+
+## Insurance and estimates
+
+- (B-INSH 1) Insurance History: when both dates in a category are already completed procedures, should staff still be able to add a newer "existing other" date, for example with an "Add date" button? **Today:** completed dates can't be changed and nothing can be added (Open Dental 25.2 behaviour).
+- (B-INSH 3) Edit Benefit: please confirm which boxes each benefit type should allow, especially quantity and qualifier on per-visit copayments, and an amount on copayments. **Today:** both are allowed, as before.
+- (M2-HIST 1) Insurance History labels for the four scaling quadrants: "Perio Scaling UL" and so on for the standard scaling group, and the group's own name for any other four-quadrant group. Or always the group name? **Today:** as just described.
+- (M2-HIST 2) A hidden code group that is marked "Show In History" keeps its Insurance History row, and a note says so when it is hidden. Confirm? (The spec contradicts itself.)
+- (M2-HIST 4) Should eligibility responses that mention FLUORIDE or SEALANTS fill the Fluoride and Sealant history rows? **Today:** they match only by procedure code. (Sealant history without a tooth is of little use.)
+- (M2-HIST 6) Eligibility lines that match no history row are only written to a detailed log. Should the eligibility request in Edit Insurance Plan tell the user which lines were skipped? **Today:** no message.
+- (M2-HIST 7) A fix: dates in eligibility responses were all read as January. They are now read correctly, so imports write different (correct) dates than before. Confirm.
+- (M2-HIST, phase B) Reset Code Groups gives the seven standard history categories their Insurance History rows (first default code as the history code, scaling with four quadrant rows). Keep? **Today:** yes (our choice; Open Dental's defaults are not public).
+- (B-PROC 3) Reset Code Groups: groups still used by benefits that match no default are kept as hidden groups, so benefits and estimates keep working, instead of being deleted. Keep? **Today:** kept hidden, and the reset runs only after the user accepts.
+- (M2-EST 2) Treatment Plan estimates for scheduled procedures use the patient's age on the appointment date. Should unscheduled procedures follow the plan's date picker too? **Today:** they use today's age.
+- (M2-EST 3) Should fees of scheduled procedures also follow the appointment date (dated fee schedules), as their estimates now do? **Today:** no.
+- (M2-EST 4) In the Treatment Plan module there is no estimate when coverage ended before the appointment. Should Chart and Appointment estimates do the same? And should a coverage start date after the appointment also mean no estimate? **Today:** Treatment Plan module only, end date only.
+- (M2-EST 6) Should the "Estimated as of (date)" line in the treatment plan description stay, or become an optional "Est. Date" column? **Today:** a description line (when Show Max/Deductions is on).
+- (M2-CARRIER 1) Carriers that require preauthorization: **today** "[PreAuth]" shows in red on the treatment plan description, and the carrier's appointment color is a highlight behind the appointment tag. Is that the look you want?
+- (M2-CARRIER 2) A procedure marked Do Not Bill to Ins for a plan gets no [PreAuth] flag for that plan. Or show it anyway? **Today:** no flag.
+- (M2-CARRIER 4) When both primary and secondary want a preauthorization, should each plan get one (primary first), or only the primary? **Today:** one per plan.
+- (M2-CARRIER, phase B) Procedures added through the Treatment Plan "Add Procs" window get only the [PreAuth] marker, without the reminder that charting shows. Enough? **Today:** marker only.
+- (M2-INSPLAN 1) The redesigned Edit Insurance Plan window fits a 1366x768 screen at 100% scaling. Is that the smallest screen in the office? A 1920x1080 screen at 150% does not fit without scrolling (the old window didn't either).
+- (M2-INSPLAN 2) The window's layout is our own design. Please check it on screen.
+- (M2-INSPLAN 3) The audit text for deleting a plan now includes the plan number. Confirm.
+- (M2-INSPLAN 4) A few plan drops write no audit entry (Trojan import, clone sync, a sheet import replacing a plan). Should they? **Today:** not logged, as before.
+- (M2-INSPLAN 5) The empty "Import Benefits" group is hidden when neither Trojan nor IAP is turned on. Confirm.
+- (M2-INSV 1) Insurance Verification List: are the "Min/Max days until appointment" labels and their layout (Min above Max) fine?
+- (M2-INSV 2) Should setup have a default for Min? **Today:** Min starts at 0 each time; Max comes from the existing setup.
+- (M2-INSV 4) Auto-unassign after 30 days counts whole calendar days. Should it be exactly 30x24 hours now that the time is stored? **Today:** whole days.
+- (M2-INSV 5) Status Date is blank for rows never assigned (the old program showed 1/1/0001). Keep?
+- (M2-TERM 2) Blue Book: the grid row says "Standard provider fee", but the double-click message still says "Provider Fee". Change the message to match? **Today:** they differ.
+- (M2-TERM 3) Three preference check boxes now say "(no write-offs)" instead of "(zero out write-offs)" so the text fits. Acceptable, or widen the boxes?
+
+---
+
+## Claims and ERA
+
+- (B-CLAIM 2) Medical EOB prompt (off by default): when a medical claim is received, the program asks about attaching its EOB to the patient's unsent primary dental claims. Is that the right reading? The spec allows two others.
+- (B-CLAIM 3) Attaching the medical EOB also ticks the claim's EOB paperwork box. Keep, or leave it to staff? **Today:** ticked automatically.
+- (B-CLAIM 4) Audit entries for overrides on received claim procedures are filed under "Claim Procedure Received Edit", which can't be picked in the Audit Trail's filter. Add it to the filter, or file them all under "Proc Edit"? **Today:** as in 24.3.
+- (B-CLAIM 5) Should overrides that the program recalculates by itself (ortho cases) also be logged? **Today:** no.
+- (B-CLAIM 6, see also the M2-CLAIMRCV integration notes) When later claims are recalculated automatically after a primary claim is received, their saved attachments (X-rays, the medical EOB) can be deleted if the claim was loaded without them. M2-CLAIMRCV made this reach tertiary claims too. **Today:** unchanged from 24.3. The developers see this as a defect with a one-line fix. May they fix it?
+- (B-ERA 2) Auto split: a line that has a listed denial code but still carries an insurance payment is never split off. Instead the claim is held back with a reason. Should such lines be split too?
+- (B-ERA 3) The claim split off by the auto split is Unsent. Or should it keep the original's status, like a manual split? **Today:** Unsent (as the spec says).
+- (B-ERA 4) Are the three extra ERA columns (Subscriber ID, Allowed, Matched Claim) useful, or should only the 24.3 set be offered? **Today:** offered.
+- (B-ERA 5) Should the manual Split Claim button also write the audit entry? **Today:** only the automatic split does.
+- (M2-ERA 2) When a claim payment is deleted, the link between its claim procedures and the ERA claim is kept (the spec says to clear it). Confirm.
+- **[SWITCH-OVER]** (M2-ERA 3) Automatic ERA processing now holds back a claim whose payment came from another ERA with the same trace number and payer (a duplicate import). Keep this, or post such claims as before? **Today:** held back.
+- **[SWITCH-OVER]** (M2-CLAIMRCV 1 and the phase B extra) After a claim is received, the prompt offers the claim of "the next insurance that has a claim, not yet received, for those procedures", not strictly the next plan in order. When all plans are still on the patient, plan order decides. For example, with medical first, then dental primary, then secondary: receiving the medical claim (with the medical-to-primary prompt off) now offers the dental primary claim, where 24.3 offered the secondary. Confirm.
+- (M2-CLAIMRCV 2) Claims on Hold or In Process are recalculated, but the prompt never changes, sends or prints them. Confirm.
+- (M2-CLAIMRCV 3) If a claim the prompt sent is then received automatically, should another prompt follow for the insurance after it? **Today:** no, as in 24.3.
+- (M2-CLAIMFORM 2) Please print a test claim on DC-217 (10/19) stock and report any shift. If you can supply the handbook's section 6 PDF (it is public), the positions can be checked against it.
+- (M2-CLAIMFORM 3) Denti-Cal form, arch and quadrant: should they print as area codes (01, 10, ...) or as letters (UA/LA, UR/UL/LL/LR)? **Today:** area codes.
+- (M2-CLAIMFORM 4) Boxes not printed on the Denti-Cal form: share of cost, other-coverage amount, a separate billing-provider signature date, TAR/NOA control numbers. Are any needed?
+
+**Clearinghouses**
+- (V-EDS 1) Can the office get EDS's documentation and a test login for the checks EDS added for 26.1? **Today:** those checks stay off.
+- (V-EDS 2) Should the online check also run when the EDS attachment service is off? **Today:** no.
+- (V-EDS 3) Add an "Update EDS payer list" action? **Today:** nothing loads the list, so the payer-list checks rarely have anything to compare with.
+- (V-EDS 4) A blank or too-short payer ID: should it be a warning, or an error that stops the claim (and blocks attachments, and can make claim creation refuse the claim)? **Today:** a warning; the claim goes out with the paper-claim ID 06126, as before.
+- (V-EDS 5) Should the last check result be kept after the program restarts? **Today:** no.
+- (V-EDS 6) In Send Claims, should Close still send the claims without problems (the XConnect rule), or cancel the whole send? **Today:** it sends them.
+- (V-EDS 7) Narratives: which procedures need one is not public. Options: the office keeps its own list, or the program remembers EDS's answers per payer and code, or it stays as it is. **Today:** it only repeats EDS's last answer for the claim, and never fires when the attachment service is off.
+- (V-DXC2 1) What is DentalXChange's real size limit for PDF attachments? **Today:** 10 MB.
+- (V-DXC2 2) Should PDFs that have only an owner password (they open without one) be allowed? **Today:** refused.
+- (V-DXC2 3) Is the Send File button in Select Image wanted, or should PDFs from disk go into the patient's images first and be sent from there? **Today:** the button is there.
+
+---
+
+## Billing, payments and statements
+
+- (B-ACCT 3) Ortho Case window: two long instruction texts were removed and the window made smaller. Please check it on screen.
+- (B-ACCT 5) Sales tax: should the sales-tax procedure be excluded from discount plans? Should procedures on an ortho case be refused, as the adjustment method refuses them? **Today:** a discount plan can apply to it, and ortho-case procedures are taxed with the procedure method.
+- (B-PAY 3) On your current Open Dental 25.3, please check how payment splits attach to payment plans in these cases: a split from another family when the plan's guarantor is in the paying family, plans that include the procedure or adjustment as production, and the confirmation for closed plans. **Today:** all are allowed (our reading).
+- (B-PAY 4) Should a "Payment Plan Prepay" split also attach to old-style patient payment plans? **Today:** only to dynamic plans, because only those apply prepayments.
+- (B-PRINT 2) Statement inserter barcode: can the office's folding/inserting machine read a Code 39 barcode with sequence, page, page count and end-of-set? Or does it need another format? Is the top-right margin a usable spot for its scanner?
+- (B-PRINT 3) Should the statement e-mail subject also carry the patient's last name? **Today:** only the attachment name does.
+- (M2-ADJ 1) Percentage adjustments that land on exactly half a cent: round away from zero, or to the nearest even cent? **Today:** away from zero.
+- (M2-ADJ 2) Should a type's default percentage also apply when the procedure is attached after an amount was already typed? **Today:** only when the amount is zero.
+- (M2-ADJ 3) Show the default percentage as a column in Definitions, Adj Types? **Today:** not shown.
+- (M2-ADJ 4) Should Add Multiple Adjustments also limit percentages to 0 to 1000 with two decimals, as Edit Adjustment does? **Today:** no limit there.
+- (M2-ADJ 5) Hide the Default % box for discount-plan adjustment types? **Today:** shown.
+- (M2-PAYW 1) With the income-transfer limit turned on (off by default): money that older transfers moved from insurance or adjustments into unearned now counts as patient money. Acceptable, or exclude transferred money too (which would block reallocating any transferred payment)?
+- (M2-PAYW 2) The Payment window's automatic Transfer button is not limited by that setting. Confirm.
+- (M2-PAYW 3) When the Payment window is opened from an invoice, should that invoice be picked already? **Today:** nothing is picked.
+- (M2-PAYW 4) The invoice drop-down shows each invoice's full total. Show what is still owed instead? **Today:** the full total.
+- (M2-RECUR 1) The failure e-mail for recurring charges (off by default) goes only for card declines, not for office setup problems or no answer from the processor. Should those e-mail the patient too? **Today:** declines only.
+- (M2-RECUR, phase B) Please confirm which processor answers count as card declines. **Today:** EdgeExpress/XWeb codes 001, 009 and 010; an X-Charge result containing DECLINE; a PayConnect 4xx answer other than 408, 409 and 429, or a status of Declined.
+- (M2-RECUR 2) The same card is not e-mailed again for 7 days. Is that right, or should it follow the office's retry schedule?
+- (M2-RECUR 3) Should the failure e-mail have its own on/off and template per clinic? **Today:** one for the office.
+- (M2-RECUR 4) The Repeating Charges tool has never checked lock dates. Should it start refusing dates before a lock date? That would change things for offices that keep backdating on. **Today:** no check.
+- (M2-RECUR 6, affects payment records) When PayConnect 2 answers a recurring sale with "success" but a status of Declined, the charge is recorded as paid and no failure e-mail goes out. Should the recurring run treat that as a decline? **Today:** recorded as paid. (Payment posting is outside M2-RECUR, so nothing was changed.)
+- (M2-DUN 1) To decide whether a statement e-mail is plain or HTML, the program matches the statement's message to the dunning message it came from. Acceptable? The alternative needs a field 26.1 does not have.
+- (M2-DUN 2) Should HTML e-mails (statements and all others) also carry a plain-text version? **Today:** HTML only, as before. This would be its own small change.
+- (M2-DUN 3) If an HTML statement body cannot be converted, should that patient be skipped in billing with an error? **Today:** it is sent as plain text.
+- (M2-SDV 1) New statements made in the Account module start in whatever view the grid is in. Or should they always start in the regular view unless Statement Options says otherwise? **Today:** the grid's view.
+- (M2-SDV 2) Statement lines for credits keep the report wording ("PatPay- Check", "InsPay- ...", "W/O- ..."). Use friendlier wording for patients? **Today:** report wording.
+- (M2-SDV 3) The Service Date View has no plain "Balance" (charges less credits) column, only the patient-portion balance. Add one? **Today:** none.
+- (M2-SDV 4) Date ranges in the Service Date View filter by date of service, with a balance forward (credits travel with their service). Or should a statement list the transactions dated in the range, as the regular view does? **Today:** by date of service.
+- (M2-SDV 6) Should the Billing default for the Service Date View also be kept per clinic, like the other Billing defaults? **Today:** one setting.
+- (M2-SDV 7) Electronic statements stay in the regular layout. Acceptable?
+
+---
+
+## Clinical, chart and treatment plans
+
+- (B-TP 1) The Treatment Plan module's Add Procs button needs the Chart Module permission. Or should it need no extra permission, or Edit Treatment Plan instead? **Today:** Chart Module.
+- (B-TP 2) Should the Chart's procedure buttons (including the auto-code buttons) also appear in Add Procs? **Today:** only Quick Buttons.
+- (B-TP 3) Should the priority default to the one selected in the module's side list? **Today:** no priority.
+- (B-TP 4) Add Procs refuses surface letters that don't fit the tooth, instead of silently dropping them as the Chart does. Keep?
+- (B-PROC 2) Which licensed CDT file will the office import (for example the ADA's spreadsheet export)? If its column names differ from the ones the program knows, they can be added.
+- (B-PROC 4) Should the D Codes import keep overwriting descriptions the office edited, as Open Dental does, or update only blank descriptions? **Today:** it overwrites them.
+- (B-PERIO 2) With the Recession wording on, the "Ging Marg +" check box reads "Recession +", although it enters overgrown-gum values. Keep, or leave it "Ging Marg +"? **Today:** "Recession +".
+- (B-PERIO 3) Is the "auto Att Ging" row in the right place, between Ging Marg and MGJ? Or should it go on the other side of MGJ, next to the probing rows?
+- (B-MED 1) Converting a patient-entered "Other" allergy or problem: the "Other" entry is pointed to the chosen definition and set inactive. Or leave it as an inactive "Other" row? **Today:** pointed and set inactive.
+- (B-MED 2) In the Medical window's right-click convert, is a Yes/No question about keeping the typed text fine, or should it open the edit window? **Today:** Yes/No question.
+- (B-MED 3) Medication search by RxNorm code: should a partial code (the first digits) match, or only the exact code? **Today:** the first digits match.
+- (M2-MED 1) A problem merge only counts the sheet and eForm fields that name the discarded problem and asks the office to edit them. Should it rewrite them instead?
+- (M2-MED 2) When the discarded problem is the one set as "Problems indicate none", the setting moves to the kept problem. Right, or should the merge refuse?
+- (M2-MED 3) Should the allergy merge also ask which allergy to keep, as the problem merge now does? **Today:** no.
+- (M2-MED 4) The Database Maintenance check reuses a hidden "UNKNOWN ALLERGY" entry when it is the only one. Should it unhide it?
+- (M2-NOTES 1) Procedure notes with two signatures: each signature is tied to its own signer. Or should the second be tied to the first signature exactly (then changing the first box's user would clear the second)? **Today:** each to its own signer.
+- (M2-NOTES 2) Who may edit a note signed by two people? **Today:** only a user with Group Note Edit Signed. Should either signer be allowed (which clears the other's signature, with an alert)?
+- (M2-NOTES 3) The merge question appears on any save that writes a new note version, not only when the text changed. Keep? Asking only on text changes could put older text back over newer text. Another option: don't save a new version when only line breaks differ, which would also stop the duplicate versions the old program writes.
+- (B-SHELL 3) Ortho chart: should the edit lock be released after a period of no activity? **Today:** no.
+- (B-SHELL 4) Ortho chart: a forced or automatic log-off saves open ortho charts without asking, as 24.3 did on automatic shutdown. Wanted, or should unsaved edits be thrown away? **Today:** saved.
+- (M2-SHELL 3) Family module Gender row: it now shows the same text as the new Chart row (blank instead of "Unknown"). Keep, or bring the old text back?
+- (M2-MISC 1) Automation "clinic mismatch" on Procedure Complete also looks at other procedures completed earlier the same day. Should only the procedures just completed be checked (a one-line change in four places)? **Today:** the whole day's procedures.
+- (M2-MISC 2) A procedure with no clinic on a patient who has a clinic counts as a mismatch. Right? **Today:** yes.
+
+---
+
+## Scheduling, staff and time cards
+
+- (B-APPT 2) "Provider time bars on operatory background" (25.2): **today** each operatory column is tinted where the provider is scheduled. Or should the far-left provider bar's time be drawn on the operatory background instead?
+- (B-APPT 3) Reopening a completed task while the appointment already has an open task: keep it silent, or warn in Task Edit? **Today:** silent.
+- (B-APPT 4) Should the far-left provider columns also use the secondary color setting? **Today:** no.
+- (B-APPT 5) Is the toolbar the right place for "Wait Rm", and is remembering its window position per Windows user on each computer right? **Today:** both as described.
+- (M2-APPT 1) Right-click Cut of a blockout needs Blockout Delete only. Or Delete and Add? **Today:** Delete only.
+- (M2-APPT 2) Should the Family Recall toolbar button also follow "Make Recall automatically searches for openings"? **Today:** only "Recall for Family" in Other Appointments follows it.
+- (M2-APPT 3) Replacing overlapping blockouts when pasting or editing now needs Blockout Delete (or Blockouts Flagged) for the replaced ones. Keep?
+- (M2-APPT 4) Keep the extra audit entry under Blockout Delete when the Cut-Copy-Paste window pastes with Replace Existing?
+- (B-TASK 1) Task filter: Clinic A (or Region 1) still shows tasks with no clinic, as before, so "Unassigned" is only useful on its own. Or should no-clinic tasks show only when Unassigned is picked? That would change what every default filter shows. **Today:** shown.
+- (B-TASK 2) With the Region default filter and a clinic that has no region, should the list default to Region: Unassigned? **Today:** no region filter.
+- (B-TIME 1) Should the Decimal/Colon choice in the Time Card window also change the time card grid itself? **Today:** totals only.
+- (B-TIME 2) Should Reports To also list the supervisor themselves, or people who report to them indirectly? **Today:** direct reports only.
+- (B-TIME 4) Should Manage Time Cards get the Reports To filter, and print with the new single-format totals row? **Today:** no.
+- (M2-EMP 1) While a clock-out time is in the future, should the status read "Working" instead of "Manual Entry"? **Today:** "Manual Entry".
+- (M2-EMP 2) A clock-out on a later day spans two dates, which Calc Daily reports as an error. Acceptable, or limit future clock-outs to later today plus overnight shifts? **Today:** later days are allowed.
+- (M2-EMP 3) Should every clock-event edit be logged with old and new times? **Today:** only future clock-outs.
+- (M2-EMP 4) Should the Employees list search also match job titles? **Today:** no.
+- (M2-EMP 5) Printed time card with clinics: should the Clinic column give up room so a long later-day date always prints in full? **Today:** there, only the time may fit.
+
+---
+
+## Forms, sheets and printing
+
+- (B-EF 1) Forms that eClipboard and Web Forms left in the office data show as "Waiting for patient" and "Submitted online" (not the spec's "In eClipboard" and "Web form", since those services are gone). Acceptable?
+- (B-EF 2) Should scanned form documents show under the Sheets filter, or only under Both? **Today:** Sheets.
+- (B-EF 3) An eForm with no status: show "None", or a blank cell? **Today:** "None".
+- (B-EF 4) Forms imported before the switch-over (including by Open Dental 25.3) don't show as Imported. If the office database shows that Open Dental's import audit entries carry the form's number, they can be counted too (the same database look as Switch-over item 1).
+- (B-EF 6) When radio button items are renamed, should the conditional fields that depend on them be updated too (the Ins Pick editor already does this)? **Today:** no.
+- (M2-EF 2) In the import window, should a blank answer clear a stored patient field by default? **Today:** unchecked (not cleared).
+- (M2-EF 3) Should patient fields be allowed as Auto Import fields? **Today:** no.
+- (M2-EF 4) The Submitted box shows in Fill Sheet only for patient forms, medical histories and consents. Other sheet types too?
+- (M2-SHEETS 1) Right-to-left text (Hebrew, Arabic) in a left-aligned field stays on the left, as designed. Or treat "left" as "start" so it sits at the right edge? **Today:** stays left.
+- (M2-SHEETS 2) Right-to-left, Indic and Chinese/Japanese text in sheet PDFs is a picture (it can't be searched or copied) until the PDF library is replaced. Acceptable?
+- (M2-SHEETS 3) The duplicate-field warning also covers output fields (patient name, date), which are often placed twice on purpose, so every such add asks. Keep?
+- (M2-SHEETS 4) The language list adds the native name for non-Latin languages ("Russian (русский)"). Keep, or English only as before?
+- (B-PRINT 4) Kiosk-filled sheets are copied to Imaging when the patient saves them at the kiosk. Acceptable, and can every kiosk computer reach the image folder? A copy that fails is only noted in the audit trail. Waiting for staff review instead would need a new field.
+- (B-PRINT 5) Print Options appears when a print situation has Prompt on, and from every print preview's Print button. Should it also appear for prints that go straight to the printer?
+- (B-PRINT 6) Should the remembered print choices be cleared at log-off? **Today:** kept until the program closes.
+- (M2-MISC 4) Is the Print Options wording right: "From Statements setting", "Last used this session (...)", "Chosen in this window (...)", "Status: Offline"?
+
+---
+
+## Imaging
+
+- (B-IMG 1) Should "Copy without drawings" also be added to the old Images module, if any computer still uses it? **Today:** new module only.
+- (B-IMG 2) Audit text: "... copied to clipboard without drawings". Fine, or should both copy commands log the same text?
+- (B-IMG 3) Please read the scanning setup Details message once and say whether the wording fits the office.
+- (M2-IMG 1) The "allow PDF JavaScript" setting covers PDFs in the Imaging module only. Should it, or a second setting, also cover PDFs shown in eForms, statements and sheets?
+- (M2-IMG 2) True 16-bit X-ray images still open with the full range, without automatic brightness windowing. Should they get the same automatic windowing as 12-bit images? That needs a real 16-bit sensor sample to tune.
+- (M2-IMG 3) 12-bit images whose stored windowing is the import fallback (4095) now show the full range instead of an almost black picture. This only changes images that were unreadable before. Confirm.
+
+---
+
+## Vendor integrations
+
+- (V-BRIDGE1 3) Overjet: opening a patient directly needs parameter names from Overjet. Once known, ship a default template or leave it to the office? **Today:** left to the office.
+- (V-BRIDGE1 4) DTX Studio: we need the DTXsync.exe command-line specification from DTX/Envista, including how Acquire differs. Ship default patient arguments or leave them to the office? **Today:** left to the office.
+- (V-BRIDGE1 5) IAP: which sign-in address should the office enter? Should the IAP button also show when a plan is edited from the insurance plan list? **Today:** hidden there, as in 24.3.
+- (V-BRIDGE2 1) Clerri: is a plain launch useful without the data sync? If yes, we need Clerri's dashboard address, and whether it takes the key and the patient number.
+- (V-BRIDGE2 2) Clerri launches are logged to a file on the computer. Should they go to the security log instead? **Today:** local file.
+- (V-BRIDGE2 3) Clever One: please confirm the hand-off file with VATECH (file name, folder, fields). The default folder is under Program Files, which ordinary users often can't write to.
+- (V-BRIDGE2 4) Trophy (Enhanced): should we build the Chart Number option and the Carestream Imaging 8 setup (blank path) from the current public page? **Today:** not built.
+- (V-GP 1) Will Global Payments give the office Cloud Integration access with its own App ID and App Key, or only through a partner such as Open Dental? If only through a partner, V2 stays set up but turned off, like EdgeExpress.
+- (V-GP 2) Please ask Global Payments (sandbox) how a terminal sale returns a reusable card, and for the full list of device statuses and a declined/cancelled answer, so our reading of them can be confirmed.
+- (V-GP 3) Program names: keep the neutral "Global Payments V1" / "Global Payments V2", or use Open Dental's "Global Payments from www.globalpaymentsintegrated.com"? **Today:** neutral.
+- (V-GP 4) An office with both X-Charge and EdgeExpress turned on must turn one off before it can save either setup window. Acceptable, or check only when turning one on?
+- (V-GP 5) Should V2 also appear among the prepaid-card buttons in the insurance payment window? **Today:** no.
+- (V-PEARL1 1, V-PEARL2 2) The Pearl client secret is stored as plain text, as Open Dental stored it. Should it be encrypted, masked and high-security like the other vendor secrets (a small follow-up)? **Today:** plain text.
+- (V-PEARL1 2) A Pearl request left "Polling" or "Uploading" by a computer that closed mid-request stays stuck; its image can't be sent again until the image is deleted. Should such requests time out, for example after 15 minutes? **Today:** stuck, as in 24.3.
+- (V-PEARL1 3) Polling stops at the first failed poll (staff send again by hand). Should it retry a few times first?
+- (V-PEARL2 3) Are our readings of the Pearl log settings acceptable: level 1 means uploads and results, values above 2 mean verbose, and one setting for the whole practice?
+- (V-PEARL2 4) Error text that Pearl returns (with private details removed) goes into the local log, and it could echo request details. Or log only the error code?
+- (M2-02 3) PaySuite stays hidden. Should PaySuite be in scope at all for a US office?
+- (B-DBM 4) Database Maintenance shows the X-Charge "Tokens" tool even when X-Charge is not turned on, which goes against the rule of no vendor screens before the office turns them on. Hide it unless X-Charge is on? **Today:** always shown.
+
+---
+
+## Reports
+
+- (B-ACCT 4) Daily Payments merchant fees: keep the 24.3 signs (PayConnect fees shown as stored; "after fees" = amount plus fee)? Include every payment processor except "None"? **Today:** both yes.
+- (B-SERVER 2) Incomplete Procedure Notes, "Include all procedures with no notes": a procedure in a group note that has text counts as noted. Right?
+- (B-SERVER 3) Should a note of only spaces count as "no note"? **Today:** yes (for the new option).
+- (B-SERVER 6) Report Setup: should checking the "all procedures" default also lock the same-day default, as the report window does? **Today:** they are separate.
+- (M2-TERM 1) Report column headers: "Standard Fee" (fits, or wraps to two lines in Capitation) or the full "Standard Provider Fee" (wraps everywhere)? Exported files keep the old names ("UCR Fee" and so on). Using new names in exports too is against the spec and needs your explicit approval.
+- (M2-UDS 2) The UDS+ patient file carries the internal patient number so the health center's tools can group a patient's rows (no name or other identifier). Acceptable, or use a made-up number per file?
+- (M2-UDS 3) Should the insurance category in UDS+ come from a mapping the office can edit, instead of the fixed list? **Today:** fixed list.
+
+---
+
+## Other
+
+**Audit trail and privacy**
+- (B-AUDIT 1) Should a sheet or eForm import also log the other patient fields it changes (name, address, phones), as Edit Patient does? **Today:** only preferred name and clinic, plus the existing "imported" entries.
+- (B-AUDIT 2) Should the PT Dental (Paperless Technology) bridge log the patient changes it imports? **Today:** no entry.
+- (B-AUDIT 3) Moving patients in the Clinics window: one audit entry per patient, so each patient's own audit trail shows it? Or the single summary entry only? **Today:** one per patient.
+- (M2-AUDIT 1) Birthdate changes read "changed from '' to '3/4/1985'" when a birthdate is added or removed. Fine, or "birthdate added" / "birthdate removed"?
+- (M2-AUDIT 2) Should a patient created with a birthdate get an "added" entry? **Today:** yes.
+- (M2-AUDIT 3) The Audit Trail shows real birthdates, even to users who see them masked in Edit Patient Information. Acceptable, given who has the Audit Trail permission?
+- (M2-SHELL 1) The "patient selected" audit is one on/off switch in Global Security Settings, off by default. Enough, or per user group?
+- (M2-SHELL 2) Should picking the patient who is already loaded also write an entry after 60 seconds? **Today:** only a change of patient is logged.
+- (M2-MISC 5) Help, About (diagnostics) shows the patient number and the MySQL user name, as before. Keep both?
+
+**Database Maintenance, server and setup**
+- (B-DBM 1) The Invalid Characters tool cleans a chosen list of fields. Should it also clean patient notes, procedure text fields, wiki history or eForm answers? Each one is a single line to add.
+- (B-DBM 2) The Raw Emails tool also removes two invisible joining characters, which changes some emoji and some scripts (for example Persian). Keep?
+- (B-DBM 3) The Base64 Documents tool deletes placeholder rows without an image-delete log entry, as the Images module does. Should it log one?
+- (B-SERVER 4) Replication read delay: should it start after any write by the program (including background writes), or only after a user saves? **Today:** any write.
+- (B-SERVER 5) Does the office run a Middle Tier server? If so, is starting the read delay when a signal is sent acceptable?
+- (B-SHELL 2) Should the File Monitor keep requiring the Setup permission? Open Dental leaves it open to everyone. **Today:** Setup required.
+- (M2-MISC 3) Referral phone: a plain 10-digit number is stored as 10 digits (anything else as typed). Or store exactly what was typed? **Today:** 10 digits.
+
+**Wiki**
+- (B-WIKI 1) The read-only wiki copy has one folder for the whole office, by default inside the A-to-Z folder (usually on the same server as the database). Should there be a folder per computer, or a second copy, so it is still there when the server is down? **Today:** one folder; Wiki Setup warns about this.
+- (B-WIKI 2) Should linked files outside the wiki folder also be copied into the read-only copy (with a size cap)? **Today:** they stay links.
+- (B-WIKI 3) Is "off" the right default for the wiki search limit?
+- (B-WIKI 6) Is Setup the right permission for the read-only copy settings? Should users who are not administrators see drafts of locked pages (as the spec says; they cannot edit them)?
+
+**Remembering choices after the program closes** (B-PROC 5, B-TIME 3, M2-ERA 1, M2-INSV 3, M2-NOTES 4)
+**Today**, each of these is remembered only until the program closes, or as noted. Which of them should be remembered longer?
+- Fee Tools: the last tab used (B-PROC 5).
+- Time Clock: the Reports To choice (B-TIME 3).
+- ERAs Automatically Processed report: Show PreAuths and Show $0 Payments (M2-ERA 1).
+- Insurance Verification List: the carrier pick (M2-INSV 3).
+- Procedure note window size: remembered per user on each computer. Or per user everywhere (M2-NOTES 4)?
+
+**Canada-only items** (hidden outside Canadian English and French settings; "not needed" is a fine answer)
+- (M2-CAN 7) Is the Canadian part needed at all for a US office?
+- (B-PROC 1) Which Canadian codes should the default Canadian code groups hold? Only Fluoride (12111) and Sealant (13401) are filled in, and a reset keeps the office's current codes for the others. When several groups match one default, merge their codes instead of taking the group with the most benefits?
+- (M2-CAN 1) Canadian code update: the confirmation word "UPDATE CODES" is shown in the prompt. Keep it visible, or hide it and document it elsewhere?
+- (M2-CAN 2) Updates match existing codes by number in any category, so a CDHA or DAC file can also rename a CDA code with the same number. Limit updates to the system's own category?
+- (M2-CAN 3) RAMQ: printed claims drop the trailing R by category. Or for every R code that the RAMQ import created, even if moved to another category?
+- (M2-CAN 4) Pay Labs: labs are paid first, up to their billed fee, and the procedure keeps the rest. Is that what the carriers need?
+- (M2-CAN 5) DAC English and French share one "DAC" category. Separate them?
+- (M2-CAN 6) Codes with commas or hyphens from before 26.1 can only be replaced, not renamed. Is a rename tool wanted, or is the Database Maintenance list enough?
+
+**Dental school** (excluded by your earlier decision)
+- (M2-02 4) If dental school features ever come back, permission 81 has a much wider meaning in 25.4, and a list of the groups that hold it would be needed first. No action today.
+- (M2-01 3) The dental school grade fields default to -1 in the database. Keep, or set it only in code? This has no effect on the office.
+
+**Developer housekeeping** ("your call" is a fine answer for all of these)
+- (B-PRINT 7) Remove the old grid text/".xls" export, which nothing uses now, in a later cleanup?
+- (M2-HIST 8) Remove the ten unused Insurance History help entries from the preference help file?
+- (M2-CARRIER 3) "Create Preauth Now" repeats the Treatment Plan module's preauthorization steps. Make the Treatment Plan button use the shared steps so the two can't drift apart? (A small change in a busy file.)
+- (V-GP, phase B) One Global Payments question box uses the plain Windows message box, because the program's own box can't set the default button. Acceptable, or add that option to the program's box?
+- (M2-01 4) Mark Open Dental's remaining headquarters-only values as reserved in a follow-up?
+- (B-EF 5, B-WIKI 4, M2-SDV 5) How the program numbers its own saved per-user settings: values from 100 up, the existing value 25 with Fkey 1 (wiki search limit), or AcctProcBreakdown with Fkey 1 and 2 (Service Date View). Keep these, or register values of the program's own?
+
+---
+
+## Added by the combined review (2026-11-01)
+
+These came out of the review of all 55 packages together. Items 4, 5, 8 and 10 above also came up again there.
+
+- **Setting names (B-PRINT, B-ACCT, B-PAY, B-PERIO, B-ERA, B-CLAIM, B-APPT, B-SERVER, B-WIKI, B-SHELL, M2-SHELL).** For settings whose Open Dental name isn't confirmed, four are stored under a guessed Open Dental name and the rest under a name starting with "Fork". Use one rule? The reviewer suggests renaming the four to "Fork" names now, while no office database has them, and adding a test that keeps it that way. **Today:** mixed.
+- **Pearl secret (V-PEARL1, V-PEARL2).** Same as the Pearl question under Vendor integrations: encrypt it like the other vendor secrets? It is a small change.
+- **CareCredit 25.2/25.3 items (B-ACCT, V-PC).** The CareCredit bridge was rebuilt during the decoupling work, but four 25.2/25.3 CareCredit items (merchant fee adjustments, self-service, the Net Amount column, the refund adjustment type) were never built, and the planning documents disagree about whether they are excluded. Build them in a vendor package, or record them as excluded? **Today:** not built.
+- **PaySuite and Clerri (V-BRIDGE2, M2-02).** Record in the owner decisions that PaySuite is not built and that Clerri is built only as a plain launch, turned off. **Today:** that's how they are built, but it isn't written down as your decision.
+
+---
+
+## Not asked again (already settled)
+
+- How package migration levels are numbered (B-ACCT 2, B-PRINT 1, B-SHELL 6, M2-EST 1, M2-UDS 1, V-BRIDGE1 2, V-PEARL2 1, M2-SHELL's old question 4): decided on 2026-11-01 and done: the package steps now have dated levels 2026110101 to 2026110104, and new steps always go above the highest one.
+- M2-01 5 (hide Employee Titles until the title feature ships): M2-EMP shipped employee titles, so it stays visible.
+- M2-01's question about test databases with fixed names clashing in parallel runs: fixed on `port/int-4`.
+- B-APPT's request that the integrator pick one approach for setting names that aren't confirmed yet: settled on the integration branch. All packages use the program's own setting rows.
