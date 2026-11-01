@@ -90,6 +90,7 @@ namespace OpenDental {
 			comboUnallocatedSplits.SetSelectedDefNum(PrefC.GetLong(PrefName.PrepaymentUnearnedType));
 			checkAllowEmailCCReceipt.Checked=PrefC.GetBool(PrefName.AllowEmailCCReceipt);
 			checkIncTxfrTreatNegProdAsIncome.Checked=PrefC.GetBool(PrefName.IncomeTransfersTreatNegativeProductionAsIncome);
+			checkIncomeTransfersLimitToPatPayments.Checked=PrefC.GetBool(PrefName.IncomeTransfersLimitToPatPayments);
 			checkPaymentCompletedDisableMerchantButtons.Checked=PrefC.GetBool(PrefName.PaymentsCompletedDisableMerchantButtons);
 			checkAllowPrepayProvider.Checked=PrefC.GetBool(PrefName.AllowPrepayProvider);
 			comboDppUnearnedType.Items.AddDefs(Defs.GetHiddenUnearnedDefs(true));
@@ -135,6 +136,11 @@ namespace OpenDental {
 			//(synced) Changed|=Prefs.UpdateBool(PrefName.PaymentsPromptForPayType,checkPaymentsPromptForPayType.Checked);
 			Changed|=Prefs.UpdateBool(PrefName.AllowEmailCCReceipt,checkAllowEmailCCReceipt.Checked);
 			Changed|=Prefs.UpdateBool(PrefName.IncomeTransfersTreatNegativeProductionAsIncome,checkIncTxfrTreatNegProdAsIncome.Checked);
+			if(Prefs.UpdateBool(PrefName.IncomeTransfersLimitToPatPayments,checkIncomeTransfersLimitToPatPayments.Checked)) {
+				Changed=true;
+				SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,"'Limit manual income transfers to the amount of patient payments' changed to "
+					+(checkIncomeTransfersLimitToPatPayments.Checked ? "on" : "off")+".");
+			}
 			Changed|=Prefs.UpdateBool(PrefName.PaymentsCompletedDisableMerchantButtons,checkPaymentCompletedDisableMerchantButtons.Checked);
 			Changed|=Prefs.UpdateBool(PrefName.AllowPrepayProvider,checkAllowPrepayProvider.Checked);
 			Changed|=Prefs.UpdateBool(PrefName.ShowAllocateUnearnedPaymentPrompt,checkShowAllocateUnearnedPaymentPrompt.Checked);

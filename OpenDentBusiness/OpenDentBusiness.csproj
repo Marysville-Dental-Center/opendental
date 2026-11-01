@@ -817,6 +817,7 @@
     <Compile Include="Data Interface\InsEditLogs.cs" />
     <Compile Include="Data Interface\PatientLinks.cs" />
     <Compile Include="Db Multi Table\PaymentEdit.cs" />
+    <Compile Include="Db Multi Table\PaymentInvoiceFilter.cs" />
     <Compile Include="Db Multi Table\ProcEdit.cs" />
     <Compile Include="InternalTools\Phones\TableTypes\PhoneComp.cs" />
     <Compile Include="Misc\ItransNCpl.cs" />
@@ -1503,6 +1504,7 @@
     <Compile Include="Data Interface\PayPlanCharges.cs" />
     <Compile Include="Data Interface\PayPlans.cs" />
     <Compile Include="Data Interface\PaySplits.cs" />
+    <Compile Include="Data Interface\IncomeTransferLimits.cs" />
     <Compile Include="Data Interface\PerioExams.cs" />
     <Compile Include="Data Interface\PerioMeasures.cs" />
     <Compile Include="Data Interface\PlannedAppts.cs" />
