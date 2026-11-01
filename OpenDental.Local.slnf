@@ -63,6 +63,7 @@
       "tests\\StatementTests\\StatementTests.csproj",
       "tests\\TaskCategoryTests\\TaskCategoryTests.csproj",
       "tests\\VBRIDGE1Tests\\VBRIDGE1Tests.csproj",
+      "tests\\VDXC2Tests\\VDXC2Tests.csproj",
       "tests\\VendorDirectTests\\VendorDirectTests.csproj",
       "tests\\VPEARL1Tests\\VPEARL1Tests.csproj",
       "tools\\AdoptionValidation\\AdoptionValidation.csproj",
