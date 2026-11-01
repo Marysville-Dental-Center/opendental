@@ -196,6 +196,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "M2IMGTests", "tests\M2IMGTe
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "M2EFTests", "tests\M2EFTests\M2EFTests.csproj", "{A5486564-69D2-45B5-A9CC-12B435740745}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "M2DUNTests", "tests\M2DUNTests\M2DUNTests.csproj", "{980D11A2-1058-4FE2-AB20-BFED22DFCE75}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -1311,6 +1313,18 @@ Global
 		{A5486564-69D2-45B5-A9CC-12B435740745}.Release|Any CPU.Build.0 = Release|x86
 		{A5486564-69D2-45B5-A9CC-12B435740745}.Release|x86.ActiveCfg = Release|x86
 		{A5486564-69D2-45B5-A9CC-12B435740745}.Release|x86.Build.0 = Release|x86
+		{980D11A2-1058-4FE2-AB20-BFED22DFCE75}.Debug|Any CPU.ActiveCfg = Debug|x86
+		{980D11A2-1058-4FE2-AB20-BFED22DFCE75}.Debug|Any CPU.Build.0 = Debug|x86
+		{980D11A2-1058-4FE2-AB20-BFED22DFCE75}.Debug|x86.ActiveCfg = Debug|x86
+		{980D11A2-1058-4FE2-AB20-BFED22DFCE75}.Debug|x86.Build.0 = Debug|x86
+		{980D11A2-1058-4FE2-AB20-BFED22DFCE75}.ODXam|Any CPU.ActiveCfg = Release|x86
+		{980D11A2-1058-4FE2-AB20-BFED22DFCE75}.ODXam|Any CPU.Build.0 = Release|x86
+		{980D11A2-1058-4FE2-AB20-BFED22DFCE75}.ODXam|x86.ActiveCfg = Release|x86
+		{980D11A2-1058-4FE2-AB20-BFED22DFCE75}.ODXam|x86.Build.0 = Release|x86
+		{980D11A2-1058-4FE2-AB20-BFED22DFCE75}.Release|Any CPU.ActiveCfg = Release|x86
+		{980D11A2-1058-4FE2-AB20-BFED22DFCE75}.Release|Any CPU.Build.0 = Release|x86
+		{980D11A2-1058-4FE2-AB20-BFED22DFCE75}.Release|x86.ActiveCfg = Release|x86
+		{980D11A2-1058-4FE2-AB20-BFED22DFCE75}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

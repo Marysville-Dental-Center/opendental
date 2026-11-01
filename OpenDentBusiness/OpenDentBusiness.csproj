@@ -574,6 +574,7 @@
     <Compile Include="InternalTools\RemoteSupport\TableTypes\PeerInfo.cs" />
     <Compile Include="InternalTools\WebChat\TableTypes\WebChatNote.cs" />
     <Compile Include="InternalTools\WebChat\TableTypes\WebChatSurvey.cs" />
+    <Compile Include="Logic\BillingEmailHtml.cs" />
     <Compile Include="Logic\BillingL.cs" />
     <Compile Include="Logic\CodeMapping.cs" />
     <Compile Include="Logic\USlocales.cs" />

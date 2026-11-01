@@ -82,6 +82,7 @@ namespace OpenDental {
 			textBillingEmailSubject.Text=PrefC.GetString(PrefName.BillingEmailSubject);
 			textBillingEmailBody.Text=PrefC.GetString(PrefName.BillingEmailBodyText);
 			checkBillingEmailIncludeAutograph.Checked=PrefC.GetBool(PrefName.BillingEmailIncludeAutograph);
+			FillBillingEmailType();
 			textInvoiceNote.Text=PrefC.GetString(PrefName.BillingDefaultsInvoiceNote);
 			_listEbills=Ebills.GetDeepCopy();
 			_listEbillsOld=_listEbills.Select(x => x.Copy()).ToList();
@@ -302,6 +303,51 @@ namespace OpenDental {
 			LoadEbill(eBill);//Could be null if user switches to a clinic which has not Ebill entry yet.
 		}
 
+		#region Email type (Open Dental 26.1)
+		///<summary>The billing e-mail body can be plain text, HTML inside the e-mail master template, or raw HTML (preference BillingEmailType).
+		///</summary>
+		private void FillBillingEmailType() {
+			comboBillingEmailType.Items.Add(Lan.g(this,"Plain Text"),EmailType.Regular);
+			comboBillingEmailType.Items.Add(Lan.g(this,"HTML"),EmailType.Html);
+			comboBillingEmailType.Items.Add(Lan.g(this,"Raw HTML"),EmailType.RawHtml);
+			comboBillingEmailType.SetSelectedEnum(BillingEmailHtml.GetBillingDefaultsEmailType());
+		}
+
+		///<summary>Opens the HTML editor and preview that e-mail templates use. Saving there makes the body HTML, or raw HTML when that box is
+		///checked.</summary>
+		private void butBillingEmailEditHtml_Click(object sender,EventArgs e) {
+			using FormEmailEdit formEmailEdit=new FormEmailEdit();
+			formEmailEdit.MarkupText=textBillingEmailBody.Text;
+			formEmailEdit.IsRaw=comboBillingEmailType.GetSelected<EmailType>()==EmailType.RawHtml;
+			formEmailEdit.ShowDialog();
+			if(formEmailEdit.DialogResult!=DialogResult.OK) {
+				return;
+			}
+			textBillingEmailBody.Text=formEmailEdit.MarkupText;
+			if(formEmailEdit.IsRaw) {
+				comboBillingEmailType.SetSelectedEnum(EmailType.RawHtml);
+			}
+			else {
+				comboBillingEmailType.SetSelectedEnum(EmailType.Html);
+			}
+		}
+
+		private bool IsBillingEmailBodyValid() {
+			string error=BillingEmailHtml.GetBodyError(textBillingEmailBody.Text,comboBillingEmailType.GetSelected<EmailType>());
+			if(error=="") {
+				return true;
+			}
+			MessageBox.Show(Lan.g(this,"The email body is not valid HTML. Fix it with Edit HTML, or choose Plain Text.")+"\r\n"+error);
+			return false;
+		}
+
+		private void SaveBillingEmailType() {
+			if(Prefs.UpdateInt(PrefName.BillingEmailType,(int)comboBillingEmailType.GetSelected<EmailType>())) {
+				DataValid.SetInvalid(InvalidType.Prefs);
+			}
+		}
+		#endregion Email type (Open Dental 26.1)
+
 		private void butSave_Click(object sender,EventArgs e) {
 			if(!textDays.IsValid()) {
 				MsgBox.Show(this,"Please fix data entry errors first.");
@@ -313,6 +359,9 @@ namespace OpenDental {
 			}
 			if(checkSinglePatient.Checked && checkIntermingled.Checked) {
 				MsgBox.Show(this,"Cannot select both 'Intermingle family members' and 'Single patient only' as defaults.");
+				return;
+			}
+			if(!IsBillingEmailBodyValid()) {
 				return;
 			}
 			string creditCard="";
@@ -366,6 +415,7 @@ namespace OpenDental {
 			{
 				DataValid.SetInvalid(InvalidType.Prefs);
 			}
+			SaveBillingEmailType();
 			if(Ebills.Sync(_listEbills,_listEbillsOld)) {//Includes the default Ebill
 				DataValid.SetInvalid(InvalidType.Ebills);//Also updates cache.
 			}
