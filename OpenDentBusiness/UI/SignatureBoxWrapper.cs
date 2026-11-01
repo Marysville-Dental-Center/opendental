@@ -100,7 +100,8 @@ In FormClosing:
 		private SigMode _signatureMode=SigMode.Default;
 		///<summary>The label's own text (LabelText) while the label says that Topaz's software is not installed, else null.</summary>
 		private string _labelTextBeforeTopazMessage;
-		///<summary>The signature that the last fill could not check because Topaz's software is not installed, else null. Treatment plans keep two
+		///<summary>The Topaz-shaped signature (IsTopazShaped) that the last fill could not check because Topaz's software is not installed, else null.
+		///A signature from the program's own box is never kept here: without Topaz it fails with the label's own text, as before. Treatment plans keep two
 		///signatures under one SigIsTopaz column, so FormTPsign and SheetDrawingJob fill a signature that does not show once more as the other kind.
 		///When the program's own check then does not accept that same signature either, the not-installed message stays: Topaz could not check it,
 		///so "Invalid Signature" would be a tamper warning the program cannot back up.</summary>
@@ -251,6 +252,26 @@ In FormClosing:
 			labelInvalidSig.Visible=true;
 		}
 
+		///<summary>True if the signature could be a Topaz SigPlus string, which is hex digits. The program's own box stores base 64 of AES ciphertext
+		///(SigBox.EncryptSigString), which has letters past F, '+', '/' or '=' in effectively every real signature, so it is never taken for Topaz's.
+		///Whitespace is ignored in case a stored string picked some up.</summary>
+		public static bool IsTopazShaped(string signature) {
+			if(string.IsNullOrEmpty(signature)) {
+				return false;
+			}
+			bool hasHexDigit=false;
+			foreach(char c in signature) {
+				if(char.IsWhiteSpace(c)) {
+					continue;
+				}
+				if(!Uri.IsHexDigit(c)) {
+					return false;
+				}
+				hasHexDigit=true;
+			}
+			return hasHexDigit;
+		}
+
 		///<summary>Puts the label's own text back after ShowTopazNotInstalled, and forgets the signature Topaz could not check.</summary>
 		private void RestoreLabelText() {
 			_signatureTopazNotInstalled=null;
@@ -319,7 +340,13 @@ In FormClosing:
 			//Note that if the keydata was hashed before this point, these replacements have to be dealt with outside of this function.
 			if(sigIsTopaz) {
 				if(!CheckTopaz()) {
-					ShowTopazNotInstalled(signature);
+					if(IsTopazShaped(signature)) {
+						ShowTopazNotInstalled(signature);
+					}
+					else {
+						//Not a Topaz string (the program's own box stores base 64), so Topaz could not have checked it either: the label's own text, as before.
+						labelInvalidSig.Visible=true;
+					}
 					return;
 				}
 				FillSignatureHelperTopaz(keyData.Replace("\r\n","\n"),signature);
@@ -339,7 +366,7 @@ In FormClosing:
 					FillSignatureHelper(keyData.Replace("\r\n","\n").Replace("\n","\r\n"),signature);
 				}
 				if(isTopazNotInstalledForSignature && !IsValid) {
-					//Not the program's own signature either, so it may be a Topaz one that cannot be checked here: keep saying so.
+					//A Topaz-shaped signature the program's own check does not accept either, so it may be a Topaz one that cannot be checked here: keep saying so.
 					ShowTopazNotInstalled(signature);
 				}
 			}
