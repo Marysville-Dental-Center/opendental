@@ -162,8 +162,8 @@ namespace ImagingTests {
 			}
 		}
 
-		///<summary>The two other windows that delete a claim run the helper after their own refusals and confirmation, and before any claimproc or
-		///the claim is deleted. A false from the helper ends the delete.</summary>
+		///<summary>The other window that deletes a claim (Send Claims) runs the helper after its own refusals and confirmation, and before any
+		///claimproc or the claim is deleted. A false from the helper ends the delete.</summary>
 		[TestMethod]
 		public void DeleteClaimElsewhere_PreAuthEobsGoFirst() {
 			string send=MethodBody(Read("OpenDental","Forms","FormClaimsSend.cs"),"private void menuItemDeleteClaim_Click(object sender,EventArgs e)");
@@ -172,14 +172,7 @@ namespace ImagingTests {
 			AssertBefore(send,"Cannot delete, there are claim procedures attached to this claim.","ClaimL.TryDeletePreAuthEobs(claim)");
 			AssertBefore(send,"ClaimL.TryDeletePreAuthEobs(claim)","ClaimProcs.DeleteMany(listClaimProcs);");
 			AssertBefore(send,"ClaimL.TryDeletePreAuthEobs(claim)","Claims.Delete(claim,");
-			//The institutional claim window (kept in the source tree, not in OpenDental.csproj).
-			string inst=MethodBody(Read("OpenDental","Forms","FormClaimInstEdit.cs"),"private void butDelete_Click(object sender, System.EventArgs e)");
-			Assert.AreEqual(1,Count(inst,"ClaimL.TryDeletePreAuthEobs("));
-			Assert.IsTrue(Regex.IsMatch(inst,@"if\(!ClaimL\.TryDeletePreAuthEobs\(ClaimCur\)\) \{\s*return;\s*\}"),"A false ends the delete.");
-			AssertBefore(inst,"Delete PreAuthorization?","ClaimL.TryDeletePreAuthEobs(ClaimCur)");
-			AssertBefore(inst,"Delete Claim?","ClaimL.TryDeletePreAuthEobs(ClaimCur)");
-			AssertBefore(inst,"ClaimL.TryDeletePreAuthEobs(ClaimCur)","ClaimProcs.Delete(");
-			AssertBefore(inst,"ClaimL.TryDeletePreAuthEobs(ClaimCur)","Claims.Delete(ClaimCur);");
+			//The institutional claim window FormClaimInstEdit was never compiled and was deleted with the other uncompiled sources.
 		}
 	}
 }
