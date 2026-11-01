@@ -24,7 +24,7 @@ the go-live checks of steps 10.1 and 10.2, run as the runbook gives them through
 
 - Adoption drops `patient._portal_active_email` and its unique index, deletes Open Dental's update files, blanks Open Dental's server
   addresses, and sets the version sentinels and fork markers. The adopted schema then matches Open Dental 25.3.48 **exactly** (no documented
-  exception needed).
+  exception needed). This is the M1 build; since M2 the adopted schema is Open Dental 26.1.70's (section "Addendum: the 26.1 target").
 - Its fork migration may make one more change, on purpose: Open Dental 24.4 and 25.2 added three reports (Production by Procedure,
   Procedures (individual), Insurance Pending Supplementals) whose report rows Open Dental's own update wrote under internal names that are
   not published. A row of one of them under a name this program does not know, with a matching description, gets this program's name,
@@ -58,6 +58,49 @@ One defect was found and fixed during the gate (F1 below): the rehash moved ever
 version found three defects in the procedure (F8 to F10), the review of the first revision five more and the overstated claims (F11 to F15),
 and the review of the second revision one more defect and more overstated claims (F17, F18); all are fixed in this revision. The owner
 has open decisions (section "For the owner"); none blocks the switch, and the runbook has a path for either answer.
+
+## Addendum: the 26.1 target (M2, integration branch `port/int-3`, 2026-10-31)
+
+Everything above is the M1 evidence, for the M1 build, whose adoption target was the Open Dental 25.3.48 schema. On the M2 integration branch
+`port/int-3` (main merged into the 26.1 integration `port/int-2`), adoption's fork migration goes on to **Open Dental 26.1.70**
+(`SchemaVerifier.ReferenceVersion`): the M2-01 schema steps and the M2-02 seed step run after the M1 steps. The source is unchanged: the
+office's Open Dental 25.3.48 database is still the only one the runbook adopts (the allowlist is 24.3.63 and 25.3.48). This addendum is no
+new sign-off: before the office switches to an M2 build, the gate (two medium runs, the runbook dry runs) is repeated on that build.
+
+What adoption now also does to a 25.3.48 copy, and how each change is checked (every guard of M1 stays as it was; each new allowed
+difference is held to its values by `adopt`'s row check):
+
+| Change | Allowed in `allowed-differences.adoption.json` as | Row check (`AdoptionRowCheck`, V11) and preview (`migration-preview`, runbook step 0.2) |
+|---|---|---|
+| 5 new tables (`deletedobj`, `paysuitepayment`, `paysuitepaymentdetail`, `schoolcourseenrollee`, `schoolcourseinstructor`) | `TableAdded`, one rule each | empty; V1 allows exactly these tables to come |
+| 28 new columns in 21 tables | `ColumnAdded`, one rule each (a unit test holds the rules to the difference of the two references) | each holds its default in every row (`evaluation.GradeOverride` -1) |
+| `claimpayment.Note` to text NOT NULL | `ColumnChanged` | only NULL to empty, as many as the preview counts |
+| `insverify` and `insverifyhist.DateLastAssigned` to datetime | `ColumnChanged` | each value the old date at midnight |
+| the ten 25.4 and 26.1 preferences | within the `preference` rule | exactly those the preview lists, each with its default |
+| the 25.4 blockout permission split (272 PhoneExtension grants to 274; BlockoutAdd and BlockoutDelete for every Blockouts group) | `*` on `grouppermission` (new) | exactly the moves and the copied grants the preview lists; nothing else changed, added or removed |
+
+The rehearsal's office fixture now also holds a PhoneExtension grant under its 25.3 number, Blockouts grants for two user groups (one row
+duplicated, one with a 30-day limit) and a NULL claim payment note. New check **M4**: the 25.4 and 26.1 steps changed exactly what the preview
+listed, and the adoption log names each preference and permission change. M2 compares with 26.1.70; V1 allows only the new tables to come;
+V10's startup model also tries an Open Dental 26.1.70 client with the classic update view (26.1.70 is the release whose schema the adopted
+database has; it is locked out like the others).
+
+**F19 (found and fixed in the integration).** M2-01's step 2026102403 makes `claimpayment.Note` NOT NULL and first writes `''` into NULL
+notes. That `UPDATE` moved the claim payment's `SecDateTEdit` (ON UPDATE `current_timestamp()`) to the adoption time: the defect F1 found in the
+rehash, in another place. `ForkMigrationContext.EnsureColumnDefinition` now keeps every ON UPDATE column of the table when it fills NULLs
+(`M201Tests` checks it with set timestamps; the rehearsal's report comparison would show the moved timestamp as an unexpected difference, and
+the integration test `Adoption_ConvertsTheFixtureRowsThe26_1StepsConvert` checks the fixture's payment).
+
+Rehearsal on this branch at commit `b4827512b` (medium, one run, scratch prefix `synth_int3_925030_`, every scratch database dropped
+afterwards): **PASS, 28 of 28 checks**, 41.3 s. 422 tables and 101,890 rows before (the M1 fixture plus the four grants and the NULL note), 427
+tables and 101,909 rows after; changed: `documentmisc` 5 -> 1, `grouppermission` 31 -> 35, `preference` 25 -> 40, `securitylog` 2701 -> 2703,
+`securityloghash` 2 -> 4. M2: "427 of 427 tables; 0 differences". V3: 80 allowed, 0 unexpected. V4: 145 of 146 totals identical (the one
+that counts the dropped column). V10: 10 of 10 release-client scenarios refuse the adopted copy. M4 and the adoption log: 10 preferences
+inserted, "Moved 1 Open Dental 25.3 PhoneExtension grant(s) from 272 to 274", "Granted BlockoutAdd to 2 user group(s)", "Granted BlockoutDelete
+to 2 user group(s)", 1 NULL note made empty with its `SecDateTEdit` kept. R1: 136 of the 141 24.4 to 25.3 columns loaded and saved, 131 given a
+new value (`claimpayment.Note` now longer than 255 characters, since the adopted column is text). The adoption step itself took 1.8 s of the
+41.3 s on the medium data; on the office database the 25.4 and 26.1 `ALTER TABLE` statements copy `claimproc`, `procedurelog` and `procnote`
+once each (MyISAM), so the runbook's time plan is to be taken from a rehearsal of the M2 build, as before.
 
 ## Scope and method
 

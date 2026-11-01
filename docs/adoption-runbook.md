@@ -14,7 +14,8 @@ step. Every step says what to run, where, what to expect, and what to do when th
 
 ## What adoption does, and what it cannot undo
 
-Adoption converts a copy of the Open Dental 25.3.48 database into a database of this program. It is done once, by an administrator, on a
+Adoption converts a copy of the Open Dental 25.3.48 database into a database of this program, with the schema of Open Dental 26.1.70 (the
+version this program follows; the office's database stays at 25.3.48 until then). It is done once, by an administrator, on a
 **copy**; normal startup never adopts. `Adoption.Run` (run here by `AdoptionValidation adopt`; the program's Adopt Database window calls the
 same code):
 
@@ -24,12 +25,18 @@ same code):
 3. deletes Open Dental's update files (`documentmisc` rows of types `UpdateFiles` and `UpdateFilesSegment`) without reading them
 4. blanks the preferences that point at Open Dental's servers
 5. sets `DataBaseVersion` and `ProgramVersion` to `99.0.0.0`, so Open Dental programs can no longer use the database
-6. writes the fork's version markers and runs the fork migration steps. For a 25.3.48 database the schema and seed steps find nothing to
-   change. One step may rename report rows: Open Dental 24.4 and 25.2 added three reports (Production by Procedure, Procedures (individual),
-   Insurance Pending Supplementals) whose `displayreport` rows Open Dental's own update wrote under internal names that are not published.
-   A row of one of them under a name this program does not know, with a matching description, gets this program's name (its `InternalName`
-   only), so this program opens that report and the report permissions carry over. Step 0.2 lists these renames in advance
-   (`migration-preview`); step 4 checks that adoption made exactly them.
+6. writes the fork's version markers and runs the fork migration steps. For a 25.3.48 database the 24.4 to 25.3 schema and seed steps find
+   nothing to change. One step may rename report rows: Open Dental 24.4 and 25.2 added three reports (Production by Procedure, Procedures
+   (individual), Insurance Pending Supplementals) whose `displayreport` rows Open Dental's own update wrote under internal names that are not
+   published. A row of one of them under a name this program does not know, with a matching description, gets this program's name (its
+   `InternalName` only), so this program opens that report and the report permissions carry over. Then the Open Dental 25.4 and 26.1 steps
+   bring the schema to 26.1.70: five new tables (empty) and 28 new columns (each holding its default in every existing row), claim payment
+   notes as long text (a note that is NULL becomes empty; the payment's last-changed time is kept) and the insurance verification
+   `DateLastAssigned` as a date and time (midnight of the same date). They add the 25.4 and 26.1 preferences with their defaults, and split
+   the blockout permission as Open Dental 25.4 did: grants of PhoneExtension under its 25.3 number (272) move to 274, because 25.4 gave 272 to
+   BlockoutAdd, and every user group that may edit blockouts (Blockouts) also gets BlockoutAdd and BlockoutDelete with the same date limits,
+   so nobody loses an ability. Step 0.2 lists all these changes in advance (`migration-preview`); step 4 checks that adoption made exactly
+   them.
 7. records the finish and adds a security log entry
 
 All tables are MyISAM: there are no transactions. If anything goes wrong, the way back is the original. That is why the procedure never
@@ -207,7 +214,8 @@ rounds those: every program shows them with the same 6 digits before and after, 
 logical backup to copy the database (steps 3.1 and 3.2 copy the stored values exactly), so nothing is to be done on the day; keep the file
 for the owner, because it says what the office's own nightly backups would round if they are `mariadb-dump` files (validation report, F12).
 
-Then, at any time (it reads only the `displayreport` table and the version preferences), the **fork migration preview**: [admin PC]
+Then, at any time (it reads only the `displayreport` and `grouppermission` tables, the preferences, and which claim payment notes are NULL),
+the **fork migration preview**: [admin PC]
 `& $av migration-preview --database opendental @db | Tee-Object C:\Adoption\migration-preview.txt` (exit code 0). It lists what adoption's
 fork migration (step 4) will change in the rows of `opendental`: the report rows of item 6 of "What adoption does". It prints one line for
 each of the three reports:
@@ -222,6 +230,20 @@ each of the three reports:
 The line `Adoption's fork migration will rename N displayreport row(s), changing only their InternalName: ...` (or `... will rename no
 displayreport row.`) sums them up. **Write each rename (old name, new name, DisplayReportNum) on the checklist**, or "none": step 4 must show
 exactly these, and step 6.1 shows them as `ColumnChanged displayreport.InternalName`. No rename at all is just as normal.
+
+The last lines are the Open Dental 25.4 and 26.1 steps of item 6:
+
+- `Steps 2026102401 to 2026102403 (Open Dental 25.4 and 26.1 schema) bring the schema to Open Dental 26.1.70: 5 new table(s), empty (...);
+  28 new column(s) in 21 table(s) ...; ... claimpayment.Note (text NOT NULL: N NULL note(s) become empty) ...`;
+- `Step 2026102501 (Open Dental 25.4 and 26.1 seed rows) inserts N preference(s) with their defaults: ...` (10 on an Open Dental database:
+  the names are this program's own);
+- `Step 2026102501 splits the blockout permission (...): it moves N Open Dental 25.3 PhoneExtension grant(s) from 272 to 274, then grants
+  BlockoutAdd (272) to N user group(s) and grants BlockoutDelete (273) to N user group(s), with the FKey and date limits of their Blockouts
+  grant.` (or `... BlockoutDelete is already configured, so it is not granted`).
+
+**Write the numbers on the checklist**: NULL notes, preferences, PhoneExtension grants moved, user groups for BlockoutAdd and for
+BlockoutDelete. Step 4 must show exactly these. Zero PhoneExtension grants is normal (Open Dental's Set All grants it, so it is there only where
+someone used Set All).
 
 0.3. **Inventory of Open Dental services and jobs** (for step 2): on every Windows computer of the office that runs Open Dental, its services
 or its scheduled tasks (the workstations, and any Windows server; `fox-db` runs none of them, being Ubuntu):
@@ -471,24 +493,38 @@ prints each step with its time; `adoption-log.txt` keeps everything. Expect, in 
   are preferences that held an address of Open Dental's servers (such as `UpdateServerAddress`, `WebServiceHQServerURL`, `UpdateWebsitePath`).
   The second person initials the list on the checklist.
 - "DataBaseVersion and ProgramVersion set to 99.0.0.0." and the fork markers
-- every fork migration step "found nothing to change", except step 2026101971 ("Report rows for Procedures, Production by Procedure and
-  Insurance Pending Supplementals") when step 0.2 listed renames: it "changed the database:", followed by one line "Renamed displayreport
-  <old name> to <new name> (same description)" for each rename of the step 0.2 list and no other line; then "The schema matches Open Dental
-  25.3.48 (OdSchemaCompat)." and "Adoption finished."
-- "Fork migration, every step again: 9 steps run, 0 changes." and "The schema matches Open Dental 25.3.48 exactly (422 of 422 tables)."
+- every Open Dental 24.4 to 25.3 fork migration step (2026101901 to 2026101951) "found nothing to change", and step 2026101971 ("Report rows
+  for Procedures, Production by Procedure and Insurance Pending Supplementals") too unless step 0.2 listed renames: then it "changed the
+  database:", followed by one line "Renamed displayreport <old name> to <new name> (same description)" for each rename of the step 0.2 list
+  and no other line
+- steps 2026102401 ("Open Dental 25.4 schema") and 2026102402 ("Open Dental 26.1 schema") "changed the database:", each followed by its
+  `ALTER TABLE` and `CREATE TABLE` statements; step 2026102403 ("Open Dental 26.1: claimpayment.Note as text") by
+  ``UPDATE `claimpayment` SET `Note`='',`SecDateTEdit`=`SecDateTEdit` WHERE `Note` IS NULL -- N row(s)`` (N the NULL notes of step 0.2;
+  without NULL notes the line still shows, with 0) and its `ALTER TABLE`
+- step 2026102501 ("Open Dental 25.4 and 26.1 seed rows") "changed the database:", followed by one line "Inserted preference <name>" for each
+  preference of the step 0.2 list, "Moved N Open Dental 25.3 PhoneExtension grant(s) from 272 to 274" if step 0.2 counted any, and "Granted
+  BlockoutAdd to N user group(s)" and "Granted BlockoutDelete to N user group(s)" with the step 0.2 numbers; then "Fork migrations: 13 step(s)
+  run, 0 already done. Fork schema level 2026102501.", "The schema matches Open Dental 26.1.70 (OdSchemaCompat)." and "Adoption finished."
+- "Fork migration, every step again: 13 steps run, 0 changes." and "The schema matches Open Dental 26.1.70 exactly (427 of 427 tables)."
 - the rehash of step 5
-- "Row check against opendental ..." with six lines and no line starting `FAIL`: `preference` (the markers added, `DataBaseVersion` and
-  `ProgramVersion` set to 99.0.0.0, the preferences of the "Blanked" line blanked, "no other row changed or removed"), `documentmisc` (the
-  update-file rows deleted, "0 other row(s) deleted; 0 added; 0 changed"), `securitylog` ("2 entries added (1 adoption, 1 rehash); no existing
-  row changed or removed"), `securityloghash`, `displayreport` ("N of the N rename(s) migration-preview lists, InternalName only (...); no
-  other row or column changed, none added or removed", or "identical row by row (migration-preview lists no rename)") and `updatehistory`
-  ("identical row by row")
+- "Row check against opendental ..." with nine lines and no line starting `FAIL`: `preference` (the markers added, "N of the N 25.4 and 26.1
+  preference(s) migration-preview lists added with their defaults", `DataBaseVersion` and `ProgramVersion` set to 99.0.0.0, the preferences of
+  the "Blanked" line blanked, "no other row changed or removed"), `documentmisc` (the update-file rows deleted, "0 other row(s) deleted; 0
+  added; 0 changed"), `securitylog` ("2 entries added (1 adoption, 1 rehash); no existing row changed or removed"), `securityloghash`,
+  `displayreport` ("N of the N rename(s) migration-preview lists, InternalName only (...); no other row or column changed, none added or
+  removed", or "identical row by row (migration-preview lists no rename)"), `grouppermission` ("N of the N Open Dental 25.3 PhoneExtension
+  grant(s) moved from 272 to 274; BlockoutAdd granted to N of N user group(s), BlockoutDelete granted to N of N user group(s), as
+  migration-preview lists, ...; no other row changed, added or removed"), "Changed columns:" ("claimpayment.Note: N of the N NULL note(s)
+  migration-preview counts now empty, every other note unchanged", and `insverify` and `insverifyhist.DateLastAssigned` "the original date at
+  midnight in all N row(s)"), "New tables and columns:" ("5 new table(s), all empty (...); 28 new column(s) in 21 table(s) hold their default
+  in every row.") and `updatehistory` ("identical row by row")
 - "Adopt: PASS." with the report rows renamed (or "the fork migration renamed no report row"), and exit code 0
 
-The second person compares the renames in the log with the step 0.2 list on the checklist. `adopt`'s row check has already held them to
-`opendental` as it is now; if they differ from the step 0.2 list, someone changed Report Setup in Open Dental since then: run
-`migration-preview` on `opendental` again (it only reads), and if its list now equals the log, note that on the checklist and go on;
-otherwise stop and go to Rollback.
+The second person compares the renames, the inserted preferences, the moved and granted permissions and the NULL notes in the log with the
+step 0.2 list on the checklist. `adopt`'s row check has already held them to `opendental` as it is now; if they differ from the step 0.2
+list, someone changed Report Setup, the security settings or a claim payment in Open Dental since then: run `migration-preview` on
+`opendental` again (it only reads), and if its list now equals the log, note that on the checklist and go on; otherwise stop and go to
+Rollback.
 
 **If it stops or fails, do not run it again on the same copy.** "Adopt: STOPPED" (exit code 1) or "Adopt: FAIL" (exit code 6): rename
 `adoption-log.txt` to `adoption-log-1.txt` and keep it, [server] `sudo mariadb -e "DROP DATABASE opendental_pms"`, and repeat 3.2, 3.3 and 4 on
@@ -522,10 +558,16 @@ person reads them all):
 - `ColumnRemoved patient._portal_active_email` and `TotalChanged patients.portal_active_email_nonnull`;
 - `ColumnChanged <table>.SecurityHash` for the rehashed tables (appointment, claim, claimproc, inssub, insverify, insverifyhist, patient,
   payplan, paysplit);
-- lines for the tables `preference`, `documentmisc`, `securitylog` and `securityloghash`. A report can only allow these four tables as a
-  whole; step 4's row check compared them with `opendental` row by row and printed exactly what changed in them;
+- lines for the tables `preference`, `documentmisc`, `securitylog`, `securityloghash` and `grouppermission` (the last only if step 0.2
+  listed a permission change). A report can only allow these five tables as a whole; step 4's row check compared them with `opendental` row
+  by row and printed exactly what changed in them;
 - `ColumnChanged displayreport.InternalName`, only if step 0.2 listed renames: the report rows the fork migration renamed. A report can only
   allow the column as a whole; step 4's row check printed which rows and to what names, and that nothing else in `displayreport` changed;
+- the Open Dental 25.4 and 26.1 schema: `TableAdded` for `deletedobj`, `paysuitepayment`, `paysuitepaymentdetail`, `schoolcourseenrollee`
+  and `schoolcourseinstructor` (0 rows), `ColumnAdded <table>.<column>` for the 28 new columns (`allowed-differences.adoption.json` names
+  each), and `ColumnChanged` for `claimpayment.Note` (if step 0.2 counted NULL notes) and `insverify` and `insverifyhist.DateLastAssigned`
+  (if those tables hold rows). A report can only allow these as whole columns; step 4's row check printed that the new tables are empty, the
+  new columns hold their defaults, only NULL notes changed and every `DateLastAssigned` is its old date at midnight;
 - `ChecksumTableChanged` lines "explained by the differences listed for this table", for the tables above.
 
 A line for any other table in the Allowed section: stop, go to Rollback, and give `compare.txt` to the developers. Every business total
@@ -701,7 +743,7 @@ Sign each line with time and initials.
 | 0.0.2 | `adoption_admin` created, history file removed | Password in the password manager | |
 | 0.0.3, 0.0.4 | Forward and tools checked from the admin PC | `connections` lists the workstations' connections, or none | |
 | 0.1 | Validation report signed, release build ready | Owner signature | |
-| 0.2 | Versions; FLOAT check filed; fork migration preview | 25.3.48.0 / 25.3.48.0, not corrupted, no update running; `float-check` exit 0 or 6, file kept; `migration-preview` exit 0, each report row rename written here (old name, new name, DisplayReportNum), or "none" | |
+| 0.2 | Versions; FLOAT check filed; fork migration preview | 25.3.48.0 / 25.3.48.0, not corrupted, no update running; `float-check` exit 0 or 6, file kept; `migration-preview` exit 0, each report row rename written here (old name, new name, DisplayReportNum), or "none"; NULL notes ___, preferences ___, PhoneExtension grants moved ___, user groups BlockoutAdd ___ / BlockoutDelete ___ | |
 | 0.3 | Services and tasks listed, per computer (both service queries) | List filed | |
 | 0.4 | Direct database users and jobs listed | List filed | |
 | 0.5 | Workstations listed, with folder, database and MariaDB user | List filed | |
