@@ -416,12 +416,8 @@ namespace OpenDentBusiness {
 			odGrid.Columns.Clear();
 			GridColumn col;
 			foreach(DisplayField colCur in listDisplayFields) {
-				if(string.IsNullOrEmpty(colCur.Description)) {
-					col=new GridColumn(colCur.InternalName,colCur.ColumnWidth);
-				}
-				else {
-					 col=new GridColumn(colCur.Description,colCur.ColumnWidth);
-				}
+				//Description, or else the internal name; a saved "Cat% UCR" row without a description shows the 25.4 wording (M2-TERM).
+				col=new GridColumn(DisplayFields26_1.GetColumnText(colCur),colCur.ColumnWidth);
 				switch(sheetField.FieldName+"."+colCur.InternalName) {//Unusual switch statement to differentiate similar column names in different grids.
 					case "StatementMain.charges":
 					case "StatementMain.credits":

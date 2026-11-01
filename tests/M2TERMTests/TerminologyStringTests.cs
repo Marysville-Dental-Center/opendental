@@ -103,6 +103,46 @@ namespace M2TERMTests {
 		}
 
 		[TestMethod]
+		public void TreatPlanCatPercColumn_SavedRowWithoutDescription_ShowsStandardFee() {
+			//An office's saved displayfield row for the column has the internal name "Cat% UCR" and, unless the user typed one, no description.
+			DisplayField displayFieldSaved=new DisplayField(DisplayFields.InternalNames.TreatmentPlanModule.CatPercUCR,65,DisplayFieldCategory.TreatmentPlanModule);
+			Assert.AreEqual("Cat% Std Fee",DisplayFields26_1.GetColumnText(displayFieldSaved));
+			Assert.IsFalse(TermSources.RegexUcrWord.IsMatch(DisplayFields26_1.GetColumnText(displayFieldSaved)));
+			displayFieldSaved.Description="My header";
+			Assert.AreEqual("My header",DisplayFields26_1.GetColumnText(displayFieldSaved),"A description the user typed wins.");
+			//Other columns show their description or else their internal name, as before.
+			Assert.AreEqual("Fee",DisplayFields26_1.GetColumnText(new DisplayField("Fee",50,DisplayFieldCategory.TreatmentPlanModule)));
+			Assert.AreEqual("Code",DisplayFields26_1.GetColumnText(
+				new DisplayField { Category=DisplayFieldCategory.None,InternalName="Procedure Code",Description="Code",ColumnWidth=65 }));
+		}
+
+		[TestMethod]
+		public void TreatPlanGrids_BuildHeadersWithGetColumnText() {
+			//The Treatment Plan module grids and the printed treatment plan sheet grid take their column headers from the same display fields; both
+			//build each header with DisplayFields26_1.GetColumnText, so a saved "Cat% UCR" row shows "Cat% Std Fee" there too.
+			List<(string File,string Call,int Count,string OldHeader)> listGrids=new List<(string,string,int,string)> {
+				(TermSources.CONTROL_TREAT,"new GridColumn(DisplayFields26_1.GetColumnText(listDisplayFields[i]),listDisplayFields[i].ColumnWidth)",2,
+					"new GridColumn(listDisplayFields[i].InternalName"),
+				(TermSources.SHEET_DRAWING_JOB,"new GridColumn(DisplayFields26_1.GetColumnText(colCur),colCur.ColumnWidth)",1,"new GridColumn(colCur.InternalName"),
+			};
+			foreach((string file,string call,int count,string oldHeader) in listGrids) {
+				string source=TestPaths.ReadRepoFile(file);
+				Assert.AreEqual(count,CountOccurrences(source,call),file+": headers built with GetColumnText.");
+				Assert.AreEqual(0,CountOccurrences(source,oldHeader),file+": a header still built from the internal name.");
+			}
+		}
+
+		private static int CountOccurrences(string source,string text) {
+			int count=0;
+			int index=source.IndexOf(text,StringComparison.Ordinal);
+			while(index>=0) {
+				count++;
+				index=source.IndexOf(text,index+text.Length,StringComparison.Ordinal);
+			}
+			return count;
+		}
+
+		[TestMethod]
 		public void PrefInfos_ControlTextMatchesTheControls_AndHelpSaysNoUcr() {
 			XDocument xDocument=XDocument.Load(TestPaths.GetRepoFile(TermSources.PREF_INFOS));
 			List<XElement> listPrefInfs=xDocument.Root.Elements("PrefInf").ToList();

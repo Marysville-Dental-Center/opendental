@@ -82,6 +82,9 @@ namespace M2TERMTests {
 		public const string INS_PLAN="OpenDentBusiness/TableTypes/InsPlan.cs";
 		public const string RP_PROD_INC="OpenDentBusiness/Reports/RpProdInc.cs";
 		public const string PREF_INFOS="OpenDental/Resources/PrefInfos.xml";
+		//Not owned by M2-TERM: the Treatment Plan grids that show the "Cat% UCR" display field (headers built with DisplayFields26_1.GetColumnText).
+		public const string CONTROL_TREAT="OpenDental/Main Modules/ControlTreat.cs";
+		public const string SHEET_DRAWING_JOB="OpenDentBusiness/SheetFramework/SheetDrawingJob.cs";
 
 		public static readonly List<string> ListOwnedSourceFiles=new List<string> {
 			FAMILY_INSURANCE_DESIGNER,FAMILY_INSURANCE,ACCOUNT_CLAIM_SEND_DESIGNER,ACCOUNT_CLAIM_SEND,BLUE_BOOK_RULES,BLUE_BOOK_RULES_DESIGNER,
