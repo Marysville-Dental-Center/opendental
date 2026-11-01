@@ -455,6 +455,30 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void Continuous_ImagesFillTheCurrentTarget_FullMountEndsTheEnable() {
+			_harness.Setup.Options.SessionMode=TwainSessionMode.Continuous;
+			_harness.Started();
+			_harness.Status(TwainCaptureState.WaitingForImage);
+			_harness.Image();
+			_harness.Image();
+			_harness.Image();
+			CollectionAssert.AreEqual(new long[] { 101,102,103 },_harness.RadiographStore.ListDocumentsUpdated.Select(x => x.MountItemNum).ToList());
+			CollectionAssert.AreEqual(new[] { TwainCaptureStopReason.End },_harness.Twain.ListDisables,"The full mount disables the continuous enable.");
+			Assert.AreEqual(CaptureSessionPhase.Stopping,Controller.Phase);
+			_harness.Ended(TwainCaptureEndReason.Stopped,ended => ended.StopReason=TwainCaptureStopReason.End);
+			Assert.AreEqual(CaptureSessionPhase.Finished,Controller.Phase);
+			Assert.AreEqual(1,_harness.Twain.ListEnables.Count);
+		}
+
+		[TestMethod]
+		public void ContinuousConfigured_ButTheEnableRanPerSlot_EnablesAgain() {
+			_harness.Setup.Options.SessionMode=TwainSessionMode.Continuous;
+			_harness.Started();
+			_harness.Expose();
+			Assert.AreEqual(2,_harness.Twain.ListEnables.Count,"Completed means the source was disabled after Count=0.");
+		}
+
+		[TestMethod]
 		public void DrainedImage_SlotTaken_GoesToTheQuarantine() {
 			_harness.Started();
 			_harness.Status(TwainCaptureState.WaitingForImage);

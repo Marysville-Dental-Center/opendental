@@ -45,7 +45,8 @@ namespace ImagingCapture.Session {
 
 	public sealed class CaptureSessionLaunchResult {
 		public CaptureSessionLaunchKind Kind { get; set; }
-		///<summary>Refused: the sentence to show. NotStarted: why, for the log.</summary>
+		///<summary>Refused: the sentence to show. NotStarted: why, for the log. Completed: "" unless the window failed while the session ran
+		///(the partial shows it).</summary>
 		public string Reason { get; set; }="";
 		///<summary>Completed: what the session did.</summary>
 		public CaptureSessionSummary Summary { get; set; }
@@ -133,6 +134,7 @@ namespace ImagingCapture.Session {
 		///<summary>Runs the checks and, when they pass, the session window. Never throws.</summary>
 		public CaptureSessionLaunchResult Run(CaptureSessionLaunchRequest request) {
 			bool isMountCreatedHere=request?.MountDef!=null && request.Mount!=null;
+			CaptureSessionController controller=null;
 			try {
 				CaptureSessionSetup setup;
 				CaptureSessionLaunchResult resultRefused=Prepare(request,out setup);
@@ -141,7 +143,7 @@ namespace ImagingCapture.Session {
 					return resultRefused;
 				}
 				ICaptureDispatcher dispatcher=_services.FuncCreateDispatcher();
-				CaptureSessionController controller=new CaptureSessionController(setup,_services,dispatcher);
+				controller=new CaptureSessionController(setup,_services,dispatcher);
 				_services.WindowRunner.ShowModal(controller,request.Owner);
 				if(controller.Phase!=CaptureSessionPhase.Finished) {
 					controller.OnClosing();//the window closed without telling the controller
@@ -154,7 +156,25 @@ namespace ImagingCapture.Session {
 			}
 			catch(Exception ex) {
 				Log("The capture session failed: "+ex);
-				return CaptureSessionLaunchResult.Refused("The capture session could not start: "+ex.Message,isMountCreatedHere);
+				if(controller==null) {
+					return CaptureSessionLaunchResult.Refused("The capture session could not start: "+ex.Message,isMountCreatedHere);
+				}
+				//The window failed while the session ran: the source closes in the safe order, and what was saved stays (the mount is kept
+				//unless it is still empty).
+				try {
+					if(controller.Phase!=CaptureSessionPhase.Finished) {
+						controller.OnClosing();
+					}
+				}
+				catch(Exception exClose) {
+					Log("The capture session could not be closed: "+exClose.Message);
+				}
+				return new CaptureSessionLaunchResult {
+					Kind=CaptureSessionLaunchKind.Completed,
+					Reason="The capture session window failed: "+ex.Message,
+					Summary=controller.Summary,
+					IsEmptyMountToDelete=isMountCreatedHere && controller.IsMountEmpty,
+				};
 			}
 		}
 

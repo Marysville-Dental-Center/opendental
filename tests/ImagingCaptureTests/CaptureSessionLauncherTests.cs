@@ -278,6 +278,26 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void WindowFailsAfterAnImageWasSaved_Completed_MountKept_SourceClosed() {
+			_windowRunner.ActionWhileShown=controller => {
+				controller.Begin();
+				_clock.Advance(CaptureSessionController.KeyIgnoreMs);
+				controller.RequestStart();
+				_dispatcher.RunPending();
+				FakeTwainCaptureSession twain=_listSessions.Single();
+				twain.RaiseImage(TestImages.Image8(4,4,(x,y) => 7));
+				_dispatcher.RunPending();
+				throw new InvalidOperationException("The layout of the window failed.");
+			};
+			CaptureSessionLaunchResult result=Launcher().Run(Request());
+			Assert.AreEqual(CaptureSessionLaunchKind.Completed,result.Kind);
+			StringAssert.Contains(result.Reason,"The layout of the window failed.");
+			Assert.AreEqual(1,result.Summary.CountImages);
+			Assert.IsFalse(result.IsEmptyMountToDelete,"Never a mount that holds an image.");
+			Assert.AreEqual(1,_listSessions.Single().CountBeginClose);
+		}
+
+		[TestMethod]
 		public void SingleTarget_NoMount_NothingToDelete() {
 			_windowRunner.ActionWhileShown=controller => {
 				Assert.IsTrue(controller.IsSingleTarget);

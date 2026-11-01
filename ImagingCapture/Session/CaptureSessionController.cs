@@ -1033,6 +1033,16 @@ namespace ImagingCapture.Session {
 				_mountSlots.SetPlaced(idxTarget,result.Document);
 				AdvanceTarget();
 				SetIndicator(CaptureIndicatorState.Saved,CaptureSessionText.GetSavedText(MountPlacement.GetSlotLabel(mountItemTarget)));
+				if(_mountSlots.IdxTarget==-1 && _enableRunning==record && Phase==CaptureSessionPhase.Enabled
+					&& _setup.Options.SessionMode==TwainSessionMode.Continuous)
+				{
+					//A continuous enable stays in state 5 after Count=0 (design 7.4): the full mount ends it, in the safe order.
+					_isEndRequested=true;
+					record.StopRequested=TwainCaptureStopReason.End;
+					_session.Disable(TwainCaptureStopReason.End);
+					Phase=CaptureSessionPhase.Stopping;
+					Log("The mount is full; the continuous enable is being disabled.");
+				}
 			}
 			if(result.ListWarnings.Count>0) {
 				NoticeText=string.Join(" ",result.ListWarnings);
@@ -1217,12 +1227,9 @@ namespace ImagingCapture.Session {
 				ShowReady(CaptureStartKind.TakeSkipped,CaptureIndicatorState.Ready,CaptureSessionText.ReadyTakeSkipped);
 				return;
 			}
-			if(_setup.Options.SessionMode==TwainSessionMode.Continuous) {
-				//A continuous enable ended (the source left state 5 by itself): enabling again needs the operator.
-				ShowReady(CaptureStartKind.ReEnable,CaptureIndicatorState.Disabled,CaptureSessionText.ReadyReEnable);
-				return;
-			}
-			EnableNext();//design 7.3 step 4: PerSlot enables again for the next empty slot
+			//Design 7.3 step 4: PerSlot enables again for the next empty slot. A Completed enable ran per slot (it was disabled after Count=0),
+			//also when SessionMode=Continuous was configured and the source did not accept ContinuousCap.
+			EnableNext();
 		}
 
 		private CaptureStartKind GetReEnableKind() {
