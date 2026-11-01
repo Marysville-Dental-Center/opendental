@@ -22,7 +22,11 @@ namespace ImagingCapture.Session {
 		public const string ExtraImages="The sensor software sent more images than expected; they are in unassigned captures.";
 		///<summary>Design 7.12 "Save fails": the red strip starts with this.</summary>
 		public const string CouldNotSavePrefix="Could not save: ";
+		///<summary>The quarantine reason of an image that arrives while the session is paused after a failed save.</summary>
+		public const string PausedAfterSaveFailure="The session was paused after a failed save; the image was not placed.";
 		public const string NotOpen="The sensor software is not open.";
+		///<summary>The library closed the source on its own while an enable ran (WM_QUIT on its worker).</summary>
+		public const string SourceClosed="The sensor software was closed. Press Retry to open it again.";
 		public const string ReadyStart="Check the patient, then press Start or hold the Confirm key.";
 		public const string ReadyReEnable="Press Re-enable or hold the Confirm key to start the sensor software again.";
 		public const string ReadyRetry="Press Retry when the problem is fixed.";

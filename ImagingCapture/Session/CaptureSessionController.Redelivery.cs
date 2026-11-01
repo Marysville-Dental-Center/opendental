@@ -104,7 +104,8 @@ namespace ImagingCapture.Session {
 			return isPosted;
 		}
 
-		///<summary>The operator confirms the first waiting redelivered image: it is saved for the bound patient into the target as it is now.
+		///<summary>The operator confirms the first waiting redelivered image: it is saved for the bound patient into the target as it is now, the one
+		///the panel shows (in single-target mode with the banner's tooth numbers as they are now).
 		///Refused while the main window shows another patient.</summary>
 		public bool ConfirmRedelivered() {
 			if(!CanConfirmRedelivered) {
@@ -131,7 +132,9 @@ namespace ImagingCapture.Session {
 				+(IsSingleTarget ? "a single image" : MountPlacement.GetSlotLabel(mountItemTarget))+".");
 			//Confirmed for the bound patient: should its save fail, the quarantine file is the bound patient's and may be assigned (design 7.12).
 			SetImageSidecarField(pending.Image,CaptureSidecarKeys.RedeliveryConfirmed,"1");
-			SaveImage(pending.Image,pending.Record,idxTarget,mountItemTarget);
+			//Into the target the panel showed (GetRedeliveredTargetText): in single-target mode the banner's teeth now, which the operator may have
+			//changed while the image waited, not the ones of the redelivery enable.
+			SaveImage(pending.Image,pending.Record,idxTarget,mountItemTarget,IsSingleTarget ? _toothNumbersSingle : null);
 			if(Phase==CaptureSessionPhase.Ready && !HasRedeliveredPending && !IsSingleTarget && _mountSlots.IdxTarget==-1) {
 				Finish(CaptureSessionEndReason.MountFull);
 				return true;

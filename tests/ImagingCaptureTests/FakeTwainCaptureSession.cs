@@ -97,8 +97,12 @@ namespace ImagingCapture.Tests {
 			Disable(TwainCaptureStopReason.Cancel);
 		}
 
+		///<summary>As the library: before Open has started the worker there is nothing to close, so a later Open still opens the source.</summary>
 		public void BeginClose() {
 			CountBeginClose++;
+			if(CountOpen==0) {
+				return;
+			}
 			State=TwainCaptureState.Closed;
 		}
 

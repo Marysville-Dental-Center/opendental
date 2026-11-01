@@ -307,5 +307,28 @@ namespace ImagingCapture.Tests {
 			Assert.AreEqual("8",document.ToothNumbers);
 			Assert.AreEqual(0,document.MountItemNum);
 		}
+
+		[TestMethod]
+		public void Redelivery_SingleTargetMode_TeethChangedWhileTheImageWaits_SavedWithTheTeethThePanelShows() {
+			_harness=new CaptureControllerHarness(0);
+			_harness.Setup.Options.RedeliverCap=RedeliverCapMadeUp;
+			string error;
+			Controller.Begin();
+			Controller.SetToothNumbers("8,9",out error);
+			_harness.Arm();
+			_harness.Start();
+			_harness.Ended(TwainCaptureEndReason.TransferFailed,ended => ended.TransferFailureCount=1);
+			_harness.Arm();
+			Assert.IsTrue(Controller.RequestRedelivery());
+			RaiseRedelivered();
+			_harness.Ended(TwainCaptureEndReason.Completed);
+			Assert.IsTrue(Controller.CanEditToothNumbers,"Between images.");
+			Assert.IsTrue(Controller.SetToothNumbers("24,25",out error),error);
+			Assert.AreEqual("Single image, Mand anterior, #24,25",Controller.RedeliveredView.TargetText);
+			_harness.Clock.Advance(CaptureSessionController.KeyIgnoreMs);
+			Assert.IsTrue(Controller.ConfirmRedelivered());
+			Document document=_harness.RadiographStore.ListDocumentsUpdated.Single();
+			Assert.AreEqual("24,25",document.ToothNumbers,"Design 7.12: what the operator confirmed.");
+		}
 	}
 }

@@ -424,7 +424,7 @@ namespace ImagingCapture.Session {
 					canExecute=!IsSingleTarget && _mountSlots.Target!=null && _mountSlots.GetEmptySlots().Count>1;
 					break;
 				case CaptureSessionAction.Disable:
-					canExecute=Phase==CaptureSessionPhase.Enabled;
+					canExecute=Phase==CaptureSessionPhase.Enabled && _enableRunning!=null;
 					break;
 				case CaptureSessionAction.End:
 					canExecute=true;
@@ -582,6 +582,18 @@ namespace ImagingCapture.Session {
 
 		private void OnOpenFinished(ITwainCaptureSession session,TwainCaptureOpenResult result) {
 			if(session!=_session || Phase==CaptureSessionPhase.Finished) {
+				if(result!=null && result.IsOpen) {
+					//The session finished (a forced close) or started over while Open still ran, for example while it waited for the previous
+					//window's source to finish closing. Its BeginClose found no worker yet, so this source would stay open in state 4 for good, and
+					//every later session of the device would find it open in another window (design 7.3 step 7: a forced close closes the source).
+					Log("The sensor software opened after the session "+(session!=_session ? "started over" : "ended")+"; it is closed now.");
+					try {
+						session.BeginClose();
+					}
+					catch(Exception ex) {
+						Log("The sensor software could not be closed: "+ex.Message);
+					}
+				}
 				return;
 			}
 			if(result.IsOpen) {
@@ -862,6 +874,12 @@ namespace ImagingCapture.Session {
 					SetIndicator(CaptureIndicatorState.Connecting,"Ending when the sensor software has opened.");
 					return true;
 				case CaptureSessionPhase.Enabled:
+					if(_enableRunning==null) {
+						//Nothing is enabled any more (its end came without a phase change): nothing to disable.
+						Log("The operator ended the session.");
+						Finish(CaptureSessionEndReason.Ended);
+						return true;
+					}
 					if(!ConfirmUnsafeStop(CaptureSessionAction.End)) {
 						return true;
 					}
@@ -1031,6 +1049,12 @@ namespace ImagingCapture.Session {
 				QuarantineImage(session,image,record,_placementStoppedReason,false);
 				return;
 			}
+			if(_isPausedBySaveFailure) {
+				//Design 7.12 "Save fails": the session pauses until the deliberate re-enable. A continuous enable that could not be disabled (no safe
+				//disable in effect) still delivers; its images are not placed into the slot whose save failed, or any other, meanwhile.
+				QuarantineImage(session,image,record,CaptureSessionText.PausedAfterSaveFailure,false);
+				return;
+			}
 			if(image.IsRedelivery || record.IsRedelivery) {
 				//The source knows no patient: a redelivered image is placed only after the operator confirms it (design 7.12). OnImageReceivedExt
 				//holds it for that; this is the fallback.
@@ -1063,10 +1087,13 @@ namespace ImagingCapture.Session {
 			SaveImage(image,record,idxTarget,mountItemTarget);
 		}
 
-		private void SaveImage(AcquiredImage image,CaptureEnableRecord record,int idxTarget,MountItem mountItemTarget) {
-			RadiographTarget target=GetRadiographTarget(mountItemTarget,record.ToothNumbers);
-			//The target this image is saved into, also in its sidecar: a failed save quarantines it for this target (settings of design 7.12).
-			SetImageTarget(image,mountItemTarget,record.ToothNumbers);
+		///<summary>Saves image into mountItemTarget (idxTarget), or in single-target mode as a document with toothNumbersSingle, by default the
+		///banner's teeth when its enable started (record.ToothNumbers).</summary>
+		private void SaveImage(AcquiredImage image,CaptureEnableRecord record,int idxTarget,MountItem mountItemTarget,string toothNumbersSingle=null) {
+			string toothNumbers=toothNumbersSingle??record.ToothNumbers;
+			RadiographTarget target=GetRadiographTarget(mountItemTarget,toothNumbers);
+			//The target this image is saved into, also in its sidecar: a failed save quarantines it for this target (design 7.12).
+			SetImageTarget(image,mountItemTarget,toothNumbers);
 			RadiographSaveRequest request=new RadiographSaveRequest {
 				Image=image,
 				Metadata=CaptureMetadataParser.Parse(image.MetadataJson),
@@ -1089,6 +1116,20 @@ namespace ImagingCapture.Session {
 				RedStripText=CaptureSessionText.CouldNotSavePrefix+error;
 				_isPausedBySaveFailure=true;
 				QuarantineImage(_session,image,record,CaptureSessionText.CouldNotSavePrefix+error,false);
+				if(_enableRunning==record && Phase==CaptureSessionPhase.Enabled && !record.IsRedelivery
+					&& _setup.Options.SessionMode==TwainSessionMode.Continuous)
+				{
+					//A continuous enable stays enabled after an image (design 7.4): the pause disables it in the safe order, but only with safe
+					//disable in effect; otherwise the fork starts no disable of its own (design 7.6, 10.6) and ReceiveImage quarantines what it sends.
+					if(record.IsSafeDisableInEffect) {
+						StopEnableSafely(record,TwainCaptureStopReason.Other);
+						Log("The save failed: the continuous enable is being disabled.");
+					}
+					else {
+						Log("The save failed: the continuous enable stays enabled (safe disable is not in effect); its images go to unassigned captures "
+							+"until the deliberate re-enable.");
+					}
+				}
 				SetIndicator(CaptureIndicatorState.Error,RedStripText);
 				PlaySound(CaptureSound.Error);
 				return;
@@ -1100,7 +1141,7 @@ namespace ImagingCapture.Session {
 			LastSavedMountItem=mountItemTarget;
 			if(IsSingleTarget) {
 				_listDocumentsSingle.Add(result.Document);
-				SetIndicator(CaptureIndicatorState.Saved,CaptureSessionText.GetSavedSingleText(record.ToothNumbers));
+				SetIndicator(CaptureIndicatorState.Saved,CaptureSessionText.GetSavedSingleText(toothNumbers));
 			}
 			else {
 				_mountSlots.SetPlaced(idxTarget,result.Document);
@@ -1245,7 +1286,17 @@ namespace ImagingCapture.Session {
 						ContinueAfterEnable(textHold);//design 7.11: enable for the new target
 						return;
 					}
+					if(_isPausedBySaveFailure && ended.StopReason!=TwainCaptureStopReason.Close) {
+						ContinueAfterEnable(textHold);//paused after a failed save: the red strip and the deliberate re-enable
+						return;
+					}
 					if(ended.StopReason==TwainCaptureStopReason.Close) {
+						//The library closed the source on its own (WM_QUIT reached its worker): the controller's own close never gets here, because
+						//Finish comes first. The worker is closing, so the session is no longer open; Retry opens a new one (design 7.3 step 7, 7.6).
+						_isSessionOpen=false;
+						Log("The sensor software was closed while the session ran. "+textEnded);
+						PlaySound(CaptureSound.Error);
+						ShowReady(CaptureStartKind.Retry,CaptureIndicatorState.Error,(CaptureSessionText.SourceClosed+" "+textEnded).Trim());
 						return;
 					}
 					PlaySound(CaptureSound.Disabled);

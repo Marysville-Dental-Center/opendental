@@ -251,6 +251,39 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void TheLibraryClosesTheSourceOnItsOwn_ReadyWithRetry_EndAndDisableHarmless() {
+			_harness.Started();
+			_harness.Status(TwainCaptureState.WaitingForImage);
+			//WM_QUIT on the worker: the library begins its own close and stops the enable with StopReason Close.
+			_harness.Ended(TwainCaptureEndReason.Stopped,ended => ended.StopReason=TwainCaptureStopReason.Close);
+			Assert.AreEqual(CaptureSessionPhase.Ready,Controller.Phase,"Not left Enabled with no enable.");
+			Assert.AreEqual(CaptureStartKind.Retry,Controller.StartKind);
+			Assert.AreEqual(CaptureIndicatorState.Error,Controller.IndicatorState);
+			StringAssert.StartsWith(Controller.IndicatorText,CaptureSessionText.SourceClosed);
+			Assert.IsFalse(Controller.CanExecute(CaptureSessionAction.Disable));
+			_harness.Arm();
+			Assert.IsTrue(_harness.Start());
+			Assert.AreEqual(2,_harness.ListSessions.Count,"Retry opens a new worker.");
+			Assert.AreEqual(1,_harness.ListSessions[1].ListEnables.Count);
+			Assert.IsTrue(_harness.Execute(CaptureSessionAction.End));
+			Assert.IsTrue(_harness.Execute(CaptureSessionAction.End),"No exception on the second press.");
+		}
+
+		[TestMethod]
+		public void ClosedWhileOpening_TheSourceThatOpensAfterwards_IsClosed() {
+			_harness.BeginArmed();
+			Assert.IsTrue(Controller.RequestStart());
+			Assert.AreEqual(CaptureSessionPhase.Opening,Controller.Phase);
+			Controller.OnClosing();//the X, or a logoff, while Open waits (for the previous window's source to finish closing)
+			Assert.AreEqual(CaptureSessionPhase.Finished,Controller.Phase);
+			_harness.Dispatcher.RunPending();//Open finishes now, and opens the source
+			Assert.AreEqual(1,_harness.Twain.CountOpen);
+			Assert.AreEqual(TwainCaptureState.Closed,_harness.Twain.State,"Design 7.3 step 7: never left open in state 4.");
+			Assert.AreEqual(2,_harness.Twain.CountBeginClose);
+			Assert.AreEqual(0,_harness.Twain.ListEnables.Count);
+		}
+
+		[TestMethod]
 		public void EnableRefusedByTheSession_RetryOpensAgain() {
 			_harness.Started();
 			_harness.Twain.IsEnableRefused=true;//the worker closed under the controller
@@ -571,6 +604,42 @@ namespace ImagingCapture.Tests {
 			Assert.IsTrue(_harness.Start());
 			Assert.AreEqual(101,_harness.LastRecord.MountItemTarget.MountItemNum,"The same slot again.");
 			Assert.AreEqual("",Controller.RedStripText);
+		}
+
+		[TestMethod]
+		public void SaveFails_InAContinuousEnable_WithSafeDisable_DisabledInTheSafeOrder_Paused() {
+			_harness.Setup.Options.SessionMode=TwainSessionMode.Continuous;
+			_harness.Started();
+			_harness.Status(TwainCaptureState.WaitingForImage,isSafeDisableInEffect:true);
+			_harness.Image();
+			_harness.RadiographStore.ThrowOn="Import";
+			_harness.Image();
+			CollectionAssert.AreEqual(new[] { TwainCaptureStopReason.Other },_harness.Twain.ListDisables,"Design 7.12: Paused (disabled).");
+			Assert.AreEqual(CaptureSessionPhase.Stopping,Controller.Phase);
+			Assert.AreEqual(CaptureIndicatorState.Error,Controller.IndicatorState);
+			_harness.Ended(TwainCaptureEndReason.Stopped,ended => ended.StopReason=TwainCaptureStopReason.Other);
+			Assert.AreEqual(CaptureSessionPhase.Ready,Controller.Phase);
+			Assert.AreEqual(CaptureStartKind.ReEnable,Controller.StartKind);
+			Assert.AreEqual(CaptureIndicatorState.Error,Controller.IndicatorState);
+			StringAssert.StartsWith(Controller.IndicatorText,"Could not save: Import failed");
+			Assert.AreEqual(1,_harness.Twain.ListEnables.Count,"No automatic enable.");
+		}
+
+		[TestMethod]
+		public void SaveFails_InAContinuousEnable_WithoutSafeDisable_NoDisableOfItsOwn_LaterImagesNotPlaced() {
+			_harness.Setup.Options.SessionMode=TwainSessionMode.Continuous;
+			_harness.Started();
+			_harness.Status(TwainCaptureState.WaitingForImage,isSafeDisableInEffect:false);
+			_harness.Image();
+			_harness.RadiographStore.ThrowOn="Import";
+			_harness.Image();
+			_harness.RadiographStore.ThrowOn="";
+			_harness.Image();//the next exposure, for the next position: not saved into slot 2, whose save failed
+			Assert.AreEqual(0,_harness.Twain.ListDisables.Count,"Design 7.6, 10.6: no disable of the fork's own without safe disable.");
+			Assert.AreEqual(1,_harness.RadiographStore.ListDocumentsUpdated.Count);
+			Assert.AreEqual(2,_harness.Twain.ListQuarantined.Count);
+			Assert.AreEqual(CaptureSessionText.PausedAfterSaveFailure,_harness.Twain.ListQuarantined[1].Reason);
+			Assert.AreEqual(2,Controller.MountSlots.Target.ItemOrder,"Slot 2 is still to take.");
 		}
 
 		[TestMethod]
