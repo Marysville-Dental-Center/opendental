@@ -42,7 +42,29 @@ namespace OpenDental {
 				return false;
 			}
 			EdsValidationResult resultLatest=formEdsValidation.ListResults.FirstOrDefault()??result;
-			return EdsClaimValidation.GetSendDecision(resultLatest)!=EdsSendDecision.Block;
+			if(EdsClaimValidation.GetSendDecision(resultLatest)==EdsSendDecision.Block) {
+				return false;
+			}
+			if(!ReferenceEquals(resultLatest,result)) {
+				//Re-validated in the window. Edit Claim checks queueItem's Missing Info next, so it must match the latest validation, not the first.
+				RefreshMissingData(claim,clearinghouseClin,queueItem);
+			}
+			return true;
+		}
+
+		///<summary>Reads the claim's queue item again and copies its Missing Info and Warnings (Eclaims.GetMissingData, with the local EDS checks) into
+		///queueItem. Keeps queueItem as it was when the claim's queue item cannot be read (the caller reports a deleted claim).</summary>
+		private static void RefreshMissingData(Claim claim,Clearinghouse clearinghouseClin,ClaimSendQueueItem queueItem) {
+			if(queueItem==null) {
+				return;
+			}
+			ClaimSendQueueItem queueItemFresh=Claims.GetQueueList(claim.ClaimNum,claim.ClinicNum,0).FirstOrDefault();
+			if(queueItemFresh==null) {
+				return;
+			}
+			queueItemFresh=Eclaims.GetMissingData(clearinghouseClin,queueItemFresh);
+			queueItem.MissingData=queueItemFresh.MissingData;
+			queueItem.Warnings=queueItemFresh.Warnings;
 		}
 
 		///<summary>After Edit Claim saved a new claim that is waiting to be sent and has no missing data. Never blocks saving: the claim is saved

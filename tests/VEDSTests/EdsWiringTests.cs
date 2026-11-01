@@ -32,6 +32,12 @@ namespace VEDSTests {
 			int indexSendBatch=source.IndexOf("Eclaims.SendBatch(",indexSend);
 			Assert.IsTrue(indexSend>0 && indexHook>indexSend && indexHook<indexMissing && indexMissing<indexSendBatch,
 				"One validation window for an EDS claim, before anything is sent; existing claims too (no IsNew check).");
+			//Re-validated in the window: the Missing Info that Edit Claim checks next is read again, so a problem fixed meanwhile does not block.
+			string logic=Read(@"OpenDental\Logic\EdsValidationL.cs");
+			int indexMethod=logic.IndexOf("public static bool ValidateBeforeSend(");
+			int indexRefresh=logic.IndexOf("RefreshMissingData(claim,clearinghouseClin,queueItem);",indexMethod);
+			int indexAfterSave=logic.IndexOf("public static void ValidateAfterSave(",indexMethod);
+			Assert.IsTrue(indexMethod>0 && indexRefresh>indexMethod && indexRefresh<indexAfterSave);
 		}
 
 		[TestMethod]
