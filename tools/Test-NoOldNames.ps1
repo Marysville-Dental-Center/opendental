@@ -84,6 +84,7 @@ $AllowList=@(
 	@{ Path='docs\m1-validation-report.md'; Reason='Validation report of milestone M1, as run.' }
 	@{ Path='UnitTests\Resources\dump.txt'; Match='OpenDental\.Imaging\.FileStore'; Reason="Open Dental's seed database dump: the ImageStore preference value." }
 	@{ Path='tools\Test-NoOldNames.ps1'; Reason='This scanner names the old names.' }
+	@{ Path='tools\Rename-ToOpenPmsDental.ps1'; Reason='The rename script names the old names it maps.' }
 
 	#--- Attribution, licences and GPL headers: whole lines.
 	@{ Path='*'; Line='(?i)GNU General Public License|Copyright \(C\) \d{4}|Jordan Sparks'; Reason='Licence and copyright notices.' }
