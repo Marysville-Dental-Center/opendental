@@ -197,6 +197,38 @@ namespace ImagingCapture.Session {
 		///<summary>The fallback reason when no record exists for the device.</summary>
 		public const string NoRecord="no Test capture record for this sensor's driver version and image settings";
 
+		///<summary>The depth image was actually stored at, in words: its samples' depth for an image of more than 8 bits ("16-bit", "14-bit in a
+		///16-bit file"), otherwise "8-bit", with the reason when the enable fell back: the library's or the request's (AcquiredImage.BitDepthReason),
+		///else reasonFallbackEnable (the session's decision for the enable), and for an 8-bit image of a 14- or 16-bit enable that the source had
+		///no original of more than 8 bits for it. "" for null.</summary>
+		public static string DescribeImage(AcquiredImage image,string reasonFallbackEnable=null) {
+			if(image==null) {
+				return "";
+			}
+			if(image.IsGray16) {
+				return image.BitDepthInEffect==TwainBitDepth.Bits14 ? Bits14 : Bits16;
+			}
+			string reason=!string.IsNullOrWhiteSpace(image.BitDepthReason) ? image.BitDepthReason : reasonFallbackEnable;
+			if(image.IsDeliveredAs8BitIn16BitEnable) {
+				reason="the source had no original of more than 8 bits for this image";
+			}
+			return Describe(TwainBitDepth.Bits8,reason);
+		}
+
+		///<summary>The depth a capture file of the quarantine or the journal was taken at, as its sidecar records it (CaptureFileEntry
+		///BitDepthInEffect, BitDepthReason), in the words of DescribeImage. "" for null.</summary>
+		public static string DescribeEntry(CaptureFileEntry entry) {
+			if(entry==null) {
+				return "";
+			}
+			if(entry.IsGray16) {
+				return entry.BitDepthInEffect==TwainBitDepth.Bits14 ? Bits14 : Bits16;
+			}
+			string reason=entry.Get("DeliveredAs8BitIn16BitEnable")=="1" ? "the source had no original of more than 8 bits for this image"
+				: entry.BitDepthReason;
+			return Describe(TwainBitDepth.Bits8,reason);
+		}
+
 		///<summary>"16-bit", "14-bit in a 16-bit file" or "8-bit"; "8-bit (fallback: reason)" for 8 with a reason.</summary>
 		public static string Describe(int bitDepth,string reasonFallback=null) {
 			switch(TwainBitDepth.Normalize(bitDepth)) {

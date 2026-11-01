@@ -177,7 +177,7 @@ namespace ImagingCapture.Session {
 		///<summary>Design 9.3 "Effective values are shown ... in the session summary": the capture settings the session ran with.</summary>
 		public CaptureEffectiveSettings EffectiveSettings { get; set; }=new CaptureEffectiveSettings();
 
-		///<summary>"5 images, 1 retake, 0 quarantined. Patient: Pat Test. Provider: DOC1. In effect: PerSlot, 8 bits, ..." (GetCountsText, then
+		///<summary>"5 images, 1 retake, 0 quarantined. Patient: Pat Test. Provider: DOC1. In effect: PerSlot, 16-bit, ..." (GetCountsText, then
 		///GetEffectiveText): the session's ImageCreate entry and its log line.</summary>
 		public string GetText() {
 			return GetCountsText()+" "+GetEffectiveText();
@@ -194,7 +194,7 @@ namespace ImagingCapture.Session {
 			return text;
 		}
 
-		///<summary>"In effect: PerSlot, 8 bits, ..." (design 9.3): the window shows it on a line of its own.</summary>
+		///<summary>"In effect: PerSlot, 16-bit, ..." (design 9.3): the window shows it on a line of its own.</summary>
 		public string GetEffectiveText() {
 			return "In effect: "+(EffectiveSettings??new CaptureEffectiveSettings()).GetText(isWithReasons:false)+".";
 		}
@@ -205,9 +205,9 @@ namespace ImagingCapture.Session {
 	}
 
 	///<summary>The capture settings a session ran with (design 9.3: effective values are shown in the session summary): the session mode, the bit
-	///depth each enable asked for and why 8, whether safe disable was in effect, the polarity, headless, and whether the gated settings were
-	///verified. Values differ from capture.ini when the gated settings are not verified (the safe values), or the source does not do what was
-	///asked.</summary>
+	///depth actually used (owner decision 2026-11-01: "16-bit", "14-bit in a 16-bit file", or "8-bit (fallback: <reason>)"), whether safe
+	///disable was in effect, the polarity, headless, and whether the gated settings were verified. Values differ from capture.ini when the gated
+	///settings are not verified (the safe values), or the source does not do what was asked.</summary>
 	public sealed class CaptureEffectiveSettings {
 		///<summary>[Device.N] SessionMode: "PerSlot" or "Continuous".</summary>
 		public string SessionMode { get; set; }="";
@@ -220,15 +220,12 @@ namespace ImagingCapture.Session {
 		///<summary>Enables the session posted, and of those the ones whose status said safe disable was in effect.</summary>
 		public int CountEnables { get; set; }
 		public int CountSafeDisable { get; set; }
-		///<summary>The bit depths the enables asked for, ascending (8, 16).</summary>
-		public List<int> ListBitsAsked { get; set; }=new List<int>();
-		///<summary>Why an enable asked for 8 bits (CaptureBitDepthDecision), the first reason, or "".</summary>
-		public string Reason8Bit { get; set; }="";
-		///<summary>16 bits were asked and the source gave 8 (TwainCaptureEnded.Reason8Bit), the first reason, or "".</summary>
-		public string Reason8BitDelivered { get; set; }="";
+		///<summary>The bit depths actually used, in words (CaptureBitDepthText), distinct, in the order first seen: those of the images received,
+		///or, when none arrived, those the enables asked for. "8-bit (fallback: ...)" names the gate or the source's reason.</summary>
+		public List<string> ListBitDepthTexts { get; set; }=new List<string>();
 
-		///<summary>"PerSlot, 8 bits, safe disable not in effect, polarity AsDelivered, headless off"; isWithReasons adds why 8 bits and why the
-		///settings are not verified (the security-log summary).</summary>
+		///<summary>"PerSlot, 16-bit, safe disable not in effect, polarity AsDelivered, headless off"; isWithReasons adds why the settings are not
+		///verified (the security-log summary). A fallback to 8 bits always says why.</summary>
 		public string GetText(bool isWithReasons) {
 			List<string> listParts=new List<string>();
 			if(!IsSettingsVerified) {
@@ -240,22 +237,7 @@ namespace ImagingCapture.Session {
 				listParts.Add("nothing enabled");
 			}
 			else {
-				string bits=ListBitsAsked.Count==0 ? "bits unknown" : string.Join(" and ",ListBitsAsked.Select(x => x.ToString(CultureInfo.InvariantCulture)))
-					+" bits";
-				if(isWithReasons && Reason8Bit.Trim()!="") {
-					string reason=Reason8Bit.Trim().TrimEnd('.');
-					foreach(string prefix in new[] { CaptureBitDepthText.PrefixFallback,CaptureBitDepthText.PrefixConfigured }) {
-						if(reason.StartsWith(prefix,StringComparison.Ordinal)) {
-							reason=reason.Substring(prefix.Length);
-							break;
-						}
-					}
-					bits+=" ("+reason+")";
-				}
-				if(Reason8BitDelivered.Trim()!="") {
-					bits+=isWithReasons ? " (the source gave 8 bits: "+Reason8BitDelivered.Trim().TrimEnd('.')+")" : " (the source gave 8 bits)";
-				}
-				listParts.Add(bits);
+				listParts.Add(ListBitDepthTexts.Count==0 ? "bit depth unknown" : string.Join(" and ",ListBitDepthTexts));
 				listParts.Add(CountSafeDisable==CountEnables ? "safe disable in effect"
 					: CountSafeDisable==0 ? "safe disable not in effect"
 					: "safe disable in effect for "+CountSafeDisable.ToString(CultureInfo.InvariantCulture)+" of "

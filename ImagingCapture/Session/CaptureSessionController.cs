@@ -85,8 +85,9 @@ namespace ImagingCapture.Session {
 		private string _indicatorText="";
 		///<summary>Every enable posted, for the effective settings of the summary (design 9.3).</summary>
 		private readonly List<CaptureEnableRecord> _listEnablesPosted=new List<CaptureEnableRecord>();
-		///<summary>The first reason the source gave 8 bits where 16 were asked (TwainCaptureEnded.Reason8Bit), or "".</summary>
-		private string _reason8BitDelivered="";
+		///<summary>The depths the images of this session were actually taken at, in words (CaptureBitDepthText.DescribeImage), distinct, in the
+		///order first seen, for the summary's "In effect" (owner decision 2026-11-01).</summary>
+		private readonly List<string> _listBitDepthTextsUsed=new List<string>();
 		///<summary>The first "14-bit layout not usable: ..." (or 16-bit) an enable ended with (TwainCaptureEnded.LayoutUnusableText), or "": from
 		///then on the session asks for 8 bits on this device.</summary>
 		private string _reasonLayoutUnusable="";
@@ -1026,10 +1027,19 @@ namespace ImagingCapture.Session {
 				SettingsNotVerifiedText=SettingsNoticeText,
 				CountEnables=_listEnablesPosted.Count,
 				CountSafeDisable=_listEnablesPosted.Count(x => x.IsSafeDisableInEffect),
-				ListBitsAsked=_listEnablesPosted.Where(x => x.BitDepth!=null).Select(x => x.BitDepth.Bits).Distinct().OrderBy(x => x).ToList(),
-				Reason8Bit=_listEnablesPosted.Select(x => x.BitDepth?.Reason8Bit).FirstOrDefault(x => !string.IsNullOrWhiteSpace(x))??"",
-				Reason8BitDelivered=_reason8BitDelivered,
+				//The depths the images were taken at; with no image, what the enables asked for.
+				ListBitDepthTexts=_listBitDepthTextsUsed.Count>0 ? new List<string>(_listBitDepthTextsUsed)
+					: _listEnablesPosted.Where(x => x.BitDepth!=null).Select(x => CaptureBitDepthText.Describe(x.BitDepth.Bits,x.BitDepth.ReasonFallback))
+						.Distinct().ToList(),
 			};
+		}
+
+		///<summary>Notes the depth image was actually taken at, for the summary.</summary>
+		private void NoteBitDepthUsed(AcquiredImage image,CaptureEnableRecord record) {
+			string text=CaptureBitDepthText.DescribeImage(image,record?.BitDepth?.ReasonFallback);
+			if(text!="" && !_listBitDepthTextsUsed.Contains(text)) {
+				_listBitDepthTextsUsed.Add(text);
+			}
 		}
 
 		///<summary>The session finished while an enable still ran, the source enabled or stopping (a forced close, the X while the source is enabled
@@ -1176,6 +1186,7 @@ namespace ImagingCapture.Session {
 				return;
 			}
 			record.CountReceived++;
+			NoteBitDepthUsed(image,record);
 			if(image.IsContinuousEnable) {
 				record.IsContinuous=true;
 			}
@@ -1407,11 +1418,8 @@ namespace ImagingCapture.Session {
 			}
 			string textEnded=CaptureEndText.GetEndedText(ended);
 			if(!string.IsNullOrWhiteSpace(ended.ReasonFallback)) {
-				//Design 7.12 "16-bit refused": silent, logged.
+				//Design 7.12 "16-bit refused": silent, logged; the summary shows the depth the images were taken at.
 				LogOnce(ended.BitsRequested+" bits were asked and the source gave "+ended.BitDepthInEffect+": "+ended.ReasonFallback.Trim());
-				if(_reason8BitDelivered=="" && ended.BitDepthInEffect==8) {
-					_reason8BitDelivered=ended.ReasonFallback.Trim();
-				}
 			}
 			if(!string.IsNullOrWhiteSpace(ended.LayoutUnusableText) && _reasonLayoutUnusable=="") {
 				//The image was not read; from now on this session asks for 8 bits on this device. Logged once.

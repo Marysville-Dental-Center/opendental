@@ -379,7 +379,7 @@ namespace ImagingCapture.UI {
 		///<summary>The session finished: the summary shows (design 7.3 step 6).</summary>
 		public bool IsSummaryVisible => Phase==CaptureSessionPhase.Finished && _controller.Summary!=null;
 
-		///<summary>Design 9.3: the capture settings the session ran with ("In effect: PerSlot, 8 bits, ..."), on a line of its own under the summary.</summary>
+		///<summary>Design 9.3: the capture settings the session ran with ("In effect: PerSlot, 16-bit, ...", or "8-bit (fallback: ...)"), on a line of its own under the summary.</summary>
 		public string EffectiveSettingsText {
 			get {
 				CaptureSessionSummary summary=_controller.Summary;

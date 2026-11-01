@@ -336,8 +336,10 @@ namespace ImagingCapture.Tests {
 				ComputerName="OPERATORY1",
 				SessionGuid=new Guid("11111111-2222-3333-4444-555555555555"),
 				UnassignedText=null,
-				//The Capture settings screen saved the settings in effect (design 9.3); the 16-bit tests set the hash they need.
+				//The Capture settings screen saved the settings in effect (design 9.3), the defaults (Bits=16, Allow16Bit=1), and no Test capture
+				//has run yet: 8 bits as a fallback. The 16-bit tests set the hash and the record they need.
 				SettingsCheck=CaptureSettingsTestKit.VerifiedHash(new string('0',64)),
+				GatedSettingsHash=new string('0',64),
 			};
 			Setup.Options.ImagingDeviceNum=12;
 			if(countSlots>0) {
@@ -428,9 +430,10 @@ namespace ImagingCapture.Tests {
 		}
 
 		public AcquiredImage Image(AcquiredImageKind kind=AcquiredImageKind.Normal,TwainCaptureStopReason stopReason=TwainCaptureStopReason.None,
-			int enableId=0)
+			int enableId=0,Action<AcquiredImage> actionConfigure=null)
 		{
 			AcquiredImage image=TestImages.Image8(6,4,(x,y) => (byte)(x*40+y));
+			actionConfigure?.Invoke(image);
 			Twain.RaiseImage(image,kind,stopReason,enableId);
 			Dispatcher.RunPending();
 			return image;

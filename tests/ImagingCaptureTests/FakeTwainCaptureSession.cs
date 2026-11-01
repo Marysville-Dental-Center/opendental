@@ -165,6 +165,8 @@ namespace ImagingCapture.Tests {
 			image.Tag=request.Tag;
 			image.TargetLabel=request.TargetLabel;
 			image.RequestedBits=request.Bits;
+			//As the library: its own fallback (set by the test) wins over the request's.
+			image.BitDepthReason=image.BitDepthReason??request.ReasonFallback;
 			image.Kind=kind;
 			image.StopReason=stopReason;
 			image.IndexInEnable=count;

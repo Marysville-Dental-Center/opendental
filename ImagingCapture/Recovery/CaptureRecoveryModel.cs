@@ -304,7 +304,9 @@ namespace ImagingCapture.Recovery {
 				: entry.Kind==CaptureFileKind.Quarantine && entry.PatientName!="" ? entry.PatientName
 				: "PatNum "+entry.PatNum.ToString(CultureInfo.InvariantCulture);
 			string slotText=CaptureRecoveryText.GetSlotText(entry);
-			item.TitleText=patient+" | "+FormatTime(entry.ReceivedAt)+(slotText=="" ? "" : " | "+slotText);
+			//A capture of more than 8 bits says so in the list (it is filed differently); the details give every capture's depth.
+			item.TitleText=patient+" | "+FormatTime(entry.ReceivedAt)+(slotText=="" ? "" : " | "+slotText)
+				+(entry.IsGray16 ? " | "+Session.CaptureBitDepthText.DescribeEntry(entry) : "");
 			item.NoteText=GetNoteText(item);
 			return item;
 		}
@@ -647,6 +649,7 @@ namespace ImagingCapture.Recovery {
 			add("Reason",entry.Reason);
 			add("Delivered",entry.Kind==CaptureFileKind.Journal ? entry.Delivered : "");
 			add("Size",entry.Width>0 ? entry.Width+" x "+entry.Height+", "+entry.BitsPerPixel+" bits per pixel" : "");
+			add("Bit depth",Session.CaptureBitDepthText.DescribeEntry(entry));
 			add("File",entry.ImagePath);
 			return stringBuilder.ToString().TrimEnd();
 		}

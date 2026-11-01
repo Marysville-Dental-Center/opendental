@@ -62,6 +62,29 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void BitDepth_TheDepthActuallyUsed_InTheListAndTheDetails() {
+			Dictionary<string,string> dictFields14=RecoveryFiles.SessionFields();
+			dictFields14[CaptureSidecarKeys.BitDepthInEffect]="14";
+			_harness.Files.Quarantine16(dictFields14,_receivedAt);
+			Dictionary<string,string> dictFields8=RecoveryFiles.SessionFields();
+			dictFields8[CaptureSidecarKeys.BitDepthReason]="no Test capture record for this sensor's driver version and image settings";
+			_harness.Files.Quarantine(dictFields8,_receivedAt.AddMinutes(1));
+			_harness.Files.Quarantine16(RecoveryFiles.SessionFields(),_receivedAt.AddMinutes(2));//a CAP-4 sidecar: 16 by its old key or by default
+			CaptureRecoveryModel model=Model(CaptureRecoveryView.Unassigned);
+			Assert.AreEqual(3,model.Items.Count);
+			CaptureRecoveryItem item16=model.Items.Single(x => x.Entry.ReceivedAt==_receivedAt.AddMinutes(2));
+			StringAssert.EndsWith(item16.TitleText," | 16-bit");
+			CaptureRecoveryItem item8=model.Items.Single(x => x.Entry.ReceivedAt==_receivedAt.AddMinutes(1));
+			Assert.IsFalse(item8.TitleText.Contains("bit"),"An 8-bit capture's title is as before.");
+			model.Select(model.Items.IndexOf(item8));
+			StringAssert.Contains(model.DetailsText,"Bit depth: 8-bit (fallback: no Test capture record for this sensor's driver version and image settings)");
+			CaptureRecoveryItem item14=model.Items.Single(x => x.Entry.ReceivedAt==_receivedAt);
+			StringAssert.EndsWith(item14.TitleText," | 14-bit in a 16-bit file");
+			model.Select(model.Items.IndexOf(item14));
+			StringAssert.Contains(model.DetailsText,"Bit depth: 14-bit in a 16-bit file");
+		}
+
+		[TestMethod]
 		public void ALaterImageOfAContinuousEnable_ItsSlotNotRecorded_ShownAsSlotUnknown_NeverAsItsEnablesSlot() {
 			//The sidecar's Slot is the slot the continuous enable began at (slot 3); image 2 was for whatever slot was the target then.
 			Dictionary<string,string> dictFields=RecoveryFiles.SessionFields();
