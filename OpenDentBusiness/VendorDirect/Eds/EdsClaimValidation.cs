@@ -314,11 +314,12 @@ namespace OpenDentBusiness.VendorDirect.Eds {
 			return claim!=null && (claim.ClaimStatus=="W" || claim.ClaimStatus=="P");
 		}
 
-		///<summary>The claim status letter as its description, like "Sent - Verified".</summary>
+		///<summary>The claim status letter as its description, like "Sent - Verified". The text comes from ClaimReceiveRelated.GetClaimStatusText
+		///(M2-CLAIMRCV), so H reads "Hold Until Prior Received" here as in Edit Claim.</summary>
 		private static string GetClaimStatusText(string claimStatus) {
 			foreach(ClaimStatus status in Enum.GetValues(typeof(ClaimStatus))) {
 				if(status.GetDescription(useShortVersionIfAvailable:true)==claimStatus) {
-					return Lans.g("enumClaimStatus",status.GetDescription());
+					return Lans.g("enumClaimStatus",ClaimReceiveRelated.GetClaimStatusText(status));
 				}
 			}
 			return claimStatus??"";

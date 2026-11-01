@@ -509,6 +509,7 @@ namespace VEDSTests {
 			Assert.IsTrue(resultDeleted.IsNotSendable);
 			Assert.AreEqual(listResults[1].PatientName,resultDeleted.PatientName,"The batch window still names the deleted claim.");
 			Assert.IsTrue(listResultsFinal[2].IsNotSendable);
+			StringAssert.Contains(listResultsFinal[2].NotSendableReason,"Hold Until Prior Received","H reads as in Edit Claim (M2-CLAIMRCV).");
 			Assert.IsFalse(listResultsFinal[3].IsNotSendable);
 			Assert.IsFalse(listResultsFinal[4].IsNotSendable,"Probably sent (P) is listed in the Send Claims queue.");
 			for(int i=0;i<3;i++) {
