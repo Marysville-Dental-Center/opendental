@@ -350,7 +350,7 @@ flowchart LR
 **CAP-3.** Add new files, plus small edits to TwainSession, TwainConstants and TwainStructs.
 
 - **Raw 16-bit memory path.** `AcquiredImage {Width, Height, BitsPerPixel, BitsPerSample, PixelType, PixelFlavor, XDpi, YDpi, ushort[] Gray16 or byte[] Dib, MetadataJson, ReceivedAt}`.
-  - When the caller asks for 16-bit and `ICAP_PIXELTYPE` is GRAY, the library negotiates in this order, in state 4: set `ICAP_XFERMECH=TWSX_MEMORY` first; then, if `ICAP_BITDEPTH` MSG_GET lists 16, set `ICAP_BITDEPTH=16`. It never sets 16 while the mechanism is native. twain-contract 1.1 implements this order: 16 while native returns TWCC_BADVALUE, and setting native while the depth is 16 resets it to 8 with TWRC_CHECKSTATUS (its sections 4 and 6.2; implemented in 1.1, fake-mode tests only, no hardware run). At 16 bits the DS's installation adjustments never apply (twain-contract 1.1 sections 3 and 6.2). With a DS that lists 8 bits only, as twain-contract 1.0 did, the library stays at 8. The session asks for 16-bit only when `[Device.N] Bits=16`, `[Twain] Allow16Bit=1` and a matching verification record exist, and the target can be written as DICOM (sections 7.8 and 7.10); Test capture asks for it to measure. Capabilities return to their defaults only at MSG_OPENDS (twain-contract 1.1 section 4), so when the session asks for 8 bits after an earlier 16-bit enable on the same open source, the library sets `ICAP_BITDEPTH=8` in state 4 before MSG_ENABLEDS. Otherwise the library leaves the bit depth as the source delivers it.
+  - When the caller asks for 16-bit and `ICAP_PIXELTYPE` is GRAY, the library negotiates in this order, in state 4: set `ICAP_XFERMECH=TWSX_MEMORY` first; then the depth asked for: for 16, 16 if MSG_GET lists it, else 14 if it lists 14, else 8; for 14, 14 if listed, else 8. A refused SET goes on to the next depth, ICAP_BITDEPTH=8 is confirmed before native transfers, and more than 8 bits are never set with native transfer. The depth in effect, and why it is lower than asked, is reported per enable and per image and recorded in the sidecars (BitDepthInEffect, BitDepthReason). 14-bit samples come right-justified in 16-bit containers. An image of more than 8 bits in any other layout (BitsPerPixel not 16, packed or compressed samples) is not read: the transfer fails ("N-bit layout not usable: ...") and the session asks for 8 bits for the rest of that session. It never sets 16 while the mechanism is native. twain-contract 1.1 implements this order: 16 while native returns TWCC_BADVALUE, and setting native while the depth is 16 resets it to 8 with TWRC_CHECKSTATUS (its sections 4 and 6.2; implemented in 1.1, fake-mode tests only, no hardware run). At 16 bits the DS's installation adjustments never apply (twain-contract 1.1 sections 3 and 6.2). With a DS that lists 8 bits only, as twain-contract 1.0 did, the library stays at 8. The session asks for [Device.N] Bits (16 by default since 2026-11-01; 14 when the matching record's Test capture asked for 16 and passed at 14) only when [Twain] Allow16Bit=1 (the default), the capture settings check holds, the latest Test capture record for the device row matches the row's TWAIN source, the driver identity the source reports at open and the image settings (Bits, ByteOrder16, Polarity), and passed at that depth, and the target can be written as DICOM (sections 7.8, 7.10, 9.3); Test capture asks for it to measure. Capabilities return to their defaults only at MSG_OPENDS (twain-contract 1.1 section 4), so when the session asks for 8 bits after an earlier 16-bit enable on the same open source, the library sets `ICAP_BITDEPTH=8` in state 4 before MSG_ENABLEDS. Otherwise the library leaves the bit depth as the source delivers it.
   - **8-bit images in a 16-bit enable.** twain-contract 1.1 delivers an image that has no 16-bit original as 8-bit, and `DAT_IMAGEINFO` says so (its section 6.2). CAP-3 therefore reads `DAT_IMAGEINFO` for every image, not once per enable. An image that reports 8 bits goes down the 8-bit save path (Gray8 PNG, section 7.8), never the 16-bit DICOM path.
   - It never asks for a 16-bit native DIB, because a 16bpp DIB is RGB555/565 by definition (TWAIN 2.4 p.12-7; BITMAPINFOHEADER).
   - The legacy facade keeps its 16-to-8 shift for scanners. The capture API never uses that shift; its preview uses a fixed LUT built from the window.
@@ -523,7 +523,7 @@ The DS may hold exposed images that it has not delivered. twain-contract 1.1 off
 - **General, DX and Intra-Oral Image:** Image Type (0008,0008) `"ORIGINAL\PRIMARY\"` (Value 3 present and empty, PS3.3 C.8.11.3.1.1); MONOCHROME2; BitsAllocated 16; BitsStored = 12 or 16 per the BitsStored rule below (never the raw effective depth, which is recorded in metadata `effectiveBits`); HighBit = BitsStored-1; PixelRepresentation 0; Rescale 0/1/US; Pixel Intensity Relationship LIN (LOG if W5 reports values that are not linear in detector signal) with Pixel Intensity Relationship Sign -1 (stored values follow the W5 polarity after any verified inversion: higher = more radiopaque = less beam intensity); Presentation LUT Shape IDENTITY; Burned In Annotation NO; Lossy Image Compression 00.
 - **Detector:** Imager Pixel Spacing = 25.4/dpi (0.02\0.02 mm at 1270 dpi); Detector Type from metadata or empty (Type 2); Positioner Type NONE.
 - **Anatomy:**
-  - Image Laterality from the slot's teeth: Universal 1-8 and 25-32 give R, 9-24 give L, teeth on both sides give B (both, i.e. midline). DICOM has no "unknown" laterality. The Intra-oral Image module also needs either Primary Anatomic Structure Sequence or Anatomic Region Modifier Sequence (CID 4017) (PS3.3 C.8.11.9). With Bits=16, a target that has no mount slot (section 7.10), or whose slot has no tooth numbers, is therefore captured at 8 bits (ICAP_BITDEPTH 8 set in state 4) and never written as DICOM.
+  - Image Laterality from the slot's teeth: Universal 1-8 and 25-32 give R, 9-24 give L, teeth on both sides give B (both, i.e. midline). DICOM has no "unknown" laterality. The Intra-oral Image module also needs either Primary Anatomic Structure Sequence or Anatomic Region Modifier Sequence (CID 4017) (PS3.3 C.8.11.9). A target that has no mount slot (7.10), or whose slot has no tooth numbers of one view, is captured at 8 bits as a fallback (ICAP_BITDEPTH 8 in state 4) whatever Bits says, and is never written as DICOM.
   - Anatomic Region Sequence (CID 4016).
   - Primary Anatomic Structure Sequence, with tooth codes mapped from Universal to ISO 3950 (CID 4026).
   - Patient Orientation (0020,0020) for the stored, unrotated rows and columns (section 7.10).
@@ -534,9 +534,9 @@ The DS may hold exposed images that it has not delivered. twain-contract 1.1 off
 
 (DICOM PS3.3 A.28.3 Table A.28-1; C.7.1.1, C.7.2.1, C.7.3.1, C.7.5.1, C.7.6.1, C.7.6.3, C.7.6.14, C.7.10.1, C.8.11.1, C.8.11.2, C.8.11.3, C.8.11.4, C.8.11.8, C.8.11.9, C.11.2, C.12.1; PS3.5 B.2; PS3.10.)
 
-**BitsStored rule.** Store 12 when every value is 4095 or less and the source reports 12 or fewer effective bits. Otherwise store 16. 14-bit data is stored as 16, because the loader rejects 14 (BitmapDicom.cs:103-166). Values are never rescaled.
+**BitsStored rule.** Store 12 when every value is 4095 or less and the source reports 12 or fewer effective bits. Otherwise store 16. 14-bit data is stored as 16, because the loader rejects 14 (BitmapDicom.cs:103-166). Values are never rescaled. 14-bit data (ICAP_BITDEPTH 14) is stored with BitsAllocated 16 and BitsStored 16, unchanged; effectiveBits=14 is recorded in Image Comments when no sample is above 16383.
 - Limitation: data that fills only 14 bits uses about 64 of the 256 slider steps under the x256 rule. Windowing is then coarse, and the stored 0-255 window loses precision.
-- Test capture measures the effective range before 16-bit is enabled.
+- Test capture measures the effective range; its passed record is what lets the session take more than 8 bits (16 by default since 2026-11-01).
 - A finer slider scale is listed as a follow-up for M2-IMG.
 
 **Writer and reader.**
@@ -546,21 +546,24 @@ The DS may hold exposed images that it has not delivered. twain-contract 1.1 off
 
 **Storing.** `ImageStore.Import(bytes, cat, ImageType.Radiograph, pat, "application/dicom", ".dcm")` (ImageStore.cs:605-636), then one `Documents.Update` that sets PrintHeading, ProvNum, DateCreated and WindowingMin/Max. WindowingMin/Max are stored on the 0-255 scale (CAP-W reading rule below).
 
-**When 16-bit is enabled.** Per device (`[Device.N] Bits=16`, with the global kill switch `[Twain] Allow16Bit`; both Setup-gated), and only once all of these hold:
+**When 16-bit is enabled.** Per device ([Device.N] Bits: 16 by default, 14 or 8, with the per-computer switch [Twain] Allow16Bit, 1 by default, 0 keeps the computer at 8; both Setup-gated; owner decision 2026-11-01), and only once all of these hold:
 
 1. the sensor DS delivers 16-bit GRAY over memory transfer (W5; implemented in twain-contract 1.1 section 6.2, fake-mode tests only, no hardware run; polarity and effective bits are published after the clinic run);
-2. the clinic has verified byte order, polarity and effective bits with Test capture, and a matching verification record exists (section 9.3);
+2. the clinic has verified byte order, polarity and effective bits with Test capture, and the latest verification record for the device row, made on any computer, matches its TWAIN source, the sensor driver's identity and the image settings, and passed at the depth asked for (section 9.3);
 3. CAP-W1 is present, and CAP-W2 as well unless the device's data fits BitsStored 12;
 4. the hook, CAP-3 and CAP-4 have landed;
 5. claim attachment can export a .dcm as a windowed 8-bit image. Today it rejects .dcm (FormImageSelectClaimAttach.cs:155-175). This needs its file owner (B-CLAIM in B2) or a later package. Email attachment already sends a .dcm as a windowed JPEG (EmailAttachL.cs:109, 139-157), and CAP-W's windowing change applies there too;
 6. counsel has reviewed the For Presentation labelling and the fork-computed window (decision 18);
 7. the DICOM reader decision (decision 7) is settled.
 
+Conditions 3, 5 and 7 (CAP-W1/W2, claim attachment of DICOM X-rays, the DICOM reader) ship on main in the same merge step as the 16-bit default (2026-11-01). Condition 6 (counsel) is an owner sign-off the program does not check: until counsel and the clinic run sign off, the runbook sets Allow16Bit=0 on computers that capture for patients.
+
 If the owner declines pulling the windowing fix forward (decision 6b), only CAP-W1 ships, and sources of 12 bits or fewer can still ship as BitsStored 12, because today's divide-by-16 is correct for them. Deeper data then waits for M2-IMG in C1.
 
 **Until then.** Radiographs stay 8-bit:
 - TIFF through the existing path in phases 0-2;
-- once the session saver exists, lossless 8-bit grayscale PNG encoded with WIC, about 4 times smaller than today's 32bpp TIFF.
+- once the session saver exists, lossless 8-bit grayscale PNG encoded with WIC, about 4 times smaller than today's 32bpp TIFF;
+- a capture of more than 8 bits in unassigned captures goes into its own empty slot as DICOM when the 16-bit rules hold now, and otherwise as an explicit 8-bit PNG copy through the 0.5/99.5 window: into that slot when it is empty, else as a "Recovered: <slot>" item (a single document when the mount is gone), and for Reassign. The 16-bit original is kept in quarantine-resolved (owner decisions 2026-11-01).
 
 8-bit PNG and TIFF attach to claims as today.
 
@@ -612,7 +615,7 @@ Stored pixels change only through a documented lossless inversion, and only when
 - Orientation is set per slot: `RotateOnAcquire` and `Mount.FlipOnAcquire`, applied as display transforms (`DegreesRotated`, `IsFlipped`).
 - DICOM captures also carry Patient Orientation (0020,0020), which the DX Image module requires for intra-oral images (PS3.3 C.8.11.3, C.7.6.1.1.1). It describes the stored, unrotated rows and columns. At capture time, the writer derives it from the slot's labial-mount direction as displayed (anterior slots L\F, patient-right posterior slots A\F, patient-left posterior slots P\F), with RotateOnAcquire and FlipOnAcquire undone.
   - A target with no mount slot (a single PA with no mount) has no known orientation. The session therefore negotiates 8 bits for it, and it is never written as DICOM.
-  - A test pins the value for every slot of the standard templates. The phantom check (section 13, step 4) confirms the values before 16-bit is enabled for a device.
+  - A test pins the value for every slot of the standard templates. The phantom check (section 13, step 4) confirms the values before a Test capture record for the device passes (16 bits are the default since 2026-11-01; the session takes them once a record passes).
   - A later rotation in Imaging changes only DegreesRotated, so any export must recompute Patient Orientation (decision 8).
 - The DS's own rotate and flip installation settings stay neutral: a host that applies its own orientation per slot needs them neutral (twain-contract 1.1 section 3). They are not `ICAP_ROTATION`, but they do rotate or mirror the delivered 8-bit image, and they never apply at 16 bits (twain-contract 1.1 sections 3 and 6.2). The runbook checks them, and metadata `adjustments` reports them (W6, implemented in 1.1; section 7.9). The DS project agreed not to add `ICAP_ROTATION` (DS answers d).
 - Template rotations are starting values. The clinic confirms them for each sensor size against a phantom with radiopaque orientation markers (section 13). The vendor's imaging software is not the reference for orientation; only the phantom markers are.
@@ -641,7 +644,8 @@ Stored pixels change only through a documented lossless inversion, and only when
 | Helper closed, cancelled or failed | MSG_CLOSEDSREQ, then DAT_STATUS on the DS before MSG_DISABLEDS (W4), and DAT_STATUSUTF8 text where the DSM passes it through | TWCC_SUCCESS (a plain cancel): "Sensor software closed". Any other code: "Sensor software closed without an image: <reason or code>. Do not re-expose until you have checked the sensor software." | Sensor software closed, Re-enable |
 | Disable refused (W13) | MSG_DISABLEDS fails while the safe-disable capability is set | "Waiting for the sensor software to finish". After a second MSG_DISABLEDS, offers "Request undelivered images again" when the device profile names a redelivery capability (W15), handled as for a failed transfer (next row). | waits at most 30 s for MSG_XFERREADY or MSG_CLOSEDSREQ, then a second MSG_DISABLEDS (section 7.1) |
 | Transfer fails mid-image | DAT_IMAGEMEMXFER or DAT_IMAGENATIVEXFER failure | "Image not received. Do not re-expose yet." Offers "Request undelivered images again" when the device profile names a redelivery capability (W15). It returns every undelivered image of the DS's most recent session, not only the last one, whatever XFERCOUNT says (twain-contract 1.1 sections 5 and 10.3). A redelivered image is placed only after the operator confirms it, with its `acquiredAt` and `captureId` shown, because the DS has no patient context. A declined image goes to the quarantine marked "patient unknown". With nothing to redeliver, the DS ends with MSG_CLOSEDSREQ and a code, shown like any other reason. The slot does not advance. | Paused |
-| 16-bit refused | ICAP_BITDEPTH set returns TWCC_BADVALUE | silent fallback to 8-bit, logged; Test capture shows "8-bit" | normal |
+| 16-bit refused | ICAP_BITDEPTH MSG_GET does not list 16, or MSG_SET returns TWCC_BADVALUE | silent fallback to 14 if listed, else 8, logged; the session and Test capture show the depth used ("14-bit in a 16-bit file" or "8-bit (fallback: ...)") | normal |
+| 14- or 16-bit layout not usable | DAT_IMAGEINFO BitsPerPixel not 16, packed or compressed samples, or more than one sample per pixel | "Image not received: <N>-bit layout not usable: ..."; nothing of it kept; 8 bits for the rest of that session | as for a failed transfer |
 | Save fails (disk, SFTP, database) | exception in the saver | red strip "Could not save: <message>". The image goes to quarantine. | Paused (disabled) |
 | Image arrives after the session ended or after a patient change | session state | moved to quarantine, tagged with the bound patient | none |
 | Extra images in single mode | pending count above 0 | "The sensor software sent more images than expected; they are in unassigned captures." | normal |
@@ -841,6 +845,7 @@ Only one program can hold the camera. Other camera software must be closed while
 - **Hardware bindings** (camera moniker, resolution, triggers, level inputs, keys, sounds) can be edited in FormVideo settings, Learn or the file itself. They do not change stored pixels.
 - **Gated settings** are the ones marked `; gated` below. They change pixels or display, or safety behaviour. From CAP-4, they change only through the "Capture settings" screen in ImagingCapture, which is opened from FormImagingDeviceEdit and needs Setup permission.
   - Each save writes a securitylog entry (Setup): computer name, device, old and new values, and a SHA-256 hash of the gated block. The hash function ships with Test capture in CAP-3.
+  - A missing or empty Bits or Allow16Bit hashes as its default (16, 1).
   - At start, ImagingCapture (CAP-4) compares the gated block's hash with the latest such entry for this computer; LocalCaptureConfig itself has no database access. On a mismatch (a hand edit, or a missing file when a logged configuration exists), the session path ignores the gated block. Safe values are used instead:
     - Session off, ThreadModal on, no timeout, no session timeout;
     - 8-bit, AsDelivered, Headless off, PerSlot;
@@ -849,7 +854,7 @@ Only one program can hold the camera. Other camera software must be closed while
   - The capture session and Test capture then show "Capture settings were changed outside Open Dental; review them in Setup."
   - When CAP-4 first runs on a PC that has a gated block but no logged entry, it shows the values and requires a Setup save before the session can be enabled. RestrictSources and AllowedSources keep their file values.
 - **Before CAP-4, and on the legacy path.** In phases 0-2 there is no Capture settings screen and no hash check. The clinic administrator sets the `[Twain]` gated keys by hand, following the CAP-0 runbook, and ImagingDeviceManager reads them without a hash check, because the library has no database access. The EZTwain facade used by the legacy loop keeps reading them that way after CAP-4, including after a rollback with `[Session] Enabled=0`. A hand edit there is neither prevented nor detected, because the file is user-writable (see above). The acceptance report records the values, and each journal sidecar records the gated values in effect. The source gate guards against accidental use; it is not access control.
-- **Verification records.** Test capture writes a verification record (securitylog, Setup) that holds the hash of the device's gated settings and the date. The session refuses a 16-bit or inverted capture unless a verification record matches the current settings.
+- **Verification records.** Test capture writes a verification record (securitylog, Setup, FKey=ImagingDeviceNum, capture-verification/2) naming the device row, its TWAIN source, the driver identity the source reported at open (TW_IDENTITY ProductName and Version: MajorNum, MinorNum, Info), a hash of the image settings ([Device.N] Bits, ByteOrder16, Polarity), the depth verified and the date; the computer name and the whole gated-settings hash are kept for the audit trail only. The session uses the latest record for the device row made on any computer, and refuses more than 8 bits, or an inverted capture, unless that record matches and passed at the depth asked for (owner decision 2026-11-01: one test covers every computer that runs the same driver version with the same image settings). capture-verification/1 records never match. The per-computer capture settings check above stays a separate gate.
 - Effective values are shown in Test capture and in the session summary.
 
 ```ini
@@ -863,7 +868,7 @@ IdleDisableMinutes=10     ; gated. Used only with DisableIsSafe=1. Longer than t
 [Twain]
 ThreadModal=1             ; gated
 AcquireTimeoutMinutes=0   ; gated. 0 = none. PerSlot and DisableIsSafeSources only. Longer than the DS's own session timeout, shorter than auto-logoff
-Allow16Bit=0              ; gated. Global 16-bit kill switch
+Allow16Bit=1              ; gated. More than 8 bits allowed on this computer; 0 forces 8 (the key keeps its name)
 RestrictSources=0         ; gated. 1 = only AllowedSources can be opened
 AllowedSources=           ; gated. ProductNames separated by |
 JournalKeep=200           ; gated
@@ -873,7 +878,7 @@ RefusedDisableCodes=      ; gated. The two W13 "disable refused" condition codes
 
 [Device.12]               ; imagingdevice.ImagingDeviceNum
 SessionMode=PerSlot       ; gated. PerSlot | Continuous
-Bits=8                    ; gated. 8 | 16
+Bits=16                   ; gated. 16 | 14 | 8 (16 falls back to 14 or 8 by what the source lists)
 ByteOrder16=LE            ; gated. LE | BE (review)
 Polarity=AsDelivered      ; gated. AsDelivered | Invert (review)
 Headless=0                ; gated
@@ -1101,7 +1106,7 @@ The positions "accepted", "conditional" and "reduced" in the Priority column are
   - the TWAIN state order for every stop (ENDXFER, drain, then DISABLEDS in state 5 only);
   - after every MSG_CLOSEDSREQ and before MSG_DISABLEDS, `DAT_STATUS / MSG_GET` on the DS (with its identity) for the condition code, then `DAT_STATUSUTF8` for text where supported, falling back to the code (W4; section 7.1);
   - after a refused MSG_DISABLEDS with safe disable in effect, handles MSG_CLOSEDSREQ as well as MSG_XFERREADY, treats the two "disable refused" codes (named in the device profile) as "wait for the notification" with its own bound of 30 s (at least the 20 s the contract asks for), sends a second consecutive MSG_DISABLEDS as the way out, and keeps waiting within a second bound when that one is refused because the sensor software is still closing (W13; section 7.1);
-  - 16-bit negotiation in the order `ICAP_XFERMECH=TWSX_MEMORY`, then `ICAP_BITDEPTH=16`; never 16 with native transfer (W5);
+  - 16-bit negotiation in the order `ICAP_XFERMECH=TWSX_MEMORY`, then `ICAP_BITDEPTH=16`, else 14, by what MSG_GET lists (else 8); never more than 8 bits with native transfer (W5);
   - DAT_EXTIMAGEINFO read in state 7, after setting ICAP_EXTIMAGEINFO;
   - native DIB and metadata handles freed with `DSM_MemFree` when DSM2 entry points were supplied, otherwise with `GlobalFree`;
   - DSM order TWAINDSM.dll then twain_32.dll;
@@ -1208,7 +1213,7 @@ CAP-W1 (+ CAP-W2 unless BitsStored 12) + CAP-DR decision + CAP-3 + CAP-4 + W5 + 
   - acquire timeout honoured only with PerSlot and a source listed in DisableIsSafeSources whose MSG_SET succeeded; DSM kept loaded across single acquisitions;
   - transfer failure and DS failure give the "Image not received. Do not re-expose ..." text;
   - single-shot helper profile, matching twain-contract 1.1 sections 2-11 including the section 9 limitations: single with XFERCOUNT=1; batch-on-Done with N pending; CLOSEDSREQ on enable gives 19; pixel type never forced;
-  - 16-bit negotiation: MEMORY set before BITDEPTH 16; 16 never requested with native transfer; a 16-bit enable followed, on the same open source, by a target that cannot be written as DICOM sets BITDEPTH 8 and gives 8 bits;
+  - 14- and 16-bit negotiation: MEMORY set before BITDEPTH 16 or 14; 16 falls back to 14, else 8, by what MSG_GET lists; more than 8 bits never with native transfer; a later target that cannot be DICOM sets BITDEPTH 8;
   - redelivery capability (W15): set TRUE in state 4 only before a redelivery enable and FALSE again before the next enable; with a fake that keeps it until MSG_CLOSEDS, the next normal enable still captures;
   - 16-bit memory strips with padded BytesPerRow and X/YOffset, pixel-exact;
   - ICAP_EXTIMAGEINFO set in state 4; EXTIMAGEINFO read in state 7; the fake fails it after ENDXFER; handle allocated and freed by the same rule as native DIBs; TWCC_BADPROTOCOL (as in twain-contract 1.0) treated as no metadata;
@@ -1247,7 +1252,7 @@ CAP-W1 (+ CAP-W2 unless BitsStored 12) + CAP-DR decision + CAP-3 + CAP-4 + W5 + 
   - every column in section 9.1 set as specified; ImageCreate log; capture-event entries; the row deleted on a failed update;
   - invalid category rejected before writing;
   - quarantine: late image, save failure and drained image each get a sidecar; Assign only to the original patient, into the original slot only if it is still empty, otherwise as a "Recovered: <slot>" unmounted item; "patient unknown" files offered only through Reassign; Reassign needs ImageEdit, preselects no patient, needs a reason and files an unmounted item with no tooth numbers; Discard needs ImageDelete; no automatic purge;
-  - 16-bit and inverted capture refused without a matching verification record;
+  - more than 8 bits and inverted capture refused without a matching passed verification record (device row, TWAIN source, driver identity, image settings; any computer);
   - a redelivered image (W15) is placed only after the operator confirms it, with `acquiredAt` and `captureId` shown; a declined one goes to the quarantine marked "patient unknown"; a non-neutral `adjustments` rotate or flip shows the warning;
   - Pearl gate called only for flagged categories;
   - Gray8 PNG displays through the existing loaders;
@@ -1274,7 +1279,7 @@ The phantom carries radiopaque laterality and orientation markers (a lead letter
 5. Fault injection: close the helper; unplug the sensor; no calibration (W4 reason shown); force a save failure (journal recovery works); a host disable with images pending (W13: nothing lost); a host disable with the sensor software idle (W13: refused, then MSG_CLOSEDSREQ within the grace time, then the disable succeeds); the DS's session timeout ends the session with its code before any fork timeout (W4); idle timeout below auto-logoff; auto-logoff during an acquire (the series stops and the image is in quarantine).
 6. A patient change attempted during acquisition is blocked or detected. A series longer than the logoff time, run with only the helper and pedals, is not interrupted (phase 3), or the runbook's logoff-time check is confirmed (phase 0).
 7. After CAP-2: Learn gives a working trigger by observation; 50 presses give no double or missed photos; picking up and putting down the handpiece 20 times gives zero photos; the camera is held exclusively.
-8. After CAP-3 and CAP-4, before enabling 16-bit: Test capture shows the expected bit depth, byte order (a known ramp), effective range and polarity; the verification record is written; windowing on the step wedge meets the criteria; attaching a capture to a claim and to an email works.
+8. After CAP-3 and CAP-4, before a Test capture record for the device passes (16 bits are the default since 2026-11-01; the session takes them once a record passes): Test capture shows the bit depth used (16-bit, or 14-bit in a 16-bit file), byte order (a known ramp), effective range and polarity; the verification record is written; windowing on the step wedge meets the criteria; attaching a capture to a claim and to an email works.
 9. Each storage mode the clinic uses.
 10. Rollback: `[Session] Enabled=0` brings back the legacy loop.
 
@@ -1284,7 +1289,7 @@ The phantom carries radiopaque laterality and orientation markers (a lead letter
 |---|---|
 | Legacy Mount/Acquire with the sensor DS (phase 0) | Source gate (`RestrictSources=1`, each PC's existing scanners listed) on every PC, the device row bound to the test PC, and W4 and W13 delivered in a published contract version (done in twain-contract 1.1) and their acceptance tests passed on hardware (not yet run) before patient use |
 | Capture session (phase 3) | `[Session] Enabled=0` by default, Setup-gated |
-| 16-bit DICOM (phase 4) | `Allow16Bit=0` and `Bits=8` by default, Setup-gated, plus the conditions in section 7.8 |
+| 16-bit DICOM (phase 4) | `Bits=16` and `Allow16Bit=1` by default since 2026-11-01 (owner decision), Setup-gated; more than 8 bits only under the capture settings check, a matching passed Test capture record and a DICOM target; the runbook keeps computers that capture for patients at `Allow16Bit=0` until counsel and the clinic run sign off |
 | Thread-modal device acquire | On by default for named-source acquisitions only. It is not a capture feature, and it can be turned off. |
 | Native UVC Video | Available in all builds, because the old Video window cannot run in fork builds. Triggers are off until configured. |
 
@@ -1309,7 +1314,7 @@ The phantom carries radiopaque laterality and orientation markers (a lead letter
 | A host sets a fixed-value capability and believes it took effect | The fork reads the fixed-value capabilities and never sets them. From twain-contract 1.1 a wrong value is refused with TWCC_BADVALUE (its section 4); in 1.0 it was accepted and ignored. |
 | Sample Grabber removed from a future Windows | IUvcBackend seam; a Media Foundation backend later (without the still pin). |
 | TWAIN does not define 16-bit byte order or justification | Test capture with a known ramp; `ByteOrder16`; twain-contract 1.1 section 6.2 specifies little-endian, right-justified, and metadata `byteOrder` reports it (its section 6.3); verification record. |
-| 16-bit saturates before the windowing fix, or 14-bit windowing is coarse | 16-bit is enabled per device only when CAP-W is present, with fallback BitsStored 12; effective range measured; finer slider later. |
+| 16-bit saturates before the windowing fix, or 14-bit windowing is coarse | 16 bits are taken only after a passed Test capture; CAP-W1/W2, CAP-DR and DICOM claim attachment ship in the same merge step as the 16-bit default; fallback BitsStored 12; effective range measured; finer slider later. |
 | CAP-W changes how existing stored windows read | Legacy values above 255 read as 12-bit scale; no database write; tests; a read-only count before deployment. |
 | 16-bit DICOM cannot be attached to claims | It is a precondition for enabling 16-bit; 8-bit stays until the export exists. Email already attaches .dcm as a windowed JPEG. |
 | fo-dicom MS-PL dependency deepened by DICOM as the master | `IDicomPixelReader`; CAP-DR before 16-bit; writer tests independent of fo-dicom; decision 7. |
@@ -1346,7 +1351,7 @@ The phantom carries radiopaque laterality and orientation markers (a lead letter
 | 15 | Retakes | (a) keep as unmounted documents labelled "Retake: <slot>"; (b) delete automatically | (a) |
 | 16 | Provider stamping | (a) today's appointment provider (ProvHyg for hygiene), else PriProv, editable on the banner; (b) leave empty | (a) |
 | 17 | Pearl auto-upload for session captures | (a) parity: only for categories the office configured; (b) exclude session captures | (a), documented in setup |
-| 18 | Regulatory stance and patient-use gate | (a) image management only: no exposure, trigger, calibration or processing parameters, and no programmatic camera control writes. The fork drives only the TWAIN Enable/Disable lifecycle (per-slot enable, cancel, timeout, idle and patient-change disable, continuous mode) and transfer and stream-format negotiation. These, the For Presentation label, the fork-computed window and the polarity and byte-order options go to counsel, together with two questions: who carries acquisition-software responsibility for a sensor cleared without its software, and whether the fork-computed presentation window falls under 21 CFR 892.2050 (section 4, Regulatory). Features are gated as in section 13 until review and the hardware comparison pass. (b) ship enabled | (a) |
+| 18 | Regulatory stance and patient-use gate | (a) image management only: no exposure, trigger, calibration or processing parameters, and no programmatic camera control writes. The fork drives only the TWAIN Enable/Disable lifecycle (per-slot enable, cancel, timeout, idle and patient-change disable, continuous mode) and transfer and stream-format negotiation. These, the For Presentation label, the fork-computed window and the polarity and byte-order options go to counsel, together with two questions: who carries acquisition-software responsibility for a sensor cleared without its software, and whether the fork-computed presentation window falls under 21 CFR 892.2050 (section 4, Regulatory). Features are gated as in section 13 until review and the hardware comparison pass. (b) ship enabled | (a). Its gate now rests on [Session] Enabled, Test capture and the owner's counsel and clinic-run sign-off (the runbook keeps patient computers at Allow16Bit=0 until then), no longer on an 8-bit default. |
 | 19 | Quarantine | (a) machine-wide folder outside AtoZ, sidecars, Assign only to the original patient, Reassign with ImageEdit, Discard with ImageDelete, no automatic purge; (b) no quarantine (drop late images) | (a) |
 | 20 | Second sensor protocol | (a) defer the helper protocol and the folder provider; TWAIN only; (b) build them now | (a) |
 | 21 | License header for new capture files | (a) GPLv2 or later, like most Open Dental headers; (b) GPLv2 only | (a) |
