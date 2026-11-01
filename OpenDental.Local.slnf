@@ -36,6 +36,7 @@
       "tests\\BPRINTTests\\BPRINTTests.csproj",
       "tests\\BPROCTests\\BPROCTests.csproj",
       "tests\\BSERVERTests\\BSERVERTests.csproj",
+      "tests\\BSHELLTests\\BSHELLTests.csproj",
       "tests\\BTASKTests\\BTASKTests.csproj",
       "tests\\BTIMETests\\BTIMETests.csproj",
       "tests\\BTPTests\\BTPTests.csproj",

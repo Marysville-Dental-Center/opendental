@@ -54,6 +54,7 @@ namespace OpenDentBusiness {
 						//CreateDirectory treats this as a relative path and the full path would be "C:\Program Files (x86)\Open Dental\P\PatientAustin1".
 						throw new ApplicationException("AtoZpath was null or empty");
 					}
+					using FileMonitorScope fileMonitorScope=FileMonitor.Begin(FileMonitorAction.Exists,retVal);
 					if(!Directory.Exists(retVal)) {
 						Directory.CreateDirectory(retVal);
 					}
@@ -304,6 +305,7 @@ namespace OpenDentBusiness {
 
 		///<summary>Can be null.</summary>
 		public static Bitmap OpenImage(Document doc,string patFolder,string localPath="") {
+			using FileMonitorScope fileMonitorScope=FileMonitor.Begin(FileMonitorAction.Read,patFolder,doc?.FileName);
 			//todo: use a stream so that the returned bitmap does not have a file lock.
 			if(PrefC.AtoZfolderUsed==DataStorageType.LocalAtoZ) {
 				string srcFileName = ODFileUtils.CombinePaths(patFolder,doc.FileName);
@@ -461,6 +463,7 @@ namespace OpenDentBusiness {
 		}
 
 		public static byte[] GetBytes(Document doc,string patFolder) {
+			using FileMonitorScope fileMonitorScope=FileMonitor.Begin(FileMonitorAction.Read,patFolder,doc?.FileName);
 			if(CloudStorage.IsCloudStorage) {
 				byte[] byteArray=CloudStorage.Download(patFolder.Replace("\\","/"),doc.FileName);
 				return byteArray;
@@ -1078,6 +1081,7 @@ namespace OpenDentBusiness {
 		///If not using AtoZ folder, this uploads to Cloud or fills the doc.RawBase64 which must then be updated to db.  
 		///The image format can be bmp, jpg, etc, but this overload does not allow specifying jpg compression quality.</summary>
 		public static void SaveDocument(Document doc,Bitmap image,ImageFormat format,string patFolder) {
+			using FileMonitorScope fileMonitorScope=FileMonitor.Begin(FileMonitorAction.Write,patFolder,doc?.FileName);
 			//Had to reassign image to new bitmap due to a possible C# bug. Would sometimes cause UE: "A generic error occurred in GDI+."
 			using(Bitmap bitmap=new Bitmap(image)) {
 				if(PrefC.AtoZfolderUsed==DataStorageType.LocalAtoZ) {
@@ -1103,6 +1107,7 @@ namespace OpenDentBusiness {
 
 		///<summary>If usingAtoZfoler, then patFolder must be fully qualified and valid.  If not usingAtoZ folder, this uploads to Cloud or fills the doc.RawBase64 which must then be updated to db.</summary>
 		public static void SaveDocument(Document doc,Bitmap image,ImageCodecInfo codec,EncoderParameters encoderParameters,string patFolder,bool uploadHasExceptions=false) {
+			using FileMonitorScope fileMonitorScope=FileMonitor.Begin(FileMonitorAction.Write,patFolder,doc?.FileName);
 			//Had to reassign image to new bitmap due to a possible C# bug. Would sometimes cause UE: "A generic error occurred in GDI+."
 			using(Bitmap bitmap=new Bitmap(image)) {
 				if(PrefC.AtoZfolderUsed==DataStorageType.LocalAtoZ) {//if saving to AtoZ folder
@@ -1127,6 +1132,7 @@ namespace OpenDentBusiness {
 
 		///<summary>If using AtoZfolder, then patFolder must be fully qualified and valid.  If not using AtoZfolder, this uploads to Cloud or fills the eob.RawBase64 which must then be updated to db.</summary>
 		public static void SaveDocument(Document doc,string pathSourceFile,string patFolder) {
+			using FileMonitorScope fileMonitorScope=FileMonitor.Begin(FileMonitorAction.Write,patFolder,doc?.FileName);
 			if(PrefC.AtoZfolderUsed==DataStorageType.LocalAtoZ) {
 				File.Copy(pathSourceFile,ODFileUtils.CombinePaths(patFolder,doc.FileName));
 			}
@@ -1142,6 +1148,7 @@ namespace OpenDentBusiness {
 
 		///<summary>If using AtoZfolder, then patFolder must be fully qualified and valid.  If not using AtoZfolder, this uploads to Cloud or fills the doc.RawBase64 which must then be updated to db.</summary>
 		public static void SaveDocument(Document doc,byte[] arrayBytes,string patFolder) {
+			using FileMonitorScope fileMonitorScope=FileMonitor.Begin(FileMonitorAction.Write,patFolder,doc?.FileName);
 			if(PrefC.AtoZfolderUsed==DataStorageType.LocalAtoZ) {
 				File.WriteAllBytes(ODFileUtils.CombinePaths(patFolder,doc.FileName),arrayBytes);
 			}
@@ -1254,6 +1261,7 @@ namespace OpenDentBusiness {
 				if(PrefC.AtoZfolderUsed==DataStorageType.LocalAtoZ) {
 					try {
 						string filePath = ODFileUtils.CombinePaths(patFolder,documents[i].FileName);
+						using FileMonitorScope fileMonitorScope=FileMonitor.Begin(FileMonitorAction.Delete,filePath);
 						if(File.Exists(filePath)) {
 							File.Delete(filePath);
 							LogDocument(Lans.g("ContrImages","Document Deleted")+": ",EnumPermType.ImageDelete,documents[i],documents[i].DateTStamp);

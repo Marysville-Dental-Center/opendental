@@ -2210,7 +2210,8 @@ namespace OpenDental {
 				}
 			}
 			else if(e.Button.Tag.GetType()==typeof(Program)) {
-				WpfControls.ProgramL.Execute(((Program)e.Button.Tag).ProgramNum,_patient);
+				WpfControls.ProgramL.Execute(((Program)e.Button.Tag).ProgramNum,_patient,
+					ProgramLinkSelectedProcs.FromLedgerRows(_dataSetMain?.Tables["account"],gridAccount.SelectedIndices));
 			}
 			Plugins.HookAddCode(this,"ContrAccount.ToolBarMain_ButtonClick_end",_patient,e);
 		}

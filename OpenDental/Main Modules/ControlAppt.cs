@@ -2099,9 +2099,7 @@ namespace OpenDental {
 					}
 					break;
 				case MenuItemNames.OrthoChart: //Open Patient Ortho Chart
-					using(FormOrthoChart formOrthoChart=new FormOrthoChart(_patient)) {
-						formOrthoChart.ShowDialog();
-					}
+					FormOrthoChart.ShowNonModal(FindForm(),_patient,0,null);//25.3: no longer blocks the program.
 					break;
 				case MenuItemNames.HomePhone: //Call Home Phone
 					if(Programs.IsEnabled(ProgramName.DentalTekSmartOfficePhone)) {

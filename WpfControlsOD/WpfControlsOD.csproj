@@ -134,7 +134,6 @@
     <Compile Include="Bridges\DentalEye.cs" />
     <Compile Include="Bridges\DentalStudio.cs" />
     <Compile Include="Bridges\DentalTek.cs" />
-    <Compile Include="Bridges\DentalXChange.cs" />
     <Compile Include="Bridges\DentForms.cs" />
     <Compile Include="Bridges\DentX.cs" />
     <Compile Include="Bridges\Dexis.cs" />

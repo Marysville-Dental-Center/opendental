@@ -62,6 +62,13 @@ namespace OpenDental{
 			DisableUIElementsBasedOnClinicRestriction();//Disable the UI Elements if needed.
 			HideClinicControls(PrefC.HasClinicsEnabled);//Hide the "Hide Button for Clinics" button based upon the user's clinics being on or off.
 			ShowPLButHiddenLabel();//Display warning label for "Hide Button for Clinics" if needed.
+			if(ProgramLinksDiscontinued.IsDiscontinued(ProgramCur)) {//25.2: the service is gone. The row stays, but it can't be enabled or get buttons.
+				checkEnabled.Checked=false;
+				checkEnabled.Enabled=false;
+				listToolBars.ClearSelected();
+				listToolBars.Enabled=false;
+				Text+=" "+Lan.g(this,ProgramLinksDiscontinued.LABEL);
+			}
 		}
 
 		private void FormProgramLinkEdit_Shown(object sender,EventArgs e) {
@@ -453,6 +460,9 @@ namespace OpenDental{
 			ProgramCur.ProgName=textProgName.Text;
 			ProgramCur.ProgDesc=textProgDesc.Text;
 			ProgramCur.Enabled=checkEnabled.Checked;
+			if(ProgramLinksDiscontinued.IsDiscontinued(ProgramCur)) {
+				ProgramCur.Enabled=false;
+			}
 			ProgramCur.Path=textPath.Text;
 			if(_pathOverrideOld!=textOverride.Text) {
 				ProgramProperties.InsertOrUpdateLocalOverridePath(ProgramCur.ProgramNum,textOverride.Text);

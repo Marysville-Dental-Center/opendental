@@ -587,6 +587,8 @@
     <Compile Include="Misc\Result.cs" />
     <Compile Include="Misc\SecurityHash.cs" />
     <Compile Include="Misc\DomainLogin.cs" />
+    <!-- Main window and module rules (backlog B-SHELL): File Monitor, [SelectedProcNums], module switch blur, ortho chart window, discontinued links. -->
+    <Compile Include="Misc\MainWindow\**\*.cs" />
     <Compile Include="Misc\SheetSignatureSigners.cs" />
     <Compile Include="Misc\Code39Barcode.cs" />
     <Compile Include="Misc\PrintOptions.cs" />
