@@ -3932,11 +3932,15 @@ namespace OpenDentBusiness {
 			}
 			string log="";
 			string command;
+			//A clock-in may never be in the future. A clock-out may (Open Dental 26.1.63, package M2-EMP, see ClockEvents.CheckFutureDates): a Home or
+			//Lunch event can hold the end of a shift entered ahead of time, and the employee counts as clocked in until then. Only a break's second
+			//time (its return) still may not be in the future, so only breaks count and get fixed on that side (INFERRED, docs/port-notes/M2-EMP.md).
+			string whereBreak="ClockStatus="+POut.Int((int)TimeClockStatus.Break)+" AND ";
 			switch(dbmMode) {
 				case DbmMode.Check:
 					command=@"SELECT COUNT(*) FROM clockevent WHERE TimeDisplayed1 > "+DbHelper.Now()+"+INTERVAL 15 MINUTE";
 					int numFound=PIn.Int(Db.GetCount(command));
-					command=@"SELECT COUNT(*) FROM clockevent WHERE TimeDisplayed2 > "+DbHelper.Now()+"+INTERVAL 15 MINUTE";
+					command=@"SELECT COUNT(*) FROM clockevent WHERE "+whereBreak+"TimeDisplayed2 > "+DbHelper.Now()+"+INTERVAL 15 MINUTE";
 					numFound+=PIn.Int(Db.GetCount(command));
 					if(numFound>0 || verbose) {
 						log+=Lans.g("FormDatabaseMaintenance","Time card entries invalid")+": "+numFound+"\r\n";
@@ -3945,7 +3949,7 @@ namespace OpenDentBusiness {
 				case DbmMode.Fix:
 					command=@"UPDATE clockevent SET TimeDisplayed1="+DbHelper.Now()+" WHERE TimeDisplayed1 > "+DbHelper.Now()+"+INTERVAL 15 MINUTE";
 					int numberFixed=(int)Db.NonQ(command);
-					command=@"UPDATE clockevent SET TimeDisplayed2="+DbHelper.Now()+" WHERE TimeDisplayed2 > "+DbHelper.Now()+"+INTERVAL 15 MINUTE";
+					command=@"UPDATE clockevent SET TimeDisplayed2="+DbHelper.Now()+" WHERE "+whereBreak+"TimeDisplayed2 > "+DbHelper.Now()+"+INTERVAL 15 MINUTE";
 					numberFixed+=(int)Db.NonQ(command);
 					if(numberFixed>0 || verbose) {
 						log+=Lans.g("FormDatabaseMaintenance","Future timecard entry times fixed")+": "+numberFixed.ToString()+"\r\n";

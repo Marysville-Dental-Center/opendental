@@ -186,6 +186,36 @@ namespace M2EMPTests {
 		}
 
 		[TestMethod]
+		public void DatabaseMaintenance_FutureClockOut_NotCountedAndNotChanged() {
+			//Database Maintenance's ClockEventInFuture used to count every clock-out more than 15 minutes ahead as invalid and, in Fix, overwrite it
+			//with the time of the run: a Home or Lunch event entered for a later day lost its clock-out and the employee counted as clocked out. Now
+			//only what CheckFutureDates still refuses counts: a clock-in in the future, and a break's return in the future.
+			long employeeNum=AddEmployee("Gray");
+			DateTime now=GetNow();
+			long clockEventNumHome=AddClockEvent(employeeNum,TimeClockStatus.Home,now.AddHours(-2),now.Date.AddDays(1).AddHours(6));
+			long clockEventNumLunch=AddClockEvent(employeeNum,TimeClockStatus.Lunch,now.AddHours(-1),now.Date.AddDays(1).AddHours(12));
+			ClockEvent clockEventHomeBefore=ClockEvents.GetOne(clockEventNumHome);
+			ClockEvent clockEventLunchBefore=ClockEvents.GetOne(clockEventNumLunch);
+			Assert.AreEqual("",DatabaseMaintenances.ClockEventInFuture(false,DbmMode.Check),"A future clock-out is not an invalid entry.");
+			StringAssert.Contains(DatabaseMaintenances.ClockEventInFuture(true,DbmMode.Check),"Time card entries invalid: 0");
+			Assert.AreEqual("",DatabaseMaintenances.ClockEventInFuture(false,DbmMode.Fix),"Fix has nothing to change.");
+			Assert.AreEqual(clockEventHomeBefore.TimeDisplayed2,ClockEvents.GetOne(clockEventNumHome).TimeDisplayed2);
+			Assert.AreEqual(clockEventLunchBefore.TimeDisplayed2,ClockEvents.GetOne(clockEventNumLunch).TimeDisplayed2);
+			Assert.IsTrue(ClockEvents.IsClockedIn(employeeNum),"Still clocked in until the entered clock-out.");
+			//What stays invalid: a clock-in in the future, and a break whose return is in the future.
+			long clockEventNumFutureIn=AddClockEvent(employeeNum,TimeClockStatus.Home,now.AddHours(3),DateTime.MinValue);
+			long clockEventNumBreak=AddClockEvent(employeeNum,TimeClockStatus.Break,now.AddMinutes(-10),now.AddHours(2));
+			Assert.AreEqual("Time card entries invalid: 2\r\n",DatabaseMaintenances.ClockEventInFuture(false,DbmMode.Check));
+			Assert.AreEqual("Future timecard entry times fixed: 2\r\n",DatabaseMaintenances.ClockEventInFuture(false,DbmMode.Fix));
+			DateTime nowAfterFix=GetNow();
+			Assert.IsTrue(ClockEvents.GetOne(clockEventNumFutureIn).TimeDisplayed1<=nowAfterFix,"Fix still corrects a future clock-in.");
+			Assert.IsTrue(ClockEvents.GetOne(clockEventNumBreak).TimeDisplayed2<=nowAfterFix,"Fix still corrects a break's future return.");
+			Assert.AreEqual(clockEventHomeBefore.TimeDisplayed2,ClockEvents.GetOne(clockEventNumHome).TimeDisplayed2,"Home clock-out kept.");
+			Assert.AreEqual(clockEventLunchBefore.TimeDisplayed2,ClockEvents.GetOne(clockEventNumLunch).TimeDisplayed2,"Lunch clock-out kept.");
+			Assert.AreEqual("",DatabaseMaintenances.ClockEventInFuture(false,DbmMode.Check),"Nothing left to fix.");
+		}
+
+		[TestMethod]
 		public void FutureClockOut_TotalsCountTheStoredTimes() {
 			//Rule 6 (INFERRED): totals use the stored times as they are. GetSimpleList returns the stored event unchanged.
 			long employeeNum=AddEmployee("Finley");
