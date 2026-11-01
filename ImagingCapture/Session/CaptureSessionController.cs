@@ -1229,8 +1229,8 @@ namespace ImagingCapture.Session {
 		}
 
 		///<summary>Saves image into mountItemTarget (idxTarget), or in single-target mode as a document with toothNumbersSingle, by default the
-		///banner's teeth when its enable started (record.ToothNumbers).</summary>
-		private void SaveImage(AcquiredImage image,CaptureEnableRecord record,int idxTarget,MountItem mountItemTarget,string toothNumbersSingle=null) {
+		///banner's teeth when its enable started (record.ToothNumbers). True when it was saved; otherwise it went to the quarantine.</summary>
+		private bool SaveImage(AcquiredImage image,CaptureEnableRecord record,int idxTarget,MountItem mountItemTarget,string toothNumbersSingle=null) {
 			string toothNumbers=toothNumbersSingle??record.ToothNumbers;
 			RadiographTarget target=GetRadiographTarget(mountItemTarget,toothNumbers);
 			//The target this image is saved into, also in its sidecar: a failed save quarantines it for this target (design 7.12).
@@ -1272,7 +1272,7 @@ namespace ImagingCapture.Session {
 				//The error only: the red strip also says where the image went, or where its only copy is when the quarantine write failed.
 				SetIndicator(CaptureIndicatorState.Error,CaptureSessionText.CouldNotSavePrefix+error);
 				PlaySound(CaptureSound.Error);
-				return;
+				return false;
 			}
 			record.CountSaved++;
 			_listDocNums.Add(result.Document.DocNum);
@@ -1328,6 +1328,7 @@ namespace ImagingCapture.Session {
 			Log("Saved DocNum "+result.Document.DocNum+" ("+result.Plan?.Format+") to "+target.GetLabel()+".");
 			PlaySound(CaptureSound.Saved);
 			OnImageSavedExt(image,record,result);
+			return true;
 		}
 
 		///<summary>Moves image to the quarantine for the bound patient (or "patient unknown"), with reason in its sidecar.</summary>

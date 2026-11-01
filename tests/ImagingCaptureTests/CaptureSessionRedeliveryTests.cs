@@ -155,6 +155,53 @@ namespace ImagingCapture.Tests {
 			Assert.IsFalse(call.IsPatientUnknown,"The operator confirmed it for the bound patient.");
 			Assert.AreEqual("1",call.Image.SidecarFields.Single(x => x.Key==CaptureSidecarKeys.RedeliveryConfirmed).Value,
 				"Its sidecar says so, so Assign may file it (CaptureRecoveryFiler.IsAssignOffered).");
+			Assert.AreEqual(0,_harness.Twain.ListJournalConfirmed.Count,"Its journal copy is rewritten by the quarantine move, not as a saved image.");
+		}
+
+		[TestMethod]
+		public void Redelivered_ConfirmedAndSaved_ItsJournalCopyNowNamesTheBoundPatient_OnlyAfterASuccessfulSave() {
+			TransferFailed();
+			_harness.Arm();
+			Controller.RequestRedelivery();
+			AcquiredImage image=RaiseRedelivered();
+			AcquiredImage imageSecond=RaiseRedelivered(TestImages.Json8BitRotated);
+			AcquiredImage imageThird=RaiseRedelivered();
+			_harness.Ended(TwainCaptureEndReason.Completed);
+			FakeTwainCaptureSession twain=_harness.Twain;
+			Assert.AreEqual(0,twain.ListJournalConfirmed.Count,"Not on arrival: the source knows no patient.");
+			_harness.Clock.Advance(CaptureSessionController.KeyIgnoreMs);
+			Assert.IsTrue(Controller.ConfirmRedelivered());
+			Assert.AreEqual(1,_harness.RadiographStore.ListDocumentsUpdated.Count);
+			Assert.AreSame(image,twain.ListJournalConfirmed.Single(),"After its save.");
+			List<KeyValuePair<string,string>> listFields=twain.ListJournalConfirmedFields.Single();
+			Assert.AreEqual("1",listFields.Single(x => x.Key==CaptureSidecarKeys.RedeliveryConfirmed).Value);
+			Assert.AreEqual("101",listFields.Single(x => x.Key==CaptureSidecarKeys.MountItemNum).Value,"With the slot it was saved into.");
+			//The second one's save fails: it goes to the quarantine for the bound patient instead (QuarantineImage rewrites its copy then).
+			_harness.Clock.Advance(CaptureSessionController.KeyIgnoreMs);
+			_harness.RadiographStore.ThrowOn="Import";
+			Assert.IsTrue(Controller.ConfirmRedelivered());
+			Assert.AreSame(imageSecond,twain.ListQuarantined.Single().Image);
+			Assert.AreEqual(1,twain.ListJournalConfirmed.Count,"Only after a successful save.");
+			//The third one is declined: "patient unknown" in the quarantine, its copy not confirmed.
+			Assert.IsTrue(Controller.DeclineRedelivered());
+			Assert.AreSame(imageThird,twain.ListQuarantined.Last().Image);
+			Assert.AreEqual(1,twain.ListJournalConfirmed.Count);
+		}
+
+		[TestMethod]
+		public void Redelivered_ConfirmedAndSaved_TheJournalCopyCannotBeRewritten_Logged_TheDocumentStays() {
+			TransferFailed();
+			_harness.Arm();
+			Controller.RequestRedelivery();
+			RaiseRedelivered();
+			_harness.Ended(TwainCaptureEndReason.Completed);
+			_harness.Twain.JournalConfirmError="The disk is full.";
+			_harness.Clock.Advance(CaptureSessionController.KeyIgnoreMs);
+			Assert.IsTrue(Controller.ConfirmRedelivered());
+			Assert.AreEqual(1,_harness.RadiographStore.ListDocumentsUpdated.Count);
+			Assert.AreEqual(0,_harness.Twain.ListQuarantined.Count);
+			Assert.IsTrue(Controller.ListLog.Any(x => x.Contains("could not be marked with patient 55") && x.Contains("The disk is full.")),
+				string.Join("\r\n",Controller.ListLog));
 		}
 
 		[TestMethod]

@@ -875,6 +875,40 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		[TestMethod]
+		public void Redelivery_ConfirmedAndSavedByTheWindow_TheJournalCopyNamesTheBoundPatient_InPlace() {
+			Capture.QuarantineContext=new TwainCaptureQuarantineContext(9,"Roe, Ann");
+			Options.RedeliverCap=FakeHelperSource.CapRedeliver;
+			_harness.OpenOrFail();
+			LoseOneImage();
+			_harness.WaitForEnded(Capture.RequestRedelivery(new TwainEnableRequest { Bits=8,TargetLabel="Slot 1" }));
+			AcquiredImage image=_harness.Images.Single();
+			string pathJournal=image.JournalPath;
+			//The window saved it into the target as it was at the confirmation, and recorded that slot in the image's sidecar fields.
+			image.SidecarFields=new List<KeyValuePair<string,string>> { new KeyValuePair<string,string>(CaptureSidecarKeys.MountItemNum,"102") };
+			string error;
+			Assert.IsTrue(Capture.ConfirmRedeliveredJournalCopy(image,out error),error);
+			Assert.AreEqual(pathJournal,image.JournalPath,"Rewritten in place: rotation counts it as before.");
+			Dictionary<string,string> dictJournal=CaptureFiles.ReadSidecar(Path.ChangeExtension(image.JournalPath,".txt"));
+			Assert.AreEqual("9",dictJournal["PatNum"],"The bound patient, as BuildRecord writes it for any image of the session.");
+			Assert.AreEqual("1",dictJournal["Redelivered"]);
+			Assert.AreEqual("1",dictJournal[CaptureSidecarKeys.RedeliveryConfirmed]);
+			Assert.AreEqual(CaptureJournal.DeliveredCaller,dictJournal["Delivered"]);
+			Assert.AreEqual("102",dictJournal[CaptureSidecarKeys.MountItemNum]);
+			Assert.AreEqual(CaptureFiles.Sha256Hex(File.ReadAllBytes(image.JournalPath)),dictJournal["Sha256"]);
+			Assert.AreEqual(1,Directory.GetFiles(Path.GetDirectoryName(pathJournal),"*.txt").Length);
+			CaptureFileEntry entry=CaptureFileStore.CreateForFolder(_harness.Folder).ListJournal().Single();
+			Assert.IsFalse(entry.IsPatientUnknown,"No longer listed as patient unknown...");
+			Assert.AreEqual(9,entry.PatNum,"...but as the bound patient's, whose documents recovery checks.");
+			Assert.IsTrue(entry.IsRedeliveryConfirmed);
+			//Called on the window's thread: the line goes to the capture log only (Logged is raised on the worker).
+			StringAssert.Contains(File.ReadAllText(Path.Combine(_harness.Folder,CaptureFolders.SubfolderCapture,CaptureLog.FileName)),
+				"confirmed and saved for patient 9");
+			Assert.IsFalse(Capture.ConfirmRedeliveredJournalCopy(new AcquiredImage { JournalPath=pathJournal },out error),"Only a redelivered image.");
+			Assert.AreEqual("Not a redelivered image.",error);
+			Assert.AreEqual("9",CaptureFiles.ReadSidecar(Path.ChangeExtension(pathJournal,".txt"))["PatNum"]);
+		}
+
+		[TestMethod]
 		public void Redelivery_ImageArrivingAfterBeginClose_QuarantinedAsPatientUnknown() {
 			Capture.QuarantineContext=new TwainCaptureQuarantineContext(9,"Roe, Ann");
 			Options.RedeliverCap=FakeHelperSource.CapRedeliver;

@@ -1121,7 +1121,8 @@ namespace ImagingDeviceManager.Capture {
 			bool isClosingAtArrival=_isClosing;
 			TwainCaptureQuarantineContext quarantineContext=QuarantineContext;//Read once: the PatNum and the name of one patient.
 			//Design 7.12: the source of a redelivered image knows no patient, so it is "patient unknown" until the operator confirms it in the
-			//window; its journal copy and a quarantine file written here record no PatNum, so they are never offered for Assign.
+			//window; its journal copy and a quarantine file written here record no PatNum, so they are never offered for Assign. Once the window
+			//saved it for the bound patient, ConfirmRedeliveredJournalCopy rewrites the copy with that patient.
 			long patNumImage=image.IsRedelivery ? 0 : quarantineContext.PatNum;
 			CaptureRecord record=BuildRecord(image,patNumImage);
 			CaptureImageFile file;
@@ -1248,6 +1249,51 @@ namespace ImagingDeviceManager.Capture {
 			catch(Exception ex) {
 				error=ex.Message;
 				return null;
+			}
+		}
+
+		///<summary>A redelivered image the window saved for the bound patient after the operator confirmed it (design 7.12): its journal copy, written
+		///with no PatNum when it arrived (Deliver), is rewritten with QuarantineContext's PatNum and RedeliveryConfirmed=1, as BuildRecord writes
+		///any image of the bound patient, with the image's sidecar fields as they are now (the slot it was saved into), still Delivered=Caller. So
+		///Unassigned captures and Recover recent captures match the copy against that patient's documents and never file the exposure a second time,
+		///for that patient or another (design 10.6). Any thread. False with error when the image is not a redelivered one, has no journal copy, or
+		///its sidecar could not be rewritten.</summary>
+		public bool ConfirmRedeliveredJournalCopy(AcquiredImage image,out string error) {
+			error="";
+			if(image==null || !image.IsRedelivery) {
+				error="Not a redelivered image.";
+				return false;
+			}
+			if(string.IsNullOrEmpty(image.JournalPath) || !File.Exists(image.JournalPath)) {
+				error="The image has no journal copy.";
+				return false;
+			}
+			try {
+				CaptureImageFile file=CaptureImageFile.FromAcquiredImage(image);
+				TwainCaptureQuarantineContext context=QuarantineContext;
+				if(context.PatNum<=0) {
+					error="The session has no patient.";
+					return false;
+				}
+				CaptureRecord record=BuildRecord(image,context.PatNum);
+				record.ListCaptureFields.RemoveAll(x => string.Equals(x.Key,CaptureSidecarKeys.RedeliveryConfirmed,StringComparison.OrdinalIgnoreCase));
+				record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.RedeliveryConfirmed,"1"));
+				string errorSet="";
+				image.JournalPath=_journal.SetDelivered(image.JournalPath,file,record,CaptureJournal.DeliveredCaller,null,line => {
+					errorSet=line;
+					Log(line);
+				});
+				if(errorSet!="") {
+					error=errorSet;
+					return false;
+				}
+				Log("Journal copy "+Path.GetFileName(image.JournalPath)+" of redelivered image "+image.IndexInEnable+" of enable "+image.EnableId
+					+": confirmed and saved for patient "+context.PatNum.ToString(CultureInfo.InvariantCulture)+".");
+				return true;
+			}
+			catch(Exception ex) {
+				error=ex.Message;
+				return false;
 			}
 		}
 		#endregion Images

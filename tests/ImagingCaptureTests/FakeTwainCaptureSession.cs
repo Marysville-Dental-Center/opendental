@@ -127,6 +127,20 @@ namespace ImagingCapture.Tests {
 			return call.Path;
 		}
 
+		///<summary>The images of ConfirmRedeliveredJournalCopy calls, with the sidecar fields they had then.</summary>
+		public readonly List<AcquiredImage> ListJournalConfirmed=new List<AcquiredImage>();
+		public readonly List<List<KeyValuePair<string,string>>> ListJournalConfirmedFields=new List<List<KeyValuePair<string,string>>>();
+		///<summary>Not null: ConfirmRedeliveredJournalCopy fails with this error.</summary>
+		public string JournalConfirmError;
+
+		public bool ConfirmRedeliveredJournalCopy(AcquiredImage image,out string error) {
+			ListJournalConfirmed.Add(image);
+			ListJournalConfirmedFields.Add(image?.SidecarFields==null ? new List<KeyValuePair<string,string>>()
+				: new List<KeyValuePair<string,string>>(image.SidecarFields));
+			error=JournalConfirmError??"";
+			return JournalConfirmError==null;
+		}
+
 		///<summary>The source accepts ContinuousCap, so an enable of SessionMode=Continuous runs continuously (the library's
 		///SetCustomCapability(ContinuousCap) returned Set). False: the enable runs per slot (design 7.4).</summary>
 		public bool IsContinuousCapAccepted=true;

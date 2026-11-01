@@ -61,6 +61,10 @@ namespace ImagingDeviceManager.Capture {
 		///<summary>Writes image to the session quarantine with QuarantineContext (or "patient unknown"), for the window's own quarantine moves
 		///(a patient change, a failed save, a declined redelivered image). Any thread. Returns the path, or null with error.</summary>
 		string QuarantineImage(AcquiredImage image,string reason,bool isPatientUnknown,out string error);
+		///<summary>After the window saved a redelivered image that the operator confirmed (design 7.12): its journal copy, written with no PatNum
+		///when it arrived, is rewritten with QuarantineContext's PatNum and RedeliveryConfirmed=1, so that recovery matches it against that
+		///patient's documents (one document per exposure, design 10.6). Any thread. False with error when it could not be rewritten.</summary>
+		bool ConfirmRedeliveredJournalCopy(AcquiredImage image,out string error);
 
 		///<summary>One image, its journal copy written.</summary>
 		event Action<AcquiredImage> ImageAcquired;

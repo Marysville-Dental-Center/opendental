@@ -134,7 +134,9 @@ namespace ImagingCapture.Session {
 			SetImageSidecarField(pending.Image,CaptureSidecarKeys.RedeliveryConfirmed,"1");
 			//Into the target the panel showed (GetRedeliveredTargetText): in single-target mode the banner's teeth now, which the operator may have
 			//changed while the image waited, not the ones of the redelivery enable.
-			SaveImage(pending.Image,pending.Record,idxTarget,mountItemTarget,IsSingleTarget ? _toothNumbersSingle : null);
+			if(SaveImage(pending.Image,pending.Record,idxTarget,mountItemTarget,IsSingleTarget ? _toothNumbersSingle : null)) {
+				ConfirmJournalCopy(pending.Image);
+			}
 			if(Phase==CaptureSessionPhase.Ready && !HasRedeliveredPending && !IsSingleTarget && _mountSlots.IdxTarget==-1) {
 				Finish(CaptureSessionEndReason.MountFull);
 				return true;
@@ -182,6 +184,25 @@ namespace ImagingCapture.Session {
 				CapturePendingRedelivered pending=_listRedeliveredPending[0];
 				_listRedeliveredPending.RemoveAt(0);
 				QuarantineRedelivered(pending,why);
+			}
+		}
+
+		///<summary>After a confirmed redelivered image was saved for the bound patient: its journal copy, written with no patient when it arrived,
+		///now names that patient (TwainCaptureSession.ConfirmRedeliveredJournalCopy). Otherwise Unassigned captures would list it as "patient unknown"
+		///and could reassign the exposure to another patient while it is already this patient's document (design 10.6). A failure is logged; the
+		///document is saved either way.</summary>
+		private void ConfirmJournalCopy(AcquiredImage image) {
+			string error="";
+			bool isDone;
+			try {
+				isDone=_session!=null && _session.ConfirmRedeliveredJournalCopy(image,out error);
+			}
+			catch(Exception ex) {
+				isDone=false;
+				error=ex.Message;
+			}
+			if(!isDone) {
+				Log("The journal copy of the confirmed redelivered image could not be marked with patient "+PatNum+": "+(error??"").Trim());
 			}
 		}
 

@@ -452,6 +452,28 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void Reassign_TheCopyOfAConfirmedRedeliveredImage_RewrittenWithItsPatient_RefusedForAnotherPatientToo() {
+			//TwainCaptureSession.ConfirmRedeliveredJournalCopy after the save: the copy names the bound patient and RedeliveryConfirmed=1.
+			Dictionary<string,string> dictFields=RecoveryFiles.SessionFields(patNum:42,captureId:"cap-7");
+			dictFields["Redelivered"]="1";
+			dictFields[CaptureSidecarKeys.RedeliveryConfirmed]="1";
+			CaptureFileEntry entry=_harness.Files.Journal(dictFields,_receivedAt);
+			Assert.IsFalse(entry.IsPatientUnknown);
+			Assert.IsTrue(entry.IsRedeliveryConfirmed);
+			Store.ListPatientDocuments.Add(new Document { DocNum=901,PatNum=42,DateCreated=new DateTime(2026,10,31,8,0,0) });
+			Store.ListSecurityLogsExisting.Add(new SecurityLog { PatNum=42,FKey=901,PermType=EnumPermType.ImageCreate,
+				LogText="Capture: captureId "+CaptureJournalMatch.QuoteLikeTheSaver("cap-7")+", sequence 3." });
+			CaptureFilingResult result=_harness.Filer.Reassign(entry,_harness.PatientJohn,"It is John's.",20);
+			Assert.IsFalse(result.IsDone,"The exposure of Jane would also become a document of John.");
+			StringAssert.Contains(result.Error,"This exposure is already DocNum 901 of Jane Doe (PatNum 42");
+			CaptureFilingResult resultOwn=_harness.Filer.Reassign(entry,_harness.PatientJane,"Again.",20);
+			Assert.IsFalse(resultOwn.IsDone);
+			StringAssert.Contains(resultOwn.Error,"originating patient");
+			Assert.AreEqual(0,RadiographStore.ListPatientsImported.Count);
+			Assert.IsFalse(_harness.Files.Store.ListJournal().Single().IsResolved);
+		}
+
+		[TestMethod]
 		public void Reassign_16Bit_Refused_StaysPut() {
 			CaptureFileEntry entry=_harness.Files.Quarantine16(RecoveryFiles.SessionFields(patNum:0),_receivedAt);
 			Assert.IsFalse(CaptureRecoveryFiler.IsReassignOffered(entry),"Not offered, rather than refused after the patient search and the reason.");
