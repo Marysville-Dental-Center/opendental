@@ -113,3 +113,10 @@ Related existing assemblies run: `SheetTests` (check sheet PDFs through `SheetDr
 - **M2-SDV** is not on `port/int-7`; the `SheetUtil` growth-height follow-up above still applies when it merges.
 - No schema, no fork migration step and no adoption change: the M1-Z adoption tools need nothing from this package.
 - Checks on the finished branch (2026-10-31): one full build of `OpenDental.Local.slnf` through the build lane (0 errors); `run-tests -Mode Core` passed, 61 assemblies, M2SHEETSTests 53 of 53, SheetTests 31, SignatureTests 55, NoHqTests 49 (results in `.git/od-tools/test-results/port_m2-sheets-t1.txt`); `tools/Test-NoHqHosts.ps1` passed.
+
+## Integration (branch `port/int-9`)
+
+- Merged onto `port/int-8` after M2-TERM, with no conflicts and no integration commit of its own.
+- **M2-TERM** changed the column headers of `SheetDrawingJob.DrawFieldGridHelper` (`DisplayFields26_1.GetColumnText`, so a saved "Cat% UCR" column reads "Cat% Std Fee"). Those headers are drawn by the grid (`GridOD`), not by `SheetTextDrawing`, so nothing was routed through this package's helper; every other text draw of `SheetDrawingJob` still goes through `SheetTextDrawing`. No other package of this round touches sheet drawing, and none adds a script, font or text helper of its own.
+- **M2-SDV** is still not merged; the `SheetUtil` growth-height follow-up stands.
+- No fork migration step, schema or row change, so the adoption tools need nothing new. On the merged head: one full build of `OpenDental.Local.slnf` through the build lane (0 errors), `run-tests -Mode Full` (69 assemblies, 3642 tests, none failed; the 2 skipped are M201Tests' published-document checks, skipped as on earlier heads) and `tools/Test-NoHqHosts.ps1` (passed). `M2SHEETSTests` 53 of 53, `SheetTests` 31, `SignatureTests` 55.

@@ -120,3 +120,10 @@ Related existing assemblies: `RegistryTests` (PrefInfos.xml entries, `InsBlueBoo
 1. Report headers: "Standard Fee" (fits, or wraps to two lines in Capitation) or the full "Standard Provider Fee" (wraps everywhere)? Either way the export keeps the old column names ("UCR Fee", "UCR", "UCR Production"), as the spec's rule asks. If you would rather have the new names in exported files too, that is a deviation from the spec: it needs your explicit approval before merging, would be recorded under "Deviations from the spec", and is done by removing the four export key statements.
 2. Blue Book: the rule's enum description is "Provider Fee" (25.3) and the grid row now says "Standard provider fee" (25.4). Should the registry owner change the description to "Standard Provider Fee" too, so the double-click message matches?
 3. Is "(no write-offs)" acceptable in place of "(zero out write-offs)" in the three preference check boxes, or should the check boxes be widened and keep the old phrase?
+
+## Integration (branch `port/int-9`)
+
+- Merged first of the four packages of this round (M2-TERM, M2-SHEETS, V-EDS, M2-CLAIMRCV) onto `port/int-8`, with no conflicts and no integration commit of its own.
+- **M2-SHEETS** (merged next) edits other lines of `SheetDrawingJob.cs`: its text helper (`SheetTextDrawing`) and this package's `DisplayFields26_1.GetColumnText` header in `DrawFieldGridHelper` sit side by side, and both packages' source checks pass on the merged file.
+- **B-CLAIM** (on `port/int-8`) adds a check box to Preferences > Account > Claim Receive, not to the Claim Send or Family Insurance controls changed here.
+- No fork migration step, schema or row change, so the adoption tools need nothing new. On the merged head: one full build of `OpenDental.Local.slnf` through the build lane (0 errors), `run-tests -Mode Full` (69 assemblies, 3642 tests, none failed; the 2 skipped are M201Tests' published-document checks, skipped as on earlier heads) and `tools/Test-NoHqHosts.ps1` (passed). `M2TERMTests` 21 of 21.

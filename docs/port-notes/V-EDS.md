@@ -172,3 +172,16 @@ Not tested: the windows themselves (FormEdsValidation, the Edit Claim and Send C
    - the office keeps its own list, for example a new procedure-code flag or a preference (foundation-owned schema);
    - EDS's answers are remembered per payer and procedure code across claims (and persisted, see question 5);
    - the check stays as it is.
+
+## Integration (branch `port/int-9`)
+
+- Merged onto `port/int-8` (which adds B-CLAIM) after M2-TERM and M2-SHEETS, with no conflicts: `FormClaimEdit.cs` keeps this package's three insertions beside B-CLAIM's Medical EOB hook, and M2-CLAIMRCV (merged next) changes other lines of it.
+- **B-CLAIM**: its Medical EOB attachments are ordinary `claimattach` rows, so the EDS checks and the attachment window see them like any other attachment. Nothing to connect.
+- **M2-CLAIMRCV** (integration commit): the "Send claim(s) now" choice of the prompt for the next insurance's claims (`ClaimL.PromptForPrimaryOrSecondaryClaim`) now validates the claims that go to EDS before sending, as the Interplay section above describes. New `EdsValidationL.FilterQueueItemsForSend`, called right after the XConnect filter (`FilterQueueItemsByXConnect`) and before `SendClaimSendQueueItems`:
+  - it runs `ValidateBatchForSend(listQueueItems,0)` (each claim's own clearinghouse) and keeps the claims that do not go to EDS plus the EDS claims allowed; claims with errors, a cancelled validation and claims no longer waiting to send (`ListClaimNumsNotWaiting`) are not sent;
+  - the prompt has set the claims to Waiting to Send just before, so they pass the waiting-to-send rule; the window opens as from Send Claims (modal, Edit Claim opens the claim);
+  - not inside `SendClaimSendQueueItems`, so the Send Claims window does not validate twice;
+  - known limits: the prompt's queue items carry no Missing Info yet, so format problems stay with the 24.3 refusal in `SendClaimSendQueueItems` ("Not allowed to send e-claims with missing information") instead of the window's "Claim data" row; and the not-sendable row's advice ("Refresh the Send Claims window") is worded for the Send Claims window.
+  - Checked by `EdsWiringTests.NextInsurancePrompt_ValidatesEdsClaimsBeforeSending`.
+- **One claim status text** (integration commit): M2-CLAIMRCV added `ClaimReceiveRelated.GetClaimStatusText` for the 26.1 "Hold Until Prior Received" text. The "no longer waiting to send" message (`EdsClaimValidation.GetClaimStatusText`) now takes its text from it, so a held claim reads the same there as in Edit Claim (`EdsDbTests` checks it).
+- No fork migration step, schema or row change, so the adoption tools need nothing new. On the merged head: one full build of `OpenDental.Local.slnf` through the build lane (0 errors), `run-tests -Mode Full` (69 assemblies, 3642 tests, none failed; the 2 skipped are M201Tests' published-document checks, skipped as on earlier heads) and `tools/Test-NoHqHosts.ps1` (passed). `VEDSTests` 83 of 83, `VendorDirectTests` 873.
