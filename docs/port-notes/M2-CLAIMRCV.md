@@ -97,6 +97,7 @@ Related existing assemblies run for this package: `VendorDirectTests` (pins the 
 - Merged `port/int-7` at `1763cc7ae` (every package merged so far) with no conflicts. Of the files this package changes, B-ERA, M2-ERA, M2-EST and B-PERIO changed `Claims.cs`, `Etranss.cs`, `ClaimProcs.cs` or `FormClaimEdit.cs` elsewhere; none of their lines meet this package's.
 - Review finding fixed: the dropped-primary regression (INFERRED behaviours, Dropped plans). The first fix kept the secondary claim after a primary claim only when its ordinal was not above the primary claim's; that still let a tertiary claim come with the secondary claim when the secondary plan was dropped (both at ordinal 2). `GetClaimPlace` orders dropped plans, so the 24.3 exception is now needed only for reordered plans and when both plans were dropped.
 - No schema change, no fork migration step and no adoption change, so the adoption tools need nothing for this package.
+- Checked on the merged branch: full build of `OpenDental.Local.slnf` through the build lane, `run-tests -Mode Core` (61 assemblies, every test passed, including `M2CLAIMRCVTests` 50/50, `M2ERATests`, `BERATests`, `VendorDirectTests` and `ImagingTests`), and `tools/Test-NoHqHosts.ps1`.
 
 Not tested: the prompt window itself (an `InputBox` dialog) and the Preferences window layout; they were not opened, because the GUI is not launched in package work.
 
