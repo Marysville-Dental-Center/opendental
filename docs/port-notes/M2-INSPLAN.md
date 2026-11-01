@@ -137,5 +137,5 @@ Branch `port/m2-insplan-t1` from `port/m2-insplan`, with `port/int-11` (c2044cf9
 On `port/m2-insplan-t1` (2026-11-01):
 
 - One full build of `OpenDental.Local.slnf` through the build lane (Debug, x86): 0 errors.
-- `run-tests.ps1 -Mode Core` (`test-results/port_m2-insplan-t1.txt`): see the result file; M2INSPLANTests 31 of 31, NoHqTests 49 of 49. No migration, schema, CRUD or adoption code changed, so the slow assemblies were not added.
+- `run-tests.ps1 -Mode Core` (`test-results/port_m2-insplan-t1.txt`): 70 assemblies, 3,704 tests, 3,704 passed, 0 failed. Among them M2INSPLANTests 31/31, M2TERMTests 21/21, M2HISTTests 43/43, M2INSVTests 17/17, M2CLAIMRCVTests 50/50, VBRIDGE1Tests 37/37, VendorDirectTests 873/873, NoHqTests 49/49. No migration, schema, CRUD or adoption code changed, so the slow assemblies were not added.
 - `tools/Test-NoHqHosts.ps1`: passed.
