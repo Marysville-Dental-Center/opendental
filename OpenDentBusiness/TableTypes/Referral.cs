@@ -23,7 +23,7 @@ namespace OpenDentBusiness{
 		public long Specialty;
 		///<summary>State</summary>
 		public string ST;
-		///<summary>Primary phone, restrictive, must only be 10 digits and only numbers.</summary>
+		///<summary>Primary phone, up to 30 characters since 25.4, with formatting and extensions like the other phone fields. A plain 10-digit number is stored as the 10 digits and shown in the office phone format (ReferralPhones).</summary>
 		public string Telephone;
 		///<summary>.</summary>
 		public string Address;

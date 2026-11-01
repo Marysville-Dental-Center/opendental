@@ -4071,7 +4071,7 @@ namespace OpenDentBusiness {
 				referral.ST=patientTo.State;
 				referral.SSN=patientTo.SSN;
 				referral.Zip=patientTo.Zip;
-				referral.Telephone=TelephoneNumbers.FormatNumbersExactTen(patientTo.HmPhone);
+				referral.Telephone=ReferralPhones.FromPatientPhone(patientTo.HmPhone);//25.4: the same copy as Edit Referral (up to 30 characters)
 				referral.EMail=patientTo.Email;
 				Referrals.Update(referral);
 				Referrals.RefreshCache();
@@ -5387,7 +5387,7 @@ namespace OpenDentBusiness {
 				referral.ST=patient.State;
 				referral.SSN=patient.SSN;
 				referral.Zip=patient.Zip;
-				referral.Telephone=TelephoneNumbers.FormatNumbersExactTen(patient.HmPhone);
+				referral.Telephone=ReferralPhones.FromPatientPhone(patient.HmPhone);//25.4: the same copy as Edit Referral (up to 30 characters)
 				referral.EMail=patient.Email;
 				Referrals.Update(referral);
 				Referrals.RefreshCache();
