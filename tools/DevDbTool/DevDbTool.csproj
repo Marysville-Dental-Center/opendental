@@ -2,7 +2,8 @@
 <!--
   DevDbTool: builds a local development database for this codebase from the seed dump in
   UnitTests\Resources\dump.txt, then upgrades it with the convert scripts in OpenDentBusiness.
-  Run it through tools\New-DevDatabase.ps1. It is deliberately not part of OpenDental.sln.
+  Run it through tools\New-DevDatabase.ps1, which builds it on its own. It is also in OpenDental.sln
+  and OpenDental.Local.slnf, so that every solution build compiles it and catches a break early.
 -->
 <Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />

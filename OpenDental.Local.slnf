@@ -103,6 +103,7 @@
       "tests\\VPEARL2Tests\\VPEARL2Tests.csproj",
       "tools\\AdoptionValidation\\AdoptionValidation.csproj",
       "tools\\AdoptionValidation\\AdoptionValidation.Tests\\AdoptionValidation.Tests.csproj",
+      "tools\\DevDbTool\\DevDbTool.csproj",
       "tools\\SyntheticData\\SyntheticData.csproj",
       "tools\\SyntheticData\\SyntheticData.Tests\\SyntheticData.Tests.csproj",
       "UnitTests\\UnitTests.csproj",
