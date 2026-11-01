@@ -98,3 +98,8 @@ Not available: the Medi-Cal Dental Provider Handbook, section 6 (forms), named i
 2. Calibration: please print a test claim on 10/19 stock and report any shift; small shifts go into Offset X/Y, a box in the wrong place into the shipped positions. If the handbook's section 6 PDF can be supplied (it is public), the positions can be checked against it.
 3. Arch and quadrant: area codes (01, 10, ...) as now, or letters (UA/LA, UR/UL/LL/LR) in the tooth box?
 4. Boxes not printed (share of cost, other-coverage amount, a separate billing-provider signature date, TAR/NOA document control numbers): are any needed on paper?
+
+## Integration (branch `port/int-6`)
+
+- Merged without conflicts or code changes. The `FormClaimPrint.cs` fix sits next to M2-CAN's one-line change of the `Code` field (RAMQ codes print without their trailing R); both are kept, and `M2CLAIMFORMTests` and `SheetTests` pass on the merged branch.
+- The premise of question 1 changed: B-SHELL (merged on `port/int-5`) made `ForkMigrationRunner.ValidateStep` accept the package ranges (`yyyy00PPNN` from 2027 on), so the step shown under "Deviations" would now validate at level 2027003601. It is still not added: whether every office gets the form automatically is the owner's question, and the step would add `claimform` and `claimformitem` rows on adopted Open Dental 25.3.48 databases, which the M1-Z adoption tools (`migration-preview`, adopt's row check, `allowed-differences.adoption.json`) would then have to plan and check, as they now do for M2-UDS's report row.
