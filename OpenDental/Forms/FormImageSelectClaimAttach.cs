@@ -96,6 +96,9 @@ namespace OpenDental{
 				MsgBox.Show(this,"The file on the clipboard could not be located. It may have been moved, deleted or renamed.");
 				return null;
 			}
+			if(ClaimAttachDicom.IsDicomFileName(fileName)) {//CLAIM-DCM: a DICOM file is pasted as its 8-bit copy; null (after a message) if unreadable.
+				return ClaimAttachDicomL.GetBitmapForFile(this,_patient,fileName);
+			}
 			try {
 				bitmapClipboard?.Dispose();
 				bitmapClipboard=new Bitmap(fileName);//Create a bitmap of the original file to avoid the transparency bug with the image class
@@ -152,6 +155,10 @@ namespace OpenDental{
 				return;
 			}
 			string patientfolder=ImageStore.GetPatientFolder(_patient,ImageStore.GetPreferredAtoZpath());
+			if(ClaimAttachDicom.IsDicomFileName(document.FileName)) {//CLAIM-DCM: an 8-bit JPEG copy is attached, never the DICOM file.
+				SaveAttachmentDicom(document,patientfolder);
+				return;
+			}
 			if(!ImageHelper.HasImageExtension(document.FileName)){
 				if(CanAttachTxt && Path.GetExtension(document.FileName).ToLower()==".txt") {
 				}
@@ -265,6 +272,70 @@ namespace OpenDental{
 			//Upload was successful
 			ClaimAttachNew=new ClaimAttach();
 			ClaimAttachNew.DisplayedFileName=document.FileName;
+			ClaimAttachNew.ActualFileName=newName;
+			DialogResult=DialogResult.OK;
+		}
+
+		///<summary>CLAIM-DCM: attaches a DICOM document as an 8-bit JPEG copy (ClaimAttachDicom.BuildClaimAttachFile: the stored window, crop,
+		///rotation and flip, read through the Imaging module's DICOM path). The copy goes into the EmailAttachments folder under a new .jpg name;
+		///the DICOM file and its document are not changed. A file that cannot be read shows a message and nothing is attached.</summary>
+		private void SaveAttachmentDicom(Document document,string patientFolder) {
+			ClaimAttachDicomFile claimAttachDicomFile=null;
+			try {
+				if(CloudStorage.IsCloudStorage) {
+					UI.ProgressWin progressWinDownload=new UI.ProgressWin();
+					progressWinDownload.StartingMessage="Downloading...";
+					progressWinDownload.ActionMain=() => claimAttachDicomFile=ClaimAttachDicom.BuildClaimAttachFile(document,patientFolder);
+					progressWinDownload.ShowDialog();
+					if(progressWinDownload.IsCancelled) {
+						return;
+					}
+				}
+				else {
+					claimAttachDicomFile=ClaimAttachDicom.BuildClaimAttachFile(document,patientFolder);
+				}
+			}
+			catch(ODException ex) {
+				MessageBox.Show(this,ex.Message);
+				return;
+			}
+			catch(Exception ex) {
+				MessageBox.Show(this,ClaimAttachDicom.GetUnreadableMessage(document.FileName)+"\r\n"+ex.Message);
+				return;
+			}
+			if(claimAttachDicomFile==null) {
+				return;
+			}
+			Random random=new Random();
+			string newName=DateTime.Now.ToString("yyyyMMdd")+"_"+DateTime.Now.TimeOfDay.Ticks.ToString()+random.Next(1000).ToString()
+				+ClaimAttachDicom.JpegExtension;
+			string attachPath=EmailAttaches.GetAttachPath();
+			if(CloudStorage.IsCloudStorage) {
+				UI.ProgressWin progressWin=new UI.ProgressWin();
+				progressWin.StartingMessage="Uploading Image for Claim Attach...";
+				progressWin.ActionMain=() => CloudStorage.Upload(attachPath,newName,claimAttachDicomFile.FileBytes);
+				try {
+					progressWin.ShowDialog();
+				}
+				catch(Exception ex) {
+					MessageBox.Show(this,ex.Message);
+					return;
+				}
+				if(progressWin.IsCancelled) {
+					return;
+				}
+			}
+			else {
+				try {
+					File.WriteAllBytes(ODFileUtils.CombinePaths(attachPath,newName),claimAttachDicomFile.FileBytes);
+				}
+				catch(Exception ex) {
+					MessageBox.Show(this,ex.Message);
+					return;
+				}
+			}
+			ClaimAttachNew=new ClaimAttach();
+			ClaimAttachNew.DisplayedFileName=claimAttachDicomFile.DisplayedFileName;
 			ClaimAttachNew.ActualFileName=newName;
 			DialogResult=DialogResult.OK;
 		}
@@ -446,6 +517,14 @@ namespace OpenDental{
 			}
 			importFilePath=openFileDialog.FileName;
 			string selectedFilePath=importFilePath;
+			if(ClaimAttachDicom.IsDicomFileName(selectedFilePath)) {
+				//CLAIM-DCM: imported into the patient's images as the DICOM it is, then attached as an 8-bit copy (SaveAttachmentDicom). A file
+				//that cannot be read is neither imported nor attached.
+				if(ClaimAttachDicomL.CanReadFile(this,selectedFilePath)) {
+					ImportDocument(selectedFilePath);
+				}
+				return;
+			}
 			try {
 				Bitmap bitmap=(Bitmap)Image.FromFile(selectedFilePath);
 				bitmap.Dispose();

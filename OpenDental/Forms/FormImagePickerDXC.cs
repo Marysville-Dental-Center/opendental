@@ -94,6 +94,10 @@ namespace OpenDental {
 				if(DxcPdfAttachment.IsPdfFileName(documentSelected.FileName)) {//Open Dental 26.1.64: PDFs can be sent; they show as a PDF icon.
 					bitmap=DxcPdfAttachment.CreatePreviewBitmap(400,520,documentSelected.Description);
 				}
+				else if(ClaimAttachDicom.IsDicomFileName(documentSelected.FileName)) {
+					//CLAIM-DCM: the 8-bit copy that would be sent. No preview when the file cannot be read; Send says why.
+					bitmap=ClaimAttachDicomL.GetBitmapForDocument(this,documentSelected,_patFolder,doIncludeDrawings:true,doShowMessage:false);
+				}
 				else {
 					bitmap=ImageHelper.GetBitmapOfDocumentFromDb(docNum);
 				}
@@ -106,7 +110,8 @@ namespace OpenDental {
 			}
 			if(nodeType==EnumImageNodeType.Mount) {
 				long mountNum=priKey;
-				Bitmap bitmap=MountHelper.GetBitmapOfMountFromDb(mountNum);
+				//CLAIM-DCM: a DICOM image in the mount that cannot be read leaves its slot empty in the preview instead of throwing; Send refuses it.
+				Bitmap bitmap=MountHelper.GetBitmapOfMountFromDb(mountNum,new List<Document>());
 				pictureBox.Image?.Dispose();
 				pictureBox.Image=bitmap;
 				Mount mount=Mounts.GetByNum(mountNum);
@@ -211,6 +216,8 @@ namespace OpenDental {
 			Bitmap bitmap=null;
 			//Open Dental 26.1.64: a PDF's own bytes, from the patient's images or from disk, sent as they are. Null for images and mounts.
 			byte[] arrayBytesPdf=null;
+			//CLAIM-DCM: true for a DICOM document, which is sent as its 8-bit copy and never named as the claim attachment's file.
+			bool isDicomDocument=false;
 			if(_pathFileFromDisk!=null) {//Send File: a PDF or an image from disk.
 				fileName=Path.GetFileName(_pathFileFromDisk);
 				if(DxcPdfAttachment.IsPdfFileName(fileName)) {
@@ -219,6 +226,12 @@ namespace OpenDental {
 					}
 					catch(ODException ex) {
 						MessageBox.Show(this,ex.Message);
+						return false;
+					}
+				}
+				else if(ClaimAttachDicom.IsDicomFileName(fileName)) {//CLAIM-DCM: sent as its 8-bit copy (a JPEG, like every image here).
+					bitmap=ClaimAttachDicomL.GetBitmapForFile(this,PatientCur,_pathFileFromDisk);
+					if(bitmap==null) {//the message was shown
 						return false;
 					}
 				}
@@ -247,6 +260,14 @@ namespace OpenDental {
 						return false;
 					}
 				}
+				else if(ClaimAttachDicom.IsDicomFileName(fileName)) {
+					//CLAIM-DCM: the 8-bit copy with the stored window, crop, rotation, flip and drawings, as other images are sent.
+					isDicomDocument=true;
+					bitmap=ClaimAttachDicomL.GetBitmapForDocument(this,document,_patFolder,doIncludeDrawings:true);
+					if(bitmap==null) {//the message was shown
+						return false;
+					}
+				}
 				else if(!fileName.ToLower().EndsWith(".bmp")
 					&& !fileName.ToLower().EndsWith(".gif")
 					&& !fileName.ToLower().EndsWith(".jpeg")
@@ -258,12 +279,19 @@ namespace OpenDental {
 					MsgBox.Show(this,"The selected file type is invalid. Valid file types include PDF, BMP, GIF, JPEG, PNG, TIFF, TIF, and JPG.");
 					return false;
 				}
-				if(arrayBytesPdf==null) {
+				if(arrayBytesPdf==null && !isDicomDocument) {
 					bitmap=ImageHelper.GetBitmapOfDocumentFromDb(_docNumSelected);
 				}
 			}
 			else {
-				bitmap=MountHelper.GetBitmapOfMountFromDb(_mountNumSelected);
+				//CLAIM-DCM: a mount with a DICOM image that cannot be read is not sent.
+				List<Document> listDocumentsDicomUnreadable=new List<Document>();
+				bitmap=MountHelper.GetBitmapOfMountFromDb(_mountNumSelected,listDocumentsDicomUnreadable);
+				if(listDocumentsDicomUnreadable.Count>0) {
+					bitmap?.Dispose();
+					MessageBox.Show(this,ClaimAttachDicomL.GetMountUnreadableMessage(listDocumentsDicomUnreadable));
+					return false;
+				}
 			}
 			if(string.IsNullOrWhiteSpace(textFileName.Text)) {
 				MsgBox.Show(this,"Enter the filename for this attachment.");
@@ -331,10 +359,11 @@ namespace OpenDental {
 				defNumImageType=defClaimAttachCat.DefNum;
 			}
 			//Documents are already saved in A-Z folder.
-			if(_docNumSelected>0) {
+			if(_docNumSelected>0 && !isDicomDocument) {
 				_claimConnectImageAttachment.ImageFileNameActual=Documents.GetByNum(_docNumSelected).FileName;
 			}
-			//Saves mount bitmap (or a file sent from disk) to A-Z folder.
+			//Saves mount bitmap (or a file sent from disk) to A-Z folder. CLAIM-DCM: a DICOM document is saved as the 8-bit copy that was sent,
+			//like a mount, so the claim attachment never names the DICOM file itself.
 			else if(PrefC.GetBool(PrefName.SaveDXCAttachments)) {
 				//Mounts get saved to the Claim Attachment image category. This is set by the user in Setup->Definitions->Image Categories.
 				Document documentCur;
@@ -376,7 +405,7 @@ namespace OpenDental {
 			}
 			using OpenFileDialog openFileDialog=new OpenFileDialog();
 			openFileDialog.Multiselect=false;
-			openFileDialog.Filter=Lan.g(this,"PDF and image files")+"|*.pdf;*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tif;*.tiff|"+Lan.g(this,"All files")+"|*.*";
+			openFileDialog.Filter=Lan.g(this,"PDF and image files")+"|*.pdf;*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tif;*.tiff;*.dcm|"+Lan.g(this,"All files")+"|*.*";
 			if(PrefC.AtoZfolderUsed==DataStorageType.LocalAtoZ && !string.IsNullOrEmpty(_patFolder) && Directory.Exists(_patFolder)) {
 				openFileDialog.InitialDirectory=_patFolder;
 			}

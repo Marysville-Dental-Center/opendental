@@ -216,6 +216,12 @@ namespace OpenDentBusiness {
 
 		///<summary>In version 21.4, we changed how crop was calculated. This requires db conversion for each crop, but that was impossible in the script. So this is a lazy conversion. We do not dispose of the bitmap here. If crop was needed, then it saves that to the db as well as altering the document passed in.</summary>
 		public static void ConvertCropIfNeeded(Document document,Bitmap bitmap){
+			ConvertCropIfNeeded(document,bitmap,doSave:true);
+		}
+
+		///<summary>ConvertCropIfNeeded. With doSave false the conversion only alters the document passed in and nothing is saved to the db
+		///(CLAIM-DCM: the 8-bit claim copy of a DICOM image is rendered on a copy of its document, which must not change the stored one).</summary>
+		public static void ConvertCropIfNeeded(Document document,Bitmap bitmap,bool doSave){
 			if(document is null || bitmap is null){
 				return;
 			}
@@ -224,7 +230,9 @@ namespace OpenDentBusiness {
 			}
 			if(document.CropW==0 || document.CropH==0){
 				document.IsCropOld=false;
-				Documents.Update(document);
+				if(doSave){
+					Documents.Update(document);
+				}
 				return;
 			}
 			Size sizeBitmap=bitmap.Size;
@@ -239,7 +247,9 @@ namespace OpenDentBusiness {
 				document.CropY=document.CropY+document.CropH/2;//to center of crop
 				document.CropY=sizeBitmap.Height/2-document.CropY;//it's now relative to center of image and flipped coord system
 				document.IsCropOld=false;
-				Documents.Update(document);
+				if(doSave){
+					Documents.Update(document);
+				}
 			}
 			if(document.DegreesRotated==90){
 				if(document.IsFlipped){
@@ -260,7 +270,9 @@ namespace OpenDentBusiness {
 				document.CropW=document.CropH;
 				document.CropH=w;
 				document.IsCropOld=false;
-				Documents.Update(document);
+				if(doSave){
+					Documents.Update(document);
+				}
 			}
 			if(document.DegreesRotated==180){
 				if(document.IsFlipped){
@@ -275,7 +287,9 @@ namespace OpenDentBusiness {
 				document.CropY=-sizeBitmap.Height/2 //from center of image to newly located UL corner of image
 					+document.CropY+document.CropH/2;//then to center of newly positioned crop
 				document.IsCropOld=false;
-				Documents.Update(document);
+				if(doSave){
+					Documents.Update(document);
+				}
 			}
 			if(document.DegreesRotated==270){
 				if(document.IsFlipped){
@@ -296,7 +310,9 @@ namespace OpenDentBusiness {
 				document.CropW=document.CropH;
 				document.CropH=w;
 				document.IsCropOld=false;
-				Documents.Update(document);
+				if(doSave){
+					Documents.Update(document);
+				}
 			}
 		}
 
@@ -567,11 +583,17 @@ namespace OpenDentBusiness {
 		///8 bit color function of ApplyDocumentSettingsToImage is left out, because the window already is the image's brightness and contrast.
 		///The returned image is new; bitmapDicom is not changed.</summary>
 		public static Bitmap GetImageCroppedDicom(Document document,BitmapDicom bitmapDicom) {
+			return GetImageCroppedDicom(document,bitmapDicom,doSaveCropConversion:true);
+		}
+
+		///<summary>GetImageCroppedDicom. With doSaveCropConversion false, a pre-21.4 crop is converted in the document passed in only and nothing is
+		///saved to the db (ConvertCropIfNeeded with doSave false; CLAIM-DCM renders claim copies on a copy of the document).</summary>
+		public static Bitmap GetImageCroppedDicom(Document document,BitmapDicom bitmapDicom,bool doSaveCropConversion) {
 			if(document==null || bitmapDicom==null) {
 				return null;
 			}
 			using Bitmap bitmapWindowed=DicomHelper.ApplyWindowing(bitmapDicom,document.WindowingMin,document.WindowingMax);
-			ConvertCropIfNeeded(document,bitmapWindowed);
+			ConvertCropIfNeeded(document,bitmapWindowed,doSaveCropConversion);
 			return ApplyDocumentSettingsToImage(document,bitmapWindowed,ImageSettingFlags.CROP | ImageSettingFlags.FLIP | ImageSettingFlags.ROTATE);
 		}
 

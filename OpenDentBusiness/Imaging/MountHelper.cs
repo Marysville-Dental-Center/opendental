@@ -6,6 +6,7 @@ using System.Drawing.Text;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using CodeBase;
 
 namespace OpenDentBusiness {
 	///<summary>Most of these methods are simplified copies of methods found in ControlImagesJ.</summary>
@@ -124,16 +125,38 @@ namespace OpenDentBusiness {
 		}
 
 		public static Bitmap GetBitmapOfMountFromDb(long mountNum){
+			return GetBitmapOfMountFromDb(mountNum,null);
+		}
+
+		///<summary>GetBitmapOfMountFromDb. When listDocumentsDicomUnreadable is not null (CLAIM-DCM: a mount sent as a claim attachment), every
+		///DICOM document of the mount whose file cannot be read is added to it instead of throwing or silently leaving its slot empty, so the
+		///caller can say so and not attach the mount.</summary>
+		public static Bitmap GetBitmapOfMountFromDb(long mountNum,List<Document> listDocumentsDicomUnreadable){
 			Mount mount=Mounts.GetByNum(mountNum);
 			Patient patient=Patients.GetPat(mount.PatNum);
 			string patFolder=ImageStore.GetPatientFolder(patient,ImageStore.GetPreferredAtoZpath());
 			List<ImageDraw> listImageDraws=ImageDraws.RefreshForMount(mount.MountNum);
 			List<MountItem> listMountItems=MountItems.GetItemsForMount(mount.MountNum);
 			List<Document> listDocuments=Documents.GetDocumentsForMountItems(listMountItems).ToList();
-			Bitmap[] bitmapArray=new Bitmap[listDocuments.Count]; 
+			Bitmap[] bitmapArray=new Bitmap[listDocuments.Count];
 			for(int i=0;i<listDocuments.Count;i++){
 				if(listDocuments[i]==null){
 					bitmapArray[i]=null;
+					continue;
+				}
+				if(listDocumentsDicomUnreadable!=null && ClaimAttachDicom.IsDicomFileName(listDocuments[i].FileName)){
+					try{
+						bitmapArray[i]=LoadBitmap(isSingleDoc:false,listDocuments[i],patFolder);
+					}
+					catch(Exception ex){
+						ex.DoNothing();
+						bitmapArray[i]=null;
+					}
+					if(bitmapArray[i]==null){
+						listDocumentsDicomUnreadable.Add(listDocuments[i]);
+						continue;
+					}
+					ImageHelper.ConvertCropIfNeeded(listDocuments[i],bitmapArray[i]);
 					continue;
 				}
 				bitmapArray[i]=LoadBitmap(isSingleDoc:false,listDocuments[i],patFolder);

@@ -482,6 +482,13 @@ namespace OpenDental {
 				AddPdfAttachment(selectedFile);
 				return;
 			}
+			if(ClaimAttachDicom.IsDicomFileName(selectedFile)) {//CLAIM-DCM: a DICOM X-ray is attached as its 8-bit copy, sent as a JPEG.
+				using Bitmap bitmapCopy=ClaimAttachDicomL.GetBitmapForFile(this,_patient,selectedFile);
+				if(bitmapCopy!=null) {//null after a message when the file cannot be read
+					ShowImageAttachmentItemEdit(bitmapCopy);
+				}
+				return;
+			}
 			//There is purposely no validation that the user selected an image as that will be handled on the clearinghouse's end.
 			try {
 				using Bitmap bitmap=(Bitmap)Image.FromFile(selectedFile);
@@ -559,6 +566,9 @@ namespace OpenDental {
 			if(!File.Exists(fileName)) {
 				MsgBox.Show(this,"The file on the clipboard could not be located. It may have been moved, deleted or renamed.");
 				return null;
+			}
+			if(ClaimAttachDicom.IsDicomFileName(fileName)) {//CLAIM-DCM: a DICOM file is pasted as its 8-bit copy; null (after a message) if unreadable.
+				return ClaimAttachDicomL.GetBitmapForFile(this,_patient,fileName);
 			}
 			try {
 				bitmapClipboard?.Dispose();

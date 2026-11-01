@@ -128,17 +128,27 @@ namespace OpenDental {
 					MsgBox.Show(this,"A file on the clipboard could not be located. It may have been moved, deleted or renamed.");
 					return false;
 				}
-				Bitmap bitmapFromFile;
-				try {
-					bitmapFromFile=new Bitmap(listFilePaths[i]);
+				Bitmap bitmapCopy;
+				if(ClaimAttachDicom.IsDicomFileName(listFilePaths[i])) {
+					//CLAIM-DCM: a DICOM X-ray is pasted as its 8-bit copy, sent as a JPEG like every pasted image. Unreadable: a message, nothing pasted.
+					bitmapCopy=ClaimAttachDicomL.GetBitmapForFile(this,PatientCur,listFilePaths[i]);
+					if(bitmapCopy==null) {
+						return false;
+					}
 				}
-				catch(ArgumentException) {
-					MsgBox.Show(this,"One or more invalid file types were pasted. Valid file types include BMP, GIF, JPEG, PNG, and TIFF.");
-					return false;
+				else {
+					Bitmap bitmapFromFile;
+					try {
+						bitmapFromFile=new Bitmap(listFilePaths[i]);
+					}
+					catch(ArgumentException) {
+						MsgBox.Show(this,"One or more invalid file types were pasted. Valid file types include BMP, GIF, JPEG, PNG, and TIFF.");
+						return false;
+					}
+					//We need to release the file lock.
+					bitmapCopy=new Bitmap(bitmapFromFile);
+					bitmapFromFile?.Dispose();
 				}
-				//We need to release the file lock.
-				Bitmap bitmapCopy=new Bitmap(bitmapFromFile);
-				bitmapFromFile?.Dispose();
 				string imageName;
 				try {
 					imageName=Path.GetFileNameWithoutExtension(listFilePaths[i]);
