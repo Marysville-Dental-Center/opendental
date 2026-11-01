@@ -36,9 +36,10 @@ Usage:
 Commands:
   rehearse       Generate a synthetic Open Dental 25.3.48 database (default: medium), record its baseline, copy it the way the
                  runbook does (default; --copy dump backs it up with mariadb-dump and restores it instead), adopt the copy (the
-                 same code as the adopt command), and validate: row counts, checksums, business totals, the rows adoption may
-                 change, the 24.4-25.3 columns through OpenDentBusiness, the dropped office column, the removed update files, the
-                 version sentinels and an Open Dental-style startup check. Then everything a second time on the adopted copy.
+                 same code as the adopt command; its fork migration brings it to the Open Dental 26.1.70 schema), and validate:
+                 row counts, checksums, business totals, the rows adoption may change, the 24.4-25.3 columns through
+                 OpenDentBusiness, the dropped office column, the removed update files, the version sentinels and an Open
+                 Dental-style startup check. Then everything a second time on the adopted copy.
                  Repeats the whole run --runs times (default 2) and checks the runs agree. Every step is timed. Writes
                  rehearsal-result.json, rehearsal-result.md and the reports to --out. Scratch databases are named
                  <prefix><tag>_r<n>_src, _adopted and _snap and are dropped afterwards unless --keep.
@@ -50,15 +51,20 @@ Commands:
                  Lists what adoption's fork migration will change in the rows of DB, an Open Dental 25.3.48 database (runbook step
                  0.2): the displayreport rows of Production by Procedure, Procedures (individual) and Insurance Pending
                  Supplementals that Open Dental wrote under an internal name this program does not know, which step 2026101971
-                 renames (InternalName only); adopt's row check later requires exactly these renames. Read-only. Exit code 0.
+                 renames (InternalName only); the Open Dental 25.4 and 26.1 schema (new tables and columns, NULL claim payment
+                 notes made empty); the 25.4 and 26.1 preferences step 2026102501 inserts, and its blockout permission split
+                 (PhoneExtension grants moved from 272 to 274, BlockoutAdd and BlockoutDelete granted). adopt's row check later
+                 requires exactly these changes. Read-only. Exit code 0.
   copy           Copies ORIGINAL into the NEW database on the same server (runbook step 3.2): CREATE TABLE ... LIKE, the
                  AUTO_INCREMENT counters and INSERT ... SELECT, so the copy is exact (FLOAT values included) and no row leaves the
                  server. Refuses a name that exists, a missing original, the same name twice, any connection to either, and
                  views, triggers, routines or events it would not carry; then checks every table's row count and AUTO_INCREMENT.
   adopt          Adopts the copy without starting the program (runbook steps 4 and 5): Adoption.Preflight and Adoption.Run,
-                 the fork migration with every step again, the schema verifier and SecurityHash.RehashNow, exactly as the rehearsal
-                 does, then checks row by row against --original what adoption changed in preference, documentmisc, securitylog,
-                 securityloghash, displayreport (only the renames migration-preview lists) and updatehistory. Before it changes
+                 the fork migration with every step again, the schema verifier (Open Dental 26.1.70) and SecurityHash.RehashNow,
+                 exactly as the rehearsal does, then checks row by row against --original what adoption changed in preference,
+                 documentmisc, securitylog, securityloghash, displayreport (only the renames migration-preview lists),
+                 grouppermission (only the permission split it lists), claimpayment.Note and DateLastAssigned, the new tables and
+                 columns (empty, at their defaults) and updatehistory. Before it changes
                  anything it checks that --confirm repeats --database, that --original is a different, unadopted Open Dental
                  database, that nobody else is connected to either, and that a copy not adopted yet has the original's tables and
                  row counts. On a finished adoption it changes nothing but its security log entry. If it stops or fails, do not
@@ -66,8 +72,8 @@ Commands:
                  to FILE.
   credentials    Lists the stored passwords of a database that the fork cannot read (to re-enter after adoption). Read-only;
                  names and rows only, never values.
-  startup-check  Shows what an Open Dental client of each version would do at startup on the database (the model of its
-                 version checks). Read-only. Exit code 0 when every Open Dental release client refuses the database, 6 when one
+  startup-check  Shows what an Open Dental client of each version (24.3.63, 25.3.48, 25.4, and 26.1.70, the schema an adopted
+                 database has) would do at startup on the database (the model of its version checks). Read-only. Exit code 0 when every Open Dental release client refuses the database, 6 when one
                  would use it.
   restore        Restores a backup file as a NEW database. Refuses a database name that exists, and a file that names a database
                  (USE, CREATE/DROP/ALTER DATABASE, a table name qualified with a database): a --databases or --all-databases dump

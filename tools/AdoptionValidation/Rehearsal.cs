@@ -9,6 +9,7 @@ using System.Reflection;
 using OpenDentBusiness;
 using OpenDentBusiness.ForkMigrations;
 using OpenDentBusiness.ForkMigrations.Features;
+using OpenDentBusiness.ForkMigrations.Seeds26_1;
 using SyntheticData.Generation;
 using SyntheticData.Infrastructure;
 using SyntheticData.Validation;
@@ -224,11 +225,13 @@ namespace AdoptionValidation {
 					+migrationResult.ListChanges.Count+" changes"+(migrationResult.ListChanges.Count==0 ? "" : ": "+string.Join("; ",migrationResult.ListChanges.Take(10))));
 				SchemaVerifyResult verifyResult=adoption.Verify;
 				_run.SchemaVerifierReport=verifyResult.GetReport();
-				Check("M2","Schema matches Open Dental 25.3.48 exactly",verifyResult.IsMatch && verifyResult.ListDifferences.Count==0,
+				//The source is Open Dental 25.3.48; adoption's fork migration brings it to the current reference (26.1.70 since M2-01).
+				Check("M2","Schema matches Open Dental "+SchemaVerifier.ReferenceVersion+" exactly",verifyResult.IsMatch && verifyResult.ListDifferences.Count==0,
 					verifyResult.CountTablesActual+" of "+verifyResult.CountTablesExpected+" tables; "+verifyResult.ListDifferences.Count+" differences, "
 					+verifyResult.ListMismatches.Count+" mismatches"+(verifyResult.ListDifferences.Count==0 ? " (no documented exception needed)" : ": "
 					+string.Join("; ",verifyResult.ListDifferences.Take(10).Select(x => x.Table+"."+x.Item))));
 				CheckReportRenames(preview,adoption,adoptionResult);
+				Check26_1Changes(preview,adoption,adoptionResult,fixture);
 				//7. Rehash (Database Maintenance, Tools, Security Hashes), done by HeadlessAdoption above.
 				_run.ListHashesBefore=adoption.ListHashesStart;
 				_run.ListHashesAfter=adoption.ListHashesAfter;
@@ -257,7 +260,8 @@ namespace AdoptionValidation {
 					+" (a Debug build of Open Dental skips its version check: "+listAfter.First(x => !x.IsReleaseClient).Outcome+"; Open Dental ships Release builds only)");
 				//The tables the allowed list can only allow whole, row by row against the source (what adopt prints in runbook steps 4 and 5).
 				AdoptionRowCheck.Result rowCheck=adoption.RowCheck;
-				Check("V11","Row by row, adoption changed only its own rows of preference, documentmisc, securitylog, securityloghash, displayreport and updatehistory",
+				Check("V11","Row by row, adoption changed only its own rows of preference, documentmisc, securitylog, securityloghash, displayreport, grouppermission "
+					+"and updatehistory, only the values the 25.4 and 26.1 steps change, and nothing in the tables and columns they add",
 					rowCheck!=null && rowCheck.Passed,rowCheck==null ? "no row check" : string.Join(" ",rowCheck.ListLines)
 					+(rowCheck.Passed ? "" : " Failures: "+string.Join(" ",rowCheck.ListFailures)));
 				//10. Data-layer round trip. It writes (and normalizes some cells, moving their rows' audit timestamps), so the runs are compared on the
@@ -313,7 +317,7 @@ namespace AdoptionValidation {
 				.Select(y => x.Table+"."+y.Key+" ("+y.Value+" cells)")).ToList();
 		}
 
-		///<summary>M3: the one fork migration step that changes rows of an Open Dental 25.3.48 database, the report rows step, renames exactly the rows
+		///<summary>M3: of the Open Dental 24.4 to 25.3 steps, the one that changes rows of an Open Dental 25.3.48 database, the report rows step, renames exactly the rows
 		///migration-preview lists for the source (the office fixture's report rows under names this program does not know), InternalName only, and
 		///the adoption log names each rename.</summary>
 		private void CheckReportRenames(MigrationPreview.Result preview,HeadlessAdoption.Result adoption,AdoptionResult adoptionResult) {
@@ -346,6 +350,75 @@ namespace AdoptionValidation {
 				+(listRowProblems.Count+listRowCheckFailures.Count==0 ? "" : "; problems: "+string.Join("; ",listRowProblems.Concat(listRowCheckFailures))));
 		}
 
+		///<summary>M4: the Open Dental 25.4 and 26.1 steps change exactly what migration-preview lists for the source (Migration26_1Plan): they insert
+		///every 25.4 and 26.1 preference with its default, split the blockout permission (the office fixture's PhoneExtension grant moved from 272 to 274,
+		///BlockoutAdd and BlockoutDelete granted to its two Blockouts groups, once each despite the duplicated row), make the fixture's NULL claim payment
+		///note empty, and add the reference's new tables (empty) and columns (at their defaults); the row check found exactly that, and the adoption log
+		///names each preference and permission change.</summary>
+		private void Check26_1Changes(MigrationPreview.Result preview,HeadlessAdoption.Result adoption,AdoptionResult adoptionResult,OfficeFixture.Summary fixture) {
+			Migration26_1Plan.Plan plan=preview.Plan26_1;
+			AdoptionRowCheck.Result rowCheck=adoption.RowCheck;
+			List<string> listProblems=new List<string>();
+			List<string> listPrefsAll=Seed26_1.ListPrefDefaults.Select(x => x.PrefName.ToString()).ToList();
+			if(!plan.ListPrefsInserted.SequenceEqual(listPrefsAll)) {
+				listProblems.Add("migration-preview lists "+plan.ListPrefsInserted.Count+" of the "+listPrefsAll.Count+" 25.4 and 26.1 preferences");
+			}
+			bool isSplitAsFixture=plan.IsPermissionSplitPlanned && plan.ListRenumbered.Count==OfficeFixture.CountPhoneExtensionGrants
+				&& plan.ListGrants.Count==Seed26_1.ListGrants.Count && plan.ListGrants.All(x => !x.IsAlreadyConfigured && x.ListSources.Count==OfficeFixture.CountBlockoutGroups);
+			if(!isSplitAsFixture) {
+				listProblems.Add("migration-preview's permission split differs from the fixture's grants");
+			}
+			if(plan.CountClaimPaymentNotesNull!=fixture.ClaimPaymentNotesNull || fixture.ClaimPaymentNotesNull!=1) {
+				listProblems.Add("migration-preview counts "+plan.CountClaimPaymentNotesNull+" NULL claim payment note(s), the fixture set "+fixture.ClaimPaymentNotesNull);
+			}
+			if(rowCheck==null) {
+				listProblems.Add("no row check");
+			}
+			else {
+				if(!rowCheck.ListPrefsSeeded.OrderBy(x => x,StringComparer.OrdinalIgnoreCase).SequenceEqual(plan.ListPrefsInserted.OrderBy(x => x,StringComparer.OrdinalIgnoreCase),
+					StringComparer.OrdinalIgnoreCase))
+				{
+					listProblems.Add("the row check found "+rowCheck.ListPrefsSeeded.Count+" preference(s) seeded");
+				}
+				if(rowCheck.CountPermsRenumbered!=plan.ListRenumbered.Count
+					|| plan.ListGrants.Any(x => (rowCheck.DictPermsGranted.TryGetValue(x.PermTypeNew.ToString(),out int count) ? count : 0)!=x.CountGranted))
+				{
+					listProblems.Add("the row check found another permission split");
+				}
+				if(rowCheck.CountNotesBlanked!=plan.CountClaimPaymentNotesNull) {
+					listProblems.Add("the row check found "+rowCheck.CountNotesBlanked+" note(s) made empty");
+				}
+				if(!rowCheck.ListTablesAdded.OrderBy(x => x,StringComparer.OrdinalIgnoreCase).SequenceEqual(plan.Schema.ListTablesAdded.OrderBy(x => x,StringComparer.OrdinalIgnoreCase),
+					StringComparer.OrdinalIgnoreCase)
+					|| !rowCheck.ListColumnsAddedChecked.OrderBy(x => x,StringComparer.OrdinalIgnoreCase).SequenceEqual(plan.Schema.ListColumnsAdded
+						.OrderBy(x => x,StringComparer.OrdinalIgnoreCase),StringComparer.OrdinalIgnoreCase))
+				{
+					listProblems.Add("the new tables and columns of the copy are not the reference's ("+rowCheck.ListTablesAdded.Count+" tables and "
+						+rowCheck.ListColumnsAddedChecked.Count+" columns checked, "+plan.Schema.ListTablesAdded.Count+" and "+plan.Schema.ListColumnsAdded.Count+" expected)");
+				}
+				listProblems.AddRange(rowCheck.ListFailures.Where(x => x.Contains("grouppermission") || x.StartsWith("Preference ") || x.Contains("claimpayment")
+					|| x.Contains("DateLastAssigned") || x.Contains("new table") || x.Contains("new column")));
+			}
+			List<string> listLogExpected=plan.ListPrefsInserted.Select(x => "Inserted preference "+x).ToList();
+			listLogExpected.Add("Moved "+plan.ListRenumbered.Count+" Open Dental 25.3 PhoneExtension grant(s) from "+Seed26_1.PERM_PHONE_EXTENSION_25_3+" to "
+				+(int)EnumPermType.PhoneExtension);
+			listLogExpected.AddRange(plan.ListGrants.Where(x => x.CountGranted>0).Select(x => "Granted "+x.PermTypeNew+" to "+x.CountGranted+" user group(s)"));
+			List<string> listLogMissing=listLogExpected.Where(x => !adoptionResult.ListLog.Any(y => y.Trim()==x)).ToList();
+			if(listLogMissing.Count>0) {
+				listProblems.Add("the adoption log lacks: "+string.Join("; ",listLogMissing));
+			}
+			string lineGroupPerm=rowCheck?.ListLines.FirstOrDefault(x => x.StartsWith("grouppermission:"))??"";
+			string lineColumns=rowCheck?.ListLines.FirstOrDefault(x => x.StartsWith("Changed columns:"))??"";
+			string lineNew=rowCheck?.ListLines.FirstOrDefault(x => x.StartsWith("New tables and columns:"))??"";
+			Check("M4","Adoption's 25.4 and 26.1 steps change exactly what migration-preview lists: their preferences, the blockout permission split, NULL claim "
+				+"payment notes, and new tables and columns at their defaults",listProblems.Count==0,
+				"migration-preview of the source: "+plan.ListPrefsInserted.Count+" preference(s) to insert, "+plan.ListRenumbered.Count+" PhoneExtension grant(s) to move, "
+				+string.Join(", ",plan.ListGrants.Select(x => x.PermTypeNew+" to "+x.CountGranted+" user group(s)"))+", "+plan.CountClaimPaymentNotesNull
+				+" NULL note(s), "+plan.Schema.ListTablesAdded.Count+" new tables and "+plan.Schema.ListColumnsAdded.Count+" new columns; the adoption log names the "
+				+listLogExpected.Count+" preference and permission changes; row check: "+lineGroupPerm+" "+lineColumns+" "+lineNew
+				+(listProblems.Count==0 ? "" : " Problems: "+string.Join("; ",listProblems)));
+		}
+
 		private void ValidateAgainstBaseline(ValidationReport baseline,ValidationReport after,List<Difference> listDiffs) {
 			_run.ListAllowedDifferences=listDiffs.Where(x => x.IsAllowed && x.Kind!=DifferenceKind.ChecksumTableChanged).Select(x => x.ToString()).ToList();
 			_run.ListUnexpectedDifferences=listDiffs.Where(x => !x.IsAllowed).Select(x => x.ToString()).ToList();
@@ -354,9 +427,14 @@ namespace AdoptionValidation {
 			_run.TablesUntouched=baseline.Tables.Count(x => !setTouched.Contains(x.Name));
 			int countUntouchedWithRows=baseline.Tables.Count(x => !setTouched.Contains(x.Name) && x.Rows>0);
 			List<Difference> listRows=listDiffs.Where(x => x.Kind==DifferenceKind.RowsChanged).ToList();
-			Check("V1","Row counts unchanged except where adoption deletes or adds rows",listRows.All(x => x.IsAllowed) && baseline.TableCount==after.TableCount,
-				baseline.TableCount+" tables before, "+after.TableCount+" after; "+(baseline.TotalRows).ToString("N0")+" rows before, "+after.TotalRows.ToString("N0")
-				+" after; changed: "+(listRows.Count==0 ? "none" : string.Join(", ",listRows.Select(x => x.Table+" "+x.Before+" -> "+x.After))));
+			//The only tables that may come or go are the new tables of the Open Dental 25.4 and 26.1 schema steps (allowed TableAdded differences).
+			List<Difference> listTablesAdded=listDiffs.Where(x => x.Kind==DifferenceKind.TableAdded).ToList();
+			bool isTableCountExpected=listTablesAdded.All(x => x.IsAllowed) && !listDiffs.Any(x => x.Kind==DifferenceKind.TableRemoved)
+				&& after.TableCount==baseline.TableCount+listTablesAdded.Count;
+			Check("V1","Row counts unchanged except where adoption deletes or adds rows, and no table gone",listRows.All(x => x.IsAllowed) && isTableCountExpected,
+				baseline.TableCount+" tables before, "+after.TableCount+" after ("+listTablesAdded.Count+" new from the Open Dental 25.4 and 26.1 schema steps"
+				+(listTablesAdded.Count==0 ? "" : ": "+string.Join(", ",listTablesAdded.Select(x => x.Table)))+"); "+(baseline.TotalRows).ToString("N0")+" rows before, "
+				+after.TotalRows.ToString("N0")+" after; changed: "+(listRows.Count==0 ? "none" : string.Join(", ",listRows.Select(x => x.Table+" "+x.Before+" -> "+x.After))));
 			Check("V2","Checksums of untouched tables identical",listDiffs.Where(x => x.Table!=null).All(x => x.IsAllowed),
 				_run.TablesUntouched+" of "+baseline.TableCount+" tables ("+countUntouchedWithRows+" that hold rows and "+(_run.TablesUntouched-countUntouchedWithRows)
 				+" empty in both) have identical row counts, CHECKSUM TABLE and column checksums; touched (each by an allowed adoption change): "

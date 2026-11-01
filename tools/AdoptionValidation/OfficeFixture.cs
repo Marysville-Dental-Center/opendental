@@ -8,8 +8,11 @@ using SyntheticData.Infrastructure;
 namespace AdoptionValidation {
 	///<summary>Rows an office's Open Dental 25.3.48 database carries but SyntheticData leaves out, because they change how a client starts: Open
 	///Dental's update files in documentmisc, the addresses of Open Dental's servers in preferences, version history, and stored passwords that Open
-	///Dental encrypted with its own key, and report rows under internal names this program does not know, which the fork migration renames. The
-	///rehearsal adds them to the generated database before the baseline, so adoption has real work to do and the checks can see it done.
+	///Dental encrypted with its own key, and report rows under internal names this program does not know, which the fork migration renames. Also the
+	///rows the Open Dental 25.4 and 26.1 steps convert: a PhoneExtension grant under its 25.3 number (272), which they move to 274, Blockouts grants
+	///(one of them twice, one with a date limit), from which they grant BlockoutAdd and BlockoutDelete, and a claim payment note that is NULL, which
+	///they make empty. The rehearsal adds them to the generated database before the baseline, so adoption has real work to do and the checks can see
+	///it done.
 	///Everything here is synthetic: the "update files" are a short placeholder text, never program files, the server addresses are built from
 	///the fork's blocked-host list (CodeBase.VendorDirect.HqHosts) so no host name is written in this file, the "ciphertexts" are random bytes
 	///from the seed, and the report rows' internal names are made up (Open Dental's are not published).</summary>
@@ -44,6 +47,17 @@ namespace AdoptionValidation {
 			("ODSyntheticFutureReport","Synthetic Future Report",3),
 			("ODToday","Today",0),
 		};
+		///<summary>EnumPermType.Blockouts, the same number in 25.3 and 26.1.</summary>
+		public const int PermBlockouts=13;
+		///<summary>PhoneExtension as Open Dental 25.3 stored it (Seed26_1.PERM_PHONE_EXTENSION_25_3); Open Dental's Set All grants it too.</summary>
+		public const int PermPhoneExtension25_3=272;
+		///<summary>The user groups of SyntheticData that get the fixture's grants: PhoneExtension (272) to the first, Blockouts to the other two
+		///(twice to the second, as a duplicated row; with a 30-day limit to the third).</summary>
+		public static readonly string[] ArrayGroupsFixture={ "Synthetic Administrators","Synthetic Front Desk","Synthetic Clinical" };
+		///<summary>What the 25.4 permission split must do with the fixture's grants: one PhoneExtension grant moved, BlockoutAdd and BlockoutDelete
+		///granted to two user groups each.</summary>
+		public const int CountPhoneExtensionGrants=1;
+		public const int CountBlockoutGroups=2;
 
 		public class Summary {
 			public int UpdateFileRows;
@@ -53,6 +67,8 @@ namespace AdoptionValidation {
 			public List<string> ListCredentialRows=new List<string>();
 			public int ReportRowsRenamed;
 			public int ReportRowsKept;
+			public int GroupPermRows;
+			public int ClaimPaymentNotesNull;
 
 			public override string ToString() {
 				return UpdateFileRows+" Open Dental update-file rows and "+OtherDocumentMiscRows+" other documentmisc row; "+ListHqPrefs.Count
@@ -60,7 +76,9 @@ namespace AdoptionValidation {
 					+" stored passwords in Open Dental's encryption ("+string.Join(", ",ListCredentialRows)+"); "+(ReportRowsRenamed+ReportRowsKept)
 					+" displayreport rows: "+ReportRowsRenamed+" for the reports this program names itself under names it does not know, which the fork migration "
 					+"renames ("+string.Join(", ",ArrayReportRowsRenamed.Select(x => x.internalName+" to "+x.nameFork))+"), and "+ReportRowsKept+" it keeps ("
-					+string.Join(", ",ArrayReportRowsKept.Select(x => x.internalName))+").";
+					+string.Join(", ",ArrayReportRowsKept.Select(x => x.internalName))+"); "+GroupPermRows+" grouppermission rows the 25.4 permission split converts ("
+					+CountPhoneExtensionGrants+" PhoneExtension under its 25.3 number "+PermPhoneExtension25_3+", Blockouts for "+CountBlockoutGroups+" user groups, one "
+					+"of them twice); "+ClaimPaymentNotesNull+" claim payment note set to NULL, which the 26.1 step makes empty.";
 			}
 		}
 
@@ -139,7 +157,24 @@ namespace AdoptionValidation {
 			}
 			summary.ReportRowsRenamed=ArrayReportRowsRenamed.Length;
 			summary.ReportRowsKept=ArrayReportRowsKept.Length;
+			//Grants the 25.4 permission split converts (Seed26_1): PhoneExtension under its 25.3 number, and Blockouts, from which BlockoutAdd and
+			//BlockoutDelete are granted; the duplicated row gets one grant, and the date limit is copied.
+			long[] arrayGroups=ArrayGroupsFixture.Select(x => db.ScalarLong("SELECT UserGroupNum FROM usergroup WHERE Description="+SqlLiteral.Quote(x)
+				+" ORDER BY UserGroupNum LIMIT 1")).ToArray();
+			if(arrayGroups.Any(x => x==0)) {
+				throw new ApplicationException("The synthetic user groups "+string.Join(", ",ArrayGroupsFixture)+" were not found.");
+			}
+			foreach((long userGroupNum,int permType,int newerDays) grant in new[] { (arrayGroups[0],PermPhoneExtension25_3,0),(arrayGroups[1],PermBlockouts,0),
+				(arrayGroups[1],PermBlockouts,0),(arrayGroups[2],PermBlockouts,30) })
+			{
+				sink.Insert("grouppermission",new Row { ["GroupPermNum"]=sink.NextId("grouppermission"),["NewerDate"]=new DateTime(1,1,1),
+					["NewerDays"]=grant.newerDays,["UserGroupNum"]=grant.userGroupNum,["PermType"]=grant.permType,["FKey"]=0L });
+				summary.GroupPermRows++;
+			}
 			sink.FlushAll();
+			//A claim payment note left NULL (the 25.3.48 column allows it); the 26.1 step makes it empty. SecDateTEdit is kept, so every run starts from
+			//the same database (X1).
+			summary.ClaimPaymentNotesNull=db.Execute("UPDATE claimpayment SET Note=NULL,SecDateTEdit=SecDateTEdit WHERE Note='' ORDER BY ClaimPaymentNum LIMIT 1");
 			int countClearinghouses=db.Execute("UPDATE clearinghouse SET Password="+SqlLiteral.Quote(FakeCiphertext(rng))
 				+" WHERE Description='Fictional Claims Exchange'");
 			if(countClearinghouses>0) {

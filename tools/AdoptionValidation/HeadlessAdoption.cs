@@ -9,9 +9,10 @@ using SyntheticData.Infrastructure;
 using Db=SyntheticData.Infrastructure.Db;
 
 namespace AdoptionValidation {
-	///<summary>Adopts a copy of the office database without starting the program: Adoption.Preflight and Adoption.Run (what the Adopt Database window calls), the
-	///fork migration with every step again, the schema verifier, and SecurityHash.RehashNow (what Database Maintenance, Tools, Security Hashes calls),
-	///in that order. The rehearsal adopts its copy with this class, and runbook steps 4 and 5 run it through "AdoptionValidation adopt", so the office
+	///<summary>Adopts a copy of the office database without starting the program: Adoption.Preflight and Adoption.Run (what the Adopt Database window calls,
+	///which brings an Open Dental 25.3.48 database to the 26.1.70 schema with the fork migration), the fork migration with every step again, the schema
+	///verifier (SchemaVerifier.ReferenceVersion, 26.1.70), and SecurityHash.RehashNow (what Database Maintenance, Tools, Security Hashes calls), in that
+	///order. The rehearsal adopts its copy with this class, and runbook steps 4 and 5 run it through "AdoptionValidation adopt", so the office
 	///runs exactly the sequence that was rehearsed.
 	///
 	///Why not the program itself: starting it and logging in writes to the database (the computer row and its heartbeat, the Database Maintenance
@@ -142,8 +143,8 @@ namespace AdoptionValidation {
 						result.RowCheck=AdoptionRowCheck.Run(db,original,database);
 					}
 				});
-				log("Row check against "+original+" (what adoption may change in preference, documentmisc, securitylog, securityloghash, displayreport and "
-					+"updatehistory):");
+				log("Row check against "+original+" (what adoption may change in preference, documentmisc, securitylog, securityloghash, displayreport, "
+					+"grouppermission and updatehistory, in the columns the 25.4 and 26.1 steps change, and in the tables and columns they add):");
 				foreach(string line in result.RowCheck.ListLines) {
 					log("  "+line);
 				}

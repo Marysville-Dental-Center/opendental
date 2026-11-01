@@ -11,6 +11,8 @@ using SyntheticData.Generation;
 using SyntheticData.Infrastructure;
 using SyntheticData.Validation;
 using DisplayReportNames=OpenDentBusiness.DisplayReports.ReportNames;
+using SchemaVerifier=OpenDentBusiness.ForkMigrations.SchemaVerifier;
+using Seed26_1=OpenDentBusiness.ForkMigrations.Seeds26_1.Seed26_1;
 
 namespace AdoptionValidation.Tests {
 	///<summary>Runs the whole M1-Z rehearsal (small preset, two runs) on scratch databases synth_m1z_t&lt;time&gt;_&lt;pid&gt;_* on the local server, keeps
@@ -26,7 +28,7 @@ namespace AdoptionValidation.Tests {
 		private static RehearsalResult _result;
 
 		///<summary>Every check a run must report, in order.</summary>
-		public static readonly string[] ArrayCheckIds={ "G1","G2","A1","A2","A3","A4","M1","M2","M3","H1","V1","V2","V3","V4","V5","V6","V7","V8","V9","V10",
+		public static readonly string[] ArrayCheckIds={ "G1","G2","A1","A2","A3","A4","M1","M2","M3","M4","H1","V1","V2","V3","V4","V5","V6","V7","V8","V9","V10",
 			"V11","R1","R2","I1","I2","I3","I4" };
 
 		[ClassInitialize]
@@ -168,12 +170,21 @@ namespace AdoptionValidation.Tests {
 			}
 			StringAssert.Contains(output,"Adoption's fork migration will rename 3 displayreport row(s), changing only their InternalName");
 			Assert.IsFalse(output.Contains("ODSyntheticFutureReport") || output.Contains("ODToday"),"Rows of other reports are not listed.\r\n"+output);
+			//The Open Dental 25.4 and 26.1 steps: the schema to 26.1.70, the fixture's NULL note, every 25.4 and 26.1 preference, the permission split.
+			StringAssert.Contains(output,"bring the schema to Open Dental "+SchemaVerifier.ReferenceVersion+": 5 new table(s), empty (");
+			StringAssert.Contains(output,"1 NULL note(s) become empty");
+			StringAssert.Contains(output,"inserts "+Seed26_1.ListPrefDefaults.Count+" preference(s) with their defaults: ");
+			StringAssert.Contains(output,"moves 1 Open Dental 25.3 PhoneExtension grant(s) from 272 to 274, then grants BlockoutAdd (272) to 2 user group(s) and "
+				+"grants BlockoutDelete (273) to 2 user group(s)");
 			using(Db db=Db.Open(_server)) {
 				List<Difference> listDiffs=ReportComparer.Compare(before,Validator.Run(db,Source(2),null,null),null);
 				Assert.AreEqual(0,listDiffs.Count,"migration-preview only reads.\r\n"+ReportComparer.Format(listDiffs));
 				MigrationPreview.Result resultAdopted=MigrationPreview.Run(db,Adopted(2));
 				Assert.AreEqual(0,resultAdopted.ListRenames.Count,string.Join("\r\n",resultAdopted.Lines()));
 				Assert.IsTrue(resultAdopted.ListPlans.All(x => x.RowExisting!=null),"After adoption every report has this program's name.");
+				Assert.AreEqual(0,resultAdopted.Plan26_1.ListPrefsInserted.Count,"After adoption every 25.4 and 26.1 preference is there.");
+				Assert.IsTrue(resultAdopted.Plan26_1.IsSeedStepApplied && !resultAdopted.Plan26_1.IsPermissionSplitPlanned,"The split never runs twice.");
+				Assert.AreEqual(0,resultAdopted.Plan26_1.CountClaimPaymentNotesNull);
 			}
 		}
 
@@ -200,6 +211,80 @@ namespace AdoptionValidation.Tests {
 			Assert.IsFalse(run.ListAllowedDifferences.Any(x => x.Contains("displayreport.") && !x.StartsWith("ColumnChanged displayreport.InternalName")),
 				string.Join("\r\n",run.ListAllowedDifferences));
 			StringAssert.Contains(run.ListChecks.Single(x => x.Id=="M3").Detail,"3 rename(s)");
+		}
+
+		///<summary>The Open Dental 25.4 and 26.1 steps on the office fixture's rows: the 25.3 PhoneExtension grant (272) is now 274 under the same key;
+		///each Blockouts group got one BlockoutAdd and one BlockoutDelete with its date limit, the duplicated Blockouts row no second one; the NULL claim
+		///payment note is empty and the payment's SecDateTEdit did not move; every 25.4 and 26.1 preference holds its default.</summary>
+		[TestMethod]
+		public void Adoption_ConvertsTheFixtureRowsThe26_1StepsConvert() {
+			SkipIfNeeded();
+			using(Db db=Db.Open(_server)) {
+				long groupPermNum=db.ScalarLong("SELECT GroupPermNum FROM `"+Source(1)+"`.grouppermission WHERE PermType="+OfficeFixture.PermPhoneExtension25_3);
+				Assert.IsTrue(groupPermNum>0,"The fixture's PhoneExtension grant.");
+				Assert.AreEqual(274,db.ScalarLong("SELECT PermType FROM `"+Adopted(1)+"`.grouppermission WHERE GroupPermNum="+groupPermNum));
+				foreach(int permType in new[] { 272,273 }) {
+					Assert.AreEqual("0:1,30:1",Convert.ToString(db.Scalar("SELECT GROUP_CONCAT(CONCAT(NewerDays,':',n) ORDER BY NewerDays) FROM (SELECT g.NewerDays,COUNT(*) n "
+						+"FROM `"+Adopted(1)+"`.grouppermission g INNER JOIN `"+Adopted(1)+"`.usergroup u ON u.UserGroupNum=g.UserGroupNum WHERE g.PermType="+permType
+						+" AND u.Description IN ('"+OfficeFixture.ArrayGroupsFixture[1]+"','"+OfficeFixture.ArrayGroupsFixture[2]+"') GROUP BY g.UserGroupNum,g.NewerDays) t")),
+						"PermType "+permType+": one grant per Blockouts group, with its date limit");
+					Assert.AreEqual(2,db.ScalarLong("SELECT COUNT(*) FROM `"+Adopted(1)+"`.grouppermission WHERE PermType="+permType),"PermType "+permType);
+				}
+				long claimPaymentNum=db.ScalarLong("SELECT ClaimPaymentNum FROM `"+Source(1)+"`.claimpayment WHERE Note IS NULL");
+				Assert.IsTrue(claimPaymentNum>0,"The fixture's NULL note.");
+				Assert.AreEqual(1,db.ScalarLong("SELECT COUNT(*) FROM `"+Source(1)+"`.claimpayment a INNER JOIN `"+Adopted(1)+"`.claimpayment b USING(ClaimPaymentNum) "
+					+"WHERE a.ClaimPaymentNum="+claimPaymentNum+" AND b.Note='' AND b.Note IS NOT NULL AND a.SecDateTEdit=b.SecDateTEdit"),
+					"The note is empty and the payment's audit timestamp did not move.");
+				foreach((OpenDentBusiness.PrefName prefName,string valueString) pref in Seed26_1.ListPrefDefaults) {
+					Assert.AreEqual(pref.valueString,Convert.ToString(db.Scalar("SELECT ValueString FROM `"+Adopted(1)+"`.preference WHERE PrefName='"+pref.prefName+"'")),
+						pref.prefName.ToString());
+				}
+			}
+		}
+
+		///<summary>Negative control for the 26.1 rules: the report comparison allows grouppermission as a whole table, the new tables and columns without
+		///their values, and claimpayment.Note and DateLastAssigned as whole columns; adopt's row check does not let a change through that the 25.4 and 26.1
+		///steps do not make.</summary>
+		[TestMethod]
+		public void RowCheck_CatchesChangesThe26_1RulesAllow() {
+			SkipIfNeeded();
+			string tampered=Rehearsal.DbPrefix+Tag+"_tampered261";
+			List<string> listLog=new List<string>();
+			Assert.AreEqual(Program.ExitPass,Program.Run(new[] { "copy","--original",Adopted(1),"--database",tampered },listLog.Add),string.Join("\r\n",listLog));
+			using(Db db=Db.Open(_server)) {
+				Assert.IsTrue(AdoptionRowCheck.Run(db,Source(1),tampered).Passed,"An untouched adopted copy passes.");
+				db.Use(tampered);
+				long groupAdmin=db.ScalarLong("SELECT UserGroupNum FROM usergroup WHERE Description='"+OfficeFixture.ArrayGroupsFixture[0]+"'");
+				Assert.AreEqual(1,db.Execute("INSERT INTO grouppermission (NewerDate,NewerDays,UserGroupNum,PermType,FKey) VALUES ('0001-01-01',0,"+groupAdmin+",272,0)"));
+				Assert.AreEqual(1,db.Execute("UPDATE grouppermission SET NewerDays=7 WHERE PermType=273 AND NewerDays=30"));
+				Assert.AreEqual(1,db.Execute("UPDATE grouppermission SET NewerDays=5 WHERE PermType=13 ORDER BY GroupPermNum LIMIT 1"));
+				Assert.AreEqual(1,db.Execute("UPDATE claimpayment SET Note=CONCAT(Note,' x') WHERE Note<>'' ORDER BY ClaimPaymentNum LIMIT 1"));
+				Assert.AreEqual(1,db.Execute("UPDATE insverify SET DateLastAssigned=DATE_ADD(DateLastAssigned,INTERVAL 9 HOUR) ORDER BY InsVerifyNum LIMIT 1"));
+				Assert.AreEqual(1,db.Execute("UPDATE carrier SET PreAuthCodes='D0000' ORDER BY CarrierNum LIMIT 1"));
+				Assert.AreEqual(1,db.Execute("INSERT INTO deletedobj (DateTEntry,ObjType,ObjSerialized) VALUES ('2026-10-24 20:00:00',0,'')"));
+				Assert.AreEqual(1,db.Execute("UPDATE preference SET ValueString='0' WHERE PrefName='RepeatingChargesAllowBackdating'"));
+				AdoptionRowCheck.Result result=AdoptionRowCheck.Run(db,Source(1),tampered);
+				string failures=string.Join("\r\n",result.ListFailures);
+				Assert.IsFalse(result.Passed);
+				StringAssert.Contains(failures,"(user group "+groupAdmin+", PermType 272, FKey 0, NewerDate 0001-01-01, NewerDays 0) was added");
+				StringAssert.Contains(failures,"changed (NewerDays); the fork migration moves only the Open Dental 25.3 PhoneExtension grants");
+				StringAssert.Contains(failures,"PermType 273, FKey 0, NewerDate 0001-01-01, NewerDays 7) was added");
+				StringAssert.Contains(failures,"No grouppermission row was added for the planned grant (user group ");
+				StringAssert.Contains(failures,"1 claimpayment note(s) changed; the fork migration only makes a NULL note empty.");
+				StringAssert.Contains(failures,"1 insverify.DateLastAssigned value(s) are not the original date at midnight.");
+				StringAssert.Contains(failures,"row(s) of carrier hold a value other than the default ('') in the new column PreAuthCodes.");
+				StringAssert.Contains(failures,"The new table deletedobj holds 1 row(s)");
+				StringAssert.Contains(failures,"Preference RepeatingChargesAllowBackdating (PrefNum ");
+				//Against the copy's report from before adoption (runbook step 6.1), the report comparison lets every one of these through.
+				AllowedDifferences allowed=AllowedDifferences.Load(Path.Combine(Path.GetDirectoryName(Validator.ReadTotalsSqlPath()),"..",
+					"allowed-differences.adoption.json"));
+				List<Difference> listDiffs=ReportComparer.Compare(ValidationReport.Load(_result.ListRuns[0].ReportCopyPath),Validator.Run(db,tampered,null,null),allowed);
+				string[] arrayTables={ "grouppermission","claimpayment","insverify","carrier","deletedobj","preference" };
+				List<Difference> listTampered=listDiffs.Where(x => arrayTables.Contains(x.Table) && (x.Table!="claimpayment" && x.Table!="insverify" && x.Table!="carrier"
+					|| x.Column=="Note" || x.Column=="DateLastAssigned" || x.Column=="PreAuthCodes")).ToList();
+				Assert.AreEqual(arrayTables.Length,listTampered.Select(x => x.Table).Distinct().Count(),ReportComparer.Format(listDiffs));
+				Assert.IsTrue(listTampered.All(x => x.IsAllowed),ReportComparer.Format(listTampered));
+			}
 		}
 
 		///<summary>Adoption and the rehash write SecurityHash only. The rows' ON UPDATE audit timestamps (DateTStamp, SecDateTEdit) must not move; before
@@ -302,7 +387,7 @@ namespace AdoptionValidation.Tests {
 				&& indexAdopt<listSteps.IndexOf("Fork migration (all steps again)") && listSteps.IndexOf("Schema verifier")<indexRehash && indexRehash<indexRowCheck
 				&& indexRowCheck<indexReport && indexReport<indexRoundTrip,string.Join(", ",listSteps));
 			foreach(string expected in new[] { "It can be adopted.","Dropped index patient.portal_active_email_uniq.","Dropped column patient._portal_active_email.",
-				"DataBaseVersion and ProgramVersion set to 99.0.0.0.","Adoption finished.","0 changes.","The schema matches Open Dental 25.3.48 exactly","Rehash finished.",
+				"DataBaseVersion and ProgramVersion set to 99.0.0.0.","Adoption finished.","0 changes.","The schema matches Open Dental "+SchemaVerifier.ReferenceVersion+" exactly","Rehash finished.",
 				"Row check against "+Source(1),"preference: 5 added (","documentmisc: 4 Open Dental update-file row(s) deleted, none left; 0 other row(s) deleted",
 				"securitylog: 2 entries added (1 adoption, 1 rehash)","updatehistory: identical row by row.",
 				"Fork migration step 2026101971 Report rows for Procedures, Production by Procedure and Insurance Pending Supplementals changed the database:",
@@ -310,7 +395,17 @@ namespace AdoptionValidation.Tests {
 				"  Renamed displayreport ODSyntheticProcsItemized to ODProceduresIndividual (same description)",
 				"  Renamed displayreport ODSyntheticInsPendingSupp to ODInsPendingSupplementals (same description)",
 				"displayreport: 3 of the 3 rename(s) migration-preview lists, InternalName only (",
-				"; no other row or column changed, none added or removed." })
+				"; no other row or column changed, none added or removed.",
+				//The Open Dental 25.4 and 26.1 steps (M2-01, M2-02) on the 25.3.48 source.
+				"Fork migration step 2026102401 Open Dental 25.4 schema changed the database:","Fork migration step 2026102402 Open Dental 26.1 schema changed the database:",
+				"  Inserted preference RepeatingChargesAllowBackdating","  Moved 1 Open Dental 25.3 PhoneExtension grant(s) from 272 to 274",
+				"  Granted BlockoutAdd to 2 user group(s)","  Granted BlockoutDelete to 2 user group(s)",
+				"of the "+Seed26_1.ListPrefDefaults.Count+" 25.4 and 26.1 preference(s) migration-preview lists added with their defaults (",
+				"grouppermission: 1 of the 1 Open Dental 25.3 PhoneExtension grant(s) moved from 272 to 274; BlockoutAdd granted to 2 of 2 user group(s), "
+					+"BlockoutDelete granted to 2 of 2 user group(s), as migration-preview lists",
+				"Changed columns: claimpayment.Note: 1 of the 1 NULL note(s) migration-preview counts now empty, every other note unchanged; "
+					+"insverify.DateLastAssigned: the original date at midnight in all ",
+				"New tables and columns: 5 new table(s), all empty (deletedobj, ","new column(s) in 21 table(s) hold their default in every row." })
 			{
 				Assert.IsTrue(run.ListAdoptionLog.Any(x => x.Contains(expected)),expected+"\r\n"+string.Join("\r\n",run.ListAdoptionLog));
 			}

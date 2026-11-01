@@ -110,6 +110,9 @@ namespace AdoptionValidation.Tests {
 			ColumnInfo columnNote=new ColumnInfo { Name="Note",DataType="varchar",ColumnType="varchar(255)",MaxLength=255 };
 			Assert.AreEqual(255,((string)DataLayerRoundTrip.NewValue(fieldNote,"",columnNote,"claimpayment.Note")).Length,
 				"claimpayment.Note keeps varchar(255) in 25.3.48: filled to the old width exactly.");
+			ColumnInfo columnNoteText=new ColumnInfo { Name="Note",DataType="text",ColumnType="text",MaxLength=65535 };
+			Assert.AreEqual(275,((string)DataLayerRoundTrip.NewValue(fieldNote,"",columnNoteText,"claimpayment.Note")).Length,
+				"The 26.1 step makes claimpayment.Note text, so on the adopted copy the new value is longer than the old width.");
 			Assert.AreEqual(true,DataLayerRoundTrip.NewValue(typeof(Medication).GetField(nameof(Medication.IsHidden)),false,null,"medication.IsHidden"));
 		}
 

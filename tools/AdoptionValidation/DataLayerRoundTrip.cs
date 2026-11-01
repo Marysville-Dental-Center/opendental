@@ -509,7 +509,10 @@ namespace AdoptionValidation {
 				int max=(int)Math.Min(column?.MaxLength??255,400);
 				int length=Math.Min(max,30);
 				if(Coverage.DictWidenedOldLength.TryGetValue(item,out int oldLength)) {
-					length=Math.Min(max,oldLength+(Coverage.DictWideningNotInReference.ContainsKey(item) ? 0 : 20));
+					//A widening the 25.3.48 source lacks (claimpayment.Note) is filled to the old width, unless the adopted copy's column is wider by now:
+					//the 26.1 step makes claimpayment.Note text, so the value is longer than the old width too.
+					bool isWiderNow=(column?.MaxLength??0)>oldLength;
+					length=Math.Min(max,oldLength+(Coverage.DictWideningNotInReference.ContainsKey(item) && !isWiderNow ? 0 : 20));
 				}
 				string seed="Rt'é-"+field.Name+"-";
 				string text="";

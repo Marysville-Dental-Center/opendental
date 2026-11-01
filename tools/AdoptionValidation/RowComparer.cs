@@ -83,12 +83,7 @@ namespace AdoptionValidation {
 			}
 			diff.ListColumnsInOneOnly.AddRange(listFirst.Select(x => x.name).Except(listSecond.Select(x => x.name),StringComparer.OrdinalIgnoreCase)
 				.Concat(listSecond.Select(x => x.name).Except(listFirst.Select(x => x.name),StringComparer.OrdinalIgnoreCase)));
-			List<string> listKey=db.Rows("SELECT COLUMN_NAME FROM information_schema.STATISTICS WHERE TABLE_SCHEMA="+SqlLiteral.Quote(databaseFirst)
-				+" AND TABLE_NAME="+SqlLiteral.Quote(table)+" AND INDEX_NAME='PRIMARY' ORDER BY SEQ_IN_INDEX").Select(x => Convert.ToString(x[0])).ToList();
-			if(listKey.Count!=1) {
-				throw new ApplicationException("Table "+table+" has no single-column primary key; it cannot be compared row by row.");
-			}
-			diff.KeyColumn=listKey[0];
+			diff.KeyColumn=KeyColumn(db,databaseFirst,table);
 			List<(string name,string type)> listCompared=listFirst.Where(x => listSecond.Any(y => string.Equals(x.name,y.name,StringComparison.OrdinalIgnoreCase))
 				&& !string.Equals(x.name,diff.KeyColumn,StringComparison.OrdinalIgnoreCase)).ToList();
 			diff.ListColumnsExcluded.AddRange(listCompared.Where(x => setExcluded.Contains(x.name)).Select(x => x.name));
@@ -129,6 +124,18 @@ namespace AdoptionValidation {
 				}
 			}
 			return diff;
+		}
+
+		///<summary>The single-column primary key of a table, which every Open Dental table has. Throws when the table has none.</summary>
+		public static string KeyColumn(Db db,string database,string table) {
+			LocalOnly.EnsureSafeIdentifier(database);
+			LocalOnly.EnsureSafeIdentifier(table);
+			List<string> listKey=db.Rows("SELECT COLUMN_NAME FROM information_schema.STATISTICS WHERE TABLE_SCHEMA="+SqlLiteral.Quote(database)
+				+" AND TABLE_NAME="+SqlLiteral.Quote(table)+" AND INDEX_NAME='PRIMARY' ORDER BY SEQ_IN_INDEX").Select(x => Convert.ToString(x[0])).ToList();
+			if(listKey.Count!=1) {
+				throw new ApplicationException("Table "+table+" has no single-column primary key; it cannot be compared row by row.");
+			}
+			return listKey[0];
 		}
 
 		///<summary>NULL-safe equality of one column of a and b: byte for byte for text, exact for numbers and dates.</summary>
