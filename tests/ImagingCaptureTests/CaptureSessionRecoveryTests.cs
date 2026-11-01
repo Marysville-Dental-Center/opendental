@@ -132,6 +132,19 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void OnCaptureFiled_TheLastEmptySlots_TheMountIsFull_TheSessionFinishesWithoutOpeningTheSensorSoftware() {
+			CaptureControllerHarness harness=new CaptureControllerHarness(3);
+			harness.Controller.Begin();
+			Assert.IsTrue(harness.Controller.OnCaptureFiled(Filed(harness,1,900)));
+			Assert.IsTrue(harness.Controller.OnCaptureFiled(Filed(harness,2,901)));
+			Assert.AreEqual(CaptureSessionPhase.Ready,harness.Controller.Phase,"One slot is still empty.");
+			Assert.IsTrue(harness.Controller.OnCaptureFiled(Filed(harness,3,902)));
+			Assert.AreEqual(CaptureSessionPhase.Finished,harness.Controller.Phase,"Design 7.3 step 6.");
+			Assert.AreEqual(CaptureSessionEndReason.MountFull,harness.Controller.Summary.EndReason);
+			Assert.AreEqual(0,harness.ListSessions.Count,"The sensor software was never opened.");
+		}
+
+		[TestMethod]
 		public void OnCaptureFiled_NewUnmountedItem_Appended() {
 			CaptureControllerHarness harness=new CaptureControllerHarness(3);
 			harness.Controller.Begin();

@@ -92,6 +92,13 @@ namespace ImagingCapture.Session {
 				_idxTargetChosen=null;
 			}
 			Log("Filed from "+result.Action+": DocNum "+result.Document.DocNum+" into "+MountPlacement.GetSlotLabel(result.MountItem)+".");
+			if(!IsSingleTarget && _mountSlots.IdxTarget==-1 && Phase==CaptureSessionPhase.Ready && !HasRedeliveredPending && _enableRunning==null) {
+				//Design 7.3 step 6: the mount is full, so the session closes with its summary; Start would only open the sensor software for
+				//nothing (as ConfirmRedelivered finishes a mount it filled).
+				Log("Every slot of the mount has an image now; the session finishes.");
+				Finish(CaptureSessionEndReason.MountFull);
+				return true;
+			}
 			NotifyChanged();
 			return true;
 		}
