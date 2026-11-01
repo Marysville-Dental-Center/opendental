@@ -78,6 +78,7 @@ namespace ImagingCapture.UI {
 			linkUnassigned.LinkClicked+=linkUnassigned_LinkClicked;
 			linkRecover.LinkClicked+=linkRecover_LinkClicked;
 			textTeeth.LostKeyboardFocus+=textTeeth_LostKeyboardFocus;
+			textTeeth.TextChanged+=textTeeth_TextChanged;
 		}
 		#endregion Constructor
 
@@ -253,6 +254,11 @@ namespace ImagingCapture.UI {
 			ApplyTeethText();
 		}
 
+		private void textTeeth_TextChanged(object sender,EventArgs e) {
+			//Applied before any start (the buttons take no focus, so the box may keep it through a click).
+			_viewModel.SetToothNumbersTyped(textTeeth.Text);
+		}
+
 		private void linkUnassigned_LinkClicked(object sender,EventArgs e) {
 			if(_isClosed || !_viewModel.CanOpenCaptureLinks || !CanShowUnassigned()) {
 				return;
@@ -358,8 +364,9 @@ namespace ImagingCapture.UI {
 			if(!(sender is Border border) || !(border.Tag is string universal) || !_viewModel.IsToothPickerEnabled) {
 				return;
 			}
-			_viewModel.ToggleTooth(universal);
-			textTeeth.Text=_viewModel.ToothNumbersText;
+			if(_viewModel.ToggleTooth(universal)) {
+				textTeeth.Text=_viewModel.ToothNumbersText;
+			}
 			RefreshView();
 		}
 

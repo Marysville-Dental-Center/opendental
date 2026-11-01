@@ -89,6 +89,8 @@ namespace ImagingCapture.UI {
 		private int _versionControllerSeen=-1;
 		private bool _isClosing;
 		private string _toothErrorText="";
+		///<summary>The tooth numbers box's text not yet applied to the banner's teeth, or null.</summary>
+		private string _toothNumbersTyped;
 		private Document _documentPreviewTracked;
 		private long _msPreviewShown=long.MinValue/2;
 		private bool _isPreviewFreshShown;
@@ -457,7 +459,7 @@ namespace ImagingCapture.UI {
 		}
 
 		public bool RequestStart() {
-			return !_isClosing && _controller.RequestStart();
+			return !_isClosing && CommitTypedTeeth() && _controller.RequestStart();
 		}
 
 		public void ConfirmOlderMount() {
@@ -486,11 +488,11 @@ namespace ImagingCapture.UI {
 		}
 
 		public bool RequestRedelivery() {
-			return !_isClosing && _controller.RequestRedelivery();
+			return !_isClosing && CommitTypedTeeth() && _controller.RequestRedelivery();
 		}
 
 		public bool ConfirmRedelivered() {
-			return !_isClosing && _controller.ConfirmRedelivered();
+			return !_isClosing && CommitTypedTeeth() && _controller.ConfirmRedelivered();
 		}
 
 		public bool DeclineRedelivered() {
@@ -520,6 +522,9 @@ namespace ImagingCapture.UI {
 		///<summary>A tap on a tooth of the picker: it is added to the banner's teeth, or removed. False, with ToothErrorText, when they cannot be
 		///changed now.</summary>
 		public bool ToggleTooth(string universal) {
+			if(!CommitTypedTeeth()) {
+				return false;//the typed teeth do not read: the tap does not replace them with the banner's teeth from before
+			}
 			List<ToothInfo> listTeeth;
 			string error;
 			if(!Dicom.ToothNumbers.TryParseList(_controller.ToothNumbers,out listTeeth,out error)) {
@@ -546,6 +551,33 @@ namespace ImagingCapture.UI {
 				NotifyOwnChange();
 			}
 			return isSet;
+		}
+
+		///<summary>The tooth numbers box's text as the operator types it; the window passes every change. It is applied to the banner's teeth
+		///before anything that starts an enable or places an image (Start or Take another, the Confirm key, redelivery, a tap on a tooth), because
+		///the session's buttons take no focus, so the box may never lose it before a click (design 7.3 step 2, 10.3: each image gets the banner's
+		///teeth).</summary>
+		public void SetToothNumbersTyped(string text) {
+			_toothNumbersTyped=text;
+		}
+
+		///<summary>Applies typed teeth that differ from the banner's (SetToothNumbersTyped). False, with ToothErrorText, when they do not read: then
+		///nothing starts, so that an image is never saved with the teeth from before.</summary>
+		private bool CommitTypedTeeth() {
+			string typed=_toothNumbersTyped;
+			if(typed==null || !IsToothPickerVisible || !IsToothPickerEnabled) {
+				return true;
+			}
+			if(typed.Trim()==(ToothNumbersText??"")) {
+				_toothNumbersTyped=null;
+				return true;
+			}
+			if(!SetToothNumbersText(typed)) {
+				NotifyOwnChange();
+				return false;
+			}
+			_toothNumbersTyped=null;
+			return true;
 		}
 
 		private HashSet<string> GetSelectedTeeth() {
@@ -683,6 +715,10 @@ namespace ImagingCapture.UI {
 			CaptureSessionKey? key=_keyBindings.Find(virtualKey,modifiers);
 			if(key==null) {
 				return false;
+			}
+			if(key.Value==CaptureSessionKey.Confirm && !isRepeat && !CommitTypedTeeth()) {
+				Track();
+				return true;//handled, and no hold starts: the typed teeth do not read
 			}
 			_controller.OnKeyDown(key.Value,_controller.NowMs,isRepeat);
 			Track();

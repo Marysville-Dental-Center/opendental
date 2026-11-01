@@ -384,6 +384,61 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void SingleTarget_TeethTypedButNotApplied_TheStartAppliesThemFirst() {
+			_harness=new CaptureControllerHarness(0);
+			ViewModel();
+			BeginArmed();
+			Assert.IsTrue(_viewModel.SetToothNumbersText("8,9"));
+			//Typed into the box, then Start clicked: the session's buttons take no focus, so the box never lost it.
+			_viewModel.SetToothNumbersTyped("10");
+			Assert.IsTrue(_viewModel.RequestStart());
+			_harness.Dispatcher.RunPending();
+			Assert.AreEqual("10",_harness.LastRecord.ToothNumbers,"Design 10.3: the image gets the teeth on the banner.");
+			Assert.AreEqual("10",_viewModel.ToothNumbersText);
+			_harness.Expose();
+			Assert.AreEqual("10",_harness.RadiographStore.ListDocumentsUpdated.Single().ToothNumbers);
+			_harness.Clock.Advance(CaptureSessionController.KeyIgnoreMs);
+			_viewModel.OnTick();
+			_viewModel.SetToothNumbersTyped("11");//then Take another
+			Assert.IsTrue(_viewModel.RequestStart());
+			_harness.Dispatcher.RunPending();
+			Assert.AreEqual("11",_harness.LastRecord.ToothNumbers);
+		}
+
+		[TestMethod]
+		public void SingleTarget_TeethTypedThatDoNotRead_NothingStarts() {
+			_harness=new CaptureControllerHarness(0);
+			ViewModel("Confirm=F12");
+			BeginArmed();
+			Assert.IsTrue(_viewModel.SetToothNumbersText("8"));
+			_viewModel.SetToothNumbersTyped("8-10");
+			Assert.IsFalse(_viewModel.RequestStart());
+			StringAssert.Contains(_viewModel.ToothErrorText,"'8-10'");
+			Assert.IsTrue(_viewModel.OnKeyDown(VkF12,CaptureKeyModifiers.None,false),"The Confirm key is handled...");
+			_harness.Clock.Advance(1500);
+			_viewModel.OnTick();
+			_viewModel.OnKeyUp(VkF12);
+			_harness.Dispatcher.RunPending();
+			Assert.AreEqual(0,_harness.ListSessions.Count,"...but nothing starts with the teeth from before: the sensor software is not even opened.");
+			Assert.AreEqual(CaptureSessionPhase.Ready,_viewModel.Phase);
+			Assert.IsFalse(_viewModel.ToggleTooth("9"),"A tap does not replace the typed teeth with the banner's either.");
+			Assert.AreEqual("8",_viewModel.ToothNumbersText);
+		}
+
+		[TestMethod]
+		public void SingleTarget_TeethTyped_TheConfirmKeyAndATapApplyThemFirst() {
+			_harness=new CaptureControllerHarness(0);
+			ViewModel("Confirm=F12");
+			BeginArmed();
+			_viewModel.SetToothNumbersTyped("10");
+			Assert.IsTrue(_viewModel.ToggleTooth("8"));
+			Assert.AreEqual("8,10",_viewModel.ToothNumbersText,"The tap toggles the typed teeth.");
+			_viewModel.SetToothNumbersTyped("12");
+			Assert.IsTrue(_viewModel.OnKeyDown(VkF12,CaptureKeyModifiers.None,false));
+			Assert.AreEqual("12",_viewModel.ToothNumbersText,"Applied when the Confirm key goes down, before its hold can start anything.");
+		}
+
+		[TestMethod]
 		public void SingleTarget_TakeAnother_AfterTheImage() {
 			_harness=new CaptureControllerHarness(0);
 			ViewModel();
