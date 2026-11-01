@@ -136,9 +136,7 @@ namespace OpenDental {
 		//<summary>Thread that downloads Apteryx images.</summary>
 		//private ODThread _threadImageRequest;
 		private System.Windows.Forms.Timer timerSearch;
-		///<summary>This is the new Sparks3D toothChart.</summary>
-		private Control _controlToothChart;
-		///<summary>Relays commands to either the old SparksToothChart.ToothChartWrapper or the new Sparks3d.ToothChart.</summary>
+		///<summary>Relays commands to SparksToothChart.ToothChartWrapper, the only tooth chart.</summary>
 		private ToothChartRelay _toothChartRelay;
 		#endregion Fields - Private
 
@@ -3511,22 +3509,6 @@ namespace OpenDental {
 			}
 		}
 
-		private void _toothChart_TextMoved(object sender,TextMovedEventArgs e) {
-			ToothInitial toothInitial=_listToothInitialsText.FirstOrDefault(x=>x.ToothInitialNum==e.ToothInitialNum);
-			if(toothInitial==null){
-				return;//shouldn't happen
-			}
-			if(e.LocationNew!=new PointF()){//0,0
-				toothInitial.DrawText=e.LocationNew.X.ToString()+","+e.LocationNew.Y.ToString()+";"+toothInitial.GetTextString();
-			}
-			if(e.ColorNew!=Color.Empty){//ARGB=0,0,0,0
-				toothInitial.ColorDraw=e.ColorNew;
-			}
-			ToothInitials.Update(toothInitial);
-			Pd.ClearAndFill(EnumPdTable.ToothInitial);
-			FillToothChart(true);
-		}
-
 		private void toothChart_ToothSelectionsChanged(object sender) {
 			if(checkShowTeeth.Checked) {
 				FillProgNotes(true,false);
@@ -4462,17 +4444,16 @@ namespace OpenDental {
 					LayoutManager.Add(tabOrtho,tabControlProc);
 				}
 			}
-			if(!ToothChartRelay.IsSparks3DPresent) {
-				//ComputerPref computerPref=ComputerPrefs.GetForLocalComputer();
-				toothChartWrapper.UseHardware=ComputerPrefs.LocalComputer.GraphicsUseHardware;
-				toothChartWrapper.PreferredPixelFormatNumber=ComputerPrefs.LocalComputer.PreferredPixelFormatNum;
-				toothChartWrapper.DeviceFormat=new ToothChartDirectX.DirectXDeviceFormat(ComputerPrefs.LocalComputer.DirectXFormat);
-				//Must be last preference set here, because this causes the pixel format to be recreated.																											
-				toothChartWrapper.DrawMode=ComputerPrefs.LocalComputer.GraphicsSimple;
-				//The preferred pixel format number changes to the selected pixel format number after a context is chosen.
-				ComputerPrefs.LocalComputer.PreferredPixelFormatNum=toothChartWrapper.PreferredPixelFormatNumber;
-				ComputerPrefs.Update(ComputerPrefs.LocalComputer);
-			}
+			//ComputerPref computerPref=ComputerPrefs.GetForLocalComputer();
+			toothChartWrapper.UseHardware=ComputerPrefs.LocalComputer.GraphicsUseHardware;
+			toothChartWrapper.PreferredPixelFormatNumber=ComputerPrefs.LocalComputer.PreferredPixelFormatNum;
+			toothChartWrapper.DeviceFormat=new ToothChartDirectX.DirectXDeviceFormat(ComputerPrefs.LocalComputer.DirectXFormat);
+			//Must be last preference set here, because this causes the pixel format to be recreated.
+			//When DirectX cannot start (no d3dx9_43.dll from the legacy DirectX runtime), the wrapper falls back to OpenGL, then Simple 2D.
+			toothChartWrapper.DrawMode=ComputerPrefs.LocalComputer.GraphicsSimple;
+			//The preferred pixel format number changes to the selected pixel format number after a context is chosen.
+			ComputerPrefs.LocalComputer.PreferredPixelFormatNum=toothChartWrapper.PreferredPixelFormatNumber;
+			ComputerPrefs.Update(ComputerPrefs.LocalComputer);
 			if(_isModuleSelected) {
 				FillToothChart(retainSelection:true);
 			}
@@ -4537,55 +4518,14 @@ namespace OpenDental {
 				return;
 			}
 			_isInitializedOnStartup=true;
-			string appDir=Application.StartupPath;
-			if(File.Exists(Path.Combine(appDir,"Sparks3D\\Sparks3D.dll"))) {
-				if(PrefC.GetBoolSilent(PrefName.DirectX11ToothChartUseIfAvail,true)){
-					ToothChartRelay.IsSparks3DPresent=true;
-				}
-				if(ComputerPrefs.LocalComputer.GraphicsUseDirectX11==YN.No) {
-					ToothChartRelay.IsSparks3DPresent=false;
-				}
-				if(ComputerPrefs.LocalComputer.GraphicsUseDirectX11==YN.Yes) {
-					ToothChartRelay.IsSparks3DPresent=true;
-				}
-				//We'll just go ahead and let everyone use it, whether on support or not.
-				//The code below might be useful if we decide to restrict usage a little more.
-				//if(ODBuild.IsTrial()){
-				//	ToothChartRelay.IsSparks3DPresent=true;
-				//}
-				//else if(OpenDentalHelp.ODHelp.IsEncryptedKeyValid()){//always true in debug
-				//	ToothChartRelay.IsSparks3DPresent=true;
-				//}
-			}
-			_toothChartRelay= new ToothChartRelay();//IsSparks3DPresent could have been set back to false here
+			//SparksToothChart is the only tooth chart. Open Dental's closed DirectX 11 chart (Sparks3D.dll) and its DirectX11ToothChartUseIfAvail
+			//preference and GraphicsUseDirectX11 computer setting were removed on 2026-11-01; the preference and column stay in the database, unread.
+			_toothChartRelay= new ToothChartRelay();
 			_toothChartRelay.SetToothChartWrapper(toothChartWrapper);
-			if(ToothChartRelay.IsSparks3DPresent){
-				toothChartWrapper.Visible=false;//already not visible
-				_controlToothChart=_toothChartRelay.GetToothChart();
-				_controlToothChart.Location=toothChartWrapper.Location;
-				_controlToothChart.Size=toothChartWrapper.Size;
-				_toothChartRelay.SegmentDrawn+=toothChart_SegmentDrawn;
-				_toothChartRelay.TextMoved+=_toothChart_TextMoved;
-				_toothChartRelay.ToothSelectionsChanged += toothChart_ToothSelectionsChanged;
-				LayoutManager.Add(_controlToothChart,this);
-				_toothChartRelay.ResetTeeth();
-				try {
-					_toothChartRelay.EndUpdate();//Initializes various pointers so that closing OD won't cause null memory error
-				}
-				catch{
-					//EndUpdate can fail.
-					ToothChartRelay.IsSparks3DPresent=false;
-					if(_controlToothChart.Visible){
-						_controlToothChart.Visible=false;//might need to be more aggressive and actually delete it
-					}
-				}
-			}
-			if(!ToothChartRelay.IsSparks3DPresent){
-				toothChartWrapper.Visible=true;
-				//ComputerPref localComputerPrefs=ComputerPrefs.GetForLocalComputer();
-				this.toothChartWrapper.DeviceFormat=new ToothChartDirectX.DirectXDeviceFormat(ComputerPrefs.LocalComputer.DirectXFormat);
-				this.toothChartWrapper.DrawMode=ComputerPrefs.LocalComputer.GraphicsSimple;//triggers ResetControls.
-			}
+			toothChartWrapper.Visible=true;
+			//ComputerPref localComputerPrefs=ComputerPrefs.GetForLocalComputer();
+			this.toothChartWrapper.DeviceFormat=new ToothChartDirectX.DirectXDeviceFormat(ComputerPrefs.LocalComputer.DirectXFormat);
+			this.toothChartWrapper.DrawMode=ComputerPrefs.LocalComputer.GraphicsSimple;//triggers ResetControls. Falls back to OpenGL, then Simple 2D.
 			_procStatNew=ProcStat.TP;
 			if(GetIsTPChartingAvailable()) {
 				FillListPriorities();//Mimics old ChartLayoutHelper logic
@@ -8370,11 +8310,6 @@ namespace OpenDental {
 				procedureTemp.CodeNum=PIn.Long(table.Rows[i]["CodeNum"].ToString());
 				listProcedures.Add(procedureTemp);
 			}
-			if(ToothChartRelay.IsSparks3DPresent) {
-				using FormPerio formPerio=new FormPerio(Pd.Patient,null);
-				formPerio.ShowDialog();
-				return;
-			}
 			using FormPerio formPerio1=new FormPerio(Pd.Patient,listProcedures);
 			formPerio1.ShowDialog();
 		}
@@ -8428,22 +8363,9 @@ namespace OpenDental {
 				return;
 			}
 			if(UsingEcwTightOrFull() && Bridges.ECW.UserId!=0) {
-				VBbridges.Ecw.LoadRxForm((int)Bridges.ECW.UserId,Bridges.ECW.EcwConfigPath,(int)Bridges.ECW.AptNum);
-				//refresh the right panel:
-				string strAppServer;
-				try {
-					strAppServer=VBbridges.Ecw.GetAppServer((int)Bridges.ECW.UserId,Bridges.ECW.EcwConfigPath);
-				}
-				catch(Exception ex) {
-					webBrowserEcw.Url=null;
-					labelECWerror.Text="Error: "+ex.Message;
-					labelECWerror.Visible=true;
-					return;
-				}
-				webBrowserEcw.Url=new Uri("http://"+strAppServer+"/mobiledoc/jsp/dashboard/Overview.jsp?ptId="
-					+Pd.PatNum.ToString()+"&panelName=overview&pnencid="
-					+Bridges.ECW.AptNum.ToString()+"&context=progressnotes&TrUserId="+Bridges.ECW.UserId.ToString());
-				labelECWerror.Visible=false;
+				//The eClinicalWorks Rx window was opened through Open Dental's closed VBbridges.dll, removed on 2026-11-01. eClinicalWorks does not
+				//publish that interface, so the action says it is not available instead of guessing.
+				MsgBox.Show(this,BridgeNotAvailable.EcwRx);
 				return;
 			}
 			using FormRxSelect formRxSelect=new FormRxSelect(Pd.Patient);
@@ -8522,12 +8444,7 @@ namespace OpenDental {
 						control=panelToothTrackBar;
 						break;
 					case "toothChart":
-						if(ToothChartRelay.IsSparks3DPresent) {
-							control=_controlToothChart;
-						}
-						else {
-							control=toothChartWrapper;
-						}
+						control=toothChartWrapper;
 						break;
 					case "PanelEcw":
 						control=panelEcw;

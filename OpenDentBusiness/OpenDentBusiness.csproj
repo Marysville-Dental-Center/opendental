@@ -205,9 +205,6 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\SigPlusNET.dll</HintPath>
     </Reference>
-    <Reference Include="Sparks3D">
-      <HintPath>..\Required dlls\Sparks3D\Sparks3D.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>

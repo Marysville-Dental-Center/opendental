@@ -72,7 +72,6 @@ namespace OpenDentBusiness {
 		public const int SEGMENT_BYTES=786432;
 		///<summary>Sub folders of the installation folder that are published too (not recursive), the same ones UpdateFileCopier copies.</summary>
 		public static readonly List<string> ListSpecialDirs=new List<string>() {
-			"Sparks3D",
 			"OpenDentalReplicationService",
 		};
 		///<summary>The program's own assemblies. The build id is the SHA-256 over their names and SHA-256 values, so any rebuilt assembly gives a new

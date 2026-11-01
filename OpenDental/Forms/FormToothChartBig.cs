@@ -12,8 +12,6 @@ namespace OpenDental {
 		private bool _showBySelectedTeeth;
 		public List<ToothInitial> ListToothInitials;
 		private ToothChartRelay _toothChartRelay;
-		///<summary>This is the new Sparks3D toothChart.</summary>
-		private Control toothChart;
 		public List<DataRow> ListDataRowsProcs;
 		public List<Appointment> ListAppointments;
 		public Patient PatientCur;
@@ -36,34 +34,24 @@ namespace OpenDental {
 			this.Text=Lan.g(this,"Big Tooth Chart")+" - "+PatientCur.GetNameLF()+" - "+PatientCur.PatNum;
 			_toothChartRelay= new ToothChartRelay();
 			_toothChartRelay.SetToothChartWrapper(toothChartWrapper);
-			if(ToothChartRelay.IsSparks3DPresent){
-				toothChartWrapper.Visible=false;//already not visible
-				toothChart=_toothChartRelay.GetToothChart();
-				toothChart.Dock = System.Windows.Forms.DockStyle.Fill;
-				toothChart.Location=toothChartWrapper.Location;
-				toothChart.Size=toothChartWrapper.Size;
-				LayoutManager.Add(toothChart,this);
+			toothChartWrapper.Visible=true;
+			//ComputerPref computerPref=ComputerPrefs.GetForLocalComputer();
+			toothChartWrapper.UseHardware=ComputerPrefs.LocalComputer.GraphicsUseHardware;
+			toothChartWrapper.PreferredPixelFormatNumber=ComputerPrefs.LocalComputer.PreferredPixelFormatNum;
+			//Must be last preference set, last so that all settings are caried through in the reinitialization this line triggers.
+			if(ComputerPrefs.LocalComputer.GraphicsSimple==DrawingMode.Simple2D) {
+				toothChartWrapper.DrawMode=DrawingMode.Simple2D;
+			}
+			else if(ComputerPrefs.LocalComputer.GraphicsSimple==DrawingMode.DirectX) {
+				toothChartWrapper.DeviceFormat=new ToothChartDirectX.DirectXDeviceFormat(ComputerPrefs.LocalComputer.DirectXFormat);
+				toothChartWrapper.DrawMode=DrawingMode.DirectX;
 			}
 			else{
-				toothChartWrapper.Visible=true;
-				//ComputerPref computerPref=ComputerPrefs.GetForLocalComputer();
-				toothChartWrapper.UseHardware=ComputerPrefs.LocalComputer.GraphicsUseHardware;
-				toothChartWrapper.PreferredPixelFormatNumber=ComputerPrefs.LocalComputer.PreferredPixelFormatNum;
-				//Must be last preference set, last so that all settings are caried through in the reinitialization this line triggers.
-				if(ComputerPrefs.LocalComputer.GraphicsSimple==DrawingMode.Simple2D) {
-					toothChartWrapper.DrawMode=DrawingMode.Simple2D;
-				}
-				else if(ComputerPrefs.LocalComputer.GraphicsSimple==DrawingMode.DirectX) {
-					toothChartWrapper.DeviceFormat=new ToothChartDirectX.DirectXDeviceFormat(ComputerPrefs.LocalComputer.DirectXFormat);
-					toothChartWrapper.DrawMode=DrawingMode.DirectX;
-				}
-				else{
-					toothChartWrapper.DrawMode=DrawingMode.OpenGL;
-				}
-				//The preferred pixel format number changes to the selected pixel format number after a context is chosen.
-				ComputerPrefs.LocalComputer.PreferredPixelFormatNum=toothChartWrapper.PreferredPixelFormatNumber;
-				ComputerPrefs.Update(ComputerPrefs.LocalComputer);
+				toothChartWrapper.DrawMode=DrawingMode.OpenGL;
 			}
+			//The preferred pixel format number changes to the selected pixel format number after a context is chosen.
+			ComputerPrefs.LocalComputer.PreferredPixelFormatNum=toothChartWrapper.PreferredPixelFormatNumber;
+			ComputerPrefs.Update(ComputerPrefs.LocalComputer);
 			FillToothChart();
 			//toothChart.Refresh();
 		}

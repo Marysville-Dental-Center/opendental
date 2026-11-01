@@ -60,27 +60,8 @@ namespace OpenDental{
 			_formatNumSelected=ComputerPrefCur.PreferredPixelFormatNum;
 			_directXFormatSelected=ComputerPrefCur.DirectXFormat;
 			textSelected.Text="";
-			if(PrefC.GetBool(PrefName.DirectX11ToothChartUseIfAvail)){
-				radioDirectX11Use.Checked=true;
-			}
-			else{
-				radioDirectX11DontUse.Checked=true;
-			}
-			if(ComputerPrefCur.GraphicsUseDirectX11==YN.Yes) {
-				radioDirectX11ThisCompYes.Checked=true;
-			}
-			else if(ComputerPrefCur.GraphicsUseDirectX11==YN.No) {
-				radioDirectX11ThisCompNo.Checked=true;
-			}
-			else {
-				radioDirectX11ThisCompUseGlobal.Checked=true;
-			}
-			if(ToothChartRelay.IsSparks3DPresent){
-				radioDirectX11Avail.Checked=true;
-			}
-			else{
-				radioDirectX11NotFound.Checked=true;
-			}
+			//The DirectX 11 tooth chart settings (the DirectX11ToothChartUseIfAvail preference and this computer's GraphicsUseDirectX11) were for
+			//Open Dental's closed Sparks3D.dll chart, removed on 2026-11-01. They stay in the database, unread. SparksToothChart is the only chart.
 			if(ComputerPrefCur.GraphicsSimple==DrawingMode.Simple2D) {
 				radioSimpleChart.Checked=true;
 				group3DToothChart.Enabled=false;
@@ -272,6 +253,9 @@ namespace OpenDental{
 
 		///<summary>CAUTION: Runs slowly. May take minutes. Returns the string "invalid" if no suitable Direct X format can be found.</summary>
 		public static string GetPreferredDirectXFormat(Form callingForm) {
+			if(!ToothChartWrapper.IsDirectXRuntimeAvailable()) {
+				return "invalid";//No format can work without d3dx9_43.dll, so don't spend minutes trying each one.
+			}
 			ToothChartDirectX.DirectXDeviceFormat[] directXDeviceFormatArray=ToothChartDirectX.GetStandardDeviceFormats();
 			for(int i=0;i<directXDeviceFormatArray.Length;i++) {
 				if(TestDirectXFormat(callingForm,directXDeviceFormatArray[i].ToString())) {
@@ -290,8 +274,8 @@ namespace OpenDental{
 			callingForm.Controls.Add(toothChartWrapperTest);
 			toothChartWrapperTest.DeviceFormat=new ToothChartDirectX.DirectXDeviceFormat(directXFormat);
 			toothChartWrapperTest.DrawMode=DrawingMode.DirectX;//Creates the device.
-			if(toothChartWrapperTest.DrawMode==DrawingMode.Simple2D) {
-				//The chart is set back to 2D mode when there is an error initializing.
+			if(toothChartWrapperTest.DrawMode!=DrawingMode.DirectX) {
+				//The chart falls back to OpenGL, then Simple 2D, when DirectX cannot start.
 				callingForm.Controls.Remove(toothChartWrapperTest);
 				return false;
 			}
@@ -309,18 +293,8 @@ namespace OpenDental{
 		}
 
 		private void butSave_Click(object sender,System.EventArgs e) {
-			bool isChanged=Prefs.UpdateBool(PrefName.DirectX11ToothChartUseIfAvail,radioDirectX11Use.Checked);
 			//ComputerPrefCur doesn't change until here, so make the old copy exactly when we need it instead of when the form is created.
 			ComputerPref computerPrefOld=ComputerPrefCur.Copy();
-			if(radioDirectX11ThisCompUseGlobal.Checked) {
-				ComputerPrefCur.GraphicsUseDirectX11=YN.Unknown;
-			}
-			else if(radioDirectX11ThisCompYes.Checked) {
-				ComputerPrefCur.GraphicsUseDirectX11=YN.Yes;
-			}
-			else if(radioDirectX11ThisCompNo.Checked) {
-				ComputerPrefCur.GraphicsUseDirectX11=YN.No;
-			}
 			//ComputerPref computerPref=ComputerPrefs.GetForLocalComputer();
 			if(radioDirectXChart.Checked) {
 				if(!_isRemoteEdit && !TestDirectXFormat(this,_directXFormatSelected)){
@@ -351,9 +325,6 @@ namespace OpenDental{
 				ComputerPrefCur.GraphicsSimple=DrawingMode.OpenGL;
 			}
 			ComputerPrefs.Update(ComputerPrefCur,computerPrefOld);
-			if(isChanged){
-				DataValid.SetInvalid(InvalidType.Prefs);
-			}
 			DialogResult=DialogResult.OK;
 		}
 

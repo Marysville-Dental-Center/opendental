@@ -220,10 +220,6 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\SigPlusNET.dll</HintPath>
     </Reference>
-    <Reference Include="Sparks3D">
-      <HintPath>..\Required dlls\Sparks3D\Sparks3D.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
     <Reference Include="System">
       <HintPath>..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.7.2\System.dll</HintPath>
     </Reference>
@@ -265,16 +261,8 @@
     </Reference>
     <Reference Include="UIAutomationClient" />
     <Reference Include="UIAutomationProvider" />
-    <Reference Include="VBbridges, Version=4.4.11.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\VBbridges.dll</HintPath>
-    </Reference>
     <Reference Include="WindowsBase" />
     <Reference Include="WindowsFormsIntegration" />
-    <Reference Include="xImageDeviceManager, Version=1.0.0.0, Culture=neutral, processorArchitecture=x86">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\xImageDeviceManager.dll</HintPath>
-    </Reference>
     <Reference Include="zxing, Version=0.16.5.0, Culture=neutral, PublicKeyToken=4e88037ac681fe60, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\zxing.dll</HintPath>
@@ -8972,7 +8960,6 @@
     <Resource Include="Resources\topazPen10.gif" />
     <Resource Include="Resources\eSig.gif" />
     <Resource Include="Resources\deleteX10.gif" />
-    <None Include="Resources\Sparks3D.txt" />
     <None Include="Resources\splashBenco.jpg" />
     <None Include="Resources\benco_logo.png" />
     <None Include="Resources\Zxing.txt" />

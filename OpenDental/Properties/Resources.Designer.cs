@@ -1337,17 +1337,6 @@ namespace OpenDental.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Sparks3D is a DirectX 11 plugin for Open Dental that is licensed separately.  Open Dental will still work fine without this plugin, but the older 3D &quot;SparksToothChart&quot; will require the user to install the DirectX 9 SDK.  To make the newer Sparks3D plugin work, the following two files must be present in the Sparks3D folder within the application folder:  Sparks3D.dll and Sparks3DXEngine.dll.  To disable the plugin for troubleshooting, rename the folder temporarily.
-        ///
-        ///License:---------------------------------- [rest of string was truncated]&quot;;.
-        /// </summary>
-        public static string Sparks3D {
-            get {
-                return ResourceManager.GetString("Sparks3D", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
         public static System.Drawing.Bitmap splashBenco {

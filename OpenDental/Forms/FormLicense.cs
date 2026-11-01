@@ -50,7 +50,6 @@ namespace OpenDental{
 			listBoxLicense.Items.Add("Pearl",Properties.Resources.Pearl);
 			listBoxLicense.Items.Add("PDFSharp",Properties.Resources.PdfSharp);
 			listBoxLicense.Items.Add("SharpDX",Properties.Resources.SharpDX);
-			listBoxLicense.Items.Add("Sparks3D",Properties.Resources.Sparks3D);
 			listBoxLicense.Items.Add("SSHNet",Properties.Resources.SshNet);
 			listBoxLicense.Items.Add("Stdole",Properties.Resources.stdole);
 			listBoxLicense.Items.Add("Tamir",Properties.Resources.Tamir);
