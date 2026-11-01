@@ -2,7 +2,9 @@
 Open Dental GPL license Copyright (C) 2003  Jordan Sparks, DMD.  http://www.open-dent.com,  www.docsparks.com
 See header in FormOpenDental.cs for complete text.  Redistributions must retain this text.
 ===============================================================================================================*/
-using MySql.Data.MySqlClient;
+//Changed in Open PMS - Dental (package RDL-SRC, docs/port-notes/RDL-SRC.md): MySqlConnector replaces MySql.Data, which the program no longer
+//ships, and the connection string is the one the running program uses, with FreeDentalConfig.xml as the fallback.
+using MySqlConnector;
 using System;
 using System.Collections;
 using System.Data;
@@ -30,76 +32,43 @@ namespace ODR{
 
 		///<summary>Constructor sets the connection values.</summary>
 		public DataConnection(){
-		  con=new MySqlConnection(GetOpenDentalConnStr());
+		  con=new MySqlConnection(GetODConnStr());
 			//dr = null;
 			cmd = new MySqlCommand();
 			cmd.Connection=con;
 			//table=new DataTable();
 		}
 
-		///<summary></summary>
-		private string GetOpenDentalConnStr() {
-			XmlDocument document=new XmlDocument();
-			string path=ODFileUtils.CombinePaths(Application.StartupPath,"FreeDentalConfig.xml");
-			if(!File.Exists(path)) {
-				return "";
+		///<summary>The connection string for report queries. Report definitions name it: =ODR.DataConnection.GetODConnStr(). It is the connection of
+		///the program this assembly is loaded into, so a report reads the database that this copy of the program is connected to, even when several
+		///copies are open or the database was chosen without saving FreeDentalConfig.xml. Without one (a middle tier client, or ODR loaded outside
+		///the program), it is built from FreeDentalConfig.xml in the program folder, as it always was. Empty when neither is available.</summary>
+		public static string GetODConnStr() {
+			string connStr=GetProgramConnStr();
+			if(connStr!="") {
+				return connStr;
 			}
-			string computerName="";
-			string database="";
-			string user="";
-			string password="";
-			string passHash="";
+			return GetConfigFileConnStr();
+		}
+
+		///<summary>The connection string of the program's own direct MySQL connection (DataConnectionBase.DataConnection), or empty if it has none.
+		///</summary>
+		private static string GetProgramConnStr() {
 			try {
-				document.Load(path);
-				XmlNodeReader reader=new XmlNodeReader(document);
-				string currentElement="";
-				while(reader.Read()) {
-					if(reader.NodeType==XmlNodeType.Element) {
-						currentElement=reader.Name;
-					}
-					else if(reader.NodeType==XmlNodeType.Text) {
-						switch(currentElement) {
-							case "ComputerName":
-								computerName=reader.Value;
-								break;
-							case "Database":
-								database=reader.Value;
-								break;
-							case "User":
-								user=reader.Value;
-								break;
-							case "Password":
-								password=reader.Value;
-								break;
-							case "MySQLPassHash":
-								passHash=reader.Value;
-								break;
-						}
-					}
+				if(!global::DataConnectionBase.DataConnection.HasDatabaseConnection
+					|| global::DataConnectionBase.DataConnection.DBtype!=global::DataConnectionBase.DatabaseType.MySql)
+				{
+					return "";
 				}
-				reader.Close();
+				return global::DataConnectionBase.DataConnection.GetCurrentConnectionString()??"";
 			}
 			catch {
 				return "";
 			}
-			string decryptedPwd;
-			if(password=="" && passHash!="" && Secrets.Decrypt(passHash,out decryptedPwd)) {
-				//if plain text password is blank but encrypted pwd isn't and decryption is successful, use decryptedPwd
-				password=decryptedPwd;
-			}
-			//example:
-			//Server=localhost;Database=opendental;User ID=root;Password=;CharSet=utf8
-			return "Server="+computerName
-				+";Database="+database
-				+";User ID="+user
-				+";Password="+password
-				+";SslMode=none"
-				+";CharSet=utf8";
 		}
 
-		///<summary>The problem with this is that if multiple copies of OD are open at the same time, it might get data from only the most recently opened database.  This won't work for some users, so we will normally dynamically alter the connection string.</summary>
-		public static string GetODConnStr() {
-			//return "Server=localhost;Database=development54;User ID=root;Password=;CharSet=utf8";
+		///<summary>Built from FreeDentalConfig.xml in the program folder. Empty if the file is missing or unreadable.</summary>
+		private static string GetConfigFileConnStr() {
 			XmlDocument document=new XmlDocument();
 			string path=ODFileUtils.CombinePaths(Application.StartupPath,"FreeDentalConfig.xml");
 			if(!File.Exists(path)) {

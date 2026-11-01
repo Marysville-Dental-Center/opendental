@@ -25,9 +25,10 @@
 			<Interface>SQL</Interface>
 		</DataSource>
 		<DataSource>
+			<!-- Changed by Open PMS - Dental contributors, 2026-11-01 (RDL-SRC): MySqlConnector in place of MySql.Data. -->
 			<DataProvider>MySQL.NET</DataProvider>
-			<CodeModule>MySql.Data.dll</CodeModule>
-			<ClassName>MySql.Data.MySqlClient.MySqlConnection</ClassName>
+			<CodeModule>MySqlConnector.dll</CodeModule>
+			<ClassName>MySqlConnector.MySqlConnection</ClassName>
 			<TableSelect>show tables</TableSelect>
 			<Interface>SQL</Interface>
 			<ReplaceParameters>true</ReplaceParameters>
