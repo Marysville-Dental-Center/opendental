@@ -515,15 +515,163 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
-		public void Reassign_16Bit_Refused_StaysPut() {
+		public void Reassign_16Bit_ToTheFoundPatient_An8BitCopy_ImageEditSaysSo_OriginalKept() {
 			CaptureFileEntry entry=_harness.Files.Quarantine16(RecoveryFiles.SessionFields(patNum:0),_receivedAt);
-			Assert.IsFalse(CaptureRecoveryFiler.IsReassignOffered(entry),"Not offered, rather than refused after the patient search and the reason.");
-			CaptureFilingResult result=_harness.Filer.Reassign(entry,_harness.PatientJane,"reason",20);
-			Assert.IsFalse(result.IsDone);
-			StringAssert.Contains(result.Error,"cannot be reassigned");
-			Assert.AreEqual(1,_harness.Files.CountQuarantineFiles());
+			Assert.IsTrue(CaptureRecoveryFiler.IsReassignOffered(entry),"Owner decision 2026-11-01: reassigned as its explicit 8-bit copy.");
+			CaptureFilingResult result=_harness.Filer.Reassign(entry,_harness.PatientJane,"The phantom was Jane's test.",20);
+			Assert.IsTrue(result.IsDone,result.Error);
+			Assert.AreEqual(".png",RadiographStore.ListExtensions.Single(),"An 8-bit PNG, never 16-bit DICOM, for an unmounted document.");
+			Document document=RadiographStore.ListDocumentsUpdated.Single();
+			Assert.AreEqual(CaptureRecoveryText.ReassignedDescription,document.Description);
+			Assert.AreEqual("",document.ToothNumbers);
+			Assert.AreEqual(0,document.MountItemNum);
+			SecurityLog securityLog=Store.ListLogEntries.Single(x => x.PermType==EnumPermType.ImageEdit);
+			StringAssert.Contains(securityLog.LogText,"an 8-bit copy of a 16-bit capture (made through the window 1000 to 3231 of its values; the 16-bit "
+				+"original is kept in Capture\\quarantine-resolved\\"+RecoveryFiles.SessionGuid.ToString("D")+")");
+			StringAssert.Contains(securityLog.LogText,"Reason: The phantom was Jane's test.");
+			AssertOriginalResolved(entry,document.DocNum,1000,3231);
+			Assert.AreEqual(0,RadiographStore.CountPearl,"The copy is a rendering of a 16-bit capture: never sent.");
+		}
+
+		///<summary>The 16-bit original moved to Capture\quarantine-resolved with its sidecar, whose disposition names the copy's DocNum and window.</summary>
+		private void AssertOriginalResolved(CaptureFileEntry entry,long docNumCopy,int windowLow,int windowHigh) {
+			Assert.AreEqual(0,_harness.Files.CountQuarantineFiles(),"No longer an unassigned capture.");
+			string folderResolved=Path.Combine(_harness.Files.Folder,@"Capture\quarantine-resolved",RecoveryFiles.SessionGuid.ToString("D"));
+			string pathImage=Path.Combine(folderResolved,entry.FileName);
+			Assert.IsTrue(File.Exists(pathImage),"The 16-bit original is kept, never deleted.");
+			string sidecar=File.ReadAllText(Path.ChangeExtension(pathImage,".txt"));
+			StringAssert.Contains(sidecar,"DispositionDocNum="+docNumCopy);
+			StringAssert.Contains(sidecar,"DispositionCopy="+RadiographSavePlanner.Copy8BitText);
+			StringAssert.Contains(sidecar,"DispositionCopyWindowLow="+windowLow);
+			StringAssert.Contains(sidecar,"DispositionCopyWindowHigh="+windowHigh);
+			StringAssert.Contains(sidecar,"DispositionCopyBitDepth=16");
+		}
+
+		///<summary>The grey value of pixel (x,y) of the copy's PNG.</summary>
+		private int GrayOfCopy(int x,int y) {
+			using(MemoryStream memoryStream=new MemoryStream(RadiographStore.ListBytesImported.Last()))
+			using(System.Drawing.Bitmap bitmap=new System.Drawing.Bitmap(memoryStream)) {
+				return bitmap.GetPixel(x,y).R;
+			}
 		}
 		#endregion Reassign
+
+		#region The 16-bit filing route
+		[TestMethod]
+		public void Assign_16Bit_SlotTaken_An8BitCopyAsRecoveredItem_WithTheSlotsTeeth_OriginalKept() {
+			CaptureFileEntry entry=_harness.Files.Quarantine16(RecoveryFiles.SessionFields(),_receivedAt);
+			Store.DictSlotDocuments[103]=new Document { DocNum=900,PatNum=42,MountItemNum=103 };
+			string error;
+			CaptureAssignPlan plan=_harness.Filer.PlanAssign(entry,0,out error);
+			Assert.IsNotNull(plan,error);
+			Assert.IsFalse(plan.IsIntoOriginalSlot);
+			Assert.IsTrue(plan.Is8BitCopy);
+			Assert.AreEqual("Recovered: Slot 3 (teeth 6)",plan.Description);
+			StringAssert.Contains(plan.Note,"filed as an 8-bit copy: a gray PNG made with its 0.5-99.5 % window, not the 16-bit original. The 16-bit "
+				+"original and its sidecar stay in Capture\\quarantine-resolved\\"+RecoveryFiles.SessionGuid.ToString("D")+" on this computer.");
+			CaptureFilingResult result=_harness.Filer.Assign(entry,0,0);
+			Assert.IsTrue(result.IsDone,result.Error);
+			Assert.AreEqual(".png",RadiographStore.ListExtensions.Single());
+			Assert.IsTrue(result.IsMountItemCreated,"An unmounted item of the mount.");
+			Document document=RadiographStore.ListDocumentsUpdated.Single();
+			Assert.AreEqual("Recovered: Slot 3 (teeth 6)",document.Description);
+			Assert.AreEqual("6",document.ToothNumbers,"The slot's teeth.");
+			Assert.AreEqual(0,GrayOfCopy(0,0),"The 0.5 % end of the window is black.");
+			Assert.AreEqual(255,GrayOfCopy(5,3),"The 99.5 % end is white.");
+			SecurityLog securityLog=Store.ListLogEntries.Single(x => x.PermType==EnumPermType.ImageCreate);
+			StringAssert.StartsWith(securityLog.LogText,CaptureRecoveryText.AssignLogPrefix);
+			StringAssert.Contains(securityLog.LogText,"as DocNum "+document.DocNum+", an 8-bit copy of a 16-bit capture (made through the window 1000 "
+				+"to 3231 of its values;");
+			StringAssert.Contains(RadiographStore.ListLogTexts.Single(),RadiographSavePlanner.Copy8BitText,"The capture details entry says so too.");
+			AssertOriginalResolved(entry,document.DocNum,1000,3231);
+			Assert.AreEqual(0,RadiographStore.CountPearl);
+		}
+
+		[TestMethod]
+		public void Assign_16Bit_MountDeleted_ASingleDocument8BitCopy_WithTheSlotsTeeth() {
+			CaptureFileEntry entry=_harness.Files.Quarantine16(RecoveryFiles.SessionFields(),_receivedAt);
+			Store.DictMounts.Remove(7);
+			CaptureFilingResult result=_harness.Filer.Assign(entry,20,0);
+			Assert.IsTrue(result.IsDone,result.Error);
+			Assert.AreEqual(".png",RadiographStore.ListExtensions.Single());
+			Assert.AreEqual(0,RadiographStore.ListMountItemsInserted.Count);
+			Document document=RadiographStore.ListDocumentsUpdated.Single();
+			Assert.AreEqual("6",document.ToothNumbers);
+			Assert.AreEqual("Recovered: Slot 3 (teeth 6)",document.Description);
+		}
+
+		[TestMethod]
+		public void Assign_16Bit_SlotNotRecorded_RecoveredItemWithNoTeeth() {
+			Dictionary<string,string> dictFields=RecoveryFiles.SessionFields();
+			dictFields[CaptureSidecarKeys.ContinuousEnable]="1";
+			dictFields[CaptureSidecarKeys.IndexInEnable]="2";
+			CaptureFileEntry entry=_harness.Files.Quarantine16(dictFields,_receivedAt);
+			Assert.IsFalse(entry.IsSlotKnown);
+			CaptureFilingResult result=_harness.Filer.Assign(entry,0,0);
+			Assert.IsTrue(result.IsDone,result.Error);
+			Document document=RadiographStore.ListDocumentsUpdated.Single();
+			Assert.AreEqual("",document.ToothNumbers,"No teeth when the slot is not known.");
+			Assert.AreEqual("Recovered: slot unknown",document.Description);
+			Assert.AreEqual(".png",RadiographStore.ListExtensions.Single());
+		}
+
+		[TestMethod]
+		public void Assign_16Bit_OwnEmptySlot_StillDicomOnly_NeverACopy() {
+			CaptureFileEntry entry=_harness.Files.Quarantine16(RecoveryFiles.SessionFields(),_receivedAt);
+			string error;
+			CaptureAssignPlan plan=_harness.Filer.PlanAssign(entry,0,out error);
+			Assert.IsTrue(plan.IsIntoOriginalSlot);
+			Assert.IsFalse(plan.Is8BitCopy,"Its own empty slot: 16-bit DICOM, as before.");
+			Assert.IsFalse(_harness.Filer.Assign(entry,0,0).IsDone,"Without the session's conditions it stays where it is.");
+			Assert.AreEqual(0,RadiographStore.ListPatientsImported.Count);
+		}
+
+		[TestMethod]
+		public void Assign_16Bit_PolarityInvert_TheCopyIsInverted() {
+			Dictionary<string,string> dictFields=RecoveryFiles.SessionFields();
+			dictFields["Device.12.Polarity"]="Invert";//as the library's sidecar records the settings in effect
+			CaptureFileEntry entry=_harness.Files.Quarantine16(dictFields,_receivedAt);
+			Assert.AreEqual(TwainPolarity.Invert,CaptureRecoveryFiler.GetCapturePolarity(entry));
+			Store.DictSlotDocuments[103]=new Document { DocNum=900,PatNum=42,MountItemNum=103 };
+			CaptureFilingResult result=_harness.Filer.Assign(entry,0,0);
+			Assert.IsTrue(result.IsDone,result.Error);
+			Assert.AreEqual(255,GrayOfCopy(0,0),"The lowest raw value is the most radiopaque after the inversion.");
+			Assert.AreEqual(0,GrayOfCopy(5,3));
+			Assert.AreEqual(TwainPolarity.AsDelivered,CaptureRecoveryFiler.GetCapturePolarity(_harness.Files.Quarantine16(RecoveryFiles.SessionFields(),
+				_receivedAt.AddMinutes(1))),"No Polarity in the sidecar: as delivered.");
+		}
+
+		[TestMethod]
+		public void Assign_16Bit_Vanilla_NotInverted_NoCopy_StaysPut() {
+			Dictionary<string,string> dictFields=RecoveryFiles.SessionFields();
+			dictFields["PixelFlavor"]="1";//TWPF_VANILLA
+			CaptureFileEntry entry=_harness.Files.Quarantine16(dictFields,_receivedAt);
+			Store.DictSlotDocuments[103]=new Document { DocNum=900,PatNum=42,MountItemNum=103 };
+			CaptureFilingResult result=_harness.Filer.Assign(entry,0,0);
+			Assert.IsFalse(result.IsDone);
+			StringAssert.Contains(result.Error,"0 as white");
+			Assert.AreEqual(1,_harness.Files.CountQuarantineFiles());
+		}
+
+		[TestMethod]
+		public void RecoverRecentCaptures_16BitJournalCopy_SlotTaken_8BitCopy_OriginalKeptPastRotation() {
+			CaptureFileEntry entry=_harness.Files.Journal16(RecoveryFiles.SessionFields(),_receivedAt);
+			Store.DictSlotDocuments[103]=new Document { DocNum=900,PatNum=42,MountItemNum=103 };
+			string error;
+			CaptureAssignPlan plan=_harness.Filer.PlanAssign(entry,42,out error);
+			Assert.IsNotNull(plan,error);
+			StringAssert.Contains(plan.Note,"stay in "+CaptureFileStore.SubfolderJournalKept);
+			CaptureFilingResult result=_harness.Filer.Assign(entry,0,42);
+			Assert.IsTrue(result.IsDone,result.Error);
+			Assert.AreEqual(".png",RadiographStore.ListExtensions.Single());
+			string pathKept=Path.Combine(_harness.Files.Folder,CaptureFileStore.SubfolderJournalKept,entry.FileName);
+			Assert.AreEqual(pathKept,result.PathResolved);
+			Assert.IsTrue(File.Exists(pathKept),"Kept where the journal's rotation does not reach.");
+			CollectionAssert.AreEqual(File.ReadAllBytes(entry.ImagePath),File.ReadAllBytes(pathKept),"Byte for byte.");
+			StringAssert.Contains(File.ReadAllText(Path.ChangeExtension(pathKept,".txt")),"DispositionDocNum="+result.Document.DocNum);
+			Assert.IsTrue(_harness.Files.Store.ListJournal().Single().IsResolved,"The journal copy itself is marked as filed, as before.");
+		}
+		#endregion The 16-bit filing route
 
 		#region Discard
 		[TestMethod]

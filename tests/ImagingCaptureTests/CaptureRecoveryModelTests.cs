@@ -112,19 +112,31 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
-		public void Gray16_NeverOfferedForReassign_TheNoteSaysWhenItCanOnlyBeDiscarded() {
+		public void Gray16_ReassignedAsAn8BitCopy_TheNoteAndTheStepsSaySoPlainly() {
 			_harness.Files.Quarantine16(RecoveryFiles.SessionFields(),_receivedAt);//its mount and slot are known
 			_harness.Files.Quarantine16(RecoveryFiles.SessionFields(patNum:0,captureId:"cap-8"),_receivedAt.AddMinutes(1));//no patient
 			CaptureRecoveryModel model=Model(CaptureRecoveryView.Unassigned);
 			Assert.AreEqual(2,model.Items.Count);
 			CaptureRecoveryItem itemSlot=model.Items.Single(x => !x.Entry.IsPatientUnknown);
-			Assert.IsFalse(itemSlot.IsReassignOffered,"Design 7.8: a 16-bit capture is never an unmounted document.");
+			Assert.IsTrue(itemSlot.IsReassignOffered,"Owner decision 2026-11-01: reassigned as an explicit 8-bit copy.");
 			StringAssert.Contains(itemSlot.NoteText,CaptureRecoveryText.Gray16Note);
 			CaptureRecoveryItem itemNoSlot=model.Items.Single(x => x.Entry.IsPatientUnknown);
 			Assert.IsFalse(itemNoSlot.IsAssignOffered);
-			Assert.IsFalse(itemNoSlot.IsReassignOffered);
+			Assert.IsTrue(itemNoSlot.IsReassignOffered);
 			Assert.IsTrue(itemNoSlot.IsDiscardOffered);
 			StringAssert.Contains(itemNoSlot.NoteText,CaptureRecoveryText.Gray16NoSlotNote,"Said before anyone searches for a patient.");
+			model.Select(model.Items.IndexOf(itemNoSlot));
+			Assert.IsTrue(model.BeginReassign());
+			StringAssert.Contains(model.StepDetailsText,"it is filed as an 8-bit copy: a gray PNG made with its 0.5-99.5 % window, not the 16-bit original. "
+				+"The 16-bit original and its sidecar stay in Capture\\quarantine-resolved");
+			model.CancelStep();
+			//Assign when its slot is taken: the confirmation says the same.
+			_harness.Store.DictSlotDocuments[103]=new Document { DocNum=900,PatNum=42,MountItemNum=103 };
+			model.Select(model.Items.IndexOf(itemSlot));
+			Assert.IsTrue(model.BeginAssign(),model.ErrorText);
+			StringAssert.Contains(model.StepDetailsText,"The original slot already holds an image.");
+			StringAssert.Contains(model.StepDetailsText,"filed as an 8-bit copy");
+			StringAssert.Contains(model.StepDetailsText,"an unmounted item of the mount");
 		}
 
 		[TestMethod]

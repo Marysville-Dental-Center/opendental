@@ -419,6 +419,53 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void Copy8_Of14Bit_AGrayPngThroughTheWindow_RecordedInThePlan() {
+			AcquiredImage image=Image14();
+			RadiographSaveRequest request=Request(image,new RadiographTarget { Mount=Mount(),MountItem=null,SlotRecovered=Slot() });
+			request.Is8BitCopyOf16Bit=true;
+			RadiographSaveResult result=_radiographImport.Save(request);
+			Assert.IsTrue(result.IsSaved,result.Error);
+			Assert.AreEqual(RadiographFormat.Png8,result.Plan.Format);
+			Assert.AreEqual(".png",result.Plan.FileExtension);
+			Assert.IsTrue(result.Plan.IsCopyOf16Bit);
+			Assert.AreEqual(14,result.Plan.CopyBitDepth);
+			int windowLow;
+			int windowHigh;
+			ImagingCapture.Dicom.DicomIntraOralWriter.GetWindow(image.Gray16,out windowLow,out windowHigh);
+			Assert.AreEqual(windowLow,result.Plan.CopyWindowLow,"The 0.5/99.5 % window the session shows.");
+			Assert.AreEqual(windowHigh,result.Plan.CopyWindowHigh);
+			Assert.AreEqual(0,result.Plan.WindowingMin,"An 8-bit PNG has no stored window.");
+			StringAssert.StartsWith(result.Plan.CaptureLogText,RadiographSavePlanner.CaptureLogPrefix+"8-bit copy of a 16-bit capture (14-bit in a 16-bit "
+				+"file), made through the window "+windowLow+" to "+windowHigh);
+			using(MemoryStream memoryStream=new MemoryStream(_store.BytesImported))
+			using(Bitmap bitmap=new Bitmap(memoryStream)) {
+				Assert.AreEqual(40,bitmap.Width);
+				Assert.AreEqual(30,bitmap.Height);
+				int idxMin=Array.IndexOf(image.Gray16,image.Gray16.Min());
+				Assert.AreEqual(0,bitmap.GetPixel(idxMin%40,idxMin/40).R);
+			}
+		}
+
+		[TestMethod]
+		public void Copy8_NotFromTheVerifiedMemoryTransfer_Refused() {
+			AcquiredImage image=Image16();
+			image.TransferMechanism=TwainTransferMechanism.Native;
+			RadiographSaveRequest request=Request(image,new RadiographTarget { ToothNumbers="" });
+			request.Is8BitCopyOf16Bit=true;
+			RadiographSaveResult result=_radiographImport.Save(request);
+			Assert.IsFalse(result.IsSaved);
+			StringAssert.Contains(result.Error,"is not copied to 8 bits");
+			AcquiredImage imageIn8BitEnable=Image16();
+			imageIn8BitEnable.BitDepthInEffect=8;
+			request=Request(imageIn8BitEnable,new RadiographTarget { ToothNumbers="" });
+			request.Is8BitCopyOf16Bit=true;
+			Assert.IsFalse(_radiographImport.Save(request).IsSaved);
+			//Never without the explicit request: a 16-bit image the caller may not store as DICOM is not saved at all.
+			request=Request(Image16(),new RadiographTarget { ToothNumbers="" });
+			Assert.IsFalse(_radiographImport.Save(request).IsSaved,"Not converted down on its own.");
+		}
+
+		[TestMethod]
 		public void Dicom16_DeliveredChocolate_VerifiedInvert_Saved() {
 			//twain-contract 1.1 keeps TWPF_CHOCOLATE and publishes after the clinic run whether the values follow it: if they do not, the
 			//verified Polarity=Invert is the clinic's fix, so the writer must accept it.

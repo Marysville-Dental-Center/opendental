@@ -189,8 +189,8 @@ namespace ImagingCapture.Recovery {
 					case CaptureRecoveryStep.ConfirmAssign:
 						return received+" It goes into "+(AssignPlan?.TargetText??"")+"."+(AssignPlan==null || AssignPlan.Note=="" ? "" : " "+AssignPlan.Note);
 					case CaptureRecoveryStep.Reassign:
-						return received+" It is filed for the patient you find as an unmounted document with no tooth numbers. Type why it belongs to that "
-							+"patient.";
+						return received+" It is filed for the patient you find as an unmounted document with no tooth numbers."
+							+(entry.IsGray16 ? " "+CaptureRecoveryText.GetCopy8BitNote(entry) : "")+" Type why it belongs to that patient.";
 					case CaptureRecoveryStep.ConfirmDiscard:
 						return received+" It is removed from unassigned captures and kept on this computer in Capture\\quarantine-resolved; the security log "
 							+"records the discard.";
@@ -318,8 +318,8 @@ namespace ImagingCapture.Recovery {
 				listNotes.Add("More than 30 days old.");
 			}
 			if(entry.IsGray16) {
-				//Design 7.8: stored only as DICOM in an empty mount slot with tooth numbers, never unmounted; there is no other route yet (an
-				//owner decision is pending), so a 16-bit capture without a known slot can only be discarded, and it is said here.
+				//Owner decision 2026-11-01: into its own empty slot as 16-bit DICOM (design 7.8); anywhere else, and reassigned, as an explicit 8-bit
+				//copy, the 16-bit original kept. The note says which applies.
 				bool hasNoSlot=entry.MountNum<=0 || !entry.IsSlotKnown || entry.IsPatientUnknown || CaptureRecoveryFiler.IsRedeliveredUnconfirmed(entry);
 				listNotes.Add(hasNoSlot ? CaptureRecoveryText.Gray16NoSlotNote : CaptureRecoveryText.Gray16Note);
 			}

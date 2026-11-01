@@ -57,11 +57,38 @@ namespace ImagingCapture.Recovery {
 		}
 
 		public const string SlotUnknown="Slot unknown";
-		///<summary>A 16-bit capture is stored only as DICOM in an empty mount slot with tooth numbers (design 7.8).</summary>
-		public const string Gray16Note="16-bit: it can be filed only into its empty slot of the mount, not reassigned.";
-		public const string Gray16NoSlotNote="16-bit with no slot to go into (no mount, the slot not recorded, or no patient): it cannot be filed or "
-			+"reassigned, only discarded.";
+		///<summary>Owner decision 2026-11-01 (the 16-bit filing route): into its own empty slot a 16-bit capture goes as 16-bit DICOM (design 7.8);
+		///anywhere else, and when reassigned, as an explicit 8-bit copy, and the 16-bit original is kept.</summary>
+		public const string Gray16Note="16-bit: into its empty slot as 16-bit DICOM; anywhere else, or reassigned, as an 8-bit copy (the 16-bit original "
+			+"is kept).";
+		public const string Gray16NoSlotNote="16-bit with no slot to go into (no mount, the slot not recorded, or no patient): it is filed as an 8-bit "
+			+"copy, and the 16-bit original is kept.";
 		public const string ToothNumbersUnknown="Tooth numbers unknown";
+
+		///<summary>Where the 16-bit original of entry is kept once its 8-bit copy is filed: its session folder under Capture\quarantine-resolved, or
+		///Capture\quarantine-resolved\journal for a journal copy (copied there; the journal's rotation removes the journal's own).</summary>
+		public static string GetOriginalKeptFolder(CaptureFileEntry entry) {
+			if(entry?.Kind==CaptureFileKind.Journal) {
+				return CaptureFileStore.SubfolderJournalKept;
+			}
+			string folderName=System.IO.Path.GetFileName(System.IO.Path.GetDirectoryName(entry?.ImagePath??"")??"")??"";
+			bool isRoot=folderName=="" || string.Equals(folderName,"quarantine",StringComparison.OrdinalIgnoreCase);
+			return @"Capture\quarantine-resolved"+(isRoot ? "" : "\\"+folderName);
+		}
+
+		///<summary>What the confirmation says plainly before a 16-bit capture is filed as its 8-bit copy (owner decision 2026-11-01).</summary>
+		public static string GetCopy8BitNote(CaptureFileEntry entry) {
+			string depth=entry!=null && entry.BitDepthInEffect==14 ? "14-bit (in a 16-bit file)" : "16-bit";
+			return "This is a "+depth+" capture, and it is filed as an 8-bit copy: a gray PNG made with its 0.5-99.5 % window, not the 16-bit "
+				+"original. The 16-bit original and its sidecar stay in "+GetOriginalKeptFolder(entry)+" on this computer.";
+		}
+
+		///<summary>The audit entry's words for an 8-bit copy: "an 8-bit copy of a 16-bit capture (made through the window 120 to 3900 of its values;
+		///the 16-bit original is kept in Capture\quarantine-resolved\...)".</summary>
+		public static string GetCopyLogText(CaptureFileEntry entry,int windowLow,int windowHigh) {
+			return "an "+RadiographSavePlanner.Copy8BitText+" (made through the window "+ToText(windowLow)+" to "+ToText(windowHigh)
+				+" of its values; the 16-bit original is kept in "+GetOriginalKeptFolder(entry)+")";
+		}
 
 		///<summary>The target an entry is shown with: its sidecar's slot (or single-image target) when it is the image's own (IsSlotKnown). For a
 		///later image of a continuous enable, or a redelivered one, whose target the session did not record, the sidecar names the target its
@@ -104,17 +131,19 @@ namespace ImagingCapture.Recovery {
 			return stringBuilder.ToString();
 		}
 
-		///<summary>Design 10.7: Assign (ImageCreate, the original patient, FKey=DocNum) with the session GUID; a journal recovery says so.</summary>
-		public static string GetAssignLogText(CaptureFileEntry entry,Patient patient,string targetText,long docNum) {
+		///<summary>Design 10.7: Assign (ImageCreate, the original patient, FKey=DocNum) with the session GUID; a journal recovery says so. copyText:
+		///GetCopyLogText when the document is the 8-bit copy of a 16-bit capture, else null.</summary>
+		public static string GetAssignLogText(CaptureFileEntry entry,Patient patient,string targetText,long docNum,string copyText=null) {
 			string prefix=entry?.Kind==CaptureFileKind.Journal ? RecoverLogPrefix : AssignLogPrefix;
 			return prefix+GetFileText(entry)+" filed for the patient the capture session was bound to, "+GetPatientLogText(patient)+", as DocNum "
-				+ToText(docNum)+" into "+Clean(targetText)+".";
+				+ToText(docNum)+(string.IsNullOrEmpty(copyText) ? "" : ", "+copyText+",")+" into "+Clean(targetText)+".";
 		}
 
-		///<summary>Design 10.7: Reassign (ImageEdit) names both patients and the reason.</summary>
-		public static string GetReassignLogText(CaptureFileEntry entry,Patient patientFrom,Patient patientTo,string reason,long docNum) {
+		///<summary>Design 10.7: Reassign (ImageEdit) names both patients and the reason. copyText: as for GetAssignLogText.</summary>
+		public static string GetReassignLogText(CaptureFileEntry entry,Patient patientFrom,Patient patientTo,string reason,long docNum,string copyText=null) {
 			return ReassignLogPrefix+GetFileText(entry)+" was for "+GetPatientLogText(patientFrom)+(patientFrom==null && entry!=null && entry.PatNum>0
 				? " (PatNum "+ToText(entry.PatNum)+", not found)" : "")+"; reassigned to "+GetPatientLogText(patientTo)+" as DocNum "+ToText(docNum)
+				+(string.IsNullOrEmpty(copyText) ? "" : ", "+copyText)
 				+", an unmounted document with no tooth numbers. Reason: "+Clean(reason).TrimEnd('.').Trim()+".";
 		}
 

@@ -269,6 +269,10 @@ namespace ImagingDeviceManager.Capture {
 		///nothing was changed.</summary>
 		bool Resolve(CaptureFileEntry entry,CaptureFileDisposition disposition,IList<KeyValuePair<string,string>> listFields,out string pathResolved,
 			out string error);
+		///<summary>Copies a journal copy (its image, and its sidecar with the disposition) into Capture\quarantine-resolved\journal, so that it is
+		///kept past the journal's rotation (see CaptureFileStore.KeepJournalCopyResolved). Returns false with error when nothing was kept.</summary>
+		bool KeepJournalCopyResolved(CaptureFileEntry entry,CaptureFileDisposition disposition,IList<KeyValuePair<string,string>> listFields,
+			out string pathKept,out string error);
 	}
 
 	///<summary>Lists, reads and resolves the quarantine files and journal copies under %ProgramData%\OpenPMS-Dental\Imaging\Capture (design 7.1,
@@ -552,6 +556,49 @@ namespace ImagingDeviceManager.Capture {
 					return ResolveJournal(entry,textDisposition,out pathResolved,out error);
 				}
 				return ResolveQuarantine(entry,textDisposition,out pathResolved,out error);
+			}
+			catch(Exception ex) {
+				error=ex.Message;
+				return false;
+			}
+		}
+
+		///<summary>The subfolder of Capture\quarantine-resolved where KeepJournalCopyResolved keeps journal copies.</summary>
+		public const string SubfolderJournalKept=CaptureFolders.SubfolderQuarantineResolved+@"\journal";
+
+		///<summary>Copies the journal copy entry, its image byte for byte and its sidecar with the disposition appended, into
+		///Capture\quarantine-resolved\journal: the journal's rotation removes old copies, and a 16-bit copy that was filed as an explicit 8-bit
+		///copy must keep its 16-bit original (owner decision 2026-11-01). The journal copy itself is left as it is (Resolve marks it). Nothing is
+		///moved, replaced or removed: a file of the same name there is never overwritten. pathKept is the kept image. False with error when nothing
+		///was kept; true with error for a warning (the folder's rule).</summary>
+		public bool KeepJournalCopyResolved(CaptureFileEntry entry,CaptureFileDisposition disposition,IList<KeyValuePair<string,string>> listFields,
+			out string pathKept,out string error)
+		{
+			pathKept=null;
+			error="";
+			if(entry==null || entry.Kind!=CaptureFileKind.Journal || string.IsNullOrEmpty(entry.ImagePath)) {
+				error="Not a journal copy.";
+				return false;
+			}
+			try {
+				if(!File.Exists(entry.ImagePath)) {
+					error="The file "+entry.FileName+" is no longer there.";
+					return false;
+				}
+				string folderKept;
+				string errorFolder;
+				if(!_folders.Ensure(SubfolderJournalKept,out folderKept,out errorFolder)) {
+					error="The folder for resolved captures is not usable: "+errorFolder;
+					return false;
+				}
+				string pathImageKept=Path.Combine(folderKept,entry.FileName);
+				File.Copy(entry.ImagePath,pathImageKept);//fails when the name exists; nothing is replaced
+				string textSidecar=entry.SidecarPath!=null && File.Exists(entry.SidecarPath) ? File.ReadAllText(entry.SidecarPath,Encoding.UTF8) : "";
+				string pathSidecarKept=Path.Combine(folderKept,Path.GetFileNameWithoutExtension(entry.FileName)+CaptureFiles.SidecarExtension);
+				File.WriteAllText(pathSidecarKept,textSidecar+BuildDisposition(entry,disposition,listFields),new UTF8Encoding(false));
+				pathKept=pathImageKept;
+				error=errorFolder;
+				return true;
 			}
 			catch(Exception ex) {
 				error=ex.Message;

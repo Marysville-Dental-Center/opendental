@@ -372,6 +372,29 @@ namespace ImagingCapture.Tests.Db {
 				Assert.IsTrue(listSecurityLogs.Any(x => x.LogText.StartsWith(CaptureRecoveryText.AssignLogPrefix)));
 				Assert.IsFalse(listSecurityLogs.Any(x => x.LogText.StartsWith(RadiographSavePlanner.CaptureLogPrefix)),
 					"A DICOM save writes no capture details entry: the header holds them (cap-3 decision 7).");
+				//A second 16-bit exposure for slot 2, which is now taken: filed as an explicit 8-bit copy, a "Recovered: <slot>" item with the slot's
+				//teeth, and the 16-bit original kept in Capture\quarantine-resolved (owner decision 2026-11-01).
+				Dictionary<string,string> dictFields2=Fields(2,"capdb-16b-"+CaptureDb.NewSuffix());
+				dictFields2["XDpi"]="1270";
+				dictFields2["YDpi"]="1270";
+				dictFields2["Metadata"]=dictFields2["Metadata"].Replace("T10:00:04.500","T10:07:04.500");//another exposure, by its time too
+				CaptureFileEntry entry2=_files.Quarantine16(dictFields2,_receivedAt.AddMinutes(7));
+				CaptureFilingResult result2=filer.Assign(entry2,0,0);
+				Assert.IsTrue(result2.IsDone,result2.Error);
+				Assert.IsTrue(result2.IsMountItemCreated);
+				Document documentCopy=CaptureDb.GetDocuments(_patientFrom.PatNum).Single(x => x.DocNum==result2.Document.DocNum);
+				StringAssert.EndsWith(documentCopy.FileName,".png","An 8-bit PNG copy.");
+				Assert.AreEqual(CaptureRecoveryText.GetRecoveredLabel(MountPlacement.GetSlotLabel(slot2)),documentCopy.Description);
+				Assert.AreEqual("4,5,28,29",documentCopy.ToothNumbers,"The slot's teeth.");
+				Assert.AreNotEqual(slot2.MountItemNum,documentCopy.MountItemNum,"Its own unmounted item, not the taken slot.");
+				byte[] arrayPng=File.ReadAllBytes(CaptureDb.GetDocumentPath(documentCopy));
+				Assert.AreEqual(0x89,arrayPng[0],"A PNG in the A to Z folder.");
+				List<SecurityLog> listLogsCopy=CaptureDb.GetLogsForPatient(EnumPermType.ImageCreate,_patientFrom.PatNum).Where(x => x.FKey==documentCopy.DocNum).ToList();
+				Assert.IsTrue(listLogsCopy.Any(x => x.LogText.StartsWith(CaptureRecoveryText.AssignLogPrefix) && x.LogText.Contains("8-bit copy of a 16-bit capture")),
+					string.Join("\r\n",listLogsCopy.Select(x => x.LogText)));
+				Assert.IsTrue(File.Exists(result2.PathResolved),"The 16-bit original is kept.");
+				StringAssert.EndsWith(result2.PathResolved,".tif");
+				StringAssert.Contains(result2.PathResolved,@"Capture\quarantine-resolved");
 			}
 			finally {
 				try {

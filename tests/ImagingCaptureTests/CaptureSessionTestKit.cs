@@ -222,6 +222,10 @@ namespace ImagingCapture.Tests {
 		public readonly List<Mount> ListMountsUpdated=new List<Mount>();
 		public readonly List<MountItem> ListMountItemsInserted=new List<MountItem>();
 		public readonly List<MountItem> ListMountItemsDeleted=new List<MountItem>();
+		///<summary>The file bytes of every import, the texts of the saver's own security-log entries, and the Pearl calls.</summary>
+		public readonly List<byte[]> ListBytesImported=new List<byte[]>();
+		public readonly List<string> ListLogTexts=new List<string>();
+		public int CountPearl;
 		private long _docNumNext=1000;
 		private long _mountItemNumNext=500;
 
@@ -241,6 +245,7 @@ namespace ImagingCapture.Tests {
 			ListPatientsImported.Add(patient);
 			ListCategoriesImported.Add(docCategory);
 			ListExtensions.Add(fileExtension);
+			ListBytesImported.Add(bytes);
 			return new Document { DocNum=_docNumNext++,PatNum=patient.PatNum,DocCategory=docCategory,ImgType=imageType,Description="",
 				FileName="img"+_docNumNext+fileExtension };
 		}
@@ -272,10 +277,12 @@ namespace ImagingCapture.Tests {
 
 		public void MakeLogEntry(EnumPermType permType,long patNum,string logText,long fKey) {
 			Call("MakeLogEntry");
+			ListLogTexts.Add(logText);
 		}
 
 		public void SendToPearlIfConfigured(Patient patient,Document document,byte[] pngBytes,MountItem mountItem) {
 			Call("SendToPearl");
+			CountPearl++;
 		}
 	}
 

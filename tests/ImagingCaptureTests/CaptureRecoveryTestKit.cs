@@ -180,6 +180,25 @@ namespace ImagingCapture.Tests {
 			return Store.ListQuarantine().Single(x => x.ImagePath==path);
 		}
 
+		///<summary>A 16-bit journal copy (.tif) with Delivered=Caller, its samples 1000+97*i as Quarantine16's.</summary>
+		public CaptureFileEntry Journal16(Dictionary<string,string> dictFields,DateTime receivedAt) {
+			string folder=Path.Combine(Folder,@"Capture\journal");
+			dictFields["Kind"]="journal copy";
+			dictFields["Delivered"]="Caller";
+			dictFields["RequestedBits"]="16";
+			dictFields["TransferMechanism"]="Memory";
+			dictFields[CaptureSidecarKeys.BitDepth16InEffect]="1";
+			dictFields.Remove("Slot");
+			dictFields.Remove("Patient");
+			dictFields.Remove("Reason");
+			ushort[] arraySamples=new ushort[6*4];
+			for(int i=0;i<arraySamples.Length;i++) {
+				arraySamples[i]=(ushort)(1000+i*97);
+			}
+			string path=Write(folder,receivedAt,Tiff16(6,4,arraySamples),".tif",dictFields);
+			return Store.ListJournal().Single(x => x.ImagePath==path);
+		}
+
 		///<summary>A journal copy with Delivered (Caller, Quarantine or None).</summary>
 		public CaptureFileEntry Journal(Dictionary<string,string> dictFields,DateTime receivedAt,string delivered="Caller") {
 			string folder=Path.Combine(Folder,@"Capture\journal");
@@ -271,7 +290,7 @@ namespace ImagingCapture.Tests {
 	}
 
 	///<summary>A filer on fakes: the patient 42 (Jane Doe) with mount 7 (slots 101-103 as CaptureControllerHarness.Slots), the patient 77 (John
-	///Roe), the categories 20 and 21, and capture.ini at its defaults (8 bits).</summary>
+	///Roe), the categories 20 and 21, and capture.ini at its defaults (Bits=16, Allow16Bit=1; no Test capture record, so no 16-bit DICOM).</summary>
 	internal sealed class RecoveryHarness:IDisposable {
 		public readonly FakeCaptureRecoveryStore Store=new FakeCaptureRecoveryStore();
 		public readonly FakeSessionRadiographStore RadiographStore=new FakeSessionRadiographStore();

@@ -455,6 +455,32 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		[TestMethod]
+		public void KeepJournalCopyResolved_A16BitCopyKeptPastRotation_NeverOverwritten_JournalOnly() {
+			CaptureJournal journal=new CaptureJournal(_folders);
+			AcquiredImage image=Gray16Image(6,4);
+			string path=journal.Write(CaptureImageFile.FromAcquiredImage(image),SessionRecord(new DateTime(2026,10,31,10,0,0),Guid.NewGuid(),true),
+				CaptureJournal.DeliveredCaller,null,200,null);
+			CaptureFileEntry entry=_store.ListJournal().Single();
+			List<KeyValuePair<string,string>> listFields=new List<KeyValuePair<string,string>> { new KeyValuePair<string,string>("DispositionDocNum","1234") };
+			string pathKept;
+			string error;
+			Assert.IsTrue(_store.KeepJournalCopyResolved(entry,CaptureFileDisposition.Assigned,listFields,out pathKept,out error),error);
+			Assert.AreEqual(Path.Combine(_folder,CaptureFileStore.SubfolderJournalKept,entry.FileName),pathKept);
+			CollectionAssert.AreEqual(File.ReadAllBytes(path),File.ReadAllBytes(pathKept),"Byte for byte.");
+			Assert.IsTrue(File.Exists(path),"The journal copy itself is not moved.");
+			Dictionary<string,string> dictKept=CaptureFiles.ReadSidecar(Path.ChangeExtension(pathKept,".txt"));
+			Assert.AreEqual("1234",dictKept["DispositionDocNum"]);
+			Assert.AreEqual("Assigned",dictKept[CaptureSidecarKeys.Disposition]);
+			Assert.AreEqual("42",dictKept["PatNum"],"The original fields are kept.");
+			Assert.IsFalse(_store.ListJournal().Single().IsResolved,"Only Resolve marks the journal copy.");
+			Assert.AreEqual(0,_store.ListQuarantine().Count,"Not an unassigned capture.");
+			Assert.IsFalse(_store.KeepJournalCopyResolved(entry,CaptureFileDisposition.Assigned,listFields,out pathKept,out error),"Never overwritten.");
+			WriteSessionQuarantine(Gray8Image(2,2),Guid.NewGuid(),42,new DateTime(2026,10,31,10,0,5));
+			Assert.IsFalse(_store.KeepJournalCopyResolved(_store.ListQuarantine().Single(),CaptureFileDisposition.Assigned,listFields,out pathKept,out error));
+			Assert.AreEqual("Not a journal copy.",error);
+		}
+
+		[TestMethod]
 		public void Resolve_JournalOnlyCopy_GetsItsPlainName() {
 			CaptureJournal journal=new CaptureJournal(_folders);
 			string path=journal.Write(CaptureImageFile.FromAcquiredImage(Gray8Image(2,2)),SessionRecord(new DateTime(2026,10,31,10,0,0),Guid.NewGuid(),false),
