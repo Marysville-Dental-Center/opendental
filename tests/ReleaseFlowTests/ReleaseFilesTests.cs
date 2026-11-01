@@ -24,6 +24,8 @@ namespace ReleaseFlowTests {
 			new ShippedProject("ImagingDeviceManager","xImagingDeviceManager.csproj","24.3.63.0",null),
 			new ShippedProject("MySQLManager","xMySQLManager.csproj","24.3.63.0",null),
 			new ShippedProject("ODCrypt","xODCrypt.csproj","24.3.63.0","24.3.63.0"),
+			//Built from source and shipped since package RDL-SRC; RDL report definitions load it by file name, so its version is never compared.
+			new ShippedProject("ODR","xODR.csproj","4.6.1",null),
 			new ShippedProject("OpenDental","OpenDental.csproj","24.3.63.0",null),
 			new ShippedProject("OpenDentalCloud","OpenDentalCloud.csproj","16.4.0.0","1.0.0.0"),
 			new ShippedProject("OpenDentalGraph","OpenDentalGraph.csproj","16.1.1.0","16.1.1.0"),
@@ -41,7 +43,7 @@ namespace ReleaseFlowTests {
 		private static readonly string[] _arrayBuiltAssemblies=new string[] {
 			"OpenDental.exe","OpenDentBusiness.dll","CodeBase.dll","DataConnectionBase.dll","WpfControlsOD.dll","OpenDentalGraph.dll",
 			"OpenDentalCloud.dll","SparksToothChart.dll","ODCrypt.dll","PasswordVaultWrapper.dll","ImagingCapture.dll","ImagingDeviceManager.dll",
-			"ServiceManager.exe","UpdateFileCopier.exe",
+			"ServiceManager.exe","UpdateFileCopier.exe","ODR.dll",
 		};
 
 		///<summary>The native x86 files the program loads at run time that no reference copies (Required dlls).</summary>

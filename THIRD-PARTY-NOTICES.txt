@@ -145,7 +145,7 @@ Source:    https://github.com/LibreOffice/dictionaries/tree/master/en
 
 --- Component: RDL Project
 Files:     RdlEngine.dll, RdlViewer.dll
-Version:   2.9.3 (prebuilt; the source is in RdlEngine/ and RdlViewer/ of this repository)
+Version:   2.9.3, built from RdlEngine/ and RdlViewer/ of this repository (changes are marked in the changed files)
 Copyright: fyiReporting Software, LLC
 License:   GNU Lesser General Public License, version 2.1 or later
            https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt
