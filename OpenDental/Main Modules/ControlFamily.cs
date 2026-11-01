@@ -2558,21 +2558,22 @@ namespace OpenDental{
 			List<Procedure> listProceduresEoAndC=Procedures.GetProcsByStatusForPat(_patient.PatNum,new [] { ProcStat.EO,ProcStat.C }); //all for the patient, all plans
 			List<long> listProcNums=listProceduresEoAndC.Select(x=>x.ProcNum).ToList();
 			List<ClaimProc> listClaimProcsForEoAndCProcs=ClaimProcs.GetForProcs(listProcNums);//all for the patient, all plans
-			List<PrefName> listPrefNames=Prefs.GetInsHistPrefNames();
-			for(int i=0;i<listPrefNames.Count();i++) {
+			//Open Dental 26.1: one row per code group marked Show In History, four for a Perio Four Quadrants group (InsHistCategories).
+			List<InsHistCategory> listInsHistCategories=InsHistCategories.GetAll();
+			for(int i=0;i<listInsHistCategories.Count;i++) {
 				row=new GridRow();
-				row.Cells.Add(Lan.g("TableCoverage",listPrefNames[i].GetDescription()));
+				row.Cells.Add(listInsHistCategories[i].Description);
 				for(int j=0;j<_listPatPlans.Count();j++) {
 					List<ClaimProc> listClaimProcsForPlan=listClaimProcsForEoAndCProcs.FindAll(x=>x.InsSubNum==_listPatPlans[j].InsSubNum && x.Status.In(ClaimProcStatus.InsHist,ClaimProcStatus.Received));
 					List<Procedure> listProceduresForPlan=listProceduresEoAndC.FindAll(x=>listClaimProcsForPlan.Any(y=>y.ProcNum==x.ProcNum));
-					Procedure procedure=Procedures.GetMostRecentInsHistProc(listProceduresForPlan,ProcedureCodes.GetCodeNumsForInsHistPref(listPrefNames[i]),listPrefNames[i]);
-					if(procedure==null) {
+					string datesText=InsHistDates.GetDatesText(listProceduresForPlan,listInsHistCategories[i]);//Both dates (25.1)
+					if(datesText=="") {
 						row.Cells.Add(new GridCell(Lan.g("TableCoverage","No History")));
 						continue;
 					}
-					row.Cells.Add(new GridCell(InsHistDates.GetDatesText(listProceduresForPlan,ProcedureCodes.GetCodeNumsForInsHistPref(listPrefNames[i]),listPrefNames[i])));//Both dates (25.1)
+					row.Cells.Add(new GridCell(datesText));
 				}
-				row.Tag=listPrefNames[i].ToString();//Tag with prefname
+				row.Tag=listInsHistCategories[i].Key;//Not empty: a double-click opens Insurance History.
 				gridIns.ListGridRows.Add(row);
 			}
 			AddInsPendingColumns();

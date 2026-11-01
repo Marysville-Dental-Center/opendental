@@ -396,6 +396,32 @@ namespace SyntheticData.Tests {
 			Assert.IsTrue(list.Where(x => x.Table=="displayreport").All(x => x.IsAllowed),ReportComparer.Format(list));
 		}
 
+		///<summary>The fork migration's Insurance History step (M2-HIST) appends codes to code groups and adds a group for a category without one. A
+		///row added changes the row count and every column checksum of codegroup, so the list allows the table as a whole; adopt's row check holds it to
+		///the groups migration-preview lists (AdoptionValidation's row check tests). The new 26.1 columns are still allowed one by one.</summary>
+		[TestMethod]
+		public void CodeGroup_IsAllowedAsAWholeTable() {
+			ValidationReport before=Report();
+			TableReport codeGroups=new TableReport { Name="codegroup",Rows=13,ChecksumTable="555" };
+			codeGroups.Columns["GroupName"]="90";
+			codeGroups.Columns["ProcCodes"]="91";
+			before.Tables.Add(codeGroups);
+			ValidationReport after=Report();
+			TableReport codeGroupsAfter=new TableReport { Name="codegroup",Rows=14,ChecksumTable="556" };
+			codeGroupsAfter.Columns["GroupName"]="92";
+			codeGroupsAfter.Columns["ProcCodes"]="93";
+			codeGroupsAfter.Columns["ShowInHistory"]="94";
+			after.Tables.Add(codeGroupsAfter);
+			List<Difference> list=ReportComparer.Compare(before,after,Adoption());
+			Assert.IsTrue(list.Any(x => x.Table=="codegroup" && x.Kind==DifferenceKind.RowsChanged),ReportComparer.Format(list));
+			Assert.IsTrue(list.Any(x => x.Table=="codegroup" && x.Kind==DifferenceKind.ColumnChanged && x.Column=="ProcCodes"),ReportComparer.Format(list));
+			Assert.IsTrue(list.Where(x => x.Table=="codegroup").All(x => x.IsAllowed),ReportComparer.Format(list));
+			//A table without a rule next to it is still unexpected.
+			after.Tables.Single(x => x.Name=="guardian").Columns["Relationship"]="51";
+			list=ReportComparer.Compare(before,after,Adoption());
+			Assert.IsTrue(list.Any(x => x.Table=="guardian" && x.Kind==DifferenceKind.ColumnChanged && !x.IsAllowed),ReportComparer.Format(list));
+		}
+
 		///<summary>MariaDB writes a FLOAT as text with 6 significant digits, so the column checksum widens it to DOUBLE, which it writes exactly.</summary>
 		[TestMethod]
 		public void ColumnChecksum_ReadsFloatsExactly() {

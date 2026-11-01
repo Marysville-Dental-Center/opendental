@@ -47,7 +47,7 @@ namespace OpenDental{
 			this.labelHeading.Name = "labelHeading";
 			this.labelHeading.Size = new System.Drawing.Size(504, 33);
 			this.labelHeading.TabIndex = 4;
-			this.labelHeading.Text = "Set procedures for each category in Preferences.  Adding a date creates an Existing Other procedure." +
+			this.labelHeading.Text = "Rows come from code groups marked Show In History.  Adding a date creates an Existing Other procedure." +
     "  Dates from completed procedures are edited in the Chart.";
 			//
 			// labelMostRecent

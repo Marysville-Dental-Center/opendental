@@ -4,60 +4,14 @@ using System.Linq;
 using CodeBase;
 
 namespace OpenDentBusiness {
-	///<summary>Insurance History with two dates per category (Open Dental 25.1) that can be edited or removed one by one (25.2). A date is an Existing
-	///Other (EO) or Completed (C) procedure with one of the category's codes and an InsHist or Received claimproc on the subscriber's plan, the same
-	///procedures the single date of 24.3 came from. Dates from completed procedures are read-only; only EO procedures are changed or deleted.
-	///The categories are still the ten InsHist*Codes preferences, and a new date still uses the first code of the category's preference.</summary>
+	///<summary>Insurance History with two dates per row (Open Dental 25.1) that can be edited or removed one by one (25.2). A date is an Existing
+	///Other (EO) or Completed (C) procedure that is history for the row (InsHistCategory.IsMatch) and has an InsHist or Received claimproc on the
+	///subscriber's plan, the same procedures the single date of 24.3 came from. Dates from completed procedures are read-only; only EO procedures are
+	///changed or deleted. From Open Dental 26.1 the rows are code groups marked Show In History (InsHistCategories, package M2-HIST), and a new date
+	///uses the row's History Proc Code; before, they were the ten InsHist*Codes preferences.</summary>
 	public class InsHistDates {
-		///<summary>How many dates the Insurance History window and the Family module show per category.</summary>
+		///<summary>How many dates the Insurance History window and the Family module show per row.</summary>
 		public const int DATES_PER_CATEGORY=2;
-
-		///<summary>The name of a category as the Insurance History window shows it, also used in the security log.</summary>
-		public static string GetCategoryName(PrefName prefName) {
-			Meth.NoCheckMiddleTierRole();
-			switch(prefName) {
-				case PrefName.InsHistBWCodes:
-					return Lans.g("InsHistDates","Bitewing");
-				case PrefName.InsHistPanoCodes:
-					return Lans.g("InsHistDates","FMX/Pano");
-				case PrefName.InsHistExamCodes:
-					return Lans.g("InsHistDates","Exam");
-				case PrefName.InsHistProphyCodes:
-					return Lans.g("InsHistDates","Prophy");
-				case PrefName.InsHistPerioURCodes:
-					return Lans.g("InsHistDates","Perio Scaling UR");
-				case PrefName.InsHistPerioULCodes:
-					return Lans.g("InsHistDates","Perio Scaling UL");
-				case PrefName.InsHistPerioLRCodes:
-					return Lans.g("InsHistDates","Perio Scaling LR");
-				case PrefName.InsHistPerioLLCodes:
-					return Lans.g("InsHistDates","Perio Scaling LL");
-				case PrefName.InsHistPerioMaintCodes:
-					return Lans.g("InsHistDates","Perio Maintenance");
-				case PrefName.InsHistDebridementCodes:
-					return Lans.g("InsHistDates","Full Mouth Debridement");
-				default:
-					return prefName.ToString();
-			}
-		}
-
-		///<summary>The quadrant a perio scaling category is limited to (matched against procedurelog.Surf), or "" for the other categories. Same rule as
-		///Procedures.GetMostRecentInsHistProc.</summary>
-		public static string GetQuadrant(PrefName prefName) {
-			Meth.NoCheckMiddleTierRole();
-			switch(prefName) {
-				case PrefName.InsHistPerioURCodes:
-					return "UR";
-				case PrefName.InsHistPerioULCodes:
-					return "UL";
-				case PrefName.InsHistPerioLRCodes:
-					return "LR";
-				case PrefName.InsHistPerioLLCodes:
-					return "LL";
-				default:
-					return "";
-			}
-		}
 
 		///<summary>The patient's EO and C procedures that have an InsHist or Received claimproc on the inssub, the procedures Insurance History is
 		///built from. listClaimProcs gets those claimprocs.</summary>
@@ -70,13 +24,15 @@ namespace OpenDentBusiness {
 			return listProcedures.FindAll(x => listProcNums.Contains(x.ProcNum));
 		}
 
-		///<summary>The procedures behind the dates of one category, most recent first, at most DATES_PER_CATEGORY. listProcedures are the
-		///procedures of one inssub (GetProcsForInsSub). A completed procedure comes before an EO procedure on the same day.</summary>
-		public static List<Procedure> GetMostRecentProcs(List<Procedure> listProcedures,List<long> listCodeNums,PrefName prefName) {
+		///<summary>The procedures behind the dates of one row, most recent first, at most DATES_PER_CATEGORY. listProcedures are the procedures of one
+		///inssub (GetProcsForInsSub). A procedure counts when it is history for the row (InsHistCategory.IsMatch: its code is one of the group's codes or
+		///the History Proc Code, and for a quadrant row its surface names the quadrant). A completed procedure comes before an EO procedure on the same
+		///day. funcGetProcCode turns a CodeNum into its ProcCode; null uses the procedure code cache.</summary>
+		public static List<Procedure> GetMostRecentProcs(List<Procedure> listProcedures,InsHistCategory insHistCategory,
+			Func<long,string> funcGetProcCode=null)
+		{
 			Meth.NoCheckMiddleTierRole();
-			string quadrant=GetQuadrant(prefName);
-			return listProcedures
-				.FindAll(x => listCodeNums.Contains(x.CodeNum) && (quadrant=="" || (x.Surf??"").Contains(quadrant)))
+			return InsHistCategories.GetProcs(listProcedures,insHistCategory,funcGetProcCode)
 				.OrderByDescending(x => x.ProcDate.Date)
 				.ThenBy(x => x.ProcStatus==ProcStat.C ? 0 : 1)
 				.ThenByDescending(x => x.ProcNum)
@@ -84,17 +40,17 @@ namespace OpenDentBusiness {
 				.ToList();
 		}
 
-		///<summary>The dates of one category for the Family module's insurance grid: the most recent date, then the previous one, for example
-		///"3/1/2026, 9/15/2025". Empty when the category has no history.</summary>
-		public static string GetDatesText(List<Procedure> listProcedures,List<long> listCodeNums,PrefName prefName) {
+		///<summary>The dates of one row for the Family module's insurance grid: the most recent date, then the previous one, for example
+		///"3/1/2026, 9/15/2025". Empty when the row has no history.</summary>
+		public static string GetDatesText(List<Procedure> listProcedures,InsHistCategory insHistCategory,Func<long,string> funcGetProcCode=null) {
 			Meth.NoCheckMiddleTierRole();
-			return string.Join(", ",GetMostRecentProcs(listProcedures,listCodeNums,prefName).Select(x => x.ProcDate.ToShortDateString()));
+			return string.Join(", ",GetMostRecentProcs(listProcedures,insHistCategory,funcGetProcCode).Select(x => x.ProcDate.ToShortDateString()));
 		}
 
-		///<summary>What saving one category of the Insurance History window does. Returns an empty list when nothing changed. error is set, and
-		///nothing is returned, when the category can not be saved: two dates on the same day. Boxes the user did not change are never checked, so
-		///history that already holds two procedures on one day does not block the window.</summary>
-		public static List<InsHistAction> GetActions(PrefName prefName,List<InsHistBox> listBoxes,out string error) {
+		///<summary>What saving one row of the Insurance History window does. Returns an empty list when nothing changed. error is set, and nothing is
+		///returned, when the row can not be saved: two dates on the same day. Boxes the user did not change are never checked, so history that already
+		///holds two procedures on one day does not block the window.</summary>
+		public static List<InsHistAction> GetActions(InsHistCategory insHistCategory,List<InsHistBox> listBoxes,out string error) {
 			Meth.NoCheckMiddleTierRole();
 			error="";
 			List<InsHistAction> listActions=new List<InsHistAction>();
@@ -103,7 +59,7 @@ namespace OpenDentBusiness {
 			}
 			List<DateTime> listDates=listBoxes.Select(x => x.GetDateSaved()).Where(x => x!=DateTime.MinValue).ToList();
 			if(listDates.Count!=listDates.Distinct().Count()) {
-				error=GetCategoryName(prefName)+": "+Lans.g("InsHistDates","the two dates can't be the same.");
+				error=insHistCategory.Description+": "+Lans.g("InsHistDates","the two dates can't be the same.");
 				return listActions;
 			}
 			for(int i=0;i<listBoxes.Count;i++) {
@@ -112,7 +68,7 @@ namespace OpenDentBusiness {
 					continue;
 				}
 				InsHistAction insHistAction=new InsHistAction();
-				insHistAction.PrefName=prefName;
+				insHistAction.InsHistCategory=insHistCategory;
 				insHistAction.Procedure=insHistBox.ProcedureLoaded;
 				insHistAction.DateNew=insHistBox.DateEntered.Date;
 				if(insHistBox.ProcedureLoaded==null) {
@@ -151,26 +107,27 @@ namespace OpenDentBusiness {
 			return true;
 		}
 
-		///<summary>Saves the actions of the Insurance History window for the inssub. A new date creates an EO procedure with the first code of the
-		///category and an InsHist claimproc; a changed date moves the EO procedure and its claimprocs; a removed date deletes the EO procedure, which
-		///never touches completed procedures, claims or adjustments (Procedures.Delete refuses a procedure that is attached to any). listClaimProcs
-		///are the claimprocs of the loaded procedures (GetProcsForInsSub). Edits are logged under ProcExistingEdit and removals under ProcDelete,
-		///with the category. Recalls are synched once at the end. Returns a message for each action that could not be saved.</summary>
+		///<summary>Saves the actions of the Insurance History window for the inssub. A new date creates an EO procedure with the row's History Proc Code
+		///(and, for a quadrant row, the quadrant as its surface) and an InsHist claimproc; a changed date moves the EO procedure and its claimprocs; a
+		///removed date deletes the EO procedure, which never touches completed procedures, claims or adjustments (Procedures.Delete refuses a procedure
+		///that is attached to any). Both go through InsHistCategories.InsertOrUpdateProcedure, which the eligibility import also uses. listClaimProcs
+		///are the claimprocs of the loaded procedures (GetProcsForInsSub). Edits are logged under ProcExistingEdit and removals under ProcDelete, with
+		///the row. Recalls are synched once at the end. Returns a message for each action that could not be saved.</summary>
 		public static List<string> ApplyActions(Patient patient,InsSub insSub,List<InsHistAction> listActions,List<ClaimProc> listClaimProcs) {
 			Meth.NoCheckMiddleTierRole();
 			List<string> listMessages=new List<string>();
 			bool isChanged=false;
 			for(int i=0;i<listActions.Count;i++) {
 				InsHistAction insHistAction=listActions[i];
-				string category=GetCategoryName(insHistAction.PrefName);
+				string category=insHistAction.InsHistCategory.Description;
 				if(insHistAction.ActionType==InsHistActionType.Insert) {
-					if(ProcedureCodes.GetByInsHistPref(insHistAction.PrefName).CodeNum==0) {
-						listMessages.Add(category+": "+Lans.g("InsHistDates","the preference for this category has no valid procedure code. "
-							+"Check the Insurance History codes in the Treatment Plan module preferences."));
+					InsHistSaveResult insHistSaveResult=InsHistCategories.InsertOrUpdateProcedure(patient,insHistAction.InsHistCategory,insHistAction.DateNew,
+						insSub.PlanNum,insSub.InsSubNum,null,new List<ClaimProc>(),doSynchRecalls:false);
+					if(insHistSaveResult==InsHistSaveResult.InvalidCode) {
+						listMessages.Add(category+": "+Lans.g("InsHistDates","the code group of this row has no valid History Proc Code, so the date was not "
+							+"saved. Set it in Setup, Code Groups."));
 						continue;
 					}
-					Procedures.InsertOrUpdateInsHistProcedure(patient,insHistAction.PrefName,insHistAction.DateNew,insSub.PlanNum,insSub.InsSubNum,null,
-						new List<ClaimProc>());
 					isChanged=true;
 					continue;
 				}
@@ -182,8 +139,8 @@ namespace OpenDentBusiness {
 						continue;//Completed procedures are never edited here.
 					}
 					List<ClaimProc> listClaimProcsForProc=listClaimProcs.FindAll(x => x.ProcNum==procedure.ProcNum);
-					Procedures.InsertOrUpdateInsHistProcedure(patient,insHistAction.PrefName,insHistAction.DateNew,insSub.PlanNum,insSub.InsSubNum,
-						procedure,listClaimProcsForProc);
+					InsHistCategories.InsertOrUpdateProcedure(patient,insHistAction.InsHistCategory,insHistAction.DateNew,insSub.PlanNum,insSub.InsSubNum,
+						procedure,listClaimProcsForProc,doSynchRecalls:false);
 					SecurityLogs.MakeLogEntry(EnumPermType.ProcExistingEdit,patient.PatNum,Lans.g("InsHistDates","Insurance History")+", "+category+": "
 						+procCode+" "+Lans.g("InsHistDates","date changed from")+" "+dateOld.ToShortDateString()+" "+Lans.g("InsHistDates","to")+" "
 						+insHistAction.DateNew.ToShortDateString());
@@ -211,21 +168,20 @@ namespace OpenDentBusiness {
 			return listMessages;
 		}
 
-		///<summary>Notes for dates that were saved but that the category does not show after saving, because DATES_PER_CATEGORY more recent
-		///procedures are on file (for example a new EO date older than two completed procedures). listProcedures are the inssub's procedures after
-		///saving (GetProcsForInsSub).</summary>
+		///<summary>Notes for dates that were saved but that the row does not show after saving, because DATES_PER_CATEGORY more recent procedures are
+		///on file (for example a new EO date older than two completed procedures). listProcedures are the inssub's procedures after saving
+		///(GetProcsForInsSub).</summary>
 		public static List<string> GetNotesForHiddenDates(List<InsHistAction> listActions,List<Procedure> listProcedures) {
 			Meth.NoCheckMiddleTierRole();
 			List<string> listNotes=new List<string>();
 			List<InsHistAction> listActionsDated=listActions.FindAll(x => x.ActionType.In(InsHistActionType.Insert,InsHistActionType.ChangeDate));
 			for(int i=0;i<listActionsDated.Count;i++) {
 				InsHistAction insHistAction=listActionsDated[i];
-				List<long> listCodeNums=ProcedureCodes.GetCodeNumsForInsHistPref(insHistAction.PrefName);
-				List<Procedure> listProceduresShown=GetMostRecentProcs(listProcedures,listCodeNums,insHistAction.PrefName);
+				List<Procedure> listProceduresShown=GetMostRecentProcs(listProcedures,insHistAction.InsHistCategory);
 				if(listProceduresShown.Any(x => x.ProcDate.Date==insHistAction.DateNew)) {
 					continue;
 				}
-				listNotes.Add(GetCategoryName(insHistAction.PrefName)+": "+insHistAction.DateNew.ToShortDateString()+" "
+				listNotes.Add(insHistAction.InsHistCategory.Description+": "+insHistAction.DateNew.ToShortDateString()+" "
 					+Lans.g("InsHistDates","was saved but isn't shown, because more recent procedures are on file."));
 			}
 			return listNotes;
@@ -278,7 +234,8 @@ namespace OpenDentBusiness {
 
 	///<summary>One change that saving the Insurance History window makes.</summary>
 	public class InsHistAction {
-		public PrefName PrefName;
+		///<summary>The row (code group, and quadrant for a Perio Four Quadrants group) the date belongs to.</summary>
+		public InsHistCategory InsHistCategory;
 		public InsHistActionType ActionType;
 		///<summary>The EO procedure that is changed or removed. Null for Insert.</summary>
 		public Procedure Procedure;
