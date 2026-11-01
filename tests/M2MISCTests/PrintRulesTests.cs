@@ -149,6 +149,93 @@ namespace M2MISCTests {
 		}
 		#endregion Rules, no database
 
+		#region Print Options window (25.4), no database
+		[TestMethod]
+		public void PrintWindow_RulesPrinterSelected_ShowsTheRule() {
+			Printer printerSit=Row(PrintSituation.Statement,PRINTER_BACK);
+			PrinterChoice printerChoice=PrintSituationRules.Resolve(PrintSituation.Statement,null,printerSit,_funcIsInstalled);
+			Assert.AreEqual(PrintWindowPrinterSource.Rules,PrintSituationRules.GetPrintWindowSource(printerChoice,PRINTER_BACK,"","Synthetic Win"));
+			Assert.AreEqual("From Statements setting",PrintSituationRules.GetPrintWindowSourceText(printerChoice,PRINTER_BACK,"","Synthetic Win"));
+			Assert.AreEqual("From Statements setting",PrintSituationRules.GetPrintWindowSourceText(printerChoice,PRINTER_BACK.ToUpperInvariant(),
+				PRINTER_FRONT,"Synthetic Win"),"Printer names are compared without case, and the rules' printer wins over the last used one.");
+			//No row names an installed printer: the Windows default printer is the rules' printer.
+			printerChoice=PrintSituationRules.Resolve(PrintSituation.Statement,null,null,_funcIsInstalled);
+			Assert.AreEqual("Synthetic Win",PrintSituationRules.GetRulesPrinterName(printerChoice,"Synthetic Win"));
+			Assert.AreEqual("",PrintSituationRules.GetRulesPrinterName(printerChoice,null));
+			Assert.AreEqual("Windows default",PrintSituationRules.GetPrintWindowSourceText(printerChoice,"Synthetic Win","","Synthetic Win"));
+			//Nothing selected (no printers listed): the rule is shown.
+			Assert.AreEqual(PrintWindowPrinterSource.Rules,PrintSituationRules.GetPrintWindowSource(printerChoice,"","","Synthetic Win"));
+		}
+
+		[TestMethod]
+		public void PrintWindow_AnotherPrinter_SaysWhatTheRulesPick() {
+			Printer printerDefault=Row(PrintSituation.Default,PRINTER_FRONT);
+			PrinterChoice printerChoice=PrintSituationRules.Resolve(PrintSituation.Statement,printerDefault,null,_funcIsInstalled);
+			Assert.AreEqual(PrintWindowPrinterSource.ChosenHere,PrintSituationRules.GetPrintWindowSource(printerChoice,PRINTER_BACK,"","Synthetic Win"));
+			Assert.AreEqual("Chosen in this window (From Default setting: Synthetic Front Desk)",
+				PrintSituationRules.GetPrintWindowSourceText(printerChoice,PRINTER_BACK,"","Synthetic Win"));
+			//The window opened with the printer remembered for the situation (PrintOptions.Remember).
+			Assert.AreEqual(PrintWindowPrinterSource.LastUsed,PrintSituationRules.GetPrintWindowSource(printerChoice,PRINTER_BACK,PRINTER_BACK,""));
+			Assert.AreEqual("Last used this session (From Default setting: Synthetic Front Desk)",
+				PrintSituationRules.GetPrintWindowSourceText(printerChoice,PRINTER_BACK,PRINTER_BACK,"Synthetic Win"));
+			printerChoice=PrintSituationRules.Resolve(PrintSituation.Statement,null,null,_funcIsInstalled);
+			Assert.AreEqual("Chosen in this window (Windows default: Synthetic Win)",
+				PrintSituationRules.GetPrintWindowSourceText(printerChoice,PRINTER_BACK,"","Synthetic Win"));
+			Assert.AreEqual("Chosen in this window (Windows default)",PrintSituationRules.GetPrintWindowSourceText(printerChoice,PRINTER_BACK,"",""),
+				"Windows has no default printer.");
+		}
+
+		[TestMethod]
+		public void PrintWindow_PrintersNotInstalled_AreNamed() {
+			Printer printerDefault=Row(PrintSituation.Default,PRINTER_FRONT);
+			Printer printerSit=Row(PrintSituation.Rx,"Synthetic Gone Rx");
+			PrinterChoice printerChoice=PrintSituationRules.Resolve(PrintSituation.Rx,printerDefault,printerSit,_funcIsInstalled);
+			Assert.AreEqual("From Default setting; not installed: Synthetic Gone Rx",
+				PrintSituationRules.GetPrintWindowSourceText(printerChoice,PRINTER_FRONT,"",""));
+			Assert.AreEqual("Chosen in this window (From Default setting: Synthetic Front Desk; not installed: Synthetic Gone Rx)",
+				PrintSituationRules.GetPrintWindowSourceText(printerChoice,PRINTER_BACK,"",""));
+		}
+
+		///<summary>The Print Options window (B-PRINT's FrmPrintOptions) cannot be opened by the tests: its source shows the rule line, the state line
+		///filled in the background, and a printer change that touches nothing but those two lines, so copies and the page range stay.</summary>
+		[TestMethod]
+		public void PrintWindow_ShowsRuleAndState_AndKeepsThePageRangeWhenThePrinterChanges() {
+			string xaml=TestDb.ReadRepoFile("WpfControlsOD","Frms","FrmPrintOptions.xaml");
+			StringAssert.Contains(xaml,"x:Name=\"labelRule\"");
+			StringAssert.Contains(xaml,"x:Name=\"labelStatus\"");
+			string code=TestDb.ReadRepoFile("WpfControlsOD","Frms","FrmPrintOptions.xaml.cs");
+			StringAssert.Contains(code,"comboPrinter.SelectionChangeCommitted+=comboPrinter_SelectionChangeCommitted;");
+			string load=TaskAttachmentWindowTests.GetMethod(code,"private void FrmPrintOptions_Load(");
+			StringAssert.Contains(load,"_printerChoiceRules=PrintSituationRules.ResolveForThisComputer(PrintSituation_);");
+			StringAssert.Contains(load,"_printerNameLastUsed=PrintOptions.GetRemembered(PrintSituation_)?.PrinterName??\"\";");
+			StringAssert.Contains(load,"FillPrinterStatusesInBackground();");
+			string background=TaskAttachmentWindowTests.GetMethod(code,"private void FillPrinterStatusesInBackground(");
+			StringAssert.Contains(background,"System.Threading.Tasks.Task.Run(");
+			StringAssert.Contains(background,"PrinterStatuses.GetAll()");
+			StringAssert.Contains(background,"dispatcher.BeginInvoke(");
+			string info=TaskAttachmentWindowTests.GetMethod(code,"private void SetPrinterInfo(");
+			StringAssert.Contains(info,"PrintSituationRules.GetPrintWindowSourceText(_printerChoiceRules,printerName,_printerNameLastUsed,_windowsDefaultPrinterName)");
+			StringAssert.Contains(info,"PrinterStatuses.GetStatus(_dictPrinterStatuses,printerName)");
+			foreach(string method in new[] { info,TaskAttachmentWindowTests.GetMethod(code,"private void comboPrinter_SelectionChangeCommitted(") }) {
+				foreach(string kept in new[] { "textFromPage","textToPage","radioAll","radioRange","textCopies","checkCollate" }) {
+					Assert.IsFalse(method.Contains(kept),"A printer change must not touch "+kept+".");
+				}
+			}
+		}
+
+		///<summary>WinForms printing, WPF printing and the setup windows pick the printer with the same rules.</summary>
+		[TestMethod]
+		public void Printing_PicksThePrinterWithTheSameRules() {
+			string printerL=TestDb.ReadRepoFile("OpenDental","Logic","PrinterL.cs");
+			StringAssert.Contains(printerL,"PrinterChoice printerChoice=PrintSituationRules.ResolveForThisComputer(printSituation);");
+			Assert.IsFalse(printerL.Contains("Printers.GetForSit("),"PrinterL reads the printer rows only through PrintSituationRules.");
+			string printOptionsWpf=TestDb.ReadRepoFile("WpfControlsOD","Logic","PrintOptionsWpf.cs");
+			StringAssert.Contains(TaskAttachmentWindowTests.GetMethod(printOptionsWpf,"public static string GetPrinterNameForSituation("),
+				"PrintSituationRules.ResolveForThisComputer(printSituation)");
+			Assert.IsFalse(printOptionsWpf.Contains("Printers.GetForSit("));
+		}
+		#endregion Print Options window (25.4), no database
+
 		#region Database
 		[TestMethod]
 		public void PutForSit_KeepsARowForPrompt_AndRemovesAnEmptyOne() {
@@ -179,6 +266,13 @@ namespace M2MISCTests {
 			CollectionAssert.Contains(printerChoice.ListPrinterNamesNotInstalled,"Synthetic Not Installed Anywhere");
 			printerChoice=PrintSituationRules.ResolveForThisComputer(PrintSituation.Claim);
 			Assert.IsTrue(printerChoice.DisplayPrompt,"No Claim row: the Default row's prompt.");
+			//WPF printing reads the same rows the same way (prompt of the situation's row, otherwise of the Default row; the Windows default
+			//printer when no row names an installed printer).
+			string printerName=WpfControls.PrintOptionsWpf.GetPrinterNameForSituation(PrintSituation.Statement,out bool isPrompt);
+			Assert.IsFalse(isPrompt);
+			Assert.AreEqual(PrintSituationRules.GetWindowsDefaultPrinterName(),printerName);
+			WpfControls.PrintOptionsWpf.GetPrinterNameForSituation(PrintSituation.Claim,out isPrompt);
+			Assert.IsTrue(isPrompt);
 		}
 
 		private static long InsertThisComputer() {

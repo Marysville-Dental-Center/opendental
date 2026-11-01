@@ -1,6 +1,7 @@
 // M2-MISC (Open Dental 25.4, "minor Print window enhancements"): the printer rules of Setup, Printers, as the 25.4 database documentation
-// clarifies them, and the online/offline state Windows reports for a printer. Used by the Printers setup windows to show which rule picks the
-// printer for each print situation, and available to the Print Options window (B-PRINT).
+// clarifies them, and the online/offline state Windows reports for a printer. Used when printing (OpenDental.PrinterL.SetPrinter and WPF
+// printing, PrintOptionsWpf), by the Printers setup windows to show which rule picks the printer for each print situation, and by the Print
+// Options window (B-PRINT's FrmPrintOptions) to show which rule picked the printer and its state.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -20,6 +21,16 @@ namespace OpenDentBusiness {
 		WindowsDefault,
 	}
 
+	///<summary>Where the printer selected in the Print Options window comes from (25.4).</summary>
+	public enum PrintWindowPrinterSource {
+		///<summary>The printer the situation's rules pick (Setup, Printers, otherwise the Windows default).</summary>
+		Rules,
+		///<summary>The printer last chosen for the situation in this session (PrintOptions.Remember), which is not the rules' printer.</summary>
+		LastUsed,
+		///<summary>Another printer, chosen in the window.</summary>
+		ChosenHere,
+	}
+
 	///<summary>The printer a print situation uses on this computer, and why.</summary>
 	public class PrinterChoice {
 		public PrintSituation PrintSituation;
@@ -36,8 +47,8 @@ namespace OpenDentBusiness {
 		public List<string> ListPrinterNamesNotInstalled=new List<string>();
 	}
 
-	///<summary>The printer rules of Setup, Printers. They are the same rules OpenDental.PrinterL.SetPrinter applies when printing (regions 1 and 2
-	///there): keep the two in step.</summary>
+	///<summary>The printer rules of Setup, Printers. OpenDental.PrinterL.SetPrinter (WinForms printing) and WpfControls.PrintOptionsWpf (WPF
+	///printing) pick the printer with ResolveForThisComputer, so the setup windows, the Print Options window and printing cannot drift apart.</summary>
 	public static class PrintSituationRules {
 		///<summary>Applies the rules to the rows of one computer. printerDefault is the computer's row for PrintSituation.Default, printerSit its row
 		///for printSituation (pass the same row, or null, for the Default situation). An empty PrinterName, or no row, means "use the Default
@@ -107,6 +118,57 @@ namespace OpenDentBusiness {
 			return text;
 		}
 
+		///<summary>The printer the rules pick, by name: the chosen printer, or the Windows default printer's name when no row names an installed
+		///printer ("" when Windows has no default printer).</summary>
+		public static string GetRulesPrinterName(PrinterChoice printerChoice,string windowsDefaultPrinterName) {
+			if(printerChoice.Source==PrinterChoiceSource.WindowsDefault) {
+				return windowsDefaultPrinterName??"";
+			}
+			return printerChoice.PrinterName;
+		}
+
+		///<summary>Where the printer selected in the Print Options window comes from: the rules' printer, the printer last chosen for the situation
+		///in this session (PrintOptions.Remember), or another one. An empty selection counts as the rules' printer.</summary>
+		public static PrintWindowPrinterSource GetPrintWindowSource(PrinterChoice printerChoice,string printerNameSelected,string printerNameLastUsed,
+			string windowsDefaultPrinterName)
+		{
+			if(string.IsNullOrEmpty(printerNameSelected) || IsSamePrinter(printerNameSelected,GetRulesPrinterName(printerChoice,windowsDefaultPrinterName))) {
+				return PrintWindowPrinterSource.Rules;
+			}
+			if(IsSamePrinter(printerNameSelected,printerNameLastUsed)) {
+				return PrintWindowPrinterSource.LastUsed;
+			}
+			return PrintWindowPrinterSource.ChosenHere;
+		}
+
+		///<summary>The line under the printer in the Print Options window (25.4): which rule picked the selected printer, for example "From
+		///Statements setting", "From Default setting" or "Windows default". When the selected printer is not the rules' printer, "Last used this
+		///session" or "Chosen in this window", followed in parentheses by the rule and the printer it picks, which is what a print without the window
+		///uses. Printers of rows passed over because they are not installed are named. Not translated here.</summary>
+		public static string GetPrintWindowSourceText(PrinterChoice printerChoice,string printerNameSelected,string printerNameLastUsed,
+			string windowsDefaultPrinterName)
+		{
+			string textNotInstalled="";
+			if(printerChoice.ListPrinterNamesNotInstalled.Count>0) {
+				textNotInstalled="; not installed: "+string.Join(", ",printerChoice.ListPrinterNamesNotInstalled);
+			}
+			PrintWindowPrinterSource printWindowPrinterSource=GetPrintWindowSource(printerChoice,printerNameSelected,printerNameLastUsed,
+				windowsDefaultPrinterName);
+			if(printWindowPrinterSource==PrintWindowPrinterSource.Rules) {
+				return GetSourceText(printerChoice)+textNotInstalled;
+			}
+			string textRules=GetSourceText(printerChoice);
+			string printerNameRules=GetRulesPrinterName(printerChoice,windowsDefaultPrinterName);
+			if(!string.IsNullOrWhiteSpace(printerNameRules)) {
+				textRules+=": "+printerNameRules;
+			}
+			string textSource="Chosen in this window";
+			if(printWindowPrinterSource==PrintWindowPrinterSource.LastUsed) {
+				textSource="Last used this session";
+			}
+			return textSource+" ("+textRules+textNotInstalled+")";
+		}
+
 		///<summary>True if a situation needs a printer row: a printer is chosen, Prompt is on, or it is a virtual printer. A row must exist when
 		///Prompt is on even with no printer chosen; with none of the three the row is removed (Printers.PutForSit).</summary>
 		public static bool IsRowNeeded(string printerName,bool displayPrompt,bool isVirtual) {
@@ -122,6 +184,14 @@ namespace OpenDentBusiness {
 				ex.DoNothing();
 				return "";
 			}
+		}
+
+		///<summary>Printer names are compared as Windows does, ignoring case. "" is never the same printer.</summary>
+		private static bool IsSamePrinter(string printerName1,string printerName2) {
+			if(string.IsNullOrEmpty(printerName1) || string.IsNullOrEmpty(printerName2)) {
+				return false;
+			}
+			return string.Equals(printerName1,printerName2,StringComparison.OrdinalIgnoreCase);
 		}
 
 		private static bool IsNamedAndInstalled(string printerName,Func<string,bool> funcIsInstalled,PrinterChoice printerChoice) {
