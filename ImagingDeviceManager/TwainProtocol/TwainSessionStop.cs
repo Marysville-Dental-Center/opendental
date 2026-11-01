@@ -250,13 +250,16 @@ namespace ImagingDeviceManager.TwainProtocol {
 							_stopReason=stopReason;
 							return Tw.MSG_NULL;
 						}
-						if(IsInterruptRequested()) {
+					}
+					if(hwndMsg==hwndProxy && (message==WM_APP_CANCEL || (message==NativeMethods.WM_TIMER && wParam==(IntPtr)TimerIdTick))) {
+						//The library's own wake-up: not for the source. The capture worker's commands are looked at only here, so that every
+						//message of the source still goes to it while it is enabled (TWAIN 2.4 pp.12-3, 12-5); each command posts a wake-up
+						//(WM_APP_WAKE), and the tick comes regularly.
+						if(!isRefusalWait && IsInterruptRequested()) {
 							IsLoopInterrupted=true;//The capture worker has a command; nothing is stopped here.
 							return Tw.MSG_NULL;
 						}
-					}
-					if(hwndMsg==hwndProxy && (message==WM_APP_CANCEL || (message==NativeMethods.WM_TIMER && wParam==(IntPtr)TimerIdTick))) {
-						continue;//The library's own wake-up: not for the source.
+						continue;
 					}
 					TW_EVENT twEvent=new TW_EVENT { pEvent=pMsg,TWMessage=Tw.MSG_NULL };
 					Marshal.StructureToPtr(twEvent,pEvent,false);

@@ -809,7 +809,8 @@ namespace ImagingDeviceManager.Capture {
 			return true;
 		}
 
-		///<summary>Called from the message loop on every pass: a command is waiting, the session is closing, or the session timeout passed.</summary>
+		///<summary>Called from the message loop on each of its own wake-ups (WM_APP_WAKE, the tick), never on a message for the source: a command
+		///is waiting, the session is closing, or the session timeout passed.</summary>
 		private bool IsInterruptRequested() {
 			lock(_lock) {
 				if(_listCommands.Count>0) {

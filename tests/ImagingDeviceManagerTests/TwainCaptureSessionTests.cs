@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using ImagingDeviceManager.Capture;
 using ImagingDeviceManager.Journal;
@@ -516,6 +517,34 @@ namespace ImagingDeviceManager.Tests {
 			Capture.Cancel();
 			Assert.AreEqual(TwainCaptureEndReason.Stopped,_harness.WaitForEnded(enableId).Reason);
 			Assert.AreEqual(1,Helper.CountEnable);
+		}
+
+		[TestMethod]
+		public void CommandWhileEnabled_TheSourcesOwnMessageStillGoesToIt() {
+			const int wmSource=0x0400+0x123;//WM_USER+0x123: a message of the source's own, on the window it was given.
+			Helper.ListExposures.Clear();
+			Helper.End=FakeHelperEnd.Never;
+			Helper.ActionOnEnable=() => {
+				//On the worker, inside MSG_ENABLEDS. The wake-up of the first enable may still be queued; it was handled, so it goes first.
+				IntPtr pMsg=Marshal.AllocHGlobal(NativeMethods.MsgBufferSize);
+				try {
+					while(NativeMethods.PeekMessage(pMsg,_harness.Fake.HwndParent,TwainSession.WM_APP_WAKE,TwainSession.WM_APP_WAKE,NativeMethods.PM_REMOVE)) {
+					}
+				}
+				finally {
+					Marshal.FreeHGlobal(pMsg);
+				}
+				//The source posts a message of its own, then a command arrives: its wake-up is queued behind the source's message.
+				NativeMethods.PostMessage(_harness.Fake.HwndParent,wmSource,IntPtr.Zero,IntPtr.Zero);
+				EnableOne();
+			};
+			_harness.OpenOrFail();
+			int enableId=EnableOne();
+			_harness.WaitUntil(() => _harness.ListEnded.Any(x => x.Reason==TwainCaptureEndReason.Refused),"the refused second enable");
+			Capture.Cancel();
+			Assert.AreEqual(TwainCaptureEndReason.Stopped,_harness.WaitForEnded(enableId).Reason);
+			Assert.IsTrue(Calls.Any(x => x.Name=="PROCESSEVENT" && x.EventMessage==wmSource),
+				"Every message goes to the enabled source (TWAIN 2.4 p.12-3); a command never drops one.\r\n"+_harness.CallText);
 		}
 
 		[TestMethod]

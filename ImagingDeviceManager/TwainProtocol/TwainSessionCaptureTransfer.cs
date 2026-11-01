@@ -195,9 +195,10 @@ namespace ImagingDeviceManager.TwainProtocol {
 		#region Enable and wait
 		///<summary>True when the last WaitForCaptureNotification returned because FuncIsInterruptRequested asked it to.</summary>
 		internal bool IsLoopInterrupted { get; private set; }
-		///<summary>Asked on every pass of the message loop while the source is enabled (not during the wait after a refused disable, when the
-		///stop is already under way). True makes WaitForCaptureNotification return MSG_NULL with IsLoopInterrupted, so that the capture worker
-		///can carry out a command. Must not throw; null for the scan and Mount/Acquire paths.</summary>
+		///<summary>Asked on each of the library's own wake-ups of the message loop (WM_APP_WAKE and the tick) while the source is enabled, never
+		///on a message for the source, which always goes to it first; not during the wait after a refused disable, when the stop is already
+		///under way. True makes WaitForCaptureNotification return MSG_NULL with IsLoopInterrupted, so that the capture worker can carry out a
+		///command. Must not throw; null for the scan and Mount/Acquire paths.</summary>
 		internal Func<bool> FuncIsInterruptRequested { get; set; }
 		///<summary>Why the last WaitForCaptureNotification returned MSG_NULL when it was not interrupted: Quit, or Error (the error is set).</summary>
 		internal TwainStopReason LoopStopReason => _stopReason;

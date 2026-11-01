@@ -147,6 +147,8 @@ namespace ImagingDeviceManager.Tests {
 		public ushort Rc;
 		///<summary>The condition code a DAT_STATUS returned, or the one a TWRC_FAILURE set.</summary>
 		public ushort Condition;
+		///<summary>For MSG_PROCESSEVENT: the Windows message (MSG.message) the application handed to the source.</summary>
+		public int EventMessage;
 
 		public string Name {
 			get {
@@ -177,7 +179,7 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		public override string ToString() {
-			return Name+(Cap!=0 ? " 0x"+Cap.ToString("X4") : "")+(Msg==Tw.MSG_SET || Dat==Tw.DAT_EVENT ? " "+Value : "")
+			return Name+(Cap!=0 ? " 0x"+Cap.ToString("X4") : "")+(Msg==Tw.MSG_SET || Dat==Tw.DAT_EVENT ? " "+Value : "")+(Dat==Tw.DAT_EVENT ? " msg 0x"+EventMessage.ToString("X4") : "")
 				+" @"+StateBefore+" rc "+Rc+(Condition!=0 ? " cc 0x"+Condition.ToString("X4") : "");
 		}
 	}
@@ -375,7 +377,11 @@ namespace ImagingDeviceManager.Tests {
 				call.Condition=((TW_STATUS)Marshal.PtrToStructure(data,typeof(TW_STATUS))).ConditionCode;
 			}
 			if(dat==Tw.DAT_EVENT) {
-				call.Value=((TW_EVENT)Marshal.PtrToStructure(data,typeof(TW_EVENT))).TWMessage;
+				TW_EVENT twEvent=(TW_EVENT)Marshal.PtrToStructure(data,typeof(TW_EVENT));
+				call.Value=twEvent.TWMessage;
+				if(twEvent.pEvent!=IntPtr.Zero) {
+					call.EventMessage=Marshal.ReadInt32(twEvent.pEvent,NativeMethods.MsgOffsetMessage);
+				}
 			}
 			ListCalls.Add(call);
 			return rc;
