@@ -169,7 +169,8 @@ Then build the solution (see [Build](#build)), start `OpenDental\bin\Debug\OpenD
 | `tools/` | `New-DevDatabase.ps1` and `DevDbTool/` (development database), `New-InitSql.ps1` (regenerates `db/init/new-database.sql`), `AdoptionValidation/` (adopting an Open Dental database), `SyntheticData/` (synthetic test data), `run-tests.ps1` (the test runner), `Test-NoHqHosts.ps1` (fails if code still references Open Dental's hosts), `Test-NoOldNames.ps1` (lists the program's old internal names, for the rename) |
 | `docs/` | Design notes, the release process, the adoption runbook, the binaries audit and one port note per package (`docs/port-notes/`) |
 | `Required dlls/` | Third-party assemblies the build references. What ships is listed in [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt); the rest is reviewed in [docs/third-party-binaries-audit.md](docs/third-party-binaries-audit.md) |
-| `RdlDesign/`, `RdlEngine/`, `RdlViewer/`, `ODR/`, `DocumentationBuilder/`, `PluginExample/` | Older or standalone projects, not in the solution filter and not built |
+| `ODR/`, `RdlEngine/`, `RdlViewer/` | RDL reports: `ODR.dll`, the code module report definitions call, and the fyiReporting RDL engine and viewer (LGPL 2.1), built from source in the solution and copied next to `OpenDental.exe` ([docs/port-notes/RDL-SRC.md](docs/port-notes/RDL-SRC.md)) |
+| `RdlDesign/`, `DocumentationBuilder/`, `PluginExample/` | Older or standalone projects, not in the solution filter and not built |
 
 ## Branches
 

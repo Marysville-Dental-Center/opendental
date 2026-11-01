@@ -267,20 +267,23 @@ namespace OpenDental{
 /*
 Things to keep in mind the next time we upgrade to a new version of RDL.
 These details may also need to be fine tuned to support various features that we want in OD.
+RdlEngine.dll, RdlViewer.dll and ODR.dll are built from source in this repository (RdlEngine/, RdlViewer/ and ODR/, package RDL-SRC,
+docs/port-notes/RDL-SRC.md). No prebuilt copy ships.
 
 Definition\Query.cs in an important class.
 Query.GetData() is important where it sets the timeout.  Setting timeout is not allowed on the MySQL connector.  They might have fixed this bug.
 
-Runtime\RdlEngineConfig.cs, must make sure there is a datasource like this:
+Runtime\RdlEngineConfig.cs, must make sure there is a datasource like this. It uses MySqlConnector, the MySQL client the program ships;
+report definitions keep naming the provider MySQL.NET:
 		<DataSource>
 			<DataProvider>MySQL.NET</DataProvider>
-			<CodeModule>MySql.Data.dll</CodeModule>
-			<ClassName>MySql.Data.MySqlClient.MySqlConnection</ClassName>
+			<CodeModule>MySqlConnector.dll</CodeModule>
+			<ClassName>MySqlConnector.MySqlConnection</ClassName>
 			<TableSelect>show tables</TableSelect>
 			<Interface>SQL</Interface>
 			<ReplaceParameters>true</ReplaceParameters>
 		</DataSource>
-Must also have MySQL.Data.dll in the same folder as RdlDesigner.exe.
+The report designer is not built from source: RdlDesign/ is outside the solution, and the prebuilt RdlDesigner.exe in Required dlls is not shipped (RDL-SRC owner question 4).
  */
 
 

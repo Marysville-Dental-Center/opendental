@@ -191,6 +191,32 @@ namespace ReportTests {
 		}
 
 		[TestMethod]
+		public void Docs_SayTheThreeAreBuiltFromSource() {
+			//M16 integration follow-up: the README, the RDL upgrade comments and the binaries audit no longer describe the prebuilt binaries.
+			string[] arrayReadmeLines=Read("README.md").Replace("\r\n","\n").Split('\n');
+			string readmeNotBuilt=arrayReadmeLines.Single(x => x.StartsWith("| ") && x.Contains("not built"));
+			foreach(string folder in new[] { "`ODR/`","`RdlEngine/`","`RdlViewer/`" }) {
+				Assert.IsFalse(readmeNotBuilt.Contains(folder),"README lists "+folder+" as not built.");
+				Assert.IsTrue(arrayReadmeLines.Any(x => x.StartsWith("| ") && x.Contains(folder) && x.Contains("built from source")),
+					"README says "+folder+" is built from source.");
+			}
+			foreach(string form in new[] { @"OpenDental\ReportingForRdl\FormReportForRdl.cs",@"OpenDental\ReportingForRdl\FormReportCustom.cs" }) {
+				string source=Read(form);
+				StringAssert.Contains(source,"<CodeModule>MySqlConnector.dll</CodeModule>",form+": the upgrade comment names the provider the engine uses.");
+				StringAssert.Contains(source,"<ClassName>MySqlConnector.MySqlConnection</ClassName>",form);
+				Assert.IsFalse(source.Contains("MySql.Data.dll") || source.Contains("MySQL.Data.dll"),form+": the upgrade comment still names MySql.Data.");
+			}
+			string[] arrayAuditLines=Read(@"docs\third-party-binaries-audit.md").Replace("\r\n","\n").Split('\n');
+			foreach(string fileName in _arrayDeletedDlls) {
+				string row=arrayAuditLines.Single(x => x.StartsWith("| `"+fileName+"` |") && x.Contains("RDL-SRC"));
+				StringAssert.Contains(row,"built from source",fileName+" audit row");
+				StringAssert.Contains(row,"ProjectReference: OpenDental",fileName+" audit row");
+				Assert.IsFalse(row.Contains("HintPath: OpenDental"),fileName+" audit row still names the old HintPath.");
+				Assert.IsFalse(row.Contains("so the build never copies it"),fileName+" audit row still says it is not copied.");
+			}
+		}
+
+		[TestMethod]
 		public void ProgramOutput_HoldsTheBinariesBuiltFromSource() {
 			string folder=Path.Combine(Root(),"OpenDental","bin","Debug");
 			if(!File.Exists(Path.Combine(folder,"OpenDental.exe"))) {
