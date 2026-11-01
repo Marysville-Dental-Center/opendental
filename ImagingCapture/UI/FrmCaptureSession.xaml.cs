@@ -54,6 +54,8 @@ namespace ImagingCapture.UI {
 		private bool _isFlippedPreviewShown;
 		private readonly List<Border> _listBordersTeeth=new List<Border>();
 		private string _viewErrorLogged;
+		///<summary>The frame's window procedure, for the operator's Alt+F4 and the taskbar's Close (CaptureSessionViewModel.IsOperatorCloseCommand).</summary>
+		private FrameCloseCommandHook _frameCloseCommandHook;
 		#endregion Fields
 
 		#region Constructor
@@ -111,6 +113,7 @@ namespace ImagingCapture.UI {
 			_viewModel.Changed+=viewModel_Changed;
 			if(_formFrame!=null) {
 				_formFrame.CloseXClicked+=formFrame_CloseXClicked;
+				AttachFrameCloseCommandHook();
 			}
 			FillProviders();
 			ShowPatientPicture();
@@ -130,6 +133,7 @@ namespace ImagingCapture.UI {
 			if(_hwndSource==null) {
 				AttachHotkeyWindow();//the hosting window had no handle at Load
 			}
+			AttachFrameCloseCommandHook();
 			Focus();//not the tooth numbers box: keys and pedals go to the session until the operator clicks into it
 		}
 
@@ -142,6 +146,7 @@ namespace ImagingCapture.UI {
 			}
 			finally {
 				DetachHotkeyWindow();
+				DetachFrameCloseCommandHook();
 				_viewModel.Changed-=viewModel_Changed;
 			}
 		}
@@ -154,13 +159,21 @@ namespace ImagingCapture.UI {
 
 		///<summary>The window's X: End while the source is enabled (the window stays until the session finishes), otherwise a close.</summary>
 		private void formFrame_CloseXClicked(object sender,CancelEventArgs e) {
-			if(_isClosed) {
-				return;
-			}
-			if(!_viewModel.OnCloseRequestedByOperator()) {
+			if(!MayOperatorClose()) {
 				e.Cancel=true;
-				RefreshView();
 			}
+		}
+
+		///<summary>The operator closes the window (the X, Alt+F4, the taskbar's Close): false while that is End instead (design 7.6).</summary>
+		private bool MayOperatorClose() {
+			if(_isClosed) {
+				return true;
+			}
+			if(_viewModel.OnCloseRequestedByOperator()) {
+				return true;
+			}
+			RefreshView();
+			return false;
 		}
 
 		private void dispatcherTimer_Tick(object sender,EventArgs e) {
@@ -367,6 +380,39 @@ namespace ImagingCapture.UI {
 		}
 		#endregion Methods - Event Handlers
 
+		///<summary>Sees the frame's messages before it does: an operator close (CaptureSessionViewModel.IsOperatorCloseCommand) is dropped when
+		///funcMayClose says the window stays (End while the source is enabled); everything else goes on unchanged.</summary>
+		private sealed class FrameCloseCommandHook:System.Windows.Forms.NativeWindow {
+			private readonly Func<bool> _funcMayClose;
+			private readonly Action<string> _actionLog;
+
+			public FrameCloseCommandHook(Func<bool> funcMayClose,Action<string> actionLog) {
+				_funcMayClose=funcMayClose;
+				_actionLog=actionLog;
+			}
+
+			protected override void WndProc(ref System.Windows.Forms.Message m) {
+				if(CaptureSessionViewModel.IsOperatorCloseCommand(m.Msg,m.WParam.ToInt64())) {
+					bool mayClose=true;
+					try {
+						mayClose=_funcMayClose();
+					}
+					catch(Exception ex) {
+						try {
+							_actionLog?.Invoke("The close could not be checked: "+ex.Message);
+						}
+						catch {
+						}
+					}
+					if(!mayClose) {
+						m.Result=IntPtr.Zero;
+						return;
+					}
+				}
+				base.WndProc(ref m);
+			}
+		}
+
 		#region Methods - setup
 		///<summary>The hotkeys register on the handle of the window that hosts this one's content, whose hook receives WM_HOTKEY.</summary>
 		private void AttachHotkeyWindow() {
@@ -387,6 +433,32 @@ namespace ImagingCapture.UI {
 				_hwndSource=null;
 				_viewModel.Controller.LogFromWindow("The hotkeys are not available: "+ex.Message);
 			}
+		}
+
+		///<summary>Alt+F4, the taskbar's Close and the system menu's Close reach the frame as WM_SYSCOMMAND SC_CLOSE, not through its X; they go
+		///to the same End-or-close rule as the X. Once per handle.</summary>
+		private void AttachFrameCloseCommandHook() {
+			if(_frameCloseCommandHook!=null || _formFrame==null || !_formFrame.IsHandleCreated) {
+				return;
+			}
+			try {
+				_frameCloseCommandHook=new FrameCloseCommandHook(MayOperatorClose,text => _viewModel.Controller.LogFromWindow(text));
+				_frameCloseCommandHook.AssignHandle(_formFrame.Handle);
+			}
+			catch(Exception ex) {
+				_frameCloseCommandHook=null;
+				_viewModel.Controller.LogFromWindow("Alt+F4 closes the window without the End rule: "+ex.Message);
+			}
+		}
+
+		private void DetachFrameCloseCommandHook() {
+			try {
+				_frameCloseCommandHook?.ReleaseHandle();
+			}
+			catch {
+				//the handle is already gone
+			}
+			_frameCloseCommandHook=null;
 		}
 
 		private void DetachHotkeyWindow() {

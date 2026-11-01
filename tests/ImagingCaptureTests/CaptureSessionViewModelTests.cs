@@ -574,6 +574,21 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void AltF4AndTheTaskbarsClose_AreOperatorCloses_LikeTheX() {
+			Assert.IsTrue(CaptureSessionViewModel.IsOperatorCloseCommand(0x0112,0xF060),"WM_SYSCOMMAND SC_CLOSE (Alt+F4, the taskbar's Close).");
+			Assert.IsTrue(CaptureSessionViewModel.IsOperatorCloseCommand(0x0112,0xF063),"The four low bits are the system's own.");
+			Assert.IsFalse(CaptureSessionViewModel.IsOperatorCloseCommand(0x0112,0xF020),"SC_MINIMIZE.");
+			Assert.IsFalse(CaptureSessionViewModel.IsOperatorCloseCommand(0x0010,0),"WM_CLOSE itself (a logoff, the owner): the forced close.");
+			//The window sends an operator close to OnCloseRequestedByOperator: while enabled without safe disable, the warning, no disable.
+			ViewModel();
+			Started();
+			Assert.IsFalse(_viewModel.OnCloseRequestedByOperator());
+			StringAssert.StartsWith(_viewModel.WarningText,"If an exposure was just taken, wait until it appears before cancelling.");
+			Assert.AreEqual(0,_harness.Twain.ListDisables.Count);
+			Assert.AreEqual(0,_harness.Twain.CountBeginClose,"Not the forced close.");
+		}
+
+		[TestMethod]
 		public void OnClosing_TwiceAndAfterTheFinish_Harmless_NoSoundAfterClose() {
 			ViewModel();
 			Started();

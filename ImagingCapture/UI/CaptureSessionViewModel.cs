@@ -743,6 +743,15 @@ namespace ImagingCapture.UI {
 			return false;
 		}
 
+		///<summary>WM_SYSCOMMAND with SC_CLOSE (the four low bits are the system's own): the operator closed the window with Alt+F4, the taskbar's
+		///Close or the system menu's Close. The window treats it as the X (OnCloseRequestedByOperator), so that while the source is enabled it is End
+		///with the design 7.6 warning; every other close (a logoff, WM_QUIT, the owner closing) stays the forced close of FormClosing.</summary>
+		public static bool IsOperatorCloseCommand(int msg,long wParam) {
+			const int WM_SYSCOMMAND=0x0112;
+			const long SC_CLOSE=0xF060;
+			return msg==WM_SYSCOMMAND && (wParam&0xFFF0)==SC_CLOSE;
+		}
+
 		///<summary>The window is closing (FormClosing: after the summary, the operator, or forced by a logoff). The hotkeys are released and a
 		///session that has not finished takes the controller's forced-close path, which never waits for the worker.</summary>
 		public void OnClosing() {
