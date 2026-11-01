@@ -1413,7 +1413,7 @@ namespace OpenDentBusiness{
 			Claims.Update(claim);
 			ClaimProcs.RemoveSupplementalTransfersForClaims(claim.ClaimNum);
 			InsBlueBooks.SynchForClaimNums(claim.ClaimNum);
-			if(PrefC.GetBool(PrefName.ClaimPrimaryReceivedRecalcSecondary) && claim.ClaimStatus=="R" && claimOld.ClaimStatus!="R" && claim.ClaimType=="P") {
+			if(PrefC.GetBool(PrefName.ClaimPrimaryReceivedRecalcSecondary) && claim.ClaimStatus=="R" && claimOld.ClaimStatus!="R" && claim.ClaimType!="PreAuth") {//26.1: any ordinal
 				Claims.CalculateAndUpdateSecondariesFromPrimaries(new List<Claim>{ claim });
 			}
 			if(isAutomatic || Security.IsAuthorized(EnumPermType.PaymentCreate,DateTime.Today,true)) {

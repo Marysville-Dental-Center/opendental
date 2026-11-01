@@ -167,7 +167,7 @@
     <PrefName />
     <Category>AccountClaimReceive</Category>
     <ControlName>checkPromptForSecondaryClaim</ControlName>
-    <ControlText>Prompt for secondary claims</ControlText>
+    <ControlText>Prompt for claims of the next insurance</ControlText>
     <Details />
     <WidthWindow>0</WidthWindow>
     <HeightWindow>0</HeightWindow>
@@ -194,7 +194,7 @@
     <PrefName />
     <Category>AccountClaimReceive</Category>
     <ControlName>checkClaimPrimaryRecievedForceSecondaryStatus</ControlName>
-    <ControlText>Remove 'Do Nothing' for secondary claims with 'Hold until Pri received'</ControlText>
+    <ControlText>Remove 'Do Nothing' from the next insurance claims prompt</ControlText>
     <Details />
     <WidthWindow>0</WidthWindow>
     <HeightWindow>0</HeightWindow>

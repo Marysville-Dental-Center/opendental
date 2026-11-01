@@ -1472,6 +1472,7 @@
     <Compile Include="Data Interface\ClaimProcs.AuditTrail25.cs" />
     <Compile Include="Data Interface\ClaimProcs.WriteOffPermission.cs" />
     <Compile Include="Data Interface\Claims.cs" />
+    <Compile Include="Data Interface\Claims.NextOrdinal.cs" />
     <Compile Include="Data Interface\ClaimValCodeLogs.cs" />
     <Compile Include="Data Interface\Clearinghouses.cs" />
     <Compile Include="Data Interface\Clinics.cs" />
