@@ -9,9 +9,10 @@ namespace ImagingDeviceManager.Imaging {
 	///<summary>Assembles the strips of a 16-bit grayscale memory transfer into raw samples (design 7.1 CAP-3): chunky, top-down rows, each
 	///sample 2 bytes, right-justified, little-endian (TWAIN 2.4 p.4-30; twain-contract 1.1 section 6.2), or big-endian when the device
 	///profile says so. Rows may be padded (BytesPerRow larger than 2 x Columns) and strips may be tiles (XOffset, Columns): both are honoured.
-	///A 14-bit enable delivers 14-bit samples right-justified in the same 16-bit containers (values 0 to 16383; twain-contract 1.1 section
-	///6.2): they are read the same way, and a sample above 2^significantBits-1 is counted (CountAboveSignificantBits), not changed. Values are
-	///kept exactly as delivered: no shift, no window, no inversion.</summary>
+	///A 14-bit enable is expected to deliver 14-bit samples right-justified in the same 16-bit containers (values 0 to 16383): TWAIN's rule
+	///that samples are right-justified (TWAIN 2.4 p.4-30), with the owner decision of 2026-11-01 to fall back from 16 to 14 bits. The contract
+	///defines no 14-bit delivery (its ICAP_BITDEPTH lists 8 and 16). They are read the same way, and a sample above 2^significantBits-1 is
+	///counted (CountAboveSignificantBits), not changed. Values are kept exactly as delivered: no shift, no window, no inversion.</summary>
 	internal sealed class Gray16Builder {
 		private readonly int _width;
 		private readonly int _heightExpected;
