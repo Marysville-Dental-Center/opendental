@@ -202,6 +202,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "M2DUNTests", "tests\M2DUNTe
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "M2TERMTests", "tests\M2TERMTests\M2TERMTests.csproj", "{922FE7E8-7BF3-42FC-ACCB-A3A53E5CAB88}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "M2SHEETSTests", "tests\M2SHEETSTests\M2SHEETSTests.csproj", "{26DEE1D0-7AA8-4538-A60E-7CE4C7568FCA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -1353,6 +1355,18 @@ Global
 		{922FE7E8-7BF3-42FC-ACCB-A3A53E5CAB88}.Release|Any CPU.Build.0 = Release|x86
 		{922FE7E8-7BF3-42FC-ACCB-A3A53E5CAB88}.Release|x86.ActiveCfg = Release|x86
 		{922FE7E8-7BF3-42FC-ACCB-A3A53E5CAB88}.Release|x86.Build.0 = Release|x86
+		{26DEE1D0-7AA8-4538-A60E-7CE4C7568FCA}.Debug|Any CPU.ActiveCfg = Debug|x86
+		{26DEE1D0-7AA8-4538-A60E-7CE4C7568FCA}.Debug|Any CPU.Build.0 = Debug|x86
+		{26DEE1D0-7AA8-4538-A60E-7CE4C7568FCA}.Debug|x86.ActiveCfg = Debug|x86
+		{26DEE1D0-7AA8-4538-A60E-7CE4C7568FCA}.Debug|x86.Build.0 = Debug|x86
+		{26DEE1D0-7AA8-4538-A60E-7CE4C7568FCA}.ODXam|Any CPU.ActiveCfg = Release|x86
+		{26DEE1D0-7AA8-4538-A60E-7CE4C7568FCA}.ODXam|Any CPU.Build.0 = Release|x86
+		{26DEE1D0-7AA8-4538-A60E-7CE4C7568FCA}.ODXam|x86.ActiveCfg = Release|x86
+		{26DEE1D0-7AA8-4538-A60E-7CE4C7568FCA}.ODXam|x86.Build.0 = Release|x86
+		{26DEE1D0-7AA8-4538-A60E-7CE4C7568FCA}.Release|Any CPU.ActiveCfg = Release|x86
+		{26DEE1D0-7AA8-4538-A60E-7CE4C7568FCA}.Release|Any CPU.Build.0 = Release|x86
+		{26DEE1D0-7AA8-4538-A60E-7CE4C7568FCA}.Release|x86.ActiveCfg = Release|x86
+		{26DEE1D0-7AA8-4538-A60E-7CE4C7568FCA}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

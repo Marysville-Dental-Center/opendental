@@ -624,6 +624,9 @@
     <Compile Include="SheetFramework\SheetDrawingJob.cs" />
     <Compile Include="SheetFramework\SheetFiller.cs" />
     <Compile Include="SheetFramework\SheetPrinting2.cs" />
+    <Compile Include="SheetFramework\SheetFonts.cs" />
+    <Compile Include="SheetFramework\SheetScripts.cs" />
+    <Compile Include="SheetFramework\SheetTextDrawing.cs" />
     <Compile Include="SheetFramework\SheetUtil.cs" />
     <Compile Include="SheetFramework\StaticTextData.cs" />
     <Compile Include="SheetFramework\ToothChartHelper.cs" />
