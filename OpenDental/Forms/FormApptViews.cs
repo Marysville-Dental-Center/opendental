@@ -92,6 +92,45 @@ namespace OpenDental{
 			listViews.SelectedIndex=listViews.Items.Count-1;//this works even if no items
 		}
 
+		private void listViews_SelectedIndexChanged(object sender,EventArgs e) {
+			butCopy.Enabled=(listViews.SelectedIndex!=-1);
+		}
+
+		///<summary>24.4 Copy View: copies the selected view with all of its settings and items, then opens the copy. Cancel deletes the copy, as
+		///with Add.</summary>
+		private void butCopy_Click(object sender,EventArgs e) {
+			if(listViews.SelectedIndex==-1) {
+				MsgBox.Show(this,"Please select a view first.");
+				return;
+			}
+			int selectedIndex=listViews.SelectedIndex;
+			ApptView apptViewSource=_listApptViews[selectedIndex];
+			ApptView apptViewCopy=ApptViews.CopyView(apptViewSource.ApptViewNum);
+			if(apptViewCopy==null) {
+				MsgBox.Show(this,"The selected view no longer exists.");
+				FillViewList();
+				return;
+			}
+			_changed=true;
+			ApptViews.RefreshCache();
+			ApptViewItems.RefreshCache();//The edit window reads the copy's items from the cache.
+			using FormApptViewEdit formApptViewEdit=new FormApptViewEdit();
+			formApptViewEdit.ApptViewCur=apptViewCopy;
+			formApptViewEdit.IsNew=true;//Cancel deletes the copy.
+			formApptViewEdit.IsCopy=true;//Keeps the copied settings instead of the defaults for a new view.
+			formApptViewEdit.ClinicNumInitial=apptViewSource.ClinicNum;
+			formApptViewEdit.ShowDialog();
+			FillViewList();
+			if(formApptViewEdit.DialogResult!=DialogResult.OK) {
+				if(selectedIndex<listViews.Items.Count) {
+					listViews.SelectedIndex=selectedIndex;
+				}
+				return;
+			}
+			SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,ApptViews.GetCopyLogText(apptViewSource.Description,formApptViewEdit.ApptViewCur.Description));
+			listViews.SelectedIndex=_listApptViews.FindIndex(x => x.ApptViewNum==apptViewCopy.ApptViewNum);//-1 if the copy moved to another clinic.
+		}
+
 		private void listViews_DoubleClick(object sender, System.EventArgs e) {
 			if(listViews.SelectedIndex==-1){
 				return;

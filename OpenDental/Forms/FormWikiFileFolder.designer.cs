@@ -28,6 +28,7 @@ namespace OpenDental{
 			this.textLink = new System.Windows.Forms.TextBox();
 			this.butBrowse = new OpenDental.UI.Button();
 			this.butOK = new OpenDental.UI.Button();
+			this.labelReadOnlyCopy = new System.Windows.Forms.Label();
 			this.SuspendLayout();
 			// 
 			// label1
@@ -68,10 +69,20 @@ namespace OpenDental{
 			this.butOK.Text = "&OK";
 			this.butOK.Click += new System.EventHandler(this.butOK_Click);
 			// 
+			// labelReadOnlyCopy
+			// 
+			this.labelReadOnlyCopy.Location = new System.Drawing.Point(92, 50);
+			this.labelReadOnlyCopy.Name = "labelReadOnlyCopy";
+			this.labelReadOnlyCopy.Size = new System.Drawing.Size(320, 62);
+			this.labelReadOnlyCopy.TabIndex = 19;
+			this.labelReadOnlyCopy.Text = "Read-only copy of the wiki: files in the wiki folder are copied into it. Files anywhere else are linked, so they open only while their folder can be reached.";
+			this.labelReadOnlyCopy.Visible = false;
+			// 
 			// FormWikiFileFolder
 			// 
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
 			this.ClientSize = new System.Drawing.Size(646, 123);
+			this.Controls.Add(this.labelReadOnlyCopy);
 			this.Controls.Add(this.butBrowse);
 			this.Controls.Add(this.butOK);
 			this.Controls.Add(this.label1);
@@ -92,6 +103,7 @@ namespace OpenDental{
 		private System.Windows.Forms.TextBox textLink;
 		private UI.Button butOK;
 		private UI.Button butBrowse;
+		private System.Windows.Forms.Label labelReadOnlyCopy;
 
 
 	}

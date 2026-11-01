@@ -3,7 +3,9 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
+using System.Text;
 
 namespace OpenDentBusiness {
 	///<summary></summary>
@@ -465,6 +467,171 @@ namespace OpenDentBusiness {
 			return diseaseDefNum;
 		}
 
+		#region 26.1: Problem merge (v26_1-lists-problem-merge-keep)
+		///<summary>The number of patients who have at least one problem with this definition.</summary>
+		public static int GetPatientCount(long diseaseDefNum) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetInt(MethodBase.GetCurrentMethod(),diseaseDefNum);
+			}
+			string command="SELECT COUNT(DISTINCT PatNum) FROM disease WHERE DiseaseDefNum="+POut.Long(diseaseDefNum);
+			return PIn.Int(Db.GetCount(command));
+		}
+
+		///<summary>The text of one choice in the Merge Problems window: the name, the ICD-10 and SNOMED CT codes that are set, whether the problem is
+		///hidden, and how many patients have it.</summary>
+		public static string GetMergeChoiceText(DiseaseDef diseaseDef,int countPatients) {
+			Meth.NoCheckMiddleTierRole();
+			string text=diseaseDef.DiseaseName??"";
+			List<string> listCodes=new List<string>();
+			if(!string.IsNullOrWhiteSpace(diseaseDef.Icd10Code)) {
+				listCodes.Add(Lans.g("DiseaseDefs","ICD-10")+" "+diseaseDef.Icd10Code.Trim());
+			}
+			if(!string.IsNullOrWhiteSpace(diseaseDef.SnomedCode)) {
+				listCodes.Add(Lans.g("DiseaseDefs","SNOMED CT")+" "+diseaseDef.SnomedCode.Trim());
+			}
+			if(listCodes.Count>0) {
+				text+=" ("+string.Join(", ",listCodes)+")";
+			}
+			if(diseaseDef.IsHidden) {
+				text+=" ["+Lans.g("DiseaseDefs","hidden")+"]";
+			}
+			if(countPatients==1) {
+				text+=", "+Lans.g("DiseaseDefs","used by 1 patient");
+			}
+			else {
+				text+=", "+Lans.g("DiseaseDefs","used by")+" "+countPatients+" "+Lans.g("DiseaseDefs","patients");
+			}
+			return text;
+		}
+
+		///<summary>Merges two problem definitions. Every reference to diseaseDefNumDiscard moves to diseaseDefNumKeep, then the discarded definition
+		///is deleted. The kept definition itself is not changed: its name, codes and hidden flag stay as they are, and nothing of the discarded one is
+		///copied into it. References moved: patient problems (disease), Rx alerts, EHR education resources, family health history, CDS triggers
+		///(ehrtrigger.ProblemDefNumList), problem reminder rules and the ProblemsIndicateNone preference. A patient who had both problems keeps both
+		///rows; the result counts those patients. The tables are MyISAM, so there is no transaction: the definition is deleted last, and if a step
+		///fails the discarded definition still exists, so running the same merge again finishes it. The caller makes the ProblemDefEdit security log
+		///entry (see GetMergeLogText) and refreshes the problem cache, and the preference cache when IsProblemsIndicateNoneMoved is true. Throws an
+		///ApplicationException when the two numbers are the same or either definition no longer exists.</summary>
+		public static DiseaseDefMergeResult Merge(long diseaseDefNumKeep,long diseaseDefNumDiscard) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetObject<DiseaseDefMergeResult>(MethodBase.GetCurrentMethod(),diseaseDefNumKeep,diseaseDefNumDiscard);
+			}
+			if(diseaseDefNumKeep==diseaseDefNumDiscard) {
+				throw new ApplicationException(Lans.g("DiseaseDefs","Choose two different problems to merge."));
+			}
+			DiseaseDef diseaseDefKeep=GetOne(diseaseDefNumKeep);
+			DiseaseDef diseaseDefDiscard=GetOne(diseaseDefNumDiscard);
+			if(diseaseDefKeep==null || diseaseDefDiscard==null) {
+				throw new ApplicationException(Lans.g("DiseaseDefs","One of the problems no longer exists. Open the Problems window again and retry."));
+			}
+			DiseaseDefMergeResult result=new DiseaseDefMergeResult();
+			result.DiseaseDefNumKept=diseaseDefKeep.DiseaseDefNum;
+			result.DiseaseNameKept=diseaseDefKeep.DiseaseName;
+			result.DiseaseDefNumDiscarded=diseaseDefDiscard.DiseaseDefNum;
+			result.DiseaseNameDiscarded=diseaseDefDiscard.DiseaseName;
+			string keep=POut.Long(diseaseDefNumKeep);
+			string discard=POut.Long(diseaseDefNumDiscard);
+			//Counted before anything moves: afterwards the two rows can't be told apart.
+			string command="SELECT COUNT(DISTINCT disease.PatNum) FROM disease "
+				+"WHERE disease.DiseaseDefNum="+discard+" "
+				+"AND EXISTS(SELECT 1 FROM disease diseaseKept WHERE diseaseKept.PatNum=disease.PatNum AND diseaseKept.DiseaseDefNum="+keep+")";
+			result.CountPatientsWithBoth=PIn.Int(Db.GetCount(command));
+			result.CountProblemsMoved=Db.NonQ("UPDATE disease SET DiseaseDefNum="+keep+" WHERE DiseaseDefNum="+discard);
+			result.CountRxAlertsMoved=Db.NonQ("UPDATE rxalert SET DiseaseDefNum="+keep+" WHERE DiseaseDefNum="+discard);
+			result.CountEduResourcesMoved=Db.NonQ("UPDATE eduresource SET DiseaseDefNum="+keep+" WHERE DiseaseDefNum="+discard);
+			result.CountFamilyHealthMoved=Db.NonQ("UPDATE familyhealth SET DiseaseDefNum="+keep+" WHERE DiseaseDefNum="+discard);
+			result.CountReminderRulesMoved=Db.NonQ("UPDATE reminderrule SET CriterionFK="+keep+" "
+				+"WHERE ReminderCriterion="+POut.Int((int)EhrCriterion.Problem)+" AND CriterionFK="+discard);
+			//CDS triggers keep problem numbers in a text column, each number wrapped in spaces: " 12  34 ".
+			command="SELECT EhrTriggerNum,ProblemDefNumList FROM ehrtrigger WHERE ProblemDefNumList LIKE '% "+discard+" %'";
+			DataTable table=Db.GetTable(command);
+			for(int i=0;i<table.Rows.Count;i++) {
+				string problemDefNumList=table.Rows[i]["ProblemDefNumList"].ToString();
+				string problemDefNumListNew=ReplaceNumInSpacedList(problemDefNumList,diseaseDefNumDiscard,diseaseDefNumKeep);
+				if(problemDefNumListNew==problemDefNumList) {
+					continue;
+				}
+				Db.NonQ("UPDATE ehrtrigger SET ProblemDefNumList='"+POut.String(problemDefNumListNew)+"' "
+					+"WHERE EhrTriggerNum="+POut.Long(PIn.Long(table.Rows[i]["EhrTriggerNum"].ToString())));
+				result.CountCdsTriggersMoved++;
+			}
+			if(PrefC.GetLong(PrefName.ProblemsIndicateNone)==diseaseDefNumDiscard) {
+				Prefs.UpdateLong(PrefName.ProblemsIndicateNone,diseaseDefNumKeep);
+				result.IsProblemsIndicateNoneMoved=true;
+			}
+			//Sheet and eForm definitions name problems ("problem:Name"), not numbers. They are left alone, but counted so the office can edit them.
+			if(diseaseDefDiscard.DiseaseName!=diseaseDefKeep.DiseaseName) {
+				string fieldName=POut.String("problem:"+diseaseDefDiscard.DiseaseName);
+				result.CountSheetFieldDefsNamingDiscarded=PIn.Int(Db.GetCount("SELECT COUNT(*) FROM sheetfielddef WHERE BINARY FieldName='"+fieldName+"'"));
+				result.CountEFormFieldDefsNamingDiscarded=PIn.Int(Db.GetCount("SELECT COUNT(*) FROM eformfielddef WHERE BINARY DbLink='"+fieldName+"'"));
+			}
+			Db.NonQ("DELETE FROM diseasedef WHERE DiseaseDefNum="+discard);
+			return result;
+		}
+
+		///<summary>Replaces one number in a list whose numbers are each wrapped in spaces, like ehrtrigger.ProblemDefNumList (" 12  34 "). Each number
+		///is kept once, in its first place. Returns the list unchanged when numOld is not in it.</summary>
+		public static string ReplaceNumInSpacedList(string numList,long numOld,long numNew) {
+			Meth.NoCheckMiddleTierRole();
+			if(string.IsNullOrEmpty(numList)) {
+				return numList;
+			}
+			List<string> listNums=numList.Split(new char[] { ' ' },StringSplitOptions.RemoveEmptyEntries).ToList();
+			string strOld=numOld.ToString();
+			if(!listNums.Contains(strOld)) {
+				return numList;
+			}
+			string strNew=numNew.ToString();
+			List<string> listNumsNew=new List<string>();
+			for(int i=0;i<listNums.Count;i++) {
+				string num=(listNums[i]==strOld ? strNew : listNums[i]);
+				if(!listNumsNew.Contains(num)) {
+					listNumsNew.Add(num);
+				}
+			}
+			return string.Concat(listNumsNew.Select(x => " "+x+" "));
+		}
+
+		///<summary>The ProblemDefEdit security log text for a merge: "Problem X merged into Y.", plus the number of patient problems moved.</summary>
+		public static string GetMergeLogText(DiseaseDefMergeResult result) {
+			Meth.NoCheckMiddleTierRole();
+			return Lans.g("DiseaseDefs","Problem")+" \""+result.DiseaseNameDiscarded+"\" (#"+result.DiseaseDefNumDiscarded+") "
+				+Lans.g("DiseaseDefs","merged into")+" \""+result.DiseaseNameKept+"\" (#"+result.DiseaseDefNumKept+"). "
+				+Lans.g("DiseaseDefs","Patient problems moved")+": "+result.CountProblemsMoved+".";
+		}
+
+		///<summary>The message shown after a merge: what moved, and the follow-ups for the office: patients who now have the problem twice, and
+		///sheet or eForm fields that still name the discarded problem.</summary>
+		public static string GetMergeSummaryText(DiseaseDefMergeResult result) {
+			Meth.NoCheckMiddleTierRole();
+			StringBuilder stringBuilder=new StringBuilder();
+			stringBuilder.AppendLine(Lans.g("DiseaseDefs","Problem")+" \""+result.DiseaseNameDiscarded+"\" "+Lans.g("DiseaseDefs","was merged into")+" \""
+				+result.DiseaseNameKept+"\".");
+			stringBuilder.AppendLine(Lans.g("DiseaseDefs","Patient problems moved")+": "+result.CountProblemsMoved);
+			long countOther=result.CountRxAlertsMoved+result.CountEduResourcesMoved+result.CountFamilyHealthMoved+result.CountReminderRulesMoved
+				+result.CountCdsTriggersMoved;
+			if(countOther>0) {
+				stringBuilder.AppendLine(Lans.g("DiseaseDefs","Rx alerts, education resources, family health entries, reminder rules and CDS triggers moved")
+					+": "+countOther);
+			}
+			if(result.IsProblemsIndicateNoneMoved) {
+				stringBuilder.AppendLine(Lans.g("DiseaseDefs","The problem that indicates the patient has no problems is now")+" \""+result.DiseaseNameKept+"\".");
+			}
+			if(result.CountPatientsWithBoth>0) {
+				stringBuilder.AppendLine();
+				stringBuilder.AppendLine(Lans.g("DiseaseDefs","Patients who had both problems now have this problem twice. Both entries were kept")+": "
+					+result.CountPatientsWithBoth);
+			}
+			int countFormFields=result.CountSheetFieldDefsNamingDiscarded+result.CountEFormFieldDefsNamingDiscarded;
+			if(countFormFields>0) {
+				stringBuilder.AppendLine();
+				stringBuilder.AppendLine(Lans.g("DiseaseDefs","Sheet and eForm fields that still refer to the old problem name and need to be edited")+": "
+					+countFormFields);
+			}
+			return stringBuilder.ToString().TrimEnd();
+		}
+		#endregion 26.1: Problem merge
+
 	/*public static DiseaseDef GetByICD9Code(string ICD9Code) {///<summary>Returns the diseasedef that has a name exactly matching the specified string. Returns null if no match.  Does not match hidden diseases.</summary>
 			Meth.NoCheckMiddleTierRole();
 			for(int i=0;i<List.Length;i++) {
@@ -474,6 +641,30 @@ namespace OpenDentBusiness {
 			}
 			return null;
 		}*/
+	}
+
+	///<summary>What DiseaseDefs.Merge did. Counts are rows changed.</summary>
+	[Serializable]
+	public class DiseaseDefMergeResult {
+		public long DiseaseDefNumKept;
+		public string DiseaseNameKept;
+		public long DiseaseDefNumDiscarded;
+		public string DiseaseNameDiscarded;
+		///<summary>Patient problems (disease rows) moved from the discarded definition to the kept one.</summary>
+		public long CountProblemsMoved;
+		///<summary>Patients who had both problems before the merge and now have the kept problem twice. Both rows are kept.</summary>
+		public int CountPatientsWithBoth;
+		public long CountRxAlertsMoved;
+		public long CountEduResourcesMoved;
+		public long CountFamilyHealthMoved;
+		public long CountReminderRulesMoved;
+		public long CountCdsTriggersMoved;
+		///<summary>True when the ProblemsIndicateNone preference pointed to the discarded definition and now points to the kept one.</summary>
+		public bool IsProblemsIndicateNoneMoved;
+		///<summary>Sheet field definitions named "problem:" plus the discarded name. They are not changed.</summary>
+		public int CountSheetFieldDefsNamingDiscarded;
+		///<summary>eForm field definitions whose DbLink is "problem:" plus the discarded name. They are not changed.</summary>
+		public int CountEFormFieldDefsNamingDiscarded;
 	}
 
 		

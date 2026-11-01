@@ -282,7 +282,7 @@ namespace OpenDental {
 			ToolStripItem toolStripItemCopy=FindBlockoutToolStripItem(MenuItemNames.CopyBlockout);
 			ToolStripItem toolStripItemPaste=FindBlockoutToolStripItem(MenuItemNames.PasteBlockout);
 			ToolStripItem toolStripItemDelete=FindBlockoutToolStripItem(MenuItemNames.DeleteBlockout);
-			//AddBlockout is not used here
+			ToolStripItem toolStripItemAdd=FindBlockoutToolStripItem(MenuItemNames.AddBlockout);//25.4: enabled by Blockout Add.
 			ToolStripItem toolStripItemCutCopyPaste=FindBlockoutToolStripItem(MenuItemNames.BlockoutCutCopyPaste);
 			ToolStripItem toolStripItemClearForDayOp=FindBlockoutToolStripItem(MenuItemNames.ClearAllBlockoutsForDayOpOnly);
 			ToolStripItem toolStripItemClearForDay=new ToolStripMenuItem();
@@ -298,15 +298,15 @@ namespace OpenDental {
 			catch (ODException ex){
 				ex.DoNothing();//It isn't there, the user needs to restart to see the changes.
 			}
-			//25.1: Blockouts covers unflagged blockouts and BlockoutsFlagged covers NS/DC-flagged ones. Either one is enough for the bulk actions,
-			//which then act only on the kinds the user may manage.
-			bool hasPermBlockouts=Security.IsAuthorized(EnumPermType.Blockouts,true);
-			bool hasPermBlockoutsFlagged=Security.IsAuthorized(EnumPermType.BlockoutsFlagged,true);
-			bool hasAnyBlockoutPerm=hasPermBlockouts || hasPermBlockoutsFlagged;
-			toolStripItemCutCopyPaste.Enabled=hasAnyBlockoutPerm;
-			toolStripItemClearForDay.Enabled=hasAnyBlockoutPerm;
-			toolStripItemClearForDayOp.Enabled=hasAnyBlockoutPerm;
-			toolStripItemClearForDayClinics.Enabled=hasAnyBlockoutPerm;
+			//25.1: BlockoutsFlagged covers NS/DC-flagged blockouts. 25.4: unflagged ones are covered by Blockout Add (add, paste, copy), Blockout
+			//Edit (edit) and Blockout Delete (delete, cut, clear). A bulk action needs its unflagged permission or BlockoutsFlagged, and then acts
+			//only on the kinds the user may manage.
+			BlockoutPerms blockoutPerms=BlockoutPerms.ForCurrentUser();
+			toolStripItemAdd.Enabled=blockoutPerms.CanDoAny(BlockoutAction.Create);
+			toolStripItemCutCopyPaste.Enabled=blockoutPerms.CanOpenCutCopyPasteTool();
+			toolStripItemClearForDay.Enabled=blockoutPerms.CanDoAny(BlockoutAction.Clear);
+			toolStripItemClearForDayOp.Enabled=blockoutPerms.CanDoAny(BlockoutAction.Clear);
+			toolStripItemClearForDayClinics.Enabled=blockoutPerms.CanDoAny(BlockoutAction.Clear);
 			_opNumClickedBlockout=e.OpNum;
 			_dateTimeClickedBlockout=e.DateT;
 			int clickedOnBlockCount=0;
@@ -332,12 +332,13 @@ namespace OpenDental {
 			}
 			if(clickedOnBlockCount>0) {
 				toolStripItemPaste.Enabled=false;//Can't paste on top of an existing blockout
-				//25.1: the blockout's type decides which permission applies. A flagged (NS or DC) type needs BlockoutsFlagged, others need Blockouts.
-				bool canManage=Schedules.CanManageBlockoutType(Schedules.IsBlockoutTypeFlagged(blockoutFlags),hasPermBlockouts,hasPermBlockoutsFlagged);
-				toolStripItemEdit.Enabled=canManage;
-				toolStripItemCopy.Enabled=canManage;
-				toolStripItemCut.Enabled=canManage;
-				toolStripItemDelete.Enabled=canManage;
+				//25.1: the blockout's type decides which permission applies. A flagged (NS or DC) type needs BlockoutsFlagged.
+				//25.4: an unflagged type needs the permission for each item's own action.
+				bool isFlagged=Schedules.IsBlockoutTypeFlagged(blockoutFlags);
+				toolStripItemEdit.Enabled=blockoutPerms.CanDo(BlockoutAction.Edit,isFlagged);
+				toolStripItemCopy.Enabled=blockoutPerms.CanDo(BlockoutAction.Copy,isFlagged);
+				toolStripItemCut.Enabled=blockoutPerms.CanDo(BlockoutAction.Cut,isFlagged);
+				toolStripItemDelete.Enabled=blockoutPerms.CanDo(BlockoutAction.Delete,isFlagged);
 				if(blockoutFlags.Contains(BlockoutType.DontCopy.GetDescription())) {
 					//DC: never cut or copied.
 					toolStripItemCut.Enabled=false;
@@ -357,15 +358,14 @@ namespace OpenDental {
 					toolStripItemPaste.Enabled=false;
 				}
 				else {
-					//25.1: pasting needs the permission for the copied blockout's type.
-					toolStripItemPaste.Enabled=Schedules.CanManageBlockoutType(Schedules.IsBlockoutTypeFlagged(_scheduleBlockoutClipboard.BlockoutType),
-						hasPermBlockouts,hasPermBlockoutsFlagged);
+					//25.1: pasting needs the permission for the copied blockout's type (25.4: Blockout Add for an unflagged type).
+					toolStripItemPaste.Enabled=blockoutPerms.CanDo(BlockoutAction.Paste,Schedules.IsBlockoutTypeFlagged(_scheduleBlockoutClipboard.BlockoutType));
 				}
 				toolStripItemDelete.Enabled=false;
 			}
 			//Web Sched ASAP blockouts were made by Open Dental's hosted Web Sched, which was removed. Any left in the database can still be deleted.
 			bool isDeleteAsapBlockoutVisible=false;
-			if(Security.IsAuthorized(EnumPermType.Blockouts,suppressMessage:true)) {
+			if(blockoutPerms.HasUnflagged(BlockoutAction.Delete)) {//25.4: Blockout Delete (24.3 used Blockouts).
 				Schedule schedule=GetClickedSchedule(ScheduleType.WebSchedASAP);
 				if(schedule!=null) {
 					isDeleteAsapBlockoutVisible=true;
@@ -1278,6 +1278,9 @@ namespace OpenDental {
 				return;
 			}
 			dateSearch.Text=formApptsOther.StringDateJumpTo;
+			if(!PrefC.GetBool(PrefName.AppointmentMakeRecallSearchesOpenings)) {//26.1: the appointment is only pinned.
+				return;
+			}
 			if(!groupSearch.Visible) {//if search not already visible
 				ShowSearch();
 			}
@@ -2099,9 +2102,7 @@ namespace OpenDental {
 					}
 					break;
 				case MenuItemNames.OrthoChart: //Open Patient Ortho Chart
-					using(FormOrthoChart formOrthoChart=new FormOrthoChart(_patient)) {
-						formOrthoChart.ShowDialog();
-					}
+					FormOrthoChart.ShowNonModal(FindForm(),_patient,0,null);//25.3: no longer blocks the program.
 					break;
 				case MenuItemNames.HomePhone: //Call Home Phone
 					if(Programs.IsEnabled(ProgramName.DentalTekSmartOfficePhone)) {
@@ -2169,6 +2170,9 @@ namespace OpenDental {
 		#region Methods - Event Handlers Menu Blockout Click
 		/// <summary>Deletes selected web schedule ASAP blockout.</summary>
 		private void DeleteWebSchedAsapBlockout_Click(object sender,EventArgs e) {
+			if(!Security.IsAuthorized(EnumPermType.BlockoutDelete)) {//25.4
+				return;
+			}
 			Schedule schedule=GetClickedSchedule(ScheduleType.WebSchedASAP);
 			if(schedule!=null && MsgBox.Show(this,MsgBoxButtons.OKCancel,"This could cause messages to not be sent.  Are you sure?"
 				,MenuItemNames.DeleteWebSchedAsapBlockout))
@@ -2180,23 +2184,30 @@ namespace OpenDental {
 		}
 
 		#region Blockout permission helpers (25.1)
-		///<summary>The blockout types this user may create or pick: unflagged types need Blockouts, NS/DC-flagged types need BlockoutsFlagged.</summary>
-		private List<Def> GetBlockoutTypesForUser() {
-			return Schedules.FilterBlockoutTypesForUser(Defs.GetDefsForCategory(DefCat.BlockoutTypes,true),
-				Security.IsAuthorized(EnumPermType.Blockouts,true),Security.IsAuthorized(EnumPermType.BlockoutsFlagged,true));
+		///<summary>The blockout types this user may pick for the action: unflagged types need the permission for the action (25.4: Blockout Add for
+		///a new blockout, Blockout Edit for an edit), NS/DC-flagged types need BlockoutsFlagged.</summary>
+		private List<Def> GetBlockoutTypesForUser(BlockoutAction blockoutAction) {
+			return BlockoutPerms.ForCurrentUser().FilterTypes(Defs.GetDefsForCategory(DefCat.BlockoutTypes,true),blockoutAction);
 		}
 
-		///<summary>Checks the permission that covers blockouts of this type. Shows the usual message when it is missing.</summary>
-		private bool IsAuthorizedForBlockoutType(long blockoutTypeDefNum) {
-			return Security.IsAuthorized(Schedules.GetBlockoutPermType(blockoutTypeDefNum));
+		///<summary>Checks the permission that covers the action on blockouts of this type. Shows the usual message when it is missing.</summary>
+		private bool IsAuthorizedForBlockoutType(BlockoutAction blockoutAction,long blockoutTypeDefNum) {
+			return Security.IsAuthorized(BlockoutPerms.GetPermType(blockoutAction,blockoutTypeDefNum));
 		}
 
-		///<summary>For the Clear menu items. False, after showing the message, when the user has neither blockout permission.</summary>
+		///<summary>25.4: replacing overlapping blockouts deletes them, so it needs the delete permission of each one's kind. Shows the usual message
+		///for the first one missing.</summary>
+		private bool IsAuthorizedToReplaceBlockouts(List<Schedule> listSchedulesOverlap) {
+			return BlockoutPerms.GetPermTypesToDelete(listSchedulesOverlap).All(x => Security.IsAuthorized(x));
+		}
+
+		///<summary>For the Clear menu items. False, after showing the message, when the user has neither blockout permission. 25.4: for unflagged
+		///blockouts, hasPermBlockouts is Blockout Delete.</summary>
 		private bool GetBlockoutClearPerms(out bool hasPermBlockouts,out bool hasPermBlockoutsFlagged) {
-			hasPermBlockouts=Security.IsAuthorized(EnumPermType.Blockouts,true);
+			hasPermBlockouts=Security.IsAuthorized(EnumPermType.BlockoutDelete,true);
 			hasPermBlockoutsFlagged=Security.IsAuthorized(EnumPermType.BlockoutsFlagged,true);
 			if(!hasPermBlockouts && !hasPermBlockoutsFlagged) {
-				Security.IsAuthorized(EnumPermType.Blockouts);//Shows the "not authorized" message.
+				Security.IsAuthorized(EnumPermType.BlockoutDelete);//Shows the "not authorized" message.
 				return false;
 			}
 			return true;
@@ -2205,7 +2216,7 @@ namespace OpenDental {
 		///<summary>Writes one clear entry per kind of blockout the user was allowed to clear, then says how many blockouts were left in place.</summary>
 		private void LogBlockoutClearAndReport(DateTime date,long opNum,long clinicNum,bool hasPermBlockouts,bool hasPermBlockoutsFlagged,int countSkipped) {
 			if(hasPermBlockouts) {
-				Schedules.BlockoutLogHelper(BlockoutAction.Clear,dateTime:date,opNum:opNum,clinicNum:clinicNum,permTypeClear:EnumPermType.Blockouts);
+				Schedules.BlockoutLogHelper(BlockoutAction.Clear,dateTime:date,opNum:opNum,clinicNum:clinicNum,permTypeClear:EnumPermType.BlockoutDelete);
 			}
 			if(hasPermBlockoutsFlagged) {
 				Schedules.BlockoutLogHelper(BlockoutAction.Clear,dateTime:date,opNum:opNum,clinicNum:clinicNum,permTypeClear:EnumPermType.BlockoutsFlagged);
@@ -2218,12 +2229,12 @@ namespace OpenDental {
 
 		private void menuBlockAdd_Click(object sender,EventArgs e) {
 			//Pre-calculate the list of Blockout Types to show in FormScheduleBlockEdit
-			//25.1: only the types this user may create.
-			List<Def> listDefsBlockoutTypes=GetBlockoutTypesForUser();
+			//25.1: only the types this user may create (25.4: Blockout Add for unflagged types).
+			List<Def> listDefsBlockoutTypes=GetBlockoutTypesForUser(BlockoutAction.Create);
 			//With no blockout types at all, FormScheduleBlockEdit explains that they must be set up first.
 			if(listDefsBlockoutTypes.Count==0 && Defs.GetDefsForCategory(DefCat.BlockoutTypes,true).Count>0) {
-				if(!Security.IsAuthorized(EnumPermType.Blockouts,true) && !Security.IsAuthorized(EnumPermType.BlockoutsFlagged,true)) {
-					Security.IsAuthorized(EnumPermType.Blockouts);//Shows the "not authorized" message.
+				if(!BlockoutPerms.ForCurrentUser().CanDoAny(BlockoutAction.Create)) {
+					Security.IsAuthorized(EnumPermType.BlockoutAdd);//Shows the "not authorized" message.
 					return;
 				}
 				MsgBox.Show(this,"There are no blockout types that you have permission to add.");
@@ -2295,7 +2306,7 @@ namespace OpenDental {
 				MsgBox.Show(this,"Blockout not found.");
 				return;//should never happen
 			}
-			if(!IsAuthorizedForBlockoutType(schedule.BlockoutType)) {//25.1
+			if(!IsAuthorizedForBlockoutType(BlockoutAction.Copy,schedule.BlockoutType)) {//25.1; 25.4: Blockout Add for an unflagged type.
 				return;
 			}
 			_scheduleBlockoutClipboard=schedule.Copy();
@@ -2309,7 +2320,7 @@ namespace OpenDental {
 				MsgBox.Show(this,"Blockout not found.");
 				return;//should never happen
 			}
-			if(!IsAuthorizedForBlockoutType(schedule.BlockoutType)) {//25.1
+			if(!IsAuthorizedForBlockoutType(BlockoutAction.Cut,schedule.BlockoutType)) {//25.1; 25.4: Blockout Delete for an unflagged type.
 				return;
 			}
 			_scheduleBlockoutClipboard=schedule.Copy();
@@ -2319,8 +2330,9 @@ namespace OpenDental {
 		}
 
 		private void menuBlockCutCopyPaste_Click(object sender,EventArgs e) {
-			//25.1: either blockout permission opens the window. It then acts only on the kinds of blockouts the user may manage.
-			if(!Security.IsAuthorized(EnumPermType.Blockouts,true) && !Security.IsAuthorized(EnumPermType.BlockoutsFlagged)) {
+			//25.1: it then acts only on the kinds of blockouts the user may manage. 25.4: Blockout Add, Blockout Delete or BlockoutsFlagged opens it.
+			if(!BlockoutPerms.ForCurrentUser().CanOpenCutCopyPasteTool()) {
+				Security.IsAuthorized(EnumPermType.BlockoutAdd);//Shows the "not authorized" message.
 				return;
 			}
 			using FormBlockoutCutCopyPaste formBlockoutCutCopyPaste=new FormBlockoutCutCopyPaste();
@@ -2343,7 +2355,7 @@ namespace OpenDental {
 				MsgBox.Show(this,"Blockout not found.");
 				return;//should never happen
 			}
-			if(!IsAuthorizedForBlockoutType(schedule.BlockoutType)) {//25.1
+			if(!IsAuthorizedForBlockoutType(BlockoutAction.Delete,schedule.BlockoutType)) {//25.1; 25.4: Blockout Delete for an unflagged type.
 				return;
 			}
 			Schedules.Delete(schedule,true);
@@ -2352,15 +2364,15 @@ namespace OpenDental {
 		}
 
 		private void menuBlockEdit_Click(object sender,EventArgs e) {
-			//25.1: the list holds only the types this user may manage.
-			List<Def> listDefsUserBlockout=GetBlockoutTypesForUser();
+			//25.1: the list holds only the types this user may manage (25.4: Blockout Edit for unflagged types).
+			List<Def> listDefsUserBlockout=GetBlockoutTypesForUser(BlockoutAction.Edit);
 			//not even enabled if not right click on a blockout
 			Schedule scheduleClicked=GetClickedBlockout();
 			if(scheduleClicked==null) {
 				MsgBox.Show(this,"Blockout not found.");
 				return;//should never happen
 			}
-			if(!IsAuthorizedForBlockoutType(scheduleClicked.BlockoutType)) {//25.1
+			if(!IsAuthorizedForBlockoutType(BlockoutAction.Edit,scheduleClicked.BlockoutType)) {//25.1; 25.4: Blockout Edit for an unflagged type.
 				return;
 			}
 			using FormScheduleBlockEdit formScheduleBlockEdit=new FormScheduleBlockEdit(scheduleClicked,Clinics.ClinicNum,listDefsUserBlockout);
@@ -2372,7 +2384,7 @@ namespace OpenDental {
 			if(_scheduleBlockoutClipboard==null) {
 				return;
 			}
-			if(!IsAuthorizedForBlockoutType(_scheduleBlockoutClipboard.BlockoutType)) {//25.1
+			if(!IsAuthorizedForBlockoutType(BlockoutAction.Paste,_scheduleBlockoutClipboard.BlockoutType)) {//25.1; 25.4: Blockout Add for an unflagged type.
 				return;
 			}
 			Schedule schedule=_scheduleBlockoutClipboard.Copy();
@@ -2391,6 +2403,9 @@ namespace OpenDental {
 			if(Schedules.Overlaps(schedule,out listSchedulesOverlap)) {
 				if(!PrefC.GetBool(PrefName.ReplaceExistingBlockout) || !Schedules.IsAppointmentBlocking(schedule.BlockoutType)) {
 					MsgBox.Show(this,"Blockouts not allowed to overlap.");
+					return;
+				}
+				if(!IsAuthorizedToReplaceBlockouts(listSchedulesOverlap)) {//25.4
 					return;
 				}
 				if(!MsgBox.Show(this,MsgBoxButtons.OKCancel,"Creating this blockout will cause blockouts to overlap. Continuing will delete the existing blockout(s). Continue?")) {
@@ -2707,6 +2722,7 @@ namespace OpenDental {
 			//asap?
 			toolBarMain.Buttons.Add(new ODToolBarButton(Lan.g(this,"Complete"),EnumIcons.Complete,"","Complete"));
 			toolBarMain.Buttons.Add(new ODToolBarButton(Lan.g(this,"Delete"),EnumIcons.DeleteX,"","Delete"));
+			AddToolBarButtonWaitingRoom();//25.2 Waiting Room window, ControlAppt.WaitingRoom.cs
 			if(Programs.IsEnabled(ProgramName.RapidCall)) {
 				toolBarMain.Buttons.Add(new ODToolBarButton(ODToolBarButtonStyle.Separator));
 				toolBarMain.Buttons.Add(new ODToolBarButton(Lan.g(this,"Rapid Call"),2,"","RapidCall"));
@@ -4380,6 +4396,10 @@ namespace OpenDental {
 						break;
 					}
 					dateSearch.Text=strDateJumpTo;
+					if(!PrefC.GetBool(PrefName.AppointmentMakeRecallSearchesOpenings)) {//26.1: the appointments are only pinned.
+						RefreshPeriod(listPinApptNums:listSelectedAptNums);
+						break;
+					}
 					if(!groupSearch.Visible) {//if search not already visible
 						ShowSearch();
 					}

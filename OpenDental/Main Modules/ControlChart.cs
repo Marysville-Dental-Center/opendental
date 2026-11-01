@@ -1515,9 +1515,7 @@ namespace OpenDental {
 
 		private void menuOrthoChart_Click(object sender,EventArgs e) {
 			int orthoChartTabIndex=(int)(((MenuItem)sender).Tag);
-			using FormOrthoChart formOrthoChart=new FormOrthoChart(Pd.Patient,orthoChartTabIndex);
-			formOrthoChart.ShowDialog();
-			ModuleSelected(Pd.PatNum);
+			FormOrthoChart.ShowNonModal(FindForm(),Pd.Patient,orthoChartTabIndex,OrthoChartSaved);//25.3: no longer blocks the program.
 		}
 
 		private void menuOrthoChart_Popup(object sender,EventArgs e) {
@@ -2860,15 +2858,18 @@ namespace OpenDental {
 
 		///<summary></summary>
 		private void butPin_Click(object sender,EventArgs e) {
-			if(!Security.IsAuthorized(EnumPermType.AppointmentMove)) {
-				return;
-			}
 			if(gridPlanned.SelectedIndices.Length==0) {
 				MsgBox.Show(this,"Please select an item first");
 				return;
 			}
 			if(Pd.Patient.PatStatus.In(PatientStatus.Archived,PatientStatus.Deceased)) {
 				MsgBox.Show(this,"Appointments cannot be scheduled for "+Pd.Patient.PatStatus.ToString().ToLower()+" patients.");
+				return;
+			}
+			//25.3: pinning a planned appointment copies it and needs no Appointment Move; a row whose scheduled appointment would be moved does.
+			if(gridPlanned.SelectedIndices.Any(x => ApptPermissionRules.IsPlannedRowPinAMove((ApptStatus)PIn.Long(_listDataRowsPlannedAppts[x]["AptStatus"].ToString())))
+				&& !Security.IsAuthorized(EnumPermType.AppointmentMove))
+			{
 				return;
 			}
 			List<long> listAptNums=new List<long>();
@@ -3401,7 +3402,8 @@ namespace OpenDental {
 		private void ToolBarMain_ButtonClick(object sender,ODToolBarButtonClickEventArgs e) {
 			if(e.Button.Tag.GetType()!=typeof(string)) {
 				if(e.Button.Tag.GetType()==typeof(Program)) {
-					WpfControls.ProgramL.Execute(((Program)e.Button.Tag).ProgramNum,Pd.Patient);
+					WpfControls.ProgramL.Execute(((Program)e.Button.Tag).ProgramNum,Pd.Patient,
+						ProgramLinkSelectedProcs.FromProgNotesRows(gridProg.SelectedIndices.Select(x => gridProg.ListGridRows[x].Tag as DataRow)));
 				}
 				return;
 			}
@@ -4003,6 +4005,7 @@ namespace OpenDental {
 					#endregion Discharge Date
 					#region Med Urgent
 					case "Med Urgent":
+						row.Cells[0].Bold=YN.Yes;//25.2: bold label, like the Medications, Allergies and Problems rows.
 						cell=new GridCell();
 						cell.Text=Pd.Patient.MedUrgNote;
 						cell.ColorText=Color.Red;
@@ -4014,6 +4017,7 @@ namespace OpenDental {
 					#endregion Med Urgent
 					#region Medical Summary
 					case "Medical Summary":
+						row.Cells[0].Bold=YN.Yes;//25.2: bold label.
 						row.Cells.Add(Pd.PatientNote.Medical);
 						row.ColorBackG=listDefsMiscColors[(int)DefCatMiscColors.ChartModuleMedical].ItemColor;
 						row.Tag="tabMedical";
@@ -8376,9 +8380,14 @@ namespace OpenDental {
 			}
 			//We store the current patNum because previously we've seen PatCur become null prior to ModuleSelected(...) being called somehow.
 			long patNum=Pd.PatNum;
-			using FormOrthoChart formOrthoChart=new FormOrthoChart(Pd.Patient);
-			formOrthoChart.ShowDialog();
-			ModuleSelected(patNum);
+			FormOrthoChart.ShowNonModal(FindForm(),Pd.Patient,0,OrthoChartSaved);//25.3: no longer blocks the program.
+		}
+
+		///<summary>An ortho chart window saved. Refreshes the module when it is showing that patient; otherwise the next module switch refreshes.</summary>
+		private void OrthoChartSaved(long patNum) {
+			if(Visible && !IsPatientNull() && Pd.PatNum==patNum) {
+				ModuleSelected(patNum);
+			}
 		}
 
 		private void Tool_Print_Click() {
@@ -10696,9 +10705,7 @@ namespace OpenDental {
 			if(idx==0){
 				return;//clicks in the hardware grid use CellDoubleClick
 			}
-			using FormOrthoChart formOrthoChart=new FormOrthoChart(Pd.Patient,idx-1);
-			formOrthoChart.ShowDialog();
-			ModuleSelected(Pd.PatNum);
+			FormOrthoChart.ShowNonModal(FindForm(),Pd.Patient,idx-1,OrthoChartSaved);//25.3: no longer blocks the program.
 		}
 
 		private void gridOrtho_CellDoubleClick(object sender,ODGridClickEventArgs e) {

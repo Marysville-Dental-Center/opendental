@@ -11,6 +11,9 @@ namespace OpenDental {
 		private string _wikiPageContentRight="";
 		private string _wikiPageTitleLeft="";
 		private string _wikiPageTitleRight="";
+		///<summary>Null keeps the designer text ("Older version ..."). Set by the draft compare.</summary>
+		private string _helpLeft=null;
+		private string _helpRight=null;
 
 		public FormWikiCompare() {
 			InitializeComponent();
@@ -25,9 +28,27 @@ namespace OpenDental {
 			_wikiPageTitleRight=WikiPageHistRight.PageTitle+" "+WikiPageHistRight.DateTimeSaved.ToString();
 		}
 
+		///<summary>Compares a published page (left) with one of its drafts (right), on markup text with page titles in the links, as wiki history
+		///does (v25_1-misc-wiki-draft-compare). The captions replace the title and date lines; the help texts replace the two lines above them.</summary>
+		public void InitializeRevisionsSelected(WikiPageHist wikiPageHistPublished,WikiPageHist wikiPageHistDraft,string captionLeft,string captionRight,
+			string helpLeft,string helpRight)
+		{
+			InitializeRevisionsSelected(wikiPageHistPublished,wikiPageHistDraft);
+			_wikiPageTitleLeft=wikiPageHistPublished.PageTitle+" - "+captionLeft;
+			_wikiPageTitleRight=wikiPageHistDraft.PageTitle+" - "+captionRight;
+			_helpLeft=helpLeft;
+			_helpRight=helpRight;
+		}
+
 		private void FormWikiCompare_Load(object sender,EventArgs e) {
 			ResizeControls();
 			UpdateODcodeBoxes();
+			if(_helpLeft!=null) {
+				label3.Text=_helpLeft;
+			}
+			if(_helpRight!=null) {
+				labelHelpNew.Text=_helpRight;
+			}
 		}
 
 		private void ResizeControls() {

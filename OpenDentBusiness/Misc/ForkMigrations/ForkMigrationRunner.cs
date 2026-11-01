@@ -61,14 +61,24 @@ namespace OpenDentBusiness.ForkMigrations {
 			ForkMigrationAttribute attribute=step.Attribute;//Throws when missing.
 			string level=attribute.Level.ToString();
 			DateTime date;
-			if(level.Length!=10 || !DateTime.TryParseExact(level.Substring(0,8),"yyyyMMdd",System.Globalization.CultureInfo.InvariantCulture,
-				System.Globalization.DateTimeStyles.None,out date) || date.Year<2026)
+			if(!IsReservedPackageLevel(level)
+				&& (level.Length!=10 || !DateTime.TryParseExact(level.Substring(0,8),"yyyyMMdd",System.Globalization.CultureInfo.InvariantCulture,
+				System.Globalization.DateTimeStyles.None,out date) || date.Year<2026))
 			{
 				throw new ApplicationException("Fork migration step "+step.GetType().FullName+" has level "+level+"; levels are yyyyMMddNN, from 2026 on.");
 			}
 			if(string.IsNullOrWhiteSpace(attribute.Name)) {
 				throw new ApplicationException("Fork migration step "+step.GetType().FullName+" has no name.");
 			}
+		}
+
+		///<summary>True for a level in a range reserved for a backlog package: yyyy00PPNN, the year (2027 on), "00" where the month would be, the
+		///package's two-digit slot and the step's two-digit number, for example 2027002301. These sort after every dated 2026 level.</summary>
+		public static bool IsReservedPackageLevel(string level) {
+			if(level==null || level.Length!=10 || !level.All(char.IsDigit)) {
+				return false;
+			}
+			return int.Parse(level.Substring(0,4))>=2027 && level.Substring(4,2)=="00";
 		}
 
 		///<summary>Levels of the steps that finished on the connected database.</summary>
