@@ -87,6 +87,20 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void RecordPassedAtAnotherDepth_TheReasonNeverAsksToSetTheBitsAlreadySet() {
+			//Bits=16 and a record that passed at 16; the filer decides for a capture whose enable asked for 14.
+			CaptureBitDepthInput input=Input();
+			input.BitsWanted=14;
+			string reason=CaptureBitDepthDecision.Decide(input).ReasonFallback;
+			StringAssert.EndsWith(reason,"passed at 16 bits, not at the 14 bits asked for; run Test capture again at 14 bits");
+			//Bits=16 and a record that passed at 14 (its source listed only 14): setting Bits=14 is the other way.
+			input=Input();
+			input.Record=CaptureControllerHarness.PassedRecord(_hash,16);
+			input.Record.BitDepthInEffect=14;
+			StringAssert.EndsWith(CaptureBitDepthDecision.Decide(input).ReasonFallback,"run Test capture again at 16 bits, or set Bits=14 and run it then");
+		}
+
+		[TestMethod]
 		public void PolarityInvert_AboveEightBits_IsInversionVerified() {
 			CaptureBitDepthInput input=Input();
 			input.Options.Polarity=TwainPolarity.Invert;

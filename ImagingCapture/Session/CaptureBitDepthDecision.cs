@@ -154,9 +154,11 @@ namespace ImagingCapture.Session {
 				return latest+" did not pass (an image of more than 8 bits over memory transfer, byte order and polarity confirmed)";
 			}
 			if(record.BitDepthVerified!=bits) {
+				//"Set Bits=N" only when the device is not set to N already (the recovery filer decides for the depth a capture asked for).
+				bool isVerifiedConfigured=record.BitDepthVerified==TwainBitDepth.Normalize(input.Options.Bits);
 				return latest+" passed at "+record.BitDepthVerified.ToString(CultureInfo.InvariantCulture)+" bits, not at the "
 					+bits.ToString(CultureInfo.InvariantCulture)+" bits asked for; run Test capture again at "+bits.ToString(CultureInfo.InvariantCulture)
-					+" bits, or set Bits="+record.BitDepthVerified.ToString(CultureInfo.InvariantCulture)+" and run it then";
+					+" bits"+(isVerifiedConfigured ? "" : ", or set Bits="+record.BitDepthVerified.ToString(CultureInfo.InvariantCulture)+" and run it then");
 			}
 			return null;
 		}

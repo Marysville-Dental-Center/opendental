@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using ImagingCapture.Recovery;
 using ImagingCapture.Save;
+using ImagingCapture.Settings;
 using ImagingDeviceManager.Capture;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenDentBusiness;
@@ -658,6 +659,48 @@ namespace ImagingCapture.Tests {
 			Assert.IsFalse(plan.Is8BitCopy,"Its own empty slot: 16-bit DICOM, as before.");
 			Assert.IsFalse(_harness.Filer.Assign(entry,0,0).IsDone,"Without the session's conditions it stays where it is.");
 			Assert.AreEqual(0,RadiographStore.ListPatientsImported.Count);
+		}
+
+		///<summary>Every gate of the session for device 12 on OPERATORY1 holds, with capture.ini at its defaults: Capture settings saved the file,
+		///and the latest Test capture record passed at bitsPassed with the sensor driver of SessionFieldsWithDriver.</summary>
+		private void SetGatesPassedAt(int bitsPassed) {
+			Store.ListSetupLogs.Add(CaptureSettingsTestKit.SavedLog(_harness.Config,12,"OPERATORY1"));
+			CaptureVerificationRecord record=CaptureControllerHarness.PassedRecord(GatedSettingsHash.Compute(_harness.Config,12),bitsPassed,
+				TwainCaptureOptions.FromConfig(_harness.Config,12));
+			Store.ListSetupLogs.Add(new SecurityLog { SecurityLogNum=901,FKey=12,PermType=EnumPermType.Setup,LogDateTime=new DateTime(2026,10,30,9,0,0),
+				LogText=record.ToLogText() });
+		}
+
+		///<summary>SessionFields of a capture delivered by the driver build CaptureControllerHarness.Driver names, with its resolution.</summary>
+		private static Dictionary<string,string> SessionFieldsWithDriver() {
+			Dictionary<string,string> dictFields=RecoveryFiles.SessionFields();
+			dictFields[CaptureSidecarKeys.DriverProductName]=CaptureControllerHarness.Driver.ProductName;
+			dictFields[CaptureSidecarKeys.DriverVersion]="1.1";
+			dictFields[CaptureSidecarKeys.DriverVersionInfo]="1.1.0";
+			dictFields["XDpi"]="1270";
+			dictFields["YDpi"]="1270";
+			return dictFields;
+		}
+
+		[TestMethod]
+		public void Assign_14BitCaptureOfA16BitEnable_UnderARecordThatPassedAt16_IntoItsEmptySlotAsDicom_EffectiveBits14() {
+			//Bits=16 and a record that passed at 16; SET 16 was refused this time, the source ran at 14, and the save failed: the session would
+			//have stored it under that record, so recovery decides for the 16 bits asked for, not the 14 in effect.
+			Dictionary<string,string> dictFields=SessionFieldsWithDriver();
+			dictFields[CaptureSidecarKeys.BitDepthInEffect]="14";
+			dictFields[CaptureSidecarKeys.BitsPerSample]="14";
+			CaptureFileEntry entry=_harness.Files.Quarantine16(dictFields,_receivedAt);
+			Assert.AreEqual(14,entry.BitDepthInEffect);
+			Assert.AreEqual("16",entry.Get("RequestedBits"));
+			SetGatesPassedAt(16);
+			CaptureFilingResult result=_harness.Filer.Assign(entry,0,0);
+			Assert.IsTrue(result.IsDone,result.Error);
+			Assert.AreEqual(".dcm",RadiographStore.ListExtensions.Single(),"14-bit data in a 16-bit DICOM file, never an 8-bit copy.");
+			Assert.IsFalse(result.IsCopy8BitOf16Bit);
+			TestDicomFile testDicomFile=TestDicomReader.Read(RadiographStore.ListBytesImported.Single());
+			Assert.AreEqual(16,testDicomFile.Get(0x0028,0x0101).US,"BitsStored 16.");
+			StringAssert.Contains(testDicomFile.Get(0x0020,0x4000).Text,"effectiveBits=14");
+			Assert.AreEqual(103,RadiographStore.ListDocumentsUpdated.Single().MountItemNum,"Its own empty slot.");
 		}
 
 		[TestMethod]

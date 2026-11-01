@@ -471,7 +471,7 @@ namespace ImagingCapture.Recovery {
 				GatedSettingsHash=settingsCheck.CurrentHash,
 				SettingsCheck=settingsCheck,
 				Target=target.ToIntraOralTarget(),
-				BitsWanted=request.Image.BitDepthInEffect>8 ? request.Image.BitDepthInEffect : (int?)null,//the depth it was taken at
+				BitsWanted=GetBitsWanted(request.Image),
 			});
 			if(choice.Bits<=8) {
 				error="This 16-bit capture can be filed into its slot only where the capture session could store it at its depth, and it is never "
@@ -482,6 +482,19 @@ namespace ImagingCapture.Recovery {
 			request.Polarity=options.Polarity;
 			request.IsInversionVerified=choice.IsInversionVerified;
 			return true;
+		}
+
+		///<summary>The depth the recovery decides for, as the session did: the depth the capture's enable asked for (its sidecar's RequestedBits,
+		///16 or 14), whose record covers whatever depth the source then fell back to (a 14-bit capture of a 16-bit enable is stored under a record
+		///that passed at 16); else the depth it was taken at. Null for an 8-bit capture.</summary>
+		internal static int? GetBitsWanted(AcquiredImage image) {
+			if(image==null) {
+				return null;
+			}
+			if(image.RequestedBits>8) {
+				return TwainBitDepth.Normalize(image.RequestedBits);
+			}
+			return image.BitDepthInEffect>8 ? image.BitDepthInEffect : (int?)null;
 		}
 		#endregion Assign
 

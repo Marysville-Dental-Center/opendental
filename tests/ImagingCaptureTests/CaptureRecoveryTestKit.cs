@@ -93,8 +93,11 @@ namespace ImagingCapture.Tests {
 			return imagingDeviceNum==12 ? CaptureControllerHarness.Device() : null;
 		}
 
+		///<summary>The Setup entries GetSetupLogEntries returns for their FKey: Capture settings saves and Test capture records.</summary>
+		public readonly List<SecurityLog> ListSetupLogs=new List<SecurityLog>();
+
 		public List<SecurityLog> GetSetupLogEntries(long imagingDeviceNum) {
-			return new List<SecurityLog>();
+			return ListSetupLogs.Where(x => x.FKey==imagingDeviceNum).ToList();
 		}
 
 		public void MakeLogEntry(EnumPermType permType,long patNum,string logText,long fKey) {
