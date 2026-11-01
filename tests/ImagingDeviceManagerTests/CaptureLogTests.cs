@@ -76,5 +76,29 @@ namespace ImagingDeviceManager.Tests {
 			Assert.AreEqual(1,arrayLines.Count(x => x.EndsWith("first after the limit")));
 			Assert.AreEqual(1,arrayLines.Count(x => x.EndsWith(" second")));
 		}
+
+		[TestMethod]
+		public void AboveTheLimit_ThePreviousLogIsHeldOpen_TheLineIsStillWritten_ALaterWriteRollsOver() {
+			CaptureFolders folders=CaptureFolders.CreateForFolder(_folder);
+			string folderCapture=folders.GetPath(CaptureFolders.SubfolderCapture);
+			Directory.CreateDirectory(folderCapture);
+			string path=Path.Combine(folderCapture,CaptureLog.FileName);
+			string pathPrevious=Path.Combine(folderCapture,CaptureLog.FileNamePrevious);
+			File.WriteAllText(pathPrevious,"older\r\n");
+			File.WriteAllText(path,new string('x',(int)CaptureLog.MaxBytes+10)+"\r\n");
+			CaptureLog captureLog=new CaptureLog(folders,null);
+			//A log viewer a technician runs while troubleshooting: it reads capture-log.1.txt and lets nobody replace or delete it.
+			using(new FileStream(pathPrevious,FileMode.Open,FileAccess.Read,FileShare.Read)) {
+				captureLog.Write("written while the previous log is held");
+			}
+			StringAssert.EndsWith(File.ReadAllText(path),"written while the previous log is held\r\n","Not lost: appended to the full log.");
+			Assert.AreEqual("older\r\n",File.ReadAllText(pathPrevious));
+			captureLog.Write("after the viewer closed");
+			StringAssert.StartsWith(File.ReadAllText(pathPrevious),"xxxx","The later write rolled the log over.");
+			StringAssert.Contains(File.ReadAllText(pathPrevious),"written while the previous log is held");
+			string[] arrayLines=File.ReadAllLines(path);
+			Assert.AreEqual(1,arrayLines.Length,string.Join("\r\n",arrayLines));
+			StringAssert.EndsWith(arrayLines[0]," after the viewer closed");
+		}
 	}
 }

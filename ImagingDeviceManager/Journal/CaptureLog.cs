@@ -9,7 +9,8 @@ using System.Threading;
 namespace ImagingDeviceManager.Journal {
 	///<summary>The capture log, Capture\capture-log.txt: what the library logs about device acquisitions (refusals, contract deviations,
 	///images drained to the quarantine, journal problems, "may still hold images"). One line per entry with the local time and the Windows
-	///user. Above 1 MB the file becomes capture-log.1.txt, replacing the previous one. A warning about the Capture folder (it is usable,
+	///user. Above 1 MB the file becomes capture-log.1.txt, replacing the previous one; while another program holds either file, the line is
+	///still appended and the rollover is tried again at the next write. A warning about the Capture folder (it is usable,
 	///but other Windows users may not be able to change its files) is the first line written, once per process. Writing never fails an
 	///acquisition: problems go to the debug trace only.
 	///
@@ -57,7 +58,14 @@ namespace ImagingDeviceManager.Journal {
 						}
 					}
 					string path=Path.Combine(_folder,FileName);
-					RollOver(path,Path.Combine(_folder,FileNamePrevious));
+					try {
+						RollOver(path,Path.Combine(_folder,FileNamePrevious));
+					}
+					catch(Exception ex) {
+						//Another program holds the log or the previous one without delete sharing (a log viewer, a second Open Dental appending): the
+						//line is appended anyway, and the log runs above MaxBytes until a later write rolls it over.
+						Trace.WriteLine("ImagingDeviceManager: the capture log could not be rolled over: "+ex.Message);
+					}
 					string lines=(warningFolder==null ? "" : FormatLine(warningFolder))+FormatLine(text);
 					Append(path,new UTF8Encoding(false).GetBytes(lines));
 				}
