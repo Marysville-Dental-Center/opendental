@@ -111,23 +111,16 @@
       <HintPath>..\Required dlls\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="PresentationCore" />
-    <Reference Include="SigPlusNET, Version=1.1.4050.24928, Culture=neutral, PublicKeyToken=6aef07010bb0624f, processorArchitecture=x86">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\SigPlusNET.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Deployment" />
     <Reference Include="System.Drawing" />
+    <Reference Include="System.IO.Compression" />
     <Reference Include="System.Management" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.ServiceProcess" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
-    <Reference Include="Tao.FreeGlut, Version=2.4.0.0, Culture=neutral, PublicKeyToken=6e602a6ad6c0d06d">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\Tao.FreeGlut.dll</HintPath>
-    </Reference>
     <Reference Include="Tao.OpenGl, Version=0.0.0.0, Culture=neutral, PublicKeyToken=1ca010269a4501ef">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\Tao.OpenGl.dll</HintPath>
@@ -238,6 +231,7 @@
     <Compile Include="Utilities\ODException.cs" />
     <Compile Include="Utilities\ODImaging.cs" />
     <Compile Include="Utilities\ODFileUtils.cs" />
+    <Compile Include="Utilities\ODZip.cs" />
     <Compile Include="Utilities\ODMathLib.cs" />
     <Compile Include="Utilities\Logger.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

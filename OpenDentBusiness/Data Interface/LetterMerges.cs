@@ -61,27 +61,50 @@ namespace OpenDentBusiness{
 		}
 		#endregion
 
-#if !DISABLE_MICROSOFT_OFFICE
-		private static Word.Application _word_Application;
+		#region Word automation
+		//Word's automation interface is late bound (callers use dynamic), so no Office interop assembly (Interop.Word, Interop.Microsoft.Office.Core,
+		//Interop.VBIDE, stdole) is referenced or shipped. These are the values of Word's own enumerations that the letter merge windows use.
+		///<summary>WdMailMergeDestination.wdSendToNewDocument.</summary>
+		public const int WORD_MAIL_MERGE_TO_NEW_DOCUMENT=0;
+		///<summary>WdMailMergeDestination.wdSendToPrinter.</summary>
+		public const int WORD_MAIL_MERGE_TO_PRINTER=1;
+		///<summary>WdWindowState.wdWindowStateMaximize.</summary>
+		public const int WORD_WINDOW_STATE_MAXIMIZE=1;
+		///<summary>WdWindowState.wdWindowStateMinimize.</summary>
+		public const int WORD_WINDOW_STATE_MINIMIZE=2;
 
-		///<summary>This is a static reference to a word application. That way, we can reuse it instead of having to reopen Word each time. Surround with try/catch. Will throw exception if Word is not installed.</summary>
-		public static Word.Application GetWordApp() {
+#if !DISABLE_MICROSOFT_OFFICE
+		private static object _word_Application;
+
+		///<summary>This is a static reference to a word application. That way, we can reuse it instead of having to reopen Word each time. Surround with try/catch. Will throw exception if Word is not installed.
+		///The object is Word's "Word.Application" automation object, late bound: callers use it as dynamic.</summary>
+		public static object GetWordApp() {
 			Meth.NoCheckMiddleTierRole();
 			if(_word_Application==null) {
-				_word_Application=new Word.Application();
-				_word_Application.Visible=true;
+				_word_Application=CreateWordApp();
 			}
 			try {
-				_word_Application.Activate();
+				_word_Application.GetType().InvokeMember("Activate",BindingFlags.InvokeMethod,null,_word_Application,null);
 			}
 			catch {
-				_word_Application=new Word.Application();
-				_word_Application.Visible=true;
-				_word_Application.Activate();
+				_word_Application=CreateWordApp();
+				_word_Application.GetType().InvokeMember("Activate",BindingFlags.InvokeMethod,null,_word_Application,null);
 			}
 			return _word_Application;
 		}
+
+		///<summary>Starts the word processor registered for "Word.Application" and makes it visible. Throws if none is installed.</summary>
+		private static object CreateWordApp() {
+			Type type=Type.GetTypeFromProgID("Word.Application");
+			if(type==null) {
+				throw new ApplicationException("Microsoft Word is not installed.");
+			}
+			object application=Activator.CreateInstance(type);
+			type.InvokeMember("Visible",BindingFlags.SetProperty,null,application,new object[] { true });
+			return application;
+		}
 #endif
+		#endregion Word automation
 
 		///<summary>Inserts this lettermerge into database.</summary>
 		public static long Insert(LetterMerge letterMerge) {

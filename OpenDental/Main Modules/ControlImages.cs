@@ -63,8 +63,10 @@ namespace OpenDental{
 		private bool _showDrawingsPearl=true;
 		///<summary>List of Pearl types that are toggled to display. Set by FrmPearlLayers. Maintains same state for the entire session, even as user changes to different images.</summary>
 		private List<OpenDentBusiness.Pearl.EnumCategoryOD> _listPearlCategoriesShown=null;
-		///<summary>Used to display Topaz signatures on Windows.</summary>
+		///<summary>Used to display Topaz signatures on Windows. Null when Topaz's software is not installed on this computer.</summary>
 		private Control _sigBoxTopaz;
+		///<summary>The invalid signature label's own text while it says that Topaz's software is not installed, else null.</summary>
+		private string _textInvalidSigBeforeTopaz;
 		///<summary>User can control width of tree.  This is stored as the 96dpi equivalent as float for conversion accuracy.  When tree is minimized, this doesn't change, allowing restoration to previous width.  It does not remember width between sessions.  Minimum 0, max 500.</summary>
 		private float _widthTree96=228;
 		private float _widthTree96StartDrag;
@@ -3028,13 +3030,24 @@ namespace OpenDental{
 				return;
 			}
 			textNote.Text=GetDocumentShowing(0).Note;
+			if(_textInvalidSigBeforeTopaz!=null) {
+				labelInvalidSig.Text=_textInvalidSigBeforeTopaz;
+				_textInvalidSigBeforeTopaz=null;
+			}
 			labelInvalidSig.Visible=false;
 			sigBox.Visible=true;
 			sigBox.SetTabletState(0);//never accepts input here
 			//Topaz box is not supported in Unix, since the required dll is Windows native.
 			if(GetDocumentShowing(0).SigIsTopaz) {
 				if(GetDocumentShowing(0).Signature!=null && GetDocumentShowing(0).Signature!="") {
-					//if(allowTopaz) {	
+					if(_sigBoxTopaz==null) {//Topaz's software is not installed, so the signature can be neither shown nor checked here.
+						sigBox.Visible=false;
+						_textInvalidSigBeforeTopaz=labelInvalidSig.Text;
+						labelInvalidSig.Text=Lan.g(this,TopazWrapper.NOT_INSTALLED_MESSAGE);
+						labelInvalidSig.Visible=true;
+						return;
+					}
+					//if(allowTopaz) {
 					sigBox.Visible=false;
 					_sigBoxTopaz.Visible=true;
 					TopazWrapper.ClearTopaz(_sigBoxTopaz);
@@ -3056,7 +3069,9 @@ namespace OpenDental{
 			else {//not topaz
 				if(GetDocumentShowing(0).Signature!=null && GetDocumentShowing(0).Signature!="") {
 					sigBox.Visible=true;
-					_sigBoxTopaz.Visible=false;
+					if(_sigBoxTopaz!=null) {
+						_sigBoxTopaz.Visible=false;
+					}
 					sigBox.ClearTablet();
 					sigBox.SetKeyString(ImageStore.GetHashString(GetDocumentShowing(0),_patFolder));
 					sigBox.SetSigString(GetDocumentShowing(0).Signature);

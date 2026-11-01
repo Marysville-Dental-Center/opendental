@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using OpenDentBusiness;
-using Ionic.Zip;
 using CodeBase;
 
 namespace OpenDentBusiness.Eclaims {
@@ -29,15 +28,9 @@ namespace OpenDentBusiness.Eclaims {
 				//same directory which might be left if there is a permission issue when trying to delete the batch files after processing.
 				batchFile=Path.Combine(clearinghouseClin.ExportPath,"claims"+batchNum+".txt");
 				//byte[] fileBytes=File.ReadAllBytes(batchFile);//unused
-				MemoryStream zipMemoryStream=new MemoryStream();
-				ZipFile tempZip=new ZipFile();
-				tempZip.AddFile(batchFile,"");
-				tempZip.Save(zipMemoryStream);
-				tempZip.Dispose();
-				zipMemoryStream.Position=0;
-				byte[] zipFileBytes=zipMemoryStream.GetBuffer();
+				//The batch file at the root of the archive. DotNetZip's buffer also carried unused trailing bytes after the archive; this is the archive alone.
+				byte[] zipFileBytes=ODZip.CreateArchive(new[] { new KeyValuePair<string,byte[]>(Path.GetFileName(batchFile),File.ReadAllBytes(batchFile)) });
 				string zipFileBytesBase64=Convert.ToBase64String(zipFileBytes);
-				zipMemoryStream.Dispose();
 				bool isTest=(clearinghouseClin.ISA15=="T");
 				string messageType=(isTest?"MCT":"MCD");//medical
 				if(medType==EnumClaimMedType.Institutional) {
@@ -120,10 +113,9 @@ namespace OpenDentBusiness.Eclaims {
 						string reportFilePath=CodeBase.ODFileUtils.CreateRandomFile(clearinghouseClin.ResponsePath,".zip");
 						File.WriteAllBytes(reportFilePath,reportFileDataBytes);
 						string errorMsg="";
-						ZipFile zipFile=null;
 						try {
-							zipFile=new ZipFile(reportFilePath);//Open zip file.
-							zipFile.ExtractAll(clearinghouseClin.ResponsePath);
+							//Refuses an archive with any path outside the response folder, and, as before, a file that already exists there.
+							ODZip.ExtractAll(reportFilePath,clearinghouseClin.ResponsePath,overwrite:false);
 						}
 						catch(Exception ex) {
 							errorMsg=Lans.g(progress.LanThis,"Report zip file downloaded but could not be extracted.")+"\r\n"
@@ -131,10 +123,7 @@ namespace OpenDentBusiness.Eclaims {
 								+ex.Message;
 						}
 						try {
-							if(zipFile!=null) {
-								zipFile.Dispose();//This releases the file handle created when opening the file above.
-							}
-							File.Delete(reportFilePath);
+							File.Delete(reportFilePath);//ExtractAll closed the file.
 						}
 						catch(Exception ex) {
 							ex.DoNothing();//Could not be deleted.  Not a big deal, because at least we were able to extract it, making it available for import.

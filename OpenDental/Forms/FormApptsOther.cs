@@ -9,7 +9,6 @@ using OpenDentBusiness;
 using OpenDentBusiness.UI;
 using OpenDentBusiness.HL7;
 using CodeBase;
-using Microsoft.Office.Core;
 
 namespace OpenDental {
 	///<summary></summary>

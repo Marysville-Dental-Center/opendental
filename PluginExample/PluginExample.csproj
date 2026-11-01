@@ -56,18 +56,11 @@
     <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Interop.AFORMAUTLib">
-      <HintPath>..\Required dlls\Interop.AFORMAUTLib.dll</HintPath>
-      <EmbedInteropTypes>True</EmbedInteropTypes>
-    </Reference>
     <Reference Include="MigraDoc.DocumentObjectModel">
       <HintPath>..\Required dlls\MigraDoc.DocumentObjectModel.dll</HintPath>
     </Reference>
     <Reference Include="MigraDoc.Rendering">
       <HintPath>..\Required dlls\MigraDoc.Rendering.dll</HintPath>
-    </Reference>
-    <Reference Include="MigraDoc.RtfRendering">
-      <HintPath>..\Required dlls\MigraDoc.RtfRendering.dll</HintPath>
     </Reference>
     <Reference Include="PdfSharp">
       <HintPath>..\Required dlls\PdfSharp.dll</HintPath>

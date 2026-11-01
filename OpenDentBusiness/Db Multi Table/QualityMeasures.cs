@@ -6,7 +6,6 @@ using System.Text;
 using System.Xml;
 using System.Xml.XPath;
 using System.Text.RegularExpressions;
-using Ionic.Zip;
 using System.Linq;
 using CodeBase;
 
@@ -7846,7 +7845,9 @@ BMI 18.5-25.";
 				swCreateZipFiles.Restart();
 			}
 			for(int i=0;i<listAllEMeasureNums.Count;i++) {//make a file for each of our 9 eMeasures
-				using(ZipFile zipCur=new ZipFile()) {
+				{
+					//The entries' text is stored in the system's default code page, as DotNetZip stored a string entry.
+					List<KeyValuePair<string,byte[]>> listZipEntries=new List<KeyValuePair<string,byte[]>>();
 					for(int j=0;j<listAllEhrPats.Count;j++) {//go through list of all unique patients that are in any of the IPPs
 						Patient patCur=listAllEhrPats[j].EhrCqmPat;
 						if(!dictPatNumXml.ContainsKey(patCur.PatNum)) {//just in case, every patient will be in the dictionary.  Dictionary links a PatNum key to the cat I QRDA xml string value
@@ -7856,10 +7857,11 @@ BMI 18.5-25.";
 							continue;
 						}
 						if(dictPatNumListEMeasureNums[patCur.PatNum].Contains(listAllEMeasureNums[i])) {
-							zipCur.AddEntry(patCur.PatNum.ToString()+"_"+patCur.LName+"_"+patCur.FName+".xml",dictPatNumXml[patCur.PatNum]);
+							listZipEntries.Add(new KeyValuePair<string,byte[]>(patCur.PatNum.ToString()+"_"+patCur.LName+"_"+patCur.FName+".xml",
+								ODZip.GetDefaultEncodingBytes(dictPatNumXml[patCur.PatNum])));
 						}
 					}
-					zipCur.Save(folderRoot+"\\Measure_"+listAllEMeasureNums[i]+".zip");
+					ODZip.CreateArchiveFile(folderRoot+"\\Measure_"+listAllEMeasureNums[i]+".zip",listZipEntries);
 				}
 			}
 			if(ODBuild.IsDebug()) {

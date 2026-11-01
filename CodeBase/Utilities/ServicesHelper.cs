@@ -13,8 +13,17 @@ using System.Xml;
 namespace CodeBase {
 	///<summary>This is a helper class meant to be used to easily manage Windows services.</summary>
 	public class ServicesHelper {
-		///<summary>[CurrentDirectory]/InstallUtil/installutil.exe</summary>
-		private static string _installUtilPath=Path.Combine(Directory.GetCurrentDirectory(),"InstallUtil","installutil.exe");
+		///<summary>[CurrentDirectory]/InstallUtil/installutil.exe when an installation has one, else the .NET Framework's own InstallUtil.exe. The
+		///program ships no installutil.exe (it is Microsoft's and not redistributable).</summary>
+		private static string _installUtilPath=GetInstallUtilPath();
+
+		private static string GetInstallUtilPath() {
+			string pathLocal=Path.Combine(Directory.GetCurrentDirectory(),"InstallUtil","installutil.exe");
+			if(File.Exists(pathLocal)) {
+				return pathLocal;
+			}
+			return Path.Combine(System.Runtime.InteropServices.RuntimeEnvironment.GetRuntimeDirectory(),"InstallUtil.exe");
+		}
 
 		///<summary>Executes a process and waits up to 10 seconds for the process to execute.</summary>
 		private static void ExecuteProcess(string fileName,string arguments,out string standardOutput,out int exitCode,string workingDirectory="") {

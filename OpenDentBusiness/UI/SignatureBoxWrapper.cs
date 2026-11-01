@@ -98,6 +98,8 @@ In FormClosing:
 		private Control sigBoxTopaz;
 		///<summary>Used for special cases where signature logic varies from our default.</summary>
 		private SigMode _signatureMode=SigMode.Default;
+		///<summary>The label's own text (LabelText) while the label says that Topaz's software is not installed, else null.</summary>
+		private string _labelTextBeforeTopazMessage;
 		#endregion Fields
 
 		#region Constructor
@@ -155,9 +157,13 @@ In FormClosing:
 		///<summary>Usually 'Invalid Signature', but this can be changed for different situations.</summary>
 		public string LabelText {
 			get {
-				return labelInvalidSig.Text;
+				return _labelTextBeforeTopazMessage??labelInvalidSig.Text;
 			}
 			set {
+				if(_labelTextBeforeTopazMessage!=null) {
+					_labelTextBeforeTopazMessage=value;
+					return;
+				}
 				labelInvalidSig.Text=value;
 			}
 		}
@@ -229,6 +235,25 @@ In FormClosing:
 			Controls.Add(sigBoxTopaz);
 		}
 
+		///<summary>Shows, in place of the signature, that Topaz's software is not installed, so a Topaz signature can be neither shown nor checked.
+		///The signature then counts as not valid (IsValid), as before when the Topaz control could not be created.</summary>
+		private void ShowTopazNotInstalled() {
+			if(_labelTextBeforeTopazMessage==null) {
+				_labelTextBeforeTopazMessage=labelInvalidSig.Text;
+			}
+			labelInvalidSig.Text=Lans.g(this,TopazWrapper.NOT_INSTALLED_MESSAGE);
+			labelInvalidSig.Visible=true;
+		}
+
+		///<summary>Puts the label's own text back after ShowTopazNotInstalled.</summary>
+		private void RestoreLabelText() {
+			if(_labelTextBeforeTopazMessage==null) {
+				return;
+			}
+			labelInvalidSig.Text=_labelTextBeforeTopazMessage;
+			_labelTextBeforeTopazMessage=null;
+		}
+
 		///<summary>Returns true if Topaz is initialized. If it is not initialized, it will attempt to do so.</summary>
 		public bool CheckTopaz() {
 			if(sigBoxTopaz==null) {
@@ -274,6 +299,7 @@ In FormClosing:
 			if(signature==null || signature=="") {
 				return;
 			}
+			RestoreLabelText();
 			//This does 3 checks for both topaz and normal signatures.  These keyData replacements are due to MiddleTier & RichTextBox newline issues.
 			//Most cases will not get past check 1.  Some of the following checks are taken care of by things like POut.StringNote().
 			//Check 1:  keyData.Replace("\r\n","\n").  This reverts any changes middle tier made to the keydata.  
@@ -284,7 +310,7 @@ In FormClosing:
 			//Note that if the keydata was hashed before this point, these replacements have to be dealt with outside of this function.
 			if(sigIsTopaz) {
 				if(!CheckTopaz()) {
-					labelInvalidSig.Visible=true;
+					ShowTopazNotInstalled();
 					return;
 				}
 				FillSignatureHelperTopaz(keyData.Replace("\r\n","\n"),signature);
@@ -576,8 +602,10 @@ In FormClosing:
 		private void butTopazSign_Click(object sender,EventArgs e) {
 			//this button is not even visible if Topaz is not allowed
 			if(!CheckTopaz()) {
+				MessageBox.Show(Lans.g(this,TopazWrapper.NOT_INSTALLED_MESSAGE)+TopazWrapper.GetLoadErrorLine());
 				return;
 			}
+			RestoreLabelText();
 			if(SignTopazClicked!=null) {
 				SignTopazClicked(this,new EventArgs());
 			}
@@ -644,6 +672,7 @@ In FormClosing:
 			}
 			signatureBox.SetTabletState(1);//on-screen box is now accepting input.
 			SigChanged=true;
+			RestoreLabelText();
 			labelInvalidSig.Visible=false;
 			OnSignatureChanged();
 		}

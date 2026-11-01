@@ -1,23 +1,30 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Ports;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using RS232;
+using CodeBase;
 
 namespace OpenDentBusiness.Eclaims {
+	///<summary>The dial-up modem terminal used by the BCBS Georgia clearinghouse. It talks to the modem through the framework's
+	///System.IO.Ports.SerialPort; it used the RS232.dll serial library (unknown author and licence) before, as a thin wrapper with the same port
+	///settings: COM1 until a port is opened, 9600 baud, 8 data bits, 1 stop bit, no parity, 1.5 second timeouts, DTR and RTS on.</summary>
 	public class TerminalConnector:ITerminalConnector {
 
 		public delegate void TextReceivedEventHandler(object sender,TextReceivedEventArgs e);
-		///<summary>Event is fired when the terminal receives text from the host.</summary>
+		///<summary>Event is fired when the terminal receives text from the host. Raised on the serial port's thread, as before.</summary>
 		public event TextReceivedEventHandler TextReceivedEvent=null;
 		///<summary>The object used to communicate to the host.</summary>
-		private Rs232 moRS232;
-		///<summary>The character array of received bytes.</summary>
-		private StringBuilder RxBuff;
+		private SerialPort _serialPort;
+		///<summary>The character array of received bytes. Filled on the serial port's thread, so every access holds _lockRx.</summary>
+		private StringBuilder RxBuff=new StringBuilder();
+		private readonly object _lockRx=new object();
+		///<summary>Each byte is one character and back (ISO-8859-1), as the received bytes have always been turned into characters.</summary>
+		private static readonly Encoding _encodingBytes=Encoding.GetEncoding(28591);
 		///<summary>CTRL-A. Start Of Header?</summary>
 		private const char SOH=(char)1;
 		///<summary>CTRL-D. End Of Transmission</summary>
@@ -30,33 +37,66 @@ namespace OpenDentBusiness.Eclaims {
 		private const char CAN=(char)24;
 
 		public TerminalConnector() {
-			moRS232=new Rs232();
-			moRS232.Port=1;
-			moRS232.BaudRate=9600;
-			moRS232.DataBit=8;
-			moRS232.StopBit=Rs232.DataStopBit.StopBit_1;
-			moRS232.Parity=Rs232.DataParity.Parity_None;
-			moRS232.Timeout=1500;
-			moRS232.CommEvent+=new Rs232.CommEventHandler(moRS232_CommEvent);
+			_serialPort=new SerialPort();
+			_serialPort.PortName="COM1";
+			_serialPort.BaudRate=9600;
+			_serialPort.DataBits=8;
+			_serialPort.StopBits=StopBits.One;
+			_serialPort.Parity=Parity.None;
+			_serialPort.ReadTimeout=1500;
+			_serialPort.WriteTimeout=1500;
+			_serialPort.Encoding=_encodingBytes;
+			_serialPort.DataReceived+=new SerialDataReceivedEventHandler(serialPort_DataReceived);
 		}
 
-		///<summary>Events raised when a communication event occurs.</summary>
-		private void moRS232_CommEvent(Rs232 source,Rs232.EventMasks Mask) {
-			if((Mask & Rs232.EventMasks.RxChar) > 0) {
-				StringBuilder strBuilder=new StringBuilder();
+		///<summary>The serial port and its settings. For tests and diagnostics.</summary>
+		public SerialPort GetSerialPort() {
+			return _serialPort;
+		}
+
+		///<summary>Raised by the serial port when bytes arrive.</summary>
+		private void serialPort_DataReceived(object sender,SerialDataReceivedEventArgs e) {
+			byte[] arrayBytes;
+			try {
+				int count=_serialPort.BytesToRead;
+				if(count<=0) {
+					return;
+				}
+				arrayBytes=new byte[count];
+				count=_serialPort.Read(arrayBytes,0,count);
+				Array.Resize(ref arrayBytes,count);
+			}
+			catch(Exception ex) {
+				ex.DoNothing();//The port was closed while reading.
+				return;
+			}
+			ReceiveBytes(arrayBytes);
+		}
+
+		///<summary>Handles bytes received from the host: adds them to RxBuff, then raises TextReceivedEvent with the special codes shown as text.</summary>
+		public void ReceiveBytes(byte[] arrayBytes) {
+			StringBuilder strBuilder=new StringBuilder();
+			lock(_lockRx) {
 				//loop through each new char and handle it.
-				for(int i=0;i<source.InputStream.Length;i++) {
-					RxBuff.Append((char)source.InputStream[i]);
-					if(IsSpecialCode((char)source.InputStream[i])) {
-						strBuilder.Append(DisplaySpecialCode((char)source.InputStream[i]));
+				for(int i=0;i<arrayBytes.Length;i++) {
+					RxBuff.Append((char)arrayBytes[i]);
+					if(IsSpecialCode((char)arrayBytes[i])) {
+						strBuilder.Append(DisplaySpecialCode((char)arrayBytes[i]));
 					}
 					else {
-						strBuilder.Append((char)source.InputStream[i]);
+						strBuilder.Append((char)arrayBytes[i]);
 					}
 				}
-				if(TextReceivedEvent != null) {
-					TextReceivedEvent(this,new TextReceivedEventArgs(strBuilder.ToString()));
-				}
+			}
+			if(TextReceivedEvent != null) {
+				TextReceivedEvent(this,new TextReceivedEventArgs(strBuilder.ToString()));
+			}
+		}
+
+		///<summary>What has been received since RxBuff was last cleared.</summary>
+		private string GetRxBuff() {
+			lock(_lockRx) {
+				return RxBuff.ToString();
 			}
 		}
 
@@ -106,17 +146,25 @@ namespace OpenDentBusiness.Eclaims {
 		}
 
 		public void ClearRxBuff() {
-			RxBuff=new StringBuilder();
+			lock(_lockRx) {
+				RxBuff=new StringBuilder();
+			}
 		}
 
 		public void CloseConnection() {
-			moRS232.Close();
+			_serialPort.Close();
 		}
 
 		public void Dial(string phone) {
-			moRS232.PurgeBuffer(Rs232.PurgeBuffers.TxClear | Rs232.PurgeBuffers.RXClear);
+			PurgeBuffers();
 			string str="ATDT"+phone+"\r\n";
-			moRS232.Write(str);
+			_serialPort.Write(str);
+		}
+
+		///<summary>Discards whatever is waiting to be sent or read.</summary>
+		private void PurgeBuffers() {
+			_serialPort.DiscardOutBuffer();
+			_serialPort.DiscardInBuffer();
 		}
 
 		///<summary>I don't think this actually works.</summary>
@@ -196,8 +244,9 @@ namespace OpenDentBusiness.Eclaims {
 			}
 			DateTime startTime=DateTime.Now;
 			while(startTime.AddMilliseconds(timeoutMS)>DateTime.Now) {
-				if(RxBuff.Length>0) {
-					return (byte)RxBuff[RxBuff.Length-1];
+				string rxBuff=GetRxBuff();
+				if(rxBuff.Length>0) {
+					return (byte)rxBuff[rxBuff.Length-1];
 				}
 				Application.DoEvents();
 			}
@@ -205,12 +254,11 @@ namespace OpenDentBusiness.Eclaims {
 		}
 
 		public void OpenConnection(int modemPort) {
-			moRS232.Port=modemPort;
-			moRS232.Open();
-			moRS232.Dtr=true;
-			moRS232.Rts=true;
-			moRS232.EnableEvents();
-			RxBuff=new StringBuilder();
+			_serialPort.PortName="COM"+modemPort;
+			_serialPort.Open();
+			_serialPort.DtrEnable=true;
+			_serialPort.RtsEnable=true;
+			ClearRxBuff();
 		}
 
 		public void Pause(double ms) {
@@ -232,23 +280,23 @@ namespace OpenDentBusiness.Eclaims {
 			while(startTime.AddMilliseconds(timeoutMS)>DateTime.Now) {
 				Application.DoEvents();
 			}
-			return CharsToString(RxBuff);
+			return CharsToString(GetRxBuff());
 		}
 
 		public void Send(string str) {
-			moRS232.PurgeBuffer(Rs232.PurgeBuffers.TxClear | Rs232.PurgeBuffers.RXClear);
+			PurgeBuffers();
 			str+="\r\n";
-			moRS232.Write(str);
+			_serialPort.Write(str);
 		}
 
 		public void Send(byte[] block) {
-			moRS232.PurgeBuffer(Rs232.PurgeBuffers.TxClear | Rs232.PurgeBuffers.RXClear);
-			moRS232.Write(block);
+			PurgeBuffers();
+			_serialPort.Write(block,0,block.Length);
 		}
 
 		public void Send(char singleChar) {
-			moRS232.PurgeBuffer(Rs232.PurgeBuffers.TxClear | Rs232.PurgeBuffers.RXClear);
-			moRS232.Write(new byte[] { (byte)singleChar });
+			PurgeBuffers();
+			_serialPort.Write(new byte[] { (byte)singleChar },0,1);
 		}
 
 		public void ShowForm() {
@@ -278,7 +326,7 @@ namespace OpenDentBusiness.Eclaims {
 		}
 
 		///<summary>Transmits a file using Xmodem protocol.</summary>
-		public void UploadXmodem(string filePath) {			
+		public void UploadXmodem(string filePath) {
 			//divide file into 128 byte packets
 			byte[][] bytes;
 			using(FileStream fs=File.Open(filePath,FileMode.Open,FileAccess.Read)){
@@ -291,7 +339,7 @@ namespace OpenDentBusiness.Eclaims {
 					bytes[i]=new byte[128];
 					buffer.CopyTo(bytes[i],0);
 				}
-			}			
+			}
 			//GetPacketNumber. If greater than 255, repeatedly subtract 256
 			//1's complement = 255-packet#
 			//checksum=sum of all bytes. If greater than 255, repeatedly subtract 256
@@ -341,7 +389,7 @@ namespace OpenDentBusiness.Eclaims {
 			WaitFor((byte)ACK,40000);
 			//Note.  Allowed to send a CAN byte (2 is better) between blocks to cancel upload
 		}
-		
+
 		private byte GetCheckSum(byte[] input){
 			byte retVal=0;
 			for(int i=0;i<input.Length;i++){
@@ -355,28 +403,31 @@ namespace OpenDentBusiness.Eclaims {
 			return WaitFor(expectedText,null,timeoutMS);
 		}
 
-		///<summary>Throws an exception if expected text not received within timeout period. Returns the response received out of the given expectedReplies.</summary>
+		///<summary>Throws an exception if expected text not received within timeout period. Returns the response received out of the given expectedReplies.
+		///expectedText2 may be null when there is only one expected reply.</summary>
 		public string WaitFor(string expectedText1,string expectedText2,double timeoutMS) {
 			if(timeoutMS>60000) {
 				throw new Exception("Not allowed to wait longer than 60 seconds");
 			}
 			DateTime startTime=DateTime.Now;
 			while(startTime.AddMilliseconds(timeoutMS)>DateTime.Now) {
-				if(RxBuff.ToString().IndexOf(expectedText1)!=-1) {
+				string rxBuff=GetRxBuff();
+				if(rxBuff.IndexOf(expectedText1)!=-1) {
 					return expectedText1;
 				}
-				if(RxBuff.ToString().IndexOf(expectedText2)!=-1) {
+				//A null second reply used to reach IndexOf(null), which throws, so a single expected reply only ever matched on the first look.
+				if(expectedText2!=null && rxBuff.IndexOf(expectedText2)!=-1) {
 					return expectedText2;
 				}
 				Application.DoEvents();
 			}
 			if(expectedText2==null) {
 				throw new Exception("Timed out waiting for "+expectedText1
-				+". Actual text received so far: '"+CharsToString(RxBuff)+"'");
+				+". Actual text received so far: '"+CharsToString(GetRxBuff())+"'");
 			}
 			throw new Exception("Timed out waiting for "+expectedText1
 				+" or "+expectedText2
-				+". Actual text received so far: '"+CharsToString(RxBuff)+"'");
+				+". Actual text received so far: '"+CharsToString(GetRxBuff())+"'");
 		}
 
 		///<summary>Throws an exception if expected text not received within timeout period. Returns the response received.</summary>
@@ -386,19 +437,17 @@ namespace OpenDentBusiness.Eclaims {
 			}
 			DateTime startTime=DateTime.Now;
 			while(startTime.AddMilliseconds(timeoutMS)>DateTime.Now) {
-				for(int i=0;i<RxBuff.Length;i++) {
-					if(RxBuff[i]==(char)expectedByte) {
-						return expectedByte;
-					}
+				if(GetRxBuff().IndexOf((char)expectedByte)!=-1) {
+					return expectedByte;
 				}
 				Application.DoEvents();
 			}
 			throw new Exception("Timed out waiting for byte "+expectedByte.ToString()
-				+". Actual text received so far: '"+CharsToString(RxBuff)+"'");
+				+". Actual text received so far: '"+CharsToString(GetRxBuff())+"'");
 		}
 
-		///<summary>Converts the char array to a display string. Any of the 5 special chars are transformed into meaningful display strings.</summary>
-		private string CharsToString(StringBuilder inputChars) {
+		///<summary>Converts the received characters to a display string. Any of the 5 special chars are transformed into meaningful display strings.</summary>
+		private string CharsToString(string inputChars) {
 			StringBuilder strBuilder=new StringBuilder();
 			for(int i=0;i<inputChars.Length;i++) {
 				if(IsSpecialCode(inputChars[i])) {
@@ -418,10 +467,11 @@ namespace OpenDentBusiness.Eclaims {
 			}
 			DateTime startTime=DateTime.Now;
 			while(startTime.AddMilliseconds(timeoutMS) > DateTime.Now) {
-				if(RxBuff.Length >= numberOfBytes) {
+				string rxBuff=GetRxBuff();
+				if(rxBuff.Length >= numberOfBytes) {
 					byte[] retVal=new byte[numberOfBytes];
 					for(int i=0;i<numberOfBytes;i++) {
-						retVal[i]=(byte)RxBuff[i];
+						retVal[i]=(byte)rxBuff[i];
 					}
 					return retVal;
 				}

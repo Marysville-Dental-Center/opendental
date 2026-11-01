@@ -112,9 +112,6 @@
     <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Avalara.AvaTax.RestClient.net45">
-      <HintPath>..\Required dlls\Avalara.AvaTax.RestClient.net45.dll</HintPath>
-    </Reference>
     <Reference Include="Dicom.Core, Version=4.0.7.0, Culture=neutral, PublicKeyToken=3a13f649e28eb09a, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\Dicom.Core.dll</HintPath>
@@ -151,13 +148,6 @@
     </Reference>
     <Reference Include="Health.Direct.ResolverPlugins">
       <HintPath>..\Required dlls\Health.Direct.ResolverPlugins.dll</HintPath>
-    </Reference>
-    <Reference Include="Interop.Word, Version=8.2.0.0, Culture=neutral">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\Interop.Word.dll</HintPath>
-    </Reference>
-    <Reference Include="Ionic.Zip">
-      <HintPath>..\Required dlls\Ionic.Zip.dll</HintPath>
     </Reference>
     <Reference Include="MailKit">
       <HintPath>..\Required dlls\MailKit.dll</HintPath>
@@ -198,13 +188,6 @@
     </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
-    <Reference Include="RS232">
-      <HintPath>..\Required dlls\RS232.dll</HintPath>
-    </Reference>
-    <Reference Include="SigPlusNET, Version=2.0.0.0, Culture=neutral, PublicKeyToken=6aef07010bb0624f, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\SigPlusNET.dll</HintPath>
-    </Reference>
     <Reference Include="Sparks3D">
       <HintPath>..\Required dlls\Sparks3D\Sparks3D.dll</HintPath>
     </Reference>
