@@ -2195,6 +2195,7 @@
     <Compile Include="Logic\ApptViewItemL.cs" />
     <Compile Include="Logic\PreAuthL.cs" />
     <Compile Include="Logic\AutomationL.cs" />
+    <Compile Include="Logic\ClaimAttachDicomL.cs" />
     <Compile Include="Logic\ClaimL.cs" />
     <Compile Include="Logic\MedicalEobL.cs" />
     <Compile Include="Logic\ClearinghouseL.cs" />
