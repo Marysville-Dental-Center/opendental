@@ -26,6 +26,10 @@ namespace ImagingDeviceManager.Capture {
 		private readonly Func<DateTime> _funcNow;
 		private readonly Stopwatch _stopwatch=Stopwatch.StartNew();
 		private readonly object _lock=new object();
+		///<summary>Held by the worker while it decides to raise ImageAcquired and raises it, and by BeginClose while it sets _isClosing (before
+		///_lock, never after it), so that no ImageAcquired is raised once BeginClose has returned. Enable, Disable and the other commands do
+		///not take it, so an ImageAcquired handler may still call them, or wait for another thread that does.</summary>
+		private readonly object _lockRaiseImage=new object();
 		private readonly LinkedList<Command> _listCommands=new LinkedList<Command>();
 		private readonly AutoResetEvent _eventCommand=new AutoResetEvent(false);
 		private readonly ManualResetEvent _eventClosed=new ManualResetEvent(true);
@@ -207,15 +211,17 @@ namespace ImagingDeviceManager.Capture {
 		}
 
 		public void BeginClose() {
-			lock(_lock) {
-				if(!IsWorkerRunning()) {
-					return;
+			lock(_lockRaiseImage) {//Waits for an ImageAcquired that is being raised; none is raised after this.
+				lock(_lock) {
+					if(!IsWorkerRunning()) {
+						return;
+					}
+					if(!_isClosing) {
+						_isClosing=true;//At once: images drained from now on go to the quarantine.
+						_listCommands.AddLast(new Command { Kind=CommandKind.Close });
+					}
+					Wake();
 				}
-				if(!_isClosing) {
-					_isClosing=true;//At once: images drained from now on go to the quarantine.
-					_listCommands.AddLast(new Command { Kind=CommandKind.Close });
-				}
-				Wake();
 			}
 		}
 
@@ -988,7 +994,9 @@ namespace ImagingDeviceManager.Capture {
 		}
 
 		///<summary>Tags the image with its enable, writes its journal copy, then raises ImageAcquired; after BeginClose writes it to the
-		///quarantine instead and raises ImageQuarantined.</summary>
+		///quarantine instead and raises ImageQuarantined. The choice between the two is made under _lockRaiseImage, which BeginClose takes
+		///to set _isClosing: an image is raised only if BeginClose has not started, and BeginClose returns only after a raise under way has
+		///ended. So a BeginClose during the journal write (slow I/O for a 16-bit image) still sends the image to the quarantine.</summary>
 		private void Deliver(EnableContext context,AcquiredImage image,AcquiredImageKind kind,TwainCaptureStopReason stopReason) {
 			image.EnableId=context.Id;
 			image.Tag=context.Request.Tag;
@@ -1004,6 +1012,7 @@ namespace ImagingDeviceManager.Capture {
 				case AcquiredImageKind.Drained: context.CountDrained++; break;
 				default: context.CountNormal++; break;
 			}
+			bool isClosingAtArrival=_isClosing;
 			TwainCaptureQuarantineContext quarantineContext=QuarantineContext;//Read once: the PatNum and the name of one patient.
 			CaptureRecord record=BuildRecord(image,quarantineContext);
 			CaptureImageFile file;
@@ -1014,26 +1023,37 @@ namespace ImagingDeviceManager.Capture {
 				Log("Image "+image.IndexInEnable+" of enable "+context.Id+" has no pixels to save: "+ex.Message);
 				file=null;
 			}
-			if(_isClosing) {
-				string error="";
-				string pathQuarantine=file==null ? null : _quarantine.WriteSessionCapture(file,record,SessionGuid,quarantineContext.PatNum,
-					quarantineContext.PatientName,image.TargetLabel,"It arrived after the capture window began to close.",Log,out error);
-				image.QuarantinePath=pathQuarantine;
-				image.JournalPath=file==null ? null : _journal.Write(file,record,
-					pathQuarantine==null ? CaptureJournal.DeliveredNone : CaptureJournal.DeliveredQuarantine,
-					pathQuarantine==null ? "The quarantine could not be written: "+error : Path.GetFileName(pathQuarantine),_options.JournalKeep,Log);
-				Log("Capture event: an image of enable "+context.Id+" arrived while the session closed; "+(pathQuarantine==null
-					? "it could not be quarantined ("+error+")"+(image.JournalPath==null ? "" : "; its journal copy is the only one")
-					: "quarantined as "+Path.GetFileName(pathQuarantine))+".");
-				Raise(ImageQuarantined,image,"ImageQuarantined");
-				return;
+			if(!isClosingAtArrival) {
+				image.JournalPath=file==null ? null : _journal.Write(file,record,CaptureJournal.DeliveredCaller,null,_options.JournalKeep,Log);
+				if(image.JournalPath!=null) {
+					Log("Journal copy "+Path.GetFileName(image.JournalPath)+" of image "+image.IndexInEnable+" of enable "+context.Id+" ("+kind
+						+(stopReason==TwainCaptureStopReason.None ? "" : ", stop "+stopReason)+").");
+				}
+				lock(_lockRaiseImage) {
+					if(!_isClosing) {
+						Raise(ImageAcquired,image,"ImageAcquired");
+						return;
+					}
+				}
 			}
-			image.JournalPath=file==null ? null : _journal.Write(file,record,CaptureJournal.DeliveredCaller,null,_options.JournalKeep,Log);
-			if(image.JournalPath!=null) {
-				Log("Journal copy "+Path.GetFileName(image.JournalPath)+" of image "+image.IndexInEnable+" of enable "+context.Id+" ("+kind
-					+(stopReason==TwainCaptureStopReason.None ? "" : ", stop "+stopReason)+").");
+			//After BeginClose, also when it came while the journal copy was written: the quarantine, never ImageAcquired.
+			string error="";
+			string pathQuarantine=file==null ? null : _quarantine.WriteSessionCapture(file,record,SessionGuid,quarantineContext.PatNum,
+				quarantineContext.PatientName,image.TargetLabel,"It arrived after the capture window began to close.",Log,out error);
+			image.QuarantinePath=pathQuarantine;
+			string delivered=pathQuarantine==null ? CaptureJournal.DeliveredNone : CaptureJournal.DeliveredQuarantine;
+			string deliveredDetail=pathQuarantine==null ? "The quarantine could not be written: "+error : Path.GetFileName(pathQuarantine);
+			if(isClosingAtArrival) {
+				image.JournalPath=file==null ? null : _journal.Write(file,record,delivered,deliveredDetail,_options.JournalKeep,Log);
 			}
-			Raise(ImageAcquired,image,"ImageAcquired");
+			else if(image.JournalPath!=null) {
+				//The copy was written as Delivered=Caller before BeginClose was seen; its sidecar now says where the image went.
+				image.JournalPath=_journal.SetDelivered(image.JournalPath,file,record,delivered,deliveredDetail,Log);
+			}
+			Log("Capture event: an image of enable "+context.Id+" arrived while the session closed; "+(pathQuarantine==null
+				? "it could not be quarantined ("+error+")"+(image.JournalPath==null ? "" : "; its journal copy is the only one")
+				: "quarantined as "+Path.GetFileName(pathQuarantine))+".");
+			Raise(ImageQuarantined,image,"ImageQuarantined");
 		}
 
 		///<summary>The sidecar record of image, with the PatNum of quarantineContext (the caller reads the context once and uses the same one

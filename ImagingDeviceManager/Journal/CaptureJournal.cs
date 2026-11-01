@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
 using ImagingDeviceManager.Imaging;
 
 namespace ImagingDeviceManager.Journal {
@@ -92,6 +93,52 @@ namespace ImagingDeviceManager.Journal {
 			catch(Exception ex) {
 				log("No journal copy: "+ex.Message);
 				return null;
+			}
+		}
+
+		///<summary>Rewrites the sidecar of the journal copy at pathImage (written by Write for file and record) with another Delivered value, for
+		///an image whose fate was decided after its copy was written: the capture session began to close in between and quarantined it. A
+		///DeliveredNone copy is renamed with OnlyCopySuffix first, so that rotation leaves it alone. Returns the image path, renamed or not;
+		///problems go to log, and the copy then stays as it was. Never throws.</summary>
+		public string SetDelivered(string pathImage,CaptureImageFile file,CaptureRecord record,string delivered,string detail,Action<string> log) {
+			log=log??(text => { });
+			if(string.IsNullOrEmpty(pathImage) || file==null || record==null) {
+				return pathImage;
+			}
+			try {
+				string folder=Path.GetDirectoryName(pathImage);
+				string baseName=Path.GetFileNameWithoutExtension(pathImage);
+				string pathSidecar=Path.Combine(folder,baseName+CaptureFiles.SidecarExtension);
+				string pathImageNew=pathImage;
+				if(delivered==DeliveredNone && !baseName.EndsWith(OnlyCopySuffix,StringComparison.Ordinal)) {
+					string baseNameNew=baseName+OnlyCopySuffix;
+					string pathCandidate=Path.Combine(folder,baseNameNew+Path.GetExtension(pathImage));
+					try {
+						File.Move(pathImage,pathCandidate);
+						pathImageNew=pathCandidate;
+						baseName=baseNameNew;
+					}
+					catch(Exception ex) {
+						log("The journal copy "+Path.GetFileName(pathImage)+" is the only one, but it could not be renamed so that rotation keeps it: "
+							+ex.Message);
+					}
+				}
+				string sha256=CaptureFiles.Sha256Hex(file.Bytes);
+				File.WriteAllText(Path.Combine(folder,baseName+CaptureFiles.SidecarExtension),
+					BuildSidecar(record,delivered,detail,Path.GetFileName(pathImageNew),file,sha256),new UTF8Encoding(false));
+				if(pathImageNew!=pathImage) {
+					try {
+						File.Delete(pathSidecar);
+					}
+					catch(Exception ex) {
+						log("The old sidecar "+Path.GetFileName(pathSidecar)+" could not be removed: "+ex.Message);
+					}
+				}
+				return pathImageNew;
+			}
+			catch(Exception ex) {
+				log("The sidecar of the journal copy "+Path.GetFileName(pathImage)+" could not be updated (Delivered="+delivered+"): "+ex.Message);
+				return pathImage;
 			}
 		}
 

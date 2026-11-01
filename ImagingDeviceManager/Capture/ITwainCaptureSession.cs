@@ -52,7 +52,8 @@ namespace ImagingDeviceManager.Capture {
 		///<summary>Disable(Cancel).</summary>
 		void Cancel();
 		///<summary>Starts closing: from now on no ImageAcquired is raised; the worker stops a running enable in the safe order, quarantines what
-		///arrives, closes the source and the DSM, and ends. Does not wait.</summary>
+		///arrives (also an image whose journal copy was being written when BeginClose was called), closes the source and the DSM, and ends.
+		///Does not wait for the worker; it waits only for an ImageAcquired handler that is running, so that none runs once it has returned.</summary>
 		void BeginClose();
 		///<summary>Waits until the worker has ended (true), or the timeout passed (false). True when no worker runs.</summary>
 		bool WaitForClose(TimeSpan timeout);

@@ -727,6 +727,72 @@ namespace ImagingDeviceManager.Tests {
 			Assert.AreEqual(1,Helper.CountDelivered,"Nothing lost.");
 		}
 
+		///<summary>The metadata parser runs after the image arrived and before its journal copy is written, so a BeginClose from it is a close
+		///that comes while the copy is written (slow I/O for a 16-bit image).</summary>
+		private void CloseWhileTheJournalCopyIsWritten(Action actionBeforeClose=null) {
+			bool isClosed=false;
+			Capture.FuncReadMetadataKeys=json => {
+				if(!isClosed) {
+					isClosed=true;
+					actionBeforeClose?.Invoke();
+					Capture.BeginClose();
+				}
+				return new CaptureMetadataKeys { CaptureId="cid-late" };
+			};
+		}
+
+		[TestMethod]
+		public void BeginClose_WhileTheJournalCopyIsWritten_ImageQuarantinedNeverRaised() {
+			Capture.QuarantineContext=new TwainCaptureQuarantineContext(42,"Doe, Jane");
+			//The patient changes as well: the image keeps the patient it arrived with, PatNum and name together.
+			CloseWhileTheJournalCopyIsWritten(() => Capture.QuarantineContext=new TwainCaptureQuarantineContext(43,"Roe, Ann"));
+			_harness.OpenOrFail();
+			int enableId=EnableOne();
+			Assert.IsTrue(enableId>0);
+			Assert.IsTrue(Capture.WaitForClose(TimeSpan.FromSeconds(10)),_harness.LogText);
+			Assert.AreEqual(0,_harness.ListImages.Count,"No ImageAcquired after BeginClose.");
+			AcquiredImage image=_harness.ListQuarantined.Single();
+			Assert.AreEqual(enableId,image.EnableId);
+			Assert.IsTrue(File.Exists(image.QuarantinePath));
+			Dictionary<string,string> dictSidecar=CaptureFiles.ReadSidecar(Path.ChangeExtension(image.QuarantinePath,".txt"));
+			Assert.AreEqual("42",dictSidecar["PatNum"]);
+			Assert.AreEqual("Doe, Jane",dictSidecar["Patient"]);
+			Assert.AreEqual("Slot 1",dictSidecar["Slot"]);
+			Dictionary<string,string> dictJournal=CaptureFiles.ReadSidecar(Path.ChangeExtension(image.JournalPath,".txt"));
+			Assert.AreEqual(CaptureJournal.DeliveredQuarantine,dictJournal["Delivered"],"The copy's sidecar says where the image went.");
+			Assert.AreEqual(Path.GetFileName(image.QuarantinePath),dictJournal["DeliveredDetail"]);
+			Assert.AreEqual("42",dictJournal["PatNum"]);
+			Assert.AreEqual("cid-late",dictJournal["CaptureId"]);
+			Assert.AreEqual(Path.GetFileName(image.JournalPath),dictJournal["ImageFile"]);
+			Assert.AreEqual(1,Directory.GetFiles(Path.GetDirectoryName(image.JournalPath),"*.txt").Length,"One sidecar for the one copy.");
+			Assert.IsTrue(_harness.HasLog("arrived while the session closed"),_harness.LogText);
+			Assert.AreEqual(1,Helper.CountDelivered,"Nothing lost.");
+		}
+
+		[TestMethod]
+		public void BeginClose_WhileTheJournalCopyIsWritten_QuarantineFails_CopyKeptAsTheOnlyOne() {
+			CloseWhileTheJournalCopyIsWritten(() => {
+				//A file where the quarantine folder should be: the quarantine cannot be written.
+				Directory.CreateDirectory(Path.Combine(_harness.Folder,"Capture"));
+				File.WriteAllText(Path.Combine(_harness.Folder,@"Capture\quarantine"),"not a folder");
+			});
+			_harness.OpenOrFail();
+			EnableOne();
+			Assert.IsTrue(Capture.WaitForClose(TimeSpan.FromSeconds(10)),_harness.LogText);
+			Assert.AreEqual(0,_harness.ListImages.Count);
+			AcquiredImage image=_harness.ListQuarantined.Single();
+			Assert.IsNull(image.QuarantinePath);
+			Assert.IsTrue(File.Exists(image.JournalPath),image.JournalPath);
+			StringAssert.EndsWith(Path.GetFileNameWithoutExtension(image.JournalPath),CaptureJournal.OnlyCopySuffix,"Rotation never removes it.");
+			Dictionary<string,string> dictJournal=CaptureFiles.ReadSidecar(Path.ChangeExtension(image.JournalPath,".txt"));
+			Assert.AreEqual(CaptureJournal.DeliveredNone,dictJournal["Delivered"]);
+			Assert.AreEqual(Path.GetFileName(image.JournalPath),dictJournal["ImageFile"]);
+			string folderJournal=Path.GetDirectoryName(image.JournalPath);
+			Assert.AreEqual(1,Directory.GetFiles(folderJournal,"*.txt").Length,"The old sidecar is gone.");
+			Assert.AreEqual(1,Directory.GetFiles(folderJournal,"*.bmp").Length);
+			Assert.IsTrue(_harness.HasLog("its journal copy is the only one"),_harness.LogText);
+		}
+
 		[TestMethod]
 		public void QuarantineImage_FromTheWindow_WithTheBoundPatientOrUnknown() {
 			Capture.QuarantineContext=new TwainCaptureQuarantineContext(9,"Roe, Ann");
