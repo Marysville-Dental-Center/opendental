@@ -156,7 +156,9 @@ items), the new test files in BSERVERTests and ReleaseFlowTests, and the enum lo
 ## Tests
 
 - Build: full `OpenDental.Local.slnf` build through the lane, 0 errors, no warnings in the changed files.
-- Targeted: NoHqTests 53/53, ReleaseFlowTests 76/76, BSERVERTests 55/55, VendorDirectTests 872 passed (1 skipped as before), BMEDTests 31/31,
+- Targeted while iterating: NoHqTests 53/53, ReleaseFlowTests 76/76, BSERVERTests 55/55, VendorDirectTests, BMEDTests 31/31,
   AttributionTests 15/15, VBRIDGE1Tests 37/37.
-- Core with ReleaseFlowTests and AdoptionValidation.Tests: see the result below.
+- `run-tests -Mode Core -Include ReleaseFlowTests,AdoptionValidation.Tests`: 80 assemblies, 5,411 tests, all passed (NoHqTests 53,
+  ReleaseFlowTests 76, BSERVERTests 55, AdoptionValidation.Tests 64, VendorDirectTests 873, and every project whose repository-root locator
+  changed).
 - `tools/Test-NoHqHosts.ps1`: passed. `tools/Test-NoOldNames.ps1`: report mode, exit 0; `-Strict` exits 1 today, as intended.
