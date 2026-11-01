@@ -12,7 +12,7 @@ namespace ImagingCapture.Settings {
 	///LogText of a Setup security-log entry with FKey=ImagingDeviceNum; there is no table of its own (design 9.1, no new tables).
 	///
 	///The session (CAP-4) refuses a 16-bit or inverted capture unless the latest record for the device and this computer matches the
-	///current gated settings (Matches) and passed (IsPassedFor16Bit). The text is key=value pairs, so it reads in the audit trail and parses
+	///device row's TWAIN source and the current gated settings (Matches) and passed (IsPassedFor16Bit). The text is key=value pairs, so it reads in the audit trail and parses
 	///back (TryParse). Values are escaped: '%', ';', '=', CR and LF become %25, %3B, %3D, %0D and %0A.</summary>
 	public sealed class CaptureVerificationRecord {
 		///<summary>The format of the text; a later format gets a new name instead of being misread.</summary>
@@ -23,8 +23,11 @@ namespace ImagingCapture.Settings {
 
 		public long ImagingDeviceNum { get; set; }
 		public string DeviceDescription { get; set; }="";
-		///<summary>The TWAIN ProductName tested.</summary>
+		///<summary>The TWAIN source of the device row when the test ran (ImagingDevice.TwainName), which Matches compares: the gated settings
+		///hash covers capture.ini only, and the row may later name another source.</summary>
 		public string SourceName { get; set; }="";
+		///<summary>The ProductName the source reported at open (TW_IDENTITY), for the audit trail. Not compared.</summary>
+		public string SourceProductName { get; set; }="";
 		///<summary>The computer Test capture ran on (ODEnvironment.MachineName). capture.ini is per computer.</summary>
 		public string ComputerName { get; set; }="";
 		///<summary>GatedSettingsHash.Compute of the capture.ini the test ran with: 64 lowercase hex digits.</summary>
@@ -70,10 +73,13 @@ namespace ImagingCapture.Settings {
 		public string DsVersion { get; set; }="";
 		public bool IsMetadataPresent { get; set; }
 
-		///<summary>The record is for this device and computer and was made with these gated settings. Computer names compare ignoring case.</summary>
-		public bool Matches(long imagingDeviceNum,string computerName,string gatedSettingsHash) {
+		///<summary>The record is for this device, computer and TWAIN source (the device row's ImagingDevice.TwainName) and was made with these
+		///gated settings. Computer and source names compare trimmed and ignoring case, as the source gate compares source names.</summary>
+		public bool Matches(long imagingDeviceNum,string computerName,string sourceName,string gatedSettingsHash) {
 			return ImagingDeviceNum==imagingDeviceNum
 				&& string.Equals((ComputerName??"").Trim(),(computerName??"").Trim(),StringComparison.OrdinalIgnoreCase)
+				&& !string.IsNullOrWhiteSpace(SourceName)
+				&& string.Equals(SourceName.Trim(),(sourceName??"").Trim(),StringComparison.OrdinalIgnoreCase)
 				&& !string.IsNullOrEmpty(GatedSettingsHash)
 				&& string.Equals(GatedSettingsHash,(gatedSettingsHash??"").Trim(),StringComparison.OrdinalIgnoreCase);
 		}
@@ -126,6 +132,7 @@ namespace ImagingCapture.Settings {
 			}
 			recordRead.DeviceDescription=Get(dictValues,"DeviceDescription");
 			recordRead.SourceName=Get(dictValues,"Source");
+			recordRead.SourceProductName=Get(dictValues,"SourceProductName");
 			DateTime dateTime;
 			if(DateTime.TryParseExact(Get(dictValues,"Date"),"yyyy-MM-ddTHH:mm:ss",CultureInfo.InvariantCulture,DateTimeStyles.None,out dateTime)) {
 				recordRead.DateTimeVerified=dateTime;
@@ -166,6 +173,7 @@ namespace ImagingCapture.Settings {
 			Add("Device",ImagingDeviceNum.ToString(CultureInfo.InvariantCulture));
 			Add("DeviceDescription",DeviceDescription);
 			Add("Source",SourceName);
+			Add("SourceProductName",SourceProductName);
 			Add("Computer",ComputerName);
 			Add("GatedSettingsHash",GatedSettingsHash);
 			Add("Date",DateTimeVerified.ToString("yyyy-MM-ddTHH:mm:ss",CultureInfo.InvariantCulture));

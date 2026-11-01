@@ -185,6 +185,7 @@ Name=Not gated
 			Assert.AreEqual(model.GatedSettingsHashValue,record.GatedSettingsHash);
 			Assert.AreEqual(now,record.DateTimeVerified);
 			Assert.AreEqual("Example Sensor DS",record.SourceName);
+			Assert.AreEqual("Example Sensor DS",record.SourceProductName);
 			Assert.AreEqual(16,record.BitsRequested);
 			Assert.AreEqual(16,record.BitsDelivered);
 			Assert.AreEqual("Memory",record.TransferMechanism);
@@ -199,7 +200,7 @@ Name=Not gated
 			Assert.IsTrue(record.IsMetadataPresent);
 			Assert.IsTrue(record.IsPassedFor16Bit);
 			Assert.AreEqual("",TestCaptureModel.GetRecordWarning(record));
-			Assert.IsTrue(record.Matches(12,"oppc1",model.GatedSettingsHashValue.ToUpperInvariant()));
+			Assert.IsTrue(record.Matches(12,"oppc1","Example Sensor DS",model.GatedSettingsHashValue.ToUpperInvariant()));
 			model.OnRecordWritten(record);
 			StringAssert.Contains(model.GetResultText(),"verifies 16-bit capture with these settings");
 			//A new image needs new confirmations.
@@ -299,7 +300,8 @@ Name=Not gated
 		#region CaptureVerificationRecord
 		private static CaptureVerificationRecord FullRecord() {
 			return new CaptureVerificationRecord {
-				ImagingDeviceNum=12,DeviceDescription="Sensor; room 2 = left %",SourceName="Example Sensor DS",ComputerName="OPPC1",
+				ImagingDeviceNum=12,DeviceDescription="Sensor; room 2 = left %",SourceName="Example Sensor DS",
+				SourceProductName="Example Sensor DS 1.1",ComputerName="OPPC1",
 				GatedSettingsHash=new string('a',64),DateTimeVerified=new DateTime(2026,10,31,15,4,5),BitsRequested=16,BitsDelivered=16,
 				TransferMechanism="Memory",Width=1000,Height=1500,XDpi=1270,YDpi=1270,ByteOrder16="LE",ByteOrderCheck="LooksRight",
 				IsByteOrderConfirmed=true,Polarity="AsDelivered",PixelFlavor="Chocolate",IsPolarityConfirmed=true,MinValue=12,MaxValue=4000,
@@ -345,12 +347,18 @@ Name=Not gated
 		[TestMethod]
 		public void Record_MatchesAndPasses() {
 			CaptureVerificationRecord record=FullRecord();
-			Assert.IsTrue(record.Matches(12,"oppc1 ",new string('A',64)));
-			Assert.IsFalse(record.Matches(13,"OPPC1",new string('a',64)),"Another device.");
-			Assert.IsFalse(record.Matches(12,"OPPC2",new string('a',64)),"Another computer.");
-			Assert.IsFalse(record.Matches(12,"OPPC1",new string('b',64)),"Other settings.");
+			Assert.IsTrue(record.Matches(12,"oppc1 "," example sensor ds",new string('A',64)));
+			Assert.IsFalse(record.Matches(13,"OPPC1","Example Sensor DS",new string('a',64)),"Another device.");
+			Assert.IsFalse(record.Matches(12,"OPPC2","Example Sensor DS",new string('a',64)),"Another computer.");
+			Assert.IsFalse(record.Matches(12,"OPPC1","Example Sensor DS",new string('b',64)),"Other settings.");
+			//The hash covers capture.ini only; with RestrictSources=0 pointing the device row at another source leaves it unchanged.
+			Assert.IsFalse(record.Matches(12,"OPPC1","Other Sensor DS",new string('a',64)),"Another TWAIN source.");
+			Assert.IsFalse(record.Matches(12,"OPPC1","",new string('a',64)));
+			record.SourceName="";
+			Assert.IsFalse(record.Matches(12,"OPPC1","",new string('a',64)),"A record without its source matches none.");
+			record=FullRecord();
 			record.GatedSettingsHash="";
-			Assert.IsFalse(record.Matches(12,"OPPC1",""));
+			Assert.IsFalse(record.Matches(12,"OPPC1","Example Sensor DS",""));
 			record=FullRecord();
 			record.ByteOrderCheck="LooksSwapped";
 			Assert.IsFalse(record.IsPassedFor16Bit);

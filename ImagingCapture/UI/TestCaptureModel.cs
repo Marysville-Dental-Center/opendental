@@ -298,7 +298,8 @@ namespace ImagingCapture.UI {
 			CaptureVerificationRecord record=new CaptureVerificationRecord();
 			record.ImagingDeviceNum=Device.ImagingDeviceNum;
 			record.DeviceDescription=Device.Description??"";
-			record.SourceName=string.IsNullOrWhiteSpace(SourceInfo?.ProductName) ? Device.TwainName??"" : SourceInfo.ProductName;
+			record.SourceName=(Device.TwainName??"").Trim();//The row value the session compares (Matches).
+			record.SourceProductName=SourceInfo?.ProductName??"";
 			record.ComputerName=ComputerName;
 			record.GatedSettingsHash=GatedSettingsHashValue;
 			record.DateTimeVerified=now;
