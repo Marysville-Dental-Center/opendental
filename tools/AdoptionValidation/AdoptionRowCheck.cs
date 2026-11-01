@@ -78,8 +78,8 @@ namespace AdoptionValidation {
 			public List<string> ListCodeGroupsMarked=new List<string>();
 			///<summary>The CodeGroupNums of the code groups the Insurance History step added as planned.</summary>
 			public List<long> ListCodeGroupNumsAdded=new List<long>();
-			///<summary>The codegroup rows CheckCodeGroup found as planned, marked and added: their 26.1 columns hold planned values, not the defaults.
-			///</summary>
+			///<summary>The codegroup rows whose 26.1 columns CheckCodeGroup checks itself, against the plan instead of the defaults: the planned groups and
+			///every added row.</summary>
 			public HashSet<long> SetCodeGroupNumsPlanned=new HashSet<long>();
 			///<summary>Open Dental 25.3 PhoneExtension grants moved from 272 to 274, all of them planned.</summary>
 			public int CountPermsRenumbered;
@@ -584,6 +584,8 @@ namespace AdoptionValidation {
 					+listUpdated.Count+" and adds "+listAddedPlanned.Count+" on this database.");
 			}
 			Dictionary<long,CodeGroup> dictUpdated=listUpdated.ToDictionary(x => x.CodeGroupNum);
+			//Planned groups with a failure: not counted as marked.
+			HashSet<long> setWrong=new HashSet<long>();
 			//Common columns: only the planned groups' ProcCodes, and (when the original already had them) their history columns.
 			foreach(RowComparer.ChangedRow changed in diff.ListChanged) {
 				if(!dictUpdated.TryGetValue(changed.Key,out CodeGroup codeGroupPlanned)) {
@@ -596,6 +598,7 @@ namespace AdoptionValidation {
 				if(listColumnsWrong.Count>0) {
 					result.ListFailures.Add("codegroup row "+changed.Key+" ('"+codeGroupPlanned.GroupName+"'): "+string.Join(", ",listColumnsWrong)+" changed; the Insurance "
 						+"History step changes only ProcCodes and the three history columns there.");
+					setWrong.Add(changed.Key);
 				}
 			}
 			foreach(CodeGroup codeGroupPlanned in listUpdated) {
@@ -604,18 +607,21 @@ namespace AdoptionValidation {
 				if(listRows.Count==0) {
 					continue;//Reported as missing above.
 				}
+				result.SetCodeGroupNumsPlanned.Add(codeGroupPlanned.CodeGroupNum);//Its 26.1 columns are checked here, not against their defaults.
 				List<string> listWrong=CompareCodeGroupValues(listRows[0],codeGroupPlanned);
 				if(listWrong.Count>0) {
 					result.ListFailures.Add("codegroup row "+codeGroupPlanned.CodeGroupNum+" ('"+codeGroupPlanned.GroupName+"') holds "+string.Join(", ",listWrong)
 						+"; the Insurance History step writes what migration-preview lists.");
 					continue;
 				}
-				result.ListCodeGroupsMarked.Add("'"+codeGroupPlanned.GroupName+"' (CodeGroupNum "+codeGroupPlanned.CodeGroupNum+")");
-				result.SetCodeGroupNumsPlanned.Add(codeGroupPlanned.CodeGroupNum);
+				if(!setWrong.Contains(codeGroupPlanned.CodeGroupNum)) {
+					result.ListCodeGroupsMarked.Add("'"+codeGroupPlanned.GroupName+"' (CodeGroupNum "+codeGroupPlanned.CodeGroupNum+")");
+				}
 			}
 			//Added rows: one per planned new group, with exactly its values.
 			List<CodeGroup> listAddedLeft=listAddedPlanned.ToList();
 			foreach(long codeGroupNum in diff.ListOnlySecond) {
+				result.SetCodeGroupNumsPlanned.Add(codeGroupNum);//An added row is checked here: as planned, or reported.
 				object[] row=db.Rows("SELECT ProcCodes,ShowInHistory,HistProcCode,IsPerioFourQuads,GroupName,ItemOrder,CodeGroupFixed,IsHidden,ShowInAgeLimit,"
 					+"ShowInFrequency,ShowInOther FROM `"+adopted+"`.codegroup WHERE CodeGroupNum="+codeGroupNum.ToString(CultureInfo.InvariantCulture))[0];
 				CodeGroup codeGroupMatch=listAddedLeft.FirstOrDefault(x => CompareCodeGroupValues(row,x,isAdded:true).Count==0);
@@ -626,7 +632,6 @@ namespace AdoptionValidation {
 				}
 				listAddedLeft.Remove(codeGroupMatch);
 				result.ListCodeGroupNumsAdded.Add(codeGroupNum);
-				result.SetCodeGroupNumsPlanned.Add(codeGroupNum);
 			}
 			foreach(CodeGroup codeGroupPlanned in listAddedLeft) {
 				result.ListFailures.Add("No codegroup row was added for the planned code group '"+codeGroupPlanned.GroupName+"' ("+codeGroupPlanned.CodeGroupFixed
@@ -719,8 +724,8 @@ namespace AdoptionValidation {
 
 		///<summary>The tables the copy has and the original lacks must be empty, and every column the copy's tables have and the original's lack must hold
 		///the column's default in every row: the 25.4 and 26.1 schema steps add them and write nothing into them (evaluation.GradeOverride's default is
-		///-1, the "no override" back-fill). The one exception is the codegroup rows the Insurance History step wrote as planned, which CheckCodeGroup
-		///holds to their planned values.</summary>
+		///-1, the "no override" back-fill). The one exception is the codegroup rows the Insurance History step writes (and any added row), which
+		///CheckCodeGroup holds to the plan.</summary>
 		private static void CheckNewTablesAndColumns(Db db,string original,string adopted,Result result) {
 			int countFailuresBefore=result.ListFailures.Count;
 			HashSet<string> setTablesOriginal=new HashSet<string>(TableNames(db,original),StringComparer.OrdinalIgnoreCase);
@@ -761,7 +766,7 @@ namespace AdoptionValidation {
 				string expected=IsTextType(dataType) && expression!="NULL" ? "BINARY "+expression : expression;
 				string where="NOT ("+value+" <=> "+expected+")";
 				if(string.Equals(table,"codegroup",StringComparison.OrdinalIgnoreCase) && result.SetCodeGroupNumsPlanned.Count>0) {
-					//The rows the Insurance History step wrote as planned (CheckCodeGroup).
+					//The rows the Insurance History step writes, which CheckCodeGroup holds to the plan.
 					where+=" AND CodeGroupNum NOT IN ("+string.Join(",",result.SetCodeGroupNumsPlanned.OrderBy(x => x).Select(x => x.ToString(CultureInfo.InvariantCulture)))+")";
 				}
 				long countOther=db.ScalarLong("SELECT COUNT(*) FROM `"+adopted+"`.`"+table+"` WHERE "+where);

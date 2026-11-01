@@ -7,6 +7,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenDentBusiness;
 using OpenDentBusiness.ForkMigrations;
 using OpenDentBusiness.ForkMigrations.Features;
+using OpenDentBusiness.ForkMigrations.FeatureSteps;
 using OpenDentBusiness.ForkMigrations.Seeds26_1;
 using SyntheticData.Validation;
 
@@ -132,6 +133,55 @@ namespace AdoptionValidation.Tests {
 			text=string.Join("\r\n",planRenamed.Lines());
 			StringAssert.Contains(text,"DisplayReportNum 14 (\"UDS+ Report\"), under a name this program does not know, is renamed to ODUdsPlus, InternalName only");
 			Assert.IsFalse(System.Text.RegularExpressions.Regex.IsMatch(text,@"Renamed displayreport \S+ to \S+ \(same description\)"));
+		}
+
+		///<summary>What migration-preview prints for the Insurance History step (M2-HIST): the code groups it marks, with their History Proc Code and the
+		///codes it adds, and the group it creates, in the words of the adoption log; nothing on an adopted database, on one from 25.4 on, or without
+		///history preferences. The dry run reads the report rows step's renames by "Renamed displayreport X to Y (same description)", which these lines
+		///never contain.</summary>
+		[TestMethod]
+		public void InsHistPlanLines_SayWhatTheStepChanges() {
+			List<CodeGroup> listCodeGroups=new List<CodeGroup> {
+				new CodeGroup { CodeGroupNum=3,GroupName="BWs",ProcCodes="Z0272,Z0274",ItemOrder=0,CodeGroupFixed=EnumCodeGroupFixed.BW },
+				new CodeGroup { CodeGroupNum=7,GroupName="Perio Maint",ProcCodes="Z4910",ItemOrder=1,CodeGroupFixed=EnumCodeGroupFixed.Perio },
+				new CodeGroup { CodeGroupNum=8,GroupName="SRP",ProcCodes="Z4341-Z4342",ItemOrder=2,CodeGroupFixed=EnumCodeGroupFixed.SRP },
+			};
+			Dictionary<string,string> dictPrefs=new Dictionary<string,string> {
+				{ nameof(PrefName.InsHistBWCodes),"Z0272" },{ nameof(PrefName.InsHistPerioMaintCodes),"Z4910,Z4920" },{ nameof(PrefName.InsHistExamCodes),"Z0120" },
+				{ nameof(PrefName.InsHistPerioURCodes),"Z4341" },{ nameof(PrefName.InsHistProphyCodes),"" },
+			};
+			List<string> listProcCodes=new List<string> { "Z0272","Z0274","Z4910","Z0120","Z4341","Z4342" };
+			InsHistCodeGroupPlan.Plan plan=new InsHistCodeGroupPlan.Plan { HasCodeGroupTable=true,
+				Migration=InsHistCodeGroupsMigration.CreatePlan(true,false,dictPrefs,listCodeGroups,listProcCodes) };
+			Assert.IsTrue(plan.IsChanging);
+			string text=string.Join("\r\n",plan.Lines());
+			StringAssert.Contains(text,"Step 2027004701 (Insurance History rows from code groups) marks 3 code group(s) Show In History and adds 1 (this database "
+				+"comes from before Open Dental 25.4; the ten InsHist*Codes preferences are kept): ");
+			StringAssert.Contains(text,"Code group 'BWs' (CodeGroupNum 3) shown in Insurance History, History Proc Code Z0272; ");
+			StringAssert.Contains(text,"Code group 'Perio Maint' (CodeGroupNum 7) shown in Insurance History, History Proc Code Z4910, codes added: Z4920; ");
+			StringAssert.Contains(text,"Code group 'SRP' (CodeGroupNum 8) shown in Insurance History with four quadrant rows, History Proc Code Z4341; ");
+			StringAssert.Contains(text,"Added code group 'Exam' (Exam, ItemOrder 3), shown in Insurance History, History Proc Code Z0120, codes Z0120");
+			StringAssert.Contains(text,"adopt's row check (step 4) requires exactly this");
+			Assert.IsFalse(System.Text.RegularExpressions.Regex.IsMatch(text,@"Renamed displayreport \S+ to \S+ \(same description\)"));
+			CollectionAssert.AreEqual(new long[] { 3,8,7 },plan.Migration.ListUpdated.Select(x => x.CodeGroupNum).ToArray(),"In the order of the 24.3 rows.");
+			//An adopted database: the level is applied.
+			InsHistCodeGroupPlan.Plan planAdopted=new InsHistCodeGroupPlan.Plan { HasCodeGroupTable=true,
+				Migration=InsHistCodeGroupsMigration.CreatePlan(true,true,dictPrefs,listCodeGroups,listProcCodes) };
+			Assert.IsFalse(planAdopted.IsChanging);
+			StringAssert.Contains(string.Join("\r\n",planAdopted.Lines()),"Step 2027004701 (Insurance History rows from code groups) changes nothing: it already ran on "
+				+"this database.");
+			//From 25.4 on, Open Dental converted the rows itself; and a group already marked Show In History is left alone.
+			StringAssert.Contains(string.Join("\r\n",new InsHistCodeGroupPlan.Plan { HasCodeGroupTable=true,
+				Migration=InsHistCodeGroupsMigration.CreatePlan(false,false,dictPrefs,listCodeGroups,listProcCodes) }.Lines()),
+				"changes nothing: this database does not come from before Open Dental 25.4.");
+			List<CodeGroup> listCodeGroupsSetUp=listCodeGroups.Select(x => x.Copy()).ToList();
+			listCodeGroupsSetUp[0].ShowInHistory=true;
+			StringAssert.Contains(string.Join("\r\n",new InsHistCodeGroupPlan.Plan { HasCodeGroupTable=true,
+				Migration=InsHistCodeGroupsMigration.CreatePlan(true,false,dictPrefs,listCodeGroupsSetUp,listProcCodes) }.Lines()),
+				"changes nothing: 1 code group(s) are already marked Show In History.");
+			StringAssert.Contains(string.Join("\r\n",new InsHistCodeGroupPlan.Plan { HasCodeGroupTable=true,
+				Migration=InsHistCodeGroupsMigration.CreatePlan(true,false,new Dictionary<string,string>(),listCodeGroups,listProcCodes) }.Lines()),
+				"changes nothing: none of the ten InsHist*Codes preferences has a value.");
 		}
 
 		[TestMethod]
