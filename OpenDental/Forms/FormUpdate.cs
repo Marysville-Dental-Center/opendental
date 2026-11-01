@@ -23,8 +23,11 @@ namespace OpenDental {
 
 		private void FormUpdate_Load(object sender, System.EventArgs e) {
 			LayoutMenu();
-			labelVersion.Text=Lan.g(this,"Using Version:")+" "+Application.ProductVersion;
-			UpdateHistory updateHistory=UpdateHistories.GetForVersion(Application.ProductVersion);
+			//The release version is shown, as in About. The "Since" date comes from the updatehistory row of the release version, or failing that of
+			//the compatibility version (AboutBoxInfo.GetUpdateHistoryVersions).
+			System.Reflection.Assembly assemblyProgram=typeof(FormUpdate).Assembly;
+			labelVersion.Text=Lan.g(this,"Using Version:")+" "+AboutBoxInfo.GetReleaseVersion(assemblyProgram);
+			UpdateHistory updateHistory=AboutBoxInfo.GetUpdateHistory(assemblyProgram);
 			if(updateHistory!=null) {
 				labelVersion.Text+="  "+Lan.g(this,"Since")+": "+updateHistory.DateTimeUpdated.ToShortDateString();
 			}

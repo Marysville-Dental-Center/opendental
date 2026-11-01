@@ -41,33 +41,10 @@ namespace OpenDental {
 			}
 		}
 
-		/// <summary>Updates some preferences in Open Dental according to the enabled state of the Benco bridge</summary>
-		private void UpdateBencoSettings() {
-			bool hasPrefChanged=false;
-			string odTitle="Open Dental";
-			string odSoftware="Open Dental Software";
-			string bencoTitle="Benco Practice Management powered by Open Dental";
-			string bencoSoftware="Benco Practice Management";
-			if(_program.Enabled) {
-				if(PrefC.GetString(PrefName.MainWindowTitle)==odTitle) {
-					hasPrefChanged|=Prefs.UpdateString(PrefName.MainWindowTitle,bencoTitle);
-				}
-				if(PrefC.GetString(PrefName.SoftwareName)!=bencoSoftware) {
-					hasPrefChanged|=Prefs.UpdateString(PrefName.SoftwareName,bencoSoftware);
-				}
-			}
-			else {
-				if(PrefC.GetString(PrefName.MainWindowTitle)==bencoTitle) {
-					hasPrefChanged|=Prefs.UpdateString(PrefName.MainWindowTitle,odTitle);
-				}
-				if(PrefC.GetString(PrefName.SoftwareName)!=odSoftware) {
-					hasPrefChanged|=Prefs.UpdateString(PrefName.SoftwareName,odSoftware);
-				}
-			}
-			if(hasPrefChanged) {
-				Signalods.SetInvalid(InvalidType.Prefs);
-			}
-		}
+		//The Benco branding switch (UpdateBencoSettings) was removed (decision D7, ground rule 7): enabling this program link used to rename the
+		//main window title and the SoftwareName preference to Benco's reseller branding, and disabling it set them back. The program link itself
+		//(path, description, toolbar buttons) is unchanged. A database that still holds the Benco values shows the product name instead
+		//(OpenDental.AboutBoxInfo.GetDisplayName); the rows are left as they are.
 
 		private void FrmBencoSetup_PreviewKeyDown(object sender,KeyEventArgs e) {
 			if(butSave.IsAltKey(Key.S,e)) {
@@ -91,8 +68,6 @@ namespace OpenDental {
 				newBut.ButtonText=textButText.Text;
 				ToolButItems.Insert(newBut);
 			}
-			//Update settings as necessary
-			UpdateBencoSettings();
 			MsgBox.Show(this,"You will need to restart Open Dental for these changes to take effect.");
 			IsDialogOK=true;
 		}
