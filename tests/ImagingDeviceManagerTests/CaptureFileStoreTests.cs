@@ -421,6 +421,67 @@ namespace ImagingDeviceManager.Tests {
 		}
 		#endregion Resolve
 
+		#region Journal SetDelivered
+		[TestMethod]
+		public void SetDelivered_None_TheSidecarCannotFollowTheRename_TheImageGetsItsNameBack_WithItsSidecarRewritten() {
+			CaptureJournal journal=new CaptureJournal(_folders);
+			CaptureImageFile file=CaptureImageFile.FromAcquiredImage(Gray8Image(2,2));
+			CaptureRecord record=SessionRecord(new DateTime(2026,10,31,10,0,0),Guid.NewGuid(),false);
+			string path=journal.Write(file,record,CaptureJournal.DeliveredCaller,null,200,null);
+			string folder=Path.GetDirectoryName(path);
+			//The -only sidecar's name is taken (here by a folder): neither a move nor a write can put the sidecar there.
+			Directory.CreateDirectory(Path.Combine(folder,Path.GetFileNameWithoutExtension(path)+CaptureJournal.OnlyCopySuffix+".txt"));
+			List<string> listLog=new List<string>();
+			string pathNow=journal.SetDelivered(path,file,record,CaptureJournal.DeliveredNone,"The quarantine could not be written.",listLog.Add);
+			Assert.AreEqual(path,pathNow,"The image gets its name back...");
+			Assert.IsTrue(File.Exists(pathNow),"...and the returned path is where it is.");
+			CaptureFileEntry entry=_store.ListJournal().Single();
+			Assert.IsTrue(entry.HasSidecar,"Never an image without its sidecar.");
+			Assert.AreEqual(42,entry.PatNum,"Its patient, session and slot are kept.");
+			Assert.AreEqual(CaptureJournal.DeliveredNone,entry.Delivered);
+			Assert.IsTrue(listLog.Any(x => x.Contains("could not follow")),string.Join("\r\n",listLog));
+		}
+
+		[TestMethod]
+		public void SetDelivered_None_TheRewriteFailsAfterTheRename_TheOnlyCopyKeepsItsSidecar_NoOrphanSidecar() {
+			CaptureJournal journal=new CaptureJournal(_folders);
+			CaptureImageFile file=CaptureImageFile.FromAcquiredImage(Gray8Image(2,2));
+			CaptureRecord record=SessionRecord(new DateTime(2026,10,31,10,0,0),Guid.NewGuid(),false);
+			string path=journal.Write(file,record,CaptureJournal.DeliveredCaller,null,200,null);
+			string folder=Path.GetDirectoryName(path);
+			string baseOnly=Path.GetFileNameWithoutExtension(path)+CaptureJournal.OnlyCopySuffix;
+			Directory.CreateDirectory(Path.Combine(folder,baseOnly+".txt.tmp"));//the rewrite through the temporary file fails, as on a full disk
+			List<string> listLog=new List<string>();
+			string pathNow=journal.SetDelivered(path,file,record,CaptureJournal.DeliveredNone,"The quarantine could not be written.",listLog.Add);
+			Assert.AreEqual(Path.Combine(folder,baseOnly+".bmp"),pathNow,"Renamed, so that rotation keeps the only copy.");
+			Assert.IsTrue(File.Exists(pathNow));
+			CaptureFileEntry entry=_store.ListJournal().Single();
+			Assert.AreEqual(pathNow,entry.ImagePath);
+			Assert.IsTrue(entry.HasSidecar,"The sidecar followed the image before the rewrite.");
+			Assert.AreEqual(42,entry.PatNum);
+			CollectionAssert.AreEqual(new[] { baseOnly+".txt" },Directory.GetFiles(folder,"*.txt").Select(x => Path.GetFileName(x)).ToArray(),
+				"No sidecar is left under the plain name.");
+			Assert.IsTrue(listLog.Any(x => x.Contains("could not be updated")),string.Join("\r\n",listLog));
+		}
+
+		[TestMethod]
+		public void SetDelivered_None_TheSidecarFollowsTheRename_RewrittenWithTheNewDelivered() {
+			CaptureJournal journal=new CaptureJournal(_folders);
+			CaptureImageFile file=CaptureImageFile.FromAcquiredImage(Gray8Image(2,2));
+			CaptureRecord record=SessionRecord(new DateTime(2026,10,31,10,0,0),Guid.NewGuid(),false);
+			string path=journal.Write(file,record,CaptureJournal.DeliveredCaller,null,200,null);
+			string pathNow=journal.SetDelivered(path,file,record,CaptureJournal.DeliveredNone,"The quarantine could not be written.",null);
+			StringAssert.EndsWith(pathNow,CaptureJournal.OnlyCopySuffix+".bmp");
+			CaptureFileEntry entry=_store.ListJournal().Single();
+			Assert.AreEqual(CaptureJournal.DeliveredNone,entry.Delivered);
+			Assert.AreEqual(42,entry.PatNum);
+			Assert.AreEqual(1,Directory.GetFiles(Path.GetDirectoryName(path),"*.txt").Length);
+			Assert.AreEqual(0,Directory.GetFiles(Path.GetDirectoryName(path),"*.tmp").Length,"No temporary file is left.");
+			Assert.AreEqual(pathNow,journal.SetDelivered(pathNow,file,record,CaptureJournal.DeliveredQuarantine,"q.bmp",null),"In place.");
+			Assert.AreEqual(CaptureJournal.DeliveredQuarantine,_store.ListJournal().Single().Delivered);
+		}
+		#endregion Journal SetDelivered
+
 		#region Unassigned count
 		[TestMethod]
 		public void UnassignedInfo_TurnsIntoTheWarningAfter30Days() {

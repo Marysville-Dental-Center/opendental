@@ -97,48 +97,88 @@ namespace ImagingDeviceManager.Journal {
 		}
 
 		///<summary>Rewrites the sidecar of the journal copy at pathImage (written by Write for file and record) with another Delivered value, for
-		///an image whose fate was decided after its copy was written: the capture session began to close in between and quarantined it. A
-		///DeliveredNone copy is renamed with OnlyCopySuffix first, so that rotation leaves it alone. Returns the image path, renamed or not;
-		///problems go to log, and the copy then stays as it was. Never throws.</summary>
+		///an image whose fate was decided after its copy was written: the capture session quarantined it (or could not). A DeliveredNone copy is
+		///renamed with OnlyCopySuffix first, so that rotation leaves it alone (a rename needs no disk space), and its sidecar is moved after it at
+		///once, so the image always keeps its sidecar with the patient, session and slot; if the sidecar cannot follow, the image gets its name
+		///back. The sidecar is then rewritten through a temporary file (WriteReplacing): a crash or a full disk leaves the old sidecar or the new
+		///one, never an empty one; when the rewrite fails, the copy keeps its sidecar with the Delivered value from before. Returns the path the
+		///image has now; problems go to log. Never throws.</summary>
 		public string SetDelivered(string pathImage,CaptureImageFile file,CaptureRecord record,string delivered,string detail,Action<string> log) {
 			log=log??(text => { });
 			if(string.IsNullOrEmpty(pathImage) || file==null || record==null) {
 				return pathImage;
 			}
+			string pathImageNow=pathImage;
 			try {
 				string folder=Path.GetDirectoryName(pathImage);
 				string baseName=Path.GetFileNameWithoutExtension(pathImage);
 				string pathSidecar=Path.Combine(folder,baseName+CaptureFiles.SidecarExtension);
-				string pathImageNew=pathImage;
 				if(delivered==DeliveredNone && !baseName.EndsWith(OnlyCopySuffix,StringComparison.Ordinal)) {
 					string baseNameNew=baseName+OnlyCopySuffix;
 					string pathCandidate=Path.Combine(folder,baseNameNew+Path.GetExtension(pathImage));
+					string pathSidecarNew=Path.Combine(folder,baseNameNew+CaptureFiles.SidecarExtension);
 					try {
 						File.Move(pathImage,pathCandidate);
-						pathImageNew=pathCandidate;
-						baseName=baseNameNew;
+						pathImageNow=pathCandidate;
 					}
 					catch(Exception ex) {
 						log("The journal copy "+Path.GetFileName(pathImage)+" is the only one, but it could not be renamed so that rotation keeps it: "
 							+ex.Message);
 					}
+					if(pathImageNow==pathCandidate) {
+						try {
+							if(File.Exists(pathSidecar)) {
+								File.Move(pathSidecar,pathSidecarNew);
+							}
+							pathSidecar=pathSidecarNew;
+						}
+						catch(Exception ex) {
+							//The image is never left without its sidecar: it gets its name back.
+							log("The sidecar "+Path.GetFileName(pathSidecar)+" could not follow the only copy renamed to "+Path.GetFileName(pathCandidate)
+								+" ("+ex.Message+"); the copy keeps its name, so rotation may remove it after "+KeepDefault+" newer copies.");
+							try {
+								File.Move(pathCandidate,pathImage);
+								pathImageNow=pathImage;
+							}
+							catch(Exception exBack) {
+								log("The journal copy "+Path.GetFileName(pathCandidate)+" could not get its name back: "+exBack.Message);
+								pathSidecar=pathSidecarNew;
+							}
+						}
+					}
 				}
 				string sha256=CaptureFiles.Sha256Hex(file.Bytes);
-				File.WriteAllText(Path.Combine(folder,baseName+CaptureFiles.SidecarExtension),
-					BuildSidecar(record,delivered,detail,Path.GetFileName(pathImageNew),file,sha256),new UTF8Encoding(false));
-				if(pathImageNew!=pathImage) {
-					try {
-						File.Delete(pathSidecar);
-					}
-					catch(Exception ex) {
-						log("The old sidecar "+Path.GetFileName(pathSidecar)+" could not be removed: "+ex.Message);
-					}
-				}
-				return pathImageNew;
+				WriteReplacing(pathSidecar,BuildSidecar(record,delivered,detail,Path.GetFileName(pathImageNow),file,sha256));
+				return pathImageNow;
 			}
 			catch(Exception ex) {
-				log("The sidecar of the journal copy "+Path.GetFileName(pathImage)+" could not be updated (Delivered="+delivered+"): "+ex.Message);
-				return pathImage;
+				log("The sidecar of the journal copy "+Path.GetFileName(pathImageNow)+" could not be updated (Delivered="+delivered+"): "+ex.Message);
+				return pathImageNow;
+			}
+		}
+
+		///<summary>Writes text to path through path+".tmp", then replaces path with it (or moves it there when there is no file yet), so that a
+		///crash or a full disk leaves the old file or the new one, never an empty one. Throws when it fails; the temporary file is removed.</summary>
+		private static void WriteReplacing(string path,string text) {
+			string pathTemp=path+".tmp";
+			try {
+				File.WriteAllText(pathTemp,text,new UTF8Encoding(false));
+				if(File.Exists(path)) {
+					File.Replace(pathTemp,path,null);
+				}
+				else {
+					File.Move(pathTemp,path);
+				}
+			}
+			catch {
+				try {
+					if(File.Exists(pathTemp)) {
+						File.Delete(pathTemp);
+					}
+				}
+				catch {
+				}
+				throw;
 			}
 		}
 
