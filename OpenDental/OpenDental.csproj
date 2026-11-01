@@ -5225,6 +5225,10 @@
     <Compile Include="Forms\FormProcEdit.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="Forms\FormProcEdit.NoteMerge.cs">
+      <DependentUpon>FormProcEdit.cs</DependentUpon>
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Forms\FormProcSelect.cs">
       <SubType>Form</SubType>
     </Compile>

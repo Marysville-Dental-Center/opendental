@@ -69,6 +69,7 @@
       "tests\\M2INSVTests\\M2INSVTests.csproj",
       "tests\\M2MEDTests\\M2MEDTests.csproj",
       "tests\\M2MISCTests\\M2MISCTests.csproj",
+      "tests\\M2NOTESTests\\M2NOTESTests.csproj",
       "tests\\M2PAYWTests\\M2PAYWTests.csproj",
       "tests\\M2RECURTests\\M2RECURTests.csproj",
       "tests\\M2SDVTests\\M2SDVTests.csproj",

@@ -222,6 +222,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "M2RECURTests", "tests\M2REC
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "M2EMPTests", "tests\M2EMPTests\M2EMPTests.csproj", "{26FE86B9-AA28-49EE-9C67-3179A92D3FEA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "M2NOTESTests", "tests\M2NOTESTests\M2NOTESTests.csproj", "{2E4AE411-5310-4703-AC4F-EB518F6179D8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -1493,6 +1495,18 @@ Global
 		{26FE86B9-AA28-49EE-9C67-3179A92D3FEA}.Release|Any CPU.Build.0 = Release|x86
 		{26FE86B9-AA28-49EE-9C67-3179A92D3FEA}.Release|x86.ActiveCfg = Release|x86
 		{26FE86B9-AA28-49EE-9C67-3179A92D3FEA}.Release|x86.Build.0 = Release|x86
+		{2E4AE411-5310-4703-AC4F-EB518F6179D8}.Debug|Any CPU.ActiveCfg = Debug|x86
+		{2E4AE411-5310-4703-AC4F-EB518F6179D8}.Debug|Any CPU.Build.0 = Debug|x86
+		{2E4AE411-5310-4703-AC4F-EB518F6179D8}.Debug|x86.ActiveCfg = Debug|x86
+		{2E4AE411-5310-4703-AC4F-EB518F6179D8}.Debug|x86.Build.0 = Debug|x86
+		{2E4AE411-5310-4703-AC4F-EB518F6179D8}.ODXam|Any CPU.ActiveCfg = Release|x86
+		{2E4AE411-5310-4703-AC4F-EB518F6179D8}.ODXam|Any CPU.Build.0 = Release|x86
+		{2E4AE411-5310-4703-AC4F-EB518F6179D8}.ODXam|x86.ActiveCfg = Release|x86
+		{2E4AE411-5310-4703-AC4F-EB518F6179D8}.ODXam|x86.Build.0 = Release|x86
+		{2E4AE411-5310-4703-AC4F-EB518F6179D8}.Release|Any CPU.ActiveCfg = Release|x86
+		{2E4AE411-5310-4703-AC4F-EB518F6179D8}.Release|Any CPU.Build.0 = Release|x86
+		{2E4AE411-5310-4703-AC4F-EB518F6179D8}.Release|x86.ActiveCfg = Release|x86
+		{2E4AE411-5310-4703-AC4F-EB518F6179D8}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

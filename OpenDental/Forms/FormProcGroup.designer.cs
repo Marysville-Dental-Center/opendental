@@ -53,6 +53,11 @@ namespace OpenDental {
 			this.comboProv = new OpenDental.UI.ComboBox();
 			this.butAdd = new OpenDental.UI.Button();
 			this.butRemove = new OpenDental.UI.Button();
+			this.labelSignature2 = new System.Windows.Forms.Label();
+			this.signatureBoxWrapper2 = new OpenDental.UI.SignatureBoxWrapper();
+			this.labelUser2 = new System.Windows.Forms.Label();
+			this.textUser2 = new System.Windows.Forms.TextBox();
+			this.butChangeUser2 = new OpenDental.UI.Button();
 			this.SuspendLayout();
 			// 
 			// label7
@@ -66,7 +71,8 @@ namespace OpenDental {
 			// 
 			// label15
 			// 
-			this.label15.Location = new System.Drawing.Point(5, 264);
+			this.label15.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.label15.Location = new System.Drawing.Point(5, 309);
 			this.label15.Name = "label15";
 			this.label15.Size = new System.Drawing.Size(91, 41);
 			this.label15.TabIndex = 79;
@@ -127,8 +133,9 @@ namespace OpenDental {
 			// 
 			// signatureBoxWrapper
 			// 
+			this.signatureBoxWrapper.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
 			this.signatureBoxWrapper.BackColor = System.Drawing.SystemColors.ControlDark;
-			this.signatureBoxWrapper.Location = new System.Drawing.Point(98, 264);
+			this.signatureBoxWrapper.Location = new System.Drawing.Point(98, 309);
 			this.signatureBoxWrapper.Name = "signatureBoxWrapper";
 			this.signatureBoxWrapper.Size = new System.Drawing.Size(394, 81);
 			this.signatureBoxWrapper.TabIndex = 194;
@@ -137,14 +144,13 @@ namespace OpenDental {
 			// 
 			// gridProc
 			// 
-			this.gridProc.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
+			this.gridProc.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
 			this.gridProc.HScrollVisible = true;
-			this.gridProc.Location = new System.Drawing.Point(10, 375);
+			this.gridProc.Location = new System.Drawing.Point(10, 420);
 			this.gridProc.Name = "gridProc";
 			this.gridProc.SelectionMode = OpenDental.UI.GridSelectionMode.MultiExtended;
-			this.gridProc.Size = new System.Drawing.Size(489, 222);
+			this.gridProc.Size = new System.Drawing.Size(864, 222);
 			this.gridProc.TabIndex = 193;
 			this.gridProc.Title = "Procedures";
 			this.gridProc.TranslationName = "TableProg";
@@ -169,6 +175,9 @@ namespace OpenDental {
 			// textNotes
 			// 
 			this.textNotes.AcceptsTab = true;
+			this.textNotes.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
 			this.textNotes.BackColor = System.Drawing.SystemColors.Window;
 			this.textNotes.DetectLinksEnabled = false;
 			this.textNotes.DetectUrls = false;
@@ -177,7 +186,7 @@ namespace OpenDental {
 			this.textNotes.Name = "textNotes";
 			this.textNotes.QuickPasteType = OpenDentBusiness.EnumQuickPasteType.Procedure;
 			this.textNotes.ScrollBars = System.Windows.Forms.RichTextBoxScrollBars.Vertical;
-			this.textNotes.Size = new System.Drawing.Size(397, 188);
+			this.textNotes.Size = new System.Drawing.Size(880, 231);
 			this.textNotes.TabIndex = 1;
 			this.textNotes.Text = "";
 			this.textNotes.TextChanged += new System.EventHandler(this.textNotes_TextChanged);
@@ -187,7 +196,7 @@ namespace OpenDental {
 			this.butDelete.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
 			this.butDelete.Icon = OpenDental.UI.EnumIcons.DeleteX;
 			this.butDelete.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			this.butDelete.Location = new System.Drawing.Point(19, 606);
+			this.butDelete.Location = new System.Drawing.Point(19, 651);
 			this.butDelete.Name = "butDelete";
 			this.butDelete.Size = new System.Drawing.Size(83, 24);
 			this.butDelete.TabIndex = 8;
@@ -197,7 +206,7 @@ namespace OpenDental {
 			// butSave
 			// 
 			this.butSave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.butSave.Location = new System.Drawing.Point(507, 609);
+			this.butSave.Location = new System.Drawing.Point(882, 654);
 			this.butSave.Name = "butSave";
 			this.butSave.Size = new System.Drawing.Size(76, 24);
 			this.butSave.TabIndex = 12;
@@ -268,9 +277,10 @@ namespace OpenDental {
 			// 
 			// labelPermAlert
 			// 
+			this.labelPermAlert.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
 			this.labelPermAlert.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
 			this.labelPermAlert.ForeColor = System.Drawing.Color.DarkRed;
-			this.labelPermAlert.Location = new System.Drawing.Point(95, 348);
+			this.labelPermAlert.Location = new System.Drawing.Point(95, 393);
 			this.labelPermAlert.Name = "labelPermAlert";
 			this.labelPermAlert.Size = new System.Drawing.Size(367, 24);
 			this.labelPermAlert.TabIndex = 209;
@@ -304,9 +314,9 @@ namespace OpenDental {
 			// 
 			// butAdd
 			// 
-			this.butAdd.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			this.butAdd.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
 			this.butAdd.Icon = OpenDental.UI.EnumIcons.Add;
-			this.butAdd.Location = new System.Drawing.Point(507, 375);
+			this.butAdd.Location = new System.Drawing.Point(882, 420);
 			this.butAdd.Name = "butAdd";
 			this.butAdd.Size = new System.Drawing.Size(76, 24);
 			this.butAdd.TabIndex = 213;
@@ -315,17 +325,72 @@ namespace OpenDental {
 			// 
 			// butRemove
 			// 
-			this.butRemove.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.butRemove.Location = new System.Drawing.Point(507, 405);
+			this.butRemove.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+			this.butRemove.Location = new System.Drawing.Point(882, 450);
 			this.butRemove.Name = "butRemove";
 			this.butRemove.Size = new System.Drawing.Size(76, 24);
 			this.butRemove.TabIndex = 214;
 			this.butRemove.Text = "Remove";
 			this.butRemove.Click += new System.EventHandler(this.butRemove_Click);
 			// 
+			// labelSignature2
+			// 
+			this.labelSignature2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.labelSignature2.Location = new System.Drawing.Point(496, 309);
+			this.labelSignature2.Name = "labelSignature2";
+			this.labelSignature2.Size = new System.Drawing.Size(87, 30);
+			this.labelSignature2.TabIndex = 215;
+			this.labelSignature2.Text = "Signature 2";
+			this.labelSignature2.TextAlign = System.Drawing.ContentAlignment.TopRight;
+			// 
+			// signatureBoxWrapper2
+			// 
+			this.signatureBoxWrapper2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.signatureBoxWrapper2.BackColor = System.Drawing.SystemColors.ControlDark;
+			this.signatureBoxWrapper2.Location = new System.Drawing.Point(586, 309);
+			this.signatureBoxWrapper2.Name = "signatureBoxWrapper2";
+			this.signatureBoxWrapper2.Size = new System.Drawing.Size(394, 81);
+			this.signatureBoxWrapper2.TabIndex = 216;
+			this.signatureBoxWrapper2.UserSig = null;
+			this.signatureBoxWrapper2.SignatureChanged += new System.EventHandler(this.signatureBoxWrapper2_SignatureChanged);
+			// 
+			// labelUser2
+			// 
+			this.labelUser2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.labelUser2.Location = new System.Drawing.Point(496, 395);
+			this.labelUser2.Name = "labelUser2";
+			this.labelUser2.Size = new System.Drawing.Size(87, 16);
+			this.labelUser2.TabIndex = 217;
+			this.labelUser2.Text = "User 2";
+			this.labelUser2.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			// 
+			// textUser2
+			// 
+			this.textUser2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.textUser2.Location = new System.Drawing.Point(586, 393);
+			this.textUser2.Name = "textUser2";
+			this.textUser2.ReadOnly = true;
+			this.textUser2.Size = new System.Drawing.Size(119, 20);
+			this.textUser2.TabIndex = 218;
+			// 
+			// butChangeUser2
+			// 
+			this.butChangeUser2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.butChangeUser2.Location = new System.Drawing.Point(706, 392);
+			this.butChangeUser2.Name = "butChangeUser2";
+			this.butChangeUser2.Size = new System.Drawing.Size(23, 22);
+			this.butChangeUser2.TabIndex = 219;
+			this.butChangeUser2.Text = "...";
+			this.butChangeUser2.Click += new System.EventHandler(this.butChangeUser2_Click);
+			// 
 			// FormProcGroup
 			// 
-			this.ClientSize = new System.Drawing.Size(615, 645);
+			this.ClientSize = new System.Drawing.Size(990, 690);
+			this.Controls.Add(this.butChangeUser2);
+			this.Controls.Add(this.textUser2);
+			this.Controls.Add(this.labelUser2);
+			this.Controls.Add(this.signatureBoxWrapper2);
+			this.Controls.Add(this.labelSignature2);
 			this.Controls.Add(this.butRemove);
 			this.Controls.Add(this.butAdd);
 			this.Controls.Add(this.comboProv);
@@ -353,14 +418,13 @@ namespace OpenDental {
 			this.Controls.Add(this.label15);
 			this.Controls.Add(this.label7);
 			this.Controls.Add(this.butDelete);
-			this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
 			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
-			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormProcGroup";
 			this.ShowInTaskbar = false;
 			this.Text = "Group Note";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormProcGroup_FormClosing);
+			this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.FormProcGroup_FormClosed);
 			this.Load += new System.EventHandler(this.FormProcGroup_Load);
 			this.ResumeLayout(false);
 			this.PerformLayout();
@@ -395,5 +459,10 @@ namespace OpenDental {
 		private UI.ComboBox comboProv;
 		private UI.Button butAdd;
 		private UI.Button butRemove;
+		private Label labelSignature2;
+		private UI.SignatureBoxWrapper signatureBoxWrapper2;
+		private Label labelUser2;
+		private TextBox textUser2;
+		private UI.Button butChangeUser2;
 	}
 }

@@ -574,6 +574,9 @@
     <Compile Include="Frms\FrmPopupEdit.xaml.cs">
       <DependentUpon>FrmPopupEdit.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Frms\FrmProcNoteMerge.xaml.cs">
+      <DependentUpon>FrmProcNoteMerge.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Frms\FrmProviderIdentEdit.xaml.cs">
       <DependentUpon>FrmProviderIdentEdit.xaml</DependentUpon>
     </Compile>
@@ -1276,6 +1279,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Frms\FrmPopupEdit.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Frms\FrmProcNoteMerge.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

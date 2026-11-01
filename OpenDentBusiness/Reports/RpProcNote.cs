@@ -119,9 +119,12 @@ namespace OpenDentBusiness {
 				else {
 					whereNotesClause+="AND (n1.ProcNum IS NOT NULL OR unsignedNotes.ProcNum IS NOT NULL)";
 				}
+				//26.1 (M2-NOTES): a group note signed only in its second box counts as signed, as in the Chart. Signature2 is NULL on rows written
+				//before the column existed.
 				whereUnsignedNote=@"
 					LEFT JOIN procnote unsignedNotes ON unsignedNotes.ProcNum=procedurelog.ProcNum
 						AND unsignedNotes.Signature=''
+						AND COALESCE(unsignedNotes.Signature2,'')=''
 						AND	TRIM(unsignedNotes.Note)!=''
 						AND unsignedNotes.EntryDateTime= (SELECT MAX(n2.EntryDateTime) 
 								FROM procnote n2 
