@@ -1,6 +1,6 @@
 # Port note: B-CLAIM (claims, claim-procedure audit and permissions)
 
-Branch `port/b-claim`, cut from `m1/integration-a2-patch`. Backlog section: [port-backlog.md, B-CLAIM](../specs/port-backlog.md). Tests: `tests/BCLAIMTests` (assembly `BCLAIMTests`).
+Branch `port/b-claim`, cut from `m1/integration-a2-patch`; review fixes on `port/b-claim-r1` and `port/b-claim-s1`; finished on `port/b-claim-t1` with the integration head `port/int-7` (1763cc7ae) merged in (see Integration on port/int-7 below). Backlog section: [port-backlog.md, B-CLAIM](../specs/port-backlog.md). Tests: `tests/BCLAIMTests` (assembly `BCLAIMTests`).
 
 Sources used: Open Dental's public release notes for 25.1, 25.2 and 25.3, the public manual pages on claim receiving and medical insurance, and the published database docs (25.1 to 25.3 diff XMLs). Nothing was decompiled, observed or copied. Where behaviour is not public it is marked **INFERRED**.
 
@@ -9,7 +9,7 @@ Sources used: Open Dental's public release notes for 25.1, 25.2 and 25.3, the pu
 | Feature ID | Status | Summary |
 |---|---|---|
 | `v25_1-misc-claimproc-override-audit` | built | Audit entries for Ins Est Total override and Allowed override changes, from every save path the fork can hook. |
-| `v25_2-account-medical-eob-prompt` | partial | Prompt, attach logic and preference checkbox are built and tested. They stay off until the preference name is confirmed and registered (see below). |
+| `v25_2-account-medical-eob-prompt` | built | Prompt, attach logic and preference checkbox. Off by default. Until Open Dental's preference name is confirmed, the setting is kept in the fork-owned preference row `ForkClaimMedReceivedPromptForMedicalEob` (see below). |
 | `v25_3-security-inswriteoffedit-clarify` | built | The wording came from M1-02. The 24.3 create, edit and delete paths were checked. Manual ERA posting let a write-off be typed without 119 and now checks it; the others already enforced the rule. Added one shared date rule and an explicit check when Delete is clicked. |
 | `v25_3-security-claimproc-billedtoins` | built | Code Sent is guarded by permission 252, the same way as Fee Billed. Changes to either field are logged under 252. |
 | `v25_1-account-canada-attachment-history` | not built | Excluded by owner decision (the Canadian claim networks were removed). |
@@ -33,7 +33,7 @@ A save that changes `claimproc.InsEstTotalOverride` or `claimproc.AllowedOverrid
 - **INFERRED**, not logged: overrides that the program recomputes by itself. These are the ortho-case estimate overrides (`ClaimProcs` ortho path), and `ComputeBaseEst` capping the allowed override at the fee outside an edit window. Logging them would add an entry on every ortho visit with no user change behind it.
 - Known gap: when Edit Claim Procedure is opened with `doSaveToDb=false` and its caller then cancels, nothing is saved. The fork logs override changes only where the save happens, so no wrong override entry is written in that case. The window's other entries are still written on OK, even when the caller then cancels: the write-off and payment entries (as in 24.3) and the new Fee Billed / Code Sent entry, because Edit Claim Procedure is the only place those two fields are edited.
 
-## v25_2-account-medical-eob-prompt (partial)
+## v25_2-account-medical-eob-prompt
 
 Only the release-note line is public, so the whole flow is the spec's design (**INFERRED**).
 
@@ -46,7 +46,12 @@ The prompt runs when a medical or institutional claim is received in three place
 
 The prompt works whether "Prompt for primary claims" is on or off. Files: `OpenDentBusiness/Data Interface/ClaimAttaches.MedicalEob.cs` (new; `ClaimAttaches` made `partial`), `OpenDental/Logic/MedicalEobL.cs` (new), hooks in `FormClaimEdit.cs`, `FormEtrans835ClaimPay.cs` and `ClaimL.cs`. The checkbox "Prompt for Medical EOB on primary claims" is in Preferences > Account > Claim Receive, Medical group (`UserControlAccountClaimReceive`).
 
-**Why partial.** Open Dental's preference name is not public. The 25.2 and 25.3 database docs and the manual pages were checked, and none of them names it. The registry rule (owner decision: preference names come from published docs; `RegistryTests.PrefNameTests.UnconfirmedNames_AreNotRegistered`) keeps the proposed name `ClaimMedReceivedPromptForMedicalEob` out of `PrefName`. So the code reads the preference only once a `PrefName` member with that name exists (`ClaimAttaches.TryGetMedicalEobPrefName`). Until then the checkbox is hidden and the prompt is off. To turn it on, the registry owner (M1-02/M2-02) adds the confirmed name in four places: `PrefName`, `PrefInfos.xml` (control `checkClaimMedReceivedPromptForMedicalEob`), the `Seed25_3` default "0", and the RegistryTests confirmed list. If the confirmed name differs, also change `ClaimAttaches.PREF_NAME_MEDICAL_EOB_PROMPT`. No other change is needed.
+**Preference storage.** Open Dental's preference name is not public. The 25.2 and 25.3 database docs and the manual pages were checked, and none of them names it. The registry rule (owner decision: preference names come from published docs; `RegistryTests.PrefNameTests.UnconfirmedNames_AreNotRegistered`) keeps the proposed name `ClaimMedReceivedPromptForMedicalEob` out of `PrefName`. The s1 attempt therefore hid the checkbox and kept the prompt off. On t1 it uses the pattern the other packages with unconfirmed names settled on after the merge (B-APPT `ApptTimeBars`, B-SHELL `ModuleSwitchBlur`, B-SERVER `RpProcNote`): the setting is the fork-owned preference row `ForkClaimMedReceivedPromptForMedicalEob` (`ClaimAttaches.PREF_NAME_MEDICAL_EOB_PROMPT_FORK`), read with B-SERVER's `PrefC.GetRawOrDefault` and written with `PrefC.UpsertRaw` (`ClaimAttaches.IsMedicalEobPromptEnabled` / `SetMedicalEobPromptEnabled`, no SQL of B-CLAIM's own).
+
+- A missing row reads as off, so neither a 24.3 database nor an adopted Open Dental 25.3.48 database needs a fork migration step, and the adoption tools see no change. Saving Preferences with the box unticked writes no row; the row is inserted the first time the box is ticked. Preferences sends the usual Prefs signal when the value changes.
+- The checkbox "Prompt for Medical EOB on primary claims" is always shown. The proposed Open Dental name is never read or written while it is unconfirmed, because an Open Dental database could hold that name with another meaning.
+- Once the registry owner (M1-02/M2-02) confirms the name and adds it to `PrefName` (plus `PrefInfos.xml` control `checkClaimMedReceivedPromptForMedicalEob`, the seed default "0" and the RegistryTests confirmed list), `ClaimAttaches.GetMedicalEobPrefNameInUse` switches to it with no other change. If the confirmed name differs, also change `ClaimAttaches.PREF_NAME_MEDICAL_EOB_PROMPT`. An office that ticked the box before then keeps an orphan `Fork...` row; a fork migration step can copy it to the confirmed name, or the office ticks the box again.
+- **INFERRED**: a medical preauthorization's EOB is an estimate, so a received medical preauth does not prompt (`GetDentalClaimsForMedicalEob` returns no claims for ClaimType PreAuth). Edit Claim already skipped preauths; manual ERA posting of a medical preauth now does too.
 
 **INFERRED / deviations:**
 
@@ -59,7 +64,7 @@ The prompt works whether "Prompt for primary claims" is on or off. Files: `OpenD
 
 The permission text ("Insurance Write-off Edit. Also needed to create or delete claim procedures") is M1-02's (`GroupPermission.cs`). Checking the 24.3 code paths found:
 
-- **Create.** Add Estimate in the Procedure window checks 119 with the procedure's `DateEntryC`. A supplemental payment's write-off column checks 119 (`FormClaimPayTotal`). A new total payment can be created, but its write-off field stays read-only without 119 for its date. Manual ERA posting (`FormEtrans835ClaimPay`) did **not** check 119: its Writeoff column was editable whenever Include Writeoffs was checked. For a supplemental ERA payment, `Etranss.TryImportEraClaimData` pre-inserts the supplemental claimprocs (a create path), so a user limited to 30 days could type a write-off on a procedure entered 90 days ago and save it through `Etranss.ReceiveEraPayment`, the delete-and-recreate dodge the 25.3 wording closes. Ordinary manual ERA posting had the same gap (a typed write-off replaced the ERA's). Fixed (see Added). With that, no path lets a write-off be added outside the limit. (**INFERRED**: creating a total payment stays allowed, because it is a payment, governed by InsPayCreate.)
+- **Create.** Add Estimate in the Procedure window checks 119 with the procedure's `DateEntryC`. A supplemental payment's write-off column checks 119 (`FormClaimPayTotal`). A new total payment can be created, but its write-off field stays read-only without 119 for its date. Manual ERA posting (`FormEtrans835ClaimPay`) did **not** check 119: its Writeoff column was editable whenever Include Writeoffs was checked. For a supplemental ERA payment, `Etranss.TryImportEraClaimData` pre-inserts the supplemental claimprocs (a create path), so a user limited to 30 days could type a write-off on a procedure entered 90 days ago and save it through `Etranss.ReceiveEraPayment`, the delete-and-recreate dodge the 25.3 wording closes. Ordinary manual ERA posting had the same gap (a typed write-off replaced the ERA's). The same window's **Write-off** button (`butWriteOff_Click`) had it too: it sets each procedure's write-off to its unpaid amount, which `butSave_Click` saves through `ReceiveEraPayment`, and for a PPO plan the Include Writeoffs box is forced on and hidden, so one click and Save wrote off the unpaid balance of a procedure entered 90 days ago for a user limited to 30 days. Both fixed (see Added). With that, no path in the B-CLAIM windows lets a write-off be added outside the limit. (**INFERRED**: creating a total payment stays allowed, because it is a payment, governed by InsPayCreate.)
 - **Edit.** Edit Claim Procedure makes Write-off and Write-off Override read-only without 119 for the date.
 - **Delete.** Edit Claim Procedure disables Delete without 119 for the date. Unchecking Do Not Bill Ins in the Procedure window (which deletes and recreates estimates) checks 119.
 
@@ -68,6 +73,8 @@ Added:
 - `ClaimProcs.GetInsWriteOffEditDate` and `IsInsWriteOffEditAuthorized` (new partial file `ClaimProcs.WriteOffPermission.cs`). They hold the date rule in one place: the procedure's `DateEntryC`, or the claimproc's `SecDateEntry` for a total payment.
 - An explicit check at the top of `FormClaimProc.butDelete_Click`, so the rule holds at the action, not only through the disabled button.
 - `ClaimProcs.IsInsWriteOffEditAuthorizedForAll` (same file) and its use in manual ERA posting. `FormEtrans835ClaimPay_Load` works out `_isWriteOffEditable` once: true only when the user has 119 for every claimproc the posting saves (`ListClaimProcs`, each with its procedure from `_listProcedures`; a total payment uses its `SecDateEntry`). The Writeoff column is built with `isEditable:isWOIncluded && _isWriteOffEditable`, like the Write-off column of `FormClaimPayTotal`. The ERA's write-offs still post; they just cannot be retyped. Edit Claim Procedure opened from a row keeps its own 119 check.
+  - The Write-off button follows the same flag: `butWriteOff.Enabled=_isWriteOffEditable;` in `FormEtrans835ClaimPay_Load` (as `FormClaimPayTotal` does), and `butWriteOff_Click` refuses with a message before it sets any write-off, so the rule holds at the action, not only through the disabled button (fixed on t1; the s1 fix covered only the column).
+  - `HookSourceTests.EraPosting_EveryWriteOffAssignmentFollowsInsWriteOffEdit` scans the window for every statement that sets a claimproc's `WriteOff`. Each must be in a method that checks `_isWriteOffEditable`, or be one of the three that need no check: reading the grid cell (`SaveGridChanges`; the column is read-only without 119), restoring the ERA's own write-offs (`checkIncludeWOPercCoPay_CheckedChanged`) and the throw-away copies for the credit check (`GetListClaimProcHypothetical`). A new bulk fill without the check fails this test.
   - **INFERRED**: the total payment row an ERA adds is not saved yet (no `SecDateEntry`). It is being created now, so it is checked with today's date: it needs 119, but no date limit stops it. Checking it with an empty date would lock the column for every ERA with a total payment.
   - **INFERRED**: one flag for the whole column (the grid has no per-row editability), so one procedure outside the limit locks the column for all rows, as in `FormClaimPayTotal`.
   - Not changed: the Include Writeoffs checkbox. It only chooses between the ERA's write-offs and none (the 24.3 preference `EraIncludeWOPercCoPay`); it never lets an amount be typed.
@@ -89,27 +96,28 @@ Outside the owned files: `GroupPermissions.HasAuditTrail` now lists 252, so the 
 - New: `OpenDentBusiness/Data Interface/ClaimProcs.AuditTrail25.cs`, `ClaimProcs.WriteOffPermission.cs`, `ClaimAttaches.MedicalEob.cs`; `OpenDental/Logic/MedicalEobL.cs`; `tests/BCLAIMTests/*`; this note.
 - Changed (B-CLAIM-owned):
   - `OpenDentBusiness/Data Interface/ClaimProcs.cs` (5 lines), `ClaimAttaches.cs` (`partial`), `Etranss.cs` (1 line)
-  - `OpenDental/Forms/FormClaimProc.cs`, `FormClaimEdit.cs` (3 lines), `FormEtrans835ClaimPay.cs` (9 lines: the Medical EOB prompt, the database copies and override audit for ERA posting, and the 119 check of the Writeoff column)
+  - `OpenDental/Forms/FormClaimProc.cs`, `FormClaimEdit.cs` (3 lines), `FormEtrans835ClaimPay.cs` (about 15 lines: the Medical EOB prompt, the database copies and override audit for ERA posting, and the 119 check of the Writeoff column and the Write-off button)
   - `OpenDental/Logic/ClaimL.cs` (1 line for the Medical EOB prompt; the Waiting to Send loop in `PromptForPrimaryOrSecondaryClaim` replaced by one call to `ClaimAttaches.SetClaimsWaitingToSend`)
   - `OpenDental/User Controls/Preferences/UserControlAccountClaimReceive.cs` and `.Designer.cs`
 - Changed outside the owned list:
   - `OpenDentBusiness/Data Interface/GroupPermissions.cs`: one `case` commented out, so 252 appears in the audit trail.
   - `OpenDentBusiness/OpenDentBusiness.csproj` and `OpenDental/OpenDental.csproj`: compile entries for the new files.
   - `OpenDental.sln` and `OpenDental.Local.slnf`: the test project.
-- No schema change, no fork migration step, no CRUD change, no preference or permission rows.
+- No schema change, no fork migration step, no CRUD change, no permission rows. The only preference row is the fork-owned `ForkClaimMedReceivedPromptForMedicalEob`, written by Preferences the first time the Medical EOB box is ticked (never by a migration).
 
 ## Interplay with packages built in parallel
 
-- **M1-02 / M2-02 (registries):** registering the Medical EOB preference name lights the feature up (see above). The `RegistryTests` permission tests still pass with 252 in the audit trail.
+- **M1-02 / M2-02 (registries):** registering the confirmed Medical EOB preference name moves the setting from the fork-owned row to that preference (see above). The `RegistryTests` permission tests still pass with 252 in the audit trail, and `ClaimMedReceivedPromptForMedicalEob` stays in the unconfirmed list.
+- **B-SERVER:** the Medical EOB setting uses its `PrefC.GetRawOrDefault` / `PrefC.UpsertRaw` helpers.
 - **M2-EST, M2-HIST (ClaimProcs.cs):** the B-CLAIM edits there are a few lines in `CreateAuditTrailEntryForClaimProcPayment` (the override call, guarded by `!isPaymentFromERA`) and `SetInsEstTotalOverride`. Everything else is in new partial files.
 - **M2-CLAIMRCV (FormClaimEdit, ClaimL, FormEtrans835ClaimPay):** the 26.1 "prompt for the next insurance" rework keeps the medical-to-primary branch. The `MedicalEobL.PromptToAttachMedicalEob` call should stay just before that branch. `HookSourceTests.MedicalEobPrompt_RunsBeforeEachPrimaryClaimsPrompt` checks it. B-CLAIM also changed the Waiting to Send loop of `ClaimL.PromptForPrimaryOrSecondaryClaim` into one call to `ClaimAttaches.SetClaimsWaitingToSend`, so expect a small conflict there if the rework rewrites that method. Whatever replaces it must not save the reloaded claims with the one-argument `Claims.Update` (it deletes their attachments, the medical EOB among them): keep the call, or use `Claims.Update(claim,claimOld)`. `HookSourceTests.PrimaryClaimsPrompt_SavesTheClaimRowAndKeepsAttachments` checks it. The same applies to any new "next insurance" prompt that saves claims loaded with `Claims.GetClaimsFromClaimNums` or `Claims.Refresh`.
-- **B-ERA, B-ACCT (dependencies), M2-ERA:** they are built against the existing ERA and claim code. In `FormEtrans835ClaimPay`, B-CLAIM adds the `_isWriteOffEditable` field, one line in `FormEtrans835ClaimPay_Load` (after `_listProcedures` is filled, before `FillGridProcedures`) and `&& _isWriteOffEditable` on the Writeoff column. A package that adds another write-off entry point to ERA posting (a new column, a bulk fill) should honour the same flag. `HookSourceTests.EraPosting_WriteOffColumnFollowsInsWriteOffEdit` checks it. The ERA hooks are one line after `ReceiveEraPayment` in the automatic branch of `Etranss.TryImportEraClaimData`, and in `FormEtrans835ClaimPay` (B-ERA and M2-ERA also list it): the `_listClaimProcsDb` field, one line in `FormEtrans835ClaimPay_Load` and one line after `Etranss.ReceiveEraPayment` in `butSave_Click`. If another package adds a save of the claimprocs before that point, or posts ERA payments through another window, it should keep the database copies taken before its first save and call `ClaimProcs.CreateAuditTrailEntriesForOverrides` once after its last save. `HookSourceTests.OverrideAudit_ManualEraPostingComparesWithTheDatabase` checks the hooks.
+- **B-ERA, B-ACCT (dependencies), M2-ERA:** they are built against the existing ERA and claim code. In `FormEtrans835ClaimPay`, B-CLAIM adds the `_isWriteOffEditable` field, one line in `FormEtrans835ClaimPay_Load` (after `_listProcedures` is filled, before `FillGridProcedures`) `&& _isWriteOffEditable` on the Writeoff column, `butWriteOff.Enabled=_isWriteOffEditable;` after it, and a guard at the top of `butWriteOff_Click`. A package that adds another write-off entry point to ERA posting (a new column, a bulk fill) must honour the same flag. `HookSourceTests.EraPosting_WriteOffColumnFollowsInsWriteOffEdit` checks the column and the button, and `EraPosting_EveryWriteOffAssignmentFollowsInsWriteOffEdit` fails for any new statement in the window that sets `WriteOff` without the check. The ERA hooks are one line after `ReceiveEraPayment` in the automatic branch of `Etranss.TryImportEraClaimData`, and in `FormEtrans835ClaimPay` (B-ERA and M2-ERA also list it): the `_listClaimProcsDb` field, one line in `FormEtrans835ClaimPay_Load` and one line after `Etranss.ReceiveEraPayment` in `butSave_Click`. If another package adds a save of the claimprocs before that point, or posts ERA payments through another window, it should keep the database copies taken before its first save and call `ClaimProcs.CreateAuditTrailEntriesForOverrides` once after its last save. `HookSourceTests.OverrideAudit_ManualEraPostingComparesWithTheDatabase` checks the hooks.
 - **V-DXC1 (merged), V-EDS, V-PAYSUITE:** claim attachments added by the prompt are ordinary `claimattach` rows. The DentalXChange Submitted keyword is not touched.
 - **B-SHELL:** `ControlAccount` and `ControlTreat` are not changed by B-CLAIM.
 
 ## Tests
 
-`BCLAIMTests` (52 tests):
+`BCLAIMTests` (54 tests):
 
 - Rule and text tests with no database.
 - Database tests on a scratch database with a unique per-run name, dropped afterwards, using synthetic Z codes and carriers:
@@ -118,21 +126,29 @@ Outside the owned files: `GroupPermissions.HasAuditTrail` now lists 252, so the 
   - the 252 audit;
   - 119 with a 30-day limit for edit, delete and create, and total payments; manual ERA posting (`IsInsWriteOffEditAuthorizedForAll`): a supplemental payment on a procedure entered 90 days ago, one old procedure among recent ones, a new and a saved total payment, and no 119 at all;
   - 252 for users with and without it;
-  - Medical EOB claim selection, EOB lookup, file attach with the A to Z folder, refusal without it, and the preference gate;
+  - Medical EOB claim selection (no prompt for a medical preauthorization), EOB lookup, file attach with the A to Z folder, refusal without it;
+  - the Medical EOB setting: off while the fork-owned row is missing, saving the default writes no row, ticking the box inserts it, the value survives a cache reload, an unchanged save reports no change; a row with the unconfirmed Open Dental name is neither read nor written;
   - the primary claims prompt after the Medical EOB attach: the claims reloaded by `Claims.GetPrimaryOrSecondaryClaimsNotReceived`, set to Waiting to Send by `ClaimAttaches.SetClaimsWaitingToSend`, keep both the medical EOB and an earlier attachment; a secondary claim recalculated by `Claims.CalculateAndUpdateSecondaries` keeps its attachment.
-- Source checks that the window hooks are present and in the right order, that the primary claims prompt no longer saves its claims with the one-argument `Claims.Update`, and that the ERA Writeoff column follows the 119 result.
+- Source checks that the window hooks are present and in the right order, that the primary claims prompt no longer saves its claims with the one-argument `Claims.Update`, that the ERA Writeoff column and Write-off button follow the 119 result, that every statement of manual ERA posting that sets a write-off is covered by it, and that the preferences checkbox reads and saves the fork-owned row.
 
-Related existing assemblies run: `RegistryTests`, `VendorDirectTests`, `ImagingTests`.
+Related existing assemblies run: `RegistryTests`, `VendorDirectTests`, `ImagingTests` (s1); on t1 the whole Core run plus the slow migration and adoption assemblies (see Integration on port/int-7).
 
 Not tested by running code:
 
 - The WinForms dialogs (`MedicalEobL` questions and file dialog, `FormClaimProc` field states, the preferences checkbox). The GUI is not launched; source checks only.
 - The ERA automatic-branch hook, and `Etranss.TryImportEraClaimData` itself on the manual path. They need an 835 fixture; source checks only. The manual-path tests set the ERA values on the working copies the way `TryImportEraClaimData` does.
-- The Medical EOB prompt end to end, which cannot fire until the preference is registered.
+- The Medical EOB prompt end to end (its questions and file dialog are WinForms); its business steps are tested one by one above.
+
+## Integration on port/int-7
+
+- `port/int-7` (1763cc7ae: M1, the 26.1 schema, and the B, M2 and V packages merged so far) merged into `port/b-claim-t1` with no conflicts. The `.sln`/`.slnf` merge driver kept `BCLAIMTests` beside the other test projects.
+- Adapted to the merged packages: the Medical EOB setting now uses B-SERVER's fork-owned preference helpers, the pattern B-APPT, B-SHELL and B-SERVER use for their unconfirmed names (B-APPT's note asked the integrator to pick one approach; this is it). No duplicate helper was kept.
+- Checked against the merged ERA packages: B-ERA (auto split in `Etranss.TryAutoProcessEraEob`) and M2-ERA (`ClaimProcs.LinkToEraClaim` in `TryImportEraClaimData`, two lines in `ClaimProcs.cs`) sit next to the B-CLAIM hooks without overlap; neither adds a write-off entry point to manual ERA posting. B-CLAIM does not change the By Total or write-off rules that `EraAutoSplit` repeats. M2-CAN's Pay Labs in `FormClaimPayTotal` leaves write-offs alone.
+- Adoption: B-CLAIM adds or activates no fork migration step and changes no schema or rows during migration, so `migration-preview`, `AdoptionRowCheck` and `allowed-differences.adoption.json` need nothing new.
 
 ## Owner questions
 
-1. What is Open Dental's preference name for "Prompt for Medical EOB on primary claims"? Or approve the proposed `ClaimMedReceivedPromptForMedicalEob`, so the registry owner can register it.
+1. What is Open Dental's preference name for "Prompt for Medical EOB on primary claims"? Or approve the proposed `ClaimMedReceivedPromptForMedicalEob`, so the registry owner can register it. Until then the setting works from the fork-owned row `ForkClaimMedReceivedPromptForMedicalEob`.
 2. Medical EOB trigger: is the fork's reading right (ask when a medical claim is received, about the unsent primary dental claims)? The spec lists two other readings.
 3. Should attaching the medical EOB set the EoB paperwork flag automatically (as built), or leave the flags to the user?
 4. Override audit entries for received claimprocs are filed under Claim Procedure Received Edit, which is not in the audit trail's permission filter (24.3 behaviour, M1-02's file). Should it be added, or should all override entries go under Proc Edit?

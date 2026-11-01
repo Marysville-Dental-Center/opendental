@@ -162,6 +162,9 @@ namespace BCLAIMTests {
 			Assert.IsFalse(ClaimAttaches.IsMedicalClaim(null));
 			Assert.AreEqual(0,ClaimAttaches.GetDentalClaimsForMedicalEob(new Claim { MedType=EnumClaimMedType.Dental },
 				new System.Collections.Generic.List<ClaimProc> { new ClaimProc { ProcNum=1 } }).Count);
+			//A medical preauthorization's EOB is an estimate, not a payment: not asked about (no database call is made).
+			Assert.AreEqual(0,ClaimAttaches.GetDentalClaimsForMedicalEob(new Claim { MedType=EnumClaimMedType.Medical,ClaimType="PreAuth" },
+				new System.Collections.Generic.List<ClaimProc> { new ClaimProc { ProcNum=1 } }).Count);
 		}
 
 		[TestMethod]

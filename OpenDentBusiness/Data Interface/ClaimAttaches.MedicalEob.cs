@@ -80,11 +80,11 @@ namespace OpenDentBusiness {
 		}
 
 		///<summary>The primary dental claims (ClaimType P, MedType Dental) that are Unsent or Hold Until Pri Received and share a procedure with the
-		///received medical claim: the claims the Medical EOB prompt asks about. Empty when claimMedical is not a medical or institutional claim.
-		///</summary>
+		///received medical claim: the claims the Medical EOB prompt asks about. Empty when claimMedical is not a medical or institutional claim, or is
+		///a preauthorization (its EOB is an estimate, not the payment the dental carrier asks for).</summary>
 		public static List<Claim> GetDentalClaimsForMedicalEob(Claim claimMedical,List<ClaimProc> listClaimProcsMedical) {
 			Meth.NoCheckMiddleTierRole();
-			if(!IsMedicalClaim(claimMedical) || listClaimProcsMedical==null || listClaimProcsMedical.Count==0) {
+			if(!IsMedicalClaim(claimMedical) || claimMedical.ClaimType=="PreAuth" || listClaimProcsMedical==null || listClaimProcsMedical.Count==0) {
 				return new List<Claim>();
 			}
 			return Claims.GetPrimaryOrSecondaryClaimsNotReceived(listClaimProcsMedical,isSecondaryClaim:false)
