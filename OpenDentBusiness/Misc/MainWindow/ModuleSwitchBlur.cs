@@ -3,7 +3,6 @@
 using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
-using System.Reflection;
 using CodeBase;
 
 namespace OpenDentBusiness {
@@ -29,10 +28,7 @@ namespace OpenDentBusiness {
 		///<summary>True when the preference row exists and is on. A missing row (the setting was never turned on) means off.</summary>
 		public static bool IsEnabled() {
 			try {
-				if(!PrefC.ContainsKey(PREF_NAME)) {
-					return false;
-				}
-				return PIn.Bool(PrefC.GetRaw(PREF_NAME));
+				return PIn.Bool(PrefC.GetRawOrDefault(PREF_NAME,"0"));//B-SERVER's shared helper for fork-owned preference rows.
 			}
 			catch(Exception ex) {
 				ex.DoNothing();
@@ -40,26 +36,10 @@ namespace OpenDentBusiness {
 			}
 		}
 
-		///<summary>Saves the setting. Inserts the row if it is missing. Returns true if anything changed; the caller invalidates the preference cache.</summary>
+		///<summary>Saves the setting. Inserts the row if it is missing, and updates this workstation's cache. Returns true if anything changed; the
+		///caller invalidates the preference cache so other workstations reload.</summary>
 		public static bool Save(bool isEnabled) {
-			if(!PrefC.ContainsKey(PREF_NAME)) {
-				InsertRow(isEnabled);
-				Prefs.RefreshCache();
-				return true;
-			}
-			return Prefs.UpdateRaw(PREF_NAME,POut.Bool(isEnabled));
-		}
-
-		///<summary>Inserts the preference row if it does not exist yet.</summary>
-		public static void InsertRow(bool isEnabled) {
-			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				Meth.GetVoid(MethodBase.GetCurrentMethod(),isEnabled);
-				return;
-			}
-			string command="INSERT INTO preference (PrefName,ValueString) "
-				+"SELECT '"+POut.String(PREF_NAME)+"','"+POut.Bool(isEnabled)+"' FROM DUAL "
-				+"WHERE NOT EXISTS (SELECT 1 FROM preference WHERE PrefName='"+POut.String(PREF_NAME)+"')";
-			Db.NonQ(command);
+			return PrefC.UpsertRaw(PREF_NAME,POut.Bool(isEnabled));//B-SERVER's shared helper for fork-owned preference rows.
 		}
 
 		///<summary>Whether a module switch gets the cover: only when the setting is on and the switch came from a click on the module bar.</summary>

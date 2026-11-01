@@ -2,18 +2,17 @@
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Globalization;
-using System.IO;
-using System.Text.RegularExpressions;
 using System.Threading;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
 using OpenDentBusiness;
+using OpenDentBusiness.ForkMigrations;
 
 namespace BSHELLTests {
 	///<summary>One scratch database for the test assembly, with a name unique to this run (time, process id, random number), so runs from other
-	///worktrees at the same time never share or drop each other's database. The tables come from the Open Dental 25.3.48 reference schema in the
-	///repository. Dropped in AssemblyCleanup. Tests that need it call RequireDb(), which marks them inconclusive when the server does not answer or
+	///worktrees at the same time never share or drop each other's database. The tables come from the current reference schema
+	///(SchemaVerifier.GetReference(), the one the generated CRUD matches). Dropped in AssemblyCleanup. Tests that need it call RequireDb(), which marks them inconclusive when the server does not answer or
 	///BSHELL_TEST_DB=skip.</summary>
 	[TestClass]
 	public class ScratchDb {
@@ -37,7 +36,7 @@ namespace BSHELLTests {
 			}
 			DbName=PREFIX+DateTime.UtcNow.ToString("yyMMddHHmmss")+"_"+System.Diagnostics.Process.GetCurrentProcess().Id+"_"+new Random().Next(1000,10000);
 			try {
-				string schema=File.ReadAllText(TestPaths.GetRepoFile("OpenDentBusiness","Misc","ForkMigrations","Reference","OdSchema-25.3.48.sql"));
+				SchemaSnapshot schema=SchemaVerifier.GetReference();
 				using(MySqlConnection connection=new MySqlConnection(CONNECTION)) {
 					connection.Open();
 					Exec(connection,"CREATE DATABASE `"+DbName+"` CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci");
@@ -86,13 +85,13 @@ namespace BSHELLTests {
 			Cache.Refresh(InvalidType.Prefs);
 		}
 
-		///<summary>The CREATE TABLE statement for one table, cut from the reference schema dump.</summary>
-		public static string GetCreateTable(string schema,string table) {
-			Match match=Regex.Match(schema,@"CREATE TABLE `"+table+@"` \(.*?\n\) ENGINE=[^;]*;",RegexOptions.Singleline);
-			if(!match.Success) {
+		///<summary>The CREATE TABLE statement for one table of the reference schema.</summary>
+		public static string GetCreateTable(SchemaSnapshot schema,string table) {
+			SchemaTable schemaTable=schema.GetTable(table);
+			if(schemaTable==null) {
 				throw new InvalidOperationException("Table "+table+" is not in the reference schema.");
 			}
-			return match.Value;
+			return schemaTable.ToDdl();
 		}
 
 		private static void Exec(MySqlConnection connection,string command) {

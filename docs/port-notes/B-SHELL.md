@@ -149,3 +149,9 @@ Not tested automatically (needs the GUI, which is not launched in this run): the
 4. Ortho chart: a forced or automatic log off saves open ortho charts without asking, as 24.3 did on automatic shutdown. Is that wanted, or should unsaved edits be discarded?
 5. DXC step: it disables the row and removes its buttons even on an adopted Open Dental 25.3.48 database, in case Open Dental's 25.2 conversion left them. Acceptable?
 6. Reserved migration ranges (`yyyy00PPNN`): `ForkMigrationRunner.ValidateStep` now accepts them. Is that the intended scheme for all packages?
+
+## Integration (branch `port/int-5`)
+
+- `ProgramL.cs` conflicted with V-BRIDGE1 (merged on `port/int-4`): V-BRIDGE1 added the DTX Studio dispatch branch next to the DXC Patient Credit Score branch this package removes. The DTX Studio branch is kept and the removed one stays removed. Every dispatch branch, V-BRIDGE1's Overjet and DTX Studio included, sits after the discontinued-link check.
+- `ModuleSwitchBlur` now reads and writes its fork-owned row through B-SERVER's shared helpers (`PrefC.GetRawOrDefault`, `PrefC.UpsertRaw`), as B-WIKI, B-PRINT and B-APPT do since `port/int-2` and `port/int-4`. Its own insert (`ModuleSwitchBlur.InsertRow`) is gone. No behaviour change: a missing row still reads as off, the first save inserts the row, and a save with no change writes nothing.
+- `tests/BSHELLTests/Shared/ScratchDb.cs` built its scratch tables from the 25.3.48 dump file. It now uses `SchemaVerifier.GetReference()` (26.1.70), the schema the generated CRUD matches, as the other packages' test databases do. No test was changed or removed.
