@@ -75,7 +75,7 @@ From the repository root:
 powershell -ExecutionPolicy Bypass -File tools\New-DevDatabase.ps1 -WithSampleData -WriteConfig
 ```
 
-`-ExecutionPolicy Bypass` applies only to that one process. It's needed because Windows blocks scripts by default. The script builds `tools/DevDbTool`, a small console program, and runs it. DevDbTool isn't in the solution. Building it also builds `OpenDentBusiness`, `CodeBase` and `DataConnectionBase` if they're out of date. It:
+`-ExecutionPolicy Bypass` applies only to that one process. It's needed because Windows blocks scripts by default. The script builds `tools/DevDbTool`, a small console program, and runs it. The full solution build also builds DevDbTool; its `--export-init-sql` command writes the new office database file (`db/README.md`). Building it also builds `OpenDentBusiness`, `CodeBase` and `DataConnectionBase` if they're out of date. It:
 
 1. Creates the database `opendental_dev` with the `utf8` character set.
 2. Loads the seed `UnitTests/Resources/dump.txt`, the 21.1.9 database the unit tests start from.

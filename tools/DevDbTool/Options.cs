@@ -27,6 +27,13 @@ namespace DevDbTool {
 		public bool SkipForkMigrations;
 		public bool AllowRemoteServer;
 		public bool ShowHelp;
+		///<summary>--export-init-sql: build a scratch database, scrub it and write it as the SQL file that initializes a new database
+		///(db/init/new-database.sql). Blank for the normal create and verify commands.</summary>
+		public string ExportInitSqlPath="";
+		///<summary>--keep-scratch: with --export-init-sql, keep the scratch database instead of dropping it, to look at it.</summary>
+		public bool KeepScratch;
+		///<summary>True when --database was given. With --export-init-sql the tool otherwise picks a scratch name unique to the run.</summary>
+		public bool IsDatabaseGiven;
 
 		///<summary>Server and port in the "host:port" form DataConnection expects.</summary>
 		public string ServerAndPort {
@@ -54,6 +61,13 @@ Usage: DevDbTool.exe [options]
   --no-fork-migrations    Stop at the 24.3.63 convert scripts: skip the fork migrations (and do not expect
                           their schema when verifying)
   --allow-remote-server   Allow a server other than localhost or 127.0.0.1
+  --export-init-sql <path>
+                          Build a scratch database the normal way (seed, convert, adopt, fork migrations;
+                          no sample data, no A to Z folder), remove everything that belongs to this PC or
+                          this run, write it to <path> as the SQL file that initializes a new database
+                          (db/init/new-database.sql), then drop the scratch database. The scratch name is
+                          initsql_<run id> unless --database is given; it must not exist yet.
+  --keep-scratch          With --export-init-sql: keep the scratch database to look at it
 
 Exit codes: 0 success, 1 error, 2 refused or bad arguments, 3 created but outbound
 network requests were attempted (and blocked), 4 verification failed.";
@@ -88,6 +102,13 @@ network requests were attempted (and blocked), 4 verification failed.";
 						break;
 					case "--database":
 						options.Database=TakeValue(queueArgs,arg);
+						options.IsDatabaseGiven=true;
+						break;
+					case "--export-init-sql":
+						options.ExportInitSqlPath=TakeValue(queueArgs,arg);
+						break;
+					case "--keep-scratch":
+						options.KeepScratch=true;
 						break;
 					case "--dump":
 						options.DumpPath=TakeValue(queueArgs,arg);
@@ -138,6 +159,18 @@ network requests were attempted (and blocked), 4 verification failed.";
 		private void Validate() {
 			if(ShowHelp) {
 				return;
+			}
+			if(ExportInitSqlPath!="") {
+				if(VerifyOnly || Force || WithSampleData || AtoZPath!="" || SkipForkMigrations) {
+					throw new ArgumentException("--export-init-sql builds its own scratch database: it cannot be combined with --verify-only, --force, "
+						+"--with-sample-data, --atoz or --no-fork-migrations.");
+				}
+				if(!IsDatabaseGiven) {
+					Database=InitSqlExport.MakeScratchName();
+				}
+			}
+			else if(KeepScratch) {
+				throw new ArgumentException("--keep-scratch only goes with --export-init-sql.");
 			}
 			//The name ends up inside backquoted SQL identifiers, so keep it to plain identifier characters.
 			if(!Regex.IsMatch(Database,"^[A-Za-z0-9_]{1,64}$")) {
