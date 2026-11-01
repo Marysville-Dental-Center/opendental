@@ -73,6 +73,9 @@ namespace M2SDVTests {
 			string source=ReadSource(Path.Combine("OpenDental","Forms","FormDisplayFieldCategories.cs"));
 			StringAssert.Contains(source,"Enum.GetValues(typeof(DisplayFieldCategory))");
 			Assert.IsFalse(source.Contains("AccountModuleServiceDateView"),"Not filtered out.");
+			//B-ERA's filter lists a category only once it has fields (placeholders for later versions are hidden): 22 has them (M2-02).
+			StringAssert.Contains(source,"DisplayFields.HasAvailableFields(");
+			Assert.IsTrue(DisplayFields.HasAvailableFields(DisplayFieldCategory.AccountModuleServiceDateView),"Listed.");
 			Assert.AreEqual(22,(int)DisplayFieldCategory.AccountModuleServiceDateView);
 			Assert.AreEqual("Account Module Service Date View",DisplayFieldCategory.AccountModuleServiceDateView.GetDescription());
 			Assert.IsFalse(CodeBase.EnumTools.GetAttributeOrDefault<PermissionAttribute>(DisplayFieldCategory.AccountModuleServiceDateView).IsCEMT);
