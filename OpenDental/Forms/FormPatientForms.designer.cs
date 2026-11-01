@@ -46,7 +46,7 @@ namespace OpenDental{
             | System.Windows.Forms.AnchorStyles.Right)));
 			this.gridMain.Location = new System.Drawing.Point(12, 123);
 			this.gridMain.Name = "gridMain";
-			this.gridMain.Size = new System.Drawing.Size(722, 563);
+			this.gridMain.Size = new System.Drawing.Size(832, 563);
 			this.gridMain.TabIndex = 4;
 			this.gridMain.Title = "Patient Forms and Medical Histories";
 			this.gridMain.TranslationName = "FormPatientForms";
@@ -58,7 +58,7 @@ namespace OpenDental{
 			this.menuMain.Dock = System.Windows.Forms.DockStyle.Top;
 			this.menuMain.Location = new System.Drawing.Point(0, 0);
 			this.menuMain.Name = "menuMain";
-			this.menuMain.Size = new System.Drawing.Size(745, 24);
+			this.menuMain.Size = new System.Drawing.Size(855, 24);
 			this.menuMain.TabIndex = 12;
 			//
 			// toolBarMain
@@ -66,7 +66,7 @@ namespace OpenDental{
 			this.toolBarMain.Dock = System.Windows.Forms.DockStyle.Top;
 			this.toolBarMain.Location = new System.Drawing.Point(0, 24);
 			this.toolBarMain.Name = "toolBarMain";
-			this.toolBarMain.Size = new System.Drawing.Size(745, 25);
+			this.toolBarMain.Size = new System.Drawing.Size(855, 25);
 			this.toolBarMain.TabIndex = 0;
 			//
 			// groupSortBy
@@ -148,7 +148,7 @@ namespace OpenDental{
 			//
 			// FormPatientForms
 			//
-			this.ClientSize = new System.Drawing.Size(745, 696);
+			this.ClientSize = new System.Drawing.Size(855, 696);
 			this.Controls.Add(this.groupShow);
 			this.Controls.Add(this.groupSortBy);
 			this.Controls.Add(this.gridMain);

@@ -115,3 +115,10 @@ Also run because they cover changed code: `EFormTests` (eForm fill, import, stat
 2. Should a blank answer clear a stored patient field by default in the import window (Open Dental's behavior is not public), or stay unchecked as built?
 3. Should patient fields be allowed as Auto Import fields?
 4. The Submitted box is shown in Fill Sheet only for patient forms, medical histories and consents. Should other sheet types have it too?
+
+## Integration (branch `port/int-7`)
+
+- Conflicts only in the two project files; every entry of B-EF, B-PRINT and this package stays.
+- Patient Forms: B-EF (merged on `port/int-2`) added a Status column and this package a Submitted column. Together the grid's columns are wider than the 722 px grid, and the grid gives its last column only what is left, so Submitted would be about 3 px wide. The window and grid are 110 px wider (client 855 px, grid 832 px), so every column shows at the default size; the window still resizes.
+- B-EF's note expected `v25_4-eforms-multi-import` to select several rows in Patient Forms for import. The spec and this package import several eForm definition files in Setup, eForms instead, so `PatientFormsList.GetActionStates` keeps its one-row rule.
+- B-EF's `EFormImport` `FKey` remark and B-MED's reliance on the "Other" definition name: this package does not change `EFormImport.cs`, so nothing to connect.
