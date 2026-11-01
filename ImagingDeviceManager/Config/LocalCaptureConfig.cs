@@ -118,10 +118,14 @@ namespace ImagingDeviceManager.Config {
 			}
 		}
 
-		///<summary>[Twain] Allow16Bit, default 0.</summary>
+		///<summary>[Twain] Allow16Bit, default 1 (owner decision 2026-11-01): more than 8 bits are allowed on this computer; 0 forces 8 bits on the
+		///capture session path. The legacy Mount/Acquire path never asks for a bit depth, whatever this says.</summary>
+		public const bool Allow16BitDefault=true;
+
+		///<summary>[Twain] Allow16Bit, default 1 (Allow16BitDefault).</summary>
 		public bool Allow16Bit {
 			get {
-				return GetBool(SectionTwain,"Allow16Bit",false);
+				return GetBool(SectionTwain,"Allow16Bit",Allow16BitDefault);
 			}
 		}
 

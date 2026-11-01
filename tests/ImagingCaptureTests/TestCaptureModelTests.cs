@@ -83,11 +83,11 @@ Name=Not gated
 			LocalCaptureConfig config=Load(Ini);
 			Assert.AreEqual(GatedSettingsHash.Compute(config,12),model.GatedSettingsHashValue);
 			Assert.AreEqual(16,model.Options.Bits);
-			Assert.IsTrue(model.Options.Is16BitConfigured);
+			Assert.IsTrue(model.Options.IsAbove8BitConfigured);
 			string text=model.GetSettingsText();
 			StringAssert.Contains(text,"Bits=16");
 			StringAssert.Contains(text,"SafeDisableCap=0x8101");
-			StringAssert.Contains(text,"16-bit capture configured: yes");
+			StringAssert.Contains(text,"More than 8 bits configured: yes, 16 bits");
 			StringAssert.Contains(text,"SHA-256 "+model.GatedSettingsHashValue);
 			StringAssert.Contains(text,"Twain.AllowedSources=example sensor ds","The gated values as hashed.");
 			Assert.IsFalse(text.Contains("Not gated"),"Hardware bindings are not shown as gated values.");

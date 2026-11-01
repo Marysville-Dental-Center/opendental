@@ -352,7 +352,7 @@ namespace ImagingCapture.Tests {
 			CaptureFilingResult result=_harness.Filer.Assign(entry,0,0);
 			Assert.IsFalse(result.IsDone);
 			StringAssert.Contains(result.Error,"never converted to 8 bits");
-			StringAssert.Contains(result.Error,"Bits is not 16");
+			StringAssert.Contains(result.Error,"(not verified)","Bits=16 by default: the settings check is the first gate that fails here.");
 			Assert.AreEqual(0,RadiographStore.ListPatientsImported.Count);
 			Assert.AreEqual(1,_harness.Files.CountQuarantineFiles());
 		}

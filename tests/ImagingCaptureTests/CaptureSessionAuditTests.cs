@@ -48,7 +48,7 @@ namespace ImagingCapture.Tests {
 			Assert.AreEqual(CaptureSessionEndReason.MountFull,Controller.Summary.EndReason);
 			List<string> listSummaries=_harness.Store.GetLogs(EnumPermType.ImageCreate).Where(x => x.Contains("Capture session summary")).ToList();
 			Assert.AreEqual("55|0|Capture session summary: device Intraoral sensor (ImagingDeviceNum 12); 4 images, 1 retake, 1 quarantined; provider "
-				+"DOC4 (ProvNum 4); mount 7; ended: MountFull; in effect: PerSlot, 8 bits ([Device.12] Bits is not 16), safe disable not in effect, "
+				+"DOC4 (ProvNum 4); mount 7; ended: MountFull; in effect: PerSlot, 8 bits (the capture settings checked are not the ones in effect (not verified)), safe disable not in effect, "
 				+"polarity AsDelivered, headless off. Session: "+SessionGuidText+".",listSummaries.Single(),"Design 9.3: the effective values too.");
 			string tailSlot3=" Device: Intraoral sensor (ImagingDeviceNum 12). Target: Slot 3 (teeth 6). Session: "+SessionGuidText+".";
 			CollectionAssert.AreEqual(new[] {
@@ -91,7 +91,7 @@ namespace ImagingCapture.Tests {
 			harness.Expose();
 			harness.Execute(CaptureSessionAction.End);
 			Assert.AreEqual("55|0|Capture session summary: device Intraoral sensor (ImagingDeviceNum 12); 1 image, 0 retakes, 0 quarantined; provider "
-				+"DOC4 (ProvNum 4); single images, no mount; ended: Ended; in effect: PerSlot, 8 bits ([Device.12] Bits is not 16), safe disable not "
+				+"DOC4 (ProvNum 4); single images, no mount; ended: Ended; in effect: PerSlot, 8 bits (the capture settings checked are not the ones in effect (not verified)), safe disable not "
 				+"in effect, polarity AsDelivered, headless off. Session: "+SessionGuidText+".",
 				harness.Store.GetLogs(EnumPermType.ImageCreate).Single());
 			_harness.BeginArmed();

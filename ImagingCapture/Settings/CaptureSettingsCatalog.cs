@@ -111,8 +111,9 @@ namespace ImagingCapture.Settings {
 				+"path.");
 			Add(twain,"AcquireTimeoutMinutes",CaptureSettingKind.WholeNumber,"0",true,"Legacy path: minutes after which an acquisition is stopped; 0 is "
 				+"none. Only with PerSlot and the sources in DisableIsSafeSources.");
-			Add(twain,"Allow16Bit",CaptureSettingKind.Switch,"0",true,"The 16-bit switch of this computer. 16-bit capture also needs Bits=16 for the "
-				+"device and a matching Test capture verification record.");
+			Add(twain,"Allow16Bit",CaptureSettingKind.Switch,"1",true,"1 (the default): more than 8 bits (16 or 14, the device's Bits) are allowed on this "
+				+"computer. 0 forces 8 bits for every device here. More than 8 bits also need the capture settings saved here and a passed Test capture "
+				+"for the sensor's driver version and image settings.");
 			Add(twain,"RestrictSources",CaptureSettingKind.Switch,"0",true,"1: only the sources in AllowedSources can be opened on this computer (the "
 				+"source gate).");
 			Add(twain,"AllowedSources",CaptureSettingKind.SourceList,"",true,"TWAIN ProductNames separated by |.");
@@ -126,8 +127,9 @@ namespace ImagingCapture.Settings {
 			Add(twain,"RefusedDisableCodes",CaptureSettingKind.CodeList,"",true,"Legacy path: the \"disable refused\" codes. "+HelpCodes);
 			Add(SectionDevice,"SessionMode",CaptureSettingKind.Choice,"PerSlot",true,"PerSlot: one enable per slot. Continuous: only when the source's "
 				+"contract offers it and ContinuousCap is set.","PerSlot","Continuous");
-			Add(SectionDevice,"Bits",CaptureSettingKind.Choice,"8",true,"8, or 16 for 16-bit DICOM (also needs Allow16Bit=1 and a matching Test capture "
-				+"verification record).","8","16");
+			Add(SectionDevice,"Bits",CaptureSettingKind.Choice,"16",true,"16 (the default), 14 or 8: the depth asked for. 16 falls back to 14, and either "
+				+"to 8, when the source does not list it; 14-bit data is stored in a 16-bit DICOM file. More than 8 bits also need Allow16Bit=1 and a "
+				+"Test capture that passed at this depth; until then, or for a target that cannot be stored as DICOM, the session takes 8 bits.","16","14","8");
 			Add(SectionDevice,"ByteOrder16",CaptureSettingKind.Choice,"LE",true,"Byte order of 16-bit samples (review flag).","LE","BE");
 			Add(SectionDevice,"Polarity",CaptureSettingKind.Choice,"AsDelivered",true,"AsDelivered, or Invert for 16-bit samples once verified (review "
 				+"flag).","AsDelivered","Invert");

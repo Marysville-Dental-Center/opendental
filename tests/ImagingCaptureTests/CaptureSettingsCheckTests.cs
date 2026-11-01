@@ -244,7 +244,7 @@ namespace ImagingCapture.Tests {
 			Assert.IsNull(options.RedeliverCap);
 			Assert.IsNull(options.NoActivateCap);
 			Assert.IsFalse(options.Allow16Bit);
-			Assert.IsFalse(options.Is16BitConfigured);
+			Assert.IsFalse(options.IsAbove8BitConfigured);
 			Assert.AreEqual(200,options.JournalKeep);
 		}
 		#endregion Safe values
@@ -283,6 +283,11 @@ namespace ImagingCapture.Tests {
 			Assert.AreEqual(optionsEmpty.ByteOrder16,optionsDefaults.ByteOrder16);
 			Assert.AreEqual(optionsEmpty.Polarity,optionsDefaults.Polarity);
 			Assert.AreEqual(optionsEmpty.JournalKeep,optionsDefaults.JournalKeep);
+			Assert.AreEqual(16,optionsDefaults.Bits,"Owner decision 2026-11-01.");
+			Assert.AreEqual(configEmpty.Allow16Bit,configDefaults.Allow16Bit);
+			Assert.IsTrue(configDefaults.Allow16Bit,"Owner decision 2026-11-01.");
+			Assert.AreEqual(optionsEmpty.Allow16Bit,optionsDefaults.Allow16Bit);
+			CollectionAssert.AreEqual(new[] { "16","14","8" },CaptureSettingsCatalog.Find("Device","Bits").ArrayChoices.ToArray());
 			Assert.AreEqual(configEmpty.ThreadModal,configDefaults.ThreadModal);
 			Assert.AreEqual(configEmpty.AcquireTimeoutMinutes,configDefaults.AcquireTimeoutMinutes);
 			CaptureSessionConfig sessionEmpty=CaptureSessionConfig.Read(configEmpty);

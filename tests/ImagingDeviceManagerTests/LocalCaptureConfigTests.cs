@@ -67,7 +67,7 @@ namespace ImagingDeviceManager.Tests {
 		private static void AssertTwainDefaults(LocalCaptureConfig config) {
 			Assert.IsTrue(config.ThreadModal);
 			Assert.AreEqual(0,config.AcquireTimeoutMinutes);
-			Assert.IsFalse(config.Allow16Bit);
+			Assert.IsTrue(config.Allow16Bit,"Owner decision 2026-11-01: default 1.");
 			Assert.IsFalse(config.RestrictSources);
 			Assert.AreEqual(0,config.AllowedSources.Count);
 			Assert.AreEqual(200,config.JournalKeep);

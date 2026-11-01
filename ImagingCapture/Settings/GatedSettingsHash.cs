@@ -25,7 +25,11 @@ namespace ImagingCapture.Settings {
 	///  differently; for every other key such a value is invalid anyway;
 	///- in the |-separated lists (AllowedSources, DisableIsSafeSources, RefusedDisableCodes) each entry normalised the same way and empty
 	///  entries dropped, keeping the order;
-	///- a missing key written like an empty value: both read as the key's default.
+	///- a missing key written like an empty value: both read as the key's default;
+	///- for Bits and Allow16Bit, whose defaults changed on 2026-11-01 (owner decision: 16 bits by default, more than 8 bits allowed), a
+	///  missing or empty value is written as that default ("16", "1"): a file without them hashes as the program now reads it, the same as
+	///  one that says Bits=16 and Allow16Bit=1. A hash logged before that change for a file without them (when they meant 8 and 0) no
+	///  longer matches, so such a file must be saved again in Capture settings; texts that mean the same in both rules hash the same.
 	///Comments and blank lines are not part of any value. The text starts with FormatName, so a later change of these rules gives different
 	///hashes instead of colliding with this format.</summary>
 	public static class GatedSettingsHash {
@@ -44,6 +48,11 @@ namespace ImagingCapture.Settings {
 			"NoActivateCap" });
 		///<summary>Keys whose value is a list separated by '|'.</summary>
 		private static readonly string[] _arrayListKeys={ "AllowedSources","DisableIsSafeSources","RefusedDisableCodes" };
+		///<summary>Keys whose missing or empty value is hashed as its default (see the class summary): [Device.N] Bits and [Twain] Allow16Bit.</summary>
+		private static readonly Dictionary<string,string> _dictEmptyAsDefault=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase) {
+			{ "Bits","16" },
+			{ "Allow16Bit","1" },
+		};
 
 		///<summary>True for a key this hash covers: a gated key of [Session], [Twain] or any [Device.N] section. Names are case-insensitive.</summary>
 		public static bool IsGatedKey(string section,string key) {
@@ -116,6 +125,10 @@ namespace ImagingCapture.Settings {
 
 		///<summary>The canonical form of one value (see the class summary).</summary>
 		internal static string NormalizeValue(string key,string value) {
+			string valueDefault;
+			if(_dictEmptyAsDefault.TryGetValue((key??"").Trim(),out valueDefault) && NormalizeText(value)=="") {
+				return valueDefault;
+			}
 			if(!_arrayListKeys.Contains(key,StringComparer.OrdinalIgnoreCase)) {
 				return NormalizeText(value);
 			}

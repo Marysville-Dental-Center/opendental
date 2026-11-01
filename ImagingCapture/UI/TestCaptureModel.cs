@@ -422,8 +422,9 @@ namespace ImagingCapture.UI {
 			stringBuilder.AppendLine("  Allow16Bit="+ToBit(options.Allow16Bit)+", RestrictSources="+ToBit(options.RestrictSources)
 				+", AllowedSources="+(options.AllowedSources.Count==0 ? "(none)" : string.Join("|",options.AllowedSources))
 				+", JournalKeep="+options.JournalKeep.ToString(CultureInfo.InvariantCulture));
-			stringBuilder.AppendLine("  16-bit capture configured: "+(options.Is16BitConfigured ? "yes" : "no (needs Bits=16 and Allow16Bit=1)")
-				+". The session also needs a verification record that matches these settings.");
+			stringBuilder.AppendLine("  More than 8 bits configured: "+(options.IsAbove8BitConfigured ? "yes, "+options.Bits+" bits"
+				: "no (needs Bits=16 or 14, the default 16, and Allow16Bit=1, the default)")
+				+". The session also needs a Test capture record for this sensor's driver version and image settings that passed at that depth.");
 			foreach(string warning in options.ListWarnings) {
 				stringBuilder.AppendLine("  Warning: "+warning);
 			}

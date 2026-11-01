@@ -167,7 +167,7 @@ namespace ImagingCapture.Tests {
 			AssertProblem("Twain","JournalKeep","1.5","is not a whole number");
 			//The journal refuses 0 and keeps 200, so 0 would be saved and logged without being in effect.
 			AssertProblem("Twain","JournalKeep","0","[Twain] JournalKeep=0 is not allowed: the journal cannot be turned off.");
-			AssertProblem("Device","Bits","12","[Device.12] Bits=12 is not 8 or 16");
+			AssertProblem("Device","Bits","12","[Device.12] Bits=12 is not 8, 14 or 16");
 			AssertProblem("Device","SessionMode","Batch","is not one of PerSlot, Continuous");
 			AssertProblem("Device","Polarity","1","is not one of");
 			AssertProblem("Device","SafeDisableCap","0x10000","is not a capability number");

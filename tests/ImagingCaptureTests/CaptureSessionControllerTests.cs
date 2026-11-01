@@ -1200,7 +1200,7 @@ namespace ImagingCapture.Tests {
 		public void BitDepth_DefaultSettings_8() {
 			_harness.Started();
 			Assert.AreEqual(8,_harness.Twain.LastRequest.Bits);
-			Assert.IsTrue(_harness.ListLogFile.Any(x => x.Contains("Bits is not 16")),string.Join("\r\n",_harness.ListLogFile));
+			Assert.IsTrue(_harness.ListLogFile.Any(x => x.Contains("(not verified)")),string.Join("\r\n",_harness.ListLogFile));
 		}
 		#endregion Bit depth
 

@@ -106,7 +106,7 @@ namespace ImagingCapture.Tests.Db {
 		public void SettingsChangedOutside_NotStarted_UntilASetupUserAcceptsThem_ThenTheSessionStarts() {
 			_kit=new CaptureSessionDbKit("hookoutside");
 			string path=Path.Combine(_kit.Folder,"capture.ini");
-			File.AppendAllText(path,"[Twain]\r\nAllow16Bit=1\r\n");//a hand edit of a gated key
+			File.AppendAllText(path,"[Twain]\r\nAllow16Bit=0\r\n");//a hand edit of a gated key (1 is the default since 2026-11-01, so 0 changes it)
 			Mount mount=_kit.CreateMount4Bw();
 			CaptureHookOutcome outcome=_kit.RunHook(mount,_kit.MountDef4Bw);
 			Assert.AreEqual(CaptureSessionLaunchKind.NotStarted,outcome.Result.Kind,"The safe value of [Session] Enabled is off.");
