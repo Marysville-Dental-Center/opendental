@@ -24,6 +24,13 @@ namespace BERATests {
 			int indexImport=source.IndexOf("TryImportEraClaimData(x835,listClaimsPaidToProcess[i],",indexMethod);
 			Assert.IsTrue(indexHook>indexMethod,"The auto split hook is missing from TryAutoProcessEraEob.");
 			Assert.IsTrue(indexHook<indexCheck && indexCheck<indexImport,"The auto split must run before CanClaimBeAutoProcessed and the import.");
+			//Combined review (2026-11-01): the next insurance's claims that hold a split procedure are taken out right after the lookup, before any
+			//of them is set to Waiting to Send.
+			int indexLookup=source.IndexOf("List<Claim> listSecondaryClaims=Claims.GetPrimaryOrSecondaryClaimsNotReceived(listReceivedClaimProcs);",indexMethod);
+			int indexKeep=source.IndexOf("EraAutoSplit.KeepNextInsuranceClaimsOnHold(x835,listSecondaryClaims,listPatients,automationResult);",indexMethod);
+			int indexWaiting=source.IndexOf("listSecondaryClaims[i].ClaimStatus=\"W\";",indexMethod);
+			Assert.IsTrue(indexLookup>indexImport,"The next-insurance lookup is missing from TryAutoProcessEraEob.");
+			Assert.IsTrue(indexLookup<indexKeep && indexKeep<indexWaiting,"The claims of split procedures must be kept on hold before the others wait to send.");
 		}
 
 		[TestMethod]

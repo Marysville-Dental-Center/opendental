@@ -255,7 +255,8 @@ namespace OpenDentBusiness {
 		///changes nothing, and CanClaimBeAutoProcessed reports the listed CARCs as in 24.3 (with the reason the claim was not split).
 		///A split happens only when the remaining claim passes every other automatic processing check, every remaining line matches a procedure and
 		///its payment needs no By Total row (WouldNeedByTotalPayment), so a split claim is always followed by its payment. Updates the given lists in place: listClaimProcsForClaim loses the moved claimprocs,
-		///and listClaimProcsAll gets their new ClaimNum (so payment finalization leaves them out). Adds a line to automationResult.ListAutoSplitNotes,
+		///and listClaimProcsAll gets their new ClaimNum (so payment finalization leaves them out). Records the moved procedures in
+		///automationResult.DictSplitClaimNumsByProcNum (see KeepNextInsuranceClaimsOnHold). Adds a line to automationResult.ListAutoSplitNotes,
 		///puts the same line at the top of the etrans note, and writes a ClaimEdit security log entry for the original claim.</summary>
 		public static Hx835_Claim SplitDeniedProcsIfNeeded(bool isFullyAutomatic,X835 x835,Hx835_Claim claimPaid,Claim claim,Patient patient,
 			InsPlan insPlan,List<PayPlan> listPayPlans,List<ClaimProc> listClaimProcsAll,List<Hx835_ShortClaimProc> listShortClaimProcsAll,
@@ -309,6 +310,9 @@ namespace OpenDentBusiness {
 			Claim claimSplit=Claims.InsertSplitClaimForEra(claim,listClaimProcsToSplit,listClaimProcsBefore,x835.EtransSource.EtransNum,claimPaid.ClpSegmentIndex,
 				isUnsent:true,out _,patient);
 			List<long> listClaimProcNumsSplit=listClaimProcsToSplit.Select(x => x.ClaimProcNum).ToList();
+			for(int i=0;i<listClaimProcsToSplit.Count;i++) {
+				automationResult.DictSplitClaimNumsByProcNum[listClaimProcsToSplit[i].ProcNum]=claimSplit.ClaimNum;//KeepNextInsuranceClaimsOnHold
+			}
 			listClaimProcsForClaim.RemoveAll(x => listClaimProcNumsSplit.Contains(x.ClaimProcNum));
 			for(int i=0;i<listClaimProcsAll.Count;i++) {
 				if(!listClaimProcNumsSplit.Contains(listClaimProcsAll[i].ClaimProcNum)) {
@@ -332,12 +336,51 @@ namespace OpenDentBusiness {
 				claimNumOriginal,LogSources.None,DateTime.MinValue);
 			return claimPaidRemaining;
 		}
+
+		///<summary>Combined review (2026-11-01). Hook for Etranss.TryAutoProcessEraEob, called with the claims of the next insurance that automatic
+		///processing is about to set to Waiting to Send after the claims it received. Takes out of the list every claim that holds a procedure an auto
+		///split moved to a new unsent claim during this run (automationResult.DictSplitClaimNumsByProcNum): the prior insurance has not adjudicated that
+		///procedure, so the claim would go out with a line the prior payer never paid or denied. Such a claim is left as it is (normally Hold Until Prior
+		///Received), with a line in automationResult.ListAutoSplitNotes and on top of the etrans note. Its estimates were already recalculated when the
+		///remaining claim was received (Etranss.ReceiveEraPayment), and the usual next-insurance lookup releases it once the split claim is received.
+		///</summary>
+		public static void KeepNextInsuranceClaimsOnHold(X835 x835,List<Claim> listClaimsNext,List<Patient> listPatients,EraAutomationResult automationResult) {
+			Meth.NoCheckMiddleTierRole();
+			if(listClaimsNext.IsNullOrEmpty() || automationResult==null || automationResult.DictSplitClaimNumsByProcNum.Count==0) {
+				return;
+			}
+			List<ClaimProc> listClaimProcsNext=ClaimProcs.RefreshForClaims(listClaimsNext.Select(x => x.ClaimNum).ToList());
+			List<Claim> listClaimsHeld=new List<Claim>();
+			for(int i=0;i<listClaimsNext.Count;i++) {
+				Claim claim=listClaimsNext[i];
+				List<long> listClaimNumsSplit=listClaimProcsNext
+					.FindAll(x => x.ClaimNum==claim.ClaimNum && automationResult.DictSplitClaimNumsByProcNum.ContainsKey(x.ProcNum))
+					.Select(x => automationResult.DictSplitClaimNumsByProcNum[x.ProcNum]).Distinct().OrderBy(x => x).ToList();
+				if(listClaimNumsSplit.Count==0) {
+					continue;
+				}
+				listClaimsHeld.Add(claim);
+				string patientName=listPatients?.FirstOrDefault(x => x.PatNum==claim.PatNum)?.GetNameFL()??"";
+				string note=Lans.g("X835","Auto split:")+" "+(patientName=="" ? "" : patientName+", ")+Lans.g("X835","claim")+" #"+claim.ClaimNum+" "
+					+Lans.g("X835","of the next insurance left on hold: procedures moved to claim")+" #"+string.Join(", #",listClaimNumsSplit)+".";
+				automationResult.ListAutoSplitNotes.Add(note);
+				if(x835?.EtransSource!=null) {
+					string noteOld=x835.EtransSource.Note??"";
+					x835.EtransSource.Note=note+(noteOld.Trim()=="" ? "" : "\r\n"+noteOld);
+				}
+			}
+			listClaimsNext.RemoveAll(x => listClaimsHeld.Contains(x));
+		}
 	}
 
 	///<summary>B-ERA additions to the automatic processing result: notes for the claims that were split, and why a claim with listed CARCs was not.</summary>
 	public partial class EraAutomationResult {
 		///<summary>One line per claim that automatic processing split (EraAutoSplit), naming the original and the new ClaimNum.</summary>
 		public List<string> ListAutoSplitNotes=new List<string>();
+		///<summary>Combined review (2026-11-01): the procedures EraAutoSplit moved to a new unsent claim during this run, keyed by ProcNum, with the
+		///ClaimNum of that claim. The claims of the next insurance that hold one of them stay on hold (EraAutoSplit.KeepNextInsuranceClaimsOnHold).
+		///</summary>
+		public Dictionary<long,long> DictSplitClaimNumsByProcNum=new Dictionary<long,long>();
 		///<summary>Why EraAutoSplit did not split a claim, when the reason comes from the database (keyed by the ERA claim object).</summary>
 		private Dictionary<Hx835_Claim,string> _dictAutoSplitSkipReasons=new Dictionary<Hx835_Claim,string>();
 

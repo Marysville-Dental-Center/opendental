@@ -986,6 +986,8 @@ namespace OpenDentBusiness{
 			}
 			if(listReceivedClaimProcs.Count > 0) {
 				List<Claim> listSecondaryClaims=Claims.GetPrimaryOrSecondaryClaimsNotReceived(listReceivedClaimProcs);
+				//B-ERA (combined review 2026-11-01): a claim that still holds a procedure the auto split moved to a new unsent claim stays on hold.
+				EraAutoSplit.KeepNextInsuranceClaimsOnHold(x835,listSecondaryClaims,listPatients,automationResult);
 				for(int i=0;i<listSecondaryClaims.Count;i++) {
 					Claim claimOld=listSecondaryClaims[i].Copy();
 					listSecondaryClaims[i].ClaimStatus="W";//Waiting to send.

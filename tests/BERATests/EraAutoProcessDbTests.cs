@@ -23,6 +23,8 @@ namespace BERATests {
 			public string MessageText;
 			public X835 X835;
 			public List<Etrans835Attach> ListAttaches;
+			///<summary>The claim of the secondary insurance, for cases made with one (CreateClaimWithSecondary). Null otherwise.</summary>
+			public Claim ClaimSecondary;
 		}
 
 		[TestInitialize]
@@ -36,11 +38,24 @@ namespace BERATests {
 		///<summary>A patient with primary insurance and a sent claim for the given completed procedures (made-up Z codes), each claimproc billed at
 		///the procedure fee.</summary>
 		private static EraCase CreateClaim(params (string Code,double Fee)[] arrayProcs) {
+			return CreateCase(null,arrayProcs);
+		}
+
+		///<summary>As CreateClaim, and the patient also has secondary insurance with a claim on Hold Until Prior Received (EraCase.ClaimSecondary) for
+		///the procedures with these indexes, as Create Claim leaves a secondary claim while the primary claim is out.</summary>
+		private static EraCase CreateClaimWithSecondary(int[] arrayProcIndexesSecondary,params (string Code,double Fee)[] arrayProcs) {
+			return CreateCase(arrayProcIndexesSecondary,arrayProcs);
+		}
+
+		private static EraCase CreateCase(int[] arrayProcIndexesSecondary,(string Code,double Fee)[] arrayProcs) {
 			_countCases++;
 			string suffix=new string((char)('A'+(_countCases%26)),1)+new string((char)('A'+(_countCases/26%26)),1);
 			EraCase eraCase=new EraCase();
 			eraCase.Patient=PatientT.CreatePatient(suffix,lName:"Bera",fName:"Synth");
 			InsuranceInfo insuranceInfo=InsuranceT.AddInsurance(eraCase.Patient,"Synthetic Payer "+suffix);
+			if(arrayProcIndexesSecondary!=null) {
+				insuranceInfo.AddInsurance(eraCase.Patient,"Synthetic Second Payer "+suffix,ordinal:2);
+			}
 			eraCase.ListProcs=arrayProcs.Select(x => ProcedureT.CreateProcedure(eraCase.Patient,x.Code,ProcStat.C,"",x.Fee,_dateService)).ToList();
 			Claim claim=ClaimT.CreateClaim(eraCase.ListProcs,insuranceInfo,"P","BERA"+_countCases+suffix);
 			List<ClaimProc> listClaimProcs=ClaimProcs.RefreshForClaim(claim.ClaimNum);
@@ -52,6 +67,13 @@ namespace BERATests {
 			claim.ClaimStatus="S";
 			Claims.Update(claim);
 			eraCase.Claim=Claims.GetClaim(claim.ClaimNum);
+			if(arrayProcIndexesSecondary!=null) {
+				List<Procedure> listProcsSecondary=arrayProcIndexesSecondary.Select(x => eraCase.ListProcs[x]).ToList();
+				Claim claimSecondary=ClaimT.CreateClaim(listProcsSecondary,insuranceInfo,"S","BERA"+_countCases+suffix+"S");
+				claimSecondary.ClaimStatus="H";
+				Claims.Update(claimSecondary);
+				eraCase.ClaimSecondary=Claims.GetClaim(claimSecondary.ClaimNum);
+			}
 			return eraCase;
 		}
 
@@ -159,6 +181,68 @@ namespace BERATests {
 			Assert.AreNotEqual(claimNumOriginal,claimProcDenied.ClaimNum);
 			Assert.AreEqual(ClaimProcStatus.NotReceived,claimProcDenied.Status);
 			Assert.AreEqual(0L,claimProcDenied.Etrans835AttachNum,"Nothing was entered on the split claim.");
+		}
+
+		///<summary>The procedure's claimproc on a claim of the case's primary plan.</summary>
+		private static ClaimProc GetPrimaryClaimProcForProc(EraCase eraCase,long procNum) {
+			return ClaimProcs.GetForProcs(new List<long> { procNum }).Single(x => x.ClaimNum!=0 && x.PlanNum==eraCase.Claim.PlanNum);
+		}
+
+		///<summary>Combined review (2026-11-01). After an auto split, automatic processing moved the claim of the next insurance to Waiting to Send,
+		///although that claim still held the denied procedure, which the split had moved to a new unsent primary claim: a secondary claim queued with
+		///a line the primary insurance has not adjudicated (the "bogus" secondary claim X837_5010 describes). It now stays on Hold Until Prior
+		///Received, with a note, and the normal next-insurance lookup releases it once the split claim is received.</summary>
+		[TestMethod]
+		public void AutoSplit_SecondaryClaimWithTheDeniedProcStaysOnHold() {
+			EraCase eraCase=CreateClaimWithSecondary(new[] { 0,1 },("Z0120",60),("Z0220",40));
+			AddEra(eraCase,new List<Era835Line> {
+				new Era835Line("Z0120",60,48,ProcNum(eraCase,0),("CO","45",12m)),
+				new Era835Line("Z0220",40,0,ProcNum(eraCase,1),("CO","97",40m)),
+			});
+			Assert.AreEqual("H",eraCase.ClaimSecondary.ClaimStatus);
+			EraAutomationResult result=Etranss.TryAutoProcessEraEob(eraCase.X835,eraCase.ListAttaches,isFullyAutomatic:false);
+			Assert.AreEqual(0,result.ListClaimErrors.Count,string.Join("\r\n",result.ListClaimErrors));
+			Assert.AreEqual(1,result.CountClaimsProcessed);
+			Assert.AreEqual("R",Claims.GetClaim(eraCase.Claim.ClaimNum).ClaimStatus);
+			long claimNumSplit=GetPrimaryClaimProcForProc(eraCase,ProcNum(eraCase,1)).ClaimNum;
+			Assert.AreNotEqual(eraCase.Claim.ClaimNum,claimNumSplit,"The denied procedure moved to a new claim.");
+			Assert.AreEqual("U",Claims.GetClaim(claimNumSplit).ClaimStatus);
+			Assert.AreEqual("H",Claims.GetClaim(eraCase.ClaimSecondary.ClaimNum).ClaimStatus,
+				"The secondary claim holds the denied procedure, whose primary claim is not even sent: it stays on hold.");
+			Assert.AreEqual(2,result.ListAutoSplitNotes.Count,string.Join("\r\n",result.ListAutoSplitNotes));
+			string note=result.ListAutoSplitNotes[1];
+			StringAssert.Contains(note,"#"+eraCase.ClaimSecondary.ClaimNum);
+			StringAssert.Contains(note,"#"+claimNumSplit);
+			StringAssert.Contains(note,"left on hold");
+			StringAssert.Contains(EraAutomationResult.CreateMessage(new List<EraAutomationResult> { result },isForSingleEra:true),note);
+			//Once the split claim is received, the next-insurance lookup offers the secondary claim as usual.
+			Claim claimSplitOld=Claims.GetClaim(claimNumSplit);
+			Claim claimSplit=claimSplitOld.Copy();
+			claimSplit.ClaimStatus="R";
+			Claims.Update(claimSplit,claimSplitOld);
+			List<ClaimProc> listClaimProcsSplit=ClaimProcs.RefreshForClaim(claimNumSplit);
+			foreach(ClaimProc claimProc in listClaimProcsSplit) {
+				ClaimProc claimProcOld=claimProc.Copy();
+				claimProc.Status=ClaimProcStatus.Received;
+				ClaimProcs.Update(claimProc,claimProcOld);
+			}
+			CollectionAssert.AreEqual(new List<long> { eraCase.ClaimSecondary.ClaimNum },
+				Claims.GetPrimaryOrSecondaryClaimsNotReceived(ClaimProcs.RefreshForClaim(claimNumSplit)).Select(x => x.ClaimNum).ToList());
+		}
+
+		///<summary>The secondary claim of the paid procedure alone has nothing to wait for: automatic processing still moves it to Waiting to Send.
+		///</summary>
+		[TestMethod]
+		public void AutoSplit_SecondaryClaimOfThePaidProcOnly_IsWaitingToSend() {
+			EraCase eraCase=CreateClaimWithSecondary(new[] { 0 },("Z0120",60),("Z0220",40));
+			AddEra(eraCase,new List<Era835Line> {
+				new Era835Line("Z0120",60,48,ProcNum(eraCase,0),("CO","45",12m)),
+				new Era835Line("Z0220",40,0,ProcNum(eraCase,1),("CO","97",40m)),
+			});
+			EraAutomationResult result=Etranss.TryAutoProcessEraEob(eraCase.X835,eraCase.ListAttaches,isFullyAutomatic:false);
+			Assert.AreEqual(1,result.CountClaimsProcessed,string.Join("\r\n",result.ListClaimErrors));
+			Assert.AreEqual(1,result.ListAutoSplitNotes.Count,"Only the split note.");
+			Assert.AreEqual("W",Claims.GetClaim(eraCase.ClaimSecondary.ClaimNum).ClaimStatus);
 		}
 
 		[TestMethod]
