@@ -112,3 +112,4 @@ Related existing assemblies run: `SheetTests` (check sheet PDFs through `SheetDr
   - No package on `port/int-7` changed `SheetDrawingJob.cs`, `SheetFieldDefs.cs` or `SheetPrinting.cs`, and none added sheet text drawing that bypasses `SheetTextDrawing`. No helper on the base duplicates `SheetScripts`, `SheetFonts` or `SheetTextDrawing`.
 - **M2-SDV** is not on `port/int-7`; the `SheetUtil` growth-height follow-up above still applies when it merges.
 - No schema, no fork migration step and no adoption change: the M1-Z adoption tools need nothing from this package.
+- Checks on the finished branch (2026-10-31): one full build of `OpenDental.Local.slnf` through the build lane (0 errors); `run-tests -Mode Core` passed, 61 assemblies, M2SHEETSTests 53 of 53, SheetTests 31, SignatureTests 55, NoHqTests 49 (results in `.git/od-tools/test-results/port_m2-sheets-t1.txt`); `tools/Test-NoHqHosts.ps1` passed.
