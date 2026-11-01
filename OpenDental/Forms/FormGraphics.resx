@@ -120,13 +120,6 @@
   <data name="label2.Text" xml:space="preserve">
     <value>You can manually pick the graphics format to use.  There are many to choose from.  If all the choices look the same, then you can probably just pick one at random.  You may need to use trial and error.  Some graphics formats would crash the program, so if you pick one of those, it will inform you to pick a different one.</value>
   </data>
-  <data name="label1.Text" xml:space="preserve">
-    <value>You should never need to go into this window.  
-The entire lower half is for technology from 15 years ago. The upper half is for DirectX 11 which has been included with Windows since Windows 8.0. 
-Everyone should use DirectX 11, but this window does give you the option to use the older DirectX 9 or OpenGL if you really need to. 
-This might be done for increasingly rare troubleshooting, to compare the 3D Toothchart drawing for older versions versus newer versions. 
-Changes in this window usually require a restart to take effect</value>
-  </data>
   <assembly alias="System.Drawing" name="System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" />
   <data name="$this.Icon" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
     <value>

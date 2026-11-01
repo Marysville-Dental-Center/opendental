@@ -147,12 +147,12 @@ namespace ImagingDeviceManager.Tests {
 			}
 		}
 
-		///<summary>The folder that holds OpenDental.sln, found by walking up from the test assembly.</summary>
+		///<summary>The repository root (the folder that holds LICENSE and NOTICE), found by walking up from the test assembly.</summary>
 		private static string GetRepositoryRoot() {
 			foreach(string start in new[] { Path.GetDirectoryName(typeof(RemovedImagingBinariesTests).Assembly.Location),Environment.CurrentDirectory }) {
 				DirectoryInfo directoryInfo=new DirectoryInfo(start);
 				while(directoryInfo!=null) {
-					if(File.Exists(Path.Combine(directoryInfo.FullName,"OpenDental.sln"))
+					if(File.Exists(Path.Combine(directoryInfo.FullName,"LICENSE")) && File.Exists(Path.Combine(directoryInfo.FullName,"NOTICE"))
 						&& Directory.Exists(Path.Combine(directoryInfo.FullName,"ImagingDeviceManager")))
 					{
 						return directoryInfo.FullName;
@@ -160,7 +160,7 @@ namespace ImagingDeviceManager.Tests {
 					directoryInfo=directoryInfo.Parent;
 				}
 			}
-			Assert.Inconclusive("The repository root (the folder with OpenDental.sln) was not found.");
+			Assert.Inconclusive("The repository root (the folder with LICENSE and NOTICE) was not found.");
 			return null;
 		}
 	}

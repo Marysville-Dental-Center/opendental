@@ -4,11 +4,11 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
 using System.Text;
 using CodeBase;
-using Ionic.Zip;
 
 namespace OpenDentBusiness {
 	///<summary>Which build is running or was published: the release version ("0.0"), the build id and the build time.</summary>
@@ -72,23 +72,26 @@ namespace OpenDentBusiness {
 		public const int SEGMENT_BYTES=786432;
 		///<summary>Sub folders of the installation folder that are published too (not recursive), the same ones UpdateFileCopier copies.</summary>
 		public static readonly List<string> ListSpecialDirs=new List<string>() {
-			"Sparks3D",
 			"OpenDentalReplicationService",
 		};
 		///<summary>The program's own assemblies. The build id is the SHA-256 over their names and SHA-256 values, so any rebuilt assembly gives a new
-		///build id while third-party files are not hashed at every startup.</summary>
+		///build id while third-party files are not hashed at every startup. ComputeBuildId skips a missing file silently, so the program-named
+		///files come from ProgramNames (the one place a rename changes them), and ReleaseFlowTests checks that every file is in the build output.
+		///</summary>
 		public static readonly List<string> ListBuildIdFiles=new List<string>() {
-			"OpenDental.exe",
-			"OpenDentBusiness.dll",
+			ProgramNames.ExeFileName,
+			ProgramNames.BusinessDllFileName,
 			"CodeBase.dll",
 			"DataConnectionBase.dll",
 			"WpfControlsOD.dll",
-			"OpenDentalGraph.dll",
-			"OpenDentalCloud.dll",
+			ProgramNames.GraphDllFileName,
+			ProgramNames.CloudDllFileName,
 			"SparksToothChart.dll",
 			"ODCrypt.dll",
 			"PasswordVaultWrapper.dll",
-			"UpdateFileCopier.exe",
+			"ImagingDeviceManager.dll",
+			"ImagingCapture.dll",
+			ProgramNames.UpdateFileCopierExeFileName,
 		};
 		///<summary>Key of the AssemblyMetadata attribute that holds the build time of OpenDental.exe (written by OpenDental.csproj).</summary>
 		public const string BUILD_UTC_METADATA_KEY="ForkBuildUtc";
@@ -275,7 +278,8 @@ namespace OpenDentBusiness {
 		///<summary>True for files of the installation folder that are published. Local settings, logs and files a plugin marks with a double underscore
 		///stay local (the same rules Open Dental used for its update files).</summary>
 		public static bool ShouldPublishFile(string fileName) {
-			if(fileName.In("FreeDentalConfig.xml","OpenDentalServerConfig.xml","ProximitySettings.txt","OpenDentalReplicationServiceConfig.xml",
+			if(fileName.In(ProgramNames.ConfigFileName,ProgramNames.MiddleTierConfigFileName,"ProximitySettings.txt",
+				ProgramNames.ReplicationServiceConfigFileName,
 				ReleaseManifest.FILE_NAME,"Manifest.txt"))
 			{
 				return false;
@@ -323,22 +327,22 @@ namespace OpenDentBusiness {
 			releaseManifest.PublishedUtc=new DateTime(dateTimeUtc.Year,dateTimeUtc.Month,dateTimeUtc.Day,dateTimeUtc.Hour,dateTimeUtc.Minute,
 				dateTimeUtc.Second,DateTimeKind.Utc);
 			releaseManifest.PublishedBy=publishedBy??"";
-			using(ZipFile zipFile=new ZipFile()) {
-				foreach(string relative in GetReleaseFiles(folder)) {
-					string path=Path.Combine(folder,relative);
-					byte[] arrayBytes=File.ReadAllBytes(path);//Read once, so the hash and the archive hold the same bytes.
-					ReleaseManifestFile releaseManifestFile=new ReleaseManifestFile();
-					releaseManifestFile.RelativePath=relative;
-					releaseManifestFile.Size=arrayBytes.LongLength;
-					releaseManifestFile.Sha256=ReleaseManifest.ComputeSha256(arrayBytes);
-					releaseManifest.ListFiles.Add(releaseManifestFile);
-					zipFile.AddEntry(relative.Replace('\\','/'),arrayBytes);
+			//The archive layout: every file under its relative path with '/' separators, in GetReleaseFiles order, then the manifest at the root.
+			using(MemoryStream memoryStream=new MemoryStream()) {
+				using(ZipArchive zipArchive=new ZipArchive(memoryStream,ZipArchiveMode.Create,leaveOpen:true)) {
+					foreach(string relative in GetReleaseFiles(folder)) {
+						string path=Path.Combine(folder,relative);
+						byte[] arrayBytes=File.ReadAllBytes(path);//Read once, so the hash and the archive hold the same bytes.
+						ReleaseManifestFile releaseManifestFile=new ReleaseManifestFile();
+						releaseManifestFile.RelativePath=relative;
+						releaseManifestFile.Size=arrayBytes.LongLength;
+						releaseManifestFile.Sha256=ReleaseManifest.ComputeSha256(arrayBytes);
+						releaseManifest.ListFiles.Add(releaseManifestFile);
+						ODZip.AddEntry(zipArchive,relative.Replace('\\','/'),arrayBytes);
+					}
+					ODZip.AddEntry(zipArchive,ReleaseManifest.FILE_NAME,Encoding.UTF8.GetBytes(releaseManifest.Serialize(includeArchiveHash:false)));
 				}
-				zipFile.AddEntry(ReleaseManifest.FILE_NAME,Encoding.UTF8.GetBytes(releaseManifest.Serialize(includeArchiveHash:false)));
-				using(MemoryStream memoryStream=new MemoryStream()) {
-					zipFile.Save(memoryStream);
-					arrayArchive=memoryStream.ToArray();
-				}
+				arrayArchive=memoryStream.ToArray();
 			}
 			releaseManifest.ArchiveSha256=ReleaseManifest.ComputeSha256(arrayArchive);
 			return releaseManifest;
@@ -438,48 +442,72 @@ namespace OpenDentBusiness {
 			return releaseDownloadResult;
 		}
 
-		private static List<string> ExtractArchive(byte[] arrayArchive,string folderDest,ReleaseManifest releaseManifest) {
+		///<summary>The largest manifest read from a release archive. A real one is a few hundred bytes per file.</summary>
+		private const long MAX_MANIFEST_BYTES=16*1024*1024;
+
+		///<summary>Extracts the release archive into folderDest, which is emptied first, and returns the problems found; none means every listed file
+		///was written. Nothing is ever written outside folderDest: an entry with an unsafe path (absolute, a drive, "..", invalid characters), one
+		///that appears twice, one the manifest does not list, or one that inflates beyond its listed size is refused, and the archive's own manifest
+		///must equal the published one. File sizes and SHA-256 are checked afterwards by ReleaseManifest.VerifyFolder.</summary>
+		public static List<string> ExtractArchive(byte[] arrayArchive,string folderDest,ReleaseManifest releaseManifest) {
 			List<string> listProblems=new List<string>();
 			if(Directory.Exists(folderDest)) {
 				Directory.Delete(folderDest,true);
 			}
 			Directory.CreateDirectory(folderDest);
-			string folderFull=Path.GetFullPath(folderDest).TrimEnd('\\')+"\\";
-			HashSet<string> hashSetListed=new HashSet<string>(releaseManifest.ListFiles.Select(x => x.RelativePath.Replace('/','\\')),
-				StringComparer.OrdinalIgnoreCase);
+			Dictionary<string,ReleaseManifestFile> dictionaryListed=new Dictionary<string,ReleaseManifestFile>(StringComparer.OrdinalIgnoreCase);
+			foreach(ReleaseManifestFile releaseManifestFile in releaseManifest.ListFiles) {
+				dictionaryListed[releaseManifestFile.RelativePath.Replace('/','\\')]=releaseManifestFile;
+			}
+			HashSet<string> hashSetSeen=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 			string manifestInside=null;
-			using(MemoryStream memoryStream=new MemoryStream(arrayArchive))
-			using(ZipFile zipFile=ZipFile.Read(memoryStream)) {
-				foreach(ZipEntry zipEntry in zipFile) {
-					if(zipEntry.IsDirectory) {
-						continue;
-					}
-					string relative=zipEntry.FileName.Replace('/','\\');
-					if(!ReleaseManifest.IsSafeRelativePath(relative)) {
-						listProblems.Add("Unsafe path in the release archive: "+zipEntry.FileName);
-						continue;
-					}
-					if(relative.Equals(ReleaseManifest.FILE_NAME,StringComparison.OrdinalIgnoreCase)) {
-						using(MemoryStream memoryStreamManifest=new MemoryStream()) {
-							zipEntry.Extract(memoryStreamManifest);
-							manifestInside=Encoding.UTF8.GetString(memoryStreamManifest.ToArray());
+			try {
+				using(MemoryStream memoryStream=new MemoryStream(arrayArchive))
+				using(ZipArchive zipArchive=new ZipArchive(memoryStream,ZipArchiveMode.Read)) {
+					foreach(ZipArchiveEntry zipArchiveEntry in zipArchive.Entries) {
+						if(ODZip.IsDirectory(zipArchiveEntry)) {
+							continue;
 						}
-						continue;
-					}
-					if(!hashSetListed.Contains(relative)) {
-						listProblems.Add("Not in the manifest: "+relative);
-						continue;
-					}
-					string pathDest=Path.GetFullPath(Path.Combine(folderDest,relative));
-					if(!pathDest.StartsWith(folderFull,StringComparison.OrdinalIgnoreCase)) {
-						listProblems.Add("Unsafe path in the release archive: "+zipEntry.FileName);
-						continue;
-					}
-					Directory.CreateDirectory(Path.GetDirectoryName(pathDest));
-					using(FileStream fileStream=new FileStream(pathDest,FileMode.Create,FileAccess.Write)) {
-						zipEntry.Extract(fileStream);
+						string relative=zipArchiveEntry.FullName.Replace('/','\\');
+						if(!ReleaseManifest.IsSafeRelativePath(relative)) {
+							listProblems.Add("Unsafe path in the release archive: "+zipArchiveEntry.FullName);
+							continue;
+						}
+						if(!hashSetSeen.Add(relative)) {
+							listProblems.Add("In the release archive twice: "+relative);
+							continue;
+						}
+						if(relative.Equals(ReleaseManifest.FILE_NAME,StringComparison.OrdinalIgnoreCase)) {
+							manifestInside=Encoding.UTF8.GetString(ODZip.ReadEntry(zipArchiveEntry,MAX_MANIFEST_BYTES));
+							continue;
+						}
+						if(!dictionaryListed.TryGetValue(relative,out ReleaseManifestFile releaseManifestFile)) {
+							listProblems.Add("Not in the manifest: "+relative);
+							continue;
+						}
+						string pathDest=ODZip.GetSafeExtractPath(folderDest,relative);
+						if(pathDest==null) {
+							listProblems.Add("Unsafe path in the release archive: "+zipArchiveEntry.FullName);
+							continue;
+						}
+						Directory.CreateDirectory(Path.GetDirectoryName(pathDest));
+						try {
+							using(Stream stream=zipArchiveEntry.Open())
+							using(FileStream fileStream=new FileStream(pathDest,FileMode.Create,FileAccess.Write)) {
+								ODZip.CopyBounded(stream,fileStream,releaseManifestFile.Size);
+							}
+						}
+						catch(ODZip.EntryTooLargeException) {
+							File.Delete(pathDest);
+							listProblems.Add("Larger in the release archive than the manifest says: "+relative);
+						}
 					}
 				}
+			}
+			catch(Exception ex) when(ex is InvalidDataException || ex is ODZip.EntryTooLargeException) {
+				//A corrupt archive, or a manifest entry that inflates beyond MAX_MANIFEST_BYTES.
+				listProblems.Add("The release archive is not a readable zip archive: "+ex.Message);
+				return listProblems;
 			}
 			if(manifestInside==null) {
 				listProblems.Add("The release archive has no manifest.");

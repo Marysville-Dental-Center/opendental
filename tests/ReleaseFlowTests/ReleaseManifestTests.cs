@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenDentBusiness;
 
@@ -245,45 +246,65 @@ namespace ReleaseFlowTests {
 
 		[TestMethod]
 		public void PublishFilter_KeepsLocalSettingsLocal() {
-			Assert.IsTrue(ForkReleases.ShouldPublishFile("OpenDental.exe"));
-			Assert.IsTrue(ForkReleases.ShouldPublishFile("UpdateFileCopier.exe"));
-			Assert.IsFalse(ForkReleases.ShouldPublishFile("FreeDentalConfig.xml"));
+			Assert.IsTrue(ForkReleases.ShouldPublishFile(ProgramNames.ExeFileName));
+			Assert.IsTrue(ForkReleases.ShouldPublishFile(ProgramNames.UpdateFileCopierExeFileName));
+			Assert.IsFalse(ForkReleases.ShouldPublishFile(ProgramNames.ConfigFileName));
+			Assert.IsFalse(ForkReleases.ShouldPublishFile(ProgramNames.MiddleTierConfigFileName),"The Middle Tier's connection settings stay local.");
+			Assert.IsFalse(ForkReleases.ShouldPublishFile(ProgramNames.ReplicationServiceConfigFileName));
 			Assert.IsFalse(ForkReleases.ShouldPublishFile("openlog_2026.txt"));
 			Assert.IsFalse(ForkReleases.ShouldPublishFile("Plugin__local.dll"));
 			Assert.IsFalse(ForkReleases.ShouldPublishFile(ReleaseManifest.FILE_NAME));
 			Assert.IsFalse(ForkReleases.ShouldPublishFile("Manifest.txt"),"Open Dental's manifest is never shipped.");
+			//Today's names (decision D3 keeps them), which a rename would change in ProgramNames only.
+			Assert.AreEqual("FreeDentalConfig.xml",ProgramNames.ConfigFileName);
+			Assert.AreEqual("OpenDentalServerConfig.xml",ProgramNames.MiddleTierConfigFileName);
 		}
 
 		[TestMethod]
 		public void BuildId_ChangesWithAnyOwnAssembly() {
 			string folder=TestPaths.NewTempFolder("buildid");
-			File.WriteAllText(Path.Combine(folder,"OpenDental.exe"),"one");
-			File.WriteAllText(Path.Combine(folder,"OpenDentBusiness.dll"),"two");
+			File.WriteAllText(Path.Combine(folder,ProgramNames.ExeFileName),"one");
+			File.WriteAllText(Path.Combine(folder,ProgramNames.BusinessDllFileName),"two");
 			File.WriteAllText(Path.Combine(folder,"ThirdParty.dll"),"three");
 			string buildId=ForkReleases.ComputeBuildId(folder);
 			Assert.IsTrue(ReleaseManifest.IsSha256Hex(buildId));
 			File.WriteAllText(Path.Combine(folder,"ThirdParty.dll"),"changed");
 			Assert.AreEqual(buildId,ForkReleases.ComputeBuildId(folder),"Third-party files are not part of the build id.");
-			File.WriteAllText(Path.Combine(folder,"OpenDentBusiness.dll"),"changed");
+			File.WriteAllText(Path.Combine(folder,ProgramNames.BusinessDllFileName),"changed");
 			Assert.AreNotEqual(buildId,ForkReleases.ComputeBuildId(folder));
+			//Every listed file is part of the id, the exe included.
+			foreach(string fileName in ForkReleases.ListBuildIdFiles) {
+				string buildIdBefore=ForkReleases.ComputeBuildId(folder);
+				File.WriteAllText(Path.Combine(folder,fileName),"rebuilt "+fileName);
+				Assert.AreNotEqual(buildIdBefore,ForkReleases.ComputeBuildId(folder),fileName+" does not change the build id.");
+			}
 		}
 
 		[TestMethod]
-		public void BuildIdFiles_AreBuiltNextToOpenDentalExe() {
-			string folder=Path.Combine(TestPaths.RepoRoot,"OpenDental","bin","Debug");
-			if(!File.Exists(Path.Combine(folder,"OpenDental.exe"))) {
-				Assert.Inconclusive("OpenDental is not built.");
-			}
-			List<string> listMissing=new List<string>();
-			foreach(string fileName in new[] { "OpenDental.exe","OpenDentBusiness.dll","CodeBase.dll","DataConnectionBase.dll","WpfControlsOD.dll",
-				"UpdateFileCopier.exe" })
+		public void BuildIdFiles_NameTheProgramAndItsOwnAssemblies() {
+			foreach(string fileName in new[] { ProgramNames.ExeFileName,ProgramNames.BusinessDllFileName,"CodeBase.dll","DataConnectionBase.dll",
+				"WpfControlsOD.dll",ProgramNames.GraphDllFileName,ProgramNames.CloudDllFileName,"ImagingDeviceManager.dll","ImagingCapture.dll",
+				ProgramNames.UpdateFileCopierExeFileName })
 			{
 				Assert.IsTrue(ForkReleases.ListBuildIdFiles.Contains(fileName),fileName);
-				if(!File.Exists(Path.Combine(folder,fileName))) {
-					listMissing.Add(fileName);
-				}
 			}
-			Assert.AreEqual(0,listMissing.Count,"Missing from the build output: "+string.Join(", ",listMissing));
+			Assert.AreEqual(ForkReleases.ListBuildIdFiles.Count,ForkReleases.ListBuildIdFiles.Distinct(StringComparer.OrdinalIgnoreCase).Count());
+			//The business layer's file name agrees with its assembly: a rename that missed ProgramNames would leave it out of the id unnoticed.
+			Assert.AreEqual(typeof(Patient).Assembly.GetName().Name+".dll",ProgramNames.BusinessDllFileName);
+			Assert.AreEqual(typeof(CodeBase.ODBuild).Assembly.GetName().Name+".dll","CodeBase.dll");
+		}
+
+		///<summary>ComputeBuildId skips a missing file without a word, so a listed name that the build no longer writes (after a rename, say) would
+		///silently stop covering that file. Every listed file must be in the program's build output.</summary>
+		[TestMethod]
+		public void BuildIdFiles_AreAllInTheBuildOutput() {
+			string dirTests=Path.GetDirectoryName(typeof(ReleaseManifestTests).Assembly.Location);//tests/ReleaseFlowTests/bin/Debug
+			string folder=Path.Combine(TestPaths.RepoRoot,"OpenDental","bin",Path.GetFileName(dirTests));
+			if(!File.Exists(Path.Combine(folder,ProgramNames.ExeFileName))) {
+				Assert.Inconclusive(Path.Combine(folder,ProgramNames.ExeFileName)+" is not built.");
+			}
+			List<string> listMissing=ForkReleases.ListBuildIdFiles.Where(x => !File.Exists(Path.Combine(folder,x))).ToList();
+			Assert.AreEqual(0,listMissing.Count,"Missing from the build output "+folder+": "+string.Join(", ",listMissing));
 		}
 	}
 }

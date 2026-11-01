@@ -788,8 +788,9 @@ namespace OpenDental{
 				try {
 					ComputerPrefs.LocalComputer.DirectXFormat=FormGraphics.GetPreferredDirectXFormat(this);
 					if(ComputerPrefs.LocalComputer.DirectXFormat=="invalid") {
-						//No valid local DirectX format could be found.
-						ComputerPrefs.LocalComputer.GraphicsSimple=DrawingMode.Simple2D;
+						//No valid local DirectX format could be found, for example because d3dx9_43.dll from the legacy DirectX runtime is missing.
+						//Use the wrapper's next mode, OpenGL; the wrapper itself falls back to Simple 2D if OpenGL cannot start either.
+						ComputerPrefs.LocalComputer.GraphicsSimple=SparksToothChart.ToothChartWrapper.GetFallbackDrawMode(DrawingMode.DirectX);
 					}
 					ComputerPrefs.Update(ComputerPrefs.LocalComputer);
 					//Reinitialize the tooth chart because the graphics mode was probably changed which should change the tooth chart appearence.
@@ -1314,11 +1315,6 @@ namespace OpenDental{
 			}
 			ComputerPref computerPref =ComputerPrefs.LocalComputer;//just to trigger refresh. See notes in LayoutManagerForms.ScaleMy().
 			//There is no registration key gate. Any key, including a blank one, is accepted.
-			//This must be done at startup in case the user does not perform any action to save something to temp file.
-			//This will cause slowdown, but only for the first week.
-			if(DateTime.Today<PrefC.GetDate(PrefName.TempFolderDateFirstCleaned).AddDays(7)) {
-				PrefC.GetTempFolderPath();//We don't care about the return value.  Just trying to trigger the one-time cleanup and create the temp/opendental directory.
-			}
 			Lans.RefreshCache();//automatically skips if current culture is en-US
 			LanguageForeigns.RefreshCache();//automatically skips if current culture is en-US
 			//menuItemMergeDatabases.Visible=PrefC.GetBool(PrefName.RandomPrimaryKeys");
@@ -3412,7 +3408,7 @@ namespace OpenDental{
 			ForkGuardResult forkGuardResult=ForkVersionGuard.Evaluate(forkDbState);
 			if(!forkGuardResult.CanProceed || forkGuardResult.HasPendingMigrations) {
 				errorMsg=(forkGuardResult.Message=="" ? Lan.g(this,"The database was updated by another workstation.") : forkGuardResult.Message)+"\r\n\r\n"
-					+Lan.g(this,"You will have to restart")+" "+PrefC.GetString(PrefName.SoftwareName)+" "+Lan.g(this,"to correct the version mismatch.");
+					+Lan.g(this,"You will have to restart")+" "+AboutBoxInfo.GetSoftwareName()+" "+Lan.g(this,"to correct the version mismatch.");
 				return false;
 			}
 			if(!ODBuild.IsDebug()) {
@@ -3427,14 +3423,14 @@ namespace OpenDental{
 				{
 					errorMsg=Lan.g(this,"You are running release")+" "+releaseIdentityRunning+", "
 						+Lan.g(this,"but the update server published release")+" "+releaseIdentityPublished+".\r\n\r\n"
-						+Lan.g(this,"You will have to restart")+" "+PrefC.GetString(PrefName.SoftwareName)+" "+Lan.g(this,"to correct the version mismatch.");
+						+Lan.g(this,"You will have to restart")+" "+AboutBoxInfo.GetSoftwareName()+" "+Lan.g(this,"to correct the version mismatch.");
 					return false;
 				}
 			}
 			string updateComputerName=PrefC.GetString(PrefName.UpdateInProgressOnComputerName);
 			if(!string.IsNullOrEmpty(updateComputerName)) {
 				errorMsg=Lan.g(this,"An update is in progress on workstation")+": '"+updateComputerName+"'.\r\n\r\n"
-					+Lan.g(this,"You will have to restart")+" "+PrefC.GetString(PrefName.SoftwareName)+" "+Lan.g(this,"once the update has finished.");
+					+Lan.g(this,"You will have to restart")+" "+AboutBoxInfo.GetSoftwareName()+" "+Lan.g(this,"once the update has finished.");
 				return false;
 			}
 			if(PrefC.GetBool(PrefName.CorruptedDatabase) || CheckCorruptedReportandRead()) {
@@ -4320,10 +4316,6 @@ namespace OpenDental{
 		}
 
 		private void menuItemGraphics_Click(object sender,EventArgs e) {
-			//if(ToothChartRelay.IsSparks3DPresent){
-			//	MsgBox.Show(this,"You are using the new 3D tooth chart (Sparks3D.dll), so the Graphics setup window is not needed.");
-			//	return;
-			//}
 			if(!Security.IsAuthorized(EnumPermType.GraphicsEdit)) {
 				return;
 			}
@@ -6926,7 +6918,7 @@ namespace OpenDental{
 			if(!doShutdownAll) {
 				msg="Your instance of Open Dental ";
 			}
-			else if(Process.GetCurrentProcess().ProcessName=="OpenDental") {
+			else if(ProgramNames.IsProgramProcessName(Process.GetCurrentProcess().ProcessName)) {
 				msg+="All copies of Open Dental ";
 			}
 			else {
@@ -7094,7 +7086,7 @@ namespace OpenDental{
 			for(int i=0;i<stringArrayFileNames.Length;i++) {
 				try {
 					//All files related to updates need to stay.  They do not contain PHI information and will not harm anything if left around.
-					if(stringArrayFileNames[i].Contains("UpdateFileCopier.exe")) {
+					if(stringArrayFileNames[i].Contains(ProgramNames.UpdateFileCopierExeFileName)) {
 						continue;//Skip any files related to updates.
 					}
 					//When an update is in progress, the binaries will be stored in a subfolder called UpdateFiles within the temp directory.
@@ -7102,7 +7094,7 @@ namespace OpenDental{
 						continue;//Skip any files related to updates.
 					}
 					//The UpdateFileCopier will create temporary backups of source and destination setup files so that it can revert if copying fails.
-					if(stringArrayFileNames[i].Contains("updatefilecopier")) {
+					if(stringArrayFileNames[i].Contains(ProgramNames.UpdateFileCopierTempFolderName)) {
 						continue;//Skip any files related to updates.
 					}
 					File.Delete(stringArrayFileNames[i]);
@@ -7120,7 +7112,7 @@ namespace OpenDental{
 						continue;//Skip any files related to updates.
 					}
 					//The UpdateFileCopier will create temporary backups of source and destination setup files so that it can revert if copying fails.
-					if(listDirectories[i].Contains("updatefilecopier")) {
+					if(listDirectories[i].Contains(ProgramNames.UpdateFileCopierTempFolderName)) {
 						continue;//Skip any files related to updates.
 					}
 					Directory.Delete(listDirectories[i]);

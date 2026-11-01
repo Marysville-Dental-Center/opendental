@@ -100,10 +100,6 @@
     <DocumentationFile>bin\Release\OpenDental.xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="AxInterop.AcroPDFLib, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\AxInterop.AcroPDFLib.dll</HintPath>
-    </Reference>
     <Reference Include="Dicom.Core, Version=4.0.7.0, Culture=neutral, PublicKeyToken=3a13f649e28eb09a, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\Dicom.Core.dll</HintPath>
@@ -115,16 +111,6 @@
     <Reference Include="Health.Direct.Common">
       <HintPath>..\Required dlls\Health.Direct.Common.dll</HintPath>
     </Reference>
-    <Reference Include="Interop.Acrobat, Version=1.1.0.0, Culture=neutral, processorArchitecture=x86">
-      <SpecificVersion>False</SpecificVersion>
-      <EmbedInteropTypes>True</EmbedInteropTypes>
-      <HintPath>..\Required dlls\Interop.Acrobat.dll</HintPath>
-    </Reference>
-    <Reference Include="Interop.AFORMAUTLib, Version=1.0.0.0, Culture=neutral, processorArchitecture=x86">
-      <SpecificVersion>False</SpecificVersion>
-      <EmbedInteropTypes>True</EmbedInteropTypes>
-      <HintPath>..\Required dlls\Interop.AFORMAUTLib.dll</HintPath>
-    </Reference>
     <Reference Include="Interop.CDRDATALib">
       <HintPath>..\Required dlls\Interop.CDRDATALib.dll</HintPath>
       <EmbedInteropTypes>True</EmbedInteropTypes>
@@ -133,22 +119,10 @@
       <HintPath>..\Required dlls\Interop.CDRDicom.dll</HintPath>
       <EmbedInteropTypes>True</EmbedInteropTypes>
     </Reference>
-    <Reference Include="Interop.Microsoft.Office.Core, Version=2.2.0.0, Culture=neutral">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\Interop.Microsoft.Office.Core.dll</HintPath>
-    </Reference>
     <Reference Include="Interop.QBFC10, Version=11.0.0.29, Culture=neutral, PublicKeyToken=31d8aec643e18259">
       <SpecificVersion>False</SpecificVersion>
       <EmbedInteropTypes>True</EmbedInteropTypes>
       <HintPath>..\Required dlls\Interop.QBFC10.dll</HintPath>
-    </Reference>
-    <Reference Include="Interop.Word, Version=8.2.0.0, Culture=neutral">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\Interop.Word.dll</HintPath>
-    </Reference>
-    <Reference Include="Ionic.Zip, Version=1.9.1.4, Culture=neutral, PublicKeyToken=edbe51ad942a3f5c, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\Ionic.Zip.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="Microsoft.VisualBasic" />
@@ -167,10 +141,6 @@
     <Reference Include="MigraDoc.Rendering, Version=1.2.2546.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\MigraDoc.Rendering.dll</HintPath>
-    </Reference>
-    <Reference Include="MigraDoc.RtfRendering, Version=1.2.2546.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\MigraDoc.RtfRendering.dll</HintPath>
     </Reference>
     <Reference Include="MySqlConnector">
       <HintPath>..\Required dlls\MySqlConnector.dll</HintPath>
@@ -216,16 +186,7 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\SharpDX.dll</HintPath>
     </Reference>
-    <Reference Include="SigPlusNET, Version=1.1.4050.24928, Culture=neutral, PublicKeyToken=6aef07010bb0624f, processorArchitecture=x86">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\SigPlusNET.dll</HintPath>
-    </Reference>
-    <Reference Include="Sparks3D">
-      <HintPath>..\Required dlls\Sparks3D\Sparks3D.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
     <Reference Include="System">
-      <HintPath>..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.7.2\System.dll</HintPath>
     </Reference>
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
@@ -238,6 +199,7 @@
     <Reference Include="System.DirectoryServices.AccountManagement" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.EnterpriseServices" />
+    <Reference Include="System.IO.Compression" />
     <Reference Include="System.Management" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Runtime.Serialization" />
@@ -265,24 +227,8 @@
     </Reference>
     <Reference Include="UIAutomationClient" />
     <Reference Include="UIAutomationProvider" />
-    <Reference Include="VBbridges, Version=4.4.11.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\VBbridges.dll</HintPath>
-    </Reference>
     <Reference Include="WindowsBase" />
     <Reference Include="WindowsFormsIntegration" />
-    <Reference Include="xImageDeviceManager, Version=1.0.0.0, Culture=neutral, processorArchitecture=x86">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\xImageDeviceManager.dll</HintPath>
-    </Reference>
-    <Reference Include="zxing, Version=0.16.5.0, Culture=neutral, PublicKeyToken=4e88037ac681fe60, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\zxing.dll</HintPath>
-    </Reference>
-    <Reference Include="zxing.presentation, Version=0.16.5.0, Culture=neutral, PublicKeyToken=4e88037ac681fe60, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\zxing.presentation.dll</HintPath>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Bridges\FormDrCeph.cs">
@@ -2296,12 +2242,6 @@
     </Compile>
     <Compile Include="Forms Reports\FormRpDiscountPlan.designer.cs">
       <DependentUpon>FormRpDiscountPlan.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\FormAvaTax.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FormAvaTax.designer.cs">
-      <DependentUpon>FormAvaTax.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\FormAutoNoteResponsePicker.cs">
       <SubType>Form</SubType>
@@ -5572,6 +5512,9 @@
     <Compile Include="Misc\Pop3.cs" />
     <Compile Include="Misc\VisiQuick.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="..\SharedAssemblyInfo.cs">
+      <Link>Properties\SharedAssemblyInfo.cs</Link>
+    </Compile>
     <Compile Include="SheetFramework\SheetEditMobileCtrl.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -6456,9 +6399,6 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms Reports\FormRpDiscountPlan.resx">
       <DependentUpon>FormRpDiscountPlan.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormAvaTax.resx">
-      <DependentUpon>FormAvaTax.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormAutoNoteResponsePicker.resx">
       <DependentUpon>FormAutoNoteResponsePicker.cs</DependentUpon>
@@ -8947,9 +8887,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\Pearl.txt" />
-    <None Include="Resources\opendentalapienduserlicense.txt" />
     <Resource Include="Resources\bola_launch.png" />
-    <None Include="Resources\Icon1.ico" />
     <None Include="Resources\XamlStyle_ToolBarButton.txt" />
     <None Include="Resources\XamlStyle_ToolBar.txt" />
     <None Include="Resources\XamlStyle_MenuItem.txt" />
@@ -8972,14 +8910,11 @@
     <Resource Include="Resources\topazPen10.gif" />
     <Resource Include="Resources\eSig.gif" />
     <Resource Include="Resources\deleteX10.gif" />
-    <None Include="Resources\Sparks3D.txt" />
     <None Include="Resources\splashBenco.jpg" />
     <None Include="Resources\benco_logo.png" />
-    <None Include="Resources\Zxing.txt" />
     <None Include="Resources\butPin22.gif" />
     <None Include="Resources\ExternalLink.png" />
     <Resource Include="Resources\webChatIcon.png" />
-    <None Include="Resources\opendentallicense.txt" />
     <None Include="Resources\downArrowWinForm.png" />
     <None Include="Resources\setupGears.gif" />
     <None Include="Resources\Microphone_22px.png" />
@@ -8992,22 +8927,16 @@
     <None Include="Resources\infoIcon.png" />
     <None Include="Resources\Twain.txt" />
     <None Include="Resources\Tao_OpenGL.txt" />
-    <None Include="Resources\Tao_Freeglut.txt" />
     <None Include="Resources\Tamir.txt" />
-    <None Include="Resources\stdole.txt" />
     <None Include="Resources\SshNet.txt" />
     <None Include="Resources\PdfSharp.txt" />
-    <None Include="Resources\Oracle.txt" />
     <None Include="Resources\NHunSpell.txt" />
     <None Include="Resources\NewtonSoft_Json.txt" />
+    <None Include="Resources\GPL.txt" />
     <None Include="Resources\NDde.txt" />
     <None Include="Resources\MySql.txt" />
     <None Include="Resources\MigraDoc.txt" />
-    <None Include="Resources\Microsoft.txt" />
     <None Include="Resources\Mentalis.txt" />
-    <None Include="Resources\Ionic.txt" />
-    <None Include="Resources\Bsd.txt" />
-    <None Include="Resources\CDT Content End User License.txt" />
     <None Include="Resources\gtaicon3.png" />
     <None Include="Resources\NoFigure.png" />
     <None Include="Resources\raisehanddisabled.png" />
@@ -9389,12 +9318,10 @@
     <Content Include="ReportingForRdl\Allocators\MyAllocator1\Images\SnuffLight7.gif" />
     <Content Include="ReportingForRdl\Allocators\MyAllocator1\Images\SnuffLight8.gif" />
     <None Include="Resources\1500_02_12.gif" />
-    <None Include="Resources\AForge.txt" />
     <Resource Include="Resources\Account32.gif" />
     <Content Include="Resources\Anesth.gif" />
     <None Include="Resources\arrowRightLine.gif" />
     <None Include="Resources\Appt32.gif" />
-    <None Include="Resources\Angular.txt" />
     <Content Include="Resources\arrowRightTriangle.gif" />
     <None Include="ReportingForRdl\Allocators\ClassDiagram_Allocators.cd" />
     <None Include="ReportingForRdl\Allocators\MyAllocator1\SupportingCode\EPP_ClassDiagram.cd" />
@@ -9409,7 +9336,6 @@
     <None Include="Resources\PaymentsRDL.txt" />
     <None Include="Resources\CommLog.gif" />
     <None Include="Resources\NoFeeProcCodes.txt" />
-    <None Include="Resources\CDT Content End User License.rtf" />
     <None Include="Resources\stationary sample1.jpg" />
     <None Include="Resources\ClaimForm.xml" />
     <None Include="Resources\butZoomOut.gif" />
@@ -9551,6 +9477,21 @@
       <Isolated>False</Isolated>
       <EmbedInteropTypes>True</EmbedInteropTypes>
     </COMReference>
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Native (x86) files that the program loads at run time but that no reference brings into the output, in Debug and Release alike:
+         Hunspellx86.dll is loaded by NHunspell.dll for the spell check in every ODtextBox (a Release build throws without it), and
+         WebView2Loader.dll by Microsoft.Web.WebView2.Core.dll for every WebView2 window (CodeBase/Controls/ODWebView2.cs). -->
+    <None Include="..\Required dlls\Hunspellx86.dll">
+      <Link>Hunspellx86.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Visible>False</Visible>
+    </None>
+    <None Include="..\Required dlls\WebView2Loader.dll">
+      <Link>WebView2Loader.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Visible>False</Visible>
+    </None>
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!-- Build time of OpenDental.exe, for the release channel: [assembly: AssemblyMetadata("ForkBuildUtc", "yyyy-MM-ddTHH:mm:ssZ")]

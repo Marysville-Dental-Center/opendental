@@ -71,7 +71,7 @@ namespace OpenDentBusiness {
 						|| !File.Exists(configFilePath))//returns false if the file doesn't exist, user doesn't have permission for file, path is blank or null
 					{
 						//either configFilePath not set or file doesn't exist, default to OpenDentalServerConfig.xml
-						configFilePath=ODFileUtils.CombinePaths(serverMapPath,"OpenDentalServerConfig.xml");
+						configFilePath=ODFileUtils.CombinePaths(serverMapPath,ProgramNames.MiddleTierConfigFileName);
 					}
 					Userods.LoadDatabaseInfoFromFile(configFilePath);
 				}
@@ -195,7 +195,7 @@ namespace OpenDentBusiness {
 				#endregion
 				#region DtoGetObject
 				else if(type == typeof(DtoGetObject)) {
-					if(dtoInformation.ClassName=="Security" && dtoInformation.MethodName=="LogInWeb") {
+					if(dtoInformation.ClassName==nameof(Security) && dtoInformation.MethodName==nameof(Security.LogInWeb)) {
 						dtoInformation.Parameters[2]=new DtoObject(serverMapPath,typeof(string));//because we can't access this variable from within OpenDentBusiness.
 						RemotingClient.MiddleTierRole=MiddleTierRole.ServerMT;
 						//We just changed the number of parameters so we need to regenerate ParamObjs.
@@ -368,7 +368,7 @@ namespace OpenDentBusiness {
 				if(methodName.Split('.').Length==2) {
 					//Versions prior to 14.3 will send 2 components. 14.3 and above will send the assembly name OpenDentBusiness or plugin assembly name.  
 					//If only 2 components are received, we will prepend OpenDentBusiness so this will be backward compatible with versions prior to 14.3.
-					methodName="OpenDentBusiness."+methodName;
+					methodName=typeof(DtoProcessor).Namespace+"."+methodName;//This assembly's name, which its root namespace equals by convention.
 				}
 				if(methodName.Split('.').Length<=3) {
 					return methodName.Split('.');

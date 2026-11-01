@@ -56,9 +56,8 @@ namespace VendorDirectTests.BridgesRemoval {
 		private static List<string> GetFiles(string folder,string searchPattern) {
 			string root=GetRoot();
 			List<string> listFiles=new List<string>();
-			if(!Directory.Exists(folder)) {
-				return listFiles;
-			}
+			//A missing project folder (renamed, say) would leave its files unchecked, so it fails instead of being skipped.
+			Assert.IsTrue(Directory.Exists(folder),folder+" is missing; update the project list.");
 			foreach(string file in Directory.EnumerateFiles(folder,searchPattern,SearchOption.AllDirectories)) {
 				string relative=file.Substring(root.Length);
 				if(!IsBuildOutput(relative)) {
@@ -239,7 +238,10 @@ namespace VendorDirectTests.BridgesRemoval {
 		[TestMethod]
 		public void HqProvisioningLeftovers_AreGone() {
 			Assembly assembly=typeof(Patient).Assembly;
-			Assert.IsFalse(assembly.GetTypes().Any(x => x.Namespace=="OpenDentBusiness.DoseSpotService"),"The DoseSpot v1 SOAP proxy should have been removed.");
+			//Sub-namespaces of the business layer's namespace, taken from a type: Bridges holds types, so the DoseSpotService check checks something.
+			string nsBusiness=typeof(Patient).Namespace;
+			Assert.IsTrue(assembly.GetTypes().Any(x => x.Namespace==nsBusiness+".Bridges"),"No type in "+nsBusiness+".Bridges, so the lookup is wrong.");
+			Assert.IsFalse(assembly.GetTypes().Any(x => x.Namespace==nsBusiness+".DoseSpotService"),"The DoseSpot v1 SOAP proxy should have been removed.");
 			Assert.IsFalse(Directory.Exists(Path.Combine(GetRoot(),@"OpenDentBusiness\Web References\DoseSpotService")));
 			Assert.IsFalse(ReadRepoFile(@"OpenDentBusiness\OpenDentBusiness.csproj").Contains("DoseSpotService"));
 			foreach(string file in new[] { @"OpenDentBusiness\Properties\Settings.settings",@"OpenDentBusiness\Properties\Settings.Designer.cs",

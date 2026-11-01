@@ -7,6 +7,7 @@ using System.Drawing.Drawing2D;
 using System.Data;
 using System.Text;
 using System.Windows.Forms;
+using CodeBase;
 using OpenDentBusiness;
 
 namespace SparksToothChart {
@@ -49,19 +50,13 @@ namespace SparksToothChart {
 				//do not break out if not changing mode.  ContrChart.InitializeOnStartup assumes this code will always run.
 				if(drawMode==DrawingMode.DirectX && value!=DrawingMode.DirectX){
 					//If switching from from DirectX to another drawing mode,
-					//then we need to cleanup DirectX resources in case the 
+					//then we need to cleanup DirectX resources in case the
 					//chart is never switched back to DirectX mode.
-					toothChartDirectX.Dispose();//Calls CleanupDirectX() and device.Dispose().
-					toothChartDirectX=null;
+					DisposeDirectX();//Calls CleanupDirectX() and device.Dispose().
 				}
-				try {
-					drawMode=value;
-					ResetControls();
-				}
-				catch {
-					drawMode=DrawingMode.Simple2D;
-					ResetControls();
-				}
+				//A mode that cannot start falls back to the next one (DirectX, OpenGL, Simple 2D) without an error dialog, logged once per process.
+				//Read DrawMode afterwards to learn which mode started.
+				drawMode=StartFirstWorkingMode(value,IsDirectXRuntimeAvailable(),TryStartDrawMode,LogFallbackOnce);
 			}
 		}
 
@@ -404,6 +399,130 @@ namespace SparksToothChart {
 				toothChartOpenGL.ResumeLayout();
 			}
 		}
+
+		#region Draw mode fallback
+		///<summary>The D3DX 9 helper library from Microsoft's legacy DirectX End-User Runtime. The DirectX chart needs it for its fonts and mesh
+		///optimisation (SharpDX.Direct3D9.Font, D3DX.OptimizeFaces). Windows itself ships d3d9.dll but not this file.</summary>
+		public const string D3DX_DLL="d3dx9_43.dll";
+		private static bool? _isDirectXRuntimeAvailable;
+		private static bool _isFallbackLogged;
+
+		///<summary>The mode the chart tries next when drawingMode cannot start: DirectX falls back to OpenGL, OpenGL to Simple 2D. Simple 2D has no
+		///fallback and returns itself.</summary>
+		public static DrawingMode GetFallbackDrawMode(DrawingMode drawingMode) {
+			if(drawingMode==DrawingMode.DirectX) {
+				return DrawingMode.OpenGL;
+			}
+			return DrawingMode.Simple2D;
+		}
+
+		///<summary>True when D3DX_DLL can be loaded in this process, so the DirectX chart can start. A clean Windows install lacks it. Checked once
+		///per process.</summary>
+		public static bool IsDirectXRuntimeAvailable() {
+			if(_isDirectXRuntimeAvailable==null) {
+				_isDirectXRuntimeAvailable=CanLoadLibrary(D3DX_DLL);
+			}
+			return _isDirectXRuntimeAvailable.Value;
+		}
+
+		///<summary>Starts the first mode that works, beginning with drawingModeRequested and following GetFallbackDrawMode: DirectX, then OpenGL,
+		///then Simple 2D. DirectX is not tried when isDirectXRuntimeAvailable is false. funcTryStart starts one mode and returns true, or returns false
+		///or throws when that mode cannot start. Simple 2D is the last resort and is not caught, as before. actionLog gets one line for each mode
+		///that was skipped or failed. Returns the mode that started.</summary>
+		public static DrawingMode StartFirstWorkingMode(DrawingMode drawingModeRequested,bool isDirectXRuntimeAvailable,Func<DrawingMode,bool> funcTryStart,
+			Action<string> actionLog)
+		{
+			DrawingMode drawingMode=drawingModeRequested;
+			if(drawingMode==DrawingMode.DirectX && !isDirectXRuntimeAvailable) {
+				actionLog?.Invoke("The DirectX tooth chart cannot start because "+D3DX_DLL+" (Microsoft's DirectX End-User Runtime) is not installed. "
+					+"Using "+GetFallbackDrawMode(drawingMode)+".");
+				drawingMode=GetFallbackDrawMode(drawingMode);
+			}
+			while(drawingMode!=DrawingMode.Simple2D) {
+				string reason="";
+				bool isStarted=false;
+				try {
+					isStarted=funcTryStart(drawingMode);
+				}
+				catch(Exception ex) {
+					reason=" ("+ex.GetType().Name+": "+ex.Message+")";
+				}
+				if(isStarted) {
+					return drawingMode;
+				}
+				actionLog?.Invoke("The "+drawingMode+" tooth chart could not start"+reason+". Using "+GetFallbackDrawMode(drawingMode)+".");
+				drawingMode=GetFallbackDrawMode(drawingMode);
+			}
+			funcTryStart(DrawingMode.Simple2D);
+			return DrawingMode.Simple2D;
+		}
+
+		///<summary>Starts drawingMode on this wrapper. Throws when it cannot start, after releasing a half-made DirectX control so the next attempt at
+		///DirectX starts clean.</summary>
+		private bool TryStartDrawMode(DrawingMode drawingMode) {
+			drawMode=drawingMode;
+			try {
+				ResetControls();
+			}
+			catch {
+				if(drawingMode==DrawingMode.DirectX) {
+					DisposeDirectX();
+				}
+				throw;
+			}
+			return true;
+		}
+
+		private void DisposeDirectX() {
+			if(toothChartDirectX==null) {
+				return;
+			}
+			try {
+				Controls.Remove(toothChartDirectX);
+				toothChartDirectX.Dispose();
+			}
+			catch(Exception ex) {
+				ex.DoNothing();//A device that never started can fail to clean up; it is dropped either way.
+			}
+			toothChartDirectX=null;
+		}
+
+		///<summary>Writes the first fallback of this process to the ToothChart log and ignores the rest, so a computer without DirectX does not fill
+		///the log every time a chart is drawn.</summary>
+		private static void LogFallbackOnce(string message) {
+			if(_isFallbackLogged) {
+				return;
+			}
+			_isFallbackLogged=true;
+			try {
+				CodeBase.Logger.WriteLine(message,"ToothChart");
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+			}
+		}
+
+		private static bool CanLoadLibrary(string fileName) {
+			try {
+				IntPtr intPtrModule=LoadLibrary(fileName);
+				if(intPtrModule==IntPtr.Zero) {
+					return false;
+				}
+				FreeLibrary(intPtrModule);
+				return true;
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+				return false;
+			}
+		}
+
+		[System.Runtime.InteropServices.DllImport("kernel32.dll",CharSet=System.Runtime.InteropServices.CharSet.Unicode,SetLastError=true)]
+		private static extern IntPtr LoadLibrary(string lpFileName);
+
+		[System.Runtime.InteropServices.DllImport("kernel32.dll",SetLastError=true)]
+		private static extern bool FreeLibrary(IntPtr hModule);
+		#endregion Draw mode fallback
 
 		//This step usually happens when the DrawMode property is set on the tooth chart wrapper, by way of the ResetControls() function.
 		///<summary>Not normally used unless we are just trying to make a copy of an existing directX control.</summary>

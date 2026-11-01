@@ -16,11 +16,11 @@ namespace AttributionTests {
 			+"the GNU GPL v2. It is not affiliated with or endorsed by Open Dental Software, Inc.";
 
 		#region Helpers
-		///<summary>The repository root: the first folder above the test assembly that holds OpenDental.sln and LICENSE.</summary>
+		///<summary>The repository root: the first folder above the test assembly that holds LICENSE and NOTICE.</summary>
 		private static string RepoRoot() {
 			DirectoryInfo directoryInfo=new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory);
 			while(directoryInfo!=null) {
-				if(File.Exists(Path.Combine(directoryInfo.FullName,"OpenDental.sln")) && File.Exists(Path.Combine(directoryInfo.FullName,"LICENSE"))) {
+				if(File.Exists(Path.Combine(directoryInfo.FullName,"LICENSE")) && File.Exists(Path.Combine(directoryInfo.FullName,"NOTICE"))) {
 					return directoryInfo.FullName;
 				}
 				directoryInfo=directoryInfo.Parent;

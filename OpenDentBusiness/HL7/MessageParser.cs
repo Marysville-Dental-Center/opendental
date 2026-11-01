@@ -223,7 +223,7 @@ namespace OpenDentBusiness.HL7 {
 				#endregion patientIdList
 			}
 			if(_isEcwHL7Def &&  (string.IsNullOrEmpty(patLName) || string.IsNullOrEmpty(patFName))) {
-				EventLog.WriteEntry("OpenDentHL7","Message not processed due to missing first or last name. PatNum:"+patNum.ToString()
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Message not processed due to missing first or last name. PatNum:"+patNum.ToString()
 					,EventLogEntryType.Information);
 				_hl7MsgCur.Note="Message not processed due to missing first or last name. PatNum:"+patNum.ToString();
 				HL7Msgs.Update(_hl7MsgCur);
@@ -257,7 +257,7 @@ namespace OpenDentBusiness.HL7 {
 					pat.ChartNumber=chartNum;//from now on, we will be able to find pat by chartNumber
 					Patients.Update(pat,patOld);
 					if(_isVerboseLogging) {
-						EventLog.WriteEntry("OpenDentHL7","Updated patient "+pat.GetNameFLnoPref()+" to include ChartNumber.",EventLogEntryType.Information);
+						EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Updated patient "+pat.GetNameFLnoPref()+" to include ChartNumber.",EventLogEntryType.Information);
 					}
 				}
 			}
@@ -404,14 +404,14 @@ namespace OpenDentBusiness.HL7 {
 					SecurityLogs.MakeLogEntry(EnumPermType.PatientCreate,pat.PatNum,"Created from HL7.",LogSources.HL7);
 				}
 				if(_isVerboseLogging) {
-					EventLog.WriteEntry("OpenDentHL7","Inserted patient with PatNum="+pat.PatNum,EventLogEntryType.Information);
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Inserted patient with PatNum="+pat.PatNum,EventLogEntryType.Information);
 				}
 				patOld=pat.Copy();
 				if(pat.Guarantor==0) {
 					pat.Guarantor=pat.PatNum;
 					Patients.Update(pat,patOld);
 					if(_isVerboseLogging) {
-						EventLog.WriteEntry("OpenDentHL7","Updated patient with PatNum="+pat.PatNum+", updated Guarantor from 0 to "+pat.Guarantor+".",
+						EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Updated patient with PatNum="+pat.PatNum+", updated Guarantor from 0 to "+pat.Guarantor+".",
 							EventLogEntryType.Information);
 					}
 					patOld=pat.Copy();
@@ -437,7 +437,7 @@ namespace OpenDentBusiness.HL7 {
 					}
 					for(int j=0;j<listSegments.Count;j++) {//normally only 1 or 0 in the list, but if it is a repeatable segment the list may contain multiple segments to process
 						if(_isVerboseLogging) {
-							EventLog.WriteEntry("OpenDentHL7","Process segment "+hl7defmsg.ListHL7DefSegments[i].SegmentName.ToString(),EventLogEntryType.Information);
+							EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Process segment "+hl7defmsg.ListHL7DefSegments[i].SegmentName.ToString(),EventLogEntryType.Information);
 						}
 						ProcessSeg(pat,aptCur,hl7defmsg.ListHL7DefSegments[i],listSegments[j],msg);
 						if(hl7defmsg.ListHL7DefSegments[i].SegmentName==SegmentNameHL7.SCH) {
@@ -464,7 +464,7 @@ namespace OpenDentBusiness.HL7 {
 			#endregion Process Segments
 			//We have processed the message so now update the patient
 			if(pat.FName=="" || pat.LName=="") {
-				EventLog.WriteEntry("OpenDentHL7","Patient demographics not processed due to missing first or last name. PatNum:"+pat.PatNum.ToString()
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Patient demographics not processed due to missing first or last name. PatNum:"+pat.PatNum.ToString()
 					,EventLogEntryType.Information);
 				_hl7MsgCur.Note="Patient demographics not processed due to missing first or last name. PatNum:"+pat.PatNum.ToString();
 				HL7Msgs.Update(_hl7MsgCur);
@@ -472,7 +472,7 @@ namespace OpenDentBusiness.HL7 {
 			else {
 				Patients.Update(pat,patOld);
 				if(_isVerboseLogging) {
-					EventLog.WriteEntry("OpenDentHL7","Updated patient "+pat.GetNameFLnoPref(),EventLogEntryType.Information);
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Updated patient "+pat.GetNameFLnoPref(),EventLogEntryType.Information);
 				}
 				_hl7MsgCur.HL7Status=HL7MessageStatus.InProcessed;
 				HL7Msgs.Update(_hl7MsgCur);
@@ -490,7 +490,7 @@ namespace OpenDentBusiness.HL7 {
 					aptCur.AptStatus=ApptStatus.Broken;
 					Appointments.Update(aptCur,aptOld);
 					if(_isVerboseLogging) {
-						EventLog.WriteEntry("OpenDentHL7","Appointment broken due to inbound SRM message with event type S04 for patient "+pat.GetNameFLnoPref(),EventLogEntryType.Information);
+						EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Appointment broken due to inbound SRM message with event type S04 for patient "+pat.GetNameFLnoPref(),EventLogEntryType.Information);
 					}
 				}
 				MessageHL7 hl7Srr=MessageConstructor.GenerateSRR(pat,aptCur,msg.EventType,msg.ControlId,true,msg.AckEvent);
@@ -668,7 +668,7 @@ namespace OpenDentBusiness.HL7 {
 			}
 			_aptProcessed=apt;
 			if(_isVerboseLogging) {
-				EventLog.WriteEntry("OpenDentHL7","Updated appointment for patient "+pat.GetNameFLnoPref()+" due to an incoming AIG or AIP segment.",EventLogEntryType.Information);
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Updated appointment for patient "+pat.GetNameFLnoPref()+" due to an incoming AIG or AIP segment.",EventLogEntryType.Information);
 			}
 			return;
 		}
@@ -718,7 +718,7 @@ namespace OpenDentBusiness.HL7 {
 			}
 			_aptProcessed=apt;
 			if(_isVerboseLogging) {
-				EventLog.WriteEntry("OpenDentHL7","Updated appointment for patient "+pat.GetNameFLnoPref()+" due to an incoming AIL segment.",EventLogEntryType.Information);
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Updated appointment for patient "+pat.GetNameFLnoPref()+" due to an incoming AIL segment.",EventLogEntryType.Information);
 			}
 			return;
 		}
@@ -738,7 +738,7 @@ namespace OpenDentBusiness.HL7 {
 					case "allergenRxNorm":
 						if(seg.GetFieldComponent(intItemOrder,2).ToLower()!="rxnorm") {
 							//if not an RXNORM code, do nothing.  Only RXNORM codes are currently supported
-							EventLog.WriteEntry("OpenDentHL7","A drug allergy was not added for patient "+pat.GetNameFLnoPref()
+							EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"A drug allergy was not added for patient "+pat.GetNameFLnoPref()
 								+".  Only RxNorm codes are currently allowed in the AL1 segment.  The code system name provided was "
 								+seg.GetFieldComponent(intItemOrder,2)+".",EventLogEntryType.Information);
 							return;
@@ -756,14 +756,14 @@ namespace OpenDentBusiness.HL7 {
 				}
 			}
 			if(rxnorm==0 || strAllergenType!="da") {
-				EventLog.WriteEntry("OpenDentHL7","A drug allergy was not added for patient "+pat.GetNameFLnoPref()
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"A drug allergy was not added for patient "+pat.GetNameFLnoPref()
 					+".  Only drug allergies, identified by type 'DA', are currently allowed in the AL1 segment.  The allergen type received was '"
 					+strAllergenType+"'.",EventLogEntryType.Information);
 				return;//not able to assign drug allergy if not given a valid rxnorm or allergen type is not a drug allergy
 			}
 			AllergyDef allergyDefCur=AllergyDefs.GetAllergyDefFromRxnorm(rxnorm);
 			if(allergyDefCur==null) {
-				EventLog.WriteEntry("OpenDentHL7","A drug allergy was not added for patient "+pat.GetNameFLnoPref()+
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"A drug allergy was not added for patient "+pat.GetNameFLnoPref()+
 					".  There is not a drug allergy in the database with an RxNorm code of "+rxnorm.ToString()+".",EventLogEntryType.Information);
 				return;//no allergydef for this rxnorm exists
 			}
@@ -780,7 +780,7 @@ namespace OpenDentBusiness.HL7 {
 			allergyCur.StatusIsActive=true;
 			Allergies.Insert(allergyCur);
 			if(_isVerboseLogging) {
-				EventLog.WriteEntry("OpenDentHL7","Inserted a new allergy for patient "+pat.GetNameFLnoPref()+" due to an incoming AL1 segment.",EventLogEntryType.Information);
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Inserted a new allergy for patient "+pat.GetNameFLnoPref()+" due to an incoming AL1 segment.",EventLogEntryType.Information);
 			}
 			return;
 		}
@@ -822,14 +822,14 @@ namespace OpenDentBusiness.HL7 {
 				oidExtCur.rootExternal=externRoot;
 				OIDExternals.Insert(oidExtCur);
 				if(_isVerboseLogging) {
-					EventLog.WriteEntry("OpenDentHL7","Added an external appointment ID to the oidexternals table due to an incoming ARQ segment.\r\n"
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Added an external appointment ID to the oidexternals table due to an incoming ARQ segment.\r\n"
 						+"AptNum: "+apt.AptNum.ToString()+", External AptID: "+externAptId+", External root: "+externRoot+".",EventLogEntryType.Information);
 				}
 			}
 			_hl7MsgCur.AptNum=apt.AptNum;
 			HL7Msgs.Update(_hl7MsgCur);
 			if(_isVerboseLogging) {
-				EventLog.WriteEntry("OpenDentHL7","Updated hl7msg to include AptNum for "+pat.GetNameFLnoPref()+" due to an incoming SCH segment.",EventLogEntryType.Information);
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Updated hl7msg to include AptNum for "+pat.GetNameFLnoPref()+" due to an incoming SCH segment.",EventLogEntryType.Information);
 			}
 			_aptProcessed=apt;
 			return;
@@ -884,7 +884,7 @@ namespace OpenDentBusiness.HL7 {
 			if(guarPatNumOrdinal==-1 && guarChartNumOrdinal==-1 && guarIdsOrdinal==-1) {
 				_hl7MsgCur.Note="Guarantor not processed.  guar.PatNum, guar.ChartNumber, or guarIdList must be included in the GT1 definition.  PatNum of patient: "+pat.PatNum.ToString();
 				HL7Msgs.Update(_hl7MsgCur);
-				EventLog.WriteEntry("OpenDentHL7","Guarantor not processed.  guar.PatNum, guar.ChartNumber, or guarIdList must be included in the GT1 definition.  "
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Guarantor not processed.  guar.PatNum, guar.ChartNumber, or guarIdList must be included in the GT1 definition.  "
 					+"PatNum of patient: "+pat.PatNum.ToString(),EventLogEntryType.Information);
 				return;
 			}
@@ -892,7 +892,7 @@ namespace OpenDentBusiness.HL7 {
 			if(guarNameOrdinal==-1) {
 				_hl7MsgCur.Note="Guarantor not processed due to guar.nameLFM not included in the GT1 definition.  Patnum of patient: "+pat.PatNum.ToString();
 				HL7Msgs.Update(_hl7MsgCur);
-				EventLog.WriteEntry("OpenDentHL7","Guarantor not processed due to guar.nameLFM not included in the GT1 definition.  Patnum of patient: "
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Guarantor not processed due to guar.nameLFM not included in the GT1 definition.  Patnum of patient: "
 					+pat.PatNum.ToString(),EventLogEntryType.Information);
 				return;
 			}
@@ -900,7 +900,7 @@ namespace OpenDentBusiness.HL7 {
 			if(seg.GetFieldComponent(guarNameOrdinal,0)=="" || seg.GetFieldComponent(guarNameOrdinal,1)=="") {
 				_hl7MsgCur.Note="Guarantor not processed due to missing first or last name.  PatNum of patient: "+pat.PatNum.ToString();
 				HL7Msgs.Update(_hl7MsgCur);
-				EventLog.WriteEntry("OpenDentHL7","Guarantor not processed due to missing first or last name.  PatNum of patient: "
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Guarantor not processed due to missing first or last name.  PatNum of patient: "
 					+pat.PatNum.ToString(),EventLogEntryType.Information);
 				return;
 			}
@@ -1018,7 +1018,7 @@ namespace OpenDentBusiness.HL7 {
 				_hl7MsgCur.Note="Guarantor not processed due to missing guar.PatNum, guar.ChartNumber, and guarIdList.  One of those numbers must be included.  "
 					+"PatNum of patient: "+pat.PatNum.ToString();
 				HL7Msgs.Update(_hl7MsgCur);
-				EventLog.WriteEntry("OpenDentHL7","Guarantor not processed due to missing guar.PatNum, guar.ChartNumber, and guarIdList.  "
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Guarantor not processed due to missing guar.PatNum, guar.ChartNumber, and guarIdList.  "
 					+"One of those numbers must be included.  PatNum of patient: "+pat.PatNum.ToString(),EventLogEntryType.Information);
 				return;
 			}
@@ -1209,13 +1209,13 @@ namespace OpenDentBusiness.HL7 {
 					SecurityLogs.MakeLogEntry(EnumPermType.PatientCreate,guar.PatNum,"Created from HL7.",LogSources.HL7);
 				}
 				if(_isVerboseLogging) {
-					EventLog.WriteEntry("OpenDentHL7","Inserted patient "+guar.GetNameFLnoPref()+" when processing a GT1 segment.",EventLogEntryType.Information);
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Inserted patient "+guar.GetNameFLnoPref()+" when processing a GT1 segment.",EventLogEntryType.Information);
 				}
 			}
 			else {
 				Patients.Update(guar,guarOld);
 				if(_isVerboseLogging) {
-					EventLog.WriteEntry("OpenDentHL7","Updated patient "+guar.GetNameFLnoPref()+" when processing a GT1 segment.",EventLogEntryType.Information);
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Updated patient "+guar.GetNameFLnoPref()+" when processing a GT1 segment.",EventLogEntryType.Information);
 				}
 			}
 			#endregion Update Guarantor Data
@@ -1234,7 +1234,7 @@ namespace OpenDentBusiness.HL7 {
 				strVerboseMsg+="\r\nExternal patient ID: "+listOids[i].IDExternal+", External root: "+listOids[i].rootExternal;
 			}
 			if(_isVerboseLogging && strVerboseMsg.Length>0) {
-				EventLog.WriteEntry("OpenDentHL7","Added the following external patient ID(s) to the oidexternals table due to an incoming GT1 segment for PatNum: "+guar.PatNum+"."
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Added the following external patient ID(s) to the oidexternals table due to an incoming GT1 segment for PatNum: "+guar.PatNum+"."
 					+strVerboseMsg+".",EventLogEntryType.Information);
 			}
 			return;
@@ -1321,7 +1321,7 @@ namespace OpenDentBusiness.HL7 {
 			Appointments.Update(apt,aptOld);
 			_aptProcessed=apt;
 			if(_isVerboseLogging) {
-				EventLog.WriteEntry("OpenDentHL7","Updated appointment for patient "+pat.GetNameFLnoPref()+" due to an incoming NTE segment.",EventLogEntryType.Information);
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Updated appointment for patient "+pat.GetNameFLnoPref()+" due to an incoming NTE segment.",EventLogEntryType.Information);
 			}
 			return;
 		}
@@ -1334,7 +1334,7 @@ namespace OpenDentBusiness.HL7 {
 					case "medicationRxNorm":
 						if(seg.GetFieldComponent(intItemOrder,2).ToLower()!="rxnorm") {
 							//if not an RXNORM code, do nothing.  Only RXNORM codes are currently supported
-							EventLog.WriteEntry("OpenDentHL7","A medication was not added for patient "+pat.GetNameFLnoPref()
+							EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"A medication was not added for patient "+pat.GetNameFLnoPref()
 								+".  Only RxNorm codes are currently allowed in the OBX segment.  The code system name provided was "
 								+seg.GetFieldComponent(intItemOrder,2)+".",EventLogEntryType.Information);
 							return;
@@ -1352,13 +1352,13 @@ namespace OpenDentBusiness.HL7 {
 				}
 			}
 			if(rxnorm==0) {
-				EventLog.WriteEntry("OpenDentHL7","A medication was not added for patient "
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"A medication was not added for patient "
 					+pat.GetNameFLnoPref()+".  The RxNorm code supplied in the OBX segment was invalid.",EventLogEntryType.Information);
 				return;//not able to enter this medication if not given a valid rxnorm
 			}
 			Medication medCur=Medications.GetMedicationFromDbByRxCui(rxnorm);//an RxNorm could be attached to multiple medications, we will just add the first one we come to
 			if(medCur==null) {
-				EventLog.WriteEntry("OpenDentHL7","A medication was not added for patient "+pat.GetNameFLnoPref()
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"A medication was not added for patient "+pat.GetNameFLnoPref()
 					+".  There is not a medication in the database with the RxNorm code of "+rxnorm.ToString()+".",EventLogEntryType.Information);
 				return;
 			}
@@ -1375,7 +1375,7 @@ namespace OpenDentBusiness.HL7 {
 			medpatCur.RxCui=medCur.RxCui;
 			MedicationPats.Insert(medpatCur);
 			if(_isVerboseLogging) {
-				EventLog.WriteEntry("OpenDentHL7","Inserted a new medication for patient "+pat.GetNameFLnoPref()+" due to an incoming OBX segment.",EventLogEntryType.Information);
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Inserted a new medication for patient "+pat.GetNameFLnoPref()+" due to an incoming OBX segment.",EventLogEntryType.Information);
 			}
 			return;
 		}
@@ -1568,7 +1568,7 @@ namespace OpenDentBusiness.HL7 {
 						string strPatOIDRoot=OIDInternals.GetForType(IdentifierType.Patient).IDRoot;
 						if(strPatOIDRoot=="") {
 							//if they have not set their internal OID root, we cannot identify which repetition in this field contains the OD PatNum
-							EventLog.WriteEntry("OpenDentHL7","Could not process the patientIdList field due to the internal OID for the patient object missing.",EventLogEntryType.Information);
+							EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Could not process the patientIdList field due to the internal OID for the patient object missing.",EventLogEntryType.Information);
 							continue;
 						}
 						string strPatIdCur="";
@@ -1653,7 +1653,7 @@ namespace OpenDentBusiness.HL7 {
 							}
 						}
 						if(_isVerboseLogging && verboseMsg.Length>0) {
-							EventLog.WriteEntry("OpenDentHL7","Added the following external patient ID(s) to the oidexternals table due to an incoming PID segment for PatNum: "
+							EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Added the following external patient ID(s) to the oidexternals table due to an incoming PID segment for PatNum: "
 								+pat.PatNum+"."+verboseMsg+".",EventLogEntryType.Information);
 						}
 						continue;
@@ -1663,7 +1663,7 @@ namespace OpenDentBusiness.HL7 {
 			}
 			Patients.Update(pat,patOld);
 			if(_isVerboseLogging) {
-				EventLog.WriteEntry("OpenDentHL7","Updated patient "+pat.GetNameFLnoPref()+" due to an incoming PID segment.",EventLogEntryType.Information);
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Updated patient "+pat.GetNameFLnoPref()+" due to an incoming PID segment.",EventLogEntryType.Information);
 			}
 			return;
 		}
@@ -1689,14 +1689,14 @@ namespace OpenDentBusiness.HL7 {
 						//Example: D1351^^CD2^^^^2014
 						//must be CDT code (CD2 is code system abbr according to HL7 documentation) and must be version 2014
 						if(seg.GetFieldComponent(itemOrder,2).ToLower()!="cd2" || seg.GetFieldComponent(itemOrder,6)!="2014") {
-							EventLog.WriteEntry("OpenDentHL7","A procedure was not added for patient "+pat.GetNameFLnoPref()
+							EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"A procedure was not added for patient "+pat.GetNameFLnoPref()
 								+".  Only CDT codes from code system version 2014 are currently allowed in the PR1 segment.  The code system name provided was "
 								+seg.GetFieldComponent(itemOrder,2)+" and the code system version provided was "+seg.GetFieldComponent(itemOrder,6)+".",EventLogEntryType.Information);
 							return;
 						}
 						string strProcCode=seg.GetFieldComponent(itemOrder,0);
 						if(!ProcedureCodes.GetContainsKey(strProcCode)) {//code does not exist in proc code list, write entry in event log an return
-							EventLog.WriteEntry("OpenDentHL7","A procedure was not added for patient "+pat.GetNameFLnoPref()
+							EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"A procedure was not added for patient "+pat.GetNameFLnoPref()
 								+".  The code supplied in the PR1 segment does not exist in the database.  The code provided was "+strProcCode+".",EventLogEntryType.Information);
 							return;
 						}
@@ -1730,7 +1730,7 @@ namespace OpenDentBusiness.HL7 {
 						strOidExtRoot=seg.GetFieldComponent(itemOrder,2);
 						if(strOidExt!="" && strOidExtRoot!="" && OIDExternals.GetByRootAndExtension(strOidExtRoot,strOidExt)!=null) {
 							//the universal ID and root are already in the oidexternals table, do not insert another procedure, must be a duplicate
-							EventLog.WriteEntry("OpenDentHL7","A procedure was not added for patient "+pat.GetNameFLnoPref()
+							EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"A procedure was not added for patient "+pat.GetNameFLnoPref()
 								+".  The universal ID and root supplied in the PR1 segment refers to an existing procedure."
 								+"  Inserting another would result in a duplicate procedure.  The ID provided was "
 								+strOidExt+", the root was "+strOidExtRoot+".",EventLogEntryType.Information);
@@ -1742,7 +1742,7 @@ namespace OpenDentBusiness.HL7 {
 				}
 			}
 			if(procCode==null) {
-				EventLog.WriteEntry("OpenDentHL7","A procedure was not added for patient "+pat.GetNameFLnoPref()
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"A procedure was not added for patient "+pat.GetNameFLnoPref()
 					+".  No procedure code was defined for a PR1 segment or was missing.",EventLogEntryType.Information);
 				return;
 			}
@@ -1751,7 +1751,7 @@ namespace OpenDentBusiness.HL7 {
 			switch(procCode.TreatArea) {
 				case TreatmentArea.Arch:
 					if(strSurf!="L" && strSurf!="U") {
-						EventLog.WriteEntry("OpenDentHL7","A procedure was not added for patient "+pat.GetNameFLnoPref()+".  The treatment area for the code "
+						EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"A procedure was not added for patient "+pat.GetNameFLnoPref()+".  The treatment area for the code "
 							+procCode.ProcCode+" is arch but the arch of "+strSurf+" is invalid.",EventLogEntryType.Information);
 						return;
 					}
@@ -1759,7 +1759,7 @@ namespace OpenDentBusiness.HL7 {
 					break;
 				case TreatmentArea.Quad:
 					if(strSurf!="UL" && strSurf!="UR" && strSurf!="LL" && strSurf!="LR") {
-						EventLog.WriteEntry("OpenDentHL7","A procedure was not added for patient "+pat.GetNameFLnoPref()+".  The treatment area for the code "
+						EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"A procedure was not added for patient "+pat.GetNameFLnoPref()+".  The treatment area for the code "
 							+procCode.ProcCode+" is quadrant but the quadrant of "+strSurf+" is invalid.",EventLogEntryType.Information);
 						return;
 					}
@@ -1776,7 +1776,7 @@ namespace OpenDentBusiness.HL7 {
 						}
 					}
 					if(!isValidSextant) {
-						EventLog.WriteEntry("OpenDentHL7","A procedure was not added for patient "+pat.GetNameFLnoPref()+".  The treatment area for the code "
+						EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"A procedure was not added for patient "+pat.GetNameFLnoPref()+".  The treatment area for the code "
 							+procCode.ProcCode+" is sextant but the sextant of "+strSurf+" is invalid.",EventLogEntryType.Information);
 						return;
 					}
@@ -1784,13 +1784,13 @@ namespace OpenDentBusiness.HL7 {
 					break;
 				case TreatmentArea.Surf:
 					if(!Tooth.IsValidEntry(strToothNum)) {
-						EventLog.WriteEntry("OpenDentHL7","A procedure was not added for patient "+pat.GetNameFLnoPref()+".  The treatment area for the code "
+						EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"A procedure was not added for patient "+pat.GetNameFLnoPref()+".  The treatment area for the code "
 							+procCode.ProcCode+" is surface but the tooth number of "+strToothNum+" is invalid.",EventLogEntryType.Information);
 					}
 					procCur.ToothNum=Tooth.Parse(strToothNum);
 					string strSurfTidy=Tooth.SurfTidyFromDisplayToDb(strSurf,procCur.ToothNum);
 					if(strSurfTidy=="" || strSurf=="") {
-						EventLog.WriteEntry("OpenDentHL7","A procedure was not added for patient "+pat.GetNameFLnoPref()+".  The treatment area for the code "
+						EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"A procedure was not added for patient "+pat.GetNameFLnoPref()+".  The treatment area for the code "
 							+procCode.ProcCode+" is surface but the surface of "+strSurf+" is invalid.",EventLogEntryType.Information);
 						return;
 					}
@@ -1798,7 +1798,7 @@ namespace OpenDentBusiness.HL7 {
 					break;
 				case TreatmentArea.Tooth:
 					if(!Tooth.IsValidEntry(strToothNum)) {
-						EventLog.WriteEntry("OpenDentHL7","A procedure was not added for patient "+pat.GetNameFLnoPref()+".  The treatment area for the code "
+						EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"A procedure was not added for patient "+pat.GetNameFLnoPref()+".  The treatment area for the code "
 							+procCode.ProcCode+" is tooth but the tooth number of "+strToothNum+" is invalid.",EventLogEntryType.Information);
 						return;
 					}
@@ -1809,12 +1809,12 @@ namespace OpenDentBusiness.HL7 {
 					string[] listToothNums=strToothNum.Split(new char[] { ',' },StringSplitOptions.RemoveEmptyEntries);
 					for(int i=0;i<listToothNums.Length;i++) {
 						if(!Tooth.IsValidEntry(listToothNums[i])) {
-							EventLog.WriteEntry("OpenDentHL7","A procedure was not added for patient "+pat.GetNameFLnoPref()+".  The treatment area for the code "
+							EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"A procedure was not added for patient "+pat.GetNameFLnoPref()+".  The treatment area for the code "
 								+procCode.ProcCode+" is tooth range but the tooth number of "+listToothNums[i]+" is invalid.",EventLogEntryType.Information);
 							return;
 						}
 						if(Tooth.IsPrimary(Tooth.Parse(listToothNums[i]))) {
-							EventLog.WriteEntry("OpenDentHL7","A procedure was not added for patient "+pat.GetNameFLnoPref()+".  The treatment area for the code "+procCode.ProcCode
+							EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"A procedure was not added for patient "+pat.GetNameFLnoPref()+".  The treatment area for the code "+procCode.ProcCode
 								+" is tooth range but the tooth number of "+listToothNums[i]+" is a primary tooth number and therefore not allowed.",EventLogEntryType.Information);
 						}
 						listToothNums[i]=Tooth.Parse(listToothNums[i]);
@@ -1828,7 +1828,7 @@ namespace OpenDentBusiness.HL7 {
 					break;
 			}
 			if(procCur.ProcStatus==ProcStat.C && dateProc.Date > DateTime.Today.Date && !PrefC.GetBool(PrefName.FutureTransDatesAllowed)) {
-				EventLog.WriteEntry("OpenDentalHL7", "A procedure was not added for patient "+pat.GetNameFLnoPref()+". Procedures are not allowed for future dates.",EventLogEntryType.Information);
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"A procedure was not added for patient "+pat.GetNameFLnoPref()+". Procedures are not allowed for future dates.",EventLogEntryType.Information);
 				return;
 			}
 			#endregion Validate/Convert/Set Treatment Area
@@ -1863,7 +1863,7 @@ namespace OpenDentBusiness.HL7 {
 			procCur.ProcFee=Procedures.GetProcFee(pat,listPatPlan,listSubs,insPlanList,procCur);
 			procCur.ProcNum=Procedures.Insert(procCur);
 			if(_isVerboseLogging) {
-				EventLog.WriteEntry("OpenDentHL7","Inserted a new procedure for patient "+pat.GetNameFLnoPref()+" due to an incoming PR1 segment.",EventLogEntryType.Information);
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Inserted a new procedure for patient "+pat.GetNameFLnoPref()+" due to an incoming PR1 segment.",EventLogEntryType.Information);
 			}
 			if(procStatus==ProcStat.C) {
 				//Auto-insert default encounter -------------------------------------------------------------------------------------------------------------
@@ -1889,7 +1889,7 @@ namespace OpenDentBusiness.HL7 {
 				procOidExt.rootExternal=strOidExtRoot;
 				OIDExternals.Insert(procOidExt);
 				if(_isVerboseLogging) {
-					EventLog.WriteEntry("OpenDentHL7","Added an external procedure ID to the oidexternals table due to an incoming PR1 segment.\r\nProcNum: "
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Added an external procedure ID to the oidexternals table due to an incoming PR1 segment.\r\nProcNum: "
 						+procCur.ProcNum.ToString()+", External problem ID: "+procOidExt.IDExternal+", External root: "+procOidExt.rootExternal+".",EventLogEntryType.Information);
 				}
 			}
@@ -1926,34 +1926,34 @@ namespace OpenDentBusiness.HL7 {
 			}
 			//we need these 3 items defined in order to process the problem
 			if(probActionOrder<0 || probCodeOrder<0 || probUniqueIdOrder<0) {
-				EventLog.WriteEntry("OpenDentHL7","The PRB segment was not processed.  The segment must have an action, code, and unique ID defined.",EventLogEntryType.Information);
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"The PRB segment was not processed.  The segment must have an action, code, and unique ID defined.",EventLogEntryType.Information);
 				return;
 			}
 			//get values from defined locations within the segment and validate info
 			//We only add or update problems.  Other actions like delete or correct are not yet supported
 			if(seg.GetFieldComponent(probActionOrder).ToLower()!="ad" && seg.GetFieldComponent(probActionOrder).ToLower()!="up") {
-				EventLog.WriteEntry("OpenDentHL7","The PRB segment was not processed.  The action codes supported are 'AD' for add or 'UP' for update.",EventLogEntryType.Information);
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"The PRB segment was not processed.  The action codes supported are 'AD' for add or 'UP' for update.",EventLogEntryType.Information);
 				return;
 			}
 			long probDefNum=DiseaseDefs.GetNumFromSnomed(PIn.String(seg.GetFieldComponent(probCodeOrder,0)));
 			//The problem must be a SNOMEDCT code, identified by the coding system table 0396 value "SNM" in component 3 of the CWE problem code field
 			//There must be a disease def setup with the SNOMEDCT code in the problem list or we will ignore this problem
 			if(seg.GetFieldComponent(probCodeOrder,2).ToLower()!="snm" || probDefNum==0) {
-				EventLog.WriteEntry("OpenDentHL7","The PRB segment was not processed.  "
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"The PRB segment was not processed.  "
 					+"The code is not attached to an existing problem definition or is not a SNOMEDCT code.",EventLogEntryType.Information);
 				return;
 			}
 			string probIdExternal=seg.GetFieldComponent(probUniqueIdOrder,0);
 			string probRootExternal=seg.GetFieldComponent(probUniqueIdOrder,2);
 			if(probIdExternal=="" || probRootExternal=="") {
-				EventLog.WriteEntry("OpenDentHL7","The PRB segment was not processed. "
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"The PRB segment was not processed. "
 					+" The problem does not have a unique ID with assigning authority root.",EventLogEntryType.Information);
 				return;
 			}
 			//If problem external ID and root is in the database, but is used to identify an object other than a problem, do not process the segment
 			OIDExternal probOidExt=OIDExternals.GetByRootAndExtension(probRootExternal,probIdExternal);
 			if(probOidExt!=null && probOidExt.IDType!=IdentifierType.Problem) {
-				EventLog.WriteEntry("OpenDentHL7","The PRB segment was not processed.  "
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"The PRB segment was not processed.  "
 					+"The problem has a unique ID with assigning authority root that has already been used to identify an object of type "
 					+probOidExt.IDType.ToString()+".",EventLogEntryType.Information);
 				return;
@@ -1969,7 +1969,7 @@ namespace OpenDentBusiness.HL7 {
 			if(diseaseNum!=0) {
 				probCur=Diseases.GetOne(diseaseNum);
 				if(probCur==null || probCur.PatNum!=pat.PatNum) {//should never be null if in the oidexternal table
-					EventLog.WriteEntry("OpenDentHL7","The PRB segment was not processed.  "
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"The PRB segment was not processed.  "
 						+"The problem referenced and the patient in the PID segment do not match.",EventLogEntryType.Information);
 					return;
 				}
@@ -1996,7 +1996,7 @@ namespace OpenDentBusiness.HL7 {
 				markedInactiveCount++;
 			}
 			if(_isVerboseLogging && markedInactiveCount>0) {
-				EventLog.WriteEntry("OpenDentHL7","Updated "+markedInactiveCount.ToString()+" problems to a status of inactive due to an incoming PRB segment.",EventLogEntryType.Information);
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Updated "+markedInactiveCount.ToString()+" problems to a status of inactive due to an incoming PRB segment.",EventLogEntryType.Information);
 			}
 			Disease probOld=probCur.Copy();
 			probCur.PatNum=pat.PatNum;
@@ -2008,7 +2008,7 @@ namespace OpenDentBusiness.HL7 {
 				//insert new problem
 				probCur.DiseaseNum=Diseases.Insert(probCur);
 				if(_isVerboseLogging) {
-					EventLog.WriteEntry("OpenDentHL7","Inserted a new problem for patient "+pat.GetNameFLnoPref()+" due to an incoming PRB segment.",EventLogEntryType.Information);
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Inserted a new problem for patient "+pat.GetNameFLnoPref()+" due to an incoming PRB segment.",EventLogEntryType.Information);
 				}
 				//using DiseaseNum from newly inserted problem, link to the external GUID and root in the oidexternals table
 				probOidExt=new OIDExternal();
@@ -2018,14 +2018,14 @@ namespace OpenDentBusiness.HL7 {
 				probOidExt.rootExternal=probRootExternal;
 				OIDExternals.Insert(probOidExt);
 				if(_isVerboseLogging) {
-					EventLog.WriteEntry("OpenDentHL7","Added an external problem ID to the oidexternals table due to an incoming PRB segment.\r\nDiseaesNum: "
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Added an external problem ID to the oidexternals table due to an incoming PRB segment.\r\nDiseaesNum: "
 						+probCur.DiseaseNum.ToString()+", External problem ID: "+probOidExt.IDExternal+", External root: "+probOidExt.rootExternal+".",EventLogEntryType.Information);
 				}
 			}
 			else {//the segment is for an existing problem, update fields if necessary
 				Diseases.Update(probCur,probOld);
 				if(_isVerboseLogging) {
-					EventLog.WriteEntry("OpenDentHL7","Updated an existing problem for patient "+pat.GetNameFLnoPref()+" due to an incoming PRB segment.",EventLogEntryType.Information);
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Updated an existing problem for patient "+pat.GetNameFLnoPref()+" due to an incoming PRB segment.",EventLogEntryType.Information);
 				}
 			}
 			return;
@@ -2128,13 +2128,13 @@ namespace OpenDentBusiness.HL7 {
 				SecurityLogs.MakeLogEntry(EnumPermType.PatPriProvEdit,pat.PatNum,securitylogText);
 			}
 			if(_isVerboseLogging) {
-				EventLog.WriteEntry("OpenDentHL7","Updated patient "+pat.GetNameFLnoPref()+" due to an incoming PV1 segment.",EventLogEntryType.Information);
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Updated patient "+pat.GetNameFLnoPref()+" due to an incoming PV1 segment.",EventLogEntryType.Information);
 			}
 			if(apt!=null) {
 				Appointments.Update(apt,aptOld);
 				_aptProcessed=apt;
 				if(_isVerboseLogging) {
-					EventLog.WriteEntry("OpenDentHL7","Updated appointment for patient "+pat.GetNameFLnoPref()+" due to an incoming PV1 segment.",
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Updated appointment for patient "+pat.GetNameFLnoPref()+" due to an incoming PV1 segment.",
 						EventLogEntryType.Information);
 				}
 			}
@@ -2228,7 +2228,7 @@ namespace OpenDentBusiness.HL7 {
 			apt.ProvNum=pat.PriProv;//Set apt.ProvNum to the patient's primary provider.  This may change after processing the AIG or PV1 segments, but set here in case those segs are missing.
 			if(isNewApt) {
 				if(_isVerboseLogging) {
-					EventLog.WriteEntry("OpenDentHL7","Inserted appointment "+(isBreakApt?"with broken status ":"")+"for "+pat.GetNameFLnoPref()+" due to an incoming SCH segment.",EventLogEntryType.Information);
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Inserted appointment "+(isBreakApt?"with broken status ":"")+"for "+pat.GetNameFLnoPref()+" due to an incoming SCH segment.",EventLogEntryType.Information);
 				}
 				Appointments.InsertIncludeAptNum(apt,true);
 				Appointments.TryAddPerVisitProcCodesToAppt(apt,ApptStatus.None);
@@ -2236,7 +2236,7 @@ namespace OpenDentBusiness.HL7 {
 			}
 			else {
 				if(_isVerboseLogging) {
-					EventLog.WriteEntry("OpenDentHL7","Updated appointment for "+pat.GetNameFLnoPref()+" due to an incoming SCH segment.",EventLogEntryType.Information);
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Updated appointment for "+pat.GetNameFLnoPref()+" due to an incoming SCH segment.",EventLogEntryType.Information);
 				}
 				Appointments.Update(apt,aptOld);
 				Appointments.TryAddPerVisitProcCodesToAppt(apt,aptOld.AptStatus);
@@ -2244,7 +2244,7 @@ namespace OpenDentBusiness.HL7 {
 			_hl7MsgCur.AptNum=apt.AptNum;
 			HL7Msgs.Update(_hl7MsgCur);
 			if(_isVerboseLogging) {
-				EventLog.WriteEntry("OpenDentHL7","Updated hl7msg to include AptNum for "+pat.GetNameFLnoPref()+" due to an incoming SCH segment.",EventLogEntryType.Information);
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Updated hl7msg to include AptNum for "+pat.GetNameFLnoPref()+" due to an incoming SCH segment.",EventLogEntryType.Information);
 			}
 			_aptProcessed=apt;
 			return aptNum;

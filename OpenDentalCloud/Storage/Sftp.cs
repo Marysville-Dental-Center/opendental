@@ -58,7 +58,7 @@ namespace OpenDentalCloud {
 		}
 
 		public class Download : TaskStateDownload {
-			private static string _stashRootFolderPath=ODFileUtils.CombinePaths(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),"OpenDental","Stash");
+			private static string _stashRootFolderPath=ODFileUtils.CombinePaths(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),ProgramNames.ProgramDataFolderName,"Stash");
 			private static string _stashInstanceFolderPath=ODFileUtils.CombinePaths(_stashRootFolderPath,Process.GetCurrentProcess().Id.ToString());
 			internal SftpClient _client;
 			public static bool DoUseStash=true;
@@ -145,7 +145,9 @@ namespace OpenDentalCloud {
 						bool isRunning=false;
 						try {
 							Process process=Process.GetProcessById(processId);//This line throws an exception if there is no such process running.
-							if(process!=null && process.ProcessName.StartsWith("OpenDental")) {//The process for this stash instance folder is still running.
+							//The stash is still in use when its process is this program, matched by the whole name (ProgramNames.ProcessName, or this
+							//process's own name), never by a prefix that another program's name could share.
+							if(process!=null && (ProgramNames.IsProgramProcessName(process.ProcessName) || process.ProcessName==Process.GetCurrentProcess().ProcessName)) {
 								isRunning=true;
 							}
 						}

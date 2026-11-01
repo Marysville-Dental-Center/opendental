@@ -37,7 +37,7 @@ public class WindowsTime {
 		systime.wMilliseconds=(ushort)newTime.Millisecond;
 		SetLocalTime(ref systime);
 		string messageText="System date and time set to:  "+newTime.ToString("MM/dd/yyyy hh:mm:ss.fff tt")+".";
-		EventLog.WriteEntry("OpenDental",messageText,EventLogEntryType.Information);
+		EventLog.WriteEntry(CodeBase.ProgramNames.EventLogSource,messageText,EventLogEntryType.Information);
 	}
 }
 

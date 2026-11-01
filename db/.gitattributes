@@ -1,0 +1,3 @@
+# The new database file is generated with LF line ends and compared byte for byte with what the generator writes
+# (tests/ForkMigrationTests/InitSqlRegenerationTests.cs). Keep LF in every checkout, whatever core.autocrlf says.
+init/*.sql text eol=lf

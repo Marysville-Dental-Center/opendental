@@ -13,51 +13,52 @@ namespace NoHqTests {
 	///Needs no database or network connection.</summary>
 	[TestClass]
 	public class EServicesRemovedTests {
-		///<summary>Data interfaces and web types that only served the hosted eServices.</summary>
+		///<summary>Data interfaces and web types that only served the hosted eServices, relative to the business layer's namespace.</summary>
 		private static readonly string[] _arrayRemovedTypes=new string[] {
-			"OpenDentBusiness.ApptReminderRules",
-			"OpenDentBusiness.ApptReminderSents",
-			"OpenDentBusiness.AsapComms",
-			"OpenDentBusiness.AutoCommExcludeDates",
-			"OpenDentBusiness.ConfirmationRequests",
-			"OpenDentBusiness.EClipboardImageCaptures",
-			"OpenDentBusiness.EClipboardSheetDefs",
-			"OpenDentBusiness.EmailHostingTemplates",
-			"OpenDentBusiness.EmailSecures",
-			"OpenDentBusiness.ERoutings",
-			"OpenDentBusiness.EServiceLogs",
-			"OpenDentBusiness.EServiceSignals",
-			"OpenDentBusiness.MobileAppDevices",
-			"OpenDentBusiness.MobileNotifications",
-			"OpenDentBusiness.MsgToPaySents",
-			"OpenDentBusiness.PatientPortalInvites",
-			"OpenDentBusiness.Promotions",
-			"OpenDentBusiness.SessionTokens",
-			"OpenDentBusiness.SmsBlockPhones",
-			"OpenDentBusiness.SmsFromMobiles",
-			"OpenDentBusiness.SmsPhones",
-			"OpenDentBusiness.SmsToMobiles",
-			"OpenDentBusiness.WebSchedRecalls",
-			"OpenDentBusiness.SheetsSynchProxy",
-			"OpenDentBusiness.WebTypes.WebForms.WebForms_Sheets",
+			"ApptReminderRules",
+			"ApptReminderSents",
+			"AsapComms",
+			"AutoCommExcludeDates",
+			"ConfirmationRequests",
+			"EClipboardImageCaptures",
+			"EClipboardSheetDefs",
+			"EmailHostingTemplates",
+			"EmailSecures",
+			"ERoutings",
+			"EServiceLogs",
+			"EServiceSignals",
+			"MobileAppDevices",
+			"MobileNotifications",
+			"MsgToPaySents",
+			"PatientPortalInvites",
+			"Promotions",
+			"SessionTokens",
+			"SmsBlockPhones",
+			"SmsFromMobiles",
+			"SmsPhones",
+			"SmsToMobiles",
+			"WebSchedRecalls",
+			"SheetsSynchProxy",
+			"WebTypes.WebForms.WebForms_Sheets",
 		};
 
-		///<summary>Table types and Crud classes of eService tables. The tables are not dropped, so these must stay.</summary>
+		///<summary>Table types and Crud classes of eService tables, relative to the business layer's namespace. The tables are not dropped, so
+		///these must stay.</summary>
 		private static readonly string[] _arrayKeptTypes=new string[] {
-			"OpenDentBusiness.ApptReminderRule",
-			"OpenDentBusiness.EClipboardSheetDef",
-			"OpenDentBusiness.EmailSecure",
-			"OpenDentBusiness.EServiceSignal",
-			"OpenDentBusiness.MobileAppDevice",
-			"OpenDentBusiness.SmsPhone",
-			"OpenDentBusiness.SmsToMobile",
-			"OpenDentBusiness.WebSchedRecall",
-			"OpenDentBusiness.Crud.ApptReminderRuleCrud",
-			"OpenDentBusiness.Crud.EClipboardSheetDefCrud",
-			"OpenDentBusiness.Crud.EServiceSignalCrud",
-			"OpenDentBusiness.Crud.MobileAppDeviceCrud",
-			"OpenDentBusiness.Crud.SmsPhoneCrud",
-			"OpenDentBusiness.Crud.WebSchedRecallCrud",
+			"ApptReminderRule",
+			"EClipboardSheetDef",
+			"EmailSecure",
+			"EServiceSignal",
+			"MobileAppDevice",
+			"SmsPhone",
+			"SmsToMobile",
+			"WebSchedRecall",
+			"Crud.ApptReminderRuleCrud",
+			"Crud.EClipboardSheetDefCrud",
+			"Crud.EServiceSignalCrud",
+			"Crud.MobileAppDeviceCrud",
+			"Crud.SmsPhoneCrud",
+			"Crud.WebSchedRecallCrud",
 		};
 
 		///<summary>Calls to Open Dental HQ for eService sign-ups, hosted email, short URLs and mobile settings.</summary>
@@ -76,18 +77,12 @@ namespace NoHqTests {
 
 		[TestMethod]
 		public void EServices_DataInterfacesAreRemoved() {
-			Assembly assembly=typeof(Patient).Assembly;
-			for(int i=0;i<_arrayRemovedTypes.Length;i++) {
-				Assert.IsNull(assembly.GetType(_arrayRemovedTypes[i]),_arrayRemovedTypes[i]+" should have been removed.");
-			}
+			TypeLookup.AssertRemoved(typeof(Patient),_arrayRemovedTypes,"should have been removed.");
 		}
 
 		[TestMethod]
 		public void EServices_TableTypesAndCrudAreKept() {
-			Assembly assembly=typeof(Patient).Assembly;
-			for(int i=0;i<_arrayKeptTypes.Length;i++) {
-				Assert.IsNotNull(assembly.GetType(_arrayKeptTypes[i]),_arrayKeptTypes[i]+" must stay, because its table stays in the database.");
-			}
+			TypeLookup.AssertKept(typeof(Patient),_arrayKeptTypes,"must stay, because its table stays in the database.");
 		}
 
 		[TestMethod]

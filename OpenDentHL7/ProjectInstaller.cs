@@ -16,7 +16,7 @@ namespace OpenDentServer {
 			serviceInstaller1 = new ServiceInstaller();
 			processInstaller.Account = ServiceAccount.LocalSystem;
 			serviceInstaller1.StartType = ServiceStartMode.Automatic;
-			serviceInstaller1.ServiceName="OpenDentHL7";
+			serviceInstaller1.ServiceName=CodeBase.ProgramNames.HL7ServiceName;
 			string[] args=Environment.GetCommandLineArgs();
 			for(int i=0;i<args.Length;i++) {
 				if(args[i].StartsWith("/ServiceName")) {

@@ -1082,11 +1082,14 @@ namespace OpenDental{
 //		}
 
 		private void butGraphical_Click(object sender,EventArgs e) {
-			if(!ToothChartRelay.IsSparks3DPresent){
-				if(ComputerPrefs.LocalComputer.GraphicsSimple!=DrawingMode.DirectX) {
-					MsgBox.Show(this,"In the Graphics setup window, you must first select DirectX.");
-					return;
-				}
+			if(ComputerPrefs.LocalComputer.GraphicsSimple!=DrawingMode.DirectX) {
+				MsgBox.Show(this,"In the Graphics setup window, you must first select DirectX.");
+				return;
+			}
+			if(!SparksToothChart.ToothChartWrapper.IsDirectXRuntimeAvailable()) {
+				//The graphical perio chart draws only in DirectX, and DirectX needs d3dx9_43.dll, which a clean Windows does not have.
+				MsgBox.Show(this,"The graphical perio chart needs Microsoft's DirectX End-User Runtime (d3dx9_43.dll), which is not installed on this computer.");
+				return;
 			}
 			if(gridODExam.GetSelectedIndex()==-1) {
 				MsgBox.Show(this,"Exam must be selected first.");

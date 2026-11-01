@@ -19,19 +19,22 @@ namespace VendorDirectTests.Dropbox {
 		}
 
 		private static Assembly GetCloudAssembly() {
-			AssemblyName assemblyName=typeof(CloudStorage).Assembly.GetReferencedAssemblies().First(x => x.Name=="OpenDentalCloud");
+			string name=Path.GetFileNameWithoutExtension(CodeBase.ProgramNames.CloudDllFileName);
+			AssemblyName assemblyName=typeof(CloudStorage).Assembly.GetReferencedAssemblies().First(x => x.Name==name);
 			return Assembly.Load(assemblyName);
 		}
 
 		[TestMethod]
 		public void CloudProject_HasNoDropboxClientOrSdk() {
 			Assembly assemblyCloud=GetCloudAssembly();
-			Assert.IsNull(assemblyCloud.GetType("OpenDentalCloud.Dropbox"),"The Dropbox client should have been removed.");
+			//The namespace of the SFTP client, which stays: taken from the assembly, so the absence check cannot pass only because it was renamed.
+			string nsCloud=assemblyCloud.GetTypes().Single(x => x.Name=="Sftp" && !x.IsNested).Namespace;
+			Assert.IsNull(assemblyCloud.GetType(nsCloud+".Dropbox"),"The Dropbox client should have been removed.");
 			Assert.IsFalse(assemblyCloud.GetReferencedAssemblies().Any(x => x.Name.StartsWith("Dropbox",StringComparison.OrdinalIgnoreCase)),
 				"OpenDentalCloud should not reference the Dropbox SDK.");
 			Assert.IsFalse(typeof(CloudStorage).Assembly.GetReferencedAssemblies().Any(x => x.Name.StartsWith("Dropbox",StringComparison.OrdinalIgnoreCase)));
 			//The project stays for SFTP A to Z storage.
-			Assert.IsNotNull(assemblyCloud.GetType("OpenDentalCloud.Sftp"));
+			Assert.IsNotNull(assemblyCloud.GetType(nsCloud+".Sftp"));
 			string csproj=ReadRepoFile(@"OpenDentalCloud\OpenDentalCloud.csproj");
 			Assert.IsFalse(csproj.Contains("Dropbox"),"OpenDentalCloud.csproj should not mention Dropbox.");
 			Assert.IsFalse(File.Exists(Path.Combine(FoundationLayoutTests.GetRepositoryRoot(),@"OpenDentalCloud\Storage\Dropbox.cs")));

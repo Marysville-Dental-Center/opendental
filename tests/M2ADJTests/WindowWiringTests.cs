@@ -9,14 +9,14 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace M2ADJTests {
 	[TestClass]
 	public class WindowWiringTests {
-		///<summary>Walks up from the test assembly until it finds OpenDental.sln.</summary>
+		///<summary>Walks up from the test assembly until it finds the repository root (LICENSE and NOTICE).</summary>
 		private static string GetRepoFile(params string[] arrayParts) {
 			string dir=Path.GetDirectoryName(typeof(WindowWiringTests).Assembly.Location);
-			while(dir!=null && !File.Exists(Path.Combine(dir,"OpenDental.sln"))) {
+			while(dir!=null && !(File.Exists(Path.Combine(dir,"LICENSE")) && File.Exists(Path.Combine(dir,"NOTICE")))) {
 				dir=Path.GetDirectoryName(dir);
 			}
 			if(dir==null) {
-				Assert.Inconclusive("Could not find the repository root (OpenDental.sln) above the test assembly.");
+				Assert.Inconclusive("Could not find the repository root (LICENSE and NOTICE) above the test assembly.");
 			}
 			string path=dir;
 			for(int i=0;i<arrayParts.Length;i++) {

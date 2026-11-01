@@ -6,7 +6,6 @@ using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using CodeBase;
-using Avalara.AvaTax.RestClient;
 
 namespace OpenDentBusiness{
 	///<summary>Handles database commands related to the adjustment table in the db.</summary>

@@ -20,7 +20,11 @@ namespace BMEDTests {
 				Assert.IsFalse(source.Contains(name),"FormMedications.cs still has "+name);
 				Assert.IsFalse(designer.Contains(name),"FormMedications.designer.cs still has "+name);
 			}
-			Assert.IsFalse(designer.Contains("OpenDental.UI.TabControl"),"The tab control is gone.");
+			//Any namespace before UI.TabControl, so the check still sees the control after the namespaces are renamed. A window that keeps its
+			//tab control shows that the pattern finds one.
+			Regex regexTabControl=new Regex(@"\bUI\.TabControl\b");
+			Assert.IsTrue(regexTabControl.IsMatch(BMedDb.ReadRepoFile("OpenDental","Forms","FormPatientEdit.Designer.cs")));
+			Assert.IsFalse(regexTabControl.IsMatch(designer),"The tab control is gone.");
 		}
 
 		[TestMethod]

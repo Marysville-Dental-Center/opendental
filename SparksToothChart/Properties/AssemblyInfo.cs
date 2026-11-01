@@ -22,9 +22,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("SparksToothChart")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Open Dental Software")]
-[assembly: AssemblyProduct("SparksToothChart")]
-[assembly: AssemblyCopyright("Copyright © Jordan Sparks, DMD, 2006")]
+//AssemblyProduct, AssemblyCompany, AssemblyCopyright and AssemblyInformationalVersion come from SharedAssemblyInfo.cs in the repository root.
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

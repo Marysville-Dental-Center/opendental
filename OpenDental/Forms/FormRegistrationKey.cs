@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Collections;
 using System.ComponentModel;
@@ -40,32 +41,13 @@ namespace OpenDental{
 			listBoxRegistration.SetSelected(0);
 		}
 
-		///<summary>Fills the listbox with licenses and the license text as a tag. New Licenses needed to be added in FormLicense.cs as well.</summary>
+		///<summary>Fills the listbox with licenses and the license text as a tag: the same list as FormLicense (LicenseList), the program's own
+		///license, the GNU GPL, first.</summary>
 		private void FillListBoxRegistration() {
-			listBoxRegistration.Items.Add("OpenDental",Properties.Resources.OpenDentalLicense);
-			listBoxRegistration.Items.Add("AForge",Properties.Resources.AForge);
-			listBoxRegistration.Items.Add("Angular",Properties.Resources.Angular);
-			listBoxRegistration.Items.Add("Bouncy Castle",Properties.Resources.BouncyCastle);
-			listBoxRegistration.Items.Add("BSD",Properties.Resources.Bsd);
-			listBoxRegistration.Items.Add("CDT",Properties.Resources.CDT_Content_End_User_License1);
-			listBoxRegistration.Items.Add("Drifty",Properties.Resources.Ionic);
-			listBoxRegistration.Items.Add("Mentalis",Properties.Resources.Mentalis);
-			listBoxRegistration.Items.Add("Microsoft",Properties.Resources.Microsoft);
-			listBoxRegistration.Items.Add("MigraDoc",Properties.Resources.MigraDoc);
-			listBoxRegistration.Items.Add("NDde",Properties.Resources.NDde);
-			listBoxRegistration.Items.Add("Newton Soft",Properties.Resources.NewtonSoft_Json);
-			listBoxRegistration.Items.Add("Oracle",Properties.Resources.Oracle);
-			listBoxRegistration.Items.Add("Pearl",Properties.Resources.Pearl);
-			listBoxRegistration.Items.Add("PDFSharp",Properties.Resources.PdfSharp);
-			listBoxRegistration.Items.Add("SharpDX",Properties.Resources.SharpDX);
-			listBoxRegistration.Items.Add("Sparks3D",Properties.Resources.Sparks3D);
-			listBoxRegistration.Items.Add("SSHNet",Properties.Resources.SshNet);
-			listBoxRegistration.Items.Add("Stdole",Properties.Resources.stdole);
-			listBoxRegistration.Items.Add("Tamir",Properties.Resources.Tamir);
-			listBoxRegistration.Items.Add("Tao_Freeglut",Properties.Resources.Tao_Freeglut);
-			listBoxRegistration.Items.Add("Tao_OpenGL",Properties.Resources.Tao_OpenGL);
-			listBoxRegistration.Items.Add("Twain Group",Properties.Resources.Twain);
-			listBoxRegistration.Items.Add("Zxing",Properties.Resources.Zxing);
+			List<LicenseEntry> listLicenseEntries=LicenseList.GetEntries();
+			for(int i=0;i<listLicenseEntries.Count;i++) {
+				listBoxRegistration.Items.Add(listLicenseEntries[i].Name,listLicenseEntries[i].Text);
+			}
 		}
 
 		private void textKey1_KeyUp(object sender,KeyEventArgs e) {

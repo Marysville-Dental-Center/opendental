@@ -40,10 +40,11 @@ namespace CodeBase {
 	}
 
 	public class DrCephUtils {
+		///<summary>Always throws BridgeNotAvailableException. Open Dental sent these fields to Dr. Ceph through its closed VBbridges.dll, which this
+		///program does not ship, and Dr. Ceph publishes no interface to rebuild it from. The Dr. Ceph bridge shows BridgeNotAvailable.DrCeph before
+		///it gets here.</summary>
 		public static void Launch(DrCephArgs args) {
-			VBbridges.DrCephNew.Launch(args.ID,args.FName,args.MiddleI,args.LName,args.Address1,args.Address2,args.City,args.State,args.Zip,args.Phone,args.SSN,args.Sex,args.Race,
-				"",args.Birthdate,args.RecordsDate,args.ReferringDr,args.TreatingDr,args.ResponsibleName,args.ResponsibleAddress1,args.ResponsibleAddress2,args.ResponsibleCity,
-				args.ResponsibleState,args.ResponsibleZip,args.ResponsiblePhone,args.ResponsibleRelationship,args.TreatmentPhase,args.CephXRayLocation,args.PhotoFileLocation,args.XRayDate);
+			throw new BridgeNotAvailableException(BridgeNotAvailable.DrCeph);
 		}
 
 	}

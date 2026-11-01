@@ -23,6 +23,16 @@ namespace AdoptionValidation {
 	///   in the raw table; the row is then deleted and the table checksums must be back to step 2.
 	///It writes to the database, so it only runs on synth* scratch databases.</summary>
 	public static class DataLayerRoundTrip {
+		///<summary>The namespace of the table classes, taken from TableBase so a rename of the business layer cannot leave every table unmapped.</summary>
+		public static readonly string TableNamespace=typeof(TableBase).Namespace;
+		///<summary>The namespace of the generated CRUD classes, taken from one of them.</summary>
+		public static readonly string CrudNamespace=typeof(OpenDentBusiness.Crud.PatientCrud).Namespace;
+
+		///<summary>The generated CRUD class of the table class (CrudNamespace + name + "Crud"), or null when there is none.</summary>
+		public static Type GetCrudType(Type typeTable) {
+			return typeof(TableBase).Assembly.GetType(CrudNamespace+"."+typeTable.Name+"Crud");
+		}
+
 		///<summary>Columns or tables without a data-layer mapping, with the reason. Their values are still preserved by step 2 (Update never writes
 		///them) and by the report comparison.</summary>
 		public static readonly Dictionary<string,string> DictDocumentedExceptions=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase) {
@@ -86,7 +96,7 @@ namespace AdoptionValidation {
 		public static Dictionary<string,Type> GetTableTypes() {
 			Dictionary<string,Type> dict=new Dictionary<string,Type>(StringComparer.OrdinalIgnoreCase);
 			//Table classes derive from TableBase; a few older ones (DeletedObject) only carry the CrudTable attribute. TableBase classes win a name clash.
-			foreach(Type type in typeof(TableBase).Assembly.GetTypes().Where(x => x.IsClass && !x.IsAbstract && x.Namespace=="OpenDentBusiness"
+			foreach(Type type in typeof(TableBase).Assembly.GetTypes().Where(x => x.IsClass && !x.IsAbstract && x.Namespace==TableNamespace
 				&& !x.Name.StartsWith("WebForms_")
 				&& (x.IsSubclassOf(typeof(TableBase)) || x.GetCustomAttributes(typeof(CrudTableAttribute),false).Length>0))
 				.OrderBy(x => x.IsSubclassOf(typeof(TableBase)) ? 0 : 1).ThenBy(x => x.Name))
@@ -130,7 +140,7 @@ namespace AdoptionValidation {
 				return;
 			}
 			result.TypeName=type.Name;
-			Type typeCrud=typeof(TableBase).Assembly.GetType("OpenDentBusiness.Crud."+type.Name+"Crud");
+			Type typeCrud=GetCrudType(type);
 			if(typeCrud==null) {
 				AddUnmappedTable(result,"no generated CRUD class for "+type.Name);
 				return;

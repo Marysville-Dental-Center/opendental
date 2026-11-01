@@ -120,12 +120,6 @@ namespace OpenDental{
 						dialogResult=formPaySimpleSetup.ShowDialog();
 					}
 					break;
-				case "AvaTax":
-					using(FormAvaTax formAvaTax=new FormAvaTax()) {
-						formAvaTax.ProgramCur=program;
-						dialogResult=formAvaTax.ShowDialog();
-					}
-					break;
 				case "XDR":
 					using(FormXDRSetup formXDRSetup=new FormXDRSetup()) {
 						dialogResult=formXDRSetup.ShowDialog();

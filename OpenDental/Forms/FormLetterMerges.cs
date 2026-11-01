@@ -26,9 +26,9 @@ namespace OpenDental{
 		private string _mergePath;
 #if !DISABLE_MICROSOFT_OFFICE
 		//private Word.Application wrdApp;
-		private Word._Document _wordDocument;
-		private Object _objectMissing = System.Reflection.Missing.Value;
-		private Object _objectFalse = false;
+		///<summary>Word's document, late bound (dynamic COM) so no Office interop assembly is needed. Omitted optional arguments of Word's methods are
+		///passed as missing, as the interop calls passed Missing before.</summary>
+		private dynamic _wordDocument;
 #endif
 		private List<Def> _listDefsLetterMergeCat;
 		///<summary>Set true when opened from the Chart module's New Chart Letter: the window is titled for picking the template of a chart letter.
@@ -283,9 +283,9 @@ namespace OpenDental{
 			if(!CreateDataFile(dataFile,letterMerge)){
 				return;
 			}
-			Word.MailMerge word_MailMerge;
+			dynamic word_MailMerge;
 			//Create an instance of Word.
-			Word.Application word_Application;
+			dynamic word_Application;
 			try {
 				word_Application=LetterMerges.GetWordApp();
 			}
@@ -294,25 +294,20 @@ namespace OpenDental{
 				return;
 			}
 			//Open a document.
-			Object objectName=templateFile;
-			_wordDocument=word_Application.Documents.Open(ref objectName,ref _objectMissing,ref _objectMissing,
-				ref _objectMissing,ref _objectMissing,ref _objectMissing,ref _objectMissing,ref _objectMissing,ref _objectMissing,
-				ref _objectMissing,ref _objectMissing,ref _objectMissing,ref _objectMissing,ref _objectMissing,ref _objectMissing);
+			_wordDocument=word_Application.Documents.Open(templateFile);
 			try {
 				_wordDocument.Select();
 				word_MailMerge=_wordDocument.MailMerge;
 				//Attach the data file.
-				_wordDocument.MailMerge.OpenDataSource(dataFile,ref _objectMissing,ref _objectMissing,ref _objectMissing,
-					ref _objectMissing,ref _objectMissing,ref _objectMissing,ref _objectMissing,ref _objectMissing,ref _objectMissing,
-					ref _objectMissing,ref _objectMissing,ref _objectMissing,ref _objectMissing,ref _objectMissing,ref _objectMissing);
-				word_MailMerge.Destination = Word.WdMailMergeDestination.wdSendToPrinter;
+				_wordDocument.MailMerge.OpenDataSource(dataFile);
+				word_MailMerge.Destination = LetterMerges.WORD_MAIL_MERGE_TO_PRINTER;
 				//WrdApp.ActivePrinter=pd.PrinterSettings.PrinterName;
 				//replaced with following 4 lines due to MS bug that changes computer default printer
 				object word_Basic = word_Application.WordBasic;
 				object[] objectArrayWBValues = new object[] { printDocument.PrinterSettings.PrinterName, 1 };
 				String[] stringArrayWBNames = new String[] { "Printer", "DoNotSetAsSysDefault" };
 				word_Basic.GetType().InvokeMember("FilePrintSetup", BindingFlags.InvokeMethod, null, word_Basic, objectArrayWBValues, null, null, stringArrayWBNames);
-				word_MailMerge.Execute(ref _objectFalse);
+				word_MailMerge.Execute(false);
 			}
 			catch {//Catches UE after hitting cancel
 				return;
@@ -320,8 +315,8 @@ namespace OpenDental{
 			if(letterMerge.ImageFolder!=0) {//if image folder exist for this letter, save to AtoZ folder
 				try {
 					_wordDocument.Select();
-					word_MailMerge.Destination = Word.WdMailMergeDestination.wdSendToNewDocument;
-					word_MailMerge.Execute(ref _objectFalse);
+					word_MailMerge.Destination = LetterMerges.WORD_MAIL_MERGE_TO_NEW_DOCUMENT;
+					word_MailMerge.Execute(false);
 					word_Application.Activate();
 					string tempFilePath=ODFileUtils.CreateRandomFile(Path.GetTempPath(),GetFileExtensionForWordDoc(templateFile));
 					Object objectFileName=tempFilePath;
@@ -335,9 +330,9 @@ namespace OpenDental{
 			}
 			//Close the original form document since just one record.
 			_wordDocument.Saved=true;
-			_wordDocument.Close(ref _objectFalse,ref _objectMissing,ref _objectMissing);
+			_wordDocument.Close(false);
 			//At this point, Word remains open with no documents.
-			word_Application.WindowState=Word.WdWindowState.wdWindowStateMinimize;
+			word_Application.WindowState=LetterMerges.WORD_WINDOW_STATE_MINIMIZE;
 			word_MailMerge=null;
 			_wordDocument=null;
 			Commlog commlog=new Commlog();
@@ -369,9 +364,9 @@ namespace OpenDental{
 			if(!CreateDataFile(dataFile,letterMerge)){
 				return;
 			}
-			Word.MailMerge word_MailMerge;
+			dynamic word_MailMerge;
 			//Create an instance of Word.
-			Word.Application word_Application;
+			dynamic word_Application;
 			try{
 				word_Application=LetterMerges.GetWordApp();
 			}
@@ -382,10 +377,7 @@ namespace OpenDental{
 			string errorMessage="";
 			//Open a document.
 			try {
-				Object objectName=templateFile;
-				_wordDocument=word_Application.Documents.Open(ref objectName,ref _objectMissing,ref _objectMissing,
-					ref _objectMissing,ref _objectMissing,ref _objectMissing,ref _objectMissing,ref _objectMissing,ref _objectMissing,
-					ref _objectMissing,ref _objectMissing,ref _objectMissing,ref _objectMissing,ref _objectMissing,ref _objectMissing);
+				_wordDocument=word_Application.Documents.Open(templateFile);
 				_wordDocument.Select();
 			}
 			catch(Exception ex) {
@@ -396,11 +388,9 @@ namespace OpenDental{
 			//Attach the data file.
 			try {
 				word_MailMerge=_wordDocument.MailMerge;
-				_wordDocument.MailMerge.OpenDataSource(dataFile,ref _objectMissing,ref _objectMissing,ref _objectMissing,
-					ref _objectMissing,ref _objectMissing,ref _objectMissing,ref _objectMissing,ref _objectMissing,ref _objectMissing,
-					ref _objectMissing,ref _objectMissing,ref _objectMissing,ref _objectMissing,ref _objectMissing,ref _objectMissing);
-				word_MailMerge.Destination = Word.WdMailMergeDestination.wdSendToNewDocument;
-				word_MailMerge.Execute(ref _objectFalse);
+				_wordDocument.MailMerge.OpenDataSource(dataFile);
+				word_MailMerge.Destination = LetterMerges.WORD_MAIL_MERGE_TO_NEW_DOCUMENT;
+				word_MailMerge.Execute(false);
 			}
 			catch(Exception ex) {
 				errorMessage=Lan.g(this,"Error attaching data file:")+"\r\n"+ex.Message;
@@ -432,7 +422,7 @@ namespace OpenDental{
 			//Close the original form document since just one record.
 			try {
 				_wordDocument.Saved=true;
-				_wordDocument.Close(ref _objectFalse,ref _objectMissing,ref _objectMissing);
+				_wordDocument.Close(false);
 			}
 			catch(Exception ex) {
 				errorMessage=Lan.g(this,"Error closing document:")+"\r\n"+ex.Message;
@@ -442,8 +432,8 @@ namespace OpenDental{
 			//At this point, Word remains open with just one new document.
 			try {
 				word_Application.Activate();
-				if(word_Application.WindowState==Word.WdWindowState.wdWindowStateMinimize) {
-					word_Application.WindowState=Word.WdWindowState.wdWindowStateMaximize;
+				if(word_Application.WindowState==LetterMerges.WORD_WINDOW_STATE_MINIMIZE) {
+					word_Application.WindowState=LetterMerges.WORD_WINDOW_STATE_MAXIMIZE;
 				}
 			}
 			catch(Exception ex) {
@@ -520,7 +510,7 @@ namespace OpenDental{
 				return;
 			}
 			//Create an instance of Word.
-			Word.Application word_Application;
+			dynamic word_Application;
 			try {
 				word_Application=LetterMerges.GetWordApp();
 			}
@@ -529,18 +519,13 @@ namespace OpenDental{
 				return;
 			}
 			//Open a document.
-			Object objectName=templateFile;
-			_wordDocument=word_Application.Documents.Open(ref objectName,ref _objectMissing,ref _objectMissing,ref _objectMissing,
-				ref _objectMissing,ref _objectMissing,ref _objectMissing,ref _objectMissing,ref _objectMissing,ref _objectMissing,
-				ref _objectMissing,ref _objectMissing,ref _objectMissing,ref _objectMissing,ref _objectMissing);
+			_wordDocument=word_Application.Documents.Open(templateFile);
 			_wordDocument.Select();
 			//Attach the data file.
-			_wordDocument.MailMerge.OpenDataSource(dataFile,ref _objectMissing,ref _objectMissing,ref _objectMissing,
-				ref _objectMissing,ref _objectMissing,ref _objectMissing,ref _objectMissing,ref _objectMissing,ref _objectMissing,
-				ref _objectMissing,ref _objectMissing,ref _objectMissing,ref _objectMissing,ref _objectMissing,ref _objectMissing);
+			_wordDocument.MailMerge.OpenDataSource(dataFile);
 			//At this point, Word remains open with just one new document.
-			if(word_Application.WindowState==Word.WdWindowState.wdWindowStateMinimize){
-				word_Application.WindowState=Word.WdWindowState.wdWindowStateMaximize;
+			if(word_Application.WindowState==LetterMerges.WORD_WINDOW_STATE_MINIMIZE){
+				word_Application.WindowState=LetterMerges.WORD_WINDOW_STATE_MAXIMIZE;
 			}
 			_wordDocument=null;
 #else

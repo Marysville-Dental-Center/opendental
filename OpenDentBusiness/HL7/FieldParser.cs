@@ -282,7 +282,7 @@ namespace OpenDentBusiness.HL7 {
 					verboseMsg+="\r\nProvNum: "+provNum.ToString()+", External root: "+strProvIdRoot+", External Provider ID: "+strProvId;
 				}
 				if(isVerbose) {
-					EventLog.WriteEntry("OpenDentHL7","Added an external provider ID to the oidexternals table due to an incoming "
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Added an external provider ID to the oidexternals table due to an incoming "
 						+segName.ToString()+" segment."+verboseMsg+".",EventLogEntryType.Information);
 				}
 				return provNum;
@@ -361,7 +361,7 @@ namespace OpenDentBusiness.HL7 {
 					verboseMsg+="\r\nProvNum: "+provNum.ToString()+", External root: "+strProvIdRoot+", External Provider ID: "+strProvId;
 				}
 				if(isVerbose) {
-					EventLog.WriteEntry("OpenDentHL7","Added an external provider ID to the oidexternals table due to an incoming "
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Added an external provider ID to the oidexternals table due to an incoming "
 						+segName.ToString()+" segment."+verboseMsg+".",EventLogEntryType.Information);
 				}
 			}

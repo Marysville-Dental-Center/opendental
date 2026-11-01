@@ -51,25 +51,9 @@ namespace OpenDental {
 			this.radioDirectXChart = new System.Windows.Forms.RadioButton();
 			this.butSave = new OpenDental.UI.Button();
 			this.groupBox1 = new OpenDental.UI.GroupBox();
-			this.groupBox2 = new OpenDental.UI.GroupBox();
-			this.label5 = new System.Windows.Forms.Label();
-			this.radioDirectX11DontUse = new System.Windows.Forms.RadioButton();
-			this.radioDirectX11Use = new System.Windows.Forms.RadioButton();
-			this.label1 = new System.Windows.Forms.Label();
-			this.groupBox3 = new OpenDental.UI.GroupBox();
-			this.radioDirectX11NotFound = new System.Windows.Forms.RadioButton();
-			this.radioDirectX11Avail = new System.Windows.Forms.RadioButton();
-			this.groupBox4 = new OpenDental.UI.GroupBox();
-			this.radioDirectX11ThisCompUseGlobal = new System.Windows.Forms.RadioButton();
-			this.radioDirectX11ThisCompYes = new System.Windows.Forms.RadioButton();
-			this.radioDirectX11ThisCompNo = new System.Windows.Forms.RadioButton();
-			this.label6 = new System.Windows.Forms.Label();
 			this.group3DToothChart.SuspendLayout();
 			this.groupFilters.SuspendLayout();
 			this.groupBox1.SuspendLayout();
-			this.groupBox2.SuspendLayout();
-			this.groupBox3.SuspendLayout();
-			this.groupBox4.SuspendLayout();
 			this.SuspendLayout();
 			// 
 			// checkHardwareAccel
@@ -211,7 +195,7 @@ namespace OpenDental {
 			this.radioDirectXChart.Size = new System.Drawing.Size(215, 19);
 			this.radioDirectXChart.TabIndex = 8;
 			this.radioDirectXChart.TabStop = true;
-			this.radioDirectXChart.Text = "DirectX 9 (requires installation of SDK)";
+			this.radioDirectXChart.Text = "DirectX 9 (needs the DirectX End-User Runtime)";
 			this.radioDirectXChart.UseVisualStyleBackColor = true;
 			this.radioDirectXChart.Click += new System.EventHandler(this.radioDirectXChart_Click);
 			// 
@@ -230,157 +214,17 @@ namespace OpenDental {
 			this.groupBox1.Controls.Add(this.radioDirectXChart);
 			this.groupBox1.Controls.Add(this.radioSimpleChart);
 			this.groupBox1.Controls.Add(this.radioOpenGLChart);
-			this.groupBox1.Location = new System.Drawing.Point(604, 209);
+			this.groupBox1.Location = new System.Drawing.Point(28, 209);
 			this.groupBox1.Name = "groupBox1";
 			this.groupBox1.Size = new System.Drawing.Size(257, 75);
 			this.groupBox1.TabIndex = 11;
 			this.groupBox1.TabStop = false;
-			this.groupBox1.Text = "Older Tooth Chart Technology";
-			// 
-			// groupBox2
-			// 
-			this.groupBox2.Controls.Add(this.label5);
-			this.groupBox2.Controls.Add(this.radioDirectX11DontUse);
-			this.groupBox2.Controls.Add(this.radioDirectX11Use);
-			this.groupBox2.Location = new System.Drawing.Point(28, 108);
-			this.groupBox2.Name = "groupBox2";
-			this.groupBox2.Size = new System.Drawing.Size(481, 96);
-			this.groupBox2.TabIndex = 12;
-			this.groupBox2.TabStop = false;
-			this.groupBox2.Text = "DirectX 11 Tooth Chart on all computers";
-			// 
-			// label5
-			// 
-			this.label5.Location = new System.Drawing.Point(12, 19);
-			this.label5.Name = "label5";
-			this.label5.Size = new System.Drawing.Size(452, 16);
-			this.label5.TabIndex = 18;
-			this.label5.Text = "This option affects all computers in the office.  All other options are specific " +
-    "to this computer.";
-			// 
-			// radioDirectX11DontUse
-			// 
-			this.radioDirectX11DontUse.Location = new System.Drawing.Point(15, 58);
-			this.radioDirectX11DontUse.Name = "radioDirectX11DontUse";
-			this.radioDirectX11DontUse.Size = new System.Drawing.Size(442, 31);
-			this.radioDirectX11DontUse.TabIndex = 9;
-			this.radioDirectX11DontUse.TabStop = true;
-			this.radioDirectX11DontUse.Text = "Do not use.  Advantage is that older or underpowered hardware might work better. " +
-    " This is an easy first step for troubleshooting certain graphics problems.";
-			this.radioDirectX11DontUse.UseVisualStyleBackColor = true;
-			// 
-			// radioDirectX11Use
-			// 
-			this.radioDirectX11Use.Location = new System.Drawing.Point(15, 38);
-			this.radioDirectX11Use.Name = "radioDirectX11Use";
-			this.radioDirectX11Use.Size = new System.Drawing.Size(442, 19);
-			this.radioDirectX11Use.TabIndex = 8;
-			this.radioDirectX11Use.TabStop = true;
-			this.radioDirectX11Use.Text = "Use if available.  Advantage is that this avoids having to install DirectX9 SDK.";
-			this.radioDirectX11Use.UseVisualStyleBackColor = true;
-			// 
-			// label1
-			// 
-			this.label1.Location = new System.Drawing.Point(27, 25);
-			this.label1.Name = "label1";
-			this.label1.Size = new System.Drawing.Size(828, 72);
-			this.label1.TabIndex = 17;
-			this.label1.Text = resources.GetString("label1.Text");
-			// 
-			// groupBox3
-			// 
-			this.groupBox3.Controls.Add(this.radioDirectX11NotFound);
-			this.groupBox3.Controls.Add(this.radioDirectX11Avail);
-			this.groupBox3.Location = new System.Drawing.Point(236, 209);
-			this.groupBox3.Name = "groupBox3";
-			this.groupBox3.Size = new System.Drawing.Size(273, 75);
-			this.groupBox3.TabIndex = 13;
-			this.groupBox3.TabStop = false;
-			this.groupBox3.Text = "DirectX 11 status on this computer";
-			// 
-			// radioDirectX11NotFound
-			// 
-			this.radioDirectX11NotFound.AutoCheck = false;
-			this.radioDirectX11NotFound.Location = new System.Drawing.Point(12, 35);
-			this.radioDirectX11NotFound.Name = "radioDirectX11NotFound";
-			this.radioDirectX11NotFound.Size = new System.Drawing.Size(255, 36);
-			this.radioDirectX11NotFound.TabIndex = 9;
-			this.radioDirectX11NotFound.TabStop = true;
-			this.radioDirectX11NotFound.Text = "Sparks3D.dll not found, or Chart not used yet, or unable to load due to graphics " +
-    "driver issue";
-			this.radioDirectX11NotFound.UseVisualStyleBackColor = true;
-			// 
-			// radioDirectX11Avail
-			// 
-			this.radioDirectX11Avail.AutoCheck = false;
-			this.radioDirectX11Avail.Location = new System.Drawing.Point(12, 16);
-			this.radioDirectX11Avail.Name = "radioDirectX11Avail";
-			this.radioDirectX11Avail.Size = new System.Drawing.Size(152, 19);
-			this.radioDirectX11Avail.TabIndex = 8;
-			this.radioDirectX11Avail.TabStop = true;
-			this.radioDirectX11Avail.Text = "Available";
-			this.radioDirectX11Avail.UseVisualStyleBackColor = true;
-			// 
-			// groupBox4
-			// 
-			this.groupBox4.Controls.Add(this.radioDirectX11ThisCompUseGlobal);
-			this.groupBox4.Controls.Add(this.radioDirectX11ThisCompYes);
-			this.groupBox4.Controls.Add(this.radioDirectX11ThisCompNo);
-			this.groupBox4.Location = new System.Drawing.Point(28, 209);
-			this.groupBox4.Name = "groupBox4";
-			this.groupBox4.Size = new System.Drawing.Size(180, 75);
-			this.groupBox4.TabIndex = 12;
-			this.groupBox4.TabStop = false;
-			this.groupBox4.Text = "DirectX 11 Tooth Chart";
-			// 
-			// radioDirectX11ThisCompUseGlobal
-			// 
-			this.radioDirectX11ThisCompUseGlobal.Location = new System.Drawing.Point(15, 17);
-			this.radioDirectX11ThisCompUseGlobal.Name = "radioDirectX11ThisCompUseGlobal";
-			this.radioDirectX11ThisCompUseGlobal.Size = new System.Drawing.Size(159, 19);
-			this.radioDirectX11ThisCompUseGlobal.TabIndex = 8;
-			this.radioDirectX11ThisCompUseGlobal.TabStop = true;
-			this.radioDirectX11ThisCompUseGlobal.Text = "Use the global setting";
-			this.radioDirectX11ThisCompUseGlobal.UseVisualStyleBackColor = true;
-			// 
-			// radioDirectX11ThisCompYes
-			// 
-			this.radioDirectX11ThisCompYes.Location = new System.Drawing.Point(15, 35);
-			this.radioDirectX11ThisCompYes.Name = "radioDirectX11ThisCompYes";
-			this.radioDirectX11ThisCompYes.Size = new System.Drawing.Size(146, 19);
-			this.radioDirectX11ThisCompYes.TabIndex = 6;
-			this.radioDirectX11ThisCompYes.TabStop = true;
-			this.radioDirectX11ThisCompYes.Text = "Use if available";
-			this.radioDirectX11ThisCompYes.UseVisualStyleBackColor = true;
-			// 
-			// radioDirectX11ThisCompNo
-			// 
-			this.radioDirectX11ThisCompNo.Location = new System.Drawing.Point(15, 52);
-			this.radioDirectX11ThisCompNo.Name = "radioDirectX11ThisCompNo";
-			this.radioDirectX11ThisCompNo.Size = new System.Drawing.Size(147, 19);
-			this.radioDirectX11ThisCompNo.TabIndex = 7;
-			this.radioDirectX11ThisCompNo.TabStop = true;
-			this.radioDirectX11ThisCompNo.Text = "Do not use";
-			this.radioDirectX11ThisCompNo.UseVisualStyleBackColor = true;
-			// 
-			// label6
-			// 
-			this.label6.ForeColor = System.Drawing.Color.Red;
-			this.label6.Location = new System.Drawing.Point(27, 9);
-			this.label6.Name = "label6";
-			this.label6.Size = new System.Drawing.Size(394, 16);
-			this.label6.TabIndex = 18;
-			this.label6.Text = "This window is obsolete!";
+			this.groupBox1.Text = "Tooth Chart Technology";
 			// 
 			// FormGraphics
 			// 
 			this.ClientSize = new System.Drawing.Size(892, 683);
-			this.Controls.Add(this.label6);
 			this.Controls.Add(this.butSave);
-			this.Controls.Add(this.groupBox4);
-			this.Controls.Add(this.label1);
-			this.Controls.Add(this.groupBox2);
-			this.Controls.Add(this.groupBox3);
 			this.Controls.Add(this.groupBox1);
 			this.Controls.Add(this.group3DToothChart);
 			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
@@ -394,9 +238,6 @@ namespace OpenDental {
 			this.group3DToothChart.PerformLayout();
 			this.groupFilters.ResumeLayout(false);
 			this.groupBox1.ResumeLayout(false);
-			this.groupBox2.ResumeLayout(false);
-			this.groupBox3.ResumeLayout(false);
-			this.groupBox4.ResumeLayout(false);
 			this.ResumeLayout(false);
 
 		}
@@ -417,18 +258,5 @@ namespace OpenDental {
 		private Label label3;
 		private RadioButton radioDirectXChart;
 		private OpenDental.UI.GroupBox groupBox1;
-		private OpenDental.UI.GroupBox groupBox2;
-		private OpenDental.UI.GroupBox groupBox3;
-		private RadioButton radioDirectX11NotFound;
-		private RadioButton radioDirectX11Avail;
-		private RadioButton radioDirectX11DontUse;
-		private RadioButton radioDirectX11Use;
-		private Label label1;
-		private Label label5;
-		private OpenDental.UI.GroupBox groupBox4;
-		private RadioButton radioDirectX11ThisCompUseGlobal;
-		private RadioButton radioDirectX11ThisCompYes;
-		private RadioButton radioDirectX11ThisCompNo;
-		private Label label6;
 	}
 }

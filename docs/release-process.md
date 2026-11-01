@@ -15,10 +15,10 @@ Nothing here talks to Open Dental's servers or reads Open Dental's update files.
 
 | Version | Value now | Where it lives | Used for |
 |---|---|---|---|
-| Release (product) version | `0.0` | `AssemblyInformationalVersion` in `OpenDental/Properties/AssemblyInfo.cs` | About window (`Application.ProductVersion`), release manifests, the `ForkProgramVersion` marker. Our own scheme. It is never compared with Open Dental numbers. |
+| Release (product) version | `0.0` | `AssemblyInformationalVersion` in `SharedAssemblyInfo.cs` (repository root, linked into every shipped assembly) | About window (`Application.ProductVersion`), release manifests, the `ForkProgramVersion` marker. Our own scheme. It is never compared with Open Dental numbers. |
 | Compatibility version | `24.3.63.0` | `AssemblyVersion` (file version), `ForkVersions.CompatVersion` | The frozen legacy conversion chain, and `DataBaseVersion`/`ProgramVersion` on databases the fork markers don't govern yet. |
 
-Raise the release version by editing `AssemblyInformationalVersion`, for example to `0.1`. Leave `AssemblyVersion` at `24.3.63.0`. Once the fork markers take over, the database checks no longer look at it.
+Raise the release version by editing `AssemblyInformationalVersion` in `SharedAssemblyInfo.cs`, for example to `0.1`. Leave `AssemblyVersion` at `24.3.63.0`. Once the fork markers take over, the database checks no longer look at it.
 
 A build is identified by its **build id**: a SHA-256 over the program's own assemblies (`ForkReleases.ListBuildIdFiles`: `OpenDental.exe`, `OpenDentBusiness.dll`, `CodeBase.dll` and the others). Every rebuild of `0.0` therefore counts as a different build, and third-party DLLs aren't hashed at every startup.
 
@@ -101,7 +101,7 @@ The **update server** is the workstation named in the `WebServiceServerName` pre
 3. At startup, `PrefL.CheckProgramVersion` sees that this build isn't the published one and asks whether to publish it. If you click Cancel, this workstation runs the build without publishing it. Update Setup's Recopy button publishes the running build at any time, under the same rules: with a blank `WebServiceServerName` it refuses to replace a different published build that this one isn't known to be newer than. A silent run publishes only when nothing is published yet. It never replaces a published release, because nobody is asked.
 4. Publishing (`ForkReleases.Publish`) works like this:
    - While it runs, `UpdateInProgressOnComputerName` is set, so other workstations wait.
-   - It zips the installation folder, except local files: `FreeDentalConfig.xml`, logs, files with `__` in the name, and Open Dental's `Manifest.txt`. The `Sparks3D` and `OpenDentalReplicationService` sub folders are included.
+   - It zips the installation folder, except local files: `FreeDentalConfig.xml`, logs, files with `__` in the name, and Open Dental's `Manifest.txt`. The `OpenDentalReplicationService` sub folder is included (a `Sparks3D` folder no longer is: Sparks3D was removed in BIN-A).
    - It writes the zip as `ForkReleaseSegment` rows (`DocMiscType` 101, about 1 MB of base64 each).
    - It then writes the manifest as one `ForkReleaseManifest` row (`DocMiscType` 100).
    - Finally it sets `ForkProgramVersion`.

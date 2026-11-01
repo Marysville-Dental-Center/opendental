@@ -32,7 +32,7 @@ namespace OpenDentBusiness {
 				socket.Close();
 				socket.Dispose();
 				string messageTextFail="NTPv4 time request from "+nistServerUrl+" timed out.";
-				EventLog.WriteEntry("OpenDental",messageTextFail,EventLogEntryType.Information);
+				EventLog.WriteEntry(CodeBase.ProgramNames.EventLogSource,messageTextFail,EventLogEntryType.Information);
 				return (double.MaxValue);
 			}
 			//Convert the received NTP packet to a usable time stamp.
@@ -51,7 +51,7 @@ namespace OpenDentBusiness {
 				+"\nTransmit:  "+transmit.ToString("hh:mm:ss.fff tt")
 				+"\nDestination:  "+destination.ToString("hh:mm:ss.fff tt")
 				+"\nOffset:  "+offset+" milliseconds";
-			EventLog.WriteEntry("OpenDental",messageText,EventLogEntryType.Information);
+			EventLog.WriteEntry(CodeBase.ProgramNames.EventLogSource,messageText,EventLogEntryType.Information);
 			return offset;
 		}
 

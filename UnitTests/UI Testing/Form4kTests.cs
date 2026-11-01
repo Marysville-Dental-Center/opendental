@@ -195,12 +195,7 @@ namespace UnitTests{
 		}
 
 		private void button1_Click_1(object sender, EventArgs e){
-			Sparks3D.ToothChart toothChart=new Sparks3D.ToothChart(false);
-			toothChart.ResetTeeth();
-			toothChart.EndUpdate();
-			Image imgToothChart=toothChart.GetBitmap();
-			imgToothChart.Dispose();
-			toothChart.Dispose();
+			//This drew Open Dental's closed Sparks3D tooth chart, removed on 2026-11-01.
 			//_imgToothChart?.Dispose();
 			//_imgToothChart=imgToothChart;
 

@@ -100,10 +100,10 @@ namespace M2UDSTests {
 			return dict;
 		}
 
-		///<summary>The repository file at the given path, found by walking up from the test assembly to OpenDental.sln.</summary>
+		///<summary>The repository file at the given path, found by walking up from the test assembly to the folder with LICENSE and NOTICE.</summary>
 		public static string GetRepoFile(params string[] arrayParts) {
 			string dir=Path.GetDirectoryName(typeof(UdsTestDb).Assembly.Location);
-			while(dir!=null && !File.Exists(Path.Combine(dir,"OpenDental.sln"))) {
+			while(dir!=null && !(File.Exists(Path.Combine(dir,"LICENSE")) && File.Exists(Path.Combine(dir,"NOTICE")))) {
 				dir=Path.GetDirectoryName(dir);
 			}
 			if(dir==null) {

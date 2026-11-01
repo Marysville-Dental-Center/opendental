@@ -83,38 +83,7 @@
     <LangVersion>8.0</LangVersion>
     <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'ODXam|AnyCPU'">
-    <DebugSymbols>true</DebugSymbols>
-    <OutputPath>bin\ODXam\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
-    <DocumentationFile>bin\Release\OpenDentBusiness.xml</DocumentationFile>
-    <Optimize>true</Optimize>
-    <WarningLevel>3</WarningLevel>
-    <DebugType>pdbonly</DebugType>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <LangVersion>8.0</LangVersion>
-    <ErrorReport>prompt</ErrorReport>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'ODXam|x86'">
-    <DebugSymbols>true</DebugSymbols>
-    <OutputPath>bin\x86\ODXam\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
-    <DocumentationFile>bin\Release\OpenDentBusiness.xml</DocumentationFile>
-    <Optimize>true</Optimize>
-    <WarningLevel>3</WarningLevel>
-    <DebugType>pdbonly</DebugType>
-    <PlatformTarget>x86</PlatformTarget>
-    <LangVersion>8.0</LangVersion>
-    <ErrorReport>prompt</ErrorReport>
-  </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Avalara.AvaTax.RestClient.net45">
-      <HintPath>..\Required dlls\Avalara.AvaTax.RestClient.net45.dll</HintPath>
-    </Reference>
     <Reference Include="Dicom.Core, Version=4.0.7.0, Culture=neutral, PublicKeyToken=3a13f649e28eb09a, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\Dicom.Core.dll</HintPath>
@@ -151,13 +120,6 @@
     </Reference>
     <Reference Include="Health.Direct.ResolverPlugins">
       <HintPath>..\Required dlls\Health.Direct.ResolverPlugins.dll</HintPath>
-    </Reference>
-    <Reference Include="Interop.Word, Version=8.2.0.0, Culture=neutral">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\Interop.Word.dll</HintPath>
-    </Reference>
-    <Reference Include="Ionic.Zip">
-      <HintPath>..\Required dlls\Ionic.Zip.dll</HintPath>
     </Reference>
     <Reference Include="MailKit">
       <HintPath>..\Required dlls\MailKit.dll</HintPath>
@@ -198,16 +160,6 @@
     </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
-    <Reference Include="RS232">
-      <HintPath>..\Required dlls\RS232.dll</HintPath>
-    </Reference>
-    <Reference Include="SigPlusNET, Version=2.0.0.0, Culture=neutral, PublicKeyToken=6aef07010bb0624f, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\SigPlusNET.dll</HintPath>
-    </Reference>
-    <Reference Include="Sparks3D">
-      <HintPath>..\Required dlls\Sparks3D\Sparks3D.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
@@ -496,6 +448,8 @@
     <Compile Include="Data Interface\StatementProds.cs" />
     <Compile Include="Db Multi Table\InsPlanSubstitution.cs" />
     <Compile Include="Imaging\BitmapDicom.cs" />
+    <Compile Include="Imaging\DicomSubsetReader.cs" />
+    <Compile Include="Imaging\IDicomPixelReader.cs" />
     <Compile Include="Imaging\ImageCopyRules.cs" />
     <Compile Include="Imaging\ImageDrawFontSizeSync.cs" />
     <Compile Include="InternalTools\Cloud\Crud\CloudBillingCrud.cs" />
@@ -1988,6 +1942,9 @@
     <Compile Include="Db\PIn.cs" />
     <Compile Include="Db\POut.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="..\SharedAssemblyInfo.cs">
+      <Link>Properties\SharedAssemblyInfo.cs</Link>
+    </Compile>
     <Compile Include="Properties\Settings.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
@@ -2220,9 +2177,6 @@
     <WebReferences Include="Web References\" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\.editorconfig">
-      <Link>.editorconfig</Link>
-    </None>
     <None Include="app.config">
       <SubType>Designer</SubType>
     </None>
@@ -2541,7 +2495,6 @@
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
-    <None Include="Resources\rxnorm.zip" />
     <None Include="Web References\OpenDentalServer\Reference.map">
       <Generator>MSDiscoCodeGenerator</Generator>
       <LastGenOutput>Reference.cs</LastGenOutput>

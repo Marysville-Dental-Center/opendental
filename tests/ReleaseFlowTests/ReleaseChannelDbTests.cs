@@ -26,8 +26,8 @@ namespace ReleaseFlowTests {
 			File.WriteAllText(Path.Combine(folder,"FreeDentalConfig.xml"),"<local/>");
 			File.WriteAllText(Path.Combine(folder,"openlog_1.txt"),"log");
 			File.WriteAllText(Path.Combine(folder,"Manifest.txt"),"24.3.63");
-			Directory.CreateDirectory(Path.Combine(folder,"Sparks3D"));
-			File.WriteAllText(Path.Combine(folder,"Sparks3D","shader.dat"),"3d");
+			Directory.CreateDirectory(Path.Combine(folder,"OpenDentalReplicationService"));
+			File.WriteAllText(Path.Combine(folder,"OpenDentalReplicationService","shader.dat"),"3d");
 			Directory.CreateDirectory(Path.Combine(folder,"NotShipped"));
 			File.WriteAllText(Path.Combine(folder,"NotShipped","x.txt"),"x");
 			if(arrayBigFile!=null) {
@@ -57,7 +57,7 @@ namespace ReleaseFlowTests {
 			string folderInstall=MakeInstallFolder(arrayBig);
 			ReleaseIdentity releaseIdentity=Identity(folderInstall);
 			ReleaseManifest releaseManifest=ForkReleases.Publish(folderInstall,releaseIdentity,"SERVER1",new DateTime(2026,10,19,9,0,0,DateTimeKind.Utc));
-			CollectionAssert.AreEquivalent(new[] { "Big.dll","OpenDental.exe","OpenDentBusiness.dll","Sparks3D\\shader.dat","UpdateFileCopier.exe" },
+			CollectionAssert.AreEquivalent(new[] { "Big.dll","OpenDental.exe","OpenDentBusiness.dll","OpenDentalReplicationService\\shader.dat","UpdateFileCopier.exe" },
 				releaseManifest.ListFiles.Select(x => x.RelativePath).ToArray(),"Local settings, logs, Open Dental's Manifest.txt and other folders stay local.");
 			Assert.IsTrue(int.Parse(ScratchDb.Scalar(DB_NAME,"SELECT COUNT(*) FROM documentmisc WHERE DocMiscType=101"))>=3);
 			Assert.AreEqual("1",ScratchDb.Scalar(DB_NAME,"SELECT COUNT(*) FROM documentmisc WHERE DocMiscType=100"));
@@ -72,7 +72,7 @@ namespace ReleaseFlowTests {
 			ReleaseDownloadResult releaseDownloadResult=ForkReleases.DownloadAndVerify(folderPull);
 			Assert.IsTrue(releaseDownloadResult.IsOk,string.Join("; ",releaseDownloadResult.ListProblems));
 			CollectionAssert.AreEqual(arrayBig,File.ReadAllBytes(Path.Combine(folderPull,"Big.dll")));
-			Assert.AreEqual("3d",File.ReadAllText(Path.Combine(folderPull,"Sparks3D","shader.dat")));
+			Assert.AreEqual("3d",File.ReadAllText(Path.Combine(folderPull,"OpenDentalReplicationService","shader.dat")));
 			Assert.IsTrue(File.Exists(Path.Combine(folderPull,ReleaseManifest.FILE_NAME)),"UpdateFileCopier checks this manifest again.");
 			Assert.IsFalse(File.Exists(Path.Combine(folderPull,"FreeDentalConfig.xml")));
 			Assert.AreEqual(0,ReleaseManifest.Parse(File.ReadAllText(Path.Combine(folderPull,ReleaseManifest.FILE_NAME))).VerifyFolder(folderPull).Count);

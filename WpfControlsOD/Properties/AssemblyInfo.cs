@@ -10,9 +10,7 @@ using System.Windows;
 [assembly: AssemblyTitle("WpfControlsOD")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("WpfControlsOD")]
-[assembly: AssemblyCopyright("Copyright ©  2023")]
+//AssemblyProduct, AssemblyCompany, AssemblyCopyright and AssemblyInformationalVersion come from SharedAssemblyInfo.cs in the repository root.
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

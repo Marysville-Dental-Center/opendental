@@ -52,6 +52,9 @@
   <ItemGroup>
     <!-- Every .cs file under this folder is compiled, so packages that add files never conflict over this project file. -->
     <Compile Include="**\*.cs" Exclude="bin\**;obj\**" />
+    <Compile Include="..\SharedAssemblyInfo.cs">
+      <Link>Properties\SharedAssemblyInfo.cs</Link>
+    </Compile>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

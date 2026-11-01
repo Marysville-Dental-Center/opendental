@@ -149,7 +149,7 @@ namespace OpenDentBusiness{
 			//For users who have the A to Z folders disabled, there is no defined image path, so we
 			//have to use a temp path.  This means that the attachments might be available immediately afterward,
 			//but probably not later.
-			attachPath=ODFileUtils.CombinePaths(Path.GetTempPath(),"opendental");//Have to use Path.GetTempPath() here instead of PrefL.GetTempPathFolder() because we can't access PrefL.
+			attachPath=ODFileUtils.CombinePaths(Path.GetTempPath(),ProgramNames.TempFolderName);//Have to use Path.GetTempPath() here instead of PrefL.GetTempPathFolder() because we can't access PrefL.
 			return attachPath;
 		}
 

@@ -6,7 +6,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml.Serialization;
 using OpenDentBusiness;
-using Ionic.Zip;
+using CodeBase;
 using System.Windows;
 
 namespace OpenDentBusiness.Eclaims {
@@ -168,19 +168,14 @@ namespace OpenDentBusiness.Eclaims {
 			}
 			//Step 2 - ZIP XML and save to report path.  The zip file name and file name within the zip file do not matter.
 			string zipFilePath=CodeBase.ODFileUtils.CreateRandomFile(clearinghouseClin.ExportPath,".zip","claims");
-			ZipFile zip=null;
 			try {
-				zip=new ZipFile();
-				zip.UseZip64WhenSaving=Zip64Option.Always;
-				zip.AddEntry("claims"+DateTime.Now.ToString("yyyyMMddHHmmss")+".xml",xml);
-				zip.Save(zipFilePath);
-				zip.Dispose();
+				//The text is stored in the system's default code page, as DotNetZip stored a string entry. DotNetZip was also told to always write
+				//Zip64 headers; System.IO.Compression writes them only when needed, which unzip programs accept. The upload to RAMQ was never written.
+				ODZip.CreateArchiveFile(zipFilePath,new[] { new KeyValuePair<string,byte[]>("claims"+DateTime.Now.ToString("yyyyMMddHHmmss")+".xml",
+					ODZip.GetDefaultEncodingBytes(xml)) });
 			}
 			catch(Exception ex) {
 				ex.ToString();
-				if(zip!=null) {
-					zip.Dispose();
-				}
 				if(File.Exists(zipFilePath)) {
 					try {
 						File.Delete(zipFilePath);

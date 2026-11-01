@@ -11,11 +11,11 @@ using OpenDentBusiness;
 namespace VendorDirectTests.Foundation {
 	[TestClass]
 	public class FoundationLayoutTests {
-		///<summary>The repository root: the first folder above this assembly that holds OpenDental.sln.</summary>
+		///<summary>The repository root: the first folder above this assembly that holds LICENSE and NOTICE.</summary>
 		public static string GetRepositoryRoot() {
 			string path=Path.GetDirectoryName(typeof(FoundationLayoutTests).Assembly.Location);
 			while(path!=null) {
-				if(File.Exists(Path.Combine(path,"OpenDental.sln"))) {
+				if(File.Exists(Path.Combine(path,"LICENSE")) && File.Exists(Path.Combine(path,"NOTICE"))) {
 					return path;
 				}
 				path=Path.GetDirectoryName(path);

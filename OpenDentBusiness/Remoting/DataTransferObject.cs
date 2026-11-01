@@ -49,7 +49,8 @@ namespace OpenDentBusiness {
 			}
 			//strReader.Close();
 			//reader.Close();
-			Type type = Type.GetType("OpenDentBusiness." +strNodeName);
+			//The DTO classes are in this class's namespace (taken from the type, so it follows a rename).
+			Type type = Type.GetType(typeof(DataTransferObject).Namespace+"."+strNodeName);
 			//StringReader strReader2=new StringReader(data);
 			//XmlReader reader2=XmlReader.Create(strReader2);
 			XmlSerializer serializer = new XmlSerializer(type);

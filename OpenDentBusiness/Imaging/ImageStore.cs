@@ -223,7 +223,7 @@ namespace OpenDentBusiness {
 			byte[] textbytes;
 			byte[] filebytes=new byte[1];
 			if(PrefC.AtoZfolderUsed==DataStorageType.InDatabase){
-				patFolder=ODFileUtils.CombinePaths(Path.GetTempPath(),"opendental");
+				patFolder=ODFileUtils.CombinePaths(Path.GetTempPath(),ProgramNames.TempFolderName);
 				byte[] rawData=Convert.FromBase64String(doc.RawBase64);
 				using(FileStream file=new FileStream(ODFileUtils.CombinePaths(patFolder,doc.FileName),FileMode.Create,FileAccess.Write)) {
 					file.Write(rawData,0,rawData.Length);

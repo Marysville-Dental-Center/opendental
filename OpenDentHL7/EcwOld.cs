@@ -90,13 +90,13 @@ namespace OpenDentHL7 {
 				MessageHL7 msg=new MessageHL7(msgtext);//this creates an entire heirarchy of objects.
 				if(msg.MsgType==MessageTypeHL7.ADT) {
 					if(IsVerboseLogging) {
-						EventLog.WriteEntry("OpenDentHL7","Processed ADT message",EventLogEntryType.Information);
+						EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Processed ADT message",EventLogEntryType.Information);
 					}
 					EcwADT.ProcessMessage(msg,ecwOldIsStandalone,IsVerboseLogging);
 				}
 				else if(msg.MsgType==MessageTypeHL7.SIU && !ecwOldIsStandalone) {//appointments don't get imported if standalone mode.
 					if(IsVerboseLogging) {
-						EventLog.WriteEntry("OpenDentHL7","Processed SUI message",EventLogEntryType.Information);
+						EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Processed SUI message",EventLogEntryType.Information);
 					}
 					EcwSIU.ProcessMessage(msg,IsVerboseLogging);
 				}
