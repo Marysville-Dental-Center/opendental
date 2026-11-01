@@ -75,7 +75,7 @@ namespace OpenDental {
 			// 
 			this.label27.Location = new System.Drawing.Point(11, 369);
 			this.label27.Name = "label27";
-			this.label27.Size = new System.Drawing.Size(238, 18);
+			this.label27.Size = new System.Drawing.Size(444, 18);
 			this.label27.TabIndex = 293;
 			this.label27.Text = "Pay Plan charge logic";
 			this.label27.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
@@ -106,6 +106,7 @@ namespace OpenDental {
 			this.comboPayPlansVersion.Name = "comboPayPlansVersion";
 			this.comboPayPlansVersion.Size = new System.Drawing.Size(205, 21);
 			this.comboPayPlansVersion.TabIndex = 292;
+			this.comboPayPlansVersion.Visible = false;
 			this.comboPayPlansVersion.SelectionChangeCommitted += new System.EventHandler(this.comboPayPlansVersion_ChangeCommitted);
 			// 
 			// checkClaimReportReceivedByService

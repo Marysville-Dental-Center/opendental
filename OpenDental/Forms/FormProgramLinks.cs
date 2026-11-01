@@ -48,7 +48,7 @@ namespace OpenDental{
 				}
 				GridCell cell=new GridCell(_listPrograms[i].Enabled ? "X" : "");
 				row.Cells.Add(cell);
-				row.Cells.Add(_listPrograms[i].ProgDesc);
+				row.Cells.Add(ProgramLinksDiscontinued.IsDiscontinued(_listPrograms[i]) ? ProgramLinksDiscontinued.GetLabeledDesc(_listPrograms[i].ProgDesc) : _listPrograms[i].ProgDesc);//25.2
 				gridProgram.ListGridRows.Add(row);
 			}
 			gridProgram.EndUpdate();

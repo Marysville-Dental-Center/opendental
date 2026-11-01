@@ -94,7 +94,7 @@ namespace OpenDental.UI{
 				//Hopefully, this doesn't break anything else.
 				_printout.PrintDoc.DefaultPageSettings.Margins=new Margins(0,0,0,0);
 			}
-			if(!PrinterL.TryPrint(_printout)) {
+			if(!PrinterL.TryPrint(_printout,isPromptForced:true)) {//25.3: the Print Options window lets the user pick printer, copies and pages.
 				return;
 			}
 			DialogResult=DialogResult.OK;

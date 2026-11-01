@@ -28,6 +28,7 @@ namespace OpenDental {
 			this.checkImagingOrderDescending = new OpenDental.UI.CheckBox();
 			this.checkPDFLaunchWindow = new OpenDental.UI.CheckBox();
 			this.checkImagesModuleUsesOld2020 = new OpenDental.UI.CheckBox();
+			this.checkImagingAllowPdfJavascript = new OpenDental.UI.CheckBox();
 			this.groupImport = new OpenDental.UI.GroupBox();
 			this.textAutoImportFolder = new System.Windows.Forms.TextBox();
 			this.textDefaultImageImportFolder = new System.Windows.Forms.TextBox();
@@ -58,9 +59,10 @@ namespace OpenDental {
 			this.groupBoxFunctionality.Controls.Add(this.checkImagingOrderDescending);
 			this.groupBoxFunctionality.Controls.Add(this.checkPDFLaunchWindow);
 			this.groupBoxFunctionality.Controls.Add(this.checkImagesModuleUsesOld2020);
+			this.groupBoxFunctionality.Controls.Add(this.checkImagingAllowPdfJavascript);
 			this.groupBoxFunctionality.Location = new System.Drawing.Point(20, 196);
 			this.groupBoxFunctionality.Name = "groupBoxFunctionality";
-			this.groupBoxFunctionality.Size = new System.Drawing.Size(450, 98);
+			this.groupBoxFunctionality.Size = new System.Drawing.Size(450, 129);
 			this.groupBoxFunctionality.TabIndex = 320;
 			this.groupBoxFunctionality.Text = "Functionality";
 			// 
@@ -91,7 +93,16 @@ namespace OpenDental {
 			this.checkImagesModuleUsesOld2020.TabIndex = 316;
 			this.checkImagesModuleUsesOld2020.Text = "Use old Imaging module interface, pre 2020";
 			this.checkImagesModuleUsesOld2020.Click += new System.EventHandler(this.checkImagesModuleUsesOld2020_Click);
-			// 
+			//
+			// checkImagingAllowPdfJavascript
+			//
+			this.checkImagingAllowPdfJavascript.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.checkImagingAllowPdfJavascript.Location = new System.Drawing.Point(5, 103);
+			this.checkImagingAllowPdfJavascript.Name = "checkImagingAllowPdfJavascript";
+			this.checkImagingAllowPdfJavascript.Size = new System.Drawing.Size(435, 17);
+			this.checkImagingAllowPdfJavascript.TabIndex = 318;
+			this.checkImagingAllowPdfJavascript.Text = "Allow JavaScript when viewing PDFs";
+			//
 			// groupImport
 			// 
 			this.groupImport.Controls.Add(this.textAutoImportFolder);
@@ -229,7 +240,7 @@ namespace OpenDental {
 			this.groupBoxOD2.Controls.Add(this.label34);
 			this.groupBoxOD2.Controls.Add(this.label35);
 			this.groupBoxOD2.Controls.Add(this.label36);
-			this.groupBoxOD2.Location = new System.Drawing.Point(20, 310);
+			this.groupBoxOD2.Location = new System.Drawing.Point(20, 341);
 			this.groupBoxOD2.Name = "groupBoxOD2";
 			this.groupBoxOD2.Size = new System.Drawing.Size(450, 98);
 			this.groupBoxOD2.TabIndex = 307;
@@ -336,5 +347,6 @@ namespace OpenDental {
 		private UI.GroupBox groupImport;
 		private UI.GroupBox groupBoxFunctionality;
 		private UI.CheckBox checkImagingOrderDescending;
+		private UI.CheckBox checkImagingAllowPdfJavascript;
 	}
 }

@@ -31,7 +31,6 @@ namespace OpenDental{
 			this.label7 = new System.Windows.Forms.Label();
 			this.label8 = new System.Windows.Forms.Label();
 			this.label3 = new System.Windows.Forms.Label();
-			this.label9 = new System.Windows.Forms.Label();
 			this.checkRequired = new OpenDental.UI.CheckBox();
 			this.groupRadioMisc = new OpenDental.UI.GroupBox();
 			this.comboRadioGroupNameMisc = new System.Windows.Forms.ComboBox();
@@ -39,7 +38,6 @@ namespace OpenDental{
 			this.labelUiLabelMobileMisc = new System.Windows.Forms.Label();
 			this.textUiLabelMobileRadioButtonMisc = new System.Windows.Forms.TextBox();
 			this.labelUiLabelMobileRadioButtonMisc = new System.Windows.Forms.Label();
-			this.label1 = new System.Windows.Forms.Label();
 			this.listRadio = new OpenDental.UI.ListBox();
 			this.groupRadio = new OpenDental.UI.GroupBox();
 			this.labelItemOverride = new System.Windows.Forms.Label();
@@ -144,15 +142,6 @@ namespace OpenDental{
 			this.label3.Text = "Group Name";
 			this.label3.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
 			// 
-			// label9
-			// 
-			this.label9.Location = new System.Drawing.Point(36, 15);
-			this.label9.Name = "label9";
-			this.label9.Size = new System.Drawing.Size(280, 33);
-			this.label9.TabIndex = 106;
-			this.label9.Text = "Use the same Field Name (misc) and the same Group Name for each radio button in a" +
-    " group.";
-			// 
 			// checkRequired
 			// 
 			this.checkRequired.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
@@ -172,7 +161,6 @@ namespace OpenDental{
 			this.groupRadioMisc.Controls.Add(this.labelUiLabelMobileMisc);
 			this.groupRadioMisc.Controls.Add(this.textUiLabelMobileRadioButtonMisc);
 			this.groupRadioMisc.Controls.Add(this.labelUiLabelMobileRadioButtonMisc);
-			this.groupRadioMisc.Controls.Add(this.label9);
 			this.groupRadioMisc.Controls.Add(this.label3);
 			this.groupRadioMisc.Location = new System.Drawing.Point(337, 57);
 			this.groupRadioMisc.Name = "groupRadioMisc";
@@ -223,15 +211,6 @@ namespace OpenDental{
 			this.labelUiLabelMobileRadioButtonMisc.Text = "Mobile Item Caption";
 			this.labelUiLabelMobileRadioButtonMisc.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
 			// 
-			// label1
-			// 
-			this.label1.Location = new System.Drawing.Point(8, 44);
-			this.label1.Name = "label1";
-			this.label1.Size = new System.Drawing.Size(283, 31);
-			this.label1.TabIndex = 87;
-			this.label1.Text = "Use the same Field Name for each radio button in a group.  But set a different Ra" +
-    "dio Button Value for each.";
-			// 
 			// listRadio
 			// 
 			this.listRadio.Location = new System.Drawing.Point(119, 80);
@@ -250,7 +229,6 @@ namespace OpenDental{
 			this.groupRadio.Controls.Add(this.textUiLabelMobile);
 			this.groupRadio.Controls.Add(this.labelUiLabelMobile);
 			this.groupRadio.Controls.Add(this.listRadio);
-			this.groupRadio.Controls.Add(this.label1);
 			this.groupRadio.Location = new System.Drawing.Point(337, 365);
 			this.groupRadio.Name = "groupRadio";
 			this.groupRadio.Size = new System.Drawing.Size(322, 168);
@@ -368,8 +346,7 @@ namespace OpenDental{
 			this.labelRequired.Name = "labelRequired";
 			this.labelRequired.Size = new System.Drawing.Size(188, 40);
 			this.labelRequired.TabIndex = 116;
-			this.labelRequired.Text = "Radio buttons in a radio button group must all be marked required or all be marke" +
-    "d not required.";
+			this.labelRequired.Text = "Same for the whole group";
 			// 
 			// textReportableName
 			// 
@@ -396,8 +373,7 @@ namespace OpenDental{
 			this.labelMiscInstructions.Name = "labelMiscInstructions";
 			this.labelMiscInstructions.Size = new System.Drawing.Size(289, 32);
 			this.labelMiscInstructions.TabIndex = 117;
-			this.labelMiscInstructions.Text = "To make misc radio buttons reportable, set a different Reportable Name for each b" +
-    "utton in the group.";
+			this.labelMiscInstructions.Text = "One Reportable Name per button";
 			this.labelMiscInstructions.Visible = false;
 			// 
 			// labelYesNo
@@ -407,9 +383,7 @@ namespace OpenDental{
 			this.labelYesNo.Name = "labelYesNo";
 			this.labelYesNo.Size = new System.Drawing.Size(197, 68);
 			this.labelYesNo.TabIndex = 118;
-			this.labelYesNo.Text = "First create a checkbox with the \"Yes\" value, then create a second checkbox for t" +
-    "he same category with the \"No\" value.  The two checkboxes will act as a radio bu" +
-    "tton group.";
+			this.labelYesNo.Text = "Pair with a \"No\" box";
 			this.labelYesNo.Visible = false;
 			// 
 			// textTabOrder
@@ -642,10 +616,8 @@ namespace OpenDental{
 		private ValidNum textHeight;
 		private UI.Button butDelete;
 		private System.Windows.Forms.Label label3;
-		private System.Windows.Forms.Label label9;
 		private OpenDental.UI.CheckBox checkRequired;
 		private OpenDental.UI.GroupBox groupRadioMisc;
-		private System.Windows.Forms.Label label1;
 		private OpenDental.UI.ListBox listRadio;
 		private OpenDental.UI.GroupBox groupRadio;
 		private ValidNum textTabOrder;

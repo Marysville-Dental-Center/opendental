@@ -49,6 +49,9 @@ namespace OpenDental {
 			this.labelSalesTaxDefaultProvider = new System.Windows.Forms.Label();
 			this.labelSalesTaxPercentage = new System.Windows.Forms.Label();
 			this.labelSalesTaxAdjType = new System.Windows.Forms.Label();
+			this.labelSalesTaxProcCode = new System.Windows.Forms.Label();
+			this.textSalesTaxProcCode = new System.Windows.Forms.TextBox();
+			this.butPickSalesTaxProcCode = new OpenDental.UI.Button();
 			this.groupBoxAdjustments.SuspendLayout();
 			this.groupBox4.SuspendLayout();
 			this.groupBoxOD3.SuspendLayout();
@@ -188,7 +191,7 @@ namespace OpenDental {
 			this.groupBox4.Controls.Add(this.listboxBadDebtAdjs);
 			this.groupBox4.Controls.Add(this.labelCurrentBadDebtAdjTypes);
 			this.groupBox4.Controls.Add(this.butBadDebt);
-			this.groupBox4.Location = new System.Drawing.Point(20, 358);
+			this.groupBox4.Location = new System.Drawing.Point(20, 389);
 			this.groupBox4.Name = "groupBox4";
 			this.groupBox4.Size = new System.Drawing.Size(450, 69);
 			this.groupBox4.TabIndex = 283;
@@ -233,9 +236,12 @@ namespace OpenDental {
 			this.groupBoxOD3.Controls.Add(this.labelSalesTaxDefaultProvider);
 			this.groupBoxOD3.Controls.Add(this.labelSalesTaxPercentage);
 			this.groupBoxOD3.Controls.Add(this.labelSalesTaxAdjType);
+			this.groupBoxOD3.Controls.Add(this.labelSalesTaxProcCode);
+			this.groupBoxOD3.Controls.Add(this.textSalesTaxProcCode);
+			this.groupBoxOD3.Controls.Add(this.butPickSalesTaxProcCode);
 			this.groupBoxOD3.Location = new System.Drawing.Point(20, 223);
 			this.groupBoxOD3.Name = "groupBoxOD3";
-			this.groupBoxOD3.Size = new System.Drawing.Size(450, 129);
+			this.groupBoxOD3.Size = new System.Drawing.Size(450, 160);
 			this.groupBoxOD3.TabIndex = 301;
 			this.groupBoxOD3.Text = "Sales Tax";
 			// 
@@ -304,6 +310,34 @@ namespace OpenDental {
 			this.labelSalesTaxAdjType.Text = "Sales Tax adj type";
 			this.labelSalesTaxAdjType.TextAlign = System.Drawing.ContentAlignment.TopRight;
 			// 
+			// labelSalesTaxProcCode
+			// 
+			this.labelSalesTaxProcCode.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			this.labelSalesTaxProcCode.Location = new System.Drawing.Point(133, 136);
+			this.labelSalesTaxProcCode.Name = "labelSalesTaxProcCode";
+			this.labelSalesTaxProcCode.Size = new System.Drawing.Size(181, 17);
+			this.labelSalesTaxProcCode.TabIndex = 307;
+			this.labelSalesTaxProcCode.Text = "Sales Tax procedure code";
+			this.labelSalesTaxProcCode.TextAlign = System.Drawing.ContentAlignment.TopRight;
+			// 
+			// textSalesTaxProcCode
+			// 
+			this.textSalesTaxProcCode.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			this.textSalesTaxProcCode.Location = new System.Drawing.Point(315, 133);
+			this.textSalesTaxProcCode.Name = "textSalesTaxProcCode";
+			this.textSalesTaxProcCode.Size = new System.Drawing.Size(98, 20);
+			this.textSalesTaxProcCode.TabIndex = 308;
+			// 
+			// butPickSalesTaxProcCode
+			// 
+			this.butPickSalesTaxProcCode.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			this.butPickSalesTaxProcCode.Location = new System.Drawing.Point(417, 132);
+			this.butPickSalesTaxProcCode.Name = "butPickSalesTaxProcCode";
+			this.butPickSalesTaxProcCode.Size = new System.Drawing.Size(23, 21);
+			this.butPickSalesTaxProcCode.TabIndex = 309;
+			this.butPickSalesTaxProcCode.Text = "...";
+			this.butPickSalesTaxProcCode.Click += new System.EventHandler(this.butPickSalesTaxProcCode_Click);
+			// 
 			// UserControlAccountAdjustments
 			// 
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
@@ -334,6 +368,9 @@ namespace OpenDental {
 		private System.Windows.Forms.TextBox textTaxPercent;
 		private System.Windows.Forms.Label labelSalesTaxAdjType;
 		private UI.ComboBox comboSalesTaxDefaultProvider;
+		private System.Windows.Forms.Label labelSalesTaxProcCode;
+		private System.Windows.Forms.TextBox textSalesTaxProcCode;
+		private UI.Button butPickSalesTaxProcCode;
 		private UI.ComboBox comboFinanceChargeAdjType;
 		private UI.ComboBox comboBillingChargeAdjType;
 		private UI.ComboBox comboPayPlanAdj;

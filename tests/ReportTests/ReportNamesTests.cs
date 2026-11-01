@@ -118,6 +118,55 @@ namespace ReportTests {
 			Assert.IsTrue(stepReports.Level>stepSeed.Level);
 		}
 
+		private static ReportRows25_3.DisplayReportRow Row(long num,string internalName,string description,DisplayReportCategory category) {
+			return new ReportRows25_3.DisplayReportRow { DisplayReportNum=num,InternalName=internalName,Description=description,Category=category };
+		}
+
+		///<summary>The plan that migration-preview prints and adopt's row check holds the adopted copy to: only rows under unknown names whose
+		///description matches, only in the report's category, never when our name exists or the match is ambiguous.</summary>
+		[TestMethod]
+		public void PlanRenames_RenamesOnlyAnUnambiguousRowUnderAnUnknownName() {
+			List<ReportRows25_3.DisplayReportRow> listRows=new List<ReportRows25_3.DisplayReportRow> {
+				Row(40,"ODOtherProduction","Production By Procedures",DisplayReportCategory.Daily),
+				Row(41,"ODOtherIndividual","Procedures (Individual)",DisplayReportCategory.Daily),
+				Row(42,"ODProcedures","Procedures",DisplayReportCategory.Daily),
+				Row(43,"ODOtherFuture","Some Later Report",DisplayReportCategory.Daily),
+				Row(50,"ODOtherPendingA","Pending Supplementals",DisplayReportCategory.Lists),
+				Row(51,"ODOtherPendingB","Insurance Pending Supplementals",DisplayReportCategory.Lists),
+				Row(60,"ODOtherWrongCategory","Production by Procedure",DisplayReportCategory.Monthly),
+			};
+			string before=string.Join(";",listRows.Select(x => x.DisplayReportNum+"/"+x.InternalName));
+			List<ReportRows25_3.ReportTargetPlan> listPlans=ReportRows25_3.PlanRenames(listRows);
+			Assert.AreEqual(before,string.Join(";",listRows.Select(x => x.DisplayReportNum+"/"+x.InternalName)),"The rows passed in are not changed.");
+			CollectionAssert.AreEqual(ReportRows25_3.ArrayTargets.Select(x => x.InternalName).ToList(),listPlans.Select(x => x.Target.InternalName).ToList());
+			ReportRows25_3.ReportTargetPlan planProduction=listPlans[0];
+			Assert.AreEqual(40L,planProduction.RowRenamed.DisplayReportNum,"The Monthly row with the same description is not a Daily report.");
+			Assert.AreEqual("ODOtherProduction",planProduction.RowRenamed.InternalName,"The plan keeps the name the row has before.");
+			StringAssert.Contains(planProduction.Describe(),ReportRows25_3.DescribeRename("ODOtherProduction",DisplayReports.ReportNames.ProductionByProcedure));
+			Assert.AreEqual(41L,listPlans[1].RowRenamed.DisplayReportNum);
+			Assert.IsNull(listPlans[2].RowRenamed,"Two rows match Insurance Pending Supplementals: ambiguous, nothing is renamed.");
+			Assert.IsTrue(listPlans[2].IsAmbiguous);
+			StringAssert.Contains(listPlans[2].Describe(),"nothing is renamed");
+			//Our name already there: nothing to rename, whatever else matches.
+			listRows.Add(Row(70,DisplayReports.ReportNames.ProductionByProcedure,"Production by Procedure",DisplayReportCategory.Daily));
+			listPlans=ReportRows25_3.PlanRenames(listRows);
+			Assert.IsNull(listPlans[0].RowRenamed);
+			Assert.AreEqual(70L,listPlans[0].RowExisting.DisplayReportNum);
+			Assert.AreEqual(0,ReportRows25_3.PlanRenames(new List<ReportRows25_3.DisplayReportRow>()).Count(x => x.RowRenamed!=null));
+		}
+
+		///<summary>ForkMigrationRunnerAdapter logs every change line of a step that changed the database, without the level prefix, so the adoption log
+		///names a report row it renamed.</summary>
+		[TestMethod]
+		public void RunnerAdapter_ListsTheChangesOfEachStep() {
+			ReportRows25_3Step step=new ReportRows25_3Step();
+			ForkMigrationResult result=new ForkMigrationResult();
+			result.ListChanges.Add("2026101901: ALTER TABLE x ADD y");
+			result.ListChanges.Add(step.Level+": "+ReportRows25_3.DescribeRename("ODOtherProduction",DisplayReports.ReportNames.ProductionByProcedure));
+			CollectionAssert.AreEqual(new List<string> { "Renamed displayreport ODOtherProduction to ODProductionByProcedure (same description)" },
+				ForkMigrationRunnerAdapter.GetChangesOfStep(result,step));
+		}
+
 		[TestMethod]
 		public void NormalizeDescription_IgnoresCaseSpacesAndPunctuation() {
 			Assert.AreEqual("productionbyprocedures",ReportRows25_3.NormalizeDescription("Production By Procedures"));

@@ -38,7 +38,7 @@ namespace OpenDental {
 			gridProduction.Columns.Add(new GridColumn(Lan.g(tran,"Status"),80));
 			gridProduction.Columns.Add(new GridColumn(Lan.g(tran,"Type"),0) { IsWidthDynamic=true });
 			gridProduction.Columns.Add(new GridColumn(Lan.g(tran,"Amount\r\nOriginal"),60,HorizontalAlignment.Right,GridSortingStrategy.AmountParse));
-			gridProduction.Columns.Add(new GridColumn(Lan.g(tran,"Amount\r\nEnd"),60,HorizontalAlignment.Right,GridSortingStrategy.AmountParse));
+			gridProduction.Columns.Add(new GridColumn(Lan.g(tran,"Amount\r\nUnpaid"),60,HorizontalAlignment.Right,GridSortingStrategy.AmountParse));//Open Dental 25.2 label; still AmountEnd.
 			gridProduction.ListGridRows.Clear();
 			List<Type> listProdTypes=new List<Type>() { typeof(Adjustment),typeof(Procedure) };
 			for(int i=0;i<_listAccountEntries.Count;i++) {

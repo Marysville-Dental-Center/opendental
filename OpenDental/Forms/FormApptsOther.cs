@@ -534,9 +534,6 @@ namespace OpenDental {
 		}
 
 		private void butPin_Click(object sender, System.EventArgs e) {
-			if(!Security.IsAuthorized(EnumPermType.AppointmentMove)) {
-				return;
-			}
 			int selectedIndex=gridMain.GetSelectedIndex();
 			if(selectedIndex==-1) {
 				MsgBox.Show(this,"Please select appointment first.");
@@ -544,6 +541,10 @@ namespace OpenDental {
 			}
 			ApptOther apptOther=ListApptOthers.FirstOrDefault(x => x.AptNum==gridMain.SelectedTag<long>());
 			if(IsSelectedApptOtherNull()) {
+				return;
+			}
+			//25.3: a planned appointment is copied onto the pinboard, so only other statuses need Appointment Move.
+			if(ApptPermissionRules.IsMoveNeededToPin(apptOther.AptStatus) && !Security.IsAuthorized(EnumPermType.AppointmentMove)) {
 				return;
 			}
 			if(PatRestrictionL.IsRestricted(_patient.PatNum,PatRestrict.ApptSchedule)) {
@@ -786,7 +787,8 @@ namespace OpenDental {
 			ListApptOthers=Appointments.GetApptOthersForPat(_patient.PatNum);
 			//If is for task and pref is set, clear out appointments that are already attached to a task.
 			if(IsForTask && !PrefC.GetBool(PrefName.TasksForApptAllowMultiple)) {
-				List<long> listAttached=Appointments.GetApptNumsAttachedToTask(ListApptOthers.Select(x=>x.AptNum).ToList());
+				//25.1: only open tasks count toward the one-task limit; completed tasks never block attaching.
+				List<long> listAttached=ApptTasks.GetApptNumsWithOpenTask(ListApptOthers.Select(x=>x.AptNum).ToList());
 				ListApptOthers.RemoveAll(x=>x.AptNum.In(listAttached.ToArray()));
 			}
 			_listPlannedAppts=Appointments.GetRefreshedPlannedAppts(_patient.PatNum);

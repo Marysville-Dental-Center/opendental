@@ -40,6 +40,8 @@ namespace OpenDental {
 			this.butSelect = new OpenDental.UI.Button();
 			this.butClearValue = new OpenDental.UI.Button();
 			this.checkNoColor = new OpenDental.UI.CheckBox();
+			this.labelDefaultPercent = new System.Windows.Forms.Label();
+			this.textDefaultPercent = new System.Windows.Forms.TextBox();
 			this.SuspendLayout();
 			// 
 			// labelName
@@ -159,10 +161,31 @@ namespace OpenDental {
 			this.checkNoColor.Visible = false;
 			this.checkNoColor.CheckedChanged += new System.EventHandler(this.checkNoColor_CheckedChanged);
 			// 
+			// labelDefaultPercent
+			// 
+			this.labelDefaultPercent.Location = new System.Drawing.Point(190, 134);
+			this.labelDefaultPercent.Name = "labelDefaultPercent";
+			this.labelDefaultPercent.Size = new System.Drawing.Size(211, 16);
+			this.labelDefaultPercent.TabIndex = 204;
+			this.labelDefaultPercent.Text = "Default % (blank for none)";
+			this.labelDefaultPercent.TextAlign = System.Drawing.ContentAlignment.BottomLeft;
+			this.labelDefaultPercent.Visible = false;
+			// 
+			// textDefaultPercent
+			// 
+			this.textDefaultPercent.Location = new System.Drawing.Point(190, 152);
+			this.textDefaultPercent.MaxLength = 20;
+			this.textDefaultPercent.Name = "textDefaultPercent";
+			this.textDefaultPercent.Size = new System.Drawing.Size(70, 20);
+			this.textDefaultPercent.TabIndex = 205;
+			this.textDefaultPercent.Visible = false;
+			// 
 			// FormDefEdit
 			// 
 			this.AcceptButton = this.butSave;
 			this.ClientSize = new System.Drawing.Size(423, 352);
+			this.Controls.Add(this.textDefaultPercent);
+			this.Controls.Add(this.labelDefaultPercent);
 			this.Controls.Add(this.checkNoColor);
 			this.Controls.Add(this.butClearValue);
 			this.Controls.Add(this.butSelect);
@@ -201,5 +224,7 @@ namespace OpenDental {
 		private OpenDental.UI.Button butDelete;
 		private UI.Button butClearValue;
 		private OpenDental.UI.CheckBox checkNoColor;
+		private System.Windows.Forms.Label labelDefaultPercent;
+		private System.Windows.Forms.TextBox textDefaultPercent;
 	}
 }

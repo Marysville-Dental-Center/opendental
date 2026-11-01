@@ -2570,7 +2570,7 @@ namespace OpenDental{
 						row.Cells.Add(new GridCell(Lan.g("TableCoverage","No History")));
 						continue;
 					}
-					row.Cells.Add(new GridCell(procedure.ProcDate.ToShortDateString()));
+					row.Cells.Add(new GridCell(InsHistDates.GetDatesText(listProceduresForPlan,ProcedureCodes.GetCodeNumsForInsHistPref(listPrefNames[i]),listPrefNames[i])));//Both dates (25.1)
 				}
 				row.Tag=listPrefNames[i].ToString();//Tag with prefname
 				gridIns.ListGridRows.Add(row);

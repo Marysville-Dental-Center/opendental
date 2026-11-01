@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using CodeBase;
@@ -432,6 +433,9 @@ namespace OpenDentBusiness{
 		///This uses the SalesTaxDefaultProvider if it is set.</summary>
 		public static void CreateAdjustmentForSalesTax(Procedure procedure,bool canSkipIsTaxed=false) {
 			Meth.NoCheckMiddleTierRole();
+			if(SalesTaxProcs.IsSalesTaxProc(procedure)) {//A sales-tax procedure carries tax; it is never taxed itself (Open Dental 24.4).
+				return;
+			}
 			if(!canSkipIsTaxed && !ProcedureCodes.GetProcCode(procedure.CodeNum).IsTaxed) {
 				return;
 			}
@@ -814,6 +818,148 @@ namespace OpenDentBusiness{
 			return retVal;
 		}*/
 		#endregion
+
+		#region Percent of Fee (Open Dental 26.1)
+		//Edit Adjustment (FormAdjust) and Add Multiple Adjustments (FormAdjMulti) can compute the amount of an adjustment as a percentage of the
+		//attached procedure's fee, and an adjustment type can carry a default percentage in definition.Supp. Only the dollar amount is stored.
+		//None of these methods touch the database.
+
+		///<summary>The highest percentage allowed for Percent of Fee. Over 100 is allowed, for surcharge types.</summary>
+		public const decimal PERCENT_OF_FEE_MAX=1000m;
+		///<summary>The most decimal places a Percent of Fee percentage, or an adjustment type's default percentage, can have.</summary>
+		public const int PERCENT_OF_FEE_DECIMALS=2;
+
+		///<summary>The amount a Percent of Fee adjustment is a percentage of: the procedure's total fee (ProcFeeTotal). That is the Fee column
+		///(AccountEntry.AmountOriginal) Add Multiple Adjustments uses. 0 when procedure is null.</summary>
+		public static double GetPercentOfFeeBasis(Procedure procedure) {
+			Meth.NoCheckMiddleTierRole();
+			if(procedure==null) {
+				return 0;
+			}
+			return procedure.ProcFeeTotal;
+		}
+
+		///<summary>percent/100 x fee, rounded to cents (a half cent rounds away from zero). The sign of the adjustment type is not applied;
+		///see ApplyAdjTypeSign.</summary>
+		public static double GetPercentOfFeeAmount(double fee,decimal percent) {
+			Meth.NoCheckMiddleTierRole();
+			decimal amount=(decimal)fee*percent/100m;
+			return (double)Math.Round(amount,2,MidpointRounding.AwayFromZero);
+		}
+
+		///<summary>Makes amountUnsigned negative for a subtraction ("-") or discount plan ("dp") adjustment type, as both adjustment windows do.
+		///Addition types and a null type keep the amount as it is.</summary>
+		public static double ApplyAdjTypeSign(double amountUnsigned,Def defAdjType) {
+			Meth.NoCheckMiddleTierRole();
+			if(defAdjType!=null && (defAdjType.ItemValue=="-" || defAdjType.ItemValue=="dp")) {
+				return -amountUnsigned;
+			}
+			return amountUnsigned;
+		}
+
+		///<summary>The AdjAmt of a Percent of Fee adjustment: percent of the procedure's fee, rounded to cents, with the sign of the adjustment type.</summary>
+		public static double GetPercentOfFeeAdjAmt(Procedure procedure,decimal percent,Def defAdjType) {
+			Meth.NoCheckMiddleTierRole();
+			return ApplyAdjTypeSign(GetPercentOfFeeAmount(GetPercentOfFeeBasis(procedure),percent),defAdjType);
+		}
+
+		///<summary>True if percent is from 0 to 1000 with at most 2 decimal places.</summary>
+		public static bool IsValidPercentOfFee(decimal percent) {
+			Meth.NoCheckMiddleTierRole();
+			if(percent<0 || percent>PERCENT_OF_FEE_MAX) {
+				return false;
+			}
+			return Math.Round(percent,PERCENT_OF_FEE_DECIMALS)==percent;
+		}
+
+		///<summary>Reads a percentage the user typed, in culture (normally the user's). Spaces and one trailing % sign are ignored. False when
+		///the text is empty, not a number, or not a valid percentage (see IsValidPercentOfFee).</summary>
+		public static bool TryParsePercentInput(string text,CultureInfo culture,out decimal percent) {
+			Meth.NoCheckMiddleTierRole();
+			percent=0;
+			string textTrimmed=(text??"").Trim();
+			if(textTrimmed.EndsWith("%")) {
+				textTrimmed=textTrimmed.Substring(0,textTrimmed.Length-1).Trim();
+			}
+			if(textTrimmed=="") {
+				return false;
+			}
+			if(!decimal.TryParse(textTrimmed,NumberStyles.Number,culture??CultureInfo.CurrentCulture,out decimal percentParsed)) {
+				return false;
+			}
+			if(!IsValidPercentOfFee(percentParsed)) {
+				return false;
+			}
+			percent=percentParsed;
+			return true;
+		}
+
+		///<summary>A percentage as the user sees it: culture's decimal separator, no group separators, at most 2 decimal places and no trailing zeros
+		///(12.5 shows as "12.5", or "12,5" in a culture with a decimal comma).</summary>
+		public static string FormatPercentForDisplay(decimal percent,CultureInfo culture) {
+			Meth.NoCheckMiddleTierRole();
+			return percent.ToString("0.##",culture??CultureInfo.CurrentCulture);
+		}
+
+		///<summary>Reads definition.Supp as stored: invariant-culture decimal text such as "90.50". False when it is empty, not a number, or not a
+		///valid percentage (see IsValidPercentOfFee).</summary>
+		public static bool TryParseSuppPercent(string supp,out decimal percent) {
+			Meth.NoCheckMiddleTierRole();
+			percent=0;
+			string suppTrimmed=(supp??"").Trim();
+			if(suppTrimmed=="") {
+				return false;
+			}
+			if(!decimal.TryParse(suppTrimmed,NumberStyles.AllowDecimalPoint,CultureInfo.InvariantCulture,out decimal percentParsed)) {
+				return false;
+			}
+			if(!IsValidPercentOfFee(percentParsed)) {
+				return false;
+			}
+			percent=percentParsed;
+			return true;
+		}
+
+		///<summary>The definition.Supp text for a default percentage: invariant culture with two decimal places, for example "90.50" or "10.00".</summary>
+		public static string FormatSuppPercent(decimal percent) {
+			Meth.NoCheckMiddleTierRole();
+			return percent.ToString("0.00",CultureInfo.InvariantCulture);
+		}
+
+		///<summary>Turns what the user typed in the Default % box of an adjustment type into its definition.Supp value. Empty (or only spaces) gives
+		///"" (no default). False when the text is not a valid percentage; supp is then "".</summary>
+		public static bool TryGetSuppFromPercentInput(string text,CultureInfo culture,out string supp) {
+			Meth.NoCheckMiddleTierRole();
+			supp="";
+			if(string.IsNullOrWhiteSpace(text)) {
+				return true;
+			}
+			if(!TryParsePercentInput(text,culture,out decimal percent)) {
+				return false;
+			}
+			supp=FormatSuppPercent(percent);
+			return true;
+		}
+
+		///<summary>The default percentage of an adjustment type, from definition.Supp. Null when defAdjType is null, is not in the AdjTypes category,
+		///or has no valid percentage in Supp. Only adjustment types read Supp.</summary>
+		public static decimal? GetDefaultPercent(Def defAdjType) {
+			Meth.NoCheckMiddleTierRole();
+			if(defAdjType==null || defAdjType.Category!=DefCat.AdjTypes) {
+				return null;
+			}
+			if(!TryParseSuppPercent(defAdjType.Supp,out decimal percent)) {
+				return null;
+			}
+			return percent;
+		}
+
+		///<summary>Text added after the amount in the security log entry of a Percent of Fee adjustment, for example " (12.5% of fee)".</summary>
+		public static string GetPercentOfFeeLogNote(decimal percent) {
+			Meth.NoCheckMiddleTierRole();
+			return " ("+percent.ToString("0.##",CultureInfo.InvariantCulture)+"% of fee)";
+		}
+		#endregion Percent of Fee (Open Dental 26.1)
 
 		[Serializable]
 		public class ChargeUndoData {

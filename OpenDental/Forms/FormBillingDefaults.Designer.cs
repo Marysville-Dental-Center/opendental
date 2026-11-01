@@ -31,6 +31,9 @@ namespace OpenDental{
 			this.label11 = new System.Windows.Forms.Label();
 			this.groupBox3 = new OpenDental.UI.GroupBox();
 			this.checkBillingEmailIncludeAutograph = new OpenDental.UI.CheckBox();
+			this.labelBillingEmailType = new System.Windows.Forms.Label();
+			this.comboBillingEmailType = new OpenDental.UI.ComboBox();
+			this.butBillingEmailEditHtml = new OpenDental.UI.Button();
 			this.textBillingEmailBody = new OpenDental.ODtextBox();
 			this.label8 = new System.Windows.Forms.Label();
 			this.label9 = new System.Windows.Forms.Label();
@@ -70,6 +73,7 @@ namespace OpenDental{
 			this.labelStartDate = new System.Windows.Forms.Label();
 			this.textNote = new OpenDental.ODtextBox();
 			this.label4 = new System.Windows.Forms.Label();
+			this.checkInserterBarcode = new OpenDental.UI.CheckBox();
 			this.groupBox3.SuspendLayout();
 			this.groupBoxBilling.SuspendLayout();
 			this.groupBox2.SuspendLayout();
@@ -134,6 +138,9 @@ namespace OpenDental{
 			// 
 			this.groupBox3.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
+			this.groupBox3.Controls.Add(this.butBillingEmailEditHtml);
+			this.groupBox3.Controls.Add(this.comboBillingEmailType);
+			this.groupBox3.Controls.Add(this.labelBillingEmailType);
 			this.groupBox3.Controls.Add(this.checkBillingEmailIncludeAutograph);
 			this.groupBox3.Controls.Add(this.textBillingEmailBody);
 			this.groupBox3.Controls.Add(this.label8);
@@ -145,6 +152,31 @@ namespace OpenDental{
 			this.groupBox3.Size = new System.Drawing.Size(850, 200);
 			this.groupBox3.TabIndex = 248;
 			this.groupBox3.Text = "Email Statements";
+			// 
+			// labelBillingEmailType
+			// 
+			this.labelBillingEmailType.Location = new System.Drawing.Point(296, 177);
+			this.labelBillingEmailType.Name = "labelBillingEmailType";
+			this.labelBillingEmailType.Size = new System.Drawing.Size(94, 18);
+			this.labelBillingEmailType.TabIndex = 266;
+			this.labelBillingEmailType.Text = "Email type";
+			this.labelBillingEmailType.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			// 
+			// comboBillingEmailType
+			// 
+			this.comboBillingEmailType.Location = new System.Drawing.Point(392, 176);
+			this.comboBillingEmailType.Name = "comboBillingEmailType";
+			this.comboBillingEmailType.Size = new System.Drawing.Size(140, 21);
+			this.comboBillingEmailType.TabIndex = 267;
+			// 
+			// butBillingEmailEditHtml
+			// 
+			this.butBillingEmailEditHtml.Location = new System.Drawing.Point(540, 174);
+			this.butBillingEmailEditHtml.Name = "butBillingEmailEditHtml";
+			this.butBillingEmailEditHtml.Size = new System.Drawing.Size(100, 24);
+			this.butBillingEmailEditHtml.TabIndex = 268;
+			this.butBillingEmailEditHtml.Text = "Edit HTML...";
+			this.butBillingEmailEditHtml.Click += new System.EventHandler(this.butBillingEmailEditHtml_Click);
 			// 
 			// checkBillingEmailIncludeAutograph
 			// 
@@ -166,7 +198,7 @@ namespace OpenDental{
 			this.textBillingEmailBody.Name = "textBillingEmailBody";
 			this.textBillingEmailBody.QuickPasteType = OpenDentBusiness.EnumQuickPasteType.Statement;
 			this.textBillingEmailBody.ScrollBars = System.Windows.Forms.RichTextBoxScrollBars.Vertical;
-			this.textBillingEmailBody.Size = new System.Drawing.Size(827, 76);
+			this.textBillingEmailBody.Size = new System.Drawing.Size(827, 72);
 			this.textBillingEmailBody.TabIndex = 1;
 			this.textBillingEmailBody.Text = "";
 			// 
@@ -543,10 +575,20 @@ namespace OpenDental{
     "You may use the variable [InstallmentPlanTerms] below to show the terms of the i" +
     "nstallment plan.";
 			this.label4.TextAlign = System.Drawing.ContentAlignment.BottomLeft;
-			// 
+			//
+			// checkInserterBarcode
+			//
+			this.checkInserterBarcode.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.checkInserterBarcode.Location = new System.Drawing.Point(24, 562);
+			this.checkInserterBarcode.Name = "checkInserterBarcode";
+			this.checkInserterBarcode.Size = new System.Drawing.Size(320, 20);
+			this.checkInserterBarcode.TabIndex = 254;
+			this.checkInserterBarcode.Text = "Print inserter barcode on statements";
+			//
 			// FormBillingDefaults
-			// 
+			//
 			this.ClientSize = new System.Drawing.Size(877, 588);
+			this.Controls.Add(this.checkInserterBarcode);
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.checkBoxBillShowTransSinceZero);
 			this.Controls.Add(this.checkSinglePatient);
@@ -622,5 +664,9 @@ namespace OpenDental{
 		private OpenDental.UI.CheckBox checkIncludeAdjust;
 		private OpenDental.UI.CheckBox checkIncludeClinicNum;
 		private UI.CheckBox checkBillingEmailIncludeAutograph;
+		private OpenDental.UI.CheckBox checkInserterBarcode;
+		private System.Windows.Forms.Label labelBillingEmailType;
+		private UI.ComboBox comboBillingEmailType;
+		private UI.Button butBillingEmailEditHtml;
 	}
 }

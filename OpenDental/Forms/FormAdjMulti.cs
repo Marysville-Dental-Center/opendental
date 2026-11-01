@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Drawing;
+using System.Globalization;
 using System.Linq;
 using System.Windows.Forms;
 using System.Windows.Media.TextFormatting;
@@ -320,7 +321,8 @@ namespace OpenDental {
 					break;
 				case AdjAmtType.PercentOfFee:
 					//The procedure row always shows the AmountOriginal value from the AccountEntryProc object in the Fee column.
-					adjustment.AdjAmt=Math.Round((adjAmtOrPerc/100)*(double)procAdjs.AccountEntryProc.AmountOriginal,2);
+					//Same calculation as Percent of Fee in Edit Adjustment (FormAdjust).
+					adjustment.AdjAmt=Adjustments.GetPercentOfFeeAmount((double)procAdjs.AccountEntryProc.AmountOriginal,(decimal)adjAmtOrPerc);
 					break;
 				case AdjAmtType.PercentOfRemBal:
 					//Calculate the remaining balance based off of the adjustments that have been added to the selected procedure, excluding the one passed in.
@@ -502,13 +504,26 @@ namespace OpenDental {
 		private void listTypeNeg_SelectedIndexChanged(object sender,EventArgs e) {
 			if(listTypeNeg.SelectedIndex>-1) {
 				listTypePos.SelectedIndex=-1;
+				ApplyAdjTypeDefaultPercent();
 			}
 		}
 
 		private void listTypePos_SelectedIndexChanged(object sender,EventArgs e) {
 			if(listTypePos.SelectedIndex>-1) {
 				listTypeNeg.SelectedIndex=-1;
+				ApplyAdjTypeDefaultPercent();
 			}
+		}
+
+		///<summary>Open Dental 26.1: when the selected adjustment type has a default percentage (definition.Supp), switches to Percent of Fee and
+		///fills in that percentage. Types without one leave the amount options alone.</summary>
+		private void ApplyAdjTypeDefaultPercent() {
+			decimal? percentDefault=Adjustments.GetDefaultPercent(GetSelectedAdjDef());
+			if(percentDefault==null) {
+				return;
+			}
+			radioPercentProcFee.Checked=true;
+			textAmt.Text=Adjustments.FormatPercentForDisplay(percentDefault.Value,CultureInfo.CurrentCulture);
 		}
 
 		private void radioCredits_Click(object sender,EventArgs e) {

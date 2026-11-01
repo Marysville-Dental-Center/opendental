@@ -17,6 +17,7 @@ namespace OpenDental {
 		}
 
 		private void FillTextBoxes() {
+			checkUseRecessionTerm.Checked=PerioMeasures.GetUseRecessionTerm();
 			string rawPerioMeasures=PrefC.GetString(PrefName.PerioDefaultProbeDepths);
 			if(string.IsNullOrEmpty(rawPerioMeasures) || rawPerioMeasures.Length!=192) {
 				return;
@@ -112,10 +113,20 @@ namespace OpenDental {
 			textL32.Text="323,323,323,323,323,323,323,323,323,323,323,323,323,323,323,323";
 		}
 
+		///<summary>Saves the "Recession" term option (24.4). Logged under Setup when it changes.</summary>
+		private void SaveUseRecessionTerm() {
+			if(!PerioMeasures.SetUseRecessionTerm(checkUseRecessionTerm.Checked)) {
+				return;
+			}
+			DataValid.SetInvalid(InvalidType.Prefs);
+			SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,"Perio Setup: Recession term "+(checkUseRecessionTerm.Checked ? "on" : "off"));
+		}
+
 		private void butSave_Click(object sender,EventArgs e) {
 			if(!IsValid()) {
 				return;
 			}
+			SaveUseRecessionTerm();
 			if(textF1.Text=="" && textF32.Text=="" && textL1.Text=="" && textL32.Text=="") {
 				if(Prefs.UpdateString(PrefName.PerioDefaultProbeDepths,"")) {
 					DataValid.SetInvalid(InvalidType.Prefs);

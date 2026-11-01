@@ -517,6 +517,7 @@ namespace OpenDental {
 					WpfControls.UI.SignatureBoxWrapper signatureBoxWrapper=(WpfControls.UI.SignatureBoxWrapper)stackPanel2.Children[1];
 					BitmapImage bitmapImage=signatureBoxWrapper.GetBitmapImage();
 					g.DrawImage(bitmapImage,_marginLeftOfPage,yPos);
+					yPos+=PrintSigCaption(g,stackPanel2,eFormField,yPos+signatureBoxWrapper.ActualHeight);
 					yPos+=frameworkElement.ActualHeight;
 					_printedStackPanelChildren=i;
 					continue;
@@ -2703,7 +2704,40 @@ namespace OpenDental {
 				}
 				signatureBoxWrapper.FillSignature(isSigTopaz,keyData,signature);
 				stackPanel2.Children.Add(signatureBoxWrapper);
-			}			
+				AddSigCaption(stackPanel2,eFormField);//Open Dental 26.1: when it was signed. Child 2, after the label row and the box.
+			}
+		}
+
+		///<summary>Open Dental 26.1 (eformfield.DateTimeSig): a small "Signed date time" caption under a signed signature box. Nothing when the box is not
+		///signed or the time was not recorded.</summary>
+		private void AddSigCaption(StackPanel stackPanelSigBox,EFormField eFormField){
+			string caption=EFormFields.GetSigCaption(eFormField);
+			if(caption==""){
+				return;
+			}
+			Label labelSigned=new Label();
+			labelSigned.FontSize=FontSize*0.9;
+			labelSigned.Padding=new Thickness(0,2,0,0);
+			labelSigned.Foreground=Brushes.DimGray;
+			labelSigned.Content=caption;
+			stackPanelSigBox.Children.Add(labelSigned);
+		}
+
+		///<summary>Prints the signed caption under a signature box (Pd_PrintPage). Reads the field, so a signature saved just before printing (Save to
+		///Images) is included even though the screen was not refreshed yet. Returns the extra height used when the screen had no caption to make room.
+		///</summary>
+		private double PrintSigCaption(Graphics g,StackPanel stackPanelSigBox,EFormField eFormField,double yBelowSigBox){
+			string caption=EFormFields.GetSigCaption(eFormField);
+			if(caption==""){
+				return 0;
+			}
+			Font font=Font.ForWpf();
+			font.SizeDip=FontSize*0.9;
+			g.DrawString(caption,font,Colors.DimGray,_marginLeftOfPage,yBelowSigBox);
+			if(stackPanelSigBox.Children.Count>2){
+				return 0;//the caption already has its place in the layout
+			}
+			return g.MeasureString(caption,font).Height;
 		}
 
 		private void AddTextBox(Border borderBox,EFormField eFormField){
