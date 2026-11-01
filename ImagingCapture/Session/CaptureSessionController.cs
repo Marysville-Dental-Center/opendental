@@ -7,6 +7,7 @@ using ImagingCapture.Dicom;
 using ImagingCapture.Metadata;
 using ImagingCapture.Save;
 using ImagingCapture.UI;
+using ImagingCapture.Video;
 using ImagingDeviceManager.Capture;
 using OpenDentBusiness;
 
@@ -97,6 +98,7 @@ namespace ImagingCapture.Session {
 			_radiographStore=services.RadiographStore??new OdRadiographStore();
 			_radiographImport=new RadiographImport(_radiographStore,() => _clock.Now);
 			_mountSlots=setup.Mount==null ? null : setup.MountSlots;
+			_patientBinding=new PatientBinding(setup.PatNum);
 			ProvNum=setup.ProvNumDefault;
 			ProviderAbbr=GetProviderAbbr(ProvNum);
 			UnassignedText=setup.UnassignedText;
@@ -213,6 +215,7 @@ namespace ImagingCapture.Session {
 			_msReadyShown=_clock.NowMs;//the banner appears now: keys are ignored for 2 s, also while the older mount is asked about
 			Log("Capture session "+SessionGuid+" for patient "+PatNum+", device "+_setup.ImagingDevice.ImagingDeviceNum+" ("
 				+(_setup.ImagingDevice.Description??"")+"), "+(IsSingleTarget ? "single-target mode" : "mount "+_setup.Mount.MountNum)+".");
+			OnBeginExt();
 			if(IsMountOlderThanToday) {
 				Phase=CaptureSessionPhase.ConfirmingOlderMount;
 				SetIndicator(CaptureIndicatorState.Ready,OlderMountText);
@@ -496,6 +499,7 @@ namespace ImagingCapture.Session {
 			if(!CheckPatient("start")) {
 				return false;
 			}
+			OnDeliberateStartExt();
 			if(StartKind==CaptureStartKind.TakeSkipped) {
 				_hashSetSkipped.Clear();
 			}
@@ -600,6 +604,12 @@ namespace ImagingCapture.Session {
 				return false;
 			}
 			if(!CheckPatient("enable")) {
+				return false;
+			}
+			if(_isPlacementStopped) {
+				//Design 7.6: after a patient change only a deliberate re-enable (which passed the patient check) resumes the session.
+				Log("Not enabled again: placement is stopped ("+_placementStoppedReason+").");
+				ShowReady(GetReEnableKind(),CaptureIndicatorState.Disabled,CaptureSessionText.NotEnabledAfterPatientChange);
 				return false;
 			}
 			CaptureEnableRecord record=new CaptureEnableRecord();
@@ -872,6 +882,7 @@ namespace ImagingCapture.Session {
 			StartKind=CaptureStartKind.None;
 			ClearStopWarning();
 			NextTargetText="";
+			OnFinishStartingExt(endReason);
 			_enableRunning=null;
 			if(_session!=null) {
 				_session.BeginClose();//does not wait for the worker
@@ -1006,9 +1017,12 @@ namespace ImagingCapture.Session {
 				bool isContinuousNext=image.Kind==AcquiredImageKind.Normal && image.IndexInEnable>1;
 				idxTarget=isContinuousNext ? _mountSlots.IdxTarget : record.IdxTarget;
 				mountItemTarget=idxTarget==-1 ? null : _mountSlots.ListMountItems[idxTarget];
-				if(idxTarget==-1 || _mountSlots.ListDocuments[idxTarget]!=null) {
-					QuarantineImage(session,image,record,"Its slot ("+(mountItemTarget==null ? "none" : MountPlacement.GetSlotLabel(mountItemTarget))
-						+") already holds an image.",false);
+				if(idxTarget==-1) {
+					QuarantineImage(session,image,record,"Every slot of the mount already holds an image.",false);
+					return;
+				}
+				if(_mountSlots.ListDocuments[idxTarget]!=null) {
+					QuarantineImage(session,image,record,"Its slot ("+MountPlacement.GetSlotLabel(mountItemTarget)+") already holds an image.",false);
 					return;
 				}
 			}
@@ -1059,12 +1073,18 @@ namespace ImagingCapture.Session {
 				if(_mountSlots.IdxTarget==-1 && _enableRunning==record && Phase==CaptureSessionPhase.Enabled
 					&& _setup.Options.SessionMode==TwainSessionMode.Continuous)
 				{
-					//A continuous enable stays in state 5 after Count=0 (design 7.4): the full mount ends it, in the safe order.
-					_isEndRequested=true;
-					record.StopRequested=TwainCaptureStopReason.End;
-					_session.Disable(TwainCaptureStopReason.End);
-					Phase=CaptureSessionPhase.Stopping;
-					Log("The mount is full; the continuous enable is being disabled.");
+					//A continuous enable stays in state 5 after Count=0 (design 7.4). The full mount ends it in the safe order, but only with safe
+					//disable in effect: otherwise the fork starts no disable of its own (design 7.6, 10.6), and the operator ends it.
+					if(record.IsSafeDisableInEffect) {
+						_isEndRequested=true;
+						StopEnableSafely(record,TwainCaptureStopReason.End);
+						SetIndicator(CaptureIndicatorState.Saved,CaptureSessionText.GetSavedText(MountPlacement.GetSlotLabel(mountItemTarget)));
+						Log("The mount is full; the continuous enable is being disabled.");
+					}
+					else {
+						NoticeText=CaptureSessionText.MountFullContinuous;
+						Log("The mount is full; the continuous enable stays enabled until the operator ends it (safe disable is not in effect).");
+					}
 				}
 			}
 			if(result.ListWarnings.Count>0) {
@@ -1148,7 +1168,7 @@ namespace ImagingCapture.Session {
 				LogOnce("16 bits were asked and the source gave 8: "+ended.Reason8Bit.Trim());//design 7.12 "16-bit refused": silent, logged
 			}
 			bool isHandled=false;
-			OnEnableEndedExt(ended,record,ref isHandled);
+			OnEnableEndedExt(ended,record,isRunning,ref isHandled);
 			if(isHandled || Phase==CaptureSessionPhase.Finished) {
 				NotifyChanged();
 				return;
@@ -1362,13 +1382,20 @@ namespace ImagingCapture.Session {
 		///<summary>Every quarantine move (path null when it failed), for the "Capture event:" entry of design 7.13.</summary>
 		partial void OnImageQuarantinedExt(AcquiredImage image,string reason,string path);
 		///<summary>The end of an enable, before the built-in handling (capture events of design 7.13, redelivery, idle and patient-change stops).
-		///Set isHandled to skip it.</summary>
-		partial void OnEnableEndedExt(TwainCaptureEnded ended,CaptureEnableRecord record,ref bool isHandled);
+		///isRunning: it was the running enable (EnableRunning is already null). Set isHandled to skip the built-in handling.</summary>
+		partial void OnEnableEndedExt(TwainCaptureEnded ended,CaptureEnableRecord record,bool isRunning,ref bool isHandled);
 		partial void OnEnablePostedExt(CaptureEnableRecord record);
 		partial void OnStatusExt(TwainCaptureStatus status,CaptureEnableRecord record);
 		partial void OnTickExt(long nowMs);
 		///<summary>The summary is made (the session's ImageCreate audit entry of design 10.7).</summary>
 		partial void OnFinishingExt(CaptureSessionSummary summary);
+		///<summary>Begin: the banner shows (the patient-change monitor starts).</summary>
+		partial void OnBeginExt();
+		///<summary>A deliberate start or re-enable passed the patient check (placement resumes after a patient change).</summary>
+		partial void OnDeliberateStartExt();
+		///<summary>Finish has begun: Phase is Finished, EnableRunning is still the enable that ran (a forced close), the source is not yet closing
+		///and the summary is not made.</summary>
+		partial void OnFinishStartingExt(CaptureSessionEndReason endReason);
 		#endregion Extension points (CAP-4 implementer A2)
 	}
 }

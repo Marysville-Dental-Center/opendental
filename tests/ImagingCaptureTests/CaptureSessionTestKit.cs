@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using CodeBase;
 using ImagingCapture.Save;
 using ImagingCapture.Session;
 using ImagingCapture.Settings;
@@ -11,29 +12,95 @@ using OpenDentBusiness;
 
 namespace ImagingCapture.Tests {
 	///<summary>Runs what the controller posts, in order, when the test says so (RunPending), on the test's thread: the "UI thread" of these
-	///tests. RunInBackground is queued the same way, so nothing re-enters the controller inside one of its own calls.</summary>
+	///tests. RunInBackground is queued the same way, so nothing re-enters the controller inside one of its own calls. Post may be called from
+	///any thread (ODEvent fires on any thread).</summary>
 	internal sealed class QueueCaptureDispatcher:ICaptureDispatcher {
 		private readonly Queue<Action> _queue=new Queue<Action>();
+		private readonly object _lock=new object();
 		public int CountBackground;
 
 		public void Post(Action action) {
-			_queue.Enqueue(action);
+			lock(_lock) {
+				_queue.Enqueue(action);
+			}
 		}
 
 		public void RunInBackground(Action action) {
-			CountBackground++;
-			_queue.Enqueue(action);
+			lock(_lock) {
+				CountBackground++;
+				_queue.Enqueue(action);
+			}
+		}
+
+		public int CountPending {
+			get {
+				lock(_lock) {
+					return _queue.Count;
+				}
+			}
 		}
 
 		///<summary>Runs everything queued, also what the queued actions queue.</summary>
 		public void RunPending() {
 			int guard=0;
-			while(_queue.Count>0) {
+			while(true) {
+				Action action;
+				lock(_lock) {
+					if(_queue.Count==0) {
+						return;
+					}
+					action=_queue.Dequeue();
+				}
 				if(++guard>10000) {
 					throw new InvalidOperationException("The dispatcher queue does not empty.");
 				}
-				_queue.Dequeue()();
+				action();
 			}
+		}
+	}
+
+	///<summary>ODEvent for one controller: Fire raises a Patient event to the subscribed handlers on the calling thread, as ODEvent.Fire does.</summary>
+	internal sealed class FakeCapturePatientEvents:ICapturePatientEvents {
+		private readonly List<ODEventHandler> _listHandlers=new List<ODEventHandler>();
+		private readonly object _lock=new object();
+		public int CountSubscribed;
+		public int CountUnsubscribed;
+
+		public int CountHandlers {
+			get {
+				lock(_lock) {
+					return _listHandlers.Count;
+				}
+			}
+		}
+
+		public void Subscribe(ODEventHandler handler) {
+			lock(_lock) {
+				CountSubscribed++;
+				_listHandlers.Add(handler);
+			}
+		}
+
+		public void Unsubscribe(ODEventHandler handler) {
+			lock(_lock) {
+				CountUnsubscribed++;
+				_listHandlers.Remove(handler);
+			}
+		}
+
+		public void Fire(ODEventType eventType,object tag) {
+			List<ODEventHandler> listHandlers;
+			lock(_lock) {
+				listHandlers=_listHandlers.ToList();
+			}
+			foreach(ODEventHandler handler in listHandlers) {
+				handler(new ODEventArgs(eventType,tag));
+			}
+		}
+
+		///<summary>ODEventType.Patient with tag (a long PatNum, 0, or a Patient).</summary>
+		public void FirePatient(object tag) {
+			Fire(ODEventType.Patient,tag);
 		}
 	}
 
@@ -227,6 +294,7 @@ namespace ImagingCapture.Tests {
 		public readonly List<FakeTwainCaptureSession> ListSessions=new List<FakeTwainCaptureSession>();
 		public readonly List<CaptureSound> ListSounds=new List<CaptureSound>();
 		public readonly List<string> ListLogFile=new List<string>();
+		public readonly FakeCapturePatientEvents PatientEvents=new FakeCapturePatientEvents();
 		public readonly CaptureSessionSetup Setup;
 		public long PatNumCur=PatNum;
 		///<summary>Configures each new fake session before the controller uses it.</summary>
@@ -297,6 +365,7 @@ namespace ImagingCapture.Tests {
 				},
 				FuncGetUnassignedText=() => "2 unassigned captures on this computer.",
 				ActionWriteLog=line => ListLogFile.Add(line),
+				PatientEvents=PatientEvents,
 			};
 			_controller=new CaptureSessionController(Setup,services,Dispatcher);
 			_controller.SoundRequested+=sound => ListSounds.Add(sound);
@@ -347,6 +416,13 @@ namespace ImagingCapture.Tests {
 
 		public void Status(TwainCaptureState state,bool isSafeDisableInEffect=false) {
 			Twain.RaiseStatus(state,isSafeDisableInEffect);
+			Dispatcher.RunPending();
+		}
+
+		///<summary>The main window's patient changes to patNum: PatNumCur, then ODEvent Patient with that long Tag, then what it posted.</summary>
+		public void ChangePatient(long patNum) {
+			PatNumCur=patNum;
+			PatientEvents.FirePatient(patNum);
 			Dispatcher.RunPending();
 		}
 

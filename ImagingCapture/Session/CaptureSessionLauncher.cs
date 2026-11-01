@@ -90,6 +90,8 @@ namespace ImagingCapture.Session {
 		public Action<string> ActionWriteLog { get; set; }
 		///<summary>The session window; null shows none, and the session is not started.</summary>
 		public ICaptureSessionWindowRunner WindowRunner { get; set; }
+		///<summary>ODEvent, for the patient-change monitor (design 7.6). Null means ODEvent itself (ODEventCapturePatientEvents).</summary>
+		public ICapturePatientEvents PatientEvents { get; set; }
 
 		///<summary>OpenDentBusiness, TwainCaptureSession, the UI thread's SynchronizationContext, capture.ini and the capture log. WindowRunner is
 		///null until the session window is built (CAP-4 implementer B sets it here).</summary>
@@ -105,6 +107,7 @@ namespace ImagingCapture.Session {
 				FuncGetUnassignedText=() => CaptureQuarantine.GetUnassignedText(),
 				ActionWriteLog=text => CaptureLogFile.Write(text),
 				WindowRunner=null,
+				PatientEvents=new ODEventCapturePatientEvents(),
 			};
 		}
 	}

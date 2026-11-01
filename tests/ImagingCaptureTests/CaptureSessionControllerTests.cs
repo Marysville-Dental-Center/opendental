@@ -455,10 +455,10 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
-		public void Continuous_ImagesFillTheCurrentTarget_FullMountEndsTheEnable() {
+		public void Continuous_ImagesFillTheCurrentTarget_FullMountEndsTheEnable_WithSafeDisable() {
 			_harness.Setup.Options.SessionMode=TwainSessionMode.Continuous;
 			_harness.Started();
-			_harness.Status(TwainCaptureState.WaitingForImage);
+			_harness.Status(TwainCaptureState.WaitingForImage,isSafeDisableInEffect:true);
 			_harness.Image();
 			_harness.Image();
 			_harness.Image();
@@ -468,6 +468,28 @@ namespace ImagingCapture.Tests {
 			_harness.Ended(TwainCaptureEndReason.Stopped,ended => ended.StopReason=TwainCaptureStopReason.End);
 			Assert.AreEqual(CaptureSessionPhase.Finished,Controller.Phase);
 			Assert.AreEqual(1,_harness.Twain.ListEnables.Count);
+		}
+
+		[TestMethod]
+		public void Continuous_FullMountWithoutSafeDisable_NoDisableOfItsOwn_TheOperatorEnds() {
+			_harness.Setup.Options.SessionMode=TwainSessionMode.Continuous;
+			_harness.Started();
+			_harness.Status(TwainCaptureState.WaitingForImage,isSafeDisableInEffect:false);
+			_harness.Image();
+			_harness.Image();
+			_harness.Image();
+			Assert.AreEqual(3,_harness.RadiographStore.ListDocumentsUpdated.Count);
+			Assert.AreEqual(0,_harness.Twain.ListDisables.Count,"Design 7.6, 10.6: no disable of the fork's own without safe disable.");
+			Assert.AreEqual(CaptureSessionPhase.Enabled,Controller.Phase);
+			Assert.AreEqual(CaptureSessionText.MountFullContinuous,Controller.NoticeText);
+			_harness.Image();
+			Assert.AreEqual("Every slot of the mount already holds an image.",_harness.Twain.ListQuarantined.Single().Reason);
+			Assert.IsTrue(_harness.Execute(CaptureSessionAction.End));
+			Assert.AreEqual(0,_harness.Twain.ListDisables.Count,"End warns first.");
+			Assert.IsTrue(_harness.Execute(CaptureSessionAction.End));
+			CollectionAssert.AreEqual(new[] { TwainCaptureStopReason.End },_harness.Twain.ListDisables);
+			_harness.Ended(TwainCaptureEndReason.Stopped,ended => ended.StopReason=TwainCaptureStopReason.End);
+			Assert.AreEqual(CaptureSessionPhase.Finished,Controller.Phase);
 		}
 
 		[TestMethod]
@@ -712,7 +734,7 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
-		public void RetakeAndRotate_NotAvailableWithoutTheirExtension() {
+		public void RetakeAndRotate_NotAvailableBeforeAnImageIsSaved() {
 			_harness.Started();
 			Assert.IsFalse(Controller.CanExecute(CaptureSessionAction.Retake));
 			Assert.IsFalse(Controller.CanExecute(CaptureSessionAction.Rotate));

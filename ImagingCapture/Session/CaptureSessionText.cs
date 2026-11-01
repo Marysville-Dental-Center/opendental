@@ -43,6 +43,27 @@ namespace ImagingCapture.Session {
 			return "Patient changed in the main window. This session is still for "+patientName+".";
 		}
 
+		///<summary>Design 7.6, with safe disable in effect: the session disables at once.</summary>
+		public const string PatientChangedDisabling="The sensor software is being disabled. Images that arrive now go to unassigned captures.";
+
+		///<summary>Design 7.6, without safe disable: the session starts no disable of its own and offers End; re-enabling needs the patient back.</summary>
+		public static string GetPatientChangedOfferEnd(string patientName) {
+			return "Images that arrive now go to unassigned captures. Press End to stop, or select "+patientName+" in the main window and re-enable "
+				+"for "+patientName+" when the sensor software has finished.";
+		}
+
+		///<summary>An automatic enable (the next slot) after a patient change: only the deliberate Re-enable, with the patient check, goes on.</summary>
+		public const string NotEnabledAfterPatientChange="Not enabled again after the patient change. Select the patient in the main window, then re-enable.";
+
+		///<summary>Design 7.12 "Idle": "Sensor software closed after 10 minutes without an exposure."</summary>
+		public static string GetIdleText(int minutes) {
+			return "Sensor software closed after "+minutes.ToString(CultureInfo.InvariantCulture)+" "+(minutes==1 ? "minute" : "minutes")
+				+" without an exposure.";
+		}
+
+		///<summary>Continuous mode, the mount full and safe disable not in effect: the fork does not disable on its own (design 7.6, 10.6).</summary>
+		public const string MountFullContinuous="Every slot has an image. Press End to stop the sensor software; further images go to unassigned captures.";
+
 		///<summary>Design 7.6: before a disable that is not safe (Cancel, End, Disable while the source is enabled without DisableIsSafe in
 		///effect). The second press of the same command goes ahead.</summary>
 		public static string GetUnsafeStopWarning(CaptureSessionAction action) {
