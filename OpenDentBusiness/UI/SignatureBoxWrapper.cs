@@ -100,6 +100,11 @@ In FormClosing:
 		private SigMode _signatureMode=SigMode.Default;
 		///<summary>The label's own text (LabelText) while the label says that Topaz's software is not installed, else null.</summary>
 		private string _labelTextBeforeTopazMessage;
+		///<summary>The signature that the last fill could not check because Topaz's software is not installed, else null. Treatment plans keep two
+		///signatures under one SigIsTopaz column, so FormTPsign and SheetDrawingJob fill a signature that does not show once more as the other kind.
+		///When the program's own check then does not accept that same signature either, the not-installed message stays: Topaz could not check it,
+		///so "Invalid Signature" would be a tamper warning the program cannot back up.</summary>
+		private string _signatureTopazNotInstalled;
 		#endregion Fields
 
 		#region Constructor
@@ -237,16 +242,18 @@ In FormClosing:
 
 		///<summary>Shows, in place of the signature, that Topaz's software is not installed, so a Topaz signature can be neither shown nor checked.
 		///The signature then counts as not valid (IsValid), as before when the Topaz control could not be created.</summary>
-		private void ShowTopazNotInstalled() {
+		private void ShowTopazNotInstalled(string signature) {
 			if(_labelTextBeforeTopazMessage==null) {
 				_labelTextBeforeTopazMessage=labelInvalidSig.Text;
 			}
+			_signatureTopazNotInstalled=signature;
 			labelInvalidSig.Text=Lans.g(this,TopazWrapper.NOT_INSTALLED_MESSAGE);
 			labelInvalidSig.Visible=true;
 		}
 
-		///<summary>Puts the label's own text back after ShowTopazNotInstalled.</summary>
+		///<summary>Puts the label's own text back after ShowTopazNotInstalled, and forgets the signature Topaz could not check.</summary>
 		private void RestoreLabelText() {
+			_signatureTopazNotInstalled=null;
 			if(_labelTextBeforeTopazMessage==null) {
 				return;
 			}
@@ -299,6 +306,8 @@ In FormClosing:
 			if(signature==null || signature=="") {
 				return;
 			}
+			//True when the fill just before this one could not check this same signature because Topaz's software is not installed.
+			bool isTopazNotInstalledForSignature=(_signatureTopazNotInstalled!=null && _signatureTopazNotInstalled==signature);
 			RestoreLabelText();
 			//This does 3 checks for both topaz and normal signatures.  These keyData replacements are due to MiddleTier & RichTextBox newline issues.
 			//Most cases will not get past check 1.  Some of the following checks are taken care of by things like POut.StringNote().
@@ -310,7 +319,7 @@ In FormClosing:
 			//Note that if the keydata was hashed before this point, these replacements have to be dealt with outside of this function.
 			if(sigIsTopaz) {
 				if(!CheckTopaz()) {
-					ShowTopazNotInstalled();
+					ShowTopazNotInstalled(signature);
 					return;
 				}
 				FillSignatureHelperTopaz(keyData.Replace("\r\n","\n"),signature);
@@ -328,6 +337,10 @@ In FormClosing:
 				}
 				if(signatureBox.NumberOfTabletPoints()==0) {
 					FillSignatureHelper(keyData.Replace("\r\n","\n").Replace("\n","\r\n"),signature);
+				}
+				if(isTopazNotInstalledForSignature && !IsValid) {
+					//Not the program's own signature either, so it may be a Topaz one that cannot be checked here: keep saying so.
+					ShowTopazNotInstalled(signature);
 				}
 			}
 		}

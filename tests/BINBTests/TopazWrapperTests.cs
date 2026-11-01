@@ -132,6 +132,121 @@ namespace Topaz {
 			}
 		}
 
+		///<summary>A string shaped like a Topaz signature (hex digits). It is valid base 64, so the program's own box tries to decrypt it, and fails.</summary>
+		private const string SIG_TOPAZ_SHAPED="0A1B2C3D4E5F60718293A4B5C6D7E8F9";
+		private const string KEY_DATA="synthetic treatment plan key data";
+
+		private static Label GetLabel(SignatureBoxWrapper signatureBoxWrapper) {
+			return (Label)signatureBoxWrapper.Controls.Find("labelInvalidSig",true).Single();
+		}
+
+		///<summary>A signature made in the program's own box for a treatment plan (digitally signed, synthetic signer), as FormTPsign saves one.</summary>
+		private static string GetOwnTreatPlanSignature(string keyData) {
+			using(SignatureBox signatureBox=new SignatureBox()) {
+				signatureBox.SetKeyString(OpenDentBusiness.TreatPlans.GetHashStringForSignature(keyData));
+				signatureBox.SetDigitalSig("Digitally Signed by Synthetic Test User");
+				return signatureBox.GetSigString();
+			}
+		}
+
+		[TestMethod]
+		public void NotInstalled_TreatPlanTriesTheOtherKind_TheMessageStays() {
+			//FormTPsign and SheetDrawingJob.GetSigTPHelper: a Topaz signature that does not show is filled once more as the program's own.
+			TopazWrapper.ResetLoader(new List<string> { _folderEmpty });
+			using(SignatureBoxWrapper signatureBoxWrapper=new SignatureBoxWrapper()) {
+				signatureBoxWrapper.SignatureMode=SignatureBoxWrapper.SigMode.TreatPlan;
+				Label labelInvalidSig=GetLabel(signatureBoxWrapper);
+				string textOwn=labelInvalidSig.Text;
+				signatureBoxWrapper.FillSignature(true,KEY_DATA,SIG_TOPAZ_SHAPED);
+				Assert.IsFalse(signatureBoxWrapper.IsValid);
+				signatureBoxWrapper.FillSignature(false,KEY_DATA,SIG_TOPAZ_SHAPED);
+				Assert.AreEqual(TopazWrapper.NOT_INSTALLED_MESSAGE,labelInvalidSig.Text,"Not 'Invalid Signature': Topaz could not check it.");
+				Assert.IsTrue(labelInvalidSig.Visible);
+				Assert.IsFalse(signatureBoxWrapper.IsValid);
+				Assert.AreEqual(0,signatureBoxWrapper.GetNumberOfTabletPoints(false));
+				Assert.AreEqual(textOwn,signatureBoxWrapper.LabelText,"Callers still see their own label text.");
+				signatureBoxWrapper.ClearSignature();
+				Assert.AreEqual(textOwn,labelInvalidSig.Text);
+				Assert.IsFalse(labelInvalidSig.Visible);
+			}
+		}
+
+		[TestMethod]
+		public void NotInstalled_OwnKindFirstThenTopaz_TheMessageShows() {
+			//The same retry when the SigIsTopaz column says the program's own box: both orders end with the same message.
+			TopazWrapper.ResetLoader(new List<string> { _folderEmpty });
+			using(SignatureBoxWrapper signatureBoxWrapper=new SignatureBoxWrapper()) {
+				signatureBoxWrapper.SignatureMode=SignatureBoxWrapper.SigMode.TreatPlan;
+				Label labelInvalidSig=GetLabel(signatureBoxWrapper);
+				string textOwn=labelInvalidSig.Text;
+				signatureBoxWrapper.FillSignature(false,KEY_DATA,SIG_TOPAZ_SHAPED);
+				Assert.AreEqual(textOwn,labelInvalidSig.Text);
+				signatureBoxWrapper.FillSignature(true,KEY_DATA,SIG_TOPAZ_SHAPED);
+				Assert.AreEqual(TopazWrapper.NOT_INSTALLED_MESSAGE,labelInvalidSig.Text);
+				Assert.IsFalse(signatureBoxWrapper.IsValid);
+			}
+		}
+
+		[TestMethod]
+		public void NotInstalled_TheOwnSignatureOfATopazMarkedPlanStillShows() {
+			//One SigIsTopaz column for two boxes: the column says Topaz, but this box was signed in the program's own box.
+			TopazWrapper.ResetLoader(new List<string> { _folderEmpty });
+			string signature=GetOwnTreatPlanSignature(KEY_DATA);
+			using(SignatureBoxWrapper signatureBoxWrapper=new SignatureBoxWrapper()) {
+				signatureBoxWrapper.SignatureMode=SignatureBoxWrapper.SigMode.TreatPlan;
+				Label labelInvalidSig=GetLabel(signatureBoxWrapper);
+				string textOwn=labelInvalidSig.Text;
+				signatureBoxWrapper.FillSignature(true,KEY_DATA,signature);
+				Assert.AreEqual(TopazWrapper.NOT_INSTALLED_MESSAGE,labelInvalidSig.Text);
+				signatureBoxWrapper.FillSignature(false,KEY_DATA,signature);
+				Assert.IsTrue(signatureBoxWrapper.IsValid,"The program's own signature is shown and checked without Topaz.");
+				Assert.IsFalse(labelInvalidSig.Visible);
+				Assert.AreEqual(textOwn,labelInvalidSig.Text);
+				Assert.AreNotEqual(0,signatureBoxWrapper.GetNumberOfTabletPoints(false));
+				//Changed key data (the plan changed after signing): the program's own check fails, and nothing Topaz could check is pending.
+				signatureBoxWrapper.FillSignature(false,KEY_DATA+" changed",signature);
+				Assert.IsFalse(signatureBoxWrapper.IsValid);
+				Assert.AreEqual(textOwn,labelInvalidSig.Text,"A failed check of the program's own signature still says so.");
+			}
+		}
+
+		[TestMethod]
+		public void NotInstalled_AnotherSignatureAfterTheMessage_GetsTheOwnText() {
+			//The message is kept only for the signature Topaz could not check, never for a different one.
+			TopazWrapper.ResetLoader(new List<string> { _folderEmpty });
+			using(SignatureBoxWrapper signatureBoxWrapper=new SignatureBoxWrapper()) {
+				signatureBoxWrapper.SignatureMode=SignatureBoxWrapper.SigMode.TreatPlan;
+				Label labelInvalidSig=GetLabel(signatureBoxWrapper);
+				string textOwn=labelInvalidSig.Text;
+				signatureBoxWrapper.FillSignature(true,KEY_DATA,SIG_TOPAZ_SHAPED);
+				signatureBoxWrapper.FillSignature(false,KEY_DATA,"1A2B3C4D5E6F708192A3B4C5D6E7F809");
+				Assert.AreEqual(textOwn,labelInvalidSig.Text);
+				Assert.IsFalse(signatureBoxWrapper.IsValid);
+				//After ClearSignature nothing is pending either.
+				signatureBoxWrapper.FillSignature(true,KEY_DATA,SIG_TOPAZ_SHAPED);
+				signatureBoxWrapper.ClearSignature();
+				signatureBoxWrapper.FillSignature(false,KEY_DATA,SIG_TOPAZ_SHAPED);
+				Assert.AreEqual(textOwn,labelInvalidSig.Text);
+			}
+		}
+
+		[TestMethod]
+		public void Installed_TreatPlanTriesTheOtherKind_InvalidAsBefore() {
+			//With Topaz installed a Topaz signature that fails both checks says the label's own text, as before.
+			TopazWrapper.ResetLoader(new List<string> { _folderFake });
+			using(SignatureBoxWrapper signatureBoxWrapper=new SignatureBoxWrapper()) {
+				signatureBoxWrapper.SignatureMode=SignatureBoxWrapper.SigMode.TreatPlan;
+				Label labelInvalidSig=GetLabel(signatureBoxWrapper);
+				string textOwn=labelInvalidSig.Text;
+				signatureBoxWrapper.FillSignature(true,KEY_DATA,SIG_TOPAZ_SHAPED);
+				Assert.IsFalse(signatureBoxWrapper.IsValid);
+				Assert.AreEqual(textOwn,labelInvalidSig.Text);
+				signatureBoxWrapper.FillSignature(false,KEY_DATA,SIG_TOPAZ_SHAPED);
+				Assert.IsFalse(signatureBoxWrapper.IsValid);
+				Assert.AreEqual(textOwn,labelInvalidSig.Text);
+			}
+		}
+
 		[TestMethod]
 		public void Installed_LoadsTheControlFromASearchFolderAtRunTime() {
 			TopazWrapper.ResetLoader(new List<string> { _folderEmpty,_folderFake });
