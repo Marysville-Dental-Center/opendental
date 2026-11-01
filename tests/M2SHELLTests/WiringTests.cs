@@ -29,6 +29,22 @@ namespace M2SHELLTests {
 		}
 
 		[TestMethod]
+		public void LogOn_DifferentUserKeepingThePatient_CallsTheAudit() {
+			//Combined review (2026-11-01): with clinics off, or PatientMaintainedOnUserChange on, the patient stays loaded for the next user, so the
+			//PatNumCur setter never runs and the new user worked in that patient's modules with no Patient Selected entry.
+			string source=TestPaths.ReadRepoFile("OpenDental","Main Modules","FormOpenDental.cs");
+			string method=GetMethod(source,"private void FinishLogOff(bool isForced) {");
+			string call="if(PatNumCur!=0 && userod.UserNum!=Security.CurUser.UserNum) {";
+			int idxLogOn=method.IndexOf("ShowLogOn(doClearCaches:true);");
+			int idxClinicBlock=method.IndexOf("RefreshMenuClinics();");
+			int idxCall=method.IndexOf(call);
+			int idxModule=method.IndexOf("SetModuleSelected();");
+			Assert.IsTrue(idxLogOn>0 && idxClinicBlock>idxLogOn,"The new user logs on, then the patient is kept or cleared for that user's clinics.");
+			Assert.IsTrue(idxCall>idxClinicBlock && idxCall<idxModule,"The entry is written once the patient is known to stay, before the modules show it.");
+			StringAssert.Contains(method.Substring(idxCall,idxModule-idxCall),"PatientSelectedAudit.LogIfEnabled(PatNumCur);");
+		}
+
+		[TestMethod]
 		public void GlobalSecurity_HasTheSetting() {
 			string source=TestPaths.ReadRepoFile("OpenDental","Forms","FormGlobalSecurity.cs");
 			StringAssert.Contains(source,"checkAuditPatientSelected.Checked=PatientSelectedAudit.IsEnabled();");

@@ -69,6 +69,18 @@ namespace M2SHELLTests {
 			Assert.AreEqual(0,Schedules.GetDuplicateBlockoutCount());
 			Assert.IsTrue(ScratchDb.GetLong("SELECT COUNT(*) FROM signalod WHERE IType="+(int)InvalidType.Schedules)>0,
 				"Workstations showing today are told to refresh.");
+			//Combined review (2026-11-01): the fix deletes blockout links and blockouts, so it leaves an Audit Trail entry like the removed tool did.
+			CollectionAssert.AreEqual(new[] { (int)EnumPermType.Setup+"/0/1/"+(int)LogSources.DBM+"/Database Maintenance removed 3 duplicate blockout link(s)." },
+				GetAuditEntries());
+			Assert.AreEqual(1,ScratchDb.GetLong("SELECT COUNT(*) FROM securityloghash"),"The entry is hashed like other audit entries.");
+			Assert.AreEqual("",RunDbm(DbmMode.Fix),"A second run finds nothing.");
+			Assert.AreEqual(1,GetAuditEntries().Count,"A run that removes nothing writes no entry.");
+		}
+
+		///<summary>Every security log entry as "PermType/PatNum/UserNum/LogSource/LogText", oldest first.</summary>
+		private static List<string> GetAuditEntries() {
+			return DataCore.GetTable("SELECT PermType,PatNum,UserNum,LogSource,LogText FROM securitylog ORDER BY SecurityLogNum").Select()
+				.Select(x => x[0]+"/"+x[1]+"/"+x[2]+"/"+x[3]+"/"+x[4]).ToList();
 		}
 
 		[TestMethod]
@@ -80,6 +92,7 @@ namespace M2SHELLTests {
 			Assert.AreEqual("Duplicate blockouts found: 0\r\n",RunDbm(DbmMode.Check,verbose:true));
 			Assert.AreEqual("Duplicate blockouts removed: 0\r\n",RunDbm(DbmMode.Fix,verbose:true));
 			Assert.AreEqual(2,ScratchDb.GetLong("SELECT COUNT(*) FROM scheduleop"));
+			Assert.AreEqual(0,GetAuditEntries().Count,"Nothing removed, so no Audit Trail entry, not even in verbose mode.");
 		}
 
 		[TestMethod]

@@ -6868,6 +6868,10 @@ namespace OpenDental{
 				Clinics.LoadClinicNumForUser();
 				RefreshMenuClinics();
 			}
+			if(PatNumCur!=0 && userod.UserNum!=Security.CurUser.UserNum) {
+				//The patient stays loaded for a different user, so the PatNumCur setter does not run: the new user's Patient Selected entry (25.4).
+				PatientSelectedAudit.LogIfEnabled(PatNumCur);
+			}
 			SetModuleSelected();
 			Patient patient=Patients.GetPat(PatNumCur);//pat could be null
 			Text=PatientL.GetMainTitle(patient,Clinics.ClinicNum);//handles pat==null by not displaying pat name in title bar
