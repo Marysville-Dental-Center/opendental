@@ -2069,6 +2069,9 @@ namespace OpenDentBusiness {
 			List<PayPlanCharge> listPayPlanChargesDB=dynamicPaymentPlanModuleData.ListPayPlanChargesDb;
 			List<PayPlanProductionEntry> listPayPlanProductionEntries=dynamicPaymentPlanModuleData.ListPayPlanProductionEntries;
 			List<PayPlanLink> listPayPlanLink=dynamicPaymentPlanModuleData.ListPayPlanLinks;
+			//25.1: audit a change of the Tx Completed Amount against what the database holds (a new plan is logged as created instead).
+			bool isNewPlanForAudit=payPlan.IsNew;
+			double completedAmtForAudit=isNewPlanForAudit ? 0 : (PayPlans.GetOne(payPlan.PayPlanNum)?.CompletedAmt??payPlan.CompletedAmt);
 			payPlan.CompletedAmt=PayPlanProductionEntry.GetDynamicPayPlanCompletedAmount(payPlan,listPayPlanProductionEntries);
 			List<PayPlanCharge> listPayPlanChargesDownPayment=new List<PayPlanCharge>();
 			if(payPlan.IsNew) {
@@ -2103,6 +2106,9 @@ namespace OpenDentBusiness {
 			payPlan.IsNew=false;
 			PayPlans.Update(payPlan);//always saved to db before opening this form
 			PayPlanLinks.Sync(listPayPlanLink,payPlan.PayPlanNum);
+			if(!isNewPlanForAudit) {
+				PayPlanAudits.LogCompletedAmtChange(payPlan,completedAmtForAudit,payPlan.CompletedAmt);
+			}
 			if(doUnlock) {
 				SecurityLogs.MakeLogEntry(EnumPermType.PayPlanUnlock,payPlan.PatNum,Lans.g("FormPayPlanDynamic","Payment plan unlocked."),
 					payPlan.PayPlanNum,DateTime.MinValue);

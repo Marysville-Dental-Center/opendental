@@ -81,10 +81,12 @@ namespace OpenDental {
 			formEtrans835Edit.Show(formParent);//Non-modal but belongs to the parent form passed in so that it never shows behind.
 		}
 
-		///<summary>Returns an EraData which contains lists of Etrans, Etrans835s, and Etrans835Attaches limited by the passed in filters.</summary>
+		///<summary>Returns an EraData which contains lists of Etrans, Etrans835s, and Etrans835Attaches limited by the passed in filters.
+		///doShowPreAuths and doShowZeroPayments are the ERAs Automatically Processed report's filters (M2-ERA, Open Dental 25.4); true shows them.</summary>
 		public static EraData GetEraDataFiltered(bool showStatusAndClinics,List<X835Status> listX835Statuses,List<long> listClinicNumsSelected,
 			string amountMin,string amountMax,DateTime dateFrom,DateTime dateTo,string carrierName,string checkTraceNum,string controlId,bool includeAutomatableCarriersOnly,
-			bool areAllClinicsSelected,List<X835AutoProcessed> listX835AutoProcessedsStatuses=null,bool includeAcknowledged=true) 
+			bool areAllClinicsSelected,List<X835AutoProcessed> listX835AutoProcessedsStatuses=null,bool includeAcknowledged=true,bool doShowPreAuths=true,
+			bool doShowZeroPayments=true)
 		{
 			ODEvent.Fire(ODEventType.ProgressBar,Lan.g("FormEtrans835s","Refreshing history."));
 			decimal insPaidMin=-1;
@@ -108,6 +110,10 @@ namespace OpenDental {
 			}
 			//Ensure listFilteredEtrans835s are listed in same order and with same total count as the listEtransFiltered.
 			eraData.ListEtrans835s=eraData.ListEtrans.Select(x => eraData.ListEtrans835s.FirstOrDefault(y => y.EtransNum==x.EtransNum)).ToList();
+			if(!doShowPreAuths || !doShowZeroPayments) {//M2-ERA (25.4): Show PreAuths and Show $0 Payments of the ERAs Automatically Processed report.
+				ODEvent.Fire(ODEventType.ProgressBar,Lan.g("FormEtrans835s","Filtering PreAuths and $0 payments."));
+				Etrans835s.RemoveHiddenForAutoProcessedReport(eraData.ListEtrans,eraData.ListEtrans835s,doShowPreAuths,doShowZeroPayments);
+			}
 			if(includeAutomatableCarriersOnly) {
 				ODEvent.Fire(ODEventType.ProgressBar,Lan.g("FormEtrans835s","Filtering by automatable carriers."));
 				FilterAutomatableERAs(eraData.ListEtrans,eraData.ListEtrans835s,eraData.ListAttached);
@@ -198,6 +204,9 @@ namespace OpenDental {
 		///Warns the user if a supplemental payment is going to be made. Prompts user to choose an insurance payment plan to associate the payment to
 		///if multiple plans are available.</summary>
 		public static void ImportEraClaimData(X835 x835,Hx835_Claim hx835_ClaimPaid,Claim claim,Patient patient,List<ClaimProc> listClaimProcsForClaim) {
+			if(!ConfirmEraClaimNotEnteredYet(x835,hx835_ClaimPaid,listClaimProcsForClaim)) {//M2-ERA (26.1)
+				return;
+			}
 			bool isSupplementalPay=(claim.ClaimStatus=="R" || listClaimProcsForClaim.All(x => x.Status.In(
 			ClaimProcStatus.Received,ClaimProcStatus.Supplemental)));
 			//Warn user if they selected a claim which is already received, so they do not accidentally enter a supplemental payment when they meant to enter a new payment.
@@ -235,6 +244,27 @@ namespace OpenDental {
 				List<ClaimProc> listClaimProcsToDelete=listClaimProcsForClaimModified.FindAll(x => !listClaimProcNumsForClaim.Contains(x.ClaimProcNum));
 				ClaimProcs.DeleteMany(listClaimProcsToDelete);
 			}
+		}
+
+		///<summary>M2-ERA (Open Dental 26.1): claimprocs remember the ERA claim they were entered from (claimproc.Etrans835AttachNum). Before payment
+		///from an ERA claim is entered, warns when it was already entered from this ERA claim, or from another ERA that carries the same payment (same
+		///check or EFT trace number and payer). Returns false when the user chooses not to continue. Reads the database, so a window that was open a
+		///while still sees what another workstation entered.</summary>
+		private static bool ConfirmEraClaimNotEnteredYet(X835 x835,Hx835_Claim hx835_ClaimPaid,List<ClaimProc> listClaimProcsForClaim) {
+			if(x835?.EtransSource==null || hx835_ClaimPaid==null || hx835_ClaimPaid.ClaimNum==0 || listClaimProcsForClaim==null) {
+				return true;
+			}
+			List<Etrans835Attach> listEtrans835Attaches=Etrans835Attaches.GetForEtransNumOrClaimNums(false,x835.EtransSource.EtransNum,hx835_ClaimPaid.ClaimNum);
+			if(EraClaimProcLinks.GetEnteredFromEraClaim(hx835_ClaimPaid,listClaimProcsForClaim,listEtrans835Attaches).Count>0) {
+				return MsgBox.Show("FormEtrans835Edit",MsgBoxButtons.YesNo,"Payment from this ERA claim was already entered on this claim. "
+					+"Entering it again would post the payment twice.\r\nContinue?");
+			}
+			List<Hx835_ShortClaimProc> listHx835_ShortClaimProcs=listClaimProcsForClaim.Select(x => new Hx835_ShortClaimProc(x)).ToList();
+			if(EraClaimProcLinks.GetEtransNumsWithSamePayment(hx835_ClaimPaid,listHx835_ShortClaimProcs,listEtrans835Attaches).Count>0) {
+				return MsgBox.Show("FormEtrans835Edit",MsgBoxButtons.YesNo,"This claim was already paid from another ERA with the same check or EFT trace "
+					+"number. This ERA may have been received twice.\r\nContinue?");
+			}
+			return true;
 		}
 
 		///<summary>Returns false if an error is encountered and payment is not finalized.

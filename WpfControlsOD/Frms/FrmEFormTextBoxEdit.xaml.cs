@@ -90,6 +90,7 @@ namespace OpenDental {
 			else {
 				comboDbLink.SelectedIndex=idxSelect;
 			}
+			EFormL.AddPatFieldDbLinks(comboDbLink,EnumEFormFieldType.TextField,EFormFieldCur.DbLink);//Open Dental 25.4: patient fields
 			checkIsRequired.Checked=EFormFieldCur.IsRequired;
 			checkAutoImport.Checked=EFormFieldCur.AutoImport;
 			checkPrefillFromGuar.Checked=EFormFieldCur.PrefillFromGuar;
@@ -147,7 +148,7 @@ namespace OpenDental {
 
 		private void ComboDbLink_SelectionTrulyChanged(object sender,EventArgs e) {
 			if(textLabel.Text==""){
-				textLabel.Text=(string)comboDbLink.SelectedItem;
+				textLabel.Text=EFormL.GetDefaultLabelForDbLink((string)comboDbLink.SelectedItem);
 			}
 			SetAutoImportControls();
 		}

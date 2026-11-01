@@ -371,6 +371,16 @@ namespace OpenDentBusiness.Properties {
         
         /// <summary>
         ///   Looks up a localized string similar to &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+        ///&lt;!-- Medi-Cal Dental (Denti-Cal) TAR/Claim form DC-217, revision 10/19, printed on preprinted stock. [rest of string was truncated]&quot;;.
+        /// </summary>
+        public static string ClaimFormDenti_Cal_DC217_2019 {
+            get {
+                return ResourceManager.GetString("ClaimFormDenti_Cal_DC217_2019", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
         ///&lt;ClaimForm xmlns:xsi=&quot;http://www.w3.org/2001/XMLSchema-instance&quot; xmlns:xsd=&quot;http://www.w3.org/2001/XMLSchema&quot;&gt;
         ///  &lt;IsNew&gt;false&lt;/IsNew&gt;
         ///  &lt;ClaimFormNum&gt;0&lt;/ClaimFormNum&gt;

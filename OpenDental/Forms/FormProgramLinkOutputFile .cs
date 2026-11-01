@@ -48,6 +48,7 @@ namespace OpenDental {
 			listMessageReplaceTypes.Add(MessageReplaceType.Patient);
 			listMessageReplaceTypes.Add(MessageReplaceType.Referral);
 			listMessageReplaceTypes.Add(MessageReplaceType.Misc);
+			listMessageReplaceTypes.Add(MessageReplaceType.ProgramLink);//[SelectedProcNums]
 			FrmMessageReplacements frmMessageReplacements=new FrmMessageReplacements(listMessageReplaceTypes);
 			frmMessageReplacements.IsSelectionMode=true;
 			frmMessageReplacements.ShowDialog();

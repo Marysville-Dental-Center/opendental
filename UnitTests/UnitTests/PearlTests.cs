@@ -72,7 +72,7 @@ namespace UnitTests {
 		///<summary>Sends 1 image and asserts various result paths returned from GetOneImageFromPearl.</summary>
 		[TestMethod]
 		public void Pearl_PollSingleRequest() {
-			void assert(Func<string,string,ImageRequestIdResponse> funcGetImageByRequestIdOutput,EnumPearlStatus pearlStatus) {
+			void assert(Func<string,string,ImageRequestIdResponse> funcGetImageByRequestIdOutput,EnumPearlStatus pearlStatus,bool isExceptionExpected=false) {
 				PearlApiClient.Inst=new PearlApiClientMock() { FuncGetImageByRequestIdOutput=funcGetImageByRequestIdOutput };
 				Patient pat=PatientT.CreatePatient(fName: "Jerry");
 				Document document=new Document();
@@ -95,16 +95,23 @@ namespace UnitTests {
 				Assert.IsTrue(pearlRequest!=null);
 				Assert.AreEqual(pearlStatus,pearlRequest.RequestStatus);
 				//Pearl should handle all exceptions, no matter if a good or bad pearlRequest. No exceptions should bubble up to thread.
-				Assert.IsFalse(threwException);
+				//V-PEARL1: except a failed poll, which ends polling as ErrorProcessing and is reported to the thread (an alert in the program).
+				Assert.AreEqual(isExceptionExpected,threwException);
 			}
 			//Mock each status.
-			assert((a,b) => new ImageRequestIdResponse() { result=new OpenDentBusiness.Pearl.Result() { is_completed=true } },EnumPearlStatus.Received );
+			OpenDentBusiness.Pearl.ToothPart toothPart=new OpenDentBusiness.Pearl.ToothPart() {
+				condition_id=OpenDentBusiness.Pearl.EnumCondition.Enamel,
+				polygon=new Polygon[] { new Polygon() { x=0.1f,y=0.1f },new Polygon() { x=0.5f,y=0.1f },new Polygon() { x=0.5f,y=0.5f } },
+			};
+			assert((a,b) => new ImageRequestIdResponse() { result=new OpenDentBusiness.Pearl.Result() { is_completed=true,annotations=new Annotation[0],toothParts=new[] { toothPart } } },EnumPearlStatus.Received );
+			//V-PEARL1 (24.4): complete, but nothing found.
+			assert((a,b) => new ImageRequestIdResponse() { result=new OpenDentBusiness.Pearl.Result() { is_completed=true } },EnumPearlStatus.NoResults);
 			assert((a,b) => new ImageRequestIdResponse() { result=new OpenDentBusiness.Pearl.Result() { is_rejected=true } },EnumPearlStatus.Error);
 			assert((a,b) => new ImageRequestIdResponse() { result=new OpenDentBusiness.Pearl.Result() { is_deleted=true } },EnumPearlStatus.Error);
 			//API returned a result but is not completed and includes no other state. We should still be polling.
 			assert((a,b) => new ImageRequestIdResponse() { result=new OpenDentBusiness.Pearl.Result() {  } },EnumPearlStatus.Polling);
-			//API threw an exception. We should still be polling.
-			assert((a,b) => null,EnumPearlStatus.Polling);
+			//API threw an exception. V-PEARL1 (24.4): polling stops as ErrorProcessing, which can be polled again.
+			assert((a,b) => null,EnumPearlStatus.ErrorProcessing,isExceptionExpected:true);
 
 		}
 

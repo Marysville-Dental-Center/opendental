@@ -428,10 +428,10 @@ namespace OpenDental {
 				}
 				string filterText="";
 				if(_listClinicNumsFilter.Count>0 && !isHQClinic) {
-					filterText+=""+string.Join(",",_listClinicNumsFilter.Select(x => Clinics.GetAbbr(x)))+"";
+					filterText+=""+string.Join(",",_listClinicNumsFilter.Select(x => TaskFilters.GetClinicFilterText(x)))+"";//Shows "Unassigned" too
 				}
 				else if(_listDefNumsRegionFilter.Count>0 && !isHQRegion) {
-					filterText+=""+string.Join(",",_listDefNumsRegionFilter.Select(x => Defs.GetName(DefCat.Regions,x)))+"";
+					filterText+=""+string.Join(",",_listDefNumsRegionFilter.Select(x => TaskFilters.GetRegionFilterText(x)))+"";//Shows "Unassigned" too
 				}
 				if(_dateFilterStart==DateTime.Today && _dateFilterEnd==DateTime.Today) {
 					if(filterText!="") {
@@ -1883,10 +1883,8 @@ namespace OpenDental {
 			else if(task!=null) {//task
 				_taskListClip=null;
 				Task taskCur=gridMain.SelectedTag<Task>().Copy();
-				if(!PrefC.GetBool(PrefName.TasksForApptAllowMultiple)
-					&& taskCur.ObjectType==TaskObjectType.Appointment
-					&& taskCur.KeyNum>0) 
-				{
+				//25.1: completed tasks do not count toward the one-task limit, so they can be copied.
+				if(ApptTasks.IsCopyBlocked(PrefC.GetBool(PrefName.TasksForApptAllowMultiple),taskCur)) {
 					MsgBox.Show("Not allowed to copy Tasks with Appointments attached.");
 					return;
 				}
@@ -2124,12 +2122,8 @@ namespace OpenDental {
 				RefillLocalTaskGrids(taskNew,listTaskNotes,listSignalNums);//No db call.
 			}
 			//If attaching multiple tasks to an appointment is not allowed, clear the clipboard after pasting a task with an appointment attached.
-			if(_taskClip!= null
-				&& _taskClip.ObjectType==TaskObjectType.Appointment
-				&& _taskClip.KeyNum!=0
-				&& _wasCut
-				&& !PrefC.GetBool(PrefName.TasksForApptAllowMultiple))
-			{
+			//25.1: only an open task counts; pasting a completed task again only adds completed tasks.
+			if(ApptTasks.IsClipboardClearedAfterPaste(PrefC.GetBool(PrefName.TasksForApptAllowMultiple),_taskClip,_wasCut)) {
 				_taskClip=null;
 				_taskListClip=null;
 			}

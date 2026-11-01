@@ -188,6 +188,9 @@ namespace OpenDental {
 			row=new GridRow(Lan.g(this,"Balance Family"),Lan.g(this,"Launches the Family Balancer window for the family of the currently selected patient."));
 			row.Tag=new Action(() => FamilyBalanceFix(isSingleFamilyMode:true));
 			gridTools.ListGridRows.Add(row);
+			row=new GridRow(Lan.g(this,"Base64 Documents"),Lan.g(this,"Creates the files of documents that are still stored as base64 text in the document note."));
+			row.Tag=new Action(Base64DocumentsFix);
+			gridTools.ListGridRows.Add(row);
 			row=new GridRow(Lan.g(this,"Clean Attachments"),Lan.g(this,"Deletes all attachments not linked to an email message."));
 			row.Tag=new Action(CleanEmailAttachesFix);
 			gridTools.ListGridRows.Add(row);
@@ -217,6 +220,12 @@ namespace OpenDental {
 				row.Tag=new Action(ChangeToPercentageInsurancePlanType);
 				gridTools.ListGridRows.Add(row);
 			}
+			row=new GridRow(Lan.g(this,"Invalid Characters (GDI+)"),Lan.g(this,"Finds and removes characters that grids and printouts cannot draw, from names, notes and other text."));
+			row.Tag=new Action(InvalidCharsGdiFix);
+			gridTools.ListGridRows.Add(row);
+			row=new GridRow(Lan.g(this,"Notes White Space"),Lan.g(this,"Trims excessive blank lines and spaces from notes."));
+			row.Tag=new Action(NotesWhiteSpaceFix);
+			gridTools.ListGridRows.Add(row);
 			if(!PrefC.GetBool(PrefName.DatabaseMaintenanceDisableOptimize)) {
 				row=new GridRow(Lan.g(this,"Optimize"),Lan.g(this,"Back up, optimize, and repair tables."));
 				row.Tag=new Action(OptimizeFix);

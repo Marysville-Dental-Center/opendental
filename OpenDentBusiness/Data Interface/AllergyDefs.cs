@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -326,5 +327,55 @@ namespace OpenDentBusiness{
 				+POut.Long(allergyDefNumCombine);
 			Db.NonQ(command);
 		}
+
+		#region 26.1: Allergy Setup search and the missing-definition repair
+		///<summary>The description of the allergy definition that the database maintenance check AllergyWithInvalidAllergyDef attaches orphaned
+		///patient allergies to, after the UNKNOWN PROBLEM definition that DiseaseWithInvalidDiseaseDef uses.</summary>
+		public const string DESCRIPTION_UNKNOWN="UNKNOWN ALLERGY";
+
+		///<summary>Allergy Setup search: true when the description contains the search text, ignoring case and spaces around the search text.
+		///Blank search text matches every definition.</summary>
+		public static bool IsSearchMatch(AllergyDef allergyDef,string searchText) {
+			Meth.NoCheckMiddleTierRole();
+			if(allergyDef==null) {
+				return false;
+			}
+			if(string.IsNullOrWhiteSpace(searchText)) {
+				return true;
+			}
+			string description=allergyDef.Description??"";
+			return CultureInfo.CurrentCulture.CompareInfo.IndexOf(description,searchText.Trim(),CompareOptions.IgnoreCase)>=0;
+		}
+
+		///<summary>The rows Allergy Setup shows: the definitions that match the search text (see IsSearchMatch), without hidden ones unless
+		///includeHidden is true. Keeps the order of the list passed in and does not change that list.</summary>
+		public static List<AllergyDef> FilterForSetup(List<AllergyDef> listAllergyDefs,string searchText,bool includeHidden) {
+			Meth.NoCheckMiddleTierRole();
+			if(listAllergyDefs==null) {
+				return new List<AllergyDef>();
+			}
+			return listAllergyDefs.FindAll(x => x!=null && (includeHidden || !x.IsHidden) && IsSearchMatch(x,searchText));
+		}
+
+		///<summary>Returns the AllergyDefNum of the definition named UNKNOWN ALLERGY, preferring one that is not hidden. Inserts a new definition
+		///with that name, not hidden, when there is none.</summary>
+		public static long GetOrInsertUnknown() {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetLong(MethodBase.GetCurrentMethod());
+			}
+			string command="SELECT AllergyDefNum FROM allergydef WHERE Description='"+POut.String(DESCRIPTION_UNKNOWN)+"' "
+				+"ORDER BY IsHidden,AllergyDefNum LIMIT 1";
+			long allergyDefNum=PIn.Long(Db.GetScalar(command));
+			if(allergyDefNum!=0) {
+				return allergyDefNum;
+			}
+			AllergyDef allergyDef=new AllergyDef();
+			allergyDef.Description=DESCRIPTION_UNKNOWN;
+			allergyDef.IsHidden=false;
+			allergyDef.SnomedType=SnomedAllergy.None;
+			allergyDef.UniiCode="";
+			return Crud.AllergyDefCrud.Insert(allergyDef);
+		}
+		#endregion 26.1: Allergy Setup search and the missing-definition repair
 	}
 }
