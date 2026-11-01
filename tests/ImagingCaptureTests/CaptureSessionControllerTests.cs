@@ -782,16 +782,38 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
-		public void BitDepth_SettingsChangedOutsideOpenDental_8_ReasonLogged() {
+		public void BitDepth_SettingsCheckedForAnotherFile_8_ReasonLogged() {
+			//Settings that are not verified never start (SettingsNotVerified_TheWindowSaysWhy_NothingStarts); a check made for another file than
+			//the one in effect starts, but gives no 16 bits.
 			_harness.Setup.Options.Bits=16;
 			_harness.Setup.Options.Allow16Bit=true;
 			_harness.Setup.GatedSettingsHash=new string('a',64);
 			_harness.Setup.VerificationRecord=CaptureControllerHarness.PassedRecord(new string('a',64));
-			_harness.Setup.SettingsCheck=CaptureSettingsCheck.CheckHash(new string('a',64),12,"OPERATORY1",
-				new List<SecurityLog> { CaptureSettingsTestKit.SavedLog(new string('e',64),12,"OPERATORY1") });
+			_harness.Setup.SettingsCheck=CaptureSettingsTestKit.VerifiedHash(new string('e',64));
 			_harness.Started();
 			Assert.AreEqual(8,_harness.Twain.LastRequest.Bits);
-			Assert.IsTrue(_harness.ListLogFile.Any(x => x.Contains("changed outside Open Dental")),string.Join("\r\n",_harness.ListLogFile));
+			Assert.IsTrue(_harness.ListLogFile.Any(x => x.Contains("not the ones in effect")),string.Join("\r\n",_harness.ListLogFile));
+		}
+
+		[TestMethod]
+		public void SettingsNotVerified_TheWindowSaysWhy_NothingStarts() {
+			_harness.Setup.SettingsCheck=CaptureSettingsCheck.CheckHash(new string('a',64),12,"OPERATORY1",
+				new List<SecurityLog> { CaptureSettingsTestKit.SavedLog(new string('e',64),12,"OPERATORY1") });
+			Assert.IsFalse(Controller.IsSettingsVerified);
+			_harness.BeginArmed();
+			Assert.AreEqual(CaptureIndicatorState.Error,Controller.IndicatorState);
+			StringAssert.StartsWith(Controller.IndicatorText,"Capture settings were changed outside Open Dental; review them in Setup.");
+			Assert.AreEqual(Controller.SettingsNoticeText,Controller.IndicatorText);
+			Assert.AreEqual(CaptureStartKind.None,Controller.StartKind);
+			Assert.IsFalse(Controller.CanStart);
+			Assert.IsFalse(_harness.Start());
+			Assert.AreEqual(0,_harness.ListSessions.Count,"Nothing opens.");
+			Assert.IsTrue(_harness.ListLogFile.Any(x => x.Contains("Not started: Capture settings were changed outside Open Dental")));
+			CaptureSessionViewModel viewModel=new CaptureSessionViewModel(Controller);
+			Assert.IsFalse(viewModel.IsStartVisible);
+			StringAssert.StartsWith(viewModel.IndicatorText,"Capture settings were changed outside Open Dental");
+			_harness.Setup.SettingsCheck=null;
+			StringAssert.Contains(Controller.SettingsNoticeText,"not checked");
 		}
 
 		[TestMethod]

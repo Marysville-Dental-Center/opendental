@@ -146,6 +146,13 @@ namespace ImagingCapture.Session {
 		public string WarningText { get; private set; }="";
 		///<summary>"N unassigned captures on this computer" (CaptureQuarantine.GetUnassignedText), or null when the quarantine is empty.</summary>
 		public string UnassignedText { get; private set; }
+		///<summary>The gated capture settings are the ones last saved in the Capture settings screen (design 9.3 hash check). The launcher starts a
+		///session only then; a session begun without it never enables (the safe value of [Session] Enabled is off).</summary>
+		public bool IsSettingsVerified => _setup.SettingsCheck!=null && _setup.SettingsCheck.IsVerified;
+		///<summary>Why the settings are not verified ("Capture settings were changed outside Open Dental; review them in Setup. ..."), or "".</summary>
+		public string SettingsNoticeText => IsSettingsVerified ? ""
+			: (_setup.SettingsCheck==null ? "The capture settings were not checked against the ones saved in Capture settings; review them in Setup."
+				: _setup.SettingsCheck.Text);
 		///<summary>The target mount: "FMX 18, 10/31/2026". "" in single-target mode.</summary>
 		public string MountText => _setup.Mount==null ? "" : CaptureSessionText.GetMountText(_setup.Mount.Description,_setup.Mount.DateCreated);
 		///<summary>Phase ConfirmingOlderMount: the question to show.</summary>
@@ -219,7 +226,13 @@ namespace ImagingCapture.Session {
 			Log("Capture session "+SessionGuid+" for patient "+PatNum+", device "+_setup.ImagingDevice.ImagingDeviceNum+" ("
 				+(_setup.ImagingDevice.Description??"")+"), "+(IsSingleTarget ? "single-target mode" : "mount "+_setup.Mount.MountNum)+".");
 			OnBeginExt();
-			if(IsMountOlderThanToday) {
+			if(!IsSettingsVerified) {
+				//Design 9.3: settings that are not verified mean the safe values, and the safe value of [Session] Enabled is off. The launcher does
+				//not open the window then; this holds for any other way into the session too. The indicator says why, and nothing can start.
+				Log("Not started: "+SettingsNoticeText);
+				ShowReady(CaptureStartKind.None,CaptureIndicatorState.Error,SettingsNoticeText);
+			}
+			else if(IsMountOlderThanToday) {
 				Phase=CaptureSessionPhase.ConfirmingOlderMount;
 				SetIndicator(CaptureIndicatorState.Ready,OlderMountText);
 			}

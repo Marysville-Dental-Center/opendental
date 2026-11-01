@@ -323,6 +323,8 @@ namespace ImagingCapture.Tests {
 				ComputerName="OPERATORY1",
 				SessionGuid=new Guid("11111111-2222-3333-4444-555555555555"),
 				UnassignedText=null,
+				//The Capture settings screen saved the settings in effect (design 9.3); the 16-bit tests set the hash they need.
+				SettingsCheck=CaptureSettingsTestKit.VerifiedHash(new string('0',64)),
 			};
 			Setup.Options.ImagingDeviceNum=12;
 			if(countSlots>0) {
