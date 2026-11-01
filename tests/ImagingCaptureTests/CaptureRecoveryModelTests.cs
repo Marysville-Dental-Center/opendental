@@ -140,6 +140,25 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void Gray16_TheSlotFilledAfterTheConfirmation_ShownAgainWithThe8BitNote_ThenTheDoneTextSaysSo() {
+			_harness.Files.Quarantine16(RecoveryFiles.SessionFields(),_receivedAt);
+			CaptureRecoveryModel model=Model(CaptureRecoveryView.Unassigned);
+			Assert.IsTrue(model.BeginAssign(),model.ErrorText);
+			StringAssert.Contains(model.StepDetailsText,"It goes into Slot 3 (teeth 6) of the mount");
+			Assert.IsFalse(model.StepDetailsText.Contains("8-bit copy"),"Its own empty slot: 16-bit DICOM.");
+			_harness.Store.DictSlotDocuments[103]=new Document { DocNum=900,PatNum=42,MountItemNum=103 };//filed meanwhile on another computer
+			Assert.IsFalse(model.Confirm(""));
+			Assert.AreEqual(CaptureRecoveryText.AssignPlanChanged,model.ErrorText);
+			Assert.AreEqual(CaptureRecoveryStep.ConfirmAssign,model.Step,"The step stays, with where the capture goes now.");
+			StringAssert.Contains(model.StepDetailsText,"filed as an 8-bit copy");
+			StringAssert.Contains(model.StepDetailsText,"an unmounted item of the mount");
+			Assert.AreEqual(0,_harness.RadiographStore.ListPatientsImported.Count,"Nothing filed without that note.");
+			Assert.IsTrue(model.Confirm(""),model.ErrorText);
+			StringAssert.Contains(model.ResultText,"as an 8-bit copy of a 16-bit capture; the 16-bit original is kept in Capture\\quarantine-resolved\\"
+				+RecoveryFiles.SessionGuid.ToString("D"));
+		}
+
+		[TestMethod]
 		public void Assign_PermissionWhenBegun_ThenTheExplicitConfirmation() {
 			_harness.Files.Quarantine(RecoveryFiles.SessionFields(),_receivedAt);
 			CaptureRecoveryModel model=Model(CaptureRecoveryView.Unassigned);

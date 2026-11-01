@@ -588,6 +588,40 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void Assign_TheSlotFilledAfterTheConfirmation_Refused_NeverASilent8BitCopy_NorAnotherTarget() {
+			CaptureFileEntry entry=_harness.Files.Quarantine16(RecoveryFiles.SessionFields(),_receivedAt);
+			string error;
+			CaptureAssignPlan plan=_harness.Filer.PlanAssign(entry,0,out error);
+			Assert.IsNotNull(plan,error);
+			Assert.IsTrue(plan.IsIntoOriginalSlot);
+			Assert.IsFalse(plan.Is8BitCopy,"Confirmed: 16-bit DICOM into its own empty slot.");
+			Store.DictSlotDocuments[103]=new Document { DocNum=900,PatNum=42,MountItemNum=103 };//another computer filed a retake meanwhile
+			CaptureFilingResult result=_harness.Filer.Assign(entry,0,0,plan);
+			Assert.IsFalse(result.IsDone);
+			Assert.IsTrue(result.IsPlanChanged);
+			Assert.AreEqual(CaptureRecoveryText.AssignPlanChanged,result.Error);
+			Assert.AreEqual(0,RadiographStore.ListPatientsImported.Count,"Nothing filed, least of all an 8-bit PNG the operator never saw a note for.");
+			Assert.AreEqual(1,_harness.Files.CountQuarantineFiles());
+			CaptureAssignPlan planNow=_harness.Filer.PlanAssign(entry,0,out error);
+			Assert.IsTrue(planNow.Is8BitCopy);
+			CaptureFilingResult resultNow=_harness.Filer.Assign(entry,0,0,planNow);
+			Assert.IsTrue(resultNow.IsDone,resultNow.Error);
+			Assert.IsTrue(resultNow.IsCopy8BitOf16Bit);
+			StringAssert.StartsWith(CaptureRecoveryText.GetCopyDoneText(resultNow)," as an 8-bit copy of a 16-bit capture; the 16-bit original is kept in "
+				+"Capture\\quarantine-resolved\\"+RecoveryFiles.SessionGuid.ToString("D"));
+			//An 8-bit capture whose slot is filled meanwhile is not silently filed as a "Recovered:" item either.
+			CaptureFileEntry entry8=_harness.Files.Quarantine(RecoveryFiles.SessionFields(captureId:"cap-8"),_receivedAt.AddMinutes(1));
+			Store.DictSlotDocuments.Remove(103);
+			CaptureAssignPlan plan8=_harness.Filer.PlanAssign(entry8,0,out error);
+			Assert.IsTrue(plan8.IsIntoOriginalSlot,error);
+			Store.DictSlotDocuments[103]=new Document { DocNum=901,PatNum=42,MountItemNum=103 };
+			CaptureFilingResult result8=_harness.Filer.Assign(entry8,0,0,plan8);
+			Assert.IsFalse(result8.IsDone);
+			Assert.IsTrue(result8.IsPlanChanged);
+			Assert.AreEqual(1,RadiographStore.ListPatientsImported.Count,"Only the copy confirmed above.");
+		}
+
+		[TestMethod]
 		public void Assign_16Bit_MountDeleted_ASingleDocument8BitCopy_WithTheSlotsTeeth() {
 			CaptureFileEntry entry=_harness.Files.Quarantine16(RecoveryFiles.SessionFields(),_receivedAt);
 			Store.DictMounts.Remove(7);

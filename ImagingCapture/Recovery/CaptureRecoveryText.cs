@@ -76,6 +76,20 @@ namespace ImagingCapture.Recovery {
 			return @"Capture\quarantine-resolved"+(isRoot ? "" : "\\"+folderName);
 		}
 
+		///<summary>Assign refused because the capture would no longer go where the confirmation said (CaptureFilingResult.IsPlanChanged).</summary>
+		public const string AssignPlanChanged="The slot was filled or changed meanwhile, so nothing was filed; review where the capture goes now, then "
+			+"confirm again.";
+
+		///<summary>The window's words after a filing whose document is the 8-bit copy of a 16-bit capture: " as an 8-bit copy of a 16-bit capture;
+		///the 16-bit original is kept in ...", else "".</summary>
+		public static string GetCopyDoneText(CaptureFilingResult result) {
+			if(result==null || !result.IsCopy8BitOf16Bit) {
+				return "";
+			}
+			return " as an 8-bit copy of a "+(result.Entry!=null && result.Entry.BitDepthInEffect==14 ? "14-bit" : "16-bit")+" capture; the 16-bit "
+				+"original is kept in "+GetOriginalKeptFolder(result.Entry);
+		}
+
 		///<summary>What the confirmation says plainly before a 16-bit capture is filed as its 8-bit copy (owner decision 2026-11-01).</summary>
 		public static string GetCopy8BitNote(CaptureFileEntry entry) {
 			string depth=entry!=null && entry.BitDepthInEffect==14 ? "14-bit (in a 16-bit file)" : "16-bit";

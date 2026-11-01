@@ -74,6 +74,12 @@ namespace ImagingCapture.Recovery {
 		public string TargetText { get; set; }="";
 		///<summary>Where the file is now (Capture\quarantine-resolved for a quarantine file).</summary>
 		public string PathResolved { get; set; }
+		///<summary>Document is the explicit 8-bit copy of a 16-bit capture (RadiographSavePlan.IsCopyOf16Bit); the 16-bit original is kept in
+		///CaptureRecoveryText.GetOriginalKeptFolder (owner decision 2026-11-01).</summary>
+		public bool IsCopy8BitOf16Bit { get; set; }
+		///<summary>Assign was refused because where it would file the capture now differs from the plan that was confirmed (the slot was filled,
+		///or the mount changed, meanwhile): nothing was filed, and the window plans again and shows the new target before another confirmation.</summary>
+		public bool IsPlanChanged { get; set; }
 
 		public static CaptureFilingResult Refused(CaptureRecoveryAction action,CaptureFileEntry entry,string error) {
 			return new CaptureFilingResult { Action=action,Entry=entry,Error=error??"" };
@@ -218,8 +224,11 @@ namespace ImagingCapture.Recovery {
 		}
 
 		///<summary>Files entry for its originating patient (see the class). docCategory 0: the plan's. patNumSession: the capture session's patient,
-		///or 0 outside a session (then a journal copy is refused).</summary>
-		public CaptureFilingResult Assign(CaptureFileEntry entry,long docCategory,long patNumSession) {
+		///or 0 outside a session (then a journal copy is refused). planConfirmed: the plan the operator confirmed (PlanAssign, shown with its
+		///target and note); Assign plans again, and refuses with IsPlanChanged when the target, or whether it files an 8-bit copy, is no longer the
+		///one confirmed, so that a 16-bit capture is never filed as its 8-bit copy, nor any capture elsewhere, without the operator having seen it.
+		///Null only where no confirmation was shown.</summary>
+		public CaptureFilingResult Assign(CaptureFileEntry entry,long docCategory,long patNumSession,CaptureAssignPlan planConfirmed=null) {
 			const CaptureRecoveryAction action=CaptureRecoveryAction.Assign;
 			string message;
 			if(!IsAuthorized(EnumPermType.ImageCreate,DateTime.MinValue,out message)) {
@@ -229,6 +238,13 @@ namespace ImagingCapture.Recovery {
 			CaptureAssignPlan plan=PlanAssign(entry,patNumSession,out error);
 			if(plan==null) {
 				return CaptureFilingResult.Refused(action,entry,error);
+			}
+			if(planConfirmed!=null && !IsSamePlan(plan,planConfirmed)) {
+				Log("Assign of "+entry.ImagePath+" refused: it would now go into "+plan.TargetText+(plan.Is8BitCopy ? " as an 8-bit copy" : "")
+					+", and the confirmation said "+planConfirmed.TargetText+(planConfirmed.Is8BitCopy ? " as an 8-bit copy" : "")+".");
+				CaptureFilingResult resultChanged=CaptureFilingResult.Refused(action,entry,CaptureRecoveryText.AssignPlanChanged);
+				resultChanged.IsPlanChanged=true;
+				return resultChanged;
 			}
 			long category=docCategory>0 ? docCategory : plan.DocCategory;
 			if(category<=0) {
@@ -264,6 +280,13 @@ namespace ImagingCapture.Recovery {
 			AddCopyFields(listFields,resultSave);
 			Resolve(entry,CaptureFileDisposition.Assigned,listFields,result);
 			return result;
+		}
+
+		///<summary>plan files the capture for the same patient, into the same target, and as an 8-bit copy or not, as planConfirmed.</summary>
+		private static bool IsSamePlan(CaptureAssignPlan plan,CaptureAssignPlan planConfirmed) {
+			return plan.Is8BitCopy==planConfirmed.Is8BitCopy
+				&& (plan.Patient?.PatNum??0)==(planConfirmed.Patient?.PatNum??0)
+				&& string.Equals(plan.TargetText??"",planConfirmed.TargetText??"",StringComparison.Ordinal);
 		}
 
 		///<summary>The audit words for the 8-bit copy resultSave made, or null when it made none.</summary>
@@ -630,6 +653,7 @@ namespace ImagingCapture.Recovery {
 				MountItem=resultSave.MountItem,
 				IsMountItemCreated=resultSave.IsMountItemCreated,
 				TargetText=targetText,
+				IsCopy8BitOf16Bit=resultSave.Plan!=null && resultSave.Plan.IsCopyOf16Bit,
 			};
 			result.ListWarnings.AddRange(resultSave.ListWarnings);
 			return result;

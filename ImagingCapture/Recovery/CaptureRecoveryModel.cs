@@ -473,7 +473,7 @@ namespace ImagingCapture.Recovery {
 			CaptureFilingResult result;
 			switch(Step) {
 				case CaptureRecoveryStep.ConfirmAssign:
-					result=_filer.Assign(item.Entry,CategoryDefNum,PatNumSession);
+					result=_filer.Assign(item.Entry,CategoryDefNum,PatNumSession,AssignPlan);
 					break;
 				case CaptureRecoveryStep.Reassign:
 					result=_filer.Reassign(item.Entry,ReassignPatient,reason,CategoryDefNum);
@@ -484,6 +484,19 @@ namespace ImagingCapture.Recovery {
 			}
 			if(!result.IsDone) {
 				ErrorText=result.Error;
+				if(result.IsPlanChanged) {
+					//The slot was filled (or the mount changed) since the confirmation was shown: the step shows where the capture goes now, and the
+					//operator confirms again; nothing was filed.
+					string errorPlan;
+					CaptureAssignPlan planNow=_filer.PlanAssign(item.Entry,PatNumSession,out errorPlan);
+					if(planNow==null) {
+						ClearStep();
+						ErrorText=(result.Error+" "+errorPlan).Trim();
+					}
+					else {
+						AssignPlan=planNow;
+					}
+				}
 				NotifyChanged();
 				return false;
 			}
@@ -509,9 +522,9 @@ namespace ImagingCapture.Recovery {
 		private static string GetDoneText(CaptureFilingResult result) {
 			switch(result.Action) {
 				case CaptureRecoveryAction.Assign:
-					return "Assigned: DocNum "+result.Document.DocNum+" in "+result.TargetText+".";
+					return "Assigned: DocNum "+result.Document.DocNum+" in "+result.TargetText+CaptureRecoveryText.GetCopyDoneText(result)+".";
 				case CaptureRecoveryAction.Reassign:
-					return "Reassigned to PatNum "+result.PatNum+": DocNum "+result.Document.DocNum+".";
+					return "Reassigned to PatNum "+result.PatNum+": DocNum "+result.Document.DocNum+CaptureRecoveryText.GetCopyDoneText(result)+".";
 				default:
 					return "Discarded.";
 			}
