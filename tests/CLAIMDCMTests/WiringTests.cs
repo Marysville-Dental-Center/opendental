@@ -94,6 +94,49 @@ namespace CLAIMDCMTests {
 		}
 
 		[TestMethod]
+		public void MountForAClaim_ConvertsADicomCropWithoutSaving() {
+			//M16 integration follow-up: the mount render for a claim converts a pre-21.4 crop of a DICOM item on its in-memory copy only, so
+			//attaching a mount never writes to the DICOM document's row (the claim path's rule, ClaimAttachDicom).
+			string source=TestSupport.ReadSource("OpenDentBusiness","Imaging","MountHelper.cs").Replace("\r\n","\n");
+			string mount=MethodBody(source,"public static Bitmap GetBitmapOfMountFromDb(long mountNum,List<Document> listDocumentsDicomUnreadable){");
+			int idxDicom=mount.IndexOf("ClaimAttachDicom.IsDicomFileName(listDocuments[i].FileName)",StringComparison.Ordinal);
+			int idxOther=mount.IndexOf("if(bitmapArray[i]!=null) {",StringComparison.Ordinal);
+			Assert.IsTrue(idxDicom>=0 && idxOther>idxDicom,"the DICOM branch comes before the other images' load");
+			string dicomBranch=mount.Substring(idxDicom,idxOther-idxDicom);
+			StringAssert.Contains(dicomBranch,"ImageHelper.ConvertCropIfNeeded(listDocuments[i],bitmapArray[i],doSave:false);");
+			Assert.IsFalse(dicomBranch.Contains("ImageHelper.ConvertCropIfNeeded(listDocuments[i],bitmapArray[i]);"),
+				"The DICOM branch never calls the overload that saves the conversion.");
+		}
+
+		[TestMethod]
+		public void EdsClaimAttachmentWindow_RefusesDicomBeforeTheAttachmentIdOrTheClaimIsSaved() {
+			//M16 integration follow-up: a refused attachment never leaves the claim with an AttachmentID and nothing sent.
+			string source=TestSupport.ReadSource("OpenDental","Forms","FormClaimAttachment.cs").Replace("\r\n","\n");
+			string send=MethodBody(source,"private void CreateAndSendAttachments() {");
+			int idxEds=send.IndexOf("else if(_eclaimsCommBridge==EclaimsCommBridge.EDS) {",StringComparison.Ordinal);
+			Assert.IsTrue(idxEds>=0,"the EDS branch");
+			string eds=send.Substring(idxEds);
+			AssertBefore(eds,"ClaimAttachDicom.ThrowIfAnyIsDicom(listImageAttachments);","EDS.GetAttachmentID(_claim)",
+				"The guard runs before EDS is asked for an attachment id.");
+			AssertBefore(eds,"ClaimAttachDicom.ThrowIfAnyIsDicom(listImageAttachments);","Claims.Update(_claim,claimOld)",
+				"The guard runs before the claim is saved with the attachment id.");
+			AssertBefore(eds,"ClaimAttachDicom.ThrowIfAnyIsDicom(listImageAttachments);","_claim.AttachmentID=",
+				"The guard runs before the claim in memory changes.");
+			string ok=MethodBody(source,"private void buttonOK_Click(object sender,EventArgs e) {");
+			StringAssert.Contains(ok,"catch(ODException ex) {","The refusal is shown as a message.");
+		}
+
+		[TestMethod]
+		public void DentalXChangeCreateAttachment_RefusesDicomBeforeTheCall() {
+			//M16 integration follow-up: ClaimConnect.CreateAttachment has no caller today; it gets the same guard as the other DentalXChange sends.
+			string source=TestSupport.ReadSource("OpenDentBusiness","Eclaims","ClaimConnect.cs").Replace("\r\n","\n");
+			string create=MethodBody(source,"public static string CreateAttachment(List<ImageAttachment> listImages,string narrative,Claim claim) {");
+			AssertBefore(create,"ClaimAttachDicom.ThrowIfAnyIsDicom(listImages);","new DentalxchangePartnerService.DeaPartnerService()",
+				"Refused before the service is created.");
+			AssertBefore(create,"ClaimAttachDicom.ThrowIfAnyIsDicom(listImages);","service.sendCompleteAttachment(","Refused before the call.");
+		}
+
+		[TestMethod]
 		public void UnreadableDicom_ShowsOneClearMessage() {
 			string source=TestSupport.ReadSource("OpenDental","Logic","ClaimAttachDicomL.cs").Replace("\r\n","\n");
 			StringAssert.Contains(source,"ClaimAttachDicom.ReadDocument(document,patFolder)");

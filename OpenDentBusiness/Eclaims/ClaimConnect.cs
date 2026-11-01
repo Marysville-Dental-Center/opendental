@@ -435,6 +435,7 @@ namespace OpenDentBusiness.Eclaims {
 		///Dentalxchange's server. Will throw an ODException if the operation is not successful or the claim has invalid fkeys.
 		///Callers of this method should handle this scenario.</summary>
 		public static string CreateAttachment(List<ImageAttachment> listImages,string narrative,Claim claim) {
+			ClaimAttachDicom.ThrowIfAnyIsDicom(listImages);//CLAIM-DCM: never a DICOM file itself, as in SendAttachmentImages and AddAttachmentImage
 			DentalxchangePartnerService.DeaPartnerService service=new DentalxchangePartnerService.DeaPartnerService();
 			service.Url=Introspection.GetOverride(Introspection.IntrospectionEntity.DentalXChangeDeaURL,"https://webservices.dentalxchange.com/dea/DeaPartnerService");
 			if(ODBuild.IsDebug()) {

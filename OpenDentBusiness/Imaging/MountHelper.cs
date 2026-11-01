@@ -156,7 +156,8 @@ namespace OpenDentBusiness {
 						listDocumentsDicomUnreadable.Add(listDocuments[i]);
 						continue;
 					}
-					ImageHelper.ConvertCropIfNeeded(listDocuments[i],bitmapArray[i]);
+					//A pre-21.4 crop is converted for this render only: attaching a mount never writes to the DICOM document's row.
+					ImageHelper.ConvertCropIfNeeded(listDocuments[i],bitmapArray[i],doSave:false);
 					continue;
 				}
 				bitmapArray[i]=LoadBitmap(isSingleDoc:false,listDocuments[i],patFolder);

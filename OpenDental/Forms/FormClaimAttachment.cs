@@ -695,17 +695,21 @@ namespace OpenDental {
 				AddAttachments(listImageAttachmentsToSends);
 			}
 			else if(_eclaimsCommBridge==EclaimsCommBridge.EDS) {
-				//Create/Retrieve the attachment id for this claim. 
+				//The images in the grid, saved below to the claim's attachment id.
+				List<EDS.ImageAttachment> listImageAttachments=gridAttachedImages.GetTags<EDS.ImageAttachment>();
+				//CLAIM-DCM: a DICOM file itself is never sent. Refused before EDS is asked for an attachment id and before the claim is saved, so a
+				//refused attachment never leaves the claim with an AttachmentID and nothing sent (EDS.SaveAttachments checks again).
+				ClaimAttachDicom.ThrowIfAnyIsDicom(listImageAttachments);
+				//Create/Retrieve the attachment id for this claim.
 				EDS.AttachmentIDResponse attachmentIdResponse;
 				attachmentIdResponse=EDS.GetAttachmentID(_claim);
 				Claim claimOld=_claim.Copy();
 				_claim.AttachmentID=attachmentIdResponse.AttachmentID;
-				//Set the claims attached flag to 'Misc' so that the attachmentID will write to the PWK segment 
+				//Set the claims attached flag to 'Misc' so that the attachmentID will write to the PWK segment
 				//when the claim is generated as an 837.
 				_claim.AttachedFlags="Misc";
 				Claims.Update(_claim,claimOld);
 				//Save the images in the grid to said attachment id. This works like a directory in EDS and will be used to keep track of attachments on their side.
-				List<EDS.ImageAttachment> listImageAttachments=gridAttachedImages.GetTags<EDS.ImageAttachment>();
 				EDS.SaveAttachments(attachmentIdResponse.AttachmentID,listImageAttachments,_claim.ClinicNum);
 			}
 		}
