@@ -2223,6 +2223,7 @@
     <Compile Include="Logic\ApptViewItemL.cs" />
     <Compile Include="Logic\AutomationL.cs" />
     <Compile Include="Logic\ClaimL.cs" />
+    <Compile Include="Logic\MedicalEobL.cs" />
     <Compile Include="Logic\ClearinghouseL.cs" />
     <Compile Include="Logic\DefL.cs" />
     <Compile Include="Logic\EmailAttachL.cs" />
@@ -2802,6 +2803,17 @@
     <Compile Include="Forms\FormXConnectValidation.Designer.cs">
       <DependentUpon>FormXConnectValidation.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\FormEdsValidation.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormEdsValidation.Designer.cs">
+      <DependentUpon>FormEdsValidation.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormClaimsSend.Eds.cs">
+      <DependentUpon>FormClaimsSend.cs</DependentUpon>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Logic\EdsValidationL.cs" />
     <Compile Include="Forms\FormPdmpClientCertificate.cs">
       <SubType>Form</SubType>
     </Compile>

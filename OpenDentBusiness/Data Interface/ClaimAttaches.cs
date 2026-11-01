@@ -7,7 +7,7 @@ using System.Reflection;
 
 namespace OpenDentBusiness{
 	///<summary></summary>
-	public class ClaimAttaches{
+	public partial class ClaimAttaches{
 		public static long Insert(ClaimAttach claimAttach) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				claimAttach.ClaimAttachNum=Meth.GetLong(MethodBase.GetCurrentMethod(),claimAttach);

@@ -26,7 +26,7 @@ namespace OpenDentBusiness{
 		public long ClaimFormNum;
 		///<summary>0=no,1=yes.  could later be extended if more alternates required</summary>
 		public bool UseAltCode;
-		///<summary>Fee billed on claim should be the UCR fee for the patient's provider.</summary>
+		///<summary>Fee billed on claim should be the standard provider fee (called the UCR fee before 25.4) for the patient's provider.</summary>
 		public bool ClaimsUseUCR;
 		///<summary>FK to feesched.FeeSchedNum. Not usually used. This fee schedule holds only co-pays(patient portions).  Only used for Capitation or for fixed copay plans.</summary>
 		public long CopayFeeSched;
@@ -165,8 +165,8 @@ namespace OpenDentBusiness{
 		///<summary>1=Do Nothing</summary>
 		[Description("Do Nothing")]
 		DoNothing,
-		///<summary>2=Use UCR Fee</summary>
-		[Description("Use UCR Fee")]
+		///<summary>2=Use Standard Provider Fee. The member keeps its old name for compatibility; only the shown text changed in 25.4.</summary>
+		[Description("Use Standard Provider Fee")]
 		UseUcrFee,
 	}
 

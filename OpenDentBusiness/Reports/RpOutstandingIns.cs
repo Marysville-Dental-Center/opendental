@@ -130,7 +130,7 @@ namespace OpenDentBusiness {
 			if(!PrefC.GetBool(PrefName.ClaimPrimaryReceivedRecalcSecondary)) {
 				return;
 			}
-			listClaims=listClaims.FindAll(x=>x.ClaimType=="P");
+			listClaims=listClaims.FindAll(x=>x.ClaimType!="PreAuth");//Open Dental 26.1: the next insurance after a claim of any ordinal
 			Claims.CalculateAndUpdateSecondariesFromPrimaries(listClaims);
 		}
 
