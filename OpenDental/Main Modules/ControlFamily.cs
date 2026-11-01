@@ -857,7 +857,7 @@ namespace OpenDental{
 					#endregion First
 					#region Gender
 					case "Gender":
-						row.Cells.Add(_patient.Gender.ToString());
+						row.Cells.Add(PatientGenderDisplay.GetText(_patient.Gender));//26.1: the same text as the Chart module's Gender row, blank for Unknown.
 						break;
 					#endregion Gender
 					#region Guardians

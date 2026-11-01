@@ -33,5 +33,17 @@ namespace M2SHELLTests {
 			StringAssert.Contains(caseBody,"PatientGenderDisplay.GetText(Pd.Patient.Gender)");
 			Assert.IsFalse(caseBody.Contains("row.Tag="),"The row keeps a null tag, so a double click opens Edit Patient Information.");
 		}
+
+		[TestMethod]
+		public void FamilyModule_UsesTheSameText() {
+			//The spec: one rendering in both modules. The Family module's 24.3 row showed the raw enum name ("Unknown" for an unknown gender).
+			string source=TestPaths.ReadRepoFile("OpenDental","Main Modules","ControlFamily.cs");
+			int idxCase=source.IndexOf("case \"Gender\":");
+			Assert.IsTrue(idxCase>0,"The Family patient information switch has a Gender case.");
+			int idxBreak=source.IndexOf("break;",idxCase);
+			string caseBody=source.Substring(idxCase,idxBreak-idxCase);
+			StringAssert.Contains(caseBody,"PatientGenderDisplay.GetText(_patient.Gender)");
+			Assert.IsFalse(caseBody.Contains("Gender.ToString()"),"The raw enum name is no longer shown.");
+		}
 	}
 }
