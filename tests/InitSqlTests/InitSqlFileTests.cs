@@ -80,8 +80,15 @@ namespace InitSqlTests {
 
 		[TestMethod]
 		public void File_HasNoNameOfThisPcOrTheSeedsPcs() {
-			List<string> listNames=new List<string> { Environment.MachineName,Environment.UserName,"JORDANS" };
-			foreach(string name in listNames.Where(x => !string.IsNullOrEmpty(x) && x.Length>=4)) {
+			//The PCs of the seed dump's history; the generator removes their rows.
+			Assert.AreEqual(-1,_text.IndexOf("JORDANS",StringComparison.OrdinalIgnoreCase),"The file names a PC of the seed dump.");
+			//This PC and its user, as the generator checks them: a name that the seed dump also holds (a Windows user called "Admin") proves nothing.
+			string seed=File.ReadAllText(ScratchDb.FindRepoFile(RepoPathSeed),new UTF8Encoding(false));
+			List<string> listNames=new List<string> { Environment.MachineName,Environment.UserName };
+			foreach(string name in listNames.Where(x => !string.IsNullOrEmpty(x) && x.Length>=3)) {
+				if(seed.IndexOf(name,StringComparison.OrdinalIgnoreCase)>=0) {
+					continue;
+				}
 				Assert.AreEqual(-1,_text.IndexOf(name,StringComparison.OrdinalIgnoreCase),"The file names '"+name+"'.");
 			}
 			string profile=Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);

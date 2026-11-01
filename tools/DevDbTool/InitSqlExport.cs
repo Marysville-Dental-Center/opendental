@@ -120,8 +120,10 @@ namespace DevDbTool {
 		}
 
 		///<summary>Names of this PC, its user and this run that must not end up in the file. Names shorter than three characters are left out: they
-		///would match ordinary text.</summary>
+		///would match ordinary text. So is a name that the seed dump itself contains (a Windows user called "Admin", a PC called "Office"): finding it
+		///in the file would prove nothing.</summary>
 		private static List<string> GetForbiddenStrings(Options options,string dumpPath) {
+			string seed=File.ReadAllText(dumpPath,new UTF8Encoding(false));
 			List<string> list=new List<string>();
 			void Add(Func<string> funcValue) {
 				string value;
@@ -133,9 +135,14 @@ namespace DevDbTool {
 				}
 				foreach(string part in (value??"").Split(new[] { ", " },StringSplitOptions.RemoveEmptyEntries)) {
 					string trimmed=part.Trim();
-					if(trimmed.Length>=3 && !list.Contains(trimmed,StringComparer.OrdinalIgnoreCase)) {
-						list.Add(trimmed);
+					if(trimmed.Length<3 || list.Contains(trimmed,StringComparer.OrdinalIgnoreCase)) {
+						continue;
 					}
+					if(seed.IndexOf(trimmed,StringComparison.OrdinalIgnoreCase)>=0) {
+						Program.Warn("'"+trimmed+"' is also in the seed dump, so the file is not checked for it.");
+						continue;
+					}
+					list.Add(trimmed);
 				}
 			}
 			Add(() => options.Database);
@@ -148,8 +155,8 @@ namespace DevDbTool {
 			//Paths as the file writes them, with doubled backslashes.
 			Add(() => Environment.GetFolderPath(Environment.SpecialFolder.UserProfile).Replace("\\","\\\\"));
 			Add(() => Path.GetDirectoryName(Path.GetDirectoryName(Path.GetDirectoryName(Path.GetFullPath(dumpPath)))).Replace("\\","\\\\"));
-			//The computers of the seed dump's own history.
-			Add(() => "JORDANS");
+			//The computers of the seed dump's own history, which the scrub removes (computer, computerpref, securitylog).
+			list.Add("JORDANS");
 			return list;
 		}
 
