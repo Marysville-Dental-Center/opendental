@@ -446,6 +446,35 @@ namespace DicomReaderTests {
 		}
 
 		[TestMethod]
+		public void LargeFileInTheSubset_HeaderThenRest_ReadsEverySample() {
+			//About 1.4 MB, so the first 64 KB are only the start: the header check passes and the rest is read after it.
+			int width=1001;
+			int height=701;
+			ushort[] arrayPixels=Ramp(width*height,65535);
+			byte[] bytes=TestFiles.FromCaptureWriter(width,height,arrayPixels,null);
+			Assert.IsTrue(bytes.Length>10*64*1024);
+			string path=Path.Combine(Path.GetTempPath(),"dicomreadertests_large_"+Guid.NewGuid().ToString("N")+".dcm");
+			try {
+				System.IO.File.WriteAllBytes(path,bytes);
+				DicomSubsetReadResult resultFile=DicomSubsetReader.ReadFileResult(path);
+				Assert.AreEqual(DicomSubsetReadStatus.Read,resultFile.Status,resultFile.ToString());
+				CollectionAssert.AreEqual(arrayPixels,resultFile.BitmapDicom.ArrayDataRaw);
+			}
+			finally {
+				System.IO.File.Delete(path);
+			}
+			using(CountingStream stream=new CountingStream(bytes)) {
+				DicomSubsetReadResult resultStream=DicomSubsetReader.ReadStreamResult(stream);
+				Assert.AreEqual(DicomSubsetReadStatus.Read,resultStream.Status,resultStream.ToString());
+				Assert.AreEqual(bytes.Length,stream.CountRead,"Each byte is read once.");
+				CollectionAssert.AreEqual(arrayPixels,resultStream.BitmapDicom.ArrayDataRaw);
+			}
+			using(NonSeekableStream stream=new NonSeekableStream(bytes)) {
+				CollectionAssert.AreEqual(arrayPixels,DicomSubsetReader.ReadStreamResult(stream).BitmapDicom.ArrayDataRaw);
+			}
+		}
+
+		[TestMethod]
 		public void StreamLongerThanTheLimit_IsDeclinedWithoutReading() {
 			using(HugeStream stream=new HugeStream()) {
 				DicomSubsetReadResult result=DicomSubsetReader.ReadStreamResult(stream);
