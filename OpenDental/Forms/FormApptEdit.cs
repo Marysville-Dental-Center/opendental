@@ -1360,14 +1360,15 @@ namespace OpenDental{
 			//If pref is enabled and apptnum not zero, fetch tasks with this appointment attached.
 			//If there is exactly one, show it and return. If there are multiple, show a list of all of the tasks attached. If there are none, carry on adding one.
 			if(_appointment.AptNum!=0 && !PrefC.GetBool(PrefName.TasksForApptAllowMultiple)){
-				List<Task> listTasksToOpen=Tasks.GetMany(_appointment.AptNum);
-				if(listTasksToOpen.Count==1){
+				//25.1: only open tasks count. One open task opens, several show the list, none starts a new task even if completed ones exist.
+				ApptTaskButtonAction apptTaskButtonAction=ApptTasks.GetTaskButtonAction(false,Tasks.GetMany(_appointment.AptNum),out Task taskOpen);
+				if(apptTaskButtonAction==ApptTaskButtonAction.OpenTask){
 					//Exactly one attached. Show it.
-					using FormTaskEdit formTaskEditExisting=new FormTaskEdit(listTasksToOpen.FirstOrDefault());
+					using FormTaskEdit formTaskEditExisting=new FormTaskEdit(taskOpen);
 					formTaskEditExisting.ShowDialog();
 					return;
 				}
-				else if(listTasksToOpen.Count>1){
+				else if(apptTaskButtonAction==ApptTaskButtonAction.ShowList){
 					//Many attached. Show FormTasksForAppt.
 					FormTasksForAppt formTasksForAppt=new FormTasksForAppt(_appointment.AptNum);
 					formTasksForAppt.ShowDialog();
@@ -1403,7 +1404,8 @@ namespace OpenDental{
 				MsgBox.Show(this,"Appointments cannot be scheduled for "+_patient.PatStatus.ToString().ToLower()+" patients.");
 				return;
 			}
-			if(!Security.IsAuthorized(EnumPermType.AppointmentMove)) {
+			//25.3: a planned appointment is copied onto the pinboard, so it needs no Appointment Move.
+			if(ApptPermissionRules.IsMoveNeededToPin(_appointment.AptStatus) && !Security.IsAuthorized(EnumPermType.AppointmentMove)) {
 				return;
 			}
 			if(!UpdateListAndDB()) {

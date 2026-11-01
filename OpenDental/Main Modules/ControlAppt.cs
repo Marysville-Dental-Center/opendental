@@ -2707,6 +2707,7 @@ namespace OpenDental {
 			//asap?
 			toolBarMain.Buttons.Add(new ODToolBarButton(Lan.g(this,"Complete"),EnumIcons.Complete,"","Complete"));
 			toolBarMain.Buttons.Add(new ODToolBarButton(Lan.g(this,"Delete"),EnumIcons.DeleteX,"","Delete"));
+			AddToolBarButtonWaitingRoom();//25.2 Waiting Room window, ControlAppt.WaitingRoom.cs
 			if(Programs.IsEnabled(ProgramName.RapidCall)) {
 				toolBarMain.Buttons.Add(new ODToolBarButton(ODToolBarButtonStyle.Separator));
 				toolBarMain.Buttons.Add(new ODToolBarButton(Lan.g(this,"Rapid Call"),2,"","RapidCall"));

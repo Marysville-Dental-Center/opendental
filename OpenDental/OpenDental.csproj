@@ -4834,6 +4834,19 @@
     <Compile Include="Forms\FormApptViews.cs">
       <SubType>Form</SubType>
     </Compile>
+    <!-- Package B-APPT: Waiting Room window and the Appointments module partial files. -->
+    <Compile Include="Forms\FormWaitingRoom.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormWaitingRoom.Designer.cs">
+      <DependentUpon>FormWaitingRoom.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Main Modules\ControlAppt.WaitingRoom.cs">
+      <DependentUpon>ControlAppt.cs</DependentUpon>
+    </Compile>
+    <Compile Include="UI\Appt\ControlApptPanel.TimeBars.cs">
+      <DependentUpon>ControlApptPanel.cs</DependentUpon>
+    </Compile>
     <Compile Include="Forms\FormAudit.cs">
       <SubType>Form</SubType>
     </Compile>
