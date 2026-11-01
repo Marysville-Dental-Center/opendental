@@ -46,6 +46,16 @@ namespace OpenDental {
 				FillListboxBadDebt(FormDP.ListDefsSelected);
 			}
 		}
+
+		private void butPickSalesTaxProcCode_Click(object sender,EventArgs e) {
+			using FormProcCodes formProcCodes=new FormProcCodes();
+			formProcCodes.IsSelectionMode=true;
+			formProcCodes.ShowDialog();
+			if(formProcCodes.DialogResult!=DialogResult.OK) {
+				return;
+			}
+			textSalesTaxProcCode.Text=ProcedureCodes.GetStringProcCode(formProcCodes.CodeNumSelected);
+		}
 		#endregion Methods - Event Handlers
 
 		#region Methods - Private
@@ -86,6 +96,8 @@ namespace OpenDental {
 			comboSalesTaxDefaultProvider.Items.AddProvsAbbr(Providers.GetDeepCopy(true));
 			comboSalesTaxDefaultProvider.SetSelectedProvNum(PrefC.GetLong(PrefName.SalesTaxDefaultProvider));
 			checkAutomateSalesTax.Checked=PrefC.GetBool(PrefName.SalesTaxDoAutomate);
+			//Code of the procedure that Account > Quick Procs > Sales Tax adds (Open Dental 24.4). Blank hides that menu item.
+			textSalesTaxProcCode.Text=SalesTaxProcs.GetProcCodeSetting();
 			// Fill negative adjustment combo with Enum preference values and set selected option
 			comboNegativeAdjustments.Items.AddEnums<EnumAdjustmentBlockOrWarn>();
 			comboNegativeAdjustments.SetSelected(PrefC.GetInt(PrefName.AdjustmentBlockNegativeExceedingPatPortion));
@@ -101,11 +113,16 @@ namespace OpenDental {
 				MsgBox.Show(this,"Sales Tax percent cannot be a negative number.");
 				return false;
 			}
+			if(!SalesTaxProcs.IsValidSetting(textSalesTaxProcCode.Text)) {
+				MsgBox.Show(this,"Please enter a valid 'Sales Tax procedure code', or leave it blank.");
+				return false;
+			}
 			string strListBadDebtAdjTypes=string.Join(",",listboxBadDebtAdjs.Items.GetAll<Def>().Select(x => x.DefNum));
 			Changed|=Prefs.UpdateDouble(PrefName.SalesTaxPercentage,taxPercent,false);//Do not round this double for Hawaii
 			Changed|=Prefs.UpdateString(PrefName.BadDebtAdjustmentTypes,strListBadDebtAdjTypes);
 			Changed|=Prefs.UpdateLong(PrefName.SalesTaxDefaultProvider,comboSalesTaxDefaultProvider.GetSelectedProvNum());
 			Changed|=Prefs.UpdateBool(PrefName.SalesTaxDoAutomate,checkAutomateSalesTax.Checked);
+			Changed|=SalesTaxProcs.SaveProcCodeSetting(textSalesTaxProcCode.Text);
 			if(comboFinanceChargeAdjType.SelectedIndex!=-1) {
 				Changed|=Prefs.UpdateLong(PrefName.FinanceChargeAdjustmentType,comboFinanceChargeAdjType.GetSelectedDefNum());
 			}

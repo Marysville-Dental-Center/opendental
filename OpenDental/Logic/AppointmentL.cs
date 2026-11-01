@@ -272,7 +272,8 @@ namespace OpenDental{
 		}
 
 		public static bool ValidateApptToPinboard(Appointment appointment) {
-			if(!Security.IsAuthorized(EnumPermType.AppointmentMove)) {
+			//25.3: a planned appointment is copied onto the pinboard, so it needs no Appointment Move.
+			if(ApptPermissionRules.IsMoveNeededToPin(appointment.AptStatus) && !Security.IsAuthorized(EnumPermType.AppointmentMove)) {
 				return false;
 			}
 			if(appointment.AptStatus==ApptStatus.Complete) {
@@ -293,13 +294,12 @@ namespace OpenDental{
 		}
 
 		public static bool ValidateApptUnsched(Appointment appointment) {
-			//separate permissions for complete appts.
-			if(appointment.AptStatus==ApptStatus.Complete && !Security.IsAuthorized(EnumPermType.AppointmentCompleteEdit))
-			{
-				return false;
-			}
-			if(appointment.AptStatus!=ApptStatus.Complete && !Security.IsAuthorized(EnumPermType.AppointmentMove)){
-				return false;
+			//25.3: Appointment Move for any status; a complete appointment also needs Completed Appointment Edit.
+			List<EnumPermType> listPermTypes=ApptPermissionRules.GetPermsToUnschedule(appointment.AptStatus);
+			for(int i=0;i<listPermTypes.Count;i++) {
+				if(!Security.IsAuthorized(listPermTypes[i])) {
+					return false;
+				}
 			}
 			if(PatRestrictionL.IsRestricted(appointment.PatNum,PatRestrict.ApptSchedule)) {
 				return false;

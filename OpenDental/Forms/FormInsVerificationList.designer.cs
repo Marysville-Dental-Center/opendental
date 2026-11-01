@@ -104,6 +104,11 @@ namespace OpenDental{
 			this.textAppointmentScheduledDaysStandard = new OpenDental.ValidNum();
 			this.textPatientEnrollmentDaysStandard = new OpenDental.ValidNum();
 			this.textInsBenefitEligibilityDaysStandard = new OpenDental.ValidNum();
+			this.labelDaysUntilApptMin = new System.Windows.Forms.Label();
+			this.textAppointmentScheduledDaysMinStandard = new OpenDental.ValidNum();
+			this.textAppointmentScheduledDaysMinMedicaid = new OpenDental.ValidNum();
+			this.butCarrierPick = new OpenDental.UI.Button();
+			this.butCarrierClear = new OpenDental.UI.Button();
 			this.tabControl1.SuspendLayout();
 			this.tabVerify.SuspendLayout();
 			this.tabControlVerificationList.SuspendLayout();
@@ -702,6 +707,11 @@ namespace OpenDental{
 			this.groupVerificationFilters.Controls.Add(this.textAppointmentScheduledDaysStandard);
 			this.groupVerificationFilters.Controls.Add(this.textPatientEnrollmentDaysStandard);
 			this.groupVerificationFilters.Controls.Add(this.textInsBenefitEligibilityDaysStandard);
+			this.groupVerificationFilters.Controls.Add(this.labelDaysUntilApptMin);
+			this.groupVerificationFilters.Controls.Add(this.textAppointmentScheduledDaysMinStandard);
+			this.groupVerificationFilters.Controls.Add(this.textAppointmentScheduledDaysMinMedicaid);
+			this.groupVerificationFilters.Controls.Add(this.butCarrierPick);
+			this.groupVerificationFilters.Controls.Add(this.butCarrierClear);
 			this.groupVerificationFilters.Location = new System.Drawing.Point(3, 4);
 			this.groupVerificationFilters.Name = "groupVerificationFilters";
 			this.groupVerificationFilters.Size = new System.Drawing.Size(969, 119);
@@ -728,7 +738,7 @@ namespace OpenDental{
 			// 
 			// textAppointmentScheduledDaysMedicaid
 			// 
-			this.textAppointmentScheduledDaysMedicaid.Location = new System.Drawing.Point(252, 31);
+			this.textAppointmentScheduledDaysMedicaid.Location = new System.Drawing.Point(252, 53);
 			this.textAppointmentScheduledDaysMedicaid.MaxVal = 99999;
 			this.textAppointmentScheduledDaysMedicaid.Name = "textAppointmentScheduledDaysMedicaid";
 			this.textAppointmentScheduledDaysMedicaid.ShowZero = false;
@@ -738,7 +748,7 @@ namespace OpenDental{
 			// 
 			// textPatientEnrollmentDaysMedicaid
 			// 
-			this.textPatientEnrollmentDaysMedicaid.Location = new System.Drawing.Point(252, 77);
+			this.textPatientEnrollmentDaysMedicaid.Location = new System.Drawing.Point(252, 97);
 			this.textPatientEnrollmentDaysMedicaid.MaxVal = 99999;
 			this.textPatientEnrollmentDaysMedicaid.Name = "textPatientEnrollmentDaysMedicaid";
 			this.textPatientEnrollmentDaysMedicaid.ShowZero = false;
@@ -748,7 +758,7 @@ namespace OpenDental{
 			// 
 			// textInsBenefitEligibilityDaysMedicaid
 			// 
-			this.textInsBenefitEligibilityDaysMedicaid.Location = new System.Drawing.Point(252, 54);
+			this.textInsBenefitEligibilityDaysMedicaid.Location = new System.Drawing.Point(252, 75);
 			this.textInsBenefitEligibilityDaysMedicaid.MaxVal = 99999;
 			this.textInsBenefitEligibilityDaysMedicaid.Name = "textInsBenefitEligibilityDaysMedicaid";
 			this.textInsBenefitEligibilityDaysMedicaid.ShowZero = false;
@@ -794,7 +804,7 @@ namespace OpenDental{
 			// 
 			// labelPlanBenefitsNotVerifiedIn
 			// 
-			this.labelPlanBenefitsNotVerifiedIn.Location = new System.Drawing.Point(6, 54);
+			this.labelPlanBenefitsNotVerifiedIn.Location = new System.Drawing.Point(6, 75);
 			this.labelPlanBenefitsNotVerifiedIn.Name = "labelPlanBenefitsNotVerifiedIn";
 			this.labelPlanBenefitsNotVerifiedIn.Size = new System.Drawing.Size(186, 20);
 			this.labelPlanBenefitsNotVerifiedIn.TabIndex = 230;
@@ -831,8 +841,28 @@ namespace OpenDental{
 			// 
 			this.textVerifyCarrier.Location = new System.Drawing.Point(371, 5);
 			this.textVerifyCarrier.Name = "textVerifyCarrier";
-			this.textVerifyCarrier.Size = new System.Drawing.Size(147, 20);
+			this.textVerifyCarrier.ReadOnly = true;
+			this.textVerifyCarrier.Size = new System.Drawing.Size(82, 20);
 			this.textVerifyCarrier.TabIndex = 225;
+			this.textVerifyCarrier.Text = "All";
+			//
+			// butCarrierPick
+			//
+			this.butCarrierPick.Location = new System.Drawing.Point(455, 5);
+			this.butCarrierPick.Name = "butCarrierPick";
+			this.butCarrierPick.Size = new System.Drawing.Size(24, 20);
+			this.butCarrierPick.TabIndex = 242;
+			this.butCarrierPick.Text = "...";
+			this.butCarrierPick.Click += new System.EventHandler(this.butCarrierPick_Click);
+			//
+			// butCarrierClear
+			//
+			this.butCarrierClear.Location = new System.Drawing.Point(481, 5);
+			this.butCarrierClear.Name = "butCarrierClear";
+			this.butCarrierClear.Size = new System.Drawing.Size(37, 20);
+			this.butCarrierClear.TabIndex = 243;
+			this.butCarrierClear.Text = "Clear";
+			this.butCarrierClear.Click += new System.EventHandler(this.butCarrierClear_Click);
 			// 
 			// labelCarrier
 			// 
@@ -873,16 +903,45 @@ namespace OpenDental{
 			// 
 			// labelDaysUntilSchedAppt
 			// 
-			this.labelDaysUntilSchedAppt.Location = new System.Drawing.Point(6, 31);
+			this.labelDaysUntilSchedAppt.Location = new System.Drawing.Point(6, 53);
 			this.labelDaysUntilSchedAppt.Name = "labelDaysUntilSchedAppt";
 			this.labelDaysUntilSchedAppt.Size = new System.Drawing.Size(186, 20);
 			this.labelDaysUntilSchedAppt.TabIndex = 77;
-			this.labelDaysUntilSchedAppt.Text = "Days until scheduled appointment";
+			this.labelDaysUntilSchedAppt.Text = "Max days until appointment";
 			this.labelDaysUntilSchedAppt.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			//
+			// labelDaysUntilApptMin
+			//
+			this.labelDaysUntilApptMin.Location = new System.Drawing.Point(6, 31);
+			this.labelDaysUntilApptMin.Name = "labelDaysUntilApptMin";
+			this.labelDaysUntilApptMin.Size = new System.Drawing.Size(186, 20);
+			this.labelDaysUntilApptMin.TabIndex = 241;
+			this.labelDaysUntilApptMin.Text = "Min days until appointment";
+			this.labelDaysUntilApptMin.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			//
+			// textAppointmentScheduledDaysMinStandard
+			//
+			this.textAppointmentScheduledDaysMinStandard.Location = new System.Drawing.Point(195, 31);
+			this.textAppointmentScheduledDaysMinStandard.MaxVal = 99999;
+			this.textAppointmentScheduledDaysMinStandard.Name = "textAppointmentScheduledDaysMinStandard";
+			this.textAppointmentScheduledDaysMinStandard.ShowZero = false;
+			this.textAppointmentScheduledDaysMinStandard.Size = new System.Drawing.Size(40, 20);
+			this.textAppointmentScheduledDaysMinStandard.TabIndex = 76;
+			this.textAppointmentScheduledDaysMinStandard.Text = "0";
+			//
+			// textAppointmentScheduledDaysMinMedicaid
+			//
+			this.textAppointmentScheduledDaysMinMedicaid.Location = new System.Drawing.Point(252, 31);
+			this.textAppointmentScheduledDaysMinMedicaid.MaxVal = 99999;
+			this.textAppointmentScheduledDaysMinMedicaid.Name = "textAppointmentScheduledDaysMinMedicaid";
+			this.textAppointmentScheduledDaysMinMedicaid.ShowZero = false;
+			this.textAppointmentScheduledDaysMinMedicaid.Size = new System.Drawing.Size(40, 20);
+			this.textAppointmentScheduledDaysMinMedicaid.TabIndex = 240;
+			this.textAppointmentScheduledDaysMinMedicaid.Text = "0";
 			// 
 			// labelDaysSincePatEligibility
 			// 
-			this.labelDaysSincePatEligibility.Location = new System.Drawing.Point(6, 77);
+			this.labelDaysSincePatEligibility.Location = new System.Drawing.Point(6, 97);
 			this.labelDaysSincePatEligibility.Name = "labelDaysSincePatEligibility";
 			this.labelDaysSincePatEligibility.Size = new System.Drawing.Size(186, 20);
 			this.labelDaysSincePatEligibility.TabIndex = 88;
@@ -891,7 +950,7 @@ namespace OpenDental{
 			// 
 			// textAppointmentScheduledDaysStandard
 			// 
-			this.textAppointmentScheduledDaysStandard.Location = new System.Drawing.Point(195, 31);
+			this.textAppointmentScheduledDaysStandard.Location = new System.Drawing.Point(195, 53);
 			this.textAppointmentScheduledDaysStandard.MaxVal = 99999;
 			this.textAppointmentScheduledDaysStandard.Name = "textAppointmentScheduledDaysStandard";
 			this.textAppointmentScheduledDaysStandard.ShowZero = false;
@@ -901,7 +960,7 @@ namespace OpenDental{
 			// 
 			// textPatientEnrollmentDaysStandard
 			// 
-			this.textPatientEnrollmentDaysStandard.Location = new System.Drawing.Point(195, 77);
+			this.textPatientEnrollmentDaysStandard.Location = new System.Drawing.Point(195, 97);
 			this.textPatientEnrollmentDaysStandard.MaxVal = 99999;
 			this.textPatientEnrollmentDaysStandard.Name = "textPatientEnrollmentDaysStandard";
 			this.textPatientEnrollmentDaysStandard.ShowZero = false;
@@ -911,7 +970,7 @@ namespace OpenDental{
 			// 
 			// textInsBenefitEligibilityDaysStandard
 			// 
-			this.textInsBenefitEligibilityDaysStandard.Location = new System.Drawing.Point(195, 54);
+			this.textInsBenefitEligibilityDaysStandard.Location = new System.Drawing.Point(195, 75);
 			this.textInsBenefitEligibilityDaysStandard.MaxVal = 99999;
 			this.textInsBenefitEligibilityDaysStandard.Name = "textInsBenefitEligibilityDaysStandard";
 			this.textInsBenefitEligibilityDaysStandard.ShowZero = false;
@@ -1032,5 +1091,10 @@ namespace OpenDental{
 		private ValidNum textAppointmentScheduledDaysMedicaid;
 		private ValidNum textPatientEnrollmentDaysMedicaid;
 		private ValidNum textInsBenefitEligibilityDaysMedicaid;
+		private System.Windows.Forms.Label labelDaysUntilApptMin;
+		private ValidNum textAppointmentScheduledDaysMinStandard;
+		private ValidNum textAppointmentScheduledDaysMinMedicaid;
+		private UI.Button butCarrierPick;
+		private UI.Button butCarrierClear;
 	}
 }

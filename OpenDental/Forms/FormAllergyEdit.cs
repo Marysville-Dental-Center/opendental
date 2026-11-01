@@ -12,6 +12,8 @@ namespace OpenDental {
 		public Allergy AllergyCur;
 		private List<AllergyDef> _listAllergyDefs;
 		private Snomed _snomedReaction;
+		///<summary>What the patient typed for an eForm "Other" allergy (its saved Reaction).  Null unless the saved allergy is an "Other" one.</summary>
+		private string _textOtherEntered;
 
 		public FormAllergyEdit() {
 			InitializeComponent();
@@ -55,6 +57,39 @@ namespace OpenDental {
 				butOK.Enabled=false;
 				butDelete.Enabled=false;
 			}
+			//Open Dental 25.2: an eForm "Other" allergy shows what the patient typed and can be converted to a listed allergy.
+			if(OtherEntryConverts.IsOtherAllergy(AllergyCur)) {
+				_textOtherEntered=AllergyCur.Reaction??"";
+				labelOtherEntered.Text=OtherEntryConverts.GetPatientEnteredText(_textOtherEntered);
+				labelOtherEntered.Visible=true;
+				butConvertOther.Visible=true;
+				butConvertOther.Enabled=butOK.Enabled;
+				checkKeepOtherText.Visible=true;
+			}
+		}
+
+		///<summary>Converts this "Other" allergy to a listed one (OtherEntryConvertL).  Other edits made in this window are saved with it.</summary>
+		private void butConvertOther_Click(object sender,EventArgs e) {
+			if(textDate.Text!="") {
+				try {
+					DateTime.Parse(textDate.Text);
+				}
+				catch {
+					MessageBox.Show("Please input a valid date.");
+					return;
+				}
+			}
+			//The definition and the reaction are set by the conversion; the other fields come from this window, as Save would set them.
+			Allergy allergy=AllergyCur.Copy();
+			allergy.DateAdverseReaction=(textDate.Text=="" ? DateTime.MinValue : DateTime.Parse(textDate.Text));
+			allergy.Reaction=textReaction.Text;
+			allergy.SnomedReaction=(_snomedReaction==null ? "" : _snomedReaction.SnomedCode);
+			allergy.StatusIsActive=checkActive.Checked;
+			if(!OtherEntryConvertL.ConvertOtherAllergy(allergy,_textOtherEntered,checkKeepOtherText.Checked)) {
+				return;
+			}
+			AllergyCur=allergy;
+			DialogResult=DialogResult.OK;
 		}
 
 		private void butSnomedReactionSelect_Click(object sender,EventArgs e) {

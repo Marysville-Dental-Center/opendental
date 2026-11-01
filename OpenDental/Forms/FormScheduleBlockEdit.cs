@@ -31,13 +31,14 @@ namespace OpenDental{
 			listType.Items.Clear();
 			//This list will be null if there isn't a passed in list.  We pass in lists if we want to show a special modified list.
 			if(_listDefsBlockoutCategories==null) {
-				//25.1: only the types this user may manage. Unflagged types need Blockouts, NS/DC-flagged types need BlockoutsFlagged.
-				_listDefsBlockoutCategories=Schedules.FilterBlockoutTypesForUser(Defs.GetDefsForCategory(DefCat.BlockoutTypes,true),
-					Security.IsAuthorized(EnumPermType.Blockouts,true),Security.IsAuthorized(EnumPermType.BlockoutsFlagged,true));
+				//25.1: only the types this user may manage. NS/DC-flagged types need BlockoutsFlagged.
+				//25.4: unflagged types need Blockout Add for a new blockout and Blockout Edit for an existing one.
+				_listDefsBlockoutCategories=BlockoutPerms.ForCurrentUser().FilterTypes(Defs.GetDefsForCategory(DefCat.BlockoutTypes,true),
+					IsNew ? BlockoutAction.Create : BlockoutAction.Edit);
 			}
 			_blockoutTypeOriginal=IsNew ? 0 : _schedule.BlockoutType;
-			//25.1: Delete follows the permission for the blockout's own type.
-			if(!IsNew && !Security.IsAuthorized(Schedules.GetBlockoutPermType(_schedule.BlockoutType),true)) {
+			//25.1: Delete follows the permission for the blockout's own type (25.4: Blockout Delete for an unflagged type).
+			if(!IsNew && !Security.IsAuthorized(BlockoutPerms.GetPermType(BlockoutAction.Delete,_schedule.BlockoutType),true)) {
 				butDelete.Enabled=false;
 			}
 			for(int i=0;i<_listDefsBlockoutCategories.Count;i++){
@@ -85,7 +86,7 @@ namespace OpenDental{
 		}
 
 		private void butDelete_Click(object sender, System.EventArgs e) {
-			if(!IsNew && !Security.IsAuthorized(Schedules.GetBlockoutPermType(_blockoutTypeOriginal))) {//25.1
+			if(!IsNew && !Security.IsAuthorized(BlockoutPerms.GetPermType(BlockoutAction.Delete,_blockoutTypeOriginal))) {//25.1; 25.4: Blockout Delete.
 				return;
 			}
 			if(MessageBox.Show(Lan.g(this,"Delete Blockout?"),"",MessageBoxButtons.OKCancel)!=DialogResult.OK){
@@ -116,10 +117,12 @@ namespace OpenDental{
 			}
 			long blockoutTypeNew=_listDefsBlockoutCategories[listType.SelectedIndex].DefNum;
 			//25.1: the new type's permission, and on an edit also the original type's permission (changing between kinds needs both).
-			if(!Security.IsAuthorized(Schedules.GetBlockoutPermType(blockoutTypeNew))) {
+			//25.4: for an unflagged type that is Blockout Add on a new blockout and Blockout Edit on an existing one.
+			BlockoutAction blockoutAction=IsNew ? BlockoutAction.Create : BlockoutAction.Edit;
+			if(!Security.IsAuthorized(BlockoutPerms.GetPermType(blockoutAction,blockoutTypeNew))) {
 				return;
 			}
-			if(!IsNew && !Security.IsAuthorized(Schedules.GetBlockoutPermType(_blockoutTypeOriginal))) {
+			if(!IsNew && !Security.IsAuthorized(BlockoutPerms.GetPermType(BlockoutAction.Edit,_blockoutTypeOriginal))) {
 				return;
 			}
 			_schedule.Note=textNote.Text;
@@ -132,6 +135,10 @@ namespace OpenDental{
 			if(Schedules.Overlaps(_schedule,out listOverlapSchedules)) {
 				if(!PrefC.GetBool(PrefName.ReplaceExistingBlockout) || !Schedules.IsAppointmentBlocking(_schedule.BlockoutType)) {
 					MsgBox.Show(this,"Blockouts not allowed to overlap.");
+					return;
+				}
+				//25.4: replacing deletes the overlapping blockouts, which needs the delete permission of each one's kind.
+				if(!BlockoutPerms.GetPermTypesToDelete(listOverlapSchedules).All(x => Security.IsAuthorized(x))) {
 					return;
 				}
 				if(!MsgBox.Show(this,MsgBoxButtons.OKCancel,"Creating this blockout will cause blockouts to overlap. Continuing will delete the existing "

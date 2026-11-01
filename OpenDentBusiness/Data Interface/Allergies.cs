@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using System.Reflection;
 using System.Text;
 
@@ -168,6 +169,32 @@ namespace OpenDentBusiness{
 				command+=" AND StatusIsActive = "+POut.Bool(onlyActive);
 			}
 			Db.NonQ(command);
+		}
+
+		///<summary>Patient allergies whose AllergyDefNum points to no allergy definition, AllergyDefNum 0 included. Used by the database
+		///maintenance check AllergyWithInvalidAllergyDef.</summary>
+		public static List<Allergy> GetWithInvalidAllergyDef() {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetObject<List<Allergy>>(MethodBase.GetCurrentMethod());
+			}
+			string command="SELECT allergy.* FROM allergy "
+				+"WHERE NOT EXISTS(SELECT 1 FROM allergydef WHERE allergydef.AllergyDefNum=allergy.AllergyDefNum) "
+				+"ORDER BY allergy.AllergyNum";
+			return Crud.AllergyCrud.SelectMany(command);
+		}
+
+		///<summary>Points the given patient allergies at one allergy definition. Changes nothing else in the rows (DateTStamp updates itself).
+		///Returns the number of rows changed.</summary>
+		public static long SetAllergyDefNum(List<long> listAllergyNums,long allergyDefNum) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetLong(MethodBase.GetCurrentMethod(),listAllergyNums,allergyDefNum);
+			}
+			if(listAllergyNums==null || listAllergyNums.Count==0) {
+				return 0;
+			}
+			string command="UPDATE allergy SET AllergyDefNum="+POut.Long(allergyDefNum)+" "
+				+"WHERE AllergyNum IN("+string.Join(",",listAllergyNums.Select(x => POut.Long(x)))+")";
+			return Db.NonQ(command);
 		}
 	}
 }

@@ -2566,12 +2566,12 @@ namespace OpenDental{
 				for(int j=0;j<_listPatPlans.Count();j++) {
 					List<ClaimProc> listClaimProcsForPlan=listClaimProcsForEoAndCProcs.FindAll(x=>x.InsSubNum==_listPatPlans[j].InsSubNum && x.Status.In(ClaimProcStatus.InsHist,ClaimProcStatus.Received));
 					List<Procedure> listProceduresForPlan=listProceduresEoAndC.FindAll(x=>listClaimProcsForPlan.Any(y=>y.ProcNum==x.ProcNum));
-					Procedure procedure=InsHistCategories.GetMostRecentProc(listProceduresForPlan,listInsHistCategories[i]);
-					if(procedure==null) {
+					string datesText=InsHistDates.GetDatesText(listProceduresForPlan,listInsHistCategories[i]);//Both dates (25.1)
+					if(datesText=="") {
 						row.Cells.Add(new GridCell(Lan.g("TableCoverage","No History")));
 						continue;
 					}
-					row.Cells.Add(new GridCell(procedure.ProcDate.ToShortDateString()));
+					row.Cells.Add(new GridCell(datesText));
 				}
 				row.Tag=listInsHistCategories[i].Key;//Not empty: a double-click opens Insurance History.
 				gridIns.ListGridRows.Add(row);

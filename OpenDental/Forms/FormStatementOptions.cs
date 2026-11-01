@@ -701,7 +701,7 @@ namespace OpenDental{
 			//Process.Start(filePathAndName);
 			EmailMessage emailMessage=Statements.GetEmailMessageForStatement(StatementCur,patient);
 			EmailAttach emailAttach=new EmailAttach();
-			emailAttach.DisplayedFileName="Statement.pdf";
+			emailAttach.DisplayedFileName=Statements.GetEmailPdfDisplayName(patient);//25.3: "Statement_LastName.pdf"
 			emailAttach.ActualFileName=fileName;
 			emailMessage.Attachments.Add(emailAttach);
 			if(checkExportCSV.Checked) {

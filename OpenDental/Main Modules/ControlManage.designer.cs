@@ -69,6 +69,8 @@ namespace OpenDental {
 			this.groupBox1 = new OpenDental.UI.GroupBox();
 			this.textFilterName = new System.Windows.Forms.TextBox();
 			this.labelFilterName = new System.Windows.Forms.Label();
+			this.comboReportsTo = new OpenDental.UI.ComboBox();
+			this.labelReportsTo = new System.Windows.Forms.Label();
 			this.butViewSched = new OpenDental.UI.Button();
 			this.butManage = new OpenDental.UI.Button();
 			this.butBreaks = new OpenDental.UI.Button();
@@ -456,6 +458,8 @@ namespace OpenDental {
 			this.groupBox1.BackColor = System.Drawing.Color.White;
 			this.groupBox1.Controls.Add(this.textFilterName);
 			this.groupBox1.Controls.Add(this.labelFilterName);
+			this.groupBox1.Controls.Add(this.comboReportsTo);
+			this.groupBox1.Controls.Add(this.labelReportsTo);
 			this.groupBox1.Controls.Add(this.butViewSched);
 			this.groupBox1.Controls.Add(this.butManage);
 			this.groupBox1.Controls.Add(this.butBreaks);
@@ -489,6 +493,23 @@ namespace OpenDental {
 			this.labelFilterName.Text = "Filter by Name";
 			this.labelFilterName.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
 			// 
+			// comboReportsTo
+			// 
+			this.comboReportsTo.Location = new System.Drawing.Point(224, 37);
+			this.comboReportsTo.Name = "comboReportsTo";
+			this.comboReportsTo.Size = new System.Drawing.Size(100, 21);
+			this.comboReportsTo.TabIndex = 28;
+			this.comboReportsTo.SelectionChangeCommitted += new System.EventHandler(this.comboReportsTo_SelectionChangeCommitted);
+			// 
+			// labelReportsTo
+			// 
+			this.labelReportsTo.Location = new System.Drawing.Point(130, 37);
+			this.labelReportsTo.Name = "labelReportsTo";
+			this.labelReportsTo.Size = new System.Drawing.Size(93, 20);
+			this.labelReportsTo.TabIndex = 27;
+			this.labelReportsTo.Text = "Reports To";
+			this.labelReportsTo.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			// 
 			// butViewSched
 			// 
 			this.butViewSched.Location = new System.Drawing.Point(340, 94);
@@ -518,10 +539,10 @@ namespace OpenDental {
 			// 
 			// gridEmp
 			// 
-			this.gridEmp.Location = new System.Drawing.Point(21, 40);
+			this.gridEmp.Location = new System.Drawing.Point(21, 62);
 			this.gridEmp.Name = "gridEmp";
 			this.gridEmp.SelectionMode = OpenDental.UI.GridSelectionMode.MultiExtended;
-			this.gridEmp.Size = new System.Drawing.Size(303, 220);
+			this.gridEmp.Size = new System.Drawing.Size(303, 198);
 			this.gridEmp.TabIndex = 21;
 			this.gridEmp.Title = "Employee";
 			this.gridEmp.TranslationName = "TableEmpClock";
@@ -670,6 +691,8 @@ namespace OpenDental {
 		private System.ComponentModel.IContainer components;
 		private Label labelFilterName;
 		private System.Windows.Forms.TextBox textFilterName;
+		private OpenDental.UI.ComboBox comboReportsTo;
+		private Label labelReportsTo;
 		private System.Windows.Forms.Timer timerUpdateTime;
 		#endregion Fields - Private - Windows Forms
 		private UI.Button butDaycare;

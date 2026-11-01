@@ -570,7 +570,8 @@ namespace OpenDentBusiness {
 			public string Key;
 		}
 
-		[DbmMethodAttr(HasBreakDown=true,HasExplain=true)]
+		///<summary>Not a Check/Fix method since Open Dental 25.3 (also 25.2.41): run on purpose from the Tools tab ("Notes White Space"), in Fix mode.
+		///The office's databasemaintenance row for this name may remain and is ignored.</summary>
 		public static string NotesWithTooMuchWhiteSpace(bool verbose,DbmMode dbmMode) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetString(MethodBase.GetCurrentMethod(),verbose,dbmMode);
@@ -11732,7 +11733,7 @@ HAVING cnt>1";
 				EmailMessage emailMessage=EmailMessages.GetOne(PIn.Long(tableEmailMessageNums.Rows[i]["EmailMessageNum"].ToString()));
 				EmailMessage emailMessageOld=emailMessage.Copy();
 				//Try and find the corresponding email address for this email.
-				EmailAddress emailAddress=listEmailAddresses.FirstOrDefault(x => x.EmailUsername.ToLower()==emailMessage.RecipientAddress.ToLower());
+				EmailAddress emailAddress=FindEmailAddressForRawEmail(listEmailAddresses,emailMessage.RecipientAddress);
 				if(emailAddress==null) {
 					countError++;
 					continue;
@@ -11756,6 +11757,7 @@ HAVING cnt>1";
 					emailMessageNewCopy.BodyText=inMsgNew.Message.Body.Text;
 					emailMessageOldCopy.Subject=inMsgOld.Message.SubjectValue;
 					emailMessageOldCopy.BodyText=inMsgOld.Message.Body.Text;
+					NormalizeRawEmailWhiteSpace(emailMessageNewCopy,emailMessageOldCopy);//Unicode white space (24.4).
 					if(Crud.EmailMessageCrud.UpdateComparison(emailMessageNewCopy,emailMessageOldCopy)) {
 						countCleaned++;
 					}

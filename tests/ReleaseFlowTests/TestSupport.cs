@@ -1,7 +1,10 @@
 // Shared helpers: repository paths and synthetic scratch databases on the local MariaDB.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
+using System.Text.RegularExpressions;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
@@ -34,12 +37,63 @@ namespace ReleaseFlowTests {
 		}
 	}
 
-	///<summary>Scratch databases with synthetic data. Every database name starts with "releaseflow_" and is dropped and recreated per scenario.
+	///<summary>Scratch databases with synthetic data. Every database name is a per-run name from RunName (releaseflow_ plus this run's id), dropped
+	///and recreated per scenario and dropped when the test class ends.
 	///Skipped (inconclusive) when no server answers at 127.0.0.1:3306 as root with a blank password, or when RELEASEFLOW_TEST_DB=skip.</summary>
 	internal static class ScratchDb {
 		public const string CONNECTION_SERVER="Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=3;Allow User Variables=true";
+		public const string PREFIX="releaseflow_";
+		///<summary>Scratch databases of an earlier run that started this long ago are dropped by later runs. No run takes nearly this long.</summary>
+		private static readonly TimeSpan _timeSpanStale=TimeSpan.FromHours(12);
+		///<summary>Unique to this test run: the start time (UTC, yyMMddHHmmss), the process id and a random number. Several runs share the one local
+		///MariaDB server (other worktrees and test runners at the same time), so a fixed name like releaseflow_adoption let one run drop or recreate
+		///the database another run was still testing ("database exists", "Unknown database").</summary>
+		private static readonly string _runId=DateTime.UtcNow.ToString("yyMMddHHmmss")+"_"+System.Diagnostics.Process.GetCurrentProcess().Id+"_"
+			+new Random().Next(1000,10000);
+		///<summary>The per-run naming scheme of RunName; group 1 is the start time.</summary>
+		private static readonly Regex _regexRunName=new Regex("^"+PREFIX+@"(\d{12})_\d+_\d+_[a-z0-9_]+$");
+		private static bool _isStaleDropDone;
 		private static bool? _isAvailable;
 		private static string _skipReason;
+
+		///<summary>This run's scratch database for the purpose, like releaseflow_261025101500_1234_5678_adoption. At most 64 characters, the MariaDB
+		///limit.</summary>
+		public static string RunName(string purpose) {
+			string name=PREFIX+_runId+"_"+purpose;
+			if(name.Length>64) {
+				throw new ArgumentException("Scratch database name too long: "+name);
+			}
+			return name;
+		}
+
+		///<summary>Drops the scratch databases of earlier runs that were left behind (a crash or a stopped run), once they are older than
+		///_timeSpanStale. Never a database of a run that may still be going, and never a name outside the per-run scheme, such as the fixed names older
+		///versions of these tests used: an older checkout may still be testing in one.</summary>
+		public static void DropStaleRunDatabases() {
+			List<string> listNames=new List<string>();
+			using(MySqlConnection connection=Open(null))
+			using(MySqlCommand mySqlCommand=new MySqlCommand("SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME LIKE 'releaseflow\\_%'",
+				connection))
+			using(MySqlDataReader reader=mySqlCommand.ExecuteReader())
+			{
+				while(reader.Read()) {
+					listNames.Add(reader.GetString(0));
+				}
+			}
+			foreach(string name in listNames) {
+				Match match=_regexRunName.Match(name);
+				DateTime dateStarted;
+				if(!match.Success || !DateTime.TryParseExact(match.Groups[1].Value,"yyMMddHHmmss",CultureInfo.InvariantCulture,
+					DateTimeStyles.AssumeUniversal|DateTimeStyles.AdjustToUniversal,out dateStarted))
+				{
+					continue;
+				}
+				if(DateTime.UtcNow-dateStarted<_timeSpanStale) {
+					continue;
+				}
+				Drop(name);
+			}
+		}
 
 		public static void RequireServer() {
 			if(_isAvailable==null) {
@@ -75,6 +129,11 @@ namespace ReleaseFlowTests {
 		///otherwise a 24.3-style patient table without it.</summary>
 		public static void Create(string dbName,bool is253) {
 			RequireServer();
+			RequireRunName(dbName);
+			if(!_isStaleDropDone) {
+				_isStaleDropDone=true;
+				DropStaleRunDatabases();
+			}
 			Exec(null,"DROP DATABASE IF EXISTS "+dbName);
 			Exec(null,"CREATE DATABASE "+dbName+" CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci");
 			Exec(dbName,"CREATE TABLE preference (PrefName varchar(255) NOT NULL DEFAULT '',ValueString text NOT NULL,PrefNum bigint(20) NOT NULL AUTO_INCREMENT,"
@@ -104,9 +163,26 @@ namespace ReleaseFlowTests {
 			new DataConnection().SetDb("127.0.0.1",dbName,"root","","root","",DatabaseType.MySql,true);
 		}
 
+		///<summary>Throws unless the name is one this run made with RunName, so a test never recreates a database another run may be using.</summary>
+		public static void RequireRunName(string dbName) {
+			if(dbName==null || !dbName.StartsWith(PREFIX+_runId+"_")) {
+				throw new ArgumentException("Scratch databases must be named with ScratchDb.RunName: "+dbName);
+			}
+		}
+
+		///<summary>True if the name follows the per-run naming scheme of RunName (this run's or an earlier run's).</summary>
+		public static bool IsRunName(string dbName) {
+			return dbName!=null && _regexRunName.IsMatch(dbName);
+		}
+
+		///<summary>Drops a database of the per-run naming scheme (this run's, or a stale one of an earlier run). Ignores any other name, such as the
+		///fixed names older versions of these tests used.</summary>
 		public static void Drop(string dbName) {
+			if(!IsRunName(dbName)) {
+				return;
+			}
 			try {
-				Exec(null,"DROP DATABASE IF EXISTS "+dbName);
+				Exec(null,"DROP DATABASE IF EXISTS `"+dbName+"`");
 			}
 			catch(Exception) {
 				//Leaving a scratch database behind is harmless; the next run drops it.

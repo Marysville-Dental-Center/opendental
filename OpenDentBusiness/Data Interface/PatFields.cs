@@ -115,6 +115,7 @@ namespace OpenDentBusiness {
 			string command="UPDATE patfield SET FieldName='"+POut.String(patFieldNameNew)+"' "
 				+"WHERE FieldName='"+POut.String(patFieldNameOld)+"'";
 			Db.NonQ(command);
+			EFormPatFields.UpdateDbLinksForRename(patFieldNameNew,patFieldNameOld);//Open Dental 25.4: eForm fields linked to this patient field follow the rename
 		}
 
 		///<summary>For all patients in the entire db when a PatField's PickListItem value changes.</summary>

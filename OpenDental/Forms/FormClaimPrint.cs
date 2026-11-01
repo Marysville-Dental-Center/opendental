@@ -402,7 +402,11 @@ namespace OpenDental{
 			//Box 18 hospitalization dates (Open Dental 24.4). The EHR record is read only when the claim form prints them.
 			DateTime dateHospitalizationFrom=DateTime.MinValue;
 			DateTime dateHospitalizationTo=DateTime.MinValue;
-			if(ClaimFormCur.Items.Any(x => x.FieldName.In("HospitalizationDateFrom","HospitalizationDateTo"))
+			if(ClaimFormCur==null) {//A claim printed from the claim or the send list: the claim's or the plan's form, as below. Box 18 needs it here.
+				ClaimFormCur=ClaimForms.GetClaimForm(_claim.ClaimForm>0 ? _claim.ClaimForm : _insPlan.ClaimFormNum);
+			}
+			if(ClaimFormCur!=null && ClaimFormCur.Items!=null
+				&& ClaimFormCur.Items.Any(x => x.FieldName.In("HospitalizationDateFrom","HospitalizationDateTo"))
 				&& _claim.MedType==EnumClaimMedType.Medical)
 			{
 				EhrPatients.GetHospitalizationDates(_claim,patient,EhrPatients.GetOne(patient.PatNum),out dateHospitalizationFrom,out dateHospitalizationTo);
@@ -4538,7 +4542,7 @@ namespace OpenDental{
 				case "System":
 					return "JP";
 				case "Code":
-					return _listClaimProcs[procIndex].CodeSent;
+					return ProcCodesOther.GetCodeForClaim(_listClaimProcs[procIndex].CodeSent,procedureCode);//RAMQ codes print without their trailing R.
 				case "Fee":
 					decimal totalProcFees=(decimal)_listClaimProcs[procIndex].FeeBilled;
 					if(CultureInfo.CurrentCulture.Name.EndsWith("CA")) {//Canadian. en-CA or fr-CA

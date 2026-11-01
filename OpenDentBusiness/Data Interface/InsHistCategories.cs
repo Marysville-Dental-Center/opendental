@@ -268,9 +268,10 @@ namespace OpenDentBusiness {
 		///recalculated. A date that is not newer than a completed procedure changes nothing.
 		///- An Existing Other procedure on another day: its date and its claimprocs' dates move (claimprocs of this plan become InsHist), or it gets an
 		///InsHist claimproc when it has none, then the recall is recalculated (INFERRED: 24.3 only did this for new procedures).
-		///A new procedure needs a valid HistProcCode; without one nothing is saved and InvalidCode is returned.</summary>
+		///A new procedure needs a valid HistProcCode; without one nothing is saved and InvalidCode is returned. doSynchRecalls false leaves the recall to
+		///the caller, which synchs it once after several dates (InsHistDates.ApplyActions).</summary>
 		public static InsHistSaveResult InsertOrUpdateProcedure(Patient patient,InsHistCategory insHistCategory,DateTime date,long planNum,long insSubNum,
-			Procedure procedure,List<ClaimProc> listClaimProcsForProc)
+			Procedure procedure,List<ClaimProc> listClaimProcsForProc,bool doSynchRecalls=true)
 		{
 			Meth.NoCheckMiddleTierRole();
 			listClaimProcsForProc=listClaimProcsForProc??new List<ClaimProc>();
@@ -281,7 +282,9 @@ namespace OpenDentBusiness {
 				Procedure procedureNew=CreateProcedure(patient,date,insHistCategory);
 				Procedures.Insert(procedureNew);
 				ClaimProcs.InsertClaimProcForInsHist(procedureNew,planNum,insSubNum);
-				Recalls.Synch(patient.PatNum);
+				if(doSynchRecalls) {
+					Recalls.Synch(patient.PatNum);
+				}
 				return InsHistSaveResult.Inserted;
 			}
 			if(procedure.ProcStatus!=ProcStat.EO || date.Date==procedure.ProcDate.Date) {
@@ -296,7 +299,9 @@ namespace OpenDentBusiness {
 			else {
 				ClaimProcs.InsertClaimProcForInsHist(procedure,planNum,insSubNum);
 			}
-			Recalls.Synch(patient.PatNum);
+			if(doSynchRecalls) {
+				Recalls.Synch(patient.PatNum);
+			}
 			return InsHistSaveResult.Updated;
 		}
 		#endregion Entering history

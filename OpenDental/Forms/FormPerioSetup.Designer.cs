@@ -36,6 +36,7 @@ namespace OpenDental {
 			this.label5 = new System.Windows.Forms.Label();
 			this.butAll323 = new OpenDental.UI.Button();
 			this.butSave = new OpenDental.UI.Button();
+			this.checkUseRecessionTerm = new OpenDental.UI.CheckBox();
 			this.SuspendLayout();
 			// 
 			// label1
@@ -121,7 +122,7 @@ namespace OpenDental {
 			// butAll323
 			// 
 			this.butAll323.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.butAll323.Location = new System.Drawing.Point(12, 201);
+			this.butAll323.Location = new System.Drawing.Point(12, 231);
 			this.butAll323.Name = "butAll323";
 			this.butAll323.Size = new System.Drawing.Size(81, 24);
 			this.butAll323.TabIndex = 23;
@@ -131,17 +132,26 @@ namespace OpenDental {
 			// butSave
 			// 
 			this.butSave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.butSave.Location = new System.Drawing.Point(467, 201);
+			this.butSave.Location = new System.Drawing.Point(467, 231);
 			this.butSave.Name = "butSave";
 			this.butSave.Size = new System.Drawing.Size(75, 24);
 			this.butSave.TabIndex = 5;
 			this.butSave.Text = "&Save";
 			this.butSave.Click += new System.EventHandler(this.butSave_Click);
 			// 
+			// checkUseRecessionTerm
+			// 
+			this.checkUseRecessionTerm.Location = new System.Drawing.Point(12, 196);
+			this.checkUseRecessionTerm.Name = "checkUseRecessionTerm";
+			this.checkUseRecessionTerm.Size = new System.Drawing.Size(530, 20);
+			this.checkUseRecessionTerm.TabIndex = 22;
+			this.checkUseRecessionTerm.Text = "Use the term \"Recession\" (reverts to Gingival Margin when hyperplasia is charted)";
+			// 
 			// FormPerioSetup
 			// 
-			this.ClientSize = new System.Drawing.Size(554, 237);
+			this.ClientSize = new System.Drawing.Size(554, 267);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
+			this.Controls.Add(this.checkUseRecessionTerm);
 			this.Controls.Add(this.butAll323);
 			this.Controls.Add(this.label5);
 			this.Controls.Add(this.textF32);
@@ -173,5 +183,6 @@ namespace OpenDental {
 		private System.Windows.Forms.Label label5;
 		private UI.Button butAll323;
 		private UI.Button butSave;
+		private UI.CheckBox checkUseRecessionTerm;
 	}
 }

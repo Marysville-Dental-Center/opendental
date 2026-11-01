@@ -157,6 +157,9 @@ namespace OpenDentBusiness{
 			///<summary>25.2: Insurance Pending Supplementals (Lists). Proposed name: Open Dental's published documentation does not list report
 			///names, so confirm it against an adopted database (port-backlog A-RPT).</summary>
 			public const string InsPendingSupplementals="ODInsPendingSupplementals";
+			///<summary>25.4: UDS+ Report for FQHC Dental Services (Public Health). Proposed name: Open Dental's published documentation does not list
+			///report names. The fork migration (ReportRowUdsPlusStep) adopts a row Open Dental wrote under another name (port-backlog M2-UDS).</summary>
+			public const string UdsPlus="ODUdsPlus";
 
 			///<summary>Every internal name that FormReportsMore.OpenReportHelper opens. A displayreport row whose name is not in this list is a report this
 			///program does not know, for example one a later Open Dental version added. Kept in step with the dispatcher by a test.</summary>
@@ -170,6 +173,7 @@ namespace OpenDentBusiness{
 				"ODPatientNotes","ODPrescriptions","ODProcedureCodes","ODReferralsRaw","ODReferralAnalysis",ReferredProcTracking,TreatmentFinder,
 				"ODRawScreeningData","ODRawPopulationData","ODDentalSealantMeasure","ODEligibilityFile","ODEncounterFile","ODDiscountPlan",
 				MonthlyProductionGoal,"ODHiddenPaySplits",DPPOvercharged,EraAutoProcessed,InsPendingSupplementals,
+				UdsPlus,
 			};
 
 			///<summary>True if this program opens a report with this internal name. Case-sensitive, as the dispatcher is.</summary>

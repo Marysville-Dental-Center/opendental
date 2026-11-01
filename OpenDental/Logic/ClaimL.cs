@@ -314,6 +314,7 @@ namespace OpenDental {
 					&& Security.IsAuthorized(EnumPermType.ClaimSend,suppressMessage:true)) 
 				{
 					List<ClaimProc> listClaimProcs=createClaimDataWrapper.CreateClaimData_.ListClaimProcs.FindAll(x=>x.ClaimNum==claimLeadOrdinal.ClaimNum);
+					MedicalEobL.PromptToAttachMedicalEob(claimLeadOrdinal,listClaimProcs);//Open Dental 25.2: before the primary claims are sent.
 					//Consider the preferences for automatically changing the claim status or prompting the user to take action on other insurance.
 					if(PrefC.GetBool(PrefName.ClaimMedReceivedPromptForPrimaryClaim) && claimLeadOrdinal.MedType.In(EnumClaimMedType.Medical,EnumClaimMedType.Institutional)) {
 						PromptForPrimaryOrSecondaryClaim(listClaimProcs,false);//Check for unsent primary claimprocs.
@@ -698,12 +699,9 @@ namespace OpenDental {
 			//Update status of claims to 'Waiting to Send'.
 			//This must happen for the "Change the claim status" and "Send secondary claim(s)" options.
 			//See Claims.GetQueueList(...) below.
-			for(int i=0;i<listClaimsPromptingFor.Count;i++){
-				listClaimsPromptingFor[i].ClaimStatus="W";
-				if(!isPromptForSecondaryClaim || !PrefC.GetBool(PrefName.ClaimPrimaryReceivedRecalcSecondary)) {
-					Claims.Update(listClaimsPromptingFor[i]);
-				}
-			}
+			//B-CLAIM: keeps the claims' attachments (a medical EOB attached just before among them); see ClaimAttaches.SetClaimsWaitingToSend.
+			ClaimAttaches.SetClaimsWaitingToSend(listClaimsPromptingFor,
+				doSaveToDb:!isPromptForSecondaryClaim || !PrefC.GetBool(PrefName.ClaimPrimaryReceivedRecalcSecondary));
 			if(isPromptForSecondaryClaim && PrefC.GetBool(PrefName.ClaimPrimaryReceivedRecalcSecondary)) {
 				Claims.CalculateAndUpdateSecondaries(listClaimsPromptingFor);
 			}

@@ -249,6 +249,10 @@ namespace OpenDental {
 			textClaimIdPrefix.Text=prefValSync.PrefVal;
 			prefValSync=ListPrefValSyncs.Find(x=>x.PrefName_==PrefName.PayPlansVersion);
 			comboPayPlansVersion.SetSelectedEnum(PIn.Int(prefValSync.PrefVal));
+			//25.1: the charge logic is no longer a choice. The combo stays hidden; a legacy mode shows as a read-only line, the default shows nothing.
+			comboPayPlansVersion.Visible=false;
+			label27.Text=PayPlanChargeLogic.GetReadOnlyText(PIn.Int(prefValSync.PrefVal));
+			label27.Visible=PayPlanChargeLogic.IsLegacyMode(PIn.Int(prefValSync.PrefVal));
 			prefValSync=ListPrefValSyncs.Find(x=>x.PrefName_==PrefName.BillingElectBatchMax);
 			textBillingElectBatchMax.Value=PIn.Int(prefValSync.PrefVal);
 		}
