@@ -1546,6 +1546,7 @@
     <Compile Include="Data Interface\SalesTaxProcs.cs" />
     <Compile Include="Data Interface\ScheduleOps.cs" />
     <Compile Include="Data Interface\Schedules.cs" />
+    <Compile Include="Data Interface\BlockoutPerms.cs" />
     <Compile Include="Data Interface\SchoolClasses.cs" />
     <Compile Include="Data Interface\SchoolCourses.cs" />
     <Compile Include="Data Interface\ScreenGroups.cs" />
