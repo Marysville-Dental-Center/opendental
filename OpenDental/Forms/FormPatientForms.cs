@@ -198,6 +198,9 @@ namespace OpenDental {
 			gridMain.Columns.Add(col);
 			col=new GridColumn(Lan.g(this,"Updated"),65,GridSortingStrategy.DateParse);
 			gridMain.Columns.Add(col);
+			col=new GridColumn(Lan.g(this,"Submitted"),115,GridSortingStrategy.DateParse);//Open Dental 25.4 sheet/eform.DateTimeSubmitted
+			gridMain.Columns.Add(col);
+			DataTable tableSubmitted=FormSubmittedDates.GetForPatient(PatNum);
 			gridMain.ListGridRows.Clear();
 			GridRow row;
 			for(int i=0;i<table.Rows.Count;i++){
@@ -218,6 +221,8 @@ namespace OpenDental {
 				row.Cells.Add(table.Rows[i][PatientFormsList.COLUMN_STATUS].ToString());
 				row.Cells.Add(table.Rows[i]["imageCat"].ToString());
 				row.Cells.Add(table.Rows[i]["DateTSheetEdited"].ToString());
+				row.Cells.Add(FormSubmittedDates.GetDisplayForRow(tableSubmitted,PIn.Long(table.Rows[i]["SheetNum"].ToString()),
+					PIn.Long(table.Rows[i]["EFormNum"].ToString())));
 				row.Tag=table.Rows[i];
 				gridMain.ListGridRows.Add(row);
 			}

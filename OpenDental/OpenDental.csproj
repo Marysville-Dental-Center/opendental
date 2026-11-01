@@ -4324,6 +4324,9 @@
     <Compile Include="Forms\FormSheetImport.designer.cs">
       <DependentUpon>FormSheetImport.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\FormSheetImport.PatFields.cs">
+      <DependentUpon>FormSheetImport.cs</DependentUpon>
+    </Compile>
     <Compile Include="Forms\FormTerminal.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -4553,6 +4556,9 @@
       <DependentUpon>FormSheetFillEdit.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\FormSheetFillEdit.AutoSaveImages.cs">
+      <DependentUpon>FormSheetFillEdit.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormSheetFillEdit.Submitted.cs">
       <DependentUpon>FormSheetFillEdit.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\FormSheetDefEdit.cs">

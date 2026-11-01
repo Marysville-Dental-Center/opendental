@@ -81,6 +81,7 @@ namespace OpenDental {
 			else{
 				comboDbLink.SelectedItem=EFormFieldCur.DbLink;
 			}
+			EFormL.AddPatFieldDbLinks(comboDbLink,EnumEFormFieldType.RadioButtons,EFormFieldCur.DbLink);//Open Dental 25.4: patient fields
 			SetVisAllerProb();
 			checkIsRequired.Checked=EFormFieldCur.IsRequired;
 			checkAutoImport.Checked=EFormFieldCur.AutoImport;
@@ -323,7 +324,7 @@ namespace OpenDental {
 			}
 			//all others
 			if(textLabel.Text==""){
-				textLabel.Text=(string)comboDbLink.SelectedItem;
+				textLabel.Text=EFormL.GetDefaultLabelForDbLink((string)comboDbLink.SelectedItem);
 			}
 			SetVisAllerProb();
 		}

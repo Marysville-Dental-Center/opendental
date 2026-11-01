@@ -66,6 +66,7 @@ namespace OpenDental {
 			else{
 				comboDbLink.SelectedItem=EFormFieldCur.DbLink;
 			}
+			EFormL.AddPatFieldDbLinks(comboDbLink,EnumEFormFieldType.CheckBox,EFormFieldCur.DbLink);//Open Dental 25.4: patient fields
 			SetVisAllerProb();
 			//Since Open Dental 25.1 only the allergiesNone and problemsNone checkboxes may be Required. Clear it on any other checkbox.
 			checkIsRequired.Checked=EFormFieldCur.IsRequired && EFormFieldsAvailable.CanCheckBoxBeRequired(EFormFieldCur.DbLink);
@@ -174,7 +175,7 @@ namespace OpenDental {
 			}
 			//all others
 			if(textLabel.Text==""){
-				textLabel.Text=(string)comboDbLink.SelectedItem;
+				textLabel.Text=EFormL.GetDefaultLabelForDbLink((string)comboDbLink.SelectedItem);
 			}
 			SetVisAllerProb();
 		}
