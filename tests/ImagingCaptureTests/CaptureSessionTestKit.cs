@@ -308,6 +308,8 @@ namespace ImagingCapture.Tests {
 		public readonly FakeCapturePatientEvents PatientEvents=new FakeCapturePatientEvents();
 		public readonly CaptureSessionSetup Setup;
 		public long PatNumCur=PatNum;
+		///<summary>How often the controller noted activity for Open Dental's automatic logoff.</summary>
+		public int CountActivity;
 		///<summary>Configures each new fake session before the controller uses it.</summary>
 		public Action<FakeTwainCaptureSession> ActionOnNewSession;
 		private CaptureSessionController _controller;
@@ -379,6 +381,7 @@ namespace ImagingCapture.Tests {
 				FuncGetUnassignedText=() => "2 unassigned captures on this computer.",
 				ActionWriteLog=line => ListLogFile.Add(line),
 				PatientEvents=PatientEvents,
+				ActionNoteActivity=() => CountActivity++,
 			};
 			_controller=new CaptureSessionController(Setup,services,Dispatcher);
 			_controller.SoundRequested+=sound => ListSounds.Add(sound);

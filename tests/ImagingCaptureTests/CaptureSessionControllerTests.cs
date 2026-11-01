@@ -270,6 +270,20 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void Activity_NotedForTheAutomaticLogoff_OnEachEnableStatusImageAndKey() {
+			_harness.BeginArmed();
+			Assert.AreEqual(0,_harness.CountActivity,"Nothing happened yet.");
+			Assert.IsTrue(_harness.Start());
+			Assert.AreEqual(1,_harness.CountActivity,"The enable.");
+			_harness.Status(TwainCaptureState.WaitingForImage);
+			Assert.AreEqual(2,_harness.CountActivity,"A status change.");
+			_harness.Image();
+			Assert.AreEqual(3,_harness.CountActivity,"A received image.");
+			Controller.OnKeyDown(CaptureSessionKey.Skip);//a pedal, or a hotkey while the sensor software has the foreground
+			Assert.AreEqual(4,_harness.CountActivity,"A key.");
+		}
+
+		[TestMethod]
 		public void ClosedWhileOpening_TheSourceThatOpensAfterwards_IsClosed() {
 			_harness.BeginArmed();
 			Assert.IsTrue(Controller.RequestStart());

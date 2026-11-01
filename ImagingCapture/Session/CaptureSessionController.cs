@@ -305,6 +305,7 @@ namespace ImagingCapture.Session {
 		///came while keys were ignored, or before the banner showed (only repeats arrive), never starts. A session key runs its command once per
 		///press. Every key is ignored in the first KeyIgnoreMs after the banner appeared. True when it did something.</summary>
 		public bool OnKeyDown(CaptureSessionKey key,long timestampMs,bool isRepeat) {
+			NoteActivity();//a pedal or a hotkey is activity Open Dental does not see (design 7.1)
 			bool isBannerShowing=Phase==CaptureSessionPhase.Ready || Phase==CaptureSessionPhase.ConfirmingOlderMount;
 			if(isBannerShowing && !IsBannerArmed(timestampMs)) {
 				if(key==CaptureSessionKey.Confirm) {
@@ -697,6 +698,7 @@ namespace ImagingCapture.Session {
 			NextTargetText="";
 			Phase=CaptureSessionPhase.Enabled;
 			SetIndicator(CaptureIndicatorState.Connecting,CaptureSessionText.Starting);
+			NoteActivity();
 			OnEnablePostedExt(record);
 			return true;
 		}
@@ -983,6 +985,7 @@ namespace ImagingCapture.Session {
 			if(record==null || status.EnableId!=record.EnableId) {
 				return;
 			}
+			NoteActivity();
 			if(status.IsSafeDisableInEffect) {
 				record.IsSafeDisableInEffect=true;
 			}
@@ -1022,6 +1025,9 @@ namespace ImagingCapture.Session {
 		private void OnImageAcquired(ITwainCaptureSession session,AcquiredImage image) {
 			if(image==null) {
 				return;
+			}
+			if(session==_session && Phase!=CaptureSessionPhase.Finished) {
+				NoteActivity();
 			}
 			CaptureEnableRecord record=image.Tag as CaptureEnableRecord;
 			ReceiveImage(session,image,record);
@@ -1407,6 +1413,16 @@ namespace ImagingCapture.Session {
 			}
 			catch {
 				return "";
+			}
+		}
+
+		///<summary>Design 7.1 (phase 3): activity for Open Dental's automatic logoff (CaptureSessionServices.ActionNoteActivity). Never throws.</summary>
+		private void NoteActivity() {
+			try {
+				_services.ActionNoteActivity?.Invoke();
+			}
+			catch {
+				//the logoff timer is a convenience here; the session goes on
 			}
 		}
 

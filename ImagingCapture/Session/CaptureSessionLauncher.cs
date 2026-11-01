@@ -96,6 +96,10 @@ namespace ImagingCapture.Session {
 		///session would start, when no source is open, so a message box is allowed: the gated capture settings are not verified (design 9.3) and
 		///the legacy Mount/Acquire loop runs instead. Null shows nothing; CreateDefault shows a message box.</summary>
 		public Action<string,object> ActionShowNotice { get; set; }
+		///<summary>Open Dental's automatic logoff counts this as activity (Security.DateTimeLastActivity=now). Design 7.1: in phase 3 the session
+		///notes activity on every enable, received image, key or pedal (also a hotkey while the sensor software has the foreground) and status
+		///change, which Open Dental would not see otherwise, so a pedal-only series is not interrupted by a logoff. Null notes nothing.</summary>
+		public Action ActionNoteActivity { get; set; }
 
 		///<summary>OpenDentBusiness, TwainCaptureSession, the UI thread's SynchronizationContext, capture.ini, the capture log and the session window
 		///(FrmCaptureSession through CaptureSessionWindowRunner).</summary>
@@ -113,6 +117,7 @@ namespace ImagingCapture.Session {
 				WindowRunner=new CaptureSessionWindowRunner(),
 				PatientEvents=new ODEventCapturePatientEvents(),
 				ActionShowNotice=(text,owner) => OpenDental.MsgBox.Show(text),
+				ActionNoteActivity=() => Security.DateTimeLastActivity=DateTime.Now,
 			};
 		}
 	}
