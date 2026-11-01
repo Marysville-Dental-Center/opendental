@@ -470,7 +470,7 @@ namespace ImagingCapture.Session {
 					Label=MountPlacement.GetSlotLabel(mountItem),
 					Document=_mountSlots.ListDocuments[i],
 					IsTarget=i==_mountSlots.IdxTarget,
-					IsEnableTarget=_enableRunning!=null && _enableRunning.IdxTarget==i,
+					IsEnableTarget=_enableRunning!=null && GetNextImageIdx(_enableRunning)==i,
 					IsSkipped=_hashSetSkipped.Contains(i),
 				});
 			}
@@ -794,6 +794,10 @@ namespace ImagingCapture.Session {
 			if(_setup.Options.SessionMode==TwainSessionMode.Continuous && _enableRunning.CountReceived>0) {
 				_idxTargetChosen=null;//design 7.11: in continuous mode only the target changes; nothing is disabled
 				NextTargetText="";
+				if(IndicatorState==CaptureIndicatorState.WaitingForExposure) {
+					//The next image goes to the new target (ReceiveImage): the indicator says so at once (design 7.3 step 3).
+					SetIndicator(CaptureIndicatorState.WaitingForExposure,CaptureSessionText.WaitingForExposure+": "+GetEnableTargetText(_enableRunning));
+				}
 				return true;
 			}
 			_idxTargetChosen=idx;
@@ -1047,11 +1051,26 @@ namespace ImagingCapture.Session {
 			NotifyChanged();
 		}
 
+		///<summary>Where the running enable's next image goes, for the indicator (design 7.3 step 3): the enable's target, or, once a continuous
+		///enable delivered an image, the target as it is now, which is where ReceiveImage places it.</summary>
 		private string GetEnableTargetText(CaptureEnableRecord record) {
 			if(IsSingleTarget) {
 				return CaptureTargetText.GetSingleText(record.ToothNumbers);
 			}
-			return CaptureTargetText.GetSlotText(_mountSlots.ListMountItems,record.MountItemTarget);
+			int idx=GetNextImageIdx(record);
+			if(idx==-1) {
+				return CaptureSessionText.EverySlotFilled;
+			}
+			return CaptureTargetText.GetSlotText(_mountSlots.ListMountItems,_mountSlots.ListMountItems[idx]);
+		}
+
+		///<summary>The index of the slot record's next image goes to (ReceiveImage): its own target, or, after the first image of a continuous
+		///enable, the target as it is now (-1 when every slot has an image).</summary>
+		private int GetNextImageIdx(CaptureEnableRecord record) {
+			if(record==null || IsSingleTarget) {
+				return -1;
+			}
+			return record.IsContinuous && record.CountReceived>0 ? _mountSlots.IdxTarget : record.IdxTarget;
 		}
 
 		private void OnImageAcquired(ITwainCaptureSession session,AcquiredImage image) {
@@ -1078,6 +1097,9 @@ namespace ImagingCapture.Session {
 				return;
 			}
 			record.CountReceived++;
+			if(image.IsContinuousEnable) {
+				record.IsContinuous=true;
+			}
 			bool isHandled=false;
 			OnImageReceivedExt(image,record,ref isHandled);
 			if(isHandled) {
@@ -1119,6 +1141,14 @@ namespace ImagingCapture.Session {
 					QuarantineImage(session,image,record,"Every slot of the mount already holds an image.",false);
 					return;
 				}
+				if(isContinuousNext && _hashSetSkipped.Contains(idxTarget)) {
+					//Only skipped slots are left (AdvanceTarget keeps the target on one): a skipped slot is taken only after the deliberate "Take the
+					//skipped slots", as in PerSlot (design 7.3).
+					QuarantineImage(session,image,record,CaptureSessionText.OnlySkippedLeftReason,false);
+					NoticeText=CaptureSessionText.OnlySkippedLeftContinuous;
+					PlaySound(CaptureSound.NotReceived);
+					return;
+				}
 				if(_mountSlots.ListDocuments[idxTarget]!=null) {
 					SetImageTarget(image,mountItemTarget,record.ToothNumbers);
 					QuarantineImage(session,image,record,"Its slot ("+MountPlacement.GetSlotLabel(mountItemTarget)+") already holds an image.",false);
@@ -1157,9 +1187,7 @@ namespace ImagingCapture.Session {
 				RedStripText=CaptureSessionText.CouldNotSavePrefix+error;
 				_isPausedBySaveFailure=true;
 				QuarantineImage(_session,image,record,CaptureSessionText.CouldNotSavePrefix+error,false);
-				if(_enableRunning==record && Phase==CaptureSessionPhase.Enabled && !record.IsRedelivery
-					&& _setup.Options.SessionMode==TwainSessionMode.Continuous)
-				{
+				if(_enableRunning==record && Phase==CaptureSessionPhase.Enabled && !record.IsRedelivery && record.IsContinuous) {
 					//A continuous enable stays enabled after an image (design 7.4): the pause disables it in the safe order, but only with safe
 					//disable in effect; otherwise the fork starts no disable of its own (design 7.6, 10.6) and ReceiveImage quarantines what it sends.
 					if(record.IsSafeDisableInEffect) {
@@ -1188,9 +1216,24 @@ namespace ImagingCapture.Session {
 				_mountSlots.SetPlaced(idxTarget,result.Document);
 				AdvanceTarget();
 				SetIndicator(CaptureIndicatorState.Saved,CaptureSessionText.GetSavedText(MountPlacement.GetSlotLabel(mountItemTarget)));
-				if(_mountSlots.IdxTarget==-1 && _enableRunning==record && Phase==CaptureSessionPhase.Enabled
-					&& _setup.Options.SessionMode==TwainSessionMode.Continuous)
+				if(_mountSlots.IdxTarget!=-1 && IsOnlySkippedLeft() && _enableRunning==record && Phase==CaptureSessionPhase.Enabled
+					&& record.IsContinuous)
 				{
+					//Only skipped slots are left: they are taken after the deliberate "Take the skipped slots" (design 7.3), never by the running
+					//continuous enable. With safe disable in effect it is disabled, and its end offers that start; otherwise it stays enabled
+					//and its images go to unassigned captures (ReceiveImage).
+					if(record.IsSafeDisableInEffect) {
+						StopEnableSafely(record,TwainCaptureStopReason.TargetChanged);
+						SetIndicator(CaptureIndicatorState.Saved,CaptureSessionText.GetSavedText(MountPlacement.GetSlotLabel(mountItemTarget)));
+						Log("Only skipped slots are left; the continuous enable is being disabled.");
+					}
+					else {
+						NoticeText=CaptureSessionText.OnlySkippedLeftContinuous;
+						Log("Only skipped slots are left; the continuous enable stays enabled until the operator ends or disables it (safe disable is not "
+							+"in effect).");
+					}
+				}
+				if(_mountSlots.IdxTarget==-1 && _enableRunning==record && Phase==CaptureSessionPhase.Enabled && record.IsContinuous) {
 					//A continuous enable stays in state 5 after Count=0 (design 7.4). The full mount ends it in the safe order, but only with safe
 					//disable in effect: otherwise the fork starts no disable of its own (design 7.6, 10.6), and the operator ends it.
 					if(record.IsSafeDisableInEffect) {

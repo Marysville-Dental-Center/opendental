@@ -99,6 +99,10 @@ namespace ImagingCapture.Session {
 		///<summary>The bit depth asked for.</summary>
 		public CaptureBitDepthChoice BitDepth { get; set; }
 		public bool IsRedelivery { get; set; }
+		///<summary>The enable runs continuously (design 7.4): its first image said so (AcquiredImage.IsContinuousEnable; the library sets it only
+		///when the source accepted ContinuousCap). False before the first image, and for an enable that ran per slot although Continuous was
+		///configured.</summary>
+		public bool IsContinuous { get; set; }
 		///<summary>From the status of the enable (TwainCaptureStatus.IsSafeDisableInEffect): the controller may disable it on its own.</summary>
 		public bool IsSafeDisableInEffect { get; set; }
 		///<summary>When the controller posted the enable (local time).</summary>

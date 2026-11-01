@@ -96,6 +96,12 @@ namespace ImagingCapture.Session {
 		}
 
 		///<summary>Continuous mode, the mount full and safe disable not in effect: the fork does not disable on its own (design 7.6, 10.6).</summary>
+		///<summary>The indicator's target once every slot has an image.</summary>
+		public const string EverySlotFilled="every slot has an image";
+		///<summary>A continuous enable whose next target would be a skipped slot (design 7.3: skipped slots need the deliberate start).</summary>
+		public const string OnlySkippedLeftContinuous="Every slot that was not skipped has an image. Press End, or Disable and then Take the skipped "
+			+"slots; further images go to unassigned captures.";
+		public const string OnlySkippedLeftReason="Only skipped slots were left; a skipped slot is taken only after Take the skipped slots.";
 		public const string MountFullContinuous="Every slot has an image. Press End to stop the sensor software; further images go to unassigned captures.";
 
 		///<summary>Design 7.6: before a disable that is not safe (Cancel, End, Disable while the source is enabled without DisableIsSafe in

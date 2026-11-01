@@ -591,6 +591,62 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void Continuous_AfterTheFirstImage_TheIndicatorAndTheMiniMapNameTheSlotTheNextImageGoesTo() {
+			_harness.Setup.Options.SessionMode=TwainSessionMode.Continuous;
+			_harness.Started();
+			_harness.Status(TwainCaptureState.WaitingForImage,isSafeDisableInEffect:true);
+			Assert.AreEqual(CaptureSessionText.WaitingForExposure+": 1 of 3: Max R, #1,2,3",Controller.IndicatorText);
+			_harness.Image();
+			//The library's status after every transfer of a continuous enable: the next image goes to slot 2 (ReceiveImage), not slot 1.
+			_harness.Status(TwainCaptureState.WaitingForImage,isSafeDisableInEffect:true);
+			StringAssert.StartsWith(Controller.IndicatorText,CaptureSessionText.WaitingForExposure+": 2 of 3:");
+			Assert.AreEqual(102,Controller.GetSlotViews().Single(x => x.IsEnableTarget).MountItem.MountItemNum,"The mini-map's \"its image goes here\".");
+			Assert.IsTrue(Controller.SelectSlot(3),"A tap on slot 3 while the continuous enable runs...");
+			StringAssert.StartsWith(Controller.IndicatorText,CaptureSessionText.WaitingForExposure+": 3 of 3:","...the indicator follows at once.");
+			Assert.AreEqual(103,Controller.GetSlotViews().Single(x => x.IsEnableTarget).MountItem.MountItemNum);
+			_harness.Image();
+			Assert.AreEqual(103,_harness.RadiographStore.ListDocumentsUpdated.Last().MountItemNum,"The image goes where the indicator said.");
+			_harness.Status(TwainCaptureState.WaitingForImage,isSafeDisableInEffect:true);
+			StringAssert.StartsWith(Controller.IndicatorText,CaptureSessionText.WaitingForExposure+": 2 of 3:");
+		}
+
+		[TestMethod]
+		public void Continuous_OnlySkippedSlotsLeft_WithSafeDisable_NoImageGoesIntoASkippedSlot_TakeTheSkippedSlotsOffered() {
+			_harness.Setup.Options.SessionMode=TwainSessionMode.Continuous;
+			_harness.Started();
+			_harness.Status(TwainCaptureState.WaitingForImage,isSafeDisableInEffect:true);
+			_harness.Image();
+			Assert.IsTrue(_harness.Execute(CaptureSessionAction.Skip),"Slot 2 is skipped; slot 3 is the target.");
+			_harness.Image();
+			CollectionAssert.AreEqual(new long[] { 101,103 },_harness.RadiographStore.ListDocumentsUpdated.Select(x => x.MountItemNum).ToList());
+			CollectionAssert.AreEqual(new[] { TwainCaptureStopReason.TargetChanged },_harness.Twain.ListDisables,
+				"Only the skipped slot is left: the continuous enable is disabled in the safe order.");
+			_harness.Image(AcquiredImageKind.Drained,TwainCaptureStopReason.TargetChanged);
+			Assert.AreEqual(2,_harness.RadiographStore.ListDocumentsUpdated.Count,"Not saved into the skipped slot 2.");
+			Assert.AreEqual(CaptureSessionText.OnlySkippedLeftReason,_harness.Twain.ListQuarantined.Single().Reason);
+			_harness.Ended(TwainCaptureEndReason.Stopped,ended => ended.StopReason=TwainCaptureStopReason.TargetChanged);
+			Assert.AreEqual(CaptureSessionPhase.Ready,Controller.Phase);
+			Assert.AreEqual(CaptureStartKind.TakeSkipped,Controller.StartKind,"As in PerSlot (design 7.3).");
+			Assert.AreEqual(1,_harness.Twain.ListEnables.Count,"No automatic enable for a skipped slot.");
+		}
+
+		[TestMethod]
+		public void Continuous_OnlySkippedSlotsLeft_WithoutSafeDisable_LaterImagesNotPlacedIntoASkippedSlot() {
+			_harness.Setup.Options.SessionMode=TwainSessionMode.Continuous;
+			_harness.Started();
+			_harness.Status(TwainCaptureState.WaitingForImage,isSafeDisableInEffect:false);
+			_harness.Image();
+			Assert.IsTrue(_harness.Execute(CaptureSessionAction.Skip));
+			_harness.Image();
+			Assert.AreEqual(0,_harness.Twain.ListDisables.Count,"Design 7.6, 10.6: no disable of the fork's own without safe disable.");
+			Assert.AreEqual(CaptureSessionText.OnlySkippedLeftContinuous,Controller.NoticeText);
+			_harness.Image();
+			Assert.AreEqual(2,_harness.RadiographStore.ListDocumentsUpdated.Count);
+			Assert.AreEqual(CaptureSessionText.OnlySkippedLeftReason,_harness.Twain.ListQuarantined.Single().Reason);
+			Assert.AreEqual(CaptureSessionPhase.Enabled,Controller.Phase);
+		}
+
+		[TestMethod]
 		public void ContinuousConfigured_ButTheEnableRanPerSlot_EnablesAgain() {
 			_harness.Setup.Options.SessionMode=TwainSessionMode.Continuous;
 			_harness.Started();
