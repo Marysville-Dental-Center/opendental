@@ -40,6 +40,8 @@ namespace OpenDentalImaging{
 			this.label4 = new System.Windows.Forms.Label();
 			this.radioTwain = new System.Windows.Forms.RadioButton();
 			this.radioTwainMulti = new System.Windows.Forms.RadioButton();
+			this.butTestCapture = new OpenDental.UI.Button();
+			this.butCaptureSettings = new OpenDental.UI.Button();
 			this.groupBoxOD1.SuspendLayout();
 			this.SuspendLayout();
 			// 
@@ -191,9 +193,31 @@ namespace OpenDentalImaging{
 			this.radioTwainMulti.Text = "Twain Multi (example: phosphor plate)";
 			this.radioTwainMulti.UseVisualStyleBackColor = true;
 			// 
+			// butTestCapture
+			// 
+			this.butTestCapture.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.butTestCapture.Location = new System.Drawing.Point(93, 205);
+			this.butTestCapture.Name = "butTestCapture";
+			this.butTestCapture.Size = new System.Drawing.Size(90, 24);
+			this.butTestCapture.TabIndex = 30;
+			this.butTestCapture.Text = "Test capture";
+			this.butTestCapture.Click += new System.EventHandler(this.butTestCapture_Click);
+			// 
+			// butCaptureSettings
+			// 
+			this.butCaptureSettings.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.butCaptureSettings.Location = new System.Drawing.Point(189, 205);
+			this.butCaptureSettings.Name = "butCaptureSettings";
+			this.butCaptureSettings.Size = new System.Drawing.Size(110, 24);
+			this.butCaptureSettings.TabIndex = 31;
+			this.butCaptureSettings.Text = "Capture settings";
+			this.butCaptureSettings.Click += new System.EventHandler(this.butCaptureSettings_Click);
+			// 
 			// FormImagingDeviceEdit
 			// 
 			this.ClientSize = new System.Drawing.Size(526, 241);
+			this.Controls.Add(this.butCaptureSettings);
+			this.Controls.Add(this.butTestCapture);
 			this.Controls.Add(this.label4);
 			this.Controls.Add(this.groupBoxOD1);
 			this.Controls.Add(this.label3);
@@ -236,5 +260,7 @@ namespace OpenDentalImaging{
 		private System.Windows.Forms.RadioButton radioTwain;
 		private System.Windows.Forms.Label label4;
 		private System.Windows.Forms.RadioButton radioTwainMulti;
+		private OpenDental.UI.Button butTestCapture;
+		private OpenDental.UI.Button butCaptureSettings;
 	}
 }

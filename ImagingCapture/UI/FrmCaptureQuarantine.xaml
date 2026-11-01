@@ -1,0 +1,51 @@
+<local:FrmODBase x:Class="ImagingCapture.UI.FrmCaptureQuarantine"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:local="clr-namespace:OpenDental;assembly=WpfControlsOD"
+             xmlns:ui="clr-namespace:WpfControls.UI;assembly=WpfControlsOD"
+             mc:Ignorable="d"
+             Width="1050" Height="700"
+             Text="Unassigned Captures" >
+	<Grid Background="#FFFCFDFE" >
+		<!--Which files: the quarantine (design 7.12) or the journal (design 7.1)-->
+		<ui:Button x:Name="butUnassigned" Width="180" Height="26" Margin="12,8,0,0" Text="Unassigned captures" Click="butUnassigned_Click" />
+		<ui:Button x:Name="butJournal" Width="180" Height="26" Margin="198,8,0,0" Text="Recent captures (journal)" Click="butJournal_Click" />
+		<ui:CheckBox x:Name="checkOthers" Width="460" Height="20" Margin="392,11,0,0" Text="Also list copies of other patients or with no patient (Reassign only)" Click="checkOthers_Click" />
+		<ui:Label x:Name="labelList" Width="1020" Height="36" Margin="12,40,0,0" Text="" IsWrap="True" />
+		<!--The list, each capture with its thumbnail-->
+		<Border x:Name="borderList" Width="480" Height="560" Margin="12,80,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" BorderBrush="DarkGray" BorderThickness="1" Background="White" >
+			<ScrollViewer x:Name="scrollList" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" >
+				<StackPanel x:Name="stackList" />
+			</ScrollViewer>
+		</Border>
+		<ui:Label x:Name="labelEmpty" Width="456" Height="40" Margin="24,92,0,0" Text="" IsWrap="True" />
+		<!--The selected capture-->
+		<Border x:Name="borderPreview" Width="250" Height="250" Margin="504,80,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" BorderBrush="DarkGray" BorderThickness="1" Background="Black" >
+			<Image x:Name="imagePreview" Stretch="Uniform" />
+		</Border>
+		<ui:TextBox x:Name="textDetails" Width="280" Height="250" Margin="762,80,0,0" IsMultiline="True" ReadOnly="True" ColorBack="#FFF0F0F0" />
+		<ui:Button x:Name="butAssign" Width="130" Height="28" Margin="504,338,0,0" Text="Assign" Click="butAssign_Click" />
+		<ui:Button x:Name="butReassign" Width="130" Height="28" Margin="640,338,0,0" Text="Reassign" Click="butReassign_Click" />
+		<ui:Button x:Name="butDiscard" Width="130" Height="28" Margin="776,338,0,0" Text="Discard" Click="butDiscard_Click" />
+		<!--The step: the explicit confirmation of Assign and Discard, and Reassign's patient search and reason-->
+		<Border x:Name="borderStep" Width="538" Height="226" Margin="504,374,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" BorderBrush="DarkGray" BorderThickness="1" Background="#FFFFF6D0" />
+		<ui:Label x:Name="labelStep" Width="520" Height="20" Margin="512,380,0,0" Text="" IsBold="True" ColorBack="#FFFFF6D0" />
+		<Border x:Name="borderStepImage" Width="80" Height="80" Margin="512,404,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" BorderBrush="DarkGray" BorderThickness="1" Background="Black" >
+			<Image x:Name="imageStep" Stretch="Uniform" />
+		</Border>
+		<ui:Label x:Name="labelStepPatient" Width="432" Height="40" Margin="600,404,0,0" Text="" IsBold="True" IsWrap="True" ColorBack="#FFFFF6D0" />
+		<ui:Label x:Name="labelStepDetails" Width="432" Height="48" Margin="600,446,0,0" Text="" IsWrap="True" ColorBack="#FFFFF6D0" />
+		<ui:Button x:Name="butFindPatient" Width="110" Height="24" Margin="512,500,0,0" Text="Find patient..." Click="butFindPatient_Click" />
+		<ui:Label x:Name="labelReason" Width="56" Height="18" Margin="630,502,0,0" Text="Reason" VAlign="Bottom" ColorBack="#FFFFF6D0" />
+		<ui:TextBox x:Name="textReason" Width="340" Height="21" Margin="690,500,0,0" />
+		<ui:Label x:Name="labelCategory" Width="60" Height="18" Margin="512,532,0,0" Text="Category" VAlign="Bottom" ColorBack="#FFFFF6D0" />
+		<ui:ComboBox x:Name="comboCategory" Width="260" Height="21" Margin="576,530,0,0" />
+		<ui:Button x:Name="butConfirm" Width="260" Height="30" Margin="512,562,0,0" Text="Confirm" Click="butConfirm_Click" />
+		<ui:Button x:Name="butCancelStep" Width="100" Height="30" Margin="780,562,0,0" Text="Cancel" Click="butCancelStep_Click" />
+		<ui:Label x:Name="labelError" Width="538" Height="40" Margin="504,606,0,0" Text="" IsWrap="True" ColorText="#FFC00000" />
+		<ui:Label x:Name="labelResult" Width="538" Height="40" Margin="504,606,0,0" Text="" IsWrap="True" ColorText="#FF006000" />
+		<ui:Button x:Name="butClose" HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="75" Height="24" Margin="0,0,12,12" Text="Close" Click="butClose_Click" />
+	</Grid>
+</local:FrmODBase>

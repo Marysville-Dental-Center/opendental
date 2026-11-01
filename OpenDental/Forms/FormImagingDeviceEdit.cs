@@ -57,6 +57,27 @@ namespace OpenDentalImaging {
 			}
 		}
 
+		///<summary>Test capture (ImagingCapture): a test image of a phantom for this device, its measurements and the verification record. It
+		///runs for the saved row, because the record is tied to the ImagingDeviceNum and the TWAIN source.</summary>
+		private void butTestCapture_Click(object sender,EventArgs e) {
+			if(ImagingDeviceCur.IsNew || comboTwainName.Text!=ImagingDeviceCur.TwainName) {
+				MsgBox.Show(this,"Save the device first, so that the test uses its saved TWAIN source.");
+				return;
+			}
+			ImagingCapture.UI.FrmTestCapture frmTestCapture=new ImagingCapture.UI.FrmTestCapture(ImagingDeviceCur);
+			frmTestCapture.ShowDialog();
+		}
+
+		///<summary>Capture settings (ImagingCapture): this computer's capture.ini for this device, with the gated keys that change only there (Setup
+		///permission, logged with the settings hash). It runs for the saved row, because capture.ini's [Device.N] is keyed by ImagingDeviceNum.</summary>
+		private void butCaptureSettings_Click(object sender,EventArgs e) {
+			if(ImagingDeviceCur.IsNew) {
+				MsgBox.Show(this,"Save the device first.");
+				return;
+			}
+			ImagingCapture.UI.FrmCaptureSettings.ShowForDevice(ImagingDeviceCur);
+		}
+
 		private void butDelete_Click(object sender,EventArgs e) {
 			if(ImagingDeviceCur.IsNew){
 				DialogResult=DialogResult.Cancel;

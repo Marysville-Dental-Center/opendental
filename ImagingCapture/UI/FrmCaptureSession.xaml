@@ -1,0 +1,80 @@
+<local:FrmODBase x:Class="ImagingCapture.UI.FrmCaptureSession"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:local="clr-namespace:OpenDental;assembly=WpfControlsOD"
+             xmlns:ui="clr-namespace:WpfControls.UI;assembly=WpfControlsOD"
+             mc:Ignorable="d"
+             Width="1100" Height="684"
+             Text="X-ray Capture" >
+	<Grid Background="#FFFCFDFE" >
+		<!--Banner (design 7.3 step 2): the patient, the provider, the target mount-->
+		<Border x:Name="borderPatient" Width="100" Height="100" Margin="12,8,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" BorderBrush="DarkGray" BorderThickness="1" Background="#FFF0F0F0" >
+			<Image x:Name="imagePatient" Stretch="Uniform" />
+		</Border>
+		<ui:Label x:Name="labelPatientName" Width="440" Height="26" Margin="124,8,0,0" Text="Patient" IsBold="True" FontSize="17" />
+		<ui:Label x:Name="labelPatientDetails" Width="440" Height="18" Margin="124,36,0,0" Text="" />
+		<ui:Label x:Name="labelProvider" Width="60" Height="18" Margin="124,60,0,0" Text="Provider" VAlign="Bottom" />
+		<ui:ComboBox x:Name="comboProv" Width="220" Height="21" Margin="186,58,0,0" />
+		<ui:Label x:Name="labelMount" Width="440" Height="18" Margin="124,86,0,0" Text="" IsBold="True" />
+		<!--The deliberate start, the older-mount question, the redelivery request-->
+		<ui:Button x:Name="butStart" Width="320" Height="44" Margin="580,8,0,0" Text="Start X-rays" FontSize="15" Click="butStart_Click" />
+		<ui:Button x:Name="butUseMount" Width="156" Height="44" Margin="580,8,0,0" Text="Use this mount" FontSize="14" Click="butUseMount_Click" />
+		<ui:Button x:Name="butDeclineMount" Width="156" Height="44" Margin="744,8,0,0" Text="Cancel" FontSize="14" Click="butDeclineMount_Click" />
+		<ui:Label x:Name="labelStartHint" Width="320" Height="18" Margin="580,54,0,0" Text="" HAlign="Center" />
+		<ui:Button x:Name="butRequestRedelivery" Width="320" Height="26" Margin="580,76,0,0" Text="Request undelivered images again" Click="butRequestRedelivery_Click" />
+		<!--Unassigned captures and Recover recent captures: implementer C's windows (FrmCaptureSession hooks)-->
+		<!--After 30 days the line is the warning (about 130 characters, five lines at this width): room for it, and a warning colour-->
+		<ui:LinkLabel x:Name="linkUnassigned" Width="176" Height="80" Margin="912,8,0,0" Text="" ColorBack="#FFFCFDFE" />
+		<ui:LinkLabel x:Name="linkRecover" Width="176" Height="18" Margin="912,90,0,0" Text="Recover recent captures" ColorBack="#FFFCFDFE" />
+		<!--The indicator area (design 7.5, 7.6, 7.11, 7.12): collapsed parts take no space. The lines that wrap grow with their text (MinHeight,
+		not Height, which would cut a third line in half), and the area scrolls rather than cover the slots below it at y=376.-->
+		<ScrollViewer x:Name="scrollIndicator" Width="1088" MaxHeight="256" Margin="12,118,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False" IsTabStop="False" >
+			<StackPanel x:Name="stackIndicator" Width="1076" HorizontalAlignment="Left" VerticalAlignment="Top" >
+				<ui:Label x:Name="labelPatientChanged" Width="1076" Height="26" Margin="0,0,0,4" Text="" IsBold="True" FontSize="14" ColorBack="#FFC00000" ColorText="#FFFFFFFF" VAlign="Center" />
+				<ui:Label x:Name="labelIndicator" Width="1076" MinHeight="44" Margin="0,0,0,4" Text="" IsBold="True" IsWrap="True" FontSize="15" VAlign="Center" />
+				<ui:Label x:Name="labelTarget" Width="1076" Height="22" Text="" IsBold="True" FontSize="14" />
+				<ui:Label x:Name="labelNextTarget" Width="1076" Height="18" Text="" />
+				<ui:Label x:Name="labelRedStrip" Width="1076" MinHeight="34" Margin="0,4,0,0" Text="" IsBold="True" IsWrap="True" ColorBack="#FFC00000" ColorText="#FFFFFFFF" VAlign="Center" />
+				<ui:Label x:Name="labelWarning" Width="1076" MinHeight="34" Margin="0,4,0,0" Text="" IsBold="True" IsWrap="True" ColorBack="#FFFFD8A0" VAlign="Center" />
+				<ui:Label x:Name="labelNotice" Width="1076" MinHeight="34" Margin="0,4,0,0" Text="" IsWrap="True" ColorBack="#FFFFF6D0" VAlign="Center" />
+				<ui:Label x:Name="labelSummary" Width="1076" MinHeight="34" Margin="0,4,0,0" Text="" IsBold="True" IsWrap="True" FontSize="14" VAlign="Center" />
+				<ui:Label x:Name="labelEffective" Width="1076" MinHeight="18" Margin="0,4,0,0" Text="" IsWrap="True" />
+			</StackPanel>
+		</ScrollViewer>
+		<!--The slot mini-map (design 7.3 step 3) or, without a mount, the tooth picker (design 10.3)-->
+		<ui:Label x:Name="labelSlots" Width="520" Height="18" Margin="12,376,0,0" Text="Slots: tap an empty slot to take it next" IsBold="True" />
+		<Border x:Name="borderSlots" Width="520" Height="230" Margin="12,396,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" BorderBrush="DarkGray" BorderThickness="1" Background="#FF303030" >
+			<Canvas x:Name="canvasSlots" ClipToBounds="True" />
+		</Border>
+		<ui:Label x:Name="labelTeethPicker" Width="520" Height="18" Margin="12,376,0,0" Text="Teeth for the next image (Universal)" IsBold="True" />
+		<Border x:Name="borderTeeth" Width="520" Height="74" Margin="12,396,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" BorderBrush="DarkGray" BorderThickness="1" Background="#FFF0F0F0" >
+			<Canvas x:Name="canvasTeeth" ClipToBounds="True" />
+		</Border>
+		<ui:Label x:Name="labelTeeth" Width="110" Height="18" Margin="12,480,0,0" Text="Tooth numbers" VAlign="Bottom" />
+		<ui:TextBox x:Name="textTeeth" Width="300" Height="21" Margin="126,478,0,0" />
+		<ui:Label x:Name="labelToothError" Width="520" Height="36" Margin="12,504,0,0" Text="" IsWrap="True" ColorText="#FFC00000" />
+		<!--The image shown briefly, with the slot's rotation and the operator's Rotate as a display transform (design 7.3 step 4)-->
+		<ui:Label x:Name="labelPreview" Width="260" Height="18" Margin="544,376,0,0" Text="" IsBold="True" />
+		<Border x:Name="borderPreview" Width="260" Height="230" Margin="544,396,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" BorderBrush="DarkGray" BorderThickness="2" Background="Black" >
+			<Image x:Name="imagePreview" Stretch="Uniform" />
+		</Border>
+		<!--A redelivered image waits for the operator (design 7.12, W15)-->
+		<ui:Label x:Name="labelRedelivered" Width="272" Height="126" Margin="816,376,0,0" Text="" IsBold="True" IsWrap="True" ColorBack="#FFFFF6D0" />
+		<ui:Label x:Name="labelRedeliveredDetails" Width="272" Height="36" Margin="816,506,0,0" Text="" IsWrap="True" />
+		<ui:Label x:Name="labelRedeliveredCount" Width="272" Height="18" Margin="816,546,0,0" Text="" />
+		<ui:Button x:Name="butConfirmRedelivered" Width="132" Height="30" Margin="816,592,0,0" Text="Place it" Click="butConfirmRedelivered_Click" />
+		<ui:Button x:Name="butDeclineRedelivered" Width="132" Height="30" Margin="956,592,0,0" Text="Unassigned" Click="butDeclineRedelivered_Click" />
+		<!--Operator commands (design 7.3 step 5); each can also have a key or pedal ([Keys])-->
+		<ui:Button x:Name="butRetake" Width="110" Height="32" Margin="12,640,0,0" Text="Retake" Click="butRetake_Click" />
+		<ui:Button x:Name="butSkip" Width="90" Height="32" Margin="128,640,0,0" Text="Skip" Click="butSkip_Click" />
+		<ui:Button x:Name="butPrevious" Width="120" Height="32" Margin="224,640,0,0" Text="Previous slot" Click="butPrevious_Click" />
+		<ui:Button x:Name="butNext" Width="110" Height="32" Margin="350,640,0,0" Text="Next slot" Click="butNext_Click" />
+		<ui:Button x:Name="butRotate" Width="100" Height="32" Margin="466,640,0,0" Text="Rotate" Click="butRotate_Click" />
+		<ui:Button x:Name="butAlwaysRotate" Width="170" Height="32" Margin="572,640,0,0" Text="Always rotate this slot" Click="butAlwaysRotate_Click" />
+		<ui:Button x:Name="butDisable" Width="100" Height="32" Margin="748,640,0,0" Text="Disable" Click="butDisable_Click" />
+		<ui:Button x:Name="butEnd" Width="100" Height="32" Margin="854,640,0,0" Text="End" Click="butEnd_Click" />
+		<ui:Button x:Name="butClose" HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="100" Height="32" Margin="0,0,12,12" Text="Close" Click="butClose_Click" />
+	</Grid>
+</local:FrmODBase>

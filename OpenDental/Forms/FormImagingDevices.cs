@@ -118,6 +118,19 @@ namespace OpenDentalImaging {
 			_changed=true;
 		}
 
+		///<summary>The unassigned captures of this computer (design 7.12): the capture quarantine, and the capture journal's recent copies. Each
+		///Assign, Reassign and Discard in it checks its own permission.</summary>
+		private void butUnassigned_Click(object sender,EventArgs e) {
+			ImagingCapture.UI.FrmCaptureQuarantine.ShowModal(new ImagingCapture.Recovery.CaptureRecoveryContext {
+				View=ImagingCapture.Recovery.CaptureRecoveryView.Unassigned });
+		}
+
+		///<summary>"Add standard templates" (ImagingCapture): the standard FMX and 4BW mount definitions with the X-ray category the user picks,
+		///idempotent by Description. It needs Setup and logs each template it adds.</summary>
+		private void butStandardTemplates_Click(object sender,EventArgs e) {
+			ImagingCapture.UI.FrmStandardTemplates.ShowModal();
+		}
+
 		private void FormImagingDevices_FormClosing(object sender,FormClosingEventArgs e) {
 			if(_changed){
 				DataValid.SetInvalid(InvalidType.ToolButsAndMounts);
