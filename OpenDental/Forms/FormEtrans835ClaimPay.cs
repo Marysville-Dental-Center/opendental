@@ -84,6 +84,7 @@ namespace OpenDental {
 			_listClaimProcsDb=ClaimProcs.RefreshForClaims(new List<long> { _claim.ClaimNum });//Open Dental 25.1: the override audit compares with these.
 			_listProcedures=Procedures.Refresh(_patient.PatNum);
 			_isWriteOffEditable=ClaimProcs.IsInsWriteOffEditAuthorizedForAll(ListClaimProcs,_listProcedures);//Open Dental 25.3: 119 also covers created claimprocs.
+			butWriteOff.Enabled=_isWriteOffEditable;//Open Dental 25.3: the Write-off button fills the same column, as in FormClaimPayTotal.
 			FillGridClaimAdjustments();
 			FillGridProcedureBreakdown();
 			decimal claimFee=_listHx835_ClaimsAll.Sum(x => x.ClaimFee);
@@ -629,6 +630,10 @@ namespace OpenDental {
 		}
 
 		private void butWriteOff_Click(object sender, System.EventArgs e) {
+			if(!_isWriteOffEditable) {//Open Dental 25.3: checked at the action too, not only through the disabled button.
+				MsgBox.Show(this,"Not authorized for Insurance Write-off Edit on every procedure of this payment.");
+				return;
+			}
 			if(MessageBox.Show(Lan.g(this,"Write off unpaid amount on each procedure?"),"",MessageBoxButtons.OKCancel)
 				!=DialogResult.OK){
 				return;

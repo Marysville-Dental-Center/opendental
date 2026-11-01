@@ -83,6 +83,60 @@ namespace BCLAIMTests {
 			string fill=GetMethodBody(source,"private void FillGridProcedures(");
 			StringAssert.Contains(fill,"col=new GridColumn(Lan.g(\"TableClaimProc\",\"Writeoff\"),62,HorizontalAlignment.Right,"
 				+"isEditable:isWOIncluded && _isWriteOffEditable);");
+			//The Write-off button fills the same column with each procedure's unpaid amount, so it follows the same flag, as in FormClaimPayTotal.
+			int indexButton=load.IndexOf("butWriteOff.Enabled=_isWriteOffEditable;",StringComparison.Ordinal);
+			Assert.IsTrue(indexButton>indexPermission,"The Write-off button is disabled without 119.");
+			string writeOff=GetMethodBody(source,"private void butWriteOff_Click(");
+			int indexGuard=writeOff.IndexOf("if(!_isWriteOffEditable) {",StringComparison.Ordinal);
+			int indexAssign=writeOff.IndexOf("claimProc.WriteOff=amtUnpaid;",StringComparison.Ordinal);
+			Assert.IsTrue(indexGuard>=0 && indexAssign>indexGuard,"The click is refused without 119 before any write-off is set.");
+			Assert.IsTrue(writeOff.Substring(indexGuard,indexAssign-indexGuard).Contains("return;"));
+		}
+
+		///<summary>Every statement of manual ERA posting that sets a claimproc's WriteOff is accounted for, so a new write-off entry point (a button,
+		///a bulk fill) cannot skip the 119 check unnoticed. Allowed without the flag: reading the grid cell (the column is read-only without 119),
+		///restoring the ERA's own write-offs, and the hypothetical copies used to validate credits.</summary>
+		[TestMethod]
+		public void EraPosting_EveryWriteOffAssignmentFollowsInsWriteOffEdit() {
+			string source=Read("OpenDental","Forms","FormEtrans835ClaimPay.cs");
+			string[] arrayAllowedMethods=new[] {
+				"private void SaveGridChanges(",
+				"private List<ClaimProc> GetListClaimProcHypothetical(",
+				"private void checkIncludeWOPercCoPay_CheckedChanged(",
+			};
+			int index=0;
+			int count=0;
+			while(true) {
+				index=source.IndexOf(".WriteOff=",index,StringComparison.Ordinal);
+				if(index<0) {
+					break;
+				}
+				if(source[index+".WriteOff=".Length]=='=') {//A comparison, not an assignment.
+					index++;
+					continue;
+				}
+				count++;
+				string method=GetEnclosingMethodSignature(source,index);
+				bool isAllowed=Array.Exists(arrayAllowedMethods,x => method.StartsWith(x,StringComparison.Ordinal));
+				if(!isAllowed) {
+					string body=GetMethodBody(source,method);
+					Assert.IsTrue(body.Contains("if(!_isWriteOffEditable) {"),"Sets WriteOff without the 119 check: "+method);
+				}
+				index++;
+			}
+			Assert.IsTrue(count>=4,"The scan found the known write-off assignments.");
+		}
+
+		///<summary>The declaration line (from "private "/"public "/"protected ") of the method that contains position index.</summary>
+		private static string GetEnclosingMethodSignature(string source,int index) {
+			int start=-1;
+			foreach(string declaration in new[] { "\n\t\tprivate ","\n\t\tpublic ","\n\t\tprotected " }) {
+				start=Math.Max(start,source.LastIndexOf(declaration,index,StringComparison.Ordinal));
+			}
+			Assert.IsTrue(start>=0,"No enclosing method.");
+			start+=3;//Past "\n\t\t".
+			int end=source.IndexOf('\n',start);
+			return source.Substring(start,end-start).TrimEnd('\r');
 		}
 
 		private static void AssertPromptBefore(string source,string hook) {
@@ -125,10 +179,11 @@ namespace BCLAIMTests {
 		}
 
 		[TestMethod]
-		public void Preferences_MedicalEobCheckboxFollowsRegistration() {
+		public void Preferences_MedicalEobCheckboxUsesTheForkOwnedRow() {
 			string source=Read("OpenDental","User Controls","Preferences","UserControlAccountClaimReceive.cs");
-			StringAssert.Contains(source,"checkClaimMedReceivedPromptForMedicalEob.Visible=isMedicalEobPrefRegistered;");
-			StringAssert.Contains(source,"Changed|=Prefs.UpdateBool(prefNameMedicalEob,checkClaimMedReceivedPromptForMedicalEob.Checked);");
+			StringAssert.Contains(source,"checkClaimMedReceivedPromptForMedicalEob.Checked=ClaimAttaches.IsMedicalEobPromptEnabled();");
+			StringAssert.Contains(source,"Changed|=ClaimAttaches.SetMedicalEobPromptEnabled(checkClaimMedReceivedPromptForMedicalEob.Checked);");
+			Assert.IsFalse(source.Contains("checkClaimMedReceivedPromptForMedicalEob.Visible"),"The checkbox is always shown.");
 			string designer=Read("OpenDental","User Controls","Preferences","UserControlAccountClaimReceive.Designer.cs");
 			StringAssert.Contains(designer,"this.groupBoxClaimsMedical.Controls.Add(this.checkClaimMedReceivedPromptForMedicalEob);");
 			StringAssert.Contains(designer,"\"Prompt for Medical EOB on primary claims\"");

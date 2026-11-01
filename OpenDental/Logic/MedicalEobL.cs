@@ -1,6 +1,6 @@
 // B-CLAIM, v25_2-account-medical-eob-prompt: when a medical or institutional claim is received, offer to attach its EOB to the patient's primary
 // dental claims that are still Unsent or Hold Until Pri Received. Runs before the existing "prompt for primary claims" question, so the attachment
-// goes out with the dental claim. Off until the preference name is confirmed and registered (ClaimAttaches.TryGetMedicalEobPrefName).
+// goes out with the dental claim. Off by default; turned on in Preferences > Account > Claim Receive (ClaimAttaches.IsMedicalEobPromptEnabled).
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;

@@ -218,24 +218,69 @@ namespace BCLAIMTests {
 			AssertThrowsOD(() => ClaimAttaches.AttachFileToClaim(claimDental.ClaimNum+1000000,sourcePath,""));
 		}
 
+		private static string GetPrefRowValue(string prefName) {
+			return DataCore.GetScalar("SELECT ValueString FROM preference WHERE PrefName='"+POut.String(prefName)+"'");
+		}
+
+		private static long CountPrefRows(string prefName) {
+			return PIn.Long(DataCore.GetScalar("SELECT COUNT(*) FROM preference WHERE PrefName='"+POut.String(prefName)+"'"));
+		}
+
+		private static void DeletePrefRows() {
+			DataCore.NonQ("DELETE FROM preference WHERE PrefName IN ('"+POut.String(ClaimAttaches.PREF_NAME_MEDICAL_EOB_PROMPT_FORK)+"','"
+				+POut.String(ClaimAttaches.PREF_NAME_MEDICAL_EOB_PROMPT)+"')");
+			Cache.Refresh(InvalidType.Prefs);
+		}
+
+		///<summary>The setting is a fork-owned preference row: off while it is missing (a 24.3 or adopted Open Dental 25.3.48 database), saving the
+		///default writes no row, turning it on inserts the row, and the value survives a cache reload (another workstation).</summary>
 		[TestMethod]
-		public void Prompt_OffWhileThePreferenceIsNotRegistered() {
-			if(ClaimAttaches.TryGetMedicalEobPrefName(out PrefName prefName)) {
-				//Registered by the registry owner: the preference row decides.
-				Assert.AreEqual(PrefC.GetBoolSilent(prefName,false),ClaimAttaches.IsMedicalEobPromptEnabled());
-				return;
-			}
-			Assert.IsFalse(ClaimAttaches.IsMedicalEobPromptEnabled());
-			//Even a preference row with the proposed name does not turn it on: the name has to be confirmed and registered first.
-			DataCore.NonQ("INSERT INTO preference (PrefName,ValueString) SELECT '"+ClaimAttaches.PREF_NAME_MEDICAL_EOB_PROMPT+"','1' FROM DUAL "
-				+"WHERE NOT EXISTS(SELECT 1 FROM preference WHERE PrefName='"+ClaimAttaches.PREF_NAME_MEDICAL_EOB_PROMPT+"')");
+		public void Prompt_FollowsTheForkOwnedPreferenceRow() {
+			string prefName=ClaimAttaches.GetMedicalEobPrefNameInUse();
+			DeletePrefRows();
 			try {
+				Assert.IsFalse(ClaimAttaches.IsMedicalEobPromptEnabled(),"A missing row reads as off.");
+				Assert.IsFalse(ClaimAttaches.SetMedicalEobPromptEnabled(false),"Saving the default changes nothing.");
+				Assert.AreEqual(0,CountPrefRows(prefName),"Saving the default writes no row.");
+				Assert.IsTrue(ClaimAttaches.SetMedicalEobPromptEnabled(true));
+				Assert.AreEqual("1",GetPrefRowValue(prefName));
+				Assert.IsTrue(ClaimAttaches.IsMedicalEobPromptEnabled());
+				Cache.Refresh(InvalidType.Prefs);
+				Assert.IsTrue(ClaimAttaches.IsMedicalEobPromptEnabled(),"Read back from the database.");
+				Assert.IsFalse(ClaimAttaches.SetMedicalEobPromptEnabled(true),"Unchanged: no Prefs signal needed.");
+				Assert.IsTrue(ClaimAttaches.SetMedicalEobPromptEnabled(false));
+				Assert.AreEqual("0",GetPrefRowValue(prefName));
+				Assert.AreEqual(1,CountPrefRows(prefName),"Updated in place.");
 				Cache.Refresh(InvalidType.Prefs);
 				Assert.IsFalse(ClaimAttaches.IsMedicalEobPromptEnabled());
 			}
 			finally {
-				DataCore.NonQ("DELETE FROM preference WHERE PrefName='"+ClaimAttaches.PREF_NAME_MEDICAL_EOB_PROMPT+"'");
+				DeletePrefRows();
+			}
+		}
+
+		///<summary>While Open Dental's name is unconfirmed, the setting is the fork-owned row only: a row with the proposed (guessed) name, which an
+		///Open Dental database could hold with another meaning, neither turns the prompt on nor is written.</summary>
+		[TestMethod]
+		public void Prompt_IgnoresTheUnconfirmedOpenDentalName() {
+			if(ClaimAttaches.TryGetMedicalEobPrefName(out _)) {
+				Assert.AreEqual(ClaimAttaches.PREF_NAME_MEDICAL_EOB_PROMPT,ClaimAttaches.GetMedicalEobPrefNameInUse(),"Registered: that row is used.");
+				return;
+			}
+			Assert.AreEqual(ClaimAttaches.PREF_NAME_MEDICAL_EOB_PROMPT_FORK,ClaimAttaches.GetMedicalEobPrefNameInUse());
+			DeletePrefRows();
+			try {
+				DataCore.NonQ("INSERT INTO preference (PrefName,ValueString) VALUES ('"+POut.String(ClaimAttaches.PREF_NAME_MEDICAL_EOB_PROMPT)+"','1')");
 				Cache.Refresh(InvalidType.Prefs);
+				Assert.IsFalse(ClaimAttaches.IsMedicalEobPromptEnabled());
+				Assert.IsTrue(ClaimAttaches.SetMedicalEobPromptEnabled(true));
+				Assert.AreEqual("1",GetPrefRowValue(ClaimAttaches.PREF_NAME_MEDICAL_EOB_PROMPT_FORK));
+				Assert.AreEqual("1",GetPrefRowValue(ClaimAttaches.PREF_NAME_MEDICAL_EOB_PROMPT),"The guessed row is not touched.");
+				ClaimAttaches.SetMedicalEobPromptEnabled(false);
+				Assert.AreEqual("1",GetPrefRowValue(ClaimAttaches.PREF_NAME_MEDICAL_EOB_PROMPT),"The guessed row is not touched.");
+			}
+			finally {
+				DeletePrefRows();
 			}
 		}
 	}

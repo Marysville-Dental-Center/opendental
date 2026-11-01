@@ -138,15 +138,20 @@ namespace BCLAIMTests {
 
 		#region Medical EOB (25.2)
 		[TestMethod]
-		public void MedicalEob_PreferenceGateFollowsRegistration() {
+		public void MedicalEob_PreferenceNameFollowsRegistration() {
 			bool isRegistered=Enum.IsDefined(typeof(PrefName),ClaimAttaches.PREF_NAME_MEDICAL_EOB_PROMPT);
 			Assert.AreEqual(isRegistered,ClaimAttaches.TryGetMedicalEobPrefName(out PrefName prefName));
 			if(isRegistered) {
 				Assert.AreEqual(ClaimAttaches.PREF_NAME_MEDICAL_EOB_PROMPT,prefName.ToString());
+				Assert.AreEqual(ClaimAttaches.PREF_NAME_MEDICAL_EOB_PROMPT,ClaimAttaches.GetMedicalEobPrefNameInUse());
 			}
 			else {
-				Assert.IsFalse(ClaimAttaches.IsMedicalEobPromptEnabled(),"Until the name is registered the prompt is off.");
+				Assert.AreEqual(ClaimAttaches.PREF_NAME_MEDICAL_EOB_PROMPT_FORK,ClaimAttaches.GetMedicalEobPrefNameInUse(),
+					"Until Open Dental's name is confirmed, the fork-owned row holds the setting.");
 			}
+			//The fork-owned row follows the "Fork" naming of the other fork-owned preference rows and is never a PrefName member.
+			StringAssert.StartsWith(ClaimAttaches.PREF_NAME_MEDICAL_EOB_PROMPT_FORK,"Fork");
+			Assert.IsFalse(Enum.IsDefined(typeof(PrefName),ClaimAttaches.PREF_NAME_MEDICAL_EOB_PROMPT_FORK));
 		}
 
 		[TestMethod]
