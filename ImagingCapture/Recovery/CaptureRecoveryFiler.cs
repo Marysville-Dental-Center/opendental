@@ -35,8 +35,21 @@ namespace ImagingCapture.Recovery {
 		public long ProvNum { get; set; }
 		///<summary>The target in words, for the confirmation and the security log.</summary>
 		public string TargetText { get; set; }="";
-		///<summary>Why the target is not the original slot, or "".</summary>
+		///<summary>Why the target is not the original slot, or "", and for an 8-bit copy the plain statement that it is one (into its own slot: why 16
+		///bits are not allowed for it now).</summary>
 		public string Note { get; set; }="";
+		///<summary>A capture of more than 8 bits filed as an explicit 8-bit copy, the 16-bit original kept in Capture\quarantine-resolved (owner
+		///decisions 2026-11-01): one that does not go back into its own empty slot, and one that does but may not be stored as 16-bit now ("fall back
+		///to 8", Reason16BitRefused), which is then that slot's document.</summary>
+		public bool Is8BitCopy { get; set; }
+		///<summary>Into its own empty slot as the 8-bit copy: why 16 bits are not allowed for it now, as a clause (the first gate of the session's
+		///decision for its depth that failed, or that its sidecar names no driver version). "" otherwise.</summary>
+		public string Reason16BitRefused { get; set; }="";
+		///<summary>Into its own empty slot as 16-bit DICOM: the session's decision for its depth allows it now (design 7.8), with the polarity and
+		///whether the matching record covers the inversion, for RadiographSaveRequest.</summary>
+		public bool Is16BitAllowed { get; internal set; }
+		internal TwainPolarity Polarity16 { get; set; }
+		internal bool IsInversionVerified16 { get; set; }
 
 		public bool IsIntoOriginalSlot => Mount!=null && Slot!=null;
 
@@ -69,8 +82,16 @@ namespace ImagingCapture.Recovery {
 		public MountItem MountItem { get; set; }
 		public bool IsMountItemCreated { get; set; }
 		public string TargetText { get; set; }="";
-		///<summary>Where the file is now (Capture\quarantine-resolved for a quarantine file).</summary>
+		///<summary>Where the file is now (Capture\quarantine-resolved for a quarantine file, or the quarantine when it could not be moved); for an
+		///8-bit copy of a 16-bit journal copy, the kept original in Capture\quarantine-resolved\journal. Null when the file was not marked.</summary>
 		public string PathResolved { get; set; }
+		///<summary>Document is the explicit 8-bit copy of a 16-bit capture (RadiographSavePlan.IsCopyOf16Bit); the 16-bit original is kept, at
+		///PathResolved (owner decision 2026-11-01).</summary>
+		public bool IsCopy8BitOf16Bit { get; set; }
+		///<summary>Assign was refused because where or how it would file the capture now differs from the plan that was confirmed (the slot was
+		///filled, or the mount changed, or 16 bits became allowed or not allowed for it, meanwhile): nothing was filed, and the window plans again
+		///and shows the new target before another confirmation.</summary>
+		public bool IsPlanChanged { get; set; }
 
 		public static CaptureFilingResult Refused(CaptureRecoveryAction action,CaptureFileEntry entry,string error) {
 			return new CaptureFilingResult { Action=action,Entry=entry,Error=error??"" };
@@ -81,11 +102,14 @@ namespace ImagingCapture.Recovery {
 	///checks its permission itself, so the window cannot skip it:
 	///- Assign (ImageCreate): only to the originating patient, never for "patient unknown"; a journal copy only from that patient's capture
 	///  session. Into the original slot if it is still empty, otherwise an unmounted item of the original mount labelled "Recovered: &lt;slot&gt;".
-	///  Saved through RadiographImport, so CAP-3's 8-bit PNG and DICOM rules apply, and a 16-bit capture only under the session's 16-bit conditions
-	///  (CaptureBitDepthDecision for its device and target). Logged under ImageCreate with the session GUID.
+	///  Saved through RadiographImport, so CAP-3's 8-bit PNG and DICOM rules apply. A 16-bit capture goes into its own empty slot as 16-bit DICOM
+	///  under the session's conditions for its depth (CaptureBitDepthDecision for its device, driver and target), and as the explicit 8-bit copy,
+	///  that slot's document, when they do not hold now (owner decision 2026-11-01, "fall back to 8"); anywhere else (its slot taken, its mount
+	///  deleted, no mount) it is filed as an explicit 8-bit copy, a "Recovered: &lt;slot&gt;" item. The 16-bit original of a copy is kept in
+	///  Capture\quarantine-resolved (owner decision 2026-11-01). Logged under ImageCreate with the session GUID.
 	///- Reassign (ImageEdit, date-restricted by the receive time): to a patient the user found with the patient search (the caller passes it; this
-	///  class never picks one), with a typed reason, as an unmounted document with no tooth numbers. Logged under ImageEdit for the target
-	///  patient with both patients and the reason, and the same text for the originating patient when known.
+	///  class never picks one), with a typed reason, as an unmounted document with no tooth numbers (a 16-bit capture as its explicit 8-bit copy).
+	///  Logged under ImageEdit for the target patient with both patients and the reason, and the same text for the originating patient when known.
 	///- Discard (ImageDelete, date-restricted by the receive time): quarantine files only. Logged first, under the bound patient (or none), naming
 	///  the session, the patient and the file; a discard that cannot be logged is not done.
 	///A filed or discarded file is moved out of the quarantine with its disposition (CaptureFileStore.Resolve); nothing is deleted.</summary>
@@ -110,13 +134,27 @@ namespace ImagingCapture.Recovery {
 		///journal copy only when patNumSession is that patient (Recover recent captures in the patient's session). A redelivered image the operator
 		///did not confirm is "patient unknown" whatever PatNum its sidecar has (a sidecar written before the library left it out): Reassign only.</summary>
 		public static bool IsAssignOffered(CaptureFileEntry entry,long patNumSession) {
-			if(entry==null || entry.IsPatientUnknown || entry.IsResolved || IsRedeliveredUnconfirmed(entry)) {
+			if(entry==null || entry.IsPatientUnknown || entry.IsResolved || IsRedeliveredUnconfirmed(entry) || IsTestCapture(entry)) {
 				return false;
 			}
 			if(entry.Kind==CaptureFileKind.Journal) {
 				return !IsJournalCopyOfQuarantined(entry) && patNumSession>0 && entry.PatNum==patNumSession;
 			}
 			return true;
+		}
+
+		///<summary>A Test capture image (CaptureSidecarKeys.TestCapture, or, from before that key, a file with no patient whose target or patient
+		///name is Test capture's own): taken of a phantom or a ramp without any of the session's conditions for more than 8 bits, so it is never
+		///filed to a patient, neither assigned nor reassigned (TestCaptureModel.Instructions: "never saved to a patient").</summary>
+		public static bool IsTestCapture(CaptureFileEntry entry) {
+			if(entry==null) {
+				return false;
+			}
+			if(entry.IsTestCapture) {
+				return true;
+			}
+			return entry.IsPatientUnknown && (entry.Get("Target")==ImagingCapture.UI.TestCaptureModel.TargetLabel
+				|| entry.Get("Patient")==ImagingCapture.UI.TestCaptureModel.QuarantinePatientName);
 		}
 
 		///<summary>Design 7.12: a redelivered image is placed only after the operator confirmed it; until then its patient is unknown.</summary>
@@ -131,7 +169,8 @@ namespace ImagingCapture.Recovery {
 		}
 
 		///<summary>Where Assign would file entry now, or null with error. Reads the mount and its documents, so the slot rule uses the current
-		///state; Assign plans again before it saves.</summary>
+		///state, and for a capture of more than 8 bits into its own empty slot the session's decision for its depth (Decide16Bit), so the
+		///confirmation says whether it goes in as 16-bit DICOM or as the 8-bit copy; Assign plans again before it saves.</summary>
 		public CaptureAssignPlan PlanAssign(CaptureFileEntry entry,long patNumSession,out string error) {
 			error="";
 			if(!IsAssignOffered(entry,patNumSession)) {
@@ -197,6 +236,28 @@ namespace ImagingCapture.Recovery {
 			else {
 				plan.ToothNumbers=toothNumbers;//a single image of the session: its banner's teeth
 			}
+			if(entry.IsGray16 && plan.IsIntoOriginalSlot) {
+				//Into its own empty slot: 16-bit DICOM when the session could store it at its depth now; otherwise (owner decision 2026-11-01, "fall
+				//back to 8") the explicit 8-bit copy, as that slot's document with the slot's teeth and rotation.
+				string reasonRefused;
+				if(!Decide16Bit(entry,plan,out reasonRefused,out error)) {
+					return null;
+				}
+				if(reasonRefused!=null) {
+					plan.Is8BitCopy=true;
+					plan.Reason16BitRefused=reasonRefused;
+					plan.Note=CaptureRecoveryText.GetCopy8BitNotAllowedNote(entry,reasonRefused);
+				}
+			}
+			else if(entry.IsGray16) {
+				//Owner decision 2026-11-01: a 16-bit capture that cannot go back into its own slot is filed as an explicit 8-bit copy, as a
+				//"Recovered: <slot>" item, with the slot's teeth when the slot is known and none when it is not.
+				plan.Is8BitCopy=true;
+				if(plan.Description=="") {
+					plan.Description=CaptureRecoveryText.GetRecoveredLabel(slotLabel);
+				}
+				plan.Note=(plan.Note+" "+CaptureRecoveryText.GetCopy8BitNote(entry)).Trim();
+			}
 			plan.DocCategory=GetDefaultCategory(entry,mount);
 			plan.ProvNum=entry.ProvNum>0 ? entry.ProvNum : GetDefaultProvNum(patient);
 			plan.TargetText=CaptureRecoveryText.GetTargetText(plan.Mount,plan.Slot,plan.Description,plan.ToothNumbers);
@@ -204,8 +265,12 @@ namespace ImagingCapture.Recovery {
 		}
 
 		///<summary>Files entry for its originating patient (see the class). docCategory 0: the plan's. patNumSession: the capture session's patient,
-		///or 0 outside a session (then a journal copy is refused).</summary>
-		public CaptureFilingResult Assign(CaptureFileEntry entry,long docCategory,long patNumSession) {
+		///or 0 outside a session (then a journal copy is refused). planConfirmed: the plan the operator confirmed (PlanAssign, shown with its
+		///target and note); Assign plans again, and refuses with IsPlanChanged when the target, or whether it files an 8-bit copy, is no longer the
+		///one confirmed (the slot was filled, or 16 bits became allowed or not allowed for it meanwhile), so that a 16-bit capture is never filed as
+		///its 8-bit copy, nor as 16-bit DICOM, nor any capture elsewhere, without the operator having seen it. Null only where no confirmation was
+		///shown.</summary>
+		public CaptureFilingResult Assign(CaptureFileEntry entry,long docCategory,long patNumSession,CaptureAssignPlan planConfirmed=null) {
 			const CaptureRecoveryAction action=CaptureRecoveryAction.Assign;
 			string message;
 			if(!IsAuthorized(EnumPermType.ImageCreate,DateTime.MinValue,out message)) {
@@ -215,6 +280,13 @@ namespace ImagingCapture.Recovery {
 			CaptureAssignPlan plan=PlanAssign(entry,patNumSession,out error);
 			if(plan==null) {
 				return CaptureFilingResult.Refused(action,entry,error);
+			}
+			if(planConfirmed!=null && !IsSamePlan(plan,planConfirmed)) {
+				Log("Assign of "+entry.ImagePath+" refused: it would now go into "+plan.TargetText+(plan.Is8BitCopy ? " as an 8-bit copy" : "")
+					+", and the confirmation said "+planConfirmed.TargetText+(planConfirmed.Is8BitCopy ? " as an 8-bit copy" : "")+".");
+				CaptureFilingResult resultChanged=CaptureFilingResult.Refused(action,entry,CaptureRecoveryText.AssignPlanChanged);
+				resultChanged.IsPlanChanged=true;
+				return resultChanged;
 			}
 			long category=docCategory>0 ? docCategory : plan.DocCategory;
 			if(category<=0) {
@@ -226,23 +298,139 @@ namespace ImagingCapture.Recovery {
 			}
 			RadiographTarget target=plan.ToRadiographTarget();
 			RadiographSaveRequest request=BuildRequest(entry,image,plan.Patient,category,plan.ProvNum,target,plan.Description);
-			if(image.IsGray16 && !Apply16BitRules(entry,target,request,out error)) {
+			if(image.IsGray16) {
+				//Into its own empty slot: 16-bit DICOM under the session's conditions, as the plan decided; anywhere else, or when they do not hold
+				//now: the explicit 8-bit copy.
+				if(plan.Is8BitCopy) {
+					ApplyCopyRules(entry,request);
+				}
+				else if(plan.Is16BitAllowed) {
+					request.Is16BitAllowed=true;
+					request.Polarity=plan.Polarity16;
+					request.IsInversionVerified=plan.IsInversionVerified16;
+				}
+				else {
+					//The file read back has more than 8 bits although its name did not say so when the filing was planned: never stored unplanned.
+					return CaptureFilingResult.Refused(action,entry,"The image has more than 8 bits, which its file did not show when the filing was "
+						+"planned, so it was not filed.");
+				}
+			}
+			string pathKept;
+			if(!KeepOriginalBeforeCopy(entry,request,out pathKept,out error)) {
 				return CaptureFilingResult.Refused(action,entry,error);
 			}
 			RadiographSaveResult resultSave=_radiographImport.Save(request);
 			if(!resultSave.IsSaved) {
+				LogKeptUnfiled(pathKept);
 				return CaptureFilingResult.Refused(action,entry,"The image was not filed: "+(resultSave.Error??"").Trim());
 			}
 			CaptureFilingResult result=NewResult(action,entry,plan.Patient.PatNum,resultSave,plan.Mount,plan.TargetText);
+			string copyText=GetCopyText(entry,resultSave);
 			WriteLog(EnumPermType.ImageCreate,plan.Patient.PatNum,CaptureRecoveryText.GetAssignLogText(entry,plan.Patient,plan.TargetText,
-				resultSave.Document.DocNum),resultSave.Document.DocNum,result);
-			Resolve(entry,CaptureFileDisposition.Assigned,new List<KeyValuePair<string,string>> {
+				resultSave.Document.DocNum,copyText),resultSave.Document.DocNum,result);
+			List<KeyValuePair<string,string>> listFields=new List<KeyValuePair<string,string>> {
 				Pair("DispositionUser",Store.GetUserName()),
 				Pair("DispositionPatNum",ToText(plan.Patient.PatNum)),
 				Pair("DispositionDocNum",ToText(resultSave.Document.DocNum)),
 				Pair("DispositionTarget",plan.TargetText),
-			},result);
+			};
+			AddCopyFields(listFields,resultSave);
+			Resolve(entry,CaptureFileDisposition.Assigned,listFields,result,pathKept);
 			return result;
+		}
+
+		///<summary>A 16-bit journal copy filed as its 8-bit copy (request.Is8BitCopyOf16Bit): the journal's rotation would remove the 16-bit
+		///original once the copy is marked as filed, so it is kept with its sidecar in Capture\quarantine-resolved\journal first, before anything is
+		///saved, and the filing is refused when that fails (owner decision 2026-11-01: the 16-bit original stays in quarantine-resolved; nothing is
+		///ever deleted). pathKept: the kept image, or null when nothing needs keeping (a quarantine file moves there with Resolve).</summary>
+		private bool KeepOriginalBeforeCopy(CaptureFileEntry entry,RadiographSaveRequest request,out string pathKept,out string error) {
+			pathKept=null;
+			error="";
+			if(entry.Kind!=CaptureFileKind.Journal || !request.Is8BitCopyOf16Bit) {
+				return true;
+			}
+			string errorKept;
+			if(!_services.FileStore.KeepJournalCopy(entry,out pathKept,out errorKept)) {
+				pathKept=null;
+				error="The 16-bit original could not be kept in "+CaptureFileStore.SubfolderJournalKept+" ("+(errorKept??"").Trim().TrimEnd('.')+"), so "
+					+"its 8-bit copy was not filed.";
+				Log(error+" File: "+entry.ImagePath);
+				return false;
+			}
+			if(!string.IsNullOrEmpty(errorKept)) {
+				Log("Keeping "+entry.ImagePath+": "+errorKept);
+			}
+			Log("The 16-bit original "+entry.ImagePath+" is kept as "+pathKept+" before its 8-bit copy is filed.");
+			return true;
+		}
+
+		///<summary>The filing failed after KeepOriginalBeforeCopy kept the original: the kept copy stays, without a disposition (a later filing of
+		///the same copy uses it again).</summary>
+		private void LogKeptUnfiled(string pathKept) {
+			if(pathKept!=null) {
+				Log("The filing failed; "+pathKept+" stays kept, with no disposition.");
+			}
+		}
+
+		///<summary>plan files the capture for the same patient, into the same target, and as an 8-bit copy or not, as planConfirmed.</summary>
+		private static bool IsSamePlan(CaptureAssignPlan plan,CaptureAssignPlan planConfirmed) {
+			return plan.Is8BitCopy==planConfirmed.Is8BitCopy
+				&& (plan.Patient?.PatNum??0)==(planConfirmed.Patient?.PatNum??0)
+				&& string.Equals(plan.TargetText??"",planConfirmed.TargetText??"",StringComparison.Ordinal);
+		}
+
+		///<summary>The audit words for the 8-bit copy resultSave made, or null when it made none.</summary>
+		private static string GetCopyText(CaptureFileEntry entry,RadiographSaveResult resultSave) {
+			RadiographSavePlan plan=resultSave?.Plan;
+			if(plan==null || !plan.IsCopyOf16Bit) {
+				return null;
+			}
+			return CaptureRecoveryText.GetCopyLogText(entry,plan.CopyWindowLow,plan.CopyWindowHigh);
+		}
+
+		///<summary>The disposition of a 16-bit original filed as its 8-bit copy: what the copy is and the window it was made with (owner decision
+		///2026-11-01: "a gray PNG made with the window recorded in its sidecar"). The copy's DocNum is DispositionDocNum.</summary>
+		private static void AddCopyFields(List<KeyValuePair<string,string>> listFields,RadiographSaveResult resultSave) {
+			RadiographSavePlan plan=resultSave?.Plan;
+			if(plan==null || !plan.IsCopyOf16Bit) {
+				return;
+			}
+			listFields.Add(Pair("DispositionCopy",RadiographSavePlanner.Copy8BitText+": a gray PNG through the window of the 16-bit values"
+				+(plan.IsInverted ? ", after the verified inversion" : "")));
+			listFields.Add(Pair("DispositionCopyWindowLow",ToText(plan.CopyWindowLow)));
+			listFields.Add(Pair("DispositionCopyWindowHigh",ToText(plan.CopyWindowHigh)));
+			listFields.Add(Pair("DispositionCopyBitDepth",ToText(plan.CopyBitDepth)));
+		}
+
+		///<summary>The explicit 8-bit copy of a 16-bit capture (owner decision 2026-11-01): RadiographSavePlanner makes it through the window the
+		///session shows, with the polarity the capture was taken with (its sidecar's [Device.N] Polarity). The capture session takes more than 8
+		///bits only under a matching, passed verification record (CaptureBitDepthDecision), which covers that polarity, so an Invert in the sidecar
+		///counts as verified. Test capture asks for more than 8 bits without one, so its images are never filed (IsTestCapture).</summary>
+		private static bool ApplyCopyRules(CaptureFileEntry entry,RadiographSaveRequest request) {
+			request.Is8BitCopyOf16Bit=true;
+			request.Is16BitAllowed=false;
+			TwainPolarity polarity=GetCapturePolarity(entry);
+			request.Polarity=polarity;
+			request.IsInversionVerified=polarity==TwainPolarity.Invert;
+			return true;
+		}
+
+		///<summary>The [Device.N] Polarity the capture's sidecar records (TwainCaptureOptions.GetSidecarFields: "Device.12.Polarity"), else
+		///AsDelivered.</summary>
+		public static TwainPolarity GetCapturePolarity(CaptureFileEntry entry) {
+			if(entry==null) {
+				return TwainPolarity.AsDelivered;
+			}
+			string text=entry.ImagingDeviceNum>0 ? entry.Get("Device."+ToText(entry.ImagingDeviceNum)+".Polarity") : "";
+			if(text=="") {
+				text=entry.Fields.Where(x => x.Key.StartsWith("Device.",StringComparison.OrdinalIgnoreCase)
+					&& x.Key.EndsWith(".Polarity",StringComparison.OrdinalIgnoreCase)).Select(x => x.Value).FirstOrDefault()??"";
+			}
+			TwainPolarity polarity;
+			if(Enum.TryParse(text.Trim(),true,out polarity) && Enum.IsDefined(typeof(TwainPolarity),polarity) && !text.Trim().All(char.IsDigit)) {
+				return polarity;
+			}
+			return TwainPolarity.AsDelivered;
 		}
 
 		private static string GetAssignNotOfferedText(CaptureFileEntry entry,long patNumSession) {
@@ -254,6 +442,9 @@ namespace ImagingCapture.Recovery {
 			}
 			if(IsJournalCopyOfQuarantined(entry)) {
 				return "This copy's image is in unassigned captures; file it from there.";
+			}
+			if(IsTestCapture(entry)) {
+				return CaptureRecoveryText.TestCaptureNote;
 			}
 			if(entry.IsPatientUnknown || IsRedeliveredUnconfirmed(entry)) {
 				return "This capture has no originating patient, so it can only be reassigned to a patient you find.";
@@ -349,48 +540,96 @@ namespace ImagingCapture.Recovery {
 			return 0;
 		}
 
-		///<summary>Design 7.8 "When 16-bit is enabled": the same decision as the session's for this device, this computer and this target. A 16-bit
-		///capture is never downconverted; one that may not be stored as DICOM stays where it is.</summary>
-		private bool Apply16BitRules(CaptureFileEntry entry,RadiographTarget target,RadiographSaveRequest request,out string error) {
+		///<summary>Design 7.8 "When 16-bit is enabled", for a capture of more than 8 bits that goes into its own empty slot (plan.Slot): the same
+		///decision as the session's for this device, this computer and that slot, for the depth the capture's enable asked for. reasonRefused: null
+		///when 16 bits are allowed for it now (plan gets the polarity and whether the record covers its inversion), else why not, as a clause: the
+		///first gate that failed, or that its sidecar names no driver version, which no record can ever cover. Such a capture is then filed as the
+		///explicit 8-bit copy (owner decision 2026-11-01, "fall back to 8"). False with error only when the settings or the records could not be read:
+		///nothing is planned then, rather than an 8-bit copy chosen for a reading error.</summary>
+		private bool Decide16Bit(CaptureFileEntry entry,CaptureAssignPlan plan,out string reasonRefused,out string error) {
+			reasonRefused=null;
 			error="";
-			long imagingDeviceNum=entry.ImagingDeviceNum;
-			LocalCaptureConfig config=_services.FuncLoadConfig?.Invoke()??LocalCaptureConfig.Load((string)null);
-			TwainCaptureOptions options=TwainCaptureOptions.FromConfig(config,imagingDeviceNum);
-			string computerName=_services.FuncGetComputerName?.Invoke()??"";
-			ImagingDevice imagingDevice=imagingDeviceNum>0 ? Store.GetImagingDevice(imagingDeviceNum) : null;
-			List<SecurityLog> listSetupLogs=imagingDeviceNum>0 ? Store.GetSetupLogEntries(imagingDeviceNum) : new List<SecurityLog>();
-			CaptureVerificationRecord record=imagingDeviceNum>0 ? CaptureVerificationRecords.FindLatest(listSetupLogs,imagingDeviceNum,computerName) : null;
-			CaptureSettingsCheck settingsCheck=imagingDeviceNum>0
-				? CaptureSettingsCheck.Check(config,imagingDeviceNum,computerName,listSetupLogs)
-				: CaptureSettingsCheck.Unknown(imagingDeviceNum,computerName,"the capture names no imaging device");
-			CaptureBitDepthChoice choice=CaptureBitDepthDecision.Decide(new CaptureBitDepthInput {
-				Options=options,
-				Record=record,
-				ImagingDeviceNum=imagingDeviceNum,
-				ComputerName=computerName,
-				TwainName=imagingDevice?.TwainName??"",
-				GatedSettingsHash=settingsCheck.CurrentHash,
-				SettingsCheck=settingsCheck,
-				Target=target.ToIntraOralTarget(),
-			});
-			if(choice.Bits!=16) {
-				error="This 16-bit capture can be filed only where the capture session could store it at 16 bits, and it is never converted to 8 bits. "
-					+(choice.Reason8Bit??"").Trim()+" It stays where it is.";
+			if(entry.DriverIdentity==null) {
+				//No record can ever cover it (a record names the driver version, owner decision 2026-11-01).
+				reasonRefused=CaptureRecoveryText.ToClause(CaptureRecoveryText.GetNoDriverReason(entry));
+				return true;
+			}
+			TwainCaptureOptions options;
+			CaptureBitDepthChoice choice;
+			try {
+				long imagingDeviceNum=entry.ImagingDeviceNum;
+				LocalCaptureConfig config=_services.FuncLoadConfig?.Invoke()??LocalCaptureConfig.Load((string)null);
+				options=TwainCaptureOptions.FromConfig(config,imagingDeviceNum);
+				string computerName=_services.FuncGetComputerName?.Invoke()??"";
+				ImagingDevice imagingDevice=imagingDeviceNum>0 ? Store.GetImagingDevice(imagingDeviceNum) : null;
+				List<SecurityLog> listSetupLogs=imagingDeviceNum>0 ? Store.GetSetupLogEntries(imagingDeviceNum) : new List<SecurityLog>();
+				CaptureVerificationRecord record=imagingDeviceNum>0 ? CaptureVerificationRecords.FindLatest(listSetupLogs,imagingDeviceNum) : null;
+				CaptureSettingsCheck settingsCheck=imagingDeviceNum>0
+					? CaptureSettingsCheck.Check(config,imagingDeviceNum,computerName,listSetupLogs)
+					: CaptureSettingsCheck.Unknown(imagingDeviceNum,computerName,"the capture names no imaging device");
+				choice=CaptureBitDepthDecision.Decide(new CaptureBitDepthInput {
+					Options=options,
+					Record=record,
+					ImagingDeviceNum=imagingDeviceNum,
+					ComputerName=computerName,
+					TwainName=imagingDevice?.TwainName??"",
+					DriverIdentity=entry.DriverIdentity,//the build that delivered the capture, from its sidecar
+					GatedSettingsHash=settingsCheck.CurrentHash,
+					SettingsCheck=settingsCheck,
+					Target=plan.ToRadiographTarget().ToIntraOralTarget(),
+					BitsWanted=GetBitsWanted(entry),
+				});
+			}
+			catch(Exception ex) {
+				error="Whether this capture may be stored at its depth could not be checked, so nothing was planned: "+ex.Message;
+				Log(error+" File: "+entry.ImagePath);
 				return false;
 			}
-			request.Is16BitAllowed=true;
-			request.Polarity=options.Polarity;
-			request.IsInversionVerified=choice.IsInversionVerified;
+			if(choice.Bits<=8) {
+				reasonRefused=GetReasonClause(choice);
+				return true;
+			}
+			plan.Is16BitAllowed=true;
+			plan.Polarity16=options.Polarity;
+			plan.IsInversionVerified16=choice.IsInversionVerified;
 			return true;
+		}
+
+		///<summary>Why the decision gave 8 bits, without the capture log's prefix ("8 bits: ", "8 bits (fallback): "), as a clause.</summary>
+		private static string GetReasonClause(CaptureBitDepthChoice choice) {
+			string reason=choice.IsFallback && !string.IsNullOrWhiteSpace(choice.ReasonFallback) ? choice.ReasonFallback : (choice.Reason8Bit??"").Trim();
+			foreach(string prefix in new[] { CaptureBitDepthText.PrefixFallback,CaptureBitDepthText.PrefixConfigured }) {
+				if(reason.StartsWith(prefix,StringComparison.Ordinal)) {
+					reason=reason.Substring(prefix.Length);
+				}
+			}
+			return CaptureRecoveryText.ToClause(reason);
+		}
+
+		///<summary>The depth the recovery decides for, as the session did: the depth the capture's enable asked for (its sidecar's RequestedBits,
+		///16 or 14, read as CaptureFileStore.ReadImage reads it), whose record covers whatever depth the source then fell back to (a 14-bit capture
+		///of a 16-bit enable is stored under a record that passed at 16); else the depth it was taken at. Null for an 8-bit capture.</summary>
+		internal static int? GetBitsWanted(CaptureFileEntry entry) {
+			if(entry==null) {
+				return null;
+			}
+			int requestedBits;
+			if(!int.TryParse(entry.Get("RequestedBits"),NumberStyles.Integer,CultureInfo.InvariantCulture,out requestedBits)) {
+				requestedBits=TwainBitDepth.Bits8;
+			}
+			if(requestedBits>8) {
+				return TwainBitDepth.Normalize(requestedBits);
+			}
+			return entry.BitDepthInEffect>8 ? entry.BitDepthInEffect : (int?)null;
 		}
 		#endregion Assign
 
 		#region Reassign
-		///<summary>Whether Reassign is offered: any capture that was not filed yet and can be read back (a .dcm cannot), except a 16-bit one: it is
-		///stored only as DICOM in a mount slot with tooth numbers (design 7.8), and Reassign files an unmounted document with none, so it is never
-		///offered (the list's note says so) instead of being refused after the patient search and the reason.</summary>
+		///<summary>Whether Reassign is offered: any capture that was not filed yet and can be read back (a .dcm cannot). A 16-bit one is reassigned
+		///as its explicit 8-bit copy (owner decision 2026-11-01): Reassign files an unmounted document with no tooth numbers, which 16-bit DICOM
+		///cannot be (design 7.8), and the 16-bit original is kept.</summary>
 		public static bool IsReassignOffered(CaptureFileEntry entry) {
-			return entry!=null && !entry.IsResolved && entry.Extension!=".dcm" && !IsJournalCopyOfQuarantined(entry) && !entry.IsGray16;
+			return entry!=null && !entry.IsResolved && entry.Extension!=".dcm" && !IsJournalCopyOfQuarantined(entry) && !IsTestCapture(entry);
 		}
 
 		///<summary>Files entry for patientTarget, whom the user found with the patient search (design 7.12 "Reassign"): ImageEdit, a typed reason,
@@ -398,7 +637,8 @@ namespace ImagingCapture.Recovery {
 		public CaptureFilingResult Reassign(CaptureFileEntry entry,Patient patientTarget,string reason,long docCategory) {
 			const CaptureRecoveryAction action=CaptureRecoveryAction.Reassign;
 			if(!IsReassignOffered(entry)) {
-				return CaptureFilingResult.Refused(action,entry,entry?.IsResolved==true ? "This capture was already filed." : "This file cannot be reassigned.");
+				return CaptureFilingResult.Refused(action,entry,entry?.IsResolved==true ? "This capture was already filed."
+					: IsTestCapture(entry) ? CaptureRecoveryText.TestCaptureNote : "This file cannot be reassigned.");
 			}
 			string message;
 			if(!IsAuthorized(EnumPermType.ImageEdit,entry.ReceivedAt,out message)) {
@@ -432,33 +672,39 @@ namespace ImagingCapture.Recovery {
 			if(image==null) {
 				return CaptureFilingResult.Refused(action,entry,error);
 			}
-			if(image.IsGray16) {
-				return CaptureFilingResult.Refused(action,entry,"A 16-bit capture is stored only as DICOM in its mount slot (design 7.8), and an unmounted "
-					+"document has no slot, so it cannot be reassigned. It stays where it is.");
-			}
 			Patient patientFrom=entry.IsPatientUnknown ? null : Store.GetPatient(entry.PatNum);
 			RadiographTarget target=new RadiographTarget { ToothNumbers="" };
 			RadiographSaveRequest request=BuildRequest(entry,image,patientTarget,docCategory,GetDefaultProvNum(patientTarget),target,
 				CaptureRecoveryText.ReassignedDescription);
+			if(image.IsGray16) {
+				ApplyCopyRules(entry,request);//an unmounted document with no teeth: the explicit 8-bit copy, the 16-bit original kept
+			}
+			string pathKept;
+			if(!KeepOriginalBeforeCopy(entry,request,out pathKept,out error)) {
+				return CaptureFilingResult.Refused(action,entry,error);
+			}
 			RadiographSaveResult resultSave=_radiographImport.Save(request);
 			if(!resultSave.IsSaved) {
+				LogKeptUnfiled(pathKept);
 				return CaptureFilingResult.Refused(action,entry,"The image was not filed: "+(resultSave.Error??"").Trim());
 			}
 			string targetText=CaptureRecoveryText.GetTargetText(null,null,CaptureRecoveryText.ReassignedDescription,"");
 			CaptureFilingResult result=NewResult(action,entry,patientTarget.PatNum,resultSave,null,targetText);
 			long docNum=resultSave.Document.DocNum;
-			string logText=CaptureRecoveryText.GetReassignLogText(entry,patientFrom,patientTarget,reasonTrimmed,docNum);
+			string logText=CaptureRecoveryText.GetReassignLogText(entry,patientFrom,patientTarget,reasonTrimmed,docNum,GetCopyText(entry,resultSave));
 			WriteLog(EnumPermType.ImageEdit,patientTarget.PatNum,logText,docNum,result);
 			if(patientFrom!=null && patientFrom.PatNum!=patientTarget.PatNum) {
 				WriteLog(EnumPermType.ImageEdit,patientFrom.PatNum,logText,0,result);//the originating patient's audit shows where the image went
 			}
-			Resolve(entry,CaptureFileDisposition.Reassigned,new List<KeyValuePair<string,string>> {
+			List<KeyValuePair<string,string>> listFields=new List<KeyValuePair<string,string>> {
 				Pair("DispositionUser",Store.GetUserName()),
 				Pair("DispositionPatNumFrom",entry.IsPatientUnknown ? "" : ToText(entry.PatNum)),
 				Pair("DispositionPatNum",ToText(patientTarget.PatNum)),
 				Pair("DispositionDocNum",ToText(docNum)),
 				Pair("DispositionReason",reasonTrimmed),
-			},result);
+			};
+			AddCopyFields(listFields,resultSave);
+			Resolve(entry,CaptureFileDisposition.Reassigned,listFields,result,pathKept);
 			return result;
 		}
 		#endregion Reassign
@@ -552,6 +798,7 @@ namespace ImagingCapture.Recovery {
 				MountItem=resultSave.MountItem,
 				IsMountItemCreated=resultSave.IsMountItemCreated,
 				TargetText=targetText,
+				IsCopy8BitOf16Bit=resultSave.Plan!=null && resultSave.Plan.IsCopyOf16Bit,
 			};
 			result.ListWarnings.AddRange(resultSave.ListWarnings);
 			return result;
@@ -568,17 +815,35 @@ namespace ImagingCapture.Recovery {
 		}
 
 		///<summary>Moves a filed capture out of the quarantine (or marks its journal copy). A failure leaves the document filed: the window says so,
-		///and the item is not offered again in this window.</summary>
-		private void Resolve(CaptureFileEntry entry,CaptureFileDisposition disposition,List<KeyValuePair<string,string>> listFields,CaptureFilingResult result) {
+		///and the item is not offered again in this window. pathKept: where KeepOriginalBeforeCopy kept a 16-bit journal copy filed as its 8-bit
+		///copy, or null; its kept sidecar gets the disposition too, and it is where the 16-bit original now is (PathResolved).</summary>
+		private void Resolve(CaptureFileEntry entry,CaptureFileDisposition disposition,List<KeyValuePair<string,string>> listFields,
+			CaptureFilingResult result,string pathKept=null)
+		{
 			string pathResolved;
 			string error;
-			if(!_services.FileStore.Resolve(entry,disposition,listFields,out pathResolved,out error)) {
+			bool isResolved=_services.FileStore.Resolve(entry,disposition,listFields,out pathResolved,out error);
+			if(pathKept!=null) {
+				//The journal copy is marked as filed (as before) and its rotation may remove it; the 16-bit original is the kept copy.
+				string errorKept;
+				if(_services.FileStore.RecordKeptDisposition(pathKept,entry,disposition,listFields,out errorKept)) {
+					Log("The 16-bit original is kept as "+pathKept+", its sidecar with the disposition.");
+				}
+				else {
+					result.ListWarnings.Add("The 16-bit original is kept as "+pathKept+", but its sidecar could not record the filing: "+errorKept);
+					Log("The kept 16-bit original "+pathKept+" could not record the filing: "+errorKept);
+				}
+			}
+			if(!isResolved) {
 				result.ListWarnings.Add("The image was filed as DocNum "+result.Document?.DocNum+", but its file could not be marked as filed, so it may be "
 					+"listed again: "+error);
 				Log(disposition+" "+entry.ImagePath+" as DocNum "+result.Document?.DocNum+"; the file could not be marked: "+error);
+				if(pathKept!=null) {
+					result.PathResolved=pathKept;
+				}
 				return;
 			}
-			result.PathResolved=pathResolved;
+			result.PathResolved=pathKept??pathResolved;
 			if(error!="") {
 				result.ListWarnings.Add(error);
 			}

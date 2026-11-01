@@ -85,8 +85,12 @@ namespace ImagingCapture.Session {
 		private string _indicatorText="";
 		///<summary>Every enable posted, for the effective settings of the summary (design 9.3).</summary>
 		private readonly List<CaptureEnableRecord> _listEnablesPosted=new List<CaptureEnableRecord>();
-		///<summary>The first reason the source gave 8 bits where 16 were asked (TwainCaptureEnded.Reason8Bit), or "".</summary>
-		private string _reason8BitDelivered="";
+		///<summary>The depths the images of this session were actually taken at, in words (CaptureBitDepthText.DescribeImage), distinct, in the
+		///order first seen, for the summary's "In effect" (owner decision 2026-11-01).</summary>
+		private readonly List<string> _listBitDepthTextsUsed=new List<string>();
+		///<summary>The first "14-bit layout not usable: ..." (or 16-bit) an enable ended with (TwainCaptureEnded.LayoutUnusableText), or "": from
+		///then on the session asks for 8 bits on this device.</summary>
+		private string _reasonLayoutUnusable="";
 		#endregion Fields
 
 		#region Constructor
@@ -698,15 +702,21 @@ namespace ImagingCapture.Session {
 				ImagingDeviceNum=_setup.ImagingDevice.ImagingDeviceNum,
 				ComputerName=_setup.ComputerName,
 				TwainName=_setup.ImagingDevice.TwainName,
+				DriverIdentity=_session.SourceInfo?.DriverIdentity,//read at this open
 				GatedSettingsHash=_setup.GatedSettingsHash,
 				SettingsCheck=_setup.SettingsCheck,
 				Target=radiographTarget.ToIntraOralTarget(),
+				ReasonLayoutUnusable=_reasonLayoutUnusable=="" ? null : _reasonLayoutUnusable,
 			});
 			if(record.BitDepth.Reason8Bit!=null) {
 				LogOnce(record.BitDepth.Reason8Bit);
 			}
+			else if(record.BitDepth.ReasonBelowBits!=null) {
+				LogOnce(CaptureBitDepthText.Prefix14+record.BitDepth.ReasonBelowBits+".");
+			}
 			TwainEnableRequest request=new TwainEnableRequest {
 				Bits=record.BitDepth.Bits,
+				ReasonFallback=record.BitDepth.ReasonFallback??record.BitDepth.ReasonBelowBits,
 				Tag=record,
 				TargetLabel=radiographTarget.GetLabel(),
 				SidecarFields=GetSidecarFields(record),
@@ -1020,10 +1030,19 @@ namespace ImagingCapture.Session {
 				SettingsNotVerifiedText=SettingsNoticeText,
 				CountEnables=_listEnablesPosted.Count,
 				CountSafeDisable=_listEnablesPosted.Count(x => x.IsSafeDisableInEffect),
-				ListBitsAsked=_listEnablesPosted.Where(x => x.BitDepth!=null).Select(x => x.BitDepth.Bits).Distinct().OrderBy(x => x).ToList(),
-				Reason8Bit=_listEnablesPosted.Select(x => x.BitDepth?.Reason8Bit).FirstOrDefault(x => !string.IsNullOrWhiteSpace(x))??"",
-				Reason8BitDelivered=_reason8BitDelivered,
+				//The depths the images were taken at; with no image, what the enables asked for.
+				ListBitDepthTexts=_listBitDepthTextsUsed.Count>0 ? new List<string>(_listBitDepthTextsUsed)
+					: _listEnablesPosted.Where(x => x.BitDepth!=null).Select(x => CaptureBitDepthText.Describe(x.BitDepth.Bits,x.BitDepth.ReasonFallback))
+						.Distinct().ToList(),
 			};
+		}
+
+		///<summary>Notes the depth image was actually taken at, for the summary.</summary>
+		private void NoteBitDepthUsed(AcquiredImage image,CaptureEnableRecord record) {
+			string text=CaptureBitDepthText.DescribeImage(image,record?.BitDepth?.ReasonFallback);
+			if(text!="" && !_listBitDepthTextsUsed.Contains(text)) {
+				_listBitDepthTextsUsed.Add(text);
+			}
 		}
 
 		///<summary>The session finished while an enable still ran, the source enabled or stopping (a forced close, the X while the source is enabled
@@ -1057,6 +1076,15 @@ namespace ImagingCapture.Session {
 			if(status.IsSafeDisableInEffect) {
 				record.IsSafeDisableInEffect=true;
 			}
+			if(!string.IsNullOrWhiteSpace(status.LayoutUnusableText) && record.LayoutUnusableText==null) {
+				//A continuous enable without safe disable: it stays enabled, and every later exposure of it would be lost the same way. The fork
+				//starts no disable of its own (design 7.6, 10.6), so the operator is told at once, before another exposure.
+				record.LayoutUnusableText=status.LayoutUnusableText.Trim();
+				NoteLayoutUnusable(record.LayoutUnusableText);
+				Log("A continuous enable could not read an image and stays enabled (safe disable is not in effect): the operator is told not to "
+					+"expose again and to end the series.");
+				PlaySound(CaptureSound.NotReceived);
+			}
 			bool isSavedShowing=record.CountSaved>0 && IndicatorState==CaptureIndicatorState.Saved;
 			switch(status.State) {
 				case TwainCaptureState.Enabling:
@@ -1064,6 +1092,10 @@ namespace ImagingCapture.Session {
 					break;
 				case TwainCaptureState.WaitingForImage:
 				case TwainCaptureState.Transferring:
+					if(record.LayoutUnusableText!=null) {
+						SetIndicator(CaptureIndicatorState.Error,CaptureSessionText.GetLayoutUnusableContinuousText(record.LayoutUnusableText));
+						break;
+					}
 					if(_isPausedBySaveFailure) {
 						//A continuous enable that could not be disabled after a failed save (no safe disable in effect) still runs: design 7.12 says
 						//Paused, so the indicator keeps the error and never invites an exposure that would not be placed.
@@ -1138,6 +1170,10 @@ namespace ImagingCapture.Session {
 		///<summary>The indicator while record's enable waits for an exposure (design 7.3 step 3): where its next image goes, or, when it has no
 		///slot left for it (GetNoSlotLeftText), that its images go to unassigned captures, in a state that never invites an exposure.</summary>
 		private void ShowWaitingForExposure(CaptureEnableRecord record) {
+			if(record?.LayoutUnusableText!=null) {
+				SetIndicator(CaptureIndicatorState.Error,CaptureSessionText.GetLayoutUnusableContinuousText(record.LayoutUnusableText));
+				return;
+			}
 			string textNoSlotLeft=GetNoSlotLeftText(record);
 			if(textNoSlotLeft!=null) {
 				SetIndicator(CaptureIndicatorState.Error,textNoSlotLeft);
@@ -1170,6 +1206,7 @@ namespace ImagingCapture.Session {
 				return;
 			}
 			record.CountReceived++;
+			NoteBitDepthUsed(image,record);
 			if(image.IsContinuousEnable) {
 				record.IsContinuous=true;
 			}
@@ -1247,7 +1284,7 @@ namespace ImagingCapture.Session {
 				DocCategory=_setup.CategoryDefNum,
 				ProvNum=ProvNum,
 				Target=target,
-				Is16BitAllowed=record.BitDepth!=null && record.BitDepth.Bits==16,
+				Is16BitAllowed=record.BitDepth!=null && record.BitDepth.Bits>8,//16 or 14 asked: a 14- or 16-bit image is written as 16-bit DICOM
 				Polarity=_setup.Options.Polarity,
 				IsInversionVerified=record.BitDepth!=null && record.BitDepth.IsInversionVerified,
 				SessionGuid=SessionGuid,
@@ -1400,11 +1437,12 @@ namespace ImagingCapture.Session {
 				NextTargetText="";
 			}
 			string textEnded=CaptureEndText.GetEndedText(ended);
-			if(!string.IsNullOrWhiteSpace(ended.Reason8Bit)) {
-				LogOnce("16 bits were asked and the source gave 8: "+ended.Reason8Bit.Trim());//design 7.12 "16-bit refused": silent, logged
-				if(_reason8BitDelivered=="") {
-					_reason8BitDelivered=ended.Reason8Bit.Trim();
-				}
+			if(!string.IsNullOrWhiteSpace(ended.ReasonFallback)) {
+				//Design 7.12 "16-bit refused": silent, logged; the summary shows the depth the images were taken at.
+				LogOnce(ended.BitsRequested+" bits were asked and the source gave "+ended.BitDepthInEffect+": "+ended.ReasonFallback.Trim());
+			}
+			if(!string.IsNullOrWhiteSpace(ended.LayoutUnusableText)) {
+				NoteLayoutUnusable(ended.LayoutUnusableText);
 			}
 			bool isHandled=false;
 			OnEnableEndedExt(ended,record,isRunning,ref isHandled);
@@ -1598,6 +1636,16 @@ namespace ImagingCapture.Session {
 			}
 			catch {
 			}
+		}
+
+		///<summary>An image of more than 8 bits was not read because of its layout (TwainCaptureEnded or TwainCaptureStatus.LayoutUnusableText):
+		///from now on this session asks for 8 bits on this device. Logged once.</summary>
+		private void NoteLayoutUnusable(string layoutUnusableText) {
+			if(_reasonLayoutUnusable!="" || string.IsNullOrWhiteSpace(layoutUnusableText)) {
+				return;
+			}
+			_reasonLayoutUnusable=layoutUnusableText.Trim().TrimEnd('.');
+			LogOnce(_reasonLayoutUnusable+". The session asks for 8 bits for the rest of this session.");
 		}
 
 		///<summary>Log, once per text in this session (the 8-bit reason, design 7.8).</summary>

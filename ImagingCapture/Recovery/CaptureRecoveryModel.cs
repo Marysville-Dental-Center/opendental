@@ -189,8 +189,8 @@ namespace ImagingCapture.Recovery {
 					case CaptureRecoveryStep.ConfirmAssign:
 						return received+" It goes into "+(AssignPlan?.TargetText??"")+"."+(AssignPlan==null || AssignPlan.Note=="" ? "" : " "+AssignPlan.Note);
 					case CaptureRecoveryStep.Reassign:
-						return received+" It is filed for the patient you find as an unmounted document with no tooth numbers. Type why it belongs to that "
-							+"patient.";
+						return received+" It is filed for the patient you find as an unmounted document with no tooth numbers."
+							+(entry.IsGray16 ? " "+CaptureRecoveryText.GetCopy8BitNote(entry) : "")+" Type why it belongs to that patient.";
 					case CaptureRecoveryStep.ConfirmDiscard:
 						return received+" It is removed from unassigned captures and kept on this computer in Capture\\quarantine-resolved; the security log "
 							+"records the discard.";
@@ -304,7 +304,9 @@ namespace ImagingCapture.Recovery {
 				: entry.Kind==CaptureFileKind.Quarantine && entry.PatientName!="" ? entry.PatientName
 				: "PatNum "+entry.PatNum.ToString(CultureInfo.InvariantCulture);
 			string slotText=CaptureRecoveryText.GetSlotText(entry);
-			item.TitleText=patient+" | "+FormatTime(entry.ReceivedAt)+(slotText=="" ? "" : " | "+slotText);
+			//A capture of more than 8 bits says so in the list (it is filed differently); the details give every capture's depth.
+			item.TitleText=patient+" | "+FormatTime(entry.ReceivedAt)+(slotText=="" ? "" : " | "+slotText)
+				+(entry.IsGray16 ? " | "+Session.CaptureBitDepthText.DescribeEntry(entry) : "");
 			item.NoteText=GetNoteText(item);
 			return item;
 		}
@@ -316,12 +318,16 @@ namespace ImagingCapture.Recovery {
 				listNotes.Add("More than 30 days old.");
 			}
 			if(entry.IsGray16) {
-				//Design 7.8: stored only as DICOM in an empty mount slot with tooth numbers, never unmounted; there is no other route yet (an
-				//owner decision is pending), so a 16-bit capture without a known slot can only be discarded, and it is said here.
+				//Owner decisions 2026-11-01: into its own empty slot as 16-bit DICOM (design 7.8) when 16 bits are allowed for it there, otherwise
+				//("fall back to 8") as an explicit 8-bit copy in that slot; anywhere else, and reassigned, as an explicit 8-bit copy; the 16-bit
+				//original kept. The note says which applies; the confirmation says which one Assign does now, and why.
 				bool hasNoSlot=entry.MountNum<=0 || !entry.IsSlotKnown || entry.IsPatientUnknown || CaptureRecoveryFiler.IsRedeliveredUnconfirmed(entry);
 				listNotes.Add(hasNoSlot ? CaptureRecoveryText.Gray16NoSlotNote : CaptureRecoveryText.Gray16Note);
 			}
-			if(!item.IsReassignOffered && !item.IsAssignOffered) {
+			if(CaptureRecoveryFiler.IsTestCapture(entry)) {
+				listNotes.Add(CaptureRecoveryText.TestCaptureNote);
+			}
+			else if(!item.IsReassignOffered && !item.IsAssignOffered) {
 				listNotes.Add("This file cannot be filed here.");
 			}
 			else if(!item.IsAssignOffered) {
@@ -471,7 +477,7 @@ namespace ImagingCapture.Recovery {
 			CaptureFilingResult result;
 			switch(Step) {
 				case CaptureRecoveryStep.ConfirmAssign:
-					result=_filer.Assign(item.Entry,CategoryDefNum,PatNumSession);
+					result=_filer.Assign(item.Entry,CategoryDefNum,PatNumSession,AssignPlan);
 					break;
 				case CaptureRecoveryStep.Reassign:
 					result=_filer.Reassign(item.Entry,ReassignPatient,reason,CategoryDefNum);
@@ -482,6 +488,19 @@ namespace ImagingCapture.Recovery {
 			}
 			if(!result.IsDone) {
 				ErrorText=result.Error;
+				if(result.IsPlanChanged) {
+					//The slot was filled (or the mount changed, or 16 bits became allowed or not allowed for it) since the confirmation was shown: the
+					//step shows where and how the capture goes now, and the operator confirms again; nothing was filed.
+					string errorPlan;
+					CaptureAssignPlan planNow=_filer.PlanAssign(item.Entry,PatNumSession,out errorPlan);
+					if(planNow==null) {
+						ClearStep();
+						ErrorText=(result.Error+" "+errorPlan).Trim();
+					}
+					else {
+						AssignPlan=planNow;
+					}
+				}
 				NotifyChanged();
 				return false;
 			}
@@ -507,9 +526,9 @@ namespace ImagingCapture.Recovery {
 		private static string GetDoneText(CaptureFilingResult result) {
 			switch(result.Action) {
 				case CaptureRecoveryAction.Assign:
-					return "Assigned: DocNum "+result.Document.DocNum+" in "+result.TargetText+".";
+					return "Assigned: DocNum "+result.Document.DocNum+" in "+result.TargetText+CaptureRecoveryText.GetCopyDoneText(result)+".";
 				case CaptureRecoveryAction.Reassign:
-					return "Reassigned to PatNum "+result.PatNum+": DocNum "+result.Document.DocNum+".";
+					return "Reassigned to PatNum "+result.PatNum+": DocNum "+result.Document.DocNum+CaptureRecoveryText.GetCopyDoneText(result)+".";
 				default:
 					return "Discarded.";
 			}
@@ -647,6 +666,7 @@ namespace ImagingCapture.Recovery {
 			add("Reason",entry.Reason);
 			add("Delivered",entry.Kind==CaptureFileKind.Journal ? entry.Delivered : "");
 			add("Size",entry.Width>0 ? entry.Width+" x "+entry.Height+", "+entry.BitsPerPixel+" bits per pixel" : "");
+			add("Bit depth",Session.CaptureBitDepthText.DescribeEntry(entry));
 			add("File",entry.ImagePath);
 			return stringBuilder.ToString().TrimEnd();
 		}

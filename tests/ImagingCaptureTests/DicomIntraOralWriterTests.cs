@@ -388,6 +388,40 @@ namespace ImagingCapture.Tests {
 			Assert.AreEqual(16,Required(WriteAndRead(image14,out result),0x00280101).US);
 			Assert.AreEqual(16383,BitConverter.ToUInt16(Required(TestDicomReader.Read(result.Bytes),0x7FE00010).Value,(40*30-1)*2));
 		}
+
+		[TestMethod]
+		public void FourteenBit_BitsStored16_EffectiveBits14Recorded_PixelsUnchanged() {
+			//The source ran at 14 bits and its metadata says nothing: BitsAllocated 16, BitsStored 16 (the loader rejects 14), effectiveBits=14 in
+			//Image Comments, every value as delivered.
+			DicomIntraOralImage image=MakeImage(metadataJson:null);
+			image.Pixels=MakePixels(40,30,16383);
+			image.EffectiveBits=14;
+			DicomWriteResult result;
+			TestDicomFile testDicomFile=WriteAndRead(image,out result);
+			Assert.IsTrue(result.IsWritten,result.Error);
+			Assert.AreEqual(16,result.BitsStored);
+			Assert.AreEqual(16,Required(testDicomFile,0x00280100).US,"Bits Allocated.");
+			Assert.AreEqual(16,Required(testDicomFile,0x00280101).US,"Bits Stored: never 14.");
+			Assert.AreEqual(15,Required(testDicomFile,0x00280102).US,"High Bit.");
+			Assert.AreEqual("rendering=original; effectiveBits=14",Required(testDicomFile,0x00204000).Text);
+			byte[] arrayPixelData=Required(testDicomFile,0x7FE00010).Value;
+			for(int i=0;i<image.Pixels.Length;i++) {
+				Assert.AreEqual(image.Pixels[i],BitConverter.ToUInt16(arrayPixelData,i*2),"Never rescaled: sample "+i);
+			}
+			Assert.AreEqual("MONOCHROME2",Required(testDicomFile,0x00280004).Text.Trim(),"The writer's other rules are unchanged.");
+			Assert.AreEqual(-1,Required(testDicomFile,0x00281041).SS);
+			//The BitsStored 12 rule stays: 14 effective bits are stored as 16 even when every value fits 12 bits.
+			image.Pixels=MakePixels(40,30,4095);
+			Assert.AreEqual(16,Required(WriteAndRead(image,out result),0x00280101).US);
+			//EffectiveBits wins over the metadata's; the metadata's is used without it.
+			DicomIntraOralImage image12=MakeImage(metadataJson:MetadataJson.Replace(@"""effectiveBits"":null",@"""effectiveBits"":12"));
+			image12.Pixels=MakePixels(40,30,4095);
+			Assert.AreEqual(12,Required(WriteAndRead(image12,out result),0x00280101).US);
+			StringAssert.Contains(result.ImageComments,"effectiveBits=12");
+			image12.EffectiveBits=14;
+			Assert.AreEqual(16,Required(WriteAndRead(image12,out result),0x00280101).US);
+			StringAssert.Contains(result.ImageComments,"effectiveBits=14");
+		}
 		#endregion Modules
 
 		#region Metadata

@@ -369,8 +369,9 @@ namespace ImagingCapture.Tests {
 			Assert.AreEqual(55,summaryRaised.PatNum);
 			Assert.AreEqual(7,summaryRaised.MountNum);
 			Assert.AreEqual(4,summaryRaised.ProvNum);
-			Assert.AreEqual("3 images, 0 retakes, 0 quarantined. Patient: Pat Test. Provider: DOC4. In effect: PerSlot, 8 bits, safe disable not in "
-				+"effect, polarity AsDelivered, headless off.",summaryRaised.GetText(),"Design 9.3: the effective values in the summary.");
+			Assert.AreEqual("3 images, 0 retakes, 0 quarantined. Patient: Pat Test. Provider: DOC4. In effect: PerSlot, 8-bit (fallback: no Test capture "
+				+"record for this sensor's driver version and image settings), safe disable not in effect, polarity AsDelivered, headless off.",
+				summaryRaised.GetText(),"Design 9.3: the effective values in the summary, with the depth actually used.");
 			Assert.AreEqual(3,summaryRaised.EffectiveSettings.CountEnables);
 			Assert.IsFalse(Controller.IsMountEmpty);
 		}
@@ -1134,7 +1135,8 @@ namespace ImagingCapture.Tests {
 			_harness.Setup.Options.Allow16Bit=true;
 			_harness.Setup.GatedSettingsHash=new string('a',64);
 			_harness.Setup.SettingsCheck=CaptureSettingsTestKit.VerifiedHash(new string('a',64));
-			_harness.Setup.VerificationRecord=CaptureControllerHarness.PassedRecord(new string('a',64));
+			//Written on another computer whose whole capture.ini hashes differently: only the image settings and the driver are compared.
+			_harness.Setup.VerificationRecord=CaptureControllerHarness.PassedRecord(new string('f',64));
 			_harness.Setup.MountSlots.ListMountItems.First(x => x.ItemOrder==2).ToothNumbers="";
 			_harness.Started();
 			Assert.AreEqual(16,_harness.Twain.LastRequest.Bits,"Slot 1 has teeth of one view.");
@@ -1151,13 +1153,13 @@ namespace ImagingCapture.Tests {
 			_harness.Started();
 			_harness.Status(TwainCaptureState.WaitingForImage);
 			_harness.Image();
-			_harness.Ended(TwainCaptureEndReason.Completed,ended => ended.Reason8Bit="ICAP_BITDEPTH 16 is not listed.");
+			_harness.Ended(TwainCaptureEndReason.Completed,ended => ended.ReasonFallback="ICAP_BITDEPTH 16 is not listed.");
 			Assert.AreEqual(2,_harness.Twain.ListEnables.Count,"The series goes on.");
 			Assert.IsFalse(Controller.IndicatorText.Contains("ICAP"),"Silent: the indicator does not show it (design 7.12).");
 			Assert.AreEqual("",Controller.NoticeText);
 			_harness.Status(TwainCaptureState.WaitingForImage);
 			_harness.Image();
-			_harness.Ended(TwainCaptureEndReason.Completed,ended => ended.Reason8Bit="ICAP_BITDEPTH 16 is not listed.");
+			_harness.Ended(TwainCaptureEndReason.Completed,ended => ended.ReasonFallback="ICAP_BITDEPTH 16 is not listed.");
 			Assert.AreEqual(1,_harness.ListLogFile.Count(x => x.Contains("ICAP_BITDEPTH 16 is not listed.")),"Logged once.");
 		}
 
@@ -1200,7 +1202,125 @@ namespace ImagingCapture.Tests {
 		public void BitDepth_DefaultSettings_8() {
 			_harness.Started();
 			Assert.AreEqual(8,_harness.Twain.LastRequest.Bits);
-			Assert.IsTrue(_harness.ListLogFile.Any(x => x.Contains("Bits is not 16")),string.Join("\r\n",_harness.ListLogFile));
+			Assert.IsTrue(_harness.ListLogFile.Any(x => x.Contains("8 bits (fallback): no Test capture record for this sensor's driver version and image "
+				+"settings.")),string.Join("\r\n",_harness.ListLogFile));
+			Assert.AreEqual("no Test capture record for this sensor's driver version and image settings",_harness.Twain.LastRequest.ReasonFallback,
+				"The request carries the fallback, for the sidecars.");
+		}
+
+		///<summary>Every gate for more than 8 bits holds, for [Device.12] Bits=bits; the record was written on another computer, whose whole
+		///capture.ini hashes differently.</summary>
+		private void SetGatesFor(int bits) {
+			_harness.Setup.Options.Bits=bits;
+			_harness.Setup.Options.Allow16Bit=true;
+			_harness.Setup.GatedSettingsHash=new string('a',64);
+			_harness.Setup.SettingsCheck=CaptureSettingsTestKit.VerifiedHash(new string('a',64));
+			_harness.Setup.VerificationRecord=CaptureControllerHarness.PassedRecord(new string('f',64),bits);
+		}
+
+		[TestMethod]
+		public void BitDepth_14_WhenTheRecordPassedAt14_SavedAsDicom_SummarySaysSo() {
+			_harness=new CaptureControllerHarness(1);
+			SetGatesFor(14);
+			_harness.Started();
+			Assert.AreEqual(14,_harness.Twain.LastRequest.Bits);
+			Assert.IsNull(_harness.Twain.LastRequest.ReasonFallback);
+			AcquiredImage image=TestImages.Image16(6,4,(x,y) => (ushort)(100+x*1000+y),TestImages.Json16Bit12);
+			image.BitDepthInEffect=14;
+			image.BitsPerSample=14;
+			_harness.Twain.RaiseImage(image);
+			_harness.Dispatcher.RunPending();
+			Assert.AreEqual(1,Controller.CountImages,string.Join("\r\n",_harness.ListLogFile));
+			Assert.AreEqual(".dcm",_harness.RadiographStore.ListExtensions.Single(),"14-bit data in a 16-bit DICOM file.");
+			_harness.Ended(TwainCaptureEndReason.Completed);
+			Assert.IsNotNull(Controller.Summary,"The one slot is filled.");
+			StringAssert.Contains(Controller.Summary.GetEffectiveText(),"In effect: PerSlot, 14-bit in a 16-bit file,");
+		}
+
+		[TestMethod]
+		public void BitDepth_Bits16_TheRecordsTestAsked16AndRanAt14_Asks14_LoggedOnce_SavedAsDicom() {
+			//Owner decision 2026-11-01: 16 by default, falling back to 14. The driver lists 14 but not 16, which its Test capture found.
+			_harness=new CaptureControllerHarness(2);
+			SetGatesFor(16);
+			_harness.Setup.VerificationRecord.BitDepthInEffect=14;
+			_harness.Started();
+			Assert.AreEqual(14,_harness.Twain.LastRequest.Bits,"The depth the record passed at, never 16.");
+			StringAssert.StartsWith(_harness.Twain.LastRequest.ReasonFallback,"[Device.12] Bits is 16, and the latest Test capture record",
+				"The sidecars say why 14.");
+			AcquiredImage image=TestImages.Image16(6,4,(x,y) => (ushort)(100+x*1000+y),TestImages.Json16Bit12);
+			image.RequestedBits=14;
+			image.BitDepthInEffect=14;
+			image.BitsPerSample=14;
+			_harness.Twain.RaiseImage(image);
+			_harness.Dispatcher.RunPending();
+			Assert.AreEqual(1,Controller.CountImages,string.Join("\r\n",_harness.ListLogFile));
+			Assert.AreEqual(".dcm",_harness.RadiographStore.ListExtensions.Single(),"14-bit data in a 16-bit DICOM file.");
+			_harness.Ended(TwainCaptureEndReason.Completed);
+			Assert.AreEqual(2,_harness.Twain.ListEnables.Count,"The next slot's enable.");
+			Assert.AreEqual(14,_harness.Twain.LastRequest.Bits);
+			Assert.AreEqual(1,_harness.ListLogFile.Count(x => x.Contains("14 bits: [Device.12] Bits is 16, and the latest Test capture record "
+				+"(2026-10-30 09:00) asked this driver for 16 bits and passed at 14, so the session asks for 14.")),string.Join("\r\n",_harness.ListLogFile));
+		}
+
+		[TestMethod]
+		public void BitDepth_LayoutNotUsable_8ForTheRestOfTheSession_LoggedOnce() {
+			SetGatesFor(16);
+			_harness.Started();
+			Assert.AreEqual(16,_harness.Twain.LastRequest.Bits);
+			_harness.Ended(TwainCaptureEndReason.TransferFailed,ended => {
+				ended.BitsRequested=16;
+				ended.BitDepthInEffect=16;
+				ended.TransferFailureCount=1;
+				ended.LayoutUnusableText="16-bit layout not usable: DAT_IMAGEINFO BitsPerPixel is 12 for a 12-bit sample, not 16: packed samples";
+			});
+			StringAssert.StartsWith(Controller.IndicatorText,CaptureEndText.ImageNotReceived);
+			StringAssert.Contains(Controller.IndicatorText,"16-bit layout not usable","The operator is told why.");
+			Assert.AreEqual(1,_harness.ListLogFile.Count(x => x.Contains("16-bit layout not usable")),"Logged once.");
+			_harness.Arm();
+			Assert.IsTrue(_harness.Start(),Controller.IndicatorText);
+			Assert.AreEqual(2,_harness.Twain.ListEnables.Count,string.Join("\r\n",_harness.ListLogFile));
+			Assert.AreEqual(8,_harness.Twain.LastRequest.Bits,"8 bits for the rest of the session on this device.");
+			StringAssert.StartsWith(_harness.Twain.LastRequest.ReasonFallback,"16-bit layout not usable");
+			_harness.Image();
+			_harness.Ended(TwainCaptureEndReason.Completed);
+			Assert.AreEqual(8,_harness.Twain.LastRequest.Bits,"Still 8 for the next slot.");
+			Assert.AreEqual(1,_harness.ListLogFile.Count(x => x.Contains("16-bit layout not usable") && !x.Contains("8 bits (fallback)")),
+				"The layout line once; the fallback reason once.");
+			Assert.AreEqual(1,_harness.ListLogFile.Count(x => x.Contains("8 bits (fallback): 16-bit layout not usable")));
+		}
+		[TestMethod]
+		public void BitDepth_LayoutNotUsable_ContinuousWithoutSafeDisable_TheIndicatorSaysAtOnceNotToExposeAgain() {
+			SetGatesFor(16);
+			_harness.Setup.Options.SessionMode=TwainSessionMode.Continuous;
+			_harness.Started();
+			_harness.Status(TwainCaptureState.WaitingForImage);
+			Assert.AreEqual(CaptureIndicatorState.WaitingForExposure,Controller.IndicatorState);
+			string layoutText="16-bit layout not usable: DAT_IMAGEINFO BitsPerPixel is 12 for a 12-bit sample, not 16: packed samples";
+			_harness.Status(TwainCaptureState.Transferring,layoutUnusableText:layoutText);
+			Assert.AreEqual(CaptureIndicatorState.Error,Controller.IndicatorState,"Told at once, while the enable still runs.");
+			Assert.AreEqual(CaptureSessionText.GetLayoutUnusableContinuousText(layoutText),Controller.IndicatorText);
+			StringAssert.EndsWith(Controller.IndicatorText,"Do not expose again; end the series.");
+			Assert.AreEqual(0,_harness.Twain.ListDisables.Count,"Design 7.6, 10.6: no disable of the fork's own without safe disable.");
+			_harness.Status(TwainCaptureState.WaitingForImage,layoutUnusableText:layoutText);
+			Assert.AreEqual(CaptureIndicatorState.Error,Controller.IndicatorState,"Never invites another exposure of that enable.");
+			Assert.AreEqual(1,_harness.ListLogFile.Count(x => x.Contains("16-bit layout not usable") && x.Contains("rest of this session")),
+				"Logged once.");
+			Assert.IsTrue(_harness.Execute(CaptureSessionAction.Disable));
+			_harness.Clock.Advance(3000);
+			Assert.IsTrue(_harness.Execute(CaptureSessionAction.Disable),"The second press goes ahead without safe disable.");
+			CollectionAssert.AreEqual(new[] { TwainCaptureStopReason.Cancel },_harness.Twain.ListDisables);
+			_harness.Ended(TwainCaptureEndReason.Stopped,ended => {
+				ended.StopReason=TwainCaptureStopReason.Cancel;
+				ended.BitsRequested=16;
+				ended.BitDepthInEffect=16;
+				ended.TransferFailureCount=1;
+				ended.LayoutUnusableText=layoutText;
+			});
+			_harness.Arm();
+			Assert.IsTrue(_harness.Start(),Controller.IndicatorText);
+			Assert.AreEqual(8,_harness.Twain.LastRequest.Bits,"8 bits for the rest of the session on this device.");
+			_harness.Status(TwainCaptureState.WaitingForImage);
+			Assert.AreEqual(CaptureIndicatorState.WaitingForExposure,Controller.IndicatorState,"The new enable at 8 bits invites the exposure.");
 		}
 		#endregion Bit depth
 

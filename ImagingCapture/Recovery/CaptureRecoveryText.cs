@@ -57,11 +57,102 @@ namespace ImagingCapture.Recovery {
 		}
 
 		public const string SlotUnknown="Slot unknown";
-		///<summary>A 16-bit capture is stored only as DICOM in an empty mount slot with tooth numbers (design 7.8).</summary>
-		public const string Gray16Note="16-bit: it can be filed only into its empty slot of the mount, not reassigned.";
-		public const string Gray16NoSlotNote="16-bit with no slot to go into (no mount, the slot not recorded, or no patient): it cannot be filed or "
-			+"reassigned, only discarded.";
+		///<summary>Owner decisions 2026-11-01 (the 16-bit filing route, and "fall back to 8"): into its own empty slot a 16-bit capture goes as 16-bit
+		///DICOM (design 7.8) when the session's conditions for its depth hold, otherwise as an explicit 8-bit copy in that slot; anywhere else, and
+		///when reassigned, as an explicit 8-bit copy. The 16-bit original is kept.</summary>
+		public const string Gray16Note="More than 8 bits: into its empty slot as 16-bit DICOM when 16 bits are allowed for it there, otherwise as an "
+			+"8-bit copy in that slot; anywhere else, or reassigned, as an 8-bit copy (the 16-bit original is kept).";
+		public const string Gray16NoSlotNote="More than 8 bits, with no slot to go into (no mount, the slot not recorded, or no patient): it is filed as "
+			+"an 8-bit copy, and the 16-bit original is kept.";
 		public const string ToothNumbersUnknown="Tooth numbers unknown";
+
+		///<summary>Owner decision 2026-11-01, "fall back to 8": what the confirmation says when a capture of more than 8 bits goes into its own empty
+		///slot as the explicit 8-bit copy, because the session's decision for its depth refuses 16 bits for it now (CaptureAssignPlan
+		///Reason16BitRefused: the first gate that failed, or GetNoDriverReason). The copy is that slot's document, with the slot's teeth and
+		///rotation.</summary>
+		public static string GetCopy8BitNotAllowedNote(CaptureFileEntry entry,string reason) {
+			string clause=ToClause(reason);
+			return "8-bit copy: 16 bits are not allowed for it now ("+(clause=="" ? "the conditions for its depth do not hold" : clause)+"); the 16-bit "
+				+"original is kept. The copy is a gray PNG made with its 0.5-99.5 % window, and the 16-bit original and its sidecar stay in "
+				+GetOriginalKeptFolder(entry)+" on this computer.";
+		}
+
+		///<summary>reason as a clause inside a sentence: trimmed, without its final full stop, and with a capital at its start lowered when the word
+		///goes on in small letters ("This capture was ..." gives "this capture was ..."; "[Twain] ..." and "TWAIN ..." stay as they are).</summary>
+		public static string ToClause(string reason) {
+			string text=Clean(reason).TrimEnd('.').Trim();
+			if(text.Length>1 && char.IsUpper(text[0]) && char.IsLower(text[1])) {
+				text=char.ToLowerInvariant(text[0])+text.Substring(1);
+			}
+			return text;
+		}
+
+		///<summary>Why no Test capture record can cover a 16-bit capture whose sidecar names no driver version (CaptureFileEntry.DriverIdentity is
+		///null): taken before captures recorded the driver version (no BitDepthInEffect key, written from CAP-16), or the source reported none. Such a
+		///capture goes into its own empty slot as the explicit 8-bit copy (GetCopy8BitNotAllowedNote).</summary>
+		public static string GetNoDriverReason(CaptureFileEntry entry) {
+			if(entry==null || entry.Get(CaptureSidecarKeys.BitDepthInEffect)=="") {
+				return "This capture was taken before captures recorded the driver version, so no Test capture record can cover it.";
+			}
+			return "The TWAIN source did not report its driver version when this capture was taken, so no Test capture record can cover it.";
+		}
+		///<summary>A Test capture image (CaptureRecoveryFiler.IsTestCapture) is neither assigned nor reassigned.</summary>
+		public const string TestCaptureNote="A Test capture image is never filed to a patient.";
+
+		///<summary>Where the 16-bit original of entry is kept once its 8-bit copy is filed: its session folder under Capture\quarantine-resolved, or
+		///Capture\quarantine-resolved\journal for a journal copy (copied there; the journal's rotation removes the journal's own).</summary>
+		public static string GetOriginalKeptFolder(CaptureFileEntry entry) {
+			if(entry?.Kind==CaptureFileKind.Journal) {
+				return CaptureFileStore.SubfolderJournalKept;
+			}
+			string folderName=System.IO.Path.GetFileName(System.IO.Path.GetDirectoryName(entry?.ImagePath??"")??"")??"";
+			bool isRoot=folderName=="" || string.Equals(folderName,"quarantine",StringComparison.OrdinalIgnoreCase);
+			return @"Capture\quarantine-resolved"+(isRoot ? "" : "\\"+folderName);
+		}
+
+		///<summary>Assign refused because the capture would no longer go where, or as what, the confirmation said (CaptureFilingResult.IsPlanChanged):
+		///its slot was filled or its mount changed, or 16 bits became allowed or not allowed for it.</summary>
+		public const string AssignPlanChanged="Where or how the capture is filed changed meanwhile (its slot was filled, its mount changed, or whether 16 "
+			+"bits are allowed for it), so nothing was filed; review where the capture goes now, then confirm again.";
+
+		///<summary>The window's words after a filing whose document is the 8-bit copy of a 16-bit capture: " as an 8-bit copy of a 16-bit capture;
+		///the 16-bit original is kept in ...", else "". The folder is where the original is now (CaptureFilingResult.PathResolved): normally
+		///under Capture\quarantine-resolved, but still the quarantine folder when it could not be moved (the result's warning says why).</summary>
+		public static string GetCopyDoneText(CaptureFilingResult result) {
+			if(result==null || !result.IsCopy8BitOf16Bit) {
+				return "";
+			}
+			return " as an 8-bit copy of a "+(result.Entry!=null && result.Entry.BitDepthInEffect==14 ? "14-bit" : "16-bit")+" capture; the 16-bit "
+				+"original is kept in "+GetFolderText(result.PathResolved??result.Entry?.ImagePath);
+		}
+
+		///<summary>The folder of path from its Capture folder on ("Capture\quarantine-resolved\&lt;session&gt;"), or the whole folder when path is
+		///not under one. "" for null or empty.</summary>
+		public static string GetFolderText(string path) {
+			if(string.IsNullOrEmpty(path)) {
+				return "";
+			}
+			string folder=System.IO.Path.GetDirectoryName(path)??"";
+			int idx=(folder+"\\").LastIndexOf(@"\Capture\",StringComparison.OrdinalIgnoreCase);//the capture folders' root (CaptureFileStore)
+			return idx==-1 ? folder : folder.Substring(idx+1);
+		}
+
+		///<summary>What the confirmation says plainly before a 16-bit capture is filed as its 8-bit copy (owner decision 2026-11-01).</summary>
+		public static string GetCopy8BitNote(CaptureFileEntry entry) {
+			string depth=entry!=null && entry.BitDepthInEffect==14 ? "14-bit (in a 16-bit file)" : "16-bit";
+			return "This is a "+depth+" capture, and it is filed as an 8-bit copy: a gray PNG made with its 0.5-99.5 % window, not the 16-bit "
+				+"original. The 16-bit original and its sidecar stay in "+GetOriginalKeptFolder(entry)+" on this computer.";
+		}
+
+		///<summary>The audit entry's words for an 8-bit copy: "an 8-bit copy of a 16-bit capture (made through the window 120 to 3900 of its values;
+		///the 16-bit original 20261031-100004-500.tif and its sidecar are kept)". The entry is written before the original moves, so it names no
+		///folder: where the original ends up (Capture\quarantine-resolved, or the quarantine when it could not be moved) is in the capture log and
+		///the window's result, and the original's sidecar records the copy's DocNum.</summary>
+		public static string GetCopyLogText(CaptureFileEntry entry,int windowLow,int windowHigh) {
+			string fileName=entry?.FileName??"";
+			return "an "+RadiographSavePlanner.Copy8BitText+" (made through the window "+ToText(windowLow)+" to "+ToText(windowHigh)
+				+" of its values; the 16-bit original "+(fileName=="" ? "" : fileName+" ")+"and its sidecar are kept)";
+		}
 
 		///<summary>The target an entry is shown with: its sidecar's slot (or single-image target) when it is the image's own (IsSlotKnown). For a
 		///later image of a continuous enable, or a redelivered one, whose target the session did not record, the sidecar names the target its
@@ -104,17 +195,19 @@ namespace ImagingCapture.Recovery {
 			return stringBuilder.ToString();
 		}
 
-		///<summary>Design 10.7: Assign (ImageCreate, the original patient, FKey=DocNum) with the session GUID; a journal recovery says so.</summary>
-		public static string GetAssignLogText(CaptureFileEntry entry,Patient patient,string targetText,long docNum) {
+		///<summary>Design 10.7: Assign (ImageCreate, the original patient, FKey=DocNum) with the session GUID; a journal recovery says so. copyText:
+		///GetCopyLogText when the document is the 8-bit copy of a 16-bit capture, else null.</summary>
+		public static string GetAssignLogText(CaptureFileEntry entry,Patient patient,string targetText,long docNum,string copyText=null) {
 			string prefix=entry?.Kind==CaptureFileKind.Journal ? RecoverLogPrefix : AssignLogPrefix;
 			return prefix+GetFileText(entry)+" filed for the patient the capture session was bound to, "+GetPatientLogText(patient)+", as DocNum "
-				+ToText(docNum)+" into "+Clean(targetText)+".";
+				+ToText(docNum)+(string.IsNullOrEmpty(copyText) ? "" : ", "+copyText+",")+" into "+Clean(targetText)+".";
 		}
 
-		///<summary>Design 10.7: Reassign (ImageEdit) names both patients and the reason.</summary>
-		public static string GetReassignLogText(CaptureFileEntry entry,Patient patientFrom,Patient patientTo,string reason,long docNum) {
+		///<summary>Design 10.7: Reassign (ImageEdit) names both patients and the reason. copyText: as for GetAssignLogText.</summary>
+		public static string GetReassignLogText(CaptureFileEntry entry,Patient patientFrom,Patient patientTo,string reason,long docNum,string copyText=null) {
 			return ReassignLogPrefix+GetFileText(entry)+" was for "+GetPatientLogText(patientFrom)+(patientFrom==null && entry!=null && entry.PatNum>0
 				? " (PatNum "+ToText(entry.PatNum)+", not found)" : "")+"; reassigned to "+GetPatientLogText(patientTo)+" as DocNum "+ToText(docNum)
+				+(string.IsNullOrEmpty(copyText) ? "" : ", "+copyText)
 				+", an unmounted document with no tooth numbers. Reason: "+Clean(reason).TrimEnd('.').Trim()+".";
 		}
 

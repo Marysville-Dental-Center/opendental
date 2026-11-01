@@ -222,6 +222,10 @@ namespace ImagingCapture.Tests {
 		public readonly List<Mount> ListMountsUpdated=new List<Mount>();
 		public readonly List<MountItem> ListMountItemsInserted=new List<MountItem>();
 		public readonly List<MountItem> ListMountItemsDeleted=new List<MountItem>();
+		///<summary>The file bytes of every import, the texts of the saver's own security-log entries, and the Pearl calls.</summary>
+		public readonly List<byte[]> ListBytesImported=new List<byte[]>();
+		public readonly List<string> ListLogTexts=new List<string>();
+		public int CountPearl;
 		private long _docNumNext=1000;
 		private long _mountItemNumNext=500;
 
@@ -241,6 +245,7 @@ namespace ImagingCapture.Tests {
 			ListPatientsImported.Add(patient);
 			ListCategoriesImported.Add(docCategory);
 			ListExtensions.Add(fileExtension);
+			ListBytesImported.Add(bytes);
 			return new Document { DocNum=_docNumNext++,PatNum=patient.PatNum,DocCategory=docCategory,ImgType=imageType,Description="",
 				FileName="img"+_docNumNext+fileExtension };
 		}
@@ -272,10 +277,12 @@ namespace ImagingCapture.Tests {
 
 		public void MakeLogEntry(EnumPermType permType,long patNum,string logText,long fKey) {
 			Call("MakeLogEntry");
+			ListLogTexts.Add(logText);
 		}
 
 		public void SendToPearlIfConfigured(Patient patient,Document document,byte[] pngBytes,MountItem mountItem) {
 			Call("SendToPearl");
+			CountPearl++;
 		}
 	}
 
@@ -336,8 +343,10 @@ namespace ImagingCapture.Tests {
 				ComputerName="OPERATORY1",
 				SessionGuid=new Guid("11111111-2222-3333-4444-555555555555"),
 				UnassignedText=null,
-				//The Capture settings screen saved the settings in effect (design 9.3); the 16-bit tests set the hash they need.
+				//The Capture settings screen saved the settings in effect (design 9.3), the defaults (Bits=16, Allow16Bit=1), and no Test capture
+				//has run yet: 8 bits as a fallback. The 16-bit tests set the hash and the record they need.
 				SettingsCheck=CaptureSettingsTestKit.VerifiedHash(new string('0',64)),
+				GatedSettingsHash=new string('0',64),
 			};
 			Setup.Options.ImagingDeviceNum=12;
 			if(countSlots>0) {
@@ -428,9 +437,10 @@ namespace ImagingCapture.Tests {
 		}
 
 		public AcquiredImage Image(AcquiredImageKind kind=AcquiredImageKind.Normal,TwainCaptureStopReason stopReason=TwainCaptureStopReason.None,
-			int enableId=0)
+			int enableId=0,Action<AcquiredImage> actionConfigure=null)
 		{
 			AcquiredImage image=TestImages.Image8(6,4,(x,y) => (byte)(x*40+y));
+			actionConfigure?.Invoke(image);
 			Twain.RaiseImage(image,kind,stopReason,enableId);
 			Dispatcher.RunPending();
 			return image;
@@ -442,8 +452,8 @@ namespace ImagingCapture.Tests {
 			return ended;
 		}
 
-		public void Status(TwainCaptureState state,bool isSafeDisableInEffect=false) {
-			Twain.RaiseStatus(state,isSafeDisableInEffect);
+		public void Status(TwainCaptureState state,bool isSafeDisableInEffect=false,string layoutUnusableText=null) {
+			Twain.RaiseStatus(state,isSafeDisableInEffect,layoutUnusableText:layoutUnusableText);
 			Dispatcher.RunPending();
 		}
 
@@ -469,11 +479,17 @@ namespace ImagingCapture.Tests {
 			return isDone;
 		}
 
-		///<summary>A passed 16-bit verification record for device 12 on OPERATORY1 with the given hash.</summary>
-		public static CaptureVerificationRecord PassedRecord(string hash) {
+		///<summary>The driver build FakeTwainCaptureSession reports at open by default, and PassedRecord names.</summary>
+		public static readonly TwainDriverIdentity Driver=new TwainDriverIdentity("Example Sensor DS",1,1,"1.1.0");
+
+		///<summary>A record that passed at bits for device 12 and Example Sensor DS with Driver, made on OPERATORY1 with the image settings of
+		///the defaults (Bits=bits, LE, AsDelivered) unless options says otherwise. gatedHash goes into the audit field only.</summary>
+		public static CaptureVerificationRecord PassedRecord(string gatedHash,int bits=16,TwainCaptureOptions options=null) {
+			TwainCaptureOptions optionsHashed=options??new TwainCaptureOptions { ImagingDeviceNum=12,Bits=bits };
 			return new CaptureVerificationRecord {
-				ImagingDeviceNum=12,ComputerName="OPERATORY1",SourceName="Example Sensor DS",GatedSettingsHash=hash,
-				DateTimeVerified=new DateTime(2026,10,30,9,0,0),BitsRequested=16,BitsDelivered=16,TransferMechanism="Memory",
+				ImagingDeviceNum=12,ComputerName="OPERATORY1",SourceName="Example Sensor DS",SourceProductName="Example Sensor DS",DriverIdentity=Driver,
+				ImageSettingsHash=CaptureBitDepthDecision.GetImageSettingsHash(optionsHashed,12),GatedSettingsHash=gatedHash??"",
+				DateTimeVerified=new DateTime(2026,10,30,9,0,0),BitsRequested=bits,BitDepthInEffect=bits,BitsDelivered=16,TransferMechanism="Memory",
 				ByteOrderCheck="LooksRight",IsByteOrderConfirmed=true,IsPolarityConfirmed=true,PixelFlavor="Chocolate",Polarity="AsDelivered",
 			};
 		}

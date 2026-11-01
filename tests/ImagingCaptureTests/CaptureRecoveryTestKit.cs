@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using ImagingCapture.Recovery;
+using ImagingCapture.Settings;
 using ImagingDeviceManager.Capture;
 using ImagingDeviceManager.Config;
 using OpenDentBusiness;
@@ -93,8 +94,11 @@ namespace ImagingCapture.Tests {
 			return imagingDeviceNum==12 ? CaptureControllerHarness.Device() : null;
 		}
 
+		///<summary>The Setup entries GetSetupLogEntries returns for their FKey: Capture settings saves and Test capture records.</summary>
+		public readonly List<SecurityLog> ListSetupLogs=new List<SecurityLog>();
+
 		public List<SecurityLog> GetSetupLogEntries(long imagingDeviceNum) {
-			return new List<SecurityLog>();
+			return ListSetupLogs.Where(x => x.FKey==imagingDeviceNum).ToList();
 		}
 
 		public void MakeLogEntry(EnumPermType permType,long patNum,string logText,long fKey) {
@@ -157,6 +161,17 @@ namespace ImagingCapture.Tests {
 			};
 		}
 
+		///<summary>SessionFields of a capture delivered by the driver build CaptureControllerHarness.Driver names, with its resolution.</summary>
+		public static Dictionary<string,string> SessionFieldsWithDriver(string captureId="cap-7",string driverVersion="1.1") {
+			Dictionary<string,string> dictFields=SessionFields(captureId:captureId);
+			dictFields[CaptureSidecarKeys.DriverProductName]=CaptureControllerHarness.Driver.ProductName;
+			dictFields[CaptureSidecarKeys.DriverVersion]=driverVersion;
+			dictFields[CaptureSidecarKeys.DriverVersionInfo]=driverVersion+".0";
+			dictFields["XDpi"]="1270";
+			dictFields["YDpi"]="1270";
+			return dictFields;
+		}
+
 		///<summary>A quarantine .bmp in the session folder (or, with isRoot, at the quarantine root as the CAP-1 library writes them).</summary>
 		public CaptureFileEntry Quarantine(Dictionary<string,string> dictFields,DateTime receivedAt,bool isRoot=false) {
 			string folder=Path.Combine(Folder,@"Capture\quarantine",isRoot ? "" : SessionGuid.ToString("D"));
@@ -178,6 +193,26 @@ namespace ImagingCapture.Tests {
 			}
 			string path=Write(folder,receivedAt,Tiff16(6,4,arraySamples),".tif",dictFields);
 			return Store.ListQuarantine().Single(x => x.ImagePath==path);
+		}
+
+		///<summary>A 16-bit journal copy (.tif) with Delivered (Caller, or None for an only copy, named -only), its samples 1000+97*i as
+		///Quarantine16's.</summary>
+		public CaptureFileEntry Journal16(Dictionary<string,string> dictFields,DateTime receivedAt,string delivered="Caller") {
+			string folder=Path.Combine(Folder,@"Capture\journal");
+			dictFields["Kind"]="journal copy";
+			dictFields["Delivered"]=delivered;
+			dictFields["RequestedBits"]="16";
+			dictFields["TransferMechanism"]="Memory";
+			dictFields[CaptureSidecarKeys.BitDepth16InEffect]="1";
+			dictFields.Remove("Slot");
+			dictFields.Remove("Patient");
+			dictFields.Remove("Reason");
+			ushort[] arraySamples=new ushort[6*4];
+			for(int i=0;i<arraySamples.Length;i++) {
+				arraySamples[i]=(ushort)(1000+i*97);
+			}
+			string path=Write(folder,receivedAt,Tiff16(6,4,arraySamples),".tif",dictFields,delivered=="None" ? "-only" : "");
+			return Store.ListJournal().Single(x => x.ImagePath==path);
 		}
 
 		///<summary>A journal copy with Delivered (Caller, Quarantine or None).</summary>
@@ -271,7 +306,8 @@ namespace ImagingCapture.Tests {
 	}
 
 	///<summary>A filer on fakes: the patient 42 (Jane Doe) with mount 7 (slots 101-103 as CaptureControllerHarness.Slots), the patient 77 (John
-	///Roe), the categories 20 and 21, and capture.ini at its defaults (8 bits).</summary>
+	///Roe), the categories 20 and 21, and capture.ini at its defaults (Bits=16, Allow16Bit=1; no Test capture record, so no 16-bit DICOM until
+	///SetGatesPassedAt).</summary>
 	internal sealed class RecoveryHarness:IDisposable {
 		public readonly FakeCaptureRecoveryStore Store=new FakeCaptureRecoveryStore();
 		public readonly FakeSessionRadiographStore RadiographStore=new FakeSessionRadiographStore();
@@ -306,8 +342,77 @@ namespace ImagingCapture.Tests {
 			return Store.DictMountItems[7].Single(x => x.MountItemNum==100+k);
 		}
 
+		///<summary>Every gate of the session for device 12 on OPERATORY1 holds, with Config: Capture settings saved the file, and the latest Test
+		///capture record passed at bitsPassed with the sensor driver of RecoveryFiles.SessionFieldsWithDriver, for the image settings of
+		///optionsRecord (else Config's).</summary>
+		public void SetGatesPassedAt(int bitsPassed,TwainCaptureOptions optionsRecord=null) {
+			Store.ListSetupLogs.Add(CaptureSettingsTestKit.SavedLog(Config,12,"OPERATORY1"));
+			CaptureVerificationRecord record=CaptureControllerHarness.PassedRecord(GatedSettingsHash.Compute(Config,12),bitsPassed,
+				optionsRecord??TwainCaptureOptions.FromConfig(Config,12));
+			Store.ListSetupLogs.Add(new SecurityLog { SecurityLogNum=901,FKey=12,PermType=EnumPermType.Setup,LogDateTime=new DateTime(2026,10,30,9,0,0),
+				LogText=record.ToLogText() });
+		}
+
 		public void Dispose() {
 			Files.Dispose();
+		}
+	}
+
+	///<summary>One way the session's decision refuses 16 bits for a capture of more than 8 bits whose own slot is still empty, so that Assign files
+	///it into that slot as the explicit 8-bit copy (owner decision 2026-11-01, "fall back to 8"): the setup of a fresh harness, the capture's
+	///sidecar fields, the start of the reason the confirmation gives, and the text that tells apart two kinds whose reasons start alike.</summary>
+	internal sealed class Gray16Refusal {
+		public string Name="";
+		public Func<Dictionary<string,string>> FuncFields;
+		public Action<RecoveryHarness> ActionSetup=harness => { };
+		///<summary>The reason as the plan's Reason16BitRefused starts.</summary>
+		public string ReasonStart="";
+		///<summary>Text the reason holds after ReasonStart, where two kinds share it: which gate refused (a record for another driver version, or
+		///one made with other image settings for the same driver). Empty where ReasonStart alone tells the kind.</summary>
+		public string ReasonContains="";
+
+		public override string ToString() {
+			return Name;
+		}
+
+		///<summary>Every kind: the capture settings not verified, Allow16Bit=0, a newer record for another driver version or other image settings, a
+		///sidecar from before captures recorded the driver version, a source that reported none, and a slot that cannot be stored as DICOM.</summary>
+		public static List<Gray16Refusal> All() {
+			return new List<Gray16Refusal> {
+				new Gray16Refusal { Name="settings not verified",FuncFields=() => RecoveryFiles.SessionFieldsWithDriver(),
+					ReasonStart="the capture settings of this device have never been saved in Open Dental on this computer (not verified)" },
+				new Gray16Refusal { Name="Allow16Bit=0",FuncFields=() => RecoveryFiles.SessionFieldsWithDriver(),
+					ActionSetup=harness => {
+						harness.Config=CaptureSessionTestConfig.Load("[Twain]","Allow16Bit=0");
+						harness.SetGatesPassedAt(16);
+					},
+					ReasonStart="[Twain] Allow16Bit is 0 (more than 8 bits are switched off on this computer)" },
+				new Gray16Refusal { Name="record for another driver version",FuncFields=() => RecoveryFiles.SessionFieldsWithDriver(driverVersion:"1.0"),
+					ActionSetup=harness => harness.SetGatesPassedAt(16),
+					ReasonStart="no Test capture record for this sensor's driver version and image settings: the latest Test capture record (",
+					ReasonContains=") is for driver " },
+				new Gray16Refusal { Name="record with other image settings",FuncFields=() => RecoveryFiles.SessionFieldsWithDriver(),
+					ActionSetup=harness => harness.SetGatesPassedAt(14,new TwainCaptureOptions { ImagingDeviceNum=12,Bits=14 }),
+					ReasonStart="no Test capture record for this sensor's driver version and image settings: the latest Test capture record (",
+					ReasonContains=") was made with other image settings (Bits, ByteOrder16 or Polarity)" },
+				new Gray16Refusal { Name="sidecar before driver versions",FuncFields=() => RecoveryFiles.SessionFields(),
+					ActionSetup=harness => harness.SetGatesPassedAt(16),
+					ReasonStart="this capture was taken before captures recorded the driver version, so no Test capture record can cover it" },
+				new Gray16Refusal { Name="source reported no driver version",
+					FuncFields=() => {
+						Dictionary<string,string> dictFields=RecoveryFiles.SessionFields();
+						dictFields[CaptureSidecarKeys.BitDepthInEffect]="16";
+						return dictFields;
+					},
+					ActionSetup=harness => harness.SetGatesPassedAt(16),
+					ReasonStart="the TWAIN source did not report its driver version when this capture was taken, so no Test capture record can cover it" },
+				new Gray16Refusal { Name="slot of no single view",FuncFields=() => RecoveryFiles.SessionFieldsWithDriver(),
+					ActionSetup=harness => {
+						harness.SetGatesPassedAt(16);
+						harness.Slot(3).ToothNumbers="5,6";//a premolar and a canine: no single view, never DICOM
+					},
+					ReasonStart="the target cannot be stored as DICOM: " },
+			};
 		}
 	}
 }

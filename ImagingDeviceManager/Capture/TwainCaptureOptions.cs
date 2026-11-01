@@ -12,15 +12,18 @@ namespace ImagingDeviceManager.Capture {
 	///<summary>The device profile a TwainCaptureSession runs with: the [Device.N] section of capture.ini for one imaging device, and the
 	///[Twain] keys that apply to it (design 9.3). Device-specific numbers (custom capabilities, refusal codes) come only from here, as data
 	///copied from the source's published contract; the library has none of its own. Every value has the design 9.3 default when the file
-	///or the key is missing or invalid; an invalid value is listed in ListWarnings. The hash check of the gated block (CAP-4) is the
-	///caller's: this class reads the file as it is.</summary>
+	///or the key is missing or invalid, except Bits and Allow16Bit: missing or empty, they are 16 and 1 (owner decision 2026-11-01); an invalid
+	///Bits is 8 and an invalid Allow16Bit is 0, so a value that cannot be read never turns more than 8 bits on. An invalid value is listed in
+	///ListWarnings. The hash check of the gated block (CAP-4) is the caller's: this class reads the file as it is.</summary>
 	public sealed class TwainCaptureOptions {
 		///<summary>imagingdevice.ImagingDeviceNum, N of [Device.N]. 0 when the options were not read from a file.</summary>
 		public long ImagingDeviceNum { get; set; }
 		///<summary>[Device.N] SessionMode, default PerSlot.</summary>
 		public TwainSessionMode SessionMode { get; set; }=TwainSessionMode.PerSlot;
-		///<summary>[Device.N] Bits, 8 (default) or 16. The library asks for 16 only when an enable request does (TwainEnableRequest.Bits).</summary>
-		public int Bits { get; set; }=8;
+		///<summary>[Device.N] Bits: 16 (the default, owner decision 2026-11-01), 14 or 8; any other value is a warning and 8. The depth the capture
+		///session asks for once its gates hold (CaptureBitDepthDecision); the library negotiates only what an enable request asks
+		///(TwainEnableRequest.Bits) and falls back from 16 to 14 or 8 by what the source lists.</summary>
+		public int Bits { get; set; }=TwainBitDepth.Bits16;
 		///<summary>[Device.N] ByteOrder16, default LE (review flag). The default byte order of 16-bit samples.</summary>
 		public TwainByteOrder ByteOrder16 { get; set; }=TwainByteOrder.LE;
 		///<summary>[Device.N] Polarity, default AsDelivered (review flag). Carried for the saver; the library never inverts pixels.</summary>
@@ -43,8 +46,10 @@ namespace ImagingDeviceManager.Capture {
 		public ushort? RedeliverCap { get; set; }
 		///<summary>[Device.N] NoActivateCap (hex): set TRUE before each enable, so the sensor software's window does not take activation (W16).</summary>
 		public ushort? NoActivateCap { get; set; }
-		///<summary>[Twain] Allow16Bit, default 0: the global 16-bit kill switch.</summary>
-		public bool Allow16Bit { get; set; }
+		///<summary>[Twain] Allow16Bit, default 1 (owner decision 2026-11-01): more than 8 bits (14 or 16) are allowed on this computer. The key keeps
+		///its name for compatibility; 0 is the computer's kill switch and forces 8 bits everywhere, and so does a value that is not 0 or 1 (a
+		///warning).</summary>
+		public bool Allow16Bit { get; set; }=true;
 		///<summary>[Twain] RestrictSources and AllowedSources: the source gate, checked when the session opens the source.</summary>
 		public bool RestrictSources { get; set; }
 		public List<string> AllowedSources { get; set; }=new List<string>();
@@ -61,9 +66,10 @@ namespace ImagingDeviceManager.Capture {
 		///<summary>How often the worker's message loop wakes up. Not in capture.ini; tests shorten it.</summary>
 		internal int TickMilliseconds { get; set; }=200;
 
-		///<summary>[Device.N] Bits=16 and [Twain] Allow16Bit=1. The session window still needs a matching verification record and a target that
-		///can be written as DICOM before it asks for 16 bits (design 7.8, 7.10).</summary>
-		public bool Is16BitConfigured => Bits==16 && Allow16Bit;
+		///<summary>[Device.N] Bits is 16 or 14 and [Twain] Allow16Bit=1 (the defaults). The session window still needs its other gates (the capture
+		///settings check, a matching Test capture record that passed at that depth, and a target that can be written as DICOM) before it asks for
+		///more than 8 bits (design 7.8, 7.10, 9.3).</summary>
+		public bool IsAbove8BitConfigured => Bits>8 && Allow16Bit;
 
 		///<summary>The [Device.N] section for imagingDeviceNum and the [Twain] keys of config, with design 9.3 defaults. config null gives the
 		///defaults. Never throws.</summary>
@@ -76,10 +82,11 @@ namespace ImagingDeviceManager.Capture {
 			try {
 				string section=LocalCaptureConfig.GetDeviceSection(imagingDeviceNum);
 				options.SessionMode=ReadEnum(config,section,"SessionMode",TwainSessionMode.PerSlot,options.ListWarnings);
-				int bits=config.GetInt(section,"Bits",8);
-				if(bits!=8 && bits!=16) {
-					options.ListWarnings.Add("["+section+"] Bits="+config.GetString(section,"Bits")+" is not 8 or 16; 8 is used.");
-					bits=8;
+				//Missing or empty: the default. A value that does not read as a number is a warning and 8, like any other value but 8, 14 or 16.
+				int bits=config.GetString(section,"Bits","").Trim()=="" ? TwainBitDepth.Bits16 : config.GetInt(section,"Bits",int.MinValue);
+				if(!TwainBitDepth.IsAllowed(bits)) {
+					options.ListWarnings.Add("["+section+"] Bits="+config.GetString(section,"Bits")+" is not 8, 14 or 16; 8 is used.");
+					bits=TwainBitDepth.Bits8;
 				}
 				options.Bits=bits;
 				options.ByteOrder16=ReadEnum(config,section,"ByteOrder16",TwainByteOrder.LE,options.ListWarnings);
@@ -97,6 +104,10 @@ namespace ImagingDeviceManager.Capture {
 					}
 				}
 				options.Allow16Bit=config.Allow16Bit;
+				if(config.IsAllow16BitInvalid) {
+					options.ListWarnings.Add("[Twain] Allow16Bit="+config.GetString(LocalCaptureConfig.SectionTwain,"Allow16Bit").Trim()+" is not 0 or 1; 8 "
+						+"bits are used.");
+				}
 				options.RestrictSources=config.RestrictSources;
 				options.AllowedSources=config.AllowedSources;
 				options.JournalKeep=config.JournalKeep;

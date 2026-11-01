@@ -437,9 +437,9 @@ namespace ImagingDeviceManager.Capture {
 		private void SetState(TwainCaptureState state,int enableId) {
 			_state=(int)state;
 			EnableContext context=_enable;
-			bool isSafeDisableInEffect=enableId!=0 && context!=null && context.Id==enableId && context.IsSafeDisableInEffect;
+			bool isOfEnable=enableId!=0 && context!=null && context.Id==enableId;
 			TwainCaptureStatus status=new TwainCaptureStatus { State=state,EnableId=enableId,Text=GetStateText(state),
-				IsSafeDisableInEffect=isSafeDisableInEffect };
+				IsSafeDisableInEffect=isOfEnable && context.IsSafeDisableInEffect,LayoutUnusableText=isOfEnable ? context.LayoutUnusableTextRunning : null };
 			Raise(StatusChanged,status,"StatusChanged");
 		}
 
@@ -565,10 +565,13 @@ namespace ImagingDeviceManager.Capture {
 				info.ProductName=identity.Value.ProductName??"";
 				info.Manufacturer=identity.Value.Manufacturer??"";
 				info.ProductFamily=identity.Value.ProductFamily??"";
+				info.VersionMajor=identity.Value.Version.MajorNum;
+				info.VersionMinor=identity.Value.Version.MinorNum;
 				info.VersionInfo=identity.Value.Version.Info??"";
 				info.ProtocolMajor=identity.Value.ProtocolMajor;
 				info.ProtocolMinor=identity.Value.ProtocolMinor;
 				info.SupportedGroups=identity.Value.SupportedGroups;
+				info.DriverIdentity=new TwainDriverIdentity(info.ProductName,info.VersionMajor,info.VersionMinor,info.VersionInfo);
 			}
 			info.UiControllable=ReadBool(Tw.CAP_UICONTROLLABLE);
 			info.DeviceOnline=ReadBool(Tw.CAP_DEVICEONLINE);
@@ -594,7 +597,8 @@ namespace ImagingDeviceManager.Capture {
 			AddCustomCapabilityInfo(info,"RedeliverCap",_options.RedeliverCap);
 			AddCustomCapabilityInfo(info,"NoActivateCap",_options.NoActivateCap);
 			AddCustomCapabilityInfo(info,"ContinuousCap",_options.ContinuousCap);
-			Log("Opened \""+info.ProductName+"\" ("+info.Manufacturer+", "+info.VersionInfo+", protocol "+info.ProtocolMajor+"."+info.ProtocolMinor
+			Log("Opened \""+info.ProductName+"\" ("+info.Manufacturer+", version "+info.VersionMajor+"."+info.VersionMinor+" \""+info.VersionInfo+"\", protocol "
+				+info.ProtocolMajor+"."+info.ProtocolMinor
 				+") through "+info.DsmName+"; CAP_UICONTROLLABLE "+Describe(info.UiControllable)+", CAP_DEVICEONLINE "+Describe(info.DeviceOnline)
 				+", ICAP_BITDEPTH "+(info.ListBitDepths==null ? "not readable" : string.Join("|",info.ListBitDepths))
 				+", capture metadata "+(info.IsMetadataListed ? "listed" : "not listed")+".");
@@ -641,8 +645,12 @@ namespace ImagingDeviceManager.Capture {
 			public ushort? ConditionCode;
 			public string ConditionText;
 			public string ErrorText;
-			public string Reason8Bit;
-			public bool IsBitDepth16InEffect;
+			public string ReasonFallback;
+			public int BitDepthInEffect=8;
+			public string LayoutUnusableText;
+			///<summary>A continuous enable without safe disable that stays enabled after a transfer whose layout could not be read: the text every
+			///later status of the enable carries (TwainCaptureStatus.LayoutUnusableText), else null.</summary>
+			public string LayoutUnusableTextRunning;
 			public bool IsContinuous;
 			public bool IsSafeDisableInEffect;
 			public bool WasDisableStartedUnsafe;
@@ -747,13 +755,13 @@ namespace ImagingDeviceManager.Capture {
 			}
 			TwainByteOrder byteOrder=context.Request.ByteOrder16 ?? _options.ByteOrder16;
 			TwainCaptureNegotiationResult negotiation=_session.NegotiateCapture(new TwainCaptureNegotiation {
-				Want16Bit=context.Request.Bits==16,
+				BitsWanted=TwainBitDepth.Normalize(context.Request.Bits),
 				IsByteOrderBigEndian=byteOrder==TwainByteOrder.BE,
 				WantExtImageInfo=true,
 				XferCount=1,
 			});
-			context.IsBitDepth16InEffect=negotiation.Bits==16;
-			context.Reason8Bit=negotiation.Reason8Bit;
+			context.BitDepthInEffect=negotiation.Bits;
+			context.ReasonFallback=negotiation.ReasonFallback;
 			if(negotiation.RefusalText!=null) {
 				context.Reason=TwainCaptureEndReason.EnableFailed;
 				context.ErrorText=negotiation.RefusalText;
@@ -893,7 +901,37 @@ namespace ImagingDeviceManager.Capture {
 				context.CountTransferFailures++;
 				context.IsSourceMayHoldImages=true;
 				context.ConditionCode=_session.TransferConditionCode??context.ConditionCode;//Never the code of an earlier, unrelated failure.
+				bool isLayoutUnusable=_session.LayoutUnusableText!=null;
+				if(isLayoutUnusable && context.LayoutUnusableText==null) {
+					context.LayoutUnusableText=_session.LayoutUnusableText;
+				}
 				Log("Capture event: image not received from \""+_session.SourceName+"\" (enable "+context.Id+"): "+_session.ErrorText);
+				if(isLayoutUnusable && context.IsContinuous && !StopContinuousAfterLayoutUnusable(context)) {
+					return false;
+				}
+			}
+			return true;
+		}
+
+		///<summary>A continuous enable stays enabled after an image (design 7.4), so every later exposure of it would come in the layout that could
+		///not be read and be lost too. With safe disable in effect it is stopped at once, and ends TransferFailed with LayoutUnusableText: the
+		///session's next enable asks for 8 bits. Without it the fork starts no disable of its own (design 7.6, 10.6): the status raised now, and
+		///every later one of the enable, carries the text, so that the window tells the operator at once not to expose again. False when the
+		///enable was stopped.</summary>
+		private bool StopContinuousAfterLayoutUnusable(EnableContext context) {
+			if(context.IsSafeDisableInEffect) {
+				Log("Enable "+context.Id+" is continuous: it is stopped after the image that could not be read, because every later image of it would"
+					+" come in the same layout.");
+				StopEnable(context,TwainCaptureStopReason.Error);
+				context.Reason=TwainCaptureEndReason.TransferFailed;
+				context.ErrorText=context.LayoutUnusableText;
+				return false;
+			}
+			if(context.LayoutUnusableTextRunning==null) {
+				context.LayoutUnusableTextRunning=context.LayoutUnusableText;
+				Log("Enable "+context.Id+" is continuous and safe disable is not in effect: it stays enabled, and every later image of it would come in"
+					+" the same layout. The window is told at once.");
+				SetState(TwainCaptureState.Transferring,context.Id);
 			}
 			return true;
 		}
@@ -1031,8 +1069,10 @@ namespace ImagingDeviceManager.Capture {
 				WasDisableStartedUnsafe=context.WasDisableStartedUnsafe,
 				WasDisableRefused=wasDisableRefused,
 				WasSecondDisableAfterWait=wasSecondDisableAfterWait,
-				IsBitDepth16InEffect=context.IsBitDepth16InEffect,
-				Reason8Bit=context.Reason8Bit,
+				BitsRequested=TwainBitDepth.Normalize(context.Request.Bits),
+				BitDepthInEffect=context.BitDepthInEffect,
+				ReasonFallback=context.ReasonFallback,
+				LayoutUnusableText=context.LayoutUnusableText,
 				ErrorText=errorText,
 				EndedAt=GetNow(),
 			};
@@ -1108,7 +1148,9 @@ namespace ImagingDeviceManager.Capture {
 			image.Kind=kind;
 			image.StopReason=stopReason;
 			image.IsRedelivery=context.IsRedelivery;
-			image.RequestedBits=context.Request.Bits;
+			image.RequestedBits=TwainBitDepth.Normalize(context.Request.Bits);
+			image.BitDepthReason=!string.IsNullOrWhiteSpace(context.ReasonFallback) ? context.ReasonFallback.Trim()
+				: (string.IsNullOrWhiteSpace(context.Request.ReasonFallback) ? null : context.Request.ReasonFallback.Trim());
 			image.SidecarFields=context.Request.SidecarFields==null ? null : new List<KeyValuePair<string,string>>(context.Request.SidecarFields);
 			image.SourceName=string.IsNullOrEmpty(image.SourceName) ? _productName : image.SourceName;
 			image.IndexInEnable=++context.CountImages;
@@ -1192,7 +1234,18 @@ namespace ImagingDeviceManager.Capture {
 			record.ListCaptureFields.Add(new SidecarField("PixelFlavor",image.PixelFlavor.ToString(CultureInfo.InvariantCulture)));
 			record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.PixelType,image.PixelType.ToString(CultureInfo.InvariantCulture)));
 			record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.BitsPerSample,image.BitsPerSample.ToString(CultureInfo.InvariantCulture)));
-			record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.BitDepth16InEffect,image.IsBitDepth16InEffect ? "1" : "0"));
+			//BitDepth16InEffect stays for the readers and sidecars before CAP-16: 1 for a depth above 8 (samples in 16-bit containers).
+			record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.BitDepth16InEffect,image.IsAbove8BitInEffect ? "1" : "0"));
+			record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.BitDepthInEffect,image.BitDepthInEffect.ToString(CultureInfo.InvariantCulture)));
+			if(!string.IsNullOrWhiteSpace(image.BitDepthReason)) {
+				record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.BitDepthReason,image.BitDepthReason));
+			}
+			TwainDriverIdentity driverIdentity=_sourceInfo?.DriverIdentity;
+			if(driverIdentity!=null) {
+				record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.DriverProductName,driverIdentity.ProductName));
+				record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.DriverVersion,driverIdentity.VersionText));
+				record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.DriverVersionInfo,driverIdentity.Info));
+			}
 			if(image.SidecarFields!=null) {
 				foreach(KeyValuePair<string,string> pair in image.SidecarFields) {
 					if(!string.IsNullOrWhiteSpace(pair.Key)) {

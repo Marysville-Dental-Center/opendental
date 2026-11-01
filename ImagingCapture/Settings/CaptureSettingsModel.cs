@@ -127,8 +127,11 @@ namespace ImagingCapture.Settings {
 			SettingsCheck=CaptureSettingsCheck.Run(config,Device.ImagingDeviceNum,ComputerName,x => _services.Store.GetSetupLogEntries(x));
 			foreach(CaptureSettingRow row in _listRows.Where(x => x.Def.IsGated)) {
 				row.SavedText=SettingsCheck.LastSaved?.GetGatedValue(row.Def.Label);
-				row.IsChangedOutside=row.SavedText!=null
-					&& GatedSettingsHash.NormalizeValue(row.Def.Key,row.SavedText)!=GatedSettingsHash.NormalizeValue(row.Def.Key,row.BaselineText);
+				//Also a Bits or Allow16Bit left empty by a save logged before their defaults changed on 2026-11-01 (8 to 16, 0 to 1), which the file
+				//still leaves empty: the check lists it, so it is never accepted unseen.
+				row.IsChangedOutside=(row.SavedText!=null
+					&& GatedSettingsHash.NormalizeValue(row.Def.Key,row.SavedText)!=GatedSettingsHash.NormalizeValue(row.Def.Key,row.BaselineText))
+					|| SettingsCheck.ListChangedLabels.Contains(row.Def.Label,StringComparer.OrdinalIgnoreCase);
 			}
 			Validate();
 			Version++;
@@ -164,7 +167,7 @@ namespace ImagingCapture.Settings {
 				&& string.Equals(x.Def.Key,key,StringComparison.OrdinalIgnoreCase));
 		}
 
-		///<summary>The problems, one line each: "[Device.12] Bits=12 is not one of 8, 16."</summary>
+		///<summary>The problems, one line each: "[Device.12] Bits=12 is not one of 16, 14, 8."</summary>
 		public List<string> GetProblemTexts() {
 			return _listRows.Where(x => x.Problem!="").Select(x => x.Problem).ToList();
 		}

@@ -34,7 +34,8 @@ namespace ImagingCapture.Session {
 		public CaptureSessionConfig SessionConfig { get; set; }=CaptureSessionConfig.Read(null);
 		///<summary>This computer (ODEnvironment.MachineName).</summary>
 		public string ComputerName { get; set; }="";
-		///<summary>The latest Test capture verification record for the device on this computer, or null.</summary>
+		///<summary>The latest Test capture verification record for the device row, made on any computer (owner decision 2026-11-01), or null. The
+		///bit-depth decision matches it against the driver version the source reports at open and the image settings.</summary>
 		public CaptureVerificationRecord VerificationRecord { get; set; }
 		///<summary>GatedSettingsHash.Compute(Config, ImagingDeviceNum), or "" when it could not be computed (no 16 bits then).</summary>
 		public string GatedSettingsHash { get; set; }="";

@@ -167,7 +167,7 @@ namespace ImagingCapture.Tests {
 			AssertProblem("Twain","JournalKeep","1.5","is not a whole number");
 			//The journal refuses 0 and keeps 200, so 0 would be saved and logged without being in effect.
 			AssertProblem("Twain","JournalKeep","0","[Twain] JournalKeep=0 is not allowed: the journal cannot be turned off.");
-			AssertProblem("Device","Bits","12","[Device.12] Bits=12 is not 8 or 16");
+			AssertProblem("Device","Bits","12","[Device.12] Bits=12 is not 8, 14 or 16");
 			AssertProblem("Device","SessionMode","Batch","is not one of PerSlot, Continuous");
 			AssertProblem("Device","Polarity","1","is not one of");
 			AssertProblem("Device","SafeDisableCap","0x10000","is not a capability number");
@@ -304,6 +304,23 @@ namespace ImagingCapture.Tests {
 			Assert.IsTrue(model.Save().IsLogged);
 			Assert.AreEqual(CaptureSettingsStatus.Verified,model.SettingsCheck.Status);
 			Assert.IsFalse(Row(model,"Twain","Allow16Bit").IsChangedOutside);
+		}
+
+		[TestMethod]
+		public void Load_SavedBeforeTheDefaultsChanged_WithoutBitsAndAllow16Bit_BothRowsMarkedChangedOutside() {
+			//A save logged before 2026-11-01 of a file with neither key (then 8 bits, not allowed); the file still has neither (now 16, allowed).
+			const string iniWithout="[Session]\r\nEnabled=1\r\n[Device.12]\r\nPolarity=AsDelivered\r\n";
+			Write(iniWithout);
+			LocalCaptureConfig config=LoadFile();
+			string canonicalOld=GatedSettingsHash.GetCanonicalText(config,12).Replace("\nTwain.Allow16Bit=1\n","\nTwain.Allow16Bit=\n")
+				.Replace("\nDevice.Bits=16\n","\nDevice.Bits=\n");
+			_store.ListLogs.Add(CaptureSettingsTestKit.SavedLog(GatedSettingsHash.ComputeFromCanonicalText(canonicalOld),12,"OPERATORY1",config:config));
+			CaptureSettingsModel model=Model();
+			Assert.AreEqual(CaptureSettingsStatus.ChangedOutside,model.SettingsCheck.Status);
+			Assert.IsTrue(Row(model,"Device","Bits").IsChangedOutside,"Bits 8 to 16 is never accepted unseen.");
+			Assert.IsTrue(Row(model,"Twain","Allow16Bit").IsChangedOutside);
+			Assert.IsFalse(Row(model,"Device","Polarity").IsChangedOutside);
+			StringAssert.Contains(model.SettingsCheck.Text,CaptureSettingsCheck.TextDefaultChanged);
 		}
 
 		[TestMethod]

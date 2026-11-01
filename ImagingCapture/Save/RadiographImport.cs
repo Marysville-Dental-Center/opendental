@@ -204,7 +204,9 @@ namespace ImagingCapture.Save {
 					result.ListWarnings.Add("The mount's provider could not be set: "+ex.Message);
 				}
 			}
-			if(plan.Format==RadiographFormat.Png8) {
+			//An explicit 8-bit copy of a 16-bit capture is a rendering the fork made through its own window, like the 16-bit DICOM it stands in for,
+			//which is never sent (cap-3 decision 7): it is not sent either.
+			if(plan.Format==RadiographFormat.Png8 && !plan.IsCopyOf16Bit) {
 				try {
 					_radiographStore.SendToPearlIfConfigured(request.Patient,document,plan.FileBytes,mountItem);
 				}

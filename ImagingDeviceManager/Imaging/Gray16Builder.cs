@@ -9,22 +9,29 @@ namespace ImagingDeviceManager.Imaging {
 	///<summary>Assembles the strips of a 16-bit grayscale memory transfer into raw samples (design 7.1 CAP-3): chunky, top-down rows, each
 	///sample 2 bytes, right-justified, little-endian (TWAIN 2.4 p.4-30; twain-contract 1.1 section 6.2), or big-endian when the device
 	///profile says so. Rows may be padded (BytesPerRow larger than 2 x Columns) and strips may be tiles (XOffset, Columns): both are honoured.
-	///Values are kept exactly as delivered: no shift, no window, no inversion.</summary>
+	///A 14-bit enable is expected to deliver 14-bit samples right-justified in the same 16-bit containers (values 0 to 16383): TWAIN's rule
+	///that samples are right-justified (TWAIN 2.4 p.4-30), with the owner decision of 2026-11-01 to fall back from 16 to 14 bits. The contract
+	///defines no 14-bit delivery (its ICAP_BITDEPTH lists 8 and 16). They are read the same way, and a sample above 2^significantBits-1 is
+	///counted (CountAboveSignificantBits), not changed. Values are kept exactly as delivered: no shift, no window, no inversion.</summary>
 	internal sealed class Gray16Builder {
 		private readonly int _width;
 		private readonly int _heightExpected;
 		private readonly bool _isBigEndian;
+		private readonly int _maxSignificantValue;
 		///<summary>Rows top to bottom; a row stays null until a strip covers it.</summary>
 		private readonly List<ushort[]> _listRows=new List<ushort[]>();
 
-		///<summary>width and height come from TW_IMAGEINFO; height is -1 (or 0) when the source does not know it in advance.</summary>
-		public Gray16Builder(int width,int height,bool isBigEndian) {
+		///<summary>width and height come from TW_IMAGEINFO; height is -1 (or 0) when the source does not know it in advance. significantBits:
+		///the depth in effect, 16 or 14 (or 9 to 16); a value outside counts as 16.</summary>
+		public Gray16Builder(int width,int height,bool isBigEndian,int significantBits=16) {
 			if(width<=0) {
 				throw new ImagingDeviceException("The device reported an image width of "+width+".",EZTwainErrorCode.EZTEC_BAD_MEMXFER);
 			}
 			_width=width;
 			_heightExpected=height;
 			_isBigEndian=isBigEndian;
+			SignificantBits=significantBits>8 && significantBits<=16 ? significantBits : 16;
+			_maxSignificantValue=(1<<SignificantBits)-1;
 			if(height>0) {
 				_listRows.Capacity=height;
 			}
@@ -32,6 +39,12 @@ namespace ImagingDeviceManager.Imaging {
 
 		///<summary>The number of rows received so far (the highest row index written, plus one).</summary>
 		public int RowsReceived => _listRows.Count;
+		///<summary>16, or 14 for a 14-bit enable: how many low bits of each 16-bit container the source says are significant.</summary>
+		public int SignificantBits { get; }
+		///<summary>2^SignificantBits-1: 65535, or 16383 for 14 bits.</summary>
+		public int MaxSignificantValue => _maxSignificantValue;
+		///<summary>Samples received so far whose value is above MaxSignificantValue (kept as delivered): not right-justified in SignificantBits.</summary>
+		public long CountAboveSignificantBits { get; private set; }
 
 		///<summary>Copies one strip out of the transfer buffer. bufferLength is the size of the buffer at pBuffer.</summary>
 		public void AddStrip(IntPtr pBuffer,int bufferLength,TW_IMAGEMEMXFER strip) {
@@ -67,7 +80,11 @@ namespace ImagingDeviceManager.Imaging {
 				for(long x=0;x<columns;x++) {
 					byte b0=bytesRow[x*2];
 					byte b1=bytesRow[x*2+1];
-					row[xOffset+x]=_isBigEndian ? (ushort)((b0<<8)|b1) : (ushort)(b0|(b1<<8));
+					ushort sample=_isBigEndian ? (ushort)((b0<<8)|b1) : (ushort)(b0|(b1<<8));
+					row[xOffset+x]=sample;
+					if(sample>_maxSignificantValue) {
+						CountAboveSignificantBits++;
+					}
 				}
 			}
 		}

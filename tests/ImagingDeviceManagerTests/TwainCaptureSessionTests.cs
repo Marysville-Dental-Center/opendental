@@ -249,14 +249,14 @@ namespace ImagingDeviceManager.Tests {
 			Helper.ListExposures.Add(page);
 			_harness.OpenOrFail();
 			TwainCaptureEnded ended16=_harness.WaitForEnded(EnableOne(16));
-			Assert.IsTrue(ended16.IsBitDepth16InEffect);
+			Assert.AreEqual(16,ended16.BitDepthInEffect);
 			AcquiredImage image16=_harness.Images.Single();
 			Assert.IsTrue(image16.IsGray16);
 			Assert.AreEqual(TwainCapturePathTests.Sample16(5,3),image16.Gray16[3*6+5]);
 			Assert.AreEqual(".tif",Path.GetExtension(image16.JournalPath));
 			int countCalls=Calls.Count;
 			TwainCaptureEnded ended8=_harness.WaitForEnded(EnableOne(8));
-			Assert.IsFalse(ended8.IsBitDepth16InEffect);
+			Assert.AreEqual(8,ended8.BitDepthInEffect);
 			AcquiredImage image8=_harness.Images[1];
 			Assert.IsFalse(image8.IsGray16);
 			Assert.AreEqual(8,image8.BitsPerPixel);
@@ -272,7 +272,7 @@ namespace ImagingDeviceManager.Tests {
 			Helper.RefusesBitDepth8=true;//Native transfers still reset the depth with TWRC_CHECKSTATUS (twain-contract 1.1 section 4).
 			Helper.ListExposures[0].Original16=FakePage.CreateGray16(6,4,FakeHelperSource.Dpi,(x,y) => x+y);
 			_harness.OpenOrFail();
-			Assert.IsTrue(_harness.WaitForEnded(EnableOne(16)).IsBitDepth16InEffect);
+			Assert.AreEqual(16,_harness.WaitForEnded(EnableOne(16)).BitDepthInEffect);
 			int countCalls=Calls.Count;
 			TwainCaptureEnded ended8=_harness.WaitForEnded(EnableOne(8));
 			Assert.AreEqual(TwainCaptureEndReason.Completed,ended8.Reason,ended8.ErrorText);
@@ -288,7 +288,7 @@ namespace ImagingDeviceManager.Tests {
 			Helper.NativeKeepsBitDepth16=true;//Not a contract source: TWRC_SUCCESS for native transfers, the depth still 16.
 			Helper.ListExposures[0].Original16=FakePage.CreateGray16(6,4,FakeHelperSource.Dpi,(x,y) => x+y);
 			_harness.OpenOrFail();
-			Assert.IsTrue(_harness.WaitForEnded(EnableOne(16)).IsBitDepth16InEffect);
+			Assert.AreEqual(16,_harness.WaitForEnded(EnableOne(16)).BitDepthInEffect);
 			TwainCaptureEnded ended8=_harness.WaitForEnded(EnableOne(8));
 			Assert.AreEqual(TwainCaptureEndReason.EnableFailed,ended8.Reason);
 			StringAssert.Contains(ended8.ErrorText,"ICAP_BITDEPTH could not be set back to 8");
@@ -301,12 +301,176 @@ namespace ImagingDeviceManager.Tests {
 		public void Bits16_ImageWithout16BitOriginal_FlaggedAndJournaledAsBmp() {
 			_harness.OpenOrFail();
 			TwainCaptureEnded ended=_harness.WaitForEnded(EnableOne(16));
-			Assert.IsTrue(ended.IsBitDepth16InEffect);
+			Assert.AreEqual(16,ended.BitDepthInEffect);
 			AcquiredImage image=_harness.Images.Single();
 			Assert.IsTrue(image.IsDeliveredAs8BitIn16BitEnable);
 			Assert.AreEqual(".bmp",Path.GetExtension(image.JournalPath));
 			Dictionary<string,string> dictSidecar=CaptureFiles.ReadSidecar(Path.ChangeExtension(image.JournalPath,".txt"));
 			Assert.AreEqual("1",dictSidecar["DeliveredAs8BitIn16BitEnable"]);
+		}
+
+		[TestMethod]
+		public void Bits16_SourceLists8And14_FallsBackTo14_DepthInSidecarAndEnded() {
+			Helper.ListBitDepths=new List<int> { 8,14 };
+			Helper.ListExposures.Clear();
+			Helper.ListExposures.Add(TwainCapturePathTests.ExposureWith14(6,4));
+			_harness.OpenOrFail();
+			TwainCaptureEnded ended=_harness.WaitForEnded(EnableOne(16));
+			Assert.AreEqual(TwainCaptureEndReason.Completed,ended.Reason,ended.ErrorText);
+			Assert.AreEqual(16,ended.BitsRequested);
+			Assert.AreEqual(14,ended.BitDepthInEffect);
+			StringAssert.Contains(ended.ReasonFallback,"does not list 16");
+			AcquiredImage image=_harness.Images.Single();
+			Assert.AreEqual(16,image.RequestedBits);
+			Assert.AreEqual(14,image.BitDepthInEffect);
+			Assert.AreEqual(TwainCapturePathTests.Sample14(5,3),image.Gray16[3*6+5]);
+			StringAssert.Contains(image.BitDepthReason,"does not list 16");
+			Dictionary<string,string> dictSidecar=CaptureFiles.ReadSidecar(Path.ChangeExtension(image.JournalPath,".txt"));
+			Assert.AreEqual("14",dictSidecar[CaptureSidecarKeys.BitDepthInEffect]);
+			Assert.AreEqual("1",dictSidecar[CaptureSidecarKeys.BitDepth16InEffect],"Kept for the readers before CAP-16: more than 8 bits.");
+			Assert.AreEqual("16",dictSidecar["RequestedBits"]);
+			StringAssert.Contains(dictSidecar[CaptureSidecarKeys.BitDepthReason],"does not list 16");
+			CaptureFileEntry entry=CaptureFileStore.CreateForFolder(_harness.Folder,() => DateTime.Now).ListJournal().Single();
+			Assert.AreEqual(14,entry.BitDepthInEffect);
+			string error;
+			AcquiredImage imageRead=CaptureFileStore.CreateForFolder(_harness.Folder,() => DateTime.Now).ReadImage(entry,out error);
+			Assert.IsNotNull(imageRead,error);
+			Assert.AreEqual(14,imageRead.BitDepthInEffect);
+			CollectionAssert.AreEqual(image.Gray16,imageRead.Gray16);
+		}
+
+		[TestMethod]
+		public void Open_DriverIdentityReported_AndWrittenInEverySidecar() {
+			Helper.VersionMajor=2;
+			Helper.VersionMinor=3;
+			Helper.VersionInfo="2.3.1 build 9";
+			TwainCaptureOpenResult result=_harness.Open();
+			Assert.IsTrue(result.IsOpen,result.ErrorText);
+			TwainCaptureSourceInfo info=result.SourceInfo;
+			Assert.AreEqual(2,info.VersionMajor);
+			Assert.AreEqual(3,info.VersionMinor);
+			Assert.AreEqual("2.3.1 build 9",info.VersionInfo);
+			Assert.IsTrue(info.DriverIdentity.IsSameAs(new TwainDriverIdentity(Helper.ProductName.ToUpperInvariant(),2,3,"2.3.1 build 9")),
+				"The product name ignores case.");
+			Assert.IsTrue(_harness.HasLog("version 2.3 \"2.3.1 build 9\""),_harness.LogText);
+			_harness.WaitForEnded(EnableOne());
+			AcquiredImage image=_harness.Images.Single();
+			Dictionary<string,string> dictSidecar=CaptureFiles.ReadSidecar(Path.ChangeExtension(image.JournalPath,".txt"));
+			Assert.AreEqual(Helper.ProductName,dictSidecar[CaptureSidecarKeys.DriverProductName]);
+			Assert.AreEqual("2.3",dictSidecar[CaptureSidecarKeys.DriverVersion]);
+			Assert.AreEqual("2.3.1 build 9",dictSidecar[CaptureSidecarKeys.DriverVersionInfo]);
+			CaptureFileEntry entry=CaptureFileStore.CreateForFolder(_harness.Folder,() => DateTime.Now).ListJournal().Single();
+			Assert.IsTrue(entry.DriverIdentity.IsSameAs(info.DriverIdentity));
+		}
+
+		[TestMethod]
+		public void DriverIdentity_VersionOrInfoDiffers_NotTheSame() {
+			TwainDriverIdentity identity=new TwainDriverIdentity(" Example Sensor DS ",1,2,"1.2.0 ");
+			Assert.AreEqual("Example Sensor DS",identity.ProductName);
+			Assert.AreEqual("1.2",identity.VersionText);
+			Assert.AreEqual("Example Sensor DS, version 1.2 (1.2.0)",identity.Describe());
+			Assert.IsTrue(identity.IsSameAs(new TwainDriverIdentity("example sensor ds",1,2,"1.2.0")));
+			Assert.IsFalse(identity.IsSameAs(new TwainDriverIdentity("Example Sensor DS",1,3,"1.2.0")),"MinorNum.");
+			Assert.IsFalse(identity.IsSameAs(new TwainDriverIdentity("Example Sensor DS",2,2,"1.2.0")),"MajorNum.");
+			Assert.IsFalse(identity.IsSameAs(new TwainDriverIdentity("Example Sensor DS",1,2,"1.2.1")),"Info.");
+			Assert.IsFalse(identity.IsSameAs(new TwainDriverIdentity("Other DS",1,2,"1.2.0")),"ProductName.");
+			Assert.IsFalse(identity.IsSameAs(null));
+			Assert.IsTrue(identity.IsSameAs(TwainDriverIdentity.TryParse("Example Sensor DS","1.2","1.2.0")));
+			Assert.IsNull(TwainDriverIdentity.TryParse("Example Sensor DS","1","1.2.0"));
+			Assert.IsNull(TwainDriverIdentity.TryParse("Example Sensor DS","1.x","1.2.0"));
+			Assert.IsNull(TwainDriverIdentity.TryParse("Example Sensor DS","-1.2","1.2.0"));
+		}
+
+		[TestMethod]
+		public void Bits8_RequestReasonRecordedInSidecar_LibraryReasonWins() {
+			Helper.ListExposures.Clear();
+			Helper.ListExposures.Add(TwainCapturePathTests.ExposureWith16(4,3));
+			_harness.OpenOrFail();
+			TwainCaptureEnded ended=_harness.WaitForEnded(Capture.Enable(new TwainEnableRequest { Bits=8,TargetLabel="Slot 1",
+				ReasonFallback="no Test capture record for this sensor's driver version and image settings" }));
+			Assert.AreEqual(8,ended.BitDepthInEffect);
+			Assert.IsNull(ended.ReasonFallback,"8 asked, 8 used: the library did not fall back.");
+			AcquiredImage image=_harness.Images.Single();
+			Assert.AreEqual("no Test capture record for this sensor's driver version and image settings",image.BitDepthReason);
+			Dictionary<string,string> dictSidecar=CaptureFiles.ReadSidecar(Path.ChangeExtension(image.JournalPath,".txt"));
+			Assert.AreEqual("8",dictSidecar[CaptureSidecarKeys.BitDepthInEffect]);
+			Assert.AreEqual("0",dictSidecar[CaptureSidecarKeys.BitDepth16InEffect]);
+			Helper.Supports16Bit=false;
+			_harness.WaitForEnded(Capture.Enable(new TwainEnableRequest { Bits=16,TargetLabel="Slot 2",ReasonFallback="the caller's" }));
+			StringAssert.Contains(_harness.Images[1].BitDepthReason,"does not list 16","The library's own fallback replaces the caller's.");
+		}
+
+		[TestMethod]
+		public void Bits14_PackedLayout_TransferFailed_NothingKept_LayoutTextInEnded() {
+			Helper.ListBitDepths=new List<int> { 8,14 };
+			Helper.BitsPerPixelAt14=14;
+			Helper.ListExposures.Clear();
+			Helper.ListExposures.Add(TwainCapturePathTests.ExposureWith14(6,4));
+			_harness.OpenOrFail();
+			TwainCaptureEnded ended=_harness.WaitForEnded(EnableOne(14));
+			Assert.AreEqual(TwainCaptureEndReason.TransferFailed,ended.Reason,ended.ErrorText);
+			Assert.AreEqual(14,ended.BitDepthInEffect);
+			StringAssert.StartsWith(ended.LayoutUnusableText,"14-bit layout not usable: ");
+			StringAssert.Contains(ended.LayoutUnusableText,"packed samples");
+			Assert.AreEqual(1,ended.TransferFailureCount);
+			Assert.AreEqual(0,ended.ImageCount);
+			Assert.AreEqual(0,_harness.Images.Count);
+			Assert.AreEqual(0,_harness.ListQuarantined.Count,"Nothing it cannot read is quarantined.");
+			Assert.AreEqual(0,CaptureFileStore.CreateForFolder(_harness.Folder,() => DateTime.Now).ListJournal().Count,"No journal copy either.");
+			Assert.IsTrue(_harness.HasLog("14-bit layout not usable") || _harness.HasLog("in a layout that cannot be read"),_harness.LogText);
+			_harness.AssertDisabledOnlyInState5();
+		}
+
+		///<summary>A continuous enable at 14 bits whose source packs its samples (BitsPerPixel 14): two exposures, ContinuousIntervalMs apart.</summary>
+		private void ConfigureContinuousPacked14() {
+			Helper.SupportsContinuous=true;
+			Helper.End=FakeHelperEnd.Never;
+			Helper.ContinuousIntervalMs=1000;
+			Helper.ListBitDepths=new List<int> { 8,14 };
+			Helper.BitsPerPixelAt14=14;
+			Helper.ListExposures.Clear();
+			Helper.ListExposures.Add(TwainCapturePathTests.ExposureWith14(6,4));
+			Helper.ListExposures.Add(TwainCapturePathTests.ExposureWith14(6,4));
+			Options.SessionMode=TwainSessionMode.Continuous;
+			Options.ContinuousCap=FakeHelperSource.CapContinuous;
+		}
+
+		[TestMethod]
+		public void Continuous_Bits14_PackedLayout_WithSafeDisable_StoppedAfterTheFirstImage_NoSecondExposureLost() {
+			ConfigureContinuousPacked14();
+			ConfigureSafeDisable();
+			_harness.OpenOrFail();
+			TwainCaptureEnded ended=_harness.WaitForEnded(EnableOne(14));
+			Assert.AreEqual(TwainCaptureEndReason.TransferFailed,ended.Reason,ended.ErrorText);
+			Assert.AreEqual(TwainCaptureStopReason.Error,ended.StopReason);
+			Assert.IsTrue(ended.IsSafeDisableInEffect);
+			StringAssert.StartsWith(ended.LayoutUnusableText,"14-bit layout not usable: ");
+			Assert.AreEqual(1,ended.TransferFailureCount,"The enable stopped at the first image it could not read: "+_harness.LogText);
+			Assert.AreEqual(0,_harness.Images.Count);
+			Assert.IsTrue(_harness.HasLog("it is stopped after the image that could not be read"),_harness.LogText);
+			Thread.Sleep(1200);
+			Assert.AreEqual(1,_harness.CountEnded);
+			Assert.AreEqual(4,Helper.State,"The source is disabled: the second exposure is never taken for an enable that would lose it.");
+			Assert.AreEqual(1,Helper.CountKeptForRedelivery,"Only the first exposure was offered.");
+		}
+
+		[TestMethod]
+		public void Continuous_Bits14_PackedLayout_WithoutSafeDisable_StaysEnabled_StatusSaysSoAtOnce() {
+			ConfigureContinuousPacked14();
+			_harness.OpenOrFail();
+			int enableId=EnableOne(14);
+			_harness.WaitUntil(() => _harness.ListStatus.Any(x => x.EnableId==enableId && x.LayoutUnusableText!=null),"the status after the failure");
+			Assert.AreEqual(0,_harness.CountEnded,"Without safe disable the fork starts no disable of its own (design 7.6, 10.6).");
+			Assert.AreEqual(1,_harness.CountLogLines("image not received from"),"Raised right after the first failure: "+_harness.LogText);
+			TwainCaptureStatus status=_harness.Statuses.First(x => x.EnableId==enableId && x.LayoutUnusableText!=null);
+			StringAssert.StartsWith(status.LayoutUnusableText,"14-bit layout not usable: ");
+			_harness.WaitUntil(() => _harness.ListStatus.Last().State==TwainCaptureState.WaitingForImage,"waiting again");
+			Assert.IsNotNull(_harness.Statuses.Last().LayoutUnusableText,"Every later status of the enable carries it.");
+			Capture.Disable(TwainCaptureStopReason.End);
+			TwainCaptureEnded ended=_harness.WaitForEnded(enableId);
+			Assert.AreEqual(TwainCaptureStopReason.End,ended.StopReason);
+			StringAssert.StartsWith(ended.LayoutUnusableText,"14-bit layout not usable: ");
+			Assert.IsFalse(_harness.Statuses.Any(x => x.EnableId!=enableId && x.LayoutUnusableText!=null),"Only that enable's statuses.");
 		}
 
 		[TestMethod]
@@ -1187,8 +1351,9 @@ namespace ImagingDeviceManager.Tests {
 			_harness.OpenOrFail();
 			TwainCaptureEnded ended=_harness.WaitForEnded(EnableOne(16));
 			Assert.AreEqual(TwainCaptureEndReason.Completed,ended.Reason);
-			Assert.IsFalse(ended.IsBitDepth16InEffect);
-			StringAssert.Contains(ended.Reason8Bit,"does not list 16");
+			Assert.AreEqual(8,ended.BitDepthInEffect);
+			Assert.AreEqual(16,ended.BitsRequested);
+			StringAssert.Contains(ended.ReasonFallback,"does not list 16");
 			Assert.IsFalse(ended.IsSafeDisableInEffect,"TWCC_CAPUNSUPPORTED: not safe.");
 			AcquiredImage image=_harness.Images.Single();
 			Assert.IsNull(image.MetadataJson);

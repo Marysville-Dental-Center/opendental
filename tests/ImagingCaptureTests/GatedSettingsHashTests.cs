@@ -228,6 +228,14 @@ Headless=0
 			Assert.AreEqual(hashMissingFile,Hash("[Session]\nEnabled=\n[Twain]\nAllowedSources=| |\n[Device.12]\nBits= \n"),
 				"A missing key and an empty value both read as the default.");
 			Assert.AreNotEqual(hashMissingFile,Hash("[Device.12]\nBits=8\n"),"An explicit value is not the same text as a missing one.");
+			//Bits and Allow16Bit: a missing value hashes as the default the program now reads (owner decision 2026-11-01).
+			Assert.AreEqual(hashMissingFile,Hash("[Twain]\nAllow16Bit=1\n[Device.12]\nBits=16\n"),"Missing Bits and Allow16Bit read as 16 and 1.");
+			Assert.AreEqual(hashMissingFile,Hash("[Twain]\nAllow16Bit= \n[Device.12]\nBits=\n"));
+			Assert.AreNotEqual(hashMissingFile,Hash("[Twain]\nAllow16Bit=0\n"));
+			Assert.AreNotEqual(hashMissingFile,Hash("[Device.12]\nBits=14\n"));
+			StringAssert.Contains(GatedSettingsHash.GetCanonicalText(null,12),"\nTwain.Allow16Bit=1\n");
+			StringAssert.Contains(GatedSettingsHash.GetCanonicalText(null,12),"\nDevice.Bits=16\n");
+			StringAssert.Contains(GatedSettingsHash.GetCanonicalText(null,12),"\nDevice.Polarity=\n","Other keys are still empty when missing.");
 			string canonical=GatedSettingsHash.GetCanonicalText(null,12);
 			Assert.IsTrue(canonical.StartsWith("capture-gated-settings/1\nDevice=12\nSession.Enabled=\n"));
 			Assert.AreEqual(2+2+9+12,canonical.Count(x => x=='\n'));

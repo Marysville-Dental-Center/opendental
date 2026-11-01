@@ -120,6 +120,29 @@ namespace ImagingDeviceManager.Tests {
 			}
 		}
 
+		public List<TwainCaptureStatus> Statuses {
+			get {
+				lock(_lock) {
+					return new List<TwainCaptureStatus>(ListStatus);
+				}
+			}
+		}
+
+		public int CountEnded {
+			get {
+				lock(_lock) {
+					return ListEnded.Count;
+				}
+			}
+		}
+
+		///<summary>The log lines that contain fragment (any case).</summary>
+		public int CountLogLines(string fragment) {
+			lock(_lock) {
+				return ListLog.Count(x => x.IndexOf(fragment,StringComparison.OrdinalIgnoreCase)>=0);
+			}
+		}
+
 		public string LogText {
 			get {
 				lock(_lock) {

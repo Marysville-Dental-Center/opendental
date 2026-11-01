@@ -46,7 +46,8 @@ namespace ImagingDeviceManager.Capture {
 		public int Height { get; set; }
 		///<summary>16 for Gray16; the DIB's bit count otherwise.</summary>
 		public int BitsPerPixel { get; set; }
-		///<summary>DAT_IMAGEINFO BitsPerSample[0]: 16 for a 16-bit sensor image, whatever its effective bits.</summary>
+		///<summary>DAT_IMAGEINFO BitsPerSample[0]: 16 for a 16-bit sensor image, whatever its effective bits; 14 or 16 for a 14-bit one in 16-bit
+		///containers, as the source reports it.</summary>
 		public int BitsPerSample { get; set; }
 		///<summary>DAT_IMAGEINFO PixelType (TWPT_: PixelTypeGray for the sensor), or -1 when the source did not describe the image.</summary>
 		public int PixelType { get; set; }
@@ -78,11 +79,19 @@ namespace ImagingDeviceManager.Capture {
 		///<summary>The image came from a redelivery enable (TwainCaptureSession.RequestRedelivery). The source knows no patient: the session
 		///window places it only after the operator confirms it (design 7.12).</summary>
 		public bool IsRedelivery { get; set; }
-		///<summary>8 or 16: what the enable asked for.</summary>
+		///<summary>16, 14 or 8: what the enable asked for.</summary>
 		public int RequestedBits { get; set; }
-		///<summary>The enable negotiated 16 bits (ICAP_BITDEPTH 16 accepted over memory transfer).</summary>
-		public bool IsBitDepth16InEffect { get; set; }
-		///<summary>The enable negotiated 16 bits, but DAT_IMAGEINFO reported 8 for this image (an image with no 16-bit original,
+		///<summary>16, 14 or 8: the ICAP_BITDEPTH the enable negotiated (16 or 14 accepted over memory transfer; 8 otherwise). The journal and
+		///quarantine sidecars record it as BitDepthInEffect, and as BitDepth16InEffect=1 when it is above 8 (CaptureSidecarKeys).</summary>
+		public int BitDepthInEffect { get; set; }=8;
+		///<summary>The enable negotiated more than 8 bits (14 or 16) over memory transfer: a Gray16 image of it is in 16-bit containers that came
+		///through the negotiation Test capture verifies.</summary>
+		public bool IsAbove8BitInEffect => BitDepthInEffect>8;
+		///<summary>Why the enable ran at fewer bits than the device is set to: the library's fallback (TwainCaptureEnded.ReasonFallback, for
+		///example 16 asked and the source lists 14) or else the caller's (TwainEnableRequest.ReasonFallback); null when there was none. The
+		///sidecars record it as BitDepthReason.</summary>
+		public string BitDepthReason { get; set; }
+		///<summary>The enable negotiated 14 or 16 bits, but DAT_IMAGEINFO reported 8 for this image (an image with no 16-bit original,
 		///twain-contract 1.1 section 6.2). It goes down the 8-bit save path, never the 16-bit DICOM path (design 7.1 CAP-3).</summary>
 		public bool IsDeliveredAs8BitIn16BitEnable { get; set; }
 		///<summary>The byte order Gray16 was read in (TwainEnableRequest.ByteOrder16).</summary>

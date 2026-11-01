@@ -118,10 +118,29 @@ namespace ImagingDeviceManager.Config {
 			}
 		}
 
-		///<summary>[Twain] Allow16Bit, default 0.</summary>
+		///<summary>[Twain] Allow16Bit, default 1 (owner decision 2026-11-01): more than 8 bits are allowed on this computer; 0 forces 8 bits on the
+		///capture session path. The legacy Mount/Acquire path never asks for a bit depth, whatever this says.</summary>
+		public const bool Allow16BitDefault=true;
+
+		///<summary>[Twain] Allow16Bit, default 1 (Allow16BitDefault) when missing or empty. A value that reads as neither 1 nor 0 (GetBool's
+		///words) is 0: the computer's kill switch fails closed (IsAllow16BitInvalid; TwainCaptureOptions lists a warning).</summary>
 		public bool Allow16Bit {
 			get {
-				return GetBool(SectionTwain,"Allow16Bit",false);
+				string value=GetRaw(SectionTwain,"Allow16Bit");
+				if(value==null || value.Trim()=="") {
+					return Allow16BitDefault;
+				}
+				bool isAllowed;
+				return TryParseBool(value,out isAllowed) && isAllowed;
+			}
+		}
+
+		///<summary>[Twain] Allow16Bit is present with a value that reads as neither 1 nor 0, so Allow16Bit is 0.</summary>
+		public bool IsAllow16BitInvalid {
+			get {
+				string value=GetRaw(SectionTwain,"Allow16Bit");
+				bool isAllowed;
+				return value!=null && value.Trim()!="" && !TryParseBool(value,out isAllowed);
 			}
 		}
 
@@ -382,18 +401,23 @@ namespace ImagingDeviceManager.Config {
 
 		///<summary>1, true or yes is true; 0, false or no is false (any case). defaultValue when missing, empty or anything else.</summary>
 		public bool GetBool(string section,string key,bool defaultValue) {
-			string value=GetRaw(section,key);
+			bool result;
+			return TryParseBool(GetRaw(section,key),out result) ? result : defaultValue;
+		}
+
+		///<summary>value, trimmed, is 1, true or yes (result true) or 0, false or no (result false), in any case. False for null, empty or anything
+		///else.</summary>
+		public static bool TryParseBool(string value,out bool result) {
+			result=false;
 			if(value==null) {
-				return defaultValue;
+				return false;
 			}
 			value=value.Trim();
 			if(value=="1" || value.Equals("true",StringComparison.OrdinalIgnoreCase) || value.Equals("yes",StringComparison.OrdinalIgnoreCase)) {
+				result=true;
 				return true;
 			}
-			if(value=="0" || value.Equals("false",StringComparison.OrdinalIgnoreCase) || value.Equals("no",StringComparison.OrdinalIgnoreCase)) {
-				return false;
-			}
-			return defaultValue;
+			return value=="0" || value.Equals("false",StringComparison.OrdinalIgnoreCase) || value.Equals("no",StringComparison.OrdinalIgnoreCase);
 		}
 
 		///<summary>For keys documented as hex: "0x8002" and "8002" both read as 0x8002. Null when missing, empty or invalid (including

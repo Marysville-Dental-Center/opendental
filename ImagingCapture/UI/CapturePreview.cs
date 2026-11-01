@@ -51,7 +51,8 @@ namespace ImagingCapture.UI {
 				return null;
 			}
 			if(isInverted) {
-				arrayPixels=Gray16Samples.Invert(arrayPixels,Metadata.CaptureMetadataParser.Parse(image.MetadataJson)?.EffectiveBits);
+				arrayPixels=Gray16Samples.Invert(arrayPixels,Gray16Samples.GetEffectiveBits(Metadata.CaptureMetadataParser.Parse(image.MetadataJson),
+					image.BitDepthInEffect,arrayPixels));
 			}
 			int low;
 			int high;

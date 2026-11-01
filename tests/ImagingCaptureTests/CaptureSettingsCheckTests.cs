@@ -117,7 +117,7 @@ namespace ImagingCapture.Tests {
 			Assert.AreEqual(CaptureSettingsStatus.Verified,check.Status);
 			Assert.IsTrue(check.IsVerified);
 			Assert.AreEqual("",check.Text);
-			Assert.IsNull(check.Reason8Bit);
+			Assert.IsNull(check.ReasonFallback);
 			Assert.AreEqual(GatedSettingsHash.Compute(config,12),check.CurrentHash);
 			Assert.IsNotNull(check.LastSaved);
 		}
@@ -133,7 +133,40 @@ namespace ImagingCapture.Tests {
 			StringAssert.StartsWith(check.Text,"Capture settings were changed outside Open Dental; review them in Setup.");
 			StringAssert.Contains(check.Text,"2026-10-29 08:00");
 			StringAssert.Contains(check.Text,"(Twain.Allow16Bit, Device.Bits)");
-			StringAssert.Contains(check.Reason8Bit,"changed outside Open Dental");
+			StringAssert.Contains(check.ReasonFallback,"changed outside Open Dental");
+		}
+
+		///<summary>A Setup entry of a Capture settings save logged before 2026-11-01 for config, whose Bits and Allow16Bit were missing: its hash
+		///then wrote them as empty (they meant 8 and 0).</summary>
+		private static SecurityLog SavedLogBefore20261101(LocalCaptureConfig config) {
+			string canonicalOld=GatedSettingsHash.GetCanonicalText(config,12).Replace("\nTwain.Allow16Bit=1\n","\nTwain.Allow16Bit=\n")
+				.Replace("\nDevice.Bits=16\n","\nDevice.Bits=\n");
+			return CaptureSettingsTestKit.SavedLog(GatedSettingsHash.ComputeFromCanonicalText(canonicalOld),12,"OPERATORY1",config:config);
+		}
+
+		[TestMethod]
+		public void Check_SavedBeforeTheDefaultsChanged_WithoutBitsAndAllow16Bit_BothNamedWithTheNote_NeverAcceptedUnseen() {
+			LocalCaptureConfig config=Config("[Session]\r\nEnabled=1\r\n[Device.12]\r\nPolarity=AsDelivered\r\n");
+			CaptureSettingsCheck check=CaptureSettingsCheck.Check(config,12,"OPERATORY1",new[] { SavedLogBefore20261101(config) });
+			Assert.AreEqual(CaptureSettingsStatus.ChangedOutside,check.Status,"The same file now reads as 16 bits allowed, which was not saved.");
+			CollectionAssert.AreEqual(new[] { "Twain.Allow16Bit","Device.Bits" },check.ListChangedLabels,"Named, not a bare 'changed outside'.");
+			CollectionAssert.AreEqual(new[] { "Twain.Allow16Bit","Device.Bits" },check.ListDefaultChangedLabels);
+			StringAssert.Contains(check.Text,"(Twain.Allow16Bit, Device.Bits)");
+			StringAssert.Contains(check.Text,CaptureSettingsCheck.TextDefaultChanged);
+			//The same file saved now: verified. A save before the change that said Bits=16 and Allow16Bit=1: no default changed.
+			Assert.IsTrue(CaptureSettingsCheck.Check(config,12,"OPERATORY1",new[] { CaptureSettingsTestKit.SavedLog(config,12,"OPERATORY1") }).IsVerified);
+			LocalCaptureConfig configExplicit=Config("[Session]\r\nEnabled=1\r\n[Twain]\r\nAllow16Bit=1\r\n[Device.12]\r\nBits=16\r\nPolarity=AsDelivered\r\n");
+			//(Under the rule before 2026-11-01 explicit values hashed as they do now.)
+			CaptureSettingsCheck checkExplicit=CaptureSettingsCheck.Check(configExplicit,12,"OPERATORY1",
+				new[] { CaptureSettingsTestKit.SavedLog(configExplicit,12,"OPERATORY1") });
+			Assert.IsTrue(checkExplicit.IsVerified,"Values that read the same under both rules hash the same.");
+			Assert.AreEqual(0,checkExplicit.ListDefaultChangedLabels.Count);
+			//Saved then without them, and the file now says 8 and 0: nothing differs as it reads, and the text says why it is still not verified.
+			LocalCaptureConfig config8=Config("[Session]\r\nEnabled=1\r\n[Twain]\r\nAllow16Bit=0\r\n[Device.12]\r\nBits=8\r\nPolarity=AsDelivered\r\n");
+			CaptureSettingsCheck check8=CaptureSettingsCheck.Check(config8,12,"OPERATORY1",new[] { SavedLogBefore20261101(config) });
+			Assert.AreEqual(CaptureSettingsStatus.ChangedOutside,check8.Status);
+			Assert.AreEqual(0,check8.ListChangedLabels.Count);
+			StringAssert.Contains(check8.Text,"No gated value differs as it reads now");
 		}
 
 		[TestMethod]
@@ -171,9 +204,9 @@ namespace ImagingCapture.Tests {
 			Assert.AreEqual(CaptureSettingsStatus.NeverSaved,check.Status);
 			Assert.IsNull(check.LastSaved);
 			Assert.AreEqual(CaptureSettingsCheck.TextNeverSaved+" "+CaptureSettingsCheck.TextConsequences,check.Text);
-			StringAssert.Contains(check.Text,"16-bit capture is not verified");
-			StringAssert.Contains(check.Reason8Bit,"never been saved");
-			StringAssert.Contains(check.Reason8Bit,"(not verified)");
+			StringAssert.Contains(check.Text,"capture of more than 8 bits is not verified");
+			StringAssert.Contains(check.ReasonFallback,"never been saved");
+			StringAssert.Contains(check.ReasonFallback,"(not verified)");
 		}
 
 		[TestMethod]
@@ -244,7 +277,7 @@ namespace ImagingCapture.Tests {
 			Assert.IsNull(options.RedeliverCap);
 			Assert.IsNull(options.NoActivateCap);
 			Assert.IsFalse(options.Allow16Bit);
-			Assert.IsFalse(options.Is16BitConfigured);
+			Assert.IsFalse(options.IsAbove8BitConfigured);
 			Assert.AreEqual(200,options.JournalKeep);
 		}
 		#endregion Safe values
@@ -283,6 +316,13 @@ namespace ImagingCapture.Tests {
 			Assert.AreEqual(optionsEmpty.ByteOrder16,optionsDefaults.ByteOrder16);
 			Assert.AreEqual(optionsEmpty.Polarity,optionsDefaults.Polarity);
 			Assert.AreEqual(optionsEmpty.JournalKeep,optionsDefaults.JournalKeep);
+			Assert.AreEqual(16,optionsDefaults.Bits,"Owner decision 2026-11-01.");
+			Assert.AreEqual(configEmpty.Allow16Bit,configDefaults.Allow16Bit);
+			Assert.IsTrue(configDefaults.Allow16Bit,"Owner decision 2026-11-01.");
+			Assert.AreEqual(optionsEmpty.Allow16Bit,optionsDefaults.Allow16Bit);
+			CollectionAssert.AreEqual(new[] { "16","14","8" },CaptureSettingsCatalog.Find("Device","Bits").ArrayChoices.ToArray());
+			StringAssert.Contains(CaptureSettingsCatalog.Find("Device","Bits").Help,"With Bits=16, a source that lists 14 but not 16 gives 14 to its "
+				+"Test capture, and the session then asks it for 14.","The fallback to 14 needs that Test capture.");
 			Assert.AreEqual(configEmpty.ThreadModal,configDefaults.ThreadModal);
 			Assert.AreEqual(configEmpty.AcquireTimeoutMinutes,configDefaults.AcquireTimeoutMinutes);
 			CaptureSessionConfig sessionEmpty=CaptureSessionConfig.Read(configEmpty);

@@ -240,6 +240,60 @@ namespace ImagingDeviceManager.Tests {
 			Assert.AreEqual("Slot 3 (teeth 2,3)",imageRead.TargetLabel);
 		}
 
+		///<summary>A quarantine file of image with the session record, changed by actionRecord first.</summary>
+		private CaptureFileEntry WriteWithRecord(AcquiredImage image,Action<CaptureRecord> actionRecord) {
+			Guid sessionGuid=Guid.NewGuid();
+			CaptureRecord record=SessionRecord(new DateTime(2026,10,31,10,0,5),sessionGuid,image.Gray16!=null);
+			actionRecord(record);
+			string error;
+			string path=new QuarantineWriter(_folders).WriteSessionCapture(CaptureImageFile.FromAcquiredImage(image),record,sessionGuid,42,"Doe, Jane",
+				"Slot 3 (teeth 2,3)","It arrived after a patient change.",null,out error);
+			Assert.IsNotNull(path,error);
+			return _store.ListQuarantine().Single(x => x.SessionGuid==sessionGuid);
+		}
+
+		[TestMethod]
+		public void BitDepthInEffect_NewKey14_ReadBack_WithTheReasonAndDriver() {
+			CaptureFileEntry entry=WriteWithRecord(Gray16Image(4,3),record => {
+				record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.BitDepthInEffect,"14"));
+				record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.BitDepthReason,"ICAP_BITDEPTH MSG_GET does not list 16 (8, 14)"));
+				record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.DriverProductName,"Example Sensor DS"));
+				record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.DriverVersion,"1.2"));
+				record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.DriverVersionInfo,"1.2.0"));
+			});
+			Assert.AreEqual(14,entry.BitDepthInEffect,"The new key wins over BitDepth16InEffect=1.");
+			Assert.AreEqual("ICAP_BITDEPTH MSG_GET does not list 16 (8, 14)",entry.BitDepthReason);
+			Assert.IsTrue(entry.DriverIdentity.IsSameAs(new TwainDriverIdentity("Example Sensor DS",1,2,"1.2.0")));
+			string error;
+			AcquiredImage imageRead=_store.ReadImage(entry,out error);
+			Assert.IsNotNull(imageRead,error);
+			Assert.AreEqual(14,imageRead.BitDepthInEffect);
+			Assert.IsTrue(imageRead.IsAbove8BitInEffect);
+			Assert.AreEqual("ICAP_BITDEPTH MSG_GET does not list 16 (8, 14)",imageRead.BitDepthReason);
+		}
+
+		[TestMethod]
+		public void BitDepthInEffect_OldSidecars_OldKeyOrNeither() {
+			CaptureFileEntry entryOld16=WriteWithRecord(Gray16Image(4,3),record => { });//BitDepth16InEffect=1 only (CAP-4)
+			Assert.AreEqual(16,entryOld16.BitDepthInEffect);
+			Assert.AreEqual("",entryOld16.BitDepthReason);
+			Assert.IsNull(entryOld16.DriverIdentity,"Sidecars before CAP-16 name no driver version.");
+			CaptureFileEntry entryOld8=WriteWithRecord(Gray8Image(4,3),record => { });//BitDepth16InEffect=0
+			Assert.AreEqual(8,entryOld8.BitDepthInEffect);
+			CaptureFileEntry entryNeither=WriteWithRecord(Gray16Image(4,3),record =>
+				record.ListCaptureFields.RemoveAll(x => x.Key==CaptureSidecarKeys.BitDepth16InEffect));//before CAP-4
+			Assert.AreEqual(16,entryNeither.BitDepthInEffect,"A 16-bit copy of a 16-bit memory enable.");
+			CaptureFileEntry entryNeither8=WriteWithRecord(Gray16Image(4,3),record => {
+				record.ListCaptureFields.RemoveAll(x => x.Key==CaptureSidecarKeys.BitDepth16InEffect);
+				record.ListCaptureFields.RemoveAll(x => x.Key=="RequestedBits");
+				record.ListCaptureFields.Add(new SidecarField("RequestedBits","8"));
+			});
+			Assert.AreEqual(8,entryNeither8.BitDepthInEffect,"16-bit samples in an 8-bit enable.");
+			CaptureFileEntry entryBad=WriteWithRecord(Gray16Image(4,3),record =>
+				record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.BitDepthInEffect,"12")));
+			Assert.AreEqual(16,entryBad.BitDepthInEffect,"A depth that is not 8, 14 or 16 is ignored; the old key decides.");
+		}
+
 		[TestMethod]
 		public void ReadImage_Tif_TheSamplesUnchanged_16BitInEffect() {
 			AcquiredImage image=Gray16Image(6,4);
@@ -254,7 +308,7 @@ namespace ImagingDeviceManager.Tests {
 			Assert.AreEqual(16,imageRead.BitsPerSample);
 			Assert.AreEqual(1270,imageRead.XDpi,0.01);
 			Assert.AreEqual(TwainTransferMechanism.Memory,imageRead.TransferMechanism);
-			Assert.IsTrue(imageRead.IsBitDepth16InEffect);
+			Assert.AreEqual(16,imageRead.BitDepthInEffect);
 			Assert.AreEqual(16,imageRead.RequestedBits);
 			Assert.AreEqual(AcquiredImage.PixelFlavorChocolate,imageRead.PixelFlavor);
 		}
@@ -398,6 +452,44 @@ namespace ImagingDeviceManager.Tests {
 			CaptureFileEntry entryAfter=_store.ListJournal().Single();
 			Assert.IsTrue(entryAfter.IsResolved);
 			Assert.AreEqual(42,entryAfter.PatNum,"The original fields are kept.");
+		}
+
+		[TestMethod]
+		public void KeepJournalCopy_A16BitCopyKeptPastRotationBeforeItIsFiled_NeverOverwritten_JournalOnly() {
+			CaptureJournal journal=new CaptureJournal(_folders);
+			AcquiredImage image=Gray16Image(6,4);
+			string path=journal.Write(CaptureImageFile.FromAcquiredImage(image),SessionRecord(new DateTime(2026,10,31,10,0,0),Guid.NewGuid(),true),
+				CaptureJournal.DeliveredCaller,null,200,null);
+			CaptureFileEntry entry=_store.ListJournal().Single();
+			string pathKept;
+			string error;
+			Assert.IsTrue(_store.KeepJournalCopy(entry,out pathKept,out error),error);
+			Assert.AreEqual(Path.Combine(_folder,CaptureFileStore.SubfolderJournalKept,entry.FileName),pathKept);
+			CollectionAssert.AreEqual(File.ReadAllBytes(path),File.ReadAllBytes(pathKept),"Byte for byte.");
+			Assert.IsTrue(File.Exists(path),"The journal copy itself is not moved.");
+			string pathSidecarKept=Path.ChangeExtension(pathKept,".txt");
+			Dictionary<string,string> dictKept=CaptureFiles.ReadSidecar(pathSidecarKept);
+			Assert.IsFalse(dictKept.ContainsKey(CaptureSidecarKeys.Disposition),"Kept before the filing: no disposition yet.");
+			Assert.AreEqual("42",dictKept["PatNum"],"The original fields are kept.");
+			Assert.IsFalse(_store.ListJournal().Single().IsResolved,"Only Resolve marks the journal copy.");
+			Assert.AreEqual(0,_store.ListQuarantine().Count,"Not an unassigned capture.");
+			//A filing that did not complete kept it already: the same image is used again, never overwritten.
+			Assert.IsTrue(_store.KeepJournalCopy(entry,out pathKept,out error),error);
+			List<KeyValuePair<string,string>> listFields=new List<KeyValuePair<string,string>> { new KeyValuePair<string,string>("DispositionDocNum","1234") };
+			Assert.IsTrue(_store.RecordKeptDisposition(pathKept,entry,CaptureFileDisposition.Assigned,listFields,out error),error);
+			string textKept=File.ReadAllText(pathSidecarKept);
+			Assert.AreEqual(1,textKept.Split(new[] { "Disposition=" },StringSplitOptions.None).Length-1,"The disposition once.");
+			dictKept=CaptureFiles.ReadSidecar(pathSidecarKept);
+			Assert.AreEqual("1234",dictKept["DispositionDocNum"]);
+			Assert.AreEqual("Assigned",dictKept[CaptureSidecarKeys.Disposition]);
+			//Another image of the same name there is never replaced, and the filing is refused.
+			File.WriteAllBytes(pathKept,new byte[] { 1,2,3 });
+			Assert.IsFalse(_store.KeepJournalCopy(entry,out pathKept,out error),"Never overwritten.");
+			StringAssert.Contains(error,"is already in");
+			CollectionAssert.AreEqual(new byte[] { 1,2,3 },File.ReadAllBytes(Path.Combine(_folder,CaptureFileStore.SubfolderJournalKept,entry.FileName)));
+			WriteSessionQuarantine(Gray8Image(2,2),Guid.NewGuid(),42,new DateTime(2026,10,31,10,0,5));
+			Assert.IsFalse(_store.KeepJournalCopy(_store.ListQuarantine().Single(),out pathKept,out error));
+			Assert.AreEqual("Not a journal copy.",error);
 		}
 
 		[TestMethod]

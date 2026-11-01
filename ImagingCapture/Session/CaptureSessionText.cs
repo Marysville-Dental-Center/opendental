@@ -53,6 +53,12 @@ namespace ImagingCapture.Session {
 			}
 		}
 
+		///<summary>The indicator while a continuous enable without safe disable still runs after an image of more than 8 bits came in a layout
+		///that cannot be read (TwainCaptureStatus.LayoutUnusableText): every later exposure of the enable would be lost the same way.</summary>
+		public static string GetLayoutUnusableContinuousText(string layoutUnusableText) {
+			return "Image not received: "+(layoutUnusableText??"").Trim().TrimEnd('.')+". Do not expose again; end the series.";
+		}
+
 		///<summary>Design 7.6: the red bar.</summary>
 		public static string GetPatientChangedText(string patientName) {
 			return "Patient changed in the main window. This session is still for "+patientName+".";

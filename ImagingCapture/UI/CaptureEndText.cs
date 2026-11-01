@@ -70,6 +70,9 @@ namespace ImagingCapture.UI {
 					break;
 				case TwainCaptureEndReason.TransferFailed:
 					listParts.Add(ImageNotReceived);
+					if(!string.IsNullOrWhiteSpace(ended.LayoutUnusableText)) {
+						listParts.Add(ended.LayoutUnusableText.Trim().TrimEnd('.')+".");
+					}
 					break;
 				case TwainCaptureEndReason.EnableFailed:
 					listParts.Add(GetErrorText(ended,"The sensor software could not be started"));
@@ -95,8 +98,9 @@ namespace ImagingCapture.UI {
 			if(ended.ExtraImageCount>0) {
 				listParts.Add(ExtraImages);
 			}
-			if(!string.IsNullOrWhiteSpace(ended.Reason8Bit)) {
-				listParts.Add("Delivered at 8 bits: "+ended.Reason8Bit.Trim().TrimEnd('.')+".");
+			if(!string.IsNullOrWhiteSpace(ended.ReasonFallback)) {
+				listParts.Add("Delivered at "+ended.BitDepthInEffect.ToString(CultureInfo.InvariantCulture)+" bits: "
+					+ended.ReasonFallback.Trim().TrimEnd('.')+".");
 			}
 			return string.Join(" ",listParts);
 		}

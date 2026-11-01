@@ -62,6 +62,29 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void BitDepth_TheDepthActuallyUsed_InTheListAndTheDetails() {
+			Dictionary<string,string> dictFields14=RecoveryFiles.SessionFields();
+			dictFields14[CaptureSidecarKeys.BitDepthInEffect]="14";
+			_harness.Files.Quarantine16(dictFields14,_receivedAt);
+			Dictionary<string,string> dictFields8=RecoveryFiles.SessionFields();
+			dictFields8[CaptureSidecarKeys.BitDepthReason]="no Test capture record for this sensor's driver version and image settings";
+			_harness.Files.Quarantine(dictFields8,_receivedAt.AddMinutes(1));
+			_harness.Files.Quarantine16(RecoveryFiles.SessionFields(),_receivedAt.AddMinutes(2));//a CAP-4 sidecar: 16 by its old key or by default
+			CaptureRecoveryModel model=Model(CaptureRecoveryView.Unassigned);
+			Assert.AreEqual(3,model.Items.Count);
+			CaptureRecoveryItem item16=model.Items.Single(x => x.Entry.ReceivedAt==_receivedAt.AddMinutes(2));
+			StringAssert.EndsWith(item16.TitleText," | 16-bit");
+			CaptureRecoveryItem item8=model.Items.Single(x => x.Entry.ReceivedAt==_receivedAt.AddMinutes(1));
+			Assert.IsFalse(item8.TitleText.Contains("bit"),"An 8-bit capture's title is as before.");
+			model.Select(model.Items.IndexOf(item8));
+			StringAssert.Contains(model.DetailsText,"Bit depth: 8-bit (fallback: no Test capture record for this sensor's driver version and image settings)");
+			CaptureRecoveryItem item14=model.Items.Single(x => x.Entry.ReceivedAt==_receivedAt);
+			StringAssert.EndsWith(item14.TitleText," | 14-bit in a 16-bit file");
+			model.Select(model.Items.IndexOf(item14));
+			StringAssert.Contains(model.DetailsText,"Bit depth: 14-bit in a 16-bit file");
+		}
+
+		[TestMethod]
 		public void ALaterImageOfAContinuousEnable_ItsSlotNotRecorded_ShownAsSlotUnknown_NeverAsItsEnablesSlot() {
 			//The sidecar's Slot is the slot the continuous enable began at (slot 3); image 2 was for whatever slot was the target then.
 			Dictionary<string,string> dictFields=RecoveryFiles.SessionFields();
@@ -89,19 +112,110 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
-		public void Gray16_NeverOfferedForReassign_TheNoteSaysWhenItCanOnlyBeDiscarded() {
+		public void Gray16_ReassignedAsAn8BitCopy_TheNoteAndTheStepsSaySoPlainly() {
 			_harness.Files.Quarantine16(RecoveryFiles.SessionFields(),_receivedAt);//its mount and slot are known
 			_harness.Files.Quarantine16(RecoveryFiles.SessionFields(patNum:0,captureId:"cap-8"),_receivedAt.AddMinutes(1));//no patient
 			CaptureRecoveryModel model=Model(CaptureRecoveryView.Unassigned);
 			Assert.AreEqual(2,model.Items.Count);
 			CaptureRecoveryItem itemSlot=model.Items.Single(x => !x.Entry.IsPatientUnknown);
-			Assert.IsFalse(itemSlot.IsReassignOffered,"Design 7.8: a 16-bit capture is never an unmounted document.");
+			Assert.IsTrue(itemSlot.IsReassignOffered,"Owner decision 2026-11-01: reassigned as an explicit 8-bit copy.");
 			StringAssert.Contains(itemSlot.NoteText,CaptureRecoveryText.Gray16Note);
 			CaptureRecoveryItem itemNoSlot=model.Items.Single(x => x.Entry.IsPatientUnknown);
 			Assert.IsFalse(itemNoSlot.IsAssignOffered);
-			Assert.IsFalse(itemNoSlot.IsReassignOffered);
+			Assert.IsTrue(itemNoSlot.IsReassignOffered);
 			Assert.IsTrue(itemNoSlot.IsDiscardOffered);
 			StringAssert.Contains(itemNoSlot.NoteText,CaptureRecoveryText.Gray16NoSlotNote,"Said before anyone searches for a patient.");
+			model.Select(model.Items.IndexOf(itemNoSlot));
+			Assert.IsTrue(model.BeginReassign());
+			StringAssert.Contains(model.StepDetailsText,"it is filed as an 8-bit copy: a gray PNG made with its 0.5-99.5 % window, not the 16-bit original. "
+				+"The 16-bit original and its sidecar stay in Capture\\quarantine-resolved");
+			model.CancelStep();
+			//Assign when its slot is taken: the confirmation says the same.
+			_harness.Store.DictSlotDocuments[103]=new Document { DocNum=900,PatNum=42,MountItemNum=103 };
+			model.Select(model.Items.IndexOf(itemSlot));
+			Assert.IsTrue(model.BeginAssign(),model.ErrorText);
+			StringAssert.Contains(model.StepDetailsText,"The original slot already holds an image.");
+			StringAssert.Contains(model.StepDetailsText,"filed as an 8-bit copy");
+			StringAssert.Contains(model.StepDetailsText,"an unmounted item of the mount");
+		}
+
+		[TestMethod]
+		public void Gray16_TheSlotFilledAfterTheConfirmation_ShownAgainWithThe8BitNote_ThenTheDoneTextSaysSo() {
+			_harness.Files.Quarantine16(RecoveryFiles.SessionFieldsWithDriver(),_receivedAt);
+			_harness.SetGatesPassedAt(16);
+			CaptureRecoveryModel model=Model(CaptureRecoveryView.Unassigned);
+			Assert.IsTrue(model.BeginAssign(),model.ErrorText);
+			StringAssert.Contains(model.StepDetailsText,"It goes into Slot 3 (teeth 6) of the mount");
+			Assert.IsFalse(model.StepDetailsText.Contains("8-bit copy"),"Its own empty slot, the 16-bit rules holding: 16-bit DICOM.");
+			_harness.Store.DictSlotDocuments[103]=new Document { DocNum=900,PatNum=42,MountItemNum=103 };//filed meanwhile on another computer
+			Assert.IsFalse(model.Confirm(""));
+			Assert.AreEqual(CaptureRecoveryText.AssignPlanChanged,model.ErrorText);
+			Assert.AreEqual(CaptureRecoveryStep.ConfirmAssign,model.Step,"The step stays, with where the capture goes now.");
+			StringAssert.Contains(model.StepDetailsText,"filed as an 8-bit copy");
+			StringAssert.Contains(model.StepDetailsText,"an unmounted item of the mount");
+			Assert.AreEqual(0,_harness.RadiographStore.ListPatientsImported.Count,"Nothing filed without that note.");
+			Assert.IsTrue(model.Confirm(""),model.ErrorText);
+			StringAssert.Contains(model.ResultText,"as an 8-bit copy of a 16-bit capture; the 16-bit original is kept in Capture\\quarantine-resolved\\"
+				+RecoveryFiles.SessionGuid.ToString("D"));
+		}
+
+		[TestMethod]
+		public void Gray16_OwnEmptySlot_16BitsNotAllowedNow_TheConfirmationSaysWhy_ThenThe8BitCopyInItsSlot_ForEveryRefusal() {
+			//Owner decision 2026-11-01, "fall back to 8": no longer "stay or discard"; Assign files it into its own slot as the 8-bit copy.
+			foreach(Gray16Refusal refusal in Gray16Refusal.All()) {
+				using(RecoveryHarness harness=new RecoveryHarness()) {
+					refusal.ActionSetup(harness);
+					harness.Slot(3).RotateOnAcquire=270;
+					CaptureFileEntry entry=harness.Files.Quarantine16(refusal.FuncFields(),_receivedAt);
+					CaptureRecoveryModel model=new CaptureRecoveryModel(new CaptureRecoveryContext { View=CaptureRecoveryView.Unassigned },harness.Services);
+					model.Load();
+					CaptureRecoveryItem item=model.Items.Single();
+					Assert.IsTrue(item.IsAssignOffered,refusal.Name);
+					StringAssert.Contains(item.NoteText,CaptureRecoveryText.Gray16Note,refusal.Name);
+					Assert.IsFalse(item.NoteText.Contains("can only stay"),refusal+": "+item.NoteText);
+					Assert.IsTrue(model.BeginAssign(),refusal+": "+model.ErrorText);
+					Assert.AreEqual(CaptureRecoveryStep.ConfirmAssign,model.Step,refusal.Name);
+					Assert.IsTrue(model.AssignPlan.IsIntoOriginalSlot && model.AssignPlan.Is8BitCopy,refusal.Name);
+					string slotLabel="Slot 3 (teeth "+harness.Slot(3).ToothNumbers+")";
+					StringAssert.Contains(model.StepDetailsText,"It goes into "+slotLabel+" of the mount \"FMX\"",refusal.Name);
+					StringAssert.Contains(model.StepDetailsText,"8-bit copy: 16 bits are not allowed for it now ("+refusal.ReasonStart,refusal.Name);
+					StringAssert.Contains(model.AssignPlan.Reason16BitRefused,refusal.ReasonContains,refusal+": the gate that refused.");
+					StringAssert.Contains(model.StepDetailsText,"("+model.AssignPlan.Reason16BitRefused+"); the 16-bit original is kept.",refusal.Name);
+					Assert.IsFalse(model.StepDetailsText.Contains("discarded"),refusal+": "+model.StepDetailsText);
+					Assert.AreEqual(0,harness.RadiographStore.ListPatientsImported.Count,refusal+": nothing is filed before the confirmation.");
+					Assert.IsTrue(model.Confirm(""),refusal+": "+model.ErrorText);
+					CaptureFilingResult result=model.ListResults.Single();
+					Assert.IsTrue(result.IsCopy8BitOf16Bit,refusal.Name);
+					StringAssert.StartsWith(model.ResultText,"Assigned: DocNum "+result.Document.DocNum+" in "+slotLabel+" of the mount \"FMX\"",refusal.Name);
+					StringAssert.Contains(model.ResultText," as an 8-bit copy of a 16-bit capture; the 16-bit original is kept in Capture\\quarantine-resolved\\"
+						+RecoveryFiles.SessionGuid.ToString("D")+".",refusal.Name);
+					Assert.AreEqual(".png",harness.RadiographStore.ListExtensions.Single(),refusal.Name);
+					Assert.AreEqual(103,result.Document.MountItemNum,refusal+": its own slot.");
+					Assert.AreEqual(harness.Slot(3).ToothNumbers,result.Document.ToothNumbers,refusal+": the slot's teeth.");
+					Assert.AreEqual(270,result.Document.DegreesRotated,refusal+": the slot's rotation.");
+					Assert.IsTrue(System.IO.File.Exists(result.PathResolved),refusal+": the 16-bit original is kept.");
+					StringAssert.Contains(System.IO.File.ReadAllText(System.IO.Path.ChangeExtension(result.PathResolved,".txt")),
+						"DispositionDocNum="+result.Document.DocNum,refusal.Name);
+					Assert.AreEqual(entry.FileName,System.IO.Path.GetFileName(result.PathResolved),refusal.Name);
+					SecurityLog securityLog=harness.Store.ListLogEntries.Single(x => x.PermType==EnumPermType.ImageCreate);
+					StringAssert.Contains(securityLog.LogText,", an 8-bit copy of a 16-bit capture (made through the window ",refusal.Name);
+					Assert.IsFalse(securityLog.LogText.Contains("quarantine-resolved"),refusal.Name);
+				}
+			}
+		}
+
+		[TestMethod]
+		public void TestCaptureImage_TheNoteSaysItIsNeverFiled() {
+			Dictionary<string,string> dictFields=RecoveryFiles.SessionFields(patNum:0);
+			dictFields[CaptureSidecarKeys.TestCapture]="1";
+			_harness.Files.Quarantine16(dictFields,_receivedAt);
+			CaptureRecoveryModel model=Model(CaptureRecoveryView.Unassigned);
+			CaptureRecoveryItem item=model.Items.Single();
+			Assert.IsFalse(item.IsAssignOffered);
+			Assert.IsFalse(item.IsReassignOffered);
+			Assert.IsTrue(item.IsDiscardOffered);
+			StringAssert.Contains(item.NoteText,CaptureRecoveryText.TestCaptureNote);
+			Assert.IsFalse(model.BeginReassign());
 		}
 
 		[TestMethod]

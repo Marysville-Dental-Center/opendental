@@ -42,10 +42,25 @@ namespace ImagingDeviceManager.Capture {
 		///<summary>"1": a redelivered image (Redelivered=1) that the operator confirmed for the bound patient in the session window (design
 		///7.12), so its PatNum is that patient's. Without it a redelivered image is never offered for Assign, whatever its PatNum says.</summary>
 		public const string RedeliveryConfirmed="RedeliveryConfirmed";
-		///<summary>Written by the library: TW_IMAGEINFO PixelType, BitsPerSample, and whether 16 bits were negotiated (IsBitDepth16InEffect).</summary>
+		///<summary>Written by the library: TW_IMAGEINFO PixelType and BitsPerSample.</summary>
 		public const string PixelType="PixelType";
 		public const string BitsPerSample="BitsPerSample";
+		///<summary>Written by the library: "1" when the enable negotiated more than 8 bits (14 or 16) over memory transfer, so the samples are
+		///in 16-bit containers, else "0". Kept for the sidecars and readers before CAP-16, where it meant 16 bits; BitDepthInEffect says
+		///which depth. A sidecar with neither key (before CAP-4) counts a 16-bit copy from a 16-bit memory enable as 16.</summary>
 		public const string BitDepth16InEffect="BitDepth16InEffect";
+		///<summary>Written by the library from CAP-16: the depth the enable ran at, 16, 14 or 8 (AcquiredImage.BitDepthInEffect).</summary>
+		public const string BitDepthInEffect="BitDepthInEffect";
+		///<summary>Why the enable ran at fewer bits than the device is set to (AcquiredImage.BitDepthReason); absent when there was no fallback.</summary>
+		public const string BitDepthReason="BitDepthReason";
+		///<summary>Written by the library from CAP-16: the TW_IDENTITY of the source that delivered the image (TwainDriverIdentity): its
+		///ProductName, Version "MajorNum.MinorNum" and Version.Info.</summary>
+		public const string DriverProductName="DriverProductName";
+		public const string DriverVersion="DriverVersion";
+		public const string DriverVersionInfo="DriverVersionInfo";
+		///<summary>"1": the image was taken by Test capture (TestCaptureModel adds it through TwainEnableRequest.SidecarFields), a phantom or a ramp
+		///taken without any of the session's conditions for more than 8 bits: never filed to a patient.</summary>
+		public const string TestCapture="TestCapture";
 		///<summary>Written when a quarantine file or journal copy is filed or discarded (CaptureFileStore.Resolve): what happened to it.</summary>
 		public const string Disposition="Disposition";
 		public const string DispositionAt="DispositionAt";
@@ -191,14 +206,48 @@ namespace ImagingDeviceManager.Capture {
 		///<summary>A journal copy whose image went to the quarantine instead of the caller (Delivered=Quarantine): it is filed from the quarantine.</summary>
 		public bool IsCopyOfQuarantined => Kind==CaptureFileKind.Journal && Delivered==CaptureJournal.DeliveredQuarantine;
 		public bool IsRedelivered => Get("Redelivered")=="1";
+		///<summary>A Test capture image (CaptureSidecarKeys.TestCapture).</summary>
+		public bool IsTestCapture => Get(CaptureSidecarKeys.TestCapture)=="1";
 		///<summary>A redelivered image the operator confirmed for the bound patient (CaptureSidecarKeys.RedeliveryConfirmed).</summary>
 		public bool IsRedeliveryConfirmed => IsRedelivered && Get(CaptureSidecarKeys.RedeliveryConfirmed)=="1";
 		public int Width => (int)GetLong("Width");
 		public int Height => (int)GetLong("Height");
 		public int BitsPerPixel => (int)GetLong("BitsPerPixel");
 		public string Sha256 => Get("Sha256");
-		///<summary>A 16-bit copy (.tif): it is filed only as DICOM, under the session's 16-bit conditions (design 7.8).</summary>
+		///<summary>A 16-bit copy (.tif, 14- or 16-bit samples in 16-bit containers): into its own empty slot it is filed as 16-bit DICOM under the
+		///session's conditions for its depth (design 7.8), otherwise as the explicit 8-bit copy in that slot (owner decision 2026-11-01, "fall back
+		///to 8"); anywhere else only as an explicit 8-bit copy.</summary>
 		public bool IsGray16 => Extension==Gray16Tiff.Extension;
+		///<summary>16, 14 or 8: the depth the image's enable ran at. The BitDepthInEffect key from CAP-16; before it BitDepth16InEffect ("1": 16,
+		///"0": 8); before CAP-4 neither, and a 16-bit copy from a 16-bit memory enable counts as 16 (GetBitDepthInEffect).</summary>
+		public int BitDepthInEffect => GetBitDepthInEffect(_dictFields,IsGray16);
+		///<summary>Why the image's enable ran at fewer bits than its device was set to (CaptureSidecarKeys.BitDepthReason), or "".</summary>
+		public string BitDepthReason => Get(CaptureSidecarKeys.BitDepthReason);
+		///<summary>The source build that delivered the image (CaptureSidecarKeys.DriverProductName, DriverVersion, DriverVersionInfo), or null for a
+		///sidecar before CAP-16 or a file of the legacy path.</summary>
+		public TwainDriverIdentity DriverIdentity => Get(CaptureSidecarKeys.DriverVersion)=="" ? null
+			: TwainDriverIdentity.TryParse(Get(CaptureSidecarKeys.DriverProductName),Get(CaptureSidecarKeys.DriverVersion),Get(CaptureSidecarKeys.DriverVersionInfo));
+
+		///<summary>The depth in effect a sidecar records (see BitDepthInEffect). isGray16: the image is a 16-bit copy.</summary>
+		internal static int GetBitDepthInEffect(IDictionary<string,string> dictFields,bool isGray16) {
+			string value;
+			int depth;
+			if(dictFields.TryGetValue(CaptureSidecarKeys.BitDepthInEffect,out value)
+				&& int.TryParse((value??"").Trim(),NumberStyles.Integer,CultureInfo.InvariantCulture,out depth) && TwainBitDepth.IsAllowed(depth))
+			{
+				return depth;
+			}
+			if(dictFields.TryGetValue(CaptureSidecarKeys.BitDepth16InEffect,out value) && (value??"").Trim()!="") {
+				return value.Trim()=="1" ? TwainBitDepth.Bits16 : TwainBitDepth.Bits8;
+			}
+			//Sidecars before CAP-4 record neither: a 16-bit copy from a 16-bit memory enable is what the session asked for.
+			string requestedBits;
+			string transferMechanism;
+			dictFields.TryGetValue("RequestedBits",out requestedBits);
+			dictFields.TryGetValue("TransferMechanism",out transferMechanism);
+			return isGray16 && (requestedBits??"").Trim()=="16" && string.Equals((transferMechanism??"").Trim(),TwainTransferMechanism.Memory.ToString(),
+				StringComparison.OrdinalIgnoreCase) ? TwainBitDepth.Bits16 : TwainBitDepth.Bits8;
+		}
 		///<summary>The file was filed or discarded before (CaptureFileStore.Resolve wrote its Disposition): a journal copy then stays in the
 		///journal until rotation removes it, and is not offered again.</summary>
 		public bool IsResolved => Get(CaptureSidecarKeys.Disposition)!="";
@@ -225,6 +274,12 @@ namespace ImagingDeviceManager.Capture {
 		///<summary>Records that entry was filed or discarded, without losing it (see CaptureFileStore.Resolve). Returns false with error when
 		///nothing was changed.</summary>
 		bool Resolve(CaptureFileEntry entry,CaptureFileDisposition disposition,IList<KeyValuePair<string,string>> listFields,out string pathResolved,
+			out string error);
+		///<summary>Copies a journal copy (its image and its sidecar as they are) into Capture\quarantine-resolved\journal before it is filed, so
+		///that it is kept past the journal's rotation (see CaptureFileStore.KeepJournalCopy). Returns false with error when nothing was kept.</summary>
+		bool KeepJournalCopy(CaptureFileEntry entry,out string pathKept,out string error);
+		///<summary>Appends the disposition to the sidecar of a copy KeepJournalCopy kept at pathKept. Returns false with error when it could not.</summary>
+		bool RecordKeptDisposition(string pathKept,CaptureFileEntry entry,CaptureFileDisposition disposition,IList<KeyValuePair<string,string>> listFields,
 			out string error);
 	}
 
@@ -466,10 +521,8 @@ namespace ImagingDeviceManager.Capture {
 			if(Enum.TryParse(entry.Get("TransferMechanism"),out transferMechanism)) {
 				image.TransferMechanism=transferMechanism;
 			}
-			string bitDepth16=entry.Get(CaptureSidecarKeys.BitDepth16InEffect);
-			//Sidecars before CAP-4 do not record it: a 16-bit copy from a 16-bit memory enable is what the session asked for.
-			image.IsBitDepth16InEffect=bitDepth16!="" ? bitDepth16=="1"
-				: image.IsGray16 && image.RequestedBits==16 && image.TransferMechanism==TwainTransferMechanism.Memory;
+			image.BitDepthInEffect=entry.BitDepthInEffect;
+			image.BitDepthReason=entry.BitDepthReason=="" ? null : entry.BitDepthReason;
 			image.IsDeliveredAs8BitIn16BitEnable=entry.Get("DeliveredAs8BitIn16BitEnable")=="1";
 			AcquiredImageKind kind;
 			if(Enum.TryParse(entry.Get("ImageKind"),out kind)) {
@@ -511,6 +564,79 @@ namespace ImagingDeviceManager.Capture {
 					return ResolveJournal(entry,textDisposition,out pathResolved,out error);
 				}
 				return ResolveQuarantine(entry,textDisposition,out pathResolved,out error);
+			}
+			catch(Exception ex) {
+				error=ex.Message;
+				return false;
+			}
+		}
+
+		///<summary>The subfolder of Capture\quarantine-resolved where KeepJournalCopy keeps journal copies.</summary>
+		public const string SubfolderJournalKept=CaptureFolders.SubfolderQuarantineResolved+@"\journal";
+
+		///<summary>Copies the journal copy entry, its image byte for byte and its sidecar as it is, into Capture\quarantine-resolved\journal, before
+		///it is filed: the journal's rotation removes old copies, and a 16-bit copy that is filed as an explicit 8-bit copy must keep its 16-bit
+		///original (owner decision 2026-11-01), so the filing is refused when this fails. RecordKeptDisposition then appends the disposition to the
+		///kept sidecar. The journal copy itself is left as it is (Resolve marks it). Nothing is moved, replaced or removed: a file of the same name
+		///there is never overwritten; when it is the same image (kept by an earlier filing of this copy that did not complete) it is used again.
+		///pathKept is the kept image. False with error when nothing was kept; true with error for a warning (the folder's rule).</summary>
+		public bool KeepJournalCopy(CaptureFileEntry entry,out string pathKept,out string error) {
+			pathKept=null;
+			error="";
+			if(entry==null || entry.Kind!=CaptureFileKind.Journal || string.IsNullOrEmpty(entry.ImagePath)) {
+				error="Not a journal copy.";
+				return false;
+			}
+			try {
+				if(!File.Exists(entry.ImagePath)) {
+					error="The file "+entry.FileName+" is no longer there.";
+					return false;
+				}
+				string folderKept;
+				string errorFolder;
+				if(!_folders.Ensure(SubfolderJournalKept,out folderKept,out errorFolder)) {
+					error="The folder for resolved captures is not usable: "+errorFolder;
+					return false;
+				}
+				string pathImageKept=Path.Combine(folderKept,entry.FileName);
+				string pathSidecarKept=Path.Combine(folderKept,Path.GetFileNameWithoutExtension(entry.FileName)+CaptureFiles.SidecarExtension);
+				if(File.Exists(pathImageKept)) {
+					if(!File.ReadAllBytes(pathImageKept).SequenceEqual(File.ReadAllBytes(entry.ImagePath))) {
+						error="A different file named "+entry.FileName+" is already in "+SubfolderJournalKept+"; it is never replaced.";
+						return false;
+					}
+				}
+				else {
+					File.Copy(entry.ImagePath,pathImageKept);//fails when the name exists; nothing is replaced
+				}
+				if(!File.Exists(pathSidecarKept)) {
+					string textSidecar=entry.SidecarPath!=null && File.Exists(entry.SidecarPath) ? File.ReadAllText(entry.SidecarPath,Encoding.UTF8) : "";
+					File.WriteAllText(pathSidecarKept,textSidecar,new UTF8Encoding(false));
+				}
+				pathKept=pathImageKept;
+				error=errorFolder;
+				return true;
+			}
+			catch(Exception ex) {
+				error=ex.Message;
+				return false;
+			}
+		}
+
+		///<summary>Appends the disposition of entry (as Resolve writes it) to the sidecar of the copy KeepJournalCopy kept at pathKept, once the
+		///copy was filed. False with error when it could not; the kept image stays either way.</summary>
+		public bool RecordKeptDisposition(string pathKept,CaptureFileEntry entry,CaptureFileDisposition disposition,IList<KeyValuePair<string,string>> listFields,
+			out string error)
+		{
+			error="";
+			if(string.IsNullOrEmpty(pathKept) || entry==null) {
+				error="No kept copy.";
+				return false;
+			}
+			try {
+				string pathSidecarKept=Path.Combine(Path.GetDirectoryName(pathKept),Path.GetFileNameWithoutExtension(pathKept)+CaptureFiles.SidecarExtension);
+				File.AppendAllText(pathSidecarKept,BuildDisposition(entry,disposition,listFields),new UTF8Encoding(false));
+				return true;
 			}
 			catch(Exception ex) {
 				error=ex.Message;

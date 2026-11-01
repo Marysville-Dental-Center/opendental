@@ -372,6 +372,125 @@ namespace ImagingCapture.Tests {
 			StringAssert.Contains(testDicomFile.Get(0x0020,0x4000).Text,"polarity=inverted");
 		}
 
+		///<summary>A 14-bit image of a 14-bit memory enable, values 1 to 16383 in 16-bit containers, metadata without effectiveBits.</summary>
+		private static AcquiredImage Image14() {
+			AcquiredImage image=TestImages.Image16(40,30,(x,y) => (ushort)(1+x*400+y*13),TestImages.Json16Bit12.Replace(@"""effectiveBits"":12",@"""effectiveBits"":null"));
+			image.BitDepthInEffect=14;
+			image.RequestedBits=16;
+			image.BitsPerSample=14;
+			return image;
+		}
+
+		[TestMethod]
+		public void Dicom14_StoredAs16_EffectiveBits14_ValuesUnchanged() {
+			AcquiredImage image=Image14();
+			Assert.IsTrue(image.Gray16.Max()<=16383 && image.Gray16.Max()>4095);
+			RadiographSaveRequest request=Request(image,new RadiographTarget { Mount=Mount(),MountItem=Slot() });
+			request.Is16BitAllowed=true;
+			RadiographSaveResult result=_radiographImport.Save(request);
+			Assert.IsTrue(result.IsSaved,result.Error);
+			Assert.AreEqual(RadiographFormat.Dicom16,result.Plan.Format);
+			Assert.AreEqual(16,result.Plan.DicomResult.BitsStored);
+			TestDicomFile testDicomFile=TestDicomReader.Read(_store.BytesImported);
+			Assert.AreEqual(16,testDicomFile.Get(0x0028,0x0100).US);
+			Assert.AreEqual(16,testDicomFile.Get(0x0028,0x0101).US,"BitsStored 16: the loader rejects 14.");
+			StringAssert.Contains(testDicomFile.Get(0x0020,0x4000).Text,"effectiveBits=14");
+			byte[] arrayPixelData=testDicomFile.Get(0x7FE0,0x0010).Value;
+			for(int i=0;i<image.Gray16.Length;i++) {
+				Assert.AreEqual(image.Gray16[i],BitConverter.ToUInt16(arrayPixelData,i*2),"Never rescaled.");
+			}
+			Assert.AreEqual(14,Gray16Samples.GetEffectiveBits(result.Plan.Metadata,14,image.Gray16));
+			Assert.IsNull(Gray16Samples.GetEffectiveBits(result.Plan.Metadata,16,image.Gray16),"16 bits in effect and no metadata: unknown.");
+		}
+
+		[TestMethod]
+		public void Dicom14_SamplesNotRightJustified_NeverLabelledEffectiveBits14_ValuesUnchanged() {
+			//A 14-bit enable whose source left-justified its samples (or sent noise above 14 bits): the data is kept exactly as delivered, but its
+			//effective depth is unknown, never "14".
+			AcquiredImage image=TestImages.Image16(40,30,(x,y) => (ushort)(4*(1+x*400+y*13)),TestImages.Json16Bit12.Replace(@"""effectiveBits"":12",
+				@"""effectiveBits"":null"));
+			image.BitDepthInEffect=14;
+			image.RequestedBits=16;
+			image.BitsPerSample=14;
+			Assert.IsTrue(image.Gray16.Max()>Gray16Samples.Max14Bit);
+			Assert.IsNull(Gray16Samples.GetEffectiveBits(null,14,image.Gray16));
+			Assert.IsNull(Gray16Samples.GetEffectiveBits(null,14,null),"Samples not known: not labelled either.");
+			Assert.AreEqual(14,Gray16Samples.GetEffectiveBits(null,14,new ushort[] { 0,1,16383 }));
+			RadiographSaveRequest request=Request(image,new RadiographTarget { Mount=Mount(),MountItem=Slot() });
+			request.Is16BitAllowed=true;
+			RadiographSaveResult result=_radiographImport.Save(request);
+			Assert.IsTrue(result.IsSaved,result.Error);
+			Assert.AreEqual(16,result.Plan.DicomResult.BitsStored);
+			TestDicomFile testDicomFile=TestDicomReader.Read(_store.BytesImported);
+			Assert.IsFalse(testDicomFile.Get(0x0020,0x4000).Text.Contains("effectiveBits=14"),testDicomFile.Get(0x0020,0x4000).Text);
+			byte[] arrayPixelData=testDicomFile.Get(0x7FE0,0x0010).Value;
+			for(int i=0;i<image.Gray16.Length;i++) {
+				Assert.AreEqual(image.Gray16[i],BitConverter.ToUInt16(arrayPixelData,i*2),"Never rescaled.");
+			}
+		}
+
+		[TestMethod]
+		public void Dicom14_VerifiedInvert_WithinFourteenBits() {
+			RadiographSaveRequest request=Request(Image14(),new RadiographTarget { Mount=Mount(),MountItem=Slot() });
+			request.Is16BitAllowed=true;
+			request.Polarity=TwainPolarity.Invert;
+			request.IsInversionVerified=true;
+			RadiographSaveResult result=_radiographImport.Save(request);
+			Assert.IsTrue(result.IsSaved,result.Error);
+			byte[] arrayPixelData=TestDicomReader.Read(_store.BytesImported).Get(0x7FE0,0x0010).Value;
+			ushort[] arrayDelivered=request.Image.Gray16;
+			for(int i=0;i<arrayDelivered.Length;i++) {
+				Assert.AreEqual(arrayDelivered[i]==0 ? 0 : 16384-arrayDelivered[i],BitConverter.ToUInt16(arrayPixelData,i*2),"Inverted within 14 bits.");
+			}
+		}
+
+		[TestMethod]
+		public void Copy8_Of14Bit_AGrayPngThroughTheWindow_RecordedInThePlan() {
+			AcquiredImage image=Image14();
+			RadiographSaveRequest request=Request(image,new RadiographTarget { Mount=Mount(),MountItem=null,SlotRecovered=Slot() });
+			request.Is8BitCopyOf16Bit=true;
+			RadiographSaveResult result=_radiographImport.Save(request);
+			Assert.IsTrue(result.IsSaved,result.Error);
+			Assert.AreEqual(RadiographFormat.Png8,result.Plan.Format);
+			Assert.AreEqual(".png",result.Plan.FileExtension);
+			Assert.IsTrue(result.Plan.IsCopyOf16Bit);
+			Assert.AreEqual(14,result.Plan.CopyBitDepth);
+			int windowLow;
+			int windowHigh;
+			ImagingCapture.Dicom.DicomIntraOralWriter.GetWindow(image.Gray16,out windowLow,out windowHigh);
+			Assert.AreEqual(windowLow,result.Plan.CopyWindowLow,"The 0.5/99.5 % window the session shows.");
+			Assert.AreEqual(windowHigh,result.Plan.CopyWindowHigh);
+			Assert.AreEqual(0,result.Plan.WindowingMin,"An 8-bit PNG has no stored window.");
+			StringAssert.StartsWith(result.Plan.CaptureLogText,RadiographSavePlanner.CaptureLogPrefix+"8-bit copy of a 16-bit capture (14-bit in a 16-bit "
+				+"file), made through the window "+windowLow+" to "+windowHigh);
+			using(MemoryStream memoryStream=new MemoryStream(_store.BytesImported))
+			using(Bitmap bitmap=new Bitmap(memoryStream)) {
+				Assert.AreEqual(40,bitmap.Width);
+				Assert.AreEqual(30,bitmap.Height);
+				int idxMin=Array.IndexOf(image.Gray16,image.Gray16.Min());
+				Assert.AreEqual(0,bitmap.GetPixel(idxMin%40,idxMin/40).R);
+			}
+		}
+
+		[TestMethod]
+		public void Copy8_NotFromTheVerifiedMemoryTransfer_Refused() {
+			AcquiredImage image=Image16();
+			image.TransferMechanism=TwainTransferMechanism.Native;
+			RadiographSaveRequest request=Request(image,new RadiographTarget { ToothNumbers="" });
+			request.Is8BitCopyOf16Bit=true;
+			RadiographSaveResult result=_radiographImport.Save(request);
+			Assert.IsFalse(result.IsSaved);
+			StringAssert.Contains(result.Error,"is not copied to 8 bits");
+			AcquiredImage imageIn8BitEnable=Image16();
+			imageIn8BitEnable.BitDepthInEffect=8;
+			request=Request(imageIn8BitEnable,new RadiographTarget { ToothNumbers="" });
+			request.Is8BitCopyOf16Bit=true;
+			Assert.IsFalse(_radiographImport.Save(request).IsSaved);
+			//Never without the explicit request: a 16-bit image the caller may not store as DICOM is not saved at all.
+			request=Request(Image16(),new RadiographTarget { ToothNumbers="" });
+			Assert.IsFalse(_radiographImport.Save(request).IsSaved,"Not converted down on its own.");
+		}
+
 		[TestMethod]
 		public void Dicom16_DeliveredChocolate_VerifiedInvert_Saved() {
 			//twain-contract 1.1 keeps TWPF_CHOCOLATE and publishes after the clinic run whether the values follow it: if they do not, the
@@ -402,7 +521,7 @@ namespace ImagingCapture.Tests {
 			CollectionAssert.AreEqual(new[] { "IsCategoryValid" },_store.ListCalls,"Nothing written: the caller quarantines it.");
 			AcquiredImage imageIn8BitEnable=Image16();
 			imageIn8BitEnable.RequestedBits=8;
-			imageIn8BitEnable.IsBitDepth16InEffect=false;//16-bit memory samples in an 8-bit enable.
+			imageIn8BitEnable.BitDepthInEffect=8;//16-bit memory samples in an 8-bit enable.
 			request=Request(imageIn8BitEnable,new RadiographTarget { Mount=Mount(),MountItem=Slot() });
 			request.Is16BitAllowed=true;
 			Assert.IsFalse(_radiographImport.Save(request).IsSaved);
@@ -421,7 +540,7 @@ namespace ImagingCapture.Tests {
 		public void EightBitInSixteenBitEnable_GoesThePngPath() {
 			AcquiredImage image=Image8();
 			image.RequestedBits=16;
-			image.IsBitDepth16InEffect=true;
+			image.BitDepthInEffect=16;
 			image.IsDeliveredAs8BitIn16BitEnable=true;
 			RadiographSaveRequest request=Request(image,new RadiographTarget { Mount=Mount(),MountItem=Slot() });
 			request.Is16BitAllowed=true;

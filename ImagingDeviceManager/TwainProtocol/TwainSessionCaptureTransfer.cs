@@ -10,7 +10,9 @@ using ImagingDeviceManager.Imaging;
 namespace ImagingDeviceManager.TwainProtocol {
 	///<summary>What the capture path negotiates in state 4 before an enable (design 7.1 CAP-3).</summary>
 	internal sealed class TwainCaptureNegotiation {
-		public bool Want16Bit;
+		///<summary>16, 14 or 8: the depth wanted (TwainEnableRequest.Bits). 16 falls back to 14 when ICAP_BITDEPTH MSG_GET does not list 16 (or
+		///the source refuses it), then to 8; 14 falls back to 8. Any other value counts as 8.</summary>
+		public int BitsWanted=8;
 		public bool IsByteOrderBigEndian;
 		public bool WantExtImageInfo=true;
 		///<summary>CAP_XFERCOUNT: 1 in both session modes (design 7.4).</summary>
@@ -20,11 +22,11 @@ namespace ImagingDeviceManager.TwainProtocol {
 	///<summary>What the source accepted.</summary>
 	internal sealed class TwainCaptureNegotiationResult {
 		public bool IsXferCountSet;
-		///<summary>16 when ICAP_BITDEPTH 16 was accepted over memory transfer, else 8.</summary>
+		///<summary>The depth in effect: 16 or 14 when ICAP_BITDEPTH 16 or 14 was accepted over memory transfer, else 8.</summary>
 		public int Bits=8;
 		public ushort XferMech=Tw.TWSX_NATIVE;
-		///<summary>Why 16 bits were asked and the enable runs at 8, else null.</summary>
-		public string Reason8Bit;
+		///<summary>Why the enable runs at fewer bits than BitsWanted (16 asked and 14 or 8 in effect, or 14 asked and 8), else null.</summary>
+		public string ReasonFallback;
 		public bool IsExtImageInfoSet;
 		///<summary>ICAP_SUPPORTEDEXTIMAGEINFO lists TWEI_TWAINDIRECTMETADATA, so it is read for each image.</summary>
 		public bool IsMetadataListed;
@@ -42,9 +44,10 @@ namespace ImagingDeviceManager.TwainProtocol {
 		///<summary>Set by the capture worker before OpenSource: every transfer, including those of a stop, goes through TransferCaptureImage
 		///and reaches the drain sink as an AcquiredImage (TwainDrainedImage.Acquired).</summary>
 		internal bool IsCaptureMode { get; set; }
-		///<summary>ICAP_BITDEPTH 16 was accepted since the source was opened; capabilities return to their defaults only at MSG_OPENDS
-		///(twain-contract 1.1 section 4), so an 8-bit enable must set 8 again.</summary>
-		private bool _isBitDepth16Set;
+		///<summary>An ICAP_BITDEPTH above 8 (14 or 16) was accepted, or answered with TWRC_CHECKSTATUS, since the source was opened or 8 was last
+		///confirmed; capabilities return to their defaults only at MSG_OPENDS (twain-contract 1.1 section 4), so an 8-bit enable must set 8
+		///again.</summary>
+		private bool _isBitDepthAbove8Set;
 		private int _captureBits=8;
 		private bool _isCaptureBigEndian;
 		///<summary>The TWEI_ items DAT_EXTIMAGEINFO asks for in state 7, or null when extended image info is off.</summary>
@@ -52,16 +55,24 @@ namespace ImagingDeviceManager.TwainProtocol {
 		///<summary>The condition code read after the transfer triplet itself (DAT_IMAGENATIVEXFER or DAT_IMAGEMEMXFER) returned TWRC_FAILURE in
 		///the last TransferCaptureImage, or null.</summary>
 		private ushort? _transferConditionCode;
+		///<summary>Why the last TransferCaptureImage could not read an image of a 14- or 16-bit enable, or null.</summary>
+		private string _layoutUnusableText;
 
 		private void ResetCaptureTransferState() {
-			_isBitDepth16Set=false;
+			_isBitDepthAbove8Set=false;
 			_captureBits=8;
 			_isCaptureBigEndian=false;
 			_listExtInfoIds=null;
+			_layoutUnusableText=null;
 		}
 
-		///<summary>The bit depth the last NegotiateCapture left in effect.</summary>
+		///<summary>The bit depth the last NegotiateCapture left in effect: 16, 14 or 8.</summary>
 		internal int CaptureBits => _captureBits;
+
+		///<summary>After a failed TransferCaptureImage: why an image of a 14- or 16-bit enable could not be read (DAT_IMAGEINFO BitsPerPixel not
+		///16 for a sample of more than 8 bits, or packed samples), as a sentence that starts "14-bit layout not usable: " (or "16-bit"); null
+		///otherwise. The transfer was ended in state 6 without reading the image, so nothing that cannot be read is kept.</summary>
+		internal string LayoutUnusableText => _layoutUnusableText;
 
 		#region Negotiation
 		///<summary>State 4, before each capture enable: CAP_XFERCOUNT, the transfer mechanism and bit depth in the order of design 7.1 CAP-3,
@@ -69,7 +80,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 		internal TwainCaptureNegotiationResult NegotiateCapture(TwainCaptureNegotiation negotiation) {
 			TwainCaptureNegotiationResult result=new TwainCaptureNegotiationResult();
 			if(State!=4) {
-				result.Reason8Bit=negotiation.Want16Bit ? "the source is not in state 4" : null;
+				result.ReasonFallback=TwainBitDepth.Normalize(negotiation.BitsWanted)>8 ? "the source is not in state 4" : null;
 				return result;
 			}
 			result.IsXferCountSet=SetCapabilityQuietly(Tw.CAP_XFERCOUNT,Tw.TWTY_INT16,negotiation.XferCount);
@@ -85,31 +96,38 @@ namespace ImagingDeviceManager.TwainProtocol {
 			return result;
 		}
 
-		///<summary>16 bits: only when ICAP_PIXELTYPE is GRAY, ICAP_XFERMECH=TWSX_MEMORY first, then ICAP_BITDEPTH=16 only if MSG_GET lists 16.
-		///16 is never set while the mechanism is native (a 16bpp DIB is RGB555/565 by definition, TWAIN 2.4 p.12-7). A refusal is a silent
-		///fallback to 8 bits, logged (design 7.12). 8 bits: ICAP_BITDEPTH=8 first when an earlier enable on this open source set 16, then
-		///native transfers. If the source refused 8, the depth is read back (MSG_GETCURRENT) after the transfer mechanism is set; a depth that
-		///is still not 8 sets RefusalText, because native transfers are never enabled while the depth is 16, and memory transfers would deliver
-		///16-bit samples to an 8-bit enable. Otherwise the bit depth is left as the source delivers it.</summary>
+		///<summary>More than 8 bits (16 or 14): only when ICAP_PIXELTYPE is GRAY, ICAP_XFERMECH=TWSX_MEMORY first, then ICAP_BITDEPTH MSG_GET;
+		///for 16, ICAP_BITDEPTH=16 if MSG_GET lists 16, else 14 if it lists 14; for 14, only 14. A depth is never set while the mechanism is
+		///native (a 16bpp DIB is RGB555/565 by definition, TWAIN 2.4 p.12-7). A depth the source refuses goes on to the next one; when none is
+		///left the enable runs at 8 bits, a silent fallback, logged (design 7.12). Either way ReasonFallback says why fewer bits than asked are in
+		///effect. 8 bits: ICAP_BITDEPTH=8 first when an earlier enable on this open source set more, then native transfers. If the source refused
+		///8, the depth is read back (MSG_GETCURRENT) after the transfer mechanism is set; a depth that is still not 8 sets RefusalText, because
+		///native transfers are never enabled while the depth is above 8, and memory transfers would deliver 16-bit samples to an 8-bit enable.
+		///Otherwise the bit depth is left as the source delivers it.</summary>
 		private void NegotiateBitDepth(TwainCaptureNegotiation negotiation,TwainCaptureNegotiationResult result) {
-			if(negotiation.Want16Bit) {
-				result.Reason8Bit=TryNegotiate16Bit();
-				if(result.Reason8Bit==null) {
-					result.Bits=16;
+			int bitsWanted=TwainBitDepth.Normalize(negotiation.BitsWanted);
+			if(bitsWanted>8) {
+				int bits;
+				result.ReasonFallback=TryNegotiateAbove8Bit(bitsWanted,out bits);
+				if(bits>8) {
+					result.Bits=bits;
 					result.XferMech=Tw.TWSX_MEMORY;
-					_captureBits=16;
+					_captureBits=bits;
+					if(result.ReasonFallback!=null) {
+						Log(bitsWanted+" bits were asked of \""+SourceName+"\"; the enable runs at "+bits+" bits: "+result.ReasonFallback+".");
+					}
 					return;
 				}
-				Log("16 bits were asked of \""+SourceName+"\", but the enable runs at 8 bits: "+result.Reason8Bit+".");
+				Log(bitsWanted+" bits were asked of \""+SourceName+"\", but the enable runs at 8 bits: "+result.ReasonFallback+".");
 			}
 			_captureBits=8;
-			if(_isBitDepth16Set) {
+			if(_isBitDepthAbove8Set) {
 				ushort? rcDepth=SendCapabilitySet(Tw.ICAP_BITDEPTH,Tw.TWTY_UINT16,8);
 				if(rcDepth==Tw.TWRC_SUCCESS || rcDepth==Tw.TWRC_CHECKSTATUS) {
-					_isBitDepth16Set=false;
+					_isBitDepthAbove8Set=false;
 				}
 				else {
-					Log("\""+SourceName+"\" did not accept ICAP_BITDEPTH 8 after an earlier 16-bit enable ("+DescribeRc(rcDepth)
+					Log("\""+SourceName+"\" did not accept ICAP_BITDEPTH 8 after an earlier enable of more than 8 bits ("+DescribeRc(rcDepth)
 						+"); it is read back after setting native transfers, which reset it under twain-contract 1.1.");
 				}
 			}
@@ -122,15 +140,15 @@ namespace ImagingDeviceManager.TwainProtocol {
 				_xferMech=Tw.TWSX_NATIVE;
 			}
 			result.XferMech=_xferMech;
-			if(_isBitDepth16Set) {
+			if(_isBitDepthAbove8Set) {
 				int depth;
 				bool isDepthRead=TryGetCapabilityCurrent(Tw.ICAP_BITDEPTH,out depth);
 				if(isDepthRead ? depth==8 : rc==Tw.TWRC_CHECKSTATUS) {
 					//Read back as 8; or, unreadable, TWRC_CHECKSTATUS: native while the depth is 16 resets it to 8 (twain-contract 1.1 section 4).
-					_isBitDepth16Set=false;
+					_isBitDepthAbove8Set=false;
 				}
 				else {
-					result.RefusalText="ICAP_BITDEPTH could not be set back to 8 after an earlier 16-bit enable ("+(isDepthRead
+					result.RefusalText="ICAP_BITDEPTH could not be set back to 8 after an earlier enable of more than 8 bits ("+(isDepthRead
 						? "it is "+depth : "it cannot be read")+"), so the 8-bit enable would get 16-bit images. Close the sensor software here and open"
 						+" it again.";
 					Log("\""+SourceName+"\": "+result.RefusalText);
@@ -138,8 +156,10 @@ namespace ImagingDeviceManager.TwainProtocol {
 			}
 		}
 
-		///<summary>The 16-bit order. Returns null when ICAP_BITDEPTH 16 is in effect, otherwise why not.</summary>
-		private string TryNegotiate16Bit() {
+		///<summary>The order for more than 8 bits, for bitsWanted 16 or 14. bits is the depth now in effect: 16 or 14 over memory transfer, or 8.
+		///Returns null when bitsWanted itself is in effect, otherwise why not (also when a lower depth above 8 is in effect).</summary>
+		private string TryNegotiateAbove8Bit(int bitsWanted,out int bits) {
+			bits=8;
 			int pixelType;
 			if(!TryGetCapabilityCurrent(Tw.ICAP_PIXELTYPE,out pixelType) && !TryGetCapability(Tw.ICAP_PIXELTYPE,Tw.MSG_GET,out pixelType)) {
 				return "ICAP_PIXELTYPE could not be read (the pixel type is never set on this path)";
@@ -153,22 +173,32 @@ namespace ImagingDeviceManager.TwainProtocol {
 				|| (rcMech==Tw.TWRC_CHECKSTATUS && TryGetCapabilityCurrent(Tw.ICAP_XFERMECH,out mechanism) && mechanism==Tw.TWSX_MEMORY);
 			if(!isMemory) {
 				_xferMech=Tw.TWSX_NATIVE;
-				return "the source did not accept memory transfers ("+DescribeRc(rcMech)+"), and 16 bits are never asked over native transfers";
+				return "the source did not accept memory transfers ("+DescribeRc(rcMech)+"), and more than 8 bits are never asked over native "
+					+"transfers";
 			}
 			_xferMech=Tw.TWSX_MEMORY;
 			TwainCapabilityValues depths;
 			if(!TryGetCapabilityValues(Tw.ICAP_BITDEPTH,Tw.MSG_GET,out depths)) {
 				return "ICAP_BITDEPTH MSG_GET failed (condition code "+ToHex(LastConditionCode)+")";
 			}
-			if(!depths.Contains(16)) {
-				return "ICAP_BITDEPTH MSG_GET does not list 16 ("+depths.Describe(false)+")";
+			List<string> listReasons=new List<string>();
+			foreach(int candidate in TwainBitDepth.GetCandidates(bitsWanted)) {
+				if(!depths.Contains(candidate)) {
+					listReasons.Add("ICAP_BITDEPTH MSG_GET does not list "+candidate+" ("+depths.Describe(false)+")");
+					continue;
+				}
+				ushort? rcDepth=SendCapabilitySet(Tw.ICAP_BITDEPTH,Tw.TWTY_UINT16,candidate);
+				if(rcDepth==Tw.TWRC_SUCCESS) {
+					_isBitDepthAbove8Set=true;
+					bits=candidate;
+					return listReasons.Count==0 ? null : string.Join("; ",listReasons);
+				}
+				if(rcDepth==Tw.TWRC_CHECKSTATUS) {
+					_isBitDepthAbove8Set=true;//The source set a value of its own: 8 is set and confirmed before native transfers.
+				}
+				listReasons.Add("the source did not accept ICAP_BITDEPTH "+candidate+" ("+DescribeRc(rcDepth)+")");
 			}
-			ushort? rcDepth=SendCapabilitySet(Tw.ICAP_BITDEPTH,Tw.TWTY_UINT16,16);
-			if(rcDepth!=Tw.TWRC_SUCCESS) {
-				return "the source did not accept ICAP_BITDEPTH 16 ("+DescribeRc(rcDepth)+")";
-			}
-			_isBitDepth16Set=true;
-			return null;
+			return string.Join("; ",listReasons);
 		}
 
 		///<summary>ICAP_EXTIMAGEINFO=TRUE in state 4 when MSG_QUERYSUPPORT allows it (FALSE by default, TWAIN 2.4 p.10-145). DAT_EXTIMAGEINFO then
@@ -367,6 +397,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 		internal TransferOutcome TransferCaptureImage(out AcquiredImage image) {
 			image=null;
 			_transferConditionCode=null;
+			_layoutUnusableText=null;
 			TW_IMAGEINFO imageInfo;
 			bool hasImageInfo=TryGetImageInfo(out imageInfo);
 			DibImage dib=null;
@@ -402,7 +433,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 				PixelType=hasImageInfo ? imageInfo.PixelType : -1,
 				PixelFlavor=pixelFlavorImage ?? (_isVanilla ? Tw.TWPF_VANILLA : Tw.TWPF_CHOCOLATE),
 				RequestedBits=_captureBits,
-				IsBitDepth16InEffect=_captureBits==16,
+				BitDepthInEffect=_captureBits,
 				ByteOrder16=_isCaptureBigEndian ? TwainByteOrder.BE : TwainByteOrder.LE,
 				TransferMechanism=xferMech==Tw.TWSX_MEMORY ? TwainTransferMechanism.Memory : TwainTransferMechanism.Native,
 			};
@@ -440,16 +471,18 @@ namespace ImagingDeviceManager.TwainProtocol {
 				image.XDpi=imageInfo.XResolution.ToDouble();
 				image.YDpi=imageInfo.YResolution.ToDouble()>0 ? imageInfo.YResolution.ToDouble() : image.XDpi;
 			}
-			image.IsDeliveredAs8BitIn16BitEnable=_captureBits==16 && image.BitsPerPixel<=8;
+			image.IsDeliveredAs8BitIn16BitEnable=_captureBits>8 && image.BitsPerPixel<=8;
 			if(image.IsDeliveredAs8BitIn16BitEnable) {
-				Log("\""+SourceName+"\" delivered an "+image.BitsPerPixel+"-bit image in a 16-bit enable (DAT_IMAGEINFO); it is returned as "
-					+image.BitsPerPixel+"-bit.");
+				Log("\""+SourceName+"\" delivered an "+image.BitsPerPixel+"-bit image in a "+_captureBits+"-bit enable (DAT_IMAGEINFO); it is returned "
+					+"as "+image.BitsPerPixel+"-bit.");
 			}
 			return TransferOutcome.Done;
 		}
 
-		///<summary>A memory transfer for the capture path: 16-bit gray goes to Gray16Builder (raw samples, no shift), anything else to
-		///DibBuilder as on the scan path.</summary>
+		///<summary>A memory transfer for the capture path: 16-bit gray goes to Gray16Builder (raw samples in 16-bit containers, no shift; 14-bit
+		///samples right-justified in them), anything else to DibBuilder as on the scan path. In a 14- or 16-bit enable, a gray image of more than
+		///8 bits per sample in any other layout (BitsPerPixel not 16, more than one sample per pixel, or compressed) is not read at all: the
+		///transfer fails in state 6 with LayoutUnusableText, and TransferCaptureImage ends it with MSG_ENDXFER.</summary>
 		private TransferOutcome TransferMemoryForCapture(bool hasImageInfo,TW_IMAGEINFO imageInfo,out DibImage dib,out ushort[] gray16,
 			out int heightGray16)
 		{
@@ -460,6 +493,15 @@ namespace ImagingDeviceManager.TwainProtocol {
 				SetError(EZTwainErrorCode.EZTEC_BAD_MEMXFER,"The device did not describe the image.");
 				return TransferOutcome.Failed;
 			}
+			string layoutProblem=GetAbove8BitLayoutProblem(imageInfo);
+			if(layoutProblem!=null) {
+				_layoutUnusableText=_captureBits+"-bit layout not usable: "+layoutProblem;
+				Log("\""+SourceName+"\" delivered an image of a "+_captureBits+"-bit enable in a layout that cannot be read ("+layoutProblem+"); the "
+					+"transfer is ended without reading it, and nothing of it is kept.");
+				SetError(EZTwainErrorCode.EZTEC_BAD_MEMXFER,"The device sent a "+_captureBits+"-bit image in a layout that cannot be read ("
+					+layoutProblem+").");
+				return TransferOutcome.Failed;
+			}
 			bool isGray16=imageInfo.PixelType==Tw.TWPT_GRAY && imageInfo.BitsPerPixel==16 && imageInfo.SamplesPerPixel<=1;
 			if(!isGray16) {
 				return TransferMemory(true,imageInfo,out dib);
@@ -468,7 +510,8 @@ namespace ImagingDeviceManager.TwainProtocol {
 				SetError(EZTwainErrorCode.EZTEC_BAD_MEMXFER,"The device sent a compressed 16-bit image, which is not supported.");
 				return TransferOutcome.Failed;
 			}
-			Gray16Builder builder=new Gray16Builder(imageInfo.ImageWidth,imageInfo.ImageLength,_isCaptureBigEndian);
+			int significantBits=_captureBits==TwainBitDepth.Bits14 ? TwainBitDepth.Bits14 : 16;
+			Gray16Builder builder=new Gray16Builder(imageInfo.ImageWidth,imageInfo.ImageLength,_isCaptureBigEndian,significantBits);
 			TransferOutcome outcome=TransferMemoryStrips(builder.AddStrip);
 			if(outcome!=TransferOutcome.Done) {
 				return outcome;
@@ -481,7 +524,38 @@ namespace ImagingDeviceManager.TwainProtocol {
 				SetError(ex.ErrorCode,ex.Message);
 				return TransferOutcome.Failed;
 			}
+			if(builder.CountAboveSignificantBits>0) {
+				Log("Warning: \""+SourceName+"\" delivered "+builder.CountAboveSignificantBits+" sample(s) above "+builder.MaxSignificantValue+" in a "
+					+significantBits+"-bit enable, so they are not right-justified "+significantBits+"-bit values. They are kept exactly as delivered.");
+			}
 			return TransferOutcome.Done;
+		}
+
+		///<summary>In a 14- or 16-bit enable, why a gray image with more than 8 bits per sample cannot be read by Gray16Builder (DAT_IMAGEINFO
+		///BitsPerPixel not 16, packed samples, more than one sample per pixel, a Compression other than TWCP_NONE), or null when it can, or when
+		///the image is 8-bit (it goes down the 8-bit path) or not gray.</summary>
+		private string GetAbove8BitLayoutProblem(TW_IMAGEINFO imageInfo) {
+			if(_captureBits<=8 || imageInfo.PixelType!=Tw.TWPT_GRAY) {
+				return null;
+			}
+			int bitsPerSample=imageInfo.BitsPerSample!=null && imageInfo.BitsPerSample.Length>0 ? imageInfo.BitsPerSample[0] : 0;
+			if(bitsPerSample<=8 && imageInfo.BitsPerPixel<=8) {
+				return null;
+			}
+			if(imageInfo.SamplesPerPixel>1) {
+				return "DAT_IMAGEINFO reports "+imageInfo.SamplesPerPixel+" samples per pixel";
+			}
+			if(imageInfo.BitsPerPixel!=16) {
+				return "DAT_IMAGEINFO BitsPerPixel is "+imageInfo.BitsPerPixel+" for a "+bitsPerSample+"-bit sample, not 16"
+					+(imageInfo.BitsPerPixel<16 ? ": packed samples" : "");
+			}
+			if(bitsPerSample>16) {
+				return "DAT_IMAGEINFO BitsPerSample is "+bitsPerSample+", more than a 16-bit container holds";
+			}
+			if(imageInfo.Compression!=Tw.TWCP_NONE) {
+				return "DAT_IMAGEINFO Compression is "+imageInfo.Compression+": compressed samples";
+			}
+			return null;
 		}
 
 		///<summary>State 7, after TWRC_XFERDONE and before MSG_ENDXFER: DAT_EXTIMAGEINFO for the items NegotiateExtImageInfo chose (twain-contract

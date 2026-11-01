@@ -38,11 +38,11 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		[TestMethod]
-		public void MissingFile_Design93Defaults() {
+		public void MissingFile_Design93Defaults_Bits16AndAllow16Bit1() {
 			TwainCaptureOptions options=TwainCaptureOptions.FromConfig(LocalCaptureConfig.Load(Path.Combine(_tempDir,"none.ini")),12);
 			Assert.AreEqual(12,options.ImagingDeviceNum);
 			Assert.AreEqual(TwainSessionMode.PerSlot,options.SessionMode);
-			Assert.AreEqual(8,options.Bits);
+			Assert.AreEqual(16,options.Bits,"Owner decision 2026-11-01: 16 by default.");
 			Assert.AreEqual(TwainByteOrder.LE,options.ByteOrder16);
 			Assert.AreEqual(TwainPolarity.AsDelivered,options.Polarity);
 			Assert.IsFalse(options.Headless);
@@ -53,11 +53,16 @@ namespace ImagingDeviceManager.Tests {
 			Assert.IsNull(options.RedeliverCap);
 			Assert.IsNull(options.NoActivateCap);
 			Assert.AreEqual(0,options.RefusedDisableCodes.Count);
-			Assert.IsFalse(options.Allow16Bit);
-			Assert.IsFalse(options.Is16BitConfigured);
+			Assert.IsTrue(options.Allow16Bit,"Owner decision 2026-11-01: more than 8 bits allowed by default.");
+			Assert.IsTrue(options.IsAbove8BitConfigured);
 			Assert.AreEqual(200,options.JournalKeep);
 			Assert.AreEqual(0,options.ListWarnings.Count);
-			Assert.AreEqual(0,TwainCaptureOptions.FromConfig(null,3).ListWarnings.Count);
+			TwainCaptureOptions optionsNull=TwainCaptureOptions.FromConfig(null,3);
+			Assert.AreEqual(0,optionsNull.ListWarnings.Count);
+			Assert.AreEqual(16,optionsNull.Bits);
+			Assert.IsTrue(optionsNull.Allow16Bit);
+			Assert.AreEqual(16,new TwainCaptureOptions().Bits);
+			Assert.IsTrue(new TwainCaptureOptions().Allow16Bit);
 		}
 
 		[TestMethod]
@@ -82,7 +87,7 @@ namespace ImagingDeviceManager.Tests {
 			Assert.AreEqual((ushort)0x8003,options.RedeliverCap);
 			Assert.AreEqual((ushort)0x8004,options.NoActivateCap);
 			Assert.IsTrue(options.Allow16Bit);
-			Assert.IsTrue(options.Is16BitConfigured);
+			Assert.IsTrue(options.IsAbove8BitConfigured);
 			Assert.IsTrue(options.RestrictSources);
 			CollectionAssert.AreEqual(new List<string> { "A","B" },options.AllowedSources);
 			Assert.AreEqual(50,options.JournalKeep);
@@ -106,8 +111,8 @@ namespace ImagingDeviceManager.Tests {
 		public void OtherDevicesSections_AndTwainCaps_NotUsed() {
 			TwainCaptureOptions options=TwainCaptureOptions.FromConfig(Config(
 				"[Twain]","SafeDisableCap=0x8002","DisableIsSafeSources=X",
-				"[Device.5]","Bits=16","DisableIsSafe=1"),12);
-			Assert.AreEqual(8,options.Bits);
+				"[Device.5]","Bits=8","DisableIsSafe=1"),12);
+			Assert.AreEqual(16,options.Bits,"[Device.12] has no Bits: the default, not [Device.5]'s.");
 			Assert.IsFalse(options.DisableIsSafe);
 			Assert.IsNull(options.SafeDisableCap,"The session path reads the device profile only.");
 		}
@@ -127,7 +132,53 @@ namespace ImagingDeviceManager.Tests {
 			Assert.IsNull(options.ContinuousCap);
 			CollectionAssert.AreEqual(new List<ushort> { 0x8006 },options.RefusedDisableCodes);
 			Assert.AreEqual(7,options.ListWarnings.Count,string.Join("\r\n",options.ListWarnings));
-			Assert.IsTrue(options.ListWarnings.Any(x => x.Contains("[Device.12] Bits=12")));
+			Assert.IsTrue(options.ListWarnings.Any(x => x.Contains("[Device.12] Bits=12 is not 8, 14 or 16; 8 is used.")));
+		}
+
+		[TestMethod]
+		public void Bits_8_14_16Allowed_OthersAWarningAnd8() {
+			foreach(int bits in new[] { 8,14,16 }) {
+				TwainCaptureOptions options=TwainCaptureOptions.FromConfig(Config("[Device.12]","Bits="+bits),12);
+				Assert.AreEqual(bits,options.Bits);
+				Assert.AreEqual(0,options.ListWarnings.Count,string.Join("; ",options.ListWarnings));
+				Assert.AreEqual(bits>8,options.IsAbove8BitConfigured);
+			}
+			foreach(string text in new[] { "12","15","32","0","sixteen" }) {
+				TwainCaptureOptions options=TwainCaptureOptions.FromConfig(Config("[Device.12]","Bits="+text),12);
+				Assert.AreEqual(8,options.Bits,text);
+				Assert.AreEqual(1,options.ListWarnings.Count,text);
+			}
+			TwainCaptureOptions optionsEmpty=TwainCaptureOptions.FromConfig(Config("[Device.12]","Bits="),12);
+			Assert.AreEqual(16,optionsEmpty.Bits,"An empty value reads as the default.");
+			TwainCaptureOptions optionsOff=TwainCaptureOptions.FromConfig(Config("[Twain]","Allow16Bit=0","[Device.12]","Bits=16"),12);
+			Assert.IsFalse(optionsOff.Allow16Bit);
+			Assert.IsFalse(optionsOff.IsAbove8BitConfigured,"Allow16Bit=0 still forces 8 bits on this computer.");
+		}
+
+		[TestMethod]
+		public void Allow16Bit_AValueThatIsNot0Or1_IsAWarningAnd0_TheKillSwitchFailsClosed() {
+			foreach(string text in new[] { "off","2","on ","-1" }) {
+				TwainCaptureOptions options=TwainCaptureOptions.FromConfig(Config("[Twain]","Allow16Bit="+text,"[Device.12]","Bits=16"),12);
+				Assert.IsFalse(options.Allow16Bit,text);
+				Assert.IsFalse(options.IsAbove8BitConfigured,text);
+				Assert.AreEqual(1,options.ListWarnings.Count,text+": "+string.Join("; ",options.ListWarnings));
+				Assert.AreEqual("[Twain] Allow16Bit="+text.Trim()+" is not 0 or 1; 8 bits are used.",options.ListWarnings[0]);
+			}
+			foreach(string text in new[] { "","1","true","Yes" }) {
+				TwainCaptureOptions options=TwainCaptureOptions.FromConfig(Config("[Twain]","Allow16Bit="+text,"[Device.12]","Bits=16"),12);
+				Assert.IsTrue(options.Allow16Bit,"'"+text+"': missing or empty is the default 1.");
+				Assert.AreEqual(0,options.ListWarnings.Count,text);
+			}
+			foreach(string text in new[] { "0","false","NO" }) {
+				TwainCaptureOptions options=TwainCaptureOptions.FromConfig(Config("[Twain]","Allow16Bit="+text),12);
+				Assert.IsFalse(options.Allow16Bit,text);
+				Assert.AreEqual(0,options.ListWarnings.Count,text);
+			}
+			LocalCaptureConfig config=Config("[Twain]","Allow16Bit=off");
+			Assert.IsFalse(config.Allow16Bit,"The journal sidecars record the same 0.");
+			Assert.IsTrue(config.IsAllow16BitInvalid);
+			Assert.IsFalse(Config("[Twain]","Allow16Bit=").IsAllow16BitInvalid);
+			Assert.IsFalse(Config("[Twain]").IsAllow16BitInvalid);
 		}
 
 		[TestMethod]

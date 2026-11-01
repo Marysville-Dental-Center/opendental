@@ -18,7 +18,8 @@ namespace ImagingCapture.Tests {
 	///<summary>A stand-in for TwainCaptureSession with no DSM and no worker thread: it records every command, and the test raises the events
 	///itself (RaiseImage, RaiseEnded, RaiseStatus), as the worker would, after the commands. Open answers OpenResult at once.</summary>
 	internal sealed class FakeTwainCaptureSession:ITwainCaptureSession {
-		public TwainCaptureOpenResult OpenResult=new TwainCaptureOpenResult { IsOpen=true,SourceInfo=new TwainCaptureSourceInfo { ProductName="Example Sensor DS" } };
+		public TwainCaptureOpenResult OpenResult=new TwainCaptureOpenResult { IsOpen=true,SourceInfo=new TwainCaptureSourceInfo { ProductName="Example Sensor DS",
+			VersionMajor=1,VersionMinor=1,VersionInfo="1.1.0",DriverIdentity=CaptureControllerHarness.Driver } };
 		public int CountOpen;
 		public string OpenProductName;
 		public TwainCaptureOptions OpenOptions;
@@ -164,6 +165,8 @@ namespace ImagingCapture.Tests {
 			image.Tag=request.Tag;
 			image.TargetLabel=request.TargetLabel;
 			image.RequestedBits=request.Bits;
+			//As the library: its own fallback (set by the test) wins over the request's.
+			image.BitDepthReason=image.BitDepthReason??request.ReasonFallback;
 			image.Kind=kind;
 			image.StopReason=stopReason;
 			image.IndexInEnable=count;
@@ -195,13 +198,14 @@ namespace ImagingCapture.Tests {
 			return ended;
 		}
 
-		public void RaiseStatus(TwainCaptureState state,bool isSafeDisableInEffect=false,int enableId=-1) {
+		public void RaiseStatus(TwainCaptureState state,bool isSafeDisableInEffect=false,int enableId=-1,string layoutUnusableText=null) {
 			State=state;
 			StatusChanged?.Invoke(new TwainCaptureStatus {
 				State=state,
 				EnableId=enableId==-1 ? LastEnableId : enableId,
 				Text=TwainCaptureSession.GetStateText(state),
 				IsSafeDisableInEffect=isSafeDisableInEffect,
+				LayoutUnusableText=layoutUnusableText,
 			});
 		}
 

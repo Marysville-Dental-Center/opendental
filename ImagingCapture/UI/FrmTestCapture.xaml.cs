@@ -22,8 +22,9 @@ namespace ImagingCapture.UI {
 	///phantom or a known ramp through TwainCaptureSession, with no patient, and shows the effective device settings and their gated values,
 	///the delivered bit depth, a histogram, the measured range and effective bits, the byte-order check of a 16-bit image, and the 'P'
 	///warning for the X-ray category. The operator confirms byte order and polarity, and Write verification record stores the record
-	///(Setup permission) that the capture session needs before it asks for 16 bits or inverts. When the gated settings are not the ones last
-	///saved in Capture settings (design 9.3 hash check), it says so, runs with the safe values and writes no record.
+	///(Setup permission) that the capture session needs before it asks for more than 8 bits or inverts. The record names the driver version the
+	///source reported and the image settings, and covers every computer that runs them (owner decision 2026-11-01). When the gated settings are
+	///not the ones last saved in Capture settings (design 9.3 hash check), it says so, runs with the safe values and writes no record.
 	///
 	///All decisions are in TestCaptureModel; this window drives the session and shows the model. The session's events come on its worker
 	///thread and are marshalled here. Closing the window does not wait: BeginClose stops the source in the safe order on the worker, and an
@@ -72,9 +73,10 @@ namespace ImagingCapture.UI {
 			_testCaptureModel=new TestCaptureModel(testCaptureDevice,localCaptureConfig,ODEnvironment.MachineName,new ImageCategoryRule(),
 				listMountTemplates,CaptureQuarantine.GetUnassignedText(),settingsCheck);
 			comboBits.Items.Clear();
-			comboBits.Items.Add(Lang.g(this,"16 bits"));
-			comboBits.Items.Add(Lang.g(this,"8 bits"));
-			comboBits.SelectedIndex=_testCaptureModel.BitsToRequest==16 ? 0 : 1;
+			foreach(int bits in _testCaptureModel.ListBitsChoices) {
+				comboBits.Items.Add(Lang.g(this,bits+" bits"));
+			}
+			comboBits.SelectedIndex=Math.Max(0,_testCaptureModel.ListBitsChoices.IndexOf(_testCaptureModel.BitsToRequest));
 			FillComboCategory();
 			textSettings.Text=_testCaptureModel.GetSettingsText();
 			RefreshView();
@@ -125,12 +127,13 @@ namespace ImagingCapture.UI {
 				MsgBox.Show(error);
 				return;
 			}
-			string warning=TestCaptureModel.GetRecordWarning(record);
+			string warning=_testCaptureModel.GetRecordWarning(record);
 			if(warning!="" && !MsgBox.Show(MsgBoxButtons.OKCancel,warning+"\r\n\r\n"+Lang.g(this,"Write it anyway?"))) {
 				return;
 			}
 			try {
-				//Setup, with FKey=ImagingDeviceNum: the capture session looks up the latest record for the device on this computer (design 9.3).
+				//Setup, with FKey=ImagingDeviceNum: the capture session looks up the latest record for the device made on any computer, and matches
+				//its driver version and image settings (design 9.3, owner decision 2026-11-01).
 				SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,record.ToLogText(),record.ImagingDeviceNum,DateTime.MinValue);
 			}
 			catch(Exception ex) {
@@ -168,7 +171,10 @@ namespace ImagingCapture.UI {
 		}
 
 		private void comboBits_SelectionChangeCommitted(object sender,EventArgs e) {
-			_testCaptureModel.BitsToRequest=comboBits.SelectedIndex==1 ? 8 : 16;
+			int idx=comboBits.SelectedIndex;
+			if(idx>=0 && idx<_testCaptureModel.ListBitsChoices.Count) {
+				_testCaptureModel.BitsToRequest=_testCaptureModel.ListBitsChoices[idx];
+			}
 			RefreshView();
 		}
 

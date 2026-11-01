@@ -48,7 +48,7 @@ namespace ImagingCapture.Tests {
 			Assert.AreEqual(CaptureSessionEndReason.MountFull,Controller.Summary.EndReason);
 			List<string> listSummaries=_harness.Store.GetLogs(EnumPermType.ImageCreate).Where(x => x.Contains("Capture session summary")).ToList();
 			Assert.AreEqual("55|0|Capture session summary: device Intraoral sensor (ImagingDeviceNum 12); 4 images, 1 retake, 1 quarantined; provider "
-				+"DOC4 (ProvNum 4); mount 7; ended: MountFull; in effect: PerSlot, 8 bits ([Device.12] Bits is not 16), safe disable not in effect, "
+				+"DOC4 (ProvNum 4); mount 7; ended: MountFull; in effect: PerSlot, 8-bit (fallback: no Test capture record for this sensor's driver version and image settings), safe disable not in effect, "
 				+"polarity AsDelivered, headless off. Session: "+SessionGuidText+".",listSummaries.Single(),"Design 9.3: the effective values too.");
 			string tailSlot3=" Device: Intraoral sensor (ImagingDeviceNum 12). Target: Slot 3 (teeth 6). Session: "+SessionGuidText+".";
 			CollectionAssert.AreEqual(new[] {
@@ -64,20 +64,26 @@ namespace ImagingCapture.Tests {
 			_harness.Setup.Options.SessionMode=TwainSessionMode.Continuous;
 			_harness.Setup.Options.Polarity=TwainPolarity.Invert;
 			_harness.Setup.Options.Headless=true;
+			//Every gate holds, so 16 bits are asked; the source gives 8 (the library's fallback is on the image).
+			_harness.Setup.GatedSettingsHash=new string('a',64);
+			_harness.Setup.SettingsCheck=CaptureSettingsTestKit.VerifiedHash(new string('a',64));
+			_harness.Setup.VerificationRecord=CaptureControllerHarness.PassedRecord(new string('a',64),16,
+				new TwainCaptureOptions { ImagingDeviceNum=12,Bits=16,Polarity=TwainPolarity.Invert });
 			_harness.Started();
+			Assert.AreEqual(16,_harness.Twain.LastRequest.Bits);
 			_harness.Status(TwainCaptureState.WaitingForImage,isSafeDisableInEffect:true);
-			_harness.Image();
-			_harness.Ended(TwainCaptureEndReason.Completed,ended => ended.Reason8Bit="The source sent 8-bit images.");
+			_harness.Image(actionConfigure:image => image.BitDepthReason="The source sent 8-bit images.");
+			_harness.Ended(TwainCaptureEndReason.Completed,ended => { ended.BitsRequested=16; ended.ReasonFallback="The source sent 8-bit images."; });
 			_harness.Execute(CaptureSessionAction.End);//the next slot's enable runs: the first press warns
 			_harness.Execute(CaptureSessionAction.End);
 			_harness.Ended(TwainCaptureEndReason.Stopped,ended => ended.StopReason=TwainCaptureStopReason.End);
 			CaptureEffectiveSettings settings=Controller.Summary.EffectiveSettings;
 			Assert.AreEqual(2,settings.CountEnables);
 			Assert.AreEqual(1,settings.CountSafeDisable);
-			Assert.AreEqual("Continuous, 8 bits (the source gave 8 bits), safe disable in effect for 1 of 2 enables, polarity Invert, headless on",
-				settings.GetText(isWithReasons:false));
+			Assert.AreEqual("Continuous, 8-bit (fallback: The source sent 8-bit images), safe disable in effect for 1 of 2 enables, polarity Invert, "
+				+"headless on",settings.GetText(isWithReasons:false),"The depth actually used, with the source's reason.");
 			StringAssert.Contains(_harness.Store.GetLogs(EnumPermType.ImageCreate).Single(x => x.Contains("Capture session summary")),
-				"(the source gave 8 bits: The source sent 8-bit images)");
+				"in effect: Continuous, 8-bit (fallback: The source sent 8-bit images)");
 			settings.IsSettingsVerified=false;
 			settings.SettingsNotVerifiedText="Capture settings were changed outside Open Dental.";
 			StringAssert.StartsWith(settings.GetText(isWithReasons:true),
@@ -91,7 +97,7 @@ namespace ImagingCapture.Tests {
 			harness.Expose();
 			harness.Execute(CaptureSessionAction.End);
 			Assert.AreEqual("55|0|Capture session summary: device Intraoral sensor (ImagingDeviceNum 12); 1 image, 0 retakes, 0 quarantined; provider "
-				+"DOC4 (ProvNum 4); single images, no mount; ended: Ended; in effect: PerSlot, 8 bits ([Device.12] Bits is not 16), safe disable not "
+				+"DOC4 (ProvNum 4); single images, no mount; ended: Ended; in effect: PerSlot, 8-bit (fallback: no Test capture record for this sensor's driver version and image settings), safe disable not "
 				+"in effect, polarity AsDelivered, headless off. Session: "+SessionGuidText+".",
 				harness.Store.GetLogs(EnumPermType.ImageCreate).Single());
 			_harness.BeginArmed();

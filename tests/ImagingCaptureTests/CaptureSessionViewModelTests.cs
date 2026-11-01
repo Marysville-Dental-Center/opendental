@@ -582,7 +582,8 @@ namespace ImagingCapture.Tests {
 			Assert.AreEqual("",_viewModel.TargetText);
 			Assert.AreEqual("Finished. 1 image, 0 retakes, 0 quarantined. Patient: Pat Test. Provider: DOC4.",_viewModel.IndicatorText,
 				"The counts only, so the indicator stays at two lines.");
-			StringAssert.StartsWith(_viewModel.EffectiveSettingsText,"In effect: PerSlot, 8 bits","Design 9.3, on a line of its own.");
+			StringAssert.StartsWith(_viewModel.EffectiveSettingsText,"In effect: PerSlot, 8-bit (fallback: no Test capture record",
+				"Design 9.3, on a line of its own, with the depth actually used.");
 			Assert.AreEqual(10,_viewModel.SecondsToClose);
 			Assert.AreEqual("Every slot of the mount has an image. This window closes in 10 s.",_viewModel.SummaryText);
 			Assert.IsFalse(_viewModel.IsCloseDue);
