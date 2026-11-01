@@ -3619,6 +3619,9 @@ namespace OpenDental{
 			if(imagingDevice is null){
 				return;
 			}
+			if(TryAcquireWithCaptureSession(imagingDevice,mountDef)){
+				return;//the capture session ran, or refused to start; with [Session] Enabled=0 it returns false and the legacy loop below runs (the rollback)
+			}
 			//Acquire from here down--------------------------------------------------------------------------------------------
 			PreselectFirstItem();
 			//Might still not be one selected

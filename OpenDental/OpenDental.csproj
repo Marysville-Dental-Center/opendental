@@ -1979,6 +1979,9 @@
     <Compile Include="Main Modules\ControlImages.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Include="Main Modules\ControlImages.Acquire.cs">
+      <DependentUpon>ControlImages.cs</DependentUpon>
+    </Compile>
     <Compile Include="Main Modules\ControlImages.Designer.cs">
       <DependentUpon>ControlImages.cs</DependentUpon>
     </Compile>
