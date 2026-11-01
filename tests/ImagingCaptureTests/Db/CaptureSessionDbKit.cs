@@ -32,6 +32,9 @@ namespace ImagingCapture.Tests.Db {
 		public readonly ImagingDevice ImagingDevice;
 		public readonly MountDef MountDef4Bw;
 		public long PatNumCur;
+		///<summary>ControlImages' _patient: the patient the Imaging module shows. A window script sets it (with PatNumCur) to stand for the main
+		///window changing patient while the session window is open; null for no patient (a logoff).</summary>
+		public Patient PatientShown;
 		private int _countImages;
 
 		public CaptureSessionDbKit(string tag,bool isSettingsSaved=true) {
@@ -39,6 +42,7 @@ namespace ImagingCapture.Tests.Db {
 			ProvNum=CaptureDb.CreateProvider(tag);
 			Patient=CaptureDb.CreatePatient(tag,ProvNum);
 			PatNumCur=Patient.PatNum;
+			PatientShown=Patient;
 			Category=CaptureDb.CreateImageCategory(tag+" X-rays");
 			ImagingDevice=CaptureDb.CreateImagingDevice(tag);
 			MountDef4Bw=CaptureDb.CreateMountDefFromTemplate(StandardTemplateKind.FourBitewingsHorizontal,Category.DefNum,tag);
@@ -83,7 +87,16 @@ namespace ImagingCapture.Tests.Db {
 
 		///<summary>The hook's partial with this kit's launcher: mountDef is the definition picked in FrmMountAndAcquire (null for an existing mount).</summary>
 		public CaptureHookOutcome RunHook(Mount mount,MountDef mountDef) {
-			return CaptureHookMirror.TryAcquireWithCaptureSession(Launcher(),Patient,mount,mountDef,ImagingDevice,Category.DefNum,() => PatNumCur);
+			return CaptureHookMirror.TryAcquireWithCaptureSession(Launcher(),() => PatientShown,mount,mountDef,ImagingDevice,Category.DefNum,() => PatNumCur);
+		}
+
+		///<summary>The main window changes to patient (null: no patient, as after a logoff that selects none) while the session window is open:
+		///PatNumCur and ControlImages' _patient change, and ODEvent Patient is raised (FormOpenDental.PatNumCur's setter).</summary>
+		public void ChangePatientShown(Patient patient) {
+			PatNumCur=patient?.PatNum??0;
+			PatientShown=patient;
+			PatientEvents.FirePatient(PatNumCur);
+			Dispatcher.RunPending();
 		}
 
 		#region Driving the controller inside the window

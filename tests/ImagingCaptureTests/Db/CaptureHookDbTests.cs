@@ -200,7 +200,7 @@ namespace ImagingCapture.Tests.Db {
 		[TestMethod]
 		public void NoMount_InvalidCategory_Refused_Logged() {
 			_kit=new CaptureSessionDbKit("hookcat");
-			CaptureHookOutcome outcome=CaptureHookMirror.TryAcquireWithCaptureSession(_kit.Launcher(),_kit.Patient,null,null,_kit.ImagingDevice,
+			CaptureHookOutcome outcome=CaptureHookMirror.TryAcquireWithCaptureSession(_kit.Launcher(),() => _kit.PatientShown,null,null,_kit.ImagingDevice,
 				_kit.Category.DefNum+100000,() => _kit.PatNumCur);
 			Assert.AreEqual(CaptureSessionLaunchKind.Refused,outcome.Result.Kind);
 			Assert.AreEqual("Image category missing; choose a category.",outcome.Result.Reason,"Design 7.12 \"Invalid category\", before writing.");
@@ -226,6 +226,9 @@ namespace ImagingCapture.Tests.Db {
 			CollectionAssert.AreEqual(new[] { MountCreatedText(mount),MountDeletedText(mount,"the capture session saved no image") },ImageCreateTexts(),
 				"Never started: no session summary either.");
 			Assert.AreEqual(0,outcome.ListMessages.Count);
+			Assert.IsTrue(outcome.IsSamePatient);
+			Assert.IsTrue(outcome.IsDisplayClearedAfterDelete,"The module still shows the patient: the deleted mount is cleared from it.");
+			Assert.AreEqual("",outcome.NodeSelectedAfter,"No mount and no image to show.");
 		}
 
 		[TestMethod]
@@ -292,7 +295,7 @@ namespace ImagingCapture.Tests.Db {
 			Document document=CaptureDb.CreateDocumentInSlot(_kit.Patient,MountItems.GetItemsForMount(mount.MountNum).Single(x => x.ItemOrder==1),
 				_kit.Category.DefNum);
 			CaptureHookOutcome outcome=new CaptureHookOutcome();
-			Assert.IsFalse(CaptureHookMirror.DeleteEmptyMountAfterSession(_kit.Patient,mount,result,outcome),"The documents are read again right before the delete.");
+			Assert.IsFalse(CaptureHookMirror.DeleteEmptyMountAfterSession(_kit.Patient,mount,result,true,outcome),"The documents are read again right before the delete.");
 			Assert.IsTrue(CaptureDb.MountExists(mount.MountNum));
 			Assert.AreEqual(4,CaptureDb.GetMountItemRows(mount.MountNum).Count,"Mounts.Delete would have removed the item the document points at.");
 			Assert.AreEqual(CaptureDb.GetMountItemRows(mount.MountNum).Single(x => x.ItemOrder==1).MountItemNum,Documents.GetByNum(document.DocNum).MountItemNum);
@@ -312,5 +315,80 @@ namespace ImagingCapture.Tests.Db {
 			CollectionAssert.AreEqual(new[] { MountCreatedText(mount) },ImageCreateTexts());
 		}
 		#endregion The empty-mount rule after a session
+
+		#region The main window's patient changes while the session window is open
+		[TestMethod]
+		public void PatientChangedDuringTheSession_TheModuleShowsTheOtherPatient_TheSessionsMountIsNotLoadedIntoIt_NothingLoggedForTheOther() {
+			//A task popup opened during the session goes to another patient's task (TaskGoTo sets PatNumCur and refreshes the module, so
+			//RefreshModuleData sets _patient to that patient). The session's mount holds the bound patient's image.
+			_kit=new CaptureSessionDbKit("hookswap");
+			Patient patientOther=CaptureDb.CreatePatient("HookSwapOther",_kit.ProvNum);
+			Mount mount=_kit.CreateMount4Bw();
+			_kit.WindowRunner.ActionWhileShown=controller => {
+				_kit.Start(controller);
+				_kit.Expose(60);
+				Assert.AreEqual(1,controller.CountImages);
+				_kit.ChangePatientShown(patientOther);//placing stops at once (design 7.6); the operator ends the session
+				_kit.Execute(controller,CaptureSessionAction.End);
+				_kit.Execute(controller,CaptureSessionAction.End);
+				_kit.Ended(TwainCaptureEndReason.Stopped);
+			};
+			CaptureHookOutcome outcome=_kit.RunHook(mount,_kit.MountDef4Bw);
+			Assert.AreEqual(CaptureSessionLaunchKind.Completed,outcome.Result.Kind,outcome.Result.Reason);
+			Assert.AreEqual(1,outcome.Result.Summary.CountImages);
+			Assert.IsFalse(outcome.IsSamePatient);
+			Assert.IsFalse(outcome.IsMountDeleted);
+			Assert.AreEqual(_kit.Patient.PatNum,Mounts.GetByNum(mount.MountNum).PatNum);
+			Assert.AreEqual(_kit.Patient.PatNum,CaptureDb.GetDocuments(_kit.Patient.PatNum).Single().PatNum);
+			Assert.AreEqual("",outcome.NodeSelectedAfter,"The bound patient's mount is not loaded into the other patient's Imaging module.");
+			Assert.IsFalse(outcome.IsThumbnailRefreshed,"No thumbnail of the bound patient's mount is written into the other patient's folder.");
+			Assert.AreEqual(0,CaptureDb.GetLogsForPatient(EnumPermType.ImageCreate,patientOther.PatNum).Count,"Nothing under the other patient.");
+			Assert.AreEqual(0,CaptureDb.GetDocuments(patientOther.PatNum).Count);
+			Assert.IsTrue(ImageCreateTexts().Any(x => x.StartsWith("Capture session summary: ")),"The session's entries are the bound patient's.");
+		}
+
+		[TestMethod]
+		public void PatientClearedDuringTheSession_TheEmptyNewMountIsDeletedAndLoggedForTheBoundPatient() {
+			//Windows locks with SecurityLogOffWithWindows: LogOffNow runs inside the session window's modal loop, and another user's logon with
+			//clinics and PatientMaintainedOnUserChange off leaves PatNumCur 0, so RefreshModuleData(0) sets _patient to null. The partial used to
+			//throw a NullReferenceException there, after the mount was already deleted, with its entry unwritten.
+			_kit=new CaptureSessionDbKit("hooknull");
+			Mount mount=_kit.CreateMount4Bw();
+			_kit.WindowRunner.ActionWhileShown=controller => {
+				controller.Begin();
+				_kit.ChangePatientShown(null);
+			};
+			CaptureHookOutcome outcome=_kit.RunHook(mount,_kit.MountDef4Bw);
+			Assert.AreEqual(CaptureSessionLaunchKind.Completed,outcome.Result.Kind,outcome.Result.Reason);
+			Assert.AreEqual(0,outcome.Result.Summary.CountImages);
+			Assert.IsFalse(outcome.IsSamePatient);
+			Assert.IsTrue(outcome.Result.IsEmptyMountToDelete,"The bound patient's mount, empty, as the database shows.");
+			Assert.IsTrue(outcome.IsMountDeleted);
+			Assert.IsFalse(CaptureDb.MountExists(mount.MountNum));
+			CollectionAssert.AreEqual(new[] { MountCreatedText(mount),MountDeletedText(mount,"the capture session saved no image") },ImageCreateTexts(),
+				"The deletion is logged under the bound patient.");
+			Assert.IsFalse(outcome.IsDisplayClearedAfterDelete,"The module shows no patient now: it is left alone.");
+			Assert.AreEqual("",outcome.NodeSelectedAfter);
+			Assert.IsFalse(outcome.IsThumbnailRefreshed);
+		}
+
+		[TestMethod]
+		public void PatientUnchanged_TheModuleShowsTheSessionsMount_AndItsThumbnail() {
+			_kit=new CaptureSessionDbKit("hooksame");
+			Mount mount=_kit.CreateMount4Bw();
+			_kit.WindowRunner.ActionWhileShown=controller => {
+				_kit.Start(controller);
+				_kit.Expose(90);
+				Assert.IsTrue(_kit.Execute(controller,CaptureSessionAction.End));
+				Assert.IsTrue(_kit.Execute(controller,CaptureSessionAction.End),"The second press within 10 s goes ahead (design 7.6).");
+				_kit.Ended(TwainCaptureEndReason.Stopped);
+			};
+			CaptureHookOutcome outcome=_kit.RunHook(mount,_kit.MountDef4Bw);
+			Assert.AreEqual(CaptureSessionLaunchKind.Completed,outcome.Result.Kind,outcome.Result.Reason);
+			Assert.IsTrue(outcome.IsSamePatient);
+			Assert.AreEqual("Mount "+mount.MountNum,outcome.NodeSelectedAfter);
+			Assert.IsTrue(outcome.IsThumbnailRefreshed);
+		}
+		#endregion The main window's patient changes while the session window is open
 	}
 }

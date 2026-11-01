@@ -226,7 +226,7 @@ namespace ImagingCapture.Tests.Db {
 				Assert.IsTrue(_kit.Execute(controller,CaptureSessionAction.End));
 				Assert.AreEqual(CaptureSessionPhase.Finished,controller.Phase);
 			};
-			CaptureHookOutcome outcome=CaptureHookMirror.TryAcquireWithCaptureSession(_kit.Launcher(),_kit.Patient,null,null,_kit.ImagingDevice,
+			CaptureHookOutcome outcome=CaptureHookMirror.TryAcquireWithCaptureSession(_kit.Launcher(),() => _kit.PatientShown,null,null,_kit.ImagingDevice,
 				_kit.Category.DefNum,() => _kit.PatNumCur);
 			Assert.AreEqual(CaptureSessionLaunchKind.Completed,outcome.Result.Kind,outcome.Result.Reason);
 			Assert.IsFalse(outcome.Result.IsEmptyMountToDelete);
